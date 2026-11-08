@@ -100,14 +100,25 @@ describe('buildCampaign', () => {
     expect(ok(result([], { crimeId: 'mutiny' })).commander.socialStats).toEqual({ authority: 2, insight: 1, empathy: 1, cunning: 1 });
   });
 
-  it('strain_trade adds 20 plyx', () => {
-    expect(ok(result([], { crimeId: 'strain_trade' })).resources.plyx).toBe(20);
-    expect(ok(result([], { crimeId: 'liquidation' })).resources.plyx).toBe(0);
+  it('strain_trade adds 20 plyx on top of the start', () => {
+    expect(ok(result([], { crimeId: 'strain_trade' })).resources.plyx).toBe(30);
+    expect(ok(result([], { crimeId: 'liquidation' })).resources.plyx).toBe(10);
+  });
+
+  it('start startingResources are applied before the effects', () => {
+    const patchedStart = { ...reg, starts: new Map([...reg.starts].map(([k, v]) => [k, { ...v, startingResources: { credits: 7, supplies: 3, plyx: 2 } }])) };
+    const s = ok(result([], { startId: 'start_vesper' }), OPTS, patchedStart);
+    expect(s.resources).toEqual({ credits: 7, supplies: 13, plyx: 2 });
+  });
+
+  it('a start without startingResources begins with nothing but the effects', () => {
+    const noBase = { ...reg, starts: new Map([...reg.starts].map(([k, v]) => { const { startingResources: _drop, ...rest } = v; return [k, rest as typeof v]; })) };
+    expect(ok(result([], { startId: 'start_vesper' }), OPTS, noBase).resources).toEqual({ credits: 0, supplies: 10, plyx: 0 });
   });
 
   it('corporation starting bonus adds its resources', () => {
-    expect(ok(result([], { startId: 'start_vesper' })).resources).toMatchObject({ supplies: 10, credits: 0 });
-    expect(ok(result([], { startId: 'start_kestrel' })).resources).toMatchObject({ credits: 100, supplies: 0 });
+    expect(ok(result([], { startId: 'start_vesper' })).resources).toMatchObject({ supplies: 30, credits: 40 });
+    expect(ok(result([], { startId: 'start_kestrel' })).resources).toMatchObject({ credits: 160, supplies: 16 });
   });
 
   it('experimentation lowers starting trust by 10, clamped at 0', () => {
@@ -180,7 +191,7 @@ describe('buildCampaign', () => {
 
   it('unknown effect types in a crime are ignored', () => {
     const s = ok(result([unit()], { crimeId: 'liquidation' }));
-    expect(s.resources).toEqual({ credits: 0, supplies: 10, plyx: 0 });
+    expect(s.resources).toEqual({ credits: 40, supplies: 30, plyx: 10 });
     expect(s.relations.unit_rhea.trust).toBe(20);
   });
 

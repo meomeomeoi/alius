@@ -240,6 +240,8 @@ function buildCampaign(r, reg, opts) {
   state.commander.socialStats = { authority: 1, insight: 1, empathy: 1, cunning: 1 };
   state.world.startId = start.id;
   state.settings = { desireBondDefects: opts.desireBondDefects };
+  const base = start.startingResources;
+  for (const k of ["credits", "supplies", "plyx"]) state.resources[k] += base?.[k] ?? 0;
   const crimeEffects = [...effectsOf(crime.perk), ...effectsOf(crime.flaw)];
   for (const fx of [...effectsOf(corp.startingBonus), ...crimeEffects]) {
     if (fx.type === "social_rank") {
@@ -253,9 +255,9 @@ function buildCampaign(r, reg, opts) {
   const knowsCrime = crime.knownByDefault === true || start.crimeKnownByDefault === true;
   const used = /* @__PURE__ */ new Set();
   for (const u of r.units) {
-    const base = `unit_${slug(u.displayName)}`;
-    let id = base;
-    for (let n = 2; used.has(id); n++) id = `${base}_${n}`;
+    const base2 = `unit_${slug(u.displayName)}`;
+    let id = base2;
+    for (let n = 2; used.has(id); n++) id = `${base2}_${n}`;
     used.add(id);
     const role = reg.roles.get(u.roleId);
     const stats = role.baseStats;

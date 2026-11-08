@@ -172,6 +172,9 @@ export function buildCampaign(
   state.world.startId = start.id;
   state.settings = { desireBondDefects: opts.desireBondDefects };
 
+  const base = start.startingResources as Partial<Record<keyof CampaignState['resources'], number>> | undefined;
+  for (const k of ['credits', 'supplies', 'plyx'] as const) state.resources[k] += base?.[k] ?? 0;
+
   const crimeEffects = [...effectsOf(crime.perk), ...effectsOf(crime.flaw)];
   for (const fx of [...effectsOf(corp.startingBonus), ...crimeEffects]) {
     if (fx.type === 'social_rank') {
