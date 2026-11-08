@@ -398,17 +398,17 @@ export class Wizard {
   - Turning `secondDefect` off removes the second defect.
   - `canAdvance`: dossier needs a name, start and crime; units always passes; calibration needs every unit `ready`/`manual` with a role, a signature and ≥1 defect; review needs `validateSetup` to return no errors.
 
-- [ ] **Step 1: Write the failing tests** (importer = a `vi.fn` returning controllable promises)
+- [x] **Step 1: Write the failing tests** (importer = a `vi.fn` returning controllable promises)
 
 `difficulty hints 4/3/2/1/0`; `default commander name comes from persona, falls back to Commander`; `cannot select a fifth unit`; `zero units skips calibration to review` (next from units → review, back from review → units); `calibrate starts one import and preselects first candidates`; `stale import result is ignored after the unit is removed`; `manual outcome sets manual status and notice`; `unit with missing card is manual` (importer → `{ kind: 'manual', reason: 'card not found' }` → status manual, the name from selection is kept); `regenerate signature keeps the chosen role and values`; `second defect toggle off removes it`; `calibration cannot advance without a defect`; `result is null when validateSetup fails and a SetupResult otherwise`; `desire_bond defects are not offered in manual lists when disabled` (helper `manualOptions(registries, desireBondDefects)` exported and tested).
 
-- [ ] **Step 2: Run** `npx vitest run tests/setup/wizard.test.ts` → FAIL.
+- [x] **Step 2: Run** `npx vitest run tests/setup/wizard.test.ts` → FAIL.
 
-- [ ] **Step 3: Implement** (also export `manualOptions(registries, desireBondDefects): { roles: Entry[]; signatures: Entry[]; defects: Entry[] }`).
+- [x] **Step 3: Implement** (also export `manualOptions(registries, desireBondDefects): { roles: Entry[]; signatures: Entry[]; defects: Entry[] }`).
 
-- [ ] **Step 4: Run** → PASS.
+- [x] **Step 4: Run** → PASS.
 
-- [ ] **Step 5: Commit** `feat(setup): pure intake wizard model with import orchestration`
+- [x] **Step 5: Commit** `feat(setup): pure intake wizard model with import orchestration`
 
 ---
 
