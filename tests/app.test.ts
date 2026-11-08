@@ -472,4 +472,46 @@ describe('campaign setup deployment (P1)', () => {
     await app.deployCampaign(result(1), 'new_group');
     expect(app.setupState()).toBeNull();
   });
+
+  it('a second deployment while one is running is refused (no second group, no second campaign)', async () => {
+    const { st, app, shell } = await bootReal();
+    const first = app.deployCampaign(result(2), 'new_group');
+    const second = app.deployCampaign(result(2), 'new_group');
+    expect(await second).toBe(false);
+    expect(await first).toBe(true);
+    expect(st.groups.size).toBe(1);
+    expect(shell.toasts.some((t) => /already running/i.test(t.text))).toBe(true);
+    // the guard is released afterwards
+    expect(await app.deployCampaign(result(1), 'new_group')).toBe(true);
+    expect(st.groups.size).toBe(2);
+  });
+
+  it('the guard is also released after a failed deployment', async () => {
+    const { st, app } = await bootReal();
+    st.failCreateGroup = true;
+    expect(await app.deployCampaign(result(1), 'new_group')).toBe(false);
+    st.failCreateGroup = false;
+    expect(await app.deployCampaign(result(1), 'new_group')).toBe(true);
+  });
+
+  it('the lorebook is never bound to a chat other than the target when the chat is switched mid-deployment', async () => {
+    const { st, app } = await bootReal(A);
+    app.openSetup();
+    st.saveLorebook = async () => { st.switchChat(B); }; // the player switches chats while the lorebook is saved
+    expect(await app.deployCampaign(result(2), 'current_group')).toBe(false);
+    expect(st.readMetadata('world_info')).toBeUndefined(); // chat B untouched
+    st.switchChat(A);
+    expect(st.readMetadata('world_info')).toBeUndefined();
+    expect(st.readMetadata(METADATA_KEY)).toBeUndefined();
+  });
+
+  it('a failed campaign write restores the chat\'s previous lorebook binding', async () => {
+    const { st, app } = await bootReal(A);
+    st.writeMetadata('world_info', 'Player Lore');
+    app.openSetup();
+    st.saveMetadata = async () => { throw new Error('quota'); };
+    expect(await app.deployCampaign(result(1), 'current_group')).toBe(false);
+    expect(st.readMetadata('world_info')).toBe('Player Lore');
+    expect(st.readMetadata(METADATA_KEY)).toBeUndefined();
+  });
 });

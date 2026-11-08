@@ -208,4 +208,28 @@ describe('re-sync flow', () => {
     expect(t.toasts.at(-1)).toMatchObject({ kind: 'warn' });
     expect(t.app.current().state!.squad[0].roleId).toBe('assault');
   });
+
+  it('typing in a re-sync text field does not lose focus', async () => {
+    const t = await boot();
+    t.st.mainReplies = [IMPORT_REPLY];
+    let focusAfter: string | undefined;
+    let valueAfter = '';
+    t.script.push(async () => 'go', async (opts) => {
+      await flush();
+      await flush();
+      const body = opts.body as HTMLElement;
+      document.body.append(body); // a real modal lives in the document
+      const input = body.querySelector<HTMLInputElement>('input[data-key="sig-name"]')!;
+      input.focus();
+      input.value = 'Renamed Skill';
+      input.dispatchEvent(new Event('input'));
+      focusAfter = (document.activeElement as HTMLElement | null)?.dataset?.key;
+      valueAfter = (document.activeElement as HTMLInputElement | null)?.value ?? '';
+      return 'cancel';
+    });
+    t.clickResync();
+    await t.settle(2);
+    expect(focusAfter).toBe('sig-name');
+    expect(valueAfter).toBe('Renamed Skill');
+  });
 });

@@ -204,7 +204,7 @@ describe('setup screen', () => {
     expect(qa(m, '.alius-sig-card')).toHaveLength(12);
     expect(qa(m, '.alius-defect-card')).toHaveLength(14);
     expect(m.host.textContent).toContain('card not found');
-    expect(q(m, 'button[data-regenerate]')).toBeNull();
+    expect(qa(m, 'button[data-regenerate]')).toHaveLength(6); // the AI can be retried after a fallback
   });
 
   it('manual signature starts as the template name and mechanic', async () => {
@@ -454,5 +454,98 @@ describe('calibration view', () => {
       renderCalibration(host, { draft: v.draft, registries: reg, desireBondDefects: false, onUpdate: vi.fn(), onRegenerate: vi.fn(), onManual: vi.fn() }),
     ).not.toThrow();
     expect(host.textContent).toContain('UNKNOWN ghost');
+  });
+});
+
+describe('focus, busy state and manual/AI switching (review fixes)', () => {
+  async function ready(over: Parameters<typeof make>[0] = {}) {
+    const m = make(over);
+    await toCalibration(m);
+    return m;
+  }
+
+  it('a slider keeps keyboard focus after its value is committed', async () => {
+    const m = await ready();
+    const before = q<HTMLInputElement>(m, 'input[type="range"][data-axis="mercy"]')!;
+    before.focus();
+    expect(document.activeElement).toBe(before);
+    before.value = '2';
+    before.dispatchEvent(new Event('change'));
+    const after = q<HTMLInputElement>(m, 'input[type="range"][data-axis="mercy"]')!;
+    expect(after).not.toBe(before); // the screen was re-rendered
+    expect(document.activeElement).toBe(after);
+    expect(after.value).toBe('2');
+    // same for a starting-axes slider and a defect card
+    const base = q<HTMLInputElement>(m, 'input[data-baseline="affinity"]')!;
+    base.focus();
+    base.value = '5';
+    base.dispatchEvent(new Event('change'));
+    expect((document.activeElement as HTMLElement).dataset.baseline).toBe('affinity');
+    const card = q(m, '.alius-defect-card[data-id="pain_inversion"]')!;
+    card.focus();
+    card.click();
+    expect(document.activeElement).toBe(q(m, '.alius-defect-card[data-id="pain_inversion"]'));
+  });
+
+  it('a chip remove button and the tag field keep focus', async () => {
+    const m = await ready();
+    const input = q<HTMLInputElement>(m, 'input[data-tags="dislikes"]')!;
+    input.focus();
+    input.value = 'noise';
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+    expect((document.activeElement as HTMLElement).dataset.key).toBe('tag-dislikes');
+    const remove = q<HTMLButtonElement>(m, 'button[aria-label="Remove noise"]')!;
+    remove.focus();
+    expect(document.activeElement).toBe(remove);
+    // an avatar with a quote in its file name must not break focus restore
+    expect(() => q<HTMLInputElement>(m, 'input[data-tags="likes"]')!.focus()).not.toThrow();
+  });
+
+  it('target radios keep focus; avatar names with quotes do not break the units step', async () => {
+    const m = make({ canBind: true });
+    m.st.characters = [{ avatar: 'we"ird.png', name: 'Weird' }, ...m.st.characters];
+    toUnits(m);
+    const box = q<HTMLInputElement>(m, 'input[type="checkbox"]')!;
+    box.focus();
+    expect(() => box.click()).not.toThrow();
+    expect(document.activeElement).toBe(q(m, 'input[type="checkbox"]'));
+  });
+
+  it('Confirm cannot be fired twice while a deployment is running, even across re-renders', async () => {
+    const m = make({ canBind: true });
+    await (async () => { await toCalibration(m); click(action(m, 'next')); })();
+    let finish!: () => void;
+    m.onConfirm.mockImplementation(() => new Promise<void>((r) => (finish = r)));
+    click(action(m, 'confirm'));
+    expect(m.onConfirm).toHaveBeenCalledTimes(1);
+    // ST fires chat_changed -> the shell re-renders the screen with the same wizard
+    renderSetupScreen(m.host, { wizard: m.wizard, registries: reg, st: m.st, onCancel: m.onCancel, onConfirm: m.onConfirm, modal: m.modal as never });
+    expect(action(m, 'confirm').disabled).toBe(true);
+    expect(m.host.textContent).toContain('DEPLOYING');
+    action(m, 'confirm').click();
+    expect(m.onConfirm).toHaveBeenCalledTimes(1);
+    finish();
+    await flush();
+    expect(action(m, 'confirm').disabled).toBe(false);
+  });
+
+  it('[ MANUAL ] is available while the import is still running', async () => {
+    const m = make();
+    m.importer.mockImplementation(() => new Promise<ImportOutcome>(() => {}));
+    toUnits(m);
+    click(q(m, 'input[data-avatar="c0.png"]'));
+    click(action(m, 'next'));
+    expect(m.host.textContent).toContain('CALIBRATING…');
+    click(q(m, 'button[data-action="manual"]'));
+    expect(m.wizard.state.units[0].status).toBe('manual');
+    expect(qa(m, '.alius-role-card')).toHaveLength(6);
+  });
+
+  it('after a fallback to manual the AI can be retried per section', async () => {
+    const m = make({ outcome: { kind: 'manual', reason: 'network down' } });
+    await toCalibration(m);
+    m.importer.mockClear();
+    click(q(m, 'button[data-regenerate="signature"]'));
+    expect(m.importer).toHaveBeenCalledWith('c0.png', ['signature']);
   });
 });

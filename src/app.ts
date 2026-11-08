@@ -17,6 +17,7 @@ import { renderOpsPlaceholder, renderSquadTab } from './ui/squad/squadTab';
 import { RESYNC_SECTIONS, type ResyncPatch, type ResyncSection } from './engine/actions/squad';
 import { renderCalibration } from './ui/setup/calibration';
 import { h } from './ui/dom';
+import { renderKeepingFocus } from './ui/focus';
 import {
   createSaver, initCampaign as initCampaignInChat, loadCampaign, writeNewCampaign, METADATA_KEY, type LoadResult,
 } from './st/persistence';
@@ -112,7 +113,25 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     setup = null;
   }
 
+  /** One deployment at a time: a second click or call must not create a second group and campaign. */
+  let deploying = false;
   async function deployCampaign(r: SetupResult, target: 'new_group' | 'current_group'): Promise<boolean> {
+    if (deploying) {
+      toast('error', 'A deployment is already running.');
+      return false;
+    }
+    deploying = true;
+    try {
+      return await deployOnce(r, target);
+    } finally {
+      deploying = false;
+    }
+  }
+
+  /** The key the adapter's setChatLorebook writes; restored if the deployment fails after binding. */
+  const WORLD_INFO_KEY = 'world_info';
+
+  async function deployOnce(r: SetupResult, target: 'new_group' | 'current_group'): Promise<boolean> {
     const fail = (text: string): false => {
       toast('error', text);
       return false;
@@ -152,17 +171,28 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         targetChatId = chat.chatId;
       }
 
-      // 3. exactly the selected cards take part
+      // 3. exactly the selected cards take part (in the target chat only)
+      if (st.getActiveChat()?.chatId !== targetChatId) return fail('The open chat changed during deployment; nothing was written.');
       await st.setMembersActive(avatars);
     } catch (e) {
       return fail(`Deployment failed: ${errText(e)}`);
     }
 
     // 4. lorebook: installed unless a lorebook of that name exists (the player may have edited it)
+    let bound = false;
+    let previousLore: unknown;
+    const restoreLorebook = () => {
+      if (bound && st.getActiveChat()?.chatId === targetChatId) st.writeMetadata(WORLD_INFO_KEY, previousLore);
+    };
     if (lorebook) {
       try {
         if (!st.listLorebooks().includes(lorebook.name)) await st.saveLorebook(lorebook);
-        st.setChatLorebook(lorebook.name);
+        // never bind into another chat if the player switched while the lorebook was saved
+        if (st.getActiveChat()?.chatId === targetChatId) {
+          previousLore = st.readMetadata(WORLD_INFO_KEY);
+          st.setChatLorebook(lorebook.name);
+          bound = true;
+        }
       } catch (e) {
         toast('warn', `Lorebook not installed: ${errText(e)}`);
       }
@@ -172,6 +202,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     try {
       const written = await writeNewCampaign(st, built.state, targetChatId);
       if (!written.ok) {
+        restoreLorebook();
         return fail(
           written.reason === 'exists' ? 'This chat already has an Alius campaign.'
           : written.reason === 'chat_changed' ? 'The open chat changed during deployment; nothing was written.'
@@ -180,6 +211,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         );
       }
     } catch (e) {
+      restoreLorebook();
       return fail(`Could not save the campaign: ${errText(e)}`);
     }
 
@@ -258,7 +290,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         onRegenerate: (s) => wizard.regenerate(0, s),
         onManual: () => wizard.setManual(0),
       });
-    wizard.subscribe(draw);
+    wizard.subscribe(() => renderKeepingFocus(body, draw));
     draw();
     const answer = await shell.modal({
       title: `Re-sync ${unit.displayName}`,

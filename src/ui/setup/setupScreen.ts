@@ -4,6 +4,7 @@ import { VALUE_AXES } from '../../engine/state/types';
 import type { StAdapter } from '../../st/adapter';
 import { difficultyHint, type UnitDraft, type Wizard, type WizardState, type WizardStep } from '../../setup/wizard';
 import { h } from '../dom';
+import { renderKeepingFocus } from '../focus';
 import type { ModalOpts } from '../shell/modal';
 import { renderCalibration } from './calibration';
 
@@ -37,49 +38,30 @@ function card(cls: string, id: string, selected: boolean, onClick: () => void, .
   return h('button', { type: 'button', class: `alius-card ${cls}`, 'data-id': id, 'aria-pressed': String(selected), onclick: onClick }, ...children);
 }
 
-/** A selector that finds the same control again after a re-render. */
-function focusSelector(el: HTMLElement): string | null {
-  const d = el.dataset;
-  if (d.key) return `[data-key="${d.key}"]`;
-  if (d.action) return `[data-action="${d.action}"]`;
-  if (d.regenerate) return `[data-regenerate="${d.regenerate}"]`;
-  if (d.addTag) return `[data-add-tag="${d.addTag}"]`;
-  if (d.avatar) return `[data-avatar="${d.avatar}"]`;
-  if (d.id && el.className) return `.${el.className.split(' ').join('.')}[data-id="${d.id}"]`;
-  return null;
-}
+/** Deployment in flight per wizard. Lives outside the render closure: ST fires chat_changed while the new group opens and the shell re-renders this screen. */
+const deploying = new WeakMap<Wizard, boolean>();
 
 export function renderSetupScreen(host: HTMLElement, ctx: SetupScreenCtx): void {
   const { wizard, registries: reg, st } = ctx;
   let search = '';
   let lastStep: WizardStep | null = null;
-  let confirming = false;
 
   const render = (): void => {
     const s = wizard.state;
-    const active = document.activeElement as (HTMLInputElement | null);
-    const sel = active && host.contains(active) ? focusSelector(active) : null;
-    const caret = sel && typeof active?.selectionStart === 'number' ? [active.selectionStart, active.selectionEnd] : null;
-
-    host.replaceChildren();
-    const title = h('h2', { class: 'alius-setup-title', tabindex: '-1' }, 'CCP INTAKE FORM');
-    host.append(
-      h('div', { class: 'alius-setup' },
-        title,
-        h('ol', { class: 'alius-steps' }, ...STEPS.map(([id, label]) =>
-          h('li', { class: 'alius-step', 'aria-current': s.step === id ? 'step' : null }, label))),
-        stepBody(s),
-        footer(s)),
-    );
-
+    let title!: HTMLElement;
+    renderKeepingFocus(host, () => {
+      host.replaceChildren();
+      title = h('h2', { class: 'alius-setup-title', tabindex: '-1' }, 'CCP INTAKE FORM');
+      host.append(
+        h('div', { class: 'alius-setup' },
+          title,
+          h('ol', { class: 'alius-steps' }, ...STEPS.map(([id, label]) =>
+            h('li', { class: 'alius-step', 'aria-current': s.step === id ? 'step' : null }, label))),
+          stepBody(s),
+          footer(s)),
+      );
+    });
     if (lastStep !== null && lastStep !== s.step) title.focus();
-    else if (sel) {
-      const el = host.querySelector<HTMLInputElement>(sel);
-      el?.focus();
-      if (el && caret && typeof el.setSelectionRange === 'function') {
-        try { el.setSelectionRange(caret[0], caret[1]); } catch { /* not a text control */ }
-      }
-    }
     lastStep = s.step;
   };
 
@@ -201,17 +183,25 @@ export function renderSetupScreen(host: HTMLElement, ctx: SetupScreenCtx): void 
       btn('back', 'Back', () => wizard.back(), s.step === 'dossier'),
     ];
     if (s.step === 'review') {
-      buttons.push(btn('confirm', 'Confirm deployment', async () => {
+      const busy = deploying.get(wizard) === true;
+      buttons.push(btn('confirm', busy ? 'DEPLOYING…' : 'Confirm deployment', async () => {
         const result = wizard.result();
-        if (!result || confirming) return;
-        confirming = true;
-        try { await ctx.onConfirm(result, s.target); } finally { confirming = false; }
-      }, !adv.ok));
+        if (!result || deploying.get(wizard)) return;
+        deploying.set(wizard, true);
+        render();
+        try {
+          await ctx.onConfirm(result, s.target);
+        } finally {
+          deploying.set(wizard, false);
+          render();
+        }
+      }, !adv.ok || busy));
     } else {
       buttons.push(btn('next', 'Next', () => wizard.next(), !adv.ok));
     }
     return h('div', { class: 'alius-setup-footer' },
       !adv.ok && adv.reason ? h('p', { class: 'alius-hint' }, adv.reason) : null,
+      s.step === 'review' && deploying.get(wizard) ? h('p', { class: 'alius-hint', role: 'status' }, 'DEPLOYING — please wait.') : null,
       h('div', { class: 'alius-row' }, ...buttons));
   }
 

@@ -61,7 +61,8 @@ export function renderCalibration(host: HTMLElement, ctx: CalibrationCtx): void 
       'div',
       { class: 'alius-calib-head' },
       h('p', { class: 'alius-status', role: 'status' }, status),
-      draft.status === 'ready'
+      // also while the import is still running, so a slow or hung call can be skipped
+      draft.status === 'ready' || draft.status === 'loading'
         ? h('button', { type: 'button', class: 'alius-btn', 'data-action': 'manual', onclick: ctx.onManual }, '[ MANUAL ]')
         : null,
     ),
@@ -77,7 +78,8 @@ export function renderCalibration(host: HTMLElement, ctx: CalibrationCtx): void 
         'div',
         { class: 'alius-calib-title' },
         h('h3', {}, title),
-        draft.status === 'ready'
+        // in manual mode too: after a failed import the AI can be retried section by section
+        draft.status === 'ready' || draft.status === 'manual'
           ? h('button', { type: 'button', class: 'alius-btn', 'data-regenerate': id, onclick: () => ctx.onRegenerate(id) }, '[ REGENERATE ]')
           : null,
       ),

@@ -5345,6 +5345,45 @@ function h(tag, attrs = {}, ...children) {
   return el;
 }
 
+// src/ui/focus.ts
+var CONTROLS = "input, button, select, textarea";
+var KEYS = ["key", "action", "regenerate", "addTag", "axis", "baseline", "avatar", "resync"];
+function identity(el) {
+  for (const k of KEYS) if (el.dataset[k]) return `${k}=${el.dataset[k]}`;
+  if (el.dataset.id) return `id=${el.className}|${el.dataset.id}`;
+  if (el instanceof HTMLInputElement && el.type === "radio") return `radio=${el.name}|${el.value}`;
+  const label = el.getAttribute("aria-label");
+  return label ? `aria=${label}` : null;
+}
+var isText = (el) => el instanceof HTMLInputElement && ["text", "search", "email", "url", "tel", "password"].includes(el.type) || el instanceof HTMLTextAreaElement;
+function renderKeepingFocus(host, draw) {
+  const active = document.activeElement;
+  let id = null;
+  let index = -1;
+  let tag = "";
+  let caret = null;
+  if (active && host.contains(active) && active.matches(CONTROLS)) {
+    index = [...host.querySelectorAll(CONTROLS)].indexOf(active);
+    id = identity(active);
+    tag = active.tagName;
+    if (isText(active)) caret = [active.selectionStart, active.selectionEnd];
+  }
+  draw();
+  if (index < 0) return;
+  const controls = [...host.querySelectorAll(CONTROLS)];
+  const byId = id ? controls.find((c) => identity(c) === id) : void 0;
+  const byPosition = controls[index]?.tagName === tag ? controls[index] : void 0;
+  const target = byId ?? byPosition;
+  if (!target) return;
+  target.focus();
+  if (caret && isText(target) && caret[0] !== null && caret[1] !== null) {
+    try {
+      target.setSelectionRange(caret[0], caret[1]);
+    } catch {
+    }
+  }
+}
+
 // src/ui/setup/calibration.ts
 var TAG_FIELDS = [
   ["likes", "Likes", SETUP_LIMITS.likes],
@@ -5376,7 +5415,8 @@ function renderCalibration(host, ctx2) {
       "div",
       { class: "alius-calib-head" },
       h("p", { class: "alius-status", role: "status" }, status),
-      draft.status === "ready" ? h("button", { type: "button", class: "alius-btn", "data-action": "manual", onclick: ctx2.onManual }, "[ MANUAL ]") : null
+      // also while the import is still running, so a slow or hung call can be skipped
+      draft.status === "ready" || draft.status === "loading" ? h("button", { type: "button", class: "alius-btn", "data-action": "manual", onclick: ctx2.onManual }, "[ MANUAL ]") : null
     )
   );
   if (draft.status === "loading" || draft.status === "idle") return;
@@ -5388,7 +5428,8 @@ function renderCalibration(host, ctx2) {
       "div",
       { class: "alius-calib-title" },
       h("h3", {}, title),
-      draft.status === "ready" ? h("button", { type: "button", class: "alius-btn", "data-regenerate": id, onclick: () => ctx2.onRegenerate(id) }, "[ REGENERATE ]") : null
+      // in manual mode too: after a failed import the AI can be retried section by section
+      draft.status === "ready" || draft.status === "manual" ? h("button", { type: "button", class: "alius-btn", "data-regenerate": id, onclick: () => ctx2.onRegenerate(id) }, "[ REGENERATE ]") : null
     ),
     ...body
   );
@@ -5604,49 +5645,29 @@ var nameOf2 = (reg, registry2, id) => {
 function card(cls, id, selected, onClick, ...children) {
   return h("button", { type: "button", class: `alius-card ${cls}`, "data-id": id, "aria-pressed": String(selected), onclick: onClick }, ...children);
 }
-function focusSelector(el) {
-  const d = el.dataset;
-  if (d.key) return `[data-key="${d.key}"]`;
-  if (d.action) return `[data-action="${d.action}"]`;
-  if (d.regenerate) return `[data-regenerate="${d.regenerate}"]`;
-  if (d.addTag) return `[data-add-tag="${d.addTag}"]`;
-  if (d.avatar) return `[data-avatar="${d.avatar}"]`;
-  if (d.id && el.className) return `.${el.className.split(" ").join(".")}[data-id="${d.id}"]`;
-  return null;
-}
+var deploying = /* @__PURE__ */ new WeakMap();
 function renderSetupScreen(host, ctx2) {
   const { wizard, registries: reg, st } = ctx2;
   let search = "";
   let lastStep = null;
-  let confirming = false;
   const render = () => {
     const s = wizard.state;
-    const active = document.activeElement;
-    const sel = active && host.contains(active) ? focusSelector(active) : null;
-    const caret = sel && typeof active?.selectionStart === "number" ? [active.selectionStart, active.selectionEnd] : null;
-    host.replaceChildren();
-    const title = h("h2", { class: "alius-setup-title", tabindex: "-1" }, "CCP INTAKE FORM");
-    host.append(
-      h(
-        "div",
-        { class: "alius-setup" },
-        title,
-        h("ol", { class: "alius-steps" }, ...STEPS.map(([id, label]) => h("li", { class: "alius-step", "aria-current": s.step === id ? "step" : null }, label))),
-        stepBody(s),
-        footer(s)
-      )
-    );
+    let title;
+    renderKeepingFocus(host, () => {
+      host.replaceChildren();
+      title = h("h2", { class: "alius-setup-title", tabindex: "-1" }, "CCP INTAKE FORM");
+      host.append(
+        h(
+          "div",
+          { class: "alius-setup" },
+          title,
+          h("ol", { class: "alius-steps" }, ...STEPS.map(([id, label]) => h("li", { class: "alius-step", "aria-current": s.step === id ? "step" : null }, label))),
+          stepBody(s),
+          footer(s)
+        )
+      );
+    });
     if (lastStep !== null && lastStep !== s.step) title.focus();
-    else if (sel) {
-      const el = host.querySelector(sel);
-      el?.focus();
-      if (el && caret && typeof el.setSelectionRange === "function") {
-        try {
-          el.setSelectionRange(caret[0], caret[1]);
-        } catch {
-        }
-      }
-    }
     lastStep = s.step;
   };
   function stepBody(s) {
@@ -5795,16 +5816,19 @@ function renderSetupScreen(host, ctx2) {
       btn("back", "Back", () => wizard.back(), s.step === "dossier")
     ];
     if (s.step === "review") {
-      buttons.push(btn("confirm", "Confirm deployment", async () => {
+      const busy = deploying.get(wizard) === true;
+      buttons.push(btn("confirm", busy ? "DEPLOYING\u2026" : "Confirm deployment", async () => {
         const result = wizard.result();
-        if (!result || confirming) return;
-        confirming = true;
+        if (!result || deploying.get(wizard)) return;
+        deploying.set(wizard, true);
+        render();
         try {
           await ctx2.onConfirm(result, s.target);
         } finally {
-          confirming = false;
+          deploying.set(wizard, false);
+          render();
         }
-      }, !adv.ok));
+      }, !adv.ok || busy));
     } else {
       buttons.push(btn("next", "Next", () => wizard.next(), !adv.ok));
     }
@@ -5812,6 +5836,7 @@ function renderSetupScreen(host, ctx2) {
       "div",
       { class: "alius-setup-footer" },
       !adv.ok && adv.reason ? h("p", { class: "alius-hint" }, adv.reason) : null,
+      s.step === "review" && deploying.get(wizard) ? h("p", { class: "alius-hint", role: "status" }, "DEPLOYING \u2014 please wait.") : null,
       h("div", { class: "alius-row" }, ...buttons)
     );
   }
@@ -6715,7 +6740,21 @@ function createApp(st, deps) {
     setup?.wizard.dispose();
     setup = null;
   }
+  let deploying2 = false;
   async function deployCampaign(r, target) {
+    if (deploying2) {
+      toast("error", "A deployment is already running.");
+      return false;
+    }
+    deploying2 = true;
+    try {
+      return await deployOnce(r, target);
+    } finally {
+      deploying2 = false;
+    }
+  }
+  const WORLD_INFO_KEY = "world_info";
+  async function deployOnce(r, target) {
     const fail = (text) => {
       toast("error", text);
       return false;
@@ -6750,14 +6789,24 @@ function createApp(st, deps) {
         if (!chat || chat.groupId !== groupId) return fail("Could not open the new group chat: it is not the active chat.");
         targetChatId = chat.chatId;
       }
+      if (st.getActiveChat()?.chatId !== targetChatId) return fail("The open chat changed during deployment; nothing was written.");
       await st.setMembersActive(avatars);
     } catch (e) {
       return fail(`Deployment failed: ${errText3(e)}`);
     }
+    let bound = false;
+    let previousLore;
+    const restoreLorebook = () => {
+      if (bound && st.getActiveChat()?.chatId === targetChatId) st.writeMetadata(WORLD_INFO_KEY, previousLore);
+    };
     if (lorebook) {
       try {
         if (!st.listLorebooks().includes(lorebook.name)) await st.saveLorebook(lorebook);
-        st.setChatLorebook(lorebook.name);
+        if (st.getActiveChat()?.chatId === targetChatId) {
+          previousLore = st.readMetadata(WORLD_INFO_KEY);
+          st.setChatLorebook(lorebook.name);
+          bound = true;
+        }
       } catch (e) {
         toast("warn", `Lorebook not installed: ${errText3(e)}`);
       }
@@ -6765,11 +6814,13 @@ function createApp(st, deps) {
     try {
       const written = await writeNewCampaign(st, built.state, targetChatId);
       if (!written.ok) {
+        restoreLorebook();
         return fail(
           written.reason === "exists" ? "This chat already has an Alius campaign." : written.reason === "chat_changed" ? "The open chat changed during deployment; nothing was written." : written.reason === "not_group" ? "Alius campaigns need a group chat." : "Open a chat first."
         );
       }
     } catch (e) {
+      restoreLorebook();
       return fail(`Could not save the campaign: ${errText3(e)}`);
     }
     endSetup();
@@ -6839,7 +6890,7 @@ function createApp(st, deps) {
       onRegenerate: (s) => wizard.regenerate(0, s),
       onManual: () => wizard.setManual(0)
     });
-    wizard.subscribe(draw);
+    wizard.subscribe(() => renderKeepingFocus(body, draw));
     draw();
     const answer = await shell.modal({
       title: `Re-sync ${unit.displayName}`,
