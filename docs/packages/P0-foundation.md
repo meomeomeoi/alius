@@ -23,6 +23,7 @@ Single interface `StAdapter` exposing (names indicative; verify actual ST APIs):
 - `getCharacterCard(id)` (name, description, personality, scenario, avatar, expressions folder).
 - `setExpression(characterId, label)`.
 - `listConnectionProfiles()`.
+P1 added to the same interface (the rest of the code still depends only on it): `getPersonaName()`, `listCharacters()`, `loadCharacterCard()` (loads lazily-loaded characters first), `getAvatarUrl()`, `getSpriteUrl(avatar, label)`, `createGroupChat()`, `openGroup()`, `addGroupMembers()`, `listLorebooks()`, `saveLorebook()` and `setChatLorebook()`. Group and lorebook calls that `getContext()` does not expose go through `st:<module>` imports declared in `src/st/st-modules.d.ts`; only `src/st/real.ts` uses them.
 All other modules depend only on this interface; a `FakeStAdapter` exists for tests.
 
 ### 3. Campaign state & saves (`src/engine/state`, `src/st/persistence`)
@@ -36,7 +37,7 @@ All other modules depend only on this interface; a `FakeStAdapter` exists for te
 - Campaign binding: a chat is an Alius campaign iff metadata has the key. "New campaign" requires a group chat (P1 creates the flow).
 
 ### 4. Content registries (`src/content/`)
-- Pack manifest: `{ id, name, version, priority, files: {registryName: path} }`.
+- Pack manifest: `{ id, name, version, priority, files: {registryName: path}, lorebook?: path }`. `lorebook` is a compact lorebook file (P1); `loadPacks` returns the one from the highest-priority pack that declares it (`null` if none or if it is invalid).
 - Registries are typed maps by id; later packs with higher priority override by id; `extends` allowed for partial overrides.
 - Every registry validated with its zod schema at load; errors list file + path.
 - Registry names reserved now (empty in P0): `roles, skills, signatures, statuses, defects, items, affixes, enemies, enemyCategories, regions, nodeTypes, activities, facilities, crimes, corporations, starts, relationshipStates, eventDeltas, dilemmaTemplates, settingsPresets, flags, marks` (`marks` stays empty in v1; see overview §10).
@@ -61,7 +62,8 @@ All other modules depend only on this interface; a `FakeStAdapter` exists for te
 - Visual language: monospace, ASCII box-drawing frames, phosphor palettes (amber default, green, white), optional scanlines, subtle CRT flicker toggle. Old-forum/BBS styling for list views. Must stay readable and keyboard-navigable.
 - PDA frame with tab bar: `SQUAD · OPS · MAP · COMMS · BASE · INV · LOG · SYS`. Tabs exist as stubs; packages fill them.
 - `SYS` tab: settings (profiles, budgets, palette, debug, edit lock) and debug panel (LLM log, state inspector read-only unless edit lock off).
-- Toast/notification system; modal system; screen router (`pda`, `scene`, `combat`, `expedition`, `setup`).
+- Toast/notification system; modal system; screen router (`pda`, `scene`, `combat`, `expedition`, `setup`). Packages register tab renderers with `registerTab` and full-screen renderers with `registerScreen`; registering the current screen re-renders it.
+- Launcher (wand menu + Extensions panel): **Alius**, **Alius: New campaign** (P1), and the two debug items.
 - UI library: follow Mundi-Expanded's approach; if it is vanilla DOM, a small component layer is acceptable (Preact allowed if it keeps bundle small).
 
 ## Out of scope

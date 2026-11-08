@@ -105,9 +105,10 @@ Source layout (TypeScript, same toolchain style as Mundi-Expanded):
 
 - `src/engine/` — **pure** functions: `(state, action, rng) → { state, events }`. No DOM, no ST, no network. Fully unit-tested.
 - `src/content/` — pack loader, registries, schema validation of content, override rules.
-- `src/llm/` — call types, prompt builders, budgets, JSON repair/retry, intent schemas (zod).
+- `src/llm/` — call types, prompt builders, budgets, JSON repair/retry, intent schemas (zod). Call types live in `src/llm/calls/`.
+- `src/setup/` — campaign setup logic that is neither engine nor UI: the card → profile importer and sanitizer, and the pure wizard state model (no DOM; it talks to ST only through the `StAdapter` interface).
 - `src/st/` — the **only** module that touches SillyTavern APIs (context, metadata, events, prompt injection, group members, connection profiles, expressions). Everything else depends on its interface, so ST API changes are fixed in one place.
-- `src/ui/` — the Alius shell and screens.
+- `src/ui/` — the Alius shell and screens (`shell/`, `setup/` wizard, `squad/` tab).
 - `content/core/` — the core JSON pack + lorebook stub.
 
 ### 5.1 State and saves
@@ -160,7 +161,7 @@ Campaign {
   resources { credits, supplies, plyx }
   base { facilities: { [id]: level } }
   inventory: ItemInstance[]
-  world { regions{...}, clocks[], threads[], factions{standing}, flags[], spineProgress }
+  world { regions{...}, clocks[], threads[], factions{standing}, flags[], spineProgress, startId? }
   missions { offered[], active[], completed[] }
   rumors[], dms: { [unitId]: Message[] }
   memory { facts[], chronicle[] }
@@ -172,9 +173,10 @@ Campaign {
 
 Unit {
   id, kind: 'named'|'grunt', cardRef?, displayName, asciiPortrait?
-  roleId, level, xp, skillPoints, unlockedNodes[], signatureSkill
+  roleId, level, xp, skillPoints, unlockedNodes[]
+  signatureSkill { templateId, name, description }   // template id from the registry; name/description are the unit's own words, numbers stay in the template
   baseStats {hp, atk, def, spd, crit}, currentHp, stress
-  defects: DefectInstance[]   // named: 1–2, grunt: 1 (lite)
+  defects: DefectInstance[]   // { id, origin?, arc? }; named: 1–2, grunt: 1 (lite)
   values { pragmatism, autonomy, ingroup, mercy, corporate, sacrifice }  // each −3…+3
   likes[], dislikes[], triggers[]   // tags
   equipment { weapon?, upper?, lower? }
@@ -183,10 +185,10 @@ Unit {
 
 Relation {
   trust, affinity, attraction
-  stateId, stateSince, history[]
+  stateId, stateSince, history[]   // a new campaign starts every named unit in state `stranger`, stateSince day 1
   flags[]                // e.g. knows_crime, accepted_defect, promise_open
   dailyGain { trust, affinity, attraction }   // for diminishing returns
-  loyaltyBand: 'steady'|'wavering'|'breaking'  // with hysteresis
+  loyaltyBand: 'steady'|'wavering'|'breaking'  // with hysteresis; initial value from Trust: <10 breaking, <25 wavering, else steady
   marks: MarkInstance[]  // RESERVED in v1 (always empty), see §10 "Marks"; present so no migration is needed later
 }
 ```
@@ -196,6 +198,8 @@ Relation {
 Flags are **declared, not invented**. The `flags` registry lists every flag the content can set: `{ id, scope: 'world'|'commander'|'relation', description, mutuallyExclusiveWith?[], setBy (hint: start/dilemma/mission/event) }`. Starts, missions, spine beats, dilemma templates and events reference flags by id; content validation fails on an unknown id.
 
 The director may create **dynamic flags** only inside a thread namespace (`thread:<threadId>:<slug>`), each with a one-line description stored next to it. Dynamic flags can be read by later director ticks and dilemmas of the same thread, but spine beats and authored content may only depend on declared flags. This keeps "consequences are remembered" true without letting the model invent a parallel world state.
+
+Core declares `knows_crime` (scope `relation`, set by `start` or `event`): a unit starts without it unless the crime or start says its crime is known.
 
 ### 6.2 Adding content (modularity in v1)
 
@@ -221,6 +225,8 @@ Packs can override by id or `extends` an existing entry. In v1 packs are loaded 
 ## 8. Settings (global, per-campaign overrides where noted)
 
 Connection profiles (main, mechanic) · per-call token budgets · intent extraction mode (per exchange / every N / scene end) · sprite mode (native Expressions / mechanic `emotion_pick`) · difficulty (combat difficulty; **easy retry**: rewind lost combat, rewinds not recorded in memory) · show raw values (off: bands only) · mechanics edit lock (on by default: view-only, unlock to edit numbers in UI) · intimacy: romance on/off, explicit scenes allowed on/off (directive to main model; actual content depends on user's model/preset), Desire/Bond defect category on/off, romantic initiative intensity (low/med/high) · UI: phosphor palette (amber/green/white), scanlines, typing animation speed · debug mode (show intents, deltas, prompts).
+
+Defaults in code: Desire/Bond defects **off**, show raw values **off**, sprite mode **native**, edit lock **on**. The campaign stores a snapshot of the Desire/Bond setting it was started with (`settings.desireBondDefects`); the engine uses that snapshot, not the global value, when it validates later changes. The edit lock does **not** apply inside the new-campaign wizard (setup is always editable); it does apply to "Re-sync from card" on a running campaign.
 
 ## 9. Packages
 

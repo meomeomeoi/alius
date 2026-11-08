@@ -16,6 +16,9 @@ Read order for an implementing agent:
 | `packages/P4-combat-progression-items.md` | Turn-based combat, stress, synergies, enemies, progression, items, balance harness |
 | `packages/P5-world-expeditions-director.md` | World map, missions, rumors, node-map expeditions, director, spine |
 | `packages/P6-dilemmas-disloyalty-leash.md` | Validated dilemmas, refusals/desertion/mutiny, the Leash, defect arcs |
+| `CONTENT.md` | How to add content: pack layout, effects, every registry's fields with an example, the lorebook format |
+| `MANUAL_TEST_P0.md`, `MANUAL_TEST_P1.md` | Acceptance checklists that must be run by hand inside SillyTavern |
+| `plans/` | Implementation plans per package (task-by-task; ticked as they are done) |
 | `content/lore.md` | **Placeholder** lore & structure (author rewrites) |
 | `content/roles.md` | Roles, stats, skills, signatures, CP orders, equipment (draft numbers) |
 | `content/defects.md` | Defect catalog, 18 entries in 5 categories (draft) |
