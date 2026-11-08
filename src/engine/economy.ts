@@ -89,3 +89,30 @@ export function runUpkeep(draft: CampaignState, reg: Registries): EngineEvent[] 
   }
   return events;
 }
+
+/** Why facility `id` cannot be upgraded now, or null. Shared by the action and the BASE tab. */
+export function checkUpgrade(state: CampaignState, reg: Registries, id: string): string | null {
+  const facility = reg.facilities.get(id);
+  if (!facility) return `Unknown facility "${id}".`;
+  const name = String(facility.name);
+  const levels = facilityLevels(reg, id);
+  const level = facilityLevel(state, id);
+  if (level >= levels.length) return `${name} is already at its max level (${levels.length}).`;
+  if ((state.base.upgrades ?? []).some((u) => u.facilityId === id)) return `${name} is already being upgraded.`;
+  const up = levels[level].upgrade;
+  if (!up) return `${name} has no upgrade to level ${level + 1}.`;
+  if (state.resources.credits < up.credits) return `Not enough credits to upgrade ${name} (needs ${up.credits}).`;
+  if (state.resources.plyx < up.plyx) return `Not enough plyx to upgrade ${name} (needs ${up.plyx}).`;
+  return null;
+}
+
+/** Why a grunt cannot be recruited now, or null. */
+export function checkRecruit(state: CampaignState): string | null {
+  if (state.squad.filter(isLiving).length >= state.roster.capacity) {
+    return `The barracks are full (${state.roster.capacity} beds). Upgrade them to recruit more.`;
+  }
+  if (state.resources.credits < TUNING.recruit.credits) {
+    return `Not enough credits to recruit a grunt (needs ${TUNING.recruit.credits}).`;
+  }
+  return null;
+}

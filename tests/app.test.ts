@@ -240,10 +240,10 @@ describe('app', () => {
 });
 
 // ---------------------------------------------------------------------------------------------
-describe('SQUAD and OPS tabs', () => {
-  it('app registers the squad and ops tabs', async () => {
+describe('SQUAD, OPS and BASE tabs', () => {
+  it('app registers the squad, ops and base tabs', async () => {
     const { shell } = await boot(A);
-    expect([...shell.tabRenderers.keys()].sort()).toEqual(['ops', 'squad']);
+    expect([...shell.tabRenderers.keys()].sort()).toEqual(['base', 'ops', 'squad']);
   });
 });
 

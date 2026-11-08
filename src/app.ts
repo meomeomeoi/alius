@@ -1,6 +1,10 @@
 import './engine/actions/debug'; // registers debug/* actions
 import './engine/actions/squad'; // registers squad/* actions
+import './engine/actions/calendar'; // registers calendar/*, activity/* and commander/* actions
+import './engine/actions/base'; // registers base/*, roster/* and squad/set_flavor actions
 import './llm/calls/profileImport'; // registers the profile_import call type
+import { generateVignette } from './llm/calls/activityVignette'; // registers the activity_vignette call type
+import { generateGruntFlavor } from './llm/calls/flavor'; // registers the flavor call type
 import type { ContentError, Registries } from './content/types';
 import { emptyRegistries } from './content/types';
 import { dispatch as engineDispatch, type Action, type EngineEvent } from './engine/dispatch';
@@ -13,7 +17,10 @@ import { buildCampaign, type SetupResult } from './engine/setup';
 import { importProfile } from './setup/profile';
 import { Wizard, type WizardState } from './setup/wizard';
 import { renderSetupScreen } from './ui/setup/setupScreen';
-import { renderOpsPlaceholder, renderSquadTab } from './ui/squad/squadTab';
+import { renderSquadTab } from './ui/squad/squadTab';
+import { renderOpsTab } from './ui/ops/opsTab';
+import { renderBaseTab } from './ui/base/baseTab';
+import type { ActivityRequest } from './engine/activities';
 import { RESYNC_SECTIONS, type ResyncPatch, type ResyncSection } from './engine/actions/squad';
 import { renderCalibration } from './ui/setup/calibration';
 import { h } from './ui/dom';
@@ -22,6 +29,7 @@ import {
   createSaver, initCampaign as initCampaignInChat, loadCampaign, writeNewCampaign, METADATA_KEY, type LoadResult,
 } from './st/persistence';
 import { createShell, type ShellApi } from './ui/shell/shell';
+import type { ToastKind } from './ui/shell/toast';
 
 export interface AliusApp {
   start(): Promise<void>;
@@ -47,6 +55,14 @@ export interface AliusApp {
   deployCampaign(r: SetupResult, target: 'new_group' | 'current_group'): Promise<boolean>;
   /** The open wizard's state, or null when no setup is in progress. */
   setupState(): WizardState | null;
+  /** Does an activity (OPS tab). Shows the error, or — with a companion and vignettes on — a short generated vignette. */
+  performActivity(req: ActivityRequest): Promise<EngineEvent[]>;
+  /** Recruits a grunt (BASE tab) and, if enabled, asks for a generated name and bio. */
+  recruitGrunt(): Promise<EngineEvent[]>;
+  upgradeFacility(facilityId: string): EngineEvent[];
+  /** Credits → supplies. */
+  requisition(supplies: number): EngineEvent[];
+  setRoster(activeIds: string[]): EngineEvent[];
 }
 
 export interface AppDeps {
@@ -68,7 +84,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
   /** The open intake wizard and the chat it was opened in (the only chat that "bind" may write to). */
   let setup: { wizard: Wizard; chatId: string | null; createdGroupId?: string } | null = null;
 
-  const toast = (kind: 'info' | 'warn' | 'error', text: string) => shell.toast(kind, text);
+  const toast = (kind: ToastKind, text: string) => shell.toast(kind, text);
 
   function applyContext(): void {
     context.apply(st, state, getSettings(st).contextTokenCap);
@@ -392,6 +408,42 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     shell.open();
   }
 
+  /** Toasts for what happened while the day ran; errors are the caller's to report. */
+  function reportEvents(events: EngineEvent[]): void {
+    for (const e of events) {
+      switch (e.type) {
+        case 'supply_shortage':
+          toast('warn', `Supply shortage: ${String(e.missing)} short. Stress and affinity suffer.`);
+          break;
+        case 'trust_penalty_event':
+          toast('warn', `${String(e.streak)} days of shortage: trust in the commander drops.`);
+          break;
+        case 'facility_upgraded':
+          toast('info', `${String(registries.facilities.get(String(e.facilityId))?.name ?? e.facilityId)} upgraded to level ${String(e.level)}.`);
+          break;
+        case 'unit_recovered':
+          toast('info', `${state?.squad.find((u) => u.id === e.unitId)?.displayName ?? 'A unit'} has recovered.`);
+          break;
+        case 'scene_requested':
+          toast('info', 'Scenes are not available yet; conversations arrive with a later update.');
+          break;
+        case 'day_started':
+          toast('info', `Day ${String(e.day)}.`);
+          break;
+      }
+    }
+  }
+
+  /** Dispatches in the chat that is open now and shows the first error, if any. */
+  function act(action: Action): EngineEvent[] {
+    const events = api.dispatch(action, { expectChatId: st.getActiveChat()?.chatId });
+    const failed = events.find((e) => e.type === 'error');
+    if (failed) toast('error', String(failed.message ?? failed.code));
+    return events;
+  }
+
+  const SHORT_NAME = (reg: Registries, registry: 'roles' | 'defects', id: string): string => String(reg[registry].get(id)?.name ?? id);
+
   const shell = (deps.shellFactory ?? createShell)({
     st,
     getState: () => state,
@@ -412,7 +464,25 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       onResync: (id) => void resyncUnit(id),
     }),
   );
-  shell.registerTab('ops', (host) => renderOpsPlaceholder(host, () => state));
+  shell.registerTab('ops', (host) =>
+    renderOpsTab(host, {
+      getState: () => state,
+      getLoad: () => load,
+      registries,
+      onDo: (req) => void api.performActivity(req),
+      onRequisition: (n) => api.requisition(n),
+    }),
+  );
+  shell.registerTab('base', (host) =>
+    renderBaseTab(host, {
+      getState: () => state,
+      getLoad: () => load,
+      registries,
+      onUpgrade: (id) => api.upgradeFacility(id),
+      onRecruit: () => void api.recruitGrunt(),
+      onSetRoster: (ids) => api.setRoster(ids),
+    }),
+  );
 
   const api: AliusApp = {
     context,
@@ -422,6 +492,74 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     openSetup,
     deployCampaign,
     setupState: () => setup?.wizard.state ?? null,
+
+    async performActivity(req) {
+      const chatId = st.getActiveChat()?.chatId;
+      const events = act({ type: 'activity/do', payload: req });
+      const done = events.find((e) => e.type === 'activity_done');
+      const settings = getSettings(st);
+      if (done?.vignette !== true || !settings.activityFlavor || !state) return events;
+      const unit = state.squad.find((u) => u.id === done.companionId);
+      const activity = registries.activities.get(String(done.activityId));
+      if (!unit || !activity) return events;
+      const text = await generateVignette(
+        {
+          activityName: String(activity.name),
+          commanderName: state.commander.name,
+          unitName: unit.displayName,
+          unitRole: SHORT_NAME(registries, 'roles', unit.roleId),
+          likes: unit.likes,
+          defectNames: unit.defects.map((d) => SHORT_NAME(registries, 'defects', d.id)),
+        },
+        { st, settings },
+      );
+      // the commander may have switched chats while the model was writing
+      if (text && st.getActiveChat()?.chatId === chatId) toast('story', text);
+      return events;
+    },
+
+    async recruitGrunt() {
+      const chatId = st.getActiveChat()?.chatId;
+      const events = act({ type: 'base/recruit_grunt', payload: {} });
+      const recruited = events.find((e) => e.type === 'grunt_recruited');
+      const settings = getSettings(st);
+      if (!recruited || !settings.gruntFlavor || !state) return events;
+      const unit = state.squad.find((u) => u.id === recruited.unitId);
+      if (!unit) return events;
+      const flavor = await generateGruntFlavor(
+        {
+          kind: 'grunt',
+          designation: unit.designation ?? unit.displayName,
+          roleName: SHORT_NAME(registries, 'roles', unit.roleId),
+          defectName: SHORT_NAME(registries, 'defects', unit.defects[0]?.id ?? ''),
+        },
+        { st, settings },
+      );
+      if (flavor) {
+        // cosmetic: if the chat changed or the engine refuses, the grunt simply keeps its designation
+        const r = api.dispatch({ type: 'squad/set_flavor', payload: { unitId: unit.id, ...flavor } }, { expectChatId: chatId });
+        if (!r.some((e) => e.type === 'error')) toast('info', `${unit.designation ?? unit.id} goes by ${flavor.name}.`);
+      }
+      return events;
+    },
+
+    upgradeFacility(facilityId) {
+      const events = act({ type: 'base/upgrade', payload: { facilityId } });
+      const started = events.find((e) => e.type === 'upgrade_started');
+      if (started) {
+        toast('info', `${String(registries.facilities.get(facilityId)?.name ?? facilityId)}: upgrade started (${String(started.days)} days).`);
+      }
+      return events;
+    },
+
+    requisition(supplies) {
+      const events = act({ type: 'base/requisition', payload: { supplies } });
+      const done = events.find((e) => e.type === 'requisitioned');
+      if (done) toast('info', `Requisitioned ${String(done.supplies)} supplies for ${String(done.credits)} credits.`);
+      return events;
+    },
+
+    setRoster: (activeIds) => act({ type: 'roster/set_active', payload: { activeIds } }),
 
     async start() {
       getSettings(st); // normalizes extension settings
@@ -470,7 +608,10 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       if (r.state !== state) {
         state = r.state;
         saver?.save(state);
+        // the day-end pipeline asks for a save: do not wait for the debounce
+        if (r.events.some((e) => e.type === 'autosave')) void saver?.flush().catch((e) => console.warn('[Alius] autosave failed', e));
       }
+      reportEvents(r.events);
       applyContext();
       shell.refresh();
       return r.events;

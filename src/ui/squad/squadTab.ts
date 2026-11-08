@@ -26,6 +26,9 @@ const MISSING_SPRITE_RETRY_MS = 30_000;
 
 /** Neutral sprite if the card has one, else the avatar; a failed load also falls back to the avatar. */
 function portrait(st: StAdapter, unit: Unit): HTMLElement | null {
+  if (unit.kind === 'grunt') {
+    return unit.asciiPortrait ? h('pre', { class: 'alius-ascii', 'aria-label': `Portrait of ${unit.displayName}` }, unit.asciiPortrait) : null;
+  }
   if (!unit.cardRef) return null;
   const card = unit.cardRef;
   const avatar = st.getAvatarUrl(card);
@@ -76,7 +79,7 @@ function defectBlock(reg: Registries, d: Unit['defects'][number]): HTMLElement {
     line('Downside', String(def.downside)),
     line('Breakdown', `${bd.name} — ${bd.text}`),
     line('Social', String(def.social)),
-    line('Arc', `Cure: ${arc.cure} · Manage: ${arc.manage} · Embrace: ${arc.embrace}`),
+    d.lite ? null : line('Arc', `Cure: ${arc.cure} · Manage: ${arc.manage} · Embrace: ${arc.embrace}`),
   );
 }
 
@@ -99,7 +102,9 @@ function unitBlock(unit: Unit, ctx: SquadTabCtx): HTMLElement {
       'div',
       { class: 'alius-unit-body' },
       h('h3', { class: 'alius-unit-name' }, unit.displayName),
+      unit.kind === 'grunt' ? h('p', { class: 'alius-dim' }, `GRUNT ${unit.designation ?? ''}`.trimEnd()) : null,
       h('p', {}, `${nameOf(reg.roles.get(unit.roleId), unit.roleId)} · LVL ${unit.level}`),
+      unit.bio ? h('p', { class: 'alius-dim' }, unit.bio) : null,
       h('p', {}, `HP ${s.hp} · ATK ${s.atk} · DEF ${s.def} · SPD ${s.spd} · CRIT ${s.crit}%`),
       h(
         'p',
@@ -110,9 +115,13 @@ function unitBlock(unit: Unit, ctx: SquadTabCtx): HTMLElement {
       ...unit.defects.map((d) => defectBlock(reg, d)),
       h('h4', {}, 'VALUES'),
       h('p', { class: 'alius-values' }, values.join(' · ')),
-      h('h4', {}, 'SIGNATURE'),
-      h('p', {}, h('strong', {}, unit.signatureSkill.name), ` — ${unit.signatureSkill.description}`),
-      h('p', { class: 'alius-dim' }, `Template: ${nameOf(sigTpl, unit.signatureSkill.templateId)} — ${sigTpl ? String(sigTpl.mechanic) : ''}`),
+      ...(unit.kind === 'grunt'
+        ? []
+        : [
+            h('h4', {}, 'SIGNATURE'),
+            h('p', {}, h('strong', {}, unit.signatureSkill.name), ` — ${unit.signatureSkill.description}`),
+            h('p', { class: 'alius-dim' }, `Template: ${nameOf(sigTpl, unit.signatureSkill.templateId)} — ${sigTpl ? String(sigTpl.mechanic) : ''}`),
+          ]),
       // Re-sync overwrites numbers on a running campaign, so it follows the SYS edit lock.
       ctx.onResync && unit.cardRef && !ctx.settings().editLock
         ? h('button', { type: 'button', class: 'alius-btn', 'data-resync': unit.id, onclick: () => ctx.onResync!(unit.id) }, '[ RE-SYNC FROM CARD ]')
@@ -146,17 +155,4 @@ export function renderSquadTab(host: HTMLElement, ctx: SquadTabCtx): void {
     return;
   }
   host.append(h('section', { class: 'alius-section alius-squad' }, ...state.squad.map((u) => unitBlock(u, ctx))));
-}
-
-export function renderOpsPlaceholder(host: HTMLElement, getState: () => CampaignState | null): void {
-  host.replaceChildren();
-  const state = getState();
-  host.append(
-    h(
-      'section',
-      { class: 'alius-section' },
-      state ? h('h2', {}, `DAY ${state.day} // ${state.slot.toUpperCase()}`) : null,
-      h('p', { class: 'alius-dim' }, 'CALENDAR MODULE OFFLINE'),
-    ),
-  );
 }

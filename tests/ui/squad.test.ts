@@ -10,7 +10,7 @@ import { FakeStAdapter } from '../../src/st/fake';
 import type { LoadResult } from '../../src/st/persistence';
 import { h } from '../../src/ui/dom';
 import { valueBand } from '../../src/ui/squad/bands';
-import { renderOpsPlaceholder, renderSquadTab } from '../../src/ui/squad/squadTab';
+import { renderSquadTab } from '../../src/ui/squad/squadTab';
 
 let reg: Registries;
 beforeAll(async () => {
@@ -189,28 +189,6 @@ describe('SQUAD tab', () => {
   });
 });
 
-describe('OPS placeholder', () => {
-  it('ops placeholder shows DAY 1 // MORNING', () => {
-    const host = h('div');
-    renderOpsPlaceholder(host, () => campaign());
-    expect(host.textContent).toContain('DAY 1 // MORNING');
-    expect(host.textContent).toContain('CALENDAR MODULE OFFLINE');
-  });
-
-  it('shows the later slot and handles no campaign', () => {
-    const s = campaign();
-    s.day = 3;
-    s.slot = 'evening';
-    const host = h('div');
-    renderOpsPlaceholder(host, () => s);
-    expect(host.textContent).toContain('DAY 3 // EVENING');
-    const none = h('div');
-    renderOpsPlaceholder(none, () => null);
-    expect(none.textContent).toContain('CALENDAR MODULE OFFLINE');
-    expect(none.textContent).not.toContain('DAY');
-  });
-});
-
 describe('re-sync button', () => {
   function withResync(editLock: boolean) {
     const st = new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' });
@@ -267,5 +245,45 @@ describe('sprite cache', () => {
       await flush();
     }
     expect(spy).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('grunt unit block', () => {
+  const grunt = (): CampaignState => {
+    const s = campaign();
+    s.squad.push({
+      ...structuredClone(s.squad[0]), id: 'grunt_k_117', kind: 'grunt', displayName: 'Mara', designation: 'K-117',
+      asciiPortrait: '+-----+\n| o o |\n+-----+', bio: 'Counts exits.', cardRef: undefined,
+      defects: [{ id: 'echo_bleed', lite: true }],
+    });
+    return s;
+  };
+
+  it('shows the ASCII portrait, designation, bio and the lite defect', () => {
+    const { host } = render({ state: grunt() });
+    const block = [...host.querySelectorAll<HTMLElement>('article.alius-unit')].find((a) => a.textContent!.includes('K-117'))!;
+    expect(block.querySelector('pre.alius-ascii')!.textContent).toContain('| o o |');
+    expect(block.textContent).toContain('Mara');
+    expect(block.textContent).toContain('K-117');
+    expect(block.textContent).toContain('Counts exits.');
+    expect(block.textContent).toContain(String(reg.defects.get('echo_bleed')!.name));
+    expect(block.querySelector('img')).toBeNull();
+  });
+
+  it('has no signature section and no re-sync button', () => {
+    const s = grunt();
+    const { host } = render({ state: s });
+    const st = new FakeStAdapter();
+    st.settings.editLock = false;
+    const block = [...host.querySelectorAll<HTMLElement>('article.alius-unit')].find((a) => a.textContent!.includes('K-117'))!;
+    expect(block.textContent).not.toContain('SIGNATURE');
+    expect(block.querySelector('[data-resync]')).toBeNull();
+    expect(block.textContent).toContain('GRUNT');
+  });
+
+  it('a named unit still shows its signature', () => {
+    const { host } = render({ state: grunt() });
+    const named = [...host.querySelectorAll<HTMLElement>('article.alius-unit')].find((a) => a.textContent!.includes('Rhea'))!;
+    expect(named.textContent).toContain('SIGNATURE');
   });
 });

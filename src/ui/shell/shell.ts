@@ -6,6 +6,7 @@ import type { LoadResult } from '../../st/persistence';
 import { h } from '../dom';
 import { createModalHost, type ModalOpts } from './modal';
 import { createRouter, type ScreenId } from './router';
+import { renderStatusHeader } from './status';
 import { renderSysTab } from './sysTab';
 import { TAB_IDS, createTabBar, tabStub, type TabId } from './tabs';
 import { createToasts, type ToastKind } from './toast';
@@ -65,12 +66,13 @@ export function createShell(deps: ShellDeps): ShellApi {
   let modals: ReturnType<typeof createModalHost> | null = null;
   let tabBar: ReturnType<typeof createTabBar> | null = null;
   let panel: HTMLElement | null = null;
+  let statusHost: HTMLElement | null = null;
 
   const isOpen = () => root !== null;
 
   function toast(kind: ToastKind, text: string): void {
     if (toasts) toasts.show(kind, text);
-    else st.toast(kind, text);
+    else st.toast(kind === 'story' ? 'info' : kind, text);
   }
 
   function applySettings(): void {
@@ -90,6 +92,10 @@ export function createShell(deps: ShellDeps): ShellApi {
         h('div', { class: 'alius-banner', role: 'alert' }, `READ-ONLY CAMPAIGN — changes will not be saved. ${load.reason}`),
       );
     }
+  }
+
+  function renderStatus(): void {
+    if (statusHost) renderStatusHeader(statusHost, deps.getState());
   }
 
   function renderTab(): void {
@@ -124,7 +130,9 @@ export function createShell(deps: ShellDeps): ShellApi {
   router.register('pda', (host) => {
     tabBar = createTabBar({ onSelect: selectTab, panelId: PANEL_ID });
     panel = h('div', { class: 'alius-screen', id: PANEL_ID, role: 'tabpanel', tabindex: '0' });
-    host.append(tabBar.element, panel);
+    statusHost = h('div', { class: 'alius-status' });
+    host.append(statusHost, tabBar.element, panel);
+    renderStatus();
     tabBar.setSelected(tab);
     renderTab();
   });
@@ -133,6 +141,7 @@ export function createShell(deps: ShellDeps): ShellApi {
     if (!root) return;
     tabBar = null;
     panel = null;
+    statusHost = null;
     router.render(view);
   }
 
@@ -193,6 +202,7 @@ export function createShell(deps: ShellDeps): ShellApi {
     modals = null;
     tabBar = null;
     panel = null;
+    statusHost = null;
   }
 
   const api: ShellApi = {
@@ -233,7 +243,10 @@ export function createShell(deps: ShellDeps): ShellApi {
       if (!root) return;
       applySettings();
       renderBanner();
-      if (router.current() === 'pda' && panel) renderTab();
+      if (router.current() === 'pda' && panel) {
+        renderStatus();
+        renderTab();
+      }
       else renderView();
     },
     destroy() {

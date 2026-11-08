@@ -330,3 +330,26 @@ describe('SYS tab P2 settings', () => {
     }
   });
 });
+
+describe('status header in the PDA', () => {
+  it('shows the clock above the tabs and follows refresh()', () => {
+    const state = createCampaign({ seed: 1, commanderName: 'Vale' });
+    const { shell } = setup({ state });
+    shell.open();
+    const header = () => document.querySelector('#alius-shell .alius-status')?.textContent ?? '';
+    expect(header()).toContain('DAY 001 // MORNING');
+    state.day = 5;
+    state.slot = 'evening';
+    state.resources.credits = 77;
+    shell.refresh();
+    expect(header()).toContain('DAY 005 // EVENING');
+    expect(header()).toContain('CR 77');
+  });
+
+  it('is not shown on other screens', () => {
+    const { shell } = setup();
+    shell.open();
+    shell.showScreen('setup');
+    expect(document.querySelector('#alius-shell .alius-status')).toBeNull();
+  });
+});

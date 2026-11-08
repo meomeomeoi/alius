@@ -1,5 +1,5 @@
 import { GENERATED_NAME, GRUNT_BIO_MAX, generateGrunt, gruntRelation } from '../grunts';
-import { facilityLevel, facilityLevels, isLiving } from '../economy';
+import { checkRecruit, checkUpgrade, facilityLevel, facilityLevels, isLiving } from '../economy';
 import { registerAction } from '../dispatch';
 import { TUNING } from '../tuning';
 
@@ -9,17 +9,11 @@ const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object
 
 registerAction('base/upgrade', (draft, payload, ctx) => {
   const id = isObj(payload) ? payload.facilityId : undefined;
-  if (typeof id !== 'string' || !ctx.registries.facilities.has(id)) throw new Error(`base/upgrade: unknown facility "${String(id)}"`);
-  const name = String(ctx.registries.facilities.get(id)!.name);
-  const levels = facilityLevels(ctx.registries, id);
+  if (typeof id !== 'string') throw new Error('base/upgrade needs { facilityId }');
+  const reason = checkUpgrade(draft, ctx.registries, id);
+  if (reason) throw new Error(reason);
   const level = facilityLevel(draft, id);
-  if (level >= levels.length) throw new Error(`${name} is already at its max level (${levels.length}).`);
-  if ((draft.base.upgrades ?? []).some((u) => u.facilityId === id)) throw new Error(`${name} is already being upgraded.`);
-
-  const up = levels[level].upgrade;
-  if (!up) throw new Error(`${name} has no upgrade to level ${level + 1}.`);
-  if (draft.resources.credits < up.credits) throw new Error(`Not enough credits to upgrade ${name} (needs ${up.credits}).`);
-  if (draft.resources.plyx < up.plyx) throw new Error(`Not enough plyx to upgrade ${name} (needs ${up.plyx}).`);
+  const up = facilityLevels(ctx.registries, id)[level].upgrade!;
 
   draft.resources.credits -= up.credits;
   draft.resources.plyx -= up.plyx;
@@ -64,12 +58,8 @@ registerAction('roster/set_active', (draft, payload) => {
 });
 
 registerAction('base/recruit_grunt', (draft, _payload, ctx) => {
-  if (draft.squad.filter(isLiving).length >= draft.roster.capacity) {
-    throw new Error(`The barracks are full (${draft.roster.capacity} beds). Upgrade them to recruit more.`);
-  }
-  if (draft.resources.credits < TUNING.recruit.credits) {
-    throw new Error(`Not enough credits to recruit a grunt (needs ${TUNING.recruit.credits}).`);
-  }
+  const reason = checkRecruit(draft);
+  if (reason) throw new Error(reason);
   const grunt = generateGrunt(draft, ctx.registries, ctx.rng);
   draft.resources.credits -= TUNING.recruit.credits;
   draft.squad.push(grunt);

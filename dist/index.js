@@ -61,19 +61,19 @@ var Rng = class {
 
 // src/engine/dispatch.ts
 var handlers = /* @__PURE__ */ new Map();
-function registerAction(type, handler) {
+function registerAction(type, handler2) {
   if (handlers.has(type)) throw new Error(`Duplicate action type: ${type}`);
-  handlers.set(type, handler);
+  handlers.set(type, handler2);
 }
 function dispatch(state, action, registries) {
-  const handler = handlers.get(action.type);
-  if (!handler) {
+  const handler2 = handlers.get(action.type);
+  if (!handler2) {
     return { state, events: [{ type: "error", code: "unknown_action", action: action.type }] };
   }
   const draft = structuredClone(state);
   const rng = new Rng(draft.rng);
   try {
-    const events = handler(draft, action.payload, { registries, rng });
+    const events = handler2(draft, action.payload, { registries, rng });
     draft.rng = rng.state;
     return { state: draft, events };
   } catch (e) {
@@ -379,6 +379,621 @@ registerAction("squad/resync", (draft, payload, ctx2) => {
   }
   const sections = RESYNC_SECTIONS.filter((s) => keys.some((k) => SECTION_OF[k] === s));
   return [{ type: "unit_resynced", unitId: unit.id, sections }];
+});
+
+// src/engine/tuning.ts
+var TUNING = Object.freeze({
+  upkeep: Object.freeze({ perUnit: 1, commander: 1, doubledByDefect: "hunger_loop" }),
+  shortage: Object.freeze({ stressPerPoint: 4, affinityPerPoint: 1, streakDays: 3, trustPenalty: 5 }),
+  /** Per axis per day: full value below `soft`, half value below `hard`, nothing after. */
+  gain: Object.freeze({ soft: 4, hard: 8 }),
+  passiveStressRecovery: 1,
+  recruit: Object.freeze({ credits: 40, baseTrust: 25, gruntCrimeBonus: 10 }),
+  requisition: Object.freeze({ creditsPerSupply: 8 }),
+  rosterActiveMax: 4,
+  rosterBaseCapacity: 6
+});
+
+// src/engine/relationGain.ts
+var RANGE = { trust: [0, 100], affinity: [-100, 100], attraction: [0, 100] };
+var defaultHandler = (relation, axis, amount) => {
+  const [lo, hi] = RANGE[axis];
+  const before = relation[axis];
+  let applied = amount;
+  if (amount > 0) {
+    const done = relation.dailyGain[axis];
+    let sum = 0;
+    for (let i = 0; i < amount; i++) {
+      const at = done + i;
+      sum += at < TUNING.gain.soft ? 1 : at < TUNING.gain.hard ? 0.5 : 0;
+    }
+    applied = Math.round(sum);
+  }
+  relation[axis] = Math.min(hi, Math.max(lo, before + applied));
+  const real = relation[axis] - before;
+  if (real > 0) relation.dailyGain[axis] += real;
+  return real;
+};
+var handler = defaultHandler;
+function applyRelationDelta(draft, unitId, axis, amount, source) {
+  const relation = draft.relations[unitId];
+  if (!relation) return 0;
+  return handler(relation, axis, amount, source);
+}
+
+// src/engine/economy.ts
+var facilityLevel = (state, id) => state.base.facilities[id] ?? 1;
+function facilityLevels(reg, id) {
+  return reg.facilities.get(id)?.levels ?? [];
+}
+function facilityEffect(state, reg, id, key) {
+  const levels = facilityLevels(reg, id);
+  if (levels.length === 0) return 0;
+  return levels[Math.min(facilityLevel(state, id), levels.length) - 1].effects[key] ?? 0;
+}
+function rosterCapacityFor(reg, barracksLevel) {
+  const levels = facilityLevels(reg, "barracks");
+  if (levels.length === 0) return TUNING.rosterBaseCapacity;
+  return levels[Math.min(barracksLevel, levels.length) - 1].effects.rosterCapacity ?? TUNING.rosterBaseCapacity;
+}
+var isLiving = (u) => u.status !== "dead" && u.status !== "deserted" && u.status !== "terminated";
+function activeRosterUnits(state) {
+  return state.roster.activeIds.map((id) => state.squad.find((u) => u.id === id)).filter((u) => u !== void 0 && isLiving(u));
+}
+var eatsDouble = (u) => u.defects.some((d) => d.id === TUNING.upkeep.doubledByDefect);
+function upkeepNeeded(state, reg) {
+  const units = activeRosterUnits(state);
+  const raw = units.reduce((n, u) => n + TUNING.upkeep.perUnit * (eatsDouble(u) ? 2 : 1), 0) + TUNING.upkeep.commander;
+  const needed = Math.max(0, raw - facilityEffect(state, reg, "mess_hall", "upkeepReduction"));
+  return { units: units.length, needed };
+}
+function spread(total, n, offset) {
+  if (n <= 0) return [];
+  const base = Math.floor(total / n);
+  const extra = total - base * n;
+  const out = new Array(n).fill(base);
+  for (let i = 0; i < extra; i++) out[((offset % n + n) % n + i) % n] += 1;
+  return out;
+}
+var clamp2 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+function runUpkeep(draft, reg) {
+  const events = [];
+  const { needed } = upkeepNeeded(draft, reg);
+  const paid = Math.min(draft.resources.supplies, needed);
+  const missing = needed - paid;
+  draft.resources.supplies -= paid;
+  events.push({ type: "upkeep", needed, paid, shortage: missing });
+  if (missing === 0) {
+    draft.calendar.shortageStreak = 0;
+    return events;
+  }
+  const units = activeRosterUnits(draft);
+  const slots = units.flatMap((u) => eatsDouble(u) ? [u, u] : [u]);
+  const stress = spread(missing * TUNING.shortage.stressPerPoint, slots.length, draft.day);
+  const affinity = spread(missing * TUNING.shortage.affinityPerPoint, slots.length, draft.day);
+  slots.forEach((u, i) => {
+    u.stress = clamp2(u.stress + stress[i], 0, 100);
+    if (affinity[i] > 0) applyRelationDelta(draft, u.id, "affinity", -affinity[i], "shortage");
+  });
+  const streak = (draft.calendar.shortageStreak ?? 0) + 1;
+  draft.calendar.shortageStreak = streak;
+  events.push({ type: "supply_shortage", missing, streak });
+  if (streak % TUNING.shortage.streakDays === 0) {
+    for (const u of units) applyRelationDelta(draft, u.id, "trust", -TUNING.shortage.trustPenalty, "shortage_streak");
+    events.push({ type: "trust_penalty_event", streak, units: units.map((u) => u.id), amount: TUNING.shortage.trustPenalty });
+  }
+  return events;
+}
+function checkUpgrade(state, reg, id) {
+  const facility = reg.facilities.get(id);
+  if (!facility) return `Unknown facility "${id}".`;
+  const name = String(facility.name);
+  const levels = facilityLevels(reg, id);
+  const level = facilityLevel(state, id);
+  if (level >= levels.length) return `${name} is already at its max level (${levels.length}).`;
+  if ((state.base.upgrades ?? []).some((u) => u.facilityId === id)) return `${name} is already being upgraded.`;
+  const up = levels[level].upgrade;
+  if (!up) return `${name} has no upgrade to level ${level + 1}.`;
+  if (state.resources.credits < up.credits) return `Not enough credits to upgrade ${name} (needs ${up.credits}).`;
+  if (state.resources.plyx < up.plyx) return `Not enough plyx to upgrade ${name} (needs ${up.plyx}).`;
+  return null;
+}
+function checkRecruit(state) {
+  if (state.squad.filter(isLiving).length >= state.roster.capacity) {
+    return `The barracks are full (${state.roster.capacity} beds). Upgrade them to recruit more.`;
+  }
+  if (state.resources.credits < TUNING.recruit.credits) {
+    return `Not enough credits to recruit a grunt (needs ${TUNING.recruit.credits}).`;
+  }
+  return null;
+}
+
+// src/engine/calendar.ts
+var SLOT_ORDER = ["morning", "afternoon", "evening", "night"];
+var slotsLeftToday = (slot) => ({ morning: 3, afternoon: 2, evening: 1, night: 1 })[slot];
+var DAY_END_STEPS = [
+  "upkeep",
+  "ticks",
+  "facility_timers",
+  "mission_deadlines",
+  "director_tick",
+  "dm_rumors",
+  "night_check",
+  "autosave"
+];
+var hooks = { mission_deadlines: [], director_tick: [], dm_rumors: [] };
+var clockText = (day, slot) => `DAY ${String(day).padStart(3, "0")} // ${slot.toUpperCase()}`;
+function rollover(draft) {
+  draft.day += 1;
+  draft.slot = "morning";
+  delete draft.calendar.nightEvent;
+  for (const r of Object.values(draft.relations)) r.dailyGain = { trust: 0, affinity: 0, attraction: 0 };
+  return [{ type: "day_started", day: draft.day }];
+}
+function ticks(draft, ctx2) {
+  const events = [];
+  const speed = 1 + facilityEffect(draft, ctx2.registries, "medbay", "injurySpeed");
+  for (const u of draft.squad) {
+    if (!isLiving(u)) continue;
+    if (u.injuryDays !== void 0) {
+      u.injuryDays -= speed;
+      if (u.injuryDays <= 0) {
+        delete u.injuryDays;
+        u.injuries = [];
+        if (u.status === "injured") u.status = "active";
+        events.push({ type: "unit_recovered", unitId: u.id });
+      }
+    }
+    u.stress = Math.max(0, u.stress - TUNING.passiveStressRecovery);
+  }
+  return events;
+}
+function facilityTimers(draft, ctx2) {
+  const events = [];
+  if (!draft.base.upgrades) return events;
+  const pending = [];
+  for (const up of draft.base.upgrades) {
+    up.daysLeft -= 1;
+    if (up.daysLeft > 0) {
+      pending.push(up);
+      continue;
+    }
+    const max = facilityLevels(ctx2.registries, up.facilityId).length || up.toLevel;
+    draft.base.facilities[up.facilityId] = Math.min(up.toLevel, max);
+    if (up.facilityId === "barracks") draft.roster.capacity = rosterCapacityFor(ctx2.registries, draft.base.facilities.barracks);
+    events.push({ type: "facility_upgraded", facilityId: up.facilityId, level: draft.base.facilities[up.facilityId] });
+  }
+  draft.base.upgrades = pending;
+  return events;
+}
+function nightCheck(draft) {
+  const events = [];
+  if (draft.calendar.nightEventsQueue.length > 0) {
+    draft.calendar.nightEvent = draft.calendar.nightEventsQueue.shift();
+    draft.slot = "night";
+    events.push({ type: "slot_advanced", from: "evening", to: "night", day: draft.day });
+    events.push({ type: "night_started", entry: draft.calendar.nightEvent });
+  } else {
+    events.push({ type: "slot_advanced", from: "evening", to: "morning", day: draft.day + 1 });
+    events.push(...rollover(draft));
+  }
+  return events;
+}
+function endOfDay(draft, ctx2) {
+  const events = [];
+  for (const step of DAY_END_STEPS) {
+    events.push({ type: "day_end_step", step, day: draft.day });
+    switch (step) {
+      case "upkeep":
+        events.push(...runUpkeep(draft, ctx2.registries));
+        break;
+      case "ticks":
+        events.push(...ticks(draft, ctx2));
+        break;
+      case "facility_timers":
+        events.push(...facilityTimers(draft, ctx2));
+        break;
+      case "night_check":
+        events.push(...nightCheck(draft));
+        break;
+      case "autosave":
+        events.push({ type: "autosave" });
+        break;
+      default:
+        for (const fn of hooks[step]) events.push(...fn(draft, ctx2));
+    }
+  }
+  return events;
+}
+function consumeSlots(draft, count, ctx2) {
+  const events = [];
+  for (let i = 0; i < count; i++) {
+    const from = draft.slot;
+    if (from === "evening") {
+      events.push(...endOfDay(draft, ctx2));
+    } else if (from === "night") {
+      events.push({ type: "slot_advanced", from: "night", to: "morning", day: draft.day + 1 });
+      events.push(...rollover(draft));
+    } else {
+      draft.slot = SLOT_ORDER[SLOT_ORDER.indexOf(from) + 1];
+      events.push({ type: "slot_advanced", from, to: draft.slot, day: draft.day });
+    }
+  }
+  return events;
+}
+
+// src/engine/social.ts
+var SOCIAL_THRESHOLDS = [0, 10, 25, 45, 70];
+var MAX_RANK = SOCIAL_THRESHOLDS.length;
+var MAX_POINTS = SOCIAL_THRESHOLDS[MAX_RANK - 1];
+function rankForPoints(points) {
+  let rank = 1;
+  SOCIAL_THRESHOLDS.forEach((t, i) => {
+    if (points >= t) rank = i + 1;
+  });
+  return rank;
+}
+var socialRank = (state, stat) => state.commander.socialStats[stat];
+function addSocialPoints(commander, stat, amount) {
+  const before = commander.socialStats[stat];
+  const points = commander.socialPoints ??= {
+    authority: SOCIAL_THRESHOLDS[commander.socialStats.authority - 1] ?? 0,
+    insight: SOCIAL_THRESHOLDS[commander.socialStats.insight - 1] ?? 0,
+    empathy: SOCIAL_THRESHOLDS[commander.socialStats.empathy - 1] ?? 0,
+    cunning: SOCIAL_THRESHOLDS[commander.socialStats.cunning - 1] ?? 0
+  };
+  const next = Math.min(MAX_POINTS, points[stat] + amount);
+  const gained = next - points[stat];
+  points[stat] = next;
+  const rank = Math.max(before, rankForPoints(next));
+  commander.socialStats[stat] = rank;
+  return { rank, gained, rankedUp: rank > before };
+}
+
+// src/engine/activities.ts
+var clamp3 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var asReq = (v) => {
+  if (typeof v !== "object" || v === null || Array.isArray(v)) return null;
+  const r = v;
+  if (typeof r.activityId !== "string") return null;
+  if (r.companionId !== void 0 && typeof r.companionId !== "string") return null;
+  if (r.focus !== void 0 && typeof r.focus !== "string") return null;
+  if (r.unitIds !== void 0 && !(Array.isArray(r.unitIds) && r.unitIds.every((x) => typeof x === "string"))) return null;
+  return r;
+};
+var focusOf = (a, req) => {
+  const list = a.focus ?? [];
+  return req.focus === void 0 ? list[0] : list.find((f) => f.id === req.focus);
+};
+function checkActivity(state, reg, request) {
+  const req = asReq(request);
+  if (!req) return "Invalid activity request.";
+  const a = reg.activities.get(req.activityId);
+  if (!a) return `Unknown activity "${req.activityId}".`;
+  const name = String(a.name);
+  if (!a.slotRules.includes(state.slot)) return `${name} is not available in the ${state.slot}.`;
+  const need = a.facilityReq;
+  if (need && facilityLevel(state, need.id) < need.level) {
+    return `${name} needs ${String(reg.facilities.get(need.id)?.name ?? need.id)} level ${need.level}.`;
+  }
+  if (a.blockedWhenCommanderInjured === true && state.day < (state.commander.injuredUntilDay ?? 0)) {
+    return `The commander is injured; ${name} is blocked until day ${state.commander.injuredUntilDay}.`;
+  }
+  const cost = a.cost;
+  for (const k of ["credits", "supplies", "plyx"]) {
+    if ((cost[k] ?? 0) > state.resources[k]) return `Not enough ${k} for ${name} (needs ${cost[k]}).`;
+  }
+  const mode = a.companion;
+  if (req.companionId !== void 0) {
+    if (mode === "none") return `${name} cannot be done with a companion.`;
+    const c = state.squad.find((u) => u.id === req.companionId);
+    if (!c || !isLiving(c)) return `Companion "${req.companionId}" is not available.`;
+    return null;
+  }
+  if (mode === "required") return `${name} needs a companion.`;
+  const focus = focusOf(a, req);
+  if (req.focus !== void 0 && !focus) return `Unknown focus "${req.focus}" for ${name}.`;
+  if (focus?.units) {
+    const ids = req.unitIds ?? [];
+    if (ids.length < focus.units.min || ids.length > focus.units.max) {
+      return `${focus.label}: pick ${focus.units.min} to ${focus.units.max} units.`;
+    }
+    if (new Set(ids).size !== ids.length) return `${focus.label}: a unit was picked twice.`;
+    for (const id of ids) {
+      const u = state.squad.find((x) => x.id === id);
+      if (!u || !isLiving(u)) return `${focus.label}: unit "${id}" is not available.`;
+    }
+  }
+  return null;
+}
+var scaled = (amount, state, reg, scale) => {
+  if (!scale) return amount;
+  const factor = 1 + facilityEffect(state, reg, scale.facility, scale.key) / 100;
+  return Math.sign(amount) * Math.round(Math.abs(amount) * factor);
+};
+function runActivity(draft, ctx2, request) {
+  const reg = ctx2.registries;
+  const reason = checkActivity(draft, reg, request);
+  if (reason) throw new Error(reason);
+  const req = asReq(request);
+  const a = reg.activities.get(req.activityId);
+  const events = [];
+  const cost = a.cost;
+  for (const k of ["credits", "supplies", "plyx"]) {
+    if (cost[k]) {
+      draft.resources[k] -= cost[k];
+      events.push({ type: "resource_changed", resource: k, amount: -cost[k] });
+    }
+  }
+  const companion = req.companionId ? draft.squad.find((u) => u.id === req.companionId) : void 0;
+  const focus = companion ? void 0 : focusOf(a, req);
+  const selected = focus?.units ? (req.unitIds ?? []).map((id) => draft.squad.find((u) => u.id === id)) : [];
+  const unitsOf = (target) => target === "companion" ? companion ? [companion] : [] : target === "selected" ? selected : activeRosterUnits(draft);
+  const recover = (u) => {
+    delete u.injuryDays;
+    u.injuries = [];
+    if (u.status === "injured") u.status = "active";
+    events.push({ type: "unit_recovered", unitId: u.id });
+  };
+  const list = companion ? a.companionEffects : a.effects;
+  for (const fx of list) {
+    if (fx.when?.focus !== void 0 && fx.when.focus !== focus?.id) continue;
+    if (fx.when?.companionLikes !== void 0 && !companion?.likes.includes(fx.when.companionLikes)) continue;
+    switch (fx.type) {
+      case "resource": {
+        const amount = scaled(fx.amount + (fx.perStat ? fx.perStat.per * socialRank(draft, fx.perStat.stat) : 0), draft, reg, fx.scale);
+        draft.resources[fx.resource] = Math.max(0, draft.resources[fx.resource] + amount);
+        events.push({ type: "resource_changed", resource: fx.resource, amount });
+        break;
+      }
+      case "commander_stat": {
+        const r = addSocialPoints(draft.commander, fx.stat, scaled(fx.amount, draft, reg, fx.scale));
+        events.push({ type: "social_gained", stat: fx.stat, gained: r.gained, rank: r.rank, rankedUp: r.rankedUp });
+        break;
+      }
+      case "unit_xp":
+        for (const u of unitsOf(fx.target)) {
+          const amount = scaled(fx.amount, draft, reg, fx.scale);
+          u.xp += amount;
+          events.push({ type: "xp_gained", unitId: u.id, amount });
+        }
+        break;
+      case "unit_stress":
+        for (const u of unitsOf(fx.target)) {
+          const next = clamp3(u.stress + scaled(fx.amount, draft, reg, fx.scale), 0, 100);
+          events.push({ type: "stress_changed", unitId: u.id, delta: next - u.stress });
+          u.stress = next;
+        }
+        break;
+      case "injury_days":
+        for (const u of unitsOf(fx.target)) {
+          if (u.injuryDays === void 0) continue;
+          u.injuryDays += fx.amount;
+          if (u.injuryDays <= 0) recover(u);
+        }
+        break;
+      case "commander_injury_days": {
+        const until = draft.commander.injuredUntilDay;
+        if (until === void 0 || until <= draft.day) break;
+        const next = until + fx.amount;
+        if (next <= draft.day) delete draft.commander.injuredUntilDay;
+        else draft.commander.injuredUntilDay = next;
+        events.push({ type: "commander_injury_changed", until: draft.commander.injuredUntilDay ?? null });
+        break;
+      }
+      case "defect_upkeep":
+        for (const u of unitsOf(fx.target)) {
+          const kept = u.defects.filter((d) => d.arc === "manage");
+          for (const d of kept) d.upkeepDay = draft.day;
+          if (kept.length > 0) events.push({ type: "defect_upkeep", unitId: u.id, defectIds: kept.map((d) => d.id) });
+        }
+        break;
+      case "relation":
+        if (companion) {
+          const applied = applyRelationDelta(draft, companion.id, fx.axis, scaled(fx.amount, draft, reg, fx.scale), `activity:${a.id}`);
+          events.push({ type: "relation_changed", unitId: companion.id, axis: fx.axis, applied });
+        }
+        break;
+      case "emit_event":
+        events.push({
+          type: fx.event,
+          activityId: a.id,
+          ...companion ? { unitId: companion.id } : {},
+          ...fx.event === "scene_requested" ? { origin: "activity" } : {}
+        });
+        break;
+    }
+  }
+  events.push({
+    type: "activity_done",
+    activityId: a.id,
+    ...companion ? { companionId: companion.id } : {},
+    vignette: companion !== void 0 && a.flavor === "short"
+  });
+  if (a.startsScene !== true) events.push(...consumeSlots(draft, 1, ctx2));
+  return events;
+}
+
+// src/engine/actions/calendar.ts
+var isObj2 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+registerAction("calendar/consume_slot", (draft, payload, ctx2) => {
+  const p = isObj2(payload) ? payload : {};
+  const slots = p.slots ?? 1;
+  if (typeof slots !== "number" || !Number.isInteger(slots) || slots < 1) {
+    throw new Error("calendar/consume_slot: slots must be a positive integer");
+  }
+  const left = slotsLeftToday(draft.slot);
+  if (slots > left) throw new Error(`calendar/consume_slot: ${slots} slot(s) requested but only ${left} left in the ${draft.slot}`);
+  return consumeSlots(draft, slots, ctx2);
+});
+registerAction("activity/do", (draft, payload, ctx2) => runActivity(draft, ctx2, payload));
+registerAction("commander/injure", (draft, payload) => {
+  const days = isObj2(payload) ? payload.days : void 0;
+  if (typeof days !== "number" || !Number.isInteger(days) || days < 1) throw new Error("commander/injure: days must be a positive integer");
+  const until = Math.max(draft.commander.injuredUntilDay ?? 0, draft.day + days);
+  draft.commander.injuredUntilDay = until;
+  return [{ type: "commander_injured", days, until }];
+});
+
+// src/engine/grunts.ts
+var GENERATED_NAME = /^(?=.*[A-Za-z])[A-Za-z0-9 '-]{1,24}$/;
+var GRUNT_BIO_MAX = 120;
+var INNER = 11;
+var fit = (s) => {
+  const left = Math.floor((INNER - s.length) / 2);
+  return (" ".repeat(left) + s + " ".repeat(INNER)).slice(0, INNER);
+};
+var HEADGEAR = ['.-"""""-.', "/=======\\", "(#######)", "/^^^^^^^\\", ".:::::::.", "_________", ";;;;;;;;;", "/\\/\\/\\/\\/\\"];
+var EYES = ["( o   o )", "( -   - )", "( O   O )", "( >   < )", "( .   . )", "( @   @ )", "[ #   # ]", "( x   o )"];
+var NOSES = ["    |    ", "    ^    ", "    L    ", "   .-.   ", "    ,    ", "   \\_/   "];
+var MOUTHS = ["\\___/", "-----", "=====", "___", "/---\\", "~~~~~", "...", "|||||"];
+var CHINS = ["\\_______/", " \\_____/ ", "  \\___/  ", "  `---`  ", "  |___|  "];
+var MARKS = [null, null, [1, 1, "/"], [2, 3, ","], [1, 9, "*"], [3, 2, "#"]];
+function generatePortrait(rng) {
+  const rows = [
+    fit(rng.pick(HEADGEAR)),
+    fit(rng.pick(EYES)),
+    fit(rng.pick(NOSES)),
+    fit(rng.pick(MOUTHS)),
+    fit(rng.pick(CHINS))
+  ];
+  const mark = rng.pick(MARKS);
+  if (mark) {
+    const [row, col, glyph] = mark;
+    rows[row] = rows[row].slice(0, col) + glyph + rows[row].slice(col + 1);
+  }
+  const frame = `+${"-".repeat(INNER)}+`;
+  return [frame, ...rows.map((r) => `|${r}|`), frame].join("\n");
+}
+function generateDesignation(rng, taken) {
+  for (let i = 0; i < 1e4; i++) {
+    const letter = String.fromCharCode(65 + rng.int(0, 25));
+    const d = `${letter}-${rng.int(100, 999)}`;
+    if (!taken.has(d)) return d;
+  }
+  throw new Error("No free grunt designation left");
+}
+var idFor = (designation) => `grunt_${designation.toLowerCase().replace(/[^a-z0-9]+/g, "_")}`;
+function generateGrunt(state, reg, rng) {
+  const role = rng.pick([...reg.roles.values()]);
+  const allowDesire = state.settings.desireBondDefects === true;
+  const defect = rng.pick([...reg.defects.values()].filter((d) => allowDesire || d.category !== "desire_bond"));
+  const sig = rng.pick([...reg.signatures.values()]);
+  const taken = /* @__PURE__ */ new Set();
+  for (const u of state.squad) {
+    if (u.designation) taken.add(u.designation);
+    taken.add(u.id);
+  }
+  let designation = generateDesignation(rng, taken);
+  while (taken.has(idFor(designation))) designation = generateDesignation(rng, /* @__PURE__ */ new Set([...taken, designation]));
+  const living = state.squad.filter(isLiving);
+  const average = living.length === 0 ? 1 : living.reduce((n, u) => n + u.level, 0) / living.length;
+  const stats = role.baseStats;
+  return {
+    id: idFor(designation),
+    kind: "grunt",
+    displayName: designation,
+    designation,
+    asciiPortrait: generatePortrait(rng),
+    roleId: role.id,
+    level: Math.max(1, Math.round(average) - 1),
+    xp: 0,
+    skillPoints: 0,
+    unlockedNodes: [],
+    signatureSkill: { templateId: sig.id, name: String(sig.name), description: String(sig.mechanic) },
+    baseStats: { ...stats },
+    currentHp: stats.hp,
+    stress: 0,
+    defects: [{ id: defect.id, lite: true }],
+    values: Object.fromEntries(VALUE_AXES.map((a) => [a, 0])),
+    likes: [],
+    dislikes: [],
+    triggers: [],
+    equipment: {},
+    injuries: [],
+    status: activeRosterUnits(state).length < TUNING.rosterActiveMax ? "active" : "reserve"
+  };
+}
+function gruntRelation(state, reg) {
+  const crime = reg.crimes.get(state.commander.crimeId ?? "");
+  const start = reg.starts.get(state.world.startId ?? "");
+  const effects = crime ? crimeEffectsOf(crime) : [];
+  const neutral = Object.fromEntries(VALUE_AXES.map((a) => [a, 0]));
+  let trust = TUNING.recruit.baseTrust + startingTrustAdjust(effects, neutral);
+  if (effects.some((fx) => fx.type === "grunt_starting_trust")) trust += TUNING.recruit.gruntCrimeBonus;
+  return initialRelation({ trust, affinity: 0, attraction: 0, knowsCrime: crime ? crimeKnownByDefault(crime, start) : false });
+}
+
+// src/engine/actions/base.ts
+var isObj3 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+registerAction("base/upgrade", (draft, payload, ctx2) => {
+  const id = isObj3(payload) ? payload.facilityId : void 0;
+  if (typeof id !== "string") throw new Error("base/upgrade needs { facilityId }");
+  const reason = checkUpgrade(draft, ctx2.registries, id);
+  if (reason) throw new Error(reason);
+  const level = facilityLevel(draft, id);
+  const up = facilityLevels(ctx2.registries, id)[level].upgrade;
+  draft.resources.credits -= up.credits;
+  draft.resources.plyx -= up.plyx;
+  (draft.base.upgrades ??= []).push({ facilityId: id, toLevel: level + 1, daysLeft: up.days });
+  return [
+    { type: "resource_changed", resource: "credits", amount: -up.credits },
+    { type: "resource_changed", resource: "plyx", amount: -up.plyx },
+    { type: "upgrade_started", facilityId: id, toLevel: level + 1, days: up.days }
+  ];
+});
+registerAction("base/requisition", (draft, payload) => {
+  const n = isObj3(payload) ? payload.supplies : void 0;
+  if (typeof n !== "number" || !Number.isInteger(n) || n < 1) throw new Error("base/requisition: supplies must be a positive integer");
+  const credits = n * TUNING.requisition.creditsPerSupply;
+  if (draft.resources.credits < credits) throw new Error(`Not enough credits: ${n} supplies cost ${credits}.`);
+  draft.resources.credits -= credits;
+  draft.resources.supplies += n;
+  return [{ type: "requisitioned", supplies: n, credits }];
+});
+registerAction("roster/set_active", (draft, payload) => {
+  const ids = isObj3(payload) ? payload.activeIds : void 0;
+  if (!Array.isArray(ids) || !ids.every((x) => typeof x === "string")) throw new Error("roster/set_active needs { activeIds: string[] }");
+  if (ids.length > TUNING.rosterActiveMax) throw new Error(`The active roster holds at most ${TUNING.rosterActiveMax} units.`);
+  if (new Set(ids).size !== ids.length) throw new Error("A unit was listed twice.");
+  for (const id of ids) {
+    const u = draft.squad.find((x) => x.id === id);
+    if (!u || !isLiving(u)) throw new Error(`Unit "${id}" cannot join the active roster.`);
+  }
+  const chosen = new Set(ids);
+  for (const u of draft.squad) {
+    if (chosen.has(u.id)) {
+      if (u.status === "reserve") u.status = "active";
+    } else if (u.status === "active") {
+      u.status = "reserve";
+    }
+  }
+  draft.roster.activeIds = [...ids];
+  return [{ type: "roster_changed", activeIds: [...ids] }];
+});
+registerAction("base/recruit_grunt", (draft, _payload, ctx2) => {
+  const reason = checkRecruit(draft);
+  if (reason) throw new Error(reason);
+  const grunt = generateGrunt(draft, ctx2.registries, ctx2.rng);
+  draft.resources.credits -= TUNING.recruit.credits;
+  draft.squad.push(grunt);
+  draft.relations[grunt.id] = gruntRelation(draft, ctx2.registries);
+  if (grunt.status === "active") draft.roster.activeIds.push(grunt.id);
+  return [
+    { type: "resource_changed", resource: "credits", amount: -TUNING.recruit.credits },
+    { type: "grunt_recruited", unitId: grunt.id, designation: grunt.designation }
+  ];
+});
+registerAction("squad/set_flavor", (draft, payload) => {
+  const p = isObj3(payload) ? payload : {};
+  const unit = draft.squad.find((u) => u.id === p.unitId);
+  if (!unit || unit.kind !== "grunt") throw new Error("squad/set_flavor: only grunts take a generated name");
+  const name = typeof p.name === "string" ? p.name.trim() : "";
+  if (!GENERATED_NAME.test(name)) throw new Error("squad/set_flavor: the name must be 1 to 24 letters, digits, spaces, apostrophes or hyphens");
+  if (typeof p.bio !== "string" || p.bio.length > GRUNT_BIO_MAX) throw new Error(`squad/set_flavor: the bio must be at most ${GRUNT_BIO_MAX} characters`);
+  unit.displayName = name;
+  unit.bio = p.bio.trim();
+  return [{ type: "unit_flavored", unitId: unit.id, name }];
 });
 
 // node_modules/zod/v3/external.js
@@ -4529,45 +5144,22 @@ registerCallType({
   schema: ProfileImportRawSchema
 });
 
-// src/content/types.ts
-var REGISTRY_NAMES = [
-  "roles",
-  "skills",
-  "signatures",
-  "statuses",
-  "defects",
-  "items",
-  "affixes",
-  "enemies",
-  "enemyCategories",
-  "regions",
-  "nodeTypes",
-  "activities",
-  "facilities",
-  "crimes",
-  "corporations",
-  "starts",
-  "relationshipStates",
-  "eventDeltas",
-  "dilemmaTemplates",
-  "settingsPresets",
-  "flags",
-  "marks"
-];
-var PackManifestSchema = external_exports.object({
-  id: external_exports.string().min(1),
-  name: external_exports.string().min(1),
-  version: external_exports.string().min(1),
-  priority: external_exports.number(),
-  /** Compact lorebook file (see LorebookSchema); the highest-priority pack that declares one wins. */
-  lorebook: external_exports.string().min(1).optional(),
-  files: external_exports.object(
-    Object.fromEntries(REGISTRY_NAMES.map((n) => [n, external_exports.string().min(1).optional()]))
-  ).strict()
-}).strict();
-function emptyRegistries() {
-  return Object.fromEntries(REGISTRY_NAMES.map((n) => [n, /* @__PURE__ */ new Map()]));
-}
+// src/llm/log.ts
+var CAPACITY = 50;
+var LlmLog = class {
+  items = [];
+  push(e) {
+    this.items.push(e);
+    if (this.items.length > CAPACITY) this.items.shift();
+  }
+  entries() {
+    return [...this.items];
+  }
+  clear() {
+    this.items = [];
+  }
+};
+var llmLog = new LlmLog();
 
 // src/llm/text.ts
 var THINK_TAGS = "think|thinking|reasoning";
@@ -4680,79 +5272,6 @@ function estTokens(s) {
   return Math.ceil(s.length / 3.6);
 }
 
-// src/llm/context.ts
-var BLOCK_TITLE = "[ALIUS CONTEXT]";
-var DIRECTIVES_TITLE = "[ALIUS DIRECTIVES \u2014 hard constraints, follow them]";
-var SLOT_LABEL = {
-  morning: "Morning",
-  afternoon: "Afternoon",
-  evening: "Evening",
-  night: "Night"
-};
-var headerProvider = {
-  id: "header",
-  priority: 100,
-  render: (s) => `[ALIUS] Day ${s.day}, ${SLOT_LABEL[s.slot]}.`
-};
-var ContextBuilder = class {
-  providers = [headerProvider];
-  directives = /* @__PURE__ */ new Map();
-  register(p) {
-    this.providers.push(p);
-  }
-  setDirective(d) {
-    this.directives.set(d.id, d);
-  }
-  clearDirective(id) {
-    this.directives.delete(id);
-  }
-  /** Call when a main-model reply arrives: drops `next_reply` directives. */
-  onReplyReceived() {
-    for (const [id, d] of this.directives) if (d.expiresAfter === "next_reply") this.directives.delete(id);
-  }
-  build(state, capTokens) {
-    const sorted = [...this.providers].sort((a, b) => b.priority - a.priority);
-    const lines = [];
-    for (const p of sorted) {
-      const text = p.render(state);
-      if (!text) continue;
-      if (estTokens([BLOCK_TITLE, ...lines, text].join("\n")) > capTokens) break;
-      lines.push(text);
-    }
-    const block = lines.length ? [BLOCK_TITLE, ...lines].join("\n") : "";
-    const dirs = [...this.directives.values()];
-    const directives = dirs.length ? [DIRECTIVES_TITLE, ...dirs.map((d) => `- ${d.text}`)].join("\n") : "";
-    return { block, directives };
-  }
-  apply(st, state, capTokens) {
-    if (state === null) {
-      st.setInjection("ctx", "", "in_prompt", 0);
-      st.setInjection("dir", "", "in_chat", 1);
-      return;
-    }
-    const { block, directives } = this.build(state, capTokens);
-    st.setInjection("ctx", block, "in_prompt", 0);
-    st.setInjection("dir", directives, "in_chat", 1);
-  }
-};
-
-// src/llm/log.ts
-var CAPACITY = 50;
-var LlmLog = class {
-  items = [];
-  push(e) {
-    this.items.push(e);
-    if (this.items.length > CAPACITY) this.items.shift();
-  }
-  entries() {
-    return [...this.items];
-  }
-  clear() {
-    this.items = [];
-  }
-};
-var llmLog = new LlmLog();
-
 // src/llm/orchestrator.ts
 var MAX_ATTEMPTS = 2;
 var RETRY_BUDGET_FACTOR = 1.5;
@@ -4817,6 +5336,185 @@ async function callLlm(id, input, deps) {
   return { ok: false, reason: "invalid_output", detail: lastDetail, attempts: MAX_ATTEMPTS };
 }
 
+// src/llm/calls/activityVignette.ts
+var MAX_LINES = 2;
+var MAX_CHARS = 240;
+function sanitizeVignette(text) {
+  const lines = text.replace(/```[a-z]*/gi, "\n").split(/\r?\n/).map(
+    (l) => l.trim().replace(/^(vignette|scene|response|reply)\s*:\s*/i, "").replace(/[*_`#>]+/g, "").trim().replace(/^["“”]+|["“”]+$/g, "").trim()
+  ).filter((l) => l !== "");
+  if (lines.length === 0) return null;
+  const out = lines.slice(0, MAX_LINES).join("\n").slice(0, MAX_CHARS).trimEnd();
+  return out === "" ? null : out;
+}
+registerCallType({
+  id: "activity_vignette",
+  profile: "main",
+  json: false,
+  system: () => [
+    "You write a tiny moment for a squad-command roleplay: the commander spends a slot of the day with one soldier.",
+    "Write exactly two lines of plain prose, at most one sentence each, in the present tense, in English.",
+    "No dialogue tags, no markdown, no headings, no game numbers. Do not decide anything for the commander beyond the shared activity."
+  ].join("\n"),
+  prompt: (raw) => {
+    const i = raw;
+    return [
+      `Activity: ${i.activityName}`,
+      `Commander: ${i.commanderName}`,
+      `Soldier: ${i.unitName} (${i.unitRole})`,
+      i.likes.length > 0 ? `She likes: ${i.likes.join(", ")}` : "",
+      i.defectNames.length > 0 ? `Her defects: ${i.defectNames.join(", ")}` : "",
+      "Write the moment."
+    ].filter(Boolean).join("\n");
+  }
+});
+async function generateVignette(input, deps) {
+  const r = await callLlm("activity_vignette", input, deps);
+  return r.ok ? sanitizeVignette(r.value) : null;
+}
+
+// src/llm/calls/flavor.ts
+var kinds = /* @__PURE__ */ new Map();
+function registerFlavorKind(kind, impl) {
+  if (kinds.has(kind)) throw new Error(`Duplicate flavor kind: ${kind}`);
+  kinds.set(kind, impl);
+}
+var kindOf = (input) => kinds.get(String(input?.kind));
+registerCallType({
+  id: "flavor",
+  profile: "mechanic",
+  json: true,
+  system: (input) => kindOf(input)?.system(input) ?? "Reply with a single JSON object and nothing else.",
+  prompt: (input) => kindOf(input)?.prompt(input) ?? "{}",
+  schema: external_exports.object({}).passthrough()
+});
+async function generateFlavor(input, deps) {
+  if (!kinds.has(input.kind)) return null;
+  const r = await callLlm("flavor", input, deps);
+  return r.ok ? r.value : null;
+}
+registerFlavorKind("grunt", {
+  system: () => [
+    "You name a freshly recruited conscript soldier for a dark, near-future squad-command RPG.",
+    'Reply with a single JSON object and nothing else: {"name": "<given name or call sign>", "bio": "<one sentence about her>"}',
+    `The name is 1 to 2 words, letters only. The bio is at most ${GRUNT_BIO_MAX} characters. Write in English. Do not mention numbers or game stats.`
+  ].join("\n"),
+  prompt: (raw) => {
+    const i = raw;
+    return `Designation: ${i.designation}
+Role: ${i.roleName}
+Defect: ${i.defectName}
+Name her and give her a bio.`;
+  }
+});
+function sanitizeGruntFlavor(raw) {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return null;
+  const r = raw;
+  const name = typeof r.name === "string" ? r.name.trim() : "";
+  if (!GENERATED_NAME.test(name)) return null;
+  const bio = typeof r.bio === "string" ? r.bio.replace(/\s+/g, " ").trim().slice(0, GRUNT_BIO_MAX).trim() : "";
+  return { name, bio };
+}
+async function generateGruntFlavor(input, deps) {
+  return sanitizeGruntFlavor(await generateFlavor(input, deps));
+}
+
+// src/content/types.ts
+var REGISTRY_NAMES = [
+  "roles",
+  "skills",
+  "signatures",
+  "statuses",
+  "defects",
+  "items",
+  "affixes",
+  "enemies",
+  "enemyCategories",
+  "regions",
+  "nodeTypes",
+  "activities",
+  "facilities",
+  "crimes",
+  "corporations",
+  "starts",
+  "relationshipStates",
+  "eventDeltas",
+  "dilemmaTemplates",
+  "settingsPresets",
+  "flags",
+  "marks"
+];
+var PackManifestSchema = external_exports.object({
+  id: external_exports.string().min(1),
+  name: external_exports.string().min(1),
+  version: external_exports.string().min(1),
+  priority: external_exports.number(),
+  /** Compact lorebook file (see LorebookSchema); the highest-priority pack that declares one wins. */
+  lorebook: external_exports.string().min(1).optional(),
+  files: external_exports.object(
+    Object.fromEntries(REGISTRY_NAMES.map((n) => [n, external_exports.string().min(1).optional()]))
+  ).strict()
+}).strict();
+function emptyRegistries() {
+  return Object.fromEntries(REGISTRY_NAMES.map((n) => [n, /* @__PURE__ */ new Map()]));
+}
+
+// src/llm/context.ts
+var BLOCK_TITLE = "[ALIUS CONTEXT]";
+var DIRECTIVES_TITLE = "[ALIUS DIRECTIVES \u2014 hard constraints, follow them]";
+var SLOT_LABEL = {
+  morning: "Morning",
+  afternoon: "Afternoon",
+  evening: "Evening",
+  night: "Night"
+};
+var headerProvider = {
+  id: "header",
+  priority: 100,
+  render: (s) => `[ALIUS] Day ${s.day}, ${SLOT_LABEL[s.slot]}.`
+};
+var ContextBuilder = class {
+  providers = [headerProvider];
+  directives = /* @__PURE__ */ new Map();
+  register(p) {
+    this.providers.push(p);
+  }
+  setDirective(d) {
+    this.directives.set(d.id, d);
+  }
+  clearDirective(id) {
+    this.directives.delete(id);
+  }
+  /** Call when a main-model reply arrives: drops `next_reply` directives. */
+  onReplyReceived() {
+    for (const [id, d] of this.directives) if (d.expiresAfter === "next_reply") this.directives.delete(id);
+  }
+  build(state, capTokens) {
+    const sorted = [...this.providers].sort((a, b) => b.priority - a.priority);
+    const lines = [];
+    for (const p of sorted) {
+      const text = p.render(state);
+      if (!text) continue;
+      if (estTokens([BLOCK_TITLE, ...lines, text].join("\n")) > capTokens) break;
+      lines.push(text);
+    }
+    const block = lines.length ? [BLOCK_TITLE, ...lines].join("\n") : "";
+    const dirs = [...this.directives.values()];
+    const directives = dirs.length ? [DIRECTIVES_TITLE, ...dirs.map((d) => `- ${d.text}`)].join("\n") : "";
+    return { block, directives };
+  }
+  apply(st, state, capTokens) {
+    if (state === null) {
+      st.setInjection("ctx", "", "in_prompt", 0);
+      st.setInjection("dir", "", "in_chat", 1);
+      return;
+    }
+    const { block, directives } = this.build(state, capTokens);
+    st.setInjection("ctx", block, "in_prompt", 0);
+    st.setInjection("dir", directives, "in_chat", 1);
+  }
+};
+
 // src/settings.ts
 var DEFAULT_SETTINGS = {
   mechanicProfileId: "",
@@ -4866,16 +5564,16 @@ var fieldSchemas = {
   gruntFlavor: external_exports.boolean()
 };
 var budgetSchema = external_exports.number().int().min(1);
-var isObj2 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj4 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function merge(base, over) {
-  const src = isObj2(over) ? over : {};
+  const src = isObj4(over) ? over : {};
   const out = { ...base };
   for (const [key, schema] of Object.entries(fieldSchemas)) {
     const parsed = schema.safeParse(src[key]);
     if (parsed.success) out[key] = parsed.data;
   }
   const budgets = { ...base.budgets };
-  const srcBudgets = isObj2(src.budgets) ? src.budgets : {};
+  const srcBudgets = isObj4(src.budgets) ? src.budgets : {};
   for (const id of CALL_TYPE_IDS) {
     const parsed = budgetSchema.safeParse(srcBudgets[id]);
     if (parsed.success) budgets[id] = parsed.data;
@@ -4930,7 +5628,7 @@ function buildImportInput(card2, registries, settings, sections) {
     defects: [...registries.defects.values()].filter((d) => settings.desireBondDefects || d.category !== "desire_bond").map((d) => ({ id: d.id, lore: str2(d.lore) }))
   };
 }
-var isObj3 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj5 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var cap = (v, max, fallback = "") => typeof v === "string" ? v.trim().slice(0, max) : fallback;
 var num = (v, lo, hi, fallback) => typeof v === "number" && Number.isFinite(v) ? Math.min(hi, Math.max(lo, Math.round(v))) : fallback;
 var SECTION_LABEL = { role: "role", signature: "signature", defects: "defects" };
@@ -4946,7 +5644,7 @@ function tagList(v, max) {
   return out;
 }
 function sanitizeProfile(raw, ctx2) {
-  const src = isObj3(raw) ? raw : {};
+  const src = isObj5(raw) ? raw : {};
   const want = (s) => ctx2.sections.includes(s);
   const dropped = [];
   const missing = [];
@@ -4955,7 +5653,7 @@ function sanitizeProfile(raw, ctx2) {
     const out = [];
     const seen = /* @__PURE__ */ new Set();
     for (const item of Array.isArray(list) ? list : []) {
-      const id = isObj3(item) && typeof item[idKey] === "string" ? item[idKey] : null;
+      const id = isObj5(item) && typeof item[idKey] === "string" ? item[idKey] : null;
       if (id === null) {
         dropped.push(`${SECTION_LABEL[section]}:(invalid)`);
         continue;
@@ -5013,7 +5711,7 @@ function sanitizeProfile(raw, ctx2) {
     if (profile.defectCandidates.length === 0) missing.push("defects");
   }
   if (want("values")) {
-    if (isObj3(src.values)) {
+    if (isObj5(src.values)) {
       const v = src.values;
       profile.values = Object.fromEntries(VALUE_KEYS.map((k) => [k, num(v[k], -3, 3, 0)]));
     } else missing.push("values");
@@ -5028,7 +5726,7 @@ function sanitizeProfile(raw, ctx2) {
     if (!likes && !dislikes && !triggers) missing.push("tags");
   }
   if (want("baseline")) {
-    if (isObj3(src.emotionalBaseline)) {
+    if (isObj5(src.emotionalBaseline)) {
       const b = src.emotionalBaseline;
       const lim = SETUP_LIMITS.baseline;
       profile.baseline = {
@@ -5921,6 +6619,9 @@ var nameOf3 = (e, id) => e ? String(e.name) : unknown(id);
 var spriteCache = /* @__PURE__ */ new WeakMap();
 var MISSING_SPRITE_RETRY_MS = 3e4;
 function portrait(st, unit) {
+  if (unit.kind === "grunt") {
+    return unit.asciiPortrait ? h("pre", { class: "alius-ascii", "aria-label": `Portrait of ${unit.displayName}` }, unit.asciiPortrait) : null;
+  }
   if (!unit.cardRef) return null;
   const card2 = unit.cardRef;
   const avatar = st.getAvatarUrl(card2);
@@ -5971,7 +6672,7 @@ function defectBlock(reg, d) {
     line("Downside", String(def.downside)),
     line("Breakdown", `${bd.name} \u2014 ${bd.text}`),
     line("Social", String(def.social)),
-    line("Arc", `Cure: ${arc.cure} \xB7 Manage: ${arc.manage} \xB7 Embrace: ${arc.embrace}`)
+    d.lite ? null : line("Arc", `Cure: ${arc.cure} \xB7 Manage: ${arc.manage} \xB7 Embrace: ${arc.embrace}`)
   );
 }
 function unitBlock(unit, ctx2) {
@@ -5992,7 +6693,9 @@ function unitBlock(unit, ctx2) {
       "div",
       { class: "alius-unit-body" },
       h("h3", { class: "alius-unit-name" }, unit.displayName),
+      unit.kind === "grunt" ? h("p", { class: "alius-dim" }, `GRUNT ${unit.designation ?? ""}`.trimEnd()) : null,
       h("p", {}, `${nameOf3(reg.roles.get(unit.roleId), unit.roleId)} \xB7 LVL ${unit.level}`),
+      unit.bio ? h("p", { class: "alius-dim" }, unit.bio) : null,
       h("p", {}, `HP ${s.hp} \xB7 ATK ${s.atk} \xB7 DEF ${s.def} \xB7 SPD ${s.spd} \xB7 CRIT ${s.crit}%`),
       h(
         "p",
@@ -6003,9 +6706,11 @@ function unitBlock(unit, ctx2) {
       ...unit.defects.map((d) => defectBlock(reg, d)),
       h("h4", {}, "VALUES"),
       h("p", { class: "alius-values" }, values.join(" \xB7 ")),
-      h("h4", {}, "SIGNATURE"),
-      h("p", {}, h("strong", {}, unit.signatureSkill.name), ` \u2014 ${unit.signatureSkill.description}`),
-      h("p", { class: "alius-dim" }, `Template: ${nameOf3(sigTpl, unit.signatureSkill.templateId)} \u2014 ${sigTpl ? String(sigTpl.mechanic) : ""}`),
+      ...unit.kind === "grunt" ? [] : [
+        h("h4", {}, "SIGNATURE"),
+        h("p", {}, h("strong", {}, unit.signatureSkill.name), ` \u2014 ${unit.signatureSkill.description}`),
+        h("p", { class: "alius-dim" }, `Template: ${nameOf3(sigTpl, unit.signatureSkill.templateId)} \u2014 ${sigTpl ? String(sigTpl.mechanic) : ""}`)
+      ],
       // Re-sync overwrites numbers on a running campaign, so it follows the SYS edit lock.
       ctx2.onResync && unit.cardRef && !ctx2.settings().editLock ? h("button", { type: "button", class: "alius-btn", "data-resync": unit.id, onclick: () => ctx2.onResync(unit.id) }, "[ RE-SYNC FROM CARD ]") : null
     )
@@ -6036,16 +6741,228 @@ function renderSquadTab(host, ctx2) {
   }
   host.append(h("section", { class: "alius-section alius-squad" }, ...state.squad.map((u) => unitBlock(u, ctx2))));
 }
-function renderOpsPlaceholder(host, getState) {
+
+// src/ui/ops/opsTab.ts
+var COST_LABEL = { credits: "CR", supplies: "SUPPLIES", plyx: "PLYX" };
+var costText = (cost) => {
+  const parts = Object.entries(cost).filter(([, n]) => (n ?? 0) > 0).map(([k, n]) => `${n} ${COST_LABEL[k] ?? k.toUpperCase()}`);
+  return parts.length === 0 ? "FREE" : parts.join(" \xB7 ");
+};
+var unitLabel = (u) => u.kind === "grunt" ? `${u.displayName} (grunt)` : u.displayName;
+function activityCard(a, state, ctx2) {
+  const mode = a.companion;
+  const focusList = a.focus ?? [];
+  const living = state.squad.filter(isLiving);
+  const companionSel = mode === "none" ? null : h(
+    "select",
+    { name: "companion", "aria-label": `Companion for ${String(a.name)}` },
+    h("option", { value: "" }, mode === "required" ? "\u2014 choose \u2014" : "\u2014 alone \u2014"),
+    ...living.map((u) => h("option", { value: u.id }, unitLabel(u)))
+  );
+  const focusSel = focusList.length === 0 ? null : h(
+    "select",
+    { name: "focus", "aria-label": `Focus for ${String(a.name)}` },
+    ...focusList.map((f) => h("option", { value: f.id }, f.label))
+  );
+  const picked = /* @__PURE__ */ new Set();
+  const boxes = living.map((u) => {
+    const box = h("input", { type: "checkbox", "data-unit": u.id });
+    box.addEventListener("change", () => {
+      if (box.checked) picked.add(u.id);
+      else picked.delete(u.id);
+      refresh();
+    });
+    return h("label", { class: "alius-check" }, box, ` ${unitLabel(u)}`);
+  });
+  const controls = h("div", { class: "alius-activity-controls" });
+  const reasonEl = h("p", { class: "alius-dim alius-reason" });
+  const btn = h("button", { type: "button", class: "alius-btn", "data-do": String(a.id) }, "[ DO ]");
+  const currentFocus = () => focusList.find((f) => f.id === focusSel?.value);
+  const request = () => {
+    const req = { activityId: String(a.id) };
+    const companion = companionSel?.value;
+    if (companion) return { ...req, companionId: companion };
+    if (focusSel) req.focus = focusSel.value;
+    if (currentFocus()?.units) req.unitIds = living.filter((u) => picked.has(u.id)).map((u) => u.id);
+    return req;
+  };
+  let shape = "";
+  function refresh() {
+    const companion = companionSel?.value ?? "";
+    const next = companion ? "companion" : `focus:${focusSel?.value ?? ""}`;
+    if (next !== shape) {
+      shape = next;
+      controls.replaceChildren();
+      if (companionSel) controls.append(companionSel);
+      if (!companion) {
+        if (focusSel) controls.append(focusSel);
+        if (currentFocus()?.units) controls.append(h("div", { class: "alius-unitpick" }, ...boxes));
+      }
+    }
+    const reason = checkActivity(state, ctx2.registries, request());
+    btn.disabled = reason !== null;
+    reasonEl.textContent = reason ?? "";
+  }
+  companionSel?.addEventListener("change", refresh);
+  focusSel?.addEventListener("change", refresh);
+  btn.addEventListener("click", () => ctx2.onDo(request()));
+  refresh();
+  return h(
+    "article",
+    { class: "alius-activity", "data-activity": String(a.id) },
+    h("h3", {}, String(a.name)),
+    h("p", { class: "alius-dim" }, `${String(a.summary)} \u2014 ${costText(a.cost)}`),
+    controls,
+    reasonEl,
+    btn
+  );
+}
+function requisition(state, ctx2) {
+  const rate = TUNING.requisition.creditsPerSupply;
+  const input = h("input", { type: "number", name: "requisition", min: "1", step: "1", value: "5", "aria-label": "Supplies to requisition" });
+  const btn = h("button", { type: "button", class: "alius-btn", "data-requisition": "" }, "[ REQUISITION ]");
+  const sync = () => {
+    const n = Math.floor(Number(input.value));
+    btn.disabled = !(n >= 1) || n * rate > state.resources.credits;
+  };
+  input.addEventListener("input", sync);
+  input.addEventListener("change", sync);
+  btn.addEventListener("click", () => {
+    const n = Math.floor(Number(input.value));
+    if (n >= 1) ctx2.onRequisition(n);
+  });
+  sync();
+  return h(
+    "section",
+    { class: "alius-section" },
+    h("h2", {}, "REQUISITION"),
+    h("p", { class: "alius-dim" }, `Buy supplies for credits: ${rate} CR per supply. The squad eats every day.`),
+    h("label", {}, "Supplies ", input),
+    " ",
+    btn
+  );
+}
+function renderOpsTab(host, ctx2) {
   host.replaceChildren();
-  const state = getState();
+  const load = ctx2.getLoad();
+  const state = ctx2.getState();
+  if (load.kind === "readonly") {
+    host.append(h("section", { class: "alius-section" }, h("p", { class: "alius-banner" }, `READ-ONLY: ${load.reason}`)));
+    return;
+  }
+  if (!state) {
+    host.append(h("section", { class: "alius-section" }, h("p", {}, "NO ACTIVE CAMPAIGN IN THIS CHAT")));
+    return;
+  }
+  const today = [...ctx2.registries.activities.values()].filter((a) => a.slotRules.includes(state.slot));
   host.append(
     h(
       "section",
-      { class: "alius-section" },
-      state ? h("h2", {}, `DAY ${state.day} // ${state.slot.toUpperCase()}`) : null,
-      h("p", { class: "alius-dim" }, "CALENDAR MODULE OFFLINE")
-    )
+      { class: "alius-section alius-ops" },
+      h("h2", {}, clockText(state.day, state.slot)),
+      h("p", { class: "alius-dim" }, "Each activity takes this slot. Talking takes it when the scene ends."),
+      ...today.map((a) => activityCard(a, state, ctx2))
+    ),
+    requisition(state, ctx2)
+  );
+}
+
+// src/ui/base/baseTab.ts
+var BOX_INNER = 16;
+var PER_ROW = 3;
+var pendingOf = (state, id) => (state.base.upgrades ?? []).find((u) => u.facilityId === id);
+function schematic(state, reg) {
+  const boxes = [...reg.facilities.values()].map((f) => {
+    const levels = facilityLevels(reg, f.id);
+    const pending = pendingOf(state, f.id);
+    const head = ` ${String(f.name).toUpperCase()}`.padEnd(BOX_INNER).slice(0, BOX_INNER);
+    const level = ` L${facilityLevel(state, f.id)}/${levels.length}${pending ? `  ^ ${pending.daysLeft}d` : ""}`.padEnd(BOX_INNER).slice(0, BOX_INNER);
+    const rule = `+${"-".repeat(BOX_INNER)}+`;
+    return [rule, `|${head}|`, `|${level}|`, rule];
+  });
+  const width = PER_ROW * (BOX_INNER + 2) + (PER_ROW - 1);
+  const lines = [];
+  for (let i = 0; i < boxes.length; i += PER_ROW) {
+    const row = boxes.slice(i, i + PER_ROW);
+    for (let k = 0; k < 4; k++) lines.push(row.map((b) => b[k]).join(" ").padEnd(width));
+  }
+  return lines.join("\n");
+}
+function facilityCard(state, f, ctx2) {
+  const levels = facilityLevels(ctx2.registries, f.id);
+  const level = facilityLevel(state, f.id);
+  const pending = pendingOf(state, f.id);
+  const card2 = h("article", { class: "alius-facility", "data-facility": f.id }, h("h3", {}, `${String(f.name)} \u2014 LEVEL ${level}/${levels.length}`), h("p", { class: "alius-dim" }, String(f.summary)));
+  if (pending) card2.append(h("p", {}, `UPGRADING TO L${pending.toLevel} ^ ${pending.daysLeft}d`));
+  if (level >= levels.length) {
+    card2.append(h("p", { class: "alius-dim" }, "MAX LEVEL"));
+    return card2;
+  }
+  const up = levels[level].upgrade;
+  const reason = checkUpgrade(state, ctx2.registries, f.id);
+  card2.append(
+    h("p", {}, `NEXT: ${up.credits} CR \xB7 ${up.plyx} PLYX \xB7 ${up.days} DAYS`),
+    ...reason ? [h("p", { class: "alius-dim alius-reason" }, reason)] : [],
+    h("button", { type: "button", class: "alius-btn", "data-upgrade": f.id, disabled: reason !== null, onclick: () => ctx2.onUpgrade(f.id) }, "[ UPGRADE ]")
+  );
+  return card2;
+}
+function roster(state, ctx2) {
+  const living = state.squad.filter(isLiving);
+  const active = state.roster.activeIds.filter((id) => living.some((u) => u.id === id));
+  const section = h(
+    "section",
+    { class: "alius-section" },
+    h("h2", {}, "ROSTER"),
+    h("p", {}, `UNITS ${living.length}/${state.roster.capacity} \xB7 ACTIVE ${active.length}/${TUNING.rosterActiveMax}`)
+  );
+  for (const u of living) {
+    const on = active.includes(u.id);
+    const full = !on && active.length >= TUNING.rosterActiveMax;
+    const role = u.kind === "grunt" ? `GRUNT ${u.designation ?? ""}`.trim() : String(ctx2.registries.roles.get(u.roleId)?.name ?? u.roleId);
+    section.append(
+      h(
+        "div",
+        { class: "alius-roster-row" },
+        h("span", {}, `${u.displayName} \xB7 ${role} \xB7 LVL ${u.level}${u.status === "injured" ? " \xB7 INJURED" : ""} `),
+        h(
+          "button",
+          {
+            type: "button",
+            class: "alius-btn",
+            "data-roster-toggle": u.id,
+            disabled: full,
+            title: full ? `The active roster is full (${TUNING.rosterActiveMax})` : "",
+            onclick: () => ctx2.onSetRoster(on ? active.filter((id) => id !== u.id) : [...active, u.id])
+          },
+          on ? "[ACTIVE]" : "[RESERVE]"
+        )
+      )
+    );
+  }
+  const reason = checkRecruit(state);
+  section.append(
+    h("button", { type: "button", class: "alius-btn", "data-recruit": "", disabled: reason !== null, onclick: ctx2.onRecruit }, `[ RECRUIT GRUNT (${TUNING.recruit.credits} CR) ]`),
+    ...reason ? [h("p", { class: "alius-dim alius-reason" }, reason)] : []
+  );
+  return section;
+}
+function renderBaseTab(host, ctx2) {
+  host.replaceChildren();
+  const load = ctx2.getLoad();
+  const state = ctx2.getState();
+  if (load.kind === "readonly") {
+    host.append(h("section", { class: "alius-section" }, h("p", { class: "alius-banner" }, `READ-ONLY: ${load.reason}`)));
+    return;
+  }
+  if (!state) {
+    host.append(h("section", { class: "alius-section" }, h("p", {}, "NO ACTIVE CAMPAIGN IN THIS CHAT")));
+    return;
+  }
+  host.append(
+    h("section", { class: "alius-section" }, h("h2", {}, "OUTPOST"), h("pre", { class: "alius-schematic" }, schematic(state, ctx2.registries))),
+    h("section", { class: "alius-section" }, h("h2", {}, "FACILITIES"), ...[...ctx2.registries.facilities.values()].map((f) => facilityCard(state, f, ctx2))),
+    roster(state, ctx2)
   );
 }
 
@@ -6266,6 +7183,26 @@ function createRouter() {
       else host.append(h("pre", { class: "alius-stub" }, stubText(current.toUpperCase())));
     }
   };
+}
+
+// src/ui/shell/status.ts
+function renderStatusHeader(host, state) {
+  host.replaceChildren();
+  if (!state) {
+    host.append(h("span", { class: "alius-clock" }, "NO CAMPAIGN"));
+    return;
+  }
+  const r = state.resources;
+  const injuredDays = (state.commander.injuredUntilDay ?? 0) - state.day;
+  const shortage = state.calendar.shortageStreak ?? 0;
+  const parts = [
+    h("span", { class: "alius-clock" }, clockText(state.day, state.slot)),
+    h("span", { class: "alius-resources" }, `CR ${r.credits} \xB7 SUP ${r.supplies} \xB7 PLYX ${r.plyx}`),
+    h("span", { class: "alius-leash" }, `LEASH ${state.leash.authorizationsLeft}`),
+    injuredDays > 0 ? h("span", { class: "alius-warn" }, `INJURED ${injuredDays}d`) : null,
+    shortage > 0 ? h("span", { class: "alius-warn" }, `SHORTAGE ${shortage}d`) : null
+  ];
+  host.append(...parts.filter((p) => p !== null));
 }
 
 // src/ui/shell/sysTab.ts
@@ -6539,7 +7476,7 @@ function createTabBar(opts) {
 }
 
 // src/ui/shell/toast.ts
-var LIFETIME_MS = { info: 4e3, warn: 6e3, error: 9e3 };
+var LIFETIME_MS = { info: 4e3, warn: 6e3, error: 9e3, story: 14e3 };
 function createToasts(host) {
   const timers = /* @__PURE__ */ new Set();
   return {
@@ -6578,10 +7515,11 @@ function createShell(deps) {
   let modals = null;
   let tabBar = null;
   let panel = null;
+  let statusHost = null;
   const isOpen = () => root !== null;
   function toast(kind, text) {
     if (toasts) toasts.show(kind, text);
-    else st.toast(kind, text);
+    else st.toast(kind === "story" ? "info" : kind, text);
   }
   function applySettings() {
     if (!root) return;
@@ -6599,6 +7537,9 @@ function createShell(deps) {
         h("div", { class: "alius-banner", role: "alert" }, `READ-ONLY CAMPAIGN \u2014 changes will not be saved. ${load.reason}`)
       );
     }
+  }
+  function renderStatus() {
+    if (statusHost) renderStatusHeader(statusHost, deps.getState());
   }
   function renderTab() {
     if (!panel) return;
@@ -6630,7 +7571,9 @@ function createShell(deps) {
   router.register("pda", (host) => {
     tabBar = createTabBar({ onSelect: selectTab, panelId: PANEL_ID });
     panel = h("div", { class: "alius-screen", id: PANEL_ID, role: "tabpanel", tabindex: "0" });
-    host.append(tabBar.element, panel);
+    statusHost = h("div", { class: "alius-status" });
+    host.append(statusHost, tabBar.element, panel);
+    renderStatus();
     tabBar.setSelected(tab);
     renderTab();
   });
@@ -6638,6 +7581,7 @@ function createShell(deps) {
     if (!root) return;
     tabBar = null;
     panel = null;
+    statusHost = null;
     router.render(view);
   }
   function open() {
@@ -6695,6 +7639,7 @@ function createShell(deps) {
     modals = null;
     tabBar = null;
     panel = null;
+    statusHost = null;
   }
   const api = {
     open,
@@ -6734,8 +7679,10 @@ function createShell(deps) {
       if (!root) return;
       applySettings();
       renderBanner();
-      if (router.current() === "pda" && panel) renderTab();
-      else renderView();
+      if (router.current() === "pda" && panel) {
+        renderStatus();
+        renderTab();
+      } else renderView();
     },
     destroy() {
       close();
@@ -7072,6 +8019,37 @@ function createApp(st, deps) {
     shell.showScreen("setup");
     shell.open();
   }
+  function reportEvents(events) {
+    for (const e of events) {
+      switch (e.type) {
+        case "supply_shortage":
+          toast("warn", `Supply shortage: ${String(e.missing)} short. Stress and affinity suffer.`);
+          break;
+        case "trust_penalty_event":
+          toast("warn", `${String(e.streak)} days of shortage: trust in the commander drops.`);
+          break;
+        case "facility_upgraded":
+          toast("info", `${String(registries.facilities.get(String(e.facilityId))?.name ?? e.facilityId)} upgraded to level ${String(e.level)}.`);
+          break;
+        case "unit_recovered":
+          toast("info", `${state?.squad.find((u) => u.id === e.unitId)?.displayName ?? "A unit"} has recovered.`);
+          break;
+        case "scene_requested":
+          toast("info", "Scenes are not available yet; conversations arrive with a later update.");
+          break;
+        case "day_started":
+          toast("info", `Day ${String(e.day)}.`);
+          break;
+      }
+    }
+  }
+  function act(action) {
+    const events = api.dispatch(action, { expectChatId: st.getActiveChat()?.chatId });
+    const failed = events.find((e) => e.type === "error");
+    if (failed) toast("error", String(failed.message ?? failed.code));
+    return events;
+  }
+  const SHORT_NAME = (reg, registry2, id) => String(reg[registry2].get(id)?.name ?? id);
   const shell = (deps.shellFactory ?? createShell)({
     st,
     getState: () => state,
@@ -7092,7 +8070,27 @@ function createApp(st, deps) {
       onResync: (id) => void resyncUnit(id)
     })
   );
-  shell.registerTab("ops", (host) => renderOpsPlaceholder(host, () => state));
+  shell.registerTab(
+    "ops",
+    (host) => renderOpsTab(host, {
+      getState: () => state,
+      getLoad: () => load,
+      registries,
+      onDo: (req) => void api.performActivity(req),
+      onRequisition: (n) => api.requisition(n)
+    })
+  );
+  shell.registerTab(
+    "base",
+    (host) => renderBaseTab(host, {
+      getState: () => state,
+      getLoad: () => load,
+      registries,
+      onUpgrade: (id) => api.upgradeFacility(id),
+      onRecruit: () => void api.recruitGrunt(),
+      onSetRoster: (ids) => api.setRoster(ids)
+    })
+  );
   const api = {
     context,
     shell,
@@ -7101,6 +8099,67 @@ function createApp(st, deps) {
     openSetup,
     deployCampaign,
     setupState: () => setup?.wizard.state ?? null,
+    async performActivity(req) {
+      const chatId = st.getActiveChat()?.chatId;
+      const events = act({ type: "activity/do", payload: req });
+      const done = events.find((e) => e.type === "activity_done");
+      const settings = getSettings(st);
+      if (done?.vignette !== true || !settings.activityFlavor || !state) return events;
+      const unit = state.squad.find((u) => u.id === done.companionId);
+      const activity = registries.activities.get(String(done.activityId));
+      if (!unit || !activity) return events;
+      const text = await generateVignette(
+        {
+          activityName: String(activity.name),
+          commanderName: state.commander.name,
+          unitName: unit.displayName,
+          unitRole: SHORT_NAME(registries, "roles", unit.roleId),
+          likes: unit.likes,
+          defectNames: unit.defects.map((d) => SHORT_NAME(registries, "defects", d.id))
+        },
+        { st, settings }
+      );
+      if (text && st.getActiveChat()?.chatId === chatId) toast("story", text);
+      return events;
+    },
+    async recruitGrunt() {
+      const chatId = st.getActiveChat()?.chatId;
+      const events = act({ type: "base/recruit_grunt", payload: {} });
+      const recruited = events.find((e) => e.type === "grunt_recruited");
+      const settings = getSettings(st);
+      if (!recruited || !settings.gruntFlavor || !state) return events;
+      const unit = state.squad.find((u) => u.id === recruited.unitId);
+      if (!unit) return events;
+      const flavor = await generateGruntFlavor(
+        {
+          kind: "grunt",
+          designation: unit.designation ?? unit.displayName,
+          roleName: SHORT_NAME(registries, "roles", unit.roleId),
+          defectName: SHORT_NAME(registries, "defects", unit.defects[0]?.id ?? "")
+        },
+        { st, settings }
+      );
+      if (flavor) {
+        const r = api.dispatch({ type: "squad/set_flavor", payload: { unitId: unit.id, ...flavor } }, { expectChatId: chatId });
+        if (!r.some((e) => e.type === "error")) toast("info", `${unit.designation ?? unit.id} goes by ${flavor.name}.`);
+      }
+      return events;
+    },
+    upgradeFacility(facilityId) {
+      const events = act({ type: "base/upgrade", payload: { facilityId } });
+      const started2 = events.find((e) => e.type === "upgrade_started");
+      if (started2) {
+        toast("info", `${String(registries.facilities.get(facilityId)?.name ?? facilityId)}: upgrade started (${String(started2.days)} days).`);
+      }
+      return events;
+    },
+    requisition(supplies) {
+      const events = act({ type: "base/requisition", payload: { supplies } });
+      const done = events.find((e) => e.type === "requisitioned");
+      if (done) toast("info", `Requisitioned ${String(done.supplies)} supplies for ${String(done.credits)} credits.`);
+      return events;
+    },
+    setRoster: (activeIds) => act({ type: "roster/set_active", payload: { activeIds } }),
     async start() {
       getSettings(st);
       try {
@@ -7142,7 +8201,9 @@ function createApp(st, deps) {
       if (r.state !== state) {
         state = r.state;
         saver?.save(state);
+        if (r.events.some((e) => e.type === "autosave")) void saver?.flush().catch((e) => console.warn("[Alius] autosave failed", e));
       }
+      reportEvents(r.events);
       applyContext();
       shell.refresh();
       return r.events;
@@ -7623,17 +8684,17 @@ function toStLorebook(book, template) {
 }
 
 // src/st/sprites.ts
-var isObj4 = (v) => typeof v === "object" && v !== null;
+var isObj6 = (v) => typeof v === "object" && v !== null;
 function spriteFolder(avatar, name, overrides) {
   if (!Array.isArray(overrides)) return name;
   const key = avatar.replace(/\.[^.]+$/, "");
-  const hit = overrides.find((o) => isObj4(o) && o.name === key && typeof o.path === "string" && o.path !== "");
+  const hit = overrides.find((o) => isObj6(o) && o.name === key && typeof o.path === "string" && o.path !== "");
   return hit ? hit.path : name;
 }
 function pickSprite(list, label) {
   if (!Array.isArray(list)) return null;
   for (const item of list) {
-    if (isObj4(item) && item.label === label && typeof item.path === "string") return item.path;
+    if (isObj6(item) && item.label === label && typeof item.path === "string") return item.path;
   }
   return null;
 }

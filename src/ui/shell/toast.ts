@@ -1,8 +1,9 @@
 import { h } from '../dom';
 
-export type ToastKind = 'info' | 'warn' | 'error';
+/** `story` is a short generated vignette: longer lifetime, line breaks kept. */
+export type ToastKind = 'info' | 'warn' | 'error' | 'story';
 
-const LIFETIME_MS: Record<ToastKind, number> = { info: 4000, warn: 6000, error: 9000 };
+const LIFETIME_MS: Record<ToastKind, number> = { info: 4000, warn: 6000, error: 9000, story: 14000 };
 
 export function createToasts(host: HTMLElement) {
   const timers = new Set<ReturnType<typeof setTimeout>>();
