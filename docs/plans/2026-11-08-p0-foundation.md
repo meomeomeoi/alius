@@ -236,13 +236,13 @@ export interface StAdapter {
   `FakeStAdapter implements StAdapter` with public fields for tests: `chat: ChatInfo|null`, `metadataByChat: Map<string, Record<string, unknown>>`, `injections: Map<string,{text,position,depth}>`, `profiles`, `mainReplies: string[]` (queue), `profileReplies: (string|Error)[]` (queue), `calls: Array<{kind, maxTokens, think?}>`, `emit(event, ...args)`, `switchChat(info)`.
   `RealStAdapter implements StAdapter` is written in **Task 12** (it needs `answerText` from Task 8); this task only creates the interface and the fake.
 
-- [ ] **Step 1: Write the failing tests** (fake only)
+- [x] **Step 1: Write the failing tests** (fake only)
 
 `metadata is per chat` (write in chat A, switch to B, read → undefined, switch back → value); `setInjection with empty text clears`; `profile reply queue returns in order and records maxTokens`; `queued Error is thrown`; `getActiveChat returns null when no chat`.
 
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement** `adapter.ts` + `fake.ts`. **Step 4: Run** → PASS; `npm run typecheck` passes.
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement** `adapter.ts` + `fake.ts`. **Step 4: Run** → PASS; `npm run typecheck` passes.
 
-- [ ] **Step 5: Commit** `feat(st): adapter interface and fake adapter`
+- [x] **Step 5: Commit** `feat(st): adapter interface and fake adapter`
 
 ---
 
