@@ -1,4 +1,5 @@
 import './engine/actions/debug'; // registers debug/* actions
+import './engine/actions/squad'; // registers squad/* actions
 import './llm/calls/profileImport'; // registers the profile_import call type
 import type { ContentError, Registries } from './content/types';
 import { emptyRegistries } from './content/types';
@@ -13,6 +14,9 @@ import { importProfile } from './setup/profile';
 import { Wizard, type WizardState } from './setup/wizard';
 import { renderSetupScreen } from './ui/setup/setupScreen';
 import { renderOpsPlaceholder, renderSquadTab } from './ui/squad/squadTab';
+import { RESYNC_SECTIONS, type ResyncPatch, type ResyncSection } from './engine/actions/squad';
+import { renderCalibration } from './ui/setup/calibration';
+import { h } from './ui/dom';
 import {
   createSaver, initCampaign as initCampaignInChat, loadCampaign, writeNewCampaign, METADATA_KEY, type LoadResult,
 } from './st/persistence';
@@ -189,6 +193,97 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     return true;
   }
 
+  const RESYNC_LABELS: Record<ResyncSection, string> = {
+    role: 'Role (stats and HP are reset if it changes)',
+    values: 'Values',
+    tags: 'Likes, dislikes and triggers',
+    signature: 'Signature skill',
+    defects: 'Defects',
+  };
+
+  /** Re-imports chosen sections from the unit's card and applies the player's choices via squad/resync. */
+  async function resyncUnit(unitId: string): Promise<void> {
+    const unit = state?.squad.find((u) => u.id === unitId);
+    if (!state || !unit?.cardRef) return;
+    const startChatId = st.getActiveChat()?.chatId;
+    const desireBond = state.settings.desireBondDefects === true;
+
+    // 1. which sections
+    const boxes = RESYNC_SECTIONS.map((s) => h('input', { type: 'checkbox', 'data-section': s, checked: true }) as HTMLInputElement);
+    const picker = await shell.modal({
+      title: 'Re-sync from card',
+      body: h('div', {},
+        h('p', {}, 'Choose what to re-import from the character card. Relationship numbers are never changed.'),
+        ...RESYNC_SECTIONS.map((s, i) => h('label', { class: 'alius-check' }, boxes[i], ` ${RESYNC_LABELS[s]}`))),
+      actions: [{ label: 'Import', value: 'go' }, { label: 'Cancel', value: 'cancel' }],
+    });
+    if (picker !== 'go') return;
+    const sections = RESYNC_SECTIONS.filter((_, i) => boxes[i].checked);
+    if (sections.length === 0) return toast('warn', 'Choose at least one section to re-sync.');
+
+    // 2. a one-unit wizard does the import and the preselection; it starts from the unit's current profile
+    const wizard = new Wizard(
+      {
+        registries,
+        desireBondDefects: desireBond,
+        // the first call imports every re-sync section, a "regenerate" asks for one
+        importer: (avatar, wanted) =>
+          importProfile(avatar, wanted.length > 1 ? [...sections] : wanted, { st, settings: getSettings(st), registries }),
+        onChange: () => {},
+      },
+      { personaName: '', canBindCurrent: false },
+    );
+    wizard.toggleUnit({ avatar: unit.cardRef, name: unit.displayName });
+    wizard.update(0, {
+      roleId: unit.roleId,
+      signature: { ...unit.signatureSkill },
+      defects: unit.defects.map((d) => ({ id: d.id, origin: d.origin ?? '' })),
+      secondDefect: unit.defects.length > 1,
+      values: { ...unit.values },
+      likes: [...unit.likes],
+      dislikes: [...unit.dislikes],
+      triggers: [...unit.triggers],
+    });
+    wizard.calibrate(0);
+
+    // 3. the player reviews the candidates
+    const body = h('div', { class: 'alius-calibration' });
+    const draw = () =>
+      renderCalibration(body, {
+        draft: wizard.state.units[0],
+        registries,
+        desireBondDefects: desireBond,
+        sections: [...sections],
+        onUpdate: (p) => wizard.update(0, p),
+        onRegenerate: (s) => wizard.regenerate(0, s),
+        onManual: () => wizard.setManual(0),
+      });
+    wizard.subscribe(draw);
+    draw();
+    const answer = await shell.modal({
+      title: `Re-sync ${unit.displayName}`,
+      body,
+      actions: [{ label: 'Apply', value: 'apply' }, { label: 'Cancel', value: 'cancel' }],
+    });
+    const draft = wizard.state.units[0];
+    wizard.dispose();
+    if (answer !== 'apply') return;
+    if (draft.status === 'loading') return toast('warn', 'The import is still running; wait for it to finish.');
+
+    // 4. apply, in the chat the flow started in
+    const c = draft.choice;
+    const patch: ResyncPatch = {};
+    if (sections.includes('role') && c.roleId) patch.roleId = c.roleId;
+    if (sections.includes('values')) patch.values = c.values;
+    if (sections.includes('tags')) Object.assign(patch, { likes: c.likes, dislikes: c.dislikes, triggers: c.triggers });
+    if (sections.includes('signature') && c.signature) patch.signature = c.signature;
+    if (sections.includes('defects')) patch.defects = c.defects;
+    const events = api.dispatch({ type: 'squad/resync', payload: { unitId, patch } }, { expectChatId: startChatId });
+    const failed = events.find((e) => e.type === 'error');
+    if (failed) toast('error', String(failed.message ?? failed.code));
+    else toast('info', `${unit.displayName} re-synced from the card.`);
+  }
+
   function openSetup(): void {
     if (load.kind === 'readonly') {
       toast('error', 'This chat has unreadable Alius data and is read-only; a new campaign cannot be started here.');
@@ -246,11 +341,12 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       registries,
       settings: () => getSettings(st),
       onNewCampaign: openSetup,
+      onResync: (id) => void resyncUnit(id),
     }),
   );
   shell.registerTab('ops', (host) => renderOpsPlaceholder(host, () => state));
 
-  return {
+  const api: AliusApp = {
     context,
     shell,
     refreshContext: applyContext,
@@ -334,4 +430,5 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       return r;
     },
   };
+  return api;
 }

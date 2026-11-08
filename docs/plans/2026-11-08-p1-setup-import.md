@@ -572,14 +572,14 @@ launcher: item order `Alius`, `Alius: New campaign`, `Alius: Initialize campaign
   - The SQUAD tab shows `[ RE-SYNC FROM CARD ]` per unit only when `editLock` is off (the SYS edit lock covers in-campaign number edits).
   - Flow: modal with one checkbox per section → `importProfile(cardRef, sections)` → a modal hosting `renderCalibration` limited to those sections, preselected from the import (or manual) → `Apply` dispatches `squad/resync` with `expectChatId` = the chat the flow started in.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 engine: `resync values replaces only values`; `resync role resets stats and hp`; `resync with unknown defect fails and leaves state unchanged`; `resync never touches the relation`.
 app: `resync flow dispatches with the starting chat id and is dropped after a chat switch` (switch chats between import and apply → `chat_changed` error, nothing saved); `resync button hidden while editLock is on`.
 
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** `npx vitest run && npm run typecheck && npm run build` → PASS.
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** `npx vitest run && npm run typecheck && npm run build` → PASS.
 
-- [ ] **Step 5: Commit** `feat: re-sync unit profile sections from the character card`
+- [x] **Step 5: Commit** `feat: re-sync unit profile sections from the character card`
 
 ---
 

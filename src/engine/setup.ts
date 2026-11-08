@@ -57,6 +57,7 @@ const inRange = (n: unknown, [lo, hi]: readonly [number, number]): n is number =
 
 function validateUnit(
   u: UnitSetup, label: string, reg: Registries, opts: { desireBondDefects: boolean }, out: string[],
+  withBaseline = true,
 ): void {
   if (typeof u.displayName !== 'string' || u.displayName.trim() === '') out.push(`${label}: display name is empty`);
   if (!reg.roles.has(u.roleId)) out.push(`${label}: unknown role "${u.roleId}"`);
@@ -94,11 +95,22 @@ function validateUnit(
     }
   }
 
-  for (const [axis, range] of Object.entries(SETUP_LIMITS.baseline) as Array<[keyof UnitSetup['baseline'], readonly [number, number]]>) {
+  for (const [axis, range] of withBaseline
+    ? (Object.entries(SETUP_LIMITS.baseline) as Array<[keyof UnitSetup['baseline'], readonly [number, number]]>)
+    : []) {
     if (!inRange(u.baseline?.[axis], range)) {
       out.push(`${label}: baseline ${axis} must be an integer from ${range[0]} to ${range[1]}`);
     }
   }
+}
+
+/** The per-unit rules of `validateSetup`, minus the baseline (re-sync never touches relationship axes). */
+export function validateUnitProfile(
+  u: Omit<UnitSetup, 'baseline'>, label: string, reg: Registries, opts: { desireBondDefects: boolean },
+): string[] {
+  const out: string[] = [];
+  validateUnit(u as UnitSetup, label, reg, opts, out, false);
+  return out;
 }
 
 /** One readable message per problem; an empty list means the setup can be built. */

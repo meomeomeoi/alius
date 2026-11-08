@@ -97,6 +97,10 @@ function unitBlock(unit: Unit, ctx: SquadTabCtx): HTMLElement {
       h('h4', {}, 'SIGNATURE'),
       h('p', {}, h('strong', {}, unit.signatureSkill.name), ` — ${unit.signatureSkill.description}`),
       h('p', { class: 'alius-dim' }, `Template: ${nameOf(sigTpl, unit.signatureSkill.templateId)} — ${sigTpl ? String(sigTpl.mechanic) : ''}`),
+      // Re-sync overwrites numbers on a running campaign, so it follows the SYS edit lock.
+      ctx.onResync && unit.cardRef && !ctx.settings().editLock
+        ? h('button', { type: 'button', class: 'alius-btn', 'data-resync': unit.id, onclick: () => ctx.onResync!(unit.id) }, '[ RE-SYNC FROM CARD ]')
+        : null,
     ),
   );
 }

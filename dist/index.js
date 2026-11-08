@@ -92,6 +92,274 @@ registerAction("debug/roll", (_draft, payload, ctx2) => {
   return [{ type: "rolled", value: ctx2.rng.int(1, sides) }];
 });
 
+// src/engine/state/create.ts
+function createCampaign(opts) {
+  return {
+    version: 1,
+    rng: seedRng(opts.seed),
+    day: 1,
+    slot: "morning",
+    difficulty: "normal",
+    settings: {},
+    commander: {
+      name: opts.commanderName,
+      corporationId: null,
+      crimeId: null,
+      socialStats: { authority: 0, insight: 0, empathy: 0, cunning: 0 },
+      flags: []
+    },
+    squad: [],
+    roster: { activeIds: [], capacity: 6 },
+    relations: {},
+    resources: { credits: 0, supplies: 0, plyx: 0 },
+    base: { facilities: {} },
+    inventory: [],
+    world: { regions: {}, clocks: [], threads: [], factions: {}, flags: [], spineProgress: 0 },
+    missions: { offered: [], active: [], completed: [] },
+    rumors: [],
+    dms: {},
+    memory: { facts: [], chronicle: [] },
+    calendar: { scheduled: [], nightEventsQueue: [] },
+    leash: { authorizationsLeft: 0, refreshDay: 1, log: [] }
+  };
+}
+
+// src/engine/state/types.ts
+var VALUE_AXES = ["pragmatism", "autonomy", "ingroup", "mercy", "corporate", "sacrifice"];
+
+// src/engine/setup.ts
+var SETUP_LIMITS = {
+  maxUnits: 4,
+  maxDefects: 2,
+  likes: 6,
+  dislikes: 6,
+  triggers: 4,
+  tagLength: 32,
+  value: [-3, 3],
+  baseline: { trust: [0, 40], affinity: [-20, 30], attraction: [0, 20] }
+};
+var INITIAL_RELATION_STATE = "stranger";
+function normalizeTag(s) {
+  if (typeof s !== "string") return null;
+  const t = s.toLowerCase().replace(/[^a-z0-9 '_-]/g, "").replace(/\s+/g, " ").trim().slice(0, SETUP_LIMITS.tagLength).trim();
+  return t === "" ? null : t;
+}
+var effectsOf = (part) => {
+  const list = part?.effects;
+  return Array.isArray(list) ? list.filter((e) => typeof e === "object" && e !== null) : [];
+};
+var inRange = (n, [lo, hi]) => typeof n === "number" && Number.isInteger(n) && n >= lo && n <= hi;
+function validateUnit(u, label, reg, opts, out, withBaseline = true) {
+  if (typeof u.displayName !== "string" || u.displayName.trim() === "") out.push(`${label}: display name is empty`);
+  if (!reg.roles.has(u.roleId)) out.push(`${label}: unknown role "${u.roleId}"`);
+  if (!reg.signatures.has(u.signature?.templateId)) {
+    out.push(`${label}: unknown signature template "${u.signature?.templateId}"`);
+  }
+  const defects = u.defects ?? [];
+  if (defects.length < 1 || defects.length > SETUP_LIMITS.maxDefects) {
+    out.push(`${label}: needs 1 to ${SETUP_LIMITS.maxDefects} defects (has ${defects.length})`);
+  }
+  const seen = /* @__PURE__ */ new Set();
+  for (const d of defects) {
+    const def = reg.defects.get(d.id);
+    if (!def) out.push(`${label}: unknown defect "${d.id}"`);
+    else if (def.category === "desire_bond" && !opts.desireBondDefects) {
+      out.push(`${label}: defect "${d.id}" is a Desire/Bond defect and that setting is off`);
+    }
+    if (seen.has(d.id)) out.push(`${label}: defect "${d.id}" is chosen twice`);
+    seen.add(d.id);
+  }
+  for (const axis of VALUE_AXES) {
+    if (!inRange(u.values?.[axis], SETUP_LIMITS.value)) {
+      out.push(`${label}: value "${axis}" must be an integer from -3 to 3`);
+    }
+  }
+  const tagCaps = { likes: SETUP_LIMITS.likes, dislikes: SETUP_LIMITS.dislikes, triggers: SETUP_LIMITS.triggers };
+  for (const [field2, cap2] of Object.entries(tagCaps)) {
+    const tags = u[field2] ?? [];
+    if (tags.length > cap2) out.push(`${label}: at most ${cap2} ${field2} (has ${tags.length})`);
+    for (const t of tags) {
+      if (normalizeTag(t) !== t) out.push(`${label}: ${field2} entry "${t}" is not a normalized tag`);
+    }
+  }
+  for (const [axis, range] of withBaseline ? Object.entries(SETUP_LIMITS.baseline) : []) {
+    if (!inRange(u.baseline?.[axis], range)) {
+      out.push(`${label}: baseline ${axis} must be an integer from ${range[0]} to ${range[1]}`);
+    }
+  }
+}
+function validateUnitProfile(u, label, reg, opts) {
+  const out = [];
+  validateUnit(u, label, reg, opts, out, false);
+  return out;
+}
+function validateSetup(r, reg, opts) {
+  const out = [];
+  const name = typeof r.commanderName === "string" ? r.commanderName.trim() : "";
+  if (name === "" || name.length > 60) out.push("Commander name must be 1 to 60 characters");
+  const start = reg.starts.get(r.startId);
+  if (!start) out.push(`Unknown start "${r.startId}"`);
+  else {
+    const corp = reg.corporations.get(String(start.corporationId));
+    if (!corp) out.push(`Start "${r.startId}" uses unknown corporation "${String(start.corporationId)}"`);
+    else if (corp.playable !== true) out.push(`Start "${r.startId}" uses non-playable corporation "${corp.id}"`);
+  }
+  if (!reg.crimes.has(r.crimeId)) out.push(`Unknown crime "${r.crimeId}"`);
+  const units = r.units ?? [];
+  if (units.length > SETUP_LIMITS.maxUnits) out.push(`At most ${SETUP_LIMITS.maxUnits} units (has ${units.length})`);
+  const cards = /* @__PURE__ */ new Set();
+  units.forEach((u, i) => {
+    if (cards.has(u.cardRef)) out.push(`Card "${u.cardRef}" is selected twice`);
+    cards.add(u.cardRef);
+    validateUnit(u, `Unit ${i + 1} (${u.displayName})`, reg, opts, out);
+  });
+  return out;
+}
+var slug = (name) => {
+  const s = name.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+  return s === "" ? "unit" : s;
+};
+var bandFor = (trust) => trust < 10 ? "breaking" : trust < 25 ? "wavering" : "steady";
+var clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+function buildCampaign(r, reg, opts) {
+  const errors = validateSetup(r, reg, opts);
+  if (errors.length > 0) return { ok: false, errors };
+  const start = reg.starts.get(r.startId);
+  const corp = reg.corporations.get(String(start.corporationId));
+  const crime = reg.crimes.get(r.crimeId);
+  const state = createCampaign({ seed: opts.seed, commanderName: r.commanderName.trim() });
+  state.commander.corporationId = corp.id;
+  state.commander.crimeId = crime.id;
+  state.commander.socialStats = { authority: 1, insight: 1, empathy: 1, cunning: 1 };
+  state.world.startId = start.id;
+  state.settings = { desireBondDefects: opts.desireBondDefects };
+  const crimeEffects = [...effectsOf(crime.perk), ...effectsOf(crime.flaw)];
+  for (const fx of [...effectsOf(corp.startingBonus), ...crimeEffects]) {
+    if (fx.type === "social_rank") {
+      const stat = fx.stat;
+      state.commander.socialStats[stat] = Math.max(state.commander.socialStats[stat], fx.rank);
+    } else if (fx.type === "resource") {
+      state.resources[fx.resource] += fx.amount;
+    }
+  }
+  const trustEffects = crimeEffects.filter((fx) => fx.type === "starting_trust");
+  const knowsCrime = crime.knownByDefault === true || start.crimeKnownByDefault === true;
+  const used = /* @__PURE__ */ new Set();
+  for (const u of r.units) {
+    const base = `unit_${slug(u.displayName)}`;
+    let id = base;
+    for (let n = 2; used.has(id); n++) id = `${base}_${n}`;
+    used.add(id);
+    const role = reg.roles.get(u.roleId);
+    const stats = role.baseStats;
+    state.squad.push({
+      id,
+      kind: "named",
+      cardRef: u.cardRef,
+      displayName: u.displayName,
+      roleId: u.roleId,
+      level: 1,
+      xp: 0,
+      skillPoints: 0,
+      unlockedNodes: [],
+      signatureSkill: { ...u.signature },
+      baseStats: { ...stats },
+      currentHp: stats.hp,
+      stress: 0,
+      defects: u.defects.map((d) => ({ id: d.id, origin: d.origin })),
+      values: { ...u.values },
+      likes: [...u.likes],
+      dislikes: [...u.dislikes],
+      triggers: [...u.triggers],
+      equipment: {},
+      injuries: [],
+      status: "active"
+    });
+    let trust = u.baseline.trust;
+    for (const fx of trustEffects) {
+      const iv = fx.ifValue;
+      if (iv) {
+        const v = u.values[iv.axis];
+        if (iv.sign === "+" ? !(v > 0) : !(v < 0)) continue;
+      }
+      trust += fx.amount;
+    }
+    trust = clamp(trust, 0, 100);
+    const relation = {
+      trust,
+      affinity: u.baseline.affinity,
+      attraction: u.baseline.attraction,
+      stateId: INITIAL_RELATION_STATE,
+      stateSince: 1,
+      history: [],
+      flags: knowsCrime ? ["knows_crime"] : [],
+      dailyGain: { trust: 0, affinity: 0, attraction: 0 },
+      loyaltyBand: bandFor(trust),
+      marks: []
+    };
+    state.relations[id] = relation;
+  }
+  state.roster.activeIds = state.squad.map((u) => u.id);
+  return { ok: true, state };
+}
+
+// src/engine/actions/squad.ts
+var RESYNC_SECTIONS = ["role", "values", "tags", "signature", "defects"];
+var isObj = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var SECTION_OF = {
+  roleId: "role",
+  values: "values",
+  likes: "tags",
+  dislikes: "tags",
+  triggers: "tags",
+  signature: "signature",
+  defects: "defects"
+};
+registerAction("squad/resync", (draft, payload, ctx2) => {
+  if (!isObj(payload) || typeof payload.unitId !== "string" || !isObj(payload.patch)) {
+    throw new Error("squad/resync needs { unitId, patch }");
+  }
+  const unit = draft.squad.find((u) => u.id === payload.unitId);
+  if (!unit) throw new Error(`squad/resync: unknown unit "${payload.unitId}"`);
+  const patch = payload.patch;
+  const keys = Object.keys(SECTION_OF).filter((k) => patch[k] !== void 0);
+  if (keys.length === 0) throw new Error("squad/resync: the patch has no re-syncable field");
+  const next = {
+    cardRef: unit.cardRef ?? "",
+    displayName: unit.displayName,
+    roleId: patch.roleId ?? unit.roleId,
+    signature: patch.signature ?? unit.signatureSkill,
+    defects: patch.defects ?? unit.defects.map((d) => ({ id: d.id, origin: d.origin ?? "" })),
+    values: patch.values ?? unit.values,
+    likes: patch.likes ?? unit.likes,
+    dislikes: patch.dislikes ?? unit.dislikes,
+    triggers: patch.triggers ?? unit.triggers
+  };
+  const errors = validateUnitProfile(next, unit.displayName, ctx2.registries, {
+    desireBondDefects: draft.settings.desireBondDefects === true
+  });
+  if (errors.length > 0) throw new Error(errors.join("; "));
+  if (patch.roleId !== void 0 && patch.roleId !== unit.roleId) {
+    const stats = ctx2.registries.roles.get(patch.roleId).baseStats;
+    unit.roleId = patch.roleId;
+    unit.baseStats = { ...stats };
+    unit.currentHp = stats.hp;
+  }
+  if (patch.values) unit.values = { ...patch.values };
+  if (patch.likes) unit.likes = [...patch.likes];
+  if (patch.dislikes) unit.dislikes = [...patch.dislikes];
+  if (patch.triggers) unit.triggers = [...patch.triggers];
+  if (patch.signature) unit.signatureSkill = { ...patch.signature };
+  if (patch.defects) {
+    unit.defects = patch.defects.map((d) => {
+      const kept = unit.defects.find((x) => x.id === d.id);
+      return { ...kept, id: d.id, origin: d.origin };
+    });
+  }
+  const sections = RESYNC_SECTIONS.filter((s) => keys.some((k) => SECTION_OF[k] === s));
+  return [{ type: "unit_resynced", unitId: unit.id, sections }];
+});
+
 // node_modules/zod/v3/external.js
 var external_exports = {};
 __export(external_exports, {
@@ -4571,16 +4839,16 @@ var fieldSchemas = {
   spriteMode: external_exports.enum(["native", "emotion_pick"])
 };
 var budgetSchema = external_exports.number().int().min(1);
-var isObj = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj2 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function merge(base, over) {
-  const src = isObj(over) ? over : {};
+  const src = isObj2(over) ? over : {};
   const out = { ...base };
   for (const [key, schema] of Object.entries(fieldSchemas)) {
     const parsed = schema.safeParse(src[key]);
     if (parsed.success) out[key] = parsed.data;
   }
   const budgets = { ...base.budgets };
-  const srcBudgets = isObj(src.budgets) ? src.budgets : {};
+  const srcBudgets = isObj2(src.budgets) ? src.budgets : {};
   for (const id of CALL_TYPE_IDS) {
     const parsed = budgetSchema.safeParse(srcBudgets[id]);
     if (parsed.success) budgets[id] = parsed.data;
@@ -4601,212 +4869,6 @@ function updateSettings(st, patch) {
   store(st, s);
   st.saveSettings();
   return s;
-}
-
-// src/engine/state/create.ts
-function createCampaign(opts) {
-  return {
-    version: 1,
-    rng: seedRng(opts.seed),
-    day: 1,
-    slot: "morning",
-    difficulty: "normal",
-    settings: {},
-    commander: {
-      name: opts.commanderName,
-      corporationId: null,
-      crimeId: null,
-      socialStats: { authority: 0, insight: 0, empathy: 0, cunning: 0 },
-      flags: []
-    },
-    squad: [],
-    roster: { activeIds: [], capacity: 6 },
-    relations: {},
-    resources: { credits: 0, supplies: 0, plyx: 0 },
-    base: { facilities: {} },
-    inventory: [],
-    world: { regions: {}, clocks: [], threads: [], factions: {}, flags: [], spineProgress: 0 },
-    missions: { offered: [], active: [], completed: [] },
-    rumors: [],
-    dms: {},
-    memory: { facts: [], chronicle: [] },
-    calendar: { scheduled: [], nightEventsQueue: [] },
-    leash: { authorizationsLeft: 0, refreshDay: 1, log: [] }
-  };
-}
-
-// src/engine/state/types.ts
-var VALUE_AXES = ["pragmatism", "autonomy", "ingroup", "mercy", "corporate", "sacrifice"];
-
-// src/engine/setup.ts
-var SETUP_LIMITS = {
-  maxUnits: 4,
-  maxDefects: 2,
-  likes: 6,
-  dislikes: 6,
-  triggers: 4,
-  tagLength: 32,
-  value: [-3, 3],
-  baseline: { trust: [0, 40], affinity: [-20, 30], attraction: [0, 20] }
-};
-var INITIAL_RELATION_STATE = "stranger";
-function normalizeTag(s) {
-  if (typeof s !== "string") return null;
-  const t = s.toLowerCase().replace(/[^a-z0-9 '_-]/g, "").replace(/\s+/g, " ").trim().slice(0, SETUP_LIMITS.tagLength).trim();
-  return t === "" ? null : t;
-}
-var effectsOf = (part) => {
-  const list = part?.effects;
-  return Array.isArray(list) ? list.filter((e) => typeof e === "object" && e !== null) : [];
-};
-var inRange = (n, [lo, hi]) => typeof n === "number" && Number.isInteger(n) && n >= lo && n <= hi;
-function validateUnit(u, label, reg, opts, out) {
-  if (typeof u.displayName !== "string" || u.displayName.trim() === "") out.push(`${label}: display name is empty`);
-  if (!reg.roles.has(u.roleId)) out.push(`${label}: unknown role "${u.roleId}"`);
-  if (!reg.signatures.has(u.signature?.templateId)) {
-    out.push(`${label}: unknown signature template "${u.signature?.templateId}"`);
-  }
-  const defects = u.defects ?? [];
-  if (defects.length < 1 || defects.length > SETUP_LIMITS.maxDefects) {
-    out.push(`${label}: needs 1 to ${SETUP_LIMITS.maxDefects} defects (has ${defects.length})`);
-  }
-  const seen = /* @__PURE__ */ new Set();
-  for (const d of defects) {
-    const def = reg.defects.get(d.id);
-    if (!def) out.push(`${label}: unknown defect "${d.id}"`);
-    else if (def.category === "desire_bond" && !opts.desireBondDefects) {
-      out.push(`${label}: defect "${d.id}" is a Desire/Bond defect and that setting is off`);
-    }
-    if (seen.has(d.id)) out.push(`${label}: defect "${d.id}" is chosen twice`);
-    seen.add(d.id);
-  }
-  for (const axis of VALUE_AXES) {
-    if (!inRange(u.values?.[axis], SETUP_LIMITS.value)) {
-      out.push(`${label}: value "${axis}" must be an integer from -3 to 3`);
-    }
-  }
-  const tagCaps = { likes: SETUP_LIMITS.likes, dislikes: SETUP_LIMITS.dislikes, triggers: SETUP_LIMITS.triggers };
-  for (const [field2, cap2] of Object.entries(tagCaps)) {
-    const tags = u[field2] ?? [];
-    if (tags.length > cap2) out.push(`${label}: at most ${cap2} ${field2} (has ${tags.length})`);
-    for (const t of tags) {
-      if (normalizeTag(t) !== t) out.push(`${label}: ${field2} entry "${t}" is not a normalized tag`);
-    }
-  }
-  for (const [axis, range] of Object.entries(SETUP_LIMITS.baseline)) {
-    if (!inRange(u.baseline?.[axis], range)) {
-      out.push(`${label}: baseline ${axis} must be an integer from ${range[0]} to ${range[1]}`);
-    }
-  }
-}
-function validateSetup(r, reg, opts) {
-  const out = [];
-  const name = typeof r.commanderName === "string" ? r.commanderName.trim() : "";
-  if (name === "" || name.length > 60) out.push("Commander name must be 1 to 60 characters");
-  const start = reg.starts.get(r.startId);
-  if (!start) out.push(`Unknown start "${r.startId}"`);
-  else {
-    const corp = reg.corporations.get(String(start.corporationId));
-    if (!corp) out.push(`Start "${r.startId}" uses unknown corporation "${String(start.corporationId)}"`);
-    else if (corp.playable !== true) out.push(`Start "${r.startId}" uses non-playable corporation "${corp.id}"`);
-  }
-  if (!reg.crimes.has(r.crimeId)) out.push(`Unknown crime "${r.crimeId}"`);
-  const units = r.units ?? [];
-  if (units.length > SETUP_LIMITS.maxUnits) out.push(`At most ${SETUP_LIMITS.maxUnits} units (has ${units.length})`);
-  const cards = /* @__PURE__ */ new Set();
-  units.forEach((u, i) => {
-    if (cards.has(u.cardRef)) out.push(`Card "${u.cardRef}" is selected twice`);
-    cards.add(u.cardRef);
-    validateUnit(u, `Unit ${i + 1} (${u.displayName})`, reg, opts, out);
-  });
-  return out;
-}
-var slug = (name) => {
-  const s = name.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
-  return s === "" ? "unit" : s;
-};
-var bandFor = (trust) => trust < 10 ? "breaking" : trust < 25 ? "wavering" : "steady";
-var clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
-function buildCampaign(r, reg, opts) {
-  const errors = validateSetup(r, reg, opts);
-  if (errors.length > 0) return { ok: false, errors };
-  const start = reg.starts.get(r.startId);
-  const corp = reg.corporations.get(String(start.corporationId));
-  const crime = reg.crimes.get(r.crimeId);
-  const state = createCampaign({ seed: opts.seed, commanderName: r.commanderName.trim() });
-  state.commander.corporationId = corp.id;
-  state.commander.crimeId = crime.id;
-  state.commander.socialStats = { authority: 1, insight: 1, empathy: 1, cunning: 1 };
-  state.world.startId = start.id;
-  state.settings = { desireBondDefects: opts.desireBondDefects };
-  const crimeEffects = [...effectsOf(crime.perk), ...effectsOf(crime.flaw)];
-  for (const fx of [...effectsOf(corp.startingBonus), ...crimeEffects]) {
-    if (fx.type === "social_rank") {
-      const stat = fx.stat;
-      state.commander.socialStats[stat] = Math.max(state.commander.socialStats[stat], fx.rank);
-    } else if (fx.type === "resource") {
-      state.resources[fx.resource] += fx.amount;
-    }
-  }
-  const trustEffects = crimeEffects.filter((fx) => fx.type === "starting_trust");
-  const knowsCrime = crime.knownByDefault === true || start.crimeKnownByDefault === true;
-  const used = /* @__PURE__ */ new Set();
-  for (const u of r.units) {
-    const base = `unit_${slug(u.displayName)}`;
-    let id = base;
-    for (let n = 2; used.has(id); n++) id = `${base}_${n}`;
-    used.add(id);
-    const role = reg.roles.get(u.roleId);
-    const stats = role.baseStats;
-    state.squad.push({
-      id,
-      kind: "named",
-      cardRef: u.cardRef,
-      displayName: u.displayName,
-      roleId: u.roleId,
-      level: 1,
-      xp: 0,
-      skillPoints: 0,
-      unlockedNodes: [],
-      signatureSkill: { ...u.signature },
-      baseStats: { ...stats },
-      currentHp: stats.hp,
-      stress: 0,
-      defects: u.defects.map((d) => ({ id: d.id, origin: d.origin })),
-      values: { ...u.values },
-      likes: [...u.likes],
-      dislikes: [...u.dislikes],
-      triggers: [...u.triggers],
-      equipment: {},
-      injuries: [],
-      status: "active"
-    });
-    let trust = u.baseline.trust;
-    for (const fx of trustEffects) {
-      const iv = fx.ifValue;
-      if (iv) {
-        const v = u.values[iv.axis];
-        if (iv.sign === "+" ? !(v > 0) : !(v < 0)) continue;
-      }
-      trust += fx.amount;
-    }
-    trust = clamp(trust, 0, 100);
-    const relation = {
-      trust,
-      affinity: u.baseline.affinity,
-      attraction: u.baseline.attraction,
-      stateId: INITIAL_RELATION_STATE,
-      stateSince: 1,
-      history: [],
-      flags: knowsCrime ? ["knows_crime"] : [],
-      dailyGain: { trust: 0, affinity: 0, attraction: 0 },
-      loyaltyBand: bandFor(trust),
-      marks: []
-    };
-    state.relations[id] = relation;
-  }
-  state.roster.activeIds = state.squad.map((u) => u.id);
-  return { ok: true, state };
 }
 
 // src/setup/profile.ts
@@ -4841,7 +4903,7 @@ function buildImportInput(card2, registries, settings, sections) {
     defects: [...registries.defects.values()].filter((d) => settings.desireBondDefects || d.category !== "desire_bond").map((d) => ({ id: d.id, lore: str2(d.lore) }))
   };
 }
-var isObj2 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj3 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var cap = (v, max, fallback = "") => typeof v === "string" ? v.trim().slice(0, max) : fallback;
 var num = (v, lo, hi, fallback) => typeof v === "number" && Number.isFinite(v) ? Math.min(hi, Math.max(lo, Math.round(v))) : fallback;
 var SECTION_LABEL = { role: "role", signature: "signature", defects: "defects" };
@@ -4857,7 +4919,7 @@ function tagList(v, max) {
   return out;
 }
 function sanitizeProfile(raw, ctx2) {
-  const src = isObj2(raw) ? raw : {};
+  const src = isObj3(raw) ? raw : {};
   const want = (s) => ctx2.sections.includes(s);
   const dropped = [];
   const missing = [];
@@ -4866,7 +4928,7 @@ function sanitizeProfile(raw, ctx2) {
     const out = [];
     const seen = /* @__PURE__ */ new Set();
     for (const item of Array.isArray(list) ? list : []) {
-      const id = isObj2(item) && typeof item[idKey] === "string" ? item[idKey] : null;
+      const id = isObj3(item) && typeof item[idKey] === "string" ? item[idKey] : null;
       if (id === null) {
         dropped.push(`${SECTION_LABEL[section]}:(invalid)`);
         continue;
@@ -4924,7 +4986,7 @@ function sanitizeProfile(raw, ctx2) {
     if (profile.defectCandidates.length === 0) missing.push("defects");
   }
   if (want("values")) {
-    if (isObj2(src.values)) {
+    if (isObj3(src.values)) {
       const v = src.values;
       profile.values = Object.fromEntries(VALUE_KEYS.map((k) => [k, num(v[k], -3, 3, 0)]));
     } else missing.push("values");
@@ -4939,7 +5001,7 @@ function sanitizeProfile(raw, ctx2) {
     if (!likes && !dislikes && !triggers) missing.push("tags");
   }
   if (want("baseline")) {
-    if (isObj2(src.emotionalBaseline)) {
+    if (isObj3(src.emotionalBaseline)) {
       const b = src.emotionalBaseline;
       const lim = SETUP_LIMITS.baseline;
       profile.baseline = {
@@ -5840,7 +5902,9 @@ function unitBlock(unit, ctx2) {
       h("p", { class: "alius-values" }, values.join(" \xB7 ")),
       h("h4", {}, "SIGNATURE"),
       h("p", {}, h("strong", {}, unit.signatureSkill.name), ` \u2014 ${unit.signatureSkill.description}`),
-      h("p", { class: "alius-dim" }, `Template: ${nameOf3(sigTpl, unit.signatureSkill.templateId)} \u2014 ${sigTpl ? String(sigTpl.mechanic) : ""}`)
+      h("p", { class: "alius-dim" }, `Template: ${nameOf3(sigTpl, unit.signatureSkill.templateId)} \u2014 ${sigTpl ? String(sigTpl.mechanic) : ""}`),
+      // Re-sync overwrites numbers on a running campaign, so it follows the SYS edit lock.
+      ctx2.onResync && unit.cardRef && !ctx2.settings().editLock ? h("button", { type: "button", class: "alius-btn", "data-resync": unit.id, onclick: () => ctx2.onResync(unit.id) }, "[ RE-SYNC FROM CARD ]") : null
     )
   );
 }
@@ -6716,6 +6780,88 @@ function createApp(st, deps) {
     toast("info", "Deployment confirmed. Day 1, Morning.");
     return true;
   }
+  const RESYNC_LABELS = {
+    role: "Role (stats and HP are reset if it changes)",
+    values: "Values",
+    tags: "Likes, dislikes and triggers",
+    signature: "Signature skill",
+    defects: "Defects"
+  };
+  async function resyncUnit(unitId) {
+    const unit = state?.squad.find((u) => u.id === unitId);
+    if (!state || !unit?.cardRef) return;
+    const startChatId = st.getActiveChat()?.chatId;
+    const desireBond = state.settings.desireBondDefects === true;
+    const boxes = RESYNC_SECTIONS.map((s) => h("input", { type: "checkbox", "data-section": s, checked: true }));
+    const picker = await shell.modal({
+      title: "Re-sync from card",
+      body: h(
+        "div",
+        {},
+        h("p", {}, "Choose what to re-import from the character card. Relationship numbers are never changed."),
+        ...RESYNC_SECTIONS.map((s, i) => h("label", { class: "alius-check" }, boxes[i], ` ${RESYNC_LABELS[s]}`))
+      ),
+      actions: [{ label: "Import", value: "go" }, { label: "Cancel", value: "cancel" }]
+    });
+    if (picker !== "go") return;
+    const sections = RESYNC_SECTIONS.filter((_, i) => boxes[i].checked);
+    if (sections.length === 0) return toast("warn", "Choose at least one section to re-sync.");
+    const wizard = new Wizard(
+      {
+        registries,
+        desireBondDefects: desireBond,
+        // the first call imports every re-sync section, a "regenerate" asks for one
+        importer: (avatar, wanted) => importProfile(avatar, wanted.length > 1 ? [...sections] : wanted, { st, settings: getSettings(st), registries }),
+        onChange: () => {
+        }
+      },
+      { personaName: "", canBindCurrent: false }
+    );
+    wizard.toggleUnit({ avatar: unit.cardRef, name: unit.displayName });
+    wizard.update(0, {
+      roleId: unit.roleId,
+      signature: { ...unit.signatureSkill },
+      defects: unit.defects.map((d) => ({ id: d.id, origin: d.origin ?? "" })),
+      secondDefect: unit.defects.length > 1,
+      values: { ...unit.values },
+      likes: [...unit.likes],
+      dislikes: [...unit.dislikes],
+      triggers: [...unit.triggers]
+    });
+    wizard.calibrate(0);
+    const body = h("div", { class: "alius-calibration" });
+    const draw = () => renderCalibration(body, {
+      draft: wizard.state.units[0],
+      registries,
+      desireBondDefects: desireBond,
+      sections: [...sections],
+      onUpdate: (p) => wizard.update(0, p),
+      onRegenerate: (s) => wizard.regenerate(0, s),
+      onManual: () => wizard.setManual(0)
+    });
+    wizard.subscribe(draw);
+    draw();
+    const answer = await shell.modal({
+      title: `Re-sync ${unit.displayName}`,
+      body,
+      actions: [{ label: "Apply", value: "apply" }, { label: "Cancel", value: "cancel" }]
+    });
+    const draft = wizard.state.units[0];
+    wizard.dispose();
+    if (answer !== "apply") return;
+    if (draft.status === "loading") return toast("warn", "The import is still running; wait for it to finish.");
+    const c = draft.choice;
+    const patch = {};
+    if (sections.includes("role") && c.roleId) patch.roleId = c.roleId;
+    if (sections.includes("values")) patch.values = c.values;
+    if (sections.includes("tags")) Object.assign(patch, { likes: c.likes, dislikes: c.dislikes, triggers: c.triggers });
+    if (sections.includes("signature") && c.signature) patch.signature = c.signature;
+    if (sections.includes("defects")) patch.defects = c.defects;
+    const events = api.dispatch({ type: "squad/resync", payload: { unitId, patch } }, { expectChatId: startChatId });
+    const failed = events.find((e) => e.type === "error");
+    if (failed) toast("error", String(failed.message ?? failed.code));
+    else toast("info", `${unit.displayName} re-synced from the card.`);
+  }
   function openSetup() {
     if (load.kind === "readonly") {
       toast("error", "This chat has unreadable Alius data and is read-only; a new campaign cannot be started here.");
@@ -6772,11 +6918,12 @@ function createApp(st, deps) {
       getLoad: () => load,
       registries,
       settings: () => getSettings(st),
-      onNewCampaign: openSetup
+      onNewCampaign: openSetup,
+      onResync: (id) => void resyncUnit(id)
     })
   );
   shell.registerTab("ops", (host) => renderOpsPlaceholder(host, () => state));
-  return {
+  const api = {
     context,
     shell,
     refreshContext: applyContext,
@@ -6851,6 +6998,7 @@ function createApp(st, deps) {
       return r;
     }
   };
+  return api;
 }
 
 // src/content/schemas.ts
@@ -7192,17 +7340,17 @@ function toStLorebook(book, template) {
 }
 
 // src/st/sprites.ts
-var isObj3 = (v) => typeof v === "object" && v !== null;
+var isObj4 = (v) => typeof v === "object" && v !== null;
 function spriteFolder(avatar, name, overrides) {
   if (!Array.isArray(overrides)) return name;
   const key = avatar.replace(/\.[^.]+$/, "");
-  const hit = overrides.find((o) => isObj3(o) && o.name === key && typeof o.path === "string" && o.path !== "");
+  const hit = overrides.find((o) => isObj4(o) && o.name === key && typeof o.path === "string" && o.path !== "");
   return hit ? hit.path : name;
 }
 function pickSprite(list, label) {
   if (!Array.isArray(list)) return null;
   for (const item of list) {
-    if (isObj3(item) && item.label === label && typeof item.path === "string") return item.path;
+    if (isObj4(item) && item.label === label && typeof item.path === "string") return item.path;
   }
   return null;
 }

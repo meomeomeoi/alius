@@ -210,3 +210,36 @@ describe('OPS placeholder', () => {
     expect(none.textContent).not.toContain('DAY');
   });
 });
+
+describe('re-sync button', () => {
+  function withResync(editLock: boolean) {
+    const st = new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' });
+    const state = campaign([unit(), unit({ cardRef: 'kay.png', displayName: 'Kay' })]);
+    const settings = { ...getSettings(st), editLock };
+    const host = h('div');
+    document.body.append(host);
+    const onResync = vi.fn();
+    renderSquadTab(host, {
+      st, getState: () => state, getLoad: () => ({ kind: 'ok', state, chatId: 'c' }), registries: reg,
+      settings: () => settings, onNewCampaign: () => {}, onResync,
+    });
+    return { host, onResync };
+  }
+
+  it('resync button hidden while editLock is on', () => {
+    expect(withResync(true).host.textContent).not.toContain('RE-SYNC');
+  });
+
+  it('resync button shown per unit when the lock is off and calls onResync with the unit id', () => {
+    const { host, onResync } = withResync(false);
+    const buttons = [...host.querySelectorAll<HTMLButtonElement>('button')].filter((b) => b.textContent === '[ RE-SYNC FROM CARD ]');
+    expect(buttons).toHaveLength(2);
+    buttons[1].click();
+    expect(onResync).toHaveBeenCalledWith('unit_kay');
+  });
+
+  it('no button without a handler', () => {
+    const { host } = render();
+    expect(host.textContent).not.toContain('RE-SYNC');
+  });
+});
