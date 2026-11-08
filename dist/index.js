@@ -4163,6 +4163,8 @@ var PackManifestSchema = external_exports.object({
   name: external_exports.string().min(1),
   version: external_exports.string().min(1),
   priority: external_exports.number(),
+  /** Compact lorebook file (see LorebookSchema); the highest-priority pack that declares one wins. */
+  lorebook: external_exports.string().min(1).optional(),
   files: external_exports.object(
     Object.fromEntries(REGISTRY_NAMES.map((n) => [n, external_exports.string().min(1).optional()]))
   ).strict()
@@ -5272,6 +5274,7 @@ function createApp(st, deps) {
   const context = new ContextBuilder();
   let registries = emptyRegistries();
   let contentErrors = [];
+  let lorebook = null;
   let load = { kind: "none" };
   let state = null;
   let saver = null;
@@ -5334,6 +5337,7 @@ function createApp(st, deps) {
       try {
         const r = await deps.loadContent();
         registries = r.registries;
+        lorebook = r.lorebook ?? null;
         contentErrors = r.errors;
       } catch (e) {
         contentErrors = [{ pack: "(loader)", file: "", path: "", message: errText2(e) }];
@@ -5397,6 +5401,9 @@ function createApp(st, deps) {
   };
 }
 
+// src/engine/state/types.ts
+var VALUE_AXES = ["pragmatism", "autonomy", "ingroup", "mercy", "corporate", "sacrifice"];
+
 // src/content/schemas.ts
 var ID_PATTERN = /^[a-z0-9_:.-]+$/;
 var BaseEntrySchema = external_exports.object({
@@ -5413,6 +5420,117 @@ var registrySchemas = Object.fromEntries(
   REGISTRY_NAMES.map((n) => [n, BaseEntrySchema])
 );
 registrySchemas.flags = FlagSchema;
+var str = external_exports.string().min(1);
+var int = external_exports.number().int();
+var valueAxis = external_exports.enum(VALUE_AXES);
+var ValuesSchema = external_exports.object(
+  Object.fromEntries(VALUE_AXES.map((a) => [a, int.min(-3).max(3)]))
+);
+var SocialRankEffect = external_exports.object({
+  stat: external_exports.enum(["authority", "insight", "empathy", "cunning"]),
+  rank: int.min(1).max(5)
+});
+var ResourceEffect = external_exports.object({ resource: external_exports.enum(["credits", "supplies", "plyx"]), amount: int });
+var StartingTrustEffect = external_exports.object({
+  amount: int.min(-40).max(40),
+  ifValue: external_exports.object({ axis: valueAxis, sign: external_exports.enum(["+", "-"]) }).optional()
+});
+var startTimeEffects = {
+  social_rank: SocialRankEffect,
+  resource: ResourceEffect,
+  starting_trust: StartingTrustEffect
+};
+var EffectSchema = external_exports.object({ type: str }).passthrough().superRefine((fx, ctx2) => {
+  const schema = startTimeEffects[fx.type];
+  if (!schema) return;
+  const parsed = schema.safeParse(fx);
+  if (parsed.success) return;
+  for (const issue of parsed.error.issues) ctx2.addIssue({ ...issue });
+});
+var textWithEffects = external_exports.object({ text: str, effects: external_exports.array(EffectSchema) });
+var CorporationSchema = BaseEntrySchema.extend({
+  name: str,
+  summary: str,
+  values: ValuesSchema,
+  oversightStyle: str,
+  playable: external_exports.boolean(),
+  startingBonus: textWithEffects,
+  // No reference check: `regions` stays empty until P5, which adds it.
+  startingRegionId: str.optional()
+});
+var StartSchema = BaseEntrySchema.extend({
+  name: str,
+  corporationId: str,
+  summary: str,
+  situation: str,
+  spine: external_exports.array(external_exports.object({ id: str, title: str, goal: str })).min(5).max(8),
+  crimeKnownByDefault: external_exports.boolean().optional()
+});
+var CrimeSchema = BaseEntrySchema.extend({
+  name: str,
+  summary: str,
+  perk: textWithEffects,
+  flaw: textWithEffects,
+  valueReactions: external_exports.array(external_exports.object({ axis: valueAxis, sign: external_exports.enum(["+", "-"]), weight: int.min(-3).max(3) })),
+  knownByDefault: external_exports.boolean()
+});
+var RoleSchema = BaseEntrySchema.extend({
+  name: str,
+  row: external_exports.enum(["front", "back", "either"]),
+  baseStats: external_exports.object({
+    hp: int.min(1),
+    atk: int.min(1),
+    def: int.min(1),
+    spd: int.min(1),
+    crit: int.min(0).max(100)
+  }),
+  weaponClasses: external_exports.array(str).min(1),
+  armorWeights: external_exports.array(external_exports.enum(["light", "medium", "heavy"])).min(1),
+  identity: str,
+  /** One line, used in prompts. */
+  summary: str,
+  branches: external_exports.array(external_exports.object({ name: str, summary: str }))
+});
+var SignatureSchema = BaseEntrySchema.extend({
+  id: external_exports.string().regex(/^sig_[a-z0-9_:.-]*$/, "signature id must start with sig_"),
+  name: str,
+  mechanic: str,
+  fits: str
+});
+var DefectSchema = BaseEntrySchema.extend({
+  name: str,
+  category: external_exports.enum(["neural", "somatic", "cybernetic", "desire_bond"]),
+  lore: str,
+  upside: str,
+  downside: str,
+  breakdown: external_exports.object({ name: str, text: str }),
+  social: str,
+  arc: external_exports.object({ cure: str, manage: str, embrace: str })
+});
+var StatusSchema = BaseEntrySchema.extend({
+  name: str,
+  kind: external_exports.enum(["buff", "debuff"]),
+  description: str
+});
+var LorebookSchema = external_exports.object({
+  name: str,
+  entries: external_exports.array(external_exports.object({
+    key: external_exports.array(external_exports.string()),
+    comment: external_exports.string(),
+    content: str,
+    constant: external_exports.boolean(),
+    order: int.optional()
+  }))
+});
+Object.assign(registrySchemas, {
+  corporations: CorporationSchema,
+  starts: StartSchema,
+  crimes: CrimeSchema,
+  roles: RoleSchema,
+  signatures: SignatureSchema,
+  defects: DefectSchema,
+  statuses: StatusSchema
+});
 
 // src/content/refs.ts
 var extractors = /* @__PURE__ */ new Map();
@@ -5428,6 +5546,16 @@ registerRefs("flags", (entry) => {
   const list = entry.mutuallyExclusiveWith;
   if (!Array.isArray(list)) return [];
   return list.map((id, i) => ({ registry: "flags", id: String(id), path: `mutuallyExclusiveWith[${i}]` }));
+});
+registerRefs("starts", (entry) => {
+  if (typeof entry.corporationId !== "string") return [];
+  const corpId = entry.corporationId;
+  return [{
+    registry: "corporations",
+    id: corpId,
+    path: "corporationId",
+    check: (target) => target.playable === true ? null : `start "${entry.id}" uses non-playable corporation "${corpId}"`
+  }];
 });
 
 // src/content/loader.ts
@@ -5471,6 +5599,10 @@ async function loadPacks(packRoots, fetchJson2) {
     packs.push({ root, manifest: parsed.data });
   });
   packs.sort((a, b) => a.manifest.priority - b.manifest.priority);
+  let lorebook = null;
+  const lorePack = [...packs].reverse().find((p) => p.manifest.lorebook !== void 0);
+  const loreFile = lorePack?.manifest.lorebook;
+  const loreJob = lorePack && loreFile ? settle(fetchJson2, `${lorePack.root}/${loreFile}`) : null;
   const jobs = packs.flatMap(
     ({ root, manifest }) => Object.entries(manifest.files).map(([registry2, file]) => ({
       pack: manifest.id,
@@ -5480,6 +5612,16 @@ async function loadPacks(packRoots, fetchJson2) {
     }))
   );
   const fileResults = await Promise.all(jobs.map((j) => settle(fetchJson2, `${j.root}/${j.file}`)));
+  if (loreJob && lorePack && loreFile) {
+    const res = await loreJob;
+    const err = (path, message) => errors.push({ pack: lorePack.manifest.id, file: loreFile, path, message });
+    if (!res.ok) err("", res.message);
+    else {
+      const parsed = LorebookSchema.safeParse(res.value);
+      if (parsed.success) lorebook = parsed.data;
+      else for (const issue of parsed.error.issues) err(fmtPath(issue.path), issue.message);
+    }
+  }
   const versions = Object.fromEntries(REGISTRY_NAMES.map((n) => [n, /* @__PURE__ */ new Map()]));
   jobs.forEach((job, ji) => {
     const res = fileResults[ji];
@@ -5558,7 +5700,14 @@ async function loadPacks(packRoots, fetchJson2) {
       const origin = finalOrigin.get(`${reg}\0${id}`);
       for (const extract2 of list) {
         for (const ref of extract2(entry)) {
-          if (registries[ref.registry].has(ref.id)) continue;
+          const target = registries[ref.registry].get(ref.id);
+          if (target) {
+            const problem = ref.check?.(target);
+            if (problem) {
+              errors.push({ pack: origin.pack, file: origin.file, path: fmtPath([ref.path], origin.index), message: problem });
+            }
+            continue;
+          }
           errors.push({
             pack: origin.pack,
             file: origin.file,
@@ -5569,7 +5718,7 @@ async function loadPacks(packRoots, fetchJson2) {
       }
     }
   }
-  return { registries, errors };
+  return { registries, errors, lorebook };
 }
 
 // src/st/real.ts

@@ -1,0 +1,5 @@
+[
+  { "id": "defect_a", "name": "Defect A", "category": "neural", "lore": "Lore.", "upside": "Up.", "downside": "Down.",
+    "breakdown": { "name": "Snap", "text": "She snaps." }, "social": "Awkward.",
+    "arc": { "cure": "Not yet written.", "manage": "Not yet written.", "embrace": "Not yet written." } }
+]

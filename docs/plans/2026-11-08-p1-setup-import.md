@@ -171,18 +171,18 @@ sprites: `override path wins` (`overrides = [{ name: 'rhea', path: 'rhea_alt' }]
 - Produces in `loader.ts`: `loadPacks` returns `{ registries; errors; lorebook: Lorebook | null }`. The lorebook comes from the highest-priority pack that declares one and is validated against `LorebookSchema = { name: string, entries: Array<{ key: string[], comment: string, content: string (min 1), constant: boolean, order?: int }> }`. Errors use file = the lorebook path; an invalid lorebook gives `null`.
 - `app.ts`: keep the loaded lorebook (`let lorebook: Lorebook | null`); `AppDeps.loadContent` gets the extended return type (`lorebook` optional in the type, so the existing tests' `okContent` still compiles).
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 schemas: `role requires positive stats and at least one weapon class`; `defect category must be one of four`; `signature id must start with sig_`; `values out of range are rejected` (`mercy: 4`); `known effect with bad params is rejected` (`{ type: 'social_rank', stat: 'charm', rank: 2 }`); `unknown effect type is accepted unchanged` (`{ type: 'cp_start', amount: 1 }` round-trips); `start spine needs 5 to 8 beats`.
 loader (fixture `p1`): `p1 fixture loads every new registry without errors`; `start with unknown corporation is reported`; `start with non-playable corporation is reported`; `lorebook from highest priority pack is returned`; `invalid lorebook is an error and null`.
 
-- [ ] **Step 2: Run** `npx vitest run tests/content` → FAIL.
+- [x] **Step 2: Run** `npx vitest run tests/content` → FAIL.
 
-- [ ] **Step 3: Implement.**
+- [x] **Step 3: Implement.**
 
-- [ ] **Step 4: Run** `npx vitest run && npm run typecheck` → PASS.
+- [x] **Step 4: Run** `npx vitest run && npm run typecheck` → PASS.
 
-- [ ] **Step 5: Commit** `feat(content): schemas for setup registries, start effects and pack lorebook`
+- [x] **Step 5: Commit** `feat(content): schemas for setup registries, start effects and pack lorebook`
 
 ---
 

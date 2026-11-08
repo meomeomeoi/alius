@@ -17,7 +17,7 @@ describe('content loader', () => {
     const { registries, errors } = await loadPacks([`${P}/base`], fsFetch);
     expect(errors).toEqual([]);
     expect([...registries.flags.keys()]).toEqual(['alpha', 'beta']);
-    expect([...registries.roles.keys()]).toEqual(['medic', 'tank']);
+    expect([...registries.items.keys()]).toEqual(['medic', 'tank']);
     expect(Object.keys(registries).sort()).toEqual([...REGISTRY_NAMES].sort());
     expect(registries.marks.size).toBe(0);
   });
@@ -39,14 +39,14 @@ describe('content loader', () => {
 
   it('missing file is reported, others load', async () => {
     const files = {
-      'p/manifest.json': { id: 'p', name: 'P', version: '1', priority: 0, files: { flags: 'flags.json', roles: 'roles.json' } },
+      'p/manifest.json': { id: 'p', name: 'P', version: '1', priority: 0, files: { flags: 'flags.json', items: 'items.json' } },
       'p/flags.json': [{ id: 'f1', scope: 'world', description: 'd' }],
     };
     const { registries, errors } = await loadPacks(['p'], memFetch(files));
     expect(errors).toHaveLength(1);
-    expect(errors[0]).toMatchObject({ pack: 'p', file: 'roles.json' });
+    expect(errors[0]).toMatchObject({ pack: 'p', file: 'items.json' });
     expect(registries.flags.has('f1')).toBe(true);
-    expect(registries.roles.size).toBe(0);
+    expect(registries.items.size).toBe(0);
   });
 
   it('missing manifest is reported and other packs still load', async () => {
@@ -67,33 +67,33 @@ describe('content loader', () => {
   it('extends merges objects and replaces arrays', async () => {
     const { registries, errors } = await loadPacks([`${P}/base`, `${P}/override`], fsFetch);
     expect(errors).toEqual([]);
-    const plus = registries.roles.get('medic_plus')!;
+    const plus = registries.items.get('medic_plus')!;
     expect(plus.name).toBe('Medic+');
     expect(plus.tags).toEqual(['heal', 'buff']);
     expect(plus.stats).toEqual({ hp: 10, atk: 5 });
     expect(plus.extends).toBeUndefined();
     // medic itself is untouched
-    expect(registries.roles.get('medic')!.stats).toEqual({ hp: 10, atk: 2 });
+    expect(registries.items.get('medic')!.stats).toEqual({ hp: 10, atk: 2 });
     // self-extends is a partial override of the lower-priority entry
-    expect(registries.roles.get('tank')).toEqual({ id: 'tank', name: 'Tank Mk2' });
+    expect(registries.items.get('tank')).toEqual({ id: 'tank', name: 'Tank Mk2' });
   });
 
   it('extends unknown id is an error', async () => {
     const files = {
-      'p/manifest.json': { id: 'p', name: 'P', version: '1', priority: 0, files: { roles: 'roles.json' } },
-      'p/roles.json': [{ id: 'x', extends: 'nope' }],
+      'p/manifest.json': { id: 'p', name: 'P', version: '1', priority: 0, files: { items: 'items.json' } },
+      'p/items.json': [{ id: 'x', extends: 'nope' }],
     };
     const { registries, errors } = await loadPacks(['p'], memFetch(files));
     expect(errors).toHaveLength(1);
-    expect(errors[0]).toMatchObject({ pack: 'p', file: 'roles.json', path: '[0].extends' });
+    expect(errors[0]).toMatchObject({ pack: 'p', file: 'items.json', path: '[0].extends' });
     expect(errors[0].message).toContain('nope');
-    expect(registries.roles.has('x')).toBe(false);
+    expect(registries.items.has('x')).toBe(false);
   });
 
   it('extends cycles are errors, not hangs', async () => {
     const files = {
-      'p/manifest.json': { id: 'p', name: 'P', version: '1', priority: 0, files: { roles: 'roles.json' } },
-      'p/roles.json': [{ id: 'a', extends: 'b' }, { id: 'b', extends: 'a' }],
+      'p/manifest.json': { id: 'p', name: 'P', version: '1', priority: 0, files: { items: 'items.json' } },
+      'p/items.json': [{ id: 'a', extends: 'b' }, { id: 'b', extends: 'a' }],
     };
     const { errors } = await loadPacks(['p'], memFetch(files));
     expect(errors.length).toBeGreaterThan(0);
@@ -128,5 +128,67 @@ describe('content loader', () => {
     const { errors } = await loadPacks(['p'], memFetch(files));
     expect(errors).toHaveLength(1);
     expect(errors[0].file).toBe('manifest.json');
+  });
+
+  describe('P1 registries and lorebook', () => {
+    /** The p1 fixture as an in-memory file map under the root `p1`, so tests can patch single files. */
+    const p1Files = async (): Promise<Record<string, unknown>> => {
+      const files: Record<string, unknown> = {};
+      for (const f of ['manifest', 'corporations', 'starts', 'crimes', 'roles', 'signatures', 'defects', 'statuses', 'lorebook']) {
+        files[`p1/${f}.json`] = await fsFetch(`${P}/p1/${f}.json`);
+      }
+      return files;
+    };
+
+    it('p1 fixture loads every new registry without errors', async () => {
+      const { registries, errors, lorebook } = await loadPacks([`${P}/p1`], fsFetch);
+      expect(errors).toEqual([]);
+      for (const name of ['corporations', 'starts', 'crimes', 'roles', 'signatures', 'defects', 'statuses'] as const) {
+        expect(registries[name].size, name).toBe(name === 'corporations' ? 2 : 1);
+      }
+      expect(lorebook?.name).toBe('P1 Lore');
+    });
+
+    it('start with unknown corporation is reported', async () => {
+      const files = await p1Files();
+      (files['p1/starts.json'] as Array<Record<string, unknown>>)[0].corporationId = 'ghost';
+      const { errors } = await loadPacks(['p1'], memFetch(files));
+      const e = errors.find((x) => x.path === '[0].corporationId');
+      expect(e).toMatchObject({ pack: 'p1', file: 'starts.json' });
+      expect(e!.message).toContain('ghost');
+    });
+
+    it('start with non-playable corporation is reported', async () => {
+      const files = await p1Files();
+      (files['p1/starts.json'] as Array<Record<string, unknown>>)[0].corporationId = 'corp_b';
+      const { errors } = await loadPacks(['p1'], memFetch(files));
+      const e = errors.find((x) => x.path === '[0].corporationId');
+      expect(e!.message).toBe('start "start_a" uses non-playable corporation "corp_b"');
+    });
+
+    it('lorebook from highest priority pack is returned', async () => {
+      const files = await p1Files();
+      files['hi/manifest.json'] = { id: 'hi', name: 'Hi', version: '1', priority: 5, lorebook: 'book.json', files: {} };
+      files['hi/book.json'] = { name: 'Hi Lore', entries: [] };
+      const { errors, lorebook } = await loadPacks(['hi', 'p1'], memFetch(files));
+      expect(errors).toEqual([]);
+      expect(lorebook?.name).toBe('Hi Lore');
+      const low = await loadPacks(['p1'], memFetch(files));
+      expect(low.lorebook?.name).toBe('P1 Lore');
+    });
+
+    it('invalid lorebook is an error and null', async () => {
+      const files = await p1Files();
+      files['p1/lorebook.json'] = { name: 'Bad', entries: [{ key: ['a'], comment: 'c', content: '', constant: false }] };
+      const { errors, lorebook } = await loadPacks(['p1'], memFetch(files));
+      expect(lorebook).toBeNull();
+      const e = errors.find((x) => x.file === 'lorebook.json');
+      expect(e).toMatchObject({ pack: 'p1', path: 'entries[0].content' });
+    });
+
+    it('packs without a lorebook give null', async () => {
+      const { lorebook } = await loadPacks([`${P}/base`], fsFetch);
+      expect(lorebook).toBeNull();
+    });
   });
 });

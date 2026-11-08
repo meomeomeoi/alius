@@ -6,7 +6,7 @@ import type { CampaignState } from './engine/state/types';
 import { ContextBuilder } from './llm/context';
 import { callLlm, type LlmResult } from './llm/orchestrator';
 import { getSettings } from './settings';
-import type { StAdapter } from './st/adapter';
+import type { Lorebook, StAdapter } from './st/adapter';
 import {
   createSaver, initCampaign as initCampaignInChat, loadCampaign, type LoadResult,
 } from './st/persistence';
@@ -33,7 +33,7 @@ export interface AliusApp {
 }
 
 export interface AppDeps {
-  loadContent: () => Promise<{ registries: Registries; errors: ContentError[] }>;
+  loadContent: () => Promise<{ registries: Registries; errors: ContentError[]; lorebook?: Lorebook | null }>;
   shellFactory?: typeof createShell;
 }
 
@@ -43,6 +43,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
   const context = new ContextBuilder();
   let registries: Registries = emptyRegistries();
   let contentErrors: ContentError[] = [];
+  let lorebook: Lorebook | null = null; // installed into new campaigns by deployCampaign (P1 Task 8)
   let load: LoadResult = { kind: 'none' };
   let state: CampaignState | null = null;
   let saver: ReturnType<typeof createSaver> | null = null;
@@ -108,6 +109,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       try {
         const r = await deps.loadContent();
         registries = r.registries;
+        lorebook = r.lorebook ?? null;
         contentErrors = r.errors;
       } catch (e) {
         contentErrors = [{ pack: '(loader)', file: '', path: '', message: errText(e) }];

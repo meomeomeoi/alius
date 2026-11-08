@@ -9,6 +9,9 @@ export type LoyaltyBand = 'steady' | 'wavering' | 'breaking';
 /** Reserved in v1: `Relation.marks` is always empty (overview §10). */
 export type MarkInstance = { id: string };
 
+export const VALUE_AXES = ['pragmatism', 'autonomy', 'ingroup', 'mercy', 'corporate', 'sacrifice'] as const;
+export type ValueAxis = (typeof VALUE_AXES)[number];
+
 export interface DefectInstance {
   id: string;
   arc?: string;

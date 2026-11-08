@@ -16,6 +16,8 @@ export const PackManifestSchema = z
     name: z.string().min(1),
     version: z.string().min(1),
     priority: z.number(),
+    /** Compact lorebook file (see LorebookSchema); the highest-priority pack that declares one wins. */
+    lorebook: z.string().min(1).optional(),
     files: z.object(
       Object.fromEntries(REGISTRY_NAMES.map((n) => [n, z.string().min(1).optional()])) as Record<
         RegistryName,

@@ -1,0 +1,6 @@
+[
+  { "id": "crime_a", "name": "Crime A", "summary": "A crime.",
+    "perk": { "text": "Respected.", "effects": [{ "type": "social_rank", "stat": "authority", "rank": 2 }] },
+    "flaw": { "text": "Distrusted.", "effects": [{ "type": "starting_trust", "amount": -10, "ifValue": { "axis": "mercy", "sign": "-" } }] },
+    "valueReactions": [{ "axis": "mercy", "sign": "-", "weight": -1 }], "knownByDefault": false }
+]

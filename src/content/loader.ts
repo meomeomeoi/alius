@@ -1,4 +1,4 @@
-import { BaseEntrySchema, registrySchemas } from './schemas';
+import { BaseEntrySchema, LorebookSchema, registrySchemas, type PackLorebook } from './schemas';
 import { getRefExtractors } from './refs';
 import {
   PackManifestSchema, REGISTRY_NAMES, emptyRegistries,
@@ -40,7 +40,7 @@ const settle = (fetchJson: Fetch, path: string) =>
 export async function loadPacks(
   packRoots: string[],
   fetchJson: Fetch,
-): Promise<{ registries: Registries; errors: ContentError[] }> {
+): Promise<{ registries: Registries; errors: ContentError[]; lorebook: PackLorebook | null }> {
   const errors: ContentError[] = [];
 
   // 1. manifests
@@ -63,6 +63,12 @@ export async function loadPacks(
   });
   packs.sort((a, b) => a.manifest.priority - b.manifest.priority);
 
+  // 1b. lorebook: only the highest-priority pack that declares one counts (no fallback if it is invalid)
+  let lorebook: PackLorebook | null = null;
+  const lorePack = [...packs].reverse().find((p) => p.manifest.lorebook !== undefined);
+  const loreFile = lorePack?.manifest.lorebook;
+  const loreJob = lorePack && loreFile ? settle(fetchJson, `${lorePack.root}/${loreFile}`) : null;
+
   // 2. registry files
   const jobs = packs.flatMap(({ root, manifest }) =>
     (Object.entries(manifest.files) as Array<[RegistryName, string]>).map(([registry, file]) => ({
@@ -70,6 +76,18 @@ export async function loadPacks(
     })),
   );
   const fileResults = await Promise.all(jobs.map((j) => settle(fetchJson, `${j.root}/${j.file}`)));
+
+  if (loreJob && lorePack && loreFile) {
+    const res = await loreJob;
+    const err = (path: string, message: string) =>
+      errors.push({ pack: lorePack.manifest.id, file: loreFile, path, message });
+    if (!res.ok) err('', res.message);
+    else {
+      const parsed = LorebookSchema.safeParse(res.value);
+      if (parsed.success) lorebook = parsed.data;
+      else for (const issue of parsed.error.issues) err(fmtPath(issue.path), issue.message);
+    }
+  }
 
   // 3. collect raw entries, in priority order, as per-id version chains
   const versions = Object.fromEntries(REGISTRY_NAMES.map((n) => [n, new Map<string, Origin[]>()])) as Record<
@@ -158,7 +176,14 @@ export async function loadPacks(
       const origin = finalOrigin.get(`${reg}\0${id}`)!;
       for (const extract of list) {
         for (const ref of extract(entry)) {
-          if (registries[ref.registry].has(ref.id)) continue;
+          const target = registries[ref.registry].get(ref.id);
+          if (target) {
+            const problem = ref.check?.(target);
+            if (problem) {
+              errors.push({ pack: origin.pack, file: origin.file, path: fmtPath([ref.path], origin.index), message: problem });
+            }
+            continue;
+          }
           errors.push({
             pack: origin.pack,
             file: origin.file,
@@ -170,5 +195,5 @@ export async function loadPacks(
     }
   }
 
-  return { registries, errors };
+  return { registries, errors, lorebook };
 }

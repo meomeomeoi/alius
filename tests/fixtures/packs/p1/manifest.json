@@ -1,0 +1,6 @@
+{ "id": "p1", "name": "P1 fixture pack", "version": "1.0.0", "priority": 0,
+  "lorebook": "lorebook.json",
+  "files": {
+    "corporations": "corporations.json", "starts": "starts.json", "crimes": "crimes.json",
+    "roles": "roles.json", "signatures": "signatures.json", "defects": "defects.json", "statuses": "statuses.json"
+  } }

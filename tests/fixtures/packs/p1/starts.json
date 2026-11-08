@@ -1,0 +1,8 @@
+[
+  { "id": "start_a", "name": "Start A", "corporationId": "corp_a", "summary": "A start.", "situation": "You arrive.",
+    "spine": [
+      { "id": "beat_1", "title": "One", "goal": "Do one." }, { "id": "beat_2", "title": "Two", "goal": "Do two." },
+      { "id": "beat_3", "title": "Three", "goal": "Do three." }, { "id": "beat_4", "title": "Four", "goal": "Do four." },
+      { "id": "beat_5", "title": "Five", "goal": "Do five." }
+    ] }
+]

@@ -1,0 +1,5 @@
+[
+  { "id": "role_a", "name": "Role A", "row": "front", "baseStats": { "hp": 100, "atk": 20, "def": 10, "spd": 12, "crit": 5 },
+    "weaponClasses": ["rifle"], "armorWeights": ["medium"], "identity": "Holds the line.", "summary": "Front-line fighter.",
+    "branches": [{ "name": "Branch A", "summary": "A branch." }] }
+]
