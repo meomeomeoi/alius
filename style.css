@@ -407,6 +407,7 @@
   text-align: left;
   padding: 6px 8px;
   cursor: pointer;
+  align-self: start; /* natural height, text at the top (buttons center by default) */
 }
 
 #alius-shell .alius-card p {

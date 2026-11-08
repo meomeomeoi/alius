@@ -589,9 +589,9 @@ app: `resync flow dispatches with the starting chat id and is dropped after a ch
 - Create: `docs/MANUAL_TEST_P1.md`
 - Modify: `dist/index.js`, `style.css` (rebuilt)
 
-- [ ] **Step 1: Run** `npm test && npm run typecheck && npm run build` → all PASS; commit the rebuilt `dist/` and `style.css` with the checklist.
+- [x] **Step 1: Run** `npm test && npm run typecheck && npm run build` → all PASS; commit the rebuilt `dist/` and `style.css` with the checklist.
 
-- [ ] **Step 2: Write `docs/MANUAL_TEST_P1.md`**, in the format of `MANUAL_TEST_P0.md`: header with ST version, browser, commit and mechanic profile; then one checklist line per P1 acceptance criterion with exact clicks and the expected observation:
+- [x] **Step 2: Write `docs/MANUAL_TEST_P1.md`**, in the format of `MANUAL_TEST_P0.md`: header with ST version, browser, commit and mechanic profile; then one checklist line per P1 acceptance criterion with exact clicks and the expected observation:
   1. The wizard completes with 4, 2 and 0 cards (`Alius: New campaign` → … → `Confirm deployment` → a new group chat opens, the SQUAD tab lists 4/2/0 units, SYS › debug state shows `startId`, `crimeId`, the squad). Reload the page → same state. The chat's lorebook (World Info chat-lore button) is `Alius Core Lore`.
   2. `profile_import` with a real mechanic profile on three cards: a detailed markdown card, a 3-line card, an explicit NSFW card. Each gives plausible candidates; SYS › debug LLM log shows the raw reply; any dropped id never appears in state.
   3. With `Desire/Bond defects` off, no `imprint_hunger`/`possessive_protocol`/`reward_loop`/`compliance_craving` appears in candidates or manual lists (run twice); with it on, they can appear.
@@ -601,7 +601,7 @@ app: `resync flow dispatches with the starting chat id and is dropped after a ch
 
 - [ ] **Step 3: Run the checklist in a real SillyTavern** (project owner), tick every line, note the versions.
 
-- [ ] **Step 4: Commit** `docs: P1 manual acceptance checklist` (with the rebuilt `dist/` and `style.css`).
+- [x] **Step 4: Commit** `docs: P1 manual acceptance checklist` (with the rebuilt `dist/` and `style.css`).
 
 ---
 
