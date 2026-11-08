@@ -540,17 +540,17 @@ launcher: item order `Alius`, `Alius: New campaign`, `Alius: Initialize campaign
   - `renderOpsPlaceholder(host, getState)`: `DAY {day} // {SLOT}` plus `CALENDAR MODULE OFFLINE`.
 - Relationship axes are **not** shown (not in P1 acceptance 5; P3 owns their display).
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `no campaign shows NEW CAMPAIGN which calls onNewCampaign`; `readonly shows reason and no button`; `unit shows role, level, stats line and signature template`; `defect shows full text and origin`; `values show bands by default and raw numbers with showRawValues`; `sprite falls back to avatar when no neutral sprite`; `unknown role id renders UNKNOWN and does not throw`; `ops placeholder shows DAY 1 // MORNING`; `valueBand thresholds` (−3 LOW, −2 LOW, −1 MID, 1 MID, 2 HIGH).
 
-- [ ] **Step 2: Run** `npx vitest run tests/ui/squad.test.ts` → FAIL.
+- [x] **Step 2: Run** `npx vitest run tests/ui/squad.test.ts` → FAIL.
 
-- [ ] **Step 3: Implement.**
+- [x] **Step 3: Implement.**
 
-- [ ] **Step 4: Run** `npx vitest run && npm run typecheck && npm run build` → PASS.
+- [x] **Step 4: Run** `npx vitest run && npm run typecheck && npm run build` → PASS.
 
-- [ ] **Step 5: Commit** `feat(ui): SQUAD profile view and day placeholder`
+- [x] **Step 5: Commit** `feat(ui): SQUAD profile view and day placeholder`
 
 ---
 

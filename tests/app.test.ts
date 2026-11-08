@@ -28,7 +28,8 @@ function fakeShell() {
     screenRenderers: new Map<string, unknown>(),
     showScreen(id: string) { shell.screens.push(id); },
     showTab(id: string) { shell.tabs.push(id); },
-    registerTab() {},
+    tabRenderers: new Map<string, unknown>(),
+    registerTab(id: string, render: unknown) { shell.tabRenderers.set(id, render); },
     registerScreen(id: string, render: unknown) { shell.screenRenderers.set(id, render); },
     toast(kind: string, text: string) { toasts.push({ kind, text }); },
     modal: async () => null,
@@ -239,6 +240,13 @@ describe('app', () => {
 });
 
 // ---------------------------------------------------------------------------------------------
+describe('SQUAD and OPS tabs', () => {
+  it('app registers the squad and ops tabs', async () => {
+    const { shell } = await boot(A);
+    expect([...shell.tabRenderers.keys()].sort()).toEqual(['ops', 'squad']);
+  });
+});
+
 describe('campaign setup deployment (P1)', () => {
   let content: Awaited<ReturnType<typeof loadPacks>>;
   beforeAll(async () => {

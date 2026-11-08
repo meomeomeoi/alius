@@ -12,6 +12,7 @@ import { buildCampaign, type SetupResult } from './engine/setup';
 import { importProfile } from './setup/profile';
 import { Wizard, type WizardState } from './setup/wizard';
 import { renderSetupScreen } from './ui/setup/setupScreen';
+import { renderOpsPlaceholder, renderSquadTab } from './ui/squad/squadTab';
 import {
   createSaver, initCampaign as initCampaignInChat, loadCampaign, writeNewCampaign, METADATA_KEY, type LoadResult,
 } from './st/persistence';
@@ -236,6 +237,18 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     getContentErrors: () => contentErrors,
     debugTools,
   });
+
+  shell.registerTab('squad', (host) =>
+    renderSquadTab(host, {
+      st,
+      getState: () => state,
+      getLoad: () => load,
+      registries,
+      settings: () => getSettings(st),
+      onNewCampaign: openSetup,
+    }),
+  );
+  shell.registerTab('ops', (host) => renderOpsPlaceholder(host, () => state));
 
   return {
     context,

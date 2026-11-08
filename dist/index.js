@@ -5759,6 +5759,129 @@ function renderSetupScreen(host, ctx2) {
   render();
 }
 
+// src/ui/squad/bands.ts
+function valueBand(v) {
+  return v <= -2 ? "LOW" : v >= 2 ? "HIGH" : "MID";
+}
+
+// src/ui/squad/squadTab.ts
+var unknown = (id) => `UNKNOWN ${id}`;
+var nameOf3 = (e, id) => e ? String(e.name) : unknown(id);
+function portrait(st, unit) {
+  if (!unit.cardRef) return null;
+  const card2 = unit.cardRef;
+  const avatar = st.getAvatarUrl(card2);
+  const img = h("img", { class: "alius-portrait", src: avatar, alt: unit.displayName, width: "96", height: "96" });
+  let usingAvatar = true;
+  img.addEventListener("error", () => {
+    if (usingAvatar) return;
+    usingAvatar = true;
+    img.setAttribute("src", avatar);
+  });
+  st.getSpriteUrl(card2, "neutral").then(
+    (url) => {
+      if (!url) return;
+      usingAvatar = false;
+      img.setAttribute("src", url);
+    },
+    () => {
+    }
+  );
+  return img;
+}
+function defectBlock(reg, d) {
+  const def = reg.defects.get(d.id);
+  if (!def) return h("div", { class: "alius-defect" }, h("strong", {}, unknown(d.id)));
+  const bd = def.breakdown;
+  const arc = def.arc;
+  const line = (label, text) => h("p", { class: "alius-defect-line" }, `${label}: ${text}`);
+  return h(
+    "div",
+    { class: "alius-defect" },
+    h("strong", {}, String(def.name)),
+    h("span", { class: "alius-dim" }, ` [${String(def.category)}]`),
+    d.origin ? line("Origin", d.origin) : null,
+    line("Lore", String(def.lore)),
+    line("Upside", String(def.upside)),
+    line("Downside", String(def.downside)),
+    line("Breakdown", `${bd.name} \u2014 ${bd.text}`),
+    line("Social", String(def.social)),
+    line("Arc", `Cure: ${arc.cure} \xB7 Manage: ${arc.manage} \xB7 Embrace: ${arc.embrace}`)
+  );
+}
+function unitBlock(unit, ctx2) {
+  const reg = ctx2.registries;
+  const raw = ctx2.settings().showRawValues;
+  const s = unit.baseStats;
+  const equipped = Object.entries(unit.equipment).filter(([, id]) => !!id);
+  const sigTpl = reg.signatures.get(unit.signatureSkill.templateId);
+  const values = VALUE_AXES.map((axis) => {
+    const v = unit.values[axis];
+    return `${axis.toUpperCase()}: ${raw ? v > 0 ? `+${v}` : String(v) : valueBand(v)}`;
+  });
+  return h(
+    "article",
+    { class: "alius-unit" },
+    portrait(ctx2.st, unit),
+    h(
+      "div",
+      { class: "alius-unit-body" },
+      h("h3", { class: "alius-unit-name" }, unit.displayName),
+      h("p", {}, `${nameOf3(reg.roles.get(unit.roleId), unit.roleId)} \xB7 LVL ${unit.level}`),
+      h("p", {}, `HP ${s.hp} \xB7 ATK ${s.atk} \xB7 DEF ${s.def} \xB7 SPD ${s.spd} \xB7 CRIT ${s.crit}%`),
+      h(
+        "p",
+        { class: "alius-dim" },
+        equipped.length === 0 ? "STANDARD ISSUE \u2014 PENDING" : equipped.map(([slot, id]) => `${slot.toUpperCase()}: ${id}`).join(" \xB7 ")
+      ),
+      h("h4", {}, "DEFECTS"),
+      ...unit.defects.map((d) => defectBlock(reg, d)),
+      h("h4", {}, "VALUES"),
+      h("p", { class: "alius-values" }, values.join(" \xB7 ")),
+      h("h4", {}, "SIGNATURE"),
+      h("p", {}, h("strong", {}, unit.signatureSkill.name), ` \u2014 ${unit.signatureSkill.description}`),
+      h("p", { class: "alius-dim" }, `Template: ${nameOf3(sigTpl, unit.signatureSkill.templateId)} \u2014 ${sigTpl ? String(sigTpl.mechanic) : ""}`)
+    )
+  );
+}
+function renderSquadTab(host, ctx2) {
+  host.replaceChildren();
+  const load = ctx2.getLoad();
+  const state = ctx2.getState();
+  if (load.kind === "readonly") {
+    host.append(h("section", { class: "alius-section" }, h("p", { class: "alius-banner" }, `READ-ONLY: ${load.reason}`)));
+    return;
+  }
+  if (!state) {
+    host.append(
+      h(
+        "section",
+        { class: "alius-section" },
+        h("p", {}, "NO ACTIVE CAMPAIGN IN THIS CHAT"),
+        h("button", { type: "button", class: "alius-btn", onclick: ctx2.onNewCampaign }, "[ NEW CAMPAIGN ]")
+      )
+    );
+    return;
+  }
+  if (state.squad.length === 0) {
+    host.append(h("section", { class: "alius-section" }, h("p", {}, "NO UNITS ASSIGNED")));
+    return;
+  }
+  host.append(h("section", { class: "alius-section alius-squad" }, ...state.squad.map((u) => unitBlock(u, ctx2))));
+}
+function renderOpsPlaceholder(host, getState) {
+  host.replaceChildren();
+  const state = getState();
+  host.append(
+    h(
+      "section",
+      { class: "alius-section" },
+      state ? h("h2", {}, `DAY ${state.day} // ${state.slot.toUpperCase()}`) : null,
+      h("p", { class: "alius-dim" }, "CALENDAR MODULE OFFLINE")
+    )
+  );
+}
+
 // src/engine/state/migrations.ts
 var CURRENT_VERSION = 1;
 var migrations = [
@@ -6641,6 +6764,18 @@ function createApp(st, deps) {
     getContentErrors: () => contentErrors,
     debugTools
   });
+  shell.registerTab(
+    "squad",
+    (host) => renderSquadTab(host, {
+      st,
+      getState: () => state,
+      getLoad: () => load,
+      registries,
+      settings: () => getSettings(st),
+      onNewCampaign: openSetup
+    })
+  );
+  shell.registerTab("ops", (host) => renderOpsPlaceholder(host, () => state));
   return {
     context,
     shell,

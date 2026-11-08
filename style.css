@@ -560,3 +560,50 @@
 #alius-shell .alius-target {
   margin-top: 10px;
 }
+
+/* SQUAD tab (P1). Palette variables only. */
+#alius-shell .alius-unit {
+  display: flex;
+  gap: 16px;
+  padding: 10px 0 14px;
+  border-bottom: 1px dashed var(--alius-dim);
+}
+
+#alius-shell .alius-portrait {
+  width: 96px;
+  height: 96px;
+  object-fit: cover;
+  border: 1px solid var(--alius-dim);
+  flex: none;
+}
+
+#alius-shell .alius-unit-body {
+  min-width: 0;
+}
+
+#alius-shell .alius-unit-body p {
+  margin: 2px 0;
+}
+
+#alius-shell .alius-unit-name {
+  margin: 0 0 4px;
+  color: var(--alius-accent);
+}
+
+#alius-shell h4 {
+  font-size: 1em;
+  margin: 10px 0 4px;
+  color: var(--alius-dim);
+  font-weight: normal;
+}
+
+#alius-shell .alius-defect {
+  border-left: 2px solid var(--alius-dim);
+  padding-left: 8px;
+  margin: 6px 0;
+}
+
+#alius-shell .alius-defect-line {
+  margin: 2px 0;
+  color: var(--alius-dim);
+}
