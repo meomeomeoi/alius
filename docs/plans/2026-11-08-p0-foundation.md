@@ -190,13 +190,13 @@ git add -A && git commit -m "chore: scaffold Alius extension build and architect
   - `snapshot(state): string` / `restore(snap: string): CampaignState`.
   - Debug actions: `debug/noop` → `[]`; `debug/roll` payload `{sides:number}` → `[{type:'rolled', value}]`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `dispatch does not mutate input` (deep-freeze input, dispatch `debug/roll`, no throw, input unchanged); `rng advances and persists` (roll on `s0` → `s1`, roll on `s1` → `s2`: `s1.rng` ≠ `s0.rng`, `s2.rng` ≠ `s1.rng`; replaying both rolls from `s0` yields identical `rolled` values); `unknown action yields error event and same state`; `throwing handler leaves state unchanged`; `snapshot/restore round trip deep-equals`.
 
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → PASS.
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → PASS.
 
-- [ ] **Step 5: Commit** `feat(engine): dispatch reducer with seeded rng and snapshots`
+- [x] **Step 5: Commit** `feat(engine): dispatch reducer with seeded rng and snapshots`
 
 ---
 
