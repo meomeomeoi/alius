@@ -91,17 +91,17 @@ tests/**                      vitest, mirrors src
 **Interfaces:**
 - Produces: `npm run build` → `dist/index.js` (ESM, single file) + `style.css`; `npm test` → vitest; import specifier convention `st:<module>` → rewritten to `../../../../<module>.js` and marked external.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `tests/architecture.test.ts` — `it('engine imports nothing outside engine')`: read every `src/engine/**/*.ts`, assert no import path matches `/\/(st|ui|llm)\//` and no identifier `window`, `document`, `SillyTavern` appears.
 `tests/build.test.ts` — `it('bundle has only st externals')`: run `node scripts/build.mjs` (execSync), read `dist/index.js`, assert every `import … from '<x>'` has `<x>` starting with `../../../../` and ending `.js`; assert `style.css` exists.
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `npx vitest run tests/architecture.test.ts tests/build.test.ts`
 Expected: `build.test.ts` FAILS (no build script). `architecture.test.ts` may pass vacuously while `src/engine` is empty; that is fine.
 
-- [ ] **Step 3: Implement scaffold**
+- [x] **Step 3: Implement scaffold**
 
 `package.json`: `"type":"module"`, scripts `build: node scripts/build.mjs`, `test: vitest run`, `typecheck: tsc --noEmit`; deps `zod@^3`; devDeps `typescript@^5`, `esbuild@^0.24`, `vitest@^2`, `jsdom`, `@types/node`.
 `tsconfig.json`: as Mundi-Expanded (`target/module ES2022`, `moduleResolution: Bundler`, `strict: true`, `lib: ES2022, DOM, DOM.Iterable`), plus `noEmit: true`, `include: ["src","tests"]`.
@@ -109,12 +109,12 @@ Expected: `build.test.ts` FAILS (no build script). `architecture.test.ts` may pa
 `manifest.json`: `display_name: "Alius"`, `loading_order: 100`, `js: "dist/index.js"`, `css: "style.css"`, `optional: ["expressions","connection-manager"]`, `author: "meomeomeoi"`, `version: "0.0.1"`, `auto_update: false`, `homePage` = repo URL.
 `.gitignore`: `node_modules/`, `*.log` — **not** `dist/`.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `npm run build && npx vitest run`
 Expected: PASS, `dist/index.js` exists.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A && git commit -m "chore: scaffold Alius extension build and architecture guard"

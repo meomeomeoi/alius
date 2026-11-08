@@ -1,0 +1,12 @@
+{
+  "display_name": "Alius",
+  "loading_order": 100,
+  "requires": [],
+  "optional": ["expressions", "connection-manager"],
+  "js": "dist/index.js",
+  "css": "style.css",
+  "author": "meomeomeoi",
+  "version": "0.0.1",
+  "homePage": "https://github.com/meomeomeoi/alius",
+  "auto_update": false
+}
