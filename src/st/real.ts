@@ -4,6 +4,7 @@ import { answerText } from '../llm/text';
 import type {
   CardInfo, ChatInfo, InjectionPosition, MemberInfo, ProfileInfo, StAdapter, StEvent,
 } from './adapter';
+import { connectionProfiles } from './profiles';
 import { reasoningPayload } from './reasoning';
 
 /** The slice of SillyTavern.getContext() that Alius uses. */
@@ -135,14 +136,8 @@ export class RealStAdapter implements StAdapter {
   }
 
   listConnectionProfiles(): ProfileInfo[] {
-    const profiles = ctx().extensionSettings?.connectionManager?.profiles;
-    if (!Array.isArray(profiles)) return [];
-    return profiles.map((p: Record<string, any>) => ({
-      id: String(p.id),
-      name: String(p.name ?? p.id),
-      api: String(p.api ?? ''),
-      model: String(p.model ?? ''),
-    }));
+    const c = ctx();
+    return connectionProfiles(c.extensionSettings, !!c.ConnectionManagerRequestService);
   }
 
   getCharacterCard(avatar: string): CardInfo | null {

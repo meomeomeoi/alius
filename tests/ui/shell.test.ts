@@ -183,6 +183,22 @@ describe('shell', () => {
   });
 });
 
+describe('focus', () => {
+  it('open moves focus into the shell and close gives it back', () => {
+    const ta = document.createElement('textarea');
+    document.body.append(ta);
+    ta.focus();
+    const { shell } = setup();
+    shell.open();
+    expect(root()!.contains(document.activeElement)).toBe(true);
+    expect(document.activeElement).toBe(tabs()[0]);
+    key(document.activeElement!, '3'); // not an editable field: the hotkey works
+    expect(selected()).toBe('MAP');
+    shell.close();
+    expect(document.activeElement).toBe(ta);
+  });
+});
+
 describe('SYS tab', () => {
   it('lists connection profiles and saves a changed setting', () => {
     const { shell, st } = setup();

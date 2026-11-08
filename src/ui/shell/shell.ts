@@ -56,6 +56,7 @@ export function createShell(deps: ShellDeps): ShellApi {
   let tab: TabId = 'squad';
 
   let root: HTMLElement | null = null;
+  let previousFocus: HTMLElement | null = null;
   let view: HTMLElement;
   let bannerHost: HTMLElement;
   let toasts: ReturnType<typeof createToasts> | null = null;
@@ -166,12 +167,16 @@ export function createShell(deps: ShellDeps): ShellApi {
       toastHost,
       modalLayer,
     );
+    previousFocus = document.activeElement as HTMLElement | null;
     toasts = createToasts(toastHost);
     modals = createModalHost(modalLayer);
     document.body.append(root);
     applySettings();
     renderBanner();
     renderView();
+    // SillyTavern keeps focus in its chat box; pull it into the shell so keys do not leak behind the overlay.
+    const focusTarget = root.querySelector<HTMLElement>('.alius-tab[aria-selected="true"]') ?? root.querySelector<HTMLElement>('.alius-close');
+    focusTarget?.focus();
   }
 
   function close(): void {
@@ -180,6 +185,8 @@ export function createShell(deps: ShellDeps): ShellApi {
     toasts?.dispose();
     root.remove();
     root = null;
+    if (previousFocus && document.contains(previousFocus)) previousFocus.focus();
+    previousFocus = null;
     toasts = null;
     modals = null;
     tabBar = null;

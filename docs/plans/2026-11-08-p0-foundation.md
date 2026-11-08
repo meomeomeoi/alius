@@ -448,7 +448,7 @@ orchestrator (fake adapter, `ping`):
 
 - [x] **Step 5: Write `docs/MANUAL_TEST_P0.md`** — one checklist line per P0 acceptance criterion 1–8, each with the exact clicks in SillyTavern and the expected observation (e.g. criterion 6: "Init campaign, send a message, open Prompt Itemization → `[ALIUS CONTEXT] … Day 1, Morning.` present; run `/echo` after clearing via SYS debug → absent").
 
-- [x] **Step 6: Run the manual checklist in a real SillyTavern** (install by cloning the repo into `public/scripts/extensions/third-party/Alius`), tick every line, note ST version in the file.
+- [ ] **Step 6: Run the manual checklist in a real SillyTavern** (install by cloning the repo into `public/scripts/extensions/third-party/Alius`), tick every line, note ST version in the file.
 
 - [x] **Step 7: Commit** `feat: wire Alius app, debug commands and manual acceptance checklist` (include rebuilt `dist/` and `style.css`).
 

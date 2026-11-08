@@ -5067,6 +5067,7 @@ function createShell(deps) {
   const tabRenderers = /* @__PURE__ */ new Map();
   let tab = "squad";
   let root = null;
+  let previousFocus = null;
   let view;
   let bannerHost;
   let toasts = null;
@@ -5168,12 +5169,15 @@ function createShell(deps) {
       toastHost,
       modalLayer
     );
+    previousFocus = document.activeElement;
     toasts = createToasts(toastHost);
     modals = createModalHost(modalLayer);
     document.body.append(root);
     applySettings();
     renderBanner();
     renderView();
+    const focusTarget = root.querySelector('.alius-tab[aria-selected="true"]') ?? root.querySelector(".alius-close");
+    focusTarget?.focus();
   }
   function close() {
     if (!root) return;
@@ -5181,6 +5185,8 @@ function createShell(deps) {
     toasts?.dispose();
     root.remove();
     root = null;
+    if (previousFocus && document.contains(previousFocus)) previousFocus.focus();
+    previousFocus = null;
     toasts = null;
     modals = null;
     tabBar = null;
@@ -5342,7 +5348,10 @@ function createApp(st, deps) {
       }
     },
     current: () => ({ load, state }),
-    dispatch(action) {
+    dispatch(action, opts) {
+      if (opts?.expectChatId !== void 0 && st.getActiveChat()?.chatId !== opts.expectChatId) {
+        return [{ type: "error", code: "chat_changed", message: "The open chat changed; the action was dropped." }];
+      }
       if (!state) {
         return load.kind === "readonly" ? [{ type: "error", code: "read_only", message: "Campaign is read-only." }] : [{ type: "error", code: "no_campaign", message: "No Alius campaign in this chat." }];
       }
@@ -5556,6 +5565,21 @@ async function loadPacks(packRoots, fetchJson2) {
 // src/st/real.ts
 import { editGroup } from "../../../../group-chats.js";
 
+// src/st/profiles.ts
+function connectionProfiles(extensionSettings, requestServiceAvailable) {
+  if (!requestServiceAvailable) return [];
+  const disabled = extensionSettings?.disabledExtensions;
+  if (Array.isArray(disabled) && disabled.includes("connection-manager")) return [];
+  const profiles = extensionSettings?.connectionManager?.profiles;
+  if (!Array.isArray(profiles)) return [];
+  return profiles.map((p) => ({
+    id: String(p.id),
+    name: String(p.name ?? p.id),
+    api: String(p.api ?? ""),
+    model: String(p.model ?? "")
+  }));
+}
+
 // src/st/reasoning.ts
 function reasoningPayload(api, think) {
   if (think === "auto") return {};
@@ -5647,14 +5671,8 @@ var RealStAdapter = class {
     }
   }
   listConnectionProfiles() {
-    const profiles = ctx().extensionSettings?.connectionManager?.profiles;
-    if (!Array.isArray(profiles)) return [];
-    return profiles.map((p) => ({
-      id: String(p.id),
-      name: String(p.name ?? p.id),
-      api: String(p.api ?? ""),
-      model: String(p.model ?? "")
-    }));
+    const c = ctx();
+    return connectionProfiles(c.extensionSettings, !!c.ConnectionManagerRequestService);
   }
   getCharacterCard(avatar) {
     const ch = ctx().characters.find((x) => x.avatar === avatar);

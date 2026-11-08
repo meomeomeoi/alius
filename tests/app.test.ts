@@ -213,4 +213,20 @@ describe('app', () => {
     expect(shell.toasts.at(-1)!.kind).toBe('error');
     expect(shell.toasts.at(-1)!.text).toMatch(/^Ping failed: no_profile/);
   });
+
+  it('a dispatch bound to another chat is dropped (in-flight result after a chat switch)', async () => {
+    const { st, app } = await boot(A);
+    await app.initCampaign();
+    const chatA = app.current().load.kind === 'ok' ? (app.current().load as { chatId: string }).chatId : '';
+    st.switchChat(B);
+    await app.initCampaign();
+    const before = structuredClone(app.current().state!);
+    const events = app.dispatch({ type: 'debug/roll', payload: { sides: 6 } }, { expectChatId: chatA });
+    expect(events).toEqual([{ type: 'error', code: 'chat_changed', message: expect.any(String) }]);
+    expect(app.current().state).toEqual(before);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect((st.readMetadata(METADATA_KEY) as { rng: unknown }).rng).toEqual(before.rng);
+    // bound to the chat that is actually open: applied
+    expect(app.dispatch({ type: 'debug/roll', payload: { sides: 6 } }, { expectChatId: 'chat-b' })[0]).toMatchObject({ type: 'rolled' });
+  });
 });

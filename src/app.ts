@@ -15,7 +15,12 @@ import { createShell, type ShellApi } from './ui/shell/shell';
 export interface AliusApp {
   start(): Promise<void>;
   current(): { load: LoadResult; state: CampaignState | null };
-  dispatch(action: Action): EngineEvent[];
+  /**
+   * Applies an action to the open campaign. Callers that await something first (an LLM call)
+   * must pass `expectChatId` — the chat the work started in; if the open chat differs the
+   * action is dropped with a `chat_changed` error event instead of landing in another campaign.
+   */
+  dispatch(action: Action, opts?: { expectChatId?: string }): EngineEvent[];
   initCampaign(): Promise<void>;
   pingMechanic(): Promise<LlmResult<{ pong: true; echo: string }>>;
   /** Replaces the whole campaign (state editor, import). Refused for read-only campaigns. */
@@ -131,7 +136,10 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
 
     current: () => ({ load, state }),
 
-    dispatch(action) {
+    dispatch(action, opts) {
+      if (opts?.expectChatId !== undefined && st.getActiveChat()?.chatId !== opts.expectChatId) {
+        return [{ type: 'error', code: 'chat_changed', message: 'The open chat changed; the action was dropped.' }];
+      }
       if (!state) {
         return load.kind === 'readonly'
           ? [{ type: 'error', code: 'read_only', message: 'Campaign is read-only.' }]
