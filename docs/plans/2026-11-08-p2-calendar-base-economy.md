@@ -237,7 +237,7 @@ calendar: `morning to afternoon to evening`; `evening without a night queue runs
 - Create: `docs/MANUAL_TEST_P2.md`
 - Test: `tests/build.test.ts` (existing)
 
-- [ ] **Step 1:** `npm run build` → writes `dist/index.js` and `style.css`; `git status` shows both changed (they stay tracked).
-- [ ] **Step 2:** Walk the six acceptance criteria of the spec against the tests (week simulated, shortage penalties, upgrade timers, deterministic grunts + portraits, social checks queryable, per-effect unit tests) and note the test names in `docs/MANUAL_TEST_P2.md` next to the in-SillyTavern steps that cannot be automated (header, OPS, BASE, vignette, grunt flavor).
-- [ ] **Step 3:** `npx vitest run` and `npm run typecheck` → all green; paste the counts into the final report.
-- [ ] **Step 4: Commit** `chore: rebuild dist and style, P2 manual checklist and notes`.
+- [x] **Step 1:** `npm run build` → writes `dist/index.js` and `style.css`; `git status` shows both changed (they stay tracked).
+- [x] **Step 2:** Walk the six acceptance criteria of the spec against the tests (week simulated, shortage penalties, upgrade timers, deterministic grunts + portraits, social checks queryable, per-effect unit tests) and note the test names in `docs/MANUAL_TEST_P2.md` next to the in-SillyTavern steps that cannot be automated (header, OPS, BASE, vignette, grunt flavor).
+- [x] **Step 3:** `npx vitest run` and `npm run typecheck` → all green; paste the counts into the final report.
+- [x] **Step 4: Commit** `chore: rebuild dist and style, P2 manual checklist and notes`.

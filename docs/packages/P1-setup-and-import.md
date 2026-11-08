@@ -69,10 +69,10 @@ On any failure an error toast is shown, no campaign is written anywhere, and the
 - Unit ids are `unit_<slug of the name>`; two cards with the same name get `_2`, `_3`, …
 
 ### 7. SQUAD tab and day placeholder
-SQUAD shows `NO ACTIVE CAMPAIGN IN THIS CHAT` with `[ NEW CAMPAIGN ]` (or the read-only reason, no button), `NO UNITS ASSIGNED`, or one block per unit: portrait, name, role, `LVL n`, `HP · ATK · DEF · SPD · CRIT%`, the equipment line, every defect with its full registry text and origin, the six values as bands (`LOW` ≤ −2, `MID` −1…+1, `HIGH` ≥ +2) or as numbers with *Show raw values*, and the signature skill with its template. An id missing from the registries shows `UNKNOWN <id>` instead of failing. Relationship axes are not shown (P3 owns them). OPS shows `DAY n // SLOT` and `CALENDAR MODULE OFFLINE`.
+SQUAD shows `NO ACTIVE CAMPAIGN IN THIS CHAT` with `[ NEW CAMPAIGN ]` (or the read-only reason, no button), `NO UNITS ASSIGNED`, or one block per unit: portrait, name, role, `LVL n`, `HP · ATK · DEF · SPD · CRIT%`, the equipment line, every defect with its full registry text and origin, the six values as bands (`LOW` ≤ −2, `MID` −1…+1, `HIGH` ≥ +2) or as numbers with *Show raw values*, and the signature skill with its template. An id missing from the registries shows `UNKNOWN <id>` instead of failing. Relationship axes are not shown (P3 owns them). OPS showed a day placeholder in P1; P2 replaced it with the day planner.
 
 ## Out of scope
-Calendar actions, base, scenes, combat. After confirm, the PDA shows the SQUAD tab (profile view) and the OPS placeholder.
+Calendar actions, base, scenes, combat. After confirm, the PDA shows the SQUAD tab (profile view); OPS was a placeholder until P2.
 
 ## Acceptance criteria
 1. Wizard completes with 4, 2 and 0 cards; state reflects choices; reload keeps it.

@@ -2,6 +2,8 @@
 
 **Depends on:** P0, P1. **Read:** overview; `content/lore.md` §8; `content/roles.md` §7 (grunts).
 
+**Status:** implemented (plan: `plans/2026-11-08-p2-calendar-base-economy.md`). Automated tests pass; the in-SillyTavern checklist `MANUAL_TEST_P2.md` still has to be run by hand. Where an earlier draft of this spec said something else, the code won; the differences are listed under **Implemented as** at the end.
+
 ## Goal
 
 The day loop works: the player spends slots on activities (alone or with a companion), resources flow, the base can be upgraded, grunts can be recruited, and the day ends with upkeep. Conversations are stubbed as an activity that P3 implements.
@@ -72,3 +74,19 @@ Scene content (P3), combat & crafting recipes (P4), missions (P5).
 4. Grunts generate deterministically from seed; portraits render.
 5. Social stat checks are queryable by other modules.
 6. Unit tests for every activity effect, upkeep math, timers, and seeded grunt generation.
+
+## Implemented as
+
+Decisions taken while implementing, where the spec was silent or the P1 code already had an answer:
+
+- **Social stats.** P1 stores ranks (`socialStats`, 1–5). P2 adds `commander.socialPoints` next to them; a rank without stored points counts as its threshold (0/10/25/45/70), so a start rank is never lost. Queries for other packages: `meetsSocialRequirements(state, { empathy: 3 })`, `socialRank`.
+- **Starting resources.** `starts[].startingResources` is the base; corporation bonus and crime effects are added on top.
+- **Supplies source.** Nothing in P2 produces supplies, so `base/requisition` (credits → supplies, 8 CR each) exists until P5 expeditions bring supplies. Shortage and its penalties are as specified: each missing point costs 4 stress and 1 Affinity spread over the active roster (a `hunger_loop` unit holds two shares), and every 3rd consecutive shortage day costs 5 Trust.
+- **Activities.** Alone → `effects`; with a companion → `companionEffects` **instead**. `talk` emits `scene_requested` and does not consume the slot (P3 calls `calendar/consume_slot` when the scene ends). XP only adds to `unit.xp`; levelling is P4.
+- **Night.** At the end of Evening the pipeline runs once; with a non-empty `nightEventsQueue` the head entry moves to `calendar.nightEvent` and the slot becomes Night (P3 reads `nightEvent`). Ending Night rolls over without a second pipeline.
+- **Day-end hooks.** P3/P5 plug into `mission_deadlines`, `director_tick` and `dm_rumors` through `registerDayEndStep`.
+- **Relationship gains** go through `setRelationGainHandler` (default: full below 4 points a day per axis, half below 8, none after). P3 replaces the handler with its own accounting. `dailyGain` is zeroed at every rollover.
+- **Grunts.** Role uniformly random, level = rounded average level of living units − 1 (min 1), stats = role base (growth is P4), one lite defect (`lite: true`, no arc; Desire/Bond only if the campaign setting is on), a signature drawn from the registry (P4 may ignore it for grunts), trust-only relation (base 25, the crime's unconditional `starting_trust` effects, +10 for `grunt_starting_trust`). Generated name and bio use the `flavor` call (`kind: 'grunt'`).
+- **Vignette.** New call type `activity_vignette` (main profile, 150 tokens), text only; both vignettes and grunt names have a SYS toggle.
+- **Facilities.** All five exist at level 1 from the start. Upgrades cost credits + plyx up front and complete at the day end after their last day. Costs, times and effect values in `facilities.json` are draft balance numbers.
+- **Not in P2:** the commander's own stress (the commander has none in the state), the Hunger Loop's extra Affinity from meals (a P3 social hook), base location ids for scenes (P3), workshop recipes and crafting (P4; the `workshop` activity only emits `workshop_session`).
