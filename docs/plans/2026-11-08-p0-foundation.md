@@ -383,13 +383,13 @@ orchestrator (fake adapter, `ping`):
   - Built-in provider `header` (priority 100): `[ALIUS] Day {day}, {Slot}.`
   - Block format: `[ALIUS CONTEXT]\n` + provider outputs joined by `\n`; directives: `[ALIUS DIRECTIVES — hard constraints, follow them]\n- …` or `''` if none.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `header renders day and slot`; `lowest priority providers are trimmed first under the cap` (three providers ~400 tokens each, cap 900 → lowest dropped); `directives are never trimmed`; `next_reply directive is gone after onReplyReceived`; `apply with null clears both injections`; `provider returning null contributes nothing`.
 
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → PASS.
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → PASS.
 
-- [ ] **Step 5: Commit** `feat(llm): context builder with priority trimming and directives`
+- [x] **Step 5: Commit** `feat(llm): context builder with priority trimming and directives`
 
 ---
 
