@@ -7209,7 +7209,9 @@ var StartSchema = BaseEntrySchema.extend({
   summary: str,
   situation: str,
   spine: external_exports.array(external_exports.object({ id: str, title: str, goal: str })).min(5).max(8),
-  crimeKnownByDefault: external_exports.boolean().optional()
+  crimeKnownByDefault: external_exports.boolean().optional(),
+  /** Base amounts the campaign begins with; corporation and crime effects are added on top (P2). */
+  startingResources: external_exports.object({ credits: int.min(0).optional(), supplies: int.min(0).optional(), plyx: int.min(0).optional() }).strict().optional()
 });
 var CrimeSchema = BaseEntrySchema.extend({
   name: str,
@@ -7276,6 +7278,88 @@ Object.assign(registrySchemas, {
   defects: DefectSchema,
   statuses: StatusSchema
 });
+var slotEnum = external_exports.enum(["morning", "afternoon", "evening", "night"]);
+var socialStat = external_exports.enum(["authority", "insight", "empathy", "cunning"]);
+var amountFields = {
+  /** Multiplies `amount` by (1 + facility effect / 100). */
+  scale: external_exports.object({ facility: str, key: str }).strict().optional(),
+  when: external_exports.object({ focus: str.optional(), companionLikes: str.optional() }).strict().optional()
+};
+var ActivityEffectSchema = external_exports.discriminatedUnion("type", [
+  external_exports.object({
+    type: external_exports.literal("resource"),
+    resource: external_exports.enum(["credits", "supplies", "plyx"]),
+    amount: int,
+    /** Adds `per` × the commander's rank in `stat`. */
+    perStat: external_exports.object({ stat: socialStat, per: int }).strict().optional(),
+    ...amountFields
+  }).strict(),
+  external_exports.object({ type: external_exports.literal("commander_stat"), stat: socialStat, amount: int, ...amountFields }).strict(),
+  external_exports.object({ type: external_exports.literal("unit_xp"), target: external_exports.enum(["selected", "companion"]), amount: int, ...amountFields }).strict(),
+  external_exports.object({ type: external_exports.literal("unit_stress"), target: external_exports.enum(["selected", "companion", "roster"]), amount: int, ...amountFields }).strict(),
+  external_exports.object({ type: external_exports.literal("injury_days"), target: external_exports.enum(["selected", "companion"]), amount: int, ...amountFields }).strict(),
+  external_exports.object({ type: external_exports.literal("commander_injury_days"), amount: int, ...amountFields }).strict(),
+  external_exports.object({ type: external_exports.literal("defect_upkeep"), target: external_exports.enum(["selected", "companion"]), ...amountFields }).strict(),
+  external_exports.object({ type: external_exports.literal("relation"), axis: external_exports.enum(["trust", "affinity", "attraction"]), amount: int, ...amountFields }).strict(),
+  external_exports.object({ type: external_exports.literal("emit_event"), event: str, ...amountFields }).strict()
+]);
+var ActivitySchema = BaseEntrySchema.extend({
+  name: str,
+  summary: str,
+  slotRules: external_exports.array(slotEnum).min(1),
+  facilityReq: external_exports.object({ id: str, level: int.min(1) }).strict().optional(),
+  cost: external_exports.object({ credits: int.min(0).optional(), supplies: int.min(0).optional(), plyx: int.min(0).optional() }).strict(),
+  companion: external_exports.enum(["none", "optional", "required"]),
+  /** Choices for the alone variant; `units` says how many squad units the player picks for that choice. */
+  focus: external_exports.array(external_exports.object({
+    id: str,
+    label: str,
+    units: external_exports.object({ min: int.min(1), max: int.min(1) }).strict().optional()
+  }).strict()).optional(),
+  effects: external_exports.array(ActivityEffectSchema),
+  companionEffects: external_exports.array(ActivityEffectSchema),
+  flavor: external_exports.enum(["none", "short"]),
+  /** The activity opens a scene (P3); the slot is consumed when the scene ends, not here. */
+  startsScene: external_exports.boolean().optional(),
+  blockedWhenCommanderInjured: external_exports.boolean().optional()
+}).superRefine((a, ctx2) => {
+  const issue = (path, message) => ctx2.addIssue({ code: "custom", path, message });
+  if (a.companion === "none" && a.companionEffects.length > 0) issue(["companionEffects"], 'companion "none" cannot have companionEffects');
+  if (a.companion === "required" && a.companionEffects.length === 0) issue(["companionEffects"], 'companion "required" needs companionEffects');
+  const focusIds = new Set((a.focus ?? []).map((f) => f.id));
+  a.effects.forEach((fx, i) => {
+    const f = fx;
+    if (f.when?.focus !== void 0 && !focusIds.has(f.when.focus)) issue(["effects", i, "when", "focus"], `unknown focus "${f.when.focus}"`);
+    if (f.target === "companion") issue(["effects", i, "target"], "effects (alone) cannot target the companion");
+    if (f.type === "relation") issue(["effects", i, "type"], "relation effects need a companion; use companionEffects");
+    if (f.when?.companionLikes !== void 0) issue(["effects", i, "when", "companionLikes"], "companionLikes only applies to companionEffects");
+  });
+  a.companionEffects.forEach((fx, i) => {
+    const f = fx;
+    if (f.target === "selected") issue(["companionEffects", i, "target"], 'companionEffects cannot target "selected"');
+    if (f.when?.focus !== void 0) issue(["companionEffects", i, "when", "focus"], "focus is ignored when a companion is present");
+  });
+});
+var FacilitySchema = BaseEntrySchema.extend({
+  name: str,
+  summary: str,
+  maxLevel: int.min(1).max(5),
+  /** `levels[0]` is level 1 (the starting level, no upgrade cost); later levels carry the cost to reach them. */
+  levels: external_exports.array(external_exports.object({
+    effects: external_exports.record(external_exports.number()),
+    upgrade: external_exports.object({ credits: int.min(0), plyx: int.min(0), days: int.min(1) }).strict().optional()
+  }).strict())
+}).superRefine((f, ctx2) => {
+  const issue = (path, message) => ctx2.addIssue({ code: "custom", path, message });
+  if (f.levels.length !== f.maxLevel) issue(["levels"], `needs exactly maxLevel (${f.maxLevel}) levels, has ${f.levels.length}`);
+  const keys = Object.keys(f.levels[0]?.effects ?? {}).sort().join(",");
+  f.levels.forEach((l, i) => {
+    if (i === 0 && l.upgrade) issue(["levels", 0, "upgrade"], "level 1 has no upgrade cost");
+    if (i > 0 && !l.upgrade) issue(["levels", i, "upgrade"], `level ${i + 1} needs an upgrade cost`);
+    if (Object.keys(l.effects).sort().join(",") !== keys) issue(["levels", i, "effects"], "every level must list the same effect keys");
+  });
+});
+Object.assign(registrySchemas, { activities: ActivitySchema, facilities: FacilitySchema });
 
 // src/content/refs.ts
 var extractors = /* @__PURE__ */ new Map();
@@ -7301,6 +7385,35 @@ registerRefs("starts", (entry) => {
     path: "corporationId",
     check: (target) => target.playable === true ? null : `start "${entry.id}" uses non-playable corporation "${corpId}"`
   }];
+});
+registerRefs("activities", (entry) => {
+  const refs = [];
+  const req = entry.facilityReq;
+  if (req && typeof req.id === "string") {
+    const level = req.level;
+    refs.push({
+      registry: "facilities",
+      id: req.id,
+      path: "facilityReq.id",
+      check: (t) => typeof level === "number" && level > (t.maxLevel ?? 0) ? `facility "${req.id}" has no level ${level}` : null
+    });
+  }
+  for (const list of ["effects", "companionEffects"]) {
+    const fxs = entry[list];
+    if (!Array.isArray(fxs)) continue;
+    fxs.forEach((fx, i) => {
+      const scale = fx.scale;
+      if (!scale || typeof scale.facility !== "string") return;
+      const key = String(scale.key);
+      refs.push({
+        registry: "facilities",
+        id: scale.facility,
+        path: `${list}[${i}].scale.facility`,
+        check: (t) => t.levels?.[0]?.effects && key in t.levels[0].effects ? null : `facility "${scale.facility}" has no effect "${key}"`
+      });
+    });
+  }
+  return refs;
 });
 
 // src/content/loader.ts

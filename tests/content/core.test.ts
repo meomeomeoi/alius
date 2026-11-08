@@ -69,3 +69,90 @@ describe('core content pack', () => {
     expect(r.flags.get('knows_crime')).toMatchObject({ scope: 'relation', setBy: ['start', 'event'] });
   });
 });
+
+describe('core content: P2 registries', () => {
+  it('core pack has the nine v1 activities and five facilities', async () => {
+    const { registries: r, errors } = await load();
+    expect(errors).toEqual([]);
+    expect([...r.activities.keys()].sort()).toEqual(
+      ['medbay', 'mess', 'rest', 'scout_net', 'study', 'talk', 'train', 'work', 'workshop'],
+    );
+    expect([...r.facilities.keys()].sort()).toEqual(['barracks', 'comms', 'medbay', 'mess_hall', 'workshop']);
+  });
+
+  it('every activity facilityReq exists and is within the facility max level', async () => {
+    const { registries: r } = await load();
+    for (const a of r.activities.values()) {
+      const req = a.facilityReq as { id: string; level: number } | undefined;
+      if (!req) continue;
+      const f = r.facilities.get(req.id);
+      expect(f, `${a.id} → ${req.id}`).toBeDefined();
+      expect(req.level).toBeLessThanOrEqual(f!.maxLevel as number);
+    }
+  });
+
+  it('facility levels are complete', async () => {
+    const { registries: r } = await load();
+    const maxes = Object.fromEntries([...r.facilities.values()].map((f) => [f.id, f.maxLevel]));
+    expect(maxes).toEqual({ barracks: 5, workshop: 5, medbay: 5, mess_hall: 3, comms: 3 });
+    const barracks = r.facilities.get('barracks')!.levels as Array<{ effects: Record<string, number> }>;
+    expect(barracks[0].effects.rosterCapacity).toBe(6);
+    expect(barracks[4].effects.rosterCapacity).toBe(10);
+  });
+
+  it('talk requires a companion and starts a scene', async () => {
+    const { registries: r } = await load();
+    expect(r.activities.get('talk')).toMatchObject({ companion: 'required', startsScene: true });
+  });
+
+  it('train and work are blocked while the commander is injured, others are not', async () => {
+    const { registries: r } = await load();
+    const blocked = [...r.activities.values()].filter((a) => a.blockedWhenCommanderInjured === true).map((a) => a.id);
+    expect(blocked.sort()).toEqual(['train', 'work']);
+  });
+
+  it('starts declare starting resources', async () => {
+    const { registries: r } = await load();
+    for (const s of r.starts.values()) {
+      const res = s.startingResources as { credits: number; supplies: number; plyx: number };
+      expect(res, s.id).toBeDefined();
+      expect(res.supplies).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe('activity cross references', () => {
+  const pack = (activity: Record<string, unknown>) => {
+    const files: Record<string, unknown> = {
+      'p/manifest.json': { id: 'p', name: 'P', version: '1', priority: 0, files: { activities: 'a.json', facilities: 'f.json' } },
+      'p/a.json': [activity],
+      'p/f.json': [{
+        id: 'medbay', name: 'M', summary: 's', maxLevel: 1, levels: [{ effects: { stressReliefPct: 0 } }],
+      }],
+    };
+    return loadPacks(['p'], async (path) => files[path]);
+  };
+  const base = {
+    id: 'x', name: 'X', summary: 's', slotRules: ['morning'], cost: {}, companion: 'none', flavor: 'none', companionEffects: [],
+    effects: [{ type: 'unit_stress', target: 'selected', amount: -5, scale: { facility: 'medbay', key: 'stressReliefPct' } }],
+  };
+
+  it('a valid scale reference loads', async () => {
+    expect((await pack(base)).errors).toEqual([]);
+  });
+
+  it('scale pointing at an unknown facility is a load error', async () => {
+    const r = await pack({ ...base, effects: [{ ...base.effects[0], scale: { facility: 'nowhere', key: 'k' } }] });
+    expect(r.errors.map((e) => e.message).join('|')).toContain('references unknown facilities id "nowhere"');
+  });
+
+  it('scale pointing at an unknown facility key is a load error', async () => {
+    const r = await pack({ ...base, effects: [{ ...base.effects[0], scale: { facility: 'medbay', key: 'nope' } }] });
+    expect(r.errors.map((e) => e.message).join('|')).toContain('has no effect "nope"');
+  });
+
+  it('facilityReq above the facility max level is a load error', async () => {
+    const r = await pack({ ...base, facilityReq: { id: 'medbay', level: 2 } });
+    expect(r.errors.map((e) => e.message).join('|')).toContain('has no level 2');
+  });
+});

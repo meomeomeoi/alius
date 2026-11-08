@@ -36,7 +36,12 @@
         "title": "Open ground",
         "goal": "Open-ended phase."
       }
-    ]
+    ],
+    "startingResources": {
+      "credits": 40,
+      "supplies": 20,
+      "plyx": 10
+    }
   },
   {
     "id": "start_kestrel",
@@ -75,6 +80,11 @@
         "title": "Open ground",
         "goal": "Open-ended phase."
       }
-    ]
+    ],
+    "startingResources": {
+      "credits": 60,
+      "supplies": 16,
+      "plyx": 5
+    }
   }
 ]

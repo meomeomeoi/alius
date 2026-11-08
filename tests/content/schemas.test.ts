@@ -71,3 +71,72 @@ describe('content schemas', () => {
     expect(CrimeSchema.safeParse({ id: 'k', name: 'K', summary: 's', perk: { text: 'p', effects: [] }, flaw: { text: 'f', effects: [] }, valueReactions: [], knownByDefault: false }).success).toBe(true);
   });
 });
+
+import { ActivitySchema, FacilitySchema } from '../../src/content/schemas';
+
+const activity = (over: Record<string, unknown> = {}) => ({
+  id: 'a', name: 'A', summary: 's', slotRules: ['morning'], cost: {}, companion: 'optional', flavor: 'none',
+  effects: [{ type: 'commander_stat', stat: 'authority', amount: 3 }],
+  companionEffects: [{ type: 'unit_xp', target: 'companion', amount: 5 }],
+  ...over,
+});
+const facility = (over: Record<string, unknown> = {}) => ({
+  id: 'f', name: 'F', summary: 's', maxLevel: 2,
+  levels: [{ effects: { cap: 1 } }, { effects: { cap: 2 }, upgrade: { credits: 10, plyx: 1, days: 2 } }],
+  ...over,
+});
+
+describe('activity and facility schemas', () => {
+  it('a valid activity passes', () => {
+    expect(ActivitySchema.safeParse(activity()).success).toBe(true);
+  });
+
+  it('activity with companion none and companionEffects is rejected', () => {
+    expect(ActivitySchema.safeParse(activity({ companion: 'none' })).success).toBe(false);
+    expect(ActivitySchema.safeParse(activity({ companion: 'none', companionEffects: [] })).success).toBe(true);
+  });
+
+  it('required companion without companionEffects is rejected', () => {
+    expect(ActivitySchema.safeParse(activity({ companion: 'required', companionEffects: [] })).success).toBe(false);
+  });
+
+  it('when.focus must be a declared focus', () => {
+    const focus = [{ id: 'units', label: 'Units', units: { min: 1, max: 2 } }];
+    const eff = (f: string) => [{ type: 'unit_xp', target: 'selected', amount: 5, when: { focus: f } }];
+    expect(ActivitySchema.safeParse(activity({ focus, effects: eff('units') })).success).toBe(true);
+    expect(ActivitySchema.safeParse(activity({ focus, effects: eff('nope') })).success).toBe(false);
+    expect(ActivitySchema.safeParse(activity({ effects: eff('units') })).success).toBe(false);
+  });
+
+  it('unknown effect type is rejected', () => {
+    expect(ActivitySchema.safeParse(activity({ effects: [{ type: 'teleport' }] })).success).toBe(false);
+  });
+
+  it('slot rules must name real slots and not be empty', () => {
+    expect(ActivitySchema.safeParse(activity({ slotRules: [] })).success).toBe(false);
+    expect(ActivitySchema.safeParse(activity({ slotRules: ['dawn'] })).success).toBe(false);
+  });
+
+  it('facility with a missing level is rejected', () => {
+    expect(FacilitySchema.safeParse(facility()).success).toBe(true);
+    expect(FacilitySchema.safeParse(facility({ levels: [{ effects: { cap: 1 } }] })).success).toBe(false);
+  });
+
+  it('facility levels need an upgrade from level 2 and the same effect keys', () => {
+    expect(FacilitySchema.safeParse(facility({
+      levels: [{ effects: { cap: 1 } }, { effects: { cap: 2 } }],
+    })).success).toBe(false);
+    expect(FacilitySchema.safeParse(facility({
+      levels: [{ effects: { cap: 1 } }, { effects: { other: 2 }, upgrade: { credits: 1, plyx: 1, days: 1 } }],
+    })).success).toBe(false);
+    expect(FacilitySchema.safeParse(facility({
+      levels: [{ effects: { cap: 1 }, upgrade: { credits: 1, plyx: 1, days: 1 } }, { effects: { cap: 2 }, upgrade: { credits: 1, plyx: 1, days: 1 } }],
+    })).success).toBe(false);
+  });
+
+  it('start accepts startingResources and rejects negatives', () => {
+    const b = start(5);
+    expect(StartSchema.safeParse({ ...b, startingResources: { credits: 5, supplies: 1 } }).success).toBe(true);
+    expect(StartSchema.safeParse({ ...b, startingResources: { credits: -5 } }).success).toBe(false);
+  });
+});

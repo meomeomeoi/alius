@@ -12,6 +12,8 @@
     "signatures": "signatures.json",
     "defects": "defects.json",
     "statuses": "statuses.json",
-    "flags": "flags.json"
+    "flags": "flags.json",
+    "activities": "activities.json",
+    "facilities": "facilities.json"
   }
 }

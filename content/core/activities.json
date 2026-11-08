@@ -1,0 +1,388 @@
+[
+  {
+    "id": "train",
+    "name": "Train",
+    "summary": "Drill the squad, or the commander's own authority; with a companion, train together.",
+    "slotRules": [
+      "morning",
+      "afternoon",
+      "evening"
+    ],
+    "cost": {},
+    "companion": "optional",
+    "blockedWhenCommanderInjured": true,
+    "focus": [
+      {
+        "id": "units",
+        "label": "Drill the squad",
+        "units": {
+          "min": 1,
+          "max": 2
+        }
+      },
+      {
+        "id": "commander",
+        "label": "Command drill"
+      }
+    ],
+    "effects": [
+      {
+        "type": "unit_xp",
+        "target": "selected",
+        "amount": 15,
+        "when": {
+          "focus": "units"
+        }
+      },
+      {
+        "type": "commander_stat",
+        "stat": "authority",
+        "amount": 6,
+        "when": {
+          "focus": "commander"
+        }
+      }
+    ],
+    "companionEffects": [
+      {
+        "type": "commander_stat",
+        "stat": "authority",
+        "amount": 4
+      },
+      {
+        "type": "unit_xp",
+        "target": "companion",
+        "amount": 20
+      },
+      {
+        "type": "relation",
+        "axis": "affinity",
+        "amount": 2
+      }
+    ],
+    "flavor": "short"
+  },
+  {
+    "id": "workshop",
+    "name": "Workshop",
+    "summary": "Craft or upgrade gear (recipes arrive with P4); a companion's weapon may come out better.",
+    "slotRules": [
+      "morning",
+      "afternoon",
+      "evening"
+    ],
+    "facilityReq": {
+      "id": "workshop",
+      "level": 1
+    },
+    "cost": {},
+    "companion": "optional",
+    "effects": [
+      {
+        "type": "emit_event",
+        "event": "workshop_session"
+      }
+    ],
+    "companionEffects": [
+      {
+        "type": "emit_event",
+        "event": "workshop_session"
+      },
+      {
+        "type": "relation",
+        "axis": "affinity",
+        "amount": 2,
+        "when": {
+          "companionLikes": "tech"
+        }
+      }
+    ],
+    "flavor": "short"
+  },
+  {
+    "id": "medbay",
+    "name": "Medbay",
+    "summary": "Relieve stress, speed up injury recovery and maintain managed defects.",
+    "slotRules": [
+      "morning",
+      "afternoon",
+      "evening"
+    ],
+    "facilityReq": {
+      "id": "medbay",
+      "level": 1
+    },
+    "cost": {},
+    "companion": "optional",
+    "focus": [
+      {
+        "id": "units",
+        "label": "Treat squad members",
+        "units": {
+          "min": 1,
+          "max": 2
+        }
+      },
+      {
+        "id": "commander",
+        "label": "Treat the commander"
+      }
+    ],
+    "effects": [
+      {
+        "type": "unit_stress",
+        "target": "selected",
+        "amount": -10,
+        "scale": {
+          "facility": "medbay",
+          "key": "stressReliefPct"
+        },
+        "when": {
+          "focus": "units"
+        }
+      },
+      {
+        "type": "injury_days",
+        "target": "selected",
+        "amount": -1,
+        "when": {
+          "focus": "units"
+        }
+      },
+      {
+        "type": "defect_upkeep",
+        "target": "selected",
+        "when": {
+          "focus": "units"
+        }
+      },
+      {
+        "type": "commander_injury_days",
+        "amount": -1,
+        "when": {
+          "focus": "commander"
+        }
+      }
+    ],
+    "companionEffects": [
+      {
+        "type": "unit_stress",
+        "target": "companion",
+        "amount": -16,
+        "scale": {
+          "facility": "medbay",
+          "key": "stressReliefPct"
+        }
+      },
+      {
+        "type": "injury_days",
+        "target": "companion",
+        "amount": -2
+      },
+      {
+        "type": "defect_upkeep",
+        "target": "companion"
+      },
+      {
+        "type": "relation",
+        "axis": "trust",
+        "amount": 2
+      }
+    ],
+    "flavor": "short"
+  },
+  {
+    "id": "work",
+    "name": "Work",
+    "summary": "Take contract work for credits; clever hands earn more.",
+    "slotRules": [
+      "morning",
+      "afternoon",
+      "evening"
+    ],
+    "cost": {},
+    "companion": "none",
+    "blockedWhenCommanderInjured": true,
+    "effects": [
+      {
+        "type": "resource",
+        "resource": "credits",
+        "amount": 15,
+        "perStat": {
+          "stat": "cunning",
+          "per": 5
+        }
+      }
+    ],
+    "companionEffects": [],
+    "flavor": "none"
+  },
+  {
+    "id": "scout_net",
+    "name": "Scout the net",
+    "summary": "Comb the corporate net for rumors and side jobs.",
+    "slotRules": [
+      "morning",
+      "afternoon",
+      "evening"
+    ],
+    "facilityReq": {
+      "id": "comms",
+      "level": 1
+    },
+    "cost": {},
+    "companion": "none",
+    "effects": [
+      {
+        "type": "commander_stat",
+        "stat": "insight",
+        "amount": 4
+      },
+      {
+        "type": "emit_event",
+        "event": "rumors_requested"
+      }
+    ],
+    "companionEffects": [],
+    "flavor": "none"
+  },
+  {
+    "id": "rest",
+    "name": "Rest",
+    "summary": "Stand the squad down; with a companion, spend the slot together.",
+    "slotRules": [
+      "morning",
+      "afternoon",
+      "evening",
+      "night"
+    ],
+    "cost": {},
+    "companion": "optional",
+    "effects": [
+      {
+        "type": "unit_stress",
+        "target": "roster",
+        "amount": -3,
+        "scale": {
+          "facility": "barracks",
+          "key": "restPct"
+        }
+      }
+    ],
+    "companionEffects": [
+      {
+        "type": "unit_stress",
+        "target": "companion",
+        "amount": -8,
+        "scale": {
+          "facility": "barracks",
+          "key": "restPct"
+        }
+      },
+      {
+        "type": "relation",
+        "axis": "affinity",
+        "amount": 2
+      }
+    ],
+    "flavor": "short"
+  },
+  {
+    "id": "mess",
+    "name": "Group meal",
+    "summary": "A shared meal for the whole squad; costs supplies.",
+    "slotRules": [
+      "afternoon",
+      "evening"
+    ],
+    "facilityReq": {
+      "id": "mess_hall",
+      "level": 1
+    },
+    "cost": {
+      "supplies": 2
+    },
+    "companion": "none",
+    "effects": [
+      {
+        "type": "unit_stress",
+        "target": "roster",
+        "amount": -5,
+        "scale": {
+          "facility": "mess_hall",
+          "key": "mealPct"
+        }
+      },
+      {
+        "type": "emit_event",
+        "event": "group_scene_offered"
+      }
+    ],
+    "companionEffects": [],
+    "flavor": "none"
+  },
+  {
+    "id": "study",
+    "name": "Study",
+    "summary": "Read the files and the people: sharpen insight or empathy.",
+    "slotRules": [
+      "morning",
+      "afternoon",
+      "evening"
+    ],
+    "cost": {},
+    "companion": "none",
+    "focus": [
+      {
+        "id": "insight",
+        "label": "Insight"
+      },
+      {
+        "id": "empathy",
+        "label": "Empathy"
+      }
+    ],
+    "effects": [
+      {
+        "type": "commander_stat",
+        "stat": "insight",
+        "amount": 5,
+        "when": {
+          "focus": "insight"
+        }
+      },
+      {
+        "type": "commander_stat",
+        "stat": "empathy",
+        "amount": 5,
+        "when": {
+          "focus": "empathy"
+        }
+      }
+    ],
+    "companionEffects": [],
+    "flavor": "none"
+  },
+  {
+    "id": "talk",
+    "name": "Talk",
+    "summary": "Start a private conversation. The slot is spent when the scene ends.",
+    "slotRules": [
+      "morning",
+      "afternoon",
+      "evening",
+      "night"
+    ],
+    "cost": {},
+    "companion": "required",
+    "startsScene": true,
+    "effects": [],
+    "companionEffects": [
+      {
+        "type": "emit_event",
+        "event": "scene_requested"
+      }
+    ],
+    "flavor": "none"
+  }
+]

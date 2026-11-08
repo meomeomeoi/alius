@@ -135,6 +135,7 @@ Perks, flaws and starting bonuses hold a list of **effect objects**: `{ "type": 
 | `corporationId` | string | Must be a **playable** corporation. |
 | `spine` | `{ id, title, goal }[]`, 5 to 8 | Milestone beats, not scripts. |
 | `crimeKnownByDefault` | boolean, optional | If true, every unit starts with the `knows_crime` flag. |
+| `startingResources` | `{ credits?, supplies?, plyx? }`, optional | Base amounts the campaign begins with. The corporation bonus and crime effects are added on top. |
 
 ```json
 { "id": "start_vesper", "name": "Seed Stock", "corporationId": "vesper", "summary": "Secure Bloom samples.", "situation": "...",
@@ -206,6 +207,47 @@ Signature skill **templates**. The id must start with `sig_`. At import the mode
   "upside": "+ATK scaling with stress.", "downside": "Insults and refusals raise stress sharply.",
   "breakdown": { "name": "Red Out", "text": "Attacks the strongest visible target." }, "social": "Fights with squadmates.",
   "arc": { "cure": "Not yet written.", "manage": "A sparring outlet.", "embrace": "Controlled fury." } }
+```
+
+## `activities`
+
+A slot action. Alone it runs `effects`; with a companion it runs `companionEffects` **instead**.
+
+| Field | Type | |
+|---|---|---|
+| `name`, `summary` | string | |
+| `slotRules` | `morning`\|`afternoon`\|`evening`\|`night`[], at least 1 | Slots where it may be started. |
+| `facilityReq` | `{ id, level }`, optional | A facility (must exist, level within its `maxLevel`). An absent facility counts as level 1. |
+| `cost` | `{ credits?, supplies?, plyx? }` | Paid before the effects. |
+| `companion` | `none`\|`optional`\|`required` | `none` forbids `companionEffects`, `required` needs them. |
+| `focus` | `{ id, label, units?: { min, max } }[]`, optional | Choices of the alone variant; `units` is how many squad units the player picks for it. The first focus is the default. |
+| `effects`, `companionEffects` | effect[] | See below. |
+| `flavor` | `none`\|`short` | `short`: after a companion run the extension may show a 2-line generated vignette (no numbers come from it). |
+| `startsScene` | boolean, optional | Emits `scene_requested`; the slot is consumed when the scene ends, not by the activity. |
+| `blockedWhenCommanderInjured` | boolean, optional | Not available while the commander is injured. |
+
+Effect types (a typo or a missing field is a load error): `resource {resource, amount, perStat?: {stat, per}}`, `commander_stat {stat, amount}` (social points), `unit_xp {target, amount}`, `unit_stress {target, amount}` (negative = relief), `injury_days {target, amount}` (negative = recovery), `commander_injury_days {amount}`, `defect_upkeep {target}`, `relation {axis, amount}` (companion only), `emit_event {event}`. `target` is `selected` (alone only), `companion` (companionEffects only) or, for stress, `roster`. Every effect may carry `when: { focus?, companionLikes? }` (`focus` only in `effects`, `companionLikes` only in `companionEffects`) and `scale: { facility, key }`, which multiplies `amount` by `1 + (facility effect at its current level) / 100`.
+
+```json
+{ "id": "rest", "name": "Rest", "summary": "Stand the squad down.", "slotRules": ["morning", "evening"], "cost": {},
+  "companion": "optional", "flavor": "short",
+  "effects": [{ "type": "unit_stress", "target": "roster", "amount": -3, "scale": { "facility": "barracks", "key": "restPct" } }],
+  "companionEffects": [{ "type": "unit_stress", "target": "companion", "amount": -8 }, { "type": "relation", "axis": "affinity", "amount": 2 }] }
+```
+
+## `facilities`
+
+| Field | Type | |
+|---|---|---|
+| `name`, `summary` | string | |
+| `maxLevel` | 1 to 5 | `levels` must have exactly this many entries. |
+| `levels` | `{ effects, upgrade? }[]` | `levels[0]` is level 1 (the starting level, no `upgrade`). Every later level has `upgrade: { credits, plyx, days }`, the cost and build time to reach it. All levels list the same keys in `effects` (numbers). |
+
+Other packages read effect values by key (`rosterCapacity`, `restPct`, `stressReliefPct`, `injurySpeed`, `upkeepReduction`, `mealPct`, `rumorsPerDay`, `missionBoardSize`, `dmFeatures`, `rarityCap`, `upgradeDiscountPct`, `arcStageCap`).
+
+```json
+{ "id": "mess_hall", "name": "Mess hall", "summary": "Cuts daily supply use.", "maxLevel": 2,
+  "levels": [{ "effects": { "upkeepReduction": 0 } }, { "effects": { "upkeepReduction": 1 }, "upgrade": { "credits": 80, "plyx": 5, "days": 2 } }] }
 ```
 
 ## `statuses`

@@ -109,11 +109,11 @@ relationGain: `first points are full value`; `points past the soft cap count hal
 - Produces in `refs.ts`: `activities.facilityReq.id → facilities` (with level ≤ maxLevel check), `activity effect scale.facility → facilities`.
 - Content: activities `train, workshop, medbay, work, scout_net, rest, mess, study, talk` and facilities `barracks (5), workshop (5), medbay (5), mess_hall (3), comms (3)` as in the spec tables. Facility effect keys: barracks `rosterCapacity` 6…10 and `restPct`; workshop `rarityCap` 1…5 and `upgradeDiscountPct`; medbay `stressReliefPct`, `injurySpeed`, `arcStageCap`; mess_hall `upkeepReduction`, `mealPct`; comms `rumorsPerDay`, `missionBoardSize`, `dmFeatures`. All numbers are draft balance values.
 
-- [ ] **Step 1: Write the failing tests** — core: `core pack has the nine v1 activities and five facilities`; `every activity facilityReq exists`; `facility levels are complete` (levels.length = maxLevel, upgrade only from level 2, same keys per level, barracks rosterCapacity is 6 at level 1 and 10 at level 5); `talk requires a companion and starts a scene`; `train and work are blocked while the commander is injured`; `starts declare starting resources`. schemas: `activity with companion none and companionEffects is rejected`; `required companion without companionEffects is rejected`; `when.focus must be a declared focus`; `unknown effect type is rejected`; `scale pointing at an unknown facility is a load error`; `facility with a missing level is rejected`.
-- [ ] **Step 2: Run** `npx vitest run tests/content` → FAIL.
-- [ ] **Step 3: Implement** schemas, refs, JSON and manifest; document both registries and `startingResources` in `docs/CONTENT.md`.
-- [ ] **Step 4: Run** `npx vitest run tests/content` → PASS (loading `content/core` reports no errors).
-- [ ] **Step 5: Commit** `feat(content): activities and facilities registries, starting resources`.
+- [x] **Step 1: Write the failing tests** — core: `core pack has the nine v1 activities and five facilities`; `every activity facilityReq exists`; `facility levels are complete` (levels.length = maxLevel, upgrade only from level 2, same keys per level, barracks rosterCapacity is 6 at level 1 and 10 at level 5); `talk requires a companion and starts a scene`; `train and work are blocked while the commander is injured`; `starts declare starting resources`. schemas: `activity with companion none and companionEffects is rejected`; `required companion without companionEffects is rejected`; `when.focus must be a declared focus`; `unknown effect type is rejected`; `scale pointing at an unknown facility is a load error`; `facility with a missing level is rejected`.
+- [x] **Step 2: Run** `npx vitest run tests/content` → FAIL.
+- [x] **Step 3: Implement** schemas, refs, JSON and manifest; document both registries and `startingResources` in `docs/CONTENT.md`.
+- [x] **Step 4: Run** `npx vitest run tests/content` → PASS (loading `content/core` reports no errors).
+- [x] **Step 5: Commit** `feat(content): activities and facilities registries, starting resources`.
 
 ### Task 3: Economy, calendar and the day-end pipeline
 

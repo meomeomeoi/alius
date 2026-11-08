@@ -40,3 +40,39 @@ registerRefs('starts', (entry) => {
       target.playable === true ? null : `start "${entry.id}" uses non-playable corporation "${corpId}"`,
   }];
 });
+
+interface FacilityLevels { levels?: Array<{ effects?: Record<string, number> }>; maxLevel?: number }
+
+registerRefs('activities', (entry) => {
+  const refs: Ref[] = [];
+  const req = entry.facilityReq as { id?: unknown; level?: unknown } | undefined;
+  if (req && typeof req.id === 'string') {
+    const level = req.level;
+    refs.push({
+      registry: 'facilities',
+      id: req.id,
+      path: 'facilityReq.id',
+      check: (t) =>
+        typeof level === 'number' && level > ((t as FacilityLevels).maxLevel ?? 0)
+          ? `facility "${req.id}" has no level ${level}`
+          : null,
+    });
+  }
+  for (const list of ['effects', 'companionEffects'] as const) {
+    const fxs = entry[list];
+    if (!Array.isArray(fxs)) continue;
+    fxs.forEach((fx, i) => {
+      const scale = (fx as { scale?: { facility?: unknown; key?: unknown } }).scale;
+      if (!scale || typeof scale.facility !== 'string') return;
+      const key = String(scale.key);
+      refs.push({
+        registry: 'facilities',
+        id: scale.facility,
+        path: `${list}[${i}].scale.facility`,
+        check: (t) => ((t as FacilityLevels).levels?.[0]?.effects && key in (t as FacilityLevels).levels![0].effects!
+          ? null : `facility "${scale.facility}" has no effect "${key}"`),
+      });
+    });
+  }
+  return refs;
+});

@@ -1,0 +1,256 @@
+[
+  {
+    "id": "barracks",
+    "name": "Barracks",
+    "summary": "Beds for more soldiers and better rest.",
+    "maxLevel": 5,
+    "levels": [
+      {
+        "effects": {
+          "rosterCapacity": 6,
+          "restPct": 0
+        }
+      },
+      {
+        "effects": {
+          "rosterCapacity": 7,
+          "restPct": 20
+        },
+        "upgrade": {
+          "credits": 60,
+          "plyx": 5,
+          "days": 2
+        }
+      },
+      {
+        "effects": {
+          "rosterCapacity": 8,
+          "restPct": 40
+        },
+        "upgrade": {
+          "credits": 120,
+          "plyx": 10,
+          "days": 3
+        }
+      },
+      {
+        "effects": {
+          "rosterCapacity": 9,
+          "restPct": 60
+        },
+        "upgrade": {
+          "credits": 200,
+          "plyx": 20,
+          "days": 4
+        }
+      },
+      {
+        "effects": {
+          "rosterCapacity": 10,
+          "restPct": 80
+        },
+        "upgrade": {
+          "credits": 300,
+          "plyx": 35,
+          "days": 5
+        }
+      }
+    ]
+  },
+  {
+    "id": "workshop",
+    "name": "Workshop",
+    "summary": "Raises the rarity of what can be crafted and trims upgrade costs.",
+    "maxLevel": 5,
+    "levels": [
+      {
+        "effects": {
+          "rarityCap": 1,
+          "upgradeDiscountPct": 0
+        }
+      },
+      {
+        "effects": {
+          "rarityCap": 2,
+          "upgradeDiscountPct": 0
+        },
+        "upgrade": {
+          "credits": 50,
+          "plyx": 10,
+          "days": 2
+        }
+      },
+      {
+        "effects": {
+          "rarityCap": 3,
+          "upgradeDiscountPct": 10
+        },
+        "upgrade": {
+          "credits": 100,
+          "plyx": 20,
+          "days": 3
+        }
+      },
+      {
+        "effects": {
+          "rarityCap": 4,
+          "upgradeDiscountPct": 15
+        },
+        "upgrade": {
+          "credits": 180,
+          "plyx": 35,
+          "days": 4
+        }
+      },
+      {
+        "effects": {
+          "rarityCap": 5,
+          "upgradeDiscountPct": 20
+        },
+        "upgrade": {
+          "credits": 280,
+          "plyx": 55,
+          "days": 5
+        }
+      }
+    ]
+  },
+  {
+    "id": "medbay",
+    "name": "Medbay",
+    "summary": "Stronger stress relief, faster injury recovery, deeper defect arc stages.",
+    "maxLevel": 5,
+    "levels": [
+      {
+        "effects": {
+          "stressReliefPct": 0,
+          "injurySpeed": 0,
+          "arcStageCap": 1
+        }
+      },
+      {
+        "effects": {
+          "stressReliefPct": 15,
+          "injurySpeed": 0,
+          "arcStageCap": 1
+        },
+        "upgrade": {
+          "credits": 60,
+          "plyx": 5,
+          "days": 2
+        }
+      },
+      {
+        "effects": {
+          "stressReliefPct": 30,
+          "injurySpeed": 1,
+          "arcStageCap": 2
+        },
+        "upgrade": {
+          "credits": 120,
+          "plyx": 12,
+          "days": 3
+        }
+      },
+      {
+        "effects": {
+          "stressReliefPct": 45,
+          "injurySpeed": 1,
+          "arcStageCap": 2
+        },
+        "upgrade": {
+          "credits": 200,
+          "plyx": 22,
+          "days": 4
+        }
+      },
+      {
+        "effects": {
+          "stressReliefPct": 60,
+          "injurySpeed": 2,
+          "arcStageCap": 3
+        },
+        "upgrade": {
+          "credits": 300,
+          "plyx": 38,
+          "days": 5
+        }
+      }
+    ]
+  },
+  {
+    "id": "mess_hall",
+    "name": "Mess hall",
+    "summary": "Cuts daily supply use and improves group meals.",
+    "maxLevel": 3,
+    "levels": [
+      {
+        "effects": {
+          "upkeepReduction": 0,
+          "mealPct": 0
+        }
+      },
+      {
+        "effects": {
+          "upkeepReduction": 1,
+          "mealPct": 25
+        },
+        "upgrade": {
+          "credits": 80,
+          "plyx": 5,
+          "days": 2
+        }
+      },
+      {
+        "effects": {
+          "upkeepReduction": 2,
+          "mealPct": 50
+        },
+        "upgrade": {
+          "credits": 160,
+          "plyx": 15,
+          "days": 3
+        }
+      }
+    ]
+  },
+  {
+    "id": "comms",
+    "name": "Comms room",
+    "summary": "More rumors, a bigger mission board, better direct messages.",
+    "maxLevel": 3,
+    "levels": [
+      {
+        "effects": {
+          "rumorsPerDay": 1,
+          "missionBoardSize": 3,
+          "dmFeatures": 0
+        }
+      },
+      {
+        "effects": {
+          "rumorsPerDay": 2,
+          "missionBoardSize": 4,
+          "dmFeatures": 1
+        },
+        "upgrade": {
+          "credits": 70,
+          "plyx": 8,
+          "days": 2
+        }
+      },
+      {
+        "effects": {
+          "rumorsPerDay": 3,
+          "missionBoardSize": 5,
+          "dmFeatures": 2
+        },
+        "upgrade": {
+          "credits": 150,
+          "plyx": 20,
+          "days": 4
+        }
+      }
+    ]
+  }
+]
