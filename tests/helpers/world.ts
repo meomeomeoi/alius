@@ -7,6 +7,7 @@ import type { CampaignState } from '../../src/engine/state/types';
 
 // Importing these registers the actions under test.
 import '../../src/engine/actions/calendar';
+import '../../src/engine/actions/base';
 
 export async function loadCore(): Promise<Registries> {
   const r = await loadPacks(['content/core'], async (p) => JSON.parse(await readFile(p, 'utf8')));
@@ -29,11 +30,17 @@ export function campaign(reg: Registries, n = 4, opts: { crimeId?: string; start
   const r = buildCampaign(
     {
       commanderName: 'Vale', startId: opts.startId ?? 'start_vesper', crimeId: opts.crimeId ?? 'mutiny',
-      units: names.slice(0, n).map((nm) => unitSetup(nm)),
+      units: names.slice(0, Math.min(n, 4)).map((nm) => unitSetup(nm)),
     },
     reg, { desireBondDefects: false, seed: 11 },
   );
   if (!r.ok) throw new Error(r.errors.join('; '));
+  // the wizard allows four named units; more are added later (story), here as reserve copies
+  for (const nm of names.slice(4, n)) {
+    const id = `unit_${nm.toLowerCase()}`;
+    r.state.squad.push({ ...structuredClone(r.state.squad[0]), id, displayName: nm, cardRef: `${nm.toLowerCase()}.png`, status: 'reserve' });
+    r.state.relations[id] = structuredClone(r.state.relations[r.state.squad[0].id]);
+  }
   return r.state;
 }
 

@@ -168,11 +168,11 @@ calendar: `morning to afternoon to evening`; `evening without a night queue runs
 - `base/requisition { supplies }`: positive integer, costs `supplies × creditsPerSupply` credits, emits `resource_changed`.
 - `roster/set_active { activeIds }`: at most `rosterActiveMax`, no duplicates, every id a living squad unit, order kept; units not listed get `status: 'reserve'` unless injured, listed `reserve` units become `active`.
 
-- [ ] **Step 1: Write the failing tests** — `upgrade pays, starts a timer and does not raise the level yet`; `timer runs across days and capacity grows at barracks 2` (consume slots through two day-ends: capacity 6 → 7); `upgrade rejected: max level`, `…: pending upgrade`, `…: not enough plyx`, `…: unknown facility` (state unchanged); `two different facilities can upgrade at once`; `requisition converts credits to supplies`; `requisition rejects fractions, zero and too little credit`; `roster accepts four, rejects five`; `roster rejects duplicates and dead units`; `roster statuses follow the list`.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/base.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** the file → PASS; whole suite green.
-- [ ] **Step 5: Commit** `feat(engine): facility upgrades, supply requisition and roster actions`.
+- [x] **Step 1: Write the failing tests** — `upgrade pays, starts a timer and does not raise the level yet`; `timer runs across days and capacity grows at barracks 2` (consume slots through two day-ends: capacity 6 → 7); `upgrade rejected: max level`, `…: pending upgrade`, `…: not enough plyx`, `…: unknown facility` (state unchanged); `two different facilities can upgrade at once`; `requisition converts credits to supplies`; `requisition rejects fractions, zero and too little credit`; `roster accepts four, rejects five`; `roster rejects duplicates and dead units`; `roster statuses follow the list`.
+- [x] **Step 2: Run** `npx vitest run tests/engine/base.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** the file → PASS; whole suite green.
+- [x] **Step 5: Commit** `feat(engine): facility upgrades, supply requisition and roster actions`.
 
 ### Task 6: Grunts
 

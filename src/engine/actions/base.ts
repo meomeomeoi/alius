@@ -1,0 +1,63 @@
+import { facilityLevel, facilityLevels, isLiving } from '../economy';
+import { registerAction } from '../dispatch';
+import { TUNING } from '../tuning';
+
+// Importing this module registers the base and roster actions.
+
+const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
+
+registerAction('base/upgrade', (draft, payload, ctx) => {
+  const id = isObj(payload) ? payload.facilityId : undefined;
+  if (typeof id !== 'string' || !ctx.registries.facilities.has(id)) throw new Error(`base/upgrade: unknown facility "${String(id)}"`);
+  const name = String(ctx.registries.facilities.get(id)!.name);
+  const levels = facilityLevels(ctx.registries, id);
+  const level = facilityLevel(draft, id);
+  if (level >= levels.length) throw new Error(`${name} is already at its max level (${levels.length}).`);
+  if ((draft.base.upgrades ?? []).some((u) => u.facilityId === id)) throw new Error(`${name} is already being upgraded.`);
+
+  const up = levels[level].upgrade;
+  if (!up) throw new Error(`${name} has no upgrade to level ${level + 1}.`);
+  if (draft.resources.credits < up.credits) throw new Error(`Not enough credits to upgrade ${name} (needs ${up.credits}).`);
+  if (draft.resources.plyx < up.plyx) throw new Error(`Not enough plyx to upgrade ${name} (needs ${up.plyx}).`);
+
+  draft.resources.credits -= up.credits;
+  draft.resources.plyx -= up.plyx;
+  (draft.base.upgrades ??= []).push({ facilityId: id, toLevel: level + 1, daysLeft: up.days });
+  return [
+    { type: 'resource_changed', resource: 'credits', amount: -up.credits },
+    { type: 'resource_changed', resource: 'plyx', amount: -up.plyx },
+    { type: 'upgrade_started', facilityId: id, toLevel: level + 1, days: up.days },
+  ];
+});
+
+/** Closes the supply loop until expeditions (P5) bring supplies: credits → supplies at a fixed rate. */
+registerAction('base/requisition', (draft, payload) => {
+  const n = isObj(payload) ? payload.supplies : undefined;
+  if (typeof n !== 'number' || !Number.isInteger(n) || n < 1) throw new Error('base/requisition: supplies must be a positive integer');
+  const credits = n * TUNING.requisition.creditsPerSupply;
+  if (draft.resources.credits < credits) throw new Error(`Not enough credits: ${n} supplies cost ${credits}.`);
+  draft.resources.credits -= credits;
+  draft.resources.supplies += n;
+  return [{ type: 'requisitioned', supplies: n, credits }];
+});
+
+registerAction('roster/set_active', (draft, payload) => {
+  const ids = isObj(payload) ? payload.activeIds : undefined;
+  if (!Array.isArray(ids) || !ids.every((x) => typeof x === 'string')) throw new Error('roster/set_active needs { activeIds: string[] }');
+  if (ids.length > TUNING.rosterActiveMax) throw new Error(`The active roster holds at most ${TUNING.rosterActiveMax} units.`);
+  if (new Set(ids).size !== ids.length) throw new Error('A unit was listed twice.');
+  for (const id of ids) {
+    const u = draft.squad.find((x) => x.id === id);
+    if (!u || !isLiving(u)) throw new Error(`Unit "${id}" cannot join the active roster.`);
+  }
+  const chosen = new Set(ids);
+  for (const u of draft.squad) {
+    if (chosen.has(u.id)) {
+      if (u.status === 'reserve') u.status = 'active';
+    } else if (u.status === 'active') {
+      u.status = 'reserve';
+    }
+  }
+  draft.roster.activeIds = [...ids];
+  return [{ type: 'roster_changed', activeIds: [...ids] }];
+});
