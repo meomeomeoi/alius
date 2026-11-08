@@ -307,7 +307,7 @@ export interface StAdapter {
 **Interfaces:**
 - Produces: `stripThinking(s: string): string`; `answerText(data: unknown): string`; `looseJson(text: string): unknown | null`; `estTokens(s: string): number` (= `Math.ceil(len / 3.6)`).
 
-- [ ] **Step 1: Write the failing tests** (these cases are the real failure modes seen in Mundi-Expanded)
+- [x] **Step 1: Write the failing tests** (these cases are the real failure modes seen in Mundi-Expanded)
 
 ```ts
 const CUT = '{\n  "bed": 23,\n  "wake": 6,\n  "weekend": 1,\n  "social": 80,\n  "rooms": ["gym", "living", "pool"],\n  "acts": [\n    {"text": "high-energy morning workout", "where": "gym"},\n    {"text": "doing quick swimming laps", "where": "pool"},\n    {"text": "blending a fruit smoothie", "where": "kitchen';
@@ -324,11 +324,11 @@ expect(answerText({ choices: [{ message: { content: 'ok' } }] })).toBe('ok');
 expect(answerText({ content: [{ text: 'a' }, { text: 'b' }] })).toBe('ab');
 ```
 
-- [ ] **Step 2: Run** → FAIL.
+- [x] **Step 2: Run** → FAIL.
 
-- [ ] **Step 3: Implement** `looseJson`: strip code fences; find the first `{` or `[`; try `JSON.parse` of the balanced span; if unbalanced (cut), scan with a string-aware stack, track the last position where a complete value inside the current container ended, truncate there, drop a dangling key/comma, close open containers, parse. Return `null` if nothing complete remains.
+- [x] **Step 3: Implement** `looseJson`: strip code fences; find the first `{` or `[`; try `JSON.parse` of the balanced span; if unbalanced (cut), scan with a string-aware stack, track the last position where a complete value inside the current container ended, truncate there, drop a dangling key/comma, close open containers, parse. Return `null` if nothing complete remains.
 
-- [ ] **Step 4: Run** → PASS. **Step 5: Commit** `feat(llm): answer text, thinking strip and cut-JSON recovery`
+- [x] **Step 4: Run** → PASS. **Step 5: Commit** `feat(llm): answer text, thinking strip and cut-JSON recovery`
 
 ---
 
