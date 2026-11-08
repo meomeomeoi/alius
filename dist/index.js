@@ -155,6 +155,13 @@ function validateUnit(u, label, reg, opts, out, withBaseline = true) {
   if (!reg.signatures.has(u.signature?.templateId)) {
     out.push(`${label}: unknown signature template "${u.signature?.templateId}"`);
   }
+  const sig = u.signature;
+  if (typeof sig?.name !== "string" || sig.name.trim() === "" || sig.name.length > 40) {
+    out.push(`${label}: signature skill name must be 1 to 40 characters`);
+  }
+  if (typeof sig?.description !== "string" || sig.description.trim() === "" || sig.description.length > 240) {
+    out.push(`${label}: signature skill description must be 1 to 240 characters`);
+  }
   const defects = u.defects ?? [];
   if (defects.length < 1 || defects.length > SETUP_LIMITS.maxDefects) {
     out.push(`${label}: needs 1 to ${SETUP_LIMITS.maxDefects} defects (has ${defects.length})`);
@@ -5070,6 +5077,8 @@ var Wizard = class {
   s;
   disposed = false;
   listeners = /* @__PURE__ */ new Set();
+  /** Latest "regenerate" request per unit and section; an older result for the same section is dropped. */
+  sectionTokens = /* @__PURE__ */ new Map();
   /** Whether Desire/Bond defects are allowed (needed by the manual lists in the UI). */
   get desireBondDefects() {
     return this.deps.desireBondDefects;
@@ -5085,6 +5094,10 @@ var Wizard = class {
   subscribe(fn) {
     this.listeners.add(fn);
     return () => this.listeners.delete(fn);
+  }
+  /** Notifies listeners without changing anything (the screen re-renders after a deployment attempt ends). */
+  refresh() {
+    this.emit();
   }
   emit() {
     if (this.disposed) return;
@@ -5134,6 +5147,7 @@ var Wizard = class {
           baseline: { trust: 20, affinity: 0, attraction: 0 }
         },
         secondDefect: false,
+        regenerating: [],
         generation: ++generationCounter
       });
     }
@@ -5152,6 +5166,7 @@ var Wizard = class {
         return { ok: true };
       case "calibration": {
         for (const u of this.s.units) {
+          if (u.regenerating.length > 0) return fail(`${u.displayName} is still regenerating.`);
           if (u.status === "idle" || u.status === "loading") return fail(`${u.displayName} is not calibrated yet.`);
           if (!u.choice.roleId) return fail(`${u.displayName}: choose a role.`);
           if (!u.choice.signature) return fail(`${u.displayName}: choose a signature skill.`);
@@ -5160,6 +5175,8 @@ var Wizard = class {
         return { ok: true };
       }
       case "review": {
+        const busy = this.s.units.find((u) => u.regenerating.length > 0);
+        if (busy) return fail(`${busy.displayName} is still regenerating.`);
         const { errors } = this.build();
         return errors.length === 0 ? { ok: true } : fail(errors[0]);
       }
@@ -5173,7 +5190,7 @@ var Wizard = class {
       else {
         this.s.step = "calibration";
         this.s.calibrationIndex = 0;
-        this.calibrate(0);
+        for (let i = 0; i < this.s.units.length; i++) this.calibrate(i);
       }
     } else if (this.s.step === "calibration") this.s.step = "review";
     this.emit();
@@ -5203,13 +5220,17 @@ var Wizard = class {
   regenerate(index, section) {
     const u = this.s.units[index];
     if (!u || u.status !== "ready" && u.status !== "manual") return;
-    u.generation = ++generationCounter;
-    void this.run(u, [section], (outcome) => this.applySection(u, section, outcome));
+    const token = ++generationCounter;
+    this.sectionTokens.set(u, { ...this.sectionTokens.get(u), [section]: token });
+    if (!u.regenerating.includes(section)) u.regenerating.push(section);
+    this.emit();
+    void this.run(u, [section], (outcome) => this.applySection(u, section, outcome), { section, token });
   }
   setManual(index) {
     const u = this.s.units[index];
     if (!u) return;
     u.generation = ++generationCounter;
+    u.regenerating = [];
     u.status = "manual";
     u.candidates = null;
     u.notice = "Manual calibration selected.";
@@ -5226,7 +5247,7 @@ var Wizard = class {
     this.emit();
   }
   /** Runs one import; the result is applied only if the draft still exists with the same generation. */
-  async run(u, sections, apply) {
+  async run(u, sections, apply, track) {
     const gen = u.generation;
     let outcome;
     try {
@@ -5235,6 +5256,10 @@ var Wizard = class {
       outcome = { kind: "manual", reason: errText(e) };
     }
     if (this.disposed || !this.s.units.includes(u) || u.generation !== gen) return;
+    if (track) {
+      if (this.sectionTokens.get(u)?.[track.section] !== track.token) return;
+      u.regenerating = u.regenerating.filter((s) => s !== track.section);
+    }
     apply(outcome);
     this.emit();
   }
@@ -5429,7 +5454,17 @@ function renderCalibration(host, ctx2) {
       { class: "alius-calib-title" },
       h("h3", {}, title),
       // in manual mode too: after a failed import the AI can be retried section by section
-      draft.status === "ready" || draft.status === "manual" ? h("button", { type: "button", class: "alius-btn", "data-regenerate": id, onclick: () => ctx2.onRegenerate(id) }, "[ REGENERATE ]") : null
+      draft.status === "ready" || draft.status === "manual" ? h(
+        "button",
+        {
+          type: "button",
+          class: "alius-btn",
+          "data-regenerate": id,
+          disabled: draft.regenerating.includes(id),
+          onclick: () => ctx2.onRegenerate(id)
+        },
+        draft.regenerating.includes(id) ? "[ REGENERATING\u2026 ]" : "[ REGENERATE ]"
+      ) : null
     ),
     ...body
   );
@@ -5650,22 +5685,23 @@ function renderSetupScreen(host, ctx2) {
   const { wizard, registries: reg, st } = ctx2;
   let search = "";
   let lastStep = null;
+  let root = null;
   const render = () => {
+    if (root && !host.contains(root)) return;
     const s = wizard.state;
     let title;
     renderKeepingFocus(host, () => {
       host.replaceChildren();
       title = h("h2", { class: "alius-setup-title", tabindex: "-1" }, "CCP INTAKE FORM");
-      host.append(
-        h(
-          "div",
-          { class: "alius-setup" },
-          title,
-          h("ol", { class: "alius-steps" }, ...STEPS.map(([id, label]) => h("li", { class: "alius-step", "aria-current": s.step === id ? "step" : null }, label))),
-          stepBody(s),
-          footer(s)
-        )
+      root = h(
+        "div",
+        { class: "alius-setup" },
+        title,
+        h("ol", { class: "alius-steps" }, ...STEPS.map(([id, label]) => h("li", { class: "alius-step", "aria-current": s.step === id ? "step" : null }, label))),
+        stepBody(s),
+        footer(s)
       );
+      host.append(root);
     });
     if (lastStep !== null && lastStep !== s.step) title.focus();
     lastStep = s.step;
@@ -5785,7 +5821,15 @@ function renderSetupScreen(host, ctx2) {
         r.addEventListener("change", () => wizard.setTarget(value));
         return h("label", { class: "alius-check" }, r, ` ${label}`);
       };
-      body.append(h("div", { class: "alius-target" }, radio("new_group", "Create a new group chat"), radio("current_group", "Use this group chat")));
+      body.append(
+        h(
+          "div",
+          { class: "alius-target" },
+          radio("new_group", "Create a new group chat"),
+          radio("current_group", "Use this group chat"),
+          s.target === "current_group" ? h("p", { class: "alius-hint" }, "Members of this group that you did not select will be set inactive. Selected cards that are not in the group are added.") : null
+        )
+      );
     }
     return body;
   }
@@ -5821,12 +5865,12 @@ function renderSetupScreen(host, ctx2) {
         const result = wizard.result();
         if (!result || deploying.get(wizard)) return;
         deploying.set(wizard, true);
-        render();
+        wizard.refresh();
         try {
           await ctx2.onConfirm(result, s.target);
         } finally {
           deploying.set(wizard, false);
-          render();
+          wizard.refresh();
         }
       }, !adv.ok || busy));
     } else {
@@ -5854,12 +5898,25 @@ function valueBand(v) {
 // src/ui/squad/squadTab.ts
 var unknown = (id) => `UNKNOWN ${id}`;
 var nameOf3 = (e, id) => e ? String(e.name) : unknown(id);
+var spriteCache = /* @__PURE__ */ new WeakMap();
+var MISSING_SPRITE_RETRY_MS = 3e4;
 function portrait(st, unit) {
   if (!unit.cardRef) return null;
   const card2 = unit.cardRef;
   const avatar = st.getAvatarUrl(card2);
-  const img = h("img", { class: "alius-portrait", src: avatar, alt: unit.displayName, width: "96", height: "96" });
-  let usingAvatar = true;
+  let cache = spriteCache.get(st);
+  if (!cache) spriteCache.set(st, cache = /* @__PURE__ */ new Map());
+  const known = cache.get(card2);
+  const img = h("img", { class: "alius-portrait", src: known?.url ?? avatar, alt: unit.displayName, width: "96", height: "96" });
+  let usingAvatar = !known?.url;
+  if (known && (known.url || Date.now() - known.at < MISSING_SPRITE_RETRY_MS)) {
+    img.addEventListener("error", () => {
+      if (usingAvatar) return;
+      usingAvatar = true;
+      img.setAttribute("src", avatar);
+    });
+    return img;
+  }
   img.addEventListener("error", () => {
     if (usingAvatar) return;
     usingAvatar = true;
@@ -5867,6 +5924,7 @@ function portrait(st, unit) {
   });
   st.getSpriteUrl(card2, "neutral").then(
     (url) => {
+      cache.set(card2, { url: url || null, at: Date.now() });
       if (!url) return;
       usingAvatar = false;
       img.setAttribute("src", url);
@@ -6759,14 +6817,23 @@ function createApp(st, deps) {
       toast("error", text);
       return false;
     };
-    const settings = getSettings(st);
+    const desireBondDefects = setup?.wizard.desireBondDefects ?? getSettings(st).desireBondDefects;
     const built = buildCampaign(r, registries, {
-      desireBondDefects: settings.desireBondDefects,
+      desireBondDefects,
       seed: Math.floor(Math.random() * 2 ** 31)
     });
     if (!built.ok) return fail(built.errors[0]);
     const avatars = r.units.map((u) => u.cardRef);
     let targetChatId;
+    const activeBefore = target === "current_group" ? st.getGroupMembers().filter((m) => m.active).map((m) => m.avatar) : null;
+    const restoreMembers = async () => {
+      if (!activeBefore || st.getActiveChat()?.chatId !== targetChatId) return;
+      try {
+        await st.setMembersActive(activeBefore);
+      } catch (e) {
+        console.warn("[Alius] could not restore group members", e);
+      }
+    };
     try {
       if (target === "current_group") {
         const chat = st.getActiveChat();
@@ -6778,10 +6845,20 @@ function createApp(st, deps) {
         await st.addGroupMembers(avatars);
         targetChatId = chat.chatId;
       } else {
-        let groupId;
+        let groupId = setup?.createdGroupId;
         try {
-          groupId = await st.createGroupChat({ name: `Alius: ${r.commanderName.trim()}`, members: avatars });
-          if (!await st.openGroup(groupId)) throw new Error("SillyTavern refused to open it");
+          let opened = false;
+          if (groupId) {
+            opened = await st.openGroup(groupId).catch(() => false);
+            if (opened) await st.addGroupMembers(avatars);
+            else groupId = void 0;
+          }
+          if (!groupId) {
+            groupId = await st.createGroupChat({ name: `Alius: ${r.commanderName.trim()}`, members: avatars });
+            if (setup) setup.createdGroupId = groupId;
+            opened = await st.openGroup(groupId);
+          }
+          if (!opened) throw new Error("SillyTavern refused to open it");
         } catch (e) {
           return fail(`Could not open the new group chat: ${errText3(e)}`);
         }
@@ -6815,12 +6892,14 @@ function createApp(st, deps) {
       const written = await writeNewCampaign(st, built.state, targetChatId);
       if (!written.ok) {
         restoreLorebook();
+        await restoreMembers();
         return fail(
           written.reason === "exists" ? "This chat already has an Alius campaign." : written.reason === "chat_changed" ? "The open chat changed during deployment; nothing was written." : written.reason === "not_group" ? "Alius campaigns need a group chat." : "Open a chat first."
         );
       }
     } catch (e) {
       restoreLorebook();
+      await restoreMembers();
       return fail(`Could not save the campaign: ${errText3(e)}`);
     }
     endSetup();
@@ -6862,7 +6941,11 @@ function createApp(st, deps) {
         registries,
         desireBondDefects: desireBond,
         // the first call imports every re-sync section, a "regenerate" asks for one
-        importer: (avatar, wanted) => importProfile(avatar, wanted.length > 1 ? [...sections] : wanted, { st, settings: getSettings(st), registries }),
+        importer: (avatar, wanted) => importProfile(avatar, wanted.length > 1 ? [...sections] : wanted, {
+          st,
+          settings: { ...getSettings(st), desireBondDefects: desireBond },
+          registries
+        }),
         onChange: () => {
         }
       },
@@ -6908,6 +6991,19 @@ function createApp(st, deps) {
     if (sections.includes("tags")) Object.assign(patch, { likes: c.likes, dislikes: c.dislikes, triggers: c.triggers });
     if (sections.includes("signature") && c.signature) patch.signature = c.signature;
     if (sections.includes("defects")) patch.defects = c.defects;
+    const current = {
+      roleId: unit.roleId,
+      values: unit.values,
+      likes: unit.likes,
+      dislikes: unit.dislikes,
+      triggers: unit.triggers,
+      signature: unit.signatureSkill,
+      defects: unit.defects.map((d) => ({ id: d.id, origin: d.origin ?? "" }))
+    };
+    const unchanged = Object.keys(patch).every(
+      (k) => JSON.stringify(patch[k]) === JSON.stringify(current[k])
+    );
+    if (unchanged) return toast("info", `Nothing changed${draft.notice ? ` (${draft.notice})` : ""}.`);
     const events = api.dispatch({ type: "squad/resync", payload: { unitId, patch } }, { expectChatId: startChatId });
     const failed = events.find((e) => e.type === "error");
     if (failed) toast("error", String(failed.message ?? failed.code));
@@ -6924,11 +7020,12 @@ function createApp(st, deps) {
     }
     endSetup();
     const chat = st.getActiveChat();
+    const desireBond = getSettings(st).desireBondDefects;
     const wizard = new Wizard(
       {
         registries,
-        desireBondDefects: getSettings(st).desireBondDefects,
-        importer: (avatar, sections) => importProfile(avatar, sections, { st, settings: getSettings(st), registries }),
+        desireBondDefects: desireBond,
+        importer: (avatar, sections) => importProfile(avatar, sections, { st, settings: { ...getSettings(st), desireBondDefects: desireBond }, registries }),
         onChange: () => {
         }
       },

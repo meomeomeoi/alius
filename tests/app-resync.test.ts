@@ -232,4 +232,26 @@ describe('re-sync flow', () => {
     expect(focusAfter).toBe('sig-name');
     expect(valueAfter).toBe('Renamed Skill');
   });
+
+  it('re-sync follows the campaign\'s Desire/Bond setting, not the global one', async () => {
+    const t = await boot(); // the campaign was deployed with the setting off
+    t.st.settings.desireBondDefects = true; // turned on globally afterwards
+    t.st.mainReplies = [IMPORT_REPLY];
+    t.script.push(async () => 'go', applyAfterImport());
+    t.clickResync();
+    await t.settle(2);
+    const text = t.st.calls[0].prompt + (t.st.calls[0].system ?? '');
+    expect(text).not.toContain('imprint_hunger');
+  });
+
+  it('applying a profile that already matches says so and changes nothing', async () => {
+    const t = await boot(); // no reply queued: the import fails and the current profile stays
+    const before = t.app.current().state;
+    t.script.push(async () => 'go', async () => { await flush(); await flush(); return 'apply'; });
+    t.clickResync();
+    await t.settle(2);
+    await flush();
+    expect(t.toasts.at(-1)).toMatchObject({ kind: 'info', text: expect.stringMatching(/Nothing changed/) });
+    expect(t.app.current().state).toBe(before); // not even a no-op dispatch
+  });
 });

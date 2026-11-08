@@ -65,6 +65,14 @@ function validateUnit(
     out.push(`${label}: unknown signature template "${u.signature?.templateId}"`);
   }
 
+  const sig = u.signature;
+  if (typeof sig?.name !== 'string' || sig.name.trim() === '' || sig.name.length > 40) {
+    out.push(`${label}: signature skill name must be 1 to 40 characters`);
+  }
+  if (typeof sig?.description !== 'string' || sig.description.trim() === '' || sig.description.length > 240) {
+    out.push(`${label}: signature skill description must be 1 to 240 characters`);
+  }
+
   const defects = u.defects ?? [];
   if (defects.length < 1 || defects.length > SETUP_LIMITS.maxDefects) {
     out.push(`${label}: needs 1 to ${SETUP_LIMITS.maxDefects} defects (has ${defects.length})`);

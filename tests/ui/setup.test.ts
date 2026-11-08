@@ -173,7 +173,7 @@ describe('setup screen', () => {
     const m = make();
     await toCalibration(m, 2);
     expect(m.host.textContent).toContain('1/2');
-    expect(m.importer).toHaveBeenCalledTimes(1);
+    expect(m.importer).toHaveBeenCalledTimes(2); // every unit is imported when calibration opens
     expect(qa(m, '.alius-role-card').map((e) => e.dataset.id)).toEqual(['defender', 'assault']);
     expect(q(m, '.alius-role-card[data-id="defender"]')!.getAttribute('aria-pressed')).toBe('true');
     expect(q(m, '.alius-role-card[data-id="defender"]')!.textContent).toContain('Protective.');
@@ -181,7 +181,7 @@ describe('setup screen', () => {
     expect(qa(m, '.alius-defect-card')).toHaveLength(3);
     expect(q(m, '.alius-defect-card[data-id="threat_saturation"]')!.textContent).toContain('Three tours.');
     expect(m.host.textContent).toContain('A veteran.');
-    expect(action(m, 'next').disabled).toBe(true); // unit 2 not calibrated yet
+    expect(action(m, 'next').disabled).toBe(false); // both imports finished meanwhile
     click(q(m, 'button[data-action="pager-next"]'));
     await flush();
     expect(m.importer).toHaveBeenCalledTimes(2);
@@ -547,5 +547,62 @@ describe('focus, busy state and manual/AI switching (review fixes)', () => {
     m.importer.mockClear();
     click(q(m, 'button[data-regenerate="signature"]'));
     expect(m.importer).toHaveBeenCalledWith('c0.png', ['signature']);
+  });
+
+  it('a section shows REGENERATING… and its button is disabled while the import runs', async () => {
+    const m = await ready();
+    m.importer.mockImplementation(() => new Promise<ImportOutcome>(() => {}));
+    click(q(m, 'button[data-regenerate="signature"]'));
+    const btn = q<HTMLButtonElement>(m, 'button[data-regenerate="signature"]')!;
+    expect(btn.disabled).toBe(true);
+    expect(btn.textContent).toContain('REGENERATING…');
+    expect(q<HTMLButtonElement>(m, 'button[data-regenerate="role"]')!.disabled).toBe(false);
+    expect(action(m, 'next').disabled).toBe(true);
+  });
+
+  it('review warns that unselected members of the bound group are set inactive', async () => {
+    const m = make({ canBind: true });
+    await toCalibration(m);
+    click(action(m, 'next'));
+    expect(m.host.textContent).not.toContain('set inactive');
+    qa(m, 'input[name="target"]')[1].click();
+    expect(m.host.textContent).toContain('Members of this group that you did not select will be set inactive');
+  });
+
+  it('a finished deployment never redraws the wizard over the screen that replaced it', async () => {
+    const m = make({ canBind: true });
+    await toCalibration(m);
+    click(action(m, 'next'));
+    m.onConfirm.mockImplementation(async () => {
+      m.wizard.dispose(); // what a successful deployment does...
+      m.host.replaceChildren(h('p', { id: 'pda' }, 'PDA')); // ...before the shell shows the PDA
+    });
+    click(action(m, 'confirm'));
+    await flush();
+    expect(m.host.querySelector('#pda')).not.toBeNull();
+    expect(m.host.querySelector('.alius-setup')).toBeNull();
+  });
+
+  it('a failed deployment re-enables Confirm, also on a screen that was re-rendered meanwhile', async () => {
+    const m = make({ canBind: true });
+    await toCalibration(m);
+    click(action(m, 'next'));
+    let fail!: () => void;
+    m.onConfirm.mockImplementation(() => new Promise<void>((r) => (fail = r)));
+    click(action(m, 'confirm'));
+    renderSetupScreen(m.host, { wizard: m.wizard, registries: reg, st: m.st, onCancel: m.onCancel, onConfirm: m.onConfirm, modal: m.modal as never });
+    expect(action(m, 'confirm').disabled).toBe(true);
+    fail();
+    await flush();
+    expect(action(m, 'confirm').disabled).toBe(false);
+    expect(action(m, 'confirm').textContent).toBe('Confirm deployment');
+  });
+
+  it('a screen that was left stops reacting to wizard changes', async () => {
+    const m = make();
+    m.host.replaceChildren(h('p', { id: 'elsewhere' }, 'other screen'));
+    m.wizard.setCommanderName('Rook');
+    expect(m.host.querySelector('#elsewhere')).not.toBeNull();
+    expect(m.host.querySelector('.alius-setup')).toBeNull();
   });
 });

@@ -243,3 +243,29 @@ describe('re-sync button', () => {
     expect(host.textContent).not.toContain('RE-SYNC');
   });
 });
+
+describe('sprite cache', () => {
+  it('a found sprite is fetched once and shown immediately on later refreshes', async () => {
+    const st = new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' });
+    st.sprites.set('rhea.png:neutral', '/sprites/rhea/neutral.png');
+    const spy = vi.spyOn(st, 'getSpriteUrl');
+    render({ st });
+    await flush();
+    document.body.innerHTML = '';
+    const second = render({ st });
+    expect(second.host.querySelector('img')!.getAttribute('src')).toBe('/sprites/rhea/neutral.png'); // no flash of the avatar
+    await flush();
+    expect(spy).toHaveBeenCalledTimes(1);
+  });
+
+  it('a missing sprite is not re-requested on every refresh', async () => {
+    const st = new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' });
+    const spy = vi.spyOn(st, 'getSpriteUrl');
+    for (let i = 0; i < 3; i++) {
+      document.body.innerHTML = '';
+      render({ st });
+      await flush();
+    }
+    expect(spy).toHaveBeenCalledTimes(1);
+  });
+});

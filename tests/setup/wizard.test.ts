@@ -154,17 +154,21 @@ describe('Wizard', () => {
     expect(importer).toHaveBeenCalledTimes(1);
   });
 
-  it('entering calibration starts the first unit import', () => {
+  it('entering calibration starts every unit import at once, not one per page', () => {
     const { w, importer } = make();
     w.setStart('start_vesper');
     w.setCrime('mutiny');
     w.toggleUnit(card('ann'));
+    w.toggleUnit(card('bea'));
     w.next();
     w.next();
     expect(w.state.step).toBe('calibration');
-    expect(importer).toHaveBeenCalledTimes(1);
+    expect(importer.mock.calls.map((c) => c[0])).toEqual(['ann.png', 'bea.png']);
+    expect(w.state.units.map((u) => u.status)).toEqual(['loading', 'loading']);
+    w.setCalibrationIndex(1);
+    expect(importer).toHaveBeenCalledTimes(2); // paging does not import again
     w.setCalibrationIndex(5);
-    expect(w.state.calibrationIndex).toBe(0);
+    expect(w.state.calibrationIndex).toBe(1);
   });
 
   it('stale import result is ignored after the unit is removed', async () => {
@@ -258,16 +262,61 @@ describe('Wizard', () => {
     expect(w.state.units[0].candidates!.roleCandidates).toHaveLength(2);
   });
 
-  it('regenerate ignores a stale result', async () => {
+  const sigOutcome = (id: string): ImportOutcome => ({
+    kind: 'ok', dropped: [], missing: [],
+    profile: { roleCandidates: [], signatureCandidates: [{ templateId: id, name: 'W', description: 'D' }], defectCandidates: [], notes: '' },
+  });
+  const roleOutcome = (id: string): ImportOutcome => ({
+    kind: 'ok', dropped: [], missing: [],
+    profile: { roleCandidates: [{ roleId: id, reason: 'r' }], signatureCandidates: [], defectCandidates: [], notes: '' },
+  });
+
+  it('a newer regenerate of the same section wins over an older, late result', async () => {
+    const { w, pending } = await ready();
+    w.regenerate(0, 'signature');
+    w.regenerate(0, 'signature');
+    pending[1].resolve(sigOutcome('sig_frenzy')); // the first, now stale
+    await flush();
+    expect(w.state.units[0].choice.signature!.templateId).toBe('sig_last_stand');
+    expect(w.state.units[0].regenerating).toEqual(['signature']); // the second is still running
+    pending[2].resolve(sigOutcome('sig_mock'));
+    await flush();
+    expect(w.state.units[0].choice.signature!.templateId).toBe('sig_mock');
+    expect(w.state.units[0].regenerating).toEqual([]);
+  });
+
+  it('regenerating two different sections applies both, in any order', async () => {
     const { w, pending } = await ready();
     w.regenerate(0, 'signature');
     w.regenerate(0, 'role');
-    pending[1].resolve({
-      kind: 'ok', dropped: [], missing: [],
-      profile: { roleCandidates: [], signatureCandidates: [{ templateId: 'sig_frenzy', name: 'W', description: 'D' }], defectCandidates: [], notes: '' },
-    });
+    expect(w.state.units[0].regenerating).toEqual(['signature', 'role']);
+    pending[2].resolve(roleOutcome('sniper'));
     await flush();
-    expect(w.state.units[0].choice.signature!.templateId).toBe('sig_last_stand');
+    pending[1].resolve(sigOutcome('sig_frenzy'));
+    await flush();
+    expect(w.state.units[0].choice.roleId).toBe('sniper');
+    expect(w.state.units[0].choice.signature!.templateId).toBe('sig_frenzy');
+    expect(w.state.units[0].regenerating).toEqual([]);
+  });
+
+  it('a regenerate in flight blocks advancing, and setManual cancels it', async () => {
+    const m = make();
+    m.w.setStart('start_vesper');
+    m.w.setCrime('mutiny');
+    m.w.toggleUnit(card('ann'));
+    m.w.next();
+    m.w.next();
+    m.pending[0].resolve(OK);
+    await flush();
+    expect(m.w.canAdvance()).toEqual({ ok: true });
+    m.w.regenerate(0, 'signature');
+    expect(m.w.canAdvance().ok).toBe(false);
+    expect(m.w.canAdvance().reason).toMatch(/regenerat/i);
+    m.w.setManual(0);
+    expect(m.w.state.units[0].regenerating).toEqual([]);
+    m.pending[1].resolve(sigOutcome('sig_frenzy')); // late, ignored
+    await flush();
+    expect(m.w.state.units[0].choice.signature!.templateId).toBe('sig_last_stand');
   });
 
   it('second defect toggle off removes the second defect', async () => {

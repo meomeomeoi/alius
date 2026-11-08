@@ -80,7 +80,14 @@ export function renderCalibration(host: HTMLElement, ctx: CalibrationCtx): void 
         h('h3', {}, title),
         // in manual mode too: after a failed import the AI can be retried section by section
         draft.status === 'ready' || draft.status === 'manual'
-          ? h('button', { type: 'button', class: 'alius-btn', 'data-regenerate': id, onclick: () => ctx.onRegenerate(id) }, '[ REGENERATE ]')
+          ? h(
+              'button',
+              {
+                type: 'button', class: 'alius-btn', 'data-regenerate': id,
+                disabled: draft.regenerating.includes(id), onclick: () => ctx.onRegenerate(id),
+              },
+              draft.regenerating.includes(id) ? '[ REGENERATING… ]' : '[ REGENERATE ]',
+            )
           : null,
       ),
       ...body,

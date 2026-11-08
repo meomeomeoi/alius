@@ -21,6 +21,8 @@ export interface UnitDraft {
     signature: SignatureInstance | null;
   };
   secondDefect: boolean;
+  /** Sections whose "regenerate" import is still running. */
+  regenerating: ImportSection[];
   /** Bumps on every (re)import; results carrying an older number are ignored. */
   generation: number;
 }
@@ -69,6 +71,8 @@ export class Wizard {
   private s: WizardState;
   private disposed = false;
   private listeners = new Set<(s: WizardState) => void>();
+  /** Latest "regenerate" request per unit and section; an older result for the same section is dropped. */
+  private sectionTokens = new Map<UnitDraft, Partial<Record<ImportSection, number>>>();
 
   constructor(private deps: WizardDeps, init: { personaName: string; canBindCurrent: boolean }) {
     this.s = {
@@ -101,6 +105,11 @@ export class Wizard {
   subscribe(fn: (s: WizardState) => void): () => void {
     this.listeners.add(fn);
     return () => this.listeners.delete(fn);
+  }
+
+  /** Notifies listeners without changing anything (the screen re-renders after a deployment attempt ends). */
+  refresh(): void {
+    this.emit();
   }
 
   private emit(): void {
@@ -156,6 +165,7 @@ export class Wizard {
           baseline: { trust: 20, affinity: 0, attraction: 0 },
         },
         secondDefect: false,
+        regenerating: [],
         generation: ++generationCounter,
       });
     }
@@ -175,6 +185,7 @@ export class Wizard {
         return { ok: true };
       case 'calibration': {
         for (const u of this.s.units) {
+          if (u.regenerating.length > 0) return fail(`${u.displayName} is still regenerating.`);
           if (u.status === 'idle' || u.status === 'loading') return fail(`${u.displayName} is not calibrated yet.`);
           if (!u.choice.roleId) return fail(`${u.displayName}: choose a role.`);
           if (!u.choice.signature) return fail(`${u.displayName}: choose a signature skill.`);
@@ -183,6 +194,8 @@ export class Wizard {
         return { ok: true };
       }
       case 'review': {
+        const busy = this.s.units.find((u) => u.regenerating.length > 0);
+        if (busy) return fail(`${busy.displayName} is still regenerating.`);
         const { errors } = this.build();
         return errors.length === 0 ? { ok: true } : fail(errors[0]);
       }
@@ -197,7 +210,8 @@ export class Wizard {
       else {
         this.s.step = 'calibration';
         this.s.calibrationIndex = 0;
-        this.calibrate(0);
+        // every unit imports at once: the waits would otherwise add up as the player pages through
+        for (let i = 0; i < this.s.units.length; i++) this.calibrate(i);
       }
     } else if (this.s.step === 'calibration') this.s.step = 'review';
     this.emit();
@@ -231,14 +245,18 @@ export class Wizard {
   regenerate(index: number, section: ImportSection): void {
     const u = this.s.units[index];
     if (!u || (u.status !== 'ready' && u.status !== 'manual')) return;
-    u.generation = ++generationCounter;
-    void this.run(u, [section], (outcome) => this.applySection(u, section, outcome));
+    const token = ++generationCounter;
+    this.sectionTokens.set(u, { ...this.sectionTokens.get(u), [section]: token });
+    if (!u.regenerating.includes(section)) u.regenerating.push(section);
+    this.emit();
+    void this.run(u, [section], (outcome) => this.applySection(u, section, outcome), { section, token });
   }
 
   setManual(index: number): void {
     const u = this.s.units[index];
     if (!u) return;
     u.generation = ++generationCounter;
+    u.regenerating = [];
     u.status = 'manual';
     u.candidates = null;
     u.notice = 'Manual calibration selected.';
@@ -257,7 +275,10 @@ export class Wizard {
   }
 
   /** Runs one import; the result is applied only if the draft still exists with the same generation. */
-  private async run(u: UnitDraft, sections: ImportSection[], apply: (o: ImportOutcome) => void): Promise<void> {
+  private async run(
+    u: UnitDraft, sections: ImportSection[], apply: (o: ImportOutcome) => void,
+    track?: { section: ImportSection; token: number },
+  ): Promise<void> {
     const gen = u.generation;
     let outcome: ImportOutcome;
     try {
@@ -266,6 +287,10 @@ export class Wizard {
       outcome = { kind: 'manual', reason: errText(e) };
     }
     if (this.disposed || !this.s.units.includes(u) || u.generation !== gen) return;
+    if (track) {
+      if (this.sectionTokens.get(u)?.[track.section] !== track.token) return; // a newer request for this section is running
+      u.regenerating = u.regenerating.filter((s) => s !== track.section);
+    }
     apply(outcome);
     this.emit();
   }

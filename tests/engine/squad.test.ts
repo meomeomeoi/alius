@@ -105,6 +105,7 @@ describe('squad/resync', () => {
       ['unit_rhea', { likes: ['Loud Music'] }],
       ['unit_rhea', { signature: { templateId: 'sig_nope', name: 'x', description: 'y' } }],
       ['unit_rhea', { defects: [] }],
+      ['unit_rhea', { signature: { templateId: 'sig_frenzy', name: '', description: 'y' } }],
     ];
     for (const [id, patch] of bad) {
       const r = run(s, id, patch);

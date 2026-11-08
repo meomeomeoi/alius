@@ -45,21 +45,23 @@ export function renderSetupScreen(host: HTMLElement, ctx: SetupScreenCtx): void 
   const { wizard, registries: reg, st } = ctx;
   let search = '';
   let lastStep: WizardStep | null = null;
+  let root: HTMLElement | null = null;
 
   const render = (): void => {
+    // The shell may have replaced this screen (PDA after a deployment): never draw over it.
+    if (root && !host.contains(root)) return;
     const s = wizard.state;
     let title!: HTMLElement;
     renderKeepingFocus(host, () => {
       host.replaceChildren();
       title = h('h2', { class: 'alius-setup-title', tabindex: '-1' }, 'CCP INTAKE FORM');
-      host.append(
-        h('div', { class: 'alius-setup' },
+      root = h('div', { class: 'alius-setup' },
           title,
           h('ol', { class: 'alius-steps' }, ...STEPS.map(([id, label]) =>
             h('li', { class: 'alius-step', 'aria-current': s.step === id ? 'step' : null }, label))),
           stepBody(s),
-          footer(s)),
-      );
+          footer(s));
+      host.append(root);
     });
     if (lastStep !== null && lastStep !== s.step) title.focus();
     lastStep = s.step;
@@ -149,7 +151,14 @@ export function renderSetupScreen(host: HTMLElement, ctx: SetupScreenCtx): void 
         r.addEventListener('change', () => wizard.setTarget(value));
         return h('label', { class: 'alius-check' }, r, ` ${label}`);
       };
-      body.append(h('div', { class: 'alius-target' }, radio('new_group', 'Create a new group chat'), radio('current_group', 'Use this group chat')));
+      body.append(
+        h('div', { class: 'alius-target' },
+          radio('new_group', 'Create a new group chat'),
+          radio('current_group', 'Use this group chat'),
+          s.target === 'current_group'
+            ? h('p', { class: 'alius-hint' }, 'Members of this group that you did not select will be set inactive. Selected cards that are not in the group are added.')
+            : null),
+      );
     }
     return body;
   }
@@ -188,12 +197,12 @@ export function renderSetupScreen(host: HTMLElement, ctx: SetupScreenCtx): void 
         const result = wizard.result();
         if (!result || deploying.get(wizard)) return;
         deploying.set(wizard, true);
-        render();
+        wizard.refresh();
         try {
           await ctx.onConfirm(result, s.target);
         } finally {
           deploying.set(wizard, false);
-          render();
+          wizard.refresh(); // reaches whichever render of this screen is current, or none if it was left
         }
       }, !adv.ok || busy));
     } else {

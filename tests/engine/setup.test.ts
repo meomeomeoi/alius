@@ -270,6 +270,16 @@ describe('validateSetup', () => {
     expect(errs(result([unit({ likes: Array.from({ length: 6 }, (_, i) => `t${i}`), triggers: ['a', 'b', 'c', 'd'] })]))).toEqual([]);
   });
 
+  it('signature name and description must be 1–40 and 1–240 characters', () => {
+    const sig = (name: string, description: string) => result([unit({ signature: { templateId: 'sig_last_stand', name, description } })]);
+    expect(errs(sig('', 'ok')).join()).toMatch(/signature/i);
+    expect(errs(sig('   ', 'ok')).length).toBeGreaterThan(0);
+    expect(errs(sig('x'.repeat(41), 'ok')).length).toBeGreaterThan(0);
+    expect(errs(sig('ok', '')).length).toBeGreaterThan(0);
+    expect(errs(sig('ok', 'y'.repeat(241))).length).toBeGreaterThan(0);
+    expect(errs(sig('x'.repeat(40), 'y'.repeat(240)))).toEqual([]);
+  });
+
   it('empty display name rejected', () => {
     expect(errs(result([unit({ displayName: '  ' })])).length).toBeGreaterThan(0);
   });

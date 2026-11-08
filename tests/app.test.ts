@@ -514,4 +514,57 @@ describe('campaign setup deployment (P1)', () => {
     expect(st.readMetadata('world_info')).toBe('Player Lore');
     expect(st.readMetadata(METADATA_KEY)).toBeUndefined();
   });
+
+  const bondResult = (): SetupResult => {
+    const r = result(1);
+    r.units[0].defects = [{ id: 'imprint_hunger', origin: 'x' }];
+    return r;
+  };
+
+  it('the Desire/Bond setting is pinned when the wizard opens: turning it on later does not change the rules mid-form', async () => {
+    const { st, app, shell } = await bootReal();
+    st.settings.desireBondDefects = false;
+    app.openSetup();
+    st.settings.desireBondDefects = true; // flipped in SYS while the form is open
+    expect(await app.deployCampaign(bondResult(), 'new_group')).toBe(false);
+    expect(shell.toasts.at(-1)!.text).toMatch(/Desire\/Bond/);
+    expect(st.groups.size).toBe(0);
+  });
+
+  it('...and turning it off later does not reject a form that was filled in with it on', async () => {
+    const { st, app } = await bootReal();
+    st.settings.desireBondDefects = true;
+    app.openSetup();
+    st.settings.desireBondDefects = false;
+    expect(await app.deployCampaign(bondResult(), 'new_group')).toBe(true);
+    expect(app.current().state!.settings.desireBondDefects).toBe(true);
+  });
+
+  it('a retry after a failed open reuses the group that was already created', async () => {
+    const { st, app } = await bootReal();
+    app.openSetup();
+    st.failOpenGroup = true;
+    expect(await app.deployCampaign(result(2), 'new_group')).toBe(false);
+    expect(st.groups.size).toBe(1);
+    st.failOpenGroup = false;
+    expect(await app.deployCampaign(result(3), 'new_group')).toBe(true); // the player added a third card meanwhile
+    expect(st.groups.size).toBe(1);
+    expect(st.members.map((m) => m.avatar)).toEqual(CHARS.slice(0, 3).map((c) => c.avatar));
+    expect(app.current().state!.squad).toHaveLength(3);
+  });
+
+  it('a failed deployment into the current group restores which members were active', async () => {
+    const { st, app } = await bootReal(A);
+    st.members = [
+      { avatar: 'rhea.png', name: 'Rhea', active: true },
+      { avatar: 'ilse.png', name: 'Ilse', active: true },
+    ];
+    app.openSetup();
+    st.saveMetadata = async () => { throw new Error('quota'); };
+    expect(await app.deployCampaign(result(2), 'current_group')).toBe(false);
+    const active = Object.fromEntries(st.members.map((m) => [m.avatar, m.active]));
+    expect(active['rhea.png']).toBe(true);
+    expect(active['ilse.png']).toBe(true); // was muted by the deployment, is active again
+    expect(active['kay.png']).toBe(false); // added by the deployment, stays out of play
+  });
 });

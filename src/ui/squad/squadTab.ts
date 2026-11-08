@@ -20,13 +20,28 @@ export interface SquadTabCtx {
 const unknown = (id: string) => `UNKNOWN ${id}`;
 const nameOf = (e: Entry | undefined, id: string) => (e ? String(e.name) : unknown(id));
 
+/** Sprite lookups per adapter: a found sprite is kept, a missing one is not asked for again for a while. */
+const spriteCache = new WeakMap<StAdapter, Map<string, { url: string | null; at: number }>>();
+const MISSING_SPRITE_RETRY_MS = 30_000;
+
 /** Neutral sprite if the card has one, else the avatar; a failed load also falls back to the avatar. */
 function portrait(st: StAdapter, unit: Unit): HTMLElement | null {
   if (!unit.cardRef) return null;
   const card = unit.cardRef;
   const avatar = st.getAvatarUrl(card);
-  const img = h('img', { class: 'alius-portrait', src: avatar, alt: unit.displayName, width: '96', height: '96' }) as HTMLImageElement;
-  let usingAvatar = true;
+  let cache = spriteCache.get(st);
+  if (!cache) spriteCache.set(st, (cache = new Map()));
+  const known = cache.get(card);
+  const img = h('img', { class: 'alius-portrait', src: known?.url ?? avatar, alt: unit.displayName, width: '96', height: '96' }) as HTMLImageElement;
+  let usingAvatar = !known?.url;
+  if (known && (known.url || Date.now() - known.at < MISSING_SPRITE_RETRY_MS)) {
+    img.addEventListener('error', () => {
+      if (usingAvatar) return;
+      usingAvatar = true;
+      img.setAttribute('src', avatar);
+    });
+    return img;
+  }
   img.addEventListener('error', () => {
     if (usingAvatar) return;
     usingAvatar = true;
@@ -34,6 +49,7 @@ function portrait(st: StAdapter, unit: Unit): HTMLElement | null {
   });
   st.getSpriteUrl(card, 'neutral').then(
     (url) => {
+      cache!.set(card, { url: url || null, at: Date.now() });
       if (!url) return;
       usingAvatar = false;
       img.setAttribute('src', url);

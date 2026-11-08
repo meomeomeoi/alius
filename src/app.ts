@@ -66,7 +66,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
   let saver: ReturnType<typeof createSaver> | null = null;
   let started = false;
   /** The open intake wizard and the chat it was opened in (the only chat that "bind" may write to). */
-  let setup: { wizard: Wizard; chatId: string | null } | null = null;
+  let setup: { wizard: Wizard; chatId: string | null; createdGroupId?: string } | null = null;
 
   const toast = (kind: 'info' | 'warn' | 'error', text: string) => shell.toast(kind, text);
 
@@ -136,11 +136,12 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       toast('error', text);
       return false;
     };
-    const settings = getSettings(st);
+    // the rule the form was filled in under (the wizard pins it when it opens), not whatever SYS says now
+    const desireBondDefects = setup?.wizard.desireBondDefects ?? getSettings(st).desireBondDefects;
 
     // 1. build and validate before anything outside Alius is touched
     const built = buildCampaign(r, registries, {
-      desireBondDefects: settings.desireBondDefects,
+      desireBondDefects,
       seed: Math.floor(Math.random() * 2 ** 31),
     });
     if (!built.ok) return fail(built.errors[0]);
@@ -148,6 +149,16 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
 
     // 2. the target chat
     let targetChatId: string;
+    const activeBefore = target === 'current_group' ? st.getGroupMembers().filter((m) => m.active).map((m) => m.avatar) : null;
+    /** Best effort: put the group's active/inactive flags back if the deployment fails afterwards. */
+    const restoreMembers = async () => {
+      if (!activeBefore || st.getActiveChat()?.chatId !== targetChatId) return;
+      try {
+        await st.setMembersActive(activeBefore);
+      } catch (e) {
+        console.warn('[Alius] could not restore group members', e);
+      }
+    };
     try {
       if (target === 'current_group') {
         const chat = st.getActiveChat();
@@ -159,10 +170,21 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         await st.addGroupMembers(avatars);
         targetChatId = chat.chatId;
       } else {
-        let groupId: string;
+        let groupId: string | undefined = setup?.createdGroupId;
         try {
-          groupId = await st.createGroupChat({ name: `Alius: ${r.commanderName.trim()}`, members: avatars });
-          if (!(await st.openGroup(groupId))) throw new Error('SillyTavern refused to open it');
+          let opened = false;
+          if (groupId) {
+            // a retry after a failure: use the group made last time instead of creating another
+            opened = await st.openGroup(groupId).catch(() => false);
+            if (opened) await st.addGroupMembers(avatars);
+            else groupId = undefined;
+          }
+          if (!groupId) {
+            groupId = await st.createGroupChat({ name: `Alius: ${r.commanderName.trim()}`, members: avatars });
+            if (setup) setup.createdGroupId = groupId;
+            opened = await st.openGroup(groupId);
+          }
+          if (!opened) throw new Error('SillyTavern refused to open it');
         } catch (e) {
           return fail(`Could not open the new group chat: ${errText(e)}`);
         }
@@ -203,6 +225,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       const written = await writeNewCampaign(st, built.state, targetChatId);
       if (!written.ok) {
         restoreLorebook();
+        await restoreMembers();
         return fail(
           written.reason === 'exists' ? 'This chat already has an Alius campaign.'
           : written.reason === 'chat_changed' ? 'The open chat changed during deployment; nothing was written.'
@@ -212,6 +235,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       }
     } catch (e) {
       restoreLorebook();
+      await restoreMembers();
       return fail(`Could not save the campaign: ${errText(e)}`);
     }
 
@@ -260,7 +284,9 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         desireBondDefects: desireBond,
         // the first call imports every re-sync section, a "regenerate" asks for one
         importer: (avatar, wanted) =>
-          importProfile(avatar, wanted.length > 1 ? [...sections] : wanted, { st, settings: getSettings(st), registries }),
+          importProfile(avatar, wanted.length > 1 ? [...sections] : wanted, {
+            st, settings: { ...getSettings(st), desireBondDefects: desireBond }, registries,
+          }),
         onChange: () => {},
       },
       { personaName: '', canBindCurrent: false },
@@ -310,6 +336,14 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     if (sections.includes('tags')) Object.assign(patch, { likes: c.likes, dislikes: c.dislikes, triggers: c.triggers });
     if (sections.includes('signature') && c.signature) patch.signature = c.signature;
     if (sections.includes('defects')) patch.defects = c.defects;
+    const current: ResyncPatch = {
+      roleId: unit.roleId, values: unit.values, likes: unit.likes, dislikes: unit.dislikes, triggers: unit.triggers,
+      signature: unit.signatureSkill, defects: unit.defects.map((d) => ({ id: d.id, origin: d.origin ?? '' })),
+    };
+    const unchanged = (Object.keys(patch) as Array<keyof ResyncPatch>).every(
+      (k) => JSON.stringify(patch[k]) === JSON.stringify(current[k]),
+    );
+    if (unchanged) return toast('info', `Nothing changed${draft.notice ? ` (${draft.notice})` : ''}.`);
     const events = api.dispatch({ type: 'squad/resync', payload: { unitId, patch } }, { expectChatId: startChatId });
     const failed = events.find((e) => e.type === 'error');
     if (failed) toast('error', String(failed.message ?? failed.code));
@@ -327,11 +361,13 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     }
     endSetup();
     const chat = st.getActiveChat();
+    const desireBond = getSettings(st).desireBondDefects; // pinned for the whole form
     const wizard = new Wizard(
       {
         registries,
-        desireBondDefects: getSettings(st).desireBondDefects,
-        importer: (avatar, sections) => importProfile(avatar, sections, { st, settings: getSettings(st), registries }),
+        desireBondDefects: desireBond,
+        importer: (avatar, sections) =>
+          importProfile(avatar, sections, { st, settings: { ...getSettings(st), desireBondDefects: desireBond }, registries }),
         onChange: () => {},
       },
       { personaName: st.getPersonaName(), canBindCurrent: !!chat?.isGroup && load.kind === 'none' },
