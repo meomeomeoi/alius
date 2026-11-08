@@ -131,17 +131,17 @@ git add -A && git commit -m "chore: scaffold Alius extension build and architect
 **Interfaces:**
 - Produces: `type RngState = [number, number, number, number]`; `seedRng(seed: number): RngState`; `class Rng { constructor(state: RngState); float(): number /*[0,1)*/; int(min: number, max: number): number /*inclusive*/; chance(p: number): boolean; pick<T>(xs: readonly T[]): T; get state(): RngState }`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `same seed same sequence` (two `Rng(seedRng(42))`, 100 floats equal); `state round-trips through JSON` (draw 10, `JSON.parse(JSON.stringify(r.state))`, new Rng continues identically for 10 more); `int is inclusive and bounded` (10 000 draws of `int(1,6)` ⊂ {1..6}, all six seen); `float in [0,1)`; `pick on empty throws`.
 
-- [ ] **Step 2: Run** `npx vitest run tests/engine/rng.test.ts` → FAIL (module not found).
+- [x] **Step 2: Run** `npx vitest run tests/engine/rng.test.ts` → FAIL (module not found).
 
-- [ ] **Step 3: Implement** sfc32 over four uint32 words; `seedRng` mixes the seed with splitmix32 into four words and discards the first 12 outputs.
+- [x] **Step 3: Implement** sfc32 over four uint32 words; `seedRng` mixes the seed with splitmix32 into four words and discards the first 12 outputs.
 
-- [ ] **Step 4: Run** → PASS.
+- [x] **Step 4: Run** → PASS.
 
-- [ ] **Step 5: Commit** `feat(engine): seeded sfc32 rng`
+- [x] **Step 5: Commit** `feat(engine): seeded sfc32 rng`
 
 ---
 
