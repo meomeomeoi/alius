@@ -8,8 +8,12 @@ import { ContextBuilder } from './llm/context';
 import { callLlm, type LlmResult } from './llm/orchestrator';
 import { getSettings } from './settings';
 import type { Lorebook, StAdapter } from './st/adapter';
+import { buildCampaign, type SetupResult } from './engine/setup';
+import { importProfile } from './setup/profile';
+import { Wizard, type WizardState } from './setup/wizard';
+import { renderSetupScreen } from './ui/setup/setupScreen';
 import {
-  createSaver, initCampaign as initCampaignInChat, loadCampaign, type LoadResult,
+  createSaver, initCampaign as initCampaignInChat, loadCampaign, writeNewCampaign, METADATA_KEY, type LoadResult,
 } from './st/persistence';
 import { createShell, type ShellApi } from './ui/shell/shell';
 
@@ -31,6 +35,12 @@ export interface AliusApp {
   /** Re-renders the injected context after providers or directives changed. */
   refreshContext(): void;
   shell: ShellApi;
+  /** Opens the CCP intake wizard (refused in a read-only campaign chat). */
+  openSetup(): void;
+  /** Builds the campaign from a finished wizard, creates or binds the group chat and writes the state. */
+  deployCampaign(r: SetupResult, target: 'new_group' | 'current_group'): Promise<boolean>;
+  /** The open wizard's state, or null when no setup is in progress. */
+  setupState(): WizardState | null;
 }
 
 export interface AppDeps {
@@ -49,6 +59,8 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
   let state: CampaignState | null = null;
   let saver: ReturnType<typeof createSaver> | null = null;
   let started = false;
+  /** The open intake wizard and the chat it was opened in (the only chat that "bind" may write to). */
+  let setup: { wizard: Wizard; chatId: string | null } | null = null;
 
   const toast = (kind: 'info' | 'warn' | 'error', text: string) => shell.toast(kind, text);
 
@@ -90,6 +102,132 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     { label: 'Clear all injections', run: () => context.apply(st, null, 0) },
   ];
 
+  function endSetup(): void {
+    setup?.wizard.dispose();
+    setup = null;
+  }
+
+  async function deployCampaign(r: SetupResult, target: 'new_group' | 'current_group'): Promise<boolean> {
+    const fail = (text: string): false => {
+      toast('error', text);
+      return false;
+    };
+    const settings = getSettings(st);
+
+    // 1. build and validate before anything outside Alius is touched
+    const built = buildCampaign(r, registries, {
+      desireBondDefects: settings.desireBondDefects,
+      seed: Math.floor(Math.random() * 2 ** 31),
+    });
+    if (!built.ok) return fail(built.errors[0]);
+    const avatars = r.units.map((u) => u.cardRef);
+
+    // 2. the target chat
+    let targetChatId: string;
+    try {
+      if (target === 'current_group') {
+        const chat = st.getActiveChat();
+        if (!chat || !chat.isGroup) return fail('Open a group chat first.');
+        if (setup?.chatId && chat.chatId !== setup.chatId) {
+          return fail('The open chat changed since the intake form was opened. Switch back or choose "Create a new group chat".');
+        }
+        if (st.readMetadata(METADATA_KEY) !== undefined) return fail('This chat already has an Alius campaign.');
+        await st.addGroupMembers(avatars);
+        targetChatId = chat.chatId;
+      } else {
+        let groupId: string;
+        try {
+          groupId = await st.createGroupChat({ name: `Alius: ${r.commanderName.trim()}`, members: avatars });
+          if (!(await st.openGroup(groupId))) throw new Error('SillyTavern refused to open it');
+        } catch (e) {
+          return fail(`Could not open the new group chat: ${errText(e)}`);
+        }
+        const chat = st.getActiveChat();
+        if (!chat || chat.groupId !== groupId) return fail('Could not open the new group chat: it is not the active chat.');
+        targetChatId = chat.chatId;
+      }
+
+      // 3. exactly the selected cards take part
+      await st.setMembersActive(avatars);
+    } catch (e) {
+      return fail(`Deployment failed: ${errText(e)}`);
+    }
+
+    // 4. lorebook: installed unless a lorebook of that name exists (the player may have edited it)
+    if (lorebook) {
+      try {
+        if (!st.listLorebooks().includes(lorebook.name)) await st.saveLorebook(lorebook);
+        st.setChatLorebook(lorebook.name);
+      } catch (e) {
+        toast('warn', `Lorebook not installed: ${errText(e)}`);
+      }
+    }
+
+    // 5. the campaign itself
+    try {
+      const written = await writeNewCampaign(st, built.state, targetChatId);
+      if (!written.ok) {
+        return fail(
+          written.reason === 'exists' ? 'This chat already has an Alius campaign.'
+          : written.reason === 'chat_changed' ? 'The open chat changed during deployment; nothing was written.'
+          : written.reason === 'not_group' ? 'Alius campaigns need a group chat.'
+          : 'Open a chat first.',
+        );
+      }
+    } catch (e) {
+      return fail(`Could not save the campaign: ${errText(e)}`);
+    }
+
+    // 6. land on Day 1
+    endSetup();
+    reload();
+    applyContext();
+    shell.showScreen('pda');
+    shell.showTab('squad');
+    toast('info', 'Deployment confirmed. Day 1, Morning.');
+    return true;
+  }
+
+  function openSetup(): void {
+    if (load.kind === 'readonly') {
+      toast('error', 'This chat has unreadable Alius data and is read-only; a new campaign cannot be started here.');
+      return;
+    }
+    if (registries.starts.size === 0 || registries.crimes.size === 0) {
+      toast('error', 'Content failed to load; a campaign cannot be started. See SYS > debug.');
+      return;
+    }
+    endSetup();
+    const chat = st.getActiveChat();
+    const wizard = new Wizard(
+      {
+        registries,
+        desireBondDefects: getSettings(st).desireBondDefects,
+        importer: (avatar, sections) => importProfile(avatar, sections, { st, settings: getSettings(st), registries }),
+        onChange: () => {},
+      },
+      { personaName: st.getPersonaName(), canBindCurrent: !!chat?.isGroup && load.kind === 'none' },
+    );
+    setup = { wizard, chatId: chat?.chatId ?? null };
+    shell.registerScreen('setup', (host) => {
+      renderSetupScreen(host, {
+        wizard,
+        registries,
+        st,
+        modal: (o) => shell.modal(o),
+        onCancel: () => {
+          if (setup?.wizard === wizard) endSetup();
+          shell.showScreen('pda');
+        },
+        onConfirm: async (r, target) => {
+          await deployCampaign(r, target);
+        },
+      });
+    });
+    shell.showScreen('setup');
+    shell.open();
+  }
+
   const shell = (deps.shellFactory ?? createShell)({
     st,
     getState: () => state,
@@ -104,6 +242,9 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     shell,
     refreshContext: applyContext,
     replaceState,
+    openSetup,
+    deployCampaign,
+    setupState: () => setup?.wizard.state ?? null,
 
     async start() {
       getSettings(st); // normalizes extension settings

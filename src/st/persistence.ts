@@ -21,18 +21,50 @@ export function loadCampaign(st: StAdapter): LoadResult {
   return { kind: 'readonly', reason: r.detail, chatId: chat.chatId };
 }
 
+type TargetProblem = 'no_chat' | 'not_group' | 'exists' | 'chat_changed';
+
+/** Can a new campaign be written into the open chat? `expectChatId` also pins which chat that must be. */
+function checkNewCampaignTarget(st: StAdapter, expectChatId?: string): TargetProblem | null {
+  const chat = st.getActiveChat();
+  if (!chat) return 'no_chat';
+  if (expectChatId !== undefined && chat.chatId !== expectChatId) return 'chat_changed';
+  if (!chat.isGroup) return 'not_group';
+  if (st.readMetadata(METADATA_KEY) !== undefined) return 'exists';
+  return null;
+}
+
 export function initCampaign(
   st: StAdapter,
   opts: { seed: number; commanderName: string },
 ): { ok: true; state: CampaignState } | { ok: false; reason: 'not_group' | 'exists' | 'no_chat' } {
-  const chat = st.getActiveChat();
-  if (!chat) return { ok: false, reason: 'no_chat' };
-  if (!chat.isGroup) return { ok: false, reason: 'not_group' };
-  if (st.readMetadata(METADATA_KEY) !== undefined) return { ok: false, reason: 'exists' };
+  const problem = checkNewCampaignTarget(st) as 'no_chat' | 'not_group' | 'exists' | null;
+  if (problem) return { ok: false, reason: problem };
   const state = createCampaign(opts);
   st.writeMetadata(METADATA_KEY, state);
   st.saveMetadata().catch((e) => console.warn('[Alius] saving new campaign failed', e));
   return { ok: true, state };
+}
+
+/**
+ * Writes a finished campaign into the chat it was built for and waits until ST has saved it.
+ * Refuses a chat that is not `expectChatId`, is not a group, or already has Alius data.
+ * If the save fails the state is removed again and the error is rethrown.
+ */
+export async function writeNewCampaign(
+  st: StAdapter,
+  state: CampaignState,
+  expectChatId: string,
+): Promise<{ ok: true } | { ok: false; reason: TargetProblem }> {
+  const problem = checkNewCampaignTarget(st, expectChatId);
+  if (problem) return { ok: false, reason: problem };
+  st.writeMetadata(METADATA_KEY, state);
+  try {
+    await st.saveMetadata();
+  } catch (e) {
+    st.writeMetadata(METADATA_KEY, undefined);
+    throw e;
+  }
+  return { ok: true };
 }
 
 /**

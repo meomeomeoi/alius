@@ -4165,6 +4165,7 @@ registerCallType({
 });
 
 // src/llm/calls/profileImport.ts
+var ALL_SECTIONS = ["role", "values", "tags", "signature", "defects", "baseline"];
 var ProfileImportRawSchema = external_exports.object({
   roleCandidates: external_exports.unknown().optional(),
   values: external_exports.unknown().optional(),
@@ -4634,6 +4635,1130 @@ function createCampaign(opts) {
   };
 }
 
+// src/engine/state/types.ts
+var VALUE_AXES = ["pragmatism", "autonomy", "ingroup", "mercy", "corporate", "sacrifice"];
+
+// src/engine/setup.ts
+var SETUP_LIMITS = {
+  maxUnits: 4,
+  maxDefects: 2,
+  likes: 6,
+  dislikes: 6,
+  triggers: 4,
+  tagLength: 32,
+  value: [-3, 3],
+  baseline: { trust: [0, 40], affinity: [-20, 30], attraction: [0, 20] }
+};
+var INITIAL_RELATION_STATE = "stranger";
+function normalizeTag(s) {
+  if (typeof s !== "string") return null;
+  const t = s.toLowerCase().replace(/[^a-z0-9 '_-]/g, "").replace(/\s+/g, " ").trim().slice(0, SETUP_LIMITS.tagLength).trim();
+  return t === "" ? null : t;
+}
+var effectsOf = (part) => {
+  const list = part?.effects;
+  return Array.isArray(list) ? list.filter((e) => typeof e === "object" && e !== null) : [];
+};
+var inRange = (n, [lo, hi]) => typeof n === "number" && Number.isInteger(n) && n >= lo && n <= hi;
+function validateUnit(u, label, reg, opts, out) {
+  if (typeof u.displayName !== "string" || u.displayName.trim() === "") out.push(`${label}: display name is empty`);
+  if (!reg.roles.has(u.roleId)) out.push(`${label}: unknown role "${u.roleId}"`);
+  if (!reg.signatures.has(u.signature?.templateId)) {
+    out.push(`${label}: unknown signature template "${u.signature?.templateId}"`);
+  }
+  const defects = u.defects ?? [];
+  if (defects.length < 1 || defects.length > SETUP_LIMITS.maxDefects) {
+    out.push(`${label}: needs 1 to ${SETUP_LIMITS.maxDefects} defects (has ${defects.length})`);
+  }
+  const seen = /* @__PURE__ */ new Set();
+  for (const d of defects) {
+    const def = reg.defects.get(d.id);
+    if (!def) out.push(`${label}: unknown defect "${d.id}"`);
+    else if (def.category === "desire_bond" && !opts.desireBondDefects) {
+      out.push(`${label}: defect "${d.id}" is a Desire/Bond defect and that setting is off`);
+    }
+    if (seen.has(d.id)) out.push(`${label}: defect "${d.id}" is chosen twice`);
+    seen.add(d.id);
+  }
+  for (const axis of VALUE_AXES) {
+    if (!inRange(u.values?.[axis], SETUP_LIMITS.value)) {
+      out.push(`${label}: value "${axis}" must be an integer from -3 to 3`);
+    }
+  }
+  const tagCaps = { likes: SETUP_LIMITS.likes, dislikes: SETUP_LIMITS.dislikes, triggers: SETUP_LIMITS.triggers };
+  for (const [field2, cap2] of Object.entries(tagCaps)) {
+    const tags = u[field2] ?? [];
+    if (tags.length > cap2) out.push(`${label}: at most ${cap2} ${field2} (has ${tags.length})`);
+    for (const t of tags) {
+      if (normalizeTag(t) !== t) out.push(`${label}: ${field2} entry "${t}" is not a normalized tag`);
+    }
+  }
+  for (const [axis, range] of Object.entries(SETUP_LIMITS.baseline)) {
+    if (!inRange(u.baseline?.[axis], range)) {
+      out.push(`${label}: baseline ${axis} must be an integer from ${range[0]} to ${range[1]}`);
+    }
+  }
+}
+function validateSetup(r, reg, opts) {
+  const out = [];
+  const name = typeof r.commanderName === "string" ? r.commanderName.trim() : "";
+  if (name === "" || name.length > 60) out.push("Commander name must be 1 to 60 characters");
+  const start = reg.starts.get(r.startId);
+  if (!start) out.push(`Unknown start "${r.startId}"`);
+  else {
+    const corp = reg.corporations.get(String(start.corporationId));
+    if (!corp) out.push(`Start "${r.startId}" uses unknown corporation "${String(start.corporationId)}"`);
+    else if (corp.playable !== true) out.push(`Start "${r.startId}" uses non-playable corporation "${corp.id}"`);
+  }
+  if (!reg.crimes.has(r.crimeId)) out.push(`Unknown crime "${r.crimeId}"`);
+  const units = r.units ?? [];
+  if (units.length > SETUP_LIMITS.maxUnits) out.push(`At most ${SETUP_LIMITS.maxUnits} units (has ${units.length})`);
+  const cards = /* @__PURE__ */ new Set();
+  units.forEach((u, i) => {
+    if (cards.has(u.cardRef)) out.push(`Card "${u.cardRef}" is selected twice`);
+    cards.add(u.cardRef);
+    validateUnit(u, `Unit ${i + 1} (${u.displayName})`, reg, opts, out);
+  });
+  return out;
+}
+var slug = (name) => {
+  const s = name.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+  return s === "" ? "unit" : s;
+};
+var bandFor = (trust) => trust < 10 ? "breaking" : trust < 25 ? "wavering" : "steady";
+var clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+function buildCampaign(r, reg, opts) {
+  const errors = validateSetup(r, reg, opts);
+  if (errors.length > 0) return { ok: false, errors };
+  const start = reg.starts.get(r.startId);
+  const corp = reg.corporations.get(String(start.corporationId));
+  const crime = reg.crimes.get(r.crimeId);
+  const state = createCampaign({ seed: opts.seed, commanderName: r.commanderName.trim() });
+  state.commander.corporationId = corp.id;
+  state.commander.crimeId = crime.id;
+  state.commander.socialStats = { authority: 1, insight: 1, empathy: 1, cunning: 1 };
+  state.world.startId = start.id;
+  state.settings = { desireBondDefects: opts.desireBondDefects };
+  const crimeEffects = [...effectsOf(crime.perk), ...effectsOf(crime.flaw)];
+  for (const fx of [...effectsOf(corp.startingBonus), ...crimeEffects]) {
+    if (fx.type === "social_rank") {
+      const stat = fx.stat;
+      state.commander.socialStats[stat] = Math.max(state.commander.socialStats[stat], fx.rank);
+    } else if (fx.type === "resource") {
+      state.resources[fx.resource] += fx.amount;
+    }
+  }
+  const trustEffects = crimeEffects.filter((fx) => fx.type === "starting_trust");
+  const knowsCrime = crime.knownByDefault === true || start.crimeKnownByDefault === true;
+  const used = /* @__PURE__ */ new Set();
+  for (const u of r.units) {
+    const base = `unit_${slug(u.displayName)}`;
+    let id = base;
+    for (let n = 2; used.has(id); n++) id = `${base}_${n}`;
+    used.add(id);
+    const role = reg.roles.get(u.roleId);
+    const stats = role.baseStats;
+    state.squad.push({
+      id,
+      kind: "named",
+      cardRef: u.cardRef,
+      displayName: u.displayName,
+      roleId: u.roleId,
+      level: 1,
+      xp: 0,
+      skillPoints: 0,
+      unlockedNodes: [],
+      signatureSkill: { ...u.signature },
+      baseStats: { ...stats },
+      currentHp: stats.hp,
+      stress: 0,
+      defects: u.defects.map((d) => ({ id: d.id, origin: d.origin })),
+      values: { ...u.values },
+      likes: [...u.likes],
+      dislikes: [...u.dislikes],
+      triggers: [...u.triggers],
+      equipment: {},
+      injuries: [],
+      status: "active"
+    });
+    let trust = u.baseline.trust;
+    for (const fx of trustEffects) {
+      const iv = fx.ifValue;
+      if (iv) {
+        const v = u.values[iv.axis];
+        if (iv.sign === "+" ? !(v > 0) : !(v < 0)) continue;
+      }
+      trust += fx.amount;
+    }
+    trust = clamp(trust, 0, 100);
+    const relation = {
+      trust,
+      affinity: u.baseline.affinity,
+      attraction: u.baseline.attraction,
+      stateId: INITIAL_RELATION_STATE,
+      stateSince: 1,
+      history: [],
+      flags: knowsCrime ? ["knows_crime"] : [],
+      dailyGain: { trust: 0, affinity: 0, attraction: 0 },
+      loyaltyBand: bandFor(trust),
+      marks: []
+    };
+    state.relations[id] = relation;
+  }
+  state.roster.activeIds = state.squad.map((u) => u.id);
+  return { ok: true, state };
+}
+
+// src/setup/profile.ts
+var CARD_INPUT_TOKENS = 2500;
+var CUT_MARK = "\u2026[truncated]";
+var CHARS_PER_TOKEN = 3.6;
+var CARD_FIELDS = ["description", "personality", "scenario", "creatorNotes"];
+function truncateCard(card2, maxTokens) {
+  const fields = CARD_FIELDS.filter((f) => card2[f] !== "").sort((a, b) => estTokens(card2[a]) - estTokens(card2[b]));
+  const out = { ...card2 };
+  let remaining = maxTokens;
+  fields.forEach((f, i) => {
+    const share = remaining / (fields.length - i);
+    const cost = estTokens(card2[f]);
+    if (cost <= share) {
+      remaining -= cost;
+      return;
+    }
+    const maxChars = Math.floor(share * CHARS_PER_TOKEN);
+    out[f] = card2[f].slice(0, Math.max(0, maxChars - CUT_MARK.length)) + CUT_MARK;
+    remaining -= share;
+  });
+  return out;
+}
+function buildImportInput(card2, registries, settings, sections) {
+  const str2 = (v) => typeof v === "string" ? v : "";
+  return {
+    card: card2,
+    sections: [...sections],
+    roles: [...registries.roles.values()].map((r) => ({ id: r.id, summary: str2(r.summary) })),
+    signatures: [...registries.signatures.values()].map((s) => ({ id: s.id, fits: str2(s.fits) })),
+    defects: [...registries.defects.values()].filter((d) => settings.desireBondDefects || d.category !== "desire_bond").map((d) => ({ id: d.id, lore: str2(d.lore) }))
+  };
+}
+var isObj2 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var cap = (v, max, fallback = "") => typeof v === "string" ? v.trim().slice(0, max) : fallback;
+var num = (v, lo, hi, fallback) => typeof v === "number" && Number.isFinite(v) ? Math.min(hi, Math.max(lo, Math.round(v))) : fallback;
+var SECTION_LABEL = { role: "role", signature: "signature", defects: "defects" };
+var VALUE_KEYS = ["pragmatism", "autonomy", "ingroup", "mercy", "corporate", "sacrifice"];
+function tagList(v, max) {
+  if (!Array.isArray(v)) return void 0;
+  const out = [];
+  for (const raw of v) {
+    const t = normalizeTag(raw);
+    if (t !== null && !out.includes(t)) out.push(t);
+    if (out.length === max) break;
+  }
+  return out;
+}
+function sanitizeProfile(raw, ctx2) {
+  const src = isObj2(raw) ? raw : {};
+  const want = (s) => ctx2.sections.includes(s);
+  const dropped = [];
+  const missing = [];
+  const profile = { roleCandidates: [], signatureCandidates: [], defectCandidates: [], notes: cap(src.notes, 300) };
+  const pick = (list, section, idKey, max, accept, make) => {
+    const out = [];
+    const seen = /* @__PURE__ */ new Set();
+    for (const item of Array.isArray(list) ? list : []) {
+      const id = isObj2(item) && typeof item[idKey] === "string" ? item[idKey] : null;
+      if (id === null) {
+        dropped.push(`${SECTION_LABEL[section]}:(invalid)`);
+        continue;
+      }
+      if (!accept(id) || seen.has(id)) {
+        dropped.push(`${SECTION_LABEL[section]}:${id}`);
+        continue;
+      }
+      seen.add(id);
+      if (out.length < max) out.push(make(id, item));
+    }
+    return out;
+  };
+  if (want("role")) {
+    profile.roleCandidates = pick(
+      src.roleCandidates,
+      "role",
+      "roleId",
+      2,
+      (id) => ctx2.registries.roles.has(id),
+      (roleId, it) => ({ roleId, reason: cap(it.reason, 200) })
+    );
+    if (profile.roleCandidates.length === 0) missing.push("role");
+  }
+  if (want("signature")) {
+    profile.signatureCandidates = pick(
+      src.signatureCandidates,
+      "signature",
+      "templateId",
+      3,
+      (id) => ctx2.registries.signatures.has(id),
+      (templateId, it) => {
+        const tpl = ctx2.registries.signatures.get(templateId);
+        return {
+          templateId,
+          name: cap(it.name, 40, String(tpl.name)) || String(tpl.name),
+          description: cap(it.description, 240, String(tpl.mechanic)) || String(tpl.mechanic)
+        };
+      }
+    );
+    if (profile.signatureCandidates.length === 0) missing.push("signature");
+  }
+  if (want("defects")) {
+    profile.defectCandidates = pick(
+      src.defectCandidates,
+      "defects",
+      "defectId",
+      3,
+      (id) => {
+        const d = ctx2.registries.defects.get(id);
+        return !!d && (ctx2.desireBondDefects || d.category !== "desire_bond");
+      },
+      (defectId, it) => ({ defectId, origin: cap(it.origin, 300) })
+    );
+    if (profile.defectCandidates.length === 0) missing.push("defects");
+  }
+  if (want("values")) {
+    if (isObj2(src.values)) {
+      const v = src.values;
+      profile.values = Object.fromEntries(VALUE_KEYS.map((k) => [k, num(v[k], -3, 3, 0)]));
+    } else missing.push("values");
+  }
+  if (want("tags")) {
+    const likes = tagList(src.likes, SETUP_LIMITS.likes);
+    const dislikes = tagList(src.dislikes, SETUP_LIMITS.dislikes);
+    const triggers = tagList(src.triggers, SETUP_LIMITS.triggers);
+    if (likes) profile.likes = likes;
+    if (dislikes) profile.dislikes = dislikes;
+    if (triggers) profile.triggers = triggers;
+    if (!likes && !dislikes && !triggers) missing.push("tags");
+  }
+  if (want("baseline")) {
+    if (isObj2(src.emotionalBaseline)) {
+      const b = src.emotionalBaseline;
+      const lim = SETUP_LIMITS.baseline;
+      profile.baseline = {
+        trust: num(b.trust, lim.trust[0], lim.trust[1], 20),
+        affinity: num(b.affinity, lim.affinity[0], lim.affinity[1], 0),
+        attraction: num(b.attraction, lim.attraction[0], lim.attraction[1], 0)
+      };
+    } else missing.push("baseline");
+  }
+  return { profile, dropped, missing };
+}
+async function importProfile(avatar, sections, deps) {
+  const { st, settings, registries } = deps;
+  try {
+    const loaded = await st.loadCharacterCard(avatar);
+    if (!loaded) return { kind: "manual", reason: "card not found" };
+    const input = buildImportInput(truncateCard(loaded, CARD_INPUT_TOKENS), registries, settings, sections);
+    const ctx2 = { registries, desireBondDefects: settings.desireBondDefects, sections };
+    const attempt = async () => {
+      const r = await callLlm("profile_import", input, { st, settings });
+      if (!r.ok) return { ok: false, reason: r.detail || r.reason };
+      return { ok: true, value: sanitizeProfile(r.value, ctx2) };
+    };
+    const critical = (m) => m.filter((s) => s === "role" || s === "defects");
+    let res = await attempt();
+    if (res.ok && critical(res.value.missing).length > 0) res = await attempt();
+    if (!res.ok) return { kind: "manual", reason: res.reason };
+    const stillMissing = critical(res.value.missing);
+    if (stillMissing.length > 0) {
+      return { kind: "manual", reason: `no usable ${stillMissing.join(" / ")} in the model's answer` };
+    }
+    return { kind: "ok", ...res.value };
+  } catch (e) {
+    return { kind: "manual", reason: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+// src/setup/wizard.ts
+function difficultyHint(n) {
+  return n >= 4 ? "INTENDED" : n === 3 ? "HARD" : n === 2 ? "BRUTAL" : "HELLISH";
+}
+function manualOptions(registries, desireBondDefects) {
+  return {
+    roles: [...registries.roles.values()],
+    signatures: [...registries.signatures.values()],
+    defects: [...registries.defects.values()].filter((d) => desireBondDefects || d.category !== "desire_bond")
+  };
+}
+var emptyProfile = () => ({ roleCandidates: [], signatureCandidates: [], defectCandidates: [], notes: "" });
+var errText = (e) => e instanceof Error ? e.message : String(e);
+var generationCounter = 0;
+var Wizard = class {
+  constructor(deps, init) {
+    this.deps = deps;
+    this.s = {
+      step: "dossier",
+      commanderName: init.personaName.trim() || "Commander",
+      startId: null,
+      crimeId: null,
+      units: [],
+      calibrationIndex: 0,
+      target: "new_group",
+      canBindCurrent: init.canBindCurrent
+    };
+  }
+  s;
+  disposed = false;
+  listeners = /* @__PURE__ */ new Set();
+  /** Whether Desire/Bond defects are allowed (needed by the manual lists in the UI). */
+  get desireBondDefects() {
+    return this.deps.desireBondDefects;
+  }
+  get state() {
+    return this.s;
+  }
+  /** Stops late import results from touching (or re-rendering) this wizard. */
+  dispose() {
+    this.disposed = true;
+  }
+  /** Extra change listener (the screen re-renders from it). Returns the unsubscribe function. */
+  subscribe(fn) {
+    this.listeners.add(fn);
+    return () => this.listeners.delete(fn);
+  }
+  emit() {
+    if (this.disposed) return;
+    this.deps.onChange(this.s);
+    for (const fn of [...this.listeners]) fn(this.s);
+  }
+  // --- dossier
+  setCommanderName(name) {
+    this.s.commanderName = name;
+    this.emit();
+  }
+  setStart(id) {
+    if (!this.deps.registries.starts.has(id)) return;
+    this.s.startId = id;
+    this.emit();
+  }
+  setCrime(id) {
+    if (!this.deps.registries.crimes.has(id)) return;
+    this.s.crimeId = id;
+    this.emit();
+  }
+  setTarget(t) {
+    if (t === "current_group" && !this.s.canBindCurrent) return;
+    this.s.target = t;
+    this.emit();
+  }
+  // --- units
+  toggleUnit(c) {
+    const i = this.s.units.findIndex((u) => u.avatar === c.avatar);
+    if (i >= 0) {
+      this.s.units.splice(i, 1);
+      this.s.calibrationIndex = Math.min(this.s.calibrationIndex, Math.max(0, this.s.units.length - 1));
+    } else if (this.s.units.length < SETUP_LIMITS.maxUnits) {
+      this.s.units.push({
+        avatar: c.avatar,
+        displayName: c.name,
+        status: "idle",
+        candidates: null,
+        choice: {
+          roleId: null,
+          signature: null,
+          defects: [],
+          values: { pragmatism: 0, autonomy: 0, ingroup: 0, mercy: 0, corporate: 0, sacrifice: 0 },
+          likes: [],
+          dislikes: [],
+          triggers: [],
+          baseline: { trust: 20, affinity: 0, attraction: 0 }
+        },
+        secondDefect: false,
+        generation: ++generationCounter
+      });
+    }
+    this.emit();
+  }
+  // --- navigation
+  canAdvance() {
+    const fail = (reason) => ({ ok: false, reason });
+    switch (this.s.step) {
+      case "dossier":
+        if (this.s.commanderName.trim() === "") return fail("Enter the commander's name.");
+        if (!this.s.startId) return fail("Choose a starting point.");
+        if (!this.s.crimeId) return fail("Choose the commander's crime.");
+        return { ok: true };
+      case "units":
+        return { ok: true };
+      case "calibration": {
+        for (const u of this.s.units) {
+          if (u.status === "idle" || u.status === "loading") return fail(`${u.displayName} is not calibrated yet.`);
+          if (!u.choice.roleId) return fail(`${u.displayName}: choose a role.`);
+          if (!u.choice.signature) return fail(`${u.displayName}: choose a signature skill.`);
+          if (u.choice.defects.length < 1) return fail(`${u.displayName}: choose at least one defect.`);
+        }
+        return { ok: true };
+      }
+      case "review": {
+        const { errors } = this.build();
+        return errors.length === 0 ? { ok: true } : fail(errors[0]);
+      }
+    }
+  }
+  next() {
+    if (!this.canAdvance().ok) return;
+    if (this.s.step === "dossier") this.s.step = "units";
+    else if (this.s.step === "units") {
+      if (this.s.units.length === 0) this.s.step = "review";
+      else {
+        this.s.step = "calibration";
+        this.s.calibrationIndex = 0;
+        this.calibrate(0);
+      }
+    } else if (this.s.step === "calibration") this.s.step = "review";
+    this.emit();
+  }
+  back() {
+    if (this.s.step === "units") this.s.step = "dossier";
+    else if (this.s.step === "calibration") this.s.step = "units";
+    else if (this.s.step === "review") this.s.step = this.s.units.length === 0 ? "units" : "calibration";
+    this.emit();
+  }
+  /** Pager inside the calibration step; also starts that unit's import if it has not run yet. */
+  setCalibrationIndex(i) {
+    if (i < 0 || i >= this.s.units.length) return;
+    this.s.calibrationIndex = i;
+    this.calibrate(i);
+    this.emit();
+  }
+  // --- calibration
+  calibrate(index) {
+    const u = this.s.units[index];
+    if (!u || u.status !== "idle") return;
+    u.status = "loading";
+    u.generation = ++generationCounter;
+    this.emit();
+    void this.run(u, [...ALL_SECTIONS], (outcome) => this.applyFull(u, outcome));
+  }
+  regenerate(index, section) {
+    const u = this.s.units[index];
+    if (!u || u.status !== "ready" && u.status !== "manual") return;
+    u.generation = ++generationCounter;
+    void this.run(u, [section], (outcome) => this.applySection(u, section, outcome));
+  }
+  setManual(index) {
+    const u = this.s.units[index];
+    if (!u) return;
+    u.generation = ++generationCounter;
+    u.status = "manual";
+    u.candidates = null;
+    u.notice = "Manual calibration selected.";
+    this.emit();
+  }
+  update(index, patch) {
+    const u = this.s.units[index];
+    if (!u) return;
+    const { secondDefect, ...choice } = patch;
+    Object.assign(u.choice, choice);
+    if (secondDefect !== void 0) u.secondDefect = secondDefect;
+    if (!u.secondDefect) u.choice.defects = u.choice.defects.slice(0, 1);
+    u.choice.defects = u.choice.defects.slice(0, SETUP_LIMITS.maxDefects);
+    this.emit();
+  }
+  /** Runs one import; the result is applied only if the draft still exists with the same generation. */
+  async run(u, sections, apply) {
+    const gen = u.generation;
+    let outcome;
+    try {
+      outcome = await this.deps.importer(u.avatar, sections);
+    } catch (e) {
+      outcome = { kind: "manual", reason: errText(e) };
+    }
+    if (this.disposed || !this.s.units.includes(u) || u.generation !== gen) return;
+    apply(outcome);
+    this.emit();
+  }
+  applyFull(u, outcome) {
+    if (outcome.kind === "manual") {
+      u.status = "manual";
+      u.notice = outcome.reason;
+      u.candidates = null;
+      return;
+    }
+    const p = outcome.profile;
+    u.status = "ready";
+    u.notice = void 0;
+    u.candidates = structuredClone(p);
+    for (const section of ALL_SECTIONS) this.preselect(u, p, section);
+  }
+  applySection(u, section, outcome) {
+    if (outcome.kind === "manual") {
+      u.notice = outcome.reason;
+      return;
+    }
+    if (outcome.missing.includes(section)) return;
+    if (u.candidates === null) u.candidates = emptyProfile();
+    u.status = "ready";
+    u.notice = void 0;
+    const p = outcome.profile;
+    const c = u.candidates;
+    if (section === "role") c.roleCandidates = p.roleCandidates;
+    else if (section === "signature") c.signatureCandidates = p.signatureCandidates;
+    else if (section === "defects") c.defectCandidates = p.defectCandidates;
+    else if (section === "values") c.values = p.values;
+    else if (section === "baseline") c.baseline = p.baseline;
+    else {
+      c.likes = p.likes;
+      c.dislikes = p.dislikes;
+      c.triggers = p.triggers;
+    }
+    this.preselect(u, p, section);
+  }
+  /** Copies the first candidate (or the suggested numbers and tags) of one section into the player's choice. */
+  preselect(u, p, section) {
+    const ch = u.choice;
+    switch (section) {
+      case "role":
+        if (p.roleCandidates[0]) ch.roleId = p.roleCandidates[0].roleId;
+        break;
+      case "signature": {
+        const s = p.signatureCandidates[0];
+        if (s) ch.signature = { templateId: s.templateId, name: s.name, description: s.description };
+        break;
+      }
+      case "defects": {
+        const d = p.defectCandidates;
+        if (d[0]) {
+          const picked = [d[0]];
+          if (u.secondDefect && d[1]) picked.push(d[1]);
+          ch.defects = picked.map((x) => ({ id: x.defectId, origin: x.origin }));
+        }
+        break;
+      }
+      case "values":
+        if (p.values) ch.values = { ...p.values };
+        break;
+      case "tags":
+        if (p.likes) ch.likes = [...p.likes];
+        if (p.dislikes) ch.dislikes = [...p.dislikes];
+        if (p.triggers) ch.triggers = [...p.triggers];
+        break;
+      case "baseline":
+        if (p.baseline) ch.baseline = { ...p.baseline };
+        break;
+    }
+  }
+  // --- result
+  build() {
+    const { startId, crimeId } = this.s;
+    if (!startId || !crimeId) return { result: null, errors: ["Choose a starting point and a crime."] };
+    const units = [];
+    for (const u of this.s.units) {
+      const { roleId, signature, ...rest } = u.choice;
+      if (!roleId || !signature) return { result: null, errors: [`${u.displayName}: calibration is incomplete.`] };
+      units.push({ cardRef: u.avatar, displayName: u.displayName, roleId, signature, ...structuredClone(rest) });
+    }
+    const result = { commanderName: this.s.commanderName, startId, crimeId, units };
+    const errors = validateSetup(result, this.deps.registries, { desireBondDefects: this.deps.desireBondDefects });
+    return { result: errors.length === 0 ? result : null, errors };
+  }
+  /** The finished setup, or null unless `validateSetup` passes. */
+  result() {
+    return this.build().result;
+  }
+};
+
+// src/ui/dom.ts
+function h(tag, attrs = {}, ...children) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (v === false || v === null || v === void 0) continue;
+    if (k === "class") el.className = String(v);
+    else if (k.startsWith("on") && typeof v === "function") el.addEventListener(k.slice(2).toLowerCase(), v);
+    else if (v === true) el.setAttribute(k, "");
+    else el.setAttribute(k, String(v));
+  }
+  for (const c of children) {
+    if (c === null || c === void 0) continue;
+    el.append(typeof c === "string" ? document.createTextNode(c) : c);
+  }
+  return el;
+}
+
+// src/ui/setup/calibration.ts
+var TAG_FIELDS = [
+  ["likes", "Likes", SETUP_LIMITS.likes],
+  ["dislikes", "Dislikes", SETUP_LIMITS.dislikes],
+  ["triggers", "Triggers (hard lines)", SETUP_LIMITS.triggers]
+];
+var BASELINE_FIELDS = ["trust", "affinity", "attraction"];
+var nameOf = (e, id) => e ? String(e.name) : `UNKNOWN ${id}`;
+function pickCard(cls, id, selected, onClick, ...children) {
+  return h("button", { type: "button", class: `alius-card ${cls}`, "data-id": id, "aria-pressed": String(selected), onclick: onClick }, ...children);
+}
+function slider(label, attrs, min, max, value, commit) {
+  const shown = h("span", { class: "alius-slider-value" }, String(value));
+  const input = h("input", { type: "range", min: String(min), max: String(max), step: "1", value: String(value), ...attrs });
+  input.addEventListener("input", () => shown.textContent = input.value);
+  input.addEventListener("change", () => commit(Math.round(Number(input.value))));
+  return h("label", { class: "alius-slider" }, h("span", { class: "alius-slider-label" }, label), input, shown);
+}
+function renderCalibration(host, ctx2) {
+  const { draft, registries: reg, onUpdate } = ctx2;
+  const shown = new Set(ctx2.sections ?? ALL_SECTIONS);
+  const manual = draft.status === "manual";
+  const cand = draft.candidates;
+  const ch = draft.choice;
+  host.replaceChildren();
+  const status = draft.status === "loading" ? "CALIBRATING\u2026" : draft.status === "idle" ? "PENDING" : manual ? `MANUAL \u2014 ${draft.notice ?? "choose everything from the lists."}` : draft.notice ?? "CALIBRATED";
+  host.append(
+    h(
+      "div",
+      { class: "alius-calib-head" },
+      h("p", { class: "alius-status", role: "status" }, status),
+      draft.status === "ready" ? h("button", { type: "button", class: "alius-btn", "data-action": "manual", onclick: ctx2.onManual }, "[ MANUAL ]") : null
+    )
+  );
+  if (draft.status === "loading" || draft.status === "idle") return;
+  const options = manualOptions(reg, ctx2.desireBondDefects);
+  const section = (id, title, ...body) => h(
+    "section",
+    { class: "alius-section alius-calib-section", "data-section": id },
+    h(
+      "div",
+      { class: "alius-calib-title" },
+      h("h3", {}, title),
+      draft.status === "ready" ? h("button", { type: "button", class: "alius-btn", "data-regenerate": id, onclick: () => ctx2.onRegenerate(id) }, "[ REGENERATE ]") : null
+    ),
+    ...body
+  );
+  if (shown.has("role")) {
+    const fromCandidates = !manual && cand && cand.roleCandidates.length > 0;
+    const list = fromCandidates ? cand.roleCandidates.map((c) => ({ id: c.roleId, reason: c.reason })) : options.roles.map((r) => ({ id: r.id, reason: "" }));
+    host.append(
+      section("role", "ROLE", h("div", { class: "alius-cards" }, ...list.map(({ id, reason }) => {
+        const role = reg.roles.get(id);
+        return pickCard(
+          "alius-role-card",
+          id,
+          ch.roleId === id,
+          () => onUpdate({ roleId: id }),
+          h("strong", {}, nameOf(role, id)),
+          h("span", {}, role ? ` \u2014 ${String(role.summary)}` : ""),
+          reason ? h("em", {}, ` ${reason}`) : ""
+        );
+      })))
+    );
+  }
+  if (shown.has("signature")) {
+    const fromCandidates = !manual && cand && cand.signatureCandidates.length > 0;
+    const list = fromCandidates ? cand.signatureCandidates : options.signatures.map((s) => ({ templateId: s.id, name: String(s.name), description: String(s.mechanic) }));
+    const cur = ch.signature;
+    const tpl = cur ? reg.signatures.get(cur.templateId) : void 0;
+    host.append(
+      section(
+        "signature",
+        "SIGNATURE SKILL",
+        h("div", { class: "alius-cards" }, ...list.map((c) => pickCard(
+          "alius-sig-card",
+          c.templateId,
+          cur?.templateId === c.templateId,
+          () => onUpdate({ signature: { templateId: c.templateId, name: c.name, description: c.description } }),
+          h("strong", {}, c.name),
+          h("span", {}, ` \u2014 ${c.description}`)
+        ))),
+        cur ? h(
+          "div",
+          { class: "alius-sig-edit" },
+          h(
+            "label",
+            { class: "alius-field" },
+            h("span", { class: "alius-field-label" }, "Skill name"),
+            textInput("sig-name", cur.name, 40, (v) => onUpdate({ signature: { ...cur, name: v } }))
+          ),
+          h(
+            "label",
+            { class: "alius-field" },
+            h("span", { class: "alius-field-label" }, "Description"),
+            textArea("sig-desc", cur.description, 240, (v) => onUpdate({ signature: { ...cur, description: v } }))
+          ),
+          h("p", { class: "alius-dim" }, `Template: ${nameOf(tpl, cur.templateId)} \u2014 ${tpl ? String(tpl.mechanic) : ""}`)
+        ) : null
+      )
+    );
+  }
+  if (shown.has("defects")) {
+    const fromCandidates = !manual && cand && cand.defectCandidates.length > 0;
+    const list = fromCandidates ? cand.defectCandidates.map((c) => ({ id: c.defectId, origin: c.origin })) : options.defects.map((d) => ({ id: d.id, origin: "" }));
+    const max = draft.secondDefect ? SETUP_LIMITS.maxDefects : 1;
+    const pick = (id, origin) => {
+      const cur = ch.defects;
+      if (cur.some((d) => d.id === id)) return onUpdate({ defects: cur.filter((d) => d.id !== id) });
+      const next = cur.length >= max ? [...cur.slice(0, max - 1), { id, origin }] : [...cur, { id, origin }];
+      onUpdate({ defects: next });
+    };
+    const toggle = h("input", { type: "checkbox", "data-action": "second-defect", checked: draft.secondDefect });
+    toggle.addEventListener("change", () => onUpdate({ secondDefect: toggle.checked }));
+    host.append(
+      section(
+        "defects",
+        "DEFECTS",
+        h("label", { class: "alius-check" }, toggle, " Add second defect"),
+        h("div", { class: "alius-cards" }, ...list.map(({ id, origin }) => {
+          const d = reg.defects.get(id);
+          return pickCard(
+            "alius-defect-card",
+            id,
+            ch.defects.some((x) => x.id === id),
+            () => pick(id, origin),
+            h("strong", {}, nameOf(d, id)),
+            h("span", { class: "alius-dim" }, d ? ` [${String(d.category)}]` : ""),
+            ...d ? defectLines(d) : [],
+            origin ? h("p", {}, `Origin: ${origin}`) : ""
+          );
+        })),
+        ...ch.defects.map((sel) => h(
+          "label",
+          { class: "alius-field" },
+          h("span", { class: "alius-field-label" }, `Origin \u2014 ${nameOf(reg.defects.get(sel.id), sel.id)}`),
+          textArea(`origin-${sel.id}`, sel.origin, 300, (v) => onUpdate({ defects: ch.defects.map((d) => d.id === sel.id ? { ...d, origin: v } : d) }))
+        ))
+      )
+    );
+  }
+  if (shown.has("values")) {
+    host.append(
+      section(
+        "values",
+        "VALUES",
+        h("div", { class: "alius-sliders" }, ...VALUE_AXES.map((axis) => slider(
+          axis.toUpperCase(),
+          { "data-axis": axis },
+          SETUP_LIMITS.value[0],
+          SETUP_LIMITS.value[1],
+          ch.values[axis],
+          (n) => onUpdate({ values: { ...ch.values, [axis]: n } })
+        )))
+      )
+    );
+  }
+  if (shown.has("tags")) {
+    host.append(
+      section("tags", "TAGS", ...TAG_FIELDS.map(([key, label, cap2]) => {
+        const list = ch[key];
+        const add = () => {
+          const t = normalizeTag(input.value);
+          if (t === null || list.includes(t) || list.length >= cap2) return;
+          onUpdate({ [key]: [...list, t] });
+        };
+        const input = h("input", {
+          type: "text",
+          class: "alius-input",
+          "data-tags": key,
+          "data-key": `tag-${key}`,
+          "aria-label": `Add ${label.toLowerCase()}`,
+          placeholder: list.length >= cap2 ? `max ${cap2}` : "add\u2026",
+          disabled: list.length >= cap2
+        });
+        input.addEventListener("keydown", (e) => {
+          if (e.key !== "Enter") return;
+          e.preventDefault();
+          add();
+        });
+        return h(
+          "div",
+          { class: "alius-tags" },
+          h("span", { class: "alius-field-label" }, `${label} (${list.length}/${cap2})`),
+          h("div", { class: "alius-chips" }, ...list.map((t) => h(
+            "span",
+            { class: "alius-chip" },
+            t,
+            h("button", { type: "button", "aria-label": `Remove ${t}`, onclick: () => onUpdate({ [key]: list.filter((x) => x !== t) }) }, "\xD7")
+          ))),
+          input,
+          h("button", { type: "button", class: "alius-btn", "data-add-tag": key, onclick: add }, "Add")
+        );
+      }))
+    );
+  }
+  if (shown.has("baseline")) {
+    host.append(
+      section(
+        "baseline",
+        "STARTING AXES",
+        h("div", { class: "alius-sliders" }, ...BASELINE_FIELDS.map((k) => {
+          const [lo, hi] = SETUP_LIMITS.baseline[k];
+          return slider(
+            k.toUpperCase(),
+            { "data-baseline": k },
+            lo,
+            hi,
+            ch.baseline[k],
+            (n) => onUpdate({ baseline: { ...ch.baseline, [k]: n } })
+          );
+        }))
+      )
+    );
+  }
+  if (cand?.notes) host.append(h("p", { class: "alius-notes" }, `NOTES: ${cand.notes}`));
+}
+function defectLines(d) {
+  const line = (label, text) => h("p", { class: "alius-defect-line" }, `${label}: ${String(text)}`);
+  const bd = d.breakdown;
+  const arc = d.arc;
+  return [
+    line("Lore", d.lore),
+    line("Upside", d.upside),
+    line("Downside", d.downside),
+    line("Breakdown", `${bd.name} \u2014 ${bd.text}`),
+    line("Social", d.social),
+    line("Arc", `Cure: ${arc.cure} \xB7 Manage: ${arc.manage} \xB7 Embrace: ${arc.embrace}`)
+  ];
+}
+function textInput(key, value, max, commit) {
+  const el = h("input", { type: "text", class: "alius-input", "data-key": key, maxlength: String(max) });
+  el.value = value;
+  el.addEventListener("input", () => commit(el.value));
+  return el;
+}
+function textArea(key, value, max, commit) {
+  const el = h("textarea", { class: "alius-input", "data-key": key, maxlength: String(max), rows: "3" });
+  el.value = value;
+  el.addEventListener("input", () => commit(el.value));
+  return el;
+}
+
+// src/ui/setup/setupScreen.ts
+var STEPS = [
+  ["dossier", "01 DOSSIER"],
+  ["units", "02 UNIT ASSIGNMENT"],
+  ["calibration", "03 PROFILE CALIBRATION"],
+  ["review", "04 REVIEW"]
+];
+var subscriptions = /* @__PURE__ */ new WeakMap();
+var nameOf2 = (reg, registry2, id) => {
+  if (!id) return "\u2014";
+  const e = reg[registry2].get(id);
+  return e ? String(e.name) : `UNKNOWN ${id}`;
+};
+function card(cls, id, selected, onClick, ...children) {
+  return h("button", { type: "button", class: `alius-card ${cls}`, "data-id": id, "aria-pressed": String(selected), onclick: onClick }, ...children);
+}
+function focusSelector(el) {
+  const d = el.dataset;
+  if (d.key) return `[data-key="${d.key}"]`;
+  if (d.action) return `[data-action="${d.action}"]`;
+  if (d.regenerate) return `[data-regenerate="${d.regenerate}"]`;
+  if (d.addTag) return `[data-add-tag="${d.addTag}"]`;
+  if (d.avatar) return `[data-avatar="${d.avatar}"]`;
+  if (d.id && el.className) return `.${el.className.split(" ").join(".")}[data-id="${d.id}"]`;
+  return null;
+}
+function renderSetupScreen(host, ctx2) {
+  const { wizard, registries: reg, st } = ctx2;
+  let search = "";
+  let lastStep = null;
+  let confirming = false;
+  const render = () => {
+    const s = wizard.state;
+    const active = document.activeElement;
+    const sel = active && host.contains(active) ? focusSelector(active) : null;
+    const caret = sel && typeof active?.selectionStart === "number" ? [active.selectionStart, active.selectionEnd] : null;
+    host.replaceChildren();
+    const title = h("h2", { class: "alius-setup-title", tabindex: "-1" }, "CCP INTAKE FORM");
+    host.append(
+      h(
+        "div",
+        { class: "alius-setup" },
+        title,
+        h("ol", { class: "alius-steps" }, ...STEPS.map(([id, label]) => h("li", { class: "alius-step", "aria-current": s.step === id ? "step" : null }, label))),
+        stepBody(s),
+        footer(s)
+      )
+    );
+    if (lastStep !== null && lastStep !== s.step) title.focus();
+    else if (sel) {
+      const el = host.querySelector(sel);
+      el?.focus();
+      if (el && caret && typeof el.setSelectionRange === "function") {
+        try {
+          el.setSelectionRange(caret[0], caret[1]);
+        } catch {
+        }
+      }
+    }
+    lastStep = s.step;
+  };
+  function stepBody(s) {
+    switch (s.step) {
+      case "dossier":
+        return dossier(s);
+      case "units":
+        return units(s);
+      case "calibration":
+        return calibration(s);
+      case "review":
+        return review(s);
+    }
+  }
+  function dossier(s) {
+    const name = h("input", { type: "text", class: "alius-input", "data-key": "name", maxlength: "60" });
+    name.value = s.commanderName;
+    name.addEventListener("input", () => wizard.setCommanderName(name.value));
+    return h(
+      "div",
+      { class: "alius-setup-body" },
+      h("label", { class: "alius-field" }, h("span", { class: "alius-field-label" }, "Commander name"), name),
+      h("h3", {}, "STARTING POINT"),
+      h("div", { class: "alius-cards" }, ...[...reg.starts.values()].map((st0) => {
+        const corp = nameOf2(reg, "corporations", String(st0.corporationId));
+        return card(
+          "alius-start-card",
+          st0.id,
+          s.startId === st0.id,
+          () => wizard.setStart(st0.id),
+          h("strong", {}, `${corp} \u2014 ${String(st0.name)}`),
+          h("p", {}, String(st0.summary))
+        );
+      })),
+      h("h3", {}, "CRIME"),
+      h("div", { class: "alius-cards" }, ...[...reg.crimes.values()].map((c) => {
+        const perk = c.perk;
+        const flaw = c.flaw;
+        return card(
+          "alius-crime-card",
+          c.id,
+          s.crimeId === c.id,
+          () => wizard.setCrime(c.id),
+          h("strong", {}, String(c.name)),
+          h("p", {}, String(c.summary)),
+          h("p", {}, `PERK: ${perk.text}`),
+          h("p", {}, `FLAW: ${flaw.text}`),
+          h("p", { class: "alius-dim" }, "Plea: GUILTY")
+        );
+      }))
+    );
+  }
+  function units(s) {
+    const q = search.trim().toLowerCase();
+    const chars = st.listCharacters().filter((c) => q === "" || c.name.toLowerCase().includes(q));
+    const full = s.units.length >= 4;
+    const input = h("input", { type: "search", class: "alius-input", "data-key": "search", "aria-label": "Search characters" });
+    input.value = search;
+    input.addEventListener("input", () => {
+      search = input.value;
+      render();
+    });
+    return h(
+      "div",
+      { class: "alius-setup-body" },
+      h("p", { class: "alius-hint" }, `Squad size ${s.units.length}/4 \u2014 ${difficultyHint(s.units.length)}. No automatic compensation.`),
+      h("label", { class: "alius-field" }, h("span", { class: "alius-field-label" }, "Search"), input),
+      h("div", { class: "alius-tiles" }, ...chars.map((c) => {
+        const checked = s.units.some((u) => u.avatar === c.avatar);
+        const box = h("input", { type: "checkbox", "data-avatar": c.avatar, checked, disabled: full && !checked });
+        box.addEventListener("change", () => wizard.toggleUnit(c));
+        return h("label", { class: "alius-tile" }, box, h("img", { src: st.getAvatarUrl(c.avatar), alt: "", width: "48", height: "48" }), h("span", {}, c.name));
+      })),
+      chars.length === 0 ? h("p", { class: "alius-dim" }, "No characters found.") : null
+    );
+  }
+  function calibration(s) {
+    const i = s.calibrationIndex;
+    const draft = s.units[i];
+    const body = h("div", { class: "alius-calibration" });
+    renderCalibration(body, {
+      draft,
+      registries: reg,
+      desireBondDefects: wizardDesireBond(),
+      onUpdate: (patch) => wizard.update(i, patch),
+      onRegenerate: (section) => wizard.regenerate(i, section),
+      onManual: () => wizard.setManual(i)
+    });
+    return h(
+      "div",
+      { class: "alius-setup-body" },
+      h(
+        "div",
+        { class: "alius-pager" },
+        h("button", { type: "button", class: "alius-btn", "data-action": "pager-prev", "aria-label": "Previous unit", disabled: i === 0, onclick: () => wizard.setCalibrationIndex(i - 1) }, "<"),
+        h("span", { class: "alius-pager-label" }, `${i + 1}/${s.units.length} \u2014 ${draft.displayName}`),
+        h("button", { type: "button", class: "alius-btn", "data-action": "pager-next", "aria-label": "Next unit", disabled: i >= s.units.length - 1, onclick: () => wizard.setCalibrationIndex(i + 1) }, ">")
+      ),
+      body
+    );
+  }
+  function review(s) {
+    const corpId = s.startId ? String(reg.starts.get(s.startId)?.corporationId ?? "") : null;
+    const lines = [
+      `COMMANDER   : ${s.commanderName.trim()}`,
+      `CORPORATION : ${nameOf2(reg, "corporations", corpId)} \u2014 ${nameOf2(reg, "starts", s.startId)}`,
+      `CRIME       : ${nameOf2(reg, "crimes", s.crimeId)} (Plea: GUILTY)`,
+      `SQUAD       : ${s.units.length}/4 \u2014 ${difficultyHint(s.units.length)}`,
+      ...s.units.flatMap((u, n) => unitLines(u, n))
+    ];
+    const body = h("div", { class: "alius-setup-body" }, h("pre", { class: "alius-review" }, lines.join("\n")));
+    if (s.canBindCurrent) {
+      const radio = (value, label) => {
+        const r = h("input", { type: "radio", name: "target", value, checked: s.target === value });
+        r.addEventListener("change", () => wizard.setTarget(value));
+        return h("label", { class: "alius-check" }, r, ` ${label}`);
+      };
+      body.append(h("div", { class: "alius-target" }, radio("new_group", "Create a new group chat"), radio("current_group", "Use this group chat")));
+    }
+    return body;
+  }
+  function unitLines(u, n) {
+    const c = u.choice;
+    const values = VALUE_AXES.map((a) => `${a.slice(0, 4).toUpperCase()} ${c.values[a] > 0 ? "+" : ""}${c.values[a]}`).join("  ");
+    return [
+      "",
+      `[${n + 1}] ${u.displayName} \u2014 ${nameOf2(reg, "roles", c.roleId)}`,
+      `    SIGNATURE : ${c.signature ? c.signature.name : "\u2014"}`,
+      `    DEFECTS   : ${c.defects.map((d) => nameOf2(reg, "defects", d.id)).join(", ") || "\u2014"}`,
+      `    VALUES    : ${values}`,
+      `    START     : TRUST ${c.baseline.trust}  AFFINITY ${c.baseline.affinity}  ATTRACTION ${c.baseline.attraction}`
+    ];
+  }
+  function footer(s) {
+    const adv = wizard.canAdvance();
+    const btn = (action, label, onclick, disabled = false) => h("button", { type: "button", class: "alius-btn", "data-action": action, disabled, onclick }, label);
+    const buttons = [
+      btn("cancel", "Cancel", async () => {
+        const answer = await ctx2.modal({
+          title: "Discard intake form?",
+          body: "Everything entered so far will be lost.",
+          actions: [{ label: "Discard", value: "discard" }, { label: "Keep editing", value: "keep" }]
+        });
+        if (answer === "discard") ctx2.onCancel();
+      }),
+      btn("back", "Back", () => wizard.back(), s.step === "dossier")
+    ];
+    if (s.step === "review") {
+      buttons.push(btn("confirm", "Confirm deployment", async () => {
+        const result = wizard.result();
+        if (!result || confirming) return;
+        confirming = true;
+        try {
+          await ctx2.onConfirm(result, s.target);
+        } finally {
+          confirming = false;
+        }
+      }, !adv.ok));
+    } else {
+      buttons.push(btn("next", "Next", () => wizard.next(), !adv.ok));
+    }
+    return h(
+      "div",
+      { class: "alius-setup-footer" },
+      !adv.ok && adv.reason ? h("p", { class: "alius-hint" }, adv.reason) : null,
+      h("div", { class: "alius-row" }, ...buttons)
+    );
+  }
+  const wizardDesireBond = () => wizard.desireBondDefects;
+  subscriptions.get(wizard)?.();
+  subscriptions.set(wizard, wizard.subscribe(render));
+  render();
+}
+
 // src/engine/state/migrations.ts
 var CURRENT_VERSION = 1;
 var migrations = [
@@ -4710,15 +5835,33 @@ function loadCampaign(st) {
   if (r.ok) return { kind: "ok", state: r.state, chatId: chat.chatId };
   return { kind: "readonly", reason: r.detail, chatId: chat.chatId };
 }
-function initCampaign(st, opts) {
+function checkNewCampaignTarget(st, expectChatId) {
   const chat = st.getActiveChat();
-  if (!chat) return { ok: false, reason: "no_chat" };
-  if (!chat.isGroup) return { ok: false, reason: "not_group" };
-  if (st.readMetadata(METADATA_KEY) !== void 0) return { ok: false, reason: "exists" };
+  if (!chat) return "no_chat";
+  if (expectChatId !== void 0 && chat.chatId !== expectChatId) return "chat_changed";
+  if (!chat.isGroup) return "not_group";
+  if (st.readMetadata(METADATA_KEY) !== void 0) return "exists";
+  return null;
+}
+function initCampaign(st, opts) {
+  const problem = checkNewCampaignTarget(st);
+  if (problem) return { ok: false, reason: problem };
   const state = createCampaign(opts);
   st.writeMetadata(METADATA_KEY, state);
   st.saveMetadata().catch((e) => console.warn("[Alius] saving new campaign failed", e));
   return { ok: true, state };
+}
+async function writeNewCampaign(st, state, expectChatId) {
+  const problem = checkNewCampaignTarget(st, expectChatId);
+  if (problem) return { ok: false, reason: problem };
+  st.writeMetadata(METADATA_KEY, state);
+  try {
+    await st.saveMetadata();
+  } catch (e) {
+    st.writeMetadata(METADATA_KEY, void 0);
+    throw e;
+  }
+  return { ok: true };
 }
 function createSaver(st, chatId, debounceMs = 500) {
   let pending = null;
@@ -4771,23 +5914,6 @@ function importCampaign(text) {
     return { ok: false, reason: "invalid", detail: `not valid JSON: ${e instanceof Error ? e.message : String(e)}` };
   }
   return migrate(raw);
-}
-
-// src/ui/dom.ts
-function h(tag, attrs = {}, ...children) {
-  const el = document.createElement(tag);
-  for (const [k, v] of Object.entries(attrs)) {
-    if (v === false || v === null || v === void 0) continue;
-    if (k === "class") el.className = String(v);
-    else if (k.startsWith("on") && typeof v === "function") el.addEventListener(k.slice(2).toLowerCase(), v);
-    else if (v === true) el.setAttribute(k, "");
-    else el.setAttribute(k, String(v));
-  }
-  for (const c of children) {
-    if (c === null || c === void 0) continue;
-    el.append(typeof c === "string" ? document.createTextNode(c) : c);
-  }
-  return el;
 }
 
 // src/ui/shell/modal.ts
@@ -4853,7 +5979,7 @@ function createRouter() {
 }
 
 // src/ui/shell/sysTab.ts
-var errText = (e) => e instanceof Error ? e.message : String(e);
+var errText2 = (e) => e instanceof Error ? e.message : String(e);
 function field(label, control) {
   return h("label", { class: "alius-field" }, h("span", { class: "alius-field-label" }, label), control);
 }
@@ -4939,7 +6065,7 @@ function renderSysTab(host, ctx2) {
     try {
       text = await file.text();
     } catch (e) {
-      return ctx2.toast("error", `Import failed: ${errText(e)}`);
+      return ctx2.toast("error", `Import failed: ${errText2(e)}`);
     }
     const r = importCampaign(text);
     if (!r.ok) return ctx2.toast("error", `Import failed: ${r.detail}`);
@@ -5020,7 +6146,7 @@ ${e.parsed === void 0 ? "(none)" : JSON.stringify(e.parsed, null, 2)}`)
         try {
           raw = JSON.parse(ta.value);
         } catch (e) {
-          return ctx2.toast("error", `Invalid JSON: ${errText(e)}`);
+          return ctx2.toast("error", `Invalid JSON: ${errText2(e)}`);
         }
         const r = migrate(raw);
         if (!r.ok) return ctx2.toast("error", `Invalid state: ${r.detail}`);
@@ -5347,7 +6473,7 @@ function createShell(deps) {
 }
 
 // src/app.ts
-var errText2 = (e) => e instanceof Error ? e.message : String(e);
+var errText3 = (e) => e instanceof Error ? e.message : String(e);
 function createApp(st, deps) {
   const context = new ContextBuilder();
   let registries = emptyRegistries();
@@ -5357,6 +6483,7 @@ function createApp(st, deps) {
   let state = null;
   let saver = null;
   let started = false;
+  let setup = null;
   const toast = (kind, text) => shell.toast(kind, text);
   function applyContext() {
     context.apply(st, state, getSettings(st).contextTokenCap);
@@ -5397,6 +6524,115 @@ function createApp(st, deps) {
     } },
     { label: "Clear all injections", run: () => context.apply(st, null, 0) }
   ];
+  function endSetup() {
+    setup?.wizard.dispose();
+    setup = null;
+  }
+  async function deployCampaign(r, target) {
+    const fail = (text) => {
+      toast("error", text);
+      return false;
+    };
+    const settings = getSettings(st);
+    const built = buildCampaign(r, registries, {
+      desireBondDefects: settings.desireBondDefects,
+      seed: Math.floor(Math.random() * 2 ** 31)
+    });
+    if (!built.ok) return fail(built.errors[0]);
+    const avatars = r.units.map((u) => u.cardRef);
+    let targetChatId;
+    try {
+      if (target === "current_group") {
+        const chat = st.getActiveChat();
+        if (!chat || !chat.isGroup) return fail("Open a group chat first.");
+        if (setup?.chatId && chat.chatId !== setup.chatId) {
+          return fail('The open chat changed since the intake form was opened. Switch back or choose "Create a new group chat".');
+        }
+        if (st.readMetadata(METADATA_KEY) !== void 0) return fail("This chat already has an Alius campaign.");
+        await st.addGroupMembers(avatars);
+        targetChatId = chat.chatId;
+      } else {
+        let groupId;
+        try {
+          groupId = await st.createGroupChat({ name: `Alius: ${r.commanderName.trim()}`, members: avatars });
+          if (!await st.openGroup(groupId)) throw new Error("SillyTavern refused to open it");
+        } catch (e) {
+          return fail(`Could not open the new group chat: ${errText3(e)}`);
+        }
+        const chat = st.getActiveChat();
+        if (!chat || chat.groupId !== groupId) return fail("Could not open the new group chat: it is not the active chat.");
+        targetChatId = chat.chatId;
+      }
+      await st.setMembersActive(avatars);
+    } catch (e) {
+      return fail(`Deployment failed: ${errText3(e)}`);
+    }
+    if (lorebook) {
+      try {
+        if (!st.listLorebooks().includes(lorebook.name)) await st.saveLorebook(lorebook);
+        st.setChatLorebook(lorebook.name);
+      } catch (e) {
+        toast("warn", `Lorebook not installed: ${errText3(e)}`);
+      }
+    }
+    try {
+      const written = await writeNewCampaign(st, built.state, targetChatId);
+      if (!written.ok) {
+        return fail(
+          written.reason === "exists" ? "This chat already has an Alius campaign." : written.reason === "chat_changed" ? "The open chat changed during deployment; nothing was written." : written.reason === "not_group" ? "Alius campaigns need a group chat." : "Open a chat first."
+        );
+      }
+    } catch (e) {
+      return fail(`Could not save the campaign: ${errText3(e)}`);
+    }
+    endSetup();
+    reload();
+    applyContext();
+    shell.showScreen("pda");
+    shell.showTab("squad");
+    toast("info", "Deployment confirmed. Day 1, Morning.");
+    return true;
+  }
+  function openSetup() {
+    if (load.kind === "readonly") {
+      toast("error", "This chat has unreadable Alius data and is read-only; a new campaign cannot be started here.");
+      return;
+    }
+    if (registries.starts.size === 0 || registries.crimes.size === 0) {
+      toast("error", "Content failed to load; a campaign cannot be started. See SYS > debug.");
+      return;
+    }
+    endSetup();
+    const chat = st.getActiveChat();
+    const wizard = new Wizard(
+      {
+        registries,
+        desireBondDefects: getSettings(st).desireBondDefects,
+        importer: (avatar, sections) => importProfile(avatar, sections, { st, settings: getSettings(st), registries }),
+        onChange: () => {
+        }
+      },
+      { personaName: st.getPersonaName(), canBindCurrent: !!chat?.isGroup && load.kind === "none" }
+    );
+    setup = { wizard, chatId: chat?.chatId ?? null };
+    shell.registerScreen("setup", (host) => {
+      renderSetupScreen(host, {
+        wizard,
+        registries,
+        st,
+        modal: (o) => shell.modal(o),
+        onCancel: () => {
+          if (setup?.wizard === wizard) endSetup();
+          shell.showScreen("pda");
+        },
+        onConfirm: async (r, target) => {
+          await deployCampaign(r, target);
+        }
+      });
+    });
+    shell.showScreen("setup");
+    shell.open();
+  }
   const shell = (deps.shellFactory ?? createShell)({
     st,
     getState: () => state,
@@ -5410,6 +6646,9 @@ function createApp(st, deps) {
     shell,
     refreshContext: applyContext,
     replaceState,
+    openSetup,
+    deployCampaign,
+    setupState: () => setup?.wizard.state ?? null,
     async start() {
       getSettings(st);
       try {
@@ -5418,7 +6657,7 @@ function createApp(st, deps) {
         lorebook = r.lorebook ?? null;
         contentErrors = r.errors;
       } catch (e) {
-        contentErrors = [{ pack: "(loader)", file: "", path: "", message: errText2(e) }];
+        contentErrors = [{ pack: "(loader)", file: "", path: "", message: errText3(e) }];
       }
       if (contentErrors.length > 0) {
         for (const e of contentErrors) console.warn(`[Alius] content: ${e.pack} ${e.file} ${e.path} \u2014 ${e.message}`);
@@ -5478,9 +6717,6 @@ function createApp(st, deps) {
     }
   };
 }
-
-// src/engine/state/types.ts
-var VALUE_AXES = ["pragmatism", "autonomy", "ingroup", "mercy", "corporate", "sacrifice"];
 
 // src/content/schemas.ts
 var ID_PATTERN = /^[a-z0-9_:.-]+$/;
@@ -5821,17 +7057,17 @@ function toStLorebook(book, template) {
 }
 
 // src/st/sprites.ts
-var isObj2 = (v) => typeof v === "object" && v !== null;
+var isObj3 = (v) => typeof v === "object" && v !== null;
 function spriteFolder(avatar, name, overrides) {
   if (!Array.isArray(overrides)) return name;
   const key = avatar.replace(/\.[^.]+$/, "");
-  const hit = overrides.find((o) => isObj2(o) && o.name === key && typeof o.path === "string" && o.path !== "");
+  const hit = overrides.find((o) => isObj3(o) && o.name === key && typeof o.path === "string" && o.path !== "");
   return hit ? hit.path : name;
 }
 function pickSprite(list, label) {
   if (!Array.isArray(list)) return null;
   for (const item of list) {
-    if (isObj2(item) && item.label === label && typeof item.path === "string") return item.path;
+    if (isObj3(item) && item.label === label && typeof item.path === "string") return item.path;
   }
   return null;
 }
@@ -6053,6 +7289,7 @@ var RealStAdapter = class {
 // src/ui/launcher.ts
 var ITEMS = [
   { id: "open", icon: "fa-solid fa-satellite-dish", menuLabel: "Alius", buttonLabel: "Open Alius", action: "open" },
+  { id: "new", icon: "fa-solid fa-file-signature", menuLabel: "Alius: New campaign", buttonLabel: "New campaign", action: "newCampaign" },
   { id: "init", icon: "fa-solid fa-flag-checkered", menuLabel: "Alius: Initialize campaign (debug)", buttonLabel: "Initialize campaign (debug)", action: "init" },
   { id: "ping", icon: "fa-solid fa-satellite", menuLabel: "Alius: Ping mechanic model (debug)", buttonLabel: "Ping mechanic model (debug)", action: "ping" }
 ];
@@ -6146,6 +7383,7 @@ async function main() {
   const app = createApp(st, { loadContent: () => loadPacks(CONTENT_ROOTS, fetchJson) });
   const launcher = installLauncher({
     open: () => app.shell.open(),
+    newCampaign: () => app.openSetup(),
     init: () => void app.initCampaign(),
     ping: () => void app.pingMechanic()
   });

@@ -163,7 +163,11 @@ export class FakeStAdapter implements StAdapter {
   }
 
   async openGroup(groupId: string): Promise<boolean> {
-    if (this.failOpenGroup || !this.groups.has(groupId)) return false;
+    const group = this.groups.get(groupId);
+    if (this.failOpenGroup || !group) return false;
+    this.members = group.members.map((avatar) => ({
+      avatar, name: this.characters.find((c) => c.avatar === avatar)?.name ?? avatar, active: true,
+    }));
     this.switchChat({ chatId: 'chat-' + groupId, isGroup: true, groupId });
     return true;
   }

@@ -18,6 +18,7 @@ async function main(): Promise<void> {
   // Launcher first: a failing start must never hide the extension from the user.
   const launcher = installLauncher({
     open: () => app.shell.open(),
+    newCampaign: () => app.openSetup(),
     init: () => void app.initCampaign(),
     ping: () => void app.pingMechanic(),
   });

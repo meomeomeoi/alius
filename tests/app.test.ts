@@ -1,4 +1,7 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest';
+import { readFile } from 'node:fs/promises';
+import { loadPacks } from '../src/content/loader';
+import type { SetupResult, UnitSetup } from '../src/engine/setup';
 import { createApp, type AliusApp } from '../src/app';
 import { FakeStAdapter } from '../src/st/fake';
 import { emptyRegistries, type ContentError } from '../src/content/types';
@@ -20,10 +23,13 @@ function fakeShell() {
     open() { shell.opened++; },
     close() {},
     isOpen: () => false,
-    showScreen() {},
-    showTab() {},
+    screens: [] as string[],
+    tabs: [] as string[],
+    screenRenderers: new Map<string, unknown>(),
+    showScreen(id: string) { shell.screens.push(id); },
+    showTab(id: string) { shell.tabs.push(id); },
     registerTab() {},
-    registerScreen() {},
+    registerScreen(id: string, render: unknown) { shell.screenRenderers.set(id, render); },
     toast(kind: string, text: string) { toasts.push({ kind, text }); },
     modal: async () => null,
     setPalette() {},
@@ -229,5 +235,233 @@ describe('app', () => {
     expect((st.readMetadata(METADATA_KEY) as { rng: unknown }).rng).toEqual(before.rng);
     // bound to the chat that is actually open: applied
     expect(app.dispatch({ type: 'debug/roll', payload: { sides: 6 } }, { expectChatId: 'chat-b' })[0]).toMatchObject({ type: 'rolled' });
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+describe('campaign setup deployment (P1)', () => {
+  let content: Awaited<ReturnType<typeof loadPacks>>;
+  beforeAll(async () => {
+    content = await loadPacks(['content/core'], async (path) => JSON.parse(await readFile(path, 'utf8')));
+    expect(content.errors).toEqual([]);
+  });
+  const realContent = async () => content;
+
+  const CHARS = ['rhea', 'kay', 'mo', 'ilse'].map((n) => ({ avatar: `${n}.png`, name: n[0].toUpperCase() + n.slice(1) }));
+  const ZERO = { pragmatism: 0, autonomy: 0, ingroup: 0, mercy: 0, corporate: 0, sacrifice: 0 };
+  const unit = (c: { avatar: string; name: string }, over: Partial<UnitSetup> = {}): UnitSetup => ({
+    cardRef: c.avatar, displayName: c.name, roleId: 'assault',
+    signature: { templateId: 'sig_last_stand', name: 'Last Stand', description: 'She holds.' },
+    defects: [{ id: 'echo_bleed', origin: 'Heard things.' }],
+    values: { ...ZERO }, likes: [], dislikes: [], triggers: [], baseline: { trust: 20, affinity: 0, attraction: 0 }, ...over,
+  });
+  const result = (n = 4, over: Partial<SetupResult> = {}): SetupResult => ({
+    commanderName: 'Vale', startId: 'start_vesper', crimeId: 'mutiny', units: CHARS.slice(0, n).map((c) => unit(c)), ...over,
+  });
+
+  async function bootReal(chat: typeof A | typeof SOLO | null = SOLO) {
+    const st = new FakeStAdapter(chat);
+    st.characters = CHARS;
+    for (const c of CHARS) {
+      st.cards.set(c.avatar, { avatar: c.avatar, name: c.name, description: 'd', personality: 'p', scenario: '', creatorNotes: '' });
+    }
+    const fs = fakeShell();
+    const app = createApp(st, { loadContent: realContent, shellFactory: fs.factory as never });
+    await app.start();
+    return { st, app, ...fs };
+  }
+  const anyCampaignWritten = (st: FakeStAdapter) => [...st.metadataByChat.values()].some((m) => m[METADATA_KEY] !== undefined);
+
+  it('deploy to new group creates the group with the cards, opens it, writes state and lands on Day 1 Morning', async () => {
+    const { st, app, shell } = await bootReal();
+    expect(await app.deployCampaign(result(4), 'new_group')).toBe(true);
+    expect(st.groups.size).toBe(1);
+    const [id, group] = [...st.groups][0];
+    expect(group).toEqual({ name: 'Alius: Vale', members: CHARS.map((c) => c.avatar) });
+    expect(st.getActiveChat()).toEqual({ chatId: `chat-${id}`, isGroup: true, groupId: id });
+    expect(st.getActiveChat()!.chatId).toBe('chat-g1');
+    const { state, load } = app.current();
+    expect(load.kind).toBe('ok');
+    expect([state!.day, state!.slot, state!.squad.length]).toEqual([1, 'morning', 4]);
+    expect(state!.world.startId).toBe('start_vesper');
+    expect(st.members.map((m) => [m.avatar, m.active])).toEqual(CHARS.map((c) => [c.avatar, true]));
+    expect(shell.screens.at(-1)).toBe('pda');
+    expect(shell.tabs.at(-1)).toBe('squad');
+    expect(shell.toasts.at(-1)).toEqual({ kind: 'info', text: 'Deployment confirmed. Day 1, Morning.' });
+    expect(st.readMetadata('world_info')).toBe('Alius Core Lore');
+    expect(st.lorebooks.get('Alius Core Lore')!.entries.length).toBe(21);
+    expect(st.metadataSaves).toBeGreaterThan(0);
+  });
+
+  it('deploy with 2 and with 0 cards works', async () => {
+    for (const n of [2, 0]) {
+      const { st, app } = await bootReal();
+      expect(await app.deployCampaign(result(n), 'new_group')).toBe(true);
+      expect(app.current().state!.squad).toHaveLength(n);
+      expect([...st.groups.values()][0].members).toHaveLength(n);
+    }
+  });
+
+  it('reload keeps the campaign', async () => {
+    const { st, app } = await bootReal();
+    await app.deployCampaign(result(4), 'new_group');
+    const squad = app.current().state!.squad.map((u) => u.id);
+    const app2 = createApp(st, { loadContent: realContent, shellFactory: fakeShell().factory as never });
+    await app2.start();
+    expect(app2.current().load.kind).toBe('ok');
+    expect(app2.current().state!.squad.map((u) => u.id)).toEqual(squad);
+  });
+
+  it('deploy into current group adds missing members and binds', async () => {
+    const { st, app } = await bootReal(A);
+    st.members = [
+      { avatar: 'rhea.png', name: 'Rhea', active: true },
+      { avatar: 'ilse.png', name: 'Ilse', active: true },
+    ];
+    app.openSetup();
+    expect(await app.deployCampaign(result(2), 'current_group')).toBe(true);
+    expect(st.groups.size).toBe(0); // no new group
+    expect(st.getActiveChat()!.chatId).toBe('chat-a');
+    expect(st.members.map((m) => [m.avatar, m.active])).toEqual([['rhea.png', true], ['ilse.png', false], ['kay.png', true]]);
+    expect(app.current().state!.squad.map((u) => u.cardRef)).toEqual(['rhea.png', 'kay.png']);
+    expect((st.readMetadata(METADATA_KEY) as { version: number }).version).toBe(1);
+    expect(st.readMetadata('world_info')).toBe('Alius Core Lore');
+  });
+
+  it('bind target that gained a campaign is refused, nothing written', async () => {
+    const { st, app, shell } = await bootReal(A);
+    app.openSetup();
+    await app.initCampaign(); // the chat gets its own campaign while the wizard is open
+    const before = structuredClone(st.readMetadata(METADATA_KEY));
+    expect(await app.deployCampaign(result(2), 'current_group')).toBe(false);
+    expect(st.readMetadata(METADATA_KEY)).toEqual(before);
+    expect(st.members).toEqual([]);
+    expect(st.readMetadata('world_info')).toBeUndefined();
+    expect(shell.toasts.at(-1)).toEqual({ kind: 'error', text: 'This chat already has an Alius campaign.' });
+  });
+
+  it('bind target is refused when the open chat is no longer the one the wizard was opened in', async () => {
+    const { st, app } = await bootReal(A);
+    app.openSetup();
+    st.switchChat(B);
+    expect(await app.deployCampaign(result(2), 'current_group')).toBe(false);
+    expect(anyCampaignWritten(st)).toBe(false);
+    expect(st.members).toEqual([]);
+  });
+
+  it('group open failure writes nothing and keeps the wizard', async () => {
+    const { st, app, shell } = await bootReal();
+    app.openSetup();
+    st.failOpenGroup = true;
+    const screensBefore = shell.screens.length;
+    expect(await app.deployCampaign(result(2), 'new_group')).toBe(false);
+    expect(anyCampaignWritten(st)).toBe(false);
+    expect(st.getActiveChat()).toEqual(SOLO);
+    expect(shell.toasts.at(-1)).toMatchObject({ kind: 'error', text: expect.stringMatching(/^Could not open the new group chat:/) });
+    expect(shell.screens).toHaveLength(screensBefore); // the wizard screen stays up
+    expect(app.setupState()).not.toBeNull();
+    // the player can retry
+    st.failOpenGroup = false;
+    expect(await app.deployCampaign(result(2), 'new_group')).toBe(true);
+  });
+
+  it('create group failure writes nothing', async () => {
+    const { st, app, shell } = await bootReal();
+    st.failCreateGroup = true;
+    expect(await app.deployCampaign(result(2), 'new_group')).toBe(false);
+    expect(st.groups.size).toBe(0);
+    expect(anyCampaignWritten(st)).toBe(false);
+    expect(shell.toasts.at(-1)).toMatchObject({ kind: 'error', text: expect.stringContaining('Could not open the new group chat') });
+  });
+
+  it('existing lorebook is bound, not overwritten', async () => {
+    const { st, app } = await bootReal();
+    const edited = { name: 'Alius Core Lore', entries: [{ key: ['x'], comment: 'mine', content: 'player edit', constant: true }] };
+    st.lorebooks.set(edited.name, structuredClone(edited));
+    expect(await app.deployCampaign(result(1), 'new_group')).toBe(true);
+    expect(st.lorebooks.get(edited.name)).toEqual(edited);
+    expect(st.readMetadata('world_info')).toBe(edited.name);
+  });
+
+  it('lorebook failure still deploys', async () => {
+    const { st, app, shell } = await bootReal();
+    st.saveLorebook = async () => { throw new Error('disk full'); };
+    expect(await app.deployCampaign(result(1), 'new_group')).toBe(true);
+    expect(app.current().load.kind).toBe('ok');
+    expect(shell.toasts.some((t) => t.kind === 'warn' && t.text === 'Lorebook not installed: disk full')).toBe(true);
+    expect(st.readMetadata('world_info')).toBeUndefined();
+  });
+
+  it('invalid setup result is refused before touching ST', async () => {
+    const { st, app, shell } = await bootReal();
+    const bad = result(2);
+    bad.units[0].roleId = 'berserker';
+    expect(await app.deployCampaign(bad, 'new_group')).toBe(false);
+    expect(st.groups.size).toBe(0);
+    expect(st.lorebooks.size).toBe(0);
+    expect(shell.toasts.at(-1)).toMatchObject({ kind: 'error', text: expect.stringContaining('berserker') });
+  });
+
+  it('a failing metadata save reports the error and leaves no campaign behind', async () => {
+    const { st, app, shell } = await bootReal();
+    st.saveMetadata = async () => { throw new Error('quota'); };
+    expect(await app.deployCampaign(result(1), 'new_group')).toBe(false);
+    expect(anyCampaignWritten(st)).toBe(false);
+    expect(shell.toasts.at(-1)).toMatchObject({ kind: 'error', text: expect.stringContaining('quota') });
+  });
+
+  it('openSetup is refused in a read-only campaign chat', async () => {
+    const st = new FakeStAdapter(A);
+    st.writeMetadata(METADATA_KEY, { version: 99 });
+    const fs = fakeShell();
+    const app = createApp(st, { loadContent: realContent, shellFactory: fs.factory as never });
+    await app.start();
+    fs.shell.toasts.length = 0;
+    app.openSetup();
+    expect(fs.shell.opened).toBe(0);
+    expect(app.setupState()).toBeNull();
+    expect(fs.shell.toasts).toEqual([{ kind: 'error', text: expect.stringMatching(/read-only/i) }]);
+  });
+
+  it('openSetup offers binding only in a group chat without a campaign', async () => {
+    const solo = await bootReal(SOLO);
+    solo.app.openSetup();
+    expect(solo.app.setupState()).toMatchObject({ canBindCurrent: false, step: 'dossier' });
+    expect(solo.shell.opened).toBe(1);
+    expect(solo.shell.screens.at(-1)).toBe('setup');
+    expect(solo.shell.screenRenderers.has('setup')).toBe(true);
+
+    const group = await bootReal(A);
+    group.app.openSetup();
+    expect(group.app.setupState()!.canBindCurrent).toBe(true);
+
+    const withCampaign = await bootReal(A);
+    await withCampaign.app.initCampaign();
+    withCampaign.app.openSetup();
+    expect(withCampaign.app.setupState()!.canBindCurrent).toBe(false);
+  });
+
+  it('openSetup defaults the commander name to the persona', async () => {
+    const { st, app } = await bootReal();
+    st.personaName = 'Rook';
+    app.openSetup();
+    expect(app.setupState()!.commanderName).toBe('Rook');
+  });
+
+  it('openSetup refuses to start when content failed to load', async () => {
+    const st = new FakeStAdapter(SOLO);
+    const fs = fakeShell();
+    const app = createApp(st, { loadContent: okContent, shellFactory: fs.factory as never });
+    await app.start();
+    app.openSetup();
+    expect(fs.shell.opened).toBe(0);
+    expect(fs.shell.toasts.at(-1)).toMatchObject({ kind: 'error' });
+  });
+
+  it('a successful deploy ends the setup session', async () => {
+    const { app } = await bootReal();
+    app.openSetup();
+    await app.deployCampaign(result(1), 'new_group');
+    expect(app.setupState()).toBeNull();
   });
 });

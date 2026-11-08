@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { FakeStAdapter } from '../../src/st/fake';
 import {
-  METADATA_KEY, loadCampaign, initCampaign, createSaver, exportCampaign, importCampaign,
+  METADATA_KEY, loadCampaign, initCampaign, writeNewCampaign, createSaver, exportCampaign, importCampaign,
 } from '../../src/st/persistence';
 import { createCampaign } from '../../src/engine/state/create';
 
@@ -126,5 +126,46 @@ describe('persistence', () => {
     const r = importCampaign('not json');
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.reason).toBe('invalid');
+  });
+
+  it('writeNewCampaign awaits save and refuses chat_changed and exists', async () => {
+    const st = new FakeStAdapter(GROUP_A);
+    const state = createCampaign(opts);
+
+    // it waits for the metadata save to finish
+    let release!: () => void;
+    st.saveMetadata = () => new Promise<void>((r) => (release = r));
+    let done = false;
+    const pending = writeNewCampaign(st, state, 'chat-a').then((r) => { done = true; return r; });
+    await Promise.resolve();
+    expect(st.readMetadata(METADATA_KEY)).toEqual(state);
+    expect(done).toBe(false);
+    release();
+    expect(await pending).toEqual({ ok: true });
+
+    // a second write into the same chat is refused and leaves the first state alone
+    st.saveMetadata = async () => {};
+    expect(await writeNewCampaign(st, createCampaign({ seed: 2, commanderName: 'Other' }), 'chat-a')).toEqual({ ok: false, reason: 'exists' });
+    expect((st.readMetadata(METADATA_KEY) as { commander: { name: string } }).commander.name).toBe('Vale');
+
+    // the open chat is not the expected one
+    const st2 = new FakeStAdapter(GROUP_B);
+    expect(await writeNewCampaign(st2, state, 'chat-a')).toEqual({ ok: false, reason: 'chat_changed' });
+    expect(st2.readMetadata(METADATA_KEY)).toBeUndefined();
+    expect(st2.metadataSaves).toBe(0);
+  });
+
+  it('writeNewCampaign refuses no chat and solo chats', async () => {
+    expect(await writeNewCampaign(new FakeStAdapter(), createCampaign(opts), 'x')).toEqual({ ok: false, reason: 'no_chat' });
+    const solo = new FakeStAdapter(SOLO);
+    expect(await writeNewCampaign(solo, createCampaign(opts), 'solo')).toEqual({ ok: false, reason: 'not_group' });
+    expect(solo.readMetadata(METADATA_KEY)).toBeUndefined();
+  });
+
+  it('writeNewCampaign removes the state again when saving fails', async () => {
+    const st = new FakeStAdapter(GROUP_A);
+    st.saveMetadata = async () => { throw new Error('disk full'); };
+    await expect(writeNewCampaign(st, createCampaign(opts), 'chat-a')).rejects.toThrow('disk full');
+    expect(st.readMetadata(METADATA_KEY)).toBeUndefined();
   });
 });

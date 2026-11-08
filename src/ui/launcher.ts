@@ -1,5 +1,6 @@
 export interface LauncherActions {
   open(): void;
+  newCampaign(): void;
   init(): void;
   ping(): void;
 }
@@ -13,6 +14,7 @@ interface Opts {
 
 const ITEMS: Array<{ id: string; icon: string; menuLabel: string; buttonLabel: string; action: keyof LauncherActions }> = [
   { id: 'open', icon: 'fa-solid fa-satellite-dish', menuLabel: 'Alius', buttonLabel: 'Open Alius', action: 'open' },
+  { id: 'new', icon: 'fa-solid fa-file-signature', menuLabel: 'Alius: New campaign', buttonLabel: 'New campaign', action: 'newCampaign' },
   { id: 'init', icon: 'fa-solid fa-flag-checkered', menuLabel: 'Alius: Initialize campaign (debug)', buttonLabel: 'Initialize campaign (debug)', action: 'init' },
   { id: 'ping', icon: 'fa-solid fa-satellite', menuLabel: 'Alius: Ping mechanic model (debug)', buttonLabel: 'Ping mechanic model (debug)', action: 'ping' },
 ];

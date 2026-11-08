@@ -485,7 +485,7 @@ export class Wizard {
   - The wizard's `onConfirm` calls `deployCampaign`; on `false` the wizard stays open with its data.
   - Launcher: a new first-after-`open` item `{ id: 'new', icon: 'fa-solid fa-file-signature', menuLabel: 'Alius: New campaign', buttonLabel: 'New campaign', action: 'newCampaign' }`; `LauncherActions` gains `newCampaign()`. `index.ts` wires it to `app.openSetup()`.
 
-- [ ] **Step 1: Write the failing tests** (fake adapter with 4 characters/cards, core registries via `loadContent`, a fake shell whose `registerScreen` records renderers)
+- [x] **Step 1: Write the failing tests** (fake adapter with 4 characters/cards, core registries via `loadContent`, a fake shell whose `registerScreen` records renderers)
 
 persistence: `writeNewCampaign awaits save and refuses chat_changed and exists`.
 app:
@@ -503,13 +503,13 @@ app:
 - `openSetup offers binding only in a group chat without a campaign`.
 launcher: item order `Alius`, `Alius: New campaign`, `Alius: Initialize campaign (debug)`, `Alius: Ping mechanic model (debug)`.
 
-- [ ] **Step 2: Run** `npx vitest run tests/app.test.ts tests/st/persistence.test.ts tests/ui/launcher.test.ts` → FAIL.
+- [x] **Step 2: Run** `npx vitest run tests/app.test.ts tests/st/persistence.test.ts tests/ui/launcher.test.ts` → FAIL.
 
-- [ ] **Step 3: Implement.**
+- [x] **Step 3: Implement.**
 
-- [ ] **Step 4: Run** `npx vitest run && npm run typecheck && npm run build` → PASS.
+- [x] **Step 4: Run** `npx vitest run && npm run typecheck && npm run build` → PASS.
 
-- [ ] **Step 5: Commit** `feat: deploy campaign from intake wizard into a new or current group chat`
+- [x] **Step 5: Commit** `feat: deploy campaign from intake wizard into a new or current group chat`
 
 ---
 
