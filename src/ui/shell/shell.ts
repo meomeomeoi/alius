@@ -1,5 +1,6 @@
 import type { CampaignState } from '../../engine/state/types';
 import { getSettings, updateSettings } from '../../settings';
+import type { ContentError } from '../../content/types';
 import type { StAdapter } from '../../st/adapter';
 import type { LoadResult } from '../../st/persistence';
 import { h } from '../dom';
@@ -33,6 +34,10 @@ export interface ShellDeps {
   getLoad: () => LoadResult;
   /** Lets the SYS tab (state editor, import) replace the campaign. */
   replaceState?: (state: CampaignState) => void;
+  /** Content pack errors shown in the SYS debug panel. */
+  getContentErrors?: () => ContentError[];
+  /** Extra buttons for the SYS debug panel (e.g. inject a test directive). */
+  debugTools?: Array<{ label: string; run: () => void }>;
 }
 
 const PANEL_ID = 'alius-panel';
@@ -94,6 +99,8 @@ export function createShell(deps: ShellDeps): ShellApi {
         getState: deps.getState,
         getLoad: deps.getLoad,
         replaceState: deps.replaceState,
+        getContentErrors: deps.getContentErrors,
+        debugTools: deps.debugTools,
         toast,
         modal: (o) => api.modal(o),
         onSettingsChanged: applySettings,

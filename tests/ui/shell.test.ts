@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { createShell } from '../../src/ui/shell/shell';
+import { createShell, type ShellDeps } from '../../src/ui/shell/shell';
 import { FakeStAdapter } from '../../src/st/fake';
 import { createCampaign } from '../../src/engine/state/create';
 import type { CampaignState } from '../../src/engine/state/types';
@@ -9,14 +9,16 @@ import type { LoadResult } from '../../src/st/persistence';
 const CHAT = { chatId: 'c', isGroup: true, groupId: 'g' };
 let shells: Array<{ destroy(): void }> = [];
 
-function setup(opts: { settings?: Record<string, unknown>; load?: LoadResult; state?: CampaignState | null } = {}) {
+function setup(
+  opts: { settings?: Record<string, unknown>; load?: LoadResult; state?: CampaignState | null; extra?: Partial<ShellDeps> } = {},
+) {
   const st = new FakeStAdapter(CHAT);
   st.profiles = [{ id: 'mech', name: 'Mech profile', api: 'openrouter', model: 'm' }];
   Object.assign(st.settings, opts.settings ?? {});
   const state = opts.state === undefined ? createCampaign({ seed: 1, commanderName: 'Vale' }) : opts.state;
   const load: LoadResult = opts.load ?? (state ? { kind: 'ok', state, chatId: 'c' } : { kind: 'none' });
   const replaceState = vi.fn();
-  const shell = createShell({ st, getState: () => state, getLoad: () => load, replaceState });
+  const shell = createShell({ st, getState: () => state, getLoad: () => load, replaceState, ...opts.extra });
   shells.push(shell);
   return { st, shell, state, replaceState };
 }
@@ -273,5 +275,29 @@ describe('SYS tab', () => {
     const labels = [...document.querySelectorAll('#alius-shell button')].map((b) => b.textContent);
     expect(labels).toContain('Export campaign');
     expect(labels).toContain('Import campaign');
+  });
+
+  it('debug panel lists content errors', () => {
+    const { shell } = setup({
+      settings: { debug: true },
+      extra: { getContentErrors: () => [{ pack: 'core', file: 'flags.json', path: '[1].scope', message: 'Invalid enum value' }] },
+    });
+    shell.open();
+    shell.showTab('sys');
+    const text = document.querySelector('#alius-shell .alius-content-errors')!.textContent!;
+    expect(text).toContain('core');
+    expect(text).toContain('flags.json');
+    expect(text).toContain('[1].scope');
+    expect(text).toContain('Invalid enum value');
+  });
+
+  it('debug panel runs the debug tools it is given', () => {
+    const run = vi.fn();
+    const { shell } = setup({ settings: { debug: true }, extra: { debugTools: [{ label: 'Set test directive', run }] } });
+    shell.open();
+    shell.showTab('sys');
+    const btn = [...document.querySelectorAll<HTMLButtonElement>('#alius-shell .alius-debug button')].find((b) => b.textContent === 'Set test directive')!;
+    btn.click();
+    expect(run).toHaveBeenCalledTimes(1);
   });
 });

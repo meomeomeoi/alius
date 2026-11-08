@@ -111,3 +111,9 @@
 #alius-shell .alius-log-entry summary {
   cursor: pointer;
 }
+
+#alius-shell .alius-content-errors {
+  margin: 0;
+  padding-left: 1.2em;
+  color: var(--alius-err);
+}

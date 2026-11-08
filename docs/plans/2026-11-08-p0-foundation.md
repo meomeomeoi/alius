@@ -440,17 +440,17 @@ orchestrator (fake adapter, `ping`):
   - Behaviour: `start` loads settings + content (errors → one toast `Content: N error(s) — see SYS › debug` and logged), loads campaign for the open chat, applies context; on `chat_changed` → dispose saver, reload, re-apply context (null when no campaign); `dispatch` → engine `dispatch`, save via saver (skipped when readonly), re-apply context, `shell.refresh()`; `message_received` → `contextBuilder.onReplyReceived()`.
   - `src/index.ts`: `const st = new RealStAdapter(); const app = createApp(st, { loadContent }); await app.start();` and adds `#extensionsMenu` items: **Alius** (open shell), **Alius: Initialize campaign (debug)**, **Alius: Ping mechanic model (debug)** (toast shows `pong: <echo>` or the failure reason).
 
-- [ ] **Step 1: Write the failing tests** (fake adapter, fake shell)
+- [x] **Step 1: Write the failing tests** (fake adapter, fake shell)
 
 `start with no campaign gives load none and clears injections`; `initCampaign in group chat creates state, saves, injects header`; `initCampaign in solo chat toasts and creates nothing`; `chat switch reloads the other chat's campaign`; `dispatch in readonly campaign does not save`; `content errors produce one toast`; `ping success and failure toast texts`.
 
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → `npm test` all PASS; `npm run typecheck`; `npm run build`.
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → `npm test` all PASS; `npm run typecheck`; `npm run build`.
 
-- [ ] **Step 5: Write `docs/MANUAL_TEST_P0.md`** — one checklist line per P0 acceptance criterion 1–8, each with the exact clicks in SillyTavern and the expected observation (e.g. criterion 6: "Init campaign, send a message, open Prompt Itemization → `[ALIUS CONTEXT] … Day 1, Morning.` present; run `/echo` after clearing via SYS debug → absent").
+- [x] **Step 5: Write `docs/MANUAL_TEST_P0.md`** — one checklist line per P0 acceptance criterion 1–8, each with the exact clicks in SillyTavern and the expected observation (e.g. criterion 6: "Init campaign, send a message, open Prompt Itemization → `[ALIUS CONTEXT] … Day 1, Morning.` present; run `/echo` after clearing via SYS debug → absent").
 
-- [ ] **Step 6: Run the manual checklist in a real SillyTavern** (install by cloning the repo into `public/scripts/extensions/third-party/Alius`), tick every line, note ST version in the file.
+- [x] **Step 6: Run the manual checklist in a real SillyTavern** (install by cloning the repo into `public/scripts/extensions/third-party/Alius`), tick every line, note ST version in the file.
 
-- [ ] **Step 7: Commit** `feat: wire Alius app, debug commands and manual acceptance checklist` (include rebuilt `dist/` and `style.css`).
+- [x] **Step 7: Commit** `feat: wire Alius app, debug commands and manual acceptance checklist` (include rebuilt `dist/` and `style.css`).
 
 ---
 

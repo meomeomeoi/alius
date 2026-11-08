@@ -1,5 +1,6 @@
 import { migrate } from '../../engine/state/migrations';
 import type { CampaignState } from '../../engine/state/types';
+import type { ContentError } from '../../content/types';
 import { CALL_TYPE_IDS } from '../../llm/callTypes';
 import { llmLog } from '../../llm/log';
 import { getSettings, updateSettings, type AliusSettings } from '../../settings';
@@ -14,6 +15,8 @@ export interface SysCtx {
   getState: () => CampaignState | null;
   getLoad: () => LoadResult;
   replaceState?: (state: CampaignState) => void;
+  getContentErrors?: () => ContentError[];
+  debugTools?: Array<{ label: string; run: () => void }>;
   toast: (kind: ToastKind, text: string) => void;
   modal: (opts: ModalOpts) => Promise<string | null>;
   /** Called after a setting changed so the shell can restyle itself. */
@@ -206,11 +209,33 @@ export function renderSysTab(host: HTMLElement, ctx: SysCtx): void {
       stateView = h('div', {}, ta, h('div', { class: 'alius-row' }, h('button', { type: 'button', class: 'alius-btn', onclick: applyState }, 'Apply')));
     }
 
+    const contentErrors = ctx.getContentErrors?.() ?? [];
+    const contentList = contentErrors.length
+      ? h(
+          'ul',
+          { class: 'alius-content-errors' },
+          ...contentErrors.map((e) => h('li', {}, `${e.pack} · ${e.file}${e.path ? ' · ' + e.path : ''} — ${e.message}`)),
+        )
+      : h('p', { class: 'alius-dim' }, 'Content packs loaded without errors.');
+    const tools = ctx.debugTools?.length
+      ? [
+          h('h3', {}, 'Tools'),
+          h(
+            'div',
+            { class: 'alius-row' },
+            ...ctx.debugTools.map((t) => h('button', { type: 'button', class: 'alius-btn', onclick: t.run }, t.label)),
+          ),
+        ]
+      : [];
+
     debugHost.append(
       h(
         'section',
         { class: 'alius-section alius-debug' },
         h('h2', {}, '[ DEBUG ]'),
+        ...tools,
+        h('h3', {}, 'Content errors'),
+        contentList,
         h('h3', {}, 'LLM log (newest first)'),
         h('div', { class: 'alius-log' }, ...logList),
         h('h3', {}, 'Campaign state'),
