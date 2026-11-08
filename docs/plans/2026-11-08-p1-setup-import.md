@@ -127,20 +127,20 @@ setChatLorebook(name: string): void;
 - Produces in `lorebook.ts`: `toStLorebook(book: Lorebook, template: Record<string, unknown>): { entries: Record<string, Record<string, unknown>> }` — entry `i` becomes `{ uid: i, ...structuredClone(template), key, comment, content, constant, order: order ?? 100 }`, keyed by `String(i)`.
 - Produces in `sprites.ts`: `spriteFolder(avatar: string, name: string, overrides: unknown): string` (finding 8; `overrides` not an array → `name`); `pickSprite(list: unknown, label: string): string | null` (first `path` whose `label === label`; anything malformed → `null`).
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 settings: `new P1 settings default to false, false, native`; `invalid spriteMode resets to native`.
 fake: `openGroup switches chat and fires chat_changed`; `openGroup failure does not switch`; `createGroupChat stores members and returns a new id`; `setChatLorebook writes world_info metadata`; `addGroupMembers skips avatars already present`.
 lorebook: `entries get sequential uids, template defaults and order 100` (template `{ selective: true, position: 0 }` → entry 1 is `{ uid: 1, selective: true, position: 0, key: [...], comment, content, constant, order: 100 }`); `template object is not shared between entries` (mutate entry 0 → entry 1 unchanged).
 sprites: `override path wins` (`overrides = [{ name: 'rhea', path: 'rhea_alt' }]`, avatar `rhea.png` → `'rhea_alt'`); `no override uses the name`; `pickSprite finds neutral`; `pickSprite on garbage is null` (`null`, `{}`, `[{label: 1}]`).
 
-- [ ] **Step 2: Run** `npx vitest run tests/settings.test.ts tests/st` → FAIL.
+- [x] **Step 2: Run** `npx vitest run tests/settings.test.ts tests/st` → FAIL.
 
-- [ ] **Step 3: Implement.** In `real.ts` follow findings 1–8. Extend the `StContext` interface with `name1`, `getThumbnailUrl`, `getRequestHeaders`, `getCharacters`, `unshallowCharacter`, `getWorldInfoNames`, `saveWorldInfo`, `updateWorldInfoList`. Declare `openGroupById(id: string): Promise<boolean | void>` in `st:group-chats` and `newWorldInfoEntryTemplate: Record<string, unknown>` in `st:world-info`. `openGroup` returns `ctx().groupId === groupId` after awaiting `openGroupById`, so a `void` return still works. SYS tab: checkboxes `desireBondDefects` ("Desire/Bond defects") and `showRawValues` ("Show raw values"), and a select `spriteMode` ("Sprite mode": `native` → "Native Expressions", `emotion_pick` → "Mechanic emotion pick").
+- [x] **Step 3: Implement.** In `real.ts` follow findings 1–8. Extend the `StContext` interface with `name1`, `getThumbnailUrl`, `getRequestHeaders`, `getCharacters`, `unshallowCharacter`, `getWorldInfoNames`, `saveWorldInfo`, `updateWorldInfoList`. Declare `openGroupById(id: string): Promise<boolean | void>` in `st:group-chats` and `newWorldInfoEntryTemplate: Record<string, unknown>` in `st:world-info`. `openGroup` returns `ctx().groupId === groupId` after awaiting `openGroupById`, so a `void` return still works. SYS tab: checkboxes `desireBondDefects` ("Desire/Bond defects") and `showRawValues` ("Show raw values"), and a select `spriteMode` ("Sprite mode": `native` → "Native Expressions", `emotion_pick` → "Mechanic emotion pick").
 
-- [ ] **Step 4: Run** `npx vitest run && npm run typecheck && npm run build` → PASS. The bundle test must still pass: the new `st:world-info` import is an allowed external.
+- [x] **Step 4: Run** `npx vitest run && npm run typecheck && npm run build` → PASS. The bundle test must still pass: the new `st:world-info` import is an allowed external.
 
-- [ ] **Step 5: Commit** `feat(st): character library, group creation, lorebook and sprite adapter methods`
+- [x] **Step 5: Commit** `feat(st): character library, group creation, lorebook and sprite adapter methods`
 
 ---
 

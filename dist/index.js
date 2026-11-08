@@ -4473,7 +4473,10 @@ var DEFAULT_SETTINGS = {
   scanlines: true,
   flicker: false,
   debug: false,
-  editLock: true
+  editLock: true,
+  desireBondDefects: false,
+  showRawValues: false,
+  spriteMode: "native"
 };
 var fieldSchemas = {
   mechanicProfileId: external_exports.string(),
@@ -4485,7 +4488,10 @@ var fieldSchemas = {
   scanlines: external_exports.boolean(),
   flicker: external_exports.boolean(),
   debug: external_exports.boolean(),
-  editLock: external_exports.boolean()
+  editLock: external_exports.boolean(),
+  desireBondDefects: external_exports.boolean(),
+  showRawValues: external_exports.boolean(),
+  spriteMode: external_exports.enum(["native", "emotion_pick"])
 };
 var budgetSchema = external_exports.number().int().min(1);
 var isObj = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -4840,6 +4846,10 @@ function renderSysTab(host, ctx2) {
     field("Palette", select("palette", [["amber", "amber"], ["green", "green"], ["white", "white"]], settings.palette)),
     field("Scanlines", checkbox("scanlines", settings.scanlines)),
     field("CRT flicker", checkbox("flicker", settings.flicker)),
+    h("h3", {}, "Campaign"),
+    field("Desire/Bond defects", checkbox("desireBondDefects", settings.desireBondDefects)),
+    field("Show raw values", checkbox("showRawValues", settings.showRawValues)),
+    field("Sprite mode", select("spriteMode", [["native", "Native Expressions"], ["emotion_pick", "Mechanic emotion pick"]], settings.spriteMode)),
     h("h3", {}, "Developer"),
     field("Debug mode", checkbox("debug", settings.debug, true)),
     field("Mechanics edit lock", checkbox("editLock", settings.editLock, true))
@@ -5563,7 +5573,41 @@ async function loadPacks(packRoots, fetchJson2) {
 }
 
 // src/st/real.ts
-import { editGroup } from "../../../../group-chats.js";
+import { editGroup, openGroupById } from "../../../../group-chats.js";
+import { newWorldInfoEntryTemplate } from "../../../../world-info.js";
+
+// src/st/lorebook.ts
+function toStLorebook(book, template) {
+  const entries = {};
+  book.entries.forEach((e, i) => {
+    entries[String(i)] = {
+      uid: i,
+      ...structuredClone(template),
+      key: [...e.key],
+      comment: e.comment,
+      content: e.content,
+      constant: e.constant,
+      order: e.order ?? 100
+    };
+  });
+  return { entries };
+}
+
+// src/st/sprites.ts
+var isObj2 = (v) => typeof v === "object" && v !== null;
+function spriteFolder(avatar, name, overrides) {
+  if (!Array.isArray(overrides)) return name;
+  const key = avatar.replace(/\.[^.]+$/, "");
+  const hit = overrides.find((o) => isObj2(o) && o.name === key && typeof o.path === "string" && o.path !== "");
+  return hit ? hit.path : name;
+}
+function pickSprite(list, label) {
+  if (!Array.isArray(list)) return null;
+  for (const item of list) {
+    if (isObj2(item) && item.label === label && typeof item.path === "string") return item.path;
+  }
+  return null;
+}
 
 // src/st/profiles.ts
 function connectionProfiles(extensionSettings, requestServiceAvailable) {
@@ -5685,6 +5729,80 @@ var RealStAdapter = class {
       scenario: String(ch.scenario ?? ch.data?.scenario ?? ""),
       creatorNotes: String(ch.data?.creator_notes ?? ch.creatorcomment ?? "")
     };
+  }
+  getPersonaName() {
+    return String(ctx().name1 ?? "");
+  }
+  listCharacters() {
+    return ctx().characters.map((c) => ({ avatar: String(c.avatar ?? ""), name: String(c.name ?? "") }));
+  }
+  async loadCharacterCard(avatar) {
+    const c = ctx();
+    const index = c.characters.findIndex((x) => x.avatar === avatar);
+    if (index < 0) return null;
+    if (c.characters[index].shallow) await c.unshallowCharacter(index);
+    return this.getCharacterCard(avatar);
+  }
+  getAvatarUrl(avatar) {
+    return ctx().getThumbnailUrl("avatar", avatar);
+  }
+  async getSpriteUrl(avatar, label) {
+    const c = ctx();
+    const ch = c.characters.find((x) => x.avatar === avatar);
+    if (!ch) return null;
+    const folder = spriteFolder(avatar, String(ch.name ?? ""), c.extensionSettings.expressionOverrides);
+    try {
+      const res = await fetch(`/api/sprites/get?name=${encodeURIComponent(folder)}`, { headers: c.getRequestHeaders() });
+      if (!res.ok) return null;
+      return pickSprite(await res.json(), label);
+    } catch {
+      return null;
+    }
+  }
+  async createGroupChat(req) {
+    const c = ctx();
+    const res = await fetch("/api/groups/create", {
+      method: "POST",
+      headers: c.getRequestHeaders(),
+      body: JSON.stringify({
+        name: req.name,
+        members: req.members,
+        avatar_url: "img/ai4.png",
+        allow_self_responses: false,
+        activation_strategy: 0,
+        generation_mode: 0,
+        disabled_members: [],
+        fav: false
+      })
+    });
+    if (!res.ok) throw new Error(`group creation failed (HTTP ${res.status})`);
+    const group = await res.json();
+    if (!group.id) throw new Error("group creation returned no id");
+    await c.getCharacters();
+    return String(group.id);
+  }
+  async openGroup(groupId) {
+    await openGroupById(groupId);
+    return ctx().groupId === groupId;
+  }
+  async addGroupMembers(avatars) {
+    const g = currentGroup(ctx());
+    if (!g) return;
+    const missing = avatars.filter((a) => !g.members.includes(a));
+    if (missing.length === 0) return;
+    g.members.push(...missing);
+    await editGroup(g.id, true, false);
+  }
+  listLorebooks() {
+    return [...ctx().getWorldInfoNames()];
+  }
+  async saveLorebook(book) {
+    const c = ctx();
+    await c.saveWorldInfo(book.name, toStLorebook(book, newWorldInfoEntryTemplate), true);
+    await c.updateWorldInfoList();
+  }
+  setChatLorebook(name) {
+    this.writeMetadata("world_info", name);
   }
   setExpression(avatar, label) {
     console.warn(`[Alius] setExpression(${avatar}, ${label}) is not implemented yet`);

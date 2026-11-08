@@ -1,15 +1,26 @@
 // The only file (besides index.ts) that touches SillyTavern.
-import { editGroup } from 'st:group-chats';
+import { editGroup, openGroupById } from 'st:group-chats';
+import { newWorldInfoEntryTemplate } from 'st:world-info';
 import { answerText } from '../llm/text';
 import type {
-  CardInfo, ChatInfo, InjectionPosition, MemberInfo, ProfileInfo, StAdapter, StEvent,
+  CardInfo, CharacterSummary, ChatInfo, InjectionPosition, Lorebook, MemberInfo, ProfileInfo, StAdapter, StEvent,
 } from './adapter';
+import { toStLorebook } from './lorebook';
+import { pickSprite, spriteFolder } from './sprites';
 import { connectionProfiles } from './profiles';
 import { reasoningPayload } from './reasoning';
 
 /** The slice of SillyTavern.getContext() that Alius uses. */
 interface StContext {
   chatId?: string;
+  name1?: string;
+  getThumbnailUrl(type: string, file: string): string;
+  getRequestHeaders(): Record<string, string>;
+  getCharacters(): Promise<void>;
+  unshallowCharacter(index: number): Promise<void>;
+  getWorldInfoNames(): string[];
+  saveWorldInfo(name: string, data: unknown, immediately?: boolean): Promise<void>;
+  updateWorldInfoList(): Promise<void>;
   groupId?: string | null;
   groups: Array<{ id: string; members: string[]; disabled_members?: string[] }>;
   characters: Array<Record<string, any>>;
@@ -151,6 +162,91 @@ export class RealStAdapter implements StAdapter {
       scenario: String(ch.scenario ?? ch.data?.scenario ?? ''),
       creatorNotes: String(ch.data?.creator_notes ?? ch.creatorcomment ?? ''),
     };
+  }
+
+  getPersonaName(): string {
+    return String(ctx().name1 ?? '');
+  }
+
+  listCharacters(): CharacterSummary[] {
+    return ctx().characters.map((c) => ({ avatar: String(c.avatar ?? ''), name: String(c.name ?? '') }));
+  }
+
+  async loadCharacterCard(avatar: string): Promise<CardInfo | null> {
+    const c = ctx();
+    const index = c.characters.findIndex((x) => x.avatar === avatar);
+    if (index < 0) return null;
+    if (c.characters[index].shallow) await c.unshallowCharacter(index);
+    return this.getCharacterCard(avatar);
+  }
+
+  getAvatarUrl(avatar: string): string {
+    return ctx().getThumbnailUrl('avatar', avatar);
+  }
+
+  async getSpriteUrl(avatar: string, label: string): Promise<string | null> {
+    const c = ctx();
+    const ch = c.characters.find((x) => x.avatar === avatar);
+    if (!ch) return null;
+    const folder = spriteFolder(avatar, String(ch.name ?? ''), c.extensionSettings.expressionOverrides);
+    try {
+      const res = await fetch(`/api/sprites/get?name=${encodeURIComponent(folder)}`, { headers: c.getRequestHeaders() });
+      if (!res.ok) return null;
+      return pickSprite(await res.json(), label);
+    } catch {
+      return null;
+    }
+  }
+
+  async createGroupChat(req: { name: string; members: string[] }): Promise<string> {
+    const c = ctx();
+    const res = await fetch('/api/groups/create', {
+      method: 'POST',
+      headers: c.getRequestHeaders(),
+      body: JSON.stringify({
+        name: req.name,
+        members: req.members,
+        avatar_url: 'img/ai4.png',
+        allow_self_responses: false,
+        activation_strategy: 0,
+        generation_mode: 0,
+        disabled_members: [],
+        fav: false,
+      }),
+    });
+    if (!res.ok) throw new Error(`group creation failed (HTTP ${res.status})`);
+    const group = (await res.json()) as { id?: string };
+    if (!group.id) throw new Error('group creation returned no id');
+    await c.getCharacters(); // also reloads the groups list
+    return String(group.id);
+  }
+
+  async openGroup(groupId: string): Promise<boolean> {
+    await openGroupById(groupId);
+    return ctx().groupId === groupId;
+  }
+
+  async addGroupMembers(avatars: string[]): Promise<void> {
+    const g = currentGroup(ctx());
+    if (!g) return;
+    const missing = avatars.filter((a) => !g.members.includes(a));
+    if (missing.length === 0) return;
+    g.members.push(...missing);
+    await editGroup(g.id, true, false);
+  }
+
+  listLorebooks(): string[] {
+    return [...ctx().getWorldInfoNames()];
+  }
+
+  async saveLorebook(book: Lorebook): Promise<void> {
+    const c = ctx();
+    await c.saveWorldInfo(book.name, toStLorebook(book, newWorldInfoEntryTemplate), true);
+    await c.updateWorldInfoList();
+  }
+
+  setChatLorebook(name: string): void {
+    this.writeMetadata('world_info', name);
   }
 
   setExpression(avatar: string, label: string): void {

@@ -66,4 +66,46 @@ describe('FakeStAdapter', () => {
     st.emit('chat_changed', 'manual');
     expect(seen).toEqual([[], ['manual']]);
   });
+
+  it('openGroup switches chat and fires chat_changed', async () => {
+    const st = new FakeStAdapter(B);
+    const id = await st.createGroupChat({ name: 'G', members: ['a.png'] });
+    let fired = 0;
+    st.on('chat_changed', () => fired++);
+    expect(await st.openGroup(id)).toBe(true);
+    expect(st.getActiveChat()).toEqual({ chatId: 'chat-' + id, isGroup: true, groupId: id });
+    expect(fired).toBe(1);
+  });
+
+  it('openGroup failure does not switch', async () => {
+    const st = new FakeStAdapter(B);
+    const id = await st.createGroupChat({ name: 'G', members: [] });
+    st.failOpenGroup = true;
+    expect(await st.openGroup(id)).toBe(false);
+    expect(await st.openGroup('nope')).toBe(false);
+    expect(st.getActiveChat()).toEqual(B);
+  });
+
+  it('createGroupChat stores members and returns a new id', async () => {
+    const st = new FakeStAdapter(B);
+    const a = await st.createGroupChat({ name: 'One', members: ['a.png', 'b.png'] });
+    const b = await st.createGroupChat({ name: 'Two', members: [] });
+    expect(a).not.toBe(b);
+    expect(st.groups.get(a)).toEqual({ name: 'One', members: ['a.png', 'b.png'] });
+    st.failCreateGroup = true;
+    await expect(st.createGroupChat({ name: 'X', members: [] })).rejects.toThrow();
+  });
+
+  it('setChatLorebook writes world_info metadata', () => {
+    const st = new FakeStAdapter(A);
+    st.setChatLorebook('Alius Core Lore');
+    expect(st.readMetadata('world_info')).toBe('Alius Core Lore');
+  });
+
+  it('addGroupMembers skips avatars already present', async () => {
+    const st = new FakeStAdapter(A);
+    st.members = [{ avatar: 'a.png', name: 'A', active: true }];
+    await st.addGroupMembers(['a.png', 'b.png']);
+    expect(st.members.map((m) => m.avatar)).toEqual(['a.png', 'b.png']);
+  });
 });

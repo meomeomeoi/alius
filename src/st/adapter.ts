@@ -9,6 +9,9 @@ export interface CardInfo {
   scenario: string;
   creatorNotes: string;
 }
+export interface CharacterSummary { avatar: string; name: string }
+export interface LorebookEntry { key: string[]; comment: string; content: string; constant: boolean; order?: number }
+export interface Lorebook { name: string; entries: LorebookEntry[] }
 export interface ProfileInfo { id: string; name: string; api: string; model: string }
 
 export type StEvent = 'chat_changed' | 'message_sent' | 'message_received' | 'generation_started';
@@ -34,6 +37,22 @@ export interface StAdapter {
   }): Promise<string>;
   listConnectionProfiles(): ProfileInfo[];
   getCharacterCard(avatar: string): CardInfo | null;
+  getPersonaName(): string;
+  listCharacters(): CharacterSummary[];
+  /** Like getCharacterCard, but loads a lazily-loaded (shallow) character first. */
+  loadCharacterCard(avatar: string): Promise<CardInfo | null>;
+  getAvatarUrl(avatar: string): string;
+  getSpriteUrl(avatar: string, label: string): Promise<string | null>;
+  /** Creates a group chat; resolves with the new group id. Rejects on failure. */
+  createGroupChat(req: { name: string; members: string[] }): Promise<string>;
+  /** Opens the group's current chat; resolves false if ST refused. */
+  openGroup(groupId: string): Promise<boolean>;
+  /** Adds avatars to the open group (no-op for avatars already in it). */
+  addGroupMembers(avatars: string[]): Promise<void>;
+  listLorebooks(): string[];
+  saveLorebook(book: Lorebook): Promise<void>;
+  /** Binds a lorebook to the open chat (metadata only; persisted by the next saveMetadata). */
+  setChatLorebook(name: string): void;
   setExpression(avatar: string, label: string): void;
   /** extensionSettings.alius (created if missing). */
   getSettings(): Record<string, unknown>;

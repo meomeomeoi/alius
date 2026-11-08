@@ -42,4 +42,19 @@ describe('settings', () => {
     expect(st.settingsSaves).toBe(1);
     expect(getSettings(st).palette).toBe('green');
   });
+
+  it('new P1 settings default to false, false, native', () => {
+    const s = getSettings(new FakeStAdapter());
+    expect(s.desireBondDefects).toBe(false);
+    expect(s.showRawValues).toBe(false);
+    expect(s.spriteMode).toBe('native');
+  });
+
+  it('invalid spriteMode resets to native', () => {
+    const st = new FakeStAdapter();
+    st.settings = { spriteMode: 'telepathy', desireBondDefects: true };
+    const s = getSettings(st);
+    expect(s.spriteMode).toBe('native');
+    expect(s.desireBondDefects).toBe(true);
+  });
 });

@@ -1,5 +1,5 @@
 import type {
-  CardInfo, ChatInfo, InjectionPosition, MemberInfo, ProfileInfo, StAdapter, StEvent,
+  CardInfo, CharacterSummary, ChatInfo, InjectionPosition, Lorebook, MemberInfo, ProfileInfo, StAdapter, StEvent,
 } from './adapter';
 
 export interface FakeCall {
@@ -19,6 +19,14 @@ export class FakeStAdapter implements StAdapter {
   profiles: ProfileInfo[] = [];
   members: MemberInfo[] = [];
   cards = new Map<string, CardInfo>();
+  personaName = 'User';
+  characters: CharacterSummary[] = [];
+  groups = new Map<string, { name: string; members: string[] }>();
+  lorebooks = new Map<string, Lorebook>();
+  /** key `${avatar}:${label}` → url */
+  sprites = new Map<string, string>();
+  failCreateGroup = false;
+  failOpenGroup = false;
   mainReplies: string[] = [];
   profileReplies: (string | Error)[] = [];
   calls: FakeCall[] = [];
@@ -125,6 +133,59 @@ export class FakeStAdapter implements StAdapter {
 
   getCharacterCard(avatar: string): CardInfo | null {
     return this.cards.get(avatar) ?? null;
+  }
+
+  getPersonaName(): string {
+    return this.personaName;
+  }
+
+  listCharacters(): CharacterSummary[] {
+    return this.characters.map((c) => ({ ...c }));
+  }
+
+  async loadCharacterCard(avatar: string): Promise<CardInfo | null> {
+    return this.getCharacterCard(avatar);
+  }
+
+  getAvatarUrl(avatar: string): string {
+    return `/thumbnail?type=avatar&file=${encodeURIComponent(avatar)}`;
+  }
+
+  async getSpriteUrl(avatar: string, label: string): Promise<string | null> {
+    return this.sprites.get(`${avatar}:${label}`) ?? null;
+  }
+
+  async createGroupChat(req: { name: string; members: string[] }): Promise<string> {
+    if (this.failCreateGroup) throw new Error('FakeStAdapter: createGroupChat failed');
+    const id = `g${this.groups.size + 1}`;
+    this.groups.set(id, { name: req.name, members: [...req.members] });
+    return id;
+  }
+
+  async openGroup(groupId: string): Promise<boolean> {
+    if (this.failOpenGroup || !this.groups.has(groupId)) return false;
+    this.switchChat({ chatId: 'chat-' + groupId, isGroup: true, groupId });
+    return true;
+  }
+
+  async addGroupMembers(avatars: string[]): Promise<void> {
+    for (const avatar of avatars) {
+      if (this.members.some((m) => m.avatar === avatar)) continue;
+      const name = this.characters.find((c) => c.avatar === avatar)?.name ?? avatar;
+      this.members.push({ avatar, name, active: true });
+    }
+  }
+
+  listLorebooks(): string[] {
+    return [...this.lorebooks.keys()];
+  }
+
+  async saveLorebook(book: Lorebook): Promise<void> {
+    this.lorebooks.set(book.name, structuredClone(book));
+  }
+
+  setChatLorebook(name: string): void {
+    this.writeMetadata('world_info', name);
   }
 
   setExpression(avatar: string, label: string): void {

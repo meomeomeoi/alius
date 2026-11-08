@@ -16,6 +16,10 @@ export interface AliusSettings {
   flicker: boolean;
   debug: boolean;
   editLock: boolean;
+  /** Allow Desire/Bond defects in import candidates and manual lists. */
+  desireBondDefects: boolean;
+  showRawValues: boolean;
+  spriteMode: 'native' | 'emotion_pick';
 }
 
 export const DEFAULT_SETTINGS: AliusSettings = {
@@ -41,6 +45,9 @@ export const DEFAULT_SETTINGS: AliusSettings = {
   flicker: false,
   debug: false,
   editLock: true,
+  desireBondDefects: false,
+  showRawValues: false,
+  spriteMode: 'native',
 };
 
 const fieldSchemas = {
@@ -54,6 +61,9 @@ const fieldSchemas = {
   flicker: z.boolean(),
   debug: z.boolean(),
   editLock: z.boolean(),
+  desireBondDefects: z.boolean(),
+  showRawValues: z.boolean(),
+  spriteMode: z.enum(['native', 'emotion_pick']),
 };
 const budgetSchema = z.number().int().min(1);
 
