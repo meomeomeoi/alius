@@ -250,7 +250,7 @@ function initialRelation(o) {
     affinity: o.affinity,
     attraction: o.attraction,
     stateId: INITIAL_RELATION_STATE,
-    stateSince: 1,
+    stateSince: o.since ?? 1,
     history: [],
     flags: o.knowsCrime ? ["knows_crime"] : [],
     dailyGain: { trust: 0, affinity: 0, attraction: 0 },
@@ -396,7 +396,7 @@ var TUNING = Object.freeze({
 
 // src/engine/relationGain.ts
 var RANGE = { trust: [0, 100], affinity: [-100, 100], attraction: [0, 100] };
-var defaultHandler = (relation, axis, amount) => {
+var defaultHandler = ({ relation }, axis, amount) => {
   const [lo, hi] = RANGE[axis];
   const before = relation[axis];
   let applied = amount;
@@ -418,7 +418,7 @@ var handler = defaultHandler;
 function applyRelationDelta(draft, unitId, axis, amount, source) {
   const relation = draft.relations[unitId];
   if (!relation) return 0;
-  return handler(relation, axis, amount, source);
+  return handler({ state: draft, unitId, relation }, axis, amount, source);
 }
 
 // src/engine/economy.ts
@@ -477,7 +477,7 @@ function runUpkeep(draft, reg) {
   });
   const streak = (draft.calendar.shortageStreak ?? 0) + 1;
   draft.calendar.shortageStreak = streak;
-  events.push({ type: "supply_shortage", missing, streak });
+  events.push({ type: "supply_shortage", missing, streak, hit: units.length });
   if (streak % TUNING.shortage.streakDays === 0) {
     for (const u of units) applyRelationDelta(draft, u.id, "trust", -TUNING.shortage.trustPenalty, "shortage_streak");
     events.push({ type: "trust_penalty_event", streak, units: units.map((u) => u.id), amount: TUNING.shortage.trustPenalty });
@@ -506,6 +506,12 @@ function checkRecruit(state) {
     return `Not enough credits to recruit a grunt (needs ${TUNING.recruit.credits}).`;
   }
   return null;
+}
+function recoverUnit(draft, u) {
+  delete u.injuryDays;
+  u.injuries = [];
+  if (u.status === "injured") u.status = draft.roster.activeIds.includes(u.id) ? "active" : "reserve";
+  return { type: "unit_recovered", unitId: u.id };
 }
 
 // src/engine/calendar.ts
@@ -552,10 +558,7 @@ function ticks(draft, ctx2) {
     if (u.injuryDays !== void 0) {
       u.injuryDays -= speed;
       if (u.injuryDays <= 0) {
-        delete u.injuryDays;
-        u.injuries = [];
-        if (u.status === "injured") u.status = "active";
-        events.push({ type: "unit_recovered", unitId: u.id });
+        events.push(recoverUnit(draft, u));
       }
     }
     u.stress = Math.max(0, u.stress - TUNING.passiveStressRecovery);
@@ -628,6 +631,7 @@ function consumeSlots(draft, count, ctx2) {
     } else if (from === "night") {
       events.push({ type: "slot_advanced", from: "night", to: "morning", day: draft.day + 1 });
       events.push(...rollover(draft));
+      events.push({ type: "autosave" });
     } else {
       draft.slot = SLOT_ORDER[SLOT_ORDER.indexOf(from) + 1];
       events.push({ type: "slot_advanced", from, to: draft.slot, day: draft.day });
@@ -656,8 +660,9 @@ function addSocialPoints(commander, stat, amount) {
     empathy: SOCIAL_THRESHOLDS[commander.socialStats.empathy - 1] ?? 0,
     cunning: SOCIAL_THRESHOLDS[commander.socialStats.cunning - 1] ?? 0
   };
-  const next = Math.min(MAX_POINTS, points[stat] + amount);
-  const gained = next - points[stat];
+  const floor = SOCIAL_THRESHOLDS[before - 1] ?? 0;
+  const next = Math.min(MAX_POINTS, Math.max(points[stat], floor) + amount);
+  const gained = next - Math.max(points[stat], floor);
   points[stat] = next;
   const rank = Math.max(before, rankForPoints(next));
   commander.socialStats[stat] = rank;
@@ -745,10 +750,7 @@ function runActivity(draft, ctx2, request) {
   const selected = focus?.units ? (req.unitIds ?? []).map((id) => draft.squad.find((u) => u.id === id)) : [];
   const unitsOf = (target) => target === "companion" ? companion ? [companion] : [] : target === "selected" ? selected : activeRosterUnits(draft);
   const recover = (u) => {
-    delete u.injuryDays;
-    u.injuries = [];
-    if (u.status === "injured") u.status = "active";
-    events.push({ type: "unit_recovered", unitId: u.id });
+    events.push(recoverUnit(draft, u));
   };
   const list = companion ? a.companionEffects : a.effects;
   for (const fx of list) {
@@ -756,9 +758,10 @@ function runActivity(draft, ctx2, request) {
     if (fx.when?.companionLikes !== void 0 && !companion?.likes.includes(fx.when.companionLikes)) continue;
     switch (fx.type) {
       case "resource": {
-        const amount = scaled(fx.amount + (fx.perStat ? fx.perStat.per * socialRank(draft, fx.perStat.stat) : 0), draft, reg, fx.scale);
-        draft.resources[fx.resource] = Math.max(0, draft.resources[fx.resource] + amount);
-        events.push({ type: "resource_changed", resource: fx.resource, amount });
+        const wanted = scaled(fx.amount + (fx.perStat ? fx.perStat.per * socialRank(draft, fx.perStat.stat) : 0), draft, reg, fx.scale);
+        const before = draft.resources[fx.resource];
+        draft.resources[fx.resource] = Math.max(0, before + wanted);
+        events.push({ type: "resource_changed", resource: fx.resource, amount: draft.resources[fx.resource] - before });
         break;
       }
       case "commander_stat": {
@@ -804,7 +807,7 @@ function runActivity(draft, ctx2, request) {
         }
         break;
       case "relation":
-        if (companion) {
+        if (companion && !(companion.kind === "grunt" && fx.axis !== "trust")) {
           const applied = applyRelationDelta(draft, companion.id, fx.axis, scaled(fx.amount, draft, reg, fx.scale), `activity:${a.id}`);
           events.push({ type: "relation_changed", unitId: companion.id, axis: fx.axis, applied });
         }
@@ -951,7 +954,7 @@ function gruntRelation(state, reg) {
   const neutral = Object.fromEntries(VALUE_AXES.map((a) => [a, 0]));
   let trust = TUNING.recruit.baseTrust + startingTrustAdjust(effects, neutral);
   if (effects.some((fx) => fx.type === "grunt_starting_trust")) trust += TUNING.recruit.gruntCrimeBonus;
-  return initialRelation({ trust, affinity: 0, attraction: 0, knowsCrime: crime ? crimeKnownByDefault(crime, start) : false });
+  return initialRelation({ trust, affinity: 0, attraction: 0, knowsCrime: crime ? crimeKnownByDefault(crime, start) : false, since: state.day });
 }
 
 // src/engine/actions/base.ts
@@ -1005,6 +1008,7 @@ registerAction("roster/set_active", (draft, payload) => {
 registerAction("base/recruit_grunt", (draft, _payload, ctx2) => {
   const reason = checkRecruit(draft);
   if (reason) throw new Error(reason);
+  draft.roster.activeIds = activeRosterUnits(draft).map((u) => u.id);
   const grunt = generateGrunt(draft, ctx2.registries, ctx2.rng);
   draft.resources.credits -= TUNING.recruit.credits;
   draft.squad.push(grunt);
@@ -6848,11 +6852,13 @@ function activityCard(a, state, ctx2) {
     btn
   );
 }
-function requisition(state, ctx2) {
+var remembered = /* @__PURE__ */ new WeakMap();
+function requisition(state, ctx2, host) {
   const rate = TUNING.requisition.creditsPerSupply;
-  const input = h("input", { type: "number", name: "requisition", min: "1", step: "1", value: "5", "aria-label": "Supplies to requisition" });
+  const input = h("input", { type: "number", name: "requisition", min: "1", step: "1", value: remembered.get(host) ?? "5", "aria-label": "Supplies to requisition" });
   const btn = h("button", { type: "button", class: "alius-btn", "data-requisition": "" }, "[ REQUISITION ]");
   const sync = () => {
+    remembered.set(host, input.value);
     const n = Math.floor(Number(input.value));
     btn.disabled = !(n >= 1) || n * rate > state.resources.credits;
   };
@@ -6885,16 +6891,16 @@ function renderOpsTab(host, ctx2) {
     host.append(h("section", { class: "alius-section" }, h("p", {}, "NO ACTIVE CAMPAIGN IN THIS CHAT")));
     return;
   }
-  const today = [...ctx2.registries.activities.values()].filter((a) => a.slotRules.includes(state.slot));
+  const all = [...ctx2.registries.activities.values()];
   host.append(
     h(
       "section",
       { class: "alius-section alius-ops" },
       h("h2", {}, clockText(state.day, state.slot)),
       h("p", { class: "alius-dim" }, "Each activity takes this slot. Talking takes it when the scene ends."),
-      ...today.map((a) => activityCard(a, state, ctx2))
+      ...all.map((a) => activityCard(a, state, ctx2))
     ),
-    requisition(state, ctx2)
+    requisition(state, ctx2, host)
   );
 }
 
@@ -8054,7 +8060,7 @@ function createApp(st, deps) {
     for (const e of events) {
       switch (e.type) {
         case "supply_shortage":
-          toast("warn", `Supply shortage: ${String(e.missing)} short. Stress and affinity suffer.`);
+          toast("warn", `Supply shortage: ${String(e.missing)} short.${Number(e.hit) > 0 ? " Stress and affinity suffer." : ""}`);
           break;
         case "trust_penalty_event":
           toast("warn", `${String(e.streak)} days of shortage: trust in the commander drops.`);
@@ -8393,6 +8399,36 @@ Object.assign(registrySchemas, {
   defects: DefectSchema,
   statuses: StatusSchema
 });
+var RESERVED_EVENT_TYPES = [
+  "error",
+  "autosave",
+  "activity_done",
+  "slot_advanced",
+  "day_started",
+  "day_end_step",
+  "day_end_step_failed",
+  "night_started",
+  "upkeep",
+  "supply_shortage",
+  "trust_penalty_event",
+  "unit_recovered",
+  "facility_upgraded",
+  "resource_changed",
+  "social_gained",
+  "xp_gained",
+  "stress_changed",
+  "relation_changed",
+  "defect_upkeep",
+  "commander_injury_changed",
+  "commander_injured",
+  "scene_cancelled",
+  "grunt_recruited",
+  "upgrade_started",
+  "requisitioned",
+  "roster_changed",
+  "unit_flavored",
+  "unit_resynced"
+];
 var slotEnum = external_exports.enum(["morning", "afternoon", "evening", "night"]);
 var socialStat = external_exports.enum(["authority", "insight", "empathy", "cunning"]);
 var amountFields = {
@@ -8416,7 +8452,11 @@ var ActivityEffectSchema = external_exports.discriminatedUnion("type", [
   external_exports.object({ type: external_exports.literal("commander_injury_days"), amount: int, ...amountFields }).strict(),
   external_exports.object({ type: external_exports.literal("defect_upkeep"), target: external_exports.enum(["selected", "companion"]), ...amountFields }).strict(),
   external_exports.object({ type: external_exports.literal("relation"), axis: external_exports.enum(["trust", "affinity", "attraction"]), amount: int, ...amountFields }).strict(),
-  external_exports.object({ type: external_exports.literal("emit_event"), event: str, ...amountFields }).strict()
+  external_exports.object({
+    type: external_exports.literal("emit_event"),
+    event: str.refine((e) => !RESERVED_EVENT_TYPES.includes(e), "this event name belongs to the engine"),
+    ...amountFields
+  }).strict()
 ]);
 var ActivitySchema = BaseEntrySchema.extend({
   name: str,
@@ -8442,6 +8482,15 @@ var ActivitySchema = BaseEntrySchema.extend({
   if (a.companion === "none" && a.companionEffects.length > 0) issue(["companionEffects"], 'companion "none" cannot have companionEffects');
   if (a.companion === "required" && a.companionEffects.length === 0) issue(["companionEffects"], 'companion "required" needs companionEffects');
   const focusIds = new Set((a.focus ?? []).map((f) => f.id));
+  if (focusIds.size !== (a.focus ?? []).length) issue(["focus"], "focus ids must be unique");
+  (a.focus ?? []).forEach((f, i) => {
+    if (f.units && f.units.min > f.units.max) issue(["focus", i, "units"], "units.min must not exceed units.max");
+  });
+  if (a.startsScene === true) {
+    [...a.effects, ...a.companionEffects].forEach((fx) => {
+      if (fx.type !== "emit_event") issue(["startsScene"], "a scene-starting activity may only emit events; its slot is not consumed here");
+    });
+  }
   a.effects.forEach((fx, i) => {
     const f = fx;
     if (f.when?.focus !== void 0 && !focusIds.has(f.when.focus)) issue(["effects", i, "when", "focus"], `unknown focus "${f.when.focus}"`);

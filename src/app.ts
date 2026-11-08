@@ -413,7 +413,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     for (const e of events) {
       switch (e.type) {
         case 'supply_shortage':
-          toast('warn', `Supply shortage: ${String(e.missing)} short. Stress and affinity suffer.`);
+          toast('warn', `Supply shortage: ${String(e.missing)} short.${Number(e.hit) > 0 ? ' Stress and affinity suffer.' : ''}`);
           break;
         case 'trust_penalty_event':
           toast('warn', `${String(e.streak)} days of shortage: trust in the commander drops.`);

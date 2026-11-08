@@ -33,26 +33,29 @@ const change = (el: HTMLSelectElement | HTMLInputElement, value?: string) => {
 };
 
 describe('OPS tab', () => {
-  it('lists every activity available in the morning with the day clock', () => {
+  it('lists every activity with the day clock, in registry order', () => {
     const { host } = render();
     expect(host.textContent).toContain('DAY 001 // MORNING');
     const ids = [...host.querySelectorAll<HTMLElement>('[data-activity]')].map((e) => e.dataset.activity);
-    expect(ids).toEqual(['train', 'workshop', 'medbay', 'work', 'scout_net', 'rest', 'study', 'talk']); // mess is afternoon/evening
+    expect(ids).toEqual(['train', 'workshop', 'medbay', 'work', 'scout_net', 'rest', 'mess', 'study', 'talk']);
   });
 
-  it('shows the activities of the evening, including the group meal', () => {
-    const s = campaign(reg, 4);
-    s.slot = 'evening';
-    const ids = [...render({ state: s }).host.querySelectorAll<HTMLElement>('[data-activity]')].map((e) => e.dataset.activity);
-    expect(ids).toContain('mess');
-    expect(ids).toHaveLength(9);
+  it('an activity not available in this slot is shown disabled with the reason', () => {
+    const { btn, card } = render();
+    expect(btn('mess').disabled).toBe(true);
+    expect(card('mess').textContent).toMatch(/not available in the morning/i);
+    const evening = campaign(reg, 4);
+    evening.slot = 'evening';
+    expect(render({ state: evening }).btn('mess').disabled).toBe(false);
   });
 
-  it('night shows only rest and talk', () => {
+  it('at night only rest and talk can be done', () => {
     const s = campaign(reg, 4);
     s.slot = 'night';
-    const ids = [...render({ state: s }).host.querySelectorAll<HTMLElement>('[data-activity]')].map((e) => e.dataset.activity);
-    expect(ids).toEqual(['rest', 'talk']);
+    const { btn } = render({ state: s });
+    const enabled = ['train', 'workshop', 'medbay', 'work', 'scout_net', 'rest', 'mess', 'study'].filter((id) => !btn(id).disabled);
+    expect(enabled).toEqual(['rest']);
+    expect(btn('talk').disabled).toBe(true); // needs a companion, but not a slot problem
   });
 
   it('a disabled activity shows its reason', () => {
@@ -135,6 +138,19 @@ describe('OPS tab', () => {
     host.querySelector<HTMLButtonElement>('button[data-requisition]')!.click();
     expect(onRequisition).toHaveBeenCalledWith(7);
     expect(host.textContent).toContain('3 CR per supply');
+  });
+
+  it('the requisition amount survives a re-render', () => {
+    const state = campaign(reg, 4);
+    const host = h('div');
+    document.body.append(host);
+    const draw = () => renderOpsTab(host, { getState: () => state, getLoad: () => ({ kind: 'ok', state, chatId: 'c' }), registries: reg, onDo: vi.fn(), onRequisition: vi.fn() });
+    draw();
+    const input = host.querySelector<HTMLInputElement>('input[name="requisition"]')!;
+    input.value = '9';
+    change(input);
+    draw();
+    expect(host.querySelector<HTMLInputElement>('input[name="requisition"]')!.value).toBe('9');
   });
 
   it('requisition is disabled without enough credits', () => {

@@ -3,13 +3,20 @@ import { TUNING } from './tuning';
 
 export type RelationAxis = 'trust' | 'affinity' | 'attraction';
 
-/** Mutates the relation and returns the delta that was actually applied. */
-export type RelationGainHandler = (relation: Relation, axis: RelationAxis, amount: number, source: string) => number;
+export interface RelationGainContext {
+  state: CampaignState;
+  unitId: string;
+  /** `state.relations[unitId]`; the handler mutates it. */
+  relation: Relation;
+}
+
+/** Mutates `ctx.relation` and returns the delta that was actually applied. */
+export type RelationGainHandler = (ctx: RelationGainContext, axis: RelationAxis, amount: number, source: string) => number;
 
 const RANGE: Record<RelationAxis, [number, number]> = { trust: [0, 100], affinity: [-100, 100], attraction: [0, 100] };
 
 /** P2's default: daily diminishing returns on gains, losses in full. P3 replaces it with its own accounting. */
-const defaultHandler: RelationGainHandler = (relation, axis, amount) => {
+const defaultHandler: RelationGainHandler = ({ relation }, axis, amount) => {
   const [lo, hi] = RANGE[axis];
   const before = relation[axis];
   let applied = amount;
@@ -43,5 +50,5 @@ export function applyRelationDelta(
 ): number {
   const relation = draft.relations[unitId];
   if (!relation) return 0;
-  return handler(relation, axis, amount, source);
+  return handler({ state: draft, unitId, relation }, axis, amount, source);
 }

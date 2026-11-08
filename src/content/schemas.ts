@@ -167,6 +167,15 @@ Object.assign(registrySchemas, {
 // ---------------------------------------------------------------------------------------------
 // P2 registries: activities and facilities.
 
+/** Event types the engine itself emits; content may not impersonate them with `emit_event`. */
+export const RESERVED_EVENT_TYPES: readonly string[] = [
+  'error', 'autosave', 'activity_done', 'slot_advanced', 'day_started', 'day_end_step', 'day_end_step_failed',
+  'night_started', 'upkeep', 'supply_shortage', 'trust_penalty_event', 'unit_recovered', 'facility_upgraded',
+  'resource_changed', 'social_gained', 'xp_gained', 'stress_changed', 'relation_changed', 'defect_upkeep',
+  'commander_injury_changed', 'commander_injured', 'scene_cancelled', 'grunt_recruited', 'upgrade_started',
+  'requisitioned', 'roster_changed', 'unit_flavored', 'unit_resynced',
+];
+
 const slotEnum = z.enum(['morning', 'afternoon', 'evening', 'night']);
 const socialStat = z.enum(['authority', 'insight', 'empathy', 'cunning']);
 const amountFields = {
@@ -191,7 +200,11 @@ export const ActivityEffectSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('commander_injury_days'), amount: int, ...amountFields }).strict(),
   z.object({ type: z.literal('defect_upkeep'), target: z.enum(['selected', 'companion']), ...amountFields }).strict(),
   z.object({ type: z.literal('relation'), axis: z.enum(['trust', 'affinity', 'attraction']), amount: int, ...amountFields }).strict(),
-  z.object({ type: z.literal('emit_event'), event: str, ...amountFields }).strict(),
+  z.object({
+    type: z.literal('emit_event'),
+    event: str.refine((e) => !RESERVED_EVENT_TYPES.includes(e), 'this event name belongs to the engine'),
+    ...amountFields,
+  }).strict(),
 ]);
 export type ActivityEffect = z.infer<typeof ActivityEffectSchema>;
 
@@ -219,6 +232,15 @@ export const ActivitySchema = BaseEntrySchema.extend({
   if (a.companion === 'none' && a.companionEffects.length > 0) issue(['companionEffects'], 'companion "none" cannot have companionEffects');
   if (a.companion === 'required' && a.companionEffects.length === 0) issue(['companionEffects'], 'companion "required" needs companionEffects');
   const focusIds = new Set((a.focus ?? []).map((f) => f.id));
+  if (focusIds.size !== (a.focus ?? []).length) issue(['focus'], 'focus ids must be unique');
+  (a.focus ?? []).forEach((f, i) => {
+    if (f.units && f.units.min > f.units.max) issue(['focus', i, 'units'], 'units.min must not exceed units.max');
+  });
+  if (a.startsScene === true) {
+    [...a.effects, ...a.companionEffects].forEach((fx) => {
+      if (fx.type !== 'emit_event') issue(['startsScene'], 'a scene-starting activity may only emit events; its slot is not consumed here');
+    });
+  }
   a.effects.forEach((fx, i) => {
     const f = fx as { target?: string; type: string; when?: { focus?: string; companionLikes?: string } };
     if (f.when?.focus !== undefined && !focusIds.has(f.when.focus)) issue(['effects', i, 'when', 'focus'], `unknown focus "${f.when.focus}"`);

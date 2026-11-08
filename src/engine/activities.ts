@@ -2,7 +2,7 @@ import type { Entry, Registries } from '../content/types';
 import type { ActivityEffect } from '../content/schemas';
 import { consumeSlots } from './calendar';
 import type { EngineCtx, EngineEvent } from './dispatch';
-import { activeRosterUnits, facilityEffect, facilityLevel, isLiving } from './economy';
+import { activeRosterUnits, facilityEffect, facilityLevel, isLiving, recoverUnit } from './economy';
 import { applyRelationDelta } from './relationGain';
 import { addSocialPoints, socialRank } from './social';
 import type { CampaignState, Unit } from './state/types';
@@ -115,10 +115,7 @@ export function runActivity(draft: CampaignState, ctx: EngineCtx, request: unkno
   const unitsOf = (target: string): Unit[] =>
     target === 'companion' ? (companion ? [companion] : []) : target === 'selected' ? selected : activeRosterUnits(draft);
   const recover = (u: Unit): void => {
-    delete u.injuryDays;
-    u.injuries = [];
-    if (u.status === 'injured') u.status = 'active';
-    events.push({ type: 'unit_recovered', unitId: u.id });
+    events.push(recoverUnit(draft, u));
   };
 
   const list = (companion ? a.companionEffects : a.effects) as Fx[];
@@ -128,9 +125,10 @@ export function runActivity(draft: CampaignState, ctx: EngineCtx, request: unkno
 
     switch (fx.type) {
       case 'resource': {
-        const amount = scaled(fx.amount + (fx.perStat ? fx.perStat.per * socialRank(draft, fx.perStat.stat) : 0), draft, reg, fx.scale);
-        draft.resources[fx.resource] = Math.max(0, draft.resources[fx.resource] + amount);
-        events.push({ type: 'resource_changed', resource: fx.resource, amount });
+        const wanted = scaled(fx.amount + (fx.perStat ? fx.perStat.per * socialRank(draft, fx.perStat.stat) : 0), draft, reg, fx.scale);
+        const before = draft.resources[fx.resource];
+        draft.resources[fx.resource] = Math.max(0, before + wanted);
+        events.push({ type: 'resource_changed', resource: fx.resource, amount: draft.resources[fx.resource] - before });
         break;
       }
       case 'commander_stat': {
@@ -176,7 +174,8 @@ export function runActivity(draft: CampaignState, ctx: EngineCtx, request: unkno
         }
         break;
       case 'relation':
-        if (companion) {
+        // grunts are trust-only: warmth and attraction effects skip them
+        if (companion && !(companion.kind === 'grunt' && fx.axis !== 'trust')) {
           const applied = applyRelationDelta(draft, companion.id, fx.axis, scaled(fx.amount, draft, reg, fx.scale), `activity:${a.id}`);
           events.push({ type: 'relation_changed', unitId: companion.id, axis: fx.axis, applied });
         }

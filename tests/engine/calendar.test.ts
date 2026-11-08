@@ -70,6 +70,13 @@ describe('slot flow', () => {
     expect(ofType(r.events, 'day_end_step')).toHaveLength(0);
   });
 
+  it('ending the night asks for a save', () => {
+    const s = at('evening');
+    s.calendar.nightEventsQueue = [{ id: 'a' }];
+    const r = consume(consume(s).state);
+    expect(ofType(r.events, 'autosave')).toHaveLength(1);
+  });
+
   it('a 3-slot expedition from morning runs the pipeline once', () => {
     const r = consume(at('morning'), 3, 'expedition');
     expect(r.state.day).toBe(2);

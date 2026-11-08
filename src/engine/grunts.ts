@@ -103,5 +103,5 @@ export function gruntRelation(state: CampaignState, reg: Registries): Relation {
   const neutral = Object.fromEntries(VALUE_AXES.map((a) => [a, 0])) as Unit['values'];
   let trust = TUNING.recruit.baseTrust + startingTrustAdjust(effects, neutral);
   if (effects.some((fx) => fx.type === 'grunt_starting_trust')) trust += TUNING.recruit.gruntCrimeBonus;
-  return initialRelation({ trust, affinity: 0, attraction: 0, knowsCrime: crime ? crimeKnownByDefault(crime, start) : false });
+  return initialRelation({ trust, affinity: 0, attraction: 0, knowsCrime: crime ? crimeKnownByDefault(crime, start) : false, since: state.day });
 }

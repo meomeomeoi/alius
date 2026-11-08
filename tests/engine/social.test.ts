@@ -41,6 +41,15 @@ describe('social stats', () => {
     expect(s.commander.socialPoints?.cunning).toBe(70);
   });
 
+  it('points follow a rank raised elsewhere', () => {
+    const s = fresh();
+    addSocialPoints(s.commander, 'empathy', 10); // 10 points, rank 2
+    s.commander.socialStats.empathy = 4; // a P6 effect sets the rank directly
+    addSocialPoints(s.commander, 'empathy', 5);
+    expect(s.commander.socialPoints?.empathy).toBe(50); // threshold of rank 4 (45) + 5
+    expect(s.commander.socialStats.empathy).toBe(4);
+  });
+
   it('meetsSocialRequirements checks every stat', () => {
     const s = fresh();
     s.commander.socialStats.empathy = 2;

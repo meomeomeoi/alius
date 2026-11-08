@@ -27,7 +27,7 @@ Most of P2 is covered by automated tests; this list covers what needs a real Sil
 ## Checklist
 
 - [ ] **1. Header.** Open Alius on a campaign: above the tabs a line reads `DAY 001 // MORNING`, `CR … · SUP … · PLYX …`, `LEASH 0`. It updates after every activity.
-- [ ] **2. OPS: alone.** OPS lists Train, Workshop, Medbay, Work, Scout the net, Rest, Study, Talk (the group meal appears in the afternoon). Do **Work**: credits go up, the clock moves to `AFTERNOON`. Do **Train** with *Drill the squad*: it stays disabled until you tick 1 or 2 units.
+- [ ] **2. OPS: alone.** OPS lists Train, Workshop, Medbay, Work, Scout the net, Rest, Study, Talk (all nine are always listed; the group meal is greyed out in the morning with its reason). Do **Work**: credits go up, the clock moves to `AFTERNOON`. Do **Train** with *Drill the squad*: it stays disabled until you tick 1 or 2 units.
 - [ ] **3. OPS: with a companion.** Pick a named unit as companion for **Rest** with *Companion vignettes* on (SYS): a toast panel with two lines of prose appears. Turn the setting off and repeat: no panel, no extra model call (check the debug log).
 - [ ] **4. Day end.** Spend all three slots: toasts for the new day appear; the header shows `DAY 002 // MORNING`. Reload the page: day and resources are unchanged (autosave).
 - [ ] **5. Shortage.** Let supplies run out (or set them to 0 in the debug state editor) and end the day: a warning toast `Supply shortage…`, the header shows `SHORTAGE 1d`. After three such days a trust warning appears. **Requisition** on OPS turns credits into supplies.

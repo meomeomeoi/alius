@@ -99,11 +99,15 @@ function activityCard(a: Entry, state: CampaignState, ctx: OpsTabCtx): HTMLEleme
   );
 }
 
-function requisition(state: CampaignState, ctx: OpsTabCtx): HTMLElement {
+/** The typed amount survives a re-render (the tab redraws after every action). */
+const remembered = new WeakMap<HTMLElement, string>();
+
+function requisition(state: CampaignState, ctx: OpsTabCtx, host: HTMLElement): HTMLElement {
   const rate = TUNING.requisition.creditsPerSupply;
-  const input = h('input', { type: 'number', name: 'requisition', min: '1', step: '1', value: '5', 'aria-label': 'Supplies to requisition' }) as HTMLInputElement;
+  const input = h('input', { type: 'number', name: 'requisition', min: '1', step: '1', value: remembered.get(host) ?? '5', 'aria-label': 'Supplies to requisition' }) as HTMLInputElement;
   const btn = h('button', { type: 'button', class: 'alius-btn', 'data-requisition': '' }, '[ REQUISITION ]') as HTMLButtonElement;
   const sync = () => {
+    remembered.set(host, input.value);
     const n = Math.floor(Number(input.value));
     btn.disabled = !(n >= 1) || n * rate > state.resources.credits;
   };
@@ -138,15 +142,15 @@ export function renderOpsTab(host: HTMLElement, ctx: OpsTabCtx): void {
     host.append(h('section', { class: 'alius-section' }, h('p', {}, 'NO ACTIVE CAMPAIGN IN THIS CHAT')));
     return;
   }
-  const today = [...ctx.registries.activities.values()].filter((a) => (a.slotRules as string[]).includes(state.slot));
+  const all = [...ctx.registries.activities.values()];
   host.append(
     h(
       'section',
       { class: 'alius-section alius-ops' },
       h('h2', {}, clockText(state.day, state.slot)),
       h('p', { class: 'alius-dim' }, 'Each activity takes this slot. Talking takes it when the scene ends.'),
-      ...today.map((a) => activityCard(a, state, ctx)),
+      ...all.map((a) => activityCard(a, state, ctx)),
     ),
-    requisition(state, ctx),
+    requisition(state, ctx, host),
   );
 }

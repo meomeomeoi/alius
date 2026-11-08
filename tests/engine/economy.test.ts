@@ -93,6 +93,16 @@ describe('runUpkeep', () => {
     expect(s.calendar.shortageStreak).toBe(1);
   });
 
+  it('the shortage event says how many units were hit', () => {
+    const s = campaign(reg, 4);
+    s.resources.supplies = 0;
+    expect(ofType(upkeep(s), 'supply_shortage')[0]).toMatchObject({ hit: 4 });
+    const none = campaign(reg, 4);
+    none.resources.supplies = 0;
+    none.roster.activeIds = [];
+    expect(ofType(upkeep(none), 'supply_shortage')[0]).toMatchObject({ hit: 0 });
+  });
+
   it('a hunger_loop unit takes a double share of the shortage', () => {
     const s = campaign(reg, 4);
     s.squad[0].defects = [{ id: 'hunger_loop' }];

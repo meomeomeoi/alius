@@ -188,6 +188,15 @@ describe('day flow in the app', () => {
     expect(t.toasts.some((x) => x.kind === 'warn' && /shortage/i.test(x.text))).toBe(true);
   });
 
+  it('the shortage toast does not claim suffering when nobody was hit', async () => {
+    const t = await boot();
+    t.app.replaceState({ ...t.state(), resources: { credits: 0, supplies: 0, plyx: 0 }, roster: { activeIds: [], capacity: 6 } });
+    t.toasts.length = 0;
+    for (let i = 0; i < 3; i++) t.app.dispatch({ type: 'calendar/consume_slot', payload: { reason: 'test' } });
+    const toast = t.toasts.find((x) => x.kind === 'warn' && /shortage/i.test(x.text))!;
+    expect(toast.text).not.toMatch(/stress/i);
+  });
+
   it('a finished facility upgrade shows an info toast', async () => {
     const t = await boot();
     t.app.replaceState({ ...t.state(), resources: { credits: 500, supplies: 99, plyx: 50 } });

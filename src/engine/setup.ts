@@ -178,14 +178,14 @@ export function startingTrustAdjust(effects: Effect[], values: Unit['values']): 
 }
 
 /** A fresh relation in the entry state of the relationship graph; trust decides the loyalty band. */
-export function initialRelation(o: { trust: number; affinity: number; attraction: number; knowsCrime: boolean }): Relation {
+export function initialRelation(o: { trust: number; affinity: number; attraction: number; knowsCrime: boolean; since?: number }): Relation {
   const trust = clamp(o.trust, 0, 100);
   return {
     trust,
     affinity: o.affinity,
     attraction: o.attraction,
     stateId: INITIAL_RELATION_STATE,
-    stateSince: 1,
+    stateSince: o.since ?? 1,
     history: [],
     flags: o.knowsCrime ? ['knows_crime'] : [],
     dailyGain: { trust: 0, affinity: 0, attraction: 0 },

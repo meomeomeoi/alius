@@ -82,7 +82,7 @@ export function runUpkeep(draft: CampaignState, reg: Registries): EngineEvent[] 
 
   const streak = (draft.calendar.shortageStreak ?? 0) + 1;
   draft.calendar.shortageStreak = streak;
-  events.push({ type: 'supply_shortage', missing, streak });
+  events.push({ type: 'supply_shortage', missing, streak, hit: units.length });
   if (streak % TUNING.shortage.streakDays === 0) {
     for (const u of units) applyRelationDelta(draft, u.id, 'trust', -TUNING.shortage.trustPenalty, 'shortage_streak');
     events.push({ type: 'trust_penalty_event', streak, units: units.map((u) => u.id), amount: TUNING.shortage.trustPenalty });
@@ -115,4 +115,12 @@ export function checkRecruit(state: CampaignState): string | null {
     return `Not enough credits to recruit a grunt (needs ${TUNING.recruit.credits}).`;
   }
   return null;
+}
+
+/** Ends a unit's injury; she returns to the roster only if she is on it, otherwise to reserve. */
+export function recoverUnit(draft: CampaignState, u: Unit): EngineEvent {
+  delete u.injuryDays;
+  u.injuries = [];
+  if (u.status === 'injured') u.status = draft.roster.activeIds.includes(u.id) ? 'active' : 'reserve';
+  return { type: 'unit_recovered', unitId: u.id };
 }

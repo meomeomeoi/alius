@@ -32,8 +32,10 @@ export function addSocialPoints(
     empathy: SOCIAL_THRESHOLDS[commander.socialStats.empathy - 1] ?? 0,
     cunning: SOCIAL_THRESHOLDS[commander.socialStats.cunning - 1] ?? 0,
   });
-  const next = Math.min(MAX_POINTS, points[stat] + amount);
-  const gained = next - points[stat];
+  // a rank raised elsewhere (a start effect, P6) lifts the points to its threshold
+  const floor = SOCIAL_THRESHOLDS[before - 1] ?? 0;
+  const next = Math.min(MAX_POINTS, Math.max(points[stat], floor) + amount);
+  const gained = next - Math.max(points[stat], floor);
   points[stat] = next;
   const rank = Math.max(before, rankForPoints(next));
   commander.socialStats[stat] = rank;

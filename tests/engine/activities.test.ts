@@ -150,6 +150,44 @@ describe('activity effects', () => {
   });
 });
 
+describe('review follow-ups', () => {
+  it('a recovered reserve unit goes back to reserve, a roster unit to active', () => {
+    const s = fresh();
+    s.roster.activeIds = [BEA, CAT, 'unit_dee'];
+    s.squad[0].status = 'injured';
+    s.squad[0].injuryDays = 2;
+    s.squad[1].status = 'injured';
+    s.squad[1].injuryDays = 2;
+    const r = act(s, { activityId: 'medbay', companionId: ANN }).state;
+    expect(r.squad[0].status).toBe('reserve');
+    const r2 = act(s, { activityId: 'medbay', companionId: BEA }).state;
+    expect(r2.squad[1].status).toBe('active');
+  });
+
+  it('a grunt companion gains trust but no affinity (grunts are trust-only)', () => {
+    let s = fresh();
+    s.resources.credits = 500;
+    s = run(s, reg, { type: 'base/recruit_grunt', payload: {} }).state;
+    const g = s.squad.at(-1)!.id;
+    const rested = act(s, { activityId: 'rest', companionId: g });
+    expect(rested.state.relations[g].affinity).toBe(0);
+    expect(ofType(rested.events, 'relation_changed')).toHaveLength(0);
+    const treated = act(s, { activityId: 'medbay', companionId: g }).state;
+    expect(treated.relations[g].trust).toBe(s.relations[g].trust + 2);
+  });
+
+  it('the resource event reports what was really applied', () => {
+    const drain = { ...reg, activities: new Map(reg.activities).set('work', {
+      ...reg.activities.get('work')!, effects: [{ type: 'resource', resource: 'credits', amount: -100 }],
+    }) };
+    const s = fresh();
+    s.resources.credits = 30;
+    const r = run(s, drain, { type: 'activity/do', payload: { activityId: 'work' } });
+    expect(r.state.resources.credits).toBe(0);
+    expect(ofType(r.events, 'resource_changed')[0]).toMatchObject({ resource: 'credits', amount: -30 });
+  });
+});
+
 describe('slots and relation gain', () => {
   it('each ordinary activity consumes exactly one slot', () => {
     for (const [id, extra] of [
@@ -164,7 +202,7 @@ describe('slots and relation gain', () => {
 
   it('affinity gains go through the relation handler', () => {
     const calls: unknown[][] = [];
-    setRelationGainHandler((rel, axis, amount, source) => (calls.push([axis, amount, source]), 0));
+    setRelationGainHandler((_ctx, axis, amount, source) => (calls.push([axis, amount, source]), 0));
     act(fresh(), { activityId: 'rest', companionId: ANN });
     expect(calls).toEqual([['affinity', 2, 'activity:rest']]);
   });

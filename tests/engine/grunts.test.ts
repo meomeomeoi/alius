@@ -171,6 +171,23 @@ describe('base/recruit_grunt', () => {
     expect([next.id, next.asciiPortrait]).not.toEqual([first.id, first.asciiPortrait]);
   });
 
+  it('a dead unit in activeIds neither blocks the grunt nor makes the roster longer than 4', () => {
+    const s = funded(4);
+    s.squad[3].status = 'dead';
+    const r = recruit(s).state;
+    expect(r.roster.activeIds).toHaveLength(4);
+    expect(r.roster.activeIds).not.toContain('unit_dee');
+    expect(r.roster.activeIds).toContain(r.squad.at(-1)!.id);
+  });
+
+  it('the relation of a grunt starts on the day it was recruited', () => {
+    const s = funded(2);
+    s.day = 12;
+    const g = recruit(s).state;
+    expect(g.relations[g.squad.at(-1)!.id].stateSince).toBe(12);
+    expect(campaign(reg, 2).relations.unit_ann.stateSince).toBe(1);
+  });
+
   it('rejected at capacity, state unchanged', () => {
     const s = funded(4);
     s.roster.capacity = 4;

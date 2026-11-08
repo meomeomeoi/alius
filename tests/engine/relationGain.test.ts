@@ -57,13 +57,25 @@ describe('relation gain', () => {
 
   it('a replaced handler is used and reset restores the default', () => {
     const s = withUnit();
-    setRelationGainHandler((r, axis, amount) => {
+    setRelationGainHandler(({ relation: r }, axis, amount) => {
       r[axis] += amount * 10;
       return amount * 10;
     });
     expect(applyRelationDelta(s, 'u1', 'affinity', 1, 'p3')).toBe(10);
     resetRelationGainHandler();
     expect(applyRelationDelta(s, 'u1', 'affinity', 1, 'p3')).toBe(1);
+  });
+
+  it('the handler gets the state, the unit id and the relation', () => {
+    const s = withUnit();
+    s.day = 9;
+    let seen: unknown;
+    setRelationGainHandler((ctx, axis, amount, source) => {
+      seen = { day: ctx.state.day, unitId: ctx.unitId, same: ctx.relation === ctx.state.relations.u1, axis, amount, source };
+      return 0;
+    });
+    applyRelationDelta(s, 'u1', 'trust', 2, 'p3');
+    expect(seen).toEqual({ day: 9, unitId: 'u1', same: true, axis: 'trust', amount: 2, source: 'p3' });
   });
 
   it('unknown unit is a no-op returning 0', () => {

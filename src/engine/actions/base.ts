@@ -1,5 +1,5 @@
 import { GENERATED_NAME, GRUNT_BIO_MAX, generateGrunt, gruntRelation } from '../grunts';
-import { checkRecruit, checkUpgrade, facilityLevel, facilityLevels, isLiving } from '../economy';
+import { activeRosterUnits, checkRecruit, checkUpgrade, facilityLevel, facilityLevels, isLiving } from '../economy';
 import { registerAction } from '../dispatch';
 import { TUNING } from '../tuning';
 
@@ -61,6 +61,8 @@ registerAction('roster/set_active', (draft, payload) => {
 registerAction('base/recruit_grunt', (draft, _payload, ctx) => {
   const reason = checkRecruit(draft);
   if (reason) throw new Error(reason);
+  // dead units leave the active list before the newcomer takes a place
+  draft.roster.activeIds = activeRosterUnits(draft).map((u) => u.id);
   const grunt = generateGrunt(draft, ctx.registries, ctx.rng);
   draft.resources.credits -= TUNING.recruit.credits;
   draft.squad.push(grunt);

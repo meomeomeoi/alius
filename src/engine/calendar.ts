@@ -1,5 +1,5 @@
 import type { EngineCtx, EngineEvent } from './dispatch';
-import { facilityEffect, facilityLevels, isLiving, rosterCapacityFor, runUpkeep } from './economy';
+import { facilityEffect, facilityLevels, isLiving, recoverUnit, rosterCapacityFor, runUpkeep } from './economy';
 import type { CampaignState, Slot } from './state/types';
 import { TUNING } from './tuning';
 
@@ -65,10 +65,7 @@ function ticks(draft: CampaignState, ctx: EngineCtx): EngineEvent[] {
     if (u.injuryDays !== undefined) {
       u.injuryDays -= speed;
       if (u.injuryDays <= 0) {
-        delete u.injuryDays;
-        u.injuries = [];
-        if (u.status === 'injured') u.status = 'active';
-        events.push({ type: 'unit_recovered', unitId: u.id });
+        events.push(recoverUnit(draft, u));
       }
     }
     u.stress = Math.max(0, u.stress - TUNING.passiveStressRecovery);
@@ -139,6 +136,7 @@ export function consumeSlots(draft: CampaignState, count: number, ctx: EngineCtx
     } else if (from === 'night') {
       events.push({ type: 'slot_advanced', from: 'night', to: 'morning', day: draft.day + 1 });
       events.push(...rollover(draft));
+      events.push({ type: 'autosave' });
     } else {
       draft.slot = SLOT_ORDER[SLOT_ORDER.indexOf(from) + 1];
       events.push({ type: 'slot_advanced', from, to: draft.slot, day: draft.day });

@@ -140,3 +140,27 @@ describe('activity and facility schemas', () => {
     expect(StartSchema.safeParse({ ...b, startingResources: { credits: -5 } }).success).toBe(false);
   });
 });
+
+describe('activity schema hardening', () => {
+  it('emit_event may not use an event name the engine owns', () => {
+    for (const event of ['error', 'autosave', 'activity_done', 'slot_advanced', 'day_started', 'resource_changed']) {
+      expect(ActivitySchema.safeParse(activity({ effects: [{ type: 'emit_event', event }] })).success, event).toBe(false);
+    }
+    expect(ActivitySchema.safeParse(activity({ effects: [{ type: 'emit_event', event: 'rumors_requested' }] })).success).toBe(true);
+  });
+
+  it('a focus needs min <= max and focus ids must be unique', () => {
+    const f = (min: number, max: number) => [{ id: 'units', label: 'U', units: { min, max } }];
+    expect(ActivitySchema.safeParse(activity({ focus: f(3, 1), effects: [] })).success).toBe(false);
+    expect(ActivitySchema.safeParse(activity({ focus: f(1, 2), effects: [] })).success).toBe(true);
+    const dup = [{ id: 'a', label: 'A' }, { id: 'a', label: 'B' }];
+    expect(ActivitySchema.safeParse(activity({ focus: dup, effects: [] })).success).toBe(false);
+  });
+
+  it('a scene-starting activity may only emit events (its slot is never consumed here)', () => {
+    const talk = (companionEffects: unknown[]) => activity({ companion: 'required', startsScene: true, effects: [], companionEffects });
+    expect(ActivitySchema.safeParse(talk([{ type: 'emit_event', event: 'scene_requested' }])).success).toBe(true);
+    expect(ActivitySchema.safeParse(talk([{ type: 'unit_xp', target: 'companion', amount: 5 }])).success).toBe(false);
+    expect(ActivitySchema.safeParse(activity({ startsScene: true, effects: [{ type: 'commander_stat', stat: 'authority', amount: 3 }] })).success).toBe(false);
+  });
+});
