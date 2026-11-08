@@ -1,4 +1,5 @@
 import './engine/actions/debug'; // registers debug/* actions
+import './llm/calls/profileImport'; // registers the profile_import call type
 import type { ContentError, Registries } from './content/types';
 import { emptyRegistries } from './content/types';
 import { dispatch as engineDispatch, type Action, type EngineEvent } from './engine/dispatch';
