@@ -207,7 +207,7 @@
       {
         "type": "resource",
         "resource": "credits",
-        "amount": 15,
+        "amount": 20,
         "perStat": {
           "stat": "cunning",
           "per": 5

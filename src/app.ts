@@ -496,6 +496,8 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     async performActivity(req) {
       const chatId = st.getActiveChat()?.chatId;
       const events = act({ type: 'activity/do', payload: req });
+      // no scene module exists yet (P3): release the held slot so the day is not locked
+      if (events.some((e) => e.type === 'scene_requested')) api.dispatch({ type: 'calendar/cancel_scene', payload: {} }, { expectChatId: chatId });
       const done = events.find((e) => e.type === 'activity_done');
       const settings = getSettings(st);
       if (done?.vignette !== true || !settings.activityFlavor || !state) return events;

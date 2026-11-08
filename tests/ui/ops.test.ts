@@ -134,7 +134,7 @@ describe('OPS tab', () => {
     input.value = '7';
     host.querySelector<HTMLButtonElement>('button[data-requisition]')!.click();
     expect(onRequisition).toHaveBeenCalledWith(7);
-    expect(host.textContent).toContain('8 CR per supply');
+    expect(host.textContent).toContain('3 CR per supply');
   });
 
   it('requisition is disabled without enough credits', () => {

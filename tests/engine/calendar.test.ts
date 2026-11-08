@@ -184,13 +184,21 @@ describe('day-end steps', () => {
     expect(s.squad.every((u) => u.stress >= 0 && u.stress <= 100)).toBe(true);
   });
 
-  it('a failing hook fails the whole action and changes nothing', () => {
-    registerDayEndStep('dm_rumors', () => {
+  it('a failing hook is isolated: the day still ends, later hooks run, its partial changes are dropped', () => {
+    const calls: string[] = [];
+    registerDayEndStep('mission_deadlines', (draft) => {
+      draft.resources.credits += 999; // partial change before the failure
       throw new Error('boom');
     });
+    registerDayEndStep('mission_deadlines', () => (calls.push('second'), []));
+    registerDayEndStep('director_tick', () => (calls.push('director'), []));
     const s = at('evening');
+    const credits = s.resources.credits;
     const r = consume(s);
-    expect(r.state).toBe(s);
-    expect(errors(r.events)[0]).toMatchObject({ code: 'handler_failed' });
+    expect(errors(r.events)).toEqual([]);
+    expect(r.state.day).toBe(2);
+    expect(r.state.resources.credits).toBe(credits);
+    expect(calls).toEqual(['second', 'director']);
+    expect(ofType(r.events, 'day_end_step_failed')[0]).toMatchObject({ step: 'mission_deadlines', message: 'boom' });
   });
 });

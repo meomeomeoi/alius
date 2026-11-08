@@ -6,7 +6,7 @@ export const TUNING = Object.freeze({
   gain: Object.freeze({ soft: 4, hard: 8 }),
   passiveStressRecovery: 1,
   recruit: Object.freeze({ credits: 40, baseTrust: 25, gruntCrimeBonus: 10 }),
-  requisition: Object.freeze({ creditsPerSupply: 8 }),
+  requisition: Object.freeze({ creditsPerSupply: 3 }),
   rosterActiveMax: 4,
   rosterBaseCapacity: 6,
 });

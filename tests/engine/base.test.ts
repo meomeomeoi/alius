@@ -94,8 +94,8 @@ describe('base/requisition', () => {
 
   it('converts credits to supplies', () => {
     const r = req(rich(), 5);
-    expect(r.state.resources).toMatchObject({ credits: 1000 - 40, supplies: 105 });
-    expect(ofType(r.events, 'requisitioned')[0]).toMatchObject({ supplies: 5, credits: 40 });
+    expect(r.state.resources).toMatchObject({ credits: 1000 - 15, supplies: 105 });
+    expect(ofType(r.events, 'requisitioned')[0]).toMatchObject({ supplies: 5, credits: 15 });
   });
 
   it('rejects fractions, zero, negatives and too little credit', () => {
@@ -105,7 +105,7 @@ describe('base/requisition', () => {
       expect(r.state, String(bad)).toBe(s);
       expect(errors(r.events)).toHaveLength(1);
     }
-    s.resources.credits = 7;
+    s.resources.credits = 2;
     expect(errors(req(s, 1).events)).toHaveLength(1);
   });
 });
@@ -130,6 +130,16 @@ describe('roster/set_active', () => {
       expect(r.state, JSON.stringify(bad)).toBe(s);
       expect(errors(r.events)).toHaveLength(1);
     }
+  });
+
+  it('an empty list is rejected while units are alive (it would switch upkeep off)', () => {
+    const s = campaign(reg, 4);
+    const r = set(s, []);
+    expect(r.state).toBe(s);
+    expect(String(errors(r.events)[0].message)).toMatch(/at least one/i);
+    const dead = campaign(reg, 2);
+    dead.squad.forEach((u) => (u.status = 'dead'));
+    expect(errors(set(dead, []).events)).toEqual([]);
   });
 
   it('statuses follow the list, injured units keep theirs, order is kept', () => {

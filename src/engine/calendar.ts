@@ -29,6 +29,24 @@ export function resetDayEndSteps(): void {
   for (const k of Object.keys(hooks) as HookStep[]) hooks[k] = [];
 }
 
+/** Replaces everything inside `target` with the contents of `source` (the draft object itself must stay). */
+function replaceContents(target: CampaignState, source: CampaignState): void {
+  for (const k of Object.keys(target)) delete (target as unknown as Record<string, unknown>)[k];
+  Object.assign(target, source);
+}
+
+/** A hook runs on a copy: if it throws, its changes are dropped and the day still ends. */
+function runHook(step: HookStep, fn: StepFn, draft: CampaignState, ctx: EngineCtx): EngineEvent[] {
+  const work = structuredClone(draft);
+  try {
+    const events = fn(work, ctx);
+    replaceContents(draft, work);
+    return events;
+  } catch (e) {
+    return [{ type: 'day_end_step_failed', step, message: e instanceof Error ? e.message : String(e) }];
+  }
+}
+
 export const clockText = (day: number, slot: Slot): string => `DAY ${String(day).padStart(3, '0')} // ${slot.toUpperCase()}`;
 
 function rollover(draft: CampaignState): EngineEvent[] {
@@ -102,7 +120,7 @@ function endOfDay(draft: CampaignState, ctx: EngineCtx): EngineEvent[] {
       case 'night_check': events.push(...nightCheck(draft)); break;
       case 'autosave': events.push({ type: 'autosave' }); break;
       default:
-        for (const fn of hooks[step]) events.push(...fn(draft, ctx));
+        for (const fn of hooks[step]) events.push(...runHook(step, fn, draft, ctx));
     }
   }
   return events;

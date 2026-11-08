@@ -101,9 +101,9 @@ describe('activity effects', () => {
   it('work: credits scale with cunning rank', () => {
     const s = fresh();
     const c0 = s.resources.credits;
-    expect(act(s, { activityId: 'work' }).state.resources.credits).toBe(c0 + 15 + 5 * 1);
+    expect(act(s, { activityId: 'work' }).state.resources.credits).toBe(c0 + 20 + 5 * 1);
     s.commander.socialStats.cunning = 4;
-    expect(act(s, { activityId: 'work' }).state.resources.credits).toBe(c0 + 15 + 5 * 4);
+    expect(act(s, { activityId: 'work' }).state.resources.credits).toBe(c0 + 20 + 5 * 4);
   });
 
   it('scout_net: insight points and a rumors_requested event', () => {
@@ -246,6 +246,51 @@ describe('rejections leave the state untouched', () => {
   });
 });
 
+describe('a talk holds its slot until the scene ends', () => {
+  const talk = (s: CampaignState) => act(s, { activityId: 'talk', companionId: ANN });
+  const consume = (s: CampaignState, reason: string) => run(s, reg, { type: 'calendar/consume_slot', payload: { reason } });
+
+  it('talk records the open scene with its slot and day', () => {
+    const r = talk(fresh());
+    expect(r.state.calendar.pendingScene).toEqual({ unitId: ANN, day: 1, slot: 'morning' });
+  });
+
+  it('while a scene is open every activity, including another talk, is rejected', () => {
+    const open = talk(fresh()).state;
+    rejected(open, { activityId: 'rest' }, /conversation/i);
+    rejected(open, { activityId: 'talk', companionId: BEA }, /conversation/i);
+  });
+
+  it('while a scene is open the slot can only be consumed by its end', () => {
+    const open = talk(fresh()).state;
+    const blocked = consume(open, 'expedition');
+    expect(blocked.state).toBe(open);
+    expect(String(errors(blocked.events)[0].message)).toMatch(/conversation/i);
+    const ended = consume(open, 'scene_end');
+    expect(errors(ended.events)).toEqual([]);
+    expect(ended.state.calendar.pendingScene).toBeUndefined();
+    expect(ended.state.slot).toBe('afternoon');
+  });
+
+  it('the evening scene cannot be charged to the next day', () => {
+    const s = fresh();
+    s.slot = 'evening';
+    const open = talk(s).state;
+    expect(errors(act(open, { activityId: 'rest' }).events)).toHaveLength(1);
+    const ended = consume(open, 'scene_end').state;
+    expect(ended.day).toBe(2);
+  });
+
+  it('calendar/cancel_scene clears the scene without consuming the slot', () => {
+    const open = talk(fresh()).state;
+    const r = run(open, reg, { type: 'calendar/cancel_scene', payload: {} });
+    expect(r.state.calendar.pendingScene).toBeUndefined();
+    expect(r.state.slot).toBe('morning');
+    expect(errors(act(r.state, { activityId: 'rest' }).events)).toEqual([]);
+    expect(errors(run(fresh(), reg, { type: 'calendar/cancel_scene', payload: {} }).events)).toHaveLength(1);
+  });
+});
+
 describe('commander/injure', () => {
   it('sets injuredUntilDay and emits commander_injured', () => {
     const s = fresh();
@@ -254,6 +299,17 @@ describe('commander/injure', () => {
     expect(r.state.commander.injuredUntilDay).toBe(5);
     expect(ofType(r.events, 'commander_injured')[0]).toMatchObject({ days: 2, until: 5 });
     expect(errors(run(s, reg, { type: 'commander/injure', payload: { days: 0 } }).events)).toHaveLength(1);
+  });
+});
+
+describe('the supply loop is affordable', () => {
+  it('one work slot pays for a day of upkeep of a full squad (about one slot a day)', async () => {
+    const { TUNING } = await import('../../src/engine/tuning');
+    const s = fresh();
+    const before = s.resources.credits;
+    const earned = act(s, { activityId: 'work' }).state.resources.credits - before;
+    const upkeepToday = 4 * TUNING.upkeep.perUnit + TUNING.upkeep.commander;
+    expect(earned).toBeGreaterThanOrEqual(upkeepToday * TUNING.requisition.creditsPerSupply);
   });
 });
 
@@ -270,7 +326,7 @@ describe('a week of activities', () => {
       }
     }
     expect(s.day).toBe(8);
-    expect(s.resources.credits).toBe(credits0 + 7 * 20);
+    expect(s.resources.credits).toBe(credits0 + 7 * 25);
     expect(s.commander.socialPoints?.authority).toBe(10 + 7 * 6);
     expect(s.commander.socialStats.authority).toBe(4);
     expect(s.resources.supplies).toBe(0); // 30 supplies, 5 a day: empty on day 6, short on day 7

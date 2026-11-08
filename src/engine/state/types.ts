@@ -141,6 +141,8 @@ export interface CampaignState {
     shortageStreak?: number;
     /** The queue entry being played in the current Night slot (P2 moves it here; P3 reads it). */
     nightEvent?: unknown;
+    /** A conversation requested by `talk` that has not ended yet; it holds its slot (P2). P3 ends it with `scene_end`. */
+    pendingScene?: { unitId: string; day: number; slot: Slot };
   };
   leash: { authorizationsLeft: number; refreshDay: number; log: unknown[] };
   expedition?: unknown;

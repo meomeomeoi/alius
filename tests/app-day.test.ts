@@ -132,6 +132,10 @@ describe('day flow in the app', () => {
     await t.app.performActivity({ activityId: 'talk', companionId: 'unit_rhea' });
     expect(t.state().slot).toBe('morning');
     expect(t.toasts.some((x) => x.kind === 'info' && /scene/i.test(x.text))).toBe(true);
+    // without a scene module nothing would ever end the conversation: the day must not stay locked
+    expect(t.state().calendar.pendingScene).toBeUndefined();
+    await t.app.performActivity({ activityId: 'rest' });
+    expect(t.state().slot).toBe('afternoon');
   });
 
   it('recruit then flavor renames the grunt, the designation stays', async () => {
@@ -201,7 +205,8 @@ describe('day flow in the app', () => {
     t.app.requisition(10_000);
     expect(t.toasts.at(-1)).toMatchObject({ kind: 'error' });
     t.app.setRoster([]);
-    expect(t.state().roster.activeIds).toEqual([]);
+    expect(t.toasts.at(-1)).toMatchObject({ kind: 'error' });
+    expect(t.state().roster.activeIds).toEqual(['unit_rhea']);
     t.app.setRoster(['ghost']);
     expect(t.toasts.at(-1)).toMatchObject({ kind: 'error' });
   });

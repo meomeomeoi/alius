@@ -39,6 +39,7 @@ registerAction('base/requisition', (draft, payload) => {
 registerAction('roster/set_active', (draft, payload) => {
   const ids = isObj(payload) ? payload.activeIds : undefined;
   if (!Array.isArray(ids) || !ids.every((x) => typeof x === 'string')) throw new Error('roster/set_active needs { activeIds: string[] }');
+  if (ids.length === 0 && draft.squad.some(isLiving)) throw new Error('The active roster needs at least one unit.');
   if (ids.length > TUNING.rosterActiveMax) throw new Error(`The active roster holds at most ${TUNING.rosterActiveMax} units.`);
   if (new Set(ids).size !== ids.length) throw new Error('A unit was listed twice.');
   for (const id of ids) {

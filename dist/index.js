@@ -389,7 +389,7 @@ var TUNING = Object.freeze({
   gain: Object.freeze({ soft: 4, hard: 8 }),
   passiveStressRecovery: 1,
   recruit: Object.freeze({ credits: 40, baseTrust: 25, gruntCrimeBonus: 10 }),
-  requisition: Object.freeze({ creditsPerSupply: 8 }),
+  requisition: Object.freeze({ creditsPerSupply: 3 }),
   rosterActiveMax: 4,
   rosterBaseCapacity: 6
 });
@@ -522,6 +522,20 @@ var DAY_END_STEPS = [
   "autosave"
 ];
 var hooks = { mission_deadlines: [], director_tick: [], dm_rumors: [] };
+function replaceContents(target, source) {
+  for (const k of Object.keys(target)) delete target[k];
+  Object.assign(target, source);
+}
+function runHook(step, fn, draft, ctx2) {
+  const work = structuredClone(draft);
+  try {
+    const events = fn(work, ctx2);
+    replaceContents(draft, work);
+    return events;
+  } catch (e) {
+    return [{ type: "day_end_step_failed", step, message: e instanceof Error ? e.message : String(e) }];
+  }
+}
 var clockText = (day, slot) => `DAY ${String(day).padStart(3, "0")} // ${slot.toUpperCase()}`;
 function rollover(draft) {
   draft.day += 1;
@@ -600,7 +614,7 @@ function endOfDay(draft, ctx2) {
         events.push({ type: "autosave" });
         break;
       default:
-        for (const fn of hooks[step]) events.push(...fn(draft, ctx2));
+        for (const fn of hooks[step]) events.push(...runHook(step, fn, draft, ctx2));
     }
   }
   return events;
@@ -671,6 +685,7 @@ function checkActivity(state, reg, request) {
   const a = reg.activities.get(req.activityId);
   if (!a) return `Unknown activity "${req.activityId}".`;
   const name = String(a.name);
+  if (state.calendar.pendingScene) return "A conversation is still open; end it first.";
   if (!a.slotRules.includes(state.slot)) return `${name} is not available in the ${state.slot}.`;
   const need = a.facilityReq;
   if (need && facilityLevel(state, need.id) < need.level) {
@@ -810,7 +825,11 @@ function runActivity(draft, ctx2, request) {
     ...companion ? { companionId: companion.id } : {},
     vignette: companion !== void 0 && a.flavor === "short"
   });
-  if (a.startsScene !== true) events.push(...consumeSlots(draft, 1, ctx2));
+  if (a.startsScene === true) {
+    if (companion) draft.calendar.pendingScene = { unitId: companion.id, day: draft.day, slot: draft.slot };
+  } else {
+    events.push(...consumeSlots(draft, 1, ctx2));
+  }
   return events;
 }
 
@@ -821,6 +840,11 @@ registerAction("calendar/consume_slot", (draft, payload, ctx2) => {
   const slots = p.slots ?? 1;
   if (typeof slots !== "number" || !Number.isInteger(slots) || slots < 1) {
     throw new Error("calendar/consume_slot: slots must be a positive integer");
+  }
+  if (draft.calendar.pendingScene) {
+    if (p.reason !== "scene_end") throw new Error("A conversation is still open; only its end can consume the slot.");
+    if (slots !== 1) throw new Error("calendar/consume_slot: a scene takes exactly one slot");
+    delete draft.calendar.pendingScene;
   }
   const left = slotsLeftToday(draft.slot);
   if (slots > left) throw new Error(`calendar/consume_slot: ${slots} slot(s) requested but only ${left} left in the ${draft.slot}`);
@@ -833,6 +857,12 @@ registerAction("commander/injure", (draft, payload) => {
   const until = Math.max(draft.commander.injuredUntilDay ?? 0, draft.day + days);
   draft.commander.injuredUntilDay = until;
   return [{ type: "commander_injured", days, until }];
+});
+registerAction("calendar/cancel_scene", (draft) => {
+  const scene = draft.calendar.pendingScene;
+  if (!scene) throw new Error("calendar/cancel_scene: no conversation is open");
+  delete draft.calendar.pendingScene;
+  return [{ type: "scene_cancelled", unitId: scene.unitId }];
 });
 
 // src/engine/grunts.ts
@@ -954,6 +984,7 @@ registerAction("base/requisition", (draft, payload) => {
 registerAction("roster/set_active", (draft, payload) => {
   const ids = isObj3(payload) ? payload.activeIds : void 0;
   if (!Array.isArray(ids) || !ids.every((x) => typeof x === "string")) throw new Error("roster/set_active needs { activeIds: string[] }");
+  if (ids.length === 0 && draft.squad.some(isLiving)) throw new Error("The active roster needs at least one unit.");
   if (ids.length > TUNING.rosterActiveMax) throw new Error(`The active roster holds at most ${TUNING.rosterActiveMax} units.`);
   if (new Set(ids).size !== ids.length) throw new Error("A unit was listed twice.");
   for (const id of ids) {
@@ -8102,6 +8133,7 @@ function createApp(st, deps) {
     async performActivity(req) {
       const chatId = st.getActiveChat()?.chatId;
       const events = act({ type: "activity/do", payload: req });
+      if (events.some((e) => e.type === "scene_requested")) api.dispatch({ type: "calendar/cancel_scene", payload: {} }, { expectChatId: chatId });
       const done = events.find((e) => e.type === "activity_done");
       const settings = getSettings(st);
       if (done?.vignette !== true || !settings.activityFlavor || !state) return events;

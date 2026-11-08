@@ -45,6 +45,7 @@ export function checkActivity(state: CampaignState, reg: Registries, request: un
   if (!a) return `Unknown activity "${req.activityId}".`;
   const name = String(a.name);
 
+  if (state.calendar.pendingScene) return 'A conversation is still open; end it first.';
   if (!(a.slotRules as string[]).includes(state.slot)) return `${name} is not available in the ${state.slot}.`;
   const need = a.facilityReq as { id: string; level: number } | undefined;
   if (need && facilityLevel(state, need.id) < need.level) {
@@ -193,6 +194,11 @@ export function runActivity(draft: CampaignState, ctx: EngineCtx, request: unkno
     type: 'activity_done', activityId: a.id, ...(companion ? { companionId: companion.id } : {}),
     vignette: companion !== undefined && a.flavor === 'short',
   });
-  if (a.startsScene !== true) events.push(...consumeSlots(draft, 1, ctx));
+  if (a.startsScene === true) {
+    // the scene holds this slot; P3 ends it with `calendar/consume_slot { reason: 'scene_end' }`
+    if (companion) draft.calendar.pendingScene = { unitId: companion.id, day: draft.day, slot: draft.slot };
+  } else {
+    events.push(...consumeSlots(draft, 1, ctx));
+  }
   return events;
 }
