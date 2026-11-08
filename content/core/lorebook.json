@@ -1,0 +1,201 @@
+{
+  "name": "Alius Core Lore",
+  "entries": [
+    {
+      "key": [],
+      "comment": "world_premise",
+      "content": "Decades ago the Bloom, a viral agent that rewrites living tissue, turned populations, animals and whole ecosystems into biological monsters. States collapsed; corporations did not. They now own cities, laws and armies. Their soldiers are bio-cybernetic constructs: grown, augmented, flashed with combat firmware, and owned as assets.",
+      "constant": true
+    },
+    {
+      "key": [],
+      "comment": "leash_protocol",
+      "content": "Every off-spec unit carries a corporate override implant. The commander cannot trigger it himself; he can only file a request to his corporation's oversight office, which approves a limited number per week. Compel: a neural compliance burst, the unit executes one order and remembers being forced. Suppress: full motor lockdown for minutes, stops a desertion or an attack in progress. Terminate: permanent deactivation, approved only with cause, irreversible. Units know exactly who filed the request.",
+      "constant": true
+    },
+    {
+      "key": [],
+      "comment": "ccp_program",
+      "content": "The Correctional Command Program (CCP) is where off-spec units are dumped: penal units sent where losses do not matter. Command goes to people who also do not matter: convicted officers, offered a sentence reduction for every mission survived. \"The scrap leads the scrap\" is the joke every corporate clerk makes about the CCP. The player is the punchline.",
+      "constant": true
+    },
+    {
+      "key": [
+        "the Bloom",
+        "bloom",
+        "the_bloom"
+      ],
+      "comment": "the_bloom",
+      "content": "The Bloom is a viral agent that rewrites living tissue. It turned populations, animals and whole ecosystems into biological monsters and collapsed the old states. Corporations treat it as a hazard, a resource, or both.",
+      "constant": false
+    },
+    {
+      "key": [
+        "off-spec",
+        "off spec",
+        "defective unit",
+        "off_spec_units"
+      ],
+      "comment": "off_spec_units",
+      "content": "Not every unit leaves the vat to spec. Off-spec units carry a malfunction in mind, body, implants or viral suppression. They are too expensive to scrap and too unreliable for regular service, so they are dumped into the Correctional Command Program.",
+      "constant": false
+    },
+    {
+      "key": [
+        "outpost",
+        "base",
+        "base_location"
+      ],
+      "comment": "base_location",
+      "content": "The base is a decommissioned CCP Outpost assigned to the unit. Places: commander quarters, unit quarters, mess hall, training yard, workshop, medbay, roof, garage, comms room, perimeter.",
+      "constant": false
+    },
+    {
+      "key": [
+        "Vesper Somatics",
+        "Vesper",
+        "vesper"
+      ],
+      "comment": "corporation_vesper",
+      "content": "Vesper Somatics is a biotech corporation: it grows soldiers and treats the Bloom as a resource. Clean labs, filthy ethics.",
+      "constant": false
+    },
+    {
+      "key": [
+        "Kestrel-Ward Industrial",
+        "Kestrel-Ward",
+        "Kestrel",
+        "kestrel"
+      ],
+      "comment": "corporation_kestrel",
+      "content": "Kestrel-Ward Industrial is a heavy industry and cybernetics corporation: more metal than flesh, brutal efficiency, quotas.",
+      "constant": false
+    },
+    {
+      "key": [
+        "Aurum Concord",
+        "Aurum",
+        "aurum"
+      ],
+      "comment": "corporation_aurum",
+      "content": "Aurum Concord is a finance and logistics corporation. It owns the debt of everyone else.",
+      "constant": false
+    },
+    {
+      "key": [
+        "Sable Line",
+        "Sable",
+        "sable"
+      ],
+      "comment": "corporation_sable",
+      "content": "Sable Line is a security contractor: the corporation other corporations hire to clean up.",
+      "constant": false
+    },
+    {
+      "key": [
+        "District 7 Quarantine",
+        "District 7",
+        "quarantine_d7"
+      ],
+      "comment": "region_quarantine_d7",
+      "content": "District 7 Quarantine: an overgrown arcology with fungal Bloom growth. Typical enemies: human mutants, beast mutants.",
+      "constant": false
+    },
+    {
+      "key": [
+        "The Ashway",
+        "Ashway",
+        "ashway"
+      ],
+      "comment": "region_ashway",
+      "content": "The Ashway: a dead highway lined with scavenger camps. Typical enemies: marauders, beast mutants.",
+      "constant": false
+    },
+    {
+      "key": [
+        "Corridor K-12",
+        "K-12",
+        "kestrel_corridor"
+      ],
+      "comment": "region_kestrel_corridor",
+      "content": "Corridor K-12: mining tunnels and machinery. Typical enemies: human mutants, enemy soldiers.",
+      "constant": false
+    },
+    {
+      "key": [
+        "Drowned Market",
+        "drowned_market"
+      ],
+      "comment": "region_drowned_market",
+      "content": "Drowned Market: a flooded commercial district. Typical enemies: marauders, human mutants, rare anomalies.",
+      "constant": false
+    },
+    {
+      "key": [
+        "The Garden",
+        "the_garden"
+      ],
+      "comment": "region_the_garden",
+      "content": "The Garden: the Bloom epicenter, with wrong geometry. Typical enemies: anomalies, hostile off-spec units.",
+      "constant": false
+    },
+    {
+      "key": [
+        "human mutants",
+        "human mutant",
+        "mutant_human"
+      ],
+      "comment": "enemy_mutant_human",
+      "content": "Bio-mutants (human): common. They inflict Infect and attack in swarms.",
+      "constant": false
+    },
+    {
+      "key": [
+        "beast mutants",
+        "beast mutant",
+        "mutant_beast"
+      ],
+      "comment": "enemy_mutant_beast",
+      "content": "Bio-mutants (beast): common. Fast, they cause bleeding and use pack tactics.",
+      "constant": false
+    },
+    {
+      "key": [
+        "marauders",
+        "marauder"
+      ],
+      "comment": "enemy_marauder",
+      "content": "Marauders: common. They use human tactics, carry loot and fight from cover.",
+      "constant": false
+    },
+    {
+      "key": [
+        "enemy soldiers",
+        "corporate soldiers",
+        "enemy_soldier"
+      ],
+      "comment": "enemy_enemy_soldier",
+      "content": "Enemy corporate soldiers: rare. Disciplined and armored, they follow orders of their own.",
+      "constant": false
+    },
+    {
+      "key": [
+        "hostile off-spec",
+        "hostile off-spec units",
+        "offspec_hostile"
+      ],
+      "comment": "enemy_offspec_hostile",
+      "content": "Hostile off-spec units: rare. They have defects themselves, a mirror of the squad.",
+      "constant": false
+    },
+    {
+      "key": [
+        "anomalies",
+        "anomaly"
+      ],
+      "comment": "enemy_anomaly",
+      "content": "Anomalies: very rare. They deal stress directly and break rules (row-ignoring, delayed effects).",
+      "constant": false
+    }
+  ]
+}

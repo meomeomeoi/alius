@@ -1,0 +1,227 @@
+[
+  {
+    "id": "liquidation",
+    "name": "Asset Liquidation",
+    "summary": "Sacrificed his previous squad to complete an objective.",
+    "perk": {
+      "text": "+1 CP at combat start.",
+      "effects": [
+        {
+          "type": "cp_start",
+          "amount": 1
+        }
+      ]
+    },
+    "flaw": {
+      "text": "Units start with -10 Trust once they learn of it.",
+      "effects": [
+        {
+          "type": "trust_on_reveal",
+          "amount": -10
+        }
+      ]
+    },
+    "valueReactions": [
+      {
+        "axis": "sacrifice",
+        "sign": "+",
+        "weight": -1
+      },
+      {
+        "axis": "ingroup",
+        "sign": "+",
+        "weight": -1
+      }
+    ],
+    "knownByDefault": false
+  },
+  {
+    "id": "smuggling",
+    "name": "Data Smuggling",
+    "summary": "Sold corporate secrets.",
+    "perk": {
+      "text": "+25% credits from missions.",
+      "effects": [
+        {
+          "type": "mission_credits_pct",
+          "amount": 25
+        }
+      ]
+    },
+    "flaw": {
+      "text": "Oversight approves fewer Leash requests (-1/week).",
+      "effects": [
+        {
+          "type": "leash_weekly",
+          "amount": -1
+        }
+      ]
+    },
+    "valueReactions": [
+      {
+        "axis": "corporate",
+        "sign": "+",
+        "weight": -1
+      },
+      {
+        "axis": "corporate",
+        "sign": "-",
+        "weight": 1
+      }
+    ],
+    "knownByDefault": false
+  },
+  {
+    "id": "experimentation",
+    "name": "Unsanctioned Experimentation",
+    "summary": "Ran illegal trials on off-spec units.",
+    "perk": {
+      "text": "Medbay actions more effective; defect arcs unlock earlier.",
+      "effects": [
+        {
+          "type": "medbay_bonus"
+        },
+        {
+          "type": "defect_arc_early"
+        }
+      ]
+    },
+    "flaw": {
+      "text": "Units start with lower Trust; distrust spikes when he touches their implants.",
+      "effects": [
+        {
+          "type": "starting_trust",
+          "amount": -10
+        },
+        {
+          "type": "implant_distrust_spike"
+        }
+      ]
+    },
+    "valueReactions": [
+      {
+        "axis": "autonomy",
+        "sign": "+",
+        "weight": -1
+      },
+      {
+        "axis": "mercy",
+        "sign": "+",
+        "weight": -1
+      }
+    ],
+    "knownByDefault": false
+  },
+  {
+    "id": "purge",
+    "name": "Sector Purge",
+    "summary": "Followed an extermination order too well.",
+    "perk": {
+      "text": "Grunts and units with pragmatism + start with +Trust.",
+      "effects": [
+        {
+          "type": "starting_trust",
+          "amount": 10,
+          "ifValue": {
+            "axis": "pragmatism",
+            "sign": "+"
+          }
+        },
+        {
+          "type": "grunt_starting_trust"
+        }
+      ]
+    },
+    "flaw": {
+      "text": "Civilian-related dilemmas hit harder.",
+      "effects": [
+        {
+          "type": "civilian_dilemma_weight"
+        }
+      ]
+    },
+    "valueReactions": [
+      {
+        "axis": "mercy",
+        "sign": "+",
+        "weight": -2
+      }
+    ],
+    "knownByDefault": false
+  },
+  {
+    "id": "mutiny",
+    "name": "Mutiny",
+    "summary": "Led a revolt against a superior.",
+    "perk": {
+      "text": "Authority starts at rank 2.",
+      "effects": [
+        {
+          "type": "social_rank",
+          "stat": "authority",
+          "rank": 2
+        }
+      ]
+    },
+    "flaw": {
+      "text": "Leash requests cost more Trust (units see him as a hypocrite).",
+      "effects": [
+        {
+          "type": "leash_trust_cost"
+        }
+      ]
+    },
+    "valueReactions": [
+      {
+        "axis": "autonomy",
+        "sign": "+",
+        "weight": 1
+      },
+      {
+        "axis": "corporate",
+        "sign": "+",
+        "weight": -1
+      }
+    ],
+    "knownByDefault": false
+  },
+  {
+    "id": "strain_trade",
+    "name": "Strain Trafficking",
+    "summary": "Sold Bloom samples.",
+    "perk": {
+      "text": "Starts with extra Plyx and a black-market contact.",
+      "effects": [
+        {
+          "type": "resource",
+          "resource": "plyx",
+          "amount": 20
+        },
+        {
+          "type": "black_market_contact"
+        }
+      ]
+    },
+    "flaw": {
+      "text": "Somatic-defect units distrust him (+stress around him).",
+      "effects": [
+        {
+          "type": "somatic_stress_aura"
+        }
+      ]
+    },
+    "valueReactions": [
+      {
+        "axis": "mercy",
+        "sign": "+",
+        "weight": -1
+      },
+      {
+        "axis": "sacrifice",
+        "sign": "+",
+        "weight": -1
+      }
+    ],
+    "knownByDefault": false
+  }
+]

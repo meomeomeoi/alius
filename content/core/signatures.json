@@ -1,0 +1,74 @@
+[
+  {
+    "id": "sig_last_stand",
+    "name": "Last Stand",
+    "mechanic": "Below 30% HP: next attack x2, can't be stunned.",
+    "fits": "stubborn, proud"
+  },
+  {
+    "id": "sig_shared_pain",
+    "name": "Shared Pain",
+    "mechanic": "Redirect 50% of damage from an ally to self for 2 turns.",
+    "fits": "protective, self-sacrificing"
+  },
+  {
+    "id": "sig_cold_read",
+    "name": "Cold Read",
+    "mechanic": "Reveal enemy weakness; team +15% crit vs target.",
+    "fits": "analytical, cold"
+  },
+  {
+    "id": "sig_lullaby",
+    "name": "Lullaby",
+    "mechanic": "Remove 15 stress from all allies, self +5.",
+    "fits": "nurturing, calm"
+  },
+  {
+    "id": "sig_frenzy",
+    "name": "Frenzy",
+    "mechanic": "3 random hits, +5 stress self.",
+    "fits": "wild, impulsive"
+  },
+  {
+    "id": "sig_mock",
+    "name": "Mock",
+    "mechanic": "Taunt all + enemies -10% ATK.",
+    "fits": "sharp-tongued, theatrical"
+  },
+  {
+    "id": "sig_vanish",
+    "name": "Vanish",
+    "mechanic": "Untargetable 1 turn, next shot crit.",
+    "fits": "evasive, secretive"
+  },
+  {
+    "id": "sig_command_echo",
+    "name": "Command Echo",
+    "mechanic": "Repeat the last CP order for free.",
+    "fits": "disciplined, loyal"
+  },
+  {
+    "id": "sig_scavenge",
+    "name": "Scavenge",
+    "mechanic": "On kill: extra loot roll.",
+    "fits": "greedy, resourceful"
+  },
+  {
+    "id": "sig_overclock_burst",
+    "name": "Overclock Burst",
+    "mechanic": "Act twice this turn, then skip next.",
+    "fits": "reckless, energetic"
+  },
+  {
+    "id": "sig_spite",
+    "name": "Spite",
+    "mechanic": "Damage scales with HP missing of allies.",
+    "fits": "vengeful"
+  },
+  {
+    "id": "sig_anchor_words",
+    "name": "Anchor Words",
+    "mechanic": "Ally in breakdown recovers immediately.",
+    "fits": "empathetic"
+  }
+]

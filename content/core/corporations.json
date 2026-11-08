@@ -1,0 +1,92 @@
+[
+  {
+    "id": "vesper",
+    "name": "Vesper Somatics",
+    "summary": "Biotech: grows soldiers, treats the Bloom as a resource. Clean labs, filthy ethics.",
+    "values": {
+      "pragmatism": 2,
+      "autonomy": -1,
+      "ingroup": 0,
+      "mercy": -1,
+      "corporate": 2,
+      "sacrifice": 0
+    },
+    "oversightStyle": "Approves Leash requests readily when the paperwork is clean; treats the CCP as a living test bed.",
+    "playable": true,
+    "startingBonus": {
+      "text": "Starter medical stock: +10 supplies.",
+      "effects": [
+        {
+          "type": "resource",
+          "resource": "supplies",
+          "amount": 10
+        }
+      ]
+    },
+    "startingRegionId": "quarantine_d7"
+  },
+  {
+    "id": "kestrel",
+    "name": "Kestrel-Ward Industrial",
+    "summary": "Heavy industry and cybernetics: more metal than flesh, brutal efficiency, quotas.",
+    "values": {
+      "pragmatism": 2,
+      "autonomy": -2,
+      "ingroup": 1,
+      "mercy": -2,
+      "corporate": 3,
+      "sacrifice": 1
+    },
+    "oversightStyle": "Approves Leash requests against quota shortfalls; treats the CCP as a labour pool.",
+    "playable": true,
+    "startingBonus": {
+      "text": "Quota advance: +100 credits.",
+      "effects": [
+        {
+          "type": "resource",
+          "resource": "credits",
+          "amount": 100
+        }
+      ]
+    },
+    "startingRegionId": "kestrel_corridor"
+  },
+  {
+    "id": "aurum",
+    "name": "Aurum Concord",
+    "summary": "Finance and logistics; owns the debt of everyone else.",
+    "values": {
+      "pragmatism": 3,
+      "autonomy": 0,
+      "ingroup": -2,
+      "mercy": -1,
+      "corporate": 1,
+      "sacrifice": -2
+    },
+    "oversightStyle": "Faction only in v1: approves anything that can be invoiced.",
+    "playable": false,
+    "startingBonus": {
+      "text": "Not a v1 start.",
+      "effects": []
+    }
+  },
+  {
+    "id": "sable",
+    "name": "Sable Line",
+    "summary": "Security contractor; the corporation corporations hire to clean up.",
+    "values": {
+      "pragmatism": 2,
+      "autonomy": 1,
+      "ingroup": 1,
+      "mercy": -3,
+      "corporate": 0,
+      "sacrifice": 0
+    },
+    "oversightStyle": "Faction only in v1: deniable, expensive, quick.",
+    "playable": false,
+    "startingBonus": {
+      "text": "Not a v1 start.",
+      "effects": []
+    }
+  }
+]

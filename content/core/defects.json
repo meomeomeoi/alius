@@ -1,0 +1,326 @@
+[
+  {
+    "id": "echo_bleed",
+    "name": "Echo Bleed",
+    "category": "neural",
+    "lore": "Hears fragments of memories from the implant's previous carriers.",
+    "upside": "Scouting: reveals one extra node on expedition maps; occasional insight into enemies.",
+    "downside": "Silence and isolation raise stress; she misremembers events as hers.",
+    "breakdown": {
+      "name": "Overwritten",
+      "text": "Acts as a previous carrier for the rest of the expedition (random skill use, may call the commander by another name)."
+    },
+    "social": "Scenes where she shares a memory that is not hers; can learn facts about the setting the player should not know.",
+    "arc": {
+      "cure": "Memories gone, scouting gone.",
+      "manage": "Journaling ritual with the commander.",
+      "embrace": "She starts choosing echoes to wear."
+    }
+  },
+  {
+    "id": "imprint_fracture",
+    "name": "Loyalty Imprint Fracture",
+    "category": "neural",
+    "lore": "Factory loyalty to the corporation is broken.",
+    "upside": "Trust gains +50%; immune to enemy-corporate morale effects.",
+    "downside": "Leash Compel costs double Trust with her and has a chance to fail.",
+    "breakdown": {
+      "name": "Unbound",
+      "text": "Ignores all orders, fights her own way."
+    },
+    "social": "Tests the commander constantly; despises corporate talk; values honesty over authority.",
+    "arc": {
+      "cure": "Re-imprinted (to whom? a dilemma).",
+      "manage": "A negotiated \"contract\" with the commander.",
+      "embrace": "She becomes a free agent who stays by choice, or does not."
+    }
+  },
+  {
+    "id": "threat_saturation",
+    "name": "Threat Saturation",
+    "category": "neural",
+    "lore": "Threat-detection firmware never turns off. Paranoid.",
+    "upside": "Never ambushed; reaction shots on enemy entry.",
+    "downside": "Cannot benefit from Rest nodes; stress rises in \"safe\" places and crowded scenes.",
+    "breakdown": {
+      "name": "Hostile Read",
+      "text": "Attacks the nearest target, ally included, once."
+    },
+    "social": "Suspects squadmates and the commander; trust is slow but very sticky once earned.",
+    "arc": {
+      "cure": "Calm and dulled.",
+      "manage": "The commander's \"all clear\" ritual.",
+      "embrace": "Her threat map is shared with the squad."
+    }
+  },
+  {
+    "id": "compulsive_protocol",
+    "name": "Compulsive Protocol",
+    "category": "neural",
+    "lore": "Rigid routine loops from training firmware.",
+    "upside": "+15% damage and CRIT when she keeps the same row and skill rotation.",
+    "downside": "Plan changes (row swaps, Fall Back, changed loadouts) give stress and -SPD.",
+    "breakdown": {
+      "name": "Loop Lock",
+      "text": "Repeats her last action regardless of target validity."
+    },
+    "social": "Needs schedules; reacts badly to the commander being late or breaking routine; values kept promises highly.",
+    "arc": {
+      "cure": "Not yet written.",
+      "manage": "A shared daily routine.",
+      "embrace": "Perfect drill: the squad syncs to her rhythm."
+    }
+  },
+  {
+    "id": "affect_dampener",
+    "name": "Affect Dampener Fault",
+    "category": "neural",
+    "lore": "Emotional regulation is stuck \"low\".",
+    "upside": "Stress gains halved.",
+    "downside": "Affinity and Attraction gains halved; struggles to read others.",
+    "breakdown": {
+      "name": "Dissociation",
+      "text": "Skips turns, unresponsive."
+    },
+    "social": "Flat affect; rare, intense breakthroughs when something finally reaches her are relationship milestones.",
+    "arc": {
+      "cure": "A flood of feelings (temporary instability).",
+      "manage": "Learns with the commander to name emotions.",
+      "embrace": "Perfect calm, unsettling to others."
+    }
+  },
+  {
+    "id": "rage_governor",
+    "name": "Rage Governor Failure",
+    "category": "neural",
+    "lore": "Aggression limiter burned out. Short-tempered.",
+    "upside": "+ATK scaling with stress (+1% per stress point above 30).",
+    "downside": "Insults, refusals and being ordered back raise stress sharply; chance to ignore Hold the Line.",
+    "breakdown": {
+      "name": "Red Out",
+      "text": "Attacks the strongest visible target, ignores CP orders."
+    },
+    "social": "Fights with squadmates and the commander; apologizes badly; values directness.",
+    "arc": {
+      "cure": "Not yet written.",
+      "manage": "A sparring outlet in the Training Yard.",
+      "embrace": "Controlled fury, terrifying."
+    }
+  },
+  {
+    "id": "latent_strain",
+    "name": "Latent Strain",
+    "category": "somatic",
+    "lore": "A suppressed Bloom strain lives in her.",
+    "upside": "At Stress >= 50: +20% ATK and regeneration.",
+    "downside": "Each breakdown risks mutation progress (a hidden clock); supplies-hungry suppressant upkeep.",
+    "breakdown": {
+      "name": "Bloom Surge",
+      "text": "Massive damage to everyone in her row, allies included; mutation clock +1."
+    },
+    "social": "Fear of turning; disgust or pity from squadmates; strongly tied to the strain_trade and experimentation crimes.",
+    "arc": {
+      "cure": "Risky treatment (may fail).",
+      "manage": "A medbay regimen.",
+      "embrace": "She learns to steer the strain."
+    }
+  },
+  {
+    "id": "hunger_loop",
+    "name": "Hunger Loop",
+    "category": "somatic",
+    "lore": "Accelerated metabolism.",
+    "upside": "Heals 5% max HP per turn in combat.",
+    "downside": "Consumes double supplies; supply shortage hits her stress hardest.",
+    "breakdown": {
+      "name": "Feeding Frenzy",
+      "text": "Attacks enemies regardless of orders, heals per hit."
+    },
+    "social": "Food is a love language; cooking and meal activities give her extra Affinity.",
+    "arc": {
+      "cure": "Not yet written.",
+      "manage": "Not yet written.",
+      "embrace": "She feeds on what she kills (unsettling)."
+    }
+  },
+  {
+    "id": "pain_inversion",
+    "name": "Pain Inversion",
+    "category": "somatic",
+    "lore": "Nociception is inverted or broken.",
+    "upside": "+damage while wounded; ignores stun from damage.",
+    "downside": "Hides injuries: injuries she gets last longer and can worsen silently.",
+    "breakdown": {
+      "name": "Reckless Advance",
+      "text": "Moves to front row and refuses retreat."
+    },
+    "social": "Worries others; scenes about care and checking on her.",
+    "arc": {
+      "cure": "Not yet written.",
+      "manage": "The commander checks on her after each expedition.",
+      "embrace": "A wall that will not fall."
+    }
+  },
+  {
+    "id": "graft_rejection",
+    "name": "Graft Rejection",
+    "category": "somatic",
+    "lore": "Her body rejects its augments.",
+    "upside": "After medbay maintenance: +20% all stats for 3 days.",
+    "downside": "Without maintenance, loses max HP over time.",
+    "breakdown": {
+      "name": "Collapse",
+      "text": "Falls to 1 HP, out of action for 2 turns."
+    },
+    "social": "Dependence on the commander's access to the medbay; pride vs need.",
+    "arc": {
+      "cure": "Losing the augments (changes role stats).",
+      "manage": "Not yet written.",
+      "embrace": "A full organic rebuild (rare, expensive)."
+    }
+  },
+  {
+    "id": "overclock_bias",
+    "name": "Overclock Bias",
+    "category": "cybernetic",
+    "lore": "Cannot run at half power.",
+    "upside": "+SPD and ATK.",
+    "downside": "After combat, overheat reduces stats on the next expedition unless she rests a slot.",
+    "breakdown": {
+      "name": "Thermal Runaway",
+      "text": "Acts twice, then shuts down for the rest of combat."
+    },
+    "social": "Restless, never sits still; rest activities with someone raise Affinity more.",
+    "arc": {
+      "cure": "Not yet written.",
+      "manage": "Cooling mods via the Workshop.",
+      "embrace": "Permanent burst mode."
+    }
+  },
+  {
+    "id": "sensor_ghosting",
+    "name": "Sensor Ghosting",
+    "category": "cybernetic",
+    "lore": "Optics register false targets.",
+    "upside": "+evasion (ghost decoys); detects hidden enemies.",
+    "downside": "10% chance per attack to target a ghost (miss).",
+    "breakdown": {
+      "name": "Phantom Fire",
+      "text": "Shoots at nothing for the rest of the round, stress to allies nearby."
+    },
+    "social": "Unsure what is real; asks the commander to confirm things; truth matters to her.",
+    "arc": {
+      "cure": "Not yet written.",
+      "manage": "Calibration sessions.",
+      "embrace": "She sees anomalies others cannot."
+    }
+  },
+  {
+    "id": "firmware_rollback",
+    "name": "Firmware Rollback",
+    "category": "cybernetic",
+    "lore": "Occasionally reverts to an old firmware with an old personality and old orders.",
+    "upside": "Unlocks 1 extra skill from her \"old profile\".",
+    "downside": "Random rollback events: she treats the commander as a stranger for a day.",
+    "breakdown": {
+      "name": "Old Orders",
+      "text": "Follows her previous commander's directives (which may be hostile)."
+    },
+    "social": "Haunted by who she was; possible link to the commander's crime (liquidation).",
+    "arc": {
+      "cure": "Her old self is deleted.",
+      "manage": "Not yet written.",
+      "embrace": "She integrates both selves."
+    }
+  },
+  {
+    "id": "target_lock",
+    "name": "Target Lock Persistence",
+    "category": "cybernetic",
+    "lore": "Targeting cannot release a lock.",
+    "upside": "+40% damage vs her current target.",
+    "downside": "Cannot switch target until it dies or 3 turns pass.",
+    "breakdown": {
+      "name": "Friendly Lock",
+      "text": "Locks onto an ally for one attack."
+    },
+    "social": "Fixates on goals and people; stubborn.",
+    "arc": {
+      "cure": "Not yet written.",
+      "manage": "Not yet written.",
+      "embrace": "The lock persists across expeditions (nemesis enemies)."
+    }
+  },
+  {
+    "id": "imprint_hunger",
+    "name": "Imprint Hunger",
+    "category": "desire_bond",
+    "lore": "Bonding firmware needs regular contact with an imprinted person.",
+    "upside": "+stats when the imprinted person is in the same expedition or scene.",
+    "downside": "Deprivation raises stress daily.",
+    "breakdown": {
+      "name": "Withdrawal",
+      "text": "Ignores orders until she reaches the imprinted person."
+    },
+    "social": "The imprint target can be the commander or a squadmate; drives night visits.",
+    "arc": {
+      "cure": "Not yet written.",
+      "manage": "Agreed rituals.",
+      "embrace": "Deep dependency (feeds the dependent state)."
+    }
+  },
+  {
+    "id": "possessive_protocol",
+    "name": "Possessive Protocol",
+    "category": "desire_bond",
+    "lore": "Treats one chosen person as an \"assigned asset\".",
+    "upside": "Protects them automatically (intercepts hits).",
+    "downside": "Jealousy events; Trust/Affinity penalties when the commander favors others.",
+    "breakdown": {
+      "name": "Claim",
+      "text": "Attacks whoever is near the chosen person."
+    },
+    "social": "Feeds the obsessed state; conflicts with a second romance.",
+    "arc": {
+      "cure": "Not yet written.",
+      "manage": "Not yet written.",
+      "embrace": "Not yet written."
+    }
+  },
+  {
+    "id": "reward_loop",
+    "name": "Reward Loop Damage",
+    "category": "desire_bond",
+    "lore": "Hedonic circuitry stuck open.",
+    "upside": "Stress relief from pleasurable activities is doubled.",
+    "downside": "Risk-seeking: chooses risky options in events, harder to keep disciplined.",
+    "breakdown": {
+      "name": "Binge",
+      "text": "Abandons the objective for the nearest reward (loot node, etc.)."
+    },
+    "social": "Flirtatious and impulsive; boundaries are a recurring theme in scenes.",
+    "arc": {
+      "cure": "Not yet written.",
+      "manage": "Not yet written.",
+      "embrace": "Not yet written."
+    }
+  },
+  {
+    "id": "compliance_craving",
+    "name": "Compliance Craving",
+    "category": "desire_bond",
+    "lore": "Performs best under strict command; autonomy causes distress.",
+    "upside": "Orders (CP) on her cost -1.",
+    "downside": "Stress when left without orders or given free choice; Leash usage is less damaging to her Trust, which tempts the commander to abuse it.",
+    "breakdown": {
+      "name": "Lost",
+      "text": "Passes her turns until given an order."
+    },
+    "social": "The moral trap is explicit: easy to exploit, harder to help her want things for herself.",
+    "arc": {
+      "cure": "Not yet written.",
+      "manage": "Not yet written.",
+      "embrace": "Not yet written."
+    }
+  }
+]

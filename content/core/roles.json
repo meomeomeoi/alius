@@ -1,0 +1,220 @@
+[
+  {
+    "id": "assault",
+    "name": "Assault",
+    "row": "front",
+    "baseStats": {
+      "hp": 110,
+      "atk": 24,
+      "def": 12,
+      "spd": 14,
+      "crit": 10
+    },
+    "weaponClasses": [
+      "Blade",
+      "SMG",
+      "Shotgun"
+    ],
+    "armorWeights": [
+      "light",
+      "medium"
+    ],
+    "identity": "Burst damage, executes.",
+    "summary": "Front-line burst damage that finishes wounded targets.",
+    "branches": [
+      {
+        "name": "Breach",
+        "summary": "Armor shred."
+      },
+      {
+        "name": "Momentum",
+        "summary": "Extra actions on kill."
+      },
+      {
+        "name": "Bloodline",
+        "summary": "Lifesteal, self-damage synergies."
+      }
+    ]
+  },
+  {
+    "id": "defender",
+    "name": "Defender",
+    "row": "front",
+    "baseStats": {
+      "hp": 150,
+      "atk": 16,
+      "def": 22,
+      "spd": 9,
+      "crit": 5
+    },
+    "weaponClasses": [
+      "Shotgun",
+      "Heavy",
+      "Blade"
+    ],
+    "armorWeights": [
+      "medium",
+      "heavy"
+    ],
+    "identity": "Guard, taunt, counters.",
+    "summary": "Front-line wall that guards allies, draws fire and counters.",
+    "branches": [
+      {
+        "name": "Bulwark",
+        "summary": "Guard and shields."
+      },
+      {
+        "name": "Retaliation",
+        "summary": "Counters."
+      },
+      {
+        "name": "Anchor",
+        "summary": "Row control, stun."
+      }
+    ]
+  },
+  {
+    "id": "sniper",
+    "name": "Sniper",
+    "row": "back",
+    "baseStats": {
+      "hp": 85,
+      "atk": 30,
+      "def": 8,
+      "spd": 12,
+      "crit": 20
+    },
+    "weaponClasses": [
+      "Precision Rifle",
+      "Pistol"
+    ],
+    "armorWeights": [
+      "light"
+    ],
+    "identity": "Single-target, marks, crits.",
+    "summary": "Back-line single-target damage with marks and crits.",
+    "branches": [
+      {
+        "name": "Marksman",
+        "summary": "Crit."
+      },
+      {
+        "name": "Spotter",
+        "summary": "Marks for the team."
+      },
+      {
+        "name": "Ghost",
+        "summary": "Evasion, row-ignoring shots."
+      }
+    ]
+  },
+  {
+    "id": "support",
+    "name": "Support",
+    "row": "back",
+    "baseStats": {
+      "hp": 95,
+      "atk": 16,
+      "def": 12,
+      "spd": 13,
+      "crit": 8
+    },
+    "weaponClasses": [
+      "Rifle",
+      "Pistol",
+      "Tech"
+    ],
+    "armorWeights": [
+      "light",
+      "medium"
+    ],
+    "identity": "Buffs, CP generation, cleanse.",
+    "summary": "Back-line buffer that generates CP and cleanses allies.",
+    "branches": [
+      {
+        "name": "Command Link",
+        "summary": "CP generation, ally SPD."
+      },
+      {
+        "name": "Overwatch",
+        "summary": "Reaction shots."
+      },
+      {
+        "name": "Field Kit",
+        "summary": "Shields, cleanse."
+      }
+    ]
+  },
+  {
+    "id": "medic",
+    "name": "Medic",
+    "row": "back",
+    "baseStats": {
+      "hp": 90,
+      "atk": 14,
+      "def": 12,
+      "spd": 12,
+      "crit": 5
+    },
+    "weaponClasses": [
+      "Pistol",
+      "Bio"
+    ],
+    "armorWeights": [
+      "light"
+    ],
+    "identity": "Heal, stress relief, revive (once per combat).",
+    "summary": "Back-line healer who relieves stress and can revive once per combat.",
+    "branches": [
+      {
+        "name": "Triage",
+        "summary": "Heals."
+      },
+      {
+        "name": "Sedation",
+        "summary": "Stress relief, calm breakdowns."
+      },
+      {
+        "name": "Viral Countermeasures",
+        "summary": "Cleanse Infect."
+      }
+    ]
+  },
+  {
+    "id": "specialist",
+    "name": "Specialist",
+    "row": "either",
+    "baseStats": {
+      "hp": 100,
+      "atk": 20,
+      "def": 12,
+      "spd": 13,
+      "crit": 12
+    },
+    "weaponClasses": [
+      "Tech",
+      "Bio",
+      "Rifle"
+    ],
+    "armorWeights": [
+      "light",
+      "medium"
+    ],
+    "identity": "Debuffs, DoTs, field control.",
+    "summary": "Flexible controller with debuffs, damage over time and field control.",
+    "branches": [
+      {
+        "name": "Corrosion",
+        "summary": "DEF down, DoT."
+      },
+      {
+        "name": "Drones",
+        "summary": "Summons."
+      },
+      {
+        "name": "Bloom Tech",
+        "summary": "Risky viral abilities, stress cost."
+      }
+    ]
+  }
+]

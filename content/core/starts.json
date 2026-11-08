@@ -1,0 +1,80 @@
+[
+  {
+    "id": "start_vesper",
+    "name": "Seed Stock",
+    "corporationId": "vesper",
+    "summary": "Secure Bloom samples in a quarantined district for Vesper Somatics.",
+    "situation": "The unit is assigned to secure Bloom samples in a quarantined district.",
+    "spine": [
+      {
+        "id": "beat_1",
+        "title": "First sample",
+        "goal": "Recover the first Bloom sample."
+      },
+      {
+        "id": "beat_2",
+        "title": "Deliberate seeding",
+        "goal": "Discover that Vesper is seeding the Bloom deliberately."
+      },
+      {
+        "id": "beat_3",
+        "title": "Engineered defect",
+        "goal": "A squad member's defect is revealed to be engineered."
+      },
+      {
+        "id": "beat_4",
+        "title": "The choice",
+        "goal": "Deliver the evidence to Vesper, sell it to Aurum, or bury it."
+      },
+      {
+        "id": "beat_5",
+        "title": "Consequences",
+        "goal": "Live with the consequences of the choice."
+      },
+      {
+        "id": "beat_6",
+        "title": "Open ground",
+        "goal": "Open-ended phase."
+      }
+    ]
+  },
+  {
+    "id": "start_kestrel",
+    "name": "Quota",
+    "corporationId": "kestrel",
+    "summary": "Clear a mining corridor overrun by mutants before a Kestrel-Ward shareholder deadline.",
+    "situation": "The unit must clear a mining corridor overrun by mutants before a shareholder deadline.",
+    "spine": [
+      {
+        "id": "beat_1",
+        "title": "Breach",
+        "goal": "The corridor is breached."
+      },
+      {
+        "id": "beat_2",
+        "title": "Acceptable loss",
+        "goal": "Find survivors Kestrel listed as \"acceptable loss\"."
+      },
+      {
+        "id": "beat_3",
+        "title": "Rival team",
+        "goal": "A rival Sable team arrives with different orders."
+      },
+      {
+        "id": "beat_4",
+        "title": "The choice",
+        "goal": "Choose between the quota, the survivors, or the rival team's offer."
+      },
+      {
+        "id": "beat_5",
+        "title": "Consequences",
+        "goal": "Live with the consequences of the choice."
+      },
+      {
+        "id": "beat_6",
+        "title": "Open ground",
+        "goal": "Open-ended phase."
+      }
+    ]
+  }
+]

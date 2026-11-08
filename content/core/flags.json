@@ -1,1 +1,11 @@
-[]
+[
+  {
+    "id": "knows_crime",
+    "scope": "relation",
+    "description": "The unit knows why the commander was convicted.",
+    "setBy": [
+      "start",
+      "event"
+    ]
+  }
+]

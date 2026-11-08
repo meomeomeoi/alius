@@ -207,17 +207,17 @@ loader (fixture `p1`): `p1 fixture loads every new registry without errors`; `st
   - lorebook: `name: "Alius Core Lore"`, one entry per lore §9 item: `world_premise`, `leash_protocol`, `ccp_program` (`constant: true`); `the_bloom`, `off_spec_units`, `base_location`, 4 corporations, 5 regions, 6 enemy categories (keyword-triggered: `key` = the placeholder name plus its id). `comment` = the entry id; `content` = the matching lore text, condensed to ≤ 120 words.
 - `docs/CONTENT.md`: one subsection per new registry (field table + one example entry), the effect object with the three start-time types, and the manifest `lorebook` field with its compact format.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `tests/content/core.test.ts` loads the real pack with `loadPacks(['content/core'], path => readFile(path) → JSON.parse)` and checks: `core pack loads with zero errors`; `counts: 4 corporations, 2 starts, 6 crimes, 6 roles, 12 signatures, 18 defects (4 desire_bond), 10 statuses`; `both starts use playable corporations`; `lorebook has the three constant entries`; `assault base stats are 110/24/12/14/10`.
 
-- [ ] **Step 2: Run** `npx vitest run tests/content/core.test.ts` → FAIL.
+- [x] **Step 2: Run** `npx vitest run tests/content/core.test.ts` → FAIL.
 
-- [ ] **Step 3: Write the content files and CONTENT.md sections.**
+- [x] **Step 3: Write the content files and CONTENT.md sections.**
 
-- [ ] **Step 4: Run** `npx vitest run` → PASS.
+- [x] **Step 4: Run** `npx vitest run` → PASS.
 
-- [ ] **Step 5: Commit** `feat(content): core corporations, starts, crimes, roles, signatures, defects, statuses and lorebook`
+- [x] **Step 5: Commit** `feat(content): core corporations, starts, crimes, roles, signatures, defects, statuses and lorebook`
 
 ---
 

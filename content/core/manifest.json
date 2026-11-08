@@ -3,5 +3,15 @@
   "name": "Alius Core",
   "version": "0.0.1",
   "priority": 0,
-  "files": { "flags": "flags.json" }
+  "lorebook": "lorebook.json",
+  "files": {
+    "corporations": "corporations.json",
+    "starts": "starts.json",
+    "crimes": "crimes.json",
+    "roles": "roles.json",
+    "signatures": "signatures.json",
+    "defects": "defects.json",
+    "statuses": "statuses.json",
+    "flags": "flags.json"
+  }
 }

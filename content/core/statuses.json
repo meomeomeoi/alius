@@ -1,0 +1,62 @@
+[
+  {
+    "id": "bleed",
+    "name": "Bleed",
+    "kind": "debuff",
+    "description": "Loses HP at the start of each turn."
+  },
+  {
+    "id": "burn",
+    "name": "Burn",
+    "kind": "debuff",
+    "description": "Takes fire damage at the start of each turn."
+  },
+  {
+    "id": "stun",
+    "name": "Stun",
+    "kind": "debuff",
+    "description": "Loses the next turn."
+  },
+  {
+    "id": "mark",
+    "name": "Mark",
+    "kind": "debuff",
+    "description": "Marked target: allies deal bonus damage to it."
+  },
+  {
+    "id": "guard",
+    "name": "Guard",
+    "kind": "buff",
+    "description": "Reduces damage taken; can intercept hits meant for allies."
+  },
+  {
+    "id": "taunt",
+    "name": "Taunt",
+    "kind": "buff",
+    "description": "Enemies must target this unit."
+  },
+  {
+    "id": "corrode",
+    "name": "Corrode",
+    "kind": "debuff",
+    "description": "DEF reduced."
+  },
+  {
+    "id": "infect",
+    "name": "Infect",
+    "kind": "debuff",
+    "description": "Gains stress over time. Inflicted by mutants."
+  },
+  {
+    "id": "overheat",
+    "name": "Overheat",
+    "kind": "debuff",
+    "description": "Stats reduced by overheated implants. Caused by Cybernetic defects."
+  },
+  {
+    "id": "shield",
+    "name": "Shield",
+    "kind": "buff",
+    "description": "Absorbs damage before HP is lost."
+  }
+]
