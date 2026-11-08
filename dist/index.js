@@ -5705,6 +5705,90 @@ var RealStAdapter = class {
   }
 };
 
+// src/ui/launcher.ts
+var ITEMS = [
+  { id: "open", icon: "fa-solid fa-satellite-dish", menuLabel: "Alius", buttonLabel: "Open Alius", action: "open" },
+  { id: "init", icon: "fa-solid fa-flag-checkered", menuLabel: "Alius: Initialize campaign (debug)", buttonLabel: "Initialize campaign (debug)", action: "init" },
+  { id: "ping", icon: "fa-solid fa-satellite", menuLabel: "Alius: Ping mechanic model (debug)", buttonLabel: "Ping mechanic model (debug)", action: "ping" }
+];
+async function waitFor(selectors, retryMs, retries) {
+  for (let i = 0; i <= retries; i++) {
+    for (const selector of selectors) {
+      const el = document.querySelector(selector);
+      if (el) return el;
+    }
+    await new Promise((r) => setTimeout(r, retryMs));
+  }
+  return null;
+}
+function addMenuItems(menu, actions) {
+  for (const it of ITEMS) {
+    const id = `alius_menu_${it.id}`;
+    if (document.getElementById(id)) continue;
+    const item = document.createElement("div");
+    item.id = id;
+    item.className = "list-group-item flex-container flexGap5";
+    item.tabIndex = 0;
+    const icon = document.createElement("div");
+    icon.className = `${it.icon} extensionsMenuExtensionButton`;
+    item.append(icon, document.createTextNode(it.menuLabel));
+    const run = () => actions[it.action]();
+    item.addEventListener("click", run);
+    item.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        run();
+      }
+    });
+    menu.append(item);
+  }
+}
+function addDrawer(host, actions) {
+  if (document.getElementById("alius_settings")) return;
+  const wrap = document.createElement("div");
+  wrap.id = "alius_settings";
+  wrap.className = "extension_container";
+  const drawer = document.createElement("div");
+  drawer.className = "inline-drawer";
+  const header = document.createElement("div");
+  header.className = "inline-drawer-toggle inline-drawer-header";
+  const title = document.createElement("b");
+  title.textContent = "Alius";
+  const chevron = document.createElement("div");
+  chevron.className = "inline-drawer-icon fa-solid fa-circle-chevron-down down";
+  header.append(title, chevron);
+  const content = document.createElement("div");
+  content.className = "inline-drawer-content";
+  const row = document.createElement("div");
+  row.className = "flex-container flexFlowColumn";
+  for (const it of ITEMS) {
+    const btn = document.createElement("input");
+    btn.type = "button";
+    btn.className = "menu_button";
+    btn.value = it.buttonLabel;
+    btn.addEventListener("click", () => actions[it.action]());
+    row.append(btn);
+  }
+  content.append(row);
+  drawer.append(header, content);
+  wrap.append(drawer);
+  host.append(wrap);
+}
+async function installLauncher(actions, opts = {}) {
+  const retryMs = opts.retryMs ?? 500;
+  const retries = opts.retries ?? 20;
+  await Promise.all([
+    waitFor(["#extensionsMenu"], retryMs, retries).then((menu) => {
+      if (menu) addMenuItems(menu, actions);
+      else console.warn("[Alius] #extensionsMenu not found; use Alt+Shift+A to open the shell");
+    }),
+    waitFor(["#extensions_settings2", "#extensions_settings"], retryMs, retries).then((settings) => {
+      if (settings) addDrawer(settings, actions);
+      else console.warn("[Alius] extension settings panel not found");
+    })
+  ]);
+}
+
 // src/index.ts
 var CONTENT_ROOTS = ["../content/core"];
 async function fetchJson(path) {
@@ -5712,38 +5796,21 @@ async function fetchJson(path) {
   if (!res.ok) throw new Error(`HTTP ${res.status} for ${path}`);
   return res.json();
 }
-function addMenuItem(menu, id, icon, label, onClick) {
-  if (document.getElementById(id)) return;
-  const item = document.createElement("div");
-  item.id = id;
-  item.className = "list-group-item flex-container flexGap5";
-  item.tabIndex = 0;
-  const iconEl = document.createElement("div");
-  iconEl.className = `${icon} extensionsMenuExtensionButton`;
-  item.append(iconEl, document.createTextNode(label));
-  item.addEventListener("click", onClick);
-  item.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      onClick();
-    }
-  });
-  menu.append(item);
-}
 async function main() {
   const st = new RealStAdapter();
   const app = createApp(st, { loadContent: () => loadPacks(CONTENT_ROOTS, fetchJson) });
-  await app.start();
-  for (let attempt = 0; attempt < 20; attempt++) {
-    const menu = document.getElementById("extensionsMenu");
-    if (menu) {
-      addMenuItem(menu, "alius_menu_open", "fa-solid fa-satellite-dish", "Alius", () => app.shell.open());
-      addMenuItem(menu, "alius_menu_init", "fa-solid fa-flag-checkered", "Alius: Initialize campaign (debug)", () => void app.initCampaign());
-      addMenuItem(menu, "alius_menu_ping", "fa-solid fa-satellite", "Alius: Ping mechanic model (debug)", () => void app.pingMechanic());
-      return;
-    }
-    await new Promise((r) => setTimeout(r, 500));
+  const launcher = installLauncher({
+    open: () => app.shell.open(),
+    init: () => void app.initCampaign(),
+    ping: () => void app.pingMechanic()
+  });
+  try {
+    await app.start();
+    console.info("[Alius] started");
+  } catch (e) {
+    console.error("[Alius] failed to start", e);
+    st.toast("error", `Alius failed to start: ${e instanceof Error ? e.message : String(e)}`);
   }
-  console.warn("[Alius] #extensionsMenu not found; use Alt+Shift+A to open the shell");
+  await launcher;
 }
-main().catch((e) => console.error("[Alius] failed to start", e));
+main().catch((e) => console.error("[Alius] fatal", e));
