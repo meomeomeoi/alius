@@ -81,3 +81,13 @@ Headless simulator (`npm run sim`) runs N seeded combats for configurable squads
 6. Loot/crafting/upgrades/role restrictions work; INV/SQUAD UIs reflect them.
 7. Balance harness runs; neutrality report generated (tuning may continue after the package).
 8. Tests: damage formula, initiative, targeting legality, every effect trigger, encounter budget, loot tables.
+
+## Interfaces already provided by P2 (implemented — use, do not rebuild)
+
+- **Injuries:** set `unit.status = 'injured'` and `unit.injuryDays = n` (P2's day-end tick recovers units, faster with the medbay `injurySpeed`; the `medbay` activity also shortens it). On recovery P2 sets `active` if the unit is in `roster.activeIds`, else `reserve`.
+- **Commander Crisis:** dispatch `commander/injure { days }`; it blocks `train` and `work` and emits `commander_injured` for P3's reactions.
+- **Workshop:** the `workshop` activity (alone or with a companion) only emits `workshop_session { unitId? }` and spends the slot; recipes, costs, rarity cap (`facilityEffect(state, reg, 'workshop', 'rarityCap')`) and `upgradeDiscountPct` are yours. A companion with the `tech` like already gets Affinity.
+- **XP:** activities only add to `unit.xp`; levelling and the level caps are P4's.
+- **Grunts:** `kind: 'grunt'`, level = rounded average of living units − 1, stats = role base (no growth applied yet), a lite defect (`lite: true`, no arc), a signature drawn from the registry only to satisfy the type (ignore it for grunts), `status` `active` or `reserve`. Death: set `status: 'dead'`; dead units stop eating and stay in `squad` (their ids and designations stay taken).
+- **Stress:** upkeep shortage and rests change `unit.stress` (0–100, clamped); the passive day-end recovery is 1.
+- **Items:** `Unit.equipment` is still empty; the SQUAD tab shows `STANDARD ISSUE — PENDING` until P4 fills it.

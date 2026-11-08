@@ -103,12 +103,12 @@ Explicitly **not** in v1: real-time/action combat, permadeath mode, third-party 
 
 Source layout (TypeScript, same toolchain style as Mundi-Expanded):
 
-- `src/engine/` — **pure** functions: `(state, action, rng) → { state, events }`. No DOM, no ST, no network. Fully unit-tested.
+- `src/engine/` — **pure** functions: `(state, action, rng) → { state, events }`. No DOM, no ST, no network. Fully unit-tested (an architecture test enforces the imports). Actions are registered with `registerAction` by importing their module from `src/engine/actions/` (`app.ts` imports them all; tests import what they use). A rejected action throws inside its handler, so `dispatch` returns the original state plus an `error` event: **a rejected action never changes anything**. Rule constants live in `src/engine/tuning.ts`.
 - `src/content/` — pack loader, registries, schema validation of content, override rules.
 - `src/llm/` — call types, prompt builders, budgets, JSON repair/retry, intent schemas (zod). Call types live in `src/llm/calls/`.
 - `src/setup/` — campaign setup logic that is neither engine nor UI: the card → profile importer and sanitizer, and the pure wizard state model (no DOM; it talks to ST only through the `StAdapter` interface).
 - `src/st/` — the **only** module that touches SillyTavern APIs (context, metadata, events, prompt injection, group members, connection profiles, expressions). Everything else depends on its interface, so ST API changes are fixed in one place.
-- `src/ui/` — the Alius shell and screens (`shell/`, `setup/` wizard, `squad/` tab).
+- `src/ui/` — the Alius shell and screens (`shell/` incl. the status header, `setup/` wizard, `squad/`, `ops/` and `base/` tabs). UI renderers are plain functions `(host, ctx)`; they ask the engine (`checkActivity`, `checkUpgrade`, `checkRecruit`) why a button is disabled instead of re-implementing rules.
 - `content/core/` — the core JSON pack + lorebook stub.
 
 ### 5.1 State and saves
@@ -150,45 +150,68 @@ Before each main-model generation the adapter injects one compact block:
 
 Character card text itself remains SillyTavern's job.
 
+### 5.4 Implemented engine interfaces (P0–P2)
+
+Later packages build on these; change them only together with the owning spec.
+
+| Interface | Owner | Use |
+|---|---|---|
+| `dispatch(state, action, registries)`, `registerAction(type, handler)` | P0 | The only way state changes. `ctx.rng` is the campaign rng. |
+| `squad/resync` | P1 | Re-import chosen profile sections of a unit. |
+| `activity/do { activityId, companionId?, unitIds?, focus? }` | P2 | One slot of an activity. Events: `activity_done { vignette }`, `scene_requested`, `rumors_requested`, `workshop_session`, `group_scene_offered`, plus per-effect events. |
+| `calendar/consume_slot { slots, reason }` | P2 | P3 scene end (`reason: 'scene_end'`, 1), P5 expedition (2–3). While a talk is open only `scene_end` is accepted. |
+| `calendar/cancel_scene` | P2 | Drops an open talk without spending the slot. |
+| `commander/injure { days }` | P2 | Called by P4 (Commander Crisis); blocks `train`/`work`; emits `commander_injured`. |
+| `base/upgrade`, `base/recruit_grunt`, `base/requisition`, `roster/set_active`, `squad/set_flavor` | P2 | Base and roster. |
+| `registerDayEndStep('mission_deadlines' \| 'director_tick' \| 'dm_rumors', fn)` | P2 | P3/P5/P6 hooks inside the day-end pipeline. A hook runs on a copy: if it throws, its changes are dropped and a `day_end_step_failed` event is emitted. |
+| `setRelationGainHandler(fn)`, `applyRelationDelta(state, unitId, axis, amount, source)` | P2 | The only way P2 touches a relation axis. P3 installs its own accounting (the default is a simple daily soft/hard cap). |
+| `meetsSocialRequirements(state, { empathy: 3 })`, `socialRank`, `addSocialPoints` | P2 | Social checks. |
+| `facilityLevel`, `facilityEffect(state, reg, id, key)`, `livingUnits`, `activeRosterUnits`, `isLiving` | P2 | Facility values and unit sets. |
+| `generateGrunt`, `gruntRelation`, `generatePortrait` | P2 | Seeded grunts (P5 may reuse for rewards). |
+| `generateFlavor(input, deps)`, `registerFlavorKind(kind, impl)` | P2 | The `flavor` call type; each package registers its own `kind`. |
+| `callLlm(callTypeId, input, deps)` | P0 | Typed, budgeted, fail-soft LLM calls. |
+
+Events emitted by the day-end pipeline: `day_end_step`, `upkeep`, `supply_shortage`, `trust_penalty_event`, `unit_recovered`, `facility_upgraded`, `slot_advanced`, `night_started`, `day_started`, `autosave` (the app flushes the saver on it).
+
 ## 6. Data model (high level)
 
 ```
 Campaign {
   version, seed/rngState, day, slot, difficulty, settings snapshot
-  commander { name, corporationId, crimeId, socialStats{authority,insight,empathy,cunning}, flags[] }
+  commander { name, corporationId, crimeId, socialStats{authority,insight,empathy,cunning} /* ranks 1–5 */, socialPoints?{…} /* P2: points behind the ranks */, injuredUntilDay?, flags[] }
   squad: Unit[]            // named + grunts, active and reserve
-  roster: { activeIds[4], capacity }   // capacity 6 → 10 via facilities
+  roster: { activeIds[≤4], capacity }   // activeIds = expedition roster; capacity = beds, 6 → 10 via barracks; dead units may linger in activeIds until the next recruit/roster change, use activeRosterUnits()
   relations: { [unitId]: Relation }
   resources { credits, supplies, plyx }
-  base { facilities: { [id]: level } }
+  base { facilities: { [id]: level } /* absent = level 1 */, upgrades?: { facilityId, toLevel, daysLeft }[] }
   inventory: ItemInstance[]
   world { regions{...}, clocks[], threads[], factions{standing}, flags[], spineProgress, startId? }
   missions { offered[], active[], completed[] }
   rumors[], dms: { [unitId]: Message[] }
   memory { facts[], chronicle[] }
-  calendar { scheduled[], nightEventsQueue[] }
+  calendar { scheduled[], nightEventsQueue[], nightEvent? /* head entry while the Night slot runs */, pendingScene? /* open talk holding its slot */, shortageStreak? }
   leash { authorizationsLeft, refreshDay, log[] }
   expedition?: ExpeditionState
   combat?: CombatState
 }
 
 Unit {
-  id, kind: 'named'|'grunt', cardRef?, displayName, asciiPortrait?
+  id, kind: 'named'|'grunt', cardRef?, displayName, asciiPortrait?, designation?, bio?   // grunts: `K-117`-style designation, optional generated name/bio
   roleId, level, xp, skillPoints, unlockedNodes[]
   signatureSkill { templateId, name, description }   // template id from the registry; name/description are the unit's own words, numbers stay in the template
   baseStats {hp, atk, def, spd, crit}, currentHp, stress
-  defects: DefectInstance[]   // { id, origin?, arc? }; named: 1–2, grunt: 1 (lite)
+  defects: DefectInstance[]   // { id, origin?, arc?, lite?, upkeepDay? }; named: 1–2, grunt: 1 (lite: no arc)
   values { pragmatism, autonomy, ingroup, mercy, corporate, sacrifice }  // each −3…+3
   likes[], dislikes[], triggers[]   // tags
   equipment { weapon?, upper?, lower? }
-  injuries[], status: 'active'|'reserve'|'injured'|'deserted'|'dead'|'terminated'
+  injuries[], injuryDays?, status: 'active'|'reserve'|'injured'|'deserted'|'dead'|'terminated'
 }
 
 Relation {
   trust, affinity, attraction
-  stateId, stateSince, history[]   // a new campaign starts every named unit in state `stranger`, stateSince day 1
+  stateId, stateSince, history[]   // a new campaign starts every named unit in state `stranger`, stateSince day 1; a grunt starts in `stranger` on its recruit day
   flags[]                // e.g. knows_crime, accepted_defect, promise_open
-  dailyGain { trust, affinity, attraction }   // for diminishing returns
+  dailyGain { trust, affinity, attraction }   // for diminishing returns; zeroed at every day rollover
   loyaltyBand: 'steady'|'wavering'|'breaking'  // with hysteresis; initial value from Trust: <10 breaking, <25 wavering, else steady
   marks: MarkInstance[]  // RESERVED in v1 (always empty), see §10 "Marks"; present so no migration is needed later
 }
@@ -215,7 +238,7 @@ Packs can override by id or `extends` an existing entry. In v1 packs are loaded 
 
 ## 7. Core loops
 
-**Day loop.** Morning → Afternoon → Evening → (Night only if an event fires). Each slot: choose an activity (alone or with a companion) or start a scene, or go on an expedition (consumes Morning+Afternoon; long ones also Evening). At day end: supplies consumed, stress/injury ticks, director tick, DMs/rumors, possible night event, save.
+**Day loop.** Morning → Afternoon → Evening → (Night only if an event fires). Each slot: choose an activity (alone or with a companion) or start a scene, or go on an expedition (consumes Morning+Afternoon; long ones also Evening). At day end (spending the Evening runs it once): supplies consumed (every living unit, reserve included, plus the commander; a shortage costs stress, Affinity and after 3 days Trust), stress/injury ticks, facility timers, mission deadlines, director tick, DMs/rumors, possible night event (the Night slot, entered only if `nightEventsQueue` is non-empty), save. A talk holds its slot until its scene ends.
 
 **Conversation loop.** Player writes free text → main model replies (with injected context) → `intent_extract` (per exchange by default, or batched every N exchanges, setting) → engine applies deltas → UI shows subtle feedback (no raw numbers by default) → on scene end, `scene_summary` writes facts and chronicle.
 
@@ -231,15 +254,17 @@ Defaults in code: Desire/Bond defects **off**, show raw values **off**, sprite m
 
 ## 9. Packages
 
-| Pkg | Name | Depends on |
-|---|---|---|
-| P0 | Foundation: toolchain, ST adapter, state & saves, content registries, LLM orchestration, Alius shell | — |
-| P1 | Campaign setup & character import | P0 |
-| P2 | Calendar, activities, base & economy | P0, P1 |
-| P3 | Scenes, relationships, memory, PDA comms | P0–P2 |
-| P4 | Combat, progression, items | P0, P1 (P2 for workshop) |
-| P5 | World map, expeditions, missions, director | P0–P4 |
-| P6 | Dilemmas, disloyalty & the Leash | P0–P5 |
+| Pkg | Name | Depends on | Status |
+|---|---|---|---|
+| P0 | Foundation: toolchain, ST adapter, state & saves, content registries, LLM orchestration, Alius shell | — | implemented |
+| P1 | Campaign setup & character import | P0 | implemented |
+| P2 | Calendar, activities, base & economy | P0, P1 | implemented |
+| P3 | Scenes, relationships, memory, PDA comms | P0–P2 | not started |
+| P4 | Combat, progression, items | P0, P1 (P2 for workshop) | not started |
+| P5 | World map, expeditions, missions, director | P0–P4 | not started |
+| P6 | Dilemmas, disloyalty & the Leash | P0–P5 | not started |
+
+"Implemented" = automated tests pass; the in-SillyTavern checklists `MANUAL_TEST_P*.md` are run by the project owner. An implemented package's spec ends with an **Implemented as** section (or a status line) listing where the code differs from the original draft: the code wins. Work not yet started has plans only in `docs/plans/` when someone wrote one; if none exists, write it first (see `CLAUDE.md`).
 
 Each package must leave the extension in a runnable state and ship with tests for its engine parts. A package may add content to `content/core` but must not change another package's public engine interfaces without updating that package's spec.
 

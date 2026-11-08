@@ -2,6 +2,8 @@
 
 **Depends on:** nothing. **Read:** `00-overview.md` (all). **Content:** none required; ships empty `content/core` skeleton.
 
+**Status:** implemented (plan: `plans/2026-11-08-p0-foundation.md`; checklist `MANUAL_TEST_P0.md`). Later packages added call types (`profile_import`, `flavor`, `activity_vignette`), settings and shell pieces on top; the current interface list is in `00-overview.md` §5.4.
+
 ## Goal
 
 A runnable SillyTavern extension that can: create/load a campaign bound to a group chat, persist versioned state in chat metadata, load content packs into validated registries, call two connection profiles with per-call budgets and robust JSON handling, inject a context block into main generations, and open the full-screen Alius shell. No gameplay yet — every later package plugs into these seams.

@@ -78,3 +78,12 @@ Directives for refusals, desertion intent, post-Leash trauma ("she remembers bei
 6. Leash actions apply exact costs, consume authorizations, refresh weekly, and are logged; Terminate removes the unit permanently.
 7. Defect arc decision flows end-to-end for at least 3 defects.
 8. Tests: validator (each rule with crafted fixtures), dominance check, loyalty band effects, desertion probability, Leash cost modifiers.
+
+## Interfaces already provided by P2 (implemented — use, do not rebuild)
+
+- **Day-end desertion check:** `registerDayEndStep('director_tick' | 'dm_rumors' | …, fn)`; P6 may add a night event by pushing onto `calendar.nightEventsQueue` (see P3's section). Choose the hook that fits the order you need (upkeep and ticks have already run when hooks run).
+- **Header:** the PDA header already renders `LEASH n` from `state.leash.authorizationsLeft`; keep that field the single source.
+- **Social checks:** `meetsSocialRequirements(state, { authority: 3 })` for `[TALK HER DOWN]` and similar.
+- **Shortage trust penalty:** P2 applies −5 Trust to every living unit on every 3rd consecutive shortage day (event `trust_penalty_event`); it does not recompute `loyaltyBand` — recompute in P6 where the band hysteresis lives.
+- **Medbay and defect arcs:** the `medbay` activity stamps `upkeepDay` on a unit's defects whose `arc === 'manage'`; the medbay `arcStageCap` effect (`facilityEffect(state, reg, 'medbay', 'arcStageCap')`) gates arc stages.
+- **Leash crime effects** (`leash_weekly`, `leash_trust_cost`, …) are declared in the crimes content but not interpreted by anything yet.

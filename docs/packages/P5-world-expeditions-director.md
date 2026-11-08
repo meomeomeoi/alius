@@ -70,3 +70,14 @@ Provider adds 1–3 sentences of world state relevant to the scene (region of la
 5. Director output with invalid ids/amounts never mutates state; spine beats only fire when conditions hold; open-ended phase continues after the spine.
 6. Clearance tier raises the level cap.
 7. Tests: node map generation (seeded), digest builder, director validation, clocks, deadlines.
+
+## Interfaces already provided by P2 (implemented — use, do not rebuild)
+
+- **Expedition slots:** `calendar/consume_slot { slots: 2 | 3, reason: 'expedition' }`. It is only accepted while that many slots are left today (Morning: 1–3, Afternoon: 1–2, Evening: 1), so a 2-slot expedition starts in the Morning or Afternoon and a 3-slot one only in the Morning, and not while a talk is open. Spending the Evening runs the day-end pipeline once.
+- **Day-end pipeline:** `registerDayEndStep('mission_deadlines', fn)` and `registerDayEndStep('director_tick', fn)` (and `dm_rumors` for rumor generation). Hooks receive `(draft, { registries, rng })`, may mutate `draft` and return events; a throwing hook is isolated (changes dropped, `day_end_step_failed` emitted) and the day still ends.
+- **Rumors / side jobs:** the `scout_net` activity emits `rumors_requested` and adds Insight points; the number of rumors per day is `facilityEffect(state, reg, 'comms', 'rumorsPerDay')`, the mission board size `'missionBoardSize'`.
+- **Supplies:** P2 only drains them (every living unit + commander per day, `hunger_loop` ×2, mess hall reduces it) and offers `base/requisition` (credits → supplies, 3 CR each) as a stopgap. Expedition loot and rest-node supplies are P5's; consider removing the stopgap or retuning its price.
+- **Credits/plyx:** `state.resources`; mission rewards should change them through an action in P5 (never directly from UI).
+- **Incoming named units:** the P1 wizard model (`src/setup/wizard.ts`) is reusable; capacity is `roster.capacity` (barracks), grunts count against it.
+- **Grunts as rewards/replacements:** `generateGrunt(state, reg, rng)` is pure.
+- **Region/start:** `state.world.startId` and the start's `startingRegionId` (via the corporation) are set by P1.

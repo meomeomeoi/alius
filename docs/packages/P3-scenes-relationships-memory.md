@@ -149,3 +149,14 @@ Queue entries from: states (`lover`, `devoted`, `obsessed`, `fwb` visits; `depen
 8. DMs work, unit-initiated DMs appear, unread counter updates.
 9. Night event fires from `lover` state and is skipped when the queue is empty.
 10. Tests: delta pipeline (each modifier), hysteresis, state transitions (every state's entry/exit), retrieval scoring, intent sanitization with hostile fixtures.
+
+## Interfaces already provided by P2 (implemented — use, do not rebuild)
+
+- **Starting a scene:** the `talk` activity (`activity/do`) emits `scene_requested { unitId, origin: 'activity' }`, records `calendar.pendingScene { unitId, day, slot }` and does **not** spend the slot. While a scene is open P2 rejects every other activity and every `calendar/consume_slot` except `reason: 'scene_end'`. **End a scene** with `calendar/consume_slot { slots: 1, reason: 'scene_end' }` (spends the slot and clears the lock) or drop it with `calendar/cancel_scene`. The app currently cancels the scene immediately and toasts "Scenes are not available yet"; remove that when the scene screen exists (`app.performActivity`).
+- **Night events:** push entries onto `calendar.nightEventsQueue`. At the end of Evening the head entry moves to `calendar.nightEvent` and the slot becomes `night`; read it from there. Ending Night rolls the day over (no second day-end run). Entries left in the queue come back on the next evening.
+- **Diminishing returns:** P2 writes every relation change through `applyRelationDelta` → the handler set by `setRelationGainHandler(({ state, unitId, relation }, axis, amount, source) => appliedDelta)`. Install P3's accounting there; the default is a soft (4/day) and hard (8/day) cap on gains. `relation.dailyGain` is zeroed by P2 at every day rollover. Losses are applied in full by the default; keep that.
+- **Companion activities** (`train`, `workshop`, `medbay`, `rest` with a companion) already give small Affinity/Trust through that handler (never Affinity/Attraction to a grunt: grunts are Trust-only). The `workshop` and `rest`/`mess` social hooks of defects (e.g. Hunger Loop: meals give extra Affinity) are **not** implemented: they are P3's.
+- **Day-end hooks:** `registerDayEndStep('dm_rumors', fn)` for character-initiated DMs. Do not rely on `slot_advanced` for the day end; use the hook.
+- **Social checks:** `meetsSocialRequirements(state, { empathy: 3 })`.
+- **Context:** `calendar` header data for the scene header: `state.day`, `state.slot`, `clockText(day, slot)`.
+- A relation's `loyaltyBand` is only initialised by P1/P2 (from Trust at creation); P2's Trust penalties (shortage streak) do **not** recompute it. P3/P6 own the hysteresis; recompute after Trust changes.
