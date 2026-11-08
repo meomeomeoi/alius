@@ -104,6 +104,8 @@ export function renderSysTab(host: HTMLElement, ctx: SysCtx): void {
     h('h3', {}, 'Campaign'),
     field('Desire/Bond defects', checkbox('desireBondDefects', settings.desireBondDefects)),
     field('Show raw values', checkbox('showRawValues', settings.showRawValues)),
+    field('Companion vignettes (main model)', checkbox('activityFlavor', settings.activityFlavor)),
+    field('Generated grunt names', checkbox('gruntFlavor', settings.gruntFlavor)),
     field('Sprite mode', select('spriteMode', [['native', 'Native Expressions'], ['emotion_pick', 'Mechanic emotion pick']], settings.spriteMode)),
     h('h3', {}, 'Developer'),
     field('Debug mode', checkbox('debug', settings.debug, true)),

@@ -5,6 +5,10 @@ import { crimeEffectsOf, crimeKnownByDefault, initialRelation, startingTrustAdju
 import { VALUE_AXES, type CampaignState, type Relation, type Unit } from './state/types';
 import { TUNING } from './tuning';
 
+/** Rules for a generated grunt name and bio (`squad/set_flavor` and the flavor call's sanitizer). */
+export const GENERATED_NAME = /^(?=.*[A-Za-z])[A-Za-z0-9 '-]{1,24}$/;
+export const GRUNT_BIO_MAX = 120;
+
 const INNER = 11;
 const fit = (s: string): string => {
   const left = Math.floor((INNER - s.length) / 2);

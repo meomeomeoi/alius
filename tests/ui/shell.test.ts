@@ -226,7 +226,7 @@ describe('SYS tab', () => {
     const { shell } = setup();
     shell.open();
     shell.showTab('sys');
-    expect(document.querySelectorAll('#alius-shell input[name^="budget:"]')).toHaveLength(10);
+    expect(document.querySelectorAll('#alius-shell input[name^="budget:"]')).toHaveLength(11);
   });
 
   it('debug panel is hidden unless debug is on', () => {
@@ -315,5 +315,18 @@ describe('SYS tab', () => {
     const btn = [...document.querySelectorAll<HTMLButtonElement>('#alius-shell .alius-debug button')].find((b) => b.textContent === 'Set test directive')!;
     btn.click();
     expect(run).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('SYS tab P2 settings', () => {
+  it('has toggles for companion vignettes and generated grunt names', () => {
+    const { shell } = setup();
+    shell.open();
+    shell.showTab('sys');
+    for (const name of ['activityFlavor', 'gruntFlavor']) {
+      const box = document.querySelector(`#alius-shell input[name="${name}"]`) as HTMLInputElement | null;
+      expect(box, name).not.toBeNull();
+      expect(box!.checked).toBe(true);
+    }
   });
 });

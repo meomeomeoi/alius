@@ -128,10 +128,11 @@ Source layout (TypeScript, same toolchain style as Mundi-Expanded):
 | `scene_summary` | mechanic | Scene → facts + chronicle entry | 800 |
 | `dilemma_generate` | mechanic | Context + template → dilemma structure | 1000 |
 | `director_tick` | mechanic | World state → mission offers, rumors, thread updates | 1200 |
-| `flavor` | mechanic | Names/descriptions for generated things (grunts, affixed enemies, items) | 400 |
+| `flavor` | mechanic | Names/descriptions for generated things (grunts, affixed enemies, items); one `kind` per use | 400 |
 | `dm_reply` | main | Short PDA message | 300 |
 | `expedition_recap` | main | Combat/expedition log → narrative recap | 700 |
 | `emotion_pick` | mechanic | Optional sprite emotion classification (when not using native Expressions) | 50 |
+| `activity_vignette` | main | ≤2-line vignette after a companion activity (P2; can be turned off) | 150 |
 | *(scene dialogue)* | main | Normal ST generation with injected context | — (ST settings) |
 
 Every budget is a user setting. Every mechanic call: request JSON → validate → on truncation/invalid JSON, one repair attempt (lenient parser) → one retry with budget ×1.5 → fail soft (no state change, toast in debug mode). Where the provider allows it, reasoning/thinking is disabled or capped for mechanic calls.
@@ -224,7 +225,7 @@ Packs can override by id or `extends` an existing entry. In v1 packs are loaded 
 
 ## 8. Settings (global, per-campaign overrides where noted)
 
-Connection profiles (main, mechanic) · per-call token budgets · intent extraction mode (per exchange / every N / scene end) · sprite mode (native Expressions / mechanic `emotion_pick`) · difficulty (combat difficulty; **easy retry**: rewind lost combat, rewinds not recorded in memory) · show raw values (off: bands only) · mechanics edit lock (on by default: view-only, unlock to edit numbers in UI) · intimacy: romance on/off, explicit scenes allowed on/off (directive to main model; actual content depends on user's model/preset), Desire/Bond defect category on/off, romantic initiative intensity (low/med/high) · UI: phosphor palette (amber/green/white), scanlines, typing animation speed · debug mode (show intents, deltas, prompts).
+Connection profiles (main, mechanic) · per-call token budgets · intent extraction mode (per exchange / every N / scene end) · sprite mode (native Expressions / mechanic `emotion_pick`) · difficulty (combat difficulty; **easy retry**: rewind lost combat, rewinds not recorded in memory) · show raw values (off: bands only) · mechanics edit lock (on by default: view-only, unlock to edit numbers in UI) · intimacy: romance on/off, explicit scenes allowed on/off (directive to main model; actual content depends on user's model/preset), Desire/Bond defect category on/off, romantic initiative intensity (low/med/high) · UI: phosphor palette (amber/green/white), scanlines, typing animation speed · companion vignettes on/off, generated grunt names on/off · debug mode (show intents, deltas, prompts).
 
 Defaults in code: Desire/Bond defects **off**, show raw values **off**, sprite mode **native**, edit lock **on**. The campaign stores a snapshot of the Desire/Bond setting it was started with (`settings.desireBondDefects`); the engine uses that snapshot, not the global value, when it validates later changes. The edit lock does **not** apply inside the new-campaign wizard (setup is always editable); it does apply to "Re-sync from card" on a running campaign.
 

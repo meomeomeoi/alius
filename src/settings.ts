@@ -20,6 +20,10 @@ export interface AliusSettings {
   desireBondDefects: boolean;
   showRawValues: boolean;
   spriteMode: 'native' | 'emotion_pick';
+  /** A short generated vignette after a companion activity (main model, one call per activity). */
+  activityFlavor: boolean;
+  /** A generated name and one-line bio for newly recruited grunts (one mechanic call per grunt). */
+  gruntFlavor: boolean;
 }
 
 export const DEFAULT_SETTINGS: AliusSettings = {
@@ -37,6 +41,7 @@ export const DEFAULT_SETTINGS: AliusSettings = {
     dm_reply: 300,
     expedition_recap: 700,
     emotion_pick: 50,
+    activity_vignette: 150,
     ping: 100,
   },
   contextTokenCap: 1200,
@@ -48,6 +53,8 @@ export const DEFAULT_SETTINGS: AliusSettings = {
   desireBondDefects: false,
   showRawValues: false,
   spriteMode: 'native',
+  activityFlavor: true,
+  gruntFlavor: true,
 };
 
 const fieldSchemas = {
@@ -64,6 +71,8 @@ const fieldSchemas = {
   desireBondDefects: z.boolean(),
   showRawValues: z.boolean(),
   spriteMode: z.enum(['native', 'emotion_pick']),
+  activityFlavor: z.boolean(),
+  gruntFlavor: z.boolean(),
 };
 const budgetSchema = z.number().int().min(1);
 

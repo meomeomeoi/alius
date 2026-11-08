@@ -4433,6 +4433,7 @@ var CALL_TYPE_IDS = [
   "dm_reply",
   "expedition_recap",
   "emotion_pick",
+  "activity_vignette",
   "ping"
 ];
 var registry = /* @__PURE__ */ new Map();
@@ -4832,6 +4833,7 @@ var DEFAULT_SETTINGS = {
     dm_reply: 300,
     expedition_recap: 700,
     emotion_pick: 50,
+    activity_vignette: 150,
     ping: 100
   },
   contextTokenCap: 1200,
@@ -4842,7 +4844,9 @@ var DEFAULT_SETTINGS = {
   editLock: true,
   desireBondDefects: false,
   showRawValues: false,
-  spriteMode: "native"
+  spriteMode: "native",
+  activityFlavor: true,
+  gruntFlavor: true
 };
 var fieldSchemas = {
   mechanicProfileId: external_exports.string(),
@@ -4857,7 +4861,9 @@ var fieldSchemas = {
   editLock: external_exports.boolean(),
   desireBondDefects: external_exports.boolean(),
   showRawValues: external_exports.boolean(),
-  spriteMode: external_exports.enum(["native", "emotion_pick"])
+  spriteMode: external_exports.enum(["native", "emotion_pick"]),
+  activityFlavor: external_exports.boolean(),
+  gruntFlavor: external_exports.boolean()
 };
 var budgetSchema = external_exports.number().int().min(1);
 var isObj2 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -6335,6 +6341,8 @@ function renderSysTab(host, ctx2) {
     h("h3", {}, "Campaign"),
     field("Desire/Bond defects", checkbox("desireBondDefects", settings.desireBondDefects)),
     field("Show raw values", checkbox("showRawValues", settings.showRawValues)),
+    field("Companion vignettes (main model)", checkbox("activityFlavor", settings.activityFlavor)),
+    field("Generated grunt names", checkbox("gruntFlavor", settings.gruntFlavor)),
     field("Sprite mode", select("spriteMode", [["native", "Native Expressions"], ["emotion_pick", "Mechanic emotion pick"]], settings.spriteMode)),
     h("h3", {}, "Developer"),
     field("Debug mode", checkbox("debug", settings.debug, true)),

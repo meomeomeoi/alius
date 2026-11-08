@@ -14,6 +14,7 @@ describe('settings', () => {
     expect(s.budgets).toEqual({
       profile_import: 1500, intent_extract: 600, scene_summary: 800, dilemma_generate: 1000,
       director_tick: 1200, flavor: 400, dm_reply: 300, expedition_recap: 700, emotion_pick: 50, ping: 100,
+      activity_vignette: 150,
     });
     expect(Object.keys(s.budgets).sort()).toEqual([...CALL_TYPE_IDS].sort());
     // and written back so SillyTavern persists them
@@ -48,6 +49,21 @@ describe('settings', () => {
     expect(s.desireBondDefects).toBe(false);
     expect(s.showRawValues).toBe(false);
     expect(s.spriteMode).toBe('native');
+  });
+
+  it('new P2 settings default to true, true', () => {
+    const s = getSettings(new FakeStAdapter());
+    expect(s.activityFlavor).toBe(true);
+    expect(s.gruntFlavor).toBe(true);
+  });
+
+  it('activity_vignette budget defaults to 150 and is clamped like the others', () => {
+    const st = new FakeStAdapter();
+    expect(getSettings(st).budgets.activity_vignette).toBe(150);
+    st.settings = { budgets: { activity_vignette: 0 }, activityFlavor: 'yes' };
+    const s = getSettings(st);
+    expect(s.budgets.activity_vignette).toBe(150);
+    expect(s.activityFlavor).toBe(true);
   });
 
   it('invalid spriteMode resets to native', () => {

@@ -1,4 +1,4 @@
-import { generateGrunt, gruntRelation } from '../grunts';
+import { GENERATED_NAME, GRUNT_BIO_MAX, generateGrunt, gruntRelation } from '../grunts';
 import { facilityLevel, facilityLevels, isLiving } from '../economy';
 import { registerAction } from '../dispatch';
 import { TUNING } from '../tuning';
@@ -80,9 +80,6 @@ registerAction('base/recruit_grunt', (draft, _payload, ctx) => {
     { type: 'grunt_recruited', unitId: grunt.id, designation: grunt.designation },
   ];
 });
-
-const GENERATED_NAME = /^(?=.*[A-Za-z])[A-Za-z0-9 '-]{1,24}$/;
-export const GRUNT_BIO_MAX = 120;
 
 /** Applies a generated name and bio to a grunt (the designation stays). The numbers never change. */
 registerAction('squad/set_flavor', (draft, payload) => {

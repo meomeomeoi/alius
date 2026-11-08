@@ -196,7 +196,7 @@ calendar: `morning to afternoon to evening`; `evening without a night queue runs
 
 **Files:**
 - Create: `src/llm/calls/activityVignette.ts`, `src/llm/calls/flavor.ts`
-- Modify: `src/llm/callTypes.ts` (id `activity_vignette`), `src/settings.ts`, `src/ui/shell/sysTab.ts`, `docs/00-overview.md` (§5.2 table row), `docs/packages/P0-foundation.md`
+- Modify: `src/llm/callTypes.ts` (id `activity_vignette`), `src/settings.ts`, `src/ui/shell/sysTab.ts`, `docs/00-overview.md` (§5.2 table row)
 - Test: `tests/llm/activityVignette.test.ts`, `tests/llm/flavor.test.ts`, `tests/settings.test.ts` (extend), `tests/ui/shell.test.ts` (SYS fields if it lists them)
 
 **Interfaces:**
@@ -204,11 +204,11 @@ calendar: `morning to afternoon to evening`; `evening without a night queue runs
 - `activity_vignette`: profile `main`, text. Input `{ activityName, commanderName, unitName, unitRole, likes, defectNames }`. `sanitizeVignette(text): string | null` — strips quotes/markdown/stage labels, keeps at most 2 non-empty lines and 240 characters, empty → `null`. `generateVignette(input, deps)` returns the string or `null` (fail-soft, never throws).
 - `flavor` (registered once here, generic): input `{ kind: 'grunt', designation, roleName, defectName }`; JSON `{ name, bio }`; `sanitizeGruntFlavor` applies the `squad/set_flavor` limits and returns `null` when the name is unusable. Other packages add their kinds through `registerFlavorKind(kind, { system, prompt })`.
 
-- [ ] **Step 1: Write the failing tests** — vignette: `keeps two lines`, `drops a third line`, `strips quotes and a speaker label`, `truncates at 240 characters`, `empty answer is null`, `generateVignette returns null on a failed call and never throws`, `the prompt names activity, unit and commander but contains no numbers from state`. flavor: `valid JSON gives name and bio`, `overlong bio is cut at 120`, `name with markup is rejected`, `invalid JSON after both attempts is null`, `unknown kind is refused`. settings: `new P2 settings default to true, true`, `activity_vignette budget defaults to 150 and is clamped like the others`.
-- [ ] **Step 2: Run** `npx vitest run tests/llm tests/settings.test.ts tests/ui/shell.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS; whole suite green.
-- [ ] **Step 5: Commit** `feat(llm): activity vignette and grunt flavor calls, P2 settings`.
+- [x] **Step 1: Write the failing tests** — vignette: `keeps two lines`, `drops a third line`, `strips quotes and a speaker label`, `truncates at 240 characters`, `empty answer is null`, `generateVignette returns null on a failed call and never throws`, `the prompt names activity, unit and commander but contains no numbers from state`. flavor: `valid JSON gives name and bio`, `overlong bio is cut at 120`, `name with markup is rejected`, `invalid JSON after both attempts is null`, `unknown kind is refused`. settings: `new P2 settings default to true, true`, `activity_vignette budget defaults to 150 and is clamped like the others`.
+- [x] **Step 2: Run** `npx vitest run tests/llm tests/settings.test.ts tests/ui/shell.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS; whole suite green.
+- [x] **Step 5: Commit** `feat(llm): activity vignette and grunt flavor calls, P2 settings`.
 
 ### Task 8: UI and app wiring
 
