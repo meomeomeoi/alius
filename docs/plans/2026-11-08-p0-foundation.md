@@ -262,13 +262,13 @@ export interface StAdapter {
   - `createSaver(st: StAdapter, chatId: string, debounceMs = 500): { save(state: CampaignState): void; flush(): Promise<void>; dispose(): void }` — refuses (no-op + console.warn) if the chat's current metadata is a `readonly` load.
   - `exportCampaign(state): string` (pretty JSON); `importCampaign(text: string): MigrateResult`.
 
-- [ ] **Step 1: Write the failing tests** (use `vi.useFakeTimers()`)
+- [x] **Step 1: Write the failing tests** (use `vi.useFakeTimers()`)
 
 `init in solo chat refuses with not_group`; `init then load returns ok and same state`; `load on chat without key is none`; `future version loads readonly`; `corrupt metadata is never overwritten` (metadata `alius: "garbage"` → load readonly; `createSaver(...).save(validState)`; flush; metadata still `"garbage"`); `debounce coalesces three saves into one saveMetadata call`; `saver drops pending write after chat change` (save in A, `switchChat(B)` before timer fires, advance timers → B metadata has no `alius`, A unchanged by the dropped write, warn logged); `export/import round trip`.
 
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement** (saver compares `st.getActiveChat()?.chatId` with its bound `chatId` at flush time). **Step 4: Run** → PASS.
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement** (saver compares `st.getActiveChat()?.chatId` with its bound `chatId` at flush time). **Step 4: Run** → PASS.
 
-- [ ] **Step 5: Commit** `feat(st): campaign persistence in chat metadata`
+- [x] **Step 5: Commit** `feat(st): campaign persistence in chat metadata`
 
 ---
 
