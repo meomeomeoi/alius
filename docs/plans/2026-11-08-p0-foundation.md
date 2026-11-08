@@ -288,13 +288,13 @@ export interface StAdapter {
   - `loadPacks(packRoots: string[], fetchJson: (path: string) => Promise<unknown>): Promise<{ registries: Registries; errors: ContentError[] }>` — sort packs by `priority` ascending, later overrides earlier by id; `extends: '<id>'` deep-merges objects onto the base entry (arrays replace), resolved after all packs; then cross-reference validation.
   - `registerRefs(registry: RegistryName, extract: (entry: Entry) => Array<{ registry: RegistryName; id: string; path: string }>): void` — P0 registers `flags.mutuallyExclusiveWith → flags`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `base pack loads two registries`; `invalid entry reported with file and path, valid siblings kept`; `missing file is reported, others load` (fetchJson rejects for one path); `higher priority pack overrides by id`; `extends merges objects and replaces arrays`; `extends unknown id is an error`; `unknown flag in mutuallyExclusiveWith is reported`; `all errors are returned together` (broken pack with 3 problems → `errors.length === 3`); `duplicate id within one file is an error`.
 
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement**; in the extension, `fetchJson` = `fetch(new URL(path, import.meta.url))` from `dist/` → pack roots `['../content/core']`. Write `docs/CONTENT.md`: manifest format, the entry base, `extends`, priority, the `flags` schema with one example, how errors look. **Step 4: Run** → PASS.
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement**; in the extension, `fetchJson` = `fetch(new URL(path, import.meta.url))` from `dist/` → pack roots `['../content/core']`. Write `docs/CONTENT.md`: manifest format, the entry base, `extends`, priority, the `flags` schema with one example, how errors look. **Step 4: Run** → PASS.
 
-- [ ] **Step 5: Commit** `feat(content): pack loader with overrides, extends and cross-reference validation`
+- [x] **Step 5: Commit** `feat(content): pack loader with overrides, extends and cross-reference validation`
 
 ---
 

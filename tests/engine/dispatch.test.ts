@@ -3,9 +3,9 @@ import { dispatch, registerAction, snapshot, restore } from '../../src/engine/di
 import '../../src/engine/actions/debug';
 import { createCampaign } from '../../src/engine/state/create';
 import type { CampaignState } from '../../src/engine/state/types';
-import type { Registries } from '../../src/content/types';
+import { emptyRegistries } from '../../src/content/types';
 
-const registries: Registries = {};
+const registries = emptyRegistries();
 
 function deepFreeze<T>(o: T): T {
   if (typeof o === 'object' && o !== null && !Object.isFrozen(o)) {

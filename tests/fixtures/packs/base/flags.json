@@ -1,0 +1,4 @@
+[
+  { "id": "alpha", "scope": "world", "description": "Alpha flag" },
+  { "id": "beta", "scope": "commander", "description": "Beta flag", "mutuallyExclusiveWith": ["alpha"], "setBy": ["start"] }
+]
