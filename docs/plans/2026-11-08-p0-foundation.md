@@ -159,17 +159,17 @@ git add -A && git commit -m "chore: scaffold Alius extension build and architect
   - `createCampaign(opts: { seed: number; commanderName: string }): CampaignState` → `version: 1`, `day: 1`, `slot: 'morning'`, empty collections, `resources {credits:0, supplies:0, plyx:0}`, `rng: seedRng(seed)`.
   - `CURRENT_VERSION = 1`; `type MigrateResult = { ok: true; state: CampaignState; migratedFrom: number } | { ok: false; reason: 'invalid' | 'future_version'; version?: number; detail: string }`; `migrate(raw: unknown): MigrateResult`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `createCampaign has version 1 and all top-level keys` (compare `Object.keys` to an explicit list copied from overview §6 + `rng`); `v0 fixture migrates to v1` (fixture `{ "version": 0, "day": 3, "slot": "evening", "seed": 7 }` → `ok`, `day 3`, `slot 'evening'`, `migratedFrom 0`, all v1 keys present); `missing version is treated as invalid` (`{day:1}` → `reason 'invalid'`); `future version is refused` (`{version: 99}` → `reason 'future_version', version 99`); `non-object is invalid` (`null`, `"x"`, `[]`).
 
-- [ ] **Step 2: Run** → FAIL.
+- [x] **Step 2: Run** → FAIL.
 
-- [ ] **Step 3: Implement** `migrations` as an ordered array `[(v0) => v1]`; v0→v1 builds a `createCampaign({seed: raw.seed ?? 1, commanderName: ''})` and copies `day`/`slot`. A light zod check of v1 top-level shape (`version`, `day` int ≥1, `slot` enum, objects/arrays by type) runs after migration; failure → `invalid` with the zod message in `detail`.
+- [x] **Step 3: Implement** `migrations` as an ordered array `[(v0) => v1]`; v0→v1 builds a `createCampaign({seed: raw.seed ?? 1, commanderName: ''})` and copies `day`/`slot`. A light zod check of v1 top-level shape (`version`, `day` int ≥1, `slot` enum, objects/arrays by type) runs after migration; failure → `invalid` with the zod message in `detail`.
 
-- [ ] **Step 4: Run** → PASS.
+- [x] **Step 4: Run** → PASS.
 
-- [ ] **Step 5: Commit** `feat(engine): campaign state v1 with migrations`
+- [x] **Step 5: Commit** `feat(engine): campaign state v1 with migrations`
 
 ---
 
