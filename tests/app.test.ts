@@ -23,6 +23,7 @@ function fakeShell() {
     showScreen() {},
     showTab() {},
     registerTab() {},
+    registerScreen() {},
     toast(kind: string, text: string) { toasts.push({ kind, text }); },
     modal: async () => null,
     setPalette() {},

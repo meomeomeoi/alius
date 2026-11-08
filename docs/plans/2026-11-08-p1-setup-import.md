@@ -448,17 +448,17 @@ export class Wizard {
   - `Back`/`Next`/`Cancel` buttons on every step; Cancel asks through `shell.modal` (`Discard intake form?` → `Discard` / `Keep editing`).
 - Styling uses the P0 palette variables only; focus outlines stay visible; every control has a label.
 
-- [ ] **Step 1: Write the failing tests** (fake adapter, core registries, importer stub)
+- [x] **Step 1: Write the failing tests** (fake adapter, core registries, importer stub)
 
 `shell renders a registered screen and showScreen switches to it`; `dossier shows 2 starts and 6 crimes with Plea: GUILTY`; `Next is disabled until name, start and crime are chosen`; `selecting units updates the difficulty hint` (0 → `HELLISH`, 3 → `HARD`); `fifth card cannot be selected` (checkbox disabled); `calibration shows candidates and preselects the first role`; `manual mode lists all six roles`; `Add second defect enables a second pick`; `values sliders write integers`; `tag input normalizes and enforces the cap`; `regenerate button calls the importer with that section only`; `review shows target choice only when binding is possible`; `confirm calls onConfirm with the SetupResult and the target`.
 
-- [ ] **Step 2: Run** `npx vitest run tests/ui/setup.test.ts` → FAIL.
+- [x] **Step 2: Run** `npx vitest run tests/ui/setup.test.ts` → FAIL.
 
-- [ ] **Step 3: Implement.**
+- [x] **Step 3: Implement.**
 
-- [ ] **Step 4: Run** `npx vitest run && npm run typecheck && npm run build` → PASS.
+- [x] **Step 4: Run** `npx vitest run && npm run typecheck && npm run build` → PASS.
 
-- [ ] **Step 5: Commit** `feat(ui): CCP intake wizard screen with profile calibration`
+- [x] **Step 5: Commit** `feat(ui): CCP intake wizard screen with profile calibration`
 
 ---
 

@@ -68,6 +68,7 @@ let generationCounter = 0;
 export class Wizard {
   private s: WizardState;
   private disposed = false;
+  private listeners = new Set<(s: WizardState) => void>();
 
   constructor(private deps: WizardDeps, init: { personaName: string; canBindCurrent: boolean }) {
     this.s = {
@@ -82,6 +83,11 @@ export class Wizard {
     };
   }
 
+  /** Whether Desire/Bond defects are allowed (needed by the manual lists in the UI). */
+  get desireBondDefects(): boolean {
+    return this.deps.desireBondDefects;
+  }
+
   get state(): WizardState {
     return this.s;
   }
@@ -91,8 +97,16 @@ export class Wizard {
     this.disposed = true;
   }
 
+  /** Extra change listener (the screen re-renders from it). Returns the unsubscribe function. */
+  subscribe(fn: (s: WizardState) => void): () => void {
+    this.listeners.add(fn);
+    return () => this.listeners.delete(fn);
+  }
+
   private emit(): void {
-    if (!this.disposed) this.deps.onChange(this.s);
+    if (this.disposed) return;
+    this.deps.onChange(this.s);
+    for (const fn of [...this.listeners]) fn(this.s);
   }
 
   // --- dossier

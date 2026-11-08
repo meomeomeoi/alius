@@ -5300,6 +5300,10 @@ function createShell(deps) {
       tabRenderers.set(id, render);
       if (isOpen() && router.current() === "pda" && tab === id) renderTab();
     },
+    registerScreen(id, render) {
+      router.register(id, render);
+      if (isOpen() && router.current() === id) renderView();
+    },
     toast,
     modal(opts) {
       return modals ? modals.show(opts) : Promise.resolve(null);

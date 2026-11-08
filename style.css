@@ -359,3 +359,204 @@
   padding-left: 1.2em;
   color: var(--alius-err);
 }
+
+/* CCP intake wizard (P1). Palette variables only. */
+#alius-shell .alius-setup {
+  height: 100%;
+  overflow: auto;
+  padding: 4px 2px 12px;
+}
+
+#alius-shell .alius-setup-title:focus {
+  outline: none;
+}
+
+#alius-shell .alius-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0 0 6px;
+  border-bottom: 1px dashed var(--alius-dim);
+}
+
+#alius-shell .alius-step {
+  color: var(--alius-dim);
+}
+
+#alius-shell .alius-step[aria-current="step"] {
+  color: var(--alius-accent);
+}
+
+#alius-shell .alius-step[aria-current="step"]::before {
+  content: "> ";
+}
+
+#alius-shell .alius-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(17em, 1fr));
+  gap: 8px;
+}
+
+#alius-shell .alius-card {
+  background: transparent;
+  color: var(--alius-fg);
+  border: 1px solid var(--alius-dim);
+  font: inherit;
+  text-align: left;
+  padding: 6px 8px;
+  cursor: pointer;
+}
+
+#alius-shell .alius-card p {
+  margin: 4px 0 0;
+}
+
+#alius-shell .alius-card:hover {
+  border-color: var(--alius-fg);
+}
+
+#alius-shell .alius-card[aria-pressed="true"] {
+  background: var(--alius-fg);
+  color: var(--alius-bg);
+  border-color: var(--alius-fg);
+}
+
+#alius-shell .alius-card[aria-pressed="true"] .alius-dim {
+  color: var(--alius-bg);
+}
+
+#alius-shell .alius-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(12em, 1fr));
+  gap: 6px;
+  margin-top: 8px;
+}
+
+#alius-shell .alius-tile {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--alius-dim);
+  padding: 4px 6px;
+  cursor: pointer;
+}
+
+#alius-shell .alius-tile img {
+  object-fit: cover;
+}
+
+#alius-shell .alius-hint {
+  color: var(--alius-accent);
+  margin: 6px 0;
+}
+
+#alius-shell .alius-setup-footer {
+  margin-top: 14px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--alius-dim);
+}
+
+#alius-shell .alius-btn:disabled {
+  color: var(--alius-dim);
+  border-color: var(--alius-dim);
+  cursor: not-allowed;
+}
+
+#alius-shell .alius-btn:disabled:hover {
+  background: transparent;
+  color: var(--alius-dim);
+}
+
+#alius-shell .alius-pager {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+#alius-shell .alius-calib-head,
+#alius-shell .alius-calib-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+#alius-shell .alius-status {
+  margin: 0;
+  color: var(--alius-accent);
+}
+
+#alius-shell .alius-defect-line {
+  margin: 2px 0 0;
+  color: var(--alius-dim);
+}
+
+#alius-shell .alius-card[aria-pressed="true"] .alius-defect-line {
+  color: var(--alius-bg);
+}
+
+#alius-shell .alius-sliders {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(17em, 1fr));
+  gap: 4px 24px;
+}
+
+#alius-shell .alius-slider {
+  display: grid;
+  grid-template-columns: 9em 1fr 2.5em;
+  align-items: center;
+  gap: 8px;
+}
+
+#alius-shell .alius-slider input[type="range"] {
+  accent-color: var(--alius-fg);
+}
+
+#alius-shell .alius-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 4px 0;
+}
+
+#alius-shell .alius-chip {
+  border: 1px solid var(--alius-dim);
+  padding: 0 4px 0 6px;
+}
+
+#alius-shell .alius-chip button {
+  background: transparent;
+  color: var(--alius-fg);
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+#alius-shell .alius-tags {
+  margin: 8px 0;
+}
+
+#alius-shell .alius-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0;
+}
+
+#alius-shell .alius-notes {
+  color: var(--alius-dim);
+  margin-top: 10px;
+}
+
+#alius-shell .alius-review {
+  border: 1px solid var(--alius-dim);
+  padding: 8px 10px;
+  overflow: auto;
+}
+
+#alius-shell .alius-target {
+  margin-top: 10px;
+}

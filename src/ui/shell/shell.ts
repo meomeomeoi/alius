@@ -20,6 +20,8 @@ export interface ShellApi {
   showScreen(id: ScreenId): void;
   showTab(id: TabId): void;
   registerTab(id: TabId, render: (host: HTMLElement) => void): void;
+  /** Registers (or replaces) the renderer of a full screen; re-renders it if it is the current one. */
+  registerScreen(id: ScreenId, render: (host: HTMLElement) => void): void;
   toast(kind: ToastKind, text: string): void;
   modal(opts: ModalOpts): Promise<string | null>;
   setPalette(p: 'amber' | 'green' | 'white'): void;
@@ -214,6 +216,10 @@ export function createShell(deps: ShellDeps): ShellApi {
     registerTab(id, render) {
       tabRenderers.set(id, render);
       if (isOpen() && router.current() === 'pda' && tab === id) renderTab();
+    },
+    registerScreen(id, render) {
+      router.register(id, render);
+      if (isOpen() && router.current() === id) renderView();
     },
     toast,
     modal(opts) {

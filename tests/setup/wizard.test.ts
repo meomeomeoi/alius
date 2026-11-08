@@ -333,6 +333,16 @@ describe('Wizard', () => {
     expect(b.w.state.target).toBe('current_group');
   });
 
+  it('subscribe notifies listeners until they unsubscribe', () => {
+    const { w } = make();
+    const seen: string[] = [];
+    const off = w.subscribe((s) => seen.push(s.commanderName));
+    w.setCommanderName('A');
+    off();
+    w.setCommanderName('B');
+    expect(seen).toEqual(['A']);
+  });
+
   it('every change notifies onChange', () => {
     const { w, changes } = make();
     w.setCommanderName('X');
