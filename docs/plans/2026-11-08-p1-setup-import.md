@@ -278,17 +278,17 @@ export function buildCampaign(
     - `loyaltyBand` from P3's entry thresholds: trust `< 10` → `breaking`, `< 25` → `wavering`, else `steady`.
   - Pure: no `Math.random`, no `Date`.
 
-- [ ] **Step 1: Write the failing tests** (real core registries)
+- [x] **Step 1: Write the failing tests** (real core registries)
 
 `four units build a valid campaign that passes migrate()` (`migrate(state).ok === true`); `zero units is valid` (empty squad and roster); `day 1 morning`; `stats initialized from role` (one unit per role → `baseStats` equal the role's, `currentHp === hp`, level 1); `mutiny raises authority to 2, others stay 1`; `strain_trade adds 20 plyx`; `experimentation lowers starting trust by 10, clamped at 0` (baseline trust 5 → 0); `purge adds trust only to pragmatism+ units`; `knows_crime only when the crime or start says so` (default → `[]`; registries patched with `knownByDefault: true` → `['knows_crime']`); `duplicate display names get distinct ids`; `unknown role, defect or signature is rejected with a message naming it`; `desire_bond defect rejected when disabled, accepted when enabled`; `five units rejected`; `same card twice rejected`; `three defects rejected`; `out-of-range value or baseline rejected`; `non-normalized tag rejected`; `unknown effect types in a crime are ignored`; `same input and seed give deep-equal states`; `normalizeTag` cases (`'  Loud   MUSIC!! '` → `'loud music'`, 40 characters → 32, `'!!!'` → `null`, `42` → `null`).
 
-- [ ] **Step 2: Run** `npx vitest run tests/engine/setup.test.ts` → FAIL.
+- [x] **Step 2: Run** `npx vitest run tests/engine/setup.test.ts` → FAIL.
 
-- [ ] **Step 3: Implement.** Fix any type errors the `signatureSkill` change causes in existing tests or fixtures.
+- [x] **Step 3: Implement.** Fix any type errors the `signatureSkill` change causes in existing tests or fixtures.
 
-- [ ] **Step 4: Run** `npx vitest run && npm run typecheck` → PASS, including `tests/architecture.test.ts`.
+- [x] **Step 4: Run** `npx vitest run && npm run typecheck` → PASS, including `tests/architecture.test.ts`.
 
-- [ ] **Step 5: Commit** `feat(engine): campaign setup builder with crime/start effects and validation`
+- [x] **Step 5: Commit** `feat(engine): campaign setup builder with crime/start effects and validation`
 
 ---
 

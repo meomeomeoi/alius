@@ -15,6 +15,15 @@ export type ValueAxis = (typeof VALUE_AXES)[number];
 export interface DefectInstance {
   id: string;
   arc?: string;
+  /** In-universe origin line written at import (P1). */
+  origin?: string;
+}
+
+/** The signature skill a unit owns: a template id plus the unit's own name and description. */
+export interface SignatureInstance {
+  templateId: string;
+  name: string;
+  description: string;
 }
 
 export interface Unit {
@@ -28,7 +37,7 @@ export interface Unit {
   xp: number;
   skillPoints: number;
   unlockedNodes: string[];
-  signatureSkill: string;
+  signatureSkill: SignatureInstance;
   baseStats: { hp: number; atk: number; def: number; spd: number; crit: number };
   currentHp: number;
   stress: number;
@@ -98,6 +107,8 @@ export interface CampaignState {
     factions: Record<string, number>;
     flags: string[];
     spineProgress: number;
+    /** Id of the start this campaign began with (P1). */
+    startId?: string;
   };
   missions: { offered: unknown[]; active: unknown[]; completed: unknown[] };
   rumors: unknown[];
