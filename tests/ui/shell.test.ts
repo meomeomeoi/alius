@@ -1,0 +1,277 @@
+// @vitest-environment jsdom
+import { describe, it, expect, afterEach, vi } from 'vitest';
+import { createShell } from '../../src/ui/shell/shell';
+import { FakeStAdapter } from '../../src/st/fake';
+import { createCampaign } from '../../src/engine/state/create';
+import type { CampaignState } from '../../src/engine/state/types';
+import type { LoadResult } from '../../src/st/persistence';
+
+const CHAT = { chatId: 'c', isGroup: true, groupId: 'g' };
+let shells: Array<{ destroy(): void }> = [];
+
+function setup(opts: { settings?: Record<string, unknown>; load?: LoadResult; state?: CampaignState | null } = {}) {
+  const st = new FakeStAdapter(CHAT);
+  st.profiles = [{ id: 'mech', name: 'Mech profile', api: 'openrouter', model: 'm' }];
+  Object.assign(st.settings, opts.settings ?? {});
+  const state = opts.state === undefined ? createCampaign({ seed: 1, commanderName: 'Vale' }) : opts.state;
+  const load: LoadResult = opts.load ?? (state ? { kind: 'ok', state, chatId: 'c' } : { kind: 'none' });
+  const replaceState = vi.fn();
+  const shell = createShell({ st, getState: () => state, getLoad: () => load, replaceState });
+  shells.push(shell);
+  return { st, shell, state, replaceState };
+}
+
+const root = () => document.getElementById('alius-shell');
+const tabs = () => [...document.querySelectorAll<HTMLElement>('#alius-shell .alius-tab')];
+const selected = () => document.querySelector('#alius-shell .alius-tab[aria-selected="true"]')?.textContent;
+const key = (target: EventTarget, k: string, init: KeyboardEventInit = {}) =>
+  target.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true, ...init }));
+
+afterEach(() => {
+  shells.forEach((s) => s.destroy());
+  shells = [];
+  document.body.innerHTML = '';
+});
+
+describe('shell', () => {
+  it('open mounts #alius-shell and close removes it', () => {
+    const { shell } = setup();
+    expect(root()).toBeNull();
+    shell.open();
+    expect(root()).not.toBeNull();
+    expect(shell.isOpen()).toBe(true);
+    shell.open(); // idempotent
+    expect(document.querySelectorAll('#alius-shell')).toHaveLength(1);
+    shell.close();
+    expect(root()).toBeNull();
+    expect(shell.isOpen()).toBe(false);
+  });
+
+  it('eight tabs in the specified order and labels', () => {
+    const { shell } = setup();
+    shell.open();
+    expect(tabs().map((t) => t.textContent)).toEqual(['SQUAD', 'OPS', 'MAP', 'COMMS', 'BASE', 'INV', 'LOG', 'SYS']);
+    expect(document.querySelector('#alius-shell [role="tablist"]')!.textContent).toBe(
+      'SQUAD · OPS · MAP · COMMS · BASE · INV · LOG · SYS',
+    );
+    expect(selected()).toBe('SQUAD');
+  });
+
+  it('digit 3 selects MAP', () => {
+    const { shell } = setup();
+    shell.open();
+    key(document.body, '3');
+    expect(selected()).toBe('MAP');
+  });
+
+  it('digits are ignored while typing in a field', () => {
+    const { shell } = setup();
+    shell.open();
+    shell.showTab('sys');
+    const input = document.querySelector<HTMLInputElement>('#alius-shell input[type="number"]')!;
+    key(input, '3');
+    expect(selected()).toBe('SYS');
+  });
+
+  it('ArrowRight on SYS wraps to SQUAD, ArrowLeft on SQUAD wraps to SYS', () => {
+    const { shell } = setup();
+    shell.open();
+    shell.showTab('sys');
+    key(tabs()[7], 'ArrowRight');
+    expect(selected()).toBe('SQUAD');
+    expect(document.activeElement).toBe(tabs()[0]);
+    key(tabs()[0], 'ArrowLeft');
+    expect(selected()).toBe('SYS');
+  });
+
+  it('unregistered tab shows stub text', () => {
+    const { shell } = setup();
+    shell.open();
+    shell.showTab('map');
+    expect(document.querySelector('#alius-shell .alius-screen')!.textContent).toContain('NO DATA // MODULE OFFLINE');
+  });
+
+  it('a registered tab renders its content, also if registered while shown', () => {
+    const { shell } = setup();
+    shell.open();
+    shell.registerTab('squad', (host) => { host.textContent = 'ROSTER HERE'; });
+    expect(document.querySelector('#alius-shell .alius-screen')!.textContent).toBe('ROSTER HERE');
+  });
+
+  it('other screens show an offline stub; pda brings the tabs back', () => {
+    const { shell } = setup();
+    shell.open();
+    shell.showScreen('combat');
+    expect(document.querySelector('#alius-shell .alius-view')!.textContent).toContain('MODULE OFFLINE');
+    expect(tabs()).toHaveLength(0);
+    shell.showScreen('pda');
+    expect(tabs()).toHaveLength(8);
+  });
+
+  it('palette sets data-palette and persists in settings', () => {
+    const { shell, st } = setup();
+    shell.open();
+    expect(root()!.dataset.palette).toBe('amber');
+    shell.setPalette('green');
+    expect(root()!.dataset.palette).toBe('green');
+    expect(st.settings.palette).toBe('green');
+    shell.close();
+    shell.open();
+    expect(root()!.dataset.palette).toBe('green');
+  });
+
+  it('scanlines and flicker classes follow settings', () => {
+    const { shell } = setup({ settings: { scanlines: true, flicker: true } });
+    shell.open();
+    expect(root()!.classList.contains('alius-scanlines')).toBe(true);
+    expect(root()!.classList.contains('alius-flicker')).toBe(true);
+  });
+
+  it('modal resolves with clicked value and Escape resolves null', async () => {
+    const { shell } = setup();
+    shell.open();
+    const p1 = shell.modal({ title: 'Sure?', body: 'Really?', actions: [{ label: 'Yes', value: 'yes' }, { label: 'No', value: 'no' }] });
+    const dialog = document.querySelector('#alius-shell [role="dialog"]')!;
+    expect(dialog.textContent).toContain('Really?');
+    [...dialog.querySelectorAll('button')].find((b) => b.textContent === 'Yes')!.click();
+    expect(await p1).toBe('yes');
+    expect(document.querySelector('#alius-shell [role="dialog"]')).toBeNull();
+
+    const p2 = shell.modal({ title: 'T', body: document.createTextNode('b'), actions: [{ label: 'OK', value: 'ok' }] });
+    key(document.body, 'Escape');
+    expect(await p2).toBeNull();
+    expect(shell.isOpen()).toBe(true); // Escape closes the modal, not the shell
+  });
+
+  it('Escape without a modal does not close the shell', () => {
+    const { shell } = setup();
+    shell.open();
+    key(document.body, 'Escape');
+    expect(shell.isOpen()).toBe(true);
+  });
+
+  it('Alt+Shift+A toggles the shell globally', () => {
+    const { shell } = setup();
+    key(document.body, 'A', { altKey: true, shiftKey: true, code: 'KeyA' });
+    expect(shell.isOpen()).toBe(true);
+    key(document.body, 'A', { altKey: true, shiftKey: true, code: 'KeyA' });
+    expect(shell.isOpen()).toBe(false);
+  });
+
+  it('toasts show inside the open shell and fall back to SillyTavern when closed', () => {
+    const { shell, st } = setup();
+    shell.toast('info', 'closed one');
+    expect(st.toasts).toEqual([{ kind: 'info', text: 'closed one' }]);
+    shell.open();
+    shell.toast('error', 'open one');
+    expect(document.querySelector('#alius-shell .alius-toast')!.textContent).toContain('open one');
+    expect(st.toasts).toHaveLength(1);
+  });
+
+  it('readonly banner shows reason', () => {
+    const { shell } = setup({ state: null, load: { kind: 'readonly', reason: 'state version 99 is newer', chatId: 'c' } });
+    shell.open();
+    expect(document.querySelector('#alius-shell .alius-banner')!.textContent).toContain('state version 99 is newer');
+  });
+
+  it('no banner for a healthy campaign', () => {
+    const { shell } = setup();
+    shell.open();
+    expect(document.querySelector('#alius-shell .alius-banner')).toBeNull();
+  });
+});
+
+describe('SYS tab', () => {
+  it('lists connection profiles and saves a changed setting', () => {
+    const { shell, st } = setup();
+    shell.open();
+    shell.showTab('sys');
+    const select = document.querySelector<HTMLSelectElement>('#alius-shell select[name="mechanicProfileId"]')!;
+    expect([...select.options].map((o) => o.value)).toEqual(['', 'mech']);
+    select.value = 'mech';
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(st.settings.mechanicProfileId).toBe('mech');
+    expect(st.settingsSaves).toBeGreaterThan(0);
+  });
+
+  it('changing the palette in SYS restyles the shell', () => {
+    const { shell } = setup();
+    shell.open();
+    shell.showTab('sys');
+    const select = document.querySelector<HTMLSelectElement>('#alius-shell select[name="palette"]')!;
+    select.value = 'white';
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(root()!.dataset.palette).toBe('white');
+  });
+
+  it('has one budget input per call type', () => {
+    const { shell } = setup();
+    shell.open();
+    shell.showTab('sys');
+    expect(document.querySelectorAll('#alius-shell input[name^="budget:"]')).toHaveLength(10);
+  });
+
+  it('debug panel is hidden unless debug is on', () => {
+    const { shell } = setup();
+    shell.open();
+    shell.showTab('sys');
+    expect(document.querySelector('#alius-shell .alius-debug')).toBeNull();
+  });
+
+  it('state editor is read-only while editLock is on', () => {
+    const { shell } = setup({ settings: { debug: true, editLock: true } });
+    shell.open();
+    shell.showTab('sys');
+    const view = document.querySelector('#alius-shell pre.alius-state-view')!;
+    expect(JSON.parse(view.textContent!).version).toBe(1);
+    expect(document.querySelector('#alius-shell textarea')).toBeNull();
+    expect([...document.querySelectorAll('#alius-shell button')].some((b) => b.textContent === 'Apply')).toBe(false);
+  });
+
+  it('with editLock off the state is editable; invalid JSON is refused with a toast', () => {
+    const { shell, replaceState } = setup({ settings: { debug: true, editLock: false } });
+    shell.open();
+    shell.showTab('sys');
+    const ta = document.querySelector<HTMLTextAreaElement>('#alius-shell textarea.alius-state-editor')!;
+    const apply = [...document.querySelectorAll<HTMLButtonElement>('#alius-shell button')].find((b) => b.textContent === 'Apply')!;
+    ta.value = '{ not json';
+    apply.click();
+    expect(replaceState).not.toHaveBeenCalled();
+    expect(document.querySelector('#alius-shell .alius-toast')!.textContent).toMatch(/invalid/i);
+
+    ta.value = JSON.stringify({ version: 99 });
+    apply.click();
+    expect(replaceState).not.toHaveBeenCalled();
+
+    const edited = createCampaign({ seed: 1, commanderName: 'Vale' });
+    edited.day = 9;
+    ta.value = JSON.stringify(edited);
+    apply.click();
+    expect(replaceState).toHaveBeenCalledTimes(1);
+    expect(replaceState.mock.calls[0][0].day).toBe(9);
+  });
+
+  it('debug panel lists LLM log entries newest first', async () => {
+    const { llmLog } = await import('../../src/llm/log');
+    llmLog.clear();
+    llmLog.push({ at: 1, callType: 'ping', profile: 'p', maxTokens: 1, prompt: 'first', raw: 'r1', ok: true, ms: 1 });
+    llmLog.push({ at: 2, callType: 'flavor', profile: 'p', maxTokens: 1, prompt: 'second', raw: 'r2', ok: false, ms: 1 });
+    const { shell } = setup({ settings: { debug: true } });
+    shell.open();
+    shell.showTab('sys');
+    const items = [...document.querySelectorAll('#alius-shell .alius-log-entry')];
+    expect(items).toHaveLength(2);
+    expect(items[0].textContent).toContain('flavor');
+    expect(items[1].textContent).toContain('ping');
+    llmLog.clear();
+  });
+
+  it('export and import buttons exist', () => {
+    const { shell } = setup();
+    shell.open();
+    shell.showTab('sys');
+    const labels = [...document.querySelectorAll('#alius-shell button')].map((b) => b.textContent);
+    expect(labels).toContain('Export campaign');
+    expect(labels).toContain('Import campaign');
+  });
+});

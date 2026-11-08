@@ -1,0 +1,224 @@
+import { migrate } from '../../engine/state/migrations';
+import type { CampaignState } from '../../engine/state/types';
+import { CALL_TYPE_IDS } from '../../llm/callTypes';
+import { llmLog } from '../../llm/log';
+import { getSettings, updateSettings, type AliusSettings } from '../../settings';
+import type { StAdapter } from '../../st/adapter';
+import { exportCampaign, importCampaign, type LoadResult } from '../../st/persistence';
+import { h } from '../dom';
+import type { ModalOpts } from './modal';
+import type { ToastKind } from './toast';
+
+export interface SysCtx {
+  st: StAdapter;
+  getState: () => CampaignState | null;
+  getLoad: () => LoadResult;
+  replaceState?: (state: CampaignState) => void;
+  toast: (kind: ToastKind, text: string) => void;
+  modal: (opts: ModalOpts) => Promise<string | null>;
+  /** Called after a setting changed so the shell can restyle itself. */
+  onSettingsChanged: () => void;
+}
+
+const errText = (e: unknown) => (e instanceof Error ? e.message : String(e));
+
+function field(label: string, control: HTMLElement): HTMLElement {
+  return h('label', { class: 'alius-field' }, h('span', { class: 'alius-field-label' }, label), control);
+}
+
+export function renderSysTab(host: HTMLElement, ctx: SysCtx): void {
+  const { st } = ctx;
+  host.replaceChildren();
+  const settings = getSettings(st);
+  const debugHost = h('div', { class: 'alius-debug-host' });
+
+  const apply = (patch: Partial<AliusSettings>): AliusSettings => {
+    const next = updateSettings(st, patch);
+    ctx.onSettingsChanged();
+    return next;
+  };
+
+  const select = (name: keyof AliusSettings, options: Array<[string, string]>, value: string) => {
+    const el = h(
+      'select',
+      { name, class: 'alius-input' },
+      ...options.map(([v, label]) => h('option', { value: v, selected: v === value }, label)),
+    ) as HTMLSelectElement;
+    el.value = value;
+    el.addEventListener('change', () => apply({ [name]: el.value } as Partial<AliusSettings>));
+    return el;
+  };
+
+  const checkbox = (name: keyof AliusSettings, checked: boolean, rerenderDebug = false) => {
+    const el = h('input', { type: 'checkbox', name, checked }) as HTMLInputElement;
+    el.addEventListener('change', () => {
+      apply({ [name]: el.checked } as Partial<AliusSettings>);
+      if (rerenderDebug) renderDebug();
+    });
+    return el;
+  };
+
+  const numberInput = (name: string, value: number, commit: (n: number) => number) => {
+    const el = h('input', { type: 'number', name, min: '0', step: '1', value: String(value), class: 'alius-input alius-num' }) as HTMLInputElement;
+    el.addEventListener('change', () => {
+      const n = Number(el.value);
+      el.value = String(Number.isFinite(n) ? commit(Math.trunc(n)) : commit(NaN));
+    });
+    return el;
+  };
+
+  // --- settings form
+  const profiles = st.listConnectionProfiles();
+  const profileOptions: Array<[string, string]> = [
+    ['', '(none — use main model if fallback is on)'],
+    ...profiles.map((p): [string, string] => [p.id, `${p.name} (${p.api}${p.model ? ' / ' + p.model : ''})`]),
+  ];
+  const budgetInputs = CALL_TYPE_IDS.map((id) =>
+    field(
+      id,
+      numberInput(`budget:${id}`, settings.budgets[id], (n) => {
+        const next = apply({ budgets: { ...getSettings(st).budgets, [id]: n } });
+        return next.budgets[id];
+      }),
+    ),
+  );
+
+  const form = h(
+    'section',
+    { class: 'alius-section' },
+    h('h2', {}, '[ SETTINGS ]'),
+    field('Mechanic profile', select('mechanicProfileId', profileOptions, settings.mechanicProfileId)),
+    field('Mechanic thinking', select('mechanicThink', [['min', 'minimal'], ['low', 'low'], ['auto', 'provider default']], settings.mechanicThink)),
+    field('Fall back to main model', checkbox('mechanicFallbackToMain', settings.mechanicFallbackToMain)),
+    field('Request floor (tokens)', numberInput('requestFloor', settings.requestFloor, (n) => apply({ requestFloor: n }).requestFloor)),
+    field('Context cap (tokens)', numberInput('contextTokenCap', settings.contextTokenCap, (n) => apply({ contextTokenCap: n }).contextTokenCap)),
+    h('h3', {}, 'Output budgets (tokens)'),
+    h('div', { class: 'alius-grid' }, ...budgetInputs),
+    h('h3', {}, 'Display'),
+    field('Palette', select('palette', [['amber', 'amber'], ['green', 'green'], ['white', 'white']], settings.palette)),
+    field('Scanlines', checkbox('scanlines', settings.scanlines)),
+    field('CRT flicker', checkbox('flicker', settings.flicker)),
+    h('h3', {}, 'Developer'),
+    field('Debug mode', checkbox('debug', settings.debug, true)),
+    field('Mechanics edit lock', checkbox('editLock', settings.editLock, true)),
+  );
+
+  // --- campaign export / import
+  const fileInput = h('input', { type: 'file', accept: 'application/json,.json', class: 'alius-hidden', tabindex: '-1' }) as HTMLInputElement;
+  fileInput.addEventListener('change', async () => {
+    const file = fileInput.files?.[0];
+    fileInput.value = '';
+    if (!file) return;
+    let text: string;
+    try {
+      text = await file.text();
+    } catch (e) {
+      return ctx.toast('error', `Import failed: ${errText(e)}`);
+    }
+    const r = importCampaign(text);
+    if (!r.ok) return ctx.toast('error', `Import failed: ${r.detail}`);
+    if (ctx.getState()) {
+      const answer = await ctx.modal({
+        title: 'Replace campaign?',
+        body: 'The campaign in this chat will be replaced by the imported file.',
+        actions: [{ label: 'Replace', value: 'yes' }, { label: 'Cancel', value: 'no' }],
+      });
+      if (answer !== 'yes') return;
+    }
+    if (!ctx.replaceState) return ctx.toast('error', 'Import is not available right now.');
+    ctx.replaceState(r.state);
+    ctx.toast('info', 'Campaign imported.');
+  });
+
+  const exportClick = () => {
+    const state = ctx.getState();
+    if (!state) return ctx.toast('warn', 'No campaign to export.');
+    const url = URL.createObjectURL(new Blob([exportCampaign(state)], { type: 'application/json' }));
+    const a = h('a', { href: url, download: `alius-campaign-day${state.day}.json` });
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
+  const backup = h(
+    'section',
+    { class: 'alius-section' },
+    h('h2', {}, '[ CAMPAIGN FILE ]'),
+    h(
+      'div',
+      { class: 'alius-row' },
+      h('button', { type: 'button', class: 'alius-btn', onclick: exportClick }, 'Export campaign'),
+      h('button', { type: 'button', class: 'alius-btn', onclick: () => fileInput.click() }, 'Import campaign'),
+      fileInput,
+    ),
+  );
+
+  // --- debug panel
+  function renderDebug(): void {
+    debugHost.replaceChildren();
+    const s = getSettings(st);
+    if (!s.debug) return;
+
+    const entries = [...llmLog.entries()].reverse();
+    const logList = entries.length
+      ? entries.map((e) =>
+          h(
+            'details',
+            { class: 'alius-log-entry' },
+            h(
+              'summary',
+              {},
+              `${new Date(e.at).toLocaleTimeString()} ${e.callType} via ${e.profile} · ${e.ok ? 'ok' : 'FAILED'} · ${e.ms} ms · max ${e.maxTokens}`,
+            ),
+            h('pre', {}, `PROMPT:\n${e.prompt}\n\nRAW:\n${e.raw}\n\nPARSED:\n${e.parsed === undefined ? '(none)' : JSON.stringify(e.parsed, null, 2)}`),
+          ),
+        )
+      : [h('p', { class: 'alius-dim' }, 'No LLM calls yet.')];
+
+    const state = ctx.getState();
+    let stateView: HTMLElement;
+    if (!state) {
+      stateView = h('p', { class: 'alius-dim' }, 'No campaign loaded.');
+    } else if (s.editLock) {
+      stateView = h(
+        'div',
+        {},
+        h('pre', { class: 'alius-state-view' }, JSON.stringify(state, null, 2)),
+        h('p', { class: 'alius-dim' }, 'Read-only. Turn off "Mechanics edit lock" to edit.'),
+      );
+    } else {
+      const ta = h('textarea', { class: 'alius-state-editor alius-input', rows: '18', spellcheck: 'false', 'aria-label': 'Campaign state JSON' }) as HTMLTextAreaElement;
+      ta.value = JSON.stringify(state, null, 2);
+      const applyState = () => {
+        let raw: unknown;
+        try {
+          raw = JSON.parse(ta.value);
+        } catch (e) {
+          return ctx.toast('error', `Invalid JSON: ${errText(e)}`);
+        }
+        const r = migrate(raw);
+        if (!r.ok) return ctx.toast('error', `Invalid state: ${r.detail}`);
+        if (!ctx.replaceState) return ctx.toast('error', 'Applying state is not available right now.');
+        ctx.replaceState(r.state);
+        ctx.toast('info', 'State applied.');
+      };
+      stateView = h('div', {}, ta, h('div', { class: 'alius-row' }, h('button', { type: 'button', class: 'alius-btn', onclick: applyState }, 'Apply')));
+    }
+
+    debugHost.append(
+      h(
+        'section',
+        { class: 'alius-section alius-debug' },
+        h('h2', {}, '[ DEBUG ]'),
+        h('h3', {}, 'LLM log (newest first)'),
+        h('div', { class: 'alius-log' }, ...logList),
+        h('h3', {}, 'Campaign state'),
+        stateView,
+      ),
+    );
+  }
+
+  renderDebug();
+  host.append(form, backup, debugHost);
+}

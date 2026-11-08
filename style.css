@@ -1,0 +1,355 @@
+/* Alius phosphor palettes. Every text color is >= 7:1 against its background. */
+#alius-shell {
+  --alius-font: "IBM Plex Mono", "JetBrains Mono", ui-monospace, monospace;
+  --alius-fg: #ffb000;
+  --alius-dim: #d29200;
+  --alius-bg: #120c02;
+  --alius-accent: #ffd060;
+  --alius-err: #ff8a5c;
+  --alius-line: 1px solid var(--alius-fg);
+}
+
+#alius-shell[data-palette="green"] {
+  --alius-fg: #33ff66;
+  --alius-dim: #2bcf55;
+  --alius-bg: #021208;
+  --alius-accent: #8dffaa;
+  --alius-err: #ff8a8a;
+}
+
+#alius-shell[data-palette="white"] {
+  --alius-fg: #e8e8e8;
+  --alius-dim: #b4b4b4;
+  --alius-bg: #0b0b0b;
+  --alius-accent: #ffffff;
+  --alius-err: #ff9a9a;
+}
+
+#alius-shell {
+  position: fixed;
+  inset: 0;
+  z-index: 100000; /* above SillyTavern's own UI and toastr (99999) */
+  background: var(--alius-bg);
+  color: var(--alius-fg);
+  font-family: var(--alius-font);
+  font-size: 15px;
+  line-height: 1.45;
+  display: flex;
+  box-sizing: border-box;
+  padding: 12px;
+}
+
+#alius-shell *,
+#alius-shell *::before,
+#alius-shell *::after {
+  box-sizing: border-box;
+}
+
+#alius-shell :focus-visible {
+  outline: 2px solid var(--alius-accent);
+  outline-offset: 2px;
+}
+
+/* CRT effects */
+#alius-shell.alius-scanlines::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.06) 0,
+    rgba(0, 0, 0, 0.06) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
+
+#alius-shell.alius-flicker .alius-frame {
+  animation: alius-flicker 4s infinite;
+}
+
+@keyframes alius-flicker {
+  0%, 100% { opacity: 1; }
+  45% { opacity: 0.97; }
+  50% { opacity: 1; }
+  55% { opacity: 0.98; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #alius-shell.alius-flicker .alius-frame { animation: none; }
+}
+
+/* Frame */
+#alius-shell .alius-frame {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  border-left: var(--alius-line);
+  border-right: var(--alius-line);
+}
+
+#alius-shell .alius-titlebar,
+#alius-shell .alius-footer {
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  flex: none;
+  margin: 0 -1px;
+}
+
+#alius-shell .alius-frame-fill {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--alius-dim);
+}
+
+#alius-shell .alius-frame-corner {
+  color: var(--alius-fg);
+}
+
+#alius-shell .alius-footer .alius-frame-corner:first-child {
+  color: var(--alius-dim);
+}
+
+#alius-shell .alius-view {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 0 12px;
+}
+
+/* Controls */
+#alius-shell .alius-btn {
+  background: transparent;
+  color: var(--alius-fg);
+  border: var(--alius-line);
+  font: inherit;
+  padding: 2px 10px;
+  cursor: pointer;
+}
+
+#alius-shell .alius-btn:hover {
+  background: var(--alius-fg);
+  color: var(--alius-bg);
+}
+
+#alius-shell .alius-close {
+  border: 0;
+  padding: 0 6px;
+}
+
+#alius-shell .alius-input,
+#alius-shell select,
+#alius-shell input[type="number"],
+#alius-shell textarea {
+  background: var(--alius-bg);
+  color: var(--alius-fg);
+  border: 1px solid var(--alius-dim);
+  font: inherit;
+  padding: 2px 6px;
+}
+
+#alius-shell textarea {
+  width: 100%;
+  resize: vertical;
+}
+
+#alius-shell .alius-num {
+  width: 7em;
+}
+
+#alius-shell .alius-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  overflow: hidden;
+}
+
+#alius-shell .alius-dim {
+  color: var(--alius-dim);
+}
+
+#alius-shell .alius-stub {
+  color: var(--alius-dim);
+  margin: 24px 0;
+}
+
+/* Banner */
+#alius-shell .alius-banner {
+  margin: 0 12px 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--alius-err);
+  color: var(--alius-err);
+}
+
+/* Toasts */
+#alius-shell .alius-toasts {
+  position: absolute;
+  right: 24px;
+  bottom: 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: min(480px, 90vw);
+  z-index: 2;
+}
+
+#alius-shell .alius-toast {
+  background: var(--alius-bg);
+  border: var(--alius-line);
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+#alius-shell .alius-toast-warn { color: var(--alius-accent); border-color: var(--alius-accent); }
+#alius-shell .alius-toast-error { color: var(--alius-err); border-color: var(--alius-err); }
+
+/* Modal */
+#alius-shell .alius-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3;
+}
+
+#alius-shell .alius-modal {
+  background: var(--alius-bg);
+  border: 2px double var(--alius-fg);
+  padding: 14px 18px;
+  min-width: min(360px, 90vw);
+  max-width: min(640px, 90vw);
+}
+
+#alius-shell .alius-modal-title {
+  color: var(--alius-accent);
+  margin-bottom: 8px;
+}
+
+#alius-shell .alius-modal-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
+/* Tab bar */
+#alius-shell .alius-tabbar {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--alius-dim);
+}
+
+#alius-shell .alius-sep {
+  color: var(--alius-dim);
+  white-space: pre;
+}
+
+#alius-shell .alius-tab {
+  background: transparent;
+  color: var(--alius-dim);
+  border: 0;
+  font: inherit;
+  letter-spacing: 0.08em;
+  padding: 2px 8px;
+  cursor: pointer;
+}
+
+#alius-shell .alius-tab:hover {
+  color: var(--alius-fg);
+}
+
+#alius-shell .alius-tab[aria-selected="true"] {
+  color: var(--alius-bg);
+  background: var(--alius-fg);
+}
+
+/* Screen area */
+#alius-shell .alius-screen {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 12px 0;
+}
+
+#alius-shell .alius-section {
+  margin-bottom: 24px;
+}
+
+#alius-shell h2 {
+  font-size: 1em;
+  margin: 0 0 8px;
+  color: var(--alius-accent);
+  font-weight: normal;
+}
+
+#alius-shell h3 {
+  font-size: 1em;
+  margin: 14px 0 6px;
+  color: var(--alius-dim);
+  font-weight: normal;
+}
+
+#alius-shell .alius-field {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 4px 0;
+}
+
+#alius-shell .alius-field-label {
+  min-width: 14em;
+}
+
+#alius-shell .alius-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(18em, 1fr));
+  gap: 2px 24px;
+}
+
+#alius-shell .alius-grid .alius-field-label {
+  min-width: 11em;
+}
+
+#alius-shell .alius-row {
+  display: flex;
+  gap: 8px;
+  margin: 6px 0;
+}
+
+#alius-shell pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+#alius-shell .alius-state-view {
+  max-height: 24em;
+  overflow: auto;
+  border: 1px solid var(--alius-dim);
+  padding: 6px 8px;
+}
+
+#alius-shell .alius-log-entry {
+  border-bottom: 1px dashed var(--alius-dim);
+  padding: 2px 0;
+}
+
+#alius-shell .alius-log-entry pre {
+  color: var(--alius-dim);
+  padding: 6px 0 6px 16px;
+}
+
+#alius-shell .alius-log-entry summary {
+  cursor: pointer;
+}

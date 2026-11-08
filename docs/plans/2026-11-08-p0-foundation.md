@@ -411,17 +411,17 @@ orchestrator (fake adapter, `ping`):
   - Keyboard: `1`–`8` select tabs, `ArrowLeft/ArrowRight` move between tabs when the tab bar has focus, `Escape` closes an open modal (not the shell); `Alt+Shift+A` toggles the shell globally.
   - SYS tab: settings form (mechanic profile select from `st.listConnectionProfiles()`, think level, fallback toggle, request floor, per-call budgets, palette, scanlines, flicker, debug, edit lock, context cap); debug panel when `debug`: LLM log list (newest first) and campaign state as read-only `<pre>` JSON (editable `<textarea>` + "Apply" only when `editLock === false`; apply runs `migrate()` and refuses invalid JSON with a toast); "Export campaign" / "Import campaign" buttons; read-only banner when `getLoad().kind === 'readonly'` with its reason.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `open mounts #alius-shell and close removes it`; `eight tabs in the specified order and labels`; `digit 3 selects MAP`; `ArrowRight on SYS wraps to SQUAD`; `unregistered tab shows stub text`; `palette sets data-palette`; `modal resolves with clicked value and Escape resolves null`; `state editor is read-only while editLock is on`; `readonly banner shows reason`.
 
-- [ ] **Step 2: Run** → FAIL.
+- [x] **Step 2: Run** → FAIL.
 
-- [ ] **Step 3: Implement.** Visual language: monospace stack (`"IBM Plex Mono", "JetBrains Mono", ui-monospace, monospace`); box-drawing frame around the PDA; palettes as CSS variables (`--alius-fg`, `--alius-dim`, `--alius-bg`, `--alius-accent`) — amber `#ffb000` on `#120c02`, green `#33ff66` on `#021208`, white `#e8e8e8` on `#0b0b0b`; scanlines as a repeating-linear-gradient overlay at ≤6% opacity; flicker as a 4s opacity keyframe between 0.97–1. Minimum text contrast 7:1 on the chosen background; focus outlines always visible.
+- [x] **Step 3: Implement.** Visual language: monospace stack (`"IBM Plex Mono", "JetBrains Mono", ui-monospace, monospace`); box-drawing frame around the PDA; palettes as CSS variables (`--alius-fg`, `--alius-dim`, `--alius-bg`, `--alius-accent`) — amber `#ffb000` on `#120c02`, green `#33ff66` on `#021208`, white `#e8e8e8` on `#0b0b0b`; scanlines as a repeating-linear-gradient overlay at ≤6% opacity; flicker as a 4s opacity keyframe between 0.97–1. Minimum text contrast 7:1 on the chosen background; focus outlines always visible.
 
-- [ ] **Step 4: Run** → PASS; `npm run build` passes.
+- [x] **Step 4: Run** → PASS; `npm run build` passes.
 
-- [ ] **Step 5: Commit** `feat(ui): Alius shell with PDA tabs, toasts, modals and SYS tab`
+- [x] **Step 5: Commit** `feat(ui): Alius shell with PDA tabs, toasts, modals and SYS tab`
 
 ---
 
