@@ -228,6 +228,36 @@ var slug = (name) => {
 };
 var bandFor = (trust) => trust < 10 ? "breaking" : trust < 25 ? "wavering" : "steady";
 var clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var crimeEffectsOf = (crime) => [...effectsOf(crime.perk), ...effectsOf(crime.flaw)];
+var crimeKnownByDefault = (crime, start) => crime.knownByDefault === true || start?.crimeKnownByDefault === true;
+function startingTrustAdjust(effects, values) {
+  let sum = 0;
+  for (const fx of effects) {
+    if (fx.type !== "starting_trust") continue;
+    const iv = fx.ifValue;
+    if (iv) {
+      const v = values[iv.axis];
+      if (iv.sign === "+" ? !(v > 0) : !(v < 0)) continue;
+    }
+    sum += fx.amount;
+  }
+  return sum;
+}
+function initialRelation(o) {
+  const trust = clamp(o.trust, 0, 100);
+  return {
+    trust,
+    affinity: o.affinity,
+    attraction: o.attraction,
+    stateId: INITIAL_RELATION_STATE,
+    stateSince: 1,
+    history: [],
+    flags: o.knowsCrime ? ["knows_crime"] : [],
+    dailyGain: { trust: 0, affinity: 0, attraction: 0 },
+    loyaltyBand: bandFor(trust),
+    marks: []
+  };
+}
 function buildCampaign(r, reg, opts) {
   const errors = validateSetup(r, reg, opts);
   if (errors.length > 0) return { ok: false, errors };
@@ -242,7 +272,7 @@ function buildCampaign(r, reg, opts) {
   state.settings = { desireBondDefects: opts.desireBondDefects };
   const base = start.startingResources;
   for (const k of ["credits", "supplies", "plyx"]) state.resources[k] += base?.[k] ?? 0;
-  const crimeEffects = [...effectsOf(crime.perk), ...effectsOf(crime.flaw)];
+  const crimeEffects = crimeEffectsOf(crime);
   for (const fx of [...effectsOf(corp.startingBonus), ...crimeEffects]) {
     if (fx.type === "social_rank") {
       const stat = fx.stat;
@@ -251,8 +281,7 @@ function buildCampaign(r, reg, opts) {
       state.resources[fx.resource] += fx.amount;
     }
   }
-  const trustEffects = crimeEffects.filter((fx) => fx.type === "starting_trust");
-  const knowsCrime = crime.knownByDefault === true || start.crimeKnownByDefault === true;
+  const knowsCrime = crimeKnownByDefault(crime, start);
   const used = /* @__PURE__ */ new Set();
   for (const u of r.units) {
     const base2 = `unit_${slug(u.displayName)}`;
@@ -284,29 +313,12 @@ function buildCampaign(r, reg, opts) {
       injuries: [],
       status: "active"
     });
-    let trust = u.baseline.trust;
-    for (const fx of trustEffects) {
-      const iv = fx.ifValue;
-      if (iv) {
-        const v = u.values[iv.axis];
-        if (iv.sign === "+" ? !(v > 0) : !(v < 0)) continue;
-      }
-      trust += fx.amount;
-    }
-    trust = clamp(trust, 0, 100);
-    const relation = {
-      trust,
+    state.relations[id] = initialRelation({
+      trust: u.baseline.trust + startingTrustAdjust(crimeEffects, u.values),
       affinity: u.baseline.affinity,
       attraction: u.baseline.attraction,
-      stateId: INITIAL_RELATION_STATE,
-      stateSince: 1,
-      history: [],
-      flags: knowsCrime ? ["knows_crime"] : [],
-      dailyGain: { trust: 0, affinity: 0, attraction: 0 },
-      loyaltyBand: bandFor(trust),
-      marks: []
-    };
-    state.relations[id] = relation;
+      knowsCrime
+    });
   }
   state.roster.activeIds = state.squad.map((u) => u.id);
   return { ok: true, state };

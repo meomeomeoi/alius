@@ -186,11 +186,11 @@ calendar: `morning to afternoon to evening`; `evening without a night queue runs
 - `base/recruit_grunt {}`: rejects when living squad ≥ `roster.capacity` or credits < `recruit.credits`; pays, generates with the campaign rng, appends the unit, creates its relation, adds it to `roster.activeIds` while fewer than 4 are active, emits `grunt_recruited { unitId }`.
 - `squad/set_flavor { unitId, name, bio }`: grunts only; `name` 1–24 chars of letters, digits, space, `'` and `-`; `bio` ≤ 120 chars; sets `displayName = name`, `bio`; keeps `designation`.
 
-- [ ] **Step 1: Write the failing tests** — `same state gives the same grunt` (two runs from one snapshot are deep-equal); `recruiting advances the campaign rng, so the next grunt differs`; `portrait is 7 lines of equal width and ASCII only`; `different seeds give different portraits (over 50 seeds at least 10 distinct)`; `designation matches X-### and avoids taken ones`; `level is squad average minus one, never below 1`; `empty squad gives level 1`; `lite defect has no arc and desire_bond is excluded by default`; `desire_bond allowed when the campaign setting is on`; `grunt trust follows the crime (purge adds, experimentation subtracts)`; `recruit pays credits, adds relation and roster entry`; `fifth active grunt goes to reserve`; `recruit rejected at capacity / without credits` (state unchanged); `ids never collide even for equal designations after a death`; `set_flavor renames, keeps designation, rejects named units and bad names`. setup: existing P1 tests stay green after the helper extraction.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/grunts.test.ts tests/engine/setup.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS; whole suite green.
-- [ ] **Step 5: Commit** `feat(engine): seeded grunt recruitment with ASCII portraits`.
+- [x] **Step 1: Write the failing tests** — `same state gives the same grunt` (two runs from one snapshot are deep-equal); `recruiting advances the campaign rng, so the next grunt differs`; `portrait is 7 lines of equal width and ASCII only`; `different seeds give different portraits (over 50 seeds at least 10 distinct)`; `designation matches X-### and avoids taken ones`; `level is squad average minus one, never below 1`; `empty squad gives level 1`; `lite defect has no arc and desire_bond is excluded by default`; `desire_bond allowed when the campaign setting is on`; `grunt trust follows the crime (purge adds, experimentation subtracts)`; `recruit pays credits, adds relation and roster entry`; `fifth active grunt goes to reserve`; `recruit rejected at capacity / without credits` (state unchanged); `ids never collide even for equal designations after a death`; `set_flavor renames, keeps designation, rejects named units and bad names`. setup: existing P1 tests stay green after the helper extraction.
+- [x] **Step 2: Run** `npx vitest run tests/engine/grunts.test.ts tests/engine/setup.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS; whole suite green.
+- [x] **Step 5: Commit** `feat(engine): seeded grunt recruitment with ASCII portraits`.
 
 ### Task 7: LLM extras and settings
 

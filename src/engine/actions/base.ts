@@ -1,3 +1,4 @@
+import { generateGrunt, gruntRelation } from '../grunts';
 import { facilityLevel, facilityLevels, isLiving } from '../economy';
 import { registerAction } from '../dispatch';
 import { TUNING } from '../tuning';
@@ -60,4 +61,38 @@ registerAction('roster/set_active', (draft, payload) => {
   }
   draft.roster.activeIds = [...ids];
   return [{ type: 'roster_changed', activeIds: [...ids] }];
+});
+
+registerAction('base/recruit_grunt', (draft, _payload, ctx) => {
+  if (draft.squad.filter(isLiving).length >= draft.roster.capacity) {
+    throw new Error(`The barracks are full (${draft.roster.capacity} beds). Upgrade them to recruit more.`);
+  }
+  if (draft.resources.credits < TUNING.recruit.credits) {
+    throw new Error(`Not enough credits to recruit a grunt (needs ${TUNING.recruit.credits}).`);
+  }
+  const grunt = generateGrunt(draft, ctx.registries, ctx.rng);
+  draft.resources.credits -= TUNING.recruit.credits;
+  draft.squad.push(grunt);
+  draft.relations[grunt.id] = gruntRelation(draft, ctx.registries);
+  if (grunt.status === 'active') draft.roster.activeIds.push(grunt.id);
+  return [
+    { type: 'resource_changed', resource: 'credits', amount: -TUNING.recruit.credits },
+    { type: 'grunt_recruited', unitId: grunt.id, designation: grunt.designation },
+  ];
+});
+
+const GENERATED_NAME = /^(?=.*[A-Za-z])[A-Za-z0-9 '-]{1,24}$/;
+export const GRUNT_BIO_MAX = 120;
+
+/** Applies a generated name and bio to a grunt (the designation stays). The numbers never change. */
+registerAction('squad/set_flavor', (draft, payload) => {
+  const p = isObj(payload) ? payload : {};
+  const unit = draft.squad.find((u) => u.id === p.unitId);
+  if (!unit || unit.kind !== 'grunt') throw new Error('squad/set_flavor: only grunts take a generated name');
+  const name = typeof p.name === 'string' ? p.name.trim() : '';
+  if (!GENERATED_NAME.test(name)) throw new Error('squad/set_flavor: the name must be 1 to 24 letters, digits, spaces, apostrophes or hyphens');
+  if (typeof p.bio !== 'string' || p.bio.length > GRUNT_BIO_MAX) throw new Error(`squad/set_flavor: the bio must be at most ${GRUNT_BIO_MAX} characters`);
+  unit.displayName = name;
+  unit.bio = p.bio.trim();
+  return [{ type: 'unit_flavored', unitId: unit.id, name }];
 });
