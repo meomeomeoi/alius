@@ -17,6 +17,10 @@ export interface DefectInstance {
   arc?: string;
   /** In-universe origin line written at import (P1). */
   origin?: string;
+  /** Grunt defect: no arc (P2). */
+  lite?: boolean;
+  /** Day a Manage-arc defect was last maintained in the medbay (P2). */
+  upkeepDay?: number;
 }
 
 /** The signature skill a unit owns: a template id plus the unit's own name and description. */
@@ -32,6 +36,12 @@ export interface Unit {
   cardRef?: string;
   displayName: string;
   asciiPortrait?: string;
+  /** Grunt designation such as `K-117` (P2); `displayName` may later become a generated name. */
+  designation?: string;
+  /** One-line generated bio of a grunt (P2). */
+  bio?: string;
+  /** Days left before an injured unit recovers (P2). */
+  injuryDays?: number;
   roleId: string;
   level: number;
   xp: number;
@@ -81,7 +91,12 @@ export interface Commander {
   name: string;
   corporationId: string | null;
   crimeId: string | null;
+  /** Current ranks 1–5. */
   socialStats: { authority: number; insight: number; empathy: number; cunning: number };
+  /** Points behind the ranks (P2); absent until the first gain, a rank then counts as its threshold. */
+  socialPoints?: { authority: number; insight: number; empathy: number; cunning: number };
+  /** The commander is injured while `day` is below this (P2). */
+  injuredUntilDay?: number;
   flags: string[];
 }
 
@@ -98,7 +113,12 @@ export interface CampaignState {
   roster: { activeIds: string[]; capacity: number };
   relations: Record<string, Relation>;
   resources: { credits: number; supplies: number; plyx: number };
-  base: { facilities: Record<string, number> };
+  base: {
+    /** Facility levels; an absent key means level 1 (P2). */
+    facilities: Record<string, number>;
+    /** Pending facility upgrades (P2). */
+    upgrades?: Array<{ facilityId: string; toLevel: number; daysLeft: number }>;
+  };
   inventory: unknown[];
   world: {
     regions: Record<string, unknown>;
@@ -114,7 +134,14 @@ export interface CampaignState {
   rumors: unknown[];
   dms: Record<string, unknown[]>;
   memory: { facts: unknown[]; chronicle: unknown[] };
-  calendar: { scheduled: unknown[]; nightEventsQueue: unknown[] };
+  calendar: {
+    scheduled: unknown[];
+    nightEventsQueue: unknown[];
+    /** Consecutive days with a supply shortage (P2). */
+    shortageStreak?: number;
+    /** The queue entry being played in the current Night slot (P2 moves it here; P3 reads it). */
+    nightEvent?: unknown;
+  };
   leash: { authorizationsLeft: number; refreshDay: number; log: unknown[] };
   expedition?: unknown;
   combat?: unknown;

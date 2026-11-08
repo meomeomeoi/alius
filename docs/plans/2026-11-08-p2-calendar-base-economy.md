@@ -83,15 +83,15 @@ tests/**                                        mirrors src
 - Produces in `relationGain.ts`: `type RelationAxis = 'trust' | 'affinity' | 'attraction'`; `type RelationGainHandler = (relation: Relation, axis, amount, source: string) => number` (mutates the relation, returns the applied delta); `applyRelationDelta(draft, unitId, axis, amount, source) → number`; `setRelationGainHandler(fn)`; `resetRelationGainHandler()`; the default handler: gains diminish per axis per day by `relation.dailyGain` (full value below `TUNING.gain.soft`, half between soft and hard, zero from hard), losses apply in full; trust/attraction clamp 0–100, affinity −100…100; `dailyGain[axis]` grows by the applied positive delta.
 - Produces in `tuning.ts`: `TUNING` (frozen) with `upkeep { perUnit: 1, commander: 1, doubledByDefect: 'hunger_loop' }`, `shortage { stressPerPoint: 4, affinityPerPoint: 1, streakDays: 3, trustPenalty: 5 }`, `gain { soft: 4, hard: 8 }`, `passiveStressRecovery: 1`, `commanderInjuryBlocks: ['train','work']` is **not** here (it is activity data), `recruit { credits: 40, baseTrust: 25 }`, `requisition { creditsPerSupply: 8 }`, `rosterActiveMax: 4`, `rosterBaseCapacity: 6`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 social: `rankForPoints follows the thresholds` (0→1, 9→1, 10→2, 24→2, 25→3, 45→4, 70→5, 999→5); `addSocialPoints raises the rank and reports it`; `a start rank counts as its threshold` (commander `socialStats.authority = 2`, no points → adding 15 gives 25 points → rank 3); `points stop at the top rank`; `meetsSocialRequirements checks every stat` (`{empathy: 3}` false at rank 2, true at 3; `{}` true).
 relationGain: `first points are full value`; `points past the soft cap count half`; `nothing past the hard cap`; `losses are applied in full and clamp at the floor`; `affinity may go negative, trust may not`; `dailyGain tracks applied gains`; `a replaced handler is used and reset restores the default`; `unknown unit is a no-op returning 0`.
 
-- [ ] **Step 2: Run** `npx vitest run tests/engine/social.test.ts tests/engine/relationGain.test.ts` → FAIL (modules missing).
-- [ ] **Step 3: Implement** the types, `tuning.ts`, `social.ts`, `relationGain.ts` exactly as above (point-by-point factor for the default handler: `1` below soft, `0.5` below hard, else `0`; applied = `Math.round(sum)`).
-- [ ] **Step 4: Run** the two files → PASS; `npm run typecheck` → clean.
-- [ ] **Step 5: Commit** `feat(engine): social stat points, relation gain handler and P2 state fields`.
+- [x] **Step 2: Run** `npx vitest run tests/engine/social.test.ts tests/engine/relationGain.test.ts` → FAIL (modules missing).
+- [x] **Step 3: Implement** the types, `tuning.ts`, `social.ts`, `relationGain.ts` exactly as above (point-by-point factor for the default handler: `1` below soft, `0.5` below hard, else `0`; applied = `Math.round(sum)`).
+- [x] **Step 4: Run** the two files → PASS; `npm run typecheck` → clean.
+- [x] **Step 5: Commit** `feat(engine): social stat points, relation gain handler and P2 state fields`.
 
 ### Task 2: Activities and facilities content
 
@@ -182,7 +182,7 @@ calendar: `morning to afternoon to evening`; `evening without a night queue runs
 - Test: `tests/engine/grunts.test.ts`, `tests/engine/setup.test.ts` (extend: refactor keeps behaviour)
 
 **Interfaces:**
-- Produces in `grunts.ts`: `generatePortrait(rng): string` (7 lines × 13 columns: ASCII frame plus a face from glyph tables for hair/visor, eyes, nose, mouth, one optional mark), `generateDesignation(rng, taken: Set<string>): string` (`K-117` style: letter A–Z + 3 digits 100–999, retried until free), `generateGrunt(state, reg, rng): Unit` (pure; picks role uniformly, level = `max(1, round(average level of living squad units) − 1)`, base stats from the role, `hp` full, one **lite** defect drawn from `defects` (`desire_bond` excluded unless `state.settings.desireBondDefects`), `lite: true`, no arc, a signature drawn from `signatures`, values all 0, empty tags, `kind: 'grunt'`, `designation`, `displayName = designation`, `asciiPortrait`, `status: 'active'` if the active roster has room else `'reserve'`), `gruntRelation(state, reg): Relation` (trust `recruit.baseTrust` + the crime's unconditional `starting_trust` effects + `grunt_starting_trust` bonus 10, clamped; affinity/attraction 0; `knows_crime` by the same rule as setup).
+- Produces in `grunts.ts`: `generatePortrait(rng): string` (7 lines × 13 columns: ASCII frame plus a face from glyph tables for hair/visor, eyes, nose, mouth, one optional mark), `generateDesignation(rng, taken: Set<string>): string` (`K-117` style: letter A–Z + 3 digits 100–999, retried until free), `generateGrunt(state, reg, rng): Unit` (pure; picks role uniformly, level = `max(1, round(average level of living squad units) − 1)`, base stats from the role, `hp` full, one **lite** defect drawn from `defects` (`desire_bond` excluded unless `state.settings.desireBondDefects`), `lite: true`, no arc, a signature drawn from `signatures`, values all 0, empty tags, `kind: 'grunt'`, `designation`, `displayName = designation`, `asciiPortrait`, `status: 'active'` if the active roster has room else `'reserve'`), `gruntRelation(state, reg): Relation` (trust `recruit.baseTrust` + the crime's unconditional `starting_trust` effects + `grunt_starting_trust` bonus (`recruit.gruntCrimeBonus`), clamped; affinity/attraction 0; `knows_crime` by the same rule as setup).
 - `base/recruit_grunt {}`: rejects when living squad ≥ `roster.capacity` or credits < `recruit.credits`; pays, generates with the campaign rng, appends the unit, creates its relation, adds it to `roster.activeIds` while fewer than 4 are active, emits `grunt_recruited { unitId }`.
 - `squad/set_flavor { unitId, name, bio }`: grunts only; `name` 1–24 chars of letters, digits, space, `'` and `-`; `bio` ≤ 120 chars; sets `displayName = name`, `bio`; keeps `designation`.
 
