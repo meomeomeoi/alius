@@ -1,0 +1,4 @@
+[
+  { "id": "medic_plus", "extends": "medic", "name": "Medic+", "tags": ["heal", "buff"], "stats": { "atk": 5 } },
+  { "id": "tank", "extends": "tank", "name": "Tank Mk2" }
+]

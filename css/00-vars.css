@@ -1,0 +1,26 @@
+/* Alius phosphor palettes. Every text color is >= 7:1 against its background. */
+#alius-shell {
+  --alius-font: "IBM Plex Mono", "JetBrains Mono", ui-monospace, monospace;
+  --alius-fg: #ffb000;
+  --alius-dim: #d29200;
+  --alius-bg: #120c02;
+  --alius-accent: #ffd060;
+  --alius-err: #ff8a5c;
+  --alius-line: 1px solid var(--alius-fg);
+}
+
+#alius-shell[data-palette="green"] {
+  --alius-fg: #33ff66;
+  --alius-dim: #2bcf55;
+  --alius-bg: #021208;
+  --alius-accent: #8dffaa;
+  --alius-err: #ff8a8a;
+}
+
+#alius-shell[data-palette="white"] {
+  --alius-fg: #e8e8e8;
+  --alius-dim: #b4b4b4;
+  --alius-bg: #0b0b0b;
+  --alius-accent: #ffffff;
+  --alius-err: #ff9a9a;
+}

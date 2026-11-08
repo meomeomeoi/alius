@@ -1,0 +1,6 @@
+[
+  { "id": "ok_one", "scope": "world", "description": "fine" },
+  { "id": "bad_scope", "scope": "galaxy", "description": "scope is not allowed" },
+  { "id": "ok_one", "scope": "world", "description": "duplicate id in the same file" },
+  { "id": "refs_ghost", "scope": "relation", "description": "points nowhere", "mutuallyExclusiveWith": ["ghost"] }
+]

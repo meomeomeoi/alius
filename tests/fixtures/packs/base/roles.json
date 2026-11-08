@@ -1,0 +1,4 @@
+[
+  { "id": "medic", "name": "Medic", "tags": ["heal"], "stats": { "hp": 10, "atk": 2 } },
+  { "id": "tank", "name": "Tank" }
+]

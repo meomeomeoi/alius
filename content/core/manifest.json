@@ -1,0 +1,7 @@
+{
+  "id": "core",
+  "name": "Alius Core",
+  "version": "0.0.1",
+  "priority": 0,
+  "files": { "flags": "flags.json" }
+}

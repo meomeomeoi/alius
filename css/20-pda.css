@@ -1,0 +1,119 @@
+/* Tab bar */
+#alius-shell .alius-tabbar {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--alius-dim);
+}
+
+#alius-shell .alius-sep {
+  color: var(--alius-dim);
+  white-space: pre;
+}
+
+#alius-shell .alius-tab {
+  background: transparent;
+  color: var(--alius-dim);
+  border: 0;
+  font: inherit;
+  letter-spacing: 0.08em;
+  padding: 2px 8px;
+  cursor: pointer;
+}
+
+#alius-shell .alius-tab:hover {
+  color: var(--alius-fg);
+}
+
+#alius-shell .alius-tab[aria-selected="true"] {
+  color: var(--alius-bg);
+  background: var(--alius-fg);
+}
+
+/* Screen area */
+#alius-shell .alius-screen {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 12px 0;
+}
+
+#alius-shell .alius-section {
+  margin-bottom: 24px;
+}
+
+#alius-shell h2 {
+  font-size: 1em;
+  margin: 0 0 8px;
+  color: var(--alius-accent);
+  font-weight: normal;
+}
+
+#alius-shell h3 {
+  font-size: 1em;
+  margin: 14px 0 6px;
+  color: var(--alius-dim);
+  font-weight: normal;
+}
+
+#alius-shell .alius-field {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 4px 0;
+}
+
+#alius-shell .alius-field-label {
+  min-width: 14em;
+}
+
+#alius-shell .alius-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(18em, 1fr));
+  gap: 2px 24px;
+}
+
+#alius-shell .alius-grid .alius-field-label {
+  min-width: 11em;
+}
+
+#alius-shell .alius-row {
+  display: flex;
+  gap: 8px;
+  margin: 6px 0;
+}
+
+#alius-shell pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+#alius-shell .alius-state-view {
+  max-height: 24em;
+  overflow: auto;
+  border: 1px solid var(--alius-dim);
+  padding: 6px 8px;
+}
+
+#alius-shell .alius-log-entry {
+  border-bottom: 1px dashed var(--alius-dim);
+  padding: 2px 0;
+}
+
+#alius-shell .alius-log-entry pre {
+  color: var(--alius-dim);
+  padding: 6px 0 6px 16px;
+}
+
+#alius-shell .alius-log-entry summary {
+  cursor: pointer;
+}
+
+#alius-shell .alius-content-errors {
+  margin: 0;
+  padding-left: 1.2em;
+  color: var(--alius-err);
+}

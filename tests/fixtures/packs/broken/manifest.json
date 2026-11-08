@@ -1,0 +1,2 @@
+{ "id": "broken", "name": "Broken test pack", "version": "1.0.0", "priority": 0,
+  "files": { "flags": "flags.json" } }
