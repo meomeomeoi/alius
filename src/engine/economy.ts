@@ -37,8 +37,11 @@ export function activeRosterUnits(state: CampaignState): Unit[] {
 
 const eatsDouble = (u: Unit): boolean => u.defects.some((d) => d.id === TUNING.upkeep.doubledByDefect);
 
+/** Everyone alive in the squad eats, on the roster or in reserve. */
+export const livingUnits = (state: CampaignState): Unit[] => state.squad.filter(isLiving);
+
 export function upkeepNeeded(state: CampaignState, reg: Registries): { units: number; needed: number } {
-  const units = activeRosterUnits(state);
+  const units = livingUnits(state);
   const raw = units.reduce((n, u) => n + TUNING.upkeep.perUnit * (eatsDouble(u) ? 2 : 1), 0) + TUNING.upkeep.commander;
   const needed = Math.max(0, raw - facilityEffect(state, reg, 'mess_hall', 'upkeepReduction'));
   return { units: units.length, needed };
@@ -70,7 +73,7 @@ export function runUpkeep(draft: CampaignState, reg: Registries): EngineEvent[] 
     return events;
   }
 
-  const units = activeRosterUnits(draft);
+  const units = livingUnits(draft);
   // a double eater holds two shares, so the shortage "hits her hardest"
   const slots = units.flatMap((u) => (eatsDouble(u) ? [u, u] : [u]));
   const stress = spread(missing * TUNING.shortage.stressPerPoint, slots.length, draft.day);

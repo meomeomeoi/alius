@@ -441,8 +441,9 @@ function activeRosterUnits(state) {
   return state.roster.activeIds.map((id) => state.squad.find((u) => u.id === id)).filter((u) => u !== void 0 && isLiving(u));
 }
 var eatsDouble = (u) => u.defects.some((d) => d.id === TUNING.upkeep.doubledByDefect);
+var livingUnits = (state) => state.squad.filter(isLiving);
 function upkeepNeeded(state, reg) {
-  const units = activeRosterUnits(state);
+  const units = livingUnits(state);
   const raw = units.reduce((n, u) => n + TUNING.upkeep.perUnit * (eatsDouble(u) ? 2 : 1), 0) + TUNING.upkeep.commander;
   const needed = Math.max(0, raw - facilityEffect(state, reg, "mess_hall", "upkeepReduction"));
   return { units: units.length, needed };
@@ -467,7 +468,7 @@ function runUpkeep(draft, reg) {
     draft.calendar.shortageStreak = 0;
     return events;
   }
-  const units = activeRosterUnits(draft);
+  const units = livingUnits(draft);
   const slots = units.flatMap((u) => eatsDouble(u) ? [u, u] : [u]);
   const stress = spread(missing * TUNING.shortage.stressPerPoint, slots.length, draft.day);
   const affinity = spread(missing * TUNING.shortage.affinityPerPoint, slots.length, draft.day);

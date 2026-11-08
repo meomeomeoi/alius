@@ -43,7 +43,7 @@ Commander injury (from Commander Crisis, P4): blocks `train` and `work` for N da
 
 ### 4. Resources
 - `credits` — missions, `work`, selling items.
-- `supplies` — daily upkeep: 1 per active-roster unit (Hunger Loop ×2), +1 commander. Shortage: each missing point → stress + Affinity penalty spread across units; 3 consecutive shortage days → Trust penalty event.
+- `supplies` — daily upkeep: 1 per living squad unit, reserve included (Hunger Loop ×2), +1 commander. Shortage: each missing point → stress + Affinity penalty spread across units; 3 consecutive shortage days → Trust penalty event.
 - `plyx` — crafting/upgrades, from expeditions and salvage.
 Starting amounts per start/crime.
 
@@ -81,8 +81,8 @@ Decisions taken while implementing, where the spec was silent or the P1 code alr
 
 - **Social stats.** P1 stores ranks (`socialStats`, 1–5). P2 adds `commander.socialPoints` next to them; a rank without stored points counts as its threshold (0/10/25/45/70), so a start rank is never lost. Queries for other packages: `meetsSocialRequirements(state, { empathy: 3 })`, `socialRank`.
 - **Starting resources.** `starts[].startingResources` is the base; corporation bonus and crime effects are added on top.
-- **Supplies source.** Nothing in P2 produces supplies, so `base/requisition` (credits → supplies, 3 CR each; one `work` slot earns 25 CR at Cunning rank 1, enough for a day of upkeep of a full squad) exists until P5 expeditions bring supplies. Shortage and its penalties are as specified: each missing point costs 4 stress and 1 Affinity spread over the active roster (a `hunger_loop` unit holds two shares), and every 3rd consecutive shortage day costs 5 Trust.
-- **Who eats.** As specified, only the active expedition roster (living units) plus the commander eats; reserve units do not. `roster/set_active` therefore refuses an empty list while any unit lives. Whether reserve units should eat too is an open design decision.
+- **Supplies source.** Nothing in P2 produces supplies, so `base/requisition` (credits → supplies, 3 CR each; one `work` slot earns 25 CR at Cunning rank 1, enough for a day of upkeep of a full squad) exists until P5 expeditions bring supplies. Shortage and its penalties are as specified: each missing point costs 4 stress and 1 Affinity spread over all living units (a `hunger_loop` unit holds two shares), and every 3rd consecutive shortage day costs 5 Trust.
+- **Who eats.** Every living unit of the squad, reserve included, plus the commander. A shortage (stress, Affinity, the 3-day Trust penalty) hits all of them. `roster/set_active` still refuses an empty list while any unit lives, since an expedition needs someone.
 - **Activities.** Alone → `effects`; with a companion → `companionEffects` **instead**. `talk` emits `scene_requested`, records `calendar.pendingScene` and does not consume the slot. While a scene is open every other activity and every `calendar/consume_slot` except `reason: 'scene_end'` is rejected; P3 ends the scene with `calendar/consume_slot { reason: 'scene_end' }` or drops it with `calendar/cancel_scene`. Until P3 exists the app cancels the scene right away. XP only adds to `unit.xp`; levelling is P4.
 - **Night.** At the end of Evening the pipeline runs once; with a non-empty `nightEventsQueue` the head entry moves to `calendar.nightEvent` and the slot becomes Night (P3 reads `nightEvent`). Ending Night rolls over without a second pipeline.
 - **Day-end hooks.** P3/P5 plug into `mission_deadlines`, `director_tick` and `dm_rumors` through `registerDayEndStep`. A hook runs on a copy of the state: if it throws, its changes are dropped, a `day_end_step_failed` event is emitted and the day still ends.

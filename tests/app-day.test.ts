@@ -190,7 +190,8 @@ describe('day flow in the app', () => {
 
   it('the shortage toast does not claim suffering when nobody was hit', async () => {
     const t = await boot();
-    t.app.replaceState({ ...t.state(), resources: { credits: 0, supplies: 0, plyx: 0 }, roster: { activeIds: [], capacity: 6 } });
+    const s = t.state();
+    t.app.replaceState({ ...s, resources: { credits: 0, supplies: 0, plyx: 0 }, squad: s.squad.map((u) => ({ ...u, status: 'dead' as const })) });
     t.toasts.length = 0;
     for (let i = 0; i < 3; i++) t.app.dispatch({ type: 'calendar/consume_slot', payload: { reason: 'test' } });
     const toast = t.toasts.find((x) => x.kind === 'warn' && /shortage/i.test(x.text))!;

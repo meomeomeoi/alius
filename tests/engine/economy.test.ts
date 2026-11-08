@@ -28,7 +28,7 @@ describe('facility helpers', () => {
 });
 
 describe('upkeepNeeded', () => {
-  it('counts active roster plus commander', () => {
+  it('counts every living unit plus the commander', () => {
     expect(upkeepNeeded(campaign(reg, 4), reg)).toEqual({ units: 4, needed: 5 });
   });
 
@@ -47,13 +47,28 @@ describe('upkeepNeeded', () => {
     expect(upkeepNeeded(empty, reg).needed).toBe(0);
   });
 
-  it('dead and deserted units do not eat; reserve units are not on the roster', () => {
+  it('reserve units eat too', () => {
+    const s = campaign(reg, 6);
+    expect(s.roster.activeIds).toHaveLength(4);
+    expect(upkeepNeeded(s, reg)).toEqual({ units: 6, needed: 7 });
+    s.roster.activeIds = [];
+    expect(upkeepNeeded(s, reg).needed).toBe(7);
+  });
+
+  it('a shortage hits reserve units as well', () => {
+    const s = campaign(reg, 6);
+    s.resources.supplies = 0;
+    const events = upkeep(s);
+    expect(s.squad.reduce((n, u) => n + u.stress, 0)).toBe(7 * 4);
+    expect(s.squad.slice(4).every((u) => u.stress > 0)).toBe(true);
+    expect(ofType(events, 'supply_shortage')[0]).toMatchObject({ hit: 6 });
+  });
+
+  it('dead and deserted units do not eat', () => {
     const s = campaign(reg, 4);
     s.squad[0].status = 'dead';
     s.squad[1].status = 'deserted';
     expect(upkeepNeeded(s, reg)).toEqual({ units: 2, needed: 3 });
-    s.roster.activeIds = [s.squad[2].id];
-    expect(upkeepNeeded(s, reg).units).toBe(1);
   });
 });
 
@@ -99,7 +114,7 @@ describe('runUpkeep', () => {
     expect(ofType(upkeep(s), 'supply_shortage')[0]).toMatchObject({ hit: 4 });
     const none = campaign(reg, 4);
     none.resources.supplies = 0;
-    none.roster.activeIds = [];
+    none.squad.forEach((u) => (u.status = 'dead'));
     expect(ofType(upkeep(none), 'supply_shortage')[0]).toMatchObject({ hit: 0 });
   });
 
