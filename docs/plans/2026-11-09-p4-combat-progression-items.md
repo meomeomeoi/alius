@@ -428,11 +428,11 @@ docs/** (Task 21), tests/** mirror src
 - `cli.ts`: parses `--runs` (default 2000), `--seed` (1), `--level` (5), `--danger` (2), `--neutrality`, `--out <path>`; loads `content/core` from disk; prints the table; writes `--out` if given.
 - `scripts/sim.mjs`: esbuild-bundles `src/sim/cli.ts` (`platform: 'node'`, `format: 'esm'`) to `node_modules/.cache/alius/sim.mjs`, then imports it with the CLI arguments.
 
-- [ ] **Step 1: Write the failing tests** — `runBatch is deterministic for a seed`; `simulate never exceeds the round cap`; `neutrality report lists all 18 defects with win rates and pp differences` (runs 20); `formatReport has one row per defect and marks PASS/FAIL`; architecture: `the sim layer imports only engine and content`.
-- [ ] **Step 2: Run** `npx vitest run tests/sim tests/architecture.test.ts` → FAIL.
-- [ ] **Step 3: Implement**; then run `npm run sim -- --runs 200 --neutrality` once by hand and check it completes.
-- [ ] **Step 4: Run** `npx vitest run` → green.
-- [ ] **Step 5: Commit** `feat(sim): headless balance harness and defect neutrality report`.
+- [x] **Step 1: Write the failing tests** — `runBatch is deterministic for a seed`; `simulate never exceeds the round cap`; `neutrality report lists all 18 defects with win rates and pp differences` (runs 20); `formatReport has one row per defect and marks PASS/FAIL`; architecture: `the sim layer imports only engine and content`.
+- [x] **Step 2: Run** `npx vitest run tests/sim tests/architecture.test.ts` → FAIL.
+- [x] **Step 3: Implement**; then run `npm run sim -- --runs 200 --neutrality` once by hand and check it completes.
+- [x] **Step 4: Run** `npx vitest run` → green.
+- [x] **Step 5: Commit** `feat(sim): headless balance harness and defect neutrality report`.
 
 ---
 
