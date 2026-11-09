@@ -31,9 +31,9 @@ content/core/
 
 ### Registry names
 
-`roles, skills, signatures, statuses, defects, items, affixes, enemies, enemyCategories, regions, nodeTypes, activities, facilities, crimes, corporations, starts, relationshipStates, eventDeltas, dilemmaTemplates, settingsPresets, flags, marks`
+`roles, skills, signatures, statuses, defects, items, affixes, enemies, enemyCategories, regions, nodeTypes, activities, facilities, crimes, corporations, starts, relationshipStates, eventDeltas, dilemmaTemplates, settingsPresets, flags, marks, locations, orders, synergies, recipes, lootTables`
 
-`marks` stays empty in v1 (overview §10). P3 added the `locations` registry name and strict schemas for `relationshipStates`, `eventDeltas` and `locations` (below). `flags` and the P1 setup registries (`corporations, starts, crimes, roles, signatures, defects, statuses`) have strict schemas, described below; the other registries accept any entry that has the base fields until a later package replaces their schema and documents it here.
+`marks` stays empty in v1 (overview §10). P3 added the `locations` registry name and strict schemas for `relationshipStates`, `eventDeltas` and `locations`; P4 added `orders`, `synergies`, `recipes`, `lootTables` and strict schemas for `skills`, `enemyCategories`, `enemies`, `affixes` and `items` (all below). `flags` and the P1 setup registries (`corporations, starts, crimes, roles, signatures, defects, statuses`) have strict schemas, described below; the other registries accept any entry that has the base fields until a later package replaces their schema and documents it here.
 
 ## Entries
 
@@ -171,12 +171,22 @@ Perks, flaws and starting bonuses hold a list of **effect objects**: `{ "type": 
 | `armorWeights` | (`light`\|`medium`\|`heavy`)[], at least 1 | |
 | `identity` | string | |
 | `summary` | string | One line, used in prompts. |
-| `branches` | `{ name, summary }[]` | Skill tree branches. |
+| `branches` | `{ name, summary }[]` | Skill tree branches (their names head the three columns of the SQUAD tree). |
+| `growth` | `{ hp, atk, def, spd, crit }` (numbers ≥ 0) | P4: stats gained per level; the engine adds `floor(growth × (level − 1))` to `baseStats`. |
+| `aiProfile` | `aggressive`\|`predator`\|`protector`\|`disruptor` | P4: how the role plays on AUTO. |
+| `starterSkills` | string[2] | P4: `skills` ids every unit of the role owns without spending points; the first is the basic attack (cooldown 0). |
+| `tree` | `TreeNode[16]` | P4: 3 branches × 5 tiers plus one ultimate node. |
+
+A **tree node** is `{ id, branch: 0|1|2|null, tier: 1..5|null, cost, requires: string[], grants }`. `grants` is `{ "skill": "<skills id>" }` or `{ "upgrade": { "skillId", "cooldownDelta?", "multPct?", "addEffects?" } }` (an upgrade changes a skill the unit already owns: cooldown, a percentage on the damage multiplier and heal, extra effects). Exactly one node has `branch: null` (the ultimate, cost 6, unlocked after two tier-3 nodes); `requires` may only name nodes of the same role. Core trees follow the pattern *active, passive, upgrade of the tier-1 active, active, passive* per branch with costs 2/3/4/5/6 (66 points in all).
 
 ```json
 { "id": "assault", "name": "Assault", "row": "front", "baseStats": { "hp": 110, "atk": 24, "def": 12, "spd": 14, "crit": 10 },
   "weaponClasses": ["Blade", "SMG"], "armorWeights": ["light", "medium"], "identity": "Burst damage, executes.",
-  "summary": "Front-line burst damage.", "branches": [{ "name": "Breach", "summary": "Armor shred." }] }
+  "summary": "Front-line burst damage.", "branches": [{ "name": "Breach", "summary": "Armor shred." }],
+  "growth": { "hp": 6, "atk": 1.4, "def": 0.6, "spd": 0.2, "crit": 0.2 }, "aiProfile": "aggressive",
+  "starterSkills": ["as_strike", "as_burst"],
+  "tree": [{ "id": "as_b1_t1", "branch": 0, "tier": 1, "cost": 2, "requires": [], "grants": { "skill": "as_breach_charge" } },
+           { "id": "as_b1_t3", "branch": 0, "tier": 3, "cost": 4, "requires": ["as_b1_t2"], "grants": { "upgrade": { "skillId": "as_breach_charge", "cooldownDelta": -1, "multPct": 20 } } }] }
 ```
 
 ## `signatures`
@@ -188,9 +198,10 @@ Signature skill **templates**. The id must start with `sig_`. At import the mode
 | `name` | string | Short label of the template. |
 | `mechanic` | string | What it does. |
 | `fits` | string | The kind of character it suits. |
+| `skill` | string | P4: the `skills` entry that implements it (by convention the same id, e.g. `sig_last_stand`). An active signature becomes a button next to the four loadout skills; a `passive` one is always on. Grunts ignore it. |
 
 ```json
-{ "id": "sig_last_stand", "name": "Last Stand", "mechanic": "Below 30% HP: next attack x2, can't be stunned.", "fits": "stubborn, proud" }
+{ "id": "sig_last_stand", "name": "Last Stand", "mechanic": "Below 30% HP: next attack x2, can't be stunned.", "fits": "stubborn, proud", "skill": "sig_last_stand" }
 ```
 
 ## `defects`
@@ -321,6 +332,108 @@ One entry per event type (`id` is the type; there must be one for each of the 26
 ## `defects`: P3 fields
 
 Optional, added to the `defects` schema: `relationModifiers` (`{ gain?, loss?, events? }`: per-axis multipliers and per-event-type multipliers), `socialHooks` (`[{ activity, who: "companion"|"roster", axis?, amount?, setFlag? }]`: effects of doing an activity), `dmChanceBonus` (0–1, added to her DM chance), `nightEvents` (night specs).
+
+## `defects`: P4 combat data
+
+Required `combat` object on every defect: `{ upside: Effect[], downside: Effect[], breakdown }`. Every `downside` effect must carry `"downside": true`: the engine multiplies those by 1.5 while the unit is **strained** (stress ≥ 50). `breakdown` is `{ policy, target?, ignoresOrders, once?, onEnter: Effect[], actionEffects: Effect[] }`:
+
+| `policy` | The unit, from stress 100 until the expedition ends |
+|---|---|
+| `skip` | passes every turn |
+| `repeat_last` | repeats her last skill on her last target (nearest legal target when it is gone) |
+| `random_skill` | a random usable skill on a random legal target |
+| `attack` | her basic damaging skill on `target`: `nearest_enemy`, `strongest_enemy`, `nearest_any` or `nearest_ally` (allies may be hit) |
+| `await_order` | passes until a CP order targets her that round |
+| `twice_then_shutdown` | acts twice (aggressively), then is stunned for the rest of the combat |
+| `normal` | plays normally (the `onEnter` effects are the whole breakdown) |
+
+`once` ends the policy after one action; `ignoresOrders` makes her untargetable by CP orders; `onEnter` runs once when she breaks down; `actionEffects` after each of her breakdown actions. From stress 80 (*breaking*) each turn has a 25 % chance to follow the policy once instead of the chosen action.
+
+```json
+{ "id": "rage_governor", "combat": {
+    "upside": [{ "type": "stat", "stat": "atk", "pct": 0, "scale": { "by": "stress_above", "per": 1, "base": 30 } }],
+    "downside": [{ "type": "stress", "amount": 3, "trigger": "onDamaged", "target": "self", "downside": true },
+                 { "type": "order_refusal", "chance": 0.25, "orders": ["hold_the_line"], "downside": true }],
+    "breakdown": { "policy": "attack", "target": "strongest_enemy", "ignoresOrders": true, "onEnter": [], "actionEffects": [] } } }
+```
+
+## Combat effects (P4)
+
+One vocabulary drives everything that happens in a fight: skills, signatures, statuses, defects, synergies, CP orders, items and enemy affixes are lists of effect objects. Adding a behaviour is adding JSON; only when no effect type can express it is a new *generic* type added to `src/engine/combat/types.ts` and `schemas.ts`.
+
+Common fields: `type`; `trigger` (absent = *on use* for a skill, *always on* for a passive); `scope` (`self` default; `ally` = fires for an ally's hit/crit/kill, only with `onHit`/`onCrit`/`onKill`); `threshold` (50, 80 or 100; only with `onStressThreshold`); `target` (default `target` for skills, `self` otherwise); `when` (conditions); `chance` (0–1); `downside` (amplified while strained); `limit` (`round` or `combat`: fires at most once per round / combat).
+
+**Triggers:** `onCombatStart`, `onRoundStart`, `onTurnStart`, `onAction`, `onHit`, `onCrit`, `onDamaged`, `onAllyDowned` (fires for the downed unit's allies *and* for the downed unit itself, so an enemy can explode on its own downing; the killer is the target), `onKill`, `onStressThreshold`, `onCombatEnd`.
+
+**Targets:** `self`, `target`, `source` (who hit her), `allies`, `allies_other`, `allies_front`, `enemies`, `own_row` (her row mates), `target_row` (the row of the target — the killer for `onAllyDowned`), `random_enemy`, `lowest_hp_ally`, `commander`.
+
+**Conditions** (`when`; every present key must hold; about the owner unless noted): `hpBelowPct`, `hpAbovePct`, `stressMin`, `stressMax`, `roundMin`, `targetHasStatus` (the target), `selfHasStatus`, `aloneInRow`, `sameRowAndSkill`, `rowChanged`, `commanderExposed`, `notOrderedThisRound`, `upkeepWithinDays` (needs a defect that was maintained), `upkeepOlderThanDays` (also true for a defect that never was).
+
+| `type` | Params | Effect |
+|---|---|---|
+| `damage` | `mult` *or* `pctMaxHp`; `hits?`, `ignoreRows?`, `critBonus?`, `scale?` | ATK-based hit (`round(ATK × mult × 100/(100+DEF) × crit × rand(0.9,1.1))`), or true damage as a share of max HP (bleed, burn) |
+| `heal`, `revive` | `pctMaxHp` | heals; brings a downed ally back |
+| `status` | `statusId`, `turns?`, `stacks?` | applies a status (blocked by `immune`) |
+| `cleanse` | `kind: buff\|debuff`, `count` | removes the newest statuses of that kind |
+| `stat` | `stat` (`hp atk def spd crit all`), `pct`, `turns?`, `scale?` | percentage change (CRIT: points); without a trigger it is always on |
+| `outgoing`, `incoming` | `pct` (`outgoing`: `vs?: marked\|locked`, `scale?`) | damage dealt / taken, always on |
+| `stress`, `stress_taken` | `amount` / `pct`, `direction: gain\|relief` | changes stress / scales stress gains or relief |
+| `cp` | `amount` | command points |
+| `move` | `to: front\|back\|swap` | changes row (a rooted unit stays; a full row swaps places) |
+| `extra_action` | | she acts again right now (once per turn) |
+| `redirect` | `pct`, `turns`, `from: ally\|commander` | she takes part of the damage meant for the target |
+| `intercept_lethal` | `protect: commander\|ally` | takes a lethal hit instead (use `limit: combat`) |
+| `summon` | `enemyId`, `max` | adds an enemy (never beyond three per row) |
+| `follow_up` | `mult` | an extra hit on the target (no chains) |
+| `misfire`, `order_refusal` | `chance` (and `orders?`) | wasted action / the unit refuses CP orders |
+| `override_action` | `policy: aggressive`, `chance` | acts aggressively instead |
+| `lock_target` | `turns` | locked onto the target |
+| `loot_roll` | `extra` | extra loot roll after the combat |
+| `repeat_order`, `hp_set`, `immune`, `order_cost`, `loadout_slots`, `injury_days` | see schema | repeat the last CP order, set HP, block a status, change order cost (never below 1), extra loadout slot, longer injuries |
+
+`scale` = `{ by: "stress_above" \| "own_hp_missing_pct" \| "allies_hp_missing_pct", per, base? }`: the value (a percentage; for `stress_above` the stress beyond `base`) × `per` is added to the effect's `pct` (or `mult` for damage).
+
+## `skills` (P4)
+
+`{ id, name, kind: "active"\|"passive"\|"ultimate"\|"enemy"\|"signature", description, cooldown, cp?, stressCost?, usableFrom: ("front"\|"back")[], targets: { side: "enemy"\|"ally"\|"self", rows, count: "one"\|"row"\|"all", melee? }, effects, tags }`. Passives omit `cooldown`/`usableFrom`/`targets` and may only hold always-on effect types or effects with a trigger. `melee` skills hit the enemy front row while it stands; any `damage` with `ignoreRows` reaches everyone; an enemy with `taunt` must be chosen; `untargetable` units cannot be. A cooldown of N blocks the skill for N of her own turns. An `ultimate` costs its `cp` unless the unit was authorized.
+
+```json
+{ "id": "as_breach_charge", "name": "Breach Charge", "kind": "active", "description": "Rams the target and eats into its armor.",
+  "cooldown": 2, "usableFrom": ["front"], "targets": { "side": "enemy", "rows": ["front", "back"], "count": "one", "melee": true },
+  "effects": [{ "type": "damage", "mult": 1.2 }, { "type": "status", "statusId": "corrode", "turns": 2 }], "tags": ["melee", "debuff"] }
+```
+
+## `statuses`: P4 mechanics
+
+Required: `turns` (default duration), `maxStacks`, `stackMode` (`add` stacks up to `maxStacks`, `refresh` only renews). Optional: `tick` (effects run at the owner's turn start, once per stack), `mods` (`{ stat: pct per stack }`), `incomingPct` (damage taken, per stack), `flags` (`skipTurn`, `taunt`, `untargetable`, `absorb` = a shield worth 15 % of the applier's max HP per stack, `rooted` = cannot be moved). A status expires at the **end of its owner's turn**: one a unit puts on herself during her own turn needs `turns: 2` to cover her next turn.
+
+```json
+{ "id": "bleed", "name": "Bleed", "kind": "debuff", "description": "...", "turns": 3, "maxStacks": 3, "stackMode": "add",
+  "tick": [{ "type": "damage", "pctMaxHp": 4, "target": "self" }] }
+```
+
+## `orders` (P4)
+
+CP orders the commander gives between unit turns: `{ id, name, summary, cost: 1..5, target: "none"\|"ally"\|"enemy", effects }`. The ordered unit (or the first standing squad unit for target-less orders) owns the effects. Core ids: `focus_fire`, `hold_the_line`, `fall_back`, `steady`, `authorize_ultimate`.
+
+## `synergies` (P4)
+
+What a relationship state's `unlocks.synergies` ids do in combat: `{ id, name, summary, effects }`. The unit in that state gets the effects as passives. Core: `trusted_cover`, `friend_assist`, `confidant_sync`, `kindred_sync`, `spark`, `lover_link`, `devoted_sacrifice`, `rival_edge` and the refusal chances `order_friction_minor` / `order_friction` / `order_friction_major` (15 / 25 / 35 %, on `resentful` / `estranged` / `despises`).
+
+## `enemyCategories`, `enemies`, `affixes` (P4)
+
+`enemyCategories`: `{ id, name, frequency: "common"\|"rare"\|"very_rare", summary }` (the generator weighs rare × 0.3, very rare × 0.08). `enemies`: `{ id, categoryId, name, stats: { base, growth }, skills (≥ 1, kind enemy), eliteSkill?, aiProfile: "aggressive"\|"predator"\|"protector"\|"disruptor"\|"stressor"\|"erratic", rowPreference, power, portrait: { ascii: string[1..8], image? }, tags }`; `power` weighs the enemy in an encounter's budget (stat power × `power`). Stats at a level: `(base + growth × (level − 1)) × difficulty × (1 + Σ affix %)`; difficulty (story 0.8, hard 1.2) scales HP, ATK and DEF. `affixes`: `{ id, name, appliesTo: "enemy"\|"item", adjective?, slots?, drawback?, statPct?, effects, extraSkill? }`; enemy affixes (`armored`, `regenerating`, `reinforcing`, `volatile`, `bloom_touched`, `swift`, `elite`) put their `adjective` in the default name ("Armored Husk"); `extraSkill` gives the enemy its `eliteSkill`.
+
+```json
+{ "id": "husk", "categoryId": "mutant_human", "name": "Husk",
+  "stats": { "base": { "hp": 55, "atk": 11, "def": 4, "spd": 8, "crit": 0 }, "growth": { "hp": 4, "atk": 0.7, "def": 0.2, "spd": 0.05, "crit": 0 } },
+  "skills": ["en_claw", "en_infectious_bite"], "eliteSkill": "en_elite_strike", "aiProfile": "aggressive", "rowPreference": "front",
+  "power": 1, "portrait": { "ascii": ["  .-.  ", " (o.o) "] }, "tags": ["swarm"] }
+```
+
+## `items`, `recipes`, `lootTables` (P4)
+
+`items`: `{ id, name, slot: "weapon"\|"upper"\|"lower", class, rarity, baseStats, affixSlots?, effects, value }`. `class` is a weapon class or an armor weight and must appear in some role's `weaponClasses` / `armorWeights`; a role may only wear its own classes. `rarity` is the template's *minimum*; an instance has its own (`standard`, `refined`, `prototype`, `corporate`, `anomalous`), an upgrade level 0–5 and affixes (`[0, 1, 2, 3, 3]` positive slots by rarity, plus one drawback when anomalous). Stats = `baseStats × (1 + 0.15 × (rarity − 1)) × (1 + 0.08 × upgrade)`; an affix's `statPct` is a share of the *wearer's* total stat. `recipes`: `{ id, itemId, rarity, cost: { credits, plyx } }` (the workshop's `rarityCap` limits what can be crafted; anomalous items have no recipe). `lootTables`: `{ id, rolls, entries: [{ weight, kind: "item"\|"credits"\|"plyx"\|"supplies", itemId?, rarityWeights?, amount?: [min, max] }] }`; an item entry rolls its rarity from `rarityWeights` (never below the template's).
 
 ## Lorebook
 

@@ -2888,7 +2888,7 @@ function strain(c, e) {
 var unitOf = (ctx2, c) => c.unitId ? ctx2.state.squad.find((u) => u.id === c.unitId) : void 0;
 function upkeepAge(ctx2, c) {
   const days = (unitOf(ctx2, c)?.defects ?? []).map((d) => d.upkeepDay).filter((d) => typeof d === "number");
-  return ctx2.state.day - (days.length > 0 ? Math.max(...days) : 0);
+  return days.length > 0 ? ctx2.state.day - Math.max(...days) : Infinity;
 }
 function checkCondition(ctx2, cid, when, targetCid, skillId) {
   if (!when) return true;

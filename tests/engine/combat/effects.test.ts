@@ -229,8 +229,9 @@ describe('conditions', () => {
     expect(run(10, 14, { upkeepWithinDays: 3 })).toBe(false);
     expect(run(10, 14, { upkeepOlderThanDays: 3 })).toBe(true);
     expect(run(10, 12, { upkeepOlderThanDays: 3 })).toBe(false);
-    expect(run(undefined, 2, { upkeepWithinDays: 3 })).toBe(true);
-    expect(run(undefined, 9, { upkeepOlderThanDays: 3 })).toBe(true);
+    // never maintained: no upside, and the downside from the start
+    expect(run(undefined, 2, { upkeepWithinDays: 3 })).toBe(false);
+    expect(run(undefined, 2, { upkeepOlderThanDays: 3 })).toBe(true);
   });
 
   it('every key present must hold', () => {

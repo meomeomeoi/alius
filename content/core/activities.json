@@ -65,7 +65,7 @@
   {
     "id": "workshop",
     "name": "Workshop",
-    "summary": "Craft or upgrade gear (recipes arrive with P4); a companion's weapon may come out better.",
+    "summary": "Craft, upgrade, reroll or scrap gear (three operations per visit); a tech-loving companion's weapon may come out better.",
     "slotRules": [
       "morning",
       "afternoon",

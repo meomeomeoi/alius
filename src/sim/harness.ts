@@ -62,7 +62,8 @@ export function fixtureSquad(reg: Registries, opts: { level: number; defectId?: 
   for (const u of state.squad) {
     u.level = opts.level;
     u.skillPoints = opts.level - 1;
-    u.defects = opts.defectId ? [{ id: opts.defectId, origin: 'harness' }] : [];
+    // a maintained defect: upkeep-gated effects (graft_rejection) show their upside, as in normal play
+    u.defects = opts.defectId ? [{ id: opts.defectId, origin: 'harness', upkeepDay: state.day }] : [];
     spendPoints(state, reg, u.id);
     u.currentHp = 1_000_000; // clamped to max HP by the combat build
   }

@@ -67,10 +67,10 @@ function strain<E extends EffectSpec>(c: Combatant, e: E): E {
 
 const unitOf = (ctx: EffectCtx, c: Combatant) => (c.unitId ? ctx.state.squad.find((u) => u.id === c.unitId) : undefined);
 
-/** Days since the unit's defect upkeep (a defect never maintained counts from day 0). */
+/** Days since the unit's defect was last maintained (medbay); `Infinity` for a defect that never was. */
 function upkeepAge(ctx: EffectCtx, c: Combatant): number {
   const days = (unitOf(ctx, c)?.defects ?? []).map((d) => d.upkeepDay).filter((d): d is number => typeof d === 'number');
-  return ctx.state.day - (days.length > 0 ? Math.max(...days) : 0);
+  return days.length > 0 ? ctx.state.day - Math.max(...days) : Infinity;
 }
 
 /**
