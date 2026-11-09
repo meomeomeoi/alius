@@ -8,6 +8,7 @@ import type { CampaignState } from '../../src/engine/state/types';
 // Importing these registers the actions under test.
 import '../../src/engine/actions/calendar';
 import '../../src/engine/actions/base';
+import '../../src/engine/actions/scene';
 
 export async function loadCore(): Promise<Registries> {
   const r = await loadPacks(['content/core'], async (p) => JSON.parse(await readFile(p, 'utf8')));
