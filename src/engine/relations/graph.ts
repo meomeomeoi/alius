@@ -1,6 +1,7 @@
 import type { Conditions } from '../../content/schemas';
 import type { Entry, Registries } from '../../content/types';
 import type { EngineEvent } from '../dispatch';
+import { isLiving } from '../economy';
 import type { CampaignState, HistoryEntry } from '../state/types';
 import { TUNING } from '../tuning';
 import { intimacyOf } from './gain';
@@ -12,12 +13,19 @@ export type ProposalCheck = { stateId: string } | { fail: ProposalFailure };
 type EntryShape = { via: string[]; fromStates?: string[]; events?: string[]; proposals?: string[]; when?: Conditions };
 const entryOf = (st: Entry): EntryShape => st.entry as EntryShape;
 
-/** Appends a history line and trims the log to `historyMax`. */
+/**
+ * Appends a history line and trims the log to `historyMax`. Entries whose type some `eventCount` condition counts
+ * (`TUNING.relations.historyKeep`) are evicted last, so a chatty scene cannot push the marks out of reach.
+ */
 export function pushHistory(draft: CampaignState, unitId: string, h: HistoryEntry): void {
   const rel = draft.relations[unitId];
   if (!rel) return;
   rel.history.push(h);
-  if (rel.history.length > TUNING.relations.historyMax) rel.history.splice(0, rel.history.length - TUNING.relations.historyMax);
+  const keep: readonly string[] = TUNING.relations.historyKeep;
+  while (rel.history.length > TUNING.relations.historyMax) {
+    const at = rel.history.findIndex((e) => !keep.includes(e.type));
+    rel.history.splice(at < 0 ? 0 : at, 1);
+  }
 }
 
 /** Does `unitId` satisfy every key of `cond`? An empty condition holds; an empty `anyOf` never does. */
@@ -159,7 +167,8 @@ export function stateForProposal(state: CampaignState, reg: Registries, unitId: 
   if (!rel || !state.squad.some((u) => u.id === unitId)) return { fail: 'unavailable' };
   const listed = availableStates(state, reg, unitId).filter((st) => entryOf(st).proposals?.includes(kind));
   if (listed.length === 0) return { fail: 'unavailable' };
-  const committedElsewhere = state.squad.some((u) => u.id !== unitId && state.relations[u.id]?.stateId === 'devoted');
+  // a dead, deserted or terminated devoted partner no longer holds the commander
+  const committedElsewhere = state.squad.some((u) => u.id !== unitId && isLiving(u) && state.relations[u.id]?.stateId === 'devoted');
   let worst = -1;
   for (const st of [...listed].sort(byPriority)) {
     const e = entryOf(st);

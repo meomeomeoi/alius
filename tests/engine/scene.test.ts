@@ -32,7 +32,7 @@ describe('scene/start', () => {
     expect(errors(r.events)).toEqual([]);
     expect(r.state.scene).toEqual({
       id: 's1', day: 1, slot: 'morning', locationId: 'quarters_commander', participants: [ANN], mode: 'private',
-      origin: 'activity', consumesSlot: true, startIndex: 7, exchanges: 0,
+      origin: 'activity', consumesSlot: true, startIndex: 7, readIndex: 7, exchanges: 0,
     });
     expect(r.state.calendar.pendingScene).toEqual(t.calendar.pendingScene);
     expect(ofType(r.events, 'scene_started')).toEqual([{ type: 'scene_started', sceneId: 's1', participants: [ANN], locationId: 'quarters_commander' }]);

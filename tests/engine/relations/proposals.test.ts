@@ -272,10 +272,13 @@ describe('discovery', () => {
     s.memory.facts.push({ id: 'f1', about: [ANN], text: 'x', tags: ['affair'], importance: 4, day: 30, knownBy: [CAT] });
     expect(rollDiscovery(s, reg, never, [ANN])).toEqual([]);
   });
-  it('an affair whose hidden partner is no longer romantic is never discovered', () => {
+  it('an affair whose hidden partner is no longer romantic is never discovered, it is closed quietly', () => {
     const s = affair();
     s.relations[BEA].stateId = 'comrade';
-    expect(rollDiscovery(s, reg, always, [ANN, BEA])).toEqual([]);
+    const events = rollDiscovery(s, reg, always, [ANN, BEA]);
+    expect(ofType(events, 'affair_discovered')).toEqual([]);
+    expect(ofType(events, 'affair_ended')).toHaveLength(1);
+    expect(s.relations[ANN].affair).toBeUndefined();
   });
   it('discovery uses the campaign rng deterministically', () => {
     const a = affair();

@@ -8,7 +8,7 @@ const REASON_TEXT: Record<ProposalFailure, string> = {
   too_soon: 'too soon',
   no_trust: 'she does not trust him enough',
   not_interested: 'she is not interested',
-  committed: 'she is already committed',
+  committed: 'he is already committed to someone else',
   unavailable: 'it is not something she would consider',
 };
 

@@ -396,6 +396,8 @@ var TUNING = Object.freeze({
   relations: Object.freeze({
     k: 6,
     historyMax: 60,
+    /** History types an `eventCount` condition counts: evicted last. Every such type used by content must be listed here. */
+    historyKeep: Object.freeze(["stress_high", "sided_against"]),
     triggerStress: 8,
     likeMult: 1.5,
     stressHint: Object.freeze({ minor: 2, moderate: 5, major: 10, extreme: 18 }),
@@ -1173,8 +1175,7 @@ function compactionDue(state) {
   const days = state.memory.chronicle.filter((e) => e.kind === "day");
   for (const week of [...new Set(days.map((e) => weekOf(e.day)))].sort((a, b) => a - b)) {
     const first = week * 7 + 1;
-    const entries = days.filter((e) => weekOf(e.day) === week);
-    if (new Set(entries.map((e) => e.day)).size === 7 && first + 6 < state.day) return { kind: "week", day: first, toDay: first + 6, entries };
+    if (first + 6 < state.day) return { kind: "week", day: first, toDay: first + 6, entries: days.filter((e) => weekOf(e.day) === week) };
   }
   return null;
 }
@@ -1382,7 +1383,11 @@ function pushHistory(draft, unitId, h2) {
   const rel = draft.relations[unitId];
   if (!rel) return;
   rel.history.push(h2);
-  if (rel.history.length > TUNING.relations.historyMax) rel.history.splice(0, rel.history.length - TUNING.relations.historyMax);
+  const keep = TUNING.relations.historyKeep;
+  while (rel.history.length > TUNING.relations.historyMax) {
+    const at = rel.history.findIndex((e) => !keep.includes(e.type));
+    rel.history.splice(at < 0 ? 0 : at, 1);
+  }
 }
 function meets(state, reg, unitId, cond) {
   const rel = state.relations[unitId];
@@ -1494,7 +1499,7 @@ function stateForProposal(state, reg, unitId, kind) {
   if (!rel || !state.squad.some((u) => u.id === unitId)) return { fail: "unavailable" };
   const listed = availableStates(state, reg, unitId).filter((st) => entryOf(st).proposals?.includes(kind));
   if (listed.length === 0) return { fail: "unavailable" };
-  const committedElsewhere = state.squad.some((u) => u.id !== unitId && state.relations[u.id]?.stateId === "devoted");
+  const committedElsewhere = state.squad.some((u) => u.id !== unitId && isLiving(u) && state.relations[u.id]?.stateId === "devoted");
   let worst = -1;
   for (const st of [...listed].sort(byPriority)) {
     const e = entryOf(st);
@@ -1737,11 +1742,17 @@ function answerProposal(draft, reg, a) {
   if ("fail" in check) {
     return [{ type: "proposal_answered", ...base }, { type: "proposal_resolved", unitId: rec.unitId, kind: rec.kind, receptive: false, reason: check.fail }];
   }
+  if (a.answer === "accept" && !rec.needsDisclosure && rec.kind !== "secret_affair" && reg.relationshipStates.get(check.stateId)?.romance === true && romanticPartners(draft, reg, rec.unitId).length > 0) {
+    rec.needsDisclosure = true;
+    list2.push(rec);
+    return [offered(rec)];
+  }
   return [
     { type: "proposal_answered", ...base },
     ...conclude(draft, reg, rec.unitId, rec.kind, check.stateId, a.answer === "accept_secret" || rec.kind === "secret_affair")
   ];
 }
+var romanceAllowed = (reg, state, stateId) => reg.relationshipStates.get(stateId)?.romance !== true || intimacyOf(state).romance;
 function affairKnown(draft, unitId, hiddenFrom) {
   return draft.memory.facts.some(
     (f) => f.tags.includes("affair") && f.about.includes(unitId) && (f.knownBy.includes("*") || hiddenFrom.some((h2) => f.knownBy.includes(h2)))
@@ -1757,7 +1768,13 @@ function rollDiscovery(draft, reg, rng, presentIds) {
       const u = draft.squad.find((x) => x.id === id);
       return u && isLiving(u) && reg.relationshipStates.get(draft.relations[id]?.stateId)?.romance === true;
     });
-    if (hidden.length === 0) continue;
+    if (hidden.length === 0) {
+      const rel2 = draft.relations[unit.id];
+      delete rel2.affair;
+      if (rel2.stateId !== affair.as && romanceAllowed(reg, draft, affair.as)) events.push(enterState(draft, unit.id, affair.as, "affair_ended"));
+      events.push({ type: "affair_ended", unitId: unit.id });
+      continue;
+    }
     const certain = affairKnown(draft, unit.id, hidden);
     const present = presentIds.includes(unit.id);
     if (!certain && !present) continue;
@@ -1767,7 +1784,7 @@ function rollDiscovery(draft, reg, rng, presentIds) {
     const rel = draft.relations[unit.id];
     const as = affair.as;
     delete rel.affair;
-    if (rel.stateId !== as) events.push(enterState(draft, unit.id, as, "affair_discovered"));
+    if (rel.stateId !== as && romanceAllowed(reg, draft, as)) events.push(enterState(draft, unit.id, as, "affair_discovered"));
     events.push({ type: "affair_discovered", unitId: unit.id, by: hidden });
     events.push(...partnersReact(draft, reg, hidden, "discovered a secret romance"));
     events.push(...evaluateAutomatic(draft, reg, unit.id));
@@ -1919,6 +1936,7 @@ registerAction("scene/start", (draft, payload, ctx2) => {
     origin,
     consumesSlot: payload.consumesSlot !== false,
     startIndex: start,
+    readIndex: start,
     exchanges: 0,
     ...typeof payload.nightEntryId === "string" ? { nightEntryId: payload.nightEntryId } : {}
   };
@@ -1934,7 +1952,9 @@ registerAction("intents/apply", (draft, payload, ctx2) => {
   if (!isObj5(payload)) throw new Error("intents/apply needs a payload");
   if (payload.channel === "scene") {
     if (!draft.scene) throw new Error("intents/apply: no scene is open");
-    return applyIntents(draft, ctx2, { channel: "scene", participants: draft.scene.participants, intents: payload.intents, sceneId: draft.scene.id });
+    const events = applyIntents(draft, ctx2, { channel: "scene", participants: draft.scene.participants, intents: payload.intents, sceneId: draft.scene.id });
+    if (typeof payload.readIndex === "number" && Number.isInteger(payload.readIndex) && payload.readIndex >= 0) draft.scene.readIndex = payload.readIndex;
+    return events;
   }
   if (payload.channel === "dm") {
     const unit = draft.squad.find((u) => u.id === payload.unitId);
@@ -7259,7 +7279,7 @@ var REASON_TEXT = {
   too_soon: "too soon",
   no_trust: "she does not trust him enough",
   not_interested: "she is not interested",
-  committed: "she is already committed",
+  committed: "he is already committed to someone else",
   unavailable: "it is not something she would consider"
 };
 function proposalDirectiveText(unitName, kind, result) {
@@ -7291,6 +7311,8 @@ function createSceneController(deps) {
   const { st, app } = deps;
   let extracted = 0;
   let lastApply = null;
+  let extracting = false;
+  const swipedWhileExtracting = /* @__PURE__ */ new Set();
   let awaitingReextract = false;
   let pending2 = false;
   let inflight = null;
@@ -7310,8 +7332,9 @@ function createSceneController(deps) {
     return events;
   }
   function reflect(events, extremeKinds = []) {
+    const set = [];
     const s = state();
-    if (!s) return;
+    if (!s) return set;
     for (const e of events) {
       switch (e.type) {
         case "relation_changed":
@@ -7330,12 +7353,14 @@ function createSceneController(deps) {
           if (!unit) break;
           const result = e.receptive === true ? { receptive: true } : { receptive: false, reason: e.reason };
           app.context.setDirective(proposalDirective(unit.id, unit.displayName, String(e.kind), result));
+          set.push(`proposal:${unit.id}`);
           break;
         }
       }
     }
     for (const kind of extremeKinds) deps.onUi({ type: "cut_in", kind });
     app.refreshContext();
+    return set;
   }
   const avatarsOf = (s, ids) => ids.map((id) => unitById(s, id)?.cardRef).filter((a) => typeof a === "string");
   function setSceneContext(s) {
@@ -7386,8 +7411,21 @@ function createSceneController(deps) {
       openPromises: openPromises(s0, scene.participants, scene.participants).map((p) => ({ by: nm(p.by), to: nm(p.to), text: p.text })),
       romance: intimacyOf(s0).romance
     };
-    const result = await extractIntents(input, { st, settings: deps.settings() });
+    swipedWhileExtracting.clear();
+    extracting = true;
+    let result;
+    try {
+      result = await extractIntents(input, { st, settings: deps.settings() });
+    } finally {
+      extracting = false;
+    }
     if (disposed || chatId() !== expect) return false;
+    if (messages.some((m) => swipedWhileExtracting.has(m.index))) {
+      swipedWhileExtracting.clear();
+      awaitingReextract = true;
+      debug("A reply was swiped while it was being read; the reading was dropped.");
+      return false;
+    }
     if (!result) {
       debug("Intent extraction failed; nothing changed.");
       return false;
@@ -7395,12 +7433,12 @@ function createSceneController(deps) {
     const from = extracted;
     const before = state();
     if (!before || !before.scene) return false;
-    const events = dispatch2({ type: "intents/apply", payload: { channel: "scene", intents: result.intents } }, expect);
+    const events = dispatch2({ type: "intents/apply", payload: { channel: "scene", intents: result.intents, readIndex: nextPointer } }, expect);
     if (events.some((e) => e.type === "error")) return false;
     const after = state();
     extracted = nextPointer;
-    if (after && after !== before) lastApply = { lastReplyIndex: lastReply.index, from, before, after };
-    reflect(events, result.intents.events.filter((e) => e.severity === "extreme").map((e) => e.type));
+    const directives = reflect(events, result.intents.events.filter((e) => e.severity === "extreme").map((e) => e.type));
+    if (after && after !== before) lastApply = { lastReplyIndex: lastReply.index, from, before, after, directives };
     if (deps.settings().spriteMode === "emotion_pick") {
       for (const em of result.emotions) deps.onUi({ type: "sprite", unitId: em.unitId, label: em.label });
     }
@@ -7548,6 +7586,10 @@ function createSceneController(deps) {
       return st.getChatMessages(Math.min(scene.startIndex, st.chatLength()));
     },
     onSwipe(index) {
+      if (extracting) {
+        swipedWhileExtracting.add(index);
+        return;
+      }
       const la = lastApply;
       if (!la || index !== la.lastReplyIndex) return;
       lastApply = null;
@@ -7558,13 +7600,14 @@ function createSceneController(deps) {
       }
       extracted = la.from;
       awaitingReextract = true;
+      for (const id of la.directives) app.context.clearDirective(id);
       app.refreshContext();
       debug("Swipe: the extraction for that reply was undone.");
     },
     resume() {
       const s = state();
       if (!s?.scene) return;
-      extracted = st.chatLength();
+      extracted = Math.min(s.scene.readIndex ?? st.chatLength(), st.chatLength());
       lastApply = null;
       void st.setMembersActive(avatarsOf(s, s.scene.participants)).catch((e) => deps.toast("warn", `Could not restore the scene members: ${e instanceof Error ? e.message : String(e)}`));
       setSceneContext(s);
@@ -10485,8 +10528,7 @@ function createApp(st, deps) {
     const s = state;
     if (!s) return;
     const named = (ids2) => ids2.map((id) => s.squad.find((u) => u.id === id)).filter((u) => u && u.kind === "named" && u.status !== "dead" && u.status !== "deserted" && u.status !== "terminated");
-    const pool = [...named(s.roster.activeIds), ...named(s.squad.map((u) => u.id))];
-    const ids = [...new Set(pool.map((u) => u.id))].slice(0, 3);
+    const ids = [...new Set(named(s.roster.activeIds).map((u) => u.id))].slice(0, 3);
     if (ids.length === 0) return;
     const answer = await shell.modal({
       title: "Linger at the table?",
@@ -11788,8 +11830,8 @@ function lastCharacterAvatar(chat) {
 var ZWSP = "\u200B";
 function escapeSlashText(s) {
   let t = s.replace(/(\\*)\|/g, (_m, slashes) => `${slashes}${slashes}\\|`);
-  t = t.replace(/\{\{/g, `{${ZWSP}{`).replace(/\}\}/g, `}${ZWSP}}`);
-  if (t.startsWith("/")) t = ZWSP + t;
+  t = t.replace(/\{\{/g, `{${ZWSP}{`).replace(/\}\}/g, `}${ZWSP}}`).replace(/\{:/g, `{${ZWSP}:`);
+  if (t.startsWith("/") || /^\s*\w+=/.test(t)) t = ZWSP + t;
   return t;
 }
 var sendCommand = (text) => `/send ${escapeSlashText(text)} | /trigger await=true`;

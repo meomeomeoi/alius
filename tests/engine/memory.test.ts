@@ -149,15 +149,12 @@ describe('chronicle', () => {
     scene(s, 10, 'today');
     expect(compactionDue(s)).toBeNull();
   });
-  it('week compaction needs seven past day entries', () => {
+  it('a fully past week is compacted from its day entries', () => {
     const s = fresh();
     s.day = 20;
-    for (let d = 1; d <= 6; d++) addChronicle(s, { kind: 'day', day: d, text: `day ${d}` });
-    expect(compactionDue(s)).toBeNull();
-    addChronicle(s, { kind: 'day', day: 7, text: 'day 7' });
-    const due = compactionDue(s)!;
-    expect(due).toMatchObject({ kind: 'week', day: 1, toDay: 7 });
-    expect(due.entries).toHaveLength(7);
+    for (let d = 1; d <= 3; d++) addChronicle(s, { kind: 'day', day: d, text: `day ${d}` });
+    expect(compactionDue(s)).toMatchObject({ kind: 'week', day: 1, toDay: 7 });
+    expect(compactionDue(s)!.entries).toHaveLength(3);
   });
   it('a week that is not over is not compacted', () => {
     const s = fresh();

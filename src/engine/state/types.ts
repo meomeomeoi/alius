@@ -148,6 +148,8 @@ export interface SceneRecord {
   origin: SceneOrigin;
   consumesSlot: boolean;
   startIndex: number;
+  /** First chat index `intent_extract` has not read yet (survives a reload; absent in older saves = `startIndex`). */
+  readIndex?: number;
   exchanges: number;
   nightEntryId?: string;
 }

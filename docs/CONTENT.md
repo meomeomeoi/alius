@@ -293,7 +293,7 @@ A state with `when: { "anyOf": [] }` is never entered (an empty `anyOf` never ho
 | `defectsAny` | The unit has at least one of these defects. |
 | `inStates` | Current state is one of these. |
 | `minDaysInState` | At least this many days since `stateSince`. |
-| `eventCount` | `{ type, min, withinDays? }`: history entries of that type (an event type, or the engine's `stress_high`). |
+| `eventCount` | `{ type, min, withinDays? }`: history entries of that type (an event type, or the engine's `stress_high`). The history keeps only the last 60 entries per relation and evicts the types in `TUNING.relations.historyKeep` (`src/engine/tuning.ts`: `stress_high`, `sided_against`) last: **a type you count here must be added to that list**, or a chatty scene can push its entries out (a core test enforces this for the shipped content). |
 | `leashUsesMin` | The Leash log has at least this many entries for this unit. |
 | `anyOf` | List of Conditions; at least one holds. |
 

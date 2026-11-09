@@ -6,6 +6,7 @@ import type { Rng } from '../rng';
 import type { CampaignState, PendingProposal } from '../state/types';
 import { TUNING } from '../tuning';
 import { applyEventToUnit } from './effects';
+import { intimacyOf } from './gain';
 import { enterState, evaluateAutomatic, pushHistory, stateForProposal, type ProposalFailure } from './graph';
 import type { EventIntent } from './intents';
 import { ROMANTIC_PROPOSALS } from './vocab';
@@ -146,11 +147,22 @@ export function answerProposal(
   if ('fail' in check) {
     return [{ type: 'proposal_answered', ...base }, { type: 'proposal_resolved', unitId: rec.unitId, kind: rec.kind, receptive: false, reason: check.fail as ProposalFailure }];
   }
+  // someone may have become a partner since the offer: the commander must then choose OPENLY or SECRETLY first
+  if (a.answer === 'accept' && !rec.needsDisclosure && rec.kind !== 'secret_affair'
+    && reg.relationshipStates.get(check.stateId)?.romance === true && romanticPartners(draft, reg, rec.unitId).length > 0) {
+    rec.needsDisclosure = true;
+    list.push(rec);
+    return [offered(rec)];
+  }
   return [
     { type: 'proposal_answered', ...base },
     ...conclude(draft, reg, rec.unitId, rec.kind, check.stateId, a.answer === 'accept_secret' || rec.kind === 'secret_affair'),
   ];
 }
+
+/** A romantic state may only be entered while romance is on. */
+const romanceAllowed = (reg: Registries, state: CampaignState, stateId: string): boolean =>
+  reg.relationshipStates.get(stateId)?.romance !== true || intimacyOf(state).romance;
 
 /** Has a hidden partner already heard about this affair? (a public fact, or one that partner knows, tagged `affair`) */
 function affairKnown(draft: CampaignState, unitId: string, hiddenFrom: string[]): boolean {
@@ -174,7 +186,14 @@ export function rollDiscovery(draft: CampaignState, reg: Registries, rng: Rng, p
       const u = draft.squad.find((x) => x.id === id);
       return u && isLiving(u) && reg.relationshipStates.get(draft.relations[id]?.stateId)?.romance === true;
     });
-    if (hidden.length === 0) continue;
+    if (hidden.length === 0) {
+      // everyone it was hidden from has left romance: nothing to conceal any more
+      const rel = draft.relations[unit.id];
+      delete rel.affair;
+      if (rel.stateId !== affair.as && romanceAllowed(reg, draft, affair.as)) events.push(enterState(draft, unit.id, affair.as, 'affair_ended'));
+      events.push({ type: 'affair_ended', unitId: unit.id });
+      continue;
+    }
     const certain = affairKnown(draft, unit.id, hidden);
     const present = presentIds.includes(unit.id);
     if (!certain && !present) continue;
@@ -184,7 +203,8 @@ export function rollDiscovery(draft: CampaignState, reg: Registries, rng: Rng, p
     const rel = draft.relations[unit.id];
     const as = affair.as;
     delete rel.affair;
-    if (rel.stateId !== as) events.push(enterState(draft, unit.id, as, 'affair_discovered'));
+    // with romance off no romantic transition fires: she stays as she is, the secret is simply out
+    if (rel.stateId !== as && romanceAllowed(reg, draft, as)) events.push(enterState(draft, unit.id, as, 'affair_discovered'));
     events.push({ type: 'affair_discovered', unitId: unit.id, by: hidden });
     events.push(...partnersReact(draft, reg, hidden, 'discovered a secret romance'));
     events.push(...evaluateAutomatic(draft, reg, unit.id));

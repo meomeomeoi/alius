@@ -72,7 +72,7 @@ registerAction('scene/start', (draft, payload, ctx) => {
   const sceneId = nextId(draft, 's');
   draft.scene = {
     id: sceneId, day: draft.day, slot: draft.slot, locationId: loc.id, participants, mode: participants.length > 1 ? 'group' : 'private',
-    origin, consumesSlot: payload.consumesSlot !== false, startIndex: start, exchanges: 0,
+    origin, consumesSlot: payload.consumesSlot !== false, startIndex: start, readIndex: start, exchanges: 0,
     ...(typeof payload.nightEntryId === 'string' ? { nightEntryId: payload.nightEntryId } : {}),
   };
   draft.calendar.pendingScene ??= { unitId: participants[0], day: draft.day, slot: draft.slot };
@@ -89,7 +89,10 @@ registerAction('intents/apply', (draft, payload, ctx) => {
   if (!isObj(payload)) throw new Error('intents/apply needs a payload');
   if (payload.channel === 'scene') {
     if (!draft.scene) throw new Error('intents/apply: no scene is open');
-    return applyIntents(draft, ctx, { channel: 'scene', participants: draft.scene.participants, intents: payload.intents, sceneId: draft.scene.id });
+    const events = applyIntents(draft, ctx, { channel: 'scene', participants: draft.scene.participants, intents: payload.intents, sceneId: draft.scene.id });
+    // the controller reports how far it has read, in the same step, so a rollback restores the pointer with the deltas
+    if (typeof payload.readIndex === 'number' && Number.isInteger(payload.readIndex) && payload.readIndex >= 0) draft.scene.readIndex = payload.readIndex;
+    return events;
   }
   if (payload.channel === 'dm') {
     const unit = draft.squad.find((u) => u.id === payload.unitId);

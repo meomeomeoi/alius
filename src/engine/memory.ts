@@ -151,8 +151,8 @@ export interface CompactionDue {
 }
 
 /**
- * What should be compacted next, or null. Scene lines of a day before today → one day entry; seven day entries of a
- * past week → one week entry. Day compaction goes first.
+ * What should be compacted next, or null. Scene lines of a day before today → one day entry; the day entries of a
+ * week that is over → one week entry. Day compaction goes first.
  */
 export function compactionDue(state: CampaignState): CompactionDue | null {
   const scenes = state.memory.chronicle.filter((e) => e.kind === 'scene' && e.day < state.day);
@@ -160,11 +160,11 @@ export function compactionDue(state: CampaignState): CompactionDue | null {
     const day = Math.min(...scenes.map((e) => e.day));
     return { kind: 'day', day, entries: scenes.filter((e) => e.day === day) };
   }
+  // a week is compacted once it is over, from whatever day entries it has (a day without scenes has none)
   const days = state.memory.chronicle.filter((e) => e.kind === 'day');
   for (const week of [...new Set(days.map((e) => weekOf(e.day)))].sort((a, b) => a - b)) {
     const first = week * 7 + 1;
-    const entries = days.filter((e) => weekOf(e.day) === week);
-    if (new Set(entries.map((e) => e.day)).size === 7 && first + 6 < state.day) return { kind: 'week', day: first, toDay: first + 6, entries };
+    if (first + 6 < state.day) return { kind: 'week', day: first, toDay: first + 6, entries: days.filter((e) => weekOf(e.day) === week) };
   }
   return null;
 }

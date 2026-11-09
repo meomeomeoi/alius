@@ -13,6 +13,8 @@ export const TUNING = Object.freeze({
   relations: Object.freeze({
     k: 6,
     historyMax: 60,
+    /** History types an `eventCount` condition counts: evicted last. Every such type used by content must be listed here. */
+    historyKeep: Object.freeze(['stress_high', 'sided_against'] as const),
     triggerStress: 8,
     likeMult: 1.5,
     stressHint: Object.freeze({ minor: 2, moderate: 5, major: 10, extreme: 18 }),

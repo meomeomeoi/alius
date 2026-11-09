@@ -7,8 +7,9 @@ const ZWSP = '​';
  */
 export function escapeSlashText(s: string): string {
   let t = s.replace(/(\\*)\|/g, (_m, slashes: string) => `${slashes}${slashes}\\|`);
-  t = t.replace(/\{\{/g, `{${ZWSP}{`).replace(/\}\}/g, `}${ZWSP}}`);
-  if (t.startsWith('/')) t = ZWSP + t;
+  t = t.replace(/\{\{/g, `{${ZWSP}{`).replace(/\}\}/g, `}${ZWSP}}`).replace(/\{:/g, `{${ZWSP}:`);
+  // a leading `word=value` would be read as a named argument of /send (ST: /^(\w+)=/ after the command name)
+  if (t.startsWith('/') || /^\s*\w+=/.test(t)) t = ZWSP + t;
   return t;
 }
 

@@ -219,8 +219,8 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     const s = state;
     if (!s) return;
     const named = (ids: string[]) => ids.map((id) => s.squad.find((u) => u.id === id)).filter((u) => u && u.kind === 'named' && u.status !== 'dead' && u.status !== 'deserted' && u.status !== 'terminated');
-    const pool = [...named(s.roster.activeIds), ...named(s.squad.map((u) => u.id))];
-    const ids = [...new Set(pool.map((u) => u!.id))].slice(0, 3);
+    // the squad lingering over the meal is the active roster; reserve and injured units are elsewhere
+    const ids = [...new Set(named(s.roster.activeIds).map((u) => u!.id))].slice(0, 3);
     if (ids.length === 0) return;
     const answer = await shell.modal({
       title: 'Linger at the table?',

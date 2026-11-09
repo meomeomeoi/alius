@@ -72,7 +72,10 @@ export function createSceneController(deps: SceneDeps): SceneController {
   /** First chat index not yet read by `intent_extract`. */
   let extracted = 0;
   /** The last applied extraction, so a swipe of its reply can undo exactly that. */
-  let lastApply: { lastReplyIndex: number; from: number; before: CampaignState; after: CampaignState } | null = null;
+  let lastApply: { lastReplyIndex: number; from: number; before: CampaignState; after: CampaignState; directives: string[] } | null = null;
+  /** True while `intent_extract` runs; a swipe during it cannot be rolled back (nothing applied yet), so it is noted. */
+  let extracting = false;
+  const swipedWhileExtracting = new Set<number>();
   let awaitingReextract = false;
   let pending = false;
   /** The send in flight (reply, extraction, sprites); `end()` waits for it so an exchange is never applied twice. */
@@ -97,9 +100,10 @@ export function createSceneController(deps: SceneDeps): SceneController {
   }
 
   /** Maps what the engine did to what the screen shows and sets directives for proposal results. */
-  function reflect(events: EngineEvent[], extremeKinds: string[] = []): void {
+  function reflect(events: EngineEvent[], extremeKinds: string[] = []): string[] {
+    const set: string[] = [];
     const s = state();
-    if (!s) return;
+    if (!s) return set;
     for (const e of events) {
       switch (e.type) {
         case 'relation_changed':
@@ -118,12 +122,14 @@ export function createSceneController(deps: SceneDeps): SceneController {
           if (!unit) break;
           const result = e.receptive === true ? ({ receptive: true } as const) : ({ receptive: false, reason: e.reason } as never);
           app.context.setDirective(proposalDirective(unit.id, unit.displayName, String(e.kind), result));
+          set.push(`proposal:${unit.id}`);
           break;
         }
       }
     }
     for (const kind of extremeKinds) deps.onUi({ type: 'cut_in', kind });
     app.refreshContext();
+    return set;
   }
 
   const avatarsOf = (s: CampaignState, ids: string[]): string[] =>
@@ -184,8 +190,22 @@ export function createSceneController(deps: SceneDeps): SceneController {
       units, openPromises: openPromises(s0, scene.participants, scene.participants).map((p) => ({ by: nm(p.by), to: nm(p.to), text: p.text })),
       romance: intimacyOf(s0).romance,
     };
-    const result = await extractIntents(input, { st, settings: deps.settings() });
+    swipedWhileExtracting.clear();
+    extracting = true;
+    let result: Awaited<ReturnType<typeof extractIntents>>;
+    try {
+      result = await extractIntents(input, { st, settings: deps.settings() });
+    } finally {
+      extracting = false;
+    }
     if (disposed || chatId() !== expect) return false; // a late answer for another chat
+    if (messages.some((m) => swipedWhileExtracting.has(m.index))) {
+      // the reply was swiped while it was being read: drop this reading; the new reply is read when it arrives
+      swipedWhileExtracting.clear();
+      awaitingReextract = true;
+      debug('A reply was swiped while it was being read; the reading was dropped.');
+      return false;
+    }
     if (!result) {
       debug('Intent extraction failed; nothing changed.');
       return false;
@@ -193,12 +213,12 @@ export function createSceneController(deps: SceneDeps): SceneController {
     const from = extracted;
     const before = state();
     if (!before || !before.scene) return false;
-    const events = dispatch({ type: 'intents/apply', payload: { channel: 'scene', intents: result.intents } }, expect);
+    const events = dispatch({ type: 'intents/apply', payload: { channel: 'scene', intents: result.intents, readIndex: nextPointer } }, expect);
     if (events.some((e) => e.type === 'error')) return false;
     const after = state();
     extracted = nextPointer;
-    if (after && after !== before) lastApply = { lastReplyIndex: lastReply.index, from, before, after };
-    reflect(events, result.intents.events.filter((e) => e.severity === 'extreme').map((e) => e.type));
+    const directives = reflect(events, result.intents.events.filter((e) => e.severity === 'extreme').map((e) => e.type));
+    if (after && after !== before) lastApply = { lastReplyIndex: lastReply.index, from, before, after, directives };
     if (deps.settings().spriteMode === 'emotion_pick') {
       for (const em of result.emotions) deps.onUi({ type: 'sprite', unitId: em.unitId, label: em.label });
     }
@@ -357,6 +377,10 @@ export function createSceneController(deps: SceneDeps): SceneController {
     },
 
     onSwipe(index) {
+      if (extracting) {
+        swipedWhileExtracting.add(index);
+        return;
+      }
       const la = lastApply;
       if (!la || index !== la.lastReplyIndex) return;
       lastApply = null;
@@ -367,6 +391,7 @@ export function createSceneController(deps: SceneDeps): SceneController {
       }
       extracted = la.from;
       awaitingReextract = true;
+      for (const id of la.directives) app.context.clearDirective(id);
       app.refreshContext();
       debug('Swipe: the extraction for that reply was undone.');
     },
@@ -374,7 +399,8 @@ export function createSceneController(deps: SceneDeps): SceneController {
     resume() {
       const s = state();
       if (!s?.scene) return;
-      extracted = st.chatLength();
+      // continue reading where the last applied extraction stopped, so lines said before the reload are not lost
+      extracted = Math.min(s.scene.readIndex ?? st.chatLength(), st.chatLength());
       lastApply = null;
       void st.setMembersActive(avatarsOf(s, s.scene.participants)).catch((e) => deps.toast('warn', `Could not restore the scene members: ${e instanceof Error ? e.message : String(e)}`));
       setSceneContext(s);

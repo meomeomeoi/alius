@@ -268,6 +268,20 @@ describe('scenes in the app', () => {
     expect(t.state().calendar.nightEventsQueue).toMatchObject([{ unitId: RHEA, kind: 'visit', priority: 80 }]);
   });
 
+  it('the group scene after a meal takes the active roster only, never reserve units', async () => {
+    const t = await boot();
+    t.setState((s) => {
+      s.slot = 'afternoon';
+      s.resources.supplies = 20;
+      const extra = structuredClone(s.squad[0]);
+      Object.assign(extra, { id: 'unit_zed', displayName: 'Zed', cardRef: 'zed.png', status: 'reserve' });
+      s.squad.push(extra);
+      s.relations.unit_zed = structuredClone(s.relations[RHEA]);
+    });
+    await t.app.performActivity({ activityId: 'mess' });
+    expect(t.state().scene!.participants).toEqual([RHEA]);
+  });
+
   it('scene directives do not leak into another chat (review #9)', async () => {
     const t = await boot();
     await t.app.performActivity({ activityId: 'talk', companionId: RHEA });

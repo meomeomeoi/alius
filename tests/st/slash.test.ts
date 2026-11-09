@@ -59,3 +59,21 @@ describe('chat mapping', () => {
     expect(lastCharacterAvatar('nope')).toBeUndefined();
   });
 });
+
+describe('slash text escaping: parser traps found in review', () => {
+  const clean = (s: string) => s.replace(/​/g, '');
+  it('a closure opener {: is neutralized anywhere in the text', () => {
+    const t = escapeSlashText('look {: /echo hi :} here');
+    expect(t).not.toContain('{:');
+    expect(clean(t)).toBe('look {: /echo hi :} here');
+  });
+  it('a leading word=value would be parsed as a named argument and is neutralized', () => {
+    for (const text of ['name=Bob is here', '  at=-1 sneaky', 'return=object x']) {
+      const t = escapeSlashText(text);
+      expect(/^\s*\w+=/.test(t), text).toBe(false);
+      expect(clean(t)).toBe(text);
+    }
+    expect(escapeSlashText('say name=Bob')).toBe('say name=Bob');
+    expect(escapeSlashText('x = 1')).toBe('x = 1');
+  });
+});
