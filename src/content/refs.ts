@@ -1,3 +1,5 @@
+import { INTERNAL_HISTORY_TYPES } from '../engine/relations/vocab';
+import type { Conditions } from './schemas';
 import type { Entry, RegistryName } from './types';
 
 export interface Ref {
@@ -75,4 +77,58 @@ registerRefs('activities', (entry) => {
     });
   }
   return refs;
+});
+
+// ---------------------------------------------------------------------------------------------
+// P3: relationship states, defect social data
+
+const HISTORY_TYPES: readonly string[] = INTERNAL_HISTORY_TYPES;
+
+/** References inside a conditions tree (recursing through `anyOf`). */
+function conditionRefs(c: Conditions | undefined, path: string, out: Ref[]): void {
+  if (!c) return;
+  c.inStates?.forEach((id, i) => out.push({ registry: 'relationshipStates', id, path: `${path}.inStates[${i}]` }));
+  c.flagsAll?.forEach((id, i) => out.push({ registry: 'flags', id, path: `${path}.flagsAll[${i}]` }));
+  c.flagsNone?.forEach((id, i) => out.push({ registry: 'flags', id, path: `${path}.flagsNone[${i}]` }));
+  c.defectsAny?.forEach((id, i) => out.push({ registry: 'defects', id, path: `${path}.defectsAny[${i}]` }));
+  if (c.eventCount && !HISTORY_TYPES.includes(c.eventCount.type)) {
+    out.push({ registry: 'eventDeltas', id: c.eventCount.type, path: `${path}.eventCount.type` });
+  }
+  c.anyOf?.forEach((sub, i) => conditionRefs(sub, `${path}.anyOf[${i}]`, out));
+}
+
+interface NightLike { ignore?: { event?: unknown } }
+function nightRefs(list: unknown, path: string, out: Ref[]): void {
+  if (!Array.isArray(list)) return;
+  list.forEach((n: NightLike, i) => {
+    if (typeof n?.ignore?.event === 'string') out.push({ registry: 'eventDeltas', id: n.ignore.event, path: `${path}[${i}].ignore.event` });
+  });
+}
+
+registerRefs('relationshipStates', (entry) => {
+  const out: Ref[] = [];
+  const e = entry.entry as { fromStates?: string[]; events?: string[]; when?: Conditions } | undefined;
+  e?.fromStates?.forEach((id, i) => out.push({ registry: 'relationshipStates', id, path: `entry.fromStates[${i}]` }));
+  // `entry.events` are EventType enums, validated by the schema; their delta rows are checked by the core test.
+  conditionRefs(e?.when, 'entry.when', out);
+  (entry.exit as Array<{ when: Conditions; to: string }> | undefined)?.forEach((x, i) => {
+    out.push({ registry: 'relationshipStates', id: x.to, path: `exit[${i}].to` });
+    conditionRefs(x.when, `exit[${i}].when`, out);
+  });
+  nightRefs((entry.unlocks as { nightEvents?: unknown } | undefined)?.nightEvents, 'unlocks.nightEvents', out);
+  return out;
+});
+
+registerRefs('defects', (entry) => {
+  const out: Ref[] = [];
+  const mods = entry.relationModifiers as { events?: Record<string, number> } | undefined;
+  for (const type of Object.keys(mods?.events ?? {})) {
+    out.push({ registry: 'eventDeltas', id: type, path: `relationModifiers.events.${type}` });
+  }
+  (entry.socialHooks as Array<{ activity: string; setFlag?: string }> | undefined)?.forEach((h, i) => {
+    out.push({ registry: 'activities', id: h.activity, path: `socialHooks[${i}].activity` });
+    if (h.setFlag) out.push({ registry: 'flags', id: h.setFlag, path: `socialHooks[${i}].setFlag` });
+  });
+  nightRefs(entry.nightEvents, 'nightEvents', out);
+  return out;
 });

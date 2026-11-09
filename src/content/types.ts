@@ -1,11 +1,11 @@
 import { z } from 'zod';
 
-/** Registry names reserved by P0 (`marks` stays empty in v1; see overview §10). */
+/** Registry names reserved by P0 (`marks` stays empty in v1; see overview §10). `locations` was added by P3. */
 export const REGISTRY_NAMES = [
   'roles', 'skills', 'signatures', 'statuses', 'defects', 'items', 'affixes', 'enemies',
   'enemyCategories', 'regions', 'nodeTypes', 'activities', 'facilities', 'crimes',
   'corporations', 'starts', 'relationshipStates', 'eventDeltas', 'dilemmaTemplates',
-  'settingsPresets', 'flags', 'marks',
+  'settingsPresets', 'flags', 'marks', 'locations',
 ] as const;
 
 export type RegistryName = (typeof REGISTRY_NAMES)[number];

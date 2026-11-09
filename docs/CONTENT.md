@@ -33,7 +33,7 @@ content/core/
 
 `roles, skills, signatures, statuses, defects, items, affixes, enemies, enemyCategories, regions, nodeTypes, activities, facilities, crimes, corporations, starts, relationshipStates, eventDeltas, dilemmaTemplates, settingsPresets, flags, marks`
 
-`marks` stays empty in v1 (overview §10). `flags` and the P1 setup registries (`corporations, starts, crimes, roles, signatures, defects, statuses`) have strict schemas, described below; the other registries accept any entry that has the base fields until a later package replaces their schema and documents it here.
+`marks` stays empty in v1 (overview §10). P3 added the `locations` registry name and strict schemas for `relationshipStates`, `eventDeltas` and `locations` (below). `flags` and the P1 setup registries (`corporations, starts, crimes, roles, signatures, defects, statuses`) have strict schemas, described below; the other registries accept any entry that has the base fields until a later package replaces their schema and documents it here.
 
 ## Entries
 
@@ -260,6 +260,67 @@ Other packages read effect values by key (`rosterCapacity`, `restPct`, `stressRe
 ```json
 { "id": "bleed", "name": "Bleed", "kind": "debuff", "description": "Loses HP at the start of each turn." }
 ```
+
+## `relationshipStates` (P3)
+
+One entry per node of the relationship graph. The engine never hard-codes a state id except `stranger` (the start state) and `secret_affair` (the hidden form of a romance).
+
+| Field | Type | |
+|---|---|---|
+| `name`, `promptHint` | string | `promptHint` tells the main model how to play her in this state. |
+| `group` | `base`\|`platonic`\|`romantic`\|`complex`\|`negative` | |
+| `romance` | boolean | `true` states are hidden (never entered, no initiative) when the Romance setting is off. |
+| `glyph` | 1–2 characters | Shown in the scene HUD. |
+| `priority` | int | Among automatic entries that hold, the highest wins. |
+| `grunts` | boolean | Optional. Grunts only ever sit in `grunts: true` states. |
+| `entry.via` | `automatic`\|`event`\|`proposal` (≥1) | `event` needs `entry.events` (event types), `proposal` needs `entry.proposals` (proposal kinds). |
+| `entry.fromStates` | state ids | Optional; empty = from any state. Limits every path in. |
+| `entry.when` | Conditions | Must hold for every path in. |
+| `exit` | `[{ when: Conditions, to: stateId }]` | Checked first, in order; the first that holds moves the unit. |
+| `modifiers` | `{ gain?, loss? }` per axis | Multipliers on deltas while in this state. |
+| `unlocks` | `{ synergies, activities, nightEvents, defectArcStages }` | `nightEvents` are *night specs* (below). |
+| `dmChance` | 0–1 | Chance per slot transition that she starts a DM (scaled by the initiative setting). |
+
+A state with `when: { "anyOf": [] }` is never entered (an empty `anyOf` never holds); `stranger` uses it.
+
+**Conditions** (all present keys must hold; every key optional; unknown keys are rejected):
+
+| Key | Meaning |
+|---|---|
+| `axes` | `{ trust?, affinity?, attraction? }`, each `[min, max]` inclusive. |
+| `stressMin` | The unit's stress is at least this. |
+| `flagsAll`, `flagsNone` | Relation flags that must / must not be set (declared in `flags`). |
+| `defectsAny` | The unit has at least one of these defects. |
+| `inStates` | Current state is one of these. |
+| `minDaysInState` | At least this many days since `stateSince`. |
+| `eventCount` | `{ type, min, withinDays? }`: history entries of that type (an event type, or the engine's `stress_high`). |
+| `leashUsesMin` | The Leash log has at least this many entries for this unit. |
+| `anyOf` | List of Conditions; at least one holds. |
+
+**Night spec**: `{ id, kind, chance (0–1), priority, trigger: "daily"|"commander_injured", framing, ignore: { event, severity } }`. `framing` is the knock text (`{name}` becomes the unit's name); `ignore` is the intent event applied when the commander ignores the knock.
+
+## `eventDeltas` (P3)
+
+One entry per event type (`id` is the type; there must be one for each of the 26 types). `rows` has all four severities, each `{ trust?, affinity?, attraction?, stress? }`. `valueAligned: true` (decision events): the row holds magnitudes and the sign comes from the unit's values. `attractionUsesReceptivity: true`: attraction gains are scaled by the unit's receptivity.
+
+```json
+{ "id": "insulted", "rows": { "minor": { "affinity": -3, "stress": 2 }, "moderate": { "trust": -2, "affinity": -6, "stress": 4 },
+  "major": { "trust": -4, "affinity": -10, "stress": 8 }, "extreme": { "trust": -8, "affinity": -18, "stress": 14 } } }
+```
+
+## `locations` (P3)
+
+| Field | Type | |
+|---|---|---|
+| `name`, `summary` | string | |
+| `ascii` | 1–12 lines | Fallback art when there is no image. |
+| `background`, `backgroundNight` | string | Optional asset paths (v1 ships none). |
+| `perUnit` | boolean | `quarters_unit`: one per unit. |
+| `slots` | slots | Optional; absent = every slot. |
+
+## `defects`: P3 fields
+
+Optional, added to the `defects` schema: `relationModifiers` (`{ gain?, loss?, events? }`: per-axis multipliers and per-event-type multipliers), `socialHooks` (`[{ activity, who: "companion"|"roster", axis?, amount?, setFlag? }]`: effects of doing an activity), `dmChanceBonus` (0–1, added to her DM chance), `nightEvents` (night specs).
 
 ## Lorebook
 

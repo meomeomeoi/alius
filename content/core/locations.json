@@ -1,0 +1,187 @@
+[
+  {
+    "id": "quarters_commander",
+    "name": "Commander quarters",
+    "summary": "A bunk, a desk and a locked terminal. The only door that closes.",
+    "ascii": [
+      "+----------------------+",
+      "|  ____         [=====] |",
+      "| |    |___     TERMINAL|",
+      "| |BUNK|   |_  ______  |",
+      "| |____|     |_|DESK|  |",
+      "|                  ____ |",
+      "+----------[DOOR]-------+"
+    ],
+    "slots": [
+      "morning",
+      "afternoon",
+      "evening",
+      "night"
+    ]
+  },
+  {
+    "id": "quarters_unit",
+    "name": "Her quarters",
+    "summary": "A cramped bunk room that has taken on its occupant.",
+    "ascii": [
+      "+----------------------+",
+      "|  ___                 |",
+      "| |   |    .-.   locker |",
+      "| |bed|   ( o )  [====] |",
+      "| |___|    `-`          |",
+      "|                      |",
+      "+----------[DOOR]-------+"
+    ],
+    "perUnit": true,
+    "slots": [
+      "morning",
+      "afternoon",
+      "evening",
+      "night"
+    ]
+  },
+  {
+    "id": "mess_hall",
+    "name": "Mess hall",
+    "summary": "Long tables, a dented serving line and the smell of reconstituted stew.",
+    "ascii": [
+      "+------------------------------+",
+      "| [SERVING]=====    o  o  o    |",
+      "|  ____________   ____________ |",
+      "| |____________| |____________||",
+      "|  o o o o o o     o o o o o  |",
+      "+------------------------------+"
+    ],
+    "slots": [
+      "morning",
+      "afternoon",
+      "evening"
+    ]
+  },
+  {
+    "id": "training_yard",
+    "name": "Training yard",
+    "summary": "Scarred concrete, practice targets and a cracked sparring ring.",
+    "ascii": [
+      ". . . . . . . . . . . . . . . .",
+      " [T]   [T]   [T]    ___________",
+      "                    /  RING     \\",
+      "  o  o  o          |  ->  <-  |",
+      "                    \\___________/",
+      "=================================="
+    ],
+    "slots": [
+      "morning",
+      "afternoon",
+      "evening"
+    ]
+  },
+  {
+    "id": "workshop",
+    "name": "Workshop",
+    "summary": "Benches, half-stripped weapons and the hum of the plyx extruder.",
+    "ascii": [
+      "+----------------------------+",
+      "| ==[BENCH]==   (  ) <- extruder|",
+      "|  /|  |\\   _   ___   ___      |",
+      "| / |__| \\ |_| |___| |___|     |",
+      "| rack: ///// ///// /////       |",
+      "+----------------------------+"
+    ],
+    "slots": [
+      "morning",
+      "afternoon",
+      "evening"
+    ]
+  },
+  {
+    "id": "medbay",
+    "name": "Medbay",
+    "summary": "White light, two cots and a diagnostic arm that never stops blinking.",
+    "ascii": [
+      "+------------------------+",
+      "|  ___   ___     (+)     |",
+      "| |cot| |cot|  DIAG ARM   |",
+      "| |___| |___|    /|      |",
+      "|  ===  ===    / |__    |",
+      "+------------------------+"
+    ],
+    "slots": [
+      "morning",
+      "afternoon",
+      "evening",
+      "night"
+    ]
+  },
+  {
+    "id": "roof",
+    "name": "Roof",
+    "summary": "Wind, antennae and the only unfiltered view of the sky.",
+    "ascii": [
+      "        *      .       *",
+      "   .         .      .",
+      "      \\|/        |      ",
+      " _____ \\|/ ___   _|_  ____",
+      "|     |_|_|   | |   ||    |",
+      "|_________________|_____|"
+    ],
+    "slots": [
+      "afternoon",
+      "evening",
+      "night"
+    ]
+  },
+  {
+    "id": "garage",
+    "name": "Garage",
+    "summary": "Armored transports under tarps, oil stains and a radio nobody turns off.",
+    "ascii": [
+      "+--------------------------+",
+      "|  ______      ______   __ |",
+      "| /|_||_|\\    /|_||_|\\  []|",
+      "|(_o____o_)  (_o____o_)  ||",
+      "+--------------------------+"
+    ],
+    "slots": [
+      "morning",
+      "afternoon",
+      "evening"
+    ]
+  },
+  {
+    "id": "comms_room",
+    "name": "Comms room",
+    "summary": "Dead screens, a patched relay and the PDA uplink.",
+    "ascii": [
+      "+------------------------+",
+      "| [###] [###] [###] [###]|",
+      "| [###] [###] [###] [###]|",
+      "|   ____________  (o)    |",
+      "|  |__ RELAY ____|        |",
+      "+------------------------+"
+    ],
+    "slots": [
+      "morning",
+      "afternoon",
+      "evening"
+    ]
+  },
+  {
+    "id": "perimeter",
+    "name": "Perimeter",
+    "summary": "A fence, a floodlit strip and a long view of the dead sector.",
+    "ascii": [
+      "|  |  |  |  |  |  |  |  |",
+      "|__|__|__|__|__|__|__|__|",
+      "  . . floodlit strip . . ",
+      "|  |  |  |  |  |  |  |  |",
+      "|__|__|__|__|__|__|__|__|"
+    ],
+    "slots": [
+      "morning",
+      "afternoon",
+      "evening",
+      "night"
+    ]
+  }
+]

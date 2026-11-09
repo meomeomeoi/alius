@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { EVENT_TYPES, PROPOSAL_KINDS, SEVERITIES } from '../engine/relations/vocab';
 import { VALUE_AXES } from '../engine/state/types';
 import { REGISTRY_NAMES, type RegistryName } from './types';
 
@@ -124,16 +125,7 @@ export const SignatureSchema = BaseEntrySchema.extend({
   fits: str,
 });
 
-export const DefectSchema = BaseEntrySchema.extend({
-  name: str,
-  category: z.enum(['neural', 'somatic', 'cybernetic', 'desire_bond']),
-  lore: str,
-  upside: str,
-  downside: str,
-  breakdown: z.object({ name: str, text: str }),
-  social: str,
-  arc: z.object({ cure: str, manage: str, embrace: str }),
-});
+// `DefectSchema` is defined after the P3 pieces below it depends on.
 
 export const StatusSchema = BaseEntrySchema.extend({
   name: str,
@@ -160,7 +152,6 @@ Object.assign(registrySchemas, {
   crimes: CrimeSchema,
   roles: RoleSchema,
   signatures: SignatureSchema,
-  defects: DefectSchema,
   statuses: StatusSchema,
 });
 
@@ -174,6 +165,10 @@ export const RESERVED_EVENT_TYPES: readonly string[] = [
   'resource_changed', 'social_gained', 'xp_gained', 'stress_changed', 'relation_changed', 'defect_upkeep',
   'commander_injury_changed', 'commander_injured', 'scene_cancelled', 'grunt_recruited', 'upgrade_started',
   'requisitioned', 'roster_changed', 'unit_flavored', 'unit_resynced',
+  // P3
+  'scene_started', 'scene_exchange', 'scene_ended', 'scene_aborted', 'intents_applied', 'relation_state_changed',
+  'loyalty_band_changed', 'proposal_offered', 'proposal_resolved', 'affair_discovered', 'crime_known', 'dm_sent',
+  'dm_received', 'dm_initiative', 'night_opened', 'defect_social', 'chronicle_compacted', 'intimacy_changed',
 ];
 
 const slotEnum = z.enum(['morning', 'afternoon', 'evening', 'night']);
@@ -276,3 +271,148 @@ export const FacilitySchema = BaseEntrySchema.extend({
 });
 
 Object.assign(registrySchemas, { activities: ActivitySchema, facilities: FacilitySchema });
+
+// ---------------------------------------------------------------------------------------------
+// P3 registries: relationship states, event deltas, locations and the defect social data.
+
+const axisName = z.enum(['trust', 'affinity', 'attraction']);
+const severityEnum = z.enum(SEVERITIES as [string, ...string[]]);
+const range = z.tuple([int, int]).refine(([lo, hi]) => lo <= hi, 'range minimum must not exceed maximum');
+
+export interface Conditions {
+  axes?: { trust?: [number, number]; affinity?: [number, number]; attraction?: [number, number] };
+  stressMin?: number;
+  flagsAll?: string[];
+  flagsNone?: string[];
+  defectsAny?: string[];
+  inStates?: string[];
+  minDaysInState?: number;
+  eventCount?: { type: string; min: number; withinDays?: number };
+  leashUsesMin?: number;
+  /** At least one alternative holds; an empty list never holds. */
+  anyOf?: Conditions[];
+}
+
+/** Conditions of the relationship graph (P3). Every key is optional; all present keys must hold. */
+export const ConditionsSchema: z.ZodType<Conditions> = z.lazy(() =>
+  z.object({
+    axes: z.object({ trust: range.optional(), affinity: range.optional(), attraction: range.optional() }).strict().optional(),
+    stressMin: int.min(0).max(100).optional(),
+    flagsAll: z.array(str).optional(),
+    flagsNone: z.array(str).optional(),
+    defectsAny: z.array(str).optional(),
+    inStates: z.array(str).optional(),
+    minDaysInState: int.min(0).optional(),
+    eventCount: z.object({ type: str, min: int.min(1), withinDays: int.min(1).optional() }).strict().optional(),
+    leashUsesMin: int.min(1).optional(),
+    anyOf: z.array(ConditionsSchema).optional(),
+  }).strict(),
+) as z.ZodType<Conditions>;
+
+const gainLoss = z.object({ gain: z.record(axisName, z.number().min(0)).optional(), loss: z.record(axisName, z.number().min(0)).optional() }).strict();
+
+export const NightSpecSchema = z.object({
+  id: str,
+  kind: str,
+  chance: z.number().min(0).max(1),
+  priority: int,
+  trigger: z.enum(['daily', 'commander_injured']),
+  /** Shown as the knock; `{name}` is replaced by the unit's name. */
+  framing: str,
+  /** What ignoring the knock does: an intent event from the commander's side. */
+  ignore: z.object({ event: str, severity: severityEnum }).strict(),
+}).strict();
+export type NightSpec = z.infer<typeof NightSpecSchema>;
+
+export const RelationshipStateSchema = BaseEntrySchema.extend({
+  name: str,
+  group: z.enum(['base', 'platonic', 'romantic', 'complex', 'negative']),
+  /** Romance off hides every state with `romance: true`. */
+  romance: z.boolean(),
+  glyph: z.string().min(1).max(2),
+  /** Among several automatic entries that hold, the highest priority wins. */
+  priority: int,
+  /** Available to grunts (Trust-only units); default false. */
+  grunts: z.boolean().optional(),
+  entry: z.object({
+    via: z.array(z.enum(['automatic', 'event', 'proposal'])).min(1),
+    /** Empty or absent = from any state. */
+    fromStates: z.array(str).optional(),
+    events: z.array(z.enum(EVENT_TYPES)).optional(),
+    proposals: z.array(z.enum(PROPOSAL_KINDS)).optional(),
+    when: ConditionsSchema.optional(),
+  }).strict(),
+  /** Checked first, in order; the first rule that holds moves the unit to `to`. */
+  exit: z.array(z.object({ when: ConditionsSchema, to: str }).strict()),
+  modifiers: gainLoss.optional(),
+  unlocks: z.object({
+    synergies: z.array(str),
+    activities: z.array(str),
+    nightEvents: z.array(NightSpecSchema),
+    defectArcStages: z.array(str),
+  }).strict(),
+  /** Base chance per slot transition that the unit starts a DM. */
+  dmChance: z.number().min(0).max(1),
+  promptHint: str,
+}).superRefine((st, ctx) => {
+  const issue = (path: Array<string | number>, message: string) => ctx.addIssue({ code: 'custom', path, message });
+  const via = st.entry.via;
+  if (via.includes('event') !== (st.entry.events?.length ?? 0) > 0) issue(['entry', 'events'], 'via "event" needs a non-empty events list, and events need via "event"');
+  if (via.includes('proposal') !== (st.entry.proposals?.length ?? 0) > 0) issue(['entry', 'proposals'], 'via "proposal" needs a non-empty proposals list, and proposals need via "proposal"');
+});
+
+const eventRow = z.object({
+  trust: z.number().optional(), affinity: z.number().optional(), attraction: z.number().optional(), stress: z.number().optional(),
+}).strict();
+
+export const EventDeltaSchema = BaseEntrySchema.extend({
+  id: z.enum(EVENT_TYPES),
+  rows: z.object({ minor: eventRow, moderate: eventRow, major: eventRow, extreme: eventRow }).strict(),
+  /** The row holds magnitudes; the sign comes from value alignment (decision events). */
+  valueAligned: z.boolean().optional(),
+  /** Attraction gains are scaled by the unit's receptivity (romance on, Affinity ≥ 0, Trust ≥ 20). */
+  attractionUsesReceptivity: z.boolean().optional(),
+});
+
+export const LocationSchema = BaseEntrySchema.extend({
+  name: str,
+  summary: str,
+  ascii: z.array(z.string()).min(1).max(12),
+  /** Asset paths relative to the extension folder; v1 ships none. */
+  background: str.optional(),
+  backgroundNight: str.optional(),
+  /** One location per unit (`quarters_unit`). */
+  perUnit: z.boolean().optional(),
+  /** Slots the location is available in; absent = all. */
+  slots: z.array(slotEnum).min(1).optional(),
+});
+
+export const DefectSchema = BaseEntrySchema.extend({
+  name: str,
+  category: z.enum(['neural', 'somatic', 'cybernetic', 'desire_bond']),
+  lore: str,
+  upside: str,
+  downside: str,
+  breakdown: z.object({ name: str, text: str }),
+  social: str,
+  arc: z.object({ cure: str, manage: str, embrace: str }),
+  /** P3: multipliers applied after state modifiers; `events` multiplies the whole delta of one event type. */
+  relationModifiers: gainLoss.extend({ events: z.record(z.number().min(0)).optional() }).strict().optional(),
+  /** P3: activity-driven social effects (e.g. Hunger Loop meals give Affinity). */
+  socialHooks: z.array(z.object({
+    activity: str,
+    who: z.enum(['companion', 'roster']),
+    axis: axisName.optional(),
+    amount: int.optional(),
+    setFlag: str.optional(),
+  }).strict()).optional(),
+  dmChanceBonus: z.number().min(0).max(1).optional(),
+  nightEvents: z.array(NightSpecSchema).optional(),
+});
+
+Object.assign(registrySchemas, {
+  relationshipStates: RelationshipStateSchema,
+  eventDeltas: EventDeltaSchema,
+  locations: LocationSchema,
+  defects: DefectSchema,
+});

@@ -1,0 +1,586 @@
+[
+  {
+    "id": "praised",
+    "rows": {
+      "minor": {
+        "affinity": 1
+      },
+      "moderate": {
+        "trust": 1,
+        "affinity": 2
+      },
+      "major": {
+        "trust": 2,
+        "affinity": 4
+      },
+      "extreme": {
+        "trust": 3,
+        "affinity": 6
+      }
+    }
+  },
+  {
+    "id": "insulted",
+    "rows": {
+      "minor": {
+        "affinity": -3,
+        "stress": 2
+      },
+      "moderate": {
+        "trust": -2,
+        "affinity": -6,
+        "stress": 4
+      },
+      "major": {
+        "trust": -4,
+        "affinity": -10,
+        "stress": 8
+      },
+      "extreme": {
+        "trust": -8,
+        "affinity": -18,
+        "stress": 14
+      }
+    }
+  },
+  {
+    "id": "comforted",
+    "rows": {
+      "minor": {
+        "trust": 1,
+        "affinity": 1,
+        "stress": -3
+      },
+      "moderate": {
+        "trust": 2,
+        "affinity": 3,
+        "stress": -6
+      },
+      "major": {
+        "trust": 3,
+        "affinity": 5,
+        "stress": -10
+      },
+      "extreme": {
+        "trust": 4,
+        "affinity": 8,
+        "stress": -15
+      }
+    }
+  },
+  {
+    "id": "dismissed",
+    "rows": {
+      "minor": {
+        "trust": -1,
+        "affinity": -1
+      },
+      "moderate": {
+        "trust": -2,
+        "affinity": -3,
+        "stress": 2
+      },
+      "major": {
+        "trust": -4,
+        "affinity": -6,
+        "stress": 5
+      },
+      "extreme": {
+        "trust": -7,
+        "affinity": -10,
+        "stress": 9
+      }
+    }
+  },
+  {
+    "id": "listened",
+    "rows": {
+      "minor": {
+        "trust": 1,
+        "affinity": 1,
+        "stress": -1
+      },
+      "moderate": {
+        "trust": 2,
+        "affinity": 2,
+        "stress": -3
+      },
+      "major": {
+        "trust": 3,
+        "affinity": 4,
+        "stress": -5
+      },
+      "extreme": {
+        "trust": 4,
+        "affinity": 6,
+        "stress": -8
+      }
+    }
+  },
+  {
+    "id": "shared_secret",
+    "rows": {
+      "minor": {
+        "trust": 1,
+        "affinity": 1
+      },
+      "moderate": {
+        "trust": 3,
+        "affinity": 3
+      },
+      "major": {
+        "trust": 5,
+        "affinity": 6
+      },
+      "extreme": {
+        "trust": 8,
+        "affinity": 10
+      }
+    }
+  },
+  {
+    "id": "learned_about",
+    "rows": {
+      "minor": {
+        "affinity": 1
+      },
+      "moderate": {
+        "trust": 1,
+        "affinity": 2
+      },
+      "major": {
+        "trust": 2,
+        "affinity": 3
+      },
+      "extreme": {
+        "trust": 3,
+        "affinity": 4
+      }
+    }
+  },
+  {
+    "id": "gift",
+    "rows": {
+      "minor": {
+        "affinity": 2
+      },
+      "moderate": {
+        "trust": 1,
+        "affinity": 4
+      },
+      "major": {
+        "trust": 2,
+        "affinity": 6
+      },
+      "extreme": {
+        "trust": 3,
+        "affinity": 9
+      }
+    }
+  },
+  {
+    "id": "flirted",
+    "rows": {
+      "minor": {
+        "attraction": 2
+      },
+      "moderate": {
+        "affinity": 1,
+        "attraction": 4
+      },
+      "major": {
+        "affinity": 2,
+        "attraction": 7
+      },
+      "extreme": {
+        "affinity": 3,
+        "attraction": 10
+      }
+    },
+    "attractionUsesReceptivity": true
+  },
+  {
+    "id": "rejected_advance",
+    "rows": {
+      "minor": {
+        "affinity": -2,
+        "attraction": -2
+      },
+      "moderate": {
+        "trust": -1,
+        "affinity": -5,
+        "attraction": -6,
+        "stress": 4
+      },
+      "major": {
+        "trust": -2,
+        "affinity": -8,
+        "attraction": -10,
+        "stress": 8
+      },
+      "extreme": {
+        "trust": -4,
+        "affinity": -12,
+        "attraction": -15,
+        "stress": 14
+      }
+    }
+  },
+  {
+    "id": "accepted_advance",
+    "rows": {
+      "minor": {
+        "affinity": 1,
+        "attraction": 3
+      },
+      "moderate": {
+        "affinity": 3,
+        "attraction": 5
+      },
+      "major": {
+        "trust": 1,
+        "affinity": 5,
+        "attraction": 8
+      },
+      "extreme": {
+        "trust": 2,
+        "affinity": 7,
+        "attraction": 12
+      }
+    },
+    "attractionUsesReceptivity": true
+  },
+  {
+    "id": "physical_affection",
+    "rows": {
+      "minor": {
+        "affinity": 1,
+        "attraction": 2,
+        "stress": -1
+      },
+      "moderate": {
+        "affinity": 3,
+        "attraction": 3,
+        "stress": -3
+      },
+      "major": {
+        "affinity": 4,
+        "attraction": 5,
+        "stress": -5
+      },
+      "extreme": {
+        "affinity": 6,
+        "attraction": 7,
+        "stress": -8
+      }
+    },
+    "attractionUsesReceptivity": true
+  },
+  {
+    "id": "sided_with",
+    "rows": {
+      "minor": {
+        "trust": 1,
+        "affinity": 1
+      },
+      "moderate": {
+        "trust": 3,
+        "affinity": 3
+      },
+      "major": {
+        "trust": 5,
+        "affinity": 5
+      },
+      "extreme": {
+        "trust": 7,
+        "affinity": 8
+      }
+    }
+  },
+  {
+    "id": "sided_against",
+    "rows": {
+      "minor": {
+        "trust": -1,
+        "affinity": -2
+      },
+      "moderate": {
+        "trust": -3,
+        "affinity": -5
+      },
+      "major": {
+        "trust": -6,
+        "affinity": -9,
+        "stress": 6
+      },
+      "extreme": {
+        "trust": -12,
+        "affinity": -16,
+        "stress": 12
+      }
+    }
+  },
+  {
+    "id": "decision_aligned",
+    "rows": {
+      "minor": {
+        "trust": 1,
+        "affinity": 1
+      },
+      "moderate": {
+        "trust": 2,
+        "affinity": 2
+      },
+      "major": {
+        "trust": 4,
+        "affinity": 3
+      },
+      "extreme": {
+        "trust": 6,
+        "affinity": 5
+      }
+    },
+    "valueAligned": true
+  },
+  {
+    "id": "decision_violated",
+    "rows": {
+      "minor": {
+        "trust": 1,
+        "affinity": 1
+      },
+      "moderate": {
+        "trust": 3,
+        "affinity": 3
+      },
+      "major": {
+        "trust": 5,
+        "affinity": 5
+      },
+      "extreme": {
+        "trust": 8,
+        "affinity": 8
+      }
+    },
+    "valueAligned": true
+  },
+  {
+    "id": "protected",
+    "rows": {
+      "minor": {
+        "trust": 2,
+        "affinity": 1
+      },
+      "moderate": {
+        "trust": 4,
+        "affinity": 3
+      },
+      "major": {
+        "trust": 8,
+        "affinity": 6
+      },
+      "extreme": {
+        "trust": 12,
+        "affinity": 10,
+        "stress": -5
+      }
+    }
+  },
+  {
+    "id": "endangered",
+    "rows": {
+      "minor": {
+        "trust": -1,
+        "stress": 3
+      },
+      "moderate": {
+        "trust": -3,
+        "affinity": -2,
+        "stress": 6
+      },
+      "major": {
+        "trust": -6,
+        "affinity": -5,
+        "stress": 10
+      },
+      "extreme": {
+        "trust": -10,
+        "affinity": -10,
+        "stress": 16
+      }
+    }
+  },
+  {
+    "id": "coerced",
+    "rows": {
+      "minor": {
+        "trust": -2,
+        "affinity": -2,
+        "stress": 3
+      },
+      "moderate": {
+        "trust": -4,
+        "affinity": -5,
+        "stress": 6
+      },
+      "major": {
+        "trust": -8,
+        "affinity": -9,
+        "stress": 10
+      },
+      "extreme": {
+        "trust": -14,
+        "affinity": -16,
+        "stress": 16
+      }
+    }
+  },
+  {
+    "id": "apologized",
+    "rows": {
+      "minor": {
+        "trust": 1,
+        "affinity": 1
+      },
+      "moderate": {
+        "trust": 2,
+        "affinity": 2
+      },
+      "major": {
+        "trust": 3,
+        "affinity": 4
+      },
+      "extreme": {
+        "trust": 5,
+        "affinity": 6
+      }
+    }
+  },
+  {
+    "id": "lied_detected",
+    "rows": {
+      "minor": {
+        "trust": -3,
+        "affinity": -1
+      },
+      "moderate": {
+        "trust": -5,
+        "affinity": -3,
+        "stress": 3
+      },
+      "major": {
+        "trust": -9,
+        "affinity": -6,
+        "stress": 6
+      },
+      "extreme": {
+        "trust": -15,
+        "affinity": -10,
+        "stress": 10
+      }
+    }
+  },
+  {
+    "id": "kept_promise",
+    "rows": {
+      "minor": {
+        "trust": 1
+      },
+      "moderate": {
+        "trust": 3,
+        "affinity": 1
+      },
+      "major": {
+        "trust": 5,
+        "affinity": 2
+      },
+      "extreme": {
+        "trust": 8,
+        "affinity": 4
+      }
+    }
+  },
+  {
+    "id": "broke_promise",
+    "rows": {
+      "minor": {
+        "trust": -2,
+        "affinity": -1
+      },
+      "moderate": {
+        "trust": -5,
+        "affinity": -3,
+        "stress": 3
+      },
+      "major": {
+        "trust": -9,
+        "affinity": -6,
+        "stress": 6
+      },
+      "extreme": {
+        "trust": -15,
+        "affinity": -12,
+        "stress": 12
+      }
+    }
+  },
+  {
+    "id": "mocked_defect",
+    "rows": {
+      "minor": {
+        "trust": -1,
+        "affinity": -3,
+        "stress": 3
+      },
+      "moderate": {
+        "trust": -2,
+        "affinity": -6,
+        "stress": 6
+      },
+      "major": {
+        "trust": -4,
+        "affinity": -10,
+        "stress": 10
+      },
+      "extreme": {
+        "trust": -8,
+        "affinity": -16,
+        "stress": 16
+      }
+    }
+  },
+  {
+    "id": "accepted_defect",
+    "rows": {
+      "minor": {
+        "trust": 1,
+        "affinity": 2,
+        "stress": -2
+      },
+      "moderate": {
+        "trust": 2,
+        "affinity": 4,
+        "stress": -4
+      },
+      "major": {
+        "trust": 4,
+        "affinity": 6,
+        "stress": -7
+      },
+      "extreme": {
+        "trust": 6,
+        "affinity": 9,
+        "stress": -10
+      }
+    }
+  },
+  {
+    "id": "crime_revealed",
+    "rows": {
+      "minor": {},
+      "moderate": {},
+      "major": {},
+      "extreme": {}
+    }
+  }
+]

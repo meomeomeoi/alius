@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFile } from 'node:fs/promises';
 import { loadPacks } from '../../src/content/loader';
+import { EVENT_TYPES, PROPOSAL_KINDS } from '../../src/engine/relations/vocab';
 
 const load = () => loadPacks(['content/core'], async (path) => JSON.parse(await readFile(path, 'utf8')));
 
@@ -154,5 +155,92 @@ describe('activity cross references', () => {
   it('facilityReq above the facility max level is a load error', async () => {
     const r = await pack({ ...base, facilityReq: { id: 'medbay', level: 2 } });
     expect(r.errors.map((e) => e.message).join('|')).toContain('has no level 2');
+  });
+
+  it('core has the 18 relationship states of the spec', async () => {
+    const { registries: r } = await load();
+    expect([...r.relationshipStates.keys()].sort()).toEqual([
+      'comrade', 'confidant', 'dependent', 'despises', 'devoted', 'estranged', 'flirting', 'friend', 'fwb', 'kindred',
+      'lover', 'obsessed', 'resentful', 'rival', 'rival_romance', 'secret_affair', 'stranger', 'trusted', 'unrequited',
+    ]);
+    // the spec table has 18 rows; its first row (stranger → comrade) is two states
+    expect(r.relationshipStates.size).toBe(19);
+  });
+
+  it('every proposal kind maps to at least one state', async () => {
+    const { registries: r } = await load();
+    const covered = new Set([...r.relationshipStates.values()].flatMap((s) => (s.entry as { proposals?: string[] }).proposals ?? []));
+    for (const k of PROPOSAL_KINDS) expect(covered.has(k), k).toBe(true);
+  });
+
+  it('romantic group states are marked romance', async () => {
+    const { registries: r } = await load();
+    for (const s of r.relationshipStates.values()) {
+      if (s.group === 'romantic') expect(s.romance, String(s.id)).toBe(true);
+    }
+    expect(r.relationshipStates.get('comrade')!.romance).toBe(false);
+  });
+
+  it('stranger, comrade and trusted are available to grunts', async () => {
+    const { registries: r } = await load();
+    const grunt = [...r.relationshipStates.values()].filter((s) => s.grunts === true).map((s) => s.id).sort();
+    expect(grunt).toEqual(['comrade', 'stranger', 'trusted']);
+  });
+
+  it('every event type has all four severity rows', async () => {
+    const { registries: r } = await load();
+    for (const t of EVENT_TYPES) {
+      const e = r.eventDeltas.get(t);
+      expect(e, t).toBeDefined();
+      expect(Object.keys(e!.rows as object).sort(), t).toEqual(['extreme', 'major', 'minor', 'moderate']);
+    }
+    expect(r.eventDeltas.size).toBe(EVENT_TYPES.length);
+  });
+
+  it('table rows from the spec', async () => {
+    const { registries: r } = await load();
+    const row = (t: string, sev: string) => (r.eventDeltas.get(t)!.rows as Record<string, Record<string, number>>)[sev];
+    expect(row('insulted', 'major')).toMatchObject({ trust: -4, affinity: -10 });
+    expect(row('protected', 'major')).toMatchObject({ trust: 8, affinity: 6 });
+    expect(row('flirted', 'minor')).toMatchObject({ attraction: 2 });
+    expect(r.eventDeltas.get('flirted')!.attractionUsesReceptivity).toBe(true);
+    expect(r.eventDeltas.get('decision_violated')!.valueAligned).toBe(true);
+    expect(r.eventDeltas.get('decision_aligned')!.valueAligned).toBe(true);
+  });
+
+  it('ten base locations with ASCII art', async () => {
+    const { registries: r } = await load();
+    expect([...r.locations.keys()].sort()).toEqual([
+      'comms_room', 'garage', 'medbay', 'mess_hall', 'perimeter', 'quarters_commander', 'quarters_unit', 'roof',
+      'training_yard', 'workshop',
+    ]);
+    for (const l of r.locations.values()) expect((l.ascii as string[]).length, String(l.id)).toBeGreaterThan(0);
+    expect(r.locations.get('quarters_unit')!.perUnit).toBe(true);
+  });
+
+  it('defect hooks reference existing activities and flags', async () => {
+    const { registries: r } = await load();
+    const hooks = [...r.defects.values()].flatMap((d) => (d.socialHooks as Array<{ activity: string; setFlag?: string }> | undefined) ?? []);
+    expect(hooks.length).toBeGreaterThanOrEqual(5);
+    for (const h of hooks) {
+      expect(r.activities.has(h.activity), h.activity).toBe(true);
+      if (h.setFlag) expect(r.flags.has(h.setFlag), h.setFlag).toBe(true);
+    }
+    expect(r.defects.get('affect_dampener')!.relationModifiers).toMatchObject({ gain: { affinity: 0.5, attraction: 0.5 } });
+    expect(r.defects.get('imprint_fracture')!.relationModifiers).toMatchObject({ gain: { trust: 1.5 } });
+    expect(r.defects.get('compulsive_protocol')!.relationModifiers).toMatchObject({ events: { kept_promise: 2, broke_promise: 2 } });
+    for (const f of ['shared_secret', 'need_controlled', 'crime_reaction_done']) expect(r.flags.get(f)!.scope).toBe('relation');
+  });
+
+  it('the exits and proposal targets listed in the plan exist', async () => {
+    const { registries: r } = await load();
+    const exits = (id: string) => (r.relationshipStates.get(id)!.exit as Array<{ to: string }>).map((e) => e.to);
+    expect(exits('estranged')).toContain('comrade');
+    expect(exits('despises')).toContain('estranged');
+    expect(exits('resentful')).toContain('comrade');
+    expect(exits('obsessed')).toContain('comrade');
+    expect(exits('kindred')).toContain('confidant');
+    expect(exits('unrequited')).toContain('comrade');
+    for (const id of ['flirting', 'fwb', 'lover', 'devoted', 'secret_affair']) expect(exits(id), id).toContain('estranged');
   });
 });

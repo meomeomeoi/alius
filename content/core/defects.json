@@ -33,6 +33,11 @@
       "cure": "Re-imprinted (to whom? a dilemma).",
       "manage": "A negotiated \"contract\" with the commander.",
       "embrace": "She becomes a free agent who stays by choice, or does not."
+    },
+    "relationModifiers": {
+      "gain": {
+        "trust": 1.5
+      }
     }
   },
   {
@@ -51,6 +56,14 @@
       "cure": "Calm and dulled.",
       "manage": "The commander's \"all clear\" ritual.",
       "embrace": "Her threat map is shared with the squad."
+    },
+    "relationModifiers": {
+      "gain": {
+        "trust": 0.5
+      },
+      "loss": {
+        "trust": 0.5
+      }
     }
   },
   {
@@ -69,6 +82,12 @@
       "cure": "Not yet written.",
       "manage": "A shared daily routine.",
       "embrace": "Perfect drill: the squad syncs to her rhythm."
+    },
+    "relationModifiers": {
+      "events": {
+        "kept_promise": 2,
+        "broke_promise": 2
+      }
     }
   },
   {
@@ -87,6 +106,12 @@
       "cure": "A flood of feelings (temporary instability).",
       "manage": "Learns with the commander to name emotions.",
       "embrace": "Perfect calm, unsettling to others."
+    },
+    "relationModifiers": {
+      "gain": {
+        "affinity": 0.5,
+        "attraction": 0.5
+      }
     }
   },
   {
@@ -141,7 +166,15 @@
       "cure": "Not yet written.",
       "manage": "Not yet written.",
       "embrace": "She feeds on what she kills (unsettling)."
-    }
+    },
+    "socialHooks": [
+      {
+        "activity": "mess",
+        "who": "roster",
+        "axis": "affinity",
+        "amount": 2
+      }
+    ]
   },
   {
     "id": "pain_inversion",
@@ -177,7 +210,14 @@
       "cure": "Losing the augments (changes role stats).",
       "manage": "Not yet written.",
       "embrace": "A full organic rebuild (rare, expensive)."
-    }
+    },
+    "socialHooks": [
+      {
+        "activity": "medbay",
+        "who": "companion",
+        "setFlag": "need_controlled"
+      }
+    ]
   },
   {
     "id": "overclock_bias",
@@ -195,7 +235,15 @@
       "cure": "Not yet written.",
       "manage": "Cooling mods via the Workshop.",
       "embrace": "Permanent burst mode."
-    }
+    },
+    "socialHooks": [
+      {
+        "activity": "rest",
+        "who": "companion",
+        "axis": "affinity",
+        "amount": 2
+      }
+    ]
   },
   {
     "id": "sensor_ghosting",
@@ -267,7 +315,29 @@
       "cure": "Not yet written.",
       "manage": "Agreed rituals.",
       "embrace": "Deep dependency (feeds the dependent state)."
-    }
+    },
+    "socialHooks": [
+      {
+        "activity": "medbay",
+        "who": "companion",
+        "setFlag": "need_controlled"
+      }
+    ],
+    "dmChanceBonus": 0.1,
+    "nightEvents": [
+      {
+        "id": "imprint_hunger_withdrawal",
+        "kind": "withdrawal",
+        "chance": 0.3,
+        "priority": 65,
+        "trigger": "daily",
+        "framing": "{name} comes to you shaking; the withdrawal has started and you are the only thing that helps.",
+        "ignore": {
+          "event": "dismissed",
+          "severity": "major"
+        }
+      }
+    ]
   },
   {
     "id": "possessive_protocol",
@@ -285,7 +355,8 @@
       "cure": "Not yet written.",
       "manage": "Not yet written.",
       "embrace": "Not yet written."
-    }
+    },
+    "dmChanceBonus": 0.1
   },
   {
     "id": "reward_loop",
@@ -321,6 +392,13 @@
       "cure": "Not yet written.",
       "manage": "Not yet written.",
       "embrace": "Not yet written."
-    }
+    },
+    "socialHooks": [
+      {
+        "activity": "medbay",
+        "who": "companion",
+        "setFlag": "need_controlled"
+      }
+    ]
   }
 ]

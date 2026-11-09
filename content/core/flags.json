@@ -7,5 +7,29 @@
       "start",
       "event"
     ]
+  },
+  {
+    "id": "shared_secret",
+    "scope": "relation",
+    "description": "The unit confided a secret in the commander.",
+    "setBy": [
+      "event"
+    ]
+  },
+  {
+    "id": "need_controlled",
+    "scope": "relation",
+    "description": "The commander controls the unit's defect-driven need (medbay access).",
+    "setBy": [
+      "event"
+    ]
+  },
+  {
+    "id": "crime_reaction_done",
+    "scope": "relation",
+    "description": "The unit already reacted to learning the commander's crime.",
+    "setBy": [
+      "event"
+    ]
   }
 ]

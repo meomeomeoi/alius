@@ -189,9 +189,9 @@ function validateUnit(u, label, reg, opts, out, withBaseline = true) {
       if (normalizeTag(t) !== t) out.push(`${label}: ${field2} entry "${t}" is not a normalized tag`);
     }
   }
-  for (const [axis, range] of withBaseline ? Object.entries(SETUP_LIMITS.baseline) : []) {
-    if (!inRange(u.baseline?.[axis], range)) {
-      out.push(`${label}: baseline ${axis} must be an integer from ${range[0]} to ${range[1]}`);
+  for (const [axis, range2] of withBaseline ? Object.entries(SETUP_LIMITS.baseline) : []) {
+    if (!inRange(u.baseline?.[axis], range2)) {
+      out.push(`${label}: baseline ${axis} must be an integer from ${range2[0]} to ${range2[1]}`);
     }
   }
 }
@@ -5500,7 +5500,8 @@ var REGISTRY_NAMES = [
   "dilemmaTemplates",
   "settingsPresets",
   "flags",
-  "marks"
+  "marks",
+  "locations"
 ];
 var PackManifestSchema = external_exports.object({
   id: external_exports.string().min(1),
@@ -8293,6 +8294,50 @@ function createApp(st, deps) {
   return api;
 }
 
+// src/engine/relations/vocab.ts
+var EVENT_TYPES = [
+  "praised",
+  "insulted",
+  "comforted",
+  "dismissed",
+  "listened",
+  "shared_secret",
+  "learned_about",
+  "gift",
+  "flirted",
+  "rejected_advance",
+  "accepted_advance",
+  "physical_affection",
+  "sided_with",
+  "sided_against",
+  "decision_aligned",
+  "decision_violated",
+  "protected",
+  "endangered",
+  "coerced",
+  "apologized",
+  "lied_detected",
+  "kept_promise",
+  "broke_promise",
+  "mocked_defect",
+  "accepted_defect",
+  "crime_revealed"
+];
+var PROPOSAL_KINDS = [
+  "friendship_deepen",
+  "confide",
+  "date",
+  "fwb",
+  "romance",
+  "exclusive",
+  "break_up",
+  "reconcile",
+  "rivalry",
+  "secret_affair"
+];
+var SEVERITIES = ["minor", "moderate", "major", "extreme"];
+var INTERNAL_HISTORY_TYPES = ["stress_high"];
+
 // src/content/schemas.ts
 var ID_PATTERN = /^[a-z0-9_:.-]+$/;
 var BaseEntrySchema = external_exports.object({
@@ -8388,16 +8433,6 @@ var SignatureSchema = BaseEntrySchema.extend({
   mechanic: str,
   fits: str
 });
-var DefectSchema = BaseEntrySchema.extend({
-  name: str,
-  category: external_exports.enum(["neural", "somatic", "cybernetic", "desire_bond"]),
-  lore: str,
-  upside: str,
-  downside: str,
-  breakdown: external_exports.object({ name: str, text: str }),
-  social: str,
-  arc: external_exports.object({ cure: str, manage: str, embrace: str })
-});
 var StatusSchema = BaseEntrySchema.extend({
   name: str,
   kind: external_exports.enum(["buff", "debuff"]),
@@ -8419,7 +8454,6 @@ Object.assign(registrySchemas, {
   crimes: CrimeSchema,
   roles: RoleSchema,
   signatures: SignatureSchema,
-  defects: DefectSchema,
   statuses: StatusSchema
 });
 var RESERVED_EVENT_TYPES = [
@@ -8450,7 +8484,26 @@ var RESERVED_EVENT_TYPES = [
   "requisitioned",
   "roster_changed",
   "unit_flavored",
-  "unit_resynced"
+  "unit_resynced",
+  // P3
+  "scene_started",
+  "scene_exchange",
+  "scene_ended",
+  "scene_aborted",
+  "intents_applied",
+  "relation_state_changed",
+  "loyalty_band_changed",
+  "proposal_offered",
+  "proposal_resolved",
+  "affair_discovered",
+  "crime_known",
+  "dm_sent",
+  "dm_received",
+  "dm_initiative",
+  "night_opened",
+  "defect_social",
+  "chronicle_compacted",
+  "intimacy_changed"
 ];
 var slotEnum = external_exports.enum(["morning", "afternoon", "evening", "night"]);
 var socialStat = external_exports.enum(["authority", "insight", "empathy", "cunning"]);
@@ -8547,6 +8600,125 @@ var FacilitySchema = BaseEntrySchema.extend({
   });
 });
 Object.assign(registrySchemas, { activities: ActivitySchema, facilities: FacilitySchema });
+var axisName = external_exports.enum(["trust", "affinity", "attraction"]);
+var severityEnum = external_exports.enum(SEVERITIES);
+var range = external_exports.tuple([int, int]).refine(([lo, hi]) => lo <= hi, "range minimum must not exceed maximum");
+var ConditionsSchema = external_exports.lazy(
+  () => external_exports.object({
+    axes: external_exports.object({ trust: range.optional(), affinity: range.optional(), attraction: range.optional() }).strict().optional(),
+    stressMin: int.min(0).max(100).optional(),
+    flagsAll: external_exports.array(str).optional(),
+    flagsNone: external_exports.array(str).optional(),
+    defectsAny: external_exports.array(str).optional(),
+    inStates: external_exports.array(str).optional(),
+    minDaysInState: int.min(0).optional(),
+    eventCount: external_exports.object({ type: str, min: int.min(1), withinDays: int.min(1).optional() }).strict().optional(),
+    leashUsesMin: int.min(1).optional(),
+    anyOf: external_exports.array(ConditionsSchema).optional()
+  }).strict()
+);
+var gainLoss = external_exports.object({ gain: external_exports.record(axisName, external_exports.number().min(0)).optional(), loss: external_exports.record(axisName, external_exports.number().min(0)).optional() }).strict();
+var NightSpecSchema = external_exports.object({
+  id: str,
+  kind: str,
+  chance: external_exports.number().min(0).max(1),
+  priority: int,
+  trigger: external_exports.enum(["daily", "commander_injured"]),
+  /** Shown as the knock; `{name}` is replaced by the unit's name. */
+  framing: str,
+  /** What ignoring the knock does: an intent event from the commander's side. */
+  ignore: external_exports.object({ event: str, severity: severityEnum }).strict()
+}).strict();
+var RelationshipStateSchema = BaseEntrySchema.extend({
+  name: str,
+  group: external_exports.enum(["base", "platonic", "romantic", "complex", "negative"]),
+  /** Romance off hides every state with `romance: true`. */
+  romance: external_exports.boolean(),
+  glyph: external_exports.string().min(1).max(2),
+  /** Among several automatic entries that hold, the highest priority wins. */
+  priority: int,
+  /** Available to grunts (Trust-only units); default false. */
+  grunts: external_exports.boolean().optional(),
+  entry: external_exports.object({
+    via: external_exports.array(external_exports.enum(["automatic", "event", "proposal"])).min(1),
+    /** Empty or absent = from any state. */
+    fromStates: external_exports.array(str).optional(),
+    events: external_exports.array(external_exports.enum(EVENT_TYPES)).optional(),
+    proposals: external_exports.array(external_exports.enum(PROPOSAL_KINDS)).optional(),
+    when: ConditionsSchema.optional()
+  }).strict(),
+  /** Checked first, in order; the first rule that holds moves the unit to `to`. */
+  exit: external_exports.array(external_exports.object({ when: ConditionsSchema, to: str }).strict()),
+  modifiers: gainLoss.optional(),
+  unlocks: external_exports.object({
+    synergies: external_exports.array(str),
+    activities: external_exports.array(str),
+    nightEvents: external_exports.array(NightSpecSchema),
+    defectArcStages: external_exports.array(str)
+  }).strict(),
+  /** Base chance per slot transition that the unit starts a DM. */
+  dmChance: external_exports.number().min(0).max(1),
+  promptHint: str
+}).superRefine((st, ctx2) => {
+  const issue = (path, message) => ctx2.addIssue({ code: "custom", path, message });
+  const via = st.entry.via;
+  if (via.includes("event") !== (st.entry.events?.length ?? 0) > 0) issue(["entry", "events"], 'via "event" needs a non-empty events list, and events need via "event"');
+  if (via.includes("proposal") !== (st.entry.proposals?.length ?? 0) > 0) issue(["entry", "proposals"], 'via "proposal" needs a non-empty proposals list, and proposals need via "proposal"');
+});
+var eventRow = external_exports.object({
+  trust: external_exports.number().optional(),
+  affinity: external_exports.number().optional(),
+  attraction: external_exports.number().optional(),
+  stress: external_exports.number().optional()
+}).strict();
+var EventDeltaSchema = BaseEntrySchema.extend({
+  id: external_exports.enum(EVENT_TYPES),
+  rows: external_exports.object({ minor: eventRow, moderate: eventRow, major: eventRow, extreme: eventRow }).strict(),
+  /** The row holds magnitudes; the sign comes from value alignment (decision events). */
+  valueAligned: external_exports.boolean().optional(),
+  /** Attraction gains are scaled by the unit's receptivity (romance on, Affinity ≥ 0, Trust ≥ 20). */
+  attractionUsesReceptivity: external_exports.boolean().optional()
+});
+var LocationSchema = BaseEntrySchema.extend({
+  name: str,
+  summary: str,
+  ascii: external_exports.array(external_exports.string()).min(1).max(12),
+  /** Asset paths relative to the extension folder; v1 ships none. */
+  background: str.optional(),
+  backgroundNight: str.optional(),
+  /** One location per unit (`quarters_unit`). */
+  perUnit: external_exports.boolean().optional(),
+  /** Slots the location is available in; absent = all. */
+  slots: external_exports.array(slotEnum).min(1).optional()
+});
+var DefectSchema = BaseEntrySchema.extend({
+  name: str,
+  category: external_exports.enum(["neural", "somatic", "cybernetic", "desire_bond"]),
+  lore: str,
+  upside: str,
+  downside: str,
+  breakdown: external_exports.object({ name: str, text: str }),
+  social: str,
+  arc: external_exports.object({ cure: str, manage: str, embrace: str }),
+  /** P3: multipliers applied after state modifiers; `events` multiplies the whole delta of one event type. */
+  relationModifiers: gainLoss.extend({ events: external_exports.record(external_exports.number().min(0)).optional() }).strict().optional(),
+  /** P3: activity-driven social effects (e.g. Hunger Loop meals give Affinity). */
+  socialHooks: external_exports.array(external_exports.object({
+    activity: str,
+    who: external_exports.enum(["companion", "roster"]),
+    axis: axisName.optional(),
+    amount: int.optional(),
+    setFlag: str.optional()
+  }).strict()).optional(),
+  dmChanceBonus: external_exports.number().min(0).max(1).optional(),
+  nightEvents: external_exports.array(NightSpecSchema).optional()
+});
+Object.assign(registrySchemas, {
+  relationshipStates: RelationshipStateSchema,
+  eventDeltas: EventDeltaSchema,
+  locations: LocationSchema,
+  defects: DefectSchema
+});
 
 // src/content/refs.ts
 var extractors = /* @__PURE__ */ new Map();
@@ -8601,6 +8773,49 @@ registerRefs("activities", (entry) => {
     });
   }
   return refs;
+});
+var HISTORY_TYPES = INTERNAL_HISTORY_TYPES;
+function conditionRefs(c, path, out) {
+  if (!c) return;
+  c.inStates?.forEach((id, i) => out.push({ registry: "relationshipStates", id, path: `${path}.inStates[${i}]` }));
+  c.flagsAll?.forEach((id, i) => out.push({ registry: "flags", id, path: `${path}.flagsAll[${i}]` }));
+  c.flagsNone?.forEach((id, i) => out.push({ registry: "flags", id, path: `${path}.flagsNone[${i}]` }));
+  c.defectsAny?.forEach((id, i) => out.push({ registry: "defects", id, path: `${path}.defectsAny[${i}]` }));
+  if (c.eventCount && !HISTORY_TYPES.includes(c.eventCount.type)) {
+    out.push({ registry: "eventDeltas", id: c.eventCount.type, path: `${path}.eventCount.type` });
+  }
+  c.anyOf?.forEach((sub, i) => conditionRefs(sub, `${path}.anyOf[${i}]`, out));
+}
+function nightRefs(list, path, out) {
+  if (!Array.isArray(list)) return;
+  list.forEach((n, i) => {
+    if (typeof n?.ignore?.event === "string") out.push({ registry: "eventDeltas", id: n.ignore.event, path: `${path}[${i}].ignore.event` });
+  });
+}
+registerRefs("relationshipStates", (entry) => {
+  const out = [];
+  const e = entry.entry;
+  e?.fromStates?.forEach((id, i) => out.push({ registry: "relationshipStates", id, path: `entry.fromStates[${i}]` }));
+  conditionRefs(e?.when, "entry.when", out);
+  entry.exit?.forEach((x, i) => {
+    out.push({ registry: "relationshipStates", id: x.to, path: `exit[${i}].to` });
+    conditionRefs(x.when, `exit[${i}].when`, out);
+  });
+  nightRefs(entry.unlocks?.nightEvents, "unlocks.nightEvents", out);
+  return out;
+});
+registerRefs("defects", (entry) => {
+  const out = [];
+  const mods = entry.relationModifiers;
+  for (const type of Object.keys(mods?.events ?? {})) {
+    out.push({ registry: "eventDeltas", id: type, path: `relationModifiers.events.${type}` });
+  }
+  entry.socialHooks?.forEach((h2, i) => {
+    out.push({ registry: "activities", id: h2.activity, path: `socialHooks[${i}].activity` });
+    if (h2.setFlag) out.push({ registry: "flags", id: h2.setFlag, path: `socialHooks[${i}].setFlag` });
+  });
+  nightRefs(entry.nightEvents, "nightEvents", out);
+  return out;
 });
 
 // src/content/loader.ts

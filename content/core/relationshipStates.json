@@ -1,0 +1,1096 @@
+[
+  {
+    "id": "stranger",
+    "name": "Stranger",
+    "group": "base",
+    "romance": false,
+    "glyph": "?",
+    "priority": 0,
+    "grunts": true,
+    "entry": {
+      "via": [
+        "automatic"
+      ],
+      "fromStates": [
+        "stranger"
+      ],
+      "when": {
+        "anyOf": []
+      }
+    },
+    "exit": [
+      {
+        "when": {
+          "axes": {
+            "trust": [
+              20,
+              100
+            ]
+          }
+        },
+        "to": "comrade"
+      }
+    ],
+    "unlocks": {
+      "synergies": [],
+      "activities": [],
+      "nightEvents": [],
+      "defectArcStages": []
+    },
+    "dmChance": 0.02,
+    "promptHint": "She does not know the commander yet: polite, guarded, professional. She answers questions but offers little of herself."
+  },
+  {
+    "id": "comrade",
+    "name": "Comrade",
+    "group": "base",
+    "romance": false,
+    "glyph": "=",
+    "priority": 10,
+    "grunts": true,
+    "entry": {
+      "via": [
+        "proposal"
+      ],
+      "proposals": [
+        "break_up",
+        "reconcile"
+      ],
+      "fromStates": [
+        "flirting",
+        "fwb",
+        "lover",
+        "devoted",
+        "secret_affair",
+        "rival_romance",
+        "resentful",
+        "estranged",
+        "despises",
+        "unrequited",
+        "rival"
+      ],
+      "when": {
+        "anyOf": [
+          {
+            "inStates": [
+              "flirting",
+              "fwb",
+              "lover",
+              "devoted",
+              "secret_affair",
+              "rival_romance",
+              "unrequited",
+              "rival"
+            ]
+          },
+          {
+            "inStates": [
+              "resentful",
+              "estranged",
+              "despises"
+            ],
+            "axes": {
+              "trust": [
+                25,
+                100
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "exit": [],
+    "unlocks": {
+      "synergies": [],
+      "activities": [],
+      "nightEvents": [],
+      "defectArcStages": []
+    },
+    "dmChance": 0.05,
+    "promptHint": "She accepts him as her commander and works with him without friction; warmth is professional, not personal."
+  },
+  {
+    "id": "trusted",
+    "name": "Trusted",
+    "group": "platonic",
+    "romance": false,
+    "glyph": "+",
+    "priority": 20,
+    "grunts": true,
+    "entry": {
+      "via": [
+        "automatic"
+      ],
+      "fromStates": [
+        "comrade"
+      ],
+      "when": {
+        "axes": {
+          "trust": [
+            45,
+            100
+          ]
+        },
+        "minDaysInState": 3
+      }
+    },
+    "exit": [],
+    "unlocks": {
+      "synergies": [
+        "trusted_cover"
+      ],
+      "activities": [],
+      "nightEvents": [],
+      "defectArcStages": [
+        "manage"
+      ]
+    },
+    "dmChance": 0.08,
+    "promptHint": "She relies on his judgement and says so; she speaks plainly and follows orders without needing them justified."
+  },
+  {
+    "id": "friend",
+    "name": "Friend",
+    "group": "platonic",
+    "romance": false,
+    "glyph": "*",
+    "priority": 25,
+    "entry": {
+      "via": [
+        "proposal"
+      ],
+      "proposals": [
+        "friendship_deepen"
+      ],
+      "fromStates": [
+        "comrade",
+        "trusted"
+      ],
+      "when": {
+        "axes": {
+          "affinity": [
+            30,
+            100
+          ],
+          "trust": [
+            30,
+            100
+          ]
+        }
+      }
+    },
+    "exit": [],
+    "unlocks": {
+      "synergies": [
+        "friend_assist"
+      ],
+      "activities": [],
+      "nightEvents": [],
+      "defectArcStages": []
+    },
+    "dmChance": 0.12,
+    "promptHint": "She is openly friendly with him: teases, checks on him, shares small things about herself."
+  },
+  {
+    "id": "confidant",
+    "name": "Confidant",
+    "group": "platonic",
+    "romance": false,
+    "glyph": "#",
+    "priority": 30,
+    "entry": {
+      "via": [
+        "proposal"
+      ],
+      "proposals": [
+        "confide"
+      ],
+      "fromStates": [
+        "friend"
+      ],
+      "when": {
+        "axes": {
+          "affinity": [
+            55,
+            100
+          ]
+        }
+      }
+    },
+    "exit": [],
+    "unlocks": {
+      "synergies": [
+        "friend_assist",
+        "confidant_sync"
+      ],
+      "activities": [],
+      "nightEvents": [],
+      "defectArcStages": [
+        "cure",
+        "embrace"
+      ]
+    },
+    "dmChance": 0.15,
+    "promptHint": "She confides in him: she tells him things she tells nobody else and expects him to keep them."
+  },
+  {
+    "id": "kindred",
+    "name": "Kindred",
+    "group": "platonic",
+    "romance": false,
+    "glyph": "&",
+    "priority": 35,
+    "entry": {
+      "via": [
+        "automatic"
+      ],
+      "fromStates": [
+        "confidant"
+      ],
+      "when": {
+        "axes": {
+          "affinity": [
+            80,
+            100
+          ],
+          "attraction": [
+            0,
+            29
+          ]
+        }
+      }
+    },
+    "exit": [
+      {
+        "when": {
+          "axes": {
+            "attraction": [
+              30,
+              100
+            ]
+          }
+        },
+        "to": "confidant"
+      }
+    ],
+    "unlocks": {
+      "synergies": [
+        "friend_assist",
+        "kindred_sync"
+      ],
+      "activities": [],
+      "nightEvents": [],
+      "defectArcStages": [
+        "cure",
+        "embrace"
+      ]
+    },
+    "dmChance": 0.15,
+    "promptHint": "The deepest bond that is not romantic: they understand each other without explaining. She is fiercely loyal and unselfconscious around him."
+  },
+  {
+    "id": "flirting",
+    "name": "Flirting",
+    "group": "romantic",
+    "romance": true,
+    "glyph": "~",
+    "priority": 40,
+    "entry": {
+      "via": [
+        "proposal",
+        "event"
+      ],
+      "proposals": [
+        "date"
+      ],
+      "events": [
+        "accepted_advance"
+      ],
+      "fromStates": [
+        "comrade",
+        "trusted",
+        "friend",
+        "confidant",
+        "kindred"
+      ],
+      "when": {
+        "axes": {
+          "attraction": [
+            25,
+            100
+          ],
+          "affinity": [
+            15,
+            100
+          ]
+        }
+      }
+    },
+    "exit": [
+      {
+        "when": {
+          "axes": {
+            "affinity": [
+              -100,
+              -30
+            ]
+          }
+        },
+        "to": "estranged"
+      }
+    ],
+    "unlocks": {
+      "synergies": [],
+      "activities": [],
+      "nightEvents": [],
+      "defectArcStages": []
+    },
+    "dmChance": 0.2,
+    "promptHint": "There is a charge between them: she teases, lingers, tests how he reacts. Nothing is promised."
+  },
+  {
+    "id": "fwb",
+    "name": "Casual",
+    "group": "romantic",
+    "romance": true,
+    "glyph": "^",
+    "priority": 42,
+    "entry": {
+      "via": [
+        "proposal"
+      ],
+      "proposals": [
+        "fwb"
+      ],
+      "fromStates": [
+        "comrade",
+        "trusted",
+        "friend",
+        "confidant",
+        "kindred",
+        "flirting"
+      ],
+      "when": {
+        "axes": {
+          "attraction": [
+            45,
+            100
+          ],
+          "affinity": [
+            10,
+            55
+          ]
+        }
+      }
+    },
+    "exit": [
+      {
+        "when": {
+          "axes": {
+            "affinity": [
+              -100,
+              -30
+            ]
+          }
+        },
+        "to": "estranged"
+      }
+    ],
+    "unlocks": {
+      "synergies": [
+        "spark"
+      ],
+      "activities": [],
+      "nightEvents": [
+        {
+          "id": "fwb_visit",
+          "kind": "visit",
+          "chance": 0.25,
+          "priority": 25,
+          "trigger": "daily",
+          "framing": "{name} is at the door, in no mood to talk about duty.",
+          "ignore": {
+            "event": "dismissed",
+            "severity": "minor"
+          }
+        }
+      ],
+      "defectArcStages": []
+    },
+    "dmChance": 0.2,
+    "promptHint": "They are physical without commitment, and she insists it stays easy. Do not let her volunteer commitment."
+  },
+  {
+    "id": "lover",
+    "name": "Lover",
+    "group": "romantic",
+    "romance": true,
+    "glyph": "<3",
+    "priority": 50,
+    "entry": {
+      "via": [
+        "proposal"
+      ],
+      "proposals": [
+        "romance"
+      ],
+      "fromStates": [
+        "flirting",
+        "fwb"
+      ],
+      "when": {
+        "axes": {
+          "attraction": [
+            50,
+            100
+          ],
+          "affinity": [
+            55,
+            100
+          ],
+          "trust": [
+            35,
+            100
+          ]
+        }
+      }
+    },
+    "exit": [
+      {
+        "when": {
+          "axes": {
+            "affinity": [
+              -100,
+              -30
+            ]
+          }
+        },
+        "to": "estranged"
+      }
+    ],
+    "unlocks": {
+      "synergies": [
+        "lover_link",
+        "friend_assist"
+      ],
+      "activities": [],
+      "nightEvents": [
+        {
+          "id": "lover_visit",
+          "kind": "visit",
+          "chance": 0.25,
+          "priority": 30,
+          "trigger": "daily",
+          "framing": "{name} knocks on your door, late.",
+          "ignore": {
+            "event": "dismissed",
+            "severity": "minor"
+          }
+        },
+        {
+          "id": "lover_visit_injured",
+          "kind": "visit",
+          "chance": 1.0,
+          "priority": 80,
+          "trigger": "commander_injured",
+          "framing": "{name} comes to check on you, and does not look like she will take no for an answer.",
+          "ignore": {
+            "event": "dismissed",
+            "severity": "moderate"
+          }
+        }
+      ],
+      "defectArcStages": [
+        "cure",
+        "embrace"
+      ]
+    },
+    "dmChance": 0.3,
+    "promptHint": "She is in love with him and shows it in her own way; she worries, she is possessive of his time and honest about what she feels."
+  },
+  {
+    "id": "devoted",
+    "name": "Devoted",
+    "group": "romantic",
+    "romance": true,
+    "glyph": "<<",
+    "priority": 55,
+    "entry": {
+      "via": [
+        "proposal"
+      ],
+      "proposals": [
+        "exclusive"
+      ],
+      "fromStates": [
+        "lover"
+      ],
+      "when": {
+        "axes": {
+          "affinity": [
+            85,
+            100
+          ]
+        },
+        "minDaysInState": 10
+      }
+    },
+    "exit": [
+      {
+        "when": {
+          "axes": {
+            "affinity": [
+              -100,
+              -30
+            ]
+          }
+        },
+        "to": "estranged"
+      }
+    ],
+    "unlocks": {
+      "synergies": [
+        "lover_link",
+        "devoted_sacrifice"
+      ],
+      "activities": [],
+      "nightEvents": [
+        {
+          "id": "devoted_visit",
+          "kind": "visit",
+          "chance": 0.35,
+          "priority": 35,
+          "trigger": "daily",
+          "framing": "{name} is outside your door; she says she could not sleep.",
+          "ignore": {
+            "event": "dismissed",
+            "severity": "moderate"
+          }
+        },
+        {
+          "id": "devoted_visit_injured",
+          "kind": "visit",
+          "chance": 1.0,
+          "priority": 85,
+          "trigger": "commander_injured",
+          "framing": "{name} has been waiting for you to wake up.",
+          "ignore": {
+            "event": "dismissed",
+            "severity": "major"
+          }
+        }
+      ],
+      "defectArcStages": [
+        "cure",
+        "embrace"
+      ]
+    },
+    "dmChance": 0.35,
+    "promptHint": "She has given him everything and expects the same: exclusive, intense, hurt deeply by anything that looks like betrayal."
+  },
+  {
+    "id": "secret_affair",
+    "name": "Secret affair",
+    "group": "romantic",
+    "romance": true,
+    "glyph": "x",
+    "priority": 45,
+    "entry": {
+      "via": [
+        "proposal"
+      ],
+      "proposals": [
+        "secret_affair"
+      ],
+      "fromStates": [
+        "comrade",
+        "trusted",
+        "friend",
+        "confidant",
+        "kindred",
+        "flirting",
+        "fwb"
+      ],
+      "when": {
+        "axes": {
+          "attraction": [
+            45,
+            100
+          ],
+          "affinity": [
+            30,
+            100
+          ]
+        }
+      }
+    },
+    "exit": [
+      {
+        "when": {
+          "axes": {
+            "affinity": [
+              -100,
+              -30
+            ]
+          }
+        },
+        "to": "estranged"
+      }
+    ],
+    "unlocks": {
+      "synergies": [],
+      "activities": [],
+      "nightEvents": [],
+      "defectArcStages": []
+    },
+    "dmChance": 0.25,
+    "promptHint": "They are together in secret. She is careful in front of others and thrilled by the risk; she will not out herself and will not forgive him if he does."
+  },
+  {
+    "id": "obsessed",
+    "name": "Obsessed",
+    "group": "complex",
+    "romance": false,
+    "glyph": "@",
+    "priority": 70,
+    "entry": {
+      "via": [
+        "automatic"
+      ],
+      "when": {
+        "axes": {
+          "affinity": [
+            60,
+            100
+          ]
+        },
+        "anyOf": [
+          {
+            "axes": {
+              "trust": [
+                0,
+                24
+              ]
+            }
+          },
+          {
+            "eventCount": {
+              "type": "stress_high",
+              "min": 3
+            }
+          },
+          {
+            "defectsAny": [
+              "possessive_protocol"
+            ]
+          }
+        ]
+      }
+    },
+    "exit": [
+      {
+        "when": {
+          "axes": {
+            "affinity": [
+              -100,
+              39
+            ]
+          }
+        },
+        "to": "comrade"
+      }
+    ],
+    "modifiers": {
+      "gain": {
+        "affinity": 2
+      },
+      "loss": {
+        "affinity": 2
+      }
+    },
+    "unlocks": {
+      "synergies": [],
+      "activities": [],
+      "nightEvents": [
+        {
+          "id": "obsessed_visit",
+          "kind": "visit",
+          "chance": 0.4,
+          "priority": 70,
+          "trigger": "daily",
+          "framing": "{name} is standing in your doorway. You did not hear her come.",
+          "ignore": {
+            "event": "dismissed",
+            "severity": "major"
+          }
+        }
+      ],
+      "defectArcStages": []
+    },
+    "dmChance": 0.4,
+    "promptHint": "She fixates on him: attention, exclusivity, jealousy. Affection and anger swing hard and nothing he does is enough or too much."
+  },
+  {
+    "id": "dependent",
+    "name": "Dependent",
+    "group": "complex",
+    "romance": false,
+    "glyph": "!",
+    "priority": 60,
+    "entry": {
+      "via": [
+        "automatic"
+      ],
+      "when": {
+        "axes": {
+          "affinity": [
+            40,
+            100
+          ]
+        },
+        "flagsAll": [
+          "need_controlled"
+        ],
+        "defectsAny": [
+          "imprint_hunger",
+          "graft_rejection",
+          "compliance_craving"
+        ]
+      }
+    },
+    "exit": [],
+    "unlocks": {
+      "synergies": [],
+      "activities": [],
+      "nightEvents": [
+        {
+          "id": "dependent_need",
+          "kind": "need",
+          "chance": 0.3,
+          "priority": 60,
+          "trigger": "daily",
+          "framing": "{name} comes to you because she needs something only you can give her.",
+          "ignore": {
+            "event": "dismissed",
+            "severity": "major"
+          }
+        },
+        {
+          "id": "dependent_injured",
+          "kind": "visit",
+          "chance": 1.0,
+          "priority": 75,
+          "trigger": "commander_injured",
+          "framing": "{name} cannot stay away while you are hurt.",
+          "ignore": {
+            "event": "dismissed",
+            "severity": "moderate"
+          }
+        }
+      ],
+      "defectArcStages": []
+    },
+    "dmChance": 0.25,
+    "promptHint": "She needs something only he controls and resents that as much as she craves it. Pride and need pull against each other."
+  },
+  {
+    "id": "rival",
+    "name": "Rival",
+    "group": "complex",
+    "romance": false,
+    "glyph": "vs",
+    "priority": 38,
+    "entry": {
+      "via": [
+        "event",
+        "proposal"
+      ],
+      "events": [
+        "sided_against"
+      ],
+      "proposals": [
+        "rivalry"
+      ],
+      "when": {
+        "axes": {
+          "trust": [
+            30,
+            100
+          ],
+          "affinity": [
+            -30,
+            20
+          ]
+        },
+        "eventCount": {
+          "type": "sided_against",
+          "min": 2
+        }
+      }
+    },
+    "exit": [],
+    "unlocks": {
+      "synergies": [
+        "rival_edge"
+      ],
+      "activities": [],
+      "nightEvents": [],
+      "defectArcStages": []
+    },
+    "dmChance": 0.1,
+    "promptHint": "She respects him and fights him on principle: sharp, competitive, never indifferent. Disagreement is how she shows she cares."
+  },
+  {
+    "id": "rival_romance",
+    "name": "Rival romance",
+    "group": "complex",
+    "romance": true,
+    "glyph": "v<",
+    "priority": 48,
+    "entry": {
+      "via": [
+        "proposal"
+      ],
+      "proposals": [
+        "romance"
+      ],
+      "fromStates": [
+        "rival"
+      ],
+      "when": {
+        "axes": {
+          "attraction": [
+            45,
+            100
+          ]
+        }
+      }
+    },
+    "exit": [
+      {
+        "when": {
+          "axes": {
+            "affinity": [
+              -100,
+              -30
+            ]
+          }
+        },
+        "to": "estranged"
+      }
+    ],
+    "unlocks": {
+      "synergies": [
+        "rival_edge",
+        "spark"
+      ],
+      "activities": [],
+      "nightEvents": [],
+      "defectArcStages": []
+    },
+    "dmChance": 0.2,
+    "promptHint": "They argue and burn for each other in equal measure; she will not admit he has won anything."
+  },
+  {
+    "id": "unrequited",
+    "name": "Unrequited",
+    "group": "complex",
+    "romance": true,
+    "glyph": "..",
+    "priority": 36,
+    "entry": {
+      "via": [
+        "event"
+      ],
+      "events": [
+        "rejected_advance"
+      ],
+      "fromStates": [
+        "comrade",
+        "trusted",
+        "friend",
+        "confidant",
+        "kindred",
+        "flirting"
+      ],
+      "when": {
+        "axes": {
+          "attraction": [
+            50,
+            100
+          ]
+        }
+      }
+    },
+    "exit": [
+      {
+        "when": {
+          "axes": {
+            "attraction": [
+              0,
+              29
+            ]
+          }
+        },
+        "to": "comrade"
+      }
+    ],
+    "unlocks": {
+      "synergies": [],
+      "activities": [],
+      "nightEvents": [],
+      "defectArcStages": []
+    },
+    "dmChance": 0.1,
+    "promptHint": "She wants more than he gave her and carries it quietly: restraint, small slips, a hurt she does not name."
+  },
+  {
+    "id": "resentful",
+    "name": "Resentful",
+    "group": "negative",
+    "romance": false,
+    "glyph": "r!",
+    "priority": 80,
+    "entry": {
+      "via": [
+        "automatic"
+      ],
+      "when": {
+        "leashUsesMin": 1,
+        "axes": {
+          "trust": [
+            0,
+            29
+          ]
+        }
+      }
+    },
+    "exit": [
+      {
+        "when": {
+          "axes": {
+            "trust": [
+              40,
+              100
+            ]
+          }
+        },
+        "to": "comrade"
+      }
+    ],
+    "unlocks": {
+      "synergies": [],
+      "activities": [],
+      "nightEvents": [],
+      "defectArcStages": []
+    },
+    "dmChance": 0.05,
+    "promptHint": "He used the Leash on her and she has not forgotten: cold, formal, compliant on the surface and watching him."
+  },
+  {
+    "id": "estranged",
+    "name": "Estranged",
+    "group": "negative",
+    "romance": false,
+    "glyph": "e!",
+    "priority": 75,
+    "entry": {
+      "via": [
+        "automatic"
+      ],
+      "when": {
+        "axes": {
+          "affinity": [
+            -100,
+            -30
+          ]
+        }
+      }
+    },
+    "exit": [
+      {
+        "when": {
+          "axes": {
+            "affinity": [
+              -19,
+              100
+            ]
+          }
+        },
+        "to": "comrade"
+      }
+    ],
+    "modifiers": {
+      "gain": {
+        "trust": 0.5,
+        "affinity": 0.5,
+        "attraction": 0.5
+      }
+    },
+    "unlocks": {
+      "synergies": [],
+      "activities": [],
+      "nightEvents": [],
+      "defectArcStages": []
+    },
+    "dmChance": 0.03,
+    "promptHint": "She has turned away from him: curt, distant, unwilling to be warmed up. Whatever he offers she weighs against what he did."
+  },
+  {
+    "id": "despises",
+    "name": "Despises",
+    "group": "negative",
+    "romance": false,
+    "glyph": "d!",
+    "priority": 90,
+    "entry": {
+      "via": [
+        "automatic"
+      ],
+      "when": {
+        "axes": {
+          "affinity": [
+            -100,
+            -60
+          ],
+          "trust": [
+            0,
+            14
+          ]
+        }
+      }
+    },
+    "exit": [
+      {
+        "when": {
+          "axes": {
+            "affinity": [
+              -49,
+              100
+            ],
+            "trust": [
+              15,
+              100
+            ]
+          }
+        },
+        "to": "estranged"
+      }
+    ],
+    "modifiers": {
+      "gain": {
+        "trust": 0.5,
+        "affinity": 0.5,
+        "attraction": 0.5
+      }
+    },
+    "unlocks": {
+      "synergies": [],
+      "activities": [],
+      "nightEvents": [],
+      "defectArcStages": []
+    },
+    "dmChance": 0.02,
+    "promptHint": "She despises him and barely hides it. She obeys only because she must, and takes no opportunity to make it easy."
+  }
+]

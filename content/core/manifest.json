@@ -14,6 +14,9 @@
     "statuses": "statuses.json",
     "flags": "flags.json",
     "activities": "activities.json",
-    "facilities": "facilities.json"
+    "facilities": "facilities.json",
+    "relationshipStates": "relationshipStates.json",
+    "eventDeltas": "eventDeltas.json",
+    "locations": "locations.json"
   }
 }
