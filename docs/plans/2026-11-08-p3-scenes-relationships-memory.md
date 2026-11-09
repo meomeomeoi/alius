@@ -313,11 +313,11 @@ docs/** (Task 15), tests/** mirror src
 - `context.ts`: `registerSceneContext(builder, deps: { registries: () => Registries; settings: () => AliusSettings })` registers providers (render `null` without `state.scene`): `scene_header` (priority 95: `Scene: <Location>, Day 12 Evening. Present: Rhea, Kara. Private.`), `units` (90: per present named unit: `<Name> — state <name> (<promptHint>); trust guarded, affinity warm, attraction faint; stress tense; defect <name>: <social line>`; raw numbers only if `showRawValues`), `commander` (80: name, corporation, crime **only for units with `knows_crime`** — otherwise `Crime: unknown to <names>`, social ranks ≥ 3), `facts` (70: `retrieveFacts` for the participants with tags from their likes/dislikes, only facts every participant knows), `promises` (60: open promises involving participants). `sceneDirectives(builder, state, settings)` sets the scene-scoped directive `explicit` (`Explicit content: allowed.` / `Explicit content: not allowed; fade out intimate moments.`) and `romance_off` when romance is disabled; `clearSceneDirectives(builder)`.
 - `directives.ts` (pure text): `proposalDirective(unitName, kind, result)` — receptive: `<Name> is receptive to the commander's proposal (<kind>). Play her accepting it in her own way.`; declining: `<Name> DECLINES the commander's proposal (<kind>). Reason: <too soon | she does not trust him enough | she is not interested | she is already committed>. She will not be talked into it this scene.`; `nightDirective(unitName, framing)`; `snapDirective` (for `dm_reply` mode text). Directive ids `proposal:<unitId>` (`next_reply`), `night` (`scene`).
 
-- [ ] **Step 1: Write the failing tests** — `no scene → only the P0 header`; `header names location, slot, participants and mode`; `units show bands, never raw numbers by default`; `raw numbers with showRawValues`; `crime is shown only to units who know it`; `a fact known only by A never appears in a scene with B, nor with A and B together` (acceptance 7); `a fact known by A appears in A's private scene`; `explicit directive follows the setting`; `proposal directives for receptive and each decline reason`; `the block respects contextTokenCap (lower priorities dropped first)`.
-- [ ] **Step 2: Run** `npx vitest run tests/scene` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS.
-- [ ] **Step 5: Commit** `feat(scene): scene context providers and directive texts`.
+- [x] **Step 1: Write the failing tests** — `no scene → only the P0 header`; `header names location, slot, participants and mode`; `units show bands, never raw numbers by default`; `raw numbers with showRawValues`; `crime is shown only to units who know it`; `a fact known only by A never appears in a scene with B, nor with A and B together` (acceptance 7); `a fact known by A appears in A's private scene`; `explicit directive follows the setting`; `proposal directives for receptive and each decline reason`; `the block respects contextTokenCap (lower priorities dropped first)`.
+- [x] **Step 2: Run** `npx vitest run tests/scene` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS.
+- [x] **Step 5: Commit** `feat(scene): scene context providers and directive texts`.
 
 ### Task 12: Scene, DM, night and chronicle controllers
 

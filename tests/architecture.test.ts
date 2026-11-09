@@ -16,7 +16,22 @@ describe('architecture', () => {
       const text = readFileSync(file, 'utf8');
       const importPaths = [...text.matchAll(/(?:from|import)\s*\(?\s*['"]([^'"]+)['"]/g)].map((m) => m[1]);
       for (const p of importPaths) {
-        expect(p, `${file} imports ${p}`).not.toMatch(/\/(st|ui|llm)\//);
+        expect(p, `${file} imports ${p}`).not.toMatch(/\/(st|ui|llm|scene)\//);
+      }
+      for (const id of ['window', 'document', 'SillyTavern']) {
+        expect(text, `${file} uses ${id}`).not.toMatch(new RegExp(`\\b${id}\\b`));
+      }
+    }
+  });
+
+  it('the scene layer talks to ST only through the adapter type and never touches the UI', () => {
+    for (const file of tsFiles('src/scene')) {
+      const text = readFileSync(file, 'utf8');
+      const importPaths = [...text.matchAll(/(?:from|import)\s*\(?\s*['"]([^'"]+)['"]/g)].map((m) => m[1]);
+      for (const p of importPaths) {
+        expect(p, `${file} imports ${p}`).not.toMatch(/\/ui\//);
+        expect(p, `${file} imports ${p}`).not.toMatch(/st\/real$/);
+        expect(p, `${file} imports ${p}`).not.toMatch(/^st:/);
       }
       for (const id of ['window', 'document', 'SillyTavern']) {
         expect(text, `${file} uses ${id}`).not.toMatch(new RegExp(`\\b${id}\\b`));
