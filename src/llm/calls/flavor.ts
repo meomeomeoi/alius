@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { enemyNameKey, isEnemyName } from '../../engine/combat/spawn';
 import { GENERATED_NAME, GRUNT_BIO_MAX } from '../../engine/grunts';
 import type { AliusSettings } from '../../settings';
 import type { StAdapter } from '../../st/adapter';
@@ -74,4 +75,41 @@ export async function generateGruntFlavor(
   input: GruntFlavorInput, deps: { st: StAdapter; settings: AliusSettings },
 ): Promise<{ name: string; bio: string } | null> {
   return sanitizeGruntFlavor(await generateFlavor(input, deps));
+}
+
+// --- enemy kind (P4) ---------------------------------------------------------------------------
+
+export interface EnemyFlavorInput {
+  kind: 'enemy';
+  archetypeName: string;
+  categoryName: string;
+  affixNames: string[];
+}
+
+export { enemyNameKey };
+
+registerFlavorKind('enemy', {
+  system: () =>
+    [
+      'You name an enemy for a dark, near-future squad-command RPG.',
+      'Reply with a single JSON object and nothing else: {"name": "<enemy name>"}',
+      'The name is 1 to 3 words of letters, spaces and hyphens, at most 32 characters. Write in English. Do not mention numbers or game stats.',
+    ].join('\n'),
+  prompt: (raw) => {
+    const i = raw as EnemyFlavorInput;
+    return `Archetype: ${i.archetypeName}\nCategory: ${i.categoryName}\nTraits: ${i.affixNames.join(', ') || 'none'}\nGive this enemy a fitting name.`;
+  },
+});
+
+/** A usable name or null: anything with prose, digits or more than 32 characters fails soft. */
+export function sanitizeEnemyFlavor(raw: unknown): { name: string } | null {
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return null;
+  const name = typeof (raw as Record<string, unknown>).name === 'string' ? ((raw as Record<string, unknown>).name as string).trim() : '';
+  return isEnemyName(name) ? { name } : null;
+}
+
+export async function generateEnemyFlavor(
+  input: EnemyFlavorInput, deps: { st: StAdapter; settings: AliusSettings },
+): Promise<{ name: string } | null> {
+  return sanitizeEnemyFlavor(await generateFlavor(input, deps));
 }

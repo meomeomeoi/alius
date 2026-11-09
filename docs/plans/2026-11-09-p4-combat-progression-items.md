@@ -448,11 +448,11 @@ docs/** (Task 21), tests/** mirror src
 - `campaign/set_difficulty { difficulty: 'story'|'normal'|'hard' }`: refused while a combat is open.
 - Settings: `easyRetry: boolean` (default `false`), `enemyFlavor: boolean` (default `false`). SYS: two toggles and a per-campaign difficulty select (dispatches `campaign/set_difficulty`).
 
-- [ ] **Step 1: Write the failing tests** — `enemy flavor accepts a valid name and fails soft on prose, numbers and long names`; `set_enemy_name caps the cache at 100`; `set_difficulty rejects an open combat`; `settings defaults and round-trip for easyRetry and enemyFlavor`; `SYS shows the difficulty of the campaign and changes it`.
-- [ ] **Step 2: Run** `npx vitest run tests/llm/flavor.test.ts tests/settings.test.ts tests/ui/shell.test.ts tests/engine/combat/actions.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS.
-- [ ] **Step 5: Commit** `feat: enemy name flavor, easy retry and difficulty settings`.
+- [x] **Step 1: Write the failing tests** — `enemy flavor accepts a valid name and fails soft on prose, numbers and long names`; `set_enemy_name caps the cache at 100`; `set_difficulty rejects an open combat`; `settings defaults and round-trip for easyRetry and enemyFlavor`; `SYS shows the difficulty of the campaign and changes it`.
+- [x] **Step 2: Run** `npx vitest run tests/llm/flavor.test.ts tests/settings.test.ts tests/ui/shell.test.ts tests/engine/combat/actions.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS.
+- [x] **Step 5: Commit** `feat: enemy name flavor, easy retry and difficulty settings`.
 
 ---
 

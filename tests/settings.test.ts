@@ -97,4 +97,16 @@ describe('settings', () => {
     const ok = updateSettings(st, { intentMode: 'every_n', intentEveryN: 5, intentMinConfidence: 0.3, scenePacing: 10, typingSpeed: 0 });
     expect(ok).toMatchObject({ intentMode: 'every_n', intentEveryN: 5, intentMinConfidence: 0.3, scenePacing: 10, typingSpeed: 0 });
   });
+
+  it('easyRetry and enemyFlavor default to off, round-trip and ignore bad values', () => {
+    const st = new FakeStAdapter();
+    expect(getSettings(st)).toMatchObject({ easyRetry: false, enemyFlavor: false });
+    const on = updateSettings(st, { easyRetry: true, enemyFlavor: true });
+    expect(on).toMatchObject({ easyRetry: true, enemyFlavor: true });
+    expect(st.settings).toMatchObject({ easyRetry: true, enemyFlavor: true });
+    expect(updateSettings(st, { easyRetry: 'yes' as never }).easyRetry).toBe(true);
+    const fresh = new FakeStAdapter();
+    fresh.settings = { easyRetry: 1, enemyFlavor: true };
+    expect(getSettings(fresh)).toMatchObject({ easyRetry: false, enemyFlavor: true });
+  });
 });

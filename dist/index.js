@@ -6657,6 +6657,50 @@ async function generateVignette(input, deps) {
   return r.ok ? sanitizeVignette(r.value) : null;
 }
 
+// src/engine/combat/types.ts
+var TRIGGERS = [
+  "onCombatStart",
+  "onRoundStart",
+  "onTurnStart",
+  "onAction",
+  "onHit",
+  "onCrit",
+  "onDamaged",
+  "onAllyDowned",
+  "onKill",
+  "onStressThreshold",
+  "onCombatEnd"
+];
+var EFFECT_TARGETS = [
+  "self",
+  "target",
+  "source",
+  "allies",
+  "allies_other",
+  "enemies",
+  "own_row",
+  "target_row",
+  "random_enemy",
+  "lowest_hp_ally",
+  "commander",
+  "allies_front"
+];
+var STATS = ["hp", "atk", "def", "spd", "crit"];
+var ALWAYS_ON_TYPES = [
+  "stat",
+  "outgoing",
+  "incoming",
+  "stress_taken",
+  "immune",
+  "order_cost",
+  "order_refusal",
+  "loadout_slots",
+  "injury_days",
+  "intercept_lethal",
+  "misfire",
+  "override_action"
+];
+
 // src/llm/calls/flavor.ts
 var kinds = /* @__PURE__ */ new Map();
 function registerFlavorKind(kind, impl) {
@@ -6702,6 +6746,20 @@ function sanitizeGruntFlavor(raw) {
 async function generateGruntFlavor(input, deps) {
   return sanitizeGruntFlavor(await generateFlavor(input, deps));
 }
+registerFlavorKind("enemy", {
+  system: () => [
+    "You name an enemy for a dark, near-future squad-command RPG.",
+    'Reply with a single JSON object and nothing else: {"name": "<enemy name>"}',
+    "The name is 1 to 3 words of letters, spaces and hyphens, at most 32 characters. Write in English. Do not mention numbers or game stats."
+  ].join("\n"),
+  prompt: (raw) => {
+    const i = raw;
+    return `Archetype: ${i.archetypeName}
+Category: ${i.categoryName}
+Traits: ${i.affixNames.join(", ") || "none"}
+Give this enemy a fitting name.`;
+  }
+});
 
 // src/content/types.ts
 var REGISTRY_NAMES = [
@@ -7785,7 +7843,9 @@ var DEFAULT_SETTINGS = {
   explicitContent: false,
   romanticInitiative: "med",
   unitDms: true,
-  chronicleCompaction: true
+  chronicleCompaction: true,
+  easyRetry: false,
+  enemyFlavor: false
 };
 var fieldSchemas = {
   mechanicProfileId: external_exports.string(),
@@ -7812,7 +7872,9 @@ var fieldSchemas = {
   explicitContent: external_exports.boolean(),
   romanticInitiative: external_exports.enum(["low", "med", "high"]),
   unitDms: external_exports.boolean(),
-  chronicleCompaction: external_exports.boolean()
+  chronicleCompaction: external_exports.boolean(),
+  easyRetry: external_exports.boolean(),
+  enemyFlavor: external_exports.boolean()
 };
 var budgetSchema = external_exports.number().int().min(1);
 var isObj8 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -10123,6 +10185,25 @@ function renderSysTab(host, ctx2) {
     });
     return el;
   };
+  const difficultySelect = () => {
+    const state = ctx2.getState();
+    const value = state?.difficulty ?? "normal";
+    const el = h(
+      "select",
+      { name: "difficulty", class: "alius-input", disabled: !state || !ctx2.dispatch },
+      ...["story", "normal", "hard"].map((v) => h("option", { value: v, selected: v === value }, v))
+    );
+    el.value = value;
+    el.addEventListener("change", () => {
+      const events = ctx2.dispatch?.({ type: "campaign/set_difficulty", payload: { difficulty: el.value } }) ?? [];
+      const err = events.find((e) => e.type === "error");
+      if (err) {
+        ctx2.toast("warn", String(err.message ?? "The difficulty could not be changed."));
+        el.value = ctx2.getState()?.difficulty ?? "normal";
+      }
+    });
+    return el;
+  };
   const profiles = st.listConnectionProfiles();
   const profileOptions = [
     ["", "(none \u2014 use main model if fallback is on)"],
@@ -10166,6 +10247,10 @@ function renderSysTab(host, ctx2) {
     field("Typing speed (chars/s, 0 = instant)", numberInput("typingSpeed", settings.typingSpeed, (n) => apply({ typingSpeed: n }).typingSpeed)),
     field("Units may start DMs", checkbox("unitDms", settings.unitDms)),
     field("Compact the chronicle with the mechanic model", checkbox("chronicleCompaction", settings.chronicleCompaction)),
+    h("h3", {}, "Combat"),
+    field("Easy retry (rewind a lost combat)", checkbox("easyRetry", settings.easyRetry)),
+    field("Generated names for affixed enemies", checkbox("enemyFlavor", settings.enemyFlavor)),
+    field("Difficulty (this campaign)", difficultySelect()),
     h("h3", {}, "Intimacy"),
     field("Romance", checkbox("romance", settings.romance)),
     field("Explicit scenes allowed", checkbox("explicitContent", settings.explicitContent)),
@@ -10454,6 +10539,7 @@ function createShell(deps) {
         getLoad: deps.getLoad,
         replaceState: deps.replaceState,
         getContentErrors: deps.getContentErrors,
+        dispatch: deps.dispatch,
         debugTools: deps.debugTools,
         toast,
         modal: (o) => api.modal(o),
@@ -11349,50 +11435,6 @@ function createApp(st, deps) {
   return api;
 }
 
-// src/engine/combat/types.ts
-var TRIGGERS = [
-  "onCombatStart",
-  "onRoundStart",
-  "onTurnStart",
-  "onAction",
-  "onHit",
-  "onCrit",
-  "onDamaged",
-  "onAllyDowned",
-  "onKill",
-  "onStressThreshold",
-  "onCombatEnd"
-];
-var EFFECT_TARGETS = [
-  "self",
-  "target",
-  "source",
-  "allies",
-  "allies_other",
-  "enemies",
-  "own_row",
-  "target_row",
-  "random_enemy",
-  "lowest_hp_ally",
-  "commander",
-  "allies_front"
-];
-var STATS = ["hp", "atk", "def", "spd", "crit"];
-var ALWAYS_ON_TYPES = [
-  "stat",
-  "outgoing",
-  "incoming",
-  "stress_taken",
-  "immune",
-  "order_cost",
-  "order_refusal",
-  "loadout_slots",
-  "injury_days",
-  "intercept_lethal",
-  "misfire",
-  "override_action"
-];
-
 // src/content/schemas.ts
 var ID_PATTERN = /^[a-z0-9_:.-]+$/;
 var BaseEntrySchema = external_exports.object({
@@ -11760,7 +11802,9 @@ var RESERVED_EVENT_TYPES = [
   "loadout_changed",
   "combat_lost_pending",
   "item_rerolled",
-  "item_dismantled"
+  "item_dismantled",
+  "enemy_named",
+  "difficulty_changed"
 ];
 var slotEnum = external_exports.enum(["morning", "afternoon", "evening", "night"]);
 var socialStat = external_exports.enum(["authority", "insight", "empathy", "cunning"]);

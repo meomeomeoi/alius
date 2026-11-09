@@ -4,6 +4,12 @@ import { TUNING } from '../tuning';
 import { enemyStats } from './stats';
 import type { CombatState, Combatant, EffectSpec, Row } from './types';
 
+/** A generated enemy name: 1–3 words of letters (hyphens inside words allowed), at most 32 characters. */
+export const ENEMY_NAME_PATTERN = /^[A-Za-z]+(?:-[A-Za-z]+)*(?: [A-Za-z]+(?:-[A-Za-z]+)*){0,2}$/;
+export const isEnemyName = (s: unknown): s is string => typeof s === 'string' && s.length <= 32 && ENEMY_NAME_PATTERN.test(s);
+/** Cache size of `state.enemyNames`. */
+export const ENEMY_NAMES_MAX = 100;
+
 export const enemyNameKey = (enemyId: string, affixes: string[]): string =>
   `${enemyId}|${[...affixes].sort().join(',')}`;
 

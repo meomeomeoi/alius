@@ -42,6 +42,10 @@ export interface AliusSettings {
   unitDms: boolean;
   /** Compact old chronicle lines with the mechanic model (otherwise by joining them). */
   chronicleCompaction: boolean;
+  /** P4: a lost combat can be retried (rewinds exactly, never recorded in memory). */
+  easyRetry: boolean;
+  /** P4: affixed enemies get a generated name (optional `flavor` call, cached, never blocks combat). */
+  enemyFlavor: boolean;
 }
 
 export const DEFAULT_SETTINGS: AliusSettings = {
@@ -84,6 +88,8 @@ export const DEFAULT_SETTINGS: AliusSettings = {
   romanticInitiative: 'med',
   unitDms: true,
   chronicleCompaction: true,
+  easyRetry: false,
+  enemyFlavor: false,
 };
 
 const fieldSchemas = {
@@ -112,6 +118,8 @@ const fieldSchemas = {
   romanticInitiative: z.enum(['low', 'med', 'high']),
   unitDms: z.boolean(),
   chronicleCompaction: z.boolean(),
+  easyRetry: z.boolean(),
+  enemyFlavor: z.boolean(),
 };
 const budgetSchema = z.number().int().min(1);
 

@@ -4,6 +4,7 @@ import { buildCombat, checkStart } from '../combat/build';
 import { fireTrigger, makeCtx, type EffectCtx } from '../combat/effects';
 import { checkOrder, issueOrder } from '../combat/orders';
 import { finalizeCombat } from '../combat/outcome';
+import { ENEMY_NAMES_MAX, isEnemyName } from '../combat/spawn';
 import { completeAction, performAction, runUntilInput, startRound } from '../combat/turn';
 import type { PlannedAction, StartPayload } from '../combat/types';
 import type { CampaignState } from '../state/types';
@@ -117,4 +118,27 @@ registerAction('combat/accept', (draft, _payload, ctx) => {
   const cs = open(draft, 'combat/accept');
   if (cs.phase !== 'lost_pending') throw new Error('combat/accept: there is no lost combat to accept');
   return finalizeCombat(draft, ctx.registries, ctx.rng, 'lost');
+});
+
+/** Caches a generated name for an affixed enemy (`enemyId|affixes`); the 100 most recent are kept. */
+registerAction('combat/set_enemy_name', (draft, payload) => {
+  const p = isObj(payload) ? payload : {};
+  if (typeof p.key !== 'string' || !/^[a-z0-9_:.-]+(\|[a-z0-9_:.,-]*)?$/.test(p.key)) throw new Error('combat/set_enemy_name needs a valid key');
+  if (!isEnemyName(p.name)) throw new Error('combat/set_enemy_name: the name must be 1 to 3 words of letters, at most 32 characters');
+  const names = draft.enemyNames ?? {};
+  delete names[p.key];
+  names[p.key] = p.name;
+  const keys = Object.keys(names);
+  for (const old of keys.slice(0, Math.max(0, keys.length - ENEMY_NAMES_MAX))) delete names[old];
+  draft.enemyNames = names;
+  return [{ type: 'enemy_named', key: p.key, name: p.name }];
+});
+
+/** Per-campaign combat difficulty (SYS); not while a combat is open. */
+registerAction('campaign/set_difficulty', (draft, payload) => {
+  const d = isObj(payload) ? payload.difficulty : undefined;
+  if (d !== 'story' && d !== 'normal' && d !== 'hard') throw new Error('campaign/set_difficulty needs { difficulty: story | normal | hard }');
+  if (draft.combat) throw new Error('The difficulty cannot change during a combat.');
+  draft.difficulty = d;
+  return [{ type: 'difficulty_changed', difficulty: d }];
 });

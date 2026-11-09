@@ -16,6 +16,8 @@ export interface SysCtx {
   getLoad: () => LoadResult;
   replaceState?: (state: CampaignState) => void;
   getContentErrors?: () => ContentError[];
+  /** Dispatches an engine action (used for the per-campaign difficulty). */
+  dispatch?: (action: { type: string; payload?: unknown }) => Array<{ type: string; [k: string]: unknown }>;
   debugTools?: Array<{ label: string; run: () => void }>;
   toast: (kind: ToastKind, text: string) => void;
   modal: (opts: ModalOpts) => Promise<string | null>;
@@ -81,6 +83,27 @@ export function renderSysTab(host: HTMLElement, ctx: SysCtx): void {
     return el;
   };
 
+  /** The campaign's combat difficulty; changing it goes through the engine (refused while a combat is open). */
+  const difficultySelect = (): HTMLElement => {
+    const state = ctx.getState();
+    const value = state?.difficulty ?? 'normal';
+    const el = h(
+      'select',
+      { name: 'difficulty', class: 'alius-input', disabled: !state || !ctx.dispatch },
+      ...(['story', 'normal', 'hard'] as const).map((v) => h('option', { value: v, selected: v === value }, v)),
+    ) as HTMLSelectElement;
+    el.value = value;
+    el.addEventListener('change', () => {
+      const events = ctx.dispatch?.({ type: 'campaign/set_difficulty', payload: { difficulty: el.value } }) ?? [];
+      const err = events.find((e) => e.type === 'error');
+      if (err) {
+        ctx.toast('warn', String(err.message ?? 'The difficulty could not be changed.'));
+        el.value = ctx.getState()?.difficulty ?? 'normal';
+      }
+    });
+    return el;
+  };
+
   // --- settings form
   const profiles = st.listConnectionProfiles();
   const profileOptions: Array<[string, string]> = [
@@ -126,6 +149,10 @@ export function renderSysTab(host: HTMLElement, ctx: SysCtx): void {
     field('Typing speed (chars/s, 0 = instant)', numberInput('typingSpeed', settings.typingSpeed, (n) => apply({ typingSpeed: n }).typingSpeed)),
     field('Units may start DMs', checkbox('unitDms', settings.unitDms)),
     field('Compact the chronicle with the mechanic model', checkbox('chronicleCompaction', settings.chronicleCompaction)),
+    h('h3', {}, 'Combat'),
+    field('Easy retry (rewind a lost combat)', checkbox('easyRetry', settings.easyRetry)),
+    field('Generated names for affixed enemies', checkbox('enemyFlavor', settings.enemyFlavor)),
+    field('Difficulty (this campaign)', difficultySelect()),
     h('h3', {}, 'Intimacy'),
     field('Romance', checkbox('romance', settings.romance)),
     field('Explicit scenes allowed', checkbox('explicitContent', settings.explicitContent)),

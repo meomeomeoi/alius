@@ -44,6 +44,8 @@ export interface ShellDeps {
   replaceState?: (state: CampaignState) => void;
   /** Content pack errors shown in the SYS debug panel. */
   getContentErrors?: () => ContentError[];
+  /** Dispatches an engine action (the SYS difficulty select uses it). */
+  dispatch?: (action: { type: string; payload?: unknown }) => Array<{ type: string; [k: string]: unknown }>;
   /** Extra buttons for the SYS debug panel (e.g. inject a test directive). */
   debugTools?: Array<{ label: string; run: () => void }>;
   /** Called after the SYS tab changed a setting (the app mirrors intimacy settings into the campaign). */
@@ -120,6 +122,7 @@ export function createShell(deps: ShellDeps): ShellApi {
         getLoad: deps.getLoad,
         replaceState: deps.replaceState,
         getContentErrors: deps.getContentErrors,
+        dispatch: deps.dispatch,
         debugTools: deps.debugTools,
         toast,
         modal: (o) => api.modal(o),

@@ -144,3 +144,54 @@ describe('combat/act', () => {
     expect(guarded.state.combat!.combatants.find((c) => c.cid === cid)!.statuses.some((s) => s.id === 'guard')).toBe(true);
   });
 });
+
+describe('combat/set_enemy_name and campaign/set_difficulty', () => {
+  it('stores a valid name and rejects bad ones without a change', () => {
+    const r = run(base, reg, { type: 'combat/set_enemy_name', payload: { key: 'husk|armored', name: 'Plated Husk' } });
+    expect(errors(r.events)).toEqual([]);
+    expect(r.state.enemyNames).toEqual({ 'husk|armored': 'Plated Husk' });
+    for (const payload of [{ key: 'husk|armored', name: 'too many words in here' }, { key: 'husk|armored', name: 'Husk 2' }, { key: '', name: 'Husk' }, { name: 'Husk' }, { key: 'husk|a', name: 7 }]) {
+      const bad = run(r.state, reg, { type: 'combat/set_enemy_name', payload });
+      expect(errors(bad.events), JSON.stringify(payload)).toHaveLength(1);
+      expect(bad.state).toBe(r.state);
+    }
+  });
+
+  it('caps the cache at the 100 most recent names', () => {
+    let s = base;
+    for (let i = 0; i < 105; i++) {
+      s = run(s, reg, { type: 'combat/set_enemy_name', payload: { key: `husk|a${i}`, name: 'Plated Husk' } }).state;
+    }
+    const keys = Object.keys(s.enemyNames!);
+    expect(keys).toHaveLength(100);
+    expect(keys[0]).toBe('husk|a5');
+    expect(keys.at(-1)).toBe('husk|a104');
+    // renaming moves a key to the newest position
+    s = run(s, reg, { type: 'combat/set_enemy_name', payload: { key: 'husk|a5', name: 'New Name' } }).state;
+    expect(Object.keys(s.enemyNames!).at(-1)).toBe('husk|a5');
+    expect(Object.keys(s.enemyNames!)).toHaveLength(100);
+  });
+
+  it('enemy names appear in the result of a combat', () => {
+    const named = run(base, reg, { type: 'combat/set_enemy_name', payload: { key: 'husk|', name: 'Rusty Husk' } }).state;
+    const end = play(run(named, reg, start(named)).state).state;
+    expect(end.lastCombat!.enemies[0].name).toBe('Rusty Husk');
+    expect(play(run(base, reg, start(base)).state).state.lastCombat!.enemies[0].name).toBe('Husk');
+  });
+
+  it('set_difficulty changes the campaign and rejects an open combat or a bad value', () => {
+    const r = run(base, reg, { type: 'campaign/set_difficulty', payload: { difficulty: 'hard' } });
+    expect(r.state.difficulty).toBe('hard');
+    expect(errors(run(base, reg, { type: 'campaign/set_difficulty', payload: { difficulty: 'nightmare' } }).events)).toHaveLength(1);
+    const open = run(base, reg, start(base)).state;
+    const refused = run(open, reg, { type: 'campaign/set_difficulty', payload: { difficulty: 'story' } });
+    expect(errors(refused.events)).toHaveLength(1);
+    expect(refused.state).toBe(open);
+  });
+
+  it('difficulty scales the enemies of the next combat', () => {
+    const hard = run(base, reg, { type: 'campaign/set_difficulty', payload: { difficulty: 'hard' } }).state;
+    const open = run(hard, reg, start(hard)).state;
+    expect(open.combat!.combatants.find((c) => c.side === 'enemy')!.maxHp).toBe(Math.round(55 * 1.2));
+  });
+});

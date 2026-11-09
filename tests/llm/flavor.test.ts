@@ -84,3 +84,42 @@ describe('flavor kinds', () => {
     expect(() => registerFlavorKind('test_item', { system: () => '', prompt: () => '' })).toThrow();
   });
 });
+
+import { enemyNameKey, generateEnemyFlavor, sanitizeEnemyFlavor, type EnemyFlavorInput } from '../../src/llm/calls/flavor';
+
+describe('enemy flavor', () => {
+  const enemy: EnemyFlavorInput = { kind: 'enemy', archetypeName: 'Husk', categoryName: 'Bio-mutants (human)', affixNames: ['Armored', 'Swift'] };
+
+  it('accepts a valid name and fails soft on prose, numbers, markup and long names', () => {
+    expect(sanitizeEnemyFlavor({ name: ' Iron-shelled Husk ' })).toEqual({ name: 'Iron-shelled Husk' });
+    expect(sanitizeEnemyFlavor({ name: 'Rust' })).toEqual({ name: 'Rust' });
+    for (const name of [
+      'It is a very frightening husk indeed', 'Husk 2', '1234', '<b>Husk</b>', '', 'A'.repeat(33), 'One Two Three Four', 'Husk!', -3, null, ['Husk'],
+    ]) {
+      expect(sanitizeEnemyFlavor({ name }), String(name)).toBeNull();
+    }
+    expect(sanitizeEnemyFlavor('Husk')).toBeNull();
+    expect(sanitizeEnemyFlavor(null)).toBeNull();
+  });
+
+  it('asks the model with the archetype, category and traits, and returns the sanitized name', async () => {
+    const { st, settings } = setup();
+    st.mainReplies = ['{"name": "Plated Crawler"}'];
+    expect(await generateEnemyFlavor(enemy, { st, settings })).toEqual({ name: 'Plated Crawler' });
+    const call = st.calls[0] as { prompt: string };
+    expect(call.prompt).toContain('Husk');
+    expect(call.prompt).toContain('Armored, Swift');
+  });
+
+  it('a failed or unusable answer gives null and changes nothing', async () => {
+    const { st, settings } = setup();
+    st.mainReplies = ['not json at all', '{"name": "has 1 digit"}'];
+    expect(await generateEnemyFlavor(enemy, { st, settings })).toBeNull();
+    expect(await generateEnemyFlavor(enemy, { st, settings })).toBeNull();
+  });
+
+  it('the cache key joins the enemy id and the sorted affixes', () => {
+    expect(enemyNameKey('husk', ['swift', 'armored'])).toBe('husk|armored,swift');
+    expect(enemyNameKey('husk', [])).toBe('husk|');
+  });
+});

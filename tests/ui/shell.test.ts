@@ -451,3 +451,48 @@ describe('P3 shell additions', () => {
   });
 });
 
+describe('SYS combat settings', () => {
+  it('shows the campaign difficulty and changes it through the engine', () => {
+    const state = createCampaign({ seed: 1, commanderName: 'Vale' });
+    const dispatch = vi.fn((action: { type: string; payload?: unknown }) => {
+      state.difficulty = (action.payload as { difficulty: CampaignState['difficulty'] }).difficulty;
+      return [{ type: 'difficulty_changed' }];
+    });
+    const { shell } = setup({ state, extra: { dispatch } });
+    shell.open();
+    shell.showTab('sys');
+    const select = document.querySelector<HTMLSelectElement>('#alius-shell select[name="difficulty"]')!;
+    expect(select.value).toBe('normal');
+    expect([...select.options].map((o) => o.value)).toEqual(['story', 'normal', 'hard']);
+    select.value = 'hard';
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(dispatch).toHaveBeenCalledWith({ type: 'campaign/set_difficulty', payload: { difficulty: 'hard' } });
+    expect(state.difficulty).toBe('hard');
+  });
+
+  it('a refused change (combat open) snaps the select back and says why', () => {
+    const state = createCampaign({ seed: 1, commanderName: 'Vale' });
+    const dispatch = vi.fn(() => [{ type: 'error', message: 'The difficulty cannot change during a combat.' }]);
+    const { shell } = setup({ state, extra: { dispatch } });
+    shell.open();
+    shell.showTab('sys');
+    const select = document.querySelector<HTMLSelectElement>('#alius-shell select[name="difficulty"]')!;
+    select.value = 'story';
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(select.value).toBe('normal');
+    expect(document.body.textContent).toContain('cannot change during a combat');
+  });
+
+  it('is disabled without a campaign; easy retry and enemy names are plain settings', () => {
+    const { shell, st } = setup({ state: null });
+    shell.open();
+    shell.showTab('sys');
+    expect(document.querySelector<HTMLSelectElement>('#alius-shell select[name="difficulty"]')!.disabled).toBe(true);
+    const easy = document.querySelector<HTMLInputElement>('#alius-shell input[name="easyRetry"]')!;
+    expect(easy.checked).toBe(false);
+    easy.checked = true;
+    easy.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(st.settings.easyRetry).toBe(true);
+    expect(document.querySelector<HTMLInputElement>('#alius-shell input[name="enemyFlavor"]')!.checked).toBe(false);
+  });
+});
