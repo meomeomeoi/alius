@@ -215,11 +215,11 @@ docs/** (Task 21), tests/** mirror src
 - Produces in `items.ts`: `rarityIndex(r): 1..5`; `newItem(draft, reg, rng, itemId, rarity): ItemInstance` (uid `it_<itemSeq>`, increments `itemSeq`; rolls `affixSlots[rarity]` distinct non-drawback item affixes allowed for the slot, plus one drawback if anomalous; rarity below the template's rarity throws); `itemStats(reg, inst): Partial<Stats> & { effects: EffectSpec[] }` (template stats × rarity × upgrade, rounded; affix `statPct` applied to the template stats; effects = template + affix effects); `canEquip(state, reg, unit, inst): string | null` (`NOT CERTIFIED: <class>` when the class is not in the role's `weaponClasses`/`armorWeights`; unknown template → `UNKNOWN ITEM`); `equippedBy(state, uid): Unit | undefined`; `rollLoot(draft, reg, rng, tableId, opts?: { extraRolls?: number }): LootDrop[]` with `LootDrop = { kind: 'item'; item: ItemInstance } | { kind: 'credits'|'plyx'|'supplies'; amount: number }` (does not bank); `bankLoot(draft, drops): EngineEvent[]` (items into `inventory`, resources added, `loot_banked`).
 - Actions: `item/equip { unitId, uid }` (living unit; `canEquip` null; unequips the item from its previous wearer and the unit's previous item in that slot; `item_equipped`); `item/unequip { unitId, slot }`.
 
-- [ ] **Step 1: Write the failing tests** — `newItem is deterministic per rng state and increments uids`; `refined has one affix, anomalous three plus one drawback`; `affixes respect slots and never repeat`; `item stats scale with rarity and upgrade`; `sniper cannot equip a Shotgun (NOT CERTIFIED)`; `equip moves an item from one unit to another`; `equip replaces the previous item of the slot`; `unitStats includes equipment and ignores an item made illegal by a role resync`; `rollLoot respects weights over 2000 rolls (±3 %)` ; `rollLoot never banks; bankLoot adds items and resources once`; `equip of a dead unit or unknown uid is rejected and changes nothing`.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/items.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS; whole suite green.
-- [ ] **Step 5: Commit** `feat(engine): item instances, equipment rules and loot rolls`.
+- [x] **Step 1: Write the failing tests** — `newItem is deterministic per rng state and increments uids`; `refined has one affix, anomalous three plus one drawback`; `affixes respect slots and never repeat`; `item stats scale with rarity and upgrade`; `sniper cannot equip a Shotgun (NOT CERTIFIED)`; `equip moves an item from one unit to another`; `equip replaces the previous item of the slot`; `unitStats includes equipment and ignores an item made illegal by a role resync`; `rollLoot respects weights over 2000 rolls (±3 %)` ; `rollLoot never banks; bankLoot adds items and resources once`; `equip of a dead unit or unknown uid is rejected and changes nothing`.
+- [x] **Step 2: Run** `npx vitest run tests/engine/items.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS; whole suite green.
+- [x] **Step 5: Commit** `feat(engine): item instances, equipment rules and loot rolls`.
 
 ---
 

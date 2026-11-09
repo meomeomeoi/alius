@@ -1,4 +1,5 @@
 import type { Registries } from '../../content/types';
+import { wornItems, itemStats } from '../items';
 import type { CampaignState, Difficulty, Unit } from '../state/types';
 import { TUNING } from '../tuning';
 import type { Encounter, Stats } from './types';
@@ -12,20 +13,17 @@ const WEIGHT_ORDER = ['light', 'medium', 'heavy'] as const;
 /** The heaviest worn armor piece decides the SPD penalty (light 0, medium −1, heavy −3). */
 function armorSpdPenalty(state: CampaignState, reg: Registries, unit: Unit): number {
   let heaviest = -1;
-  for (const slot of ['upper', 'lower'] as const) {
-    const uid = unit.equipment[slot];
-    if (!uid) continue;
-    const inst = state.inventory.find((i) => i.uid === uid);
-    const tpl = inst ? reg.items.get(inst.itemId) : undefined;
-    const w = tpl ? WEIGHT_ORDER.indexOf(tpl.class as (typeof WEIGHT_ORDER)[number]) : -1;
+  for (const { inst, slot } of wornItems(state, reg, unit)) {
+    if (slot === 'weapon') continue;
+    const w = WEIGHT_ORDER.indexOf(reg.items.get(inst.itemId)!.class as (typeof WEIGHT_ORDER)[number]);
     if (w > heaviest) heaviest = w;
   }
   return heaviest < 0 ? 0 : TUNING.combat.armorSpd[WEIGHT_ORDER[heaviest]];
 }
 
 /**
- * Effective stats of a unit: role base + `floor(growth × (level − 1))`, then equipment, then armor SPD, then
- * −10 % per injury (at most 3), each stat floored at 1 (CRIT at 0). `unit.baseStats` stays the role base.
+ * Effective stats of a unit: role base + `floor(growth × (level − 1))`, then equipment (flat stats, then the affix
+ * percentages of the wearer's total), then armor SPD, then −10 % per injury (at most 3), each stat floored at 1 (CRIT at 0). `unit.baseStats` stays the role base.
  */
 export function unitStats(state: CampaignState, reg: Registries, unit: Unit): Stats {
   const role = reg.roles.get(unit.roleId);
@@ -33,6 +31,16 @@ export function unitStats(state: CampaignState, reg: Registries, unit: Unit): St
   const growth = (role.growth as Stats | undefined) ?? ZERO;
   const out: Stats = { ...ZERO };
   for (const k of STATS) out[k] = unit.baseStats[k] + Math.floor(growth[k] * (unit.level - 1));
+  const pct: Stats = { ...ZERO };
+  for (const { inst } of wornItems(state, reg, unit)) {
+    const it = itemStats(reg, inst);
+    if (!it) continue;
+    for (const k of STATS) {
+      out[k] += it.stats[k] ?? 0;
+      pct[k] += it.statPct[k] ?? 0;
+    }
+  }
+  for (const k of STATS) out[k] = Math.round(out[k] * (1 + pct[k] / 100));
   out.spd += armorSpdPenalty(state, reg, unit);
   const stacks = Math.min(unit.injuries.length, TUNING.combat.injuryMaxStacks);
   const factor = 1 + (TUNING.combat.injuryStatPct * stacks) / 100;

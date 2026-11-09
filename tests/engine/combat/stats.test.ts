@@ -45,16 +45,21 @@ describe('unitStats', () => {
     expect(unitStats(state, reg, u)).toEqual({ hp: 1, atk: 1, def: 1, spd: 1, crit: 0 });
   });
 
-  it('a heavy and a light piece cost the heavy SPD only', () => {
+  it('only the heaviest armor piece costs SPD', () => {
     const u = fresh();
-    state.inventory.push(item('it_1', 'upper_heavy'), item('it_2', 'lower_light'));
-    u.equipment = { upper: 'it_1', lower: 'it_2' };
-    expect(unitStats(state, reg, u).spd).toBe(14 + TUNING.combat.armorSpd.heavy);
-    u.equipment = { lower: 'it_2' };
+    state.inventory.push(item('it_1', 'upper_heavy'), item('it_2', 'lower_light'), item('it_3', 'lower_medium'), item('it_4', 'upper_light'));
+    // assault wears light and medium: the medium piece costs 1, a light one nothing
+    u.equipment = { upper: 'it_4', lower: 'it_2' };
     expect(unitStats(state, reg, u).spd).toBe(14);
-    state.inventory.push(item('it_3', 'lower_medium'));
-    u.equipment = { upper: 'it_2', lower: 'it_3' };
-    expect(unitStats(state, reg, u).spd).toBe(13);
+    u.equipment = { upper: 'it_4', lower: 'it_3' };
+    expect(unitStats(state, reg, u).spd).toBe(14 + TUNING.combat.armorSpd.medium);
+    // a defender in heavy plate and medium greaves pays the heavy penalty once
+    state.inventory.push(item('it_5', 'lower_medium'));
+    const d = state.squad[1];
+    d.roleId = 'defender';
+    d.baseStats = { hp: 150, atk: 16, def: 22, spd: 9, crit: 5 };
+    d.equipment = { upper: 'it_1', lower: 'it_5' };
+    expect(unitStats(state, reg, d).spd).toBe(9 + TUNING.combat.armorSpd.heavy);
   });
 
   it('unknown role gives a clear error, unknown item is ignored', () => {
