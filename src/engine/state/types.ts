@@ -74,17 +74,109 @@ export interface DailyGain {
   attraction: number;
 }
 
+export type Severity = 'minor' | 'moderate' | 'major' | 'extreme';
+
+/** One line of a relation's story (P3). Trimmed to `TUNING.relations.historyMax`. */
+export interface HistoryEntry {
+  day: number;
+  kind: 'event' | 'state' | 'proposal' | 'mark';
+  type: string;
+  severity?: Severity;
+  detail?: string;
+}
+
 export interface Relation {
   trust: number;
   affinity: number;
   attraction: number;
   stateId: string;
   stateSince: number;
-  history: unknown[];
+  history: HistoryEntry[];
   flags: string[];
   dailyGain: DailyGain;
   loyaltyBand: LoyaltyBand;
   marks: MarkInstance[];
+  /** A concealed romance (P3): the state it will turn into when discovered, and who must not know. */
+  affair?: { as: string; hiddenFrom: string[]; since: number };
+}
+
+/** A remembered fact (P3). `knownBy` holds unit ids or `'*'` for public; the commander always knows. */
+export interface Fact {
+  id: string;
+  about: string[];
+  text: string;
+  tags: string[];
+  importance: 1 | 2 | 3 | 4 | 5;
+  day: number;
+  sceneId?: string;
+  knownBy: string[];
+}
+
+export interface PromiseRecord {
+  id: string;
+  by: string;
+  to: string;
+  text: string;
+  status: 'open' | 'kept' | 'broken';
+  day: number;
+  deadlineDay?: number;
+}
+
+export interface ChronicleEntry {
+  id: string;
+  kind: 'scene' | 'day' | 'week';
+  day: number;
+  toDay?: number;
+  text: string;
+  sceneId?: string;
+}
+
+export type SceneOrigin = 'activity' | 'night' | 'mess' | 'event' | 'debrief';
+
+/** The open scene (P3). The transcript stays in the ST chat; only the start index is stored. */
+export interface SceneRecord {
+  id: string;
+  day: number;
+  slot: Slot;
+  locationId: string;
+  participants: string[];
+  mode: 'private' | 'group';
+  origin: SceneOrigin;
+  consumesSlot: boolean;
+  startIndex: number;
+  exchanges: number;
+  nightEntryId?: string;
+}
+
+export interface PendingProposal {
+  id: string;
+  unitId: string;
+  kind: string;
+  from: 'unit' | 'commander';
+  day: number;
+  channel: 'scene' | 'dm';
+  targetState: string;
+  needsDisclosure: boolean;
+}
+
+export interface DmMessage {
+  id: string;
+  from: 'commander' | string;
+  text: string;
+  day: number;
+  slot: Slot;
+  read: boolean;
+  initiated?: boolean;
+}
+
+export interface NightEntry {
+  id: string;
+  unitId: string;
+  kind: string;
+  priority: number;
+  framing: string;
+  ignore: { event: string; severity: Severity };
+  expiresDay: number;
 }
 
 export interface Commander {
@@ -132,15 +224,21 @@ export interface CampaignState {
   };
   missions: { offered: unknown[]; active: unknown[]; completed: unknown[] };
   rumors: unknown[];
-  dms: Record<string, unknown[]>;
-  memory: { facts: unknown[]; chronicle: unknown[] };
+  dms: Record<string, DmMessage[]>;
+  /** Per unit: the day and how many commander DMs were sent that day (the unit's "social battery", P3). */
+  dmMeta?: Record<string, { day: number; sent: number }>;
+  memory: { facts: Fact[]; chronicle: ChronicleEntry[]; promises?: PromiseRecord[]; nextId?: number };
+  /** The open scene, if any (P3). */
+  scene?: SceneRecord;
+  /** Open proposals waiting for the commander's answer (P3). */
+  proposals?: PendingProposal[];
   calendar: {
     scheduled: unknown[];
-    nightEventsQueue: unknown[];
+    nightEventsQueue: NightEntry[];
     /** Consecutive days with a supply shortage (P2). */
     shortageStreak?: number;
     /** The queue entry being played in the current Night slot (P2 moves it here; P3 reads it). */
-    nightEvent?: unknown;
+    nightEvent?: NightEntry;
     /** A conversation requested by `talk` that has not ended yet; it holds its slot (P2). P3 ends it with `scene_end`. */
     pendingScene?: { unitId: string; day: number; slot: Slot };
   };

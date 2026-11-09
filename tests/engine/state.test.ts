@@ -78,4 +78,22 @@ describe('campaign state', () => {
       expect(r.detail).toContain('day');
     }
   });
+
+  it('a P2-era save without the new fields loads and passes migrate()', () => {
+    const s = createCampaign({ seed: 5, commanderName: 'Vale' });
+    const raw = JSON.parse(JSON.stringify(s));
+    delete raw.memory.promises;
+    delete raw.memory.nextId;
+    delete raw.scene;
+    delete raw.proposals;
+    delete raw.dmMeta;
+    delete raw.settings.intimacy;
+    const r = migrate(raw);
+    expect(r.ok).toBe(true);
+    if (r.ok) {
+      expect(r.state.memory).toEqual({ facts: [], chronicle: [] });
+      expect(r.state.dms).toEqual({});
+      expect(r.state.calendar.nightEventsQueue).toEqual([]);
+    }
+  });
 });

@@ -3,8 +3,13 @@ import type { Registries } from '../../src/content/types';
 import {
   DAY_END_STEPS, clockText, registerDayEndStep, resetDayEndSteps, slotsLeftToday,
 } from '../../src/engine/calendar';
-import type { CampaignState, Slot } from '../../src/engine/state/types';
+import type { CampaignState, NightEntry, Slot } from '../../src/engine/state/types';
 import { campaign, errors, loadCore, ofType, run } from '../helpers/world';
+
+const nightEntry = (id: string): NightEntry => ({
+  id, unitId: 'unit_ann', kind: 'visit', priority: 1, framing: 'A knock.',
+  ignore: { event: 'dismissed', severity: 'minor' }, expiresDay: 9,
+});
 
 let reg: Registries;
 beforeAll(async () => {
@@ -48,18 +53,18 @@ describe('slot flow', () => {
 
   it('non-empty night queue gives a night slot, day unchanged, head moved to nightEvent', () => {
     const s = at('evening');
-    s.calendar.nightEventsQueue = [{ id: 'a' }, { id: 'b' }];
+    s.calendar.nightEventsQueue = [nightEntry('a'), nightEntry('b')];
     const r = consume(s);
     expect(r.state.slot).toBe('night');
     expect(r.state.day).toBe(1);
-    expect(r.state.calendar.nightEvent).toEqual({ id: 'a' });
-    expect(r.state.calendar.nightEventsQueue).toEqual([{ id: 'b' }]);
+    expect(r.state.calendar.nightEvent).toEqual(nightEntry('a'));
+    expect(r.state.calendar.nightEventsQueue).toEqual([nightEntry('b')]);
     expect(ofType(r.events, 'night_started')).toHaveLength(1);
   });
 
   it('ending night rolls over without a second pipeline', () => {
     const s = at('evening');
-    s.calendar.nightEventsQueue = [{ id: 'a' }];
+    s.calendar.nightEventsQueue = [nightEntry('a')];
     const night = consume(s).state;
     const suppliesAtNight = night.resources.supplies;
     const r = consume(night);
@@ -72,7 +77,7 @@ describe('slot flow', () => {
 
   it('ending the night asks for a save', () => {
     const s = at('evening');
-    s.calendar.nightEventsQueue = [{ id: 'a' }];
+    s.calendar.nightEventsQueue = [nightEntry('a')];
     const r = consume(consume(s).state);
     expect(ofType(r.events, 'autosave')).toHaveLength(1);
   });
