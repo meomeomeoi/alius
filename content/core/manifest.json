@@ -18,6 +18,8 @@
     "relationshipStates": "relationshipStates.json",
     "eventDeltas": "eventDeltas.json",
     "locations": "locations.json",
-    "synergies": "synergies.json"
+    "synergies": "synergies.json",
+    "skills": "skills.json",
+    "orders": "orders.json"
   }
 }

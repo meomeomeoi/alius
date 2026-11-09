@@ -11323,7 +11323,8 @@ var EFFECT_TARGETS = [
   "target_row",
   "random_enemy",
   "lowest_hp_ally",
-  "commander"
+  "commander",
+  "allies_front"
 ];
 var STATS = ["hp", "atk", "def", "spd", "crit"];
 var ALWAYS_ON_TYPES = [
@@ -11449,13 +11450,13 @@ var effectCommon = {
 var fx = (type, shape) => external_exports.object({ type: external_exports.literal(type), ...effectCommon, ...shape }).strict();
 var statEnum = external_exports.enum(STATS);
 var EffectUnion = external_exports.discriminatedUnion("type", [
-  fx("damage", { mult: num2.positive(), hits: int.min(1).optional(), ignoreRows: external_exports.boolean().optional(), critBonus: num2.optional(), scale: ScaleSchema.optional() }),
+  fx("damage", { mult: num2.positive().optional(), pctMaxHp: num2.positive().optional(), hits: int.min(1).optional(), ignoreRows: external_exports.boolean().optional(), critBonus: num2.optional(), scale: ScaleSchema.optional() }),
   fx("heal", { pctMaxHp: num2.positive() }),
   fx("revive", { pctMaxHp: num2.positive() }),
   fx("status", { statusId: str, turns: int.min(1).optional(), stacks: int.min(1).optional() }),
   fx("cleanse", { kind: external_exports.enum(["buff", "debuff"]), count: int.min(1) }),
   fx("stat", { stat: external_exports.union([statEnum, external_exports.literal("all")]), pct: num2, turns: int.min(1).optional(), scale: ScaleSchema.optional() }),
-  fx("outgoing", { pct: num2, vs: external_exports.enum(["any", "marked", "locked"]).optional() }),
+  fx("outgoing", { pct: num2, vs: external_exports.enum(["any", "marked", "locked"]).optional(), scale: ScaleSchema.optional() }),
   fx("incoming", { pct: num2 }),
   fx("stress", { amount: num2 }),
   fx("stress_taken", { pct: num2, direction: external_exports.enum(["gain", "relief"]) }),
@@ -11486,6 +11487,7 @@ var CombatEffectSchema = EffectUnion.superRefine((e, ctx2) => {
     issue("scope", 'scope "ally" is only valid with onHit, onCrit or onKill');
   }
   if ((e.type === "misfire" || e.type === "order_refusal") && e.chance === void 0) issue("chance", `${e.type} needs a chance`);
+  if (e.type === "damage" && e.mult === void 0 === (e.pctMaxHp === void 0)) issue("mult", "damage needs exactly one of mult and pctMaxHp");
 });
 var effects = external_exports.array(CombatEffectSchema);
 var SKILL_KINDS = ["active", "passive", "ultimate", "enemy", "signature"];
@@ -11566,13 +11568,12 @@ var RoleSchema = BaseEntrySchema.extend({
   /** One line, used in prompts. */
   summary: str,
   branches: external_exports.array(external_exports.object({ name: str, summary: str })),
-  // P4 (optional until the core pack ships them)
-  growth: GrowthSchema.optional(),
-  aiProfile: aiProfileForRoles.optional(),
-  starterSkills: external_exports.array(str).length(2).optional(),
-  tree: external_exports.array(TreeNodeSchema).optional()
+  // P4
+  growth: GrowthSchema,
+  aiProfile: aiProfileForRoles,
+  starterSkills: external_exports.array(str).length(2),
+  tree: external_exports.array(TreeNodeSchema)
 }).superRefine((r, ctx2) => {
-  if (!r.tree) return;
   const issue = (path, message) => ctx2.addIssue({ code: "custom", path, message });
   if (r.tree.length !== 16) issue(["tree"], `a tree has exactly 16 nodes, this one has ${r.tree.length}`);
   const ultimates = r.tree.filter((n) => n.branch === null);
@@ -11600,22 +11601,22 @@ var SignatureSchema = BaseEntrySchema.extend({
   mechanic: str,
   fits: str,
   /** P4: the `skills` entry that implements the template (by convention the same id). */
-  skill: str.optional()
+  skill: str
 });
 var StatusSchema = BaseEntrySchema.extend({
   name: str,
   kind: external_exports.enum(["buff", "debuff"]),
   description: str,
-  // P4 mechanics (optional until the core pack ships them)
-  turns: int.min(1).optional(),
-  maxStacks: int.min(1).optional(),
-  stackMode: external_exports.enum(["add", "refresh"]).optional(),
+  // P4 mechanics
+  turns: int.min(1),
+  maxStacks: int.min(1),
+  stackMode: external_exports.enum(["add", "refresh"]),
   /** Effects run at the owner's turn start, once per stack; `target: 'self'` is the owner. */
   tick: external_exports.array(CombatEffectSchema).optional(),
   /** Stat multipliers per stack, in percent. */
   mods: external_exports.record(statEnum, num2).optional(),
   incomingPct: num2.optional(),
-  flags: external_exports.array(external_exports.enum(["skipTurn", "taunt", "untargetable", "absorb"])).optional()
+  flags: external_exports.array(external_exports.enum(["skipTurn", "taunt", "untargetable", "absorb", "rooted"])).optional()
 });
 var LorebookSchema = external_exports.object({
   name: str,
@@ -11928,7 +11929,7 @@ var DefectSchema = BaseEntrySchema.extend({
     c.downside.forEach((e, i) => {
       if (e.downside !== true) ctx2.addIssue({ code: "custom", path: ["downside", i, "downside"], message: "every downside effect must carry downside: true" });
     });
-  }).optional()
+  })
 });
 Object.assign(registrySchemas, {
   relationshipStates: RelationshipStateSchema,

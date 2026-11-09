@@ -1,0 +1,27 @@
+[
+  {
+    "id": "sk_a",
+    "name": "Strike",
+    "kind": "active",
+    "description": "Hits.",
+    "cooldown": 0,
+    "usableFrom": [
+      "front"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front"
+      ],
+      "count": "one",
+      "melee": true
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 1
+      }
+    ],
+    "tags": []
+  }
+]

@@ -1,5 +1,226 @@
 [
-  { "id": "role_a", "name": "Role A", "row": "front", "baseStats": { "hp": 100, "atk": 20, "def": 10, "spd": 12, "crit": 5 },
-    "weaponClasses": ["rifle"], "armorWeights": ["medium"], "identity": "Holds the line.", "summary": "Front-line fighter.",
-    "branches": [{ "name": "Branch A", "summary": "A branch." }] }
+  {
+    "id": "role_a",
+    "name": "Role A",
+    "row": "front",
+    "baseStats": {
+      "hp": 100,
+      "atk": 20,
+      "def": 10,
+      "spd": 12,
+      "crit": 5
+    },
+    "weaponClasses": [
+      "rifle"
+    ],
+    "armorWeights": [
+      "medium"
+    ],
+    "identity": "Holds the line.",
+    "summary": "Front-line fighter.",
+    "branches": [
+      {
+        "name": "Branch A",
+        "summary": "A branch."
+      }
+    ],
+    "growth": {
+      "hp": 6,
+      "atk": 1,
+      "def": 0.5,
+      "spd": 0.1,
+      "crit": 0.2
+    },
+    "aiProfile": "aggressive",
+    "starterSkills": [
+      "sk_a",
+      "sk_a"
+    ],
+    "tree": [
+      {
+        "id": "n_0_1",
+        "branch": 0,
+        "tier": 1,
+        "cost": 2,
+        "requires": [],
+        "grants": {
+          "skill": "sk_a"
+        }
+      },
+      {
+        "id": "n_0_2",
+        "branch": 0,
+        "tier": 2,
+        "cost": 3,
+        "requires": [
+          "n_0_1"
+        ],
+        "grants": {
+          "skill": "sk_a"
+        }
+      },
+      {
+        "id": "n_0_3",
+        "branch": 0,
+        "tier": 3,
+        "cost": 4,
+        "requires": [
+          "n_0_2"
+        ],
+        "grants": {
+          "skill": "sk_a"
+        }
+      },
+      {
+        "id": "n_0_4",
+        "branch": 0,
+        "tier": 4,
+        "cost": 5,
+        "requires": [
+          "n_0_3"
+        ],
+        "grants": {
+          "skill": "sk_a"
+        }
+      },
+      {
+        "id": "n_0_5",
+        "branch": 0,
+        "tier": 5,
+        "cost": 6,
+        "requires": [
+          "n_0_4"
+        ],
+        "grants": {
+          "skill": "sk_a"
+        }
+      },
+      {
+        "id": "n_1_1",
+        "branch": 1,
+        "tier": 1,
+        "cost": 2,
+        "requires": [],
+        "grants": {
+          "skill": "sk_a"
+        }
+      },
+      {
+        "id": "n_1_2",
+        "branch": 1,
+        "tier": 2,
+        "cost": 3,
+        "requires": [
+          "n_1_1"
+        ],
+        "grants": {
+          "skill": "sk_a"
+        }
+      },
+      {
+        "id": "n_1_3",
+        "branch": 1,
+        "tier": 3,
+        "cost": 4,
+        "requires": [
+          "n_1_2"
+        ],
+        "grants": {
+          "skill": "sk_a"
+        }
+      },
+      {
+        "id": "n_1_4",
+        "branch": 1,
+        "tier": 4,
+        "cost": 5,
+        "requires": [
+          "n_1_3"
+        ],
+        "grants": {
+          "skill": "sk_a"
+        }
+      },
+      {
+        "id": "n_1_5",
+        "branch": 1,
+        "tier": 5,
+        "cost": 6,
+        "requires": [
+          "n_1_4"
+        ],
+        "grants": {
+          "skill": "sk_a"
+        }
+      },
+      {
+        "id": "n_2_1",
+        "branch": 2,
+        "tier": 1,
+        "cost": 2,
+        "requires": [],
+        "grants": {
+          "skill": "sk_a"
+        }
+      },
+      {
+        "id": "n_2_2",
+        "branch": 2,
+        "tier": 2,
+        "cost": 3,
+        "requires": [
+          "n_2_1"
+        ],
+        "grants": {
+          "skill": "sk_a"
+        }
+      },
+      {
+        "id": "n_2_3",
+        "branch": 2,
+        "tier": 3,
+        "cost": 4,
+        "requires": [
+          "n_2_2"
+        ],
+        "grants": {
+          "skill": "sk_a"
+        }
+      },
+      {
+        "id": "n_2_4",
+        "branch": 2,
+        "tier": 4,
+        "cost": 5,
+        "requires": [
+          "n_2_3"
+        ],
+        "grants": {
+          "skill": "sk_a"
+        }
+      },
+      {
+        "id": "n_2_5",
+        "branch": 2,
+        "tier": 5,
+        "cost": 6,
+        "requires": [
+          "n_2_4"
+        ],
+        "grants": {
+          "skill": "sk_a"
+        }
+      },
+      {
+        "id": "n_ult",
+        "branch": null,
+        "tier": null,
+        "cost": 6,
+        "requires": [],
+        "grants": {
+          "skill": "sk_a"
+        }
+      }
+    ]
+  }
 ]

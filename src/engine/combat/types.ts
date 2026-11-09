@@ -20,7 +20,7 @@ export type EffectType = (typeof EFFECT_TYPES)[number];
 
 export const EFFECT_TARGETS = [
   'self', 'target', 'source', 'allies', 'allies_other', 'enemies', 'own_row', 'target_row', 'random_enemy',
-  'lowest_hp_ally', 'commander',
+  'lowest_hp_ally', 'commander', 'allies_front',
 ] as const;
 export type EffectTarget = (typeof EFFECT_TARGETS)[number];
 
@@ -46,6 +46,10 @@ export interface Condition {
   upkeepOlderThanDays?: number;
 }
 
+/**
+ * The value of `by` (a percentage 0–100; for `stress_above` the stress beyond `base`) times `per` is added to the
+ * effect's `pct` (stat, outgoing) or `mult` (damage).
+ */
 export interface Scale {
   by: 'stress_above' | 'own_hp_missing_pct' | 'allies_hp_missing_pct';
   per: number;
@@ -71,14 +75,15 @@ export interface EffectBase {
 
 export type EffectSpec = EffectBase &
   (
-    | { type: 'damage'; mult: number; hits?: number; ignoreRows?: boolean; critBonus?: number; scale?: Scale }
+    /** Exactly one of `mult` (ATK based) and `pctMaxHp` (true damage: ignores DEF, no crit, no variance). */
+    | { type: 'damage'; mult?: number; pctMaxHp?: number; hits?: number; ignoreRows?: boolean; critBonus?: number; scale?: Scale }
     | { type: 'heal'; pctMaxHp: number }
     | { type: 'revive'; pctMaxHp: number }
     | { type: 'status'; statusId: string; turns?: number; stacks?: number }
     | { type: 'cleanse'; kind: 'buff' | 'debuff'; count: number }
     /** `stat: 'all'` applies to hp, atk, def and spd. For `crit`, `pct` is added as percentage points. */
     | { type: 'stat'; stat: StatName | 'all'; pct: number; turns?: number; scale?: Scale }
-    | { type: 'outgoing'; pct: number; vs?: 'any' | 'marked' | 'locked' }
+    | { type: 'outgoing'; pct: number; vs?: 'any' | 'marked' | 'locked'; scale?: Scale }
     | { type: 'incoming'; pct: number }
     | { type: 'stress'; amount: number }
     | { type: 'stress_taken'; pct: number; direction: 'gain' | 'relief' }

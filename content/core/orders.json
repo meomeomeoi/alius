@@ -1,0 +1,76 @@
+[
+  {
+    "id": "focus_fire",
+    "name": "Focus Fire",
+    "summary": "The whole squad deals more damage to one marked target this round.",
+    "cost": 2,
+    "target": "enemy",
+    "effects": [
+      {
+        "type": "status",
+        "statusId": "mark",
+        "turns": 1
+      },
+      {
+        "type": "status",
+        "statusId": "focus",
+        "turns": 1
+      }
+    ]
+  },
+  {
+    "id": "hold_the_line",
+    "name": "Hold the Line",
+    "summary": "Front row: DEF +30% and immune to row-shift this round.",
+    "cost": 2,
+    "target": "none",
+    "effects": [
+      {
+        "type": "status",
+        "statusId": "hold_line",
+        "turns": 1,
+        "target": "allies_front"
+      }
+    ]
+  },
+  {
+    "id": "fall_back",
+    "name": "Fall Back",
+    "summary": "Swaps a unit's row without using her turn.",
+    "cost": 1,
+    "target": "ally",
+    "effects": [
+      {
+        "type": "move",
+        "to": "swap"
+      }
+    ]
+  },
+  {
+    "id": "steady",
+    "name": "Steady",
+    "summary": "-10 stress to one unit.",
+    "cost": 1,
+    "target": "ally",
+    "effects": [
+      {
+        "type": "stress",
+        "amount": -10
+      }
+    ]
+  },
+  {
+    "id": "authorize_ultimate",
+    "name": "Authorize Ultimate",
+    "summary": "The unit may use her ultimate this turn for free.",
+    "cost": 3,
+    "target": "ally",
+    "effects": [
+      {
+        "type": "status",
+        "statusId": "authorized",
+        "turns": 1
+      }
+    ]
+  }
+]

@@ -494,7 +494,7 @@
         {
           "id": "lover_visit_injured",
           "kind": "visit",
-          "chance": 1.0,
+          "chance": 1,
           "priority": 80,
           "trigger": "commander_injured",
           "framing": "{name} comes to check on you, and does not look like she will take no for an answer.",
@@ -574,7 +574,7 @@
         {
           "id": "devoted_visit_injured",
           "kind": "visit",
-          "chance": 1.0,
+          "chance": 1,
           "priority": 85,
           "trigger": "commander_injured",
           "framing": "{name} has been waiting for you to wake up.",
@@ -782,7 +782,7 @@
         {
           "id": "dependent_injured",
           "kind": "visit",
-          "chance": 1.0,
+          "chance": 1,
           "priority": 75,
           "trigger": "commander_injured",
           "framing": "{name} cannot stay away while you are hurt.",
@@ -983,7 +983,9 @@
       }
     ],
     "unlocks": {
-      "synergies": [],
+      "synergies": [
+        "order_friction_minor"
+      ],
       "activities": [],
       "nightEvents": [],
       "defectArcStages": []
@@ -1032,7 +1034,9 @@
       }
     },
     "unlocks": {
-      "synergies": [],
+      "synergies": [
+        "order_friction"
+      ],
       "activities": [],
       "nightEvents": [],
       "defectArcStages": []
@@ -1089,7 +1093,9 @@
       }
     },
     "unlocks": {
-      "synergies": [],
+      "synergies": [
+        "order_friction_major"
+      ],
       "activities": [],
       "nightEvents": [],
       "defectArcStages": []

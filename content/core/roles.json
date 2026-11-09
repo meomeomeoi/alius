@@ -34,6 +34,215 @@
         "name": "Bloodline",
         "summary": "Lifesteal, self-damage synergies."
       }
+    ],
+    "growth": {
+      "hp": 6,
+      "atk": 1.4,
+      "def": 0.6,
+      "spd": 0.2,
+      "crit": 0.2
+    },
+    "aiProfile": "aggressive",
+    "starterSkills": [
+      "as_strike",
+      "as_burst"
+    ],
+    "tree": [
+      {
+        "id": "as_b1_t1",
+        "branch": 0,
+        "tier": 1,
+        "cost": 2,
+        "requires": [],
+        "grants": {
+          "skill": "as_breach_charge"
+        }
+      },
+      {
+        "id": "as_b1_t2",
+        "branch": 0,
+        "tier": 2,
+        "cost": 3,
+        "requires": [
+          "as_b1_t1"
+        ],
+        "grants": {
+          "skill": "as_armor_piercer"
+        }
+      },
+      {
+        "id": "as_b1_t3",
+        "branch": 0,
+        "tier": 3,
+        "cost": 4,
+        "requires": [
+          "as_b1_t2"
+        ],
+        "grants": {
+          "upgrade": {
+            "skillId": "as_breach_charge",
+            "cooldownDelta": -1,
+            "multPct": 20
+          }
+        }
+      },
+      {
+        "id": "as_b1_t4",
+        "branch": 0,
+        "tier": 4,
+        "cost": 5,
+        "requires": [
+          "as_b1_t3"
+        ],
+        "grants": {
+          "skill": "as_rend_plating"
+        }
+      },
+      {
+        "id": "as_b1_t5",
+        "branch": 0,
+        "tier": 5,
+        "cost": 6,
+        "requires": [
+          "as_b1_t4"
+        ],
+        "grants": {
+          "skill": "as_shock_doctrine"
+        }
+      },
+      {
+        "id": "as_b2_t1",
+        "branch": 1,
+        "tier": 1,
+        "cost": 2,
+        "requires": [],
+        "grants": {
+          "skill": "as_finisher"
+        }
+      },
+      {
+        "id": "as_b2_t2",
+        "branch": 1,
+        "tier": 2,
+        "cost": 3,
+        "requires": [
+          "as_b2_t1"
+        ],
+        "grants": {
+          "skill": "as_momentum"
+        }
+      },
+      {
+        "id": "as_b2_t3",
+        "branch": 1,
+        "tier": 3,
+        "cost": 4,
+        "requires": [
+          "as_b2_t2"
+        ],
+        "grants": {
+          "upgrade": {
+            "skillId": "as_finisher",
+            "cooldownDelta": -1,
+            "multPct": 10
+          }
+        }
+      },
+      {
+        "id": "as_b2_t4",
+        "branch": 1,
+        "tier": 4,
+        "cost": 5,
+        "requires": [
+          "as_b2_t3"
+        ],
+        "grants": {
+          "skill": "as_rampage"
+        }
+      },
+      {
+        "id": "as_b2_t5",
+        "branch": 1,
+        "tier": 5,
+        "cost": 6,
+        "requires": [
+          "as_b2_t4"
+        ],
+        "grants": {
+          "skill": "as_adrenaline"
+        }
+      },
+      {
+        "id": "as_b3_t1",
+        "branch": 2,
+        "tier": 1,
+        "cost": 2,
+        "requires": [],
+        "grants": {
+          "skill": "as_blood_rush"
+        }
+      },
+      {
+        "id": "as_b3_t2",
+        "branch": 2,
+        "tier": 2,
+        "cost": 3,
+        "requires": [
+          "as_b3_t1"
+        ],
+        "grants": {
+          "skill": "as_thirst"
+        }
+      },
+      {
+        "id": "as_b3_t3",
+        "branch": 2,
+        "tier": 3,
+        "cost": 4,
+        "requires": [
+          "as_b3_t2"
+        ],
+        "grants": {
+          "upgrade": {
+            "skillId": "as_blood_rush",
+            "multPct": 20
+          }
+        }
+      },
+      {
+        "id": "as_b3_t4",
+        "branch": 2,
+        "tier": 4,
+        "cost": 5,
+        "requires": [
+          "as_b3_t3"
+        ],
+        "grants": {
+          "skill": "as_red_mist"
+        }
+      },
+      {
+        "id": "as_b3_t5",
+        "branch": 2,
+        "tier": 5,
+        "cost": 6,
+        "requires": [
+          "as_b3_t4"
+        ],
+        "grants": {
+          "skill": "as_pain_fuel"
+        }
+      },
+      {
+        "id": "as_ult",
+        "branch": null,
+        "tier": null,
+        "cost": 6,
+        "requires": [],
+        "grants": {
+          "skill": "as_ult_overrun"
+        }
+      }
     ]
   },
   {
@@ -71,6 +280,213 @@
         "name": "Anchor",
         "summary": "Row control, stun."
       }
+    ],
+    "growth": {
+      "hp": 8,
+      "atk": 0.8,
+      "def": 1,
+      "spd": 0.1,
+      "crit": 0.1
+    },
+    "aiProfile": "protector",
+    "starterSkills": [
+      "df_bash",
+      "df_brace"
+    ],
+    "tree": [
+      {
+        "id": "df_b1_t1",
+        "branch": 0,
+        "tier": 1,
+        "cost": 2,
+        "requires": [],
+        "grants": {
+          "skill": "df_cover_ally"
+        }
+      },
+      {
+        "id": "df_b1_t2",
+        "branch": 0,
+        "tier": 2,
+        "cost": 3,
+        "requires": [
+          "df_b1_t1"
+        ],
+        "grants": {
+          "skill": "df_plating"
+        }
+      },
+      {
+        "id": "df_b1_t3",
+        "branch": 0,
+        "tier": 3,
+        "cost": 4,
+        "requires": [
+          "df_b1_t2"
+        ],
+        "grants": {
+          "upgrade": {
+            "skillId": "df_cover_ally",
+            "cooldownDelta": -1
+          }
+        }
+      },
+      {
+        "id": "df_b1_t4",
+        "branch": 0,
+        "tier": 4,
+        "cost": 5,
+        "requires": [
+          "df_b1_t3"
+        ],
+        "grants": {
+          "skill": "df_bastion"
+        }
+      },
+      {
+        "id": "df_b1_t5",
+        "branch": 0,
+        "tier": 5,
+        "cost": 6,
+        "requires": [
+          "df_b1_t4"
+        ],
+        "grants": {
+          "skill": "df_ironhide"
+        }
+      },
+      {
+        "id": "df_b2_t1",
+        "branch": 1,
+        "tier": 1,
+        "cost": 2,
+        "requires": [],
+        "grants": {
+          "skill": "df_provoke"
+        }
+      },
+      {
+        "id": "df_b2_t2",
+        "branch": 1,
+        "tier": 2,
+        "cost": 3,
+        "requires": [
+          "df_b2_t1"
+        ],
+        "grants": {
+          "skill": "df_riposte"
+        }
+      },
+      {
+        "id": "df_b2_t3",
+        "branch": 1,
+        "tier": 3,
+        "cost": 4,
+        "requires": [
+          "df_b2_t2"
+        ],
+        "grants": {
+          "upgrade": {
+            "skillId": "df_provoke",
+            "cooldownDelta": -1
+          }
+        }
+      },
+      {
+        "id": "df_b2_t4",
+        "branch": 1,
+        "tier": 4,
+        "cost": 5,
+        "requires": [
+          "df_b2_t3"
+        ],
+        "grants": {
+          "skill": "df_shatter"
+        }
+      },
+      {
+        "id": "df_b2_t5",
+        "branch": 1,
+        "tier": 5,
+        "cost": 6,
+        "requires": [
+          "df_b2_t4"
+        ],
+        "grants": {
+          "skill": "df_vengeance"
+        }
+      },
+      {
+        "id": "df_b3_t1",
+        "branch": 2,
+        "tier": 1,
+        "cost": 2,
+        "requires": [],
+        "grants": {
+          "skill": "df_hold_ground"
+        }
+      },
+      {
+        "id": "df_b3_t2",
+        "branch": 2,
+        "tier": 2,
+        "cost": 3,
+        "requires": [
+          "df_b3_t1"
+        ],
+        "grants": {
+          "skill": "df_anchor"
+        }
+      },
+      {
+        "id": "df_b3_t3",
+        "branch": 2,
+        "tier": 3,
+        "cost": 4,
+        "requires": [
+          "df_b3_t2"
+        ],
+        "grants": {
+          "upgrade": {
+            "skillId": "df_hold_ground",
+            "cooldownDelta": -1
+          }
+        }
+      },
+      {
+        "id": "df_b3_t4",
+        "branch": 2,
+        "tier": 4,
+        "cost": 5,
+        "requires": [
+          "df_b3_t3"
+        ],
+        "grants": {
+          "skill": "df_quake"
+        }
+      },
+      {
+        "id": "df_b3_t5",
+        "branch": 2,
+        "tier": 5,
+        "cost": 6,
+        "requires": [
+          "df_b3_t4"
+        ],
+        "grants": {
+          "skill": "df_unbowed"
+        }
+      },
+      {
+        "id": "df_ult",
+        "branch": null,
+        "tier": null,
+        "cost": 6,
+        "requires": [],
+        "grants": {
+          "skill": "df_ult_fortress"
+        }
+      }
     ]
   },
   {
@@ -105,6 +521,213 @@
       {
         "name": "Ghost",
         "summary": "Evasion, row-ignoring shots."
+      }
+    ],
+    "growth": {
+      "hp": 5,
+      "atk": 1.4,
+      "def": 0.4,
+      "spd": 0.2,
+      "crit": 0.3
+    },
+    "aiProfile": "predator",
+    "starterSkills": [
+      "sn_shot",
+      "sn_sidearm"
+    ],
+    "tree": [
+      {
+        "id": "sn_b1_t1",
+        "branch": 0,
+        "tier": 1,
+        "cost": 2,
+        "requires": [],
+        "grants": {
+          "skill": "sn_headshot"
+        }
+      },
+      {
+        "id": "sn_b1_t2",
+        "branch": 0,
+        "tier": 2,
+        "cost": 3,
+        "requires": [
+          "sn_b1_t1"
+        ],
+        "grants": {
+          "skill": "sn_steady_aim"
+        }
+      },
+      {
+        "id": "sn_b1_t3",
+        "branch": 0,
+        "tier": 3,
+        "cost": 4,
+        "requires": [
+          "sn_b1_t2"
+        ],
+        "grants": {
+          "upgrade": {
+            "skillId": "sn_headshot",
+            "cooldownDelta": -1
+          }
+        }
+      },
+      {
+        "id": "sn_b1_t4",
+        "branch": 0,
+        "tier": 4,
+        "cost": 5,
+        "requires": [
+          "sn_b1_t3"
+        ],
+        "grants": {
+          "skill": "sn_volley"
+        }
+      },
+      {
+        "id": "sn_b1_t5",
+        "branch": 0,
+        "tier": 5,
+        "cost": 6,
+        "requires": [
+          "sn_b1_t4"
+        ],
+        "grants": {
+          "skill": "sn_dead_eye"
+        }
+      },
+      {
+        "id": "sn_b2_t1",
+        "branch": 1,
+        "tier": 1,
+        "cost": 2,
+        "requires": [],
+        "grants": {
+          "skill": "sn_paint"
+        }
+      },
+      {
+        "id": "sn_b2_t2",
+        "branch": 1,
+        "tier": 2,
+        "cost": 3,
+        "requires": [
+          "sn_b2_t1"
+        ],
+        "grants": {
+          "skill": "sn_spotter"
+        }
+      },
+      {
+        "id": "sn_b2_t3",
+        "branch": 1,
+        "tier": 3,
+        "cost": 4,
+        "requires": [
+          "sn_b2_t2"
+        ],
+        "grants": {
+          "upgrade": {
+            "skillId": "sn_paint",
+            "cooldownDelta": -1
+          }
+        }
+      },
+      {
+        "id": "sn_b2_t4",
+        "branch": 1,
+        "tier": 4,
+        "cost": 5,
+        "requires": [
+          "sn_b2_t3"
+        ],
+        "grants": {
+          "skill": "sn_spotlight"
+        }
+      },
+      {
+        "id": "sn_b2_t5",
+        "branch": 1,
+        "tier": 5,
+        "cost": 6,
+        "requires": [
+          "sn_b2_t4"
+        ],
+        "grants": {
+          "skill": "sn_lens"
+        }
+      },
+      {
+        "id": "sn_b3_t1",
+        "branch": 2,
+        "tier": 1,
+        "cost": 2,
+        "requires": [],
+        "grants": {
+          "skill": "sn_ghost_round"
+        }
+      },
+      {
+        "id": "sn_b3_t2",
+        "branch": 2,
+        "tier": 2,
+        "cost": 3,
+        "requires": [
+          "sn_b3_t1"
+        ],
+        "grants": {
+          "skill": "sn_evasion"
+        }
+      },
+      {
+        "id": "sn_b3_t3",
+        "branch": 2,
+        "tier": 3,
+        "cost": 4,
+        "requires": [
+          "sn_b3_t2"
+        ],
+        "grants": {
+          "upgrade": {
+            "skillId": "sn_ghost_round",
+            "multPct": 20
+          }
+        }
+      },
+      {
+        "id": "sn_b3_t4",
+        "branch": 2,
+        "tier": 4,
+        "cost": 5,
+        "requires": [
+          "sn_b3_t3"
+        ],
+        "grants": {
+          "skill": "sn_fade"
+        }
+      },
+      {
+        "id": "sn_b3_t5",
+        "branch": 2,
+        "tier": 5,
+        "cost": 6,
+        "requires": [
+          "sn_b3_t4"
+        ],
+        "grants": {
+          "skill": "sn_quick_draw"
+        }
+      },
+      {
+        "id": "sn_ult",
+        "branch": null,
+        "tier": null,
+        "cost": 6,
+        "requires": [],
+        "grants": {
+          "skill": "sn_ult_deadline"
+        }
       }
     ]
   },
@@ -143,6 +766,213 @@
         "name": "Field Kit",
         "summary": "Shields, cleanse."
       }
+    ],
+    "growth": {
+      "hp": 5.5,
+      "atk": 0.9,
+      "def": 0.6,
+      "spd": 0.2,
+      "crit": 0.15
+    },
+    "aiProfile": "protector",
+    "starterSkills": [
+      "su_cover_fire",
+      "su_rally"
+    ],
+    "tree": [
+      {
+        "id": "su_b1_t1",
+        "branch": 0,
+        "tier": 1,
+        "cost": 2,
+        "requires": [],
+        "grants": {
+          "skill": "su_uplink"
+        }
+      },
+      {
+        "id": "su_b1_t2",
+        "branch": 0,
+        "tier": 2,
+        "cost": 3,
+        "requires": [
+          "su_b1_t1"
+        ],
+        "grants": {
+          "skill": "su_relay"
+        }
+      },
+      {
+        "id": "su_b1_t3",
+        "branch": 0,
+        "tier": 3,
+        "cost": 4,
+        "requires": [
+          "su_b1_t2"
+        ],
+        "grants": {
+          "upgrade": {
+            "skillId": "su_uplink",
+            "cooldownDelta": -1
+          }
+        }
+      },
+      {
+        "id": "su_b1_t4",
+        "branch": 0,
+        "tier": 4,
+        "cost": 5,
+        "requires": [
+          "su_b1_t3"
+        ],
+        "grants": {
+          "skill": "su_tempo"
+        }
+      },
+      {
+        "id": "su_b1_t5",
+        "branch": 0,
+        "tier": 5,
+        "cost": 6,
+        "requires": [
+          "su_b1_t4"
+        ],
+        "grants": {
+          "skill": "su_feedback"
+        }
+      },
+      {
+        "id": "su_b2_t1",
+        "branch": 1,
+        "tier": 1,
+        "cost": 2,
+        "requires": [],
+        "grants": {
+          "skill": "su_suppress"
+        }
+      },
+      {
+        "id": "su_b2_t2",
+        "branch": 1,
+        "tier": 2,
+        "cost": 3,
+        "requires": [
+          "su_b2_t1"
+        ],
+        "grants": {
+          "skill": "su_overwatch"
+        }
+      },
+      {
+        "id": "su_b2_t3",
+        "branch": 1,
+        "tier": 3,
+        "cost": 4,
+        "requires": [
+          "su_b2_t2"
+        ],
+        "grants": {
+          "upgrade": {
+            "skillId": "su_suppress",
+            "cooldownDelta": -1
+          }
+        }
+      },
+      {
+        "id": "su_b2_t4",
+        "branch": 1,
+        "tier": 4,
+        "cost": 5,
+        "requires": [
+          "su_b2_t3"
+        ],
+        "grants": {
+          "skill": "su_barrage"
+        }
+      },
+      {
+        "id": "su_b2_t5",
+        "branch": 1,
+        "tier": 5,
+        "cost": 6,
+        "requires": [
+          "su_b2_t4"
+        ],
+        "grants": {
+          "skill": "su_marksmanship"
+        }
+      },
+      {
+        "id": "su_b3_t1",
+        "branch": 2,
+        "tier": 1,
+        "cost": 2,
+        "requires": [],
+        "grants": {
+          "skill": "su_barrier"
+        }
+      },
+      {
+        "id": "su_b3_t2",
+        "branch": 2,
+        "tier": 2,
+        "cost": 3,
+        "requires": [
+          "su_b3_t1"
+        ],
+        "grants": {
+          "skill": "su_field_kit"
+        }
+      },
+      {
+        "id": "su_b3_t3",
+        "branch": 2,
+        "tier": 3,
+        "cost": 4,
+        "requires": [
+          "su_b3_t2"
+        ],
+        "grants": {
+          "upgrade": {
+            "skillId": "su_barrier",
+            "cooldownDelta": -1
+          }
+        }
+      },
+      {
+        "id": "su_b3_t4",
+        "branch": 2,
+        "tier": 4,
+        "cost": 5,
+        "requires": [
+          "su_b3_t3"
+        ],
+        "grants": {
+          "skill": "su_purge"
+        }
+      },
+      {
+        "id": "su_b3_t5",
+        "branch": 2,
+        "tier": 5,
+        "cost": 6,
+        "requires": [
+          "su_b3_t4"
+        ],
+        "grants": {
+          "skill": "su_hardened"
+        }
+      },
+      {
+        "id": "su_ult",
+        "branch": null,
+        "tier": null,
+        "cost": 6,
+        "requires": [],
+        "grants": {
+          "skill": "su_ult_command_surge"
+        }
+      }
     ]
   },
   {
@@ -177,6 +1007,213 @@
       {
         "name": "Viral Countermeasures",
         "summary": "Cleanse Infect."
+      }
+    ],
+    "growth": {
+      "hp": 6,
+      "atk": 0.8,
+      "def": 0.6,
+      "spd": 0.15,
+      "crit": 0.1
+    },
+    "aiProfile": "protector",
+    "starterSkills": [
+      "me_sidearm",
+      "me_patch"
+    ],
+    "tree": [
+      {
+        "id": "me_b1_t1",
+        "branch": 0,
+        "tier": 1,
+        "cost": 2,
+        "requires": [],
+        "grants": {
+          "skill": "me_triage"
+        }
+      },
+      {
+        "id": "me_b1_t2",
+        "branch": 0,
+        "tier": 2,
+        "cost": 3,
+        "requires": [
+          "me_b1_t1"
+        ],
+        "grants": {
+          "skill": "me_regen"
+        }
+      },
+      {
+        "id": "me_b1_t3",
+        "branch": 0,
+        "tier": 3,
+        "cost": 4,
+        "requires": [
+          "me_b1_t2"
+        ],
+        "grants": {
+          "upgrade": {
+            "skillId": "me_triage",
+            "cooldownDelta": -1
+          }
+        }
+      },
+      {
+        "id": "me_b1_t4",
+        "branch": 0,
+        "tier": 4,
+        "cost": 5,
+        "requires": [
+          "me_b1_t3"
+        ],
+        "grants": {
+          "skill": "me_resuscitate"
+        }
+      },
+      {
+        "id": "me_b1_t5",
+        "branch": 0,
+        "tier": 5,
+        "cost": 6,
+        "requires": [
+          "me_b1_t4"
+        ],
+        "grants": {
+          "skill": "me_steady_hands"
+        }
+      },
+      {
+        "id": "me_b2_t1",
+        "branch": 1,
+        "tier": 1,
+        "cost": 2,
+        "requires": [],
+        "grants": {
+          "skill": "me_sedate"
+        }
+      },
+      {
+        "id": "me_b2_t2",
+        "branch": 1,
+        "tier": 2,
+        "cost": 3,
+        "requires": [
+          "me_b2_t1"
+        ],
+        "grants": {
+          "skill": "me_calm_presence"
+        }
+      },
+      {
+        "id": "me_b2_t3",
+        "branch": 1,
+        "tier": 3,
+        "cost": 4,
+        "requires": [
+          "me_b2_t2"
+        ],
+        "grants": {
+          "upgrade": {
+            "skillId": "me_sedate",
+            "cooldownDelta": -1
+          }
+        }
+      },
+      {
+        "id": "me_b2_t4",
+        "branch": 1,
+        "tier": 4,
+        "cost": 5,
+        "requires": [
+          "me_b2_t3"
+        ],
+        "grants": {
+          "skill": "me_calm_aura"
+        }
+      },
+      {
+        "id": "me_b2_t5",
+        "branch": 1,
+        "tier": 5,
+        "cost": 6,
+        "requires": [
+          "me_b2_t4"
+        ],
+        "grants": {
+          "skill": "me_composure"
+        }
+      },
+      {
+        "id": "me_b3_t1",
+        "branch": 2,
+        "tier": 1,
+        "cost": 2,
+        "requires": [],
+        "grants": {
+          "skill": "me_antiviral"
+        }
+      },
+      {
+        "id": "me_b3_t2",
+        "branch": 2,
+        "tier": 2,
+        "cost": 3,
+        "requires": [
+          "me_b3_t1"
+        ],
+        "grants": {
+          "skill": "me_inoculated"
+        }
+      },
+      {
+        "id": "me_b3_t3",
+        "branch": 2,
+        "tier": 3,
+        "cost": 4,
+        "requires": [
+          "me_b3_t2"
+        ],
+        "grants": {
+          "upgrade": {
+            "skillId": "me_antiviral",
+            "cooldownDelta": -1
+          }
+        }
+      },
+      {
+        "id": "me_b3_t4",
+        "branch": 2,
+        "tier": 4,
+        "cost": 5,
+        "requires": [
+          "me_b3_t3"
+        ],
+        "grants": {
+          "skill": "me_pathogen"
+        }
+      },
+      {
+        "id": "me_b3_t5",
+        "branch": 2,
+        "tier": 5,
+        "cost": 6,
+        "requires": [
+          "me_b3_t4"
+        ],
+        "grants": {
+          "skill": "me_hazmat"
+        }
+      },
+      {
+        "id": "me_ult",
+        "branch": null,
+        "tier": null,
+        "cost": 6,
+        "requires": [],
+        "grants": {
+          "skill": "me_ult_field_surgery"
+        }
       }
     ]
   },
@@ -214,6 +1251,213 @@
       {
         "name": "Bloom Tech",
         "summary": "Risky viral abilities, stress cost."
+      }
+    ],
+    "growth": {
+      "hp": 6,
+      "atk": 1.1,
+      "def": 0.6,
+      "spd": 0.15,
+      "crit": 0.2
+    },
+    "aiProfile": "disruptor",
+    "starterSkills": [
+      "sp_emitter",
+      "sp_corrosive"
+    ],
+    "tree": [
+      {
+        "id": "sp_b1_t1",
+        "branch": 0,
+        "tier": 1,
+        "cost": 2,
+        "requires": [],
+        "grants": {
+          "skill": "sp_acid_cloud"
+        }
+      },
+      {
+        "id": "sp_b1_t2",
+        "branch": 0,
+        "tier": 2,
+        "cost": 3,
+        "requires": [
+          "sp_b1_t1"
+        ],
+        "grants": {
+          "skill": "sp_slow_burn"
+        }
+      },
+      {
+        "id": "sp_b1_t3",
+        "branch": 0,
+        "tier": 3,
+        "cost": 4,
+        "requires": [
+          "sp_b1_t2"
+        ],
+        "grants": {
+          "upgrade": {
+            "skillId": "sp_acid_cloud",
+            "cooldownDelta": -1
+          }
+        }
+      },
+      {
+        "id": "sp_b1_t4",
+        "branch": 0,
+        "tier": 4,
+        "cost": 5,
+        "requires": [
+          "sp_b1_t3"
+        ],
+        "grants": {
+          "skill": "sp_meltdown"
+        }
+      },
+      {
+        "id": "sp_b1_t5",
+        "branch": 0,
+        "tier": 5,
+        "cost": 6,
+        "requires": [
+          "sp_b1_t4"
+        ],
+        "grants": {
+          "skill": "sp_solvent"
+        }
+      },
+      {
+        "id": "sp_b2_t1",
+        "branch": 1,
+        "tier": 1,
+        "cost": 2,
+        "requires": [],
+        "grants": {
+          "skill": "sp_drone_strike"
+        }
+      },
+      {
+        "id": "sp_b2_t2",
+        "branch": 1,
+        "tier": 2,
+        "cost": 3,
+        "requires": [
+          "sp_b2_t1"
+        ],
+        "grants": {
+          "skill": "sp_sentry_drone"
+        }
+      },
+      {
+        "id": "sp_b2_t3",
+        "branch": 1,
+        "tier": 3,
+        "cost": 4,
+        "requires": [
+          "sp_b2_t2"
+        ],
+        "grants": {
+          "upgrade": {
+            "skillId": "sp_drone_strike",
+            "cooldownDelta": -1
+          }
+        }
+      },
+      {
+        "id": "sp_b2_t4",
+        "branch": 1,
+        "tier": 4,
+        "cost": 5,
+        "requires": [
+          "sp_b2_t3"
+        ],
+        "grants": {
+          "skill": "sp_swarm"
+        }
+      },
+      {
+        "id": "sp_b2_t5",
+        "branch": 1,
+        "tier": 5,
+        "cost": 6,
+        "requires": [
+          "sp_b2_t4"
+        ],
+        "grants": {
+          "skill": "sp_overwatch_drones"
+        }
+      },
+      {
+        "id": "sp_b3_t1",
+        "branch": 2,
+        "tier": 1,
+        "cost": 2,
+        "requires": [],
+        "grants": {
+          "skill": "sp_spore_burst"
+        }
+      },
+      {
+        "id": "sp_b3_t2",
+        "branch": 2,
+        "tier": 2,
+        "cost": 3,
+        "requires": [
+          "sp_b3_t1"
+        ],
+        "grants": {
+          "skill": "sp_viral_load"
+        }
+      },
+      {
+        "id": "sp_b3_t3",
+        "branch": 2,
+        "tier": 3,
+        "cost": 4,
+        "requires": [
+          "sp_b3_t2"
+        ],
+        "grants": {
+          "upgrade": {
+            "skillId": "sp_spore_burst",
+            "cooldownDelta": -1
+          }
+        }
+      },
+      {
+        "id": "sp_b3_t4",
+        "branch": 2,
+        "tier": 4,
+        "cost": 5,
+        "requires": [
+          "sp_b3_t3"
+        ],
+        "grants": {
+          "skill": "sp_bloom_surge"
+        }
+      },
+      {
+        "id": "sp_b3_t5",
+        "branch": 2,
+        "tier": 5,
+        "cost": 6,
+        "requires": [
+          "sp_b3_t4"
+        ],
+        "grants": {
+          "skill": "sp_acclimated"
+        }
+      },
+      {
+        "id": "sp_ult",
+        "branch": null,
+        "tier": null,
+        "cost": 6,
+        "requires": [],
+        "grants": {
+          "skill": "sp_ult_cascade"
+        }
       }
     ]
   }

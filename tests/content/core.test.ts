@@ -11,7 +11,7 @@ describe('core content pack', () => {
     expect(errors).toEqual([]);
   });
 
-  it('counts: 4 corporations, 2 starts, 6 crimes, 6 roles, 12 signatures, 18 defects (4 desire_bond), 10 statuses', async () => {
+  it('counts: 4 corporations, 2 starts, 6 crimes, 6 roles, 12 signatures, 18 defects (4 desire_bond), 14 statuses', async () => {
     const { registries: r } = await load();
     expect(r.corporations.size).toBe(4);
     expect(r.starts.size).toBe(2);
@@ -20,7 +20,7 @@ describe('core content pack', () => {
     expect(r.signatures.size).toBe(12);
     expect(r.defects.size).toBe(18);
     expect([...r.defects.values()].filter((d) => d.category === 'desire_bond')).toHaveLength(4);
-    expect(r.statuses.size).toBe(10);
+    expect(r.statuses.size).toBe(14);
   });
 
   it('both starts use playable corporations', async () => {
@@ -242,5 +242,159 @@ describe('activity cross references', () => {
     expect(exits('kindred')).toContain('confidant');
     expect(exits('unrequited')).toContain('comrade');
     for (const id of ['flirting', 'fwb', 'lover', 'devoted', 'secret_affair']) expect(exits(id), id).toContain('estranged');
+  });
+});
+
+// ---- P4: role skills, signatures, statuses, orders, synergies, defect combat data -----------------------------------
+
+import type { Skill } from '../../src/content/schemas';
+
+type Node = { id: string; branch: number | null; tier: number | null; cost: number; requires: string[]; grants: { skill?: string; upgrade?: { skillId: string } } };
+const roleTree = (r: Record<string, unknown>) => r.tree as Node[];
+const skillOf = (r: Awaited<ReturnType<typeof load>>['registries'], id: string) => r.skills.get(id) as unknown as Skill;
+const fxTypes = (s: Skill) => s.effects.map((e) => e.type);
+
+describe('core content: P4 roles and skills', () => {
+  it('every role has growth, aiProfile, 2 starters and a 66-point tree', async () => {
+    const { registries: r } = await load();
+    const profiles: Record<string, string> = {
+      assault: 'aggressive', defender: 'protector', sniper: 'predator', support: 'protector', medic: 'protector', specialist: 'disruptor',
+    };
+    for (const role of r.roles.values()) {
+      const g = role.growth as Record<string, number>;
+      expect(g.hp, role.id).toBeGreaterThanOrEqual(5);
+      expect(g.hp).toBeLessThanOrEqual(8);
+      expect(g.atk).toBeGreaterThanOrEqual(0.8);
+      expect(g.atk).toBeLessThanOrEqual(1.4);
+      expect(role.aiProfile).toBe(profiles[role.id]);
+      expect(role.starterSkills as string[]).toHaveLength(2);
+      const tree = roleTree(role);
+      expect(tree, role.id).toHaveLength(16);
+      expect(tree.reduce((sum, n) => sum + n.cost, 0), role.id).toBe(66);
+      expect(tree.filter((n) => n.branch === null)).toHaveLength(1);
+      expect(tree.find((n) => n.branch === null)!.cost).toBe(6);
+    }
+  });
+
+  it('every tree branch follows active/passive/upgrade/active/passive with costs 2-6', async () => {
+    const { registries: r } = await load();
+    for (const role of r.roles.values()) {
+      for (let b = 0; b < 3; b++) {
+        const nodes = roleTree(role).filter((n) => n.branch === b).sort((x, y) => (x.tier ?? 0) - (y.tier ?? 0));
+        expect(nodes.map((n) => n.tier), `${role.id} branch ${b}`).toEqual([1, 2, 3, 4, 5]);
+        expect(nodes.map((n) => n.cost)).toEqual([2, 3, 4, 5, 6]);
+        const kinds = nodes.map((n) => (n.grants.upgrade ? 'upgrade' : skillOf(r, n.grants.skill!).kind));
+        expect(kinds, `${role.id} branch ${b}`).toEqual(['active', 'passive', 'upgrade', 'active', 'passive']);
+        expect(nodes[2].grants.upgrade!.skillId).toBe(nodes[0].grants.skill);
+        for (let i = 1; i < 5; i++) expect(nodes[i].requires).toEqual([nodes[i - 1].id]);
+      }
+      const ult = roleTree(role).find((n) => n.branch === null)!;
+      expect(skillOf(r, ult.grants.skill!).kind).toBe('ultimate');
+      expect(skillOf(r, ult.grants.skill!).cp).toBe(3);
+    }
+  });
+
+  it('every role has a basic damaging starter that costs no cooldown', async () => {
+    const { registries: r } = await load();
+    for (const role of r.roles.values()) {
+      const first = skillOf(r, (role.starterSkills as string[])[0]);
+      expect(first.kind).toBe('active');
+      expect(first.cooldown).toBe(0);
+      expect(fxTypes(first)).toContain('damage');
+    }
+  });
+
+  it('medic trees revive (limit combat), support trees generate CP, defender trees taunt and guard', async () => {
+    const { registries: r } = await load();
+    const skillsOfRole = (id: string) => roleTree(r.roles.get(id)!).map((n) => n.grants.skill).filter(Boolean).map((s) => skillOf(r, s!));
+    const effects = (id: string) => skillsOfRole(id).flatMap((s) => s.effects);
+    expect(effects('medic').some((e) => e.type === 'revive' && e.limit === 'combat')).toBe(true);
+    expect(effects('support').some((e) => e.type === 'cp')).toBe(true);
+    expect(effects('defender').some((e) => e.type === 'status' && e.statusId === 'taunt')).toBe(true);
+    expect(effects('defender').some((e) => e.type === 'status' && e.statusId === 'guard')).toBe(true);
+  });
+
+  it('every signature template has a signature skill under its own id', async () => {
+    const { registries: r } = await load();
+    for (const sig of r.signatures.values()) {
+      expect(sig.skill, sig.id).toBe(sig.id);
+      const s = skillOf(r, sig.id);
+      expect(['signature', 'passive'], sig.id).toContain(s.kind);
+    }
+    expect(skillOf(r, 'sig_last_stand').kind).toBe('passive');
+    expect(skillOf(r, 'sig_scavenge').kind).toBe('passive');
+    expect(fxTypes(skillOf(r, 'sig_command_echo'))).toContain('repeat_order');
+    expect(fxTypes(skillOf(r, 'sig_overclock_burst'))).toEqual(['extra_action', 'status']);
+  });
+});
+
+describe('core content: P4 statuses, orders, synergies and defects', () => {
+  it('14 statuses with mechanics', async () => {
+    const { registries: r } = await load();
+    expect([...r.statuses.keys()].sort()).toEqual([
+      'authorized', 'bleed', 'burn', 'corrode', 'focus', 'guard', 'hold_line', 'infect', 'mark', 'overheat', 'shield', 'stun', 'taunt', 'untargetable',
+    ]);
+    expect(r.statuses.get('stun')!.flags).toEqual(['skipTurn']);
+    expect(r.statuses.get('untargetable')!.flags).toEqual(['untargetable']);
+    expect(r.statuses.get('taunt')!.flags).toEqual(['taunt']);
+    expect(r.statuses.get('shield')!.flags).toEqual(['absorb']);
+    expect(r.statuses.get('guard')!.incomingPct).toBe(-30);
+    expect(r.statuses.get('mark')!.incomingPct).toBe(15);
+    expect(r.statuses.get('corrode')!.mods).toEqual({ def: -15 });
+    expect(r.statuses.get('corrode')!.maxStacks).toBe(3);
+    expect(r.statuses.get('hold_line')!.mods).toEqual({ def: 30 });
+    expect(r.statuses.get('hold_line')!.flags).toContain('rooted');
+    expect((r.statuses.get('bleed')!.tick as Array<{ pctMaxHp: number }>)[0].pctMaxHp).toBe(4);
+    expect((r.statuses.get('burn')!.tick as Array<{ pctMaxHp: number }>)[0].pctMaxHp).toBe(6);
+    expect((r.statuses.get('infect')!.tick as Array<{ type: string; amount: number }>)[0]).toMatchObject({ type: 'stress', amount: 3 });
+    expect(r.statuses.get('overheat')!.mods).toEqual({ atk: -10, spd: -10 });
+  });
+
+  it('5 orders with the roles.md costs', async () => {
+    const { registries: r } = await load();
+    expect([...r.orders.keys()]).toEqual(['focus_fire', 'hold_the_line', 'fall_back', 'steady', 'authorize_ultimate']);
+    const cost = (id: string) => r.orders.get(id)!.cost;
+    expect([cost('focus_fire'), cost('hold_the_line'), cost('fall_back'), cost('steady'), cost('authorize_ultimate')]).toEqual([2, 2, 1, 1, 3]);
+    expect(r.orders.get('focus_fire')!.target).toBe('enemy');
+    expect(r.orders.get('hold_the_line')!.target).toBe('none');
+    expect(r.orders.get('fall_back')!.target).toBe('ally');
+  });
+
+  it('every synergy id unlocked by a relationship state exists, and the friction ids are attached', async () => {
+    const { registries: r } = await load();
+    for (const st of r.relationshipStates.values()) {
+      for (const id of (st.unlocks as { synergies: string[] }).synergies) expect(r.synergies.has(id), `${st.id}: ${id}`).toBe(true);
+    }
+    const unlocks = (id: string) => (r.relationshipStates.get(id)!.unlocks as { synergies: string[] }).synergies;
+    expect(unlocks('resentful')).toContain('order_friction_minor');
+    expect(unlocks('estranged')).toContain('order_friction');
+    expect(unlocks('despises')).toContain('order_friction_major');
+    const chance = (id: string) => (r.synergies.get(id)!.effects as Array<{ chance: number }>)[0].chance;
+    expect([chance('order_friction_minor'), chance('order_friction'), chance('order_friction_major')]).toEqual([0.15, 0.25, 0.35]);
+  });
+
+  it('all 18 defects have combat data and every downside effect is marked', async () => {
+    const { registries: r } = await load();
+    for (const d of r.defects.values()) {
+      const c = d.combat as { upside: unknown[]; downside: Array<{ downside?: boolean }>; breakdown: { policy: string } };
+      expect(c, d.id).toBeTruthy();
+      expect(c.breakdown.policy, d.id).toBeTruthy();
+      for (const e of c.downside) expect(e.downside, d.id).toBe(true);
+    }
+  });
+
+  it('at least 6 defects use distinct breakdown policies', async () => {
+    const { registries: r } = await load();
+    const policies = new Set([...r.defects.values()].map((d) => (d.combat as { breakdown: { policy: string } }).breakdown.policy));
+    expect(policies.size).toBeGreaterThanOrEqual(6);
+    const by = (id: string) => (r.defects.get(id)!.combat as { breakdown: Record<string, unknown> }).breakdown;
+    expect(by('rage_governor')).toMatchObject({ policy: 'attack', target: 'strongest_enemy', ignoresOrders: true });
+    expect(by('affect_dampener').policy).toBe('skip');
+    expect(by('compulsive_protocol').policy).toBe('repeat_last');
+    expect(by('threat_saturation')).toMatchObject({ policy: 'attack', target: 'nearest_any', once: true });
+    expect(by('overclock_bias').policy).toBe('twice_then_shutdown');
+    expect(by('compliance_craving').policy).toBe('await_order');
+    expect(by('graft_rejection').policy).toBe('normal');
+    expect(by('echo_bleed')).toMatchObject({ policy: 'random_skill', ignoresOrders: true });
   });
 });

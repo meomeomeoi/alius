@@ -154,11 +154,11 @@ docs/** (Task 21), tests/** mirror src
 | reward_loop | stress_taken relief +100 % | override_action aggressive chance 0.15 | skip, ignoresOrders |
 | compliance_craving | order_cost −1 for orders targeting her | onTurnStart stress +3 when notOrderedThisRound | await_order |
 
-- [ ] **Step 1: Write the failing tests** (`tests/content/core.test.ts`) — `core pack loads with zero errors` (existing); `every role has growth, aiProfile, 2 starters and a 66-point tree`; `every tree branch follows active/passive/upgrade/active/passive`; `every signature template has a signature skill`; `14 statuses with mechanics`; `5 orders with the roles.md costs`; `every synergy id unlocked by a relationship state exists`; `all 18 defects have combat data and every downside effect is marked`; `at least 6 defects use distinct breakdown policies`; `medic trees revive, support trees generate CP`; update the status count (14).
-- [ ] **Step 2: Run** `npx vitest run tests/content` → FAIL.
-- [ ] **Step 3: Write the JSON** and make the P4 fields required in their schemas. Text (names, descriptions) is data; never inline it in code.
-- [ ] **Step 4: Run** `npx vitest run` → green.
-- [ ] **Step 5: Commit** `feat(content): role skill trees, signature mechanics, statuses, orders, synergies and defect combat data`.
+- [x] **Step 1: Write the failing tests** (`tests/content/core.test.ts`) — `core pack loads with zero errors` (existing); `every role has growth, aiProfile, 2 starters and a 66-point tree`; `every tree branch follows active/passive/upgrade/active/passive`; `every signature template has a signature skill`; `14 statuses with mechanics`; `5 orders with the roles.md costs`; `every synergy id unlocked by a relationship state exists`; `all 18 defects have combat data and every downside effect is marked`; `at least 6 defects use distinct breakdown policies`; `medic trees revive, support trees generate CP`; update the status count (14).
+- [x] **Step 2: Run** `npx vitest run tests/content` → FAIL.
+- [x] **Step 3: Write the JSON** and make the P4 fields required in their schemas. Text (names, descriptions) is data; never inline it in code.
+- [x] **Step 4: Run** `npx vitest run` → green.
+- [x] **Step 5: Commit** `feat(content): role skill trees, signature mechanics, statuses, orders, synergies and defect combat data`.
 
 ---
 

@@ -1,1 +1,9 @@
-[ { "id": "sig_a", "name": "Sig A", "mechanic": "Does a thing.", "fits": "Anyone." } ]
+[
+  {
+    "id": "sig_a",
+    "name": "Sig A",
+    "mechanic": "Does a thing.",
+    "fits": "Anyone.",
+    "skill": "sk_a"
+  }
+]

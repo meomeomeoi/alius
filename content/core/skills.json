@@ -1,0 +1,2629 @@
+[
+  {
+    "id": "as_strike",
+    "name": "Strike",
+    "kind": "active",
+    "description": "A heavy melee blow.",
+    "cooldown": 0,
+    "usableFrom": [
+      "front"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one",
+      "melee": true
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 1
+      }
+    ],
+    "tags": [
+      "melee"
+    ]
+  },
+  {
+    "id": "as_burst",
+    "name": "Burst Fire",
+    "kind": "active",
+    "description": "Two quick shots at any target.",
+    "cooldown": 2,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 0.6,
+        "hits": 2
+      }
+    ],
+    "tags": [
+      "ranged"
+    ]
+  },
+  {
+    "id": "as_breach_charge",
+    "name": "Breach Charge",
+    "kind": "active",
+    "description": "Rams the target and eats into its armor.",
+    "cooldown": 2,
+    "usableFrom": [
+      "front"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one",
+      "melee": true
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 1.2
+      },
+      {
+        "type": "status",
+        "statusId": "corrode",
+        "turns": 2
+      }
+    ],
+    "tags": [
+      "melee",
+      "debuff"
+    ]
+  },
+  {
+    "id": "as_armor_piercer",
+    "name": "Armor Piercer",
+    "kind": "passive",
+    "description": "Hits harder against marked targets.",
+    "effects": [
+      {
+        "type": "outgoing",
+        "pct": 12,
+        "vs": "marked"
+      }
+    ],
+    "tags": []
+  },
+  {
+    "id": "as_rend_plating",
+    "name": "Rend Plating",
+    "kind": "active",
+    "description": "Tears through the whole front line.",
+    "cooldown": 3,
+    "usableFrom": [
+      "front"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front"
+      ],
+      "count": "row",
+      "melee": true
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 0.8
+      },
+      {
+        "type": "status",
+        "statusId": "corrode",
+        "turns": 2
+      }
+    ],
+    "tags": [
+      "melee",
+      "row"
+    ]
+  },
+  {
+    "id": "as_shock_doctrine",
+    "name": "Shock Doctrine",
+    "kind": "passive",
+    "description": "Opens every fight with a harder hit.",
+    "effects": [
+      {
+        "type": "stat",
+        "stat": "atk",
+        "pct": 10
+      }
+    ],
+    "tags": []
+  },
+  {
+    "id": "as_finisher",
+    "name": "Finishing Blow",
+    "kind": "active",
+    "description": "A brutal single strike.",
+    "cooldown": 2,
+    "usableFrom": [
+      "front"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one",
+      "melee": true
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 1.5
+      }
+    ],
+    "tags": [
+      "melee"
+    ]
+  },
+  {
+    "id": "as_momentum",
+    "name": "Momentum",
+    "kind": "passive",
+    "description": "A kill gives her another action (once per round).",
+    "effects": [
+      {
+        "type": "extra_action",
+        "trigger": "onKill",
+        "target": "self",
+        "limit": "round"
+      }
+    ],
+    "tags": []
+  },
+  {
+    "id": "as_rampage",
+    "name": "Rampage",
+    "kind": "active",
+    "description": "Three chained hits on one target.",
+    "cooldown": 3,
+    "usableFrom": [
+      "front"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one",
+      "melee": true
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 0.8,
+        "hits": 3
+      }
+    ],
+    "tags": [
+      "melee"
+    ]
+  },
+  {
+    "id": "as_adrenaline",
+    "name": "Adrenaline",
+    "kind": "passive",
+    "description": "A kill sharpens her next attacks.",
+    "effects": [
+      {
+        "type": "stat",
+        "stat": "atk",
+        "pct": 15,
+        "turns": 2,
+        "trigger": "onKill",
+        "target": "self"
+      }
+    ],
+    "tags": []
+  },
+  {
+    "id": "as_blood_rush",
+    "name": "Blood Rush",
+    "kind": "active",
+    "description": "A strike that patches her up.",
+    "cooldown": 2,
+    "usableFrom": [
+      "front"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one",
+      "melee": true
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 1.2
+      },
+      {
+        "type": "heal",
+        "pctMaxHp": 8,
+        "target": "self"
+      }
+    ],
+    "tags": [
+      "melee",
+      "sustain"
+    ]
+  },
+  {
+    "id": "as_thirst",
+    "name": "Thirst",
+    "kind": "passive",
+    "description": "Her first hit each round heals her.",
+    "effects": [
+      {
+        "type": "heal",
+        "pctMaxHp": 3,
+        "trigger": "onHit",
+        "target": "self",
+        "limit": "round"
+      }
+    ],
+    "tags": []
+  },
+  {
+    "id": "as_red_mist",
+    "name": "Red Mist",
+    "kind": "active",
+    "description": "Sweeps the whole enemy line, at a cost to her nerves.",
+    "cooldown": 4,
+    "usableFrom": [
+      "front"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "all"
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 0.7
+      },
+      {
+        "type": "stress",
+        "amount": 4,
+        "target": "self"
+      }
+    ],
+    "tags": [
+      "aoe"
+    ]
+  },
+  {
+    "id": "as_pain_fuel",
+    "name": "Pain Fuel",
+    "kind": "passive",
+    "description": "The more hurt she is, the harder she hits.",
+    "effects": [
+      {
+        "type": "stat",
+        "stat": "atk",
+        "pct": 0,
+        "scale": {
+          "by": "own_hp_missing_pct",
+          "per": 0.3
+        }
+      }
+    ],
+    "tags": []
+  },
+  {
+    "id": "as_ult_overrun",
+    "name": "Overrun",
+    "kind": "ultimate",
+    "description": "Charges through the entire enemy line.",
+    "cooldown": 3,
+    "cp": 3,
+    "usableFrom": [
+      "front"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "all"
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 1.6
+      }
+    ],
+    "tags": [
+      "ultimate",
+      "aoe"
+    ]
+  },
+  {
+    "id": "df_bash",
+    "name": "Shield Bash",
+    "kind": "active",
+    "description": "A blunt shove with the shield.",
+    "cooldown": 0,
+    "usableFrom": [
+      "front"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one",
+      "melee": true
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 0.9
+      }
+    ],
+    "tags": [
+      "melee"
+    ]
+  },
+  {
+    "id": "df_brace",
+    "name": "Brace",
+    "kind": "active",
+    "description": "Raises her guard.",
+    "cooldown": 2,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "self",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "status",
+        "statusId": "guard",
+        "turns": 2,
+        "target": "self"
+      }
+    ],
+    "tags": [
+      "defense"
+    ]
+  },
+  {
+    "id": "df_cover_ally",
+    "name": "Cover Ally",
+    "kind": "active",
+    "description": "Puts a guard on one ally.",
+    "cooldown": 2,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "ally",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "status",
+        "statusId": "guard",
+        "turns": 2
+      }
+    ],
+    "tags": [
+      "defense"
+    ]
+  },
+  {
+    "id": "df_plating",
+    "name": "Plating",
+    "kind": "passive",
+    "description": "Reinforced armor plates.",
+    "effects": [
+      {
+        "type": "stat",
+        "stat": "def",
+        "pct": 10
+      }
+    ],
+    "tags": []
+  },
+  {
+    "id": "df_bastion",
+    "name": "Bastion",
+    "kind": "active",
+    "description": "Raises a shield over the whole squad.",
+    "cooldown": 4,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "ally",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "all"
+    },
+    "effects": [
+      {
+        "type": "status",
+        "statusId": "shield",
+        "turns": 2,
+        "target": "allies"
+      }
+    ],
+    "tags": [
+      "defense",
+      "aoe"
+    ]
+  },
+  {
+    "id": "df_ironhide",
+    "name": "Ironhide",
+    "kind": "passive",
+    "description": "Takes less damage from everything.",
+    "effects": [
+      {
+        "type": "incoming",
+        "pct": -8
+      }
+    ],
+    "tags": []
+  },
+  {
+    "id": "df_provoke",
+    "name": "Provoke",
+    "kind": "active",
+    "description": "Draws every enemy to her.",
+    "cooldown": 3,
+    "usableFrom": [
+      "front"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one",
+      "melee": true
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 0.5
+      },
+      {
+        "type": "status",
+        "statusId": "taunt",
+        "turns": 2,
+        "target": "self"
+      }
+    ],
+    "tags": [
+      "taunt"
+    ]
+  },
+  {
+    "id": "df_riposte",
+    "name": "Riposte",
+    "kind": "passive",
+    "description": "Strikes back at whoever hits her (once per round).",
+    "effects": [
+      {
+        "type": "follow_up",
+        "mult": 0.6,
+        "trigger": "onDamaged",
+        "target": "source",
+        "limit": "round"
+      }
+    ],
+    "tags": []
+  },
+  {
+    "id": "df_shatter",
+    "name": "Shatter Strike",
+    "kind": "active",
+    "description": "A crushing blow that may stun.",
+    "cooldown": 3,
+    "usableFrom": [
+      "front"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one",
+      "melee": true
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 1.3
+      },
+      {
+        "type": "status",
+        "statusId": "stun",
+        "turns": 1,
+        "chance": 0.5
+      }
+    ],
+    "tags": [
+      "melee",
+      "control"
+    ]
+  },
+  {
+    "id": "df_vengeance",
+    "name": "Vengeance",
+    "kind": "passive",
+    "description": "When an ally falls she hits harder.",
+    "effects": [
+      {
+        "type": "stat",
+        "stat": "atk",
+        "pct": 20,
+        "turns": 3,
+        "trigger": "onAllyDowned",
+        "target": "self"
+      }
+    ],
+    "tags": []
+  },
+  {
+    "id": "df_hold_ground",
+    "name": "Hold Ground",
+    "kind": "active",
+    "description": "Plants her feet.",
+    "cooldown": 3,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "self",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "status",
+        "statusId": "guard",
+        "turns": 2,
+        "target": "self"
+      },
+      {
+        "type": "stat",
+        "stat": "def",
+        "pct": 20,
+        "turns": 2,
+        "target": "self"
+      }
+    ],
+    "tags": [
+      "defense"
+    ]
+  },
+  {
+    "id": "df_anchor",
+    "name": "Anchor",
+    "kind": "passive",
+    "description": "Sturdier frame.",
+    "effects": [
+      {
+        "type": "stat",
+        "stat": "hp",
+        "pct": 10
+      }
+    ],
+    "tags": []
+  },
+  {
+    "id": "df_quake",
+    "name": "Quake",
+    "kind": "active",
+    "description": "Slams the ground; the front row may stagger.",
+    "cooldown": 4,
+    "usableFrom": [
+      "front"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front"
+      ],
+      "count": "row",
+      "melee": true
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 0.7
+      },
+      {
+        "type": "status",
+        "statusId": "stun",
+        "turns": 1,
+        "chance": 0.5
+      }
+    ],
+    "tags": [
+      "melee",
+      "control",
+      "row"
+    ]
+  },
+  {
+    "id": "df_unbowed",
+    "name": "Unbowed",
+    "kind": "passive",
+    "description": "Cannot be stunned.",
+    "effects": [
+      {
+        "type": "immune",
+        "statusId": "stun"
+      }
+    ],
+    "tags": []
+  },
+  {
+    "id": "df_ult_fortress",
+    "name": "Fortress",
+    "kind": "ultimate",
+    "description": "Guards the whole squad while she soaks the attention.",
+    "cooldown": 4,
+    "cp": 3,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "self",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "status",
+        "statusId": "guard",
+        "turns": 2,
+        "target": "allies"
+      },
+      {
+        "type": "status",
+        "statusId": "taunt",
+        "turns": 2,
+        "target": "self"
+      }
+    ],
+    "tags": [
+      "ultimate",
+      "defense"
+    ]
+  },
+  {
+    "id": "sn_shot",
+    "name": "Aimed Shot",
+    "kind": "active",
+    "description": "A careful single shot.",
+    "cooldown": 0,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 1.1
+      }
+    ],
+    "tags": [
+      "ranged"
+    ]
+  },
+  {
+    "id": "sn_sidearm",
+    "name": "Sidearm Burst",
+    "kind": "active",
+    "description": "Two snap shots.",
+    "cooldown": 2,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 0.5,
+        "hits": 2
+      }
+    ],
+    "tags": [
+      "ranged"
+    ]
+  },
+  {
+    "id": "sn_headshot",
+    "name": "Headshot",
+    "kind": "active",
+    "description": "Goes for the kill.",
+    "cooldown": 3,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 1.6,
+        "critBonus": 25
+      }
+    ],
+    "tags": [
+      "ranged"
+    ]
+  },
+  {
+    "id": "sn_steady_aim",
+    "name": "Steady Aim",
+    "kind": "passive",
+    "description": "Better crit chance.",
+    "effects": [
+      {
+        "type": "stat",
+        "stat": "crit",
+        "pct": 8
+      }
+    ],
+    "tags": []
+  },
+  {
+    "id": "sn_volley",
+    "name": "Volley",
+    "kind": "active",
+    "description": "Three rapid shots at one target.",
+    "cooldown": 3,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 0.7,
+        "hits": 3
+      }
+    ],
+    "tags": [
+      "ranged"
+    ]
+  },
+  {
+    "id": "sn_dead_eye",
+    "name": "Dead Eye",
+    "kind": "passive",
+    "description": "Marked targets take more.",
+    "effects": [
+      {
+        "type": "outgoing",
+        "pct": 15,
+        "vs": "marked"
+      }
+    ],
+    "tags": []
+  },
+  {
+    "id": "sn_paint",
+    "name": "Paint Target",
+    "kind": "active",
+    "description": "Marks the target for the squad.",
+    "cooldown": 2,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 0.5
+      },
+      {
+        "type": "status",
+        "statusId": "mark",
+        "turns": 2
+      }
+    ],
+    "tags": [
+      "ranged",
+      "debuff"
+    ]
+  },
+  {
+    "id": "sn_spotter",
+    "name": "Spotter",
+    "kind": "passive",
+    "description": "Marks a random enemy when the fight starts.",
+    "effects": [
+      {
+        "type": "status",
+        "statusId": "mark",
+        "turns": 2,
+        "trigger": "onCombatStart",
+        "target": "random_enemy"
+      }
+    ],
+    "tags": []
+  },
+  {
+    "id": "sn_spotlight",
+    "name": "Spotlight",
+    "kind": "active",
+    "description": "Marks every enemy for a turn.",
+    "cooldown": 4,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "all"
+    },
+    "effects": [
+      {
+        "type": "status",
+        "statusId": "mark",
+        "turns": 1
+      }
+    ],
+    "tags": [
+      "debuff",
+      "aoe"
+    ]
+  },
+  {
+    "id": "sn_lens",
+    "name": "Lens",
+    "kind": "passive",
+    "description": "More crits.",
+    "effects": [
+      {
+        "type": "stat",
+        "stat": "crit",
+        "pct": 6
+      }
+    ],
+    "tags": []
+  },
+  {
+    "id": "sn_ghost_round",
+    "name": "Ghost Round",
+    "kind": "active",
+    "description": "A shot that ignores rows.",
+    "cooldown": 3,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 1.3,
+        "ignoreRows": true
+      }
+    ],
+    "tags": [
+      "ranged"
+    ]
+  },
+  {
+    "id": "sn_evasion",
+    "name": "Evasion",
+    "kind": "passive",
+    "description": "Harder to hit.",
+    "effects": [
+      {
+        "type": "incoming",
+        "pct": -10
+      }
+    ],
+    "tags": []
+  },
+  {
+    "id": "sn_fade",
+    "name": "Fade",
+    "kind": "active",
+    "description": "Vanishes from the enemy line for a turn.",
+    "cooldown": 4,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "self",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "status",
+        "statusId": "untargetable",
+        "turns": 1,
+        "target": "self"
+      }
+    ],
+    "tags": [
+      "defense"
+    ]
+  },
+  {
+    "id": "sn_quick_draw",
+    "name": "Quick Draw",
+    "kind": "passive",
+    "description": "Faster at the start of a fight.",
+    "effects": [
+      {
+        "type": "stat",
+        "stat": "spd",
+        "pct": 15,
+        "turns": 2,
+        "trigger": "onCombatStart",
+        "target": "self"
+      }
+    ],
+    "tags": []
+  },
+  {
+    "id": "sn_ult_deadline",
+    "name": "Deadline",
+    "kind": "ultimate",
+    "description": "One perfect shot, through anything.",
+    "cooldown": 4,
+    "cp": 3,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 3.2,
+        "ignoreRows": true,
+        "critBonus": 100
+      }
+    ],
+    "tags": [
+      "ultimate",
+      "ranged"
+    ]
+  },
+  {
+    "id": "su_cover_fire",
+    "name": "Covering Fire",
+    "kind": "active",
+    "description": "Steady suppressive shots.",
+    "cooldown": 0,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 0.9
+      }
+    ],
+    "tags": [
+      "ranged"
+    ]
+  },
+  {
+    "id": "su_rally",
+    "name": "Rally",
+    "kind": "active",
+    "description": "Rallies one ally: more damage, less stress.",
+    "cooldown": 2,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "ally",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "stat",
+        "stat": "atk",
+        "pct": 15,
+        "turns": 2
+      },
+      {
+        "type": "stress",
+        "amount": -5
+      }
+    ],
+    "tags": [
+      "buff"
+    ]
+  },
+  {
+    "id": "su_uplink",
+    "name": "Uplink",
+    "kind": "active",
+    "description": "Opens a command channel: +1 CP.",
+    "cooldown": 3,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "self",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "cp",
+        "amount": 1,
+        "target": "self"
+      }
+    ],
+    "tags": [
+      "cp"
+    ]
+  },
+  {
+    "id": "su_relay",
+    "name": "Relay",
+    "kind": "passive",
+    "description": "Starts the fight with a spare command point.",
+    "effects": [
+      {
+        "type": "cp",
+        "amount": 1,
+        "trigger": "onCombatStart",
+        "target": "self",
+        "limit": "combat"
+      }
+    ],
+    "tags": []
+  },
+  {
+    "id": "su_tempo",
+    "name": "Tempo",
+    "kind": "active",
+    "description": "Speeds up the whole squad.",
+    "cooldown": 3,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "ally",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "all"
+    },
+    "effects": [
+      {
+        "type": "stat",
+        "stat": "spd",
+        "pct": 15,
+        "turns": 2,
+        "target": "allies"
+      }
+    ],
+    "tags": [
+      "buff",
+      "aoe"
+    ]
+  },
+  {
+    "id": "su_feedback",
+    "name": "Feedback",
+    "kind": "passive",
+    "description": "A crit feeds a command point back (once per combat).",
+    "effects": [
+      {
+        "type": "cp",
+        "amount": 1,
+        "trigger": "onCrit",
+        "target": "self",
+        "limit": "combat"
+      }
+    ],
+    "tags": []
+  },
+  {
+    "id": "su_suppress",
+    "name": "Suppressing Fire",
+    "kind": "active",
+    "description": "Pins the target down.",
+    "cooldown": 3,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 0.8
+      },
+      {
+        "type": "stat",
+        "stat": "atk",
+        "pct": -20,
+        "turns": 2
+      }
+    ],
+    "tags": [
+      "ranged",
+      "debuff"
+    ]
+  },
+  {
+    "id": "su_overwatch",
+    "name": "Overwatch",
+    "kind": "passive",
+    "description": "Fires after an ally hits (once per round).",
+    "effects": [
+      {
+        "type": "follow_up",
+        "mult": 0.4,
+        "trigger": "onHit",
+        "scope": "ally",
+        "limit": "round"
+      }
+    ],
+    "tags": []
+  },
+  {
+    "id": "su_barrage",
+    "name": "Barrage",
+    "kind": "active",
+    "description": "Rakes the whole enemy line.",
+    "cooldown": 4,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "all"
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 0.6
+      }
+    ],
+    "tags": [
+      "ranged",
+      "aoe"
+    ]
+  },
+  {
+    "id": "su_marksmanship",
+    "name": "Marksmanship",
+    "kind": "passive",
+    "description": "Hits harder.",
+    "effects": [
+      {
+        "type": "outgoing",
+        "pct": 8
+      }
+    ],
+    "tags": []
+  },
+  {
+    "id": "su_barrier",
+    "name": "Barrier",
+    "kind": "active",
+    "description": "A projected shield for one ally.",
+    "cooldown": 3,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "ally",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "status",
+        "statusId": "shield",
+        "turns": 2
+      }
+    ],
+    "tags": [
+      "defense"
+    ]
+  },
+  {
+    "id": "su_field_kit",
+    "name": "Field Kit",
+    "kind": "passive",
+    "description": "Shields the squad at the start of a fight.",
+    "effects": [
+      {
+        "type": "status",
+        "statusId": "shield",
+        "turns": 2,
+        "trigger": "onCombatStart",
+        "target": "allies"
+      }
+    ],
+    "tags": []
+  },
+  {
+    "id": "su_purge",
+    "name": "Purge",
+    "kind": "active",
+    "description": "Cleanses an ally and steadies them.",
+    "cooldown": 3,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "ally",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "cleanse",
+        "kind": "debuff",
+        "count": 2
+      },
+      {
+        "type": "stress",
+        "amount": -5
+      }
+    ],
+    "tags": [
+      "cleanse"
+    ]
+  },
+  {
+    "id": "su_hardened",
+    "name": "Hardened",
+    "kind": "passive",
+    "description": "Takes less damage.",
+    "effects": [
+      {
+        "type": "incoming",
+        "pct": -6
+      }
+    ],
+    "tags": []
+  },
+  {
+    "id": "su_ult_command_surge",
+    "name": "Command Surge",
+    "kind": "ultimate",
+    "description": "Floods the squad with orders: +2 CP and a damage boost.",
+    "cooldown": 4,
+    "cp": 3,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "self",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "cp",
+        "amount": 2,
+        "target": "self"
+      },
+      {
+        "type": "stat",
+        "stat": "atk",
+        "pct": 25,
+        "turns": 2,
+        "target": "allies"
+      }
+    ],
+    "tags": [
+      "ultimate",
+      "cp"
+    ]
+  },
+  {
+    "id": "me_sidearm",
+    "name": "Sidearm",
+    "kind": "active",
+    "description": "A reluctant shot.",
+    "cooldown": 0,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 0.8
+      }
+    ],
+    "tags": [
+      "ranged"
+    ]
+  },
+  {
+    "id": "me_patch",
+    "name": "Field Patch",
+    "kind": "active",
+    "description": "Heals one ally.",
+    "cooldown": 1,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "ally",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "heal",
+        "pctMaxHp": 25
+      }
+    ],
+    "tags": [
+      "heal"
+    ]
+  },
+  {
+    "id": "me_triage",
+    "name": "Triage Burst",
+    "kind": "active",
+    "description": "A wave of stimulants for everyone.",
+    "cooldown": 3,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "ally",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "all"
+    },
+    "effects": [
+      {
+        "type": "heal",
+        "pctMaxHp": 12,
+        "target": "allies"
+      }
+    ],
+    "tags": [
+      "heal",
+      "aoe"
+    ]
+  },
+  {
+    "id": "me_regen",
+    "name": "Regen Field",
+    "kind": "passive",
+    "description": "The most wounded ally heals a little each turn.",
+    "effects": [
+      {
+        "type": "heal",
+        "pctMaxHp": 3,
+        "trigger": "onTurnStart",
+        "target": "lowest_hp_ally"
+      }
+    ],
+    "tags": []
+  },
+  {
+    "id": "me_resuscitate",
+    "name": "Resuscitate",
+    "kind": "active",
+    "description": "Brings a fallen ally back (once per combat).",
+    "cooldown": 5,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "ally",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "revive",
+        "pctMaxHp": 35,
+        "limit": "combat"
+      }
+    ],
+    "tags": [
+      "heal",
+      "revive"
+    ]
+  },
+  {
+    "id": "me_steady_hands",
+    "name": "Steady Hands",
+    "kind": "passive",
+    "description": "Sturdier frame.",
+    "effects": [
+      {
+        "type": "stat",
+        "stat": "hp",
+        "pct": 8
+      }
+    ],
+    "tags": []
+  },
+  {
+    "id": "me_sedate",
+    "name": "Sedate",
+    "kind": "active",
+    "description": "Calms one ally down.",
+    "cooldown": 2,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "ally",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "stress",
+        "amount": -20
+      }
+    ],
+    "tags": [
+      "stress"
+    ]
+  },
+  {
+    "id": "me_calm_presence",
+    "name": "Calm Presence",
+    "kind": "passive",
+    "description": "The squad loses a little stress every round.",
+    "effects": [
+      {
+        "type": "stress",
+        "amount": -1,
+        "trigger": "onRoundStart",
+        "target": "allies"
+      }
+    ],
+    "tags": []
+  },
+  {
+    "id": "me_calm_aura",
+    "name": "Calm Aura",
+    "kind": "active",
+    "description": "Soothes the whole squad.",
+    "cooldown": 4,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "ally",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "all"
+    },
+    "effects": [
+      {
+        "type": "stress",
+        "amount": -10,
+        "target": "allies"
+      }
+    ],
+    "tags": [
+      "stress",
+      "aoe"
+    ]
+  },
+  {
+    "id": "me_composure",
+    "name": "Composure",
+    "kind": "passive",
+    "description": "Her own stress rises more slowly.",
+    "effects": [
+      {
+        "type": "stress_taken",
+        "pct": -15,
+        "direction": "gain"
+      }
+    ],
+    "tags": []
+  },
+  {
+    "id": "me_antiviral",
+    "name": "Antiviral",
+    "kind": "active",
+    "description": "Cleanses and patches one ally.",
+    "cooldown": 2,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "ally",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "cleanse",
+        "kind": "debuff",
+        "count": 2
+      },
+      {
+        "type": "heal",
+        "pctMaxHp": 10
+      }
+    ],
+    "tags": [
+      "cleanse",
+      "heal"
+    ]
+  },
+  {
+    "id": "me_inoculated",
+    "name": "Inoculated",
+    "kind": "passive",
+    "description": "Immune to Infect.",
+    "effects": [
+      {
+        "type": "immune",
+        "statusId": "infect"
+      }
+    ],
+    "tags": []
+  },
+  {
+    "id": "me_pathogen",
+    "name": "Pathogen Round",
+    "kind": "active",
+    "description": "A corrosive round.",
+    "cooldown": 3,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 0.8
+      },
+      {
+        "type": "status",
+        "statusId": "corrode",
+        "turns": 2
+      }
+    ],
+    "tags": [
+      "ranged",
+      "debuff"
+    ]
+  },
+  {
+    "id": "me_hazmat",
+    "name": "Hazmat",
+    "kind": "passive",
+    "description": "Takes less damage.",
+    "effects": [
+      {
+        "type": "incoming",
+        "pct": -8
+      }
+    ],
+    "tags": []
+  },
+  {
+    "id": "me_ult_field_surgery",
+    "name": "Field Surgery",
+    "kind": "ultimate",
+    "description": "Heals and cleanses the whole squad.",
+    "cooldown": 4,
+    "cp": 3,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "ally",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "all"
+    },
+    "effects": [
+      {
+        "type": "heal",
+        "pctMaxHp": 40,
+        "target": "allies"
+      },
+      {
+        "type": "cleanse",
+        "kind": "debuff",
+        "count": 1,
+        "target": "allies"
+      }
+    ],
+    "tags": [
+      "ultimate",
+      "heal",
+      "aoe"
+    ]
+  },
+  {
+    "id": "sp_emitter",
+    "name": "Emitter Burst",
+    "kind": "active",
+    "description": "A focused energy burst.",
+    "cooldown": 0,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 0.9
+      }
+    ],
+    "tags": [
+      "ranged"
+    ]
+  },
+  {
+    "id": "sp_corrosive",
+    "name": "Corrosive Round",
+    "kind": "active",
+    "description": "Weakens armor.",
+    "cooldown": 2,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 0.6
+      },
+      {
+        "type": "status",
+        "statusId": "corrode",
+        "turns": 2
+      }
+    ],
+    "tags": [
+      "ranged",
+      "debuff"
+    ]
+  },
+  {
+    "id": "sp_acid_cloud",
+    "name": "Acid Cloud",
+    "kind": "active",
+    "description": "Eats through a whole row.",
+    "cooldown": 3,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "row"
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 0.5
+      },
+      {
+        "type": "status",
+        "statusId": "corrode",
+        "turns": 2
+      }
+    ],
+    "tags": [
+      "aoe",
+      "debuff"
+    ]
+  },
+  {
+    "id": "sp_slow_burn",
+    "name": "Slow Burn",
+    "kind": "passive",
+    "description": "Her hits sometimes ignite the target.",
+    "effects": [
+      {
+        "type": "status",
+        "statusId": "burn",
+        "turns": 2,
+        "trigger": "onHit",
+        "chance": 0.25
+      }
+    ],
+    "tags": []
+  },
+  {
+    "id": "sp_meltdown",
+    "name": "Meltdown",
+    "kind": "active",
+    "description": "A searing blast.",
+    "cooldown": 4,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 1
+      },
+      {
+        "type": "status",
+        "statusId": "burn",
+        "turns": 3
+      }
+    ],
+    "tags": [
+      "ranged",
+      "dot"
+    ]
+  },
+  {
+    "id": "sp_solvent",
+    "name": "Solvent",
+    "kind": "passive",
+    "description": "Hits harder.",
+    "effects": [
+      {
+        "type": "stat",
+        "stat": "atk",
+        "pct": 8
+      }
+    ],
+    "tags": []
+  },
+  {
+    "id": "sp_drone_strike",
+    "name": "Drone Strike",
+    "kind": "active",
+    "description": "Drones strafe the target regardless of rows.",
+    "cooldown": 2,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 0.5,
+        "hits": 2,
+        "ignoreRows": true
+      }
+    ],
+    "tags": [
+      "drone"
+    ]
+  },
+  {
+    "id": "sp_sentry_drone",
+    "name": "Sentry Drone",
+    "kind": "passive",
+    "description": "A drone shoots a random enemy every turn.",
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 0.3,
+        "trigger": "onTurnStart",
+        "target": "random_enemy",
+        "ignoreRows": true
+      }
+    ],
+    "tags": []
+  },
+  {
+    "id": "sp_swarm",
+    "name": "Drone Swarm",
+    "kind": "active",
+    "description": "The whole swarm hits everyone.",
+    "cooldown": 4,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "all"
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 0.5,
+        "ignoreRows": true
+      }
+    ],
+    "tags": [
+      "drone",
+      "aoe"
+    ]
+  },
+  {
+    "id": "sp_overwatch_drones",
+    "name": "Overwatch Drones",
+    "kind": "passive",
+    "description": "Drones harass an enemy at the start of every round.",
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 0.2,
+        "trigger": "onRoundStart",
+        "target": "random_enemy",
+        "ignoreRows": true
+      }
+    ],
+    "tags": []
+  },
+  {
+    "id": "sp_spore_burst",
+    "name": "Spore Burst",
+    "kind": "active",
+    "description": "A risky viral shot.",
+    "cooldown": 3,
+    "stressCost": 5,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 1.4
+      },
+      {
+        "type": "status",
+        "statusId": "bleed",
+        "turns": 3
+      }
+    ],
+    "tags": [
+      "ranged",
+      "bloom"
+    ]
+  },
+  {
+    "id": "sp_viral_load",
+    "name": "Viral Load",
+    "kind": "passive",
+    "description": "Hits harder.",
+    "effects": [
+      {
+        "type": "outgoing",
+        "pct": 8
+      }
+    ],
+    "tags": []
+  },
+  {
+    "id": "sp_bloom_surge",
+    "name": "Bloom Surge",
+    "kind": "active",
+    "description": "Releases a cloud of Bloom spores over everyone.",
+    "cooldown": 4,
+    "stressCost": 8,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "all"
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 1
+      },
+      {
+        "type": "status",
+        "statusId": "bleed",
+        "turns": 3
+      }
+    ],
+    "tags": [
+      "aoe",
+      "bloom"
+    ]
+  },
+  {
+    "id": "sp_acclimated",
+    "name": "Acclimated",
+    "kind": "passive",
+    "description": "Her stress rises more slowly.",
+    "effects": [
+      {
+        "type": "stress_taken",
+        "pct": -20,
+        "direction": "gain"
+      }
+    ],
+    "tags": []
+  },
+  {
+    "id": "sp_ult_cascade",
+    "name": "Cascade Failure",
+    "kind": "ultimate",
+    "description": "Overloads every enemy system.",
+    "cooldown": 4,
+    "cp": 3,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "all"
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 1.1
+      },
+      {
+        "type": "status",
+        "statusId": "corrode",
+        "turns": 2,
+        "stacks": 2
+      },
+      {
+        "type": "status",
+        "statusId": "stun",
+        "turns": 1,
+        "chance": 0.4
+      }
+    ],
+    "tags": [
+      "ultimate",
+      "aoe"
+    ]
+  },
+  {
+    "id": "sig_last_stand",
+    "name": "Last Stand",
+    "kind": "passive",
+    "description": "Below 30% HP her attacks deal double and she cannot be stunned.",
+    "effects": [
+      {
+        "type": "outgoing",
+        "pct": 100,
+        "when": {
+          "hpBelowPct": 30
+        }
+      },
+      {
+        "type": "immune",
+        "statusId": "stun",
+        "when": {
+          "hpBelowPct": 30
+        }
+      }
+    ],
+    "tags": [
+      "signature"
+    ]
+  },
+  {
+    "id": "sig_shared_pain",
+    "name": "Shared Pain",
+    "kind": "signature",
+    "description": "Takes half of the damage meant for an ally for 2 turns.",
+    "cooldown": 4,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "ally",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "redirect",
+        "pct": 50,
+        "turns": 2,
+        "from": "ally"
+      }
+    ],
+    "tags": [
+      "signature",
+      "defense"
+    ]
+  },
+  {
+    "id": "sig_cold_read",
+    "name": "Cold Read",
+    "kind": "signature",
+    "description": "Exposes a weakness: the target is marked and the squad crits more.",
+    "cooldown": 4,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "status",
+        "statusId": "mark",
+        "turns": 2
+      },
+      {
+        "type": "stat",
+        "stat": "crit",
+        "pct": 15,
+        "turns": 2,
+        "target": "allies"
+      }
+    ],
+    "tags": [
+      "signature",
+      "debuff"
+    ]
+  },
+  {
+    "id": "sig_lullaby",
+    "name": "Lullaby",
+    "kind": "signature",
+    "description": "Takes the squad's stress onto herself.",
+    "cooldown": 4,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "self",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "stress",
+        "amount": -15,
+        "target": "allies_other"
+      },
+      {
+        "type": "stress",
+        "amount": 5,
+        "target": "self"
+      }
+    ],
+    "tags": [
+      "signature",
+      "stress"
+    ]
+  },
+  {
+    "id": "sig_frenzy",
+    "name": "Frenzy",
+    "kind": "signature",
+    "description": "Three wild hits at random enemies, at a cost to her nerves.",
+    "cooldown": 3,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "self",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 0.6,
+        "hits": 3,
+        "target": "random_enemy"
+      },
+      {
+        "type": "stress",
+        "amount": 5,
+        "target": "self"
+      }
+    ],
+    "tags": [
+      "signature"
+    ]
+  },
+  {
+    "id": "sig_mock",
+    "name": "Mock",
+    "kind": "signature",
+    "description": "Taunts the enemy and rattles their aim.",
+    "cooldown": 4,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "self",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "status",
+        "statusId": "taunt",
+        "turns": 2,
+        "target": "self"
+      },
+      {
+        "type": "stat",
+        "stat": "atk",
+        "pct": -10,
+        "turns": 2,
+        "target": "enemies"
+      }
+    ],
+    "tags": [
+      "signature",
+      "taunt"
+    ]
+  },
+  {
+    "id": "sig_vanish",
+    "name": "Vanish",
+    "kind": "signature",
+    "description": "Disappears for a turn; the next shot is a sure crit.",
+    "cooldown": 4,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "self",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "status",
+        "statusId": "untargetable",
+        "turns": 1,
+        "target": "self"
+      },
+      {
+        "type": "stat",
+        "stat": "crit",
+        "pct": 100,
+        "turns": 2,
+        "target": "self"
+      }
+    ],
+    "tags": [
+      "signature"
+    ]
+  },
+  {
+    "id": "sig_command_echo",
+    "name": "Command Echo",
+    "kind": "signature",
+    "description": "Repeats the last order for free.",
+    "cooldown": 5,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "self",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "repeat_order"
+      }
+    ],
+    "tags": [
+      "signature",
+      "order"
+    ]
+  },
+  {
+    "id": "sig_scavenge",
+    "name": "Scavenge",
+    "kind": "passive",
+    "description": "A kill earns an extra loot roll.",
+    "effects": [
+      {
+        "type": "loot_roll",
+        "extra": 1,
+        "trigger": "onKill",
+        "target": "self"
+      }
+    ],
+    "tags": [
+      "signature"
+    ]
+  },
+  {
+    "id": "sig_overclock_burst",
+    "name": "Overclock Burst",
+    "kind": "signature",
+    "description": "Acts again right now, then shuts down for a turn.",
+    "cooldown": 5,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "self",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "extra_action",
+        "target": "self"
+      },
+      {
+        "type": "status",
+        "statusId": "stun",
+        "turns": 1,
+        "target": "self"
+      }
+    ],
+    "tags": [
+      "signature"
+    ]
+  },
+  {
+    "id": "sig_spite",
+    "name": "Spite",
+    "kind": "signature",
+    "description": "Hits harder the worse her allies are hurt.",
+    "cooldown": 4,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 0.8,
+        "scale": {
+          "by": "allies_hp_missing_pct",
+          "per": 0.02
+        }
+      }
+    ],
+    "tags": [
+      "signature"
+    ]
+  },
+  {
+    "id": "sig_anchor_words",
+    "name": "Anchor Words",
+    "kind": "signature",
+    "description": "Talks an ally back from the edge.",
+    "cooldown": 5,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "ally",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "stress",
+        "amount": -25
+      },
+      {
+        "type": "cleanse",
+        "kind": "debuff",
+        "count": 1
+      }
+    ],
+    "tags": [
+      "signature",
+      "stress"
+    ]
+  }
+]

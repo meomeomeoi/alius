@@ -139,13 +139,13 @@ const fx = <T extends string, S extends z.ZodRawShape>(type: T, shape: S) =>
 const statEnum = z.enum(STATS);
 
 const EffectUnion = z.discriminatedUnion('type', [
-  fx('damage', { mult: num.positive(), hits: int.min(1).optional(), ignoreRows: z.boolean().optional(), critBonus: num.optional(), scale: ScaleSchema.optional() }),
+  fx('damage', { mult: num.positive().optional(), pctMaxHp: num.positive().optional(), hits: int.min(1).optional(), ignoreRows: z.boolean().optional(), critBonus: num.optional(), scale: ScaleSchema.optional() }),
   fx('heal', { pctMaxHp: num.positive() }),
   fx('revive', { pctMaxHp: num.positive() }),
   fx('status', { statusId: str, turns: int.min(1).optional(), stacks: int.min(1).optional() }),
   fx('cleanse', { kind: z.enum(['buff', 'debuff']), count: int.min(1) }),
   fx('stat', { stat: z.union([statEnum, z.literal('all')]), pct: num, turns: int.min(1).optional(), scale: ScaleSchema.optional() }),
-  fx('outgoing', { pct: num, vs: z.enum(['any', 'marked', 'locked']).optional() }),
+  fx('outgoing', { pct: num, vs: z.enum(['any', 'marked', 'locked']).optional(), scale: ScaleSchema.optional() }),
   fx('incoming', { pct: num }),
   fx('stress', { amount: num }),
   fx('stress_taken', { pct: num, direction: z.enum(['gain', 'relief']) }),
@@ -178,6 +178,7 @@ export const CombatEffectSchema = EffectUnion.superRefine((e, ctx) => {
     issue('scope', 'scope "ally" is only valid with onHit, onCrit or onKill');
   }
   if ((e.type === 'misfire' || e.type === 'order_refusal') && e.chance === undefined) issue('chance', `${e.type} needs a chance`);
+  if (e.type === 'damage' && (e.mult === undefined) === (e.pctMaxHp === undefined)) issue('mult', 'damage needs exactly one of mult and pctMaxHp');
 });
 export type CombatEffect = z.infer<typeof CombatEffectSchema>;
 const effects = z.array(CombatEffectSchema);
@@ -258,13 +259,12 @@ export const RoleSchema = BaseEntrySchema.extend({
   /** One line, used in prompts. */
   summary: str,
   branches: z.array(z.object({ name: str, summary: str })),
-  // P4 (optional until the core pack ships them)
-  growth: GrowthSchema.optional(),
-  aiProfile: aiProfileForRoles.optional(),
-  starterSkills: z.array(str).length(2).optional(),
-  tree: z.array(TreeNodeSchema).optional(),
+  // P4
+  growth: GrowthSchema,
+  aiProfile: aiProfileForRoles,
+  starterSkills: z.array(str).length(2),
+  tree: z.array(TreeNodeSchema),
 }).superRefine((r, ctx) => {
-  if (!r.tree) return;
   const issue = (path: Array<string | number>, message: string) => ctx.addIssue({ code: 'custom', path, message });
   if (r.tree.length !== 16) issue(['tree'], `a tree has exactly 16 nodes, this one has ${r.tree.length}`);
   const ultimates = r.tree.filter((n) => n.branch === null);
@@ -293,7 +293,7 @@ export const SignatureSchema = BaseEntrySchema.extend({
   mechanic: str,
   fits: str,
   /** P4: the `skills` entry that implements the template (by convention the same id). */
-  skill: str.optional(),
+  skill: str,
 });
 
 // `DefectSchema` is defined after the P3 pieces below it depends on.
@@ -302,16 +302,16 @@ export const StatusSchema = BaseEntrySchema.extend({
   name: str,
   kind: z.enum(['buff', 'debuff']),
   description: str,
-  // P4 mechanics (optional until the core pack ships them)
-  turns: int.min(1).optional(),
-  maxStacks: int.min(1).optional(),
-  stackMode: z.enum(['add', 'refresh']).optional(),
+  // P4 mechanics
+  turns: int.min(1),
+  maxStacks: int.min(1),
+  stackMode: z.enum(['add', 'refresh']),
   /** Effects run at the owner's turn start, once per stack; `target: 'self'` is the owner. */
   tick: z.array(CombatEffectSchema).optional(),
   /** Stat multipliers per stack, in percent. */
   mods: z.record(statEnum, num).optional(),
   incomingPct: num.optional(),
-  flags: z.array(z.enum(['skipTurn', 'taunt', 'untargetable', 'absorb'])).optional(),
+  flags: z.array(z.enum(['skipTurn', 'taunt', 'untargetable', 'absorb', 'rooted'])).optional(),
 });
 
 /** Compact lorebook shipped by a pack; converted to SillyTavern's format by the adapter. */
@@ -610,7 +610,7 @@ export const DefectSchema = BaseEntrySchema.extend({
     c.downside.forEach((e, i) => {
       if (e.downside !== true) ctx.addIssue({ code: 'custom', path: ['downside', i, 'downside'], message: 'every downside effect must carry downside: true' });
     });
-  }).optional(),
+  }),
 });
 
 Object.assign(registrySchemas, {

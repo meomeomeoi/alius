@@ -3,72 +3,84 @@
     "id": "sig_last_stand",
     "name": "Last Stand",
     "mechanic": "Below 30% HP: next attack x2, can't be stunned.",
-    "fits": "stubborn, proud"
+    "fits": "stubborn, proud",
+    "skill": "sig_last_stand"
   },
   {
     "id": "sig_shared_pain",
     "name": "Shared Pain",
     "mechanic": "Redirect 50% of damage from an ally to self for 2 turns.",
-    "fits": "protective, self-sacrificing"
+    "fits": "protective, self-sacrificing",
+    "skill": "sig_shared_pain"
   },
   {
     "id": "sig_cold_read",
     "name": "Cold Read",
     "mechanic": "Reveal enemy weakness; team +15% crit vs target.",
-    "fits": "analytical, cold"
+    "fits": "analytical, cold",
+    "skill": "sig_cold_read"
   },
   {
     "id": "sig_lullaby",
     "name": "Lullaby",
     "mechanic": "Remove 15 stress from all allies, self +5.",
-    "fits": "nurturing, calm"
+    "fits": "nurturing, calm",
+    "skill": "sig_lullaby"
   },
   {
     "id": "sig_frenzy",
     "name": "Frenzy",
     "mechanic": "3 random hits, +5 stress self.",
-    "fits": "wild, impulsive"
+    "fits": "wild, impulsive",
+    "skill": "sig_frenzy"
   },
   {
     "id": "sig_mock",
     "name": "Mock",
     "mechanic": "Taunt all + enemies -10% ATK.",
-    "fits": "sharp-tongued, theatrical"
+    "fits": "sharp-tongued, theatrical",
+    "skill": "sig_mock"
   },
   {
     "id": "sig_vanish",
     "name": "Vanish",
     "mechanic": "Untargetable 1 turn, next shot crit.",
-    "fits": "evasive, secretive"
+    "fits": "evasive, secretive",
+    "skill": "sig_vanish"
   },
   {
     "id": "sig_command_echo",
     "name": "Command Echo",
     "mechanic": "Repeat the last CP order for free.",
-    "fits": "disciplined, loyal"
+    "fits": "disciplined, loyal",
+    "skill": "sig_command_echo"
   },
   {
     "id": "sig_scavenge",
     "name": "Scavenge",
     "mechanic": "On kill: extra loot roll.",
-    "fits": "greedy, resourceful"
+    "fits": "greedy, resourceful",
+    "skill": "sig_scavenge"
   },
   {
     "id": "sig_overclock_burst",
     "name": "Overclock Burst",
     "mechanic": "Act twice this turn, then skip next.",
-    "fits": "reckless, energetic"
+    "fits": "reckless, energetic",
+    "skill": "sig_overclock_burst"
   },
   {
     "id": "sig_spite",
     "name": "Spite",
     "mechanic": "Damage scales with HP missing of allies.",
-    "fits": "vengeful"
+    "fits": "vengeful",
+    "skill": "sig_spite"
   },
   {
     "id": "sig_anchor_words",
     "name": "Anchor Words",
     "mechanic": "Ally in breakdown recovers immediately.",
-    "fits": "empathetic"
+    "fits": "empathetic",
+    "skill": "sig_anchor_words"
   }
 ]

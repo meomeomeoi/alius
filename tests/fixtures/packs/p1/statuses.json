@@ -1,1 +1,11 @@
-[ { "id": "bleed", "name": "Bleed", "kind": "debuff", "description": "Loses HP each turn." } ]
+[
+  {
+    "id": "bleed",
+    "name": "Bleed",
+    "kind": "debuff",
+    "description": "Loses HP each turn.",
+    "turns": 3,
+    "maxStacks": 3,
+    "stackMode": "add"
+  }
+]

@@ -3,60 +3,175 @@
     "id": "bleed",
     "name": "Bleed",
     "kind": "debuff",
-    "description": "Loses HP at the start of each turn."
+    "description": "Loses HP at the start of each turn.",
+    "turns": 3,
+    "maxStacks": 3,
+    "stackMode": "add",
+    "tick": [
+      {
+        "type": "damage",
+        "pctMaxHp": 4,
+        "target": "self"
+      }
+    ]
   },
   {
     "id": "burn",
     "name": "Burn",
     "kind": "debuff",
-    "description": "Takes fire damage at the start of each turn."
+    "description": "Takes fire damage at the start of each turn.",
+    "turns": 2,
+    "maxStacks": 1,
+    "stackMode": "refresh",
+    "tick": [
+      {
+        "type": "damage",
+        "pctMaxHp": 6,
+        "target": "self"
+      }
+    ]
   },
   {
     "id": "stun",
     "name": "Stun",
     "kind": "debuff",
-    "description": "Loses the next turn."
+    "description": "Loses the next turn.",
+    "turns": 1,
+    "maxStacks": 1,
+    "stackMode": "refresh",
+    "flags": [
+      "skipTurn"
+    ]
   },
   {
     "id": "mark",
     "name": "Mark",
     "kind": "debuff",
-    "description": "Marked target: allies deal bonus damage to it."
+    "description": "Marked target: allies deal bonus damage to it.",
+    "turns": 2,
+    "maxStacks": 1,
+    "stackMode": "refresh",
+    "incomingPct": 15
   },
   {
     "id": "guard",
     "name": "Guard",
     "kind": "buff",
-    "description": "Reduces damage taken; can intercept hits meant for allies."
+    "description": "Reduces damage taken; can intercept hits meant for allies.",
+    "turns": 2,
+    "maxStacks": 1,
+    "stackMode": "refresh",
+    "incomingPct": -30
   },
   {
     "id": "taunt",
     "name": "Taunt",
     "kind": "buff",
-    "description": "Enemies must target this unit."
+    "description": "Enemies must target this unit.",
+    "turns": 2,
+    "maxStacks": 1,
+    "stackMode": "refresh",
+    "flags": [
+      "taunt"
+    ]
   },
   {
     "id": "corrode",
     "name": "Corrode",
     "kind": "debuff",
-    "description": "DEF reduced."
+    "description": "DEF reduced.",
+    "turns": 3,
+    "maxStacks": 3,
+    "stackMode": "add",
+    "mods": {
+      "def": -15
+    }
   },
   {
     "id": "infect",
     "name": "Infect",
     "kind": "debuff",
-    "description": "Gains stress over time. Inflicted by mutants."
+    "description": "Gains stress over time. Inflicted by mutants.",
+    "turns": 3,
+    "maxStacks": 3,
+    "stackMode": "add",
+    "tick": [
+      {
+        "type": "stress",
+        "amount": 3,
+        "target": "self"
+      }
+    ]
   },
   {
     "id": "overheat",
     "name": "Overheat",
     "kind": "debuff",
-    "description": "Stats reduced by overheated implants. Caused by Cybernetic defects."
+    "description": "Stats reduced by overheated implants. Caused by Cybernetic defects.",
+    "turns": 3,
+    "maxStacks": 3,
+    "stackMode": "add",
+    "mods": {
+      "atk": -10,
+      "spd": -10
+    }
   },
   {
     "id": "shield",
     "name": "Shield",
     "kind": "buff",
-    "description": "Absorbs damage before HP is lost."
+    "description": "Absorbs damage before HP is lost.",
+    "turns": 3,
+    "maxStacks": 3,
+    "stackMode": "add",
+    "flags": [
+      "absorb"
+    ]
+  },
+  {
+    "id": "hold_line",
+    "name": "Hold the Line",
+    "kind": "buff",
+    "description": "DEF +30% and cannot be moved out of her row.",
+    "turns": 1,
+    "maxStacks": 1,
+    "stackMode": "refresh",
+    "mods": {
+      "def": 30
+    },
+    "flags": [
+      "rooted"
+    ]
+  },
+  {
+    "id": "authorized",
+    "name": "Authorized",
+    "kind": "buff",
+    "description": "May use her ultimate this turn without spending CP.",
+    "turns": 1,
+    "maxStacks": 1,
+    "stackMode": "refresh"
+  },
+  {
+    "id": "untargetable",
+    "name": "Untargetable",
+    "kind": "buff",
+    "description": "Cannot be targeted.",
+    "turns": 1,
+    "maxStacks": 1,
+    "stackMode": "refresh",
+    "flags": [
+      "untargetable"
+    ]
+  },
+  {
+    "id": "focus",
+    "name": "Focus",
+    "kind": "debuff",
+    "description": "Focused by the whole squad: takes 25% more damage.",
+    "turns": 1,
+    "maxStacks": 1,
+    "stackMode": "refresh",
+    "incomingPct": 25
   }
 ]

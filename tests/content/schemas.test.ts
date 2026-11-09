@@ -5,14 +5,7 @@ import {
   RelationshipStateSchema, RoleSchema, SignatureSchema, StartSchema, ValuesSchema,
 } from '../../src/content/schemas';
 
-const role = {
-  id: 'r', name: 'R', row: 'front', baseStats: { hp: 100, atk: 20, def: 10, spd: 12, crit: 5 },
-  weaponClasses: ['rifle'], armorWeights: ['light'], identity: 'i', summary: 's', branches: [],
-};
-const defect = {
-  id: 'd', name: 'D', category: 'neural', lore: 'l', upside: 'u', downside: 'd',
-  breakdown: { name: 'b', text: 't' }, social: 's', arc: { cure: 'c', manage: 'm', embrace: 'e' },
-};
+import { defect, role } from '../helpers/combatContent';
 const beat = (i: number) => ({ id: `beat_${i}`, title: 't', goal: 'g' });
 const start = (n: number) => ({
   id: 's', name: 'S', corporationId: 'c', summary: 'x', situation: 'y', spine: Array.from({ length: n }, (_, i) => beat(i + 1)),
@@ -33,7 +26,7 @@ describe('content schemas', () => {
   });
 
   it('signature id must start with sig_', () => {
-    const sig = { id: 'sig_x', name: 'X', mechanic: 'm', fits: 'f' };
+    const sig = { id: 'sig_x', name: 'X', mechanic: 'm', fits: 'f', skill: 'sig_x' };
     expect(SignatureSchema.safeParse(sig).success).toBe(true);
     expect(SignatureSchema.safeParse({ ...sig, id: 'x' }).success).toBe(false);
   });

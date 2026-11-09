@@ -7,6 +7,7 @@ import {
 } from '../../src/content/schemas';
 import { REGISTRY_NAMES } from '../../src/content/types';
 import { EFFECT_TYPES } from '../../src/engine/combat/types';
+import { defect, defectBase, defectCombat, growth, role, roleSkills, skill, status, tree } from '../helpers/combatContent';
 
 const MIN: Record<string, Record<string, unknown>> = {
   damage: { type: 'damage', mult: 1 },
@@ -39,31 +40,6 @@ const MIN: Record<string, Record<string, unknown>> = {
   injury_days: { type: 'injury_days', pct: 50 },
 };
 
-const skill = {
-  id: 's', name: 'S', kind: 'active', description: 'd', cooldown: 1, usableFrom: ['front'],
-  targets: { side: 'enemy', rows: ['front', 'back'], count: 'one' }, effects: [{ type: 'damage', mult: 1 }], tags: [],
-};
-
-const growth = { hp: 6, atk: 1, def: 0.5, spd: 0.1, crit: 0.2 };
-function tree(over: (nodes: Array<Record<string, unknown>>) => void = () => {}) {
-  const nodes: Array<Record<string, unknown>> = [];
-  for (let b = 0; b < 3; b++) {
-    for (let t = 1; t <= 5; t++) {
-      nodes.push({
-        id: `n_${b}_${t}`, branch: b, tier: t, cost: t + 1, requires: t === 1 ? [] : [`n_${b}_${t - 1}`],
-        grants: { skill: `sk_${b}_${t}` },
-      });
-    }
-  }
-  nodes.push({ id: 'n_ult', branch: null, tier: null, cost: 6, requires: [], grants: { skill: 'sk_ult' } });
-  over(nodes);
-  return nodes;
-}
-const role = {
-  id: 'r', name: 'R', row: 'front', baseStats: { hp: 100, atk: 20, def: 10, spd: 12, crit: 5 },
-  weaponClasses: ['Blade'], armorWeights: ['light'], identity: 'i', summary: 's', branches: [],
-  growth, aiProfile: 'aggressive', starterSkills: ['a', 'b'], tree: tree(),
-};
 const enemy = {
   id: 'husk', categoryId: 'c', name: 'Husk', stats: { base: { hp: 40, atk: 10, def: 5, spd: 8, crit: 0 }, growth },
   skills: ['sk'], aiProfile: 'aggressive', rowPreference: 'front', power: 1,
@@ -77,6 +53,13 @@ describe('combat effect schemas', () => {
       expect(CombatEffectSchema.safeParse(fx).success, `${type} minimal`).toBe(true);
       expect(CombatEffectSchema.safeParse({ ...fx, bogus: 1 }).success, `${type} bogus`).toBe(false);
     }
+  });
+
+  it('damage needs exactly one of mult and pctMaxHp; outgoing may scale', () => {
+    expect(CombatEffectSchema.safeParse({ type: 'damage' }).success).toBe(false);
+    expect(CombatEffectSchema.safeParse({ type: 'damage', mult: 1, pctMaxHp: 4 }).success).toBe(false);
+    expect(CombatEffectSchema.safeParse({ type: 'damage', pctMaxHp: 4, target: 'self' }).success).toBe(true);
+    expect(CombatEffectSchema.safeParse({ type: 'outgoing', pct: 0, scale: { by: 'own_hp_missing_pct', per: 0.5 } }).success).toBe(true);
   });
 
   it('misfire and order_refusal need a chance', () => {
@@ -135,10 +118,12 @@ describe('skill schema', () => {
 });
 
 describe('role, signature, status and defect extensions', () => {
-  it('a role without P4 fields still parses; with them it is validated', () => {
-    const { growth: _g, aiProfile: _a, starterSkills: _s, tree: _t, ...plain } = role;
-    expect(RoleSchema.safeParse(plain).success).toBe(true);
+  it('a role needs its P4 fields', () => {
     expect(RoleSchema.safeParse(role).success).toBe(true);
+    for (const key of ['growth', 'aiProfile', 'starterSkills', 'tree']) {
+      const { [key]: _omit, ...rest } = role as Record<string, unknown>;
+      expect(RoleSchema.safeParse(rest).success, key).toBe(false);
+    }
   });
 
   it('role tree needs 16 nodes and exactly one ultimate node', () => {
@@ -155,32 +140,29 @@ describe('role, signature, status and defect extensions', () => {
   });
 
   it('signature may point at its mechanics skill', () => {
-    expect(SignatureSchema.safeParse({ id: 'sig_x', name: 'X', mechanic: 'm', fits: 'f', skill: 'sig_x' }).success).toBe(true);
+    const sig = { id: 'sig_x', name: 'X', mechanic: 'm', fits: 'f', skill: 'sig_x' };
+    expect(SignatureSchema.safeParse(sig).success).toBe(true);
+    const { skill: _s, ...noSkill } = sig;
+    expect(SignatureSchema.safeParse(noSkill).success).toBe(false);
   });
 
   it('status mechanics: stackMode and flags are enumerated', () => {
-    const st = { id: 'bleed', name: 'Bleed', kind: 'debuff', description: 'd', turns: 3, maxStacks: 3, stackMode: 'add',
-      tick: [{ type: 'damage', mult: 0.1, target: 'self' }], flags: ['skipTurn'] };
+    const st = { ...status, tick: [{ type: 'damage', pctMaxHp: 4, target: 'self' }], flags: ['skipTurn'] };
     expect(StatusSchema.safeParse(st).success).toBe(true);
     expect(StatusSchema.safeParse({ ...st, stackMode: 'multiply' }).success).toBe(false);
     expect(StatusSchema.safeParse({ ...st, flags: ['wow'] }).success).toBe(false);
+    const { turns: _t, ...noTurns } = st;
+    expect(StatusSchema.safeParse(noTurns).success).toBe(false);
   });
 
   it('defect combat data: every downside effect must carry downside: true', () => {
-    const defect = {
-      id: 'd', name: 'D', category: 'neural', lore: 'l', upside: 'u', downside: 'd',
-      breakdown: { name: 'b', text: 't' }, social: 's', arc: { cure: 'c', manage: 'm', embrace: 'e' },
-      combat: {
-        upside: [{ type: 'stat', stat: 'atk', pct: 10 }],
-        downside: [{ type: 'stress', amount: 1, trigger: 'onRoundStart', downside: true }],
-        breakdown: { policy: 'skip', ignoresOrders: false, onEnter: [], actionEffects: [] },
-      },
-    };
     expect(DefectSchema.safeParse(defect).success).toBe(true);
     const bad = structuredClone(defect);
     delete (bad.combat.downside[0] as Record<string, unknown>).downside;
     expect(DefectSchema.safeParse(bad).success).toBe(false);
-    expect(DefectSchema.safeParse({ ...defect, combat: { ...defect.combat, breakdown: { ...defect.combat.breakdown, policy: 'dance' } } }).success).toBe(false);
+    expect(DefectSchema.safeParse({ ...defect, combat: { ...defectCombat, breakdown: { ...defectCombat.breakdown, policy: 'dance' } } }).success).toBe(false);
+    const { combat: _c, ...noCombat } = defect;
+    expect(DefectSchema.safeParse(noCombat).success).toBe(false);
   });
 
   it('order, synergy, enemy category schemas', () => {
@@ -247,7 +229,6 @@ const pack = (files: Record<string, unknown[]>) => {
   for (const [k, v] of Object.entries(files)) out[`p/${k}.json`] = v;
   return out;
 };
-const status = { id: 'bleed', name: 'Bleed', kind: 'debuff', description: 'd' };
 const dmgSkill = (id: string, effects: unknown[] = [{ type: 'damage', mult: 1 }]) => ({ ...skill, id, effects });
 const cat = { id: 'c', name: 'C', frequency: 'common', summary: 's' };
 
@@ -312,7 +293,8 @@ describe('content refs', () => {
   it('item class must be a weapon class or armor weight of some role; recipe rarity may not be below the template', async () => {
     const item = { id: 'blade_std', name: 'B', slot: 'weapon', class: 'Blade', rarity: 'refined', baseStats: { atk: 5 }, effects: [], value: 10 };
     const errs = await errorsOf({
-      roles: [{ ...role, id: 'r1', growth: undefined, aiProfile: undefined, starterSkills: undefined, tree: undefined }].map((r) => JSON.parse(JSON.stringify(r))),
+      skills: roleSkills(),
+      roles: [role],
       items: [item, { ...item, id: 'laser', class: 'Laser' }],
       recipes: [{ id: 'rc', itemId: 'blade_std', rarity: 'standard', cost: { credits: 1, plyx: 1 } }],
     });
@@ -326,8 +308,7 @@ describe('content refs', () => {
       statuses: [{ ...status, tick: [{ type: 'status', statusId: 'ghost_tick', target: 'self' }] }],
       orders: [{ id: 'o', name: 'O', summary: 's', cost: 1, target: 'none', effects: [{ type: 'status', statusId: 'ghost_order' }] }],
       defects: [{
-        id: 'd', name: 'D', category: 'neural', lore: 'l', upside: 'u', downside: 'd', breakdown: { name: 'b', text: 't' }, social: 's',
-        arc: { cure: 'c', manage: 'm', embrace: 'e' },
+        ...defectBase,
         combat: {
           upside: [{ type: 'status', statusId: 'ghost_up' }], downside: [],
           breakdown: { policy: 'skip', ignoresOrders: false, onEnter: [{ type: 'status', statusId: 'ghost_enter' }], actionEffects: [] },

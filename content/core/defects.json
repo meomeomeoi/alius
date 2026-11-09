@@ -15,6 +15,35 @@
       "cure": "Memories gone, scouting gone.",
       "manage": "Journaling ritual with the commander.",
       "embrace": "She starts choosing echoes to wear."
+    },
+    "combat": {
+      "upside": [
+        {
+          "type": "status",
+          "statusId": "mark",
+          "turns": 2,
+          "trigger": "onCombatStart",
+          "target": "random_enemy"
+        }
+      ],
+      "downside": [
+        {
+          "type": "stress",
+          "amount": 2,
+          "trigger": "onRoundStart",
+          "target": "self",
+          "when": {
+            "aloneInRow": true
+          },
+          "downside": true
+        }
+      ],
+      "breakdown": {
+        "policy": "random_skill",
+        "ignoresOrders": true,
+        "onEnter": [],
+        "actionEffects": []
+      }
     }
   },
   {
@@ -37,6 +66,29 @@
     "relationModifiers": {
       "gain": {
         "trust": 1.5
+      }
+    },
+    "combat": {
+      "upside": [
+        {
+          "type": "stress_taken",
+          "pct": -50,
+          "direction": "gain"
+        }
+      ],
+      "downside": [
+        {
+          "type": "order_refusal",
+          "chance": 0.1,
+          "downside": true
+        }
+      ],
+      "breakdown": {
+        "policy": "attack",
+        "ignoresOrders": true,
+        "onEnter": [],
+        "actionEffects": [],
+        "target": "nearest_enemy"
       }
     }
   },
@@ -64,6 +116,33 @@
       "loss": {
         "trust": 0.5
       }
+    },
+    "combat": {
+      "upside": [
+        {
+          "type": "damage",
+          "mult": 0.5,
+          "trigger": "onCombatStart",
+          "target": "random_enemy"
+        }
+      ],
+      "downside": [
+        {
+          "type": "stress",
+          "amount": 2,
+          "trigger": "onRoundStart",
+          "target": "self",
+          "downside": true
+        }
+      ],
+      "breakdown": {
+        "policy": "attack",
+        "ignoresOrders": false,
+        "onEnter": [],
+        "actionEffects": [],
+        "target": "nearest_any",
+        "once": true
+      }
     }
   },
   {
@@ -87,6 +166,55 @@
       "events": {
         "kept_promise": 2,
         "broke_promise": 2
+      }
+    },
+    "combat": {
+      "upside": [
+        {
+          "type": "outgoing",
+          "pct": 15,
+          "when": {
+            "sameRowAndSkill": true
+          }
+        },
+        {
+          "type": "stat",
+          "stat": "crit",
+          "pct": 15,
+          "when": {
+            "sameRowAndSkill": true
+          }
+        }
+      ],
+      "downside": [
+        {
+          "type": "stress",
+          "amount": 5,
+          "trigger": "onTurnStart",
+          "target": "self",
+          "when": {
+            "rowChanged": true
+          },
+          "downside": true
+        },
+        {
+          "type": "stat",
+          "stat": "spd",
+          "pct": -10,
+          "turns": 2,
+          "trigger": "onTurnStart",
+          "target": "self",
+          "when": {
+            "rowChanged": true
+          },
+          "downside": true
+        }
+      ],
+      "breakdown": {
+        "policy": "repeat_last",
+        "ignoresOrders": false,
+        "onEnter": [],
+        "actionEffects": []
       }
     }
   },
@@ -112,6 +240,29 @@
         "affinity": 0.5,
         "attraction": 0.5
       }
+    },
+    "combat": {
+      "upside": [
+        {
+          "type": "stress_taken",
+          "pct": -50,
+          "direction": "gain"
+        }
+      ],
+      "downside": [
+        {
+          "type": "stress_taken",
+          "pct": -50,
+          "direction": "relief",
+          "downside": true
+        }
+      ],
+      "breakdown": {
+        "policy": "skip",
+        "ignoresOrders": false,
+        "onEnter": [],
+        "actionEffects": []
+      }
     }
   },
   {
@@ -130,6 +281,44 @@
       "cure": "Not yet written.",
       "manage": "A sparring outlet in the Training Yard.",
       "embrace": "Controlled fury, terrifying."
+    },
+    "combat": {
+      "upside": [
+        {
+          "type": "stat",
+          "stat": "atk",
+          "pct": 0,
+          "scale": {
+            "by": "stress_above",
+            "per": 1,
+            "base": 30
+          }
+        }
+      ],
+      "downside": [
+        {
+          "type": "stress",
+          "amount": 3,
+          "trigger": "onDamaged",
+          "target": "self",
+          "downside": true
+        },
+        {
+          "type": "order_refusal",
+          "chance": 0.25,
+          "orders": [
+            "hold_the_line"
+          ],
+          "downside": true
+        }
+      ],
+      "breakdown": {
+        "policy": "attack",
+        "ignoresOrders": true,
+        "onEnter": [],
+        "actionEffects": [],
+        "target": "strongest_enemy"
+      }
     }
   },
   {
@@ -148,6 +337,49 @@
       "cure": "Risky treatment (may fail).",
       "manage": "A medbay regimen.",
       "embrace": "She learns to steer the strain."
+    },
+    "combat": {
+      "upside": [
+        {
+          "type": "stat",
+          "stat": "atk",
+          "pct": 20,
+          "when": {
+            "stressMin": 50
+          }
+        },
+        {
+          "type": "heal",
+          "pctMaxHp": 3,
+          "trigger": "onTurnStart",
+          "target": "self",
+          "when": {
+            "stressMin": 50
+          }
+        }
+      ],
+      "downside": [
+        {
+          "type": "stress",
+          "amount": 1,
+          "trigger": "onRoundStart",
+          "target": "self",
+          "downside": true
+        }
+      ],
+      "breakdown": {
+        "policy": "attack",
+        "ignoresOrders": false,
+        "onEnter": [
+          {
+            "type": "damage",
+            "mult": 1.5,
+            "target": "own_row"
+          }
+        ],
+        "actionEffects": [],
+        "target": "nearest_enemy"
+      }
     }
   },
   {
@@ -174,7 +406,31 @@
         "axis": "affinity",
         "amount": 2
       }
-    ]
+    ],
+    "combat": {
+      "upside": [
+        {
+          "type": "heal",
+          "pctMaxHp": 5,
+          "trigger": "onTurnStart",
+          "target": "self"
+        }
+      ],
+      "downside": [],
+      "breakdown": {
+        "policy": "attack",
+        "ignoresOrders": true,
+        "onEnter": [],
+        "actionEffects": [
+          {
+            "type": "heal",
+            "pctMaxHp": 5,
+            "target": "self"
+          }
+        ],
+        "target": "nearest_enemy"
+      }
+    }
   },
   {
     "id": "pain_inversion",
@@ -192,6 +448,48 @@
       "cure": "Not yet written.",
       "manage": "The commander checks on her after each expedition.",
       "embrace": "A wall that will not fall."
+    },
+    "combat": {
+      "upside": [
+        {
+          "type": "outgoing",
+          "pct": 0,
+          "scale": {
+            "by": "own_hp_missing_pct",
+            "per": 0.5
+          }
+        },
+        {
+          "type": "immune",
+          "statusId": "stun"
+        }
+      ],
+      "downside": [
+        {
+          "type": "injury_days",
+          "pct": 50,
+          "trigger": "onCombatEnd",
+          "downside": true
+        }
+      ],
+      "breakdown": {
+        "policy": "attack",
+        "ignoresOrders": false,
+        "onEnter": [
+          {
+            "type": "move",
+            "to": "front"
+          },
+          {
+            "type": "status",
+            "statusId": "hold_line",
+            "turns": 99,
+            "target": "self"
+          }
+        ],
+        "actionEffects": [],
+        "target": "nearest_enemy"
+      }
     }
   },
   {
@@ -217,7 +515,47 @@
         "who": "companion",
         "setFlag": "need_controlled"
       }
-    ]
+    ],
+    "combat": {
+      "upside": [
+        {
+          "type": "stat",
+          "stat": "all",
+          "pct": 20,
+          "when": {
+            "upkeepWithinDays": 3
+          }
+        }
+      ],
+      "downside": [
+        {
+          "type": "stat",
+          "stat": "hp",
+          "pct": -10,
+          "when": {
+            "upkeepOlderThanDays": 3
+          },
+          "downside": true
+        }
+      ],
+      "breakdown": {
+        "policy": "normal",
+        "ignoresOrders": false,
+        "onEnter": [
+          {
+            "type": "hp_set",
+            "value": 1
+          },
+          {
+            "type": "status",
+            "statusId": "stun",
+            "turns": 2,
+            "target": "self"
+          }
+        ],
+        "actionEffects": []
+      }
+    }
   },
   {
     "id": "overclock_bias",
@@ -243,7 +581,40 @@
         "axis": "affinity",
         "amount": 2
       }
-    ]
+    ],
+    "combat": {
+      "upside": [
+        {
+          "type": "stat",
+          "stat": "spd",
+          "pct": 15
+        },
+        {
+          "type": "stat",
+          "stat": "atk",
+          "pct": 10
+        }
+      ],
+      "downside": [
+        {
+          "type": "status",
+          "statusId": "overheat",
+          "turns": 3,
+          "trigger": "onRoundStart",
+          "target": "self",
+          "when": {
+            "roundMin": 4
+          },
+          "downside": true
+        }
+      ],
+      "breakdown": {
+        "policy": "twice_then_shutdown",
+        "ignoresOrders": false,
+        "onEnter": [],
+        "actionEffects": []
+      }
+    }
   },
   {
     "id": "sensor_ghosting",
@@ -261,6 +632,33 @@
       "cure": "Not yet written.",
       "manage": "Calibration sessions.",
       "embrace": "She sees anomalies others cannot."
+    },
+    "combat": {
+      "upside": [
+        {
+          "type": "incoming",
+          "pct": -15
+        }
+      ],
+      "downside": [
+        {
+          "type": "misfire",
+          "chance": 0.1,
+          "downside": true
+        }
+      ],
+      "breakdown": {
+        "policy": "skip",
+        "ignoresOrders": false,
+        "onEnter": [],
+        "actionEffects": [
+          {
+            "type": "stress",
+            "amount": 5,
+            "target": "own_row"
+          }
+        ]
+      }
     }
   },
   {
@@ -279,6 +677,32 @@
       "cure": "Her old self is deleted.",
       "manage": "Not yet written.",
       "embrace": "She integrates both selves."
+    },
+    "combat": {
+      "upside": [
+        {
+          "type": "loadout_slots",
+          "amount": 1
+        }
+      ],
+      "downside": [
+        {
+          "type": "status",
+          "statusId": "stun",
+          "turns": 1,
+          "trigger": "onCombatStart",
+          "target": "self",
+          "chance": 0.1,
+          "downside": true
+        }
+      ],
+      "breakdown": {
+        "policy": "attack",
+        "ignoresOrders": true,
+        "onEnter": [],
+        "actionEffects": [],
+        "target": "nearest_any"
+      }
     }
   },
   {
@@ -297,6 +721,31 @@
       "cure": "Not yet written.",
       "manage": "Not yet written.",
       "embrace": "The lock persists across expeditions (nemesis enemies)."
+    },
+    "combat": {
+      "upside": [
+        {
+          "type": "outgoing",
+          "pct": 40,
+          "vs": "locked"
+        }
+      ],
+      "downside": [
+        {
+          "type": "lock_target",
+          "turns": 3,
+          "trigger": "onAction",
+          "downside": true
+        }
+      ],
+      "breakdown": {
+        "policy": "attack",
+        "ignoresOrders": false,
+        "onEnter": [],
+        "actionEffects": [],
+        "target": "nearest_ally",
+        "once": true
+      }
     }
   },
   {
@@ -337,7 +786,31 @@
           "severity": "major"
         }
       }
-    ]
+    ],
+    "combat": {
+      "upside": [
+        {
+          "type": "stat",
+          "stat": "all",
+          "pct": 10
+        }
+      ],
+      "downside": [
+        {
+          "type": "stress",
+          "amount": 1,
+          "trigger": "onRoundStart",
+          "target": "self",
+          "downside": true
+        }
+      ],
+      "breakdown": {
+        "policy": "skip",
+        "ignoresOrders": true,
+        "onEnter": [],
+        "actionEffects": []
+      }
+    }
   },
   {
     "id": "possessive_protocol",
@@ -356,7 +829,31 @@
       "manage": "Not yet written.",
       "embrace": "Not yet written."
     },
-    "dmChanceBonus": 0.1
+    "dmChanceBonus": 0.1,
+    "combat": {
+      "upside": [
+        {
+          "type": "intercept_lethal",
+          "protect": "commander",
+          "limit": "combat"
+        }
+      ],
+      "downside": [
+        {
+          "type": "order_refusal",
+          "chance": 0.1,
+          "downside": true
+        }
+      ],
+      "breakdown": {
+        "policy": "attack",
+        "ignoresOrders": false,
+        "onEnter": [],
+        "actionEffects": [],
+        "target": "nearest_any",
+        "once": true
+      }
+    }
   },
   {
     "id": "reward_loop",
@@ -374,6 +871,29 @@
       "cure": "Not yet written.",
       "manage": "Not yet written.",
       "embrace": "Not yet written."
+    },
+    "combat": {
+      "upside": [
+        {
+          "type": "stress_taken",
+          "pct": 100,
+          "direction": "relief"
+        }
+      ],
+      "downside": [
+        {
+          "type": "override_action",
+          "policy": "aggressive",
+          "chance": 0.15,
+          "downside": true
+        }
+      ],
+      "breakdown": {
+        "policy": "skip",
+        "ignoresOrders": true,
+        "onEnter": [],
+        "actionEffects": []
+      }
     }
   },
   {
@@ -399,6 +919,32 @@
         "who": "companion",
         "setFlag": "need_controlled"
       }
-    ]
+    ],
+    "combat": {
+      "upside": [
+        {
+          "type": "order_cost",
+          "delta": -1
+        }
+      ],
+      "downside": [
+        {
+          "type": "stress",
+          "amount": 3,
+          "trigger": "onTurnStart",
+          "target": "self",
+          "when": {
+            "notOrderedThisRound": true
+          },
+          "downside": true
+        }
+      ],
+      "breakdown": {
+        "policy": "await_order",
+        "ignoresOrders": false,
+        "onEnter": [],
+        "actionEffects": []
+      }
+    }
   }
 ]
