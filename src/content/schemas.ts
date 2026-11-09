@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { EFFECT_TARGETS, STATS, TRIGGERS, ALWAYS_ON_TYPES } from '../engine/combat/types';
 import { EVENT_TYPES, PROPOSAL_KINDS, SEVERITIES } from '../engine/relations/vocab';
 import { VALUE_AXES } from '../engine/state/types';
 import { REGISTRY_NAMES, type RegistryName } from './types';
@@ -104,6 +105,147 @@ export const CrimeSchema = BaseEntrySchema.extend({
   knownByDefault: z.boolean(),
 });
 
+
+// ---------------------------------------------------------------------------------------------
+// P4: the combat effect vocabulary (see `engine/combat/types.ts`) and the schemas built on it.
+
+const num = z.number();
+const rowEnum = z.enum(['front', 'back']);
+
+export const ConditionSchema = z.object({
+  hpBelowPct: num.optional(), hpAbovePct: num.optional(), stressMin: num.optional(), stressMax: num.optional(),
+  roundMin: num.optional(), targetHasStatus: str.optional(), selfHasStatus: str.optional(),
+  aloneInRow: z.boolean().optional(), sameRowAndSkill: z.boolean().optional(), rowChanged: z.boolean().optional(),
+  commanderExposed: z.boolean().optional(), notOrderedThisRound: z.boolean().optional(),
+  upkeepWithinDays: num.optional(), upkeepOlderThanDays: num.optional(),
+}).strict();
+
+const ScaleSchema = z.object({
+  by: z.enum(['stress_above', 'own_hp_missing_pct', 'allies_hp_missing_pct']), per: num, base: num.optional(),
+}).strict();
+
+const effectCommon = {
+  trigger: z.enum(TRIGGERS).optional(),
+  scope: z.enum(['self', 'ally']).optional(),
+  threshold: z.union([z.literal(50), z.literal(80), z.literal(100)]).optional(),
+  target: z.enum(EFFECT_TARGETS).optional(),
+  when: ConditionSchema.optional(),
+  chance: num.min(0).max(1).optional(),
+  downside: z.boolean().optional(),
+  limit: z.enum(['round', 'combat']).optional(),
+};
+const fx = <T extends string, S extends z.ZodRawShape>(type: T, shape: S) =>
+  z.object({ type: z.literal(type), ...effectCommon, ...shape }).strict();
+const statEnum = z.enum(STATS);
+
+const EffectUnion = z.discriminatedUnion('type', [
+  fx('damage', { mult: num.positive(), hits: int.min(1).optional(), ignoreRows: z.boolean().optional(), critBonus: num.optional(), scale: ScaleSchema.optional() }),
+  fx('heal', { pctMaxHp: num.positive() }),
+  fx('revive', { pctMaxHp: num.positive() }),
+  fx('status', { statusId: str, turns: int.min(1).optional(), stacks: int.min(1).optional() }),
+  fx('cleanse', { kind: z.enum(['buff', 'debuff']), count: int.min(1) }),
+  fx('stat', { stat: z.union([statEnum, z.literal('all')]), pct: num, turns: int.min(1).optional(), scale: ScaleSchema.optional() }),
+  fx('outgoing', { pct: num, vs: z.enum(['any', 'marked', 'locked']).optional() }),
+  fx('incoming', { pct: num }),
+  fx('stress', { amount: num }),
+  fx('stress_taken', { pct: num, direction: z.enum(['gain', 'relief']) }),
+  fx('cp', { amount: int }),
+  fx('move', { to: z.enum(['front', 'back', 'swap']) }),
+  fx('extra_action', {}),
+  fx('redirect', { pct: num.min(0).max(100), turns: int.min(1), from: z.enum(['ally', 'commander']) }),
+  fx('intercept_lethal', { protect: z.enum(['commander', 'ally']) }),
+  fx('summon', { enemyId: str, max: int.min(1) }),
+  fx('follow_up', { mult: num.positive() }),
+  fx('misfire', {}),
+  fx('override_action', { policy: z.literal('aggressive') }),
+  fx('lock_target', { turns: int.min(1) }),
+  fx('loot_roll', { extra: int.min(1) }),
+  fx('repeat_order', {}),
+  fx('hp_set', { value: int.min(1) }),
+  fx('immune', { statusId: str }),
+  fx('order_cost', { delta: int, orders: z.array(str).optional() }),
+  fx('order_refusal', { orders: z.array(str).optional() }),
+  fx('loadout_slots', { amount: int.min(1) }),
+  fx('injury_days', { pct: num }),
+]);
+
+/** One combat effect: strict per type, with the cross-field rules of the vocabulary. */
+export const CombatEffectSchema = EffectUnion.superRefine((e, ctx) => {
+  const issue = (path: string, message: string) => ctx.addIssue({ code: 'custom', path: [path], message });
+  if (e.threshold !== undefined && e.trigger !== 'onStressThreshold') issue('threshold', 'threshold needs trigger onStressThreshold');
+  if (e.trigger === 'onStressThreshold' && e.threshold === undefined) issue('threshold', 'onStressThreshold needs a threshold (50, 80 or 100)');
+  if (e.scope === 'ally' && !(e.trigger === 'onHit' || e.trigger === 'onCrit' || e.trigger === 'onKill')) {
+    issue('scope', 'scope "ally" is only valid with onHit, onCrit or onKill');
+  }
+  if ((e.type === 'misfire' || e.type === 'order_refusal') && e.chance === undefined) issue('chance', `${e.type} needs a chance`);
+});
+export type CombatEffect = z.infer<typeof CombatEffectSchema>;
+const effects = z.array(CombatEffectSchema);
+
+export const SKILL_KINDS = ['active', 'passive', 'ultimate', 'enemy', 'signature'] as const;
+export const AI_PROFILES = ['aggressive', 'predator', 'protector', 'disruptor', 'stressor', 'erratic'] as const;
+const aiProfile = z.enum(AI_PROFILES);
+const aiProfileForRoles = z.enum(['aggressive', 'predator', 'protector', 'disruptor']);
+
+export const SkillSchema = BaseEntrySchema.extend({
+  name: str,
+  kind: z.enum(SKILL_KINDS),
+  description: str,
+  /** Passives carry no use rules; every other kind needs `cooldown`, `usableFrom` and `targets`. */
+  cooldown: int.min(0).optional(),
+  cp: int.min(0).optional(),
+  stressCost: int.min(0).optional(),
+  usableFrom: z.array(rowEnum).min(1).optional(),
+  targets: z.object({
+    side: z.enum(['enemy', 'ally', 'self']),
+    rows: z.array(rowEnum),
+    count: z.enum(['one', 'row', 'all']),
+    melee: z.boolean().optional(),
+  }).strict().optional(),
+  effects: effects.min(1),
+  tags: z.array(str),
+}).superRefine((s, ctx) => {
+  const issue = (path: Array<string | number>, message: string) => ctx.addIssue({ code: 'custom', path, message });
+  if (s.kind === 'passive') {
+    s.effects.forEach((e, i) => {
+      if (e.trigger === undefined && !ALWAYS_ON_TYPES.includes(e.type)) {
+        issue(['effects', i, 'trigger'], `a passive "${e.type}" effect needs a trigger`);
+      }
+    });
+    return;
+  }
+  if (s.cooldown === undefined) issue(['cooldown'], 'cooldown is required');
+  if (s.usableFrom === undefined) issue(['usableFrom'], 'usableFrom is required');
+  if (s.targets === undefined) issue(['targets'], 'targets is required');
+});
+export type Skill = z.infer<typeof SkillSchema>;
+
+const statsShape = { hp: num, atk: num, def: num, spd: num, crit: num };
+const PartialStatsSchema = z.object({
+  hp: num.optional(), atk: num.optional(), def: num.optional(), spd: num.optional(), crit: num.optional(),
+}).strict();
+const GrowthSchema = z.object(statsShape).strict();
+
+export const TreeNodeSchema = z.object({
+  id: z.string().regex(ID_PATTERN),
+  branch: z.union([z.literal(0), z.literal(1), z.literal(2), z.null()]),
+  tier: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5), z.null()]),
+  cost: int.min(1),
+  requires: z.array(str),
+  grants: z.union([
+    z.object({ skill: str }).strict(),
+    z.object({
+      upgrade: z.object({
+        skillId: str,
+        cooldownDelta: int.optional(),
+        multPct: num.optional(),
+        addEffects: effects.optional(),
+      }).strict(),
+    }).strict(),
+  ]),
+}).strict();
+export type TreeNode = z.infer<typeof TreeNodeSchema>;
+
 export const RoleSchema = BaseEntrySchema.extend({
   name: str,
   row: z.enum(['front', 'back', 'either']),
@@ -116,6 +258,33 @@ export const RoleSchema = BaseEntrySchema.extend({
   /** One line, used in prompts. */
   summary: str,
   branches: z.array(z.object({ name: str, summary: str })),
+  // P4 (optional until the core pack ships them)
+  growth: GrowthSchema.optional(),
+  aiProfile: aiProfileForRoles.optional(),
+  starterSkills: z.array(str).length(2).optional(),
+  tree: z.array(TreeNodeSchema).optional(),
+}).superRefine((r, ctx) => {
+  if (!r.tree) return;
+  const issue = (path: Array<string | number>, message: string) => ctx.addIssue({ code: 'custom', path, message });
+  if (r.tree.length !== 16) issue(['tree'], `a tree has exactly 16 nodes, this one has ${r.tree.length}`);
+  const ultimates = r.tree.filter((n) => n.branch === null);
+  if (ultimates.length !== 1) issue(['tree'], `a tree has exactly one ultimate node (branch null), this one has ${ultimates.length}`);
+  const ids = new Set<string>();
+  const slots = new Set<string>();
+  r.tree.forEach((n, i) => {
+    if (ids.has(n.id)) issue(['tree', i, 'id'], `duplicate node id "${n.id}"`);
+    ids.add(n.id);
+    if ((n.branch === null) !== (n.tier === null)) issue(['tree', i], 'branch and tier are both null (ultimate) or both set');
+    if (n.branch !== null) {
+      const key = `${n.branch}/${n.tier}`;
+      if (slots.has(key)) issue(['tree', i], `branch ${n.branch} already has a tier ${n.tier} node`);
+      slots.add(key);
+    }
+  });
+  r.tree.forEach((n, i) => n.requires.forEach((req, j) => {
+    if (!ids.has(req)) issue(['tree', i, 'requires', j], `requires "${req}", which is not a node of this role`);
+    if (req === n.id) issue(['tree', i, 'requires', j], 'a node cannot require itself');
+  }));
 });
 
 export const SignatureSchema = BaseEntrySchema.extend({
@@ -123,6 +292,8 @@ export const SignatureSchema = BaseEntrySchema.extend({
   name: str,
   mechanic: str,
   fits: str,
+  /** P4: the `skills` entry that implements the template (by convention the same id). */
+  skill: str.optional(),
 });
 
 // `DefectSchema` is defined after the P3 pieces below it depends on.
@@ -131,6 +302,16 @@ export const StatusSchema = BaseEntrySchema.extend({
   name: str,
   kind: z.enum(['buff', 'debuff']),
   description: str,
+  // P4 mechanics (optional until the core pack ships them)
+  turns: int.min(1).optional(),
+  maxStacks: int.min(1).optional(),
+  stackMode: z.enum(['add', 'refresh']).optional(),
+  /** Effects run at the owner's turn start, once per stack; `target: 'self'` is the owner. */
+  tick: z.array(CombatEffectSchema).optional(),
+  /** Stat multipliers per stack, in percent. */
+  mods: z.record(statEnum, num).optional(),
+  incomingPct: num.optional(),
+  flags: z.array(z.enum(['skipTurn', 'taunt', 'untargetable', 'absorb'])).optional(),
 });
 
 /** Compact lorebook shipped by a pack; converted to SillyTavern's format by the adapter. */
@@ -170,6 +351,10 @@ export const RESERVED_EVENT_TYPES: readonly string[] = [
   'loyalty_band_changed', 'proposal_offered', 'proposal_resolved', 'affair_discovered', 'crime_known', 'dm_sent',
   'dm_received', 'dm_initiative', 'night_opened', 'defect_social', 'chronicle_compacted', 'intimacy_changed', 'proposals_expired',
   'proposal_answered', 'night_queued', 'night_ignored', 'dm_read',
+  // P4
+  'combat_started', 'combat_log', 'combat_awaiting', 'combat_ended', 'combat_cutin', 'order_refused', 'level_up',
+  'node_unlocked', 'loot_banked', 'item_crafted', 'item_upgraded', 'item_equipped', 'breakdown', 'breakdown_released',
+  'workshop_opened',
 ];
 
 const slotEnum = z.enum(['morning', 'afternoon', 'evening', 'night']);
@@ -409,6 +594,23 @@ export const DefectSchema = BaseEntrySchema.extend({
   }).strict()).optional(),
   dmChanceBonus: z.number().min(0).max(1).optional(),
   nightEvents: z.array(NightSpecSchema).optional(),
+  /** P4: combat data. Downside effects are amplified while the unit is strained, so each must say so. */
+  combat: z.object({
+    upside: z.array(CombatEffectSchema),
+    downside: z.array(CombatEffectSchema),
+    breakdown: z.object({
+      policy: z.enum(['skip', 'repeat_last', 'random_skill', 'attack', 'await_order', 'twice_then_shutdown', 'normal']),
+      target: z.enum(['nearest_enemy', 'strongest_enemy', 'nearest_any', 'nearest_ally']).optional(),
+      ignoresOrders: z.boolean(),
+      once: z.boolean().optional(),
+      onEnter: z.array(CombatEffectSchema),
+      actionEffects: z.array(CombatEffectSchema),
+    }).strict(),
+  }).strict().superRefine((c, ctx) => {
+    c.downside.forEach((e, i) => {
+      if (e.downside !== true) ctx.addIssue({ code: 'custom', path: ['downside', i, 'downside'], message: 'every downside effect must carry downside: true' });
+    });
+  }).optional(),
 });
 
 Object.assign(registrySchemas, {
@@ -416,4 +618,103 @@ Object.assign(registrySchemas, {
   eventDeltas: EventDeltaSchema,
   locations: LocationSchema,
   defects: DefectSchema,
+});
+
+// ---------------------------------------------------------------------------------------------
+// P4 registries: orders, synergies, enemies, affixes, items, recipes, loot tables.
+
+export const OrderSchema = BaseEntrySchema.extend({
+  name: str,
+  summary: str,
+  cost: int.min(1).max(5),
+  target: z.enum(['none', 'ally', 'enemy']),
+  effects: effects.min(1),
+});
+
+export const SynergySchema = BaseEntrySchema.extend({ name: str, summary: str, effects: effects.min(1) });
+
+export const EnemyCategorySchema = BaseEntrySchema.extend({
+  name: str,
+  frequency: z.enum(['common', 'rare', 'very_rare']),
+  summary: str,
+});
+
+export const EnemySchema = BaseEntrySchema.extend({
+  categoryId: str,
+  name: str,
+  stats: z.object({
+    base: z.object({ hp: num.min(1), atk: num.min(1), def: num.min(0), spd: num.min(1), crit: num.min(0).max(100) }).strict(),
+    growth: GrowthSchema,
+  }).strict(),
+  skills: z.array(str).min(1),
+  eliteSkill: str.optional(),
+  aiProfile,
+  rowPreference: rowEnum,
+  /** Budget weight of the enemy in the encounter generator: cost = stat power × `power`. */
+  power: num.positive(),
+  portrait: z.object({ ascii: z.array(z.string()).min(1).max(8), image: str.optional() }).strict(),
+  tags: z.array(str),
+});
+
+export const AffixSchema = BaseEntrySchema.extend({
+  name: str,
+  appliesTo: z.enum(['enemy', 'item']),
+  /** Enemy affixes: the word in the default name ("Armored Husk"). */
+  adjective: str.optional(),
+  /** Item affixes: slots the affix may roll on; absent = any. */
+  slots: z.array(z.enum(['weapon', 'upper', 'lower'])).min(1).optional(),
+  drawback: z.boolean().optional(),
+  statPct: PartialStatsSchema.optional(),
+  effects: effects,
+  /** Enemy affix: the enemy also gets its `eliteSkill`. */
+  extraSkill: z.boolean().optional(),
+});
+
+export const RARITY_IDS = ['standard', 'refined', 'prototype', 'corporate', 'anomalous'] as const;
+const rarityEnum = z.enum(RARITY_IDS);
+
+export const ItemSchema = BaseEntrySchema.extend({
+  name: str,
+  slot: z.enum(['weapon', 'upper', 'lower']),
+  /** A weapon class or an armor weight; checked against the roles' lists. */
+  class: str,
+  /** The template's minimum rarity. */
+  rarity: rarityEnum,
+  baseStats: PartialStatsSchema,
+  affixSlots: int.min(0).max(3).optional(),
+  effects: effects,
+  value: int.min(0),
+});
+
+export const RecipeSchema = BaseEntrySchema.extend({
+  itemId: str,
+  rarity: rarityEnum,
+  cost: z.object({ credits: int.min(0), plyx: int.min(0) }).strict(),
+});
+
+export const LootTableSchema = BaseEntrySchema.extend({
+  rolls: int.min(0),
+  entries: z.array(z.object({
+    weight: num.positive(),
+    kind: z.enum(['item', 'credits', 'plyx', 'supplies']),
+    itemId: str.optional(),
+    rarityWeights: z.record(rarityEnum, num.positive()).optional(),
+    amount: z.tuple([int.min(0), int.min(0)]).optional(),
+  }).strict().superRefine((e, ctx) => {
+    if (e.kind === 'item' && e.itemId === undefined) ctx.addIssue({ code: 'custom', path: ['itemId'], message: 'kind "item" needs an itemId' });
+    if (e.kind !== 'item' && e.amount === undefined) ctx.addIssue({ code: 'custom', path: ['amount'], message: `kind "${e.kind}" needs an amount [min, max]` });
+    if (e.amount && e.amount[0] > e.amount[1]) ctx.addIssue({ code: 'custom', path: ['amount'], message: 'amount minimum must not exceed maximum' });
+  })),
+});
+
+Object.assign(registrySchemas, {
+  skills: SkillSchema,
+  orders: OrderSchema,
+  synergies: SynergySchema,
+  enemyCategories: EnemyCategorySchema,
+  enemies: EnemySchema,
+  affixes: AffixSchema,
+  items: ItemSchema,
+  recipes: RecipeSchema,
+  lootTables: LootTableSchema,
 });

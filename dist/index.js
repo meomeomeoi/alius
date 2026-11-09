@@ -230,16 +230,16 @@ var bandFor = (trust) => trust < 10 ? "breaking" : trust < 25 ? "wavering" : "st
 var clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var crimeEffectsOf = (crime) => [...effectsOf(crime.perk), ...effectsOf(crime.flaw)];
 var crimeKnownByDefault = (crime, start) => crime.knownByDefault === true || start?.crimeKnownByDefault === true;
-function startingTrustAdjust(effects, values) {
+function startingTrustAdjust(effects2, values) {
   let sum = 0;
-  for (const fx of effects) {
-    if (fx.type !== "starting_trust") continue;
-    const iv = fx.ifValue;
+  for (const fx2 of effects2) {
+    if (fx2.type !== "starting_trust") continue;
+    const iv = fx2.ifValue;
     if (iv) {
       const v = values[iv.axis];
       if (iv.sign === "+" ? !(v > 0) : !(v < 0)) continue;
     }
-    sum += fx.amount;
+    sum += fx2.amount;
   }
   return sum;
 }
@@ -273,12 +273,12 @@ function buildCampaign(r, reg, opts) {
   const base = start.startingResources;
   for (const k of ["credits", "supplies", "plyx"]) state.resources[k] += base?.[k] ?? 0;
   const crimeEffects = crimeEffectsOf(crime);
-  for (const fx of [...effectsOf(corp.startingBonus), ...crimeEffects]) {
-    if (fx.type === "social_rank") {
-      const stat = fx.stat;
-      state.commander.socialStats[stat] = Math.max(state.commander.socialStats[stat], fx.rank);
-    } else if (fx.type === "resource") {
-      state.resources[fx.resource] += fx.amount;
+  for (const fx2 of [...effectsOf(corp.startingBonus), ...crimeEffects]) {
+    if (fx2.type === "social_rank") {
+      const stat = fx2.stat;
+      state.commander.socialStats[stat] = Math.max(state.commander.socialStats[stat], fx2.rank);
+    } else if (fx2.type === "resource") {
+      state.resources[fx2.resource] += fx2.amount;
     }
   }
   const knowsCrime = crimeKnownByDefault(crime, start);
@@ -789,71 +789,71 @@ function runActivity(draft, ctx2, request) {
     events.push(recoverUnit(draft, u));
   };
   const list2 = companion ? a.companionEffects : a.effects;
-  for (const fx of list2) {
-    if (fx.when?.focus !== void 0 && fx.when.focus !== focus?.id) continue;
-    if (fx.when?.companionLikes !== void 0 && !companion?.likes.includes(fx.when.companionLikes)) continue;
-    switch (fx.type) {
+  for (const fx2 of list2) {
+    if (fx2.when?.focus !== void 0 && fx2.when.focus !== focus?.id) continue;
+    if (fx2.when?.companionLikes !== void 0 && !companion?.likes.includes(fx2.when.companionLikes)) continue;
+    switch (fx2.type) {
       case "resource": {
-        const wanted = scaled(fx.amount + (fx.perStat ? fx.perStat.per * socialRank(draft, fx.perStat.stat) : 0), draft, reg, fx.scale);
-        const before = draft.resources[fx.resource];
-        draft.resources[fx.resource] = Math.max(0, before + wanted);
-        events.push({ type: "resource_changed", resource: fx.resource, amount: draft.resources[fx.resource] - before });
+        const wanted = scaled(fx2.amount + (fx2.perStat ? fx2.perStat.per * socialRank(draft, fx2.perStat.stat) : 0), draft, reg, fx2.scale);
+        const before = draft.resources[fx2.resource];
+        draft.resources[fx2.resource] = Math.max(0, before + wanted);
+        events.push({ type: "resource_changed", resource: fx2.resource, amount: draft.resources[fx2.resource] - before });
         break;
       }
       case "commander_stat": {
-        const r = addSocialPoints(draft.commander, fx.stat, scaled(fx.amount, draft, reg, fx.scale));
-        events.push({ type: "social_gained", stat: fx.stat, gained: r.gained, rank: r.rank, rankedUp: r.rankedUp });
+        const r = addSocialPoints(draft.commander, fx2.stat, scaled(fx2.amount, draft, reg, fx2.scale));
+        events.push({ type: "social_gained", stat: fx2.stat, gained: r.gained, rank: r.rank, rankedUp: r.rankedUp });
         break;
       }
       case "unit_xp":
-        for (const u of unitsOf(fx.target)) {
-          const amount = scaled(fx.amount, draft, reg, fx.scale);
+        for (const u of unitsOf(fx2.target)) {
+          const amount = scaled(fx2.amount, draft, reg, fx2.scale);
           u.xp += amount;
           events.push({ type: "xp_gained", unitId: u.id, amount });
         }
         break;
       case "unit_stress":
-        for (const u of unitsOf(fx.target)) {
-          const next = clamp3(u.stress + scaled(fx.amount, draft, reg, fx.scale), 0, 100);
+        for (const u of unitsOf(fx2.target)) {
+          const next = clamp3(u.stress + scaled(fx2.amount, draft, reg, fx2.scale), 0, 100);
           events.push({ type: "stress_changed", unitId: u.id, delta: next - u.stress });
           u.stress = next;
         }
         break;
       case "injury_days":
-        for (const u of unitsOf(fx.target)) {
+        for (const u of unitsOf(fx2.target)) {
           if (u.injuryDays === void 0) continue;
-          u.injuryDays += fx.amount;
+          u.injuryDays += fx2.amount;
           if (u.injuryDays <= 0) recover(u);
         }
         break;
       case "commander_injury_days": {
         const until = draft.commander.injuredUntilDay;
         if (until === void 0 || until <= draft.day) break;
-        const next = until + fx.amount;
+        const next = until + fx2.amount;
         if (next <= draft.day) delete draft.commander.injuredUntilDay;
         else draft.commander.injuredUntilDay = next;
         events.push({ type: "commander_injury_changed", until: draft.commander.injuredUntilDay ?? null });
         break;
       }
       case "defect_upkeep":
-        for (const u of unitsOf(fx.target)) {
+        for (const u of unitsOf(fx2.target)) {
           const kept = u.defects.filter((d) => d.arc === "manage");
           for (const d of kept) d.upkeepDay = draft.day;
           if (kept.length > 0) events.push({ type: "defect_upkeep", unitId: u.id, defectIds: kept.map((d) => d.id) });
         }
         break;
       case "relation":
-        if (companion && !(companion.kind === "grunt" && fx.axis !== "trust")) {
-          const applied = applyRelationDelta(draft, companion.id, fx.axis, scaled(fx.amount, draft, reg, fx.scale), `activity:${a.id}`);
-          events.push({ type: "relation_changed", unitId: companion.id, axis: fx.axis, applied });
+        if (companion && !(companion.kind === "grunt" && fx2.axis !== "trust")) {
+          const applied = applyRelationDelta(draft, companion.id, fx2.axis, scaled(fx2.amount, draft, reg, fx2.scale), `activity:${a.id}`);
+          events.push({ type: "relation_changed", unitId: companion.id, axis: fx2.axis, applied });
         }
         break;
       case "emit_event":
         events.push({
-          type: fx.event,
+          type: fx2.event,
           activityId: a.id,
           ...companion ? { unitId: companion.id } : {},
-          ...fx.event === "scene_requested" ? { origin: "activity" } : {}
+          ...fx2.event === "scene_requested" ? { origin: "activity" } : {}
         });
         break;
     }
@@ -992,10 +992,10 @@ function generateGrunt(state, reg, rng) {
 function gruntRelation(state, reg) {
   const crime = reg.crimes.get(state.commander.crimeId ?? "");
   const start = reg.starts.get(state.world.startId ?? "");
-  const effects = crime ? crimeEffectsOf(crime) : [];
+  const effects2 = crime ? crimeEffectsOf(crime) : [];
   const neutral = Object.fromEntries(VALUE_AXES.map((a) => [a, 0]));
-  let trust = TUNING.recruit.baseTrust + startingTrustAdjust(effects, neutral);
-  if (effects.some((fx) => fx.type === "grunt_starting_trust")) trust += TUNING.recruit.gruntCrimeBonus;
+  let trust = TUNING.recruit.baseTrust + startingTrustAdjust(effects2, neutral);
+  if (effects2.some((fx2) => fx2.type === "grunt_starting_trust")) trust += TUNING.recruit.gruntCrimeBonus;
   return initialRelation({ trust, affinity: 0, attraction: 0, knowsCrime: crime ? crimeKnownByDefault(crime, start) : false, since: state.day });
 }
 
@@ -6676,7 +6676,12 @@ var REGISTRY_NAMES = [
   "settingsPresets",
   "flags",
   "marks",
-  "locations"
+  "locations",
+  // P4
+  "orders",
+  "synergies",
+  "recipes",
+  "lootTables"
 ];
 var PackManifestSchema = external_exports.object({
   id: external_exports.string().min(1),
@@ -7109,7 +7114,7 @@ function registerSceneContext(builder, deps) {
       const reg = deps.registries();
       const raw = deps.settings().showRawValues;
       const romance = intimacyOf(s).romance;
-      const num2 = (n) => raw ? ` (${n})` : "";
+      const num3 = (n) => raw ? ` (${n})` : "";
       const here = new Set(s.scene?.participants ?? []);
       return presentUnits(s).map((u) => {
         const rel = s.relations[u.id];
@@ -7117,15 +7122,15 @@ function registerSceneContext(builder, deps) {
         const covered = rel.affair?.hiddenFrom.some((id) => here.has(id)) === true;
         const st = reg.relationshipStates.get(covered ? "comrade" : rel.stateId);
         const axes = [
-          `trust ${trustBand(rel.trust)}${num2(rel.trust)}`,
-          `affinity ${affinityBand(rel.affinity)}${num2(rel.affinity)}`,
-          ...romance && !covered ? [`attraction ${attractionBand(rel.attraction)}${num2(rel.attraction)}`] : []
+          `trust ${trustBand(rel.trust)}${num3(rel.trust)}`,
+          `affinity ${affinityBand(rel.affinity)}${num3(rel.affinity)}`,
+          ...romance && !covered ? [`attraction ${attractionBand(rel.attraction)}${num3(rel.attraction)}`] : []
         ].join(", ");
         const defects = u.defects.map((d) => {
           const def = reg.defects.get(d.id);
           return def ? `; defect ${String(def.name)}: ${String(def.social)}` : "";
         }).join("");
-        return `${u.displayName} \u2014 state ${String(st?.name ?? "Comrade")}${st ? ` (${String(st.promptHint)})` : ""}; ${axes}; stress ${stressBand(u.stress)}${num2(u.stress)}${defects}`;
+        return `${u.displayName} \u2014 state ${String(st?.name ?? "Comrade")}${st ? ` (${String(st.promptHint)})` : ""}; ${axes}; stress ${stressBand(u.stress)}${num3(u.stress)}${defects}`;
       }).join("\n");
     }
   });
@@ -8874,11 +8879,11 @@ function relationLine(unit, state, ctx2) {
   const rel = state.relations[unit.id];
   if (!rel) return null;
   const raw = ctx2.settings().showRawValues;
-  const num2 = (n) => raw ? ` (${n})` : "";
-  const parts = [`${String(ctx2.registries.relationshipStates.get(rel.stateId)?.name ?? rel.stateId).toUpperCase()}`, `TRUST ${trustBand(rel.trust).toUpperCase()}${num2(rel.trust)}`];
+  const num3 = (n) => raw ? ` (${n})` : "";
+  const parts = [`${String(ctx2.registries.relationshipStates.get(rel.stateId)?.name ?? rel.stateId).toUpperCase()}`, `TRUST ${trustBand(rel.trust).toUpperCase()}${num3(rel.trust)}`];
   if (unit.kind !== "grunt") {
-    parts.push(`AFFINITY ${affinityBand(rel.affinity).toUpperCase()}${num2(rel.affinity)}`);
-    if (intimacyOf(state).romance) parts.push(`ATTRACTION ${attractionBand(rel.attraction).toUpperCase()}${num2(rel.attraction)}`);
+    parts.push(`AFFINITY ${affinityBand(rel.affinity).toUpperCase()}${num3(rel.affinity)}`);
+    if (intimacyOf(state).romance) parts.push(`ATTRACTION ${attractionBand(rel.attraction).toUpperCase()}${num3(rel.attraction)}`);
   }
   return h("p", { class: "alius-relation" }, parts.join(" \xB7 "));
 }
@@ -11293,6 +11298,49 @@ function createApp(st, deps) {
   return api;
 }
 
+// src/engine/combat/types.ts
+var TRIGGERS = [
+  "onCombatStart",
+  "onRoundStart",
+  "onTurnStart",
+  "onAction",
+  "onHit",
+  "onCrit",
+  "onDamaged",
+  "onAllyDowned",
+  "onKill",
+  "onStressThreshold",
+  "onCombatEnd"
+];
+var EFFECT_TARGETS = [
+  "self",
+  "target",
+  "source",
+  "allies",
+  "allies_other",
+  "enemies",
+  "own_row",
+  "target_row",
+  "random_enemy",
+  "lowest_hp_ally",
+  "commander"
+];
+var STATS = ["hp", "atk", "def", "spd", "crit"];
+var ALWAYS_ON_TYPES = [
+  "stat",
+  "outgoing",
+  "incoming",
+  "stress_taken",
+  "immune",
+  "order_cost",
+  "order_refusal",
+  "loadout_slots",
+  "injury_days",
+  "intercept_lethal",
+  "misfire",
+  "override_action"
+];
+
 // src/content/schemas.ts
 var ID_PATTERN = /^[a-z0-9_:.-]+$/;
 var BaseEntrySchema = external_exports.object({
@@ -11329,10 +11377,10 @@ var startTimeEffects = {
   resource: ResourceEffect,
   starting_trust: StartingTrustEffect
 };
-var EffectSchema = external_exports.object({ type: str }).passthrough().superRefine((fx, ctx2) => {
-  const schema = startTimeEffects[fx.type];
+var EffectSchema = external_exports.object({ type: str }).passthrough().superRefine((fx2, ctx2) => {
+  const schema = startTimeEffects[fx2.type];
   if (!schema) return;
-  const parsed = schema.safeParse(fx);
+  const parsed = schema.safeParse(fx2);
   if (parsed.success) return;
   for (const issue of parsed.error.issues) ctx2.addIssue({ ...issue });
 });
@@ -11365,6 +11413,143 @@ var CrimeSchema = BaseEntrySchema.extend({
   valueReactions: external_exports.array(external_exports.object({ axis: valueAxis, sign: external_exports.enum(["+", "-"]), weight: int.min(-3).max(3) })),
   knownByDefault: external_exports.boolean()
 });
+var num2 = external_exports.number();
+var rowEnum = external_exports.enum(["front", "back"]);
+var ConditionSchema = external_exports.object({
+  hpBelowPct: num2.optional(),
+  hpAbovePct: num2.optional(),
+  stressMin: num2.optional(),
+  stressMax: num2.optional(),
+  roundMin: num2.optional(),
+  targetHasStatus: str.optional(),
+  selfHasStatus: str.optional(),
+  aloneInRow: external_exports.boolean().optional(),
+  sameRowAndSkill: external_exports.boolean().optional(),
+  rowChanged: external_exports.boolean().optional(),
+  commanderExposed: external_exports.boolean().optional(),
+  notOrderedThisRound: external_exports.boolean().optional(),
+  upkeepWithinDays: num2.optional(),
+  upkeepOlderThanDays: num2.optional()
+}).strict();
+var ScaleSchema = external_exports.object({
+  by: external_exports.enum(["stress_above", "own_hp_missing_pct", "allies_hp_missing_pct"]),
+  per: num2,
+  base: num2.optional()
+}).strict();
+var effectCommon = {
+  trigger: external_exports.enum(TRIGGERS).optional(),
+  scope: external_exports.enum(["self", "ally"]).optional(),
+  threshold: external_exports.union([external_exports.literal(50), external_exports.literal(80), external_exports.literal(100)]).optional(),
+  target: external_exports.enum(EFFECT_TARGETS).optional(),
+  when: ConditionSchema.optional(),
+  chance: num2.min(0).max(1).optional(),
+  downside: external_exports.boolean().optional(),
+  limit: external_exports.enum(["round", "combat"]).optional()
+};
+var fx = (type, shape) => external_exports.object({ type: external_exports.literal(type), ...effectCommon, ...shape }).strict();
+var statEnum = external_exports.enum(STATS);
+var EffectUnion = external_exports.discriminatedUnion("type", [
+  fx("damage", { mult: num2.positive(), hits: int.min(1).optional(), ignoreRows: external_exports.boolean().optional(), critBonus: num2.optional(), scale: ScaleSchema.optional() }),
+  fx("heal", { pctMaxHp: num2.positive() }),
+  fx("revive", { pctMaxHp: num2.positive() }),
+  fx("status", { statusId: str, turns: int.min(1).optional(), stacks: int.min(1).optional() }),
+  fx("cleanse", { kind: external_exports.enum(["buff", "debuff"]), count: int.min(1) }),
+  fx("stat", { stat: external_exports.union([statEnum, external_exports.literal("all")]), pct: num2, turns: int.min(1).optional(), scale: ScaleSchema.optional() }),
+  fx("outgoing", { pct: num2, vs: external_exports.enum(["any", "marked", "locked"]).optional() }),
+  fx("incoming", { pct: num2 }),
+  fx("stress", { amount: num2 }),
+  fx("stress_taken", { pct: num2, direction: external_exports.enum(["gain", "relief"]) }),
+  fx("cp", { amount: int }),
+  fx("move", { to: external_exports.enum(["front", "back", "swap"]) }),
+  fx("extra_action", {}),
+  fx("redirect", { pct: num2.min(0).max(100), turns: int.min(1), from: external_exports.enum(["ally", "commander"]) }),
+  fx("intercept_lethal", { protect: external_exports.enum(["commander", "ally"]) }),
+  fx("summon", { enemyId: str, max: int.min(1) }),
+  fx("follow_up", { mult: num2.positive() }),
+  fx("misfire", {}),
+  fx("override_action", { policy: external_exports.literal("aggressive") }),
+  fx("lock_target", { turns: int.min(1) }),
+  fx("loot_roll", { extra: int.min(1) }),
+  fx("repeat_order", {}),
+  fx("hp_set", { value: int.min(1) }),
+  fx("immune", { statusId: str }),
+  fx("order_cost", { delta: int, orders: external_exports.array(str).optional() }),
+  fx("order_refusal", { orders: external_exports.array(str).optional() }),
+  fx("loadout_slots", { amount: int.min(1) }),
+  fx("injury_days", { pct: num2 })
+]);
+var CombatEffectSchema = EffectUnion.superRefine((e, ctx2) => {
+  const issue = (path, message) => ctx2.addIssue({ code: "custom", path: [path], message });
+  if (e.threshold !== void 0 && e.trigger !== "onStressThreshold") issue("threshold", "threshold needs trigger onStressThreshold");
+  if (e.trigger === "onStressThreshold" && e.threshold === void 0) issue("threshold", "onStressThreshold needs a threshold (50, 80 or 100)");
+  if (e.scope === "ally" && !(e.trigger === "onHit" || e.trigger === "onCrit" || e.trigger === "onKill")) {
+    issue("scope", 'scope "ally" is only valid with onHit, onCrit or onKill');
+  }
+  if ((e.type === "misfire" || e.type === "order_refusal") && e.chance === void 0) issue("chance", `${e.type} needs a chance`);
+});
+var effects = external_exports.array(CombatEffectSchema);
+var SKILL_KINDS = ["active", "passive", "ultimate", "enemy", "signature"];
+var AI_PROFILES = ["aggressive", "predator", "protector", "disruptor", "stressor", "erratic"];
+var aiProfile = external_exports.enum(AI_PROFILES);
+var aiProfileForRoles = external_exports.enum(["aggressive", "predator", "protector", "disruptor"]);
+var SkillSchema = BaseEntrySchema.extend({
+  name: str,
+  kind: external_exports.enum(SKILL_KINDS),
+  description: str,
+  /** Passives carry no use rules; every other kind needs `cooldown`, `usableFrom` and `targets`. */
+  cooldown: int.min(0).optional(),
+  cp: int.min(0).optional(),
+  stressCost: int.min(0).optional(),
+  usableFrom: external_exports.array(rowEnum).min(1).optional(),
+  targets: external_exports.object({
+    side: external_exports.enum(["enemy", "ally", "self"]),
+    rows: external_exports.array(rowEnum),
+    count: external_exports.enum(["one", "row", "all"]),
+    melee: external_exports.boolean().optional()
+  }).strict().optional(),
+  effects: effects.min(1),
+  tags: external_exports.array(str)
+}).superRefine((s, ctx2) => {
+  const issue = (path, message) => ctx2.addIssue({ code: "custom", path, message });
+  if (s.kind === "passive") {
+    s.effects.forEach((e, i) => {
+      if (e.trigger === void 0 && !ALWAYS_ON_TYPES.includes(e.type)) {
+        issue(["effects", i, "trigger"], `a passive "${e.type}" effect needs a trigger`);
+      }
+    });
+    return;
+  }
+  if (s.cooldown === void 0) issue(["cooldown"], "cooldown is required");
+  if (s.usableFrom === void 0) issue(["usableFrom"], "usableFrom is required");
+  if (s.targets === void 0) issue(["targets"], "targets is required");
+});
+var statsShape = { hp: num2, atk: num2, def: num2, spd: num2, crit: num2 };
+var PartialStatsSchema = external_exports.object({
+  hp: num2.optional(),
+  atk: num2.optional(),
+  def: num2.optional(),
+  spd: num2.optional(),
+  crit: num2.optional()
+}).strict();
+var GrowthSchema = external_exports.object(statsShape).strict();
+var TreeNodeSchema = external_exports.object({
+  id: external_exports.string().regex(ID_PATTERN),
+  branch: external_exports.union([external_exports.literal(0), external_exports.literal(1), external_exports.literal(2), external_exports.null()]),
+  tier: external_exports.union([external_exports.literal(1), external_exports.literal(2), external_exports.literal(3), external_exports.literal(4), external_exports.literal(5), external_exports.null()]),
+  cost: int.min(1),
+  requires: external_exports.array(str),
+  grants: external_exports.union([
+    external_exports.object({ skill: str }).strict(),
+    external_exports.object({
+      upgrade: external_exports.object({
+        skillId: str,
+        cooldownDelta: int.optional(),
+        multPct: num2.optional(),
+        addEffects: effects.optional()
+      }).strict()
+    }).strict()
+  ])
+}).strict();
 var RoleSchema = BaseEntrySchema.extend({
   name: str,
   row: external_exports.enum(["front", "back", "either"]),
@@ -11380,18 +11565,57 @@ var RoleSchema = BaseEntrySchema.extend({
   identity: str,
   /** One line, used in prompts. */
   summary: str,
-  branches: external_exports.array(external_exports.object({ name: str, summary: str }))
+  branches: external_exports.array(external_exports.object({ name: str, summary: str })),
+  // P4 (optional until the core pack ships them)
+  growth: GrowthSchema.optional(),
+  aiProfile: aiProfileForRoles.optional(),
+  starterSkills: external_exports.array(str).length(2).optional(),
+  tree: external_exports.array(TreeNodeSchema).optional()
+}).superRefine((r, ctx2) => {
+  if (!r.tree) return;
+  const issue = (path, message) => ctx2.addIssue({ code: "custom", path, message });
+  if (r.tree.length !== 16) issue(["tree"], `a tree has exactly 16 nodes, this one has ${r.tree.length}`);
+  const ultimates = r.tree.filter((n) => n.branch === null);
+  if (ultimates.length !== 1) issue(["tree"], `a tree has exactly one ultimate node (branch null), this one has ${ultimates.length}`);
+  const ids = /* @__PURE__ */ new Set();
+  const slots = /* @__PURE__ */ new Set();
+  r.tree.forEach((n, i) => {
+    if (ids.has(n.id)) issue(["tree", i, "id"], `duplicate node id "${n.id}"`);
+    ids.add(n.id);
+    if (n.branch === null !== (n.tier === null)) issue(["tree", i], "branch and tier are both null (ultimate) or both set");
+    if (n.branch !== null) {
+      const key = `${n.branch}/${n.tier}`;
+      if (slots.has(key)) issue(["tree", i], `branch ${n.branch} already has a tier ${n.tier} node`);
+      slots.add(key);
+    }
+  });
+  r.tree.forEach((n, i) => n.requires.forEach((req, j) => {
+    if (!ids.has(req)) issue(["tree", i, "requires", j], `requires "${req}", which is not a node of this role`);
+    if (req === n.id) issue(["tree", i, "requires", j], "a node cannot require itself");
+  }));
 });
 var SignatureSchema = BaseEntrySchema.extend({
   id: external_exports.string().regex(/^sig_[a-z0-9_:.-]*$/, "signature id must start with sig_"),
   name: str,
   mechanic: str,
-  fits: str
+  fits: str,
+  /** P4: the `skills` entry that implements the template (by convention the same id). */
+  skill: str.optional()
 });
 var StatusSchema = BaseEntrySchema.extend({
   name: str,
   kind: external_exports.enum(["buff", "debuff"]),
-  description: str
+  description: str,
+  // P4 mechanics (optional until the core pack ships them)
+  turns: int.min(1).optional(),
+  maxStacks: int.min(1).optional(),
+  stackMode: external_exports.enum(["add", "refresh"]).optional(),
+  /** Effects run at the owner's turn start, once per stack; `target: 'self'` is the owner. */
+  tick: external_exports.array(CombatEffectSchema).optional(),
+  /** Stat multipliers per stack, in percent. */
+  mods: external_exports.record(statEnum, num2).optional(),
+  incomingPct: num2.optional(),
+  flags: external_exports.array(external_exports.enum(["skipTurn", "taunt", "untargetable", "absorb"])).optional()
 });
 var LorebookSchema = external_exports.object({
   name: str,
@@ -11463,7 +11687,23 @@ var RESERVED_EVENT_TYPES = [
   "proposal_answered",
   "night_queued",
   "night_ignored",
-  "dm_read"
+  "dm_read",
+  // P4
+  "combat_started",
+  "combat_log",
+  "combat_awaiting",
+  "combat_ended",
+  "combat_cutin",
+  "order_refused",
+  "level_up",
+  "node_unlocked",
+  "loot_banked",
+  "item_crafted",
+  "item_upgraded",
+  "item_equipped",
+  "breakdown",
+  "breakdown_released",
+  "workshop_opened"
 ];
 var slotEnum = external_exports.enum(["morning", "afternoon", "evening", "night"]);
 var socialStat = external_exports.enum(["authority", "insight", "empathy", "cunning"]);
@@ -11523,19 +11763,19 @@ var ActivitySchema = BaseEntrySchema.extend({
     if (f.units && f.units.min > f.units.max) issue(["focus", i, "units"], "units.min must not exceed units.max");
   });
   if (a.startsScene === true) {
-    [...a.effects, ...a.companionEffects].forEach((fx) => {
-      if (fx.type !== "emit_event") issue(["startsScene"], "a scene-starting activity may only emit events; its slot is not consumed here");
+    [...a.effects, ...a.companionEffects].forEach((fx2) => {
+      if (fx2.type !== "emit_event") issue(["startsScene"], "a scene-starting activity may only emit events; its slot is not consumed here");
     });
   }
-  a.effects.forEach((fx, i) => {
-    const f = fx;
+  a.effects.forEach((fx2, i) => {
+    const f = fx2;
     if (f.when?.focus !== void 0 && !focusIds.has(f.when.focus)) issue(["effects", i, "when", "focus"], `unknown focus "${f.when.focus}"`);
     if (f.target === "companion") issue(["effects", i, "target"], "effects (alone) cannot target the companion");
     if (f.type === "relation") issue(["effects", i, "type"], "relation effects need a companion; use companionEffects");
     if (f.when?.companionLikes !== void 0) issue(["effects", i, "when", "companionLikes"], "companionLikes only applies to companionEffects");
   });
-  a.companionEffects.forEach((fx, i) => {
-    const f = fx;
+  a.companionEffects.forEach((fx2, i) => {
+    const f = fx2;
     if (f.target === "selected") issue(["companionEffects", i, "target"], 'companionEffects cannot target "selected"');
     if (f.when?.focus !== void 0) issue(["companionEffects", i, "when", "focus"], "focus is ignored when a companion is present");
   });
@@ -11671,13 +11911,116 @@ var DefectSchema = BaseEntrySchema.extend({
     setFlag: str.optional()
   }).strict()).optional(),
   dmChanceBonus: external_exports.number().min(0).max(1).optional(),
-  nightEvents: external_exports.array(NightSpecSchema).optional()
+  nightEvents: external_exports.array(NightSpecSchema).optional(),
+  /** P4: combat data. Downside effects are amplified while the unit is strained, so each must say so. */
+  combat: external_exports.object({
+    upside: external_exports.array(CombatEffectSchema),
+    downside: external_exports.array(CombatEffectSchema),
+    breakdown: external_exports.object({
+      policy: external_exports.enum(["skip", "repeat_last", "random_skill", "attack", "await_order", "twice_then_shutdown", "normal"]),
+      target: external_exports.enum(["nearest_enemy", "strongest_enemy", "nearest_any", "nearest_ally"]).optional(),
+      ignoresOrders: external_exports.boolean(),
+      once: external_exports.boolean().optional(),
+      onEnter: external_exports.array(CombatEffectSchema),
+      actionEffects: external_exports.array(CombatEffectSchema)
+    }).strict()
+  }).strict().superRefine((c, ctx2) => {
+    c.downside.forEach((e, i) => {
+      if (e.downside !== true) ctx2.addIssue({ code: "custom", path: ["downside", i, "downside"], message: "every downside effect must carry downside: true" });
+    });
+  }).optional()
 });
 Object.assign(registrySchemas, {
   relationshipStates: RelationshipStateSchema,
   eventDeltas: EventDeltaSchema,
   locations: LocationSchema,
   defects: DefectSchema
+});
+var OrderSchema = BaseEntrySchema.extend({
+  name: str,
+  summary: str,
+  cost: int.min(1).max(5),
+  target: external_exports.enum(["none", "ally", "enemy"]),
+  effects: effects.min(1)
+});
+var SynergySchema = BaseEntrySchema.extend({ name: str, summary: str, effects: effects.min(1) });
+var EnemyCategorySchema = BaseEntrySchema.extend({
+  name: str,
+  frequency: external_exports.enum(["common", "rare", "very_rare"]),
+  summary: str
+});
+var EnemySchema = BaseEntrySchema.extend({
+  categoryId: str,
+  name: str,
+  stats: external_exports.object({
+    base: external_exports.object({ hp: num2.min(1), atk: num2.min(1), def: num2.min(0), spd: num2.min(1), crit: num2.min(0).max(100) }).strict(),
+    growth: GrowthSchema
+  }).strict(),
+  skills: external_exports.array(str).min(1),
+  eliteSkill: str.optional(),
+  aiProfile,
+  rowPreference: rowEnum,
+  /** Budget weight of the enemy in the encounter generator: cost = stat power × `power`. */
+  power: num2.positive(),
+  portrait: external_exports.object({ ascii: external_exports.array(external_exports.string()).min(1).max(8), image: str.optional() }).strict(),
+  tags: external_exports.array(str)
+});
+var AffixSchema = BaseEntrySchema.extend({
+  name: str,
+  appliesTo: external_exports.enum(["enemy", "item"]),
+  /** Enemy affixes: the word in the default name ("Armored Husk"). */
+  adjective: str.optional(),
+  /** Item affixes: slots the affix may roll on; absent = any. */
+  slots: external_exports.array(external_exports.enum(["weapon", "upper", "lower"])).min(1).optional(),
+  drawback: external_exports.boolean().optional(),
+  statPct: PartialStatsSchema.optional(),
+  effects,
+  /** Enemy affix: the enemy also gets its `eliteSkill`. */
+  extraSkill: external_exports.boolean().optional()
+});
+var RARITY_IDS = ["standard", "refined", "prototype", "corporate", "anomalous"];
+var rarityEnum = external_exports.enum(RARITY_IDS);
+var ItemSchema = BaseEntrySchema.extend({
+  name: str,
+  slot: external_exports.enum(["weapon", "upper", "lower"]),
+  /** A weapon class or an armor weight; checked against the roles' lists. */
+  class: str,
+  /** The template's minimum rarity. */
+  rarity: rarityEnum,
+  baseStats: PartialStatsSchema,
+  affixSlots: int.min(0).max(3).optional(),
+  effects,
+  value: int.min(0)
+});
+var RecipeSchema = BaseEntrySchema.extend({
+  itemId: str,
+  rarity: rarityEnum,
+  cost: external_exports.object({ credits: int.min(0), plyx: int.min(0) }).strict()
+});
+var LootTableSchema = BaseEntrySchema.extend({
+  rolls: int.min(0),
+  entries: external_exports.array(external_exports.object({
+    weight: num2.positive(),
+    kind: external_exports.enum(["item", "credits", "plyx", "supplies"]),
+    itemId: str.optional(),
+    rarityWeights: external_exports.record(rarityEnum, num2.positive()).optional(),
+    amount: external_exports.tuple([int.min(0), int.min(0)]).optional()
+  }).strict().superRefine((e, ctx2) => {
+    if (e.kind === "item" && e.itemId === void 0) ctx2.addIssue({ code: "custom", path: ["itemId"], message: 'kind "item" needs an itemId' });
+    if (e.kind !== "item" && e.amount === void 0) ctx2.addIssue({ code: "custom", path: ["amount"], message: `kind "${e.kind}" needs an amount [min, max]` });
+    if (e.amount && e.amount[0] > e.amount[1]) ctx2.addIssue({ code: "custom", path: ["amount"], message: "amount minimum must not exceed maximum" });
+  }))
+});
+Object.assign(registrySchemas, {
+  skills: SkillSchema,
+  orders: OrderSchema,
+  synergies: SynergySchema,
+  enemyCategories: EnemyCategorySchema,
+  enemies: EnemySchema,
+  affixes: AffixSchema,
+  items: ItemSchema,
+  recipes: RecipeSchema,
+  lootTables: LootTableSchema
 });
 
 // src/content/refs.ts
@@ -11720,8 +12063,8 @@ registerRefs("activities", (entry) => {
   for (const list2 of ["effects", "companionEffects"]) {
     const fxs = entry[list2];
     if (!Array.isArray(fxs)) continue;
-    fxs.forEach((fx, i) => {
-      const scale = fx.scale;
+    fxs.forEach((fx2, i) => {
+      const scale = fx2.scale;
       if (!scale || typeof scale.facility !== "string") return;
       const key = String(scale.key);
       refs.push({
@@ -11776,6 +12119,106 @@ registerRefs("defects", (entry) => {
   });
   nightRefs(entry.nightEvents, "nightEvents", out);
   return out;
+});
+function effectRefs(list2, path, out) {
+  if (!Array.isArray(list2)) return;
+  list2.forEach((fx2, i) => {
+    if (!fx2 || typeof fx2 !== "object") return;
+    if ((fx2.type === "status" || fx2.type === "immune") && typeof fx2.statusId === "string") {
+      out.push({ registry: "statuses", id: fx2.statusId, path: `${path}[${i}].statusId` });
+    }
+    if (fx2.type === "summon" && typeof fx2.enemyId === "string") {
+      out.push({ registry: "enemies", id: fx2.enemyId, path: `${path}[${i}].enemyId` });
+    }
+  });
+}
+registerRefs("skills", (entry) => {
+  const out = [];
+  effectRefs(entry.effects, "effects", out);
+  return out;
+});
+for (const reg of ["orders", "synergies", "affixes", "items"]) {
+  registerRefs(reg, (entry) => {
+    const out = [];
+    effectRefs(entry.effects, "effects", out);
+    return out;
+  });
+}
+registerRefs("statuses", (entry) => {
+  const out = [];
+  effectRefs(entry.tick, "tick", out);
+  return out;
+});
+registerRefs("defects", (entry) => {
+  const out = [];
+  const combat = entry.combat;
+  if (!combat) return out;
+  effectRefs(combat.upside, "combat.upside", out);
+  effectRefs(combat.downside, "combat.downside", out);
+  effectRefs(combat.breakdown?.onEnter, "combat.breakdown.onEnter", out);
+  effectRefs(combat.breakdown?.actionEffects, "combat.breakdown.actionEffects", out);
+  return out;
+});
+registerRefs("roles", (entry) => {
+  const out = [];
+  entry.starterSkills?.forEach((id, i) => {
+    out.push({ registry: "skills", id: String(id), path: `starterSkills[${i}]` });
+  });
+  entry.tree?.forEach((n, i) => {
+    if (typeof n.grants?.skill === "string") out.push({ registry: "skills", id: n.grants.skill, path: `tree[${i}].grants.skill` });
+    const up = n.grants?.upgrade;
+    if (up && typeof up.skillId === "string") out.push({ registry: "skills", id: up.skillId, path: `tree[${i}].grants.upgrade.skillId` });
+    effectRefs(up?.addEffects, `tree[${i}].grants.upgrade.addEffects`, out);
+  });
+  return out;
+});
+registerRefs("signatures", (entry) => typeof entry.skill === "string" ? [{ registry: "skills", id: entry.skill, path: "skill" }] : []);
+registerRefs("enemies", (entry) => {
+  const out = [];
+  if (typeof entry.categoryId === "string") out.push({ registry: "enemyCategories", id: entry.categoryId, path: "categoryId" });
+  entry.skills?.forEach((id, i) => out.push({ registry: "skills", id: String(id), path: `skills[${i}]` }));
+  if (typeof entry.eliteSkill === "string") out.push({ registry: "skills", id: entry.eliteSkill, path: "eliteSkill" });
+  return out;
+});
+var RARITY_ORDER = ["standard", "refined", "prototype", "corporate", "anomalous"];
+registerRefs("recipes", (entry) => {
+  if (typeof entry.itemId !== "string") return [];
+  const rarity = String(entry.rarity);
+  return [{
+    registry: "items",
+    id: entry.itemId,
+    path: "itemId",
+    check: (t) => RARITY_ORDER.indexOf(rarity) >= RARITY_ORDER.indexOf(String(t.rarity)) ? null : `recipe rarity "${rarity}" is below the template's minimum rarity "${String(t.rarity)}"`
+  }];
+});
+registerRefs("lootTables", (entry) => {
+  const out = [];
+  entry.entries?.forEach((e, i) => {
+    if (typeof e.itemId === "string") out.push({ registry: "items", id: e.itemId, path: `entries[${i}].itemId` });
+  });
+  return out;
+});
+registerRefs("relationshipStates", (entry) => {
+  const list2 = entry.unlocks?.synergies;
+  return (list2 ?? []).map((id, i) => ({ registry: "synergies", id: String(id), path: `unlocks.synergies[${i}]` }));
+});
+var checkExtractors = /* @__PURE__ */ new Map();
+function registerChecks(registry2, check) {
+  const list2 = checkExtractors.get(registry2) ?? [];
+  list2.push(check);
+  checkExtractors.set(registry2, list2);
+}
+function getCheckExtractors() {
+  return checkExtractors;
+}
+registerChecks("items", (entry, regs) => {
+  const cls = String(entry.class);
+  for (const role of regs.roles.values()) {
+    const weapons = role.weaponClasses ?? [];
+    const armor = role.armorWeights ?? [];
+    if (weapons.includes(cls) || armor.includes(cls)) return [];
+  }
+  return [{ path: "class", message: `class "${cls}" is not a weapon class or armor weight of any role` }];
 });
 
 // src/content/loader.ts
@@ -11934,6 +12377,16 @@ async function loadPacks(packRoots, fetchJson2) {
             path: fmtPath([ref.path], origin.index),
             message: `references unknown ${ref.registry} id "${ref.id}"`
           });
+        }
+      }
+    }
+  }
+  for (const [reg, list2] of getCheckExtractors()) {
+    for (const [id, entry] of registries[reg]) {
+      const origin = finalOrigin.get(`${reg}\0${id}`);
+      for (const check of list2) {
+        for (const problem of check(entry, registries)) {
+          errors.push({ pack: origin.pack, file: origin.file, path: fmtPath([problem.path], origin.index), message: problem.message });
         }
       }
     }

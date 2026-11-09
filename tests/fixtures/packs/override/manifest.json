@@ -1,2 +1,2 @@
 { "id": "override", "name": "Override test pack", "version": "1.0.0", "priority": 10,
-  "files": { "flags": "flags.json", "items": "items.json" } }
+  "files": { "flags": "flags.json", "marks": "marks.json" } }

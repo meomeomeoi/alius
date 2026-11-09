@@ -1,0 +1,27 @@
+[
+  { "id": "trusted_cover", "name": "Trusted Cover", "summary": "She takes less damage while the commander is exposed.",
+    "effects": [{ "type": "incoming", "pct": -20, "when": { "commanderExposed": true } }] },
+  { "id": "friend_assist", "name": "Follow-Up", "summary": "After an ally's crit she strikes the same target for half damage (once per round).",
+    "effects": [{ "type": "follow_up", "mult": 0.5, "trigger": "onCrit", "scope": "ally", "limit": "round" }] },
+  { "id": "confidant_sync", "name": "Confidant Sync", "summary": "Orders aimed at her cost 1 less CP.",
+    "effects": [{ "type": "order_cost", "delta": -1 }] },
+  { "id": "kindred_sync", "name": "Kindred Sync", "summary": "Each round she calms herself a little and, less so, her squadmates.",
+    "effects": [
+      { "type": "stress", "amount": -2, "trigger": "onRoundStart", "target": "self" },
+      { "type": "stress", "amount": -1, "trigger": "onRoundStart", "target": "allies_other" }
+    ] },
+  { "id": "spark", "name": "Spark", "summary": "+10 CRIT.",
+    "effects": [{ "type": "stat", "stat": "crit", "pct": 10 }] },
+  { "id": "lover_link", "name": "Shield Body", "summary": "+15% damage while the commander is exposed.",
+    "effects": [{ "type": "outgoing", "pct": 15, "when": { "commanderExposed": true } }] },
+  { "id": "devoted_sacrifice", "name": "Devoted Sacrifice", "summary": "Once per combat she takes a lethal hit meant for the commander.",
+    "effects": [{ "type": "intercept_lethal", "protect": "commander", "limit": "combat" }] },
+  { "id": "rival_edge", "name": "Rival Edge", "summary": "+10% damage.",
+    "effects": [{ "type": "outgoing", "pct": 10 }] },
+  { "id": "order_friction_minor", "name": "Grudging Obedience", "summary": "15% chance to refuse an order aimed at her.",
+    "effects": [{ "type": "order_refusal", "chance": 0.15 }] },
+  { "id": "order_friction", "name": "Open Resentment", "summary": "25% chance to refuse an order aimed at her.",
+    "effects": [{ "type": "order_refusal", "chance": 0.25 }] },
+  { "id": "order_friction_major", "name": "Defiance", "summary": "35% chance to refuse an order aimed at her.",
+    "effects": [{ "type": "order_refusal", "chance": 0.35 }] }
+]

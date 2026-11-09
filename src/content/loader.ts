@@ -1,11 +1,11 @@
 import { BaseEntrySchema, LorebookSchema, registrySchemas, type PackLorebook } from './schemas';
-import { getRefExtractors } from './refs';
+import { getCheckExtractors, getRefExtractors } from './refs';
 import {
   PackManifestSchema, REGISTRY_NAMES, emptyRegistries,
   type ContentError, type Entry, type PackManifest, type RegistryName, type Registries,
 } from './types';
 
-export { registerRefs } from './refs';
+export { registerChecks, registerRefs } from './refs';
 
 type Raw = Record<string, unknown>;
 interface Origin { entry: Raw; pack: string; file: string; index: number }
@@ -190,6 +190,18 @@ export async function loadPacks(
             path: fmtPath([ref.path], origin.index),
             message: `references unknown ${ref.registry} id "${ref.id}"`,
           });
+        }
+      }
+    }
+  }
+
+  // 7. checks that look at several registries at once
+  for (const [reg, list] of getCheckExtractors()) {
+    for (const [id, entry] of registries[reg]) {
+      const origin = finalOrigin.get(`${reg}\0${id}`)!;
+      for (const check of list) {
+        for (const problem of check(entry, registries)) {
+          errors.push({ pack: origin.pack, file: origin.file, path: fmtPath([problem.path], origin.index), message: problem.message });
         }
       }
     }

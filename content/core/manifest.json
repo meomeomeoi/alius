@@ -17,6 +17,7 @@
     "facilities": "facilities.json",
     "relationshipStates": "relationshipStates.json",
     "eventDeltas": "eventDeltas.json",
-    "locations": "locations.json"
+    "locations": "locations.json",
+    "synergies": "synergies.json"
   }
 }

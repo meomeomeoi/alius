@@ -132,3 +132,128 @@ registerRefs('defects', (entry) => {
   nightRefs(entry.nightEvents, 'nightEvents', out);
   return out;
 });
+
+// ---------------------------------------------------------------------------------------------
+// P4: combat content references
+
+/** Status, enemy and skill ids inside a list of combat effects. */
+function effectRefs(list: unknown, path: string, out: Ref[]): void {
+  if (!Array.isArray(list)) return;
+  list.forEach((fx: { type?: string; statusId?: unknown; enemyId?: unknown; addEffects?: unknown }, i) => {
+    if (!fx || typeof fx !== 'object') return;
+    if ((fx.type === 'status' || fx.type === 'immune') && typeof fx.statusId === 'string') {
+      out.push({ registry: 'statuses', id: fx.statusId, path: `${path}[${i}].statusId` });
+    }
+    if (fx.type === 'summon' && typeof fx.enemyId === 'string') {
+      out.push({ registry: 'enemies', id: fx.enemyId, path: `${path}[${i}].enemyId` });
+    }
+  });
+}
+
+registerRefs('skills', (entry) => {
+  const out: Ref[] = [];
+  effectRefs(entry.effects, 'effects', out);
+  return out;
+});
+
+for (const reg of ['orders', 'synergies', 'affixes', 'items'] as const) {
+  registerRefs(reg, (entry) => {
+    const out: Ref[] = [];
+    effectRefs(entry.effects, 'effects', out);
+    return out;
+  });
+}
+
+registerRefs('statuses', (entry) => {
+  const out: Ref[] = [];
+  effectRefs(entry.tick, 'tick', out);
+  return out;
+});
+
+registerRefs('defects', (entry) => {
+  const out: Ref[] = [];
+  const combat = entry.combat as { upside?: unknown; downside?: unknown; breakdown?: { onEnter?: unknown; actionEffects?: unknown } } | undefined;
+  if (!combat) return out;
+  effectRefs(combat.upside, 'combat.upside', out);
+  effectRefs(combat.downside, 'combat.downside', out);
+  effectRefs(combat.breakdown?.onEnter, 'combat.breakdown.onEnter', out);
+  effectRefs(combat.breakdown?.actionEffects, 'combat.breakdown.actionEffects', out);
+  return out;
+});
+
+interface TreeNodeLike { grants?: { skill?: unknown; upgrade?: { skillId?: unknown; addEffects?: unknown } } }
+registerRefs('roles', (entry) => {
+  const out: Ref[] = [];
+  (entry.starterSkills as unknown[] | undefined)?.forEach((id, i) => {
+    out.push({ registry: 'skills', id: String(id), path: `starterSkills[${i}]` });
+  });
+  (entry.tree as TreeNodeLike[] | undefined)?.forEach((n, i) => {
+    if (typeof n.grants?.skill === 'string') out.push({ registry: 'skills', id: n.grants.skill, path: `tree[${i}].grants.skill` });
+    const up = n.grants?.upgrade;
+    if (up && typeof up.skillId === 'string') out.push({ registry: 'skills', id: up.skillId, path: `tree[${i}].grants.upgrade.skillId` });
+    effectRefs(up?.addEffects, `tree[${i}].grants.upgrade.addEffects`, out);
+  });
+  return out;
+});
+
+registerRefs('signatures', (entry) =>
+  typeof entry.skill === 'string' ? [{ registry: 'skills' as const, id: entry.skill, path: 'skill' }] : []);
+
+registerRefs('enemies', (entry) => {
+  const out: Ref[] = [];
+  if (typeof entry.categoryId === 'string') out.push({ registry: 'enemyCategories', id: entry.categoryId, path: 'categoryId' });
+  (entry.skills as unknown[] | undefined)?.forEach((id, i) => out.push({ registry: 'skills', id: String(id), path: `skills[${i}]` }));
+  if (typeof entry.eliteSkill === 'string') out.push({ registry: 'skills', id: entry.eliteSkill, path: 'eliteSkill' });
+  return out;
+});
+
+const RARITY_ORDER = ['standard', 'refined', 'prototype', 'corporate', 'anomalous'];
+registerRefs('recipes', (entry) => {
+  if (typeof entry.itemId !== 'string') return [];
+  const rarity = String(entry.rarity);
+  return [{
+    registry: 'items' as const,
+    id: entry.itemId,
+    path: 'itemId',
+    check: (t) => (RARITY_ORDER.indexOf(rarity) >= RARITY_ORDER.indexOf(String(t.rarity))
+      ? null : `recipe rarity "${rarity}" is below the template's minimum rarity "${String(t.rarity)}"`),
+  }];
+});
+
+registerRefs('lootTables', (entry) => {
+  const out: Ref[] = [];
+  (entry.entries as Array<{ itemId?: unknown }> | undefined)?.forEach((e, i) => {
+    if (typeof e.itemId === 'string') out.push({ registry: 'items', id: e.itemId, path: `entries[${i}].itemId` });
+  });
+  return out;
+});
+
+registerRefs('relationshipStates', (entry) => {
+  const list = (entry.unlocks as { synergies?: unknown[] } | undefined)?.synergies;
+  return (list ?? []).map((id, i) => ({ registry: 'synergies' as const, id: String(id), path: `unlocks.synergies[${i}]` }));
+});
+
+/** Checks that need the whole registry set (reported at `path` of the entry). */
+export interface RegistryCheck { path: string; message: string }
+export type CheckExtractor = (entry: Entry, registries: Record<RegistryName, Map<string, Entry>>) => RegistryCheck[];
+const checkExtractors = new Map<RegistryName, CheckExtractor[]>();
+
+export function registerChecks(registry: RegistryName, check: CheckExtractor): void {
+  const list = checkExtractors.get(registry) ?? [];
+  list.push(check);
+  checkExtractors.set(registry, list);
+}
+
+export function getCheckExtractors(): ReadonlyMap<RegistryName, CheckExtractor[]> {
+  return checkExtractors;
+}
+
+registerChecks('items', (entry, regs) => {
+  const cls = String(entry.class);
+  for (const role of regs.roles.values()) {
+    const weapons = (role.weaponClasses as string[] | undefined) ?? [];
+    const armor = (role.armorWeights as string[] | undefined) ?? [];
+    if (weapons.includes(cls) || armor.includes(cls)) return [];
+  }
+  return [{ path: 'class', message: `class "${cls}" is not a weapon class or armor weight of any role` }];
+});

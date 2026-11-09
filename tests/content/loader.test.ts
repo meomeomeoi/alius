@@ -17,9 +17,9 @@ describe('content loader', () => {
     const { registries, errors } = await loadPacks([`${P}/base`], fsFetch);
     expect(errors).toEqual([]);
     expect([...registries.flags.keys()]).toEqual(['alpha', 'beta']);
-    expect([...registries.items.keys()]).toEqual(['medic', 'tank']);
+    expect([...registries.marks.keys()]).toEqual(['medic', 'tank']);
     expect(Object.keys(registries).sort()).toEqual([...REGISTRY_NAMES].sort());
-    expect(registries.marks.size).toBe(0);
+    expect(registries.skills.size).toBe(0);
   });
 
   it('the shipped core pack loads without errors', async () => {
@@ -39,14 +39,14 @@ describe('content loader', () => {
 
   it('missing file is reported, others load', async () => {
     const files = {
-      'p/manifest.json': { id: 'p', name: 'P', version: '1', priority: 0, files: { flags: 'flags.json', items: 'items.json' } },
+      'p/manifest.json': { id: 'p', name: 'P', version: '1', priority: 0, files: { flags: 'flags.json', marks: 'marks.json' } },
       'p/flags.json': [{ id: 'f1', scope: 'world', description: 'd' }],
     };
     const { registries, errors } = await loadPacks(['p'], memFetch(files));
     expect(errors).toHaveLength(1);
-    expect(errors[0]).toMatchObject({ pack: 'p', file: 'items.json' });
+    expect(errors[0]).toMatchObject({ pack: 'p', file: 'marks.json' });
     expect(registries.flags.has('f1')).toBe(true);
-    expect(registries.items.size).toBe(0);
+    expect(registries.skills.size).toBe(0);
   });
 
   it('missing manifest is reported and other packs still load', async () => {
@@ -67,33 +67,33 @@ describe('content loader', () => {
   it('extends merges objects and replaces arrays', async () => {
     const { registries, errors } = await loadPacks([`${P}/base`, `${P}/override`], fsFetch);
     expect(errors).toEqual([]);
-    const plus = registries.items.get('medic_plus')!;
+    const plus = registries.marks.get('medic_plus')!;
     expect(plus.name).toBe('Medic+');
     expect(plus.tags).toEqual(['heal', 'buff']);
     expect(plus.stats).toEqual({ hp: 10, atk: 5 });
     expect(plus.extends).toBeUndefined();
     // medic itself is untouched
-    expect(registries.items.get('medic')!.stats).toEqual({ hp: 10, atk: 2 });
+    expect(registries.marks.get('medic')!.stats).toEqual({ hp: 10, atk: 2 });
     // self-extends is a partial override of the lower-priority entry
-    expect(registries.items.get('tank')).toEqual({ id: 'tank', name: 'Tank Mk2' });
+    expect(registries.marks.get('tank')).toEqual({ id: 'tank', name: 'Tank Mk2' });
   });
 
   it('extends unknown id is an error', async () => {
     const files = {
-      'p/manifest.json': { id: 'p', name: 'P', version: '1', priority: 0, files: { items: 'items.json' } },
-      'p/items.json': [{ id: 'x', extends: 'nope' }],
+      'p/manifest.json': { id: 'p', name: 'P', version: '1', priority: 0, files: { marks: 'marks.json' } },
+      'p/marks.json': [{ id: 'x', extends: 'nope' }],
     };
     const { registries, errors } = await loadPacks(['p'], memFetch(files));
     expect(errors).toHaveLength(1);
-    expect(errors[0]).toMatchObject({ pack: 'p', file: 'items.json', path: '[0].extends' });
+    expect(errors[0]).toMatchObject({ pack: 'p', file: 'marks.json', path: '[0].extends' });
     expect(errors[0].message).toContain('nope');
-    expect(registries.items.has('x')).toBe(false);
+    expect(registries.marks.has('x')).toBe(false);
   });
 
   it('extends cycles are errors, not hangs', async () => {
     const files = {
-      'p/manifest.json': { id: 'p', name: 'P', version: '1', priority: 0, files: { items: 'items.json' } },
-      'p/items.json': [{ id: 'a', extends: 'b' }, { id: 'b', extends: 'a' }],
+      'p/manifest.json': { id: 'p', name: 'P', version: '1', priority: 0, files: { marks: 'marks.json' } },
+      'p/marks.json': [{ id: 'a', extends: 'b' }, { id: 'b', extends: 'a' }],
     };
     const { errors } = await loadPacks(['p'], memFetch(files));
     expect(errors.length).toBeGreaterThan(0);
