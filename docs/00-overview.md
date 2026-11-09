@@ -151,7 +151,7 @@ Before each main-model generation the adapter injects one compact block:
 
 Character card text itself remains SillyTavern's job.
 
-### 5.4 Implemented engine interfaces (P0–P3)
+### 5.4 Implemented engine interfaces (P0–P4)
 
 Later packages build on these; change them only together with the owning spec.
 
@@ -179,6 +179,10 @@ Later packages build on these; change them only together with the owning spec.
 | `registerActivityHook(fn)` | P3 | Runs after an activity's effects, before its slot is spent (defect social hooks). |
 | `app.startScene(opts)`, `app.scene`, `app.comms`, `app.restoreSnapshot(snap, expected)` | P3 | `startScene` opens a scene and its screen; `scene` is the controller (`send`, `propose`, `answer`, `end`, `resume`); `comms` the DM/night controller; `restoreSnapshot` a conditional state restore. |
 | `cutIn(host, kind, text)`, `shell.setTabBadge(id, n)`, `shell.registerScreen(id, render, { refresh })` | P3 | UI hooks (a one-animation cut-in for major events, tab badges, in-place screen refresh). |
+| `combat/start { encounter, formation, coverId?, allowRetry?, expedition?, bankLoot? }`, `combat/act`, `combat/order`, `combat/auto`, `combat/retreat`, `combat/retry`, `combat/accept`, `combat/set_enemy_name`, `campaign/set_difficulty` | P4 | Combat. A decided combat is finalized at once into `state.lastCombat` (`CombatResult`: outcome, xp, level-ups, loot, injuries, deaths, breakdowns, `relationHints`); a loss with `allowRetry` waits as `phase: 'lost_pending'`. `app.startCombat(opts)` shows the screen (fills `allowRetry` from the setting). |
+| `engine/combat` exports: `checkStart`, `canAutoResolve`, `generateEncounter(state, reg, rng, { table, danger, squadPower, exposesCommander?, lootTableId? })`, `defaultFormation`, `squadPower`, `encounterPower`, `defaultEnemyName`, `releaseBreakdowns` | P4 | What P5 uses to build and judge fights. `EnemyTable = { categories, archetypes? }`. |
+| `squad/unlock_node`, `squad/respec`, `squad/set_loadout`, `squad/release_breakdowns`, `levelCap(state)` (`world.clearanceTier`), `unitStats(state, reg, unit)` | P4 | Progression. P5 calls `squad/release_breakdowns` on return and writes `world.clearanceTier`. |
+| `item/equip`, `item/unequip`, `item/craft`, `item/upgrade`, `item/reroll`, `item/dismantle`, `rollLoot(draft, reg, rng, tableId, { extraRolls? })`, `bankLoot(draft, drops)` | P4 | Items and the workshop (session opened by the `workshop` activity). P5 banks `lastCombat.loot` with `bankLoot` on return; `loot_cache` is the table for cache nodes. |
 
 Events emitted by the day-end pipeline: `day_end_step`, `upkeep`, `supply_shortage`, `trust_penalty_event`, `unit_recovered`, `facility_upgraded`, `slot_advanced`, `night_started`, `day_started`, `autosave` (the app flushes the saver on it).
 
@@ -193,8 +197,8 @@ Campaign {
   relations: { [unitId]: Relation }
   resources { credits, supplies, plyx }
   base { facilities: { [id]: level } /* absent = level 1 */, upgrades?: { facilityId, toLevel, daysLeft }[] }
-  inventory: ItemInstance[]
-  world { regions{...}, clocks[], threads[], factions{standing}, flags[], spineProgress, startId? }
+  inventory: ItemInstance[]   // P4: { uid, itemId, rarity, upgrade, affixes[] }; itemSeq? counts uids
+  world { regions{...}, clocks[], threads[], factions{standing}, flags[], spineProgress, startId?, clearanceTier? /* P4 reads, P5 writes: level cap tier 0–3 */ }
   missions { offered[], active[], completed[] }
   rumors[], dms: { [unitId]: DmMessage[] }, dmMeta?: { [unitId]: { day, sent } }   // P3: the unit's daily "social battery"
   memory { facts[], chronicle[], promises?[], nextId? }   // P3
@@ -202,12 +206,14 @@ Campaign {
   calendar { scheduled[], nightEventsQueue[], nightEvent? /* head entry while the Night slot runs */, pendingScene? /* open talk holding its slot */, shortageStreak? }
   leash { authorizationsLeft, refreshDay, log[] }
   expedition?: ExpeditionState
-  combat?: CombatState
+  combat?: CombatState        // P4: only combat and rng change while it runs
+  lastCombat?: CombatResult   // P4: for P5's recap and debrief
+  workshopSession?: { day, opsLeft, companionId? }, enemyNames?: { [enemyId|affixes]: name }   // P4
 }
 
 Unit {
   id, kind: 'named'|'grunt', cardRef?, displayName, asciiPortrait?, designation?, bio?   // grunts: `K-117`-style designation, optional generated name/bio
-  roleId, level, xp, skillPoints, unlockedNodes[]
+  roleId, level, xp, skillPoints, unlockedNodes[], loadout?: skillId[], breakdown?: { defectId, day }   // P4
   signatureSkill { templateId, name, description }   // template id from the registry; name/description are the unit's own words, numbers stay in the template
   baseStats {hp, atk, def, spd, crit}, currentHp, stress
   defects: DefectInstance[]   // { id, origin?, arc?, lite?, upkeepDay? }; named: 1–2, grunt: 1 (lite: no arc)
@@ -261,6 +267,8 @@ Packs can override by id or `extends` an existing entry. In v1 packs are loaded 
 
 Connection profiles (main, mechanic) · per-call token budgets · intent extraction mode (per exchange / every N / scene end) · sprite mode (native Expressions / mechanic `emotion_pick`) · difficulty (combat difficulty; **easy retry**: rewind lost combat, rewinds not recorded in memory) · show raw values (off: bands only) · mechanics edit lock (on by default: view-only, unlock to edit numbers in UI) · intimacy: romance on/off, explicit scenes allowed on/off (directive to main model; actual content depends on user's model/preset), Desire/Bond defect category on/off, romantic initiative intensity (low/med/high) · UI: phosphor palette (amber/green/white), scanlines, typing animation speed · companion vignettes on/off, generated grunt names on/off · debug mode (show intents, deltas, prompts).
 
+P4: **easy retry** (default off) and generated enemy names (default off) are global settings; combat difficulty (story / normal / hard) is per campaign (`campaign/set_difficulty`, SYS).
+
 Defaults in code: Desire/Bond defects **off**, show raw values **off**, sprite mode **native**, edit lock **on**; P3: intent extraction **per exchange** (min confidence 0.5), scene pacing 30 exchanges, typing 60 chars/s, romance **on**, explicit scenes **off**, romantic initiative **medium**, unit DMs **on**, chronicle compaction **on**. The campaign stores a snapshot of the Desire/Bond setting it was started with (`settings.desireBondDefects`); the engine uses that snapshot, not the global value, when it validates later changes. The edit lock does **not** apply inside the new-campaign wizard (setup is always editable); it does apply to "Re-sync from card" on a running campaign.
 
 ## 9. Packages
@@ -271,7 +279,7 @@ Defaults in code: Desire/Bond defects **off**, show raw values **off**, sprite m
 | P1 | Campaign setup & character import | P0 | implemented |
 | P2 | Calendar, activities, base & economy | P0, P1 | implemented |
 | P3 | Scenes, relationships, memory, PDA comms | P0–P2 | implemented |
-| P4 | Combat, progression, items | P0, P1 (P2 for workshop) | not started |
+| P4 | Combat, progression, items | P0, P1 (P2 for workshop) | implemented |
 | P5 | World map, expeditions, missions, director | P0–P4 | not started |
 | P6 | Dilemmas, disloyalty & the Leash | P0–P5 | not started |
 

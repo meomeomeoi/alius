@@ -2,6 +2,8 @@
 
 **Depends on:** P0, P1 (P2 for workshop/medbay hooks, P3 for synergies — use stubs if not present). **Read:** overview; `content/roles.md` (all); `content/defects.md` (effects); `content/lore.md` §7.
 
+**Status:** implemented (plan: `plans/2026-11-09-p4-combat-progression-items.md`). Automated tests pass; the in-SillyTavern checklist `MANUAL_TEST_P4.md` still has to be run by hand. Where an earlier draft of this spec said something else, the code won; the differences are listed under **Implemented as** at the end.
+
 ## Goal
 
 Short, tactical, self-sufficiently interesting turn-based combat with zero LLM calls, tied to relationships through synergies and to defects through stress; levels, skill trees, equipment, crafting and loot.
@@ -99,3 +101,32 @@ Headless simulator (`npm run sim`) runs N seeded combats for configurable squads
 - **Cut-ins:** `cutIn(host, kind, text)` (`src/ui/scene/cutIn.ts`) is the one-animation hook for combat flourishes.
 - **Commander Crisis:** dispatch `commander/injure { days }`; the app answers `commander_injured` with `relations/commander_injured`, which queues visits from lovers, devoted and dependent units.
 - **Defect social data:** `defects[].relationModifiers`, `socialHooks`, `dmChanceBonus` and `nightEvents` already exist in the schema (see `CONTENT.md`); combat effects of defects stay in your own fields.
+
+## Implemented as
+
+### Rules
+- **Synergies are unit↔commander** (v1 has no NPC↔NPC relations): `friend_assist` = follow-up after any ally's crit (once per round), `rival_edge` = flat +10 % damage. New `synergies` registry; `resentful`/`estranged`/`despises` unlock `order_friction_minor`/`order_friction`/`order_friction_major` (refusal chance 15/25/35 % on CP orders aimed at her).
+- **Stats** are computed, never stored: role base + `floor(growth × (level − 1))`, then equipment (flat stats, then affix percentages of the wearer's total), then armor SPD (heaviest piece only: light 0, medium −1, heavy −3), then −10 % per injury (max 3), each stat floored at 1 (CRIT 0). Enemy stats: `(base + growth × (level − 1)) × difficulty × (1 + Σ affix %)`; difficulty (0.8 / 1 / 1.2) scales HP, ATK and DEF only.
+- **Levels:** XP to leave a level = 40 + 20 × level; cap `[10, 20, 30, 40][world.clearanceTier ?? 0]` (P5 writes the tier); XP above the cap is kept. The P4 activity hook levels units after every activity; combats level them at the end.
+- **Skill trees** live on the role (`tree`): 3 branches × 5 tiers (costs 2–6, pattern active / passive / upgrade of the tier-1 active / active / passive) + an ultimate (cost 6, needs two tier-3 nodes) = 66 points. Loadout = up to 4 actives (+1 per `loadout_slots`) + an active signature + the ultimate. Ultimates cost their CP unless the unit is `authorized`.
+- **Items:** a template's rarity is its minimum; instances carry rarity, upgrade 0–5 and affixes; `Unit.equipment[slot]` holds the instance uid and is the only record of the wearer. Illegal or unknown items are ignored by `unitStats` and flagged `NOT CERTIFIED` / `UNKNOWN` in SQUAD. Dismantle pays `value × (1 + 0.15 × (rarity − 1)) × 50 %` plyx.
+- **Workshop:** the `workshop` activity opens `state.workshopSession = { day, opsLeft: 3, companionId? }`; craft, upgrade, reroll and dismantle each need an open session of today and spend one op. A companion who likes `tech` gives a 25 % chance of a free +1 on her equipped weapon.
+- **Combat only writes `state.combat` and `state.rng`.** HP, stress, XP, levels, injuries, deaths, breakdowns and loot are written once by `finalizeCombat`, in the same dispatch in which the combat is decided. Hence `combat/retry` (only from `lost_pending`, i.e. a loss with `allowRetry`) restores `rng` to `combat.start.rng` and rebuilds from the stored payload: JSON-equal to the state right after `combat/start`. P4 writes no memory or chronicle entries.
+- **Loot banking:** `combat/start { bankLoot }`; `false` (P5 expeditions, the drill) only records loot in `lastCombat.loot`.
+- **Breakdown persistence:** `Unit.breakdown = { defectId, day }` survives between combats; `squad/release_breakdowns` (P5 calls it on return) clears it and emits `breakdown_released`; a combat with `expedition: false` releases at finalize. A unit at stress 80–99 follows her breakdown policy 25 % of turns without spending a `once` or shutting down.
+- **Easy retry** is the global setting `easyRetry` (default off), applied by `app.startCombat` (it overrides the caller's `allowRetry`). **Difficulty** is per campaign: `campaign/set_difficulty` (refused during a combat).
+- **Auto-resolve** = `combat/auto { on: true }`: squad units are chosen by the role's AI profile in the same dispatch until the combat ends. AUTO never issues orders. `canAutoResolve` = encounter power ≤ 60 % of squad power.
+- **Round cap:** a combat past round 30 ends as `retreated`. A squad unit with no usable skill passes by itself.
+- **Commander Crisis:** `encounter.exposesCommander` + `coverId`. The commander is not a combatant but a pseudo target `commander` (HP 60, DEF 10): enemy skills that reach the back row may pick it (melee only once the squad's front is gone); the cover unit takes the hit while she stands; `intercept_lethal` saves him once per combat; at 0 HP the combat is lost and `injureCommander(draft, 3)` (extracted from `commander/injure`) runs. Area effects never reach the commander.
+- **Relation hints** leave in `lastCombat.relationHints` for P5's debrief (`intents/apply`): the cover unit took hits → `{ protected, actor: unitId }`; protective orders on a unit below 30 % HP → `{ protected, actor: 'commander', targets: [unitId] }`; a unit downed → `{ endangered, actor: 'commander', targets: [unitId] }`; one per (type, actor, target), highest severity kept.
+- **Time inside a combat:** a status expires at the end of its owner's turn, so a unit's self-applied status needs `turns: 2` to cover her next turn (the Guard action does this). Cooldown N is stored as N + 1 and ticks at each of her turn starts. `onAllyDowned` also fires for the downed unit itself (enemy affix `volatile`).
+- **Vocabulary additions** beyond the draft: `damage.pctMaxHp` (true damage for bleed/burn), `outgoing.scale`, `stat: 'all'`, target `allies_front`, status flag `rooted`. `reinforcing` always summons a `husk`.
+- **Settings and UI:** `easyRetry`, `enemyFlavor` (the optional cached `flavor` kind `enemy`), SYS difficulty select; the combat screen (keyboard: `1`–`6` skills, `←`/`→` targets, `Enter`, `G S P`, `Q W E R T` orders, `A`, `Esc`), the INV tab (dry-run dispatch gives the greyed-button reasons), SQUAD tree/loadout/equipment/respec. The app flushes the save at once on every `combat_*` event so a reload resumes the same turn.
+- **Entry point without P5:** `app.startCombat(opts)` and the SYS debug tool **Combat drill**.
+
+### Balance (see `BALANCE_REPORT.md`)
+The harness is `npm run sim`. Regular fights (danger 2) last 4.2 rounds and every defect is within ±5 pp; at danger 4 (win rate 84 %, 9.5 rounds) six defects are above the band — `graft_rejection` (+13.6), `target_lock` (+9.8), `imprint_hunger` (+9.5), `hunger_loop` (+8.0), `compulsive_protocol` (+5.8), `pain_inversion` (+5.7); none below. Out-of-combat costs are not simulated. The rule is reported, not enforced; tuning continues.
+
+### Not in P4
+Bosses, permadeath mode, NPC↔NPC synergies, per-expedition rows between nodes (P5), images for enemies, real tuning of the draft numbers.
+

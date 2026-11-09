@@ -521,8 +521,8 @@ docs/** (Task 21), tests/** mirror src
 - Create: `docs/MANUAL_TEST_P4.md`, `docs/BALANCE_REPORT.md` (from `npm run sim -- --neutrality --out docs/BALANCE_REPORT.md`)
 - Test: `tests/build.test.ts` (existing)
 
-- [ ] **Step 1:** `npm run build` → `dist/index.js` and `style.css` change and stay tracked.
-- [ ] **Step 2:** `npm run sim -- --neutrality --out docs/BALANCE_REPORT.md` (2000 runs); note failing defects and the average rounds in the spec's **Implemented as** (tuning may continue).
-- [ ] **Step 3:** Walk the eight acceptance criteria against test names and record them in `docs/MANUAL_TEST_P4.md` next to the in-SillyTavern steps that cannot be automated (mouse and keyboard play of a full drill, sprite head crops, cut-ins, INV compare and workshop, SQUAD tree, easy retry toggle, difficulty select).
-- [ ] **Step 4:** `npx vitest run` and `npm run typecheck` → all green; put the counts in the final report.
-- [ ] **Step 5: Commit** `chore: rebuild dist and style, P4 docs, balance report and manual checklist`.
+- [x] **Step 1:** `npm run build` → `dist/index.js` and `style.css` change and stay tracked.
+- [x] **Step 2:** `npm run sim -- --neutrality --out docs/BALANCE_REPORT.md` (2000 runs); note failing defects and the average rounds in the spec's **Implemented as** (tuning may continue).
+- [x] **Step 3:** Walk the eight acceptance criteria against test names and record them in `docs/MANUAL_TEST_P4.md` next to the in-SillyTavern steps that cannot be automated (mouse and keyboard play of a full drill, sprite head crops, cut-ins, INV compare and workshop, SQUAD tree, easy retry toggle, difficulty select).
+- [x] **Step 4:** `npx vitest run` and `npm run typecheck` → all green; put the counts in the final report.
+- [x] **Step 5: Commit** `chore: rebuild dist and style, P4 docs, balance report and manual checklist`.

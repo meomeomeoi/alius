@@ -90,3 +90,13 @@ Provider adds 1–3 sentences of world state relevant to the scene (region of la
 - **Intents after an expedition:** feed `protected` / `endangered` / `sided_with` events through `intents/apply` inside a debrief scene; the engine validates and applies them (diminishing returns included).
 - **Chronicle:** scene lines are written by `scene/end`; the weekly/daily compaction runs by itself (`memory/compact`); add story beats as facts or as chronicle entries via `addChronicle(draft, { kind: 'scene', day, text })` if needed.
 - **Director context:** `ContextBuilder` providers registered by P5 sit next to P3's (`scene_header` 95, `units` 90, `commander` 80, `facts` 70, `promises` 60). The relationship `promptHint`s are in `relationshipStates.json`.
+
+## Interfaces already provided by P4 (implemented — use, do not rebuild)
+
+- **Starting a fight:** `app.startCombat({ encounter, formation, coverId?, bankLoot?, expedition: true })` (shows the combat screen; `allowRetry` comes from the easy-retry setting). Build the encounter with `generateEncounter(state, reg, rng, { table: region.enemyTable, danger, squadPower, exposesCommander?, lootTableId? })` and the formation with `defaultFormation(state, reg, unitIds)`; `checkStart` says why a payload is refused; `canAutoResolve` offers AUTO. All are exported from `engine/combat`.
+- **Result:** a decided combat leaves `state.lastCombat` (`outcome`, `rounds`, `enemies` with names, `xp`, `levelUps`, `loot`, `injuries`, `deaths`, `breakdowns`, `stressDelta`, `relationHints`, `commanderInjured`) and no `combat`. With `bankLoot: false` the loot is only recorded: bank it on return with `bankLoot(draft, lastCombat.loot)` (a lost or retreated combat has none). Chosen cache nodes use the loot table `loot_cache`.
+- **Debrief:** pass `lastCombat.relationHints` to `intents/apply` inside the debrief scene (`protected` / `endangered` with actor, targets and severity).
+- **Breakdowns** last until the expedition ends: call `squad/release_breakdowns` on return (emits `breakdown_released { unitId }`; queue the debrief/night hook from it).
+- **Level cap:** write `world.clearanceTier` (0–3 → caps 10/20/30/40) when a beat or facility raises it; stored XP is spent by the next `applyLevelUps` (the next activity or combat).
+- **Injuries** use P2's `status: 'injured'` + `injuryDays`; a downed named unit is never dead, grunts die on a loss.
+- **Rows between nodes:** `squad` formation is chosen per combat; the engine accepts any valid formation each time.

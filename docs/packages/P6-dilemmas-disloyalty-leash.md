@@ -98,3 +98,11 @@ Directives for refusals, desertion intent, post-Leash trauma ("she remembers bei
 - **States P6 reads:** `despises` (attack outcomes), `resentful`, `obsessed`, `dependent`, `unrequited`; their entry/exit conditions are data in `relationshipStates.json`.
 - **Defect arcs:** states list `unlocks.defectArcStages` (`manage`, `cure`, `embrace`); the arc itself is yours.
 - **Marks:** `Relation.marks[]` is still reserved and empty; P3 does not read it.
+
+## Interfaces already provided by P4 (implemented — use, do not rebuild)
+
+- **Order refusals:** `order_refusal` passives (defects such as `imprint_fracture`, `rage_governor`, `possessive_protocol`; the friction synergies `order_friction_minor` / `order_friction` / `order_friction_major` on `resentful` / `estranged` / `despises`) are rolled in `issueOrder` (`engine/combat/orders`); a refusal keeps the CP spent, adds stress and emits `order_refused { orderId, cid, unitId }`. `wavering` units should get a friction synergy in the same way (a synergy entry in `synergies.json` plus the id in the state's `unlocks.synergies`).
+- **Compel** cancelling a refusal belongs in `issueOrder` before the refusal roll; `combat.ordersThisRound` and `combat.lastOrder` record what was ordered this round.
+- **Stress and breakdown:** `Unit.stress`, `Unit.breakdown`; the daily relationship pass already marks stress ≥ 80 (`stress_high`).
+- **Injury and death:** `lastCombat.injuries` / `deaths`; named units are never killed by combat, only by the Leash (`terminated`).
+- **Commander Crisis** hooks: `lastCombat.commanderInjured`, `commander_injured` event (P3 answers it).
