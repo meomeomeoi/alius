@@ -184,8 +184,8 @@ export interface Combatant {
   aiAffixSkills?: string[];
   /** Redirects this unit has accepted: damage meant for `fromCid` that she takes instead. */
   redirects?: Array<{ fromCid: string; pct: number; turnsLeft: number }>;
-  /** Stress thresholds already crossed upward (50, 80, 100); cleared when stress drops back below. */
-  thresholds?: number[];
+  /** The combatant (cid) that summoned this enemy. */
+  summonedBy?: string;
 }
 
 export interface LogEntry {
@@ -261,6 +261,8 @@ export interface CombatState {
   nextCid: number;
   /** Set when the commander went down. */
   commanderDown?: boolean;
+  /** `repeat_order` fired: the order engine repeats `lastOrder` for free (read by orders.ts). */
+  repeatOrder?: boolean;
 }
 
 // ---------------------------------------------------------------------------------------------
