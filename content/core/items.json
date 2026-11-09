@@ -1,0 +1,260 @@
+[
+  {
+    "id": "item_blade",
+    "name": "Standard Blade",
+    "slot": "weapon",
+    "class": "Blade",
+    "rarity": "standard",
+    "baseStats": {
+      "atk": 8,
+      "crit": 4
+    },
+    "effects": [],
+    "value": 30
+  },
+  {
+    "id": "item_pistol",
+    "name": "Standard Pistol",
+    "slot": "weapon",
+    "class": "Pistol",
+    "rarity": "standard",
+    "baseStats": {
+      "atk": 6,
+      "spd": 1,
+      "crit": 6
+    },
+    "effects": [],
+    "value": 25
+  },
+  {
+    "id": "item_smg",
+    "name": "Standard SMG",
+    "slot": "weapon",
+    "class": "SMG",
+    "rarity": "standard",
+    "baseStats": {
+      "atk": 7,
+      "spd": 1
+    },
+    "effects": [],
+    "value": 30
+  },
+  {
+    "id": "item_rifle",
+    "name": "Standard Rifle",
+    "slot": "weapon",
+    "class": "Rifle",
+    "rarity": "standard",
+    "baseStats": {
+      "atk": 8,
+      "crit": 3
+    },
+    "effects": [],
+    "value": 30
+  },
+  {
+    "id": "item_shotgun",
+    "name": "Standard Shotgun",
+    "slot": "weapon",
+    "class": "Shotgun",
+    "rarity": "standard",
+    "baseStats": {
+      "atk": 10,
+      "spd": -1
+    },
+    "effects": [],
+    "value": 35
+  },
+  {
+    "id": "item_precision_rifle",
+    "name": "Standard Precision Rifle",
+    "slot": "weapon",
+    "class": "Precision Rifle",
+    "rarity": "standard",
+    "baseStats": {
+      "atk": 10,
+      "crit": 10
+    },
+    "effects": [],
+    "value": 40
+  },
+  {
+    "id": "item_heavy",
+    "name": "Standard Heavy Weapon",
+    "slot": "weapon",
+    "class": "Heavy",
+    "rarity": "standard",
+    "baseStats": {
+      "atk": 11,
+      "spd": -2
+    },
+    "effects": [],
+    "value": 40
+  },
+  {
+    "id": "item_tech",
+    "name": "Standard Emitter",
+    "slot": "weapon",
+    "class": "Tech",
+    "rarity": "standard",
+    "baseStats": {
+      "atk": 6,
+      "crit": 4
+    },
+    "effects": [],
+    "value": 35
+  },
+  {
+    "id": "item_bio",
+    "name": "Standard Injector",
+    "slot": "weapon",
+    "class": "Bio",
+    "rarity": "standard",
+    "baseStats": {
+      "atk": 5,
+      "hp": 10
+    },
+    "effects": [],
+    "value": 35
+  },
+  {
+    "id": "upper_light",
+    "name": "Light Vest",
+    "slot": "upper",
+    "class": "light",
+    "rarity": "standard",
+    "baseStats": {
+      "def": 3,
+      "hp": 10
+    },
+    "effects": [],
+    "value": 20
+  },
+  {
+    "id": "upper_medium",
+    "name": "Medium Harness",
+    "slot": "upper",
+    "class": "medium",
+    "rarity": "standard",
+    "baseStats": {
+      "def": 6,
+      "hp": 15
+    },
+    "effects": [],
+    "value": 30
+  },
+  {
+    "id": "upper_heavy",
+    "name": "Heavy Plate",
+    "slot": "upper",
+    "class": "heavy",
+    "rarity": "standard",
+    "baseStats": {
+      "def": 10,
+      "hp": 20
+    },
+    "effects": [],
+    "value": 40
+  },
+  {
+    "id": "lower_light",
+    "name": "Light Greaves",
+    "slot": "lower",
+    "class": "light",
+    "rarity": "standard",
+    "baseStats": {
+      "def": 2,
+      "hp": 6
+    },
+    "effects": [],
+    "value": 15
+  },
+  {
+    "id": "lower_medium",
+    "name": "Medium Greaves",
+    "slot": "lower",
+    "class": "medium",
+    "rarity": "standard",
+    "baseStats": {
+      "def": 4,
+      "hp": 10
+    },
+    "effects": [],
+    "value": 25
+  },
+  {
+    "id": "lower_heavy",
+    "name": "Heavy Greaves",
+    "slot": "lower",
+    "class": "heavy",
+    "rarity": "standard",
+    "baseStats": {
+      "def": 7,
+      "hp": 14
+    },
+    "effects": [],
+    "value": 35
+  },
+  {
+    "id": "bloom_fang",
+    "name": "Bloom Fang",
+    "slot": "weapon",
+    "class": "Blade",
+    "rarity": "anomalous",
+    "baseStats": {
+      "atk": 14,
+      "crit": 8
+    },
+    "effects": [
+      {
+        "type": "status",
+        "statusId": "bleed",
+        "turns": 3,
+        "trigger": "onHit",
+        "chance": 0.3
+      }
+    ],
+    "value": 200
+  },
+  {
+    "id": "whisper_coil",
+    "name": "Whisper Coil",
+    "slot": "weapon",
+    "class": "Tech",
+    "rarity": "anomalous",
+    "baseStats": {
+      "atk": 12,
+      "crit": 6
+    },
+    "effects": [
+      {
+        "type": "cp",
+        "amount": 1,
+        "trigger": "onCombatStart",
+        "target": "self",
+        "limit": "combat"
+      }
+    ],
+    "value": 200
+  },
+  {
+    "id": "grafted_plate",
+    "name": "Grafted Plate",
+    "slot": "upper",
+    "class": "heavy",
+    "rarity": "anomalous",
+    "baseStats": {
+      "def": 14,
+      "hp": 30
+    },
+    "effects": [
+      {
+        "type": "heal",
+        "pctMaxHp": 3,
+        "trigger": "onTurnStart",
+        "target": "self"
+      }
+    ],
+    "value": 220
+  }
+]

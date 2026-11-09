@@ -1,0 +1,535 @@
+[
+  {
+    "id": "loot_standard",
+    "rolls": 2,
+    "entries": [
+      {
+        "weight": 120,
+        "kind": "credits",
+        "amount": [
+          10,
+          30
+        ]
+      },
+      {
+        "weight": 105,
+        "kind": "plyx",
+        "amount": [
+          3,
+          8
+        ]
+      },
+      {
+        "weight": 5,
+        "kind": "item",
+        "itemId": "item_blade",
+        "rarityWeights": {
+          "standard": 70,
+          "refined": 30
+        }
+      },
+      {
+        "weight": 5,
+        "kind": "item",
+        "itemId": "item_pistol",
+        "rarityWeights": {
+          "standard": 70,
+          "refined": 30
+        }
+      },
+      {
+        "weight": 5,
+        "kind": "item",
+        "itemId": "item_smg",
+        "rarityWeights": {
+          "standard": 70,
+          "refined": 30
+        }
+      },
+      {
+        "weight": 5,
+        "kind": "item",
+        "itemId": "item_rifle",
+        "rarityWeights": {
+          "standard": 70,
+          "refined": 30
+        }
+      },
+      {
+        "weight": 5,
+        "kind": "item",
+        "itemId": "item_shotgun",
+        "rarityWeights": {
+          "standard": 70,
+          "refined": 30
+        }
+      },
+      {
+        "weight": 5,
+        "kind": "item",
+        "itemId": "item_precision_rifle",
+        "rarityWeights": {
+          "standard": 70,
+          "refined": 30
+        }
+      },
+      {
+        "weight": 5,
+        "kind": "item",
+        "itemId": "item_heavy",
+        "rarityWeights": {
+          "standard": 70,
+          "refined": 30
+        }
+      },
+      {
+        "weight": 5,
+        "kind": "item",
+        "itemId": "item_tech",
+        "rarityWeights": {
+          "standard": 70,
+          "refined": 30
+        }
+      },
+      {
+        "weight": 5,
+        "kind": "item",
+        "itemId": "item_bio",
+        "rarityWeights": {
+          "standard": 70,
+          "refined": 30
+        }
+      },
+      {
+        "weight": 5,
+        "kind": "item",
+        "itemId": "upper_light",
+        "rarityWeights": {
+          "standard": 70,
+          "refined": 30
+        }
+      },
+      {
+        "weight": 5,
+        "kind": "item",
+        "itemId": "upper_medium",
+        "rarityWeights": {
+          "standard": 70,
+          "refined": 30
+        }
+      },
+      {
+        "weight": 5,
+        "kind": "item",
+        "itemId": "upper_heavy",
+        "rarityWeights": {
+          "standard": 70,
+          "refined": 30
+        }
+      },
+      {
+        "weight": 5,
+        "kind": "item",
+        "itemId": "lower_light",
+        "rarityWeights": {
+          "standard": 70,
+          "refined": 30
+        }
+      },
+      {
+        "weight": 5,
+        "kind": "item",
+        "itemId": "lower_medium",
+        "rarityWeights": {
+          "standard": 70,
+          "refined": 30
+        }
+      },
+      {
+        "weight": 5,
+        "kind": "item",
+        "itemId": "lower_heavy",
+        "rarityWeights": {
+          "standard": 70,
+          "refined": 30
+        }
+      }
+    ]
+  },
+  {
+    "id": "loot_elite",
+    "rolls": 2,
+    "entries": [
+      {
+        "weight": 60,
+        "kind": "credits",
+        "amount": [
+          30,
+          70
+        ]
+      },
+      {
+        "weight": 60,
+        "kind": "plyx",
+        "amount": [
+          8,
+          18
+        ]
+      },
+      {
+        "weight": 6,
+        "kind": "item",
+        "itemId": "item_blade",
+        "rarityWeights": {
+          "refined": 50,
+          "prototype": 40,
+          "corporate": 10
+        }
+      },
+      {
+        "weight": 6,
+        "kind": "item",
+        "itemId": "item_pistol",
+        "rarityWeights": {
+          "refined": 50,
+          "prototype": 40,
+          "corporate": 10
+        }
+      },
+      {
+        "weight": 6,
+        "kind": "item",
+        "itemId": "item_smg",
+        "rarityWeights": {
+          "refined": 50,
+          "prototype": 40,
+          "corporate": 10
+        }
+      },
+      {
+        "weight": 6,
+        "kind": "item",
+        "itemId": "item_rifle",
+        "rarityWeights": {
+          "refined": 50,
+          "prototype": 40,
+          "corporate": 10
+        }
+      },
+      {
+        "weight": 6,
+        "kind": "item",
+        "itemId": "item_shotgun",
+        "rarityWeights": {
+          "refined": 50,
+          "prototype": 40,
+          "corporate": 10
+        }
+      },
+      {
+        "weight": 6,
+        "kind": "item",
+        "itemId": "item_precision_rifle",
+        "rarityWeights": {
+          "refined": 50,
+          "prototype": 40,
+          "corporate": 10
+        }
+      },
+      {
+        "weight": 6,
+        "kind": "item",
+        "itemId": "item_heavy",
+        "rarityWeights": {
+          "refined": 50,
+          "prototype": 40,
+          "corporate": 10
+        }
+      },
+      {
+        "weight": 6,
+        "kind": "item",
+        "itemId": "item_tech",
+        "rarityWeights": {
+          "refined": 50,
+          "prototype": 40,
+          "corporate": 10
+        }
+      },
+      {
+        "weight": 6,
+        "kind": "item",
+        "itemId": "item_bio",
+        "rarityWeights": {
+          "refined": 50,
+          "prototype": 40,
+          "corporate": 10
+        }
+      },
+      {
+        "weight": 6,
+        "kind": "item",
+        "itemId": "upper_light",
+        "rarityWeights": {
+          "refined": 50,
+          "prototype": 40,
+          "corporate": 10
+        }
+      },
+      {
+        "weight": 6,
+        "kind": "item",
+        "itemId": "upper_medium",
+        "rarityWeights": {
+          "refined": 50,
+          "prototype": 40,
+          "corporate": 10
+        }
+      },
+      {
+        "weight": 6,
+        "kind": "item",
+        "itemId": "upper_heavy",
+        "rarityWeights": {
+          "refined": 50,
+          "prototype": 40,
+          "corporate": 10
+        }
+      },
+      {
+        "weight": 6,
+        "kind": "item",
+        "itemId": "lower_light",
+        "rarityWeights": {
+          "refined": 50,
+          "prototype": 40,
+          "corporate": 10
+        }
+      },
+      {
+        "weight": 6,
+        "kind": "item",
+        "itemId": "lower_medium",
+        "rarityWeights": {
+          "refined": 50,
+          "prototype": 40,
+          "corporate": 10
+        }
+      },
+      {
+        "weight": 6,
+        "kind": "item",
+        "itemId": "lower_heavy",
+        "rarityWeights": {
+          "refined": 50,
+          "prototype": 40,
+          "corporate": 10
+        }
+      },
+      {
+        "weight": 1,
+        "kind": "item",
+        "itemId": "bloom_fang",
+        "rarityWeights": {
+          "anomalous": 1
+        }
+      },
+      {
+        "weight": 1,
+        "kind": "item",
+        "itemId": "whisper_coil",
+        "rarityWeights": {
+          "anomalous": 1
+        }
+      },
+      {
+        "weight": 1,
+        "kind": "item",
+        "itemId": "grafted_plate",
+        "rarityWeights": {
+          "anomalous": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "loot_cache",
+    "rolls": 2,
+    "entries": [
+      {
+        "weight": 60,
+        "kind": "supplies",
+        "amount": [
+          3,
+          8
+        ]
+      },
+      {
+        "weight": 25,
+        "kind": "credits",
+        "amount": [
+          10,
+          40
+        ]
+      },
+      {
+        "weight": 15,
+        "kind": "plyx",
+        "amount": [
+          3,
+          10
+        ]
+      },
+      {
+        "weight": 2,
+        "kind": "item",
+        "itemId": "item_blade",
+        "rarityWeights": {
+          "standard": 60,
+          "refined": 35,
+          "prototype": 5
+        }
+      },
+      {
+        "weight": 2,
+        "kind": "item",
+        "itemId": "item_pistol",
+        "rarityWeights": {
+          "standard": 60,
+          "refined": 35,
+          "prototype": 5
+        }
+      },
+      {
+        "weight": 2,
+        "kind": "item",
+        "itemId": "item_smg",
+        "rarityWeights": {
+          "standard": 60,
+          "refined": 35,
+          "prototype": 5
+        }
+      },
+      {
+        "weight": 2,
+        "kind": "item",
+        "itemId": "item_rifle",
+        "rarityWeights": {
+          "standard": 60,
+          "refined": 35,
+          "prototype": 5
+        }
+      },
+      {
+        "weight": 2,
+        "kind": "item",
+        "itemId": "item_shotgun",
+        "rarityWeights": {
+          "standard": 60,
+          "refined": 35,
+          "prototype": 5
+        }
+      },
+      {
+        "weight": 2,
+        "kind": "item",
+        "itemId": "item_precision_rifle",
+        "rarityWeights": {
+          "standard": 60,
+          "refined": 35,
+          "prototype": 5
+        }
+      },
+      {
+        "weight": 2,
+        "kind": "item",
+        "itemId": "item_heavy",
+        "rarityWeights": {
+          "standard": 60,
+          "refined": 35,
+          "prototype": 5
+        }
+      },
+      {
+        "weight": 2,
+        "kind": "item",
+        "itemId": "item_tech",
+        "rarityWeights": {
+          "standard": 60,
+          "refined": 35,
+          "prototype": 5
+        }
+      },
+      {
+        "weight": 2,
+        "kind": "item",
+        "itemId": "item_bio",
+        "rarityWeights": {
+          "standard": 60,
+          "refined": 35,
+          "prototype": 5
+        }
+      },
+      {
+        "weight": 2,
+        "kind": "item",
+        "itemId": "upper_light",
+        "rarityWeights": {
+          "standard": 60,
+          "refined": 35,
+          "prototype": 5
+        }
+      },
+      {
+        "weight": 2,
+        "kind": "item",
+        "itemId": "upper_medium",
+        "rarityWeights": {
+          "standard": 60,
+          "refined": 35,
+          "prototype": 5
+        }
+      },
+      {
+        "weight": 2,
+        "kind": "item",
+        "itemId": "upper_heavy",
+        "rarityWeights": {
+          "standard": 60,
+          "refined": 35,
+          "prototype": 5
+        }
+      },
+      {
+        "weight": 2,
+        "kind": "item",
+        "itemId": "lower_light",
+        "rarityWeights": {
+          "standard": 60,
+          "refined": 35,
+          "prototype": 5
+        }
+      },
+      {
+        "weight": 2,
+        "kind": "item",
+        "itemId": "lower_medium",
+        "rarityWeights": {
+          "standard": 60,
+          "refined": 35,
+          "prototype": 5
+        }
+      },
+      {
+        "weight": 2,
+        "kind": "item",
+        "itemId": "lower_heavy",
+        "rarityWeights": {
+          "standard": 60,
+          "refined": 35,
+          "prototype": 5
+        }
+      }
+    ]
+  }
+]

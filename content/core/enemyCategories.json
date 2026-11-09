@@ -1,0 +1,38 @@
+[
+  {
+    "id": "mutant_human",
+    "name": "Bio-mutants (human)",
+    "frequency": "common",
+    "summary": "Bloom-twisted people. They infect and they swarm."
+  },
+  {
+    "id": "mutant_beast",
+    "name": "Bio-mutants (beast)",
+    "frequency": "common",
+    "summary": "Fast pack hunters that make their prey bleed."
+  },
+  {
+    "id": "marauder",
+    "name": "Marauders",
+    "frequency": "common",
+    "summary": "Human raiders with human tactics, loot and cover."
+  },
+  {
+    "id": "enemy_soldier",
+    "name": "Enemy corporate soldiers",
+    "frequency": "rare",
+    "summary": "Disciplined and armored, with orders of their own."
+  },
+  {
+    "id": "offspec_hostile",
+    "name": "Hostile off-spec units",
+    "frequency": "rare",
+    "summary": "Units like the squad, with defects of their own: a mirror."
+  },
+  {
+    "id": "anomaly",
+    "name": "Anomalies",
+    "frequency": "very_rare",
+    "summary": "They deal stress directly and break the rules of rows and time."
+  }
+]

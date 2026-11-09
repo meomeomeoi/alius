@@ -398,3 +398,128 @@ describe('core content: P4 statuses, orders, synergies and defects', () => {
     expect(by('echo_bleed')).toMatchObject({ policy: 'random_skill', ignoresOrders: true });
   });
 });
+
+// ---- P4: enemies, affixes, items, recipes, loot tables ---------------------------------------------------------------
+
+describe('core content: P4 enemies and items', () => {
+  it('6 categories with the lore frequencies', async () => {
+    const { registries: r } = await load();
+    const freq = Object.fromEntries([...r.enemyCategories.values()].map((c) => [c.id, c.frequency]));
+    expect(freq).toEqual({
+      mutant_human: 'common', mutant_beast: 'common', marauder: 'common',
+      enemy_soldier: 'rare', offspec_hostile: 'rare', anomaly: 'very_rare',
+    });
+  });
+
+  it('18 enemies, 3 per category, every aiProfile used, erratic only on fracture', async () => {
+    const { registries: r } = await load();
+    expect(r.enemies.size).toBe(18);
+    const per: Record<string, number> = {};
+    for (const e of r.enemies.values()) per[e.categoryId as string] = (per[e.categoryId as string] ?? 0) + 1;
+    expect(Object.values(per)).toEqual([3, 3, 3, 3, 3, 3]);
+    expect(new Set([...r.enemies.values()].map((e) => e.aiProfile))).toEqual(
+      new Set(['aggressive', 'predator', 'protector', 'disruptor', 'stressor', 'erratic']),
+    );
+    expect([...r.enemies.values()].filter((e) => e.aiProfile === 'erratic').map((e) => e.id)).toEqual(['fracture']);
+    for (const e of r.enemies.values()) {
+      const lines = (e.portrait as { ascii: string[] }).ascii;
+      expect(lines.length, e.id).toBeLessThanOrEqual(8);
+    }
+    expect([...r.enemies.keys()].sort()).toEqual([
+      'bloater', 'brute', 'echo', 'field_officer', 'fracture', 'hound', 'husk', 'raider', 'rogue_assault', 'rogue_medic',
+      'rogue_specialist', 'scav_marksman', 'shield_trooper', 'stalker', 'swarmer', 'trooper', 'warlord', 'whisper',
+    ]);
+  });
+
+  it('anomalies deal stress and ignore rows; mutants inflict infect or bleed', async () => {
+    const { registries: r } = await load();
+    const fx = (id: string) => (r.enemies.get(id)!.skills as string[]).flatMap((s) => skillOf(r, s).effects);
+    for (const id of ['whisper', 'echo']) {
+      expect(fx(id).some((e) => e.type === 'stress'), id).toBe(true);
+    }
+    for (const id of ['whisper', 'fracture', 'echo']) {
+      expect(fx(id).some((e) => e.type === 'damage' && e.ignoreRows === true), id).toBe(true);
+    }
+    for (const id of ['husk', 'swarmer', 'stalker', 'hound']) {
+      expect(fx(id).some((e) => e.type === 'status' && (e.statusId === 'infect' || e.statusId === 'bleed')), id).toBe(true);
+    }
+  });
+
+  it('every enemy skill is kind enemy and every enemy has an elite skill', async () => {
+    const { registries: r } = await load();
+    for (const e of r.enemies.values()) {
+      for (const s of e.skills as string[]) expect(skillOf(r, s).kind, `${e.id}: ${s}`).toBe('enemy');
+      expect(skillOf(r, e.eliteSkill as string).kind).toBe('enemy');
+    }
+  });
+
+  it('7 enemy affixes and >= 8 item affixes with 3 drawbacks', async () => {
+    const { registries: r } = await load();
+    const enemyAffixes = [...r.affixes.values()].filter((a) => a.appliesTo === 'enemy');
+    expect(enemyAffixes.map((a) => a.id).sort()).toEqual(['armored', 'bloom_touched', 'elite', 'regenerating', 'reinforcing', 'swift', 'volatile']);
+    for (const a of enemyAffixes) expect(typeof a.adjective, a.id).toBe('string');
+    expect(r.affixes.get('elite')!.extraSkill).toBe(true);
+    const itemAffixes = [...r.affixes.values()].filter((a) => a.appliesTo === 'item');
+    expect(itemAffixes.filter((a) => !a.drawback).length).toBeGreaterThanOrEqual(8);
+    expect(itemAffixes.filter((a) => a.drawback).map((a) => a.id).sort()).toEqual(['bloom_leak', 'parasitic', 'unstable_core']);
+    for (const slot of ['weapon', 'upper', 'lower']) {
+      const pool = itemAffixes.filter((a) => !a.drawback && (!a.slots || (a.slots as string[]).includes(slot)));
+      expect(pool.length, slot).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  it('18 item templates: one standard weapon per class, armor in three weights, three anomalous', async () => {
+    const { registries: r } = await load();
+    expect(r.items.size).toBe(18);
+    const weapons = [...r.items.values()].filter((i) => i.slot === 'weapon' && i.rarity === 'standard');
+    expect(weapons.map((w) => w.class).sort()).toEqual(['Bio', 'Blade', 'Heavy', 'Pistol', 'Precision Rifle', 'Rifle', 'SMG', 'Shotgun', 'Tech']);
+    for (const slot of ['upper', 'lower']) {
+      const std = [...r.items.values()].filter((i) => i.slot === slot && i.rarity === 'standard');
+      expect(std.map((i) => i.class).sort()).toEqual(['heavy', 'light', 'medium']);
+    }
+    expect([...r.items.values()].filter((i) => i.rarity === 'anomalous').map((i) => i.id).sort()).toEqual(['bloom_fang', 'grafted_plate', 'whisper_coil']);
+  });
+
+  it('every weapon class and armor weight of every role is craftable at standard', async () => {
+    const { registries: r } = await load();
+    const craftable = new Set(
+      [...r.recipes.values()].filter((x) => x.rarity === 'standard').map((x) => r.items.get(x.itemId as string)!)
+        .map((i) => `${i.slot === 'weapon' ? 'w' : 'a'}:${i.class}`),
+    );
+    for (const role of r.roles.values()) {
+      for (const c of role.weaponClasses as string[]) expect(craftable.has(`w:${c}`), `${role.id} ${c}`).toBe(true);
+      for (const w of role.armorWeights as string[]) expect(craftable.has(`a:${w}`), `${role.id} ${w}`).toBe(true);
+    }
+  });
+
+  it('recipes: weapons also at refined and prototype (>= 24); anomalous templates have no recipe', async () => {
+    const { registries: r } = await load();
+    expect(r.recipes.size).toBeGreaterThanOrEqual(24);
+    for (const item of r.items.values()) {
+      const mine = [...r.recipes.values()].filter((x) => x.itemId === item.id).map((x) => x.rarity as string).sort();
+      if (item.rarity === 'anomalous') expect(mine, item.id).toEqual([]);
+      else if (item.slot === 'weapon') expect(mine, item.id).toEqual(['prototype', 'refined', 'standard']);
+      else expect(mine, item.id).toEqual(['standard']);
+    }
+  });
+
+  it('loot tables reference known items and have positive weights', async () => {
+    const { registries: r } = await load();
+    expect([...r.lootTables.keys()].sort()).toEqual(['loot_cache', 'loot_elite', 'loot_standard']);
+    for (const t of r.lootTables.values()) {
+      const entries = t.entries as Array<{ weight: number; kind: string; itemId?: string }>;
+      expect(entries.length).toBeGreaterThan(0);
+      for (const e of entries) {
+        expect(e.weight).toBeGreaterThan(0);
+        if (e.kind === 'item') expect(r.items.has(e.itemId!), `${t.id}: ${e.itemId}`).toBe(true);
+      }
+    }
+    const share = (id: string, kind: string) => {
+      const es = r.lootTables.get(id)!.entries as Array<{ weight: number; kind: string }>;
+      return es.filter((e) => e.kind === kind).reduce((s, e) => s + e.weight, 0) / es.reduce((s, e) => s + e.weight, 0);
+    };
+    expect(share('loot_standard', 'item')).toBeCloseTo(0.25, 2);
+    expect(r.lootTables.get('loot_elite')!.rolls).toBe(2);
+    expect(share('loot_cache', 'supplies')).toBeGreaterThan(0);
+  });
+});

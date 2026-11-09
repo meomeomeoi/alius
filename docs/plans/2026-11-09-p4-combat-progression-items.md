@@ -175,11 +175,11 @@ docs/** (Task 21), tests/** mirror src
 - Item affixes (≥ 8 positive, 3 drawbacks): e.g. `honed` (atk +8 %), `keen` (crit +5), `reinforced` (def +10 %), `padded` (hp +8 %), `light_frame` (spd +1 flat via stat pct on spd), `serrated` (onHit status bleed chance 0.2), `calming` (onRoundStart stress −1), `capacitor` (onCombatStart cp +1, limit combat); drawbacks `bloom_leak` (onRoundStart stress +2), `unstable_core` (onDamaged chance 0.1 status burn self), `parasitic` (stat hp −8 %).
 - Items (18 templates): one `standard` weapon per class (`Blade, Pistol, SMG, Rifle, Shotgun, Precision Rifle, Heavy, Tech, Bio`), upper and lower in `light/medium/heavy`, and three `anomalous`-only (`bloom_fang` Blade, `whisper_coil` Tech, `grafted_plate` upper heavy). Recipes: every non-anomalous template at `standard`, weapons also at `refined` and `prototype` (≥ 24 recipes). Loot tables: `loot_standard` (credits, plyx, 25 % item mostly standard/refined), `loot_elite` (2 rolls, higher rarities), `loot_cache` (P5 cache nodes, supplies + items).
 
-- [ ] **Step 1: Write the failing tests** — `6 categories with the lore frequencies`; `18 enemies, 3 per category, every aiProfile used`; `7 enemy affixes and ≥ 8 item affixes with 3 drawbacks`; `every weapon class and armor weight of every role is craftable at standard`; `anomalous templates exist only above the workshop cap 4`; `loot tables reference known items and have positive weights`; `every enemy skill is kind enemy`.
-- [ ] **Step 2: Run** `npx vitest run tests/content` → FAIL.
-- [ ] **Step 3: Write the JSON.**
-- [ ] **Step 4: Run** `npx vitest run` → green.
-- [ ] **Step 5: Commit** `feat(content): enemies, affixes, items, recipes and loot tables`.
+- [x] **Step 1: Write the failing tests** — `6 categories with the lore frequencies`; `18 enemies, 3 per category, every aiProfile used`; `7 enemy affixes and ≥ 8 item affixes with 3 drawbacks`; `every weapon class and armor weight of every role is craftable at standard`; `anomalous templates exist only above the workshop cap 4`; `loot tables reference known items and have positive weights`; `every enemy skill is kind enemy`.
+- [x] **Step 2: Run** `npx vitest run tests/content` → FAIL.
+- [x] **Step 3: Write the JSON.**
+- [x] **Step 4: Run** `npx vitest run` → green.
+- [x] **Step 5: Commit** `feat(content): enemies, affixes, items, recipes and loot tables`.
 
 ---
 

@@ -1,0 +1,243 @@
+[
+  {
+    "id": "armored",
+    "name": "Armored",
+    "appliesTo": "enemy",
+    "adjective": "Armored",
+    "statPct": {
+      "def": 40
+    },
+    "effects": []
+  },
+  {
+    "id": "regenerating",
+    "name": "Regenerating",
+    "appliesTo": "enemy",
+    "adjective": "Regenerating",
+    "effects": [
+      {
+        "type": "heal",
+        "pctMaxHp": 5,
+        "trigger": "onTurnStart",
+        "target": "self"
+      }
+    ]
+  },
+  {
+    "id": "reinforcing",
+    "name": "Reinforcing",
+    "appliesTo": "enemy",
+    "adjective": "Reinforcing",
+    "effects": [
+      {
+        "type": "summon",
+        "enemyId": "husk",
+        "max": 1,
+        "trigger": "onRoundStart",
+        "chance": 0.5
+      }
+    ]
+  },
+  {
+    "id": "volatile",
+    "name": "Volatile",
+    "appliesTo": "enemy",
+    "adjective": "Volatile",
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 0.8,
+        "trigger": "onAllyDowned",
+        "target": "target_row"
+      }
+    ]
+  },
+  {
+    "id": "bloom_touched",
+    "name": "Bloom-touched",
+    "appliesTo": "enemy",
+    "adjective": "Bloom-touched",
+    "effects": [
+      {
+        "type": "status",
+        "statusId": "infect",
+        "turns": 2,
+        "trigger": "onHit"
+      }
+    ]
+  },
+  {
+    "id": "swift",
+    "name": "Swift",
+    "appliesTo": "enemy",
+    "adjective": "Swift",
+    "statPct": {
+      "spd": 30
+    },
+    "effects": []
+  },
+  {
+    "id": "elite",
+    "name": "Elite",
+    "appliesTo": "enemy",
+    "adjective": "Elite",
+    "statPct": {
+      "hp": 40,
+      "atk": 40,
+      "def": 40,
+      "spd": 40
+    },
+    "extraSkill": true,
+    "effects": []
+  },
+  {
+    "id": "honed",
+    "name": "Honed",
+    "appliesTo": "item",
+    "slots": [
+      "weapon"
+    ],
+    "statPct": {
+      "atk": 8
+    },
+    "effects": []
+  },
+  {
+    "id": "keen",
+    "name": "Keen",
+    "appliesTo": "item",
+    "slots": [
+      "weapon"
+    ],
+    "effects": [
+      {
+        "type": "stat",
+        "stat": "crit",
+        "pct": 5
+      }
+    ]
+  },
+  {
+    "id": "serrated",
+    "name": "Serrated",
+    "appliesTo": "item",
+    "slots": [
+      "weapon"
+    ],
+    "effects": [
+      {
+        "type": "status",
+        "statusId": "bleed",
+        "turns": 2,
+        "trigger": "onHit",
+        "chance": 0.2
+      }
+    ]
+  },
+  {
+    "id": "reinforced",
+    "name": "Reinforced",
+    "appliesTo": "item",
+    "slots": [
+      "upper",
+      "lower"
+    ],
+    "statPct": {
+      "def": 10
+    },
+    "effects": []
+  },
+  {
+    "id": "padded",
+    "name": "Padded",
+    "appliesTo": "item",
+    "slots": [
+      "upper",
+      "lower"
+    ],
+    "statPct": {
+      "hp": 8
+    },
+    "effects": []
+  },
+  {
+    "id": "light_frame",
+    "name": "Light Frame",
+    "appliesTo": "item",
+    "slots": [
+      "upper",
+      "lower"
+    ],
+    "statPct": {
+      "spd": 8
+    },
+    "effects": []
+  },
+  {
+    "id": "calming",
+    "name": "Calming",
+    "appliesTo": "item",
+    "effects": [
+      {
+        "type": "stress",
+        "amount": -1,
+        "trigger": "onRoundStart",
+        "target": "self"
+      }
+    ]
+  },
+  {
+    "id": "capacitor",
+    "name": "Capacitor",
+    "appliesTo": "item",
+    "effects": [
+      {
+        "type": "cp",
+        "amount": 1,
+        "trigger": "onCombatStart",
+        "target": "self",
+        "limit": "combat"
+      }
+    ]
+  },
+  {
+    "id": "bloom_leak",
+    "name": "Bloom Leak",
+    "appliesTo": "item",
+    "drawback": true,
+    "effects": [
+      {
+        "type": "stress",
+        "amount": 2,
+        "trigger": "onRoundStart",
+        "target": "self"
+      }
+    ]
+  },
+  {
+    "id": "unstable_core",
+    "name": "Unstable Core",
+    "appliesTo": "item",
+    "drawback": true,
+    "effects": [
+      {
+        "type": "status",
+        "statusId": "burn",
+        "turns": 2,
+        "trigger": "onDamaged",
+        "target": "self",
+        "chance": 0.1
+      }
+    ]
+  },
+  {
+    "id": "parasitic",
+    "name": "Parasitic",
+    "appliesTo": "item",
+    "drawback": true,
+    "statPct": {
+      "hp": -8
+    },
+    "effects": []
+  }
+]

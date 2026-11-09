@@ -1,0 +1,299 @@
+[
+  {
+    "id": "recipe_item_blade_standard",
+    "itemId": "item_blade",
+    "rarity": "standard",
+    "cost": {
+      "credits": 36,
+      "plyx": 10
+    }
+  },
+  {
+    "id": "recipe_item_blade_refined",
+    "itemId": "item_blade",
+    "rarity": "refined",
+    "cost": {
+      "credits": 72,
+      "plyx": 20
+    }
+  },
+  {
+    "id": "recipe_item_blade_prototype",
+    "itemId": "item_blade",
+    "rarity": "prototype",
+    "cost": {
+      "credits": 144,
+      "plyx": 40
+    }
+  },
+  {
+    "id": "recipe_item_pistol_standard",
+    "itemId": "item_pistol",
+    "rarity": "standard",
+    "cost": {
+      "credits": 30,
+      "plyx": 8
+    }
+  },
+  {
+    "id": "recipe_item_pistol_refined",
+    "itemId": "item_pistol",
+    "rarity": "refined",
+    "cost": {
+      "credits": 60,
+      "plyx": 17
+    }
+  },
+  {
+    "id": "recipe_item_pistol_prototype",
+    "itemId": "item_pistol",
+    "rarity": "prototype",
+    "cost": {
+      "credits": 120,
+      "plyx": 33
+    }
+  },
+  {
+    "id": "recipe_item_smg_standard",
+    "itemId": "item_smg",
+    "rarity": "standard",
+    "cost": {
+      "credits": 36,
+      "plyx": 10
+    }
+  },
+  {
+    "id": "recipe_item_smg_refined",
+    "itemId": "item_smg",
+    "rarity": "refined",
+    "cost": {
+      "credits": 72,
+      "plyx": 20
+    }
+  },
+  {
+    "id": "recipe_item_smg_prototype",
+    "itemId": "item_smg",
+    "rarity": "prototype",
+    "cost": {
+      "credits": 144,
+      "plyx": 40
+    }
+  },
+  {
+    "id": "recipe_item_rifle_standard",
+    "itemId": "item_rifle",
+    "rarity": "standard",
+    "cost": {
+      "credits": 36,
+      "plyx": 10
+    }
+  },
+  {
+    "id": "recipe_item_rifle_refined",
+    "itemId": "item_rifle",
+    "rarity": "refined",
+    "cost": {
+      "credits": 72,
+      "plyx": 20
+    }
+  },
+  {
+    "id": "recipe_item_rifle_prototype",
+    "itemId": "item_rifle",
+    "rarity": "prototype",
+    "cost": {
+      "credits": 144,
+      "plyx": 40
+    }
+  },
+  {
+    "id": "recipe_item_shotgun_standard",
+    "itemId": "item_shotgun",
+    "rarity": "standard",
+    "cost": {
+      "credits": 42,
+      "plyx": 12
+    }
+  },
+  {
+    "id": "recipe_item_shotgun_refined",
+    "itemId": "item_shotgun",
+    "rarity": "refined",
+    "cost": {
+      "credits": 84,
+      "plyx": 23
+    }
+  },
+  {
+    "id": "recipe_item_shotgun_prototype",
+    "itemId": "item_shotgun",
+    "rarity": "prototype",
+    "cost": {
+      "credits": 168,
+      "plyx": 47
+    }
+  },
+  {
+    "id": "recipe_item_precision_rifle_standard",
+    "itemId": "item_precision_rifle",
+    "rarity": "standard",
+    "cost": {
+      "credits": 48,
+      "plyx": 13
+    }
+  },
+  {
+    "id": "recipe_item_precision_rifle_refined",
+    "itemId": "item_precision_rifle",
+    "rarity": "refined",
+    "cost": {
+      "credits": 96,
+      "plyx": 27
+    }
+  },
+  {
+    "id": "recipe_item_precision_rifle_prototype",
+    "itemId": "item_precision_rifle",
+    "rarity": "prototype",
+    "cost": {
+      "credits": 192,
+      "plyx": 53
+    }
+  },
+  {
+    "id": "recipe_item_heavy_standard",
+    "itemId": "item_heavy",
+    "rarity": "standard",
+    "cost": {
+      "credits": 48,
+      "plyx": 13
+    }
+  },
+  {
+    "id": "recipe_item_heavy_refined",
+    "itemId": "item_heavy",
+    "rarity": "refined",
+    "cost": {
+      "credits": 96,
+      "plyx": 27
+    }
+  },
+  {
+    "id": "recipe_item_heavy_prototype",
+    "itemId": "item_heavy",
+    "rarity": "prototype",
+    "cost": {
+      "credits": 192,
+      "plyx": 53
+    }
+  },
+  {
+    "id": "recipe_item_tech_standard",
+    "itemId": "item_tech",
+    "rarity": "standard",
+    "cost": {
+      "credits": 42,
+      "plyx": 12
+    }
+  },
+  {
+    "id": "recipe_item_tech_refined",
+    "itemId": "item_tech",
+    "rarity": "refined",
+    "cost": {
+      "credits": 84,
+      "plyx": 23
+    }
+  },
+  {
+    "id": "recipe_item_tech_prototype",
+    "itemId": "item_tech",
+    "rarity": "prototype",
+    "cost": {
+      "credits": 168,
+      "plyx": 47
+    }
+  },
+  {
+    "id": "recipe_item_bio_standard",
+    "itemId": "item_bio",
+    "rarity": "standard",
+    "cost": {
+      "credits": 42,
+      "plyx": 12
+    }
+  },
+  {
+    "id": "recipe_item_bio_refined",
+    "itemId": "item_bio",
+    "rarity": "refined",
+    "cost": {
+      "credits": 84,
+      "plyx": 23
+    }
+  },
+  {
+    "id": "recipe_item_bio_prototype",
+    "itemId": "item_bio",
+    "rarity": "prototype",
+    "cost": {
+      "credits": 168,
+      "plyx": 47
+    }
+  },
+  {
+    "id": "recipe_upper_light_standard",
+    "itemId": "upper_light",
+    "rarity": "standard",
+    "cost": {
+      "credits": 24,
+      "plyx": 7
+    }
+  },
+  {
+    "id": "recipe_upper_medium_standard",
+    "itemId": "upper_medium",
+    "rarity": "standard",
+    "cost": {
+      "credits": 36,
+      "plyx": 10
+    }
+  },
+  {
+    "id": "recipe_upper_heavy_standard",
+    "itemId": "upper_heavy",
+    "rarity": "standard",
+    "cost": {
+      "credits": 48,
+      "plyx": 13
+    }
+  },
+  {
+    "id": "recipe_lower_light_standard",
+    "itemId": "lower_light",
+    "rarity": "standard",
+    "cost": {
+      "credits": 18,
+      "plyx": 5
+    }
+  },
+  {
+    "id": "recipe_lower_medium_standard",
+    "itemId": "lower_medium",
+    "rarity": "standard",
+    "cost": {
+      "credits": 30,
+      "plyx": 8
+    }
+  },
+  {
+    "id": "recipe_lower_heavy_standard",
+    "itemId": "lower_heavy",
+    "rarity": "standard",
+    "cost": {
+      "credits": 42,
+      "plyx": 12
+    }
+  }
+]

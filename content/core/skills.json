@@ -2625,5 +2625,1237 @@
       "signature",
       "stress"
     ]
+  },
+  {
+    "id": "en_claw",
+    "name": "Claw",
+    "kind": "enemy",
+    "description": "A savage swipe.",
+    "cooldown": 0,
+    "usableFrom": [
+      "front"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one",
+      "melee": true
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 1
+      }
+    ],
+    "tags": [
+      "melee"
+    ]
+  },
+  {
+    "id": "en_infectious_bite",
+    "name": "Infectious Bite",
+    "kind": "enemy",
+    "description": "A bite that spreads the Bloom.",
+    "cooldown": 3,
+    "usableFrom": [
+      "front"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one",
+      "melee": true
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 0.8
+      },
+      {
+        "type": "status",
+        "statusId": "infect",
+        "turns": 2
+      }
+    ],
+    "tags": [
+      "melee",
+      "infect"
+    ]
+  },
+  {
+    "id": "en_lunge",
+    "name": "Lunge",
+    "kind": "enemy",
+    "description": "Throws itself at the nearest target.",
+    "cooldown": 0,
+    "usableFrom": [
+      "front"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one",
+      "melee": true
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 0.8
+      }
+    ],
+    "tags": [
+      "melee"
+    ]
+  },
+  {
+    "id": "en_spore_spit",
+    "name": "Spore Spit",
+    "kind": "enemy",
+    "description": "Spits infectious spores.",
+    "cooldown": 2,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 0.5
+      },
+      {
+        "type": "status",
+        "statusId": "infect",
+        "turns": 2
+      }
+    ],
+    "tags": [
+      "ranged",
+      "infect"
+    ]
+  },
+  {
+    "id": "en_slam",
+    "name": "Slam",
+    "kind": "enemy",
+    "description": "A heavy, clumsy blow.",
+    "cooldown": 0,
+    "usableFrom": [
+      "front"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one",
+      "melee": true
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 0.9
+      }
+    ],
+    "tags": [
+      "melee"
+    ]
+  },
+  {
+    "id": "en_bulk_up",
+    "name": "Bulk Up",
+    "kind": "enemy",
+    "description": "Swells up and dares the squad to hit it.",
+    "cooldown": 4,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "self",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "status",
+        "statusId": "guard",
+        "turns": 2,
+        "target": "self"
+      },
+      {
+        "type": "status",
+        "statusId": "taunt",
+        "turns": 2,
+        "target": "self"
+      }
+    ],
+    "tags": [
+      "defense"
+    ]
+  },
+  {
+    "id": "en_pounce",
+    "name": "Pounce",
+    "kind": "enemy",
+    "description": "Leaps onto a target and tears it open.",
+    "cooldown": 3,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one",
+      "melee": true
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 1.2
+      },
+      {
+        "type": "status",
+        "statusId": "bleed",
+        "turns": 3
+      }
+    ],
+    "tags": [
+      "melee",
+      "bleed"
+    ]
+  },
+  {
+    "id": "en_bite",
+    "name": "Bite",
+    "kind": "enemy",
+    "description": "Snapping jaws.",
+    "cooldown": 0,
+    "usableFrom": [
+      "front"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one",
+      "melee": true
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 0.9
+      }
+    ],
+    "tags": [
+      "melee"
+    ]
+  },
+  {
+    "id": "en_savage",
+    "name": "Savage Pack Attack",
+    "kind": "enemy",
+    "description": "Two fast bites that draw blood.",
+    "cooldown": 3,
+    "usableFrom": [
+      "front"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one",
+      "melee": true
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 0.7,
+        "hits": 2
+      },
+      {
+        "type": "status",
+        "statusId": "bleed",
+        "turns": 2
+      }
+    ],
+    "tags": [
+      "melee",
+      "bleed"
+    ]
+  },
+  {
+    "id": "en_smash",
+    "name": "Smash",
+    "kind": "enemy",
+    "description": "A crushing overhand blow.",
+    "cooldown": 0,
+    "usableFrom": [
+      "front"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one",
+      "melee": true
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 1.4
+      }
+    ],
+    "tags": [
+      "melee"
+    ]
+  },
+  {
+    "id": "en_roar",
+    "name": "Roar",
+    "kind": "enemy",
+    "description": "Works itself into a rage.",
+    "cooldown": 4,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "self",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "stat",
+        "stat": "atk",
+        "pct": 20,
+        "turns": 2,
+        "target": "self"
+      }
+    ],
+    "tags": [
+      "buff"
+    ]
+  },
+  {
+    "id": "en_rifle_burst",
+    "name": "Rifle Burst",
+    "kind": "enemy",
+    "description": "A burst from a scavenged rifle.",
+    "cooldown": 0,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 0.9
+      }
+    ],
+    "tags": [
+      "ranged"
+    ]
+  },
+  {
+    "id": "en_grenade",
+    "name": "Grenade",
+    "kind": "enemy",
+    "description": "A crude grenade at a row.",
+    "cooldown": 3,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "row"
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 0.6
+      }
+    ],
+    "tags": [
+      "ranged",
+      "row"
+    ]
+  },
+  {
+    "id": "en_scoped_shot",
+    "name": "Scoped Shot",
+    "kind": "enemy",
+    "description": "A patient shot.",
+    "cooldown": 0,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 1.2
+      }
+    ],
+    "tags": [
+      "ranged"
+    ]
+  },
+  {
+    "id": "en_snipe",
+    "name": "Snipe",
+    "kind": "enemy",
+    "description": "A deadly aimed shot.",
+    "cooldown": 4,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 1.6,
+        "critBonus": 20
+      }
+    ],
+    "tags": [
+      "ranged"
+    ]
+  },
+  {
+    "id": "en_cleaver",
+    "name": "Cleaver",
+    "kind": "enemy",
+    "description": "A brutal chop.",
+    "cooldown": 0,
+    "usableFrom": [
+      "front"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one",
+      "melee": true
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 1.2
+      }
+    ],
+    "tags": [
+      "melee"
+    ]
+  },
+  {
+    "id": "en_war_cry",
+    "name": "War Cry",
+    "kind": "enemy",
+    "description": "Rallies the whole band.",
+    "cooldown": 4,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "self",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "stat",
+        "stat": "atk",
+        "pct": 20,
+        "turns": 2,
+        "target": "allies"
+      }
+    ],
+    "tags": [
+      "buff"
+    ]
+  },
+  {
+    "id": "en_carbine",
+    "name": "Carbine Fire",
+    "kind": "enemy",
+    "description": "Disciplined three-round bursts.",
+    "cooldown": 0,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 0.9
+      }
+    ],
+    "tags": [
+      "ranged"
+    ]
+  },
+  {
+    "id": "en_suppress",
+    "name": "Suppressing Fire",
+    "kind": "enemy",
+    "description": "Pins a target down.",
+    "cooldown": 3,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 0.6
+      },
+      {
+        "type": "stat",
+        "stat": "atk",
+        "pct": -15,
+        "turns": 2
+      }
+    ],
+    "tags": [
+      "ranged",
+      "debuff"
+    ]
+  },
+  {
+    "id": "en_shield_bash",
+    "name": "Shield Bash",
+    "kind": "enemy",
+    "description": "Rams with a riot shield.",
+    "cooldown": 0,
+    "usableFrom": [
+      "front"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one",
+      "melee": true
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 0.8
+      }
+    ],
+    "tags": [
+      "melee"
+    ]
+  },
+  {
+    "id": "en_shield_wall",
+    "name": "Shield Wall",
+    "kind": "enemy",
+    "description": "Raises shields over the whole group.",
+    "cooldown": 4,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "self",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "status",
+        "statusId": "guard",
+        "turns": 2,
+        "target": "allies"
+      }
+    ],
+    "tags": [
+      "defense"
+    ]
+  },
+  {
+    "id": "en_pistol",
+    "name": "Sidearm",
+    "kind": "enemy",
+    "description": "A quick pistol shot.",
+    "cooldown": 0,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 0.8
+      }
+    ],
+    "tags": [
+      "ranged"
+    ]
+  },
+  {
+    "id": "en_command",
+    "name": "Field Command",
+    "kind": "enemy",
+    "description": "Barks an order that sharpens the group.",
+    "cooldown": 4,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "self",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "stat",
+        "stat": "atk",
+        "pct": 20,
+        "turns": 2,
+        "target": "allies"
+      }
+    ],
+    "tags": [
+      "buff",
+      "order"
+    ]
+  },
+  {
+    "id": "en_mark_target",
+    "name": "Designate Target",
+    "kind": "enemy",
+    "description": "Marks a target for the whole group.",
+    "cooldown": 3,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 0.4
+      },
+      {
+        "type": "status",
+        "statusId": "mark",
+        "turns": 2
+      }
+    ],
+    "tags": [
+      "ranged",
+      "debuff"
+    ]
+  },
+  {
+    "id": "en_blade",
+    "name": "Monoblade",
+    "kind": "enemy",
+    "description": "A fast cut.",
+    "cooldown": 0,
+    "usableFrom": [
+      "front"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one",
+      "melee": true
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 1.1
+      }
+    ],
+    "tags": [
+      "melee"
+    ]
+  },
+  {
+    "id": "en_flurry",
+    "name": "Flurry",
+    "kind": "enemy",
+    "description": "Three quick cuts.",
+    "cooldown": 3,
+    "usableFrom": [
+      "front"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one",
+      "melee": true
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 0.6,
+        "hits": 3
+      }
+    ],
+    "tags": [
+      "melee"
+    ]
+  },
+  {
+    "id": "en_sidearm",
+    "name": "Sidearm",
+    "kind": "enemy",
+    "description": "A reluctant shot.",
+    "cooldown": 0,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 0.7
+      }
+    ],
+    "tags": [
+      "ranged"
+    ]
+  },
+  {
+    "id": "en_triage",
+    "name": "Triage",
+    "kind": "enemy",
+    "description": "Patches up an ally.",
+    "cooldown": 2,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "ally",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "heal",
+        "pctMaxHp": 25
+      }
+    ],
+    "tags": [
+      "heal"
+    ]
+  },
+  {
+    "id": "en_emitter",
+    "name": "Emitter Burst",
+    "kind": "enemy",
+    "description": "An energy burst.",
+    "cooldown": 0,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 0.8
+      }
+    ],
+    "tags": [
+      "ranged"
+    ]
+  },
+  {
+    "id": "en_corrode_shot",
+    "name": "Corrosive Shot",
+    "kind": "enemy",
+    "description": "Weakens armor.",
+    "cooldown": 2,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 0.5
+      },
+      {
+        "type": "status",
+        "statusId": "corrode",
+        "turns": 2
+      }
+    ],
+    "tags": [
+      "ranged",
+      "debuff"
+    ]
+  },
+  {
+    "id": "en_overload",
+    "name": "Overload",
+    "kind": "enemy",
+    "description": "A jolt that may stun.",
+    "cooldown": 4,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 0.5
+      },
+      {
+        "type": "status",
+        "statusId": "stun",
+        "turns": 1,
+        "chance": 0.5
+      }
+    ],
+    "tags": [
+      "ranged",
+      "control"
+    ]
+  },
+  {
+    "id": "en_whisper",
+    "name": "Whisper",
+    "kind": "enemy",
+    "description": "A voice in the implant that should not be there.",
+    "cooldown": 0,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 0.3,
+        "ignoreRows": true
+      },
+      {
+        "type": "stress",
+        "amount": 8
+      }
+    ],
+    "tags": [
+      "stress"
+    ]
+  },
+  {
+    "id": "en_dread",
+    "name": "Dread",
+    "kind": "enemy",
+    "description": "Everyone hears it at once.",
+    "cooldown": 4,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "all"
+    },
+    "effects": [
+      {
+        "type": "stress",
+        "amount": 6
+      }
+    ],
+    "tags": [
+      "stress",
+      "aoe"
+    ]
+  },
+  {
+    "id": "en_glitch_strike",
+    "name": "Glitch Strike",
+    "kind": "enemy",
+    "description": "Appears where it should not be.",
+    "cooldown": 0,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 1.2,
+        "ignoreRows": true
+      }
+    ],
+    "tags": [
+      "anomaly"
+    ]
+  },
+  {
+    "id": "en_rift",
+    "name": "Rift",
+    "kind": "enemy",
+    "description": "The geometry folds and everyone is hit.",
+    "cooldown": 3,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "all"
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 0.5,
+        "ignoreRows": true
+      },
+      {
+        "type": "stress",
+        "amount": 3
+      }
+    ],
+    "tags": [
+      "anomaly",
+      "aoe"
+    ]
+  },
+  {
+    "id": "en_echo_scream",
+    "name": "Echo Scream",
+    "kind": "enemy",
+    "description": "Your own voice, screaming.",
+    "cooldown": 0,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 0.4,
+        "ignoreRows": true
+      },
+      {
+        "type": "stress",
+        "amount": 10
+      }
+    ],
+    "tags": [
+      "stress"
+    ]
+  },
+  {
+    "id": "en_mimic",
+    "name": "Mimic",
+    "kind": "enemy",
+    "description": "Copies the target's stance and exposes it.",
+    "cooldown": 3,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "status",
+        "statusId": "mark",
+        "turns": 2
+      },
+      {
+        "type": "stress",
+        "amount": 5
+      }
+    ],
+    "tags": [
+      "stress",
+      "debuff"
+    ]
+  },
+  {
+    "id": "en_elite_strike",
+    "name": "Elite Strike",
+    "kind": "enemy",
+    "description": "A practised, devastating blow.",
+    "cooldown": 3,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one",
+      "melee": true
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 1.5
+      }
+    ],
+    "tags": [
+      "elite",
+      "melee"
+    ]
+  },
+  {
+    "id": "en_elite_volley",
+    "name": "Elite Volley",
+    "kind": "enemy",
+    "description": "Two precise shots.",
+    "cooldown": 3,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "enemy",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "damage",
+        "mult": 1.1,
+        "hits": 2
+      }
+    ],
+    "tags": [
+      "elite",
+      "ranged"
+    ]
+  },
+  {
+    "id": "en_elite_bulwark",
+    "name": "Elite Bulwark",
+    "kind": "enemy",
+    "description": "Digs in behind a shield.",
+    "cooldown": 4,
+    "usableFrom": [
+      "front",
+      "back"
+    ],
+    "targets": {
+      "side": "self",
+      "rows": [
+        "front",
+        "back"
+      ],
+      "count": "one"
+    },
+    "effects": [
+      {
+        "type": "status",
+        "statusId": "shield",
+        "turns": 2,
+        "target": "self"
+      },
+      {
+        "type": "status",
+        "statusId": "guard",
+        "turns": 2,
+        "target": "self"
+      }
+    ],
+    "tags": [
+      "elite",
+      "defense"
+    ]
   }
 ]

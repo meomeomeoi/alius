@@ -20,6 +20,12 @@
     "locations": "locations.json",
     "synergies": "synergies.json",
     "skills": "skills.json",
-    "orders": "orders.json"
+    "orders": "orders.json",
+    "enemyCategories": "enemyCategories.json",
+    "enemies": "enemies.json",
+    "affixes": "affixes.json",
+    "items": "items.json",
+    "recipes": "recipes.json",
+    "lootTables": "lootTables.json"
   }
 }
