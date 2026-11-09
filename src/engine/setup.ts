@@ -1,5 +1,6 @@
 import type { Entry, Registries } from '../content/types';
 import { createCampaign } from './state/create';
+import { seedWorld } from './world/state';
 import {
   VALUE_AXES, type CampaignState, type LoyaltyBand, type Relation, type SignatureInstance, type Unit,
 } from './state/types';
@@ -266,5 +267,6 @@ export function buildCampaign(
     });
   }
   state.roster.activeIds = state.squad.map((u) => u.id);
+  seedWorld(state, reg);
   return { ok: true, state };
 }

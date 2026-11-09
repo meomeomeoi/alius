@@ -23,6 +23,17 @@ describe('campaign state', () => {
     expect(Object.keys(s).sort()).toEqual(V1_KEYS);
   });
 
+  it('createCampaign leaves the P5 world fields unseeded and empty', () => {
+    const s = createCampaign({ seed: 5, commanderName: 'Vale' });
+    expect(s.world.seeded).toBeUndefined();
+    expect(s.world.clocks).toEqual([]);
+    expect(s.world.threads).toEqual([]);
+    expect(s.missions).toEqual({ offered: [], active: [], completed: [] });
+    expect(s.rumors).toEqual([]);
+    expect(s.expedition).toBeUndefined();
+    expect(s.lastExpedition).toBeUndefined();
+  });
+
   it('v0 fixture migrates to v1', () => {
     const raw = JSON.parse(readFileSync('tests/fixtures/campaign-v0.json', 'utf8'));
     const r = migrate(raw);

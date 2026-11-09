@@ -1,5 +1,6 @@
 import type { CombatResult, CombatState } from '../combat/types';
 import type { RngState } from '../rng';
+import type { Clock, DirectorRequest, ExpeditionReport, ExpeditionState, Mission, RegionState, Rumor, Thread } from '../world/types';
 
 export type Slot = 'morning' | 'afternoon' | 'evening' | 'night';
 export type Difficulty = 'story' | 'normal' | 'hard';
@@ -243,9 +244,9 @@ export interface CampaignState {
   /** Counter behind item uids `it_<n>` (P4). */
   itemSeq?: number;
   world: {
-    regions: Record<string, unknown>;
-    clocks: unknown[];
-    threads: unknown[];
+    regions: Record<string, RegionState>;
+    clocks: Clock[];
+    threads: Thread[];
     factions: Record<string, number>;
     flags: string[];
     spineProgress: number;
@@ -253,9 +254,18 @@ export interface CampaignState {
     startId?: string;
     /** Clearance tier 0–3 that raises the level cap (P5 writes it, P4 reads it). */
     clearanceTier?: number;
+    /** `seedWorld` has run (P5). Older saves load without it and are seeded by `world/seed`. */
+    seeded?: boolean;
+    /** Spine bookkeeping (P5): the beat the director proposed and when. */
+    spine?: { proposed?: string; proposedDay?: number; lastProposalDay?: number };
+    /** The open director request, if any, and the last tick (P5). */
+    director?: { pending?: DirectorRequest; lastTickDay?: number; seq?: number };
+    /** Named units the story offered that the player has not answered yet (P5). */
+    incomingUnits?: number;
+    lastExpeditionRegionId?: string;
   };
-  missions: { offered: unknown[]; active: unknown[]; completed: unknown[] };
-  rumors: unknown[];
+  missions: { offered: Mission[]; active: Mission[]; completed: Mission[] };
+  rumors: Rumor[];
   dms: Record<string, DmMessage[]>;
   /** Per unit: the day and how many commander DMs were sent that day (the unit's "social battery", P3). */
   dmMeta?: Record<string, { day: number; sent: number }>;
@@ -275,7 +285,10 @@ export interface CampaignState {
     pendingScene?: { unitId: string; day: number; slot: Slot };
   };
   leash: { authorizationsLeft: number; refreshDay: number; log: unknown[] };
-  expedition?: unknown;
+  /** The open expedition (P5). Only expedition/combat/director/debug actions run while it is open. */
+  expedition?: ExpeditionState;
+  /** The last finished expedition's after-action report (P5). */
+  lastExpedition?: ExpeditionReport;
   /** The open combat (P4). Only `combat` and `rng` change while it runs. */
   combat?: CombatState;
   /** The last finished combat, for P5's recap and debrief (P4). */

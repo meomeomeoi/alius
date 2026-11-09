@@ -169,11 +169,11 @@ docs/** (Task 21), tests/** mirror src
 - Action `world/seed {}` → `seedWorld` (a second call is a no-op with no events).
 - `dispatch.ts`: after the combat guard — while `state.expedition` is open only action types starting with `expedition/`, `combat/`, `director/` or `debug/` run; anything else returns the original state and `{ type: 'error', code: 'expedition_open', message: 'An expedition is under way: finish or abandon it first.' }`.
 
-- [ ] **Step 1: Write the failing tests** — `seedWorld creates every clock at its start value, factions at 0 with the own corporation at 10, and knows the start region`; `seedWorld twice changes nothing`; `buildCampaign returns a seeded world`; `a P4-era save (world.clocks = [], no seeded flag) loads through migrate and seeds with world/seed`; `knownRegions adds a region when its clearance requirement is met`; `an activity is refused while an expedition is open and the state is unchanged`; `combat and debug actions still run while an expedition is open`.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/world tests/engine/dispatch.test.ts tests/engine/state.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** `npx vitest run` → whole suite green; `npm run typecheck` clean (fix every former `unknown` read).
-- [ ] **Step 5: Commit** `feat(engine): P5 state types, world seeding and the expedition guard`.
+- [x] **Step 1: Write the failing tests** — `seedWorld creates every clock at its start value, factions at 0 with the own corporation at 10, and knows the start region`; `seedWorld twice changes nothing`; `buildCampaign returns a seeded world`; `a P4-era save (world.clocks = [], no seeded flag) loads through migrate and seeds with world/seed`; `knownRegions adds a region when its clearance requirement is met`; `an activity is refused while an expedition is open and the state is unchanged`; `combat and debug actions still run while an expedition is open`.
+- [x] **Step 2: Run** `npx vitest run tests/engine/world tests/engine/dispatch.test.ts tests/engine/state.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** `npx vitest run` → whole suite green; `npm run typecheck` clean (fix every former `unknown` read).
+- [x] **Step 5: Commit** `feat(engine): P5 state types, world seeding and the expedition guard`.
 
 ---
 

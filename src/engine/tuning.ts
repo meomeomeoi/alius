@@ -77,4 +77,40 @@ export const TUNING = Object.freeze({
     opsPerSession: 3,
     companionQualityChance: 0.25,
   }),
+  /** P5: world, missions and rumors. */
+  world: Object.freeze({
+    completedMax: 30,
+    rumorsMax: 20,
+    threadsOpenMax: 6,
+    threadFlagsMax: 12,
+    deadlineMinDays: 5,
+    deadlineMaxDays: 14,
+    commandEveryDays: 3,
+    poiCooldownDays: 2,
+    insightRumorRank: 3,
+    ownFactionStart: 10,
+  }),
+  /** P5: expeditions. */
+  expedition: Object.freeze({
+    partyMax: 4,
+    suppliesMax: 12,
+    treat: Object.freeze({ hpPct: 20, stress: 10 }),
+    logMax: 60,
+    recapMax: 1200,
+    breakdownNight: Object.freeze({ priority: 60, expiresInDays: 2 }),
+  }),
+  /** P5: director validation limits. */
+  director: Object.freeze({
+    maxOffers: 2,
+    maxRumors: 3,
+    maxClockPerClock: 2,
+    maxClockTotal: 3,
+    beatCooldownDays: 3,
+    titleMax: 60,
+    briefMax: 300,
+    rumorWords: 40,
+    framingWords: 60,
+    reasonMax: 120,
+    digestFlags: 8,
+  }),
 });

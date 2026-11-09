@@ -19,6 +19,11 @@ const fresh = (): CampaignState => createCampaign({ seed: 42, commanderName: 'Va
 const roll = (s: CampaignState) => dispatch(s, { type: 'debug/roll', payload: { sides: 1_000_000 } }, registries);
 const rolled = (events: { type: string; [k: string]: unknown }[]) => events.find((e) => e.type === 'rolled')!.value;
 
+registerAction('expedition/test_ok', () => [{ type: 'ok' }]);
+registerAction('director/test_ok', () => [{ type: 'ok' }]);
+registerAction('combat/test_ok', () => [{ type: 'ok' }]);
+registerAction('test/other', () => [{ type: 'ok' }]);
+
 registerAction('test/throw', (draft) => {
   draft.day = 99; // partial mutation must not leak out
   throw new Error('boom');
@@ -87,5 +92,24 @@ describe('dispatch', () => {
     const snap = snapshot(s);
     expect(typeof snap).toBe('string');
     expect(restore(snap)).toEqual(s);
+  });
+});
+
+describe('expedition guard', () => {
+  const open = (): CampaignState => ({ ...fresh(), expedition: { id: 'exp_1' } as never });
+
+  it('only expedition/, combat/, director/ and debug/ actions run while an expedition is open', () => {
+    const s = open();
+    for (const type of ['expedition/test_ok', 'combat/test_ok', 'director/test_ok', 'debug/noop']) {
+      expect(dispatch(s, { type }, registries).events.some((e) => e.type === 'error'), type).toBe(false);
+    }
+    const r = dispatch(s, { type: 'test/other' }, registries);
+    expect(r.state).toBe(s);
+    expect(r.events).toEqual([{ type: 'error', code: 'expedition_open', message: 'An expedition is under way: finish or abandon it first.' }]);
+  });
+
+  it('unknown actions keep their own error, and a closed expedition guards nothing', () => {
+    expect(dispatch(open(), { type: 'nope/never' }, registries).events[0]).toMatchObject({ code: 'unknown_action' });
+    expect(dispatch(fresh(), { type: 'test/other' }, registries).events).toEqual([{ type: 'ok' }]);
   });
 });
