@@ -215,11 +215,11 @@ docs/** (Task 21), tests/** mirror src
 - `runDeadlines(draft, ctx): EngineEvent[]` — for offered missions with `deadlineDay <= draft.day`: `status: 'failed'`, apply `failureEffects` (`src.kind: 'mission'`), move to `completed`, `mission_failed`; missions whose template or region no longer exists are removed with `mission_expired` and no effects. Registered as `registerDayEndStep('mission_deadlines', runDeadlines)` in `actions/world.ts`.
 - Action `mission/dismiss { missionId }` — removes an offered `side`/`rumor` mission (no effects); refuses `command`/`story`.
 
-- [ ] **Step 1: Write the failing tests** — `offer fills title, brief, danger, tier and a deadline of at least 5 days`; `a story offer has no deadline and needs a spine beat`; `an unknown template, unknown region, unknown tier or wrong source is refused with a reason`; `a duplicate template+region offer is refused`; `a full board refuses a side offer and lets a command offer push out the oldest side one`; `board size follows the comms level`; `rewards stay inside the tier ranges for 200 seeds`; `completion banks credits, plyx and loot once and applies faction and clearance`; `deadline day passing fails the mission and applies its failure effects once`; `a mission completed today is not failed by tonight's deadline step`; `a mission whose template was removed expires without effects and the step does not throw`; `dismiss refuses a command mission`; `completed keeps the newest 30`.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/world/missions.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS.
-- [ ] **Step 5: Commit** `feat(engine): missions, board limit, tiered rewards and deadlines`.
+- [x] **Step 1: Write the failing tests** — `offer fills title, brief, danger, tier and a deadline of at least 5 days`; `a story offer has no deadline and needs a spine beat`; `an unknown template, unknown region, unknown tier or wrong source is refused with a reason`; `a duplicate template+region offer is refused`; `a full board refuses a side offer and lets a command offer push out the oldest side one`; `board size follows the comms level`; `rewards stay inside the tier ranges for 200 seeds`; `completion banks credits, plyx and loot once and applies faction and clearance`; `deadline day passing fails the mission and applies its failure effects once`; `a mission completed today is not failed by tonight's deadline step`; `a mission whose template was removed expires without effects and the step does not throw`; `dismiss refuses a command mission`; `completed keeps the newest 30`.
+- [x] **Step 2: Run** `npx vitest run tests/engine/world/missions.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS.
+- [x] **Step 5: Commit** `feat(engine): missions, board limit, tiered rewards and deadlines`.
 
 ---
 

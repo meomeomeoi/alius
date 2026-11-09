@@ -199,8 +199,4 @@ describe('world effects', () => {
     expect(r.events).toEqual([]);
     expect(r.draft.world.factions).toEqual(base.world.factions);
   });
-
-  it('offer_mission is routed to the mission module (not in this task: it throws until then)', () => {
-    expect(() => apply(base, [{ type: 'offer_mission', templateId: 'tpl_sweep', source: 'command' }])).toThrow(/not implemented/);
-  });
 });

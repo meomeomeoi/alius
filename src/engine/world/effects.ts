@@ -6,6 +6,8 @@ import { addFact } from '../memory';
 import type { CampaignState, LootDrop, Unit } from '../state/types';
 import { TUNING } from '../tuning';
 import { advanceClock } from './clocks';
+import { offerMission } from './missions';
+import { knownRegions } from './state';
 import type { QueuedIntent, WorldEffect } from './types';
 
 /** Where a list of effects came from. `depth` counts nested chains (a clock's `onFill`); past `MAX_DEPTH` they stop. */
@@ -31,9 +33,12 @@ function partyUnits(draft: CampaignState): Unit[] {
   return activeRosterUnits(draft);
 }
 
-/** Not implemented until Task 5 replaces it: mission offers need the mission module. */
-function offerMissionEffect(_draft: CampaignState, _ctx: EngineCtx, _fx: Extract<WorldEffect, { type: 'offer_mission' }>): EngineEvent[] {
-  throw new Error('offer_mission: not implemented');
+/** Offers a mission; the region defaults to the template's first allowed one. An invalid offer is skipped. */
+function offerMissionEffect(draft: CampaignState, ctx: EngineCtx, fx: Extract<WorldEffect, { type: 'offer_mission' }>): EngineEvent[] {
+  const tpl = ctx.registries.missionTemplates.get(fx.templateId);
+  const regionId = fx.regionId ?? (tpl?.regions as string[] | undefined)?.[0] ?? knownRegions(draft, ctx.registries)[0]?.id;
+  if (regionId === undefined) return [];
+  return offerMission(draft, ctx, { templateId: fx.templateId, regionId, source: fx.source }).events;
 }
 
 /**

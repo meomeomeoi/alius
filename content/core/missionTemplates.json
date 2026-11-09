@@ -247,7 +247,8 @@
         ],
         "importance": 4
       }
-    ]
+    ],
+    "factionId": "vesper"
   },
   {
     "id": "tpl_vesper_beat_2",
@@ -288,7 +289,8 @@
         ],
         "importance": 4
       }
-    ]
+    ],
+    "factionId": "vesper"
   },
   {
     "id": "tpl_vesper_beat_3",
@@ -329,7 +331,8 @@
         ],
         "importance": 4
       }
-    ]
+    ],
+    "factionId": "vesper"
   },
   {
     "id": "tpl_vesper_beat_4",
@@ -360,7 +363,8 @@
     "regions": [
       "quarantine_d7"
     ],
-    "objectiveEventId": "evt_vesper_choice"
+    "objectiveEventId": "evt_vesper_choice",
+    "factionId": "vesper"
   },
   {
     "id": "tpl_kestrel_beat_1",
@@ -401,7 +405,8 @@
         ],
         "importance": 4
       }
-    ]
+    ],
+    "factionId": "kestrel"
   },
   {
     "id": "tpl_kestrel_beat_2",
@@ -442,7 +447,8 @@
         ],
         "importance": 4
       }
-    ]
+    ],
+    "factionId": "kestrel"
   },
   {
     "id": "tpl_kestrel_beat_3",
@@ -483,7 +489,8 @@
         ],
         "importance": 4
       }
-    ]
+    ],
+    "factionId": "kestrel"
   },
   {
     "id": "tpl_kestrel_beat_4",
@@ -514,6 +521,7 @@
     "regions": [
       "kestrel_corridor"
     ],
-    "objectiveEventId": "evt_kestrel_choice"
+    "objectiveEventId": "evt_kestrel_choice",
+    "factionId": "kestrel"
   }
 ]

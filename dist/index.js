@@ -256,6 +256,21 @@ var TUNING = Object.freeze({
 });
 
 // src/engine/world/state.ts
+function clockById(state, id) {
+  return state.world.clocks.find((c) => c.id === id);
+}
+function regionState(state, id) {
+  return state.world.regions[id] ?? { known: false };
+}
+function knownRegions(state, reg) {
+  const out = [];
+  for (const region of reg.regions.values()) {
+    const unlock = region.unlockedBy;
+    const unlocked = unlock !== void 0 && (unlock.flag === void 0 || state.world.flags.includes(unlock.flag)) && (unlock.clearanceMin === void 0 || (state.world.clearanceTier ?? 0) >= unlock.clearanceMin);
+    if (regionState(state, String(region.id)).known || region.knownFromStart === true || unlocked) out.push(region);
+  }
+  return out;
+}
 function seedWorld(draft, reg) {
   const world = draft.world;
   if (world.seeded === true) return [];
@@ -4520,13 +4535,266 @@ registerAction("squad/release_breakdowns", (draft, payload) => {
 });
 registerActivityHook((draft, ctx2) => applyAllLevelUps(draft, ctx2.registries));
 
+// src/engine/world/clocks.ts
+function advanceClock(draft, ctx2, clockId, by, reason, depth = 0) {
+  const clock = clockById(draft, clockId);
+  if (!clock) return [];
+  const def = ctx2.registries.clocks.get(clockId);
+  const repeat = def?.repeat === true;
+  if (clock.filled >= clock.segments && !repeat) return [];
+  const next = Math.min(clock.segments, Math.max(0, clock.filled + by));
+  const delta = next - clock.filled;
+  if (delta === 0) return [];
+  clock.filled = next;
+  const events = [{ type: "clock_advanced", clockId, filled: next, by: delta, reason }];
+  if (next < clock.segments) return events;
+  clock.filledDay = draft.day;
+  events.push({ type: "clock_filled", clockId, label: clock.label });
+  if (repeat) clock.filled = 0;
+  const onFill = def?.onFill ?? [];
+  events.push(...applyWorldEffects(draft, ctx2, onFill, { kind: "clock", id: clockId, depth: depth + 1, label: clock.label }));
+  return events;
+}
+
+// src/engine/world/effects.ts
+var MAX_EFFECT_DEPTH = 3;
+var clamp7 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+function partyUnits(draft) {
+  if (draft.expedition) {
+    return draft.expedition.party.map((id) => draft.squad.find((u) => u.id === id)).filter((u) => u !== void 0 && isLiving(u));
+  }
+  return activeRosterUnits(draft);
+}
+function offerMissionEffect(draft, ctx2, fx2) {
+  const tpl = ctx2.registries.missionTemplates.get(fx2.templateId);
+  const regionId = fx2.regionId ?? tpl?.regions?.[0] ?? knownRegions(draft, ctx2.registries)[0]?.id;
+  if (regionId === void 0) return [];
+  return offerMission(draft, ctx2, { templateId: fx2.templateId, regionId, source: fx2.source }).events;
+}
+function applyWorldEffects(draft, ctx2, effects2, src) {
+  const depth = src.depth ?? 0;
+  if (depth > MAX_EFFECT_DEPTH) return [];
+  const events = [];
+  const reg = ctx2.registries;
+  for (const fx2 of effects2) {
+    switch (fx2.type) {
+      case "resource": {
+        const before = draft.resources[fx2.resource];
+        const after = Math.max(0, before + fx2.amount);
+        draft.resources[fx2.resource] = after;
+        if (after !== before) events.push({ type: "resource_changed", resource: fx2.resource, amount: after - before });
+        break;
+      }
+      case "carried_supplies": {
+        const exp = draft.expedition;
+        if (exp) exp.supplies = clamp7(exp.supplies + fx2.amount, 0, TUNING.expedition.suppliesMax);
+        break;
+      }
+      case "faction": {
+        if (!reg.corporations.has(fx2.factionId)) break;
+        const before = draft.world.factions[fx2.factionId] ?? 0;
+        const after = clamp7(before + fx2.amount, -100, 100);
+        draft.world.factions[fx2.factionId] = after;
+        if (after !== before) events.push({ type: "faction_changed", factionId: fx2.factionId, amount: after - before, standing: after });
+        break;
+      }
+      case "clock":
+        events.push(...advanceClock(draft, ctx2, fx2.clockId, fx2.by, `${src.kind}:${src.id}`, depth));
+        break;
+      case "flag": {
+        const def = reg.flags.get(fx2.flagId);
+        if (!def || def.scope !== "world" && def.scope !== "commander") break;
+        const list2 = def.scope === "world" ? draft.world.flags : draft.commander.flags;
+        if (list2.includes(fx2.flagId)) break;
+        const excluded = new Set(def.mutuallyExclusiveWith ?? []);
+        for (let i = list2.length - 1; i >= 0; i--) if (excluded.has(list2[i])) list2.splice(i, 1);
+        list2.push(fx2.flagId);
+        events.push({ type: "flag_set", flagId: fx2.flagId, scope: def.scope });
+        break;
+      }
+      case "clearance": {
+        const before = draft.world.clearanceTier ?? 0;
+        const after = Math.min(3, Math.max(before, fx2.tier));
+        if (after > before) {
+          draft.world.clearanceTier = after;
+          events.push({ type: "clearance_raised", tier: after });
+        }
+        break;
+      }
+      case "party_stress": {
+        for (const u of partyUnits(draft)) {
+          const next = clamp7(u.stress + fx2.amount, 0, 100);
+          if (next !== u.stress) events.push({ type: "stress_changed", unitId: u.id, delta: next - u.stress });
+          u.stress = next;
+        }
+        break;
+      }
+      case "party_hp": {
+        for (const u of partyUnits(draft)) {
+          const max = unitStats(draft, reg, u).hp;
+          const next = u.currentHp + Math.round(max * fx2.pct / 100);
+          u.currentHp = fx2.pct < 0 ? Math.max(1, next) : Math.min(max, next);
+        }
+        break;
+      }
+      case "loot": {
+        if (!reg.lootTables.has(fx2.tableId)) break;
+        const drops = [];
+        for (let i = 0; i < (fx2.rolls ?? 1); i++) drops.push(...rollLoot(draft, reg, ctx2.rng, fx2.tableId));
+        if (draft.expedition) draft.expedition.loot.push(...drops);
+        else events.push(...bankLoot(draft, drops));
+        break;
+      }
+      case "leash":
+        draft.leash.authorizationsLeft = Math.max(0, draft.leash.authorizationsLeft + fx2.amount);
+        break;
+      case "thread": {
+        const thread = draft.world.threads.find((t) => t.id === fx2.threadId);
+        if (!thread || thread.status === fx2.status) break;
+        thread.status = fx2.status;
+        events.push({ type: "thread_changed", threadId: fx2.threadId, status: fx2.status });
+        break;
+      }
+      case "unit_event": {
+        const exp = draft.expedition;
+        if (!exp) break;
+        const targets = exp.party.filter((id) => {
+          const u = draft.squad.find((x) => x.id === id);
+          return u !== void 0 && (fx2.targets === "party" || u.kind === "named");
+        });
+        if (targets.length === 0) break;
+        const hint = { type: fx2.event, actor: "commander", targets, severity: fx2.severity, evidence: src.label ?? src.id };
+        if (fx2.valueAxes) hint.valueAxes = fx2.valueAxes.map((a) => ({ axis: a.axis, direction: a.direction }));
+        exp.hints.push(hint);
+        break;
+      }
+      case "incoming_unit":
+        draft.world.incomingUnits = (draft.world.incomingUnits ?? 0) + 1;
+        events.push({ type: "incoming_unit_offered", count: draft.world.incomingUnits });
+        break;
+      case "fact":
+        addFact(draft, { about: [], text: fx2.text, tags: fx2.tags, importance: fx2.importance, day: draft.day, knownBy: ["*"] });
+        break;
+      case "offer_mission":
+        events.push(...offerMissionEffect(draft, ctx2, fx2));
+        break;
+    }
+  }
+  return events;
+}
+
+// src/engine/world/missions.ts
+var clamp8 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+function checkOffer(state, reg, o) {
+  const tpl = reg.missionTemplates.get(o.templateId);
+  if (!tpl) return `Unknown mission template "${o.templateId}".`;
+  const region = reg.regions.get(o.regionId);
+  if (!region) return `Unknown region "${o.regionId}".`;
+  if (!knownRegions(state, reg).some((r) => r.id === o.regionId)) return `Region "${o.regionId}" is not known yet.`;
+  if (!tpl.sources.includes(o.source)) return `Template "${o.templateId}" does not allow source "${o.source}".`;
+  if (tpl.regions && !tpl.regions.includes(o.regionId)) return `Template "${o.templateId}" is not used in region "${o.regionId}".`;
+  if (o.objectiveNode !== void 0 && !tpl.objectives.some((x) => x.node === o.objectiveNode)) {
+    return `Template "${o.templateId}" has no objective node "${o.objectiveNode}".`;
+  }
+  if (o.rewardsTier !== void 0 && !tpl.tiers.includes(o.rewardsTier)) return `Template "${o.templateId}" has no reward tier "${o.rewardsTier}".`;
+  if (o.threadId !== void 0 && !state.world.threads.some((t) => t.id === o.threadId && t.status === "open")) {
+    return `Thread "${o.threadId}" is not an open thread.`;
+  }
+  if (o.source === "story" && o.spineBeat === void 0) return "A story mission needs a spine beat.";
+  const dup = [...state.missions.offered, ...state.missions.active].some((m) => m.templateId === o.templateId && m.regionId === o.regionId);
+  if (dup) return `A mission "${o.templateId}" in "${o.regionId}" is already on the board or under way.`;
+  return null;
+}
+function boardRoom(state, reg) {
+  return Math.max(0, facilityEffect(state, reg, "comms", "missionBoardSize") - state.missions.offered.length);
+}
+var lowestTier = (reg, tiers) => [...tiers].sort((a, b) => (reg.rewardTiers.get(a)?.rank ?? 99) - (reg.rewardTiers.get(b)?.rank ?? 99))[0];
+function offerMission(draft, ctx2, o) {
+  const reg = ctx2.registries;
+  if (checkOffer(draft, reg, o) !== null) return { mission: null, events: [] };
+  const tpl = reg.missionTemplates.get(o.templateId);
+  const region = reg.regions.get(o.regionId);
+  const events = [];
+  if (boardRoom(draft, reg) === 0) {
+    if (o.source === "side" || o.source === "rumor") return { mission: null, events: [] };
+    const i = draft.missions.offered.findIndex((m) => m.source === "side" || m.source === "rumor");
+    if (i >= 0) {
+      const [gone] = draft.missions.offered.splice(i, 1);
+      events.push({ type: "mission_expired", missionId: gone.id, reason: "pushed_out" });
+    }
+  }
+  const pick = (list2) => list2[ctx2.rng.int(0, list2.length - 1)];
+  const objective = tpl.objectives.find((x) => x.node === o.objectiveNode) ?? tpl.objectives[0];
+  const mission = {
+    id: nextId(draft, "m"),
+    source: o.source,
+    templateId: o.templateId,
+    title: (o.title ?? pick(tpl.titles)).slice(0, TUNING.director.titleMax),
+    brief: (o.brief ?? pick(tpl.briefs)).slice(0, TUNING.director.briefMax),
+    regionId: o.regionId,
+    danger: clamp8(Math.round(o.danger ?? region.danger), tpl.dangerRange[0], tpl.dangerRange[1]),
+    objective: { node: objective.node, condition: objective.condition },
+    offeredDay: draft.day,
+    rewardsTier: o.rewardsTier ?? lowestTier(reg, tpl.tiers),
+    failureEffects: structuredClone(tpl.failureEffects),
+    status: "offered"
+  };
+  if (o.source !== "story") {
+    mission.deadlineDay = draft.day + clamp8(o.deadlineDays ?? 7, TUNING.world.deadlineMinDays, TUNING.world.deadlineMaxDays);
+  }
+  if (o.threadId !== void 0) mission.threadId = o.threadId;
+  if (o.spineBeat !== void 0) mission.spineBeat = o.spineBeat;
+  if (o.scouted === true) mission.scouted = true;
+  draft.missions.offered.push(mission);
+  events.push({ type: "mission_offered", missionId: mission.id, source: mission.source, regionId: mission.regionId, title: mission.title });
+  return { mission, events };
+}
+function archive(draft, m) {
+  draft.missions.completed.push(m);
+  if (draft.missions.completed.length > TUNING.world.completedMax) {
+    draft.missions.completed.splice(0, draft.missions.completed.length - TUNING.world.completedMax);
+  }
+}
+function runDeadlines(draft, ctx2) {
+  const reg = ctx2.registries;
+  const events = [];
+  for (const m of [...draft.missions.offered]) {
+    const gone = !reg.missionTemplates.has(m.templateId) || !reg.regions.has(m.regionId);
+    const late2 = m.deadlineDay !== void 0 && m.deadlineDay <= draft.day;
+    if (!gone && !late2) continue;
+    draft.missions.offered = draft.missions.offered.filter((x) => x.id !== m.id);
+    if (gone) {
+      events.push({ type: "mission_expired", missionId: m.id, reason: "content_removed" });
+      continue;
+    }
+    m.status = "failed";
+    m.outcomeDay = draft.day;
+    archive(draft, m);
+    events.push({ type: "mission_failed", missionId: m.id, title: m.title });
+    events.push(...applyWorldEffects(draft, ctx2, m.failureEffects, { kind: "mission", id: m.id, label: m.title }));
+  }
+  return events;
+}
+
 // src/engine/actions/world.ts
+var isObj9 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 registerAction("world/seed", (draft, _payload, ctx2) => seedWorld(draft, ctx2.registries));
+registerAction("mission/dismiss", (draft, payload) => {
+  const id = isObj9(payload) ? payload.missionId : void 0;
+  if (typeof id !== "string") throw new Error("mission/dismiss needs { missionId }");
+  const i = draft.missions.offered.findIndex((m2) => m2.id === id);
+  if (i < 0) throw new Error(`Mission "${id}" is not on the board.`);
+  const m = draft.missions.offered[i];
+  if (m.source !== "side" && m.source !== "rumor") throw new Error("Command and story missions cannot be dismissed.");
+  draft.missions.offered.splice(i, 1);
+  return [{ type: "mission_expired", missionId: id, reason: "dismissed" }];
+});
+registerDayEndStep("mission_deadlines", runDeadlines);
 
 // src/engine/actions/items.ts
-var isObj9 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj10 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 registerAction("item/equip", (draft, payload, ctx2) => {
-  if (!isObj9(payload) || typeof payload.unitId !== "string" || typeof payload.uid !== "string") {
+  if (!isObj10(payload) || typeof payload.unitId !== "string" || typeof payload.uid !== "string") {
     throw new Error("item/equip needs { unitId, uid }");
   }
   const unit = draft.squad.find((u) => u.id === payload.unitId);
@@ -4544,7 +4812,7 @@ registerAction("item/equip", (draft, payload, ctx2) => {
   return [{ type: "item_equipped", unitId: unit.id, slot, uid: inst.uid, from: previous?.id ?? null }];
 });
 registerAction("item/unequip", (draft, payload) => {
-  if (!isObj9(payload) || typeof payload.unitId !== "string" || !["weapon", "upper", "lower"].includes(String(payload.slot))) {
+  if (!isObj10(payload) || typeof payload.unitId !== "string" || !["weapon", "upper", "lower"].includes(String(payload.slot))) {
     throw new Error("item/unequip needs { unitId, slot }");
   }
   const unit = draft.squad.find((u) => u.id === payload.unitId);
@@ -4574,7 +4842,7 @@ var ownedItem = (draft, uid) => {
 };
 registerAction("item/craft", (draft, payload, ctx2) => {
   session(draft);
-  const id = isObj9(payload) ? payload.recipeId : void 0;
+  const id = isObj10(payload) ? payload.recipeId : void 0;
   const recipe = typeof id === "string" ? ctx2.registries.recipes.get(id) : void 0;
   if (!recipe) throw new Error(`Unknown recipe "${String(id)}".`);
   const rarity = recipe.rarity;
@@ -4588,7 +4856,7 @@ registerAction("item/craft", (draft, payload, ctx2) => {
 });
 registerAction("item/upgrade", (draft, payload, ctx2) => {
   session(draft);
-  const inst = ownedItem(draft, isObj9(payload) ? payload.uid : void 0);
+  const inst = ownedItem(draft, isObj10(payload) ? payload.uid : void 0);
   if (inst.upgrade >= TUNING.items.maxUpgrade) throw new Error("MAX UPGRADE");
   const cost = upgradeCost(draft, ctx2.registries, inst);
   const events = spend(draft, cost.credits, cost.plyx);
@@ -4598,7 +4866,7 @@ registerAction("item/upgrade", (draft, payload, ctx2) => {
 });
 registerAction("item/reroll", (draft, payload, ctx2) => {
   session(draft);
-  const p = isObj9(payload) ? payload : {};
+  const p = isObj10(payload) ? payload : {};
   const inst = ownedItem(draft, p.uid);
   const i = p.affixIndex;
   if (typeof i !== "number" || !Number.isInteger(i) || i < 0 || i >= inst.affixes.length) throw new Error("Pick one of the item's affixes.");
@@ -4614,7 +4882,7 @@ registerAction("item/reroll", (draft, payload, ctx2) => {
 });
 registerAction("item/dismantle", (draft, payload, ctx2) => {
   session(draft);
-  const inst = ownedItem(draft, isObj9(payload) ? payload.uid : void 0);
+  const inst = ownedItem(draft, isObj10(payload) ? payload.uid : void 0);
   if (equippedBy(draft, inst.uid)) throw new Error("Unequip the item first.");
   const plyx = dismantleValue(ctx2.registries, inst);
   draft.inventory = draft.inventory.filter((i) => i.uid !== inst.uid);
@@ -10066,17 +10334,17 @@ registerCallType({
   prompt: prompt2,
   schema: IntentExtractRawSchema
 });
-var isObj10 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj11 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var LABELS = EXPRESSION_LABELS;
 function sanitizeIntentOutput(raw, ctx2) {
   const parsed = IntentExtractRawSchema.safeParse(raw);
   const src = parsed.success ? parsed.data : { events: [], facts: [], proposals: [], promises: [], emotions: [], stressHints: [] };
-  const events = src.events.filter((e) => isObj10(e) && typeof e.confidence === "number" && e.confidence >= ctx2.minConfidence);
-  const proposals2 = src.proposals.filter((p) => ctx2.romance || !(isObj10(p) && ROMANTIC_PROPOSALS.includes(p.kind)));
+  const events = src.events.filter((e) => isObj11(e) && typeof e.confidence === "number" && e.confidence >= ctx2.minConfidence);
+  const proposals2 = src.proposals.filter((p) => ctx2.romance || !(isObj11(p) && ROMANTIC_PROPOSALS.includes(p.kind)));
   const intents = validateIntents({ ...src, events, proposals: proposals2 }, { participants: ctx2.participants, squad: ctx2.squad });
   const emotions = [];
   for (const e of src.emotions) {
-    if (isObj10(e) && typeof e.unitId === "string" && ctx2.participants.includes(e.unitId) && typeof e.label === "string" && LABELS.includes(e.label)) {
+    if (isObj11(e) && typeof e.unitId === "string" && ctx2.participants.includes(e.unitId) && typeof e.label === "string" && LABELS.includes(e.label)) {
       emotions.push({ unitId: e.unitId, label: e.label });
     }
   }
@@ -10878,16 +11146,16 @@ var fieldSchemas = {
   enemyFlavor: external_exports.boolean()
 };
 var budgetSchema = external_exports.number().int().min(1);
-var isObj11 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj12 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function merge(base, over) {
-  const src = isObj11(over) ? over : {};
+  const src = isObj12(over) ? over : {};
   const out = { ...base };
   for (const [key, schema] of Object.entries(fieldSchemas)) {
     const parsed = schema.safeParse(src[key]);
     if (parsed.success) out[key] = parsed.data;
   }
   const budgets = { ...base.budgets };
-  const srcBudgets = isObj11(src.budgets) ? src.budgets : {};
+  const srcBudgets = isObj12(src.budgets) ? src.budgets : {};
   for (const id of CALL_TYPE_IDS) {
     const parsed = budgetSchema.safeParse(srcBudgets[id]);
     if (parsed.success) budgets[id] = parsed.data;
@@ -10942,7 +11210,7 @@ function buildImportInput(card2, registries, settings, sections) {
     defects: [...registries.defects.values()].filter((d) => settings.desireBondDefects || d.category !== "desire_bond").map((d) => ({ id: d.id, lore: str3(d.lore) }))
   };
 }
-var isObj12 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj13 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var cap = (v, max, fallback = "") => typeof v === "string" ? v.trim().slice(0, max) : fallback;
 var num = (v, lo, hi, fallback) => typeof v === "number" && Number.isFinite(v) ? Math.min(hi, Math.max(lo, Math.round(v))) : fallback;
 var SECTION_LABEL = { role: "role", signature: "signature", defects: "defects" };
@@ -10958,7 +11226,7 @@ function tagList2(v, max) {
   return out;
 }
 function sanitizeProfile(raw, ctx2) {
-  const src = isObj12(raw) ? raw : {};
+  const src = isObj13(raw) ? raw : {};
   const want = (s) => ctx2.sections.includes(s);
   const dropped = [];
   const missing = [];
@@ -10967,7 +11235,7 @@ function sanitizeProfile(raw, ctx2) {
     const out = [];
     const seen = /* @__PURE__ */ new Set();
     for (const item of Array.isArray(list2) ? list2 : []) {
-      const id = isObj12(item) && typeof item[idKey] === "string" ? item[idKey] : null;
+      const id = isObj13(item) && typeof item[idKey] === "string" ? item[idKey] : null;
       if (id === null) {
         dropped.push(`${SECTION_LABEL[section]}:(invalid)`);
         continue;
@@ -11025,7 +11293,7 @@ function sanitizeProfile(raw, ctx2) {
     if (profile.defectCandidates.length === 0) missing.push("defects");
   }
   if (want("values")) {
-    if (isObj12(src.values)) {
+    if (isObj13(src.values)) {
       const v = src.values;
       profile.values = Object.fromEntries(VALUE_KEYS.map((k) => [k, num(v[k], -3, 3, 0)]));
     } else missing.push("values");
@@ -11040,7 +11308,7 @@ function sanitizeProfile(raw, ctx2) {
     if (!likes && !dislikes && !triggers) missing.push("tags");
   }
   if (want("baseline")) {
-    if (isObj12(src.emotionalBaseline)) {
+    if (isObj13(src.emotionalBaseline)) {
       const b = src.emotionalBaseline;
       const lim = SETUP_LIMITS.baseline;
       profile.baseline = {
@@ -16083,13 +16351,13 @@ import { editGroup, openGroupById } from "../../../../group-chats.js";
 import { newWorldInfoEntryTemplate } from "../../../../world-info.js";
 
 // src/st/chat.ts
-var isObj13 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj14 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function mapChatMessages(chat, from = 0) {
   if (!Array.isArray(chat)) return [];
   const out = [];
   for (let index = Math.max(0, from); index < chat.length; index++) {
     const m = chat[index];
-    if (!isObj13(m) || m.is_system === true) continue;
+    if (!isObj14(m) || m.is_system === true) continue;
     const avatar = typeof m.original_avatar === "string" && m.original_avatar !== "" ? m.original_avatar : void 0;
     out.push({
       index,
@@ -16106,7 +16374,7 @@ function lastCharacterAvatar(chat) {
   if (!Array.isArray(chat)) return void 0;
   for (let i = chat.length - 1; i >= 0; i--) {
     const m = chat[i];
-    if (isObj13(m) && m.is_user !== true && m.is_system !== true) {
+    if (isObj14(m) && m.is_user !== true && m.is_system !== true) {
       return typeof m.original_avatar === "string" && m.original_avatar !== "" ? m.original_avatar : void 0;
     }
   }
@@ -16142,17 +16410,17 @@ function toStLorebook(book, template) {
 }
 
 // src/st/sprites.ts
-var isObj14 = (v) => typeof v === "object" && v !== null;
+var isObj15 = (v) => typeof v === "object" && v !== null;
 function spriteFolder(avatar, name, overrides) {
   if (!Array.isArray(overrides)) return name;
   const key = avatar.replace(/\.[^.]+$/, "");
-  const hit = overrides.find((o) => isObj14(o) && o.name === key && typeof o.path === "string" && o.path !== "");
+  const hit = overrides.find((o) => isObj15(o) && o.name === key && typeof o.path === "string" && o.path !== "");
   return hit ? hit.path : name;
 }
 function pickSprite(list2, label2) {
   if (!Array.isArray(list2)) return null;
   for (const item of list2) {
-    if (isObj14(item) && item.label === label2 && typeof item.path === "string") return item.path;
+    if (isObj15(item) && item.label === label2 && typeof item.path === "string") return item.path;
   }
   return null;
 }
