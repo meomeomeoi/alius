@@ -51,3 +51,15 @@ registerAction('combat/act', (draft, payload, ctx) => {
   runUntilInput(ectx);
   return combatEvents(ectx, start);
 });
+
+registerAction('combat/auto', (draft, payload, ctx) => {
+  const cs = draft.combat;
+  if (!cs) throw new Error('combat/auto: no combat is open');
+  if (!isObj(payload) || typeof payload.on !== 'boolean') throw new Error('combat/auto needs { on: boolean }');
+  if (cs.phase !== 'awaiting') throw new Error('combat/auto: the combat is already decided');
+  const ectx = makeCtx(cs, draft, ctx.registries, ctx.rng);
+  const start = cs.log.length;
+  cs.auto = payload.on;
+  if (payload.on) runUntilInput(ectx);
+  return combatEvents(ectx, start);
+});

@@ -313,11 +313,11 @@ docs/** (Task 21), tests/** mirror src
 - `canAutoResolve(state, reg, p: StartPayload): boolean` (`encounterPower ≤ autoResolveRatio × squadPower` of the formation).
 - `combat/auto { on: boolean }`: sets `cs.auto`; when on, `runUntilInput` uses `chooseAction` for squad units (orders are not issued by AUTO) and runs to the end in the same dispatch.
 
-- [ ] **Step 1: Write the failing tests** — one per profile with a crafted fixture (`aggressive picks the heaviest hit`, `predator finishes the weakest`, `protector heals an ally under half HP`, `disruptor applies a missing status`, `stressor targets the most stressed squad unit`, `erratic stays legal over 200 seeded picks`); `no usable skill → guard`; `auto-resolve is deterministic for a seed` (two dispatches of start+auto from the same state are deep-equal, acceptance 5); `auto can be turned off at the next input`; `canAutoResolve at 60 % and not at 61 %`.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/combat/ai.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS.
-- [ ] **Step 5: Commit** `feat(engine): enemy and squad AI profiles with deterministic auto-resolve`.
+- [x] **Step 1: Write the failing tests** — one per profile with a crafted fixture (`aggressive picks the heaviest hit`, `predator finishes the weakest`, `protector heals an ally under half HP`, `disruptor applies a missing status`, `stressor targets the most stressed squad unit`, `erratic stays legal over 200 seeded picks`); `no usable skill → guard`; `auto-resolve is deterministic for a seed` (two dispatches of start+auto from the same state are deep-equal, acceptance 5); `auto can be turned off at the next input`; `canAutoResolve at 60 % and not at 61 %`.
+- [x] **Step 2: Run** `npx vitest run tests/engine/combat/ai.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS.
+- [x] **Step 5: Commit** `feat(engine): enemy and squad AI profiles with deterministic auto-resolve`.
 
 ---
 
