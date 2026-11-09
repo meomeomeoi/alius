@@ -1110,3 +1110,56 @@
 @media (prefers-reduced-motion: reduce) {
   #alius-shell .alius-busy-text::after { animation: none; }
 }
+
+/* P4: combat screen, INV tab and SQUAD progression views */
+.alius-combat { display: flex; flex-direction: column; gap: 6px; font-family: inherit; }
+.alius-combat-head { display: flex; gap: 16px; align-items: baseline; border-bottom: 1px dashed var(--alius-dim, #777); padding-bottom: 4px; }
+.alius-combat-cp { letter-spacing: 2px; }
+.alius-combat-lost { color: var(--alius-warn, #f55); }
+.alius-combat-timeline { display: flex; gap: 4px; flex-wrap: wrap; font-size: 0.8em; }
+.alius-tl { padding: 0 4px; border: 1px solid var(--alius-dim, #555); }
+.alius-tl-now { background: var(--alius-fg, #fb3); color: var(--alius-bg, #000); }
+.alius-tl-down { text-decoration: line-through; opacity: 0.5; }
+.alius-combat-field { display: flex; flex-direction: column; gap: 4px; }
+.alius-combat-row { display: flex; gap: 6px; justify-content: center; min-height: 2em; }
+.alius-combat-mid { text-align: center; color: var(--alius-dim, #777); overflow: hidden; }
+.alius-cc { display: flex; gap: 6px; border: 1px solid var(--alius-dim, #666); padding: 4px; min-width: 150px; max-width: 220px; flex: 1; }
+.alius-cc-active { border-color: var(--alius-fg, #fb3); box-shadow: 0 0 6px var(--alius-fg, #fb3); }
+.alius-cc-legal { cursor: pointer; border-style: dashed; border-color: var(--alius-fg, #fb3); }
+.alius-cc-selected { background: rgba(255, 187, 51, 0.15); }
+.alius-cc-down { opacity: 0.4; }
+.alius-cc-head { width: 48px; height: 48px; overflow: hidden; flex: none; border: 1px solid var(--alius-dim, #555); }
+.alius-cc-img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
+.alius-cc-ascii { margin: 0; font-size: 6px; line-height: 6px; white-space: pre; }
+.alius-cc-body { font-size: 0.8em; line-height: 1.3; min-width: 0; }
+.alius-cc-name { font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.alius-cc-hp, .alius-cc-st { white-space: pre; }
+.alius-cc-tags { color: var(--alius-warn, #f95); }
+.alius-cc-syn { color: var(--alius-dim, #999); font-style: italic; }
+.alius-combat-skills, .alius-combat-orders, .alius-combat-controls { display: flex; gap: 4px; flex-wrap: wrap; }
+.alius-skill-selected { outline: 1px solid var(--alius-fg, #fb3); }
+.alius-combat-log { font-size: 0.8em; border-top: 1px dashed var(--alius-dim, #777); padding-top: 4px; }
+.alius-combat-result { display: flex; flex-direction: column; gap: 4px; }
+.alius-cutin-img { height: 4em; margin-right: 1em; vertical-align: middle; }
+
+/* INV tab */
+.alius-inv { display: flex; flex-direction: column; gap: 8px; }
+.alius-inv-res { color: var(--alius-dim, #999); }
+.alius-inv-filters { display: flex; gap: 4px; }
+.alius-inv-list { display: flex; flex-direction: column; gap: 2px; }
+.alius-inv-item { display: flex; gap: 8px; align-items: baseline; padding: 2px 4px; border: 1px solid transparent; cursor: pointer; text-align: left; background: none; color: inherit; font: inherit; }
+.alius-inv-item[aria-pressed="true"] { border-color: var(--alius-fg, #fb3); }
+.alius-rarity { font-size: 0.75em; padding: 0 4px; border: 1px solid currentColor; }
+.alius-inv-compare { border: 1px dashed var(--alius-dim, #777); padding: 4px; white-space: pre; }
+.alius-inv-workshop { border-top: 1px dashed var(--alius-dim, #777); padding-top: 4px; }
+.alius-delta-up { color: #7c7; }
+.alius-delta-down { color: #f77; }
+
+/* SQUAD: tree, loadout, equipment */
+.alius-tree { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px 12px; font-family: inherit; }
+.alius-tree-node { text-align: left; background: none; border: none; color: inherit; font: inherit; padding: 0; cursor: pointer; }
+.alius-tree-node[data-state="owned"] { color: var(--alius-fg, #fb3); }
+.alius-tree-node[data-state="locked"] { opacity: 0.45; cursor: default; }
+.alius-tree-ult { grid-column: 1 / -1; text-align: center; }
+.alius-loadout label { display: block; }
+.alius-equip-flag { color: var(--alius-warn, #f55); }

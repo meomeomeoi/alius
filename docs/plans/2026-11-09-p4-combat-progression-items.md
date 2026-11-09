@@ -469,11 +469,11 @@ docs/** (Task 21), tests/** mirror src
 - Keyboard (`keys.ts`, ignored inside inputs): `1`–`6` skills, `←`/`→` cycle legal targets, `Enter` confirm, `G` guard, `S` swap, `P` pass, `Q W E R T` orders in registry order, `A` AUTO, `Esc` cancel selection.
 - `combat_cutin` events → `cutIn(host, kind, text, spriteUrl)` (ultimates and breakdowns only).
 
-- [ ] **Step 1: Write the failing tests** — `bar widths at 0, half and full`; `renders enemy and squad rows with bars and statuses`; `only legal targets are selectable`; `skill on cooldown is disabled with the turns left`; `keyboard 1 + Enter acts on the first legal target`; `Q issues the first order and is disabled without CP`; `lost_pending shows RETRY and ACCEPT DEFEAT`; `result panel lists xp, loot and injuries`; `log text is not HTML`; `cut-in fires on a breakdown event`.
-- [ ] **Step 2: Run** `npx vitest run tests/ui/combat.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS.
-- [ ] **Step 5: Commit** `feat(ui): terminal combat screen with keyboard control`.
+- [x] **Step 1: Write the failing tests** — `bar widths at 0, half and full`; `renders enemy and squad rows with bars and statuses`; `only legal targets are selectable`; `skill on cooldown is disabled with the turns left`; `keyboard 1 + Enter acts on the first legal target`; `Q issues the first order and is disabled without CP`; `lost_pending shows RETRY and ACCEPT DEFEAT`; `result panel lists xp, loot and injuries`; `log text is not HTML`; `cut-in fires on a breakdown event`.
+- [x] **Step 2: Run** `npx vitest run tests/ui/combat.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS.
+- [x] **Step 5: Commit** `feat(ui): terminal combat screen with keyboard control`.
 
 ---
 

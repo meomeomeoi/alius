@@ -9487,9 +9487,10 @@ async function pickLocation(modal, ctx2) {
 
 // src/ui/scene/cutIn.ts
 var CUT_IN_MS = 900;
-function cutIn(host, kind, text) {
+function cutIn(host, kind, text, imageUrl) {
   const el = h("div", { class: "alius-cutin", "data-kind": kind, "aria-hidden": "true" });
-  el.textContent = text;
+  if (imageUrl) el.append(h("img", { class: "alius-cutin-img", src: imageUrl, alt: "" }));
+  el.append(document.createTextNode(text));
   host.append(el);
   setTimeout(() => el.remove(), CUT_IN_MS);
 }
