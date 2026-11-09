@@ -55,7 +55,7 @@ interface Case {
 }
 const FRIEND: Patch = { stateId: 'friend', trust: 50, affinity: 50 };
 const cases: Case[] = [
-  { id: 'comrade', via: 'proposal', kind: 'reconcile', ok: { stateId: 'estranged', trust: 25, affinity: -40 }, bad: { stateId: 'estranged', trust: 24, affinity: -40 } },
+  { id: 'comrade', via: 'proposal', kind: 'reconcile', ok: { stateId: 'estranged', trust: 30, affinity: -20 }, bad: { stateId: 'estranged', trust: 29, affinity: -20 } },
   { id: 'trusted', via: 'auto', ok: { trust: 45, daysIn: 3 }, bad: { trust: 45, daysIn: 2 } },
   { id: 'friend', via: 'proposal', kind: 'friendship_deepen', ok: { trust: 30, affinity: 30 }, bad: { trust: 30, affinity: 29 } },
   { id: 'confidant', via: 'proposal', kind: 'confide', ok: { stateId: 'friend', trust: 50, affinity: 55 }, bad: { stateId: 'friend', trust: 50, affinity: 54 } },

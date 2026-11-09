@@ -48,9 +48,14 @@ export class ContextBuilder {
     this.directives.delete(id);
   }
 
-  /** Call when a main-model reply arrives: drops `next_reply` directives. */
-  onReplyReceived(): void {
-    for (const [id, d] of this.directives) if (d.expiresAfter === 'next_reply') this.directives.delete(id);
+  /** Call when a main-model reply arrives: drops `next_reply` directives (except those `keep` says must outlive this reply). */
+  onReplyReceived(keep?: (d: Directive) => boolean): void {
+    for (const [id, d] of this.directives) if (d.expiresAfter === 'next_reply' && !keep?.(d)) this.directives.delete(id);
+  }
+
+  /** Drops every directive `match` accepts (e.g. all `proposal:*` ones when a scene ends or the chat changes). */
+  clearMatching(match: (d: Directive) => boolean): void {
+    for (const [id, d] of this.directives) if (match(d)) this.directives.delete(id);
   }
 
   build(state: CampaignState, capTokens: number): { block: string; directives: string } {

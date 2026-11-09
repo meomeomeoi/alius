@@ -160,6 +160,18 @@ describe('scene screen', () => {
     expect(input.value).toBe('');
   });
 
+  it('END, swipe, regenerate and PROPOSE are locked while a send is pending (review #1)', async () => {
+    const { q, qa, finishSend } = setup({ participants: [ANN, BEA] });
+    const input = q<HTMLInputElement>('input[name="cmd"]')!;
+    input.value = 'Hello';
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    const locked = () => [...qa<HTMLButtonElement>('button[data-action]'), ...qa<HTMLSelectElement>('select')].map((e) => (e as HTMLButtonElement).disabled);
+    expect(locked().every(Boolean)).toBe(true);
+    finishSend();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(locked().some(Boolean)).toBe(false);
+  });
+
   it('an empty command is not sent', () => {
     const { q, controller } = setup();
     const input = q<HTMLInputElement>('input[name="cmd"]')!;

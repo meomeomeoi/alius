@@ -53,25 +53,32 @@ export function applyIntents(draft: CampaignState, ctx: EngineCtx, p: ApplyParam
     touched.add(unit.id);
   }
 
+  // promise-derived events share the per-exchange event budget
+  let eventBudget = TUNING.relations.maxEventsPerExchange - intents.events.length;
   for (const pr of intents.promises) {
-    const { event } = recordPromise(draft, pr, draft.day);
+    const { event } = recordPromise(draft, pr, draft.day, p.participants);
     if (!event) continue;
     const unit = event.targets[0];
     const duplicate = intents.events.some((e) => e.type === event.type && e.targets.includes(unit));
-    if (duplicate || !p.participants.includes(unit)) continue;
+    if (duplicate || !p.participants.includes(unit) || eventBudget <= 0) continue;
+    eventBudget--;
     events.push(...applyEventToUnit(draft, reg, unit, event));
     touched.add(unit);
   }
 
+  // a scene stores at most `factsPerScene` facts over all its exchanges
+  const already = p.sceneId ? draft.memory.facts.filter((f) => f.sceneId === p.sceneId).length : 0;
+  const factRoom = Math.max(0, TUNING.memory.factsPerScene - already);
   let storedFacts = 0;
   for (const f of intents.facts) {
-    if (storedFacts >= TUNING.memory.factsPerScene) break;
+    if (storedFacts >= factRoom) break;
     storedFacts++;
     addFact(draft, {
       about: Array.isArray(f.about) ? f.about : [f.about], text: f.text, tags: f.tags, importance: f.importance, day: draft.day,
       knownBy: [...p.participants], ...(p.sceneId ? { sceneId: p.sceneId } : {}),
     });
-    if (f.tags.includes('crime')) events.push(...revealCrime(draft, reg, p.participants));
+    // the `crime` tag only counts for a fact about the commander: a model-chosen tag on any other fact reveals nothing
+    if (f.tags.includes('crime') && f.about === 'commander') events.push(...revealCrime(draft, reg, p.participants));
   }
 
   for (const pr of intents.proposals) {

@@ -202,6 +202,11 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     if (pacing) banner.append(h('div', { class: 'alius-pacing', role: 'status' }, 'TIME IS PASSING'));
   }
 
+  /** While an exchange is being read, END, swipe/regenerate and PROPOSE stay off (they would race the extraction). */
+  function lock(on: boolean): void {
+    for (const el of root.querySelectorAll<HTMLButtonElement | HTMLSelectElement>('button[data-action], select')) el.disabled = on;
+  }
+
   function build(s: CampaignState): void {
     const units = present(s);
     sceneKey = s.scene!.id;
@@ -218,9 +223,11 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
       if (text === '') return;
       pending = true;
       input.disabled = true;
+      lock(true);
       void controller.send(text).finally(() => {
         pending = false;
         if (disposed) return;
+        lock(false);
         input.disabled = false;
         input.value = '';
         input.focus();

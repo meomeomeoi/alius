@@ -48,20 +48,23 @@ export function registerSceneContext(builder: ContextBuilder, deps: Deps): void 
       const raw = deps.settings().showRawValues;
       const romance = intimacyOf(s).romance;
       const num = (n: number) => (raw ? ` (${n})` : '');
+      const here = new Set(s.scene?.participants ?? []);
       return presentUnits(s).map((u) => {
         const rel = s.relations[u.id];
         if (!rel) return `${u.displayName}`;
-        const st = reg.relationshipStates.get(rel.stateId);
+        // a concealed romance is shown with its cover while the partner it is hidden from is in the room
+        const covered = rel.affair?.hiddenFrom.some((id) => here.has(id)) === true;
+        const st = reg.relationshipStates.get(covered ? 'comrade' : rel.stateId);
         const axes = [
           `trust ${trustBand(rel.trust)}${num(rel.trust)}`,
           `affinity ${affinityBand(rel.affinity)}${num(rel.affinity)}`,
-          ...(romance ? [`attraction ${attractionBand(rel.attraction)}${num(rel.attraction)}`] : []),
+          ...(romance && !covered ? [`attraction ${attractionBand(rel.attraction)}${num(rel.attraction)}`] : []),
         ].join(', ');
         const defects = u.defects.map((d) => {
           const def = reg.defects.get(d.id);
           return def ? `; defect ${String(def.name)}: ${String(def.social)}` : '';
         }).join('');
-        return `${u.displayName} — state ${String(st?.name ?? rel.stateId)}${st ? ` (${String(st.promptHint)})` : ''}; ${axes}; stress ${stressBand(u.stress)}${num(u.stress)}${defects}`;
+        return `${u.displayName} — state ${String(st?.name ?? 'Comrade')}${st ? ` (${String(st.promptHint)})` : ''}; ${axes}; stress ${stressBand(u.stress)}${num(u.stress)}${defects}`;
       }).join('\n');
     },
   });
@@ -79,10 +82,12 @@ export function registerSceneContext(builder: ContextBuilder, deps: Deps): void 
         const units = presentUnits(s);
         const knows = units.filter((u) => s.relations[u.id]?.flags.includes('knows_crime'));
         const ignorant = units.filter((u) => !s.relations[u.id]?.flags.includes('knows_crime'));
-        if (knows.length > 0) {
+        // the prompt is shared by everyone present: the crime is named only when nobody present is in the dark
+        if (knows.length > 0 && ignorant.length === 0) {
           lines.push(`Crime: ${String(crime.name)} — ${String(crime.summary).slice(0, CRIME_SUMMARY_MAX)} (known to ${knows.map((u) => u.displayName).join(', ')}).`);
+        } else if (ignorant.length > 0) {
+          lines.push(`Crime: unknown to ${ignorant.map((u) => u.displayName).join(', ')}.${knows.length > 0 ? ' Do not bring it up while they are present.' : ''}`);
         }
-        if (ignorant.length > 0) lines.push(`Crime: unknown to ${ignorant.map((u) => u.displayName).join(', ')}.`);
       }
       return lines.join('\n');
     },
@@ -104,7 +109,7 @@ export function registerSceneContext(builder: ContextBuilder, deps: Deps): void 
     id: 'promises', priority: 60,
     render: (s) => {
       if (!s.scene) return null;
-      const open = openPromises(s, s.scene.participants);
+      const open = openPromises(s, s.scene.participants, s.scene.participants);
       if (open.length === 0) return null;
       return ['Open promises:', ...open.map((p) => `- ${nameOf(s, p.by)} promised ${nameOf(s, p.to)}: ${p.text}`)].join('\n');
     },

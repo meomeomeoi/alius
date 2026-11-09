@@ -31,7 +31,19 @@ export function addFact(draft: CampaignState, f: Omit<Fact, 'id'>): Fact {
   }
   const fact: Fact = { ...f, id: nextId(draft, 'f'), text, about, tags: tagList(f.tags), knownBy: [...new Set(f.knownBy)] };
   draft.memory.facts.push(fact);
+  pruneFacts(draft);
   return fact;
+}
+
+/** Metadata must stay small: past `factsMax` the least important (then oldest) facts go. */
+function pruneFacts(draft: CampaignState): void {
+  const extra = draft.memory.facts.length - TUNING.memory.factsMax;
+  if (extra <= 0) return;
+  const order = (f: Fact): number => Number(f.id.replace(/\D/g, '')) || 0;
+  const doomed = new Set(
+    [...draft.memory.facts].sort((a, b) => a.importance - b.importance || a.day - b.day || order(a) - order(b)).slice(0, extra).map((f) => f.id),
+  );
+  draft.memory.facts = draft.memory.facts.filter((f) => !doomed.has(f.id));
 }
 
 /** A fact is visible to a group only if it is public (`'*'`) or every viewer knows it. The commander always knows. */
@@ -76,10 +88,12 @@ function jaccard(a: string, b: string): number {
  * (word overlap ≥ 0.3, else the newest). A commander promise yields the `kept_promise`/`broke_promise` event the caller
  * should apply (unless the intent list already carried one for that unit).
  */
-export function recordPromise(draft: CampaignState, p: PromiseIntent, day: number): { event: EventIntent | null; record?: PromiseRecord } {
+export function recordPromise(
+  draft: CampaignState, p: PromiseIntent, day: number, knownBy?: string[],
+): { event: EventIntent | null; record?: PromiseRecord } {
   const list = (draft.memory.promises ??= []);
   if (p.kind === 'made') {
-    const record: PromiseRecord = { id: nextId(draft, 'p'), by: p.by, to: p.to, text: p.text, status: 'open', day };
+    const record: PromiseRecord = { id: nextId(draft, 'p'), by: p.by, to: p.to, text: p.text, status: 'open', day, ...(knownBy ? { knownBy: [...knownBy] } : {}) };
     list.push(record);
     return { event: null, record };
   }
@@ -88,6 +102,7 @@ export function recordPromise(draft: CampaignState, p: PromiseIntent, day: numbe
   const matching = open.filter((x) => jaccard(x.text, p.text) >= 0.3).sort((a, b) => jaccard(b.text, p.text) - jaccard(a.text, p.text));
   const target = matching[0] ?? open[open.length - 1];
   target.status = p.kind === 'kept' ? 'kept' : 'broken';
+  pruneClosedPromises(draft);
   if (p.by !== 'commander') return { event: null, record: target };
   const event: EventIntent = {
     type: p.kind === 'kept' ? 'kept_promise' : 'broke_promise', actor: 'commander', targets: [p.to], severity: 'moderate',
@@ -96,9 +111,24 @@ export function recordPromise(draft: CampaignState, p: PromiseIntent, day: numbe
   return { event, record: target };
 }
 
-/** Open promises that involve any of these units. */
-export function openPromises(state: CampaignState, unitIds: string[]): PromiseRecord[] {
-  return (state.memory.promises ?? []).filter((p) => p.status === 'open' && (unitIds.includes(p.by) || unitIds.includes(p.to)));
+/** Closed promises are only history: keep the newest `closedPromisesMax`. */
+function pruneClosedPromises(draft: CampaignState): void {
+  const list = draft.memory.promises ?? [];
+  const extra = list.filter((x) => x.status !== 'open').length - TUNING.memory.closedPromisesMax;
+  if (extra <= 0) return;
+  let drop = extra;
+  draft.memory.promises = list.filter((x) => !(x.status !== 'open' && drop-- > 0));
+}
+
+/**
+ * Open promises that involve any of these units and that every viewer heard (a promise without `knownBy` is visible to
+ * all). Pass the present participants as `viewers` for anything that reaches a shared prompt.
+ */
+export function openPromises(state: CampaignState, unitIds: string[], viewers: string[] = []): PromiseRecord[] {
+  return (state.memory.promises ?? []).filter(
+    (p) => p.status === 'open' && (unitIds.includes(p.by) || unitIds.includes(p.to))
+      && (!p.knownBy || p.knownBy.includes('*') || viewers.every((v) => p.knownBy!.includes(v))),
+  );
 }
 
 // ---------------------------------------------------------------------------------------------

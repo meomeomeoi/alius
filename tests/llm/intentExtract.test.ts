@@ -84,7 +84,7 @@ describe('sanitizeIntentOutput', () => {
       { from: ANN, to: 'commander', kind: 'confide', evidence: 'x' }, { from: 'commander', to: BEA, kind: 'romance', evidence: 'x' },
     ] };
     expect(sanitize(raw, { romance: false }).intents.proposals.map((p) => p.kind)).toEqual(['confide']);
-    expect(sanitize(raw).intents.proposals).toHaveLength(4);
+    expect(sanitize(raw).intents.proposals).toHaveLength(3); // at most three proposals per call
   });
   it('unknown emotion label dropped; the 28 labels are known', () => {
     expect(EXPRESSION_LABELS).toHaveLength(28);

@@ -22,7 +22,7 @@ export const TUNING = Object.freeze({
     affair: Object.freeze({ base: 0.04, perOther: 0.04, partnerPresent: 0.15 }),
   }),
   /** P3: facts, promises and the chronicle. */
-  memory: Object.freeze({ factTextMax: 200, factsPerScene: 8, recencyBase: 0.8, retrievalK: 6 }),
+  memory: Object.freeze({ factTextMax: 200, factsPerScene: 8, recencyBase: 0.8, retrievalK: 6, factsMax: 120, closedPromisesMax: 30 }),
   /** P3: PDA DMs and night visits. */
   comms: Object.freeze({
     threadMax: 40,

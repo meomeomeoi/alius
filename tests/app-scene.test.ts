@@ -267,4 +267,17 @@ describe('scenes in the app', () => {
     await flush();
     expect(t.state().calendar.nightEventsQueue).toMatchObject([{ unitId: RHEA, kind: 'visit', priority: 80 }]);
   });
+
+  it('scene directives do not leak into another chat (review #9)', async () => {
+    const t = await boot();
+    await t.app.performActivity({ activityId: 'talk', companionId: RHEA });
+    expect(t.app.context.build(t.state(), 3000).directives).toContain('Explicit content');
+    t.app.context.setDirective({ id: 'night', text: 'It is night.', expiresAfter: 'scene' });
+    t.app.context.setDirective({ id: `proposal:${RHEA}`, text: 'Rhea DECLINES', expiresAfter: 'next_reply' });
+    t.app.replaceState(t.state());
+    const snap = structuredClone(t.state());
+    t.st.switchChat({ chatId: 'elsewhere', isGroup: true, groupId: 'gx' });
+    expect(t.app.context.build(snap, 3000).directives).toBe('');
+  });
 });
+

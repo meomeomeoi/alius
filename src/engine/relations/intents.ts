@@ -59,6 +59,9 @@ export const emptyIntents = (): Intents => ({ events: [], facts: [], proposals: 
 const EVIDENCE_WORDS = 20;
 const EVIDENCE_CHARS = 400;
 const MAX_TAGS = 8;
+/** Per call: promises and proposals are capped like events, stress hints are one per unit. */
+const MAX_PROMISES = 3;
+const MAX_PROPOSALS = 3;
 const DECISION_TYPES: readonly string[] = ['decision_aligned', 'decision_violated'];
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -140,7 +143,7 @@ export function validateIntents(raw: unknown, ctx: { participants: string[]; squ
     if (!kind) continue;
     const pair = (p.from === 'commander' && isUnit(p.to)) || (isUnit(p.from) && p.to === 'commander');
     if (!pair) continue;
-    out.proposals.push({ from: p.from as string, to: p.to as string, kind, evidence: evidenceOf(p.evidence) });
+    if (out.proposals.length < MAX_PROPOSALS) out.proposals.push({ from: p.from as string, to: p.to as string, kind, evidence: evidenceOf(p.evidence) });
   }
 
   for (const p of arr(raw.promises)) {
@@ -150,14 +153,14 @@ export function validateIntents(raw: unknown, ctx: { participants: string[]; squ
     if (!kind || !pair) continue;
     const text = typeof p.text === 'string' ? p.text.trim().slice(0, TUNING.memory.factTextMax).trim() : '';
     if (kind === 'made' && text === '') continue;
-    out.promises.push({ by: p.by as string, to: p.to as string, text, kind });
+    if (out.promises.length < MAX_PROMISES) out.promises.push({ by: p.by as string, to: p.to as string, text, kind });
   }
 
   for (const h of arr(raw.stressHints)) {
     if (!isObj(h) || !isUnit(h.unitId)) continue;
     const severity = oneOf(SEVERITIES, h.severity);
     if (!severity || (h.direction !== 1 && h.direction !== -1)) continue;
-    out.stressHints.push({ unitId: h.unitId, direction: h.direction, severity });
+    if (!out.stressHints.some((x) => x.unitId === h.unitId)) out.stressHints.push({ unitId: h.unitId, direction: h.direction, severity });
   }
   return out;
 }

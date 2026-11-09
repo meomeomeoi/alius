@@ -168,7 +168,8 @@ export const RESERVED_EVENT_TYPES: readonly string[] = [
   // P3
   'scene_started', 'scene_exchange', 'scene_ended', 'scene_aborted', 'intents_applied', 'relation_state_changed',
   'loyalty_band_changed', 'proposal_offered', 'proposal_resolved', 'affair_discovered', 'crime_known', 'dm_sent',
-  'dm_received', 'dm_initiative', 'night_opened', 'defect_social', 'chronicle_compacted', 'intimacy_changed',
+  'dm_received', 'dm_initiative', 'night_opened', 'defect_social', 'chronicle_compacted', 'intimacy_changed', 'proposals_expired',
+  'proposal_answered', 'night_queued', 'night_ignored', 'dm_read',
 ];
 
 const slotEnum = z.enum(['morning', 'afternoon', 'evening', 'night']);

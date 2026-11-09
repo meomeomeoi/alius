@@ -16,7 +16,7 @@ import { intimacyOf } from './engine/relations/gain';
 import { ContextBuilder } from './llm/context';
 import { runCompaction } from './scene/chronicle';
 import { createComms, type Comms } from './scene/comms';
-import { registerSceneContext } from './scene/context';
+import { clearSceneDirectives, registerSceneContext } from './scene/context';
 import { createSceneController, type SceneController, type SceneUiEvent, type StartOptions } from './scene/sceneController';
 import { callLlm, type LlmResult } from './llm/orchestrator';
 import { getSettings } from './settings';
@@ -81,7 +81,9 @@ export interface AliusApp {
    * happened since). Used to undo the extraction of a swiped reply. Returns whether it replaced the state.
    */
   restoreSnapshot(snap: CampaignState, expectedCurrent: CampaignState): boolean;
-  /** Scenes (P3): start, send, propose, end. */
+  /** Starts a scene (P5 debriefs and events use this): dispatches `scene/start`, activates the members, shows the scene screen. */
+  startScene(opts: StartOptions): Promise<boolean>;
+  /** Scenes (P3): send, propose, end, resume. */
   scene: SceneController;
   /** PDA DMs and night knocks (P3). */
   comms: Comms;
@@ -171,6 +173,9 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
   function adoptScene(): void {
     sceneScreen?.dispose();
     sceneScreen = null;
+    // directives belong to one campaign's scene: never carry them into another chat
+    clearSceneDirectives(context);
+    context.clearMatching((d) => d.id === 'night' || d.id.startsWith('proposal:'));
     if (state?.scene) {
       scene.resume();
       showScene();
@@ -699,6 +704,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     shell,
     scene,
     comms,
+    startScene: beginScene,
     refreshContext: applyContext,
     replaceState,
     openSetup,
@@ -802,7 +808,8 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
           shell.refresh();
         });
         st.on('message_received', () => {
-          context.onReplyReceived();
+          // proposal directives lapse when their unit answers (the scene controller handles those)
+          context.onReplyReceived((d) => d.id.startsWith('proposal:'));
           applyContext();
         });
         // a swiped or deleted reply: undo its extraction if it was the last one applied

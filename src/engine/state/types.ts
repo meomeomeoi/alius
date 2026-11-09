@@ -120,6 +120,8 @@ export interface PromiseRecord {
   status: 'open' | 'kept' | 'broken';
   day: number;
   deadlineDay?: number;
+  /** Unit ids (or `'*'`) who heard the promise; absent = visible to everyone (P2-era saves). The commander always knows. */
+  knownBy?: string[];
 }
 
 export interface ChronicleEntry {

@@ -60,8 +60,10 @@ export interface SceneController {
   dispose(): void;
 }
 
-/** At most this many new messages go into one extraction. */
+/** One extraction call reads at most this many new messages; longer backlogs are read chunk by chunk. */
 const EXTRACT_MAX_MESSAGES = 8;
+/** At most this many chunks per pass (older lines beyond that are skipped, never re-read). */
+const EXTRACT_MAX_CHUNKS = 6;
 
 export const DEBUG_NOT_ROLLED_BACK = 'Not rolled back: something changed since.';
 
@@ -73,6 +75,8 @@ export function createSceneController(deps: SceneDeps): SceneController {
   let lastApply: { lastReplyIndex: number; from: number; before: CampaignState; after: CampaignState } | null = null;
   let awaitingReextract = false;
   let pending = false;
+  /** The send in flight (reply, extraction, sprites); `end()` waits for it so an exchange is never applied twice. */
+  let inflight: Promise<void> | null = null;
   let disposed = false;
   let background: Promise<void> = Promise.resolve();
 
@@ -143,21 +147,41 @@ export function createSceneController(deps: SceneDeps): SceneController {
     return { id, name: u.displayName, values: { ...u.values }, likes: u.likes, dislikes: u.dislikes, triggers: u.triggers, stateId: rel.stateId, defectIds: u.defects.map((d) => d.id) };
   }
 
-  /** Reads the not-yet-extracted messages and applies what the mechanic model reports. Returns whether it applied. */
+  /**
+   * Reads the not-yet-extracted messages, chunk by chunk, and applies what the mechanic model reports. Returns whether
+   * anything applied. A failed chunk stops the pass without advancing the read pointer, so the next pass re-reads it.
+   */
   async function extract(expect: string | undefined): Promise<boolean> {
-    const s0 = state();
-    const scene = s0?.scene;
-    if (!s0 || !scene) return false;
-    const all = st.getChatMessages(extracted);
-    const messages = all.slice(-EXTRACT_MAX_MESSAGES);
-    const lastReply = [...messages].reverse().find((m) => !m.isUser);
-    if (!lastReply) return false;
+    let applied = false;
+    const first = st.getChatMessages(extracted);
+    if (first.length > EXTRACT_MAX_CHUNKS * EXTRACT_MAX_MESSAGES) extracted = first[first.length - EXTRACT_MAX_CHUNKS * EXTRACT_MAX_MESSAGES].index;
+    for (let chunk = 0; chunk < EXTRACT_MAX_CHUNKS; chunk++) {
+      const s0 = state();
+      if (!s0?.scene) return applied;
+      const messages = st.getChatMessages(extracted).slice(0, EXTRACT_MAX_MESSAGES);
+      if (messages.length === 0) return applied;
+      const lastReply = [...messages].reverse().find((m) => !m.isUser);
+      const nextPointer = messages[messages.length - 1].index + 1;
+      if (!lastReply) {
+        extracted = nextPointer;
+        continue;
+      }
+      if (!(await extractChunk(s0, messages, lastReply, nextPointer, expect))) return applied;
+      applied = true;
+    }
+    return applied;
+  }
+
+  async function extractChunk(
+    s0: CampaignState, messages: ChatMessage[], lastReply: ChatMessage, nextPointer: number, expect: string | undefined,
+  ): Promise<boolean> {
+    const scene = s0.scene!;
     const units = scene.participants.map((id) => unitInput(s0, id)).filter((u): u is NonNullable<typeof u> => u !== null);
     const nm = (id: string) => (id === 'commander' ? s0.commander.name : unitById(s0, id)?.displayName ?? id);
     const input: IntentExtractInput = {
       commanderName: s0.commander.name, channel: 'scene',
       exchange: messages.map((m) => ({ speaker: m.isUser ? s0.commander.name : m.name, text: m.text })),
-      units, openPromises: openPromises(s0, scene.participants).map((p) => ({ by: nm(p.by), to: nm(p.to), text: p.text })),
+      units, openPromises: openPromises(s0, scene.participants, scene.participants).map((p) => ({ by: nm(p.by), to: nm(p.to), text: p.text })),
       romance: intimacyOf(s0).romance,
     };
     const result = await extractIntents(input, { st, settings: deps.settings() });
@@ -172,7 +196,7 @@ export function createSceneController(deps: SceneDeps): SceneController {
     const events = dispatch({ type: 'intents/apply', payload: { channel: 'scene', intents: result.intents } }, expect);
     if (events.some((e) => e.type === 'error')) return false;
     const after = state();
-    extracted = st.chatLength();
+    extracted = nextPointer;
     if (after && after !== before) lastApply = { lastReplyIndex: lastReply.index, from, before, after };
     reflect(events, result.intents.events.filter((e) => e.severity === 'extreme').map((e) => e.type));
     if (deps.settings().spriteMode === 'emotion_pick') {
@@ -198,6 +222,34 @@ export function createSceneController(deps: SceneDeps): SceneController {
         const label = await pickEmotion({ unitName: unit.displayName, text: msg.text }, { st, settings: deps.settings() });
         if (label) deps.onUi({ type: 'sprite', unitId: unit.id, label });
       }
+    }
+  }
+
+  /** One exchange: send, read the group's replies, extract, draw sprites. The caller has set `pending`. */
+  async function sendNow(t: string): Promise<void> {
+    const expect = chatId();
+    awaitingReextract = false;
+    try {
+      const before = st.chatLength();
+      try {
+        await st.sendUserMessage(t);
+      } catch (e) {
+        deps.toast('error', `Could not send: ${e instanceof Error ? e.message : String(e)}`);
+        return;
+      }
+      if (disposed || chatId() !== expect || !state()?.scene) return;
+      const events = dispatch({ type: 'scene/exchange', payload: {} }, expect);
+      const exchanges = Number(events.find((e) => e.type === 'scene_exchange')?.exchanges ?? 0);
+      deps.onUi({ type: 'transcript' });
+      const settings = deps.settings();
+      const due =
+        settings.intentMode === 'exchange' || (settings.intentMode === 'every_n' && exchanges > 0 && exchanges % settings.intentEveryN === 0);
+      const applied = due ? await extract(expect) : false;
+      await showSprites(st.getChatMessages(before).filter((m) => !m.isUser), applied);
+      if (exchanges >= settings.scenePacing) deps.onUi({ type: 'pacing' });
+      deps.onUi({ type: 'transcript' });
+    } finally {
+      pending = false;
     }
   }
 
@@ -228,35 +280,15 @@ export function createSceneController(deps: SceneDeps): SceneController {
       return true;
     },
 
-    async send(text) {
-      const t = text.trim();
-      const expect = chatId();
-      if (t === '' || pending || !state()?.scene) return;
+    send(text) {
+      if (text.trim() === '' || pending || !state()?.scene) return Promise.resolve();
       pending = true;
-      awaitingReextract = false;
-      try {
-        const before = st.chatLength();
-        try {
-          await st.sendUserMessage(t);
-        } catch (e) {
-          deps.toast('error', `Could not send: ${e instanceof Error ? e.message : String(e)}`);
-          return;
-        }
-        if (disposed || chatId() !== expect || !state()?.scene) return;
-        app.context.onReplyReceived();
-        const events = dispatch({ type: 'scene/exchange', payload: {} }, expect);
-        const exchanges = Number(events.find((e) => e.type === 'scene_exchange')?.exchanges ?? 0);
-        deps.onUi({ type: 'transcript' });
-        const settings = deps.settings();
-        const due =
-          settings.intentMode === 'exchange' || (settings.intentMode === 'every_n' && exchanges > 0 && exchanges % settings.intentEveryN === 0);
-        const applied = due ? await extract(expect) : false;
-        await showSprites(st.getChatMessages(before).filter((m) => !m.isUser), applied);
-        if (exchanges >= settings.scenePacing) deps.onUi({ type: 'pacing' });
-        deps.onUi({ type: 'transcript' });
-      } finally {
-        pending = false;
-      }
+      const run = sendNow(text.trim());
+      inflight = run;
+      void run.finally(() => {
+        if (inflight === run) inflight = null;
+      });
+      return run;
     },
 
     propose(kind, unitId) {
@@ -266,7 +298,6 @@ export function createSceneController(deps: SceneDeps): SceneController {
       const events = dispatch({ type: 'proposal/commander', payload: { unitId: target, kind, channel: 'scene' } }, chatId());
       if (!events.some((e) => e.type === 'error')) reflect(events);
     },
-
     answer(proposalId, answer) {
       const s = state();
       const p = s?.proposals?.find((x) => x.id === proposalId);
@@ -280,6 +311,8 @@ export function createSceneController(deps: SceneDeps): SceneController {
     },
 
     async end() {
+      // an exchange still being read must finish first, or it would be applied twice (here and by this flush)
+      await inflight?.catch(() => {});
       const expect = chatId();
       const s = state();
       const scene = s?.scene;
@@ -304,7 +337,7 @@ export function createSceneController(deps: SceneDeps): SceneController {
           clearSceneDirectives(app.context);
           app.context.clearDirective('night');
           const now = state();
-          for (const u of now?.squad ?? []) app.context.clearDirective(`proposal:${u.id}`);
+          app.context.clearMatching((d) => d.id.startsWith('proposal:'));
           app.refreshContext();
           const living = (now?.squad ?? []).filter((u) => u.kind === 'named' && u.status !== 'dead' && u.status !== 'deserted' && u.status !== 'terminated');
           try {
@@ -354,6 +387,17 @@ export function createSceneController(deps: SceneDeps): SceneController {
       disposed = true;
     },
   };
+
+  // a proposal directive lapses only when the unit it is about has answered (not when her neighbour in a group does)
+  st.on('message_received', (i) => {
+    const s = state();
+    if (!s?.scene || disposed) return;
+    const m = st.getChatMessages(Number(i))[0];
+    const unit = m && !m.isUser ? unitByAvatar(s, m.avatar) : undefined;
+    if (!unit) return;
+    app.context.clearDirective(`proposal:${unit.id}`);
+    app.refreshContext();
+  });
 
   // a swiped or regenerated reply arrives: read it once the chat has finished generating
   st.on('generation_ended', () => {

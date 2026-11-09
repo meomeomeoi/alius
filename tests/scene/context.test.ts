@@ -75,17 +75,17 @@ describe('scene context', () => {
     const s = inScene([ANN], (w) => { w.settings.intimacy = { romance: false, initiative: 'med' }; });
     expect(block(b, s)).not.toContain('attraction');
   });
-  it('crime is shown only to units who know it', () => {
+  it('crime is shown only when every present unit knows it', () => {
     const b = builder();
-    const s = inScene([ANN, BEA], (w) => {
-      w.relations[ANN].flags = ['knows_crime'];
-      w.relations[BEA].flags = [];
-    });
-    const out = block(b, s);
     const crime = String(reg.crimes.get('mutiny')!.name);
-    expect(out).toContain(`Crime: ${crime}`);
-    expect(out).toMatch(/known to Ann/);
-    expect(out).toContain('Crime: unknown to Bea.');
+    const mixed = block(b, inScene([ANN, BEA], (w) => { w.relations[ANN].flags = ['knows_crime']; w.relations[BEA].flags = []; }));
+    expect(mixed).not.toContain(crime); // Bea is in the room: the shared prompt must not name it
+    expect(mixed).toContain('Crime: unknown to Bea.');
+    const private1 = block(b, inScene([ANN], (w) => { w.relations[ANN].flags = ['knows_crime']; }));
+    expect(private1).toContain(`Crime: ${crime}`);
+    expect(private1).toMatch(/known to Ann/);
+    const both = block(b, inScene([ANN, BEA], (w) => { w.relations[ANN].flags = ['knows_crime']; w.relations[BEA].flags = ['knows_crime']; }));
+    expect(both).toContain(`Crime: ${crime}`);
     const none = block(b, inScene([ANN, BEA], (w) => { w.relations[ANN].flags = []; w.relations[BEA].flags = []; }));
     expect(none).not.toContain(crime);
     expect(none).toContain('Crime: unknown to Ann, Bea.');

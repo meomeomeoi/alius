@@ -30,6 +30,14 @@ registerDayEndStep('dm_rumors', (draft, ctx) => {
   return events;
 });
 
+/** Her scene-channel proposals do not outlive the scene: nobody could answer them (chips need the open scene). */
+function expireSceneProposals(draft: import('../state/types').CampaignState, participants: string[]): import('../dispatch').EngineEvent[] {
+  const ids = (draft.proposals ?? []).filter((x) => x.channel === 'scene' && participants.includes(x.unitId)).map((x) => x.id);
+  if (ids.length === 0) return [];
+  draft.proposals = (draft.proposals ?? []).filter((x) => !ids.includes(x.id));
+  return [{ type: 'proposals_expired', ids }];
+}
+
 registerAction('scene/start', (draft, payload, ctx) => {
   const reg = ctx.registries;
   if (!isObj(payload)) throw new Error('scene/start needs a payload');
@@ -109,16 +117,18 @@ registerAction('scene/end', (draft, payload, ctx) => {
 
   if (summary && Array.isArray(summary.facts)) {
     const facts = validateIntents({ facts: summary.facts }, { participants: scene.participants, squad: draft.squad }).facts;
-    for (const f of facts.slice(0, TUNING.memory.factsPerScene)) {
+    const room = Math.max(0, TUNING.memory.factsPerScene - draft.memory.facts.filter((x) => x.sceneId === scene.id).length);
+    for (const f of facts.slice(0, room)) {
       addFact(draft, {
         about: Array.isArray(f.about) ? f.about : [f.about], text: f.text, tags: f.tags, importance: f.importance, day: scene.day,
         sceneId: scene.id, knownBy: [...scene.participants],
       });
-      if (f.tags.includes('crime')) events.push(...revealCrime(draft, reg, scene.participants));
+      if (f.tags.includes('crime') && f.about === 'commander') events.push(...revealCrime(draft, reg, scene.participants));
     }
   }
 
   events.push(...rollDiscovery(draft, reg, ctx.rng, scene.participants));
+  events.push(...expireSceneProposals(draft, scene.participants));
   delete draft.scene;
   delete draft.calendar.pendingScene;
   events.push({ type: 'scene_ended', sceneId: scene.id, consumed: scene.consumesSlot });
@@ -132,7 +142,7 @@ registerAction('scene/abort', (draft) => {
   delete draft.scene;
   // an activity talk keeps its hold so the app can cancel it with `calendar/cancel_scene`
   if (scene.origin !== 'activity') delete draft.calendar.pendingScene;
-  return [{ type: 'scene_aborted', sceneId: scene.id }];
+  return [{ type: 'scene_aborted', sceneId: scene.id }, ...expireSceneProposals(draft, scene.participants)];
 });
 
 registerAction('proposal/commander', (draft, payload, ctx) => {

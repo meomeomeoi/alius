@@ -405,7 +405,7 @@ var TUNING = Object.freeze({
     affair: Object.freeze({ base: 0.04, perOther: 0.04, partnerPresent: 0.15 })
   }),
   /** P3: facts, promises and the chronicle. */
-  memory: Object.freeze({ factTextMax: 200, factsPerScene: 8, recencyBase: 0.8, retrievalK: 6 }),
+  memory: Object.freeze({ factTextMax: 200, factsPerScene: 8, recencyBase: 0.8, retrievalK: 6, factsMax: 120, closedPromisesMax: 30 }),
   /** P3: PDA DMs and night visits. */
   comms: Object.freeze({
     threadMax: 40,
@@ -1090,7 +1090,17 @@ function addFact(draft, f) {
   }
   const fact = { ...f, id: nextId(draft, "f"), text, about, tags: tagList(f.tags), knownBy: [...new Set(f.knownBy)] };
   draft.memory.facts.push(fact);
+  pruneFacts(draft);
   return fact;
+}
+function pruneFacts(draft) {
+  const extra = draft.memory.facts.length - TUNING.memory.factsMax;
+  if (extra <= 0) return;
+  const order = (f) => Number(f.id.replace(/\D/g, "")) || 0;
+  const doomed = new Set(
+    [...draft.memory.facts].sort((a, b) => a.importance - b.importance || a.day - b.day || order(a) - order(b)).slice(0, extra).map((f) => f.id)
+  );
+  draft.memory.facts = draft.memory.facts.filter((f) => !doomed.has(f.id));
 }
 function factsVisibleTo(state, viewers) {
   return state.memory.facts.filter((f) => f.knownBy.includes("*") || viewers.every((v) => f.knownBy.includes(v)));
@@ -1111,10 +1121,10 @@ function jaccard(a, b) {
   for (const w of x) if (y.has(w)) both++;
   return both / (x.size + y.size - both);
 }
-function recordPromise(draft, p, day) {
+function recordPromise(draft, p, day, knownBy) {
   const list2 = draft.memory.promises ??= [];
   if (p.kind === "made") {
-    const record = { id: nextId(draft, "p"), by: p.by, to: p.to, text: p.text, status: "open", day };
+    const record = { id: nextId(draft, "p"), by: p.by, to: p.to, text: p.text, status: "open", day, ...knownBy ? { knownBy: [...knownBy] } : {} };
     list2.push(record);
     return { event: null, record };
   }
@@ -1123,6 +1133,7 @@ function recordPromise(draft, p, day) {
   const matching = open.filter((x) => jaccard(x.text, p.text) >= 0.3).sort((a, b) => jaccard(b.text, p.text) - jaccard(a.text, p.text));
   const target = matching[0] ?? open[open.length - 1];
   target.status = p.kind === "kept" ? "kept" : "broken";
+  pruneClosedPromises(draft);
   if (p.by !== "commander") return { event: null, record: target };
   const event = {
     type: p.kind === "kept" ? "kept_promise" : "broke_promise",
@@ -1134,8 +1145,17 @@ function recordPromise(draft, p, day) {
   };
   return { event, record: target };
 }
-function openPromises(state, unitIds) {
-  return (state.memory.promises ?? []).filter((p) => p.status === "open" && (unitIds.includes(p.by) || unitIds.includes(p.to)));
+function pruneClosedPromises(draft) {
+  const list2 = draft.memory.promises ?? [];
+  const extra = list2.filter((x) => x.status !== "open").length - TUNING.memory.closedPromisesMax;
+  if (extra <= 0) return;
+  let drop = extra;
+  draft.memory.promises = list2.filter((x) => !(x.status !== "open" && drop-- > 0));
+}
+function openPromises(state, unitIds, viewers = []) {
+  return (state.memory.promises ?? []).filter(
+    (p) => p.status === "open" && (unitIds.includes(p.by) || unitIds.includes(p.to)) && (!p.knownBy || p.knownBy.includes("*") || viewers.every((v) => p.knownBy.includes(v)))
+  );
 }
 function addChronicle(draft, e) {
   const entry = { ...e, id: nextId(draft, "c") };
@@ -1516,6 +1536,8 @@ var emptyIntents = () => ({ events: [], facts: [], proposals: [], promises: [], 
 var EVIDENCE_WORDS = 20;
 var EVIDENCE_CHARS = 400;
 var MAX_TAGS = 8;
+var MAX_PROMISES = 3;
+var MAX_PROPOSALS = 3;
 var DECISION_TYPES = ["decision_aligned", "decision_violated"];
 var isObj4 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var arr = (v) => Array.isArray(v) ? v : [];
@@ -1584,7 +1606,7 @@ function validateIntents(raw, ctx2) {
     if (!kind) continue;
     const pair = p.from === "commander" && isUnit(p.to) || isUnit(p.from) && p.to === "commander";
     if (!pair) continue;
-    out.proposals.push({ from: p.from, to: p.to, kind, evidence: evidenceOf(p.evidence) });
+    if (out.proposals.length < MAX_PROPOSALS) out.proposals.push({ from: p.from, to: p.to, kind, evidence: evidenceOf(p.evidence) });
   }
   for (const p of arr(raw.promises)) {
     if (!isObj4(p)) continue;
@@ -1593,13 +1615,13 @@ function validateIntents(raw, ctx2) {
     if (!kind || !pair) continue;
     const text = typeof p.text === "string" ? p.text.trim().slice(0, TUNING.memory.factTextMax).trim() : "";
     if (kind === "made" && text === "") continue;
-    out.promises.push({ by: p.by, to: p.to, text, kind });
+    if (out.promises.length < MAX_PROMISES) out.promises.push({ by: p.by, to: p.to, text, kind });
   }
   for (const h2 of arr(raw.stressHints)) {
     if (!isObj4(h2) || !isUnit(h2.unitId)) continue;
     const severity = oneOf(SEVERITIES, h2.severity);
     if (!severity || h2.direction !== 1 && h2.direction !== -1) continue;
-    out.stressHints.push({ unitId: h2.unitId, direction: h2.direction, severity });
+    if (!out.stressHints.some((x) => x.unitId === h2.unitId)) out.stressHints.push({ unitId: h2.unitId, direction: h2.direction, severity });
   }
   return out;
 }
@@ -1782,18 +1804,22 @@ function applyIntents(draft, ctx2, p) {
     unit.stress = next;
     touched.add(unit.id);
   }
+  let eventBudget = TUNING.relations.maxEventsPerExchange - intents.events.length;
   for (const pr of intents.promises) {
-    const { event } = recordPromise(draft, pr, draft.day);
+    const { event } = recordPromise(draft, pr, draft.day, p.participants);
     if (!event) continue;
     const unit = event.targets[0];
     const duplicate = intents.events.some((e) => e.type === event.type && e.targets.includes(unit));
-    if (duplicate || !p.participants.includes(unit)) continue;
+    if (duplicate || !p.participants.includes(unit) || eventBudget <= 0) continue;
+    eventBudget--;
     events.push(...applyEventToUnit(draft, reg, unit, event));
     touched.add(unit);
   }
+  const already = p.sceneId ? draft.memory.facts.filter((f) => f.sceneId === p.sceneId).length : 0;
+  const factRoom = Math.max(0, TUNING.memory.factsPerScene - already);
   let storedFacts = 0;
   for (const f of intents.facts) {
-    if (storedFacts >= TUNING.memory.factsPerScene) break;
+    if (storedFacts >= factRoom) break;
     storedFacts++;
     addFact(draft, {
       about: Array.isArray(f.about) ? f.about : [f.about],
@@ -1804,7 +1830,7 @@ function applyIntents(draft, ctx2, p) {
       knownBy: [...p.participants],
       ...p.sceneId ? { sceneId: p.sceneId } : {}
     });
-    if (f.tags.includes("crime")) events.push(...revealCrime(draft, reg, p.participants));
+    if (f.tags.includes("crime") && f.about === "commander") events.push(...revealCrime(draft, reg, p.participants));
   }
   for (const pr of intents.proposals) {
     const unitId = pr.from === "commander" ? pr.to : pr.from;
@@ -1846,6 +1872,12 @@ registerDayEndStep("dm_rumors", (draft, ctx2) => {
   }
   return events;
 });
+function expireSceneProposals(draft, participants) {
+  const ids = (draft.proposals ?? []).filter((x) => x.channel === "scene" && participants.includes(x.unitId)).map((x) => x.id);
+  if (ids.length === 0) return [];
+  draft.proposals = (draft.proposals ?? []).filter((x) => !ids.includes(x.id));
+  return [{ type: "proposals_expired", ids }];
+}
 registerAction("scene/start", (draft, payload, ctx2) => {
   const reg = ctx2.registries;
   if (!isObj5(payload)) throw new Error("scene/start needs a payload");
@@ -1930,7 +1962,8 @@ registerAction("scene/end", (draft, payload, ctx2) => {
   });
   if (summary && Array.isArray(summary.facts)) {
     const facts = validateIntents({ facts: summary.facts }, { participants: scene.participants, squad: draft.squad }).facts;
-    for (const f of facts.slice(0, TUNING.memory.factsPerScene)) {
+    const room = Math.max(0, TUNING.memory.factsPerScene - draft.memory.facts.filter((x) => x.sceneId === scene.id).length);
+    for (const f of facts.slice(0, room)) {
       addFact(draft, {
         about: Array.isArray(f.about) ? f.about : [f.about],
         text: f.text,
@@ -1940,10 +1973,11 @@ registerAction("scene/end", (draft, payload, ctx2) => {
         sceneId: scene.id,
         knownBy: [...scene.participants]
       });
-      if (f.tags.includes("crime")) events.push(...revealCrime(draft, reg, scene.participants));
+      if (f.tags.includes("crime") && f.about === "commander") events.push(...revealCrime(draft, reg, scene.participants));
     }
   }
   events.push(...rollDiscovery(draft, reg, ctx2.rng, scene.participants));
+  events.push(...expireSceneProposals(draft, scene.participants));
   delete draft.scene;
   delete draft.calendar.pendingScene;
   events.push({ type: "scene_ended", sceneId: scene.id, consumed: scene.consumesSlot });
@@ -1955,7 +1989,7 @@ registerAction("scene/abort", (draft) => {
   if (!scene) throw new Error("scene/abort: no scene is open");
   delete draft.scene;
   if (scene.origin !== "activity") delete draft.calendar.pendingScene;
-  return [{ type: "scene_aborted", sceneId: scene.id }];
+  return [{ type: "scene_aborted", sceneId: scene.id }, ...expireSceneProposals(draft, scene.participants)];
 });
 registerAction("proposal/commander", (draft, payload, ctx2) => {
   if (!isObj5(payload) || typeof payload.unitId !== "string") throw new Error("proposal/commander needs { unitId, kind, channel }");
@@ -6665,9 +6699,13 @@ var ContextBuilder = class {
   clearDirective(id) {
     this.directives.delete(id);
   }
-  /** Call when a main-model reply arrives: drops `next_reply` directives. */
-  onReplyReceived() {
-    for (const [id, d] of this.directives) if (d.expiresAfter === "next_reply") this.directives.delete(id);
+  /** Call when a main-model reply arrives: drops `next_reply` directives (except those `keep` says must outlive this reply). */
+  onReplyReceived(keep) {
+    for (const [id, d] of this.directives) if (d.expiresAfter === "next_reply" && !keep?.(d)) this.directives.delete(id);
+  }
+  /** Drops every directive `match` accepts (e.g. all `proposal:*` ones when a scene ends or the chat changes). */
+  clearMatching(match) {
+    for (const [id, d] of this.directives) if (match(d)) this.directives.delete(id);
   }
   build(state, capTokens) {
     const sorted = [...this.providers].sort((a, b) => b.priority - a.priority);
@@ -7052,20 +7090,22 @@ function registerSceneContext(builder, deps) {
       const raw = deps.settings().showRawValues;
       const romance = intimacyOf(s).romance;
       const num2 = (n) => raw ? ` (${n})` : "";
+      const here = new Set(s.scene?.participants ?? []);
       return presentUnits(s).map((u) => {
         const rel = s.relations[u.id];
         if (!rel) return `${u.displayName}`;
-        const st = reg.relationshipStates.get(rel.stateId);
+        const covered = rel.affair?.hiddenFrom.some((id) => here.has(id)) === true;
+        const st = reg.relationshipStates.get(covered ? "comrade" : rel.stateId);
         const axes = [
           `trust ${trustBand(rel.trust)}${num2(rel.trust)}`,
           `affinity ${affinityBand(rel.affinity)}${num2(rel.affinity)}`,
-          ...romance ? [`attraction ${attractionBand(rel.attraction)}${num2(rel.attraction)}`] : []
+          ...romance && !covered ? [`attraction ${attractionBand(rel.attraction)}${num2(rel.attraction)}`] : []
         ].join(", ");
         const defects = u.defects.map((d) => {
           const def = reg.defects.get(d.id);
           return def ? `; defect ${String(def.name)}: ${String(def.social)}` : "";
         }).join("");
-        return `${u.displayName} \u2014 state ${String(st?.name ?? rel.stateId)}${st ? ` (${String(st.promptHint)})` : ""}; ${axes}; stress ${stressBand(u.stress)}${num2(u.stress)}${defects}`;
+        return `${u.displayName} \u2014 state ${String(st?.name ?? "Comrade")}${st ? ` (${String(st.promptHint)})` : ""}; ${axes}; stress ${stressBand(u.stress)}${num2(u.stress)}${defects}`;
       }).join("\n");
     }
   });
@@ -7083,10 +7123,11 @@ function registerSceneContext(builder, deps) {
         const units = presentUnits(s);
         const knows = units.filter((u) => s.relations[u.id]?.flags.includes("knows_crime"));
         const ignorant = units.filter((u) => !s.relations[u.id]?.flags.includes("knows_crime"));
-        if (knows.length > 0) {
+        if (knows.length > 0 && ignorant.length === 0) {
           lines.push(`Crime: ${String(crime.name)} \u2014 ${String(crime.summary).slice(0, CRIME_SUMMARY_MAX)} (known to ${knows.map((u) => u.displayName).join(", ")}).`);
+        } else if (ignorant.length > 0) {
+          lines.push(`Crime: unknown to ${ignorant.map((u) => u.displayName).join(", ")}.${knows.length > 0 ? " Do not bring it up while they are present." : ""}`);
         }
-        if (ignorant.length > 0) lines.push(`Crime: unknown to ${ignorant.map((u) => u.displayName).join(", ")}.`);
       }
       return lines.join("\n");
     }
@@ -7108,7 +7149,7 @@ function registerSceneContext(builder, deps) {
     priority: 60,
     render: (s) => {
       if (!s.scene) return null;
-      const open = openPromises(s, s.scene.participants);
+      const open = openPromises(s, s.scene.participants, s.scene.participants);
       if (open.length === 0) return null;
       return ["Open promises:", ...open.map((p) => `- ${nameOf(s, p.by)} promised ${nameOf(s, p.to)}: ${p.text}`)].join("\n");
     }
@@ -7244,6 +7285,7 @@ function answerDirective(unitId, unitName, kind, answer) {
 
 // src/scene/sceneController.ts
 var EXTRACT_MAX_MESSAGES = 8;
+var EXTRACT_MAX_CHUNKS = 6;
 var DEBUG_NOT_ROLLED_BACK = "Not rolled back: something changed since.";
 function createSceneController(deps) {
   const { st, app } = deps;
@@ -7251,6 +7293,7 @@ function createSceneController(deps) {
   let lastApply = null;
   let awaitingReextract = false;
   let pending2 = false;
+  let inflight = null;
   let disposed = false;
   let background = Promise.resolve();
   const state = () => app.current().state;
@@ -7312,13 +7355,27 @@ function createSceneController(deps) {
     return { id, name: u.displayName, values: { ...u.values }, likes: u.likes, dislikes: u.dislikes, triggers: u.triggers, stateId: rel.stateId, defectIds: u.defects.map((d) => d.id) };
   }
   async function extract2(expect) {
-    const s0 = state();
-    const scene = s0?.scene;
-    if (!s0 || !scene) return false;
-    const all = st.getChatMessages(extracted);
-    const messages = all.slice(-EXTRACT_MAX_MESSAGES);
-    const lastReply = [...messages].reverse().find((m) => !m.isUser);
-    if (!lastReply) return false;
+    let applied = false;
+    const first = st.getChatMessages(extracted);
+    if (first.length > EXTRACT_MAX_CHUNKS * EXTRACT_MAX_MESSAGES) extracted = first[first.length - EXTRACT_MAX_CHUNKS * EXTRACT_MAX_MESSAGES].index;
+    for (let chunk = 0; chunk < EXTRACT_MAX_CHUNKS; chunk++) {
+      const s0 = state();
+      if (!s0?.scene) return applied;
+      const messages = st.getChatMessages(extracted).slice(0, EXTRACT_MAX_MESSAGES);
+      if (messages.length === 0) return applied;
+      const lastReply = [...messages].reverse().find((m) => !m.isUser);
+      const nextPointer = messages[messages.length - 1].index + 1;
+      if (!lastReply) {
+        extracted = nextPointer;
+        continue;
+      }
+      if (!await extractChunk(s0, messages, lastReply, nextPointer, expect)) return applied;
+      applied = true;
+    }
+    return applied;
+  }
+  async function extractChunk(s0, messages, lastReply, nextPointer, expect) {
+    const scene = s0.scene;
     const units = scene.participants.map((id) => unitInput(s0, id)).filter((u) => u !== null);
     const nm = (id) => id === "commander" ? s0.commander.name : unitById(s0, id)?.displayName ?? id;
     const input = {
@@ -7326,7 +7383,7 @@ function createSceneController(deps) {
       channel: "scene",
       exchange: messages.map((m) => ({ speaker: m.isUser ? s0.commander.name : m.name, text: m.text })),
       units,
-      openPromises: openPromises(s0, scene.participants).map((p) => ({ by: nm(p.by), to: nm(p.to), text: p.text })),
+      openPromises: openPromises(s0, scene.participants, scene.participants).map((p) => ({ by: nm(p.by), to: nm(p.to), text: p.text })),
       romance: intimacyOf(s0).romance
     };
     const result = await extractIntents(input, { st, settings: deps.settings() });
@@ -7341,7 +7398,7 @@ function createSceneController(deps) {
     const events = dispatch2({ type: "intents/apply", payload: { channel: "scene", intents: result.intents } }, expect);
     if (events.some((e) => e.type === "error")) return false;
     const after = state();
-    extracted = st.chatLength();
+    extracted = nextPointer;
     if (after && after !== before) lastApply = { lastReplyIndex: lastReply.index, from, before, after };
     reflect(events, result.intents.events.filter((e) => e.severity === "extreme").map((e) => e.type));
     if (deps.settings().spriteMode === "emotion_pick") {
@@ -7366,6 +7423,31 @@ function createSceneController(deps) {
         const label2 = await pickEmotion({ unitName: unit.displayName, text: msg.text }, { st, settings: deps.settings() });
         if (label2) deps.onUi({ type: "sprite", unitId: unit.id, label: label2 });
       }
+    }
+  }
+  async function sendNow(t) {
+    const expect = chatId();
+    awaitingReextract = false;
+    try {
+      const before = st.chatLength();
+      try {
+        await st.sendUserMessage(t);
+      } catch (e) {
+        deps.toast("error", `Could not send: ${e instanceof Error ? e.message : String(e)}`);
+        return;
+      }
+      if (disposed || chatId() !== expect || !state()?.scene) return;
+      const events = dispatch2({ type: "scene/exchange", payload: {} }, expect);
+      const exchanges = Number(events.find((e) => e.type === "scene_exchange")?.exchanges ?? 0);
+      deps.onUi({ type: "transcript" });
+      const settings = deps.settings();
+      const due = settings.intentMode === "exchange" || settings.intentMode === "every_n" && exchanges > 0 && exchanges % settings.intentEveryN === 0;
+      const applied = due ? await extract2(expect) : false;
+      await showSprites(st.getChatMessages(before).filter((m) => !m.isUser), applied);
+      if (exchanges >= settings.scenePacing) deps.onUi({ type: "pacing" });
+      deps.onUi({ type: "transcript" });
+    } finally {
+      pending2 = false;
     }
   }
   const controller = {
@@ -7394,34 +7476,15 @@ function createSceneController(deps) {
       deps.onUi({ type: "transcript" });
       return true;
     },
-    async send(text) {
-      const t = text.trim();
-      const expect = chatId();
-      if (t === "" || pending2 || !state()?.scene) return;
+    send(text) {
+      if (text.trim() === "" || pending2 || !state()?.scene) return Promise.resolve();
       pending2 = true;
-      awaitingReextract = false;
-      try {
-        const before = st.chatLength();
-        try {
-          await st.sendUserMessage(t);
-        } catch (e) {
-          deps.toast("error", `Could not send: ${e instanceof Error ? e.message : String(e)}`);
-          return;
-        }
-        if (disposed || chatId() !== expect || !state()?.scene) return;
-        app.context.onReplyReceived();
-        const events = dispatch2({ type: "scene/exchange", payload: {} }, expect);
-        const exchanges = Number(events.find((e) => e.type === "scene_exchange")?.exchanges ?? 0);
-        deps.onUi({ type: "transcript" });
-        const settings = deps.settings();
-        const due = settings.intentMode === "exchange" || settings.intentMode === "every_n" && exchanges > 0 && exchanges % settings.intentEveryN === 0;
-        const applied = due ? await extract2(expect) : false;
-        await showSprites(st.getChatMessages(before).filter((m) => !m.isUser), applied);
-        if (exchanges >= settings.scenePacing) deps.onUi({ type: "pacing" });
-        deps.onUi({ type: "transcript" });
-      } finally {
-        pending2 = false;
-      }
+      const run = sendNow(text.trim());
+      inflight = run;
+      void run.finally(() => {
+        if (inflight === run) inflight = null;
+      });
+      return run;
     },
     propose(kind, unitId) {
       const s = state();
@@ -7442,6 +7505,8 @@ function createSceneController(deps) {
       reflect(events);
     },
     async end() {
+      await inflight?.catch(() => {
+      });
       const expect = chatId();
       const s = state();
       const scene = s?.scene;
@@ -7465,7 +7530,7 @@ function createSceneController(deps) {
           clearSceneDirectives(app.context);
           app.context.clearDirective("night");
           const now = state();
-          for (const u of now?.squad ?? []) app.context.clearDirective(`proposal:${u.id}`);
+          app.context.clearMatching((d) => d.id.startsWith("proposal:"));
           app.refreshContext();
           const living = (now?.squad ?? []).filter((u) => u.kind === "named" && u.status !== "dead" && u.status !== "deserted" && u.status !== "terminated");
           try {
@@ -7510,6 +7575,15 @@ function createSceneController(deps) {
       disposed = true;
     }
   };
+  st.on("message_received", (i) => {
+    const s = state();
+    if (!s?.scene || disposed) return;
+    const m = st.getChatMessages(Number(i))[0];
+    const unit = m && !m.isUser ? unitByAvatar(s, m.avatar) : void 0;
+    if (!unit) return;
+    app.context.clearDirective(`proposal:${unit.id}`);
+    app.refreshContext();
+  });
   st.on("generation_ended", () => {
     if (!awaitingReextract || disposed) return;
     awaitingReextract = false;
@@ -9366,6 +9440,9 @@ function renderSceneScreen(host, ctx2) {
     banner.replaceChildren();
     if (pacing) banner.append(h("div", { class: "alius-pacing", role: "status" }, "TIME IS PASSING"));
   }
+  function lock(on) {
+    for (const el of root.querySelectorAll("button[data-action], select")) el.disabled = on;
+  }
   function build(s) {
     const units = present(s);
     sceneKey = s.scene.id;
@@ -9382,9 +9459,11 @@ function renderSceneScreen(host, ctx2) {
       if (text === "") return;
       pending2 = true;
       input.disabled = true;
+      lock(true);
       void controller.send(text).finally(() => {
         pending2 = false;
         if (disposed) return;
+        lock(false);
         input.disabled = false;
         input.value = "";
         input.focus();
@@ -10367,6 +10446,8 @@ function createApp(st, deps) {
   function adoptScene() {
     sceneScreen?.dispose();
     sceneScreen = null;
+    clearSceneDirectives(context);
+    context.clearMatching((d) => d.id === "night" || d.id.startsWith("proposal:"));
     if (state?.scene) {
       scene.resume();
       showScene();
@@ -10864,6 +10945,7 @@ function createApp(st, deps) {
     shell,
     scene,
     comms,
+    startScene: beginScene,
     refreshContext: applyContext,
     replaceState,
     openSetup,
@@ -10957,7 +11039,7 @@ function createApp(st, deps) {
           shell.refresh();
         });
         st.on("message_received", () => {
-          context.onReplyReceived();
+          context.onReplyReceived((d) => d.id.startsWith("proposal:"));
           applyContext();
         });
         st.on("message_swiped", (i) => scene.onSwipe(Number(i)));
@@ -11184,7 +11266,12 @@ var RESERVED_EVENT_TYPES = [
   "night_opened",
   "defect_social",
   "chronicle_compacted",
-  "intimacy_changed"
+  "intimacy_changed",
+  "proposals_expired",
+  "proposal_answered",
+  "night_queued",
+  "night_ignored",
+  "dm_read"
 ];
 var slotEnum = external_exports.enum(["morning", "afternoon", "evening", "night"]);
 var socialStat = external_exports.enum(["authority", "insight", "empathy", "cunning"]);
