@@ -3,8 +3,10 @@ import { editGroup, openGroupById } from 'st:group-chats';
 import { newWorldInfoEntryTemplate } from 'st:world-info';
 import { answerText } from '../llm/text';
 import type {
-  CardInfo, CharacterSummary, ChatInfo, InjectionPosition, Lorebook, MemberInfo, ProfileInfo, StAdapter, StEvent,
+  CardInfo, CharacterSummary, ChatInfo, ChatMessage, InjectionPosition, Lorebook, MemberInfo, ProfileInfo, StAdapter, StEvent,
 } from './adapter';
+import { lastCharacterAvatar, mapChatMessages } from './chat';
+import { sendCommand, slashArg } from './slash';
 import { toStLorebook } from './lorebook';
 import { pickSprite, spriteFolder } from './sprites';
 import { connectionProfiles } from './profiles';
@@ -14,6 +16,11 @@ import { reasoningPayload } from './reasoning';
 interface StContext {
   chatId?: string;
   name1?: string;
+  chat: unknown[];
+  stopGeneration(): void;
+  executeSlashCommandsWithOptions(
+    text: string, options?: Record<string, unknown>,
+  ): Promise<{ pipe?: string; isError?: boolean; isAborted?: boolean; abortReason?: string; errorMessage?: string } | null>;
   getThumbnailUrl(type: string, file: string): string;
   getRequestHeaders(): Record<string, string>;
   getCharacters(): Promise<void>;
@@ -51,6 +58,10 @@ const EVENT: Record<StEvent, string> = {
   message_sent: 'MESSAGE_SENT',
   message_received: 'MESSAGE_RECEIVED',
   generation_started: 'GENERATION_STARTED',
+  message_swiped: 'MESSAGE_SWIPED',
+  message_deleted: 'MESSAGE_DELETED',
+  generation_ended: 'GENERATION_ENDED',
+  group_wrapper_finished: 'GROUP_WRAPPER_FINISHED',
 };
 
 function currentGroup(c: StContext) {
@@ -250,8 +261,47 @@ export class RealStAdapter implements StAdapter {
   }
 
   setExpression(avatar: string, label: string): void {
-    // Not wired in P0: no verified ST API yet, and nothing calls it. Expressions land with P3.
-    console.warn(`[Alius] setExpression(${avatar}, ${label}) is not implemented yet`);
+    const c = ctx();
+    // `/expression-set` has no character argument: in a group it targets the speaker of the last character message
+    if (c.groupId && lastCharacterAvatar(c.chat) !== avatar) return;
+    void this.slash(`/expression-set ${slashArg(label)}`).catch((e: unknown) => console.warn('[Alius] /expression-set failed', e));
+  }
+
+  /** Runs a slash command and returns its result; a command that errored or was aborted rejects. */
+  private async slash(text: string): Promise<string> {
+    const result = await ctx().executeSlashCommandsWithOptions(text, { handleParserErrors: false, handleExecutionErrors: false, source: 'alius' });
+    if (!result) throw new Error('SillyTavern ran no command');
+    if (result.isError || result.isAborted) throw new Error(result.errorMessage ?? result.abortReason ?? 'the command failed');
+    return String(result.pipe ?? '');
+  }
+
+  getChatMessages(from = 0): ChatMessage[] {
+    return mapChatMessages(ctx().chat, from);
+  }
+
+  chatLength(): number {
+    return ctx().chat.length;
+  }
+
+  async sendUserMessage(text: string): Promise<void> {
+    await this.slash(sendCommand(text));
+  }
+
+  async regenerateLast(): Promise<void> {
+    await this.slash('/regenerate await=true');
+  }
+
+  async swipeLast(dir: 'left' | 'right'): Promise<void> {
+    await this.slash(`/swipe direction=${dir} await=true`);
+  }
+
+  stopGeneration(): void {
+    ctx().stopGeneration();
+  }
+
+  async getLastExpression(name: string): Promise<string | null> {
+    const label = (await this.slash(`/expression-last ${slashArg(name)}`)).trim();
+    return label === '' ? null : label;
   }
 
   getSettings(): Record<string, unknown> {

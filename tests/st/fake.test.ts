@@ -109,3 +109,78 @@ describe('FakeStAdapter', () => {
     expect(st.members.map((m) => m.avatar)).toEqual(['a.png', 'b.png']);
   });
 });
+
+describe('FakeStAdapter chat (P3)', () => {
+  const make = () => {
+    const st = new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' });
+    st.personaName = 'Vale';
+    return st;
+  };
+  const reply = (name: string, text: string) => ({ avatar: `${name.toLowerCase()}.png`, name, text });
+
+  it('sendUserMessage appends user then replies in order and fires events', async () => {
+    const st = make();
+    st.groupReplies = [[reply('Ann', 'Hi.'), reply('Bea', 'Hey.')]];
+    const seen: string[] = [];
+    for (const e of ['message_sent', 'message_received', 'group_wrapper_finished'] as const) st.on(e, (i) => seen.push(`${e}:${String(i ?? '')}`));
+    await st.sendUserMessage('Hello');
+    expect(st.getChatMessages()).toEqual([
+      { index: 0, isUser: true, name: 'Vale', text: 'Hello', swipeId: 0 },
+      { index: 1, isUser: false, name: 'Ann', avatar: 'ann.png', text: 'Hi.', swipeId: 0 },
+      { index: 2, isUser: false, name: 'Bea', avatar: 'bea.png', text: 'Hey.', swipeId: 0 },
+    ]);
+    expect(st.chatLength()).toBe(3);
+    expect(seen).toEqual(['message_sent:0', 'message_received:1', 'message_received:2', 'group_wrapper_finished:']);
+  });
+
+  it('failSend rejects without changing the chat', async () => {
+    const st = make();
+    st.failSend = true;
+    st.groupReplies = [[reply('Ann', 'x')]];
+    await expect(st.sendUserMessage('Hello')).rejects.toThrow(/send failed/i);
+    expect(st.chatLength()).toBe(0);
+    expect(st.groupReplies).toHaveLength(1);
+  });
+
+  it('swipe replaces the last reply and fires message_swiped', async () => {
+    const st = make();
+    st.groupReplies = [[reply('Ann', 'first')]];
+    st.swipeReplies = [reply('Ann', 'second')];
+    await st.sendUserMessage('Hello');
+    const swiped: unknown[] = [];
+    st.on('message_swiped', (i) => swiped.push(i));
+    await st.swipeLast('right');
+    expect(st.getChatMessages().at(-1)).toMatchObject({ text: 'second', swipeId: 1 });
+    expect(swiped).toEqual([1]);
+    await st.swipeLast('left');
+    expect(st.getChatMessages().at(-1)).toMatchObject({ swipeId: 0 });
+    expect(st.chatLength()).toBe(2);
+  });
+
+  it('regenerateLast also replaces the last reply', async () => {
+    const st = make();
+    st.groupReplies = [[reply('Ann', 'first')]];
+    st.swipeReplies = [reply('Ann', 'again')];
+    await st.sendUserMessage('Hello');
+    await st.regenerateLast();
+    expect(st.getChatMessages().at(-1)!.text).toBe('again');
+  });
+
+  it('getChatMessages(from) slices', async () => {
+    const st = make();
+    st.groupReplies = [[reply('Ann', 'a'), reply('Bea', 'b')]];
+    await st.sendUserMessage('Hello');
+    expect(st.getChatMessages(1).map((m) => m.text)).toEqual(['a', 'b']);
+    expect(st.getChatMessages(5)).toEqual([]);
+  });
+
+  it('getLastExpression returns the scripted label, stopGeneration is counted', async () => {
+    const st = make();
+    st.expressionsByName.set('ann.png', 'joy');
+    expect(await st.getLastExpression('ann.png')).toBe('joy');
+    expect(await st.getLastExpression('bea.png')).toBeNull();
+    st.stopGeneration();
+    expect(st.stopped).toBe(1);
+  });
+});
+

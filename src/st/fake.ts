@@ -1,6 +1,8 @@
 import type {
-  CardInfo, CharacterSummary, ChatInfo, InjectionPosition, Lorebook, MemberInfo, ProfileInfo, StAdapter, StEvent,
+  CardInfo, CharacterSummary, ChatInfo, ChatMessage, InjectionPosition, Lorebook, MemberInfo, ProfileInfo, StAdapter, StEvent,
 } from './adapter';
+
+export interface ScriptedReply { avatar: string; name: string; text: string }
 
 export interface FakeCall {
   kind: 'main' | 'profile';
@@ -35,6 +37,16 @@ export class FakeStAdapter implements StAdapter {
   settings: Record<string, unknown> = {};
   metadataSaves = 0;
   settingsSaves = 0;
+  /** The chat the scene screen reads; filled by `sendUserMessage`. */
+  chatMessages: ChatMessage[] = [];
+  /** One entry per `sendUserMessage`: the replies the group gives, in order. */
+  groupReplies: ScriptedReply[][] = [];
+  /** Consumed by `swipeLast('right')` and `regenerateLast`. */
+  swipeReplies: ScriptedReply[] = [];
+  failSend = false;
+  /** name or avatar → last expression label. */
+  expressionsByName = new Map<string, string>();
+  stopped = 0;
   private handlers = new Map<StEvent, Array<(...a: unknown[]) => void>>();
 
   constructor(chat: ChatInfo | null = null) {
@@ -194,6 +206,60 @@ export class FakeStAdapter implements StAdapter {
 
   setExpression(avatar: string, label: string): void {
     this.expressions.push({ avatar, label });
+  }
+
+  getChatMessages(from = 0): ChatMessage[] {
+    return this.chatMessages.filter((m) => m.index >= from).map((m) => ({ ...m }));
+  }
+
+  chatLength(): number {
+    return this.chatMessages.length;
+  }
+
+  async sendUserMessage(text: string): Promise<void> {
+    if (this.failSend) throw new Error('FakeStAdapter: send failed');
+    const push = (m: Omit<ChatMessage, 'index' | 'swipeId'>): number => {
+      const index = this.chatMessages.length;
+      this.chatMessages.push({ ...m, index, swipeId: 0 });
+      return index;
+    };
+    this.emit('message_sent', push({ isUser: true, name: this.personaName, text }));
+    for (const r of this.groupReplies.shift() ?? []) {
+      this.emit('message_received', push({ isUser: false, name: r.name, avatar: r.avatar, text: r.text }));
+    }
+    this.emit('group_wrapper_finished');
+  }
+
+  private lastReply(): ChatMessage | undefined {
+    return [...this.chatMessages].reverse().find((m) => !m.isUser);
+  }
+
+  async regenerateLast(): Promise<void> {
+    await this.swipeLast('right');
+  }
+
+  async swipeLast(dir: 'left' | 'right'): Promise<void> {
+    const last = this.lastReply();
+    if (!last) return;
+    if (dir === 'right') {
+      const next = this.swipeReplies.shift();
+      if (!next) return;
+      last.text = next.text;
+      last.swipeId += 1;
+    } else {
+      if (last.swipeId === 0) return;
+      last.swipeId -= 1;
+    }
+    this.emit('message_swiped', last.index);
+    this.emit('generation_ended');
+  }
+
+  stopGeneration(): void {
+    this.stopped++;
+  }
+
+  async getLastExpression(name: string): Promise<string | null> {
+    return this.expressionsByName.get(name) ?? null;
   }
 
   getSettings(): Record<string, unknown> {

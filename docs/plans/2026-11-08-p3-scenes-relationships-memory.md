@@ -296,11 +296,11 @@ docs/** (Task 15), tests/** mirror src
 - `slash.ts` (pure): `escapeSlashText(s: string): string` (escapes `|`, `{{`, `}}` and leading `/`), `sendCommand(text): string` → `/send <escaped> | /trigger await=true`.
 - `fake.ts`: `chatMessages: ChatMessage[]`; `groupReplies: Array<Array<{ avatar; name; text }>>` consumed by `sendUserMessage` (pushes the user message, then the scripted replies, emitting `message_sent`, `message_received` per reply and `group_wrapper_finished`); `failSend`; `swipeLast` replaces the last reply with the next scripted one and emits `message_swiped`; `expressionsByName`.
 
-- [ ] **Step 1: Write the failing tests** — slash: `pipes and macros are escaped`, `a leading slash is neutralized`, `multi-line text survives`. fake: `sendUserMessage appends user then replies in order and fires events`, `failSend rejects without changing the chat`, `swipe replaces the last reply and fires message_swiped`, `getChatMessages(from) slices`, `getLastExpression returns the scripted label`.
-- [ ] **Step 2: Run** `npx vitest run tests/st` → FAIL.
-- [ ] **Step 3: Implement** fake + helpers; then `real.ts` with `ctx.executeSlashCommandsWithOptions(sendCommand(text))`, `ctx.chat` mapping (`original_avatar` → `avatar`), `ctx.swipe.left/right`, `/regenerate`, `/expression-last`, `/expression-set`, event names `MESSAGE_SWIPED`, `MESSAGE_DELETED`, `GENERATION_ENDED`, `GROUP_WRAPPER_FINISHED`. Re-verify each name in the ST `release` source first (findings above); if any differs, stop and report.
-- [ ] **Step 4: Run** → PASS; `npm run typecheck` clean.
-- [ ] **Step 5: Commit** `feat(st): chat access, sending, swipes and expressions in the adapter`.
+- [x] **Step 1: Write the failing tests** — slash: `pipes and macros are escaped`, `a leading slash is neutralized`, `multi-line text survives`. fake: `sendUserMessage appends user then replies in order and fires events`, `failSend rejects without changing the chat`, `swipe replaces the last reply and fires message_swiped`, `getChatMessages(from) slices`, `getLastExpression returns the scripted label`.
+- [x] **Step 2: Run** `npx vitest run tests/st` → FAIL.
+- [x] **Step 3: Implement** fake + helpers; then `real.ts` with `ctx.executeSlashCommandsWithOptions(sendCommand(text))`, `ctx.chat` mapping (`original_avatar` → `avatar`), `ctx.swipe.left/right`, `/regenerate`, `/expression-last`, `/expression-set`, event names `MESSAGE_SWIPED`, `MESSAGE_DELETED`, `GENERATION_ENDED`, `GROUP_WRAPPER_FINISHED`. Re-verify each name in the ST `release` source first (findings above); if any differs, stop and report.
+- [x] **Step 4: Run** → PASS; `npm run typecheck` clean.
+- [x] **Step 5: Commit** `feat(st): chat access, sending, swipes and expressions in the adapter`.
 
 ### Task 11: Scene context and directives
 

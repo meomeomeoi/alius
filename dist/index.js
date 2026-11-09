@@ -9014,6 +9014,48 @@ async function loadPacks(packRoots, fetchJson2) {
 import { editGroup, openGroupById } from "../../../../group-chats.js";
 import { newWorldInfoEntryTemplate } from "../../../../world-info.js";
 
+// src/st/chat.ts
+var isObj6 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+function mapChatMessages(chat, from = 0) {
+  if (!Array.isArray(chat)) return [];
+  const out = [];
+  for (let index = Math.max(0, from); index < chat.length; index++) {
+    const m = chat[index];
+    if (!isObj6(m) || m.is_system === true) continue;
+    const avatar = typeof m.original_avatar === "string" && m.original_avatar !== "" ? m.original_avatar : void 0;
+    out.push({
+      index,
+      isUser: m.is_user === true,
+      name: String(m.name ?? ""),
+      ...avatar ? { avatar } : {},
+      text: typeof m.mes === "string" ? m.mes : "",
+      swipeId: typeof m.swipe_id === "number" ? m.swipe_id : 0
+    });
+  }
+  return out;
+}
+function lastCharacterAvatar(chat) {
+  if (!Array.isArray(chat)) return void 0;
+  for (let i = chat.length - 1; i >= 0; i--) {
+    const m = chat[i];
+    if (isObj6(m) && m.is_user !== true && m.is_system !== true) {
+      return typeof m.original_avatar === "string" && m.original_avatar !== "" ? m.original_avatar : void 0;
+    }
+  }
+  return void 0;
+}
+
+// src/st/slash.ts
+var ZWSP = "\u200B";
+function escapeSlashText(s) {
+  let t = s.replace(/(\\*)\|/g, (_m, slashes) => `${slashes}${slashes}\\|`);
+  t = t.replace(/\{\{/g, `{${ZWSP}{`).replace(/\}\}/g, `}${ZWSP}}`);
+  if (t.startsWith("/")) t = ZWSP + t;
+  return t;
+}
+var sendCommand = (text) => `/send ${escapeSlashText(text)} | /trigger await=true`;
+var slashArg = (s) => escapeSlashText(s).replace(/\s+/g, " ").trim();
+
 // src/st/lorebook.ts
 function toStLorebook(book, template) {
   const entries = {};
@@ -9032,17 +9074,17 @@ function toStLorebook(book, template) {
 }
 
 // src/st/sprites.ts
-var isObj6 = (v) => typeof v === "object" && v !== null;
+var isObj7 = (v) => typeof v === "object" && v !== null;
 function spriteFolder(avatar, name, overrides) {
   if (!Array.isArray(overrides)) return name;
   const key = avatar.replace(/\.[^.]+$/, "");
-  const hit = overrides.find((o) => isObj6(o) && o.name === key && typeof o.path === "string" && o.path !== "");
+  const hit = overrides.find((o) => isObj7(o) && o.name === key && typeof o.path === "string" && o.path !== "");
   return hit ? hit.path : name;
 }
 function pickSprite(list, label) {
   if (!Array.isArray(list)) return null;
   for (const item of list) {
-    if (isObj6(item) && item.label === label && typeof item.path === "string") return item.path;
+    if (isObj7(item) && item.label === label && typeof item.path === "string") return item.path;
   }
   return null;
 }
@@ -9077,7 +9119,11 @@ var EVENT = {
   chat_changed: "CHAT_CHANGED",
   message_sent: "MESSAGE_SENT",
   message_received: "MESSAGE_RECEIVED",
-  generation_started: "GENERATION_STARTED"
+  generation_started: "GENERATION_STARTED",
+  message_swiped: "MESSAGE_SWIPED",
+  message_deleted: "MESSAGE_DELETED",
+  generation_ended: "GENERATION_ENDED",
+  group_wrapper_finished: "GROUP_WRAPPER_FINISHED"
 };
 function currentGroup(c) {
   return c.groupId ? c.groups.find((g) => g.id === c.groupId) : void 0;
@@ -9243,7 +9289,38 @@ var RealStAdapter = class {
     this.writeMetadata("world_info", name);
   }
   setExpression(avatar, label) {
-    console.warn(`[Alius] setExpression(${avatar}, ${label}) is not implemented yet`);
+    const c = ctx();
+    if (c.groupId && lastCharacterAvatar(c.chat) !== avatar) return;
+    void this.slash(`/expression-set ${slashArg(label)}`).catch((e) => console.warn("[Alius] /expression-set failed", e));
+  }
+  /** Runs a slash command and returns its result; a command that errored or was aborted rejects. */
+  async slash(text) {
+    const result = await ctx().executeSlashCommandsWithOptions(text, { handleParserErrors: false, handleExecutionErrors: false, source: "alius" });
+    if (!result) throw new Error("SillyTavern ran no command");
+    if (result.isError || result.isAborted) throw new Error(result.errorMessage ?? result.abortReason ?? "the command failed");
+    return String(result.pipe ?? "");
+  }
+  getChatMessages(from = 0) {
+    return mapChatMessages(ctx().chat, from);
+  }
+  chatLength() {
+    return ctx().chat.length;
+  }
+  async sendUserMessage(text) {
+    await this.slash(sendCommand(text));
+  }
+  async regenerateLast() {
+    await this.slash("/regenerate await=true");
+  }
+  async swipeLast(dir) {
+    await this.slash(`/swipe direction=${dir} await=true`);
+  }
+  stopGeneration() {
+    ctx().stopGeneration();
+  }
+  async getLastExpression(name) {
+    const label = (await this.slash(`/expression-last ${slashArg(name)}`)).trim();
+    return label === "" ? null : label;
   }
   getSettings() {
     const c = ctx();
