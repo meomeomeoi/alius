@@ -96,4 +96,18 @@ describe('campaign state', () => {
       expect(r.state.calendar.nightEventsQueue).toEqual([]);
     }
   });
+
+  it('a P3 save without P4 fields loads and reads empty inventory and no combat', () => {
+    const s = createCampaign({ seed: 5, commanderName: 'Vale' });
+    const raw = JSON.parse(JSON.stringify(s));
+    for (const k of ['combat', 'lastCombat', 'workshopSession', 'enemyNames', 'itemSeq']) delete raw[k];
+    const r = migrate(raw);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.state.inventory).toEqual([]);
+    expect(r.state.combat).toBeUndefined();
+    expect(r.state.lastCombat).toBeUndefined();
+    expect(r.state.workshopSession).toBeUndefined();
+    expect(r.state.world.clearanceTier).toBeUndefined();
+  });
 });

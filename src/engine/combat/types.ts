@@ -1,3 +1,6 @@
+import type { RngState } from '../rng';
+import type { LootDrop, Severity } from '../state/types';
+
 /**
  * Combat effect vocabulary (P4). Every combat behaviour of skills, signatures, defects, statuses, synergies,
  * CP orders, enemy affixes and items is a list of `EffectSpec`s interpreted by one runner (`effects.ts`).
@@ -114,3 +117,172 @@ export const ALWAYS_ON_TYPES: readonly EffectType[] = [
   'stat', 'outgoing', 'incoming', 'stress_taken', 'immune', 'order_cost', 'order_refusal', 'loadout_slots',
   'injury_days', 'intercept_lethal', 'misfire', 'override_action',
 ];
+
+// ---------------------------------------------------------------------------------------------
+// Combat state (lives in `CampaignState.combat` while a combat is open; plain JSON).
+
+export type Stats = { hp: number; atk: number; def: number; spd: number; crit: number };
+export type Side = 'squad' | 'enemy';
+
+export interface StatusInstance {
+  id: string;
+  turns: number;
+  stacks: number;
+  /** Shield: remaining absorb value. */
+  value?: number;
+  sourceCid: string;
+}
+
+/** A timed stat modifier (percent; for crit, percentage points). */
+export interface Mod {
+  stat: StatName;
+  pct: number;
+  turnsLeft?: number;
+  source: string;
+}
+
+export type BreakdownPolicy =
+  | 'skip' | 'repeat_last' | 'random_skill' | 'attack' | 'await_order' | 'twice_then_shutdown' | 'normal';
+
+export interface Combatant {
+  cid: string;
+  side: Side;
+  unitId?: string;
+  enemyId?: string;
+  /** Key into `state.enemyNames` (enemies) or the unit's display name (squad). */
+  nameKey: string;
+  level: number;
+  row: Row;
+  index: number;
+  hp: number;
+  maxHp: number;
+  base: Stats;
+  stress: number;
+  statuses: StatusInstance[];
+  mods: Mod[];
+  cooldowns: Record<string, number>;
+  skills: string[];
+  passives: Array<EffectSpec & { source: string }>;
+  downed: boolean;
+  aiProfile: string;
+  breakdown?: {
+    defectId: string;
+    policy: BreakdownPolicy;
+    target?: 'nearest_enemy' | 'strongest_enemy' | 'nearest_any' | 'nearest_ally';
+    ignoresOrders: boolean;
+    once?: boolean;
+    used?: boolean;
+    actionEffects: EffectSpec[];
+  };
+  lastSkillId?: string;
+  lastRow?: Row;
+  lockedTargetId?: string;
+  lockTurns?: number;
+  /** `<source>:<index>:<round|combat>` keys of limited effects that already fired. */
+  usedLimits: string[];
+  /** Skills added by enemy affixes (the elite skill). */
+  aiAffixSkills?: string[];
+  /** Redirects this unit has accepted: damage meant for `fromCid` that she takes instead. */
+  redirects?: Array<{ fromCid: string; pct: number; turnsLeft: number }>;
+  /** Stress thresholds already crossed upward (50, 80, 100); cleared when stress drops back below. */
+  thresholds?: number[];
+}
+
+export interface LogEntry {
+  round: number;
+  kind:
+    | 'skill' | 'hit' | 'crit' | 'miss' | 'heal' | 'status' | 'downed' | 'revived' | 'order' | 'order_refused'
+    | 'cover' | 'intercept' | 'breakdown' | 'stress' | 'summon' | 'pass';
+  actor?: string;
+  target?: string;
+  amount?: number;
+  skillId?: string;
+  orderId?: string;
+  statusId?: string;
+}
+
+export interface PlannedAction {
+  kind: 'skill' | 'guard' | 'swap' | 'pass';
+  skillId?: string;
+  targetCid?: string;
+}
+
+export interface Encounter {
+  enemies: Array<{ enemyId: string; level: number; affixes: string[]; row?: Row }>;
+  exposesCommander?: boolean;
+  lootTableId?: string;
+  danger: number;
+}
+
+export interface StartPayload {
+  encounter: Encounter;
+  formation: { front: string[]; back: string[] };
+  coverId?: string;
+  allowRetry?: boolean;
+  expedition?: boolean;
+  bankLoot?: boolean;
+}
+
+export interface RelationHint {
+  type: 'protected' | 'endangered';
+  actor: 'commander' | string;
+  targets: string[];
+  severity: Severity;
+}
+
+export type CombatOutcome = 'won' | 'lost' | 'retreated';
+
+export interface CombatState {
+  id: string;
+  round: number;
+  /** `ended`: the fight is decided but not yet written back (finalize happens in the same dispatch from Task 14 on). */
+  phase: 'awaiting' | 'lost_pending' | 'ended';
+  outcome?: CombatOutcome;
+  cp: number;
+  timeline: string[];
+  turn: number;
+  combatants: Combatant[];
+  commander?: { hp: number; maxHp: number; def: number; coverId: string; downed: boolean };
+  encounter: Encounter;
+  formation: { front: string[]; back: string[] };
+  log: LogEntry[];
+  auto: boolean;
+  allowRetry: boolean;
+  expedition: boolean;
+  bankLoot: boolean;
+  start: { rng: RngState; payload: StartPayload };
+  ordersThisRound: Array<{ orderId: string; targetCid?: string }>;
+  lastOrder?: { orderId: string; targetCid?: string };
+  /** The combatant who acts again right now (`extra_action`). */
+  extraAction?: string;
+  pendingLootRolls: number;
+  hints: RelationHint[];
+  /** Next number for summoned enemy ids. */
+  nextCid: number;
+  /** Set when the commander went down. */
+  commanderDown?: boolean;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Result of a finished combat (`CampaignState.lastCombat`).
+
+export interface CombatResult {
+  id: string;
+  day: number;
+  outcome: CombatOutcome;
+  rounds: number;
+  formation: { front: string[]; back: string[] };
+  participants: string[];
+  enemies: Array<{ enemyId: string; level: number; affixes: string[]; name: string; downed: boolean }>;
+  log: LogEntry[];
+  xp: Record<string, number>;
+  levelUps: Array<{ unitId: string; level: number }>;
+  loot: LootDrop[];
+  banked: boolean;
+  injuries: string[];
+  deaths: string[];
+  breakdowns: string[];
+  stressDelta: Record<string, number>;
+  relationHints: RelationHint[];
+  commanderInjured: boolean;
+}

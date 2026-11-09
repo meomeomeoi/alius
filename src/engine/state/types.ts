@@ -1,3 +1,4 @@
+import type { CombatResult, CombatState } from '../combat/types';
 import type { RngState } from '../rng';
 
 export type Slot = 'morning' | 'afternoon' | 'evening' | 'night';
@@ -11,6 +12,23 @@ export type MarkInstance = { id: string };
 
 export const VALUE_AXES = ['pragmatism', 'autonomy', 'ingroup', 'mercy', 'corporate', 'sacrifice'] as const;
 export type ValueAxis = (typeof VALUE_AXES)[number];
+
+export const RARITIES = ['standard', 'refined', 'prototype', 'corporate', 'anomalous'] as const;
+export type Rarity = (typeof RARITIES)[number];
+
+/** One owned item (P4). `Unit.equipment[slot]` holds its `uid`; it is the only record of who wears it. */
+export interface ItemInstance {
+  uid: string;
+  itemId: string;
+  rarity: Rarity;
+  /** Upgrade level 0–5. */
+  upgrade: number;
+  affixes: string[];
+}
+
+export type LootDrop =
+  | { kind: 'item'; item: ItemInstance }
+  | { kind: 'credits' | 'plyx' | 'supplies'; amount: number };
 
 export interface DefectInstance {
   id: string;
@@ -66,6 +84,10 @@ export interface Unit {
   equipment: { weapon?: string; upper?: string; lower?: string };
   injuries: string[];
   status: UnitStatus;
+  /** Equipped active skills (P4); absent = the role's starter skills. */
+  loadout?: string[];
+  /** Set while the unit is broken down: until the expedition ends (P4). */
+  breakdown?: { defectId: string; day: number };
 }
 
 export interface DailyGain {
@@ -217,7 +239,9 @@ export interface CampaignState {
     /** Pending facility upgrades (P2). */
     upgrades?: Array<{ facilityId: string; toLevel: number; daysLeft: number }>;
   };
-  inventory: unknown[];
+  inventory: ItemInstance[];
+  /** Counter behind item uids `it_<n>` (P4). */
+  itemSeq?: number;
   world: {
     regions: Record<string, unknown>;
     clocks: unknown[];
@@ -227,6 +251,8 @@ export interface CampaignState {
     spineProgress: number;
     /** Id of the start this campaign began with (P1). */
     startId?: string;
+    /** Clearance tier 0–3 that raises the level cap (P5 writes it, P4 reads it). */
+    clearanceTier?: number;
   };
   missions: { offered: unknown[]; active: unknown[]; completed: unknown[] };
   rumors: unknown[];
@@ -250,5 +276,12 @@ export interface CampaignState {
   };
   leash: { authorizationsLeft: number; refreshDay: number; log: unknown[] };
   expedition?: unknown;
-  combat?: unknown;
+  /** The open combat (P4). Only `combat` and `rng` change while it runs. */
+  combat?: CombatState;
+  /** The last finished combat, for P5's recap and debrief (P4). */
+  lastCombat?: CombatResult;
+  /** An open workshop session of a given day (P4). */
+  workshopSession?: { day: number; opsLeft: number; companionId?: string };
+  /** Cached display names of affixed enemies, keyed `enemyId|affixes` (P4; at most 100). */
+  enemyNames?: Record<string, string>;
 }

@@ -195,11 +195,11 @@ docs/** (Task 21), tests/** mirror src
 - `TUNING.combat = { maxRounds: 30, logMax: 300, cpStart: 1, cpMax: 5, maxPerRow: 3, critMult: 1.5, variance: [0.9, 1.1], initiativeRand: 3, strainedMult: 1.5, breakingChance: 0.25, commanderHp: 60, commanderDef: 10, commanderInjuryDays: 3, gruntDeathOnWin: 0.1, autoResolveRatio: 0.6, difficultyMult: { story: 0.8, normal: 1, hard: 1.2 }, injuryDays: 2, injuryStatPct: -10, injuryMaxStacks: 3, armorSpd: { light: 0, medium: -1, heavy: -3 }, stress: { critTaken: 6, allyDowned: 8, commanderHit: 5, refusedOrder: 6, kill: -2, loss: 10 } }`; `TUNING.progression = { levelCaps: [10, 20, 30, 40], xpToNext: { base: 40, perLevel: 20 }, combatXp: { base: 20, perEnemyLevel: 3, lowLevelBonus: 1.5, lowLevelGap: 2, gruntMult: 0.5 }, respec: { creditsPerLevel: 10, plyxPerLevel: 5 }, loadoutSize: 4 }`; `TUNING.items = { rarityStatStep: 0.15, upgradeStep: 0.08, maxUpgrade: 5, affixSlots: [0, 1, 2, 3, 3], upgradeCost: { credits: 20, plyx: 10 }, rerollPlyxPerRarity: 15, dismantlePct: 50, opsPerSession: 3, companionQualityChance: 0.25 }`.
 - Produces in `stats.ts`: `type Stats = { hp; atk; def; spd; crit }`; `unitStats(state, reg, unit): Stats` (rules in "Where the code differs": growth, then equipment via `itemStats` from Task 5 — until Task 5, equipment contributes nothing — then armor SPD, injuries, floors); `statPower(s: Stats): number = s.hp × 0.2 + s.atk × 2 + s.def + s.spd × 1.5, × (1 + s.crit / 200)`; `squadPower(state, reg, unitIds)`; `encounterPower(reg, encounter, difficulty)`; `defaultFormation(state, reg, unitIds): { front: string[]; back: string[] }` (role `row`; `either` fills the smaller row; never more than 3 per row).
 
-- [ ] **Step 1: Write the failing tests** — `level 1 stats equal the role base`; `level 5 adds four levels of growth, floored`; `two injuries cost 20 %, a fifth injury counts as three`; `stats never drop below 1 (crit below 0)`; `a heavy and a light piece cost the heavy SPD only`; `unknown role gives a clear error, unknown item is ignored`; `power grows with level`; `defaultFormation puts defenders front, snipers back and never four in a row`; state: `a P3 save without P4 fields loads and reads empty inventory and no combat`.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/combat/stats.test.ts tests/engine/state.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS; `npm run typecheck` clean.
-- [ ] **Step 5: Commit** `feat(engine): P4 state types, combat tuning and effective unit stats`.
+- [x] **Step 1: Write the failing tests** — `level 1 stats equal the role base`; `level 5 adds four levels of growth, floored`; `two injuries cost 20 %, a fifth injury counts as three`; `stats never drop below 1 (crit below 0)`; `a heavy and a light piece cost the heavy SPD only`; `unknown role gives a clear error, unknown item is ignored`; `power grows with level`; `defaultFormation puts defenders front, snipers back and never four in a row`; state: `a P3 save without P4 fields loads and reads empty inventory and no combat`.
+- [x] **Step 2: Run** `npx vitest run tests/engine/combat/stats.test.ts tests/engine/state.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS; `npm run typecheck` clean.
+- [x] **Step 5: Commit** `feat(engine): P4 state types, combat tuning and effective unit stats`.
 
 ---
 
