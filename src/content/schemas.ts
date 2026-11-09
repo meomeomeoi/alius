@@ -354,7 +354,7 @@ export const RESERVED_EVENT_TYPES: readonly string[] = [
   // P4
   'combat_started', 'combat_log', 'combat_awaiting', 'combat_ended', 'combat_cutin', 'order_refused', 'level_up',
   'node_unlocked', 'loot_banked', 'item_crafted', 'item_upgraded', 'item_equipped', 'breakdown', 'breakdown_released',
-  'workshop_opened',
+  'workshop_opened', 'unit_respec', 'loadout_changed',
 ];
 
 const slotEnum = z.enum(['morning', 'afternoon', 'evening', 'night']);

@@ -12,6 +12,7 @@ import '../../src/engine/actions/scene';
 import '../../src/engine/actions/comms';
 import '../../src/engine/actions/items';
 import '../../src/engine/actions/combat';
+import '../../src/engine/actions/progression';
 
 export async function loadCore(): Promise<Registries> {
   const r = await loadPacks(['content/core'], async (p) => JSON.parse(await readFile(p, 'utf8')));

@@ -11751,7 +11751,9 @@ var RESERVED_EVENT_TYPES = [
   "item_equipped",
   "breakdown",
   "breakdown_released",
-  "workshop_opened"
+  "workshop_opened",
+  "unit_respec",
+  "loadout_changed"
 ];
 var slotEnum = external_exports.enum(["morning", "afternoon", "evening", "night"]);
 var socialStat = external_exports.enum(["authority", "insight", "empathy", "cunning"]);
