@@ -2,6 +2,7 @@ import { registerAction } from '../dispatch';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { buildCombat, checkStart } from '../combat/build';
 import { fireTrigger, makeCtx, type EffectCtx } from '../combat/effects';
+import { checkOrder, issueOrder } from '../combat/orders';
 import { completeAction, performAction, runUntilInput, startRound } from '../combat/turn';
 import type { PlannedAction, StartPayload } from '../combat/types';
 import type { CampaignState } from '../state/types';
@@ -61,5 +62,19 @@ registerAction('combat/auto', (draft, payload, ctx) => {
   const start = cs.log.length;
   cs.auto = payload.on;
   if (payload.on) runUntilInput(ectx);
+  return combatEvents(ectx, start);
+});
+
+registerAction('combat/order', (draft, payload, ctx) => {
+  const cs = draft.combat;
+  if (!cs) throw new Error('combat/order: no combat is open');
+  if (!isObj(payload) || typeof payload.orderId !== 'string' || (payload.targetCid !== undefined && typeof payload.targetCid !== 'string')) {
+    throw new Error('combat/order needs { orderId, targetCid? }');
+  }
+  const ectx = makeCtx(cs, draft, ctx.registries, ctx.rng);
+  const reason = checkOrder(ectx, payload.orderId, payload.targetCid);
+  if (reason) throw new Error(reason);
+  const start = cs.log.length;
+  issueOrder(ectx, payload.orderId, payload.targetCid);
   return combatEvents(ectx, start);
 });

@@ -715,6 +715,11 @@ function consumeSlots(draft, count, ctx2) {
   }
   return events;
 }
+function injureCommander(draft, days) {
+  const until = Math.max(draft.commander.injuredUntilDay ?? 0, draft.day + days);
+  draft.commander.injuredUntilDay = until;
+  return [{ type: "commander_injured", days, until }];
+}
 
 // src/engine/social.ts
 var SOCIAL_THRESHOLDS = [0, 10, 25, 45, 70];
@@ -943,9 +948,7 @@ registerAction("activity/do", (draft, payload, ctx2) => runActivity(draft, ctx2,
 registerAction("commander/injure", (draft, payload) => {
   const days = isObj2(payload) ? payload.days : void 0;
   if (typeof days !== "number" || !Number.isInteger(days) || days < 1) throw new Error("commander/injure: days must be a positive integer");
-  const until = Math.max(draft.commander.injuredUntilDay ?? 0, draft.day + days);
-  draft.commander.injuredUntilDay = until;
-  return [{ type: "commander_injured", days, until }];
+  return injureCommander(draft, days);
 });
 registerAction("calendar/cancel_scene", (draft) => {
   const scene = draft.calendar.pendingScene;

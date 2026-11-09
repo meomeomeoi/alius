@@ -61,7 +61,14 @@ export function legalTargets(cs: CombatState, actorCid: string, skill: Skill, re
     const locked = eligible.find((c) => c.cid === actor.lockedTargetId);
     if (locked) eligible = [locked];
   }
-  return eligible.map((c) => c.cid);
+  const out = eligible.map((c) => c.cid);
+  // an exposed commander stands in the squad's back row: enemy skills that reach the back may pick him (his cover takes the hit)
+  if (actor.side === 'enemy' && cs.commander && !cs.commander.downed && taunters.length === 0) {
+    const frontStands = living(cs, 'squad').some((c) => c.row === 'front');
+    const reachesBack = ignoreRows || (targets.rows.includes('back') && (!targets.melee || !frontStands));
+    if (reachesBack) out.push('commander');
+  }
+  return out;
 }
 
 /** Everyone a skill hits once the primary target is chosen: one, the primary's row, or every legal target. */
@@ -77,7 +84,7 @@ export function expandTargets(cs: CombatState, actorCid: string, skill: Skill, p
     return living(cs, side).filter((c) => !hasFlag(c, reg, 'untargetable') || c.cid === actorCid).map((c) => c.cid);
   }
   if (primaryCid === undefined || !legal.includes(primaryCid)) return [];
-  if (targets.count === 'one') return [primaryCid];
+  if (targets.count === 'one' || primaryCid === 'commander') return [primaryCid];
   const primary = byCid(cs, primaryCid);
   return cs.combatants
     .filter((c) => c.side === primary.side && c.row === primary.row && isStanding(c) && !hasFlag(c, reg, 'untargetable'))

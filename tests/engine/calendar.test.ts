@@ -214,3 +214,18 @@ describe('day-end steps', () => {
     expect(ofType(r.events, 'day_end_step_failed')[0]).toMatchObject({ step: 'mission_deadlines', message: 'boom' });
   });
 });
+
+import { injureCommander } from '../../src/engine/calendar';
+import { createCampaign } from '../../src/engine/state/create';
+
+describe('injureCommander (P4 extraction)', () => {
+  it('keeps the commander/injure behaviour: the longest injury wins and commander_injured is reported', () => {
+    const s = createCampaign({ seed: 1, commanderName: 'Vale' });
+    s.day = 5;
+    expect(injureCommander(s, 3)).toEqual([{ type: 'commander_injured', days: 3, until: 8 }]);
+    expect(s.commander.injuredUntilDay).toBe(8);
+    expect(injureCommander(s, 1)[0]).toMatchObject({ until: 8 });
+    expect(s.commander.injuredUntilDay).toBe(8);
+    expect(injureCommander(s, 6)[0]).toMatchObject({ until: 11 });
+  });
+});

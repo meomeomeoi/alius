@@ -144,3 +144,10 @@ export function consumeSlots(draft: CampaignState, count: number, ctx: EngineCtx
   }
   return events;
 }
+
+/** Injures the commander for `days` (Commander Crisis, P4; the `commander/injure` action). Blocks `train` and `work`. */
+export function injureCommander(draft: CampaignState, days: number): EngineEvent[] {
+  const until = Math.max(draft.commander.injuredUntilDay ?? 0, draft.day + days);
+  draft.commander.injuredUntilDay = until;
+  return [{ type: 'commander_injured', days, until }];
+}

@@ -5,6 +5,7 @@ import {
   type EffectCtx,
 } from './effects';
 import { initiativeOrder } from './formulas';
+import { repeatLastOrder } from './orders';
 import { resolveSkill, usableSkills } from './skills';
 import { addStress, applyBreakdownActionEffects, breakdownAction, rollBreaking } from './stress';
 import { byCid, expandTargets, hasFlag, isStanding, legalTargets, living } from './targeting';
@@ -121,7 +122,10 @@ export function performAction(ctx: EffectCtx, cid: string, action: PlannedAction
 
   const misfire = activePassives(ctx, cid, 'misfire').some((e) => e.chance !== undefined && ctx.rng.chance(e.chance));
   if (misfire) ctx.log({ kind: 'miss', actor: cid, skillId: id });
-  else applyEffects(ctx, cid, skill.effects as never, { targets, targetCid: action.targetCid ?? targets[0], skillId: id }, id);
+  else {
+    applyEffects(ctx, cid, skill.effects as never, { targets, targetCid: action.targetCid ?? targets[0], skillId: id }, id);
+    if (cs.repeatOrder) repeatLastOrder(ctx);
+  }
 
   c.lastSkillId = id;
   c.lastTargetCid = action.targetCid;

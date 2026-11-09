@@ -1,5 +1,5 @@
 import { runActivity } from '../activities';
-import { consumeSlots, slotsLeftToday } from '../calendar';
+import { consumeSlots, injureCommander, slotsLeftToday } from '../calendar';
 import { registerAction } from '../dispatch';
 
 // Importing this module registers the calendar actions.
@@ -29,9 +29,7 @@ registerAction('activity/do', (draft, payload, ctx) => runActivity(draft, ctx, p
 registerAction('commander/injure', (draft, payload) => {
   const days = isObj(payload) ? payload.days : undefined;
   if (typeof days !== 'number' || !Number.isInteger(days) || days < 1) throw new Error('commander/injure: days must be a positive integer');
-  const until = Math.max(draft.commander.injuredUntilDay ?? 0, draft.day + days);
-  draft.commander.injuredUntilDay = until;
-  return [{ type: 'commander_injured', days, until }];
+  return injureCommander(draft, days);
 });
 
 /** Drops an open conversation without spending its slot (the player backed out, or no scene module is installed). */

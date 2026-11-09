@@ -347,7 +347,9 @@ function runEffect(ctx: EffectCtx, ownerCid: string, effect: EffectSpec, ev: Eff
   if (limitKey) owner.usedLimits.push(limitKey);
   const attacker = ev.attackerCid ?? ownerCid;
 
-  const targets = resolveTargets(ctx, owner, e, ev);
+  const resolved = resolveTargets(ctx, owner, e, ev);
+  // the commander (Commander Crisis) is only ever hit by damage; every other effect needs a combatant
+  const targets = e.type === 'damage' || e.type === 'follow_up' ? resolved : resolved.filter((t) => t !== 'commander');
   switch (e.type) {
     case 'damage': {
       const hits = e.hits ?? 1;

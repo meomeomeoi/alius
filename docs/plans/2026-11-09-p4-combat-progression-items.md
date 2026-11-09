@@ -333,11 +333,11 @@ docs/** (Task 21), tests/** mirror src
 - Commander Crisis in `effects.ts` `dealDamage`: target `commander` → redirected to `coverId` while she stands (log `cover`); without a standing cover the commander takes it (`stress +commanderHit` to every squad unit); `intercept_lethal` (`devoted_sacrifice`, `possessive_protocol`) takes a lethal commander hit instead, once per combat. Commander at 0 → `checkEnd` returns lost with `commanderDown: true`.
 - Action: `combat/order { orderId, targetCid? }` → events `combat_log`, `order_refused` when refused.
 
-- [ ] **Step 1: Write the failing tests** — `each of the five orders does what roles.md says`; `orders cost CP and are rejected without enough CP`; `orders only in the awaiting phase`; `fall back does not use her turn`; `compliance_craving and confidant_sync never push a cost below 1`; `despises refuses about 35 % of orders (seeded, 400 orders within 30–40 %)`; `estranged/resentful use 25 %/15 %`; `a refused order spends CP and adds stress`; `command echo repeats the last order for free and cannot repeat itself`; `hits on the commander go to the cover unit`; `without cover the commander is hit and the squad gains stress`; `devoted_sacrifice intercepts a lethal hit once`; `commander down loses the combat`; `friend_assist follows up after an ally crit, once per round`; `injureCommander keeps the commander/injure behaviour`.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/combat/orders.test.ts tests/engine/calendar.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS; whole suite green.
-- [ ] **Step 5: Commit** `feat(engine): CP orders, refusals, Commander Crisis and relationship synergies`.
+- [x] **Step 1: Write the failing tests** — `each of the five orders does what roles.md says`; `orders cost CP and are rejected without enough CP`; `orders only in the awaiting phase`; `fall back does not use her turn`; `compliance_craving and confidant_sync never push a cost below 1`; `despises refuses about 35 % of orders (seeded, 400 orders within 30–40 %)`; `estranged/resentful use 25 %/15 %`; `a refused order spends CP and adds stress`; `command echo repeats the last order for free and cannot repeat itself`; `hits on the commander go to the cover unit`; `without cover the commander is hit and the squad gains stress`; `devoted_sacrifice intercepts a lethal hit once`; `commander down loses the combat`; `friend_assist follows up after an ally crit, once per round`; `injureCommander keeps the commander/injure behaviour`.
+- [x] **Step 2: Run** `npx vitest run tests/engine/combat/orders.test.ts tests/engine/calendar.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS; whole suite green.
+- [x] **Step 5: Commit** `feat(engine): CP orders, refusals, Commander Crisis and relationship synergies`.
 
 ---
 

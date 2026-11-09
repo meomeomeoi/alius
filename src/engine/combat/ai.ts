@@ -14,7 +14,7 @@ function expectedDamage(ctx: EffectCtx, cid: string, skill: Skill, targetCid: st
   const perHit = skill.effects.reduce((s, e) => (e.type === 'damage' && e.mult !== undefined ? s + e.mult * (e.hits ?? 1) : s), 0);
   if (perHit === 0) return 0;
   return expandTargets(ctx.cs, cid, skill, targetCid, ctx.reg)
-    .reduce((sum, t) => sum + (perHit * atk * 100) / (100 + effectiveStat(ctx, t, 'def')), 0);
+    .reduce((sum, t) => sum + (perHit * atk * 100) / (100 + defOf(ctx, t)), 0);
 }
 
 interface Option { skill: Skill; targetCid: string; damage: number }
@@ -22,9 +22,11 @@ interface Option { skill: Skill; targetCid: string; damage: number }
 const first = <T>(xs: T[]): T | undefined => xs[0];
 const toAction = (o: Option): PlannedAction => ({ kind: 'skill', skillId: o.skill.id, targetCid: o.targetCid });
 const hpPct = (ctx: EffectCtx, cid: string): number => {
+  if (cid === 'commander') return ctx.cs.commander!.hp / ctx.cs.commander!.maxHp;
   const c = byCid(ctx.cs, cid);
   return c.hp / c.maxHp;
 };
+const defOf = (ctx: EffectCtx, cid: string): number => (cid === 'commander' ? ctx.cs.commander!.def : effectiveStat(ctx, cid, 'def'));
 
 /** Every (skill, target) pair, in skill order then target order. */
 function options(ctx: EffectCtx, cid: string, usable: UsableSkill[]): Option[] {
@@ -102,13 +104,14 @@ export function chooseAction(ctx: EffectCtx, cid: string): PlannedAction {
       for (const o of opts) {
         const fx = o.skill.effects.filter((e): e is Extract<typeof e, { type: 'status' }> => e.type === 'status' && (e.target ?? 'target') === 'target');
         if (o.skill.targets?.side !== 'enemy' || fx.length === 0) continue;
+        if (o.targetCid === 'commander') continue;
         const target = byCid(cs, o.targetCid);
         if (fx.some((e) => !target.statuses.some((s) => s.id === e.statusId))) return toAction(o);
       }
       break;
     }
     case 'stressor': {
-      const stressful = opts.filter((o) => o.skill.effects.some((e) => e.type === 'stress' && e.amount > 0 && (e.target ?? 'target') === 'target')
+      const stressful = opts.filter((o) => o.targetCid !== 'commander' && o.skill.effects.some((e) => e.type === 'stress' && e.amount > 0 && (e.target ?? 'target') === 'target')
         && byCid(cs, o.targetCid).side === 'squad' && byCid(cs, o.targetCid).stress < 100);
       if (stressful.length > 0) {
         const top = Math.max(...stressful.map((o) => byCid(cs, o.targetCid).stress));
