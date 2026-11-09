@@ -1,5 +1,6 @@
 import type { Registries } from '../content/types';
 import type { EngineEvent } from './dispatch';
+import { facilityEffect } from './economy';
 import type { EffectSpec, Stats } from './combat/types';
 import type { Rng } from './rng';
 import { RARITIES, type CampaignState, type ItemInstance, type LootDrop, type Rarity, type Unit } from './state/types';
@@ -149,5 +150,48 @@ export function bankLoot(draft: CampaignState, drops: LootDrop[]): EngineEvent[]
     else draft.resources[d.kind] += d.amount;
   }
   if (drops.length > 0) events.push({ type: 'loot_banked', drops: structuredClone(drops) });
+  return events;
+}
+
+// ------------------------------------------------------------------------------------------------ workshop
+
+/** `null` while a workshop session of today with operations left is open. */
+export function checkWorkshop(state: CampaignState): string | null {
+  const s = state.workshopSession;
+  return s && s.day === state.day && s.opsLeft > 0 ? null : 'NO WORKSHOP SESSION';
+}
+
+/** The highest rarity index (1–5) the workshop can craft at its current level. */
+export const workshopRarityCap = (state: CampaignState, reg: Registries): number => facilityEffect(state, reg, 'workshop', 'rarityCap');
+
+/** Upgrade cost: `(upgrade + 1) × base`, reduced by the workshop's discount, rounded up. */
+export function upgradeCost(state: CampaignState, reg: Registries, inst: ItemInstance): { credits: number; plyx: number } {
+  const factor = (1 - facilityEffect(state, reg, 'workshop', 'upgradeDiscountPct') / 100) * (inst.upgrade + 1);
+  return {
+    credits: Math.ceil(TUNING.items.upgradeCost.credits * factor),
+    plyx: Math.ceil(TUNING.items.upgradeCost.plyx * factor),
+  };
+}
+
+export const rerollCost = (inst: ItemInstance): number => TUNING.items.rerollPlyxPerRarity * rarityIndex(inst.rarity);
+
+/** Plyx for scrapping an item: `value × (1 + 0.15 × (rarity − 1)) × 50 %`. */
+export function dismantleValue(reg: Registries, inst: ItemInstance): number {
+  const value = (reg.items.get(inst.itemId)?.value as number | undefined) ?? 0;
+  return Math.round((value * (1 + TUNING.items.rarityStatStep * (rarityIndex(inst.rarity) - 1)) * TUNING.items.dismantlePct) / 100);
+}
+
+/** Opens (or renews) today's session after a workshop activity; a tech-loving companion may improve her weapon for free. */
+export function openWorkshop(draft: CampaignState, reg: Registries, rng: Rng, companionId?: string): EngineEvent[] {
+  draft.workshopSession = { day: draft.day, opsLeft: TUNING.items.opsPerSession, ...(companionId ? { companionId } : {}) };
+  const events: EngineEvent[] = [{ type: 'workshop_opened', day: draft.day, opsLeft: TUNING.items.opsPerSession, ...(companionId ? { companionId } : {}) }];
+  const companion = companionId ? draft.squad.find((u) => u.id === companionId) : undefined;
+  const weapon = companion?.equipment.weapon ? draft.inventory.find((i) => i.uid === companion.equipment.weapon) : undefined;
+  if (companion && weapon && companion.likes.includes('tech') && weapon.upgrade < TUNING.items.maxUpgrade
+    && rng.chance(TUNING.items.companionQualityChance)) {
+    weapon.upgrade += 1;
+    events.push({ type: 'item_upgraded', uid: weapon.uid, upgrade: weapon.upgrade, free: true, unitId: companion.id });
+  }
+  void reg;
   return events;
 }

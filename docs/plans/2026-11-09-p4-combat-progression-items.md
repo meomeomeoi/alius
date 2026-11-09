@@ -408,11 +408,11 @@ docs/** (Task 21), tests/** mirror src
 - Activity hook: `activityId === 'workshop'` → `workshopSession = { day, opsLeft: opsPerSession, companionId? }`, emits `workshop_opened`; with a companion who `likes` `tech` and an equipped weapon below +5: `companionQualityChance` → free +1 (`item_upgraded { free: true }`).
 - `checkWorkshop(state): string | null` (`NO WORKSHOP SESSION` unless a session of today with ops left). `item/craft { recipeId }`: rarity index ≤ `rarityCap`; pays recipe cost; `newItem`; op −1; `item_crafted`. `item/upgrade { uid }`: < +5; cost `(upgrade + 1) × upgradeCost`, × (1 − discount %), rounded up; op −1. `item/reroll { uid, affixIndex }`: non-drawback affix replaced by another allowed one not already present; `rerollPlyxPerRarity × rarityIndex` plyx; op −1. `item/dismantle { uid }`: not equipped; plyx `round(value × rarity mult × dismantlePct / 100)`; removes it; op −1.
 
-- [ ] **Step 1: Write the failing tests** — `workshop activity opens a session with 3 ops`; `ops run out`; `a session from yesterday is closed`; `craft respects the rarity cap (prototype needs workshop 3)`; `craft pays and adds an item`; `upgrade cost scales and the discount applies at workshop 3`; `upgrade stops at +5`; `reroll never picks a duplicate or touches a drawback`; `dismantle refuses an equipped item and pays plyx`; `tech-loving companion can give a free weapon upgrade (seeded)`; every rejection leaves the state unchanged.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/workshop.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS.
-- [ ] **Step 5: Commit** `feat(engine): workshop sessions, crafting, upgrades, rerolls and dismantling`.
+- [x] **Step 1: Write the failing tests** — `workshop activity opens a session with 3 ops`; `ops run out`; `a session from yesterday is closed`; `craft respects the rarity cap (prototype needs workshop 3)`; `craft pays and adds an item`; `upgrade cost scales and the discount applies at workshop 3`; `upgrade stops at +5`; `reroll never picks a duplicate or touches a drawback`; `dismantle refuses an equipped item and pays plyx`; `tech-loving companion can give a free weapon upgrade (seeded)`; every rejection leaves the state unchanged.
+- [x] **Step 2: Run** `npx vitest run tests/engine/workshop.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS.
+- [x] **Step 5: Commit** `feat(engine): workshop sessions, crafting, upgrades, rerolls and dismantling`.
 
 ---
 
