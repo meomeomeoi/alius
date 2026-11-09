@@ -26,6 +26,12 @@
     "affixes": "affixes.json",
     "items": "items.json",
     "recipes": "recipes.json",
-    "lootTables": "lootTables.json"
+    "lootTables": "lootTables.json",
+    "regions": "regions.json",
+    "nodeTypes": "nodeTypes.json",
+    "clocks": "clocks.json",
+    "missionTemplates": "missionTemplates.json",
+    "rewardTiers": "rewardTiers.json",
+    "dilemmaTemplates": "dilemmaTemplates.json"
   }
 }

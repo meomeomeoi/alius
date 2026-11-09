@@ -1,0 +1,551 @@
+[
+  {
+    "id": "evt_sealed_crate",
+    "scale": "minor",
+    "contexts": [
+      "expedition_event"
+    ],
+    "fixed": {
+      "title": "Sealed crate",
+      "setup": "A corporate crate sits welded shut in the middle of the passage.",
+      "options": [
+        {
+          "label": "Pry it open by hand",
+          "effects": [
+            {
+              "type": "loot",
+              "tableId": "loot_cache"
+            },
+            {
+              "type": "party_stress",
+              "amount": 10
+            }
+          ]
+        },
+        {
+          "label": "Burn through the seal",
+          "effects": [
+            {
+              "type": "loot",
+              "tableId": "loot_cache"
+            },
+            {
+              "type": "carried_supplies",
+              "amount": -2
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "evt_wounded_scavenger",
+    "scale": "minor",
+    "contexts": [
+      "expedition_event"
+    ],
+    "fixed": {
+      "title": "Wounded scavenger",
+      "setup": "A scavenger lies against the wall, pressing a rag to a bad wound.",
+      "options": [
+        {
+          "label": "Share your rations",
+          "effects": [
+            {
+              "type": "carried_supplies",
+              "amount": -2
+            },
+            {
+              "type": "unit_event",
+              "event": "sided_with",
+              "severity": "minor",
+              "targets": "party",
+              "valueAxes": [
+                {
+                  "axis": "mercy",
+                  "direction": 1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Move on",
+          "effects": [
+            {
+              "type": "unit_event",
+              "event": "decision_violated",
+              "severity": "minor",
+              "targets": "party",
+              "valueAxes": [
+                {
+                  "axis": "mercy",
+                  "direction": -1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Treat the wound properly",
+          "effects": [
+            {
+              "type": "carried_supplies",
+              "amount": -1
+            },
+            {
+              "type": "party_stress",
+              "amount": -5
+            },
+            {
+              "type": "unit_event",
+              "event": "sided_with",
+              "severity": "moderate",
+              "targets": "party",
+              "valueAxes": [
+                {
+                  "axis": "mercy",
+                  "direction": 1
+                }
+              ]
+            }
+          ],
+          "requires": {
+            "stat": "empathy",
+            "rank": 3
+          }
+        }
+      ]
+    }
+  },
+  {
+    "id": "evt_checkpoint",
+    "scale": "minor",
+    "contexts": [
+      "expedition_event"
+    ],
+    "fixed": {
+      "title": "Corporate checkpoint",
+      "setup": "A private checkpoint blocks the only dry route and the guards are looking for a reason.",
+      "options": [
+        {
+          "label": "Bribe the guards",
+          "effects": [
+            {
+              "type": "resource",
+              "resource": "credits",
+              "amount": -30
+            }
+          ]
+        },
+        {
+          "label": "Slip past under cover",
+          "effects": [
+            {
+              "type": "clock",
+              "clockId": "oversight",
+              "by": 1
+            },
+            {
+              "type": "party_stress",
+              "amount": 5
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "evt_collapsed_gallery",
+    "scale": "minor",
+    "contexts": [
+      "expedition_event"
+    ],
+    "fixed": {
+      "title": "Collapsed gallery",
+      "setup": "Something worth taking is buried under a half-fallen ceiling.",
+      "options": [
+        {
+          "label": "Dig it out now",
+          "effects": [
+            {
+              "type": "loot",
+              "tableId": "loot_cache"
+            },
+            {
+              "type": "party_hp",
+              "pct": -15
+            }
+          ]
+        },
+        {
+          "label": "Shore up the ceiling first",
+          "effects": [
+            {
+              "type": "loot",
+              "tableId": "loot_cache"
+            },
+            {
+              "type": "carried_supplies",
+              "amount": -2
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "evt_signal_beacon",
+    "scale": "minor",
+    "contexts": [
+      "expedition_event"
+    ],
+    "fixed": {
+      "title": "Signal beacon",
+      "setup": "A beacon pulses on an open channel, broadcasting a position that is not yours.",
+      "options": [
+        {
+          "label": "Follow the signal",
+          "effects": [
+            {
+              "type": "loot",
+              "tableId": "loot_standard"
+            },
+            {
+              "type": "clock",
+              "clockId": "oversight",
+              "by": 1
+            }
+          ]
+        },
+        {
+          "label": "Smash it and move on",
+          "effects": [
+            {
+              "type": "party_stress",
+              "amount": 5
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "evt_deserters",
+    "scale": "minor",
+    "contexts": [
+      "expedition_event"
+    ],
+    "fixed": {
+      "title": "Deserters",
+      "setup": "Three deserters in stripped uniforms beg to be taken along.",
+      "options": [
+        {
+          "label": "Take them in",
+          "effects": [
+            {
+              "type": "carried_supplies",
+              "amount": -3
+            },
+            {
+              "type": "unit_event",
+              "event": "sided_with",
+              "severity": "moderate",
+              "targets": "party",
+              "valueAxes": [
+                {
+                  "axis": "mercy",
+                  "direction": 1
+                },
+                {
+                  "axis": "autonomy",
+                  "direction": 1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Turn them in",
+          "effects": [
+            {
+              "type": "resource",
+              "resource": "credits",
+              "amount": 20
+            },
+            {
+              "type": "unit_event",
+              "event": "decision_violated",
+              "severity": "moderate",
+              "targets": "party",
+              "valueAxes": [
+                {
+                  "axis": "mercy",
+                  "direction": -1
+                },
+                {
+                  "axis": "corporate",
+                  "direction": 1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Bluff the patrol away",
+          "effects": [
+            {
+              "type": "party_stress",
+              "amount": 5
+            },
+            {
+              "type": "unit_event",
+              "event": "sided_with",
+              "severity": "minor",
+              "targets": "party",
+              "valueAxes": [
+                {
+                  "axis": "autonomy",
+                  "direction": 1
+                }
+              ]
+            }
+          ],
+          "requires": {
+            "stat": "cunning",
+            "rank": 3
+          }
+        }
+      ]
+    }
+  },
+  {
+    "id": "evt_old_terminal",
+    "scale": "minor",
+    "contexts": [
+      "expedition_event"
+    ],
+    "fixed": {
+      "title": "Old terminal",
+      "setup": "A terminal still holds data nobody asked you to find.",
+      "options": [
+        {
+          "label": "Pull the data and report it",
+          "effects": [
+            {
+              "type": "resource",
+              "resource": "credits",
+              "amount": 25
+            },
+            {
+              "type": "clock",
+              "clockId": "oversight",
+              "by": 1
+            }
+          ]
+        },
+        {
+          "label": "Wipe it and say nothing",
+          "effects": [
+            {
+              "type": "party_stress",
+              "amount": 3
+            },
+            {
+              "type": "unit_event",
+              "event": "decision_violated",
+              "severity": "minor",
+              "targets": "party",
+              "valueAxes": [
+                {
+                  "axis": "corporate",
+                  "direction": -1
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "evt_flavor_quiet",
+    "scale": "minor",
+    "contexts": [
+      "expedition_event"
+    ],
+    "flavor": true,
+    "fixed": {
+      "title": "Quiet stretch",
+      "setup": "Nothing moves. The only sound is the squad breathing.",
+      "options": [
+        {
+          "label": "CONTINUE",
+          "effects": []
+        }
+      ]
+    }
+  },
+  {
+    "id": "evt_flavor_graffiti",
+    "scale": "minor",
+    "contexts": [
+      "expedition_event"
+    ],
+    "flavor": true,
+    "fixed": {
+      "title": "Old graffiti",
+      "setup": "Someone marked the wall with a tally of days, then stopped counting.",
+      "options": [
+        {
+          "label": "CONTINUE",
+          "effects": []
+        }
+      ]
+    }
+  },
+  {
+    "id": "evt_vesper_choice",
+    "scale": "minor",
+    "contexts": [
+      "expedition_event"
+    ],
+    "fixed": {
+      "title": "The evidence",
+      "setup": "The records that prove the Bloom was seeded are in your hands. Three buyers, one chance.",
+      "options": [
+        {
+          "label": "Deliver it to Vesper",
+          "effects": [
+            {
+              "type": "flag",
+              "flagId": "evidence_delivered_vesper"
+            },
+            {
+              "type": "faction",
+              "factionId": "aurum",
+              "amount": -10
+            },
+            {
+              "type": "party_stress",
+              "amount": 5
+            }
+          ]
+        },
+        {
+          "label": "Sell it to Aurum",
+          "effects": [
+            {
+              "type": "flag",
+              "flagId": "evidence_sold_aurum"
+            },
+            {
+              "type": "resource",
+              "resource": "credits",
+              "amount": 100
+            },
+            {
+              "type": "faction",
+              "factionId": "vesper",
+              "amount": -15
+            }
+          ]
+        },
+        {
+          "label": "Bury it",
+          "effects": [
+            {
+              "type": "flag",
+              "flagId": "evidence_buried"
+            },
+            {
+              "type": "clock",
+              "clockId": "oversight",
+              "by": 1
+            },
+            {
+              "type": "party_stress",
+              "amount": 5
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "evt_kestrel_choice",
+    "scale": "minor",
+    "contexts": [
+      "expedition_event"
+    ],
+    "fixed": {
+      "title": "The junction",
+      "setup": "The quota, the survivors and a stranger's offer. The corridor will not hold all three.",
+      "options": [
+        {
+          "label": "Meet the quota",
+          "effects": [
+            {
+              "type": "flag",
+              "flagId": "quota_met_k12"
+            },
+            {
+              "type": "party_stress",
+              "amount": 10
+            },
+            {
+              "type": "unit_event",
+              "event": "decision_violated",
+              "severity": "moderate",
+              "targets": "party",
+              "valueAxes": [
+                {
+                  "axis": "mercy",
+                  "direction": -1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Spare the survivors",
+          "effects": [
+            {
+              "type": "flag",
+              "flagId": "spared_survivors_k12"
+            },
+            {
+              "type": "faction",
+              "factionId": "kestrel",
+              "amount": -15
+            },
+            {
+              "type": "clock",
+              "clockId": "corridor_quota",
+              "by": 2
+            }
+          ]
+        },
+        {
+          "label": "Take Sable's offer",
+          "effects": [
+            {
+              "type": "flag",
+              "flagId": "sable_offer_taken"
+            },
+            {
+              "type": "resource",
+              "resource": "credits",
+              "amount": 80
+            },
+            {
+              "type": "faction",
+              "factionId": "kestrel",
+              "amount": -10
+            }
+          ]
+        }
+      ]
+    }
+  }
+]

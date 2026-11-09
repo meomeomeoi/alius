@@ -1,0 +1,519 @@
+[
+  {
+    "id": "tpl_sweep",
+    "name": "Sweep",
+    "sources": [
+      "command",
+      "side"
+    ],
+    "objectives": [
+      {
+        "node": "combat",
+        "condition": "win"
+      }
+    ],
+    "dangerRange": [
+      1,
+      3
+    ],
+    "tiers": [
+      "tier_1",
+      "tier_2"
+    ],
+    "failureEffects": [
+      {
+        "type": "clock",
+        "clockId": "oversight",
+        "by": 1
+      }
+    ],
+    "titles": [
+      "Clear the hostiles",
+      "Sweep the sector",
+      "Secure the perimeter"
+    ],
+    "briefs": [
+      "Hostiles are blocking the route. Clear them and report back.",
+      "Command wants the sector swept before the next survey crew arrives."
+    ]
+  },
+  {
+    "id": "tpl_recover",
+    "name": "Recovery",
+    "sources": [
+      "command",
+      "rumor",
+      "side"
+    ],
+    "objectives": [
+      {
+        "node": "cache",
+        "condition": "reach"
+      }
+    ],
+    "dangerRange": [
+      1,
+      3
+    ],
+    "tiers": [
+      "tier_1",
+      "tier_2",
+      "tier_3"
+    ],
+    "failureEffects": [],
+    "titles": [
+      "Recover the cache",
+      "Retrieve lost stock",
+      "Salvage run"
+    ],
+    "briefs": [
+      "A cache was left behind in the area. Reach it and bring it out.",
+      "Stock written off as lost is still out there. Go and get it."
+    ]
+  },
+  {
+    "id": "tpl_escort_data",
+    "name": "Data run",
+    "sources": [
+      "command"
+    ],
+    "objectives": [
+      {
+        "node": "event",
+        "condition": "reach"
+      }
+    ],
+    "dangerRange": [
+      1,
+      3
+    ],
+    "tiers": [
+      "tier_2",
+      "tier_3"
+    ],
+    "failureEffects": [
+      {
+        "type": "clock",
+        "clockId": "oversight",
+        "by": 1
+      },
+      {
+        "type": "leash",
+        "amount": -1
+      }
+    ],
+    "titles": [
+      "Carry the data package",
+      "Courier run"
+    ],
+    "briefs": [
+      "A data package has to cross the sector. The units carry it; nobody is allowed to read it."
+    ]
+  },
+  {
+    "id": "tpl_hunt",
+    "name": "Hunt",
+    "sources": [
+      "side",
+      "rumor"
+    ],
+    "objectives": [
+      {
+        "node": "elite",
+        "condition": "win"
+      }
+    ],
+    "dangerRange": [
+      2,
+      4
+    ],
+    "tiers": [
+      "tier_2",
+      "tier_3",
+      "tier_4"
+    ],
+    "failureEffects": [],
+    "titles": [
+      "Hunt the strongpoint",
+      "Put down the pack leader",
+      "Break the stronghold"
+    ],
+    "briefs": [
+      "Something dangerous has dug in. Kill it before it spreads.",
+      "Rumors point to a hard target worth the risk."
+    ]
+  },
+  {
+    "id": "tpl_scavenge",
+    "name": "Scavenging run",
+    "sources": [
+      "side"
+    ],
+    "objectives": [
+      {
+        "node": "cache",
+        "condition": "reach"
+      }
+    ],
+    "dangerRange": [
+      1,
+      3
+    ],
+    "tiers": [
+      "tier_1"
+    ],
+    "failureEffects": [],
+    "titles": [
+      "Scavenging run",
+      "Scrap and supplies"
+    ],
+    "briefs": [
+      "A standing run through the ruins for supplies and scrap."
+    ]
+  },
+  {
+    "id": "tpl_outbreak",
+    "name": "Outbreak response",
+    "sources": [
+      "command"
+    ],
+    "objectives": [
+      {
+        "node": "elite",
+        "condition": "win"
+      }
+    ],
+    "dangerRange": [
+      2,
+      4
+    ],
+    "tiers": [
+      "tier_3"
+    ],
+    "failureEffects": [
+      {
+        "type": "clock",
+        "clockId": "bloom_d7",
+        "by": 2
+      }
+    ],
+    "titles": [
+      "Contain the outbreak",
+      "Burn out the Bloom nest"
+    ],
+    "briefs": [
+      "The Bloom has broken containment. Burn out the nest before it spreads further."
+    ],
+    "regions": [
+      "quarantine_d7"
+    ]
+  },
+  {
+    "id": "tpl_vesper_beat_1",
+    "name": "First sample",
+    "sources": [
+      "story"
+    ],
+    "objectives": [
+      {
+        "node": "combat",
+        "condition": "win"
+      }
+    ],
+    "dangerRange": [
+      1,
+      2
+    ],
+    "tiers": [
+      "tier_2"
+    ],
+    "failureEffects": [],
+    "titles": [
+      "Recover the first sample",
+      "Secure the sample"
+    ],
+    "briefs": [
+      "Vesper wants the first Bloom sample secured from the east wing. Fight through whatever holds it."
+    ],
+    "regions": [
+      "quarantine_d7"
+    ],
+    "onSuccess": [
+      {
+        "type": "fact",
+        "text": "The first Bloom sample was recovered from District 7.",
+        "tags": [
+          "spine"
+        ],
+        "importance": 4
+      }
+    ]
+  },
+  {
+    "id": "tpl_vesper_beat_2",
+    "name": "Seeding evidence",
+    "sources": [
+      "story"
+    ],
+    "objectives": [
+      {
+        "node": "cache",
+        "condition": "reach"
+      }
+    ],
+    "dangerRange": [
+      1,
+      2
+    ],
+    "tiers": [
+      "tier_2"
+    ],
+    "failureEffects": [],
+    "titles": [
+      "Follow the seeding trail",
+      "Reach the seed vault"
+    ],
+    "briefs": [
+      "Records point to deliberate seeding. Reach the vault and see what was planted."
+    ],
+    "regions": [
+      "quarantine_d7"
+    ],
+    "onSuccess": [
+      {
+        "type": "fact",
+        "text": "Vesper records show the Bloom in District 7 was seeded deliberately.",
+        "tags": [
+          "spine"
+        ],
+        "importance": 4
+      }
+    ]
+  },
+  {
+    "id": "tpl_vesper_beat_3",
+    "name": "Engineered",
+    "sources": [
+      "story"
+    ],
+    "objectives": [
+      {
+        "node": "elite",
+        "condition": "win"
+      }
+    ],
+    "dangerRange": [
+      2,
+      3
+    ],
+    "tiers": [
+      "tier_2"
+    ],
+    "failureEffects": [],
+    "titles": [
+      "Track the engineered carrier",
+      "Run down the carrier"
+    ],
+    "briefs": [
+      "A carrier on the Ashway shows signs of design. Bring in what is left of it."
+    ],
+    "regions": [
+      "ashway"
+    ],
+    "onSuccess": [
+      {
+        "type": "fact",
+        "text": "A carrier on the Ashway carried an engineered defect.",
+        "tags": [
+          "spine"
+        ],
+        "importance": 4
+      }
+    ]
+  },
+  {
+    "id": "tpl_vesper_beat_4",
+    "name": "The choice",
+    "sources": [
+      "story"
+    ],
+    "objectives": [
+      {
+        "node": "event",
+        "condition": "reach"
+      }
+    ],
+    "dangerRange": [
+      2,
+      3
+    ],
+    "tiers": [
+      "tier_3"
+    ],
+    "failureEffects": [],
+    "titles": [
+      "Decide what to do with the evidence"
+    ],
+    "briefs": [
+      "The evidence is in your hands. Reach the drop point and decide who gets it."
+    ],
+    "regions": [
+      "quarantine_d7"
+    ],
+    "objectiveEventId": "evt_vesper_choice"
+  },
+  {
+    "id": "tpl_kestrel_beat_1",
+    "name": "Breach",
+    "sources": [
+      "story"
+    ],
+    "objectives": [
+      {
+        "node": "combat",
+        "condition": "win"
+      }
+    ],
+    "dangerRange": [
+      1,
+      2
+    ],
+    "tiers": [
+      "tier_2"
+    ],
+    "failureEffects": [],
+    "titles": [
+      "Hold the breach",
+      "Seal the breach"
+    ],
+    "briefs": [
+      "The corridor wall has been breached. Push the mutants back before the quota collapses."
+    ],
+    "regions": [
+      "kestrel_corridor"
+    ],
+    "onSuccess": [
+      {
+        "type": "fact",
+        "text": "The Corridor K-12 breach was held, for now.",
+        "tags": [
+          "spine"
+        ],
+        "importance": 4
+      }
+    ]
+  },
+  {
+    "id": "tpl_kestrel_beat_2",
+    "name": "Acceptable loss",
+    "sources": [
+      "story"
+    ],
+    "objectives": [
+      {
+        "node": "cache",
+        "condition": "reach"
+      }
+    ],
+    "dangerRange": [
+      1,
+      2
+    ],
+    "tiers": [
+      "tier_2"
+    ],
+    "failureEffects": [],
+    "titles": [
+      "Find the listed survivors",
+      "Reach the sealed gallery"
+    ],
+    "briefs": [
+      "Kestrel listed a gallery crew as an acceptable loss. They may still be alive."
+    ],
+    "regions": [
+      "kestrel_corridor"
+    ],
+    "onSuccess": [
+      {
+        "type": "fact",
+        "text": "Survivors Kestrel-Ward listed as an acceptable loss were found in Corridor K-12.",
+        "tags": [
+          "spine"
+        ],
+        "importance": 4
+      }
+    ]
+  },
+  {
+    "id": "tpl_kestrel_beat_3",
+    "name": "Rival team",
+    "sources": [
+      "story"
+    ],
+    "objectives": [
+      {
+        "node": "elite",
+        "condition": "win"
+      }
+    ],
+    "dangerRange": [
+      2,
+      3
+    ],
+    "tiers": [
+      "tier_2"
+    ],
+    "failureEffects": [],
+    "titles": [
+      "Meet the rival team",
+      "Stop the rival advance"
+    ],
+    "briefs": [
+      "A Sable team is moving on the corridor with different orders. Meet them on the Ashway."
+    ],
+    "regions": [
+      "ashway"
+    ],
+    "onSuccess": [
+      {
+        "type": "fact",
+        "text": "A Sable Line team with different orders reached the Ashway.",
+        "tags": [
+          "spine"
+        ],
+        "importance": 4
+      }
+    ]
+  },
+  {
+    "id": "tpl_kestrel_beat_4",
+    "name": "The choice",
+    "sources": [
+      "story"
+    ],
+    "objectives": [
+      {
+        "node": "event",
+        "condition": "reach"
+      }
+    ],
+    "dangerRange": [
+      2,
+      3
+    ],
+    "tiers": [
+      "tier_3"
+    ],
+    "failureEffects": [],
+    "titles": [
+      "Decide: quota, survivors or the offer"
+    ],
+    "briefs": [
+      "The quota, the survivors and Sable's offer cannot all be satisfied. Reach the junction and choose."
+    ],
+    "regions": [
+      "kestrel_corridor"
+    ],
+    "objectiveEventId": "evt_kestrel_choice"
+  }
+]

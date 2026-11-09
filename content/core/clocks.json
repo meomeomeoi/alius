@@ -1,0 +1,89 @@
+[
+  {
+    "id": "bloom_d7",
+    "label": "Bloom spread — District 7",
+    "segments": 8,
+    "startFilled": 1,
+    "regionId": "quarantine_d7",
+    "visibleToPlayer": true,
+    "onFill": [
+      {
+        "type": "offer_mission",
+        "templateId": "tpl_outbreak",
+        "regionId": "quarantine_d7",
+        "source": "command"
+      }
+    ]
+  },
+  {
+    "id": "corridor_quota",
+    "label": "Corridor K-12 quota",
+    "segments": 6,
+    "startFilled": 1,
+    "regionId": "kestrel_corridor",
+    "visibleToPlayer": true,
+    "onFill": [
+      {
+        "type": "clock",
+        "clockId": "oversight",
+        "by": 1
+      }
+    ]
+  },
+  {
+    "id": "oversight",
+    "label": "Oversight suspicion",
+    "segments": 6,
+    "startFilled": 0,
+    "visibleToPlayer": true,
+    "repeat": true,
+    "onFill": [
+      {
+        "type": "leash",
+        "amount": -1
+      },
+      {
+        "type": "fact",
+        "text": "Oversight opened a file on the unit.",
+        "tags": [
+          "oversight"
+        ],
+        "importance": 4
+      }
+    ]
+  },
+  {
+    "id": "sable_operation",
+    "label": "Sable Line operation",
+    "segments": 6,
+    "startFilled": 0,
+    "regionId": "ashway",
+    "visibleToPlayer": false,
+    "onFill": [
+      {
+        "type": "faction",
+        "factionId": "sable",
+        "amount": -10
+      }
+    ]
+  },
+  {
+    "id": "garden_wake",
+    "label": "The Garden wakes",
+    "segments": 10,
+    "startFilled": 0,
+    "regionId": "the_garden",
+    "visibleToPlayer": false,
+    "onFill": [
+      {
+        "type": "fact",
+        "text": "Something in the Garden has woken and noticed the city.",
+        "tags": [
+          "bloom",
+          "garden"
+        ],
+        "importance": 5
+      }
+    ]
+  }
+]

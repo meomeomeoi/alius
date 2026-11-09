@@ -1,0 +1,58 @@
+[
+  {
+    "id": "tier_1",
+    "rank": 1,
+    "credits": [
+      20,
+      40
+    ],
+    "plyx": [
+      2,
+      6
+    ]
+  },
+  {
+    "id": "tier_2",
+    "rank": 2,
+    "credits": [
+      40,
+      70
+    ],
+    "plyx": [
+      5,
+      10
+    ],
+    "lootTableId": "loot_standard",
+    "lootRolls": 1
+  },
+  {
+    "id": "tier_3",
+    "rank": 3,
+    "credits": [
+      70,
+      120
+    ],
+    "plyx": [
+      8,
+      16
+    ],
+    "lootTableId": "loot_elite",
+    "lootRolls": 1,
+    "faction": 5
+  },
+  {
+    "id": "tier_4",
+    "rank": 4,
+    "credits": [
+      120,
+      200
+    ],
+    "plyx": [
+      15,
+      30
+    ],
+    "lootTableId": "loot_elite",
+    "lootRolls": 2,
+    "faction": 10
+  }
+]

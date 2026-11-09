@@ -9,32 +9,99 @@
       {
         "id": "beat_1",
         "title": "First sample",
-        "goal": "Recover the first Bloom sample."
+        "goal": "Recover the first Bloom sample.",
+        "completion": {
+          "kind": "mission",
+          "templateId": "tpl_vesper_beat_1",
+          "regionId": "quarantine_d7"
+        },
+        "onComplete": [
+          {
+            "type": "clearance",
+            "tier": 1
+          }
+        ]
       },
       {
         "id": "beat_2",
         "title": "Deliberate seeding",
-        "goal": "Discover that Vesper is seeding the Bloom deliberately."
+        "goal": "Discover that Vesper is seeding the Bloom deliberately.",
+        "conditions": {
+          "minDay": 4
+        },
+        "completion": {
+          "kind": "mission",
+          "templateId": "tpl_vesper_beat_2",
+          "regionId": "quarantine_d7"
+        }
       },
       {
         "id": "beat_3",
         "title": "Engineered defect",
-        "goal": "A squad member's defect is revealed to be engineered."
+        "goal": "A squad member's defect is revealed to be engineered.",
+        "conditions": {
+          "minDay": 8
+        },
+        "completion": {
+          "kind": "mission",
+          "templateId": "tpl_vesper_beat_3",
+          "regionId": "ashway"
+        },
+        "onComplete": [
+          {
+            "type": "incoming_unit"
+          }
+        ]
       },
       {
         "id": "beat_4",
         "title": "The choice",
-        "goal": "Deliver the evidence to Vesper, sell it to Aurum, or bury it."
+        "goal": "Deliver the evidence to Vesper, sell it to Aurum, or bury it.",
+        "conditions": {
+          "minDay": 12,
+          "clearanceMin": 1
+        },
+        "completion": {
+          "kind": "mission",
+          "templateId": "tpl_vesper_beat_4",
+          "regionId": "quarantine_d7"
+        },
+        "onComplete": [
+          {
+            "type": "clearance",
+            "tier": 2
+          }
+        ]
       },
       {
         "id": "beat_5",
         "title": "Consequences",
-        "goal": "Live with the consequences of the choice."
+        "goal": "Live with the consequences of the choice.",
+        "conditions": {
+          "minDay": 16
+        },
+        "completion": {
+          "kind": "flag",
+          "anyOf": [
+            "evidence_delivered_vesper",
+            "evidence_sold_aurum",
+            "evidence_buried"
+          ]
+        },
+        "onComplete": [
+          {
+            "type": "clearance",
+            "tier": 3
+          }
+        ]
       },
       {
         "id": "beat_6",
         "title": "Open ground",
-        "goal": "Open-ended phase."
+        "goal": "Open-ended phase.",
+        "completion": {
+          "kind": "auto"
+        }
       }
     ],
     "startingResources": {
@@ -53,32 +120,99 @@
       {
         "id": "beat_1",
         "title": "Breach",
-        "goal": "The corridor is breached."
+        "goal": "The corridor is breached.",
+        "completion": {
+          "kind": "mission",
+          "templateId": "tpl_kestrel_beat_1",
+          "regionId": "kestrel_corridor"
+        },
+        "onComplete": [
+          {
+            "type": "clearance",
+            "tier": 1
+          }
+        ]
       },
       {
         "id": "beat_2",
         "title": "Acceptable loss",
-        "goal": "Find survivors Kestrel listed as \"acceptable loss\"."
+        "goal": "Find survivors Kestrel listed as \"acceptable loss\".",
+        "conditions": {
+          "minDay": 4
+        },
+        "completion": {
+          "kind": "mission",
+          "templateId": "tpl_kestrel_beat_2",
+          "regionId": "kestrel_corridor"
+        }
       },
       {
         "id": "beat_3",
         "title": "Rival team",
-        "goal": "A rival Sable team arrives with different orders."
+        "goal": "A rival Sable team arrives with different orders.",
+        "conditions": {
+          "minDay": 8
+        },
+        "completion": {
+          "kind": "mission",
+          "templateId": "tpl_kestrel_beat_3",
+          "regionId": "ashway"
+        },
+        "onComplete": [
+          {
+            "type": "incoming_unit"
+          }
+        ]
       },
       {
         "id": "beat_4",
         "title": "The choice",
-        "goal": "Choose between the quota, the survivors, or the rival team's offer."
+        "goal": "Choose between the quota, the survivors, or the rival team's offer.",
+        "conditions": {
+          "minDay": 12,
+          "clearanceMin": 1
+        },
+        "completion": {
+          "kind": "mission",
+          "templateId": "tpl_kestrel_beat_4",
+          "regionId": "kestrel_corridor"
+        },
+        "onComplete": [
+          {
+            "type": "clearance",
+            "tier": 2
+          }
+        ]
       },
       {
         "id": "beat_5",
         "title": "Consequences",
-        "goal": "Live with the consequences of the choice."
+        "goal": "Live with the consequences of the choice.",
+        "conditions": {
+          "minDay": 16
+        },
+        "completion": {
+          "kind": "flag",
+          "anyOf": [
+            "quota_met_k12",
+            "spared_survivors_k12",
+            "sable_offer_taken"
+          ]
+        },
+        "onComplete": [
+          {
+            "type": "clearance",
+            "tier": 3
+          }
+        ]
       },
       {
         "id": "beat_6",
         "title": "Open ground",
-        "goal": "Open-ended phase."
+        "goal": "Open-ended phase.",
+        "completion": {
+          "kind": "auto"
+        }
       }
     ],
     "startingResources": {

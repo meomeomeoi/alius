@@ -1,0 +1,78 @@
+[
+  {
+    "id": "combat",
+    "name": "Contact",
+    "glyph": "⚔",
+    "kind": "combat",
+    "combat": {
+      "dangerDelta": 0,
+      "lootTableId": "loot_standard"
+    }
+  },
+  {
+    "id": "elite",
+    "name": "Strongpoint",
+    "glyph": "☠",
+    "kind": "combat",
+    "combat": {
+      "dangerDelta": 1,
+      "lootTableId": "loot_elite"
+    },
+    "firstLayer": false
+  },
+  {
+    "id": "event",
+    "name": "Event",
+    "glyph": "!",
+    "kind": "event"
+  },
+  {
+    "id": "cache",
+    "name": "Cache",
+    "glyph": "≡",
+    "kind": "cache"
+  },
+  {
+    "id": "rest",
+    "name": "Rest point",
+    "glyph": "+",
+    "kind": "rest",
+    "rest": {
+      "suppliesPerUnit": 1,
+      "hpPct": 25,
+      "stress": -15
+    },
+    "firstLayer": false
+  },
+  {
+    "id": "unknown",
+    "name": "Unknown",
+    "glyph": "?",
+    "kind": "unknown",
+    "resolvesTo": {
+      "combat": 4,
+      "event": 3,
+      "cache": 3
+    }
+  },
+  {
+    "id": "objective",
+    "name": "Objective",
+    "glyph": "◎",
+    "kind": "objective"
+  },
+  {
+    "id": "crisis",
+    "name": "Commander Crisis",
+    "glyph": "▲",
+    "kind": "combat",
+    "combat": {
+      "dangerDelta": 1,
+      "lootTableId": "loot_elite",
+      "exposesCommander": true
+    },
+    "firstLayer": false,
+    "maxPerMap": 1,
+    "minDanger": 3
+  }
+]

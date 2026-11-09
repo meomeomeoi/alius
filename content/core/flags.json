@@ -31,5 +31,77 @@
     "setBy": [
       "event"
     ]
+  },
+  {
+    "id": "evidence_delivered_vesper",
+    "scope": "world",
+    "description": "The evidence of deliberate seeding was handed to Vesper.",
+    "mutuallyExclusiveWith": [
+      "evidence_sold_aurum",
+      "evidence_buried"
+    ],
+    "setBy": [
+      "event"
+    ]
+  },
+  {
+    "id": "evidence_sold_aurum",
+    "scope": "world",
+    "description": "The evidence of deliberate seeding was sold to Aurum Concord.",
+    "mutuallyExclusiveWith": [
+      "evidence_delivered_vesper",
+      "evidence_buried"
+    ],
+    "setBy": [
+      "event"
+    ]
+  },
+  {
+    "id": "evidence_buried",
+    "scope": "world",
+    "description": "The evidence of deliberate seeding was buried.",
+    "mutuallyExclusiveWith": [
+      "evidence_delivered_vesper",
+      "evidence_sold_aurum"
+    ],
+    "setBy": [
+      "event"
+    ]
+  },
+  {
+    "id": "quota_met_k12",
+    "scope": "world",
+    "description": "The Corridor K-12 quota was met at the survivors' expense.",
+    "mutuallyExclusiveWith": [
+      "spared_survivors_k12",
+      "sable_offer_taken"
+    ],
+    "setBy": [
+      "event"
+    ]
+  },
+  {
+    "id": "spared_survivors_k12",
+    "scope": "world",
+    "description": "The Corridor K-12 survivors were spared and the quota missed.",
+    "mutuallyExclusiveWith": [
+      "quota_met_k12",
+      "sable_offer_taken"
+    ],
+    "setBy": [
+      "event"
+    ]
+  },
+  {
+    "id": "sable_offer_taken",
+    "scope": "world",
+    "description": "The Sable Line offer was taken.",
+    "mutuallyExclusiveWith": [
+      "quota_met_k12",
+      "spared_survivors_k12"
+    ],
+    "setBy": [
+      "event"
+    ]
   }
 ]

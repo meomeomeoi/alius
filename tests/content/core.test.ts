@@ -523,3 +523,146 @@ describe('core content: P4 enemies and items', () => {
     expect(share('loot_cache', 'supplies')).toBeGreaterThan(0);
   });
 });
+
+describe('core content: P5 world', () => {
+  const REGION_IDS = ['quarantine_d7', 'kestrel_corridor', 'ashway', 'drowned_market', 'the_garden'];
+
+  it('five regions, eight node types, both start regions exist and are known from the start', async () => {
+    const { registries: r } = await load();
+    expect([...r.regions.keys()].sort()).toEqual([...REGION_IDS].sort());
+    expect([...r.nodeTypes.keys()].sort()).toEqual(['cache', 'combat', 'crisis', 'elite', 'event', 'objective', 'rest', 'unknown']);
+    for (const corp of ['vesper', 'kestrel']) {
+      const region = r.regions.get(String(r.corporations.get(corp)!.startingRegionId))!;
+      expect(region.knownFromStart, corp).toBe(true);
+    }
+    expect(r.regions.get('drowned_market')!.unlockedBy).toEqual({ clearanceMin: 1 });
+    expect(r.regions.get('the_garden')!.unlockedBy).toEqual({ clearanceMin: 2 });
+    const cells = [...r.regions.values()].map((x) => JSON.stringify(x.mapCell));
+    expect(new Set(cells).size).toBe(5);
+    expect(r.regions.get('the_garden')!.danger).toBe(5);
+    expect(r.regions.get('drowned_market')!.travelSlots).toBe(3);
+  });
+
+  it('every region has a scavenge POI and three rumor lines of at most 40 words', async () => {
+    const { registries: r } = await load();
+    expect(r.regions.size).toBe(5);
+    for (const region of r.regions.values()) {
+      const pois = region.pointsOfInterest as Array<{ id: string; templateId: string }>;
+      expect(pois.find((p) => p.id === 'scavenge')?.templateId, String(region.id)).toBe('tpl_scavenge');
+      const rumors = region.rumors as string[];
+      expect(rumors.length, String(region.id)).toBeGreaterThanOrEqual(3);
+      for (const line of rumors) expect(line.trim().split(/\s+/).length).toBeLessThanOrEqual(40);
+    }
+  });
+
+  it('every mission template source is covered: command, story, rumor, side', async () => {
+    const { registries: r } = await load();
+    const covered = new Set([...r.missionTemplates.values()].flatMap((t) => t.sources as string[]));
+    expect([...covered].sort()).toEqual(['command', 'rumor', 'side', 'story']);
+    for (const id of ['tpl_sweep', 'tpl_recover', 'tpl_escort_data', 'tpl_hunt', 'tpl_scavenge', 'tpl_outbreak']) {
+      expect(r.missionTemplates.has(id), id).toBe(true);
+    }
+    for (const start of ['vesper', 'kestrel']) {
+      for (let n = 1; n <= 4; n++) expect(r.missionTemplates.get(`tpl_${start}_beat_${n}`)?.sources, `${start} ${n}`).toEqual(['story']);
+    }
+    expect(r.rewardTiers.size).toBe(4);
+  });
+
+  it('every spine beat of both starts has a reachable completion (story mission in an existing region, declared flags, or auto)', async () => {
+    const { registries: r } = await load();
+    for (const start of r.starts.values()) {
+      const spine = start.spine as Array<{ id: string; completion?: { kind: string; templateId?: string; regionId?: string; anyOf?: string[] } }>;
+      expect(spine.length, String(start.id)).toBe(6);
+      for (const beat of spine) {
+        const c = beat.completion ?? { kind: 'auto' };
+        if (c.kind === 'mission') {
+          const tpl = r.missionTemplates.get(c.templateId!)!;
+          expect(tpl.sources, `${String(start.id)} ${beat.id}`).toContain('story');
+          expect(r.regions.has(c.regionId!)).toBe(true);
+          const allowed = tpl.regions as string[] | undefined;
+          if (allowed) expect(allowed).toContain(c.regionId);
+        } else if (c.kind === 'flag') {
+          for (const f of c.anyOf!) expect(r.flags.get(f)?.scope).toBe('world');
+        } else {
+          expect(c.kind).toBe('auto');
+        }
+      }
+      expect(spine[5].completion).toEqual({ kind: 'auto' });
+      expect(spine[0].completion?.kind).toBe('mission');
+    }
+  });
+
+  it('the pinned choice events set mutually exclusive declared flags', async () => {
+    const { registries: r } = await load();
+    const choices: Record<string, string[]> = {
+      evt_vesper_choice: ['evidence_delivered_vesper', 'evidence_sold_aurum', 'evidence_buried'],
+      evt_kestrel_choice: ['quota_met_k12', 'spared_survivors_k12', 'sable_offer_taken'],
+    };
+    for (const [evt, flags] of Object.entries(choices)) {
+      const options = (r.dilemmaTemplates.get(evt)!.fixed as { options: Array<{ effects: Array<{ type: string; flagId?: string }> }> }).options;
+      expect(options.map((o) => o.effects.find((e) => e.type === 'flag')?.flagId), evt).toEqual(flags);
+      for (const f of flags) {
+        const flag = r.flags.get(f)!;
+        expect(flag.scope).toBe('world');
+        expect(flag.setBy).toEqual(['event']);
+        expect([...(flag.mutuallyExclusiveWith as string[])].sort()).toEqual(flags.filter((x) => x !== f).sort());
+      }
+    }
+    // the two beat-4 templates point at their pinned events
+    expect(r.missionTemplates.get('tpl_vesper_beat_4')!.objectiveEventId).toBe('evt_vesper_choice');
+    expect(r.missionTemplates.get('tpl_kestrel_beat_4')!.objectiveEventId).toBe('evt_kestrel_choice');
+    const spineFlags = (id: string) => (r.starts.get(id)!.spine as Array<{ completion?: { anyOf?: string[] } }>)[4].completion!.anyOf;
+    expect(spineFlags('start_vesper')).toEqual(choices.evt_vesper_choice);
+    expect(spineFlags('start_kestrel')).toEqual(choices.evt_kestrel_choice);
+  });
+
+  it('at least six non-flavor minor events, each option with a cost; value-axis events, a gated third way and flavor events exist', async () => {
+    const { registries: r } = await load();
+    const events = [...r.dilemmaTemplates.values()];
+    for (const e of events) {
+      expect(e.scale).toBe('minor');
+      expect(e.contexts).toContain('expedition_event');
+    }
+    const real = events.filter((e) => !e.flavor && !String(e.id).endsWith('_choice'));
+    expect(real.length).toBeGreaterThanOrEqual(6);
+    expect(events.filter((e) => e.flavor === true).length).toBeGreaterThanOrEqual(2);
+    type Opt = { requires?: { stat: string; rank: number }; effects: Array<{ type: string; valueAxes?: unknown[] }> };
+    const opts = (e: (typeof events)[number]) => (e.fixed as { options: Opt[] }).options;
+    const withAxes = real.filter((e) => opts(e).some((o) => o.effects.some((x) => x.type === 'unit_event' && (x.valueAxes?.length ?? 0) > 0)));
+    expect(withAxes.length).toBeGreaterThanOrEqual(3);
+    expect(real.some((e) => opts(e).some((o) => o.requires?.stat === 'empathy' && o.requires.rank === 3))).toBe(true);
+    for (const e of real) {
+      expect(opts(e).length).toBeGreaterThanOrEqual(2);
+      expect(opts(e).length).toBeLessThanOrEqual(3);
+    }
+  });
+
+  it('clearance 1, 2 and 3 are each granted by some beat', async () => {
+    const { registries: r } = await load();
+    for (const start of r.starts.values()) {
+      const granted = new Set(
+        (start.spine as Array<{ onComplete?: Array<{ type: string; tier?: number }> }>)
+          .flatMap((b) => (b.onComplete ?? []).filter((e) => e.type === 'clearance').map((e) => e.tier)),
+      );
+      expect([...granted].sort(), String(start.id)).toEqual([1, 2, 3]);
+    }
+  });
+
+  it('echo_bleed reveals one more step', async () => {
+    const { registries: r } = await load();
+    expect(r.defects.get('echo_bleed')!.expedition).toEqual({ reveal: 1 });
+    expect([...r.defects.values()].filter((d) => d.expedition !== undefined)).toHaveLength(1);
+  });
+
+  it('clocks, reward tiers and node types follow the plan numbers', async () => {
+    const { registries: r } = await load();
+    expect([...r.clocks.keys()].sort()).toEqual(['bloom_d7', 'corridor_quota', 'garden_wake', 'oversight', 'sable_operation']);
+    expect(r.clocks.get('oversight')!.repeat).toBe(true);
+    expect(r.clocks.get('bloom_d7')!.segments).toBe(8);
+    expect(r.clocks.get('garden_wake')!.visibleToPlayer).toBe(false);
+    expect(r.nodeTypes.get('crisis')).toMatchObject({ maxPerMap: 1, minDanger: 3, firstLayer: false });
+    expect(r.nodeTypes.get('rest')).toMatchObject({ rest: { suppliesPerUnit: 1, hpPct: 25, stress: -15 }, firstLayer: false });
+    expect(r.nodeTypes.get('unknown')!.resolvesTo).toEqual({ combat: 4, event: 3, cache: 3 });
+    expect(r.rewardTiers.get('tier_3')).toMatchObject({ credits: [70, 120], plyx: [8, 16], lootTableId: 'loot_elite', faction: 5 });
+  });
+});

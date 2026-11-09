@@ -1,0 +1,327 @@
+[
+  {
+    "id": "quarantine_d7",
+    "name": "District 7 Quarantine",
+    "summary": "A sealed arcology district where the Bloom grows through the walls.",
+    "environmentPrompt": "Overgrown arcology, fungal Bloom growth, dim emergency lighting.",
+    "danger": 1,
+    "travelSlots": 2,
+    "enemyTable": {
+      "categories": {
+        "mutant_human": 3,
+        "mutant_beast": 2
+      }
+    },
+    "modifiers": [],
+    "mapHotspot": [
+      [
+        3,
+        3
+      ],
+      [
+        31,
+        3
+      ],
+      [
+        31,
+        31
+      ],
+      [
+        3,
+        31
+      ]
+    ],
+    "mapCell": {
+      "x": 0,
+      "y": 0
+    },
+    "layers": [
+      3,
+      3
+    ],
+    "nodeWeights": {
+      "combat": 3,
+      "elite": 1,
+      "event": 2,
+      "cache": 2,
+      "rest": 1,
+      "unknown": 2,
+      "crisis": 1
+    },
+    "pointsOfInterest": [
+      {
+        "id": "scavenge",
+        "name": "Scavenging run",
+        "summary": "A standing run through the ruins for supplies and scrap.",
+        "templateId": "tpl_scavenge"
+      }
+    ],
+    "rumors": [
+      "Quarantine wardens stopped answering the radio three nights ago.",
+      "Someone is selling clean air filters out of Block C. The filters are not clean.",
+      "The spores bloom brighter near the old seed vault. Locals avoid the east stairwell."
+    ],
+    "knownFromStart": true
+  },
+  {
+    "id": "kestrel_corridor",
+    "name": "Corridor K-12",
+    "summary": "A mining corridor of tunnels and half-powered machinery, behind its quota.",
+    "environmentPrompt": "Mining tunnels, machinery, sparks and cold rock.",
+    "danger": 1,
+    "travelSlots": 2,
+    "enemyTable": {
+      "categories": {
+        "mutant_human": 3,
+        "enemy_soldier": 1
+      }
+    },
+    "modifiers": [],
+    "mapHotspot": [
+      [
+        36,
+        3
+      ],
+      [
+        64,
+        3
+      ],
+      [
+        64,
+        31
+      ],
+      [
+        36,
+        31
+      ]
+    ],
+    "mapCell": {
+      "x": 1,
+      "y": 0
+    },
+    "layers": [
+      3,
+      4
+    ],
+    "nodeWeights": {
+      "combat": 3,
+      "elite": 1,
+      "event": 2,
+      "cache": 2,
+      "rest": 1,
+      "unknown": 2,
+      "crisis": 1
+    },
+    "pointsOfInterest": [
+      {
+        "id": "scavenge",
+        "name": "Scavenging run",
+        "summary": "A standing run through the ruins for supplies and scrap.",
+        "templateId": "tpl_scavenge"
+      }
+    ],
+    "rumors": [
+      "The night shift never came up from level four. Their lamps are still lit.",
+      "Kestrel-Ward is counting the corridor as lost stock on paper already.",
+      "Drills keep running in the lower galleries with nobody at the controls."
+    ],
+    "knownFromStart": true
+  },
+  {
+    "id": "ashway",
+    "name": "The Ashway",
+    "summary": "A dead highway lined with scavenger camps and burnt-out convoys.",
+    "environmentPrompt": "Dead highway, ash drifts, scavenger camps.",
+    "danger": 2,
+    "travelSlots": 2,
+    "enemyTable": {
+      "categories": {
+        "marauder": 3,
+        "mutant_beast": 2
+      }
+    },
+    "modifiers": [],
+    "mapHotspot": [
+      [
+        69,
+        3
+      ],
+      [
+        97,
+        3
+      ],
+      [
+        97,
+        31
+      ],
+      [
+        69,
+        31
+      ]
+    ],
+    "mapCell": {
+      "x": 2,
+      "y": 0
+    },
+    "layers": [
+      3,
+      4
+    ],
+    "nodeWeights": {
+      "combat": 3,
+      "elite": 1,
+      "event": 2,
+      "cache": 2,
+      "rest": 1,
+      "unknown": 2,
+      "crisis": 1
+    },
+    "pointsOfInterest": [
+      {
+        "id": "scavenge",
+        "name": "Scavenging run",
+        "summary": "A standing run through the ruins for supplies and scrap.",
+        "templateId": "tpl_scavenge"
+      }
+    ],
+    "rumors": [
+      "A convoy of sealed crates was left on the overpass. Three crews have gone to look.",
+      "Packs follow the highway at dusk. They are bigger than they used to be.",
+      "The marauders pay in old credit chips for anything that still runs."
+    ],
+    "knownFromStart": true
+  },
+  {
+    "id": "drowned_market",
+    "name": "Drowned Market",
+    "summary": "A flooded commercial district; the stalls still open at dawn, for someone.",
+    "environmentPrompt": "Flooded commercial district, neon in dark water.",
+    "danger": 3,
+    "travelSlots": 3,
+    "enemyTable": {
+      "categories": {
+        "marauder": 2,
+        "mutant_human": 2,
+        "anomaly": 1
+      }
+    },
+    "modifiers": [],
+    "mapHotspot": [
+      [
+        36,
+        36
+      ],
+      [
+        64,
+        36
+      ],
+      [
+        64,
+        64
+      ],
+      [
+        36,
+        64
+      ]
+    ],
+    "mapCell": {
+      "x": 1,
+      "y": 1
+    },
+    "layers": [
+      4,
+      4
+    ],
+    "nodeWeights": {
+      "combat": 3,
+      "elite": 1,
+      "event": 2,
+      "cache": 2,
+      "rest": 1,
+      "unknown": 2,
+      "crisis": 1
+    },
+    "pointsOfInterest": [
+      {
+        "id": "scavenge",
+        "name": "Scavenging run",
+        "summary": "A standing run through the ruins for supplies and scrap.",
+        "templateId": "tpl_scavenge"
+      }
+    ],
+    "rumors": [
+      "Traders say the lights under the water move when nobody is looking.",
+      "An Aurum broker is buying debts in the east arcade. Nobody sees him leave.",
+      "Something in the cold storage hums a tune from before the Bloom."
+    ],
+    "unlockedBy": {
+      "clearanceMin": 1
+    }
+  },
+  {
+    "id": "the_garden",
+    "name": "The Garden",
+    "summary": "The epicenter of the Bloom, where the geometry stops agreeing with itself.",
+    "environmentPrompt": "Bloom epicenter, wrong geometry, impossible light.",
+    "danger": 5,
+    "travelSlots": 3,
+    "enemyTable": {
+      "categories": {
+        "anomaly": 3,
+        "offspec_hostile": 2
+      }
+    },
+    "modifiers": [],
+    "mapHotspot": [
+      [
+        36,
+        69
+      ],
+      [
+        64,
+        69
+      ],
+      [
+        64,
+        97
+      ],
+      [
+        36,
+        97
+      ]
+    ],
+    "mapCell": {
+      "x": 1,
+      "y": 2
+    },
+    "layers": [
+      4,
+      5
+    ],
+    "nodeWeights": {
+      "combat": 3,
+      "elite": 1,
+      "event": 2,
+      "cache": 2,
+      "rest": 1,
+      "unknown": 2,
+      "crisis": 1
+    },
+    "pointsOfInterest": [
+      {
+        "id": "scavenge",
+        "name": "Scavenging run",
+        "summary": "A standing run through the ruins for supplies and scrap.",
+        "templateId": "tpl_scavenge"
+      }
+    ],
+    "rumors": [
+      "The map of the Garden is different every time it is drawn.",
+      "Off-spec units went in with their limiters on. Their signals still come out.",
+      "Nothing that goes in is quite the same on the way out."
+    ],
+    "unlockedBy": {
+      "clearanceMin": 2
+    }
+  }
+]
