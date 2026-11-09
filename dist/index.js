@@ -693,6 +693,7 @@ function addSocialPoints(commander, stat, amount) {
 }
 
 // src/engine/activities.ts
+var activityHooks = [];
 var clamp3 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var asReq = (v) => {
   if (typeof v !== "object" || v === null || Array.isArray(v)) return null;
@@ -851,6 +852,12 @@ function runActivity(draft, ctx2, request) {
     ...companion ? { companionId: companion.id } : {},
     vignette: companion !== void 0 && a.flavor === "short"
   });
+  const done = {
+    activityId: a.id,
+    ...companion ? { companionId: companion.id } : {},
+    rosterIds: activeRosterUnits(draft).map((u) => u.id)
+  };
+  for (const hook of activityHooks) events.push(...hook(draft, ctx2, done));
   if (a.startsScene === true) {
     if (companion) draft.calendar.pendingScene = { unitId: companion.id, day: draft.day, slot: draft.slot };
   } else {

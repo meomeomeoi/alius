@@ -1,6 +1,7 @@
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import type { Registries } from '../../src/content/types';
-import { checkActivity } from '../../src/engine/activities';
+import { checkActivity, registerActivityHook, resetActivityHooks } from '../../src/engine/activities';
+import { defectSocialHook } from '../../src/engine/actions/comms';
 import { resetRelationGainHandler, setRelationGainHandler } from '../../src/engine/relationGain';
 import type { CampaignState } from '../../src/engine/state/types';
 import { campaign, errors, loadCore, ofType, run } from '../helpers/world';
@@ -370,5 +371,87 @@ describe('a week of activities', () => {
     expect(s.resources.supplies).toBe(0); // 30 supplies, 5 a day: empty on day 6, short on day 7
     expect(s.calendar.shortageStreak).toBe(1);
     expect(s.squad.map((u) => u.stress)).toEqual([4, 4, 4, 4]); // +5 shortage, −1 passive on the last day only
+  });
+});
+
+describe('defect social hooks (P3)', () => {
+  const withDefect = (s: CampaignState, id: string, defect: string): void => {
+    s.squad.find((u) => u.id === id)!.defects = [{ id: defect }];
+  };
+  it('hunger_loop unit gains affinity from mess', () => {
+    const s = fresh();
+    withDefect(s, ANN, 'hunger_loop');
+    s.slot = 'afternoon';
+    const r = act(s, { activityId: 'mess' });
+    expect(r.state.relations[ANN].affinity - s.relations[ANN].affinity).toBe(2);
+    expect(r.state.relations[BEA].affinity).toBe(s.relations[BEA].affinity);
+    expect(ofType(r.events, 'defect_social')).toEqual([{ type: 'defect_social', unitId: ANN, defectId: 'hunger_loop' }]);
+  });
+  it('overclock_bias companion gains extra affinity from rest', () => {
+    const plain = fresh();
+    const base = act(plain, { activityId: 'rest', companionId: ANN }).state.relations[ANN].affinity - plain.relations[ANN].affinity;
+    const s = fresh();
+    withDefect(s, ANN, 'overclock_bias');
+    const r = act(s, { activityId: 'rest', companionId: ANN });
+    expect(r.state.relations[ANN].affinity - s.relations[ANN].affinity).toBeGreaterThan(base);
+    expect(ofType(r.events, 'defect_social')).toHaveLength(1);
+  });
+  it('overclock_bias does nothing on a solo rest or for other companions', () => {
+    const s = fresh();
+    withDefect(s, ANN, 'overclock_bias');
+    expect(ofType(act(s, { activityId: 'rest' }).events, 'defect_social')).toEqual([]);
+    expect(ofType(act(s, { activityId: 'rest', companionId: BEA }).events, 'defect_social')).toEqual([]);
+  });
+  it('medbay with a graft_rejection companion sets need_controlled', () => {
+    const s = fresh();
+    withDefect(s, ANN, 'graft_rejection');
+    const r = act(s, { activityId: 'medbay', companionId: ANN });
+    expect(r.state.relations[ANN].flags).toContain('need_controlled');
+    const again = act({ ...r.state, slot: 'morning', day: 2 } as CampaignState, { activityId: 'medbay', companionId: ANN });
+    expect(again.state.relations[ANN].flags.filter((f) => f === 'need_controlled')).toHaveLength(1);
+  });
+  it('hooks do not run when the activity is rejected', () => {
+    const calls: string[] = [];
+    resetActivityHooks();
+    registerActivityHook((_d, _c, done) => { calls.push(done.activityId); return []; });
+    try {
+      const s = fresh();
+      s.slot = 'night';
+      rejected(s, { activityId: 'mess' }, /night/i);
+      expect(calls).toEqual([]);
+      const ok = fresh();
+      ok.slot = 'afternoon';
+      act(ok, { activityId: 'mess' });
+      expect(calls).toEqual(['mess']);
+    } finally {
+      resetActivityHooks();
+      registerActivityHook(defectSocialHook);
+    }
+  });
+  it('hooks see the companion and the active roster, and run before the slot is spent', () => {
+    let seen: { companionId?: string; rosterIds: string[]; slot?: string } | undefined;
+    resetActivityHooks();
+    registerActivityHook((d, _c, done) => { seen = { ...done, slot: d.slot }; return []; });
+    try {
+      act(fresh(), { activityId: 'rest', companionId: ANN });
+      expect(seen).toMatchObject({ companionId: ANN, slot: 'morning' });
+      expect(seen!.rosterIds.length).toBeGreaterThan(0);
+    } finally {
+      resetActivityHooks();
+      registerActivityHook(defectSocialHook);
+    }
+  });
+  it('with no hooks registered the P2 behaviour is unchanged', () => {
+    resetActivityHooks();
+    try {
+      const s = fresh();
+      withDefect(s, ANN, 'hunger_loop');
+      s.slot = 'afternoon';
+      const r = act(s, { activityId: 'mess' });
+      expect(ofType(r.events, 'defect_social')).toEqual([]);
+      expect(r.state.relations[ANN].affinity).toBe(s.relations[ANN].affinity);
+    } finally {
+      registerActivityHook(defectSocialHook);
+    }
   });
 });

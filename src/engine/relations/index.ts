@@ -3,6 +3,7 @@ import type { Registries } from '../../content/types';
 import type { CampaignState, LoyaltyBand, Relation } from '../state/types';
 
 export { applyIntents } from './apply';
+export { enqueueNight } from '../night';
 export { addFact } from '../memory';
 
 export const getRelation = (state: CampaignState, unitId: string): Relation | undefined => state.relations[unitId];

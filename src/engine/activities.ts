@@ -20,6 +20,24 @@ type Cost = { credits?: number; supplies?: number; plyx?: number };
 type Focus = { id: string; label: string; units?: { min: number; max: number } };
 type Fx = ActivityEffect & { when?: { focus?: string; companionLikes?: string }; scale?: { facility: string; key: string } };
 
+/** What an activity just did; hooks (P3 defect social effects) react to it. */
+export interface ActivityDone {
+  activityId: string;
+  companionId?: string;
+  /** Living units on the active roster when the activity ran. */
+  rosterIds: string[];
+}
+/** Runs after the activity's effects and before its slot is consumed; the events it returns join the activity's events. */
+export type ActivityHook = (draft: CampaignState, ctx: EngineCtx, done: ActivityDone) => EngineEvent[];
+
+const activityHooks: ActivityHook[] = [];
+export const registerActivityHook = (fn: ActivityHook): void => {
+  activityHooks.push(fn);
+};
+export const resetActivityHooks = (): void => {
+  activityHooks.length = 0;
+};
+
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
 const asReq = (v: unknown): ActivityRequest | null => {
   if (typeof v !== 'object' || v === null || Array.isArray(v)) return null;
@@ -193,6 +211,10 @@ export function runActivity(draft: CampaignState, ctx: EngineCtx, request: unkno
     type: 'activity_done', activityId: a.id, ...(companion ? { companionId: companion.id } : {}),
     vignette: companion !== undefined && a.flavor === 'short',
   });
+  const done: ActivityDone = {
+    activityId: a.id, ...(companion ? { companionId: companion.id } : {}), rosterIds: activeRosterUnits(draft).map((u) => u.id),
+  };
+  for (const hook of activityHooks) events.push(...hook(draft, ctx, done));
   if (a.startsScene === true) {
     // the scene holds this slot; P3 ends it with `calendar/consume_slot { reason: 'scene_end' }`
     if (companion) draft.calendar.pendingScene = { unitId: companion.id, day: draft.day, slot: draft.slot };
