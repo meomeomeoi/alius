@@ -233,11 +233,11 @@ docs/** (Task 21), tests/** mirror src
 - Produces in `formulas.ts`: `rollDamage(rng, { atk, mult, def, crit: boolean }): number` (roles.md §1, min 1); `rollCrit(rng, critPct): boolean`; `initiativeOrder(cs: CombatState, rng): string[]` (living, non-downed combatants; key `effective SPD + rng.int(0, 3)`; ties squad first, then higher base SPD, then lower `index`).
 - Produces in `targeting.ts`: `legalTargets(cs, actorCid, skill): string[]` — `usableFrom` checked against the actor's row (illegal row → `[]`); side `self` → actor; `ally` → living allies (downed allies only for `revive`); `enemy` → living enemies in `targets.rows`; `melee` → enemy front only unless it is empty; `ignoreRows` (on any effect) → every living enemy; `taunt` on an eligible enemy restricts to taunters; `untargetable` excluded; a `lockedTargetId` restricts to it while alive. `nearest(cs, cid, side)`, `strongest(cs, side)` (highest current ATK, then HP), `lowestHpPct(cs, side)`.
 
-- [ ] **Step 1: Write the failing tests** — `damage matches the formula at fixed rng` (ATK 24, mult 1, DEF 12: 21–24 range, exact value for a seeded rng); `crit multiplies by 1.5`; `damage is at least 1`; `crit chance 0 never crits, 100 always`; `initiative orders by SPD plus 0–3`; `ties: squad first, then base SPD, then index`; `downed units have no initiative`; `melee hits only the front while it stands, then the back`; `ranged with rows [back] cannot hit the front`; `ignoreRows hits anyone`; `taunt forces the target`; `untargetable is skipped`; `a back-row unit cannot use a front-only skill`; `lock restricts to the locked target until it dies`; `revive targets only downed allies`.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/combat` → FAIL.
-- [ ] **Step 3: Implement.** Use a small hand-built `CombatState` fixture helper in `tests/helpers/combat.ts` (`fixtureCombat({ squad: [...], enemies: [...] })`), reused by later tasks.
-- [ ] **Step 4: Run** → PASS.
-- [ ] **Step 5: Commit** `feat(engine): damage, crit, initiative and targeting rules`.
+- [x] **Step 1: Write the failing tests** — `damage matches the formula at fixed rng` (ATK 24, mult 1, DEF 12: 21–24 range, exact value for a seeded rng); `crit multiplies by 1.5`; `damage is at least 1`; `crit chance 0 never crits, 100 always`; `initiative orders by SPD plus 0–3`; `ties: squad first, then base SPD, then index`; `downed units have no initiative`; `melee hits only the front while it stands, then the back`; `ranged with rows [back] cannot hit the front`; `ignoreRows hits anyone`; `taunt forces the target`; `untargetable is skipped`; `a back-row unit cannot use a front-only skill`; `lock restricts to the locked target until it dies`; `revive targets only downed allies`.
+- [x] **Step 2: Run** `npx vitest run tests/engine/combat` → FAIL.
+- [x] **Step 3: Implement.** Use a small hand-built `CombatState` fixture helper in `tests/helpers/combat.ts` (`fixtureCombat({ squad: [...], enemies: [...] })`), reused by later tasks.
+- [x] **Step 4: Run** → PASS.
+- [x] **Step 5: Commit** `feat(engine): damage, crit, initiative and targeting rules`.
 
 ---
 
