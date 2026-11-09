@@ -235,10 +235,14 @@ export class FakeStAdapter implements StAdapter {
   }
 
   async regenerateLast(): Promise<void> {
-    await this.swipeLast('right');
+    this.doSwipe('right');
   }
 
   async swipeLast(dir: 'left' | 'right'): Promise<void> {
+    this.doSwipe(dir);
+  }
+
+  private doSwipe(dir: 'left' | 'right'): void {
     const last = this.lastReply();
     if (!last) return;
     if (dir === 'right') {

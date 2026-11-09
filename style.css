@@ -691,3 +691,244 @@
 #alius-shell .alius-toast-story {
   white-space: pre-line;
 }
+
+/* Scene screen, COMMS, LOG and the night knock (P3). Palette variables only; every text colour keeps its 7:1 contrast. */
+#alius-shell .alius-scene {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow: hidden;
+}
+
+#alius-shell .alius-scene-header {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: center;
+  border-bottom: 1px dashed var(--alius-dim);
+  padding-bottom: 4px;
+  color: var(--alius-accent);
+  letter-spacing: 0.06em;
+}
+
+#alius-shell .alius-scene-tools {
+  margin-left: auto;
+  display: flex;
+  gap: 4px;
+}
+
+#alius-shell .alius-dim {
+  color: var(--alius-dim);
+}
+
+#alius-shell .alius-stage {
+  position: relative;
+  flex: 1 1 40%;
+  min-height: 120px;
+  border: var(--alius-line);
+  overflow: hidden;
+}
+
+#alius-shell .alius-scene-bg {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  opacity: 0.55;
+}
+
+#alius-shell .alius-ascii {
+  margin: 0;
+  padding: 8px;
+  color: var(--alius-dim);
+  font-size: 12px;
+  line-height: 1.1;
+  overflow: hidden;
+}
+
+#alius-shell .alius-sprites {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  pointer-events: none;
+}
+
+#alius-shell .alius-sprite {
+  position: absolute;
+  bottom: 0;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  filter: brightness(0.55);
+  transition: filter 0.2s;
+}
+
+#alius-shell .alius-sprite.is-speaking {
+  filter: brightness(1);
+}
+
+#alius-shell .alius-sprite.pos-left { left: 8%; }
+#alius-shell .alius-sprite.pos-center { left: 50%; transform: translateX(-50%); }
+#alius-shell .alius-sprite.pos-right { right: 8%; }
+
+#alius-shell .alius-sprite-img {
+  max-height: 100%;
+  max-width: 40vw;
+  object-fit: contain;
+}
+
+#alius-shell .alius-hud {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+}
+
+#alius-shell .alius-hud-unit {
+  display: inline-flex;
+  gap: 6px;
+  align-items: baseline;
+}
+
+#alius-shell .alius-glyph {
+  color: var(--alius-bg);
+  background: var(--alius-fg);
+  padding: 0 5px;
+  font-weight: bold;
+}
+
+#alius-shell .alius-pulses {
+  display: inline-flex;
+  gap: 6px;
+}
+
+#alius-shell .alius-pulse {
+  color: var(--alius-accent);
+  animation: alius-pulse 1.5s ease-out forwards;
+}
+
+#alius-shell .alius-pulse.is-down {
+  color: var(--alius-err);
+}
+
+@keyframes alius-pulse {
+  0% { opacity: 0; transform: translateY(4px); }
+  15% { opacity: 1; transform: none; }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+#alius-shell .alius-transcript {
+  flex: 1 1 35%;
+  min-height: 90px;
+  overflow-y: auto;
+  border: 1px solid var(--alius-dim);
+  padding: 6px 8px;
+}
+
+#alius-shell .alius-line {
+  margin: 0 0 6px;
+}
+
+#alius-shell .alius-line.is-user {
+  color: var(--alius-dim);
+}
+
+#alius-shell .alius-speaker {
+  color: var(--alius-accent);
+  font-weight: bold;
+  letter-spacing: 0.08em;
+  animation: alius-slam 0.18s ease-out;
+}
+
+@keyframes alius-slam {
+  from { opacity: 0; transform: translateX(-10px) scale(1.15); }
+  to { opacity: 1; transform: none; }
+}
+
+#alius-shell .alius-glitch {
+  font-style: normal;
+  color: var(--alius-bg);
+  background: var(--alius-fg);
+  padding: 0 3px;
+}
+
+#alius-shell .alius-chips {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+#alius-shell .alius-chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: center;
+}
+
+#alius-shell .alius-chip-label {
+  color: var(--alius-accent);
+}
+
+#alius-shell .alius-cmd {
+  flex: none;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+#alius-shell .alius-cmd .alius-input {
+  flex: 1;
+  min-width: 0;
+}
+
+#alius-shell .alius-prompt {
+  color: var(--alius-accent);
+  font-weight: bold;
+}
+
+#alius-shell .alius-pacing {
+  text-align: center;
+  color: var(--alius-bg);
+  background: var(--alius-fg);
+  letter-spacing: 0.3em;
+}
+
+#alius-shell .alius-cutin {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 38%;
+  text-align: center;
+  font-size: 28px;
+  font-weight: bold;
+  letter-spacing: 0.25em;
+  color: var(--alius-bg);
+  background: var(--alius-fg);
+  padding: 6px 0;
+  pointer-events: none;
+  animation: alius-cutin 0.9s ease-out forwards;
+}
+
+@keyframes alius-cutin {
+  0% { opacity: 0; transform: scale(2) skewX(-8deg); }
+  15% { opacity: 1; transform: scale(1) skewX(-8deg); }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+#alius-shell .alius-location-picker label {
+  display: block;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #alius-shell .alius-pulse,
+  #alius-shell .alius-speaker,
+  #alius-shell .alius-cutin { animation: none; }
+}

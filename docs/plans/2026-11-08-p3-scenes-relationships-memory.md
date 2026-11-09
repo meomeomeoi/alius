@@ -354,11 +354,11 @@ docs/** (Task 15), tests/** mirror src
 - `cutIn.ts`: `cutIn(host, kind: string, text: string): void` — one CSS animation (slam + fade, 900 ms), removed afterwards; the hook other packages reuse.
 - `locationPicker.ts`: `pickLocation(modal, ctx: { registries; state; firstUnitId; candidates: Unit[] }): Promise<{ locationId; participants } | null>` — locations allowed in the current slot; up to two extra named living units; `quarters_unit` labelled with the first unit's name.
 
-- [ ] **Step 1: Write the failing tests** — `renders location ASCII when there is no image`; `group scene places three sprites left/center/right`; `speaker tag and emphasized text render as glitch spans`; `model text with <script> stays text`; `typing speed 0 renders instantly`; `CMD> Enter calls controller.send and disables input until done`; `chips appear for a pending proposal and call answer`; `disclosure chips replace decline`; `pulse shows ▲ TRUST without numbers; with showRawValues shows +3`; `propose menu hides romantic kinds when romance is off`; `END TRANSMISSION calls controller.end`; `cutIn adds and removes its element`; `location picker offers only slot-allowed locations and caps participants at three`.
-- [ ] **Step 2: Run** `npx vitest run tests/ui/scene.test.ts` → FAIL.
-- [ ] **Step 3: Implement** (renderers stay pure over `(host, ctx)` like the other tabs).
-- [ ] **Step 4: Run** → PASS.
-- [ ] **Step 5: Commit** `feat(ui): VN-style scene screen with terminal transcript, chips and HUD`.
+- [x] **Step 1: Write the failing tests** — `renders location ASCII when there is no image`; `group scene places three sprites left/center/right`; `speaker tag and emphasized text render as glitch spans`; `model text with <script> stays text`; `typing speed 0 renders instantly`; `CMD> Enter calls controller.send and disables input until done`; `chips appear for a pending proposal and call answer`; `disclosure chips replace decline`; `pulse shows ▲ TRUST without numbers; with showRawValues shows +3`; `propose menu hides romantic kinds when romance is off`; `END TRANSMISSION calls controller.end`; `cutIn adds and removes its element`; `location picker offers only slot-allowed locations and caps participants at three`.
+- [x] **Step 2: Run** `npx vitest run tests/ui/scene.test.ts` → FAIL.
+- [x] **Step 3: Implement** (renderers stay pure over `(host, ctx)` like the other tabs).
+- [x] **Step 4: Run** → PASS.
+- [x] **Step 5: Commit** `feat(ui): VN-style scene screen with terminal transcript, chips and HUD`.
 
 ### Task 14: COMMS, LOG, night knock, SYS and app wiring
 
