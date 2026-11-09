@@ -81,3 +81,12 @@ Provider adds 1–3 sentences of world state relevant to the scene (region of la
 - **Incoming named units:** the P1 wizard model (`src/setup/wizard.ts`) is reusable; capacity is `roster.capacity` (barracks), grunts count against it.
 - **Grunts as rewards/replacements:** `generateGrunt(state, reg, rng)` is pure.
 - **Region/start:** `state.world.startId` and the start's `startingRegionId` (via the corporation) are set by P1.
+
+## Interfaces already provided by P3 (implemented — use, do not rebuild)
+
+- **Debrief and event scenes:** start them with the scene controller (`app.scene.start({ locationId, participants, origin: 'debrief' | 'event', consumesSlot? })`), which dispatches `scene/start`, activates only the participants in the group chat and sets the scene context. `consumesSlot: false` makes the scene free. Up to three named, living participants; locations come from the `locations` registry (add ids there).
+- **Memory:** `addFact(draft, { about, text, tags, importance, day, knownBy })` (from `engine/memory`; `knownBy` is a list of unit ids or `'*'`; the commander always knows) and `recordPromise`. Facts tagged `crime` reveal the commander's crime to the unit(s) that know them; facts tagged `affair` can force the discovery of a secret affair.
+- **Night entries:** `enqueueNight(draft, entry)` (`NightEntry = { id, unitId, kind, priority, framing, ignore: { event, severity }, expiresDay }`; one per unit+kind; highest priority first; entries expire; `framing` is shown as the knock). P2 moves the head to `calendar.nightEvent` at the end of Evening.
+- **Intents after an expedition:** feed `protected` / `endangered` / `sided_with` events through `intents/apply` inside a debrief scene; the engine validates and applies them (diminishing returns included).
+- **Chronicle:** scene lines are written by `scene/end`; the weekly/daily compaction runs by itself (`memory/compact`); add story beats as facts or as chronicle entries via `addChronicle(draft, { kind: 'scene', day, text })` if needed.
+- **Director context:** `ContextBuilder` providers registered by P5 sit next to P3's (`scene_header` 95, `units` 90, `commander` 80, `facts` 70, `promises` 60). The relationship `promptHint`s are in `relationshipStates.json`.

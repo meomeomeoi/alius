@@ -34,5 +34,5 @@ Most of P2 is covered by automated tests; this list covers what needs a real Sil
 - [ ] **6. BASE.** The schematic shows five boxes with levels. Upgrade the Barracks (needs 60 CR, 5 PLYX): the box shows `^ 2d`; after two day ends the toast `Barracks upgraded to level 2.` appears and `UNITS n/7`.
 - [ ] **7. Grunt.** **Recruit grunt** (40 CR): a new unit with a designation like `K-117` appears in ROSTER and on SQUAD with an ASCII portrait. With *Generated grunt names* on, a name and one-line bio replace the designation as display name within a few seconds; the designation stays on the card.
 - [ ] **8. Roster.** Toggle `[ACTIVE]`/`[RESERVE]`: a fifth active unit is refused (the button is disabled).
-- [ ] **9. Talk.** **Talk** with a companion shows the toast that scenes are not available yet and does **not** advance the clock, and Rest can still be done afterwards.
+- [ ] **9. Talk.** (Changed by P3: **Talk** now opens the location picker; see `MANUAL_TEST_P3.md`.) Cancel the picker: the clock does **not** advance and Rest can still be done afterwards.
 - [ ] **10. Chat switch.** Start **Rest** with a companion and switch chats at once: no vignette toast appears in the other chat.

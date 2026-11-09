@@ -151,7 +151,7 @@ Before each main-model generation the adapter injects one compact block:
 
 Character card text itself remains SillyTavern's job.
 
-### 5.4 Implemented engine interfaces (P0–P2)
+### 5.4 Implemented engine interfaces (P0–P3)
 
 Later packages build on these; change them only together with the owning spec.
 
@@ -171,6 +171,13 @@ Later packages build on these; change them only together with the owning spec.
 | `generateGrunt`, `gruntRelation`, `generatePortrait` | P2 | Seeded grunts (P5 may reuse for rewards). |
 | `generateFlavor(input, deps)`, `registerFlavorKind(kind, impl)` | P2 | The `flavor` call type; each package registers its own `kind`. |
 | `callLlm(callTypeId, input, deps)` | P0 | Typed, budgeted, fail-soft LLM calls. |
+| `engine/relations` hooks: `getRelation`, `applyIntents`, `getSynergies(state, reg, unitIds)`, `addFact`, `loyaltyBand`, `enqueueNight` | P3 | Relationship reads/writes for P4–P6. `applyIntents` re-validates everything; `getSynergies` lists the synergy ids unlocked by the units' relationship states. |
+| `scene/start { locationId, participants, origin, consumesSlot?, startIndex, nightEntryId? }`, `scene/exchange`, `scene/end { summary? }`, `scene/abort` | P3 | One scene at a time; origins `activity`, `night`, `mess`, `event`, `debrief` (P5). `scene/end` consumes the slot unless `consumesSlot: false`. |
+| `intents/apply { channel: 'scene'\|'dm', intents, unitId? }`, `proposal/commander`, `proposal/answer`, `campaign/set_intimacy`, `memory/compact` | P3 | The only way relationship axes, facts, promises and the chronicle change. |
+| `dm/send`, `dm/receive`, `dm/read`, `dm/roll_initiative`, `night/open`, `night/ignore`, `relations/commander_injured` | P3 | PDA comms and night knocks. |
+| `registerActivityHook(fn)` | P3 | Runs after an activity's effects, before its slot is spent (defect social hooks). |
+| `app.scene`, `app.comms`, `app.restoreSnapshot(snap, expected)` | P3 | Scene controller (`start`, `send`, `propose`, `answer`, `end`, `resume`), DM/night controller, conditional state restore. |
+| `cutIn(host, kind, text)`, `shell.setTabBadge(id, n)`, `shell.registerScreen(id, render, { refresh })` | P3 | UI hooks (a one-animation cut-in for major events, tab badges, in-place screen refresh). |
 
 Events emitted by the day-end pipeline: `day_end_step`, `upkeep`, `supply_shortage`, `trust_penalty_event`, `unit_recovered`, `facility_upgraded`, `slot_advanced`, `night_started`, `day_started`, `autosave` (the app flushes the saver on it).
 
@@ -188,8 +195,9 @@ Campaign {
   inventory: ItemInstance[]
   world { regions{...}, clocks[], threads[], factions{standing}, flags[], spineProgress, startId? }
   missions { offered[], active[], completed[] }
-  rumors[], dms: { [unitId]: Message[] }
-  memory { facts[], chronicle[] }
+  rumors[], dms: { [unitId]: DmMessage[] }, dmMeta?: { [unitId]: { day, sent } }   // P3: the unit's daily "social battery"
+  memory { facts[], chronicle[], promises?[], nextId? }   // P3
+  scene?: SceneRecord, proposals?: PendingProposal[]       // P3: the open scene (transcript stays in the ST chat) and open proposals
   calendar { scheduled[], nightEventsQueue[], nightEvent? /* head entry while the Night slot runs */, pendingScene? /* open talk holding its slot */, shortageStreak? }
   leash { authorizationsLeft, refreshDay, log[] }
   expedition?: ExpeditionState
@@ -214,6 +222,7 @@ Relation {
   flags[]                // e.g. knows_crime, accepted_defect, promise_open
   dailyGain { trust, affinity, attraction }   // for diminishing returns; zeroed at every day rollover
   loyaltyBand: 'steady'|'wavering'|'breaking'  // with hysteresis; initial value from Trust: <10 breaking, <25 wavering, else steady
+  affair?: { as, hiddenFrom[], since }   // P3: a concealed romance until discovered
   marks: MarkInstance[]  // RESERVED in v1 (always empty), see §10 "Marks"; present so no migration is needed later
 }
 ```
@@ -251,7 +260,7 @@ Packs can override by id or `extends` an existing entry. In v1 packs are loaded 
 
 Connection profiles (main, mechanic) · per-call token budgets · intent extraction mode (per exchange / every N / scene end) · sprite mode (native Expressions / mechanic `emotion_pick`) · difficulty (combat difficulty; **easy retry**: rewind lost combat, rewinds not recorded in memory) · show raw values (off: bands only) · mechanics edit lock (on by default: view-only, unlock to edit numbers in UI) · intimacy: romance on/off, explicit scenes allowed on/off (directive to main model; actual content depends on user's model/preset), Desire/Bond defect category on/off, romantic initiative intensity (low/med/high) · UI: phosphor palette (amber/green/white), scanlines, typing animation speed · companion vignettes on/off, generated grunt names on/off · debug mode (show intents, deltas, prompts).
 
-Defaults in code: Desire/Bond defects **off**, show raw values **off**, sprite mode **native**, edit lock **on**. The campaign stores a snapshot of the Desire/Bond setting it was started with (`settings.desireBondDefects`); the engine uses that snapshot, not the global value, when it validates later changes. The edit lock does **not** apply inside the new-campaign wizard (setup is always editable); it does apply to "Re-sync from card" on a running campaign.
+Defaults in code: Desire/Bond defects **off**, show raw values **off**, sprite mode **native**, edit lock **on**; P3: intent extraction **per exchange** (min confidence 0.5), scene pacing 30 exchanges, typing 60 chars/s, romance **on**, explicit scenes **off**, romantic initiative **medium**, unit DMs **on**, chronicle compaction **on**. The campaign stores a snapshot of the Desire/Bond setting it was started with (`settings.desireBondDefects`); the engine uses that snapshot, not the global value, when it validates later changes. The edit lock does **not** apply inside the new-campaign wizard (setup is always editable); it does apply to "Re-sync from card" on a running campaign.
 
 ## 9. Packages
 
@@ -260,7 +269,7 @@ Defaults in code: Desire/Bond defects **off**, show raw values **off**, sprite m
 | P0 | Foundation: toolchain, ST adapter, state & saves, content registries, LLM orchestration, Alius shell | — | implemented |
 | P1 | Campaign setup & character import | P0 | implemented |
 | P2 | Calendar, activities, base & economy | P0, P1 | implemented |
-| P3 | Scenes, relationships, memory, PDA comms | P0–P2 | not started |
+| P3 | Scenes, relationships, memory, PDA comms | P0–P2 | implemented |
 | P4 | Combat, progression, items | P0, P1 (P2 for workshop) | not started |
 | P5 | World map, expeditions, missions, director | P0–P4 | not started |
 | P6 | Dilemmas, disloyalty & the Leash | P0–P5 | not started |

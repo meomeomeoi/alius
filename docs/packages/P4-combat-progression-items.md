@@ -91,3 +91,11 @@ Headless simulator (`npm run sim`) runs N seeded combats for configurable squads
 - **Grunts:** `kind: 'grunt'`, level = rounded average of living units − 1, stats = role base (no growth applied yet), a lite defect (`lite: true`, no arc), a signature drawn from the registry only to satisfy the type (ignore it for grunts), `status` `active` or `reserve`. Death: set `status: 'dead'`; dead units stop eating and stay in `squad` (their ids and designations stay taken).
 - **Stress:** upkeep shortage and rests change `unit.stress` (0–100, clamped); the passive day-end recovery is 1.
 - **Items:** `Unit.equipment` is still empty; the SQUAD tab shows `STANDARD ISSUE — PENDING` until P4 fills it.
+
+## Interfaces already provided by P3 (implemented — use, do not rebuild)
+
+- **Synergies:** `getSynergies(state, reg, unitIds)` (from `engine/relations`) returns `[{ unitId, synergyId }]` for the relationship states the units are in. Core ships the ids `trusted_cover`, `friend_assist`, `confidant_sync`, `kindred_sync`, `spark`, `lover_link`, `devoted_sacrifice`, `rival_edge` in `relationshipStates[].unlocks.synergies`; P4 defines what they do (add the ids it needs to the JSON, never in code).
+- **Relationship feedback after combat:** report who protected or endangered whom as intents (`protected`, `endangered`, `sided_with`, …) through `intents/apply` (it needs an open scene or a DM; the P5 debrief scene is the natural place) — never by writing Trust/Affinity directly. Stress changes are yours; the daily relationship pass adds a `stress_high` mark at Stress ≥ 80 (three marks can push a unit into `obsessed`).
+- **Cut-ins:** `cutIn(host, kind, text)` (`src/ui/scene/cutIn.ts`) is the one-animation hook for combat flourishes.
+- **Commander Crisis:** dispatch `commander/injure { days }`; the app answers `commander_injured` with `relations/commander_injured`, which queues visits from lovers, devoted and dependent units.
+- **Defect social data:** `defects[].relationModifiers`, `socialHooks`, `dmChanceBonus` and `nightEvents` already exist in the schema (see `CONTENT.md`); combat effects of defects stay in your own fields.

@@ -386,7 +386,7 @@ docs/** (Task 15), tests/** mirror src
 - Create: `docs/MANUAL_TEST_P3.md`
 - Test: `tests/build.test.ts` (existing)
 
-- [ ] **Step 1:** `npm run build` → `dist/index.js` and `style.css` change and stay tracked.
-- [ ] **Step 2:** Walk the ten acceptance criteria against test names and record them in `docs/MANUAL_TEST_P3.md` next to the in-SillyTavern steps that cannot be automated (real group generation, sprites, swipe passthrough, typing animation, COMMS unread, night knock, lorebook untouched).
-- [ ] **Step 3:** `npx vitest run` and `npm run typecheck` → all green; put the counts in the final report.
-- [ ] **Step 4: Commit** `chore: rebuild dist and style, P3 docs and manual checklist`.
+- [x] **Step 1:** `npm run build` → `dist/index.js` and `style.css` change and stay tracked.
+- [x] **Step 2:** Walk the ten acceptance criteria against test names and record them in `docs/MANUAL_TEST_P3.md` next to the in-SillyTavern steps that cannot be automated (real group generation, sprites, swipe passthrough, typing animation, COMMS unread, night knock, lorebook untouched).
+- [x] **Step 3:** `npx vitest run` and `npm run typecheck` → all green; put the counts in the final report.
+- [x] **Step 4: Commit** `chore: rebuild dist and style, P3 docs and manual checklist`.

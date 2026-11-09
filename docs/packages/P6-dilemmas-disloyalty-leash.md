@@ -87,3 +87,14 @@ Directives for refusals, desertion intent, post-Leash trauma ("she remembers bei
 - **Shortage trust penalty:** P2 applies −5 Trust to every living unit on every 3rd consecutive shortage day (event `trust_penalty_event`); it does not recompute `loyaltyBand` — recompute in P6 where the band hysteresis lives.
 - **Medbay and defect arcs:** the `medbay` activity stamps `upkeepDay` on a unit's defects whose `arc === 'manage'`; the medbay `arcStageCap` effect (`facilityEffect(state, reg, 'medbay', 'arcStageCap')`) gates arc stages.
 - **Leash crime effects** (`leash_weekly`, `leash_trust_cost`, …) are declared in the crimes content but not interpreted by anything yet.
+
+## Interfaces already provided by P3 (implemented — use, do not rebuild)
+
+- **Loyalty:** `loyaltyBand(state, unitId)` (`steady` / `wavering` / `breaking`, hysteresis on Trust, recomputed after every relationship change and once per day) and `getRelation(state, unitId)`.
+- **Leash log shape:** the `resentful` state counts `leash.log` entries with **`unitId === <the unit>`** (`leashUsesMin: 1` and Trust < 30). Log every Leash use as `{ unitId, kind: 'compel' | 'suppress' | 'terminate', day, … }`; without `unitId` the state never triggers.
+- **Directives:** `app.context.setDirective({ id, text, expiresAfter: 'next_reply' | 'scene' | 'manual' })`; P3 already sets `proposal:<unitId>` (next reply), `night` (scene), `explicit` and `romance_off` (scene). Refusals, desertion intent and post-Leash trauma are yours to set the same way.
+- **Events and consequences:** apply them as intents (`coerced`, `sided_against`, `decision_violated`, … through `intents/apply`) or, outside a scene, with `applyEventToUnit` (`engine/relations/effects`); both run the full modifier chain (value alignment, tags, state and defect modifiers, diminishing returns).
+- **Night entries:** `enqueueNight` (see the P5 note) for desertion attempts and night confrontations; `night/ignore` applies `entry.ignore` as an event from the commander's side.
+- **States P6 reads:** `despises` (attack outcomes), `resentful`, `obsessed`, `dependent`, `unrequited`; their entry/exit conditions are data in `relationshipStates.json`.
+- **Defect arcs:** states list `unlocks.defectArcStages` (`manage`, `cure`, `embrace`); the arc itself is yours.
+- **Marks:** `Relation.marks[]` is still reserved and empty; P3 does not read it.
