@@ -117,7 +117,9 @@ export function finalizeCombat(draft: CampaignState, reg: Registries, rng: Rng, 
         levelUps.push({ unitId: unit.id, level: e.level as number });
       }
     }
-    loot = rollLoot(draft, reg, rng, cs.encounter.lootTableId ?? 'loot_standard', { extraRolls: cs.pendingLootRolls });
+    const tableId = cs.encounter.lootTableId ?? 'loot_standard';
+    // content may have changed under the save: no table, no loot (never a combat that cannot be finalized)
+    loot = reg.lootTables.has(tableId) ? rollLoot(draft, reg, rng, tableId, { extraRolls: cs.pendingLootRolls }) : [];
     if (cs.bankLoot) {
       events.push(...bankLoot(draft, loot));
       banked = true;

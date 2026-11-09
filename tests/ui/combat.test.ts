@@ -37,8 +37,11 @@ function open(enemies = [husk, marksman], cp = 3): CampaignState {
 }
 
 function mount(state: CampaignState | null, over: Partial<CombatScreenCtx> = {}) {
+  const shell = document.createElement('div');
+  shell.id = 'alius-shell';
+  document.body.append(shell);
   const host = document.createElement('div');
-  document.body.append(host);
+  shell.append(host);
   const st = new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' });
   const cur = { state };
   const calls = {
@@ -258,6 +261,14 @@ describe('combat screen', () => {
     const { calls, screen } = mount(open());
     screen.dispose();
     press('g');
+    expect(calls.onAct).not.toHaveBeenCalled();
+  });
+
+  it('keys do nothing once the shell is closed', () => {
+    const { calls } = mount(open());
+    document.getElementById('alius-shell')!.remove();
+    press('g');
+    press('Enter');
     expect(calls.onAct).not.toHaveBeenCalled();
   });
 

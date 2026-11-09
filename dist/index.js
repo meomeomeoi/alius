@@ -74,6 +74,9 @@ function dispatch(state, action, registries) {
   if (!handler2) {
     return { state, events: [{ type: "error", code: "unknown_action", action: action.type }] };
   }
+  if (state.combat && !action.type.startsWith("combat/") && !action.type.startsWith("debug/")) {
+    return { state, events: [{ type: "error", code: "combat_open", message: "A combat is open: finish it first." }] };
+  }
   const draft = structuredClone(state);
   const rng = new Rng(draft.rng);
   try {
@@ -3491,7 +3494,8 @@ function checkStart(state, reg, p) {
   if (enemies.length < 1 || enemies.length > 6) return "An encounter has 1 to 6 enemies.";
   for (const e of enemies) {
     if (!reg.enemies.has(e.enemyId)) return `Unknown enemy "${e.enemyId}".`;
-    if (!Number.isInteger(e.level) || e.level < 1) return `Enemy "${e.enemyId}" needs a level of at least 1.`;
+    if (!Number.isInteger(e.level) || e.level < 1 || e.level > 99) return `Enemy "${e.enemyId}" needs a level from 1 to 99.`;
+    if (e.row !== void 0 && e.row !== "front" && e.row !== "back") return `Enemy "${e.enemyId}" has an unknown row.`;
     for (const a of e.affixes) if (reg.affixes.get(a)?.appliesTo !== "enemy") return `Unknown enemy affix "${a}".`;
   }
   if (p.encounter.lootTableId !== void 0 && !reg.lootTables.has(p.encounter.lootTableId)) return `Unknown loot table "${p.encounter.lootTableId}".`;
@@ -3627,7 +3631,7 @@ function checkOrder(ctx2, orderId, targetCid) {
     if (targetCid !== void 0) return `${orderId} takes no target.`;
   } else {
     target = cs.combatants.find((c) => c.cid === targetCid);
-    if (!target || !isStanding(target)) return "The order needs a standing target.";
+    if (!target || !isStanding(target) || target.side === "enemy" && hasFlag(target, ctx2.reg, "untargetable")) return "The order needs a standing target.";
     if (order.target === "ally" && target.side !== "squad") return "The order targets a squad unit.";
     if (order.target === "enemy" && target.side !== "enemy") return "The order targets an enemy.";
     if (target.breakdown?.ignoresOrders) return `${target.nameKey} ignores orders.`;
@@ -3690,7 +3694,7 @@ function repeatLastOrder(ctx2) {
   if (!order) return;
   if (order.target !== "none") {
     const t = cs.combatants.find((c) => c.cid === last.targetCid);
-    if (!t || !isStanding(t) || hasFlag(t, ctx2.reg, "untargetable") && order.target === "enemy") return;
+    if (!t || !isStanding(t) || hasFlag(t, ctx2.reg, "untargetable") && order.target === "enemy" || t.breakdown?.ignoresOrders) return;
   }
   issueOrder(ctx2, last.orderId, last.targetCid, { free: true });
 }
@@ -3979,7 +3983,8 @@ function finalizeCombat(draft, reg, rng, outcome) {
         levelUps.push({ unitId: unit.id, level: e.level });
       }
     }
-    loot = rollLoot(draft, reg, rng, cs.encounter.lootTableId ?? "loot_standard", { extraRolls: cs.pendingLootRolls });
+    const tableId = cs.encounter.lootTableId ?? "loot_standard";
+    loot = reg.lootTables.has(tableId) ? rollLoot(draft, reg, rng, tableId, { extraRolls: cs.pendingLootRolls }) : [];
     if (cs.bankLoot) {
       events.push(...bankLoot(draft, loot));
       banked = true;
@@ -4089,7 +4094,7 @@ function chooseAction(ctx2, cid) {
           if (target) return { kind: "skill", skillId: u.skill.id, targetCid: target };
         }
       }
-      if (cs.commander && !cs.commander.downed && cs.commander.hp < cs.commander.maxHp) {
+      if (c.side === "squad" && cs.commander && !cs.commander.downed && cs.commander.hp < cs.commander.maxHp) {
         const guard = usable2.find((u) => grantsProtection(u.skill));
         if (guard) return { kind: "skill", skillId: guard.skill.id, targetCid: guard.targets[0] };
       }
@@ -4257,6 +4262,10 @@ function runUntilInput(ctx2) {
       cs.inExtra = true;
     } else {
       cs.extraAction = void 0;
+      if (cs.turnStarted && cs.timeline[cs.turn] && !isStanding(byCid(cs, cs.timeline[cs.turn]))) {
+        finishTurn(ctx2, cs.timeline[cs.turn]);
+        continue;
+      }
       if (!cs.turnStarted) {
         while (cs.turn < cs.timeline.length && !isStanding(byCid(cs, cs.timeline[cs.turn]))) cs.turn += 1;
         if (cs.turn >= cs.timeline.length) {
@@ -9091,6 +9100,7 @@ var isEditable = (t) => {
 };
 function attachCombatKeys(h2) {
   const onKey = (e) => {
+    if (!document.getElementById("alius-shell")) return;
     if (isEditable(e.target) || e.ctrlKey || e.metaKey || e.altKey) return;
     const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
     let handled = true;

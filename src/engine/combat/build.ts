@@ -35,7 +35,8 @@ export function checkStart(state: CampaignState, reg: Registries, p: StartPayloa
   if (enemies.length < 1 || enemies.length > 6) return 'An encounter has 1 to 6 enemies.';
   for (const e of enemies) {
     if (!reg.enemies.has(e.enemyId)) return `Unknown enemy "${e.enemyId}".`;
-    if (!Number.isInteger(e.level) || e.level < 1) return `Enemy "${e.enemyId}" needs a level of at least 1.`;
+    if (!Number.isInteger(e.level) || e.level < 1 || e.level > 99) return `Enemy "${e.enemyId}" needs a level from 1 to 99.`;
+    if (e.row !== undefined && e.row !== 'front' && e.row !== 'back') return `Enemy "${e.enemyId}" has an unknown row.`;
     for (const a of e.affixes) if (reg.affixes.get(a)?.appliesTo !== 'enemy') return `Unknown enemy affix "${a}".`;
   }
   if (p.encounter.lootTableId !== undefined && !reg.lootTables.has(p.encounter.lootTableId)) return `Unknown loot table "${p.encounter.lootTableId}".`;

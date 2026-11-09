@@ -21,6 +21,8 @@ const isEditable = (t: EventTarget | null): boolean => {
 /** Keyboard control of the combat screen (ignored while typing). Returns the remover. */
 export function attachCombatKeys(h: CombatKeyHandlers): () => void {
   const onKey = (e: KeyboardEvent): void => {
+    // the screen lives inside the open shell: with the shell closed the keys belong to SillyTavern
+    if (!document.getElementById('alius-shell')) return;
     if (isEditable(e.target) || e.ctrlKey || e.metaKey || e.altKey) return;
     const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
     let handled = true;

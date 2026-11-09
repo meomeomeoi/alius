@@ -35,7 +35,7 @@ export function checkOrder(ctx: EffectCtx, orderId: string, targetCid?: string):
     if (targetCid !== undefined) return `${orderId} takes no target.`;
   } else {
     target = cs.combatants.find((c) => c.cid === targetCid);
-    if (!target || !isStanding(target)) return 'The order needs a standing target.';
+    if (!target || !isStanding(target) || (target.side === 'enemy' && hasFlag(target, ctx.reg, 'untargetable'))) return 'The order needs a standing target.';
     if (order.target === 'ally' && target.side !== 'squad') return 'The order targets a squad unit.';
     if (order.target === 'enemy' && target.side !== 'enemy') return 'The order targets an enemy.';
     if (target.breakdown?.ignoresOrders) return `${target.nameKey} ignores orders.`;
@@ -112,7 +112,7 @@ export function repeatLastOrder(ctx: EffectCtx): void {
   if (!order) return;
   if (order.target !== 'none') {
     const t = cs.combatants.find((c) => c.cid === last.targetCid);
-    if (!t || !isStanding(t) || hasFlag(t, ctx.reg, 'untargetable') && order.target === 'enemy') return;
+    if (!t || !isStanding(t) || (hasFlag(t, ctx.reg, 'untargetable') && order.target === 'enemy') || t.breakdown?.ignoresOrders) return;
   }
   issueOrder(ctx, last.orderId, last.targetCid, { free: true });
 }

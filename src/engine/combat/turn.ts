@@ -185,6 +185,11 @@ export function runUntilInput(ctx: EffectCtx): void {
       cs.inExtra = true;
     } else {
       cs.extraAction = undefined;
+      // the actor fell during her own action (retaliation, a self-hit): her turn is over
+      if (cs.turnStarted && cs.timeline[cs.turn] && !isStanding(byCid(cs, cs.timeline[cs.turn]))) {
+        finishTurn(ctx, cs.timeline[cs.turn]);
+        continue;
+      }
       if (!cs.turnStarted) {
         while (cs.turn < cs.timeline.length && !isStanding(byCid(cs, cs.timeline[cs.turn]))) cs.turn += 1;
         if (cs.turn >= cs.timeline.length) {

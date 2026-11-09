@@ -33,6 +33,10 @@ export function dispatch(
   if (!handler) {
     return { state, events: [{ type: 'error', code: 'unknown_action', action: action.type }] };
   }
+  // while a combat is open only combat/* (and debug/*) may run: anything else would change what a retry rebuilds
+  if (state.combat && !action.type.startsWith('combat/') && !action.type.startsWith('debug/')) {
+    return { state, events: [{ type: 'error', code: 'combat_open', message: 'A combat is open: finish it first.' }] };
+  }
   const draft = structuredClone(state);
   const rng = new Rng(draft.rng);
   try {

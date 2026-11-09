@@ -94,7 +94,7 @@ export function chooseAction(ctx: EffectCtx, cid: string): PlannedAction {
           if (target) return { kind: 'skill', skillId: u.skill.id, targetCid: target };
         }
       }
-      if (cs.commander && !cs.commander.downed && cs.commander.hp < cs.commander.maxHp) {
+      if (c.side === 'squad' && cs.commander && !cs.commander.downed && cs.commander.hp < cs.commander.maxHp) {
         const guard = usable.find((u) => grantsProtection(u.skill));
         if (guard) return { kind: 'skill', skillId: guard.skill.id, targetCid: guard.targets[0] };
       }
