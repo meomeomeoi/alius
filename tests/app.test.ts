@@ -31,6 +31,7 @@ function fakeShell() {
     tabRenderers: new Map<string, unknown>(),
     registerTab(id: string, render: unknown) { shell.tabRenderers.set(id, render); },
     registerScreen(id: string, render: unknown) { shell.screenRenderers.set(id, render); },
+    setTabBadge() {},
     toast(kind: string, text: string) { toasts.push({ kind, text }); },
     modal: async () => null,
     setPalette() {},
@@ -241,9 +242,10 @@ describe('app', () => {
 
 // ---------------------------------------------------------------------------------------------
 describe('SQUAD, OPS and BASE tabs', () => {
-  it('app registers the squad, ops and base tabs', async () => {
+  it('app registers the squad, ops, base, comms and log tabs and the scene screen', async () => {
     const { shell } = await boot(A);
-    expect([...shell.tabRenderers.keys()].sort()).toEqual(['base', 'ops', 'squad']);
+    expect([...shell.tabRenderers.keys()].sort()).toEqual(['base', 'comms', 'log', 'ops', 'squad']);
+    expect(shell.screenRenderers.has('scene')).toBe(true);
   });
 });
 

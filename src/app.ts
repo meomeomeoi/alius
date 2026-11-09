@@ -2,6 +2,8 @@ import './engine/actions/debug'; // registers debug/* actions
 import './engine/actions/squad'; // registers squad/* actions
 import './engine/actions/calendar'; // registers calendar/*, activity/* and commander/* actions
 import './engine/actions/base'; // registers base/*, roster/* and squad/set_flavor actions
+import './engine/actions/scene'; // registers scene/*, intents/*, proposal/*, memory/* actions and the P3 relation accounting
+import './engine/actions/comms'; // registers dm/*, night/* actions and the defect social hooks
 import './llm/calls/profileImport'; // registers the profile_import call type
 import { generateVignette } from './llm/calls/activityVignette'; // registers the activity_vignette call type
 import { generateGruntFlavor } from './llm/calls/flavor'; // registers the flavor call type
@@ -9,7 +11,13 @@ import type { ContentError, Registries } from './content/types';
 import { emptyRegistries } from './content/types';
 import { dispatch as engineDispatch, type Action, type EngineEvent } from './engine/dispatch';
 import type { CampaignState } from './engine/state/types';
+import { unreadCount } from './engine/dms';
+import { intimacyOf } from './engine/relations/gain';
 import { ContextBuilder } from './llm/context';
+import { runCompaction } from './scene/chronicle';
+import { createComms, type Comms } from './scene/comms';
+import { registerSceneContext } from './scene/context';
+import { createSceneController, type SceneController, type SceneUiEvent, type StartOptions } from './scene/sceneController';
 import { callLlm, type LlmResult } from './llm/orchestrator';
 import { getSettings } from './settings';
 import type { Lorebook, StAdapter } from './st/adapter';
@@ -20,6 +28,11 @@ import { renderSetupScreen } from './ui/setup/setupScreen';
 import { renderSquadTab } from './ui/squad/squadTab';
 import { renderOpsTab } from './ui/ops/opsTab';
 import { renderBaseTab } from './ui/base/baseTab';
+import { renderCommsTab } from './ui/comms/commsTab';
+import { renderLogTab } from './ui/log/logTab';
+import { renderKnock } from './ui/night/knock';
+import { pickLocation } from './ui/scene/locationPicker';
+import { renderSceneScreen, type SceneScreen } from './ui/scene/sceneScreen';
 import type { ActivityRequest } from './engine/activities';
 import { RESYNC_SECTIONS, type ResyncPatch, type ResyncSection } from './engine/actions/squad';
 import { renderCalibration } from './ui/setup/calibration';
@@ -63,6 +76,15 @@ export interface AliusApp {
   /** Credits → supplies. */
   requisition(supplies: number): EngineEvent[];
   setRoster(activeIds: string[]): EngineEvent[];
+  /**
+   * Puts `snap` back as the campaign, but only while the current state is still `expectedCurrent` (nothing else
+   * happened since). Used to undo the extraction of a swiped reply. Returns whether it replaced the state.
+   */
+  restoreSnapshot(snap: CampaignState, expectedCurrent: CampaignState): boolean;
+  /** Scenes (P3): start, send, propose, end. */
+  scene: SceneController;
+  /** PDA DMs and night knocks (P3). */
+  comms: Comms;
 }
 
 export interface AppDeps {
@@ -90,6 +112,164 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     context.apply(st, state, getSettings(st).contextTokenCap);
   }
 
+  registerSceneContext(context, { registries: () => registries, settings: () => getSettings(st) });
+
+  /** The COMMS tab shows how many messages from units are unread. */
+  function syncBadges(): void {
+    shell.setTabBadge('comms', state ? unreadCount(state) : 0);
+  }
+
+  /** The Romance and initiative settings are global; the pure engine reads them from the campaign. */
+  function syncIntimacy(): void {
+    if (!state || load.kind !== 'ok') return;
+    const s = getSettings(st);
+    const cur = intimacyOf(state);
+    if (cur.romance === s.romance && cur.initiative === s.romanticInitiative) return;
+    api.dispatch({ type: 'campaign/set_intimacy', payload: { romance: s.romance, initiative: s.romanticInitiative } }, { expectChatId: st.getActiveChat()?.chatId });
+  }
+
+  let sceneScreen: SceneScreen | null = null;
+  /** True while the scene screen (or the night knock) is what the shell shows. */
+  let onSceneScreen = false;
+  const sceneApp = {
+    dispatch: (a: Action, o?: { expectChatId?: string }) => api.dispatch(a, o),
+    current: () => api.current(),
+    context,
+    refreshContext: applyContext,
+  };
+  const routeUi = (e: SceneUiEvent): void => sceneScreen?.handle(e);
+  const sceneDeps = {
+    st,
+    app: sceneApp,
+    restore: (before: CampaignState, expected: CampaignState) => api.restoreSnapshot(before, expected),
+    registries: () => registries,
+    settings: () => getSettings(st),
+    toast: (kind: 'info' | 'warn' | 'error', text: string) => toast(kind, text),
+    onUi: routeUi,
+  };
+  const scene = createSceneController(sceneDeps);
+  const comms = createComms({ ...sceneDeps, scene });
+
+  function showScene(): void {
+    onSceneScreen = true;
+    shell.showScreen('scene');
+  }
+
+  /** Where the player lands after a scene or a knock: the night knock if one is waiting, else the PDA. */
+  function leaveScene(): void {
+    sceneScreen?.dispose();
+    sceneScreen = null;
+    if (state && !state.scene && state.slot === 'night' && state.calendar.nightEvent) {
+      showScene();
+      return;
+    }
+    onSceneScreen = false;
+    shell.showScreen('pda');
+  }
+
+  /** After a (re)load: pick up an open scene, or leave the scene screen of another chat. */
+  function adoptScene(): void {
+    sceneScreen?.dispose();
+    sceneScreen = null;
+    if (state?.scene) {
+      scene.resume();
+      showScene();
+    } else if (onSceneScreen) {
+      onSceneScreen = false;
+      shell.showScreen('pda');
+    }
+  }
+
+  async function beginScene(opts: StartOptions): Promise<boolean> {
+    const chatId = st.getActiveChat()?.chatId;
+    const ok = await scene.start(opts);
+    if (!ok) {
+      // an activity talk still holds its slot if the scene never opened: release it
+      if (opts.origin === 'activity' && state?.calendar.pendingScene && !state.scene) {
+        api.dispatch({ type: 'calendar/cancel_scene', payload: {} }, { expectChatId: chatId });
+      }
+      return false;
+    }
+    showScene();
+    shell.open();
+    return true;
+  }
+
+  /** `talk`: where, and who else? Cancelling gives the slot back. */
+  async function offerScene(unitId: string): Promise<void> {
+    const chatId = st.getActiveChat()?.chatId;
+    if (!state) return;
+    const pick = await pickLocation((o) => shell.modal(o), { registries, state, firstUnitId: unitId, candidates: state.squad });
+    if (st.getActiveChat()?.chatId !== chatId) return;
+    if (!pick) {
+      api.dispatch({ type: 'calendar/cancel_scene', payload: {} }, { expectChatId: chatId });
+      return;
+    }
+    await beginScene({ locationId: pick.locationId, participants: pick.participants, origin: 'activity' });
+  }
+
+  /** After a group meal: an optional scene with up to three of the squad that does not use a slot. */
+  async function offerGroupScene(): Promise<void> {
+    const chatId = st.getActiveChat()?.chatId;
+    const s = state;
+    if (!s) return;
+    const named = (ids: string[]) => ids.map((id) => s.squad.find((u) => u.id === id)).filter((u) => u && u.kind === 'named' && u.status !== 'dead' && u.status !== 'deserted' && u.status !== 'terminated');
+    const pool = [...named(s.roster.activeIds), ...named(s.squad.map((u) => u.id))];
+    const ids = [...new Set(pool.map((u) => u!.id))].slice(0, 3);
+    if (ids.length === 0) return;
+    const answer = await shell.modal({
+      title: 'Linger at the table?',
+      body: 'The squad lingers over the meal. Talk with them? This does not use a slot.',
+      actions: [{ label: 'Talk', value: 'yes' }, { label: 'Skip', value: 'no' }],
+    });
+    if (answer !== 'yes' || st.getActiveChat()?.chatId !== chatId) return;
+    await beginScene({ locationId: 'mess_hall', participants: ids, origin: 'mess', consumesSlot: false });
+  }
+
+  /** What the events of one dispatch set in motion, after it has been committed. */
+  function followUps(events: EngineEvent[]): void {
+    const chatId = st.getActiveChat()?.chatId;
+    const has = (t: string) => events.some((e) => e.type === t);
+    const warn = (what: string) => (e: unknown) => console.warn(`[Alius] ${what} failed`, e);
+    queueMicrotask(() => {
+      if (st.getActiveChat()?.chatId !== chatId) return;
+      if (has('commander_injured')) api.dispatch({ type: 'relations/commander_injured', payload: {} }, { expectChatId: chatId });
+      if (has('night_started') && state?.slot === 'night' && !state.scene) {
+        showScene();
+        shell.open();
+      }
+      if (has('slot_advanced')) void comms.onSlotAdvanced().catch(warn('unit DMs'));
+      if (has('day_started')) void runCompaction({ st, app: sceneApp, settings: () => getSettings(st) }).catch(warn('chronicle compaction'));
+    });
+  }
+
+  /** The scene screen, or the night knock when the Night slot waits for an answer. */
+  function renderSceneView(host: HTMLElement): void {
+    sceneScreen?.dispose();
+    sceneScreen = null;
+    const s = state;
+    if (s?.scene) {
+      sceneScreen = renderSceneScreen(host, {
+        controller: scene, getState: () => state, registries, st, settings: () => getSettings(st), onEnded: leaveScene,
+      });
+      return;
+    }
+    const entry = s && s.slot === 'night' ? s.calendar.nightEvent : undefined;
+    if (s && entry) {
+      renderKnock(host, {
+        entry, unitName: s.squad.find((u) => u.id === entry.unitId)?.displayName ?? 'Someone',
+        onOpen: () => void comms.openNight().then(() => { if (state?.scene) showScene(); }),
+        onIgnore: () => {
+          comms.ignoreNight();
+          leaveScene();
+        },
+      });
+      return;
+    }
+    host.append(h('section', { class: 'alius-section' }, h('p', {}, 'NO SCENE OPEN'),
+      h('button', { type: 'button', class: 'alius-btn', onclick: leaveScene }, '[ BACK ]')));
+  }
+
   /** Re-reads the campaign of the open chat. */
   function reload(): void {
     saver?.dispose();
@@ -98,6 +278,14 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     state = load.kind === 'ok' ? load.state : null;
     if (load.kind === 'ok') saver = createSaver(st, load.chatId);
     if (load.kind === 'readonly') toast('warn', `Alius campaign in this chat is read-only: ${load.reason}`);
+  }
+
+  /** Everything that follows a (re)load of the campaign: context, badge, scene and the intimacy mirror. */
+  function afterLoad(): void {
+    applyContext();
+    syncBadges();
+    adoptScene();
+    syncIntimacy();
   }
 
   function replaceState(next: CampaignState): void {
@@ -114,6 +302,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     saver!.save(next);
     void saver!.flush();
     applyContext();
+    syncBadges();
     shell.refresh();
   }
 
@@ -258,7 +447,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     // 6. land on Day 1
     endSetup();
     reload();
-    applyContext();
+    afterLoad();
     shell.showScreen('pda');
     shell.showTab('squad');
     toast('info', 'Deployment confirmed. Day 1, Morning.');
@@ -424,9 +613,6 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         case 'unit_recovered':
           toast('info', `${state?.squad.find((u) => u.id === e.unitId)?.displayName ?? 'A unit'} has recovered.`);
           break;
-        case 'scene_requested':
-          toast('info', 'Scenes are not available yet; conversations arrive with a later update.');
-          break;
         case 'day_started':
           toast('info', `Day ${String(e.day)}.`);
           break;
@@ -451,6 +637,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     replaceState,
     getContentErrors: () => contentErrors,
     debugTools,
+    onSettingsChanged: syncIntimacy,
   });
 
   shell.registerTab('squad', (host) =>
@@ -484,9 +671,34 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     }),
   );
 
+  shell.registerTab('comms', (host) =>
+    renderCommsTab(host, {
+      getState: () => state,
+      registries,
+      onSend: (unitId, text) => void comms.send(unitId, text),
+      onRead: (unitId) => {
+        const unit = state?.dms[unitId];
+        if (unit?.some((m) => m.from !== 'commander' && !m.read)) api.dispatch({ type: 'dm/read', payload: { unitId } }, { expectChatId: st.getActiveChat()?.chatId });
+      },
+      onAnswer: (proposalId, answer) => void act({ type: 'proposal/answer', payload: { proposalId, answer } }),
+    }),
+  );
+  shell.registerTab('log', (host) => renderLogTab(host, { getState: () => state }));
+  shell.registerScreen('scene', renderSceneView, {
+    refresh: () => {
+      if (state?.scene && sceneScreen) {
+        sceneScreen.refresh();
+        return true;
+      }
+      return false;
+    },
+  });
+
   const api: AliusApp = {
     context,
     shell,
+    scene,
+    comms,
     refreshContext: applyContext,
     replaceState,
     openSetup,
@@ -496,8 +708,9 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     async performActivity(req) {
       const chatId = st.getActiveChat()?.chatId;
       const events = act({ type: 'activity/do', payload: req });
-      // no scene module exists yet (P3): release the held slot so the day is not locked
-      if (events.some((e) => e.type === 'scene_requested')) api.dispatch({ type: 'calendar/cancel_scene', payload: {} }, { expectChatId: chatId });
+      const requested = events.find((e) => e.type === 'scene_requested');
+      if (requested) await offerScene(String(requested.unitId));
+      else if (events.some((e) => e.type === 'group_scene_offered')) await offerGroupScene();
       const done = events.find((e) => e.type === 'activity_done');
       const settings = getSettings(st);
       if (done?.vignette !== true || !settings.activityFlavor || !state) return events;
@@ -579,19 +792,22 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       }
 
       reload();
-      applyContext();
+      afterLoad();
 
       if (!started) {
         started = true;
         st.on('chat_changed', () => {
           reload();
-          applyContext();
+          afterLoad();
           shell.refresh();
         });
         st.on('message_received', () => {
           context.onReplyReceived();
           applyContext();
         });
+        // a swiped or deleted reply: undo its extraction if it was the last one applied
+        st.on('message_swiped', (i) => scene.onSwipe(Number(i)));
+        st.on('message_deleted', (i) => scene.onSwipe(Number(i)));
       }
     },
 
@@ -615,8 +831,21 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       }
       reportEvents(r.events);
       applyContext();
+      syncBadges();
       shell.refresh();
+      followUps(r.events);
       return r.events;
+    },
+
+    restoreSnapshot(snap, expectedCurrent) {
+      if (!state || state !== expectedCurrent || load.kind !== 'ok') return false;
+      state = snap;
+      load = { kind: 'ok', state: snap, chatId: load.chatId };
+      saver?.save(snap);
+      applyContext();
+      syncBadges();
+      shell.refresh();
+      return true;
     },
 
     async initCampaign() {
@@ -629,7 +858,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         return;
       }
       reload();
-      applyContext();
+      afterLoad();
       shell.refresh();
       toast('info', 'Alius campaign initialized.');
     },

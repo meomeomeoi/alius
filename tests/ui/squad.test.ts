@@ -131,9 +131,10 @@ describe('SQUAD tab', () => {
     expect(raw).not.toContain('MERCY: HIGH');
   });
 
-  it('relationship axes are not shown', () => {
-    const t = render().host.textContent!;
-    expect(t).not.toMatch(/TRUST|AFFINITY|ATTRACTION/);
+  it('relationship axes are shown as bands, never as numbers (P3 replaced the P1 "hidden" rule)', () => {
+    const t = render().host.querySelector('.alius-relation')!.textContent!;
+    expect(t).toMatch(/TRUST \w+ · AFFINITY \w+ · ATTRACTION \w+/);
+    expect(t).not.toMatch(/\d/);
   });
 
   it('sprite falls back to avatar when no neutral sprite', async () => {
@@ -287,3 +288,34 @@ describe('grunt unit block', () => {
     expect(named.textContent).toContain('SIGNATURE');
   });
 });
+
+describe('relationship line', () => {
+  it('named unit shows state and bands', () => {
+    const s = campaign();
+    Object.assign(s.relations[s.squad[0].id], { stateId: 'friend', trust: 51, affinity: 33, attraction: 12 });
+    const { host } = render({ state: s });
+    const line = host.querySelector('.alius-relation')!.textContent!;
+    expect(line).toContain('FRIEND');
+    expect(line).toContain('TRUST SOLID');
+    expect(line).toContain('AFFINITY WARM');
+    expect(line).toContain('ATTRACTION FAINT');
+    expect(line).not.toMatch(/\b(51|33|12)\b/);
+  });
+
+  it('raw values appear with showRawValues; attraction is hidden when romance is off', () => {
+    const s = campaign();
+    Object.assign(s.relations[s.squad[0].id], { trust: 51, affinity: 33, attraction: 12 });
+    expect(render({ state: s, raw: true }).host.querySelector('.alius-relation')!.textContent).toContain('TRUST SOLID (51)');
+    s.settings.intimacy = { romance: false, initiative: 'med' };
+    expect(render({ state: s }).host.querySelector('.alius-relation')!.textContent).not.toContain('ATTRACTION');
+  });
+
+  it('a grunt shows trust only', () => {
+    const s = campaign();
+    s.squad[0].kind = 'grunt';
+    const line = render({ state: s }).host.querySelector('.alius-relation')!.textContent!;
+    expect(line).toContain('TRUST');
+    expect(line).not.toContain('AFFINITY');
+  });
+});
+

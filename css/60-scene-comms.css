@@ -238,3 +238,116 @@
   #alius-shell .alius-speaker,
   #alius-shell .alius-cutin { animation: none; }
 }
+
+/* Tab badge, COMMS, LOG and the night knock */
+#alius-shell .alius-badge {
+  display: inline-block;
+  min-width: 1.4em;
+  padding: 0 4px;
+  text-align: center;
+  color: var(--alius-bg);
+  background: var(--alius-fg);
+  font-weight: bold;
+}
+
+#alius-shell .alius-comms-body {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+#alius-shell .alius-threads {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 10em;
+}
+
+#alius-shell .alius-contact.is-open {
+  background: var(--alius-fg);
+  color: var(--alius-bg);
+}
+
+#alius-shell .alius-dot {
+  color: var(--alius-accent);
+}
+
+#alius-shell .alius-contact.is-open .alius-dot {
+  color: var(--alius-bg);
+}
+
+#alius-shell .alius-thread {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+#alius-shell .alius-msg {
+  max-width: 80%;
+  padding: 4px 8px;
+  border: 1px solid var(--alius-dim);
+}
+
+#alius-shell .alius-msg.is-commander {
+  align-self: flex-end;
+  color: var(--alius-dim);
+}
+
+#alius-shell .alius-msg.is-unit {
+  align-self: flex-start;
+  border-color: var(--alius-fg);
+}
+
+#alius-shell .alius-msg-meta {
+  display: block;
+  font-size: 12px;
+  color: var(--alius-dim);
+}
+
+#alius-shell .alius-msg-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+#alius-shell .alius-post {
+  padding: 8px 0;
+  border-bottom: 1px dashed var(--alius-dim);
+}
+
+#alius-shell .alius-post-head {
+  color: var(--alius-accent);
+  letter-spacing: 0.08em;
+}
+
+#alius-shell .alius-post.is-week .alius-post-head,
+#alius-shell .alius-post.is-day .alius-post-head {
+  font-weight: bold;
+}
+
+#alius-shell .alius-post-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+#alius-shell .alius-knock {
+  text-align: center;
+}
+
+#alius-shell .alius-knock .alius-ascii {
+  display: inline-block;
+  text-align: left;
+  animation: alius-knock 1.2s ease-in-out infinite;
+}
+
+@keyframes alius-knock {
+  0%, 100% { transform: none; }
+  10%, 30% { transform: translateX(-2px); }
+  20%, 40% { transform: translateX(2px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #alius-shell .alius-knock .alius-ascii { animation: none; }
+}

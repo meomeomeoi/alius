@@ -165,4 +165,14 @@ describe('OPS tab', () => {
     const ro = render({ state: null, load: { kind: 'readonly', reason: 'broken', chatId: 'c' } });
     expect(ro.host.textContent).toContain('READ-ONLY');
   });
+
+  it('talk companion list excludes grunts, other activities keep them', () => {
+    const s = campaign(reg, 4);
+    s.squad.find((u) => u.id === 'unit_dee')!.kind = 'grunt';
+    const { card } = render({ state: s });
+    const talk = card('talk').querySelector<HTMLSelectElement>('select[name="companion"]')!;
+    expect([...talk.options].map((o) => o.value)).toEqual(['', 'unit_ann', 'unit_bea', 'unit_cat']);
+    const rest = card('rest').querySelector<HTMLSelectElement>('select[name="companion"]')!;
+    expect([...rest.options].map((o) => o.value)).toContain('unit_dee');
+  });
 });

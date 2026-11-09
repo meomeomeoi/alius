@@ -1,11 +1,12 @@
 import type { Registries } from '../../content/types';
 import { intimacyOf } from '../../engine/relations/gain';
 import { ROMANTIC_PROPOSALS } from '../../engine/relations/vocab';
-import type { CampaignState, PendingProposal, Unit } from '../../engine/state/types';
+import type { CampaignState, Unit } from '../../engine/state/types';
 import type { SceneController, SceneUiEvent } from '../../scene/sceneController';
 import type { AliusSettings } from '../../settings';
 import type { ChatMessage, StAdapter } from '../../st/adapter';
 import { h } from '../dom';
+import { drawProposalChips, kindLabel } from '../proposalChips';
 import { cutIn } from './cutIn';
 
 export interface SceneScreenCtx {
@@ -31,7 +32,7 @@ const PULSE_MS = 1500;
 const TICK_MS = 50;
 const NON_ROMANTIC_KINDS = ['friendship_deepen', 'confide', 'rivalry', 'reconcile', 'break_up'] as const;
 const ALL_KINDS = [...NON_ROMANTIC_KINDS, ...ROMANTIC_PROPOSALS] as const;
-const label = (s: string): string => s.replace(/_/g, ' ').toUpperCase();
+const label = kindLabel;
 
 interface Segment { text: string; em: boolean }
 /** Splits `*emphasis*` out of model text; nothing here ever becomes markup. */
@@ -146,18 +147,8 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
   }
 
   function drawChips(s: CampaignState): void {
-    chips.replaceChildren();
     const ids = new Set(s.scene?.participants ?? []);
-    for (const p of (s.proposals ?? []) as PendingProposal[]) {
-      if (p.channel !== 'scene' || !ids.has(p.unitId)) continue;
-      const name = (s.squad.find((u) => u.id === p.unitId)?.displayName ?? p.unitId).toUpperCase();
-      const buttons: Array<[string, Parameters<SceneController['answer']>[1]]> = p.needsDisclosure
-        ? [['[OPENLY]', 'accept'], ['[SECRETLY]', 'accept_secret'], ['[NOT NOW]', 'not_now']]
-        : p.from === 'commander' ? [['[NOT NOW]', 'not_now']] : [['[ACCEPT]', 'accept'], ['[DECLINE]', 'decline'], ['[NOT NOW]', 'not_now']];
-      chips.append(h('div', { class: 'alius-chip-group', 'data-proposal': p.id },
-        h('span', { class: 'alius-chip-label' }, p.from === 'unit' ? `${name} PROPOSES: ${label(p.kind)}` : `${name}: ${label(p.kind)} — OPENLY OR SECRETLY?`),
-        ...buttons.map(([text, answer]) => h('button', { type: 'button', class: 'alius-btn alius-chip', onclick: () => controller.answer(p.id, answer) }, text))));
-    }
+    drawProposalChips(chips, s, (p) => p.channel === 'scene' && ids.has(p.unitId), (id, answer) => controller.answer(id, answer));
   }
 
   function stopTyping(): void {

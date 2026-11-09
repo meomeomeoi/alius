@@ -49,7 +49,7 @@ function scriptedShell() {
   const shell = {
     open() {}, close() {}, isOpen: () => false, showScreen() {}, showTab() {},
     registerTab(id: string, r: (host: HTMLElement) => void) { tabRenderers.set(id, r); },
-    registerScreen() {},
+    registerScreen() {}, setTabBadge() {},
     toast(kind: string, text: string) { toasts.push({ kind, text }); },
     async modal(opts: ModalOpts) {
       modals.push(opts);

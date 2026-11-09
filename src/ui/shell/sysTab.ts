@@ -61,11 +61,22 @@ export function renderSysTab(host: HTMLElement, ctx: SysCtx): void {
     return el;
   };
 
-  const numberInput = (name: string, value: number, commit: (n: number) => number) => {
-    const el = h('input', { type: 'number', name, min: '0', step: '1', value: String(value), class: 'alius-input alius-num' }) as HTMLInputElement;
+  const numberInput = (name: string, value: number, commit: (n: number) => number, attrs: Record<string, string> = {}) => {
+    const el = h('input', { type: 'number', name, min: '0', step: '1', value: String(value), class: 'alius-input alius-num', ...attrs }) as HTMLInputElement;
     el.addEventListener('change', () => {
       const n = Number(el.value);
       el.value = String(Number.isFinite(n) ? commit(Math.trunc(n)) : commit(NaN));
+    });
+    return el;
+  };
+
+  /** A decimal setting (0.05 steps); a value the settings reject snaps back to what is stored. */
+  const decimalInput = (name: keyof AliusSettings, value: number, attrs: Record<string, string>) => {
+    const el = h('input', { type: 'number', name, step: '0.05', value: String(value), class: 'alius-input alius-num', ...attrs }) as HTMLInputElement;
+    el.addEventListener('change', () => {
+      const n = Number(el.value);
+      const next = apply(Number.isFinite(n) ? ({ [name]: n } as Partial<AliusSettings>) : {});
+      el.value = String(next[name]);
     });
     return el;
   };
@@ -107,6 +118,18 @@ export function renderSysTab(host: HTMLElement, ctx: SysCtx): void {
     field('Companion vignettes (main model)', checkbox('activityFlavor', settings.activityFlavor)),
     field('Generated grunt names', checkbox('gruntFlavor', settings.gruntFlavor)),
     field('Sprite mode', select('spriteMode', [['native', 'Native Expressions'], ['emotion_pick', 'Mechanic emotion pick']], settings.spriteMode)),
+    h('h3', {}, 'Conversations'),
+    field('Read the conversation', select('intentMode', [['exchange', 'after every exchange'], ['every_n', 'every N exchanges'], ['scene_end', 'at scene end only']], settings.intentMode)),
+    field('Every N exchanges (2–10)', numberInput('intentEveryN', settings.intentEveryN, (n) => apply({ intentEveryN: n }).intentEveryN, { min: '2', max: '10' })),
+    field('Minimum confidence (0–1)', decimalInput('intentMinConfidence', settings.intentMinConfidence, { min: '0', max: '1' })),
+    field('Scene pacing (exchanges, ≥5)', numberInput('scenePacing', settings.scenePacing, (n) => apply({ scenePacing: n }).scenePacing, { min: '5' })),
+    field('Typing speed (chars/s, 0 = instant)', numberInput('typingSpeed', settings.typingSpeed, (n) => apply({ typingSpeed: n }).typingSpeed)),
+    field('Units may start DMs', checkbox('unitDms', settings.unitDms)),
+    field('Compact the chronicle with the mechanic model', checkbox('chronicleCompaction', settings.chronicleCompaction)),
+    h('h3', {}, 'Intimacy'),
+    field('Romance', checkbox('romance', settings.romance)),
+    field('Explicit scenes allowed', checkbox('explicitContent', settings.explicitContent)),
+    field('Romantic initiative', select('romanticInitiative', [['low', 'low'], ['med', 'medium'], ['high', 'high']], settings.romanticInitiative)),
     h('h3', {}, 'Developer'),
     field('Debug mode', checkbox('debug', settings.debug, true)),
     field('Mechanics edit lock', checkbox('editLock', settings.editLock, true)),

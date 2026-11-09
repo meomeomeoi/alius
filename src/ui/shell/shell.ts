@@ -22,7 +22,12 @@ export interface ShellApi {
   showTab(id: TabId): void;
   registerTab(id: TabId, render: (host: HTMLElement) => void): void;
   /** Registers (or replaces) the renderer of a full screen; re-renders it if it is the current one. */
-  registerScreen(id: ScreenId, render: (host: HTMLElement) => void): void;
+  registerScreen(
+    id: ScreenId, render: (host: HTMLElement) => void,
+    opts?: { /** Updates the screen in place on `refresh()`; return false to have it rendered from scratch. */ refresh?: (host: HTMLElement) => boolean },
+  ): void;
+  /** Shows a small unread count on a tab (0 clears it). */
+  setTabBadge(id: TabId, count: number): void;
   toast(kind: ToastKind, text: string): void;
   modal(opts: ModalOpts): Promise<string | null>;
   setPalette(p: 'amber' | 'green' | 'white'): void;
@@ -41,6 +46,8 @@ export interface ShellDeps {
   getContentErrors?: () => ContentError[];
   /** Extra buttons for the SYS debug panel (e.g. inject a test directive). */
   debugTools?: Array<{ label: string; run: () => void }>;
+  /** Called after the SYS tab changed a setting (the app mirrors intimacy settings into the campaign). */
+  onSettingsChanged?: () => void;
 }
 
 const PANEL_ID = 'alius-panel';
@@ -57,6 +64,10 @@ export function createShell(deps: ShellDeps): ShellApi {
   const router = createRouter();
   const tabRenderers = new Map<TabId, (host: HTMLElement) => void>();
   let tab: TabId = 'squad';
+  const badges = new Map<TabId, number>();
+  const screenRefresh = new Map<ScreenId, (host: HTMLElement) => boolean>();
+  /** The screen the view currently shows, rendered by `renderView` (so `refresh` may update it in place). */
+  let renderedScreen: ScreenId | null = null;
 
   let root: HTMLElement | null = null;
   let previousFocus: HTMLElement | null = null;
@@ -112,7 +123,10 @@ export function createShell(deps: ShellDeps): ShellApi {
         debugTools: deps.debugTools,
         toast,
         modal: (o) => api.modal(o),
-        onSettingsChanged: applySettings,
+        onSettingsChanged: () => {
+          applySettings();
+          deps.onSettingsChanged?.();
+        },
       });
       return;
     }
@@ -129,6 +143,7 @@ export function createShell(deps: ShellDeps): ShellApi {
 
   router.register('pda', (host) => {
     tabBar = createTabBar({ onSelect: selectTab, panelId: PANEL_ID });
+    for (const [id, n] of badges) tabBar.setBadge(id, n);
     panel = h('div', { class: 'alius-screen', id: PANEL_ID, role: 'tabpanel', tabindex: '0' });
     statusHost = h('div', { class: 'alius-status' });
     host.append(statusHost, tabBar.element, panel);
@@ -143,6 +158,7 @@ export function createShell(deps: ShellDeps): ShellApi {
     panel = null;
     statusHost = null;
     router.render(view);
+    renderedScreen = router.current();
   }
 
   function open(): void {
@@ -203,6 +219,7 @@ export function createShell(deps: ShellDeps): ShellApi {
     tabBar = null;
     panel = null;
     statusHost = null;
+    renderedScreen = null;
   }
 
   const api: ShellApi = {
@@ -227,9 +244,16 @@ export function createShell(deps: ShellDeps): ShellApi {
       tabRenderers.set(id, render);
       if (isOpen() && router.current() === 'pda' && tab === id) renderTab();
     },
-    registerScreen(id, render) {
+    registerScreen(id, render, opts) {
       router.register(id, render);
+      if (opts?.refresh) screenRefresh.set(id, opts.refresh);
+      else screenRefresh.delete(id);
       if (isOpen() && router.current() === id) renderView();
+    },
+    setTabBadge(id, count) {
+      if (count > 0) badges.set(id, count);
+      else badges.delete(id);
+      tabBar?.setBadge(id, count);
     },
     toast,
     modal(opts) {
@@ -247,7 +271,11 @@ export function createShell(deps: ShellDeps): ShellApi {
         renderStatus();
         renderTab();
       }
-      else renderView();
+      else {
+        const inPlace = screenRefresh.get(router.current());
+        if (inPlace && renderedScreen === router.current() && inPlace(view)) return;
+        renderView();
+      }
     },
     destroy() {
       close();

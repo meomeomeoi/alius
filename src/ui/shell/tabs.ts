@@ -43,6 +43,16 @@ export function createTabBar(opts: { onSelect: (id: TabId) => void; panelId: str
 
   return {
     element: bar,
+    /** Shows a small count on a tab (0 clears it); counts above 99 read `99+`. */
+    setBadge(id: TabId, n: number): void {
+      const btn = buttons.get(id);
+      if (!btn) return;
+      btn.querySelector('.alius-badge')?.remove();
+      if (n > 0) {
+        btn.append(' ', h('span', { class: 'alius-badge' }, n > 99 ? '99+' : String(n)));
+        btn.setAttribute('aria-label', `${TAB_LABELS[id]}, ${n > 99 ? '99+' : n} unread`);
+      } else btn.removeAttribute('aria-label');
+    },
     setSelected(id: TabId): void {
       for (const [tid, btn] of buttons) {
         const on = tid === id;

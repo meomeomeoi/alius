@@ -39,7 +39,7 @@ function scriptedShell() {
   const shell = {
     open() {}, close() {}, isOpen: () => false, showScreen() {}, showTab() {},
     registerTab(id: string, r: (host: HTMLElement) => void) { tabRenderers.set(id, r); },
-    registerScreen() {},
+    registerScreen() {}, setTabBadge() {},
     toast(kind: string, text: string) { toasts.push({ kind, text }); },
     async modal() { return null; },
     setPalette() {}, refresh, destroy() {},
@@ -127,12 +127,12 @@ describe('day flow in the app', () => {
     expect(t.toasts.some((x) => x.kind === 'story')).toBe(false);
   });
 
-  it('talk reports that scenes are not available yet and keeps the slot', async () => {
+  it('talk with a cancelled location picker keeps the slot and does not lock the day', async () => {
     const t = await boot();
-    await t.app.performActivity({ activityId: 'talk', companionId: 'unit_rhea' });
+    await t.app.performActivity({ activityId: 'talk', companionId: 'unit_rhea' }); // the scripted modal answers null: cancelled
     expect(t.state().slot).toBe('morning');
-    expect(t.toasts.some((x) => x.kind === 'info' && /scene/i.test(x.text))).toBe(true);
-    // without a scene module nothing would ever end the conversation: the day must not stay locked
+    expect(t.toasts.some((x) => /not available yet/i.test(x.text))).toBe(false);
+    expect(t.state().scene).toBeUndefined();
     expect(t.state().calendar.pendingScene).toBeUndefined();
     await t.app.performActivity({ activityId: 'rest' });
     expect(t.state().slot).toBe('afternoon');

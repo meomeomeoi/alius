@@ -353,3 +353,101 @@ describe('status header in the PDA', () => {
     expect(document.querySelector('#alius-shell .alius-status')).toBeNull();
   });
 });
+
+describe('P3 shell additions', () => {
+  const comms = () => document.querySelector<HTMLElement>('#alius-shell #alius-tab-comms')!;
+
+  it('setTabBadge shows and clears a count', () => {
+    const { shell } = setup();
+    shell.open();
+    shell.setTabBadge('comms', 3);
+    expect(comms().querySelector('.alius-badge')!.textContent).toBe('3');
+    expect(comms().getAttribute('aria-label')).toBe('COMMS, 3 unread');
+    shell.setTabBadge('comms', 0);
+    expect(comms().querySelector('.alius-badge')).toBeNull();
+    expect(comms().getAttribute('aria-label')).toBeNull();
+  });
+
+  it('a badge set before the shell opens, and one that survives a re-render', () => {
+    const { shell } = setup();
+    shell.setTabBadge('comms', 2);
+    shell.open();
+    expect(comms().querySelector('.alius-badge')!.textContent).toBe('2');
+    shell.showScreen('setup');
+    shell.showScreen('pda');
+    expect(comms().querySelector('.alius-badge')!.textContent).toBe('2');
+    shell.setTabBadge('comms', 120);
+    expect(comms().querySelector('.alius-badge')!.textContent).toBe('99+');
+  });
+
+  it('a screen with a refresh handler is updated in place, and re-rendered when the handler declines', () => {
+    const { shell } = setup();
+    let renders = 0;
+    let refreshes = 0;
+    let handled = true;
+    shell.registerScreen('scene', (host) => { renders++; host.append(document.createElement('p')); }, { refresh: () => { refreshes++; return handled; } });
+    shell.open();
+    shell.showScreen('scene');
+    expect([renders, refreshes]).toEqual([1, 0]);
+    const p = document.querySelector('#alius-shell .alius-view p')!;
+    shell.refresh();
+    expect([renders, refreshes]).toEqual([1, 1]);
+    expect(document.querySelector('#alius-shell .alius-view p')).toBe(p);
+    handled = false;
+    shell.refresh();
+    expect([renders, refreshes]).toEqual([2, 2]);
+    shell.showScreen('scene'); // an explicit visit always renders fresh
+    expect(renders).toBe(3);
+  });
+
+  it('SYS reports a changed setting to the app', () => {
+    const onSettingsChanged = vi.fn();
+    const { shell } = setup({ extra: { onSettingsChanged } });
+    shell.open();
+    shell.showTab('sys');
+    const box = document.querySelector<HTMLInputElement>('#alius-shell input[name="romance"]')!;
+    box.checked = false;
+    box.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(onSettingsChanged).toHaveBeenCalled();
+  });
+
+  it('P3 settings fields round-trip', () => {
+    const { shell, st } = setup();
+    shell.open();
+    shell.showTab('sys');
+    const input = (name: string) => document.querySelector<HTMLInputElement | HTMLSelectElement>(`#alius-shell [name="${name}"]`)!;
+    const change = (el: HTMLInputElement | HTMLSelectElement, value: string) => { el.value = value; el.dispatchEvent(new Event('change', { bubbles: true })); };
+    const toggle = (el: HTMLInputElement) => { el.checked = !el.checked; el.dispatchEvent(new Event('change', { bubbles: true })); };
+    expect((input('intentMode') as HTMLSelectElement).value).toBe('exchange');
+    change(input('intentMode'), 'every_n');
+    change(input('intentEveryN'), '5');
+    change(input('intentMinConfidence'), '0.3');
+    change(input('scenePacing'), '12');
+    change(input('typingSpeed'), '0');
+    change(input('romanticInitiative'), 'high');
+    toggle(input('romance') as HTMLInputElement);
+    toggle(input('explicitContent') as HTMLInputElement);
+    toggle(input('unitDms') as HTMLInputElement);
+    toggle(input('chronicleCompaction') as HTMLInputElement);
+    expect(st.settings).toMatchObject({
+      intentMode: 'every_n', intentEveryN: 5, intentMinConfidence: 0.3, scenePacing: 12, typingSpeed: 0, romanticInitiative: 'high',
+      romance: false, explicitContent: true, unitDms: false, chronicleCompaction: false,
+    });
+  });
+
+  it('invalid numbers snap back to a valid value', () => {
+    const { shell, st } = setup();
+    shell.open();
+    shell.showTab('sys');
+    const input = document.querySelector<HTMLInputElement>('#alius-shell input[name="intentEveryN"]')!;
+    input.value = '99';
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(st.settings.intentEveryN).toBe(3);
+    expect(input.value).toBe('3');
+    const conf = document.querySelector<HTMLInputElement>('#alius-shell input[name="intentMinConfidence"]')!;
+    conf.value = '7';
+    conf.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(conf.value).toBe('0.5');
+  });
+});
+

@@ -103,7 +103,7 @@ registerAction('scene/end', (draft, payload, ctx) => {
   const names = scene.participants.map((id) => draft.squad.find((u) => u.id === id)?.displayName ?? id).join(', ');
   const line = typeof summary?.chronicle === 'string' ? summary.chronicle.trim().slice(0, CHRONICLE_LINE_MAX).trim() : '';
   addChronicle(draft, {
-    kind: 'scene', day: scene.day, sceneId: scene.id,
+    kind: 'scene', day: scene.day, sceneId: scene.id, slot: scene.slot,
     text: line !== '' ? line : `${String(reg.locations.get(scene.locationId)?.name ?? scene.locationId)}: ${names} talked.`,
   });
 

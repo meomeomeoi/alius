@@ -129,6 +129,8 @@ export interface ChronicleEntry {
   toDay?: number;
   text: string;
   sceneId?: string;
+  /** The slot a scene line belongs to (scene entries only; compacted entries have none). */
+  slot?: Slot;
 }
 
 export type SceneOrigin = 'activity' | 'night' | 'mess' | 'event' | 'debrief';

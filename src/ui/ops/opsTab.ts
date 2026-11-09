@@ -28,12 +28,14 @@ function activityCard(a: Entry, state: CampaignState, ctx: OpsTabCtx): HTMLEleme
   const mode = a.companion as 'none' | 'optional' | 'required';
   const focusList = (a.focus as Focus[] | undefined) ?? [];
   const living = state.squad.filter(isLiving);
+  // a conversation needs a character card: grunts cannot be talked to
+  const companions = a.startsScene === true ? living.filter((u) => u.kind === 'named') : living;
 
   const companionSel = mode === 'none'
     ? null
     : (h('select', { name: 'companion', 'aria-label': `Companion for ${String(a.name)}` },
       h('option', { value: '' }, mode === 'required' ? '— choose —' : '— alone —'),
-      ...living.map((u) => h('option', { value: u.id }, unitLabel(u))),
+      ...companions.map((u) => h('option', { value: u.id }, unitLabel(u))),
     ) as HTMLSelectElement);
   const focusSel = focusList.length === 0
     ? null

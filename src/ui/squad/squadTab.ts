@@ -1,4 +1,6 @@
 import type { Entry, Registries } from '../../content/types';
+import { affinityBand, attractionBand, trustBand } from '../../engine/relations/bands';
+import { intimacyOf } from '../../engine/relations/gain';
 import type { CampaignState, Unit } from '../../engine/state/types';
 import { VALUE_AXES } from '../../engine/state/types';
 import type { AliusSettings } from '../../settings';
@@ -83,7 +85,21 @@ function defectBlock(reg: Registries, d: Unit['defects'][number]): HTMLElement {
   );
 }
 
-function unitBlock(unit: Unit, ctx: SquadTabCtx): HTMLElement {
+/** State name and axis bands (numbers only with "show raw values"); grunts show Trust only. */
+function relationLine(unit: Unit, state: CampaignState, ctx: SquadTabCtx): HTMLElement | null {
+  const rel = state.relations[unit.id];
+  if (!rel) return null;
+  const raw = ctx.settings().showRawValues;
+  const num = (n: number) => (raw ? ` (${n})` : '');
+  const parts = [`${String(ctx.registries.relationshipStates.get(rel.stateId)?.name ?? rel.stateId).toUpperCase()}`, `TRUST ${trustBand(rel.trust).toUpperCase()}${num(rel.trust)}`];
+  if (unit.kind !== 'grunt') {
+    parts.push(`AFFINITY ${affinityBand(rel.affinity).toUpperCase()}${num(rel.affinity)}`);
+    if (intimacyOf(state).romance) parts.push(`ATTRACTION ${attractionBand(rel.attraction).toUpperCase()}${num(rel.attraction)}`);
+  }
+  return h('p', { class: 'alius-relation' }, parts.join(' · '));
+}
+
+function unitBlock(unit: Unit, ctx: SquadTabCtx, state: CampaignState): HTMLElement {
   const reg = ctx.registries;
   const raw = ctx.settings().showRawValues;
   const s = unit.baseStats;
@@ -104,6 +120,7 @@ function unitBlock(unit: Unit, ctx: SquadTabCtx): HTMLElement {
       h('h3', { class: 'alius-unit-name' }, unit.displayName),
       unit.kind === 'grunt' ? h('p', { class: 'alius-dim' }, `GRUNT ${unit.designation ?? ''}`.trimEnd()) : null,
       h('p', {}, `${nameOf(reg.roles.get(unit.roleId), unit.roleId)} · LVL ${unit.level}`),
+      relationLine(unit, state, ctx),
       unit.bio ? h('p', { class: 'alius-dim' }, unit.bio) : null,
       h('p', {}, `HP ${s.hp} · ATK ${s.atk} · DEF ${s.def} · SPD ${s.spd} · CRIT ${s.crit}%`),
       h(
@@ -154,5 +171,5 @@ export function renderSquadTab(host: HTMLElement, ctx: SquadTabCtx): void {
     host.append(h('section', { class: 'alius-section' }, h('p', {}, 'NO UNITS ASSIGNED')));
     return;
   }
-  host.append(h('section', { class: 'alius-section alius-squad' }, ...state.squad.map((u) => unitBlock(u, ctx))));
+  host.append(h('section', { class: 'alius-section alius-squad' }, ...state.squad.map((u) => unitBlock(u, ctx, state))));
 }
