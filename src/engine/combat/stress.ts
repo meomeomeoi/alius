@@ -1,6 +1,8 @@
+import type { Registries } from '../../content/types';
 import { TUNING } from '../tuning';
-import { fireTrigger, activePassives, type EffectCtx } from './effects';
-import { byCid } from './targeting';
+import { activePassives, applyEffects, applyStatus, fireTrigger, effectiveStat, type EffectCtx } from './effects';
+import { byCid, legalTargets, nearest, skillById } from './targeting';
+import type { BreakdownPolicy, Combatant, EffectSpec, PlannedAction } from './types';
 
 export type StressBand = 'calm' | 'strained' | 'breaking' | 'breakdown';
 
@@ -13,12 +15,12 @@ export type StressSource = 'enemy' | 'self' | 'ally' | 'order' | 'system';
 /**
  * Changes a squad unit's stress. `stress_taken` passives scale gains (direction `gain`) and relief (`relief`); the
  * value is clamped to 0–100 and locked at 100 while the unit is broken down. Upward crossings of 50, 80 and 100 fire
- * `onStressThreshold`. Returns the applied change.
+ * `onStressThreshold`; reaching 100 starts the breakdown. Returns the applied change.
  */
 export function addStress(ctx: EffectCtx, cid: string, amount: number, _source: StressSource): number {
   const c = byCid(ctx.cs, cid);
   if (c.side !== 'squad' || c.downed || amount === 0) return 0;
-  if (c.breakdown && amount < 0) return 0; // locked at 100 until released
+  if (c.breakdown) return 0; // locked at 100 until released
   let delta = amount;
   for (const e of activePassives(ctx, cid, 'stress_taken')) {
     if ((delta > 0 && e.direction === 'gain') || (delta < 0 && e.direction === 'relief')) delta *= Math.max(0, 1 + e.pct / 100);
@@ -35,7 +37,158 @@ export function addStress(ctx: EffectCtx, cid: string, amount: number, _source: 
   return applied;
 }
 
-/** Task 8 fills this in (defect lookup, onEnter, cut-in). */
-export function enterBreakdown(_ctx: EffectCtx, _cid: string): void {
-  void TUNING;
+// ------------------------------------------------------------------------------------------------ breakdowns
+
+interface BreakdownSpec {
+  policy: BreakdownPolicy;
+  target?: 'nearest_enemy' | 'strongest_enemy' | 'nearest_any' | 'nearest_ally';
+  ignoresOrders: boolean;
+  once?: boolean;
+  onEnter: EffectSpec[];
+  actionEffects: EffectSpec[];
+}
+
+const FALLBACK: BreakdownSpec = { policy: 'skip', ignoresOrders: true, onEnter: [], actionEffects: [] };
+
+/** The first defect of the unit that has combat breakdown data. */
+function defectBreakdown(ctx: EffectCtx, c: Combatant): { defectId: string; spec: BreakdownSpec } | null {
+  const unit = c.unitId ? ctx.state.squad.find((u) => u.id === c.unitId) : undefined;
+  for (const d of unit?.defects ?? []) {
+    const spec = (ctx.reg.defects.get(d.id)?.combat as { breakdown?: BreakdownSpec } | undefined)?.breakdown;
+    if (spec) return { defectId: d.id, spec };
+  }
+  return null;
+}
+
+/** The breakdown state a unit carries for `defectId` (used when a combat restores `Unit.breakdown`). */
+export function makeBreakdown(reg: Registries, defectId: string): NonNullable<Combatant['breakdown']> {
+  const spec = (reg.defects.get(defectId)?.combat as { breakdown?: BreakdownSpec } | undefined)?.breakdown ?? FALLBACK;
+  return {
+    defectId, policy: spec.policy, ...(spec.target ? { target: spec.target } : {}), ignoresOrders: spec.ignoresOrders,
+    ...(spec.once ? { once: true } : {}), actionEffects: spec.actionEffects,
+  };
+}
+
+/**
+ * The unit breaks down: her defect's breakdown policy rules the rest of the expedition, stress is locked at 100.
+ * Runs the defect's `onEnter` effects and emits a cut-in.
+ */
+export function enterBreakdown(ctx: EffectCtx, cid: string): void {
+  const c = byCid(ctx.cs, cid);
+  if (c.breakdown || c.side !== 'squad') return;
+  const found = defectBreakdown(ctx, c);
+  const spec = found?.spec ?? FALLBACK;
+  const defectId = found?.defectId ?? 'unknown';
+  c.stress = 100;
+  c.breakdown = makeBreakdown(ctx.reg, found ? defectId : 'unknown');
+  if (!found) c.breakdown = { defectId, policy: 'skip', ignoresOrders: true, actionEffects: [] };
+  ctx.log({ kind: 'breakdown', target: cid });
+  const name = (ctx.reg.defects.get(defectId)?.breakdown as { name?: string } | undefined)?.name ?? 'BREAKDOWN';
+  ctx.emit({ type: 'combat_cutin', kind: 'breakdown', unitId: c.unitId, cid, text: name });
+  ctx.emit({ type: 'breakdown', unitId: c.unitId, cid, defectId });
+  applyEffects(ctx, cid, spec.onEnter, {}, `breakdown:${defectId}:enter`);
+}
+
+/** Runs the policy's `actionEffects` after a breakdown action resolved (called by turn.ts). */
+export function applyBreakdownActionEffects(ctx: EffectCtx, cid: string): void {
+  const b = byCid(ctx.cs, cid).breakdown;
+  if (b) applyEffects(ctx, cid, b.actionEffects, {}, `breakdown:${b.defectId}:action`);
+}
+
+const rowRank = (c: Combatant): number => (c.row === 'front' ? 0 : 1);
+const nearestOf = (ctx: EffectCtx, ids: string[]): string | undefined =>
+  ids.map((id) => byCid(ctx.cs, id)).sort((a, b) => rowRank(a) - rowRank(b) || a.index - b.index)[0]?.cid;
+
+/** The first damaging active skill of the unit that has a legal target, with its legal targets. */
+function basicAttack(ctx: EffectCtx, c: Combatant): { skillId: string; legal: string[] } | null {
+  for (const id of c.skills) {
+    const sk = skillById(ctx.reg, id);
+    if (!sk || sk.kind === 'passive' || sk.kind === 'ultimate' || !sk.effects.some((e) => e.type === 'damage')) continue;
+    if ((c.cooldowns[id] ?? 0) > 0) continue;
+    const legal = legalTargets(ctx.cs, c.cid, sk, ctx.reg);
+    if (legal.length > 0 && sk.targets?.side === 'enemy') return { skillId: id, legal };
+  }
+  return null;
+}
+
+function attackAction(ctx: EffectCtx, c: Combatant, target: NonNullable<Combatant['breakdown']>['target']): PlannedAction {
+  const atk = basicAttack(ctx, c);
+  if (!atk) return { kind: 'pass' };
+  const { cs } = ctx;
+  let targetCid: string | undefined;
+  if (target === 'strongest_enemy') {
+    targetCid = atk.legal
+      .map((id) => byCid(cs, id))
+      .sort((a, b) => effectiveStat(ctx, b.cid, 'atk') - effectiveStat(ctx, a.cid, 'atk') || b.hp - a.hp || a.index - b.index)[0]?.cid;
+  } else if (target === 'nearest_ally') {
+    targetCid = nearest(cs, c.cid, c.side, ctx.reg);
+  } else if (target === 'nearest_any') {
+    const any = nearest(cs, c.cid, 'any', ctx.reg);
+    targetCid = any && byCid(cs, any).side !== c.side && !atk.legal.includes(any) ? nearestOf(ctx, atk.legal) : any;
+  } else targetCid = nearestOf(ctx, atk.legal);
+  return targetCid ? { kind: 'skill', skillId: atk.skillId, targetCid } : { kind: 'pass' };
+}
+
+/**
+ * What a broken (or breaking, with `breaking: true`) unit does instead of the player's choice. `null` means normal
+ * control. Stateful parts (`once`, the extra action and shutdown of `twice_then_shutdown`) only apply to a real
+ * breakdown, not to a breaking turn.
+ */
+export function breakdownAction(ctx: EffectCtx, cid: string, opts: { breaking?: boolean } = {}): PlannedAction | null {
+  const { cs } = ctx;
+  const c = byCid(cs, cid);
+  const real = c.breakdown;
+  let b: { policy: BreakdownPolicy; target?: NonNullable<Combatant['breakdown']>['target'] } | undefined = real;
+  if (!b && opts.breaking) b = defectBreakdown(ctx, c)?.spec;
+  if (!b) return null;
+  if (real?.once && real.used) return null;
+
+  const finish = (a: PlannedAction): PlannedAction => {
+    if (real?.once) real.used = true;
+    return a;
+  };
+  switch (b.policy) {
+    case 'normal': return null;
+    case 'skip': return { kind: 'pass' };
+    case 'await_order': return cs.ordersThisRound.some((o) => o.targetCid === cid) && real ? null : { kind: 'pass' };
+    case 'attack': return finish(attackAction(ctx, c, b.target));
+    case 'twice_then_shutdown': {
+      const attack = attackAction(ctx, c, b.target);
+      if (!real) return attack;
+      const count = real.count ?? 0;
+      if (count >= 2) return { kind: 'pass' };
+      real.count = count + 1;
+      if (count === 0) cs.extraAction = cid;
+      else applyStatus(ctx, cid, 'stun', 99, 1, cid);
+      return attack;
+    }
+    case 'repeat_last': {
+      const sk = c.lastSkillId ? skillById(ctx.reg, c.lastSkillId) : undefined;
+      if (sk && sk.kind !== 'passive') {
+        const legal = legalTargets(cs, cid, sk, ctx.reg);
+        if (c.lastTargetCid && legal.includes(c.lastTargetCid)) return { kind: 'skill', skillId: sk.id, targetCid: c.lastTargetCid };
+        const near = nearestOf(ctx, legal);
+        if (near) return { kind: 'skill', skillId: sk.id, targetCid: near };
+      }
+      return attackAction(ctx, c, 'nearest_enemy');
+    }
+    case 'random_skill': {
+      const options = c.skills
+        .map((id) => skillById(ctx.reg, id))
+        .filter((s): s is NonNullable<typeof s> => !!s && s.kind !== 'passive' && s.kind !== 'ultimate' && (c.cooldowns[s.id] ?? 0) === 0)
+        .map((s) => ({ s, legal: legalTargets(cs, cid, s, ctx.reg) }))
+        .filter((o) => o.legal.length > 0);
+      if (options.length === 0) return { kind: 'pass' };
+      const pick = ctx.rng.pick(options);
+      return { kind: 'skill', skillId: pick.s.id, targetCid: ctx.rng.pick(pick.legal) };
+    }
+    default: return null;
+  }
+}
+
+/** A unit at 80–99 stress rolls 25 % per turn to follow her breakdown policy instead of the chosen action. */
+export function rollBreaking(ctx: EffectCtx, cid: string): boolean {
+  const c = byCid(ctx.cs, cid);
+  if (c.side !== 'squad' || c.breakdown || c.stress < 80 || c.stress >= 100) return false;
+  return ctx.rng.chance(TUNING.combat.breakingChance);
 }

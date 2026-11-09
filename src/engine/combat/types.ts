@@ -172,9 +172,12 @@ export interface Combatant {
     ignoresOrders: boolean;
     once?: boolean;
     used?: boolean;
+    /** Actions taken under `twice_then_shutdown`. */
+    count?: number;
     actionEffects: EffectSpec[];
   };
   lastSkillId?: string;
+  lastTargetCid?: string;
   lastRow?: Row;
   lockedTargetId?: string;
   lockTurns?: number;

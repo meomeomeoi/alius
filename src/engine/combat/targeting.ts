@@ -2,6 +2,8 @@ import type { Registries } from '../../content/types';
 import type { Skill } from '../../content/schemas';
 import type { CombatState, Combatant, Side } from './types';
 
+export const skillById = (reg: Registries, id: string): Skill | undefined => reg.skills.get(id) as unknown as Skill | undefined;
+
 export const byCid = (cs: CombatState, cid: string): Combatant => {
   const c = cs.combatants.find((x) => x.cid === cid);
   if (!c) throw new Error(`Unknown combatant "${cid}"`);
