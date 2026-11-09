@@ -24,6 +24,24 @@ export interface AliusSettings {
   activityFlavor: boolean;
   /** A generated name and one-line bio for newly recruited grunts (one mechanic call per grunt). */
   gruntFlavor: boolean;
+  /** P3: when the mechanic model reads the conversation. */
+  intentMode: 'exchange' | 'every_n' | 'scene_end';
+  /** `every_n` mode: extract after this many exchanges. */
+  intentEveryN: number;
+  /** Events below this confidence are dropped. */
+  intentMinConfidence: number;
+  /** After this many exchanges the scene header says time is passing. */
+  scenePacing: number;
+  /** Typed-out dialogue speed in characters per second; 0 = instant. */
+  typingSpeed: number;
+  romance: boolean;
+  /** Context-only: tells the main model whether explicit scenes are allowed. */
+  explicitContent: boolean;
+  romanticInitiative: 'low' | 'med' | 'high';
+  /** Units may start DMs on their own. */
+  unitDms: boolean;
+  /** Compact old chronicle lines with the mechanic model (otherwise by joining them). */
+  chronicleCompaction: boolean;
 }
 
 export const DEFAULT_SETTINGS: AliusSettings = {
@@ -42,6 +60,7 @@ export const DEFAULT_SETTINGS: AliusSettings = {
     expedition_recap: 700,
     emotion_pick: 50,
     activity_vignette: 150,
+    chronicle_compact: 400,
     ping: 100,
   },
   contextTokenCap: 1200,
@@ -55,6 +74,16 @@ export const DEFAULT_SETTINGS: AliusSettings = {
   spriteMode: 'native',
   activityFlavor: true,
   gruntFlavor: true,
+  intentMode: 'exchange',
+  intentEveryN: 3,
+  intentMinConfidence: 0.5,
+  scenePacing: 30,
+  typingSpeed: 60,
+  romance: true,
+  explicitContent: false,
+  romanticInitiative: 'med',
+  unitDms: true,
+  chronicleCompaction: true,
 };
 
 const fieldSchemas = {
@@ -73,6 +102,16 @@ const fieldSchemas = {
   spriteMode: z.enum(['native', 'emotion_pick']),
   activityFlavor: z.boolean(),
   gruntFlavor: z.boolean(),
+  intentMode: z.enum(['exchange', 'every_n', 'scene_end']),
+  intentEveryN: z.number().int().min(2).max(10),
+  intentMinConfidence: z.number().min(0).max(1),
+  scenePacing: z.number().int().min(5),
+  typingSpeed: z.number().min(0),
+  romance: z.boolean(),
+  explicitContent: z.boolean(),
+  romanticInitiative: z.enum(['low', 'med', 'high']),
+  unitDms: z.boolean(),
+  chronicleCompaction: z.boolean(),
 };
 const budgetSchema = z.number().int().min(1);
 

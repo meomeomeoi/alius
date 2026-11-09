@@ -14,7 +14,7 @@ describe('settings', () => {
     expect(s.budgets).toEqual({
       profile_import: 1500, intent_extract: 600, scene_summary: 800, dilemma_generate: 1000,
       director_tick: 1200, flavor: 400, dm_reply: 300, expedition_recap: 700, emotion_pick: 50, ping: 100,
-      activity_vignette: 150,
+      activity_vignette: 150, chronicle_compact: 400,
     });
     expect(Object.keys(s.budgets).sort()).toEqual([...CALL_TYPE_IDS].sort());
     // and written back so SillyTavern persists them
@@ -72,5 +72,29 @@ describe('settings', () => {
     const s = getSettings(st);
     expect(s.spriteMode).toBe('native');
     expect(s.desireBondDefects).toBe(true);
+  });
+
+  it('P3 defaults', () => {
+    const s = getSettings(new FakeStAdapter());
+    expect(s).toMatchObject({
+      intentMode: 'exchange', intentEveryN: 3, intentMinConfidence: 0.5, scenePacing: 30, typingSpeed: 60,
+      romance: true, explicitContent: false, romanticInitiative: 'med', unitDms: true, chronicleCompaction: true,
+    });
+    expect(s.budgets.chronicle_compact).toBe(400);
+  });
+
+  it('P3: invalid values fall back, valid ones are kept', () => {
+    const st = new FakeStAdapter();
+    st.settings = {
+      intentMode: 'always', intentEveryN: 1, intentMinConfidence: 2, scenePacing: 3, typingSpeed: -5, romance: 'yes',
+      explicitContent: true, romanticInitiative: 'high', unitDms: false, chronicleCompaction: 0,
+    };
+    const s = getSettings(st);
+    expect(s).toMatchObject({
+      intentMode: 'exchange', intentEveryN: 3, intentMinConfidence: 0.5, scenePacing: 30, typingSpeed: 60, romance: true,
+      explicitContent: true, romanticInitiative: 'high', unitDms: false, chronicleCompaction: true,
+    });
+    const ok = updateSettings(st, { intentMode: 'every_n', intentEveryN: 5, intentMinConfidence: 0.3, scenePacing: 10, typingSpeed: 0 });
+    expect(ok).toMatchObject({ intentMode: 'every_n', intentEveryN: 5, intentMinConfidence: 0.3, scenePacing: 10, typingSpeed: 0 });
   });
 });

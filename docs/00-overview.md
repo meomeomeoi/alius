@@ -132,6 +132,7 @@ Source layout (TypeScript, same toolchain style as Mundi-Expanded):
 | `dm_reply` | main | Short PDA message | 300 |
 | `expedition_recap` | main | Combat/expedition log → narrative recap | 700 |
 | `emotion_pick` | mechanic | Optional sprite emotion classification (when not using native Expressions) | 50 |
+| `chronicle_compact` | mechanic | Day/week chronicle lines → one compact entry (P3; without a profile the lines are joined) | 400 |
 | `activity_vignette` | main | ≤2-line vignette after a companion activity (P2; can be turned off) | 150 |
 | *(scene dialogue)* | main | Normal ST generation with injected context | — (ST settings) |
 

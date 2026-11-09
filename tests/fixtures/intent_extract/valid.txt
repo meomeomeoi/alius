@@ -1,0 +1,15 @@
+```json
+{
+  "events": [
+    { "type": "comforted", "actor": "commander", "targets": ["unit_ann"], "severity": "major", "tags": ["quiet"], "evidence": "\"You did not have to carry that alone.\"", "confidence": 0.9 },
+    { "type": "shared_secret", "actor": "unit_ann", "targets": [], "severity": "moderate", "evidence": "She admits she keeps her brother's tags.", "confidence": 0.8 },
+    { "type": "decision_violated", "actor": "commander", "targets": ["unit_ann", "unit_bea"], "severity": "moderate", "valueAxes": [{ "axis": "mercy", "direction": -1 }], "evidence": "He had the prisoner shot.", "confidence": 0.7 },
+    { "type": "praised", "actor": "commander", "targets": ["unit_bea"], "severity": "minor", "evidence": "good work out there", "confidence": 0.3 }
+  ],
+  "facts": [{ "about": ["unit_ann"], "text": "Ann keeps her brother's dog tags.", "importance": 4, "tags": ["Family"] }],
+  "proposals": [{ "from": "unit_ann", "to": "commander", "kind": "confide", "evidence": "She asks to tell him something." }],
+  "promises": [{ "by": "commander", "to": "unit_ann", "text": "I will find out what happened to him", "kind": "made" }],
+  "emotions": [{ "unitId": "unit_ann", "label": "sadness" }, { "unitId": "unit_bea", "label": "annoyance" }],
+  "stressHints": [{ "unitId": "unit_ann", "direction": -1, "severity": "moderate" }]
+}
+```

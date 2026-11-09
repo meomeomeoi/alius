@@ -1,0 +1,10 @@
+{
+  "events": [
+    { "type": "praised", "actor": "commander", "targets": ["unit_zed", "unit_cat"], "severity": "major", "evidence": "x", "confidence": 1 },
+    { "type": "insulted", "actor": "unit_zed", "targets": [], "severity": "major", "evidence": "x", "confidence": 1 },
+    { "type": "praised", "actor": "commander", "targets": ["unit_ann"], "severity": "minor", "evidence": "fine work", "confidence": 1 }
+  ],
+  "facts": [{ "about": ["unit_zed"], "text": "A ghost.", "importance": 5, "tags": [] }],
+  "emotions": [{ "unitId": "unit_zed", "label": "joy" }],
+  "stressHints": [{ "unitId": "unit_zed", "direction": 1, "severity": "extreme" }]
+}

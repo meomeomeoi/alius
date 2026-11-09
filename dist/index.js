@@ -5114,6 +5114,7 @@ var CALL_TYPE_IDS = [
   "expedition_recap",
   "emotion_pick",
   "activity_vignette",
+  "chronicle_compact",
   "ping"
 ];
 var registry = /* @__PURE__ */ new Map();
@@ -5598,6 +5599,7 @@ var DEFAULT_SETTINGS = {
     expedition_recap: 700,
     emotion_pick: 50,
     activity_vignette: 150,
+    chronicle_compact: 400,
     ping: 100
   },
   contextTokenCap: 1200,
@@ -5610,7 +5612,17 @@ var DEFAULT_SETTINGS = {
   showRawValues: false,
   spriteMode: "native",
   activityFlavor: true,
-  gruntFlavor: true
+  gruntFlavor: true,
+  intentMode: "exchange",
+  intentEveryN: 3,
+  intentMinConfidence: 0.5,
+  scenePacing: 30,
+  typingSpeed: 60,
+  romance: true,
+  explicitContent: false,
+  romanticInitiative: "med",
+  unitDms: true,
+  chronicleCompaction: true
 };
 var fieldSchemas = {
   mechanicProfileId: external_exports.string(),
@@ -5627,7 +5639,17 @@ var fieldSchemas = {
   showRawValues: external_exports.boolean(),
   spriteMode: external_exports.enum(["native", "emotion_pick"]),
   activityFlavor: external_exports.boolean(),
-  gruntFlavor: external_exports.boolean()
+  gruntFlavor: external_exports.boolean(),
+  intentMode: external_exports.enum(["exchange", "every_n", "scene_end"]),
+  intentEveryN: external_exports.number().int().min(2).max(10),
+  intentMinConfidence: external_exports.number().min(0).max(1),
+  scenePacing: external_exports.number().int().min(5),
+  typingSpeed: external_exports.number().min(0),
+  romance: external_exports.boolean(),
+  explicitContent: external_exports.boolean(),
+  romanticInitiative: external_exports.enum(["low", "med", "high"]),
+  unitDms: external_exports.boolean(),
+  chronicleCompaction: external_exports.boolean()
 };
 var budgetSchema = external_exports.number().int().min(1);
 var isObj4 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);

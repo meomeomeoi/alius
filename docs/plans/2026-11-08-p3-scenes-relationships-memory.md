@@ -278,11 +278,11 @@ docs/** (Task 15), tests/** mirror src
 - `chronicle_compact` (mechanic, text): lines in → one paragraph ≤ 400 chars; `compactChronicle(...) → Promise<string | null>`.
 - `emotion_pick` (mechanic, JSON `{ label }`): used only when extraction is batched and `spriteMode === 'emotion_pick'`.
 
-- [ ] **Step 1: Write the failing tests** — intentExtract: `valid fixture gives intents and emotions`; `truncated JSON is repaired or retried (orchestrator path)`; `prose answer → null after both attempts`; `low-confidence event dropped at 0.5, kept at 0.3 setting`; `hostile: ids of absent units dropped`; `hostile: instruction text in evidence is kept only as text and capped`; `hostile: numbers in fact text never become fields`; `hostile: 50 events → 6`; `romantic proposals dropped when romance is off`; `unknown emotion label dropped`; `the prompt contains every participant id and no raw axis numbers`. sceneSummary: `valid`, `chronicle capped`, `invalid → null`, `transcript trimmed from the oldest side`. dmReply: `snap mode says so in the prompt`, `sanitizer strips "Rhea:" and quotes`, `empty → null`, `prompt holds bands, not numbers`. chronicleCompact: `joins to one paragraph ≤ 400`, `failure → null`. emotionPick: `known label`, `unknown → null`. settings: `P3 defaults`, `invalid values fall back`, `chronicle_compact budget 400`.
-- [ ] **Step 2: Run** `npx vitest run tests/llm tests/settings.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS; whole suite green.
-- [ ] **Step 5: Commit** `feat(llm): intent extraction, scene summary, DM reply, chronicle compaction and emotion calls`.
+- [x] **Step 1: Write the failing tests** — intentExtract: `valid fixture gives intents and emotions`; `truncated JSON is repaired or retried (orchestrator path)`; `prose answer → null after both attempts`; `low-confidence event dropped at 0.5, kept at 0.3 setting`; `hostile: ids of absent units dropped`; `hostile: instruction text in evidence is kept only as text and capped`; `hostile: numbers in fact text never become fields`; `hostile: 50 events → 6`; `romantic proposals dropped when romance is off`; `unknown emotion label dropped`; `the prompt contains every participant id and no raw axis numbers`. sceneSummary: `valid`, `chronicle capped`, `invalid → null`, `transcript trimmed from the oldest side`. dmReply: `snap mode says so in the prompt`, `sanitizer strips "Rhea:" and quotes`, `empty → null`, `prompt holds bands, not numbers`. chronicleCompact: `joins to one paragraph ≤ 400`, `failure → null`. emotionPick: `known label`, `unknown → null`. settings: `P3 defaults`, `invalid values fall back`, `chronicle_compact budget 400`.
+- [x] **Step 2: Run** `npx vitest run tests/llm tests/settings.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS; whole suite green.
+- [x] **Step 5: Commit** `feat(llm): intent extraction, scene summary, DM reply, chronicle compaction and emotion calls`.
 
 ### Task 10: SillyTavern adapter — chat, sending, swipes, expressions
 

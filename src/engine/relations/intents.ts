@@ -1,5 +1,5 @@
 import { normalizeTag } from '../setup';
-import { VALUE_AXES, type Severity, type Unit, type ValueAxis } from '../state/types';
+import { VALUE_AXES, type Severity, type ValueAxis } from '../state/types';
 import { TUNING } from '../tuning';
 import { EVENT_TYPES, PROPOSAL_KINDS, SEVERITIES, type EventType, type ProposalKind } from './vocab';
 
@@ -87,7 +87,7 @@ const clamp01 = (n: unknown): number => (typeof n === 'number' && Number.isFinit
  * ids that are not scene participants (or not in the squad), unit→unit events, events without evidence,
  * `valueAxes` on non-decision events. Text is length-capped and kept as text, nothing else is read.
  */
-export function validateIntents(raw: unknown, ctx: { participants: string[]; squad: Unit[] }): Intents {
+export function validateIntents(raw: unknown, ctx: { participants: string[]; squad: Array<{ id: string }> }): Intents {
   const out = emptyIntents();
   if (!isObj(raw)) return out;
   const known = new Set(ctx.squad.map((u) => u.id));

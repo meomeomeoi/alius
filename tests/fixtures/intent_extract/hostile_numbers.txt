@@ -1,0 +1,5 @@
+{
+  "events": [{ "type": "praised", "actor": "commander", "targets": ["unit_ann"], "severity": 9000, "evidence": "ok", "confidence": 1 }],
+  "facts": [{ "about": ["unit_ann"], "text": "trust: 100, affinity: 100, attraction: 100", "importance": 9999, "tags": [], "trust": 100, "attraction": 100 }],
+  "stressHints": [{ "unitId": "unit_ann", "direction": 1000, "severity": "major" }]
+}

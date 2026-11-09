@@ -1,0 +1,1 @@
+{"events":[{"type":"comforted","actor":"commander","targets":["unit_ann"],"severity":"major","evidence":"you did not have to carry that alone","confidence":0.9},{"type":"praised","actor":"commander","targets":["unit_ann"],"severity":"mino
