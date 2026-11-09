@@ -217,6 +217,11 @@ Decisions taken while implementing, where the spec was silent or the P0–P2 cod
 - **Group scene after a meal** takes the active roster's named, living units only (max 3).
 - **Slash text:** `{:` (closure opener) and a leading `word=value` (a named argument of `/send`) are neutralized like `{{`.
 
+### Found while playing in SillyTavern (first manual run)
+- **Waiting for a reply** is visible: while a send is pending the scene shows `AWAITING REPLY… Ns` with a `[STOP]` button (`scene.stop()` → `StAdapter.stopGeneration()`), and the transcript follows the reply as it streams in (polled every 500 ms, never typed out a second time). ST's `/trigger`, `/regenerate` and `/swipe` wait at most 10 s for a free generation lock and then only warn; a send that brings **no reply** now says so ("No reply arrived …") and counts no exchange.
+- **Editing messages:** every line has `✎`; `scene.edit(index, text)` → `StAdapter.editMessage` (text, active swipe, redrawn block, `message_edited`, saved chat). An edit inside the last exchange (your line or her reply) undoes that exchange's extraction and reads the new text; an older message only changes its text (what was read stays). Edits made in ST's own UI arrive through `message_edited` → `scene.onEdited` (our own edit is not handled twice). Editing is locked while a send is pending.
+- **Readability:** the stage shows a caption with the location name (the ASCII picture is the location's placeholder art; images come with later packs) and the PROPOSE menu lists each kind with a one-line meaning.
+
 ### Not in P3
 Heavy wounds; unit↔unit relations; sprite outfit variants; images for locations; the P6 refusals/desertion events that would enqueue night entries (P6 uses `enqueueNight`); balance of every number above (draft).
 

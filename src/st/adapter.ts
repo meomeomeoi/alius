@@ -27,7 +27,7 @@ export interface ChatMessage {
 
 export type StEvent =
   | 'chat_changed' | 'message_sent' | 'message_received' | 'generation_started'
-  | 'message_swiped' | 'message_deleted' | 'generation_ended' | 'group_wrapper_finished';
+  | 'message_swiped' | 'message_deleted' | 'message_edited' | 'generation_ended' | 'group_wrapper_finished';
 
 /** The only surface through which the rest of Alius touches SillyTavern. */
 export interface StAdapter {
@@ -81,6 +81,8 @@ export interface StAdapter {
   regenerateLast(): Promise<void>;
   swipeLast(dir: 'left' | 'right'): Promise<void>;
   stopGeneration(): void;
+  /** Rewrites a chat message's text (the active swipe too), redraws it in ST, saves the chat and fires `message_edited`. Rejects for an unknown index. */
+  editMessage(index: number, text: string): Promise<void>;
   /** The last expression label ST's Expressions extension set for a character (name or avatar key), or null. */
   getLastExpression(name: string): Promise<string | null>;
   /** extensionSettings.alius (created if missing). */

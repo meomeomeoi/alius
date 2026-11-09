@@ -33,6 +33,13 @@ const TICK_MS = 50;
 const NON_ROMANTIC_KINDS = ['friendship_deepen', 'confide', 'rivalry', 'reconcile', 'break_up'] as const;
 const ALL_KINDS = [...NON_ROMANTIC_KINDS, ...ROMANTIC_PROPOSALS] as const;
 const label = kindLabel;
+/** One line of what each proposal means, shown in the PROPOSE menu. */
+const KIND_HINT: Record<string, string> = {
+  friendship_deepen: 'ask to be friends', confide: 'tell her a secret', rivalry: 'declare a rivalry', reconcile: 'make peace',
+  break_up: 'end the relationship', date: 'ask her out', fwb: 'propose something casual', romance: 'propose a relationship',
+  exclusive: 'ask for exclusivity', secret_affair: 'propose a secret relationship',
+};
+const BUSY_TICK_MS = 500;
 
 interface Segment { text: string; em: boolean }
 /** Splits `*emphasis*` out of model text; nothing here ever becomes markup. */
@@ -78,6 +85,9 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
   let progress = new Map<number, number>();
   let timer: ReturnType<typeof setInterval> | null = null;
   let started = 0;
+  let editing: { index: number; value: string; focus: boolean } | null = null;
+  let busyTimer: ReturnType<typeof setInterval> | null = null;
+  let busyStarted = 0;
   const labels = new Map<string, string>();
   const timeouts = new Set<ReturnType<typeof setTimeout>>();
 
@@ -87,6 +97,8 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
   let log: HTMLElement;
   let chips: HTMLElement;
   let banner: HTMLElement;
+  let busyHost: HTMLElement;
+  let caption: HTMLElement;
   let input: HTMLInputElement;
   let sceneKey = '';
 
@@ -100,6 +112,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
 
   function drawBackground(s: CampaignState): void {
     const loc = registries.locations.get(s.scene!.locationId);
+    caption.textContent = locationName(s, present(s)).toUpperCase();
     bg.replaceChildren();
     bg.style.backgroundImage = '';
     const night = s.slot === 'night' ? (loc?.backgroundNight as string | undefined) : undefined;
@@ -157,27 +170,73 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     animating = null;
   }
 
+  function cancelEdit(s: CampaignState): void {
+    editing = null;
+    drawLog(s);
+  }
+
+  function saveEdit(s: CampaignState): void {
+    const e = editing;
+    editing = null;
+    const original = controller.transcript().find((m) => m.index === e?.index)?.text;
+    drawLog(s);
+    if (!e || e.value.trim() === '' || e.value === original) return;
+    void controller.edit(e.index, e.value).catch(() => {});
+  }
+
   function drawLog(s: CampaignState): void {
     const messages: ChatMessage[] = controller.transcript();
     const lastIndex = messages.length > 0 ? messages[messages.length - 1].index : -1;
     const speed = ctx.settings().typingSpeed;
-    const fresh = seen < 0 ? [] : messages.filter((m) => m.index > seen);
-    const newest = [...fresh].reverse().find((m) => !m.isUser);
-    if (newest && speed > 0 && !progress.has(newest.index)) {
-      animating = newest.index;
-      progress.set(newest.index, 0);
-      started = Date.now();
+    if (pending) {
+      // the reply is streaming in: show it as it grows and do not type it out again afterwards
+      stopTyping();
+      if (lastIndex > seen) seen = lastIndex;
+    } else {
+      const fresh = seen < 0 ? [] : messages.filter((m) => m.index > seen);
+      const newest = [...fresh].reverse().find((m) => !m.isUser);
+      if (newest && speed > 0 && !progress.has(newest.index)) {
+        animating = newest.index;
+        progress.set(newest.index, 0);
+        started = Date.now();
+      }
+      if (seen < 0 || lastIndex > seen) seen = lastIndex;
     }
-    if (seen < 0 || lastIndex > seen) seen = lastIndex;
 
+    const boxHadFocus = document.activeElement instanceof HTMLTextAreaElement && log.contains(document.activeElement);
     log.replaceChildren(...messages.map((m) => {
       const speaker = h('span', { class: 'alius-speaker' });
       speaker.textContent = `${(m.isUser ? s.commander.name : m.name).toUpperCase()} //`;
+      if (editing && editing.index === m.index) {
+        const e = editing;
+        const box = h('textarea', { class: 'alius-edit-box', rows: '3', 'aria-label': 'Edit message' }) as HTMLTextAreaElement;
+        box.value = e.value;
+        box.addEventListener('input', () => { e.value = box.value; });
+        box.addEventListener('keydown', (ev) => {
+          const k = ev as KeyboardEvent;
+          if (k.key === 'Escape') cancelEdit(s);
+          else if (k.key === 'Enter' && (k.ctrlKey || k.metaKey)) saveEdit(s);
+        });
+        return h('div', { class: `alius-line${m.isUser ? ' is-user' : ''} is-editing`, 'data-index': m.index }, speaker, ' ', h('div', { class: 'alius-edit-form' }, box,
+          h('button', { type: 'button', class: 'alius-btn', 'data-action': 'edit-save', onclick: () => saveEdit(s) }, '[SAVE]'),
+          h('button', { type: 'button', class: 'alius-btn', 'data-action': 'edit-cancel', onclick: () => cancelEdit(s) }, '[CANCEL]')));
+      }
       const text = h('span', { class: 'alius-text' });
       fillText(text, m.text, m.index === animating ? progress.get(m.index) ?? 0 : Infinity);
-      return h('div', { class: `alius-line${m.isUser ? ' is-user' : ''}`, 'data-index': m.index }, speaker, ' ', text);
+      const edit = h('button', {
+        type: 'button', class: 'alius-edit', 'data-edit': m.index, 'aria-label': 'Edit message', title: 'Edit this message', disabled: pending,
+        onclick: () => {
+          editing = { index: m.index, value: m.text, focus: true };
+          drawLog(s);
+        },
+      }, '✎');
+      return h('div', { class: `alius-line${m.isUser ? ' is-user' : ''}`, 'data-index': m.index }, speaker, ' ', text, ' ', edit);
     }));
-    log.scrollTop = log.scrollHeight;
+    const box = log.querySelector<HTMLTextAreaElement>('textarea.alius-edit-box');
+    if (box && (editing?.focus || boxHadFocus)) {
+      box.focus();
+      if (editing) editing.focus = false;
+    } else log.scrollTop = log.scrollHeight;
 
     if (animating !== null && !timer) {
       timer = setInterval(() => {
@@ -202,9 +261,26 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     if (pacing) banner.append(h('div', { class: 'alius-pacing', role: 'status' }, 'TIME IS PASSING'));
   }
 
-  /** While an exchange is being read, END, swipe/regenerate and PROPOSE stay off (they would race the extraction). */
+  /** While an exchange is being read, END, swipe/regenerate, editing and PROPOSE stay off (they would race the extraction). */
   function lock(on: boolean): void {
-    for (const el of root.querySelectorAll<HTMLButtonElement | HTMLSelectElement>('button[data-action], select')) el.disabled = on;
+    for (const el of root.querySelectorAll<HTMLButtonElement | HTMLSelectElement>('button[data-action]:not([data-action="stop"]), button.alius-edit, select')) el.disabled = on;
+  }
+
+  /** The "waiting" line with a STOP button; the transcript follows the reply while it streams in. */
+  function setBusy(on: boolean): void {
+    if (busyTimer) clearInterval(busyTimer);
+    busyTimer = null;
+    busyHost.replaceChildren();
+    if (!on) return;
+    busyStarted = Date.now();
+    const text = h('span', { class: 'alius-busy-text' }, 'AWAITING REPLY… 0s');
+    busyHost.append(h('div', { class: 'alius-busy', role: 'status' }, text,
+      h('button', { type: 'button', class: 'alius-btn', 'data-action': 'stop', 'aria-label': 'Stop the generation', onclick: () => controller.stop() }, '[STOP]')));
+    busyTimer = setInterval(() => {
+      text.textContent = `AWAITING REPLY… ${Math.floor((Date.now() - busyStarted) / 1000)}s`;
+      const s = state();
+      if (s?.scene) drawLog(s);
+    }, BUSY_TICK_MS);
   }
 
   function build(s: CampaignState): void {
@@ -216,6 +292,8 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     log = h('div', { class: 'alius-transcript', role: 'log', 'aria-live': 'polite', tabindex: '0' });
     chips = h('div', { class: 'alius-chips' });
     banner = h('div', { class: 'alius-pacing-host' });
+    busyHost = h('div', { class: 'alius-busy-host' });
+    caption = h('div', { class: 'alius-stage-caption' });
     input = h('input', { type: 'text', name: 'cmd', class: 'alius-input', autocomplete: 'off', 'aria-label': 'Command line' }) as HTMLInputElement;
     input.addEventListener('keydown', (ev) => {
       if ((ev as KeyboardEvent).key !== 'Enter' || pending) return;
@@ -223,10 +301,13 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
       if (text === '') return;
       pending = true;
       input.disabled = true;
+      editing = null;
       lock(true);
+      setBusy(true);
       void controller.send(text).finally(() => {
         pending = false;
         if (disposed) return;
+        setBusy(false);
         lock(false);
         input.disabled = false;
         input.value = '';
@@ -236,8 +317,10 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
 
     const romance = intimacyOf(s).romance;
     const kinds = ALL_KINDS.filter((k) => romance || !(ROMANTIC_PROPOSALS as readonly string[]).includes(k));
-    const propose = h('select', { name: 'propose', class: 'alius-select', 'aria-label': 'Propose' },
-      h('option', { value: '' }, 'PROPOSE ▾'), ...kinds.map((k) => h('option', { value: k }, label(k)))) as HTMLSelectElement;
+    const propose = h('select', {
+      name: 'propose', class: 'alius-select', 'aria-label': 'Propose',
+      title: 'Make a formal proposal. The rules decide how she answers; the model plays it out.',
+    }, h('option', { value: '' }, 'PROPOSE ▾'), ...kinds.map((k) => h('option', { value: k }, `${label(k)} — ${KIND_HINT[k] ?? ''}`))) as HTMLSelectElement;
     const who = units.length > 1
       ? (h('select', { name: 'propose-unit', class: 'alius-select', 'aria-label': 'Propose to' }, ...units.map((u) => h('option', { value: u.id }, u.displayName))) as HTMLSelectElement)
       : null;
@@ -262,7 +345,8 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
           act('end', '[END TRANSMISSION]', () => void controller.end().then(() => { if (!disposed) ctx.onEnded(); }), 'End the conversation')),
       ),
       banner,
-      h('div', { class: 'alius-stage' }, bg, spriteHost),
+      busyHost,
+      h('div', { class: 'alius-stage' }, bg, spriteHost, caption),
       hud,
       log,
       chips,
@@ -333,6 +417,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     dispose() {
       disposed = true;
       stopTyping();
+      if (busyTimer) clearInterval(busyTimer);
       for (const t of timeouts) clearTimeout(t);
       timeouts.clear();
     },

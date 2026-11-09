@@ -39,6 +39,7 @@ function setup(opts: { participants?: string[]; messages?: ChatMessage[]; settin
     propose: vi.fn(),
     answer: vi.fn(),
     end: vi.fn(async () => {}),
+    edit: vi.fn(async () => {}), stop: vi.fn(), onEdited: vi.fn(),
     transcript: () => messages,
     onSwipe: vi.fn(), resume: vi.fn(), idle: vi.fn(), dispose: vi.fn(), start: vi.fn(),
   } as unknown as SceneController;
@@ -160,16 +161,107 @@ describe('scene screen', () => {
     expect(input.value).toBe('');
   });
 
-  it('END, swipe, regenerate and PROPOSE are locked while a send is pending (review #1)', async () => {
-    const { q, qa, finishSend } = setup({ participants: [ANN, BEA] });
+  it('END, swipe, regenerate, edit and PROPOSE are locked while a send is pending; STOP is available then (review #1)', async () => {
+    const { q, qa, finishSend } = setup({ participants: [ANN, BEA], messages: [msg(0, { text: 'earlier' })] });
+    expect(q('button[data-action="stop"]')).toBeNull();
     const input = q<HTMLInputElement>('input[name="cmd"]')!;
     input.value = 'Hello';
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
-    const locked = () => [...qa<HTMLButtonElement>('button[data-action]'), ...qa<HTMLSelectElement>('select')].map((e) => (e as HTMLButtonElement).disabled);
+    const locked = () => [...qa<HTMLButtonElement>('button[data-action]:not([data-action="stop"])'), ...qa<HTMLButtonElement>('button.alius-edit'), ...qa<HTMLSelectElement>('select')].map((e) => (e as HTMLButtonElement).disabled);
+    expect(locked().length).toBeGreaterThan(4);
     expect(locked().every(Boolean)).toBe(true);
+    expect(q<HTMLButtonElement>('button[data-action="stop"]')!.disabled).toBe(false);
+    expect(q('.alius-busy')!.textContent).toMatch(/AWAITING REPLY/);
     finishSend();
     await vi.advanceTimersByTimeAsync(0);
     expect(locked().some(Boolean)).toBe(false);
+    expect(q('button[data-action="stop"]')).toBeNull();
+    expect(q('.alius-busy')).toBeNull();
+  });
+
+  it('STOP calls the controller', () => {
+    const { q, controller } = setup();
+    const input = q<HTMLInputElement>('input[name="cmd"]')!;
+    input.value = 'Hello';
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    q('button[data-action="stop"]')!.click();
+    expect(controller.stop).toHaveBeenCalledTimes(1);
+  });
+
+  it('while waiting, the transcript follows the reply as it streams in, without typing it out again', async () => {
+    const messages: ChatMessage[] = [msg(0, { isUser: true, name: 'Vale', avatar: undefined, text: 'Hi' })];
+    const { q, qa, screen, finishSend } = setup({ messages, settings: { typingSpeed: 20 } });
+    const input = q<HTMLInputElement>('input[name="cmd"]')!;
+    input.value = 'Hello';
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    messages.push(msg(1, { text: 'Streaming in' }));
+    vi.advanceTimersByTime(600);
+    expect(qa('.alius-text').at(-1)!.textContent).toBe('Streaming in');
+    messages[1].text = 'Streaming in, and more';
+    vi.advanceTimersByTime(600);
+    expect(qa('.alius-text').at(-1)!.textContent).toBe('Streaming in, and more');
+    finishSend();
+    await vi.advanceTimersByTimeAsync(0);
+    screen.handle({ type: 'transcript' });
+    expect(qa('.alius-text').at(-1)!.textContent).toBe('Streaming in, and more'); // not restarted as an animation
+  });
+
+  it('every message has an edit button; saving calls controller.edit with the new text', () => {
+    const { q, qa, controller } = setup({ messages: [msg(0, { isUser: true, name: 'Vale', avatar: undefined, text: 'Hi' }), msg(1, { text: 'Hello *there*' })] });
+    expect(qa('button.alius-edit').map((b) => b.dataset.edit)).toEqual(['0', '1']);
+    qa('button.alius-edit')[1].click();
+    const box = q<HTMLTextAreaElement>('textarea.alius-edit-box')!;
+    expect(box.value).toBe('Hello *there*');
+    box.value = 'Hello, changed';
+    box.dispatchEvent(new Event('input', { bubbles: true }));
+    q('button[data-action="edit-save"]')!.click();
+    expect(controller.edit).toHaveBeenCalledWith(1, 'Hello, changed');
+    expect(q('textarea.alius-edit-box')).toBeNull();
+  });
+
+  it('cancel, Escape and an unchanged save call nothing; Ctrl+Enter saves', () => {
+    const { q, qa, controller } = setup({ messages: [msg(0, { text: 'Hello' })] });
+    qa('button.alius-edit')[0].click();
+    q('button[data-action="edit-cancel"]')!.click();
+    expect(q('textarea.alius-edit-box')).toBeNull();
+    qa('button.alius-edit')[0].click();
+    q('textarea.alius-edit-box')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(q('textarea.alius-edit-box')).toBeNull();
+    qa('button.alius-edit')[0].click();
+    q('button[data-action="edit-save"]')!.click();
+    expect(controller.edit).not.toHaveBeenCalled();
+    qa('button.alius-edit')[0].click();
+    const box = q<HTMLTextAreaElement>('textarea.alius-edit-box')!;
+    box.value = 'New text';
+    box.dispatchEvent(new Event('input', { bubbles: true }));
+    box.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true, bubbles: true }));
+    expect(controller.edit).toHaveBeenCalledWith(0, 'New text');
+  });
+
+  it('a half-edited message survives a redraw and the edit box shows markup as text', () => {
+    const { q, qa, screen } = setup({ messages: [msg(0, { text: '<b>bold</b>' })] });
+    qa('button.alius-edit')[0].click();
+    const box = q<HTMLTextAreaElement>('textarea.alius-edit-box')!;
+    expect(box.value).toBe('<b>bold</b>');
+    box.value = 'draft';
+    box.dispatchEvent(new Event('input', { bubbles: true }));
+    screen.handle({ type: 'transcript' });
+    expect(q<HTMLTextAreaElement>('textarea.alius-edit-box')!.value).toBe('draft');
+    expect(q('b')).toBeNull();
+  });
+
+  it('the location art is captioned, so it reads as a place', () => {
+    expect(setup().q('.alius-stage-caption')!.textContent).toBe('MESS HALL');
+    expect(setup({ locationId: 'training_yard' }).q('.alius-stage-caption')!.textContent).toBe('TRAINING YARD');
+  });
+
+  it('the propose menu explains each kind', () => {
+    const { q, qa } = setup();
+    expect(q('select[name="propose"]')!.getAttribute('title')).toMatch(/formal proposal/i);
+    const labels = qa<HTMLOptionElement>('select[name="propose"] option').map((o) => o.textContent);
+    expect(labels).toContain('DATE — ask her out');
+    expect(labels).toContain('CONFIDE — tell her a secret');
+    expect(labels.every((l) => l === 'PROPOSE ▾' || / — /.test(l!))).toBe(true);
   });
 
   it('an empty command is not sent', () => {

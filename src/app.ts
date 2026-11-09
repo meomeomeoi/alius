@@ -815,6 +815,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         // a swiped or deleted reply: undo its extraction if it was the last one applied
         st.on('message_swiped', (i) => scene.onSwipe(Number(i)));
         st.on('message_deleted', (i) => scene.onSwipe(Number(i)));
+        st.on('message_edited', (i) => scene.onEdited(Number(i)));
       }
     },
 

@@ -50,6 +50,12 @@ export interface SceneController {
   propose(kind: string, unitId?: string): void;
   answer(proposalId: string, answer: ProposalAnswer): void;
   end(): Promise<void>;
+  /** Rewrites a message of the scene in the chat. If it belongs to the last exchange, that exchange's extraction is undone and read again. */
+  edit(index: number, text: string): Promise<void>;
+  /** A message was edited in the chat itself (not through `edit`). */
+  onEdited(index: number): void;
+  /** Asks the chat to stop the generation in progress. */
+  stop(): void;
   transcript(): ChatMessage[];
   /** A message was swiped or deleted in ST: undo the last extraction if it was for that reply, then re-extract. */
   onSwipe(index: number): void;
@@ -258,6 +264,12 @@ export function createSceneController(deps: SceneDeps): SceneController {
         return;
       }
       if (disposed || chatId() !== expect || !state()?.scene) return;
+      if (!st.getChatMessages(before).some((m) => !m.isUser)) {
+        // /trigger gives up quietly after 10 s when ST is still busy; the group may also simply have chosen nobody
+        deps.toast('warn', 'No reply arrived. The chat may still be busy generating, or no group member was chosen to answer. Press STOP, wait a moment, then use ↻ to regenerate.');
+        deps.onUi({ type: 'transcript' });
+        return;
+      }
       const events = dispatch({ type: 'scene/exchange', payload: {} }, expect);
       const exchanges = Number(events.find((e) => e.type === 'scene_exchange')?.exchanges ?? 0);
       deps.onUi({ type: 'transcript' });
@@ -271,6 +283,36 @@ export function createSceneController(deps: SceneDeps): SceneController {
     } finally {
       pending = false;
     }
+  }
+
+  /** Index of a message this controller is editing right now (its `message_edited` event is ours to handle). */
+  let selfEdit: number | null = null;
+
+  /**
+   * A message of the scene changed. If it is part of the last extracted exchange, that extraction is undone and the
+   * exchange is read again; an older message keeps whatever was already read from it.
+   */
+  function handleEdited(index: number): void {
+    const la = lastApply;
+    deps.onUi({ type: 'transcript' });
+    if (extracting) {
+      swipedWhileExtracting.add(index);
+      return;
+    }
+    if (!la || index < la.from || index > la.lastReplyIndex) {
+      if (index < extracted) debug('That message has already been read; what was taken from it stays.');
+      return;
+    }
+    awaitingReextract = false;
+    controller.onSwipe(la.lastReplyIndex);
+    if (!awaitingReextract) return; // not rolled back (something changed since): onSwipe said so
+    awaitingReextract = false;
+    const expect = chatId();
+    background = background.then(async () => {
+      if (!state()?.scene || chatId() !== expect) return;
+      await extract(expect);
+      deps.onUi({ type: 'transcript' });
+    });
   }
 
   const controller: SceneController = {
@@ -374,6 +416,30 @@ export function createSceneController(deps: SceneDeps): SceneController {
       const scene = state()?.scene;
       if (!scene) return [];
       return st.getChatMessages(Math.min(scene.startIndex, st.chatLength()));
+    },
+
+    async edit(index, text) {
+      const t = text.trim();
+      if (t === '' || !state()?.scene) return;
+      selfEdit = index;
+      try {
+        await st.editMessage(index, t);
+      } catch (e) {
+        deps.toast('error', `Could not edit the message: ${e instanceof Error ? e.message : String(e)}`);
+        return;
+      } finally {
+        selfEdit = null;
+      }
+      handleEdited(index);
+    },
+
+    onEdited(index) {
+      if (selfEdit === index) return; // our own edit: `edit` handles it
+      handleEdited(index);
+    },
+
+    stop() {
+      st.stopGeneration();
     },
 
     onSwipe(index) {

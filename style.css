@@ -1045,3 +1045,68 @@
 @media (prefers-reduced-motion: reduce) {
   #alius-shell .alius-knock .alius-ascii { animation: none; }
 }
+
+/* Scene: stage caption, waiting line, message editing */
+#alius-shell .alius-stage-caption {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  padding: 0 8px;
+  color: var(--alius-bg);
+  background: var(--alius-fg);
+  letter-spacing: 0.1em;
+  font-size: 12px;
+}
+
+#alius-shell .alius-busy {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  color: var(--alius-accent);
+  letter-spacing: 0.08em;
+}
+
+#alius-shell .alius-busy-text::after {
+  content: "";
+  display: inline-block;
+  width: 0.6em;
+  animation: alius-blink 1s steps(2) infinite;
+}
+
+@keyframes alius-blink {
+  0% { content: "_"; }
+  50% { content: ""; }
+}
+
+#alius-shell button.alius-edit {
+  background: transparent;
+  color: var(--alius-dim);
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+  opacity: 0.6;
+}
+
+#alius-shell .alius-line:hover button.alius-edit,
+#alius-shell button.alius-edit:focus-visible {
+  opacity: 1;
+  color: var(--alius-accent);
+}
+
+#alius-shell button.alius-edit:disabled {
+  visibility: hidden;
+}
+
+#alius-shell .alius-edit-form {
+  display: block;
+}
+
+#alius-shell .alius-edit-box {
+  width: 100%;
+  min-height: 4em;
+  margin: 4px 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #alius-shell .alius-busy-text::after { animation: none; }
+}

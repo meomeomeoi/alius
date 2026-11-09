@@ -18,6 +18,8 @@ interface StContext {
   name1?: string;
   chat: unknown[];
   stopGeneration(): void;
+  updateMessageBlock(messageId: number, message: unknown): void;
+  saveChat(): Promise<void>;
   executeSlashCommandsWithOptions(
     text: string, options?: Record<string, unknown>,
   ): Promise<{ pipe?: string; isError?: boolean; isAborted?: boolean; abortReason?: string; errorMessage?: string } | null>;
@@ -35,7 +37,7 @@ interface StContext {
   saveMetadata(): Promise<void>;
   extensionSettings: Record<string, any>;
   saveSettingsDebounced(): void;
-  eventSource: { on(event: string, fn: (...a: unknown[]) => void): void };
+  eventSource: { on(event: string, fn: (...a: unknown[]) => void): void; emit?(event: string, ...a: unknown[]): Promise<void> | void };
   eventTypes: Record<string, string>;
   setExtensionPrompt(key: string, value: string, position: number, depth: number, scan?: boolean, role?: number): void;
   generateRawData(opts: { prompt: string; systemPrompt?: string; responseLength?: number }): Promise<unknown>;
@@ -60,6 +62,7 @@ const EVENT: Record<StEvent, string> = {
   generation_started: 'GENERATION_STARTED',
   message_swiped: 'MESSAGE_SWIPED',
   message_deleted: 'MESSAGE_DELETED',
+  message_edited: 'MESSAGE_EDITED',
   generation_ended: 'GENERATION_ENDED',
   group_wrapper_finished: 'GROUP_WRAPPER_FINISHED',
 };
@@ -297,6 +300,18 @@ export class RealStAdapter implements StAdapter {
 
   stopGeneration(): void {
     ctx().stopGeneration();
+  }
+
+  async editMessage(index: number, text: string): Promise<void> {
+    const c = ctx();
+    const m = c.chat[index] as Record<string, unknown> | undefined;
+    if (!m || typeof m !== 'object') throw new Error(`no such message ${index}`);
+    // what ST's own "edit done" does: the text, the active swipe, the rendered block, the event, the save
+    m.mes = text;
+    if (Array.isArray(m.swipes) && typeof m.swipe_id === 'number') m.swipes[m.swipe_id] = text;
+    c.updateMessageBlock(index, m);
+    await c.eventSource.emit?.(c.eventTypes.MESSAGE_EDITED, index);
+    await c.saveChat();
   }
 
   async getLastExpression(name: string): Promise<string | null> {

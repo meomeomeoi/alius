@@ -7475,6 +7475,11 @@ function createSceneController(deps) {
         return;
       }
       if (disposed || chatId() !== expect || !state()?.scene) return;
+      if (!st.getChatMessages(before).some((m) => !m.isUser)) {
+        deps.toast("warn", "No reply arrived. The chat may still be busy generating, or no group member was chosen to answer. Press STOP, wait a moment, then use \u21BB to regenerate.");
+        deps.onUi({ type: "transcript" });
+        return;
+      }
       const events = dispatch2({ type: "scene/exchange", payload: {} }, expect);
       const exchanges = Number(events.find((e) => e.type === "scene_exchange")?.exchanges ?? 0);
       deps.onUi({ type: "transcript" });
@@ -7487,6 +7492,29 @@ function createSceneController(deps) {
     } finally {
       pending2 = false;
     }
+  }
+  let selfEdit = null;
+  function handleEdited(index) {
+    const la = lastApply;
+    deps.onUi({ type: "transcript" });
+    if (extracting) {
+      swipedWhileExtracting.add(index);
+      return;
+    }
+    if (!la || index < la.from || index > la.lastReplyIndex) {
+      if (index < extracted) debug("That message has already been read; what was taken from it stays.");
+      return;
+    }
+    awaitingReextract = false;
+    controller.onSwipe(la.lastReplyIndex);
+    if (!awaitingReextract) return;
+    awaitingReextract = false;
+    const expect = chatId();
+    background = background.then(async () => {
+      if (!state()?.scene || chatId() !== expect) return;
+      await extract2(expect);
+      deps.onUi({ type: "transcript" });
+    });
   }
   const controller = {
     async start(opts) {
@@ -7584,6 +7612,27 @@ function createSceneController(deps) {
       const scene = state()?.scene;
       if (!scene) return [];
       return st.getChatMessages(Math.min(scene.startIndex, st.chatLength()));
+    },
+    async edit(index, text) {
+      const t = text.trim();
+      if (t === "" || !state()?.scene) return;
+      selfEdit = index;
+      try {
+        await st.editMessage(index, t);
+      } catch (e) {
+        deps.toast("error", `Could not edit the message: ${e instanceof Error ? e.message : String(e)}`);
+        return;
+      } finally {
+        selfEdit = null;
+      }
+      handleEdited(index);
+    },
+    onEdited(index) {
+      if (selfEdit === index) return;
+      handleEdited(index);
+    },
+    stop() {
+      st.stopGeneration();
     },
     onSwipe(index) {
       if (extracting) {
@@ -9333,6 +9382,19 @@ var TICK_MS = 50;
 var NON_ROMANTIC_KINDS = ["friendship_deepen", "confide", "rivalry", "reconcile", "break_up"];
 var ALL_KINDS = [...NON_ROMANTIC_KINDS, ...ROMANTIC_PROPOSALS];
 var label = kindLabel;
+var KIND_HINT = {
+  friendship_deepen: "ask to be friends",
+  confide: "tell her a secret",
+  rivalry: "declare a rivalry",
+  reconcile: "make peace",
+  break_up: "end the relationship",
+  date: "ask her out",
+  fwb: "propose something casual",
+  romance: "propose a relationship",
+  exclusive: "ask for exclusivity",
+  secret_affair: "propose a secret relationship"
+};
+var BUSY_TICK_MS = 500;
 function segments(text) {
   const out = [];
   let last = 0;
@@ -9372,6 +9434,9 @@ function renderSceneScreen(host, ctx2) {
   let progress = /* @__PURE__ */ new Map();
   let timer = null;
   let started = 0;
+  let editing = null;
+  let busyTimer = null;
+  let busyStarted = 0;
   const labels = /* @__PURE__ */ new Map();
   const timeouts = /* @__PURE__ */ new Set();
   let bg;
@@ -9380,6 +9445,8 @@ function renderSceneScreen(host, ctx2) {
   let log;
   let chips;
   let banner;
+  let busyHost;
+  let caption;
   let input;
   let sceneKey = "";
   const state = () => ctx2.getState();
@@ -9390,6 +9457,7 @@ function renderSceneScreen(host, ctx2) {
   }
   function drawBackground(s) {
     const loc = registries.locations.get(s.scene.locationId);
+    caption.textContent = locationName(s, present(s)).toUpperCase();
     bg.replaceChildren();
     bg.style.backgroundImage = "";
     const night = s.slot === "night" ? loc?.backgroundNight : void 0;
@@ -9442,26 +9510,81 @@ function renderSceneScreen(host, ctx2) {
     timer = null;
     animating = null;
   }
+  function cancelEdit(s) {
+    editing = null;
+    drawLog(s);
+  }
+  function saveEdit(s) {
+    const e = editing;
+    editing = null;
+    const original = controller.transcript().find((m) => m.index === e?.index)?.text;
+    drawLog(s);
+    if (!e || e.value.trim() === "" || e.value === original) return;
+    void controller.edit(e.index, e.value).catch(() => {
+    });
+  }
   function drawLog(s) {
     const messages = controller.transcript();
     const lastIndex = messages.length > 0 ? messages[messages.length - 1].index : -1;
     const speed = ctx2.settings().typingSpeed;
-    const fresh = seen < 0 ? [] : messages.filter((m) => m.index > seen);
-    const newest = [...fresh].reverse().find((m) => !m.isUser);
-    if (newest && speed > 0 && !progress.has(newest.index)) {
-      animating = newest.index;
-      progress.set(newest.index, 0);
-      started = Date.now();
+    if (pending2) {
+      stopTyping();
+      if (lastIndex > seen) seen = lastIndex;
+    } else {
+      const fresh = seen < 0 ? [] : messages.filter((m) => m.index > seen);
+      const newest = [...fresh].reverse().find((m) => !m.isUser);
+      if (newest && speed > 0 && !progress.has(newest.index)) {
+        animating = newest.index;
+        progress.set(newest.index, 0);
+        started = Date.now();
+      }
+      if (seen < 0 || lastIndex > seen) seen = lastIndex;
     }
-    if (seen < 0 || lastIndex > seen) seen = lastIndex;
+    const boxHadFocus = document.activeElement instanceof HTMLTextAreaElement && log.contains(document.activeElement);
     log.replaceChildren(...messages.map((m) => {
       const speaker = h("span", { class: "alius-speaker" });
       speaker.textContent = `${(m.isUser ? s.commander.name : m.name).toUpperCase()} //`;
+      if (editing && editing.index === m.index) {
+        const e = editing;
+        const box2 = h("textarea", { class: "alius-edit-box", rows: "3", "aria-label": "Edit message" });
+        box2.value = e.value;
+        box2.addEventListener("input", () => {
+          e.value = box2.value;
+        });
+        box2.addEventListener("keydown", (ev) => {
+          const k = ev;
+          if (k.key === "Escape") cancelEdit(s);
+          else if (k.key === "Enter" && (k.ctrlKey || k.metaKey)) saveEdit(s);
+        });
+        return h("div", { class: `alius-line${m.isUser ? " is-user" : ""} is-editing`, "data-index": m.index }, speaker, " ", h(
+          "div",
+          { class: "alius-edit-form" },
+          box2,
+          h("button", { type: "button", class: "alius-btn", "data-action": "edit-save", onclick: () => saveEdit(s) }, "[SAVE]"),
+          h("button", { type: "button", class: "alius-btn", "data-action": "edit-cancel", onclick: () => cancelEdit(s) }, "[CANCEL]")
+        ));
+      }
       const text = h("span", { class: "alius-text" });
       fillText(text, m.text, m.index === animating ? progress.get(m.index) ?? 0 : Infinity);
-      return h("div", { class: `alius-line${m.isUser ? " is-user" : ""}`, "data-index": m.index }, speaker, " ", text);
+      const edit = h("button", {
+        type: "button",
+        class: "alius-edit",
+        "data-edit": m.index,
+        "aria-label": "Edit message",
+        title: "Edit this message",
+        disabled: pending2,
+        onclick: () => {
+          editing = { index: m.index, value: m.text, focus: true };
+          drawLog(s);
+        }
+      }, "\u270E");
+      return h("div", { class: `alius-line${m.isUser ? " is-user" : ""}`, "data-index": m.index }, speaker, " ", text, " ", edit);
     }));
-    log.scrollTop = log.scrollHeight;
+    const box = log.querySelector("textarea.alius-edit-box");
+    if (box && (editing?.focus || boxHadFocus)) {
+      box.focus();
+      if (editing) editing.focus = false;
+    } else log.scrollTop = log.scrollHeight;
     if (animating !== null && !timer) {
       timer = setInterval(() => {
         const idx = animating;
@@ -9484,7 +9607,26 @@ function renderSceneScreen(host, ctx2) {
     if (pacing) banner.append(h("div", { class: "alius-pacing", role: "status" }, "TIME IS PASSING"));
   }
   function lock(on) {
-    for (const el of root.querySelectorAll("button[data-action], select")) el.disabled = on;
+    for (const el of root.querySelectorAll('button[data-action]:not([data-action="stop"]), button.alius-edit, select')) el.disabled = on;
+  }
+  function setBusy(on) {
+    if (busyTimer) clearInterval(busyTimer);
+    busyTimer = null;
+    busyHost.replaceChildren();
+    if (!on) return;
+    busyStarted = Date.now();
+    const text = h("span", { class: "alius-busy-text" }, "AWAITING REPLY\u2026 0s");
+    busyHost.append(h(
+      "div",
+      { class: "alius-busy", role: "status" },
+      text,
+      h("button", { type: "button", class: "alius-btn", "data-action": "stop", "aria-label": "Stop the generation", onclick: () => controller.stop() }, "[STOP]")
+    ));
+    busyTimer = setInterval(() => {
+      text.textContent = `AWAITING REPLY\u2026 ${Math.floor((Date.now() - busyStarted) / 1e3)}s`;
+      const s = state();
+      if (s?.scene) drawLog(s);
+    }, BUSY_TICK_MS);
   }
   function build(s) {
     const units = present(s);
@@ -9495,6 +9637,8 @@ function renderSceneScreen(host, ctx2) {
     log = h("div", { class: "alius-transcript", role: "log", "aria-live": "polite", tabindex: "0" });
     chips = h("div", { class: "alius-chips" });
     banner = h("div", { class: "alius-pacing-host" });
+    busyHost = h("div", { class: "alius-busy-host" });
+    caption = h("div", { class: "alius-stage-caption" });
     input = h("input", { type: "text", name: "cmd", class: "alius-input", autocomplete: "off", "aria-label": "Command line" });
     input.addEventListener("keydown", (ev) => {
       if (ev.key !== "Enter" || pending2) return;
@@ -9502,10 +9646,13 @@ function renderSceneScreen(host, ctx2) {
       if (text === "") return;
       pending2 = true;
       input.disabled = true;
+      editing = null;
       lock(true);
+      setBusy(true);
       void controller.send(text).finally(() => {
         pending2 = false;
         if (disposed) return;
+        setBusy(false);
         lock(false);
         input.disabled = false;
         input.value = "";
@@ -9514,12 +9661,12 @@ function renderSceneScreen(host, ctx2) {
     });
     const romance = intimacyOf(s).romance;
     const kinds2 = ALL_KINDS.filter((k) => romance || !ROMANTIC_PROPOSALS.includes(k));
-    const propose = h(
-      "select",
-      { name: "propose", class: "alius-select", "aria-label": "Propose" },
-      h("option", { value: "" }, "PROPOSE \u25BE"),
-      ...kinds2.map((k) => h("option", { value: k }, label(k)))
-    );
+    const propose = h("select", {
+      name: "propose",
+      class: "alius-select",
+      "aria-label": "Propose",
+      title: "Make a formal proposal. The rules decide how she answers; the model plays it out."
+    }, h("option", { value: "" }, "PROPOSE \u25BE"), ...kinds2.map((k) => h("option", { value: k }, `${label(k)} \u2014 ${KIND_HINT[k] ?? ""}`)));
     const who = units.length > 1 ? h("select", { name: "propose-unit", class: "alius-select", "aria-label": "Propose to" }, ...units.map((u) => h("option", { value: u.id }, u.displayName))) : null;
     propose.addEventListener("change", () => {
       const kind = propose.value;
@@ -9548,7 +9695,8 @@ function renderSceneScreen(host, ctx2) {
         )
       ),
       banner,
-      h("div", { class: "alius-stage" }, bg, spriteHost),
+      busyHost,
+      h("div", { class: "alius-stage" }, bg, spriteHost, caption),
       hud,
       log,
       chips,
@@ -9621,6 +9769,7 @@ function renderSceneScreen(host, ctx2) {
     dispose() {
       disposed = true;
       stopTyping();
+      if (busyTimer) clearInterval(busyTimer);
       for (const t of timeouts) clearTimeout(t);
       timeouts.clear();
     }
@@ -11086,6 +11235,7 @@ function createApp(st, deps) {
         });
         st.on("message_swiped", (i) => scene.onSwipe(Number(i)));
         st.on("message_deleted", (i) => scene.onSwipe(Number(i)));
+        st.on("message_edited", (i) => scene.onEdited(Number(i)));
       }
     },
     current: () => ({ load, state }),
@@ -11903,6 +12053,7 @@ var EVENT = {
   generation_started: "GENERATION_STARTED",
   message_swiped: "MESSAGE_SWIPED",
   message_deleted: "MESSAGE_DELETED",
+  message_edited: "MESSAGE_EDITED",
   generation_ended: "GENERATION_ENDED",
   group_wrapper_finished: "GROUP_WRAPPER_FINISHED"
 };
@@ -12098,6 +12249,16 @@ var RealStAdapter = class {
   }
   stopGeneration() {
     ctx().stopGeneration();
+  }
+  async editMessage(index, text) {
+    const c = ctx();
+    const m = c.chat[index];
+    if (!m || typeof m !== "object") throw new Error(`no such message ${index}`);
+    m.mes = text;
+    if (Array.isArray(m.swipes) && typeof m.swipe_id === "number") m.swipes[m.swipe_id] = text;
+    c.updateMessageBlock(index, m);
+    await c.eventSource.emit?.(c.eventTypes.MESSAGE_EDITED, index);
+    await c.saveChat();
   }
   async getLastExpression(name) {
     const label2 = (await this.slash(`/expression-last ${slashArg(name)}`)).trim();

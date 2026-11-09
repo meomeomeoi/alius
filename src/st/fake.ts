@@ -262,6 +262,13 @@ export class FakeStAdapter implements StAdapter {
     this.stopped++;
   }
 
+  async editMessage(index: number, text: string): Promise<void> {
+    const m = this.chatMessages.find((x) => x.index === index);
+    if (!m) throw new Error(`FakeStAdapter: no such message ${index}`);
+    m.text = text;
+    this.emit('message_edited', index);
+  }
+
   async getLastExpression(name: string): Promise<string | null> {
     return this.expressionsByName.get(name) ?? null;
   }

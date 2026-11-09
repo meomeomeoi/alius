@@ -184,3 +184,18 @@ describe('FakeStAdapter chat (P3)', () => {
   });
 });
 
+
+describe('FakeStAdapter editing (P3)', () => {
+  it('editMessage changes the text, keeps the rest and fires message_edited', async () => {
+    const st = new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' });
+    st.groupReplies = [[{ avatar: 'ann.png', name: 'Ann', text: 'first' }]];
+    await st.sendUserMessage('Hello');
+    const edited: unknown[] = [];
+    st.on('message_edited', (i) => edited.push(i));
+    await st.editMessage(1, 'changed');
+    expect(st.getChatMessages().map((m) => m.text)).toEqual(['Hello', 'changed']);
+    expect(st.getChatMessages()[1]).toMatchObject({ name: 'Ann', avatar: 'ann.png' });
+    expect(edited).toEqual([1]);
+    await expect(st.editMessage(9, 'x')).rejects.toThrow(/no such message/i);
+  });
+});
