@@ -31,3 +31,14 @@ export const nightDirective = (unitName: string, framing: string): Directive => 
 
 /** For DM replies: she is being spammed. */
 export const snapDirective = (unitName: string): string => `${unitName}: ${SNAP_TEXT}`;
+
+/** After the commander answers one of her proposals the next reply must acknowledge it. */
+export function answerDirective(unitId: string, unitName: string, kind: string, answer: 'accept' | 'accept_secret' | 'decline' | 'not_now'): Directive {
+  const label = kind.replace(/_/g, ' ');
+  const text =
+    answer === 'accept' ? `The commander ACCEPTS ${unitName}'s proposal (${label}). Play her reaction to that.`
+    : answer === 'accept_secret' ? `The commander ACCEPTS ${unitName}'s proposal (${label}) but wants it kept secret from the others. Play her reaction to that.`
+    : answer === 'decline' ? `The commander DECLINES ${unitName}'s proposal (${label}). Play her reaction to being turned down.`
+    : `The commander puts ${unitName}'s proposal (${label}) off: not now. Play her reaction.`;
+  return { id: `proposal:${unitId}`, expiresAfter: 'next_reply', text };
+}
