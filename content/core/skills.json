@@ -1054,7 +1054,7 @@
       {
         "type": "status",
         "statusId": "untargetable",
-        "turns": 1,
+        "turns": 2,
         "target": "self"
       }
     ],
@@ -2466,7 +2466,7 @@
       {
         "type": "status",
         "statusId": "untargetable",
-        "turns": 1,
+        "turns": 2,
         "target": "self"
       },
       {
@@ -2552,7 +2552,7 @@
       {
         "type": "status",
         "statusId": "stun",
-        "turns": 1,
+        "turns": 2,
         "target": "self"
       }
     ],

@@ -189,6 +189,16 @@ export interface Combatant {
   redirects?: Array<{ fromCid: string; pct: number; turnsLeft: number }>;
   /** The combatant (cid) that summoned this enemy. */
   summonedBy?: string;
+  /** Owned upgrade nodes: they modify the skill with `skillId` when it is used. */
+  upgrades?: SkillUpgrade[];
+}
+
+export interface SkillUpgrade {
+  skillId: string;
+  cooldownDelta?: number;
+  /** Percent added to the damage multiplier and heal percentage of the skill. */
+  multPct?: number;
+  addEffects?: EffectSpec[];
 }
 
 export interface LogEntry {
@@ -266,6 +276,12 @@ export interface CombatState {
   commanderDown?: boolean;
   /** `repeat_order` fired: the order engine repeats `lastOrder` for free (read by orders.ts). */
   repeatOrder?: boolean;
+  /** The current actor's turn-start effects already ran (the combat is waiting for her input or resuming). */
+  turnStarted?: boolean;
+  /** The squad unit the combat waits for. */
+  awaitingCid?: string;
+  /** The current action is an extra action (no new turn start, no second extra). */
+  inExtra?: boolean;
 }
 
 // ---------------------------------------------------------------------------------------------
