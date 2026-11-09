@@ -4,15 +4,25 @@ import './engine/actions/calendar'; // registers calendar/*, activity/* and comm
 import './engine/actions/base'; // registers base/*, roster/* and squad/set_flavor actions
 import './engine/actions/scene'; // registers scene/*, intents/*, proposal/*, memory/* actions and the P3 relation accounting
 import './engine/actions/comms'; // registers dm/*, night/* actions and the defect social hooks
+import './engine/actions/combat'; // registers combat/* and campaign/set_difficulty actions
+import './engine/actions/progression'; // registers squad/unlock_node, respec, set_loadout, release_breakdowns and the level-up hook
+import './engine/actions/items'; // registers item/* actions and the workshop hook
 import './llm/calls/profileImport'; // registers the profile_import call type
 import { generateVignette } from './llm/calls/activityVignette'; // registers the activity_vignette call type
-import { generateGruntFlavor } from './llm/calls/flavor'; // registers the flavor call type
+import { generateEnemyFlavor, generateGruntFlavor } from './llm/calls/flavor'; // registers the flavor call type
 import type { ContentError, Registries } from './content/types';
 import { emptyRegistries } from './content/types';
 import { dispatch as engineDispatch, type Action, type EngineEvent } from './engine/dispatch';
 import type { CampaignState } from './engine/state/types';
 import { unreadCount } from './engine/dms';
 import { intimacyOf } from './engine/relations/gain';
+import { activeRosterUnits } from './engine/economy';
+import { generateEncounter } from './engine/combat/encounter';
+import { defaultFormation, squadPower } from './engine/combat/stats';
+import type { StartPayload } from './engine/combat/types';
+import { Rng } from './engine/rng';
+import { renderCombatScreen, type CombatScreen } from './ui/combat/combatScreen';
+import { renderInvTab } from './ui/inv/invTab';
 import { ContextBuilder } from './llm/context';
 import { runCompaction } from './scene/chronicle';
 import { createComms, type Comms } from './scene/comms';
@@ -83,6 +93,11 @@ export interface AliusApp {
   restoreSnapshot(snap: CampaignState, expectedCurrent: CampaignState): boolean;
   /** Starts a scene (P5 debriefs and events use this): dispatches `scene/start`, activates the members, shows the scene screen. */
   startScene(opts: StartOptions): Promise<boolean>;
+  /**
+   * Starts a combat (P5 expeditions use this): fills `allowRetry` from the easy-retry setting, dispatches `combat/start`
+   * and shows the combat screen. Returns false (with a toast) when the engine refuses.
+   */
+  startCombat(opts: StartPayload): boolean;
   /** Scenes (P3): send, propose, end, resume. */
   scene: SceneController;
   /** PDA DMs and night knocks (P3). */
@@ -133,6 +148,11 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
   let sceneScreen: SceneScreen | null = null;
   /** True while the scene screen (or the night knock) is what the shell shows. */
   let onSceneScreen = false;
+  let combatScreen: CombatScreen | null = null;
+  /** True while the combat screen is what the shell shows. */
+  let onCombatScreen = false;
+  /** Enemy names being generated (one request per `enemyId|affixes` key at a time). */
+  const namesInFlight = new Set<string>();
   const sceneApp = {
     dispatch: (a: Action, o?: { expectChatId?: string }) => api.dispatch(a, o),
     current: () => api.current(),
@@ -275,6 +295,108 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       h('button', { type: 'button', class: 'alius-btn', onclick: leaveScene }, '[ BACK ]')));
   }
 
+  // ---------------------------------------------------------------------------------------------- combat (P4)
+
+  function showCombat(): void {
+    onCombatScreen = true;
+    shell.showScreen('combat');
+  }
+
+  /** CONTINUE after a combat: back to the PDA. The result stays in `state.lastCombat` for P5. */
+  function leaveCombat(): void {
+    combatScreen?.dispose();
+    combatScreen = null;
+    onCombatScreen = false;
+    shell.showScreen('pda');
+  }
+
+  /** After a (re)load: an open combat is shown again, a combat screen of another chat is left. */
+  function adoptCombat(): void {
+    combatScreen?.dispose();
+    combatScreen = null;
+    if (state?.combat) showCombat();
+    else if (onCombatScreen) {
+      onCombatScreen = false;
+      shell.showScreen('pda');
+    }
+  }
+
+  /** Dispatches a combat action in the open chat; cut-ins and the like go to the screen. */
+  function combatDo(type: string, payload?: unknown): EngineEvent[] {
+    const events = act({ type, payload });
+    combatScreen?.handle(events);
+    return events;
+  }
+
+  function renderCombatView(host: HTMLElement): void {
+    combatScreen?.dispose();
+    combatScreen = null;
+    if (!state?.combat && !state?.lastCombat) {
+      host.append(h('section', { class: 'alius-section' }, h('p', {}, 'NO COMBAT'),
+        h('button', { type: 'button', class: 'alius-btn', onclick: leaveCombat }, '[ BACK ]')));
+      return;
+    }
+    combatScreen = renderCombatScreen(host, {
+      getState: () => state,
+      registries,
+      st,
+      settings: () => getSettings(st),
+      onAct: (action) => void combatDo('combat/act', { action }),
+      onOrder: (orderId, targetCid) => void combatDo('combat/order', { orderId, ...(targetCid ? { targetCid } : {}) }),
+      onAuto: (on) => void combatDo('combat/auto', { on }),
+      onRetry: () => void combatDo('combat/retry'),
+      onAccept: () => void combatDo('combat/accept'),
+      onRetreat: () => void combatDo('combat/retreat'),
+      onClose: leaveCombat,
+    });
+  }
+
+  /** Optional generated names for affixed enemies: one request per key, never blocks or changes the combat. */
+  function requestEnemyNames(): void {
+    const s = state;
+    const cs = s?.combat;
+    const settings = getSettings(st);
+    if (!s || !cs || !settings.enemyFlavor) return;
+    const chatId = st.getActiveChat()?.chatId;
+    for (const c of cs.combatants) {
+      if (c.side !== 'enemy' || !c.enemyId) continue;
+      const key = c.nameKey;
+      const affixes = (key.split('|')[1] ?? '').split(',').filter((a) => a !== '');
+      if (affixes.length === 0 || s.enemyNames?.[key] || namesInFlight.has(key)) continue;
+      namesInFlight.add(key);
+      const tpl = registries.enemies.get(c.enemyId);
+      void generateEnemyFlavor(
+        {
+          kind: 'enemy',
+          archetypeName: String(tpl?.name ?? c.enemyId),
+          categoryName: String(registries.enemyCategories.get(String(tpl?.categoryId))?.name ?? ''),
+          affixNames: affixes.map((a) => String(registries.affixes.get(a)?.adjective ?? a)),
+        },
+        { st, settings },
+      )
+        .then((r) => {
+          if (r) api.dispatch({ type: 'combat/set_enemy_name', payload: { key, name: r.name } }, { expectChatId: chatId });
+        })
+        .catch(() => {})
+        .finally(() => namesInFlight.delete(key));
+    }
+  }
+
+  /** Debug tool: a generated danger-1 encounter against the active roster (nothing banked, no expedition). */
+  function combatDrill(): void {
+    if (!state) return toast('warn', 'No campaign loaded.');
+    if (state.combat) return toast('warn', 'A combat is already open.');
+    const roster = activeRosterUnits(state);
+    if (roster.length === 0) return toast('warn', 'The active roster is empty.');
+    const ids = roster.map((u) => u.id);
+    const encounter = generateEncounter(state, registries, new Rng(state.rng), {
+      table: { categories: Object.fromEntries([...registries.enemyCategories.keys()].map((id) => [id, 1])) },
+      danger: 1,
+      squadPower: squadPower(state, registries, ids),
+    });
+    api.startCombat({ encounter, formation: defaultFormation(state, registries, ids), expedition: false, bankLoot: false });
+  }
+
   /** Re-reads the campaign of the open chat. */
   function reload(): void {
     saver?.dispose();
@@ -290,6 +412,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     applyContext();
     syncBadges();
     adoptScene();
+    adoptCombat();
     syncIntimacy();
   }
 
@@ -316,6 +439,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     { label: 'Set test directive', run: () => { context.setDirective(TEST_DIRECTIVE); applyContext(); } },
     { label: 'Clear test directive', run: () => { context.clearDirective(TEST_DIRECTIVE.id); applyContext(); } },
     { label: 'Clear all injections', run: () => context.apply(st, null, 0) },
+    { label: 'Combat drill', run: () => combatDrill() },
   ];
 
   function endSetup(): void {
@@ -615,6 +739,12 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         case 'facility_upgraded':
           toast('info', `${String(registries.facilities.get(String(e.facilityId))?.name ?? e.facilityId)} upgraded to level ${String(e.level)}.`);
           break;
+        case 'level_up':
+          toast('info', `${state?.squad.find((u) => u.id === e.unitId)?.displayName ?? 'A unit'} reached level ${String(e.level)}.`);
+          break;
+        case 'item_crafted':
+          toast('info', `Crafted ${String(registries.items.get(String(e.itemId))?.name ?? e.itemId)} [${String(e.rarity)}].`);
+          break;
         case 'unit_recovered':
           toast('info', `${state?.squad.find((u) => u.id === e.unitId)?.displayName ?? 'A unit'} has recovered.`);
           break;
@@ -642,6 +772,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     replaceState,
     getContentErrors: () => contentErrors,
     debugTools,
+    dispatch: (action) => api.dispatch(action, { expectChatId: st.getActiveChat()?.chatId }),
     onSettingsChanged: syncIntimacy,
   });
 
@@ -654,8 +785,33 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       settings: () => getSettings(st),
       onNewCampaign: openSetup,
       onResync: (id) => void resyncUnit(id),
+      onUnlock: (unitId, nodeId) => void act({ type: 'squad/unlock_node', payload: { unitId, nodeId } }),
+      onRespec: (unitId) => void act({ type: 'squad/respec', payload: { unitId } }),
+      onSetLoadout: (unitId, skillIds) => void act({ type: 'squad/set_loadout', payload: { unitId, skillIds } }),
+      onEquip: (unitId, uid) => void act({ type: 'item/equip', payload: { unitId, uid } }),
+      onUnequip: (unitId, slot) => void act({ type: 'item/unequip', payload: { unitId, slot } }),
     }),
   );
+  shell.registerTab('inv', (host) =>
+    renderInvTab(host, {
+      getState: () => state,
+      registries,
+      onEquip: (unitId, uid) => void act({ type: 'item/equip', payload: { unitId, uid } }),
+      onCraft: (recipeId) => void act({ type: 'item/craft', payload: { recipeId } }),
+      onUpgrade: (uid) => void act({ type: 'item/upgrade', payload: { uid } }),
+      onReroll: (uid, affixIndex) => void act({ type: 'item/reroll', payload: { uid, affixIndex } }),
+      onDismantle: (uid) => void act({ type: 'item/dismantle', payload: { uid } }),
+    }),
+  );
+  shell.registerScreen('combat', renderCombatView, {
+    refresh: () => {
+      if ((state?.combat || state?.lastCombat) && combatScreen) {
+        combatScreen.refresh();
+        return true;
+      }
+      return false;
+    },
+  });
   shell.registerTab('ops', (host) =>
     renderOpsTab(host, {
       getState: () => state,
@@ -705,6 +861,25 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     scene,
     comms,
     startScene: beginScene,
+    startCombat(opts) {
+      if (!state) {
+        toast('error', 'No Alius campaign in this chat.');
+        return false;
+      }
+      const chatId = st.getActiveChat()?.chatId;
+      const payload: StartPayload = { ...opts, allowRetry: getSettings(st).easyRetry };
+      const events = api.dispatch({ type: 'combat/start', payload }, { expectChatId: chatId });
+      const failed = events.find((e) => e.type === 'error');
+      if (failed) {
+        toast('error', String(failed.message ?? failed.code));
+        return false;
+      }
+      showCombat();
+      shell.open();
+      combatScreen?.handle(events);
+      requestEnemyNames();
+      return true;
+    },
     refreshContext: applyContext,
     replaceState,
     openSetup,
@@ -714,6 +889,10 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     async performActivity(req) {
       const chatId = st.getActiveChat()?.chatId;
       const events = act({ type: 'activity/do', payload: req });
+      if (events.some((e) => e.type === 'workshop_opened')) {
+        shell.showTab('inv');
+        shell.open();
+      }
       const requested = events.find((e) => e.type === 'scene_requested');
       if (requested) await offerScene(String(requested.unitId));
       else if (events.some((e) => e.type === 'group_scene_offered')) await offerGroupScene();
@@ -834,8 +1013,11 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       if (r.state !== state) {
         state = r.state;
         saver?.save(state);
-        // the day-end pipeline asks for a save: do not wait for the debounce
-        if (r.events.some((e) => e.type === 'autosave')) void saver?.flush().catch((e) => console.warn('[Alius] autosave failed', e));
+        // the day-end pipeline asks for a save: do not wait for the debounce; neither does a combat, so a reload
+        // (or a chat switch) mid-fight resumes at the same turn
+        if (r.events.some((e) => e.type === 'autosave' || e.type.startsWith('combat_'))) {
+          void saver?.flush().catch((e) => console.warn('[Alius] autosave failed', e));
+        }
       }
       reportEvents(r.events);
       applyContext();

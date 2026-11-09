@@ -506,11 +506,11 @@ docs/** (Task 21), tests/** mirror src
 **Interfaces:**
 - `app.ts` imports `engine/actions/combat`, `engine/actions/progression`, `engine/actions/items`; registers the `combat` screen and the `inv` tab; new `AliusApp.startCombat(opts: StartPayload): boolean` (fills `allowRetry` from `easyRetry`, dispatches with `expectChatId`, shows the combat screen; P5 uses it); SQUAD/INV callbacks dispatch the P4 actions; `workshop_session`/`workshop_opened` → INV tab in workshop mode; `combat_cutin` → cut-in; debug tool **Combat drill** (debug mode: active roster, `defaultFormation`, `generateEncounter` at danger 1 over every category, `expedition: false`, `bankLoot: false`; refuses with a toast when the roster is empty or a combat is open); with `enemyFlavor` on, after `combat_started` request names for affixed enemies whose key is not cached (fail soft, `combat/set_enemy_name`); on load/chat change with `state.combat` open → combat screen; `[CONTINUE]` after a result → back to the PDA.
 
-- [ ] **Step 1: Write the failing tests** — `combat drill opens the combat screen`; `acting through the screen dispatches combat/act`; `easy retry setting reaches combat/start`; `reload with an open combat shows the combat screen`; `a late combat dispatch for another chat is dropped`; `workshop activity opens INV in workshop mode`; `enemy flavor names are requested once per key and failures change nothing`; `commander down in a drill queues the P3 commander_injured follow-up`.
-- [ ] **Step 2: Run** `npx vitest run tests/app-combat.test.ts tests/app.test.ts tests/app-day.test.ts tests/app-scene.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS; whole suite green; `npm run typecheck` clean.
-- [ ] **Step 5: Commit** `feat: wire combat, inventory, workshop and combat drill into the app`.
+- [x] **Step 1: Write the failing tests** — `combat drill opens the combat screen`; `acting through the screen dispatches combat/act`; `easy retry setting reaches combat/start`; `reload with an open combat shows the combat screen`; `a late combat dispatch for another chat is dropped`; `workshop activity opens INV in workshop mode`; `enemy flavor names are requested once per key and failures change nothing`; `commander down in a drill queues the P3 commander_injured follow-up`.
+- [x] **Step 2: Run** `npx vitest run tests/app-combat.test.ts tests/app.test.ts tests/app-day.test.ts tests/app-scene.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS; whole suite green; `npm run typecheck` clean.
+- [x] **Step 5: Commit** `feat: wire combat, inventory, workshop and combat drill into the app`.
 
 ---
 

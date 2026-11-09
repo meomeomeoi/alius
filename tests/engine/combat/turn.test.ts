@@ -254,6 +254,17 @@ describe('turn loop', () => {
     expect(comb(authorized.cs, 's1').statuses.some((s) => s.id === 'authorized')).toBe(false);
   });
 
+  it('an ultimate emits a cut-in event', () => {
+    const cs = fixtureCombat({ squad: [{ cid: 's1', skills: ['as_ult_overrun'] }], enemies: [{ hp: 9999, maxHp: 9999 }], cp: 3 });
+    const ctx = ctxOf(cs);
+    performAction(ctx, 's1', { kind: 'skill', skillId: 'as_ult_overrun' });
+    expect(ctx.events.find((e) => e.type === 'combat_cutin')).toMatchObject({ kind: 'ultimate', cid: 's1', text: 'Overrun' });
+    const plain = fixtureCombat({ squad: [{ skills: ['as_strike'] }], enemies: [{}] });
+    const pctx = ctxOf(plain);
+    performAction(pctx, 's1', { kind: 'skill', skillId: 'as_strike', targetCid: 'e1' });
+    expect(pctx.events).toEqual([]);
+  });
+
   it('an illegal or missing target is rejected', () => {
     const cs = fixtureCombat({ squad: [{ skills: strike }], enemies: [{ row: 'front' }, { row: 'back' }] });
     const ctx = ctxOf(cs);

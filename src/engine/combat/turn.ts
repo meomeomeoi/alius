@@ -118,6 +118,7 @@ export function performAction(ctx: EffectCtx, cid: string, action: PlannedAction
   if (skill.stressCost) addStress(ctx, cid, skill.stressCost, 'self');
   c.cooldowns[id] = (skill.cooldown ?? 0) > 0 ? skill.cooldown! + 1 : 0;
   ctx.log({ kind: 'skill', actor: cid, skillId: id, ...(action.targetCid ? { target: action.targetCid } : {}) });
+  if (skill.kind === 'ultimate') ctx.emit({ type: 'combat_cutin', kind: 'ultimate', unitId: c.unitId, cid, text: skill.name });
   fireTrigger(ctx, 'onAction', { actorCid: cid, targetCid: action.targetCid, skillId: id });
 
   const misfire = activePassives(ctx, cid, 'misfire').some((e) => e.chance !== undefined && ctx.rng.chance(e.chance));

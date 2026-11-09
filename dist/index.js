@@ -1013,8 +1013,8 @@ function generateGrunt(state, reg, rng) {
   }
   let designation = generateDesignation(rng, taken);
   while (taken.has(idFor(designation))) designation = generateDesignation(rng, /* @__PURE__ */ new Set([...taken, designation]));
-  const living = state.squad.filter(isLiving);
-  const average = living.length === 0 ? 1 : living.reduce((n, u) => n + u.level, 0) / living.length;
+  const living2 = state.squad.filter(isLiving);
+  const average = living2.length === 0 ? 1 : living2.reduce((n, u) => n + u.level, 0) / living2.length;
   const stats = role.baseStats;
   return {
     id: idFor(designation),
@@ -1182,10 +1182,10 @@ function recordPromise(draft, p, day, knownBy) {
     list2.push(record);
     return { event: null, record };
   }
-  const open = list2.filter((x) => x.status === "open" && x.by === p.by && x.to === p.to);
-  if (open.length === 0) return { event: null };
-  const matching = open.filter((x) => jaccard(x.text, p.text) >= 0.3).sort((a, b) => jaccard(b.text, p.text) - jaccard(a.text, p.text));
-  const target = matching[0] ?? open[open.length - 1];
+  const open2 = list2.filter((x) => x.status === "open" && x.by === p.by && x.to === p.to);
+  if (open2.length === 0) return { event: null };
+  const matching = open2.filter((x) => jaccard(x.text, p.text) >= 0.3).sort((a, b) => jaccard(b.text, p.text) - jaccard(a.text, p.text));
+  const target = matching[0] ?? open2[open2.length - 1];
   target.status = p.kind === "kept" ? "kept" : "broken";
   pruneClosedPromises(draft);
   if (p.by !== "commander") return { event: null, record: target };
@@ -1226,8 +1226,8 @@ function compactionDue(state) {
   }
   const days = state.memory.chronicle.filter((e) => e.kind === "day");
   for (const week of [...new Set(days.map((e) => weekOf(e.day)))].sort((a, b) => a - b)) {
-    const first = week * 7 + 1;
-    if (first + 6 < state.day) return { kind: "week", day: first, toDay: first + 6, entries: days.filter((e) => weekOf(e.day) === week) };
+    const first2 = week * 7 + 1;
+    if (first2 + 6 < state.day) return { kind: "week", day: first2, toDay: first2 + 6, entries: days.filter((e) => weekOf(e.day) === week) };
   }
   return null;
 }
@@ -2280,6 +2280,2263 @@ registerAction("night/ignore", (draft, _payload, ctx2) => {
 });
 registerAction("relations/commander_injured", (draft, _payload, ctx2) => rollNight(draft, ctx2.registries, ctx2.rng, "commander_injured"));
 
+// src/engine/items.ts
+var rarityIndex = (r) => RARITIES.indexOf(r) + 1;
+function affixPools(reg, slot) {
+  const good = [];
+  const drawbacks = [];
+  for (const a of reg.affixes.values()) {
+    if (a.appliesTo !== "item") continue;
+    const slots = a.slots;
+    if (slots && !slots.includes(slot)) continue;
+    (a.drawback === true ? drawbacks : good).push(a.id);
+  }
+  return { good, drawbacks };
+}
+function pickDistinct(rng, pool, n) {
+  const left = [...pool];
+  const out = [];
+  while (out.length < n && left.length > 0) out.push(left.splice(rng.int(0, left.length - 1), 1)[0]);
+  return out;
+}
+function newItem(draft, reg, rng, itemId, rarity) {
+  const tpl = reg.items.get(itemId);
+  if (!tpl) throw new Error(`Unknown item "${itemId}"`);
+  if (rarityIndex(rarity) < rarityIndex(tpl.rarity)) {
+    throw new Error(`Item "${itemId}" cannot be ${rarity}: its minimum rarity is ${String(tpl.rarity)}`);
+  }
+  const pools = affixPools(reg, tpl.slot);
+  const slots = tpl.affixSlots ?? TUNING.items.affixSlots[rarityIndex(rarity) - 1];
+  const affixes = pickDistinct(rng, pools.good, slots);
+  if (rarity === "anomalous") affixes.push(...pickDistinct(rng, pools.drawbacks, 1));
+  const seq = (draft.itemSeq ?? 0) + 1;
+  draft.itemSeq = seq;
+  return { uid: `it_${seq}`, itemId, rarity, upgrade: 0, affixes };
+}
+function itemStats(reg, inst) {
+  const tpl = reg.items.get(inst.itemId);
+  if (!tpl) return null;
+  const mult = (1 + TUNING.items.rarityStatStep * (rarityIndex(inst.rarity) - 1)) * (1 + TUNING.items.upgradeStep * inst.upgrade);
+  const stats = {};
+  for (const [k, v] of Object.entries(tpl.baseStats)) stats[k] = Math.round(v * mult);
+  const statPct = {};
+  const effects2 = [...tpl.effects ?? []];
+  for (const id of inst.affixes) {
+    const a = reg.affixes.get(id);
+    if (!a) continue;
+    for (const [k, v] of Object.entries(a.statPct ?? {})) {
+      statPct[k] = (statPct[k] ?? 0) + v;
+    }
+    effects2.push(...a.effects ?? []);
+  }
+  return { stats, statPct, effects: effects2 };
+}
+function canEquip(reg, unit, inst) {
+  const tpl = reg.items.get(inst.itemId);
+  if (!tpl) return "UNKNOWN ITEM";
+  const role = reg.roles.get(unit.roleId);
+  if (!role) return "UNKNOWN ROLE";
+  const allowed = tpl.slot === "weapon" ? role.weaponClasses : role.armorWeights;
+  return allowed.includes(tpl.class) ? null : `NOT CERTIFIED: ${String(tpl.class)}`;
+}
+var equippedBy = (state, uid) => state.squad.find((u) => u.equipment.weapon === uid || u.equipment.upper === uid || u.equipment.lower === uid);
+function wornItems(state, reg, unit) {
+  const out = [];
+  for (const slot of ["weapon", "upper", "lower"]) {
+    const uid = unit.equipment[slot];
+    const inst = uid ? state.inventory.find((i) => i.uid === uid) : void 0;
+    if (inst && reg.items.get(inst.itemId)?.slot === slot && canEquip(reg, unit, inst) === null) out.push({ inst, slot });
+  }
+  return out;
+}
+function rollLoot(draft, reg, rng, tableId, opts = {}) {
+  const table = reg.lootTables.get(tableId);
+  if (!table) throw new Error(`Unknown loot table "${tableId}"`);
+  const entries = table.entries;
+  const total = entries.reduce((s, e) => s + e.weight, 0);
+  const drops = [];
+  const rolls = table.rolls + (opts.extraRolls ?? 0);
+  for (let i = 0; i < rolls; i++) {
+    let r = rng.float() * total;
+    const entry = entries.find((e) => (r -= e.weight) < 0) ?? entries[entries.length - 1];
+    if (entry.kind === "item") {
+      const tplRarity = reg.items.get(entry.itemId)?.rarity;
+      if (!tplRarity) continue;
+      let rarity = tplRarity;
+      if (entry.rarityWeights) {
+        const options2 = RARITIES.filter((x) => (entry.rarityWeights[x] ?? 0) > 0 && rarityIndex(x) >= rarityIndex(tplRarity));
+        if (options2.length > 0) {
+          const sum = options2.reduce((s, x) => s + entry.rarityWeights[x], 0);
+          let q = rng.float() * sum;
+          rarity = options2.find((x) => (q -= entry.rarityWeights[x]) < 0) ?? options2[options2.length - 1];
+        }
+      }
+      drops.push({ kind: "item", item: newItem(draft, reg, rng, entry.itemId, rarity) });
+    } else {
+      const [lo, hi] = entry.amount;
+      drops.push({ kind: entry.kind, amount: rng.int(lo, hi) });
+    }
+  }
+  return drops;
+}
+function bankLoot(draft, drops) {
+  const events = [];
+  for (const d of drops) {
+    if (d.kind === "item") draft.inventory.push(structuredClone(d.item));
+    else draft.resources[d.kind] += d.amount;
+  }
+  if (drops.length > 0) events.push({ type: "loot_banked", drops: structuredClone(drops) });
+  return events;
+}
+function checkWorkshop(state) {
+  const s = state.workshopSession;
+  return s && s.day === state.day && s.opsLeft > 0 ? null : "NO WORKSHOP SESSION";
+}
+var workshopRarityCap = (state, reg) => facilityEffect(state, reg, "workshop", "rarityCap");
+function upgradeCost(state, reg, inst) {
+  const factor = (1 - facilityEffect(state, reg, "workshop", "upgradeDiscountPct") / 100) * (inst.upgrade + 1);
+  return {
+    credits: Math.ceil(TUNING.items.upgradeCost.credits * factor),
+    plyx: Math.ceil(TUNING.items.upgradeCost.plyx * factor)
+  };
+}
+var rerollCost = (inst) => TUNING.items.rerollPlyxPerRarity * rarityIndex(inst.rarity);
+function dismantleValue(reg, inst) {
+  const value = reg.items.get(inst.itemId)?.value ?? 0;
+  return Math.round(value * (1 + TUNING.items.rarityStatStep * (rarityIndex(inst.rarity) - 1)) * TUNING.items.dismantlePct / 100);
+}
+function openWorkshop(draft, reg, rng, companionId) {
+  draft.workshopSession = { day: draft.day, opsLeft: TUNING.items.opsPerSession, ...companionId ? { companionId } : {} };
+  const events = [{ type: "workshop_opened", day: draft.day, opsLeft: TUNING.items.opsPerSession, ...companionId ? { companionId } : {} }];
+  const companion = companionId ? draft.squad.find((u) => u.id === companionId) : void 0;
+  const weapon = companion?.equipment.weapon ? draft.inventory.find((i) => i.uid === companion.equipment.weapon) : void 0;
+  if (companion && weapon && companion.likes.includes("tech") && weapon.upgrade < TUNING.items.maxUpgrade && rng.chance(TUNING.items.companionQualityChance)) {
+    weapon.upgrade += 1;
+    events.push({ type: "item_upgraded", uid: weapon.uid, upgrade: weapon.upgrade, free: true, unitId: companion.id });
+  }
+  return events;
+}
+
+// src/engine/relations/index.ts
+function getSynergies(state, reg, unitIds) {
+  const out = [];
+  for (const id of unitIds) {
+    const st = reg.relationshipStates.get(state.relations[id]?.stateId ?? "");
+    for (const synergyId of st?.unlocks?.synergies ?? []) out.push({ unitId: id, synergyId });
+  }
+  return out;
+}
+
+// src/engine/combat/formulas.ts
+function rollDamage(rng, o) {
+  const [lo, hi] = TUNING.combat.variance;
+  const variance = lo + (hi - lo) * rng.float();
+  const raw = o.atk * o.mult * (100 / (100 + Math.max(0, o.def))) * (o.crit ? TUNING.combat.critMult : 1) * variance;
+  return Math.max(1, Math.round(raw));
+}
+function rollCrit(rng, critPct) {
+  return rng.float() * 100 < critPct;
+}
+function initiativeOrder(cs, rng, spdOf = (c) => c.base.spd) {
+  const keyed = cs.combatants.filter((c) => !c.downed && c.hp > 0).map((c) => ({ c, key: spdOf(c) + rng.int(0, TUNING.combat.initiativeRand) }));
+  keyed.sort((a, b) => b.key - a.key || (a.c.side === b.c.side ? 0 : a.c.side === "squad" ? -1 : 1) || b.c.base.spd - a.c.base.spd || a.c.index - b.c.index);
+  return keyed.map((k) => k.c.cid);
+}
+
+// src/engine/combat/types.ts
+var TRIGGERS = [
+  "onCombatStart",
+  "onRoundStart",
+  "onTurnStart",
+  "onAction",
+  "onHit",
+  "onCrit",
+  "onDamaged",
+  "onAllyDowned",
+  "onKill",
+  "onStressThreshold",
+  "onCombatEnd"
+];
+var EFFECT_TARGETS = [
+  "self",
+  "target",
+  "source",
+  "allies",
+  "allies_other",
+  "enemies",
+  "own_row",
+  "target_row",
+  "random_enemy",
+  "lowest_hp_ally",
+  "commander",
+  "allies_front"
+];
+var STATS = ["hp", "atk", "def", "spd", "crit"];
+var ALWAYS_ON_TYPES = [
+  "stat",
+  "outgoing",
+  "incoming",
+  "stress_taken",
+  "immune",
+  "order_cost",
+  "order_refusal",
+  "loadout_slots",
+  "injury_days",
+  "intercept_lethal",
+  "misfire",
+  "override_action"
+];
+
+// src/engine/combat/stats.ts
+var ZERO = { hp: 0, atk: 0, def: 0, spd: 0, crit: 0 };
+var WEIGHT_ORDER = ["light", "medium", "heavy"];
+function armorSpdPenalty(state, reg, unit) {
+  let heaviest2 = -1;
+  for (const { inst, slot } of wornItems(state, reg, unit)) {
+    if (slot === "weapon") continue;
+    const w = WEIGHT_ORDER.indexOf(reg.items.get(inst.itemId).class);
+    if (w > heaviest2) heaviest2 = w;
+  }
+  return heaviest2 < 0 ? 0 : TUNING.combat.armorSpd[WEIGHT_ORDER[heaviest2]];
+}
+function unitStats(state, reg, unit) {
+  const role = reg.roles.get(unit.roleId);
+  if (!role) throw new Error(`Unknown role "${unit.roleId}" (unit ${unit.id})`);
+  const growth = role.growth ?? ZERO;
+  const out = { ...ZERO };
+  for (const k of STATS) out[k] = unit.baseStats[k] + Math.floor(growth[k] * (unit.level - 1));
+  const pct = { ...ZERO };
+  for (const { inst } of wornItems(state, reg, unit)) {
+    const it = itemStats(reg, inst);
+    if (!it) continue;
+    for (const k of STATS) {
+      out[k] += it.stats[k] ?? 0;
+      pct[k] += it.statPct[k] ?? 0;
+    }
+  }
+  for (const k of STATS) out[k] = Math.round(out[k] * (1 + pct[k] / 100));
+  out.spd += armorSpdPenalty(state, reg, unit);
+  const stacks = Math.min(unit.injuries.length, TUNING.combat.injuryMaxStacks);
+  const factor = 1 + TUNING.combat.injuryStatPct * stacks / 100;
+  for (const k of STATS) out[k] = Math.max(k === "crit" ? 0 : 1, Math.round(out[k] * factor));
+  return out;
+}
+function statPower(s) {
+  return (s.hp * 0.2 + s.atk * 2 + s.def + s.spd * 1.5) * (1 + s.crit / 200);
+}
+function squadPower(state, reg, unitIds) {
+  let sum = 0;
+  for (const id of unitIds) {
+    const u = state.squad.find((x) => x.id === id);
+    if (u) sum += statPower(unitStats(state, reg, u));
+  }
+  return sum;
+}
+function enemyStats(reg, enemyId, level, affixes, difficulty) {
+  const tpl = reg.enemies.get(enemyId);
+  if (!tpl) throw new Error(`Unknown enemy "${enemyId}"`);
+  const { base, growth } = tpl.stats;
+  const diff = TUNING.combat.difficultyMult[difficulty];
+  const pct = { ...ZERO };
+  for (const id of affixes) {
+    const sp = reg.affixes.get(id)?.statPct;
+    if (sp) for (const k of STATS) pct[k] += sp[k] ?? 0;
+  }
+  const out = { ...ZERO };
+  for (const k of STATS) {
+    const scaled2 = base[k] + growth[k] * (level - 1);
+    const d = k === "hp" || k === "atk" || k === "def" ? diff : 1;
+    out[k] = Math.max(k === "hp" || k === "atk" ? 1 : 0, Math.round(scaled2 * d * (1 + pct[k] / 100)));
+  }
+  return out;
+}
+function defaultFormation(state, reg, unitIds) {
+  const front = [];
+  const back = [];
+  const max = TUNING.combat.maxPerRow;
+  const rowOf = (id) => {
+    const u = state.squad.find((x) => x.id === id);
+    return (u && reg.roles.get(u.roleId)?.row) ?? "either";
+  };
+  for (const id of unitIds) {
+    const row = rowOf(id);
+    if (row === "front") (front.length < max ? front : back).push(id);
+    else if (row === "back") (back.length < max ? back : front).push(id);
+  }
+  for (const id of unitIds) {
+    if (rowOf(id) !== "either") continue;
+    (front.length < back.length && front.length < max ? front : back.length < max ? back : front).push(id);
+  }
+  const order = (xs) => [...xs].sort((a, b) => unitIds.indexOf(a) - unitIds.indexOf(b));
+  return { front: order(front), back: order(back) };
+}
+
+// src/engine/combat/spawn.ts
+var ENEMY_NAME_PATTERN = /^[A-Za-z]+(?:-[A-Za-z]+)*(?: [A-Za-z]+(?:-[A-Za-z]+)*){0,2}$/;
+var isEnemyName = (s) => typeof s === "string" && s.length <= 32 && ENEMY_NAME_PATTERN.test(s);
+var ENEMY_NAMES_MAX = 100;
+var enemyNameKey = (enemyId, affixes) => `${enemyId}|${[...affixes].sort().join(",")}`;
+function spawnEnemy(cs, state, reg, spec, summonedBy) {
+  const tpl = reg.enemies.get(spec.enemyId);
+  if (!tpl) throw new Error(`Unknown enemy "${spec.enemyId}"`);
+  const enemies = cs.combatants.filter((c2) => c2.side === "enemy");
+  const inRow = (r) => enemies.filter((c2) => c2.row === r).length;
+  const preferred = spec.row ?? tpl.rowPreference;
+  const other = preferred === "front" ? "back" : "front";
+  const row = inRow(preferred) < TUNING.combat.maxPerRow ? preferred : inRow(other) < TUNING.combat.maxPerRow ? other : null;
+  if (row === null) return null;
+  const stats = enemyStats(reg, spec.enemyId, spec.level, spec.affixes, state.difficulty);
+  const skills = [...tpl.skills];
+  const passives = [];
+  for (const id of spec.affixes) {
+    const a = reg.affixes.get(id);
+    if (!a) continue;
+    if (a.extraSkill === true && typeof tpl.eliteSkill === "string") skills.push(tpl.eliteSkill);
+    for (const e of a.effects ?? []) passives.push({ ...e, source: `affix:${id}` });
+  }
+  const c = {
+    cid: `e${cs.nextCid}`,
+    side: "enemy",
+    enemyId: spec.enemyId,
+    nameKey: enemyNameKey(spec.enemyId, spec.affixes),
+    level: spec.level,
+    row,
+    index: enemies.reduce((m, x) => Math.max(m, x.index + 1), 0),
+    hp: stats.hp,
+    maxHp: stats.hp,
+    base: stats,
+    stress: 0,
+    statuses: [],
+    mods: [],
+    cooldowns: {},
+    skills,
+    passives,
+    downed: false,
+    aiProfile: tpl.aiProfile,
+    usedLimits: [],
+    ...summonedBy ? { summonedBy } : {}
+  };
+  cs.nextCid += 1;
+  cs.combatants.push(c);
+  return c;
+}
+
+// src/engine/combat/targeting.ts
+var skillById = (reg, id) => reg.skills.get(id);
+var byCid = (cs, cid) => {
+  const c = cs.combatants.find((x) => x.cid === cid);
+  if (!c) throw new Error(`Unknown combatant "${cid}"`);
+  return c;
+};
+var isStanding = (c) => !c.downed && c.hp > 0;
+var living = (cs, side) => cs.combatants.filter((c) => c.side === side && isStanding(c));
+var opposite = (side) => side === "squad" ? "enemy" : "squad";
+function hasFlag(c, reg, flag) {
+  return c.statuses.some((s) => {
+    if (!reg) return s.id === flag;
+    return (reg.statuses.get(s.id)?.flags ?? []).includes(flag);
+  });
+}
+var hasEffect = (skill, type) => skill.effects.some((e) => e.type === type);
+function legalTargets(cs, actorCid, skill, reg) {
+  const actor = byCid(cs, actorCid);
+  if (skill.usableFrom && !skill.usableFrom.includes(actor.row)) return [];
+  const targets = skill.targets;
+  if (!targets) return [];
+  if (targets.side === "self") return [actor.cid];
+  if (targets.side === "ally") {
+    const allies = cs.combatants.filter((c) => c.side === actor.side);
+    const pool = hasEffect(skill, "revive") ? allies.filter((c) => c.downed || c.hp <= 0) : allies.filter(isStanding);
+    return pool.filter((c) => c.cid === actor.cid || !hasFlag(c, reg, "untargetable")).map((c) => c.cid);
+  }
+  const enemies = living(cs, opposite(actor.side)).filter((c) => !hasFlag(c, reg, "untargetable"));
+  const ignoreRows = skill.effects.some((e) => e.type === "damage" && e.ignoreRows === true);
+  let eligible;
+  if (ignoreRows) eligible = enemies;
+  else {
+    eligible = enemies.filter((c) => targets.rows.includes(c.row));
+    if (targets.melee) {
+      const front = eligible.filter((c) => c.row === "front");
+      const anyFront = living(cs, opposite(actor.side)).some((c) => c.row === "front");
+      eligible = front.length > 0 || anyFront ? front : eligible;
+    }
+  }
+  const taunters = eligible.filter((c) => hasFlag(c, reg, "taunt"));
+  if (taunters.length > 0) eligible = taunters;
+  if (actor.lockedTargetId) {
+    const locked = eligible.find((c) => c.cid === actor.lockedTargetId);
+    if (locked) eligible = [locked];
+  }
+  const out = eligible.map((c) => c.cid);
+  if (actor.side === "enemy" && cs.commander && !cs.commander.downed && taunters.length === 0) {
+    const frontStands = living(cs, "squad").some((c) => c.row === "front");
+    const reachesBack = ignoreRows || targets.rows.includes("back") && (!targets.melee || !frontStands);
+    if (reachesBack) out.push("commander");
+  }
+  return out;
+}
+function expandTargets(cs, actorCid, skill, primaryCid, reg) {
+  const targets = skill.targets;
+  if (!targets) return [];
+  if (targets.side === "self") return [actorCid];
+  const legal = legalTargets(cs, actorCid, skill, reg);
+  if (targets.count === "all") {
+    const actor = byCid(cs, actorCid);
+    const side = targets.side === "ally" ? actor.side : opposite(actor.side);
+    return living(cs, side).filter((c) => !hasFlag(c, reg, "untargetable") || c.cid === actorCid).map((c) => c.cid);
+  }
+  if (primaryCid === void 0 || !legal.includes(primaryCid)) return [];
+  if (targets.count === "one" || primaryCid === "commander") return [primaryCid];
+  const primary = byCid(cs, primaryCid);
+  return cs.combatants.filter((c) => c.side === primary.side && c.row === primary.row && isStanding(c) && !hasFlag(c, reg, "untargetable")).map((c) => c.cid);
+}
+var rowRank = (c) => c.row === "front" ? 0 : 1;
+function nearest(cs, cid, side, reg) {
+  const self = byCid(cs, cid);
+  const pool = cs.combatants.filter((c) => c.cid !== cid && isStanding(c) && !hasFlag(c, reg, "untargetable") && (side === "any" || c.side === side));
+  pool.sort((a, b) => rowRank(a) - rowRank(b) || (a.side === self.side ? 1 : 0) - (b.side === self.side ? 1 : 0) || a.index - b.index);
+  return pool[0]?.cid;
+}
+
+// src/engine/combat/stress.ts
+function stressBand2(stress) {
+  return stress >= 100 ? "breakdown" : stress >= 80 ? "breaking" : stress >= 50 ? "strained" : "calm";
+}
+function addStress(ctx2, cid, amount, _source) {
+  const c = byCid(ctx2.cs, cid);
+  if (c.side !== "squad" || c.downed || amount === 0) return 0;
+  if (c.breakdown) return 0;
+  let delta = amount;
+  for (const e of activePassives(ctx2, cid, "stress_taken")) {
+    if (delta > 0 && e.direction === "gain" || delta < 0 && e.direction === "relief") delta *= Math.max(0, 1 + e.pct / 100);
+  }
+  delta = Math.round(delta);
+  const before = c.stress;
+  c.stress = Math.min(100, Math.max(0, before + delta));
+  const applied = c.stress - before;
+  if (applied !== 0) ctx2.log({ kind: "stress", target: cid, amount: applied });
+  for (const t of [50, 80, 100]) {
+    if (before < t && c.stress >= t) fireTrigger(ctx2, "onStressThreshold", { actorCid: cid, threshold: t });
+  }
+  if (c.stress >= 100 && !c.breakdown) enterBreakdown(ctx2, cid);
+  return applied;
+}
+var FALLBACK = { policy: "skip", ignoresOrders: true, onEnter: [], actionEffects: [] };
+function defectBreakdown(ctx2, c) {
+  const unit = c.unitId ? ctx2.state.squad.find((u) => u.id === c.unitId) : void 0;
+  for (const d of unit?.defects ?? []) {
+    const spec = ctx2.reg.defects.get(d.id)?.combat?.breakdown;
+    if (spec) return { defectId: d.id, spec };
+  }
+  return null;
+}
+function makeBreakdown(reg, defectId) {
+  const spec = reg.defects.get(defectId)?.combat?.breakdown ?? FALLBACK;
+  return {
+    defectId,
+    policy: spec.policy,
+    ...spec.target ? { target: spec.target } : {},
+    ignoresOrders: spec.ignoresOrders,
+    ...spec.once ? { once: true } : {},
+    actionEffects: spec.actionEffects
+  };
+}
+function enterBreakdown(ctx2, cid) {
+  const c = byCid(ctx2.cs, cid);
+  if (c.breakdown || c.side !== "squad") return;
+  const found = defectBreakdown(ctx2, c);
+  const spec = found?.spec ?? FALLBACK;
+  const defectId = found?.defectId ?? "unknown";
+  c.stress = 100;
+  c.breakdown = makeBreakdown(ctx2.reg, found ? defectId : "unknown");
+  if (!found) c.breakdown = { defectId, policy: "skip", ignoresOrders: true, actionEffects: [] };
+  ctx2.log({ kind: "breakdown", target: cid });
+  const name = ctx2.reg.defects.get(defectId)?.breakdown?.name ?? "BREAKDOWN";
+  ctx2.emit({ type: "combat_cutin", kind: "breakdown", unitId: c.unitId, cid, text: name });
+  ctx2.emit({ type: "breakdown", unitId: c.unitId, cid, defectId });
+  applyEffects(ctx2, cid, spec.onEnter, {}, `breakdown:${defectId}:enter`);
+}
+function applyBreakdownActionEffects(ctx2, cid) {
+  const b = byCid(ctx2.cs, cid).breakdown;
+  if (b) applyEffects(ctx2, cid, b.actionEffects, {}, `breakdown:${b.defectId}:action`);
+}
+var rowRank2 = (c) => c.row === "front" ? 0 : 1;
+var nearestOf = (ctx2, ids) => ids.map((id) => byCid(ctx2.cs, id)).sort((a, b) => rowRank2(a) - rowRank2(b) || a.index - b.index)[0]?.cid;
+function basicAttack(ctx2, c) {
+  for (const id of c.skills) {
+    const sk = skillById(ctx2.reg, id);
+    if (!sk || sk.kind === "passive" || sk.kind === "ultimate" || !sk.effects.some((e) => e.type === "damage")) continue;
+    if ((c.cooldowns[id] ?? 0) > 0) continue;
+    const legal = legalTargets(ctx2.cs, c.cid, sk, ctx2.reg);
+    if (legal.length > 0 && sk.targets?.side === "enemy") return { skillId: id, legal };
+  }
+  return null;
+}
+function attackAction(ctx2, c, target) {
+  const atk = basicAttack(ctx2, c);
+  if (!atk) return { kind: "pass" };
+  const { cs } = ctx2;
+  let targetCid;
+  if (target === "strongest_enemy") {
+    targetCid = atk.legal.map((id) => byCid(cs, id)).sort((a, b) => effectiveStat(ctx2, b.cid, "atk") - effectiveStat(ctx2, a.cid, "atk") || b.hp - a.hp || a.index - b.index)[0]?.cid;
+  } else if (target === "nearest_ally") {
+    targetCid = nearest(cs, c.cid, c.side, ctx2.reg);
+  } else if (target === "nearest_any") {
+    const any = nearest(cs, c.cid, "any", ctx2.reg);
+    targetCid = any && byCid(cs, any).side !== c.side && !atk.legal.includes(any) ? nearestOf(ctx2, atk.legal) : any;
+  } else targetCid = nearestOf(ctx2, atk.legal);
+  return targetCid ? { kind: "skill", skillId: atk.skillId, targetCid } : { kind: "pass" };
+}
+function breakdownAction(ctx2, cid, opts = {}) {
+  const { cs } = ctx2;
+  const c = byCid(cs, cid);
+  const real = c.breakdown;
+  let b = real;
+  if (!b && opts.breaking) b = defectBreakdown(ctx2, c)?.spec;
+  if (!b) return null;
+  if (real?.once && real.used) return null;
+  const finish = (a) => {
+    if (real?.once) real.used = true;
+    return a;
+  };
+  switch (b.policy) {
+    case "normal":
+      return null;
+    case "skip":
+      return { kind: "pass" };
+    case "await_order":
+      return cs.ordersThisRound.some((o) => o.targetCid === cid) && real ? null : { kind: "pass" };
+    case "attack":
+      return finish(attackAction(ctx2, c, b.target));
+    case "twice_then_shutdown": {
+      const attack = attackAction(ctx2, c, b.target);
+      if (!real) return attack;
+      const count = real.count ?? 0;
+      if (count >= 2) return { kind: "pass" };
+      real.count = count + 1;
+      if (count === 0) cs.extraAction = cid;
+      else applyStatus(ctx2, cid, "stun", 99, 1, cid);
+      return attack;
+    }
+    case "repeat_last": {
+      const sk = c.lastSkillId ? skillById(ctx2.reg, c.lastSkillId) : void 0;
+      if (sk && sk.kind !== "passive") {
+        const legal = legalTargets(cs, cid, sk, ctx2.reg);
+        if (c.lastTargetCid && legal.includes(c.lastTargetCid)) return { kind: "skill", skillId: sk.id, targetCid: c.lastTargetCid };
+        const near = nearestOf(ctx2, legal);
+        if (near) return { kind: "skill", skillId: sk.id, targetCid: near };
+      }
+      return attackAction(ctx2, c, "nearest_enemy");
+    }
+    case "random_skill": {
+      const options2 = c.skills.map((id) => skillById(ctx2.reg, id)).filter((s) => !!s && s.kind !== "passive" && s.kind !== "ultimate" && (c.cooldowns[s.id] ?? 0) === 0).map((s) => ({ s, legal: legalTargets(cs, cid, s, ctx2.reg) })).filter((o) => o.legal.length > 0);
+      if (options2.length === 0) return { kind: "pass" };
+      const pick = ctx2.rng.pick(options2);
+      return { kind: "skill", skillId: pick.s.id, targetCid: ctx2.rng.pick(pick.legal) };
+    }
+    default:
+      return null;
+  }
+}
+function rollBreaking(ctx2, cid) {
+  const c = byCid(ctx2.cs, cid);
+  if (c.side !== "squad" || c.breakdown || c.stress < 80 || c.stress >= 100) return false;
+  return ctx2.rng.chance(TUNING.combat.breakingChance);
+}
+
+// src/engine/combat/effects.ts
+function makeCtx(cs, state, reg, rng) {
+  const events = [];
+  return {
+    cs,
+    state,
+    reg,
+    rng,
+    events,
+    log: (e) => {
+      cs.log.push({ round: cs.round, ...e });
+      if (cs.log.length > TUNING.combat.logMax) cs.log.splice(0, cs.log.length - TUNING.combat.logMax);
+    },
+    emit: (e) => {
+      events.push(e);
+    }
+  };
+}
+var READ_ONLY = /* @__PURE__ */ new Set([
+  "outgoing",
+  "incoming",
+  "stress_taken",
+  "intercept_lethal",
+  "misfire",
+  "override_action",
+  "order_cost",
+  "order_refusal",
+  "loadout_slots",
+  "injury_days",
+  "immune"
+]);
+var AMPLIFIED = ["mult", "pct", "amount", "pctMaxHp"];
+function amplify(e, factor) {
+  const out = { ...e };
+  for (const k of AMPLIFIED) if (typeof out[k] === "number") out[k] = out[k] * factor;
+  if (typeof out.chance === "number") out.chance = Math.min(1, out.chance * factor);
+  return out;
+}
+function strain(c, e) {
+  return e.downside === true && c.side === "squad" && c.stress >= 50 ? amplify(e, TUNING.combat.strainedMult) : e;
+}
+var unitOf = (ctx2, c) => c.unitId ? ctx2.state.squad.find((u) => u.id === c.unitId) : void 0;
+function upkeepAge(ctx2, c) {
+  const days = (unitOf(ctx2, c)?.defects ?? []).map((d) => d.upkeepDay).filter((d) => typeof d === "number");
+  return ctx2.state.day - (days.length > 0 ? Math.max(...days) : 0);
+}
+function checkCondition(ctx2, cid, when, targetCid, skillId) {
+  if (!when) return true;
+  const { cs } = ctx2;
+  const c = byCid(cs, cid);
+  const hpPct2 = c.hp / c.maxHp * 100;
+  if (when.hpBelowPct !== void 0 && !(hpPct2 < when.hpBelowPct)) return false;
+  if (when.hpAbovePct !== void 0 && !(hpPct2 > when.hpAbovePct)) return false;
+  if (when.stressMin !== void 0 && !(c.stress >= when.stressMin)) return false;
+  if (when.stressMax !== void 0 && !(c.stress <= when.stressMax)) return false;
+  if (when.roundMin !== void 0 && !(cs.round >= when.roundMin)) return false;
+  if (when.targetHasStatus !== void 0) {
+    const t = targetCid && targetCid !== "commander" ? cs.combatants.find((x) => x.cid === targetCid) : void 0;
+    if (!t || !t.statuses.some((s) => s.id === when.targetHasStatus)) return false;
+  }
+  if (when.selfHasStatus !== void 0 && !c.statuses.some((s) => s.id === when.selfHasStatus)) return false;
+  if (when.aloneInRow !== void 0) {
+    const alone = !cs.combatants.some((x) => x.side === c.side && x.cid !== c.cid && x.row === c.row && isStanding(x));
+    if (alone !== when.aloneInRow) return false;
+  }
+  if (when.sameRowAndSkill !== void 0) {
+    const same = c.lastRow !== void 0 && c.lastRow === c.row && (skillId === void 0 || c.lastSkillId === skillId);
+    if (same !== when.sameRowAndSkill) return false;
+  }
+  if (when.rowChanged !== void 0) {
+    const changed = c.lastRow !== void 0 && c.lastRow !== c.row;
+    if (changed !== when.rowChanged) return false;
+  }
+  if (when.commanderExposed !== void 0) {
+    const exposed = cs.commander !== void 0 && !cs.commander.downed;
+    if (exposed !== when.commanderExposed) return false;
+  }
+  if (when.notOrderedThisRound !== void 0) {
+    const notOrdered = !cs.ordersThisRound.some((o) => o.targetCid === cid);
+    if (notOrdered !== when.notOrderedThisRound) return false;
+  }
+  if (when.upkeepWithinDays !== void 0 && !(upkeepAge(ctx2, c) <= when.upkeepWithinDays)) return false;
+  if (when.upkeepOlderThanDays !== void 0 && !(upkeepAge(ctx2, c) > when.upkeepOlderThanDays)) return false;
+  return true;
+}
+function scaleValue(ctx2, cid, scale) {
+  if (!scale) return 0;
+  const c = byCid(ctx2.cs, cid);
+  let value = 0;
+  if (scale.by === "stress_above") value = Math.max(0, c.stress - (scale.base ?? 0));
+  else if (scale.by === "own_hp_missing_pct") value = (1 - c.hp / c.maxHp) * 100;
+  else {
+    const others = ctx2.cs.combatants.filter((x) => x.side === c.side && x.cid !== cid);
+    if (others.length > 0) value = others.reduce((s, x) => s + (x.downed ? 1 : 1 - x.hp / x.maxHp), 0) / others.length * 100;
+  }
+  return scale.per * value;
+}
+function activePassives(ctx2, cid, type, targetCid, skillId) {
+  const c = byCid(ctx2.cs, cid);
+  if (c.downed) return [];
+  return c.passives.filter((p) => p.type === type && p.trigger === void 0 && checkCondition(ctx2, cid, p.when, targetCid, skillId)).map((p) => strain(c, p));
+}
+function effectiveStat(ctx2, cid, stat) {
+  const c = byCid(ctx2.cs, cid);
+  if (stat === "hp") return c.maxHp;
+  let pct = 0;
+  for (const m of c.mods) if (m.stat === stat) pct += m.pct;
+  for (const s of c.statuses) {
+    const v = ctx2.reg.statuses.get(s.id)?.mods?.[stat];
+    if (v) pct += v * s.stacks;
+  }
+  for (const e of activePassives(ctx2, cid, "stat")) {
+    if (e.stat === stat || e.stat === "all" && stat !== "crit") pct += e.pct + scaleValue(ctx2, cid, e.scale);
+  }
+  const base = c.base[stat];
+  if (stat === "crit") return Math.max(0, base + pct);
+  return Math.max(stat === "def" ? 0 : 1, Math.round(base * (1 + pct / 100)));
+}
+function outgoingPct(ctx2, cid, targetCid) {
+  const c = byCid(ctx2.cs, cid);
+  const target = targetCid && targetCid !== "commander" ? ctx2.cs.combatants.find((x) => x.cid === targetCid) : void 0;
+  let sum = 0;
+  for (const e of activePassives(ctx2, cid, "outgoing", targetCid)) {
+    if (e.vs === "marked" && !target?.statuses.some((s) => s.id === "mark")) continue;
+    if (e.vs === "locked" && !(targetCid !== void 0 && c.lockedTargetId === targetCid)) continue;
+    sum += e.pct + scaleValue(ctx2, cid, e.scale);
+  }
+  return sum;
+}
+function incomingPct(ctx2, cid) {
+  const c = byCid(ctx2.cs, cid);
+  let sum = 0;
+  for (const e of activePassives(ctx2, cid, "incoming")) sum += e.pct;
+  for (const s of c.statuses) sum += (ctx2.reg.statuses.get(s.id)?.incomingPct ?? 0) * s.stacks;
+  return sum;
+}
+function applyStatus(ctx2, cid, statusId, turns, stacks = 1, sourceCid = cid) {
+  const c = byCid(ctx2.cs, cid);
+  const def = ctx2.reg.statuses.get(statusId);
+  if (!def || c.downed) return false;
+  if (activePassives(ctx2, cid, "immune").some((e) => e.statusId === statusId)) return false;
+  const maxStacks = def.maxStacks ?? 1;
+  const duration = turns ?? def.turns ?? 1;
+  const mode = def.stackMode ?? "refresh";
+  const absorbs = (def.flags ?? []).includes("absorb");
+  const perStack = absorbs ? Math.max(1, Math.round(byCid(ctx2.cs, sourceCid).maxHp * 0.15)) : 0;
+  const existing = c.statuses.find((s) => s.id === statusId);
+  if (existing) {
+    const stacksNow = mode === "add" ? Math.min(maxStacks, existing.stacks + stacks) : existing.stacks;
+    const added = stacksNow - existing.stacks;
+    existing.stacks = stacksNow;
+    existing.turns = Math.max(existing.turns, duration);
+    if (absorbs) existing.value = mode === "add" ? (existing.value ?? 0) + perStack * added : Math.max(existing.value ?? 0, perStack * stacksNow);
+  } else {
+    const n = Math.min(stacks, maxStacks);
+    c.statuses.push({ id: statusId, turns: duration, stacks: n, sourceCid, ...absorbs ? { value: perStack * n } : {} });
+  }
+  ctx2.log({ kind: "status", actor: sourceCid, target: cid, statusId });
+  return true;
+}
+function tickStatuses(ctx2, cid) {
+  const c = byCid(ctx2.cs, cid);
+  for (const s of [...c.statuses]) {
+    const tick = ctx2.reg.statuses.get(s.id)?.tick ?? [];
+    for (let i = 0; i < s.stacks; i++) {
+      if (c.downed) return;
+      tick.forEach((e, idx) => runEffect(ctx2, cid, e, { sourceCid: s.sourceCid, attackerCid: s.sourceCid }, `status:${s.id}:${idx}`));
+    }
+  }
+}
+function expireStatuses(ctx2, cid) {
+  const c = byCid(ctx2.cs, cid);
+  for (const s of c.statuses) s.turns -= 1;
+  c.statuses = c.statuses.filter((s) => s.turns > 0);
+  for (const m of c.mods) if (m.turnsLeft !== void 0) m.turnsLeft -= 1;
+  c.mods = c.mods.filter((m) => m.turnsLeft === void 0 || m.turnsLeft > 0);
+  if (c.redirects) {
+    for (const r of c.redirects) r.turnsLeft -= 1;
+    c.redirects = c.redirects.filter((r) => r.turnsLeft > 0);
+  }
+  if (c.lockTurns !== void 0) {
+    c.lockTurns -= 1;
+    if (c.lockTurns <= 0) {
+      delete c.lockedTargetId;
+      delete c.lockTurns;
+    }
+  }
+}
+function clearRoundLimits(cs) {
+  for (const c of cs.combatants) c.usedLimits = c.usedLimits.filter((k) => !k.endsWith(":round"));
+}
+function resolveTargets(ctx2, owner, e, ev) {
+  const { cs } = ctx2;
+  const kind = e.target ?? (ev.targets ? "target" : "self");
+  const side = owner.side;
+  const standing = (s) => living(cs, s);
+  switch (kind) {
+    case "self":
+      return [owner.cid];
+    case "target":
+      return ev.targets ?? (ev.targetCid ? [ev.targetCid] : []);
+    case "source":
+      return ev.sourceCid ? [ev.sourceCid] : [];
+    case "allies":
+      return standing(side).map((c) => c.cid);
+    case "allies_other":
+      return standing(side).filter((c) => c.cid !== owner.cid).map((c) => c.cid);
+    case "allies_front":
+      return standing(side).filter((c) => c.row === "front").map((c) => c.cid);
+    case "enemies":
+      return standing(opposite(side)).map((c) => c.cid);
+    case "own_row":
+      return standing(side).filter((c) => c.row === owner.row && c.cid !== owner.cid).map((c) => c.cid);
+    case "target_row": {
+      const ref = ev.targetCid ?? ev.sourceCid;
+      const r = ref && ref !== "commander" ? cs.combatants.find((c) => c.cid === ref) : void 0;
+      return r ? cs.combatants.filter((c) => c.side === r.side && c.row === r.row && isStanding(c)).map((c) => c.cid) : [];
+    }
+    case "random_enemy": {
+      const pool = standing(opposite(side));
+      return pool.length > 0 ? [ctx2.rng.pick(pool).cid] : [];
+    }
+    case "lowest_hp_ally": {
+      const pool = standing(side).sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp || a.index - b.index);
+      return pool.length > 0 ? [pool[0].cid] : [];
+    }
+    case "commander":
+      return [];
+    default:
+      return [];
+  }
+}
+function applyEffects(ctx2, ownerCid, effects2, ev, source = "effect") {
+  effects2.forEach((e, i) => runEffect(ctx2, ownerCid, e, ev, `${source}:${i}`));
+}
+function heal(ctx2, targetCid, pct) {
+  const t = byCid(ctx2.cs, targetCid);
+  if (t.downed || t.hp <= 0) return;
+  const amount = Math.max(1, Math.round(t.maxHp * pct / 100));
+  const gained = Math.min(amount, t.maxHp - t.hp);
+  t.hp += gained;
+  if (gained > 0) ctx2.log({ kind: "heal", target: targetCid, amount: gained });
+}
+function moveCombatant(ctx2, targetCid, to) {
+  const t = byCid(ctx2.cs, targetCid);
+  if (t.downed || t.statuses.some((s) => ctx2.reg.statuses.get(s.id)?.flags?.includes("rooted"))) return;
+  const dest = to === "swap" ? t.row === "front" ? "back" : "front" : to;
+  if (dest === t.row) return;
+  const crowd = ctx2.cs.combatants.filter((c) => c.side === t.side && c.row === dest && !c.downed);
+  if (crowd.length < TUNING.combat.maxPerRow) {
+    t.row = dest;
+    return;
+  }
+  const mate = crowd.find((c) => !c.statuses.some((s) => ctx2.reg.statuses.get(s.id)?.flags?.includes("rooted")));
+  if (to === "swap" && mate) {
+    mate.row = t.row;
+    t.row = dest;
+  }
+}
+function runEffect(ctx2, ownerCid, effect, ev, keyBase) {
+  if (READ_ONLY.has(effect.type)) return;
+  const owner = byCid(ctx2.cs, ownerCid);
+  const limitKey = effect.limit ? `${keyBase}:${effect.limit}` : void 0;
+  if (limitKey && owner.usedLimits.includes(limitKey)) return;
+  if (!checkCondition(ctx2, ownerCid, effect.when, ev.targetCid, ev.skillId)) return;
+  const e = strain(owner, effect);
+  if (e.chance !== void 0 && !ctx2.rng.chance(e.chance)) return;
+  if (limitKey) owner.usedLimits.push(limitKey);
+  const attacker = ev.attackerCid ?? ownerCid;
+  const resolved = resolveTargets(ctx2, owner, e, ev);
+  const targets = e.type === "damage" || e.type === "follow_up" ? resolved : resolved.filter((t) => t !== "commander");
+  switch (e.type) {
+    case "damage": {
+      const hits = e.hits ?? 1;
+      const opts = { critBonus: e.critBonus, scale: e.scale, pctMaxHp: e.pctMaxHp, skillId: ev.skillId, followUp: false };
+      if (e.target === "random_enemy") {
+        for (let h2 = 0; h2 < hits; h2++) {
+          const pool = living(ctx2.cs, opposite(owner.side));
+          if (pool.length === 0) break;
+          dealDamage(ctx2, attacker, ctx2.rng.pick(pool).cid, e.mult ?? 0, opts);
+        }
+        break;
+      }
+      for (const t of targets) {
+        for (let h2 = 0; h2 < hits; h2++) {
+          if (t !== "commander" && !isStanding(byCid(ctx2.cs, t))) break;
+          dealDamage(ctx2, attacker, t, e.mult ?? 0, opts);
+        }
+      }
+      break;
+    }
+    case "heal":
+      for (const t of targets) heal(ctx2, t, e.pctMaxHp);
+      break;
+    case "revive":
+      for (const t of targets) {
+        const c = byCid(ctx2.cs, t);
+        if (!c.downed && c.hp > 0) continue;
+        c.downed = false;
+        c.hp = Math.max(1, Math.round(c.maxHp * e.pctMaxHp / 100));
+        ctx2.log({ kind: "revived", actor: ownerCid, target: t, amount: c.hp });
+      }
+      break;
+    case "status":
+      for (const t of targets) applyStatus(ctx2, t, e.statusId, e.turns, e.stacks ?? 1, ownerCid);
+      break;
+    case "cleanse":
+      for (const t of targets) {
+        const c = byCid(ctx2.cs, t);
+        let left = e.count;
+        for (let i = c.statuses.length - 1; i >= 0 && left > 0; i--) {
+          if (ctx2.reg.statuses.get(c.statuses[i].id)?.kind === e.kind) {
+            c.statuses.splice(i, 1);
+            left -= 1;
+          }
+        }
+      }
+      break;
+    case "stat":
+      for (const t of targets) {
+        const c = byCid(ctx2.cs, t);
+        const pct = e.pct + scaleValue(ctx2, ownerCid, e.scale);
+        const stats = e.stat === "all" ? ["atk", "def", "spd"] : [e.stat];
+        for (const stat of stats) {
+          if (stat === "hp") continue;
+          c.mods.push({ stat, pct, ...e.turns !== void 0 ? { turnsLeft: e.turns } : {}, source: ownerCid });
+        }
+      }
+      break;
+    case "stress":
+      for (const t of targets) addStress(ctx2, t, e.amount, t === ownerCid ? "self" : owner.side === "squad" ? "ally" : "enemy");
+      break;
+    case "cp":
+      if (owner.side === "squad") ctx2.cs.cp = Math.min(TUNING.combat.cpMax, Math.max(0, ctx2.cs.cp + e.amount));
+      break;
+    case "move":
+      for (const t of targets) moveCombatant(ctx2, t, e.to);
+      break;
+    case "extra_action":
+      ctx2.cs.extraAction = ownerCid;
+      break;
+    // read by turn.ts after the action resolves
+    case "redirect": {
+      const protector = owner;
+      for (const t of targets) {
+        if (t === ownerCid) continue;
+        (protector.redirects ??= []).push({ fromCid: e.from === "commander" ? "commander" : t, pct: e.pct, turnsLeft: e.turns });
+      }
+      break;
+    }
+    case "summon": {
+      const alive = ctx2.cs.combatants.filter((c) => c.summonedBy === ownerCid && c.enemyId === e.enemyId && isStanding(c));
+      if (alive.length >= e.max) break;
+      const sp = spawnEnemy(ctx2.cs, ctx2.state, ctx2.reg, { enemyId: e.enemyId, level: owner.level, affixes: [], row: owner.row }, ownerCid);
+      if (sp) ctx2.log({ kind: "summon", actor: ownerCid, target: sp.cid });
+      break;
+    }
+    case "follow_up":
+      for (const t of targets) {
+        if (t !== "commander" && !isStanding(byCid(ctx2.cs, t))) continue;
+        dealDamage(ctx2, ownerCid, t, e.mult, { followUp: true, skillId: ev.skillId });
+      }
+      break;
+    case "lock_target":
+      if (ev.targetCid && ev.targetCid !== "commander") {
+        owner.lockedTargetId = ev.targetCid;
+        owner.lockTurns = e.turns;
+      }
+      break;
+    case "loot_roll":
+      ctx2.cs.pendingLootRolls += e.extra;
+      break;
+    // banked by outcome.ts
+    case "repeat_order":
+      ctx2.cs.repeatOrder = true;
+      break;
+    // read by orders.ts after the action resolves
+    case "hp_set":
+      for (const t of targets) byCid(ctx2.cs, t).hp = Math.min(e.value, byCid(ctx2.cs, t).maxHp);
+      break;
+    default:
+      break;
+  }
+}
+function fireTrigger(ctx2, trigger, ev) {
+  const { cs } = ctx2;
+  const actor = ev.actorCid ? byCid(cs, ev.actorCid) : void 0;
+  for (const owner of [...cs.combatants]) {
+    if (owner.downed && !(trigger === "onAllyDowned" && owner.cid === ev.actorCid)) continue;
+    owner.passives.forEach((p, idx) => {
+      if (p.trigger !== trigger) return;
+      let fires;
+      if (trigger === "onAllyDowned") fires = !!actor && owner.side === actor.side;
+      else if (trigger === "onCombatStart" || trigger === "onRoundStart" || trigger === "onCombatEnd") fires = true;
+      else if (trigger === "onStressThreshold") fires = owner.cid === ev.actorCid && p.threshold === ev.threshold;
+      else if ((p.scope ?? "self") === "ally") fires = !!actor && owner.cid !== actor.cid && owner.side === actor.side;
+      else fires = owner.cid === ev.actorCid;
+      if (!fires) return;
+      runEffect(ctx2, owner.cid, p, {
+        targetCid: ev.targetCid,
+        sourceCid: ev.targetCid && trigger === "onDamaged" ? ev.targetCid : ev.actorCid,
+        skillId: ev.skillId
+      }, `${p.source}:${idx}`);
+    });
+  }
+}
+function passiveKey(c, p, kind) {
+  return `${p.source}:${c.passives.findIndex((x) => x === p)}:${kind}`;
+}
+function shiftToProtectors(ctx2, targetCid, amount) {
+  const shifts = [];
+  let rest = amount;
+  for (const p of ctx2.cs.combatants) {
+    if (!isStanding(p) || p.cid === targetCid) continue;
+    for (const r of p.redirects ?? []) {
+      if (r.fromCid !== targetCid) continue;
+      const part = Math.min(rest, Math.round(amount * r.pct / 100));
+      if (part > 0) {
+        shifts.push({ cid: p.cid, amount: part });
+        rest -= part;
+      }
+    }
+  }
+  return { rest, shifts };
+}
+function loseHp(ctx2, targetCid, amount, absorb) {
+  const t = byCid(ctx2.cs, targetCid);
+  let left = amount;
+  if (absorb) {
+    for (const s of t.statuses) {
+      const flags = ctx2.reg.statuses.get(s.id)?.flags ?? [];
+      if (!flags.includes("absorb") || !s.value) continue;
+      const taken = Math.min(s.value, left);
+      s.value -= taken;
+      left -= taken;
+    }
+    t.statuses = t.statuses.filter((s) => {
+      const flags = ctx2.reg.statuses.get(s.id)?.flags ?? [];
+      return !flags.includes("absorb") || (s.value ?? 0) > 0;
+    });
+  }
+  const lost = Math.min(left, t.hp);
+  t.hp -= lost;
+  return lost;
+}
+function down(ctx2, targetCid, killerCid) {
+  const t = byCid(ctx2.cs, targetCid);
+  t.hp = 0;
+  t.downed = true;
+  ctx2.log({ kind: "downed", actor: killerCid, target: targetCid });
+  if (t.side === "squad") {
+    for (const ally of living(ctx2.cs, "squad")) addStress(ctx2, ally.cid, TUNING.combat.stress.allyDowned, "ally");
+  }
+  fireTrigger(ctx2, "onAllyDowned", { actorCid: targetCid, targetCid: killerCid });
+}
+function dealDamage(ctx2, attackerCid, targetCid, mult, opts = {}) {
+  const { cs } = ctx2;
+  const attacker = byCid(cs, attackerCid);
+  if (targetCid === "commander") return hitCommander(ctx2, attackerCid, mult, opts);
+  const target = byCid(cs, targetCid);
+  let amount;
+  let crit = false;
+  if (opts.pctMaxHp !== void 0) {
+    amount = Math.max(1, Math.round(target.maxHp * opts.pctMaxHp / 100));
+  } else {
+    const critChance = effectiveStat(ctx2, attackerCid, "crit") + (opts.critBonus ?? 0);
+    crit = rollCrit(ctx2.rng, critChance);
+    const m = (mult + scaleValue(ctx2, attackerCid, opts.scale)) * Math.max(0, 1 + outgoingPct(ctx2, attackerCid, targetCid) / 100) * Math.max(0, 1 + incomingPct(ctx2, targetCid) / 100);
+    amount = rollDamage(ctx2.rng, { atk: effectiveStat(ctx2, attackerCid, "atk"), mult: m, def: effectiveStat(ctx2, targetCid, "def"), crit });
+  }
+  const trueDamage = opts.pctMaxHp !== void 0;
+  let victimCid = targetCid;
+  if (!trueDamage && amount >= target.hp) {
+    for (const p of cs.combatants) {
+      if (!isStanding(p) || p.cid === targetCid || p.side !== target.side) continue;
+      const passive = p.passives.find((x) => x.type === "intercept_lethal" && x.protect === "ally" && x.trigger === void 0);
+      if (!passive) continue;
+      const key = passiveKey(p, passive, "combat");
+      if (passive.limit && p.usedLimits.includes(key)) continue;
+      if (passive.limit) p.usedLimits.push(key);
+      ctx2.log({ kind: "intercept", actor: p.cid, target: targetCid });
+      victimCid = p.cid;
+      break;
+    }
+  }
+  let dealtTotal = 0;
+  let killed = false;
+  const hit = (cid, amt, canRedirect) => {
+    const v = byCid(cs, cid);
+    if (!isStanding(v)) return;
+    let rest = amt;
+    if (canRedirect && !trueDamage) {
+      const shifted = shiftToProtectors(ctx2, cid, amt);
+      rest = shifted.rest;
+      for (const s of shifted.shifts) hit(s.cid, s.amount, false);
+    }
+    const lost = loseHp(ctx2, cid, rest, !trueDamage);
+    dealtTotal += lost;
+    ctx2.log({ kind: crit ? "crit" : "hit", actor: attackerCid, target: cid, amount: lost, ...opts.skillId ? { skillId: opts.skillId } : {} });
+    if (v.hp <= 0) {
+      if (cid === victimCid) killed = true;
+      down(ctx2, cid, attackerCid);
+    }
+  };
+  hit(victimCid, amount, victimCid === targetCid);
+  if (!opts.followUp && !trueDamage) {
+    fireTrigger(ctx2, "onHit", { actorCid: attackerCid, targetCid, skillId: opts.skillId });
+    if (crit) fireTrigger(ctx2, "onCrit", { actorCid: attackerCid, targetCid, skillId: opts.skillId });
+    fireTrigger(ctx2, "onDamaged", { actorCid: victimCid, targetCid: attackerCid });
+  }
+  if (crit && target.side === "squad" && attacker.side === "enemy" && isStanding(byCid(cs, targetCid))) {
+    addStress(ctx2, targetCid, TUNING.combat.stress.critTaken, "enemy");
+  }
+  if (killed) {
+    fireTrigger(ctx2, "onKill", { actorCid: attackerCid, targetCid });
+    if (attacker.side === "squad") addStress(ctx2, attackerCid, TUNING.combat.stress.kill, "system");
+  }
+  return { dealt: dealtTotal, crit, killed };
+}
+function hitCommander(ctx2, attackerCid, mult, opts) {
+  const { cs } = ctx2;
+  const cmd = cs.commander;
+  if (!cmd || cmd.downed) return { dealt: 0, crit: false, killed: false };
+  const cover = byCid(cs, cmd.coverId);
+  if (isStanding(cover)) {
+    ctx2.log({ kind: "cover", actor: cover.cid, target: "commander" });
+    return dealDamage(ctx2, attackerCid, cover.cid, mult, opts);
+  }
+  const attackerAtk = effectiveStat(ctx2, attackerCid, "atk");
+  const amount = opts.pctMaxHp !== void 0 ? Math.max(1, Math.round(cmd.maxHp * opts.pctMaxHp / 100)) : rollDamage(ctx2.rng, { atk: attackerAtk, mult, def: cmd.def, crit: false });
+  if (amount >= cmd.hp) {
+    for (const p of cs.combatants) {
+      if (!isStanding(p) || p.side !== "squad") continue;
+      const passive = p.passives.find((x) => x.type === "intercept_lethal" && x.protect === "commander" && x.trigger === void 0);
+      if (!passive) continue;
+      const key = passiveKey(p, passive, "combat");
+      if (passive.limit && p.usedLimits.includes(key)) continue;
+      if (passive.limit) p.usedLimits.push(key);
+      ctx2.log({ kind: "intercept", actor: p.cid, target: "commander" });
+      return dealDamage(ctx2, attackerCid, p.cid, mult, { ...opts, followUp: true });
+    }
+  }
+  const lost = Math.min(amount, cmd.hp);
+  cmd.hp -= lost;
+  ctx2.log({ kind: "hit", actor: attackerCid, target: "commander", amount: lost });
+  for (const ally of living(cs, "squad")) addStress(ctx2, ally.cid, TUNING.combat.stress.commanderHit, "enemy");
+  if (cmd.hp <= 0) {
+    cmd.downed = true;
+    cs.commanderDown = true;
+    ctx2.log({ kind: "downed", actor: attackerCid, target: "commander" });
+  }
+  return { dealt: lost, crit: false, killed: cmd.hp <= 0 };
+}
+
+// src/engine/combat/skills.ts
+var treeOf = (reg, unit) => reg.roles.get(unit.roleId)?.tree ?? [];
+function applyUpgrades(skill, upgrades) {
+  const mine = (upgrades ?? []).filter((u) => u.skillId === skill.id);
+  if (mine.length === 0) return skill;
+  const out = structuredClone(skill);
+  for (const u of mine) {
+    if (u.cooldownDelta) out.cooldown = Math.max(0, (out.cooldown ?? 0) + u.cooldownDelta);
+    if (u.multPct) {
+      for (const e of out.effects) {
+        if (e.type === "damage" && e.mult !== void 0) e.mult = e.mult * (1 + u.multPct / 100);
+        if (e.type === "heal") e.pctMaxHp = e.pctMaxHp * (1 + u.multPct / 100);
+      }
+    }
+    if (u.addEffects) out.effects.push(...u.addEffects);
+  }
+  return out;
+}
+function ownedUpgrades(reg, unit) {
+  const owned = new Set(unit.unlockedNodes);
+  return treeOf(reg, unit).filter((n) => owned.has(n.id) && n.grants.upgrade).map((n) => n.grants.upgrade);
+}
+function knownSkillIds(reg, unit) {
+  const owned = new Set(unit.unlockedNodes);
+  const ids = [...reg.roles.get(unit.roleId)?.starterSkills ?? []];
+  for (const n of treeOf(reg, unit)) {
+    const id = n.grants.skill;
+    if (!id || !owned.has(n.id)) continue;
+    if (skillById(reg, id)?.kind === "active") ids.push(id);
+  }
+  return ids.filter((id) => reg.skills.has(id));
+}
+function ownedPassiveIds(reg, unit) {
+  const owned = new Set(unit.unlockedNodes);
+  return treeOf(reg, unit).filter((n) => n.grants.skill && owned.has(n.id) && skillById(reg, n.grants.skill)?.kind === "passive").map((n) => n.grants.skill);
+}
+function ownedUltimateId(reg, unit) {
+  const owned = new Set(unit.unlockedNodes);
+  return treeOf(reg, unit).find((n) => n.branch === null && owned.has(n.id))?.grants.skill;
+}
+function loadoutSize(reg, unit) {
+  let extra = 0;
+  for (const d of unit.defects) {
+    const c = reg.defects.get(d.id)?.combat;
+    for (const e of [...c?.upside ?? [], ...c?.downside ?? []]) if (e.type === "loadout_slots") extra += e.amount;
+  }
+  return TUNING.progression.loadoutSize + extra;
+}
+function activeLoadout(reg, unit) {
+  const known = knownSkillIds(reg, unit);
+  const starters = (reg.roles.get(unit.roleId)?.starterSkills ?? []).filter((id) => reg.skills.has(id));
+  const chosen = (unit.loadout ?? []).filter((id, i, a) => known.includes(id) && a.indexOf(id) === i);
+  return (chosen.length > 0 ? chosen : starters).slice(0, loadoutSize(reg, unit));
+}
+function resolveSkill(reg, c, skillId) {
+  const base = skillById(reg, skillId);
+  return base ? applyUpgrades(base, c.upgrades) : void 0;
+}
+function usableSkills(ctx2, cid) {
+  const { cs, reg } = ctx2;
+  const c = byCid(cs, cid);
+  const out = [];
+  for (const id of c.skills) {
+    const skill = resolveSkill(reg, c, id);
+    if (!skill || skill.kind === "passive") continue;
+    if ((c.cooldowns[id] ?? 0) > 0) continue;
+    if (c.side === "squad" && (skill.cp ?? 0) > 0 && cs.cp < skill.cp && !c.statuses.some((s) => s.id === "authorized")) continue;
+    const targets = legalTargets(cs, cid, skill, reg);
+    if (targets.length > 0) out.push({ skill, targets });
+  }
+  return out;
+}
+
+// src/engine/combat/build.ts
+function checkStart(state, reg, p) {
+  if (state.combat) return "A combat is already open.";
+  const front = p?.formation?.front ?? [];
+  const back = p?.formation?.back ?? [];
+  const ids = [...front, ...back];
+  if (ids.length < 1 || ids.length > TUNING.rosterActiveMax) return `A combat fields 1 to ${TUNING.rosterActiveMax} units.`;
+  if (new Set(ids).size !== ids.length) return "A unit was listed twice.";
+  if (front.length > TUNING.combat.maxPerRow || back.length > TUNING.combat.maxPerRow) return `A row holds at most ${TUNING.combat.maxPerRow} units.`;
+  const active = new Set(activeRosterUnits(state).map((u) => u.id));
+  for (const id of ids) {
+    const u = state.squad.find((x) => x.id === id);
+    if (!u) return `Unknown unit "${id}".`;
+    if (!isLiving(u) || u.status !== "active" || !active.has(id)) return `${u.displayName} is not available (${u.status}).`;
+    if (!reg.roles.has(u.roleId)) return `${u.displayName} has an unknown role "${u.roleId}".`;
+  }
+  const enemies = p.encounter?.enemies ?? [];
+  if (enemies.length < 1 || enemies.length > 6) return "An encounter has 1 to 6 enemies.";
+  for (const e of enemies) {
+    if (!reg.enemies.has(e.enemyId)) return `Unknown enemy "${e.enemyId}".`;
+    if (!Number.isInteger(e.level) || e.level < 1) return `Enemy "${e.enemyId}" needs a level of at least 1.`;
+    for (const a of e.affixes) if (reg.affixes.get(a)?.appliesTo !== "enemy") return `Unknown enemy affix "${a}".`;
+  }
+  if (p.encounter.lootTableId !== void 0 && !reg.lootTables.has(p.encounter.lootTableId)) return `Unknown loot table "${p.encounter.lootTableId}".`;
+  if (p.encounter.exposesCommander) {
+    if (!p.coverId) return "The commander is exposed: a cover unit is required.";
+    if (!ids.includes(p.coverId)) return "The cover unit must be fielded.";
+  } else if (p.coverId !== void 0) return "A cover unit is only used when the commander is exposed.";
+  return null;
+}
+function startingCp(state, reg) {
+  let cp = TUNING.combat.cpStart;
+  const lists = [];
+  const crime = reg.crimes.get(state.commander.crimeId ?? "");
+  lists.push(crime?.perk?.effects, crime?.flaw?.effects);
+  lists.push(reg.corporations.get(state.commander.corporationId ?? "")?.startingBonus?.effects);
+  for (const list2 of lists) {
+    for (const e of list2 ?? []) if (e.type === "cp_start") cp += e.amount ?? 0;
+  }
+  return Math.min(TUNING.combat.cpMax, cp);
+}
+function squadCombatant(state, reg, unit, index, row, synergies) {
+  const stats = unitStats(state, reg, unit);
+  const role = reg.roles.get(unit.roleId);
+  const skills = activeLoadout(reg, unit).slice(0, loadoutSize(reg, unit));
+  const passives = [];
+  const add = (effects2, source) => {
+    for (const e of effects2 ?? []) passives.push({ ...e, source });
+  };
+  for (const id of ownedPassiveIds(reg, unit)) add(skillById(reg, id).effects, `skill:${id}`);
+  for (const d of unit.defects) {
+    const c = reg.defects.get(d.id)?.combat;
+    add(c?.upside, `defect:${d.id}`);
+    add(c?.downside, `defect:${d.id}:down`);
+  }
+  if (unit.kind === "named") {
+    const sigSkill = reg.signatures.get(unit.signatureSkill.templateId)?.skill;
+    const sk = sigSkill ? skillById(reg, sigSkill) : void 0;
+    if (sk?.kind === "passive") add(sk.effects, `sig:${sigSkill}`);
+    else if (sk) skills.push(sk.id);
+  }
+  const ult = ownedUltimateId(reg, unit);
+  if (ult && skillById(reg, ult)) skills.push(ult);
+  for (const { inst } of wornItems(state, reg, unit)) add(itemStats(reg, inst)?.effects, `item:${inst.uid}`);
+  for (const s of synergies) if (s.unitId === unit.id) add(reg.synergies.get(s.synergyId)?.effects, `synergy:${s.synergyId}`);
+  return {
+    cid: `s${index + 1}`,
+    side: "squad",
+    unitId: unit.id,
+    nameKey: unit.displayName,
+    level: unit.level,
+    row,
+    index,
+    hp: Math.max(1, Math.min(unit.currentHp, stats.hp)),
+    maxHp: stats.hp,
+    base: stats,
+    stress: unit.breakdown ? 100 : unit.stress,
+    statuses: [],
+    mods: [],
+    cooldowns: {},
+    skills,
+    passives,
+    downed: false,
+    aiProfile: role.aiProfile ?? "aggressive",
+    ...unit.breakdown ? { breakdown: makeBreakdown(reg, unit.breakdown.defectId) } : {},
+    usedLimits: [],
+    upgrades: ownedUpgrades(reg, unit)
+  };
+}
+function buildCombat(state, reg, rng, p) {
+  const rngState = rng.state;
+  const formation = { front: [...p.formation.front], back: [...p.formation.back] };
+  const unitIds = [...formation.front, ...formation.back];
+  const synergies = getSynergies(state, reg, unitIds);
+  const squad = unitIds.map((id, i) => squadCombatant(state, reg, state.squad.find((u) => u.id === id), i, formation.front.includes(id) ? "front" : "back", synergies));
+  const cs = {
+    id: `cmb_${state.day}_${rngState[0].toString(36)}`,
+    round: 0,
+    phase: "awaiting",
+    cp: startingCp(state, reg),
+    timeline: [],
+    turn: 0,
+    combatants: squad,
+    encounter: structuredClone(p.encounter),
+    formation,
+    log: [],
+    auto: false,
+    allowRetry: p.allowRetry === true,
+    expedition: p.expedition === true,
+    bankLoot: p.bankLoot === true,
+    start: { rng: rngState, payload: structuredClone(p) },
+    ordersThisRound: [],
+    pendingLootRolls: 0,
+    hints: [],
+    nextCid: 1
+  };
+  for (const e of p.encounter.enemies) spawnEnemy(cs, state, reg, e);
+  if (p.encounter.exposesCommander && p.coverId) {
+    const cover = squad.find((c) => c.unitId === p.coverId);
+    cs.commander = { hp: TUNING.combat.commanderHp, maxHp: TUNING.combat.commanderHp, def: TUNING.combat.commanderDef, coverId: cover.cid, downed: false };
+  }
+  const ctx2 = makeCtx(cs, state, reg, rng);
+  for (const c of cs.combatants.filter((x) => x.side === "squad")) {
+    const pct = activePassives(ctx2, c.cid, "stat").filter((e) => e.stat === "hp" || e.stat === "all").reduce((sum, e) => sum + e.pct, 0);
+    if (pct !== 0) {
+      const maxHp = Math.max(1, Math.round(c.maxHp * (1 + pct / 100)));
+      c.hp = Math.max(1, Math.min(maxHp, Math.round(c.hp * (maxHp / c.maxHp))));
+      c.maxHp = maxHp;
+      c.base = { ...c.base, hp: maxHp };
+    }
+  }
+  return cs;
+}
+
+// src/engine/combat/orders.ts
+var orderOf = (ctx2, id) => ctx2.reg.orders.get(id);
+var matches = (list2, orderId) => !list2 || list2.length === 0 || list2.includes(orderId);
+function orderCost(ctx2, orderId, targetCid) {
+  const order = orderOf(ctx2, orderId);
+  if (!order) throw new Error(`Unknown order "${orderId}"`);
+  let cost = order.cost;
+  if (targetCid && targetCid !== "commander" && ctx2.cs.combatants.some((c) => c.cid === targetCid)) {
+    for (const e of activePassives(ctx2, targetCid, "order_cost")) if (matches(e.orders, orderId)) cost += e.delta;
+  }
+  return Math.max(1, cost);
+}
+function checkOrder(ctx2, orderId, targetCid) {
+  const { cs } = ctx2;
+  const order = orderOf(ctx2, orderId);
+  if (!order) return `Unknown order "${orderId}".`;
+  if (cs.phase !== "awaiting" || !cs.awaitingCid) return "Orders are only given while a unit awaits input.";
+  let target;
+  if (order.target === "none") {
+    if (targetCid !== void 0) return `${orderId} takes no target.`;
+  } else {
+    target = cs.combatants.find((c) => c.cid === targetCid);
+    if (!target || !isStanding(target)) return "The order needs a standing target.";
+    if (order.target === "ally" && target.side !== "squad") return "The order targets a squad unit.";
+    if (order.target === "enemy" && target.side !== "enemy") return "The order targets an enemy.";
+    if (target.breakdown?.ignoresOrders) return `${target.nameKey} ignores orders.`;
+  }
+  const cost = orderCost(ctx2, orderId, targetCid);
+  if (cs.cp < cost) return `${orderId} needs ${cost} CP.`;
+  return null;
+}
+var severityOfMissing = (missing) => missing < 0.15 ? "minor" : missing < 0.4 ? "moderate" : "major";
+var SEVERITY_RANK = ["minor", "moderate", "major", "extreme"];
+function addHint(ctx2, hint) {
+  const key = (h2) => `${h2.type}|${h2.actor}|${h2.targets.join(",")}`;
+  const existing = ctx2.cs.hints.find((h2) => key(h2) === key(hint));
+  if (!existing) ctx2.cs.hints.push(hint);
+  else if (SEVERITY_RANK.indexOf(hint.severity) > SEVERITY_RANK.indexOf(existing.severity)) existing.severity = hint.severity;
+}
+var PROTECTIVE_ORDERS = ["steady", "hold_the_line", "fall_back"];
+function applyOrder(ctx2, order, targetCid) {
+  const { cs } = ctx2;
+  const owner = targetCid && order.target === "ally" ? targetCid : living(cs, "squad")[0]?.cid;
+  if (!owner) return;
+  const woundedBefore = new Map(living(cs, "squad").map((c) => [c.cid, c.hp / c.maxHp]));
+  applyEffects(ctx2, owner, order.effects, { targets: targetCid ? [targetCid] : [] }, `order:${order.id}`);
+  cs.ordersThisRound.push({ orderId: order.id, ...targetCid ? { targetCid } : {} });
+  cs.lastOrder = { orderId: order.id, ...targetCid ? { targetCid } : {} };
+  ctx2.log({ kind: "order", orderId: order.id, ...targetCid ? { target: targetCid } : {} });
+  if (PROTECTIVE_ORDERS.includes(order.id)) {
+    const covered = order.target === "ally" && targetCid ? [targetCid] : living(cs, "squad").filter((c) => c.row === "front").map((c) => c.cid);
+    for (const cid of covered) {
+      const pct = woundedBefore.get(cid);
+      if (pct !== void 0 && pct < 0.3) {
+        const unitId = byCid(cs, cid).unitId;
+        if (unitId) addHint(ctx2, { type: "protected", actor: "commander", targets: [unitId], severity: severityOfMissing(1 - pct) });
+      }
+    }
+  }
+}
+function issueOrder(ctx2, orderId, targetCid, opts = {}) {
+  const { cs } = ctx2;
+  const order = orderOf(ctx2, orderId);
+  if (!opts.free) cs.cp -= orderCost(ctx2, orderId, targetCid);
+  if (order.target === "ally" && targetCid) {
+    const chance = Math.max(0, ...activePassives(ctx2, targetCid, "order_refusal").filter((e) => matches(e.orders, orderId)).map((e) => e.chance ?? 0));
+    if (chance > 0 && ctx2.rng.chance(chance)) {
+      ctx2.log({ kind: "order_refused", orderId, target: targetCid });
+      ctx2.emit({ type: "order_refused", orderId, cid: targetCid, unitId: byCid(cs, targetCid).unitId });
+      addStress(ctx2, targetCid, TUNING.combat.stress.refusedOrder, "order");
+      return false;
+    }
+  }
+  applyOrder(ctx2, order, targetCid);
+  return true;
+}
+function repeatLastOrder(ctx2) {
+  const { cs } = ctx2;
+  cs.repeatOrder = false;
+  const last = cs.lastOrder;
+  if (!last) return;
+  const order = orderOf(ctx2, last.orderId);
+  if (!order) return;
+  if (order.target !== "none") {
+    const t = cs.combatants.find((c) => c.cid === last.targetCid);
+    if (!t || !isStanding(t) || hasFlag(t, ctx2.reg, "untargetable") && order.target === "enemy") return;
+  }
+  issueOrder(ctx2, last.orderId, last.targetCid, { free: true });
+}
+
+// src/engine/progression.ts
+var treeOf2 = (reg, unit) => reg.roles.get(unit.roleId)?.tree ?? [];
+var xpToNext = (level) => TUNING.progression.xpToNext.base + TUNING.progression.xpToNext.perLevel * level;
+function levelCap(state) {
+  const caps = TUNING.progression.levelCaps;
+  const tier = Math.min(Math.max(0, Math.floor(state.world.clearanceTier ?? 0)), caps.length - 1);
+  return caps[tier];
+}
+function hpGrowth(reg, unit, level) {
+  const g = reg.roles.get(unit.roleId)?.growth?.hp ?? 0;
+  return Math.floor(g * (level - 1));
+}
+function applyLevelUps(draft, reg, unit) {
+  const events = [];
+  const cap2 = levelCap(draft);
+  while (unit.xp >= xpToNext(unit.level) && unit.level < cap2) {
+    const before = hpGrowth(reg, unit, unit.level);
+    unit.xp -= xpToNext(unit.level);
+    unit.level += 1;
+    unit.skillPoints += 1;
+    unit.currentHp += hpGrowth(reg, unit, unit.level) - before;
+    events.push({ type: "level_up", unitId: unit.id, level: unit.level });
+  }
+  return events;
+}
+function applyAllLevelUps(draft, reg) {
+  return draft.squad.filter(isLiving).flatMap((u) => applyLevelUps(draft, reg, u));
+}
+function prerequisiteProblem(reg, unit, node) {
+  const owned = new Set(unit.unlockedNodes);
+  for (const r of node.requires) if (!owned.has(r)) return "LOCKED: unlock the previous node first";
+  if (node.branch === null) {
+    const tier3 = treeOf2(reg, unit).filter((n) => n.tier === 3 && owned.has(n.id)).length;
+    if (tier3 < 2) return "LOCKED: needs two tier-3 nodes";
+  }
+  return null;
+}
+function nodeState(state, reg, unit, nodeId) {
+  if (unit.unlockedNodes.includes(nodeId)) return "owned";
+  const node = treeOf2(reg, unit).find((n) => n.id === nodeId);
+  return node && prerequisiteProblem(reg, unit, node) === null ? "available" : "locked";
+}
+function checkUnlock(state, reg, unitId, nodeId) {
+  const unit = state.squad.find((u) => u.id === unitId);
+  if (!unit || !isLiving(unit)) return "Unknown or unavailable unit.";
+  const node = treeOf2(reg, unit).find((n) => n.id === nodeId);
+  if (!node) return `Unknown node "${nodeId}".`;
+  if (unit.unlockedNodes.includes(nodeId)) return "Already unlocked.";
+  const problem = prerequisiteProblem(reg, unit, node);
+  if (problem) return problem;
+  if (unit.skillPoints < node.cost) return `NEEDS ${node.cost} SKILL POINTS (has ${unit.skillPoints})`;
+  return null;
+}
+function unlockNode(draft, reg, unitId, nodeId) {
+  const reason = checkUnlock(draft, reg, unitId, nodeId);
+  if (reason) throw new Error(reason);
+  const unit = draft.squad.find((u) => u.id === unitId);
+  const node = treeOf2(reg, unit).find((n) => n.id === nodeId);
+  unit.skillPoints -= node.cost;
+  unit.unlockedNodes.push(nodeId);
+  return [{ type: "node_unlocked", unitId, nodeId, cost: node.cost }];
+}
+var respecCost = (unit) => ({
+  credits: TUNING.progression.respec.creditsPerLevel * unit.level,
+  plyx: TUNING.progression.respec.plyxPerLevel * unit.level
+});
+function respec(draft, reg, unitId) {
+  const unit = draft.squad.find((u) => u.id === unitId);
+  if (!unit || !isLiving(unit)) throw new Error("Unknown or unavailable unit.");
+  if (unit.unlockedNodes.length === 0) throw new Error("Nothing to respec.");
+  const cost = respecCost(unit);
+  if (draft.resources.credits < cost.credits || draft.resources.plyx < cost.plyx) {
+    throw new Error(`Respec needs ${cost.credits} credits and ${cost.plyx} plyx.`);
+  }
+  const owned = new Set(unit.unlockedNodes);
+  const refund = treeOf2(reg, unit).filter((n) => owned.has(n.id)).reduce((s, n) => s + n.cost, 0);
+  draft.resources.credits -= cost.credits;
+  draft.resources.plyx -= cost.plyx;
+  unit.skillPoints += refund;
+  unit.unlockedNodes = [];
+  delete unit.loadout;
+  return [
+    { type: "resource_changed", resource: "credits", amount: -cost.credits },
+    { type: "resource_changed", resource: "plyx", amount: -cost.plyx },
+    { type: "unit_respec", unitId, refunded: refund }
+  ];
+}
+var knownSkills = (reg, unit) => knownSkillIds(reg, unit);
+function setLoadout(draft, reg, unitId, skillIds) {
+  const unit = draft.squad.find((u) => u.id === unitId);
+  if (!unit || !isLiving(unit)) throw new Error("Unknown or unavailable unit.");
+  if (new Set(skillIds).size !== skillIds.length) throw new Error("A skill was listed twice.");
+  const known = knownSkills(reg, unit);
+  for (const id of skillIds) {
+    const sk = skillById(reg, id);
+    if (!sk) throw new Error(`Unknown skill "${id}".`);
+    if (sk.kind === "passive") throw new Error(`${sk.name} is a passive and cannot be equipped.`);
+    if (!known.includes(id)) throw new Error(`${sk.name} is not unlocked.`);
+  }
+  if (skillIds.length > loadoutSize(reg, unit)) throw new Error(`A loadout holds at most ${loadoutSize(reg, unit)} skills.`);
+  if (skillIds.length === 0) delete unit.loadout;
+  else unit.loadout = [...skillIds];
+}
+function releaseBreakdowns(draft, unitIds) {
+  const events = [];
+  for (const u of draft.squad) {
+    if (!u.breakdown || unitIds && !unitIds.includes(u.id)) continue;
+    delete u.breakdown;
+    events.push({ type: "breakdown_released", unitId: u.id });
+  }
+  return events;
+}
+function combatXp(state, reg, cs) {
+  const t = TUNING.progression.combatXp;
+  const squad = cs.combatants.filter((c) => c.side === "squad" && c.unitId);
+  const enemyLevels = cs.encounter.enemies.reduce((s, e) => s + e.level, 0);
+  const average = squad.length > 0 ? squad.reduce((s, c) => s + c.level, 0) / squad.length : 0;
+  const out = {};
+  for (const c of squad) {
+    const unit = state.squad.find((u) => u.id === c.unitId);
+    let xp = t.base + t.perEnemyLevel * enemyLevels;
+    if (c.level < average - t.lowLevelGap) xp *= t.lowLevelBonus;
+    if (unit?.kind === "grunt") xp *= t.gruntMult;
+    out[c.unitId] = Math.round(xp);
+  }
+  return out;
+}
+
+// src/engine/combat/encounter.ts
+var BUDGET = [0.5, 0.7, 0.9, 1.1, 1.3];
+var FREQUENCY = { common: 1, rare: 0.3, very_rare: 0.08 };
+var MAX_ENEMIES = 6;
+function defaultEnemyName(reg, enemyId, affixes) {
+  const words2 = affixes.map((id) => reg.affixes.get(id)?.adjective ?? "").filter((w) => w !== "");
+  return [...words2, reg.enemies.get(enemyId)?.name ?? enemyId].join(" ");
+}
+function averageLevel(state) {
+  const fielded = state.roster.activeIds.map((id) => state.squad.find((u) => u.id === id)).filter((u) => u !== void 0);
+  const pool = fielded.length > 0 ? fielded : state.squad;
+  if (pool.length === 0) return 1;
+  return pool.reduce((s, u) => s + u.level, 0) / pool.length;
+}
+function generateEncounter(state, reg, rng, input) {
+  const { danger } = input;
+  const budget = input.squadPower * BUDGET[danger - 1];
+  const level = Math.max(1, Math.round(averageLevel(state)) + danger - 2);
+  const byCategory = /* @__PURE__ */ new Map();
+  for (const e of reg.enemies.values()) {
+    if (input.table.archetypes && !input.table.archetypes.includes(e.id)) continue;
+    const list2 = byCategory.get(e.categoryId) ?? [];
+    list2.push(e.id);
+    byCategory.set(e.categoryId, list2);
+  }
+  const weighted = [];
+  for (const [id, w] of Object.entries(input.table.categories)) {
+    const cat = reg.enemyCategories.get(id);
+    if (!cat || w <= 0 || !byCategory.has(id)) continue;
+    weighted.push({ id, weight: w * FREQUENCY[cat.frequency] });
+  }
+  if (weighted.length === 0) throw new Error("The enemy table has no known category with enemies.");
+  const total = weighted.reduce((s, c) => s + c.weight, 0);
+  const affixPool = [...reg.affixes.values()].filter((a) => a.appliesTo === "enemy" && (a.id !== "elite" || danger >= 3)).map((a) => a.id);
+  const maxAffixes = Math.min(2, danger - 1);
+  const draw = () => {
+    let r = rng.float() * total;
+    const cat = weighted.find((c) => (r -= c.weight) < 0) ?? weighted[weighted.length - 1];
+    const enemyId = rng.pick(byCategory.get(cat.id));
+    const affixes = [];
+    if (maxAffixes > 0 && rng.chance(0.1 * danger)) {
+      const n = rng.int(1, maxAffixes);
+      const left = [...affixPool];
+      while (affixes.length < n && left.length > 0) affixes.push(left.splice(rng.int(0, left.length - 1), 1)[0]);
+    }
+    return { enemyId, level, affixes };
+  };
+  const cost = (e) => statPower(enemyStats(reg, e.enemyId, e.level, e.affixes, state.difficulty)) * (reg.enemies.get(e.enemyId)?.power ?? 1);
+  const enemies = [];
+  let spent = 0;
+  while (enemies.length < MAX_ENEMIES) {
+    const next = draw();
+    const c = cost(next);
+    if (enemies.length > 0 && spent + c > budget) break;
+    enemies.push(next);
+    spent += c;
+  }
+  return {
+    enemies,
+    danger,
+    ...input.exposesCommander ? { exposesCommander: true } : {},
+    ...input.lootTableId ? { lootTableId: input.lootTableId } : {}
+  };
+}
+
+// src/engine/combat/outcome.ts
+var RANK = ["minor", "moderate", "major", "extreme"];
+var severityOfShare = (share) => share < 0.15 ? "minor" : share < 0.4 ? "moderate" : "major";
+function mergeHints(into, more) {
+  const key = (h2) => `${h2.type}|${h2.actor}|${h2.targets.join(",")}`;
+  for (const h2 of more) {
+    const have = into.find((x) => key(x) === key(h2));
+    if (!have) into.push({ ...h2, targets: [...h2.targets] });
+    else if (RANK.indexOf(h2.severity) > RANK.indexOf(have.severity)) have.severity = h2.severity;
+  }
+}
+function relationHints(cs, unitIdOf) {
+  const out = [];
+  mergeHints(out, cs.hints);
+  const cmd = cs.commander;
+  if (cmd) {
+    const cover = cs.combatants.find((c) => c.cid === cmd.coverId);
+    const covered = cs.log.some((l) => l.kind === "cover" && l.actor === cmd.coverId);
+    if (cover?.unitId && covered) {
+      const taken = cs.log.filter((l) => (l.kind === "hit" || l.kind === "crit") && l.target === cover.cid && l.actor !== void 0).reduce((s, l) => s + (l.amount ?? 0), 0);
+      mergeHints(out, [{ type: "protected", actor: cover.unitId, targets: [], severity: severityOfShare(taken / cover.maxHp) }]);
+    }
+  }
+  for (const c of cs.combatants) {
+    const id = c.side === "squad" ? unitIdOf(c.cid) : void 0;
+    if (id && c.downed) mergeHints(out, [{ type: "endangered", actor: "commander", targets: [id], severity: "major" }]);
+  }
+  return out;
+}
+function injuryDaysFor(c) {
+  let pct = 0;
+  for (const p of c.passives) {
+    if (p.type !== "injury_days") continue;
+    pct += (p.downside === true && c.stress >= 50 ? amplify(p, TUNING.combat.strainedMult) : p).pct;
+  }
+  return Math.max(1, Math.round(TUNING.combat.injuryDays * (1 + pct / 100)));
+}
+function finalizeCombat(draft, reg, rng, outcome) {
+  const cs = draft.combat;
+  if (!cs) throw new Error("finalizeCombat: no combat is open");
+  const ctx2 = makeCtx(cs, draft, reg, rng);
+  fireTrigger(ctx2, "onCombatEnd", {});
+  const events = [];
+  const squad = cs.combatants.filter((c) => c.side === "squad" && c.unitId);
+  const unitOf2 = (c) => draft.squad.find((u) => u.id === c.unitId);
+  const unitIdOf = (cid) => cs.combatants.find((c) => c.cid === cid)?.unitId;
+  const stressBefore = Object.fromEntries(squad.map((c) => [c.unitId, unitOf2(c).stress]));
+  const injuries = [];
+  const deaths = [];
+  const breakdowns = [];
+  const levelUps = [];
+  const lost = outcome !== "won";
+  for (const c of squad) {
+    const unit = unitOf2(c);
+    unit.stress = Math.min(100, Math.max(0, c.stress + (lost ? TUNING.combat.stress.loss : 0)));
+    if (c.breakdown) {
+      unit.breakdown = { defectId: c.breakdown.defectId, day: draft.day };
+      breakdowns.push(unit.id);
+    }
+    if (!c.downed) {
+      unit.currentHp = Math.max(1, c.hp);
+      continue;
+    }
+    const grunt = unit.kind === "grunt";
+    if (grunt && (lost || rng.chance(TUNING.combat.gruntDeathOnWin))) {
+      unit.status = "dead";
+      unit.currentHp = 0;
+      deaths.push(unit.id);
+      continue;
+    }
+    unit.currentHp = 1;
+    unit.injuries.push("wounded");
+    unit.injuryDays = Math.max(unit.injuryDays ?? 0, injuryDaysFor(c));
+    unit.status = "injured";
+    injuries.push(unit.id);
+  }
+  let xp = {};
+  let loot = [];
+  let banked = false;
+  if (outcome === "won") {
+    xp = combatXp(draft, reg, cs);
+    for (const c of squad) {
+      const unit = unitOf2(c);
+      if (unit.status === "dead") continue;
+      unit.xp += xp[unit.id] ?? 0;
+      events.push({ type: "xp_gained", unitId: unit.id, amount: xp[unit.id] ?? 0 });
+      for (const e of applyLevelUps(draft, reg, unit)) {
+        events.push(e);
+        levelUps.push({ unitId: unit.id, level: e.level });
+      }
+    }
+    loot = rollLoot(draft, reg, rng, cs.encounter.lootTableId ?? "loot_standard", { extraRolls: cs.pendingLootRolls });
+    if (cs.bankLoot) {
+      events.push(...bankLoot(draft, loot));
+      banked = true;
+    }
+  }
+  let commanderInjured = false;
+  if (cs.commander?.downed) {
+    events.push(...injureCommander(draft, TUNING.combat.commanderInjuryDays));
+    commanderInjured = true;
+  }
+  const result = {
+    id: cs.id,
+    day: draft.day,
+    outcome,
+    rounds: cs.round,
+    formation: cs.formation,
+    participants: squad.map((c) => c.unitId),
+    enemies: cs.combatants.filter((c) => c.side === "enemy").map((c) => ({
+      enemyId: c.enemyId,
+      level: c.level,
+      affixes: (c.nameKey.split("|")[1] ?? "").split(",").filter((a) => a !== ""),
+      name: draft.enemyNames?.[c.nameKey] ?? defaultEnemyName(reg, c.enemyId, (c.nameKey.split("|")[1] ?? "").split(",").filter((a) => a !== "")),
+      downed: c.downed
+    })),
+    log: cs.log.slice(-TUNING.combat.logMax),
+    xp,
+    levelUps,
+    loot,
+    banked,
+    injuries,
+    deaths,
+    breakdowns,
+    stressDelta: Object.fromEntries(squad.map((c) => [c.unitId, unitOf2(c).stress - stressBefore[c.unitId]])),
+    relationHints: relationHints(cs, unitIdOf),
+    commanderInjured
+  };
+  draft.lastCombat = result;
+  delete draft.combat;
+  if (!cs.expedition) events.push(...releaseBreakdowns(draft));
+  events.push({ type: "combat_ended", outcome, result: cs.id });
+  return events;
+}
+
+// src/engine/combat/ai.ts
+function expectedDamage(ctx2, cid, skill, targetCid) {
+  const atk = effectiveStat(ctx2, cid, "atk");
+  const perHit = skill.effects.reduce((s, e) => e.type === "damage" && e.mult !== void 0 ? s + e.mult * (e.hits ?? 1) : s, 0);
+  if (perHit === 0) return 0;
+  return expandTargets(ctx2.cs, cid, skill, targetCid, ctx2.reg).reduce((sum, t) => sum + perHit * atk * 100 / (100 + defOf(ctx2, t)), 0);
+}
+var first = (xs) => xs[0];
+var toAction = (o) => ({ kind: "skill", skillId: o.skill.id, targetCid: o.targetCid });
+var hpPct = (ctx2, cid) => {
+  if (cid === "commander") return ctx2.cs.commander.hp / ctx2.cs.commander.maxHp;
+  const c = byCid(ctx2.cs, cid);
+  return c.hp / c.maxHp;
+};
+var defOf = (ctx2, cid) => cid === "commander" ? ctx2.cs.commander.def : effectiveStat(ctx2, cid, "def");
+function options(ctx2, cid, usable2) {
+  const out = [];
+  for (const { skill, targets } of usable2) for (const t of targets) out.push({ skill, targetCid: t, damage: expectedDamage(ctx2, cid, skill, t) });
+  return out;
+}
+function heaviest(opts) {
+  let best = null;
+  for (const o of opts) if (o.damage > 0 && (!best || o.damage > best.damage)) best = o;
+  return best;
+}
+var hasEffect2 = (skill, ...types) => skill.effects.some((e) => types.includes(e.type));
+var grantsProtection = (skill) => skill.effects.some((e) => e.type === "status" && ["guard", "shield", "taunt"].includes(e.statusId));
+function aggressive(ctx2, cid, opts) {
+  const best = heaviest(opts);
+  if (best) return toAction(best);
+  const any = first(opts);
+  return any ? toAction(any) : null;
+}
+function chooseAction(ctx2, cid) {
+  const { cs } = ctx2;
+  const c = byCid(cs, cid);
+  const usable2 = usableSkills(ctx2, cid);
+  if (usable2.length === 0) return { kind: "guard" };
+  const opts = options(ctx2, cid, usable2);
+  switch (c.aiProfile) {
+    case "erratic": {
+      const pick = ctx2.rng.pick(usable2);
+      return { kind: "skill", skillId: pick.skill.id, targetCid: ctx2.rng.pick(pick.targets) };
+    }
+    case "predator": {
+      const damaging = opts.filter((o) => o.damage > 0);
+      if (damaging.length > 0) {
+        const lowest = Math.min(...damaging.map((o) => hpPct(ctx2, o.targetCid)));
+        const best = heaviest(damaging.filter((o) => hpPct(ctx2, o.targetCid) === lowest));
+        if (best) return toAction(best);
+      }
+      break;
+    }
+    case "protector": {
+      const allies = living(cs, c.side);
+      const hurt = allies.filter((a) => a.hp / a.maxHp < 0.5).sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp || a.index - b.index);
+      const downed = cs.combatants.filter((a) => a.side === c.side && a.downed);
+      const revive = usable2.find((u) => hasEffect2(u.skill, "revive") && downed.length > 0);
+      if (revive) return { kind: "skill", skillId: revive.skill.id, targetCid: first(downed.filter((d) => revive.targets.includes(d.cid)))?.cid ?? revive.targets[0] };
+      if (hurt.length > 0) {
+        for (const u of usable2) {
+          if (!hasEffect2(u.skill, "heal") && !grantsProtection(u.skill)) continue;
+          const target = first(hurt.filter((h2) => u.targets.includes(h2.cid)))?.cid ?? (u.targets.length > 0 && u.skill.targets?.count !== "one" ? u.targets[0] : void 0);
+          if (target) return { kind: "skill", skillId: u.skill.id, targetCid: target };
+        }
+      }
+      if (cs.commander && !cs.commander.downed && cs.commander.hp < cs.commander.maxHp) {
+        const guard = usable2.find((u) => grantsProtection(u.skill));
+        if (guard) return { kind: "skill", skillId: guard.skill.id, targetCid: guard.targets[0] };
+      }
+      break;
+    }
+    case "disruptor": {
+      for (const o of opts) {
+        const fx2 = o.skill.effects.filter((e) => e.type === "status" && (e.target ?? "target") === "target");
+        if (o.skill.targets?.side !== "enemy" || fx2.length === 0) continue;
+        if (o.targetCid === "commander") continue;
+        const target = byCid(cs, o.targetCid);
+        if (fx2.some((e) => !target.statuses.some((s) => s.id === e.statusId))) return toAction(o);
+      }
+      break;
+    }
+    case "stressor": {
+      const stressful = opts.filter((o) => o.targetCid !== "commander" && o.skill.effects.some((e) => e.type === "stress" && e.amount > 0 && (e.target ?? "target") === "target") && byCid(cs, o.targetCid).side === "squad" && byCid(cs, o.targetCid).stress < 100);
+      if (stressful.length > 0) {
+        const top = Math.max(...stressful.map((o) => byCid(cs, o.targetCid).stress));
+        const best = stressful.find((o) => byCid(cs, o.targetCid).stress === top);
+        return toAction(best);
+      }
+      break;
+    }
+    default:
+      break;
+  }
+  return aggressive(ctx2, cid, opts) ?? { kind: "guard" };
+}
+
+// src/engine/combat/turn.ts
+function checkEnd(ctx2) {
+  const { cs } = ctx2;
+  if (living(cs, "squad").length === 0 || cs.commander?.downed) return "lost";
+  if (living(cs, "enemy").length === 0) return "won";
+  return null;
+}
+function endCombat(ctx2, outcome) {
+  ctx2.cs.phase = "ended";
+  ctx2.cs.outcome = outcome;
+  ctx2.cs.awaitingCid = void 0;
+}
+function startRound(ctx2) {
+  const { cs } = ctx2;
+  cs.round += 1;
+  if (cs.round > 1) cs.cp = Math.min(TUNING.combat.cpMax, cs.cp + 1);
+  clearRoundLimits(cs);
+  cs.ordersThisRound = [];
+  fireTrigger(ctx2, "onRoundStart", {});
+  cs.timeline = initiativeOrder(cs, ctx2.rng, (c) => effectiveStat(ctx2, c.cid, "spd"));
+  cs.turn = 0;
+  cs.turnStarted = false;
+}
+function beginTurn(ctx2, cid) {
+  const c = byCid(ctx2.cs, cid);
+  for (const id of Object.keys(c.cooldowns)) c.cooldowns[id] = Math.max(0, c.cooldowns[id] - 1);
+  tickStatuses(ctx2, cid);
+  if (isStanding(c)) fireTrigger(ctx2, "onTurnStart", { actorCid: cid });
+  ctx2.cs.turnStarted = true;
+}
+function finishTurn(ctx2, cid) {
+  const { cs } = ctx2;
+  expireStatuses(ctx2, cid);
+  cs.turn += 1;
+  cs.turnStarted = false;
+  cs.inExtra = false;
+  cs.extraAction = void 0;
+}
+function performAction(ctx2, cid, action, opts = {}) {
+  const { cs, reg } = ctx2;
+  const c = byCid(cs, cid);
+  if (!isStanding(c)) throw new Error("A downed unit cannot act.");
+  if (c.side === "squad" && !opts.trusted && action.kind !== "pass") {
+    const flip = activePassives(ctx2, cid, "override_action").find((e) => e.chance !== void 0 && ctx2.rng.chance(e.chance));
+    if (flip) action = chooseAction(ctx2, cid);
+  }
+  if (action.kind === "pass") {
+    ctx2.log({ kind: "pass", actor: cid });
+    return;
+  }
+  if (action.kind === "guard") {
+    applyStatus(ctx2, cid, "guard", 2, 1, cid);
+    ctx2.log({ kind: "pass", actor: cid });
+    return;
+  }
+  if (action.kind === "swap") {
+    if (hasFlag(c, reg, "rooted")) throw new Error("She cannot leave her row.");
+    applyEffects(ctx2, cid, [{ type: "move", to: "swap", target: "self" }], {}, "swap");
+    return;
+  }
+  const id = action.skillId;
+  const skill = id ? resolveSkill(reg, c, id) : void 0;
+  if (!id || !skill || !c.skills.includes(id) || skill.kind === "passive") throw new Error(`Unknown skill "${String(id)}".`);
+  if ((c.cooldowns[id] ?? 0) > 0) throw new Error(`${skill.name} is on cooldown (${c.cooldowns[id]}).`);
+  const authorized = c.statuses.some((s) => s.id === "authorized");
+  const cpCost = c.side === "squad" && !opts.trusted ? skill.cp ?? 0 : 0;
+  if (cpCost > 0 && !authorized && cs.cp < cpCost) throw new Error(`${skill.name} needs ${cpCost} CP.`);
+  let targets;
+  const t = skill.targets;
+  if (opts.trusted && action.targetCid && byCid(cs, action.targetCid)) {
+    targets = [action.targetCid];
+  } else if (t.side === "self" || t.count === "all") {
+    targets = expandTargets(cs, cid, skill, action.targetCid, reg);
+    if (targets.length === 0) throw new Error(`${skill.name} has no legal target.`);
+  } else {
+    if (!action.targetCid || !legalTargets(cs, cid, skill, reg).includes(action.targetCid)) throw new Error(`Illegal target for ${skill.name}.`);
+    targets = expandTargets(cs, cid, skill, action.targetCid, reg);
+  }
+  if (cpCost > 0) {
+    if (authorized) c.statuses = c.statuses.filter((s) => s.id !== "authorized");
+    else cs.cp -= cpCost;
+  }
+  if (skill.stressCost) addStress(ctx2, cid, skill.stressCost, "self");
+  c.cooldowns[id] = (skill.cooldown ?? 0) > 0 ? skill.cooldown + 1 : 0;
+  ctx2.log({ kind: "skill", actor: cid, skillId: id, ...action.targetCid ? { target: action.targetCid } : {} });
+  if (skill.kind === "ultimate") ctx2.emit({ type: "combat_cutin", kind: "ultimate", unitId: c.unitId, cid, text: skill.name });
+  fireTrigger(ctx2, "onAction", { actorCid: cid, targetCid: action.targetCid, skillId: id });
+  const misfire = activePassives(ctx2, cid, "misfire").some((e) => e.chance !== void 0 && ctx2.rng.chance(e.chance));
+  if (misfire) ctx2.log({ kind: "miss", actor: cid, skillId: id });
+  else {
+    applyEffects(ctx2, cid, skill.effects, { targets, targetCid: action.targetCid ?? targets[0], skillId: id }, id);
+    if (cs.repeatOrder) repeatLastOrder(ctx2);
+  }
+  c.lastSkillId = id;
+  c.lastTargetCid = action.targetCid;
+  c.lastRow = c.row;
+}
+var hasChoice = (ctx2, cid) => usableSkills(ctx2, cid).length > 0;
+function decide(ctx2, cid) {
+  const { cs } = ctx2;
+  const c = byCid(cs, cid);
+  if (c.side === "enemy") return { action: chooseAction(ctx2, cid), trusted: false, broken: false };
+  if (c.breakdown) {
+    const a = breakdownAction(ctx2, cid);
+    if (a) return { action: a, trusted: true, broken: true };
+  } else if (rollBreaking(ctx2, cid)) {
+    const a = breakdownAction(ctx2, cid, { breaking: true });
+    if (a) return { action: a, trusted: true, broken: true };
+  }
+  if (cs.auto) return { action: chooseAction(ctx2, cid), trusted: false, broken: false };
+  if (!hasChoice(ctx2, cid)) return { action: { kind: "pass" }, trusted: false, broken: false };
+  return "await";
+}
+function completeAction(ctx2, cid, broken = false) {
+  const { cs } = ctx2;
+  if (broken) applyBreakdownActionEffects(ctx2, cid);
+  cs.awaitingCid = void 0;
+  const end = checkEnd(ctx2);
+  if (end) return endCombat(ctx2, end);
+  if (cs.extraAction === cid && !cs.inExtra) return;
+  finishTurn(ctx2, cid);
+}
+function runUntilInput(ctx2) {
+  const { cs } = ctx2;
+  for (let guard = 0; guard < 2e4; guard++) {
+    if (cs.phase !== "awaiting") return;
+    const end = checkEnd(ctx2);
+    if (end) return endCombat(ctx2, end);
+    let cid;
+    if (cs.awaitingCid) {
+      cid = cs.awaitingCid;
+    } else if (cs.extraAction && isStanding(byCid(cs, cs.extraAction))) {
+      cid = cs.extraAction;
+      cs.extraAction = void 0;
+      cs.inExtra = true;
+    } else {
+      cs.extraAction = void 0;
+      if (!cs.turnStarted) {
+        while (cs.turn < cs.timeline.length && !isStanding(byCid(cs, cs.timeline[cs.turn]))) cs.turn += 1;
+        if (cs.turn >= cs.timeline.length) {
+          if (cs.round >= TUNING.combat.maxRounds) return endCombat(ctx2, "retreated");
+          startRound(ctx2);
+          continue;
+        }
+      }
+      cid = cs.timeline[cs.turn];
+      if (!cs.turnStarted) {
+        beginTurn(ctx2, cid);
+        const actor = byCid(cs, cid);
+        if (!isStanding(actor)) {
+          finishTurn(ctx2, cid);
+          continue;
+        }
+        if (hasFlag(actor, ctx2.reg, "skipTurn")) {
+          ctx2.log({ kind: "pass", actor: cid });
+          if (checkEnd(ctx2)) continue;
+          finishTurn(ctx2, cid);
+          continue;
+        }
+      }
+      cs.inExtra = false;
+    }
+    const d = decide(ctx2, cid);
+    if (d === "await") {
+      cs.awaitingCid = cid;
+      return;
+    }
+    try {
+      performAction(ctx2, cid, d.action, { trusted: d.trusted });
+    } catch {
+      ctx2.log({ kind: "pass", actor: cid });
+    }
+    completeAction(ctx2, cid, d.broken);
+  }
+  throw new Error("The combat did not settle.");
+}
+
+// src/engine/actions/combat.ts
+var isObj7 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+function settle(draft, ctx2, ectx, logStart) {
+  const { cs } = ectx;
+  const events = [{ type: "combat_log", entries: cs.log.slice(Math.max(0, logStart)) }, ...ectx.events];
+  if (cs.phase === "ended") {
+    const outcome = cs.outcome;
+    if (outcome === "lost" && cs.allowRetry) {
+      cs.phase = "lost_pending";
+      events.push({ type: "combat_lost_pending" });
+    } else events.push(...finalizeCombat(draft, ctx2.registries, ctx2.rng, outcome));
+  } else if (cs.awaitingCid) events.push({ type: "combat_awaiting", cid: cs.awaitingCid });
+  return events;
+}
+function startCombat(draft, ctx2, payload) {
+  const reason = checkStart(draft, ctx2.registries, payload);
+  if (reason) throw new Error(reason);
+  const cs = buildCombat(draft, ctx2.registries, ctx2.rng, payload);
+  draft.combat = cs;
+  const ectx = makeCtx(cs, draft, ctx2.registries, ctx2.rng);
+  fireTrigger(ectx, "onCombatStart", {});
+  startRound(ectx);
+  runUntilInput(ectx);
+  return [{ type: "combat_started", id: cs.id }, ...settle(draft, ctx2, ectx, 0)];
+}
+var open = (draft, what) => {
+  if (!draft.combat) throw new Error(`${what}: no combat is open`);
+  return draft.combat;
+};
+registerAction("combat/start", (draft, payload, ctx2) => {
+  if (!isObj7(payload)) throw new Error("combat/start needs a payload");
+  return startCombat(draft, ctx2, payload);
+});
+registerAction("combat/act", (draft, payload, ctx2) => {
+  const cs = open(draft, "combat/act");
+  if (cs.phase !== "awaiting" || !cs.awaitingCid) throw new Error("combat/act: the combat is not waiting for an action");
+  const action = isObj7(payload) ? payload.action : void 0;
+  if (!isObj7(action) || !["skill", "guard", "swap", "pass"].includes(String(action.kind))) throw new Error("combat/act needs { action }");
+  const ectx = makeCtx(cs, draft, ctx2.registries, ctx2.rng);
+  const start = cs.log.length;
+  const cid = cs.awaitingCid;
+  performAction(ectx, cid, action);
+  completeAction(ectx, cid);
+  runUntilInput(ectx);
+  return settle(draft, ctx2, ectx, start);
+});
+registerAction("combat/auto", (draft, payload, ctx2) => {
+  const cs = open(draft, "combat/auto");
+  if (!isObj7(payload) || typeof payload.on !== "boolean") throw new Error("combat/auto needs { on: boolean }");
+  if (cs.phase !== "awaiting") throw new Error("combat/auto: the combat is already decided");
+  const ectx = makeCtx(cs, draft, ctx2.registries, ctx2.rng);
+  const start = cs.log.length;
+  cs.auto = payload.on;
+  if (payload.on) runUntilInput(ectx);
+  return settle(draft, ctx2, ectx, start);
+});
+registerAction("combat/order", (draft, payload, ctx2) => {
+  const cs = open(draft, "combat/order");
+  if (!isObj7(payload) || typeof payload.orderId !== "string" || payload.targetCid !== void 0 && typeof payload.targetCid !== "string") {
+    throw new Error("combat/order needs { orderId, targetCid? }");
+  }
+  const ectx = makeCtx(cs, draft, ctx2.registries, ctx2.rng);
+  const reason = checkOrder(ectx, payload.orderId, payload.targetCid);
+  if (reason) throw new Error(reason);
+  const start = cs.log.length;
+  issueOrder(ectx, payload.orderId, payload.targetCid);
+  return settle(draft, ctx2, ectx, start);
+});
+registerAction("combat/retreat", (draft, _payload, ctx2) => {
+  const cs = open(draft, "combat/retreat");
+  if (cs.phase !== "awaiting") throw new Error("combat/retreat: the combat is not running");
+  const ectx = makeCtx(cs, draft, ctx2.registries, ctx2.rng);
+  const start = cs.log.length;
+  cs.phase = "ended";
+  cs.outcome = "retreated";
+  cs.awaitingCid = void 0;
+  return settle(draft, ctx2, ectx, start);
+});
+registerAction("combat/retry", (draft, _payload, ctx2) => {
+  const cs = open(draft, "combat/retry");
+  if (cs.phase !== "lost_pending") throw new Error("combat/retry: only a lost combat with easy retry can be retried");
+  const { rng, payload } = cs.start;
+  delete draft.combat;
+  ctx2.rng.restore(rng);
+  return startCombat(draft, ctx2, payload);
+});
+registerAction("combat/accept", (draft, _payload, ctx2) => {
+  const cs = open(draft, "combat/accept");
+  if (cs.phase !== "lost_pending") throw new Error("combat/accept: there is no lost combat to accept");
+  return finalizeCombat(draft, ctx2.registries, ctx2.rng, "lost");
+});
+registerAction("combat/set_enemy_name", (draft, payload) => {
+  const p = isObj7(payload) ? payload : {};
+  if (typeof p.key !== "string" || !/^[a-z0-9_:.-]+(\|[a-z0-9_:.,-]*)?$/.test(p.key)) throw new Error("combat/set_enemy_name needs a valid key");
+  if (!isEnemyName(p.name)) throw new Error("combat/set_enemy_name: the name must be 1 to 3 words of letters, at most 32 characters");
+  const names = draft.enemyNames ?? {};
+  delete names[p.key];
+  names[p.key] = p.name;
+  const keys = Object.keys(names);
+  for (const old of keys.slice(0, Math.max(0, keys.length - ENEMY_NAMES_MAX))) delete names[old];
+  draft.enemyNames = names;
+  return [{ type: "enemy_named", key: p.key, name: p.name }];
+});
+registerAction("campaign/set_difficulty", (draft, payload) => {
+  const d = isObj7(payload) ? payload.difficulty : void 0;
+  if (d !== "story" && d !== "normal" && d !== "hard") throw new Error("campaign/set_difficulty needs { difficulty: story | normal | hard }");
+  if (draft.combat) throw new Error("The difficulty cannot change during a combat.");
+  draft.difficulty = d;
+  return [{ type: "difficulty_changed", difficulty: d }];
+});
+
+// src/engine/actions/progression.ts
+var isObj8 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var str = (v, what) => {
+  if (typeof v !== "string") throw new Error(`${what} must be a string`);
+  return v;
+};
+registerAction("squad/unlock_node", (draft, payload, ctx2) => {
+  const p = isObj8(payload) ? payload : {};
+  return unlockNode(draft, ctx2.registries, str(p.unitId, "unitId"), str(p.nodeId, "nodeId"));
+});
+registerAction("squad/respec", (draft, payload, ctx2) => {
+  const p = isObj8(payload) ? payload : {};
+  return respec(draft, ctx2.registries, str(p.unitId, "unitId"));
+});
+registerAction("squad/set_loadout", (draft, payload, ctx2) => {
+  const p = isObj8(payload) ? payload : {};
+  const ids = p.skillIds;
+  if (!Array.isArray(ids) || !ids.every((x) => typeof x === "string")) throw new Error("squad/set_loadout needs { unitId, skillIds: string[] }");
+  setLoadout(draft, ctx2.registries, str(p.unitId, "unitId"), ids);
+  return [{ type: "loadout_changed", unitId: p.unitId }];
+});
+registerAction("squad/release_breakdowns", (draft, payload) => {
+  const ids = isObj8(payload) ? payload.unitIds : void 0;
+  if (ids !== void 0 && !(Array.isArray(ids) && ids.every((x) => typeof x === "string"))) throw new Error("unitIds must be a list of unit ids");
+  return releaseBreakdowns(draft, ids);
+});
+registerActivityHook((draft, ctx2) => applyAllLevelUps(draft, ctx2.registries));
+
+// src/engine/actions/items.ts
+var isObj9 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+registerAction("item/equip", (draft, payload, ctx2) => {
+  if (!isObj9(payload) || typeof payload.unitId !== "string" || typeof payload.uid !== "string") {
+    throw new Error("item/equip needs { unitId, uid }");
+  }
+  const unit = draft.squad.find((u) => u.id === payload.unitId);
+  if (!unit || !isLiving(unit)) throw new Error(`item/equip: unit "${payload.unitId}" cannot equip anything`);
+  const inst = draft.inventory.find((i) => i.uid === payload.uid);
+  if (!inst) throw new Error(`item/equip: unknown item "${payload.uid}"`);
+  const reason = canEquip(ctx2.registries, unit, inst);
+  if (reason) throw new Error(`item/equip: ${reason}`);
+  const slot = ctx2.registries.items.get(inst.itemId).slot;
+  const previous = equippedBy(draft, inst.uid);
+  if (previous) {
+    for (const s of ["weapon", "upper", "lower"]) if (previous.equipment[s] === inst.uid) delete previous.equipment[s];
+  }
+  unit.equipment[slot] = inst.uid;
+  return [{ type: "item_equipped", unitId: unit.id, slot, uid: inst.uid, from: previous?.id ?? null }];
+});
+registerAction("item/unequip", (draft, payload) => {
+  if (!isObj9(payload) || typeof payload.unitId !== "string" || !["weapon", "upper", "lower"].includes(String(payload.slot))) {
+    throw new Error("item/unequip needs { unitId, slot }");
+  }
+  const unit = draft.squad.find((u) => u.id === payload.unitId);
+  if (!unit) throw new Error(`item/unequip: unknown unit "${payload.unitId}"`);
+  const slot = payload.slot;
+  if (!unit.equipment[slot]) throw new Error(`item/unequip: nothing equipped in ${slot}`);
+  delete unit.equipment[slot];
+  return [{ type: "item_equipped", unitId: unit.id, slot, uid: null, from: null }];
+});
+var spend = (draft, credits, plyx) => {
+  if (draft.resources.credits < credits || draft.resources.plyx < plyx) throw new Error(`Not enough resources: needs ${credits} credits and ${plyx} plyx.`);
+  draft.resources.credits -= credits;
+  draft.resources.plyx -= plyx;
+  const out = [];
+  if (credits) out.push({ type: "resource_changed", resource: "credits", amount: -credits });
+  if (plyx) out.push({ type: "resource_changed", resource: "plyx", amount: -plyx });
+  return out;
+};
+var session = (draft) => {
+  const reason = checkWorkshop(draft);
+  if (reason) throw new Error(reason);
+};
+var ownedItem = (draft, uid) => {
+  const inst = draft.inventory.find((i) => i.uid === uid);
+  if (!inst) throw new Error(`Unknown item "${String(uid)}".`);
+  return inst;
+};
+registerAction("item/craft", (draft, payload, ctx2) => {
+  session(draft);
+  const id = isObj9(payload) ? payload.recipeId : void 0;
+  const recipe = typeof id === "string" ? ctx2.registries.recipes.get(id) : void 0;
+  if (!recipe) throw new Error(`Unknown recipe "${String(id)}".`);
+  const rarity = recipe.rarity;
+  if (rarityIndex(rarity) > workshopRarityCap(draft, ctx2.registries)) throw new Error("WORKSHOP LEVEL TOO LOW");
+  const cost = recipe.cost;
+  const events = spend(draft, cost.credits, cost.plyx);
+  const item = newItem(draft, ctx2.registries, ctx2.rng, recipe.itemId, rarity);
+  draft.inventory.push(item);
+  draft.workshopSession.opsLeft -= 1;
+  return [...events, { type: "item_crafted", uid: item.uid, itemId: item.itemId, rarity }];
+});
+registerAction("item/upgrade", (draft, payload, ctx2) => {
+  session(draft);
+  const inst = ownedItem(draft, isObj9(payload) ? payload.uid : void 0);
+  if (inst.upgrade >= TUNING.items.maxUpgrade) throw new Error("MAX UPGRADE");
+  const cost = upgradeCost(draft, ctx2.registries, inst);
+  const events = spend(draft, cost.credits, cost.plyx);
+  inst.upgrade += 1;
+  draft.workshopSession.opsLeft -= 1;
+  return [...events, { type: "item_upgraded", uid: inst.uid, upgrade: inst.upgrade }];
+});
+registerAction("item/reroll", (draft, payload, ctx2) => {
+  session(draft);
+  const p = isObj9(payload) ? payload : {};
+  const inst = ownedItem(draft, p.uid);
+  const i = p.affixIndex;
+  if (typeof i !== "number" || !Number.isInteger(i) || i < 0 || i >= inst.affixes.length) throw new Error("Pick one of the item's affixes.");
+  if (ctx2.registries.affixes.get(inst.affixes[i])?.drawback === true) throw new Error("A drawback cannot be rerolled.");
+  const slot = ctx2.registries.items.get(inst.itemId)?.slot;
+  const pool = [...ctx2.registries.affixes.values()].filter((a) => a.appliesTo === "item" && a.drawback !== true && !inst.affixes.includes(a.id) && (!a.slots || a.slots.includes(slot))).map((a) => a.id);
+  if (pool.length === 0) throw new Error("No other affix can roll on this item.");
+  const events = spend(draft, 0, rerollCost(inst));
+  const before = inst.affixes[i];
+  inst.affixes[i] = ctx2.rng.pick(pool);
+  draft.workshopSession.opsLeft -= 1;
+  return [...events, { type: "item_rerolled", uid: inst.uid, from: before, to: inst.affixes[i] }];
+});
+registerAction("item/dismantle", (draft, payload, ctx2) => {
+  session(draft);
+  const inst = ownedItem(draft, isObj9(payload) ? payload.uid : void 0);
+  if (equippedBy(draft, inst.uid)) throw new Error("Unequip the item first.");
+  const plyx = dismantleValue(ctx2.registries, inst);
+  draft.inventory = draft.inventory.filter((i) => i.uid !== inst.uid);
+  draft.resources.plyx += plyx;
+  draft.workshopSession.opsLeft -= 1;
+  return [{ type: "resource_changed", resource: "plyx", amount: plyx }, { type: "item_dismantled", uid: inst.uid, plyx }];
+});
+registerActivityHook((draft, ctx2, done) => done.activityId === "workshop" ? openWorkshop(draft, ctx2.registries, ctx2.rng, done.companionId) : []);
+
 // node_modules/zod/v3/external.js
 var external_exports = {};
 __export(external_exports, {
@@ -2454,9 +4711,9 @@ var util;
 })(util || (util = {}));
 var objectUtil;
 (function(objectUtil2) {
-  objectUtil2.mergeShapes = (first, second) => {
+  objectUtil2.mergeShapes = (first2, second) => {
     return {
-      ...first,
+      ...first2,
       ...second
       // second overwrites first
     };
@@ -3646,48 +5903,48 @@ var ZodString = class _ZodString extends ZodType {
       ...errorUtil.errToObj(message)
     });
   }
-  jwt(options) {
-    return this._addCheck({ kind: "jwt", ...errorUtil.errToObj(options) });
+  jwt(options2) {
+    return this._addCheck({ kind: "jwt", ...errorUtil.errToObj(options2) });
   }
-  ip(options) {
-    return this._addCheck({ kind: "ip", ...errorUtil.errToObj(options) });
+  ip(options2) {
+    return this._addCheck({ kind: "ip", ...errorUtil.errToObj(options2) });
   }
-  cidr(options) {
-    return this._addCheck({ kind: "cidr", ...errorUtil.errToObj(options) });
+  cidr(options2) {
+    return this._addCheck({ kind: "cidr", ...errorUtil.errToObj(options2) });
   }
-  datetime(options) {
-    if (typeof options === "string") {
+  datetime(options2) {
+    if (typeof options2 === "string") {
       return this._addCheck({
         kind: "datetime",
         precision: null,
         offset: false,
         local: false,
-        message: options
+        message: options2
       });
     }
     return this._addCheck({
       kind: "datetime",
-      precision: typeof options?.precision === "undefined" ? null : options?.precision,
-      offset: options?.offset ?? false,
-      local: options?.local ?? false,
-      ...errorUtil.errToObj(options?.message)
+      precision: typeof options2?.precision === "undefined" ? null : options2?.precision,
+      offset: options2?.offset ?? false,
+      local: options2?.local ?? false,
+      ...errorUtil.errToObj(options2?.message)
     });
   }
   date(message) {
     return this._addCheck({ kind: "date", message });
   }
-  time(options) {
-    if (typeof options === "string") {
+  time(options2) {
+    if (typeof options2 === "string") {
       return this._addCheck({
         kind: "time",
         precision: null,
-        message: options
+        message: options2
       });
     }
     return this._addCheck({
       kind: "time",
-      precision: typeof options?.precision === "undefined" ? null : options?.precision,
-      ...errorUtil.errToObj(options?.message)
+      precision: typeof options2?.precision === "undefined" ? null : options2?.precision,
+      ...errorUtil.errToObj(options2?.message)
     });
   }
   duration(message) {
@@ -3700,12 +5957,12 @@ var ZodString = class _ZodString extends ZodType {
       ...errorUtil.errToObj(message)
     });
   }
-  includes(value, options) {
+  includes(value, options2) {
     return this._addCheck({
       kind: "includes",
       value,
-      position: options?.position,
-      ...errorUtil.errToObj(options?.message)
+      position: options2?.position,
+      ...errorUtil.errToObj(options2?.message)
     });
   }
   startsWith(value, message) {
@@ -4989,7 +7246,7 @@ ZodObject.lazycreate = (shape, params) => {
 var ZodUnion = class extends ZodType {
   _parse(input) {
     const { ctx: ctx2 } = this._processInputParams(input);
-    const options = this._def.options;
+    const options2 = this._def.options;
     function handleResults(results) {
       for (const result of results) {
         if (result.result.status === "valid") {
@@ -5010,7 +7267,7 @@ var ZodUnion = class extends ZodType {
       return INVALID;
     }
     if (ctx2.common.async) {
-      return Promise.all(options.map(async (option) => {
+      return Promise.all(options2.map(async (option) => {
         const childCtx = {
           ...ctx2,
           common: {
@@ -5031,7 +7288,7 @@ var ZodUnion = class extends ZodType {
     } else {
       let dirty = void 0;
       const issues = [];
-      for (const option of options) {
+      for (const option of options2) {
         const childCtx = {
           ...ctx2,
           common: {
@@ -5161,9 +7418,9 @@ var ZodDiscriminatedUnion = class _ZodDiscriminatedUnion extends ZodType {
    * @param types an array of object schemas
    * @param params
    */
-  static create(discriminator, options, params) {
+  static create(discriminator, options2, params) {
     const optionsMap = /* @__PURE__ */ new Map();
-    for (const type of options) {
+    for (const type of options2) {
       const discriminatorValues = getDiscriminator(type.shape[discriminator]);
       if (!discriminatorValues.length) {
         throw new Error(`A discriminator value for key \`${discriminator}\` could not be extracted from all schema options`);
@@ -5178,7 +7435,7 @@ var ZodDiscriminatedUnion = class _ZodDiscriminatedUnion extends ZodType {
     return new _ZodDiscriminatedUnion({
       typeName: ZodFirstPartyTypeKind.ZodDiscriminatedUnion,
       discriminator,
-      options,
+      options: options2,
       optionsMap,
       ...processCreateParams(params)
     });
@@ -5378,10 +7635,10 @@ var ZodRecord = class _ZodRecord extends ZodType {
   get element() {
     return this._def.valueType;
   }
-  static create(first, second, third) {
+  static create(first2, second, third) {
     if (second instanceof ZodType) {
       return new _ZodRecord({
-        keyType: first,
+        keyType: first2,
         valueType: second,
         typeName: ZodFirstPartyTypeKind.ZodRecord,
         ...processCreateParams(third)
@@ -5389,7 +7646,7 @@ var ZodRecord = class _ZodRecord extends ZodType {
     }
     return new _ZodRecord({
       keyType: ZodString.create(),
-      valueType: first,
+      valueType: first2,
       typeName: ZodFirstPartyTypeKind.ZodRecord,
       ...processCreateParams(second)
     });
@@ -6485,10 +8742,10 @@ function scan(text, start) {
   const n = text.length;
   const stack = [];
   let safeEnd = -1;
-  let open = [];
+  let open2 = [];
   const mark = (end) => {
     safeEnd = end;
-    open = stack.map((c) => c.t);
+    open2 = stack.map((c) => c.t);
   };
   let i = start;
   while (i < n) {
@@ -6525,7 +8782,7 @@ function scan(text, start) {
       i = j;
     }
   }
-  return { kind: "cut", safeEnd, open };
+  return { kind: "cut", safeEnd, open: open2 };
 }
 function looseJson(text) {
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)(?:```|$)/i);
@@ -6658,123 +8915,6 @@ async function generateVignette(input, deps) {
   return r.ok ? sanitizeVignette(r.value) : null;
 }
 
-// src/engine/items.ts
-var rarityIndex = (r) => RARITIES.indexOf(r) + 1;
-function itemStats(reg, inst) {
-  const tpl = reg.items.get(inst.itemId);
-  if (!tpl) return null;
-  const mult = (1 + TUNING.items.rarityStatStep * (rarityIndex(inst.rarity) - 1)) * (1 + TUNING.items.upgradeStep * inst.upgrade);
-  const stats = {};
-  for (const [k, v] of Object.entries(tpl.baseStats)) stats[k] = Math.round(v * mult);
-  const statPct = {};
-  const effects2 = [...tpl.effects ?? []];
-  for (const id of inst.affixes) {
-    const a = reg.affixes.get(id);
-    if (!a) continue;
-    for (const [k, v] of Object.entries(a.statPct ?? {})) {
-      statPct[k] = (statPct[k] ?? 0) + v;
-    }
-    effects2.push(...a.effects ?? []);
-  }
-  return { stats, statPct, effects: effects2 };
-}
-function canEquip(reg, unit, inst) {
-  const tpl = reg.items.get(inst.itemId);
-  if (!tpl) return "UNKNOWN ITEM";
-  const role = reg.roles.get(unit.roleId);
-  if (!role) return "UNKNOWN ROLE";
-  const allowed = tpl.slot === "weapon" ? role.weaponClasses : role.armorWeights;
-  return allowed.includes(tpl.class) ? null : `NOT CERTIFIED: ${String(tpl.class)}`;
-}
-function wornItems(state, reg, unit) {
-  const out = [];
-  for (const slot of ["weapon", "upper", "lower"]) {
-    const uid = unit.equipment[slot];
-    const inst = uid ? state.inventory.find((i) => i.uid === uid) : void 0;
-    if (inst && reg.items.get(inst.itemId)?.slot === slot && canEquip(reg, unit, inst) === null) out.push({ inst, slot });
-  }
-  return out;
-}
-
-// src/engine/combat/types.ts
-var TRIGGERS = [
-  "onCombatStart",
-  "onRoundStart",
-  "onTurnStart",
-  "onAction",
-  "onHit",
-  "onCrit",
-  "onDamaged",
-  "onAllyDowned",
-  "onKill",
-  "onStressThreshold",
-  "onCombatEnd"
-];
-var EFFECT_TARGETS = [
-  "self",
-  "target",
-  "source",
-  "allies",
-  "allies_other",
-  "enemies",
-  "own_row",
-  "target_row",
-  "random_enemy",
-  "lowest_hp_ally",
-  "commander",
-  "allies_front"
-];
-var STATS = ["hp", "atk", "def", "spd", "crit"];
-var ALWAYS_ON_TYPES = [
-  "stat",
-  "outgoing",
-  "incoming",
-  "stress_taken",
-  "immune",
-  "order_cost",
-  "order_refusal",
-  "loadout_slots",
-  "injury_days",
-  "intercept_lethal",
-  "misfire",
-  "override_action"
-];
-
-// src/engine/combat/stats.ts
-var ZERO = { hp: 0, atk: 0, def: 0, spd: 0, crit: 0 };
-var WEIGHT_ORDER = ["light", "medium", "heavy"];
-function armorSpdPenalty(state, reg, unit) {
-  let heaviest = -1;
-  for (const { inst, slot } of wornItems(state, reg, unit)) {
-    if (slot === "weapon") continue;
-    const w = WEIGHT_ORDER.indexOf(reg.items.get(inst.itemId).class);
-    if (w > heaviest) heaviest = w;
-  }
-  return heaviest < 0 ? 0 : TUNING.combat.armorSpd[WEIGHT_ORDER[heaviest]];
-}
-function unitStats(state, reg, unit) {
-  const role = reg.roles.get(unit.roleId);
-  if (!role) throw new Error(`Unknown role "${unit.roleId}" (unit ${unit.id})`);
-  const growth = role.growth ?? ZERO;
-  const out = { ...ZERO };
-  for (const k of STATS) out[k] = unit.baseStats[k] + Math.floor(growth[k] * (unit.level - 1));
-  const pct = { ...ZERO };
-  for (const { inst } of wornItems(state, reg, unit)) {
-    const it = itemStats(reg, inst);
-    if (!it) continue;
-    for (const k of STATS) {
-      out[k] += it.stats[k] ?? 0;
-      pct[k] += it.statPct[k] ?? 0;
-    }
-  }
-  for (const k of STATS) out[k] = Math.round(out[k] * (1 + pct[k] / 100));
-  out.spd += armorSpdPenalty(state, reg, unit);
-  const stacks = Math.min(unit.injuries.length, TUNING.combat.injuryMaxStacks);
-  const factor = 1 + TUNING.combat.injuryStatPct * stacks / 100;
-  for (const k of STATS) out[k] = Math.max(k === "crit" ? 0 : 1, Math.round(out[k] * factor));
-  return out;
-}
-
 // src/llm/calls/flavor.ts
 var kinds = /* @__PURE__ */ new Map();
 function registerFlavorKind(kind, impl) {
@@ -6834,6 +8974,14 @@ Traits: ${i.affixNames.join(", ") || "none"}
 Give this enemy a fitting name.`;
   }
 });
+function sanitizeEnemyFlavor(raw) {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return null;
+  const name = typeof raw.name === "string" ? raw.name.trim() : "";
+  return isEnemyName(name) ? { name } : null;
+}
+async function generateEnemyFlavor(input, deps) {
+  return sanitizeEnemyFlavor(await generateFlavor(input, deps));
+}
 
 // src/content/types.ts
 var REGISTRY_NAMES = [
@@ -6879,6 +9027,693 @@ var PackManifestSchema = external_exports.object({
 }).strict();
 function emptyRegistries() {
   return Object.fromEntries(REGISTRY_NAMES.map((n) => [n, /* @__PURE__ */ new Map()]));
+}
+
+// src/ui/dom.ts
+function h(tag, attrs = {}, ...children) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (v === false || v === null || v === void 0) continue;
+    if (k === "class") el.className = String(v);
+    else if (k.startsWith("on") && typeof v === "function") el.addEventListener(k.slice(2).toLowerCase(), v);
+    else if (v === true) el.setAttribute(k, "");
+    else el.setAttribute(k, String(v));
+  }
+  for (const c of children) {
+    if (c === null || c === void 0) continue;
+    el.append(typeof c === "string" ? document.createTextNode(c) : c);
+  }
+  return el;
+}
+
+// src/ui/scene/cutIn.ts
+var CUT_IN_MS = 900;
+function cutIn(host, kind, text, imageUrl) {
+  const el = h("div", { class: "alius-cutin", "data-kind": kind, "aria-hidden": "true" });
+  if (imageUrl) el.append(h("img", { class: "alius-cutin-img", src: imageUrl, alt: "" }));
+  el.append(document.createTextNode(text));
+  host.append(el);
+  setTimeout(() => el.remove(), CUT_IN_MS);
+}
+
+// src/ui/combat/bars.ts
+function bar(value, max, width = 10) {
+  const v = Math.min(max, Math.max(0, value));
+  const filled = max > 0 ? Math.round(width * v / max) : 0;
+  return "\u2588".repeat(filled) + "\u2591".repeat(width - filled);
+}
+var GLYPHS = {
+  bleed: "BLD",
+  burn: "BRN",
+  stun: "STN",
+  mark: "MRK",
+  guard: "GRD",
+  taunt: "TNT",
+  corrode: "CRD",
+  infect: "INF",
+  overheat: "OVH",
+  shield: "SHD",
+  hold_line: "HLD",
+  authorized: "AUT",
+  untargetable: "UNT",
+  focus: "FOC"
+};
+function statusGlyph(id, stacks = 1) {
+  const g = GLYPHS[id] ?? id.slice(0, 3).toUpperCase();
+  return stacks > 1 ? `${g}\xD7${stacks}` : g;
+}
+
+// src/ui/combat/keys.ts
+var ORDER_KEYS = ["q", "w", "e", "r", "t"];
+var isEditable = (t) => {
+  const el = t;
+  return !!el && typeof el.tagName === "string" && (["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName) || el.isContentEditable === true);
+};
+function attachCombatKeys(h2) {
+  const onKey = (e) => {
+    if (isEditable(e.target) || e.ctrlKey || e.metaKey || e.altKey) return;
+    const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+    let handled = true;
+    if (k >= "1" && k <= "6") h2.skill(Number(k) - 1);
+    else if (k === "ArrowLeft") h2.cycleTarget(-1);
+    else if (k === "ArrowRight") h2.cycleTarget(1);
+    else if (k === "Enter") h2.confirm();
+    else if (k === "g") h2.guard();
+    else if (k === "s") h2.swap();
+    else if (k === "p") h2.pass();
+    else if (k === "a") h2.auto();
+    else if (k === "Escape") h2.cancel();
+    else if (ORDER_KEYS.includes(k)) h2.order(ORDER_KEYS.indexOf(k));
+    else handled = false;
+    if (handled) e.preventDefault();
+  };
+  document.addEventListener("keydown", onKey);
+  return () => document.removeEventListener("keydown", onKey);
+}
+
+// src/ui/combat/combatScreen.ts
+var LOG_LINES = 8;
+function renderCombatScreen(host, ctx2) {
+  host.replaceChildren();
+  const root = h("div", { class: "alius-combat" });
+  host.append(root);
+  const { registries: reg, st } = ctx2;
+  let selSkill = null;
+  let selTarget = null;
+  let orderMode = null;
+  const sprites = /* @__PURE__ */ new Map();
+  const unitOf2 = (state, c) => state.squad.find((u) => u.id === c.unitId);
+  const nameOf5 = (state, c) => {
+    if (c.side === "squad") return unitOf2(state, c)?.displayName ?? c.nameKey;
+    const affixes = (c.nameKey.split("|")[1] ?? "").split(",").filter((a) => a !== "");
+    return state.enemyNames?.[c.nameKey] ?? defaultEnemyName(reg, c.enemyId ?? "", affixes);
+  };
+  const effCtx = (state) => makeCtx(state.combat, state, reg, new Rng(state.rng));
+  function skillRows(state, cid) {
+    const cs = state.combat;
+    const c = cs.combatants.find((x) => x.cid === cid);
+    const e = effCtx(state);
+    const usable2 = new Map(usableSkills(e, cid).map((u) => [u.skill.id, u.targets]));
+    const rows = [];
+    for (const id of c.skills) {
+      const skill = resolveSkill(reg, c, id);
+      if (!skill || skill.kind === "passive") continue;
+      const cd = c.cooldowns[id] ?? 0;
+      let reason = null;
+      if (cd > 0) reason = `COOLDOWN ${cd}`;
+      else if (!usable2.has(id)) {
+        const needsCp = (skill.cp ?? 0) > 0 && cs.cp < skill.cp && !c.statuses.some((s) => s.id === "authorized");
+        reason = needsCp ? `NEEDS ${skill.cp} CP` : legalTargets(cs, cid, skill, reg).length === 0 ? "NO TARGET" : "UNAVAILABLE";
+      }
+      rows.push({ skill, reason, targets: usable2.get(id) ?? [] });
+    }
+    return rows;
+  }
+  const needsTarget = (skill) => !!skill.targets && skill.targets.side !== "self" && skill.targets.count !== "all";
+  function targetsOfSelection(state) {
+    const cs = state.combat;
+    if (!cs?.awaitingCid) return [];
+    if (orderMode) {
+      const order = reg.orders.get(orderMode);
+      if (!order) return [];
+      const side = order.target === "enemy" ? "enemy" : "squad";
+      return order.target === "none" ? [] : cs.combatants.filter((c2) => c2.side === side && !c2.downed).map((c2) => c2.cid);
+    }
+    if (!selSkill) return [];
+    const c = cs.combatants.find((x) => x.cid === cs.awaitingCid);
+    const skill = resolveSkill(reg, c, selSkill);
+    return skill ? legalTargets(cs, cs.awaitingCid, skill, reg) : [];
+  }
+  function act(state, action) {
+    selSkill = null;
+    selTarget = null;
+    orderMode = null;
+    ctx2.onAct(action);
+  }
+  function pickSkill(state, index) {
+    const cs = state.combat;
+    if (!cs?.awaitingCid) return;
+    const row = skillRows(state, cs.awaitingCid)[index];
+    if (!row || row.reason) return;
+    orderMode = null;
+    selSkill = row.skill.id;
+    selTarget = needsTarget(row.skill) ? row.targets[0] ?? null : null;
+    render();
+  }
+  function confirm(state) {
+    const cs = state.combat;
+    if (!cs?.awaitingCid) return;
+    if (selSkill) {
+      const c = cs.combatants.find((x) => x.cid === cs.awaitingCid);
+      const skill = resolveSkill(reg, c, selSkill);
+      if (!skill) return;
+      if (needsTarget(skill)) {
+        if (!selTarget || !targetsOfSelection(state).includes(selTarget)) return;
+        act(state, { kind: "skill", skillId: selSkill, targetCid: selTarget });
+      } else act(state, { kind: "skill", skillId: selSkill });
+    }
+  }
+  function clickCard(state, cid) {
+    const legal = targetsOfSelection(state);
+    if (!legal.includes(cid)) return;
+    if (orderMode) {
+      const id = orderMode;
+      orderMode = null;
+      selSkill = null;
+      ctx2.onOrder(id, cid);
+      return;
+    }
+    selTarget = cid;
+    confirm(state);
+  }
+  function cycleTarget(state, dir) {
+    const legal = targetsOfSelection(state);
+    if (legal.length === 0) return;
+    const i = selTarget ? legal.indexOf(selTarget) : -1;
+    selTarget = legal[(i + dir + legal.length) % legal.length];
+    render();
+  }
+  function issueOrder2(state, index) {
+    const cs = state.combat;
+    const id = [...reg.orders.keys()][index];
+    if (!cs || !id) return;
+    const e = effCtx(state);
+    const order = reg.orders.get(id);
+    if (order.target === "none") {
+      if (checkOrder(e, id) === null) ctx2.onOrder(id);
+      return;
+    }
+    const side = order.target === "enemy" ? "enemy" : "squad";
+    const pool = cs.combatants.filter((c) => c.side === side && !c.downed).map((c) => c.cid);
+    const preferred = selTarget && pool.includes(selTarget) ? selTarget : cs.awaitingCid && pool.includes(cs.awaitingCid) && side === "squad" ? cs.awaitingCid : pool[0];
+    const target = [preferred, ...pool].find((t) => t !== void 0 && checkOrder(e, id, t) === null);
+    if (target) {
+      selSkill = null;
+      orderMode = null;
+      ctx2.onOrder(id, target);
+    }
+  }
+  const keysOff = attachCombatKeys({
+    skill: (i) => {
+      const s = ctx2.getState();
+      if (s) pickSkill(s, i);
+    },
+    cycleTarget: (d) => {
+      const s = ctx2.getState();
+      if (s) cycleTarget(s, d);
+    },
+    confirm: () => {
+      const s = ctx2.getState();
+      if (s) confirm(s);
+    },
+    guard: () => {
+      const s = ctx2.getState();
+      if (s?.combat?.awaitingCid) act(s, { kind: "guard" });
+    },
+    swap: () => {
+      const s = ctx2.getState();
+      if (s?.combat?.awaitingCid) act(s, { kind: "swap" });
+    },
+    pass: () => {
+      const s = ctx2.getState();
+      if (s?.combat?.awaitingCid) act(s, { kind: "pass" });
+    },
+    order: (i) => {
+      const s = ctx2.getState();
+      if (s) issueOrder2(s, i);
+    },
+    auto: () => {
+      const s = ctx2.getState();
+      if (s?.combat?.phase === "awaiting") ctx2.onAuto(!s.combat.auto);
+    },
+    cancel: () => {
+      selSkill = null;
+      selTarget = null;
+      orderMode = null;
+      render();
+    }
+  });
+  function logLine(state, l) {
+    const cs = state.combat;
+    const name = (cid) => {
+      if (!cid) return "";
+      if (cid === "commander") return "Commander";
+      const c = cs?.combatants.find((x) => x.cid === cid);
+      return c ? nameOf5(state, c) : cid;
+    };
+    const skill = l.skillId ? reg.skills.get(l.skillId)?.name ?? l.skillId : "";
+    const order = l.orderId ? reg.orders.get(l.orderId)?.name ?? l.orderId : "";
+    switch (l.kind) {
+      case "skill":
+        return `R${l.round} ${name(l.actor)} uses ${skill}${l.target ? ` on ${name(l.target)}` : ""}`;
+      case "hit":
+        return `R${l.round} ${name(l.actor)} hits ${name(l.target)} for ${l.amount ?? 0}`;
+      case "crit":
+        return `R${l.round} ${name(l.actor)} CRITS ${name(l.target)} for ${l.amount ?? 0}`;
+      case "heal":
+        return `R${l.round} ${name(l.target)} recovers ${l.amount ?? 0}`;
+      case "downed":
+        return `R${l.round} ${name(l.target)} is down`;
+      case "revived":
+        return `R${l.round} ${name(l.target)} is back on their feet`;
+      case "order":
+        return `R${l.round} ORDER ${order}${l.target ? ` \u2192 ${name(l.target)}` : ""}`;
+      case "order_refused":
+        return `R${l.round} ${name(l.target)} REFUSES ${order}`;
+      case "breakdown":
+        return `R${l.round} ${name(l.target)} BREAKS DOWN`;
+      case "status":
+        return `R${l.round} ${name(l.target)} ${l.statusId ?? ""}`;
+      case "stress":
+        return `R${l.round} ${name(l.target)} stress ${(l.amount ?? 0) > 0 ? "+" : ""}${l.amount ?? 0}`;
+      case "cover":
+        return `R${l.round} ${name(l.actor)} covers the commander`;
+      case "intercept":
+        return `R${l.round} ${name(l.actor)} takes the hit for ${name(l.target)}`;
+      case "miss":
+        return `R${l.round} ${name(l.actor)} misfires`;
+      case "pass":
+        return `R${l.round} ${name(l.actor)} holds`;
+      case "summon":
+        return `R${l.round} reinforcements arrive`;
+      default:
+        return `R${l.round} ${l.kind}`;
+    }
+  }
+  function headCrop(state, c) {
+    const box = h("div", { class: "alius-cc-head" });
+    if (c.side === "enemy") {
+      const ascii = reg.enemies.get(c.enemyId ?? "")?.portrait?.ascii ?? [];
+      const pre = h("pre", { class: "alius-cc-ascii" });
+      pre.textContent = ascii.join("\n");
+      box.append(pre);
+      return box;
+    }
+    const unit = unitOf2(state, c);
+    if (!unit) return box;
+    if (unit.kind === "grunt" || !unit.cardRef) {
+      const pre = h("pre", { class: "alius-cc-ascii" });
+      pre.textContent = unit.asciiPortrait ?? "";
+      box.append(pre);
+      return box;
+    }
+    const img = h("img", { class: "alius-cc-img", alt: "", src: st.getAvatarUrl(unit.cardRef) });
+    box.append(img);
+    const key = unit.cardRef;
+    const apply = (url) => {
+      if (url) img.src = url;
+    };
+    if (sprites.has(key)) apply(sprites.get(key));
+    else {
+      void st.getSpriteUrl(key, "neutral").then((u) => {
+        sprites.set(key, u);
+        apply(u);
+      }, () => sprites.set(key, null));
+    }
+    return box;
+  }
+  function card2(state, c, synergyNames, legal, selected2) {
+    const cs = state.combat;
+    const band = c.side === "squad" ? stressBand2(c.stress) : "calm";
+    const el = h("div", {
+      class: `alius-cc${c.downed ? " alius-cc-down" : ""}${c.cid === cs.awaitingCid ? " alius-cc-active" : ""}${legal ? " alius-cc-legal" : ""}${selected2 ? " alius-cc-selected" : ""}`,
+      "data-cid": c.cid,
+      "data-legal": legal ? "true" : "false",
+      "data-side": c.side,
+      role: "button",
+      tabindex: "-1",
+      onclick: () => {
+        const s = ctx2.getState();
+        if (s) clickCard(s, c.cid);
+      }
+    });
+    const lines = [h("div", { class: "alius-cc-name" }, `${nameOf5(state, c)}${c.level > 1 ? ` L${c.level}` : ""}`)];
+    lines.push(h("div", { class: "alius-cc-hp" }, `HP ${bar(c.hp, c.maxHp)} ${c.hp}/${c.maxHp}`));
+    if (c.side === "squad") lines.push(h("div", { class: "alius-cc-st" }, `ST ${bar(c.stress, 100)} ${c.stress}`));
+    const tags = c.statuses.map((s) => statusGlyph(s.id, s.stacks));
+    if (c.downed) tags.push("DOWN");
+    if (band === "strained") tags.push("STRAINED");
+    if (band === "breaking") tags.push("BREAKING");
+    if (c.breakdown) tags.push("BREAKDOWN");
+    if (tags.length > 0) lines.push(h("div", { class: "alius-cc-tags" }, tags.map((t) => `[${t}]`).join(" ")));
+    if (synergyNames.length > 0) lines.push(h("div", { class: "alius-cc-syn" }, synergyNames.join(" \xB7 ")));
+    el.append(headCrop(state, c), h("div", { class: "alius-cc-body" }, ...lines));
+    return el;
+  }
+  function resultPanel(state) {
+    const r = state.lastCombat;
+    const unitName = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
+    const rows = [`OUTCOME: ${r.outcome.toUpperCase()} \xB7 ${r.rounds} ROUNDS`];
+    const xp = Object.entries(r.xp);
+    if (xp.length > 0) rows.push(`XP: ${xp.map(([id, n]) => `${unitName(id)} +${n}`).join(", ")}`);
+    if (r.levelUps.length > 0) rows.push(`LEVEL UP: ${r.levelUps.map((l) => `${unitName(l.unitId)} \u2192 ${l.level}`).join(", ")}`);
+    if (r.loot.length > 0) {
+      rows.push(`LOOT${r.banked ? "" : " (NOT BANKED YET)"}: ${r.loot.map((d) => d.kind === "item" ? `${reg.items.get(d.item.itemId)?.name ?? d.item.itemId} [${d.item.rarity}]` : `${d.amount} ${d.kind}`).join(", ")}`);
+    }
+    if (r.injuries.length > 0) rows.push(`INJURED: ${r.injuries.map(unitName).join(", ")}`);
+    if (r.deaths.length > 0) rows.push(`LOST: ${r.deaths.map(unitName).join(", ")}`);
+    if (r.breakdowns.length > 0) rows.push(`BREAKDOWN: ${r.breakdowns.map(unitName).join(", ")}`);
+    if (r.commanderInjured) rows.push("THE COMMANDER WAS INJURED");
+    return h(
+      "section",
+      { class: "alius-combat-result" },
+      h("h2", {}, "[ COMBAT REPORT ]"),
+      ...rows.map((t) => h("div", { class: "alius-combat-result-row" }, t)),
+      h("button", { type: "button", class: "alius-btn", "data-act": "continue", onclick: () => ctx2.onClose() }, "[CONTINUE]")
+    );
+  }
+  function render() {
+    const state = ctx2.getState();
+    root.replaceChildren();
+    if (!state) return;
+    const cs = state.combat;
+    if (!cs) {
+      if (state.lastCombat) root.append(resultPanel(state));
+      return;
+    }
+    const legal = new Set(targetsOfSelection(state));
+    const fielded = cs.combatants.filter((c) => c.side === "squad" && c.unitId).map((c) => c.unitId);
+    const synergyOf = (unitId) => unitId ? getSynergies(state, reg, fielded).filter((s) => s.unitId === unitId).map((s) => reg.synergies.get(s.synergyId)?.name ?? s.synergyId) : [];
+    const row = (side, r) => {
+      const cards = cs.combatants.filter((c) => c.side === side && c.row === r).map((c) => card2(state, c, side === "squad" ? synergyOf(c.unitId) : [], legal.has(c.cid), selTarget === c.cid));
+      if (side === "squad" && r === "back" && cs.commander) {
+        const cmd = cs.commander;
+        cards.push(h(
+          "div",
+          { class: `alius-cc alius-cc-commander${cmd.downed ? " alius-cc-down" : ""}${legal.has("commander") ? " alius-cc-legal" : ""}`, "data-cid": "commander", "data-side": "squad" },
+          h("div", { class: "alius-cc-body" }, h("div", { class: "alius-cc-name" }, "COMMANDER"), h("div", { class: "alius-cc-hp" }, `HP ${bar(cmd.hp, cmd.maxHp)} ${cmd.hp}/${cmd.maxHp}`))
+        ));
+      }
+      return h("div", { class: `alius-combat-row alius-combat-${side}-${r}`, "data-row": `${side}-${r}` }, ...cards);
+    };
+    const timeline = h(
+      "div",
+      { class: "alius-combat-timeline", "aria-label": "Turn order" },
+      ...cs.timeline.map((cid, i) => {
+        const c = cs.combatants.find((x) => x.cid === cid);
+        return h("span", { class: `alius-tl${i === cs.turn ? " alius-tl-now" : ""}${c.downed ? " alius-tl-down" : ""}`, "data-cid": cid }, nameOf5(state, c).slice(0, 6));
+      })
+    );
+    const waiting2 = cs.phase === "awaiting" && cs.awaitingCid;
+    const skillButtons = [];
+    if (waiting2) {
+      skillRows(state, cs.awaitingCid).forEach((r, i) => {
+        skillButtons.push(h("button", {
+          type: "button",
+          class: `alius-btn alius-skill${selSkill === r.skill.id ? " alius-skill-selected" : ""}`,
+          "data-skill": r.skill.id,
+          "data-key": String(i + 1),
+          disabled: r.reason !== null,
+          title: r.skill.description,
+          onclick: () => {
+            const s = ctx2.getState();
+            if (!s) return;
+            pickSkill(s, i);
+            if (!needsTarget(r.skill)) confirm(s);
+          }
+        }, `[${i + 1}] ${r.skill.name}${r.skill.cp ? ` ${r.skill.cp}CP` : ""}${r.reason ? ` (${r.reason})` : ""}`));
+      });
+    }
+    const e = effCtx(state);
+    const orders = [...reg.orders.values()].map((o, i) => {
+      const id = o.id;
+      const kind = o.target;
+      const pool = kind === "none" ? [void 0] : cs.combatants.filter((c) => c.side === (kind === "enemy" ? "enemy" : "squad") && !c.downed).map((c) => c.cid);
+      const blocked = !waiting2 || !pool.some((t) => checkOrder(e, id, t) === null);
+      const cost = waiting2 ? orderCost(e, id, kind === "ally" ? cs.awaitingCid : void 0) : o.cost;
+      return h("button", {
+        type: "button",
+        class: `alius-btn alius-order${orderMode === id ? " alius-skill-selected" : ""}`,
+        "data-order": id,
+        "data-key": "QWERT"[i],
+        disabled: blocked,
+        title: String(o.summary),
+        onclick: () => {
+          const s = ctx2.getState();
+          if (!s?.combat) return;
+          if (kind === "none") issueOrder2(s, i);
+          else {
+            orderMode = orderMode === id ? null : id;
+            selSkill = null;
+            selTarget = null;
+            render();
+          }
+        }
+      }, `[${"QWERT"[i]}] ${o.name} ${cost}CP`);
+    });
+    const controls = cs.phase === "lost_pending" ? [
+      h("button", { type: "button", class: "alius-btn", "data-act": "retry", onclick: () => ctx2.onRetry() }, "[RETRY]"),
+      h("button", { type: "button", class: "alius-btn", "data-act": "accept", onclick: () => ctx2.onAccept() }, "[ACCEPT DEFEAT]")
+    ] : [
+      h("button", { type: "button", class: "alius-btn", "data-act": "guard", disabled: !waiting2, onclick: () => {
+        const s = ctx2.getState();
+        if (s) act(s, { kind: "guard" });
+      } }, "[G] GUARD"),
+      h("button", { type: "button", class: "alius-btn", "data-act": "swap", disabled: !waiting2, onclick: () => {
+        const s = ctx2.getState();
+        if (s) act(s, { kind: "swap" });
+      } }, "[S] SWAP"),
+      h("button", { type: "button", class: "alius-btn", "data-act": "pass", disabled: !waiting2, onclick: () => {
+        const s = ctx2.getState();
+        if (s) act(s, { kind: "pass" });
+      } }, "[P] PASS"),
+      h("button", { type: "button", class: `alius-btn${cs.auto ? " alius-skill-selected" : ""}`, "data-act": "auto", onclick: () => ctx2.onAuto(!cs.auto) }, `[A] AUTO${cs.auto ? " ON" : ""}`),
+      h("button", { type: "button", class: "alius-btn", "data-act": "retreat", onclick: () => ctx2.onRetreat() }, "[RETREAT]")
+    ];
+    const logBox = h(
+      "div",
+      { class: "alius-combat-log", "aria-label": "Combat log" },
+      ...cs.log.slice(-LOG_LINES).map((l) => {
+        const d = h("div", { class: "alius-log-line" });
+        d.textContent = logLine(state, l);
+        return d;
+      })
+    );
+    root.append(
+      h(
+        "div",
+        { class: "alius-combat-head" },
+        h("span", {}, `ROUND ${cs.round}`),
+        h("span", { class: "alius-combat-cp" }, `CP ${"\u25CF".repeat(cs.cp)}${"\u25CB".repeat(Math.max(0, 5 - cs.cp))}`),
+        cs.phase === "lost_pending" ? h("span", { class: "alius-combat-lost" }, "DEFEAT") : null
+      ),
+      timeline,
+      h(
+        "div",
+        { class: "alius-combat-field" },
+        row("enemy", "back"),
+        row("enemy", "front"),
+        h("div", { class: "alius-combat-mid" }, "\u2550".repeat(40)),
+        row("squad", "front"),
+        row("squad", "back")
+      ),
+      h("div", { class: "alius-combat-skills" }, ...skillButtons),
+      h("div", { class: "alius-combat-orders" }, ...orders),
+      h("div", { class: "alius-combat-controls" }, ...controls),
+      logBox
+    );
+  }
+  render();
+  function handle(events) {
+    const state = ctx2.getState();
+    for (const ev of events) {
+      if (ev.type !== "combat_cutin") continue;
+      const unit = state?.squad.find((u) => u.id === ev.unitId);
+      const kind = String(ev.kind ?? "combat");
+      const text = String(ev.text ?? "");
+      const show = (url) => cutIn(host, kind, text, url);
+      if (unit?.cardRef) {
+        void st.getSpriteUrl(unit.cardRef, kind === "breakdown" ? "sadness" : "neutral").then((u) => show(u ?? void 0), () => show());
+      } else show();
+    }
+  }
+  return {
+    refresh: render,
+    handle,
+    dispose: () => {
+      keysOff();
+      root.remove();
+    }
+  };
+}
+
+// src/ui/inv/invTab.ts
+var STATS2 = ["hp", "atk", "def", "spd", "crit"];
+function refusal(state, reg, type, payload) {
+  const r = dispatch(state, { type, payload }, reg);
+  const err = r.events.find((e) => e.type === "error");
+  return err ? String(err.message ?? "NOT POSSIBLE") : null;
+}
+var upper = (s) => s.toUpperCase();
+function renderInvTab(host, ctx2) {
+  const { registries: reg } = ctx2;
+  let filter = "all";
+  let selected2 = null;
+  let compareUnit = null;
+  function render() {
+    host.replaceChildren();
+    const state = ctx2.getState();
+    if (!state) {
+      host.append(h("section", { class: "alius-section" }, h("p", {}, "NO ACTIVE CAMPAIGN IN THIS CHAT")));
+      return;
+    }
+    const slotOf = (i) => reg.items.get(i.itemId)?.slot;
+    const nameOf5 = (i) => reg.items.get(i.itemId)?.name ?? `UNKNOWN ${i.itemId}`;
+    const items = state.inventory.filter((i) => filter === "all" || slotOf(i) === filter);
+    const current = state.inventory.find((i) => i.uid === selected2) ?? null;
+    if (!current) selected2 = null;
+    const res = h("p", { class: "alius-inv-res" }, `CREDITS ${state.resources.credits} \xB7 SUPPLIES ${state.resources.supplies} \xB7 PLYX ${state.resources.plyx}`);
+    const filters = h(
+      "div",
+      { class: "alius-inv-filters" },
+      ...["all", "weapon", "upper", "lower"].map((f) => h("button", { type: "button", class: "alius-btn", "data-filter": f, "aria-pressed": filter === f ? "true" : "false", onclick: () => {
+        filter = f;
+        render();
+      } }, upper(f)))
+    );
+    const list2 = h(
+      "div",
+      { class: "alius-inv-list", role: "list" },
+      ...items.length === 0 ? [h("p", { class: "alius-dim" }, "NOTHING IN STORAGE")] : items.map((i) => {
+        const wearer = equippedBy(state, i.uid);
+        return h(
+          "button",
+          {
+            type: "button",
+            class: "alius-inv-item",
+            "data-uid": i.uid,
+            "aria-pressed": selected2 === i.uid ? "true" : "false",
+            onclick: () => {
+              selected2 = i.uid;
+              render();
+            }
+          },
+          h("span", { class: "alius-inv-name" }, nameOf5(i)),
+          h("span", { class: `alius-rarity alius-rarity-${i.rarity}` }, i.rarity),
+          h("span", {}, i.upgrade > 0 ? `+${i.upgrade}` : ""),
+          h("span", { class: "alius-dim" }, i.affixes.map((a) => String(reg.affixes.get(a)?.name ?? a)).join(", ")),
+          h("span", { class: "alius-dim" }, wearer ? `WORN BY ${wearer.displayName}` : "")
+        );
+      })
+    );
+    host.append(h("section", { class: "alius-section alius-inv" }, h("h2", {}, "[ INVENTORY ]"), res, filters, list2));
+    if (current) host.append(comparePanel(state, current));
+    if (checkWorkshop(state) === null) host.append(workshopPanel(state, current));
+  }
+  function comparePanel(state, item) {
+    const units = activeRosterUnits(state);
+    if (!compareUnit || !units.some((u) => u.id === compareUnit)) compareUnit = units[0]?.id ?? null;
+    const unit = units.find((u) => u.id === compareUnit);
+    const slot = reg.items.get(item.itemId)?.slot;
+    const worn = unit && slot && unit.equipment[slot] ? state.inventory.find((i) => i.uid === unit.equipment[slot]) : void 0;
+    const mine = itemStats(reg, item)?.stats ?? {};
+    const theirs = worn && worn.uid !== item.uid ? itemStats(reg, worn)?.stats ?? {} : {};
+    const deltas = STATS2.filter((k) => (mine[k] ?? 0) !== (theirs[k] ?? 0) || (mine[k] ?? 0) !== 0).map((k) => {
+      const d = (mine[k] ?? 0) - (theirs[k] ?? 0);
+      return h("span", { class: d >= 0 ? "alius-delta-up" : "alius-delta-down", "data-stat": k }, `${upper(k)} ${d > 0 ? "+" : ""}${d}  `);
+    });
+    const picker = h(
+      "select",
+      { class: "alius-input", "data-compare-unit": "true", "aria-label": "Compare for" },
+      ...units.map((u) => h("option", { value: u.id, selected: u.id === compareUnit }, u.displayName))
+    );
+    picker.value = compareUnit ?? "";
+    picker.addEventListener("change", () => {
+      compareUnit = picker.value;
+      render();
+    });
+    const reason = unit ? canEquip(reg, unit, item) : "NO UNIT";
+    let afterLine = null;
+    if (unit && reason === null) {
+      try {
+        const sample = structuredClone(state);
+        const s2 = sample.squad.find((u) => u.id === unit.id);
+        const before = unitStats(sample, reg, s2);
+        for (const x of sample.squad) for (const k of ["weapon", "upper", "lower"]) if (x.equipment[k] === item.uid) delete x.equipment[k];
+        s2.equipment[slot] = item.uid;
+        const after = unitStats(sample, reg, s2);
+        afterLine = h("p", { class: "alius-dim", "data-after": "true" }, `${unit.displayName}: ${STATS2.map((k) => `${upper(k)} ${before[k]}\u2192${after[k]}`).join(" \xB7 ")}`);
+      } catch {
+        afterLine = null;
+      }
+    }
+    return h(
+      "section",
+      { class: "alius-section alius-inv-compare" },
+      h("h3", {}, `COMPARE: ${reg.items.get(item.itemId)?.name ?? item.itemId}`),
+      h("div", {}, "FOR ", picker, worn && worn.uid !== item.uid ? ` (WEARS ${reg.items.get(worn.itemId)?.name ?? worn.itemId})` : " (STANDARD ISSUE)"),
+      h("p", { class: "alius-inv-deltas" }, ...deltas),
+      afterLine,
+      h("button", {
+        type: "button",
+        class: "alius-btn",
+        "data-act": "equip",
+        disabled: reason !== null || !unit,
+        title: reason ?? "Equip",
+        onclick: () => {
+          if (unit) ctx2.onEquip(unit.id, item.uid);
+        }
+      }, reason ? `[EQUIP] ${reason}` : "[EQUIP]")
+    );
+  }
+  function workshopPanel(state, item) {
+    const ops = state.workshopSession?.opsLeft ?? 0;
+    const recipes = [...reg.recipes.values()].map((r) => {
+      const reason = refusal(state, reg, "item/craft", { recipeId: r.id });
+      const tpl = reg.items.get(r.itemId);
+      const cost = r.cost;
+      return h("button", {
+        type: "button",
+        class: "alius-btn",
+        "data-recipe": r.id,
+        disabled: reason !== null,
+        title: reason ?? "Craft",
+        onclick: () => ctx2.onCraft(r.id)
+      }, `${String(tpl?.name ?? r.itemId)} [${String(r.rarity)}] ${cost.credits} CR / ${cost.plyx} PLYX${reason ? ` \u2014 ${reason}` : ""}`);
+    });
+    const itemButtons = [];
+    if (item) {
+      const up = refusal(state, reg, "item/upgrade", { uid: item.uid });
+      const dis = refusal(state, reg, "item/dismantle", { uid: item.uid });
+      itemButtons.push(
+        h("button", { type: "button", class: "alius-btn", "data-act": "upgrade", disabled: up !== null, title: up ?? "Upgrade", onclick: () => ctx2.onUpgrade(item.uid) }, `[UPGRADE +${item.upgrade + 1}]${up ? ` \u2014 ${up}` : ""}`),
+        h("button", { type: "button", class: "alius-btn", "data-act": "dismantle", disabled: dis !== null, title: dis ?? "Dismantle", onclick: () => ctx2.onDismantle(item.uid) }, `[DISMANTLE]${dis ? ` \u2014 ${dis}` : ""}`),
+        ...item.affixes.map((a, i) => {
+          const why = refusal(state, reg, "item/reroll", { uid: item.uid, affixIndex: i });
+          return h("button", { type: "button", class: "alius-btn", "data-act": "reroll", "data-index": String(i), disabled: why !== null, title: why ?? "Reroll", onclick: () => ctx2.onReroll(item.uid, i) }, `[REROLL ${upper(String(reg.affixes.get(a)?.name ?? a))}]${why ? ` \u2014 ${why}` : ""}`);
+        })
+      );
+    }
+    return h(
+      "section",
+      { class: "alius-section alius-inv-workshop" },
+      h("h3", {}, `[ WORKSHOP ] ${ops} OPERATION${ops === 1 ? "" : "S"} LEFT`),
+      h("div", { class: "alius-row" }, ...itemButtons),
+      h("h4", {}, "RECIPES"),
+      h("div", { class: "alius-inv-recipes" }, ...recipes)
+    );
+  }
+  render();
 }
 
 // src/llm/context.ts
@@ -7139,17 +9974,17 @@ registerCallType({
   prompt: prompt2,
   schema: IntentExtractRawSchema
 });
-var isObj7 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj10 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var LABELS = EXPRESSION_LABELS;
 function sanitizeIntentOutput(raw, ctx2) {
   const parsed = IntentExtractRawSchema.safeParse(raw);
   const src = parsed.success ? parsed.data : { events: [], facts: [], proposals: [], promises: [], emotions: [], stressHints: [] };
-  const events = src.events.filter((e) => isObj7(e) && typeof e.confidence === "number" && e.confidence >= ctx2.minConfidence);
-  const proposals2 = src.proposals.filter((p) => ctx2.romance || !(isObj7(p) && ROMANTIC_PROPOSALS.includes(p.kind)));
+  const events = src.events.filter((e) => isObj10(e) && typeof e.confidence === "number" && e.confidence >= ctx2.minConfidence);
+  const proposals2 = src.proposals.filter((p) => ctx2.romance || !(isObj10(p) && ROMANTIC_PROPOSALS.includes(p.kind)));
   const intents = validateIntents({ ...src, events, proposals: proposals2 }, { participants: ctx2.participants, squad: ctx2.squad });
   const emotions = [];
   for (const e of src.emotions) {
-    if (isObj7(e) && typeof e.unitId === "string" && ctx2.participants.includes(e.unitId) && typeof e.label === "string" && LABELS.includes(e.label)) {
+    if (isObj10(e) && typeof e.unitId === "string" && ctx2.participants.includes(e.unitId) && typeof e.label === "string" && LABELS.includes(e.label)) {
       emotions.push({ unitId: e.unitId, label: e.label });
     }
   }
@@ -7357,9 +10192,9 @@ function registerSceneContext(builder, deps) {
     priority: 60,
     render: (s) => {
       if (!s.scene) return null;
-      const open = openPromises(s, s.scene.participants, s.scene.participants);
-      if (open.length === 0) return null;
-      return ["Open promises:", ...open.map((p) => `- ${nameOf(s, p.by)} promised ${nameOf(s, p.to)}: ${p.text}`)].join("\n");
+      const open2 = openPromises(s, s.scene.participants, s.scene.participants);
+      if (open2.length === 0) return null;
+      return ["Open promises:", ...open2.map((p) => `- ${nameOf(s, p.by)} promised ${nameOf(s, p.to)}: ${p.text}`)].join("\n");
     }
   });
 }
@@ -7569,8 +10404,8 @@ function createSceneController(deps) {
   }
   async function extract2(expect) {
     let applied = false;
-    const first = st.getChatMessages(extracted);
-    if (first.length > EXTRACT_MAX_CHUNKS * EXTRACT_MAX_MESSAGES) extracted = first[first.length - EXTRACT_MAX_CHUNKS * EXTRACT_MAX_MESSAGES].index;
+    const first2 = st.getChatMessages(extracted);
+    if (first2.length > EXTRACT_MAX_CHUNKS * EXTRACT_MAX_MESSAGES) extracted = first2[first2.length - EXTRACT_MAX_CHUNKS * EXTRACT_MAX_MESSAGES].index;
     for (let chunk = 0; chunk < EXTRACT_MAX_CHUNKS; chunk++) {
       const s0 = state();
       if (!s0?.scene) return applied;
@@ -7786,9 +10621,9 @@ function createSceneController(deps) {
           const now = state();
           app.context.clearMatching((d) => d.id.startsWith("proposal:"));
           app.refreshContext();
-          const living = (now?.squad ?? []).filter((u) => u.kind === "named" && u.status !== "dead" && u.status !== "deserted" && u.status !== "terminated");
+          const living2 = (now?.squad ?? []).filter((u) => u.kind === "named" && u.status !== "dead" && u.status !== "deserted" && u.status !== "terminated");
           try {
-            await st.setMembersActive(living.map((u) => u.cardRef).filter((a) => typeof a === "string"));
+            await st.setMembersActive(living2.map((u) => u.cardRef).filter((a) => typeof a === "string"));
           } catch (e) {
             deps.toast("warn", `Could not re-activate the squad in the group chat: ${e instanceof Error ? e.message : String(e)}`);
           }
@@ -7951,16 +10786,16 @@ var fieldSchemas = {
   enemyFlavor: external_exports.boolean()
 };
 var budgetSchema = external_exports.number().int().min(1);
-var isObj8 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj11 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function merge(base, over) {
-  const src = isObj8(over) ? over : {};
+  const src = isObj11(over) ? over : {};
   const out = { ...base };
   for (const [key, schema] of Object.entries(fieldSchemas)) {
     const parsed = schema.safeParse(src[key]);
     if (parsed.success) out[key] = parsed.data;
   }
   const budgets = { ...base.budgets };
-  const srcBudgets = isObj8(src.budgets) ? src.budgets : {};
+  const srcBudgets = isObj11(src.budgets) ? src.budgets : {};
   for (const id of CALL_TYPE_IDS) {
     const parsed = budgetSchema.safeParse(srcBudgets[id]);
     if (parsed.success) budgets[id] = parsed.data;
@@ -8006,16 +10841,16 @@ function truncateCard(card2, maxTokens) {
   return out;
 }
 function buildImportInput(card2, registries, settings, sections) {
-  const str2 = (v) => typeof v === "string" ? v : "";
+  const str3 = (v) => typeof v === "string" ? v : "";
   return {
     card: card2,
     sections: [...sections],
-    roles: [...registries.roles.values()].map((r) => ({ id: r.id, summary: str2(r.summary) })),
-    signatures: [...registries.signatures.values()].map((s) => ({ id: s.id, fits: str2(s.fits) })),
-    defects: [...registries.defects.values()].filter((d) => settings.desireBondDefects || d.category !== "desire_bond").map((d) => ({ id: d.id, lore: str2(d.lore) }))
+    roles: [...registries.roles.values()].map((r) => ({ id: r.id, summary: str3(r.summary) })),
+    signatures: [...registries.signatures.values()].map((s) => ({ id: s.id, fits: str3(s.fits) })),
+    defects: [...registries.defects.values()].filter((d) => settings.desireBondDefects || d.category !== "desire_bond").map((d) => ({ id: d.id, lore: str3(d.lore) }))
   };
 }
-var isObj9 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj12 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var cap = (v, max, fallback = "") => typeof v === "string" ? v.trim().slice(0, max) : fallback;
 var num = (v, lo, hi, fallback) => typeof v === "number" && Number.isFinite(v) ? Math.min(hi, Math.max(lo, Math.round(v))) : fallback;
 var SECTION_LABEL = { role: "role", signature: "signature", defects: "defects" };
@@ -8031,7 +10866,7 @@ function tagList2(v, max) {
   return out;
 }
 function sanitizeProfile(raw, ctx2) {
-  const src = isObj9(raw) ? raw : {};
+  const src = isObj12(raw) ? raw : {};
   const want = (s) => ctx2.sections.includes(s);
   const dropped = [];
   const missing = [];
@@ -8040,7 +10875,7 @@ function sanitizeProfile(raw, ctx2) {
     const out = [];
     const seen = /* @__PURE__ */ new Set();
     for (const item of Array.isArray(list2) ? list2 : []) {
-      const id = isObj9(item) && typeof item[idKey] === "string" ? item[idKey] : null;
+      const id = isObj12(item) && typeof item[idKey] === "string" ? item[idKey] : null;
       if (id === null) {
         dropped.push(`${SECTION_LABEL[section]}:(invalid)`);
         continue;
@@ -8098,7 +10933,7 @@ function sanitizeProfile(raw, ctx2) {
     if (profile.defectCandidates.length === 0) missing.push("defects");
   }
   if (want("values")) {
-    if (isObj9(src.values)) {
+    if (isObj12(src.values)) {
       const v = src.values;
       profile.values = Object.fromEntries(VALUE_KEYS.map((k) => [k, num(v[k], -3, 3, 0)]));
     } else missing.push("values");
@@ -8113,7 +10948,7 @@ function sanitizeProfile(raw, ctx2) {
     if (!likes && !dislikes && !triggers) missing.push("tags");
   }
   if (want("baseline")) {
-    if (isObj9(src.emotionalBaseline)) {
+    if (isObj12(src.emotionalBaseline)) {
       const b = src.emotionalBaseline;
       const lim = SETUP_LIMITS.baseline;
       profile.baseline = {
@@ -8458,23 +11293,6 @@ var Wizard = class {
   }
 };
 
-// src/ui/dom.ts
-function h(tag, attrs = {}, ...children) {
-  const el = document.createElement(tag);
-  for (const [k, v] of Object.entries(attrs)) {
-    if (v === false || v === null || v === void 0) continue;
-    if (k === "class") el.className = String(v);
-    else if (k.startsWith("on") && typeof v === "function") el.addEventListener(k.slice(2).toLowerCase(), v);
-    else if (v === true) el.setAttribute(k, "");
-    else el.setAttribute(k, String(v));
-  }
-  for (const c of children) {
-    if (c === null || c === void 0) continue;
-    el.append(typeof c === "string" ? document.createTextNode(c) : c);
-  }
-  return el;
-}
-
 // src/ui/focus.ts
 var CONTROLS = "input, button, select, textarea";
 var KEYS = ["key", "action", "regenerate", "addTag", "axis", "baseline", "avatar", "resync"];
@@ -8550,7 +11368,7 @@ function renderCalibration(host, ctx2) {
     )
   );
   if (draft.status === "loading" || draft.status === "idle") return;
-  const options = manualOptions(reg, ctx2.desireBondDefects);
+  const options2 = manualOptions(reg, ctx2.desireBondDefects);
   const section = (id, title, ...body) => h(
     "section",
     { class: "alius-section alius-calib-section", "data-section": id },
@@ -8575,7 +11393,7 @@ function renderCalibration(host, ctx2) {
   );
   if (shown.has("role")) {
     const fromCandidates = !manual && cand && cand.roleCandidates.length > 0;
-    const list2 = fromCandidates ? cand.roleCandidates.map((c) => ({ id: c.roleId, reason: c.reason })) : options.roles.map((r) => ({ id: r.id, reason: "" }));
+    const list2 = fromCandidates ? cand.roleCandidates.map((c) => ({ id: c.roleId, reason: c.reason })) : options2.roles.map((r) => ({ id: r.id, reason: "" }));
     host.append(
       section("role", "ROLE", h("div", { class: "alius-cards" }, ...list2.map(({ id, reason }) => {
         const role = reg.roles.get(id);
@@ -8593,7 +11411,7 @@ function renderCalibration(host, ctx2) {
   }
   if (shown.has("signature")) {
     const fromCandidates = !manual && cand && cand.signatureCandidates.length > 0;
-    const list2 = fromCandidates ? cand.signatureCandidates : options.signatures.map((s) => ({ templateId: s.id, name: String(s.name), description: String(s.mechanic) }));
+    const list2 = fromCandidates ? cand.signatureCandidates : options2.signatures.map((s) => ({ templateId: s.id, name: String(s.name), description: String(s.mechanic) }));
     const cur = ch.signature;
     const tpl = cur ? reg.signatures.get(cur.templateId) : void 0;
     host.append(
@@ -8630,7 +11448,7 @@ function renderCalibration(host, ctx2) {
   }
   if (shown.has("defects")) {
     const fromCandidates = !manual && cand && cand.defectCandidates.length > 0;
-    const list2 = fromCandidates ? cand.defectCandidates.map((c) => ({ id: c.defectId, origin: c.origin })) : options.defects.map((d) => ({ id: d.id, origin: "" }));
+    const list2 = fromCandidates ? cand.defectCandidates.map((c) => ({ id: c.defectId, origin: c.origin })) : options2.defects.map((d) => ({ id: d.id, origin: "" }));
     const max = draft.secondDefect ? SETUP_LIMITS.maxDefects : 1;
     const pick = (id, origin) => {
       const cur = ch.defects;
@@ -8995,70 +11813,6 @@ function renderSetupScreen(host, ctx2) {
   render();
 }
 
-// src/engine/combat/targeting.ts
-var skillById = (reg, id) => reg.skills.get(id);
-
-// src/engine/combat/skills.ts
-var treeOf = (reg, unit) => reg.roles.get(unit.roleId)?.tree ?? [];
-function knownSkillIds(reg, unit) {
-  const owned = new Set(unit.unlockedNodes);
-  const ids = [...reg.roles.get(unit.roleId)?.starterSkills ?? []];
-  for (const n of treeOf(reg, unit)) {
-    const id = n.grants.skill;
-    if (!id || !owned.has(n.id)) continue;
-    if (skillById(reg, id)?.kind === "active") ids.push(id);
-  }
-  return ids.filter((id) => reg.skills.has(id));
-}
-function loadoutSize(reg, unit) {
-  let extra = 0;
-  for (const d of unit.defects) {
-    const c = reg.defects.get(d.id)?.combat;
-    for (const e of [...c?.upside ?? [], ...c?.downside ?? []]) if (e.type === "loadout_slots") extra += e.amount;
-  }
-  return TUNING.progression.loadoutSize + extra;
-}
-function activeLoadout(reg, unit) {
-  const known = knownSkillIds(reg, unit);
-  const starters = (reg.roles.get(unit.roleId)?.starterSkills ?? []).filter((id) => reg.skills.has(id));
-  const chosen = (unit.loadout ?? []).filter((id, i, a) => known.includes(id) && a.indexOf(id) === i);
-  return (chosen.length > 0 ? chosen : starters).slice(0, loadoutSize(reg, unit));
-}
-
-// src/engine/progression.ts
-var treeOf2 = (reg, unit) => reg.roles.get(unit.roleId)?.tree ?? [];
-var xpToNext = (level) => TUNING.progression.xpToNext.base + TUNING.progression.xpToNext.perLevel * level;
-function prerequisiteProblem(reg, unit, node) {
-  const owned = new Set(unit.unlockedNodes);
-  for (const r of node.requires) if (!owned.has(r)) return "LOCKED: unlock the previous node first";
-  if (node.branch === null) {
-    const tier3 = treeOf2(reg, unit).filter((n) => n.tier === 3 && owned.has(n.id)).length;
-    if (tier3 < 2) return "LOCKED: needs two tier-3 nodes";
-  }
-  return null;
-}
-function nodeState(state, reg, unit, nodeId) {
-  if (unit.unlockedNodes.includes(nodeId)) return "owned";
-  const node = treeOf2(reg, unit).find((n) => n.id === nodeId);
-  return node && prerequisiteProblem(reg, unit, node) === null ? "available" : "locked";
-}
-function checkUnlock(state, reg, unitId, nodeId) {
-  const unit = state.squad.find((u) => u.id === unitId);
-  if (!unit || !isLiving(unit)) return "Unknown or unavailable unit.";
-  const node = treeOf2(reg, unit).find((n) => n.id === nodeId);
-  if (!node) return `Unknown node "${nodeId}".`;
-  if (unit.unlockedNodes.includes(nodeId)) return "Already unlocked.";
-  const problem = prerequisiteProblem(reg, unit, node);
-  if (problem) return problem;
-  if (unit.skillPoints < node.cost) return `NEEDS ${node.cost} SKILL POINTS (has ${unit.skillPoints})`;
-  return null;
-}
-var respecCost = (unit) => ({
-  credits: TUNING.progression.respec.creditsPerLevel * unit.level,
-  plyx: TUNING.progression.respec.plyxPerLevel * unit.level
-});
-var knownSkills = (reg, unit) => knownSkillIds(reg, unit);
-
 // src/ui/squad/bands.ts
 function valueBand(v) {
   return v <= -2 ? "LOW" : v >= 2 ? "HIGH" : "MID";
@@ -9204,12 +11958,12 @@ function equipmentBlock(unit, ctx2, state) {
       text = `${String(tpl.name)} [${inst.rarity}]${inst.upgrade > 0 ? ` +${inst.upgrade}` : ""}`;
       flag = canEquip(reg, unit, inst);
     }
-    const options = state.inventory.filter((i) => reg.items.get(i.itemId)?.slot === slot && canEquip(reg, unit, i) === null);
+    const options2 = state.inventory.filter((i) => reg.items.get(i.itemId)?.slot === slot && canEquip(reg, unit, i) === null);
     const picker = ctx2.onEquip && ctx2.onUnequip ? h(
       "select",
       { class: "alius-input", "data-equip": slot, "data-unit": unit.id, "aria-label": `${slot} of ${unit.displayName}` },
       h("option", { value: "", selected: !uid }, "(standard issue)"),
-      ...options.map((i) => h("option", { value: i.uid, selected: i.uid === uid }, `${String(reg.items.get(i.itemId)?.name)} [${i.rarity}]${i.upgrade > 0 ? ` +${i.upgrade}` : ""}`))
+      ...options2.map((i) => h("option", { value: i.uid, selected: i.uid === uid }, `${String(reg.items.get(i.itemId)?.name)} [${i.rarity}]${i.upgrade > 0 ? ` +${i.upgrade}` : ""}`))
     ) : null;
     if (picker) {
       picker.value = uid ?? "";
@@ -9348,8 +12102,8 @@ var unitLabel = (u) => u.kind === "grunt" ? `${u.displayName} (grunt)` : u.displ
 function activityCard(a, state, ctx2) {
   const mode = a.companion;
   const focusList = a.focus ?? [];
-  const living = state.squad.filter(isLiving);
-  const companions = a.startsScene === true ? living.filter((u) => u.kind === "named") : living;
+  const living2 = state.squad.filter(isLiving);
+  const companions = a.startsScene === true ? living2.filter((u) => u.kind === "named") : living2;
   const companionSel = mode === "none" ? null : h(
     "select",
     { name: "companion", "aria-label": `Companion for ${String(a.name)}` },
@@ -9362,7 +12116,7 @@ function activityCard(a, state, ctx2) {
     ...focusList.map((f) => h("option", { value: f.id }, f.label))
   );
   const picked = /* @__PURE__ */ new Set();
-  const boxes = living.map((u) => {
+  const boxes = living2.map((u) => {
     const box = h("input", { type: "checkbox", "data-unit": u.id });
     box.addEventListener("change", () => {
       if (box.checked) picked.add(u.id);
@@ -9380,7 +12134,7 @@ function activityCard(a, state, ctx2) {
     const companion = companionSel?.value;
     if (companion) return { ...req, companionId: companion };
     if (focusSel) req.focus = focusSel.value;
-    if (currentFocus()?.units) req.unitIds = living.filter((u) => picked.has(u.id)).map((u) => u.id);
+    if (currentFocus()?.units) req.unitIds = living2.filter((u) => picked.has(u.id)).map((u) => u.id);
     return req;
   };
   let shape = "";
@@ -9507,15 +12261,15 @@ function facilityCard(state, f, ctx2) {
   return card2;
 }
 function roster(state, ctx2) {
-  const living = state.squad.filter(isLiving);
-  const active = state.roster.activeIds.filter((id) => living.some((u) => u.id === id));
+  const living2 = state.squad.filter(isLiving);
+  const active = state.roster.activeIds.filter((id) => living2.some((u) => u.id === id));
   const section = h(
     "section",
     { class: "alius-section" },
     h("h2", {}, "ROSTER"),
-    h("p", {}, `UNITS ${living.length}/${state.roster.capacity} \xB7 ACTIVE ${active.length}/${TUNING.rosterActiveMax}`)
+    h("p", {}, `UNITS ${living2.length}/${state.roster.capacity} \xB7 ACTIVE ${active.length}/${TUNING.rosterActiveMax}`)
   );
-  for (const u of living) {
+  for (const u of living2) {
     const on = active.includes(u.id);
     const full = !on && active.length >= TUNING.rosterActiveMax;
     const role = u.kind === "grunt" ? `GRUNT ${u.designation ?? ""}`.trim() : String(ctx2.registries.roles.get(u.roleId)?.name ?? u.roleId);
@@ -9604,7 +12358,7 @@ function renderCommsTab(host, ctx2) {
     selected.delete(host);
     current = void 0;
   }
-  const open = (id) => {
+  const open2 = (id) => {
     selected.set(host, id);
     ctx2.onRead(id);
     renderCommsTab(host, ctx2);
@@ -9612,7 +12366,7 @@ function renderCommsTab(host, ctx2) {
   const list2 = h("div", { class: "alius-threads", role: "list" }, ...contacts.map((u) => {
     const n = unread(state, u.id);
     const dot = n > 0 ? h("span", { class: "alius-dot", "aria-label": `${n} unread` }, "\u25CF") : null;
-    return h("button", { type: "button", class: `alius-btn alius-contact${u.id === current ? " is-open" : ""}`, "data-unit": u.id, onclick: () => open(u.id) }, u.displayName, " ", dot);
+    return h("button", { type: "button", class: `alius-btn alius-contact${u.id === current ? " is-open" : ""}`, "data-unit": u.id, onclick: () => open2(u.id) }, u.displayName, " ", dot);
   }));
   const thread = h("div", { class: "alius-thread", role: "log", "aria-live": "polite" });
   if (!current) {
@@ -9710,28 +12464,28 @@ function renderKnock(host, ctx2) {
     for (const b of buttons) b.disabled = true;
     fn();
   };
-  const open = h("button", { type: "button", class: "alius-btn", "data-action": "open", onclick: press(ctx2.onOpen) }, "[OPEN]");
+  const open2 = h("button", { type: "button", class: "alius-btn", "data-action": "open", onclick: press(ctx2.onOpen) }, "[OPEN]");
   const ignore = h("button", { type: "button", class: "alius-btn", "data-action": "ignore", onclick: press(ctx2.onIgnore) }, "[IGNORE]");
-  buttons.push(open, ignore);
+  buttons.push(open2, ignore);
   host.append(h(
     "section",
     { class: "alius-section alius-knock", "aria-label": `${ctx2.unitName} at the door` },
     h("h2", {}, "[ NIGHT // KNOCK ]"),
     art,
     framing,
-    h("div", { class: "alius-row" }, open, ignore)
+    h("div", { class: "alius-row" }, open2, ignore)
   ));
 }
 
 // src/ui/scene/locationPicker.ts
 var MAX_PARTICIPANTS = 3;
 async function pickLocation(modal, ctx2) {
-  const first = ctx2.state.squad.find((u) => u.id === ctx2.firstUnitId);
+  const first2 = ctx2.state.squad.find((u) => u.id === ctx2.firstUnitId);
   const locations = [...ctx2.registries.locations.values()].filter((l) => !l.slots || l.slots.includes(ctx2.state.slot));
   const extras = ctx2.candidates.filter((u) => u.id !== ctx2.firstUnitId && u.kind === "named" && isLiving(u));
   const radios = locations.map((l, i) => {
     const radio = h("input", { type: "radio", name: "location", value: l.id, checked: i === 0 });
-    const name = l.perUnit === true && first ? `${first.displayName}'s quarters` : String(l.name);
+    const name = l.perUnit === true && first2 ? `${first2.displayName}'s quarters` : String(l.name);
     return h("label", { class: "alius-check", "data-location": l.id }, radio, ` ${name} \u2014 ${String(l.summary)}`);
   });
   const boxes = extras.map((u) => h("input", { type: "checkbox", name: "extra", value: u.id }));
@@ -9743,7 +12497,7 @@ async function pickLocation(modal, ctx2) {
   const body = h(
     "div",
     { class: "alius-location-picker" },
-    h("p", {}, `Where do you talk${first ? ` with ${first.displayName}` : ""}?`),
+    h("p", {}, `Where do you talk${first2 ? ` with ${first2.displayName}` : ""}?`),
     ...radios,
     ...extras.length > 0 ? [h("p", {}, `Bring someone along? (up to ${MAX_PARTICIPANTS - 1} more)`), ...extras.map((u, i) => h("label", { class: "alius-check" }, boxes[i], ` ${u.displayName}`))] : []
   );
@@ -9753,16 +12507,6 @@ async function pickLocation(modal, ctx2) {
   if (!picked) return null;
   const extraIds = boxes.filter((b) => b.checked).map((b) => b.value).slice(0, MAX_PARTICIPANTS - 1);
   return { locationId: picked, participants: [ctx2.firstUnitId, ...extraIds] };
-}
-
-// src/ui/scene/cutIn.ts
-var CUT_IN_MS = 900;
-function cutIn(host, kind, text, imageUrl) {
-  const el = h("div", { class: "alius-cutin", "data-kind": kind, "aria-hidden": "true" });
-  if (imageUrl) el.append(h("img", { class: "alius-cutin-img", src: imageUrl, alt: "" }));
-  el.append(document.createTextNode(text));
-  host.append(el);
-  setTimeout(() => el.remove(), CUT_IN_MS);
 }
 
 // src/ui/scene/sceneScreen.ts
@@ -10421,11 +13165,11 @@ function renderSysTab(host, ctx2) {
     ctx2.onSettingsChanged();
     return next;
   };
-  const select = (name, options, value) => {
+  const select = (name, options2, value) => {
     const el = h(
       "select",
       { name, class: "alius-input" },
-      ...options.map(([v, label2]) => h("option", { value: v, selected: v === value }, label2))
+      ...options2.map(([v, label2]) => h("option", { value: v, selected: v === value }, label2))
     );
     el.value = value;
     el.addEventListener("change", () => apply({ [name]: el.value }));
@@ -10678,9 +13422,9 @@ var TAB_LABELS = {
 var tabStub = (id) => h("pre", { class: "alius-stub" }, stubText(TAB_LABELS[id]));
 function createTabBar(opts) {
   const buttons = /* @__PURE__ */ new Map();
-  const bar = h("div", { class: "alius-tabbar", role: "tablist", "aria-label": "Alius sections" });
+  const bar2 = h("div", { class: "alius-tabbar", role: "tablist", "aria-label": "Alius sections" });
   TAB_IDS.forEach((id, i) => {
-    if (i > 0) bar.append(h("span", { class: "alius-sep", "aria-hidden": "true" }, " \xB7 "));
+    if (i > 0) bar2.append(h("span", { class: "alius-sep", "aria-hidden": "true" }, " \xB7 "));
     const btn = h(
       "button",
       {
@@ -10696,9 +13440,9 @@ function createTabBar(opts) {
       TAB_LABELS[id]
     );
     buttons.set(id, btn);
-    bar.append(btn);
+    bar2.append(btn);
   });
-  bar.addEventListener("keydown", (e) => {
+  bar2.addEventListener("keydown", (e) => {
     const ev = e;
     if (ev.key !== "ArrowRight" && ev.key !== "ArrowLeft") return;
     const at = TAB_IDS.findIndex((id) => buttons.get(id) === ev.target);
@@ -10709,7 +13453,7 @@ function createTabBar(opts) {
     buttons.get(next).focus();
   });
   return {
-    element: bar,
+    element: bar2,
     /** Shows a small count on a tab (0 clears it); counts above 99 read `99+`. */
     setBadge(id, n) {
       const btn = buttons.get(id);
@@ -10752,7 +13496,7 @@ function createToasts(host) {
 // src/ui/shell/shell.ts
 var PANEL_ID = "alius-panel";
 var FRAME_FILL = "\u2550".repeat(300);
-function isEditable(t) {
+function isEditable2(t) {
   const el = t;
   if (!el || typeof el.tagName !== "string") return false;
   return ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName) || el.isContentEditable === true;
@@ -10848,7 +13592,7 @@ function createShell(deps) {
     router.render(view);
     renderedScreen = router.current();
   }
-  function open() {
+  function open2() {
     if (root) return;
     const toastHost = h("div", { class: "alius-toasts", "aria-live": "polite" });
     const modalLayer = h("div", { class: "alius-modal-layer" });
@@ -10907,7 +13651,7 @@ function createShell(deps) {
     renderedScreen = null;
   }
   const api = {
-    open,
+    open: open2,
     close,
     isOpen,
     showScreen(id) {
@@ -10969,7 +13713,7 @@ function createShell(deps) {
     if (e.altKey && e.shiftKey && (e.code === "KeyA" || e.key.toLowerCase() === "a")) {
       e.preventDefault();
       if (isOpen()) close();
-      else open();
+      else open2();
       return;
     }
     if (!isOpen()) return;
@@ -10979,7 +13723,7 @@ function createShell(deps) {
       modals.cancel();
       return;
     }
-    if (/^[1-8]$/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey && !isEditable(e.target) && !modals?.isOpen()) {
+    if (/^[1-8]$/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey && !isEditable2(e.target) && !modals?.isOpen()) {
       if (router.current() === "pda") selectTab(TAB_IDS[Number(e.key) - 1]);
     }
   }
@@ -11016,6 +13760,9 @@ function createApp(st, deps) {
   }
   let sceneScreen = null;
   let onSceneScreen = false;
+  let combatScreen = null;
+  let onCombatScreen = false;
+  const namesInFlight = /* @__PURE__ */ new Set();
   const sceneApp = {
     dispatch: (a, o) => api.dispatch(a, o),
     current: () => api.current(),
@@ -11152,6 +13899,96 @@ function createApp(st, deps) {
       h("button", { type: "button", class: "alius-btn", onclick: leaveScene }, "[ BACK ]")
     ));
   }
+  function showCombat() {
+    onCombatScreen = true;
+    shell.showScreen("combat");
+  }
+  function leaveCombat() {
+    combatScreen?.dispose();
+    combatScreen = null;
+    onCombatScreen = false;
+    shell.showScreen("pda");
+  }
+  function adoptCombat() {
+    combatScreen?.dispose();
+    combatScreen = null;
+    if (state?.combat) showCombat();
+    else if (onCombatScreen) {
+      onCombatScreen = false;
+      shell.showScreen("pda");
+    }
+  }
+  function combatDo(type, payload) {
+    const events = act({ type, payload });
+    combatScreen?.handle(events);
+    return events;
+  }
+  function renderCombatView(host) {
+    combatScreen?.dispose();
+    combatScreen = null;
+    if (!state?.combat && !state?.lastCombat) {
+      host.append(h(
+        "section",
+        { class: "alius-section" },
+        h("p", {}, "NO COMBAT"),
+        h("button", { type: "button", class: "alius-btn", onclick: leaveCombat }, "[ BACK ]")
+      ));
+      return;
+    }
+    combatScreen = renderCombatScreen(host, {
+      getState: () => state,
+      registries,
+      st,
+      settings: () => getSettings(st),
+      onAct: (action) => void combatDo("combat/act", { action }),
+      onOrder: (orderId, targetCid) => void combatDo("combat/order", { orderId, ...targetCid ? { targetCid } : {} }),
+      onAuto: (on) => void combatDo("combat/auto", { on }),
+      onRetry: () => void combatDo("combat/retry"),
+      onAccept: () => void combatDo("combat/accept"),
+      onRetreat: () => void combatDo("combat/retreat"),
+      onClose: leaveCombat
+    });
+  }
+  function requestEnemyNames() {
+    const s = state;
+    const cs = s?.combat;
+    const settings = getSettings(st);
+    if (!s || !cs || !settings.enemyFlavor) return;
+    const chatId = st.getActiveChat()?.chatId;
+    for (const c of cs.combatants) {
+      if (c.side !== "enemy" || !c.enemyId) continue;
+      const key = c.nameKey;
+      const affixes = (key.split("|")[1] ?? "").split(",").filter((a) => a !== "");
+      if (affixes.length === 0 || s.enemyNames?.[key] || namesInFlight.has(key)) continue;
+      namesInFlight.add(key);
+      const tpl = registries.enemies.get(c.enemyId);
+      void generateEnemyFlavor(
+        {
+          kind: "enemy",
+          archetypeName: String(tpl?.name ?? c.enemyId),
+          categoryName: String(registries.enemyCategories.get(String(tpl?.categoryId))?.name ?? ""),
+          affixNames: affixes.map((a) => String(registries.affixes.get(a)?.adjective ?? a))
+        },
+        { st, settings }
+      ).then((r) => {
+        if (r) api.dispatch({ type: "combat/set_enemy_name", payload: { key, name: r.name } }, { expectChatId: chatId });
+      }).catch(() => {
+      }).finally(() => namesInFlight.delete(key));
+    }
+  }
+  function combatDrill() {
+    if (!state) return toast("warn", "No campaign loaded.");
+    if (state.combat) return toast("warn", "A combat is already open.");
+    const roster2 = activeRosterUnits(state);
+    if (roster2.length === 0) return toast("warn", "The active roster is empty.");
+    const ids = roster2.map((u) => u.id);
+    const encounter = generateEncounter(state, registries, new Rng(state.rng), {
+      table: { categories: Object.fromEntries([...registries.enemyCategories.keys()].map((id) => [id, 1])) },
+      danger: 1,
+      squadPower: squadPower(state, registries, ids)
+    });
+    api.startCombat({ encounter, formation: defaultFormation(state, registries, ids), expedition: false, bankLoot: false });
+  }
   function reload() {
     saver?.dispose();
     saver = null;
@@ -11164,6 +14001,7 @@ function createApp(st, deps) {
     applyContext();
     syncBadges();
     adoptScene();
+    adoptCombat();
     syncIntimacy();
   }
   function replaceState(next) {
@@ -11193,7 +14031,8 @@ function createApp(st, deps) {
       context.clearDirective(TEST_DIRECTIVE.id);
       applyContext();
     } },
-    { label: "Clear all injections", run: () => context.apply(st, null, 0) }
+    { label: "Clear all injections", run: () => context.apply(st, null, 0) },
+    { label: "Combat drill", run: () => combatDrill() }
   ];
   function endSetup() {
     setup?.wizard.dispose();
@@ -11463,6 +14302,12 @@ function createApp(st, deps) {
         case "facility_upgraded":
           toast("info", `${String(registries.facilities.get(String(e.facilityId))?.name ?? e.facilityId)} upgraded to level ${String(e.level)}.`);
           break;
+        case "level_up":
+          toast("info", `${state?.squad.find((u) => u.id === e.unitId)?.displayName ?? "A unit"} reached level ${String(e.level)}.`);
+          break;
+        case "item_crafted":
+          toast("info", `Crafted ${String(registries.items.get(String(e.itemId))?.name ?? e.itemId)} [${String(e.rarity)}].`);
+          break;
         case "unit_recovered":
           toast("info", `${state?.squad.find((u) => u.id === e.unitId)?.displayName ?? "A unit"} has recovered.`);
           break;
@@ -11486,6 +14331,7 @@ function createApp(st, deps) {
     replaceState,
     getContentErrors: () => contentErrors,
     debugTools,
+    dispatch: (action) => api.dispatch(action, { expectChatId: st.getActiveChat()?.chatId }),
     onSettingsChanged: syncIntimacy
   });
   shell.registerTab(
@@ -11497,9 +14343,35 @@ function createApp(st, deps) {
       registries,
       settings: () => getSettings(st),
       onNewCampaign: openSetup,
-      onResync: (id) => void resyncUnit(id)
+      onResync: (id) => void resyncUnit(id),
+      onUnlock: (unitId, nodeId) => void act({ type: "squad/unlock_node", payload: { unitId, nodeId } }),
+      onRespec: (unitId) => void act({ type: "squad/respec", payload: { unitId } }),
+      onSetLoadout: (unitId, skillIds) => void act({ type: "squad/set_loadout", payload: { unitId, skillIds } }),
+      onEquip: (unitId, uid) => void act({ type: "item/equip", payload: { unitId, uid } }),
+      onUnequip: (unitId, slot) => void act({ type: "item/unequip", payload: { unitId, slot } })
     })
   );
+  shell.registerTab(
+    "inv",
+    (host) => renderInvTab(host, {
+      getState: () => state,
+      registries,
+      onEquip: (unitId, uid) => void act({ type: "item/equip", payload: { unitId, uid } }),
+      onCraft: (recipeId) => void act({ type: "item/craft", payload: { recipeId } }),
+      onUpgrade: (uid) => void act({ type: "item/upgrade", payload: { uid } }),
+      onReroll: (uid, affixIndex) => void act({ type: "item/reroll", payload: { uid, affixIndex } }),
+      onDismantle: (uid) => void act({ type: "item/dismantle", payload: { uid } })
+    })
+  );
+  shell.registerScreen("combat", renderCombatView, {
+    refresh: () => {
+      if ((state?.combat || state?.lastCombat) && combatScreen) {
+        combatScreen.refresh();
+        return true;
+      }
+      return false;
+    }
+  });
   shell.registerTab(
     "ops",
     (host) => renderOpsTab(host, {
@@ -11550,6 +14422,25 @@ function createApp(st, deps) {
     scene,
     comms,
     startScene: beginScene,
+    startCombat(opts) {
+      if (!state) {
+        toast("error", "No Alius campaign in this chat.");
+        return false;
+      }
+      const chatId = st.getActiveChat()?.chatId;
+      const payload = { ...opts, allowRetry: getSettings(st).easyRetry };
+      const events = api.dispatch({ type: "combat/start", payload }, { expectChatId: chatId });
+      const failed = events.find((e) => e.type === "error");
+      if (failed) {
+        toast("error", String(failed.message ?? failed.code));
+        return false;
+      }
+      showCombat();
+      shell.open();
+      combatScreen?.handle(events);
+      requestEnemyNames();
+      return true;
+    },
     refreshContext: applyContext,
     replaceState,
     openSetup,
@@ -11558,6 +14449,10 @@ function createApp(st, deps) {
     async performActivity(req) {
       const chatId = st.getActiveChat()?.chatId;
       const events = act({ type: "activity/do", payload: req });
+      if (events.some((e) => e.type === "workshop_opened")) {
+        shell.showTab("inv");
+        shell.open();
+      }
       const requested = events.find((e) => e.type === "scene_requested");
       if (requested) await offerScene(String(requested.unitId));
       else if (events.some((e) => e.type === "group_scene_offered")) await offerGroupScene();
@@ -11663,7 +14558,9 @@ function createApp(st, deps) {
       if (r.state !== state) {
         state = r.state;
         saver?.save(state);
-        if (r.events.some((e) => e.type === "autosave")) void saver?.flush().catch((e) => console.warn("[Alius] autosave failed", e));
+        if (r.events.some((e) => e.type === "autosave" || e.type.startsWith("combat_"))) {
+          void saver?.flush().catch((e) => console.warn("[Alius] autosave failed", e));
+        }
       }
       reportEvents(r.events);
       applyContext();
@@ -11722,7 +14619,7 @@ var registrySchemas = Object.fromEntries(
   REGISTRY_NAMES.map((n) => [n, BaseEntrySchema])
 );
 registrySchemas.flags = FlagSchema;
-var str = external_exports.string().min(1);
+var str2 = external_exports.string().min(1);
 var int = external_exports.number().int();
 var valueAxis = external_exports.enum(VALUE_AXES);
 var ValuesSchema = external_exports.object(
@@ -11742,37 +14639,37 @@ var startTimeEffects = {
   resource: ResourceEffect,
   starting_trust: StartingTrustEffect
 };
-var EffectSchema = external_exports.object({ type: str }).passthrough().superRefine((fx2, ctx2) => {
+var EffectSchema = external_exports.object({ type: str2 }).passthrough().superRefine((fx2, ctx2) => {
   const schema = startTimeEffects[fx2.type];
   if (!schema) return;
   const parsed = schema.safeParse(fx2);
   if (parsed.success) return;
   for (const issue of parsed.error.issues) ctx2.addIssue({ ...issue });
 });
-var textWithEffects = external_exports.object({ text: str, effects: external_exports.array(EffectSchema) });
+var textWithEffects = external_exports.object({ text: str2, effects: external_exports.array(EffectSchema) });
 var CorporationSchema = BaseEntrySchema.extend({
-  name: str,
-  summary: str,
+  name: str2,
+  summary: str2,
   values: ValuesSchema,
-  oversightStyle: str,
+  oversightStyle: str2,
   playable: external_exports.boolean(),
   startingBonus: textWithEffects,
   // No reference check: `regions` stays empty until P5, which adds it.
-  startingRegionId: str.optional()
+  startingRegionId: str2.optional()
 });
 var StartSchema = BaseEntrySchema.extend({
-  name: str,
-  corporationId: str,
-  summary: str,
-  situation: str,
-  spine: external_exports.array(external_exports.object({ id: str, title: str, goal: str })).min(5).max(8),
+  name: str2,
+  corporationId: str2,
+  summary: str2,
+  situation: str2,
+  spine: external_exports.array(external_exports.object({ id: str2, title: str2, goal: str2 })).min(5).max(8),
   crimeKnownByDefault: external_exports.boolean().optional(),
   /** Base amounts the campaign begins with; corporation and crime effects are added on top (P2). */
   startingResources: external_exports.object({ credits: int.min(0).optional(), supplies: int.min(0).optional(), plyx: int.min(0).optional() }).strict().optional()
 });
 var CrimeSchema = BaseEntrySchema.extend({
-  name: str,
-  summary: str,
+  name: str2,
+  summary: str2,
   perk: textWithEffects,
   flaw: textWithEffects,
   valueReactions: external_exports.array(external_exports.object({ axis: valueAxis, sign: external_exports.enum(["+", "-"]), weight: int.min(-3).max(3) })),
@@ -11786,8 +14683,8 @@ var ConditionSchema = external_exports.object({
   stressMin: num2.optional(),
   stressMax: num2.optional(),
   roundMin: num2.optional(),
-  targetHasStatus: str.optional(),
-  selfHasStatus: str.optional(),
+  targetHasStatus: str2.optional(),
+  selfHasStatus: str2.optional(),
   aloneInRow: external_exports.boolean().optional(),
   sameRowAndSkill: external_exports.boolean().optional(),
   rowChanged: external_exports.boolean().optional(),
@@ -11817,7 +14714,7 @@ var EffectUnion = external_exports.discriminatedUnion("type", [
   fx("damage", { mult: num2.positive().optional(), pctMaxHp: num2.positive().optional(), hits: int.min(1).optional(), ignoreRows: external_exports.boolean().optional(), critBonus: num2.optional(), scale: ScaleSchema.optional() }),
   fx("heal", { pctMaxHp: num2.positive() }),
   fx("revive", { pctMaxHp: num2.positive() }),
-  fx("status", { statusId: str, turns: int.min(1).optional(), stacks: int.min(1).optional() }),
+  fx("status", { statusId: str2, turns: int.min(1).optional(), stacks: int.min(1).optional() }),
   fx("cleanse", { kind: external_exports.enum(["buff", "debuff"]), count: int.min(1) }),
   fx("stat", { stat: external_exports.union([statEnum, external_exports.literal("all")]), pct: num2, turns: int.min(1).optional(), scale: ScaleSchema.optional() }),
   fx("outgoing", { pct: num2, vs: external_exports.enum(["any", "marked", "locked"]).optional(), scale: ScaleSchema.optional() }),
@@ -11829,7 +14726,7 @@ var EffectUnion = external_exports.discriminatedUnion("type", [
   fx("extra_action", {}),
   fx("redirect", { pct: num2.min(0).max(100), turns: int.min(1), from: external_exports.enum(["ally", "commander"]) }),
   fx("intercept_lethal", { protect: external_exports.enum(["commander", "ally"]) }),
-  fx("summon", { enemyId: str, max: int.min(1) }),
+  fx("summon", { enemyId: str2, max: int.min(1) }),
   fx("follow_up", { mult: num2.positive() }),
   fx("misfire", {}),
   fx("override_action", { policy: external_exports.literal("aggressive") }),
@@ -11837,9 +14734,9 @@ var EffectUnion = external_exports.discriminatedUnion("type", [
   fx("loot_roll", { extra: int.min(1) }),
   fx("repeat_order", {}),
   fx("hp_set", { value: int.min(1) }),
-  fx("immune", { statusId: str }),
-  fx("order_cost", { delta: int, orders: external_exports.array(str).optional() }),
-  fx("order_refusal", { orders: external_exports.array(str).optional() }),
+  fx("immune", { statusId: str2 }),
+  fx("order_cost", { delta: int, orders: external_exports.array(str2).optional() }),
+  fx("order_refusal", { orders: external_exports.array(str2).optional() }),
   fx("loadout_slots", { amount: int.min(1) }),
   fx("injury_days", { pct: num2 })
 ]);
@@ -11859,9 +14756,9 @@ var AI_PROFILES = ["aggressive", "predator", "protector", "disruptor", "stressor
 var aiProfile = external_exports.enum(AI_PROFILES);
 var aiProfileForRoles = external_exports.enum(["aggressive", "predator", "protector", "disruptor"]);
 var SkillSchema = BaseEntrySchema.extend({
-  name: str,
+  name: str2,
   kind: external_exports.enum(SKILL_KINDS),
-  description: str,
+  description: str2,
   /** Passives carry no use rules; every other kind needs `cooldown`, `usableFrom` and `targets`. */
   cooldown: int.min(0).optional(),
   cp: int.min(0).optional(),
@@ -11874,7 +14771,7 @@ var SkillSchema = BaseEntrySchema.extend({
     melee: external_exports.boolean().optional()
   }).strict().optional(),
   effects: effects.min(1),
-  tags: external_exports.array(str)
+  tags: external_exports.array(str2)
 }).superRefine((s, ctx2) => {
   const issue = (path, message) => ctx2.addIssue({ code: "custom", path, message });
   if (s.kind === "passive") {
@@ -11903,12 +14800,12 @@ var TreeNodeSchema = external_exports.object({
   branch: external_exports.union([external_exports.literal(0), external_exports.literal(1), external_exports.literal(2), external_exports.null()]),
   tier: external_exports.union([external_exports.literal(1), external_exports.literal(2), external_exports.literal(3), external_exports.literal(4), external_exports.literal(5), external_exports.null()]),
   cost: int.min(1),
-  requires: external_exports.array(str),
+  requires: external_exports.array(str2),
   grants: external_exports.union([
-    external_exports.object({ skill: str }).strict(),
+    external_exports.object({ skill: str2 }).strict(),
     external_exports.object({
       upgrade: external_exports.object({
-        skillId: str,
+        skillId: str2,
         cooldownDelta: int.optional(),
         multPct: num2.optional(),
         addEffects: effects.optional()
@@ -11917,7 +14814,7 @@ var TreeNodeSchema = external_exports.object({
   ])
 }).strict();
 var RoleSchema = BaseEntrySchema.extend({
-  name: str,
+  name: str2,
   row: external_exports.enum(["front", "back", "either"]),
   baseStats: external_exports.object({
     hp: int.min(1),
@@ -11926,16 +14823,16 @@ var RoleSchema = BaseEntrySchema.extend({
     spd: int.min(1),
     crit: int.min(0).max(100)
   }),
-  weaponClasses: external_exports.array(str).min(1),
+  weaponClasses: external_exports.array(str2).min(1),
   armorWeights: external_exports.array(external_exports.enum(["light", "medium", "heavy"])).min(1),
-  identity: str,
+  identity: str2,
   /** One line, used in prompts. */
-  summary: str,
-  branches: external_exports.array(external_exports.object({ name: str, summary: str })),
+  summary: str2,
+  branches: external_exports.array(external_exports.object({ name: str2, summary: str2 })),
   // P4
   growth: GrowthSchema,
   aiProfile: aiProfileForRoles,
-  starterSkills: external_exports.array(str).length(2),
+  starterSkills: external_exports.array(str2).length(2),
   tree: external_exports.array(TreeNodeSchema)
 }).superRefine((r, ctx2) => {
   const issue = (path, message) => ctx2.addIssue({ code: "custom", path, message });
@@ -11961,16 +14858,16 @@ var RoleSchema = BaseEntrySchema.extend({
 });
 var SignatureSchema = BaseEntrySchema.extend({
   id: external_exports.string().regex(/^sig_[a-z0-9_:.-]*$/, "signature id must start with sig_"),
-  name: str,
-  mechanic: str,
-  fits: str,
+  name: str2,
+  mechanic: str2,
+  fits: str2,
   /** P4: the `skills` entry that implements the template (by convention the same id). */
-  skill: str
+  skill: str2
 });
 var StatusSchema = BaseEntrySchema.extend({
-  name: str,
+  name: str2,
   kind: external_exports.enum(["buff", "debuff"]),
-  description: str,
+  description: str2,
   // P4 mechanics
   turns: int.min(1),
   maxStacks: int.min(1),
@@ -11983,11 +14880,11 @@ var StatusSchema = BaseEntrySchema.extend({
   flags: external_exports.array(external_exports.enum(["skipTurn", "taunt", "untargetable", "absorb", "rooted"])).optional()
 });
 var LorebookSchema = external_exports.object({
-  name: str,
+  name: str2,
   entries: external_exports.array(external_exports.object({
     key: external_exports.array(external_exports.string()),
     comment: external_exports.string(),
-    content: str,
+    content: str2,
     constant: external_exports.boolean(),
     order: int.optional()
   }))
@@ -12081,8 +14978,8 @@ var slotEnum = external_exports.enum(["morning", "afternoon", "evening", "night"
 var socialStat = external_exports.enum(["authority", "insight", "empathy", "cunning"]);
 var amountFields = {
   /** Multiplies `amount` by (1 + facility effect / 100). */
-  scale: external_exports.object({ facility: str, key: str }).strict().optional(),
-  when: external_exports.object({ focus: str.optional(), companionLikes: str.optional() }).strict().optional()
+  scale: external_exports.object({ facility: str2, key: str2 }).strict().optional(),
+  when: external_exports.object({ focus: str2.optional(), companionLikes: str2.optional() }).strict().optional()
 };
 var ActivityEffectSchema = external_exports.discriminatedUnion("type", [
   external_exports.object({
@@ -12102,21 +14999,21 @@ var ActivityEffectSchema = external_exports.discriminatedUnion("type", [
   external_exports.object({ type: external_exports.literal("relation"), axis: external_exports.enum(["trust", "affinity", "attraction"]), amount: int, ...amountFields }).strict(),
   external_exports.object({
     type: external_exports.literal("emit_event"),
-    event: str.refine((e) => !RESERVED_EVENT_TYPES.includes(e), "this event name belongs to the engine"),
+    event: str2.refine((e) => !RESERVED_EVENT_TYPES.includes(e), "this event name belongs to the engine"),
     ...amountFields
   }).strict()
 ]);
 var ActivitySchema = BaseEntrySchema.extend({
-  name: str,
-  summary: str,
+  name: str2,
+  summary: str2,
   slotRules: external_exports.array(slotEnum).min(1),
-  facilityReq: external_exports.object({ id: str, level: int.min(1) }).strict().optional(),
+  facilityReq: external_exports.object({ id: str2, level: int.min(1) }).strict().optional(),
   cost: external_exports.object({ credits: int.min(0).optional(), supplies: int.min(0).optional(), plyx: int.min(0).optional() }).strict(),
   companion: external_exports.enum(["none", "optional", "required"]),
   /** Choices for the alone variant; `units` says how many squad units the player picks for that choice. */
   focus: external_exports.array(external_exports.object({
-    id: str,
-    label: str,
+    id: str2,
+    label: str2,
     units: external_exports.object({ min: int.min(1), max: int.min(1) }).strict().optional()
   }).strict()).optional(),
   effects: external_exports.array(ActivityEffectSchema),
@@ -12153,8 +15050,8 @@ var ActivitySchema = BaseEntrySchema.extend({
   });
 });
 var FacilitySchema = BaseEntrySchema.extend({
-  name: str,
-  summary: str,
+  name: str2,
+  summary: str2,
   maxLevel: int.min(1).max(5),
   /** `levels[0]` is level 1 (the starting level, no upgrade cost); later levels carry the cost to reach them. */
   levels: external_exports.array(external_exports.object({
@@ -12179,30 +15076,30 @@ var ConditionsSchema = external_exports.lazy(
   () => external_exports.object({
     axes: external_exports.object({ trust: range.optional(), affinity: range.optional(), attraction: range.optional() }).strict().optional(),
     stressMin: int.min(0).max(100).optional(),
-    flagsAll: external_exports.array(str).optional(),
-    flagsNone: external_exports.array(str).optional(),
-    defectsAny: external_exports.array(str).optional(),
-    inStates: external_exports.array(str).optional(),
+    flagsAll: external_exports.array(str2).optional(),
+    flagsNone: external_exports.array(str2).optional(),
+    defectsAny: external_exports.array(str2).optional(),
+    inStates: external_exports.array(str2).optional(),
     minDaysInState: int.min(0).optional(),
-    eventCount: external_exports.object({ type: str, min: int.min(1), withinDays: int.min(1).optional() }).strict().optional(),
+    eventCount: external_exports.object({ type: str2, min: int.min(1), withinDays: int.min(1).optional() }).strict().optional(),
     leashUsesMin: int.min(1).optional(),
     anyOf: external_exports.array(ConditionsSchema).optional()
   }).strict()
 );
 var gainLoss = external_exports.object({ gain: external_exports.record(axisName, external_exports.number().min(0)).optional(), loss: external_exports.record(axisName, external_exports.number().min(0)).optional() }).strict();
 var NightSpecSchema = external_exports.object({
-  id: str,
-  kind: str,
+  id: str2,
+  kind: str2,
   chance: external_exports.number().min(0).max(1),
   priority: int,
   trigger: external_exports.enum(["daily", "commander_injured"]),
   /** Shown as the knock; `{name}` is replaced by the unit's name. */
-  framing: str,
+  framing: str2,
   /** What ignoring the knock does: an intent event from the commander's side. */
-  ignore: external_exports.object({ event: str, severity: severityEnum }).strict()
+  ignore: external_exports.object({ event: str2, severity: severityEnum }).strict()
 }).strict();
 var RelationshipStateSchema = BaseEntrySchema.extend({
-  name: str,
+  name: str2,
   group: external_exports.enum(["base", "platonic", "romantic", "complex", "negative"]),
   /** Romance off hides every state with `romance: true`. */
   romance: external_exports.boolean(),
@@ -12214,23 +15111,23 @@ var RelationshipStateSchema = BaseEntrySchema.extend({
   entry: external_exports.object({
     via: external_exports.array(external_exports.enum(["automatic", "event", "proposal"])).min(1),
     /** Empty or absent = from any state. */
-    fromStates: external_exports.array(str).optional(),
+    fromStates: external_exports.array(str2).optional(),
     events: external_exports.array(external_exports.enum(EVENT_TYPES)).optional(),
     proposals: external_exports.array(external_exports.enum(PROPOSAL_KINDS)).optional(),
     when: ConditionsSchema.optional()
   }).strict(),
   /** Checked first, in order; the first rule that holds moves the unit to `to`. */
-  exit: external_exports.array(external_exports.object({ when: ConditionsSchema, to: str }).strict()),
+  exit: external_exports.array(external_exports.object({ when: ConditionsSchema, to: str2 }).strict()),
   modifiers: gainLoss.optional(),
   unlocks: external_exports.object({
-    synergies: external_exports.array(str),
-    activities: external_exports.array(str),
+    synergies: external_exports.array(str2),
+    activities: external_exports.array(str2),
     nightEvents: external_exports.array(NightSpecSchema),
-    defectArcStages: external_exports.array(str)
+    defectArcStages: external_exports.array(str2)
   }).strict(),
   /** Base chance per slot transition that the unit starts a DM. */
   dmChance: external_exports.number().min(0).max(1),
-  promptHint: str
+  promptHint: str2
 }).superRefine((st, ctx2) => {
   const issue = (path, message) => ctx2.addIssue({ code: "custom", path, message });
   const via = st.entry.via;
@@ -12252,35 +15149,35 @@ var EventDeltaSchema = BaseEntrySchema.extend({
   attractionUsesReceptivity: external_exports.boolean().optional()
 });
 var LocationSchema = BaseEntrySchema.extend({
-  name: str,
-  summary: str,
+  name: str2,
+  summary: str2,
   ascii: external_exports.array(external_exports.string()).min(1).max(12),
   /** Asset paths relative to the extension folder; v1 ships none. */
-  background: str.optional(),
-  backgroundNight: str.optional(),
+  background: str2.optional(),
+  backgroundNight: str2.optional(),
   /** One location per unit (`quarters_unit`). */
   perUnit: external_exports.boolean().optional(),
   /** Slots the location is available in; absent = all. */
   slots: external_exports.array(slotEnum).min(1).optional()
 });
 var DefectSchema = BaseEntrySchema.extend({
-  name: str,
+  name: str2,
   category: external_exports.enum(["neural", "somatic", "cybernetic", "desire_bond"]),
-  lore: str,
-  upside: str,
-  downside: str,
-  breakdown: external_exports.object({ name: str, text: str }),
-  social: str,
-  arc: external_exports.object({ cure: str, manage: str, embrace: str }),
+  lore: str2,
+  upside: str2,
+  downside: str2,
+  breakdown: external_exports.object({ name: str2, text: str2 }),
+  social: str2,
+  arc: external_exports.object({ cure: str2, manage: str2, embrace: str2 }),
   /** P3: multipliers applied after state modifiers; `events` multiplies the whole delta of one event type. */
   relationModifiers: gainLoss.extend({ events: external_exports.record(external_exports.number().min(0)).optional() }).strict().optional(),
   /** P3: activity-driven social effects (e.g. Hunger Loop meals give Affinity). */
   socialHooks: external_exports.array(external_exports.object({
-    activity: str,
+    activity: str2,
     who: external_exports.enum(["companion", "roster"]),
     axis: axisName.optional(),
     amount: int.optional(),
-    setFlag: str.optional()
+    setFlag: str2.optional()
   }).strict()).optional(),
   dmChanceBonus: external_exports.number().min(0).max(1).optional(),
   nightEvents: external_exports.array(NightSpecSchema).optional(),
@@ -12309,39 +15206,39 @@ Object.assign(registrySchemas, {
   defects: DefectSchema
 });
 var OrderSchema = BaseEntrySchema.extend({
-  name: str,
-  summary: str,
+  name: str2,
+  summary: str2,
   cost: int.min(1).max(5),
   target: external_exports.enum(["none", "ally", "enemy"]),
   effects: effects.min(1)
 });
-var SynergySchema = BaseEntrySchema.extend({ name: str, summary: str, effects: effects.min(1) });
+var SynergySchema = BaseEntrySchema.extend({ name: str2, summary: str2, effects: effects.min(1) });
 var EnemyCategorySchema = BaseEntrySchema.extend({
-  name: str,
+  name: str2,
   frequency: external_exports.enum(["common", "rare", "very_rare"]),
-  summary: str
+  summary: str2
 });
 var EnemySchema = BaseEntrySchema.extend({
-  categoryId: str,
-  name: str,
+  categoryId: str2,
+  name: str2,
   stats: external_exports.object({
     base: external_exports.object({ hp: num2.min(1), atk: num2.min(1), def: num2.min(0), spd: num2.min(1), crit: num2.min(0).max(100) }).strict(),
     growth: GrowthSchema
   }).strict(),
-  skills: external_exports.array(str).min(1),
-  eliteSkill: str.optional(),
+  skills: external_exports.array(str2).min(1),
+  eliteSkill: str2.optional(),
   aiProfile,
   rowPreference: rowEnum,
   /** Budget weight of the enemy in the encounter generator: cost = stat power × `power`. */
   power: num2.positive(),
-  portrait: external_exports.object({ ascii: external_exports.array(external_exports.string()).min(1).max(8), image: str.optional() }).strict(),
-  tags: external_exports.array(str)
+  portrait: external_exports.object({ ascii: external_exports.array(external_exports.string()).min(1).max(8), image: str2.optional() }).strict(),
+  tags: external_exports.array(str2)
 });
 var AffixSchema = BaseEntrySchema.extend({
-  name: str,
+  name: str2,
   appliesTo: external_exports.enum(["enemy", "item"]),
   /** Enemy affixes: the word in the default name ("Armored Husk"). */
-  adjective: str.optional(),
+  adjective: str2.optional(),
   /** Item affixes: slots the affix may roll on; absent = any. */
   slots: external_exports.array(external_exports.enum(["weapon", "upper", "lower"])).min(1).optional(),
   drawback: external_exports.boolean().optional(),
@@ -12353,10 +15250,10 @@ var AffixSchema = BaseEntrySchema.extend({
 var RARITY_IDS = ["standard", "refined", "prototype", "corporate", "anomalous"];
 var rarityEnum = external_exports.enum(RARITY_IDS);
 var ItemSchema = BaseEntrySchema.extend({
-  name: str,
+  name: str2,
   slot: external_exports.enum(["weapon", "upper", "lower"]),
   /** A weapon class or an armor weight; checked against the roles' lists. */
-  class: str,
+  class: str2,
   /** The template's minimum rarity. */
   rarity: rarityEnum,
   baseStats: PartialStatsSchema,
@@ -12365,7 +15262,7 @@ var ItemSchema = BaseEntrySchema.extend({
   value: int.min(0)
 });
 var RecipeSchema = BaseEntrySchema.extend({
-  itemId: str,
+  itemId: str2,
   rarity: rarityEnum,
   cost: external_exports.object({ credits: int.min(0), plyx: int.min(0) }).strict()
 });
@@ -12374,7 +15271,7 @@ var LootTableSchema = BaseEntrySchema.extend({
   entries: external_exports.array(external_exports.object({
     weight: num2.positive(),
     kind: external_exports.enum(["item", "credits", "plyx", "supplies"]),
-    itemId: str.optional(),
+    itemId: str2.optional(),
     rarityWeights: external_exports.record(rarityEnum, num2.positive()).optional(),
     amount: external_exports.tuple([int.min(0), int.min(0)]).optional()
   }).strict().superRefine((e, ctx2) => {
@@ -12610,13 +15507,13 @@ function fmtPath(path, index) {
   for (const p of path) s += typeof p === "number" ? `[${p}]` : s === "" ? p : `.${p}`;
   return s;
 }
-var settle = (fetchJson2, path) => fetchJson2(path).then(
+var settle2 = (fetchJson2, path) => fetchJson2(path).then(
   (value) => ({ ok: true, value }),
   (e) => ({ ok: false, message: e instanceof Error ? e.message : String(e) })
 );
 async function loadPacks(packRoots, fetchJson2) {
   const errors = [];
-  const manifestResults = await Promise.all(packRoots.map((root) => settle(fetchJson2, `${root}/manifest.json`)));
+  const manifestResults = await Promise.all(packRoots.map((root) => settle2(fetchJson2, `${root}/manifest.json`)));
   const packs = [];
   manifestResults.forEach((res, i) => {
     const root = packRoots[i];
@@ -12637,7 +15534,7 @@ async function loadPacks(packRoots, fetchJson2) {
   let lorebook = null;
   const lorePack = [...packs].reverse().find((p) => p.manifest.lorebook !== void 0);
   const loreFile = lorePack?.manifest.lorebook;
-  const loreJob = lorePack && loreFile ? settle(fetchJson2, `${lorePack.root}/${loreFile}`) : null;
+  const loreJob = lorePack && loreFile ? settle2(fetchJson2, `${lorePack.root}/${loreFile}`) : null;
   const jobs = packs.flatMap(
     ({ root, manifest }) => Object.entries(manifest.files).map(([registry2, file]) => ({
       pack: manifest.id,
@@ -12646,7 +15543,7 @@ async function loadPacks(packRoots, fetchJson2) {
       file
     }))
   );
-  const fileResults = await Promise.all(jobs.map((j) => settle(fetchJson2, `${j.root}/${j.file}`)));
+  const fileResults = await Promise.all(jobs.map((j) => settle2(fetchJson2, `${j.root}/${j.file}`)));
   if (loreJob && lorePack && loreFile) {
     const res = await loreJob;
     const err = (path, message) => errors.push({ pack: lorePack.manifest.id, file: loreFile, path, message });
@@ -12771,13 +15668,13 @@ import { editGroup, openGroupById } from "../../../../group-chats.js";
 import { newWorldInfoEntryTemplate } from "../../../../world-info.js";
 
 // src/st/chat.ts
-var isObj10 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj13 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function mapChatMessages(chat, from = 0) {
   if (!Array.isArray(chat)) return [];
   const out = [];
   for (let index = Math.max(0, from); index < chat.length; index++) {
     const m = chat[index];
-    if (!isObj10(m) || m.is_system === true) continue;
+    if (!isObj13(m) || m.is_system === true) continue;
     const avatar = typeof m.original_avatar === "string" && m.original_avatar !== "" ? m.original_avatar : void 0;
     out.push({
       index,
@@ -12794,7 +15691,7 @@ function lastCharacterAvatar(chat) {
   if (!Array.isArray(chat)) return void 0;
   for (let i = chat.length - 1; i >= 0; i--) {
     const m = chat[i];
-    if (isObj10(m) && m.is_user !== true && m.is_system !== true) {
+    if (isObj13(m) && m.is_user !== true && m.is_system !== true) {
       return typeof m.original_avatar === "string" && m.original_avatar !== "" ? m.original_avatar : void 0;
     }
   }
@@ -12830,17 +15727,17 @@ function toStLorebook(book, template) {
 }
 
 // src/st/sprites.ts
-var isObj11 = (v) => typeof v === "object" && v !== null;
+var isObj14 = (v) => typeof v === "object" && v !== null;
 function spriteFolder(avatar, name, overrides) {
   if (!Array.isArray(overrides)) return name;
   const key = avatar.replace(/\.[^.]+$/, "");
-  const hit = overrides.find((o) => isObj11(o) && o.name === key && typeof o.path === "string" && o.path !== "");
+  const hit = overrides.find((o) => isObj14(o) && o.name === key && typeof o.path === "string" && o.path !== "");
   return hit ? hit.path : name;
 }
 function pickSprite(list2, label2) {
   if (!Array.isArray(list2)) return null;
   for (const item of list2) {
-    if (isObj11(item) && item.label === label2 && typeof item.path === "string") return item.path;
+    if (isObj14(item) && item.label === label2 && typeof item.path === "string") return item.path;
   }
   return null;
 }
