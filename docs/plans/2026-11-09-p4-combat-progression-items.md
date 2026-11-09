@@ -489,11 +489,11 @@ docs/** (Task 21), tests/** mirror src
 - `renderSkillTree(host, ctx: { unit; registries; state; onUnlock(nodeId) })` — ASCII node graph: three branch columns, tiers top to bottom, `[■]` owned, `[□]` available, `[·]` locked, ultimate below; the reason from `checkUnlock` on hover/title.
 - SQUAD unit view: level, `XP n/next`, skill points; equipment slots (`WEAPON/UPPER/LOWER`, `STANDARD ISSUE` when empty, `UNKNOWN`/`NOT CERTIFIED` flags) with an equip picker; loadout editor (checkboxes up to `loadoutSize`); `[RESPEC — n CR / m PLYX]`; skill tree; breakdown marker.
 
-- [ ] **Step 1: Write the failing tests** — inv: `lists items with rarity and wearer`, `compare shows stat deltas`, `workshop panel only during a session, buttons greyed with the engine reason`, `dismantle disabled for equipped items`; squad: `shows level, xp and points`, `STANDARD ISSUE replaces PENDING`, `tree marks owned/available/locked`, `unlock click calls onUnlock`, `loadout limit enforced in the editor`, `illegal item is flagged NOT CERTIFIED`.
-- [ ] **Step 2: Run** `npx vitest run tests/ui/inv.test.ts tests/ui/squad.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS.
-- [ ] **Step 5: Commit** `feat(ui): INV tab with workshop and SQUAD skill tree, loadout and equipment`.
+- [x] **Step 1: Write the failing tests** — inv: `lists items with rarity and wearer`, `compare shows stat deltas`, `workshop panel only during a session, buttons greyed with the engine reason`, `dismantle disabled for equipped items`; squad: `shows level, xp and points`, `STANDARD ISSUE replaces PENDING`, `tree marks owned/available/locked`, `unlock click calls onUnlock`, `loadout limit enforced in the editor`, `illegal item is flagged NOT CERTIFIED`.
+- [x] **Step 2: Run** `npx vitest run tests/ui/inv.test.ts tests/ui/squad.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS.
+- [x] **Step 5: Commit** `feat(ui): INV tab with workshop and SQUAD skill tree, loadout and equipment`.
 
 ---
 

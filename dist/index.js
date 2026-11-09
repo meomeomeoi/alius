@@ -130,6 +130,7 @@ function createCampaign(opts) {
 
 // src/engine/state/types.ts
 var VALUE_AXES = ["pragmatism", "autonomy", "ingroup", "mercy", "corporate", "sacrifice"];
+var RARITIES = ["standard", "refined", "prototype", "corporate", "anomalous"];
 
 // src/engine/setup.ts
 var SETUP_LIMITS = {
@@ -6657,6 +6658,44 @@ async function generateVignette(input, deps) {
   return r.ok ? sanitizeVignette(r.value) : null;
 }
 
+// src/engine/items.ts
+var rarityIndex = (r) => RARITIES.indexOf(r) + 1;
+function itemStats(reg, inst) {
+  const tpl = reg.items.get(inst.itemId);
+  if (!tpl) return null;
+  const mult = (1 + TUNING.items.rarityStatStep * (rarityIndex(inst.rarity) - 1)) * (1 + TUNING.items.upgradeStep * inst.upgrade);
+  const stats = {};
+  for (const [k, v] of Object.entries(tpl.baseStats)) stats[k] = Math.round(v * mult);
+  const statPct = {};
+  const effects2 = [...tpl.effects ?? []];
+  for (const id of inst.affixes) {
+    const a = reg.affixes.get(id);
+    if (!a) continue;
+    for (const [k, v] of Object.entries(a.statPct ?? {})) {
+      statPct[k] = (statPct[k] ?? 0) + v;
+    }
+    effects2.push(...a.effects ?? []);
+  }
+  return { stats, statPct, effects: effects2 };
+}
+function canEquip(reg, unit, inst) {
+  const tpl = reg.items.get(inst.itemId);
+  if (!tpl) return "UNKNOWN ITEM";
+  const role = reg.roles.get(unit.roleId);
+  if (!role) return "UNKNOWN ROLE";
+  const allowed = tpl.slot === "weapon" ? role.weaponClasses : role.armorWeights;
+  return allowed.includes(tpl.class) ? null : `NOT CERTIFIED: ${String(tpl.class)}`;
+}
+function wornItems(state, reg, unit) {
+  const out = [];
+  for (const slot of ["weapon", "upper", "lower"]) {
+    const uid = unit.equipment[slot];
+    const inst = uid ? state.inventory.find((i) => i.uid === uid) : void 0;
+    if (inst && reg.items.get(inst.itemId)?.slot === slot && canEquip(reg, unit, inst) === null) out.push({ inst, slot });
+  }
+  return out;
+}
+
 // src/engine/combat/types.ts
 var TRIGGERS = [
   "onCombatStart",
@@ -6700,6 +6739,41 @@ var ALWAYS_ON_TYPES = [
   "misfire",
   "override_action"
 ];
+
+// src/engine/combat/stats.ts
+var ZERO = { hp: 0, atk: 0, def: 0, spd: 0, crit: 0 };
+var WEIGHT_ORDER = ["light", "medium", "heavy"];
+function armorSpdPenalty(state, reg, unit) {
+  let heaviest = -1;
+  for (const { inst, slot } of wornItems(state, reg, unit)) {
+    if (slot === "weapon") continue;
+    const w = WEIGHT_ORDER.indexOf(reg.items.get(inst.itemId).class);
+    if (w > heaviest) heaviest = w;
+  }
+  return heaviest < 0 ? 0 : TUNING.combat.armorSpd[WEIGHT_ORDER[heaviest]];
+}
+function unitStats(state, reg, unit) {
+  const role = reg.roles.get(unit.roleId);
+  if (!role) throw new Error(`Unknown role "${unit.roleId}" (unit ${unit.id})`);
+  const growth = role.growth ?? ZERO;
+  const out = { ...ZERO };
+  for (const k of STATS) out[k] = unit.baseStats[k] + Math.floor(growth[k] * (unit.level - 1));
+  const pct = { ...ZERO };
+  for (const { inst } of wornItems(state, reg, unit)) {
+    const it = itemStats(reg, inst);
+    if (!it) continue;
+    for (const k of STATS) {
+      out[k] += it.stats[k] ?? 0;
+      pct[k] += it.statPct[k] ?? 0;
+    }
+  }
+  for (const k of STATS) out[k] = Math.round(out[k] * (1 + pct[k] / 100));
+  out.spd += armorSpdPenalty(state, reg, unit);
+  const stacks = Math.min(unit.injuries.length, TUNING.combat.injuryMaxStacks);
+  const factor = 1 + TUNING.combat.injuryStatPct * stacks / 100;
+  for (const k of STATS) out[k] = Math.max(k === "crit" ? 0 : 1, Math.round(out[k] * factor));
+  return out;
+}
 
 // src/llm/calls/flavor.ts
 var kinds = /* @__PURE__ */ new Map();
@@ -8921,9 +8995,115 @@ function renderSetupScreen(host, ctx2) {
   render();
 }
 
+// src/engine/combat/targeting.ts
+var skillById = (reg, id) => reg.skills.get(id);
+
+// src/engine/combat/skills.ts
+var treeOf = (reg, unit) => reg.roles.get(unit.roleId)?.tree ?? [];
+function knownSkillIds(reg, unit) {
+  const owned = new Set(unit.unlockedNodes);
+  const ids = [...reg.roles.get(unit.roleId)?.starterSkills ?? []];
+  for (const n of treeOf(reg, unit)) {
+    const id = n.grants.skill;
+    if (!id || !owned.has(n.id)) continue;
+    if (skillById(reg, id)?.kind === "active") ids.push(id);
+  }
+  return ids.filter((id) => reg.skills.has(id));
+}
+function loadoutSize(reg, unit) {
+  let extra = 0;
+  for (const d of unit.defects) {
+    const c = reg.defects.get(d.id)?.combat;
+    for (const e of [...c?.upside ?? [], ...c?.downside ?? []]) if (e.type === "loadout_slots") extra += e.amount;
+  }
+  return TUNING.progression.loadoutSize + extra;
+}
+function activeLoadout(reg, unit) {
+  const known = knownSkillIds(reg, unit);
+  const starters = (reg.roles.get(unit.roleId)?.starterSkills ?? []).filter((id) => reg.skills.has(id));
+  const chosen = (unit.loadout ?? []).filter((id, i, a) => known.includes(id) && a.indexOf(id) === i);
+  return (chosen.length > 0 ? chosen : starters).slice(0, loadoutSize(reg, unit));
+}
+
+// src/engine/progression.ts
+var treeOf2 = (reg, unit) => reg.roles.get(unit.roleId)?.tree ?? [];
+var xpToNext = (level) => TUNING.progression.xpToNext.base + TUNING.progression.xpToNext.perLevel * level;
+function prerequisiteProblem(reg, unit, node) {
+  const owned = new Set(unit.unlockedNodes);
+  for (const r of node.requires) if (!owned.has(r)) return "LOCKED: unlock the previous node first";
+  if (node.branch === null) {
+    const tier3 = treeOf2(reg, unit).filter((n) => n.tier === 3 && owned.has(n.id)).length;
+    if (tier3 < 2) return "LOCKED: needs two tier-3 nodes";
+  }
+  return null;
+}
+function nodeState(state, reg, unit, nodeId) {
+  if (unit.unlockedNodes.includes(nodeId)) return "owned";
+  const node = treeOf2(reg, unit).find((n) => n.id === nodeId);
+  return node && prerequisiteProblem(reg, unit, node) === null ? "available" : "locked";
+}
+function checkUnlock(state, reg, unitId, nodeId) {
+  const unit = state.squad.find((u) => u.id === unitId);
+  if (!unit || !isLiving(unit)) return "Unknown or unavailable unit.";
+  const node = treeOf2(reg, unit).find((n) => n.id === nodeId);
+  if (!node) return `Unknown node "${nodeId}".`;
+  if (unit.unlockedNodes.includes(nodeId)) return "Already unlocked.";
+  const problem = prerequisiteProblem(reg, unit, node);
+  if (problem) return problem;
+  if (unit.skillPoints < node.cost) return `NEEDS ${node.cost} SKILL POINTS (has ${unit.skillPoints})`;
+  return null;
+}
+var respecCost = (unit) => ({
+  credits: TUNING.progression.respec.creditsPerLevel * unit.level,
+  plyx: TUNING.progression.respec.plyxPerLevel * unit.level
+});
+var knownSkills = (reg, unit) => knownSkillIds(reg, unit);
+
 // src/ui/squad/bands.ts
 function valueBand(v) {
   return v <= -2 ? "LOW" : v >= 2 ? "HIGH" : "MID";
+}
+
+// src/ui/squad/skillTree.ts
+var MARK = { owned: "[\u25A0]", available: "[\u25A1]", locked: "[\xB7]" };
+function renderSkillTree(host, ctx2) {
+  host.replaceChildren();
+  const { unit, registries: reg, state } = ctx2;
+  const role = reg.roles.get(unit.roleId);
+  const tree = role?.tree ?? [];
+  const branches = role?.branches ?? [];
+  const root = h("div", { class: "alius-tree", "data-unit": unit.id });
+  const label2 = (n) => {
+    if (n.grants.upgrade) return `${skillById(reg, n.grants.upgrade.skillId)?.name ?? n.grants.upgrade.skillId} +`;
+    return skillById(reg, n.grants.skill ?? "")?.name ?? n.grants.skill ?? n.id;
+  };
+  const button = (n) => {
+    const st = nodeState(state, reg, unit, n.id);
+    const reason = st === "owned" ? "UNLOCKED" : checkUnlock(state, reg, unit.id, n.id) ?? "READY";
+    const desc = n.grants.skill ? skillById(reg, n.grants.skill)?.description ?? "" : "Upgrades a skill.";
+    const afford = st === "available" && reason === "READY";
+    return h("button", {
+      type: "button",
+      class: "alius-tree-node",
+      "data-node": n.id,
+      "data-state": st,
+      title: `${reason} \u2014 ${desc} (${n.cost} pt)`,
+      "aria-disabled": st === "owned" || !afford ? "true" : null,
+      onclick: () => {
+        if (afford) ctx2.onUnlock(n.id);
+      }
+    }, `${MARK[st]} ${label2(n)} (${n.cost})`);
+  };
+  for (let b = 0; b < 3; b++) root.append(h("div", { class: "alius-tree-head" }, (branches[b]?.name ?? `Branch ${b + 1}`).toUpperCase()));
+  for (let tier = 1; tier <= 5; tier++) {
+    for (let b = 0; b < 3; b++) {
+      const n = tree.find((x) => x.branch === b && x.tier === tier);
+      root.append(n ? button(n) : h("span", {}));
+    }
+  }
+  const ult = tree.find((n) => n.branch === null);
+  if (ult) root.append(h("div", { class: "alius-tree-ult" }, button(ult)));
+  host.append(root);
 }
 
 // src/ui/squad/squadTab.ts
@@ -9000,11 +9180,102 @@ function relationLine(unit, state, ctx2) {
   }
   return h("p", { class: "alius-relation" }, parts.join(" \xB7 "));
 }
+var SLOTS = ["weapon", "upper", "lower"];
+function effectiveStats(unit, ctx2, state) {
+  try {
+    return unitStats(state, ctx2.registries, unit);
+  } catch {
+    return unit.baseStats;
+  }
+}
+function equipmentBlock(unit, ctx2, state) {
+  const reg = ctx2.registries;
+  const rows = SLOTS.map((slot) => {
+    const uid = unit.equipment[slot];
+    const inst = uid ? state.inventory.find((i) => i.uid === uid) : void 0;
+    const tpl = inst ? reg.items.get(inst.itemId) : void 0;
+    let text;
+    let flag = null;
+    if (!uid) text = "STANDARD ISSUE";
+    else if (!inst || !tpl) {
+      text = "UNKNOWN";
+      flag = "UNKNOWN";
+    } else {
+      text = `${String(tpl.name)} [${inst.rarity}]${inst.upgrade > 0 ? ` +${inst.upgrade}` : ""}`;
+      flag = canEquip(reg, unit, inst);
+    }
+    const options = state.inventory.filter((i) => reg.items.get(i.itemId)?.slot === slot && canEquip(reg, unit, i) === null);
+    const picker = ctx2.onEquip && ctx2.onUnequip ? h(
+      "select",
+      { class: "alius-input", "data-equip": slot, "data-unit": unit.id, "aria-label": `${slot} of ${unit.displayName}` },
+      h("option", { value: "", selected: !uid }, "(standard issue)"),
+      ...options.map((i) => h("option", { value: i.uid, selected: i.uid === uid }, `${String(reg.items.get(i.itemId)?.name)} [${i.rarity}]${i.upgrade > 0 ? ` +${i.upgrade}` : ""}`))
+    ) : null;
+    if (picker) {
+      picker.value = uid ?? "";
+      picker.addEventListener("change", () => {
+        const v = picker.value;
+        if (v) ctx2.onEquip(unit.id, v);
+        else if (uid) ctx2.onUnequip(unit.id, slot);
+      });
+    }
+    return h(
+      "div",
+      { class: "alius-equip-row", "data-slot": slot },
+      h("span", {}, `${slot.toUpperCase()}: ${text}`),
+      flag ? h("span", { class: "alius-equip-flag" }, ` ${flag}`) : null,
+      picker
+    );
+  });
+  return h("div", { class: "alius-equipment" }, ...rows);
+}
+function loadoutBlock(unit, ctx2) {
+  const reg = ctx2.registries;
+  const known = knownSkills(reg, unit);
+  const size = loadoutSize(reg, unit);
+  const chosen = new Set(activeLoadout(reg, unit));
+  const boxes = [];
+  const sync = () => {
+    const count = boxes.filter((b) => b.checked).length;
+    for (const b of boxes) b.disabled = !b.checked && count >= size;
+  };
+  const rows = known.map((id) => {
+    const box = h("input", { type: "checkbox", "data-skill": id, checked: chosen.has(id) });
+    boxes.push(box);
+    box.addEventListener("change", () => {
+      sync();
+      ctx2.onSetLoadout?.(unit.id, boxes.filter((b) => b.checked).map((b) => b.getAttribute("data-skill")));
+    });
+    return h("label", {}, box, ` ${skillById(reg, id)?.name ?? id}`);
+  });
+  sync();
+  return h("div", { class: "alius-loadout", "data-unit": unit.id }, h("p", { class: "alius-dim" }, `LOADOUT ${chosen.size}/${size}`), ...rows);
+}
+function progressionBlock(unit, ctx2, state) {
+  const cost = respecCost(unit);
+  const canPay = state.resources.credits >= cost.credits && state.resources.plyx >= cost.plyx;
+  const tree = h("div", { class: "alius-tree-host" });
+  renderSkillTree(tree, { unit, registries: ctx2.registries, state, onUnlock: (nodeId) => ctx2.onUnlock?.(unit.id, nodeId) });
+  return h(
+    "div",
+    { class: "alius-progression" },
+    h("h4", {}, "SKILLS"),
+    tree,
+    h("h4", {}, "LOADOUT"),
+    loadoutBlock(unit, ctx2),
+    ctx2.onRespec ? h("button", {
+      type: "button",
+      class: "alius-btn",
+      "data-respec": unit.id,
+      disabled: unit.unlockedNodes.length === 0 || !canPay,
+      onclick: () => ctx2.onRespec(unit.id)
+    }, `[RESPEC \u2014 ${cost.credits} CR / ${cost.plyx} PLYX]`) : null
+  );
+}
 function unitBlock(unit, ctx2, state) {
   const reg = ctx2.registries;
   const raw = ctx2.settings().showRawValues;
-  const s = unit.baseStats;
-  const equipped = Object.entries(unit.equipment).filter(([, id]) => !!id);
+  const s = effectiveStats(unit, ctx2, state);
   const sigTpl = reg.signatures.get(unit.signatureSkill.templateId);
   const values = VALUE_AXES.map((axis) => {
     const v = unit.values[axis];
@@ -9020,14 +9291,13 @@ function unitBlock(unit, ctx2, state) {
       h("h3", { class: "alius-unit-name" }, unit.displayName),
       unit.kind === "grunt" ? h("p", { class: "alius-dim" }, `GRUNT ${unit.designation ?? ""}`.trimEnd()) : null,
       h("p", {}, `${nameOf4(reg.roles.get(unit.roleId), unit.roleId)} \xB7 LVL ${unit.level}`),
+      h("p", { class: "alius-xp" }, `XP ${unit.xp}/${xpToNext(unit.level)} \xB7 SKILL POINTS ${unit.skillPoints}`),
+      unit.breakdown ? h("p", { class: "alius-equip-flag" }, `BREAKDOWN: ${String(reg.defects.get(unit.breakdown.defectId)?.breakdown?.name ?? unit.breakdown.defectId)}`) : null,
       relationLine(unit, state, ctx2),
       unit.bio ? h("p", { class: "alius-dim" }, unit.bio) : null,
       h("p", {}, `HP ${s.hp} \xB7 ATK ${s.atk} \xB7 DEF ${s.def} \xB7 SPD ${s.spd} \xB7 CRIT ${s.crit}%`),
-      h(
-        "p",
-        { class: "alius-dim" },
-        equipped.length === 0 ? "STANDARD ISSUE \u2014 PENDING" : equipped.map(([slot, id]) => `${slot.toUpperCase()}: ${id}`).join(" \xB7 ")
-      ),
+      equipmentBlock(unit, ctx2, state),
+      progressionBlock(unit, ctx2, state),
       h("h4", {}, "DEFECTS"),
       ...unit.defects.map((d) => defectBlock(reg, d)),
       h("h4", {}, "VALUES"),

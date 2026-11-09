@@ -91,15 +91,17 @@ describe('SQUAD tab', () => {
     expect(t).toContain('Litany of the Lost');
     expect(t).toContain('She reads names aloud.');
     expect(t).toContain(`Template: Last Stand — ${reg.signatures.get('sig_last_stand')!.mechanic}`);
-    expect(t).toContain('STANDARD ISSUE — PENDING');
+    expect(t).toContain('STANDARD ISSUE');
   });
 
   it('equipment line lists items once a slot is filled', () => {
     const s = campaign();
-    s.squad[0].equipment = { weapon: 'blade_standard' };
+    s.inventory.push({ uid: 'it_1', itemId: 'item_blade', rarity: 'refined', upgrade: 2, affixes: [] });
+    s.squad[0].equipment = { weapon: 'it_1' };
     const { host } = render({ state: s });
-    expect(host.textContent).not.toContain('STANDARD ISSUE — PENDING');
-    expect(host.textContent).toContain('blade_standard');
+    expect(host.textContent).toContain('WEAPON: Standard Blade [refined] +2');
+    expect(host.textContent).toContain('UPPER: STANDARD ISSUE');
+    expect(host.textContent).not.toContain('PENDING');
   });
 
   it('defect shows full text and origin', () => {
@@ -319,3 +321,137 @@ describe('relationship line', () => {
   });
 });
 
+describe('P4 progression views', () => {
+  const view = (state: CampaignState, over: Partial<Parameters<typeof renderSquadTab>[1]> = {}) => {
+    const st = new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' });
+    const settings = { ...getSettings(st), showRawValues: false };
+    const host = h('div');
+    document.body.append(host);
+    const calls = { onUnlock: vi.fn(), onRespec: vi.fn(), onSetLoadout: vi.fn(), onEquip: vi.fn(), onUnequip: vi.fn() };
+    renderSquadTab(host, {
+      st, getState: () => state, getLoad: () => ({ kind: 'ok', state, chatId: 'c' }), registries: reg, settings: () => settings,
+      onNewCampaign: vi.fn(), ...calls, ...over,
+    });
+    return { host, calls };
+  };
+
+  it('shows level, xp and points', () => {
+    const s = campaign();
+    s.squad[0].level = 3;
+    s.squad[0].xp = 42;
+    s.squad[0].skillPoints = 2;
+    const { host } = view(s);
+    expect(host.textContent).toContain('LVL 3');
+    expect(host.textContent).toContain('XP 42/100 · SKILL POINTS 2');
+    expect(host.textContent).toContain('HP 122'); // level growth applies to the shown stats
+  });
+
+  it('STANDARD ISSUE replaces PENDING', () => {
+    const { host } = view(campaign());
+    expect(host.textContent).toContain('WEAPON: STANDARD ISSUE');
+    expect(host.textContent).not.toContain('PENDING');
+  });
+
+  it('tree marks owned/available/locked', () => {
+    const s = campaign();
+    s.squad[0].skillPoints = 5;
+    s.squad[0].unlockedNodes = ['as_b1_t1'];
+    const { host } = view(s);
+    const node = (id: string) => host.querySelector<HTMLElement>(`[data-node="${id}"]`)!;
+    expect(node('as_b1_t1').dataset.state).toBe('owned');
+    expect(node('as_b1_t1').textContent).toContain('[■] Breach Charge');
+    expect(node('as_b1_t2').dataset.state).toBe('available');
+    expect(node('as_b1_t2').textContent).toContain('[□]');
+    expect(node('as_b1_t3').dataset.state).toBe('locked');
+    expect(node('as_b1_t3').textContent).toContain('[·]');
+    expect(node('as_ult').dataset.state).toBe('locked');
+    expect(host.querySelectorAll('.alius-tree-node')).toHaveLength(16);
+    expect(host.querySelector('.alius-tree-head')!.textContent).toBe('BREACH');
+    expect(node('as_b1_t3').title).toContain('previous node');
+  });
+
+  it('unlock click calls onUnlock only for an affordable available node', () => {
+    const s = campaign();
+    s.squad[0].skillPoints = 2;
+    const { host, calls } = view(s);
+    host.querySelector<HTMLElement>('[data-node="as_b1_t1"]')!.click();
+    expect(calls.onUnlock).toHaveBeenCalledWith('unit_rhea', 'as_b1_t1');
+    host.querySelector<HTMLElement>('[data-node="as_b1_t2"]')!.click(); // locked
+    s.squad[0].skillPoints = 0;
+    const poor = view(s);
+    poor.host.querySelector<HTMLElement>('[data-node="as_b1_t1"]')!.click();
+    expect(poor.calls.onUnlock).not.toHaveBeenCalled();
+  });
+
+  it('loadout limit enforced in the editor', () => {
+    const s = campaign();
+    s.squad[0].unlockedNodes = ['as_b1_t1', 'as_b2_t1', 'as_b3_t1'];
+    const { host, calls } = view(s);
+    const boxes = [...host.querySelectorAll<HTMLInputElement>('.alius-loadout input[type="checkbox"]')];
+    expect(boxes.map((b) => b.dataset.skill)).toEqual(['as_strike', 'as_burst', 'as_breach_charge', 'as_finisher', 'as_blood_rush']);
+    expect(boxes.map((b) => b.checked)).toEqual([true, true, false, false, false]);
+    expect(boxes.every((b) => !b.disabled)).toBe(true);
+    boxes[2].checked = true;
+    boxes[2].dispatchEvent(new Event('change'));
+    boxes[3].checked = true;
+    boxes[3].dispatchEvent(new Event('change'));
+    expect(calls.onSetLoadout).toHaveBeenLastCalledWith('unit_rhea', ['as_strike', 'as_burst', 'as_breach_charge', 'as_finisher']);
+    expect(boxes[4].disabled).toBe(true); // four is the limit
+    expect(boxes[0].disabled).toBe(false);
+    expect(host.textContent).toContain('LOADOUT 2/4');
+  });
+
+  it('illegal item is flagged NOT CERTIFIED, an unknown one UNKNOWN', () => {
+    const s = campaign();
+    s.inventory.push({ uid: 'it_1', itemId: 'item_precision_rifle', rarity: 'standard', upgrade: 0, affixes: [] });
+    s.squad[0].equipment = { weapon: 'it_1', upper: 'it_ghost' };
+    const { host } = view(s);
+    expect(host.querySelector('[data-slot="weapon"]')!.textContent).toContain('NOT CERTIFIED: Precision Rifle');
+    expect(host.querySelector('[data-slot="upper"]')!.textContent).toContain('UNKNOWN');
+  });
+
+  it('equip picker lists only legal items and calls the handlers', () => {
+    const s = campaign();
+    s.inventory.push(
+      { uid: 'it_1', itemId: 'item_blade', rarity: 'standard', upgrade: 0, affixes: [] },
+      { uid: 'it_2', itemId: 'item_precision_rifle', rarity: 'standard', upgrade: 0, affixes: [] },
+    );
+    const { host, calls } = view(s);
+    const sel = host.querySelector<HTMLSelectElement>('select[data-equip="weapon"]')!;
+    expect([...sel.options].map((o) => o.value)).toEqual(['', 'it_1']);
+    sel.value = 'it_1';
+    sel.dispatchEvent(new Event('change'));
+    expect(calls.onEquip).toHaveBeenCalledWith('unit_rhea', 'it_1');
+    s.squad[0].equipment = { weapon: 'it_1' };
+    const worn = view(s);
+    const sel2 = worn.host.querySelector<HTMLSelectElement>('select[data-equip="weapon"]')!;
+    sel2.value = '';
+    sel2.dispatchEvent(new Event('change'));
+    expect(worn.calls.onUnequip).toHaveBeenCalledWith('unit_rhea', 'weapon');
+  });
+
+  it('respec button shows the cost and is disabled without nodes or funds', () => {
+    const s = campaign();
+    s.squad[0].level = 4;
+    s.squad[0].unlockedNodes = ['as_b1_t1'];
+    s.resources.credits = 100;
+    s.resources.plyx = 100;
+    const { host, calls } = view(s);
+    const btn = host.querySelector<HTMLButtonElement>('[data-respec]')!;
+    expect(btn.textContent).toBe('[RESPEC — 40 CR / 20 PLYX]');
+    expect(btn.disabled).toBe(false);
+    btn.click();
+    expect(calls.onRespec).toHaveBeenCalledWith('unit_rhea');
+    s.resources.plyx = 5;
+    expect(view(s).host.querySelector<HTMLButtonElement>('[data-respec]')!.disabled).toBe(true);
+    s.squad[0].unlockedNodes = [];
+    s.resources.plyx = 100;
+    expect(view(s).host.querySelector<HTMLButtonElement>('[data-respec]')!.disabled).toBe(true);
+  });
+
+  it('a breakdown is marked', () => {
+    const s = campaign();
+    s.squad[0].breakdown = { defectId: 'threat_saturation', day: 1 };
+    expect(view(s).host.textContent).toContain('BREAKDOWN: Hostile Read');
+  });
+});

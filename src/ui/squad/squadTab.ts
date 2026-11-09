@@ -1,4 +1,9 @@
 import type { Entry, Registries } from '../../content/types';
+import { knownSkills, loadoutSize, respecCost, xpToNext } from '../../engine/progression';
+import { activeLoadout } from '../../engine/combat/skills';
+import { skillById } from '../../engine/combat/targeting';
+import { canEquip } from '../../engine/items';
+import { unitStats } from '../../engine/combat/stats';
 import { affinityBand, attractionBand, trustBand } from '../../engine/relations/bands';
 import { intimacyOf } from '../../engine/relations/gain';
 import type { CampaignState, Unit } from '../../engine/state/types';
@@ -8,6 +13,7 @@ import type { StAdapter } from '../../st/adapter';
 import type { LoadResult } from '../../st/persistence';
 import { h } from '../dom';
 import { valueBand } from './bands';
+import { renderSkillTree } from './skillTree';
 
 export interface SquadTabCtx {
   st: StAdapter;
@@ -17,6 +23,12 @@ export interface SquadTabCtx {
   settings: () => AliusSettings;
   onNewCampaign: () => void;
   onResync?: (unitId: string) => void;
+  /** P4 progression and equipment callbacks (the app dispatches the engine actions). */
+  onUnlock?: (unitId: string, nodeId: string) => void;
+  onRespec?: (unitId: string) => void;
+  onSetLoadout?: (unitId: string, skillIds: string[]) => void;
+  onEquip?: (unitId: string, uid: string) => void;
+  onUnequip?: (unitId: string, slot: 'weapon' | 'upper' | 'lower') => void;
 }
 
 const unknown = (id: string) => `UNKNOWN ${id}`;
@@ -99,11 +111,102 @@ function relationLine(unit: Unit, state: CampaignState, ctx: SquadTabCtx): HTMLE
   return h('p', { class: 'alius-relation' }, parts.join(' · '));
 }
 
+const SLOTS = ['weapon', 'upper', 'lower'] as const;
+
+/** Level, gear and injuries included; the role base when the role is unknown. */
+function effectiveStats(unit: Unit, ctx: SquadTabCtx, state: CampaignState): Unit['baseStats'] {
+  try {
+    return unitStats(state, ctx.registries, unit);
+  } catch {
+    return unit.baseStats;
+  }
+}
+
+/** One equipment line: the item, `STANDARD ISSUE` when empty, `UNKNOWN` / `NOT CERTIFIED` flags; with a picker. */
+function equipmentBlock(unit: Unit, ctx: SquadTabCtx, state: CampaignState): HTMLElement {
+  const reg = ctx.registries;
+  const rows = SLOTS.map((slot) => {
+    const uid = unit.equipment[slot];
+    const inst = uid ? state.inventory.find((i) => i.uid === uid) : undefined;
+    const tpl = inst ? reg.items.get(inst.itemId) : undefined;
+    let text: string;
+    let flag: string | null = null;
+    if (!uid) text = 'STANDARD ISSUE';
+    else if (!inst || !tpl) {
+      text = 'UNKNOWN';
+      flag = 'UNKNOWN';
+    } else {
+      text = `${String(tpl.name)} [${inst.rarity}]${inst.upgrade > 0 ? ` +${inst.upgrade}` : ''}`;
+      flag = canEquip(reg, unit, inst);
+    }
+    const options = state.inventory.filter((i) => reg.items.get(i.itemId)?.slot === slot && canEquip(reg, unit, i) === null);
+    const picker = ctx.onEquip && ctx.onUnequip
+      ? h('select', { class: 'alius-input', 'data-equip': slot, 'data-unit': unit.id, 'aria-label': `${slot} of ${unit.displayName}` },
+        h('option', { value: '', selected: !uid }, '(standard issue)'),
+        ...options.map((i) => h('option', { value: i.uid, selected: i.uid === uid }, `${String(reg.items.get(i.itemId)?.name)} [${i.rarity}]${i.upgrade > 0 ? ` +${i.upgrade}` : ''}`)))
+      : null;
+    if (picker) {
+      (picker as HTMLSelectElement).value = uid ?? '';
+      picker.addEventListener('change', () => {
+        const v = (picker as HTMLSelectElement).value;
+        if (v) ctx.onEquip!(unit.id, v);
+        else if (uid) ctx.onUnequip!(unit.id, slot);
+      });
+    }
+    return h('div', { class: 'alius-equip-row', 'data-slot': slot },
+      h('span', {}, `${slot.toUpperCase()}: ${text}`),
+      flag ? h('span', { class: 'alius-equip-flag' }, ` ${flag}`) : null,
+      picker);
+  });
+  return h('div', { class: 'alius-equipment' }, ...rows);
+}
+
+/** Checkboxes for the known actives; once the loadout is full the unchecked ones are disabled. */
+function loadoutBlock(unit: Unit, ctx: SquadTabCtx): HTMLElement {
+  const reg = ctx.registries;
+  const known = knownSkills(reg, unit);
+  const size = loadoutSize(reg, unit);
+  const chosen = new Set(activeLoadout(reg, unit));
+  const boxes: HTMLInputElement[] = [];
+  const sync = () => {
+    const count = boxes.filter((b) => b.checked).length;
+    for (const b of boxes) b.disabled = !b.checked && count >= size;
+  };
+  const rows = known.map((id) => {
+    const box = h('input', { type: 'checkbox', 'data-skill': id, checked: chosen.has(id) }) as HTMLInputElement;
+    boxes.push(box);
+    box.addEventListener('change', () => {
+      sync();
+      ctx.onSetLoadout?.(unit.id, boxes.filter((b) => b.checked).map((b) => b.getAttribute('data-skill')!));
+    });
+    return h('label', {}, box, ` ${skillById(reg, id)?.name ?? id}`);
+  });
+  sync();
+  return h('div', { class: 'alius-loadout', 'data-unit': unit.id }, h('p', { class: 'alius-dim' }, `LOADOUT ${chosen.size}/${size}`), ...rows);
+}
+
+function progressionBlock(unit: Unit, ctx: SquadTabCtx, state: CampaignState): HTMLElement {
+  const cost = respecCost(unit);
+  const canPay = state.resources.credits >= cost.credits && state.resources.plyx >= cost.plyx;
+  const tree = h('div', { class: 'alius-tree-host' });
+  renderSkillTree(tree, { unit, registries: ctx.registries, state, onUnlock: (nodeId) => ctx.onUnlock?.(unit.id, nodeId) });
+  return h('div', { class: 'alius-progression' },
+    h('h4', {}, 'SKILLS'),
+    tree,
+    h('h4', {}, 'LOADOUT'),
+    loadoutBlock(unit, ctx),
+    ctx.onRespec
+      ? h('button', {
+        type: 'button', class: 'alius-btn', 'data-respec': unit.id, disabled: unit.unlockedNodes.length === 0 || !canPay,
+        onclick: () => ctx.onRespec!(unit.id),
+      }, `[RESPEC — ${cost.credits} CR / ${cost.plyx} PLYX]`)
+      : null);
+}
+
 function unitBlock(unit: Unit, ctx: SquadTabCtx, state: CampaignState): HTMLElement {
   const reg = ctx.registries;
   const raw = ctx.settings().showRawValues;
-  const s = unit.baseStats;
-  const equipped = Object.entries(unit.equipment).filter(([, id]) => !!id);
+  const s = effectiveStats(unit, ctx, state);
   const sigTpl = reg.signatures.get(unit.signatureSkill.templateId);
   const values = VALUE_AXES.map((axis) => {
     const v = unit.values[axis];
@@ -120,14 +223,15 @@ function unitBlock(unit: Unit, ctx: SquadTabCtx, state: CampaignState): HTMLElem
       h('h3', { class: 'alius-unit-name' }, unit.displayName),
       unit.kind === 'grunt' ? h('p', { class: 'alius-dim' }, `GRUNT ${unit.designation ?? ''}`.trimEnd()) : null,
       h('p', {}, `${nameOf(reg.roles.get(unit.roleId), unit.roleId)} · LVL ${unit.level}`),
+      h('p', { class: 'alius-xp' }, `XP ${unit.xp}/${xpToNext(unit.level)} · SKILL POINTS ${unit.skillPoints}`),
+      unit.breakdown
+        ? h('p', { class: 'alius-equip-flag' }, `BREAKDOWN: ${String((reg.defects.get(unit.breakdown.defectId)?.breakdown as { name?: string } | undefined)?.name ?? unit.breakdown.defectId)}`)
+        : null,
       relationLine(unit, state, ctx),
       unit.bio ? h('p', { class: 'alius-dim' }, unit.bio) : null,
       h('p', {}, `HP ${s.hp} · ATK ${s.atk} · DEF ${s.def} · SPD ${s.spd} · CRIT ${s.crit}%`),
-      h(
-        'p',
-        { class: 'alius-dim' },
-        equipped.length === 0 ? 'STANDARD ISSUE — PENDING' : equipped.map(([slot, id]) => `${slot.toUpperCase()}: ${id}`).join(' · '),
-      ),
+      equipmentBlock(unit, ctx, state),
+      progressionBlock(unit, ctx, state),
       h('h4', {}, 'DEFECTS'),
       ...unit.defects.map((d) => defectBlock(reg, d)),
       h('h4', {}, 'VALUES'),
