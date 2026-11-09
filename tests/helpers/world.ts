@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { loadPacks } from '../../src/content/loader';
 import type { Registries } from '../../src/content/types';
 import { dispatch, type Action, type EngineEvent } from '../../src/engine/dispatch';
+import { Rng } from '../../src/engine/rng';
 import { buildCampaign, type UnitSetup } from '../../src/engine/setup';
 import type { CampaignState } from '../../src/engine/state/types';
 
@@ -56,3 +57,19 @@ export function run(state: CampaignState, reg: Registries, action: Action): { st
 
 export const errors = (events: EngineEvent[]) => events.filter((e) => e.type === 'error');
 export const ofType = (events: EngineEvent[], type: string) => events.filter((e) => e.type === type);
+
+/** A minimal open expedition for tests that need `state.expedition` without playing a map. */
+export function stubExpedition(state: CampaignState, over: Partial<NonNullable<CampaignState['expedition']>> = {}): NonNullable<CampaignState['expedition']> {
+  const party = over.party ?? state.roster.activeIds.slice(0, 2);
+  return {
+    id: 'exp_1', missionId: 'm_1', regionId: 'quarantine_d7', day: state.day, slots: 2, party,
+    formation: { front: party.slice(0, 1), back: party.slice(1) }, supplies: 3,
+    map: { layers: [], objectiveId: 'n_obj', nodes: {} }, at: null, path: [], phase: 'travel', loot: [], log: [], hints: [],
+    objectiveDone: false, reveal: 1, ...over,
+  };
+}
+
+/** A fresh Rng context over a draft (what `dispatch` builds). */
+export function ctxOf(draft: CampaignState, registries: Registries) {
+  return { registries, rng: new Rng(draft.rng) };
+}
