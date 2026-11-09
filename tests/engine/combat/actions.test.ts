@@ -84,8 +84,10 @@ describe('combat/start', () => {
   });
 
   it('only state.combat and state.rng change during a combat', () => {
-    const open = run(base, reg, start(base)).state;
-    const { state } = play(open, 3);
+    const brutes = Array.from({ length: 3 }, () => ({ enemyId: 'brute', level: 3, affixes: [] as string[] }));
+    const open = run(base, reg, start(base, brutes)).state;
+    const { state } = play(open, 2);
+    expect(state.combat!.phase).toBe('awaiting');
     const strip = (s: CampaignState) => { const { combat: _c, rng: _r, ...rest } = s; return JSON.stringify(rest); };
     expect(strip(state)).toBe(strip(base));
     expect(JSON.stringify(state.rng)).not.toBe(JSON.stringify(base.rng));
@@ -116,10 +118,10 @@ describe('combat/act', () => {
   it('plays a full combat to a decision, passing the turn to the enemies in between', () => {
     const open = run(base, reg, start(base)).state;
     const { state, events } = play(open);
-    expect(state.combat!.phase).toBe('ended');
-    expect(state.combat!.outcome).toBe('won');
+    expect(state.combat).toBeUndefined(); // a decided combat is written back at once
+    expect(state.lastCombat!.outcome).toBe('won');
     expect(ofType(events, 'combat_ended')[0].outcome).toBe('won');
-    expect(state.combat!.log.length).toBeGreaterThan(3);
+    expect(state.lastCombat!.log.length).toBeGreaterThan(3);
   });
 
   it('continues identically after a JSON round trip', () => {

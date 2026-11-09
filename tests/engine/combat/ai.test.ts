@@ -122,18 +122,19 @@ describe('auto-resolve', () => {
     const a = auto(base);
     const b = auto(structuredClone(base));
     expect(errors(a.events)).toEqual([]);
-    expect(a.state.combat!.phase).toBe('ended');
+    expect(a.state.combat).toBeUndefined();
+    expect(a.state.lastCombat!.outcome).toBe('won');
     expect(JSON.stringify(a.state)).toBe(JSON.stringify(b.state));
     expect(ofType(a.events, 'combat_ended')).toHaveLength(1);
     const other = structuredClone(base);
     other.rng = [1, 2, 3, 4];
-    expect(JSON.stringify(auto(other).state.combat!.log)).not.toBe(JSON.stringify(a.state.combat!.log));
+    expect(JSON.stringify(auto(other).state.lastCombat!.log)).not.toBe(JSON.stringify(a.state.lastCombat!.log));
   });
 
-  it('runs to the end in one dispatch, with CP orders left to the player', () => {
+  it('runs to the end in one dispatch, and AUTO never issues CP orders', () => {
     const r = auto(base);
-    expect(r.state.combat!.outcome).toBe('won');
-    expect(r.state.combat!.ordersThisRound).toEqual([]);
+    expect(r.state.lastCombat!.outcome).toBe('won');
+    expect(r.state.lastCombat!.log.some((l) => l.kind === 'order')).toBe(false);
   });
 
   it('can be switched off while the combat waits, and is refused without a combat or after the end', () => {

@@ -33,6 +33,11 @@ export class Rng {
     return [this.s[0], this.s[1], this.s[2], this.s[3]];
   }
 
+  /** Rewinds the generator to a saved state (easy retry). */
+  restore(state: RngState): void {
+    this.s = [state[0] >>> 0, state[1] >>> 0, state[2] >>> 0, state[3] >>> 0];
+  }
+
   private next(): number {
     let [a, b, c, d] = this.s;
     const t = (((a + b) | 0) + d) | 0;

@@ -389,11 +389,11 @@ docs/** (Task 21), tests/** mirror src
 - Loss path: `checkEnd` → `lost` with `allowRetry` → phase `lost_pending` (nothing written); otherwise finalize immediately. `combat/retry` (only `lost_pending`): `state.rng = combat.start.rng`, rebuild via `combat/start` logic from `combat.start.payload`. `combat/accept` (only `lost_pending`): finalize as `lost`. A won combat cannot be retried.
 - `index.ts` exports for P5/P6: `checkStart`, `canAutoResolve`, `generateEncounter`, `defaultFormation`, `squadPower`, `encounterPower`, `defaultEnemyName`, `releaseBreakdowns`, types `Encounter`, `EnemyTable`, `StartPayload`, `CombatResult`, `RelationHint`.
 
-- [ ] **Step 1: Write the failing tests** — `win grants xp, levels and loot once`; `bankLoot false only records loot`; `downed named unit is injured, never dead`; `grunt dies on loss, seeded 10 % on wins`; `pain_inversion injuries last 50 % longer`; `loss adds stress to every fielded unit`; `stress and breakdown persist into the campaign`; `standalone combat releases breakdowns`; `commander down injures the commander and emits commander_injured`; `relation hints: cover protected, steady on a wounded unit, downed endangered, one per pair at the highest severity`; easy retry (acceptance 4): `retry restores the state right after combat/start exactly`, `retry twice is still exact`, `accept after retry finalizes the second attempt only`, `retry is rejected without allowRetry and after a win`, `the chronicle and memory never change through combat and retries`; `lastCombat.log is capped at 300`; `retreat finalizes as retreated`.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/combat/outcome.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS; whole suite green.
-- [ ] **Step 5: Commit** `feat(engine): combat outcomes, easy retry and relation hints`.
+- [x] **Step 1: Write the failing tests** — `win grants xp, levels and loot once`; `bankLoot false only records loot`; `downed named unit is injured, never dead`; `grunt dies on loss, seeded 10 % on wins`; `pain_inversion injuries last 50 % longer`; `loss adds stress to every fielded unit`; `stress and breakdown persist into the campaign`; `standalone combat releases breakdowns`; `commander down injures the commander and emits commander_injured`; `relation hints: cover protected, steady on a wounded unit, downed endangered, one per pair at the highest severity`; easy retry (acceptance 4): `retry restores the state right after combat/start exactly`, `retry twice is still exact`, `accept after retry finalizes the second attempt only`, `retry is rejected without allowRetry and after a win`, `the chronicle and memory never change through combat and retries`; `lastCombat.log is capped at 300`; `retreat finalizes as retreated`.
+- [x] **Step 2: Run** `npx vitest run tests/engine/combat/outcome.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS; whole suite green.
+- [x] **Step 5: Commit** `feat(engine): combat outcomes, easy retry and relation hints`.
 
 ---
 

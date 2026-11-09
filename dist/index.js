@@ -31,6 +31,10 @@ var Rng = class {
   get state() {
     return [this.s[0], this.s[1], this.s[2], this.s[3]];
   }
+  /** Rewinds the generator to a saved state (easy retry). */
+  restore(state) {
+    this.s = [state[0] >>> 0, state[1] >>> 0, state[2] >>> 0, state[3] >>> 0];
+  }
   next() {
     let [a, b, c, d] = this.s;
     const t = (a + b | 0) + d | 0;
@@ -11753,7 +11757,8 @@ var RESERVED_EVENT_TYPES = [
   "breakdown_released",
   "workshop_opened",
   "unit_respec",
-  "loadout_changed"
+  "loadout_changed",
+  "combat_lost_pending"
 ];
 var slotEnum = external_exports.enum(["morning", "afternoon", "evening", "night"]);
 var socialStat = external_exports.enum(["authority", "insight", "empathy", "cunning"]);

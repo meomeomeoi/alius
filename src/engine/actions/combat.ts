@@ -3,6 +3,7 @@ import type { EngineCtx, EngineEvent } from '../dispatch';
 import { buildCombat, checkStart } from '../combat/build';
 import { fireTrigger, makeCtx, type EffectCtx } from '../combat/effects';
 import { checkOrder, issueOrder } from '../combat/orders';
+import { finalizeCombat } from '../combat/outcome';
 import { completeAction, performAction, runUntilInput, startRound } from '../combat/turn';
 import type { PlannedAction, StartPayload } from '../combat/types';
 import type { CampaignState } from '../state/types';
@@ -11,13 +12,21 @@ import type { CampaignState } from '../state/types';
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 
-/** Events every combat dispatch ends with: the new log lines, then what the combat waits for or how it ended. */
-export function combatEvents(ctx: EffectCtx, start: number): EngineEvent[] {
-  const { cs } = ctx;
-  const out: EngineEvent[] = [{ type: 'combat_log', entries: cs.log.slice(Math.max(0, start)) }, ...ctx.events];
-  if (cs.phase === 'ended') out.push({ type: 'combat_ended', outcome: cs.outcome });
-  else if (cs.awaitingCid) out.push({ type: 'combat_awaiting', cid: cs.awaitingCid });
-  return out;
+/**
+ * Ends every combat dispatch: the new log lines, what the combat waits for, or its end. A decided combat is
+ * written back at once (`combat_ended`), except a loss with easy retry, which waits for RETRY or ACCEPT.
+ */
+function settle(draft: CampaignState, ctx: EngineCtx, ectx: EffectCtx, logStart: number): EngineEvent[] {
+  const { cs } = ectx;
+  const events: EngineEvent[] = [{ type: 'combat_log', entries: cs.log.slice(Math.max(0, logStart)) }, ...ectx.events];
+  if (cs.phase === 'ended') {
+    const outcome = cs.outcome!;
+    if (outcome === 'lost' && cs.allowRetry) {
+      cs.phase = 'lost_pending';
+      events.push({ type: 'combat_lost_pending' });
+    } else events.push(...finalizeCombat(draft, ctx.registries, ctx.rng, outcome));
+  } else if (cs.awaitingCid) events.push({ type: 'combat_awaiting', cid: cs.awaitingCid });
+  return events;
 }
 
 /** Builds the combat from a payload and runs it to the first squad decision. */
@@ -30,8 +39,13 @@ export function startCombat(draft: CampaignState, ctx: EngineCtx, payload: Start
   fireTrigger(ectx, 'onCombatStart', {});
   startRound(ectx);
   runUntilInput(ectx);
-  return [{ type: 'combat_started', id: cs.id }, ...combatEvents(ectx, 0)];
+  return [{ type: 'combat_started', id: cs.id }, ...settle(draft, ctx, ectx, 0)];
 }
+
+const open = (draft: CampaignState, what: string) => {
+  if (!draft.combat) throw new Error(`${what}: no combat is open`);
+  return draft.combat;
+};
 
 registerAction('combat/start', (draft, payload, ctx) => {
   if (!isObj(payload)) throw new Error('combat/start needs a payload');
@@ -39,8 +53,7 @@ registerAction('combat/start', (draft, payload, ctx) => {
 });
 
 registerAction('combat/act', (draft, payload, ctx) => {
-  const cs = draft.combat;
-  if (!cs) throw new Error('combat/act: no combat is open');
+  const cs = open(draft, 'combat/act');
   if (cs.phase !== 'awaiting' || !cs.awaitingCid) throw new Error('combat/act: the combat is not waiting for an action');
   const action = isObj(payload) ? (payload.action as PlannedAction | undefined) : undefined;
   if (!isObj(action) || !['skill', 'guard', 'swap', 'pass'].includes(String(action.kind))) throw new Error('combat/act needs { action }');
@@ -50,24 +63,22 @@ registerAction('combat/act', (draft, payload, ctx) => {
   performAction(ectx, cid, action);
   completeAction(ectx, cid);
   runUntilInput(ectx);
-  return combatEvents(ectx, start);
+  return settle(draft, ctx, ectx, start);
 });
 
 registerAction('combat/auto', (draft, payload, ctx) => {
-  const cs = draft.combat;
-  if (!cs) throw new Error('combat/auto: no combat is open');
+  const cs = open(draft, 'combat/auto');
   if (!isObj(payload) || typeof payload.on !== 'boolean') throw new Error('combat/auto needs { on: boolean }');
   if (cs.phase !== 'awaiting') throw new Error('combat/auto: the combat is already decided');
   const ectx = makeCtx(cs, draft, ctx.registries, ctx.rng);
   const start = cs.log.length;
   cs.auto = payload.on;
   if (payload.on) runUntilInput(ectx);
-  return combatEvents(ectx, start);
+  return settle(draft, ctx, ectx, start);
 });
 
 registerAction('combat/order', (draft, payload, ctx) => {
-  const cs = draft.combat;
-  if (!cs) throw new Error('combat/order: no combat is open');
+  const cs = open(draft, 'combat/order');
   if (!isObj(payload) || typeof payload.orderId !== 'string' || (payload.targetCid !== undefined && typeof payload.targetCid !== 'string')) {
     throw new Error('combat/order needs { orderId, targetCid? }');
   }
@@ -76,5 +87,34 @@ registerAction('combat/order', (draft, payload, ctx) => {
   if (reason) throw new Error(reason);
   const start = cs.log.length;
   issueOrder(ectx, payload.orderId, payload.targetCid);
-  return combatEvents(ectx, start);
+  return settle(draft, ctx, ectx, start);
+});
+
+/** Leaves a running combat: finalized as `retreated` (loss rules without easy retry). */
+registerAction('combat/retreat', (draft, _payload, ctx) => {
+  const cs = open(draft, 'combat/retreat');
+  if (cs.phase !== 'awaiting') throw new Error('combat/retreat: the combat is not running');
+  const ectx = makeCtx(cs, draft, ctx.registries, ctx.rng);
+  const start = cs.log.length;
+  cs.phase = 'ended';
+  cs.outcome = 'retreated';
+  cs.awaitingCid = undefined;
+  return settle(draft, ctx, ectx, start);
+});
+
+/** Easy retry: rewinds the rng and rebuilds the combat from its stored start payload (exactly the state after `combat/start`). */
+registerAction('combat/retry', (draft, _payload, ctx) => {
+  const cs = open(draft, 'combat/retry');
+  if (cs.phase !== 'lost_pending') throw new Error('combat/retry: only a lost combat with easy retry can be retried');
+  const { rng, payload } = cs.start;
+  delete draft.combat;
+  ctx.rng.restore(rng);
+  return startCombat(draft, ctx, payload);
+});
+
+/** Accepts the defeat: the lost combat is written back as it stands. */
+registerAction('combat/accept', (draft, _payload, ctx) => {
+  const cs = open(draft, 'combat/accept');
+  if (cs.phase !== 'lost_pending') throw new Error('combat/accept: there is no lost combat to accept');
+  return finalizeCombat(draft, ctx.registries, ctx.rng, 'lost');
 });
