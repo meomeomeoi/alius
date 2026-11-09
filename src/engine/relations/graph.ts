@@ -68,6 +68,7 @@ export function enterState(draft: CampaignState, unitId: string, stateId: string
   const from = rel.stateId;
   rel.stateId = stateId;
   rel.stateSince = draft.day;
+  if (from === 'secret_affair') delete rel.affair; // a concealed romance ends with its state
   pushHistory(draft, unitId, { day: draft.day, kind: 'state', type: stateId, detail: why });
   return { type: 'relation_state_changed', unitId, from, to: stateId, why };
 }
