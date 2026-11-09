@@ -42,7 +42,7 @@ All other modules depend only on this interface; a `FakeStAdapter` exists for te
 - Pack manifest: `{ id, name, version, priority, files: {registryName: path}, lorebook?: path }`. `lorebook` is a compact lorebook file (P1); `loadPacks` returns the one from the highest-priority pack that declares it (`null` if none or if it is invalid).
 - Registries are typed maps by id; later packs with higher priority override by id; `extends` allowed for partial overrides.
 - Every registry validated with its zod schema at load; errors list file + path.
-- Registry names reserved now (empty in P0): `roles, skills, signatures, statuses, defects, items, affixes, enemies, enemyCategories, regions, nodeTypes, activities, facilities, crimes, corporations, starts, relationshipStates, eventDeltas, dilemmaTemplates, settingsPresets, flags, marks` (`marks` stays empty in v1; see overview §10).
+- Registry names reserved now (empty in P0): `roles, skills, signatures, statuses, defects, items, affixes, enemies, enemyCategories, regions, nodeTypes, activities, facilities, crimes, corporations, starts, relationshipStates, eventDeltas, dilemmaTemplates, settingsPresets, flags, marks` and — added by P3 — `locations` (`marks` stays empty in v1; see overview §10).
 - **Cross-reference validation** after all packs load: every id referenced by any entry (skill → status, enemy → affix, start → flag, dilemma template → flag, …) must exist; errors are reported together, not one by one.
 - Declarative only. No JS from packs.
 - Developer doc `docs/CONTENT.md` (written in this package): schema of each registry with one minimal example entry, so content can be added without reading code.

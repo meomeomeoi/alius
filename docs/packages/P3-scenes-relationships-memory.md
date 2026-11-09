@@ -201,6 +201,14 @@ Decisions taken while implementing, where the spec was silent or the P0–P2 cod
 - **Shell.** `registerScreen(id, render, { refresh })` lets a screen update in place (the scene screen would otherwise be rebuilt after every action); `setTabBadge` shows the COMMS unread count. The night knock is rendered by the `scene` screen when no scene is open and the Night slot holds an entry. App follow-ups (`commander_injured`, `night_started`, `slot_advanced`, `day_started`) run in a microtask after the dispatch that produced them.
 - **Settings added:** `intentMode`, `intentEveryN`, `intentMinConfidence`, `scenePacing`, `typingSpeed`, `romance`, `explicitContent`, `romanticInitiative`, `unitDms`, `chronicleCompaction`, budget `chronicle_compact`.
 
+### Hardening after the independent review
+- **Caps per call:** events 6 (promise-derived events count against that budget), promises 3, proposals 3, stress hints one per unit; a scene stores at most `factsPerScene` facts over all its exchanges, the campaign at most `TUNING.memory.factsMax` (least important, then oldest, go first) and keeps at most `closedPromisesMax` closed promises.
+- **`crime` tag** reveals the commander's crime only on a fact whose subject is the commander (`about: 'commander'`); on any other fact it is just a tag.
+- **Open scene-channel proposals** of the participants expire at `scene/end` and `scene/abort` (`proposals_expired`).
+- **`reconcile`** needs Trust ≥ 30 and Affinity ≥ −29 (what `comrade` keeps), so a receptive answer is never undone in the same call.
+- **Shared prompts leak nothing:** promises carry `knownBy` and are filtered like facts; the crime is named only when every present unit knows it; a secret affair is shown with its `comrade` cover while the partner it is hidden from is present.
+- **Controller:** `end()` waits for the exchange in flight; END, swipe/regenerate and PROPOSE are locked while a send is pending; batched modes read the backlog in chunks of 8 messages (up to 6 chunks); a proposal directive lapses when *its* unit replies, and scene directives are cleared when another chat loads. `app.startScene(opts)` is the entry point for other packages.
+
 ### Not in P3
 Heavy wounds; unit↔unit relations; sprite outfit variants; images for locations; the P6 refusals/desertion events that would enqueue night entries (P6 uses `enqueueNight`); balance of every number above (draft).
 

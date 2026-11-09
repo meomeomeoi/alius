@@ -176,7 +176,7 @@ Later packages build on these; change them only together with the owning spec.
 | `intents/apply { channel: 'scene'\|'dm', intents, unitId? }`, `proposal/commander`, `proposal/answer`, `campaign/set_intimacy`, `memory/compact` | P3 | The only way relationship axes, facts, promises and the chronicle change. |
 | `dm/send`, `dm/receive`, `dm/read`, `dm/roll_initiative`, `night/open`, `night/ignore`, `relations/commander_injured` | P3 | PDA comms and night knocks. |
 | `registerActivityHook(fn)` | P3 | Runs after an activity's effects, before its slot is spent (defect social hooks). |
-| `app.scene`, `app.comms`, `app.restoreSnapshot(snap, expected)` | P3 | Scene controller (`start`, `send`, `propose`, `answer`, `end`, `resume`), DM/night controller, conditional state restore. |
+| `app.startScene(opts)`, `app.scene`, `app.comms`, `app.restoreSnapshot(snap, expected)` | P3 | `startScene` opens a scene and its screen; `scene` is the controller (`send`, `propose`, `answer`, `end`, `resume`); `comms` the DM/night controller; `restoreSnapshot` a conditional state restore. |
 | `cutIn(host, kind, text)`, `shell.setTabBadge(id, n)`, `shell.registerScreen(id, render, { refresh })` | P3 | UI hooks (a one-animation cut-in for major events, tab badges, in-place screen refresh). |
 
 Events emitted by the day-end pipeline: `day_end_step`, `upkeep`, `supply_shortage`, `trust_penalty_event`, `unit_recovered`, `facility_upgraded`, `slot_advanced`, `night_started`, `day_started`, `autosave` (the app flushes the saver on it).
