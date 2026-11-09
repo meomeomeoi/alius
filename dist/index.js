@@ -4775,6 +4775,25 @@ function runDeadlines(draft, ctx2) {
   }
   return events;
 }
+function followRumor(draft, ctx2, rumorId) {
+  const rumor = draft.rumors.find((r) => r.id === rumorId);
+  if (!rumor) throw new Error(`Rumor "${rumorId}" does not exist.`);
+  if (rumor.status !== "new") throw new Error("That rumor was already followed.");
+  const events = [];
+  if (rumor.leadsTo === "mission" && rumor.lead) {
+    const offer = { ...rumor.lead, source: "rumor", scouted: true };
+    const { mission, events: offered2 } = offerMission(draft, ctx2, offer);
+    if (!mission) throw new Error(checkOffer(draft, ctx2.registries, offer) ?? "The mission board is full.");
+    events.push(...offered2);
+  } else if (rumor.leadsTo === "fact") {
+    addFact(draft, { about: [], text: rumor.text, tags: rumor.tags, importance: 2, day: draft.day, knownBy: ["*"] });
+  } else {
+    throw new Error("There is nothing to follow up on that rumor.");
+  }
+  rumor.status = "followed";
+  events.push({ type: "rumor_followed", rumorId, leadsTo: rumor.leadsTo });
+  return events;
+}
 
 // src/engine/actions/world.ts
 var isObj9 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -4788,6 +4807,11 @@ registerAction("mission/dismiss", (draft, payload) => {
   if (m.source !== "side" && m.source !== "rumor") throw new Error("Command and story missions cannot be dismissed.");
   draft.missions.offered.splice(i, 1);
   return [{ type: "mission_expired", missionId: id, reason: "dismissed" }];
+});
+registerAction("rumor/follow", (draft, payload, ctx2) => {
+  const id = isObj9(payload) ? payload.rumorId : void 0;
+  if (typeof id !== "string") throw new Error("rumor/follow needs { rumorId }");
+  return followRumor(draft, ctx2, id);
 });
 registerDayEndStep("mission_deadlines", runDeadlines);
 

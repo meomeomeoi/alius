@@ -1,13 +1,14 @@
 import type { Entry, Registries } from '../../content/types';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { facilityEffect } from '../economy';
+import { addFact, nextId } from '../memory';
+import { socialRank } from '../social';
 import { bankLoot, rollLoot } from '../items';
-import { nextId } from '../memory';
 import type { CampaignState, LootDrop } from '../state/types';
 import { TUNING } from '../tuning';
 import { applyWorldEffects } from './effects';
 import { knownRegions } from './state';
-import type { Mission, MissionRewards, MissionSource, WorldEffect } from './types';
+import type { Mission, MissionRewards, MissionSource, Rumor, WorldEffect } from './types';
 
 const clamp = (n: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, n));
 
@@ -210,5 +211,60 @@ export function runDeadlines(draft: CampaignState, ctx: EngineCtx): EngineEvent[
     events.push({ type: 'mission_failed', missionId: m.id, title: m.title });
     events.push(...applyWorldEffects(draft, ctx, m.failureEffects, { kind: 'mission', id: m.id, label: m.title }));
   }
+  return events;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Rumors
+
+/** Rumors a day may add: the comms level (+1 for an insightful commander), never more than the director's limit. */
+export function rumorCap(state: CampaignState, reg: Registries): number {
+  const bonus = socialRank(state, 'insight') >= TUNING.world.insightRumorRank ? 1 : 0;
+  return Math.min(TUNING.director.maxRumors, facilityEffect(state, reg, 'comms', 'rumorsPerDay') + bonus);
+}
+
+const cutWords = (text: string, max: number): string => text.trim().split(/\s+/).filter(Boolean).slice(0, max).join(' ');
+
+/**
+ * Posts one rumor on the board (plain text, at most 40 words). Returns `null` when today's cap is used up. A
+ * `mission` lead that could not be offered as a rumor mission right now is kept as `leadsTo: 'none'`.
+ */
+export function postRumor(
+  draft: CampaignState, ctx: EngineCtx,
+  r: { text: string; tags: string[]; leadsTo: 'mission' | 'fact' | 'none'; lead?: { templateId: string; regionId: string } },
+): Rumor | null {
+  if (draft.rumors.filter((x) => x.day === draft.day).length >= rumorCap(draft, ctx.registries)) return null;
+  const text = cutWords(r.text, TUNING.director.rumorWords);
+  if (text === '') return null;
+  const rumor: Rumor = { id: nextId(draft, 'r'), day: draft.day, text, tags: [...r.tags], leadsTo: r.leadsTo, status: 'new' };
+  if (r.leadsTo === 'mission') {
+    if (r.lead && checkOffer(draft, ctx.registries, { ...r.lead, source: 'rumor' }) === null) rumor.lead = { ...r.lead };
+    else rumor.leadsTo = 'none';
+  }
+  draft.rumors.push(rumor);
+  if (draft.rumors.length > TUNING.world.rumorsMax) draft.rumors.splice(0, draft.rumors.length - TUNING.world.rumorsMax);
+  return rumor;
+}
+
+export const rumorPostedEvent = (r: Rumor): EngineEvent => ({ type: 'rumor_posted', rumorId: r.id, text: r.text, leadsTo: r.leadsTo });
+
+/** Follows a rumor: a mission lead puts a scouted rumor mission on the board, a fact lead becomes a public fact. */
+export function followRumor(draft: CampaignState, ctx: EngineCtx, rumorId: string): EngineEvent[] {
+  const rumor = draft.rumors.find((r) => r.id === rumorId);
+  if (!rumor) throw new Error(`Rumor "${rumorId}" does not exist.`);
+  if (rumor.status !== 'new') throw new Error('That rumor was already followed.');
+  const events: EngineEvent[] = [];
+  if (rumor.leadsTo === 'mission' && rumor.lead) {
+    const offer: MissionOffer = { ...rumor.lead, source: 'rumor', scouted: true };
+    const { mission, events: offered } = offerMission(draft, ctx, offer);
+    if (!mission) throw new Error(checkOffer(draft, ctx.registries, offer) ?? 'The mission board is full.');
+    events.push(...offered);
+  } else if (rumor.leadsTo === 'fact') {
+    addFact(draft, { about: [], text: rumor.text, tags: rumor.tags, importance: 2, day: draft.day, knownBy: ['*'] });
+  } else {
+    throw new Error('There is nothing to follow up on that rumor.');
+  }
+  rumor.status = 'followed';
+  events.push({ type: 'rumor_followed', rumorId, leadsTo: rumor.leadsTo });
   return events;
 }

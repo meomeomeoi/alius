@@ -234,11 +234,11 @@ docs/** (Task 21), tests/** mirror src
 - `postRumor(draft, ctx, r: { text: string; tags: string[]; leadsTo: 'mission'|'fact'|'none'; lead?: { templateId: string; regionId: string } }): Rumor | null` — plain text cut to 40 words; at most `rumorCap` rumors with `day === draft.day`; a `mission` lead must pass `checkOffer` with source `rumor` now, otherwise it is stored as `leadsTo: 'none'`; keeps the newest `rumorsMax`; emits `rumor_posted`.
 - Action `rumor/follow { rumorId }` — status `new` only: `mission` → `offerMission({ ...lead, source: 'rumor', scouted: true })` (a refusal by the board keeps the rumor `new` and throws the reason); `fact` → `addFact({ about: [], text, tags, importance: 2, knownBy: ['*'] })`; `none` → refused. Emits `rumor_followed`.
 
-- [ ] **Step 1: Write the failing tests** — `cap follows comms level and insight rank and never exceeds 3`; `a rumor over the daily cap is not stored`; `a 60-word text is cut to 40 words`; `following a mission rumor offers a scouted rumor-source mission`; `following with a full board keeps the rumor and reports why`; `following a fact rumor adds one public fact`; `a rumor cannot be followed twice`; `rumors keep the newest 20`.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/world/rumors.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS.
-- [ ] **Step 5: Commit** `feat(engine): rumor mill with mission and fact leads`.
+- [x] **Step 1: Write the failing tests** — `cap follows comms level and insight rank and never exceeds 3`; `a rumor over the daily cap is not stored`; `a 60-word text is cut to 40 words`; `following a mission rumor offers a scouted rumor-source mission`; `following with a full board keeps the rumor and reports why`; `following a fact rumor adds one public fact`; `a rumor cannot be followed twice`; `rumors keep the newest 20`.
+- [x] **Step 2: Run** `npx vitest run tests/engine/world/rumors.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS.
+- [x] **Step 5: Commit** `feat(engine): rumor mill with mission and fact leads`.
 
 ---
 
