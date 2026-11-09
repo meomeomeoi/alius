@@ -350,11 +350,11 @@ docs/** (Task 21), tests/** mirror src
 **Interfaces:**
 - Produces: `type EnemyTable = { categories: Record<string, number>; archetypes?: string[] }` (same shape P5 regions use); `generateEncounter(state, reg, rng, input: { table: EnemyTable; danger: 1|2|3|4|5; squadPower: number; exposesCommander?: boolean; lootTableId?: string }): Encounter` — budget = `squadPower × [0.5, 0.7, 0.9, 1.1, 1.3][danger − 1]`; category weight × frequency factor `{ common: 1, rare: 0.3, very_rare: 0.08 }`; archetype uniform within the category (restricted to `archetypes` when given); level = `max(1, round(average fielded level) + danger − 2)`; affix chance `0.1 × danger` per enemy, at most `min(2, danger − 1)` affixes, `elite` only from danger 3; keep adding while the next enemy fits the budget, at most 6, always at least 1; `defaultEnemyName(reg, enemyId, affixes)` ("Armored Husk"; elite as "Elite").
 
-- [ ] **Step 1: Write the failing tests** — `same rng state, same encounter`; `encounter power stays within budget except the guaranteed first enemy`; `never more than 6 enemies`; `category frequencies follow lore over 3000 encounters (rare ≈ 0.3 × common, ±20 %)`; `archetype list restricts picks`; `no elite below danger 3`; `default name joins affix adjectives and archetype name`; `unknown category in the table is ignored, an all-unknown table throws`.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/combat/encounter.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS.
-- [ ] **Step 5: Commit** `feat(engine): budgeted encounter generator with affixes`.
+- [x] **Step 1: Write the failing tests** — `same rng state, same encounter`; `encounter power stays within budget except the guaranteed first enemy`; `never more than 6 enemies`; `category frequencies follow lore over 3000 encounters (rare ≈ 0.3 × common, ±20 %)`; `archetype list restricts picks`; `no elite below danger 3`; `default name joins affix adjectives and archetype name`; `unknown category in the table is ignored, an all-unknown table throws`.
+- [x] **Step 2: Run** `npx vitest run tests/engine/combat/encounter.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS.
+- [x] **Step 5: Commit** `feat(engine): budgeted encounter generator with affixes`.
 
 ---
 
