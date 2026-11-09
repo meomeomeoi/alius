@@ -53,6 +53,30 @@ describe('content schemas', () => {
     expect(r.success && r.data).toEqual(fx);
   });
 
+  it('spine beat accepts conditions, completion and onComplete and still parses without them', () => {
+    const full = {
+      ...beat(1),
+      conditions: { minDay: 4, flagsAll: ['a'], flagsNone: ['b'], clearanceMin: 1, threads: [{ id: 't', status: 'resolved' }] },
+      completion: { kind: 'mission', templateId: 'tpl_x', regionId: 'r' },
+      onComplete: [{ type: 'clearance', tier: 1 }],
+    };
+    const spine = (b: unknown) => ({ ...start(5), spine: [b, beat(2), beat(3), beat(4), beat(5)] });
+    expect(StartSchema.safeParse(spine(full)).success).toBe(true);
+    expect(StartSchema.safeParse(spine(beat(1))).success).toBe(true);
+    expect(StartSchema.safeParse(spine({ ...beat(1), completion: { kind: 'auto' } })).success).toBe(true);
+    expect(StartSchema.safeParse(spine({ ...beat(1), completion: { kind: 'flag', anyOf: ['f'] } })).success).toBe(true);
+    expect(StartSchema.safeParse(spine({ ...beat(1), completion: { kind: 'flag', anyOf: [] } })).success).toBe(false);
+    expect(StartSchema.safeParse(spine({ ...beat(1), completion: { kind: 'mission', templateId: 'x' } })).success).toBe(false);
+    expect(StartSchema.safeParse(spine({ ...beat(1), conditions: { minDay: 0 } })).success).toBe(false);
+    expect(StartSchema.safeParse(spine({ ...beat(1), onComplete: [{ type: 'bogus' }] })).success).toBe(false);
+  });
+
+  it('defect may declare an expedition reveal of exactly one step', () => {
+    expect(DefectSchema.safeParse({ ...defect, expedition: { reveal: 1 } }).success).toBe(true);
+    expect(DefectSchema.safeParse({ ...defect, expedition: { reveal: 2 } }).success).toBe(false);
+    expect(DefectSchema.safeParse({ ...defect, expedition: { reveal: 1, extra: 1 } }).success).toBe(false);
+  });
+
   it('start spine needs 5 to 8 beats', () => {
     expect(StartSchema.safeParse(start(4)).success).toBe(false);
     expect(StartSchema.safeParse(start(5)).success).toBe(true);

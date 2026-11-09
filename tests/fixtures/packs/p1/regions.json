@@ -1,0 +1,9 @@
+[
+  {
+    "id": "region_not_yet", "name": "Fixture Region", "summary": "Placeholder region for fixture references.",
+    "environmentPrompt": "A bare test site.", "danger": 1, "travelSlots": 2,
+    "enemyTable": { "categories": {} }, "modifiers": [],
+    "mapHotspot": [[0, 0], [10, 0], [10, 10]], "mapCell": { "x": 0, "y": 0 }, "layers": [3, 3],
+    "nodeWeights": {}, "pointsOfInterest": [], "rumors": []
+  }
+]

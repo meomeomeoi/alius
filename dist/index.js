@@ -9021,7 +9021,11 @@ var REGISTRY_NAMES = [
   "orders",
   "synergies",
   "recipes",
-  "lootTables"
+  "lootTables",
+  // P5
+  "missionTemplates",
+  "clocks",
+  "rewardTiers"
 ];
 var PackManifestSchema = external_exports.object({
   id: external_exports.string().min(1),
@@ -14657,6 +14661,76 @@ var EffectSchema = external_exports.object({ type: str2 }).passthrough().superRe
   for (const issue of parsed.error.issues) ctx2.addIssue({ ...issue });
 });
 var textWithEffects = external_exports.object({ text: str2, effects: external_exports.array(EffectSchema) });
+var worldInt = external_exports.number().int();
+var WorldEffectSchema = external_exports.discriminatedUnion("type", [
+  external_exports.object({ type: external_exports.literal("resource"), resource: external_exports.enum(["credits", "supplies", "plyx"]), amount: worldInt }).strict(),
+  external_exports.object({ type: external_exports.literal("carried_supplies"), amount: worldInt }).strict(),
+  external_exports.object({ type: external_exports.literal("faction"), factionId: str2, amount: worldInt.min(-30).max(30) }).strict(),
+  external_exports.object({ type: external_exports.literal("clock"), clockId: str2, by: worldInt.min(-2).max(2).refine((n) => n !== 0, "by must not be 0") }).strict(),
+  external_exports.object({ type: external_exports.literal("flag"), flagId: str2 }).strict(),
+  external_exports.object({ type: external_exports.literal("clearance"), tier: external_exports.union([external_exports.literal(1), external_exports.literal(2), external_exports.literal(3)]) }).strict(),
+  external_exports.object({ type: external_exports.literal("party_stress"), amount: worldInt }).strict(),
+  external_exports.object({ type: external_exports.literal("party_hp"), pct: worldInt.min(-90).max(100) }).strict(),
+  external_exports.object({ type: external_exports.literal("loot"), tableId: str2, rolls: worldInt.min(1).max(3).optional() }).strict(),
+  external_exports.object({ type: external_exports.literal("leash"), amount: external_exports.union([external_exports.literal(-1), external_exports.literal(1)]) }).strict(),
+  external_exports.object({ type: external_exports.literal("thread"), threadId: str2, status: external_exports.enum(["open", "resolved", "failed", "dormant"]) }).strict(),
+  external_exports.object({
+    type: external_exports.literal("unit_event"),
+    event: external_exports.enum(EVENT_TYPES),
+    severity: external_exports.enum(["minor", "moderate", "major", "extreme"]),
+    targets: external_exports.enum(["party", "named"]),
+    valueAxes: external_exports.array(external_exports.object({ axis: external_exports.enum(VALUE_AXES), direction: external_exports.union([external_exports.literal(-1), external_exports.literal(1)]) }).strict()).optional()
+  }).strict(),
+  external_exports.object({ type: external_exports.literal("incoming_unit") }).strict(),
+  external_exports.object({ type: external_exports.literal("fact"), text: str2.max(200), tags: external_exports.array(str2), importance: worldInt.min(1).max(5) }).strict(),
+  external_exports.object({
+    type: external_exports.literal("offer_mission"),
+    templateId: str2,
+    regionId: str2.optional(),
+    source: external_exports.enum(["command", "story", "rumor", "side"])
+  }).strict()
+]);
+var COST_EVENTS = ["sided_against", "decision_violated", "endangered", "coerced", "dismissed"];
+function isCostEffect(e) {
+  switch (e.type) {
+    case "resource":
+    case "carried_supplies":
+    case "faction":
+      return e.amount < 0;
+    case "party_hp":
+      return e.pct < 0;
+    case "leash":
+      return e.amount < 0;
+    case "party_stress":
+      return e.amount > 0;
+    case "clock":
+      return e.by > 0;
+    case "unit_event":
+      return COST_EVENTS.includes(e.event);
+    default:
+      return false;
+  }
+}
+var SpineBeatSchema = external_exports.object({
+  id: str2,
+  title: str2,
+  goal: str2,
+  /** P5: when the director may propose the beat. */
+  conditions: external_exports.object({
+    minDay: worldInt.min(1).optional(),
+    flagsAll: external_exports.array(str2).optional(),
+    flagsNone: external_exports.array(str2).optional(),
+    clearanceMin: worldInt.min(1).max(3).optional(),
+    threads: external_exports.array(external_exports.object({ id: str2, status: external_exports.enum(["open", "resolved", "failed", "dormant"]) }).strict()).optional()
+  }).strict().optional(),
+  /** When the beat counts as done (default `auto`: as soon as it is proposed). */
+  completion: external_exports.discriminatedUnion("kind", [
+    external_exports.object({ kind: external_exports.literal("auto") }).strict(),
+    external_exports.object({ kind: external_exports.literal("mission"), templateId: str2, regionId: str2 }).strict(),
+    external_exports.object({ kind: external_exports.literal("flag"), anyOf: external_exports.array(str2).min(1) }).strict()
+  ]).optional(),
+  onComplete: external_exports.array(WorldEffectSchema).optional()
+});
 var CorporationSchema = BaseEntrySchema.extend({
   name: str2,
   summary: str2,
@@ -14664,7 +14738,6 @@ var CorporationSchema = BaseEntrySchema.extend({
   oversightStyle: str2,
   playable: external_exports.boolean(),
   startingBonus: textWithEffects,
-  // No reference check: `regions` stays empty until P5, which adds it.
   startingRegionId: str2.optional()
 });
 var StartSchema = BaseEntrySchema.extend({
@@ -14672,7 +14745,7 @@ var StartSchema = BaseEntrySchema.extend({
   corporationId: str2,
   summary: str2,
   situation: str2,
-  spine: external_exports.array(external_exports.object({ id: str2, title: str2, goal: str2 })).min(5).max(8),
+  spine: external_exports.array(SpineBeatSchema).min(5).max(8),
   crimeKnownByDefault: external_exports.boolean().optional(),
   /** Base amounts the campaign begins with; corporation and crime effects are added on top (P2). */
   startingResources: external_exports.object({ credits: int.min(0).optional(), supplies: int.min(0).optional(), plyx: int.min(0).optional() }).strict().optional()
@@ -14982,7 +15055,37 @@ var RESERVED_EVENT_TYPES = [
   "item_rerolled",
   "item_dismantled",
   "enemy_named",
-  "difficulty_changed"
+  "difficulty_changed",
+  // P5
+  "world_seeded",
+  "clock_advanced",
+  "clock_filled",
+  "faction_changed",
+  "flag_set",
+  "clearance_raised",
+  "thread_changed",
+  "mission_offered",
+  "mission_completed",
+  "mission_failed",
+  "mission_expired",
+  "rumor_posted",
+  "rumor_followed",
+  "beat_proposed",
+  "beat_completed",
+  "incoming_unit_offered",
+  "unit_joined",
+  "director_requested",
+  "director_applied",
+  "director_rejected",
+  "expedition_started",
+  "expedition_moved",
+  "expedition_node",
+  "expedition_combat",
+  "expedition_event",
+  "expedition_choice",
+  "expedition_treated",
+  "expedition_ended",
+  "expedition_recap_set"
 ];
 var slotEnum = external_exports.enum(["morning", "afternoon", "evening", "night"]);
 var socialStat = external_exports.enum(["authority", "insight", "empathy", "cunning"]);
@@ -15191,6 +15294,8 @@ var DefectSchema = BaseEntrySchema.extend({
   }).strict()).optional(),
   dmChanceBonus: external_exports.number().min(0).max(1).optional(),
   nightEvents: external_exports.array(NightSpecSchema).optional(),
+  /** P5: one more node revealed ahead on the expedition map (Echo Bleed). */
+  expedition: external_exports.object({ reveal: external_exports.literal(1) }).strict().optional(),
   /** P4: combat data. Downside effects are amplified while the unit is strained, so each must say so. */
   combat: external_exports.object({
     upside: external_exports.array(CombatEffectSchema),
@@ -15300,6 +15405,123 @@ Object.assign(registrySchemas, {
   items: ItemSchema,
   recipes: RecipeSchema,
   lootTables: LootTableSchema
+});
+var idKeyed = external_exports.record(str2, external_exports.number().positive());
+var wordCount = (t) => t.trim().split(/\s+/).filter(Boolean).length;
+var hotspotPoint = external_exports.tuple([num2.min(0).max(100), num2.min(0).max(100)]);
+var RegionSchema = BaseEntrySchema.extend({
+  name: str2,
+  summary: str2,
+  environmentPrompt: str2,
+  danger: int.min(1).max(5),
+  travelSlots: external_exports.union([external_exports.literal(2), external_exports.literal(3)]),
+  enemyTable: external_exports.object({ categories: idKeyed, archetypes: external_exports.array(str2).optional() }).strict(),
+  modifiers: external_exports.array(str2),
+  mapHotspot: external_exports.array(hotspotPoint).min(3),
+  mapCell: external_exports.object({ x: int.min(0).max(2), y: int.min(0).max(2) }).strict(),
+  layers: external_exports.tuple([int.min(3).max(5), int.min(3).max(5)]).refine(([a, b]) => a <= b, "layers minimum must not exceed maximum"),
+  nodeWeights: idKeyed,
+  pointsOfInterest: external_exports.array(external_exports.object({ id: str2, name: str2, summary: str2, templateId: str2 }).strict()),
+  rumors: external_exports.array(str2.refine((t) => wordCount(t) <= 40, "a rumor line is at most 40 words")),
+  knownFromStart: external_exports.boolean().optional(),
+  unlockedBy: external_exports.object({ flag: str2.optional(), clearanceMin: int.min(1).max(3).optional() }).strict().optional()
+});
+var NodeTypeSchema = BaseEntrySchema.extend({
+  name: str2,
+  glyph: external_exports.string().refine((g) => [...g].length === 1, "glyph must be one character"),
+  kind: external_exports.enum(["combat", "event", "cache", "rest", "objective", "unknown"]),
+  combat: external_exports.object({ dangerDelta: int.min(-1).max(2), lootTableId: str2, exposesCommander: external_exports.boolean().optional() }).strict().optional(),
+  rest: external_exports.object({ suppliesPerUnit: int.min(0), hpPct: num2, stress: num2 }).strict().optional(),
+  resolvesTo: idKeyed.optional(),
+  firstLayer: external_exports.boolean().optional(),
+  maxPerMap: int.min(1).optional(),
+  minDanger: int.min(1).max(5).optional()
+}).superRefine((n, ctx2) => {
+  const need = (field2, kind) => {
+    if (n.kind === kind && n[field2] === void 0) ctx2.addIssue({ code: "custom", path: [field2], message: `kind "${kind}" needs a ${field2} block` });
+    if (n.kind !== kind && n[field2] !== void 0) ctx2.addIssue({ code: "custom", path: [field2], message: `${field2} is only for kind "${kind}"` });
+  };
+  need("combat", "combat");
+  need("rest", "rest");
+  need("resolvesTo", "unknown");
+});
+var ClockSchema = BaseEntrySchema.extend({
+  label: str2,
+  segments: int.min(4).max(12),
+  startFilled: int.min(0),
+  regionId: str2.optional(),
+  visibleToPlayer: external_exports.boolean(),
+  onFill: external_exports.array(WorldEffectSchema),
+  repeat: external_exports.boolean().optional()
+}).superRefine((c, ctx2) => {
+  if (c.startFilled >= c.segments) ctx2.addIssue({ code: "custom", path: ["startFilled"], message: "startFilled must be below segments" });
+});
+var orderedRange = external_exports.tuple([int.min(0), int.min(0)]).refine(([a, b]) => a <= b, "range minimum must not exceed maximum");
+var RewardTierSchema = BaseEntrySchema.extend({
+  rank: int.min(1).max(5),
+  credits: orderedRange,
+  plyx: orderedRange,
+  lootTableId: str2.optional(),
+  lootRolls: int.min(1).max(3).optional(),
+  faction: int.min(0).max(15).optional()
+});
+var MissionTemplateSchema = BaseEntrySchema.extend({
+  name: str2,
+  sources: external_exports.array(external_exports.enum(["command", "story", "rumor", "side"])).min(1),
+  regions: external_exports.array(str2).optional(),
+  objectives: external_exports.array(external_exports.object({ node: str2, condition: external_exports.enum(["win", "reach"]) }).strict()).min(1),
+  dangerRange: external_exports.tuple([int.min(1).max(5), int.min(1).max(5)]).refine(([a, b]) => a <= b, "dangerRange minimum must not exceed maximum"),
+  tiers: external_exports.array(str2).min(1),
+  factionId: str2.optional(),
+  clearance: external_exports.union([external_exports.literal(1), external_exports.literal(2), external_exports.literal(3)]).optional(),
+  objectiveEventId: str2.optional(),
+  failureEffects: external_exports.array(WorldEffectSchema),
+  onSuccess: external_exports.array(WorldEffectSchema).optional(),
+  titles: external_exports.array(str2.max(60)).min(1),
+  briefs: external_exports.array(str2.max(300)).min(1)
+});
+var EventOptionSchema = external_exports.object({
+  label: str2.max(80),
+  requires: external_exports.object({ stat: socialStat, rank: int.min(1).max(5) }).strict().optional(),
+  effects: external_exports.array(WorldEffectSchema)
+}).passthrough();
+var DilemmaTemplateSchema = BaseEntrySchema.extend({
+  scale: external_exports.enum(["minor", "major", "defining"]),
+  contexts: external_exports.array(str2).min(1),
+  regions: external_exports.array(str2).optional(),
+  flavor: external_exports.boolean().optional(),
+  fixed: external_exports.object({
+    title: str2,
+    setup: str2.max(600),
+    options: external_exports.array(EventOptionSchema).min(1).max(4)
+  }).passthrough().optional()
+}).superRefine((d, ctx2) => {
+  if (d.scale === "minor" && d.contexts.includes("expedition_event") && d.fixed === void 0) {
+    ctx2.addIssue({ code: "custom", path: ["fixed"], message: "a minor expedition event needs a fixed block" });
+  }
+  if (d.fixed === void 0) return;
+  const options2 = d.fixed.options;
+  if (d.flavor === true) {
+    if (options2.length !== 1) ctx2.addIssue({ code: "custom", path: ["fixed", "options"], message: "a flavor event has exactly one option" });
+    options2.forEach((o, i) => {
+      if (o.effects.length > 0) ctx2.addIssue({ code: "custom", path: ["fixed", "options", i, "effects"], message: "a flavor option has no effects" });
+    });
+    return;
+  }
+  if (options2.length < 2) ctx2.addIssue({ code: "custom", path: ["fixed", "options"], message: "an event needs 2 to 4 options" });
+  options2.forEach((o, i) => {
+    if (!o.effects.some(isCostEffect)) {
+      ctx2.addIssue({ code: "custom", path: ["fixed", "options", i, "effects"], message: "every option must carry at least one cost effect" });
+    }
+  });
+});
+Object.assign(registrySchemas, {
+  regions: RegionSchema,
+  nodeTypes: NodeTypeSchema,
+  clocks: ClockSchema,
+  rewardTiers: RewardTierSchema,
+  missionTemplates: MissionTemplateSchema,
+  dilemmaTemplates: DilemmaTemplateSchema
 });
 
 // src/content/refs.ts
@@ -15480,6 +15702,111 @@ registerRefs("lootTables", (entry) => {
 registerRefs("relationshipStates", (entry) => {
   const list2 = entry.unlocks?.synergies;
   return (list2 ?? []).map((id, i) => ({ registry: "synergies", id: String(id), path: `unlocks.synergies[${i}]` }));
+});
+function worldEffectRefs(list2, path, out) {
+  if (!Array.isArray(list2)) return;
+  list2.forEach((fx2, i) => {
+    if (!fx2 || typeof fx2 !== "object") return;
+    const at = `${path}[${i}]`;
+    if (fx2.type === "faction" && typeof fx2.factionId === "string") out.push({ registry: "corporations", id: fx2.factionId, path: `${at}.factionId` });
+    if (fx2.type === "clock" && typeof fx2.clockId === "string") out.push({ registry: "clocks", id: fx2.clockId, path: `${at}.clockId` });
+    if (fx2.type === "flag" && typeof fx2.flagId === "string") {
+      const flagId = fx2.flagId;
+      out.push({
+        registry: "flags",
+        id: flagId,
+        path: `${at}.flagId`,
+        check: (t) => t.scope === "world" || t.scope === "commander" ? null : `flag "${flagId}" has scope "${String(t.scope)}"; a world effect needs scope world or commander`
+      });
+    }
+    if (fx2.type === "loot" && typeof fx2.tableId === "string") out.push({ registry: "lootTables", id: fx2.tableId, path: `${at}.tableId` });
+    if (fx2.type === "offer_mission") {
+      if (typeof fx2.templateId === "string") out.push({ registry: "missionTemplates", id: fx2.templateId, path: `${at}.templateId` });
+      if (typeof fx2.regionId === "string") out.push({ registry: "regions", id: fx2.regionId, path: `${at}.regionId` });
+    }
+  });
+}
+var hasSource = (source) => (t) => Array.isArray(t.sources) && t.sources.includes(source) ? null : `mission template "${t.id}" does not allow source "${source}"`;
+registerRefs("clocks", (entry) => {
+  const out = [];
+  if (typeof entry.regionId === "string") out.push({ registry: "regions", id: entry.regionId, path: "regionId" });
+  worldEffectRefs(entry.onFill, "onFill", out);
+  return out;
+});
+registerRefs("regions", (entry) => {
+  const out = [];
+  const table = entry.enemyTable;
+  for (const id of Object.keys(table?.categories ?? {})) out.push({ registry: "enemyCategories", id, path: `enemyTable.categories.${id}` });
+  table?.archetypes?.forEach((id, i) => out.push({ registry: "enemies", id: String(id), path: `enemyTable.archetypes[${i}]` }));
+  for (const id of Object.keys(entry.nodeWeights ?? {})) {
+    out.push({ registry: "nodeTypes", id, path: `nodeWeights.${id}` });
+  }
+  entry.pointsOfInterest?.forEach((p, i) => {
+    if (typeof p.templateId === "string") out.push({ registry: "missionTemplates", id: p.templateId, path: `pointsOfInterest[${i}].templateId`, check: hasSource("side") });
+  });
+  const flag = entry.unlockedBy?.flag;
+  if (typeof flag === "string") out.push({ registry: "flags", id: flag, path: "unlockedBy.flag" });
+  return out;
+});
+registerRefs("nodeTypes", (entry) => {
+  const out = [];
+  const lootTableId = entry.combat?.lootTableId;
+  if (typeof lootTableId === "string") out.push({ registry: "lootTables", id: lootTableId, path: "combat.lootTableId" });
+  for (const id of Object.keys(entry.resolvesTo ?? {})) {
+    out.push({
+      registry: "nodeTypes",
+      id,
+      path: `resolvesTo.${id}`,
+      check: (t) => t.kind === "unknown" || t.kind === "objective" ? `node type "${id}" has kind "${String(t.kind)}" and cannot be a resolvesTo target` : null
+    });
+  }
+  return out;
+});
+var OBJECTIVE_KINDS = ["combat", "event", "cache"];
+registerRefs("missionTemplates", (entry) => {
+  const out = [];
+  entry.regions?.forEach((id, i) => out.push({ registry: "regions", id: String(id), path: `regions[${i}]` }));
+  entry.objectives?.forEach((o, i) => {
+    if (typeof o.node !== "string") return;
+    const node = o.node;
+    out.push({
+      registry: "nodeTypes",
+      id: node,
+      path: `objectives[${i}].node`,
+      check: (t) => OBJECTIVE_KINDS.includes(String(t.kind)) ? null : `node type "${node}" has kind "${String(t.kind)}"; an objective node is combat, event or cache`
+    });
+  });
+  entry.tiers?.forEach((id, i) => out.push({ registry: "rewardTiers", id: String(id), path: `tiers[${i}]` }));
+  if (typeof entry.factionId === "string") out.push({ registry: "corporations", id: entry.factionId, path: "factionId" });
+  if (typeof entry.objectiveEventId === "string") out.push({ registry: "dilemmaTemplates", id: entry.objectiveEventId, path: "objectiveEventId" });
+  worldEffectRefs(entry.failureEffects, "failureEffects", out);
+  worldEffectRefs(entry.onSuccess, "onSuccess", out);
+  return out;
+});
+registerRefs("rewardTiers", (entry) => typeof entry.lootTableId === "string" ? [{ registry: "lootTables", id: entry.lootTableId, path: "lootTableId" }] : []);
+registerRefs("dilemmaTemplates", (entry) => {
+  const out = [];
+  entry.regions?.forEach((id, i) => out.push({ registry: "regions", id: String(id), path: `regions[${i}]` }));
+  const options2 = entry.fixed?.options;
+  options2?.forEach((o, i) => worldEffectRefs(o.effects, `fixed.options[${i}].effects`, out));
+  return out;
+});
+registerRefs("corporations", (entry) => typeof entry.startingRegionId === "string" ? [{ registry: "regions", id: entry.startingRegionId, path: "startingRegionId" }] : []);
+registerRefs("starts", (entry) => {
+  const out = [];
+  entry.spine?.forEach((beat, i) => {
+    const at = `spine[${i}]`;
+    beat.conditions?.flagsAll?.forEach((id, j) => out.push({ registry: "flags", id: String(id), path: `${at}.conditions.flagsAll[${j}]` }));
+    beat.conditions?.flagsNone?.forEach((id, j) => out.push({ registry: "flags", id: String(id), path: `${at}.conditions.flagsNone[${j}]` }));
+    const completion = beat.completion;
+    completion?.anyOf?.forEach((id, j) => out.push({ registry: "flags", id: String(id), path: `${at}.completion.anyOf[${j}]` }));
+    if (typeof completion?.templateId === "string") {
+      out.push({ registry: "missionTemplates", id: completion.templateId, path: `${at}.completion.templateId`, check: hasSource("story") });
+    }
+    if (typeof completion?.regionId === "string") out.push({ registry: "regions", id: completion.regionId, path: `${at}.completion.regionId` });
+    worldEffectRefs(beat.onComplete, `${at}.onComplete`, out);
+  });
+  return out;
 });
 var checkExtractors = /* @__PURE__ */ new Map();
 function registerChecks(registry2, check) {

@@ -233,6 +233,122 @@ registerRefs('relationshipStates', (entry) => {
   return (list ?? []).map((id, i) => ({ registry: 'synergies' as const, id: String(id), path: `unlocks.synergies[${i}]` }));
 });
 
+// ---------------------------------------------------------------------------------------------
+// P5: world content references
+
+/** Ids inside a list of world effects (faction, clock, flag, loot table, mission template, region). */
+function worldEffectRefs(list: unknown, path: string, out: Ref[]): void {
+  if (!Array.isArray(list)) return;
+  list.forEach((fx: Record<string, unknown>, i) => {
+    if (!fx || typeof fx !== 'object') return;
+    const at = `${path}[${i}]`;
+    if (fx.type === 'faction' && typeof fx.factionId === 'string') out.push({ registry: 'corporations', id: fx.factionId, path: `${at}.factionId` });
+    if (fx.type === 'clock' && typeof fx.clockId === 'string') out.push({ registry: 'clocks', id: fx.clockId, path: `${at}.clockId` });
+    if (fx.type === 'flag' && typeof fx.flagId === 'string') {
+      const flagId = fx.flagId;
+      out.push({
+        registry: 'flags', id: flagId, path: `${at}.flagId`,
+        check: (t) => (t.scope === 'world' || t.scope === 'commander' ? null : `flag "${flagId}" has scope "${String(t.scope)}"; a world effect needs scope world or commander`),
+      });
+    }
+    if (fx.type === 'loot' && typeof fx.tableId === 'string') out.push({ registry: 'lootTables', id: fx.tableId, path: `${at}.tableId` });
+    if (fx.type === 'offer_mission') {
+      if (typeof fx.templateId === 'string') out.push({ registry: 'missionTemplates', id: fx.templateId, path: `${at}.templateId` });
+      if (typeof fx.regionId === 'string') out.push({ registry: 'regions', id: fx.regionId, path: `${at}.regionId` });
+    }
+  });
+}
+
+const hasSource = (source: string) => (t: Entry): string | null =>
+  Array.isArray(t.sources) && t.sources.includes(source) ? null : `mission template "${t.id}" does not allow source "${source}"`;
+
+registerRefs('clocks', (entry) => {
+  const out: Ref[] = [];
+  if (typeof entry.regionId === 'string') out.push({ registry: 'regions', id: entry.regionId, path: 'regionId' });
+  worldEffectRefs(entry.onFill, 'onFill', out);
+  return out;
+});
+
+registerRefs('regions', (entry) => {
+  const out: Ref[] = [];
+  const table = entry.enemyTable as { categories?: Record<string, unknown>; archetypes?: unknown[] } | undefined;
+  for (const id of Object.keys(table?.categories ?? {})) out.push({ registry: 'enemyCategories', id, path: `enemyTable.categories.${id}` });
+  table?.archetypes?.forEach((id, i) => out.push({ registry: 'enemies', id: String(id), path: `enemyTable.archetypes[${i}]` }));
+  for (const id of Object.keys((entry.nodeWeights as Record<string, unknown> | undefined) ?? {})) {
+    out.push({ registry: 'nodeTypes', id, path: `nodeWeights.${id}` });
+  }
+  (entry.pointsOfInterest as Array<{ templateId?: unknown }> | undefined)?.forEach((p, i) => {
+    if (typeof p.templateId === 'string') out.push({ registry: 'missionTemplates', id: p.templateId, path: `pointsOfInterest[${i}].templateId`, check: hasSource('side') });
+  });
+  const flag = (entry.unlockedBy as { flag?: unknown } | undefined)?.flag;
+  if (typeof flag === 'string') out.push({ registry: 'flags', id: flag, path: 'unlockedBy.flag' });
+  return out;
+});
+
+registerRefs('nodeTypes', (entry) => {
+  const out: Ref[] = [];
+  const lootTableId = (entry.combat as { lootTableId?: unknown } | undefined)?.lootTableId;
+  if (typeof lootTableId === 'string') out.push({ registry: 'lootTables', id: lootTableId, path: 'combat.lootTableId' });
+  for (const id of Object.keys((entry.resolvesTo as Record<string, unknown> | undefined) ?? {})) {
+    out.push({
+      registry: 'nodeTypes', id, path: `resolvesTo.${id}`,
+      check: (t) => (t.kind === 'unknown' || t.kind === 'objective' ? `node type "${id}" has kind "${String(t.kind)}" and cannot be a resolvesTo target` : null),
+    });
+  }
+  return out;
+});
+
+const OBJECTIVE_KINDS = ['combat', 'event', 'cache'];
+registerRefs('missionTemplates', (entry) => {
+  const out: Ref[] = [];
+  (entry.regions as unknown[] | undefined)?.forEach((id, i) => out.push({ registry: 'regions', id: String(id), path: `regions[${i}]` }));
+  (entry.objectives as Array<{ node?: unknown }> | undefined)?.forEach((o, i) => {
+    if (typeof o.node !== 'string') return;
+    const node = o.node;
+    out.push({
+      registry: 'nodeTypes', id: node, path: `objectives[${i}].node`,
+      check: (t) => (OBJECTIVE_KINDS.includes(String(t.kind)) ? null : `node type "${node}" has kind "${String(t.kind)}"; an objective node is combat, event or cache`),
+    });
+  });
+  (entry.tiers as unknown[] | undefined)?.forEach((id, i) => out.push({ registry: 'rewardTiers', id: String(id), path: `tiers[${i}]` }));
+  if (typeof entry.factionId === 'string') out.push({ registry: 'corporations', id: entry.factionId, path: 'factionId' });
+  if (typeof entry.objectiveEventId === 'string') out.push({ registry: 'dilemmaTemplates', id: entry.objectiveEventId, path: 'objectiveEventId' });
+  worldEffectRefs(entry.failureEffects, 'failureEffects', out);
+  worldEffectRefs(entry.onSuccess, 'onSuccess', out);
+  return out;
+});
+
+registerRefs('rewardTiers', (entry) =>
+  typeof entry.lootTableId === 'string' ? [{ registry: 'lootTables' as const, id: entry.lootTableId, path: 'lootTableId' }] : []);
+
+registerRefs('dilemmaTemplates', (entry) => {
+  const out: Ref[] = [];
+  (entry.regions as unknown[] | undefined)?.forEach((id, i) => out.push({ registry: 'regions', id: String(id), path: `regions[${i}]` }));
+  const options = (entry.fixed as { options?: Array<{ effects?: unknown }> } | undefined)?.options;
+  options?.forEach((o, i) => worldEffectRefs(o.effects, `fixed.options[${i}].effects`, out));
+  return out;
+});
+
+registerRefs('corporations', (entry) =>
+  typeof entry.startingRegionId === 'string' ? [{ registry: 'regions' as const, id: entry.startingRegionId, path: 'startingRegionId' }] : []);
+
+registerRefs('starts', (entry) => {
+  const out: Ref[] = [];
+  (entry.spine as Array<Record<string, any>> | undefined)?.forEach((beat, i) => {
+    const at = `spine[${i}]`;
+    (beat.conditions?.flagsAll as unknown[] | undefined)?.forEach((id, j) => out.push({ registry: 'flags', id: String(id), path: `${at}.conditions.flagsAll[${j}]` }));
+    (beat.conditions?.flagsNone as unknown[] | undefined)?.forEach((id, j) => out.push({ registry: 'flags', id: String(id), path: `${at}.conditions.flagsNone[${j}]` }));
+    const completion = beat.completion as { kind?: string; anyOf?: unknown[]; templateId?: unknown; regionId?: unknown } | undefined;
+    completion?.anyOf?.forEach((id, j) => out.push({ registry: 'flags', id: String(id), path: `${at}.completion.anyOf[${j}]` }));
+    if (typeof completion?.templateId === 'string') {
+      out.push({ registry: 'missionTemplates', id: completion.templateId, path: `${at}.completion.templateId`, check: hasSource('story') });
+    }
+    if (typeof completion?.regionId === 'string') out.push({ registry: 'regions', id: completion.regionId, path: `${at}.completion.regionId` });
+    worldEffectRefs(beat.onComplete, `${at}.onComplete`, out);
+  });
+  return out;
+});
+
 /** Checks that need the whole registry set (reported at `path` of the entry). */
 export interface RegistryCheck { path: string; message: string }
 export type CheckExtractor = (entry: Entry, registries: Record<RegistryName, Map<string, Entry>>) => RegistryCheck[];

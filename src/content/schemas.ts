@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { EFFECT_TARGETS, STATS, TRIGGERS, ALWAYS_ON_TYPES } from '../engine/combat/types';
 import { EVENT_TYPES, PROPOSAL_KINDS, SEVERITIES } from '../engine/relations/vocab';
 import { VALUE_AXES } from '../engine/state/types';
+import type { WorldEffect } from '../engine/world/types';
 import { REGISTRY_NAMES, type RegistryName } from './types';
 
 export const ID_PATTERN = /^[a-z0-9_:.-]+$/;
@@ -71,6 +72,71 @@ export type Effect = z.infer<typeof EffectSchema>;
 
 const textWithEffects = z.object({ text: str, effects: z.array(EffectSchema) });
 
+// ---------------------------------------------------------------------------------------------
+// P5: the world-effect vocabulary (every consequence outside combat is one of these).
+
+const worldInt = z.number().int();
+export const WorldEffectSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('resource'), resource: z.enum(['credits', 'supplies', 'plyx']), amount: worldInt }).strict(),
+  z.object({ type: z.literal('carried_supplies'), amount: worldInt }).strict(),
+  z.object({ type: z.literal('faction'), factionId: str, amount: worldInt.min(-30).max(30) }).strict(),
+  z.object({ type: z.literal('clock'), clockId: str, by: worldInt.min(-2).max(2).refine((n) => n !== 0, 'by must not be 0') }).strict(),
+  z.object({ type: z.literal('flag'), flagId: str }).strict(),
+  z.object({ type: z.literal('clearance'), tier: z.union([z.literal(1), z.literal(2), z.literal(3)]) }).strict(),
+  z.object({ type: z.literal('party_stress'), amount: worldInt }).strict(),
+  z.object({ type: z.literal('party_hp'), pct: worldInt.min(-90).max(100) }).strict(),
+  z.object({ type: z.literal('loot'), tableId: str, rolls: worldInt.min(1).max(3).optional() }).strict(),
+  z.object({ type: z.literal('leash'), amount: z.union([z.literal(-1), z.literal(1)]) }).strict(),
+  z.object({ type: z.literal('thread'), threadId: str, status: z.enum(['open', 'resolved', 'failed', 'dormant']) }).strict(),
+  z.object({
+    type: z.literal('unit_event'),
+    event: z.enum(EVENT_TYPES),
+    severity: z.enum(['minor', 'moderate', 'major', 'extreme']),
+    targets: z.enum(['party', 'named']),
+    valueAxes: z.array(z.object({ axis: z.enum(VALUE_AXES), direction: z.union([z.literal(-1), z.literal(1)]) }).strict()).optional(),
+  }).strict(),
+  z.object({ type: z.literal('incoming_unit') }).strict(),
+  z.object({ type: z.literal('fact'), text: str.max(200), tags: z.array(str), importance: worldInt.min(1).max(5) }).strict(),
+  z.object({
+    type: z.literal('offer_mission'), templateId: str, regionId: str.optional(), source: z.enum(['command', 'story', 'rumor', 'side']),
+  }).strict(),
+]);
+
+const COST_EVENTS: readonly string[] = ['sided_against', 'decision_violated', 'endangered', 'coerced', 'dismissed'];
+/** True when the effect costs the player something (a minor event option must contain at least one). */
+export function isCostEffect(e: WorldEffect): boolean {
+  switch (e.type) {
+    case 'resource': case 'carried_supplies': case 'faction': return e.amount < 0;
+    case 'party_hp': return e.pct < 0;
+    case 'leash': return e.amount < 0;
+    case 'party_stress': return e.amount > 0;
+    case 'clock': return e.by > 0;
+    case 'unit_event': return COST_EVENTS.includes(e.event);
+    default: return false;
+  }
+}
+
+const SpineBeatSchema = z.object({
+  id: str,
+  title: str,
+  goal: str,
+  /** P5: when the director may propose the beat. */
+  conditions: z.object({
+    minDay: worldInt.min(1).optional(),
+    flagsAll: z.array(str).optional(),
+    flagsNone: z.array(str).optional(),
+    clearanceMin: worldInt.min(1).max(3).optional(),
+    threads: z.array(z.object({ id: str, status: z.enum(['open', 'resolved', 'failed', 'dormant']) }).strict()).optional(),
+  }).strict().optional(),
+  /** When the beat counts as done (default `auto`: as soon as it is proposed). */
+  completion: z.discriminatedUnion('kind', [
+    z.object({ kind: z.literal('auto') }).strict(),
+    z.object({ kind: z.literal('mission'), templateId: str, regionId: str }).strict(),
+    z.object({ kind: z.literal('flag'), anyOf: z.array(str).min(1) }).strict(),
+  ]).optional(),
+  onComplete: z.array(WorldEffectSchema).optional(),
+});
+
 export const CorporationSchema = BaseEntrySchema.extend({
   name: str,
   summary: str,
@@ -78,7 +144,6 @@ export const CorporationSchema = BaseEntrySchema.extend({
   oversightStyle: str,
   playable: z.boolean(),
   startingBonus: textWithEffects,
-  // No reference check: `regions` stays empty until P5, which adds it.
   startingRegionId: str.optional(),
 });
 
@@ -87,7 +152,7 @@ export const StartSchema = BaseEntrySchema.extend({
   corporationId: str,
   summary: str,
   situation: str,
-  spine: z.array(z.object({ id: str, title: str, goal: str })).min(5).max(8),
+  spine: z.array(SpineBeatSchema).min(5).max(8),
   crimeKnownByDefault: z.boolean().optional(),
   /** Base amounts the campaign begins with; corporation and crime effects are added on top (P2). */
   startingResources: z
@@ -355,6 +420,12 @@ export const RESERVED_EVENT_TYPES: readonly string[] = [
   'combat_started', 'combat_log', 'combat_awaiting', 'combat_ended', 'combat_cutin', 'order_refused', 'level_up',
   'node_unlocked', 'loot_banked', 'item_crafted', 'item_upgraded', 'item_equipped', 'breakdown', 'breakdown_released',
   'workshop_opened', 'unit_respec', 'loadout_changed', 'combat_lost_pending', 'item_rerolled', 'item_dismantled', 'enemy_named', 'difficulty_changed',
+  // P5
+  'world_seeded', 'clock_advanced', 'clock_filled', 'faction_changed', 'flag_set', 'clearance_raised', 'thread_changed',
+  'mission_offered', 'mission_completed', 'mission_failed', 'mission_expired', 'rumor_posted', 'rumor_followed', 'beat_proposed',
+  'beat_completed', 'incoming_unit_offered', 'unit_joined', 'director_requested', 'director_applied', 'director_rejected',
+  'expedition_started', 'expedition_moved', 'expedition_node', 'expedition_combat', 'expedition_event', 'expedition_choice',
+  'expedition_treated', 'expedition_ended', 'expedition_recap_set',
 ];
 
 const slotEnum = z.enum(['morning', 'afternoon', 'evening', 'night']);
@@ -594,6 +665,8 @@ export const DefectSchema = BaseEntrySchema.extend({
   }).strict()).optional(),
   dmChanceBonus: z.number().min(0).max(1).optional(),
   nightEvents: z.array(NightSpecSchema).optional(),
+  /** P5: one more node revealed ahead on the expedition map (Echo Bleed). */
+  expedition: z.object({ reveal: z.literal(1) }).strict().optional(),
   /** P4: combat data. Downside effects are amplified while the unit is strained, so each must say so. */
   combat: z.object({
     upside: z.array(CombatEffectSchema),
@@ -717,4 +790,133 @@ Object.assign(registrySchemas, {
   items: ItemSchema,
   recipes: RecipeSchema,
   lootTables: LootTableSchema,
+});
+
+// ---------------------------------------------------------------------------------------------
+// P5 registries: regions, node types, clocks, reward tiers, mission templates, minor events.
+
+const idKeyed = z.record(str, z.number().positive());
+const wordCount = (t: string) => t.trim().split(/\s+/).filter(Boolean).length;
+const hotspotPoint = z.tuple([num.min(0).max(100), num.min(0).max(100)]);
+
+export const RegionSchema = BaseEntrySchema.extend({
+  name: str,
+  summary: str,
+  environmentPrompt: str,
+  danger: int.min(1).max(5),
+  travelSlots: z.union([z.literal(2), z.literal(3)]),
+  enemyTable: z.object({ categories: idKeyed, archetypes: z.array(str).optional() }).strict(),
+  modifiers: z.array(str),
+  mapHotspot: z.array(hotspotPoint).min(3),
+  mapCell: z.object({ x: int.min(0).max(2), y: int.min(0).max(2) }).strict(),
+  layers: z.tuple([int.min(3).max(5), int.min(3).max(5)]).refine(([a, b]) => a <= b, 'layers minimum must not exceed maximum'),
+  nodeWeights: idKeyed,
+  pointsOfInterest: z.array(z.object({ id: str, name: str, summary: str, templateId: str }).strict()),
+  rumors: z.array(str.refine((t) => wordCount(t) <= 40, 'a rumor line is at most 40 words')),
+  knownFromStart: z.boolean().optional(),
+  unlockedBy: z.object({ flag: str.optional(), clearanceMin: int.min(1).max(3).optional() }).strict().optional(),
+});
+
+export const NodeTypeSchema = BaseEntrySchema.extend({
+  name: str,
+  glyph: z.string().refine((g) => [...g].length === 1, 'glyph must be one character'),
+  kind: z.enum(['combat', 'event', 'cache', 'rest', 'objective', 'unknown']),
+  combat: z.object({ dangerDelta: int.min(-1).max(2), lootTableId: str, exposesCommander: z.boolean().optional() }).strict().optional(),
+  rest: z.object({ suppliesPerUnit: int.min(0), hpPct: num, stress: num }).strict().optional(),
+  resolvesTo: idKeyed.optional(),
+  firstLayer: z.boolean().optional(),
+  maxPerMap: int.min(1).optional(),
+  minDanger: int.min(1).max(5).optional(),
+}).superRefine((n, ctx) => {
+  const need = (field: 'combat' | 'rest' | 'resolvesTo', kind: string) => {
+    if (n.kind === kind && n[field] === undefined) ctx.addIssue({ code: 'custom', path: [field], message: `kind "${kind}" needs a ${field} block` });
+    if (n.kind !== kind && n[field] !== undefined) ctx.addIssue({ code: 'custom', path: [field], message: `${field} is only for kind "${kind}"` });
+  };
+  need('combat', 'combat');
+  need('rest', 'rest');
+  need('resolvesTo', 'unknown');
+});
+
+export const ClockSchema = BaseEntrySchema.extend({
+  label: str,
+  segments: int.min(4).max(12),
+  startFilled: int.min(0),
+  regionId: str.optional(),
+  visibleToPlayer: z.boolean(),
+  onFill: z.array(WorldEffectSchema),
+  repeat: z.boolean().optional(),
+}).superRefine((c, ctx) => {
+  if (c.startFilled >= c.segments) ctx.addIssue({ code: 'custom', path: ['startFilled'], message: 'startFilled must be below segments' });
+});
+
+const orderedRange = z.tuple([int.min(0), int.min(0)]).refine(([a, b]) => a <= b, 'range minimum must not exceed maximum');
+export const RewardTierSchema = BaseEntrySchema.extend({
+  rank: int.min(1).max(5),
+  credits: orderedRange,
+  plyx: orderedRange,
+  lootTableId: str.optional(),
+  lootRolls: int.min(1).max(3).optional(),
+  faction: int.min(0).max(15).optional(),
+});
+
+export const MissionTemplateSchema = BaseEntrySchema.extend({
+  name: str,
+  sources: z.array(z.enum(['command', 'story', 'rumor', 'side'])).min(1),
+  regions: z.array(str).optional(),
+  objectives: z.array(z.object({ node: str, condition: z.enum(['win', 'reach']) }).strict()).min(1),
+  dangerRange: z.tuple([int.min(1).max(5), int.min(1).max(5)]).refine(([a, b]) => a <= b, 'dangerRange minimum must not exceed maximum'),
+  tiers: z.array(str).min(1),
+  factionId: str.optional(),
+  clearance: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
+  objectiveEventId: str.optional(),
+  failureEffects: z.array(WorldEffectSchema),
+  onSuccess: z.array(WorldEffectSchema).optional(),
+  titles: z.array(str.max(60)).min(1),
+  briefs: z.array(str.max(300)).min(1),
+});
+
+const EventOptionSchema = z.object({
+  label: str.max(80),
+  requires: z.object({ stat: socialStat, rank: int.min(1).max(5) }).strict().optional(),
+  effects: z.array(WorldEffectSchema),
+}).passthrough();
+
+export const DilemmaTemplateSchema = BaseEntrySchema.extend({
+  scale: z.enum(['minor', 'major', 'defining']),
+  contexts: z.array(str).min(1),
+  regions: z.array(str).optional(),
+  flavor: z.boolean().optional(),
+  fixed: z.object({
+    title: str,
+    setup: str.max(600),
+    options: z.array(EventOptionSchema).min(1).max(4),
+  }).passthrough().optional(),
+}).superRefine((d, ctx) => {
+  if (d.scale === 'minor' && d.contexts.includes('expedition_event') && d.fixed === undefined) {
+    ctx.addIssue({ code: 'custom', path: ['fixed'], message: 'a minor expedition event needs a fixed block' });
+  }
+  if (d.fixed === undefined) return;
+  const options = d.fixed.options as Array<{ effects: WorldEffect[] }>;
+  if (d.flavor === true) {
+    if (options.length !== 1) ctx.addIssue({ code: 'custom', path: ['fixed', 'options'], message: 'a flavor event has exactly one option' });
+    options.forEach((o, i) => {
+      if (o.effects.length > 0) ctx.addIssue({ code: 'custom', path: ['fixed', 'options', i, 'effects'], message: 'a flavor option has no effects' });
+    });
+    return;
+  }
+  if (options.length < 2) ctx.addIssue({ code: 'custom', path: ['fixed', 'options'], message: 'an event needs 2 to 4 options' });
+  options.forEach((o, i) => {
+    if (!o.effects.some(isCostEffect)) {
+      ctx.addIssue({ code: 'custom', path: ['fixed', 'options', i, 'effects'], message: 'every option must carry at least one cost effect' });
+    }
+  });
+});
+
+Object.assign(registrySchemas, {
+  regions: RegionSchema,
+  nodeTypes: NodeTypeSchema,
+  clocks: ClockSchema,
+  rewardTiers: RewardTierSchema,
+  missionTemplates: MissionTemplateSchema,
+  dilemmaTemplates: DilemmaTemplateSchema,
 });

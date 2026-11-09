@@ -134,7 +134,7 @@ describe('content loader', () => {
     /** The p1 fixture as an in-memory file map under the root `p1`, so tests can patch single files. */
     const p1Files = async (): Promise<Record<string, unknown>> => {
       const files: Record<string, unknown> = {};
-      for (const f of ['manifest', 'corporations', 'starts', 'crimes', 'roles', 'signatures', 'defects', 'statuses', 'skills', 'lorebook']) {
+      for (const f of ['manifest', 'corporations', 'regions', 'starts', 'crimes', 'roles', 'signatures', 'defects', 'statuses', 'skills', 'lorebook']) {
         files[`p1/${f}.json`] = await fsFetch(`${P}/p1/${f}.json`);
       }
       return files;

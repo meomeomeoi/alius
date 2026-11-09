@@ -6,6 +6,7 @@
   "lorebook": "lorebook.json",
   "files": {
     "corporations": "corporations.json",
+    "regions": "regions.json",
     "starts": "starts.json",
     "crimes": "crimes.json",
     "roles": "roles.json",
