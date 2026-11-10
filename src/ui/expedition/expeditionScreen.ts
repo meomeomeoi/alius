@@ -145,7 +145,12 @@ export function renderExpeditionScreen(host: HTMLElement, ctx: ExpeditionScreenC
     if (pending?.kind !== 'event') return;
     const fixed = reg.dilemmaTemplates.get(pending.templateId)?.fixed as { title: string; setup: string } | undefined;
     const panel = h('section', { class: 'alius-section alius-event' }, h('h3', {}, fixed?.title ?? 'EVENT'), h('p', {}, fixed?.setup ?? ''));
-    for (const o of eventOptions(state, reg)) {
+    const options = eventOptions(state, reg);
+    if (options.length === 0) {
+      // the event was removed from the pack under this save: the node resolves as nothing
+      panel.append(h('button', { type: 'button', class: 'alius-btn', onclick: () => controller.choose(0) }, '[ CONTINUE ]'));
+    }
+    for (const o of options) {
       panel.append(h('div', {},
         h('button', {
           type: 'button', class: 'alius-btn', 'data-option': String(o.index), disabled: o.disabled !== null,

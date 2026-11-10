@@ -141,6 +141,8 @@ describe('director_tick call', () => {
     expect(call.system).toMatch(/never write amounts/i);
     expect(call.system).toMatch(/at most 2 mission offers and 3 rumors/i);
     expect(call.system).toMatch(/never skip or invent story beats/i);
+    expect(call.system).toMatch(/only one command mission/i);
+    expect(call.system).toMatch(/boardRoom/);
   });
 
   it('a scout request tells the model to answer with rumors only', async () => {

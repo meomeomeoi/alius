@@ -79,7 +79,7 @@ export function renderPlanner(host: HTMLElement, ctx: PlannerCtx): void {
     return;
   }
   const region = reg.regions.get(info.regionId);
-  const end = SLOT_INDEX[state.slot] + info.slots === 2 ? 'returns in the Evening' : 'returns the next morning';
+  const end = SLOT_INDEX[state.slot] + info.slots === 2 ? 'returns in the Evening' : 'returns after the day ends';
   root.append(
     h('h2', {}, `[ PLAN ] ${info.title}`),
     h('p', {}, `${String(region?.name ?? info.regionId)} · DANGER ${info.danger} · OBJECTIVE: ${info.objective}`),

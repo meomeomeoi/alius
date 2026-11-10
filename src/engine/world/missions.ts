@@ -215,6 +215,11 @@ export function runDeadlines(draft: CampaignState, ctx: EngineCtx): EngineEvent[
     draft.missions.offered = draft.missions.offered.filter((x) => x.id !== m.id);
     if (gone) {
       events.push({ type: 'mission_expired', missionId: m.id, reason: 'content_removed' });
+      // a story mission that vanished gives its beat back, so the beat can be proposed (and offered) again
+      if (m.spineBeat !== undefined && draft.world.spine?.proposed === m.spineBeat) {
+        delete draft.world.spine.proposed;
+        delete draft.world.spine.proposedDay;
+      }
       continue;
     }
     m.status = 'failed';

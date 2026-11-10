@@ -16,7 +16,8 @@ export type Handler = (draft: CampaignState, payload: unknown, ctx: EngineCtx) =
 const handlers = new Map<string, Handler>();
 
 /** Action families that may run while `state.expedition` is open. */
-const EXPEDITION_OPEN_PREFIXES = ['expedition/', 'combat/', 'director/', 'debug/'];
+/** `relations/commander_injured` is the night-visit roll after a Commander Crisis, which can only happen inside a run. */
+const EXPEDITION_OPEN_PREFIXES = ['expedition/', 'combat/', 'director/', 'debug/', 'relations/commander_injured'];
 
 export function registerAction(type: string, handler: Handler): void {
   if (handlers.has(type)) throw new Error(`Duplicate action type: ${type}`);

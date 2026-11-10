@@ -300,7 +300,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         shell.open();
       }
       if (has('slot_advanced')) void comms.onSlotAdvanced().catch(warn('unit DMs'));
-      if (has('director_requested')) void director.onRequested().catch(warn('director'));
+      if (has('director_requested') || (has('combat_ended') && state?.world.director?.pending)) void director.onRequested().catch(warn('director'));
       if (has('rumors_requested')) api.dispatch({ type: 'director/request', payload: { reason: 'scout' } }, { expectChatId: chatId });
       if (has('expedition_ended')) {
         showExpedition();
@@ -412,6 +412,11 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     expeditionScreen?.dispose();
     expeditionScreen = null;
     onExpeditionScreen = false;
+    // a return through the Evening can end in the Night: the knock that is waiting must not be lost behind the report
+    if (state && !state.scene && state.slot === 'night' && state.calendar.nightEvent) {
+      showScene();
+      return;
+    }
     shell.showScreen('pda');
   }
 

@@ -23,7 +23,8 @@ export function createDirector(deps: WorldDeps): DirectorController {
     const events: EngineEvent[] = deps.app.dispatch(action, { expectChatId: chat });
     const failed = events.find((e) => e.type === 'error');
     // a chat switch or an answer that arrived after the request was closed is not worth a message
-    if (failed && failed.code !== 'chat_changed' && failed.message !== 'Stale director answer.') {
+    // not worth a message: a chat switch, an answer after the request was closed, a fight in progress (it is retried when the fight ends)
+    if (failed && failed.code !== 'chat_changed' && failed.code !== 'combat_open' && failed.message !== 'Stale director answer.') {
       deps.toast('error', String(failed.message ?? failed.code));
     }
     const rejected = events.find((e) => e.type === 'director_rejected');
@@ -36,9 +37,11 @@ export function createDirector(deps: WorldDeps): DirectorController {
   async function onRequested(): Promise<void> {
     const state = deps.app.current().state;
     const pending = state?.world.director?.pending;
-    if (!state || !pending || running.has(pending.id)) return;
-    running.add(pending.id);
     const chat = chatId();
+    // request ids repeat from campaign to campaign: the chat is part of the key
+    const key = `${chat ?? ''}:${pending?.id ?? ''}`;
+    if (!state || !pending || running.has(key)) return;
+    running.add(key);
     try {
       const settings = deps.settings();
       if (!settings.directorEnabled) {
@@ -54,7 +57,7 @@ export function createDirector(deps: WorldDeps): DirectorController {
       if (output === null) answer({ type: 'director/fallback', payload: { requestId: pending.id } }, chat);
       else answer({ type: 'director/apply', payload: { requestId: pending.id, output, beatCooldownDays: settings.beatCooldownDays } }, chat);
     } finally {
-      running.delete(pending.id);
+      running.delete(key);
     }
   }
 

@@ -82,7 +82,7 @@ describe('planner', () => {
     expect(text).toContain('DANGER 1');
     expect(text).toContain('OBJECTIVE');
     expect(text).toContain('DURATION 2 SLOTS (returns in the Evening)');
-    expect(planner((s) => { s.slot = 'afternoon'; }).host.textContent).toContain('DURATION 2 SLOTS (returns the next morning)');
+    expect(planner((s) => { s.slot = 'afternoon'; }).host.textContent).toContain('DURATION 2 SLOTS (returns after the day ends)');
   });
 
   it('an injured unit is disabled with the reason', () => {
@@ -496,5 +496,17 @@ describe('the screen picks its view', () => {
     expect(m.host.childElementCount).toBe(0);
     m.screen.refresh();
     expect(m.host.childElementCount).toBe(0);
+  });
+
+  it('an event whose template vanished offers a CONTINUE button instead of nothing', () => {
+    const regs = { ...reg, dilemmaTemplates: new Map<string, never>() } as unknown as Registries;
+    const s = underway('event');
+    s.expedition!.at = 'n0_0';
+    s.expedition!.phase = 'event';
+    s.expedition!.pending = { kind: 'event', nodeId: 'n0_0', templateId: 'evt_gone' };
+    const m = mount(s, { regs });
+    expect(m.host.querySelector('button[data-option]')).toBeNull();
+    click(btn(m.host, 'CONTINUE')!);
+    expect(m.controller.choose).toHaveBeenCalledWith(0);
   });
 });

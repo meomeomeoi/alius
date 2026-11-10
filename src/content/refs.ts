@@ -309,6 +309,13 @@ registerRefs('missionTemplates', (entry) => {
       registry: 'nodeTypes', id: node, path: `objectives[${i}].node`,
       check: (t) => (OBJECTIVE_KINDS.includes(String(t.kind)) ? null : `node type "${node}" has kind "${String(t.kind)}"; an objective node is combat, event or cache`),
     });
+    // a fight can only be won at a combat node: any other kind would make the mission impossible to complete
+    if ((entry.objectives as Array<{ condition?: unknown }>)[i].condition === 'win') {
+      out.push({
+        registry: 'nodeTypes', id: node, path: `objectives[${i}].condition`,
+        check: (t) => (t.kind === 'combat' ? null : `a "win" objective needs a combat node, but "${node}" has kind "${String(t.kind)}"`),
+      });
+    }
   });
   (entry.tiers as unknown[] | undefined)?.forEach((id, i) => out.push({ registry: 'rewardTiers', id: String(id), path: `tiers[${i}]` }));
   if (typeof entry.factionId === 'string') out.push({ registry: 'corporations', id: entry.factionId, path: 'factionId' });

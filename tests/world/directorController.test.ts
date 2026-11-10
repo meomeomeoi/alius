@@ -140,4 +140,29 @@ describe('director controller', () => {
     expect(h.state().missions.offered).toEqual([]);
     expect(h.state().rumors).toHaveLength(1);
   });
+
+  it('a fight that is open is not an error: the answer waits and no toast appears', async () => {
+    const h = worldHarness(reg, requested);
+    h.setState((s) => { s.combat = { id: 'cmb_open' } as never; });
+    h.st.mainReplies = [valid];
+    await createDirector(h.deps).onRequested();
+    expect(h.toasts).toEqual([]);
+    expect(h.state().world.director!.pending!.id).toBe('d1');
+  });
+
+  it('the same request id in another chat is not mistaken for the one in flight', async () => {
+    const h = worldHarness(reg, requested);
+    h.st.mainReplies = [valid, valid];
+    const original = h.st.generateMain.bind(h.st);
+    let release: () => void = () => {};
+    const gate = new Promise<void>((r) => { release = r; });
+    h.st.generateMain = async (req) => { await gate; return original(req); };
+    const director = createDirector(h.deps);
+    const first = director.onRequested();
+    h.switchChat('other'); // another campaign whose pending request is also called d1
+    const second = director.onRequested();
+    release();
+    await Promise.all([first, second]);
+    expect(h.st.calls).toHaveLength(2);
+  });
 });

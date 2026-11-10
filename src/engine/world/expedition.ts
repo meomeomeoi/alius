@@ -330,6 +330,7 @@ function enterCombat(draft: CampaignState, ctx: EngineCtx, nodeId: string, def: 
     });
   } catch {
     addLog(exp, 'move', 'Nothing here.', nodeId);
+    if (nodeId === exp.map.objectiveId) exp.objectiveDone = true; // never strand the run at an objective that cannot be played
     return [];
   }
   exp.pending = { kind: 'combat', nodeId, encounter, ...(draft.lastCombat ? { prevCombatId: draft.lastCombat.id } : {}) };
@@ -463,8 +464,15 @@ export function retreatFromExpedition(draft: CampaignState, ctx: EngineCtx): Eng
   const exp = draft.expedition;
   if (!exp) throw new Error('There is no expedition.');
   if (draft.combat) throw new Error('A fight is going on: it has to be decided first.');
-  addLog(exp, 'retreat', 'The squad pulls back.');
-  return endExpedition(draft, ctx, 'retreated');
+  const events: EngineEvent[] = [];
+  // a fight that is decided but not yet taken into the run keeps its injuries, hints and verdict
+  if (exp.phase === 'combat' && exp.pending?.kind === 'combat' && draft.lastCombat && draft.lastCombat.id !== exp.pending.prevCombatId) {
+    events.push(...resolveCombat(draft, ctx));
+    if (!draft.expedition) return events; // a lost or retreated fight already ended the run
+  }
+  addLog(draft.expedition!, 'retreat', 'The squad pulls back.');
+  events.push(...endExpedition(draft, ctx, 'retreated'));
+  return events;
 }
 
 /** Plain text of a model recap: tags dropped (their content stays), whitespace collapsed, cut to `recapMax`. */
@@ -593,6 +601,7 @@ function enterEvent(draft: CampaignState, ctx: EngineCtx, nodeId: string, isObje
   }
   if (templateId === undefined) {
     addLog(exp, 'move', 'Nothing here.', nodeId);
+    if (isObjective) exp.objectiveDone = true;
     return [];
   }
   exp.pending = { kind: 'event', nodeId, templateId };
@@ -634,7 +643,16 @@ export function eventOptions(state: CampaignState, reg: Registries): Array<{ ind
 export function chooseOption(draft: CampaignState, ctx: EngineCtx, index: number): EngineEvent[] {
   const exp = draft.expedition;
   const found = optionsOf(draft, ctx.registries);
-  if (!exp || exp.phase !== 'event' || !found || exp.pending?.kind !== 'event') throw new Error('There is no event to answer.');
+  if (!exp || exp.phase !== 'event' || exp.pending?.kind !== 'event') throw new Error('There is no event to answer.');
+  if (!found) {
+    // the event was removed from the pack under a save: the node resolves as nothing and the run goes on
+    const { nodeId } = exp.pending;
+    addLog(exp, 'event', 'Nothing here.', nodeId);
+    delete exp.pending;
+    exp.phase = 'travel';
+    if (nodeId === exp.map.objectiveId) exp.objectiveDone = true;
+    return [];
+  }
   const option = eventOptions(draft, ctx.registries)[index];
   if (!Number.isInteger(index) || !option) throw new Error(`There is no option ${String(index)}.`);
   if (option.disabled !== null) throw new Error(`${option.label}: ${option.disabled}.`);

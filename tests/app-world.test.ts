@@ -462,3 +462,46 @@ describe('world toasts', () => {
     expect(t.sh.toasts.some((x) => /mission failed/i.test(x.text))).toBe(true);
   });
 });
+
+describe('review fixes', () => {
+  it('closing the report after a return through the Evening shows the night knock that was waiting', async () => {
+    const t = await boot();
+    t.st.settings.expeditionRecap = false;
+    t.st.settings.directorEnabled = false;
+    t.edit((s) => { s.slot = 'afternoon'; });
+    t.launch('cache');
+    const unitId = t.state().roster.activeIds[0];
+    t.edit((s) => {
+      s.calendar.nightEventsQueue.push({ id: 'n1', unitId, kind: 'after_breakdown', priority: 60, framing: 'She is at your door.', ignore: { event: 'dismissed', severity: 'moderate' }, expiresDay: s.day + 2 });
+    });
+    t.app.expedition.retreat();
+    await settle();
+    expect(t.state().slot).toBe('night');
+    expect(t.state().calendar.nightEvent).toBeDefined();
+    const report = t.mount('expedition');
+    click(btn(report, 'CLOSE'));
+    expect(t.sh.screens.at(-1)).toBe('scene'); // the knock, not the PDA
+  });
+
+  it('a director answer that comes due during a fight waits for the fight to end, without an error toast', async () => {
+    const t = await boot();
+    t.st.settings.directorEnabled = false;
+    t.edit((s) => { for (const u of s.squad) u.level = 12; });
+    t.app.dispatch({ type: 'director/request', payload: { reason: 'scout' } });
+    expect(t.state().world.director!.pending).toBeDefined();
+    await settle();
+    expect(t.state().world.director!.pending).toBeUndefined(); // answered at once outside a fight
+    t.app.dispatch({ type: 'director/request', payload: { reason: 'scout' } });
+    t.edit((s) => { s.world.director!.pending = { id: 'd9', reason: 'scout', day: s.day }; });
+    t.app.startCombat({ encounter: { enemies: [{ enemyId: 'husk', level: 1, affixes: [] }], danger: 1 }, formation: { front: t.state().roster.activeIds.slice(0, 1), back: t.state().roster.activeIds.slice(1) }, expedition: false, bankLoot: false });
+    expect(t.state().combat).toBeDefined();
+    t.sh.toasts.length = 0;
+    await t.app.director.onRequested();
+    expect(t.sh.toasts.filter((x) => x.kind === 'error')).toEqual([]);
+    expect(t.state().world.director!.pending!.id).toBe('d9');
+    t.app.dispatch({ type: 'combat/auto', payload: { on: true } });
+    if (t.state().combat) t.app.dispatch({ type: 'combat/accept', payload: {} });
+    await settle();
+    expect(t.state().world.director!.pending).toBeUndefined();
+  });
+});

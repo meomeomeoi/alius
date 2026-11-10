@@ -334,4 +334,21 @@ describe('world content refs', () => {
     expect(at(errs, 'regions.json', '[0].pointsOfInterest[0].templateId')?.message).toContain('side');
     expect(at(errs, 'starts.json', '[0].spine[0].completion.templateId')?.message).toContain('story');
   });
+
+  it('a win objective needs a combat-kind node; reach may use any objective kind', async () => {
+    const nodeTypes = [
+      { id: 'combat', name: 'C', glyph: 'X', kind: 'combat', combat: { dangerDelta: 0, lootTableId: 'ghost_loot' } },
+      { id: 'cache', name: 'K', glyph: '=', kind: 'cache' },
+    ];
+    const tpl = (id: string, node: string, condition: string) => ({
+      id, name: 'T', sources: ['command'], objectives: [{ node, condition }], dangerRange: [1, 2], tiers: ['tier_1'], failureEffects: [], titles: ['T'], briefs: ['B'],
+    });
+    const errs = await errorsOf({
+      nodeTypes, rewardTiers: [{ id: 'tier_1', rank: 1, credits: [1, 2], plyx: [1, 2] }],
+      missionTemplates: [tpl('win_cache', 'cache', 'win'), tpl('win_combat', 'combat', 'win'), tpl('reach_cache', 'cache', 'reach')],
+    });
+    expect(at(errs, 'missionTemplates.json', '[0].objectives[0].condition')?.message).toMatch(/win/);
+    expect(at(errs, 'missionTemplates.json', '[1].objectives[0].condition')).toBeUndefined();
+    expect(at(errs, 'missionTemplates.json', '[2].objectives[0].condition')).toBeUndefined();
+  });
 });

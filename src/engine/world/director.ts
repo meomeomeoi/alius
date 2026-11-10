@@ -11,7 +11,7 @@ import {
 } from './missions';
 import { checkProposal, currentBeat, beatReady, isOpenEnded, proposeBeat, spineOf } from './spine';
 import { knownRegions } from './state';
-import { THREAD_STATUSES, type DirectorRequest, type MissionSource, type ThreadStatus } from './types';
+import { THREAD_STATUSES, type DirectorRequest, type MissionSource, type Thread, type ThreadStatus } from './types';
 
 // ---------------------------------------------------------------------------------------------
 // Digest: what the mechanic model is shown (no numbers of the relationship layer, no unit ids)
@@ -47,7 +47,7 @@ export function buildDigest(state: CampaignState, reg: Registries): Digest {
     day: state.day,
     phase: spine.length > 0 && !isOpenEnded(state, reg) ? 'spine' : 'open',
     threads: state.world.threads
-      .filter((t) => t.status === 'open' || t.status === 'dormant')
+      .filter((t, _i, all) => t.status === 'open' || (t.status === 'dormant' && all.filter((x) => x.status === 'dormant').slice(-6).includes(t)))
       .map((t) => ({ id: t.id, title: t.title, status: t.status, flags: t.flags.slice(-DIGEST_THREAD_FLAGS).map((f) => f.id) })),
     clocks: state.world.clocks.map((c) => ({
       id: c.id, label: c.label, filled: c.filled, segments: c.segments, ...(c.regionId !== undefined ? { regionId: c.regionId } : {}),
@@ -121,10 +121,15 @@ function plain(v: unknown, max: number): string {
 const words = (text: string, max: number): string => text.split(' ').filter(Boolean).slice(0, max).join(' ');
 const slug = (s: string): string => s.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 32).replace(/_+$/g, '');
 
-/** The first of `command`, `side` a template allows (what a director offer is), or `null`. */
-export function directorSource(reg: Registries, templateId: string): MissionSource | null {
+/**
+ * What a director offer becomes: the single open `command` mission slot goes to the first command-capable offer, any
+ * other offer is a `side` mission (which the board size limits); `null` when neither is possible.
+ */
+export function directorSource(state: CampaignState, reg: Registries, templateId: string, commandTaken: boolean): MissionSource | null {
   const sources = (reg.missionTemplates.get(templateId)?.sources as string[] | undefined) ?? [];
-  return (['command', 'side'] as const).find((s) => sources.includes(s)) ?? null;
+  const commandOpen = commandTaken || [...state.missions.offered, ...state.missions.active].some((m) => m.source === 'command');
+  if (sources.includes('command') && !commandOpen) return 'command';
+  return sources.includes('side') ? 'side' : null;
 }
 
 const openThreads = (state: CampaignState): number =>
@@ -151,6 +156,7 @@ export function validateDirectorOutput(
     return v;
   };
   const only = opts.only === 'rumors';
+  let commandTaken = false;
 
   // spine beat first: an offer for it may come in the same answer
   let proposedNow: string | undefined;
@@ -181,8 +187,8 @@ export function validateDirectorOutput(
         offer.spineBeat = o.spineBeat;
         source = 'story';
       } else {
-        source = directorSource(reg, o.templateId);
-        if (source === null) return reject(part, 'the template allows neither command nor side missions');
+        source = directorSource(state, reg, o.templateId, commandTaken);
+        if (source === null) return reject(part, 'a command mission is already open and the template allows no side mission');
       }
       if (o.danger !== undefined) {
         if (typeof o.danger !== 'number' || !Number.isInteger(o.danger) || o.danger < 1 || o.danger > 5) return reject(part, 'danger must be an integer from 1 to 5');
@@ -203,6 +209,7 @@ export function validateDirectorOutput(
       const problem = checkOffer(state, reg, { ...offer, source });
       if (problem) return reject(part, problem);
       if (output.missionOffers.some((x) => x.templateId === offer.templateId && x.regionId === offer.regionId)) return reject(part, 'the same offer twice');
+      if (source === 'command') commandTaken = true;
       output.missionOffers.push(offer);
     });
   }
@@ -235,6 +242,8 @@ export function validateDirectorOutput(
   if (only) return { output, rejected };
 
   let newThread = false;
+  const statusNow = new Map<string, Thread['status']>(state.world.threads.map((t) => [t.id, t.status]));
+  let openCount = openThreads(state);
   const flagCount = new Map<string, number>(state.world.threads.map((t) => [t.id, t.flags.length]));
   list('threadUpdates').forEach((u, i) => {
     const part = `threadUpdates[${i}]`;
@@ -245,7 +254,7 @@ export function validateDirectorOutput(
       const title = plain(u.title, 60);
       if (title === '') return reject(part, 'a new thread needs a title');
       if (newThread) return reject(part, 'at most one new thread per tick');
-      if (openThreads(state) >= TUNING.world.threadsOpenMax) return reject(part, `already ${TUNING.world.threadsOpenMax} open threads (the limit)`);
+      if (openCount >= TUNING.world.threadsOpenMax) return reject(part, `already ${TUNING.world.threadsOpenMax} open threads (the limit)`);
       update.title = title;
     } else {
       if (u.threadId.startsWith('spine:')) return reject(part, 'spine threads belong to the story');
@@ -253,7 +262,16 @@ export function validateDirectorOutput(
     }
     if (u.status !== undefined) {
       if (typeof u.status !== 'string' || !(THREAD_STATUSES as readonly string[]).includes(u.status)) return reject(part, 'unknown thread status');
-      update.status = u.status as ThreadStatus;
+      const next = u.status as ThreadStatus;
+      if (!isNew) {
+        const was = statusNow.get(u.threadId);
+        // reopening a closed thread uses an open slot like a new one
+        if (was !== 'open' && next === 'open' && openCount >= TUNING.world.threadsOpenMax) return reject(part, `already ${TUNING.world.threadsOpenMax} open threads (the limit)`);
+        if (was !== 'open' && next === 'open') openCount++;
+        if (was === 'open' && next !== 'open') openCount--;
+        statusNow.set(u.threadId, next);
+      }
+      update.status = next;
     }
     const base = isNew ? 0 : flagCount.get(u.threadId) ?? 0;
     let have = base;
@@ -270,7 +288,10 @@ export function validateDirectorOutput(
     });
     if (flags.length > 0) update.addFlags = flags;
     if (!isNew) flagCount.set(u.threadId, have);
-    if (isNew) newThread = true;
+    if (isNew) {
+      newThread = true;
+      if ((update.status ?? 'open') === 'open') openCount++;
+    }
     output.threadUpdates.push(update);
   });
 
@@ -297,6 +318,22 @@ export function validateDirectorOutput(
 // ---------------------------------------------------------------------------------------------
 // Application
 
+/** Metadata stays small: the newest 20 closed and 6 dormant threads are kept (spine and open threads never go). */
+export function trimThreads(draft: CampaignState): void {
+  const keep = (status: (t: Thread) => boolean, max: number): Set<Thread> => {
+    const list = draft.world.threads.filter((t) => !t.id.startsWith('spine:') && status(t));
+    return new Set(list.slice(Math.max(0, list.length - max)));
+  };
+  const closed = keep((t) => t.status === 'resolved' || t.status === 'failed', 20);
+  const dormant = keep((t) => t.status === 'dormant', 6);
+  draft.world.threads = draft.world.threads.filter((t) => {
+    if (t.id.startsWith('spine:')) return true;
+    if (t.status === 'resolved' || t.status === 'failed') return closed.has(t);
+    if (t.status === 'dormant') return dormant.has(t);
+    return true;
+  });
+}
+
 export function applyDirectorOutput(draft: CampaignState, ctx: EngineCtx, out: DirectorOutput, opts: { fallback?: boolean } = {}): EngineEvent[] {
   const events: EngineEvent[] = [];
   let threads = 0;
@@ -321,6 +358,7 @@ export function applyDirectorOutput(draft: CampaignState, ctx: EngineCtx, out: D
     threads++;
   }
 
+  trimThreads(draft);
   let beat: string | null = null;
   const proposal = out.storyBeatProposal;
   if (proposal && checkProposal(draft, ctx.registries, proposal.beatId, 0) === null) {
@@ -328,10 +366,13 @@ export function applyDirectorOutput(draft: CampaignState, ctx: EngineCtx, out: D
     beat = proposal.beatId;
   }
 
+  let commandTaken = false;
   for (const o of out.missionOffers) {
-    const source = o.spineBeat !== undefined ? 'story' : directorSource(ctx.registries, o.templateId);
+    const source = o.spineBeat !== undefined ? 'story' : directorSource(draft, ctx.registries, o.templateId, commandTaken);
     if (source === null) continue;
-    events.push(...offerMission(draft, ctx, { ...o, source }).events);
+    const made = offerMission(draft, ctx, { ...o, source });
+    events.push(...made.events);
+    if (made.mission && source === 'command') commandTaken = true;
   }
   const offers = events.filter((e) => e.type === 'mission_offered').length;
 
