@@ -15,6 +15,7 @@ import type { Rng } from '../rng';
 import type { CampaignState, LootDrop, Unit } from '../state/types';
 import { TUNING } from '../tuning';
 import { applyWorldEffects } from './effects';
+import { openRequest } from './director';
 import { buildMission, completeMission, releaseMission } from './missions';
 import { generateNodeMap, nextNodes, nodePlayType } from './nodeMap';
 import { knownRegions } from './state';
@@ -323,11 +324,6 @@ function enterCombat(draft: CampaignState, ctx: EngineCtx, nodeId: string, def: 
 
 export type ExpeditionOutcome = 'success' | 'retreated' | 'failed';
 
-/** Opens a director request after an expedition (Task 12 replaces this hook with the real `openRequest`). */
-function openDirectorRequest(_draft: CampaignState, _reason: 'expedition'): EngineEvent[] {
-  return [];
-}
-
 const SEVERITY_RANK: Record<string, number> = { minor: 0, moderate: 1, major: 2, extreme: 3 };
 
 /** One hint per (type, actor, targets), the highest severity wins; the first of equals keeps its evidence. */
@@ -433,7 +429,7 @@ export function endExpedition(draft: CampaignState, ctx: EngineCtx, outcome: Exp
 
   delete draft.expedition;
   events.push(...consumeSlots(draft, exp.slots, ctx));
-  events.push(...openDirectorRequest(draft, 'expedition'));
+  events.push(...openRequest(draft, 'expedition'));
   events.push({ type: 'expedition_ended', outcome, reportId: report.id });
   return events;
 }

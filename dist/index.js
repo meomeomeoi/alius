@@ -3925,8 +3925,8 @@ var BUDGET = [0.5, 0.7, 0.9, 1.1, 1.3];
 var FREQUENCY = { common: 1, rare: 0.3, very_rare: 0.08 };
 var MAX_ENEMIES = 6;
 function defaultEnemyName(reg, enemyId, affixes) {
-  const words2 = affixes.map((id) => reg.affixes.get(id)?.adjective ?? "").filter((w) => w !== "");
-  return [...words2, reg.enemies.get(enemyId)?.name ?? enemyId].join(" ");
+  const words3 = affixes.map((id) => reg.affixes.get(id)?.adjective ?? "").filter((w) => w !== "");
+  return [...words3, reg.enemies.get(enemyId)?.name ?? enemyId].join(" ");
 }
 function averageLevel(state) {
   const fielded = state.roster.activeIds.map((id) => state.squad.find((u) => u.id === id)).filter((u) => u !== void 0);
@@ -4538,192 +4538,8 @@ registerAction("squad/release_breakdowns", (draft, payload) => {
 });
 registerActivityHook((draft, ctx2) => applyAllLevelUps(draft, ctx2.registries));
 
-// src/engine/world/clocks.ts
-function advanceClock(draft, ctx2, clockId, by, reason, depth = 0) {
-  const clock = clockById(draft, clockId);
-  if (!clock) return [];
-  const def = ctx2.registries.clocks.get(clockId);
-  const repeat = def?.repeat === true;
-  if (clock.filled >= clock.segments && !repeat) return [];
-  const next = Math.min(clock.segments, Math.max(0, clock.filled + by));
-  const delta = next - clock.filled;
-  if (delta === 0) return [];
-  clock.filled = next;
-  const events = [{ type: "clock_advanced", clockId, filled: next, by: delta, reason }];
-  if (next < clock.segments) return events;
-  clock.filledDay = draft.day;
-  events.push({ type: "clock_filled", clockId, label: clock.label });
-  if (repeat) clock.filled = 0;
-  const onFill = def?.onFill ?? [];
-  events.push(...applyWorldEffects(draft, ctx2, onFill, { kind: "clock", id: clockId, depth: depth + 1, label: clock.label }));
-  return events;
-}
-
-// src/engine/world/spine.ts
-function spineOf(state, reg) {
-  const start = state.world.startId === void 0 ? void 0 : reg.starts.get(state.world.startId);
-  return start?.spine ?? [];
-}
-function currentBeat(state, reg) {
-  return spineOf(state, reg)[state.world.spineProgress] ?? null;
-}
-var hasFlag2 = (state, id) => state.world.flags.includes(id) || state.commander.flags.includes(id);
-function completeBeat(draft, ctx2, beatId) {
-  const beat = currentBeat(draft, ctx2.registries);
-  if (!beat || beat.id !== beatId) throw new Error(`Beat "${beatId}" is not the current beat: beats cannot be skipped.`);
-  if (draft.world.spine?.proposed !== beatId) throw new Error(`Beat "${beatId}" was not proposed.`);
-  const thread = draft.world.threads.find((t) => t.id === `spine:${beatId}`);
-  if (thread) thread.status = "resolved";
-  draft.world.spineProgress += 1;
-  delete draft.world.spine.proposed;
-  delete draft.world.spine.proposedDay;
-  const events = [{ type: "beat_completed", beatId, progress: draft.world.spineProgress }];
-  events.push(...applyWorldEffects(draft, ctx2, beat.onComplete ?? [], { kind: "beat", id: beatId, label: beat.title }));
-  return events;
-}
-function onMissionCompleted(draft, ctx2, mission) {
-  if (mission.spineBeat === void 0 || draft.world.spine?.proposed !== mission.spineBeat) return [];
-  const beat = currentBeat(draft, ctx2.registries);
-  if (!beat || beat.id !== mission.spineBeat || beat.completion?.kind !== "mission") return [];
-  return completeBeat(draft, ctx2, beat.id);
-}
-function checkBeatFlags(draft, ctx2) {
-  const beat = currentBeat(draft, ctx2.registries);
-  if (!beat || draft.world.spine?.proposed !== beat.id || beat.completion?.kind !== "flag") return [];
-  if (!beat.completion.anyOf.some((f) => hasFlag2(draft, f))) return [];
-  return completeBeat(draft, ctx2, beat.id);
-}
-
-// src/engine/world/effects.ts
-var MAX_EFFECT_DEPTH = 3;
-var clamp7 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
-function partyUnits(draft) {
-  if (draft.expedition) {
-    return draft.expedition.party.map((id) => draft.squad.find((u) => u.id === id)).filter((u) => u !== void 0 && isLiving(u));
-  }
-  return activeRosterUnits(draft);
-}
-function offerMissionEffect(draft, ctx2, fx2) {
-  const tpl = ctx2.registries.missionTemplates.get(fx2.templateId);
-  const regionId = fx2.regionId ?? tpl?.regions?.[0] ?? knownRegions(draft, ctx2.registries)[0]?.id;
-  if (regionId === void 0) return [];
-  return offerMission(draft, ctx2, { templateId: fx2.templateId, regionId, source: fx2.source }).events;
-}
-function applyWorldEffects(draft, ctx2, effects2, src) {
-  const depth = src.depth ?? 0;
-  if (depth > MAX_EFFECT_DEPTH) return [];
-  const events = [];
-  const reg = ctx2.registries;
-  for (const fx2 of effects2) {
-    switch (fx2.type) {
-      case "resource": {
-        const before = draft.resources[fx2.resource];
-        const after = Math.max(0, before + fx2.amount);
-        draft.resources[fx2.resource] = after;
-        if (after !== before) events.push({ type: "resource_changed", resource: fx2.resource, amount: after - before });
-        break;
-      }
-      case "carried_supplies": {
-        const exp = draft.expedition;
-        if (exp) exp.supplies = clamp7(exp.supplies + fx2.amount, 0, TUNING.expedition.suppliesMax);
-        break;
-      }
-      case "faction": {
-        if (!reg.corporations.has(fx2.factionId)) break;
-        const before = draft.world.factions[fx2.factionId] ?? 0;
-        const after = clamp7(before + fx2.amount, -100, 100);
-        draft.world.factions[fx2.factionId] = after;
-        if (after !== before) events.push({ type: "faction_changed", factionId: fx2.factionId, amount: after - before, standing: after });
-        break;
-      }
-      case "clock":
-        events.push(...advanceClock(draft, ctx2, fx2.clockId, fx2.by, `${src.kind}:${src.id}`, depth));
-        break;
-      case "flag": {
-        const def = reg.flags.get(fx2.flagId);
-        if (!def || def.scope !== "world" && def.scope !== "commander") break;
-        const list2 = def.scope === "world" ? draft.world.flags : draft.commander.flags;
-        if (list2.includes(fx2.flagId)) break;
-        const excluded = new Set(def.mutuallyExclusiveWith ?? []);
-        for (let i = list2.length - 1; i >= 0; i--) if (excluded.has(list2[i])) list2.splice(i, 1);
-        list2.push(fx2.flagId);
-        events.push({ type: "flag_set", flagId: fx2.flagId, scope: def.scope });
-        events.push(...checkBeatFlags(draft, ctx2));
-        break;
-      }
-      case "clearance": {
-        const before = draft.world.clearanceTier ?? 0;
-        const after = Math.min(3, Math.max(before, fx2.tier));
-        if (after > before) {
-          draft.world.clearanceTier = after;
-          events.push({ type: "clearance_raised", tier: after });
-        }
-        break;
-      }
-      case "party_stress": {
-        for (const u of partyUnits(draft)) {
-          const next = clamp7(u.stress + fx2.amount, 0, 100);
-          if (next !== u.stress) events.push({ type: "stress_changed", unitId: u.id, delta: next - u.stress });
-          u.stress = next;
-        }
-        break;
-      }
-      case "party_hp": {
-        for (const u of partyUnits(draft)) {
-          const max = unitStats(draft, reg, u).hp;
-          const next = u.currentHp + Math.round(max * fx2.pct / 100);
-          u.currentHp = fx2.pct < 0 ? Math.max(1, next) : Math.min(max, next);
-        }
-        break;
-      }
-      case "loot": {
-        if (!reg.lootTables.has(fx2.tableId)) break;
-        const drops = [];
-        for (let i = 0; i < (fx2.rolls ?? 1); i++) drops.push(...rollLoot(draft, reg, ctx2.rng, fx2.tableId));
-        if (draft.expedition) draft.expedition.loot.push(...drops);
-        else events.push(...bankLoot(draft, drops));
-        break;
-      }
-      case "leash":
-        draft.leash.authorizationsLeft = Math.max(0, draft.leash.authorizationsLeft + fx2.amount);
-        break;
-      case "thread": {
-        const thread = draft.world.threads.find((t) => t.id === fx2.threadId);
-        if (!thread || thread.status === fx2.status) break;
-        thread.status = fx2.status;
-        events.push({ type: "thread_changed", threadId: fx2.threadId, status: fx2.status });
-        break;
-      }
-      case "unit_event": {
-        const exp = draft.expedition;
-        if (!exp) break;
-        const targets = exp.party.filter((id) => {
-          const u = draft.squad.find((x) => x.id === id);
-          return u !== void 0 && (fx2.targets === "party" || u.kind === "named");
-        });
-        if (targets.length === 0) break;
-        const hint = { type: fx2.event, actor: "commander", targets, severity: fx2.severity, evidence: src.label ?? src.id };
-        if (fx2.valueAxes) hint.valueAxes = fx2.valueAxes.map((a) => ({ axis: a.axis, direction: a.direction }));
-        exp.hints.push(hint);
-        break;
-      }
-      case "incoming_unit":
-        draft.world.incomingUnits = (draft.world.incomingUnits ?? 0) + 1;
-        events.push({ type: "incoming_unit_offered", count: draft.world.incomingUnits });
-        break;
-      case "fact":
-        addFact(draft, { about: [], text: fx2.text, tags: fx2.tags, importance: fx2.importance, day: draft.day, knownBy: ["*"] });
-        break;
-      case "offer_mission":
-        events.push(...offerMissionEffect(draft, ctx2, fx2));
-        break;
-    }
-  }
-  return events;
-}
-
 // src/engine/world/missions.ts
-var clamp8 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp7 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 function checkOffer(state, reg, o) {
   const tpl = reg.missionTemplates.get(o.templateId);
   if (!tpl) return `Unknown mission template "${o.templateId}".`;
@@ -4761,7 +4577,7 @@ function buildMission(draft, ctx2, o) {
     title: (o.title ?? pick(tpl.titles)).slice(0, TUNING.director.titleMax),
     brief: (o.brief ?? pick(tpl.briefs)).slice(0, TUNING.director.briefMax),
     regionId: o.regionId,
-    danger: clamp8(Math.round(o.danger ?? region.danger), tpl.dangerRange[0], tpl.dangerRange[1]),
+    danger: clamp7(Math.round(o.danger ?? region.danger), tpl.dangerRange[0], tpl.dangerRange[1]),
     objective: { node: objective.node, condition: objective.condition },
     offeredDay: draft.day,
     rewardsTier: o.rewardsTier ?? lowestTier(reg, tpl.tiers),
@@ -4769,7 +4585,7 @@ function buildMission(draft, ctx2, o) {
     status: "offered"
   };
   if (o.source !== "story" && o.poiId === void 0) {
-    mission.deadlineDay = draft.day + clamp8(o.deadlineDays ?? 7, TUNING.world.deadlineMinDays, TUNING.world.deadlineMaxDays);
+    mission.deadlineDay = draft.day + clamp7(o.deadlineDays ?? 7, TUNING.world.deadlineMinDays, TUNING.world.deadlineMaxDays);
   }
   if (o.threadId !== void 0) mission.threadId = o.threadId;
   if (o.spineBeat !== void 0) mission.spineBeat = o.spineBeat;
@@ -4883,6 +4699,25 @@ function runDeadlines(draft, ctx2) {
   }
   return events;
 }
+function rumorCap(state, reg) {
+  const bonus = socialRank(state, "insight") >= TUNING.world.insightRumorRank ? 1 : 0;
+  return Math.min(TUNING.director.maxRumors, facilityEffect(state, reg, "comms", "rumorsPerDay") + bonus);
+}
+var cutWords = (text, max) => text.trim().split(/\s+/).filter(Boolean).slice(0, max).join(" ");
+function postRumor(draft, ctx2, r) {
+  if (draft.rumors.filter((x) => x.day === draft.day).length >= rumorCap(draft, ctx2.registries)) return null;
+  const text = cutWords(r.text, TUNING.director.rumorWords);
+  if (text === "") return null;
+  const rumor = { id: nextId(draft, "r"), day: draft.day, text, tags: [...r.tags], leadsTo: r.leadsTo, status: "new" };
+  if (r.leadsTo === "mission") {
+    if (r.lead && checkOffer(draft, ctx2.registries, { ...r.lead, source: "rumor" }) === null) rumor.lead = { ...r.lead };
+    else rumor.leadsTo = "none";
+  }
+  draft.rumors.push(rumor);
+  if (draft.rumors.length > TUNING.world.rumorsMax) draft.rumors.splice(0, draft.rumors.length - TUNING.world.rumorsMax);
+  return rumor;
+}
+var rumorPostedEvent = (r) => ({ type: "rumor_posted", rumorId: r.id, text: r.text, leadsTo: r.leadsTo });
 function followRumor(draft, ctx2, rumorId) {
   const rumor = draft.rumors.find((r) => r.id === rumorId);
   if (!rumor) throw new Error(`Rumor "${rumorId}" does not exist.`);
@@ -4903,11 +4738,567 @@ function followRumor(draft, ctx2, rumorId) {
   return events;
 }
 
-// src/engine/actions/world.ts
+// src/engine/world/spine.ts
+function spineOf(state, reg) {
+  const start = state.world.startId === void 0 ? void 0 : reg.starts.get(state.world.startId);
+  return start?.spine ?? [];
+}
+function currentBeat(state, reg) {
+  return spineOf(state, reg)[state.world.spineProgress] ?? null;
+}
+var hasFlag2 = (state, id) => state.world.flags.includes(id) || state.commander.flags.includes(id);
+function beatReady(state, _reg, beat) {
+  const c = beat.conditions;
+  if (!c) return true;
+  if (c.minDay !== void 0 && state.day < c.minDay) return false;
+  if (c.flagsAll?.some((f) => !hasFlag2(state, f))) return false;
+  if (c.flagsNone?.some((f) => hasFlag2(state, f))) return false;
+  if (c.clearanceMin !== void 0 && (state.world.clearanceTier ?? 0) < c.clearanceMin) return false;
+  if (c.threads?.some((t) => state.world.threads.find((x) => x.id === t.id)?.status !== t.status)) return false;
+  return true;
+}
+function checkProposal(state, reg, beatId, cooldownDays) {
+  const beat = currentBeat(state, reg);
+  if (!beat || beat.id !== beatId) return `Beat "${beatId}" is not the current beat.`;
+  if (state.world.spine?.proposed === beatId) return `Beat "${beatId}" was already proposed.`;
+  if (!beatReady(state, reg, beat)) return `The conditions of beat "${beatId}" are not ready.`;
+  const last = state.world.spine?.lastProposalDay;
+  if (last !== void 0 && state.day - last < cooldownDays) return `Cooldown: the last beat was proposed ${state.day - last} day(s) ago (needs ${cooldownDays}).`;
+  return null;
+}
+var cutWords2 = (text, max) => text.trim().split(/\s+/).filter(Boolean).slice(0, max).join(" ");
+function proposeBeat(draft, ctx2, beatId, framing) {
+  const reg = ctx2.registries;
+  const problem = checkProposal(draft, reg, beatId, 0);
+  if (problem) throw new Error(problem);
+  const beat = currentBeat(draft, reg);
+  const text = cutWords2(framing, TUNING.director.framingWords) || beat.goal;
+  const events = [];
+  draft.world.spine = { ...draft.world.spine ?? {}, proposed: beatId, proposedDay: draft.day, lastProposalDay: draft.day };
+  const threadId = `spine:${beatId}`;
+  if (!draft.world.threads.some((t) => t.id === threadId)) {
+    const completion2 = beat.completion;
+    draft.world.threads.push({
+      id: threadId,
+      title: beat.title,
+      status: "open",
+      flags: [],
+      relatedUnits: [],
+      relatedRegions: completion2?.kind === "mission" ? [completion2.regionId] : [],
+      createdDay: draft.day
+    });
+  }
+  addFact(draft, { about: [], text, tags: ["spine"], importance: 4, day: draft.day, knownBy: ["*"] });
+  addChronicle(draft, { kind: "scene", day: draft.day, text });
+  events.push({ type: "beat_proposed", beatId, framing: text });
+  const completion = beat.completion ?? { kind: "auto" };
+  if (completion.kind === "mission") {
+    const taken = [...draft.missions.offered, ...draft.missions.active].some((m) => m.spineBeat === beatId);
+    if (!taken) {
+      events.push(...offerMission(draft, ctx2, {
+        templateId: completion.templateId,
+        regionId: completion.regionId,
+        source: "story",
+        spineBeat: beatId,
+        threadId
+      }).events);
+    }
+  } else if (completion.kind === "auto") {
+    events.push(...completeBeat(draft, ctx2, beatId));
+  } else {
+    events.push(...checkBeatFlags(draft, ctx2));
+  }
+  return events;
+}
+function completeBeat(draft, ctx2, beatId) {
+  const beat = currentBeat(draft, ctx2.registries);
+  if (!beat || beat.id !== beatId) throw new Error(`Beat "${beatId}" is not the current beat: beats cannot be skipped.`);
+  if (draft.world.spine?.proposed !== beatId) throw new Error(`Beat "${beatId}" was not proposed.`);
+  const thread = draft.world.threads.find((t) => t.id === `spine:${beatId}`);
+  if (thread) thread.status = "resolved";
+  draft.world.spineProgress += 1;
+  delete draft.world.spine.proposed;
+  delete draft.world.spine.proposedDay;
+  const events = [{ type: "beat_completed", beatId, progress: draft.world.spineProgress }];
+  events.push(...applyWorldEffects(draft, ctx2, beat.onComplete ?? [], { kind: "beat", id: beatId, label: beat.title }));
+  return events;
+}
+function onMissionCompleted(draft, ctx2, mission) {
+  if (mission.spineBeat === void 0 || draft.world.spine?.proposed !== mission.spineBeat) return [];
+  const beat = currentBeat(draft, ctx2.registries);
+  if (!beat || beat.id !== mission.spineBeat || beat.completion?.kind !== "mission") return [];
+  return completeBeat(draft, ctx2, beat.id);
+}
+function checkBeatFlags(draft, ctx2) {
+  const beat = currentBeat(draft, ctx2.registries);
+  if (!beat || draft.world.spine?.proposed !== beat.id || beat.completion?.kind !== "flag") return [];
+  if (!beat.completion.anyOf.some((f) => hasFlag2(draft, f))) return [];
+  return completeBeat(draft, ctx2, beat.id);
+}
+
+// src/engine/world/effects.ts
+var MAX_EFFECT_DEPTH = 3;
+var clamp8 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+function partyUnits(draft) {
+  if (draft.expedition) {
+    return draft.expedition.party.map((id) => draft.squad.find((u) => u.id === id)).filter((u) => u !== void 0 && isLiving(u));
+  }
+  return activeRosterUnits(draft);
+}
+function offerMissionEffect(draft, ctx2, fx2) {
+  const tpl = ctx2.registries.missionTemplates.get(fx2.templateId);
+  const regionId = fx2.regionId ?? tpl?.regions?.[0] ?? knownRegions(draft, ctx2.registries)[0]?.id;
+  if (regionId === void 0) return [];
+  return offerMission(draft, ctx2, { templateId: fx2.templateId, regionId, source: fx2.source }).events;
+}
+function applyWorldEffects(draft, ctx2, effects2, src) {
+  const depth = src.depth ?? 0;
+  if (depth > MAX_EFFECT_DEPTH) return [];
+  const events = [];
+  const reg = ctx2.registries;
+  for (const fx2 of effects2) {
+    switch (fx2.type) {
+      case "resource": {
+        const before = draft.resources[fx2.resource];
+        const after = Math.max(0, before + fx2.amount);
+        draft.resources[fx2.resource] = after;
+        if (after !== before) events.push({ type: "resource_changed", resource: fx2.resource, amount: after - before });
+        break;
+      }
+      case "carried_supplies": {
+        const exp = draft.expedition;
+        if (exp) exp.supplies = clamp8(exp.supplies + fx2.amount, 0, TUNING.expedition.suppliesMax);
+        break;
+      }
+      case "faction": {
+        if (!reg.corporations.has(fx2.factionId)) break;
+        const before = draft.world.factions[fx2.factionId] ?? 0;
+        const after = clamp8(before + fx2.amount, -100, 100);
+        draft.world.factions[fx2.factionId] = after;
+        if (after !== before) events.push({ type: "faction_changed", factionId: fx2.factionId, amount: after - before, standing: after });
+        break;
+      }
+      case "clock":
+        events.push(...advanceClock(draft, ctx2, fx2.clockId, fx2.by, `${src.kind}:${src.id}`, depth));
+        break;
+      case "flag": {
+        const def = reg.flags.get(fx2.flagId);
+        if (!def || def.scope !== "world" && def.scope !== "commander") break;
+        const list2 = def.scope === "world" ? draft.world.flags : draft.commander.flags;
+        if (list2.includes(fx2.flagId)) break;
+        const excluded = new Set(def.mutuallyExclusiveWith ?? []);
+        for (let i = list2.length - 1; i >= 0; i--) if (excluded.has(list2[i])) list2.splice(i, 1);
+        list2.push(fx2.flagId);
+        events.push({ type: "flag_set", flagId: fx2.flagId, scope: def.scope });
+        events.push(...checkBeatFlags(draft, ctx2));
+        break;
+      }
+      case "clearance": {
+        const before = draft.world.clearanceTier ?? 0;
+        const after = Math.min(3, Math.max(before, fx2.tier));
+        if (after > before) {
+          draft.world.clearanceTier = after;
+          events.push({ type: "clearance_raised", tier: after });
+        }
+        break;
+      }
+      case "party_stress": {
+        for (const u of partyUnits(draft)) {
+          const next = clamp8(u.stress + fx2.amount, 0, 100);
+          if (next !== u.stress) events.push({ type: "stress_changed", unitId: u.id, delta: next - u.stress });
+          u.stress = next;
+        }
+        break;
+      }
+      case "party_hp": {
+        for (const u of partyUnits(draft)) {
+          const max = unitStats(draft, reg, u).hp;
+          const next = u.currentHp + Math.round(max * fx2.pct / 100);
+          u.currentHp = fx2.pct < 0 ? Math.max(1, next) : Math.min(max, next);
+        }
+        break;
+      }
+      case "loot": {
+        if (!reg.lootTables.has(fx2.tableId)) break;
+        const drops = [];
+        for (let i = 0; i < (fx2.rolls ?? 1); i++) drops.push(...rollLoot(draft, reg, ctx2.rng, fx2.tableId));
+        if (draft.expedition) draft.expedition.loot.push(...drops);
+        else events.push(...bankLoot(draft, drops));
+        break;
+      }
+      case "leash":
+        draft.leash.authorizationsLeft = Math.max(0, draft.leash.authorizationsLeft + fx2.amount);
+        break;
+      case "thread": {
+        const thread = draft.world.threads.find((t) => t.id === fx2.threadId);
+        if (!thread || thread.status === fx2.status) break;
+        thread.status = fx2.status;
+        events.push({ type: "thread_changed", threadId: fx2.threadId, status: fx2.status });
+        break;
+      }
+      case "unit_event": {
+        const exp = draft.expedition;
+        if (!exp) break;
+        const targets = exp.party.filter((id) => {
+          const u = draft.squad.find((x) => x.id === id);
+          return u !== void 0 && (fx2.targets === "party" || u.kind === "named");
+        });
+        if (targets.length === 0) break;
+        const hint = { type: fx2.event, actor: "commander", targets, severity: fx2.severity, evidence: src.label ?? src.id };
+        if (fx2.valueAxes) hint.valueAxes = fx2.valueAxes.map((a) => ({ axis: a.axis, direction: a.direction }));
+        exp.hints.push(hint);
+        break;
+      }
+      case "incoming_unit":
+        draft.world.incomingUnits = (draft.world.incomingUnits ?? 0) + 1;
+        events.push({ type: "incoming_unit_offered", count: draft.world.incomingUnits });
+        break;
+      case "fact":
+        addFact(draft, { about: [], text: fx2.text, tags: fx2.tags, importance: fx2.importance, day: draft.day, knownBy: ["*"] });
+        break;
+      case "offer_mission":
+        events.push(...offerMissionEffect(draft, ctx2, fx2));
+        break;
+    }
+  }
+  return events;
+}
+
+// src/engine/world/clocks.ts
+function advanceClock(draft, ctx2, clockId, by, reason, depth = 0) {
+  const clock = clockById(draft, clockId);
+  if (!clock) return [];
+  const def = ctx2.registries.clocks.get(clockId);
+  const repeat = def?.repeat === true;
+  if (clock.filled >= clock.segments && !repeat) return [];
+  const next = Math.min(clock.segments, Math.max(0, clock.filled + by));
+  const delta = next - clock.filled;
+  if (delta === 0) return [];
+  clock.filled = next;
+  const events = [{ type: "clock_advanced", clockId, filled: next, by: delta, reason }];
+  if (next < clock.segments) return events;
+  clock.filledDay = draft.day;
+  events.push({ type: "clock_filled", clockId, label: clock.label });
+  if (repeat) clock.filled = 0;
+  const onFill = def?.onFill ?? [];
+  events.push(...applyWorldEffects(draft, ctx2, onFill, { kind: "clock", id: clockId, depth: depth + 1, label: clock.label }));
+  return events;
+}
+
+// src/engine/world/types.ts
+var THREAD_STATUSES = ["open", "resolved", "failed", "dormant"];
+
+// src/engine/world/director.ts
+function rumorRoom(state, reg) {
+  return Math.max(0, rumorCap(state, reg) - state.rumors.filter((r) => r.day === state.day).length);
+}
+var emptyOutput = () => ({ missionOffers: [], rumors: [], threadUpdates: [], clockAdvances: [] });
 var isObj9 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var clamp9 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+function plain(v, max) {
+  if (typeof v !== "string") return "";
+  return v.replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim().slice(0, max).trim();
+}
+var words2 = (text, max) => text.split(" ").filter(Boolean).slice(0, max).join(" ");
+var slug2 = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 32).replace(/_+$/g, "");
+function directorSource(reg, templateId) {
+  const sources = reg.missionTemplates.get(templateId)?.sources ?? [];
+  return ["command", "side"].find((s) => sources.includes(s)) ?? null;
+}
+var openThreads = (state) => state.world.threads.filter((t) => t.status === "open" && !t.id.startsWith("spine:")).length;
+function validateDirectorOutput(state, reg, raw, opts) {
+  const output = emptyOutput();
+  const rejected = [];
+  const reject = (part, reason) => {
+    rejected.push({ part, reason });
+  };
+  if (!isObj9(raw)) {
+    reject("output", "the answer is not an object");
+    return { output, rejected };
+  }
+  const list2 = (key) => {
+    const v = raw[key];
+    if (v === void 0) return [];
+    if (!Array.isArray(v)) {
+      reject(key, "not a list");
+      return [];
+    }
+    return v;
+  };
+  const only = opts.only === "rumors";
+  let proposedNow;
+  if (!only && raw.storyBeatProposal !== void 0) {
+    const p = raw.storyBeatProposal;
+    if (!isObj9(p) || typeof p.beatId !== "string") reject("storyBeatProposal", "not a beat proposal");
+    else {
+      const problem = checkProposal(state, reg, p.beatId, opts.cooldownDays);
+      if (problem) reject("storyBeatProposal", problem);
+      else {
+        output.storyBeatProposal = { beatId: p.beatId, framing: words2(plain(p.framing, 600), TUNING.director.framingWords) };
+        proposedNow = p.beatId;
+      }
+    }
+  }
+  const current = currentBeat(state, reg)?.id;
+  const beatOpen = (id) => id === current && (state.world.spine?.proposed === id || proposedNow === id);
+  if (!only) {
+    list2("missionOffers").forEach((o, i) => {
+      const part = `missionOffers[${i}]`;
+      if (i >= TUNING.director.maxOffers) return reject(part, `more than ${TUNING.director.maxOffers} offers`);
+      if (!isObj9(o) || typeof o.templateId !== "string" || typeof o.regionId !== "string") return reject(part, "not a mission offer");
+      const offer = { templateId: o.templateId, regionId: o.regionId };
+      let source;
+      if (o.spineBeat !== void 0) {
+        if (typeof o.spineBeat !== "string" || !beatOpen(o.spineBeat)) return reject(part, "that beat is not the proposed current beat");
+        offer.spineBeat = o.spineBeat;
+        source = "story";
+      } else {
+        source = directorSource(reg, o.templateId);
+        if (source === null) return reject(part, "the template allows neither command nor side missions");
+      }
+      if (o.danger !== void 0) {
+        if (typeof o.danger !== "number" || !Number.isInteger(o.danger) || o.danger < 1 || o.danger > 5) return reject(part, "danger must be an integer from 1 to 5");
+        offer.danger = o.danger;
+      }
+      if (typeof o.deadlineDays === "number" && Number.isFinite(o.deadlineDays)) {
+        offer.deadlineDays = clamp9(Math.round(o.deadlineDays), TUNING.world.deadlineMinDays, TUNING.world.deadlineMaxDays);
+      }
+      const title = plain(o.title, TUNING.director.titleMax);
+      if (title !== "") offer.title = title;
+      const brief = plain(o.brief, TUNING.director.briefMax);
+      if (brief !== "") offer.brief = brief;
+      for (const key of ["objectiveNode", "rewardsTier", "threadId"]) {
+        if (o[key] === void 0) continue;
+        if (typeof o[key] !== "string") return reject(part, `${key} must be an id`);
+        offer[key] = o[key];
+      }
+      const problem = checkOffer(state, reg, { ...offer, source });
+      if (problem) return reject(part, problem);
+      if (output.missionOffers.some((x) => x.templateId === offer.templateId && x.regionId === offer.regionId)) return reject(part, "the same offer twice");
+      output.missionOffers.push(offer);
+    });
+  }
+  let room = rumorRoom(state, reg);
+  list2("rumors").forEach((r, i) => {
+    const part = `rumors[${i}]`;
+    if (i >= TUNING.director.maxRumors) return reject(part, `more than ${TUNING.director.maxRumors} rumors`);
+    if (!isObj9(r)) return reject(part, "not a rumor");
+    const text = words2(plain(r.text, 600), TUNING.director.rumorWords);
+    if (text === "") return reject(part, "the rumor has no text");
+    if (room <= 0) return reject(part, "no room for more rumors today");
+    const tags = [];
+    for (const t of Array.isArray(r.tags) ? r.tags : []) {
+      const n = normalizeTag(t);
+      if (n !== null && !tags.includes(n)) tags.push(n);
+    }
+    const leadsTo = r.leadsTo === "mission" || r.leadsTo === "fact" ? r.leadsTo : "none";
+    const rumor = { text, leadsTo, tags };
+    if (leadsTo === "mission") {
+      const lead = r.lead;
+      if (!isObj9(lead) || typeof lead.templateId !== "string" || typeof lead.regionId !== "string") return reject(part, "a mission lead needs a lead");
+      const problem = checkOffer(state, reg, { templateId: lead.templateId, regionId: lead.regionId, source: "rumor" });
+      if (problem) return reject(part, `bad lead: ${problem}`);
+      rumor.lead = { templateId: lead.templateId, regionId: lead.regionId };
+    }
+    room--;
+    output.rumors.push(rumor);
+  });
+  if (only) return { output, rejected };
+  let newThread = false;
+  const flagCount = new Map(state.world.threads.map((t) => [t.id, t.flags.length]));
+  list2("threadUpdates").forEach((u, i) => {
+    const part = `threadUpdates[${i}]`;
+    if (!isObj9(u) || typeof u.threadId !== "string") return reject(part, "not a thread update");
+    const isNew = u.threadId === "new";
+    const update = { threadId: u.threadId };
+    if (isNew) {
+      const title = plain(u.title, 60);
+      if (title === "") return reject(part, "a new thread needs a title");
+      if (newThread) return reject(part, "at most one new thread per tick");
+      if (openThreads(state) >= TUNING.world.threadsOpenMax) return reject(part, `already ${TUNING.world.threadsOpenMax} open threads (the limit)`);
+      update.title = title;
+    } else {
+      if (u.threadId.startsWith("spine:")) return reject(part, "spine threads belong to the story");
+      if (!state.world.threads.some((t) => t.id === u.threadId)) return reject(part, `unknown thread "${u.threadId}"`);
+    }
+    if (u.status !== void 0) {
+      if (typeof u.status !== "string" || !THREAD_STATUSES.includes(u.status)) return reject(part, "unknown thread status");
+      update.status = u.status;
+    }
+    const base = isNew ? 0 : flagCount.get(u.threadId) ?? 0;
+    let have = base;
+    const flags = [];
+    (Array.isArray(u.addFlags) ? u.addFlags : []).forEach((f, j) => {
+      const fp = `${part}.addFlags[${j}]`;
+      if (j >= 3) return reject(fp, "at most 3 flags per update");
+      const s = typeof f === "string" ? slug2(f) : isObj9(f) && typeof f.slug === "string" ? slug2(f.slug) : "";
+      const description = typeof f === "string" ? plain(f, TUNING.director.reasonMax) : isObj9(f) ? plain(f.description, TUNING.director.reasonMax) : "";
+      if (s === "") return reject(fp, "the flag has no usable name");
+      if (have >= TUNING.world.threadFlagsMax) return reject(fp, `a thread holds at most ${TUNING.world.threadFlagsMax} flags`);
+      have++;
+      flags.push({ slug: s, description: description || s });
+    });
+    if (flags.length > 0) update.addFlags = flags;
+    if (!isNew) flagCount.set(u.threadId, have);
+    if (isNew) newThread = true;
+    output.threadUpdates.push(update);
+  });
+  let total = 0;
+  const perClock = /* @__PURE__ */ new Map();
+  list2("clockAdvances").forEach((c, i) => {
+    const part = `clockAdvances[${i}]`;
+    if (!isObj9(c) || typeof c.clockId !== "string") return reject(part, "not a clock advance");
+    const clock = state.world.clocks.find((x) => x.id === c.clockId);
+    if (!clock) return reject(part, `unknown clock "${c.clockId}"`);
+    const repeat = reg.clocks.get(clock.id)?.repeat === true;
+    if (clock.filled >= clock.segments && !repeat) return reject(part, "the clock is full");
+    if (c.by !== 1 && c.by !== 2) return reject(part, "by must be exactly 1 or 2");
+    const by = c.by;
+    if ((perClock.get(clock.id) ?? 0) + by > TUNING.director.maxClockPerClock) return reject(part, `at most ${TUNING.director.maxClockPerClock} on one clock`);
+    if (total + by > TUNING.director.maxClockTotal) return reject(part, `at most ${TUNING.director.maxClockTotal} clock segments in all`);
+    perClock.set(clock.id, (perClock.get(clock.id) ?? 0) + by);
+    total += by;
+    output.clockAdvances.push({ clockId: clock.id, by, reason: plain(c.reason, TUNING.director.reasonMax) });
+  });
+  return { output, rejected };
+}
+function applyDirectorOutput(draft, ctx2, out, opts = {}) {
+  const events = [];
+  let threads = 0;
+  for (const u of out.threadUpdates) {
+    let thread = draft.world.threads.find((t) => t.id === u.threadId);
+    if (u.threadId === "new") {
+      thread = {
+        id: nextId(draft, "t"),
+        title: u.title ?? "Untitled",
+        status: u.status ?? "open",
+        flags: [],
+        relatedUnits: [],
+        relatedRegions: [],
+        createdDay: draft.day
+      };
+      draft.world.threads.push(thread);
+      events.push({ type: "thread_changed", threadId: thread.id, status: thread.status });
+    } else if (thread && u.status !== void 0 && thread.status !== u.status) {
+      thread.status = u.status;
+      events.push({ type: "thread_changed", threadId: thread.id, status: thread.status });
+    }
+    if (!thread) continue;
+    for (const f of u.addFlags ?? []) {
+      const id = `thread:${thread.id}:${f.slug}`;
+      if (thread.flags.length >= TUNING.world.threadFlagsMax || thread.flags.some((x) => x.id === id)) continue;
+      thread.flags.push({ id, description: f.description });
+    }
+    threads++;
+  }
+  let beat = null;
+  const proposal = out.storyBeatProposal;
+  if (proposal && checkProposal(draft, ctx2.registries, proposal.beatId, 0) === null) {
+    events.push(...proposeBeat(draft, ctx2, proposal.beatId, proposal.framing));
+    beat = proposal.beatId;
+  }
+  for (const o of out.missionOffers) {
+    const source = o.spineBeat !== void 0 ? "story" : directorSource(ctx2.registries, o.templateId);
+    if (source === null) continue;
+    events.push(...offerMission(draft, ctx2, { ...o, source }).events);
+  }
+  const offers = events.filter((e) => e.type === "mission_offered").length;
+  let rumors = 0;
+  for (const r of out.rumors) {
+    const posted = postRumor(draft, ctx2, r);
+    if (!posted) continue;
+    events.push(rumorPostedEvent(posted));
+    rumors++;
+  }
+  let clocks = 0;
+  for (const c of out.clockAdvances) {
+    const moved = advanceClock(draft, ctx2, c.clockId, c.by, c.reason || "director");
+    events.push(...moved);
+    if (moved.some((e) => e.type === "clock_advanced")) clocks++;
+  }
+  events.push({ type: "director_applied", offers, rumors, threads, clocks, beat, ...opts.fallback ? { fallback: true } : {} });
+  return events;
+}
+function answerRequest(draft, ctx2, requestId, raw, opts = {}) {
+  const pending2 = draft.world.director?.pending;
+  if (!pending2 || pending2.id !== requestId) throw new Error("Stale director answer.");
+  const cooldownDays = Number.isFinite(opts.cooldownDays) ? clamp9(Math.round(opts.cooldownDays), 1, 14) : TUNING.director.beatCooldownDays;
+  const { output, rejected } = validateDirectorOutput(draft, ctx2.registries, raw(pending2), {
+    cooldownDays,
+    only: pending2.reason === "scout" ? "rumors" : void 0
+  });
+  const events = applyDirectorOutput(draft, ctx2, output, { fallback: opts.fallback });
+  delete draft.world.director.pending;
+  draft.world.director.lastTickDay = draft.day;
+  if (rejected.length > 0) events.push({ type: "director_rejected", rejected });
+  return events;
+}
+function openRequest(draft, reason) {
+  const director = draft.world.director ??= {};
+  if (director.pending) return [];
+  director.seq = (director.seq ?? 0) + 1;
+  director.pending = { id: `d${director.seq}`, reason, day: draft.day };
+  return [{ type: "director_requested", id: director.pending.id, reason }];
+}
+function poiTemplates(reg) {
+  return new Set([...reg.regions.values()].flatMap((r) => r.pointsOfInterest.map((p) => p.templateId)));
+}
+var pairs = (state, reg, source, accept) => {
+  const known = knownRegions(state, reg);
+  const out = [];
+  for (const t of reg.missionTemplates.values()) {
+    if (!accept(t)) continue;
+    for (const region of known) {
+      const offer = { templateId: String(t.id), regionId: String(region.id), source };
+      if (checkOffer(state, reg, offer) === null) out.push(offer);
+    }
+  }
+  return out;
+};
+function fallbackOutput(state, reg, rng) {
+  const out = emptyOutput();
+  const beat = currentBeat(state, reg);
+  if (beat && checkProposal(state, reg, beat.id, TUNING.director.beatCooldownDays) === null) {
+    out.storyBeatProposal = { beatId: beat.id, framing: "" };
+  }
+  const all = [...state.missions.offered, ...state.missions.active, ...state.missions.completed];
+  const lastCommand = Math.max(-Infinity, ...all.filter((m) => m.source === "command").map((m) => m.offeredDay));
+  const commandOpen = [...state.missions.offered, ...state.missions.active].some((m) => m.source === "command");
+  const taken = /* @__PURE__ */ new Set();
+  const take = (o) => {
+    if (!o) return;
+    taken.add(`${o.templateId}|${o.regionId}`);
+    out.missionOffers.push({ templateId: o.templateId, regionId: o.regionId });
+  };
+  if (!commandOpen && state.day - lastCommand >= TUNING.world.commandEveryDays) {
+    const options2 = pairs(state, reg, "command", (t) => t.sources.includes("command"));
+    if (options2.length > 0) take(rng.pick(options2));
+  }
+  if (boardRoom(state, reg) - out.missionOffers.length > 0 && out.missionOffers.length < TUNING.director.maxOffers) {
+    const pois = poiTemplates(reg);
+    const options2 = pairs(state, reg, "side", (t) => !pois.has(String(t.id)) && t.sources.includes("side") && !t.sources.includes("command")).filter((o) => !taken.has(`${o.templateId}|${o.regionId}`));
+    if (options2.length > 0) take(rng.pick(options2));
+  }
+  if (rumorRoom(state, reg) > 0) {
+    const used = new Set(state.rumors.map((r) => r.text));
+    const open2 = knownRegions(state, reg).map((r) => ({ id: String(r.id), lines: r.rumors.filter((l) => !used.has(l)) })).filter((r) => r.lines.length > 0);
+    if (open2.length > 0) {
+      const region = rng.pick(open2);
+      out.rumors.push({ text: rng.pick(region.lines), leadsTo: "none", tags: [region.id] });
+    }
+  }
+  if (state.day % 2 === 0) {
+    const options2 = state.world.clocks.filter((c) => c.regionId !== void 0 && c.filled < c.segments);
+    if (options2.length > 0) out.clockAdvances.push({ clockId: rng.pick(options2).id, by: 1, reason: "Pressure builds in the region." });
+  }
+  return out;
+}
+
+// src/engine/actions/world.ts
+var isObj10 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 registerAction("world/seed", (draft, _payload, ctx2) => seedWorld(draft, ctx2.registries));
 registerAction("mission/dismiss", (draft, payload) => {
-  const id = isObj9(payload) ? payload.missionId : void 0;
+  const id = isObj10(payload) ? payload.missionId : void 0;
   if (typeof id !== "string") throw new Error("mission/dismiss needs { missionId }");
   const i = draft.missions.offered.findIndex((m2) => m2.id === id);
   if (i < 0) throw new Error(`Mission "${id}" is not on the board.`);
@@ -4917,12 +5308,37 @@ registerAction("mission/dismiss", (draft, payload) => {
   return [{ type: "mission_expired", missionId: id, reason: "dismissed" }];
 });
 registerAction("rumor/follow", (draft, payload, ctx2) => {
-  const id = isObj9(payload) ? payload.rumorId : void 0;
+  const id = isObj10(payload) ? payload.rumorId : void 0;
   if (typeof id !== "string") throw new Error("rumor/follow needs { rumorId }");
   return followRumor(draft, ctx2, id);
 });
 registerDayEndStep("mission_deadlines", runDeadlines);
 registerMissionCompletedHook(onMissionCompleted);
+registerAction("director/apply", (draft, payload, ctx2) => {
+  const p = isObj10(payload) ? payload : {};
+  const days = typeof p.beatCooldownDays === "number" ? p.beatCooldownDays : void 0;
+  return answerRequest(draft, ctx2, typeof p.requestId === "string" ? p.requestId : void 0, () => p.output, { cooldownDays: days });
+});
+registerAction("director/fallback", (draft, payload, ctx2) => {
+  const id = isObj10(payload) && typeof payload.requestId === "string" ? payload.requestId : void 0;
+  return answerRequest(draft, ctx2, id, () => fallbackOutput(draft, ctx2.registries, ctx2.rng), { fallback: true });
+});
+registerAction("director/request", (draft, payload) => {
+  if (!isObj10(payload) || payload.reason !== "scout") throw new Error("Only a scout request can be opened by hand.");
+  return openRequest(draft, "scout");
+});
+registerDayEndStep("director_tick", (draft, ctx2) => {
+  const events = [];
+  const pending2 = draft.world.director?.pending;
+  if (pending2) {
+    events.push(...answerRequest(draft, ctx2, pending2.id, () => fallbackOutput(draft, ctx2.registries, ctx2.rng), {
+      cooldownDays: TUNING.director.beatCooldownDays,
+      fallback: true
+    }));
+  }
+  events.push(...openRequest(draft, "day_end"));
+  return events;
+});
 
 // src/engine/world/nodeMap.ts
 var OBJECTIVE_ID = "obj";
@@ -5245,7 +5661,7 @@ function treat(draft, ctx2, unitId, kind) {
   addLog(exp, "treat", `${u.displayName}: ${kind === "patch" ? "wounds patched" : "calmed down"}.`, void 0, { unitId, kind });
   return [{ type: "expedition_treated", unitId, kind }];
 }
-var clamp9 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp10 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 function enterCombat(draft, ctx2, nodeId, def, mission) {
   const exp = draft.expedition;
   const reg = ctx2.registries;
@@ -5255,7 +5671,7 @@ function enterCombat(draft, ctx2, nodeId, def, mission) {
   try {
     encounter = generateEncounter(draft, reg, ctx2.rng, {
       table: region.enemyTable,
-      danger: clamp9(mission.danger + combat.dangerDelta, 1, 5),
+      danger: clamp10(mission.danger + combat.dangerDelta, 1, 5),
       squadPower: squadPower(draft, reg, ableParty(draft)),
       exposesCommander: combat.exposesCommander,
       lootTableId: combat.lootTableId
@@ -5267,9 +5683,6 @@ function enterCombat(draft, ctx2, nodeId, def, mission) {
   exp.pending = { kind: "combat", nodeId, encounter, ...draft.lastCombat ? { prevCombatId: draft.lastCombat.id } : {} };
   exp.phase = "combat";
   return [{ type: "expedition_combat", nodeId, encounter }];
-}
-function openDirectorRequest(_draft, _reason) {
-  return [];
 }
 var SEVERITY_RANK2 = { minor: 0, moderate: 1, major: 2, extreme: 3 };
 function dedupeHints(hints) {
@@ -5365,7 +5778,7 @@ function endExpedition(draft, ctx2, outcome) {
   draft.world.lastExpeditionRegionId = exp.regionId;
   delete draft.expedition;
   events.push(...consumeSlots(draft, exp.slots, ctx2));
-  events.push(...openDirectorRequest(draft, "expedition"));
+  events.push(...openRequest(draft, "expedition"));
   events.push({ type: "expedition_ended", outcome, reportId: report.id });
   return events;
 }
@@ -5505,21 +5918,21 @@ function chooseOption(draft, ctx2, index) {
 }
 
 // src/engine/actions/expedition.ts
-var isObj10 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj11 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var strList = (v) => Array.isArray(v) && v.every((x) => typeof x === "string") ? v : null;
 function readFormation(v) {
-  const front = isObj10(v) ? strList(v.front) : null;
-  const back = isObj10(v) ? strList(v.back) : null;
+  const front = isObj11(v) ? strList(v.front) : null;
+  const back = isObj11(v) ? strList(v.back) : null;
   if (!front || !back) throw new Error("A formation needs { front: string[], back: string[] }.");
   return { front, back };
 }
 registerAction("expedition/start", (draft, payload, ctx2) => {
-  if (!isObj10(payload)) throw new Error("expedition/start needs a payload.");
+  if (!isObj11(payload)) throw new Error("expedition/start needs a payload.");
   const unitIds = strList(payload.unitIds);
   if (!unitIds) throw new Error("expedition/start needs { unitIds: string[] }.");
   const p = { unitIds, formation: readFormation(payload.formation), supplies: payload.supplies };
   if (typeof payload.missionId === "string") p.missionId = payload.missionId;
-  if (isObj10(payload.poi) && typeof payload.poi.regionId === "string" && typeof payload.poi.poiId === "string") {
+  if (isObj11(payload.poi) && typeof payload.poi.regionId === "string" && typeof payload.poi.poiId === "string") {
     p.poi = { regionId: payload.poi.regionId, poiId: payload.poi.poiId };
   }
   const problem = checkExpedition(draft, ctx2.registries, p);
@@ -5527,23 +5940,23 @@ registerAction("expedition/start", (draft, payload, ctx2) => {
   return startExpedition(draft, ctx2, p);
 });
 registerAction("expedition/move", (draft, payload, ctx2) => {
-  const nodeId = isObj10(payload) ? payload.nodeId : void 0;
+  const nodeId = isObj11(payload) ? payload.nodeId : void 0;
   if (typeof nodeId !== "string") throw new Error("expedition/move needs { nodeId }.");
   return moveTo(draft, ctx2, nodeId);
 });
 registerAction("expedition/set_formation", (draft, payload) => {
-  setFormation(draft, readFormation(isObj10(payload) ? payload.formation : void 0));
+  setFormation(draft, readFormation(isObj11(payload) ? payload.formation : void 0));
   return [];
 });
 registerAction("expedition/treat", (draft, payload, ctx2) => {
-  const unitId = isObj10(payload) ? payload.unitId : void 0;
-  const kind = isObj10(payload) ? payload.kind : void 0;
+  const unitId = isObj11(payload) ? payload.unitId : void 0;
+  const kind = isObj11(payload) ? payload.kind : void 0;
   if (typeof unitId !== "string" || typeof kind !== "string") throw new Error("expedition/treat needs { unitId, kind }.");
   return treat(draft, ctx2, unitId, kind);
 });
 registerAction("expedition/resolve_combat", (draft, _payload, ctx2) => resolveCombat(draft, ctx2));
 registerAction("expedition/choose", (draft, payload, ctx2) => {
-  const option = isObj10(payload) ? payload.option : void 0;
+  const option = isObj11(payload) ? payload.option : void 0;
   if (typeof option !== "number") throw new Error("expedition/choose needs { option }.");
   return chooseOption(draft, ctx2, option);
 });
@@ -5560,18 +5973,18 @@ registerAction("expedition/mark_debriefed", (draft) => {
   return [];
 });
 registerAction("expedition/set_recap", (draft, payload) => {
-  const reportId = isObj10(payload) ? payload.reportId : void 0;
+  const reportId = isObj11(payload) ? payload.reportId : void 0;
   if (!draft.lastExpedition || reportId !== draft.lastExpedition.id) throw new Error("That report is no longer the last one.");
-  const text = cleanRecap(isObj10(payload) ? payload.text : void 0);
+  const text = cleanRecap(isObj11(payload) ? payload.text : void 0);
   if (text === "") throw new Error("The recap is empty.");
   draft.lastExpedition.recap = text;
   return [{ type: "expedition_recap_set", reportId }];
 });
 
 // src/engine/actions/items.ts
-var isObj11 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj12 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 registerAction("item/equip", (draft, payload, ctx2) => {
-  if (!isObj11(payload) || typeof payload.unitId !== "string" || typeof payload.uid !== "string") {
+  if (!isObj12(payload) || typeof payload.unitId !== "string" || typeof payload.uid !== "string") {
     throw new Error("item/equip needs { unitId, uid }");
   }
   const unit = draft.squad.find((u) => u.id === payload.unitId);
@@ -5589,7 +6002,7 @@ registerAction("item/equip", (draft, payload, ctx2) => {
   return [{ type: "item_equipped", unitId: unit.id, slot, uid: inst.uid, from: previous?.id ?? null }];
 });
 registerAction("item/unequip", (draft, payload) => {
-  if (!isObj11(payload) || typeof payload.unitId !== "string" || !["weapon", "upper", "lower"].includes(String(payload.slot))) {
+  if (!isObj12(payload) || typeof payload.unitId !== "string" || !["weapon", "upper", "lower"].includes(String(payload.slot))) {
     throw new Error("item/unequip needs { unitId, slot }");
   }
   const unit = draft.squad.find((u) => u.id === payload.unitId);
@@ -5619,7 +6032,7 @@ var ownedItem = (draft, uid) => {
 };
 registerAction("item/craft", (draft, payload, ctx2) => {
   session(draft);
-  const id = isObj11(payload) ? payload.recipeId : void 0;
+  const id = isObj12(payload) ? payload.recipeId : void 0;
   const recipe = typeof id === "string" ? ctx2.registries.recipes.get(id) : void 0;
   if (!recipe) throw new Error(`Unknown recipe "${String(id)}".`);
   const rarity = recipe.rarity;
@@ -5633,7 +6046,7 @@ registerAction("item/craft", (draft, payload, ctx2) => {
 });
 registerAction("item/upgrade", (draft, payload, ctx2) => {
   session(draft);
-  const inst = ownedItem(draft, isObj11(payload) ? payload.uid : void 0);
+  const inst = ownedItem(draft, isObj12(payload) ? payload.uid : void 0);
   if (inst.upgrade >= TUNING.items.maxUpgrade) throw new Error("MAX UPGRADE");
   const cost = upgradeCost(draft, ctx2.registries, inst);
   const events = spend(draft, cost.credits, cost.plyx);
@@ -5643,7 +6056,7 @@ registerAction("item/upgrade", (draft, payload, ctx2) => {
 });
 registerAction("item/reroll", (draft, payload, ctx2) => {
   session(draft);
-  const p = isObj11(payload) ? payload : {};
+  const p = isObj12(payload) ? payload : {};
   const inst = ownedItem(draft, p.uid);
   const i = p.affixIndex;
   if (typeof i !== "number" || !Number.isInteger(i) || i < 0 || i >= inst.affixes.length) throw new Error("Pick one of the item's affixes.");
@@ -5659,7 +6072,7 @@ registerAction("item/reroll", (draft, payload, ctx2) => {
 });
 registerAction("item/dismantle", (draft, payload, ctx2) => {
   session(draft);
-  const inst = ownedItem(draft, isObj11(payload) ? payload.uid : void 0);
+  const inst = ownedItem(draft, isObj12(payload) ? payload.uid : void 0);
   if (equippedBy(draft, inst.uid)) throw new Error("Unequip the item first.");
   const plyx = dismantleValue(ctx2.registries, inst);
   draft.inventory = draft.inventory.filter((i) => i.uid !== inst.uid);
@@ -6214,9 +6627,9 @@ var ParseStatus = class _ParseStatus {
     }
     return { status: status.value, value: arrayValue };
   }
-  static async mergeObjectAsync(status, pairs) {
+  static async mergeObjectAsync(status, pairs2) {
     const syncPairs = [];
-    for (const pair of pairs) {
+    for (const pair of pairs2) {
       const key = await pair.key;
       const value = await pair.value;
       syncPairs.push({
@@ -6226,9 +6639,9 @@ var ParseStatus = class _ParseStatus {
     }
     return _ParseStatus.mergeObjectSync(status, syncPairs);
   }
-  static mergeObjectSync(status, pairs) {
+  static mergeObjectSync(status, pairs2) {
     const finalObject = {};
-    for (const pair of pairs) {
+    for (const pair of pairs2) {
       const { key, value } = pair;
       if (key.status === "aborted")
         return INVALID;
@@ -8073,11 +8486,11 @@ var ZodObject = class _ZodObject extends ZodType {
         }
       }
     }
-    const pairs = [];
+    const pairs2 = [];
     for (const key of shapeKeys) {
       const keyValidator = shape[key];
       const value = ctx2.data[key];
-      pairs.push({
+      pairs2.push({
         key: { status: "valid", value: key },
         value: keyValidator._parse(new ParseInputLazyPath(ctx2, value, ctx2.path, key)),
         alwaysSet: key in ctx2.data
@@ -8087,7 +8500,7 @@ var ZodObject = class _ZodObject extends ZodType {
       const unknownKeys = this._def.unknownKeys;
       if (unknownKeys === "passthrough") {
         for (const key of extraKeys) {
-          pairs.push({
+          pairs2.push({
             key: { status: "valid", value: key },
             value: { status: "valid", value: ctx2.data[key] }
           });
@@ -8108,7 +8521,7 @@ var ZodObject = class _ZodObject extends ZodType {
       const catchall = this._def.catchall;
       for (const key of extraKeys) {
         const value = ctx2.data[key];
-        pairs.push({
+        pairs2.push({
           key: { status: "valid", value: key },
           value: catchall._parse(
             new ParseInputLazyPath(ctx2, value, ctx2.path, key)
@@ -8121,7 +8534,7 @@ var ZodObject = class _ZodObject extends ZodType {
     if (ctx2.common.async) {
       return Promise.resolve().then(async () => {
         const syncPairs = [];
-        for (const pair of pairs) {
+        for (const pair of pairs2) {
           const key = await pair.key;
           const value = await pair.value;
           syncPairs.push({
@@ -8135,7 +8548,7 @@ var ZodObject = class _ZodObject extends ZodType {
         return ParseStatus.mergeObjectSync(status, syncPairs);
       });
     } else {
-      return ParseStatus.mergeObjectSync(status, pairs);
+      return ParseStatus.mergeObjectSync(status, pairs2);
     }
   }
   get shape() {
@@ -8748,20 +9161,20 @@ var ZodRecord = class _ZodRecord extends ZodType {
       });
       return INVALID;
     }
-    const pairs = [];
+    const pairs2 = [];
     const keyType = this._def.keyType;
     const valueType = this._def.valueType;
     for (const key in ctx2.data) {
-      pairs.push({
+      pairs2.push({
         key: keyType._parse(new ParseInputLazyPath(ctx2, key, ctx2.path, key)),
         value: valueType._parse(new ParseInputLazyPath(ctx2, ctx2.data[key], ctx2.path, key)),
         alwaysSet: key in ctx2.data
       });
     }
     if (ctx2.common.async) {
-      return ParseStatus.mergeObjectAsync(status, pairs);
+      return ParseStatus.mergeObjectAsync(status, pairs2);
     } else {
-      return ParseStatus.mergeObjectSync(status, pairs);
+      return ParseStatus.mergeObjectSync(status, pairs2);
     }
   }
   get element() {
@@ -8803,7 +9216,7 @@ var ZodMap = class extends ZodType {
     }
     const keyType = this._def.keyType;
     const valueType = this._def.valueType;
-    const pairs = [...ctx2.data.entries()].map(([key, value], index) => {
+    const pairs2 = [...ctx2.data.entries()].map(([key, value], index) => {
       return {
         key: keyType._parse(new ParseInputLazyPath(ctx2, key, ctx2.path, [index, "key"])),
         value: valueType._parse(new ParseInputLazyPath(ctx2, value, ctx2.path, [index, "value"]))
@@ -8812,7 +9225,7 @@ var ZodMap = class extends ZodType {
     if (ctx2.common.async) {
       const finalMap = /* @__PURE__ */ new Map();
       return Promise.resolve().then(async () => {
-        for (const pair of pairs) {
+        for (const pair of pairs2) {
           const key = await pair.key;
           const value = await pair.value;
           if (key.status === "aborted" || value.status === "aborted") {
@@ -8827,7 +9240,7 @@ var ZodMap = class extends ZodType {
       });
     } else {
       const finalMap = /* @__PURE__ */ new Map();
-      for (const pair of pairs) {
+      for (const pair of pairs2) {
         const key = pair.key;
         const value = pair.value;
         if (key.status === "aborted" || value.status === "aborted") {
@@ -11111,17 +11524,17 @@ registerCallType({
   prompt: prompt2,
   schema: IntentExtractRawSchema
 });
-var isObj12 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj13 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var LABELS = EXPRESSION_LABELS;
 function sanitizeIntentOutput(raw, ctx2) {
   const parsed = IntentExtractRawSchema.safeParse(raw);
   const src = parsed.success ? parsed.data : { events: [], facts: [], proposals: [], promises: [], emotions: [], stressHints: [] };
-  const events = src.events.filter((e) => isObj12(e) && typeof e.confidence === "number" && e.confidence >= ctx2.minConfidence);
-  const proposals2 = src.proposals.filter((p) => ctx2.romance || !(isObj12(p) && ROMANTIC_PROPOSALS.includes(p.kind)));
+  const events = src.events.filter((e) => isObj13(e) && typeof e.confidence === "number" && e.confidence >= ctx2.minConfidence);
+  const proposals2 = src.proposals.filter((p) => ctx2.romance || !(isObj13(p) && ROMANTIC_PROPOSALS.includes(p.kind)));
   const intents = validateIntents({ ...src, events, proposals: proposals2 }, { participants: ctx2.participants, squad: ctx2.squad });
   const emotions = [];
   for (const e of src.emotions) {
-    if (isObj12(e) && typeof e.unitId === "string" && ctx2.participants.includes(e.unitId) && typeof e.label === "string" && LABELS.includes(e.label)) {
+    if (isObj13(e) && typeof e.unitId === "string" && ctx2.participants.includes(e.unitId) && typeof e.label === "string" && LABELS.includes(e.label)) {
       emotions.push({ unitId: e.unitId, label: e.label });
     }
   }
@@ -11923,16 +12336,16 @@ var fieldSchemas = {
   enemyFlavor: external_exports.boolean()
 };
 var budgetSchema = external_exports.number().int().min(1);
-var isObj13 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj14 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function merge(base, over) {
-  const src = isObj13(over) ? over : {};
+  const src = isObj14(over) ? over : {};
   const out = { ...base };
   for (const [key, schema] of Object.entries(fieldSchemas)) {
     const parsed = schema.safeParse(src[key]);
     if (parsed.success) out[key] = parsed.data;
   }
   const budgets = { ...base.budgets };
-  const srcBudgets = isObj13(src.budgets) ? src.budgets : {};
+  const srcBudgets = isObj14(src.budgets) ? src.budgets : {};
   for (const id of CALL_TYPE_IDS) {
     const parsed = budgetSchema.safeParse(srcBudgets[id]);
     if (parsed.success) budgets[id] = parsed.data;
@@ -11987,7 +12400,7 @@ function buildImportInput(card2, registries, settings, sections) {
     defects: [...registries.defects.values()].filter((d) => settings.desireBondDefects || d.category !== "desire_bond").map((d) => ({ id: d.id, lore: str3(d.lore) }))
   };
 }
-var isObj14 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj15 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var cap = (v, max, fallback = "") => typeof v === "string" ? v.trim().slice(0, max) : fallback;
 var num = (v, lo, hi, fallback) => typeof v === "number" && Number.isFinite(v) ? Math.min(hi, Math.max(lo, Math.round(v))) : fallback;
 var SECTION_LABEL = { role: "role", signature: "signature", defects: "defects" };
@@ -12003,7 +12416,7 @@ function tagList2(v, max) {
   return out;
 }
 function sanitizeProfile(raw, ctx2) {
-  const src = isObj14(raw) ? raw : {};
+  const src = isObj15(raw) ? raw : {};
   const want = (s) => ctx2.sections.includes(s);
   const dropped = [];
   const missing = [];
@@ -12012,7 +12425,7 @@ function sanitizeProfile(raw, ctx2) {
     const out = [];
     const seen = /* @__PURE__ */ new Set();
     for (const item of Array.isArray(list2) ? list2 : []) {
-      const id = isObj14(item) && typeof item[idKey] === "string" ? item[idKey] : null;
+      const id = isObj15(item) && typeof item[idKey] === "string" ? item[idKey] : null;
       if (id === null) {
         dropped.push(`${SECTION_LABEL[section]}:(invalid)`);
         continue;
@@ -12070,7 +12483,7 @@ function sanitizeProfile(raw, ctx2) {
     if (profile.defectCandidates.length === 0) missing.push("defects");
   }
   if (want("values")) {
-    if (isObj14(src.values)) {
+    if (isObj15(src.values)) {
       const v = src.values;
       profile.values = Object.fromEntries(VALUE_KEYS.map((k) => [k, num(v[k], -3, 3, 0)]));
     } else missing.push("values");
@@ -12085,7 +12498,7 @@ function sanitizeProfile(raw, ctx2) {
     if (!likes && !dislikes && !triggers) missing.push("tags");
   }
   if (want("baseline")) {
-    if (isObj14(src.emotionalBaseline)) {
+    if (isObj15(src.emotionalBaseline)) {
       const b = src.emotionalBaseline;
       const lim = SETUP_LIMITS.baseline;
       profile.baseline = {
@@ -17128,13 +17541,13 @@ import { editGroup, openGroupById } from "../../../../group-chats.js";
 import { newWorldInfoEntryTemplate } from "../../../../world-info.js";
 
 // src/st/chat.ts
-var isObj15 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj16 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function mapChatMessages(chat, from = 0) {
   if (!Array.isArray(chat)) return [];
   const out = [];
   for (let index = Math.max(0, from); index < chat.length; index++) {
     const m = chat[index];
-    if (!isObj15(m) || m.is_system === true) continue;
+    if (!isObj16(m) || m.is_system === true) continue;
     const avatar = typeof m.original_avatar === "string" && m.original_avatar !== "" ? m.original_avatar : void 0;
     out.push({
       index,
@@ -17151,7 +17564,7 @@ function lastCharacterAvatar(chat) {
   if (!Array.isArray(chat)) return void 0;
   for (let i = chat.length - 1; i >= 0; i--) {
     const m = chat[i];
-    if (isObj15(m) && m.is_user !== true && m.is_system !== true) {
+    if (isObj16(m) && m.is_user !== true && m.is_system !== true) {
       return typeof m.original_avatar === "string" && m.original_avatar !== "" ? m.original_avatar : void 0;
     }
   }
@@ -17187,17 +17600,17 @@ function toStLorebook(book, template) {
 }
 
 // src/st/sprites.ts
-var isObj16 = (v) => typeof v === "object" && v !== null;
+var isObj17 = (v) => typeof v === "object" && v !== null;
 function spriteFolder(avatar, name, overrides) {
   if (!Array.isArray(overrides)) return name;
   const key = avatar.replace(/\.[^.]+$/, "");
-  const hit = overrides.find((o) => isObj16(o) && o.name === key && typeof o.path === "string" && o.path !== "");
+  const hit = overrides.find((o) => isObj17(o) && o.name === key && typeof o.path === "string" && o.path !== "");
   return hit ? hit.path : name;
 }
 function pickSprite(list2, label2) {
   if (!Array.isArray(list2)) return null;
   for (const item of list2) {
-    if (isObj16(item) && item.label === label2 && typeof item.path === "string") return item.path;
+    if (isObj17(item) && item.label === label2 && typeof item.path === "string") return item.path;
   }
   return null;
 }

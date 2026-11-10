@@ -1,4 +1,6 @@
 import { registerDayEndStep } from '../calendar';
+import { answerRequest, fallbackOutput, openRequest } from '../world/director';
+import { TUNING } from '../tuning';
 import { registerAction } from '../dispatch';
 import { followRumor, registerMissionCompletedHook, runDeadlines } from '../world/missions';
 import { onMissionCompleted } from '../world/spine';
@@ -29,3 +31,35 @@ registerAction('rumor/follow', (draft, payload, ctx) => {
 
 registerDayEndStep('mission_deadlines', runDeadlines);
 registerMissionCompletedHook(onMissionCompleted);
+
+// ---------------------------------------------------------------------------------------------
+// Director: the model (or the fallback) answers a request the engine opened
+
+registerAction('director/apply', (draft, payload, ctx) => {
+  const p = isObj(payload) ? payload : {};
+  const days = typeof p.beatCooldownDays === 'number' ? p.beatCooldownDays : undefined;
+  return answerRequest(draft, ctx, typeof p.requestId === 'string' ? p.requestId : undefined, () => p.output, { cooldownDays: days });
+});
+
+registerAction('director/fallback', (draft, payload, ctx) => {
+  const id = isObj(payload) && typeof payload.requestId === 'string' ? payload.requestId : undefined;
+  return answerRequest(draft, ctx, id, () => fallbackOutput(draft, ctx.registries, ctx.rng), { fallback: true });
+});
+
+registerAction('director/request', (draft, payload) => {
+  if (!isObj(payload) || payload.reason !== 'scout') throw new Error('Only a scout request can be opened by hand.');
+  return openRequest(draft, 'scout');
+});
+
+/** An unanswered request is answered by the engine's own fallback first; then tonight's request opens. */
+registerDayEndStep('director_tick', (draft, ctx) => {
+  const events = [];
+  const pending = draft.world.director?.pending;
+  if (pending) {
+    events.push(...answerRequest(draft, ctx, pending.id, () => fallbackOutput(draft, ctx.registries, ctx.rng), {
+      cooldownDays: TUNING.director.beatCooldownDays, fallback: true,
+    }));
+  }
+  events.push(...openRequest(draft, 'day_end'));
+  return events;
+});
