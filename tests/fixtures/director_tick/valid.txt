@@ -1,0 +1,51 @@
+{
+ "missionOffers": [
+  {
+   "templateId": "tpl_sweep",
+   "regionId": "ashway",
+   "danger": 2,
+   "title": "Clear the Ashway convoy road",
+   "brief": "Marauders hold the overpass. Clear them before the survey crew arrives.",
+   "objectiveNode": "combat",
+   "deadlineDays": 7,
+   "rewardsTier": "tier_2"
+  }
+ ],
+ "rumors": [
+  {
+   "text": "A convoy of sealed crates was left on the overpass. Three crews have gone to look.",
+   "leadsTo": "mission",
+   "tags": [
+    "ashway",
+    "convoy"
+   ],
+   "lead": {
+    "templateId": "tpl_recover",
+    "regionId": "ashway"
+   }
+  }
+ ],
+ "threadUpdates": [
+  {
+   "threadId": "new",
+   "title": "The silent overpass",
+   "addFlags": [
+    {
+     "slug": "crates_seen",
+     "description": "The sealed crates were seen from afar."
+    }
+   ]
+  }
+ ],
+ "clockAdvances": [
+  {
+   "clockId": "bloom_d7",
+   "by": 1,
+   "reason": "The spores are spreading east."
+  }
+ ],
+ "storyBeatProposal": {
+  "beatId": "beat_1",
+  "framing": "Vesper's quartermaster wants the first Bloom sample out of the east wing before the district is sealed for good."
+ }
+}
