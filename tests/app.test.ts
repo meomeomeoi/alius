@@ -242,11 +242,12 @@ describe('app', () => {
 
 // ---------------------------------------------------------------------------------------------
 describe('SQUAD, OPS and BASE tabs', () => {
-  it('app registers the squad, ops, base, comms, inv and log tabs and the scene and combat screens', async () => {
+  it('app registers the squad, ops, map, base, comms, inv and log tabs and the scene, combat and expedition screens', async () => {
     const { shell } = await boot(A);
-    expect([...shell.tabRenderers.keys()].sort()).toEqual(['base', 'comms', 'inv', 'log', 'ops', 'squad']);
+    expect([...shell.tabRenderers.keys()].sort()).toEqual(['base', 'comms', 'inv', 'log', 'map', 'ops', 'squad']);
     expect(shell.screenRenderers.has('scene')).toBe(true);
     expect(shell.screenRenderers.has('combat')).toBe(true);
+    expect(shell.screenRenderers.has('expedition')).toBe(true);
   });
 });
 

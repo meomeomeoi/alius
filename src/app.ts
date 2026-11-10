@@ -39,6 +39,13 @@ import { Wizard, type WizardState } from './setup/wizard';
 import { renderSetupScreen } from './ui/setup/setupScreen';
 import { renderSquadTab } from './ui/squad/squadTab';
 import { renderOpsTab } from './ui/ops/opsTab';
+import { renderMapTab } from './ui/map/mapTab';
+import { renderExpeditionScreen, type ExpeditionScreen } from './ui/expedition/expeditionScreen';
+import './llm/calls/directorTick'; // registers the director_tick call type
+import './llm/calls/expeditionRecap'; // registers the expedition_recap call type
+import { registerWorldContext } from './world/context';
+import { createDirector, type DirectorController } from './world/directorController';
+import { createExpedition, type ExpeditionController } from './world/expeditionController';
 import { renderBaseTab } from './ui/base/baseTab';
 import { renderCommsTab } from './ui/comms/commsTab';
 import { renderLogTab } from './ui/log/logTab';
@@ -104,11 +111,19 @@ export interface AliusApp {
   scene: SceneController;
   /** PDA DMs and night knocks (P3). */
   comms: Comms;
+  /** Expeditions (P5): planning, the run, fights, recap and debrief. */
+  expedition: ExpeditionController;
+  /** The director (P5): answers the requests the engine opens. */
+  director: DirectorController;
+  /** A story outcome offered a new unit: pick a character card (or take a grunt instead). */
+  intakeUnit(): Promise<void>;
 }
 
 export interface AppDeps {
   loadContent: () => Promise<{ registries: Registries; errors: ContentError[]; lorebook?: Lorebook | null }>;
   shellFactory?: typeof createShell;
+  /** URL of a file shipped with the extension (the optional world map image). */
+  assetUrl?: (path: string) => string;
 }
 
 const errText = (e: unknown) => (e instanceof Error ? e.message : String(e));
@@ -132,11 +147,16 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
   }
 
   registerSceneContext(context, { registries: () => registries, settings: () => getSettings(st) });
+  registerWorldContext(context, { registries: () => registries });
 
   /** The COMMS tab shows how many messages from units are unread. */
   function syncBadges(): void {
     shell.setTabBadge('comms', state ? unreadCount(state) : 0);
+    // new story and command offers since the OPS tab was last shown
+    const fresh = state ? state.missions.offered.filter((m) => (m.source === 'command' || m.source === 'story') && !seenOffers.has(m.id)).length : 0;
+    shell.setTabBadge('ops', fresh);
   }
+  const seenOffers = new Set<string>();
 
   /** The Romance and initiative settings are global; the pure engine reads them from the campaign. */
   function syncIntimacy(): void {
@@ -173,6 +193,20 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
   };
   const scene = createSceneController(sceneDeps);
   const comms = createComms({ ...sceneDeps, scene });
+  const worldDeps = {
+    st,
+    app: sceneApp,
+    registries: () => registries,
+    settings: () => getSettings(st),
+    toast: (kind: 'info' | 'warn' | 'error', text: string) => toast(kind, text),
+  };
+  const director = createDirector(worldDeps);
+  const expedition = createExpedition({ ...worldDeps, startCombat: (p) => api.startCombat(p), startScene: (o) => beginScene(o) });
+  let expeditionScreen: ExpeditionScreen | null = null;
+  /** True while the expedition screen is what the shell shows. */
+  let onExpeditionScreen = false;
+  /** The report a recap has been requested for and has not arrived yet. */
+  let recapPendingFor: string | null = null;
 
   function showScene(): void {
     onSceneScreen = true;
@@ -266,6 +300,13 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         shell.open();
       }
       if (has('slot_advanced')) void comms.onSlotAdvanced().catch(warn('unit DMs'));
+      if (has('director_requested')) void director.onRequested().catch(warn('director'));
+      if (has('rumors_requested')) api.dispatch({ type: 'director/request', payload: { reason: 'scout' } }, { expectChatId: chatId });
+      if (has('expedition_ended')) {
+        showExpedition();
+        shell.open();
+        startRecap();
+      }
       if (has('day_started')) void runCompaction({ st, app: sceneApp, settings: () => getSettings(st) }).catch(warn('chronicle compaction'));
     });
   }
@@ -309,6 +350,13 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     combatScreen?.dispose();
     combatScreen = null;
     onCombatScreen = false;
+    if (state?.expedition) {
+      // a fight of an expedition: its result becomes part of the run (once), then the run goes on
+      expedition.afterCombat();
+      if (state?.expedition) showExpedition();
+      else shell.showScreen('pda'); // the run ended with the fight: the report follows
+      return;
+    }
     shell.showScreen('pda');
   }
 
@@ -351,6 +399,58 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       onRetreat: () => void combatDo('combat/retreat'),
       onClose: leaveCombat,
     });
+  }
+
+  // ---------------------------------------------------------------------------------------------- expeditions (P5)
+
+  function showExpedition(): void {
+    onExpeditionScreen = true;
+    shell.showScreen('expedition');
+  }
+
+  function leaveExpedition(): void {
+    expeditionScreen?.dispose();
+    expeditionScreen = null;
+    onExpeditionScreen = false;
+    shell.showScreen('pda');
+  }
+
+  function renderExpeditionView(host: HTMLElement): void {
+    expeditionScreen?.dispose();
+    expeditionScreen = renderExpeditionScreen(host, {
+      getState: () => state,
+      registries,
+      settings: () => getSettings(st),
+      controller: expedition,
+      onClose: leaveExpedition,
+      recapPending: () => recapPendingFor !== null && recapPendingFor === state?.lastExpedition?.id,
+    });
+  }
+
+  /** After a (re)load: an open run is shown again (an open fight comes first) and a finished fight is taken into it. */
+  function adoptExpedition(): void {
+    expeditionScreen?.dispose();
+    expeditionScreen = null;
+    if (state?.expedition) {
+      if (!state.combat) showExpedition();
+      expedition.afterCombat();
+    } else if (onExpeditionScreen) {
+      onExpeditionScreen = false;
+      shell.showScreen('pda');
+    }
+  }
+
+  /** Asks for the narrative recap of the report just written (once; the screen shows COMPILING… meanwhile). */
+  function startRecap(): void {
+    const report = state?.lastExpedition;
+    if (!report || report.recap !== undefined || !getSettings(st).expeditionRecap) return;
+    recapPendingFor = report.id;
+    void expedition.requestRecap()
+      .catch((e) => console.warn('[Alius] expedition recap failed', e))
+      .finally(() => {
+        if (recapPendingFor === report.id) recapPendingFor = null;
+        shell.refresh();
+      });
   }
 
   /** Optional generated names for affixed enemies: one request per key, never blocks or changes the combat. */
@@ -411,11 +511,17 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
 
   /** Everything that follows a (re)load of the campaign: context, badge, scene and the intimacy mirror. */
   function afterLoad(): void {
+    // a save from before P5 has no world yet: seed it, then everything else sees a complete state
+    if (load.kind === 'ok' && state && state.world.seeded !== true) {
+      api.dispatch({ type: 'world/seed', payload: {} }, { expectChatId: load.chatId });
+    }
     applyContext();
     syncBadges();
     adoptScene();
     adoptCombat();
+    adoptExpedition();
     syncIntimacy();
+    if (state?.world.director?.pending) void director.onRequested().catch((e) => console.warn('[Alius] director failed', e));
   }
 
   function replaceState(next: CampaignState): void {
@@ -686,6 +792,88 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     else toast('info', `${unit.displayName} re-synced from the card.`);
   }
 
+  /** A story outcome offered a new unit: pick a card (calibrated like a re-sync), or take a grunt instead. */
+  async function intakeUnit(): Promise<void> {
+    const s = state;
+    if (!s || (s.world.incomingUnits ?? 0) < 1) return toast('warn', 'No unit is waiting for intake.');
+    const chatId = st.getActiveChat()?.chatId;
+    const inSquad = new Set(s.squad.map((u) => u.cardRef));
+    const characters = st.listCharacters().filter((c) => !inSquad.has(c.avatar));
+
+    const select = h('select', { name: 'intake-card', 'aria-label': 'Character card' },
+      ...characters.map((c) => h('option', { value: c.avatar }, c.name))) as HTMLSelectElement;
+    const choice = await shell.modal({
+      title: 'New unit',
+      body: h('div', {},
+        h('p', {}, 'Command has assigned a new unit. Choose her character card, or decline and take a grunt instead.'),
+        ...(characters.length > 0 ? [select] : [h('p', { class: 'alius-dim' }, 'Every available character card is already in the squad.')])),
+      actions: [
+        ...(characters.length > 0 ? [{ label: 'Review', value: 'pick' }] : []),
+        { label: 'DECLINE — TAKE A GRUNT', value: 'decline' },
+        { label: 'Cancel', value: 'cancel' },
+      ],
+    });
+    if (st.getActiveChat()?.chatId !== chatId) return;
+    if (choice === 'decline') {
+      act({ type: 'squad/decline_incoming', payload: {} });
+      return;
+    }
+    if (choice !== 'pick') return;
+    const card = characters.find((c) => c.avatar === select.value);
+    if (!card) return;
+
+    const desireBond = s.settings.desireBondDefects === true;
+    const wizard = new Wizard(
+      {
+        registries,
+        desireBondDefects: desireBond,
+        importer: (avatar, sections) =>
+          importProfile(avatar, sections, { st, settings: { ...getSettings(st), desireBondDefects: desireBond }, registries }),
+        onChange: () => {},
+      },
+      { personaName: '', canBindCurrent: false },
+    );
+    wizard.toggleUnit(card);
+    wizard.calibrate(0);
+    const body = h('div', { class: 'alius-calibration' });
+    const draw = () =>
+      renderCalibration(body, {
+        draft: wizard.state.units[0],
+        registries,
+        desireBondDefects: desireBond,
+        onUpdate: (p) => wizard.update(0, p),
+        onRegenerate: (section) => wizard.regenerate(0, section),
+        onManual: () => wizard.setManual(0),
+      });
+    wizard.subscribe(() => renderKeepingFocus(body, draw));
+    draw();
+    const answer = await shell.modal({
+      title: `New unit: ${card.name}`,
+      body,
+      actions: [{ label: 'Accept', value: 'apply' }, { label: 'Cancel', value: 'cancel' }],
+    });
+    const draft = wizard.state.units[0];
+    wizard.dispose();
+    if (answer !== 'apply') return;
+    if (st.getActiveChat()?.chatId !== chatId) return;
+    if (draft.status === 'loading') return toast('warn', 'The import is still running; wait for it to finish.');
+    const { roleId, signature, ...rest } = draft.choice;
+    if (!roleId || !signature) return toast('warn', `${card.name}: calibration is incomplete.`);
+
+    const events = act({
+      type: 'squad/add_named',
+      payload: { unit: { cardRef: draft.avatar, displayName: draft.displayName, roleId, signature, ...structuredClone(rest) } },
+    });
+    if (events.some((e) => e.type === 'error')) return;
+    try {
+      await st.addGroupMembers([draft.avatar]);
+    } catch (e) {
+      toast('warn', `${card.name} joined the squad but could not be added to the group chat: ${errText(e)}`);
+      return;
+    }
+    toast('info', `${card.name} joined the squad.`);
+  }
+
   function openSetup(): void {
     if (load.kind === 'readonly') {
       toast('error', 'This chat has unreadable Alius data and is read-only; a new campaign cannot be started here.');
@@ -753,6 +941,24 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         case 'day_started':
           toast('info', `Day ${String(e.day)}.`);
           break;
+        case 'mission_offered':
+          if (e.source === 'command' || e.source === 'story') toast('info', `New ${String(e.source)} mission: ${String(e.title)}.`);
+          break;
+        case 'mission_failed':
+          toast('warn', `Mission failed: ${String(e.title)}.`);
+          break;
+        case 'clock_filled':
+          if (state?.world.clocks.find((c) => c.id === e.clockId)?.visibleToPlayer) toast('warn', `${String(e.label)} has filled.`);
+          break;
+        case 'beat_completed':
+          toast('info', 'A story milestone was reached.');
+          break;
+        case 'clearance_raised':
+          toast('info', `Clearance raised to tier ${String(e.tier)}.`);
+          break;
+        case 'incoming_unit_offered':
+          toast('info', 'A new unit is waiting for intake (OPS).');
+          break;
       }
     }
   }
@@ -814,15 +1020,49 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       return false;
     },
   });
-  shell.registerTab('ops', (host) =>
+  shell.registerTab('ops', (host) => {
+    for (const m of state?.missions.offered ?? []) seenOffers.add(m.id);
+    shell.setTabBadge('ops', 0);
     renderOpsTab(host, {
       getState: () => state,
       getLoad: () => load,
       registries,
       onDo: (req) => void api.performActivity(req),
       onRequisition: (n) => api.requisition(n),
+      onPlan: (missionId) => {
+        expedition.plan({ missionId });
+        showExpedition();
+        shell.open();
+      },
+      onDismiss: (missionId) => void act({ type: 'mission/dismiss', payload: { missionId } }),
+      onFollowRumor: (rumorId) => void act({ type: 'rumor/follow', payload: { rumorId } }),
+      onIntake: () => void api.intakeUnit(),
+      onOpenReport: () => {
+        showExpedition();
+        shell.open();
+      },
+    });
+  });
+  shell.registerTab('map', (host) =>
+    renderMapTab(host, {
+      getState: () => state,
+      getLoad: () => load,
+      registries,
+      mapImageUrl: deps.assetUrl?.('content/core/map/world.png') ?? null,
+      onPlan: (target) => {
+        expedition.plan(target);
+        showExpedition();
+        shell.open();
+      },
     }),
   );
+  shell.registerScreen('expedition', renderExpeditionView, {
+    refresh: () => {
+      if (!expeditionScreen) return false;
+      expeditionScreen.refresh();
+      return true;
+    },
+  });
   shell.registerTab('base', (host) =>
     renderBaseTab(host, {
       getState: () => state,
@@ -862,6 +1102,9 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     shell,
     scene,
     comms,
+    expedition,
+    director,
+    intakeUnit,
     startScene: beginScene,
     startCombat(opts) {
       if (!state) {
@@ -1017,7 +1260,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         saver?.save(state);
         // the day-end pipeline asks for a save: do not wait for the debounce; neither does a combat, so a reload
         // (or a chat switch) mid-fight resumes at the same turn
-        if (r.events.some((e) => e.type === 'autosave' || e.type.startsWith('combat_'))) {
+        if (r.events.some((e) => e.type === 'autosave' || e.type.startsWith('combat_') || e.type.startsWith('expedition_'))) {
           void saver?.flush().catch((e) => console.warn('[Alius] autosave failed', e));
         }
       }

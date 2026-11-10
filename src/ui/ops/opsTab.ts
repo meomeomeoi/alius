@@ -19,6 +19,7 @@ export interface OpsTabCtx {
   onDismiss?: (missionId: string) => void;
   onFollowRumor?: (rumorId: string) => void;
   onIntake?: () => void;
+  onOpenReport?: () => void;
 }
 
 type Focus = { id: string; label: string; units?: { min: number; max: number } };

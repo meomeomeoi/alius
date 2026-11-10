@@ -318,4 +318,17 @@ describe('OPS: mission board and rumor mill', () => {
     // the board comes first
     expect(host.textContent!.indexOf('MISSION BOARD')).toBeLessThan(host.textContent!.indexOf('DAY 001'));
   });
+
+  it('an unacknowledged report shows REPORT READY with an OPEN REPORT button', () => {
+    const s = campaign(reg, 4);
+    s.lastExpedition = { id: 'rep_1', missionId: 'm1', missionTitle: 'T', regionId: 'ashway', day: 1, outcome: 'success' as const, party: [], nodes: [], log: [], loot: [], injuries: [], deaths: [], breakdowns: [], acknowledged: false, debriefed: false };
+    const onOpenReport = vi.fn();
+    const r = render({ state: s, extra: { onOpenReport } });
+    expect(r.host.textContent).toContain('REPORT READY');
+    [...r.host.querySelectorAll('button')].find((b) => b.textContent!.includes('OPEN REPORT'))!.click();
+    expect(onOpenReport).toHaveBeenCalledTimes(1);
+    s.lastExpedition!.acknowledged = true;
+    expect(render({ state: s, extra: { onOpenReport } }).host.textContent).not.toContain('REPORT READY');
+    expect(render({ state: s }).host.textContent).not.toContain('REPORT READY');
+  });
 });

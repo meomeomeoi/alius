@@ -13,7 +13,10 @@ async function fetchJson(path: string): Promise<unknown> {
 
 async function main(): Promise<void> {
   const st = new RealStAdapter();
-  const app = createApp(st, { loadContent: () => loadPacks(CONTENT_ROOTS, fetchJson) });
+  const app = createApp(st, {
+    loadContent: () => loadPacks(CONTENT_ROOTS, fetchJson),
+    assetUrl: (p) => new URL('../' + p, import.meta.url).href, // relative to dist/index.js
+  });
 
   // Launcher first: a failing start must never hide the extension from the user.
   const launcher = installLauncher({

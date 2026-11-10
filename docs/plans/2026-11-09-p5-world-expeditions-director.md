@@ -537,11 +537,11 @@ docs/** (Task 21), tests/** mirror src
 - `intakeUnit()`: modal with the character list (`st.listCharacters()` minus cards already in the squad) and `[ DECLINE — TAKE A GRUNT ]`; a pick runs a one-unit `Wizard` + `renderCalibration` exactly as `resyncUnit` does, then `squad/add_named { unit }` and `st.addGroupMembers([avatar])`; decline → `squad/decline_incoming`.
 - OPS badge: `shell.setTabBadge('ops', new story/command offers since the tab was last shown)`.
 
-- [ ] **Step 1: Write the failing tests** (fake adapter, real shell in jsdom) — `a P4-era campaign is seeded on load`; `ending the day requests the director and applies the model's offers to the board`; `without a mechanic profile the fallback fills the board`; `scout_net posts rumors through a scout request`; `planning from MAP and departing shows the expedition screen`; `a combat node opens the combat screen and CONTINUE returns to the expedition with the node resolved`; `reload with a finished fight resolves the node`; `reload mid-expedition shows the expedition screen`; `a full run to RETURN shows the after-action report and requests a recap once`; `a late recap for another chat is dropped`; `retreat returns to the PDA with the mission back on the board`; `intake adds the picked card to the squad and the group, decline adds a grunt`; `the MAP tab is no longer a stub`; `a late director answer for another chat is dropped`.
-- [ ] **Step 2: Run** `npx vitest run tests/app-world.test.ts tests/app.test.ts tests/app-day.test.ts tests/app-combat.test.ts tests/app-scene.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS; whole suite green; `npm run typecheck` clean.
-- [ ] **Step 5: Commit** `feat: wire world map, missions, expeditions and the director into the app`.
+- [x] **Step 1: Write the failing tests** (fake adapter, real shell in jsdom) — `a P4-era campaign is seeded on load`; `ending the day requests the director and applies the model's offers to the board`; `without a mechanic profile the fallback fills the board`; `scout_net posts rumors through a scout request`; `planning from MAP and departing shows the expedition screen`; `a combat node opens the combat screen and CONTINUE returns to the expedition with the node resolved`; `reload with a finished fight resolves the node`; `reload mid-expedition shows the expedition screen`; `a full run to RETURN shows the after-action report and requests a recap once`; `a late recap for another chat is dropped`; `retreat returns to the PDA with the mission back on the board`; `intake adds the picked card to the squad and the group, decline adds a grunt`; `the MAP tab is no longer a stub`; `a late director answer for another chat is dropped`.
+- [x] **Step 2: Run** `npx vitest run tests/app-world.test.ts tests/app.test.ts tests/app-day.test.ts tests/app-combat.test.ts tests/app-scene.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS; whole suite green; `npm run typecheck` clean.
+- [x] **Step 5: Commit** `feat: wire world map, missions, expeditions and the director into the app`.
 
 ---
 

@@ -11,6 +11,8 @@ export interface MissionBoardCtx {
   onDismiss?: (missionId: string) => void;
   onFollowRumor?: (rumorId: string) => void;
   onIntake?: () => void;
+  /** Offered while the last expedition's report has not been acknowledged. */
+  onOpenReport?: () => void;
 }
 
 const SOURCE_TAG: Record<string, string> = { command: 'COMMAND', story: 'STORY', rumor: 'RUMOR', side: 'SIDE' };
@@ -71,6 +73,10 @@ export function renderMissionBoard(host: HTMLElement, state: CampaignState, ctx:
       'INTAKE PENDING: a new unit is waiting. ',
       ...(ctx.onIntake ? [h('button', { type: 'button', class: 'alius-btn', 'data-intake': '', onclick: ctx.onIntake }, '[ REVIEW ]')] : []),
     ));
+  }
+  if (state.lastExpedition && !state.lastExpedition.acknowledged && ctx.onOpenReport) {
+    board.append(h('p', { class: 'alius-banner' }, 'REPORT READY: the last expedition has an after-action report. ',
+      h('button', { type: 'button', class: 'alius-btn', onclick: ctx.onOpenReport }, '[ OPEN REPORT ]')));
   }
   if (offered.length === 0) board.append(h('p', { class: 'alius-dim' }, 'NO MISSIONS POSTED'));
   for (const m of offered) board.append(missionCard(m, state, ctx));
