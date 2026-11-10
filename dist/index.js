@@ -12304,7 +12304,10 @@ var DEFAULT_SETTINGS = {
   unitDms: true,
   chronicleCompaction: true,
   easyRetry: false,
-  enemyFlavor: false
+  enemyFlavor: false,
+  directorEnabled: true,
+  beatCooldownDays: 3,
+  expeditionRecap: true
 };
 var fieldSchemas = {
   mechanicProfileId: external_exports.string(),
@@ -12333,7 +12336,10 @@ var fieldSchemas = {
   unitDms: external_exports.boolean(),
   chronicleCompaction: external_exports.boolean(),
   easyRetry: external_exports.boolean(),
-  enemyFlavor: external_exports.boolean()
+  enemyFlavor: external_exports.boolean(),
+  directorEnabled: external_exports.boolean(),
+  beatCooldownDays: external_exports.number().int().min(1).max(14),
+  expeditionRecap: external_exports.boolean()
 };
 var budgetSchema = external_exports.number().int().min(1);
 var isObj14 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -14816,6 +14822,10 @@ function renderSysTab(host, ctx2) {
     field("Easy retry (rewind a lost combat)", checkbox("easyRetry", settings.easyRetry)),
     field("Generated names for affixed enemies", checkbox("enemyFlavor", settings.enemyFlavor)),
     field("Difficulty (this campaign)", difficultySelect()),
+    h("h3", {}, "World"),
+    field("Story director (mechanic model)", checkbox("directorEnabled", settings.directorEnabled)),
+    field("Story beat cooldown (days, 1\u201314)", numberInput("beatCooldownDays", settings.beatCooldownDays, (n) => apply({ beatCooldownDays: n }).beatCooldownDays, { min: "1", max: "14" })),
+    field("Expedition recap (main model)", checkbox("expeditionRecap", settings.expeditionRecap)),
     h("h3", {}, "Intimacy"),
     field("Romance", checkbox("romance", settings.romance)),
     field("Explicit scenes allowed", checkbox("explicitContent", settings.explicitContent)),

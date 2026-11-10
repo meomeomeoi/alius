@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { readdirSync, readFileSync, statSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join, resolve, sep } from 'node:path';
 
 function tsFiles(dir: string): string[] {
   if (!existsSync(dir)) return [];
@@ -48,6 +48,36 @@ describe('architecture', () => {
       for (const p of importPaths) {
         if (p.startsWith('node:') || p === 'esbuild') continue;
         expect(p, `${file} imports ${p}`).toMatch(/^(\.\.\/(engine|content)\/|\.\/)/);
+      }
+      for (const id of ['window', 'document', 'SillyTavern']) {
+        expect(text, `${file} uses ${id}`).not.toMatch(new RegExp(`\\b${id}\\b`));
+      }
+    }
+  });
+
+  it('the engine never reaches into the world layer (resolved paths, since the engine has its own world folder)', () => {
+    const worldRoot = resolve('src/world') + sep;
+    for (const file of tsFiles('src/engine')) {
+      const text = readFileSync(file, 'utf8');
+      const importPaths = [...text.matchAll(/(?:from|import)\s*\(?\s*['"]([^'"]+)['"]/g)].map((m) => m[1]);
+      for (const p of importPaths) {
+        if (!p.startsWith('.')) continue;
+        const target = resolve(dirname(file), p);
+        expect(target + sep, `${file} imports ${p}`).not.toMatch(new RegExp(`^${worldRoot.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`));
+      }
+    }
+  });
+
+  it('the world layer talks to ST only through type imports and never touches the UI', () => {
+    const files = tsFiles('src/world');
+    expect(files.length).toBeGreaterThan(0);
+    for (const file of files) {
+      const text = readFileSync(file, 'utf8');
+      const imports = [...text.matchAll(/^import\s+(type\s+)?[^;]*?from\s+['"]([^'"]+)['"]/gm)].map((m) => ({ isType: m[1] !== undefined, path: m[2] }));
+      for (const { isType, path } of imports) {
+        expect(path, `${file} imports ${path}`).not.toMatch(/\/ui\//);
+        if (/\/st\//.test(path) || /\/st$/.test(path)) expect(isType, `${file} must use import type for ${path}`).toBe(true);
+        expect(path, `${file} imports ${path}`).not.toMatch(/st\/real$/);
       }
       for (const id of ['window', 'document', 'SillyTavern']) {
         expect(text, `${file} uses ${id}`).not.toMatch(new RegExp(`\\b${id}\\b`));

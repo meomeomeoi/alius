@@ -495,4 +495,28 @@ describe('SYS combat settings', () => {
     expect(st.settings.easyRetry).toBe(true);
     expect(document.querySelector<HTMLInputElement>('#alius-shell input[name="enemyFlavor"]')!.checked).toBe(false);
   });
+
+  it('SYS shows the world settings: director, beat cooldown and expedition recap', () => {
+    const { shell, st } = setup({});
+    shell.open();
+    shell.showTab('sys');
+    const box = (name: string) => document.querySelector<HTMLInputElement>(`#alius-shell input[name="${name}"]`)!;
+    expect(box('directorEnabled').checked).toBe(true);
+    expect(box('expeditionRecap').checked).toBe(true);
+    expect(box('beatCooldownDays').value).toBe('3');
+    box('directorEnabled').checked = false;
+    box('directorEnabled').dispatchEvent(new Event('change', { bubbles: true }));
+    expect(st.settings.directorEnabled).toBe(false);
+    box('expeditionRecap').checked = false;
+    box('expeditionRecap').dispatchEvent(new Event('change', { bubbles: true }));
+    expect(st.settings.expeditionRecap).toBe(false);
+    box('beatCooldownDays').value = '9';
+    box('beatCooldownDays').dispatchEvent(new Event('change', { bubbles: true }));
+    expect(st.settings.beatCooldownDays).toBe(9);
+    // a value the settings reject snaps back to what is stored
+    box('beatCooldownDays').value = '50';
+    box('beatCooldownDays').dispatchEvent(new Event('change', { bubbles: true }));
+    expect(box('beatCooldownDays').value).toBe('9');
+    expect(st.settings.beatCooldownDays).toBe(9);
+  });
 });

@@ -46,6 +46,12 @@ export interface AliusSettings {
   easyRetry: boolean;
   /** P4: affixed enemies get a generated name (optional `flavor` call, cached, never blocks combat). */
   enemyFlavor: boolean;
+  /** P5: the mechanic model plans missions, rumors and story beats (off: the engine's own fallback does). */
+  directorEnabled: boolean;
+  /** P5: days between two story-beat proposals (1–14). */
+  beatCooldownDays: number;
+  /** P5: a narrative after-action recap from the main model (the deterministic report always exists). */
+  expeditionRecap: boolean;
 }
 
 export const DEFAULT_SETTINGS: AliusSettings = {
@@ -90,6 +96,9 @@ export const DEFAULT_SETTINGS: AliusSettings = {
   chronicleCompaction: true,
   easyRetry: false,
   enemyFlavor: false,
+  directorEnabled: true,
+  beatCooldownDays: 3,
+  expeditionRecap: true,
 };
 
 const fieldSchemas = {
@@ -120,6 +129,9 @@ const fieldSchemas = {
   chronicleCompaction: z.boolean(),
   easyRetry: z.boolean(),
   enemyFlavor: z.boolean(),
+  directorEnabled: z.boolean(),
+  beatCooldownDays: z.number().int().min(1).max(14),
+  expeditionRecap: z.boolean(),
 };
 const budgetSchema = z.number().int().min(1);
 

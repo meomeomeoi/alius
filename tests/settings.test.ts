@@ -109,4 +109,20 @@ describe('settings', () => {
     fresh.settings = { easyRetry: 1, enemyFlavor: true };
     expect(getSettings(fresh)).toMatchObject({ easyRetry: false, enemyFlavor: true });
   });
+
+  it('the P5 settings default on, round-trip and ignore bad values', () => {
+    const st = new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' });
+    expect(getSettings(st)).toMatchObject({ directorEnabled: true, beatCooldownDays: 3, expeditionRecap: true });
+    const next = updateSettings(st, { directorEnabled: false, beatCooldownDays: 7, expeditionRecap: false });
+    expect(next).toMatchObject({ directorEnabled: false, beatCooldownDays: 7, expeditionRecap: false });
+    expect(st.settings).toMatchObject({ directorEnabled: false, beatCooldownDays: 7, expeditionRecap: false });
+    // out-of-range, fractional and wrong-typed values keep what was stored
+    for (const bad of [0, 15, 2.5, '4', null]) expect(updateSettings(st, { beatCooldownDays: bad as never }).beatCooldownDays, String(bad)).toBe(7);
+    expect(updateSettings(st, { beatCooldownDays: 1 }).beatCooldownDays).toBe(1);
+    expect(updateSettings(st, { beatCooldownDays: 14 }).beatCooldownDays).toBe(14);
+    expect(updateSettings(st, { directorEnabled: 'yes' as never }).directorEnabled).toBe(false);
+    const fresh = new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' });
+    fresh.settings = { directorEnabled: 0, beatCooldownDays: 99, expeditionRecap: false };
+    expect(getSettings(fresh)).toMatchObject({ directorEnabled: true, beatCooldownDays: 3, expeditionRecap: false });
+  });
 });
