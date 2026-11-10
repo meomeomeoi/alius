@@ -17,10 +17,10 @@ Quick facts for a new session: state changes only through registered engine acti
 | `packages/P2-calendar-base-economy.md` | Slots, activities, social stats, resources, facilities, grunts (**implemented**) |
 | `packages/P3-scenes-relationships-memory.md` | Scene UI, intent extraction, delta engine, relationship state graph, memory, DMs, night events (**implemented**) |
 | `packages/P4-combat-progression-items.md` | Turn-based combat, stress, synergies, enemies, progression, items, balance harness (**implemented**) |
-| `packages/P5-world-expeditions-director.md` | World map, missions, rumors, node-map expeditions, director, spine |
+| `packages/P5-world-expeditions-director.md` | World map, missions, rumors, node-map expeditions, director, spine (**implemented**) |
 | `packages/P6-dilemmas-disloyalty-leash.md` | Validated dilemmas, refusals/desertion/mutiny, the Leash, defect arcs |
 | `CONTENT.md` | How to add content: pack layout, effects, every registry's fields with an example, the lorebook format |
-| `MANUAL_TEST_P0.md` … `MANUAL_TEST_P4.md` | Acceptance checklists that must be run by hand inside SillyTavern |
+| `MANUAL_TEST_P0.md` … `MANUAL_TEST_P5.md` | Acceptance checklists that must be run by hand inside SillyTavern |
 | `BALANCE_REPORT.md` | Defect neutrality report from `npm run sim -- --neutrality` (P4) |
 | `plans/` | Implementation plans per package (task-by-task; ticked as they are done) |
 | `content/lore.md` | **Placeholder** lore & structure (author rewrites) |

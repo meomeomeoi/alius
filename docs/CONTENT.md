@@ -119,7 +119,7 @@ Perks, flaws and starting bonuses hold a list of **effect objects**: `{ "type": 
 | `values` | value axes | The corporation's outlook. |
 | `playable` | boolean | A start may only use a playable corporation. |
 | `startingBonus` | `{ text, effects[] }` | |
-| `startingRegionId` | string, optional | Not checked until P5 adds `regions`. |
+| `startingRegionId` | string, optional | A `regions` id (checked by the loader since P5). |
 
 ```json
 { "id": "vesper", "name": "Vesper Somatics", "summary": "Biotech.", "values": { "pragmatism": 2, "autonomy": -1, "ingroup": 0, "mercy": -1, "corporate": 2, "sacrifice": 0 },
@@ -133,7 +133,7 @@ Perks, flaws and starting bonuses hold a list of **effect objects**: `{ "type": 
 |---|---|---|
 | `name`, `summary`, `situation` | string | |
 | `corporationId` | string | Must be a **playable** corporation. |
-| `spine` | `{ id, title, goal }[]`, 5 to 8 | Milestone beats, not scripts. |
+| `spine` | `{ id, title, goal, conditions?, completion?, onComplete? }[]`, 5 to 8 | Milestone beats, not scripts. P5 fields: see **Spine beats (P5)**. |
 | `crimeKnownByDefault` | boolean, optional | If true, every unit starts with the `knows_crime` flag. |
 | `startingResources` | `{ credits?, supplies?, plyx? }`, optional | Base amounts the campaign begins with. The corporation bonus and crime effects are added on top. |
 
@@ -434,6 +434,90 @@ What a relationship state's `unlocks.synergies` ids do in combat: `{ id, name, s
 ## `items`, `recipes`, `lootTables` (P4)
 
 `items`: `{ id, name, slot: "weapon"\|"upper"\|"lower", class, rarity, baseStats, affixSlots?, effects, value }`. `class` is a weapon class or an armor weight and must appear in some role's `weaponClasses` / `armorWeights`; a role may only wear its own classes. `rarity` is the template's *minimum*; an instance has its own (`standard`, `refined`, `prototype`, `corporate`, `anomalous`), an upgrade level 0–5 and affixes (`[0, 1, 2, 3, 3]` positive slots by rarity, plus one drawback when anomalous). Stats = `baseStats × (1 + 0.15 × (rarity − 1)) × (1 + 0.08 × upgrade)`; an affix's `statPct` is a share of the *wearer's* total stat. `recipes`: `{ id, itemId, rarity, cost: { credits, plyx } }` (the workshop's `rarityCap` limits what can be crafted; anomalous items have no recipe). `lootTables`: `{ id, rolls, entries: [{ weight, kind: "item"\|"credits"\|"plyx"\|"supplies", itemId?, rarityWeights?, amount?: [min, max] }] }`; an item entry rolls its rarity from `rarityWeights` (never below the template's).
+
+## World effects (P5)
+
+Every consequence outside combat is a list of **world effects**: `{ "type": "<id>", ...params }`, strictly validated (an unknown field is an error). They appear in `clocks[].onFill`, `missionTemplates[].failureEffects` / `onSuccess`, `dilemmaTemplates[].fixed.options[].effects` and `starts[].spine[].onComplete`.
+
+| `type` | Params | Does |
+|---|---|---|
+| `resource` | `resource`: `credits`\|`supplies`\|`plyx`, `amount`: int | Changes the stores (never below 0). |
+| `carried_supplies` | `amount`: int | Changes the supplies an open expedition carries (0…12); ignored without one. |
+| `faction` | `factionId` (a `corporations` id), `amount`: int −30…30 | Standing −100…100. |
+| `clock` | `clockId`, `by`: int −2…2 except 0 | Advances a clock; a full clock runs its `onFill` once. |
+| `flag` | `flagId` (a declared flag of scope `world` or `commander`) | Sets it, first removing the flags it is `mutuallyExclusiveWith`. |
+| `clearance` | `tier`: 1…3 | Raises `world.clearanceTier` (never lowers); raises P4's level cap. |
+| `party_stress`, `party_hp` | `amount`: int / `pct`: int −90…100 | The expedition party (or the active roster); HP never below 1 or above max. |
+| `loot` | `tableId`, `rolls?`: 1…3 | Rolls a loot table into the run (banked on return) or straight into the stores. |
+| `leash` | `amount`: −1\|1 | Changes the Leash authorizations left (never below 0). |
+| `thread` | `threadId`, `status` | Sets the status of an existing thread. |
+| `unit_event` | `event` (a P3 event type), `severity`, `targets`: `party`\|`named`, `valueAxes?` | Queues a relation event for the party's units; applied on return. `valueAxes` only work on `decision_aligned` / `decision_violated`. |
+| `incoming_unit` | — | A new named unit waits for intake (OPS). |
+| `fact` | `text` ≤ 200, `tags[]`, `importance` 1…5 | A public fact. |
+| `offer_mission` | `templateId`, `regionId?`, `source` | Puts a mission on the board. |
+
+An effect whose target no longer exists is skipped. Effects of a clock that fills another clock nest at most 3 deep. A **cost effect** (a negative resource/faction/HP/Leash amount, positive stress or clock, or a `unit_event` of `sided_against`, `decision_violated`, `endangered`, `coerced`, `dismissed`) is what every non-flavor event option must contain.
+
+## `regions` (P5)
+
+| Field | Type | |
+|---|---|---|
+| `name`, `summary`, `environmentPrompt` | string | |
+| `danger` | int 1…5 | |
+| `travelSlots` | 2 \| 3 | Slots an expedition takes (spent on return). |
+| `enemyTable` | `{ categories: { <enemyCategory id>: weight }, archetypes?: enemy id[] }` | Feeds P4's encounter generator. |
+| `modifiers` | string[] | Reserved. |
+| `mapHotspot` | `[x, y][]`, ≥ 3 points, each 0…100 | Polygon over the optional world image (`content/core/map/world.png`, author-supplied). |
+| `mapCell` | `{ x: 0…2, y: 0…2 }` | Cell of the ASCII fallback grid (distinct per region). |
+| `layers` | `[min, max]`, inside 3…5 | Node-map depth. |
+| `nodeWeights` | `{ <nodeType id>: weight > 0 }` | Which node types the map draws. |
+| `pointsOfInterest` | `{ id, name, summary, templateId }[]` | Standing runs; `templateId` is a mission template with source `side`. |
+| `rumors` | string[] (≤ 40 words each) | Authored fallback rumor lines. |
+| `knownFromStart`, `unlockedBy` | boolean / `{ flag?, clearanceMin? }` | A region is on the map when known from the start, unlocked, or recorded as known in state. |
+
+## `nodeTypes` (P5)
+
+`{ name, glyph (one character), kind: combat|event|cache|rest|objective|unknown, combat?, rest?, resolvesTo?, firstLayer?, maxPerMap?, minDanger? }`. `combat` is required for kind `combat` (`{ dangerDelta: −1…2, lootTableId, exposesCommander? }`), `rest` for kind `rest` (`{ suppliesPerUnit, hpPct, stress }`), `resolvesTo` (`{ <nodeType id>: weight }`, never `unknown` or `objective`) for kind `unknown`. `firstLayer: false` keeps the type off the first layer. Core ships `combat ⚔`, `elite ☠`, `event !`, `cache ≡`, `rest +`, `unknown ?`, `objective ◎`, `crisis ▲` (Commander Crisis, at most one per map, danger ≥ 3).
+
+## `clocks` (P5)
+
+`{ label, segments: 4…12, startFilled, regionId?, visibleToPlayer, onFill: WorldEffect[], repeat? }`. Hidden clocks are shown to the director but never to the player. `repeat: true` resets to 0 after filling.
+
+```json
+{ "id": "oversight", "label": "Oversight suspicion", "segments": 6, "startFilled": 0, "visibleToPlayer": true, "repeat": true,
+  "onFill": [{ "type": "leash", "amount": -1 }, { "type": "fact", "text": "Oversight opened a file on the unit.", "tags": ["oversight"], "importance": 4 }] }
+```
+
+## `rewardTiers` and `missionTemplates` (P5)
+
+`rewardTiers`: `{ rank 1…5, credits: [min, max], plyx: [min, max], lootTableId?, lootRolls?, faction?: 0…15 }` — the **only** source of mission amounts (the director picks a tier id, never numbers).
+
+`missionTemplates`: `{ name, sources: command|story|rumor|side[], regions?, objectives: [{ node, condition: win|reach }], dangerRange: [min, max], tiers[], factionId?, clearance?: 1…3, objectiveEventId?, failureEffects[], onSuccess?[], titles[] (≤ 60 chars), briefs[] (≤ 300) }`. An objective node is of kind `combat`, `event` or `cache`; `win` needs a won fight, `reach` a resolved node. `objectiveEventId` pins the event that plays at the objective.
+
+```json
+{ "id": "tpl_hunt", "name": "Hunt", "sources": ["side", "rumor"], "objectives": [{ "node": "elite", "condition": "win" }],
+  "dangerRange": [2, 4], "tiers": ["tier_2", "tier_3", "tier_4"], "failureEffects": [],
+  "titles": ["Hunt the strongpoint"], "briefs": ["Something dangerous has dug in. Kill it before it spreads."] }
+```
+
+## `dilemmaTemplates` (P5: minor expedition events)
+
+`{ scale: minor|major|defining, contexts[], regions?, flavor?, fixed?: { title, setup ≤ 600, options: [{ label ≤ 80, requires?: { stat, rank }, effects: WorldEffect[] }] } }`; unknown fields pass through (P6). A `minor` entry with context `expedition_event` needs `fixed`. A non-flavor event has 2–4 options and **every option carries at least one cost effect**; a `flavor: true` event has exactly one option (`CONTINUE`) without effects. Templates referenced by a mission template's `objectiveEventId` are never drawn at random.
+
+```json
+{ "id": "evt_wounded_scavenger", "scale": "minor", "contexts": ["expedition_event"],
+  "fixed": { "title": "Wounded scavenger", "setup": "A scavenger lies against the wall.", "options": [
+    { "label": "Share your rations", "effects": [{ "type": "carried_supplies", "amount": -2 }, { "type": "unit_event", "event": "decision_aligned", "severity": "minor", "targets": "party", "valueAxes": [{ "axis": "mercy", "direction": 1 }] }] },
+    { "label": "Treat the wound properly", "requires": { "stat": "empathy", "rank": 3 }, "effects": [{ "type": "carried_supplies", "amount": -1 }] } ] } }
+```
+
+## Spine beats (P5)
+
+`starts[].spine[]` gains optional fields: `conditions { minDay?, flagsAll?[], flagsNone?[], clearanceMin?, threads?[{ id, status }] }` (when the director may propose the beat), `completion` (`{ "kind": "auto" }` default \| `{ "kind": "mission", "templateId", "regionId" }` — a template with source `story` \| `{ "kind": "flag", "anyOf": [flag ids] }`) and `onComplete: WorldEffect[]`. Beats are reached in order, never skipped; after the last one the director runs open-ended.
+
+## `defects[].expedition` (P5)
+
+`{ "reveal": 1 }` — the node map shows one more step ahead while a party member has the defect (`echo_bleed`).
 
 ## Lorebook
 

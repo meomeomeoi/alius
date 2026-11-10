@@ -552,10 +552,10 @@ docs/** (Task 21), tests/** mirror src
 - Create: `docs/MANUAL_TEST_P5.md`
 - Test: `tests/build.test.ts` (existing)
 
-- [ ] **Step 1:** `npm run build` → `dist/index.js` and `style.css` change and stay tracked.
-- [ ] **Step 2:** Walk the seven acceptance criteria against test names and record them in `docs/MANUAL_TEST_P5.md` next to the in-SillyTavern steps that cannot be automated (a real `director_tick` with a mechanic profile and its log in SYS › debug; director off; a full expedition by mouse; a crisis node with a cover unit; easy retry inside an expedition; the recap text; a debrief scene; intake of a real card; the map image fallback; reload mid-run).
-- [ ] **Step 3:** `npx vitest run` and `npm run typecheck` → all green; put the counts in the final report.
-- [ ] **Step 4: Commit** `chore: rebuild dist and style, P5 docs and manual checklist`.
+- [x] **Step 1:** `npm run build` → `dist/index.js` and `style.css` change and stay tracked.
+- [x] **Step 2:** Walk the seven acceptance criteria against test names and record them in `docs/MANUAL_TEST_P5.md` next to the in-SillyTavern steps that cannot be automated (a real `director_tick` with a mechanic profile and its log in SYS › debug; director off; a full expedition by mouse; a crisis node with a cover unit; easy retry inside an expedition; the recap text; a debrief scene; intake of a real card; the map image fallback; reload mid-run).
+- [x] **Step 3:** `npx vitest run` and `npm run typecheck` → all green; put the counts in the final report.
+- [x] **Step 4: Commit** `chore: rebuild dist and style, P5 docs and manual checklist`.
 
 ---
 

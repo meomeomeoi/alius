@@ -91,3 +91,7 @@ Decisions taken while implementing, where the spec was silent or the P1 code alr
 - **Vignette.** New call type `activity_vignette` (main profile, 150 tokens), text only; both vignettes and grunt names have a SYS toggle.
 - **Facilities.** All five exist at level 1 from the start. Upgrades cost credits + plyx up front and complete at the day end after their last day. Costs, times and effect values in `facilities.json` are draft balance numbers.
 - **Not in P2:** the commander's own stress (the commander has none in the state), the Hunger Loop's extra Affinity from meals (a P3 social hook), base location ids for scenes (P3), workshop recipes and crafting (P4; the `workshop` activity only emits `workshop_session`).
+
+## Note from P5
+
+`base/requisition` is kept unchanged. Expedition supplies come from three places: cache nodes (`loot_cache`), the standing scavenging runs (points of interest, a `side` mission per region), and mission rewards. Supplies a run does not eat are returned to the stores on return. The day-end hooks `mission_deadlines` and `director_tick` are used by P5 (`director_tick` opens a director request and answers a stale one with the fallback); `rumors_requested` from `scout_net` becomes a scout director request.

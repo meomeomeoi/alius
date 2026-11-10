@@ -127,10 +127,10 @@ Source layout (TypeScript, same toolchain style as Mundi-Expanded):
 | `intent_extract` | mechanic | Exchange/scene → list of intents | 600 |
 | `scene_summary` | mechanic | Scene → facts + chronicle entry | 800 |
 | `dilemma_generate` | mechanic | Context + template → dilemma structure | 1000 |
-| `director_tick` | mechanic | World state → mission offers, rumors, thread updates | 1200 |
+| `director_tick` | mechanic | World digest → mission offers, rumors, thread updates, clock advances, story-beat proposal (P5; the engine validates every id and never reads amounts) | 1200 |
 | `flavor` | mechanic | Names/descriptions for generated things (grunts, affixed enemies, items); one `kind` per use | 400 |
 | `dm_reply` | main | Short PDA message | 300 |
-| `expedition_recap` | main | Combat/expedition log → narrative recap | 700 |
+| `expedition_recap` | main | After-action report lines → narrative recap (P5; optional, setting `expeditionRecap`) | 700 |
 | `emotion_pick` | mechanic | Optional sprite emotion classification (when not using native Expressions) | 50 |
 | `chronicle_compact` | mechanic | Day/week chronicle lines → one compact entry (P3; without a profile the lines are joined) | 400 |
 | `activity_vignette` | main | ≤2-line vignette after a companion activity (P2; can be turned off) | 150 |
@@ -151,7 +151,7 @@ Before each main-model generation the adapter injects one compact block:
 
 Character card text itself remains SillyTavern's job.
 
-### 5.4 Implemented engine interfaces (P0–P4)
+### 5.4 Implemented engine interfaces (P0–P5)
 
 Later packages build on these; change them only together with the owning spec.
 
@@ -183,8 +183,13 @@ Later packages build on these; change them only together with the owning spec.
 | `engine/combat` exports: `checkStart`, `canAutoResolve`, `generateEncounter(state, reg, rng, { table, danger, squadPower, exposesCommander?, lootTableId? })`, `defaultFormation`, `squadPower`, `encounterPower`, `defaultEnemyName`, `releaseBreakdowns` | P4 | What P5 uses to build and judge fights. `EnemyTable = { categories, archetypes? }`. |
 | `squad/unlock_node`, `squad/respec`, `squad/set_loadout`, `squad/release_breakdowns`, `levelCap(state)` (`world.clearanceTier`), `unitStats(state, reg, unit)` | P4 | Progression. P5 calls `squad/release_breakdowns` on return and writes `world.clearanceTier`. |
 | `item/equip`, `item/unequip`, `item/craft`, `item/upgrade`, `item/reroll`, `item/dismantle`, `rollLoot(draft, reg, rng, tableId, { extraRolls? })`, `bankLoot(draft, drops)` | P4 | Items and the workshop (session opened by the `workshop` activity). P5 banks `lastCombat.loot` with `bankLoot` on return; `loot_cache` is the table for cache nodes. |
+| `world/seed`, `mission/dismiss { missionId }`, `rumor/follow { rumorId }`, `squad/add_named { unit }`, `squad/decline_incoming` | P5 | World seeding (older saves), board and rumors, intake of incoming named units (`world.incomingUnits`). |
+| `expedition/start { missionId \| poi, unitIds, formation, supplies }`, `expedition/move`, `expedition/set_formation`, `expedition/treat`, `expedition/resolve_combat`, `expedition/choose`, `expedition/return`, `expedition/retreat`, `expedition/ack_report`, `expedition/set_recap`, `expedition/mark_debriefed` | P5 | Expeditions. While `state.expedition` is open only `expedition/`, `combat/`, `director/` and `debug/` actions run (guard in `dispatch`); slots are spent once on return; `lastExpedition` is the after-action report. |
+| `director/apply { requestId, output, beatCooldownDays? }`, `director/fallback { requestId }`, `director/request { reason: 'scout' }` | P5 | The director's second phase: the engine opens `world.director.pending` (`director_requested`), the app answers it. Validated by `validateDirectorOutput`; an unanswered request is answered by `fallbackOutput` at the next day end. |
+| `engine/world` exports (`index.ts`): `applyWorldEffects(draft, ctx, effects, src)`, `advanceClock`, `factionStanding`, `offerMission`, `missionById`, `currentBeat`, `isOpenEnded`, `buildDigest`, `ableParty`, the state types | P5 | What P6 uses: the world-effect vocabulary (`WORLD_EFFECT_TYPES`), clocks, factions, missions, the spine, the digest. |
+| `app.expedition` (`plan`, `launch`, `move`, `choose`, `treat`, `fight`, `afterCombat`, `retreat`, `return`, `requestRecap`, `debrief`), `app.director` (`onRequested`), `app.intakeUnit()`, `AppDeps.assetUrl` | P5 | The controllers behind the expedition screen and the director; `intakeUnit` runs the one-unit calibration for a card. |
 
-Events emitted by the day-end pipeline: `day_end_step`, `upkeep`, `supply_shortage`, `trust_penalty_event`, `unit_recovered`, `facility_upgraded`, `slot_advanced`, `night_started`, `day_started`, `autosave` (the app flushes the saver on it).
+Events emitted by the day-end pipeline: `director_requested` (P5), `mission_failed` / `mission_expired` / `clock_filled` (P5), `day_end_step`, `upkeep`, `supply_shortage`, `trust_penalty_event`, `unit_recovered`, `facility_upgraded`, `slot_advanced`, `night_started`, `day_started`, `autosave` (the app flushes the saver on it).
 
 ## 6. Data model (high level)
 
@@ -198,14 +203,15 @@ Campaign {
   resources { credits, supplies, plyx }
   base { facilities: { [id]: level } /* absent = level 1 */, upgrades?: { facilityId, toLevel, daysLeft }[] }
   inventory: ItemInstance[]   // P4: { uid, itemId, rarity, upgrade, affixes[] }; itemSeq? counts uids
-  world { regions{...}, clocks[], threads[], factions{standing}, flags[], spineProgress, startId?, clearanceTier? /* P4 reads, P5 writes: level cap tier 0–3 */ }
-  missions { offered[], active[], completed[] }
-  rumors[], dms: { [unitId]: DmMessage[] }, dmMeta?: { [unitId]: { day, sent } }   // P3: the unit's daily "social battery"
+  world { regions{ [id]: { known, lastVisitedDay?, poi? } }, clocks[] /* { id, label, segments, filled, regionId?, visibleToPlayer, filledDay? } */, threads[] /* { id, title, status, flags[{id,description}], relatedUnits, relatedRegions, createdDay } */, factions{standing −100…100}, flags[], spineProgress /* beats completed */, spine?{ proposed?, proposedDay?, lastProposalDay? }, director?{ pending?, lastTickDay?, seq? }, incomingUnits?, lastExpeditionRegionId?, seeded?, startId?, clearanceTier? /* P4 reads, P5 writes: level cap tier 0–3 */ }
+  missions { offered[] /* the board */, active[], completed[] /* newest 30 */ }   // Mission: { id, source, templateId, title, brief, regionId, danger, objective, deadlineDay?, rewardsTier, failureEffects, threadId?, spineBeat?, poiId?, scouted?, status, rewards? }
+  rumors[] /* newest 20 */, dms: { [unitId]: DmMessage[] }, dmMeta?: { [unitId]: { day, sent } }   // P3: the unit's daily "social battery"
   memory { facts[], chronicle[], promises?[], nextId? }   // P3
   scene?: SceneRecord, proposals?: PendingProposal[]       // P3: the open scene (transcript stays in the ST chat) and open proposals
   calendar { scheduled[], nightEventsQueue[], nightEvent? /* head entry while the Night slot runs */, pendingScene? /* open talk holding its slot */, shortageStreak? }
   leash { authorizationsLeft, refreshDay, log[] }
-  expedition?: ExpeditionState
+  expedition?: ExpeditionState   // P5: open run (map, party, formation, carried supplies, pending node, unbanked loot, log, queued relation hints)
+  lastExpedition?: ExpeditionReport   // P5: the after-action report (outcome, log, loot, rewards, injuries, deaths, recap?)
   combat?: CombatState        // P4: only combat and rng change while it runs
   lastCombat?: CombatResult   // P4: for P5's recap and debrief
   workshopSession?: { day, opsLeft, companionId? }, enemyNames?: { [enemyId|affixes]: name }   // P4
@@ -269,6 +275,8 @@ Connection profiles (main, mechanic) · per-call token budgets · intent extract
 
 P4: **easy retry** (default off) and generated enemy names (default off) are global settings; combat difficulty (story / normal / hard) is per campaign (`campaign/set_difficulty`, SYS).
 
+P5: **story director** on/off (`directorEnabled`, default on; off = the engine's fallback plans the world), **story beat cooldown** (`beatCooldownDays`, 1–14, default 3) and **expedition recap** (`expeditionRecap`, default on) — SYS › World.
+
 Defaults in code: Desire/Bond defects **off**, show raw values **off**, sprite mode **native**, edit lock **on**; P3: intent extraction **per exchange** (min confidence 0.5), scene pacing 30 exchanges, typing 60 chars/s, romance **on**, explicit scenes **off**, romantic initiative **medium**, unit DMs **on**, chronicle compaction **on**. The campaign stores a snapshot of the Desire/Bond setting it was started with (`settings.desireBondDefects`); the engine uses that snapshot, not the global value, when it validates later changes. The edit lock does **not** apply inside the new-campaign wizard (setup is always editable); it does apply to "Re-sync from card" on a running campaign.
 
 ## 9. Packages
@@ -280,7 +288,7 @@ Defaults in code: Desire/Bond defects **off**, show raw values **off**, sprite m
 | P2 | Calendar, activities, base & economy | P0, P1 | implemented |
 | P3 | Scenes, relationships, memory, PDA comms | P0–P2 | implemented |
 | P4 | Combat, progression, items | P0, P1 (P2 for workshop) | implemented |
-| P5 | World map, expeditions, missions, director | P0–P4 | not started |
+| P5 | World map, expeditions, missions, director | P0–P4 | implemented |
 | P6 | Dilemmas, disloyalty & the Leash | P0–P5 | not started |
 
 "Implemented" = automated tests pass; the in-SillyTavern checklists `MANUAL_TEST_P*.md` are run by the project owner. An implemented package's spec ends with an **Implemented as** section (or a status line) listing where the code differs from the original draft: the code wins. Work not yet started has plans only in `docs/plans/` when someone wrote one; if none exists, write it first (see `CLAUDE.md`).
