@@ -455,11 +455,11 @@ docs/** (Task 21), tests/** mirror src
 **Interfaces:**
 - `registerWorldContext(builder: ContextBuilder, deps: { registries: () => Registries }): void` — provider `{ id: 'world', priority: 50 }` (below P3's `promises` 60, so it is trimmed first). Renders nothing without an open scene. Otherwise at most three sentences, in this order, each only when it applies: the region of the last expedition if within 3 days (`World: the unit came back from <Region> <n> day(s) ago (<outcome>).`); one open thread whose `relatedUnits` includes a present unit, else the proposed spine beat's thread (`Ongoing: <title>.`); visible clocks filled above 50 %, at most two (`Pressure: <label> is at 5/8.`). Hidden clocks and dynamic flags never appear.
 
-- [ ] **Step 1: Write the failing tests** — `renders nothing outside a scene`; `mentions the last expedition for three days and then drops it`; `prefers a thread that involves a present unit`; `lists at most two visible clocks above half and never a hidden one`; `never more than three sentences`; `is trimmed before the promises provider under a tight cap`.
-- [ ] **Step 2: Run** `npx vitest run tests/world/context.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS.
-- [ ] **Step 5: Commit** `feat(world): world line in the scene context`.
+- [x] **Step 1: Write the failing tests** — `renders nothing outside a scene`; `mentions the last expedition for three days and then drops it`; `prefers a thread that involves a present unit`; `lists at most two visible clocks above half and never a hidden one`; `never more than three sentences`; `is trimmed before the promises provider under a tight cap`.
+- [x] **Step 2: Run** `npx vitest run tests/world/context.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS.
+- [x] **Step 5: Commit** `feat(world): world line in the scene context`.
 
 ---
 
