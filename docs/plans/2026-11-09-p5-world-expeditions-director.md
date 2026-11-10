@@ -277,11 +277,11 @@ docs/** (Task 21), tests/** mirror src
 - `mapRows(map: NodeMap, opts: { at: string | null; visible: Set<string>; reg: Registries }): Array<Array<{ nodeId: string; text: string; state: 'visited'|'current'|'option'|'ahead'; }>>` — one row per layer, `text` = `[<glyph>]` for a visible type and `[ ]` otherwise (pure model; the DOM view is Task 19).
 - `nodePlayType(map, nodeId, mission: Mission): string` — the mission's `objective.node` for `obj`, `resolvedType ?? type` otherwise.
 
-- [ ] **Step 1: Write the failing tests** — `same seed and input give the same map`; over 300 seeds per core region: `3 to 5 layers of 2 to 3 nodes`, `every node of a layer has 1 or 2 edges into the next layer and every node has an incoming edge`, `every path from the entrance reaches the objective`, `no elite, rest or crisis in the first layer`, `at most one crisis and none below danger 3`, `every layer has a combat-kind node`; `nextNodes from the entrance is the first layer`; `with reveal 1 only the options show their type, with reveal 2 one layer more`; `visited nodes stay visible`; `mapRows marks current, options and hidden nodes`; `a region whose weights name only removed node types throws a readable error`.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/world/nodeMap.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS.
-- [ ] **Step 5: Commit** `feat(engine): seeded node maps with fog`.
+- [x] **Step 1: Write the failing tests** — `same seed and input give the same map`; over 300 seeds per core region: `3 to 5 layers of 2 to 3 nodes`, `every node of a layer has 1 or 2 edges into the next layer and every node has an incoming edge`, `every path from the entrance reaches the objective`, `no elite, rest or crisis in the first layer`, `at most one crisis and none below danger 3`, `every layer has a combat-kind node`; `nextNodes from the entrance is the first layer`; `with reveal 1 only the options show their type, with reveal 2 one layer more`; `visited nodes stay visible`; `mapRows marks current, options and hidden nodes`; `a region whose weights name only removed node types throws a readable error`.
+- [x] **Step 2: Run** `npx vitest run tests/engine/world/nodeMap.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS.
+- [x] **Step 5: Commit** `feat(engine): seeded node maps with fog`.
 
 ---
 
