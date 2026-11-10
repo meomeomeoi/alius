@@ -53,6 +53,13 @@ export function formationProblem(ids: string[], f: Formation): string | null {
 
 const regionName = (r: Entry): string => String(r.name);
 
+/** Why a point of interest cannot be run again yet (its cooldown), or `null`. */
+export function poiCooldownReason(state: CampaignState, regionId: string, poiId: string): string | null {
+  const last = state.world.regions[regionId]?.poi?.[poiId];
+  if (last === undefined || state.day >= last + TUNING.world.poiCooldownDays) return null;
+  return `That point of interest cannot be run again before day ${last + TUNING.world.poiCooldownDays}.`;
+}
+
 /** Why this expedition cannot start now, or `null`. Checked in the order of the rules; nothing is changed. */
 export function checkExpedition(state: CampaignState, reg: Registries, p: StartExpedition): string | null {
   if (state.expedition) return 'An expedition is already under way.';
@@ -75,10 +82,8 @@ export function checkExpedition(state: CampaignState, reg: Registries, p: StartE
     if (!knownRegions(state, reg).some((r) => r.id === regionId)) return `Region "${regionId}" is not known yet.`;
     const poi = (region.pointsOfInterest as Array<{ id: string; templateId: string }>).find((x) => x.id === p.poi!.poiId);
     if (!poi) return `Region "${regionId}" has no point of interest "${p.poi!.poiId}".`;
-    const last = state.world.regions[regionId]?.poi?.[poi.id];
-    if (last !== undefined && state.day < last + TUNING.world.poiCooldownDays) {
-      return `That point of interest cannot be run again before day ${last + TUNING.world.poiCooldownDays}.`;
-    }
+    const cooldown = poiCooldownReason(state, regionId, poi.id);
+    if (cooldown) return cooldown;
     templateId = poi.templateId;
   }
   const region = reg.regions.get(regionId);

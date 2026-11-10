@@ -474,11 +474,11 @@ docs/** (Task 21), tests/** mirror src
 - Map: with `mapImageUrl` an `<img>` plus an SVG overlay (`viewBox 0 0 100 100`, one `<polygon>` per region from `mapHotspot`, focusable, `aria-label` = region name); on the image's `error` event, or without a URL, the ASCII grid: a 3×3 box-drawing grid with each region's name at its `mapCell` as a button. Regions not in `knownRegions` render as `[ NO SIGNAL ]` and cannot be selected.
 - Region panel (selected region; default = the start region): name, summary, `ENVIRONMENT` (`environmentPrompt`), `DANGER ▮▮▯▯▯`, `TRAVEL 2 SLOTS`, `KNOWN HOSTILES` (category names of `enemyTable`), `CLOCKS` (visible clocks of the region plus region-less visible clocks, each `label ████░░░░ 4/8` using P4's `bar`), `MISSIONS` (offered missions of the region: source tag, title, danger, `D-3` days left; a button → `onPlan({ missionId })`), `POINTS OF INTEREST` (name, summary, button → `onPlan({ poi })`, disabled with the reason from `checkExpedition`'s POI rule while on cooldown).
 
-- [ ] **Step 1: Write the failing tests** — `without an image the ASCII grid shows every known region as a button`; `an unknown region shows NO SIGNAL and is not selectable`; `with an image URL polygons are rendered and an image error falls back to ASCII`; `selecting a region shows environment, danger, hostiles, clocks and missions`; `hidden clocks are not shown`; `a mission button calls onPlan with its id`; `a POI on cooldown is disabled with the reason`; `region names and briefs are rendered as text, not HTML`; `no campaign shows the offline stub text`.
-- [ ] **Step 2: Run** `npx vitest run tests/ui/map.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS.
-- [ ] **Step 5: Commit** `feat(ui): MAP tab with regions, clocks and mission entry points`.
+- [x] **Step 1: Write the failing tests** — `without an image the ASCII grid shows every known region as a button`; `an unknown region shows NO SIGNAL and is not selectable`; `with an image URL polygons are rendered and an image error falls back to ASCII`; `selecting a region shows environment, danger, hostiles, clocks and missions`; `hidden clocks are not shown`; `a mission button calls onPlan with its id`; `a POI on cooldown is disabled with the reason`; `region names and briefs are rendered as text, not HTML`; `no campaign shows the offline stub text`.
+- [x] **Step 2: Run** `npx vitest run tests/ui/map.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS.
+- [x] **Step 5: Commit** `feat(ui): MAP tab with regions, clocks and mission entry points`.
 
 ---
 

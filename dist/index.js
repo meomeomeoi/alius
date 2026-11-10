@@ -5500,6 +5500,11 @@ function formationProblem(ids, f) {
   return null;
 }
 var regionName = (r) => String(r.name);
+function poiCooldownReason(state, regionId, poiId) {
+  const last = state.world.regions[regionId]?.poi?.[poiId];
+  if (last === void 0 || state.day >= last + TUNING.world.poiCooldownDays) return null;
+  return `That point of interest cannot be run again before day ${last + TUNING.world.poiCooldownDays}.`;
+}
 function checkExpedition(state, reg, p) {
   if (state.expedition) return "An expedition is already under way.";
   if (state.combat) return "A combat is open: finish it first.";
@@ -5520,10 +5525,8 @@ function checkExpedition(state, reg, p) {
     if (!knownRegions(state, reg).some((r) => r.id === regionId)) return `Region "${regionId}" is not known yet.`;
     const poi = region2.pointsOfInterest.find((x) => x.id === p.poi.poiId);
     if (!poi) return `Region "${regionId}" has no point of interest "${p.poi.poiId}".`;
-    const last = state.world.regions[regionId]?.poi?.[poi.id];
-    if (last !== void 0 && state.day < last + TUNING.world.poiCooldownDays) {
-      return `That point of interest cannot be run again before day ${last + TUNING.world.poiCooldownDays}.`;
-    }
+    const cooldown = poiCooldownReason(state, regionId, poi.id);
+    if (cooldown) return cooldown;
     templateId = poi.templateId;
   }
   const region = reg.regions.get(regionId);
