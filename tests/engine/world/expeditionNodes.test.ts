@@ -3,10 +3,10 @@ import type { CombatResult } from '../../../src/engine/combat/types';
 import type { Registries } from '../../../src/content/types';
 import { seedRng } from '../../../src/engine/rng';
 import type { CampaignState } from '../../../src/engine/state/types';
-import { eventOptions, resolveCombat } from '../../../src/engine/world/expedition';
+import { eventOptions } from '../../../src/engine/world/expedition';
 import type { NodeMap } from '../../../src/engine/world/types';
 import { depart, withMission } from '../../helpers/expedition';
-import { campaign, ctxOf, errors, loadCore, ofType, run } from '../../helpers/world';
+import { campaign, errors, loadCore, ofType, run } from '../../helpers/world';
 
 let reg: Registries;
 let base: CampaignState;
@@ -199,27 +199,28 @@ describe('combat nodes', () => {
     expect([...q.state.expedition!.formation.front, ...q.state.expedition!.formation.back].sort()).toEqual([c, d].sort());
   });
 
-  it('a lost fight ends the run as failed and a retreated fight as retreated (Task 11 stub)', () => {
+  it('a lost fight ends the run as failed and a retreated fight as retreated', () => {
     const base2 = move(runWith('combat'), 'n0_0').state;
-    const lost = fought(base2, { outcome: 'lost', loot: [] });
-    expect(String(errors(resolve(lost).events)[0].message)).toContain('failed');
-    const retreated = fought(base2, { outcome: 'retreated', loot: [] });
-    expect(String(errors(resolve(retreated).events)[0].message)).toContain('retreated');
-    // directly, so the stub's message is the whole story
-    const draft = structuredClone(lost);
-    expect(() => resolveCombat(draft, ctxOf(draft, reg))).toThrow(/failed/);
+    const lost = resolve(fought(base2, { outcome: 'lost', loot: [] }));
+    expect(errors(lost.events)).toEqual([]);
+    expect(lost.state.expedition).toBeUndefined();
+    expect(lost.state.lastExpedition!.outcome).toBe('failed');
+    const fled = resolve(fought(base2, { outcome: 'retreated', loot: [] }));
+    expect(fled.state.expedition).toBeUndefined();
+    expect(fled.state.lastExpedition!.outcome).toBe('retreated');
   });
 
   it('a win with nobody standing forces a retreat', () => {
     const s = fought(move(runWith('combat'), 'n0_0').state);
     for (const id of s.expedition!.party) s.squad.find((u) => u.id === id)!.status = 'injured';
-    const draft = structuredClone(s);
-    expect(() => resolveCombat(draft, ctxOf(draft, reg))).toThrow(/retreated/);
+    const r = resolve(s);
+    expect(errors(r.events)).toEqual([]);
+    expect(r.state.lastExpedition!.outcome).toBe('retreated');
+    expect(r.state.expedition).toBeUndefined();
     // a dead last grunt counts the same
     const t = fought(move(runWith('combat'), 'n0_0').state);
     for (const id of t.expedition!.party) t.squad.find((u) => u.id === id)!.status = 'dead';
-    const d2 = structuredClone(t);
-    expect(() => resolveCombat(d2, ctxOf(d2, reg))).toThrow(/retreated/);
+    expect(resolve(t).state.lastExpedition!.outcome).toBe('retreated');
   });
 });
 
@@ -281,7 +282,7 @@ describe('event nodes', () => {
     const exp = r.state.expedition!;
     expect(exp.supplies).toBe(2); // Share your rations: −2 carried
     expect(exp.hints).toHaveLength(1);
-    expect(exp.hints[0]).toMatchObject({ type: 'sided_with', actor: 'commander', severity: 'minor', targets: exp.party, valueAxes: [{ axis: 'mercy', direction: 1 }] });
+    expect(exp.hints[0]).toMatchObject({ type: 'decision_aligned', actor: 'commander', severity: 'minor', targets: exp.party, valueAxes: [{ axis: 'mercy', direction: 1 }] });
     expect(exp.hints[0].evidence).toBe('Wounded scavenger');
     expect(exp.phase).toBe('travel');
     expect(exp.pending).toBeUndefined();

@@ -57,7 +57,7 @@
             },
             {
               "type": "unit_event",
-              "event": "sided_with",
+              "event": "decision_aligned",
               "severity": "minor",
               "targets": "party",
               "valueAxes": [
@@ -99,7 +99,7 @@
             },
             {
               "type": "unit_event",
-              "event": "sided_with",
+              "event": "decision_aligned",
               "severity": "moderate",
               "targets": "party",
               "valueAxes": [
@@ -249,7 +249,7 @@
             },
             {
               "type": "unit_event",
-              "event": "sided_with",
+              "event": "decision_aligned",
               "severity": "moderate",
               "targets": "party",
               "valueAxes": [
@@ -300,7 +300,7 @@
             },
             {
               "type": "unit_event",
-              "event": "sided_with",
+              "event": "decision_aligned",
               "severity": "minor",
               "targets": "party",
               "valueAxes": [

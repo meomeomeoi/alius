@@ -1,5 +1,7 @@
 import { registerAction } from '../dispatch';
-import { checkExpedition, chooseOption, moveTo, resolveCombat, setFormation, startExpedition, treat, type StartExpedition, type TreatKind } from '../world/expedition';
+import {
+  checkExpedition, chooseOption, cleanRecap, moveTo, resolveCombat, retreatFromExpedition, returnFromExpedition, setFormation, startExpedition, treat, type StartExpedition, type TreatKind,
+} from '../world/expedition';
 
 // Importing this module registers the expedition actions.
 
@@ -51,4 +53,30 @@ registerAction('expedition/choose', (draft, payload, ctx) => {
   const option = isObj(payload) ? payload.option : undefined;
   if (typeof option !== 'number') throw new Error('expedition/choose needs { option }.');
   return chooseOption(draft, ctx, option);
+});
+
+registerAction('expedition/return', (draft, _payload, ctx) => returnFromExpedition(draft, ctx));
+
+registerAction('expedition/retreat', (draft, _payload, ctx) => retreatFromExpedition(draft, ctx));
+
+registerAction('expedition/ack_report', (draft) => {
+  if (!draft.lastExpedition) throw new Error('There is no report.');
+  draft.lastExpedition.acknowledged = true;
+  return [];
+});
+
+registerAction('expedition/mark_debriefed', (draft) => {
+  if (!draft.lastExpedition) throw new Error('There is no report.');
+  draft.lastExpedition.debriefed = true;
+  return [];
+});
+
+/** The main model's narrative recap, stored on the report it belongs to (a late answer for an older report is refused). */
+registerAction('expedition/set_recap', (draft, payload) => {
+  const reportId = isObj(payload) ? payload.reportId : undefined;
+  if (!draft.lastExpedition || reportId !== draft.lastExpedition.id) throw new Error('That report is no longer the last one.');
+  const text = cleanRecap(isObj(payload) ? payload.text : undefined);
+  if (text === '') throw new Error('The recap is empty.');
+  draft.lastExpedition.recap = text;
+  return [{ type: 'expedition_recap_set', reportId }];
 });

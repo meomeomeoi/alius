@@ -4796,6 +4796,30 @@ function offerMission(draft, ctx2, o) {
   events.push({ type: "mission_offered", missionId: mission.id, source: mission.source, regionId: mission.regionId, title: mission.title });
   return { mission, events };
 }
+function rollRewards(draft, ctx2, m) {
+  const reg = ctx2.registries;
+  const tpl = reg.missionTemplates.get(m.templateId);
+  const tier = reg.rewardTiers.get(m.rewardsTier);
+  const rewards = { credits: 0, plyx: 0, items: [] };
+  const drops = [];
+  if (tier) {
+    const [cLo, cHi] = tier.credits;
+    const [pLo, pHi] = tier.plyx;
+    rewards.credits = ctx2.rng.int(cLo, cHi);
+    rewards.plyx = ctx2.rng.int(pLo, pHi);
+    if (typeof tier.lootTableId === "string" && reg.lootTables.has(tier.lootTableId)) {
+      for (let i = 0; i < (tier.lootRolls ?? 1); i++) drops.push(...rollLoot(draft, reg, ctx2.rng, tier.lootTableId));
+    }
+  }
+  const factionId = tpl?.factionId;
+  const amount = tier?.faction ?? 0;
+  if (factionId !== void 0 && amount > 0) rewards.faction = { id: factionId, amount };
+  if (typeof tpl?.clearance === "number") rewards.clearance = tpl.clearance;
+  for (const d of drops) {
+    if (d.kind === "item") rewards.items.push(String(reg.items.get(d.item.itemId)?.name ?? d.item.itemId));
+  }
+  return { rewards, drops };
+}
 var completedHooks = [];
 function registerMissionCompletedHook(fn) {
   completedHooks.push(fn);
@@ -4805,6 +4829,39 @@ function archive(draft, m) {
   if (draft.missions.completed.length > TUNING.world.completedMax) {
     draft.missions.completed.splice(0, draft.missions.completed.length - TUNING.world.completedMax);
   }
+}
+function completeMission(draft, ctx2, missionId) {
+  const i = draft.missions.active.findIndex((m2) => m2.id === missionId);
+  if (i < 0) return [];
+  const [m] = draft.missions.active.splice(i, 1);
+  const tpl = ctx2.registries.missionTemplates.get(m.templateId);
+  const { rewards, drops } = rollRewards(draft, ctx2, m);
+  m.status = "completed";
+  m.outcomeDay = draft.day;
+  m.rewards = rewards;
+  archive(draft, m);
+  const effects2 = [];
+  if (rewards.credits > 0) effects2.push({ type: "resource", resource: "credits", amount: rewards.credits });
+  if (rewards.plyx > 0) effects2.push({ type: "resource", resource: "plyx", amount: rewards.plyx });
+  if (rewards.faction) effects2.push({ type: "faction", factionId: rewards.faction.id, amount: rewards.faction.amount });
+  if (rewards.clearance !== void 0 && rewards.clearance >= 1 && rewards.clearance <= 3) {
+    effects2.push({ type: "clearance", tier: rewards.clearance });
+  }
+  const events = [];
+  events.push(...applyWorldEffects(draft, ctx2, effects2, { kind: "mission", id: m.id, label: m.title }));
+  events.push(...bankLoot(draft, drops));
+  if (tpl?.onSuccess) events.push(...applyWorldEffects(draft, ctx2, tpl.onSuccess, { kind: "mission", id: m.id, label: m.title }));
+  events.push({ type: "mission_completed", missionId: m.id, title: m.title, rewards });
+  for (const hook of completedHooks) events.push(...hook(draft, ctx2, m));
+  return events;
+}
+function releaseMission(draft, missionId) {
+  const i = draft.missions.active.findIndex((m2) => m2.id === missionId);
+  if (i < 0) return;
+  const [m] = draft.missions.active.splice(i, 1);
+  if (m.poiId !== void 0) return;
+  m.status = "offered";
+  draft.missions.offered.push(m);
 }
 function runDeadlines(draft, ctx2) {
   const reg = ctx2.registries;
@@ -5211,8 +5268,124 @@ function enterCombat(draft, ctx2, nodeId, def, mission) {
   exp.phase = "combat";
   return [{ type: "expedition_combat", nodeId, encounter }];
 }
-function endExpedition(_draft, _ctx, outcome) {
-  throw new Error(`endExpedition(${outcome}) is not implemented until Task 11.`);
+function openDirectorRequest(_draft, _reason) {
+  return [];
+}
+var SEVERITY_RANK2 = { minor: 0, moderate: 1, major: 2, extreme: 3 };
+function dedupeHints(hints) {
+  const byKey = /* @__PURE__ */ new Map();
+  for (const h2 of hints) {
+    const key = `${h2.type}|${h2.actor}|${[...h2.targets].sort().join(",")}`;
+    const kept = byKey.get(key);
+    if (!kept || SEVERITY_RANK2[h2.severity] > SEVERITY_RANK2[kept.severity]) byKey.set(key, h2);
+  }
+  return [...byKey.values()];
+}
+function applyHints(draft, ctx2, exp) {
+  const events = [];
+  const hints = dedupeHints(exp.hints);
+  const size = TUNING.relations.maxEventsPerExchange;
+  for (let i = 0; i < hints.length; i += size) {
+    const batch = hints.slice(i, i + size).map((h2) => ({ ...h2, confidence: 1 }));
+    events.push(...applyIntents(draft, ctx2, { channel: "scene", participants: exp.party, intents: { events: batch } }));
+  }
+  return events;
+}
+var OUTCOME_TEXT = {
+  success: "objective secured",
+  retreated: "the squad pulled back",
+  failed: "the squad was beaten back"
+};
+var unique = (ids) => [...new Set(ids)];
+var logIds = (exp, key) => unique(exp.log.flatMap((l) => l.kind === "combat" ? l.data?.[key] ?? [] : []));
+function endExpedition(draft, ctx2, outcome) {
+  const exp = draft.expedition;
+  if (!exp) throw new Error("There is no expedition.");
+  const reg = ctx2.registries;
+  const events = [];
+  const mission = draft.missions.active.find((m) => m.id === exp.missionId);
+  const region = reg.regions.get(exp.regionId);
+  const regionLabel = region ? regionName(region) : exp.regionId;
+  const nameOf5 = (id) => draft.squad.find((u) => u.id === id)?.displayName ?? id;
+  draft.resources.supplies += exp.supplies;
+  let rewards;
+  if (outcome === "success") {
+    events.push(...bankLoot(draft, exp.loot));
+    if (mission) {
+      events.push(...completeMission(draft, ctx2, mission.id));
+      rewards = draft.missions.completed.find((m) => m.id === mission.id)?.rewards;
+    }
+  } else if (mission) {
+    releaseMission(draft, mission.id);
+  }
+  const released = releaseBreakdowns(draft, exp.party);
+  events.push(...released);
+  for (const e of released) {
+    const unit = draft.squad.find((u) => u.id === e.unitId);
+    if (!unit || unit.kind !== "named") continue;
+    enqueueNight(draft, {
+      id: nextId(draft, "n"),
+      unitId: unit.id,
+      kind: "after_breakdown",
+      priority: TUNING.expedition.breakdownNight.priority,
+      framing: `${unit.displayName} is at your door. She has not slept since the breakdown.`,
+      ignore: { event: "dismissed", severity: "moderate" },
+      expiresDay: draft.day + TUNING.expedition.breakdownNight.expiresInDays
+    });
+  }
+  events.push(...applyHints(draft, ctx2, exp));
+  const injuries = logIds(exp, "injuries");
+  const deaths = logIds(exp, "deaths");
+  const breakdowns = logIds(exp, "breakdowns");
+  const report = {
+    id: `rep_${exp.id}`,
+    missionId: exp.missionId,
+    missionTitle: mission?.title ?? "Unknown mission",
+    regionId: exp.regionId,
+    day: exp.day,
+    outcome,
+    party: [...exp.party],
+    nodes: mission ? exp.path.map((id) => nodePlayType(exp.map, id, mission)) : [],
+    log: structuredClone(exp.log),
+    loot: structuredClone(exp.loot),
+    injuries,
+    deaths,
+    breakdowns,
+    acknowledged: false,
+    debriefed: false
+  };
+  if (rewards) report.rewards = structuredClone(rewards);
+  draft.lastExpedition = report;
+  let line = `Expedition to ${regionLabel}: ${OUTCOME_TEXT[outcome]}.`;
+  if (injuries.length > 0) line += ` ${injuries.map(nameOf5).join(" and ")} ${injuries.length > 1 ? "were" : "was"} carried back.`;
+  if (deaths.length > 0) line += ` ${deaths.map(nameOf5).join(" and ")} did not return.`;
+  addChronicle(draft, { kind: "scene", day: draft.day, text: line });
+  const rs = draft.world.regions[exp.regionId] ?? { known: true };
+  draft.world.regions[exp.regionId] = { ...rs, lastVisitedDay: draft.day };
+  draft.world.lastExpeditionRegionId = exp.regionId;
+  delete draft.expedition;
+  events.push(...consumeSlots(draft, exp.slots, ctx2));
+  events.push(...openDirectorRequest(draft, "expedition"));
+  events.push({ type: "expedition_ended", outcome, reportId: report.id });
+  return events;
+}
+function returnFromExpedition(draft, ctx2) {
+  const exp = draft.expedition;
+  if (!exp) throw new Error("There is no expedition.");
+  if (exp.phase !== "travel") throw new Error("Finish what is happening here first.");
+  if (!exp.objectiveDone) throw new Error("The objective has not been reached yet.");
+  return endExpedition(draft, ctx2, "success");
+}
+function retreatFromExpedition(draft, ctx2) {
+  const exp = draft.expedition;
+  if (!exp) throw new Error("There is no expedition.");
+  if (draft.combat) throw new Error("A fight is going on: it has to be decided first.");
+  addLog(exp, "retreat", "The squad pulls back.");
+  return endExpedition(draft, ctx2, "retreated");
+}
+function cleanRecap(text) {
+  if (typeof text !== "string") return "";
+  return text.replace(/<\s*(script|style)[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi, " ").replace(/<[^>]*>?/g, " ").replace(/[<>]/g, "").replace(/\s+/g, " ").trim().slice(0, TUNING.expedition.recapMax).trim();
 }
 var nodeNumber = (exp) => exp.path.length;
 function hintEvidence(draft, h2, node) {
@@ -5234,7 +5407,7 @@ function resolveCombat(draft, ctx2) {
   for (const h2 of result.relationHints) {
     exp.hints.push({ type: h2.type, actor: h2.actor, targets: [...h2.targets], severity: h2.severity, evidence: hintEvidence(draft, h2, node) });
   }
-  addLog(exp, "combat", `Fight at node ${node}: ${result.outcome} in ${result.rounds} round(s).`, nodeId, {
+  addLog(exp, "combat", `Fight at node ${node} against ${result.enemies.map((e) => e.name).join(", ")}: ${result.outcome} in ${result.rounds} round(s).`, nodeId, {
     outcome: result.outcome,
     rounds: result.rounds,
     enemies: result.enemies.map((e) => e.name),
@@ -5373,6 +5546,26 @@ registerAction("expedition/choose", (draft, payload, ctx2) => {
   const option = isObj10(payload) ? payload.option : void 0;
   if (typeof option !== "number") throw new Error("expedition/choose needs { option }.");
   return chooseOption(draft, ctx2, option);
+});
+registerAction("expedition/return", (draft, _payload, ctx2) => returnFromExpedition(draft, ctx2));
+registerAction("expedition/retreat", (draft, _payload, ctx2) => retreatFromExpedition(draft, ctx2));
+registerAction("expedition/ack_report", (draft) => {
+  if (!draft.lastExpedition) throw new Error("There is no report.");
+  draft.lastExpedition.acknowledged = true;
+  return [];
+});
+registerAction("expedition/mark_debriefed", (draft) => {
+  if (!draft.lastExpedition) throw new Error("There is no report.");
+  draft.lastExpedition.debriefed = true;
+  return [];
+});
+registerAction("expedition/set_recap", (draft, payload) => {
+  const reportId = isObj10(payload) ? payload.reportId : void 0;
+  if (!draft.lastExpedition || reportId !== draft.lastExpedition.id) throw new Error("That report is no longer the last one.");
+  const text = cleanRecap(isObj10(payload) ? payload.text : void 0);
+  if (text === "") throw new Error("The recap is empty.");
+  draft.lastExpedition.recap = text;
+  return [{ type: "expedition_recap_set", reportId }];
 });
 
 // src/engine/actions/items.ts

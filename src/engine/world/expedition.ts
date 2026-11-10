@@ -1,20 +1,24 @@
 import type { Entry, Registries } from '../../content/types';
-import { slotsLeftToday } from '../calendar';
+import { consumeSlots, slotsLeftToday } from '../calendar';
 import { generateEncounter, squadPower } from '../combat';
 import { unitStats } from '../combat/stats';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { isLiving } from '../economy';
-import { rollLoot } from '../items';
+import { addChronicle } from '../memory';
+import { enqueueNight } from '../night';
+import { releaseBreakdowns } from '../progression';
+import { applyIntents } from '../relations';
+import { bankLoot, rollLoot } from '../items';
 import { meetsSocialRequirements } from '../social';
 import { nextId } from '../memory';
 import type { Rng } from '../rng';
 import type { CampaignState, LootDrop, Unit } from '../state/types';
 import { TUNING } from '../tuning';
 import { applyWorldEffects } from './effects';
-import { buildMission } from './missions';
+import { buildMission, completeMission, releaseMission } from './missions';
 import { generateNodeMap, nextNodes, nodePlayType } from './nodeMap';
 import { knownRegions } from './state';
-import type { ExpeditionLogEntry, ExpeditionState, Mission, QueuedIntent, WorldEffect } from './types';
+import type { ExpeditionLogEntry, ExpeditionReport, ExpeditionState, Mission, QueuedIntent, WorldEffect } from './types';
 
 export interface Formation { front: string[]; back: string[] }
 
@@ -317,9 +321,184 @@ function enterCombat(draft: CampaignState, ctx: EngineCtx, nodeId: string, def: 
   return [{ type: 'expedition_combat', nodeId, encounter }];
 }
 
-/** Ends the run (Task 11 implements the return: banking, report, slots). */
-export function endExpedition(_draft: CampaignState, _ctx: EngineCtx, outcome: 'success' | 'retreated' | 'failed'): EngineEvent[] {
-  throw new Error(`endExpedition(${outcome}) is not implemented until Task 11.`);
+export type ExpeditionOutcome = 'success' | 'retreated' | 'failed';
+
+/** Opens a director request after an expedition (Task 12 replaces this hook with the real `openRequest`). */
+function openDirectorRequest(_draft: CampaignState, _reason: 'expedition'): EngineEvent[] {
+  return [];
+}
+
+const SEVERITY_RANK: Record<string, number> = { minor: 0, moderate: 1, major: 2, extreme: 3 };
+
+/** One hint per (type, actor, targets), the highest severity wins; the first of equals keeps its evidence. */
+function dedupeHints(hints: QueuedIntent[]): QueuedIntent[] {
+  const byKey = new Map<string, QueuedIntent>();
+  for (const h of hints) {
+    const key = `${h.type}|${h.actor}|${[...h.targets].sort().join(',')}`;
+    const kept = byKey.get(key);
+    if (!kept || SEVERITY_RANK[h.severity] > SEVERITY_RANK[kept.severity]) byKey.set(key, h);
+  }
+  return [...byKey.values()];
+}
+
+/** Applies what the run taught the squad about the commander, in batches the intent validator accepts. */
+function applyHints(draft: CampaignState, ctx: EngineCtx, exp: ExpeditionState): EngineEvent[] {
+  const events: EngineEvent[] = [];
+  const hints = dedupeHints(exp.hints);
+  const size = TUNING.relations.maxEventsPerExchange;
+  for (let i = 0; i < hints.length; i += size) {
+    const batch = hints.slice(i, i + size).map((h) => ({ ...h, confidence: 1 }));
+    events.push(...applyIntents(draft, ctx, { channel: 'scene', participants: exp.party, intents: { events: batch } }));
+  }
+  return events;
+}
+
+const OUTCOME_TEXT: Record<ExpeditionOutcome, string> = {
+  success: 'objective secured', retreated: 'the squad pulled back', failed: 'the squad was beaten back',
+};
+
+const unique = (ids: string[]): string[] => [...new Set(ids)];
+const logIds = (exp: ExpeditionState, key: 'injuries' | 'deaths' | 'breakdowns'): string[] =>
+  unique(exp.log.flatMap((l) => (l.kind === 'combat' ? ((l.data?.[key] as string[] | undefined) ?? []) : [])));
+
+/**
+ * Closes the run: supplies come home, the mission pays (success) or returns to the board, breakdowns end, what the
+ * squad learned is applied, the report is written and the slots are spent (the day may end here).
+ */
+export function endExpedition(draft: CampaignState, ctx: EngineCtx, outcome: ExpeditionOutcome): EngineEvent[] {
+  const exp = draft.expedition;
+  if (!exp) throw new Error('There is no expedition.');
+  const reg = ctx.registries;
+  const events: EngineEvent[] = [];
+  const mission = draft.missions.active.find((m) => m.id === exp.missionId);
+  const region = reg.regions.get(exp.regionId);
+  const regionLabel = region ? regionName(region) : exp.regionId;
+  const nameOf = (id: string): string => draft.squad.find((u) => u.id === id)?.displayName ?? id;
+
+  draft.resources.supplies += exp.supplies;
+
+  let rewards: ExpeditionReport['rewards'];
+  if (outcome === 'success') {
+    events.push(...bankLoot(draft, exp.loot));
+    if (mission) {
+      events.push(...completeMission(draft, ctx, mission.id));
+      rewards = draft.missions.completed.find((m) => m.id === mission.id)?.rewards;
+    }
+  } else if (mission) {
+    releaseMission(draft, mission.id);
+  }
+
+  const released = releaseBreakdowns(draft, exp.party);
+  events.push(...released);
+  for (const e of released) {
+    const unit = draft.squad.find((u) => u.id === e.unitId);
+    if (!unit || unit.kind !== 'named') continue;
+    enqueueNight(draft, {
+      id: nextId(draft, 'n'), unitId: unit.id, kind: 'after_breakdown', priority: TUNING.expedition.breakdownNight.priority,
+      framing: `${unit.displayName} is at your door. She has not slept since the breakdown.`,
+      ignore: { event: 'dismissed', severity: 'moderate' }, expiresDay: draft.day + TUNING.expedition.breakdownNight.expiresInDays,
+    });
+  }
+
+  events.push(...applyHints(draft, ctx, exp));
+
+  const injuries = logIds(exp, 'injuries');
+  const deaths = logIds(exp, 'deaths');
+  const breakdowns = logIds(exp, 'breakdowns');
+  const report: ExpeditionReport = {
+    id: `rep_${exp.id}`,
+    missionId: exp.missionId,
+    missionTitle: mission?.title ?? 'Unknown mission',
+    regionId: exp.regionId,
+    day: exp.day,
+    outcome,
+    party: [...exp.party],
+    nodes: mission ? exp.path.map((id) => nodePlayType(exp.map, id, mission)) : [],
+    log: structuredClone(exp.log),
+    loot: structuredClone(exp.loot),
+    injuries, deaths, breakdowns,
+    acknowledged: false,
+    debriefed: false,
+  };
+  if (rewards) report.rewards = structuredClone(rewards);
+  draft.lastExpedition = report;
+
+  let line = `Expedition to ${regionLabel}: ${OUTCOME_TEXT[outcome]}.`;
+  if (injuries.length > 0) line += ` ${injuries.map(nameOf).join(' and ')} ${injuries.length > 1 ? 'were' : 'was'} carried back.`;
+  if (deaths.length > 0) line += ` ${deaths.map(nameOf).join(' and ')} did not return.`;
+  addChronicle(draft, { kind: 'scene', day: draft.day, text: line });
+  const rs = draft.world.regions[exp.regionId] ?? { known: true };
+  draft.world.regions[exp.regionId] = { ...rs, lastVisitedDay: draft.day };
+  draft.world.lastExpeditionRegionId = exp.regionId;
+
+  delete draft.expedition;
+  events.push(...consumeSlots(draft, exp.slots, ctx));
+  events.push(...openDirectorRequest(draft, 'expedition'));
+  events.push({ type: 'expedition_ended', outcome, reportId: report.id });
+  return events;
+}
+
+/** `return` is allowed once the objective is done and nothing is pending. */
+export function returnFromExpedition(draft: CampaignState, ctx: EngineCtx): EngineEvent[] {
+  const exp = draft.expedition;
+  if (!exp) throw new Error('There is no expedition.');
+  if (exp.phase !== 'travel') throw new Error('Finish what is happening here first.');
+  if (!exp.objectiveDone) throw new Error('The objective has not been reached yet.');
+  return endExpedition(draft, ctx, 'success');
+}
+
+/** Pulls the squad back: allowed while travelling, at an event, or at a combat node whose fight has not started. */
+export function retreatFromExpedition(draft: CampaignState, ctx: EngineCtx): EngineEvent[] {
+  const exp = draft.expedition;
+  if (!exp) throw new Error('There is no expedition.');
+  if (draft.combat) throw new Error('A fight is going on: it has to be decided first.');
+  addLog(exp, 'retreat', 'The squad pulls back.');
+  return endExpedition(draft, ctx, 'retreated');
+}
+
+/** Plain text of a model recap: tags dropped (their content stays), whitespace collapsed, cut to `recapMax`. */
+export function cleanRecap(text: unknown): string {
+  if (typeof text !== 'string') return '';
+  return text
+    .replace(/<\s*(script|style)[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi, ' ')
+    .replace(/<[^>]*>?/g, ' ')
+    .replace(/[<>]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, TUNING.expedition.recapMax)
+    .trim();
+}
+
+const OUTCOME_LABEL: Record<ExpeditionOutcome, string> = { success: 'OBJECTIVE SECURED', retreated: 'RETREATED', failed: 'FAILED: SQUAD BEATEN BACK' };
+
+/** The deterministic AFTER-ACTION REPORT: header, route, the log, loot, rewards and who was hurt. */
+export function reportLines(report: ExpeditionReport, state: CampaignState, reg: Registries): string[] {
+  const nameOf = (id: string): string => state.squad.find((u) => u.id === id)?.displayName ?? id;
+  const region = reg.regions.get(report.regionId);
+  const lines = [
+    'AFTER-ACTION REPORT',
+    `Mission: ${report.missionTitle}`,
+    `Region: ${region ? regionName(region) : report.regionId} // Day ${report.day}`,
+    `Outcome: ${OUTCOME_LABEL[report.outcome]}`,
+    `Squad: ${report.party.map(nameOf).join(', ')}`,
+  ];
+  const route = report.nodes.map((t) => String(reg.nodeTypes.get(t)?.name ?? t));
+  if (route.length > 0) lines.push(`Route: ${route.join(' > ')}`);
+  for (const entry of report.log) lines.push(entry.text);
+  const loot = describeLoot(report.loot, reg);
+  lines.push(report.outcome === 'success' ? `Loot banked: ${loot}.` : `Loot lost: ${loot}.`);
+  if (report.rewards) {
+    const r = report.rewards;
+    const parts = [`${r.credits} credits`, `${r.plyx} plyx`, ...r.items];
+    if (r.faction) parts.push(`${r.faction.id} standing +${r.faction.amount}`);
+    if (r.clearance !== undefined) parts.push(`clearance tier ${r.clearance}`);
+    lines.push(`Rewards: ${parts.join(', ')}.`);
+  }
+  if (report.injuries.length > 0) lines.push(`Injured: ${report.injuries.map(nameOf).join(', ')}.`);
+  if (report.deaths.length > 0) lines.push(`Fallen: ${report.deaths.map(nameOf).join(', ')}.`);
+  if (report.breakdowns.length > 0) lines.push(`Breakdown: ${report.breakdowns.map(nameOf).join(', ')}.`);
+  if (report.recap) lines.push('', report.recap);
+  return lines;
 }
 
 const nodeNumber = (exp: ExpeditionState): number => exp.path.length;
@@ -349,7 +528,7 @@ export function resolveCombat(draft: CampaignState, ctx: EngineCtx): EngineEvent
   for (const h of result.relationHints) {
     exp.hints.push({ type: h.type, actor: h.actor, targets: [...h.targets], severity: h.severity, evidence: hintEvidence(draft, h, node) } as QueuedIntent);
   }
-  addLog(exp, 'combat', `Fight at node ${node}: ${result.outcome} in ${result.rounds} round(s).`, nodeId, {
+  addLog(exp, 'combat', `Fight at node ${node} against ${result.enemies.map((e) => e.name).join(', ')}: ${result.outcome} in ${result.rounds} round(s).`, nodeId, {
     outcome: result.outcome, rounds: result.rounds, enemies: result.enemies.map((e) => e.name),
     injuries: [...result.injuries], deaths: [...result.deaths], breakdowns: [...result.breakdowns],
   });
