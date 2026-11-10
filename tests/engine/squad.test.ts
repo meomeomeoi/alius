@@ -4,7 +4,9 @@ import { loadPacks } from '../../src/content/loader';
 import type { Registries } from '../../src/content/types';
 import { dispatch } from '../../src/engine/dispatch';
 import { RESYNC_SECTIONS } from '../../src/engine/actions/squad';
-import { buildCampaign, type UnitSetup } from '../../src/engine/setup';
+import { crimeEffectsOf, crimeKnownByDefault, buildCampaign, initialRelation, startingTrustAdjust, type UnitSetup } from '../../src/engine/setup';
+import { gruntRelation } from '../../src/engine/grunts';
+import { livingUnits } from '../../src/engine/economy';
 import type { CampaignState } from '../../src/engine/state/types';
 
 let reg: Registries;
@@ -136,5 +138,121 @@ describe('squad/resync', () => {
     expect(r.state.squad[0].level).toBe(1);
     expect(r.state.relations.unit_rhea).toEqual(s.relations.unit_rhea);
     expect(r.events[0]).toMatchObject({ sections: ['values'] });
+  });
+});
+
+describe('incoming named units (P5)', () => {
+  const zed = (over: Partial<UnitSetup> = {}): UnitSetup => unit({ cardRef: 'zed.png', displayName: 'Zed', ...over });
+  const waiting = (n = 1, day = 5, edit: (s: CampaignState) => void = () => {}): CampaignState => {
+    const s = campaign();
+    s.world.incomingUnits = n;
+    s.day = day;
+    edit(s);
+    return s;
+  };
+  const add = (s: CampaignState, u: UnitSetup) => dispatch(s, { type: 'squad/add_named', payload: { unit: u } }, reg);
+  const message = (r: ReturnType<typeof add>) => String(r.events.find((e) => e.type === 'error')?.message ?? '');
+
+  it('add_named needs a pending intake and a free bed', () => {
+    const none = campaign();
+    expect(message(add(none, zed()))).toBe('No unit is waiting for intake.');
+    expect(add(none, zed()).state).toBe(none);
+    const full = waiting(1, 5, (s) => { s.roster.capacity = livingUnits(s).length; });
+    expect(message(add(full, zed()))).toBe('No free bed: upgrade the barracks or let someone go.');
+    expect(message(dispatch(full, { type: 'squad/decline_incoming', payload: {} }, reg))).toBe('No free bed: upgrade the barracks or let someone go.');
+    expect(add(waiting(), zed()).events.some((e) => e.type === 'error')).toBe(false);
+  });
+
+  it('an invalid profile is refused with every problem listed', () => {
+    const s = waiting();
+    const r = add(s, zed({ roleId: 'ghost_role', defects: [], baseline: { trust: 99, affinity: 0, attraction: 0 } }));
+    const msg = message(r);
+    expect(msg).toContain('unknown role "ghost_role"');
+    expect(msg).toContain('needs 1 to 2 defects');
+    expect(msg).toContain('baseline trust');
+    expect(r.state).toBe(s);
+    expect(s.world.incomingUnits).toBe(1);
+    expect(message(add(s, { ...zed(), cardRef: '' }))).toMatch(/card/i);
+    expect(message(dispatch(s, { type: 'squad/add_named', payload: {} }, reg))).toMatch(/unit/i);
+  });
+
+  it('a card already in the squad is refused', () => {
+    const s = waiting();
+    expect(message(add(s, zed({ cardRef: 'rhea.png' })))).toMatch(/already/i);
+  });
+
+  it('the new unit starts as stranger with the crime adjustment and since = today', () => {
+    const s = waiting(1, 9);
+    const u = zed({ values: { ...ZERO, mercy: -2, corporate: 3 } });
+    const r = add(s, u);
+    expect(message(r)).toBe('');
+    const id = 'unit_zed';
+    const added = r.state.squad.find((x) => x.id === id)!;
+    expect(added).toMatchObject({ kind: 'named', cardRef: 'zed.png', displayName: 'Zed', roleId: 'assault', level: 1, status: 'active', currentHp: added.baseStats.hp });
+    expect(added.defects).toEqual([{ id: 'threat_saturation', origin: 'Three tours.' }]);
+    expect(added.values).toEqual(u.values);
+    const crime = reg.crimes.get('mutiny')!;
+    const expected = initialRelation({
+      trust: u.baseline.trust + startingTrustAdjust(crimeEffectsOf(crime), u.values), affinity: u.baseline.affinity, attraction: u.baseline.attraction,
+      knowsCrime: crimeKnownByDefault(crime, reg.starts.get('start_vesper')), since: 9,
+    });
+    expect(r.state.relations[id]).toEqual(expected);
+    expect(r.state.relations[id]).toMatchObject({ stateId: 'stranger', stateSince: 9 });
+    expect(r.state.world.incomingUnits).toBe(0);
+    expect(r.state.roster.activeIds).toContain(id);
+    expect(r.events.find((e) => e.type === 'unit_joined')).toEqual({ type: 'unit_joined', unitId: id, kind: 'named' });
+  });
+
+  it('the unit id follows the unit_<slug> rule and stays unique', () => {
+    const s = waiting(2);
+    const a = add(s, zed({ displayName: 'Zed Ro' })).state;
+    expect(a.squad.some((u) => u.id === 'unit_zed_ro')).toBe(true);
+    const b = add(a, zed({ cardRef: 'zed2.png', displayName: 'Zed Ro' })).state;
+    expect(b.squad.some((u) => u.id === 'unit_zed_ro_2')).toBe(true);
+  });
+
+  it('she goes to reserve when four are active', () => {
+    const four = waiting(1, 5, (s) => {
+      for (const name of ['Cy', 'Di']) {
+        const copy = structuredClone(s.squad[0]);
+        Object.assign(copy, { id: `unit_${name.toLowerCase()}`, displayName: name, cardRef: `${name.toLowerCase()}.png` });
+        s.squad.push(copy);
+        s.relations[copy.id] = structuredClone(s.relations[s.squad[0].id]);
+        s.roster.activeIds.push(copy.id);
+      }
+    });
+    expect(four.roster.activeIds).toHaveLength(4);
+    const r = add(four, zed());
+    const added = r.state.squad.find((u) => u.id === 'unit_zed')!;
+    expect(added.status).toBe('reserve');
+    expect(r.state.roster.activeIds).toHaveLength(4);
+    expect(r.state.roster.activeIds).not.toContain('unit_zed');
+    // with room on the active roster she joins it
+    const roomy = add(waiting(), zed());
+    expect(roomy.state.roster.activeIds).toContain('unit_zed');
+  });
+
+  it('decline adds a grunt and lowers the counter', () => {
+    const s = waiting(1, 7);
+    const r = dispatch(s, { type: 'squad/decline_incoming', payload: {} }, reg);
+    expect(r.events.some((e) => e.type === 'error')).toBe(false);
+    expect(r.state.squad).toHaveLength(s.squad.length + 1);
+    const grunt = r.state.squad.at(-1)!;
+    expect(grunt.kind).toBe('grunt');
+    expect(r.state.relations[grunt.id]).toEqual(gruntRelation({ ...s, day: 7 }, reg));
+    expect(r.state.world.incomingUnits).toBe(0);
+    expect(r.events.find((e) => e.type === 'unit_joined')).toEqual({ type: 'unit_joined', unitId: grunt.id, kind: 'grunt' });
+    expect(message(dispatch(r.state, { type: 'squad/decline_incoming', payload: {} }, reg))).toBe('No unit is waiting for intake.');
+    if (grunt.status === 'active') expect(r.state.roster.activeIds).toContain(grunt.id);
+  });
+
+  it('two offers allow two intakes', () => {
+    const s = waiting(2);
+    const first = add(s, zed()).state;
+    expect(first.world.incomingUnits).toBe(1);
+    const second = add(first, zed({ cardRef: 'yan.png', displayName: 'Yan' })).state;
+    expect(second.world.incomingUnits).toBe(0);
+    expect(message(add(second, zed({ cardRef: 'xe.png', displayName: 'Xe' })))).toBe('No unit is waiting for intake.');
+    expect(second.squad.filter((u) => u.kind === 'named')).toHaveLength(4);
   });
 });

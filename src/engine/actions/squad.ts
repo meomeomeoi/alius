@@ -1,6 +1,12 @@
 import type { Entry } from '../../content/types';
 import { registerAction } from '../dispatch';
-import { validateUnitProfile, type UnitSetup } from '../setup';
+import { generateGrunt, gruntRelation } from '../grunts';
+import { livingUnits } from '../economy';
+import {
+  crimeEffectsOf, crimeKnownByDefault, initialRelation, makeNamedUnit, startingTrustAdjust, validateIncomingUnit, validateUnitProfile, type UnitSetup,
+} from '../setup';
+import { TUNING } from '../tuning';
+import type { CampaignState } from '../state/types';
 import type { DefectInstance } from '../state/types';
 
 // Importing this module registers the squad actions.
@@ -63,4 +69,59 @@ registerAction('squad/resync', (draft, payload, ctx) => {
 
   const sections = RESYNC_SECTIONS.filter((s) => keys.some((k) => SECTION_OF[k] === s));
   return [{ type: 'unit_resynced', unitId: unit.id, sections }];
+});
+
+// ---------------------------------------------------------------------------------------------
+// P5: incoming named units (a story outcome offers one; the player imports a card or a grunt joins instead)
+
+/** Why nobody can join now, or `null`. */
+export function checkIncoming(state: CampaignState): string | null {
+  if ((state.world.incomingUnits ?? 0) < 1) return 'No unit is waiting for intake.';
+  if (livingUnits(state).length >= state.roster.capacity) return 'No free bed: upgrade the barracks or let someone go.';
+  return null;
+}
+
+registerAction('squad/add_named', (draft, payload, ctx) => {
+  const reason = checkIncoming(draft);
+  if (reason) throw new Error(reason);
+  const u = isObj(payload) ? (payload.unit as UnitSetup | undefined) : undefined;
+  if (!isObj(u)) throw new Error('squad/add_named needs { unit }');
+  const problems = validateIncomingUnit(u as UnitSetup, ctx.registries, { desireBondDefects: draft.settings.desireBondDefects === true });
+  if (draft.squad.some((x) => x.cardRef !== undefined && x.cardRef === u.cardRef)) problems.push(`Card "${String(u.cardRef)}" is already in the squad`);
+  if (problems.length > 0) throw new Error(problems.join('; '));
+
+  const reg = ctx.registries;
+  const unit = makeNamedUnit(u as UnitSetup, reg, new Set(draft.squad.map((x) => x.id)));
+  const crime = reg.crimes.get(draft.commander.crimeId ?? '');
+  const start = reg.starts.get(draft.world.startId ?? '');
+  const setup = u as UnitSetup;
+  draft.relations[unit.id] = initialRelation({
+    trust: setup.baseline.trust + (crime ? startingTrustAdjust(crimeEffectsOf(crime), setup.values) : 0),
+    affinity: setup.baseline.affinity,
+    attraction: setup.baseline.attraction,
+    knowsCrime: crime ? crimeKnownByDefault(crime, start) : false,
+    since: draft.day,
+  });
+  // dead units leave the active list first, as when a grunt is recruited
+  const active = draft.roster.activeIds.filter((id) => draft.squad.some((x) => x.id === id && x.status !== 'dead'));
+  if (active.length < TUNING.rosterActiveMax) {
+    active.push(unit.id);
+  } else {
+    unit.status = 'reserve';
+  }
+  draft.roster.activeIds = active;
+  draft.squad.push(unit);
+  draft.world.incomingUnits = (draft.world.incomingUnits ?? 0) - 1;
+  return [{ type: 'unit_joined', unitId: unit.id, kind: 'named' }];
+});
+
+registerAction('squad/decline_incoming', (draft, _payload, ctx) => {
+  const reason = checkIncoming(draft);
+  if (reason) throw new Error(reason);
+  const grunt = generateGrunt(draft, ctx.registries, ctx.rng);
+  draft.squad.push(grunt);
+  draft.relations[grunt.id] = gruntRelation(draft, ctx.registries);
+  if (grunt.status === 'active') draft.roster.activeIds.push(grunt.id);
+  draft.world.incomingUnits = (draft.world.incomingUnits ?? 0) - 1;
+  return [{ type: 'unit_joined', unitId: grunt.id, kind: 'grunt' }];
 });

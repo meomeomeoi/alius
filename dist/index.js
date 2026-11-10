@@ -106,38 +106,6 @@ registerAction("debug/roll", (_draft, payload, ctx2) => {
   return [{ type: "rolled", value: ctx2.rng.int(1, sides) }];
 });
 
-// src/engine/state/create.ts
-function createCampaign(opts) {
-  return {
-    version: 1,
-    rng: seedRng(opts.seed),
-    day: 1,
-    slot: "morning",
-    difficulty: "normal",
-    settings: {},
-    commander: {
-      name: opts.commanderName,
-      corporationId: null,
-      crimeId: null,
-      socialStats: { authority: 0, insight: 0, empathy: 0, cunning: 0 },
-      flags: []
-    },
-    squad: [],
-    roster: { activeIds: [], capacity: 6 },
-    relations: {},
-    resources: { credits: 0, supplies: 0, plyx: 0 },
-    base: { facilities: {} },
-    inventory: [],
-    world: { regions: {}, clocks: [], threads: [], factions: {}, flags: [], spineProgress: 0 },
-    missions: { offered: [], active: [], completed: [] },
-    rumors: [],
-    dms: {},
-    memory: { facts: [], chronicle: [] },
-    calendar: { scheduled: [], nightEventsQueue: [] },
-    leash: { authorizationsLeft: 0, refreshDay: 1, log: [] }
-  };
-}
-
 // src/engine/tuning.ts
 var TUNING = Object.freeze({
   upkeep: Object.freeze({ perUnit: 1, commander: 1, doubledByDefect: "hunger_loop" }),
@@ -254,6 +222,162 @@ var TUNING = Object.freeze({
     digestFlags: 8
   })
 });
+
+// src/engine/relationGain.ts
+var RANGE = { trust: [0, 100], affinity: [-100, 100], attraction: [0, 100] };
+var defaultHandler = ({ relation }, axis, amount) => {
+  const [lo, hi] = RANGE[axis];
+  const before = relation[axis];
+  let applied = amount;
+  if (amount > 0) {
+    const done = relation.dailyGain[axis];
+    let sum = 0;
+    for (let i = 0; i < amount; i++) {
+      const at = done + i;
+      sum += at < TUNING.gain.soft ? 1 : at < TUNING.gain.hard ? 0.5 : 0;
+    }
+    applied = Math.round(sum);
+  }
+  relation[axis] = Math.min(hi, Math.max(lo, before + applied));
+  const real = relation[axis] - before;
+  if (real > 0) relation.dailyGain[axis] += real;
+  return real;
+};
+var handler = defaultHandler;
+var setRelationGainHandler = (fn) => {
+  handler = fn;
+};
+function applyRelationDelta(draft, unitId, axis, amount, source) {
+  const relation = draft.relations[unitId];
+  if (!relation) return 0;
+  return handler({ state: draft, unitId, relation }, axis, amount, source);
+}
+
+// src/engine/economy.ts
+var facilityLevel = (state, id) => state.base.facilities[id] ?? 1;
+function facilityLevels(reg, id) {
+  return reg.facilities.get(id)?.levels ?? [];
+}
+function facilityEffect(state, reg, id, key) {
+  const levels = facilityLevels(reg, id);
+  if (levels.length === 0) return 0;
+  return levels[Math.min(facilityLevel(state, id), levels.length) - 1].effects[key] ?? 0;
+}
+function rosterCapacityFor(reg, barracksLevel) {
+  const levels = facilityLevels(reg, "barracks");
+  if (levels.length === 0) return TUNING.rosterBaseCapacity;
+  return levels[Math.min(barracksLevel, levels.length) - 1].effects.rosterCapacity ?? TUNING.rosterBaseCapacity;
+}
+var isLiving = (u) => u.status !== "dead" && u.status !== "deserted" && u.status !== "terminated";
+function activeRosterUnits(state) {
+  return state.roster.activeIds.map((id) => state.squad.find((u) => u.id === id)).filter((u) => u !== void 0 && isLiving(u));
+}
+var eatsDouble = (u) => u.defects.some((d) => d.id === TUNING.upkeep.doubledByDefect);
+var livingUnits = (state) => state.squad.filter(isLiving);
+function upkeepNeeded(state, reg) {
+  const units = livingUnits(state);
+  const raw = units.reduce((n, u) => n + TUNING.upkeep.perUnit * (eatsDouble(u) ? 2 : 1), 0) + TUNING.upkeep.commander;
+  const needed = Math.max(0, raw - facilityEffect(state, reg, "mess_hall", "upkeepReduction"));
+  return { units: units.length, needed };
+}
+function spread(total, n, offset) {
+  if (n <= 0) return [];
+  const base = Math.floor(total / n);
+  const extra = total - base * n;
+  const out = new Array(n).fill(base);
+  for (let i = 0; i < extra; i++) out[((offset % n + n) % n + i) % n] += 1;
+  return out;
+}
+var clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+function runUpkeep(draft, reg) {
+  const events = [];
+  const { needed } = upkeepNeeded(draft, reg);
+  const paid = Math.min(draft.resources.supplies, needed);
+  const missing = needed - paid;
+  draft.resources.supplies -= paid;
+  events.push({ type: "upkeep", needed, paid, shortage: missing });
+  if (missing === 0) {
+    draft.calendar.shortageStreak = 0;
+    return events;
+  }
+  const units = livingUnits(draft);
+  const slots = units.flatMap((u) => eatsDouble(u) ? [u, u] : [u]);
+  const stress = spread(missing * TUNING.shortage.stressPerPoint, slots.length, draft.day);
+  const affinity = spread(missing * TUNING.shortage.affinityPerPoint, slots.length, draft.day);
+  slots.forEach((u, i) => {
+    u.stress = clamp(u.stress + stress[i], 0, 100);
+    if (affinity[i] > 0) applyRelationDelta(draft, u.id, "affinity", -affinity[i], "shortage");
+  });
+  const streak = (draft.calendar.shortageStreak ?? 0) + 1;
+  draft.calendar.shortageStreak = streak;
+  events.push({ type: "supply_shortage", missing, streak, hit: units.length });
+  if (streak % TUNING.shortage.streakDays === 0) {
+    for (const u of units) applyRelationDelta(draft, u.id, "trust", -TUNING.shortage.trustPenalty, "shortage_streak");
+    events.push({ type: "trust_penalty_event", streak, units: units.map((u) => u.id), amount: TUNING.shortage.trustPenalty });
+  }
+  return events;
+}
+function checkUpgrade(state, reg, id) {
+  const facility = reg.facilities.get(id);
+  if (!facility) return `Unknown facility "${id}".`;
+  const name = String(facility.name);
+  const levels = facilityLevels(reg, id);
+  const level = facilityLevel(state, id);
+  if (level >= levels.length) return `${name} is already at its max level (${levels.length}).`;
+  if ((state.base.upgrades ?? []).some((u) => u.facilityId === id)) return `${name} is already being upgraded.`;
+  const up = levels[level].upgrade;
+  if (!up) return `${name} has no upgrade to level ${level + 1}.`;
+  if (state.resources.credits < up.credits) return `Not enough credits to upgrade ${name} (needs ${up.credits}).`;
+  if (state.resources.plyx < up.plyx) return `Not enough plyx to upgrade ${name} (needs ${up.plyx}).`;
+  return null;
+}
+function checkRecruit(state) {
+  if (state.squad.filter(isLiving).length >= state.roster.capacity) {
+    return `The barracks are full (${state.roster.capacity} beds). Upgrade them to recruit more.`;
+  }
+  if (state.resources.credits < TUNING.recruit.credits) {
+    return `Not enough credits to recruit a grunt (needs ${TUNING.recruit.credits}).`;
+  }
+  return null;
+}
+function recoverUnit(draft, u) {
+  delete u.injuryDays;
+  u.injuries = [];
+  if (u.status === "injured") u.status = draft.roster.activeIds.includes(u.id) ? "active" : "reserve";
+  return { type: "unit_recovered", unitId: u.id };
+}
+
+// src/engine/state/create.ts
+function createCampaign(opts) {
+  return {
+    version: 1,
+    rng: seedRng(opts.seed),
+    day: 1,
+    slot: "morning",
+    difficulty: "normal",
+    settings: {},
+    commander: {
+      name: opts.commanderName,
+      corporationId: null,
+      crimeId: null,
+      socialStats: { authority: 0, insight: 0, empathy: 0, cunning: 0 },
+      flags: []
+    },
+    squad: [],
+    roster: { activeIds: [], capacity: 6 },
+    relations: {},
+    resources: { credits: 0, supplies: 0, plyx: 0 },
+    base: { facilities: {} },
+    inventory: [],
+    world: { regions: {}, clocks: [], threads: [], factions: {}, flags: [], spineProgress: 0 },
+    missions: { offered: [], active: [], completed: [] },
+    rumors: [],
+    dms: {},
+    memory: { facts: [], chronicle: [] },
+    calendar: { scheduled: [], nightEventsQueue: [] },
+    leash: { authorizationsLeft: 0, refreshDay: 1, log: [] }
+  };
+}
 
 // src/engine/world/state.ts
 function clockById(state, id) {
@@ -405,7 +529,7 @@ var slug = (name) => {
   return s === "" ? "unit" : s;
 };
 var bandFor = (trust) => trust < 10 ? "breaking" : trust < 25 ? "wavering" : "steady";
-var clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp2 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var crimeEffectsOf = (crime) => [...effectsOf(crime.perk), ...effectsOf(crime.flaw)];
 var crimeKnownByDefault = (crime, start) => crime.knownByDefault === true || start?.crimeKnownByDefault === true;
 function startingTrustAdjust(effects2, values) {
@@ -422,7 +546,7 @@ function startingTrustAdjust(effects2, values) {
   return sum;
 }
 function initialRelation(o) {
-  const trust = clamp(o.trust, 0, 100);
+  const trust = clamp2(o.trust, 0, 100);
   return {
     trust,
     affinity: o.affinity,
@@ -435,6 +559,42 @@ function initialRelation(o) {
     loyaltyBand: bandFor(trust),
     marks: []
   };
+}
+function makeNamedUnit(u, reg, usedIds) {
+  const base = `unit_${slug(u.displayName)}`;
+  let id = base;
+  for (let n = 2; usedIds.has(id); n++) id = `${base}_${n}`;
+  usedIds.add(id);
+  const stats = reg.roles.get(u.roleId).baseStats;
+  return {
+    id,
+    kind: "named",
+    cardRef: u.cardRef,
+    displayName: u.displayName,
+    roleId: u.roleId,
+    level: 1,
+    xp: 0,
+    skillPoints: 0,
+    unlockedNodes: [],
+    signatureSkill: { ...u.signature },
+    baseStats: { ...stats },
+    currentHp: stats.hp,
+    stress: 0,
+    defects: u.defects.map((d) => ({ id: d.id, origin: d.origin })),
+    values: { ...u.values },
+    likes: [...u.likes],
+    dislikes: [...u.dislikes],
+    triggers: [...u.triggers],
+    equipment: {},
+    injuries: [],
+    status: "active"
+  };
+}
+function validateIncomingUnit(u, reg, opts) {
+  const out = [];
+  if (typeof u?.cardRef !== "string" || u.cardRef.trim() === "") out.push("The unit has no character card");
+  validateUnit(u, `Unit (${String(u?.displayName)})`, reg, opts, out);
+  return out;
 }
 function buildCampaign(r, reg, opts) {
   const errors = validateSetup(r, reg, opts);
@@ -462,35 +622,9 @@ function buildCampaign(r, reg, opts) {
   const knowsCrime = crimeKnownByDefault(crime, start);
   const used = /* @__PURE__ */ new Set();
   for (const u of r.units) {
-    const base2 = `unit_${slug(u.displayName)}`;
-    let id = base2;
-    for (let n = 2; used.has(id); n++) id = `${base2}_${n}`;
-    used.add(id);
-    const role = reg.roles.get(u.roleId);
-    const stats = role.baseStats;
-    state.squad.push({
-      id,
-      kind: "named",
-      cardRef: u.cardRef,
-      displayName: u.displayName,
-      roleId: u.roleId,
-      level: 1,
-      xp: 0,
-      skillPoints: 0,
-      unlockedNodes: [],
-      signatureSkill: { ...u.signature },
-      baseStats: { ...stats },
-      currentHp: stats.hp,
-      stress: 0,
-      defects: u.defects.map((d) => ({ id: d.id, origin: d.origin })),
-      values: { ...u.values },
-      likes: [...u.likes],
-      dislikes: [...u.dislikes],
-      triggers: [...u.triggers],
-      equipment: {},
-      injuries: [],
-      status: "active"
-    });
+    const unit = makeNamedUnit(u, reg, used);
+    const id = unit.id;
+    state.squad.push(unit);
     state.relations[id] = initialRelation({
       trust: u.baseline.trust + startingTrustAdjust(crimeEffects, u.values),
       affinity: u.baseline.affinity,
@@ -501,6 +635,95 @@ function buildCampaign(r, reg, opts) {
   state.roster.activeIds = state.squad.map((u) => u.id);
   seedWorld(state, reg);
   return { ok: true, state };
+}
+
+// src/engine/grunts.ts
+var GENERATED_NAME = /^(?=.*[A-Za-z])[A-Za-z0-9 '-]{1,24}$/;
+var GRUNT_BIO_MAX = 120;
+var INNER = 11;
+var fit = (s) => {
+  const left = Math.floor((INNER - s.length) / 2);
+  return (" ".repeat(left) + s + " ".repeat(INNER)).slice(0, INNER);
+};
+var HEADGEAR = ['.-"""""-.', "/=======\\", "(#######)", "/^^^^^^^\\", ".:::::::.", "_________", ";;;;;;;;;", "/\\/\\/\\/\\/\\"];
+var EYES = ["( o   o )", "( -   - )", "( O   O )", "( >   < )", "( .   . )", "( @   @ )", "[ #   # ]", "( x   o )"];
+var NOSES = ["    |    ", "    ^    ", "    L    ", "   .-.   ", "    ,    ", "   \\_/   "];
+var MOUTHS = ["\\___/", "-----", "=====", "___", "/---\\", "~~~~~", "...", "|||||"];
+var CHINS = ["\\_______/", " \\_____/ ", "  \\___/  ", "  `---`  ", "  |___|  "];
+var MARKS = [null, null, [1, 1, "/"], [2, 3, ","], [1, 9, "*"], [3, 2, "#"]];
+function generatePortrait(rng) {
+  const rows = [
+    fit(rng.pick(HEADGEAR)),
+    fit(rng.pick(EYES)),
+    fit(rng.pick(NOSES)),
+    fit(rng.pick(MOUTHS)),
+    fit(rng.pick(CHINS))
+  ];
+  const mark = rng.pick(MARKS);
+  if (mark) {
+    const [row, col, glyph] = mark;
+    rows[row] = rows[row].slice(0, col) + glyph + rows[row].slice(col + 1);
+  }
+  const frame = `+${"-".repeat(INNER)}+`;
+  return [frame, ...rows.map((r) => `|${r}|`), frame].join("\n");
+}
+function generateDesignation(rng, taken) {
+  for (let i = 0; i < 1e4; i++) {
+    const letter = String.fromCharCode(65 + rng.int(0, 25));
+    const d = `${letter}-${rng.int(100, 999)}`;
+    if (!taken.has(d)) return d;
+  }
+  throw new Error("No free grunt designation left");
+}
+var idFor = (designation) => `grunt_${designation.toLowerCase().replace(/[^a-z0-9]+/g, "_")}`;
+function generateGrunt(state, reg, rng) {
+  const role = rng.pick([...reg.roles.values()]);
+  const allowDesire = state.settings.desireBondDefects === true;
+  const defect = rng.pick([...reg.defects.values()].filter((d) => allowDesire || d.category !== "desire_bond"));
+  const sig = rng.pick([...reg.signatures.values()]);
+  const taken = /* @__PURE__ */ new Set();
+  for (const u of state.squad) {
+    if (u.designation) taken.add(u.designation);
+    taken.add(u.id);
+  }
+  let designation = generateDesignation(rng, taken);
+  while (taken.has(idFor(designation))) designation = generateDesignation(rng, /* @__PURE__ */ new Set([...taken, designation]));
+  const living2 = state.squad.filter(isLiving);
+  const average = living2.length === 0 ? 1 : living2.reduce((n, u) => n + u.level, 0) / living2.length;
+  const stats = role.baseStats;
+  return {
+    id: idFor(designation),
+    kind: "grunt",
+    displayName: designation,
+    designation,
+    asciiPortrait: generatePortrait(rng),
+    roleId: role.id,
+    level: Math.max(1, Math.round(average) - 1),
+    xp: 0,
+    skillPoints: 0,
+    unlockedNodes: [],
+    signatureSkill: { templateId: sig.id, name: String(sig.name), description: String(sig.mechanic) },
+    baseStats: { ...stats },
+    currentHp: stats.hp,
+    stress: 0,
+    defects: [{ id: defect.id, lite: true }],
+    values: Object.fromEntries(VALUE_AXES.map((a) => [a, 0])),
+    likes: [],
+    dislikes: [],
+    triggers: [],
+    equipment: {},
+    injuries: [],
+    status: activeRosterUnits(state).length < TUNING.rosterActiveMax ? "active" : "reserve"
+  };
+}
+function gruntRelation(state, reg) {
+  const crime = reg.crimes.get(state.commander.crimeId ?? "");
+  const start = reg.starts.get(state.world.startId ?? "");
+  const effects2 = crime ? crimeEffectsOf(crime) : [];
+  const neutral = Object.fromEntries(VALUE_AXES.map((a) => [a, 0]));
+  let trust = TUNING.recruit.baseTrust + startingTrustAdjust(effects2, neutral);
+  if (effects2.some((fx2) => fx2.type === "grunt_starting_trust")) trust += TUNING.recruit.gruntCrimeBonus;
+  return initialRelation({ trust, affinity: 0, attraction: 0, knowsCrime: crime ? crimeKnownByDefault(crime, start) : false, since: state.day });
 }
 
 // src/engine/actions/squad.ts
@@ -559,130 +782,52 @@ registerAction("squad/resync", (draft, payload, ctx2) => {
   const sections = RESYNC_SECTIONS.filter((s) => keys.some((k) => SECTION_OF[k] === s));
   return [{ type: "unit_resynced", unitId: unit.id, sections }];
 });
-
-// src/engine/relationGain.ts
-var RANGE = { trust: [0, 100], affinity: [-100, 100], attraction: [0, 100] };
-var defaultHandler = ({ relation }, axis, amount) => {
-  const [lo, hi] = RANGE[axis];
-  const before = relation[axis];
-  let applied = amount;
-  if (amount > 0) {
-    const done = relation.dailyGain[axis];
-    let sum = 0;
-    for (let i = 0; i < amount; i++) {
-      const at = done + i;
-      sum += at < TUNING.gain.soft ? 1 : at < TUNING.gain.hard ? 0.5 : 0;
-    }
-    applied = Math.round(sum);
-  }
-  relation[axis] = Math.min(hi, Math.max(lo, before + applied));
-  const real = relation[axis] - before;
-  if (real > 0) relation.dailyGain[axis] += real;
-  return real;
-};
-var handler = defaultHandler;
-var setRelationGainHandler = (fn) => {
-  handler = fn;
-};
-function applyRelationDelta(draft, unitId, axis, amount, source) {
-  const relation = draft.relations[unitId];
-  if (!relation) return 0;
-  return handler({ state: draft, unitId, relation }, axis, amount, source);
+function checkIncoming(state) {
+  if ((state.world.incomingUnits ?? 0) < 1) return "No unit is waiting for intake.";
+  if (livingUnits(state).length >= state.roster.capacity) return "No free bed: upgrade the barracks or let someone go.";
+  return null;
 }
-
-// src/engine/economy.ts
-var facilityLevel = (state, id) => state.base.facilities[id] ?? 1;
-function facilityLevels(reg, id) {
-  return reg.facilities.get(id)?.levels ?? [];
-}
-function facilityEffect(state, reg, id, key) {
-  const levels = facilityLevels(reg, id);
-  if (levels.length === 0) return 0;
-  return levels[Math.min(facilityLevel(state, id), levels.length) - 1].effects[key] ?? 0;
-}
-function rosterCapacityFor(reg, barracksLevel) {
-  const levels = facilityLevels(reg, "barracks");
-  if (levels.length === 0) return TUNING.rosterBaseCapacity;
-  return levels[Math.min(barracksLevel, levels.length) - 1].effects.rosterCapacity ?? TUNING.rosterBaseCapacity;
-}
-var isLiving = (u) => u.status !== "dead" && u.status !== "deserted" && u.status !== "terminated";
-function activeRosterUnits(state) {
-  return state.roster.activeIds.map((id) => state.squad.find((u) => u.id === id)).filter((u) => u !== void 0 && isLiving(u));
-}
-var eatsDouble = (u) => u.defects.some((d) => d.id === TUNING.upkeep.doubledByDefect);
-var livingUnits = (state) => state.squad.filter(isLiving);
-function upkeepNeeded(state, reg) {
-  const units = livingUnits(state);
-  const raw = units.reduce((n, u) => n + TUNING.upkeep.perUnit * (eatsDouble(u) ? 2 : 1), 0) + TUNING.upkeep.commander;
-  const needed = Math.max(0, raw - facilityEffect(state, reg, "mess_hall", "upkeepReduction"));
-  return { units: units.length, needed };
-}
-function spread(total, n, offset) {
-  if (n <= 0) return [];
-  const base = Math.floor(total / n);
-  const extra = total - base * n;
-  const out = new Array(n).fill(base);
-  for (let i = 0; i < extra; i++) out[((offset % n + n) % n + i) % n] += 1;
-  return out;
-}
-var clamp2 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
-function runUpkeep(draft, reg) {
-  const events = [];
-  const { needed } = upkeepNeeded(draft, reg);
-  const paid = Math.min(draft.resources.supplies, needed);
-  const missing = needed - paid;
-  draft.resources.supplies -= paid;
-  events.push({ type: "upkeep", needed, paid, shortage: missing });
-  if (missing === 0) {
-    draft.calendar.shortageStreak = 0;
-    return events;
-  }
-  const units = livingUnits(draft);
-  const slots = units.flatMap((u) => eatsDouble(u) ? [u, u] : [u]);
-  const stress = spread(missing * TUNING.shortage.stressPerPoint, slots.length, draft.day);
-  const affinity = spread(missing * TUNING.shortage.affinityPerPoint, slots.length, draft.day);
-  slots.forEach((u, i) => {
-    u.stress = clamp2(u.stress + stress[i], 0, 100);
-    if (affinity[i] > 0) applyRelationDelta(draft, u.id, "affinity", -affinity[i], "shortage");
+registerAction("squad/add_named", (draft, payload, ctx2) => {
+  const reason = checkIncoming(draft);
+  if (reason) throw new Error(reason);
+  const u = isObj(payload) ? payload.unit : void 0;
+  if (!isObj(u)) throw new Error("squad/add_named needs { unit }");
+  const problems = validateIncomingUnit(u, ctx2.registries, { desireBondDefects: draft.settings.desireBondDefects === true });
+  if (draft.squad.some((x) => x.cardRef !== void 0 && x.cardRef === u.cardRef)) problems.push(`Card "${String(u.cardRef)}" is already in the squad`);
+  if (problems.length > 0) throw new Error(problems.join("; "));
+  const reg = ctx2.registries;
+  const unit = makeNamedUnit(u, reg, new Set(draft.squad.map((x) => x.id)));
+  const crime = reg.crimes.get(draft.commander.crimeId ?? "");
+  const start = reg.starts.get(draft.world.startId ?? "");
+  const setup = u;
+  draft.relations[unit.id] = initialRelation({
+    trust: setup.baseline.trust + (crime ? startingTrustAdjust(crimeEffectsOf(crime), setup.values) : 0),
+    affinity: setup.baseline.affinity,
+    attraction: setup.baseline.attraction,
+    knowsCrime: crime ? crimeKnownByDefault(crime, start) : false,
+    since: draft.day
   });
-  const streak = (draft.calendar.shortageStreak ?? 0) + 1;
-  draft.calendar.shortageStreak = streak;
-  events.push({ type: "supply_shortage", missing, streak, hit: units.length });
-  if (streak % TUNING.shortage.streakDays === 0) {
-    for (const u of units) applyRelationDelta(draft, u.id, "trust", -TUNING.shortage.trustPenalty, "shortage_streak");
-    events.push({ type: "trust_penalty_event", streak, units: units.map((u) => u.id), amount: TUNING.shortage.trustPenalty });
+  const active = draft.roster.activeIds.filter((id) => draft.squad.some((x) => x.id === id && x.status !== "dead"));
+  if (active.length < TUNING.rosterActiveMax) {
+    active.push(unit.id);
+  } else {
+    unit.status = "reserve";
   }
-  return events;
-}
-function checkUpgrade(state, reg, id) {
-  const facility = reg.facilities.get(id);
-  if (!facility) return `Unknown facility "${id}".`;
-  const name = String(facility.name);
-  const levels = facilityLevels(reg, id);
-  const level = facilityLevel(state, id);
-  if (level >= levels.length) return `${name} is already at its max level (${levels.length}).`;
-  if ((state.base.upgrades ?? []).some((u) => u.facilityId === id)) return `${name} is already being upgraded.`;
-  const up = levels[level].upgrade;
-  if (!up) return `${name} has no upgrade to level ${level + 1}.`;
-  if (state.resources.credits < up.credits) return `Not enough credits to upgrade ${name} (needs ${up.credits}).`;
-  if (state.resources.plyx < up.plyx) return `Not enough plyx to upgrade ${name} (needs ${up.plyx}).`;
-  return null;
-}
-function checkRecruit(state) {
-  if (state.squad.filter(isLiving).length >= state.roster.capacity) {
-    return `The barracks are full (${state.roster.capacity} beds). Upgrade them to recruit more.`;
-  }
-  if (state.resources.credits < TUNING.recruit.credits) {
-    return `Not enough credits to recruit a grunt (needs ${TUNING.recruit.credits}).`;
-  }
-  return null;
-}
-function recoverUnit(draft, u) {
-  delete u.injuryDays;
-  u.injuries = [];
-  if (u.status === "injured") u.status = draft.roster.activeIds.includes(u.id) ? "active" : "reserve";
-  return { type: "unit_recovered", unitId: u.id };
-}
+  draft.roster.activeIds = active;
+  draft.squad.push(unit);
+  draft.world.incomingUnits = (draft.world.incomingUnits ?? 0) - 1;
+  return [{ type: "unit_joined", unitId: unit.id, kind: "named" }];
+});
+registerAction("squad/decline_incoming", (draft, _payload, ctx2) => {
+  const reason = checkIncoming(draft);
+  if (reason) throw new Error(reason);
+  const grunt = generateGrunt(draft, ctx2.registries, ctx2.rng);
+  draft.squad.push(grunt);
+  draft.relations[grunt.id] = gruntRelation(draft, ctx2.registries);
+  if (grunt.status === "active") draft.roster.activeIds.push(grunt.id);
+  draft.world.incomingUnits = (draft.world.incomingUnits ?? 0) - 1;
+  return [{ type: "unit_joined", unitId: grunt.id, kind: "grunt" }];
+});
 
 // src/engine/calendar.ts
 var SLOT_ORDER = ["morning", "afternoon", "evening", "night"];
@@ -1057,95 +1202,6 @@ registerAction("calendar/cancel_scene", (draft) => {
   delete draft.calendar.pendingScene;
   return [{ type: "scene_cancelled", unitId: scene.unitId }];
 });
-
-// src/engine/grunts.ts
-var GENERATED_NAME = /^(?=.*[A-Za-z])[A-Za-z0-9 '-]{1,24}$/;
-var GRUNT_BIO_MAX = 120;
-var INNER = 11;
-var fit = (s) => {
-  const left = Math.floor((INNER - s.length) / 2);
-  return (" ".repeat(left) + s + " ".repeat(INNER)).slice(0, INNER);
-};
-var HEADGEAR = ['.-"""""-.', "/=======\\", "(#######)", "/^^^^^^^\\", ".:::::::.", "_________", ";;;;;;;;;", "/\\/\\/\\/\\/\\"];
-var EYES = ["( o   o )", "( -   - )", "( O   O )", "( >   < )", "( .   . )", "( @   @ )", "[ #   # ]", "( x   o )"];
-var NOSES = ["    |    ", "    ^    ", "    L    ", "   .-.   ", "    ,    ", "   \\_/   "];
-var MOUTHS = ["\\___/", "-----", "=====", "___", "/---\\", "~~~~~", "...", "|||||"];
-var CHINS = ["\\_______/", " \\_____/ ", "  \\___/  ", "  `---`  ", "  |___|  "];
-var MARKS = [null, null, [1, 1, "/"], [2, 3, ","], [1, 9, "*"], [3, 2, "#"]];
-function generatePortrait(rng) {
-  const rows = [
-    fit(rng.pick(HEADGEAR)),
-    fit(rng.pick(EYES)),
-    fit(rng.pick(NOSES)),
-    fit(rng.pick(MOUTHS)),
-    fit(rng.pick(CHINS))
-  ];
-  const mark = rng.pick(MARKS);
-  if (mark) {
-    const [row, col, glyph] = mark;
-    rows[row] = rows[row].slice(0, col) + glyph + rows[row].slice(col + 1);
-  }
-  const frame = `+${"-".repeat(INNER)}+`;
-  return [frame, ...rows.map((r) => `|${r}|`), frame].join("\n");
-}
-function generateDesignation(rng, taken) {
-  for (let i = 0; i < 1e4; i++) {
-    const letter = String.fromCharCode(65 + rng.int(0, 25));
-    const d = `${letter}-${rng.int(100, 999)}`;
-    if (!taken.has(d)) return d;
-  }
-  throw new Error("No free grunt designation left");
-}
-var idFor = (designation) => `grunt_${designation.toLowerCase().replace(/[^a-z0-9]+/g, "_")}`;
-function generateGrunt(state, reg, rng) {
-  const role = rng.pick([...reg.roles.values()]);
-  const allowDesire = state.settings.desireBondDefects === true;
-  const defect = rng.pick([...reg.defects.values()].filter((d) => allowDesire || d.category !== "desire_bond"));
-  const sig = rng.pick([...reg.signatures.values()]);
-  const taken = /* @__PURE__ */ new Set();
-  for (const u of state.squad) {
-    if (u.designation) taken.add(u.designation);
-    taken.add(u.id);
-  }
-  let designation = generateDesignation(rng, taken);
-  while (taken.has(idFor(designation))) designation = generateDesignation(rng, /* @__PURE__ */ new Set([...taken, designation]));
-  const living2 = state.squad.filter(isLiving);
-  const average = living2.length === 0 ? 1 : living2.reduce((n, u) => n + u.level, 0) / living2.length;
-  const stats = role.baseStats;
-  return {
-    id: idFor(designation),
-    kind: "grunt",
-    displayName: designation,
-    designation,
-    asciiPortrait: generatePortrait(rng),
-    roleId: role.id,
-    level: Math.max(1, Math.round(average) - 1),
-    xp: 0,
-    skillPoints: 0,
-    unlockedNodes: [],
-    signatureSkill: { templateId: sig.id, name: String(sig.name), description: String(sig.mechanic) },
-    baseStats: { ...stats },
-    currentHp: stats.hp,
-    stress: 0,
-    defects: [{ id: defect.id, lite: true }],
-    values: Object.fromEntries(VALUE_AXES.map((a) => [a, 0])),
-    likes: [],
-    dislikes: [],
-    triggers: [],
-    equipment: {},
-    injuries: [],
-    status: activeRosterUnits(state).length < TUNING.rosterActiveMax ? "active" : "reserve"
-  };
-}
-function gruntRelation(state, reg) {
-  const crime = reg.crimes.get(state.commander.crimeId ?? "");
-  const start = reg.starts.get(state.world.startId ?? "");
-  const effects2 = crime ? crimeEffectsOf(crime) : [];
-  const neutral = Object.fromEntries(VALUE_AXES.map((a) => [a, 0]));
-  let trust = TUNING.recruit.baseTrust + startingTrustAdjust(effects2, neutral);
-  if (effects2.some((fx2) => fx2.type === "grunt_starting_trust")) trust += TUNING.recruit.gruntCrimeBonus;
-  return initialRelation({ trust, affinity: 0, attraction: 0, knowsCrime: crime ? crimeKnownByDefault(crime, start) : false, since: state.day });
-}
 
 // src/engine/actions/base.ts
 var isObj3 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);

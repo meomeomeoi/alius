@@ -195,6 +195,49 @@ export function initialRelation(o: { trust: number; affinity: number; attraction
   };
 }
 
+/**
+ * A fresh named unit at level 1 from a validated profile. Its id follows the `unit_<slug>` rule and is made unique
+ * against `usedIds`, which this call extends. Relationship data is the caller's business.
+ */
+export function makeNamedUnit(u: UnitSetup, reg: Registries, usedIds: Set<string>): Unit {
+  const base = `unit_${slug(u.displayName)}`;
+  let id = base;
+  for (let n = 2; usedIds.has(id); n++) id = `${base}_${n}`;
+  usedIds.add(id);
+  const stats = (reg.roles.get(u.roleId) as Entry).baseStats as Unit['baseStats'];
+  return {
+    id,
+    kind: 'named',
+    cardRef: u.cardRef,
+    displayName: u.displayName,
+    roleId: u.roleId,
+    level: 1,
+    xp: 0,
+    skillPoints: 0,
+    unlockedNodes: [],
+    signatureSkill: { ...u.signature },
+    baseStats: { ...stats },
+    currentHp: stats.hp,
+    stress: 0,
+    defects: u.defects.map((d) => ({ id: d.id, origin: d.origin })),
+    values: { ...u.values },
+    likes: [...u.likes],
+    dislikes: [...u.dislikes],
+    triggers: [...u.triggers],
+    equipment: {},
+    injuries: [],
+    status: 'active',
+  };
+}
+
+/** Every problem of a unit joining a running campaign: the profile rules and the baseline ranges of `validateSetup`. */
+export function validateIncomingUnit(u: UnitSetup, reg: Registries, opts: { desireBondDefects: boolean }): string[] {
+  const out: string[] = [];
+  if (typeof u?.cardRef !== 'string' || u.cardRef.trim() === '') out.push('The unit has no character card');
+  validateUnit(u, `Unit (${String(u?.displayName)})`, reg, opts, out);
+  return out;
+}
+
 export function buildCampaign(
   r: SetupResult, reg: Registries, opts: { desireBondDefects: boolean; seed: number },
 ): { ok: true; state: CampaignState } | { ok: false; errors: string[] } {
@@ -228,36 +271,9 @@ export function buildCampaign(
 
   const used = new Set<string>();
   for (const u of r.units) {
-    const base = `unit_${slug(u.displayName)}`;
-    let id = base;
-    for (let n = 2; used.has(id); n++) id = `${base}_${n}`;
-    used.add(id);
-
-    const role = reg.roles.get(u.roleId) as Entry;
-    const stats = role.baseStats as Unit['baseStats'];
-    state.squad.push({
-      id,
-      kind: 'named',
-      cardRef: u.cardRef,
-      displayName: u.displayName,
-      roleId: u.roleId,
-      level: 1,
-      xp: 0,
-      skillPoints: 0,
-      unlockedNodes: [],
-      signatureSkill: { ...u.signature },
-      baseStats: { ...stats },
-      currentHp: stats.hp,
-      stress: 0,
-      defects: u.defects.map((d) => ({ id: d.id, origin: d.origin })),
-      values: { ...u.values },
-      likes: [...u.likes],
-      dislikes: [...u.dislikes],
-      triggers: [...u.triggers],
-      equipment: {},
-      injuries: [],
-      status: 'active',
-    });
+    const unit = makeNamedUnit(u, reg, used);
+    const id = unit.id;
+    state.squad.push(unit);
 
     state.relations[id] = initialRelation({
       trust: u.baseline.trust + startingTrustAdjust(crimeEffects, u.values),

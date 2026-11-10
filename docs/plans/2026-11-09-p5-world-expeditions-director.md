@@ -438,11 +438,11 @@ docs/** (Task 21), tests/** mirror src
 - `squad/add_named { unit: UnitSetup }` — `checkIncoming`; `validateUnitProfile` plus the baseline ranges of `validateSetup` (errors joined into the thrown message); `cardRef` not already in the squad; unit id by the `unit_<slug>` rule against existing ids; `status: 'active'`, joins `roster.activeIds` when fewer than `TUNING.rosterActiveMax` are active, else `'reserve'`; relation = `initialRelation` with the crime trust adjustment and `since: day`; `world.incomingUnits -= 1`; emits `unit_joined { unitId, kind: 'named' }`.
 - `squad/decline_incoming {}` — `checkIncoming`; a `generateGrunt` joins with `gruntRelation`; counter −1; emits `unit_joined { unitId, kind: 'grunt' }`.
 
-- [ ] **Step 1: Write the failing tests** — `buildCampaign output is unchanged by the extraction` (existing setup tests stay green); `add_named needs a pending intake and a free bed`; `an invalid profile is refused with every problem listed`; `a card already in the squad is refused`; `the new unit starts as stranger with the crime adjustment and since = today`; `she goes to reserve when four are active`; `decline adds a grunt and lowers the counter`; `two offers allow two intakes`.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/squad.test.ts tests/engine/setup.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS.
-- [ ] **Step 5: Commit** `feat(engine): intake of incoming named units and grunt replacements`.
+- [x] **Step 1: Write the failing tests** — `buildCampaign output is unchanged by the extraction` (existing setup tests stay green); `add_named needs a pending intake and a free bed`; `an invalid profile is refused with every problem listed`; `a card already in the squad is refused`; `the new unit starts as stranger with the crime adjustment and since = today`; `she goes to reserve when four are active`; `decline adds a grunt and lowers the counter`; `two offers allow two intakes`.
+- [x] **Step 2: Run** `npx vitest run tests/engine/squad.test.ts tests/engine/setup.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS.
+- [x] **Step 5: Commit** `feat(engine): intake of incoming named units and grunt replacements`.
 
 ---
 
