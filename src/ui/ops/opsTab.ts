@@ -6,6 +6,7 @@ import type { CampaignState, Unit } from '../../engine/state/types';
 import { TUNING } from '../../engine/tuning';
 import type { LoadResult } from '../../st/persistence';
 import { h } from '../dom';
+import { renderMissionBoard } from './missionBoard';
 
 export interface OpsTabCtx {
   getState: () => CampaignState | null;
@@ -13,6 +14,11 @@ export interface OpsTabCtx {
   registries: Registries;
   onDo: (req: ActivityRequest) => void;
   onRequisition: (supplies: number) => void;
+  /** P5: mission board and rumor mill callbacks; a missing one hides its button. */
+  onPlan?: (missionId: string) => void;
+  onDismiss?: (missionId: string) => void;
+  onFollowRumor?: (rumorId: string) => void;
+  onIntake?: () => void;
 }
 
 type Focus = { id: string; label: string; units?: { min: number; max: number } };
@@ -145,6 +151,7 @@ export function renderOpsTab(host: HTMLElement, ctx: OpsTabCtx): void {
     return;
   }
   const all = [...ctx.registries.activities.values()];
+  renderMissionBoard(host, state, ctx);
   host.append(
     h(
       'section',

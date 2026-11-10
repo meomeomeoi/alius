@@ -1181,3 +1181,7 @@
 .alius-region-panel h3 { margin: 0.8em 0 0.2em; }
 .alius-clock { white-space: pre; margin: 0.1em 0; }
 .alius-mission-row, .alius-poi-row { margin: 0.3em 0; }
+.alius-mission, .alius-rumor { margin: 0.5em 0; padding: 0.4em 0.6em; border-left: 2px solid currentColor; }
+.alius-mission h3 { margin: 0 0 0.2em; }
+.alius-rumor { opacity: 0.9; }
+.alius-rumor p { margin: 0.1em 0; }

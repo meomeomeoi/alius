@@ -60,8 +60,11 @@ export function poiCooldownReason(state: CampaignState, regionId: string, poiId:
   return `That point of interest cannot be run again before day ${last + TUNING.world.poiCooldownDays}.`;
 }
 
-/** Why this expedition cannot start now, or `null`. Checked in the order of the rules; nothing is changed. */
-export function checkExpedition(state: CampaignState, reg: Registries, p: StartExpedition): string | null {
+/**
+ * Why an expedition cannot leave now whatever the squad: something is open, the mission or point of interest is gone
+ * or not ready, or too few slots are left today. `null` when only the party and supplies remain to be checked.
+ */
+export function checkDeparture(state: CampaignState, reg: Registries, p: { missionId?: string; poi?: { regionId: string; poiId: string } }): string | null {
   if (state.expedition) return 'An expedition is already under way.';
   if (state.combat) return 'A combat is open: finish it first.';
   if (state.scene) return 'A scene is open: end it first.';
@@ -98,6 +101,13 @@ export function checkExpedition(state: CampaignState, reg: Registries, p: StartE
     return `${regionName(region)} takes ${slots} slots: leave in the Morning${slots === 2 ? ' or Afternoon' : ''}.`;
   }
 
+  return null;
+}
+
+/** Why this expedition cannot start now, or `null`. Checked in the order of the rules; nothing is changed. */
+export function checkExpedition(state: CampaignState, reg: Registries, p: StartExpedition): string | null {
+  const departure = checkDeparture(state, reg, p);
+  if (departure) return departure;
   const ids = p.unitIds ?? [];
   if (ids.length < 1 || ids.length > TUNING.expedition.partyMax) return `An expedition takes 1 to ${TUNING.expedition.partyMax} units.`;
   if (new Set(ids).size !== ids.length) return 'A unit was listed twice.';

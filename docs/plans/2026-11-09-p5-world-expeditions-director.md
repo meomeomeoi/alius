@@ -493,11 +493,11 @@ docs/** (Task 21), tests/** mirror src
 - `OpsTabCtx` + `onPlan?(missionId: string): void`, `onDismiss?(missionId: string): void`, `onFollowRumor?(rumorId: string): void`, `onIntake?(): void`.
 - `renderMissionBoard(host, ctx)` — `MISSION BOARD n/size`: one card per offered mission (`[COMMAND]`/`[STORY]`/`[RUMOR]`/`[SIDE]`, title, region, `DANGER n`, objective (`node type name`), `D-n` or `NO DEADLINE`, brief, reward tier as `REWARD: TIER n`), `[ PLAN ]` (disabled with `checkExpedition`'s slot reason when it cannot start now), `[ DISMISS ]` only for side/rumor; `RUMOR MILL`: BBS-style posts newest first (`> anon_<3 digits from the rumor id> // DAY 004`, the text, tags), `[ FOLLOW ]` for `new` rumors with a lead (`mission` or `fact`), `FOLLOWED` otherwise; an `INTAKE PENDING` banner with `[ REVIEW ]` when `world.incomingUnits > 0`.
 
-- [ ] **Step 1: Write the failing tests** — `board lists offered missions with source tag, deadline and tier`; `board header shows used and total size`; `PLAN is disabled in the Evening with the engine's reason`; `DISMISS is absent for command and story missions`; `rumors render newest first with a FOLLOW button only when they lead somewhere`; `FOLLOW calls onFollowRumor`; `the intake banner appears while a unit is waiting`; `rumor text is not HTML`; `existing activity cards still render` (the P2 tests stay green).
-- [ ] **Step 2: Run** `npx vitest run tests/ui/ops.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS.
-- [ ] **Step 5: Commit** `feat(ui): OPS mission board and rumor mill`.
+- [x] **Step 1: Write the failing tests** — `board lists offered missions with source tag, deadline and tier`; `board header shows used and total size`; `PLAN is disabled in the Evening with the engine's reason`; `DISMISS is absent for command and story missions`; `rumors render newest first with a FOLLOW button only when they lead somewhere`; `FOLLOW calls onFollowRumor`; `the intake banner appears while a unit is waiting`; `rumor text is not HTML`; `existing activity cards still render` (the P2 tests stay green).
+- [x] **Step 2: Run** `npx vitest run tests/ui/ops.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS.
+- [x] **Step 5: Commit** `feat(ui): OPS mission board and rumor mill`.
 
 ---
 

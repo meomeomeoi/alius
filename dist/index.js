@@ -5505,7 +5505,7 @@ function poiCooldownReason(state, regionId, poiId) {
   if (last === void 0 || state.day >= last + TUNING.world.poiCooldownDays) return null;
   return `That point of interest cannot be run again before day ${last + TUNING.world.poiCooldownDays}.`;
 }
-function checkExpedition(state, reg, p) {
+function checkDeparture(state, reg, p) {
   if (state.expedition) return "An expedition is already under way.";
   if (state.combat) return "A combat is open: finish it first.";
   if (state.scene) return "A scene is open: end it first.";
@@ -5539,6 +5539,11 @@ function checkExpedition(state, reg, p) {
   if (slotsLeftToday(state.slot) < slots) {
     return `${regionName(region)} takes ${slots} slots: leave in the Morning${slots === 2 ? " or Afternoon" : ""}.`;
   }
+  return null;
+}
+function checkExpedition(state, reg, p) {
+  const departure = checkDeparture(state, reg, p);
+  if (departure) return departure;
   const ids = p.unitIds ?? [];
   if (ids.length < 1 || ids.length > TUNING.expedition.partyMax) return `An expedition takes 1 to ${TUNING.expedition.partyMax} units.`;
   if (new Set(ids).size !== ids.length) return "A unit was listed twice.";
@@ -13707,6 +13712,80 @@ function renderSquadTab(host, ctx2) {
   host.append(h("section", { class: "alius-section alius-squad" }, ...state.squad.map((u) => unitBlock(u, ctx2, state))));
 }
 
+// src/ui/ops/missionBoard.ts
+var SOURCE_TAG = { command: "COMMAND", story: "STORY", rumor: "RUMOR", side: "SIDE" };
+function anonHandle(rumorId) {
+  const n = Number.parseInt(rumorId.replace(/\D/g, "") || "0", 10);
+  return String((n * 137 + 11) % 1e3).padStart(3, "0");
+}
+function missionCard(m, state, ctx2) {
+  const reg = ctx2.registries;
+  const region = reg.regions.get(m.regionId);
+  const node = reg.nodeTypes.get(m.objective.node);
+  const tierRank = reg.rewardTiers.get(m.rewardsTier)?.rank;
+  const deadline = m.deadlineDay === void 0 ? "NO DEADLINE" : `D-${Math.max(0, m.deadlineDay - state.day)}`;
+  const reason = checkDeparture(state, reg, { missionId: m.id });
+  const card2 = h(
+    "article",
+    { class: "alius-mission", "data-mission-card": m.id },
+    h("h3", {}, `[${SOURCE_TAG[m.source] ?? m.source.toUpperCase()}] ${m.title}`),
+    h("p", { class: "alius-dim" }, `${String(region?.name ?? m.regionId)} \xB7 DANGER ${m.danger} \xB7 OBJECTIVE: ${String(node?.name ?? m.objective.node)} (${m.objective.condition}) \xB7 ${deadline}`),
+    h("p", {}, m.brief),
+    h("p", { class: "alius-dim" }, `REWARD: TIER ${String(tierRank ?? m.rewardsTier)}`)
+  );
+  if (ctx2.onPlan) {
+    card2.append(h("button", {
+      type: "button",
+      class: "alius-btn",
+      "data-plan": m.id,
+      disabled: reason !== null,
+      title: reason ?? "",
+      onclick: () => {
+        if (reason === null) ctx2.onPlan(m.id);
+      }
+    }, "[ PLAN ]"));
+    if (reason) card2.append(h("p", { class: "alius-dim alius-reason" }, reason));
+  }
+  if (ctx2.onDismiss && (m.source === "side" || m.source === "rumor")) {
+    card2.append(h("button", { type: "button", class: "alius-btn", "data-dismiss": m.id, onclick: () => ctx2.onDismiss(m.id) }, "[ DISMISS ]"));
+  }
+  return card2;
+}
+function rumorPost(r, ctx2) {
+  const day = `DAY ${String(r.day).padStart(3, "0")}`;
+  const post = h(
+    "article",
+    { class: "alius-rumor", "data-rumor": r.id },
+    h("p", { class: "alius-dim" }, `> anon_${anonHandle(r.id)} // ${day}`),
+    h("p", {}, r.text)
+  );
+  if (r.tags.length > 0) post.append(h("p", { class: "alius-dim" }, r.tags.map((t) => `#${t}`).join(" ")));
+  if (r.status === "followed") post.append(h("p", { class: "alius-dim" }, "FOLLOWED"));
+  else if (r.leadsTo !== "none" && ctx2.onFollowRumor) {
+    post.append(h("button", { type: "button", class: "alius-btn", "data-follow": r.id, onclick: () => ctx2.onFollowRumor(r.id) }, "[ FOLLOW ]"));
+  }
+  return post;
+}
+function renderMissionBoard(host, state, ctx2) {
+  const size = facilityEffect(state, ctx2.registries, "comms", "missionBoardSize");
+  const offered2 = state.missions.offered;
+  const board = h("section", { class: "alius-section alius-board" }, h("h2", {}, `MISSION BOARD ${offered2.length}/${size}`));
+  if ((state.world.incomingUnits ?? 0) > 0) {
+    board.append(h(
+      "p",
+      { class: "alius-banner" },
+      "INTAKE PENDING: a new unit is waiting. ",
+      ...ctx2.onIntake ? [h("button", { type: "button", class: "alius-btn", "data-intake": "", onclick: ctx2.onIntake }, "[ REVIEW ]")] : []
+    ));
+  }
+  if (offered2.length === 0) board.append(h("p", { class: "alius-dim" }, "NO MISSIONS POSTED"));
+  for (const m of offered2) board.append(missionCard(m, state, ctx2));
+  const mill = h("section", { class: "alius-section alius-rumor-mill" }, h("h2", {}, "RUMOR MILL"));
+  if (state.rumors.length === 0) mill.append(h("p", { class: "alius-dim" }, "NOTHING OVERHEARD"));
+  for (const r of [...state.rumors].reverse()) mill.append(rumorPost(r, ctx2));
+  host.append(board, mill);
+}
+
 // src/ui/ops/opsTab.ts
 var COST_LABEL = { credits: "CR", supplies: "SUPPLIES", plyx: "PLYX" };
 var costText = (cost) => {
@@ -13823,6 +13902,7 @@ function renderOpsTab(host, ctx2) {
     return;
   }
   const all = [...ctx2.registries.activities.values()];
+  renderMissionBoard(host, state, ctx2);
   host.append(
     h(
       "section",

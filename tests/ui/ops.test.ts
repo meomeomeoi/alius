@@ -4,8 +4,10 @@ import type { Registries } from '../../src/content/types';
 import type { CampaignState } from '../../src/engine/state/types';
 import type { LoadResult } from '../../src/st/persistence';
 import { h } from '../../src/ui/dom';
-import { renderOpsTab } from '../../src/ui/ops/opsTab';
-import { campaign, loadCore } from '../helpers/world';
+import { renderOpsTab, type OpsTabCtx } from '../../src/ui/ops/opsTab';
+import { offerMission } from '../../src/engine/world/missions';
+import { postRumor } from '../../src/engine/world/missions';
+import { campaign, ctxOf, loadCore } from '../helpers/world';
 
 let reg: Registries;
 beforeAll(async () => {
@@ -15,14 +17,14 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 
-function render(opts: { state?: CampaignState | null; load?: LoadResult } = {}) {
+function render(opts: { state?: CampaignState | null; load?: LoadResult; extra?: Partial<OpsTabCtx> } = {}) {
   const state = opts.state === undefined ? campaign(reg, 4) : opts.state;
   const load: LoadResult = opts.load ?? (state ? { kind: 'ok', state, chatId: 'c' } : { kind: 'none' });
   const onDo = vi.fn();
   const onRequisition = vi.fn();
   const host = h('div');
   document.body.append(host);
-  renderOpsTab(host, { getState: () => state, getLoad: () => load, registries: reg, onDo, onRequisition });
+  renderOpsTab(host, { getState: () => state, getLoad: () => load, registries: reg, onDo, onRequisition, ...opts.extra });
   const card = (id: string) => host.querySelector<HTMLElement>(`[data-activity="${id}"]`)!;
   const btn = (id: string) => card(id).querySelector<HTMLButtonElement>('button[data-do]')!;
   return { host, onDo, onRequisition, card, btn, state };
@@ -174,5 +176,146 @@ describe('OPS tab', () => {
     expect([...talk.options].map((o) => o.value)).toEqual(['', 'unit_ann', 'unit_bea', 'unit_cat']);
     const rest = card('rest').querySelector<HTMLSelectElement>('select[name="companion"]')!;
     expect([...rest.options].map((o) => o.value)).toContain('unit_dee');
+  });
+});
+
+describe('OPS: mission board and rumor mill', () => {
+  const board = (s: CampaignState) => {
+    const onPlan = vi.fn();
+    const onDismiss = vi.fn();
+    const onFollowRumor = vi.fn();
+    const onIntake = vi.fn();
+    const r = render({ state: s, extra: { onPlan, onDismiss, onFollowRumor, onIntake } });
+    return { ...r, onPlan, onDismiss, onFollowRumor, onIntake };
+  };
+  const offer = (s: CampaignState, o: { templateId: string; regionId: string; source: 'command' | 'side' | 'rumor' | 'story'; title?: string; brief?: string; spineBeat?: string }) =>
+    offerMission(s, ctxOf(s, reg), o).mission!;
+  const post = (s: CampaignState, text: string, over: Record<string, unknown> = {}) =>
+    postRumor(s, ctxOf(s, reg), { text, tags: [], leadsTo: 'none', ...over } as never)!;
+
+  it('board lists offered missions with source tag, deadline and tier', () => {
+    const s = campaign(reg, 4);
+    s.day = 3;
+    const cmd = offer(s, { templateId: 'tpl_sweep', regionId: 'ashway', source: 'command', title: 'Clear the road', brief: 'Marauders hold the overpass.' });
+    const story = offer(s, { templateId: 'tpl_vesper_beat_1', regionId: 'quarantine_d7', source: 'story', spineBeat: 'beat_1', title: 'First sample' });
+    const { host } = board(s);
+    const card = (id: string) => host.querySelector<HTMLElement>(`[data-mission-card="${id}"]`)!;
+    const text = card(cmd.id).textContent!;
+    expect(text).toContain('[COMMAND]');
+    expect(text).toContain('Clear the road');
+    expect(text).toContain('The Ashway');
+    expect(text).toContain('DANGER 2');
+    expect(text).toContain('OBJECTIVE: Contact');
+    expect(text).toContain(`D-${cmd.deadlineDay! - 3}`);
+    expect(text).toContain('Marauders hold the overpass.');
+    expect(text).toContain('REWARD: TIER 1');
+    const st = card(story.id).textContent!;
+    expect(st).toContain('[STORY]');
+    expect(st).toContain('NO DEADLINE');
+    expect(st).toContain('REWARD: TIER 2');
+  });
+
+  it('board header shows used and total size', () => {
+    const s = campaign(reg, 4);
+    expect(board(s).host.textContent).toContain('MISSION BOARD 0/3');
+    offer(s, { templateId: 'tpl_sweep', regionId: 'ashway', source: 'side' });
+    expect(board(s).host.textContent).toContain('MISSION BOARD 1/3');
+    s.base.facilities.comms = 2;
+    expect(board(s).host.textContent).toContain('MISSION BOARD 1/4');
+    expect(board(campaign(reg, 4)).host.textContent).toContain('NO MISSIONS POSTED');
+  });
+
+  it("PLAN is disabled in the Evening with the engine's reason", () => {
+    const s = campaign(reg, 4);
+    const m = offer(s, { templateId: 'tpl_sweep', regionId: 'quarantine_d7', source: 'command' });
+    const ok = board(s);
+    const plan = ok.host.querySelector<HTMLButtonElement>(`button[data-plan="${m.id}"]`)!;
+    expect(plan.disabled).toBe(false);
+    plan.click();
+    expect(ok.onPlan).toHaveBeenCalledWith(m.id);
+    s.slot = 'evening';
+    const late = board(s);
+    const blocked = late.host.querySelector<HTMLButtonElement>(`button[data-plan="${m.id}"]`)!;
+    expect(blocked.disabled).toBe(true);
+    expect(late.host.textContent).toContain('District 7 Quarantine takes 2 slots: leave in the Morning or Afternoon.');
+    blocked.click();
+    expect(late.onPlan).not.toHaveBeenCalled();
+  });
+
+  it('DISMISS is absent for command and story missions', () => {
+    const s = campaign(reg, 4);
+    s.base.facilities.comms = 2;
+    const cmd = offer(s, { templateId: 'tpl_sweep', regionId: 'quarantine_d7', source: 'command' });
+    const story = offer(s, { templateId: 'tpl_vesper_beat_1', regionId: 'quarantine_d7', source: 'story', spineBeat: 'beat_1' });
+    const side = offer(s, { templateId: 'tpl_hunt', regionId: 'ashway', source: 'side' });
+    const rumor = offer(s, { templateId: 'tpl_recover', regionId: 'ashway', source: 'rumor' });
+    const b = board(s);
+    expect(b.host.querySelector(`button[data-dismiss="${cmd.id}"]`)).toBeNull();
+    expect(b.host.querySelector(`button[data-dismiss="${story.id}"]`)).toBeNull();
+    b.host.querySelector<HTMLButtonElement>(`button[data-dismiss="${side.id}"]`)!.click();
+    b.host.querySelector<HTMLButtonElement>(`button[data-dismiss="${rumor.id}"]`)!.click();
+    expect(b.onDismiss.mock.calls.map((c) => c[0])).toEqual([side.id, rumor.id]);
+  });
+
+  it('rumors render newest first with a FOLLOW button only when they lead somewhere', () => {
+    const s = campaign(reg, 4);
+    s.base.facilities.comms = 3;
+    s.commander.socialStats.insight = 5;
+    s.day = 4;
+    const plain = post(s, 'Nothing came of it.');
+    const fact = post(s, 'The east stairwell is avoided.', { leadsTo: 'fact', tags: ['d7'] });
+    const lead = post(s, 'A cache lies on the Ashway.', { leadsTo: 'mission', lead: { templateId: 'tpl_recover', regionId: 'ashway' } });
+    fact.status = 'followed';
+    const b = board(s);
+    const posts = [...b.host.querySelectorAll<HTMLElement>('[data-rumor]')];
+    expect(posts.map((p) => p.dataset.rumor)).toEqual([lead.id, fact.id, plain.id]);
+    expect(b.host.textContent).toContain('RUMOR MILL');
+    expect(posts[0].textContent).toMatch(/> anon_\d{3} \/\/ DAY 004/);
+    expect(posts[1].textContent).toContain('#d7');
+    expect(posts[0].querySelector('button[data-follow]')).not.toBeNull();
+    expect(posts[1].querySelector('button[data-follow]')).toBeNull();
+    expect(posts[1].textContent).toContain('FOLLOWED');
+    expect(posts[2].querySelector('button[data-follow]')).toBeNull();
+    expect(posts[2].textContent).not.toContain('FOLLOWED');
+  });
+
+  it('FOLLOW calls onFollowRumor', () => {
+    const s = campaign(reg, 4);
+    const r = post(s, 'A cache lies on the Ashway.', { leadsTo: 'mission', lead: { templateId: 'tpl_recover', regionId: 'ashway' } });
+    const b = board(s);
+    b.host.querySelector<HTMLButtonElement>(`button[data-follow="${r.id}"]`)!.click();
+    expect(b.onFollowRumor).toHaveBeenCalledWith(r.id);
+  });
+
+  it('the intake banner appears while a unit is waiting', () => {
+    const s = campaign(reg, 4);
+    expect(board(s).host.textContent).not.toContain('INTAKE PENDING');
+    s.world.incomingUnits = 1;
+    const b = board(s);
+    expect(b.host.textContent).toContain('INTAKE PENDING');
+    b.host.querySelector<HTMLButtonElement>('button[data-intake]')!.click();
+    expect(b.onIntake).toHaveBeenCalledTimes(1);
+  });
+
+  it('rumor and mission text is not HTML', () => {
+    const s = campaign(reg, 4);
+    const evil = '<img src=x onerror=alert(1)>';
+    post(s, evil, { tags: ['<b>x</b>'] });
+    offer(s, { templateId: 'tpl_sweep', regionId: 'ashway', source: 'command', title: '<i>Title</i>', brief: '<script>x()</script>' });
+    const { host } = board(s);
+    expect(host.querySelector('img, script, i, b')).toBeNull();
+    expect(host.textContent).toContain(evil);
+    expect(host.textContent).toContain('<i>Title</i>');
+  });
+
+  it('existing activity cards still render under the board, and the board needs no callbacks', () => {
+    const s = campaign(reg, 4);
+    offer(s, { templateId: 'tpl_sweep', regionId: 'ashway', source: 'command' });
+    const { host } = render({ state: s });
+    expect(host.querySelector('[data-activity="train"]')).not.toBeNull();
+    expect(host.textContent).toContain('MISSION BOARD');
+    expect(host.querySelector('button[data-plan]')).toBeNull(); // no onPlan: nothing to click
+    // the board comes first
+    expect(host.textContent!.indexOf('MISSION BOARD')).toBeLessThan(host.textContent!.indexOf('DAY 001'));
   });
 });
