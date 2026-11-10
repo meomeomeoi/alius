@@ -847,6 +847,9 @@ function addSocialPoints(commander, stat, amount) {
   commander.socialStats[stat] = rank;
   return { rank, gained, rankedUp: rank > before };
 }
+function meetsSocialRequirements(state, requires) {
+  return Object.entries(requires).every(([stat, min]) => socialRank(state, stat) >= min);
+}
 
 // src/engine/activities.ts
 var activityHooks = [];
@@ -5104,9 +5107,9 @@ function moveTo(draft, ctx2, nodeId) {
   const events = [{ type: "expedition_moved", nodeId }];
   let playType = nodePlayType(exp.map, nodeId, mission);
   if (reg.nodeTypes.get(playType)?.kind === "unknown") {
-    const resolved = resolveUnknownType(reg, ctx2.rng, playType);
-    if (resolved !== null) node.resolvedType = resolved;
-    playType = resolved ?? playType;
+    const resolved2 = resolveUnknownType(reg, ctx2.rng, playType);
+    if (resolved2 !== null) node.resolvedType = resolved2;
+    playType = resolved2 ?? playType;
   }
   const def = reg.nodeTypes.get(playType);
   const isObjective = nodeId === exp.map.objectiveId;
@@ -5144,12 +5147,16 @@ function moveTo(draft, ctx2, nodeId) {
       break;
     }
     case "combat":
+      events.push(...enterCombat(draft, ctx2, nodeId, def, mission));
+      break;
     case "event":
-      throw new Error(`Expedition: ${kind} nodes are not implemented yet.`);
+      events.push(...enterEvent(draft, ctx2, nodeId, isObjective, mission));
+      break;
     default:
       addLog(exp, "move", "Nothing here.", nodeId);
   }
-  if (reach || isObjective && kind === "nothing") exp.objectiveDone = true;
+  const resolved = exp.phase === "travel";
+  if (resolved && (reach || isObjective && kind === "nothing")) exp.objectiveDone = true;
   return events;
 }
 function setFormation(draft, formation) {
@@ -5180,6 +5187,148 @@ function treat(draft, ctx2, unitId, kind) {
   }
   addLog(exp, "treat", `${u.displayName}: ${kind === "patch" ? "wounds patched" : "calmed down"}.`, void 0, { unitId, kind });
   return [{ type: "expedition_treated", unitId, kind }];
+}
+var clamp9 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+function enterCombat(draft, ctx2, nodeId, def, mission) {
+  const exp = draft.expedition;
+  const reg = ctx2.registries;
+  const combat = def.combat;
+  const region = reg.regions.get(exp.regionId);
+  let encounter;
+  try {
+    encounter = generateEncounter(draft, reg, ctx2.rng, {
+      table: region.enemyTable,
+      danger: clamp9(mission.danger + combat.dangerDelta, 1, 5),
+      squadPower: squadPower(draft, reg, ableParty(draft)),
+      exposesCommander: combat.exposesCommander,
+      lootTableId: combat.lootTableId
+    });
+  } catch {
+    addLog(exp, "move", "Nothing here.", nodeId);
+    return [];
+  }
+  exp.pending = { kind: "combat", nodeId, encounter, ...draft.lastCombat ? { prevCombatId: draft.lastCombat.id } : {} };
+  exp.phase = "combat";
+  return [{ type: "expedition_combat", nodeId, encounter }];
+}
+function endExpedition(_draft, _ctx, outcome) {
+  throw new Error(`endExpedition(${outcome}) is not implemented until Task 11.`);
+}
+var nodeNumber = (exp) => exp.path.length;
+function hintEvidence(draft, h2, node) {
+  const name = (id) => id === "commander" ? "the commander" : draft.squad.find((u) => u.id === id)?.displayName ?? id;
+  const targets = h2.targets.map(name).join(" and ");
+  if (h2.type === "protected") {
+    return h2.targets.includes("commander") ? `Took the hits meant for the commander at node ${node}.` : `${name(h2.actor)} covered ${targets} at node ${node}.`;
+  }
+  return `${name(h2.actor)} left ${targets} exposed at node ${node}.`;
+}
+function resolveCombat(draft, ctx2) {
+  const exp = draft.expedition;
+  if (!exp || exp.phase !== "combat" || exp.pending?.kind !== "combat") throw new Error("There is no fight to resolve.");
+  if (draft.combat) throw new Error("The fight is still going.");
+  const result = draft.lastCombat;
+  if (!result || result.id === exp.pending.prevCombatId) throw new Error("The fight has not been fought yet.");
+  const nodeId = exp.pending.nodeId;
+  const node = nodeNumber(exp);
+  for (const h2 of result.relationHints) {
+    exp.hints.push({ type: h2.type, actor: h2.actor, targets: [...h2.targets], severity: h2.severity, evidence: hintEvidence(draft, h2, node) });
+  }
+  addLog(exp, "combat", `Fight at node ${node}: ${result.outcome} in ${result.rounds} round(s).`, nodeId, {
+    outcome: result.outcome,
+    rounds: result.rounds,
+    enemies: result.enemies.map((e) => e.name),
+    injuries: [...result.injuries],
+    deaths: [...result.deaths],
+    breakdowns: [...result.breakdowns]
+  });
+  delete exp.pending;
+  if (result.outcome !== "won") {
+    exp.phase = "travel";
+    return endExpedition(draft, ctx2, result.outcome === "lost" ? "failed" : "retreated");
+  }
+  exp.loot.push(...structuredClone(result.loot));
+  const able = ableParty(draft);
+  if (able.length === 0) {
+    exp.phase = "travel";
+    return endExpedition(draft, ctx2, "retreated");
+  }
+  const front = exp.formation.front.filter((id) => able.includes(id));
+  const back = exp.formation.back.filter((id) => able.includes(id));
+  if (front.length === 0) front.push(...back.splice(0, 1));
+  exp.formation = { front, back };
+  if (nodeId === exp.map.objectiveId) exp.objectiveDone = true;
+  exp.phase = "travel";
+  return [];
+}
+function eventPool(reg, regionId) {
+  const pinned = new Set([...reg.missionTemplates.values()].map((t) => t.objectiveEventId).filter((x) => typeof x === "string"));
+  return [...reg.dilemmaTemplates.values()].filter((t) => {
+    const regions = t.regions;
+    return t.scale === "minor" && t.contexts.includes("expedition_event") && !pinned.has(t.id) && (regions === void 0 || regions.includes(regionId));
+  });
+}
+function enterEvent(draft, ctx2, nodeId, isObjective, mission) {
+  const exp = draft.expedition;
+  const reg = ctx2.registries;
+  let templateId;
+  if (isObjective) {
+    const pinned = reg.missionTemplates.get(mission.templateId)?.objectiveEventId;
+    if (typeof pinned === "string" && reg.dilemmaTemplates.has(pinned)) templateId = pinned;
+  }
+  if (templateId === void 0) {
+    const pool = eventPool(reg, exp.regionId);
+    if (pool.length > 0) templateId = String(ctx2.rng.pick(pool).id);
+  }
+  if (templateId === void 0) {
+    addLog(exp, "move", "Nothing here.", nodeId);
+    return [];
+  }
+  exp.pending = { kind: "event", nodeId, templateId };
+  exp.phase = "event";
+  return [{ type: "expedition_event", nodeId, templateId }];
+}
+var capital = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+function optionsOf(state, reg) {
+  const pending2 = state.expedition?.pending;
+  if (pending2?.kind !== "event") return null;
+  const fixed = reg.dilemmaTemplates.get(pending2.templateId)?.fixed;
+  return fixed ? { templateId: pending2.templateId, title: fixed.title, options: fixed.options } : null;
+}
+function eventOptions(state, reg) {
+  const found = optionsOf(state, reg);
+  if (!found) return [];
+  const exp = state.expedition;
+  return found.options.map((o, index) => {
+    let disabled = null;
+    if (o.requires && !meetsSocialRequirements(state, { [o.requires.stat]: o.requires.rank })) {
+      disabled = `Needs ${capital(o.requires.stat)} ${o.requires.rank}`;
+    }
+    if (disabled === null) {
+      for (const fx2 of o.effects) {
+        if (fx2.type === "carried_supplies" && fx2.amount < 0 && exp.supplies < -fx2.amount) disabled = "Not enough supplies";
+        else if (fx2.type === "resource" && fx2.amount < 0 && state.resources[fx2.resource] < -fx2.amount) disabled = `Not enough ${fx2.resource}`;
+        if (disabled !== null) break;
+      }
+    }
+    return { index, label: o.label, disabled };
+  });
+}
+function chooseOption(draft, ctx2, index) {
+  const exp = draft.expedition;
+  const found = optionsOf(draft, ctx2.registries);
+  if (!exp || exp.phase !== "event" || !found || exp.pending?.kind !== "event") throw new Error("There is no event to answer.");
+  const option = eventOptions(draft, ctx2.registries)[index];
+  if (!Number.isInteger(index) || !option) throw new Error(`There is no option ${String(index)}.`);
+  if (option.disabled !== null) throw new Error(`${option.label}: ${option.disabled}.`);
+  const { nodeId, templateId } = exp.pending;
+  const events = applyWorldEffects(draft, ctx2, found.options[index].effects, { kind: "event", id: templateId, label: found.title });
+  addLog(exp, "event", `${found.title}: ${option.label}.`, nodeId, { templateId, option: option.label });
+  delete exp.pending;
+  exp.phase = "travel";
+  if (nodeId === exp.map.objectiveId) exp.objectiveDone = true;
+  events.push({ type: "expedition_choice", nodeId, templateId, option: index, label: option.label });
+  return events;
 }
 
 // src/engine/actions/expedition.ts
@@ -5218,6 +5367,12 @@ registerAction("expedition/treat", (draft, payload, ctx2) => {
   const kind = isObj10(payload) ? payload.kind : void 0;
   if (typeof unitId !== "string" || typeof kind !== "string") throw new Error("expedition/treat needs { unitId, kind }.");
   return treat(draft, ctx2, unitId, kind);
+});
+registerAction("expedition/resolve_combat", (draft, _payload, ctx2) => resolveCombat(draft, ctx2));
+registerAction("expedition/choose", (draft, payload, ctx2) => {
+  const option = isObj10(payload) ? payload.option : void 0;
+  if (typeof option !== "number") throw new Error("expedition/choose needs { option }.");
+  return chooseOption(draft, ctx2, option);
 });
 
 // src/engine/actions/items.ts

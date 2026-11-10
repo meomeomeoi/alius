@@ -324,11 +324,11 @@ docs/** (Task 21), tests/** mirror src
 - `eventOptions(state, reg): Array<{ index: number; label: string; disabled: string | null }>` — `requires` unmet → `"Needs Empathy 3"`; a `carried_supplies`/`resource` cost the party cannot pay → `"Not enough supplies"` / `"Not enough credits"`.
 - `chooseOption(draft, ctx, index): EngineEvent[]` (action `expedition/choose { option }`) — phase `event`, option enabled; applies its effects (`src.kind: 'event'`), logs `event` with `{ templateId, option: label }`, phase `travel`, a `reach` objective is done; emits `expedition_choice`.
 
-- [ ] **Step 1: Write the failing tests** — `a combat node stores the encounter and waits`; `elite raises the danger by one, capped at 5`; `a crisis encounter exposes the commander`; `resolve before the fight is refused`; `a won fight moves its loot into the expedition and its hints into the queue`; `a combat result is consumed once: a second resolve is refused`; `expedition round-trips through JSON mid-node and resolves identically`; `a lost fight ends the run as failed and a retreated fight as retreated` (with the Task 11 stub replaced by a spy until Task 11); `a win with nobody standing forces a retreat`; `an injured unit leaves the formation`; `an event node offers the template's options and disables one that needs Empathy 3`; `choosing applies the effects, queues unit_event intents and returns to travel`; `an option the party cannot pay for is refused and nothing changes`; `the pinned objective event of beat 4 sets exactly one of its three flags`; `a region with no matching event resolves the node as nothing`.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/world/expeditionNodes.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS.
-- [ ] **Step 5: Commit** `feat(engine): expedition combat hand-off and fixed-option events`.
+- [x] **Step 1: Write the failing tests** — `a combat node stores the encounter and waits`; `elite raises the danger by one, capped at 5`; `a crisis encounter exposes the commander`; `resolve before the fight is refused`; `a won fight moves its loot into the expedition and its hints into the queue`; `a combat result is consumed once: a second resolve is refused`; `expedition round-trips through JSON mid-node and resolves identically`; `a lost fight ends the run as failed and a retreated fight as retreated` (with the Task 11 stub replaced by a spy until Task 11); `a win with nobody standing forces a retreat`; `an injured unit leaves the formation`; `an event node offers the template's options and disables one that needs Empathy 3`; `choosing applies the effects, queues unit_event intents and returns to travel`; `an option the party cannot pay for is refused and nothing changes`; `the pinned objective event of beat 4 sets exactly one of its three flags`; `a region with no matching event resolves the node as nothing`.
+- [x] **Step 2: Run** `npx vitest run tests/engine/world/expeditionNodes.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS.
+- [x] **Step 5: Commit** `feat(engine): expedition combat hand-off and fixed-option events`.
 
 ---
 

@@ -1,5 +1,5 @@
 import { registerAction } from '../dispatch';
-import { checkExpedition, moveTo, setFormation, startExpedition, treat, type StartExpedition, type TreatKind } from '../world/expedition';
+import { checkExpedition, chooseOption, moveTo, resolveCombat, setFormation, startExpedition, treat, type StartExpedition, type TreatKind } from '../world/expedition';
 
 // Importing this module registers the expedition actions.
 
@@ -43,4 +43,12 @@ registerAction('expedition/treat', (draft, payload, ctx) => {
   const kind = isObj(payload) ? payload.kind : undefined;
   if (typeof unitId !== 'string' || typeof kind !== 'string') throw new Error('expedition/treat needs { unitId, kind }.');
   return treat(draft, ctx, unitId, kind as TreatKind);
+});
+
+registerAction('expedition/resolve_combat', (draft, _payload, ctx) => resolveCombat(draft, ctx));
+
+registerAction('expedition/choose', (draft, payload, ctx) => {
+  const option = isObj(payload) ? payload.option : undefined;
+  if (typeof option !== 'number') throw new Error('expedition/choose needs { option }.');
+  return chooseOption(draft, ctx, option);
 });

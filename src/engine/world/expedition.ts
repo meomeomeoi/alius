@@ -1,17 +1,20 @@
 import type { Entry, Registries } from '../../content/types';
 import { slotsLeftToday } from '../calendar';
+import { generateEncounter, squadPower } from '../combat';
 import { unitStats } from '../combat/stats';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { isLiving } from '../economy';
 import { rollLoot } from '../items';
+import { meetsSocialRequirements } from '../social';
 import { nextId } from '../memory';
 import type { Rng } from '../rng';
 import type { CampaignState, LootDrop, Unit } from '../state/types';
 import { TUNING } from '../tuning';
+import { applyWorldEffects } from './effects';
 import { buildMission } from './missions';
 import { generateNodeMap, nextNodes, nodePlayType } from './nodeMap';
 import { knownRegions } from './state';
-import type { ExpeditionLogEntry, ExpeditionState, Mission } from './types';
+import type { ExpeditionLogEntry, ExpeditionState, Mission, QueuedIntent, WorldEffect } from './types';
 
 export interface Formation { front: string[]; back: string[] }
 
@@ -239,12 +242,17 @@ export function moveTo(draft: CampaignState, ctx: EngineCtx, nodeId: string): En
       break;
     }
     case 'combat':
+      events.push(...enterCombat(draft, ctx, nodeId, def!, mission));
+      break;
     case 'event':
-      throw new Error(`Expedition: ${kind} nodes are not implemented yet.`);
+      events.push(...enterEvent(draft, ctx, nodeId, isObjective, mission));
+      break;
     default:
       addLog(exp, 'move', 'Nothing here.', nodeId);
   }
-  if (reach || (isObjective && kind === 'nothing')) exp.objectiveDone = true;
+  // a node that resolved on the spot counts for a `reach` objective; fights and events finish it when they are decided
+  const resolved = exp.phase === 'travel';
+  if (resolved && (reach || (isObjective && kind === 'nothing'))) exp.objectiveDone = true;
   return events;
 }
 
@@ -283,3 +291,169 @@ export function treat(draft: CampaignState, ctx: EngineCtx, unitId: string, kind
   return [{ type: 'expedition_treated', unitId, kind }];
 }
 
+
+const clamp = (n: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, n));
+
+function enterCombat(draft: CampaignState, ctx: EngineCtx, nodeId: string, def: Entry, mission: Mission): EngineEvent[] {
+  const exp = draft.expedition!;
+  const reg = ctx.registries;
+  const combat = def.combat as { dangerDelta: number; lootTableId: string; exposesCommander?: boolean };
+  const region = reg.regions.get(exp.regionId)!;
+  let encounter;
+  try {
+    encounter = generateEncounter(draft, reg, ctx.rng, {
+      table: region.enemyTable as { categories: Record<string, number>; archetypes?: string[] },
+      danger: clamp(mission.danger + combat.dangerDelta, 1, 5) as 1 | 2 | 3 | 4 | 5,
+      squadPower: squadPower(draft, reg, ableParty(draft)),
+      exposesCommander: combat.exposesCommander,
+      lootTableId: combat.lootTableId,
+    });
+  } catch {
+    addLog(exp, 'move', 'Nothing here.', nodeId);
+    return [];
+  }
+  exp.pending = { kind: 'combat', nodeId, encounter, ...(draft.lastCombat ? { prevCombatId: draft.lastCombat.id } : {}) };
+  exp.phase = 'combat';
+  return [{ type: 'expedition_combat', nodeId, encounter }];
+}
+
+/** Ends the run (Task 11 implements the return: banking, report, slots). */
+export function endExpedition(_draft: CampaignState, _ctx: EngineCtx, outcome: 'success' | 'retreated' | 'failed'): EngineEvent[] {
+  throw new Error(`endExpedition(${outcome}) is not implemented until Task 11.`);
+}
+
+const nodeNumber = (exp: ExpeditionState): number => exp.path.length;
+
+function hintEvidence(draft: CampaignState, h: { type: string; actor: string; targets: string[] }, node: number): string {
+  const name = (id: string): string => (id === 'commander' ? 'the commander' : draft.squad.find((u) => u.id === id)?.displayName ?? id);
+  const targets = h.targets.map(name).join(' and ');
+  if (h.type === 'protected') {
+    return h.targets.includes('commander') ? `Took the hits meant for the commander at node ${node}.` : `${name(h.actor)} covered ${targets} at node ${node}.`;
+  }
+  return `${name(h.actor)} left ${targets} exposed at node ${node}.`;
+}
+
+/**
+ * Takes the result of the fight P4 played for the pending combat node: hints, loot, formation and the verdict.
+ * It is consumed once (the node leaves the `combat` phase); a stale `lastCombat` of an earlier fight is refused.
+ */
+export function resolveCombat(draft: CampaignState, ctx: EngineCtx): EngineEvent[] {
+  const exp = draft.expedition;
+  if (!exp || exp.phase !== 'combat' || exp.pending?.kind !== 'combat') throw new Error('There is no fight to resolve.');
+  if (draft.combat) throw new Error('The fight is still going.');
+  const result = draft.lastCombat;
+  if (!result || result.id === exp.pending.prevCombatId) throw new Error('The fight has not been fought yet.');
+  const nodeId = exp.pending.nodeId;
+  const node = nodeNumber(exp);
+
+  for (const h of result.relationHints) {
+    exp.hints.push({ type: h.type, actor: h.actor, targets: [...h.targets], severity: h.severity, evidence: hintEvidence(draft, h, node) } as QueuedIntent);
+  }
+  addLog(exp, 'combat', `Fight at node ${node}: ${result.outcome} in ${result.rounds} round(s).`, nodeId, {
+    outcome: result.outcome, rounds: result.rounds, enemies: result.enemies.map((e) => e.name),
+    injuries: [...result.injuries], deaths: [...result.deaths], breakdowns: [...result.breakdowns],
+  });
+  delete exp.pending;
+
+  if (result.outcome !== 'won') {
+    exp.phase = 'travel';
+    return endExpedition(draft, ctx, result.outcome === 'lost' ? 'failed' : 'retreated');
+  }
+  exp.loot.push(...structuredClone(result.loot));
+  const able = ableParty(draft);
+  if (able.length === 0) {
+    exp.phase = 'travel';
+    return endExpedition(draft, ctx, 'retreated');
+  }
+  const front = exp.formation.front.filter((id) => able.includes(id));
+  const back = exp.formation.back.filter((id) => able.includes(id));
+  if (front.length === 0) front.push(...back.splice(0, 1));
+  exp.formation = { front, back };
+  if (nodeId === exp.map.objectiveId) exp.objectiveDone = true;
+  exp.phase = 'travel';
+  return [];
+}
+
+// ---------------------------------------------------------------------------------------------
+// Events
+
+type EventOption = { label: string; requires?: { stat: string; rank: number }; effects: WorldEffect[] };
+
+/** Minor events the pack offers in this region; the ones a mission pins to its objective are never drawn at random. */
+function eventPool(reg: Registries, regionId: string): Entry[] {
+  const pinned = new Set([...reg.missionTemplates.values()].map((t) => t.objectiveEventId).filter((x): x is string => typeof x === 'string'));
+  return [...reg.dilemmaTemplates.values()].filter((t) => {
+    const regions = t.regions as string[] | undefined;
+    return t.scale === 'minor' && (t.contexts as string[]).includes('expedition_event') && !pinned.has(t.id)
+      && (regions === undefined || regions.includes(regionId));
+  });
+}
+
+function enterEvent(draft: CampaignState, ctx: EngineCtx, nodeId: string, isObjective: boolean, mission: Mission): EngineEvent[] {
+  const exp = draft.expedition!;
+  const reg = ctx.registries;
+  let templateId: string | undefined;
+  if (isObjective) {
+    const pinned = reg.missionTemplates.get(mission.templateId)?.objectiveEventId;
+    if (typeof pinned === 'string' && reg.dilemmaTemplates.has(pinned)) templateId = pinned;
+  }
+  if (templateId === undefined) {
+    const pool = eventPool(reg, exp.regionId);
+    if (pool.length > 0) templateId = String(ctx.rng.pick(pool).id);
+  }
+  if (templateId === undefined) {
+    addLog(exp, 'move', 'Nothing here.', nodeId);
+    return [];
+  }
+  exp.pending = { kind: 'event', nodeId, templateId };
+  exp.phase = 'event';
+  return [{ type: 'expedition_event', nodeId, templateId }];
+}
+
+const capital = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
+
+function optionsOf(state: CampaignState, reg: Registries): { templateId: string; title: string; options: EventOption[] } | null {
+  const pending = state.expedition?.pending;
+  if (pending?.kind !== 'event') return null;
+  const fixed = reg.dilemmaTemplates.get(pending.templateId)?.fixed as { title: string; options: EventOption[] } | undefined;
+  return fixed ? { templateId: pending.templateId, title: fixed.title, options: fixed.options } : null;
+}
+
+/** The pending event's options with the reason each is disabled (`null` = available). */
+export function eventOptions(state: CampaignState, reg: Registries): Array<{ index: number; label: string; disabled: string | null }> {
+  const found = optionsOf(state, reg);
+  if (!found) return [];
+  const exp = state.expedition!;
+  return found.options.map((o, index) => {
+    let disabled: string | null = null;
+    if (o.requires && !meetsSocialRequirements(state, { [o.requires.stat]: o.requires.rank })) {
+      disabled = `Needs ${capital(o.requires.stat)} ${o.requires.rank}`;
+    }
+    if (disabled === null) {
+      for (const fx of o.effects) {
+        if (fx.type === 'carried_supplies' && fx.amount < 0 && exp.supplies < -fx.amount) disabled = 'Not enough supplies';
+        else if (fx.type === 'resource' && fx.amount < 0 && state.resources[fx.resource] < -fx.amount) disabled = `Not enough ${fx.resource}`;
+        if (disabled !== null) break;
+      }
+    }
+    return { index, label: o.label, disabled };
+  });
+}
+
+/** Picks an option of the pending event: its effects apply, the node is resolved and the run travels on. */
+export function chooseOption(draft: CampaignState, ctx: EngineCtx, index: number): EngineEvent[] {
+  const exp = draft.expedition;
+  const found = optionsOf(draft, ctx.registries);
+  if (!exp || exp.phase !== 'event' || !found || exp.pending?.kind !== 'event') throw new Error('There is no event to answer.');
+  const option = eventOptions(draft, ctx.registries)[index];
+  if (!Number.isInteger(index) || !option) throw new Error(`There is no option ${String(index)}.`);
+  if (option.disabled !== null) throw new Error(`${option.label}: ${option.disabled}.`);
+  const { nodeId, templateId } = exp.pending;
+  const events = applyWorldEffects(draft, ctx, found.options[index].effects, { kind: 'event', id: templateId, label: found.title });
+  addLog(exp, 'event', `${found.title}: ${option.label}.`, nodeId, { templateId, option: option.label });
+  delete exp.pending;
+  exp.phase = 'travel';
+  if (nodeId === exp.map.objectiveId) exp.objectiveDone = true;
+  events.push({ type: 'expedition_choice', nodeId, templateId, option: index, label: option.label });
+  return events;
+}
