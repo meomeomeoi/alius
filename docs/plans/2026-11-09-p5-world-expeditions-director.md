@@ -256,11 +256,11 @@ docs/** (Task 21), tests/** mirror src
 - `completeBeat(draft, ctx, beatId): EngineEvent[]` — only for the proposed current beat: runs `onComplete` (`src.kind: 'beat'`), resolves the thread, `world.spineProgress += 1`, clears `spine.proposed`, emits `beat_completed`.
 - Hooks: `onMissionCompleted(draft, ctx, mission)` completes the beat named by `mission.spineBeat`; `checkBeatFlags(draft, ctx)` completes a proposed `flag`-kind beat once one of `anyOf` is set.
 
-- [ ] **Step 1: Write the failing tests** — `a beat is not ready before its minDay, flags and clearance`; `proposing a beat that is not the current one, or not ready, is refused`; `a second proposal within 3 days is refused and allowed on day 4`; `proposing opens the spine thread, stores the framing as a fact and offers the story mission`; `completing the story mission completes the beat, runs onComplete and advances spineProgress`; `a flag-kind beat completes when the flag is set by an event option`; `an auto beat completes on proposal`; `after the last beat currentBeat is null and isOpenEnded is true`; `beats cannot be skipped: completing beat_3 while beat_2 is current throws`; `clearance 1 from beat_1 raises levelCap from 10 to 20 and stored XP levels the unit at the next applyLevelUps`.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/world/spine.test.ts tests/engine/progression.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS.
-- [ ] **Step 5: Commit** `feat(engine): spine beats with conditions, completions and clearance`.
+- [x] **Step 1: Write the failing tests** — `a beat is not ready before its minDay, flags and clearance`; `proposing a beat that is not the current one, or not ready, is refused`; `a second proposal within 3 days is refused and allowed on day 4`; `proposing opens the spine thread, stores the framing as a fact and offers the story mission`; `completing the story mission completes the beat, runs onComplete and advances spineProgress`; `a flag-kind beat completes when the flag is set by an event option`; `an auto beat completes on proposal`; `after the last beat currentBeat is null and isOpenEnded is true`; `beats cannot be skipped: completing beat_3 while beat_2 is current throws`; `clearance 1 from beat_1 raises levelCap from 10 to 20 and stored XP levels the unit at the next applyLevelUps`.
+- [x] **Step 2: Run** `npx vitest run tests/engine/world/spine.test.ts tests/engine/progression.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS.
+- [x] **Step 5: Commit** `feat(engine): spine beats with conditions, completions and clearance`.
 
 ---
 

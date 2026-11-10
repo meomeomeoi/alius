@@ -7,6 +7,7 @@ import type { CampaignState, LootDrop, Unit } from '../state/types';
 import { TUNING } from '../tuning';
 import { advanceClock } from './clocks';
 import { offerMission } from './missions';
+import { checkBeatFlags } from './spine';
 import { knownRegions } from './state';
 import type { QueuedIntent, WorldEffect } from './types';
 
@@ -87,6 +88,7 @@ export function applyWorldEffects(
         for (let i = list.length - 1; i >= 0; i--) if (excluded.has(list[i])) list.splice(i, 1);
         list.push(fx.flagId);
         events.push({ type: 'flag_set', flagId: fx.flagId, scope: def.scope });
+        events.push(...checkBeatFlags(draft, ctx));
         break;
       }
       case 'clearance': {

@@ -1,6 +1,7 @@
 import { registerDayEndStep } from '../calendar';
 import { registerAction } from '../dispatch';
-import { followRumor, runDeadlines } from '../world/missions';
+import { followRumor, registerMissionCompletedHook, runDeadlines } from '../world/missions';
+import { onMissionCompleted } from '../world/spine';
 import { seedWorld } from '../world/state';
 
 // Importing this module registers the world actions (more are added by the expedition and mission modules).
@@ -27,3 +28,4 @@ registerAction('rumor/follow', (draft, payload, ctx) => {
 });
 
 registerDayEndStep('mission_deadlines', runDeadlines);
+registerMissionCompletedHook(onMissionCompleted);

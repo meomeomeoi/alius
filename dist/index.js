@@ -4556,6 +4556,41 @@ function advanceClock(draft, ctx2, clockId, by, reason, depth = 0) {
   return events;
 }
 
+// src/engine/world/spine.ts
+function spineOf(state, reg) {
+  const start = state.world.startId === void 0 ? void 0 : reg.starts.get(state.world.startId);
+  return start?.spine ?? [];
+}
+function currentBeat(state, reg) {
+  return spineOf(state, reg)[state.world.spineProgress] ?? null;
+}
+var hasFlag2 = (state, id) => state.world.flags.includes(id) || state.commander.flags.includes(id);
+function completeBeat(draft, ctx2, beatId) {
+  const beat = currentBeat(draft, ctx2.registries);
+  if (!beat || beat.id !== beatId) throw new Error(`Beat "${beatId}" is not the current beat: beats cannot be skipped.`);
+  if (draft.world.spine?.proposed !== beatId) throw new Error(`Beat "${beatId}" was not proposed.`);
+  const thread = draft.world.threads.find((t) => t.id === `spine:${beatId}`);
+  if (thread) thread.status = "resolved";
+  draft.world.spineProgress += 1;
+  delete draft.world.spine.proposed;
+  delete draft.world.spine.proposedDay;
+  const events = [{ type: "beat_completed", beatId, progress: draft.world.spineProgress }];
+  events.push(...applyWorldEffects(draft, ctx2, beat.onComplete ?? [], { kind: "beat", id: beatId, label: beat.title }));
+  return events;
+}
+function onMissionCompleted(draft, ctx2, mission) {
+  if (mission.spineBeat === void 0 || draft.world.spine?.proposed !== mission.spineBeat) return [];
+  const beat = currentBeat(draft, ctx2.registries);
+  if (!beat || beat.id !== mission.spineBeat || beat.completion?.kind !== "mission") return [];
+  return completeBeat(draft, ctx2, beat.id);
+}
+function checkBeatFlags(draft, ctx2) {
+  const beat = currentBeat(draft, ctx2.registries);
+  if (!beat || draft.world.spine?.proposed !== beat.id || beat.completion?.kind !== "flag") return [];
+  if (!beat.completion.anyOf.some((f) => hasFlag2(draft, f))) return [];
+  return completeBeat(draft, ctx2, beat.id);
+}
+
 // src/engine/world/effects.ts
 var MAX_EFFECT_DEPTH = 3;
 var clamp7 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
@@ -4610,6 +4645,7 @@ function applyWorldEffects(draft, ctx2, effects2, src) {
         for (let i = list2.length - 1; i >= 0; i--) if (excluded.has(list2[i])) list2.splice(i, 1);
         list2.push(fx2.flagId);
         events.push({ type: "flag_set", flagId: fx2.flagId, scope: def.scope });
+        events.push(...checkBeatFlags(draft, ctx2));
         break;
       }
       case "clearance": {
@@ -4749,6 +4785,10 @@ function offerMission(draft, ctx2, o) {
   events.push({ type: "mission_offered", missionId: mission.id, source: mission.source, regionId: mission.regionId, title: mission.title });
   return { mission, events };
 }
+var completedHooks = [];
+function registerMissionCompletedHook(fn) {
+  completedHooks.push(fn);
+}
 function archive(draft, m) {
   draft.missions.completed.push(m);
   if (draft.missions.completed.length > TUNING.world.completedMax) {
@@ -4814,6 +4854,7 @@ registerAction("rumor/follow", (draft, payload, ctx2) => {
   return followRumor(draft, ctx2, id);
 });
 registerDayEndStep("mission_deadlines", runDeadlines);
+registerMissionCompletedHook(onMissionCompleted);
 
 // src/engine/actions/items.ts
 var isObj10 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);

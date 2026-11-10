@@ -7,7 +7,9 @@ import {
   applyLevelUps, checkUnlock, combatXp, levelCap, loadoutSize, nodeState, respecCost, skillWithUpgrades, xpToNext,
 } from '../../src/engine/progression';
 import type { CampaignState } from '../../src/engine/state/types';
-import { campaign, errors, loadCore, ofType, run } from '../helpers/world';
+import { completeMission } from '../../src/engine/world/missions';
+import { proposeBeat } from '../../src/engine/world/spine';
+import { campaign, ctxOf, errors, loadCore, ofType, run } from '../helpers/world';
 import { fixtureCombat } from '../helpers/combat';
 
 let reg: Registries;
@@ -50,6 +52,28 @@ describe('levels', () => {
     expect(ann(s).level).toBeGreaterThan(10);
     s.world.clearanceTier = 9;
     expect(levelCap(s)).toBe(40);
+  });
+
+  it('clearance 1 from beat_1 raises levelCap from 10 to 20 and stored XP levels the unit at the next applyLevelUps', () => {
+    const s = fresh();
+    ann(s).level = 10;
+    ann(s).xp = 5000;
+    expect(levelCap(s)).toBe(10);
+    expect(applyLevelUps(s, reg, ann(s))).toEqual([]);
+    // beat_1: proposed, its story mission done
+    const ctx = ctxOf(s, reg);
+    proposeBeat(s, ctx, 'beat_1', 'The first sample.');
+    const m = s.missions.offered.splice(0, 1)[0];
+    m.status = 'active';
+    s.missions.active.push(m);
+    completeMission(s, ctx, m.id);
+    expect(s.world.clearanceTier).toBe(1);
+    expect(levelCap(s)).toBe(20);
+    expect(ann(s).level).toBe(10); // nothing levels until the next applyLevelUps
+    const events = applyLevelUps(s, reg, ann(s));
+    expect(ofType(events, 'level_up').length).toBeGreaterThan(0);
+    expect(ann(s).level).toBeGreaterThan(10);
+    expect(ann(s).level).toBeLessThanOrEqual(20);
   });
 
   it('train activity xp levels the unit through the hook', () => {
