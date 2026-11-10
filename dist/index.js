@@ -3952,7 +3952,7 @@ function generateEncounter(state, reg, rng, input) {
   const total = weighted.reduce((s, c) => s + c.weight, 0);
   const affixPool = [...reg.affixes.values()].filter((a) => a.appliesTo === "enemy" && (a.id !== "elite" || danger >= 3)).map((a) => a.id);
   const maxAffixes = Math.min(2, danger - 1);
-  const draw = () => {
+  const draw2 = () => {
     let r = rng.float() * total;
     const cat = weighted.find((c) => (r -= c.weight) < 0) ?? weighted[weighted.length - 1];
     const enemyId = rng.pick(byCategory.get(cat.id));
@@ -3968,7 +3968,7 @@ function generateEncounter(state, reg, rng, input) {
   const enemies = [];
   let spent = 0;
   while (enemies.length < MAX_ENEMIES) {
-    const next = draw();
+    const next = draw2();
     const c = cost(next);
     if (enemies.length > 0 && spent + c > budget) break;
     enemies.push(next);
@@ -4745,20 +4745,10 @@ function boardRoom(state, reg) {
   return Math.max(0, facilityEffect(state, reg, "comms", "missionBoardSize") - state.missions.offered.length);
 }
 var lowestTier = (reg, tiers) => [...tiers].sort((a, b) => (reg.rewardTiers.get(a)?.rank ?? 99) - (reg.rewardTiers.get(b)?.rank ?? 99))[0];
-function offerMission(draft, ctx2, o) {
+function buildMission(draft, ctx2, o) {
   const reg = ctx2.registries;
-  if (checkOffer(draft, reg, o) !== null) return { mission: null, events: [] };
   const tpl = reg.missionTemplates.get(o.templateId);
   const region = reg.regions.get(o.regionId);
-  const events = [];
-  if (boardRoom(draft, reg) === 0) {
-    if (o.source === "side" || o.source === "rumor") return { mission: null, events: [] };
-    const i = draft.missions.offered.findIndex((m) => m.source === "side" || m.source === "rumor");
-    if (i >= 0) {
-      const [gone] = draft.missions.offered.splice(i, 1);
-      events.push({ type: "mission_expired", missionId: gone.id, reason: "pushed_out" });
-    }
-  }
   const pick = (list2) => list2[ctx2.rng.int(0, list2.length - 1)];
   const objective = tpl.objectives.find((x) => x.node === o.objectiveNode) ?? tpl.objectives[0];
   const mission = {
@@ -4775,12 +4765,30 @@ function offerMission(draft, ctx2, o) {
     failureEffects: structuredClone(tpl.failureEffects),
     status: "offered"
   };
-  if (o.source !== "story") {
+  if (o.source !== "story" && o.poiId === void 0) {
     mission.deadlineDay = draft.day + clamp8(o.deadlineDays ?? 7, TUNING.world.deadlineMinDays, TUNING.world.deadlineMaxDays);
   }
   if (o.threadId !== void 0) mission.threadId = o.threadId;
   if (o.spineBeat !== void 0) mission.spineBeat = o.spineBeat;
   if (o.scouted === true) mission.scouted = true;
+  if (o.poiId !== void 0) mission.poiId = o.poiId;
+  return mission;
+}
+function offerMission(draft, ctx2, o) {
+  const reg = ctx2.registries;
+  if (checkOffer(draft, reg, o) !== null) return { mission: null, events: [] };
+  const tpl = reg.missionTemplates.get(o.templateId);
+  const region = reg.regions.get(o.regionId);
+  const events = [];
+  if (boardRoom(draft, reg) === 0) {
+    if (o.source === "side" || o.source === "rumor") return { mission: null, events: [] };
+    const i = draft.missions.offered.findIndex((m) => m.source === "side" || m.source === "rumor");
+    if (i >= 0) {
+      const [gone] = draft.missions.offered.splice(i, 1);
+      events.push({ type: "mission_expired", missionId: gone.id, reason: "pushed_out" });
+    }
+  }
+  const mission = buildMission(draft, ctx2, o);
   draft.missions.offered.push(mission);
   events.push({ type: "mission_offered", missionId: mission.id, source: mission.source, regionId: mission.regionId, title: mission.title });
   return { mission, events };
@@ -4856,10 +4864,366 @@ registerAction("rumor/follow", (draft, payload, ctx2) => {
 registerDayEndStep("mission_deadlines", runDeadlines);
 registerMissionCompletedHook(onMissionCompleted);
 
-// src/engine/actions/items.ts
+// src/engine/world/nodeMap.ts
+var OBJECTIVE_ID = "obj";
+function candidates2(reg, region, layer, danger) {
+  const out = [];
+  for (const [id, weight] of Object.entries(region.nodeWeights)) {
+    const def = reg.nodeTypes.get(id);
+    if (!def || def.kind === "objective" || !(weight > 0)) continue;
+    if (layer === 0 && def.firstLayer === false) continue;
+    if (typeof def.minDanger === "number" && danger < def.minDanger) continue;
+    out.push({ id, weight, kind: String(def.kind), maxPerMap: def.maxPerMap });
+  }
+  return out;
+}
+function draw(rng, list2, used, onlyKind) {
+  const open2 = list2.filter((c) => (c.maxPerMap === void 0 || (used.get(c.id) ?? 0) < c.maxPerMap) && (onlyKind === void 0 || c.kind === onlyKind));
+  if (open2.length === 0) return null;
+  const total = open2.reduce((s, c) => s + c.weight, 0);
+  let r = rng.float() * total;
+  const pick = open2.find((c) => (r -= c.weight) < 0) ?? open2[open2.length - 1];
+  return pick.id;
+}
+function generateNodeMap(reg, rng, input) {
+  const region = reg.regions.get(input.regionId);
+  if (!region) throw new Error(`Unknown region "${input.regionId}"`);
+  const [minLayers, maxLayers] = region.layers;
+  const layerCount = rng.int(minLayers, maxLayers);
+  const nodes = {};
+  const layers = [];
+  const used = /* @__PURE__ */ new Map();
+  const bump = (type, by) => used.set(type, (used.get(type) ?? 0) + by);
+  const none = () => {
+    throw new Error(`No playable node type for region "${input.regionId}"`);
+  };
+  for (let l = 0; l < layerCount; l++) {
+    const list2 = candidates2(reg, region, l, input.danger);
+    const size = rng.int(2, 3);
+    const ids = [];
+    for (let i = 0; i < size; i++) {
+      const type = draw(rng, list2, used) ?? none();
+      bump(type, 1);
+      const id = `n${l}_${i}`;
+      nodes[id] = { id, layer: l, type, edges: [], visited: false };
+      ids.push(id);
+    }
+    if (!ids.some((id) => reg.nodeTypes.get(nodes[id].type).kind === "combat")) {
+      bump(nodes[ids[0]].type, -1);
+      const type = draw(rng, list2, used, "combat");
+      if (type === null) bump(nodes[ids[0]].type, 1);
+      else {
+        nodes[ids[0]].type = type;
+        bump(type, 1);
+      }
+    }
+    layers.push(ids);
+  }
+  for (let l = 0; l + 1 < layers.length; l++) {
+    const from = layers[l];
+    const to = layers[l + 1];
+    const edges = from.map((_, i) => [Math.min(i, to.length - 1)]);
+    for (let t = 0; t < to.length; t++) {
+      if (edges.some((e) => e.includes(t))) continue;
+      const order = from.map((_, i) => i).sort((a, b) => Math.abs(a - t) - Math.abs(b - t) || a - b);
+      const donor = order.find((i) => edges[i].length < 2) ?? order[0];
+      edges[donor].push(t);
+    }
+    from.forEach((_, i) => {
+      if (edges[i].length >= 2 || !rng.chance(0.5)) return;
+      const options2 = [edges[i][0] - 1, edges[i][0] + 1].filter((t) => t >= 0 && t < to.length && !edges[i].includes(t));
+      if (options2.length > 0) edges[i].push(options2[rng.int(0, options2.length - 1)]);
+    });
+    from.forEach((id, i) => {
+      nodes[id].edges = [...edges[i]].sort((a, b) => a - b).map((t) => to[t]);
+    });
+  }
+  for (const id of layers[layers.length - 1]) nodes[id].edges = [OBJECTIVE_ID];
+  nodes[OBJECTIVE_ID] = { id: OBJECTIVE_ID, layer: layers.length, type: "objective", edges: [], visited: false };
+  return { layers, objectiveId: OBJECTIVE_ID, nodes };
+}
+function nextNodes(map, at) {
+  return at === null ? [...map.layers[0]] : [...map.nodes[at]?.edges ?? []];
+}
+function nodePlayType(map, nodeId, mission) {
+  if (nodeId === map.objectiveId) return mission.objective.node;
+  const node = map.nodes[nodeId];
+  return node.resolvedType ?? node.type;
+}
+
+// src/engine/world/expedition.ts
+function ableParty(state) {
+  return (state.expedition?.party ?? []).filter((id) => {
+    const u = state.squad.find((x) => x.id === id);
+    return u !== void 0 && isLiving(u) && u.status === "active";
+  });
+}
+function formationProblem(ids, f) {
+  const listed = [...f?.front ?? [], ...f?.back ?? []];
+  if (listed.length !== ids.length || new Set(listed).size !== listed.length || !ids.every((id) => listed.includes(id))) {
+    return "The formation must list exactly the units that go.";
+  }
+  if (f.front.length > TUNING.combat.maxPerRow || f.back.length > TUNING.combat.maxPerRow) return `A row holds at most ${TUNING.combat.maxPerRow} units.`;
+  if (f.front.length === 0) return "The front row cannot be empty.";
+  return null;
+}
+var regionName = (r) => String(r.name);
+function checkExpedition(state, reg, p) {
+  if (state.expedition) return "An expedition is already under way.";
+  if (state.combat) return "A combat is open: finish it first.";
+  if (state.scene) return "A scene is open: end it first.";
+  if (state.calendar.pendingScene) return "A talk still holds the slot: end it first.";
+  if (p.missionId === void 0 === (p.poi === void 0)) return "Choose exactly one of a mission or a point of interest.";
+  let regionId;
+  let templateId;
+  if (p.missionId !== void 0) {
+    const m = state.missions.offered.find((x) => x.id === p.missionId);
+    if (!m) return `Mission "${p.missionId}" is not on the board.`;
+    regionId = m.regionId;
+    templateId = m.templateId;
+  } else {
+    regionId = p.poi.regionId;
+    const region2 = reg.regions.get(regionId);
+    if (!region2) return `Region "${regionId}" no longer exists.`;
+    if (!knownRegions(state, reg).some((r) => r.id === regionId)) return `Region "${regionId}" is not known yet.`;
+    const poi = region2.pointsOfInterest.find((x) => x.id === p.poi.poiId);
+    if (!poi) return `Region "${regionId}" has no point of interest "${p.poi.poiId}".`;
+    const last = state.world.regions[regionId]?.poi?.[poi.id];
+    if (last !== void 0 && state.day < last + TUNING.world.poiCooldownDays) {
+      return `That point of interest cannot be run again before day ${last + TUNING.world.poiCooldownDays}.`;
+    }
+    templateId = poi.templateId;
+  }
+  const region = reg.regions.get(regionId);
+  if (!region) return `Region "${regionId}" no longer exists.`;
+  const tpl = reg.missionTemplates.get(templateId);
+  if (!tpl) return `The mission template "${templateId}" no longer exists.`;
+  if (p.poi !== void 0 && !tpl.sources.includes("side")) return `The template "${templateId}" is not a side mission.`;
+  const slots = region.travelSlots;
+  if (state.slot === "night") return "Nobody leaves at night.";
+  if (slotsLeftToday(state.slot) < slots) {
+    return `${regionName(region)} takes ${slots} slots: leave in the Morning${slots === 2 ? " or Afternoon" : ""}.`;
+  }
+  const ids = p.unitIds ?? [];
+  if (ids.length < 1 || ids.length > TUNING.expedition.partyMax) return `An expedition takes 1 to ${TUNING.expedition.partyMax} units.`;
+  if (new Set(ids).size !== ids.length) return "A unit was listed twice.";
+  for (const id of ids) {
+    const u = state.squad.find((x) => x.id === id);
+    if (!u) return `Unknown unit "${id}".`;
+    if (!isLiving(u) || u.status !== "active") return `${u.displayName} is not available (${u.status}).`;
+    if (u.breakdown) return `${u.displayName} is in a breakdown.`;
+    if (!state.roster.activeIds.includes(id)) return `${u.displayName} is not on the active roster.`;
+  }
+  const formation = formationProblem(ids, p.formation);
+  if (formation) return formation;
+  const maxSupplies = Math.min(state.resources.supplies, TUNING.expedition.suppliesMax);
+  if (!Number.isInteger(p.supplies) || p.supplies < 0 || p.supplies > maxSupplies) {
+    return `Supplies to bring must be a whole number from 0 to ${maxSupplies}.`;
+  }
+  return null;
+}
+function addLog(exp, kind, text, nodeId, data) {
+  const entry = { n: (exp.log.at(-1)?.n ?? 0) + 1, kind, text };
+  if (nodeId !== void 0) entry.nodeId = nodeId;
+  if (data !== void 0) entry.data = data;
+  exp.log.push(entry);
+  if (exp.log.length > TUNING.expedition.logMax) exp.log.splice(0, exp.log.length - TUNING.expedition.logMax);
+  return entry;
+}
+function startExpedition(draft, ctx2, p) {
+  const reg = ctx2.registries;
+  let mission;
+  if (p.missionId !== void 0) {
+    const i = draft.missions.offered.findIndex((m) => m.id === p.missionId);
+    [mission] = draft.missions.offered.splice(i, 1);
+  } else {
+    const { regionId, poiId } = p.poi;
+    const poi = reg.regions.get(regionId).pointsOfInterest.find((x) => x.id === poiId);
+    mission = buildMission(draft, ctx2, { templateId: poi.templateId, regionId, source: "side", poiId });
+    const rs = draft.world.regions[regionId] ?? { known: true };
+    draft.world.regions[regionId] = { ...rs, poi: { ...rs.poi ?? {}, [poiId]: draft.day } };
+  }
+  mission.status = "active";
+  draft.missions.active.push(mission);
+  draft.resources.supplies -= p.supplies;
+  const region = reg.regions.get(mission.regionId);
+  const revealDefect = p.unitIds.some((id) => {
+    const u = draft.squad.find((x) => x.id === id);
+    return u?.defects.some((d) => reg.defects.get(d.id)?.expedition?.reveal === 1) === true;
+  });
+  const exp = {
+    id: nextId(draft, "exp"),
+    missionId: mission.id,
+    regionId: mission.regionId,
+    day: draft.day,
+    slots: region.travelSlots,
+    party: [...p.unitIds],
+    formation: { front: [...p.formation.front], back: [...p.formation.back] },
+    supplies: p.supplies,
+    map: generateNodeMap(reg, ctx2.rng, { regionId: mission.regionId, danger: mission.danger }),
+    at: null,
+    path: [],
+    phase: "travel",
+    loot: [],
+    log: [],
+    hints: [],
+    objectiveDone: false,
+    reveal: 1 + (revealDefect ? 1 : 0) + (mission.scouted === true ? 1 : 0)
+  };
+  addLog(exp, "start", `Departed for ${regionName(region)}: ${mission.title}.`);
+  draft.expedition = exp;
+  return [{ type: "expedition_started", expeditionId: exp.id, missionId: mission.id, regionId: mission.regionId, party: exp.party, slots: exp.slots }];
+}
+function resolveUnknownType(reg, rng, typeId) {
+  const weights = Object.entries(reg.nodeTypes.get(typeId)?.resolvesTo ?? {}).filter(([id, w]) => reg.nodeTypes.has(id) && w > 0);
+  const total = weights.reduce((s, [, w]) => s + w, 0);
+  if (total <= 0) return null;
+  let r = rng.float() * total;
+  return (weights.find(([, w]) => (r -= w) < 0) ?? weights[weights.length - 1])[0];
+}
+var describeLoot = (drops, reg) => {
+  if (drops.length === 0) return "nothing";
+  return drops.map((d) => d.kind === "item" ? String(reg.items.get(d.item.itemId)?.name ?? d.item.itemId) : `${d.amount} ${d.kind}`).join(", ");
+};
+function missionOf(draft) {
+  const m = draft.missions.active.find((x) => x.id === draft.expedition.missionId);
+  if (!m) throw new Error("The mission of this expedition is gone.");
+  return m;
+}
+function moveTo(draft, ctx2, nodeId) {
+  const exp = draft.expedition;
+  if (!exp) throw new Error("There is no expedition.");
+  if (exp.phase !== "travel") throw new Error("Finish what is happening here first.");
+  if (!nextNodes(exp.map, exp.at).includes(nodeId)) throw new Error(`Node "${nodeId}" cannot be reached from here.`);
+  const reg = ctx2.registries;
+  const mission = missionOf(draft);
+  const node = exp.map.nodes[nodeId];
+  node.visited = true;
+  exp.at = nodeId;
+  exp.path.push(nodeId);
+  const events = [{ type: "expedition_moved", nodeId }];
+  let playType = nodePlayType(exp.map, nodeId, mission);
+  if (reg.nodeTypes.get(playType)?.kind === "unknown") {
+    const resolved = resolveUnknownType(reg, ctx2.rng, playType);
+    if (resolved !== null) node.resolvedType = resolved;
+    playType = resolved ?? playType;
+  }
+  const def = reg.nodeTypes.get(playType);
+  const isObjective = nodeId === exp.map.objectiveId;
+  const reach = isObjective && mission.objective.condition === "reach";
+  const kind = def && def.kind !== "unknown" ? String(def.kind) : "nothing";
+  addLog(exp, "move", `Moved to ${def ? String(def.name) : "an empty place"}.`, nodeId);
+  events.push({ type: "expedition_node", nodeId, nodeType: playType, kind });
+  switch (kind) {
+    case "cache": {
+      if (!reg.lootTables.has("loot_cache")) {
+        addLog(exp, "cache", "Nothing here.", nodeId);
+        break;
+      }
+      const drops = rollLoot(draft, reg, ctx2.rng, "loot_cache");
+      exp.loot.push(...drops);
+      addLog(exp, "cache", `Cache opened: ${describeLoot(drops, reg)}.`, nodeId, { drops: drops.length });
+      break;
+    }
+    case "rest": {
+      const rest = def.rest;
+      const able = ableParty(draft);
+      const need = rest.suppliesPerUnit * able.length;
+      if (exp.supplies < need) {
+        addLog(exp, "rest", "No supplies to rest.", nodeId, { need, have: exp.supplies });
+        break;
+      }
+      exp.supplies -= need;
+      for (const id of able) {
+        const u = draft.squad.find((x) => x.id === id);
+        const max = unitStats(draft, reg, u).hp;
+        u.currentHp = Math.min(max, u.currentHp + Math.round(max * rest.hpPct / 100));
+        u.stress = Math.max(0, Math.min(100, u.stress + rest.stress));
+      }
+      addLog(exp, "rest", `The squad rests (${need} supplies).`, nodeId, { spent: need });
+      break;
+    }
+    case "combat":
+    case "event":
+      throw new Error(`Expedition: ${kind} nodes are not implemented yet.`);
+    default:
+      addLog(exp, "move", "Nothing here.", nodeId);
+  }
+  if (reach || isObjective && kind === "nothing") exp.objectiveDone = true;
+  return events;
+}
+function setFormation(draft, formation) {
+  const exp = draft.expedition;
+  if (!exp) throw new Error("There is no expedition.");
+  const idle = exp.phase === "travel" || exp.pending?.kind === "combat" && !draft.combat;
+  if (!idle) throw new Error("The formation cannot change right now.");
+  const problem = formationProblem(ableParty(draft), formation);
+  if (problem) throw new Error(problem);
+  exp.formation = { front: [...formation.front], back: [...formation.back] };
+}
+var TREAT_KINDS = ["patch", "calm"];
+function treat(draft, ctx2, unitId, kind) {
+  const exp = draft.expedition;
+  if (!exp) throw new Error("There is no expedition.");
+  if (exp.phase !== "travel") throw new Error("Nobody can be treated right now.");
+  if (!TREAT_KINDS.includes(kind)) throw new Error(`Unknown treatment "${String(kind)}".`);
+  if (!ableParty(draft).includes(unitId)) throw new Error(`Unit "${unitId}" cannot be treated.`);
+  if (exp.supplies < 1) throw new Error("No supplies to spend.");
+  const u = draft.squad.find((x) => x.id === unitId);
+  if (kind === "calm" && u.breakdown) throw new Error(`${u.displayName} is in a breakdown and cannot be calmed.`);
+  exp.supplies -= 1;
+  if (kind === "patch") {
+    const max = unitStats(draft, ctx2.registries, u).hp;
+    u.currentHp = Math.min(max, u.currentHp + Math.round(max * TUNING.expedition.treat.hpPct / 100));
+  } else {
+    u.stress = Math.max(0, u.stress - TUNING.expedition.treat.stress);
+  }
+  addLog(exp, "treat", `${u.displayName}: ${kind === "patch" ? "wounds patched" : "calmed down"}.`, void 0, { unitId, kind });
+  return [{ type: "expedition_treated", unitId, kind }];
+}
+
+// src/engine/actions/expedition.ts
 var isObj10 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var strList = (v) => Array.isArray(v) && v.every((x) => typeof x === "string") ? v : null;
+function readFormation(v) {
+  const front = isObj10(v) ? strList(v.front) : null;
+  const back = isObj10(v) ? strList(v.back) : null;
+  if (!front || !back) throw new Error("A formation needs { front: string[], back: string[] }.");
+  return { front, back };
+}
+registerAction("expedition/start", (draft, payload, ctx2) => {
+  if (!isObj10(payload)) throw new Error("expedition/start needs a payload.");
+  const unitIds = strList(payload.unitIds);
+  if (!unitIds) throw new Error("expedition/start needs { unitIds: string[] }.");
+  const p = { unitIds, formation: readFormation(payload.formation), supplies: payload.supplies };
+  if (typeof payload.missionId === "string") p.missionId = payload.missionId;
+  if (isObj10(payload.poi) && typeof payload.poi.regionId === "string" && typeof payload.poi.poiId === "string") {
+    p.poi = { regionId: payload.poi.regionId, poiId: payload.poi.poiId };
+  }
+  const problem = checkExpedition(draft, ctx2.registries, p);
+  if (problem) throw new Error(problem);
+  return startExpedition(draft, ctx2, p);
+});
+registerAction("expedition/move", (draft, payload, ctx2) => {
+  const nodeId = isObj10(payload) ? payload.nodeId : void 0;
+  if (typeof nodeId !== "string") throw new Error("expedition/move needs { nodeId }.");
+  return moveTo(draft, ctx2, nodeId);
+});
+registerAction("expedition/set_formation", (draft, payload) => {
+  setFormation(draft, readFormation(isObj10(payload) ? payload.formation : void 0));
+  return [];
+});
+registerAction("expedition/treat", (draft, payload, ctx2) => {
+  const unitId = isObj10(payload) ? payload.unitId : void 0;
+  const kind = isObj10(payload) ? payload.kind : void 0;
+  if (typeof unitId !== "string" || typeof kind !== "string") throw new Error("expedition/treat needs { unitId, kind }.");
+  return treat(draft, ctx2, unitId, kind);
+});
+
+// src/engine/actions/items.ts
+var isObj11 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 registerAction("item/equip", (draft, payload, ctx2) => {
-  if (!isObj10(payload) || typeof payload.unitId !== "string" || typeof payload.uid !== "string") {
+  if (!isObj11(payload) || typeof payload.unitId !== "string" || typeof payload.uid !== "string") {
     throw new Error("item/equip needs { unitId, uid }");
   }
   const unit = draft.squad.find((u) => u.id === payload.unitId);
@@ -4877,7 +5241,7 @@ registerAction("item/equip", (draft, payload, ctx2) => {
   return [{ type: "item_equipped", unitId: unit.id, slot, uid: inst.uid, from: previous?.id ?? null }];
 });
 registerAction("item/unequip", (draft, payload) => {
-  if (!isObj10(payload) || typeof payload.unitId !== "string" || !["weapon", "upper", "lower"].includes(String(payload.slot))) {
+  if (!isObj11(payload) || typeof payload.unitId !== "string" || !["weapon", "upper", "lower"].includes(String(payload.slot))) {
     throw new Error("item/unequip needs { unitId, slot }");
   }
   const unit = draft.squad.find((u) => u.id === payload.unitId);
@@ -4907,7 +5271,7 @@ var ownedItem = (draft, uid) => {
 };
 registerAction("item/craft", (draft, payload, ctx2) => {
   session(draft);
-  const id = isObj10(payload) ? payload.recipeId : void 0;
+  const id = isObj11(payload) ? payload.recipeId : void 0;
   const recipe = typeof id === "string" ? ctx2.registries.recipes.get(id) : void 0;
   if (!recipe) throw new Error(`Unknown recipe "${String(id)}".`);
   const rarity = recipe.rarity;
@@ -4921,7 +5285,7 @@ registerAction("item/craft", (draft, payload, ctx2) => {
 });
 registerAction("item/upgrade", (draft, payload, ctx2) => {
   session(draft);
-  const inst = ownedItem(draft, isObj10(payload) ? payload.uid : void 0);
+  const inst = ownedItem(draft, isObj11(payload) ? payload.uid : void 0);
   if (inst.upgrade >= TUNING.items.maxUpgrade) throw new Error("MAX UPGRADE");
   const cost = upgradeCost(draft, ctx2.registries, inst);
   const events = spend(draft, cost.credits, cost.plyx);
@@ -4931,7 +5295,7 @@ registerAction("item/upgrade", (draft, payload, ctx2) => {
 });
 registerAction("item/reroll", (draft, payload, ctx2) => {
   session(draft);
-  const p = isObj10(payload) ? payload : {};
+  const p = isObj11(payload) ? payload : {};
   const inst = ownedItem(draft, p.uid);
   const i = p.affixIndex;
   if (typeof i !== "number" || !Number.isInteger(i) || i < 0 || i >= inst.affixes.length) throw new Error("Pick one of the item's affixes.");
@@ -4947,7 +5311,7 @@ registerAction("item/reroll", (draft, payload, ctx2) => {
 });
 registerAction("item/dismantle", (draft, payload, ctx2) => {
   session(draft);
-  const inst = ownedItem(draft, isObj10(payload) ? payload.uid : void 0);
+  const inst = ownedItem(draft, isObj11(payload) ? payload.uid : void 0);
   if (equippedBy(draft, inst.uid)) throw new Error("Unequip the item first.");
   const plyx = dismantleValue(ctx2.registries, inst);
   draft.inventory = draft.inventory.filter((i) => i.uid !== inst.uid);
@@ -10399,17 +10763,17 @@ registerCallType({
   prompt: prompt2,
   schema: IntentExtractRawSchema
 });
-var isObj11 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj12 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var LABELS = EXPRESSION_LABELS;
 function sanitizeIntentOutput(raw, ctx2) {
   const parsed = IntentExtractRawSchema.safeParse(raw);
   const src = parsed.success ? parsed.data : { events: [], facts: [], proposals: [], promises: [], emotions: [], stressHints: [] };
-  const events = src.events.filter((e) => isObj11(e) && typeof e.confidence === "number" && e.confidence >= ctx2.minConfidence);
-  const proposals2 = src.proposals.filter((p) => ctx2.romance || !(isObj11(p) && ROMANTIC_PROPOSALS.includes(p.kind)));
+  const events = src.events.filter((e) => isObj12(e) && typeof e.confidence === "number" && e.confidence >= ctx2.minConfidence);
+  const proposals2 = src.proposals.filter((p) => ctx2.romance || !(isObj12(p) && ROMANTIC_PROPOSALS.includes(p.kind)));
   const intents = validateIntents({ ...src, events, proposals: proposals2 }, { participants: ctx2.participants, squad: ctx2.squad });
   const emotions = [];
   for (const e of src.emotions) {
-    if (isObj11(e) && typeof e.unitId === "string" && ctx2.participants.includes(e.unitId) && typeof e.label === "string" && LABELS.includes(e.label)) {
+    if (isObj12(e) && typeof e.unitId === "string" && ctx2.participants.includes(e.unitId) && typeof e.label === "string" && LABELS.includes(e.label)) {
       emotions.push({ unitId: e.unitId, label: e.label });
     }
   }
@@ -11211,16 +11575,16 @@ var fieldSchemas = {
   enemyFlavor: external_exports.boolean()
 };
 var budgetSchema = external_exports.number().int().min(1);
-var isObj12 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj13 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function merge(base, over) {
-  const src = isObj12(over) ? over : {};
+  const src = isObj13(over) ? over : {};
   const out = { ...base };
   for (const [key, schema] of Object.entries(fieldSchemas)) {
     const parsed = schema.safeParse(src[key]);
     if (parsed.success) out[key] = parsed.data;
   }
   const budgets = { ...base.budgets };
-  const srcBudgets = isObj12(src.budgets) ? src.budgets : {};
+  const srcBudgets = isObj13(src.budgets) ? src.budgets : {};
   for (const id of CALL_TYPE_IDS) {
     const parsed = budgetSchema.safeParse(srcBudgets[id]);
     if (parsed.success) budgets[id] = parsed.data;
@@ -11275,7 +11639,7 @@ function buildImportInput(card2, registries, settings, sections) {
     defects: [...registries.defects.values()].filter((d) => settings.desireBondDefects || d.category !== "desire_bond").map((d) => ({ id: d.id, lore: str3(d.lore) }))
   };
 }
-var isObj13 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj14 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var cap = (v, max, fallback = "") => typeof v === "string" ? v.trim().slice(0, max) : fallback;
 var num = (v, lo, hi, fallback) => typeof v === "number" && Number.isFinite(v) ? Math.min(hi, Math.max(lo, Math.round(v))) : fallback;
 var SECTION_LABEL = { role: "role", signature: "signature", defects: "defects" };
@@ -11291,7 +11655,7 @@ function tagList2(v, max) {
   return out;
 }
 function sanitizeProfile(raw, ctx2) {
-  const src = isObj13(raw) ? raw : {};
+  const src = isObj14(raw) ? raw : {};
   const want = (s) => ctx2.sections.includes(s);
   const dropped = [];
   const missing = [];
@@ -11300,7 +11664,7 @@ function sanitizeProfile(raw, ctx2) {
     const out = [];
     const seen = /* @__PURE__ */ new Set();
     for (const item of Array.isArray(list2) ? list2 : []) {
-      const id = isObj13(item) && typeof item[idKey] === "string" ? item[idKey] : null;
+      const id = isObj14(item) && typeof item[idKey] === "string" ? item[idKey] : null;
       if (id === null) {
         dropped.push(`${SECTION_LABEL[section]}:(invalid)`);
         continue;
@@ -11358,7 +11722,7 @@ function sanitizeProfile(raw, ctx2) {
     if (profile.defectCandidates.length === 0) missing.push("defects");
   }
   if (want("values")) {
-    if (isObj13(src.values)) {
+    if (isObj14(src.values)) {
       const v = src.values;
       profile.values = Object.fromEntries(VALUE_KEYS.map((k) => [k, num(v[k], -3, 3, 0)]));
     } else missing.push("values");
@@ -11373,7 +11737,7 @@ function sanitizeProfile(raw, ctx2) {
     if (!likes && !dislikes && !triggers) missing.push("tags");
   }
   if (want("baseline")) {
-    if (isObj13(src.emotionalBaseline)) {
+    if (isObj14(src.emotionalBaseline)) {
       const b = src.emotionalBaseline;
       const lim = SETUP_LIMITS.baseline;
       profile.baseline = {
@@ -11729,7 +12093,7 @@ function identity(el) {
   return label2 ? `aria=${label2}` : null;
 }
 var isText = (el) => el instanceof HTMLInputElement && ["text", "search", "email", "url", "tel", "password"].includes(el.type) || el instanceof HTMLTextAreaElement;
-function renderKeepingFocus(host, draw) {
+function renderKeepingFocus(host, draw2) {
   const active = document.activeElement;
   let id = null;
   let index = -1;
@@ -11741,7 +12105,7 @@ function renderKeepingFocus(host, draw) {
     tag = active.tagName;
     if (isText(active)) caret = [active.selectionStart, active.selectionEnd];
   }
-  draw();
+  draw2();
   if (index < 0) return;
   const controls = [...host.querySelectorAll(CONTROLS)];
   const byId = id ? controls.find((c) => identity(c) === id) : void 0;
@@ -14629,7 +14993,7 @@ function createApp(st, deps) {
     });
     wizard.calibrate(0);
     const body = h("div", { class: "alius-calibration" });
-    const draw = () => renderCalibration(body, {
+    const draw2 = () => renderCalibration(body, {
       draft: wizard.state.units[0],
       registries,
       desireBondDefects: desireBond,
@@ -14638,8 +15002,8 @@ function createApp(st, deps) {
       onRegenerate: (s) => wizard.regenerate(0, s),
       onManual: () => wizard.setManual(0)
     });
-    wizard.subscribe(() => renderKeepingFocus(body, draw));
-    draw();
+    wizard.subscribe(() => renderKeepingFocus(body, draw2));
+    draw2();
     const answer = await shell.modal({
       title: `Re-sync ${unit.displayName}`,
       body,
@@ -16416,13 +16780,13 @@ import { editGroup, openGroupById } from "../../../../group-chats.js";
 import { newWorldInfoEntryTemplate } from "../../../../world-info.js";
 
 // src/st/chat.ts
-var isObj14 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj15 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function mapChatMessages(chat, from = 0) {
   if (!Array.isArray(chat)) return [];
   const out = [];
   for (let index = Math.max(0, from); index < chat.length; index++) {
     const m = chat[index];
-    if (!isObj14(m) || m.is_system === true) continue;
+    if (!isObj15(m) || m.is_system === true) continue;
     const avatar = typeof m.original_avatar === "string" && m.original_avatar !== "" ? m.original_avatar : void 0;
     out.push({
       index,
@@ -16439,7 +16803,7 @@ function lastCharacterAvatar(chat) {
   if (!Array.isArray(chat)) return void 0;
   for (let i = chat.length - 1; i >= 0; i--) {
     const m = chat[i];
-    if (isObj14(m) && m.is_user !== true && m.is_system !== true) {
+    if (isObj15(m) && m.is_user !== true && m.is_system !== true) {
       return typeof m.original_avatar === "string" && m.original_avatar !== "" ? m.original_avatar : void 0;
     }
   }
@@ -16475,17 +16839,17 @@ function toStLorebook(book, template) {
 }
 
 // src/st/sprites.ts
-var isObj15 = (v) => typeof v === "object" && v !== null;
+var isObj16 = (v) => typeof v === "object" && v !== null;
 function spriteFolder(avatar, name, overrides) {
   if (!Array.isArray(overrides)) return name;
   const key = avatar.replace(/\.[^.]+$/, "");
-  const hit = overrides.find((o) => isObj15(o) && o.name === key && typeof o.path === "string" && o.path !== "");
+  const hit = overrides.find((o) => isObj16(o) && o.name === key && typeof o.path === "string" && o.path !== "");
   return hit ? hit.path : name;
 }
 function pickSprite(list2, label2) {
   if (!Array.isArray(list2)) return null;
   for (const item of list2) {
-    if (isObj15(item) && item.label === label2 && typeof item.path === "string") return item.path;
+    if (isObj16(item) && item.label === label2 && typeof item.path === "string") return item.path;
   }
   return null;
 }

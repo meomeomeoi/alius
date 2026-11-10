@@ -302,11 +302,11 @@ docs/** (Task 21), tests/** mirror src
 - `treat(draft, ctx, unitId, kind: 'patch'|'calm')` — phase `travel`, unit in `ableParty`, 1 carried supply; `patch` +20 % max HP (cap max), `calm` −10 stress (floor 0; refused for a unit in breakdown); emits `expedition_treated`.
 - Actions: `expedition/start` (payload `StartExpedition`), `expedition/move { nodeId }`, `expedition/set_formation { formation }`, `expedition/treat { unitId, kind }`.
 
-- [ ] **Step 1: Write the failing tests** — `start moves the mission to active, takes the supplies and builds a map`; `start is refused in the Evening for a 2-slot region and in the Afternoon for a 3-slot region, with the region named`; `start is refused at night, with an open scene, an open talk, an open combat or a second expedition`; `start is refused for an injured, dead, reserve, duplicate or fifth unit`; `more supplies than owned or than 12 are refused`; `a refused start leaves the state deep-equal`; `a POI start creates a side mission that never appears on the board and stamps the cooldown`; `a POI on cooldown is refused until day + 2`; `echo_bleed and a scouted mission each add 1 to reveal`; `move only accepts a connected node`; `cache adds loot to the expedition, not to the inventory`; `rest spends 1 supply per able unit and heals`; `rest without supplies changes nothing and logs it`; `unknown resolves to a real type with the seed`; `a node type removed from the pack resolves as nothing and the run continues`; `treat spends one supply and never exceeds max HP`; `reaching a reach-objective sets objectiveDone`; `activities are refused during the run` (guard, via `activity/do`).
-- [ ] **Step 2: Run** `npx vitest run tests/engine/world/expedition.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS.
-- [ ] **Step 5: Commit** `feat(engine): expedition start, node movement, caches, rest and field treatment`.
+- [x] **Step 1: Write the failing tests** — `start moves the mission to active, takes the supplies and builds a map`; `start is refused in the Evening for a 2-slot region and in the Afternoon for a 3-slot region, with the region named`; `start is refused at night, with an open scene, an open talk, an open combat or a second expedition`; `start is refused for an injured, dead, reserve, duplicate or fifth unit`; `more supplies than owned or than 12 are refused`; `a refused start leaves the state deep-equal`; `a POI start creates a side mission that never appears on the board and stamps the cooldown`; `a POI on cooldown is refused until day + 2`; `echo_bleed and a scouted mission each add 1 to reveal`; `move only accepts a connected node`; `cache adds loot to the expedition, not to the inventory`; `rest spends 1 supply per able unit and heals`; `rest without supplies changes nothing and logs it`; `unknown resolves to a real type with the seed`; `a node type removed from the pack resolves as nothing and the run continues`; `treat spends one supply and never exceeds max HP`; `reaching a reach-objective sets objectiveDone`; `activities are refused during the run` (guard, via `activity/do`).
+- [x] **Step 2: Run** `npx vitest run tests/engine/world/expedition.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS.
+- [x] **Step 5: Commit** `feat(engine): expedition start, node movement, caches, rest and field treatment`.
 
 ---
 

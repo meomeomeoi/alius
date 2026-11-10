@@ -7,6 +7,7 @@ import './engine/actions/comms'; // registers dm/*, night/* actions and the defe
 import './engine/actions/combat'; // registers combat/* and campaign/set_difficulty actions
 import './engine/actions/progression'; // registers squad/unlock_node, respec, set_loadout, release_breakdowns and the level-up hook
 import './engine/actions/world'; // registers world/* actions
+import './engine/actions/expedition'; // registers expedition/* actions
 import './engine/actions/items'; // registers item/* actions and the workshop hook
 import './llm/calls/profileImport'; // registers the profile_import call type
 import { generateVignette } from './llm/calls/activityVignette'; // registers the activity_vignette call type

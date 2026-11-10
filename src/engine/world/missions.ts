@@ -25,6 +25,8 @@ export interface MissionOffer {
   threadId?: string;
   spineBeat?: string;
   scouted?: boolean;
+  /** A standing point-of-interest run: no deadline, never on the board. */
+  poiId?: string;
 }
 
 type Template = Entry & {
@@ -66,6 +68,37 @@ export function missionById(state: CampaignState, id: string): Mission | undefin
 const lowestTier = (reg: Registries, tiers: string[]): string =>
   [...tiers].sort((a, b) => ((reg.rewardTiers.get(a)?.rank as number | undefined) ?? 99) - ((reg.rewardTiers.get(b)?.rank as number | undefined) ?? 99))[0];
 
+/** Builds (does not place) a mission from an offer: defaults come from the template and region. */
+export function buildMission(draft: CampaignState, ctx: EngineCtx, o: MissionOffer): Mission {
+  const reg = ctx.registries;
+  const tpl = reg.missionTemplates.get(o.templateId) as Template;
+  const region = reg.regions.get(o.regionId)!;
+  const pick = (list: string[]): string => list[ctx.rng.int(0, list.length - 1)];
+  const objective = tpl.objectives.find((x) => x.node === o.objectiveNode) ?? tpl.objectives[0];
+  const mission: Mission = {
+    id: nextId(draft, 'm'),
+    source: o.source,
+    templateId: o.templateId,
+    title: (o.title ?? pick(tpl.titles)).slice(0, TUNING.director.titleMax),
+    brief: (o.brief ?? pick(tpl.briefs)).slice(0, TUNING.director.briefMax),
+    regionId: o.regionId,
+    danger: clamp(Math.round(o.danger ?? (region.danger as number)), tpl.dangerRange[0], tpl.dangerRange[1]) as Mission['danger'],
+    objective: { node: objective.node, condition: objective.condition },
+    offeredDay: draft.day,
+    rewardsTier: o.rewardsTier ?? lowestTier(reg, tpl.tiers),
+    failureEffects: structuredClone(tpl.failureEffects),
+    status: 'offered',
+  };
+  if (o.source !== 'story' && o.poiId === undefined) {
+    mission.deadlineDay = draft.day + clamp(o.deadlineDays ?? 7, TUNING.world.deadlineMinDays, TUNING.world.deadlineMaxDays);
+  }
+  if (o.threadId !== undefined) mission.threadId = o.threadId;
+  if (o.spineBeat !== undefined) mission.spineBeat = o.spineBeat;
+  if (o.scouted === true) mission.scouted = true;
+  if (o.poiId !== undefined) mission.poiId = o.poiId;
+  return mission;
+}
+
 /**
  * Puts a mission on the board. Defaults (danger, texts, first objective, lowest tier, deadline) are filled from the
  * template. A full board refuses `side`/`rumor` offers; a `command`/`story` offer pushes out the oldest `side`/`rumor` one.
@@ -87,28 +120,7 @@ export function offerMission(draft: CampaignState, ctx: EngineCtx, o: MissionOff
     }
   }
 
-  const pick = (list: string[]): string => list[ctx.rng.int(0, list.length - 1)];
-  const objective = tpl.objectives.find((x) => x.node === o.objectiveNode) ?? tpl.objectives[0];
-  const mission: Mission = {
-    id: nextId(draft, 'm'),
-    source: o.source,
-    templateId: o.templateId,
-    title: (o.title ?? pick(tpl.titles)).slice(0, TUNING.director.titleMax),
-    brief: (o.brief ?? pick(tpl.briefs)).slice(0, TUNING.director.briefMax),
-    regionId: o.regionId,
-    danger: clamp(Math.round(o.danger ?? (region.danger as number)), tpl.dangerRange[0], tpl.dangerRange[1]) as Mission['danger'],
-    objective: { node: objective.node, condition: objective.condition },
-    offeredDay: draft.day,
-    rewardsTier: o.rewardsTier ?? lowestTier(reg, tpl.tiers),
-    failureEffects: structuredClone(tpl.failureEffects),
-    status: 'offered',
-  };
-  if (o.source !== 'story') {
-    mission.deadlineDay = draft.day + clamp(o.deadlineDays ?? 7, TUNING.world.deadlineMinDays, TUNING.world.deadlineMaxDays);
-  }
-  if (o.threadId !== undefined) mission.threadId = o.threadId;
-  if (o.spineBeat !== undefined) mission.spineBeat = o.spineBeat;
-  if (o.scouted === true) mission.scouted = true;
+  const mission = buildMission(draft, ctx, o);
   draft.missions.offered.push(mission);
   events.push({ type: 'mission_offered', missionId: mission.id, source: mission.source, regionId: mission.regionId, title: mission.title });
   return { mission, events };
