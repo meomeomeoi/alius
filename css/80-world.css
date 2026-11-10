@@ -19,3 +19,13 @@
 .alius-mission h3 { margin: 0 0 0.2em; }
 .alius-rumor { opacity: 0.9; }
 .alius-rumor p { margin: 0.1em 0; }
+.alius-nodemap { display: flex; align-items: center; gap: 0.2em; overflow-x: auto; padding: 0.4em 0; }
+.alius-nodecol { display: flex; flex-direction: column; gap: 0.2em; }
+.alius-node { font-family: inherit; background: none; border: 0; color: inherit; padding: 0 0.1em; opacity: 0.55; }
+.alius-node.alius-path { opacity: 1; font-weight: bold; text-shadow: 0 0 4px currentColor; }
+button.alius-node.alius-option { opacity: 1; cursor: pointer; border: 1px dashed currentColor; }
+.alius-nodelink { opacity: 0.5; white-space: pre; }
+.alius-party-unit { margin: 0.2em 0; }
+.alius-planner-unit { margin: 0.2em 0; }
+.alius-report-line, .alius-recap { margin: 0.2em 0; }
+.alius-recap { border-left: 2px solid currentColor; padding-left: 0.6em; }

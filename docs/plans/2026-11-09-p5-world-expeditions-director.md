@@ -515,11 +515,11 @@ docs/** (Task 21), tests/** mirror src
 - Run view: map, party strip (name, `HP ████░░`, `ST ███░░`, row, breakdown marker; per unit `[PATCH] [CALM]` with the supply cost; row swap buttons), `SUPPLIES n`, unbanked loot count, log (last 8 lines), `[ RETREAT ]` (confirm modal: `Unbanked loot will be lost.`) and, once `objectiveDone`, `[ RETURN TO BASE ]`. Pending combat: enemy list (`defaultEnemyName`), cover picker when the encounter exposes the commander, `[ FIGHT ]`, `[ AUTO ]` only when `canAutoResolve`, `[ RETREAT ]`. Pending event: title, setup, option buttons from `eventOptions` (disabled with the reason).
 - Report (`report.ts`): `AFTER-ACTION REPORT` header, the recap paragraph when present (or `COMPILING…` while requested), `reportLines`, `[ DEBRIEF ]` (pick up to 3 named living party units; hidden at night or when already debriefed), `[ CLOSE ]` → `controller.acknowledge()` + `onClose`.
 
-- [ ] **Step 1: Write the failing tests** — planner: `lists the mission and the duration`, `an injured unit is disabled with the reason`, `DEPART is disabled with the engine reason and enabled for a valid plan`, `the fifth checkbox cannot be ticked`, `supplies cannot exceed what is owned`; run: `renders layers joined by ── with glyphs only for visible nodes`, `only connected nodes are buttons and clicking one calls move`, `the visited path is highlighted`, `PATCH is disabled without supplies`, `RETURN appears only after the objective`, `RETREAT asks for confirmation`; combat panel: `shows the enemies, a cover picker for a crisis and AUTO only when allowed`; event panel: `shows options and disables the one that needs Empathy 3`, `event text is not HTML`; report: `shows the deterministic lines without a recap and the recap when present`, `DEBRIEF is hidden at night`, `CLOSE acknowledges`.
-- [ ] **Step 2: Run** `npx vitest run tests/ui/expedition.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS.
-- [ ] **Step 5: Commit** `feat(ui): expedition planner, node map, event panel and after-action report`.
+- [x] **Step 1: Write the failing tests** — planner: `lists the mission and the duration`, `an injured unit is disabled with the reason`, `DEPART is disabled with the engine reason and enabled for a valid plan`, `the fifth checkbox cannot be ticked`, `supplies cannot exceed what is owned`; run: `renders layers joined by ── with glyphs only for visible nodes`, `only connected nodes are buttons and clicking one calls move`, `the visited path is highlighted`, `PATCH is disabled without supplies`, `RETURN appears only after the objective`, `RETREAT asks for confirmation`; combat panel: `shows the enemies, a cover picker for a crisis and AUTO only when allowed`; event panel: `shows options and disables the one that needs Empathy 3`, `event text is not HTML`; report: `shows the deterministic lines without a recap and the recap when present`, `DEBRIEF is hidden at night`, `CLOSE acknowledges`.
+- [x] **Step 2: Run** `npx vitest run tests/ui/expedition.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS.
+- [x] **Step 5: Commit** `feat(ui): expedition planner, node map, event panel and after-action report`.
 
 ---
 
