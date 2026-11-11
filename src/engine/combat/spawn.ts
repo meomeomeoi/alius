@@ -1,7 +1,8 @@
 import type { Registries } from '../../content/types';
 import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
-import { enemyStats } from './stats';
+import { ownedUpgrades, unitSkillIds } from './skills';
+import { enemyStats, unitStats } from './stats';
 import type { CombatState, Combatant, EffectSpec, Row } from './types';
 
 /** A generated enemy name: 1–3 words of letters (hyphens inside words allowed), at most 32 characters. */
@@ -60,6 +61,57 @@ export function spawnEnemy(
     aiProfile: tpl.aiProfile as string,
     usedLimits: [],
     ...(summonedBy ? { summonedBy } : {}),
+  };
+  cs.nextCid += 1;
+  cs.combatants.push(c);
+  return c;
+}
+
+/**
+ * A squad unit on the enemy side (a mutiny): her stats and her own skills, only the passives of her defects (no
+ * synergies, items or signature passive: she fights as who she is, not as the commander's soldier), her role's AI, no
+ * stress. She is never written back as a squad unit (`finalizeCombat` lists her in `result.mutineers`).
+ */
+export function spawnMutineer(
+  cs: CombatState, state: CampaignState, reg: Registries, spec: { unitId: string; row?: Row },
+): Combatant | null {
+  const unit = state.squad.find((u) => u.id === spec.unitId);
+  if (!unit) throw new Error(`Unknown mutineer "${spec.unitId}"`);
+  const enemies = cs.combatants.filter((c) => c.side === 'enemy');
+  const inRow = (r: Row) => enemies.filter((c) => c.row === r).length;
+  const preferred: Row = spec.row ?? 'front';
+  const other: Row = preferred === 'front' ? 'back' : 'front';
+  const row = inRow(preferred) < TUNING.combat.maxPerRow ? preferred : inRow(other) < TUNING.combat.maxPerRow ? other : null;
+  if (row === null) return null;
+
+  const stats = unitStats(state, reg, unit);
+  const passives: Array<EffectSpec & { source: string }> = [];
+  for (const d of unit.defects) {
+    const c = reg.defects.get(d.id)?.combat as { upside?: EffectSpec[]; downside?: EffectSpec[] } | undefined;
+    for (const e of c?.upside ?? []) passives.push({ ...e, source: `defect:${d.id}` });
+    for (const e of c?.downside ?? []) passives.push({ ...e, source: `defect:${d.id}:down` });
+  }
+  const c: Combatant = {
+    cid: `e${cs.nextCid}`,
+    side: 'enemy',
+    unitId: unit.id,
+    nameKey: unit.displayName,
+    level: unit.level,
+    row,
+    index: enemies.reduce((m, x) => Math.max(m, x.index + 1), 0),
+    hp: Math.max(1, Math.min(unit.currentHp, stats.hp)),
+    maxHp: stats.hp,
+    base: stats,
+    stress: 0,
+    statuses: [],
+    mods: [],
+    cooldowns: {},
+    skills: unitSkillIds(reg, unit),
+    passives,
+    downed: false,
+    aiProfile: (reg.roles.get(unit.roleId)?.aiProfile as string | undefined) ?? 'aggressive',
+    usedLimits: [],
+    upgrades: ownedUpgrades(reg, unit),
   };
   cs.nextCid += 1;
   cs.combatants.push(c);

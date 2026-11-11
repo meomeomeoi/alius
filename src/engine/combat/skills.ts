@@ -63,6 +63,22 @@ export function ownedUltimateId(reg: Registries, unit: Unit): string | undefined
   return treeOf(reg, unit).find((n) => n.branch === null && owned.has(n.id))?.grants.skill;
 }
 
+/**
+ * Everything a unit can use in a fight: her equipped loadout, her signature skill when it is active and her ultimate.
+ * (The passive signature is a passive, not a skill.) Shared by her own combatant and by a mutineer.
+ */
+export function unitSkillIds(reg: Registries, unit: Unit): string[] {
+  const skills = activeLoadout(reg, unit).slice(0, loadoutSize(reg, unit));
+  if (unit.kind === 'named') {
+    const sigSkill = reg.signatures.get(unit.signatureSkill.templateId)?.skill as string | undefined;
+    const sk = sigSkill ? skillById(reg, sigSkill) : undefined;
+    if (sk && sk.kind !== 'passive') skills.push(sk.id);
+  }
+  const ult = ownedUltimateId(reg, unit);
+  if (ult && skillById(reg, ult)) skills.push(ult);
+  return skills;
+}
+
 /** Equipped active skills: base 4 plus `loadout_slots` of the unit's defects. */
 export function loadoutSize(reg: Registries, unit: Unit): number {
   let extra = 0;

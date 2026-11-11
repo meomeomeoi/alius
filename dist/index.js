@@ -2820,6 +2820,167 @@ function initiativeOrder(cs, rng, spdOf = (c) => c.base.spd) {
   return keyed.map((k) => k.c.cid);
 }
 
+// src/engine/combat/targeting.ts
+var skillById = (reg, id) => reg.skills.get(id);
+var byCid = (cs, cid) => {
+  const c = cs.combatants.find((x) => x.cid === cid);
+  if (!c) throw new Error(`Unknown combatant "${cid}"`);
+  return c;
+};
+var isStanding = (c) => !c.downed && c.hp > 0;
+var living = (cs, side) => cs.combatants.filter((c) => c.side === side && isStanding(c));
+var opposite = (side) => side === "squad" ? "enemy" : "squad";
+function hasFlag(c, reg, flag) {
+  return c.statuses.some((s) => {
+    if (!reg) return s.id === flag;
+    return (reg.statuses.get(s.id)?.flags ?? []).includes(flag);
+  });
+}
+var hasEffect = (skill, type) => skill.effects.some((e) => e.type === type);
+function legalTargets(cs, actorCid, skill, reg) {
+  const actor = byCid(cs, actorCid);
+  if (skill.usableFrom && !skill.usableFrom.includes(actor.row)) return [];
+  const targets = skill.targets;
+  if (!targets) return [];
+  if (targets.side === "self") return [actor.cid];
+  if (targets.side === "ally") {
+    const allies = cs.combatants.filter((c) => c.side === actor.side);
+    const pool = hasEffect(skill, "revive") ? allies.filter((c) => c.downed || c.hp <= 0) : allies.filter(isStanding);
+    return pool.filter((c) => c.cid === actor.cid || !hasFlag(c, reg, "untargetable")).map((c) => c.cid);
+  }
+  const enemies = living(cs, opposite(actor.side)).filter((c) => !hasFlag(c, reg, "untargetable"));
+  const ignoreRows = skill.effects.some((e) => e.type === "damage" && e.ignoreRows === true);
+  let eligible;
+  if (ignoreRows) eligible = enemies;
+  else {
+    eligible = enemies.filter((c) => targets.rows.includes(c.row));
+    if (targets.melee) {
+      const front = eligible.filter((c) => c.row === "front");
+      const anyFront = living(cs, opposite(actor.side)).some((c) => c.row === "front");
+      eligible = front.length > 0 || anyFront ? front : eligible;
+    }
+  }
+  const taunters = eligible.filter((c) => hasFlag(c, reg, "taunt"));
+  if (taunters.length > 0) eligible = taunters;
+  if (actor.lockedTargetId) {
+    const locked = eligible.find((c) => c.cid === actor.lockedTargetId);
+    if (locked) eligible = [locked];
+  }
+  const out = eligible.map((c) => c.cid);
+  if (actor.side === "enemy" && cs.commander && !cs.commander.downed && taunters.length === 0) {
+    const frontStands = living(cs, "squad").some((c) => c.row === "front");
+    const reachesBack = ignoreRows || targets.rows.includes("back") && (!targets.melee || !frontStands);
+    if (reachesBack) out.push("commander");
+  }
+  return out;
+}
+function expandTargets(cs, actorCid, skill, primaryCid, reg) {
+  const targets = skill.targets;
+  if (!targets) return [];
+  if (targets.side === "self") return [actorCid];
+  const legal = legalTargets(cs, actorCid, skill, reg);
+  if (targets.count === "all") {
+    const actor = byCid(cs, actorCid);
+    const side = targets.side === "ally" ? actor.side : opposite(actor.side);
+    return living(cs, side).filter((c) => !hasFlag(c, reg, "untargetable") || c.cid === actorCid).map((c) => c.cid);
+  }
+  if (primaryCid === void 0 || !legal.includes(primaryCid)) return [];
+  if (targets.count === "one" || primaryCid === "commander") return [primaryCid];
+  const primary = byCid(cs, primaryCid);
+  return cs.combatants.filter((c) => c.side === primary.side && c.row === primary.row && isStanding(c) && !hasFlag(c, reg, "untargetable")).map((c) => c.cid);
+}
+var rowRank = (c) => c.row === "front" ? 0 : 1;
+function nearest(cs, cid, side, reg) {
+  const self = byCid(cs, cid);
+  const pool = cs.combatants.filter((c) => c.cid !== cid && isStanding(c) && !hasFlag(c, reg, "untargetable") && (side === "any" || c.side === side));
+  pool.sort((a, b) => rowRank(a) - rowRank(b) || (a.side === self.side ? 1 : 0) - (b.side === self.side ? 1 : 0) || a.index - b.index);
+  return pool[0]?.cid;
+}
+
+// src/engine/combat/skills.ts
+var treeOf = (reg, unit) => reg.roles.get(unit.roleId)?.tree ?? [];
+function applyUpgrades(skill, upgrades) {
+  const mine = (upgrades ?? []).filter((u) => u.skillId === skill.id);
+  if (mine.length === 0) return skill;
+  const out = structuredClone(skill);
+  for (const u of mine) {
+    if (u.cooldownDelta) out.cooldown = Math.max(0, (out.cooldown ?? 0) + u.cooldownDelta);
+    if (u.multPct) {
+      for (const e of out.effects) {
+        if (e.type === "damage" && e.mult !== void 0) e.mult = e.mult * (1 + u.multPct / 100);
+        if (e.type === "heal") e.pctMaxHp = e.pctMaxHp * (1 + u.multPct / 100);
+      }
+    }
+    if (u.addEffects) out.effects.push(...u.addEffects);
+  }
+  return out;
+}
+function ownedUpgrades(reg, unit) {
+  const owned = new Set(unit.unlockedNodes);
+  return treeOf(reg, unit).filter((n) => owned.has(n.id) && n.grants.upgrade).map((n) => n.grants.upgrade);
+}
+function knownSkillIds(reg, unit) {
+  const owned = new Set(unit.unlockedNodes);
+  const ids = [...reg.roles.get(unit.roleId)?.starterSkills ?? []];
+  for (const n of treeOf(reg, unit)) {
+    const id = n.grants.skill;
+    if (!id || !owned.has(n.id)) continue;
+    if (skillById(reg, id)?.kind === "active") ids.push(id);
+  }
+  return ids.filter((id) => reg.skills.has(id));
+}
+function ownedPassiveIds(reg, unit) {
+  const owned = new Set(unit.unlockedNodes);
+  return treeOf(reg, unit).filter((n) => n.grants.skill && owned.has(n.id) && skillById(reg, n.grants.skill)?.kind === "passive").map((n) => n.grants.skill);
+}
+function ownedUltimateId(reg, unit) {
+  const owned = new Set(unit.unlockedNodes);
+  return treeOf(reg, unit).find((n) => n.branch === null && owned.has(n.id))?.grants.skill;
+}
+function unitSkillIds(reg, unit) {
+  const skills = activeLoadout(reg, unit).slice(0, loadoutSize(reg, unit));
+  if (unit.kind === "named") {
+    const sigSkill = reg.signatures.get(unit.signatureSkill.templateId)?.skill;
+    const sk = sigSkill ? skillById(reg, sigSkill) : void 0;
+    if (sk && sk.kind !== "passive") skills.push(sk.id);
+  }
+  const ult = ownedUltimateId(reg, unit);
+  if (ult && skillById(reg, ult)) skills.push(ult);
+  return skills;
+}
+function loadoutSize(reg, unit) {
+  let extra = 0;
+  for (const d of unit.defects) {
+    const c = reg.defects.get(d.id)?.combat;
+    for (const e of [...c?.upside ?? [], ...c?.downside ?? []]) if (e.type === "loadout_slots") extra += e.amount;
+  }
+  return TUNING.progression.loadoutSize + extra;
+}
+function activeLoadout(reg, unit) {
+  const known = knownSkillIds(reg, unit);
+  const starters = (reg.roles.get(unit.roleId)?.starterSkills ?? []).filter((id) => reg.skills.has(id));
+  const chosen = (unit.loadout ?? []).filter((id, i, a) => known.includes(id) && a.indexOf(id) === i);
+  return (chosen.length > 0 ? chosen : starters).slice(0, loadoutSize(reg, unit));
+}
+function resolveSkill(reg, c, skillId) {
+  const base = skillById(reg, skillId);
+  return base ? applyUpgrades(base, c.upgrades) : void 0;
+}
+function usableSkills(ctx2, cid) {
+  const { cs, reg } = ctx2;
+  const c = byCid(cs, cid);
+  const out = [];
+  for (const id of c.skills) {
+    const skill = resolveSkill(reg, c, id);
+    if (!skill || skill.kind === "passive") continue;
+    if ((c.cooldowns[id] ?? 0) > 0) continue;
+    if (c.side === "squad" && (skill.cp ?? 0) > 0 && cs.cp < skill.cp && !c.statuses.some((s) => s.id === "authorized")) continue;
+    const targets = legalTargets(cs, cid, skill, reg);
+    if (targets.length > 0) out.push({ skill, targets });
+  }
+  return out;
+}
+
 // src/engine/combat/types.ts
 var TRIGGERS = [
   "onCombatStart",
@@ -3005,82 +3166,47 @@ function spawnEnemy(cs, state, reg, spec, summonedBy) {
   cs.combatants.push(c);
   return c;
 }
-
-// src/engine/combat/targeting.ts
-var skillById = (reg, id) => reg.skills.get(id);
-var byCid = (cs, cid) => {
-  const c = cs.combatants.find((x) => x.cid === cid);
-  if (!c) throw new Error(`Unknown combatant "${cid}"`);
+function spawnMutineer(cs, state, reg, spec) {
+  const unit = state.squad.find((u) => u.id === spec.unitId);
+  if (!unit) throw new Error(`Unknown mutineer "${spec.unitId}"`);
+  const enemies = cs.combatants.filter((c2) => c2.side === "enemy");
+  const inRow = (r) => enemies.filter((c2) => c2.row === r).length;
+  const preferred = spec.row ?? "front";
+  const other = preferred === "front" ? "back" : "front";
+  const row = inRow(preferred) < TUNING.combat.maxPerRow ? preferred : inRow(other) < TUNING.combat.maxPerRow ? other : null;
+  if (row === null) return null;
+  const stats = unitStats(state, reg, unit);
+  const passives = [];
+  for (const d of unit.defects) {
+    const c2 = reg.defects.get(d.id)?.combat;
+    for (const e of c2?.upside ?? []) passives.push({ ...e, source: `defect:${d.id}` });
+    for (const e of c2?.downside ?? []) passives.push({ ...e, source: `defect:${d.id}:down` });
+  }
+  const c = {
+    cid: `e${cs.nextCid}`,
+    side: "enemy",
+    unitId: unit.id,
+    nameKey: unit.displayName,
+    level: unit.level,
+    row,
+    index: enemies.reduce((m, x) => Math.max(m, x.index + 1), 0),
+    hp: Math.max(1, Math.min(unit.currentHp, stats.hp)),
+    maxHp: stats.hp,
+    base: stats,
+    stress: 0,
+    statuses: [],
+    mods: [],
+    cooldowns: {},
+    skills: unitSkillIds(reg, unit),
+    passives,
+    downed: false,
+    aiProfile: reg.roles.get(unit.roleId)?.aiProfile ?? "aggressive",
+    usedLimits: [],
+    upgrades: ownedUpgrades(reg, unit)
+  };
+  cs.nextCid += 1;
+  cs.combatants.push(c);
   return c;
-};
-var isStanding = (c) => !c.downed && c.hp > 0;
-var living = (cs, side) => cs.combatants.filter((c) => c.side === side && isStanding(c));
-var opposite = (side) => side === "squad" ? "enemy" : "squad";
-function hasFlag(c, reg, flag) {
-  return c.statuses.some((s) => {
-    if (!reg) return s.id === flag;
-    return (reg.statuses.get(s.id)?.flags ?? []).includes(flag);
-  });
-}
-var hasEffect = (skill, type) => skill.effects.some((e) => e.type === type);
-function legalTargets(cs, actorCid, skill, reg) {
-  const actor = byCid(cs, actorCid);
-  if (skill.usableFrom && !skill.usableFrom.includes(actor.row)) return [];
-  const targets = skill.targets;
-  if (!targets) return [];
-  if (targets.side === "self") return [actor.cid];
-  if (targets.side === "ally") {
-    const allies = cs.combatants.filter((c) => c.side === actor.side);
-    const pool = hasEffect(skill, "revive") ? allies.filter((c) => c.downed || c.hp <= 0) : allies.filter(isStanding);
-    return pool.filter((c) => c.cid === actor.cid || !hasFlag(c, reg, "untargetable")).map((c) => c.cid);
-  }
-  const enemies = living(cs, opposite(actor.side)).filter((c) => !hasFlag(c, reg, "untargetable"));
-  const ignoreRows = skill.effects.some((e) => e.type === "damage" && e.ignoreRows === true);
-  let eligible;
-  if (ignoreRows) eligible = enemies;
-  else {
-    eligible = enemies.filter((c) => targets.rows.includes(c.row));
-    if (targets.melee) {
-      const front = eligible.filter((c) => c.row === "front");
-      const anyFront = living(cs, opposite(actor.side)).some((c) => c.row === "front");
-      eligible = front.length > 0 || anyFront ? front : eligible;
-    }
-  }
-  const taunters = eligible.filter((c) => hasFlag(c, reg, "taunt"));
-  if (taunters.length > 0) eligible = taunters;
-  if (actor.lockedTargetId) {
-    const locked = eligible.find((c) => c.cid === actor.lockedTargetId);
-    if (locked) eligible = [locked];
-  }
-  const out = eligible.map((c) => c.cid);
-  if (actor.side === "enemy" && cs.commander && !cs.commander.downed && taunters.length === 0) {
-    const frontStands = living(cs, "squad").some((c) => c.row === "front");
-    const reachesBack = ignoreRows || targets.rows.includes("back") && (!targets.melee || !frontStands);
-    if (reachesBack) out.push("commander");
-  }
-  return out;
-}
-function expandTargets(cs, actorCid, skill, primaryCid, reg) {
-  const targets = skill.targets;
-  if (!targets) return [];
-  if (targets.side === "self") return [actorCid];
-  const legal = legalTargets(cs, actorCid, skill, reg);
-  if (targets.count === "all") {
-    const actor = byCid(cs, actorCid);
-    const side = targets.side === "ally" ? actor.side : opposite(actor.side);
-    return living(cs, side).filter((c) => !hasFlag(c, reg, "untargetable") || c.cid === actorCid).map((c) => c.cid);
-  }
-  if (primaryCid === void 0 || !legal.includes(primaryCid)) return [];
-  if (targets.count === "one" || primaryCid === "commander") return [primaryCid];
-  const primary = byCid(cs, primaryCid);
-  return cs.combatants.filter((c) => c.side === primary.side && c.row === primary.row && isStanding(c) && !hasFlag(c, reg, "untargetable")).map((c) => c.cid);
-}
-var rowRank = (c) => c.row === "front" ? 0 : 1;
-function nearest(cs, cid, side, reg) {
-  const self = byCid(cs, cid);
-  const pool = cs.combatants.filter((c) => c.cid !== cid && isStanding(c) && !hasFlag(c, reg, "untargetable") && (side === "any" || c.side === side));
-  pool.sort((a, b) => rowRank(a) - rowRank(b) || (a.side === self.side ? 1 : 0) - (b.side === self.side ? 1 : 0) || a.index - b.index);
-  return pool[0]?.cid;
 }
 
 // src/engine/combat/stress.ts
@@ -3783,79 +3909,6 @@ function hitCommander(ctx2, attackerCid, mult, opts) {
   return { dealt: lost, crit: false, killed: cmd.hp <= 0 };
 }
 
-// src/engine/combat/skills.ts
-var treeOf = (reg, unit) => reg.roles.get(unit.roleId)?.tree ?? [];
-function applyUpgrades(skill, upgrades) {
-  const mine = (upgrades ?? []).filter((u) => u.skillId === skill.id);
-  if (mine.length === 0) return skill;
-  const out = structuredClone(skill);
-  for (const u of mine) {
-    if (u.cooldownDelta) out.cooldown = Math.max(0, (out.cooldown ?? 0) + u.cooldownDelta);
-    if (u.multPct) {
-      for (const e of out.effects) {
-        if (e.type === "damage" && e.mult !== void 0) e.mult = e.mult * (1 + u.multPct / 100);
-        if (e.type === "heal") e.pctMaxHp = e.pctMaxHp * (1 + u.multPct / 100);
-      }
-    }
-    if (u.addEffects) out.effects.push(...u.addEffects);
-  }
-  return out;
-}
-function ownedUpgrades(reg, unit) {
-  const owned = new Set(unit.unlockedNodes);
-  return treeOf(reg, unit).filter((n) => owned.has(n.id) && n.grants.upgrade).map((n) => n.grants.upgrade);
-}
-function knownSkillIds(reg, unit) {
-  const owned = new Set(unit.unlockedNodes);
-  const ids = [...reg.roles.get(unit.roleId)?.starterSkills ?? []];
-  for (const n of treeOf(reg, unit)) {
-    const id = n.grants.skill;
-    if (!id || !owned.has(n.id)) continue;
-    if (skillById(reg, id)?.kind === "active") ids.push(id);
-  }
-  return ids.filter((id) => reg.skills.has(id));
-}
-function ownedPassiveIds(reg, unit) {
-  const owned = new Set(unit.unlockedNodes);
-  return treeOf(reg, unit).filter((n) => n.grants.skill && owned.has(n.id) && skillById(reg, n.grants.skill)?.kind === "passive").map((n) => n.grants.skill);
-}
-function ownedUltimateId(reg, unit) {
-  const owned = new Set(unit.unlockedNodes);
-  return treeOf(reg, unit).find((n) => n.branch === null && owned.has(n.id))?.grants.skill;
-}
-function loadoutSize(reg, unit) {
-  let extra = 0;
-  for (const d of unit.defects) {
-    const c = reg.defects.get(d.id)?.combat;
-    for (const e of [...c?.upside ?? [], ...c?.downside ?? []]) if (e.type === "loadout_slots") extra += e.amount;
-  }
-  return TUNING.progression.loadoutSize + extra;
-}
-function activeLoadout(reg, unit) {
-  const known = knownSkillIds(reg, unit);
-  const starters = (reg.roles.get(unit.roleId)?.starterSkills ?? []).filter((id) => reg.skills.has(id));
-  const chosen = (unit.loadout ?? []).filter((id, i, a) => known.includes(id) && a.indexOf(id) === i);
-  return (chosen.length > 0 ? chosen : starters).slice(0, loadoutSize(reg, unit));
-}
-function resolveSkill(reg, c, skillId) {
-  const base = skillById(reg, skillId);
-  return base ? applyUpgrades(base, c.upgrades) : void 0;
-}
-function usableSkills(ctx2, cid) {
-  const { cs, reg } = ctx2;
-  const c = byCid(cs, cid);
-  const out = [];
-  for (const id of c.skills) {
-    const skill = resolveSkill(reg, c, id);
-    if (!skill || skill.kind === "passive") continue;
-    if ((c.cooldowns[id] ?? 0) > 0) continue;
-    if (c.side === "squad" && (skill.cp ?? 0) > 0 && cs.cp < skill.cp && !c.statuses.some((s) => s.id === "authorized")) continue;
-    const targets = legalTargets(cs, cid, skill, reg);
-    if (targets.length > 0) out.push({ skill, targets });
-  }
-  return out;
-}
-
 // src/engine/combat/build.ts
 function checkStart(state, reg, p) {
   if (state.combat) return "A combat is already open.";
@@ -3873,7 +3926,19 @@ function checkStart(state, reg, p) {
     if (!reg.roles.has(u.roleId)) return `${u.displayName} has an unknown role "${u.roleId}".`;
   }
   const enemies = p.encounter?.enemies ?? [];
-  if (enemies.length < 1 || enemies.length > 6) return "An encounter has 1 to 6 enemies.";
+  const mutineers = p.encounter?.mutineers ?? [];
+  if (enemies.length + mutineers.length < 1 || enemies.length + mutineers.length > 6) return "An encounter has 1 to 6 enemies.";
+  const seen = /* @__PURE__ */ new Set();
+  for (const m of mutineers) {
+    const u = state.squad.find((x) => x.id === m.unitId);
+    if (!u) return `Unknown mutineer "${String(m.unitId)}".`;
+    if (!isLiving(u)) return `${u.displayName} is no longer in the squad and cannot fight.`;
+    if (ids.includes(m.unitId)) return `${u.displayName} cannot fight on both sides.`;
+    if (seen.has(m.unitId)) return `${u.displayName} was listed twice.`;
+    seen.add(m.unitId);
+    if (!reg.roles.has(u.roleId)) return `${u.displayName} has an unknown role "${u.roleId}".`;
+    if (m.row !== void 0 && m.row !== "front" && m.row !== "back") return `Mutineer ${u.displayName} has an unknown row.`;
+  }
   for (const e of enemies) {
     if (!reg.enemies.has(e.enemyId)) return `Unknown enemy "${e.enemyId}".`;
     if (!Number.isInteger(e.level) || e.level < 1 || e.level > 99) return `Enemy "${e.enemyId}" needs a level from 1 to 99.`;
@@ -3901,7 +3966,7 @@ function startingCp(state, reg) {
 function squadCombatant(state, reg, unit, index, row, synergies) {
   const stats = unitStats(state, reg, unit);
   const role = reg.roles.get(unit.roleId);
-  const skills = activeLoadout(reg, unit).slice(0, loadoutSize(reg, unit));
+  const skills = unitSkillIds(reg, unit);
   const passives = [];
   const add = (effects2, source) => {
     for (const e of effects2 ?? []) passives.push({ ...e, source });
@@ -3916,10 +3981,7 @@ function squadCombatant(state, reg, unit, index, row, synergies) {
     const sigSkill = reg.signatures.get(unit.signatureSkill.templateId)?.skill;
     const sk = sigSkill ? skillById(reg, sigSkill) : void 0;
     if (sk?.kind === "passive") add(sk.effects, `sig:${sigSkill}`);
-    else if (sk) skills.push(sk.id);
   }
-  const ult = ownedUltimateId(reg, unit);
-  if (ult && skillById(reg, ult)) skills.push(ult);
   for (const { inst } of wornItems(state, reg, unit)) add(itemStats(reg, inst)?.effects, `item:${inst.uid}`);
   for (const s of synergies) if (s.unitId === unit.id) add(reg.synergies.get(s.synergyId)?.effects, `synergy:${s.synergyId}`);
   return {
@@ -3974,6 +4036,7 @@ function buildCombat(state, reg, rng, p) {
     nextCid: 1
   };
   for (const e of p.encounter.enemies) spawnEnemy(cs, state, reg, e);
+  for (const m of p.encounter.mutineers ?? []) spawnMutineer(cs, state, reg, m);
   if (p.encounter.exposesCommander && p.coverId) {
     const cover = squad.find((c) => c.unitId === p.coverId);
     cs.commander = { hp: TUNING.combat.commanderHp, maxHp: TUNING.combat.commanderHp, def: TUNING.combat.commanderDef, coverId: cover.cid, downed: false };
@@ -4557,7 +4620,7 @@ function finalizeCombat(draft, reg, rng, outcome) {
       }
     }
     const tableId = cs.encounter.lootTableId ?? "loot_standard";
-    loot = reg.lootTables.has(tableId) ? rollLoot(draft, reg, rng, tableId, { extraRolls: cs.pendingLootRolls }) : [];
+    loot = reg.lootTables.has(tableId) && cs.encounter.enemies.length > 0 ? rollLoot(draft, reg, rng, tableId, { extraRolls: cs.pendingLootRolls }) : [];
     if (cs.bankLoot) {
       events.push(...bankLoot(draft, loot));
       banked = true;
@@ -4570,6 +4633,7 @@ function finalizeCombat(draft, reg, rng, outcome) {
   }
   const compels = cs.compels ?? [];
   events.push(...settleCompels(draft, { registries: reg, rng }, compels));
+  const mutineers = cs.combatants.filter((c) => c.side === "enemy" && c.unitId !== void 0 && c.enemyId === void 0).map((c) => ({ unitId: c.unitId, downed: c.downed }));
   const result = {
     id: cs.id,
     day: draft.day,
@@ -4577,7 +4641,7 @@ function finalizeCombat(draft, reg, rng, outcome) {
     rounds: cs.round,
     formation: cs.formation,
     participants: squad.map((c) => c.unitId),
-    enemies: cs.combatants.filter((c) => c.side === "enemy").map((c) => ({
+    enemies: cs.combatants.filter((c) => c.side === "enemy" && c.enemyId !== void 0).map((c) => ({
       enemyId: c.enemyId,
       level: c.level,
       affixes: (c.nameKey.split("|")[1] ?? "").split(",").filter((a) => a !== ""),
@@ -4595,7 +4659,8 @@ function finalizeCombat(draft, reg, rng, outcome) {
     stressDelta: Object.fromEntries(squad.map((c) => [c.unitId, unitOf3(c).stress - stressBefore[c.unitId]])),
     relationHints: relationHints(cs, unitIdOf2),
     commanderInjured,
-    ...compels.length > 0 ? { compels: [...compels] } : {}
+    ...compels.length > 0 ? { compels: [...compels] } : {},
+    ...mutineers.length > 0 ? { mutineers } : {}
   };
   draft.lastCombat = result;
   delete draft.combat;

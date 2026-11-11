@@ -6,10 +6,8 @@ import { getSynergies } from '../relations';
 import type { CampaignState, Unit } from '../state/types';
 import { TUNING } from '../tuning';
 import { activePassives, makeCtx } from './effects';
-import {
-  activeLoadout, loadoutSize, ownedPassiveIds, ownedUltimateId, ownedUpgrades,
-} from './skills';
-import { spawnEnemy } from './spawn';
+import { ownedPassiveIds, ownedUpgrades, unitSkillIds } from './skills';
+import { spawnEnemy, spawnMutineer } from './spawn';
 import { unitStats } from './stats';
 import { makeBreakdown } from './stress';
 import { skillById } from './targeting';
@@ -32,7 +30,19 @@ export function checkStart(state: CampaignState, reg: Registries, p: StartPayloa
     if (!reg.roles.has(u.roleId)) return `${u.displayName} has an unknown role "${u.roleId}".`;
   }
   const enemies = p.encounter?.enemies ?? [];
-  if (enemies.length < 1 || enemies.length > 6) return 'An encounter has 1 to 6 enemies.';
+  const mutineers = p.encounter?.mutineers ?? [];
+  if (enemies.length + mutineers.length < 1 || enemies.length + mutineers.length > 6) return 'An encounter has 1 to 6 enemies.';
+  const seen = new Set<string>();
+  for (const m of mutineers) {
+    const u = state.squad.find((x) => x.id === m.unitId);
+    if (!u) return `Unknown mutineer "${String(m.unitId)}".`;
+    if (!isLiving(u)) return `${u.displayName} is no longer in the squad and cannot fight.`;
+    if (ids.includes(m.unitId)) return `${u.displayName} cannot fight on both sides.`;
+    if (seen.has(m.unitId)) return `${u.displayName} was listed twice.`;
+    seen.add(m.unitId);
+    if (!reg.roles.has(u.roleId)) return `${u.displayName} has an unknown role "${u.roleId}".`;
+    if (m.row !== undefined && m.row !== 'front' && m.row !== 'back') return `Mutineer ${u.displayName} has an unknown row.`;
+  }
   for (const e of enemies) {
     if (!reg.enemies.has(e.enemyId)) return `Unknown enemy "${e.enemyId}".`;
     if (!Number.isInteger(e.level) || e.level < 1 || e.level > 99) return `Enemy "${e.enemyId}" needs a level from 1 to 99.`;
@@ -65,7 +75,7 @@ function squadCombatant(
 ): Combatant {
   const stats = unitStats(state, reg, unit);
   const role = reg.roles.get(unit.roleId)!;
-  const skills = activeLoadout(reg, unit).slice(0, loadoutSize(reg, unit));
+  const skills = unitSkillIds(reg, unit);
   const passives: Array<EffectSpec & { source: string }> = [];
   const add = (effects: EffectSpec[] | undefined, source: string) => {
     for (const e of effects ?? []) passives.push({ ...e, source });
@@ -81,10 +91,7 @@ function squadCombatant(
     const sigSkill = reg.signatures.get(unit.signatureSkill.templateId)?.skill as string | undefined;
     const sk = sigSkill ? skillById(reg, sigSkill) : undefined;
     if (sk?.kind === 'passive') add(sk.effects as unknown as EffectSpec[], `sig:${sigSkill}`);
-    else if (sk) skills.push(sk.id);
   }
-  const ult = ownedUltimateId(reg, unit);
-  if (ult && skillById(reg, ult)) skills.push(ult);
   for (const { inst } of wornItems(state, reg, unit)) add(itemStats(reg, inst)?.effects, `item:${inst.uid}`);
   for (const s of synergies) if (s.unitId === unit.id) add(reg.synergies.get(s.synergyId)?.effects as EffectSpec[] | undefined, `synergy:${s.synergyId}`);
 
@@ -144,6 +151,7 @@ export function buildCombat(state: CampaignState, reg: Registries, rng: Rng, p: 
     nextCid: 1,
   };
   for (const e of p.encounter.enemies) spawnEnemy(cs, state, reg, e);
+  for (const m of p.encounter.mutineers ?? []) spawnMutineer(cs, state, reg, m);
   if (p.encounter.exposesCommander && p.coverId) {
     const cover = squad.find((c) => c.unitId === p.coverId)!;
     cs.commander = { hp: TUNING.combat.commanderHp, maxHp: TUNING.combat.commanderHp, def: TUNING.combat.commanderDef, coverId: cover.cid, downed: false };

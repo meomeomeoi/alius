@@ -222,6 +222,8 @@ export interface PlannedAction {
 
 export interface Encounter {
   enemies: Array<{ enemyId: string; level: number; affixes: string[]; row?: Row }>;
+  /** Squad units fighting on the enemy side (a mutiny, P6): at least one opponent of either kind is needed. */
+  mutineers?: Array<{ unitId: string; row?: Row }>;
   exposesCommander?: boolean;
   lootTableId?: string;
   danger: number;
@@ -312,4 +314,6 @@ export interface CombatResult {
   commanderInjured: boolean;
   /** Units whose refusal was Compelled; their Leash cost was settled with this result (P6). */
   compels?: string[];
+  /** Squad units that fought on the enemy side (P6); absent without mutineers. */
+  mutineers?: Array<{ unitId: string; downed: boolean }>;
 }

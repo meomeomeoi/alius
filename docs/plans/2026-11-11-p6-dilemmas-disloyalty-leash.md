@@ -231,9 +231,9 @@ docs/** (Task 16), tests/** mirror src, tests/helpers/loyalty.ts, tests/fixtures
 - `checkStart`: `enemies.length + mutineers.length` is 1…6; each mutineer is a living squad unit and not in the formation.
 - `finalizeCombat`: squad write-back, XP and `participants` ignore enemy-side combatants; `enemies` in the result lists only combatants with `enemyId`; `mutineers` lists the rest; an encounter with no `enemies` rolls **no loot**.
 
-- [ ] **Step 1: Write the failing tests** — `a combat can be built from mutineers only`; `a mutineer acts on her turn with one of her own skills` (run `combat/auto`); `a mutineer in the formation, a dead one, or seven opponents are refused`; `finalize never writes a mutineer back as a squad unit, gives her no XP and no breakdown`; `a mutineers-only fight drops no loot`; `the result lists mutineers with downed flags`; `P4 encounters without mutineers behave as before` (existing fixtures).
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement** (check every place that reads `enemyId!` or assumes `unitId` means squad side: `outcome.ts`, `stress.ts`, `effects.ts`, `ai.ts`). **Step 4: Run** → PASS, `tests/engine/combat` green.
-- [ ] **Step 5: Commit** `feat(engine): squad units as the enemy side of a combat`.
+- [x] **Step 1: Write the failing tests** — `a combat can be built from mutineers only`; `a mutineer acts on her turn with one of her own skills` (run `combat/auto`); `a mutineer in the formation, a dead one, or seven opponents are refused`; `finalize never writes a mutineer back as a squad unit, gives her no XP and no breakdown`; `a mutineers-only fight drops no loot`; `the result lists mutineers with downed flags`; `P4 encounters without mutineers behave as before` (existing fixtures).
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement** (check every place that reads `enemyId!` or assumes `unitId` means squad side: `outcome.ts`, `stress.ts`, `effects.ts`, `ai.ts`). **Step 4: Run** → PASS, `tests/engine/combat` green.
+- [x] **Step 5: Commit** `feat(engine): squad units as the enemy side of a combat`.
 
 ---
 

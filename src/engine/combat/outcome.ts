@@ -120,7 +120,10 @@ export function finalizeCombat(draft: CampaignState, reg: Registries, rng: Rng, 
     }
     const tableId = cs.encounter.lootTableId ?? 'loot_standard';
     // content may have changed under the save: no table, no loot (never a combat that cannot be finalized)
-    loot = reg.lootTables.has(tableId) ? rollLoot(draft, reg, rng, tableId, { extraRolls: cs.pendingLootRolls }) : [];
+    // a fight against squad units only (a mutiny) drops nothing
+    loot = reg.lootTables.has(tableId) && cs.encounter.enemies.length > 0
+      ? rollLoot(draft, reg, rng, tableId, { extraRolls: cs.pendingLootRolls })
+      : [];
     if (cs.bankLoot) {
       events.push(...bankLoot(draft, loot));
       banked = true;
@@ -137,6 +140,10 @@ export function finalizeCombat(draft: CampaignState, reg: Registries, rng: Rng, 
   const compels = cs.compels ?? [];
   events.push(...settleCompels(draft, { registries: reg, rng }, compels));
 
+  const mutineers = cs.combatants
+    .filter((c) => c.side === 'enemy' && c.unitId !== undefined && c.enemyId === undefined)
+    .map((c) => ({ unitId: c.unitId!, downed: c.downed }));
+
   const result: CombatResult = {
     id: cs.id,
     day: draft.day,
@@ -144,7 +151,7 @@ export function finalizeCombat(draft: CampaignState, reg: Registries, rng: Rng, 
     rounds: cs.round,
     formation: cs.formation,
     participants: squad.map((c) => c.unitId!),
-    enemies: cs.combatants.filter((c) => c.side === 'enemy').map((c) => ({
+    enemies: cs.combatants.filter((c) => c.side === 'enemy' && c.enemyId !== undefined).map((c) => ({
       enemyId: c.enemyId!, level: c.level, affixes: (c.nameKey.split('|')[1] ?? '').split(',').filter((a) => a !== ''),
       name: draft.enemyNames?.[c.nameKey] ?? defaultEnemyName(reg, c.enemyId!, (c.nameKey.split('|')[1] ?? '').split(',').filter((a) => a !== '')),
       downed: c.downed,
@@ -161,6 +168,7 @@ export function finalizeCombat(draft: CampaignState, reg: Registries, rng: Rng, 
     relationHints: relationHints(cs, unitIdOf),
     commanderInjured,
     ...(compels.length > 0 ? { compels: [...compels] } : {}),
+    ...(mutineers.length > 0 ? { mutineers } : {}),
   };
   draft.lastCombat = result;
   delete draft.combat;
