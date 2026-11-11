@@ -18,7 +18,7 @@ const BETRAYALS: readonly string[] = ['lied_detected', 'broke_promise', 'coerced
 type Trigger = { kind: 'leash' | 'betrayal' | 'forced_cure'; day: number };
 
 /**
- * The latest thing inside the trigger window that can set her off: a Leash use or a forced cure (recorded on her loyalty
+ * The latest thing inside the trigger period that can set her off: a Leash use or a forced cure (recorded on her loyalty
  * record, always extreme) or a betrayal in her history at `minSeverity` or worse.
  */
 export function mutinyTrigger(state: CampaignState, unitId: string, minSeverity: 'major' | 'extreme' = 'major'): Trigger | null {
