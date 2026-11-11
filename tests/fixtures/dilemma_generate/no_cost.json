@@ -1,0 +1,63 @@
+{
+  "title": "The informant",
+  "setup": "A clerk from the corporate annex asks for a private word. He carries a ledger that matters to more than one patron, and he wants you to decide who gets it.",
+  "options": [
+    {
+      "label": "Pay him and keep the ledger quiet",
+      "effects": [
+        {
+          "kind": "resource",
+          "target": "credits",
+          "direction": 1,
+          "magnitude": "medium"
+        },
+        {
+          "kind": "faction",
+          "target": "vesper",
+          "direction": 1,
+          "magnitude": "small"
+        }
+      ]
+    },
+    {
+      "label": "Turn him in to oversight",
+      "effects": [
+        {
+          "kind": "resource",
+          "target": "plyx",
+          "direction": 1,
+          "magnitude": "medium"
+        },
+        {
+          "kind": "clock",
+          "target": "oversight",
+          "direction": -1,
+          "magnitude": "small"
+        }
+      ]
+    },
+    {
+      "label": "Take the ledger by force",
+      "effects": [
+        {
+          "kind": "resource",
+          "target": "plyx",
+          "direction": 1,
+          "magnitude": "medium"
+        },
+        {
+          "kind": "faction",
+          "target": "sable",
+          "direction": -1,
+          "magnitude": "small"
+        },
+        {
+          "kind": "unit_event",
+          "target": "mercy",
+          "direction": -1,
+          "magnitude": "medium"
+        }
+      ]
+    }
+  ]
+}
