@@ -49,6 +49,8 @@ export interface LoyaltyRecord {
   signs: Array<{ day: number; about: 'doubt' | 'desertion' | 'mutiny'; kind: 'dm' | 'fact' | 'talk'; signId: string }>;
   attempts: number;
   nextCheckDay?: number;
+  /** The earliest day of her next `doubt` sign while she is wavering (a unit that has just started wavering waits first). */
+  nextDoubtDay?: number;
   trigger?: { kind: 'leash' | 'betrayal' | 'forced_cure'; day: number };
   cause?: { kind: 'attack' | 'desertion'; day: number };
   deniedDay?: number;

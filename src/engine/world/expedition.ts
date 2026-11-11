@@ -16,6 +16,7 @@ import type { CampaignState, LootDrop, Unit } from '../state/types';
 import { TUNING } from '../tuning';
 import { applyWorldEffects } from './effects';
 import { openRequest } from './director';
+import { missionStartCheck } from '../loyalty/desertion';
 import { buildMission, completeMission, releaseMission } from './missions';
 import { generateNodeMap, nextNodes, nodePlayType } from './nodeMap';
 import { knownRegions } from './state';
@@ -108,6 +109,12 @@ export function checkDeparture(state: CampaignState, reg: Registries, p: { missi
 export function checkExpedition(state: CampaignState, reg: Registries, p: StartExpedition): string | null {
   const departure = checkDeparture(state, reg, p);
   if (departure) return departure;
+  // P6: someone is about to walk out or attack: that comes first
+  const open = state.disloyalty?.open;
+  if (open && (open.kind === 'desertion' || open.kind === 'mutiny')) {
+    const name = state.squad.find((u) => u.id === open.unitId)?.displayName ?? open.unitId;
+    return `${name} is about to ${open.kind === 'desertion' ? 'walk' : 'attack'}: deal with it first.`;
+  }
   const ids = p.unitIds ?? [];
   if (ids.length < 1 || ids.length > TUNING.expedition.partyMax) return `An expedition takes 1 to ${TUNING.expedition.partyMax} units.`;
   if (new Set(ids).size !== ids.length) return 'A unit was listed twice.';
@@ -140,6 +147,9 @@ export function addLog(exp: ExpeditionState, kind: ExpeditionLogEntry['kind'], t
 /** Opens an expedition: the mission becomes active, supplies leave the stores, the map is drawn. Slots are spent on return. */
 export function startExpedition(draft: CampaignState, ctx: EngineCtx, p: StartExpedition): EngineEvent[] {
   const reg = ctx.registries;
+  // P6: a breaking party member may walk instead of boarding; then nothing else changes and the run does not start
+  const walkOut = missionStartCheck(draft, ctx, p.unitIds);
+  if (walkOut) return walkOut;
   let mission: Mission;
   if (p.missionId !== undefined) {
     const i = draft.missions.offered.findIndex((m) => m.id === p.missionId);

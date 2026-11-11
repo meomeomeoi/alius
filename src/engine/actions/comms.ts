@@ -6,6 +6,7 @@ import { isLiving } from '../economy';
 import { rollNight } from '../night';
 import { applyRelationDelta } from '../relationGain';
 import { applyEventToUnit } from '../relations/effects';
+import { CONFRONTATION_KINDS } from '../loyalty/state';
 import { evaluateAutomatic } from '../relations/graph';
 import type { EventIntent } from '../relations/intents';
 import type { EngineEvent } from '../dispatch';
@@ -85,8 +86,11 @@ registerAction('dm/roll_initiative', (draft, _payload, ctx) => {
   return [{ type: 'dm_initiative', unitIds: rollInitiative(draft, ctx.registries, ctx.rng) }];
 });
 
+const isConfrontation = (entry: NightEntry): boolean => (CONFRONTATION_KINDS as readonly string[]).includes(entry.kind);
+
 registerAction('night/open', (draft) => {
   if (draft.slot !== 'night' || !draft.calendar.nightEvent) throw new Error('night/open: there is no night event to open.');
+  if (isConfrontation(draft.calendar.nightEvent)) throw new Error('This is not a knock: answer it from its own panel.');
   return [{ type: 'night_opened', entry: draft.calendar.nightEvent }];
 });
 
@@ -94,6 +98,7 @@ registerAction('night/ignore', (draft, _payload, ctx) => {
   const entry = draft.calendar.nightEvent as NightEntry | undefined;
   if (draft.slot !== 'night' || !entry) throw new Error('night/ignore: there is no night event to ignore.');
   if (draft.scene || draft.calendar.pendingScene) throw new Error('night/ignore: a scene is open.');
+  if (isConfrontation(entry)) throw new Error('This cannot be ignored: answer it from its own panel.');
   const events: EngineEvent[] = [{ type: 'night_ignored', unitId: entry.unitId, entryId: entry.id }];
   const consequence: EventIntent = {
     type: entry.ignore.event as EventIntent['type'], actor: 'commander', targets: [entry.unitId], severity: entry.ignore.severity,

@@ -439,7 +439,8 @@ export const RESERVED_EVENT_TYPES: readonly string[] = [
   'expedition_treated', 'expedition_ended', 'expedition_recap_set', 'leash_changed',
   // P6
   'leash_seeded', 'leash_refreshed', 'leash_used', 'scene_compelled', 'unit_terminated',
-  'scene_order', 'combat_compelled',
+  'scene_order', 'combat_compelled', 'loyalty_sign', 'desertion_attempt', 'loyalty_talk_down', 'unit_deserted',
+  'deserter_returned', 'deserter_answered',
 ];
 
 const slotEnum = z.enum(['morning', 'afternoon', 'evening', 'night']);

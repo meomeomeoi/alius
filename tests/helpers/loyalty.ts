@@ -32,15 +32,14 @@ export function withDefect(state: CampaignState, unitId: string, defectId: strin
   return state;
 }
 
-/** Plays the rest of the current day: consumes slots until the day number changes (or a Night slot opens). */
+/** Plays the rest of the current day, including a Night slot a knock may open: consumes slots until the day number changes. */
 export function endDay(state: CampaignState, reg: Registries): CampaignState {
   const start = state.day;
   let s = state;
-  for (let i = 0; i < 4 && s.day === start; i++) {
+  for (let i = 0; i < 5 && s.day === start; i++) {
     const r = run(s, reg, { type: 'calendar/consume_slot' });
     if (r.events.some((e) => e.type === 'error')) throw new Error(JSON.stringify(r.events));
     s = r.state;
-    if (s.slot === 'night') break;
   }
   return s;
 }
