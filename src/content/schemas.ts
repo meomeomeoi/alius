@@ -442,6 +442,7 @@ export const RESERVED_EVENT_TYPES: readonly string[] = [
   'scene_order', 'combat_compelled', 'loyalty_sign', 'desertion_attempt', 'loyalty_talk_down', 'unit_deserted',
   'deserter_returned', 'deserter_answered', 'mutiny_started', 'mutiny_subdued', 'mutiny_escaped',
   'thread_flag_set', 'dilemma_requested', 'dilemma_rejected', 'dilemma_presented', 'dilemma_resolved',
+  'arc_decided', 'arc_step', 'arc_completed', 'arc_unlocked',
 ];
 
 const slotEnum = z.enum(['morning', 'afternoon', 'evening', 'night']);

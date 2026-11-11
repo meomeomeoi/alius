@@ -2,6 +2,7 @@ import type { Registries } from '../../content/types';
 import { consumeSlots } from '../calendar';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { isLiving } from '../economy';
+import { arcDayStep } from '../arcs';
 import { removeFromService } from '../leash/use';
 import { nextId } from '../memory';
 import { enqueueNight } from '../night';
@@ -253,6 +254,7 @@ export function loyaltyDayStep(draft: CampaignState, ctx: EngineCtx): EngineEven
     }
   }
 
+  events.push(...arcDayStep(draft, ctx));
   events.push(...mutinyDayStep(draft, ctx));
   events.push(...returns(draft, ctx));
   return events;

@@ -5,7 +5,8 @@ import { itemStats, wornItems } from '../items';
 import { getSynergies } from '../relations';
 import type { CampaignState, Unit } from '../state/types';
 import { TUNING } from '../tuning';
-import { activePassives, makeCtx } from './effects';
+import { arcScale } from '../arcs';
+import { activePassives, amplify, makeCtx } from './effects';
 import { ownedPassiveIds, ownedUpgrades, unitSkillIds } from './skills';
 import { spawnEnemy, spawnMutineer } from './spawn';
 import { unitStats } from './stats';
@@ -84,8 +85,10 @@ function squadCombatant(
   for (const id of ownedPassiveIds(reg, unit)) add(skillById(reg, id)!.effects as unknown as EffectSpec[], `skill:${id}`);
   for (const d of unit.defects) {
     const c = reg.defects.get(d.id)?.combat as { upside?: EffectSpec[]; downside?: EffectSpec[] } | undefined;
-    add(c?.upside, `defect:${d.id}`);
-    add(c?.downside, `defect:${d.id}:down`);
+    const scale = arcScale(d, state.day); // a managed or embraced defect (P6) changes in strength
+    const scaled = (effects: EffectSpec[] | undefined, factor: number) => (factor === 1 ? effects : effects?.map((e) => amplify(e, factor)));
+    add(scaled(c?.upside, scale.upside), `defect:${d.id}`);
+    add(scaled(c?.downside, scale.downside), `defect:${d.id}:down`);
   }
   if (unit.kind === 'named') {
     const sigSkill = reg.signatures.get(unit.signatureSkill.templateId)?.skill as string | undefined;

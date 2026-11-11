@@ -6,6 +6,7 @@ import { run } from './world';
 import '../../src/engine/actions/leash';
 import '../../src/engine/actions/loyalty';
 import '../../src/engine/actions/dilemma';
+import '../../src/engine/actions/arc';
 
 export { campaign, ctxOf, errors, loadCore, ofType, run, unitSetup } from './world';
 
