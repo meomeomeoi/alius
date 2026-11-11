@@ -3,6 +3,10 @@ import type { EngineCtx, EngineEvent } from '../dispatch';
 import { buildCombat, checkStart } from '../combat/build';
 import { fireTrigger, makeCtx, type EffectCtx } from '../combat/effects';
 import { checkOrder, issueOrder } from '../combat/orders';
+import { addStress } from '../combat/stress';
+import { isStanding } from '../combat/targeting';
+import { isLiving } from '../economy';
+import { leashCost } from '../leash/use';
 import { finalizeCombat } from '../combat/outcome';
 import { ENEMY_NAMES_MAX, isEnemyName } from '../combat/spawn';
 import { completeAction, performAction, runUntilInput, startRound } from '../combat/turn';
@@ -88,6 +92,31 @@ registerAction('combat/order', (draft, payload, ctx) => {
   if (reason) throw new Error(reason);
   const start = cs.log.length;
   issueOrder(ectx, payload.orderId, payload.targetCid);
+  return settle(draft, ctx, ectx, start);
+});
+
+/**
+ * Compel (P6): cancels the last refusal. The refused order runs for free and without a second roll, her combat stress
+ * rises at once, and her unit id is pledged in `cs.compels`; authorizations, Trust, Affinity and the log are settled by
+ * `finalizeCombat`, so an easy retry never charges twice. A failed burst (a defect) still counts but the order does not run.
+ */
+registerAction('combat/compel', (draft, _payload, ctx) => {
+  const cs = open(draft, 'combat/compel');
+  if (cs.phase !== 'awaiting') throw new Error('combat/compel: the combat is not running');
+  const refusal = cs.lastRefusal;
+  if (!refusal) throw new Error('No order was refused: there is nothing to compel.');
+  const target = cs.combatants.find((c) => c.cid === refusal.targetCid);
+  const unit = target?.unitId ? draft.squad.find((u) => u.id === target.unitId) : undefined;
+  if (!target || !unit || !isStanding(target) || !isLiving(unit)) throw new Error('The unit that refused is no longer standing.');
+  if (draft.leash.authorizationsLeft - (cs.compels?.length ?? 0) < 1) throw new Error('No Leash authorization is left this week.');
+  const cost = leashCost(draft, ctx.registries, unit.id, 'compel');
+  const ectx = makeCtx(cs, draft, ctx.registries, ctx.rng);
+  const start = cs.log.length;
+  const forced = !(cost.failChance > 0 && ctx.rng.chance(cost.failChance));
+  (cs.compels ??= []).push(unit.id);
+  addStress(ectx, target.cid, cost.stress, 'order');
+  if (forced) issueOrder(ectx, refusal.orderId, refusal.targetCid, { free: true, compel: true });
+  ectx.emit({ type: 'combat_compelled', unitId: unit.id, cid: target.cid, forced });
   return settle(draft, ctx, ectx, start);
 });
 

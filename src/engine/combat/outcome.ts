@@ -2,6 +2,7 @@ import type { Registries } from '../../content/types';
 import { injureCommander } from '../calendar';
 import type { EngineEvent } from '../dispatch';
 import { bankLoot, rollLoot } from '../items';
+import { settleCompels } from '../leash/use';
 import { applyLevelUps, combatXp, releaseBreakdowns } from '../progression';
 import type { Rng } from '../rng';
 import type { CampaignState, LootDrop, Severity, Unit } from '../state/types';
@@ -132,6 +133,10 @@ export function finalizeCombat(draft: CampaignState, reg: Registries, rng: Rng, 
     commanderInjured = true;
   }
 
+  // P6: the Leash is paid once, here, so an easy retry that discards the attempt never charges (the compels died with it)
+  const compels = cs.compels ?? [];
+  events.push(...settleCompels(draft, { registries: reg, rng }, compels));
+
   const result: CombatResult = {
     id: cs.id,
     day: draft.day,
@@ -155,6 +160,7 @@ export function finalizeCombat(draft: CampaignState, reg: Registries, rng: Rng, 
     stressDelta: Object.fromEntries(squad.map((c) => [c.unitId!, unitOf(c).stress - stressBefore[c.unitId!]])),
     relationHints: relationHints(cs, unitIdOf),
     commanderInjured,
+    ...(compels.length > 0 ? { compels: [...compels] } : {}),
   };
   draft.lastCombat = result;
   delete draft.combat;

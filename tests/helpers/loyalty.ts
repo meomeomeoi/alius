@@ -4,6 +4,7 @@ import { run } from './world';
 
 // Importing this registers the P6 actions under test (the P0–P5 actions come with ./world).
 import '../../src/engine/actions/leash';
+import '../../src/engine/actions/loyalty';
 
 export { campaign, ctxOf, errors, loadCore, ofType, run, unitSetup } from './world';
 
@@ -42,4 +43,29 @@ export function endDay(state: CampaignState, reg: Registries): CampaignState {
     if (s.slot === 'night') break;
   }
   return s;
+}
+
+/** Starts a combat with the active roster against `enemies` (default: one level-1 husk) and returns the state with `combat` open. */
+export function startFight(
+  state: CampaignState, reg: Registries,
+  over: { enemies?: Array<{ enemyId: string; level: number; affixes: string[] }>; allowRetry?: boolean } = {},
+): CampaignState {
+  const ids = state.roster.activeIds;
+  const r = run(state, reg, {
+    type: 'combat/start',
+    payload: {
+      encounter: { enemies: over.enemies ?? [{ enemyId: 'husk', level: 1, affixes: [] }], danger: 1 },
+      formation: { front: ids.slice(0, 2), back: ids.slice(2) },
+      allowRetry: over.allowRetry,
+    },
+  });
+  if (r.events.some((e) => e.type === 'error')) throw new Error(JSON.stringify(r.events));
+  return r.state;
+}
+
+/** The combatant id of a squad unit in the open combat. */
+export function cidOf(state: CampaignState, unitId: string): string {
+  const c = state.combat?.combatants.find((x) => x.unitId === unitId);
+  if (!c) throw new Error(`${unitId} is not in the combat`);
+  return c.cid;
 }

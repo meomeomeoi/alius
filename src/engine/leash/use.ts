@@ -137,13 +137,13 @@ const COERCED: Omit<EventIntent, 'targets' | 'severity'> = { type: 'coerced', ac
  * `skipStress` is for combat, where her stress already rose at once.
  */
 export function compel(
-  draft: CampaignState, ctx: EngineCtx, p: { unitId: string; context: LeashLogEntry['context']; skipStress?: boolean },
+  draft: CampaignState, ctx: EngineCtx, p: { unitId: string; context: LeashLogEntry['context']; skipStress?: boolean; roll?: boolean },
 ): { forced: boolean; events: EngineEvent[] } {
   const reg = ctx.registries;
   const why = checkLeash(draft, reg, 'compel', p.unitId);
   if (why) throw new Error(why);
   const cost = leashCost(draft, reg, p.unitId, 'compel');
-  const forced = !(cost.failChance > 0 && ctx.rng.chance(cost.failChance));
+  const forced = !(p.roll !== false && cost.failChance > 0 && ctx.rng.chance(cost.failChance));
   const events: EngineEvent[] = [];
   events.push(...payCost(draft, reg, p.unitId, cost, { skipStress: p.skipStress }));
   const witnesses = witnessesOf(draft, p.unitId);
@@ -154,6 +154,21 @@ export function compel(
   for (const id of [p.unitId, ...witnesses]) events.push(...evaluateAutomatic(draft, reg, id));
   events.push(...bookUse(draft, p.unitId, 'compel', p.context, forced ? 'done' : 'failed'));
   return { forced, events };
+}
+
+/**
+ * Pays the Compels of a finished combat: one `combat` use per entry, her stress already rose when she was compelled and
+ * a failed burst was already played out. A unit that is gone by now (a grunt that fell) still costs the authorization.
+ */
+export function settleCompels(draft: CampaignState, ctx: EngineCtx, unitIds: string[]): EngineEvent[] {
+  const events: EngineEvent[] = [];
+  for (const unitId of unitIds) {
+    if (draft.leash.authorizationsLeft < 1) break;
+    const unit = unitOf(draft, unitId);
+    if (!unit || !isLiving(unit)) events.push(...bookUse(draft, unitId, 'compel', 'combat', 'done'));
+    else events.push(...compel(draft, ctx, { unitId, context: 'combat', skipStress: true, roll: false }).events);
+  }
+  return events;
 }
 
 /** Stops a desertion or an attack in progress: she keeps her place and pays; the rest of the squad is shaken. */

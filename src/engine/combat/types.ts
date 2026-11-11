@@ -282,6 +282,10 @@ export interface CombatState {
   awaitingCid?: string;
   /** The current action is an extra action (no new turn start, no second extra). */
   inExtra?: boolean;
+  /** The last order a unit refused and nothing has been ordered since: what `combat/compel` runs (P6). */
+  lastRefusal?: { orderId: string; targetCid: string };
+  /** Unit ids whose refusals were Compelled in this combat; the Leash is paid when the combat is finalized (P6). */
+  compels?: string[];
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -306,4 +310,6 @@ export interface CombatResult {
   stressDelta: Record<string, number>;
   relationHints: RelationHint[];
   commanderInjured: boolean;
+  /** Units whose refusal was Compelled; their Leash cost was settled with this result (P6). */
+  compels?: string[];
 }

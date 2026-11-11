@@ -81,20 +81,23 @@ function applyOrder(ctx: EffectCtx, order: OrderEntry, targetCid: string | undef
 
 /**
  * Gives an order: pays CP, then the target may refuse (the highest matching `order_refusal` chance); a refusal keeps
- * the CP spent, stresses her and emits `order_refused`. Otherwise the order's effects run on the target (or the
+ * the CP spent, stresses her, emits `order_refused` and is remembered as `cs.lastRefusal` (P6: `combat/compel` runs it
+ * with `compel: true`, which skips the roll). Otherwise the order's effects run on the target (or the
  * squad) and the order is remembered for `sig_command_echo`.
  */
-export function issueOrder(ctx: EffectCtx, orderId: string, targetCid?: string, opts: { free?: boolean } = {}): boolean {
+export function issueOrder(ctx: EffectCtx, orderId: string, targetCid?: string, opts: { free?: boolean; compel?: boolean } = {}): boolean {
   const { cs } = ctx;
   const order = orderOf(ctx, orderId)!;
   if (!opts.free) cs.cp -= orderCost(ctx, orderId, targetCid);
-  if (order.target === 'ally' && targetCid) {
+  delete cs.lastRefusal; // any later order answers the refusal (P6)
+  if (order.target === 'ally' && targetCid && opts.compel !== true) {
     const chance = Math.max(0, ...activePassives(ctx, targetCid, 'order_refusal')
       .filter((e) => matches(e.orders, orderId)).map((e) => e.chance ?? 0));
     if (chance > 0 && ctx.rng.chance(chance)) {
       ctx.log({ kind: 'order_refused', orderId, target: targetCid });
       ctx.emit({ type: 'order_refused', orderId, cid: targetCid, unitId: byCid(cs, targetCid).unitId });
       addStress(ctx, targetCid, TUNING.combat.stress.refusedOrder, 'order');
+      cs.lastRefusal = { orderId, targetCid };
       return false;
     }
   }

@@ -1,6 +1,7 @@
 /** The relationship hooks other packages use (P3 spec §9). */
 import type { Registries } from '../../content/types';
 import type { CampaignState, LoyaltyBand, Relation } from '../state/types';
+import { TUNING } from '../tuning';
 
 export { applyIntents } from './apply';
 export { enqueueNight } from '../night';
@@ -17,6 +18,12 @@ export function getSynergies(state: CampaignState, reg: Registries, unitIds: str
   for (const id of unitIds) {
     const st = reg.relationshipStates.get(state.relations[id]?.stateId ?? '');
     for (const synergyId of (st?.unlocks as { synergies?: string[] } | undefined)?.synergies ?? []) out.push({ unitId: id, synergyId });
+    // P6: a wavering or breaking unit also carries the refusal chance of her loyalty band (the highest chance wins in combat)
+    const band = state.relations[id]?.loyaltyBand;
+    if (band === 'wavering' || band === 'breaking') {
+      const synergyId = TUNING.disloyalty.bandSynergy[band];
+      if (reg.synergies.has(synergyId)) out.push({ unitId: id, synergyId });
+    }
   }
   return out;
 }
