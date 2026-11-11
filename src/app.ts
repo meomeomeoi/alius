@@ -9,10 +9,9 @@ import './engine/actions/progression'; // registers squad/unlock_node, respec, s
 import './engine/actions/world'; // registers world/* actions
 import './engine/actions/expedition'; // registers expedition/* actions
 import './engine/actions/leash'; // registers leash/* actions and the weekly refresh (P6)
-import './engine/actions/loyalty'; // registers scene/order and the other loyalty actions (P6)
+import './engine/actions/loyalty'; // registers scene/order, loyalty/* actions and the loyalty day step (P6)
+import './engine/actions/dilemma'; // registers dilemma/* actions and the pacing step, after the loyalty step (P6)
 import './engine/actions/arc'; // registers arc/decide and the medbay arc steps (P6)
-// P6 Task 15 wires './engine/actions/dilemma' (dilemma/* actions and the pacing step) together with the panel that answers a presented dilemma:
-// without that UI the day-end pacing would block time at the first dilemma, so the app does not load it yet.
 import './engine/actions/items'; // registers item/* actions and the workshop hook
 import './llm/calls/profileImport'; // registers the profile_import call type
 import { generateVignette } from './llm/calls/activityVignette'; // registers the activity_vignette call type
@@ -28,6 +27,20 @@ import { generateEncounter } from './engine/combat/encounter';
 import { defaultFormation, squadPower } from './engine/combat/stats';
 import type { StartPayload } from './engine/combat/types';
 import { Rng } from './engine/rng';
+import { arcPaths } from './engine/arcs';
+import { dilemmaOptions } from './engine/dilemma/flow';
+import { isLiving } from './engine/economy';
+import { checkLeash, leashCost } from './engine/leash/use';
+import { leashLog } from './engine/leash/weekly';
+import { loyalUnits } from './engine/loyalty/mutiny';
+import { CONFRONTATION_KINDS } from './engine/loyalty/state';
+import type { LeashKind } from './engine/state/types';
+import { createDilemmas, type DilemmaController } from './loyalty/dilemmaController';
+import { createLoyalty, type LoyaltyController } from './loyalty/loyaltyController';
+import { renderDilemma } from './ui/dilemma/dilemmaPanel';
+import { fileLeashRequest } from './ui/leash/requestForm';
+import { renderConfrontation } from './ui/loyalty/confrontation';
+import { cutIn } from './ui/scene/cutIn';
 import { renderCombatScreen, type CombatScreen } from './ui/combat/combatScreen';
 import { renderInvTab } from './ui/inv/invTab';
 import { ContextBuilder } from './llm/context';
@@ -122,6 +135,15 @@ export interface AliusApp {
   director: DirectorController;
   /** A story outcome offered a new unit: pick a character card (or take a grunt instead). */
   intakeUnit(): Promise<void>;
+  /** Dilemmas (P6): answers the requests the engine opens and takes the player's pick. */
+  dilemmas: DilemmaController;
+  /** Refusals, Leash directives and decision aftermath in scenes (P6). */
+  loyalty: LoyaltyController;
+  /**
+   * Files a Leash request through the oversight form, then runs the action. Refused (with a toast) before the form
+   * opens when it cannot apply; resolves false when withdrawn or refused by the engine.
+   */
+  fileLeash(kind: LeashKind, unitId: string): Promise<boolean>;
 }
 
 export interface AppDeps {
@@ -129,6 +151,8 @@ export interface AppDeps {
   shellFactory?: typeof createShell;
   /** URL of a file shipped with the extension (the optional world map image). */
   assetUrl?: (path: string) => string;
+  /** How long the oversight form's "review" takes (default 1800 ms, 0 with reduced motion); tests pass 0. */
+  leashDelayMs?: number;
 }
 
 const errText = (e: unknown) => (e instanceof Error ? e.message : String(e));
@@ -214,6 +238,8 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     toast: (kind: 'info' | 'warn' | 'error', text: string) => toast(kind, text),
   };
   const director = createDirector(worldDeps);
+  const dilemmas = createDilemmas(worldDeps);
+  const loyalty = createLoyalty({ ...worldDeps, context, refreshContext: applyContext });
   const expedition = createExpedition({ ...worldDeps, startCombat: (p) => api.startCombat(p), startScene: (o) => beginScene(o) });
   let expeditionScreen: ExpeditionScreen | null = null;
   /** True while the expedition screen is what the shell shows. */
@@ -245,9 +271,13 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     // directives belong to one campaign's scene: never carry them into another chat
     clearSceneDirectives(context);
     context.clearMatching((d) => d.id === 'night' || d.id.startsWith('proposal:'));
+    loyalty.onSceneClosed(); // refusal, band, trauma and aftermath directives belong to one scene of one campaign (P6)
     if (state?.scene) {
       scene.resume();
+      loyalty.onSceneOpened();
       showScene();
+    } else if (state && state.slot === 'night' && state.calendar.nightEvent && confrontationNight(state)) {
+      showScene(); // a confrontation is waiting: its panel comes back after a reload
     } else if (onSceneScreen) {
       onSceneScreen = false;
       shell.showScreen('pda');
@@ -264,6 +294,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       }
       return false;
     }
+    loyalty.onSceneOpened();
     showScene();
     shell.open();
     return true;
@@ -307,6 +338,26 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     const warn = (what: string) => (e: unknown) => console.warn(`[Alius] ${what} failed`, e);
     queueMicrotask(() => {
       if (st.getActiveChat()?.chatId !== chatId) return;
+      if (has('dilemma_requested')) {
+        if (state?.dilemmas?.open?.context !== 'expedition_event') openDilemmaModal();
+        void dilemmas.onRequested().catch(warn('dilemma'));
+      }
+      if (has('dilemma_presented') && state?.dilemmas?.open?.context !== 'expedition_event') openDilemmaModal();
+      if (has('dilemma_resolved')) {
+        loyalty.onEvents(events);
+        suggestTalk(events);
+      }
+      if (has('expedition_event')) requestExpeditionDilemma(events);
+      if (has('combat_ended')) {
+        if (state?.dilemmas?.open?.status === 'requested') void dilemmas.onRequested().catch(warn('dilemma'));
+        resolveMutinyIfDue();
+      }
+      if (events.some((e) => e.type === 'desertion_attempt' && e.at === 'mission_start')) openConfrontationModal();
+      for (const e of events) {
+        if (e.type === 'unit_deserted') removeFromChat(String(e.unitId), `${state?.squad.find((u) => u.id === e.unitId)?.displayName ?? 'A unit'} HAS DESERTED`);
+        if (e.type === 'unit_terminated') removeFromChat(String(e.unitId), `${state?.squad.find((u) => u.id === e.unitId)?.displayName ?? 'A unit'} DEACTIVATED`);
+      }
+      if (has('scene_ended') || has('scene_aborted')) loyalty.onSceneClosed();
       if (has('commander_injured')) api.dispatch({ type: 'relations/commander_injured', payload: {} }, { expectChatId: chatId });
       if (has('night_started') && state?.slot === 'night' && !state.scene) {
         showScene();
@@ -332,10 +383,16 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     if (s?.scene) {
       sceneScreen = renderSceneScreen(host, {
         controller: scene, getState: () => state, registries, st, settings: () => getSettings(st), onEnded: leaveScene,
+        onOrder: (unitId) => loyalty.order(unitId),
+        onCompel: (unitId) => void api.fileLeash('compel', unitId),
       });
       return;
     }
     const entry = s && s.slot === 'night' ? s.calendar.nightEvent : undefined;
+    if (s && entry && confrontationNight(s)) {
+      renderConfrontationPanel(host);
+      return;
+    }
     if (s && entry) {
       renderKnock(host, {
         entry, unitName: s.squad.find((u) => u.id === entry.unitId)?.displayName ?? 'Someone',
@@ -349,6 +406,228 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     }
     host.append(h('section', { class: 'alius-section' }, h('p', {}, 'NO SCENE OPEN'),
       h('button', { type: 'button', class: 'alius-btn', onclick: leaveScene }, '[ BACK ]')));
+  }
+
+
+  // ---------------------------------------------------------------------------------------------- dilemmas and loyalty (P6)
+
+  /** A decision that is waiting at the base is a modal over the PDA; inside a run the expedition screen shows it. */
+  let dilemmaHost: HTMLElement | null = null;
+  let dilemmaModalOpen = false;
+
+  /** Renders the open base dilemma into its host, or closes the modal when nothing is waiting. */
+  function drawDilemma(): void {
+    const s = state;
+    const open = s?.dilemmas?.open;
+    if (!s || !open || open.context === 'expedition_event') {
+      if (dilemmaModalOpen) shell.closeModal?.();
+      dilemmaModalOpen = false;
+      dilemmaHost = null;
+      return;
+    }
+    dilemmaHost ??= h('div');
+    renderDilemma(dilemmaHost, {
+      title: open.title ?? 'DECISION', setup: open.setup ?? '', scale: open.scale, waiting: open.status === 'requested',
+      options: dilemmaOptions(s, registries), onChoose: (i) => void dilemmas.choose(i),
+    });
+  }
+
+  function openDilemmaModal(): void {
+    drawDilemma();
+    if (!dilemmaHost || dilemmaModalOpen) return;
+    dilemmaModalOpen = true;
+    shell.open();
+    void shell.modal({ title: 'DECISION', body: dilemmaHost, actions: [] }).then(() => { dilemmaModalOpen = false; });
+  }
+
+  /** After a decision that moved people: name them and offer a talk (it does not use a slot). */
+  function suggestTalk(events: EngineEvent[]): void {
+    const resolved = events.find((e) => e.type === 'dilemma_resolved' && Array.isArray(e.affected) && e.affected.length > 0);
+    const s = state;
+    if (!resolved || !s || s.scene || s.combat || s.expedition) return;
+    const ids = (resolved.affected as string[]).filter((id) => {
+      const u = s.squad.find((x) => x.id === id);
+      return u !== undefined && u.kind === 'named' && isLiving(u);
+    }).slice(0, 3);
+    if (ids.length === 0) return;
+    const names = ids.map((id) => s.squad.find((u) => u.id === id)!.displayName).join(', ');
+    toast('info', `Your decision "${String(resolved.title)}" moved ${names}.`);
+    const chatId = st.getActiveChat()?.chatId;
+    void shell.modal({
+      title: 'Talk it over?',
+      body: `${names} reacted to what you decided. Talk with them now? This does not use a slot.`,
+      actions: [{ label: '[ TALK ]', value: 'talk' }, { label: 'Later', value: 'later' }],
+    }).then((answer) => {
+      if (answer === 'talk' && st.getActiveChat()?.chatId === chatId) {
+        void beginScene({ locationId: 'mess_hall', participants: ids, origin: 'event', consumesSlot: false });
+      }
+    });
+  }
+
+  /** A pinned expedition event that generates becomes a dilemma (the expedition screen shows it). */
+  function requestExpeditionDilemma(events: EngineEvent[]): void {
+    const ev = events.find((e) => e.type === 'expedition_event');
+    if (!ev || !getSettings(st).dilemmasEnabled) return;
+    const template = registries.dilemmaTemplates.get(String(ev.templateId));
+    if (template?.generate === undefined || state?.dilemmas?.open) return;
+    api.dispatch({ type: 'dilemma/request', payload: { templateId: String(ev.templateId), context: 'expedition_event' } }, { expectChatId: st.getActiveChat()?.chatId });
+  }
+
+  /** The night entry is a desertion, mutiny or return waiting for its panel. */
+  function confrontationNight(s: CampaignState): boolean {
+    const entry = s.calendar.nightEvent;
+    const open = s.disloyalty?.open;
+    return entry !== undefined && open !== undefined && open.unitId === entry.unitId && (CONFRONTATION_KINDS as readonly string[]).includes(entry.kind);
+  }
+
+  /** What follows an answer to a confrontation: the panel again while it is still open, else back to the PDA (or the next knock). */
+  function afterConfrontation(close?: () => void): void {
+    if (state?.disloyalty?.open) {
+      shell.refresh();
+      return;
+    }
+    close?.();
+    if (onSceneScreen) leaveScene();
+    else shell.refresh();
+  }
+
+  /** Fills `host` with the panel of the open confrontation. */
+  function renderConfrontationPanel(host: HTMLElement, close?: () => void): void {
+    const s = state;
+    const open = s?.disloyalty?.open;
+    if (!s || !open) return;
+    const unit = s.squad.find((u) => u.id === open.unitId);
+    const name = unit?.displayName ?? 'Someone';
+    const entry = s.calendar.nightEvent?.id === open.nightEntryId ? s.calendar.nightEvent : undefined;
+    const answer = (type: string, payload?: unknown) => {
+      act({ type, payload });
+      afterConfrontation(close);
+    };
+    renderConfrontation(host, {
+      kind: open.kind, unitName: name,
+      framing: entry?.framing ?? (open.kind === 'desertion' ? `${name} is about to walk out.` : open.kind === 'mutiny' ? `${name} is about to attack.` : `${name} is at the gate.`),
+      talkTried: open.talkTried === true,
+      ranks: { authority: s.commander.socialStats.authority, empathy: s.commander.socialStats.empathy },
+      leashLeft: s.leash.authorizationsLeft,
+      canFight: open.kind === 'mutiny' && loyalUnits(s, open.unitId).length > 0,
+      canTakeBack: s.squad.filter(isLiving).length >= s.roster.capacity ? `The barracks are full (${s.roster.capacity} beds).` : null,
+      onTalk: (stat) => answer('loyalty/talk_down', { stat }),
+      onLetGo: () => answer('loyalty/let_go'),
+      onSuppress: () => void api.fileLeash('suppress', open.unitId).then(() => afterConfrontation(close)),
+      onFight: () => fightMutiny(open.unitId),
+      onYield: () => answer('loyalty/yield'),
+      onTakeBack: () => answer('loyalty/take_back'),
+      onTurnAway: () => answer('loyalty/turn_away'),
+    });
+  }
+
+  /** A desertion that stops a departure is a modal over whatever screen is up. */
+  function openConfrontationModal(): void {
+    const open = state?.disloyalty?.open;
+    if (!open || open.at !== 'mission_start') return;
+    const host = h('div');
+    const close = () => shell.closeModal?.();
+    renderConfrontationPanel(host, close);
+    shell.open();
+    void shell.modal({ title: open.kind === 'mutiny' ? 'MUTINY' : 'DESERTION', body: host, actions: [] });
+  }
+
+  /** [FIGHT]: the loyal units stand with the commander in the default formation, the first one covers him. */
+  function fightMutiny(unitId: string): void {
+    const s = state;
+    if (!s) return;
+    const ids = loyalUnits(s, unitId).slice(0, 4);
+    const formation = defaultFormation(s, registries, ids);
+    const events = act({ type: 'loyalty/fight', payload: { formation, coverId: ids[0], allowRetry: getSettings(st).easyRetry } });
+    if (events.some((e) => e.type === 'error')) return;
+    showCombat();
+    shell.open();
+    combatScreen?.handle(events);
+    requestEnemyNames();
+  }
+
+  /** A finished mutiny fight is resolved exactly once; the engine refuses a second try. */
+  function resolveMutinyIfDue(): void {
+    const open = state?.disloyalty?.open;
+    if (open?.kind !== 'mutiny' || open.combatId === undefined || state?.combat || state?.lastCombat?.id !== open.combatId) return;
+    act({ type: 'loyalty/resolve_mutiny' });
+  }
+
+  /** A unit that left the unit for good is no longer a member of the group chat. */
+  function removeFromChat(unitId: string, text: string): void {
+    const unit = state?.squad.find((u) => u.id === unitId);
+    if (unit?.cardRef) {
+      const keep = st.getGroupMembers().filter((m) => m.active && m.avatar !== unit.cardRef).map((m) => m.avatar);
+      void st.setMembersActive(keep).catch((e) => console.warn('[Alius] could not update the group members', e));
+    }
+    void saver?.flush().catch((e) => console.warn('[Alius] save failed', e));
+    const root = document.getElementById('alius-shell');
+    if (root) cutIn(root, 'leash', text);
+  }
+
+  const nextLeashNo = (s: CampaignState): number => (s.leash.seq ?? Math.max(0, ...leashLog(s).map((e) => e.no))) + 1;
+  const KIND_WORD: Record<LeashKind, string> = { compel: 'COMPEL', suppress: 'SUPPRESS', terminate: 'TERMINATE' };
+
+  /** Why a Leash request cannot be filed right now, or null. Nothing is asked of the player before this. */
+  function leashProblem(s: CampaignState, kind: LeashKind, unitId: string): string | null {
+    if (kind === 'compel') {
+      if (!s.scene?.participants.includes(unitId) || !(s.scene.refusals ?? []).some((r) => r.unitId === unitId)) {
+        return 'There is no refused order to compel: give an order in a scene first.';
+      }
+    } else if (kind === 'suppress') {
+      const open = s.disloyalty?.open;
+      if (!open || open.unitId !== unitId || (open.kind !== 'desertion' && open.kind !== 'mutiny')) return 'Nothing is happening that needs to be suppressed.';
+    }
+    return checkLeash(s, registries, kind, unitId);
+  }
+
+  async function fileLeash(kind: LeashKind, unitId: string): Promise<boolean> {
+    const s = state;
+    const unit = s?.squad.find((u) => u.id === unitId);
+    if (!s || !unit) {
+      toast('warn', 'No such unit.');
+      return false;
+    }
+    const why = leashProblem(s, kind, unitId);
+    if (why) {
+      toast('warn', why);
+      return false;
+    }
+    const chatId = st.getActiveChat()?.chatId;
+    const cause = kind === 'terminate' ? s.disloyalty?.units[unitId]?.cause : undefined;
+    const filed = await fileLeashRequest(shell, {
+      kind, unitName: unit.displayName, no: nextLeashNo(s), left: s.leash.authorizationsLeft,
+      ...(kind !== 'terminate' ? { cost: leashCost(s, registries, unitId, kind) } : {}),
+      ...(cause ? { cause: cause.kind === 'attack' ? 'ATTACKED THE UNIT' : 'REPEATED DESERTION ATTEMPTS' } : {}),
+      showNumbers: getSettings(st).showRawValues, delayMs: deps.leashDelayMs,
+      ...(kind === 'terminate' ? { verdict: 'UNDER REVIEW' } : {}),
+    });
+    if (!filed || st.getActiveChat()?.chatId !== chatId) return false;
+    if (kind === 'compel') return loyalty.compel(unitId);
+    const events = act({ type: kind === 'suppress' ? 'leash/suppress' : 'leash/terminate', payload: { unitId } });
+    if (events.some((e) => e.type === 'error')) return false;
+    if (events.some((e) => e.type === 'leash_used' && e.outcome === 'denied')) toast('warn', `Oversight denied the termination of ${unit.displayName}.`);
+    return true;
+  }
+
+  /** A path she refuses is forced through the Leash: the form first, then the decision. */
+  async function decideArc(unitId: string, defectId: string, path: string, compel: boolean): Promise<void> {
+    const s = state;
+    const unit = s?.squad.find((u) => u.id === unitId);
+    if (!s || !unit) return;
+    const chatId = st.getActiveChat()?.chatId;
+    if (compel) {
+      const why = checkLeash(s, registries, 'compel', unitId);
+      if (why) return void toast('warn', why);
+      const filed = await fileLeashRequest(shell, {
+        kind: 'compel', unitName: unit.displayName, no: nextLeashNo(s), left: s.leash.authorizationsLeft, cost: leashCost(s, registries, unitId, 'compel'),
+        cause: `FORCED ${path.toUpperCase()} OF A DEFECT`, showNumbers: getSettings(st).showRawValues, delayMs: deps.leashDelayMs,
+      });
+      if (!filed || st.getActiveChat()?.chatId !== chatId) return;
+    }
+    const events = act({ type: 'arc/decide', payload: { unitId, defectId, path, compel } });
+    if (!events.some((e) => e.type === 'error') && events.some((e) => e.type === 'arc_decided')) toast('info', `${unit.displayName} takes the ${path} path.`);
+    else if (!events.some((e) => e.type === 'error') && compel) toast('warn', 'The Leash burst failed: nothing was decided.');
   }
 
   // ---------------------------------------------------------------------------------------------- combat (P4)
@@ -411,6 +690,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       onAccept: () => void combatDo('combat/accept'),
       onRetreat: () => void combatDo('combat/retreat'),
       onClose: leaveCombat,
+      onCompel: () => void combatDo('combat/compel'),
     });
   }
 
@@ -442,6 +722,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       controller: expedition,
       onClose: leaveExpedition,
       recapPending: () => recapPendingFor !== null && recapPendingFor === state?.lastExpedition?.id,
+      onDilemmaChoose: (index) => void dilemmas.choose(index),
     });
   }
 
@@ -533,6 +814,10 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     if (load.kind === 'ok' && state && state.world.seeded !== true) {
       api.dispatch({ type: 'world/seed', payload: {} }, { expectChatId: load.chatId });
     }
+    // a save from before P6 has no Leash week yet: seed it once
+    if (load.kind === 'ok' && state && state.leash.seeded !== true) {
+      api.dispatch({ type: 'leash/seed', payload: {} }, { expectChatId: load.chatId });
+    }
     applyContext();
     syncBadges();
     adoptScene();
@@ -541,6 +826,14 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     syncIntimacy();
     syncBeatCooldown();
     if (state?.world.director?.pending) void director.onRequested().catch((e) => console.warn('[Alius] director failed', e));
+    // dilemmas and confrontations that were open when the campaign was saved come back as they were
+    dilemmaHost = null;
+    dilemmaModalOpen = false;
+    if (state?.dilemmas?.open) {
+      if (state.dilemmas.open.context !== 'expedition_event') openDilemmaModal();
+      if (state.dilemmas.open.status === 'requested') void dilemmas.onRequested().catch((e) => console.warn('[Alius] dilemma failed', e));
+    }
+    openConfrontationModal();
   }
 
   function replaceState(next: CampaignState): void {
@@ -975,6 +1268,43 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         case 'leash_changed':
           toast('warn', `Leash authorizations: ${String(e.left)} left.`);
           break;
+        case 'leash_used': {
+          const who = state?.squad.find((u) => u.id === e.unitId)?.displayName ?? String(e.unitId);
+          toast('info', `Oversight request #${String(e.no).padStart(4, '0')}: ${KIND_WORD[e.kind as LeashKind] ?? String(e.kind)} ${who} — ${String(e.outcome)}.`);
+          break;
+        }
+        case 'leash_refreshed':
+          toast('info', `A new week: ${String(e.left)} Leash authorizations.`);
+          break;
+        case 'loyalty_sign': {
+          const who = state?.squad.find((u) => u.id === e.unitId)?.displayName ?? 'A unit';
+          if (e.kind === 'fact') toast('warn', `${who} is giving the squad cause for concern.`);
+          else if (e.kind === 'talk') toast('info', `${who} wants to talk. She will knock tonight.`);
+          break;
+        }
+        case 'arc_unlocked':
+          toast('info', `${state?.squad.find((u) => u.id === e.unitId)?.displayName ?? 'A unit'} wants to talk about her defect.`);
+          break;
+        case 'arc_completed':
+          toast('info', `${state?.squad.find((u) => u.id === e.unitId)?.displayName ?? 'A unit'}: the ${String(e.path)} is complete.`);
+          break;
+        case 'deserter_returned': {
+          const who = state?.squad.find((u) => u.id === e.unitId)?.displayName ?? 'A deserter';
+          toast(e.stance === 'ally' ? 'info' : 'warn', e.stance === 'ally' ? `${who} is back at the gate.` : `${who} has been seen with armed deserters.`);
+          break;
+        }
+        case 'unit_deserted':
+          toast('warn', `${state?.squad.find((u) => u.id === e.unitId)?.displayName ?? 'A unit'} has deserted.`);
+          break;
+        case 'unit_terminated':
+          toast('warn', `${state?.squad.find((u) => u.id === e.unitId)?.displayName ?? 'A unit'} was terminated through the Leash.`);
+          break;
+        case 'mutiny_subdued':
+          toast('info', `${state?.squad.find((u) => u.id === e.unitId)?.displayName ?? 'A unit'} was put down: the mutiny is over.`);
+          break;
+        case 'mutiny_escaped':
+          toast('warn', `${state?.squad.find((u) => u.id === e.unitId)?.displayName ?? 'A unit'} got away with the mutineers.`);
+          break;
         case 'clearance_raised':
           toast('info', `Clearance raised to tier ${String(e.tier)}.`);
           break;
@@ -1023,6 +1353,10 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       onSetLoadout: (unitId, skillIds) => void act({ type: 'squad/set_loadout', payload: { unitId, skillIds } }),
       onEquip: (unitId, uid) => void act({ type: 'item/equip', payload: { unitId, uid } }),
       onUnequip: (unitId, slot) => void act({ type: 'item/unequip', payload: { unitId, slot } }),
+      onLeash: (unitId, kind) => void api.fileLeash(kind, unitId),
+      onArc: (unitId, defectId, path, compel) => void decideArc(unitId, defectId, path, compel),
+      arcPaths: (unitId, defectId) => (state ? arcPaths(state, registries, unitId, defectId) : []),
+      canTerminate: (unitId) => (state ? checkLeash(state, registries, 'terminate', unitId) : 'No campaign.'),
     }),
   );
   shell.registerTab('inv', (host) =>
@@ -1129,6 +1463,9 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     comms,
     expedition,
     director,
+    dilemmas,
+    loyalty,
+    fileLeash,
     intakeUnit,
     startScene: beginScene,
     startCombat(opts) {
@@ -1295,6 +1632,9 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       reportEvents(r.events);
       applyContext();
       syncBadges();
+      drawDilemma();
+      // a blocked action brings the waiting decision back (the player may have dismissed its modal)
+      if (r.events.some((e) => e.type === 'error' && e.code === 'dilemma_open')) openDilemmaModal();
       shell.refresh();
       followUps(r.events);
       return r.events;
