@@ -8,6 +8,8 @@ export interface CombatKeyHandlers {
   order(index: number): void;
   auto(): void;
   cancel(): void;
+  /** Compel the unit that just refused (P6). */
+  compel?(): void;
 }
 
 /** Order hotkeys in registry order. */
@@ -34,6 +36,7 @@ export function attachCombatKeys(h: CombatKeyHandlers): () => void {
     else if (k === 's') h.swap();
     else if (k === 'p') h.pass();
     else if (k === 'a') h.auto();
+    else if (k === 'c' && h.compel) h.compel();
     else if (k === 'Escape') h.cancel();
     else if ((ORDER_KEYS as readonly string[]).includes(k)) h.order((ORDER_KEYS as readonly string[]).indexOf(k));
     else handled = false;

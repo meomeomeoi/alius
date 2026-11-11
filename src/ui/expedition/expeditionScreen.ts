@@ -7,6 +7,8 @@ import { mapRows, visibleTypes } from '../../engine/world/nodeMap';
 import type { AliusSettings } from '../../settings';
 import type { ExpeditionController } from '../../world/expeditionController';
 import { bar } from '../combat/bars';
+import { dilemmaOptions } from '../../engine/dilemma/flow';
+import { renderDilemma } from '../dilemma/dilemmaPanel';
 import { h } from '../dom';
 import { renderNodeMap } from './nodeMapView';
 import { newDraft, renderPlanner, type PlannerDraft } from './planner';
@@ -20,6 +22,8 @@ export interface ExpeditionScreenCtx {
   onClose: () => void;
   /** True while a recap has been asked for and has not arrived (the report shows COMPILING…). */
   recapPending?: () => boolean;
+  /** P6: the player's pick of a generated dilemma for the pending event node. */
+  onDilemmaChoose?: (index: number) => void;
 }
 
 export interface ExpeditionScreen {
@@ -145,6 +149,18 @@ export function renderExpeditionScreen(host: HTMLElement, ctx: ExpeditionScreenC
     if (pending?.kind !== 'event') return;
     const fixed = reg.dilemmaTemplates.get(pending.templateId)?.fixed as { title: string; setup: string } | undefined;
     const panel = h('section', { class: 'alius-section alius-event' }, h('h3', {}, fixed?.title ?? 'EVENT'), h('p', {}, fixed?.setup ?? ''));
+    const generated = state.dilemmas?.open;
+    if (ctx.onDilemmaChoose && generated && generated.context === 'expedition_event' && generated.templateId === pending.templateId) {
+      // a generated (or authored-fallback) dilemma replaces the fixed options of the pending node
+      const slot = h('div', { class: 'alius-dilemma-host' });
+      panel.replaceChildren(slot);
+      renderDilemma(slot, {
+        title: generated.title ?? fixed?.title ?? 'EVENT', setup: generated.setup ?? fixed?.setup ?? '', scale: generated.scale,
+        waiting: generated.status === 'requested', options: dilemmaOptions(state, reg), onChoose: ctx.onDilemmaChoose,
+      });
+      root.append(panel);
+      return;
+    }
     const options = eventOptions(state, reg);
     if (options.length === 0) {
       // the event was removed from the pack under this save: the node resolves as nothing

@@ -30,6 +30,8 @@ export interface CombatScreenCtx {
   onAccept(): void;
   onRetreat(): void;
   onClose(): void;
+  /** P6: Compel the unit whose order was just refused. */
+  onCompel?(): void;
 }
 
 export interface CombatScreen {
@@ -56,7 +58,7 @@ export function renderCombatScreen(host: HTMLElement, ctx: CombatScreenCtx): Com
   // ------------------------------------------------------------------------------------------------ helpers
   const unitOf = (state: CampaignState, c: Combatant): Unit | undefined => state.squad.find((u) => u.id === c.unitId);
   const nameOf = (state: CampaignState, c: Combatant): string => {
-    if (c.side === 'squad') return unitOf(state, c)?.displayName ?? c.nameKey;
+    if (c.side === 'squad' || (c.unitId !== undefined && c.enemyId === undefined)) return unitOf(state, c)?.displayName ?? c.nameKey; // a mutineer keeps her own name
     const affixes = (c.nameKey.split('|')[1] ?? '').split(',').filter((a) => a !== '');
     return state.enemyNames?.[c.nameKey] ?? defaultEnemyName(reg, c.enemyId ?? '', affixes);
   };
@@ -176,6 +178,13 @@ export function renderCombatScreen(host: HTMLElement, ctx: CombatScreenCtx): Com
     }
   }
 
+  /** `ready` while a refusal stands and an authorization is not yet pledged; `blocked` when none is left. */
+  function compelState(state: CampaignState): 'none' | 'ready' | 'blocked' {
+    const cs = state.combat;
+    if (!ctx.onCompel || !cs?.lastRefusal || cs.phase !== 'awaiting') return 'none';
+    return state.leash.authorizationsLeft - (cs.compels?.length ?? 0) >= 1 ? 'ready' : 'blocked';
+  }
+
   const keysOff = attachCombatKeys({
     skill: (i) => { const s = ctx.getState(); if (s) pickSkill(s, i); },
     cycleTarget: (d) => { const s = ctx.getState(); if (s) cycleTarget(s, d); },
@@ -186,6 +195,7 @@ export function renderCombatScreen(host: HTMLElement, ctx: CombatScreenCtx): Com
     order: (i) => { const s = ctx.getState(); if (s) issueOrder(s, i); },
     auto: () => { const s = ctx.getState(); if (s?.combat?.phase === 'awaiting') ctx.onAuto(!s.combat.auto); },
     cancel: () => { selSkill = null; selTarget = null; orderMode = null; render(); },
+    compel: () => { const s = ctx.getState(); if (s && compelState(s) === 'ready') ctx.onCompel?.(); },
   });
 
   // ------------------------------------------------------------------------------------------------ rendering
@@ -373,6 +383,13 @@ export function renderCombatScreen(host: HTMLElement, ctx: CombatScreenCtx): Com
         h('button', { type: 'button', class: 'alius-btn', 'data-act': 'pass', disabled: !waiting, onclick: () => { const s = ctx.getState(); if (s) act(s, { kind: 'pass' }); } }, '[P] PASS'),
         h('button', { type: 'button', class: `alius-btn${cs.auto ? ' alius-skill-selected' : ''}`, 'data-act': 'auto', onclick: () => ctx.onAuto(!cs.auto) }, `[A] AUTO${cs.auto ? ' ON' : ''}`),
         h('button', { type: 'button', class: 'alius-btn', 'data-act': 'retreat', onclick: () => ctx.onRetreat() }, '[RETREAT]'),
+        compelState(state) !== 'none'
+          ? h('button', {
+            type: 'button', class: 'alius-btn', 'data-act': 'compel', disabled: compelState(state) === 'blocked',
+            title: compelState(state) === 'blocked' ? 'Every authorization is already pledged.' : 'Force the refused order through the Leash.',
+            onclick: () => ctx.onCompel!(),
+          }, '[C] COMPEL')
+          : null,
       ];
 
     const logBox = h('div', { class: 'alius-combat-log', 'aria-label': 'Combat log' },
@@ -382,6 +399,7 @@ export function renderCombatScreen(host: HTMLElement, ctx: CombatScreenCtx): Com
       h('div', { class: 'alius-combat-head' },
         h('span', {}, `ROUND ${cs.round}`),
         h('span', { class: 'alius-combat-cp' }, `CP ${'●'.repeat(cs.cp)}${'○'.repeat(Math.max(0, 5 - cs.cp))}`),
+        ctx.onCompel ? h('span', { class: 'alius-combat-leash' }, `LEASH ${Math.max(0, state.leash.authorizationsLeft - (cs.compels?.length ?? 0))}`) : null,
         cs.phase === 'lost_pending' ? h('span', { class: 'alius-combat-lost' }, 'DEFEAT') : null),
       timeline,
       h('div', { class: 'alius-combat-field' },

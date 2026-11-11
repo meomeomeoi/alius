@@ -402,9 +402,9 @@ docs/** (Task 16), tests/** mirror src, tests/helpers/loyalty.ts, tests/fixtures
 - Combat screen: after `order_refused`, `[ COMPEL ]` (a free key in `keys.ts`) while `cs.lastRefusal` exists → `ctx.onCompel()`; shows `LEASH n` minus pledged compels.
 - Expedition screen: when a dilemma is open for the pending node, the event panel renders `renderDilemma` instead of the fixed options.
 
-- [ ] **Step 1: Write the failing tests** — `waiting shows no buttons`; `a greyed option shows its reason and cannot be chosen`; `choosing disables every button and calls onChoose once`; `there is no text input`; `desertion offers the two talk-downs once, then only let go and suppress`; `suppress is disabled at 0 authorizations`; `mutiny with no loyal unit offers yield instead of fight`; `return greys take-back without a free bed`; `the ORDER toggle calls onOrder before sending and shows REFUSED with a COMPEL chip`; `the combat COMPEL control appears only after a refusal and disappears after use`; `the expedition event panel shows the generated dilemma when one is open and the fixed options otherwise`.
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → PASS; `npm run build`.
-- [ ] **Step 5: Commit** `feat(ui): dilemma panel, confrontation panel, scene orders and combat Compel`.
+- [x] **Step 1: Write the failing tests** — `waiting shows no buttons`; `a greyed option shows its reason and cannot be chosen`; `choosing disables every button and calls onChoose once`; `there is no text input`; `desertion offers the two talk-downs once, then only let go and suppress`; `suppress is disabled at 0 authorizations`; `mutiny with no loyal unit offers yield instead of fight`; `return greys take-back without a free bed`; `the ORDER toggle calls onOrder before sending and shows REFUSED with a COMPEL chip`; `the combat COMPEL control appears only after a refusal and disappears after use`; `the expedition event panel shows the generated dilemma when one is open and the fixed options otherwise`.
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → PASS; `npm run build`.
+- [x] **Step 5: Commit** `feat(ui): dilemma panel, confrontation panel, scene orders and combat Compel`.
 
 ---
 

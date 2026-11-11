@@ -19,6 +19,10 @@ export interface SceneScreenCtx {
   onEnded: () => void;
   /** Resolves an asset path of a location background against the extension folder. */
   assetUrl?: (path: string) => string;
+  /** P6: rolls a unit's refusal before the next message goes out (the ORDER toggle). Returns whether she refused. */
+  onOrder?: (unitId: string) => boolean;
+  /** P6: forces her refused order through the Leash. */
+  onCompel?: (unitId: string) => void;
 }
 
 export interface SceneScreen {
@@ -101,6 +105,9 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
   let caption: HTMLElement;
   let input: HTMLInputElement;
   let sceneKey = '';
+  let orderOn = false;
+  let orderToggle: HTMLButtonElement | null = null;
+  let orderWho: HTMLSelectElement | null = null;
 
   const state = (): CampaignState | null => ctx.getState();
   const present = (s: CampaignState): Unit[] => (s.scene?.participants ?? []).map((id) => s.squad.find((u) => u.id === id)).filter((u): u is Unit => u !== undefined);
@@ -155,7 +162,14 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
       const holder = keep ?? h('span', { class: 'alius-pulses' });
       const glyph = h('span', { class: 'alius-glyph', title: String(st0?.name ?? '') });
       glyph.textContent = String(st0?.glyph ?? '?');
-      return h('div', { class: 'alius-hud-unit', 'data-unit': u.id }, glyph, h('span', { class: 'alius-hud-name' }, u.displayName), holder);
+      const refused = ctx.onCompel !== undefined && (s.scene?.refusals ?? []).some((r) => r.unitId === u.id);
+      return h('div', { class: 'alius-hud-unit', 'data-unit': u.id }, glyph, h('span', { class: 'alius-hud-name' }, u.displayName), holder,
+        refused ? h('span', { class: 'alius-refused-mark' }, 'REFUSED') : null,
+        refused ? h('button', {
+          type: 'button', class: 'alius-btn', 'data-action': 'compel', 'data-unit': u.id, disabled: s.leash.authorizationsLeft < 1,
+          title: s.leash.authorizationsLeft < 1 ? 'No Leash authorization is left this week.' : 'Force the order through the Leash.',
+          onclick: () => ctx.onCompel!(u.id),
+        }, '[ COMPEL ]') : null);
     }));
   }
 
@@ -299,6 +313,8 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
       if ((ev as KeyboardEvent).key !== 'Enter' || pending) return;
       const text = input.value.trim();
       if (text === '') return;
+      const order = orderOn && ctx.onOrder !== undefined ? ctx.onOrder(orderWho?.value || present(state()!)[0]?.id || '') : false;
+      void order; // the engine rolled her answer and set her directive: the message goes out either way
       pending = true;
       input.disabled = true;
       editing = null;
@@ -307,6 +323,8 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
       void controller.send(text).finally(() => {
         pending = false;
         if (disposed) return;
+        orderOn = false;
+        syncOrder();
         setBusy(false);
         lock(false);
         input.disabled = false;
@@ -330,6 +348,20 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
       propose.value = '';
       controller.propose(kind, who?.value || units[0]?.id);
     });
+    if (ctx.onOrder) {
+      orderToggle = h('button', {
+        type: 'button', class: 'alius-btn', 'data-action': 'order', 'aria-pressed': 'false',
+        title: 'Give the next message as an order: the rules decide whether she complies.',
+        onclick: () => { orderOn = !orderOn; syncOrder(); },
+      }, '[ORDER]') as HTMLButtonElement;
+      orderWho = units.length > 1
+        ? (h('select', { name: 'order-unit', class: 'alius-select', 'aria-label': 'Order for' }, ...units.map((u) => h('option', { value: u.id }, u.displayName))) as HTMLSelectElement)
+        : null;
+      orderOn = false;
+    } else {
+      orderToggle = null;
+      orderWho = null;
+    }
     const act = (action: string, text: string, onclick: () => void, aria: string) =>
       h('button', { type: 'button', class: 'alius-btn', 'data-action': action, 'aria-label': aria, onclick }, text);
     const ignore = (p: Promise<void>): void => void p.catch(() => {});
@@ -350,9 +382,15 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
       hud,
       log,
       chips,
-      h('div', { class: 'alius-cmd' }, h('span', { class: 'alius-prompt' }, 'CMD>'), input, propose, who),
+      h('div', { class: 'alius-cmd' }, h('span', { class: 'alius-prompt' }, 'CMD>'), input, orderToggle, orderWho, propose, who),
     );
     drawBackground(s);
+  }
+
+  function syncOrder(): void {
+    if (!orderToggle) return;
+    orderToggle.setAttribute('aria-pressed', String(orderOn));
+    orderToggle.classList.toggle('alius-skill-selected', orderOn);
   }
 
   function refresh(): void {
