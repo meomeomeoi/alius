@@ -195,6 +195,8 @@ describe('hooks', () => {
     const s = campaign(reg, 4);
     s.relations[ANN].stateId = 'lover';
     s.relations[BEA].stateId = 'trusted';
+    // new units start at Trust 20, which is `wavering` (P6 adds the band synergy): this test is about the state synergies
+    for (const id of [ANN, BEA, CAT]) s.relations[id].loyaltyBand = 'steady';
     expect(getRelation(s, ANN)).toBe(s.relations[ANN]);
     expect(getRelation(s, 'ghost')).toBeUndefined();
     expect(getSynergies(s, reg, [ANN, BEA, CAT])).toEqual([
