@@ -1,4 +1,5 @@
 import type { CombatResult, CombatState } from '../combat/types';
+import type { DilemmaState } from '../dilemma/types';
 import type { RngState } from '../rng';
 import type { Clock, DirectorRequest, ExpeditionReport, ExpeditionState, Mission, RegionState, Rumor, Thread } from '../world/types';
 
@@ -31,6 +32,43 @@ export type LootDrop =
   | { kind: 'item'; item: ItemInstance }
   | { kind: 'credits' | 'plyx' | 'supplies'; amount: number };
 
+export type LeashKind = 'compel' | 'suppress' | 'terminate';
+
+/** One Leash use. P3's `resentful` state counts entries by `unitId`. */
+export interface LeashLogEntry {
+  no: number;
+  unitId: string;
+  kind: LeashKind;
+  day: number;
+  context: 'scene' | 'combat' | 'arc' | 'desertion' | 'mutiny' | 'pda';
+  outcome: 'done' | 'failed' | 'denied';
+}
+
+/** Per unit loyalty bookkeeping (P6). */
+export interface LoyaltyRecord {
+  signs: Array<{ day: number; about: 'doubt' | 'desertion' | 'mutiny'; kind: 'dm' | 'fact' | 'talk'; signId: string }>;
+  attempts: number;
+  nextCheckDay?: number;
+  trigger?: { kind: 'leash' | 'betrayal' | 'forced_cure'; day: number };
+  cause?: { kind: 'attack' | 'desertion'; day: number };
+  deniedDay?: number;
+  desertedDay?: number;
+  stance?: 'hostile' | 'ally';
+  returned?: boolean;
+}
+
+/** A desertion, mutiny or return waiting for the commander's answer. */
+export interface Confrontation {
+  kind: 'desertion' | 'mutiny' | 'return';
+  unitId: string;
+  day: number;
+  at: 'night' | 'mission_start';
+  nightEntryId?: string;
+  talkTried?: boolean;
+  sympathizers?: string[];
+  combatId?: string;
+}
+
 export interface DefectInstance {
   id: string;
   arc?: string;
@@ -40,6 +78,8 @@ export interface DefectInstance {
   lite?: boolean;
   /** Day a Manage-arc defect was last maintained in the medbay (P2). */
   upkeepDay?: number;
+  /** Progress of a defect arc path (P6). */
+  arcSteps?: { done: number; needed: number; lastDay?: number };
 }
 
 /** The signature skill a unit owns: a template id plus the unit's own name and description. */
@@ -175,6 +215,8 @@ export interface SceneRecord {
   readIndex?: number;
   exchanges: number;
   nightEntryId?: string;
+  /** Orders a unit refused in this scene, with the exchange number (P6). */
+  refusals?: Array<{ unitId: string; exchange: number }>;
 }
 
 export interface PendingProposal {
@@ -292,7 +334,19 @@ export interface CampaignState {
     /** A conversation requested by `talk` that has not ended yet; it holds its slot (P2). P3 ends it with `scene_end`. */
     pendingScene?: { unitId: string; day: number; slot: Slot };
   };
-  leash: { authorizationsLeft: number; refreshDay: number; log: unknown[] };
+  /** `log` stays `unknown[]` on purpose: `leashLog(state)` filters the well-formed entries, older saves may hold others. */
+  leash: { authorizationsLeft: number; refreshDay: number; log: unknown[]; seq?: number; seeded?: boolean };
+  /** Loyalty, signs and open confrontations (P6). Absent in older saves. */
+  disloyalty?: { units: Record<string, LoyaltyRecord>; open?: Confrontation };
+  /** Dilemma bookkeeping and the open dilemma (P6). Absent in older saves. */
+  dilemmas?: {
+    seq: number;
+    lastDay?: number;
+    lastDefiningDay?: number;
+    definingBeats?: string[];
+    recent?: string[];
+    open?: DilemmaState;
+  };
   /** The open expedition (P5). Only expedition/combat/director/debug actions run while it is open. */
   expedition?: ExpeditionState;
   /** The last finished expedition's after-action report (P5). */

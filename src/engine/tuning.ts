@@ -113,4 +113,96 @@ export const TUNING = Object.freeze({
     reasonMax: 120,
     digestFlags: 8,
   }),
+  /** P6: the Leash (draft balance values; spec numbers verbatim). */
+  leash: Object.freeze({
+    weeklyMax: 5,
+    /** Used when the commander's corporation vanished from the content under a save. */
+    weeklyFallback: 2,
+    refreshDays: 7,
+    logMax: 60,
+    traumaDays: 7,
+    /** Standing at or above / at or below ± this moves the week by one. */
+    standingStep: 30,
+    compel: Object.freeze({ trust: 15, affinity: 10, stress: 15 }),
+    suppress: Object.freeze({ trust: 25, stress: 10, squadStress: 5 }),
+    /** Witness reaction scale: clamp(base + autonomy·a − corporate·c, min, max); negative = approval. */
+    witness: Object.freeze({ base: 0.5, autonomy: 0.25, corporate: 0.25, min: -0.5, max: 1.5 }),
+    terminate: Object.freeze({ approvalPerStanding: 0.005, approvalMin: 0.1, approvalMax: 0.95, attemptsForCause: 2 }),
+  }),
+  /** P6: refusals, signs and desertion. */
+  disloyalty: Object.freeze({
+    refusal: Object.freeze({ wavering: 0.15, breaking: 0.35 }),
+    /** Synergy ids (content) that carry the band's refusal chance. */
+    bandSynergy: Object.freeze({ wavering: 'loyalty_wavering', breaking: 'loyalty_breaking' }),
+    doubtEveryDays: 3,
+    signsMax: 6,
+    desertion: Object.freeze({
+      base: 0.15, perTrustBelow: 0.02, trustRef: 10, affinityNegative: 0.002, affinityPositive: 0.002,
+      perStressAbove: 0.004, stressRef: 50, min: 0.03, max: 0.6, minSignAgeDays: 1, pauseDays: 3,
+    }),
+    talkDown: Object.freeze({
+      baseRank: 2, lowTrust: 5, highStress: 80, base: 0.5, perRank: 0.2, min: 0.1, max: 0.95, trustGain: 8, pauseDays: 3,
+    }),
+    night: Object.freeze({ desertion: 95, talk: 55, return: 50, expiresInDays: 2 }),
+    comeback: Object.freeze({ afterDays: 5, chancePerDay: 0.15, allyAffinity: -30, backTrust: 15 }),
+  }),
+  /** P6: mutiny. */
+  mutiny: Object.freeze({
+    chancePerDay: 0.5,
+    minDaysInState: 2,
+    minSigns: 2,
+    triggerWindowDays: 3,
+    maxSympathizers: 2,
+    sympathizerTrustBelow: 20,
+    nightPriority: 100,
+    subduedInjuryDays: 2,
+  }),
+  /** P6: dilemmas. Magnitudes are `[small, medium, large]`; the model only ever picks the word. */
+  dilemma: Object.freeze({
+    everyDays: 4,
+    definingCooldownDays: 7,
+    recentMax: 3,
+    maxAttempts: 2,
+    setupWords: 120,
+    labelWords: 12,
+    titleMax: 60,
+    optionsMin: 2,
+    optionsMax: 4,
+    magnitude: Object.freeze({
+      credits: Object.freeze([15, 40, 100] as const),
+      supplies: Object.freeze([3, 8, 15] as const),
+      plyx: Object.freeze([3, 8, 20] as const),
+      faction: Object.freeze([5, 10, 20] as const),
+      clock: Object.freeze([1, 1, 2] as const),
+      stress: Object.freeze([5, 10, 20] as const),
+      severity: Object.freeze(['minor', 'moderate', 'major'] as const),
+      checkRank: Object.freeze([2, 3, 4] as const),
+    }),
+    /** Dominance scoring: points of utility per unit of each dimension. */
+    weight: Object.freeze({
+      credits: 1, supplies: 3, plyx: 5, faction: 2, clock: -15, stress: -1,
+      unit: Object.freeze({ minor: 2, moderate: 5, major: 10 }),
+    }),
+  }),
+  /** P6: defect arcs. */
+  arc: Object.freeze({
+    minDay: 5,
+    nightPriority: 45,
+    steps: Object.freeze({ manage: 1, embrace: 2, cure: 3 }),
+    stage: Object.freeze({ manage: 1, embrace: 2, cure: 3 }),
+    manageUpkeepDays: 5,
+    manageDownsideMult: 0.5,
+    embraceMult: 1.5,
+    cost: Object.freeze({
+      manage: Object.freeze({ supplies: 5 }),
+      embrace: Object.freeze({ plyx: 5 }),
+      cure: Object.freeze({ credits: 60, plyx: 10 }),
+    }),
+    /** The values a path agrees with: [axis, direction]. */
+    axes: Object.freeze({
+      cure: Object.freeze([['autonomy', -1], ['corporate', 1]] as const),
+      manage: Object.freeze([['pragmatism', 1], ['ingroup', 1]] as const),
+      embrace: Object.freeze([['autonomy', 1], ['corporate', -1]] as const),
+    }),
+  }),
 });

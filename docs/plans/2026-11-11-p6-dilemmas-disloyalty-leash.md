@@ -139,11 +139,11 @@ docs/** (Task 16), tests/** mirror src, tests/helpers/loyalty.ts, tests/fixtures
 - Day-end step on `mission_deadlines` (`ensureLeash` then `refreshLeash`; registered after P5's, so that day's `leash −1` lands in the old week); action `leash/seed` (`ensureLeash`).
 - `tests/helpers/loyalty.ts`: `setRelation(state, unitId, { trust?, affinity?, stateId?, band?, stateSince? })`, `withDefect(state, unitId, defectId)`, `endDay(state, reg)` (three `calendar/consume_slot`).
 
-- [ ] **Step 1: Write the failing tests** — `weekly is the corporation base` (vesper 3); `smuggling lowers it by one`; `standing 30 adds one, −30 removes one, never below 0 or above 5`; `a new campaign starts with a full week and refreshDay 8`; `the seventh day end refills and moves refreshDay by 7`; `a leash −1 effect on the refresh day is not carried into the new week`; `a pre-P6 save is seeded once` (state with `{0, 1, []}` → `leash/seed` fills; a second `leash/seed` after spending one does not refill); `leashLog ignores entries of unknown shape and keeps them in state`.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/leash/weekly.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** → PASS; `npx vitest run` green.
-- [ ] **Step 5: Commit** `feat(engine): P6 state types, tuning and weekly Leash authorizations`.
+- [x] **Step 1: Write the failing tests** — `weekly is the corporation base` (vesper 3); `smuggling lowers it by one`; `standing 30 adds one, −30 removes one, never below 0 or above 5`; `a new campaign starts with a full week and refreshDay 8`; `the seventh day end refills and moves refreshDay by 7`; `a leash −1 effect on the refresh day is not carried into the new week`; `a pre-P6 save is seeded once` (state with `{0, 1, []}` → `leash/seed` fills; a second `leash/seed` after spending one does not refill); `leashLog ignores entries of unknown shape and keeps them in state`.
+- [x] **Step 2: Run** `npx vitest run tests/engine/leash/weekly.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** → PASS; `npx vitest run` green.
+- [x] **Step 5: Commit** `feat(engine): P6 state types, tuning and weekly Leash authorizations`.
 
 ---
 

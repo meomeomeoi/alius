@@ -8,6 +8,7 @@ import './engine/actions/combat'; // registers combat/* and campaign/set_difficu
 import './engine/actions/progression'; // registers squad/unlock_node, respec, set_loadout, release_breakdowns and the level-up hook
 import './engine/actions/world'; // registers world/* actions
 import './engine/actions/expedition'; // registers expedition/* actions
+import './engine/actions/leash'; // registers leash/* actions and the weekly refresh (P6)
 import './engine/actions/items'; // registers item/* actions and the workshop hook
 import './llm/calls/profileImport'; // registers the profile_import call type
 import { generateVignette } from './llm/calls/activityVignette'; // registers the activity_vignette call type

@@ -1,5 +1,6 @@
 import type { Entry, Registries } from '../content/types';
 import { createCampaign } from './state/create';
+import { ensureLeash } from './leash/weekly';
 import { seedWorld } from './world/state';
 import {
   VALUE_AXES, type CampaignState, type LoyaltyBand, type Relation, type SignatureInstance, type Unit,
@@ -284,5 +285,6 @@ export function buildCampaign(
   }
   state.roster.activeIds = state.squad.map((u) => u.id);
   seedWorld(state, reg);
+  ensureLeash(state, reg);
   return { ok: true, state };
 }
