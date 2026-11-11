@@ -1,3 +1,4 @@
+import { leashLog } from '../../engine/leash/weekly';
 import type { ChronicleEntry, CampaignState } from '../../engine/state/types';
 import { h } from '../dom';
 
@@ -39,5 +40,17 @@ export function renderLogTab(host: HTMLElement, ctx: LogTabCtx): void {
   host.append(h('section', { class: 'alius-section alius-log-thread' },
     h('h2', {}, '[ CCP INCIDENT LOG ]'),
     posts.length > 0 ? h('div', { class: 'alius-posts' }, ...posts) : h('p', { class: 'alius-dim' }, 'NO ENTRIES YET'),
-  ));
+  ), oversightLog(state));
+}
+
+/** Every Leash request, newest first: `#0007 DAY 012 COMPEL Ann — DONE`. Entries of unknown shape are skipped. */
+function oversightLog(state: CampaignState): HTMLElement {
+  const entries = leashLog(state).sort((a, b) => b.no - a.no);
+  const nameOf = (id: string): string => state.squad.find((u) => u.id === id)?.displayName ?? id;
+  return h('section', { class: 'alius-section alius-oversight-log' },
+    h('h2', {}, '[ OVERSIGHT LOG ]'),
+    entries.length > 0
+      ? h('div', {}, ...entries.map((e) => h('p', { class: 'alius-oversight-entry', 'data-no': String(e.no) },
+        `#${String(e.no).padStart(4, '0')} DAY ${day3(e.day)} ${e.kind.toUpperCase()} ${nameOf(e.unitId)} — ${String(e.outcome).toUpperCase()}`)))
+      : h('p', { class: 'alius-dim' }, 'NO REQUESTS FILED'));
 }

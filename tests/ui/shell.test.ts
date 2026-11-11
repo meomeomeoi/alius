@@ -145,6 +145,37 @@ describe('shell', () => {
     expect(shell.isOpen()).toBe(true); // Escape closes the modal, not the shell
   });
 
+  it('a disabled modal action cannot be clicked and shows its reason', async () => {
+    const { shell } = setup();
+    shell.open();
+    const p = shell.modal({
+      title: 'T', body: 'b',
+      actions: [{ label: 'Go', value: 'go', disabled: 'Nothing left this week' }, { label: 'Stop', value: 'stop' }],
+    });
+    const go = [...document.querySelectorAll<HTMLButtonElement>('.alius-modal-actions button')].find((b) => b.textContent === 'Go')!;
+    expect(go.disabled).toBe(true);
+    expect(document.querySelector('.alius-modal-actions')!.textContent).toContain('Nothing left this week');
+    go.click();
+    expect(document.querySelector('.alius-modal')).not.toBeNull();
+    // focus went to the first enabled action
+    expect(document.activeElement?.textContent).toBe('Stop');
+    shell.closeModal();
+    expect(await p).toBeNull();
+  });
+
+  it('SYS offers the dilemmas setting under Decisions and saves it', () => {
+    const { shell, st } = setup();
+    shell.open();
+    shell.showTab('sys');
+    const box = document.querySelector<HTMLInputElement>('#alius-shell input[data-setting="dilemmasEnabled"], #alius-shell input[name="dilemmasEnabled"]');
+    expect(document.querySelector('#alius-shell')!.textContent).toContain('Decisions');
+    expect(box).not.toBeNull();
+    expect(box!.checked).toBe(true);
+    box!.checked = false;
+    box!.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(st.settings.dilemmasEnabled).toBe(false);
+  });
+
   it('Escape without a modal does not close the shell', () => {
     const { shell } = setup();
     shell.open();

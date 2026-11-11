@@ -15056,7 +15056,53 @@ function progressionBlock(unit, ctx2, state) {
     }, `[RESPEC \u2014 ${cost.credits} CR / ${cost.plyx} PLYX]`) : null
   );
 }
+var COST_NAMES = { credits: "CREDITS", supplies: "SUPPLIES", plyx: "PLYX" };
+var costText = (cost) => Object.entries(cost).filter(([, n]) => (n ?? 0) > 0).map(([k, n]) => `${n} ${COST_NAMES[k] ?? k.toUpperCase()}`).join(" / ") || "NO COST";
+function arcBlock(unit, d, ctx2) {
+  if (d.lite || unit.kind !== "named") return null;
+  if (d.arc !== void 0 && d.arcSteps) {
+    return h("p", { class: "alius-arc", "data-arc": d.id }, `ARC: ${d.arc.toUpperCase()} ${d.arcSteps.done}/${d.arcSteps.needed}`);
+  }
+  if (!ctx2.arcPaths || !ctx2.onArc) return null;
+  const paths = ctx2.arcPaths(unit.id, d.id);
+  if (!paths.some((p) => p.available)) return null;
+  const rows = paths.map((p) => {
+    const refused = p.available && p.refuses;
+    const button = h("button", {
+      type: "button",
+      class: "alius-btn",
+      "data-decide": p.path,
+      disabled: !p.available,
+      title: p.reason ?? void 0,
+      onclick: () => ctx2.onArc(unit.id, d.id, p.path, refused)
+    }, refused ? `[ ${p.path.toUpperCase()} \u2014 WITH LEASH ]` : `[ ${p.path.toUpperCase()} ]`);
+    return h(
+      "div",
+      { class: "alius-arc-path", "data-path": p.path },
+      h("strong", {}, p.path.toUpperCase()),
+      h("span", {}, ` \u2014 ${p.text}`),
+      h("span", { class: "alius-dim" }, ` \xB7 ${costText(p.cost)}`),
+      p.wanted ? h("span", { class: "alius-arc-mark" }, " SHE WANTS THIS") : null,
+      refused ? h("span", { class: "alius-arc-mark is-refused" }, " SHE REFUSES \u2014 LEASH ONLY") : null,
+      !p.available && p.reason ? h("span", { class: "alius-equip-flag" }, ` ${p.reason}`) : null,
+      button
+    );
+  });
+  return h("details", { class: "alius-arc", "data-arc": d.id }, h("summary", {}, "[ DECIDE ARC ]"), ...rows);
+}
+function leashMenu(unit, ctx2) {
+  if (!ctx2.onLeash) return null;
+  const kinds2 = ["compel", "suppress"];
+  if (ctx2.canTerminate && ctx2.canTerminate(unit.id) === null) kinds2.push("terminate");
+  return h(
+    "details",
+    { class: "alius-leash-menu", "data-leash-menu": unit.id },
+    h("summary", {}, "[ LEASH ]"),
+    ...kinds2.map((kind) => h("button", { type: "button", class: "alius-btn", "data-leash": kind, onclick: () => ctx2.onLeash(unit.id, kind) }, kind.toUpperCase()))
+  );
+}
 function unitBlock(unit, ctx2, state) {
+  const gone = unit.status === "dead" || unit.status === "deserted" || unit.status === "terminated";
   const reg = ctx2.registries;
   const raw = ctx2.settings().showRawValues;
   const s = effectiveStats(unit, ctx2, state);
@@ -15077,13 +15123,16 @@ function unitBlock(unit, ctx2, state) {
       h("p", {}, `${nameOf6(reg.roles.get(unit.roleId), unit.roleId)} \xB7 LVL ${unit.level}`),
       h("p", { class: "alius-xp" }, `XP ${unit.xp}/${xpToNext(unit.level)} \xB7 SKILL POINTS ${unit.skillPoints}`),
       unit.breakdown ? h("p", { class: "alius-equip-flag" }, `BREAKDOWN: ${String(reg.defects.get(unit.breakdown.defectId)?.breakdown?.name ?? unit.breakdown.defectId)}`) : null,
+      gone ? h("p", { class: "alius-equip-flag" }, `STATUS: ${unit.status.toUpperCase()}`) : null,
       relationLine(unit, state, ctx2),
+      !gone && state.relations[unit.id] ? h("p", { class: "alius-loyalty" }, `LOYALTY: ${state.relations[unit.id].loyaltyBand.toUpperCase()}`) : null,
+      gone ? null : leashMenu(unit, ctx2),
       unit.bio ? h("p", { class: "alius-dim" }, unit.bio) : null,
       h("p", {}, `HP ${s.hp} \xB7 ATK ${s.atk} \xB7 DEF ${s.def} \xB7 SPD ${s.spd} \xB7 CRIT ${s.crit}%`),
       equipmentBlock(unit, ctx2, state),
       progressionBlock(unit, ctx2, state),
       h("h4", {}, "DEFECTS"),
-      ...unit.defects.map((d) => defectBlock(reg, d)),
+      ...unit.defects.flatMap((d) => [defectBlock(reg, d), gone ? null : arcBlock(unit, d, ctx2)]),
       h("h4", {}, "VALUES"),
       h("p", { class: "alius-values" }, values.join(" \xB7 ")),
       ...unit.kind === "grunt" ? [] : [
@@ -15206,7 +15255,7 @@ function renderMissionBoard(host, state, ctx2) {
 
 // src/ui/ops/opsTab.ts
 var COST_LABEL = { credits: "CR", supplies: "SUPPLIES", plyx: "PLYX" };
-var costText = (cost) => {
+var costText2 = (cost) => {
   const parts = Object.entries(cost).filter(([, n]) => (n ?? 0) > 0).map(([k, n]) => `${n} ${COST_LABEL[k] ?? k.toUpperCase()}`);
   return parts.length === 0 ? "FREE" : parts.join(" \xB7 ");
 };
@@ -15274,7 +15323,7 @@ function activityCard(a, state, ctx2) {
     "article",
     { class: "alius-activity", "data-activity": String(a.id) },
     h("h3", {}, String(a.name)),
-    h("p", { class: "alius-dim" }, `${String(a.summary)} \u2014 ${costText(a.cost)}`),
+    h("p", { class: "alius-dim" }, `${String(a.summary)} \u2014 ${costText2(a.cost)}`),
     controls,
     reasonEl,
     btn
@@ -16391,7 +16440,21 @@ function renderLogTab(host, ctx2) {
     { class: "alius-section alius-log-thread" },
     h("h2", {}, "[ CCP INCIDENT LOG ]"),
     posts.length > 0 ? h("div", { class: "alius-posts" }, ...posts) : h("p", { class: "alius-dim" }, "NO ENTRIES YET")
-  ));
+  ), oversightLog(state));
+}
+function oversightLog(state) {
+  const entries = leashLog(state).sort((a, b) => b.no - a.no);
+  const nameOf7 = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
+  return h(
+    "section",
+    { class: "alius-section alius-oversight-log" },
+    h("h2", {}, "[ OVERSIGHT LOG ]"),
+    entries.length > 0 ? h("div", {}, ...entries.map((e) => h(
+      "p",
+      { class: "alius-oversight-entry", "data-no": String(e.no) },
+      `#${String(e.no).padStart(4, "0")} DAY ${day3(e.day)} ${e.kind.toUpperCase()} ${nameOf7(e.unitId)} \u2014 ${String(e.outcome).toUpperCase()}`
+    ))) : h("p", { class: "alius-dim" }, "NO REQUESTS FILED")
+  );
 }
 
 // src/ui/night/knock.ts
@@ -17039,19 +17102,20 @@ function createModalHost(layer) {
           resolve(value);
         };
         const buttons = opts.actions.map(
-          (a) => h("button", { type: "button", class: "alius-btn", onclick: () => finish(a.value) }, a.label)
+          (a) => h("button", { type: "button", class: "alius-btn", disabled: a.disabled !== void 0, title: a.disabled, onclick: () => finish(a.value) }, a.label)
         );
+        const reasons = opts.actions.flatMap((a) => a.disabled !== void 0 ? [h("span", { class: "alius-modal-reason" }, `${a.label} \u2014 ${a.disabled}`)] : []);
         const dialog = h(
           "div",
           { class: "alius-modal", role: "dialog", "aria-modal": "true", "aria-label": opts.title },
           h("div", { class: "alius-modal-title" }, opts.title),
           h("div", { class: "alius-modal-body" }, opts.body),
-          h("div", { class: "alius-modal-actions" }, ...buttons)
+          h("div", { class: "alius-modal-actions" }, ...buttons, ...reasons)
         );
         const backdrop = h("div", { class: "alius-modal-backdrop" }, dialog);
         layer.append(backdrop);
         cancelCurrent = () => finish(null);
-        buttons[0]?.focus();
+        buttons.find((b) => !b.disabled)?.focus();
       });
     }
   };
@@ -17224,6 +17288,8 @@ function renderSysTab(host, ctx2) {
     field("Story director (mechanic model)", checkbox("directorEnabled", settings.directorEnabled)),
     field("Story beat cooldown (days, 1\u201314)", numberInput("beatCooldownDays", settings.beatCooldownDays, (n) => apply({ beatCooldownDays: n }).beatCooldownDays, { min: "1", max: "14" })),
     field("Expedition recap (main model)", checkbox("expeditionRecap", settings.expeditionRecap)),
+    h("h3", {}, "Decisions"),
+    field("Generated dilemmas (mechanic model; off: authored options)", checkbox("dilemmasEnabled", settings.dilemmasEnabled)),
     h("h3", {}, "Intimacy"),
     field("Romance", checkbox("romance", settings.romance)),
     field("Explicit scenes allowed", checkbox("explicitContent", settings.explicitContent)),
@@ -17642,6 +17708,9 @@ function createShell(deps) {
       tabBar?.setBadge(id, count);
     },
     toast,
+    closeModal() {
+      modals?.cancel();
+    },
     modal(opts) {
       return modals ? modals.show(opts) : Promise.resolve(null);
     },

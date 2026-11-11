@@ -157,6 +157,8 @@ export function renderSysTab(host: HTMLElement, ctx: SysCtx): void {
     field('Story director (mechanic model)', checkbox('directorEnabled', settings.directorEnabled)),
     field('Story beat cooldown (days, 1–14)', numberInput('beatCooldownDays', settings.beatCooldownDays, (n) => apply({ beatCooldownDays: n }).beatCooldownDays, { min: '1', max: '14' })),
     field('Expedition recap (main model)', checkbox('expeditionRecap', settings.expeditionRecap)),
+    h('h3', {}, 'Decisions'),
+    field('Generated dilemmas (mechanic model; off: authored options)', checkbox('dilemmasEnabled', settings.dilemmasEnabled)),
     h('h3', {}, 'Intimacy'),
     field('Romance', checkbox('romance', settings.romance)),
     field('Explicit scenes allowed', checkbox('explicitContent', settings.explicitContent)),

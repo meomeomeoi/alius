@@ -11,6 +11,8 @@ import { VALUE_AXES } from '../../engine/state/types';
 import type { AliusSettings } from '../../settings';
 import type { StAdapter } from '../../st/adapter';
 import type { LoadResult } from '../../st/persistence';
+import type { ArcPath, ArcPathInfo } from '../../engine/arcs';
+import type { LeashKind } from '../../engine/state/types';
 import { h } from '../dom';
 import { valueBand } from './bands';
 import { renderSkillTree } from './skillTree';
@@ -29,6 +31,12 @@ export interface SquadTabCtx {
   onSetLoadout?: (unitId: string, skillIds: string[]) => void;
   onEquip?: (unitId: string, uid: string) => void;
   onUnequip?: (unitId: string, slot: 'weapon' | 'upper' | 'lower') => void;
+  /** P6: the Leash menu, defect arcs and Terminate. */
+  onLeash?: (unitId: string, kind: LeashKind) => void;
+  onArc?: (unitId: string, defectId: string, path: ArcPath, compel: boolean) => void;
+  arcPaths?: (unitId: string, defectId: string) => ArcPathInfo[];
+  /** `null` when oversight would hear a termination request (there is cause), else why not. */
+  canTerminate?: (unitId: string) => string | null;
 }
 
 const unknown = (id: string) => `UNKNOWN ${id}`;
@@ -203,7 +211,49 @@ function progressionBlock(unit: Unit, ctx: SquadTabCtx, state: CampaignState): H
       : null);
 }
 
+const COST_NAMES: Record<string, string> = { credits: 'CREDITS', supplies: 'SUPPLIES', plyx: 'PLYX' };
+const costText = (cost: ArcPathInfo['cost']): string =>
+  Object.entries(cost).filter(([, n]) => (n ?? 0) > 0).map(([k, n]) => `${n} ${COST_NAMES[k] ?? k.toUpperCase()}`).join(' / ') || 'NO COST';
+
+/** The arc status of one defect (`ARC: MANAGE 1/1`) or the paths she can take, marked with what she wants and refuses. */
+function arcBlock(unit: Unit, d: Unit['defects'][number], ctx: SquadTabCtx): HTMLElement | null {
+  if (d.lite || unit.kind !== 'named') return null;
+  if (d.arc !== undefined && d.arcSteps) {
+    return h('p', { class: 'alius-arc', 'data-arc': d.id }, `ARC: ${d.arc.toUpperCase()} ${d.arcSteps.done}/${d.arcSteps.needed}`);
+  }
+  if (!ctx.arcPaths || !ctx.onArc) return null;
+  const paths = ctx.arcPaths(unit.id, d.id);
+  if (!paths.some((p) => p.available)) return null;
+  const rows = paths.map((p) => {
+    const refused = p.available && p.refuses;
+    const button = h('button', {
+      type: 'button', class: 'alius-btn', 'data-decide': p.path, disabled: !p.available, title: p.reason ?? undefined,
+      onclick: () => ctx.onArc!(unit.id, d.id, p.path, refused),
+    }, refused ? `[ ${p.path.toUpperCase()} — WITH LEASH ]` : `[ ${p.path.toUpperCase()} ]`);
+    return h('div', { class: 'alius-arc-path', 'data-path': p.path },
+      h('strong', {}, p.path.toUpperCase()),
+      h('span', {}, ` — ${p.text}`),
+      h('span', { class: 'alius-dim' }, ` · ${costText(p.cost)}`),
+      p.wanted ? h('span', { class: 'alius-arc-mark' }, ' SHE WANTS THIS') : null,
+      refused ? h('span', { class: 'alius-arc-mark is-refused' }, ' SHE REFUSES — LEASH ONLY') : null,
+      !p.available && p.reason ? h('span', { class: 'alius-equip-flag' }, ` ${p.reason}`) : null,
+      button);
+  });
+  return h('details', { class: 'alius-arc', 'data-arc': d.id }, h('summary', {}, '[ DECIDE ARC ]'), ...rows);
+}
+
+/** The Leash menu: compel and suppress always, terminate only when there is cause. */
+function leashMenu(unit: Unit, ctx: SquadTabCtx): HTMLElement | null {
+  if (!ctx.onLeash) return null;
+  const kinds: LeashKind[] = ['compel', 'suppress'];
+  if (ctx.canTerminate && ctx.canTerminate(unit.id) === null) kinds.push('terminate');
+  return h('details', { class: 'alius-leash-menu', 'data-leash-menu': unit.id },
+    h('summary', {}, '[ LEASH ]'),
+    ...kinds.map((kind) => h('button', { type: 'button', class: 'alius-btn', 'data-leash': kind, onclick: () => ctx.onLeash!(unit.id, kind) }, kind.toUpperCase())));
+}
+
 function unitBlock(unit: Unit, ctx: SquadTabCtx, state: CampaignState): HTMLElement {
+  const gone = unit.status === 'dead' || unit.status === 'deserted' || unit.status === 'terminated';
   const reg = ctx.registries;
   const raw = ctx.settings().showRawValues;
   const s = effectiveStats(unit, ctx, state);
@@ -227,13 +277,16 @@ function unitBlock(unit: Unit, ctx: SquadTabCtx, state: CampaignState): HTMLElem
       unit.breakdown
         ? h('p', { class: 'alius-equip-flag' }, `BREAKDOWN: ${String((reg.defects.get(unit.breakdown.defectId)?.breakdown as { name?: string } | undefined)?.name ?? unit.breakdown.defectId)}`)
         : null,
+      gone ? h('p', { class: 'alius-equip-flag' }, `STATUS: ${unit.status.toUpperCase()}`) : null,
       relationLine(unit, state, ctx),
+      !gone && state.relations[unit.id] ? h('p', { class: 'alius-loyalty' }, `LOYALTY: ${state.relations[unit.id].loyaltyBand.toUpperCase()}`) : null,
+      gone ? null : leashMenu(unit, ctx),
       unit.bio ? h('p', { class: 'alius-dim' }, unit.bio) : null,
       h('p', {}, `HP ${s.hp} · ATK ${s.atk} · DEF ${s.def} · SPD ${s.spd} · CRIT ${s.crit}%`),
       equipmentBlock(unit, ctx, state),
       progressionBlock(unit, ctx, state),
       h('h4', {}, 'DEFECTS'),
-      ...unit.defects.map((d) => defectBlock(reg, d)),
+      ...unit.defects.flatMap((d) => [defectBlock(reg, d), gone ? null : arcBlock(unit, d, ctx)]),
       h('h4', {}, 'VALUES'),
       h('p', { class: 'alius-values' }, values.join(' · ')),
       ...(unit.kind === 'grunt'

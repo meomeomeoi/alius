@@ -1,0 +1,101 @@
+/* P6: oversight request form, loyalty and arc controls, dilemma and confrontation panels. Palette variables only. */
+#alius-shell .alius-form {
+  font-family: monospace;
+  white-space: pre-wrap;
+  border: 1px solid var(--alius-dim);
+  padding: 8px 10px;
+}
+
+#alius-shell .alius-form-line {
+  display: flex;
+  gap: 12px;
+  padding: 2px 0;
+  border-bottom: 1px dotted var(--alius-dim);
+}
+
+#alius-shell .alius-form-key {
+  flex: none;
+  width: 14em;
+  color: var(--alius-dim);
+}
+
+#alius-shell .alius-form-val {
+  min-width: 0;
+}
+
+#alius-shell .alius-form-status {
+  margin-top: 8px;
+}
+
+#alius-shell .alius-form-status .alius-form-line {
+  border-bottom: 0;
+}
+
+#alius-shell .alius-modal-reason {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  color: var(--alius-dim);
+}
+
+#alius-shell .alius-loyalty {
+  letter-spacing: 0.05em;
+}
+
+#alius-shell .alius-leash-menu,
+#alius-shell .alius-arc {
+  margin: 6px 0;
+}
+
+#alius-shell .alius-leash-menu summary,
+#alius-shell .alius-arc summary {
+  cursor: pointer;
+  color: var(--alius-accent);
+}
+
+#alius-shell .alius-arc-path {
+  margin: 4px 0 4px 12px;
+}
+
+#alius-shell .alius-arc-mark {
+  color: var(--alius-accent);
+}
+
+#alius-shell .alius-arc-mark.is-refused {
+  text-decoration: underline;
+}
+
+#alius-shell .alius-oversight-entry {
+  font-family: monospace;
+  margin: 2px 0;
+}
+
+#alius-shell .alius-dilemma,
+#alius-shell .alius-confrontation {
+  border: 1px solid var(--alius-dim);
+  padding: 10px 12px;
+}
+
+#alius-shell .alius-dilemma-setup {
+  margin: 8px 0 12px;
+  white-space: pre-wrap;
+}
+
+#alius-shell .alius-dilemma-options,
+#alius-shell .alius-confrontation-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+#alius-shell .alius-dilemma-reason {
+  color: var(--alius-dim);
+  margin-left: 8px;
+}
+
+#alius-shell .alius-refused-mark {
+  color: var(--alius-accent);
+  border: 1px solid var(--alius-accent);
+  padding: 0 4px;
+}

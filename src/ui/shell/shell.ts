@@ -30,6 +30,8 @@ export interface ShellApi {
   setTabBadge(id: TabId, count: number): void;
   toast(kind: ToastKind, text: string): void;
   modal(opts: ModalOpts): Promise<string | null>;
+  /** Closes the open modal (its promise resolves `null`). */
+  closeModal(): void;
   setPalette(p: 'amber' | 'green' | 'white'): void;
   refresh(): void;
   /** Removes the global hotkey listener (tests, hot reload). */
@@ -259,6 +261,9 @@ export function createShell(deps: ShellDeps): ShellApi {
       tabBar?.setBadge(id, count);
     },
     toast,
+    closeModal() {
+      modals?.cancel();
+    },
     modal(opts) {
       return modals ? modals.show(opts) : Promise.resolve(null);
     },
