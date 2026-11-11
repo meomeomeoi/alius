@@ -151,7 +151,7 @@ Before each main-model generation the adapter injects one compact block:
 
 Character card text itself remains SillyTavern's job.
 
-### 5.4 Implemented engine interfaces (P0–P5)
+### 5.4 Implemented engine interfaces (P0–P6)
 
 Later packages build on these; change them only together with the owning spec.
 
@@ -188,8 +188,14 @@ Later packages build on these; change them only together with the owning spec.
 | `director/apply { requestId, output, beatCooldownDays? }`, `director/fallback { requestId }`, `director/request { reason: 'scout' }`, `campaign/set_beat_cooldown { days }` | P5 | The director's second phase: the engine opens `world.director.pending` (`director_requested`), the app answers it. Validated by `validateDirectorOutput`; an unanswered request is answered by `fallbackOutput` at the next day end; a full request that arrives while a scout request is open is opened right after it (`world.director.after`). `beatCooldownDays` is mirrored into `settings` of the campaign by the app. |
 | `engine/world` exports (`index.ts`): `applyWorldEffects(draft, ctx, effects, src)`, `advanceClock`, `factionStanding`, `offerMission`, `missionById`, `currentBeat`, `isOpenEnded`, `buildDigest`, `ableParty`, the state types | P5 | What P6 uses: the world-effect vocabulary (`WORLD_EFFECT_TYPES`), clocks, factions, missions, the spine, the digest. |
 | `app.expedition` (`plan`, `launch`, `move`, `choose`, `treat`, `fight`, `afterCombat`, `retreat`, `return`, `requestRecap`, `debrief`), `app.director` (`onRequested`), `app.intakeUnit()`, `AppDeps.assetUrl` | P5 | The controllers behind the expedition screen and the director; `intakeUnit` runs the one-unit calibration for a card. |
+| `leash/seed`, `leash/compel { unitId, context: 'scene' }`, `leash/suppress { unitId }`, `leash/terminate { unitId }`; `leashCost`, `witnessesOf`, `removeFromService(draft, unitId, status)` | P6 | The Leash: weekly authorizations (`leashWeekly`, refreshed at day end), exact costs, `leash.log`. A request that cannot be paid or has no valid target changes nothing. |
+| `scene/order { unitId }`, `combat/compel`, `loyalty/talk_down { stat }`, `loyalty/let_go`, `loyalty/take_back`, `loyalty/turn_away`, `loyalty/fight { formation, coverId, allowRetry? }`, `loyalty/yield`, `loyalty/resolve_mutiny` | P6 | Refusals, desertion and mutiny. State: `disloyalty { units, open }`; night entries of kind `desertion` / `mutiny` / `deserter_return` (`CONFRONTATION_KINDS`) are refused by `night/open` and `night/ignore`. |
+| `dilemma/request { templateId, context }`, `dilemma/present { requestId, output }`, `dilemma/fallback { requestId }`, `dilemma/choose { id, index }` | P6 | Two-phase generated dilemmas (`state.dilemmas.open`); every answer needs the open id (`Stale dilemma answer.`). While one is `presented`, `activity/`, `calendar/consume_slot`, `scene/start`, `expedition/start` return `dilemma_open`; `dilemma/` is allowed during a run. |
+| `arc/decide { unitId, defectId, path, compel? }`, `arcPaths`, `arcScale` | P6 | Defect arcs (Cure / Manage / Embrace); steps through the `medbay` activity. |
+| `Encounter.mutineers`, `CombatResult.mutineers`, `CombatState.lastRefusal` / `compels`, `applyEventToUnit(…, { scale })`, `EffectSource.units`, world effect `thread_flag`, `finishEventNode` | P6 | Extensions of P3/P4/P5 interfaces (squad units as the enemy side, the order refusal memory, witness scaling, unit events at the base, dynamic thread flags). |
+| `app.dilemmas` (`onRequested`, `choose`), `app.loyalty` (`order`, `compel`, `onSceneOpened`, `onSceneClosed`, `onEvents`), `app.fileLeash(kind, unitId)`, `ShellApi.closeModal()` | P6 | Controllers and the oversight form; `loyaltySigns` is a new registry. |
 
-Events emitted by the day-end pipeline: `director_requested` (P5), `mission_failed` / `mission_expired` / `clock_filled` / `leash_changed` (P5), `day_end_step`, `upkeep`, `supply_shortage`, `trust_penalty_event`, `unit_recovered`, `facility_upgraded`, `slot_advanced`, `night_started`, `day_started`, `autosave` (the app flushes the saver on it).
+Events emitted by the day-end pipeline: `director_requested` (P5), `leash_refreshed`, `loyalty_sign`, `desertion_attempt`, `mutiny_started`, `dilemma_requested`, `arc_unlocked` (P6), `mission_failed` / `mission_expired` / `clock_filled` / `leash_changed` (P5), `day_end_step`, `upkeep`, `supply_shortage`, `trust_penalty_event`, `unit_recovered`, `facility_upgraded`, `slot_advanced`, `night_started`, `day_started`, `autosave` (the app flushes the saver on it).
 
 ## 6. Data model (high level)
 
@@ -209,7 +215,9 @@ Campaign {
   memory { facts[], chronicle[], promises?[], nextId? }   // P3
   scene?: SceneRecord, proposals?: PendingProposal[]       // P3: the open scene (transcript stays in the ST chat) and open proposals
   calendar { scheduled[], nightEventsQueue[], nightEvent? /* head entry while the Night slot runs */, pendingScene? /* open talk holding its slot */, shortageStreak? }
-  leash { authorizationsLeft, refreshDay, log[] }
+  leash { authorizationsLeft, refreshDay, log[] /* entries { no, unitId, kind, day, context, outcome }, newest 60 */, seq?, seeded? }   // P6
+  disloyalty?: { units: { [unitId]: LoyaltyRecord /* signs ≤ 6, attempts, nextCheckDay?, nextDoubtDay?, trigger?, cause?, deniedDay?, desertedDay?, stance?, returned? */ }, open?: Confrontation /* { kind: desertion|mutiny|return, unitId, day, at: night|mission_start, nightEntryId?, talkTried?, sympathizers?, combatId? } */ }   // P6
+  dilemmas?: { seq, lastDay?, lastDefiningDay?, definingBeats?[], recent?[] /* 3 */, open?: DilemmaState /* { id, templateId, scale, context, status: requested|presented, attempts, units, threadId?, beatId, title?, setup?, options?, source? } */ }   // P6
   expedition?: ExpeditionState   // P5: open run (map, party, formation, carried supplies, pending node, unbanked loot, log, queued relation hints)
   lastExpedition?: ExpeditionReport   // P5: the after-action report (outcome, log, loot, rewards, injuries, deaths, recap?)
   combat?: CombatState        // P4: only combat and rng change while it runs
@@ -222,7 +230,7 @@ Unit {
   roleId, level, xp, skillPoints, unlockedNodes[], loadout?: skillId[], breakdown?: { defectId, day }   // P4
   signatureSkill { templateId, name, description }   // template id from the registry; name/description are the unit's own words, numbers stay in the template
   baseStats {hp, atk, def, spd, crit}, currentHp, stress
-  defects: DefectInstance[]   // { id, origin?, arc?, lite?, upkeepDay? }; named: 1–2, grunt: 1 (lite: no arc)
+  defects: DefectInstance[]   // { id, origin?, arc?, lite?, upkeepDay?, arcSteps?: { done, needed, lastDay? } /* P6 */ }; named: 1–2, grunt: 1 (lite: no arc)
   values { pragmatism, autonomy, ingroup, mercy, corporate, sacrifice }  // each −3…+3
   likes[], dislikes[], triggers[]   // tags
   equipment { weapon?, upper?, lower? }
@@ -275,6 +283,8 @@ Connection profiles (main, mechanic) · per-call token budgets · intent extract
 
 P4: **easy retry** (default off) and generated enemy names (default off) are global settings; combat difficulty (story / normal / hard) is per campaign (`campaign/set_difficulty`, SYS).
 
+P6: **generated dilemmas** on/off (`dilemmasEnabled`, default on; off = the template's authored block is shown) — SYS › Decisions.
+
 P5: **story director** on/off (`directorEnabled`, default on; off = the engine's fallback plans the world), **story beat cooldown** (`beatCooldownDays`, 1–14, default 3) and **expedition recap** (`expeditionRecap`, default on) — SYS › World.
 
 Defaults in code: Desire/Bond defects **off**, show raw values **off**, sprite mode **native**, edit lock **on**; P3: intent extraction **per exchange** (min confidence 0.5), scene pacing 30 exchanges, typing 60 chars/s, romance **on**, explicit scenes **off**, romantic initiative **medium**, unit DMs **on**, chronicle compaction **on**. The campaign stores a snapshot of the Desire/Bond setting it was started with (`settings.desireBondDefects`); the engine uses that snapshot, not the global value, when it validates later changes. The edit lock does **not** apply inside the new-campaign wizard (setup is always editable); it does apply to "Re-sync from card" on a running campaign.
@@ -289,7 +299,7 @@ Defaults in code: Desire/Bond defects **off**, show raw values **off**, sprite m
 | P3 | Scenes, relationships, memory, PDA comms | P0–P2 | implemented |
 | P4 | Combat, progression, items | P0, P1 (P2 for workshop) | implemented |
 | P5 | World map, expeditions, missions, director | P0–P4 | implemented |
-| P6 | Dilemmas, disloyalty & the Leash | P0–P5 | not started |
+| P6 | Dilemmas, disloyalty & the Leash | P0–P5 | implemented |
 
 "Implemented" = automated tests pass; the in-SillyTavern checklists `MANUAL_TEST_P*.md` are run by the project owner. An implemented package's spec ends with an **Implemented as** section (or a status line) listing where the code differs from the original draft: the code wins. Work not yet started has plans only in `docs/plans/` when someone wrote one; if none exists, write it first (see `CLAUDE.md`).
 

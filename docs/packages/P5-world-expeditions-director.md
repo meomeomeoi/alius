@@ -176,3 +176,9 @@ Where the plan or spec was silent, ambiguous or in conflict with the P0–P4 cod
 
 ### Not in P5
 The full dilemma system (P6: the pinned beat-4 events are placeholders), the Leash effects of failed command missions beyond `leash −1` (P6), expedition-time Leash use, bosses, multi-expedition parties, images for regions, real tuning of the draft numbers.
+
+### P6 additions
+- `unit_event` outside an expedition applies at once through `applyEventToUnit` to `EffectSource.units` (default: the active roster; `targets: named` only named units), then each unit is re-evaluated. New world effect `thread_flag` (a dynamic flag in a thread's namespace).
+- `finishEventNode(draft, nodeId, text, data?)` is exported from `world/expedition.ts` (used by `chooseOption` and by dilemmas); `expedition/choose` is refused while a dilemma for that node is open.
+- The two beat-4 events (`evt_vesper_choice`, `evt_kestrel_choice`) are now `defining` templates with a `generate` block: the app turns the pinned objective event into a `dilemma/request` (when `dilemmasEnabled`), the model writes the three options (exactly one allowed flag each) and the authored block is the fallback; the beat-5 flag completion is unchanged. `dilemma/` actions are allowed while an expedition is open; a presented dilemma blocks `expedition/start`.
+- `startExpedition` may open a mission-start desertion confrontation instead of starting; `checkExpedition` then says `<name> is about to walk: deal with it first.`

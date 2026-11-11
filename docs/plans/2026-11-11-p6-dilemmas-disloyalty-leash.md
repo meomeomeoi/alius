@@ -1,5 +1,7 @@
 # P6 Dilemmas, Disloyalty & the Leash Implementation Plan
 
+> **Status: executed** (all 16 tasks ticked, commits on `unstable`). The rulings taken where this plan was silent or wrong are in the spec's **Implemented as** section (`docs/packages/P6-dilemmas-disloyalty-leash.md`).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Choices that always cost something and are validated by the engine before the player sees them; soldiers who refuse orders, desert or attack according to their loyalty; the Leash (Compel / Suppress / Terminate) as a rationed, logged, relationally expensive override; and defect arcs (Cure / Manage / Embrace) as personal decisions.
@@ -432,10 +434,10 @@ docs/** (Task 16), tests/** mirror src, tests/helpers/loyalty.ts, tests/fixtures
 - Create: `docs/MANUAL_TEST_P6.md`
 - Test: `tests/build.test.ts` (existing)
 
-- [ ] **Step 1:** `npm run build` → `dist/index.js` and `style.css` change and stay tracked.
-- [ ] **Step 2:** Walk the eight acceptance criteria against test names and record them in `docs/MANUAL_TEST_P6.md` next to the in-SillyTavern steps that cannot be automated (a real `dilemma_generate` with a mechanic profile and its log in SYS › debug; dilemmas off; a refusal directive visible in Prompt Itemization and obeyed by the main model; Compel in a scene and in a fight; the request form's delay; a desertion night by mouse with each of the three answers; a mutiny fight; Terminate; a defect arc from unlock to completion; the beat-4 choice as a generated dilemma; reload at each confrontation).
-- [ ] **Step 3:** `npx vitest run` and `npm run typecheck` → all green; put the counts in the final report.
-- [ ] **Step 4: Commit** `chore: rebuild dist and style, P6 docs and manual checklist`.
+- [x] **Step 1:** `npm run build` → `dist/index.js` and `style.css` change and stay tracked.
+- [x] **Step 2:** Walk the eight acceptance criteria against test names and record them in `docs/MANUAL_TEST_P6.md` next to the in-SillyTavern steps that cannot be automated (a real `dilemma_generate` with a mechanic profile and its log in SYS › debug; dilemmas off; a refusal directive visible in Prompt Itemization and obeyed by the main model; Compel in a scene and in a fight; the request form's delay; a desertion night by mouse with each of the three answers; a mutiny fight; Terminate; a defect arc from unlock to completion; the beat-4 choice as a generated dilemma; reload at each confrontation).
+- [x] **Step 3:** `npx vitest run` and `npm run typecheck` → all green; put the counts in the final report.
+- [x] **Step 4: Commit** `chore: rebuild dist and style, P6 docs and manual checklist`.
 
 ---
 

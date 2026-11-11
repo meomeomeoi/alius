@@ -120,11 +120,13 @@ Perks, flaws and starting bonuses hold a list of **effect objects**: `{ "type": 
 | `playable` | boolean | A start may only use a playable corporation. |
 | `startingBonus` | `{ text, effects[] }` | |
 | `startingRegionId` | string, optional | A `regions` id (checked by the loader since P5). |
+| `leash` | `{ weekly: 0–5, approval: 0–1 }`, **required (P6)** | Oversight numbers: Leash authorizations per week and the base chance that a Terminate request is approved. |
 
 ```json
 { "id": "vesper", "name": "Vesper Somatics", "summary": "Biotech.", "values": { "pragmatism": 2, "autonomy": -1, "ingroup": 0, "mercy": -1, "corporate": 2, "sacrifice": 0 },
   "oversightStyle": "Approves Leash requests readily.", "playable": true,
-  "startingBonus": { "text": "+10 supplies.", "effects": [{ "type": "resource", "resource": "supplies", "amount": 10 }] } }
+  "startingBonus": { "text": "+10 supplies.", "effects": [{ "type": "resource", "resource": "supplies", "amount": 10 }] },
+  "leash": { "weekly": 3, "approval": 0.7 } }
 ```
 
 ## `starts`
@@ -212,6 +214,9 @@ Signature skill **templates**. The id must start with `sig_`. At import the mode
 | `category` | `neural`\|`somatic`\|`cybernetic`\|`desire_bond` | `desire_bond` is gated by the *Desire/Bond defects* setting. |
 | `breakdown` | `{ name, text }` | What happens at Stress 100. |
 | `arc` | `{ cure, manage, embrace }` | Strings; `"Not yet written."` is a valid placeholder. |
+| `leash` | `{ costMult: 0–4, failChance?: 0–1 }`, optional (P6) | Changes what a Compel on this unit costs (Trust and Affinity × `costMult`) and how often it fails. |
+| `desertionMod` | number −0.3…0.3, optional (P6) | Added to her daily desertion chance. |
+| `arcFlag` | flag id, optional (P6) | A flag (on her relation, the world or the commander) that must be set before the defect's arc is offered. |
 
 ```json
 { "id": "rage_governor", "name": "Rage Governor Failure", "category": "neural", "lore": "Aggression limiter burned out.",
@@ -535,3 +540,43 @@ A pack may ship one compact lorebook, named in the manifest's `lorebook` field. 
 - `constant: true` entries are always injected; others trigger on their `key` words.
 - `order` is optional (default 100).
 
+## `loyaltySigns` (P6)
+
+The warnings before a refusal, a desertion or a mutiny. `{ id, about: doubt|desertion|mutiny, kind: dm|fact|talk, level?: 1|2, text ≤ 200 }`; a `mutiny` sign needs a `level`. `dm` is a message from her (named units only), `fact` a public fact, `talk` a "we need to talk" night knock; a grunt always gets a `fact`. `{name}` in `text` is replaced by the unit's name. The engine needs at least one `doubt` of each kind, a `desertion` `dm` and `fact`, and mutiny signs of level 1 and 2.
+
+```json
+{ "id": "sign_desertion_fact_1", "about": "desertion", "kind": "fact", "text": "{name} was seen packing her field kit twice this week and unpacking it once." }
+```
+
+## `dilemmaTemplates` (P6: generated dilemmas)
+
+A template with a `generate` block is written by the mechanic model; its authored `fixed` block (not `flavor`, ≥ 2 options) is the fallback shown with no mechanic profile, a failed call, the setting off, or after two rejected answers.
+
+| Field | Type | |
+|---|---|---|
+| `generate` | `{ brief ≤ 300 }` | What the model is asked to write about. |
+| `optionCount` | int 2–4, default 3 | Exactly this many options. |
+| `contexts` | `expedition_event`\|`base`\|`mission_outcome`\|`defect_arc`\|`director` | Where it may appear. A template without `expedition_event` may not use `carried_supplies`, `party_hp` or `loot` in `fixed`. |
+| `requiredRefs` | `{ units?: 1–4, factions?[], regions?[], clocks?[] }` | Needed to be drawn (checked against the registries). |
+| `allowedFlags` | flag ids | The declared flags the model may set. |
+| `constraints` | `{ flagPerOption?: boolean }` | Every option sets exactly one allowed flag, no two the same (needs `allowedFlags.length ≥ optionCount`). |
+
+```json
+{ "id": "dil_rations", "scale": "minor", "contexts": ["base"], "optionCount": 2,
+  "generate": { "brief": "The mess hall is short on rations. Someone has to go without, or the commander finds food off the books." },
+  "fixed": { "title": "Short rations", "setup": "The mess hall count is wrong again.", "options": [
+    { "label": "Cut everyone's portions", "effects": [{ "type": "resource", "resource": "supplies", "amount": 3 }, { "type": "party_stress", "amount": 5 },
+      { "type": "unit_event", "event": "decision_aligned", "severity": "minor", "targets": "named", "valueAxes": [{ "axis": "pragmatism", "direction": 1 }, { "axis": "mercy", "direction": -1 }] }] },
+    { "label": "Buy rations on the black market", "effects": [{ "type": "resource", "resource": "supplies", "amount": 3 }, { "type": "resource", "resource": "credits", "amount": -15 },
+      { "type": "faction", "factionId": "sable", "amount": 5 }] } ] } }
+```
+
+The model only chooses `kind`, `target`, `direction` and a `magnitude` word; the numbers come from the engine's tables, and the validator rejects a dilemma unless every option has a gain and a loss on different things, a `major`/`defining` one hurts someone by what she values, no option beats another everywhere, magnitudes fit the scale, and every flag is declared and allowed. `scale: defining` templates (the two beat-4 choices) are never drawn by pacing: one per spine beat, at least 7 days apart. **Fixed blocks of generating templates are checked by the same rules in the tests**, so write them as fair choices.
+
+## `thread_flag` (P6 world effect)
+
+`{ "type": "thread_flag", "threadId": "<thread>", "flagId": "thread:<threadId>:<slug>", "description": "<≤ 120>" }` stores a dynamic flag in the thread (≤ 12 per thread, a repeat is ignored). Not a cost effect. Authored content may not depend on it; only later dilemmas and director ticks of the same thread read it.
+
+## Leash numbers in other registries (P6)
+
+`crimes[].flaw|perk.effects`: `{ "type": "leash_weekly", "amount": −1 }` changes the weekly authorizations; `{ "type": "leash_trust_cost", "amount": 5 }` adds Trust to every Leash use. `synergies`: `loyalty_wavering` and `loyalty_breaking` carry the refusal chance of the loyalty bands (15 % / 35 %). `flags`: `leashed` and `arc_raised` are relation flags set by the engine.

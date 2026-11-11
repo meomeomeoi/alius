@@ -130,3 +130,8 @@ The harness is `npm run sim`. Regular fights (danger 2) last 4.2 rounds and ever
 ### Not in P4
 Bosses, permadeath mode, NPC↔NPC synergies, per-expedition rows between nodes (P5), images for enemies, real tuning of the draft numbers.
 
+### P6 additions
+- `Encounter.mutineers?: [{ unitId, row? }]` puts squad units on the enemy side (1–6 opponents in all, none of them in the formation); they fight with their own skills and defect passives, are never written back as squad units, get no XP and no breakdown, and an encounter with no `enemies` drops no loot. `CombatResult.mutineers?: [{ unitId, downed }]`; `CombatResult.enemies` lists only combatants with an `enemyId`.
+- `issueOrder` records the last refusal in `CombatState.lastRefusal` (cleared by any later order); `combat/compel` runs that order for free and pledges the unit in `CombatState.compels`; `finalizeCombat` settles the pledges (`CombatResult.compels`), so an easy retry never charges twice.
+- A defect's combat effects are scaled by `arcScale` when the combatant is built (Manage halves the downside while maintained, Embrace ×1.5); a Cure removes the defect.
+- Loyalty bands add refusal synergies (see P3).

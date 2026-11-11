@@ -225,3 +225,9 @@ Decisions taken while implementing, where the spec was silent or the P0–P2 cod
 ### Not in P3
 Heavy wounds; unit↔unit relations; sprite outfit variants; images for locations; the P6 refusals/desertion events that would enqueue night entries (P6 uses `enqueueNight`); balance of every number above (draft).
 
+### P6 additions
+- `applyEventToUnit(draft, reg, unitId, event, { scale? })` multiplies the three axis deltas by `scale` (negative = approval) and the stress by `max(0, scale)`; the Leash uses it for witnesses.
+- `SceneRecord.refusals?: [{ unitId, exchange }]` holds the orders a unit refused in the open scene (`scene/order`); `leash/compel` clears one.
+- `night/open` and `night/ignore` refuse night entries of kind `desertion`, `mutiny` and `deserter_return` (`CONFRONTATION_KINDS`); they have their own panel.
+- `getSynergies` also returns `loyalty_wavering` / `loyalty_breaking` for a unit whose loyalty band is `wavering` / `breaking`.
+- `Relation.history` entries `lied_detected`, `broke_promise`, `coerced`, `decision_violated`, `crime_revealed` at `major`+ are mutiny triggers; the Leash writes `coerced/extreme` for its target.
