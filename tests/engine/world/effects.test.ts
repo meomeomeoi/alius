@@ -173,8 +173,7 @@ describe('world effects', () => {
     const party = apply(s, [{ ...fx, targets: 'party' }]);
     expect(party.draft.expedition!.hints[0].targets).toEqual([a, b]);
     expect(party.draft.expedition!.hints[0].evidence).toBe('evt_test');
-    // without an expedition there is nobody to report to
-    expect(apply(base, [fx]).events).toEqual([]);
+    // without an expedition it applies at once (P6): see effectsBase.test.ts
   });
 
   it('incoming_unit raises the counter', () => {

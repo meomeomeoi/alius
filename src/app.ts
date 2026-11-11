@@ -10,6 +10,7 @@ import './engine/actions/world'; // registers world/* actions
 import './engine/actions/expedition'; // registers expedition/* actions
 import './engine/actions/leash'; // registers leash/* actions and the weekly refresh (P6)
 import './engine/actions/loyalty'; // registers scene/order and the other loyalty actions (P6)
+import './engine/actions/dilemma'; // registers dilemma/* actions and the pacing step (P6)
 import './engine/actions/items'; // registers item/* actions and the workshop hook
 import './llm/calls/profileImport'; // registers the profile_import call type
 import { generateVignette } from './llm/calls/activityVignette'; // registers the activity_vignette call type

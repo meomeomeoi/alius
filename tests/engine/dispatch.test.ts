@@ -23,6 +23,11 @@ registerAction('expedition/test_ok', () => [{ type: 'ok' }]);
 registerAction('director/test_ok', () => [{ type: 'ok' }]);
 registerAction('combat/test_ok', () => [{ type: 'ok' }]);
 registerAction('test/other', () => [{ type: 'ok' }]);
+registerAction('dilemma/test_ok', () => [{ type: 'ok' }]);
+registerAction('activity/test_ok', () => [{ type: 'ok' }]);
+registerAction('calendar/consume_slot', () => [{ type: 'ok' }]);
+registerAction('scene/start', () => [{ type: 'ok' }]);
+registerAction('expedition/start', () => [{ type: 'ok' }]);
 
 registerAction('test/throw', (draft) => {
   draft.day = 99; // partial mutation must not leak out
@@ -111,5 +116,24 @@ describe('expedition guard', () => {
   it('unknown actions keep their own error, and a closed expedition guards nothing', () => {
     expect(dispatch(open(), { type: 'nope/never' }, registries).events[0]).toMatchObject({ code: 'unknown_action' });
     expect(dispatch(fresh(), { type: 'test/other' }, registries).events).toEqual([{ type: 'ok' }]);
+  });
+
+  it('dilemma/ actions run while an expedition is open (P6)', () => {
+    expect(dispatch(open(), { type: 'dilemma/test_ok' }, registries).events).toEqual([{ type: 'ok' }]);
+  });
+
+  it('a presented dilemma blocks activities, slots, scenes and departures; a requested one does not (P6)', () => {
+    const presented = fresh();
+    presented.dilemmas = { seq: 1, open: { id: 'dl1', templateId: 't', scale: 'minor', context: 'base', day: 1, status: 'presented', attempts: 1, units: [], beatId: 'b' } };
+    for (const type of ['activity/test_ok', 'calendar/consume_slot', 'scene/start', 'expedition/start']) {
+      const r = dispatch(presented, { type }, registries);
+      expect(r.state, type).toBe(presented);
+      expect(r.events, type).toEqual([{ type: 'error', code: 'dilemma_open', message: 'A decision is waiting: answer it first.' }]);
+    }
+    expect(dispatch(presented, { type: 'test/other' }, registries).events).toEqual([{ type: 'ok' }]);
+    expect(dispatch(presented, { type: 'dilemma/test_ok' }, registries).events).toEqual([{ type: 'ok' }]);
+    const requested = structuredClone(presented);
+    requested.dilemmas!.open!.status = 'requested';
+    expect(dispatch(requested, { type: 'calendar/consume_slot' }, registries).events).toEqual([{ type: 'ok' }]);
   });
 });

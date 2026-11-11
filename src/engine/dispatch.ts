@@ -17,7 +17,10 @@ const handlers = new Map<string, Handler>();
 
 /** Action families that may run while `state.expedition` is open. */
 /** `relations/commander_injured` is the night-visit roll after a Commander Crisis, which can only happen inside a run. */
-const EXPEDITION_OPEN_PREFIXES = ['expedition/', 'combat/', 'director/', 'debug/', 'relations/commander_injured'];
+const EXPEDITION_OPEN_PREFIXES = ['expedition/', 'combat/', 'director/', 'debug/', 'dilemma/', 'relations/commander_injured'];
+
+/** Actions that spend time or start something: refused while a presented dilemma waits for its answer (P6). */
+const BLOCKED_BY_DILEMMA = ['activity/', 'calendar/consume_slot', 'scene/start', 'expedition/start'];
 
 export function registerAction(type: string, handler: Handler): void {
   if (handlers.has(type)) throw new Error(`Duplicate action type: ${type}`);
@@ -47,6 +50,9 @@ export function dispatch(
       state,
       events: [{ type: 'error', code: 'expedition_open', message: 'An expedition is under way: finish or abandon it first.' }],
     };
+  }
+  if (state.dilemmas?.open?.status === 'presented' && BLOCKED_BY_DILEMMA.some((p) => action.type.startsWith(p))) {
+    return { state, events: [{ type: 'error', code: 'dilemma_open', message: 'A decision is waiting: answer it first.' }] };
   }
   const draft = structuredClone(state);
   const rng = new Rng(draft.rng);

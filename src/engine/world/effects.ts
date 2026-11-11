@@ -3,6 +3,8 @@ import { activeRosterUnits, isLiving } from '../economy';
 import { unitStats } from '../combat/stats';
 import { bankLoot, rollLoot } from '../items';
 import { addFact } from '../memory';
+import { applyEventToUnit } from '../relations/effects';
+import { evaluateAutomatic } from '../relations/graph';
 import type { CampaignState, LootDrop, Unit } from '../state/types';
 import { TUNING } from '../tuning';
 import { advanceClock } from './clocks';
@@ -18,6 +20,8 @@ export interface EffectSource {
   depth?: number;
   /** Shown as the evidence of relation events; defaults to `id`. */
   label?: string;
+  /** Who a `unit_event` outside an expedition touches (P6: the units present at a dilemma); default the active roster. */
+  units?: string[];
 }
 
 export const MAX_EFFECT_DEPTH = 3;
@@ -32,6 +36,29 @@ function partyUnits(draft: CampaignState): Unit[] {
       .filter((u): u is Unit => u !== undefined && isLiving(u));
   }
   return activeRosterUnits(draft);
+}
+
+/**
+ * A `unit_event` with no expedition under way (P6 dilemmas at the base): applied at once through P3 to the units
+ * present (default the active roster), then each unit is re-evaluated. Only named units for `targets: 'named'`.
+ */
+function applyUnitEventAtBase(
+  draft: CampaignState, ctx: EngineCtx, fx: Extract<WorldEffect, { type: 'unit_event' }>, src: EffectSource,
+): EngineEvent[] {
+  const ids = src.units ?? activeRosterUnits(draft).map((u) => u.id);
+  const targets = ids.filter((id) => {
+    const u = draft.squad.find((x) => x.id === id);
+    return u !== undefined && isLiving(u) && (fx.targets === 'party' || u.kind === 'named');
+  });
+  const events: EngineEvent[] = [];
+  for (const id of targets) {
+    events.push(...applyEventToUnit(draft, ctx.registries, id, {
+      type: fx.event, actor: 'commander', targets: [id], severity: fx.severity, evidence: src.label ?? src.id, confidence: 1,
+      ...(fx.valueAxes ? { valueAxes: fx.valueAxes.map((a) => ({ axis: a.axis as never, direction: a.direction })) } : {}),
+    }));
+  }
+  for (const id of targets) events.push(...evaluateAutomatic(draft, ctx.registries, id));
+  return events;
 }
 
 /** Offers a mission; the region defaults to the template's first allowed one. An invalid offer is skipped. */
@@ -142,7 +169,10 @@ export function applyWorldEffects(
       }
       case 'unit_event': {
         const exp = draft.expedition;
-        if (!exp) break;
+        if (!exp) {
+          events.push(...applyUnitEventAtBase(draft, ctx, fx, src));
+          break;
+        }
         const targets = exp.party.filter((id) => {
           const u = draft.squad.find((x) => x.id === id);
           return u !== undefined && (fx.targets === 'party' || u.kind === 'named');
@@ -151,6 +181,13 @@ export function applyWorldEffects(
         const hint: QueuedIntent = { type: fx.event, actor: 'commander', targets, severity: fx.severity, evidence: src.label ?? src.id };
         if (fx.valueAxes) hint.valueAxes = fx.valueAxes.map((a) => ({ axis: a.axis as never, direction: a.direction }));
         exp.hints.push(hint);
+        break;
+      }
+      case 'thread_flag': {
+        const thread = draft.world.threads.find((t) => t.id === fx.threadId);
+        if (!thread || thread.flags.length >= TUNING.world.threadFlagsMax || thread.flags.some((f) => f.id === fx.flagId)) break;
+        thread.flags.push({ id: fx.flagId, description: fx.description });
+        events.push({ type: 'thread_flag_set', threadId: fx.threadId, flagId: fx.flagId });
         break;
       }
       case 'incoming_unit':

@@ -5,6 +5,7 @@ import { run } from './world';
 // Importing this registers the P6 actions under test (the P0–P5 actions come with ./world).
 import '../../src/engine/actions/leash';
 import '../../src/engine/actions/loyalty';
+import '../../src/engine/actions/dilemma';
 
 export { campaign, ctxOf, errors, loadCore, ofType, run, unitSetup } from './world';
 
@@ -37,6 +38,7 @@ export function endDay(state: CampaignState, reg: Registries): CampaignState {
   const start = state.day;
   let s = state;
   for (let i = 0; i < 5 && s.day === start; i++) {
+    s = answerDilemma(s, reg);
     const r = run(s, reg, { type: 'calendar/consume_slot' });
     if (r.events.some((e) => e.type === 'error')) throw new Error(JSON.stringify(r.events));
     s = r.state;
@@ -67,4 +69,16 @@ export function cidOf(state: CampaignState, unitId: string): string {
   const c = state.combat?.combatants.find((x) => x.unitId === unitId);
   if (!c) throw new Error(`${unitId} is not in the combat`);
   return c.cid;
+}
+
+/** Answers an open dilemma the way a player in a hurry would: the authored block, its first option that is not greyed. */
+export function answerDilemma(state: CampaignState, reg: Registries): CampaignState {
+  let s = state;
+  const open = s.dilemmas?.open;
+  if (!open) return s;
+  if (open.status === 'requested') s = run(s, reg, { type: 'dilemma/fallback', payload: { requestId: open.id } }).state;
+  const now = s.dilemmas!.open!;
+  const index = now.options!.findIndex((o) => !(o.requires && (s.commander.socialStats[o.requires.stat] ?? 0) < o.requires.rank)
+    && !o.effects.some((e) => e.type === 'resource' && e.amount < 0 && s.resources[e.resource] < -e.amount));
+  return run(s, reg, { type: 'dilemma/choose', payload: { id: now.id, index: Math.max(0, index) } }).state;
 }

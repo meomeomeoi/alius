@@ -650,18 +650,24 @@ export function eventOptions(state: CampaignState, reg: Registries): Array<{ ind
   });
 }
 
+/** Closes the pending event node: a log line, the run travels on, an objective node counts as done. Used by `chooseOption` and by P6 dilemmas. */
+export function finishEventNode(draft: CampaignState, nodeId: string, text: string, data?: Record<string, unknown>): void {
+  const exp = draft.expedition!;
+  addLog(exp, 'event', text, nodeId, data);
+  delete exp.pending;
+  exp.phase = 'travel';
+  if (nodeId === exp.map.objectiveId) exp.objectiveDone = true;
+}
+
 /** Picks an option of the pending event: its effects apply, the node is resolved and the run travels on. */
 export function chooseOption(draft: CampaignState, ctx: EngineCtx, index: number): EngineEvent[] {
   const exp = draft.expedition;
   const found = optionsOf(draft, ctx.registries);
   if (!exp || exp.phase !== 'event' || exp.pending?.kind !== 'event') throw new Error('There is no event to answer.');
+  if (draft.dilemmas?.open?.context === 'expedition_event') throw new Error('A decision is waiting: answer it first.');
   if (!found) {
     // the event was removed from the pack under a save: the node resolves as nothing and the run goes on
-    const { nodeId } = exp.pending;
-    addLog(exp, 'event', 'Nothing here.', nodeId);
-    delete exp.pending;
-    exp.phase = 'travel';
-    if (nodeId === exp.map.objectiveId) exp.objectiveDone = true;
+    finishEventNode(draft, exp.pending.nodeId, 'Nothing here.');
     return [];
   }
   const option = eventOptions(draft, ctx.registries)[index];
@@ -669,10 +675,7 @@ export function chooseOption(draft: CampaignState, ctx: EngineCtx, index: number
   if (option.disabled !== null) throw new Error(`${option.label}: ${option.disabled}.`);
   const { nodeId, templateId } = exp.pending;
   const events = applyWorldEffects(draft, ctx, found.options[index].effects, { kind: 'event', id: templateId, label: found.title });
-  addLog(exp, 'event', `${found.title}: ${option.label}.`, nodeId, { templateId, option: option.label });
-  delete exp.pending;
-  exp.phase = 'travel';
-  if (nodeId === exp.map.objectiveId) exp.objectiveDone = true;
+  finishEventNode(draft, nodeId, `${found.title}: ${option.label}.`, { templateId, option: option.label });
   events.push({ type: 'expedition_choice', nodeId, templateId, option: index, label: option.label });
   return events;
 }

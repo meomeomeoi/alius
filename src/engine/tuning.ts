@@ -168,6 +168,10 @@ export const TUNING = Object.freeze({
     titleMax: 60,
     optionsMin: 2,
     optionsMax: 4,
+    /** A social check at choice time: clamp(base + perRank × (commander rank − check rank), min, max). */
+    check: Object.freeze({ base: 0.5, perRank: 0.2, min: 0.1, max: 0.95 }),
+    /** Resource levels of the digest: below the first number is `low`, from the second `high`. */
+    resourceBands: Object.freeze({ credits: [40, 200], supplies: [6, 24], plyx: [6, 30] } as const),
     magnitude: Object.freeze({
       credits: Object.freeze([15, 40, 100] as const),
       supplies: Object.freeze([3, 8, 15] as const),
