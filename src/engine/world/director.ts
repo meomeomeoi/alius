@@ -36,6 +36,12 @@ export interface Digest {
 /** Flags shown per thread (the newest ones) — the digest has to stay small. */
 const DIGEST_THREAD_FLAGS = 4;
 
+/** Days between two story-beat proposals: the campaign's mirror of the setting (1–14), else the default. */
+export function beatCooldownDays(state: CampaignState): number {
+  const n = state.settings.beatCooldownDays;
+  return typeof n === 'number' && Number.isInteger(n) && n >= 1 && n <= 14 ? n : TUNING.director.beatCooldownDays;
+}
+
 export function rumorRoom(state: CampaignState, reg: Registries): number {
   return Math.max(0, rumorCap(state, reg) - state.rumors.filter((r) => r.day === state.day).length);
 }
@@ -389,6 +395,7 @@ export function applyDirectorOutput(draft: CampaignState, ctx: EngineCtx, out: D
     const moved = advanceClock(draft, ctx, c.clockId, c.by, c.reason || 'director');
     events.push(...moved);
     if (moved.some((e) => e.type === 'clock_advanced')) clocks++;
+    if (opts.fallback) (draft.world.director ??= {}).lastClockDay = draft.day;
   }
   events.push({ type: 'director_applied', offers, rumors, threads, clocks, beat, ...(opts.fallback ? { fallback: true } : {}) });
   return events;
@@ -401,13 +408,18 @@ export function answerRequest(
 ): EngineEvent[] {
   const pending = draft.world.director?.pending;
   if (!pending || pending.id !== requestId) throw new Error('Stale director answer.');
-  const cooldownDays = Number.isFinite(opts.cooldownDays) ? clamp(Math.round(opts.cooldownDays!), 1, 14) : TUNING.director.beatCooldownDays;
+  const cooldownDays = Number.isFinite(opts.cooldownDays) ? clamp(Math.round(opts.cooldownDays!), 1, 14) : beatCooldownDays(draft);
   const { output, rejected } = validateDirectorOutput(draft, ctx.registries, raw(pending), {
     cooldownDays, only: pending.reason === 'scout' ? 'rumors' : undefined,
   });
   const events = applyDirectorOutput(draft, ctx, output, { fallback: opts.fallback });
   delete draft.world.director!.pending;
   draft.world.director!.lastTickDay = draft.day;
+  const after = draft.world.director!.after;
+  if (after) {
+    delete draft.world.director!.after;
+    events.push(...openRequest(draft, after));
+  }
   if (rejected.length > 0) events.push({ type: 'director_rejected', rejected });
   return events;
 }
@@ -415,7 +427,11 @@ export function answerRequest(
 /** Opens a request for the model unless one is already open. */
 export function openRequest(draft: CampaignState, reason: DirectorRequest['reason']): EngineEvent[] {
   const director = (draft.world.director ??= {});
-  if (director.pending) return [];
+  if (director.pending) {
+    // a scout request only answers with rumors: a full request behind it must not be lost
+    if (director.pending.reason === 'scout' && reason !== 'scout' && director.after === undefined) director.after = reason;
+    return [];
+  }
   director.seq = (director.seq ?? 0) + 1;
   director.pending = { id: `d${director.seq}`, reason, day: draft.day };
   return [{ type: 'director_requested', id: director.pending.id, reason }];
@@ -450,7 +466,7 @@ const pairs = (state: CampaignState, reg: Registries, source: MissionSource, acc
 export function fallbackOutput(state: CampaignState, reg: Registries, rng: Rng): DirectorOutput {
   const out = emptyOutput();
   const beat = currentBeat(state, reg);
-  if (beat && checkProposal(state, reg, beat.id, TUNING.director.beatCooldownDays) === null) {
+  if (beat && checkProposal(state, reg, beat.id, beatCooldownDays(state)) === null) {
     out.storyBeatProposal = { beatId: beat.id, framing: '' };
   }
 
@@ -485,7 +501,7 @@ export function fallbackOutput(state: CampaignState, reg: Registries, rng: Rng):
     }
   }
 
-  if (state.day % 2 === 0) {
+  if (state.day % 2 === 0 && state.world.director?.lastClockDay !== state.day) {
     const options = state.world.clocks.filter((c) => c.regionId !== undefined && c.filled < c.segments);
     if (options.length > 0) out.clockAdvances.push({ clockId: rng.pick(options).id, by: 1, reason: 'Pressure builds in the region.' });
   }

@@ -425,7 +425,7 @@ export const RESERVED_EVENT_TYPES: readonly string[] = [
   'mission_offered', 'mission_completed', 'mission_failed', 'mission_expired', 'rumor_posted', 'rumor_followed', 'beat_proposed',
   'beat_completed', 'incoming_unit_offered', 'unit_joined', 'director_requested', 'director_applied', 'director_rejected',
   'expedition_started', 'expedition_moved', 'expedition_node', 'expedition_combat', 'expedition_event', 'expedition_choice',
-  'expedition_treated', 'expedition_ended', 'expedition_recap_set',
+  'expedition_treated', 'expedition_ended', 'expedition_recap_set', 'leash_changed',
 ];
 
 const slotEnum = z.enum(['morning', 'afternoon', 'evening', 'night']);

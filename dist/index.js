@@ -5002,9 +5002,14 @@ function applyWorldEffects(draft, ctx2, effects2, src) {
         else events.push(...bankLoot(draft, drops));
         break;
       }
-      case "leash":
-        draft.leash.authorizationsLeft = Math.max(0, draft.leash.authorizationsLeft + fx2.amount);
+      case "leash": {
+        const before = draft.leash.authorizationsLeft;
+        draft.leash.authorizationsLeft = Math.max(0, before + fx2.amount);
+        if (draft.leash.authorizationsLeft !== before) {
+          events.push({ type: "leash_changed", amount: draft.leash.authorizationsLeft - before, left: draft.leash.authorizationsLeft });
+        }
         break;
+      }
       case "thread": {
         const thread = draft.world.threads.find((t) => t.id === fx2.threadId);
         if (!thread || thread.status === fx2.status) break;
@@ -5066,6 +5071,10 @@ var THREAD_STATUSES = ["open", "resolved", "failed", "dormant"];
 
 // src/engine/world/director.ts
 var DIGEST_THREAD_FLAGS = 4;
+function beatCooldownDays(state) {
+  const n = state.settings.beatCooldownDays;
+  return typeof n === "number" && Number.isInteger(n) && n >= 1 && n <= 14 ? n : TUNING.director.beatCooldownDays;
+}
 function rumorRoom(state, reg) {
   return Math.max(0, rumorCap(state, reg) - state.rumors.filter((r) => r.day === state.day).length);
 }
@@ -5372,6 +5381,7 @@ function applyDirectorOutput(draft, ctx2, out, opts = {}) {
     const moved = advanceClock(draft, ctx2, c.clockId, c.by, c.reason || "director");
     events.push(...moved);
     if (moved.some((e) => e.type === "clock_advanced")) clocks++;
+    if (opts.fallback) (draft.world.director ??= {}).lastClockDay = draft.day;
   }
   events.push({ type: "director_applied", offers, rumors, threads, clocks, beat, ...opts.fallback ? { fallback: true } : {} });
   return events;
@@ -5379,7 +5389,7 @@ function applyDirectorOutput(draft, ctx2, out, opts = {}) {
 function answerRequest(draft, ctx2, requestId, raw, opts = {}) {
   const pending2 = draft.world.director?.pending;
   if (!pending2 || pending2.id !== requestId) throw new Error("Stale director answer.");
-  const cooldownDays = Number.isFinite(opts.cooldownDays) ? clamp9(Math.round(opts.cooldownDays), 1, 14) : TUNING.director.beatCooldownDays;
+  const cooldownDays = Number.isFinite(opts.cooldownDays) ? clamp9(Math.round(opts.cooldownDays), 1, 14) : beatCooldownDays(draft);
   const { output, rejected } = validateDirectorOutput(draft, ctx2.registries, raw(pending2), {
     cooldownDays,
     only: pending2.reason === "scout" ? "rumors" : void 0
@@ -5387,12 +5397,20 @@ function answerRequest(draft, ctx2, requestId, raw, opts = {}) {
   const events = applyDirectorOutput(draft, ctx2, output, { fallback: opts.fallback });
   delete draft.world.director.pending;
   draft.world.director.lastTickDay = draft.day;
+  const after = draft.world.director.after;
+  if (after) {
+    delete draft.world.director.after;
+    events.push(...openRequest(draft, after));
+  }
   if (rejected.length > 0) events.push({ type: "director_rejected", rejected });
   return events;
 }
 function openRequest(draft, reason) {
   const director = draft.world.director ??= {};
-  if (director.pending) return [];
+  if (director.pending) {
+    if (director.pending.reason === "scout" && reason !== "scout" && director.after === void 0) director.after = reason;
+    return [];
+  }
   director.seq = (director.seq ?? 0) + 1;
   director.pending = { id: `d${director.seq}`, reason, day: draft.day };
   return [{ type: "director_requested", id: director.pending.id, reason }];
@@ -5415,7 +5433,7 @@ var pairs = (state, reg, source, accept) => {
 function fallbackOutput(state, reg, rng) {
   const out = emptyOutput();
   const beat = currentBeat(state, reg);
-  if (beat && checkProposal(state, reg, beat.id, TUNING.director.beatCooldownDays) === null) {
+  if (beat && checkProposal(state, reg, beat.id, beatCooldownDays(state)) === null) {
     out.storyBeatProposal = { beatId: beat.id, framing: "" };
   }
   const all = [...state.missions.offered, ...state.missions.active, ...state.missions.completed];
@@ -5444,7 +5462,7 @@ function fallbackOutput(state, reg, rng) {
       out.rumors.push({ text: rng.pick(region.lines), leadsTo: "none", tags: [region.id] });
     }
   }
-  if (state.day % 2 === 0) {
+  if (state.day % 2 === 0 && state.world.director?.lastClockDay !== state.day) {
     const options2 = state.world.clocks.filter((c) => c.regionId !== void 0 && c.filled < c.segments);
     if (options2.length > 0) out.clockAdvances.push({ clockId: rng.pick(options2).id, by: 1, reason: "Pressure builds in the region." });
   }
@@ -5480,6 +5498,12 @@ registerAction("director/fallback", (draft, payload, ctx2) => {
   const id = isObj10(payload) && typeof payload.requestId === "string" ? payload.requestId : void 0;
   return answerRequest(draft, ctx2, id, () => fallbackOutput(draft, ctx2.registries, ctx2.rng), { fallback: true });
 });
+registerAction("campaign/set_beat_cooldown", (draft, payload) => {
+  const days = isObj10(payload) ? payload.days : void 0;
+  if (typeof days !== "number" || !Number.isInteger(days) || days < 1 || days > 14) throw new Error("campaign/set_beat_cooldown needs { days } from 1 to 14");
+  draft.settings.beatCooldownDays = days;
+  return [];
+});
 registerAction("director/request", (draft, payload) => {
   if (!isObj10(payload) || payload.reason !== "scout") throw new Error("Only a scout request can be opened by hand.");
   return openRequest(draft, "scout");
@@ -5489,7 +5513,7 @@ registerDayEndStep("director_tick", (draft, ctx2) => {
   const pending2 = draft.world.director?.pending;
   if (pending2) {
     events.push(...answerRequest(draft, ctx2, pending2.id, () => fallbackOutput(draft, ctx2.registries, ctx2.rng), {
-      cooldownDays: TUNING.director.beatCooldownDays,
+      cooldownDays: beatCooldownDays(draft),
       fallback: true
     }));
   }
@@ -5968,6 +5992,7 @@ function endExpedition(draft, ctx2, outcome) {
   draft.world.lastExpeditionRegionId = exp.regionId;
   delete draft.expedition;
   events.push(...consumeSlots(draft, exp.slots, ctx2));
+  draft.lastExpedition.day = draft.day;
   events.push(...openRequest(draft, "expedition"));
   events.push({ type: "expedition_ended", outcome, reportId: report.id });
   return events;
@@ -16480,6 +16505,12 @@ function createApp(st, deps) {
     if (cur.romance === s.romance && cur.initiative === s.romanticInitiative) return;
     api.dispatch({ type: "campaign/set_intimacy", payload: { romance: s.romance, initiative: s.romanticInitiative } }, { expectChatId: st.getActiveChat()?.chatId });
   }
+  function syncBeatCooldown() {
+    if (!state || load.kind !== "ok") return;
+    const days = getSettings(st).beatCooldownDays;
+    if (state.settings.beatCooldownDays === days) return;
+    api.dispatch({ type: "campaign/set_beat_cooldown", payload: { days } }, { expectChatId: st.getActiveChat()?.chatId });
+  }
   let sceneScreen = null;
   let onSceneScreen = false;
   let combatScreen = null;
@@ -16799,6 +16830,7 @@ function createApp(st, deps) {
     adoptCombat();
     adoptExpedition();
     syncIntimacy();
+    syncBeatCooldown();
     if (state?.world.director?.pending) void director.onRequested().catch((e) => console.warn("[Alius] director failed", e));
   }
   function replaceState(next) {
@@ -17205,6 +17237,9 @@ function createApp(st, deps) {
         case "beat_completed":
           toast("info", "A story milestone was reached.");
           break;
+        case "leash_changed":
+          toast("warn", `Leash authorizations: ${String(e.left)} left.`);
+          break;
         case "clearance_raised":
           toast("info", `Clearance raised to tier ${String(e.tier)}.`);
           break;
@@ -17229,7 +17264,10 @@ function createApp(st, deps) {
     getContentErrors: () => contentErrors,
     debugTools,
     dispatch: (action) => api.dispatch(action, { expectChatId: st.getActiveChat()?.chatId }),
-    onSettingsChanged: syncIntimacy
+    onSettingsChanged: () => {
+      syncIntimacy();
+      syncBeatCooldown();
+    }
   });
   shell.registerTab(
     "squad",
@@ -17467,6 +17505,8 @@ function createApp(st, deps) {
       if (!started) {
         started = true;
         st.on("chat_changed", () => {
+          expedition.cancelPlan();
+          seenOffers.clear();
           reload();
           afterLoad();
           shell.refresh();
@@ -18005,7 +18045,8 @@ var RESERVED_EVENT_TYPES = [
   "expedition_choice",
   "expedition_treated",
   "expedition_ended",
-  "expedition_recap_set"
+  "expedition_recap_set",
+  "leash_changed"
 ];
 var slotEnum = external_exports.enum(["morning", "afternoon", "evening", "night"]);
 var socialStat = external_exports.enum(["authority", "insight", "empathy", "cunning"]);

@@ -167,6 +167,14 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     api.dispatch({ type: 'campaign/set_intimacy', payload: { romance: s.romance, initiative: s.romanticInitiative } }, { expectChatId: st.getActiveChat()?.chatId });
   }
 
+  /** The beat cooldown is a global setting; the pure engine reads its mirror in the campaign. */
+  function syncBeatCooldown(): void {
+    if (!state || load.kind !== 'ok') return;
+    const days = getSettings(st).beatCooldownDays;
+    if (state.settings.beatCooldownDays === days) return;
+    api.dispatch({ type: 'campaign/set_beat_cooldown', payload: { days } }, { expectChatId: st.getActiveChat()?.chatId });
+  }
+
   let sceneScreen: SceneScreen | null = null;
   /** True while the scene screen (or the night knock) is what the shell shows. */
   let onSceneScreen = false;
@@ -526,6 +534,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     adoptCombat();
     adoptExpedition();
     syncIntimacy();
+    syncBeatCooldown();
     if (state?.world.director?.pending) void director.onRequested().catch((e) => console.warn('[Alius] director failed', e));
   }
 
@@ -958,6 +967,9 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         case 'beat_completed':
           toast('info', 'A story milestone was reached.');
           break;
+        case 'leash_changed':
+          toast('warn', `Leash authorizations: ${String(e.left)} left.`);
+          break;
         case 'clearance_raised':
           toast('info', `Clearance raised to tier ${String(e.tier)}.`);
           break;
@@ -986,7 +998,10 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     getContentErrors: () => contentErrors,
     debugTools,
     dispatch: (action) => api.dispatch(action, { expectChatId: st.getActiveChat()?.chatId }),
-    onSettingsChanged: syncIntimacy,
+    onSettingsChanged: () => {
+      syncIntimacy();
+      syncBeatCooldown();
+    },
   });
 
   shell.registerTab('squad', (host) =>
@@ -1232,6 +1247,9 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       if (!started) {
         started = true;
         st.on('chat_changed', () => {
+          // a plan and the "seen" offers belong to one campaign (ids such as m1 repeat in every one)
+          expedition.cancelPlan();
+          seenOffers.clear();
           reload();
           afterLoad();
           shell.refresh();

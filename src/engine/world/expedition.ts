@@ -445,6 +445,7 @@ export function endExpedition(draft: CampaignState, ctx: EngineCtx, outcome: Exp
 
   delete draft.expedition;
   events.push(...consumeSlots(draft, exp.slots, ctx));
+  draft.lastExpedition!.day = draft.day; // the day the squad is back; day-end hooks replace the draft's contents, so not `report` (the day may have ended inside the return)
   events.push(...openRequest(draft, 'expedition'));
   events.push({ type: 'expedition_ended', outcome, reportId: report.id });
   return events;

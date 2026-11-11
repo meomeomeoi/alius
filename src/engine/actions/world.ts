@@ -1,6 +1,5 @@
 import { registerDayEndStep } from '../calendar';
-import { answerRequest, fallbackOutput, openRequest } from '../world/director';
-import { TUNING } from '../tuning';
+import { answerRequest, beatCooldownDays, fallbackOutput, openRequest } from '../world/director';
 import { registerAction } from '../dispatch';
 import { followRumor, registerMissionCompletedHook, runDeadlines } from '../world/missions';
 import { onMissionCompleted } from '../world/spine';
@@ -46,6 +45,14 @@ registerAction('director/fallback', (draft, payload, ctx) => {
   return answerRequest(draft, ctx, id, () => fallbackOutput(draft, ctx.registries, ctx.rng), { fallback: true });
 });
 
+/** Mirrors the global setting `beatCooldownDays` into the campaign, which is what the pure engine reads. */
+registerAction('campaign/set_beat_cooldown', (draft, payload) => {
+  const days = isObj(payload) ? payload.days : undefined;
+  if (typeof days !== 'number' || !Number.isInteger(days) || days < 1 || days > 14) throw new Error('campaign/set_beat_cooldown needs { days } from 1 to 14');
+  draft.settings.beatCooldownDays = days;
+  return [];
+});
+
 registerAction('director/request', (draft, payload) => {
   if (!isObj(payload) || payload.reason !== 'scout') throw new Error('Only a scout request can be opened by hand.');
   return openRequest(draft, 'scout');
@@ -57,7 +64,7 @@ registerDayEndStep('director_tick', (draft, ctx) => {
   const pending = draft.world.director?.pending;
   if (pending) {
     events.push(...answerRequest(draft, ctx, pending.id, () => fallbackOutput(draft, ctx.registries, ctx.rng), {
-      cooldownDays: TUNING.director.beatCooldownDays, fallback: true,
+      cooldownDays: beatCooldownDays(draft), fallback: true,
     }));
   }
   events.push(...openRequest(draft, 'day_end'));

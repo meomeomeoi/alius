@@ -259,7 +259,15 @@ export interface CampaignState {
     /** Spine bookkeeping (P5): the beat the director proposed and when. */
     spine?: { proposed?: string; proposedDay?: number; lastProposalDay?: number };
     /** The open director request, if any, and the last tick (P5). */
-    director?: { pending?: DirectorRequest; lastTickDay?: number; seq?: number };
+    director?: {
+      pending?: DirectorRequest;
+      lastTickDay?: number;
+      seq?: number;
+      /** The last day the fallback advanced a clock (it does so once per day). */
+      lastClockDay?: number;
+      /** A full request that arrived while a scout request was open: opened as soon as that one is answered. */
+      after?: 'day_end' | 'expedition';
+    };
     /** Named units the story offered that the player has not answered yet (P5). */
     incomingUnits?: number;
     lastExpeditionRegionId?: string;

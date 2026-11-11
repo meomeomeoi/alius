@@ -81,7 +81,8 @@ async function boot(opts: { st?: FakeStAdapter; deploy?: boolean } = {}) {
   st.settings.unitDms = false; // no unit DMs: they would eat the queued model replies
   st.settings.chronicleCompaction = false;
   const sh = scriptedShell();
-  const app: AliusApp = createApp(st, { loadContent: async () => content, shellFactory: () => sh.shell as never, assetUrl: (p) => `/${p}` });
+  let shellDeps: { onSettingsChanged?: () => void } = {};
+  const app: AliusApp = createApp(st, { loadContent: async () => content, shellFactory: (d) => { shellDeps = d as never; return sh.shell as never; }, assetUrl: (p) => `/${p}` });
   await app.start();
   if (opts.deploy !== false) {
     expect(await app.deployCampaign(setupResult(), 'new_group')).toBe(true);
@@ -128,7 +129,7 @@ async function boot(opts: { st?: FakeStAdapter; deploy?: boolean } = {}) {
     expect(app.expedition.launch({ unitIds: ids, formation: { front: ids.slice(0, 1), back: ids.slice(1) }, supplies: 2 })).toBe(true);
     edit((s) => { s.expedition!.map.nodes.n0_0.type = type; });
   };
-  return { st, app, sh, state, edit, mount, tab, endDay, offer, launch, initialScreens };
+  return { st, app, sh, state, edit, mount, tab, endDay, offer, launch, initialScreens, settingsChanged: () => shellDeps.onSettingsChanged?.() };
 }
 const click = (el: Element | null | undefined) => (el as HTMLElement).click();
 const btn = (host: HTMLElement, label: string) => [...host.querySelectorAll('button')].find((b) => b.textContent!.includes(label));
@@ -503,5 +504,43 @@ describe('review fixes', () => {
     if (t.state().combat) t.app.dispatch({ type: 'combat/accept', payload: {} });
     await settle();
     expect(t.state().world.director!.pending).toBeUndefined();
+  });
+});
+
+describe('minor fixes', () => {
+  it('the beat cooldown setting is mirrored into the campaign on load and when it changes', async () => {
+    const st = new FakeStAdapter(SOLO);
+    st.settings.beatCooldownDays = 7;
+    const t = await boot({ st });
+    expect(t.state().settings.beatCooldownDays).toBe(7);
+    t.st.settings.beatCooldownDays = 2;
+    t.settingsChanged();
+    expect(t.state().settings.beatCooldownDays).toBe(2);
+  });
+
+  it('a plan and the OPS badge memory do not survive a chat switch', async () => {
+    const t = await boot();
+    const id = t.offer();
+    t.tab('ops');
+    expect(t.sh.badges.get('ops')).toBe(0);
+    t.app.expedition.plan({ missionId: id });
+    const chat = t.st.getActiveChat()!;
+    t.st.switchChat({ chatId: 'chat-other', isGroup: true, groupId: 'gx' });
+    expect(t.app.expedition.planning()).toBeNull();
+    t.st.switchChat(chat);
+    expect(t.sh.badges.get('ops')).toBe(1); // the offer is unseen again in the reloaded campaign
+  });
+
+  it('a Leash authorization lost to a clock is announced', async () => {
+    const t = await boot();
+    t.st.settings.directorEnabled = false;
+    t.edit((s) => {
+      s.leash.authorizationsLeft = 2;
+      s.world.clocks.find((c) => c.id === 'oversight')!.filled = 5;
+    });
+    const id = t.offer('tpl_sweep');
+    t.edit((s) => { s.missions.offered.find((m) => m.id === id)!.deadlineDay = s.day; });
+    await t.endDay();
+    expect(t.sh.toasts.some((x) => /leash/i.test(x.text))).toBe(true);
   });
 });

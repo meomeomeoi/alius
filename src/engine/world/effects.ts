@@ -125,9 +125,14 @@ export function applyWorldEffects(
         else events.push(...bankLoot(draft, drops));
         break;
       }
-      case 'leash':
-        draft.leash.authorizationsLeft = Math.max(0, draft.leash.authorizationsLeft + fx.amount);
+      case 'leash': {
+        const before = draft.leash.authorizationsLeft;
+        draft.leash.authorizationsLeft = Math.max(0, before + fx.amount);
+        if (draft.leash.authorizationsLeft !== before) {
+          events.push({ type: 'leash_changed', amount: draft.leash.authorizationsLeft - before, left: draft.leash.authorizationsLeft });
+        }
         break;
+      }
       case 'thread': {
         const thread = draft.world.threads.find((t) => t.id === fx.threadId);
         if (!thread || thread.status === fx.status) break;
