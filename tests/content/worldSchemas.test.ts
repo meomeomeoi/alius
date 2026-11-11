@@ -23,6 +23,7 @@ const MIN: Record<string, Record<string, unknown>> = {
   incoming_unit: { type: 'incoming_unit' },
   fact: { type: 'fact', text: 'Something happened.', tags: ['world'], importance: 3 },
   offer_mission: { type: 'offer_mission', templateId: 'tpl_sweep', source: 'command' },
+  thread_flag: { type: 'thread_flag', threadId: 't1', flagId: 'thread:t1:saw_it', description: 'Saw it.' },
 };
 
 describe('world-effect vocabulary', () => {
@@ -243,7 +244,8 @@ describe('world content refs', () => {
         failureEffects: [], titles: ['T'], briefs: ['B'] }],
       dilemmaTemplates: [{ ...minor, id: 'evt_a', regions: ['ghost_region4'] }],
       corporations: [{ id: 'corp', name: 'C', summary: 's', values: { pragmatism: 0, autonomy: 0, ingroup: 0, mercy: 0, corporate: 0, sacrifice: 0 },
-        oversightStyle: 'o', playable: true, startingBonus: { text: 't', effects: [] }, startingRegionId: 'ghost_region5' }],
+        oversightStyle: 'o', playable: true, startingBonus: { text: 't', effects: [] }, startingRegionId: 'ghost_region5',
+        leash: { weekly: 2, approval: 0.5 } }],
     });
     const wanted: Array<[string, string, string]> = [
       ['clocks.json', '[0].regionId', 'regions'],

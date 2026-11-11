@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { EFFECT_TARGETS, STATS, TRIGGERS, ALWAYS_ON_TYPES } from '../engine/combat/types';
 import { EVENT_TYPES, PROPOSAL_KINDS, SEVERITIES } from '../engine/relations/vocab';
 import { VALUE_AXES } from '../engine/state/types';
+import { DILEMMA_CONTEXTS } from '../engine/dilemma/types';
 import type { WorldEffect } from '../engine/world/types';
 import { REGISTRY_NAMES, type RegistryName } from './types';
 
@@ -76,7 +77,7 @@ const textWithEffects = z.object({ text: str, effects: z.array(EffectSchema) });
 // P5: the world-effect vocabulary (every consequence outside combat is one of these).
 
 const worldInt = z.number().int();
-export const WorldEffectSchema = z.discriminatedUnion('type', [
+const WorldEffectUnion = z.discriminatedUnion('type', [
   z.object({ type: z.literal('resource'), resource: z.enum(['credits', 'supplies', 'plyx']), amount: worldInt }).strict(),
   z.object({ type: z.literal('carried_supplies'), amount: worldInt }).strict(),
   z.object({ type: z.literal('faction'), factionId: str, amount: worldInt.min(-30).max(30) }).strict(),
@@ -100,7 +101,15 @@ export const WorldEffectSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('offer_mission'), templateId: str, regionId: str.optional(), source: z.enum(['command', 'story', 'rumor', 'side']),
   }).strict(),
+  // P6: a dynamic flag in the namespace of the thread it belongs to (overview §6.1)
+  z.object({ type: z.literal('thread_flag'), threadId: str, flagId: z.string().regex(/^thread:[^:]+:[a-z0-9_]+$/, 'flagId must be thread:<threadId>:<slug>'), description: str.max(120) }).strict(),
 ]);
+
+export const WorldEffectSchema = WorldEffectUnion.superRefine((fx, ctx) => {
+  if (fx.type === 'thread_flag' && !fx.flagId.startsWith(`thread:${fx.threadId}:`)) {
+    ctx.addIssue({ code: 'custom', path: ['flagId'], message: `flagId must be in the namespace of thread "${fx.threadId}"` });
+  }
+});
 
 const COST_EVENTS: readonly string[] = ['sided_against', 'decision_violated', 'endangered', 'coerced', 'dismissed'];
 /** True when the effect costs the player something (a minor event option must contain at least one). */
@@ -145,6 +154,8 @@ export const CorporationSchema = BaseEntrySchema.extend({
   playable: z.boolean(),
   startingBonus: textWithEffects,
   startingRegionId: str.optional(),
+  /** P6: oversight numbers: authorizations per week and the Terminate approval base chance. */
+  leash: z.object({ weekly: int.min(0).max(5), approval: z.number().min(0).max(1) }).strict(),
 });
 
 export const StartSchema = BaseEntrySchema.extend({
@@ -664,6 +675,12 @@ export const DefectSchema = BaseEntrySchema.extend({
     setFlag: str.optional(),
   }).strict()).optional(),
   dmChanceBonus: z.number().min(0).max(1).optional(),
+  /** P6: Leash cost multiplier (Compel) and the chance a Compel fails. */
+  leash: z.object({ costMult: z.number().min(0).max(4), failChance: z.number().min(0).max(1).optional() }).strict().optional(),
+  /** P6: added to the daily desertion chance. */
+  desertionMod: z.number().min(-0.3).max(0.3).optional(),
+  /** P6: a relation flag that must be set before the defect arc can start. */
+  arcFlag: str.optional(),
   nightEvents: z.array(NightSpecSchema).optional(),
   /** P5: one more node revealed ahead on the expedition map (Echo Bleed). */
   expedition: z.object({ reveal: z.literal(1) }).strict().optional(),
@@ -881,9 +898,12 @@ const EventOptionSchema = z.object({
   effects: z.array(WorldEffectSchema),
 }).passthrough();
 
+/** Effect types that only make sense inside an expedition run. */
+const EXPEDITION_ONLY_EFFECTS: readonly string[] = ['carried_supplies', 'party_hp', 'loot'];
+
 export const DilemmaTemplateSchema = BaseEntrySchema.extend({
   scale: z.enum(['minor', 'major', 'defining']),
-  contexts: z.array(str).min(1),
+  contexts: z.array(z.enum(DILEMMA_CONTEXTS)).min(1),
   regions: z.array(str).optional(),
   flavor: z.boolean().optional(),
   fixed: z.object({
@@ -891,12 +911,40 @@ export const DilemmaTemplateSchema = BaseEntrySchema.extend({
     setup: str.max(600),
     options: z.array(EventOptionSchema).min(1).max(4),
   }).passthrough().optional(),
+  /** P6: the mechanic model writes the dilemma from this brief; `fixed` is the authored fallback. */
+  generate: z.object({ brief: str.max(300) }).strict().optional(),
+  optionCount: int.min(2).max(4).optional(),
+  requiredRefs: z.object({
+    units: int.min(1).max(4).optional(),
+    factions: z.array(str).optional(),
+    regions: z.array(str).optional(),
+    clocks: z.array(str).optional(),
+  }).strict().optional(),
+  /** Declared flags the model may pick among (rule 6). */
+  allowedFlags: z.array(str).optional(),
+  constraints: z.object({ flagPerOption: z.boolean().optional() }).strict().optional(),
 }).superRefine((d, ctx) => {
   if (d.scale === 'minor' && d.contexts.includes('expedition_event') && d.fixed === undefined) {
     ctx.addIssue({ code: 'custom', path: ['fixed'], message: 'a minor expedition event needs a fixed block' });
   }
+  if (d.generate !== undefined) {
+    const n = d.fixed?.options.length ?? 0;
+    if (d.fixed === undefined || d.flavor === true || n < 2) {
+      ctx.addIssue({ code: 'custom', path: ['fixed'], message: 'a generating template needs an authored fixed block (not flavor) with at least 2 options' });
+    }
+  }
+  if (d.constraints?.flagPerOption === true && (d.allowedFlags?.length ?? 0) < (d.optionCount ?? 3)) {
+    ctx.addIssue({ code: 'custom', path: ['allowedFlags'], message: 'flagPerOption needs at least as many allowedFlags as options' });
+  }
   if (d.fixed === undefined) return;
   const options = d.fixed.options as Array<{ effects: WorldEffect[] }>;
+  if (!d.contexts.includes('expedition_event')) {
+    options.forEach((o, i) => o.effects.forEach((e, j) => {
+      if (EXPEDITION_ONLY_EFFECTS.includes(e.type)) {
+        ctx.addIssue({ code: 'custom', path: ['fixed', 'options', i, 'effects', j, 'type'], message: `"${e.type}" is only meaningful in an expedition event` });
+      }
+    }));
+  }
   if (d.flavor === true) {
     if (options.length !== 1) ctx.addIssue({ code: 'custom', path: ['fixed', 'options'], message: 'a flavor event has exactly one option' });
     options.forEach((o, i) => {
@@ -912,6 +960,17 @@ export const DilemmaTemplateSchema = BaseEntrySchema.extend({
   });
 });
 
+export const LoyaltySignSchema = BaseEntrySchema.extend({
+  about: z.enum(['doubt', 'desertion', 'mutiny']),
+  kind: z.enum(['dm', 'fact', 'talk']),
+  level: z.union([z.literal(1), z.literal(2)]).optional(),
+  text: str.max(200),
+}).superRefine((s, ctx) => {
+  if (s.about === 'mutiny' && s.level === undefined) {
+    ctx.addIssue({ code: 'custom', path: ['level'], message: 'a mutiny sign needs a level (1 or 2)' });
+  }
+});
+
 Object.assign(registrySchemas, {
   regions: RegionSchema,
   nodeTypes: NodeTypeSchema,
@@ -919,4 +978,5 @@ Object.assign(registrySchemas, {
   rewardTiers: RewardTierSchema,
   missionTemplates: MissionTemplateSchema,
   dilemmaTemplates: DilemmaTemplateSchema,
+  loyaltySigns: LoyaltySignSchema,
 });

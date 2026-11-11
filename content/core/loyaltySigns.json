@@ -1,0 +1,78 @@
+[
+  {
+    "id": "sign_doubt_dm_1",
+    "about": "doubt",
+    "kind": "dm",
+    "text": "Commander. I carried out the last order. I want you to know I am no longer sure why I did."
+  },
+  {
+    "id": "sign_doubt_dm_2",
+    "about": "doubt",
+    "kind": "dm",
+    "text": "Do you ever check what the orders cost? Or only what they bring in?"
+  },
+  {
+    "id": "sign_doubt_fact_1",
+    "about": "doubt",
+    "kind": "fact",
+    "text": "{name} has stopped answering the squad channel unless spoken to directly."
+  },
+  {
+    "id": "sign_doubt_talk_1",
+    "about": "doubt",
+    "kind": "talk",
+    "text": "{name} is waiting outside your quarters. She says it will not take long."
+  },
+  {
+    "id": "sign_desertion_dm_1",
+    "about": "desertion",
+    "kind": "dm",
+    "text": "Whatever happens, do not take it personally. I have been counting the exits."
+  },
+  {
+    "id": "sign_desertion_dm_2",
+    "about": "desertion",
+    "kind": "dm",
+    "text": "The perimeter log has a gap on the east side at 0300. I only noticed because I looked."
+  },
+  {
+    "id": "sign_desertion_fact_1",
+    "about": "desertion",
+    "kind": "fact",
+    "text": "{name} was seen packing her field kit twice this week and unpacking it once."
+  },
+  {
+    "id": "sign_desertion_talk_1",
+    "about": "desertion",
+    "kind": "talk",
+    "text": "{name} asks for a word, standing by the door and not sitting down."
+  },
+  {
+    "id": "sign_mutiny_fact_1",
+    "about": "mutiny",
+    "kind": "fact",
+    "level": 1,
+    "text": "{name} stopped eating with the squad and was seen cleaning her weapon in the dark."
+  },
+  {
+    "id": "sign_mutiny_dm_1",
+    "about": "mutiny",
+    "kind": "dm",
+    "level": 1,
+    "text": "You can hear the implant, you know. A little click when someone files a request."
+  },
+  {
+    "id": "sign_mutiny_fact_2",
+    "about": "mutiny",
+    "kind": "fact",
+    "level": 2,
+    "text": "Two soldiers were overheard agreeing with {name} about who gives the orders here."
+  },
+  {
+    "id": "sign_mutiny_dm_2",
+    "about": "mutiny",
+    "kind": "dm",
+    "level": 2,
+    "text": "You should not sleep in the command module tonight, Commander."
+  }
+]

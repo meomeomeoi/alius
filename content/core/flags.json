@@ -103,5 +103,21 @@
     "setBy": [
       "event"
     ]
+  },
+  {
+    "id": "leashed",
+    "scope": "relation",
+    "description": "The Leash was used on this unit; she remembers being forced.",
+    "setBy": [
+      "event"
+    ]
+  },
+  {
+    "id": "arc_raised",
+    "scope": "relation",
+    "description": "The unit has raised her defect arc with the commander.",
+    "setBy": [
+      "event"
+    ]
   }
 ]

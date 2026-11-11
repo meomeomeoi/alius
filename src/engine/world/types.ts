@@ -6,6 +6,8 @@ import type { LootDrop, Severity, ValueAxis } from '../state/types';
 export const WORLD_EFFECT_TYPES = [
   'resource', 'carried_supplies', 'faction', 'clock', 'flag', 'clearance', 'party_stress', 'party_hp', 'loot',
   'leash', 'thread', 'unit_event', 'incoming_unit', 'fact', 'offer_mission',
+  // P6
+  'thread_flag',
 ] as const;
 export type WorldEffectType = (typeof WORLD_EFFECT_TYPES)[number];
 
@@ -41,7 +43,9 @@ export type WorldEffect =
     }
   | { type: 'incoming_unit' }
   | { type: 'fact'; text: string; tags: string[]; importance: number }
-  | { type: 'offer_mission'; templateId: string; regionId?: string; source: MissionSource };
+  | { type: 'offer_mission'; templateId: string; regionId?: string; source: MissionSource }
+  /** P6: a dynamic flag in a thread's namespace (`thread:<threadId>:<slug>`) with its one-line description. */
+  | { type: 'thread_flag'; threadId: string; flagId: string; description: string };
 
 // ---------------------------------------------------------------------------------------------
 // State shapes (campaign state `version: 1`; every P5 field is optional or empty in older saves).

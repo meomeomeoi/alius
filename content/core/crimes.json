@@ -167,7 +167,8 @@
       "text": "Leash requests cost more Trust (units see him as a hypocrite).",
       "effects": [
         {
-          "type": "leash_trust_cost"
+          "type": "leash_trust_cost",
+          "amount": 5
         }
       ]
     },

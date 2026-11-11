@@ -93,7 +93,12 @@
         "actionEffects": [],
         "target": "nearest_enemy"
       }
-    }
+    },
+    "leash": {
+      "costMult": 2,
+      "failChance": 0.25
+    },
+    "desertionMod": 0.1
   },
   {
     "id": "threat_saturation",
@@ -856,7 +861,8 @@
         "target": "nearest_any",
         "once": true
       }
-    }
+    },
+    "desertionMod": -0.1
   },
   {
     "id": "reward_loop",
@@ -948,6 +954,10 @@
         "onEnter": [],
         "actionEffects": []
       }
-    }
+    },
+    "leash": {
+      "costMult": 0.5
+    },
+    "desertionMod": -0.1
   }
 ]

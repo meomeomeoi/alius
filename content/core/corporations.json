@@ -23,7 +23,11 @@
         }
       ]
     },
-    "startingRegionId": "quarantine_d7"
+    "startingRegionId": "quarantine_d7",
+    "leash": {
+      "weekly": 3,
+      "approval": 0.7
+    }
   },
   {
     "id": "kestrel",
@@ -49,7 +53,11 @@
         }
       ]
     },
-    "startingRegionId": "kestrel_corridor"
+    "startingRegionId": "kestrel_corridor",
+    "leash": {
+      "weekly": 2,
+      "approval": 0.5
+    }
   },
   {
     "id": "aurum",
@@ -68,6 +76,10 @@
     "startingBonus": {
       "text": "Not a v1 start.",
       "effects": []
+    },
+    "leash": {
+      "weekly": 2,
+      "approval": 0.6
     }
   },
   {
@@ -87,6 +99,10 @@
     "startingBonus": {
       "text": "Not a v1 start.",
       "effects": []
+    },
+    "leash": {
+      "weekly": 1,
+      "approval": 0.4
     }
   }
 ]

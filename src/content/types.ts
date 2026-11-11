@@ -10,6 +10,8 @@ export const REGISTRY_NAMES = [
   'orders', 'synergies', 'recipes', 'lootTables',
   // P5
   'missionTemplates', 'clocks', 'rewardTiers',
+  // P6
+  'loyaltySigns',
 ] as const;
 
 export type RegistryName = (typeof REGISTRY_NAMES)[number];

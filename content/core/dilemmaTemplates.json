@@ -406,7 +406,7 @@
   },
   {
     "id": "evt_vesper_choice",
-    "scale": "minor",
+    "scale": "defining",
     "contexts": [
       "expedition_event"
     ],
@@ -447,7 +447,7 @@
             {
               "type": "faction",
               "factionId": "vesper",
-              "amount": -15
+              "amount": -20
             }
           ]
         },
@@ -470,11 +470,23 @@
           ]
         }
       ]
+    },
+    "generate": {
+      "brief": "The commander holds the evidence that the Bloom was seeded on purpose. Three buyers want it; each way of handing it over costs something different."
+    },
+    "optionCount": 3,
+    "allowedFlags": [
+      "evidence_delivered_vesper",
+      "evidence_sold_aurum",
+      "evidence_buried"
+    ],
+    "constraints": {
+      "flagPerOption": true
     }
   },
   {
     "id": "evt_kestrel_choice",
-    "scale": "minor",
+    "scale": "defining",
     "contexts": [
       "expedition_event"
     ],
@@ -517,7 +529,7 @@
             {
               "type": "faction",
               "factionId": "kestrel",
-              "amount": -15
+              "amount": -20
             },
             {
               "type": "clock",
@@ -542,6 +554,431 @@
               "type": "faction",
               "factionId": "kestrel",
               "amount": -10
+            }
+          ]
+        }
+      ]
+    },
+    "generate": {
+      "brief": "A quota, a group of survivors and a stranger's offer cannot all be satisfied in the corridor. Every way out costs lives, standing or money."
+    },
+    "optionCount": 3,
+    "allowedFlags": [
+      "quota_met_k12",
+      "spared_survivors_k12",
+      "sable_offer_taken"
+    ],
+    "constraints": {
+      "flagPerOption": true
+    }
+  },
+  {
+    "id": "dil_rations",
+    "scale": "minor",
+    "contexts": [
+      "base"
+    ],
+    "generate": {
+      "brief": "The mess hall is short on rations. Someone has to go without, or the commander has to find food off the books."
+    },
+    "optionCount": 2,
+    "fixed": {
+      "title": "Short rations",
+      "setup": "The mess hall count is wrong again. There is food for two thirds of the squad and the quartermaster is waiting for you to decide who eats.",
+      "options": [
+        {
+          "label": "Cut everyone's portions",
+          "effects": [
+            {
+              "type": "resource",
+              "resource": "supplies",
+              "amount": 3
+            },
+            {
+              "type": "party_stress",
+              "amount": 5
+            },
+            {
+              "type": "unit_event",
+              "event": "decision_aligned",
+              "severity": "minor",
+              "targets": "named",
+              "valueAxes": [
+                {
+                  "axis": "pragmatism",
+                  "direction": 1
+                },
+                {
+                  "axis": "mercy",
+                  "direction": -1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Buy rations on the black market",
+          "effects": [
+            {
+              "type": "resource",
+              "resource": "supplies",
+              "amount": 3
+            },
+            {
+              "type": "resource",
+              "resource": "credits",
+              "amount": -15
+            },
+            {
+              "type": "faction",
+              "factionId": "sable",
+              "amount": 5
+            },
+            {
+              "type": "unit_event",
+              "event": "decision_aligned",
+              "severity": "minor",
+              "targets": "named",
+              "valueAxes": [
+                {
+                  "axis": "autonomy",
+                  "direction": 1
+                },
+                {
+                  "axis": "corporate",
+                  "direction": -1
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "dil_informant",
+    "scale": "major",
+    "contexts": [
+      "base",
+      "director"
+    ],
+    "generate": {
+      "brief": "A corporate insider offers something valuable about a rival, and the price is not only money."
+    },
+    "optionCount": 3,
+    "fixed": {
+      "title": "The informant",
+      "setup": "A clerk from the corporate annex asks for a private word. He has a ledger that matters to someone, and he wants you to decide who gets it.",
+      "options": [
+        {
+          "label": "Pay him and keep the ledger quiet",
+          "effects": [
+            {
+              "type": "resource",
+              "resource": "credits",
+              "amount": -40
+            },
+            {
+              "type": "clock",
+              "clockId": "oversight",
+              "by": -1
+            },
+            {
+              "type": "unit_event",
+              "event": "decision_aligned",
+              "severity": "moderate",
+              "targets": "named",
+              "valueAxes": [
+                {
+                  "axis": "corporate",
+                  "direction": 1
+                },
+                {
+                  "axis": "pragmatism",
+                  "direction": 1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Turn him in to oversight",
+          "effects": [
+            {
+              "type": "faction",
+              "factionId": "vesper",
+              "amount": 10
+            },
+            {
+              "type": "faction",
+              "factionId": "sable",
+              "amount": -10
+            },
+            {
+              "type": "party_stress",
+              "amount": 10
+            },
+            {
+              "type": "unit_event",
+              "event": "decision_aligned",
+              "severity": "moderate",
+              "targets": "named",
+              "valueAxes": [
+                {
+                  "axis": "corporate",
+                  "direction": 1
+                },
+                {
+                  "axis": "mercy",
+                  "direction": -1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Take the ledger by force",
+          "effects": [
+            {
+              "type": "resource",
+              "resource": "plyx",
+              "amount": 8
+            },
+            {
+              "type": "faction",
+              "factionId": "sable",
+              "amount": -10
+            },
+            {
+              "type": "unit_event",
+              "event": "decision_aligned",
+              "severity": "moderate",
+              "targets": "named",
+              "valueAxes": [
+                {
+                  "axis": "autonomy",
+                  "direction": 1
+                },
+                {
+                  "axis": "mercy",
+                  "direction": -1
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "dil_transfer_order",
+    "scale": "major",
+    "contexts": [
+      "base"
+    ],
+    "requiredRefs": {
+      "units": 2
+    },
+    "generate": {
+      "brief": "Corporate command orders one soldier moved to another unit. At least two members of the squad have a stake in it."
+    },
+    "optionCount": 3,
+    "fixed": {
+      "title": "Transfer order",
+      "setup": "A transfer order arrives from the corporate annex: one of your soldiers is to be reassigned by morning. She does not know yet, and not everyone will let it pass.",
+      "options": [
+        {
+          "label": "Hand her over",
+          "effects": [
+            {
+              "type": "faction",
+              "factionId": "vesper",
+              "amount": 10
+            },
+            {
+              "type": "party_stress",
+              "amount": 10
+            },
+            {
+              "type": "unit_event",
+              "event": "decision_aligned",
+              "severity": "moderate",
+              "targets": "named",
+              "valueAxes": [
+                {
+                  "axis": "corporate",
+                  "direction": 1
+                },
+                {
+                  "axis": "ingroup",
+                  "direction": -1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Refuse and stall the annex",
+          "effects": [
+            {
+              "type": "clock",
+              "clockId": "oversight",
+              "by": 1
+            },
+            {
+              "type": "party_stress",
+              "amount": -5
+            },
+            {
+              "type": "unit_event",
+              "event": "decision_aligned",
+              "severity": "moderate",
+              "targets": "named",
+              "valueAxes": [
+                {
+                  "axis": "ingroup",
+                  "direction": 1
+                },
+                {
+                  "axis": "autonomy",
+                  "direction": 1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Buy her an exemption",
+          "effects": [
+            {
+              "type": "resource",
+              "resource": "credits",
+              "amount": -60
+            },
+            {
+              "type": "faction",
+              "factionId": "vesper",
+              "amount": 5
+            },
+            {
+              "type": "unit_event",
+              "event": "decision_aligned",
+              "severity": "moderate",
+              "targets": "named",
+              "valueAxes": [
+                {
+                  "axis": "pragmatism",
+                  "direction": 1
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "dil_after_action",
+    "scale": "major",
+    "contexts": [
+      "mission_outcome"
+    ],
+    "generate": {
+      "brief": "The after-action report from a mission has to be written. The honest version and the convenient version are not the same document."
+    },
+    "optionCount": 3,
+    "fixed": {
+      "title": "The after-action report",
+      "setup": "The report is due at the annex by dawn. The squad is watching to see what you write about them.",
+      "options": [
+        {
+          "label": "File the clean report",
+          "effects": [
+            {
+              "type": "clock",
+              "clockId": "oversight",
+              "by": -1
+            },
+            {
+              "type": "party_stress",
+              "amount": 5
+            },
+            {
+              "type": "unit_event",
+              "event": "decision_aligned",
+              "severity": "moderate",
+              "targets": "named",
+              "valueAxes": [
+                {
+                  "axis": "corporate",
+                  "direction": 1
+                },
+                {
+                  "axis": "mercy",
+                  "direction": -1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "File the honest report",
+          "effects": [
+            {
+              "type": "clock",
+              "clockId": "oversight",
+              "by": 1
+            },
+            {
+              "type": "party_stress",
+              "amount": -5
+            },
+            {
+              "type": "unit_event",
+              "event": "decision_aligned",
+              "severity": "moderate",
+              "targets": "named",
+              "valueAxes": [
+                {
+                  "axis": "mercy",
+                  "direction": 1
+                },
+                {
+                  "axis": "autonomy",
+                  "direction": 1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Bill the losses to a rival",
+          "effects": [
+            {
+              "type": "resource",
+              "resource": "credits",
+              "amount": 40
+            },
+            {
+              "type": "faction",
+              "factionId": "sable",
+              "amount": -10
+            },
+            {
+              "type": "unit_event",
+              "event": "decision_aligned",
+              "severity": "moderate",
+              "targets": "named",
+              "valueAxes": [
+                {
+                  "axis": "pragmatism",
+                  "direction": 1
+                },
+                {
+                  "axis": "ingroup",
+                  "direction": -1
+                }
+              ]
             }
           ]
         }

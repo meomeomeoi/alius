@@ -32,6 +32,7 @@
     "clocks": "clocks.json",
     "missionTemplates": "missionTemplates.json",
     "rewardTiers": "rewardTiers.json",
-    "dilemmaTemplates": "dilemmaTemplates.json"
+    "dilemmaTemplates": "dilemmaTemplates.json",
+    "loyaltySigns": "loyaltySigns.json"
   }
 }

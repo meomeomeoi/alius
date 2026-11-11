@@ -333,8 +333,17 @@ registerRefs('dilemmaTemplates', (entry) => {
   (entry.regions as unknown[] | undefined)?.forEach((id, i) => out.push({ registry: 'regions', id: String(id), path: `regions[${i}]` }));
   const options = (entry.fixed as { options?: Array<{ effects?: unknown }> } | undefined)?.options;
   options?.forEach((o, i) => worldEffectRefs(o.effects, `fixed.options[${i}].effects`, out));
+  // P6
+  (entry.allowedFlags as unknown[] | undefined)?.forEach((id, i) => out.push({ registry: 'flags', id: String(id), path: `allowedFlags[${i}]` }));
+  const refs = entry.requiredRefs as { factions?: unknown[]; regions?: unknown[]; clocks?: unknown[] } | undefined;
+  refs?.factions?.forEach((id, i) => out.push({ registry: 'corporations', id: String(id), path: `requiredRefs.factions[${i}]` }));
+  refs?.regions?.forEach((id, i) => out.push({ registry: 'regions', id: String(id), path: `requiredRefs.regions[${i}]` }));
+  refs?.clocks?.forEach((id, i) => out.push({ registry: 'clocks', id: String(id), path: `requiredRefs.clocks[${i}]` }));
   return out;
 });
+
+registerRefs('defects', (entry) =>
+  typeof entry.arcFlag === 'string' ? [{ registry: 'flags' as const, id: entry.arcFlag, path: 'arcFlag' }] : []);
 
 registerRefs('corporations', (entry) =>
   typeof entry.startingRegionId === 'string' ? [{ registry: 'regions' as const, id: entry.startingRegionId, path: 'startingRegionId' }] : []);

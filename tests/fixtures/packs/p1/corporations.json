@@ -1,7 +1,7 @@
 [
   { "id": "corp_a", "name": "Corp A", "summary": "Playable.", "values": { "pragmatism": 1, "autonomy": 0, "ingroup": 0, "mercy": 0, "corporate": 2, "sacrifice": 0 },
-    "oversightStyle": "Strict.", "playable": true,
+    "oversightStyle": "Strict.", "playable": true, "leash": { "weekly": 2, "approval": 0.5 },
     "startingBonus": { "text": "Some credits.", "effects": [{ "type": "resource", "resource": "credits", "amount": 100 }, { "type": "cp_start", "amount": 1 }] } },
   { "id": "corp_b", "name": "Corp B", "summary": "Not playable.", "values": { "pragmatism": 0, "autonomy": 0, "ingroup": 0, "mercy": 0, "corporate": 0, "sacrifice": 0 },
-    "oversightStyle": "Loose.", "playable": false, "startingBonus": { "text": "None.", "effects": [] }, "startingRegionId": "region_not_yet" }
+    "oversightStyle": "Loose.", "playable": false, "leash": { "weekly": 1, "approval": 0.4 }, "startingBonus": { "text": "None.", "effects": [] }, "startingRegionId": "region_not_yet" }
 ]

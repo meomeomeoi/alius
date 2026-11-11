@@ -619,11 +619,12 @@ describe('core content: P5 world', () => {
   it('at least six non-flavor minor events, each option with a cost; value-axis events, a gated third way and flavor events exist', async () => {
     const { registries: r } = await load();
     const events = [...r.dilemmaTemplates.values()];
-    for (const e of events) {
-      expect(e.scale).toBe('minor');
-      expect(e.contexts).toContain('expedition_event');
+    const expeditionEvents = events.filter((e) => (e.contexts as string[]).includes('expedition_event'));
+    for (const e of expeditionEvents) {
+      // P6: the two beat-4 choices are defining; every other expedition event stays minor
+      expect(e.scale).toBe(String(e.id).endsWith('_choice') ? 'defining' : 'minor');
     }
-    const real = events.filter((e) => !e.flavor && !String(e.id).endsWith('_choice'));
+    const real = expeditionEvents.filter((e) => !e.flavor && !String(e.id).endsWith('_choice'));
     expect(real.length).toBeGreaterThanOrEqual(6);
     expect(events.filter((e) => e.flavor === true).length).toBeGreaterThanOrEqual(2);
     type Opt = { requires?: { stat: string; rank: number }; effects: Array<{ type: string; valueAxes?: unknown[] }> };
@@ -664,5 +665,97 @@ describe('core content: P5 world', () => {
     expect(r.nodeTypes.get('rest')).toMatchObject({ rest: { suppliesPerUnit: 1, hpPct: 25, stress: -15 }, firstLayer: false });
     expect(r.nodeTypes.get('unknown')!.resolvesTo).toEqual({ combat: 4, event: 3, cache: 3 });
     expect(r.rewardTiers.get('tier_3')).toMatchObject({ credits: [70, 120], plyx: [8, 16], lootTableId: 'loot_elite', faction: 5 });
+  });
+});
+
+describe('core content pack: P6 content', () => {
+  it('every corporation has leash numbers', async () => {
+    const { registries: r } = await load();
+    const leash = (id: string) => r.corporations.get(id)!.leash;
+    expect(leash('vesper')).toEqual({ weekly: 3, approval: 0.7 });
+    expect(leash('kestrel')).toEqual({ weekly: 2, approval: 0.5 });
+    expect(leash('aurum')).toEqual({ weekly: 2, approval: 0.6 });
+    expect(leash('sable')).toEqual({ weekly: 1, approval: 0.4 });
+  });
+
+  it('the mutiny flaw costs 5 Trust per Leash use; defect Leash and desertion modifiers are set', async () => {
+    const { registries: r } = await load();
+    const flaw = (r.crimes.get('mutiny')!.flaw as { effects: unknown[] }).effects;
+    expect(flaw).toContainEqual({ type: 'leash_trust_cost', amount: 5 });
+    const d = (id: string) => r.defects.get(id)!;
+    expect(d('imprint_fracture').leash).toEqual({ costMult: 2, failChance: 0.25 });
+    expect(d('imprint_fracture').desertionMod).toBe(0.1);
+    expect(d('compliance_craving').leash).toEqual({ costMult: 0.5 });
+    expect(d('compliance_craving').desertionMod).toBe(-0.1);
+    expect(d('possessive_protocol').desertionMod).toBe(-0.1);
+  });
+
+  it('loyalty_wavering is 0.15 and loyalty_breaking 0.35', async () => {
+    const { registries: r } = await load();
+    const chance = (id: string) =>
+      (r.synergies.get(id)!.effects as Array<{ type: string; chance: number }>).find((e) => e.type === 'order_refusal')!.chance;
+    expect(chance('loyalty_wavering')).toBe(0.15);
+    expect(chance('loyalty_breaking')).toBe(0.35);
+  });
+
+  it('leashed and arc_raised are declared relation flags', async () => {
+    const { registries: r } = await load();
+    expect(r.flags.get('leashed')).toMatchObject({ scope: 'relation' });
+    expect(r.flags.get('arc_raised')).toMatchObject({ scope: 'relation' });
+  });
+
+  it('both beat-4 choices are defining, generating and keep three mutually exclusive flags', async () => {
+    const { registries: r } = await load();
+    for (const id of ['evt_vesper_choice', 'evt_kestrel_choice']) {
+      const t = r.dilemmaTemplates.get(id)!;
+      expect(t.scale, id).toBe('defining');
+      expect(t.generate, id).toBeTruthy();
+      expect(t.optionCount, id).toBe(3);
+      expect((t.constraints as { flagPerOption: boolean }).flagPerOption, id).toBe(true);
+      const allowed = t.allowedFlags as string[];
+      expect(allowed, id).toHaveLength(3);
+      const fixedFlags = (t.fixed as { options: Array<{ effects: Array<{ type: string; flagId?: string }> }> }).options
+        .map((o) => o.effects.find((e) => e.type === 'flag')!.flagId);
+      expect(fixedFlags.sort(), id).toEqual([...allowed].sort());
+      for (const f of allowed) {
+        const others = allowed.filter((x) => x !== f).sort();
+        expect([...(r.flags.get(f)!.mutuallyExclusiveWith as string[])].sort(), f).toEqual(others);
+      }
+    }
+  });
+
+  it('the new base and mission-outcome templates generate and carry an authored fixed block', async () => {
+    const { registries: r } = await load();
+    const want: Record<string, { scale: string; contexts: string[] }> = {
+      dil_rations: { scale: 'minor', contexts: ['base'] },
+      dil_informant: { scale: 'major', contexts: ['base', 'director'] },
+      dil_transfer_order: { scale: 'major', contexts: ['base'] },
+      dil_after_action: { scale: 'major', contexts: ['mission_outcome'] },
+    };
+    for (const [id, w] of Object.entries(want)) {
+      const t = r.dilemmaTemplates.get(id)!;
+      expect(t, id).toBeTruthy();
+      expect(t.scale, id).toBe(w.scale);
+      expect(t.contexts, id).toEqual(w.contexts);
+      expect((t.generate as { brief: string }).brief.length, id).toBeGreaterThan(0);
+      const options = (t.fixed as { options: Array<{ effects: Array<Record<string, unknown>> }> }).options;
+      expect(options.length, id).toBeGreaterThanOrEqual(2);
+      expect(options.length, id).toBeLessThanOrEqual(3);
+      expect(options.some((o) => o.effects.some((e) => e.type === 'unit_event' && Array.isArray(e.valueAxes))), id).toBe(true);
+    }
+    expect(r.dilemmaTemplates.get('dil_transfer_order')!.requiredRefs).toEqual({ units: 2 });
+  });
+
+  it('there is a sign for every about/kind the engine needs', async () => {
+    const { registries: r } = await load();
+    const signs = [...r.loyaltySigns.values()] as unknown as Array<{ about: string; kind: string; level?: number }>;
+    const has = (about: string, kind: string, level?: number) =>
+      signs.some((s) => s.about === about && s.kind === kind && (level === undefined || s.level === level));
+    for (const kind of ['dm', 'fact', 'talk']) expect(has('doubt', kind), `doubt/${kind}`).toBe(true);
+    for (const kind of ['dm', 'fact']) expect(has('desertion', kind), `desertion/${kind}`).toBe(true);
+    expect(signs.filter((s) => s.about === 'doubt').length).toBeGreaterThanOrEqual(2);
+    expect(signs.filter((s) => s.about === 'desertion').length).toBeGreaterThanOrEqual(3);
+    expect(signs.filter((s) => s.about === 'mutiny' && s.level === 1).length).toBeGreaterThanOrEqual(2);
+    expect(signs.filter((s) => s.about === 'mutiny' && s.level === 2).length).toBeGreaterThanOrEqual(2);
   });
 });

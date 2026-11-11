@@ -23,5 +23,9 @@
   { "id": "order_friction", "name": "Open Resentment", "summary": "25% chance to refuse an order aimed at her.",
     "effects": [{ "type": "order_refusal", "chance": 0.25 }] },
   { "id": "order_friction_major", "name": "Defiance", "summary": "35% chance to refuse an order aimed at her.",
+    "effects": [{ "type": "order_refusal", "chance": 0.35 }] },
+  { "id": "loyalty_wavering", "name": "Wavering Loyalty", "summary": "15% chance to refuse an order aimed at her: her loyalty is slipping.",
+    "effects": [{ "type": "order_refusal", "chance": 0.15 }] },
+  { "id": "loyalty_breaking", "name": "Broken Loyalty", "summary": "35% chance to refuse an order aimed at her: her loyalty is breaking.",
     "effects": [{ "type": "order_refusal", "chance": 0.35 }] }
 ]

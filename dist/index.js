@@ -10820,7 +10820,9 @@ var REGISTRY_NAMES = [
   // P5
   "missionTemplates",
   "clocks",
-  "rewardTiers"
+  "rewardTiers",
+  // P6
+  "loyaltySigns"
 ];
 var PackManifestSchema = external_exports.object({
   id: external_exports.string().min(1),
@@ -17577,6 +17579,9 @@ function createApp(st, deps) {
   return api;
 }
 
+// src/engine/dilemma/types.ts
+var DILEMMA_CONTEXTS = ["expedition_event", "base", "mission_outcome", "defect_arc", "director"];
+
 // src/content/schemas.ts
 var ID_PATTERN = /^[a-z0-9_:.-]+$/;
 var BaseEntrySchema = external_exports.object({
@@ -17622,7 +17627,7 @@ var EffectSchema = external_exports.object({ type: str2 }).passthrough().superRe
 });
 var textWithEffects = external_exports.object({ text: str2, effects: external_exports.array(EffectSchema) });
 var worldInt = external_exports.number().int();
-var WorldEffectSchema = external_exports.discriminatedUnion("type", [
+var WorldEffectUnion = external_exports.discriminatedUnion("type", [
   external_exports.object({ type: external_exports.literal("resource"), resource: external_exports.enum(["credits", "supplies", "plyx"]), amount: worldInt }).strict(),
   external_exports.object({ type: external_exports.literal("carried_supplies"), amount: worldInt }).strict(),
   external_exports.object({ type: external_exports.literal("faction"), factionId: str2, amount: worldInt.min(-30).max(30) }).strict(),
@@ -17648,8 +17653,15 @@ var WorldEffectSchema = external_exports.discriminatedUnion("type", [
     templateId: str2,
     regionId: str2.optional(),
     source: external_exports.enum(["command", "story", "rumor", "side"])
-  }).strict()
+  }).strict(),
+  // P6: a dynamic flag in the namespace of the thread it belongs to (overview §6.1)
+  external_exports.object({ type: external_exports.literal("thread_flag"), threadId: str2, flagId: external_exports.string().regex(/^thread:[^:]+:[a-z0-9_]+$/, "flagId must be thread:<threadId>:<slug>"), description: str2.max(120) }).strict()
 ]);
+var WorldEffectSchema = WorldEffectUnion.superRefine((fx2, ctx2) => {
+  if (fx2.type === "thread_flag" && !fx2.flagId.startsWith(`thread:${fx2.threadId}:`)) {
+    ctx2.addIssue({ code: "custom", path: ["flagId"], message: `flagId must be in the namespace of thread "${fx2.threadId}"` });
+  }
+});
 var COST_EVENTS = ["sided_against", "decision_violated", "endangered", "coerced", "dismissed"];
 function isCostEffect(e) {
   switch (e.type) {
@@ -17698,7 +17710,9 @@ var CorporationSchema = BaseEntrySchema.extend({
   oversightStyle: str2,
   playable: external_exports.boolean(),
   startingBonus: textWithEffects,
-  startingRegionId: str2.optional()
+  startingRegionId: str2.optional(),
+  /** P6: oversight numbers: authorizations per week and the Terminate approval base chance. */
+  leash: external_exports.object({ weekly: int.min(0).max(5), approval: external_exports.number().min(0).max(1) }).strict()
 });
 var StartSchema = BaseEntrySchema.extend({
   name: str2,
@@ -18254,6 +18268,12 @@ var DefectSchema = BaseEntrySchema.extend({
     setFlag: str2.optional()
   }).strict()).optional(),
   dmChanceBonus: external_exports.number().min(0).max(1).optional(),
+  /** P6: Leash cost multiplier (Compel) and the chance a Compel fails. */
+  leash: external_exports.object({ costMult: external_exports.number().min(0).max(4), failChance: external_exports.number().min(0).max(1).optional() }).strict().optional(),
+  /** P6: added to the daily desertion chance. */
+  desertionMod: external_exports.number().min(-0.3).max(0.3).optional(),
+  /** P6: a relation flag that must be set before the defect arc can start. */
+  arcFlag: str2.optional(),
   nightEvents: external_exports.array(NightSpecSchema).optional(),
   /** P5: one more node revealed ahead on the expedition map (Echo Bleed). */
   expedition: external_exports.object({ reveal: external_exports.literal(1) }).strict().optional(),
@@ -18446,22 +18466,51 @@ var EventOptionSchema = external_exports.object({
   requires: external_exports.object({ stat: socialStat, rank: int.min(1).max(5) }).strict().optional(),
   effects: external_exports.array(WorldEffectSchema)
 }).passthrough();
+var EXPEDITION_ONLY_EFFECTS = ["carried_supplies", "party_hp", "loot"];
 var DilemmaTemplateSchema = BaseEntrySchema.extend({
   scale: external_exports.enum(["minor", "major", "defining"]),
-  contexts: external_exports.array(str2).min(1),
+  contexts: external_exports.array(external_exports.enum(DILEMMA_CONTEXTS)).min(1),
   regions: external_exports.array(str2).optional(),
   flavor: external_exports.boolean().optional(),
   fixed: external_exports.object({
     title: str2,
     setup: str2.max(600),
     options: external_exports.array(EventOptionSchema).min(1).max(4)
-  }).passthrough().optional()
+  }).passthrough().optional(),
+  /** P6: the mechanic model writes the dilemma from this brief; `fixed` is the authored fallback. */
+  generate: external_exports.object({ brief: str2.max(300) }).strict().optional(),
+  optionCount: int.min(2).max(4).optional(),
+  requiredRefs: external_exports.object({
+    units: int.min(1).max(4).optional(),
+    factions: external_exports.array(str2).optional(),
+    regions: external_exports.array(str2).optional(),
+    clocks: external_exports.array(str2).optional()
+  }).strict().optional(),
+  /** Declared flags the model may pick among (rule 6). */
+  allowedFlags: external_exports.array(str2).optional(),
+  constraints: external_exports.object({ flagPerOption: external_exports.boolean().optional() }).strict().optional()
 }).superRefine((d, ctx2) => {
   if (d.scale === "minor" && d.contexts.includes("expedition_event") && d.fixed === void 0) {
     ctx2.addIssue({ code: "custom", path: ["fixed"], message: "a minor expedition event needs a fixed block" });
   }
+  if (d.generate !== void 0) {
+    const n = d.fixed?.options.length ?? 0;
+    if (d.fixed === void 0 || d.flavor === true || n < 2) {
+      ctx2.addIssue({ code: "custom", path: ["fixed"], message: "a generating template needs an authored fixed block (not flavor) with at least 2 options" });
+    }
+  }
+  if (d.constraints?.flagPerOption === true && (d.allowedFlags?.length ?? 0) < (d.optionCount ?? 3)) {
+    ctx2.addIssue({ code: "custom", path: ["allowedFlags"], message: "flagPerOption needs at least as many allowedFlags as options" });
+  }
   if (d.fixed === void 0) return;
   const options2 = d.fixed.options;
+  if (!d.contexts.includes("expedition_event")) {
+    options2.forEach((o, i) => o.effects.forEach((e, j) => {
+      if (EXPEDITION_ONLY_EFFECTS.includes(e.type)) {
+        ctx2.addIssue({ code: "custom", path: ["fixed", "options", i, "effects", j, "type"], message: `"${e.type}" is only meaningful in an expedition event` });
+      }
+    }));
+  }
   if (d.flavor === true) {
     if (options2.length !== 1) ctx2.addIssue({ code: "custom", path: ["fixed", "options"], message: "a flavor event has exactly one option" });
     options2.forEach((o, i) => {
@@ -18476,13 +18525,24 @@ var DilemmaTemplateSchema = BaseEntrySchema.extend({
     }
   });
 });
+var LoyaltySignSchema = BaseEntrySchema.extend({
+  about: external_exports.enum(["doubt", "desertion", "mutiny"]),
+  kind: external_exports.enum(["dm", "fact", "talk"]),
+  level: external_exports.union([external_exports.literal(1), external_exports.literal(2)]).optional(),
+  text: str2.max(200)
+}).superRefine((s, ctx2) => {
+  if (s.about === "mutiny" && s.level === void 0) {
+    ctx2.addIssue({ code: "custom", path: ["level"], message: "a mutiny sign needs a level (1 or 2)" });
+  }
+});
 Object.assign(registrySchemas, {
   regions: RegionSchema,
   nodeTypes: NodeTypeSchema,
   clocks: ClockSchema,
   rewardTiers: RewardTierSchema,
   missionTemplates: MissionTemplateSchema,
-  dilemmaTemplates: DilemmaTemplateSchema
+  dilemmaTemplates: DilemmaTemplateSchema,
+  loyaltySigns: LoyaltySignSchema
 });
 
 // src/content/refs.ts
@@ -18758,8 +18818,14 @@ registerRefs("dilemmaTemplates", (entry) => {
   entry.regions?.forEach((id, i) => out.push({ registry: "regions", id: String(id), path: `regions[${i}]` }));
   const options2 = entry.fixed?.options;
   options2?.forEach((o, i) => worldEffectRefs(o.effects, `fixed.options[${i}].effects`, out));
+  entry.allowedFlags?.forEach((id, i) => out.push({ registry: "flags", id: String(id), path: `allowedFlags[${i}]` }));
+  const refs = entry.requiredRefs;
+  refs?.factions?.forEach((id, i) => out.push({ registry: "corporations", id: String(id), path: `requiredRefs.factions[${i}]` }));
+  refs?.regions?.forEach((id, i) => out.push({ registry: "regions", id: String(id), path: `requiredRefs.regions[${i}]` }));
+  refs?.clocks?.forEach((id, i) => out.push({ registry: "clocks", id: String(id), path: `requiredRefs.clocks[${i}]` }));
   return out;
 });
+registerRefs("defects", (entry) => typeof entry.arcFlag === "string" ? [{ registry: "flags", id: entry.arcFlag, path: "arcFlag" }] : []);
 registerRefs("corporations", (entry) => typeof entry.startingRegionId === "string" ? [{ registry: "regions", id: entry.startingRegionId, path: "startingRegionId" }] : []);
 registerRefs("starts", (entry) => {
   const out = [];
