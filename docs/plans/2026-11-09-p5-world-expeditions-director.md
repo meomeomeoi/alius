@@ -1,5 +1,7 @@
 # P5 World Map, Expeditions, Missions & Director Implementation Plan
 
+> **Status: executed** (all 21 tasks ticked; commits from `docs: P5 … plan` to the P5 review fixes on `unstable`). The rulings taken where this plan was silent or wrong, and the fixes made after the whole-branch review, are listed in `docs/packages/P5-world-expeditions-director.md` under **Implemented as** › **Decisions taken while implementing**. Where this plan and the code differ, the code wins.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** A world that moves: regions on a MAP tab, a mission board and a RUMOR MILL on OPS, expeditions as fogged node-map runs (combat, event, cache, rest, objective, retreat, after-action report), and a director that turns a compact world digest into validated mission offers, rumors, thread updates, clock advances and spine beats — with a pure fallback so the world keeps moving without any LLM.

@@ -137,5 +137,42 @@ Provider adds 1–3 sentences of world state relevant to the scene (region of la
 - `expedition_node` events carry `nodeType` (not `type`); `mapRows` has one extra row for the objective.
 - Hint evidence, rest and field-treatment texts are authored in code (`expedition.ts`); everything content-like is JSON.
 
+### Decisions taken while implementing (rulings)
+
+Where the plan or spec was silent, ambiguous or in conflict with the P0–P4 code, these calls were made. Each can be reversed cheaply; the cost is noted where it is not obvious.
+
+**Content (`content/core`)**
+- Story missions are `tpl_vesper_beat_N` / `tpl_kestrel_beat_N` (corporation key, not the start id) and carry `factionId` = the start's corporation, so a tier's `faction` has an effect. `bloom_d7` and `corridor_quota` start with 1 filled segment.
+- `unit_event`s with `valueAxes` use `decision_aligned` (P3's `validateIntents` keeps axes only on `decision_aligned` / `decision_violated`; axes on `sided_with` were silently dropped). Units whose values match an axis direction gain, the others lose.
+- A `win` objective must use a combat-kind node (loader check); `startingRegionId` is now a checked reference (the p1 test fixture got a minimal `regions.json`).
+
+**Engine rules**
+- `WorldEffect` is a hand-written TS type in `engine/world/types.ts` (the engine may not import content schemas); keep it in step with `WorldEffectSchema`.
+- `loot` effect `rolls` = repeated rolls of the table; repeat clocks reset to 0 **before** `onFill` runs; `party_hp`/`carried_supplies` emit no events (the run log carries them); `leash` emits `leash_changed { amount, left }`.
+- Boards: `boardRoom = missionBoardSize − offered.length`; a refused offer returns `{ mission: null }` with no events. The `offer_mission` effect uses the template's first region, else the first known one.
+- Rumors: `postRumor` returns the rumor (or `null`); callers emit `rumorPostedEvent(r)`. A rumor whose mission lead is missing or invalid is rejected whole by the director validator.
+- The mission-completed hook is registered in `actions/world.ts` (`registerMissionCompletedHook`) because `effects`/`spine`/`missions` import each other and a registration at module load would hit a temporal dead zone.
+- `completeBeat` advances `spineProgress` and clears `spine.proposed` **before** running `onComplete` (a flag set there cannot re-complete the beat). `proposeBeat` throws unless the beat is the current, ready, unproposed one; the cooldown is the caller's policy.
+- Node map: each node first links to its nearest next-layer index, uncovered nodes are taken by the nearest node with room, then a node may add a second edge (keeps the 1–2 edge invariant); `mapRows` returns one extra row for the objective; a region that cannot draw a combat-kind node for a layer skips that rule silently (only "no node type at all" throws).
+- Expedition: `checkExpedition` also requires every party unit to be on `roster.activeIds` (P4's `checkStart` demands it); `expedition_node` events carry `nodeType` (not `type`); random events exclude any template pinned by `objectiveEventId`; `checkDeparture` and `poiCooldownReason` are exported so the UI shows the engine's own reasons; `buildMission` (extracted from `offerMission`) builds POI runs; a win with an empty front row moves the first back-row unit forward.
+- Content removed under a save: a node type, event or encounter that can no longer be played resolves as `Nothing here.` and finishes an objective node; a vanished story mission frees its beat.
+- Director: `answerRequest` is the one path for `director/apply`, `director/fallback` and the day-end fallback; `director_applied` counts `mission_offered` events (a beat's mission counts) and carries `fallback: true` only for fallback answers. Digest: newest 4 flag ids per thread, story-only templates left out, ≤ 6 dormant threads (to stay under 4000 characters). Fallback side missions are templates that allow `side` but not `command` and are not a POI template (core: `tpl_hunt`); its command cadence counts `offeredDay` over offered + active + completed command missions. The plan's test name "three advances of 2 keep the total at 3" contradicts its own rule ("later ones rejected"): the rule is implemented (`[2,2,2]` on three clocks keeps the first; `[1,1,1,1]` keeps three).
+- `answerRequest`/`openRequest` details added after review: the first command-capable offer of a tick becomes the single open command mission, others are `side`; reopening a thread counts against the 6-open limit and old closed/dormant threads are trimmed; a scout request that is open when a full request arrives remembers it (`world.director.after`) and opens it as soon as the scout is answered; the fallback advances a clock once per day (`world.director.lastClockDay`); the campaign mirrors the global `beatCooldownDays` into `settings.beatCooldownDays` (`campaign/set_beat_cooldown`, synced by the app on load and on setting change) so fallback and day-end answers use it; `expedition/retreat` first takes in a decided fight; `lastExpedition.day` is the day the squad came back.
+- Dispatch guard during a run also lets `relations/commander_injured` through (a Commander Crisis happens only inside a run).
+- Report text: the combat log line names the enemies; recap cleaning strips tags and script/style blocks, collapses whitespace and cuts to 1200; an expedition returned today reads "today" in the context line.
+
+**App and UI**
+- `WorldDeps` (`src/world/deps.ts`) is a structural subset of `AliusApp` (`dispatch`, `current`). Controllers never toast `chat_changed`, `combat_open` or `Stale director answer.`; a director answer that comes due during a fight is retried on `combat_ended`; the in-flight key of a request includes the chat id.
+- RETREAT confirmation is inline in the run view; an event whose template vanished offers `[ CONTINUE ]`; `renderNodeMap` takes optional `labels`; the OPS tab gained `onOpenReport` (`REPORT READY`) and the badge counts new command/story offers not yet drawn in the tab; the expedition screen keeps the planner draft and debrief picks across refreshes.
+- After the report closes, a night knock that was queued by the return is shown (not lost); a fight's CONTINUE returns to the expedition (or to the PDA when the fight ended the run; the report follows); a plan and the OPS "seen" memory are reset on a chat switch.
+- `expedition_*` events flush the save at once (reload mid-run resumes at the same node).
+- `tests/app.test.ts` lists the new `map` tab and `expedition` screen.
+
+### Open items for later sessions
+- **Manual acceptance** (`MANUAL_TEST_P5.md`, in SillyTavern) has not been run by anyone yet.
+- **P6** owns: the full dilemma system (the beat-4 events are placeholders), consequences of failed command missions beyond `oversight +1` / `leash −1`, Leash use during a run, refusals of expedition orders.
+- Known soft spots, deliberately left: a model that never proposes a ready beat stalls the spine (no safety net besides the fallback director being on); clocks added to content after a save was seeded are never created (`world.seeded`); an open (non-scout) request that is slow absorbs a later scout request (the open answer carries rumors anyway); the debrief is impossible after a return that ends in the Night and is gone once the report is closed.
+- Balance numbers (rewards, tiers, clocks, region danger, rest and treat costs) are draft values.
+
 ### Not in P5
 The full dilemma system (P6: the pinned beat-4 events are placeholders), the Leash effects of failed command missions beyond `leash −1` (P6), expedition-time Leash use, bosses, multi-expedition parties, images for regions, real tuning of the draft numbers.

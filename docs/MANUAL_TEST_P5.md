@@ -28,4 +28,8 @@ Automated coverage per acceptance criterion (all in `npm test`), then the steps 
 - [ ] **Map image fallback:** without `content/core/map/world.png` (or with a broken file) the ASCII grid is shown; with an image, the hotspots are focusable and selectable by keyboard.
 - [ ] **Reload mid-run** (SillyTavern reload on a node, on a fight, on the report): the expedition screen returns at the same node, a finished fight is counted once.
 - [ ] **Chat switch** during a director call or a recap: nothing leaks into the other campaign; the request is answered when the first chat is open again.
+- [ ] **Night after a return:** a run that ends in the Night (leave in the Afternoon with a queued night visit) → closing the report shows the knock, not the PDA.
+- [ ] **Commander Crisis in a run:** lose the cover unit at a crisis node; later nights bring the expected visits from lovers/devoted units.
+- [ ] **Leash:** let the `oversight` clock fill (fail command missions): a toast announces the lost authorization and the header counter drops.
+- [ ] **Beat cooldown:** change the setting in SYS › World; with the director off the story still moves at the new pace.
 - [ ] Switching away to another tab while an expedition is open: activities and scenes are refused with the "expedition is under way" message.

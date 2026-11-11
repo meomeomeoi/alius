@@ -14,5 +14,6 @@ SillyTavern extension (TypeScript). Design docs live in `docs/`.
 - Never put `dist/` or `style.css` into .gitignore — they are committed on purpose.
 - Stop at the task boundary you were given; don't start the next chunk.
 - If the plan and the code disagree, stop and report instead of improvising.
+- P5 is implemented; its rulings and open items are in `docs/packages/P5-world-expeditions-director.md` (**Implemented as**). Read them before touching `src/engine/world/`, `src/world/` or the expedition UI.
 - When you finish a package, update its spec (status line and an **Implemented as** section), the status table in `docs/00-overview.md` §9, the interface list in §5.4, and add an **Interfaces already provided by <package>** note to the specs of the packages that depend on it.
 - `npm test` rebuilds `dist/index.js` and `style.css`; commit them with your change.

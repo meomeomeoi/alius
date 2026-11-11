@@ -22,7 +22,9 @@ Quick facts for a new session: state changes only through registered engine acti
 | `CONTENT.md` | How to add content: pack layout, effects, every registry's fields with an example, the lorebook format |
 | `MANUAL_TEST_P0.md` … `MANUAL_TEST_P5.md` | Acceptance checklists that must be run by hand inside SillyTavern |
 | `BALANCE_REPORT.md` | Defect neutrality report from `npm run sim -- --neutrality` (P4) |
-| `plans/` | Implementation plans per package (task-by-task; ticked as they are done) |
+| `plans/` | Implementation plans per package (task-by-task; ticked as they are done; a **Status** line on top says when a plan was executed) |
 | `content/lore.md` | **Placeholder** lore & structure (author rewrites) |
 | `content/roles.md` | Roles, stats, skills, signatures, CP orders, equipment (draft numbers) |
 | `content/defects.md` | Defect catalog, 18 entries in 5 categories (draft) |
+
+**Where decisions live.** Every implemented package spec ends with **Implemented as**; P5's also has **Decisions taken while implementing** (rulings where the plan was silent or wrong) and **Open items for later sessions**. Read those before changing P5 code or building P6 on it.
