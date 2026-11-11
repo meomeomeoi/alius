@@ -38,3 +38,10 @@ export interface DilemmaState {
   options?: DilemmaOption[];
   source?: 'model' | 'fallback';
 }
+
+/** Why a dilemma (or one of its options) was turned down. `rule` is the validator rule (1–6) or `shape` for a malformed answer. */
+export interface Rejection {
+  rule: 'shape' | 1 | 2 | 3 | 4 | 5 | 6;
+  option?: number;
+  reason: string;
+}

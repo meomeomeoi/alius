@@ -429,6 +429,23 @@
             {
               "type": "party_stress",
               "amount": 5
+            },
+            {
+              "type": "faction",
+              "factionId": "vesper",
+              "amount": 10
+            },
+            {
+              "type": "unit_event",
+              "event": "decision_aligned",
+              "severity": "moderate",
+              "targets": "named",
+              "valueAxes": [
+                {
+                  "axis": "corporate",
+                  "direction": 1
+                }
+              ]
             }
           ]
         },
@@ -448,6 +465,22 @@
               "type": "faction",
               "factionId": "vesper",
               "amount": -20
+            },
+            {
+              "type": "unit_event",
+              "event": "decision_aligned",
+              "severity": "moderate",
+              "targets": "named",
+              "valueAxes": [
+                {
+                  "axis": "pragmatism",
+                  "direction": 1
+                },
+                {
+                  "axis": "corporate",
+                  "direction": -1
+                }
+              ]
             }
           ]
         },
@@ -465,7 +498,19 @@
             },
             {
               "type": "party_stress",
-              "amount": 5
+              "amount": -5
+            },
+            {
+              "type": "unit_event",
+              "event": "decision_aligned",
+              "severity": "moderate",
+              "targets": "named",
+              "valueAxes": [
+                {
+                  "axis": "ingroup",
+                  "direction": 1
+                }
+              ]
             }
           ]
         }
@@ -516,6 +561,11 @@
                   "direction": -1
                 }
               ]
+            },
+            {
+              "type": "faction",
+              "factionId": "kestrel",
+              "amount": 10
             }
           ]
         },
@@ -535,6 +585,22 @@
               "type": "clock",
               "clockId": "corridor_quota",
               "by": 2
+            },
+            {
+              "type": "party_stress",
+              "amount": -10
+            },
+            {
+              "type": "unit_event",
+              "event": "decision_aligned",
+              "severity": "moderate",
+              "targets": "named",
+              "valueAxes": [
+                {
+                  "axis": "mercy",
+                  "direction": 1
+                }
+              ]
             }
           ]
         },
@@ -554,6 +620,18 @@
               "type": "faction",
               "factionId": "kestrel",
               "amount": -10
+            },
+            {
+              "type": "unit_event",
+              "event": "decision_aligned",
+              "severity": "moderate",
+              "targets": "named",
+              "valueAxes": [
+                {
+                  "axis": "pragmatism",
+                  "direction": 1
+                }
+              ]
             }
           ]
         }
