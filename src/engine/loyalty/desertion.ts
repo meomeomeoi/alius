@@ -13,7 +13,8 @@ import type { CampaignState, Confrontation } from '../state/types';
 import { TUNING } from '../tuning';
 import { applyWorldEffects } from '../world/effects';
 import { postRumor, rumorPostedEvent } from '../world/missions';
-import { emitSign, loyaltyOf, loyaltyRecord } from './state';
+import { mutinyDayStep, resolveExpiredMutiny } from './mutiny';
+import { closeNight, emitSign, loyaltyOf, loyaltyRecord, requireOpen } from './state';
 
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
 
@@ -73,19 +74,6 @@ export function missionStartCheck(draft: CampaignState, ctx: EngineCtx, unitIds:
 
 // ---------------------------------------------------------------------------------------------
 // Answers
-
-function requireOpen(draft: CampaignState, kind: Confrontation['kind']): Confrontation {
-  const open = draft.disloyalty?.open;
-  if (!open || open.kind !== kind) {
-    throw new Error(kind === 'return' ? 'Nobody is waiting at the gate.' : 'Nobody is about to walk out.');
-  }
-  return open;
-}
-
-/** An answer given at night spends the Night slot. */
-function closeNight(draft: CampaignState, ctx: EngineCtx, open: Confrontation): EngineEvent[] {
-  return open.at === 'night' && draft.slot === 'night' ? consumeSlots(draft, 1, ctx) : [];
-}
 
 /** One seeded social check with Authority or Empathy against a difficulty that grows with low Trust and high stress. */
 export function talkDown(draft: CampaignState, ctx: EngineCtx, stat: 'authority' | 'empathy'): EngineEvent[] {
@@ -237,6 +225,7 @@ export function loyaltyDayStep(draft: CampaignState, ctx: EngineCtx): EngineEven
   if (open && expiredConfrontation(draft, open)) {
     if (open.kind === 'desertion') events.push(...letGo(draft, ctx));
     else if (open.kind === 'return') events.push(...turnAway(draft, ctx));
+    else events.push(...resolveExpiredMutiny(draft, ctx, open));
   }
 
   for (const u of draft.squad.filter(isLiving)) {
@@ -264,6 +253,7 @@ export function loyaltyDayStep(draft: CampaignState, ctx: EngineCtx): EngineEven
     }
   }
 
+  events.push(...mutinyDayStep(draft, ctx));
   events.push(...returns(draft, ctx));
   return events;
 }

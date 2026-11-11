@@ -440,7 +440,7 @@ export const RESERVED_EVENT_TYPES: readonly string[] = [
   // P6
   'leash_seeded', 'leash_refreshed', 'leash_used', 'scene_compelled', 'unit_terminated',
   'scene_order', 'combat_compelled', 'loyalty_sign', 'desertion_attempt', 'loyalty_talk_down', 'unit_deserted',
-  'deserter_returned', 'deserter_answered',
+  'deserter_returned', 'deserter_answered', 'mutiny_started', 'mutiny_subdued', 'mutiny_escaped',
 ];
 
 const slotEnum = z.enum(['morning', 'afternoon', 'evening', 'night']);

@@ -2,7 +2,8 @@ import type { EngineCtx, EngineEvent } from '../dispatch';
 import { pushMessage } from '../dms';
 import { addFact, nextId } from '../memory';
 import { enqueueNight } from '../night';
-import type { CampaignState, LoyaltyRecord } from '../state/types';
+import { consumeSlots } from '../calendar';
+import type { CampaignState, Confrontation, LoyaltyRecord } from '../state/types';
 import { TUNING } from '../tuning';
 
 const blank = (): LoyaltyRecord => ({ signs: [], attempts: 0 });
@@ -57,3 +58,20 @@ export function emitSign(draft: CampaignState, ctx: EngineCtx, unitId: string, a
   if (rec.signs.length > TUNING.disloyalty.signsMax) rec.signs.splice(0, rec.signs.length - TUNING.disloyalty.signsMax);
   return [{ type: 'loyalty_sign', unitId, about, kind }];
 }
+
+// ---------------------------------------------------------------------------------------------
+// Open confrontations
+
+export function requireOpen(draft: Pick<CampaignState, 'disloyalty'>, kind: Confrontation['kind']): Confrontation {
+  const open = draft.disloyalty?.open;
+  if (!open || open.kind !== kind) {
+    throw new Error(kind === 'return' ? 'Nobody is waiting at the gate.' : 'Nobody is about to walk out.');
+  }
+  return open;
+}
+
+/** An answer given at night spends the Night slot. */
+export function closeNight(draft: CampaignState, ctx: EngineCtx, open: Confrontation): EngineEvent[] {
+  return open.at === 'night' && draft.slot === 'night' ? consumeSlots(draft, 1, ctx) : [];
+}
+

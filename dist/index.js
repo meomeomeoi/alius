@@ -2565,6 +2565,16 @@ function emitSign(draft, ctx2, unitId, about, level) {
   if (rec.signs.length > TUNING.disloyalty.signsMax) rec.signs.splice(0, rec.signs.length - TUNING.disloyalty.signsMax);
   return [{ type: "loyalty_sign", unitId, about, kind }];
 }
+function requireOpen(draft, kind) {
+  const open2 = draft.disloyalty?.open;
+  if (!open2 || open2.kind !== kind) {
+    throw new Error(kind === "return" ? "Nobody is waiting at the gate." : "Nobody is about to walk out.");
+  }
+  return open2;
+}
+function closeNight(draft, ctx2, open2) {
+  return open2.at === "night" && draft.slot === "night" ? consumeSlots(draft, 1, ctx2) : [];
+}
 
 // src/engine/actions/comms.ts
 var isObj7 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -6024,6 +6034,162 @@ registerDayEndStep("director_tick", (draft, ctx2) => {
   return events;
 });
 
+// src/engine/loyalty/mutiny.ts
+var SEVERITY_RANK2 = { minor: 0, moderate: 1, major: 2, extreme: 3 };
+var BETRAYALS = ["lied_detected", "broke_promise", "coerced", "decision_violated", "crime_revealed"];
+function mutinyTrigger(state, unitId, minSeverity = "major") {
+  const within = (day) => state.day - day <= TUNING.mutiny.triggerWindowDays;
+  const found = [];
+  const rec = loyaltyOf(state, unitId);
+  if (rec?.trigger && within(rec.trigger.day)) found.push({ kind: rec.trigger.kind, day: rec.trigger.day });
+  for (const h2 of state.relations[unitId]?.history ?? []) {
+    if (h2.kind !== "event" || !BETRAYALS.includes(h2.type) || h2.severity === void 0) continue;
+    if (SEVERITY_RANK2[h2.severity] >= SEVERITY_RANK2[minSeverity] && within(h2.day)) found.push({ kind: "betrayal", day: h2.day });
+  }
+  return found.sort((a, b) => b.day - a.day)[0] ?? null;
+}
+var mutinySigns = (state, unitId) => (loyaltyOf(state, unitId)?.signs ?? []).filter((s) => s.about === "mutiny");
+function mayMutiny(state, unitId) {
+  const unit = state.squad.find((u) => u.id === unitId);
+  const rel = state.relations[unitId];
+  if (!unit || !rel || unit.kind !== "named" || !isLiving(unit)) return false;
+  if (rel.stateId === "despises") return state.day - rel.stateSince >= TUNING.mutiny.minDaysInState;
+  return rel.stateId === "obsessed" && mutinyTrigger(state, unitId, "extreme") !== null;
+}
+function mutinyReady(state, _reg, unitId) {
+  if (!mayMutiny(state, unitId)) return false;
+  if (state.relations[unitId].stateId === "despises" && mutinyTrigger(state, unitId) === null) return false;
+  const signs = mutinySigns(state, unitId);
+  return signs.length >= TUNING.mutiny.minSigns && new Set(signs.map((s) => s.day)).size >= TUNING.mutiny.minSigns;
+}
+function sympathizers(state, unitId) {
+  return state.roster.activeIds.filter((id) => {
+    const u = state.squad.find((x) => x.id === id);
+    const rel = state.relations[id];
+    return id !== unitId && u !== void 0 && rel !== void 0 && u.kind === "named" && isLiving(u) && u.status === "active" && rel.loyaltyBand !== "steady" && rel.trust < TUNING.mutiny.sympathizerTrustBelow;
+  }).sort((a, b) => state.relations[a].trust - state.relations[b].trust).slice(0, TUNING.mutiny.maxSympathizers);
+}
+var groupOf = (open2) => [open2.unitId, ...open2.sympathizers ?? []];
+function loyalUnits(state, unitId) {
+  const open2 = state.disloyalty?.open;
+  const mutineers = /* @__PURE__ */ new Set([unitId, ...open2?.unitId === unitId && open2.sympathizers ? open2.sympathizers : sympathizers(state, unitId)]);
+  return state.roster.activeIds.filter((id) => {
+    const u = state.squad.find((x) => x.id === id);
+    return !mutineers.has(id) && u !== void 0 && isLiving(u) && u.status === "active";
+  });
+}
+var nameOf = (state, id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
+function startMutiny(draft, unitId) {
+  const group = sympathizers(draft, unitId);
+  const entry = {
+    id: nextId(draft, "n"),
+    unitId,
+    kind: "mutiny",
+    priority: TUNING.mutiny.nightPriority,
+    framing: `${nameOf(draft, unitId)} is not alone: voices in the corridor, weapons out of the racks. This is about to turn violent.`,
+    ignore: { event: "dismissed", severity: "major" },
+    expiresDay: draft.day + TUNING.disloyalty.night.expiresInDays
+  };
+  draft.calendar.nightEventsQueue = draft.calendar.nightEventsQueue.filter((n) => !(n.unitId === unitId && n.kind === "mutiny"));
+  enqueueNight(draft, entry);
+  (draft.disloyalty ??= { units: {} }).open = { kind: "mutiny", unitId, day: draft.day, at: "night", nightEntryId: entry.id, sympathizers: group };
+  return [{ type: "mutiny_started", unitId, sympathizers: group }];
+}
+function mutinyDayStep(draft, ctx2) {
+  const events = [];
+  for (const u of draft.squad.filter((x) => x.kind === "named" && isLiving(x))) {
+    const rec = loyaltyOf(draft, u.id);
+    const candidate = draft.relations[u.id]?.stateId === "despises" || draft.relations[u.id]?.stateId === "obsessed" && mutinyTrigger(draft, u.id, "extreme") !== null;
+    if (!candidate) {
+      if (rec?.signs.some((s) => s.about === "mutiny")) rec.signs = rec.signs.filter((s) => s.about !== "mutiny");
+      continue;
+    }
+    const signs = mutinySigns(draft, u.id);
+    const newest = Math.max(-Infinity, ...signs.map((s) => s.day));
+    if (signs.length === 0) events.push(...emitSign(draft, ctx2, u.id, "mutiny", 1));
+    else if (signs.length === 1 && newest < draft.day) events.push(...emitSign(draft, ctx2, u.id, "mutiny", 2));
+    const aged = mutinySigns(draft, u.id);
+    const lastSign = Math.max(-Infinity, ...aged.map((s) => s.day));
+    if (draft.disloyalty?.open || draft.day - lastSign < 1 || !mutinyReady(draft, ctx2.registries, u.id)) continue;
+    if (ctx2.rng.chance(TUNING.mutiny.chancePerDay)) events.push(...startMutiny(draft, u.id));
+  }
+  return events;
+}
+function fightPayload(state, p) {
+  const open2 = requireOpen(state, "mutiny");
+  if (open2.combatId !== void 0) throw new Error("The fight has already been fought: resolve it.");
+  const loyal = new Set(loyalUnits(state, open2.unitId));
+  const ids = [...p.formation.front, ...p.formation.back];
+  if (ids.length === 0) throw new Error("Choose who stands with you.");
+  for (const id of ids) {
+    if (!loyal.has(id)) throw new Error(`${nameOf(state, id)} cannot stand with you: only your able, loyal units can.`);
+  }
+  return {
+    encounter: { enemies: [], mutineers: groupOf(open2).map((unitId) => ({ unitId })), exposesCommander: true, danger: 0 },
+    formation: { front: [...p.formation.front], back: [...p.formation.back] },
+    ...p.coverId !== void 0 ? { coverId: p.coverId } : {},
+    allowRetry: p.allowRetry === true
+  };
+}
+function escape(draft, ctx2, open2, how, commanderHurt) {
+  const events = [];
+  for (const id of groupOf(open2)) {
+    const u = draft.squad.find((x) => x.id === id);
+    if (!u || !isLiving(u)) continue;
+    removeFromService(draft, id, "deserted");
+    const rec = loyaltyRecord(draft, id);
+    rec.desertedDay = draft.day;
+    rec.stance = "hostile";
+    delete rec.returned;
+    rec.signs = rec.signs.filter((s) => s.about !== "mutiny");
+    delete rec.trigger;
+  }
+  if (!commanderHurt && (draft.commander.injuredUntilDay ?? 0) <= draft.day) events.push(...injureCommander(draft, TUNING.combat.commanderInjuryDays));
+  delete draft.disloyalty.open;
+  events.push({ type: "mutiny_escaped", unitId: open2.unitId, sympathizers: open2.sympathizers ?? [], how });
+  events.push(...closeNight(draft, ctx2, open2));
+  return events;
+}
+function yieldToMutiny(draft, ctx2) {
+  const open2 = requireOpen(draft, "mutiny");
+  if (loyalUnits(draft, open2.unitId).length > 0) throw new Error("You still have soldiers who can fight: stand with them or suppress it.");
+  return escape(draft, ctx2, open2, "yield", false);
+}
+function subdue(draft, open2, fought) {
+  for (const id of fought) {
+    const u = draft.squad.find((x) => x.id === id);
+    if (!u || !isLiving(u)) continue;
+    u.status = "injured";
+    u.currentHp = 1;
+    u.injuryDays = Math.max(u.injuryDays ?? 0, TUNING.mutiny.subduedInjuryDays);
+    if (u.injuries.length === 0) u.injuries.push("wounded");
+  }
+  const events = [];
+  const rel = draft.relations[open2.unitId];
+  if (rel && rel.stateId !== "resentful") events.push(enterState(draft, open2.unitId, "resentful", "mutiny_subdued"));
+  const rec = loyaltyRecord(draft, open2.unitId);
+  rec.cause = { kind: "attack", day: draft.day };
+  rec.signs = rec.signs.filter((s) => s.about !== "mutiny");
+  delete rec.trigger;
+  delete draft.disloyalty.open;
+  events.push({ type: "mutiny_subdued", unitId: open2.unitId, sympathizers: open2.sympathizers ?? [] });
+  return events;
+}
+function resolveMutiny(draft, ctx2) {
+  const open2 = requireOpen(draft, "mutiny");
+  if (open2.combatId === void 0) throw new Error("The fight has not been fought yet.");
+  if (draft.combat) throw new Error("The fight is still going on.");
+  const result = draft.lastCombat;
+  if (!result || result.id !== open2.combatId) throw new Error("The result of that fight is no longer available.");
+  const events = result.outcome === "won" ? subdue(draft, open2, (result.mutineers ?? []).map((m) => m.unitId)) : escape(draft, ctx2, open2, result.outcome === "retreated" ? "retreat" : "defeat", result.commanderInjured);
+  if (result.outcome === "won") events.push(...closeNight(draft, ctx2, open2));
+  return events;
+}
+function resolveExpiredMutiny(draft, ctx2, open2) {
+  if (open2.combatId !== void 0 && !draft.combat && draft.lastCombat?.id === open2.combatId) return resolveMutiny(draft, ctx2);
+  return escape(draft, ctx2, open2, "yield", false);
+}
+
 // src/engine/loyalty/desertion.ts
 var clamp11 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 function desertionChance(state, reg, unitId) {
@@ -6045,7 +6211,7 @@ function mayDesert(state, unitId) {
   const newest = Math.max(-Infinity, ...rec.signs.filter((s) => s.about === "desertion").map((s) => s.day));
   return state.day - newest >= TUNING.disloyalty.desertion.minSignAgeDays;
 }
-var nameOf = (state, id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
+var nameOf2 = (state, id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
 function startDesertion(draft, unitId, at) {
   const rec = loyaltyRecord(draft, unitId);
   rec.attempts += 1;
@@ -6057,7 +6223,7 @@ function startDesertion(draft, unitId, at) {
       unitId,
       kind: "desertion",
       priority: TUNING.disloyalty.night.desertion,
-      framing: `${nameOf(draft, unitId)} is about to walk out. This is the moment to say something, or to stop her.`,
+      framing: `${nameOf2(draft, unitId)} is about to walk out. This is the moment to say something, or to stop her.`,
       ignore: { event: "dismissed", severity: "moderate" },
       expiresDay: draft.day + TUNING.disloyalty.night.expiresInDays
     };
@@ -6074,16 +6240,6 @@ function missionStartCheck(draft, ctx2, unitIds) {
     if (ctx2.rng.chance(desertionChance(draft, ctx2.registries, id))) return startDesertion(draft, id, "mission_start");
   }
   return null;
-}
-function requireOpen(draft, kind) {
-  const open2 = draft.disloyalty?.open;
-  if (!open2 || open2.kind !== kind) {
-    throw new Error(kind === "return" ? "Nobody is waiting at the gate." : "Nobody is about to walk out.");
-  }
-  return open2;
-}
-function closeNight(draft, ctx2, open2) {
-  return open2.at === "night" && draft.slot === "night" ? consumeSlots(draft, 1, ctx2) : [];
 }
 function talkDown(draft, ctx2, stat) {
   const open2 = requireOpen(draft, "desertion");
@@ -6128,7 +6284,7 @@ function letGo(draft, ctx2) {
       actor: "commander",
       targets: [w.id],
       severity: "moderate",
-      evidence: `let ${nameOf(draft, unitId)} go`,
+      evidence: `let ${nameOf2(draft, unitId)} go`,
       valueAxes: [{ axis: "autonomy", direction: 1 }, { axis: "mercy", direction: 1 }],
       confidence: 1
     }));
@@ -6171,7 +6327,7 @@ function expiredConfrontation(draft, open2) {
 }
 function comeBack(draft, ctx2, unitId) {
   const rec = loyaltyRecord(draft, unitId);
-  const name = nameOf(draft, unitId);
+  const name = nameOf2(draft, unitId);
   const stance = rec.stance ?? "hostile";
   rec.returned = true;
   const events = [{ type: "deserter_returned", unitId, stance }];
@@ -6223,6 +6379,7 @@ function loyaltyDayStep(draft, ctx2) {
   if (open2 && expiredConfrontation(draft, open2)) {
     if (open2.kind === "desertion") events.push(...letGo(draft, ctx2));
     else if (open2.kind === "return") events.push(...turnAway(draft, ctx2));
+    else events.push(...resolveExpiredMutiny(draft, ctx2, open2));
   }
   for (const u of draft.squad.filter(isLiving)) {
     const band = draft.relations[u.id]?.loyaltyBand;
@@ -6248,6 +6405,7 @@ function loyaltyDayStep(draft, ctx2) {
       events.push(...startDesertion(draft, u.id, "night"));
     }
   }
+  events.push(...mutinyDayStep(draft, ctx2));
   events.push(...returns(draft, ctx2));
   return events;
 }
@@ -6636,13 +6794,13 @@ function enterCombat(draft, ctx2, nodeId, def, mission) {
   exp.phase = "combat";
   return [{ type: "expedition_combat", nodeId, encounter }];
 }
-var SEVERITY_RANK2 = { minor: 0, moderate: 1, major: 2, extreme: 3 };
+var SEVERITY_RANK3 = { minor: 0, moderate: 1, major: 2, extreme: 3 };
 function dedupeHints(hints) {
   const byKey = /* @__PURE__ */ new Map();
   for (const h2 of hints) {
     const key = `${h2.type}|${h2.actor}|${[...h2.targets].sort().join(",")}`;
     const kept = byKey.get(key);
-    if (!kept || SEVERITY_RANK2[h2.severity] > SEVERITY_RANK2[kept.severity]) byKey.set(key, h2);
+    if (!kept || SEVERITY_RANK3[h2.severity] > SEVERITY_RANK3[kept.severity]) byKey.set(key, h2);
   }
   return [...byKey.values()];
 }
@@ -6671,7 +6829,7 @@ function endExpedition(draft, ctx2, outcome) {
   const mission = draft.missions.active.find((m) => m.id === exp.missionId);
   const region = reg.regions.get(exp.regionId);
   const regionLabel = region ? regionName(region) : exp.regionId;
-  const nameOf6 = (id) => draft.squad.find((u) => u.id === id)?.displayName ?? id;
+  const nameOf7 = (id) => draft.squad.find((u) => u.id === id)?.displayName ?? id;
   draft.resources.supplies += exp.supplies;
   let rewards;
   if (outcome === "success") {
@@ -6722,8 +6880,8 @@ function endExpedition(draft, ctx2, outcome) {
   if (rewards) report.rewards = structuredClone(rewards);
   draft.lastExpedition = report;
   let line = `Expedition to ${regionLabel}: ${OUTCOME_TEXT[outcome]}.`;
-  if (injuries.length > 0) line += ` ${injuries.map(nameOf6).join(" and ")} ${injuries.length > 1 ? "were" : "was"} carried back.`;
-  if (deaths.length > 0) line += ` ${deaths.map(nameOf6).join(" and ")} did not return.`;
+  if (injuries.length > 0) line += ` ${injuries.map(nameOf7).join(" and ")} ${injuries.length > 1 ? "were" : "was"} carried back.`;
+  if (deaths.length > 0) line += ` ${deaths.map(nameOf7).join(" and ")} did not return.`;
   addChronicle(draft, { kind: "scene", day: draft.day, text: line });
   const rs = draft.world.regions[exp.regionId] ?? { known: true };
   draft.world.regions[exp.regionId] = { ...rs, lastVisitedDay: draft.day };
@@ -6761,14 +6919,14 @@ function cleanRecap(text) {
 }
 var OUTCOME_LABEL = { success: "OBJECTIVE SECURED", retreated: "RETREATED", failed: "FAILED: SQUAD BEATEN BACK" };
 function reportLines(report, state, reg) {
-  const nameOf6 = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
+  const nameOf7 = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
   const region = reg.regions.get(report.regionId);
   const lines = [
     "AFTER-ACTION REPORT",
     `Mission: ${report.missionTitle}`,
     `Region: ${region ? regionName(region) : report.regionId} // Day ${report.day}`,
     `Outcome: ${OUTCOME_LABEL[report.outcome]}`,
-    `Squad: ${report.party.map(nameOf6).join(", ")}`
+    `Squad: ${report.party.map(nameOf7).join(", ")}`
   ];
   const route = report.nodes.map((t) => String(reg.nodeTypes.get(t)?.name ?? t));
   if (route.length > 0) lines.push(`Route: ${route.join(" > ")}`);
@@ -6782,9 +6940,9 @@ function reportLines(report, state, reg) {
     if (r.clearance !== void 0) parts.push(`clearance tier ${r.clearance}`);
     lines.push(`Rewards: ${parts.join(", ")}.`);
   }
-  if (report.injuries.length > 0) lines.push(`Injured: ${report.injuries.map(nameOf6).join(", ")}.`);
-  if (report.deaths.length > 0) lines.push(`Fallen: ${report.deaths.map(nameOf6).join(", ")}.`);
-  if (report.breakdowns.length > 0) lines.push(`Breakdown: ${report.breakdowns.map(nameOf6).join(", ")}.`);
+  if (report.injuries.length > 0) lines.push(`Injured: ${report.injuries.map(nameOf7).join(", ")}.`);
+  if (report.deaths.length > 0) lines.push(`Fallen: ${report.deaths.map(nameOf7).join(", ")}.`);
+  if (report.breakdowns.length > 0) lines.push(`Breakdown: ${report.breakdowns.map(nameOf7).join(", ")}.`);
   if (report.recap) lines.push("", report.recap);
   return lines;
 }
@@ -7059,6 +7217,26 @@ registerAction("loyalty/talk_down", (draft, payload, ctx2) => {
 registerAction("loyalty/let_go", (draft, _payload, ctx2) => letGo(draft, ctx2));
 registerAction("loyalty/take_back", (draft, _payload, ctx2) => takeBack(draft, ctx2));
 registerAction("loyalty/turn_away", (draft, _payload, ctx2) => turnAway(draft, ctx2));
+var strList2 = (v) => Array.isArray(v) && v.every((x) => typeof x === "string") ? v : null;
+registerAction("loyalty/fight", (draft, payload, ctx2) => {
+  const p = isObj14(payload) ? payload : {};
+  const f = isObj14(p.formation) ? p.formation : {};
+  const front = strList2(f.front);
+  const back = strList2(f.back);
+  if (!front || !back) throw new Error("loyalty/fight needs { formation: { front, back }, coverId, allowRetry? }");
+  const start = fightPayload(draft, {
+    formation: { front, back },
+    ...typeof p.coverId === "string" ? { coverId: p.coverId } : {},
+    allowRetry: p.allowRetry === true
+  });
+  const events = startCombat(draft, ctx2, start);
+  const id = events.find((e) => e.type === "combat_started")?.id;
+  if (typeof id !== "string") throw new Error("The fight did not start.");
+  draft.disloyalty.open.combatId = id;
+  return events;
+});
+registerAction("loyalty/yield", (draft, _payload, ctx2) => yieldToMutiny(draft, ctx2));
+registerAction("loyalty/resolve_mutiny", (draft, _payload, ctx2) => resolveMutiny(draft, ctx2));
 
 // src/engine/actions/items.ts
 var isObj15 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -11754,7 +11932,7 @@ function renderCombatScreen(host, ctx2) {
   let orderMode = null;
   const sprites = /* @__PURE__ */ new Map();
   const unitOf3 = (state, c) => state.squad.find((u) => u.id === c.unitId);
-  const nameOf6 = (state, c) => {
+  const nameOf7 = (state, c) => {
     if (c.side === "squad") return unitOf3(state, c)?.displayName ?? c.nameKey;
     const affixes = (c.nameKey.split("|")[1] ?? "").split(",").filter((a) => a !== "");
     return state.enemyNames?.[c.nameKey] ?? defaultEnemyName(reg, c.enemyId ?? "", affixes);
@@ -11910,7 +12088,7 @@ function renderCombatScreen(host, ctx2) {
       if (!cid) return "";
       if (cid === "commander") return "Commander";
       const c = cs?.combatants.find((x) => x.cid === cid);
-      return c ? nameOf6(state, c) : cid;
+      return c ? nameOf7(state, c) : cid;
     };
     const skill = l.skillId ? reg.skills.get(l.skillId)?.name ?? l.skillId : "";
     const order = l.orderId ? reg.orders.get(l.orderId)?.name ?? l.orderId : "";
@@ -11998,7 +12176,7 @@ function renderCombatScreen(host, ctx2) {
         if (s) clickCard(s, c.cid);
       }
     });
-    const lines = [h("div", { class: "alius-cc-name" }, `${nameOf6(state, c)}${c.level > 1 ? ` L${c.level}` : ""}`)];
+    const lines = [h("div", { class: "alius-cc-name" }, `${nameOf7(state, c)}${c.level > 1 ? ` L${c.level}` : ""}`)];
     lines.push(h("div", { class: "alius-cc-hp" }, `HP ${bar(c.hp, c.maxHp)} ${c.hp}/${c.maxHp}`));
     if (c.side === "squad") lines.push(h("div", { class: "alius-cc-st" }, `ST ${bar(c.stress, 100)} ${c.stress}`));
     const tags = c.statuses.map((s) => statusGlyph(s.id, s.stacks));
@@ -12062,7 +12240,7 @@ function renderCombatScreen(host, ctx2) {
       { class: "alius-combat-timeline", "aria-label": "Turn order" },
       ...cs.timeline.map((cid, i) => {
         const c = cs.combatants.find((x) => x.cid === cid);
-        return h("span", { class: `alius-tl${i === cs.turn ? " alius-tl-now" : ""}${c.downed ? " alius-tl-down" : ""}`, "data-cid": cid }, nameOf6(state, c).slice(0, 6));
+        return h("span", { class: `alius-tl${i === cs.turn ? " alius-tl-now" : ""}${c.downed ? " alius-tl-down" : ""}`, "data-cid": cid }, nameOf7(state, c).slice(0, 6));
       })
     );
     const waiting2 = cs.phase === "awaiting" && cs.awaitingCid;
@@ -12209,7 +12387,7 @@ function renderInvTab(host, ctx2) {
       return;
     }
     const slotOf = (i) => reg.items.get(i.itemId)?.slot;
-    const nameOf6 = (i) => reg.items.get(i.itemId)?.name ?? `UNKNOWN ${i.itemId}`;
+    const nameOf7 = (i) => reg.items.get(i.itemId)?.name ?? `UNKNOWN ${i.itemId}`;
     const items = state.inventory.filter((i) => filter === "all" || slotOf(i) === filter);
     const current = state.inventory.find((i) => i.uid === selected2) ?? null;
     if (!current) selected2 = null;
@@ -12239,7 +12417,7 @@ function renderInvTab(host, ctx2) {
               render();
             }
           },
-          h("span", { class: "alius-inv-name" }, nameOf6(i)),
+          h("span", { class: "alius-inv-name" }, nameOf7(i)),
           h("span", { class: `alius-rarity alius-rarity-${i.rarity}` }, i.rarity),
           h("span", {}, i.upgrade > 0 ? `+${i.upgrade}` : ""),
           h("span", { class: "alius-dim" }, i.affixes.map((a) => String(reg.affixes.get(a)?.name ?? a)).join(", ")),
@@ -12736,7 +12914,7 @@ function createComms(deps) {
 var SLOT_LABEL2 = { morning: "Morning", afternoon: "Afternoon", evening: "Evening", night: "Night" };
 var SOCIAL_STATS = ["authority", "insight", "empathy", "cunning"];
 var CRIME_SUMMARY_MAX = 160;
-var nameOf2 = (s, id) => {
+var nameOf3 = (s, id) => {
   if (id === "commander") return s.commander.name;
   return s.squad.find((u) => u.id === id)?.displayName ?? id;
 };
@@ -12825,7 +13003,7 @@ function registerSceneContext(builder, deps) {
       if (!s.scene) return null;
       const open2 = openPromises(s, s.scene.participants, s.scene.participants);
       if (open2.length === 0) return null;
-      return ["Open promises:", ...open2.map((p) => `- ${nameOf2(s, p.by)} promised ${nameOf2(s, p.to)}: ${p.text}`)].join("\n");
+      return ["Open promises:", ...open2.map((p) => `- ${nameOf3(s, p.by)} promised ${nameOf3(s, p.to)}: ${p.text}`)].join("\n");
     }
   });
 }
@@ -13976,7 +14154,7 @@ var TAG_FIELDS = [
   ["triggers", "Triggers (hard lines)", SETUP_LIMITS.triggers]
 ];
 var BASELINE_FIELDS = ["trust", "affinity", "attraction"];
-var nameOf3 = (e, id) => e ? String(e.name) : `UNKNOWN ${id}`;
+var nameOf4 = (e, id) => e ? String(e.name) : `UNKNOWN ${id}`;
 function pickCard(cls, id, selected2, onClick, ...children) {
   return h("button", { type: "button", class: `alius-card ${cls}`, "data-id": id, "aria-pressed": String(selected2), onclick: onClick }, ...children);
 }
@@ -14039,7 +14217,7 @@ function renderCalibration(host, ctx2) {
           id,
           ch.roleId === id,
           () => onUpdate({ roleId: id }),
-          h("strong", {}, nameOf3(role, id)),
+          h("strong", {}, nameOf4(role, id)),
           h("span", {}, role ? ` \u2014 ${String(role.summary)}` : ""),
           reason ? h("em", {}, ` ${reason}`) : ""
         );
@@ -14078,7 +14256,7 @@ function renderCalibration(host, ctx2) {
             h("span", { class: "alius-field-label" }, "Description"),
             textArea("sig-desc", cur.description, 240, (v) => onUpdate({ signature: { ...cur, description: v } }))
           ),
-          h("p", { class: "alius-dim" }, `Template: ${nameOf3(tpl, cur.templateId)} \u2014 ${tpl ? String(tpl.mechanic) : ""}`)
+          h("p", { class: "alius-dim" }, `Template: ${nameOf4(tpl, cur.templateId)} \u2014 ${tpl ? String(tpl.mechanic) : ""}`)
         ) : null
       )
     );
@@ -14107,7 +14285,7 @@ function renderCalibration(host, ctx2) {
             id,
             ch.defects.some((x) => x.id === id),
             () => pick(id, origin),
-            h("strong", {}, nameOf3(d, id)),
+            h("strong", {}, nameOf4(d, id)),
             h("span", { class: "alius-dim" }, d ? ` [${String(d.category)}]` : ""),
             ...d ? defectLines(d) : [],
             origin ? h("p", {}, `Origin: ${origin}`) : ""
@@ -14116,7 +14294,7 @@ function renderCalibration(host, ctx2) {
         ...ch.defects.map((sel) => h(
           "label",
           { class: "alius-field" },
-          h("span", { class: "alius-field-label" }, `Origin \u2014 ${nameOf3(reg.defects.get(sel.id), sel.id)}`),
+          h("span", { class: "alius-field-label" }, `Origin \u2014 ${nameOf4(reg.defects.get(sel.id), sel.id)}`),
           textArea(`origin-${sel.id}`, sel.origin, 300, (v) => onUpdate({ defects: ch.defects.map((d) => d.id === sel.id ? { ...d, origin: v } : d) }))
         ))
       )
@@ -14232,7 +14410,7 @@ var STEPS = [
   ["review", "04 REVIEW"]
 ];
 var subscriptions = /* @__PURE__ */ new WeakMap();
-var nameOf4 = (reg, registry2, id) => {
+var nameOf5 = (reg, registry2, id) => {
   if (!id) return "\u2014";
   const e = reg[registry2].get(id);
   return e ? String(e.name) : `UNKNOWN ${id}`;
@@ -14288,7 +14466,7 @@ function renderSetupScreen(host, ctx2) {
       h("label", { class: "alius-field" }, h("span", { class: "alius-field-label" }, "Commander name"), name),
       h("h3", {}, "STARTING POINT"),
       h("div", { class: "alius-cards" }, ...[...reg.starts.values()].map((st0) => {
-        const corp = nameOf4(reg, "corporations", String(st0.corporationId));
+        const corp = nameOf5(reg, "corporations", String(st0.corporationId));
         return card(
           "alius-start-card",
           st0.id,
@@ -14369,8 +14547,8 @@ function renderSetupScreen(host, ctx2) {
     const corpId = s.startId ? String(reg.starts.get(s.startId)?.corporationId ?? "") : null;
     const lines = [
       `COMMANDER   : ${s.commanderName.trim()}`,
-      `CORPORATION : ${nameOf4(reg, "corporations", corpId)} \u2014 ${nameOf4(reg, "starts", s.startId)}`,
-      `CRIME       : ${nameOf4(reg, "crimes", s.crimeId)} (Plea: GUILTY)`,
+      `CORPORATION : ${nameOf5(reg, "corporations", corpId)} \u2014 ${nameOf5(reg, "starts", s.startId)}`,
+      `CRIME       : ${nameOf5(reg, "crimes", s.crimeId)} (Plea: GUILTY)`,
       `SQUAD       : ${s.units.length}/4 \u2014 ${difficultyHint(s.units.length)}`,
       ...s.units.flatMap((u, n) => unitLines(u, n))
     ];
@@ -14398,9 +14576,9 @@ function renderSetupScreen(host, ctx2) {
     const values = VALUE_AXES.map((a) => `${a.slice(0, 4).toUpperCase()} ${c.values[a] > 0 ? "+" : ""}${c.values[a]}`).join("  ");
     return [
       "",
-      `[${n + 1}] ${u.displayName} \u2014 ${nameOf4(reg, "roles", c.roleId)}`,
+      `[${n + 1}] ${u.displayName} \u2014 ${nameOf5(reg, "roles", c.roleId)}`,
       `    SIGNATURE : ${c.signature ? c.signature.name : "\u2014"}`,
-      `    DEFECTS   : ${c.defects.map((d) => nameOf4(reg, "defects", d.id)).join(", ") || "\u2014"}`,
+      `    DEFECTS   : ${c.defects.map((d) => nameOf5(reg, "defects", d.id)).join(", ") || "\u2014"}`,
       `    VALUES    : ${values}`,
       `    START     : TRUST ${c.baseline.trust}  AFFINITY ${c.baseline.affinity}  ATTRACTION ${c.baseline.attraction}`
     ];
@@ -14499,7 +14677,7 @@ function renderSkillTree(host, ctx2) {
 
 // src/ui/squad/squadTab.ts
 var unknown = (id) => `UNKNOWN ${id}`;
-var nameOf5 = (e, id) => e ? String(e.name) : unknown(id);
+var nameOf6 = (e, id) => e ? String(e.name) : unknown(id);
 var spriteCache = /* @__PURE__ */ new WeakMap();
 var MISSING_SPRITE_RETRY_MS = 3e4;
 function portrait(st, unit) {
@@ -14681,7 +14859,7 @@ function unitBlock(unit, ctx2, state) {
       { class: "alius-unit-body" },
       h("h3", { class: "alius-unit-name" }, unit.displayName),
       unit.kind === "grunt" ? h("p", { class: "alius-dim" }, `GRUNT ${unit.designation ?? ""}`.trimEnd()) : null,
-      h("p", {}, `${nameOf5(reg.roles.get(unit.roleId), unit.roleId)} \xB7 LVL ${unit.level}`),
+      h("p", {}, `${nameOf6(reg.roles.get(unit.roleId), unit.roleId)} \xB7 LVL ${unit.level}`),
       h("p", { class: "alius-xp" }, `XP ${unit.xp}/${xpToNext(unit.level)} \xB7 SKILL POINTS ${unit.skillPoints}`),
       unit.breakdown ? h("p", { class: "alius-equip-flag" }, `BREAKDOWN: ${String(reg.defects.get(unit.breakdown.defectId)?.breakdown?.name ?? unit.breakdown.defectId)}`) : null,
       relationLine(unit, state, ctx2),
@@ -14696,7 +14874,7 @@ function unitBlock(unit, ctx2, state) {
       ...unit.kind === "grunt" ? [] : [
         h("h4", {}, "SIGNATURE"),
         h("p", {}, h("strong", {}, unit.signatureSkill.name), ` \u2014 ${unit.signatureSkill.description}`),
-        h("p", { class: "alius-dim" }, `Template: ${nameOf5(sigTpl, unit.signatureSkill.templateId)} \u2014 ${sigTpl ? String(sigTpl.mechanic) : ""}`)
+        h("p", { class: "alius-dim" }, `Template: ${nameOf6(sigTpl, unit.signatureSkill.templateId)} \u2014 ${sigTpl ? String(sigTpl.mechanic) : ""}`)
       ],
       // Re-sync overwrites numbers on a running campaign, so it follows the SYS edit lock.
       ctx2.onResync && unit.cardRef && !ctx2.settings().editLock ? h("button", { type: "button", class: "alius-btn", "data-resync": unit.id, onclick: () => ctx2.onResync(unit.id) }, "[ RE-SYNC FROM CARD ]") : null
@@ -18894,7 +19072,10 @@ var RESERVED_EVENT_TYPES = [
   "loyalty_talk_down",
   "unit_deserted",
   "deserter_returned",
-  "deserter_answered"
+  "deserter_answered",
+  "mutiny_started",
+  "mutiny_subdued",
+  "mutiny_escaped"
 ];
 var slotEnum = external_exports.enum(["morning", "afternoon", "evening", "night"]);
 var socialStat = external_exports.enum(["authority", "insight", "empathy", "cunning"]);
