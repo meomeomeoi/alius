@@ -84,4 +84,31 @@ describe('architecture', () => {
       }
     }
   });
+
+  it('the loyalty layer never touches the UI or the real ST adapter, and the engine never reaches into it', () => {
+    const files = tsFiles('src/loyalty');
+    expect(files.length).toBeGreaterThan(0);
+    for (const file of files) {
+      const text = readFileSync(file, 'utf8');
+      const imports = [...text.matchAll(/^import\s+(type\s+)?[^;]*?from\s+['"]([^'"]+)['"]/gm)].map((m) => ({ isType: m[1] !== undefined, path: m[2] }));
+      for (const { isType, path } of imports) {
+        expect(path, `${file} imports ${path}`).not.toMatch(/\/ui\//);
+        expect(path, `${file} imports ${path}`).not.toMatch(/st\/real$/);
+        expect(path, `${file} imports ${path}`).not.toMatch(/^st:/);
+        if (/\/st\//.test(path) || /\/st$/.test(path)) expect(isType, `${file} must use import type for ${path}`).toBe(true);
+      }
+      for (const id of ['window', 'document', 'SillyTavern']) {
+        expect(text, `${file} uses ${id}`).not.toMatch(new RegExp(`\\b${id}\\b`));
+      }
+    }
+    const loyaltyRoot = resolve('src/loyalty') + sep;
+    for (const file of tsFiles('src/engine')) {
+      const text = readFileSync(file, 'utf8');
+      const importPaths = [...text.matchAll(/(?:from|import)\s*\(?\s*['"]([^'"]+)['"]/g)].map((m) => m[1]);
+      for (const p of importPaths) {
+        if (!p.startsWith('.')) continue;
+        expect(resolve(dirname(file), p) + sep, `${file} imports ${p}`).not.toMatch(new RegExp(`^${loyaltyRoot.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`));
+      }
+    }
+  });
 });

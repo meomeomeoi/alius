@@ -13779,7 +13779,8 @@ var DEFAULT_SETTINGS = {
   enemyFlavor: false,
   directorEnabled: true,
   beatCooldownDays: 3,
-  expeditionRecap: true
+  expeditionRecap: true,
+  dilemmasEnabled: true
 };
 var fieldSchemas = {
   mechanicProfileId: external_exports.string(),
@@ -13811,7 +13812,8 @@ var fieldSchemas = {
   enemyFlavor: external_exports.boolean(),
   directorEnabled: external_exports.boolean(),
   beatCooldownDays: external_exports.number().int().min(1).max(14),
-  expeditionRecap: external_exports.boolean()
+  expeditionRecap: external_exports.boolean(),
+  dilemmasEnabled: external_exports.boolean()
 };
 var budgetSchema = external_exports.number().int().min(1);
 var isObj19 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);

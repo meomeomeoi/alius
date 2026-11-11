@@ -52,6 +52,8 @@ export interface AliusSettings {
   beatCooldownDays: number;
   /** P5: a narrative after-action recap from the main model (the deterministic report always exists). */
   expeditionRecap: boolean;
+  /** P6: the mechanic model writes dilemmas (off: the authored block of the template is shown). */
+  dilemmasEnabled: boolean;
 }
 
 export const DEFAULT_SETTINGS: AliusSettings = {
@@ -99,6 +101,7 @@ export const DEFAULT_SETTINGS: AliusSettings = {
   directorEnabled: true,
   beatCooldownDays: 3,
   expeditionRecap: true,
+  dilemmasEnabled: true,
 };
 
 const fieldSchemas = {
@@ -132,6 +135,7 @@ const fieldSchemas = {
   directorEnabled: z.boolean(),
   beatCooldownDays: z.number().int().min(1).max(14),
   expeditionRecap: z.boolean(),
+  dilemmasEnabled: z.boolean(),
 };
 const budgetSchema = z.number().int().min(1);
 

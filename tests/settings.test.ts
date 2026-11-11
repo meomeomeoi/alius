@@ -125,4 +125,13 @@ describe('settings', () => {
     fresh.settings = { directorEnabled: 0, beatCooldownDays: 99, expeditionRecap: false };
     expect(getSettings(fresh)).toMatchObject({ directorEnabled: true, beatCooldownDays: 3, expeditionRecap: false });
   });
+
+  it('dilemmasEnabled defaults to true and can be switched off (P6)', () => {
+    const st = new FakeStAdapter();
+    expect(getSettings(st).dilemmasEnabled).toBe(true);
+    const next = updateSettings(st, { dilemmasEnabled: false });
+    expect(next.dilemmasEnabled).toBe(false);
+    expect(st.settings.dilemmasEnabled).toBe(false);
+    expect(updateSettings(st, { dilemmasEnabled: 'no' as never }).dilemmasEnabled).toBe(false);
+  });
 });

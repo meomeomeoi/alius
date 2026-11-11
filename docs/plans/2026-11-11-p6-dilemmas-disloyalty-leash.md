@@ -364,9 +364,9 @@ docs/** (Task 16), tests/** mirror src, tests/helpers/loyalty.ts, tests/fixtures
   - `aftermathDirective(title, label)`: `The commander has just decided "${title}": ${label}. Narrate the immediate aftermath; the decision is final and cannot be talked back.`
 - Architecture test: `src/loyalty` never imports `src/ui`, `st/real` or `st:`; `src/engine` never imports `src/loyalty`.
 
-- [ ] **Step 1: Write the failing tests** — dilemmas: `a request is answered with present after one call`; `a rejected first answer triggers exactly one more call`; `a failed call, a missing profile and the setting off all answer with fallback`; `two onRequested for one request make one call`; `a chat switch during the call drops the answer and leaves the request open`. Loyalty: `a refused order sets the refusal directive for the scene and a compel replaces it for the next reply`; `a failed compel says so`; `opening a scene with a wavering, recently leashed unit sets both directives`; `a leash use older than 7 days sets no trauma directive`; `closing the scene clears them`; `a resolved dilemma sets the aftermath directive`. Directives: exact texts. Settings: `dilemmasEnabled defaults to true`.
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → PASS, suite green.
-- [ ] **Step 5: Commit** `feat(loyalty): dilemma and loyalty controllers, directives, setting`.
+- [x] **Step 1: Write the failing tests** — dilemmas: `a request is answered with present after one call`; `a rejected first answer triggers exactly one more call`; `a failed call, a missing profile and the setting off all answer with fallback`; `two onRequested for one request make one call`; `a chat switch during the call drops the answer and leaves the request open`. Loyalty: `a refused order sets the refusal directive for the scene and a compel replaces it for the next reply`; `a failed compel says so`; `opening a scene with a wavering, recently leashed unit sets both directives`; `a leash use older than 7 days sets no trauma directive`; `closing the scene clears them`; `a resolved dilemma sets the aftermath directive`. Directives: exact texts. Settings: `dilemmasEnabled defaults to true`.
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → PASS, suite green.
+- [x] **Step 5: Commit** `feat(loyalty): dilemma and loyalty controllers, directives, setting`.
 
 ---
 
