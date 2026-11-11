@@ -10,7 +10,8 @@ import './engine/actions/world'; // registers world/* actions
 import './engine/actions/expedition'; // registers expedition/* actions
 import './engine/actions/leash'; // registers leash/* actions and the weekly refresh (P6)
 import './engine/actions/loyalty'; // registers scene/order and the other loyalty actions (P6)
-import './engine/actions/dilemma'; // registers dilemma/* actions and the pacing step (P6)
+// P6 Task 15 wires './engine/actions/dilemma' (dilemma/* actions and the pacing step) together with the panel that answers a presented dilemma:
+// without that UI the day-end pacing would block time at the first dilemma, so the app does not load it yet.
 import './engine/actions/items'; // registers item/* actions and the workshop hook
 import './llm/calls/profileImport'; // registers the profile_import call type
 import { generateVignette } from './llm/calls/activityVignette'; // registers the activity_vignette call type
