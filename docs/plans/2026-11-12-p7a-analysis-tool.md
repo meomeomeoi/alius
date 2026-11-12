@@ -133,9 +133,9 @@ docs/** (Task 16), tests/** mirror src, tests/fixtures/analyze/, tests/helpers/a
   - `interface PanelModel { address: string; source: string; title: string; text: string | null; long: string | null; effects: string[]; see: string[]; reading: { lines: string[] } | null; missing: boolean }` — `text`, `long`, `effects`, `reading.lines` are strings that may carry link markup.
   - `buildPanelModel(subject: Subject, env: AnalyzeEnv): PanelModel` — `glossary` → the entry; `setting` → glossary `setting_<id>`, `source` stays `setting`; a registry name → `entryTitle`/`entryText`, `effects = entryEffects(...)` (Task 4; `[]` until then); unknown source or id → `{ missing: true, title: 'NO DATA', text: address }`. `reading` is `null` in this chunk.
 
-- [ ] **Step 1: Write the failing tests** — `subject`: `parses source, id and ctx`; `a malformed address is null` (`'items:'`, `'trust'`, `':x'`); `bad ctx JSON gives empty data`; `a bare target resolves to glossary`. `model`: `a glossary subject shows term, short and long`; `an item without description falls back to null text and is listed by missingDescriptions`; `a defect falls back to upside / downside`; `a setting reads its setting_ glossary entry`; `an unknown id builds a missing model`; `an unknown source builds a missing model`. SYS: `content warnings list missing descriptions` (fixture registries).
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → PASS, suite green.
-- [ ] **Step 5: Commit** `feat(analysis): subjects, static text and panel model`.
+- [x] **Step 1: Write the failing tests** — `subject`: `parses source, id and ctx`; `a malformed address is null` (`'items:'`, `'trust'`, `':x'`); `bad ctx JSON gives empty data`; `a bare target resolves to glossary`. `model`: `a glossary subject shows term, short and long`; `an item without description falls back to null text and is listed by missingDescriptions`; `a defect falls back to upside / downside`; `a setting reads its setting_ glossary entry`; `an unknown id builds a missing model`; `an unknown source builds a missing model`. SYS: `content warnings list missing descriptions` (fixture registries).
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → PASS, suite green.
+- [x] **Step 5: Commit** `feat(analysis): subjects, static text and panel model`.
 
 ---
 

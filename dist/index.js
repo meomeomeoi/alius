@@ -1465,14 +1465,14 @@ var normText = (s) => s.toLowerCase().replace(/\s+/g, " ").trim();
 var sameAbout = (a, b) => a.length === b.length && [...a].sort().join("\0") === [...b].sort().join("\0");
 var tagList = (tags) => [...new Set(tags.map((t) => normalizeTag(t)).filter((t) => t !== null))];
 function addFact(draft, f) {
-  const text = f.text.trim().slice(0, TUNING.memory.factTextMax).trim();
+  const text2 = f.text.trim().slice(0, TUNING.memory.factTextMax).trim();
   const about = [...f.about];
-  const dup = draft.memory.facts.find((x) => normText(x.text) === normText(text) && sameAbout(x.about, about));
+  const dup = draft.memory.facts.find((x) => normText(x.text) === normText(text2) && sameAbout(x.about, about));
   if (dup) {
     for (const k of f.knownBy) if (!dup.knownBy.includes(k)) dup.knownBy.push(k);
     return dup;
   }
-  const fact = { ...f, id: nextId(draft, "f"), text, about, tags: tagList(f.tags), knownBy: [...new Set(f.knownBy)] };
+  const fact = { ...f, id: nextId(draft, "f"), text: text2, about, tags: tagList(f.tags), knownBy: [...new Set(f.knownBy)] };
   draft.memory.facts.push(fact);
   pruneFacts(draft);
   return fact;
@@ -1564,11 +1564,11 @@ function compactionDue(state) {
 function applyCompaction(draft, c) {
   const due = compactionDue(draft);
   if (!due || due.kind !== c.kind || due.day !== c.day || due.toDay !== c.toDay) throw new Error("memory/compact: that compaction is not due");
-  const text = c.text.trim().slice(0, COMPACT_MAX).trim();
-  if (text === "") throw new Error("memory/compact: empty text");
+  const text2 = c.text.trim().slice(0, COMPACT_MAX).trim();
+  if (text2 === "") throw new Error("memory/compact: empty text");
   const ids = new Set(due.entries.map((e) => e.id));
   const at = draft.memory.chronicle.findIndex((e) => ids.has(e.id));
-  const entry = { id: nextId(draft, "c"), kind: c.kind, day: c.day, ...c.toDay !== void 0 ? { toDay: c.toDay } : {}, text };
+  const entry = { id: nextId(draft, "c"), kind: c.kind, day: c.day, ...c.toDay !== void 0 ? { toDay: c.toDay } : {}, text: text2 };
   draft.memory.chronicle = draft.memory.chronicle.filter((e) => !ids.has(e.id));
   draft.memory.chronicle.splice(at, 0, entry);
   return entry;
@@ -1983,8 +1983,8 @@ function validateIntents(raw, ctx2) {
   }
   for (const f of arr(raw.facts)) {
     if (!isObj5(f) || typeof f.text !== "string") continue;
-    const text = f.text.trim().slice(0, TUNING.memory.factTextMax).trim();
-    if (text === "") continue;
+    const text2 = f.text.trim().slice(0, TUNING.memory.factTextMax).trim();
+    if (text2 === "") continue;
     let about;
     if (f.about === "world" || f.about === "commander") about = f.about;
     else {
@@ -1992,7 +1992,7 @@ function validateIntents(raw, ctx2) {
       if (about.length === 0) continue;
     }
     const imp = typeof f.importance === "number" && Number.isFinite(f.importance) ? Math.round(f.importance) : 3;
-    out.facts.push({ about, text, importance: Math.min(5, Math.max(1, imp)), tags: tagsOf(f.tags) });
+    out.facts.push({ about, text: text2, importance: Math.min(5, Math.max(1, imp)), tags: tagsOf(f.tags) });
   }
   for (const p of arr(raw.proposals)) {
     if (!isObj5(p)) continue;
@@ -2007,9 +2007,9 @@ function validateIntents(raw, ctx2) {
     const kind = oneOf(["made", "kept", "broken"], p.kind);
     const pair = p.by === "commander" && isUnit(p.to) || isUnit(p.by) && p.to === "commander";
     if (!kind || !pair) continue;
-    const text = typeof p.text === "string" ? p.text.trim().slice(0, TUNING.memory.factTextMax).trim() : "";
-    if (kind === "made" && text === "") continue;
-    if (out.promises.length < MAX_PROMISES) out.promises.push({ by: p.by, to: p.to, text, kind });
+    const text2 = typeof p.text === "string" ? p.text.trim().slice(0, TUNING.memory.factTextMax).trim() : "";
+    if (kind === "made" && text2 === "") continue;
+    if (out.promises.length < MAX_PROMISES) out.promises.push({ by: p.by, to: p.to, text: text2, kind });
   }
   for (const h2 of arr(raw.stressHints)) {
     if (!isObj5(h2) || !isUnit(h2.unitId)) continue;
@@ -2424,11 +2424,11 @@ registerAction("campaign/set_intimacy", (draft, payload) => {
 });
 registerAction("memory/compact", (draft, payload) => {
   if (!isObj6(payload)) throw new Error("memory/compact needs a payload");
-  const { kind, day, toDay, text } = payload;
-  if (kind !== "day" && kind !== "week" || typeof day !== "number" || typeof text !== "string" || toDay !== void 0 && typeof toDay !== "number") {
+  const { kind, day, toDay, text: text2 } = payload;
+  if (kind !== "day" && kind !== "week" || typeof day !== "number" || typeof text2 !== "string" || toDay !== void 0 && typeof toDay !== "number") {
     throw new Error("memory/compact needs { kind, day, toDay?, text }");
   }
-  const entry = applyCompaction(draft, { kind, day, toDay, text });
+  const entry = applyCompaction(draft, { kind, day, toDay, text: text2 });
   return [{ type: "chronicle_compacted", kind, day, toDay: entry.toDay ?? null }];
 });
 
@@ -2554,18 +2554,18 @@ function emitSign(draft, ctx2, unitId, about, level) {
   if (pool.length === 0) return [];
   const line2 = ctx2.rng.pick(pool);
   const kind = line2.kind;
-  const text = String(line2.text).replaceAll("{name}", unit.displayName);
+  const text2 = String(line2.text).replaceAll("{name}", unit.displayName);
   if (kind === "dm") {
-    pushMessage(draft, unitId, { from: unitId, text, day: draft.day, slot: draft.slot, read: false });
+    pushMessage(draft, unitId, { from: unitId, text: text2, day: draft.day, slot: draft.slot, read: false });
   } else if (kind === "fact") {
-    addFact(draft, { about: [unitId], text, tags: ["loyalty", about], importance: 3, day: draft.day, knownBy: ["*"] });
+    addFact(draft, { about: [unitId], text: text2, tags: ["loyalty", about], importance: 3, day: draft.day, knownBy: ["*"] });
   } else {
     enqueueNight(draft, {
       id: nextId(draft, "n"),
       unitId,
       kind: "we_need_to_talk",
       priority: TUNING.disloyalty.night.talk,
-      framing: text,
+      framing: text2,
       ignore: { event: "dismissed", severity: "moderate" },
       expiresDay: draft.day + TUNING.disloyalty.night.expiresInDays
     });
@@ -2622,17 +2622,17 @@ function textOf(v) {
 registerAction("dm/send", (draft, payload) => {
   if (!isObj7(payload)) throw new Error("dm/send needs { unitId, text }");
   const unit = namedUnit(draft, payload.unitId);
-  const text = textOf(payload.text);
-  pushMessage(draft, unit.id, { from: "commander", text, day: draft.day, slot: draft.slot, read: true });
+  const text2 = textOf(payload.text);
+  pushMessage(draft, unit.id, { from: "commander", text: text2, day: draft.day, slot: draft.slot, read: true });
   countSent(draft, unit.id);
   return [{ type: "dm_sent", unitId: unit.id, mode: dmMode(draft, unit.id) }];
 });
 registerAction("dm/receive", (draft, payload, ctx2) => {
   if (!isObj7(payload)) throw new Error("dm/receive needs { unitId, text }");
   const unit = namedUnit(draft, payload.unitId);
-  const text = textOf(payload.text);
+  const text2 = textOf(payload.text);
   const initiated = payload.initiated === true;
-  pushMessage(draft, unit.id, { from: unit.id, text, day: draft.day, slot: draft.slot, read: false, ...initiated ? { initiated: true } : {} });
+  pushMessage(draft, unit.id, { from: unit.id, text: text2, day: draft.day, slot: draft.slot, read: false, ...initiated ? { initiated: true } : {} });
   return [{ type: "dm_received", unitId: unit.id, initiated }, ...evaluateAutomatic(draft, ctx2.registries, unit.id)];
 });
 registerAction("dm/read", (draft, payload) => {
@@ -5463,12 +5463,12 @@ function rumorCap(state, reg) {
   const bonus = socialRank(state, "insight") >= TUNING.world.insightRumorRank ? 1 : 0;
   return Math.min(TUNING.director.maxRumors, facilityEffect(state, reg, "comms", "rumorsPerDay") + bonus);
 }
-var cutWords = (text, max) => text.trim().split(/\s+/).filter(Boolean).slice(0, max).join(" ");
+var cutWords = (text2, max) => text2.trim().split(/\s+/).filter(Boolean).slice(0, max).join(" ");
 function postRumor(draft, ctx2, r) {
   if (draft.rumors.filter((x) => x.day === draft.day).length >= rumorCap(draft, ctx2.registries)) return null;
-  const text = cutWords(r.text, TUNING.director.rumorWords);
-  if (text === "") return null;
-  const rumor = { id: nextId(draft, "r"), day: draft.day, text, tags: [...r.tags], leadsTo: r.leadsTo, status: "new" };
+  const text2 = cutWords(r.text, TUNING.director.rumorWords);
+  if (text2 === "") return null;
+  const rumor = { id: nextId(draft, "r"), day: draft.day, text: text2, tags: [...r.tags], leadsTo: r.leadsTo, status: "new" };
   if (r.leadsTo === "mission") {
     if (r.lead && checkOffer(draft, ctx2.registries, { ...r.lead, source: "rumor" }) === null) rumor.lead = { ...r.lead };
     else rumor.leadsTo = "none";
@@ -5530,13 +5530,13 @@ function checkProposal(state, reg, beatId, cooldownDays) {
   if (last !== void 0 && state.day - last < cooldownDays) return `Cooldown: the last beat was proposed ${state.day - last} day(s) ago (needs ${cooldownDays}).`;
   return null;
 }
-var cutWords2 = (text, max) => text.trim().split(/\s+/).filter(Boolean).slice(0, max).join(" ");
+var cutWords2 = (text2, max) => text2.trim().split(/\s+/).filter(Boolean).slice(0, max).join(" ");
 function proposeBeat(draft, ctx2, beatId, framing) {
   const reg = ctx2.registries;
   const problem = checkProposal(draft, reg, beatId, 0);
   if (problem) throw new Error(problem);
   const beat = currentBeat(draft, reg);
-  const text = cutWords2(framing, TUNING.director.framingWords) || beat.goal;
+  const text2 = cutWords2(framing, TUNING.director.framingWords) || beat.goal;
   const events = [];
   draft.world.spine = { ...draft.world.spine ?? {}, proposed: beatId, proposedDay: draft.day, lastProposalDay: draft.day };
   const threadId = `spine:${beatId}`;
@@ -5552,9 +5552,9 @@ function proposeBeat(draft, ctx2, beatId, framing) {
       createdDay: draft.day
     });
   }
-  addFact(draft, { about: [], text, tags: ["spine"], importance: 4, day: draft.day, knownBy: ["*"] });
-  addChronicle(draft, { kind: "scene", day: draft.day, text });
-  events.push({ type: "beat_proposed", beatId, framing: text });
+  addFact(draft, { about: [], text: text2, tags: ["spine"], importance: 4, day: draft.day, knownBy: ["*"] });
+  addChronicle(draft, { kind: "scene", day: draft.day, text: text2 });
+  events.push({ type: "beat_proposed", beatId, framing: text2 });
   const completion = beat.completion ?? { kind: "auto" };
   if (completion.kind === "mission") {
     const taken = [...draft.missions.offered, ...draft.missions.active].some((m) => m.spineBeat === beatId);
@@ -5849,7 +5849,7 @@ function plain(v, max) {
   if (typeof v !== "string") return "";
   return v.replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim().slice(0, max).trim();
 }
-var words2 = (text, max) => text.split(" ").filter(Boolean).slice(0, max).join(" ");
+var words2 = (text2, max) => text2.split(" ").filter(Boolean).slice(0, max).join(" ");
 var slug2 = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 32).replace(/_+$/g, "");
 function directorSource(state, reg, templateId, commandTaken) {
   const sources = reg.missionTemplates.get(templateId)?.sources ?? [];
@@ -5937,8 +5937,8 @@ function validateDirectorOutput(state, reg, raw, opts) {
     const part = `rumors[${i}]`;
     if (i >= TUNING.director.maxRumors) return reject(part, `more than ${TUNING.director.maxRumors} rumors`);
     if (!isObj11(r)) return reject(part, "not a rumor");
-    const text = words2(plain(r.text, 600), TUNING.director.rumorWords);
-    if (text === "") return reject(part, "the rumor has no text");
+    const text2 = words2(plain(r.text, 600), TUNING.director.rumorWords);
+    if (text2 === "") return reject(part, "the rumor has no text");
     if (room <= 0) return reject(part, "no room for more rumors today");
     const tags = [];
     for (const t of Array.isArray(r.tags) ? r.tags : []) {
@@ -5946,7 +5946,7 @@ function validateDirectorOutput(state, reg, raw, opts) {
       if (n !== null && !tags.includes(n)) tags.push(n);
     }
     const leadsTo = r.leadsTo === "mission" || r.leadsTo === "fact" ? r.leadsTo : "none";
-    const rumor = { text, leadsTo, tags };
+    const rumor = { text: text2, leadsTo, tags };
     if (leadsTo === "mission") {
       const lead = r.lead;
       if (!isObj11(lead) || typeof lead.templateId !== "string" || typeof lead.regionId !== "string") return reject(part, "a mission lead needs a lead");
@@ -6812,8 +6812,8 @@ function checkExpedition(state, reg, p) {
   }
   return null;
 }
-function addLog(exp, kind, text, nodeId, data) {
-  const entry = { n: (exp.log.at(-1)?.n ?? 0) + 1, kind, text };
+function addLog(exp, kind, text2, nodeId, data) {
+  const entry = { n: (exp.log.at(-1)?.n ?? 0) + 1, kind, text: text2 };
   if (nodeId !== void 0) entry.nodeId = nodeId;
   if (data !== void 0) entry.data = data;
   exp.log.push(entry);
@@ -7125,9 +7125,9 @@ function retreatFromExpedition(draft, ctx2) {
   events.push(...endExpedition(draft, ctx2, "retreated"));
   return events;
 }
-function cleanRecap(text) {
-  if (typeof text !== "string") return "";
-  return text.replace(/<\s*(script|style)[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi, " ").replace(/<[^>]*>?/g, " ").replace(/[<>]/g, "").replace(/\s+/g, " ").trim().slice(0, TUNING.expedition.recapMax).trim();
+function cleanRecap(text2) {
+  if (typeof text2 !== "string") return "";
+  return text2.replace(/<\s*(script|style)[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi, " ").replace(/<[^>]*>?/g, " ").replace(/[<>]/g, "").replace(/\s+/g, " ").trim().slice(0, TUNING.expedition.recapMax).trim();
 }
 var OUTCOME_LABEL = { success: "OBJECTIVE SECURED", retreated: "RETREATED", failed: "FAILED: SQUAD BEATEN BACK" };
 function reportLines(report, state, reg) {
@@ -7259,9 +7259,9 @@ function eventOptions(state, reg) {
     return { index, label: o.label, disabled };
   });
 }
-function finishEventNode(draft, nodeId, text, data) {
+function finishEventNode(draft, nodeId, text2, data) {
   const exp = draft.expedition;
-  addLog(exp, "event", text, nodeId, data);
+  addLog(exp, "event", text2, nodeId, data);
   delete exp.pending;
   exp.phase = "travel";
   if (nodeId === exp.map.objectiveId) exp.objectiveDone = true;
@@ -7343,9 +7343,9 @@ registerAction("expedition/mark_debriefed", (draft) => {
 registerAction("expedition/set_recap", (draft, payload) => {
   const reportId = isObj13(payload) ? payload.reportId : void 0;
   if (!draft.lastExpedition || reportId !== draft.lastExpedition.id) throw new Error("That report is no longer the last one.");
-  const text = cleanRecap(isObj13(payload) ? payload.text : void 0);
-  if (text === "") throw new Error("The recap is empty.");
-  draft.lastExpedition.recap = text;
+  const text2 = cleanRecap(isObj13(payload) ? payload.text : void 0);
+  if (text2 === "") throw new Error("The recap is empty.");
+  draft.lastExpedition.recap = text2;
   return [{ type: "expedition_recap_set", reportId }];
 });
 
@@ -11551,29 +11551,29 @@ function emptyRegistries() {
 
 // src/content/links.ts
 var LINK = /\[\[([^[\]|]+)(?:\|([^[\]]*))?\]\]/g;
-function parseLinks(text) {
+function parseLinks(text2) {
   const out = [];
   let last = 0;
-  for (const m of text.matchAll(LINK)) {
+  for (const m of text2.matchAll(LINK)) {
     const at = m.index ?? 0;
-    if (at > last) out.push(text.slice(last, at));
+    if (at > last) out.push(text2.slice(last, at));
     const target = m[1].trim();
     const label2 = m[2]?.trim();
     out.push(label2 ? { target, label: label2 } : { target });
     last = at + m[0].length;
   }
-  if (last < text.length) out.push(text.slice(last));
+  if (last < text2.length) out.push(text2.slice(last));
   return out;
 }
 function idPart(target) {
   const i = target.indexOf(":");
   return i < 0 ? target : target.slice(i + 1);
 }
-function stripLinks(text) {
-  return parseLinks(text).map((p) => typeof p === "string" ? p : p.label ?? idPart(p.target)).join("");
+function stripLinks(text2) {
+  return parseLinks(text2).map((p) => typeof p === "string" ? p : p.label ?? idPart(p.target)).join("");
 }
-function linkTargets(text) {
-  return parseLinks(text).flatMap((p) => typeof p === "string" ? [] : [p.target]);
+function linkTargets(text2) {
+  return parseLinks(text2).flatMap((p) => typeof p === "string" ? [] : [p.target]);
 }
 
 // src/content/schemas.ts
@@ -12693,7 +12693,7 @@ function toWorldEffect(raw, ctx2) {
 // src/engine/dilemma/validate.ts
 var isObj17 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var clamp14 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
-var cutWords3 = (text, max) => text.split(" ").filter(Boolean).slice(0, max).join(" ");
+var cutWords3 = (text2, max) => text2.split(" ").filter(Boolean).slice(0, max).join(" ");
 function parseOption(raw, index, ctx2, bad) {
   const at = (reason, rule = "shape") => void bad.push({ rule, option: index, reason });
   if (!isObj17(raw)) return at("An option must be an object."), null;
@@ -13380,8 +13380,8 @@ function extract(data) {
 function answerText(data) {
   return stripThinking(extract(data));
 }
-function scan(text, start) {
-  const n = text.length;
+function scan(text2, start) {
+  const n = text2.length;
   const stack = [];
   let safeEnd = -1;
   let open2 = [];
@@ -13391,10 +13391,10 @@ function scan(text, start) {
   };
   let i = start;
   while (i < n) {
-    const c = text[i];
+    const c = text2[i];
     if (c === '"') {
       let j = i + 1;
-      while (j < n && text[j] !== '"') j += text[j] === "\\" ? 2 : 1;
+      while (j < n && text2[j] !== '"') j += text2[j] === "\\" ? 2 : 1;
       if (j >= n) break;
       const top = stack[stack.length - 1];
       if (!(top && top.t === "{" && top.key)) mark(j + 1);
@@ -13418,7 +13418,7 @@ function scan(text, start) {
       i++;
     } else {
       let j = i;
-      while (j < n && !/[\s,\]}:"{[]/.test(text[j])) j++;
+      while (j < n && !/[\s,\]}:"{[]/.test(text2[j])) j++;
       if (j >= n) break;
       mark(j);
       i = j;
@@ -13426,9 +13426,9 @@ function scan(text, start) {
   }
   return { kind: "cut", safeEnd, open: open2 };
 }
-function looseJson(text) {
-  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)(?:```|$)/i);
-  const src = fenced ? fenced[1] : text;
+function looseJson(text2) {
+  const fenced = text2.match(/```(?:json)?\s*([\s\S]*?)(?:```|$)/i);
+  const src = fenced ? fenced[1] : text2;
   let pos = 0;
   for (; ; ) {
     const rel = src.slice(pos).search(/[{[]/);
@@ -13492,11 +13492,11 @@ async function callLlm(id, input, deps) {
       llmLog.push({ ...entry, raw: detail, ok: false, ms: Date.now() - started });
       return { ok: false, reason: "call_failed", detail, attempts: attempt };
     }
-    const text = stripThinking(raw);
+    const text2 = stripThinking(raw);
     let value;
     let valid = false;
     if (ct.json) {
-      const json = looseJson(text);
+      const json = looseJson(text2);
       if (json === null) {
         lastDetail = "no JSON found in the answer";
       } else if (ct.schema) {
@@ -13508,9 +13508,9 @@ async function callLlm(id, input, deps) {
         valid = true;
         value = json;
       }
-    } else if (text !== "") {
+    } else if (text2 !== "") {
       valid = true;
-      value = text;
+      value = text2;
     } else {
       lastDetail = "empty answer";
     }
@@ -13523,8 +13523,8 @@ async function callLlm(id, input, deps) {
 // src/llm/calls/activityVignette.ts
 var MAX_LINES = 2;
 var MAX_CHARS = 240;
-function sanitizeVignette(text) {
-  const lines = text.replace(/```[a-z]*/gi, "\n").split(/\r?\n/).map(
+function sanitizeVignette(text2) {
+  const lines = text2.replace(/```[a-z]*/gi, "\n").split(/\r?\n/).map(
     (l) => l.trim().replace(/^(vignette|scene|response|reply)\s*:\s*/i, "").replace(/[*_`#>]+/g, "").trim().replace(/^["“”]+|["“”]+$/g, "").trim()
   ).filter((l) => l !== "");
   if (lines.length === 0) return null;
@@ -13971,7 +13971,7 @@ async function fileLeashRequest(shell, o) {
   const delay = o.delayMs ?? (reducedMotion() ? 0 : 1800);
   const status = h("div", { class: "alius-form-status", "aria-live": "polite" });
   void shell.modal({ title, body: h("div", { class: "alius-form" }, form, status), actions: [] });
-  const add = (text) => void status.append(h("div", { class: "alius-form-line" }, text));
+  const add = (text2) => void status.append(h("div", { class: "alius-form-line" }, text2));
   add("TRANSMITTING\u2026");
   if (delay > 0) await sleep(delay / 3);
   add("OVERSIGHT REVIEW\u2026");
@@ -14033,10 +14033,10 @@ function renderConfrontation(host, ctx2) {
 
 // src/ui/scene/cutIn.ts
 var CUT_IN_MS = 900;
-function cutIn(host, kind, text, imageUrl) {
+function cutIn(host, kind, text2, imageUrl) {
   const el = h("div", { class: "alius-cutin", "data-kind": kind, "aria-hidden": "true" });
   if (imageUrl) el.append(h("img", { class: "alius-cutin-img", src: imageUrl, alt: "" }));
-  el.append(document.createTextNode(text));
+  el.append(document.createTextNode(text2));
   host.append(el);
   setTimeout(() => el.remove(), CUT_IN_MS);
 }
@@ -14545,8 +14545,8 @@ function renderCombatScreen(host, ctx2) {
       if (ev.type !== "combat_cutin") continue;
       const unit = state?.squad.find((u) => u.id === ev.unitId);
       const kind = String(ev.kind ?? "combat");
-      const text = String(ev.text ?? "");
-      const show = (url) => cutIn(host, kind, text, url);
+      const text2 = String(ev.text ?? "");
+      const show = (url) => cutIn(host, kind, text2, url);
       if (unit?.cardRef) {
         void st.getSpriteUrl(unit.cardRef, kind === "breakdown" ? "sadness" : "neutral").then((u) => show(u ?? void 0), () => show());
       } else show();
@@ -14759,10 +14759,10 @@ var ContextBuilder = class {
     const sorted = [...this.providers].sort((a, b) => b.priority - a.priority);
     const lines = [];
     for (const p of sorted) {
-      const text = p.render(state);
-      if (!text) continue;
-      if (estTokens([BLOCK_TITLE, ...lines, text].join("\n")) > capTokens) break;
-      lines.push(text);
+      const text2 = p.render(state);
+      if (!text2) continue;
+      if (estTokens([BLOCK_TITLE, ...lines, text2].join("\n")) > capTokens) break;
+      lines.push(text2);
     }
     const block = lines.length ? [BLOCK_TITLE, ...lines].join("\n") : "";
     const dirs = [...this.directives.values()];
@@ -14801,8 +14801,8 @@ async function compactChronicle(input, deps) {
   if (input.lines.length === 0) return null;
   const r = await callLlm("chronicle_compact", input, deps);
   if (!r.ok) return null;
-  const text = r.value.replace(/```[a-z]*/gi, " ").replace(/[*_`#>]+/g, "").replace(/\s+/g, " ").trim().slice(0, COMPACT_MAX2).trim();
-  return text === "" ? null : text;
+  const text2 = r.value.replace(/```[a-z]*/gi, " ").replace(/[*_`#>]+/g, "").replace(/\s+/g, " ").trim().slice(0, COMPACT_MAX2).trim();
+  return text2 === "" ? null : text2;
 }
 
 // src/scene/chronicle.ts
@@ -14815,10 +14815,10 @@ async function runCompaction(deps) {
     if (!s || !due) return;
     const lines = due.entries.map((e) => e.text);
     const modelText = deps.settings().chronicleCompaction ? await compactChronicle({ kind: due.kind, lines }, { st: deps.st, settings: deps.settings() }) : null;
-    const text = modelText ?? fallbackCompaction(due.entries);
-    if (text === "") return;
+    const text2 = modelText ?? fallbackCompaction(due.entries);
+    if (text2 === "") return;
     const events = deps.app.dispatch(
-      { type: "memory/compact", payload: { kind: due.kind, day: due.day, ...due.toDay !== void 0 ? { toDay: due.toDay } : {}, text } },
+      { type: "memory/compact", payload: { kind: due.kind, day: due.day, ...due.toDay !== void 0 ? { toDay: due.toDay } : {}, text: text2 } },
       { expectChatId: expect }
     );
     if (events.some((e) => e.type === "error")) return;
@@ -14835,8 +14835,8 @@ var MODE_TEXT = {
   snap: SNAP_TEXT,
   initiate: "She writes first: she starts the conversation herself, for her own reasons, without waiting to be asked."
 };
-function sanitizeDm(text) {
-  let t = text.replace(/```[a-z]*/gi, " ").replace(/\*[^*\n]*\*/g, " ").replace(/[_`#>]+/g, " ").replace(/\*+/g, " ");
+function sanitizeDm(text2) {
+  let t = text2.replace(/```[a-z]*/gi, " ").replace(/\*[^*\n]*\*/g, " ").replace(/[_`#>]+/g, " ").replace(/\*+/g, " ");
   t = t.replace(/\s+/g, " ").trim();
   t = t.replace(/^[A-Z][\w'’-]*(?: [A-Z][\w'’-]*){0,2}\s*:\s*/, "");
   t = t.replace(/["“”]/g, "").replace(/\s+/g, " ").trim();
@@ -15060,9 +15060,9 @@ function createComms(deps) {
     deps.onUi({ type: "transcript" });
   }
   return {
-    async send(unitId, text) {
+    async send(unitId, text2) {
       const expect = chatId();
-      const events = app.dispatch({ type: "dm/send", payload: { unitId, text } }, { expectChatId: expect });
+      const events = app.dispatch({ type: "dm/send", payload: { unitId, text: text2 } }, { expectChatId: expect });
       if (failed(events)) return;
       const mode = events.find((e) => e.type === "dm_sent")?.mode;
       deps.onUi({ type: "transcript" });
@@ -15075,7 +15075,7 @@ function createComms(deps) {
       const received = app.dispatch({ type: "dm/receive", payload: { unitId, text: reply } }, { expectChatId: expect });
       if (failed(received)) return;
       deps.onUi({ type: "transcript" });
-      await readExchange(expect, unitId, text.trim(), reply);
+      await readExchange(expect, unitId, text2.trim(), reply);
     },
     async onSlotAdvanced() {
       if (!deps.settings().unitDms) return;
@@ -15087,9 +15087,9 @@ function createComms(deps) {
         const s = state();
         const unit = s?.squad.find((u) => u.id === unitId);
         if (!s || !unit || chatId() !== expect) return;
-        const text = await generateDm(replyInput(s, deps, unit, "initiate"), { st, settings: deps.settings() });
-        if (text === null || chatId() !== expect) continue;
-        const r = app.dispatch({ type: "dm/receive", payload: { unitId, text, initiated: true } }, { expectChatId: expect });
+        const text2 = await generateDm(replyInput(s, deps, unit, "initiate"), { st, settings: deps.settings() });
+        if (text2 === null || chatId() !== expect) continue;
+        const r = app.dispatch({ type: "dm/receive", payload: { unitId, text: text2, initiated: true } }, { expectChatId: expect });
         if (!failed(r)) deps.onUi({ type: "transcript" });
       }
     },
@@ -15327,8 +15327,8 @@ var nightDirective = (unitName, framing) => ({
 });
 function answerDirective(unitId, unitName, kind, answer) {
   const label2 = kind.replace(/_/g, " ");
-  const text = answer === "accept" ? `The commander ACCEPTS ${unitName}'s proposal (${label2}). Play her reaction to that.` : answer === "accept_secret" ? `The commander ACCEPTS ${unitName}'s proposal (${label2}) but wants it kept secret from the others. Play her reaction to that.` : answer === "decline" ? `The commander DECLINES ${unitName}'s proposal (${label2}). Play her reaction to being turned down.` : `The commander puts ${unitName}'s proposal (${label2}) off: not now. Play her reaction.`;
-  return { id: `proposal:${unitId}`, expiresAfter: "next_reply", text };
+  const text2 = answer === "accept" ? `The commander ACCEPTS ${unitName}'s proposal (${label2}). Play her reaction to that.` : answer === "accept_secret" ? `The commander ACCEPTS ${unitName}'s proposal (${label2}) but wants it kept secret from the others. Play her reaction to that.` : answer === "decline" ? `The commander DECLINES ${unitName}'s proposal (${label2}). Play her reaction to being turned down.` : `The commander puts ${unitName}'s proposal (${label2}) off: not now. Play her reaction.`;
+  return { id: `proposal:${unitId}`, expiresAfter: "next_reply", text: text2 };
 }
 
 // src/scene/sceneController.ts
@@ -15348,8 +15348,8 @@ function createSceneController(deps) {
   let background = Promise.resolve();
   const state = () => app.current().state;
   const chatId = () => st.getActiveChat()?.chatId;
-  const debug = (text) => {
-    if (deps.settings().debug) deps.toast("info", text);
+  const debug = (text2) => {
+    if (deps.settings().debug) deps.toast("info", text2);
   };
   const unitById = (s, id) => s.squad.find((u) => u.id === id);
   const unitByAvatar = (s, avatar) => avatar === void 0 ? void 0 : s.squad.find((u) => u.cardRef === avatar);
@@ -15570,10 +15570,10 @@ function createSceneController(deps) {
       deps.onUi({ type: "transcript" });
       return true;
     },
-    send(text) {
-      if (text.trim() === "" || pending2 || !state()?.scene) return Promise.resolve();
+    send(text2) {
+      if (text2.trim() === "" || pending2 || !state()?.scene) return Promise.resolve();
       pending2 = true;
-      const run = sendNow(text.trim());
+      const run = sendNow(text2.trim());
       inflight = run;
       void run.finally(() => {
         if (inflight === run) inflight = null;
@@ -15641,8 +15641,8 @@ function createSceneController(deps) {
       if (!scene) return [];
       return st.getChatMessages(Math.min(scene.startIndex, st.chatLength()));
     },
-    async edit(index, text) {
-      const t = text.trim();
+    async edit(index, text2) {
+      const t = text2.trim();
       if (t === "" || !state()?.scene) return;
       selfEdit = index;
       try {
@@ -16581,7 +16581,7 @@ function renderCalibration(host, ctx2) {
   if (cand?.notes) host.append(h("p", { class: "alius-notes" }, `NOTES: ${cand.notes}`));
 }
 function defectLines(d) {
-  const line2 = (label2, text) => h("p", { class: "alius-defect-line" }, `${label2}: ${String(text)}`);
+  const line2 = (label2, text2) => h("p", { class: "alius-defect-line" }, `${label2}: ${String(text2)}`);
   const bd = d.breakdown;
   const arc = d.arc;
   return [
@@ -16926,7 +16926,7 @@ function defectBlock(reg, d) {
   if (!def) return h("div", { class: "alius-defect" }, h("strong", {}, unknown(d.id)));
   const bd = def.breakdown;
   const arc = def.arc;
-  const line2 = (label2, text) => h("p", { class: "alius-defect-line" }, `${label2}: ${text}`);
+  const line2 = (label2, text2) => h("p", { class: "alius-defect-line" }, `${label2}: ${text2}`);
   return h(
     "div",
     { class: "alius-defect" },
@@ -16967,14 +16967,14 @@ function equipmentBlock(unit, ctx2, state) {
     const uid = unit.equipment[slot2];
     const inst = uid ? state.inventory.find((i) => i.uid === uid) : void 0;
     const tpl = inst ? reg.items.get(inst.itemId) : void 0;
-    let text;
+    let text2;
     let flag = null;
-    if (!uid) text = "STANDARD ISSUE";
+    if (!uid) text2 = "STANDARD ISSUE";
     else if (!inst || !tpl) {
-      text = "UNKNOWN";
+      text2 = "UNKNOWN";
       flag = "UNKNOWN";
     } else {
-      text = `${String(tpl.name)} [${inst.rarity}]${inst.upgrade > 0 ? ` +${inst.upgrade}` : ""}`;
+      text2 = `${String(tpl.name)} [${inst.rarity}]${inst.upgrade > 0 ? ` +${inst.upgrade}` : ""}`;
       flag = canEquip(reg, unit, inst);
     }
     const options2 = state.inventory.filter((i) => reg.items.get(i.itemId)?.slot === slot2 && canEquip(reg, unit, i) === null);
@@ -16995,7 +16995,7 @@ function equipmentBlock(unit, ctx2, state) {
     return h(
       "div",
       { class: "alius-equip-row", "data-slot": slot2 },
-      h("span", {}, `${slot2.toUpperCase()}: ${text}`),
+      h("span", {}, `${slot2.toUpperCase()}: ${text2}`),
       flag ? h("span", { class: "alius-equip-flag" }, ` ${flag}`) : null,
       picker
     );
@@ -17989,8 +17989,8 @@ async function runDirectorTick(input, deps) {
 
 // src/llm/calls/expeditionRecap.ts
 var LABEL = /^\s*(?:\*\*|__)?\s*(?:narrator|recap|report|after-action report|summary|assistant|ai|chronicle|story)\s*(?:\*\*|__)?\s*:\s*(?:\*\*|__)?\s*/i;
-function sanitizeRecap(text) {
-  const lines = text.replace(/```[a-z]*/gi, "\n").split(/\r?\n/).map((l) => l.replace(/^\s{0,3}#{1,6}\s+/, "").replace(/^\s*[-*+]\s+/, "").replace(/^\s*>\s?/, "").replace(/[*_`~]+/g, "").trim());
+function sanitizeRecap(text2) {
+  const lines = text2.replace(/```[a-z]*/gi, "\n").split(/\r?\n/).map((l) => l.replace(/^\s{0,3}#{1,6}\s+/, "").replace(/^\s*[-*+]\s+/, "").replace(/^\s*>\s?/, "").replace(/[*_`~]+/g, "").trim());
   let out = lines.join("\n").replace(/\n{3,}/g, "\n\n").trim();
   out = out.replace(LABEL, "").replace(/^["“”]+|["“”]+$/g, "").trim();
   out = out.slice(0, TUNING.expedition.recapMax).trim();
@@ -18185,7 +18185,7 @@ function createExpedition(deps) {
       const chat = chatId();
       const region = reg.regions.get(report.regionId);
       const commander = s.commander.name;
-      const text = await generateRecap({
+      const text2 = await generateRecap({
         commanderName: commander,
         missionTitle: report.missionTitle,
         regionName: String(region?.name ?? report.regionId),
@@ -18197,8 +18197,8 @@ function createExpedition(deps) {
           return { name: u?.displayName ?? id, role: String(reg.roles.get(u?.roleId ?? "")?.name ?? u?.roleId ?? "soldier") };
         })
       }, { st: deps.st, settings });
-      if (text === null || chatId() !== chat || state()?.lastExpedition?.id !== report.id) return;
-      act("expedition/set_recap", { reportId: report.id, text }, chat);
+      if (text2 === null || chatId() !== chat || state()?.lastExpedition?.id !== report.id) return;
+      act("expedition/set_recap", { reportId: report.id, text: text2 }, chat);
     },
     async debrief(unitIds) {
       const s = state();
@@ -18338,7 +18338,7 @@ function drawProposalChips(host, state, pick, onAnswer) {
       "div",
       { class: "alius-chip-group", "data-proposal": p.id },
       h("span", { class: "alius-chip-label" }, p.from === "unit" ? `${name} PROPOSES: ${kindLabel(p.kind)}` : `${name}: ${kindLabel(p.kind)} \u2014 OPENLY OR SECRETLY?`),
-      ...buttons.map(([text, answer]) => h("button", { type: "button", class: "alius-btn alius-chip", onclick: () => onAnswer(p.id, answer) }, text))
+      ...buttons.map(([text2, answer]) => h("button", { type: "button", class: "alius-btn alius-chip", onclick: () => onAnswer(p.id, answer) }, text2))
     ));
   }
 }
@@ -18382,13 +18382,13 @@ function renderCommsTab(host, ctx2) {
     const unit = contacts.find((u) => u.id === current);
     thread.append(h("h3", {}, `// ${unit.displayName.toUpperCase()}`));
     for (const m of state.dms[current] ?? []) {
-      const text = h("span", { class: "alius-msg-text" });
-      text.textContent = m.text;
+      const text2 = h("span", { class: "alius-msg-text" });
+      text2.textContent = m.text;
       thread.append(h(
         "div",
         { class: `alius-msg ${m.from === "commander" ? "is-commander" : "is-unit"}` },
         h("span", { class: "alius-msg-meta" }, `${stamp(m.day, m.slot)}${m.initiated ? " \xB7 SHE WROTE FIRST" : ""}`),
-        text
+        text2
       ));
     }
     const chips = h("div", { class: "alius-chips" });
@@ -18397,11 +18397,11 @@ function renderCommsTab(host, ctx2) {
     input.value = drafts.get(host) ?? "";
     input.addEventListener("input", () => drafts.set(host, input.value));
     const send = () => {
-      const text = input.value.trim();
-      if (text === "") return;
+      const text2 = input.value.trim();
+      if (text2 === "") return;
       input.value = "";
       drafts.delete(host);
-      ctx2.onSend(unit.id, text);
+      ctx2.onSend(unit.id, text2);
     };
     input.addEventListener("keydown", (e) => {
       if (e.key === "Enter") send();
@@ -18435,9 +18435,9 @@ function renderLogTab(host, ctx2) {
     return;
   }
   const posts = chronicleOrder(state.memory.chronicle).map((e) => {
-    const text = h("div", { class: "alius-post-text" });
-    text.textContent = e.text;
-    return h("article", { class: `alius-post is-${e.kind}`, "data-entry": e.id }, h("div", { class: "alius-post-head" }, heading(e)), text);
+    const text2 = h("div", { class: "alius-post-text" });
+    text2.textContent = e.text;
+    return h("article", { class: `alius-post is-${e.kind}`, "data-entry": e.id }, h("div", { class: "alius-post-head" }, heading(e)), text2);
   });
   host.append(h(
     "section",
@@ -18549,21 +18549,21 @@ var KIND_HINT = {
   secret_affair: "propose a secret relationship"
 };
 var BUSY_TICK_MS = 500;
-function segments(text) {
+function segments(text2) {
   const out = [];
   let last = 0;
-  for (const m of text.matchAll(/\*([^*\n]+)\*/g)) {
-    if (m.index > last) out.push({ text: text.slice(last, m.index), em: false });
+  for (const m of text2.matchAll(/\*([^*\n]+)\*/g)) {
+    if (m.index > last) out.push({ text: text2.slice(last, m.index), em: false });
     out.push({ text: m[1], em: true });
     last = m.index + m[0].length;
   }
-  if (last < text.length) out.push({ text: text.slice(last), em: false });
+  if (last < text2.length) out.push({ text: text2.slice(last), em: false });
   return out;
 }
-function fillText(el, text, visible) {
+function fillText(el, text2, visible) {
   el.replaceChildren();
   let left = visible;
-  for (const seg of segments(text)) {
+  for (const seg of segments(text2)) {
     if (left <= 0) break;
     const part = seg.text.slice(0, left);
     left -= part.length;
@@ -18574,7 +18574,7 @@ function fillText(el, text, visible) {
     } else el.append(document.createTextNode(part));
   }
 }
-var visibleLength = (text) => segments(text).reduce((n, s) => n + s.text.length, 0);
+var visibleLength = (text2) => segments(text2).reduce((n, s) => n + s.text.length, 0);
 function renderSceneScreen(host, ctx2) {
   const { controller, registries, st } = ctx2;
   host.replaceChildren();
@@ -18738,8 +18738,8 @@ function renderSceneScreen(host, ctx2) {
           h("button", { type: "button", class: "alius-btn", "data-action": "edit-cancel", onclick: () => cancelEdit(s) }, "[CANCEL]")
         ));
       }
-      const text = h("span", { class: "alius-text" });
-      fillText(text, m.text, m.index === animating ? progress.get(m.index) ?? 0 : Infinity);
+      const text2 = h("span", { class: "alius-text" });
+      fillText(text2, m.text, m.index === animating ? progress.get(m.index) ?? 0 : Infinity);
       const edit = h("button", {
         type: "button",
         class: "alius-edit",
@@ -18752,7 +18752,7 @@ function renderSceneScreen(host, ctx2) {
           drawLog(s);
         }
       }, "\u270E");
-      return h("div", { class: `alius-line${m.isUser ? " is-user" : ""}`, "data-index": m.index }, speaker, " ", text, " ", edit);
+      return h("div", { class: `alius-line${m.isUser ? " is-user" : ""}`, "data-index": m.index }, speaker, " ", text2, " ", edit);
     }));
     const box = log.querySelector("textarea.alius-edit-box");
     if (box && (editing?.focus || boxHadFocus)) {
@@ -18789,15 +18789,15 @@ function renderSceneScreen(host, ctx2) {
     busyHost.replaceChildren();
     if (!on) return;
     busyStarted = Date.now();
-    const text = h("span", { class: "alius-busy-text" }, "AWAITING REPLY\u2026 0s");
+    const text2 = h("span", { class: "alius-busy-text" }, "AWAITING REPLY\u2026 0s");
     busyHost.append(h(
       "div",
       { class: "alius-busy", role: "status" },
-      text,
+      text2,
       h("button", { type: "button", class: "alius-btn", "data-action": "stop", "aria-label": "Stop the generation", onclick: () => controller.stop() }, "[STOP]")
     ));
     busyTimer = setInterval(() => {
-      text.textContent = `AWAITING REPLY\u2026 ${Math.floor((Date.now() - busyStarted) / 1e3)}s`;
+      text2.textContent = `AWAITING REPLY\u2026 ${Math.floor((Date.now() - busyStarted) / 1e3)}s`;
       const s = state();
       if (s?.scene) drawLog(s);
     }, BUSY_TICK_MS);
@@ -18816,15 +18816,15 @@ function renderSceneScreen(host, ctx2) {
     input = h("input", { type: "text", name: "cmd", class: "alius-input", autocomplete: "off", "aria-label": "Command line" });
     input.addEventListener("keydown", (ev) => {
       if (ev.key !== "Enter" || pending2) return;
-      const text = input.value.trim();
-      if (text === "") return;
+      const text2 = input.value.trim();
+      if (text2 === "") return;
       const order = orderOn && ctx2.onOrder !== void 0 ? ctx2.onOrder(orderWho?.value || present(state())[0]?.id || "") : false;
       pending2 = true;
       input.disabled = true;
       editing = null;
       lock(true);
       setBusy(true);
-      void controller.send(text).finally(() => {
+      void controller.send(text2).finally(() => {
         pending2 = false;
         if (disposed) return;
         orderOn = false;
@@ -18869,7 +18869,7 @@ function renderSceneScreen(host, ctx2) {
       orderToggle = null;
       orderWho = null;
     }
-    const act = (action, text, onclick, aria) => h("button", { type: "button", class: "alius-btn", "data-action": action, "aria-label": aria, onclick }, text);
+    const act = (action, text2, onclick, aria) => h("button", { type: "button", class: "alius-btn", "data-action": action, "aria-label": aria, onclick }, text2);
     const ignore = (p) => void p.catch(() => {
     });
     root.replaceChildren(
@@ -19125,10 +19125,10 @@ function createSaver(st, chatId, debounceMs = 500) {
 function exportCampaign(state) {
   return JSON.stringify(state, null, 2);
 }
-function importCampaign(text) {
+function importCampaign(text2) {
   let raw;
   try {
-    raw = JSON.parse(text);
+    raw = JSON.parse(text2);
   } catch (e) {
     return { ok: false, reason: "invalid", detail: `not valid JSON: ${e instanceof Error ? e.message : String(e)}` };
   }
@@ -19216,6 +19216,39 @@ function renderStatusHeader(host, state) {
     shortage > 0 ? h("span", { class: "alius-warn" }, `SHORTAGE ${shortage}d`) : null
   ];
   host.append(...parts.filter((p) => p !== null));
+}
+
+// src/analysis/describe.ts
+var PLAYER_VISIBLE = [...DESCRIBED_REGISTRIES, "glossary"];
+var text = (v) => typeof v === "string" && v.trim() !== "" ? v : null;
+function entryText(registry2, entry) {
+  if (registry2 === "glossary") return text(entry.short);
+  const direct = text(entry.description) ?? text(entry.summary);
+  if (direct) return direct;
+  switch (registry2) {
+    case "defects": {
+      const parts = [
+        text(entry.upside) && `Upside: ${entry.upside}`,
+        text(entry.downside) && `Downside: ${entry.downside}`
+      ].filter((p) => !!p);
+      return parts.length ? parts.join(" \xB7 ") : null;
+    }
+    case "signatures":
+      return text(entry.mechanic);
+    case "clocks":
+      return text(entry.label);
+    default:
+      return null;
+  }
+}
+function missingDescriptions(reg) {
+  const out = [];
+  for (const registry2 of PLAYER_VISIBLE) {
+    for (const [id, entry] of reg[registry2]) {
+      if (entryText(registry2, entry) === null) out.push({ registry: registry2, id });
+    }
+  }
+  return out;
 }
 
 // src/ui/shell/sysTab.ts
@@ -19357,13 +19390,13 @@ function renderSysTab(host, ctx2) {
     const file = fileInput.files?.[0];
     fileInput.value = "";
     if (!file) return;
-    let text;
+    let text2;
     try {
-      text = await file.text();
+      text2 = await file.text();
     } catch (e) {
       return ctx2.toast("error", `Import failed: ${errText2(e)}`);
     }
-    const r = importCampaign(text);
+    const r = importCampaign(text2);
     if (!r.ok) return ctx2.toast("error", `Import failed: ${r.detail}`);
     if (ctx2.getState()) {
       const answer = await ctx2.modal({
@@ -19458,6 +19491,12 @@ ${e.parsed === void 0 ? "(none)" : JSON.stringify(e.parsed, null, 2)}`)
       { class: "alius-content-errors" },
       ...contentErrors.map((e) => h("li", {}, `${e.pack} \xB7 ${e.file}${e.path ? " \xB7 " + e.path : ""} \u2014 ${e.message}`))
     ) : h("p", { class: "alius-dim" }, "Content packs loaded without errors.");
+    const registries = ctx2.getRegistries?.();
+    const missing = registries ? missingDescriptions(registries) : null;
+    const warnings = missing === null ? [] : [
+      h("h3", {}, "Content warnings"),
+      missing.length ? h("ul", { class: "alius-content-warnings" }, ...missing.map((m) => h("li", {}, `${m.registry} \xB7 ${m.id} \u2014 no description`))) : h("p", { class: "alius-dim" }, "Every player-visible entry has a description.")
+    ];
     const tools = ctx2.debugTools?.length ? [
       h("h3", {}, "Tools"),
       h(
@@ -19474,6 +19513,7 @@ ${e.parsed === void 0 ? "(none)" : JSON.stringify(e.parsed, null, 2)}`)
         ...tools,
         h("h3", {}, "Content errors"),
         contentList,
+        ...warnings,
         h("h3", {}, "LLM log (newest first)"),
         h("div", { class: "alius-log" }, ...logList),
         h("h3", {}, "Campaign state"),
@@ -19557,8 +19597,8 @@ var LIFETIME_MS = { info: 4e3, warn: 6e3, error: 9e3, story: 14e3 };
 function createToasts(host) {
   const timers = /* @__PURE__ */ new Set();
   return {
-    show(kind, text) {
-      const el = h("div", { class: `alius-toast alius-toast-${kind}`, role: kind === "error" ? "alert" : "status" }, text);
+    show(kind, text2) {
+      const el = h("div", { class: `alius-toast alius-toast-${kind}`, role: kind === "error" ? "alert" : "status" }, text2);
       const remove = () => el.remove();
       el.addEventListener("click", remove);
       host.append(el);
@@ -19597,9 +19637,9 @@ function createShell(deps) {
   let panel = null;
   let statusHost = null;
   const isOpen = () => root !== null;
-  function toast(kind, text) {
-    if (toasts) toasts.show(kind, text);
-    else st.toast(kind === "story" ? "info" : kind, text);
+  function toast(kind, text2) {
+    if (toasts) toasts.show(kind, text2);
+    else st.toast(kind === "story" ? "info" : kind, text2);
   }
   function applySettings() {
     if (!root) return;
@@ -19824,7 +19864,7 @@ function createApp(st, deps) {
   let saver = null;
   let started = false;
   let setup = null;
-  const toast = (kind, text) => shell.toast(kind, text);
+  const toast = (kind, text2) => shell.toast(kind, text2);
   function applyContext() {
     context.apply(st, state, getSettings(st).contextTokenCap);
   }
@@ -19867,7 +19907,7 @@ function createApp(st, deps) {
     restore: (before, expected) => api.restoreSnapshot(before, expected),
     registries: () => registries,
     settings: () => getSettings(st),
-    toast: (kind, text) => toast(kind, text),
+    toast: (kind, text2) => toast(kind, text2),
     onUi: routeUi
   };
   const scene = createSceneController(sceneDeps);
@@ -19877,7 +19917,7 @@ function createApp(st, deps) {
     app: sceneApp,
     registries: () => registries,
     settings: () => getSettings(st),
-    toast: (kind, text) => toast(kind, text)
+    toast: (kind, text2) => toast(kind, text2)
   };
   const director = createDirector(worldDeps);
   const dilemmas = createDilemmas(worldDeps);
@@ -20176,7 +20216,7 @@ function createApp(st, deps) {
     if (open2?.kind !== "mutiny" || open2.combatId === void 0 || state?.combat || state?.lastCombat?.id !== open2.combatId) return;
     act({ type: "loyalty/resolve_mutiny" });
   }
-  function removeFromChat(unitId, text) {
+  function removeFromChat(unitId, text2) {
     const unit = state?.squad.find((u) => u.id === unitId);
     if (unit?.cardRef) {
       const keep = st.getGroupMembers().filter((m) => m.active && m.avatar !== unit.cardRef).map((m) => m.avatar);
@@ -20184,7 +20224,7 @@ function createApp(st, deps) {
     }
     void saver?.flush().catch((e) => console.warn("[Alius] save failed", e));
     const root = document.getElementById("alius-shell");
-    if (root) cutIn(root, "leash", text);
+    if (root) cutIn(root, "leash", text2);
   }
   const nextLeashNo = (s) => (s.leash.seq ?? Math.max(0, ...leashLog(s).map((e) => e.no))) + 1;
   const KIND_WORD = { compel: "COMPEL", suppress: "SUPPRESS", terminate: "TERMINATE" };
@@ -20479,8 +20519,8 @@ function createApp(st, deps) {
   }
   const WORLD_INFO_KEY = "world_info";
   async function deployOnce(r, target) {
-    const fail = (text) => {
-      toast("error", text);
+    const fail = (text2) => {
+      toast("error", text2);
       return false;
     };
     const desireBondDefects = setup?.wizard.desireBondDefects ?? getSettings(st).desireBondDefects;
@@ -21005,7 +21045,7 @@ function createApp(st, deps) {
     (host) => renderCommsTab(host, {
       getState: () => state,
       registries,
-      onSend: (unitId, text) => void comms.send(unitId, text),
+      onSend: (unitId, text2) => void comms.send(unitId, text2),
       onRead: (unitId) => {
         const unit = state?.dms[unitId];
         if (unit?.some((m) => m.from !== "commander" && !m.read)) api.dispatch({ type: "dm/read", payload: { unitId } }, { expectChatId: st.getActiveChat()?.chatId });
@@ -21075,7 +21115,7 @@ function createApp(st, deps) {
       const unit = state.squad.find((u) => u.id === done.companionId);
       const activity = registries.activities.get(String(done.activityId));
       if (!unit || !activity) return events;
-      const text = await generateVignette(
+      const text2 = await generateVignette(
         {
           activityName: String(activity.name),
           commanderName: state.commander.name,
@@ -21086,7 +21126,7 @@ function createApp(st, deps) {
         },
         { st, settings }
       );
-      if (text && st.getActiveChat()?.chatId === chatId) toast("story", text);
+      if (text2 && st.getActiveChat()?.chatId === chatId) toast("story", text2);
       return events;
     },
     async recruitGrunt() {
@@ -21789,7 +21829,7 @@ function escapeSlashText(s) {
   if (t.startsWith("/") || /^\s*\w+=/.test(t)) t = ZWSP + t;
   return t;
 }
-var sendCommand = (text) => `/send ${escapeSlashText(text)} | /trigger await=true`;
+var sendCommand = (text2) => `/send ${escapeSlashText(text2)} | /trigger await=true`;
 var slashArg = (s) => escapeSlashText(s).replace(/\s+/g, " ").trim();
 
 // src/st/lorebook.ts
@@ -21907,8 +21947,8 @@ var RealStAdapter = class {
     const c = ctx();
     c.eventSource.on(c.eventTypes[EVENT[event]], fn);
   }
-  setInjection(id, text, position, depth) {
-    ctx().setExtensionPrompt(`alius_${id}`, text, POSITION[position], depth, false, 0);
+  setInjection(id, text2, position, depth) {
+    ctx().setExtensionPrompt(`alius_${id}`, text2, POSITION[position], depth, false, 0);
   }
   async generateMain(req) {
     const res = await ctx().generateRawData({
@@ -22031,8 +22071,8 @@ var RealStAdapter = class {
     void this.slash(`/expression-set ${slashArg(label2)}`).catch((e) => console.warn("[Alius] /expression-set failed", e));
   }
   /** Runs a slash command and returns its result; a command that errored or was aborted rejects. */
-  async slash(text) {
-    const result = await ctx().executeSlashCommandsWithOptions(text, { handleParserErrors: false, handleExecutionErrors: false, source: "alius" });
+  async slash(text2) {
+    const result = await ctx().executeSlashCommandsWithOptions(text2, { handleParserErrors: false, handleExecutionErrors: false, source: "alius" });
     if (!result) throw new Error("SillyTavern ran no command");
     if (result.isError || result.isAborted) throw new Error(result.errorMessage ?? result.abortReason ?? "the command failed");
     return String(result.pipe ?? "");
@@ -22043,8 +22083,8 @@ var RealStAdapter = class {
   chatLength() {
     return ctx().chat.length;
   }
-  async sendUserMessage(text) {
-    await this.slash(sendCommand(text));
+  async sendUserMessage(text2) {
+    await this.slash(sendCommand(text2));
   }
   async regenerateLast() {
     await this.slash("/regenerate await=true");
@@ -22055,12 +22095,12 @@ var RealStAdapter = class {
   stopGeneration() {
     ctx().stopGeneration();
   }
-  async editMessage(index, text) {
+  async editMessage(index, text2) {
     const c = ctx();
     const m = c.chat[index];
     if (!m || typeof m !== "object") throw new Error(`no such message ${index}`);
-    m.mes = text;
-    if (Array.isArray(m.swipes) && typeof m.swipe_id === "number") m.swipes[m.swipe_id] = text;
+    m.mes = text2;
+    if (Array.isArray(m.swipes) && typeof m.swipe_id === "number") m.swipes[m.swipe_id] = text2;
     c.updateMessageBlock(index, m);
     await c.eventSource.emit?.(c.eventTypes.MESSAGE_EDITED, index);
     await c.saveChat();
@@ -22077,11 +22117,11 @@ var RealStAdapter = class {
   saveSettings() {
     ctx().saveSettingsDebounced();
   }
-  toast(kind, text) {
+  toast(kind, text2) {
     const t = globalThis.toastr;
     const fn = t?.[kind === "warn" ? "warning" : kind];
-    if (typeof fn === "function") fn.call(t, text, "Alius");
-    else console[kind === "info" ? "info" : kind === "warn" ? "warn" : "error"](`[Alius] ${text}`);
+    if (typeof fn === "function") fn.call(t, text2, "Alius");
+    else console[kind === "info" ? "info" : kind === "warn" ? "warn" : "error"](`[Alius] ${text2}`);
   }
 };
 

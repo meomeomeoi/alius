@@ -1,6 +1,7 @@
 import { migrate } from '../../engine/state/migrations';
 import type { CampaignState } from '../../engine/state/types';
-import type { ContentError } from '../../content/types';
+import type { ContentError, Registries } from '../../content/types';
+import { missingDescriptions } from '../../analysis/describe';
 import { CALL_TYPE_IDS } from '../../llm/callTypes';
 import { llmLog } from '../../llm/log';
 import { getSettings, updateSettings, type AliusSettings } from '../../settings';
@@ -16,6 +17,8 @@ export interface SysCtx {
   getLoad: () => LoadResult;
   replaceState?: (state: CampaignState) => void;
   getContentErrors?: () => ContentError[];
+  /** P7a: lets SYS › Debug list player-visible entries without a description. */
+  getRegistries?: () => Registries;
   /** Dispatches an engine action (used for the per-campaign difficulty). */
   dispatch?: (action: { type: string; payload?: unknown }) => Array<{ type: string; [k: string]: unknown }>;
   debugTools?: Array<{ label: string; run: () => void }>;
@@ -283,6 +286,16 @@ export function renderSysTab(host: HTMLElement, ctx: SysCtx): void {
           ...contentErrors.map((e) => h('li', {}, `${e.pack} · ${e.file}${e.path ? ' · ' + e.path : ''} — ${e.message}`)),
         )
       : h('p', { class: 'alius-dim' }, 'Content packs loaded without errors.');
+    const registries = ctx.getRegistries?.();
+    const missing = registries ? missingDescriptions(registries) : null;
+    const warnings = missing === null
+      ? []
+      : [
+          h('h3', {}, 'Content warnings'),
+          missing.length
+            ? h('ul', { class: 'alius-content-warnings' }, ...missing.map((m) => h('li', {}, `${m.registry} · ${m.id} — no description`)))
+            : h('p', { class: 'alius-dim' }, 'Every player-visible entry has a description.'),
+        ];
     const tools = ctx.debugTools?.length
       ? [
           h('h3', {}, 'Tools'),
@@ -302,6 +315,7 @@ export function renderSysTab(host: HTMLElement, ctx: SysCtx): void {
         ...tools,
         h('h3', {}, 'Content errors'),
         contentList,
+        ...warnings,
         h('h3', {}, 'LLM log (newest first)'),
         h('div', { class: 'alius-log' }, ...logList),
         h('h3', {}, 'Campaign state'),
