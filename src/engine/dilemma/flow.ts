@@ -144,7 +144,7 @@ function showFallback(draft: CampaignState, reg: Registries, open: DilemmaState)
   const fixed = reg.dilemmaTemplates.get(open.templateId)?.fixed as
     | { title: string; setup: string; options: Array<{ label: string; requires?: DilemmaOption['requires']; effects: WorldEffect[] }> }
     | undefined;
-  if (!fixed) return resolveNothing(draft, open);
+  if (!fixed || nothingChoosable(draft, fixed.options)) return resolveNothing(draft, open);
   open.title = fixed.title;
   open.setup = fixed.setup;
   open.options = fixed.options.map((o) => ({ label: o.label, ...(o.requires ? { requires: { ...o.requires } } : {}), effects: structuredClone(o.effects), magnitudes: [] }));
@@ -170,6 +170,9 @@ export function presentDilemma(draft: CampaignState, ctx: EngineCtx, requestId: 
   open.attempts += 1;
   const parsed = parseDilemmaOutput(raw, { state: draft, reg, template, ...(open.threadId !== undefined ? { threadId: open.threadId } : {}) });
   const rejections = 'rejected' in parsed ? parsed.rejected : validateOptions(parsed.options, open.scale, unitsOf(draft, open.units));
+  if (!('rejected' in parsed) && rejections.length === 0 && nothingChoosable(draft, parsed.options)) {
+    rejections.push({ rule: 'shape', reason: 'No option can be chosen right now: every one costs more than the squad has. Offer at least one the squad can afford.' });
+  }
   if (!('rejected' in parsed) && rejections.length === 0) {
     open.title = parsed.title;
     open.setup = parsed.setup;
@@ -187,21 +190,26 @@ export function presentDilemma(draft: CampaignState, ctx: EngineCtx, requestId: 
 // ---------------------------------------------------------------------------------------------
 // Choosing
 
+/** Why an option cannot be chosen right now (`null` = it can). */
+function blockedReason(state: CampaignState, o: { requires?: DilemmaOption['requires']; effects: WorldEffect[] }): string | null {
+  if (o.requires && !meetsSocialRequirements(state, { [o.requires.stat]: o.requires.rank })) return `Needs ${capital(o.requires.stat)} ${o.requires.rank}`;
+  for (const fx of o.effects) {
+    if (fx.type === 'resource' && fx.amount < 0 && state.resources[fx.resource] < -fx.amount) return `Not enough ${fx.resource}`;
+    if (fx.type === 'carried_supplies' && fx.amount < 0 && (state.expedition?.supplies ?? 0) < -fx.amount) return 'Not enough supplies';
+  }
+  return null;
+}
+
+/** A dilemma nobody can answer would block time for good: at least one option must be choosable when it is shown. */
+const nothingChoosable = (state: CampaignState, options: Array<{ requires?: DilemmaOption['requires']; effects: WorldEffect[] }>): boolean =>
+  options.every((o) => blockedReason(state, o) !== null);
+
 /** The presented options with the reason each one is greyed (`null` = available). */
 export function dilemmaOptions(state: CampaignState, reg: Registries): Array<{ index: number; label: string; disabled: string | null; hasCheck: boolean }> {
   void reg;
   const open = state.dilemmas?.open;
   if (!open || open.status !== 'presented' || !open.options) return [];
-  return open.options.map((o, index) => {
-    let disabled: string | null = null;
-    if (o.requires && !meetsSocialRequirements(state, { [o.requires.stat]: o.requires.rank })) disabled = `Needs ${capital(o.requires.stat)} ${o.requires.rank}`;
-    for (const fx of o.effects) {
-      if (disabled !== null) break;
-      if (fx.type === 'resource' && fx.amount < 0 && state.resources[fx.resource] < -fx.amount) disabled = `Not enough ${fx.resource}`;
-      else if (fx.type === 'carried_supplies' && fx.amount < 0 && (state.expedition?.supplies ?? 0) < -fx.amount) disabled = 'Not enough supplies';
-    }
-    return { index, label: o.label, disabled, hasCheck: o.check !== undefined };
-  });
+  return open.options.map((o, index) => ({ index, label: o.label, disabled: blockedReason(state, o), hasCheck: o.check !== undefined }));
 }
 
 const isBookkeeping = (fx: WorldEffect): boolean => fx.type === 'flag' || fx.type === 'thread_flag';

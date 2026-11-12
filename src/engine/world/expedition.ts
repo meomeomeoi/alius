@@ -399,6 +399,13 @@ export function endExpedition(draft: CampaignState, ctx: EngineCtx, outcome: Exp
 
   draft.resources.supplies += exp.supplies;
 
+  // a decision of this run's event node that nobody answered dies with the run (it could never be shown or applied again)
+  const abandoned = draft.dilemmas?.open;
+  if (abandoned && abandoned.context === 'expedition_event') {
+    delete draft.dilemmas!.open;
+    events.push({ type: 'dilemma_resolved', id: abandoned.id, templateId: abandoned.templateId, nothing: true });
+  }
+
   let rewards: ExpeditionReport['rewards'];
   if (outcome === 'success') {
     events.push(...bankLoot(draft, exp.loot));

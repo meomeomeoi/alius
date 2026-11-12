@@ -459,3 +459,76 @@ describe('toasts', () => {
     expect(announced).toBe(signs[0].kind !== 'dm');
   });
 });
+
+describe('final review fixes', () => {
+  async function missionStartDesertion(t: Boot): Promise<string> {
+    let missionId = '';
+    t.edit((s) => {
+      missionId = offerMission(s, { registries: content.registries, rng: new Rng(s.rng) }, { templateId: 'tpl_recover', regionId: 'quarantine_d7', source: 'command' }).mission!.id;
+      Object.assign(s.relations[RHEA], { trust: 0, affinity: -100, loyaltyBand: 'breaking' });
+      loyaltyRecord(s, RHEA).signs.push({ day: s.day - 2, about: 'desertion', kind: 'fact', signId: 'x' });
+    });
+    t.app.expedition.plan({ missionId });
+    const ids = t.state().roster.activeIds;
+    for (let seed = 1; seed <= 100 && !t.state().disloyalty?.open; seed++) {
+      t.edit((s) => { s.rng = seedRng(seed); });
+      t.app.expedition.launch({ unitIds: ids, formation: { front: ids.slice(0, 1), back: ids.slice(1) }, supplies: 2 });
+    }
+    await settle();
+    expect(t.state().disloyalty!.open).toMatchObject({ at: 'mission_start' });
+    return missionId;
+  }
+  const desertionModals = (t: Boot) => t.sh.modals.filter((m) => /DESERTION/.test(m.title));
+
+  it('I1: a withdrawn Suppress brings the mission-start panel back', async () => {
+    const t = await boot();
+    await missionStartDesertion(t);
+    expect(desertionModals(t)).toHaveLength(1);
+    t.sh.script.push(async () => null); // the oversight form is withdrawn
+    btn((t.sh.modals.at(-1)!.body as HTMLElement), '[SUPPRESS]')!.click();
+    await settle();
+    expect(t.state().disloyalty!.open).toBeDefined();
+    expect(desertionModals(t)).toHaveLength(2);
+    expect(btn(t.sh.modals.at(-1)!.body as HTMLElement, '[LET HER GO]')!.disabled).toBe(false);
+  });
+
+  it('I1: a departure refused because of the open desertion brings the panel back', async () => {
+    const t = await boot();
+    const mission = await missionStartDesertion(t);
+    const before = desertionModals(t).length;
+    const ids = t.state().roster.activeIds;
+    t.app.expedition.plan({ missionId: mission });
+    t.app.expedition.launch({ unitIds: ids, formation: { front: ids.slice(0, 1), back: ids.slice(1) }, supplies: 2 });
+    await settle();
+    expect(desertionModals(t).length).toBeGreaterThan(before);
+  });
+
+  it('I2: a chat switch closes a modal that belongs to the old campaign', async () => {
+    const t = await boot({ settings: { dilemmasEnabled: false } });
+    requestRations(t);
+    await settle();
+    expect(t.state().dilemmas!.open!.status).toBe('presented');
+    const closes = (t.sh.shell.closeModal as ReturnType<typeof vi.fn>).mock.calls.length;
+    t.st.emit('chat_changed');
+    await settle();
+    expect((t.sh.shell.closeModal as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(closes);
+  });
+
+  it('I3: mutineers who escape leave the group chat', async () => {
+    const t = await boot();
+    t.edit((s) => {
+      s.squad.find((u) => u.id === MIRA)!.status = 'injured'; // nobody is left to fight beside her
+      const entry = { id: 'n_m', unitId: RHEA, kind: 'mutiny', priority: 100, framing: 'Rhea is not alone.', ignore: { event: 'dismissed', severity: 'major' as const }, expiresDay: s.day + 2 };
+      s.slot = 'night';
+      s.calendar.nightEvent = entry;
+      s.disloyalty ??= { units: {} };
+      s.disloyalty.open = { kind: 'mutiny', unitId: RHEA, day: s.day, at: 'night', nightEntryId: 'n_m', sympathizers: [] };
+    });
+    expect(t.st.members.find((m) => m.avatar === 'rhea.png')!.active).toBe(true);
+    const events = t.app.dispatch({ type: 'loyalty/yield', payload: {} });
+    await settle();
+    expect(events.some((e) => e.type === 'mutiny_escaped')).toBe(true);
+    expect(t.st.members.find((m) => m.avatar === 'rhea.png')!.active).toBe(false);
+  });
+});
+

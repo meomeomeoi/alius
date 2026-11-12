@@ -354,6 +354,10 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       }
       if (events.some((e) => e.type === 'desertion_attempt' && e.at === 'mission_start')) openConfrontationModal();
       for (const e of events) {
+        if (e.type === 'mutiny_escaped') {
+          const gone = [String(e.unitId), ...((e.sympathizers as string[] | undefined) ?? [])];
+          for (const id of gone) removeFromChat(id, `${state?.squad.find((u) => u.id === id)?.displayName ?? 'A unit'} HAS DESERTED`);
+        }
         if (e.type === 'unit_deserted') removeFromChat(String(e.unitId), `${state?.squad.find((u) => u.id === e.unitId)?.displayName ?? 'A unit'} HAS DESERTED`);
         if (e.type === 'unit_terminated') removeFromChat(String(e.unitId), `${state?.squad.find((u) => u.id === e.unitId)?.displayName ?? 'A unit'} DEACTIVATED`);
       }
@@ -482,8 +486,11 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
 
   /** What follows an answer to a confrontation: the panel again while it is still open, else back to the PDA (or the next knock). */
   function afterConfrontation(close?: () => void): void {
-    if (state?.disloyalty?.open) {
-      shell.refresh();
+    const still = state?.disloyalty?.open;
+    if (still) {
+      // a modal body is rendered once (and a Suppress form replaces the modal): bring the panel back
+      if (still.at === 'mission_start') openConfrontationModal();
+      else shell.refresh();
       return;
     }
     close?.();
@@ -827,6 +834,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     syncBeatCooldown();
     if (state?.world.director?.pending) void director.onRequested().catch((e) => console.warn('[Alius] director failed', e));
     // dilemmas and confrontations that were open when the campaign was saved come back as they were
+    shell.closeModal?.(); // a modal of the previous chat must not act on this campaign
     dilemmaHost = null;
     dilemmaModalOpen = false;
     if (state?.dilemmas?.open) {
@@ -1635,6 +1643,8 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       drawDilemma();
       // a blocked action brings the waiting decision back (the player may have dismissed its modal)
       if (r.events.some((e) => e.type === 'error' && e.code === 'dilemma_open')) openDilemmaModal();
+      // likewise a departure refused for the desertion that is waiting at the gate
+      if (r.events.some((e) => e.type === 'error' && /deal with it first/.test(String(e.message)))) openConfrontationModal();
       shell.refresh();
       followUps(r.events);
       return r.events;

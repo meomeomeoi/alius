@@ -2969,6 +2969,9 @@ function removeFromService(draft, unitId, status) {
   if (draft.calendar.pendingScene?.unitId === unitId) delete draft.calendar.pendingScene;
   if (draft.proposals) draft.proposals = draft.proposals.filter((x) => x.unitId !== unitId);
   if (draft.disloyalty?.open?.unitId === unitId) delete draft.disloyalty.open;
+  if (draft.calendar.nightEvent?.unitId === unitId) delete draft.calendar.nightEvent;
+  const waiting2 = draft.dilemmas?.open;
+  if (waiting2) waiting2.units = waiting2.units.filter((id) => id !== unitId);
 }
 function terminate(draft, ctx2, unitId) {
   const reg = ctx2.registries;
@@ -2984,8 +2987,10 @@ function terminate(draft, ctx2, unitId) {
     return { approved: false, events: bookUse(draft, unitId, "terminate", "desertion", "denied") };
   }
   const events = [];
+  const herNight = draft.slot === "night" && draft.calendar.nightEvent?.unitId === unitId;
   removeFromService(draft, unitId, "terminated");
   events.push(...bookUse(draft, unitId, "terminate", "desertion", "done"));
+  if (herNight) events.push(...consumeSlots(draft, 1, ctx2));
   const reactors = draft.squad.filter((u) => u.id !== unitId && u.kind === "named" && isLiving(u));
   for (const u of reactors) {
     events.push(...applyEventToUnit(draft, reg, u.id, {
@@ -7033,6 +7038,11 @@ function endExpedition(draft, ctx2, outcome) {
   const regionLabel = region ? regionName(region) : exp.regionId;
   const nameOf7 = (id) => draft.squad.find((u) => u.id === id)?.displayName ?? id;
   draft.resources.supplies += exp.supplies;
+  const abandoned = draft.dilemmas?.open;
+  if (abandoned && abandoned.context === "expedition_event") {
+    delete draft.dilemmas.open;
+    events.push({ type: "dilemma_resolved", id: abandoned.id, templateId: abandoned.templateId, nothing: true });
+  }
   let rewards;
   if (outcome === "success") {
     events.push(...bankLoot(draft, exp.loot));
@@ -12883,7 +12893,7 @@ function resolveNothing(draft, open2) {
 }
 function showFallback(draft, reg, open2) {
   const fixed = reg.dilemmaTemplates.get(open2.templateId)?.fixed;
-  if (!fixed) return resolveNothing(draft, open2);
+  if (!fixed || nothingChoosable(draft, fixed.options)) return resolveNothing(draft, open2);
   open2.title = fixed.title;
   open2.setup = fixed.setup;
   open2.options = fixed.options.map((o) => ({ label: o.label, ...o.requires ? { requires: { ...o.requires } } : {}, effects: structuredClone(o.effects), magnitudes: [] }));
@@ -12902,6 +12912,9 @@ function presentDilemma(draft, ctx2, requestId, raw) {
   open2.attempts += 1;
   const parsed = parseDilemmaOutput(raw, { state: draft, reg, template, ...open2.threadId !== void 0 ? { threadId: open2.threadId } : {} });
   const rejections = "rejected" in parsed ? parsed.rejected : validateOptions(parsed.options, open2.scale, unitsOf(draft, open2.units));
+  if (!("rejected" in parsed) && rejections.length === 0 && nothingChoosable(draft, parsed.options)) {
+    rejections.push({ rule: "shape", reason: "No option can be chosen right now: every one costs more than the squad has. Offer at least one the squad can afford." });
+  }
   if (!("rejected" in parsed) && rejections.length === 0) {
     open2.title = parsed.title;
     open2.setup = parsed.setup;
@@ -12915,19 +12928,19 @@ function presentDilemma(draft, ctx2, requestId, raw) {
   if (!retry) events.push(...showFallback(draft, reg, open2));
   return events;
 }
+function blockedReason(state, o) {
+  if (o.requires && !meetsSocialRequirements(state, { [o.requires.stat]: o.requires.rank })) return `Needs ${capital2(o.requires.stat)} ${o.requires.rank}`;
+  for (const fx2 of o.effects) {
+    if (fx2.type === "resource" && fx2.amount < 0 && state.resources[fx2.resource] < -fx2.amount) return `Not enough ${fx2.resource}`;
+    if (fx2.type === "carried_supplies" && fx2.amount < 0 && (state.expedition?.supplies ?? 0) < -fx2.amount) return "Not enough supplies";
+  }
+  return null;
+}
+var nothingChoosable = (state, options2) => options2.every((o) => blockedReason(state, o) !== null);
 function dilemmaOptions(state, reg) {
   const open2 = state.dilemmas?.open;
   if (!open2 || open2.status !== "presented" || !open2.options) return [];
-  return open2.options.map((o, index) => {
-    let disabled = null;
-    if (o.requires && !meetsSocialRequirements(state, { [o.requires.stat]: o.requires.rank })) disabled = `Needs ${capital2(o.requires.stat)} ${o.requires.rank}`;
-    for (const fx2 of o.effects) {
-      if (disabled !== null) break;
-      if (fx2.type === "resource" && fx2.amount < 0 && state.resources[fx2.resource] < -fx2.amount) disabled = `Not enough ${fx2.resource}`;
-      else if (fx2.type === "carried_supplies" && fx2.amount < 0 && (state.expedition?.supplies ?? 0) < -fx2.amount) disabled = "Not enough supplies";
-    }
-    return { index, label: o.label, disabled, hasCheck: o.check !== void 0 };
-  });
+  return open2.options.map((o, index) => ({ index, label: o.label, disabled: blockedReason(state, o), hasCheck: o.check !== void 0 }));
 }
 var isBookkeeping = (fx2) => fx2.type === "flag" || fx2.type === "thread_flag";
 function chooseDilemma(draft, ctx2, id, index) {
@@ -19871,6 +19884,10 @@ function createApp(st, deps) {
       }
       if (events.some((e) => e.type === "desertion_attempt" && e.at === "mission_start")) openConfrontationModal();
       for (const e of events) {
+        if (e.type === "mutiny_escaped") {
+          const gone = [String(e.unitId), ...e.sympathizers ?? []];
+          for (const id of gone) removeFromChat(id, `${state?.squad.find((u) => u.id === id)?.displayName ?? "A unit"} HAS DESERTED`);
+        }
         if (e.type === "unit_deserted") removeFromChat(String(e.unitId), `${state?.squad.find((u) => u.id === e.unitId)?.displayName ?? "A unit"} HAS DESERTED`);
         if (e.type === "unit_terminated") removeFromChat(String(e.unitId), `${state?.squad.find((u) => u.id === e.unitId)?.displayName ?? "A unit"} DEACTIVATED`);
       }
@@ -19999,8 +20016,10 @@ function createApp(st, deps) {
     return entry !== void 0 && open2 !== void 0 && open2.unitId === entry.unitId && CONFRONTATION_KINDS.includes(entry.kind);
   }
   function afterConfrontation(close) {
-    if (state?.disloyalty?.open) {
-      shell.refresh();
+    const still = state?.disloyalty?.open;
+    if (still) {
+      if (still.at === "mission_start") openConfrontationModal();
+      else shell.refresh();
       return;
     }
     close?.();
@@ -20307,6 +20326,7 @@ function createApp(st, deps) {
     syncIntimacy();
     syncBeatCooldown();
     if (state?.world.director?.pending) void director.onRequested().catch((e) => console.warn("[Alius] director failed", e));
+    shell.closeModal?.();
     dilemmaHost = null;
     dilemmaModalOpen = false;
     if (state?.dilemmas?.open) {
@@ -21067,6 +21087,7 @@ function createApp(st, deps) {
       syncBadges();
       drawDilemma();
       if (r.events.some((e) => e.type === "error" && e.code === "dilemma_open")) openDilemmaModal();
+      if (r.events.some((e) => e.type === "error" && /deal with it first/.test(String(e.message)))) openConfrontationModal();
       shell.refresh();
       followUps(r.events);
       return r.events;

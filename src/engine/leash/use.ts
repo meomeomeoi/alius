@@ -1,4 +1,5 @@
 import type { Registries } from '../../content/types';
+import { consumeSlots } from '../calendar';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { isLiving } from '../economy';
 import { loyaltyOf, loyaltyRecord } from '../loyalty/state';
@@ -206,6 +207,9 @@ export function removeFromService(draft: CampaignState, unitId: string, status: 
   if (draft.calendar.pendingScene?.unitId === unitId) delete draft.calendar.pendingScene;
   if (draft.proposals) draft.proposals = draft.proposals.filter((x) => x.unitId !== unitId);
   if (draft.disloyalty?.open?.unitId === unitId) delete draft.disloyalty.open;
+  if (draft.calendar.nightEvent?.unitId === unitId) delete draft.calendar.nightEvent;
+  const waiting = draft.dilemmas?.open;
+  if (waiting) waiting.units = waiting.units.filter((id) => id !== unitId);
 }
 
 /**
@@ -226,8 +230,10 @@ export function terminate(draft: CampaignState, ctx: EngineCtx, unitId: string):
     return { approved: false, events: bookUse(draft, unitId, 'terminate', 'desertion', 'denied') };
   }
   const events: EngineEvent[] = [];
+  const herNight = draft.slot === 'night' && draft.calendar.nightEvent?.unitId === unitId;
   removeFromService(draft, unitId, 'terminated');
   events.push(...bookUse(draft, unitId, 'terminate', 'desertion', 'done'));
+  if (herNight) events.push(...consumeSlots(draft, 1, ctx)); // her night is over: the day rolls on instead of waiting for her
   const reactors = draft.squad.filter((u) => u.id !== unitId && u.kind === 'named' && isLiving(u));
   for (const u of reactors) {
     events.push(...applyEventToUnit(draft, reg, u.id, {

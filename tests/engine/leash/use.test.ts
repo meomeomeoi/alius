@@ -326,6 +326,8 @@ describe('removeFromService', () => {
       { id: 'p2', unitId: BEA, kind: 'kiss', from: 'unit', day: 1, channel: 'dm', targetState: 'lover', needsDisclosure: false },
     ];
     s.calendar.pendingScene = { unitId: ANN, day: 1, slot: 'morning' };
+    s.calendar.nightEvent = { id: 'n0', unitId: ANN, kind: 'desertion', priority: 95, framing: 'f', ignore: { event: 'dismissed', severity: 'minor' }, expiresDay: 9 };
+    s.dilemmas = { open: { id: 'dl1', templateId: 'dil_rations', scale: 'minor', context: 'base', status: 'requested', attempts: 0, units: [ANN, BEA] } } as CampaignState['dilemmas'];
     removeFromService(s, ANN, 'deserted');
     const ann = s.squad.find((u) => u.id === ANN)!;
     expect(ann.status).toBe('deserted');
@@ -336,6 +338,27 @@ describe('removeFromService', () => {
     expect(s.calendar.nightEventsQueue.map((n) => n.id)).toEqual(['n2']);
     expect(s.proposals.map((p) => p.id)).toEqual(['p2']);
     expect(s.calendar.pendingScene).toBeUndefined();
+    expect(s.calendar.nightEvent).toBeUndefined();
+    expect(s.dilemmas!.open!.units).toEqual([BEA]);
+  });
+
+  it('a Terminate approved at her own night does not strand the night', () => {
+    const s = clone();
+    loyaltyRecord(s, ANN).cause = { kind: 'attack', day: 1 };
+    s.slot = 'night';
+    s.calendar.nightEvent = { id: 'n0', unitId: ANN, kind: 'desertion', priority: 95, framing: 'f', ignore: { event: 'dismissed', severity: 'minor' }, expiresDay: 9 };
+    s.disloyalty!.open = { kind: 'desertion', unitId: ANN, day: 1, at: 'night', nightEntryId: 'n0' };
+    let out: ReturnType<typeof run> | undefined;
+    for (let seed = 1; seed <= 60 && !out; seed++) {
+      const t = structuredClone(s);
+      t.rng = seedRng(seed);
+      const r = run(t, reg, { type: 'leash/terminate', payload: { unitId: ANN } });
+      if (ofType(r.events, 'unit_terminated').length === 1) out = r;
+    }
+    expect(out).toBeDefined();
+    expect(out!.state.calendar.nightEvent).toBeUndefined();
+    expect(out!.state.slot).toBe('morning');
+    expect(out!.state.day).toBe(s.day + 1);
   });
 
   it('is refused while a scene with her is open', () => {

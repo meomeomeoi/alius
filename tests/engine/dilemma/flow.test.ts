@@ -520,3 +520,61 @@ describe('eligibleTemplates and the digest', () => {
     expect(d.resources).toEqual({ credits: 'low', supplies: 'high', plyx: 'ok' });
   });
 });
+
+describe('final review fixes', () => {
+  it('C1: retreating with an event dilemma open (drafting or presented) leaves nothing waiting', () => {
+    const { s } = (() => {
+      const { state, mission } = withMission(reg, clone());
+      state.world.spineProgress = 4;
+      state.world.spine = { proposed: 'beat_5' };
+      const d = depart(reg, state, mission.id);
+      d.expedition!.pending = { kind: 'event', nodeId: d.expedition!.map.objectiveId, templateId: 'evt_vesper_choice' };
+      d.expedition!.phase = 'event';
+      return { s: d };
+    })();
+    const drafting = requested(s, 'evt_vesper_choice', 'expedition_event');
+    const shown = act(drafting, 'dilemma/fallback', { requestId: 'dl1' }).state;
+    for (const [name, st] of [['requested', drafting], ['presented', shown]] as const) {
+      const r = act(st, 'expedition/retreat');
+      expect(errors(r.events), name).toEqual([]);
+      expect(r.state.expedition, name).toBeUndefined();
+      expect(r.state.dilemmas!.open, name).toBeUndefined();
+      expect(errors(act(r.state, 'calendar/consume_slot').events), name).toEqual([]);
+    }
+  });
+
+  it('C2: an answer whose options are all unaffordable is rejected, then the fallback is shown', () => {
+    const poor = clone();
+    poor.resources = { ...poor.resources, credits: 0, supplies: 0 };
+    const q = requested(poor);
+    const broke = {
+      title: 'Short rations', setup: 'The mess hall is short again.',
+      options: [
+        opt('Buy a lot', [eff('resource', 'credits', -1, 'medium'), eff('faction', 'sable', 1, 'medium')]),
+        opt('Buy a little', [eff('resource', 'credits', -1, 'small'), eff('stress', 'party', 1, 'small'), eff('resource', 'supplies', 1, 'medium')]),
+      ],
+    };
+    const first = act(q, 'dilemma/present', { requestId: 'dl1', output: broke });
+    expect(ofType(first.events, 'dilemma_rejected')).toMatchObject([{ retry: true, rejections: [{ reason: expect.stringContaining('can be chosen') }] }]);
+    expect(open(first.state).status).toBe('requested');
+    const second = act(first.state, 'dilemma/present', { requestId: 'dl1', output: broke });
+    expect(ofType(second.events, 'dilemma_presented')).toMatchObject([{ source: 'fallback' }]);
+    expect(dilemmaOptions(second.state, reg).some((o) => o.disabled === null)).toBe(true);
+    expect(errors(choose(second.state, dilemmaOptions(second.state, reg).find((o) => o.disabled === null)!.index).events)).toEqual([]);
+  });
+
+  it('C2: a fallback with no choosable option is dropped, never presented', () => {
+    const poor = clone();
+    poor.resources = { ...poor.resources, credits: 0, supplies: 0, plyx: 0 };
+    const hard = regWith((t) => {
+      const tpl = reg.dilemmaTemplates.get('dil_rations')! as Record<string, any>;
+      const cost = { type: 'resource', resource: 'credits', amount: -10 };
+      t.set('dil_rations', { ...tpl, fixed: { ...tpl.fixed, options: tpl.fixed.options.map((o: any) => ({ ...o, effects: [cost] })) } } as unknown as Entry);
+    });
+    const q = requested(poor, 'dil_rations', 'base', hard);
+    const r = act(q, 'dilemma/fallback', { requestId: 'dl1' }, hard);
+    expect(errors(r.events)).toEqual([]);
+    expect(r.state.dilemmas!.open).toBeUndefined();
+  });
+});
+
