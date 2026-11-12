@@ -27,7 +27,7 @@ Campaign state: `world.options: { [optionId]: choiceId }`. The chosen choices' `
 
 | id | Choices | Effects |
 |---|---|---|
-| `gender_norms` | `indifferent` / `corporate_machismo` / `inverted` | NPC/oversight/enemy-soldier directives react to commander expression (P7) in machismo/inverted worlds; small starting oversight-standing modifier by distance from the norm. **Squad members are never affected by this option** — they react only through their own tastes. |
+| `gender_norms` | `indifferent` / `corporate_machismo` / `inverted` | NPC/oversight/enemy-soldier directives react to commander expression (P7) in machismo/inverted worlds; small starting oversight-standing modifier by distance from the norm. Squad members are affected **only through their own per-unit stance** (§3.1), never globally. |
 | `offspec_stigma` | `tolerated` / `scorned` / `hunted` | NPC directives; mission rewards modifier (scorned −10%); `hunted` enables the "purge sweep" event family (director) and +stress when units hear about it. |
 | `oversight` | `lenient` / `standard` / `brutal` | Leash authorizations base (3/2/1 per week), failed-command-mission penalties, approval roll for Terminate, tone of corporate messages. |
 | `bloom_horror` (live) | `restrained` / `graphic` | Directive on how explicitly mutants and wounds are described. |
@@ -57,6 +57,21 @@ The last row keeps the hardest level winnable: where trust is rare, it is worth 
 
 **Per-unit offset.** Each named unit has `dispositionOffset ∈ [−2, +2]`; effective level = clamp(world + offset, 1, 5). `profile_import` proposes the offset with a one-line reason from the card; the player can change it in the wizard. Grunts use the world level.
 
+### 3.1 Per-unit world stances
+
+A world norm reaches the squad only through each unit's own stance toward it, set at import and editable by the player. This keeps the card authoritative: a unit shares the world's prejudice only if her profile says so.
+
+```
+Unit.worldStances: { [worldOptionId]: { stance: 'shares'|'indifferent'|'opposes', strength: 1|2, reason: string } }
+```
+
+- Applies to options marked `squadStance: true` in `worldOptions` (v1: `gender_norms`, `offspec_stigma`). Not shown when the world choice is neutral (`indifferent`, `tolerated`).
+- `profile_import` proposes each stance from **both** the world choice and the card (a card that says nothing defaults toward `indifferent`, not toward the world norm) with a one-line reason. The wizard shows them next to disposition offset and tastes; the player can change any of them. "Re-sync from card" can fill them for already imported units.
+- Effects (registry `stanceEffects`, per option × stance × strength):
+  - `gender_norms` · `shares`: starting Trust/Affinity offset and an early-days directive when the commander's expression (P7) departs from the norm, scaled by distance and by the first-impression weight `w(d)` — the prejudice fades as she gets to know him; image-consistency (P7) can make norm-breaking acts land harder for her. `opposes`: small Affinity bonus for a norm-breaking commander and friction with units who `share`. `indifferent`: nothing.
+  - `offspec_stigma` · `shares`: internalized stigma — extra stress from contempt events and the purge family, self-deprecating directive; `opposes`: defiance toward oversight, Trust bonus when the commander shields the squad from it.
+- Grunts: stance rolled from the world choice (weighted), no reason text.
+
 **Where parameters plug in** (implementation note): P3 delta pipeline (multipliers, confidence thresholds, stage timing), P3 loyalty bands, P6 refusal/desertion/mutiny, P4 breakdown target override (effect system), P9 Impunity base (P9 reads `dispositionLevels[].impunityBase`).
 
 ## 4. Setup UI
@@ -70,7 +85,7 @@ New screen **WORLD PARAMETERS** right after the start/corporation choice. It is 
 3. The same intent sequence produces the documented differences between `kind` and `hazardous`: multipliers, confidence filtering, band thresholds, stage timing (table-driven tests).
 4. Per-unit offset changes only that unit's effective level.
 5. Mutiny is impossible at `kind`, possible from `resentful` at `volatile`+ (P6 tests extended).
-6. `gender_norms` never changes any squad member's deltas (test).
+6. `gender_norms` changes a squad member's deltas only through her `worldStances` entry: an `indifferent` unit is unaffected (test), a `shares` unit's effect decays with days known (tests at d = 0, 7, 21); the player can edit stances in the wizard and they persist.
 7. `oversight` changes Leash authorizations; `bloom_horror` can be switched mid-campaign.
 8. Presets set every option; manual changes after a preset persist.
 
@@ -78,3 +93,4 @@ New screen **WORLD PARAMETERS** right after the start/corporation choice. It is 
 
 - Lore text of every choice (stubs ship with placeholders).
 - Whether `gender_norms` should also have a mild effect on enemy targeting (default: no).
+- Stance effect numbers (`stanceEffects`).
