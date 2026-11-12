@@ -4,11 +4,13 @@
 
 ## Premise
 
-The commander's crime was too grave. He was spared execution only by agreeing to carry the same control implant as his soldiers. One unit of the squad — the **warden** (`warden`; in-game "inverted commander") — holds his leash. Hierarchy:
+The commander's crime was too grave. He was spared execution only by agreeing to carry the same control implant as his soldiers. One unit of the squad — the **warden** (`warden`; in-game "inverted commander") — holds his leash. The default chain of authority is:
 
 **corporation (oversight) > warden > commander (player) > squad**
 
-The warden cannot simply release him: the controller belongs to the corporation. She can only use it — or not.
+This is how power is *supposed* to flow, not a hard rule. Anyone in the chain can try to defy the one above: the commander defies the warden (§4), the warden can bend or ignore oversight's directives while oversight isn't looking, and the two of them can collude against the corporation. No dedicated mechanics for this: it emerges from what already exists — her values and relationship with the commander shape her directives, collusion is ordinary intrigue with the same discovery rolls, and oversight noticing is the director's and the investigation clock's business. The engine must not *enforce* the chain anywhere beyond the specific rules below (e.g. her co-sign on squad Leash requests is the default; she can choose to rubber-stamp or to look away).
+
+The warden cannot simply release him: the controller belongs to the corporation, so an official release is not in her power. What she does with it — use it, hold back, or cover for him — is.
 
 ## 1. Mode setup
 
