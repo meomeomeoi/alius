@@ -1,4 +1,4 @@
-# Alius — Next Packages (P7–P13) and Session Plan
+# Alius — Next Packages (P7a–P13) and Session Plan
 
 P0–P6 are done. These packages bring the base to a proper starting level before content expansion.
 
@@ -6,6 +6,7 @@ P0–P6 are done. These packages bring the base to a proper starting level befor
 
 | # | Package | Why here |
 |---|---|---|
+| 0 | **P7a** Analysis tool | UI infrastructure: every screen built from P7 on gets explanations from day one instead of being back-filled. |
 | 1 | **P7** Commander profile & traits | Everything below reads the commander's body, expression, presence and traits. |
 | 2 | **P8** World options & disposition | Disposition is the base for Impunity (P9) and changes the P3/P6 parameters P9 builds on. |
 | 3 | **P9** Impunity, discipline, demands, reputation | Needs P7 presence and P8 disposition. |
@@ -22,6 +23,7 @@ Each package: **one planning session** (agent writes `docs/plans/<date>-pN-….m
 
 | Package | Execution chunks |
 |---|---|
+| P7a | (a) panel component, interaction (hover/focus/long-press, pin, drill-down), `glossary` registry, `data-analyze` addressing, effects summary, settings; (b) dynamic providers (axes, stats, stress, resources), knowledge filter, back-fill of existing screens, coverage test, starter glossary |
 | P7 | (a) engine: stats, archetype, pool/growth, check routes + validator rule, presence/decay, image consistency, tastes, migration; (b) traits registry + 8 regular traits + `vow_of_distance`, `commander_import`, COMMANDER FILE wizard step, CMDR card, context line |
 | P8 | (a) `worldOptions` + `dispositionLevels` registries, state, locking, lore block, parameter plumbing into P3/P4/P6 with table-driven tests; (b) WORLD PARAMETERS screen, presets, per-unit offset in import |
 | P9 | (a) Impunity terms, new intents, pending threats, stances + directives, sabotage; (b) punishments registry, menu + dialogue paths, chips with UNDO; (c) demands + reputation/nicknames |
@@ -38,12 +40,14 @@ Rule of thumb from P0–P6: one chunk per session, start each session with the p
 2. §6 Data model: commander `body`, `expression`, `seasoning`, `traits`, `archetype`; relation `metDay`, `impunityRecord`, `dispositionOffset` (on unit); campaign `world.options`, `onboarding`, `objectives`.
 3. §5.2 Call types: `commander_import` (mechanic, 600).
 4. §8 Settings: first-impression τ, dithered portraits, readable mode, reduced motion, sound volume/mute, device skin override.
-5. §9 Packages table: add P7–P13 with the dependencies above.
+5. §9 Packages table: add P7a–P13 with the dependencies above.
+8. §3 Principles or §11 rules: every player-facing stat/option/chip carries `data-analyze` (P7a coverage rule); new values add an analyze provider in the same package.
 6. §10 Roadmap: special traits beyond P12 (`former_off_spec`, `bound_elsewhere`, `voice_synth`); P13 LEASHSWAP mode replaces the `collared` idea; **Bloom update** (mutation slot on units — type, stage 1–4, visibility, self-attitude; progression clocks; treatment; infection incl. the commander; mark Shared Strain; Latent Strain moves onto these rails; art cost: visible stages need new sprite packs — limit visible stages or keep changes off-sprite).
 7. Mark older package specs as "historical; code is the source of truth where they differ".
 
 ## Author to-do (can run in parallel)
 
+- Glossary wording (P7a).
 - Decide P7 open questions (seasoning slider vs persona age; pool size; trait list).
 - Lore lines for every world option choice (P8).
 - Punishment and nickname lists (P9).
