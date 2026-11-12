@@ -34,16 +34,16 @@ Each package: **one planning session** (agent writes `docs/plans/<date>-pN-….m
 
 Rule of thumb from P0–P6: one chunk per session, start each session with the plan file and ticked boxes, stop at the chunk boundary.
 
-## Overview changes (apply in the P7 planning session)
+## Overview changes (apply in the P7a planning session)
 
 1. §3 Principles: add **P10 — Weakness is a playstyle** (weaker commander is really weaker, never secretly compensated, never dead-ended; every body check has a non-body route) and **P11 — Expression has no mechanical value** (only tastes, world options and narration).
 2. §6 Data model: commander `body`, `expression`, `seasoning`, `traits`, `archetype`; relation `metDay`, `impunityRecord`, `dispositionOffset` (on unit); campaign `world.options`, `onboarding`, `objectives`.
 3. §5.2 Call types: `commander_import` (mechanic, 600).
 4. §8 Settings: first-impression τ, dithered portraits, readable mode, reduced motion, sound volume/mute, device skin override.
 5. §9 Packages table: add P7a–P13 with the dependencies above.
-8. §3 Principles or §11 rules: every player-facing stat/option/chip carries `data-analyze` (P7a coverage rule); new values add an analyze provider in the same package.
 6. §10 Roadmap: special traits beyond P12 (`former_off_spec`, `bound_elsewhere`, `voice_synth`); P13 LEASHSWAP mode replaces the `collared` idea; **Bloom update** (mutation slot on units — type, stage 1–4, visibility, self-attitude; progression clocks; treatment; infection incl. the commander; mark Shared Strain; Latent Strain moves onto these rails; art cost: visible stages need new sprite packs — limit visible stages or keep changes off-sprite).
 7. Mark older package specs as "historical; code is the source of truth where they differ".
+8. §3 Principles or §11 rules: every player-facing stat/option/chip carries `data-analyze` (P7a coverage rule); new values add an analyze provider in the same package.
 
 ## Author to-do (can run in parallel)
 
