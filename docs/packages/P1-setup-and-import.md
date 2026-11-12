@@ -2,6 +2,8 @@
 
 **Depends on:** P0. **Read:** overview; `content/lore.md` (§3–5, §9), `content/roles.md` (§2–4), `content/defects.md`.
 
+> **Historical spec.** This package is implemented; where this text and the code differ, the code is the source of truth (see **Implemented as**).
+
 **Status:** implemented (plan: `plans/2026-11-08-p1-setup-import.md`). Automated tests pass; the in-SillyTavern checklist `MANUAL_TEST_P1.md` still has to be run by hand. This file describes the behaviour of the code; where an earlier draft of this spec said something else, the code won.
 
 ## Goal

@@ -50,6 +50,12 @@ Explicitly **not** in v1: real-time/action combat, permadeath mode, third-party 
 
 **P9 — AI co-authorship is visible.** Commits keep `Co-Authored-By` / `Claude-Session` trailers.
 
+**P10 — Weakness is a playstyle** (P7). A weaker commander is really weaker: the game never compensates it secretly and never dead-ends it. Every check that needs a body stat declares at least one non-body route (the validator rejects body-only checks).
+
+**P11 — Expression has no mechanical value** (P7). Femininity/masculinity never gives buffs or debuffs; it matters only through individual characters' tastes, world options (P8) and narration.
+
+**P12 — Everything the player sees can be analyzed** (P7a). Every player-facing stat, option, chip and choice card carries `data-analyze`; a package that adds a new value also adds its glossary entry or registry description and, for live values, an analyze provider that respects the knowledge filter. The coverage test enforces it.
+
 ## 4. Glossary
 
 | Term | Meaning |
@@ -134,6 +140,7 @@ Source layout (TypeScript, same toolchain style as Mundi-Expanded):
 | `emotion_pick` | mechanic | Optional sprite emotion classification (when not using native Expressions) | 50 |
 | `chronicle_compact` | mechanic | Day/week chronicle lines → one compact entry (P3; without a profile the lines are joined) | 400 |
 | `activity_vignette` | main | ≤2-line vignette after a companion activity (P2; can be turned off) | 150 |
+| `commander_import` | mechanic | Persona text → commander descriptors, expression, seasoning, 0–2 traits with reasons (P7, planned) | 600 |
 | *(scene dialogue)* | main | Normal ST generation with injected context | — (ST settings) |
 
 Every budget is a user setting. Every mechanic call: request JSON → validate → on truncation/invalid JSON, one repair attempt (lenient parser) → one retry with budget ×1.5 → fail soft (no state change, toast in debug mode). Where the provider allows it, reasoning/thinking is disabled or capped for mechanic calls.
@@ -202,18 +209,21 @@ Events emitted by the day-end pipeline: `director_requested` (P5), `leash_refres
 ```
 Campaign {
   version, seed/rngState, day, slot, difficulty, settings snapshot
-  commander { name, corporationId, crimeId, socialStats{authority,insight,empathy,cunning} /* ranks 1–5 */, socialPoints?{…} /* P2: points behind the ranks */, injuredUntilDay?, flags[] }
+  commander { name, corporationId, crimeId, socialStats{authority,insight,empathy,cunning} /* ranks 1–5 */, socialPoints?{…} /* P2: points behind the ranks */, injuredUntilDay?, flags[],
+              /* P7 (planned): */ body{strength,endurance,reflexes 1–5}, bodyXp{…}, expression 1–5, seasoning 1–5, traits{ regular[≤2], special? }, archetype (derived, cached) }
   squad: Unit[]            // named + grunts, active and reserve
   roster: { activeIds[≤4], capacity }   // activeIds = expedition roster; capacity = beds, 6 → 10 via barracks; dead units may linger in activeIds until the next recruit/roster change, use activeRosterUnits()
   relations: { [unitId]: Relation }
   resources { credits, supplies, plyx }
   base { facilities: { [id]: level } /* absent = level 1 */, upgrades?: { facilityId, toLevel, daysLeft }[] }
   inventory: ItemInstance[]   // P4: { uid, itemId, rarity, upgrade, affixes[] }; itemSeq? counts uids
-  world { regions{ [id]: { known, lastVisitedDay?, poi? } }, clocks[] /* { id, label, segments, filled, regionId?, visibleToPlayer, filledDay? } */, threads[] /* { id, title, status, flags[{id,description}], relatedUnits, relatedRegions, createdDay } */, factions{standing −100…100}, flags[], spineProgress /* beats completed */, spine?{ proposed?, proposedDay?, lastProposalDay? }, director?{ pending?, lastTickDay?, seq? }, incomingUnits?, lastExpeditionRegionId?, seeded?, startId?, clearanceTier? /* P4 reads, P5 writes: level cap tier 0–3 */ }
+  world { regions{ [id]: { known, lastVisitedDay?, poi? } }, clocks[] /* { id, label, segments, filled, regionId?, visibleToPlayer, filledDay? } */, threads[] /* { id, title, status, flags[{id,description}], relatedUnits, relatedRegions, createdDay } */, factions{standing −100…100}, flags[], spineProgress /* beats completed */, spine?{ proposed?, proposedDay?, lastProposalDay? }, director?{ pending?, lastTickDay?, seq? }, incomingUnits?, lastExpeditionRegionId?, seeded?, startId?, clearanceTier? /* P4 reads, P5 writes: level cap tier 0–3 */, options? /* P8 (planned): { [optionId]: choiceId } */ }
   missions { offered[] /* the board */, active[], completed[] /* newest 30 */ }   // Mission: { id, source, templateId, title, brief, regionId, danger, objective, deadlineDay?, rewardsTier, failureEffects, threadId?, spineBeat?, poiId?, scouted?, status, rewards? }
   rumors[] /* newest 20 */, dms: { [unitId]: DmMessage[] }, dmMeta?: { [unitId]: { day, sent } }   // P3: the unit's daily "social battery"
   memory { facts[], chronicle[], promises?[], nextId? }   // P3
   scene?: SceneRecord, proposals?: PendingProposal[]       // P3: the open scene (transcript stays in the ST chat) and open proposals
+  onboarding? { prologueId, stepId, completed[], skipped[], done }   // P11 (planned); existing campaigns migrate to done: true
+  objectives?: [{ id, text, source: prologue|spine|director|unit, dueDay?, done }]   // P11 (planned)
   calendar { scheduled[], nightEventsQueue[], nightEvent? /* head entry while the Night slot runs */, pendingScene? /* open talk holding its slot */, shortageStreak? }
   leash { authorizationsLeft, refreshDay, log[] /* entries { no, unitId, kind, day, context, outcome }, newest 60 */, seq?, seeded? }   // P6
   disloyalty?: { units: { [unitId]: LoyaltyRecord /* signs ≤ 6, attempts, nextCheckDay?, nextDoubtDay?, trigger?, cause?, deniedDay?, desertedDay?, stance?, returned? */ }, open?: Confrontation /* { kind: desertion|mutiny|return, unitId, day, at: night|mission_start, nightEntryId?, talkTried?, sympathizers?, combatId? } */ }   // P6
@@ -235,6 +245,7 @@ Unit {
   likes[], dislikes[], triggers[]   // tags
   equipment { weapon?, upper?, lower? }
   injuries[], injuryDays?, status: 'active'|'reserve'|'injured'|'deserted'|'dead'|'terminated'
+  dispositionOffset?   // P8 (planned): −2…+2 on top of the world disposition level, proposed at import
 }
 
 Relation {
@@ -244,6 +255,8 @@ Relation {
   dailyGain { trust, affinity, attraction }   // for diminishing returns; zeroed at every day rollover
   loyaltyBand: 'steady'|'wavering'|'breaking'  // with hysteresis; initial value from Trust: <10 breaking, <25 wavering, else steady
   affair?: { as, hiddenFrom[], since }   // P3: a concealed romance until discovered
+  metDay?                // P7 (planned): first day the unit knew the commander (default: her join day)
+  impunityRecord?        // P9 (planned): stored term of Impunity, −40…40, decays toward 0
   marks: MarkInstance[]  // RESERVED in v1 (always empty), see §10 "Marks"; present so no migration is needed later
 }
 ```
@@ -285,6 +298,8 @@ P4: **easy retry** (default off) and generated enemy names (default off) are glo
 
 P6: **generated dilemmas** on/off (`dilemmasEnabled`, default on; off = the template's authored block is shown) — SYS › Decisions.
 
+Planned (P7–P10): **first-impression τ** (P7; decay of presence and image consistency, default 7 days) · **dithered portraits** (P10) · **readable mode** (P10; disables scanlines, flicker, dithering and glitch, one font step up) · **reduced motion** (P10; also honours `prefers-reduced-motion`) · **sound volume / mute** (P10; default low) · **device skin override** (P10; default: the skin follows the corporation).
+
 P5: **story director** on/off (`directorEnabled`, default on; off = the engine's fallback plans the world), **story beat cooldown** (`beatCooldownDays`, 1–14, default 3) and **expedition recap** (`expeditionRecap`, default on) — SYS › World.
 
 Defaults in code: Desire/Bond defects **off**, show raw values **off**, sprite mode **native**, edit lock **on**; P3: intent extraction **per exchange** (min confidence 0.5), scene pacing 30 exchanges, typing 60 chars/s, romance **on**, explicit scenes **off**, romantic initiative **medium**, unit DMs **on**, chronicle compaction **on**. The campaign stores a snapshot of the Desire/Bond setting it was started with (`settings.desireBondDefects`); the engine uses that snapshot, not the global value, when it validates later changes. The edit lock does **not** apply inside the new-campaign wizard (setup is always editable); it does apply to "Re-sync from card" on a running campaign.
@@ -300,14 +315,28 @@ Defaults in code: Desire/Bond defects **off**, show raw values **off**, sprite m
 | P4 | Combat, progression, items | P0, P1 (P2 for workshop) | implemented |
 | P5 | World map, expeditions, missions, director | P0–P4 | implemented |
 | P6 | Dilemmas, disloyalty & the Leash | P0–P5 | implemented |
+| P7a | Analysis tool (contextual explanations) | P0–P6 | planned (`plans/2026-11-12-p7a-analysis-tool.md`) |
+| P7 | Commander profile & traits | P0–P6 | spec |
+| P8 | World options & disposition | P0–P7 | spec |
+| P9 | Impunity, discipline, demands, reputation | P0–P8 | spec |
+| P10 | Visual upgrade (hub, device skins, voices) | P0–P6 | spec |
+| P11 | Prologue & onboarding | P7, P8, P10 | spec |
+| P12 | Special traits: Secret Frequency, Bloom-induced Paranoia, Web of Debts | P5, P6, P7, P9 | spec |
+| P13 | LEASHSWAP mode | P0, P5, P6, P7, P9, P12 | spec |
 
-"Implemented" = automated tests pass; the in-SillyTavern checklists `MANUAL_TEST_P*.md` are run by the project owner. An implemented package's spec ends with an **Implemented as** section (or a status line) listing where the code differs from the original draft: the code wins. Work not yet started has plans only in `docs/plans/` when someone wrote one; if none exists, write it first (see `CLAUDE.md`).
+Order and session plan for P7a–P13: `ROADMAP-next.md`.
+
+"Implemented" = automated tests pass; the in-SillyTavern checklists `MANUAL_TEST_P*.md` are run by the project owner. Specs of implemented packages are **historical**: the code is the source of truth where they differ. An implemented package's spec ends with an **Implemented as** section (or a status line) listing where the code differs from the original draft: the code wins. Work not yet started has plans only in `docs/plans/` when someone wrote one; if none exists, write it first (see `CLAUDE.md`).
 
 Each package must leave the extension in a runnable state and ship with tests for its engine parts. A package may add content to `content/core` but must not change another package's public engine interfaces without updating that package's spec.
 
 ## 10. Roadmap beyond v1
 
 **Marks (special statuses)** — a relationship layer that lives *in parallel* with relationship states and arises only from extreme, usually irreversible choices or events. A unit can be `lover` and `limiter_torn` at the same time. Each mark: `{ id, origin (dilemma/defect arc/event ids), prerequisites, effects (combat, relationship modifiers, Leash rules, directives), reversible: bool, visibleToSquad: bool }`. Ideas to develop: **Neural Sync** (commander's and her neurons linked: shared stress, she acts on his intent without CP, his injuries hurt her); **Limiter Torn** (commander ripped out her limiter: huge power, the Leash no longer works on her, loyalty is now purely personal); **Blood Debt** (she owes him her life, or he owes her); **Shared Strain** (infected each other with the Bloom; mutation clocks linked); **Ghost Copy** (an echo of the commander lives in her implant); **Branded** (corporation marked her as defective-beyond-use: hunted). The `Relation.marks[]` field is reserved in v1 so this lands without a save migration.
+
+**Special traits beyond P12** — `former_off_spec`, `bound_elsewhere`, `voice_synth` (on P7's trait framework). The **LEASHSWAP mode** (P13) replaces the earlier `collared` idea.
+
+**Bloom update** — a mutation slot on units (type, stage 1–4, visibility, self-attitude); progression clocks; treatment; infection, the commander included; the mark **Shared Strain**; the defect Latent Strain moves onto these rails. Art cost: visible stages need new sprite packs, so limit the visible stages or keep the changes off-sprite.
 
 Action/real-time combat (shelved) · permadeath mode · module system for third-party content packs (declarative first; third-party JS only with an explicit trust model) · heavy wounds / limb loss module · NPC↔NPC relationships inside the squad · bosses & special enemies · more starting points (other corporations, non-corporate starts) · auto-generated backgrounds · outfit variants for sprites · deeper multi-romance support.
 

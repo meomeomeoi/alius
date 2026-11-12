@@ -2,6 +2,8 @@
 
 **Depends on:** P0–P4. **Read:** overview; `content/lore.md` (§3, §4, §6, §7).
 
+> **Historical spec.** This package is implemented; where this text and the code differ, the code is the source of truth (see **Implemented as**).
+
 **Status:** implemented (plan: `plans/2026-11-09-p5-world-expeditions-director.md`). Automated tests pass; the in-SillyTavern checklist `MANUAL_TEST_P5.md` still has to be run by hand. Where an earlier draft of this spec said something else, the code won; the differences are listed under **Implemented as** at the end.
 
 ## Goal

@@ -2,6 +2,8 @@
 
 **Depends on:** nothing. **Read:** `00-overview.md` (all). **Content:** none required; ships empty `content/core` skeleton.
 
+> **Historical spec.** This package is implemented; where this text and the code differ, the code is the source of truth (see **Implemented as**).
+
 **Status:** implemented (plan: `plans/2026-11-08-p0-foundation.md`; checklist `MANUAL_TEST_P0.md`). Later packages added call types (`profile_import`, `flavor`, `activity_vignette`), settings and shell pieces on top; the current interface list is in `00-overview.md` §5.4.
 
 ## Goal

@@ -34,7 +34,7 @@ Each package: **one planning session** (agent writes `docs/plans/<date>-pN-….m
 
 Rule of thumb from P0–P6: one chunk per session, start each session with the plan file and ticked boxes, stop at the chunk boundary.
 
-## Overview changes (apply in the P7a planning session)
+## Overview changes (applied in the P7a planning session, 2026-11-12)
 
 1. §3 Principles: add **P10 — Weakness is a playstyle** (weaker commander is really weaker, never secretly compensated, never dead-ended; every body check has a non-body route) and **P11 — Expression has no mechanical value** (only tastes, world options and narration).
 2. §6 Data model: commander `body`, `expression`, `seasoning`, `traits`, `archetype`; relation `metDay`, `impunityRecord`, `dispositionOffset` (on unit); campaign `world.options`, `onboarding`, `objectives`.

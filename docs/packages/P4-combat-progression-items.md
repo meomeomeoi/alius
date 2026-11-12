@@ -2,6 +2,8 @@
 
 **Depends on:** P0, P1 (P2 for workshop/medbay hooks, P3 for synergies — use stubs if not present). **Read:** overview; `content/roles.md` (all); `content/defects.md` (effects); `content/lore.md` §7.
 
+> **Historical spec.** This package is implemented; where this text and the code differ, the code is the source of truth (see **Implemented as**).
+
 **Status:** implemented (plan: `plans/2026-11-09-p4-combat-progression-items.md`). Automated tests pass; the in-SillyTavern checklist `MANUAL_TEST_P4.md` still has to be run by hand. Where an earlier draft of this spec said something else, the code won; the differences are listed under **Implemented as** at the end.
 
 ## Goal

@@ -44,7 +44,7 @@ Rulings taken while planning; Task 16 lists them in the spec's **Implemented as*
 - **Refresh.** `shell.refresh()` closes a transient panel and rebuilds a pinned one from the current state (its target may be gone).
 - **Coverage markers.** There are no shared stat/option/chip classes today. This package introduces `alius-stat`, `alius-chip`, `alius-option`; the coverage test checks `ANALYZE_MARKERS = '.alius-stat, .alius-chip, .alius-option'`. Text that is neither (headings, names, free input) is not marked.
 - **Event causes.** History lines need one-line causes: `eventDeltas[]` gets optional `cause: str.max(80)` (content); missing → the humanized event id.
-- **Overview edits.** `docs/ROADMAP-next.md` asks the P7a *planning* session to apply eight overview changes for P7–P13. This plan does not (it adds no code for them); Task 16 applies only item 8 (the coverage rule) and leaves the rest to the next planning session that owns them.
+- **Overview edits.** The eight overview changes `docs/ROADMAP-next.md` assigns to this planning session were applied together with this plan (principles P10–P12, planned data-model fields, `commander_import`, planned settings, P7a–P13 in §9, the §10 roadmap items, historical notes on P0–P6). P12 in §3 is the coverage rule; Task 16 only turns P7a's §9 row to implemented and fills §5.4/§6/§8 with what was built.
 
 ## File Structure
 
@@ -369,7 +369,7 @@ Reads `docs/content/roles.md` and `docs/content/defects.md`; texts go into JSON 
 ### Task 16: Build, docs, acceptance
 
 **Files:**
-- Modify: `dist/index.js`, `style.css` (via `npm run build`), `docs/packages/P7a-analysis-tool.md` (status line + **Implemented as** with every ruling above and those taken while implementing), `docs/00-overview.md` (§5.4: `glossary` registry, `description`, link syntax, `registerAnalyzeProvider`, `registerKnowledgeRule`, `buildKnowledge`, `analyzeAttrs` / `ANALYZE_MARKERS`, `ledger`, `unitStatSteps`, `ShellDeps.analyze`; §6 `ledger?`; §8 the three settings; §9 add P7a as implemented; §11 the coverage rule: every player-facing stat, option and chip carries `data-analyze`, new values add a provider in the same package — ROADMAP item 8), `docs/CONTENT.md` (`glossary`, `description`, `cause`, link syntax with an example), `docs/packages/P7-…md` … `P13-…md` (**Interfaces already provided by P7a**: markers, providers, knowledge rules, glossary), `docs/README.md`, `CLAUDE.md` (pointer to the P7a **Implemented as**)
+- Modify: `dist/index.js`, `style.css` (via `npm run build`), `docs/packages/P7a-analysis-tool.md` (status line + **Implemented as** with every ruling above and those taken while implementing), `docs/00-overview.md` (§5.4: `glossary` registry, `description`, link syntax, `registerAnalyzeProvider`, `registerKnowledgeRule`, `buildKnowledge`, `analyzeAttrs` / `ANALYZE_MARKERS`, `ledger`, `unitStatSteps`, `ShellDeps.analyze`; §6 `ledger?`; §8 the three settings; §9 P7a row → implemented), `docs/CONTENT.md` (`glossary`, `description`, `cause`, link syntax with an example), `docs/packages/P7-…md` … `P13-…md` (**Interfaces already provided by P7a**: markers, providers, knowledge rules, glossary), `docs/README.md`, `CLAUDE.md` (pointer to the P7a **Implemented as**)
 - Create: `docs/MANUAL_TEST_P7a.md`
 - Test: `tests/build.test.ts` (existing)
 

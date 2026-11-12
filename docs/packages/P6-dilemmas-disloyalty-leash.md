@@ -2,6 +2,8 @@
 
 **Depends on:** P0–P5.
 
+> **Historical spec.** This package is implemented; where this text and the code differ, the code is the source of truth (see **Implemented as**).
+
 **Status:** implemented (plan: `plans/2026-11-11-p6-dilemmas-disloyalty-leash.md`). Automated tests pass; the in-SillyTavern checklist `MANUAL_TEST_P6.md` still has to be run by hand. Where an earlier draft of this spec said something else, the code won; the differences are listed under **Implemented as** at the end.
 
 **Read:** overview (principles P2, P3, P6); `content/lore.md` §2, §5; `content/defects.md` (arcs).
