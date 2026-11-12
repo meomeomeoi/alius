@@ -1,0 +1,17 @@
+[
+  {
+    "id": "trust",
+    "term": "Trust",
+    "short": "How much a soldier believes in you as her commander. It decides whether she obeys."
+  },
+  {
+    "id": "stress",
+    "term": "Stress",
+    "short": "Strain on a soldier, 0–100. It sharpens her defects and, at the top, breaks her."
+  },
+  {
+    "id": "cp",
+    "term": "CP",
+    "short": "Command Points: what you spend in combat to give orders."
+  }
+]

@@ -1,6 +1,7 @@
 import { INTERNAL_HISTORY_TYPES } from '../engine/relations/vocab';
-import type { Conditions } from './schemas';
-import type { Entry, RegistryName } from './types';
+import { DESCRIBED_REGISTRIES, type Conditions } from './schemas';
+import { linkTargets } from './links';
+import { REGISTRY_NAMES, type Entry, type RegistryName } from './types';
 
 export interface Ref {
   registry: RegistryName;
@@ -389,3 +390,50 @@ registerChecks('items', (entry, regs) => {
   }
   return [{ path: 'class', message: `class "${cls}" is not a weapon class or armor weight of any role` }];
 });
+
+// ---------------------------------------------------------------------------------------------
+// P7a: glossary entries and `[[links]]` in descriptions
+
+/** What a link target points at: a registry entry, nothing to check (`setting:`), or an unknown source. */
+type LinkResolution = { registry: RegistryName; id: string } | { registry: null; unchecked: true } | { registry: null; unknown: string };
+
+export function resolveLink(target: string): LinkResolution {
+  const i = target.indexOf(':');
+  if (i < 0) return { registry: 'glossary', id: target };
+  const source = target.slice(0, i);
+  const id = target.slice(i + 1);
+  if (source === 'setting') return { registry: null, unchecked: true };
+  if ((REGISTRY_NAMES as readonly string[]).includes(source)) return { registry: source as RegistryName, id };
+  return { registry: null, unknown: source };
+}
+
+/** Every link target in the text fields of an entry, with the path of the field. */
+function textLinks(registry: RegistryName, entry: Entry): Array<{ path: string; target: string }> {
+  const out: Array<{ path: string; target: string }> = [];
+  const scan = (field: string) => {
+    const v = entry[field];
+    if (typeof v === 'string') for (const target of linkTargets(v)) out.push({ path: field, target });
+  };
+  scan('description');
+  if (registry === 'glossary') {
+    scan('short');
+    scan('long');
+    if (Array.isArray(entry.see)) {
+      entry.see.forEach((id, i) => out.push({ path: `see[${i}]`, target: String(id) }));
+    }
+  }
+  return out;
+}
+
+for (const registry of ['glossary', ...DESCRIBED_REGISTRIES] as RegistryName[]) {
+  registerRefs(registry, (entry) =>
+    textLinks(registry, entry).flatMap(({ path, target }) => {
+      const r = resolveLink(target);
+      return r.registry === null ? [] : [{ registry: r.registry, id: r.id, path }];
+    }));
+  registerChecks(registry, (entry) =>
+    textLinks(registry, entry).flatMap(({ path, target }) => {
+      const r = resolveLink(target);
+      return 'unknown' in r ? [{ path, message: `unknown source "${r.unknown}" in link "${target}"` }] : [];
+    }));
+}

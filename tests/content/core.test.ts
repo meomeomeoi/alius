@@ -11,6 +11,12 @@ describe('core content pack', () => {
     expect(errors).toEqual([]);
   });
 
+  it('glossary is a registry of the core pack', async () => {
+    const { registries: r } = await load();
+    expect(r.glossary.size).toBeGreaterThanOrEqual(3);
+    for (const id of ['trust', 'stress', 'cp']) expect(r.glossary.has(id), id).toBe(true);
+  });
+
   it('counts: 4 corporations, 2 starts, 6 crimes, 6 roles, 12 signatures, 18 defects (4 desire_bond), 14 statuses', async () => {
     const { registries: r } = await load();
     expect(r.corporations.size).toBe(4);

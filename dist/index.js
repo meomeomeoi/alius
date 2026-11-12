@@ -11530,7 +11530,9 @@ var REGISTRY_NAMES = [
   "clocks",
   "rewardTiers",
   // P6
-  "loyaltySigns"
+  "loyaltySigns",
+  // P7a
+  "glossary"
 ];
 var PackManifestSchema = external_exports.object({
   id: external_exports.string().min(1),
@@ -11545,6 +11547,33 @@ var PackManifestSchema = external_exports.object({
 }).strict();
 function emptyRegistries() {
   return Object.fromEntries(REGISTRY_NAMES.map((n) => [n, /* @__PURE__ */ new Map()]));
+}
+
+// src/content/links.ts
+var LINK = /\[\[([^[\]|]+)(?:\|([^[\]]*))?\]\]/g;
+function parseLinks(text) {
+  const out = [];
+  let last = 0;
+  for (const m of text.matchAll(LINK)) {
+    const at = m.index ?? 0;
+    if (at > last) out.push(text.slice(last, at));
+    const target = m[1].trim();
+    const label2 = m[2]?.trim();
+    out.push(label2 ? { target, label: label2 } : { target });
+    last = at + m[0].length;
+  }
+  if (last < text.length) out.push(text.slice(last));
+  return out;
+}
+function idPart(target) {
+  const i = target.indexOf(":");
+  return i < 0 ? target : target.slice(i + 1);
+}
+function stripLinks(text) {
+  return parseLinks(text).map((p) => typeof p === "string" ? p : p.label ?? idPart(p.target)).join("");
+}
+function linkTargets(text) {
+  return parseLinks(text).flatMap((p) => typeof p === "string" ? [] : [p.target]);
 }
 
 // src/content/schemas.ts
@@ -12221,6 +12250,8 @@ var eventRow = external_exports.object({
 }).strict();
 var EventDeltaSchema = BaseEntrySchema.extend({
   id: external_exports.enum(EVENT_TYPES),
+  /** P7a: one-line cause shown in relationship history readings; absent = the humanized event id. */
+  cause: str2.max(80).optional(),
   rows: external_exports.object({ minor: eventRow, moderate: eventRow, major: eventRow, extreme: eventRow }).strict(),
   /** The row holds magnitudes; the sign comes from value alignment (decision events). */
   valueAligned: external_exports.boolean().optional(),
@@ -12535,6 +12566,60 @@ Object.assign(registrySchemas, {
   dilemmaTemplates: DilemmaTemplateSchema,
   loyaltySigns: LoyaltySignSchema
 });
+var GLOSSARY_SHORT_MAX = 160;
+var GLOSSARY_LONG_MAX = 600;
+var DESCRIPTION_MAX = 600;
+var GlossarySchema = BaseEntrySchema.extend({
+  term: str2,
+  short: str2,
+  long: str2.optional(),
+  see: external_exports.array(str2).optional()
+}).superRefine((g, ctx2) => {
+  if (stripLinks(g.short).length > GLOSSARY_SHORT_MAX) {
+    ctx2.addIssue({ code: "custom", path: ["short"], message: `short is at most ${GLOSSARY_SHORT_MAX} characters` });
+  }
+  if (g.long !== void 0 && stripLinks(g.long).length > GLOSSARY_LONG_MAX) {
+    ctx2.addIssue({ code: "custom", path: ["long"], message: `long is at most ${GLOSSARY_LONG_MAX} characters` });
+  }
+});
+var DESCRIBED_REGISTRIES = [
+  "roles",
+  "skills",
+  "signatures",
+  "statuses",
+  "defects",
+  "items",
+  "affixes",
+  "enemies",
+  "enemyCategories",
+  "regions",
+  "nodeTypes",
+  "activities",
+  "facilities",
+  "crimes",
+  "corporations",
+  "starts",
+  "relationshipStates",
+  "locations",
+  "orders",
+  "synergies"
+];
+function withDescription(schema) {
+  return schema.superRefine((entry, ctx2) => {
+    const d = entry.description;
+    if (d === void 0) return;
+    if (typeof d !== "string" || d.length === 0) {
+      ctx2.addIssue({ code: "custom", path: ["description"], message: "description must be a non-empty string" });
+    } else if (stripLinks(d).length > DESCRIPTION_MAX) {
+      ctx2.addIssue({ code: "custom", path: ["description"], message: `description is at most ${DESCRIPTION_MAX} characters` });
+    }
+  });
+}
+registrySchemas.glossary = GlossarySchema;
+for (const name of DESCRIBED_REGISTRIES) {
+  if (name === "skills" || name === "statuses") continue;
+  registrySchemas[name] = withDescription(registrySchemas[name]);
+}
 
 // src/engine/dilemma/effects.ts
 var EFFECT_KINDS = ["resource", "unit_event", "faction", "clock", "flag", "stress", "social_check"];
@@ -21442,6 +21527,41 @@ registerChecks("items", (entry, regs) => {
   }
   return [{ path: "class", message: `class "${cls}" is not a weapon class or armor weight of any role` }];
 });
+function resolveLink(target) {
+  const i = target.indexOf(":");
+  if (i < 0) return { registry: "glossary", id: target };
+  const source = target.slice(0, i);
+  const id = target.slice(i + 1);
+  if (source === "setting") return { registry: null, unchecked: true };
+  if (REGISTRY_NAMES.includes(source)) return { registry: source, id };
+  return { registry: null, unknown: source };
+}
+function textLinks(registry2, entry) {
+  const out = [];
+  const scan2 = (field2) => {
+    const v = entry[field2];
+    if (typeof v === "string") for (const target of linkTargets(v)) out.push({ path: field2, target });
+  };
+  scan2("description");
+  if (registry2 === "glossary") {
+    scan2("short");
+    scan2("long");
+    if (Array.isArray(entry.see)) {
+      entry.see.forEach((id, i) => out.push({ path: `see[${i}]`, target: String(id) }));
+    }
+  }
+  return out;
+}
+for (const registry2 of ["glossary", ...DESCRIBED_REGISTRIES]) {
+  registerRefs(registry2, (entry) => textLinks(registry2, entry).flatMap(({ path, target }) => {
+    const r = resolveLink(target);
+    return r.registry === null ? [] : [{ registry: r.registry, id: r.id, path }];
+  }));
+  registerChecks(registry2, (entry) => textLinks(registry2, entry).flatMap(({ path, target }) => {
+    const r = resolveLink(target);
+    return "unknown" in r ? [{ path, message: `unknown source "${r.unknown}" in link "${target}"` }] : [];
+  }));
+}
 
 // src/content/loader.ts
 var UNSAFE_KEYS = /* @__PURE__ */ new Set(["__proto__", "constructor", "prototype"]);

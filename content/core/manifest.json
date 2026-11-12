@@ -33,6 +33,7 @@
     "missionTemplates": "missionTemplates.json",
     "rewardTiers": "rewardTiers.json",
     "dilemmaTemplates": "dilemmaTemplates.json",
-    "loyaltySigns": "loyaltySigns.json"
+    "loyaltySigns": "loyaltySigns.json",
+    "glossary": "glossary.json"
   }
 }

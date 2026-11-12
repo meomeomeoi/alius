@@ -5,6 +5,7 @@ import { VALUE_AXES } from '../engine/state/types';
 import { DILEMMA_CONTEXTS } from '../engine/dilemma/types';
 import type { WorldEffect } from '../engine/world/types';
 import { REGISTRY_NAMES, type RegistryName } from './types';
+import { stripLinks } from './links';
 
 export const ID_PATTERN = /^[a-z0-9_:.-]+$/;
 
@@ -641,6 +642,8 @@ const eventRow = z.object({
 
 export const EventDeltaSchema = BaseEntrySchema.extend({
   id: z.enum(EVENT_TYPES),
+  /** P7a: one-line cause shown in relationship history readings; absent = the humanized event id. */
+  cause: str.max(80).optional(),
   rows: z.object({ minor: eventRow, moderate: eventRow, major: eventRow, extreme: eventRow }).strict(),
   /** The row holds magnitudes; the sign comes from value alignment (decision events). */
   valueAligned: z.boolean().optional(),
@@ -986,3 +989,51 @@ Object.assign(registrySchemas, {
   dilemmaTemplates: DilemmaTemplateSchema,
   loyaltySigns: LoyaltySignSchema,
 });
+
+// ---------------------------------------------------------------------------------------------
+// P7a: glossary and entry descriptions. Both may carry `[[target]]` links (see `links.ts`); the
+// length limits count the displayed text.
+
+export const GLOSSARY_SHORT_MAX = 160;
+export const GLOSSARY_LONG_MAX = 600;
+export const DESCRIPTION_MAX = 600;
+
+export const GlossarySchema = BaseEntrySchema.extend({
+  term: str,
+  short: str,
+  long: str.optional(),
+  see: z.array(str).optional(),
+}).superRefine((g, ctx) => {
+  if (stripLinks(g.short).length > GLOSSARY_SHORT_MAX) {
+    ctx.addIssue({ code: 'custom', path: ['short'], message: `short is at most ${GLOSSARY_SHORT_MAX} characters` });
+  }
+  if (g.long !== undefined && stripLinks(g.long).length > GLOSSARY_LONG_MAX) {
+    ctx.addIssue({ code: 'custom', path: ['long'], message: `long is at most ${GLOSSARY_LONG_MAX} characters` });
+  }
+});
+
+/** Player-visible registries whose entries carry an optional `description` (skills and statuses already require one). */
+export const DESCRIBED_REGISTRIES = [
+  'roles', 'skills', 'signatures', 'statuses', 'defects', 'items', 'affixes', 'enemies',
+  'enemyCategories', 'regions', 'nodeTypes', 'activities', 'facilities', 'crimes',
+  'corporations', 'starts', 'relationshipStates', 'locations', 'orders', 'synergies',
+] as const satisfies readonly RegistryName[];
+
+/** Adds the optional `description` rule to a registry schema without changing its shape. */
+function withDescription(schema: z.ZodTypeAny): z.ZodTypeAny {
+  return schema.superRefine((entry: { description?: unknown }, ctx) => {
+    const d = entry.description;
+    if (d === undefined) return;
+    if (typeof d !== 'string' || d.length === 0) {
+      ctx.addIssue({ code: 'custom', path: ['description'], message: 'description must be a non-empty string' });
+    } else if (stripLinks(d).length > DESCRIPTION_MAX) {
+      ctx.addIssue({ code: 'custom', path: ['description'], message: `description is at most ${DESCRIPTION_MAX} characters` });
+    }
+  });
+}
+
+registrySchemas.glossary = GlossarySchema;
+for (const name of DESCRIBED_REGISTRIES) {
+  if (name === 'skills' || name === 'statuses') continue; // already require a `description`
+  registrySchemas[name] = withDescription(registrySchemas[name]);
+}

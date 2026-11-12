@@ -95,11 +95,11 @@ docs/** (Task 16), tests/** mirror src, tests/fixtures/analyze/, tests/helpers/a
   - `EventDeltaSchema` + `cause: str.max(80).optional()`.
   - Refs: a target `glossary:<id>` or bare `<id>` → `glossary`; `<registry>:<id>` with a known registry name → that registry; `setting:*` → none; any other source → a broken-reference error `unknown source "<src>"`. Applied to `glossary.see`, links in `glossary.short/long`, and links in every `description`.
 
-- [ ] **Step 1: Write the failing tests** — `links`: `parses a bare and a labelled link`; `an unclosed bracket stays text`; `strip keeps labels and the id part`. `glossarySchemas`: `short over 160 displayed chars is rejected, markup does not count`; `long over 600 is rejected`; `a see entry pointing at a missing glossary id is a broken reference`; `a link to items:nope in a description is a broken reference`; `a setting: link is not checked`; `an unknown source is reported`; `description is optional on items and roles`; `eventDeltas accept a cause up to 80 chars`. `core`: `the core pack loads with no errors` (still), `glossary is a registry of the core pack`.
-- [ ] **Step 2: Run** `npx vitest run tests/content` → FAIL.
-- [ ] **Step 3: Implement** links, schemas, refs, manifest entry, placeholder file.
-- [ ] **Step 4: Run** `npx vitest run` → whole suite green.
-- [ ] **Step 5: Commit** `feat(content): glossary registry, descriptions and drill-down link syntax`.
+- [x] **Step 1: Write the failing tests** — `links`: `parses a bare and a labelled link`; `an unclosed bracket stays text`; `strip keeps labels and the id part`. `glossarySchemas`: `short over 160 displayed chars is rejected, markup does not count`; `long over 600 is rejected`; `a see entry pointing at a missing glossary id is a broken reference`; `a link to items:nope in a description is a broken reference`; `a setting: link is not checked`; `an unknown source is reported`; `description is optional on items and roles`; `eventDeltas accept a cause up to 80 chars`. `core`: `the core pack loads with no errors` (still), `glossary is a registry of the core pack`.
+- [x] **Step 2: Run** `npx vitest run tests/content` → FAIL.
+- [x] **Step 3: Implement** links, schemas, refs, manifest entry, placeholder file.
+- [x] **Step 4: Run** `npx vitest run` → whole suite green.
+- [x] **Step 5: Commit** `feat(content): glossary registry, descriptions and drill-down link syntax`.
 
 ---
 
