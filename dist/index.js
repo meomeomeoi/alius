@@ -15763,7 +15763,10 @@ var DEFAULT_SETTINGS = {
   directorEnabled: true,
   beatCooldownDays: 3,
   expeditionRecap: true,
-  dilemmasEnabled: true
+  dilemmasEnabled: true,
+  analyzeEnabled: true,
+  analyzeAnimation: "full",
+  analyzeHoverDelay: 250
 };
 var fieldSchemas = {
   mechanicProfileId: external_exports.string(),
@@ -15796,7 +15799,10 @@ var fieldSchemas = {
   directorEnabled: external_exports.boolean(),
   beatCooldownDays: external_exports.number().int().min(1).max(14),
   expeditionRecap: external_exports.boolean(),
-  dilemmasEnabled: external_exports.boolean()
+  dilemmasEnabled: external_exports.boolean(),
+  analyzeEnabled: external_exports.boolean(),
+  analyzeAnimation: external_exports.enum(["full", "short", "off"]),
+  analyzeHoverDelay: external_exports.number().int().min(100).max(1500)
 };
 var budgetSchema = external_exports.number().int().min(1);
 var isObj22 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -19334,6 +19340,10 @@ function renderSysTab(host, ctx2) {
     field("Expedition recap (main model)", checkbox("expeditionRecap", settings.expeditionRecap)),
     h("h3", {}, "Decisions"),
     field("Generated dilemmas (mechanic model; off: authored options)", checkbox("dilemmasEnabled", settings.dilemmasEnabled)),
+    h("h3", {}, "Analysis"),
+    field("Analysis tool (hover, ? or long-press)", checkbox("analyzeEnabled", settings.analyzeEnabled)),
+    field("Analysis animation", select("analyzeAnimation", [["full", "full"], ["short", "short"], ["off", "off"]], settings.analyzeAnimation)),
+    field("Hover delay (ms, 100\u20131500)", numberInput("analyzeHoverDelay", settings.analyzeHoverDelay, (n) => apply({ analyzeHoverDelay: n }).analyzeHoverDelay, { min: "100", max: "1500", step: "50" })),
     h("h3", {}, "Intimacy"),
     field("Romance", checkbox("romance", settings.romance)),
     field("Explicit scenes allowed", checkbox("explicitContent", settings.explicitContent)),

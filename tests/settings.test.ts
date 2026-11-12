@@ -134,4 +134,26 @@ describe('settings', () => {
     expect(st.settings.dilemmasEnabled).toBe(false);
     expect(updateSettings(st, { dilemmasEnabled: 'no' as never }).dilemmasEnabled).toBe(false);
   });
+  it('the analysis settings default to enabled, full and 250 (P7a)', () => {
+    const st = new FakeStAdapter();
+    expect(getSettings(st)).toMatchObject({ analyzeEnabled: true, analyzeAnimation: 'full', analyzeHoverDelay: 250 });
+    const next = updateSettings(st, { analyzeEnabled: false, analyzeAnimation: 'short', analyzeHoverDelay: 400 });
+    expect(next).toMatchObject({ analyzeEnabled: false, analyzeAnimation: 'short', analyzeHoverDelay: 400 });
+    expect(st.settings).toMatchObject({ analyzeEnabled: false, analyzeAnimation: 'short', analyzeHoverDelay: 400 });
+    expect(updateSettings(st, { analyzeAnimation: 'slow' as never }).analyzeAnimation).toBe('short');
+    expect(updateSettings(st, { analyzeEnabled: 'yes' as never }).analyzeEnabled).toBe(false);
+  });
+
+  it('a hover delay of 50 or 2000 falls back to the stored value', () => {
+    const st = new FakeStAdapter();
+    updateSettings(st, { analyzeHoverDelay: 300 });
+    for (const bad of [50, 99, 1501, 2000, 250.5, '300', null]) {
+      expect(updateSettings(st, { analyzeHoverDelay: bad as never }).analyzeHoverDelay, String(bad)).toBe(300);
+    }
+    expect(updateSettings(st, { analyzeHoverDelay: 100 }).analyzeHoverDelay).toBe(100);
+    expect(updateSettings(st, { analyzeHoverDelay: 1500 }).analyzeHoverDelay).toBe(1500);
+    const fresh = new FakeStAdapter();
+    fresh.settings = { analyzeHoverDelay: 5000, analyzeAnimation: 'x' };
+    expect(getSettings(fresh)).toMatchObject({ analyzeHoverDelay: 250, analyzeAnimation: 'full' });
+  });
 });

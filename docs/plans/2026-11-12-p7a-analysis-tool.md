@@ -112,9 +112,9 @@ docs/** (Task 16), tests/** mirror src, tests/fixtures/analyze/, tests/helpers/a
 **Interfaces:**
 - Produces: `AliusSettings.analyzeEnabled: boolean` (default `true`), `analyzeAnimation: 'full' | 'short' | 'off'` (default `'full'`), `analyzeHoverDelay: number` (int 100–1500, default `250`); SYS section `h3 'Analysis'` after **Decisions** with `field('Analysis tool (hover, ? or long-press)', checkbox('analyzeEnabled'))`, `field('Analysis animation', select('analyzeAnimation', [['full','full'],['short','short'],['off','off']]))`, `field('Hover delay (ms, 100–1500)', numberInput(...))`.
 
-- [ ] **Step 1: Write the failing tests** — `defaults are enabled, full and 250`; `a hover delay of 50 or 2000 falls back to the stored value`; SYS: `the Analysis section changes the three settings`.
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → PASS, suite green.
-- [ ] **Step 5: Commit** `feat(settings): analysis tool settings`.
+- [x] **Step 1: Write the failing tests** — `defaults are enabled, full and 250`; `a hover delay of 50 or 2000 falls back to the stored value`; SYS: `the Analysis section changes the three settings`.
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → PASS, suite green.
+- [x] **Step 5: Commit** `feat(settings): analysis tool settings`.
 
 ---
 

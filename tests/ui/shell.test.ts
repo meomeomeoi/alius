@@ -550,4 +550,31 @@ describe('SYS combat settings', () => {
     expect(box('beatCooldownDays').value).toBe('9');
     expect(st.settings.beatCooldownDays).toBe(9);
   });
+  it('the Analysis section changes the three settings', () => {
+    const { shell, st } = setup();
+    shell.open();
+    shell.showTab('sys');
+    const text = document.querySelector('#alius-shell')!.textContent!;
+    expect(text).toContain('Analysis');
+    expect(text.indexOf('Decisions')).toBeLessThan(text.indexOf('Analysis'));
+    expect(text.indexOf('Analysis')).toBeLessThan(text.indexOf('Intimacy'));
+    const input = (name: string) => document.querySelector<HTMLInputElement & HTMLSelectElement>(`#alius-shell [name="${name}"]`)!;
+    expect(input('analyzeEnabled').checked).toBe(true);
+    expect(input('analyzeAnimation').value).toBe('full');
+    expect(input('analyzeHoverDelay').value).toBe('250');
+    input('analyzeEnabled').checked = false;
+    input('analyzeEnabled').dispatchEvent(new Event('change', { bubbles: true }));
+    expect(st.settings.analyzeEnabled).toBe(false);
+    input('analyzeAnimation').value = 'off';
+    input('analyzeAnimation').dispatchEvent(new Event('change', { bubbles: true }));
+    expect(st.settings.analyzeAnimation).toBe('off');
+    input('analyzeHoverDelay').value = '600';
+    input('analyzeHoverDelay').dispatchEvent(new Event('change', { bubbles: true }));
+    expect(st.settings.analyzeHoverDelay).toBe(600);
+    // a value the settings reject snaps back to what is stored
+    input('analyzeHoverDelay').value = '50';
+    input('analyzeHoverDelay').dispatchEvent(new Event('change', { bubbles: true }));
+    expect(input('analyzeHoverDelay').value).toBe('600');
+    expect(st.settings.analyzeHoverDelay).toBe(600);
+  });
 });

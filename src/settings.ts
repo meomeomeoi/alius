@@ -54,6 +54,12 @@ export interface AliusSettings {
   expeditionRecap: boolean;
   /** P6: the mechanic model writes dilemmas (off: the authored block of the template is shown). */
   dilemmasEnabled: boolean;
+  /** P7a: hover, `?` and long-press open the analysis panel. */
+  analyzeEnabled: boolean;
+  /** P7a: the ANALYZING animation (`full`: 600 ms first time, 150 ms after; `short`: 150 ms; `off`: none). */
+  analyzeAnimation: 'full' | 'short' | 'off';
+  /** P7a: hover time before the panel opens, ms (100–1500). */
+  analyzeHoverDelay: number;
 }
 
 export const DEFAULT_SETTINGS: AliusSettings = {
@@ -102,6 +108,9 @@ export const DEFAULT_SETTINGS: AliusSettings = {
   beatCooldownDays: 3,
   expeditionRecap: true,
   dilemmasEnabled: true,
+  analyzeEnabled: true,
+  analyzeAnimation: 'full',
+  analyzeHoverDelay: 250,
 };
 
 const fieldSchemas = {
@@ -136,6 +145,9 @@ const fieldSchemas = {
   beatCooldownDays: z.number().int().min(1).max(14),
   expeditionRecap: z.boolean(),
   dilemmasEnabled: z.boolean(),
+  analyzeEnabled: z.boolean(),
+  analyzeAnimation: z.enum(['full', 'short', 'off']),
+  analyzeHoverDelay: z.number().int().min(100).max(1500),
 };
 const budgetSchema = z.number().int().min(1);
 
