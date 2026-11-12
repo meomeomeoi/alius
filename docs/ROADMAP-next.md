@@ -26,9 +26,9 @@ Each package: **one planning session** (agent writes `docs/plans/<date>-pN-….m
 | P8 | (a) `worldOptions` + `dispositionLevels` registries, state, locking, lore block, parameter plumbing into P3/P4/P6 with table-driven tests; (b) WORLD PARAMETERS screen, presets, per-unit offset in import |
 | P9 | (a) Impunity terms, new intents, pending threats, stances + directives, sabotage; (b) punishments registry, menu + dialogue paths, chips with UNDO; (c) demands + reputation/nicknames |
 | P10 | (a) hub screen + rooms + markers + panels; (b) device frame + `deviceSkins` (3 CSS presets, image skin support), slide-over PDA; (c) voices + `VoiceCard`, dithered portraits, semantic colours, motion/sound, readable mode, bundled fonts |
+| P11 | (a) onboarding state, `prologues` registry, paper forms for intake/exam/dossier, veteran skip; (b) line-up and first-words scenes with caps, tutorial expedition, debrief, `uiUnlocks`, objective tracker + director `objectiveHint` |
 | P12 | (a) special-trait plumbing + Secret Frequency (intercepts, distortion, `knowledge_leak`, suspicion, discovery, burn); (b) Bloom-induced Paranoia (premonitions, false alarms, `accused`, nightmares, `contingency`); (c) Web of Debts (handler visits, intel exchange, consequences, two discovery paths, `defector_arc` stubs) |
 | P13 | (a) mode setup, warden selection, `warden_agenda`, warden state, permadeath rules with rewind/end; (b) overrides (COMPLY/ARGUE/DEFY), commander punishments + Leash on commander, lethal escalation; (c) intrigue, three removal routes, investigation, remote control, verdicts, WARDEN panel |
-| P11 | (a) onboarding state, `prologues` registry, paper forms for intake/exam/dossier, veteran skip; (b) line-up and first-words scenes with caps, tutorial expedition, debrief, `uiUnlocks`, objective tracker + director `objectiveHint` |
 
 Rule of thumb from P0–P6: one chunk per session, start each session with the plan file and ticked boxes, stop at the chunk boundary.
 
