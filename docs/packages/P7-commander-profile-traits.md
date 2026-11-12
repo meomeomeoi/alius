@@ -21,7 +21,7 @@ commander {
   bodyXp { strength, endurance, reflexes }          // training progress
   expression: 1..5          // 1 very feminine … 3 androgynous … 5 very masculine
   seasoning: 1..5           // 1 green … 5 veteran (age/visible experience) — AUTHOR TO CONFIRM (see Open decisions)
-  traits: { regular: string[] /*≤2*/, rule?: string /*≤1*/ }
+  traits: { regular: string[] /*≤2*/, special?: string /*≤1*/ }
   archetype: 'frail'|'slight'|'average'|'fit'|'hardened'   // derived, cached
 }
 Relation { …existing, metDay: number }   // first day the unit knew the commander (default: unit's join day)
@@ -90,7 +90,7 @@ The P3 context block gets a commander line generated from descriptors (no number
 
 ## 8. Traits
 
-Registry `commanderTraits`: `{ id, name, kind: 'regular'|'rule', description, upside, downside, effects[], hooks[], exclusiveWith[], requiresSettings? }`. Pick **up to 2 regular** and **0–1 rule** trait. Regular traits follow the defect rule: change the approach, not the power.
+Registry `commanderTraits`: `{ id, name, kind: 'regular'|'special', description, upside, downside, effects[], hooks[], exclusiveWith[], requiresSettings? }`. Pick **up to 2 regular** and **0–1 special** trait. Regular traits follow the defect rule: change the approach, not the power.
 
 v1 regular traits (draft — author tunes):
 
@@ -105,10 +105,10 @@ v1 regular traits (draft — author tunes):
 | `corporate_polish` | +1 Leash authorization/week; oversight standing + | Units with `corporate −` values: starting Trust −10 |
 | `street_raised` | Cunning starts at rank 2; black-market prices −15% | Corporate standing −; Leash approved less often |
 
-Rule traits are a **framework in P7**, with **one** implemented to prove the hooks:
+Special traits are a **framework in P7**, with **one** implemented to prove the hooks:
 - `vow_of_distance` — romantic states filtered out of the relationship graph for this campaign (same filter as the romance setting); platonic `confidant`/`kindred` thresholds −15%; a unique platonic state `sworn` (author describes).
 
-Other rule traits (`former_off_spec`, `collared`, `bound_elsewhere`, `voice_synth`) go to overview §10; each needs new hooks (commander defect, Leash on the commander, an outside DM contact, text-only scenes) and gets its own small spec later.
+Other special traits: `secret_frequency`, `bloom_paranoia`, `web_of_debts` — P12; the LEASHSWAP mode (supersedes the earlier `collared` idea) — P13; later: `former_off_spec`, `bound_elsewhere`, `voice_synth` (overview §10).
 
 ## 9. Setup UI (temporary — P11 makes it diegetic)
 
@@ -116,7 +116,7 @@ New wizard step **COMMANDER FILE** after crime: body pool with descriptors and r
 
 ## Out of scope
 
-Rule traits other than `vow_of_distance`; reputation/nicknames (P9); diegetic intake (P11).
+Special traits other than `vow_of_distance`; reputation/nicknames (P9); diegetic intake (P11).
 
 ## Acceptance criteria
 
