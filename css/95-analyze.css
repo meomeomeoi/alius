@@ -1,0 +1,107 @@
+/* P7a analysis panel: a terminal window that follows the cursor. Palette comes from 00-vars.css. */
+#alius-shell .alius-analyze {
+  position: fixed;
+  z-index: 10; /* above the shell's modal backdrop (3) */
+  max-width: 42ch;
+  min-width: 24ch;
+  padding: 2px 8px 4px;
+  background: var(--alius-bg);
+  color: var(--alius-fg);
+  border: var(--alius-line);
+  font-family: var(--alius-font);
+  font-size: 14px;
+  line-height: 1.4;
+  box-shadow: 0 0 0 1px var(--alius-bg), 0 4px 16px rgba(0, 0, 0, 0.6);
+  overflow-wrap: anywhere;
+}
+
+#alius-shell .alius-analyze-frame {
+  color: var(--alius-dim);
+  white-space: pre;
+  user-select: none;
+}
+
+#alius-shell .alius-analyze-bar {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+#alius-shell .alius-analyze-title {
+  flex: 1;
+  color: var(--alius-accent);
+  font-weight: bold;
+}
+
+#alius-shell .alius-analyze button {
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  color: var(--alius-accent);
+  font: inherit;
+  cursor: pointer;
+}
+
+#alius-shell .alius-analyze-link {
+  text-decoration: underline dotted;
+}
+
+#alius-shell .alius-analyze button:hover,
+#alius-shell .alius-analyze button:focus-visible {
+  background: var(--alius-fg);
+  color: var(--alius-bg);
+}
+
+#alius-shell .alius-analyze-crumbs {
+  color: var(--alius-dim);
+  font-size: 13px;
+}
+
+#alius-shell .alius-analyze-text,
+#alius-shell .alius-analyze-long {
+  margin: 6px 0;
+}
+
+#alius-shell .alius-analyze-long {
+  color: var(--alius-dim);
+}
+
+#alius-shell .alius-analyze-block {
+  margin-top: 6px;
+}
+
+#alius-shell .alius-analyze-label {
+  color: var(--alius-dim);
+  letter-spacing: 0.08em;
+  font-size: 12px;
+}
+
+#alius-shell .alius-analyze-block .alius-analyze-line::before {
+  content: "› ";
+  color: var(--alius-dim);
+}
+
+#alius-shell .alius-analyze-see .alius-analyze-line::before {
+  content: "";
+}
+
+#alius-shell .alius-analyze-missing {
+  color: var(--alius-err);
+}
+
+/* the scan-line wipe of the ANALYZING line: the text is revealed left to right */
+#alius-shell .alius-analyze-wipe {
+  animation: alius-analyze-wipe 600ms steps(12, end) 1;
+}
+
+@keyframes alius-analyze-wipe {
+  from { clip-path: inset(0 100% 0 0); }
+  to { clip-path: inset(0 0 0 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #alius-shell .alius-analyze-wipe {
+    animation: none;
+  }
+}

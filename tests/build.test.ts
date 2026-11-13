@@ -12,5 +12,6 @@ describe('build', () => {
       expect(x.startsWith('../../../../') && x.endsWith('.js'), `bad import ${x}`).toBe(true);
     }
     expect(existsSync('style.css')).toBe(true);
+    expect(readFileSync('style.css', 'utf8')).toContain('.alius-analyze');
   });
 });
