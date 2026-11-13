@@ -206,3 +206,41 @@ describe('the core pack', () => {
     expect(checked).toBeGreaterThan(300);
   });
 });
+
+describe('scaled and timed effects (final review)', () => {
+  it('a scale is spelled out instead of reading as ±0%', () => {
+    expect(fx({ type: 'stat', stat: 'atk', pct: 0, scale: { by: 'stress_above', per: 1, base: 30 } })).toBe('+1% ATK per Stress above 30');
+    expect(fx({ type: 'outgoing', pct: 0, scale: { by: 'own_hp_missing_pct', per: 0.5 } })).toBe('+0.5% damage dealt per 1% HP missing');
+    expect(fx({ type: 'stat', stat: 'atk', pct: 10, scale: { by: 'own_hp_missing_pct', per: 0.3 } })).toBe('+10% ATK, +0.3% per 1% HP missing');
+    expect(fx({ type: 'damage', mult: 0.8, scale: { by: 'allies_hp_missing_pct', per: 0.02 } })).toBe("Damage ×0.8, +×0.02 per 1% allies' HP missing");
+    expect(fx({ type: 'stat', stat: 'atk', pct: 10, scale: { by: 'stress_above', per: 1 } })).toBe('+10% ATK, +1% per Stress above 0');
+  });
+
+  it('a stat effect with a duration says so, and an ally scope says whose hit it is', () => {
+    expect(fx({ type: 'stat', stat: 'spd', pct: 20, turns: 2 })).toBe('+20% SPD (2 turns)');
+    expect(fx({ type: 'stat', stat: 'spd', pct: 20, turns: 1 })).toBe('+20% SPD (1 turn)');
+    expect(fx({ type: 'follow_up', mult: 0.5, trigger: 'onHit', scope: 'ally' })).toBe('Follow-up ×0.5 when an ally hits');
+    expect(fx({ type: 'follow_up', mult: 0.5, trigger: 'onKill', scope: 'ally' })).toBe('Follow-up ×0.5 when an ally kills');
+    expect(fx({ type: 'follow_up', mult: 0.5, trigger: 'onCrit', scope: 'ally' })).toBe('Follow-up ×0.5 when an ally crits');
+  });
+
+  it('no generated line in the core pack reads as a zero change', async () => {
+    const { registries } = await loadPacks(['content/core'], async (p) => JSON.parse(await readFile(p, 'utf8')));
+    const zero: string[] = [];
+    for (const name of Object.keys(registries) as RegistryName[]) {
+      for (const entry of (registries as Registries)[name].values()) {
+        for (const line of entryEffects(name, entry, registries)) if (/±0/.test(line)) zero.push(`${name}:${entry.id} ${line}`);
+      }
+    }
+    expect(zero).toEqual([]);
+  });
+});
+
+describe('node types', () => {
+  it('a plain combat node says nothing about danger, a tougher one does', () => {
+    const r = emptyRegistries();
+    expect(entryEffects('nodeTypes', { id: 'combat', combat: { dangerDelta: 0, lootTableId: 'l' } }, r)).toEqual([]);
+    expect(entryEffects('nodeTypes', { id: 'elite', combat: { dangerDelta: 1, lootTableId: 'l' } }, r)).toEqual(['Danger +1']);
+    expect(entryEffects('nodeTypes', { id: 'easy', combat: { dangerDelta: -1, lootTableId: 'l' } }, r)).toEqual(['Danger −1']);
+  });
+});

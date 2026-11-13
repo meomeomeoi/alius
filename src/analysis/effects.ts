@@ -29,6 +29,9 @@ const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFin
 // ---------------------------------------------------------------------------------------------
 // combat
 
+/** Triggers of an effect that belongs to an ally (`scope: 'ally'`). */
+const ALLY_TRIGGER_SUFFIX: Record<string, string> = { onHit: ' when an ally hits', onCrit: ' when an ally crits', onKill: ' when an ally kills' };
+
 const TRIGGER_SUFFIX: Record<string, string> = {
   onHit: ' on hit',
   onCrit: ' on crit',
@@ -42,10 +45,28 @@ const TRIGGER_SUFFIX: Record<string, string> = {
   onAction: ' on action',
 };
 
+/** What a `scale` multiplies: `per × value`, with the value named here. */
+function scaleUnit(scale: Loose): string {
+  switch (scale.by) {
+    case 'stress_above': return `Stress above ${num(Number(scale.base ?? 0))}`;
+    case 'own_hp_missing_pct': return '1% HP missing';
+    case 'allies_hp_missing_pct': return "1% allies' HP missing";
+    default: return humanize(String(scale.by));
+  }
+}
+
+/** The scaled part of a percentage line; with a zero base the line is the scale alone (`+1% ATK per Stress above 30`). */
+function scaledPct(pct: number, name: string, scale: Loose | undefined): string {
+  if (!scale || !isNum(scale.per)) return `${pctSigned(pct)} ${name}`;
+  if (pct === 0) return `${signed(scale.per)}% ${name} per ${scaleUnit(scale)}`;
+  return `${pctSigned(pct)} ${name}, ${signed(scale.per)}% per ${scaleUnit(scale)}`;
+}
+
 function combatBase(e: Loose): string {
   switch (e.type) {
     case 'damage': {
       let s = isNum(e.pctMaxHp) ? `Damage ${num(e.pctMaxHp)}% max HP` : `Damage ×${num(Number(e.mult ?? 1))}`;
+      if (e.scale && isNum(e.scale.per)) s += `, +×${num(e.scale.per)} per ${scaleUnit(e.scale)}`;
       if (isNum(e.hits) && e.hits > 1) s += ` ×${e.hits} hits`;
       if (e.ignoreRows) s += ' ignores rows';
       if (isNum(e.critBonus)) s += ` +${num(e.critBonus)}% crit`;
@@ -60,8 +81,8 @@ function combatBase(e: Loose): string {
       return s;
     }
     case 'cleanse': return `Remove ${e.count} ${e.kind}${Number(e.count) === 1 ? '' : 's'}`;
-    case 'stat': return `${pctSigned(Number(e.pct))} ${e.stat === 'all' ? 'all stats' : String(e.stat).toUpperCase()}`;
-    case 'outgoing': return `${pctSigned(Number(e.pct))} damage dealt${e.vs && e.vs !== 'any' ? ` vs ${e.vs}` : ''}`;
+    case 'stat': return `${scaledPct(Number(e.pct), e.stat === 'all' ? 'all stats' : String(e.stat).toUpperCase(), e.scale)}${isNum(e.turns) ? ` (${e.turns} ${plural(e.turns, 'turn')})` : ''}`;
+    case 'outgoing': return `${scaledPct(Number(e.pct), 'damage dealt', e.scale)}${e.vs && e.vs !== 'any' ? ` vs ${e.vs}` : ''}`;
     case 'incoming': return `${pctSigned(Number(e.pct))} damage taken`;
     case 'stress': return `${signed(Number(e.amount))} Stress`;
     case 'stress_taken': return `${pctSigned(Number(e.pct))} stress ${e.direction === 'relief' ? 'relief' : 'gained'}`;
@@ -110,6 +131,7 @@ export function summarizeCombatEffect(effect: CombatEffect, _reg: Registries): s
   let s = combatBase(e);
   if (e.target && e.target !== 'self' && e.target !== 'target') s += ` — ${humanize(String(e.target))}`;
   if (e.trigger === 'onStressThreshold') s += ` at Stress ≥ ${e.threshold}`;
+  else if (e.scope === 'ally' && typeof e.trigger === 'string' && ALLY_TRIGGER_SUFFIX[e.trigger]) s += ALLY_TRIGGER_SUFFIX[e.trigger];
   else if (typeof e.trigger === 'string' && TRIGGER_SUFFIX[e.trigger]) s += TRIGGER_SUFFIX[e.trigger];
   s += whenSuffix(e);
   if (isNum(e.chance)) s += ` (${Math.round(e.chance * 100)}% chance)`;
@@ -286,7 +308,7 @@ function effectsFor(registry: RegistryName, entry: Entry, reg: Registries): stri
       const c = e.combat && typeof e.combat === 'object' ? (e.combat as Loose) : null;
       return compact([
         r ? `Costs ${r.suppliesPerUnit} supplies per unit · ${r.hpPct}% HP · ${isNum(r.stress) ? signed(r.stress) : r.stress} Stress` : null,
-        c && isNum(c.dangerDelta) ? `Danger ${signed(c.dangerDelta)}` : null,
+        c && isNum(c.dangerDelta) && c.dangerDelta !== 0 ? `Danger ${signed(c.dangerDelta)}` : null,
       ]);
     }
     case 'enemies':

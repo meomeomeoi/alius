@@ -15,7 +15,9 @@ export const LONG_PRESS_MS = 400;
 export const LONG_PRESS_MOVE_PX = 10;
 export const CLOSE_DELAY_MS = 100;
 export const MAX_DEPTH = 3;
-const SWALLOW_CLICK_MS = 1000;
+/** After a long-press the click is swallowed while the finger is down, then for this grace after it lifts; the cap is a safety net for a lost `pointerup`. */
+const SWALLOW_GRACE_MS = 350;
+const SWALLOW_MAX_MS = 10_000;
 const ANALYZE = '[data-analyze]';
 
 /** How long the ANALYZING line shows: `full` 600 ms the first time and 150 ms after, `short` 150, `off` or reduced motion 0. */
@@ -207,7 +209,7 @@ export function attachAnalyzer(root: HTMLElement, deps: AnalyzerDeps): Analyzer 
     const at = { x: e.clientX, y: e.clientY };
     hoverTimer = setTimeout(() => {
       hoverTimer = null;
-      if (hoverEl === el && enabled()) openFor(el as HTMLElement, at);
+      if (hoverEl === el && el.isConnected && enabled()) openFor(el as HTMLElement, at);
     }, deps.getEnv().settings.analyzeHoverDelay);
   };
 
@@ -262,7 +264,7 @@ export function attachAnalyzer(root: HTMLElement, deps: AnalyzerDeps): Analyzer 
       stopSwallowing();
       swallowing = true;
       window.addEventListener('click', swallow, true);
-      swallowTimer = setTimeout(stopSwallowing, SWALLOW_CLICK_MS);
+      swallowTimer = setTimeout(stopSwallowing, SWALLOW_MAX_MS);
       openFor(el as HTMLElement, touchStart, { pinned: true });
     }, LONG_PRESS_MS);
   };
@@ -274,6 +276,11 @@ export function attachAnalyzer(root: HTMLElement, deps: AnalyzerDeps): Analyzer 
   };
   const onUp = (): void => {
     touchTimer = clear(touchTimer);
+    if (swallowing) {
+      // the click some browsers send on release comes right after it; if none comes the grace ends by itself
+      swallowTimer = clear(swallowTimer);
+      swallowTimer = setTimeout(stopSwallowing, SWALLOW_GRACE_MS);
+    }
   };
   const onContextMenu = (ev: Event): void => {
     if (touchTimer !== null || swallowing) ev.preventDefault(); // no browser menu on a long-press
@@ -323,7 +330,12 @@ export function attachAnalyzer(root: HTMLElement, deps: AnalyzerDeps): Analyzer 
     isOpen: () => panelEl !== null,
     isPinned: () => panelEl !== null && pinned,
     refresh() {
-      if (!panelEl) return;
+      // the DOM was redrawn: a hover that is still counting down points at something that is gone
+      hoverTimer = clear(hoverTimer);
+      if (!panelEl) {
+        hoverEl = null;
+        return;
+      }
       if (!pinned) return close();
       rerender();
     },

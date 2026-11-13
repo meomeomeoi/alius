@@ -19293,6 +19293,7 @@ var signed = (n) => n > 0 ? `+${num3(n)}` : n < 0 ? `${MINUS}${abs(n)}` : "\xB10
 var pctSigned = (n) => `${signed(n)}%`;
 var plural = (n, word) => n === 1 ? word : `${word}s`;
 var isNum = (v) => typeof v === "number" && Number.isFinite(v);
+var ALLY_TRIGGER_SUFFIX = { onHit: " when an ally hits", onCrit: " when an ally crits", onKill: " when an ally kills" };
 var TRIGGER_SUFFIX = {
   onHit: " on hit",
   onCrit: " on crit",
@@ -19305,10 +19306,28 @@ var TRIGGER_SUFFIX = {
   onCombatEnd: " after combat",
   onAction: " on action"
 };
+function scaleUnit(scale) {
+  switch (scale.by) {
+    case "stress_above":
+      return `Stress above ${num3(Number(scale.base ?? 0))}`;
+    case "own_hp_missing_pct":
+      return "1% HP missing";
+    case "allies_hp_missing_pct":
+      return "1% allies' HP missing";
+    default:
+      return humanize(String(scale.by));
+  }
+}
+function scaledPct(pct, name, scale) {
+  if (!scale || !isNum(scale.per)) return `${pctSigned(pct)} ${name}`;
+  if (pct === 0) return `${signed(scale.per)}% ${name} per ${scaleUnit(scale)}`;
+  return `${pctSigned(pct)} ${name}, ${signed(scale.per)}% per ${scaleUnit(scale)}`;
+}
 function combatBase(e) {
   switch (e.type) {
     case "damage": {
       let s = isNum(e.pctMaxHp) ? `Damage ${num3(e.pctMaxHp)}% max HP` : `Damage \xD7${num3(Number(e.mult ?? 1))}`;
+      if (e.scale && isNum(e.scale.per)) s += `, +\xD7${num3(e.scale.per)} per ${scaleUnit(e.scale)}`;
       if (isNum(e.hits) && e.hits > 1) s += ` \xD7${e.hits} hits`;
       if (e.ignoreRows) s += " ignores rows";
       if (isNum(e.critBonus)) s += ` +${num3(e.critBonus)}% crit`;
@@ -19327,9 +19346,9 @@ function combatBase(e) {
     case "cleanse":
       return `Remove ${e.count} ${e.kind}${Number(e.count) === 1 ? "" : "s"}`;
     case "stat":
-      return `${pctSigned(Number(e.pct))} ${e.stat === "all" ? "all stats" : String(e.stat).toUpperCase()}`;
+      return `${scaledPct(Number(e.pct), e.stat === "all" ? "all stats" : String(e.stat).toUpperCase(), e.scale)}${isNum(e.turns) ? ` (${e.turns} ${plural(e.turns, "turn")})` : ""}`;
     case "outgoing":
-      return `${pctSigned(Number(e.pct))} damage dealt${e.vs && e.vs !== "any" ? ` vs ${e.vs}` : ""}`;
+      return `${scaledPct(Number(e.pct), "damage dealt", e.scale)}${e.vs && e.vs !== "any" ? ` vs ${e.vs}` : ""}`;
     case "incoming":
       return `${pctSigned(Number(e.pct))} damage taken`;
     case "stress":
@@ -19397,6 +19416,7 @@ function summarizeCombatEffect(effect, _reg) {
   let s = combatBase(e);
   if (e.target && e.target !== "self" && e.target !== "target") s += ` \u2014 ${humanize(String(e.target))}`;
   if (e.trigger === "onStressThreshold") s += ` at Stress \u2265 ${e.threshold}`;
+  else if (e.scope === "ally" && typeof e.trigger === "string" && ALLY_TRIGGER_SUFFIX[e.trigger]) s += ALLY_TRIGGER_SUFFIX[e.trigger];
   else if (typeof e.trigger === "string" && TRIGGER_SUFFIX[e.trigger]) s += TRIGGER_SUFFIX[e.trigger];
   s += whenSuffix(e);
   if (isNum(e.chance)) s += ` (${Math.round(e.chance * 100)}% chance)`;
@@ -19540,7 +19560,7 @@ function effectsFor(registry2, entry, reg) {
       const c = e.combat && typeof e.combat === "object" ? e.combat : null;
       return compact([
         r ? `Costs ${r.suppliesPerUnit} supplies per unit \xB7 ${r.hpPct}% HP \xB7 ${isNum(r.stress) ? signed(r.stress) : r.stress} Stress` : null,
-        c && isNum(c.dangerDelta) ? `Danger ${signed(c.dangerDelta)}` : null
+        c && isNum(c.dangerDelta) && c.dangerDelta !== 0 ? `Danger ${signed(c.dangerDelta)}` : null
       ]);
     }
     case "enemies":
@@ -19690,12 +19710,17 @@ var axisProvider = (axis) => (subject, env, knowledge) => {
 function nextStressBand(stress) {
   return stress < 50 ? "strained" : stress < 80 ? "breaking" : stress < 100 ? "breakdown" : null;
 }
+function liveStress(state, unit) {
+  const fighter = state.combat?.combatants.find((c) => c.side === "squad" && c.unitId === unit.id);
+  return fighter ? fighter.stress : unit.stress;
+}
 var stressProvider = (subject, env, knowledge) => {
   const state = env.state;
   const found = unitOf3(state, subject.data);
   if (!found) return null;
   const { unit } = found;
-  const lines = [`${unit.displayName}: ${stressBand2(unit.stress).toUpperCase()}${rawSuffix(knowledge, unit.stress)}`];
+  const stress = liveStress(state, unit);
+  const lines = [`${unit.displayName}: ${stressBand2(stress).toUpperCase()}${rawSuffix(knowledge, stress)}`];
   const groups = /* @__PURE__ */ new Map();
   for (const e of ledgerFor(state, `stress:${unit.id}`, state.day - 1)) {
     const label2 = ledgerLabel(e.action);
@@ -19707,7 +19732,7 @@ var stressProvider = (subject, env, knowledge) => {
     const r = knowledge.raw(Math.abs(delta));
     lines.push(r === null ? `${delta > 0 ? "rose" : "fell"} \u2014 ${label2}` : `${delta > 0 ? "+" : MINUS2}${r} ${label2}`);
   }
-  const next = nextStressBand(unit.stress);
+  const next = nextStressBand(stress);
   if (next) {
     const short = env.registries.glossary.get(`stress_${next}`)?.short;
     lines.push(`Next: ${typeof short === "string" ? short : next.toUpperCase()}`);
@@ -19999,7 +20024,8 @@ var LONG_PRESS_MS = 400;
 var LONG_PRESS_MOVE_PX = 10;
 var CLOSE_DELAY_MS = 100;
 var MAX_DEPTH = 3;
-var SWALLOW_CLICK_MS = 1e3;
+var SWALLOW_GRACE_MS = 350;
+var SWALLOW_MAX_MS = 1e4;
 var ANALYZE = "[data-analyze]";
 function animationMs(mode, seenBefore, reducedMotion2) {
   if (reducedMotion2 || mode === "off") return 0;
@@ -20149,7 +20175,7 @@ function attachAnalyzer(root, deps) {
     const at = { x: e.clientX, y: e.clientY };
     hoverTimer = setTimeout(() => {
       hoverTimer = null;
-      if (hoverEl === el && enabled()) openFor2(el, at);
+      if (hoverEl === el && el.isConnected && enabled()) openFor2(el, at);
     }, deps.getEnv().settings.analyzeHoverDelay);
   };
   const onOut = (ev) => {
@@ -20199,7 +20225,7 @@ function attachAnalyzer(root, deps) {
       stopSwallowing();
       swallowing = true;
       window.addEventListener("click", swallow, true);
-      swallowTimer = setTimeout(stopSwallowing, SWALLOW_CLICK_MS);
+      swallowTimer = setTimeout(stopSwallowing, SWALLOW_MAX_MS);
       openFor2(el, touchStart, { pinned: true });
     }, LONG_PRESS_MS);
   };
@@ -20210,6 +20236,10 @@ function attachAnalyzer(root, deps) {
   };
   const onUp = () => {
     touchTimer = clear(touchTimer);
+    if (swallowing) {
+      swallowTimer = clear(swallowTimer);
+      swallowTimer = setTimeout(stopSwallowing, SWALLOW_GRACE_MS);
+    }
   };
   const onContextMenu = (ev) => {
     if (touchTimer !== null || swallowing) ev.preventDefault();
@@ -20254,7 +20284,11 @@ function attachAnalyzer(root, deps) {
     isOpen: () => panelEl !== null,
     isPinned: () => panelEl !== null && pinned,
     refresh() {
-      if (!panelEl) return;
+      hoverTimer = clear(hoverTimer);
+      if (!panelEl) {
+        hoverEl = null;
+        return;
+      }
       if (!pinned) return close();
       rerender();
     },
@@ -20782,6 +20816,7 @@ function createShell(deps) {
   }
   function renderTab() {
     if (!panel) return;
+    analyzer?.refresh();
     panel.replaceChildren();
     panel.setAttribute("aria-labelledby", `alius-tab-${tab}`);
     if (tab === "sys") {
@@ -20824,6 +20859,7 @@ function createShell(deps) {
   });
   function renderView() {
     if (!root) return;
+    analyzer?.refresh();
     tabBar = null;
     panel = null;
     statusHost = null;

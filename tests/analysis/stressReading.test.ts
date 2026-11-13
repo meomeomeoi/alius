@@ -8,6 +8,7 @@ import type { Registries } from '../../src/content/types';
 import type { CampaignState, LedgerEntry } from '../../src/engine/state/types';
 import { DEFAULT_SETTINGS } from '../../src/settings';
 import { hiddenFixture } from '../fixtures/analyze/hidden';
+import { fixtureCombat } from '../helpers/combat';
 import { campaign, loadCore } from '../helpers/world';
 
 let reg: Registries;
@@ -99,5 +100,22 @@ describe('stress reading', () => {
   it('an unknown unit gives no reading', () => {
     const { state } = hiddenFixture(reg);
     expect(read(state, 'unit_nobody')).toBeNull();
+  });
+});
+
+describe('stress during a combat (final review)', () => {
+  it('reads the fighter\'s live stress, not the stress the unit entered with', () => {
+    const { state, unitId } = hiddenFixture(reg);
+    state.ledger = [];
+    state.squad[0].stress = 20;
+    state.combat = fixtureCombat({ squad: [{ unitId, stress: 85 }] });
+    const lines = read(state, unitId)!;
+    expect(lines[0]).toBe('Ann: BREAKING');
+    expect(lines).toContain('Next: At breakdown something changes.');
+    // raw values show the live number too
+    expect(read(state, unitId, true)![0]).toBe('Ann: BREAKING (85)');
+    // another unit, or no combatant for her, falls back to the sheet
+    state.combat = fixtureCombat({ squad: [{ unitId: 'unit_other', stress: 85 }] });
+    expect(read(state, unitId)![0]).toBe('Ann: CALM');
   });
 });

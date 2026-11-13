@@ -615,7 +615,7 @@ describe('analysis panel in context (P7a)', () => {
       document.querySelector<HTMLButtonElement>('.alius-analyze-pin')!.click();
       expect(document.querySelector('.alius-analyze')!.textContent).toContain('Ann: CALM');
       // the fight goes on: more stress, the screen is redrawn (its old chips are gone)
-      state.squad[0].stress = 63;
+      state.combat!.combatants.find((c) => c.cid === 's1')!.stress = 63; // live stress is on the fighter during a combat
       shell.refresh();
       expect(document.body.contains(stress)).toBe(false);
       const panelEl = document.querySelector('.alius-analyze')!;
@@ -648,5 +648,61 @@ describe('analysis panel in context (P7a)', () => {
     } finally {
       shell.destroy();
     }
+  });
+});
+
+describe('lifecycle holes found in review', () => {
+  it('a hover timer does not open a panel for an element that was removed meanwhile', () => {
+    const { a } = setup({ analyzeAnimation: 'off' });
+    ptr('pointerover', a);
+    vi.advanceTimersByTime(100);
+    a.remove(); // the screen was redrawn
+    vi.advanceTimersByTime(1000);
+    expect(panel()).toBeNull();
+  });
+
+  it('refresh clears a pending hover even when no panel is open', () => {
+    const { a } = setup({ analyzeAnimation: 'off' });
+    ptr('pointerover', a);
+    analyzer!.refresh();
+    vi.advanceTimersByTime(1000);
+    expect(panel()).toBeNull();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('a transient panel closes when the element it points at is gone (checked at the next pointer move)', () => {
+    const { a, b } = setup({ analyzeAnimation: 'off' });
+    ptr('pointerover', a);
+    vi.advanceTimersByTime(250);
+    expect(panel()).not.toBeNull();
+    a.remove();
+    ptr('pointerover', b);
+    expect(panel()).toBeNull();
+  });
+
+  it('a long-press swallows the click for as long as the finger is down, plus a short grace', () => {
+    const { button } = setup({ analyzeAnimation: 'off' });
+    const onclick = vi.fn();
+    button.addEventListener('click', onclick);
+    ptr('pointerdown', button, { pointerType: 'touch', clientX: 50, clientY: 50 });
+    vi.advanceTimersByTime(400);
+    expect(panel()).not.toBeNull();
+    vi.advanceTimersByTime(3000); // still holding to read
+    ptr('pointerup', button, { pointerType: 'touch', clientX: 50, clientY: 50 });
+    button.click(); // the click some browsers send on release
+    expect(onclick).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('with no click after the release the swallow ends by itself and the next tap works', () => {
+    const { button } = setup({ analyzeAnimation: 'off' });
+    const onclick = vi.fn();
+    button.addEventListener('click', onclick);
+    ptr('pointerdown', button, { pointerType: 'touch', clientX: 50, clientY: 50 });
+    vi.advanceTimersByTime(400);
+    ptr('pointerup', button, { pointerType: 'touch' });
+    vi.advanceTimersByTime(500);
+    button.click();
+    expect(onclick).toHaveBeenCalledTimes(1);
   });
 });

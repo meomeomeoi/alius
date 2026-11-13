@@ -708,3 +708,27 @@ describe('analysis tool in the shell (P7a)', () => {
   });
 });
 
+describe('analysis panel and tab switches (final review)', () => {
+  it('switching tabs closes a transient panel', () => {
+    vi.useFakeTimers();
+    try {
+      const reg = emptyRegistries();
+      reg.glossary.set('trust', { id: 'trust', term: 'Trust', short: 'Belief in you.' });
+      const { shell } = setup({ settings: { analyzeAnimation: 'off' }, extra: { analyze: { registries: () => reg } } });
+      shell.registerTab('squad', (host) => {
+        const chip = document.createElement('span');
+        chip.setAttribute('data-analyze', 'glossary:trust');
+        host.append(chip);
+      });
+      shell.open();
+      const chip = document.querySelector<HTMLElement>('#alius-shell [data-analyze="glossary:trust"]')!;
+      chip.dispatchEvent(Object.assign(new Event('pointerover', { bubbles: true }), { pointerType: 'mouse', clientX: 5, clientY: 5 }));
+      vi.advanceTimersByTime(250);
+      expect(document.querySelector('#alius-shell .alius-analyze')).not.toBeNull();
+      shell.showTab('base');
+      expect(document.querySelector('#alius-shell .alius-analyze')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});

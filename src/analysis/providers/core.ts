@@ -74,12 +74,19 @@ function nextStressBand(stress: number): string | null {
   return stress < 50 ? 'strained' : stress < 80 ? 'breaking' : stress < 100 ? 'breakdown' : null;
 }
 
+/** In a fight the live stress is on the combatant; the unit gets it only when the combat is settled. */
+function liveStress(state: CampaignState, unit: Unit): number {
+  const fighter = state.combat?.combatants.find((c) => c.side === 'squad' && c.unitId === unit.id);
+  return fighter ? fighter.stress : unit.stress;
+}
+
 const stressProvider: AnalyzeProvider = (subject, env, knowledge) => {
   const state = env.state!;
   const found = unitOf(state, subject.data);
   if (!found) return null;
   const { unit } = found;
-  const lines = [`${unit.displayName}: ${stressBand(unit.stress).toUpperCase()}${rawSuffix(knowledge, unit.stress)}`];
+  const stress = liveStress(state, unit);
+  const lines = [`${unit.displayName}: ${stressBand(stress).toUpperCase()}${rawSuffix(knowledge, stress)}`];
 
   // what moved her stress since yesterday, grouped by cause (newest cause first)
   const groups = new Map<string, number>();
@@ -94,7 +101,7 @@ const stressProvider: AnalyzeProvider = (subject, env, knowledge) => {
     lines.push(r === null ? `${delta > 0 ? 'rose' : 'fell'} — ${label}` : `${delta > 0 ? '+' : MINUS}${r} ${label}`);
   }
 
-  const next = nextStressBand(unit.stress);
+  const next = nextStressBand(stress);
   if (next) {
     const short = env.registries.glossary.get(`stress_${next}`)?.short;
     lines.push(`Next: ${typeof short === 'string' ? short : next.toUpperCase()}`);

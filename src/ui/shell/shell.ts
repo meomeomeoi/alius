@@ -119,6 +119,7 @@ export function createShell(deps: ShellDeps): ShellApi {
 
   function renderTab(): void {
     if (!panel) return;
+    analyzer?.refresh(); // the tab is redrawn: a transient panel would point at removed elements
     panel.replaceChildren();
     panel.setAttribute('aria-labelledby', `alius-tab-${tab}`);
     if (tab === 'sys') {
@@ -164,6 +165,7 @@ export function createShell(deps: ShellDeps): ShellApi {
 
   function renderView(): void {
     if (!root) return;
+    analyzer?.refresh();
     tabBar = null;
     panel = null;
     statusHost = null;
