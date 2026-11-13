@@ -3,7 +3,7 @@
     "id": "insomniac",
     "name": "Insomniac",
     "kind": "regular",
-    "description": "The commander barely sleeps; the night is his to use, at a price.",
+    "description": "The commander barely sleeps; the night is there to be used, at a price.",
     "upside": "Night slot always available (not only on events).",
     "downside": "-1 effective Empathy rank on the day after a sleepless night.",
     "effects": [
@@ -24,8 +24,8 @@
     "id": "old_wound",
     "name": "Old Wound",
     "kind": "regular",
-    "description": "He has been hurt before and it shows; the squad respects that, and so does the next fight.",
-    "upside": "Seasoning +1 at start; Trust gains +15% for the first 14 days (\"he's seen worse\").",
+    "description": "The commander has been hurt before and it shows; the squad respects that, and so does the next fight.",
+    "upside": "Seasoning +1 at start; Trust gains +15% for the first 14 days (\"seen worse\").",
     "downside": "Crisis HP -10.",
     "effects": [
       {
@@ -46,7 +46,7 @@
     "id": "silver_tongue",
     "name": "Silver Tongue",
     "kind": "regular",
-    "description": "Words come easily to him, and so do half-truths.",
+    "description": "Words come easily to the commander, and so do half-truths.",
     "upside": "Cunning grows 50% faster.",
     "downside": "Units with the trigger \"lies\" punish a detected lie harder.",
     "effects": [
@@ -67,7 +67,7 @@
     "id": "pretty_face",
     "name": "Pretty Face",
     "kind": "regular",
-    "description": "People notice him first and judge him second.",
+    "description": "People notice the commander first and judge second.",
     "upside": "Matching tastes: starting Attraction +10.",
     "downside": "Trust gains -10% for the first 14 days (\"corporate doll\").",
     "effects": [
@@ -85,7 +85,7 @@
     "id": "bookish",
     "name": "Bookish",
     "kind": "regular",
-    "description": "He learns from files and people before he learns from drills.",
+    "description": "The commander learns from files and people before learning from drills.",
     "upside": "Insight grows 50% faster.",
     "downside": "Body training XP -30%.",
     "effects": [
@@ -104,7 +104,7 @@
     "id": "field_medic",
     "name": "Field Medic",
     "kind": "regular",
-    "description": "He was trained to patch people up, and they remember who did.",
+    "description": "The commander was trained to patch people up, and they remember who did.",
     "upside": "Medbay actions with a unit give +Affinity; Empathy starts at rank 2.",
     "downside": "Medbay supplies cost +1.",
     "effects": [
@@ -131,7 +131,7 @@
     "id": "corporate_polish",
     "name": "Corporate Polish",
     "kind": "regular",
-    "description": "He speaks the corporation's language fluently, which opens doors and closes hearts.",
+    "description": "The commander speaks the corporation's language fluently, which opens doors and closes hearts.",
     "upside": "+1 Leash authorization per week; oversight standing +.",
     "downside": "Units whose values lean against the corporation start with Trust -10.",
     "effects": [
@@ -160,7 +160,7 @@
     "id": "street_raised",
     "name": "Street-Raised",
     "kind": "regular",
-    "description": "He grew up below the corporate floors and knows how things really get done.",
+    "description": "The commander grew up below the corporate floors and knows how things really get done.",
     "upside": "Cunning starts at rank 2; requisition prices -15%.",
     "downside": "Corporate standing -; the Leash is approved less often.",
     "effects": [

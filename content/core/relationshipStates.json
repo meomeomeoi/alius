@@ -113,7 +113,7 @@
       "defectArcStages": []
     },
     "dmChance": 0.05,
-    "promptHint": "She accepts him as her commander and works with him without friction; warmth is professional, not personal."
+    "promptHint": "She accepts the commander as her commander and works with them without friction; warmth is professional, not personal."
   },
   {
     "id": "trusted",
@@ -153,7 +153,7 @@
       ]
     },
     "dmChance": 0.08,
-    "promptHint": "She relies on his judgement and says so; she speaks plainly and follows orders without needing them justified."
+    "promptHint": "She relies on the commander's judgement and says so; she speaks plainly and follows orders without needing them justified."
   },
   {
     "id": "friend",
@@ -197,7 +197,7 @@
       "defectArcStages": []
     },
     "dmChance": 0.12,
-    "promptHint": "She is openly friendly with him: teases, checks on him, shares small things about herself."
+    "promptHint": "She is openly friendly with the commander: teases, checks in, shares small things about herself."
   },
   {
     "id": "confidant",
@@ -240,7 +240,7 @@
       ]
     },
     "dmChance": 0.15,
-    "promptHint": "She confides in him: she tells him things she tells nobody else and expects him to keep them."
+    "promptHint": "She confides in the commander: she tells them things she tells nobody else and expects them to keep them."
   },
   {
     "id": "kindred",
@@ -296,7 +296,7 @@
       ]
     },
     "dmChance": 0.15,
-    "promptHint": "The deepest bond that is not romantic: they understand each other without explaining. She is fiercely loyal and unselfconscious around him."
+    "promptHint": "The deepest bond that is not romantic: they understand each other without explaining. She is fiercely loyal and unselfconscious around the commander."
   },
   {
     "id": "sworn",
@@ -339,7 +339,7 @@
       ]
     },
     "dmChance": 0.15,
-    "promptHint": "AUTHOR TO WRITE: she is sworn to him: loyal beyond duty, close without any romance.",
+    "promptHint": "AUTHOR TO WRITE: she is sworn to the commander: loyal beyond duty, close without any romance.",
     "requiresTrait": "vow_of_distance"
   },
   {
@@ -401,7 +401,7 @@
       "defectArcStages": []
     },
     "dmChance": 0.2,
-    "promptHint": "There is a charge between them: she teases, lingers, tests how he reacts. Nothing is promised."
+    "promptHint": "There is a charge between them: she teases, lingers, tests how the commander reacts. Nothing is promised."
   },
   {
     "id": "fwb",
@@ -563,7 +563,7 @@
       ]
     },
     "dmChance": 0.3,
-    "promptHint": "She is in love with him and shows it in her own way; she worries, she is possessive of his time and honest about what she feels."
+    "promptHint": "She is in love with the commander and shows it in her own way; she worries, she is possessive of their time and honest about what she feels."
   },
   {
     "id": "devoted",
@@ -644,7 +644,7 @@
       ]
     },
     "dmChance": 0.35,
-    "promptHint": "She has given him everything and expects the same: exclusive, intense, hurt deeply by anything that looks like betrayal."
+    "promptHint": "She has given the commander everything and expects the same: exclusive, intense, hurt deeply by anything that looks like betrayal."
   },
   {
     "id": "secret_affair",
@@ -703,7 +703,7 @@
       "defectArcStages": []
     },
     "dmChance": 0.25,
-    "promptHint": "They are together in secret. She is careful in front of others and thrilled by the risk; she will not out herself and will not forgive him if he does."
+    "promptHint": "They are together in secret. She is careful in front of others and thrilled by the risk; she will not out herself and will not forgive the commander if they do."
   },
   {
     "id": "obsessed",
@@ -788,7 +788,7 @@
       "defectArcStages": []
     },
     "dmChance": 0.4,
-    "promptHint": "She fixates on him: attention, exclusivity, jealousy. Affection and anger swing hard and nothing he does is enough or too much."
+    "promptHint": "She fixates on the commander: attention, exclusivity, jealousy. Affection and anger swing hard and nothing the commander does is enough or too much."
   },
   {
     "id": "dependent",
@@ -852,7 +852,7 @@
       "defectArcStages": []
     },
     "dmChance": 0.25,
-    "promptHint": "She needs something only he controls and resents that as much as she craves it. Pride and need pull against each other."
+    "promptHint": "She needs something only the commander controls and resents that as much as she craves it. Pride and need pull against each other."
   },
   {
     "id": "rival",
@@ -900,7 +900,7 @@
       "defectArcStages": []
     },
     "dmChance": 0.1,
-    "promptHint": "She respects him and fights him on principle: sharp, competitive, never indifferent. Disagreement is how she shows she cares."
+    "promptHint": "She respects the commander and fights them on principle: sharp, competitive, never indifferent. Disagreement is how she shows she cares."
   },
   {
     "id": "rival_romance",
@@ -952,7 +952,7 @@
       "defectArcStages": []
     },
     "dmChance": 0.2,
-    "promptHint": "They argue and burn for each other in equal measure; she will not admit he has won anything."
+    "promptHint": "They argue and burn for each other in equal measure; she will not admit the commander has won anything."
   },
   {
     "id": "unrequited",
@@ -1006,7 +1006,7 @@
       "defectArcStages": []
     },
     "dmChance": 0.1,
-    "promptHint": "She wants more than he gave her and carries it quietly: restraint, small slips, a hurt she does not name."
+    "promptHint": "She wants more than the commander gave her and carries it quietly: restraint, small slips, a hurt she does not name."
   },
   {
     "id": "resentful",
@@ -1052,7 +1052,7 @@
       "defectArcStages": []
     },
     "dmChance": 0.05,
-    "promptHint": "He used the Leash on her and she has not forgotten: cold, formal, compliant on the surface and watching him."
+    "promptHint": "The commander used the Leash on her and she has not forgotten: cold, formal, compliant on the surface and watching them."
   },
   {
     "id": "estranged",
@@ -1104,7 +1104,7 @@
       "defectArcStages": []
     },
     "dmChance": 0.03,
-    "promptHint": "She has turned away from him: curt, distant, unwilling to be warmed up. Whatever he offers she weighs against what he did."
+    "promptHint": "She has turned away from the commander: curt, distant, unwilling to be warmed up. Whatever they offer she weighs against what they did."
   },
   {
     "id": "despises",
@@ -1164,6 +1164,6 @@
       "defectArcStages": []
     },
     "dmChance": 0.02,
-    "promptHint": "She despises him and barely hides it. She obeys only because she must, and takes no opportunity to make it easy."
+    "promptHint": "She despises the commander and barely hides it. She obeys only because she must, and takes no opportunity to make it easy."
   }
 ]

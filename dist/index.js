@@ -478,7 +478,7 @@ function recordLedger(before, after, action) {
     if (!was) continue;
     for (const axis of AXES) push(`axis:${id}:${axis}`, (rel[axis] ?? 0) - (was[axis] ?? 0));
   }
-  for (const stat2 of BODY_STATS) push(`body:${stat2}`, (after.commander?.body?.[stat2] ?? 0) - (before.commander?.body?.[stat2] ?? 0));
+  if (before.commander?.body !== void 0 && after.commander?.body !== void 0) for (const stat2 of BODY_STATS) push(`body:${stat2}`, (after.commander?.body?.[stat2] ?? 0) - (before.commander?.body?.[stat2] ?? 0));
   if (entries.length > 0) after.ledger = [...after.ledger ?? [], ...entries];
   if (!after.ledger) return;
   const oldest = after.day - (TUNING.ledger.days - 1);
@@ -1758,7 +1758,9 @@ function runActivity(draft, ctx2, request) {
     const penalty = traitEffects(draft, reg, "sleepless_rank");
     if (penalty.length > 0) {
       draft.commander.sleeplessDay = draft.day + 1;
-      draft.commander.sleeplessRank = Object.fromEntries(penalty.map((fx2) => [fx2.stat, fx2.amount]));
+      const sum = {};
+      for (const fx2 of penalty) sum[fx2.stat] = (sum[fx2.stat] ?? 0) + fx2.amount;
+      draft.commander.sleeplessRank = sum;
     }
   }
   events.push({
@@ -17001,7 +17003,7 @@ function renderCommanderFile(host, ctx2) {
       "section",
       { class: "alius-section" },
       h("h3", {}, "TRAITS"),
-      h("p", { class: "alius-hint" }, `Up to ${TUNING.commander.maxRegular} regular traits and one special. A trait changes how he plays, not how strong he is.`),
+      h("p", { class: "alius-hint" }, `Up to ${TUNING.commander.maxRegular} regular traits and one special. A trait changes how the commander plays, not how strong the commander is.`),
       h("div", { class: "alius-cards" }, ...all.filter((t) => t.kind === "regular").map((t) => card2(t.id))),
       all.some((t) => t.kind === "special") ? h("h4", {}, "SPECIAL") : null,
       h("div", { class: "alius-cards" }, ...all.filter((t) => t.kind === "special").map((t) => card2(t.id)))
@@ -17021,7 +17023,10 @@ function renderCommanderFile(host, ctx2) {
   const note = (text2) => h("p", { class: "alius-status", role: "status" }, text2);
   if (st?.status === "loading") host.append(note("READING THE PERSONA\u2026"));
   else if (st?.status === "manual") host.append(note(`MANUAL \u2014 ${st.notice ?? "fill the form by hand."}`));
-  else if (st?.status === "ready") host.append(note("PREFILLED \u2014 check every field."));
+  else if (st?.status === "ready") {
+    host.append(note(`PREFILLED${st.source ? ` from the persona "${st.source}"` : ""} \u2014 check every field.`));
+    if (st.notes) host.append(h("p", { class: "alius-hint" }, `Note: ${st.notes}`));
+  }
 }
 
 // src/setup/commander.ts
@@ -17034,7 +17039,7 @@ function valueOf(kind, v) {
   return i < 0 ? null : i + 1;
 }
 var LOWER_ORDER = ["reflexes", "endurance", "strength"];
-function sanitizeCommanderImport(raw, reg) {
+function sanitizeCommanderImport(raw, reg, opts = { desireBondDefects: false }) {
   const src = isObj23(raw) ? raw : {};
   const setup = defaultCommanderSetup();
   for (const k of BODY_STATS) {
@@ -17054,12 +17059,11 @@ function sanitizeCommanderImport(raw, reg) {
     const id = isObj23(item) && typeof item.id === "string" ? item.id : null;
     const t = id === null ? void 0 : reg.commanderTraits.get(id);
     if (!id || !t || t.kind !== "regular" || setup.traits.regular.includes(id)) continue;
-    const excluded = setup.traits.regular.some((kept) => (t.exclusiveWith ?? []).includes(kept) || (reg.commanderTraits.get(kept)?.exclusiveWith ?? []).includes(id));
-    if (excluded) continue;
+    if (traitBlockReason(reg, setup.traits, id, opts) !== null) continue;
     setup.traits.regular.push(id);
     reasons[id] = cap2(item.reason, 200);
   }
-  return { setup, reasons, notes: cap2(src.notes, 300) };
+  return { setup, personaName: "", reasons, notes: cap2(src.notes, 300) };
 }
 var usable2 = (raw, result) => isObj23(raw) && ["strength", "endurance", "reflexes", "expression", "seasoning"].some((k) => valueOf(k, raw[k]) !== null) || result.setup.traits.regular.length > 0;
 async function importCommander(st, deps) {
@@ -17073,7 +17077,7 @@ async function importCommander(st, deps) {
     };
     const r = await callLlm("commander_import", input, { st, settings });
     if (!r.ok) return { kind: "manual", reason: r.detail || r.reason };
-    const result = sanitizeCommanderImport(r.value, registries);
+    const result = { ...sanitizeCommanderImport(r.value, registries, { desireBondDefects: settings.desireBondDefects }), personaName: input.persona.name };
     if (!usable2(r.value, result)) return { kind: "manual", reason: "no usable commander profile in the model's answer" };
     return { kind: "ok", result };
   } catch (e) {
@@ -17395,7 +17399,12 @@ var Wizard = class {
         const special = this.s.commander.traits.special;
         this.s.commander = structuredClone(outcome.result.setup);
         if (special !== void 0) this.s.commander.traits.special = special;
-        this.s.commanderImport = { status: "ready", reasons: { ...outcome.result.reasons } };
+        this.s.commanderImport = {
+          status: "ready",
+          reasons: { ...outcome.result.reasons },
+          ...outcome.result.notes !== "" ? { notes: outcome.result.notes } : {},
+          ...outcome.result.personaName !== "" ? { source: outcome.result.personaName } : {}
+        };
       } else {
         this.s.commanderImport = { status: "manual", notice: outcome.reason, reasons: {} };
       }
@@ -17926,7 +17935,7 @@ function renderCalibration(host, ctx2) {
       section(
         "tastes",
         "HOW SHE READS THE COMMANDER",
-        h("p", { class: "alius-hint" }, `Pick up to ${TUNING.commander.maxTastes} (${picked.length}/${TUNING.commander.maxTastes}). Tastes decide first impressions and who notices his looks; they never change a number by themselves.`),
+        h("p", { class: "alius-hint" }, `Pick up to ${TUNING.commander.maxTastes} (${picked.length}/${TUNING.commander.maxTastes}). Tastes decide first impressions and who notices the commander's looks; they never change a number by themselves.`),
         h("div", { class: "alius-tastes" }, ...[...reg.tastes.values()].map((t) => {
           const id = String(t.id);
           const on = picked.includes(id);
@@ -21001,7 +21010,7 @@ function summarizeTraitEffect(e, _reg) {
     case "faction_start":
       return `Own corporation standing ${signed(x.amount)} at start`;
     case "taste_attraction":
-      return `Starting Attraction ${signed(x.amount)} with units whose tastes fit him`;
+      return `Starting Attraction ${signed(x.amount)} with units whose tastes fit the commander`;
     case "social_growth":
       return `${stat2(x.stat)} grows \xD7${num3(x.mult)} ${x.mult >= 1 ? "faster" : "slower"}`;
     case "body_growth":
@@ -21107,8 +21116,8 @@ function readingFor(subject, env) {
 // src/analysis/providers/commander.ts
 var WHERE_USED = {
   strength: "Used by: an Authority talk-down (together with seasoning), body routes of physical checks.",
-  endurance: "Used by: Crisis HP (his HP if a fight reaches him); with low endurance a three-slot expedition exhausts him.",
-  reflexes: "Used by: his chance to dodge a hit that reaches him in Commander Crisis."
+  endurance: "Used by: Crisis HP (the commander's HP if a fight reaches them); with low endurance a three-slot expedition exhausts the commander.",
+  reflexes: "Used by: the chance to dodge a hit that reaches the commander in Commander Crisis."
 };
 var PRESENCE_LABEL = { unnoticed: ["presence_unnoticed", "Unnoticed"], steady_voice: ["presence_steady_voice", "Steady Voice"], rally: ["presence_rally", "Rally"] };
 var pct = (n) => Math.round(n * 100);
@@ -21140,15 +21149,15 @@ function archetypeProvider(_subject, env) {
   const lines = [`Build: ${archetype}`, `Presence action: [[${id}|${label2}]]`];
   const group = [...env.registries.imageConsistency.values()].find((g) => g.archetypes.includes(archetype));
   const link = (events) => events.map((e) => `[[eventDeltas:${e}|${e}]]`).join(", ");
-  if (group && group.offImage.length > 0) lines.push(`Out of character for this build: ${link(group.offImage)}. These land harder until they know him.`);
+  if (group && group.offImage.length > 0) lines.push(`Out of character for this build: ${link(group.offImage)}. These land harder until they know the commander.`);
   if (group && group.inImage.length > 0) lines.push(`In character: ${link(group.inImage)}.`);
   return { lines };
 }
 function presenceProvider(subject, env, k) {
   const state = env.state;
   if (!state) return null;
-  const lines = ["Presence is how he comes across on first meeting: his build, his experience and his Authority."];
-  if (k.showRaw) lines.push(`His presence now: ${k.raw(presenceOf(state, env.registries))}`);
+  const lines = ["Presence is how the commander comes across on first meeting: build, experience and Authority."];
+  if (k.showRaw) lines.push(`Presence now: ${k.raw(presenceOf(state, env.registries))}`);
   const unitId = typeof subject.data.unitId === "string" ? subject.data.unitId : null;
   const unit = unitId === null ? void 0 : state.squad.find((u) => u.id === unitId);
   if (unit) {
@@ -21156,7 +21165,7 @@ function presenceProvider(subject, env, k) {
     const word = w > 0.5 ? "fresh" : w >= 0.1 ? "fading" : "faded";
     lines.push(`First impression: ${word}${k.showRaw ? ` (${k.raw(pct(w))}%)` : ""}`);
     const tastes = matchedTastes(state, env.registries, unit);
-    if (tastes.length > 0) lines.push(`Her tastes that fit him: ${tastes.map((t) => `[[tastes:${t.id}|${String(t.name)}]]`).join(", ")}`);
+    if (tastes.length > 0) lines.push(`Her tastes that fit the commander: ${tastes.map((t) => `[[tastes:${t.id}|${String(t.name)}]]`).join(", ")}`);
   }
   return { lines };
 }
@@ -23224,7 +23233,7 @@ function createApp(st, deps) {
     try {
       const answer = await shell.modal({
         title: "Commander file incomplete \u2014 review",
-        body: h("div", {}, h("p", {}, "This campaign began before the commander had a body, an expression and traits. Review his file, or skip to keep the defaults."), body),
+        body: h("div", {}, h("p", {}, "This campaign began before the commander had a body, an expression and traits. Review the commander's file, or skip to keep the defaults."), body),
         actions: [{ label: "Confirm", value: "confirm" }, { label: "Skip", value: "skip" }]
       });
       const commander = structuredClone(wizard.state.commander);

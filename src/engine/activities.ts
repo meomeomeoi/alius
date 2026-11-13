@@ -241,7 +241,9 @@ export function runActivity(draft: CampaignState, ctx: EngineCtx, request: unkno
     const penalty = traitEffects(draft, reg, 'sleepless_rank');
     if (penalty.length > 0) {
       draft.commander.sleeplessDay = draft.day + 1;
-      draft.commander.sleeplessRank = Object.fromEntries(penalty.map((fx) => [fx.stat, fx.amount]));
+      const sum: Partial<Record<'authority' | 'insight' | 'empathy' | 'cunning', number>> = {};
+      for (const fx of penalty) sum[fx.stat] = (sum[fx.stat] ?? 0) + fx.amount;
+      draft.commander.sleeplessRank = sum;
     }
   }
 

@@ -195,3 +195,14 @@ describe('the review modal and other modals (final review)', () => {
     expect(titles(modals)).toEqual(['Commander file incomplete — review', 'DECISION']);
   });
 });
+
+describe('review modal wording', () => {
+  it('names no pronoun for the commander', async () => {
+    const st = new FakeStAdapter(GROUP);
+    st.writeMetadata(METADATA_KEY, oldCampaign());
+    let text = '';
+    await boot(st, (o) => { text = (bodyOf(o).textContent ?? ''); return 'skip'; });
+    expect(text).toMatch(/review the commander/i);
+    expect(text).not.toMatch(/\b(he|him|his|himself)\b/i);
+  });
+});

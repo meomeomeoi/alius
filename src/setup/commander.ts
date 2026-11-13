@@ -1,5 +1,5 @@
 import type { Registries } from '../content/types';
-import { BODY_STATS, DESCRIPTORS, defaultCommanderSetup, poolSpent, type CommanderSetup, type DescriptorKind } from '../engine/commander/profile';
+import { BODY_STATS, DESCRIPTORS, defaultCommanderSetup, poolSpent, traitBlockReason, type CommanderSetup, type DescriptorKind } from '../engine/commander/profile';
 import { TUNING } from '../engine/tuning';
 import '../llm/calls/commanderImport'; // registers the call type
 import type { CommanderImportInput } from '../llm/calls/commanderImport';
@@ -12,6 +12,8 @@ const PERSONA_CHARS = 6000;
 
 export interface ImportedCommander {
   setup: CommanderSetup;
+  /** The persona whose text was read (the review of an old campaign reads the *current* persona, so the player should see whose). */
+  personaName: string;
   /** Why the model picked each trait, by trait id. */
   reasons: Record<string, string>;
   notes: string;
@@ -36,7 +38,7 @@ const LOWER_ORDER = ['reflexes', 'endurance', 'strength'] as const;
  * default), each body stat at most 4, then the highest stat is lowered until the pool of 7 is respected; traits are
  * known, regular, unique, at most 2, and the first of an exclusive pair wins. Never throws.
  */
-export function sanitizeCommanderImport(raw: unknown, reg: Registries): ImportedCommander {
+export function sanitizeCommanderImport(raw: unknown, reg: Registries, opts: { desireBondDefects: boolean } = { desireBondDefects: false }): ImportedCommander {
   const src = isObj(raw) ? raw : {};
   const setup = defaultCommanderSetup();
   for (const k of BODY_STATS) {
@@ -57,13 +59,12 @@ export function sanitizeCommanderImport(raw: unknown, reg: Registries): Imported
     const id = isObj(item) && typeof item.id === 'string' ? item.id : null;
     const t = id === null ? undefined : reg.commanderTraits.get(id);
     if (!id || !t || t.kind !== 'regular' || setup.traits.regular.includes(id)) continue;
-    const excluded = setup.traits.regular.some((kept) => ((t.exclusiveWith as string[] | undefined) ?? []).includes(kept)
-      || ((reg.commanderTraits.get(kept)?.exclusiveWith as string[] | undefined) ?? []).includes(id));
-    if (excluded) continue;
+    // the same rule the form uses: an exclusive pair, or a trait the campaign settings do not allow, is not proposed
+    if (traitBlockReason(reg, setup.traits, id, opts) !== null) continue;
     setup.traits.regular.push(id);
     reasons[id] = cap((item as Record<string, unknown>).reason, 200);
   }
-  return { setup, reasons, notes: cap(src.notes, 300) };
+  return { setup, personaName: '', reasons, notes: cap(src.notes, 300) };
 }
 
 /** Whether the model's answer said anything usable (a recognised descriptor or a trait). */
@@ -87,7 +88,7 @@ export async function importCommander(
     };
     const r = await callLlm<unknown>('commander_import', input, { st, settings });
     if (!r.ok) return { kind: 'manual', reason: r.detail || r.reason };
-    const result = sanitizeCommanderImport(r.value, registries);
+    const result = { ...sanitizeCommanderImport(r.value, registries, { desireBondDefects: settings.desireBondDefects }), personaName: input.persona.name };
     if (!usable(r.value, result)) return { kind: 'manual', reason: "no usable commander profile in the model's answer" };
     return { kind: 'ok', result };
   } catch (e) {

@@ -626,13 +626,13 @@
   {
     "id": "setting_first_impression_tau",
     "term": "First impression fades",
-    "short": "How many days units take to stop judging the commander by his looks. The first meeting counts most."
+    "short": "How many days units take to stop judging the commander by looks. The first meeting counts most."
   },
   {
     "id": "body_strength",
     "term": "Strength",
-    "short": "How hard the commander hits and how well he holds a line. Shown as a word, never a number.",
-    "long": "Strength helps when he has to push, lift or lean on someone, and it adds to an Authority talk-down together with experience. A weak commander is really weaker here; some checks stay closed to him, but every physical check has another way through. It grows by training, never by itself.",
+    "short": "How hard the commander hits and how well the line holds. Shown as a word, never a number.",
+    "long": "Strength helps when the commander has to push, lift or lean on someone, and it adds to an Authority talk-down together with experience. A weak commander is really weaker here; some checks stay closed, but every physical check has another way through. It grows by training, never by itself.",
     "see": [
       "body_endurance",
       "body_reflexes",
@@ -643,7 +643,7 @@
     "id": "body_endurance",
     "term": "Endurance",
     "short": "How much punishment and how many hours the commander can take. Shown as a word, never a number.",
-    "long": "Endurance sets his HP if a fight reaches him (Commander Crisis). With low endurance a long expedition exhausts him: he loses the next morning unless a close friend in the party covers for him. It grows by training.",
+    "long": "Endurance sets the commander's HP if a fight reaches them (Commander Crisis). With low endurance a long expedition exhausts the commander: the next morning is lost unless a close friend in the party covers. It grows by training.",
     "see": [
       "body_strength",
       "body_reflexes",
@@ -654,7 +654,7 @@
     "id": "body_reflexes",
     "term": "Reflexes",
     "short": "How quickly the commander gets out of the way. Shown as a word, never a number.",
-    "long": "Reflexes give him a chance to dodge a hit that reaches him in Commander Crisis. The better they are, the more often a blow misses. It grows by training.",
+    "long": "Reflexes give the commander a chance to dodge a hit that reaches them in Commander Crisis. The better they are, the more often a blow misses. It grows by training.",
     "see": [
       "body_strength",
       "body_endurance",
@@ -664,14 +664,14 @@
   {
     "id": "expression",
     "term": "Expression",
-    "short": "How the commander presents himself, from very feminine to very masculine. It has no game bonus or penalty of its own.",
-    "long": "Expression never buffs or weakens anything. It only matters through how each soldier reads it: individual tastes decide who notices, and the story may react to it. Nobody is punished for how he looks."
+    "short": "How the commander presents, from very feminine to very masculine. It has no game bonus or penalty of its own.",
+    "long": "Expression never buffs or weakens anything. It only matters through how each soldier reads it: individual tastes decide who notices, and the story may react to it. Nobody is punished for how they look."
   },
   {
     "id": "seasoning",
     "term": "Seasoning",
-    "short": "The commander's visible experience, from green to veteran. It shapes first impressions and the weight of his word.",
-    "long": "Seasoning is how much he has clearly lived through. It adds to his presence on first meeting and, together with Strength, to an Authority talk-down. Scars from a lost Crisis fight can raise it.",
+    "short": "The commander's visible experience, from green to veteran. It shapes first impressions and the weight of a word.",
+    "long": "Seasoning is how much the commander has clearly lived through. It adds to presence on first meeting and, together with Strength, to an Authority talk-down. Scars from a lost Crisis fight can raise it.",
     "see": [
       "archetype",
       "authority"
@@ -680,8 +680,8 @@
   {
     "id": "archetype",
     "term": "Build",
-    "short": "The commander's physique in one word, from frail to hardened, worked out from his three body stats.",
-    "long": "Frail, slight, average, fit or hardened. The build decides which presence action he gets in a fight and which acts the squad finds out of character for him: a gentle commander who coerces, or a tough one who comforts, makes a bigger impression until they know him better.",
+    "short": "The commander's physique in one word, from frail to hardened, worked out from the three body stats.",
+    "long": "Frail, slight, average, fit or hardened. The build decides which presence action the commander gets in a fight and which acts the squad finds out of character: a gentle commander who coerces, or a tough one who comforts, makes a bigger impression until they know each other better.",
     "see": [
       "body_strength",
       "body_endurance",
@@ -691,8 +691,8 @@
   {
     "id": "presence_unnoticed",
     "term": "Unnoticed",
-    "short": "A slight commander's once-per-fight trick: enemies look past him about half of the time.",
-    "long": "Free, once per combat. For the rest of the fight an enemy that could pick the exposed commander skips him on about half of its decisions. It does nothing if he is not exposed.",
+    "short": "A slight commander's once-per-fight trick: enemies look past the commander about half of the time.",
+    "long": "Free, once per combat. For the rest of the fight an enemy that could pick the exposed commander skips the commander on about half of its decisions. It does nothing if the commander is not exposed.",
     "see": [
       "archetype",
       "presence_steady_voice",
@@ -702,7 +702,7 @@
   {
     "id": "presence_steady_voice",
     "term": "Steady Voice",
-    "short": "An average commander's once-per-fight trick: his next order costs 1 CP less.",
+    "short": "An average commander's once-per-fight trick: the next order costs 1 CP less.",
     "long": "Free, once per combat. The next order you pay for costs 1 CP less, and can cost nothing. Free orders and repeats do not use it up.",
     "see": [
       "archetype",
@@ -746,7 +746,7 @@
     "id": "quiet_night",
     "term": "Quiet night",
     "short": "An insomniac commander is awake with nobody at the door. Sleep, or spend the night and pay for it tomorrow.",
-    "long": "When no one knocks, a commander who cannot sleep gets the Night slot anyway. You can SLEEP it away at no cost, or do an evening activity; a night spent awake lowers his Empathy rank by one the next day.",
+    "long": "When no one knocks, a commander who cannot sleep gets the Night slot anyway. You can SLEEP it away at no cost, or do an evening activity; a night spent awake lowers the Empathy rank by one the next day.",
     "see": [
       "slots"
     ]
@@ -754,8 +754,8 @@
   {
     "id": "presence",
     "term": "Presence",
-    "short": "How the commander comes across to someone who has just met him: build, experience and the weight of his Authority.",
-    "long": "Presence moves a soldier's Trust once, the day she joins, scaled by her tastes. It matters most on first meeting and fades as she gets to know him; what he does matters more and more. It is never shown as a number unless raw values are on.",
+    "short": "How the commander comes across to someone who has just met them: build, experience and the weight of Authority.",
+    "long": "Presence moves a soldier's Trust once, the day she joins, scaled by her tastes. It matters most on first meeting and fades as she gets to know the commander; what the commander does matters more and more. It is never shown as a number unless raw values are on.",
     "see": [
       "first_impression",
       "archetype",
@@ -766,8 +766,8 @@
   {
     "id": "first_impression",
     "term": "First impression",
-    "short": "Looks count most the day a soldier meets him and fade with every day she knows him.",
-    "long": "A unit's first impression decays over days (the setting First impression fades). While it lasts, acts that do not fit his build land harder, and the narration is told that the squad is still sizing him up.",
+    "short": "Looks count most the day a soldier meets the commander and fade with every day she knows them.",
+    "long": "A unit's first impression decays over days (the setting First impression fades). While it lasts, acts that do not fit the commander's build land harder, and the narration is told that the squad is still sizing the commander up.",
     "see": [
       "presence",
       "image_consistency"
@@ -776,8 +776,8 @@
   {
     "id": "image_consistency",
     "term": "Image consistency",
-    "short": "A commander who acts against the picture his build gives makes a bigger impression, for better or worse, until they know him.",
-    "long": "A gentle commander who coerces, or a hard one who comforts, shocks. The effect is strongest at first and fades with the days a unit has known him. Some soldiers' tastes make it stronger. The engine tags the act, never the model.",
+    "short": "A commander who acts against the picture the build gives makes a bigger impression, for better or worse, until the squad knows them.",
+    "long": "A gentle commander who coerces, or a hard one who comforts, shocks. The effect is strongest at first and fades with the days a unit has known the commander. Some soldiers' tastes make it stronger. The engine tags the act, never the model.",
     "see": [
       "archetype",
       "first_impression"
@@ -786,7 +786,7 @@
   {
     "id": "commander_traits",
     "term": "Traits",
-    "short": "Up to two regular traits and one special one change how the commander plays, not how strong he is.",
+    "short": "Up to two regular traits and one special one change how the commander plays, not how strong the commander is.",
     "long": "Every trait has an upside and a downside. Regular traits shape growth, costs and first impressions; a special trait can reshape the campaign. Picked when the file is made; there is no way to change them later.",
     "see": [
       "archetype"
@@ -795,8 +795,8 @@
   {
     "id": "exhausted",
     "term": "Exhausted",
-    "short": "A weak commander loses the next morning after a three-slot expedition, unless a close friend in the party covers for him.",
-    "long": "Endurance 2 or less. The squad comes back, he sleeps through the morning and the day starts in the afternoon. A unit that is a friend or closer, in the party and standing, takes the strain instead.",
+    "short": "A weak commander loses the next morning after a three-slot expedition, unless a close friend in the party covers.",
+    "long": "Endurance 2 or less. The squad comes back, the commander sleeps through the morning and the day starts in the afternoon. A unit that is a friend or closer, in the party and standing, takes the strain instead.",
     "see": [
       "body_endurance"
     ]

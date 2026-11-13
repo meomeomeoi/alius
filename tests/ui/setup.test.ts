@@ -726,3 +726,18 @@ describe('calibration tastes (P7)', () => {
     expect(tastesView({ status: 'manual' }).host.querySelector('button[data-regenerate="tastes"]')).not.toBeNull();
   });
 });
+
+describe('tastes wording (P7)', () => {
+  it('the tastes hint names no pronoun for the commander', () => {
+    const wizard = new Wizard({ registries: reg, desireBondDefects: false, importer: async () => OK, onChange: () => {} }, { personaName: 'V', canBindCurrent: false });
+    wizard.toggleUnit({ avatar: 'a.png', name: 'Ann' });
+    const draft = wizard.state.units[0];
+    draft.status = 'ready';
+    draft.candidates = structuredClone(PROFILE);
+    const host = h('div');
+    document.body.append(host);
+    renderCalibration(host, { draft, registries: reg, desireBondDefects: false, onUpdate: vi.fn(), onRegenerate: vi.fn(), onManual: vi.fn() });
+    const section = host.querySelector('[data-section="tastes"]')!.textContent!;
+    expect(section).not.toMatch(/\b(he|him|his|himself)\b/i);
+  });
+});

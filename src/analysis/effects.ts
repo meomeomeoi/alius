@@ -369,7 +369,7 @@ export function summarizeTraitEffect(e: TraitEffect, _reg: Registries): string {
     case 'leash_weekly': return `${signed(x.amount)} Leash ${Math.abs(x.amount) === 1 ? 'authorization' : 'authorizations'} a week`;
     case 'seasoning_start': return `Seasoning ${signed(x.amount)} at start`;
     case 'faction_start': return `Own corporation standing ${signed(x.amount)} at start`;
-    case 'taste_attraction': return `Starting Attraction ${signed(x.amount)} with units whose tastes fit him`;
+    case 'taste_attraction': return `Starting Attraction ${signed(x.amount)} with units whose tastes fit the commander`;
     case 'social_growth': return `${stat(x.stat)} grows ×${num(x.mult)} ${x.mult >= 1 ? 'faster' : 'slower'}`;
     case 'body_growth': return `Body training XP ×${num(x.mult)}`;
     case 'early_trust_gain': return `Trust gains ${pctSigned(x.pct)} for the first ${TUNING.commander.earlyDays} days`;

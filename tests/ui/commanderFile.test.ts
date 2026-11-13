@@ -150,7 +150,9 @@ describe('commander file form', () => {
     expect(loading.btn('button[data-action="prefill"]').disabled).toBe(true);
     const manual = render(setup(), { importStatus: { status: 'manual', notice: 'the persona has no description', reasons: {} } });
     expect(manual.host.textContent).toContain('MANUAL — the persona has no description');
-    const ready = render(setup({ traits: { regular: ['old_wound'] } }), { importStatus: { status: 'ready', reasons: { old_wound: 'A limp from an old fight.', bookish: 'unused' } } });
+    const ready = render(setup({ traits: { regular: ['old_wound'] } }), { importStatus: { status: 'ready', source: 'Mara Vale', notes: 'A scarred, quiet officer.', reasons: { old_wound: 'A limp from an old fight.', bookish: 'unused' } } });
+    expect(ready.host.textContent).toContain('PREFILLED from the persona "Mara Vale"');
+    expect(ready.host.textContent).toContain('Note: A scarred, quiet officer.');
     expect(ready.host.textContent).toContain('A limp from an old fight.');
     expect(ready.host.textContent).not.toContain('unused'); // only chosen traits carry a reason
   });
@@ -171,5 +173,12 @@ describe('commander file form', () => {
     expect(host.querySelector('img')).toBeNull();
     expect(host.querySelector('b')).toBeNull();
     expect(host.textContent).toContain('<img src=x onerror=alert(1)>');
+  });
+});
+
+describe('wording', () => {
+  it('the form names no pronoun for the commander', () => {
+    const text = render(setup(), { onPrefill: vi.fn(), onRandom: vi.fn() }).host.textContent!;
+    expect(text).not.toMatch(/\b(he|him|his|himself)\b/i);
   });
 });

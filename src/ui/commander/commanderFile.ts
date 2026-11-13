@@ -99,7 +99,7 @@ export function renderCommanderFile(host: HTMLElement, ctx: CommanderFileCtx): v
   host.append(
     h('section', { class: 'alius-section' },
       h('h3', {}, 'TRAITS'),
-      h('p', { class: 'alius-hint' }, `Up to ${TUNING.commander.maxRegular} regular traits and one special. A trait changes how he plays, not how strong he is.`),
+      h('p', { class: 'alius-hint' }, `Up to ${TUNING.commander.maxRegular} regular traits and one special. A trait changes how the commander plays, not how strong the commander is.`),
       h('div', { class: 'alius-cards' }, ...all.filter((t) => t.kind === 'regular').map((t) => card(t.id))),
       all.some((t) => t.kind === 'special') ? h('h4', {}, 'SPECIAL') : null,
       h('div', { class: 'alius-cards' }, ...all.filter((t) => t.kind === 'special').map((t) => card(t.id)))),
@@ -119,5 +119,8 @@ export function renderCommanderFile(host: HTMLElement, ctx: CommanderFileCtx): v
   const note = (text: string): HTMLElement => h('p', { class: 'alius-status', role: 'status' }, text);
   if (st?.status === 'loading') host.append(note('READING THE PERSONA…'));
   else if (st?.status === 'manual') host.append(note(`MANUAL — ${st.notice ?? 'fill the form by hand.'}`));
-  else if (st?.status === 'ready') host.append(note('PREFILLED — check every field.'));
+  else if (st?.status === 'ready') {
+    host.append(note(`PREFILLED${st.source ? ` from the persona "${st.source}"` : ''} — check every field.`));
+    if (st.notes) host.append(h('p', { class: 'alius-hint' }, `Note: ${st.notes}`));
+  }
 }

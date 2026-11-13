@@ -219,7 +219,7 @@ export function renderCalibration(host: HTMLElement, ctx: CalibrationCtx): void 
     const full = picked.length >= TUNING.commander.maxTastes;
     host.append(
       section('tastes', 'HOW SHE READS THE COMMANDER',
-        h('p', { class: 'alius-hint' }, `Pick up to ${TUNING.commander.maxTastes} (${picked.length}/${TUNING.commander.maxTastes}). Tastes decide first impressions and who notices his looks; they never change a number by themselves.`),
+        h('p', { class: 'alius-hint' }, `Pick up to ${TUNING.commander.maxTastes} (${picked.length}/${TUNING.commander.maxTastes}). Tastes decide first impressions and who notices the commander's looks; they never change a number by themselves.`),
         h('div', { class: 'alius-tastes' }, ...[...reg.tastes.values()].map((t) => {
           const id = String(t.id);
           const on = picked.includes(id);

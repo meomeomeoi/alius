@@ -5,6 +5,7 @@ import { dispatch, registerAction } from '../../src/engine/dispatch';
 import { recordLedger } from '../../src/engine/ledger';
 import type { CampaignState, LedgerEntry } from '../../src/engine/state/types';
 import { TUNING } from '../../src/engine/tuning';
+import '../../src/engine/actions/commander';
 import { campaign, errors, loadCore, run } from '../helpers/world';
 
 let reg: Registries;
@@ -39,6 +40,24 @@ describe('change ledger', () => {
     expect(errors(r.events)).toEqual([]);
     expect(r.state.commander.body!.strength).toBe(3);
     expect(r.state.ledger).toContainEqual({ day: s.day, slot: s.slot, action: 'activity/do', key: 'body:strength', delta: 1 });
+  });
+
+  it('the commander/seed migration is not recorded as training', () => {
+    const s = fresh();
+    for (const k of ['body', 'bodyXp', 'expression', 'seasoning', 'traits', 'archetype', 'fileReviewed'] as const) delete s.commander[k];
+    const r = run(s, reg, { type: 'commander/seed', payload: {} });
+    expect(errors(r.events)).toEqual([]);
+    expect(r.state.commander.body).toBeDefined();
+    expect((r.state.ledger ?? []).filter((e) => e.key.startsWith('body:'))).toEqual([]);
+  });
+
+  it('a scarred body stat is recorded with a negative delta', () => {
+    const before = fresh();
+    before.commander.body = { strength: 3, endurance: 3, reflexes: 2 };
+    const after = structuredClone(before);
+    after.commander.body!.endurance = 2;
+    recordLedger(before, after, 'combat/start');
+    expect(after.ledger).toContainEqual({ day: before.day, slot: before.slot, action: 'combat/start', key: 'body:endurance', delta: -1 });
   });
 
   it('a scene intent that moves Trust records axis:<id>:trust', () => {

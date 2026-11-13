@@ -15,8 +15,8 @@ import type { Subject } from '../subject';
 
 const WHERE_USED: Record<BodyStat, string> = {
   strength: 'Used by: an Authority talk-down (together with seasoning), body routes of physical checks.',
-  endurance: 'Used by: Crisis HP (his HP if a fight reaches him); with low endurance a three-slot expedition exhausts him.',
-  reflexes: 'Used by: his chance to dodge a hit that reaches him in Commander Crisis.',
+  endurance: "Used by: Crisis HP (the commander's HP if a fight reaches them); with low endurance a three-slot expedition exhausts the commander.",
+  reflexes: 'Used by: the chance to dodge a hit that reaches the commander in Commander Crisis.',
 };
 
 const PRESENCE_LABEL = { unnoticed: ['presence_unnoticed', 'Unnoticed'], steady_voice: ['presence_steady_voice', 'Steady Voice'], rally: ['presence_rally', 'Rally'] } as const;
@@ -54,7 +54,7 @@ function archetypeProvider(_subject: Subject, env: AnalyzeEnv): { lines: string[
   const lines = [`Build: ${archetype}`, `Presence action: [[${id}|${label}]]`];
   const group = [...env.registries.imageConsistency.values()].find((g) => (g.archetypes as string[]).includes(archetype));
   const link = (events: unknown): string => (events as string[]).map((e) => `[[eventDeltas:${e}|${e}]]`).join(', ');
-  if (group && (group.offImage as string[]).length > 0) lines.push(`Out of character for this build: ${link(group.offImage)}. These land harder until they know him.`);
+  if (group && (group.offImage as string[]).length > 0) lines.push(`Out of character for this build: ${link(group.offImage)}. These land harder until they know the commander.`);
   if (group && (group.inImage as string[]).length > 0) lines.push(`In character: ${link(group.inImage)}.`);
   return { lines };
 }
@@ -62,8 +62,8 @@ function archetypeProvider(_subject: Subject, env: AnalyzeEnv): { lines: string[
 function presenceProvider(subject: Subject, env: AnalyzeEnv, k: Knowledge): { lines: string[] } | null {
   const state = env.state;
   if (!state) return null;
-  const lines = ['Presence is how he comes across on first meeting: his build, his experience and his Authority.'];
-  if (k.showRaw) lines.push(`His presence now: ${k.raw(presenceOf(state, env.registries))}`);
+  const lines = ['Presence is how the commander comes across on first meeting: build, experience and Authority.'];
+  if (k.showRaw) lines.push(`Presence now: ${k.raw(presenceOf(state, env.registries))}`);
   const unitId = typeof subject.data.unitId === 'string' ? subject.data.unitId : null;
   const unit = unitId === null ? undefined : state.squad.find((u) => u.id === unitId);
   if (unit) {
@@ -71,7 +71,7 @@ function presenceProvider(subject: Subject, env: AnalyzeEnv, k: Knowledge): { li
     const word = w > 0.5 ? 'fresh' : w >= 0.1 ? 'fading' : 'faded';
     lines.push(`First impression: ${word}${k.showRaw ? ` (${k.raw(pct(w))}%)` : ''}`);
     const tastes = matchedTastes(state, env.registries, unit);
-    if (tastes.length > 0) lines.push(`Her tastes that fit him: ${tastes.map((t) => `[[tastes:${t.id}|${String(t.name)}]]`).join(', ')}`);
+    if (tastes.length > 0) lines.push(`Her tastes that fit the commander: ${tastes.map((t) => `[[tastes:${t.id}|${String(t.name)}]]`).join(', ')}`);
   }
   return { lines };
 }

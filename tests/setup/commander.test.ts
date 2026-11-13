@@ -133,6 +133,33 @@ describe('importCommander', () => {
   });
 });
 
+describe('review follow-ups', () => {
+  it('the sanitizer honours requiresSettings (a pack trait that needs Desire/Bond is not proposed with the setting off)', () => {
+    const custom: Registries = { ...reg, commanderTraits: new Map([...reg.commanderTraits, ['bond', { id: 'bond', name: 'Bond', kind: 'regular', requiresSettings: { desireBondDefects: true }, upside: 'u', downside: 'd', effects: [], description: 'x' } as never]]) };
+    const raw = { traits: [{ id: 'bond', reason: 'r' }, { id: 'bookish', reason: 'r2' }] };
+    expect(sanitizeCommanderImport(raw, custom).setup.traits.regular).toEqual(['bookish']);
+    expect(sanitizeCommanderImport(raw, custom, { desireBondDefects: true }).setup.traits.regular).toEqual(['bond', 'bookish']);
+  });
+
+  it('importCommander passes the campaign setting to the sanitizer', async () => {
+    const custom: Registries = { ...reg, commanderTraits: new Map([...reg.commanderTraits, ['bond', { id: 'bond', name: 'Bond', kind: 'regular', requiresSettings: { desireBondDefects: true }, upside: 'u', downside: 'd', effects: [], description: 'x' } as never]]) };
+    const { st, deps } = setup();
+    st.profileReplies = ['{ "strength": "Strong", "traits": [{ "id": "bond", "reason": "r" }] }'];
+    const r = await importCommander(st, { ...deps, registries: custom });
+    if (r.kind !== 'ok') throw new Error('expected ok');
+    expect(r.result.setup.traits.regular).toEqual([]);
+  });
+
+  it('the outcome says which persona was read and carries the notes', async () => {
+    const { st, deps } = setup();
+    st.profileReplies = [fixture('valid')];
+    const r = await importCommander(st, deps);
+    if (r.kind !== 'ok') throw new Error('expected ok');
+    expect(r.result.personaName).toBe('Vale');
+    expect(r.result.notes).toBe('A scarred, quiet officer.');
+  });
+});
+
 describe('sanitizeCommanderImport', () => {
   it('descriptors are case-insensitive and unknown ones fall back to the defaults', () => {
     const r = sanitizeCommanderImport({ strength: 'POWERFUL', endurance: 'fragile', reflexes: '  quick ', expression: 'very FEMININE', seasoning: 'green' }, reg);

@@ -434,6 +434,7 @@ describe('manualOptions', () => {
 const IMPORTED_COMMANDER: CommanderImportOutcome = {
   kind: 'ok',
   result: {
+    personaName: 'Mara Vale',
     setup: { body: { strength: 4, endurance: 3, reflexes: 2 }, expression: 2, seasoning: 4, traits: { regular: ['old_wound'] } },
     reasons: { old_wound: 'A limp from an old fight.' },
     notes: 'ok',
@@ -549,7 +550,7 @@ describe('Wizard: commander file (P7)', () => {
     pendingCommander[0].resolve(IMPORTED_COMMANDER);
     await flush();
     expect(w.state.commander).toEqual({ body: { strength: 4, endurance: 3, reflexes: 2 }, expression: 2, seasoning: 4, traits: { regular: ['old_wound'] } });
-    expect(w.state.commanderImport).toMatchObject({ status: 'ready', reasons: { old_wound: 'A limp from an old fight.' } });
+    expect(w.state.commanderImport).toMatchObject({ status: 'ready', reasons: { old_wound: 'A limp from an old fight.' }, notes: 'ok', source: 'Mara Vale' });
   });
 
   it('a prefill keeps the special trait the player already chose', async () => {

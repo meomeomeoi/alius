@@ -103,6 +103,14 @@ describe('inside a quiet night', () => {
     expect(socialRank(later, 'empathy')).toBe(3);
   });
 
+  it('two sleepless_rank effects on one stat add up', () => {
+    const two: Registries = { ...reg, commanderTraits: new Map([...reg.commanderTraits, ['extra', { id: 'extra', kind: 'regular', effects: [{ type: 'sleepless_rank', stat: 'empathy', amount: -1 }] } as never]]) };
+    const s = quiet((t) => { t.commander.socialStats.empathy = 4; t.commander.traits = { regular: ['insomniac', 'extra'] }; });
+    const r = run(s, two, { type: 'activity/do', payload: { activityId: 'work' } });
+    expect(r.state.commander.sleeplessRank).toEqual({ empathy: -2 });
+    expect(socialRank(r.state, 'empathy')).toBe(2);
+  });
+
   it('the sleepless penalty never takes a rank below 1', () => {
     const s = quiet((t) => { t.commander.socialStats.empathy = 1; });
     const r = run(s, reg, { type: 'activity/do', payload: { activityId: 'work' } });

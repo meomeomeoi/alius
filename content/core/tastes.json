@@ -32,7 +32,7 @@
   {
     "id": "protective_of_frail",
     "name": "Protective of the frail",
-    "description": "Warms to a commander who looks fragile and wants to look after him.",
+    "description": "Warms to a commander who looks fragile and wants to look after them.",
     "match": {
       "archetypes": [
         "frail",
@@ -117,7 +117,7 @@
   {
     "id": "indifferent_to_looks",
     "name": "Indifferent to looks",
-    "description": "Does not judge a commander by his looks at all.",
+    "description": "Does not judge a commander by looks at all.",
     "presenceMult": 0
   }
 ]

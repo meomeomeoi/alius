@@ -38,6 +38,9 @@ export interface CommanderImportState {
   notice?: string;
   /** Why the model picked each trait, by trait id. */
   reasons: Record<string, string>;
+  /** The model's note for the player and the persona it read (status `ready`). */
+  notes?: string;
+  source?: string;
 }
 
 export interface WizardState {
@@ -224,7 +227,11 @@ export class Wizard {
         const special = this.s.commander.traits.special;
         this.s.commander = structuredClone(outcome.result.setup);
         if (special !== undefined) this.s.commander.traits.special = special;
-        this.s.commanderImport = { status: 'ready', reasons: { ...outcome.result.reasons } };
+        this.s.commanderImport = {
+          status: 'ready', reasons: { ...outcome.result.reasons },
+          ...(outcome.result.notes !== '' ? { notes: outcome.result.notes } : {}),
+          ...(outcome.result.personaName !== '' ? { source: outcome.result.personaName } : {}),
+        };
       } else {
         this.s.commanderImport = { status: 'manual', notice: outcome.reason, reasons: {} };
       }

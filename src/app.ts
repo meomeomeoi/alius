@@ -878,7 +878,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     try {
       const answer = await shell.modal({
         title: 'Commander file incomplete — review',
-        body: h('div', {}, h('p', {}, 'This campaign began before the commander had a body, an expression and traits. Review his file, or skip to keep the defaults.'), body),
+        body: h('div', {}, h('p', {}, "This campaign began before the commander had a body, an expression and traits. Review the commander's file, or skip to keep the defaults."), body),
         actions: [{ label: 'Confirm', value: 'confirm' }, { label: 'Skip', value: 'skip' }],
       });
       const commander = structuredClone(wizard.state.commander);
