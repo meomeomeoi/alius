@@ -1,4 +1,4 @@
-# Alius — Next Packages (P7a–P13) and Session Plan
+# Alius — Next Packages (P7a–P13, incl. P9b–P9d, P10b) and Session Plan
 
 P0–P6 are done. These packages bring the base to a proper starting level before content expansion.
 
@@ -12,8 +12,12 @@ P0–P6 are done. These packages bring the base to a proper starting level befor
 | 3 | **P9** Impunity, discipline, demands, reputation | Needs P7 presence and P8 disposition. |
 | 4 | **P10** Visual upgrade | Independent of P7–P9 logic, but P11 is built from its voices (paper forms, dossier) and its hub. |
 | 5 | **P11** Prologue & onboarding | Assembles P7 (creation fields), P8 (world screen) and P10 (paper voice, hub, objective panel). |
+| 5b | **P9d** Desire & bonds | Defines the bond profile and opt-in content categories that P9b/P9c read; needs P9 and P3. Implement before P9b/P9c. |
+| 5c | **P9b** Squad power structure | Voting, hierarchy/leader, outside perception, scapegoat; needs P9, P8, P9d §1. |
+| 5d | **P9c** Personal pressure | Device access levels, bookings, inverted courtship, tokens, squad secrets, wagers; needs P9b, P9d, P10. |
+| 5e | **P10b** Intimate immersion UI | Telemetry, living DMs, night door, handwriting, device marks; needs P10, P9c data, P9d. |
 | 6 | **P12** Special traits: Secret Frequency, Bloom-induced Paranoia, Web of Debts | Stand on P7's trait framework, P9's leverage/punishments and P5's night events and threads. |
-| 7 | **P13** LEASHSWAP mode | Mirrors P9's punishments onto the commander, reuses P12's suspicion clocks; needs P11's intake to reveal the warden. |
+| 7 | **P13** LEASHSWAP mode | Mirrors P9's punishments onto the commander, reuses P12's suspicion clocks, sits above P9b's hierarchy, uses P9d's lead and content categories; needs P11's intake to reveal the warden. |
 
 The prologue was item 4 in the original list and the visuals item 5. They swap because a diegetic intake made of paper forms and a dossier needs the `paper` voice to exist first; otherwise the prologue gets built twice.
 
@@ -29,6 +33,10 @@ Each package: **one planning session** (agent writes `docs/plans/<date>-pN-….m
 | P9 | (a) Impunity terms, new intents, pending threats, stances + directives, sabotage; (b) punishments registry, menu + dialogue paths, chips with UNDO; (c) demands + reputation/nicknames |
 | P10 | (a) hub screen + rooms + markers + panels; (b) device frame + `deviceSkins` (3 CSS presets, image skin support), slide-over PDA; (c) voices + `VoiceCard`, dithered portraits, semantic colours, motion/sound, readable mode, bundled fonts |
 | P11 | (a) onboarding state, `prologues` registry, paper forms for intake/exam/dossier, veteran skip; (b) line-up and first-words scenes with caps, tutorial expedition, debrief, `uiUnlocks`, objective tracker + director `objectiveHint` |
+| P9d | (a) bond profile in import, `contentCategories` (opt-in CONTENT section, exclusion directive, violation flag, mechanic filtering), characters' own limits; (b) lead per scene + chips, Want, relationship rules; (c) two new defects + balance harness, publicity |
+| P9b | (a) `squad_assertiveness`, voting toggle + VOTE panel + ballots + overruling; (b) standing, leader, privileges, endorse/challenge, outside perception; (c) scapegoat dilemma family |
+| P9c | (a) device access levels (incl. level-4 edits with KEEP/REVERT), bookings, inverted courtship + `claimed`; (b) tokens, wagers (5 games, stakes filtered by content categories); (c) squad secrets |
+| P10b | (a) VITALS telemetry, living DM behaviours; (b) night theme + door, handwriting fonts and notes, device marks |
 | P12 | (a) special-trait plumbing + Secret Frequency (intercepts, distortion, `knowledge_leak`, suspicion, discovery, burn); (b) Bloom-induced Paranoia (premonitions, false alarms, `accused`, nightmares, `contingency`); (c) Web of Debts (handler visits, intel exchange, consequences, two discovery paths, `defector_arc` stubs) |
 | P13 | (a) mode setup, warden selection, `warden_agenda`, warden state, permadeath rules with rewind/end; (b) overrides (COMPLY/ARGUE/DEFY), commander punishments + Leash on commander, lethal escalation; (c) intrigue, three removal routes, investigation, remote control, verdicts, WARDEN panel |
 
@@ -44,6 +52,7 @@ Rule of thumb from P0–P6: one chunk per session, start each session with the p
 6. §10 Roadmap: special traits beyond P12 (`former_off_spec`, `bound_elsewhere`, `voice_synth`); P13 LEASHSWAP mode replaces the `collared` idea; **Bloom update** (mutation slot on units — type, stage 1–4, visibility, self-attitude; progression clocks; treatment; infection incl. the commander; mark Shared Strain; Latent Strain moves onto these rails; art cost: visible stages need new sprite packs — limit visible stages or keep changes off-sprite).
 7. Mark older package specs as "historical; code is the source of truth where they differ".
 8. §3 Principles or §11 rules: every player-facing stat/option/chip carries `data-analyze` (P7a coverage rule); new values add an analyze provider in the same package.
+9. §8 Settings: the single "explicit scenes allowed" switch is superseded by P9d content categories (all off by default; enabling = full consent; characters' own limits still apply).
 
 ## Author to-do (can run in parallel)
 
@@ -53,4 +62,5 @@ Rule of thumb from P0–P6: one chunk per session, start each session with the p
 - Punishment and nickname lists (P9).
 - Art: hub cross-section; device renders with transparent screen per skin (optional); CC0 textures/sounds (optional).
 - Prologue texts for both starts (P11).
+- Content category list and descriptions (P9d); relationship rule templates; token kinds; vote reasons wording (P9b/P9c).
 - Handler character and `defector_arc` beats (P12); warden expectations, controller-implant lore (P13).

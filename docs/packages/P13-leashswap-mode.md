@@ -1,6 +1,6 @@
 # P13 — LEASHSWAP Mode (Inverted Command)
 
-**Depends on:** P7, P9 (punishments, Impunity), P12 (special-trait plumbing, suspicion clocks), P6 (Leash, dilemmas, mutiny), P5 (oversight, director), P0 (snapshots). **Read:** overview; this file; P6; P9.
+**Depends on:** P7, P9 (punishments, Impunity), P9b (hierarchy: the warden sits above it), P9d (lead, bond profile, content categories), P12 (special-trait plumbing, suspicion clocks), P6 (Leash, dilemmas, mutiny), P5 (oversight, director), P0 (snapshots). **Read:** overview; this file; P6; P9.
 
 ## Premise
 
