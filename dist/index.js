@@ -6,6 +6,36 @@ var __export = (target, all) => {
 
 // src/engine/tuning.ts
 var TUNING = Object.freeze({
+  /** P7: the commander's body, presence and traits (draft balance values). */
+  commander: Object.freeze({
+    pool: 7,
+    creationMax: 4,
+    defaults: Object.freeze({
+      body: Object.freeze({ strength: 3, endurance: 3, reflexes: 2 }),
+      expression: 3,
+      seasoning: 3
+    }),
+    /** Tenths of a session: one `train` body session = 10; a step costs 3 / 6 / 10 / 15 sessions (index = value − 1). */
+    bodyXpPerSession: 10,
+    bodyXpSteps: Object.freeze([30, 60, 100, 150]),
+    crisisHpBase: 20,
+    crisisHpPerEndurance: 10,
+    crisisHpMin: 10,
+    dodgePerReflex: 0.06,
+    scarChance: 0.15,
+    unnoticedSkip: 0.5,
+    rallyStress: 10,
+    presenceMax: 15,
+    tau: 7,
+    offImageMult: 1.3,
+    earlyDays: 14,
+    exhaustionEndurance: 2,
+    coverStates: Object.freeze(["friend", "confidant", "kindred", "sworn", "flirting", "fwb", "lover", "devoted", "secret_affair"]),
+    intimidatePerPoint: 0.03,
+    delegateRemarkChance: 0.3,
+    maxTastes: 3,
+    maxRegular: 2
+  }),
   /** P7a: the change ledger behind trends, stress sources and "last changes" readings. */
   ledger: Object.freeze({ days: 7, max: 150 }),
   upkeep: Object.freeze({ perUnit: 1, commander: 1, doubledByDefect: "hunger_loop" }),
@@ -516,9 +546,64 @@ function recoverUnit(draft, u) {
   return { type: "unit_recovered", unitId: u.id };
 }
 
+// src/engine/commander/profile.ts
+var BODY_STATS = Object.freeze(["strength", "endurance", "reflexes"]);
+var DESCRIPTORS = Object.freeze({
+  strength: Object.freeze(["Feeble", "Slight", "Average", "Strong", "Powerful"]),
+  endurance: Object.freeze(["Fragile", "Delicate", "Average", "Hardy", "Iron"]),
+  reflexes: Object.freeze(["Sluggish", "Slow", "Average", "Quick", "Lightning"]),
+  expression: Object.freeze(["Very feminine", "Feminine", "Androgynous", "Masculine", "Very masculine"]),
+  seasoning: Object.freeze(["Green", "Young", "Experienced", "Seasoned", "Veteran"])
+});
+function archetypeOf(body) {
+  const sum = BODY_STATS.reduce((n, k) => n + body[k], 0);
+  if (sum <= 4) return "frail";
+  if (sum <= 6) return "slight";
+  if (sum <= 9) return "average";
+  if (sum <= 12) return "fit";
+  return "hardened";
+}
+var defaultCommanderSetup = () => ({
+  body: { ...TUNING.commander.defaults.body },
+  expression: TUNING.commander.defaults.expression,
+  seasoning: TUNING.commander.defaults.seasoning,
+  traits: { regular: [] }
+});
+var poolSpent = (body) => BODY_STATS.reduce((n, k) => n + body[k], 0) - BODY_STATS.length;
+var isInt = (n, lo, hi) => typeof n === "number" && Number.isInteger(n) && n >= lo && n <= hi;
+function validateCommanderSetup(c, _reg, _opts) {
+  const out = [];
+  if (typeof c !== "object" || c === null) return ["The commander file is missing"];
+  for (const k of BODY_STATS) {
+    if (!isInt(c.body?.[k], 1, TUNING.commander.creationMax)) {
+      out.push(`Commander ${k} must be a whole number from 1 to ${TUNING.commander.creationMax}`);
+    }
+  }
+  if (BODY_STATS.every((k) => isInt(c.body?.[k], 1, TUNING.commander.creationMax)) && poolSpent(c.body) > TUNING.commander.pool) {
+    out.push(`Commander body spends ${poolSpent(c.body)} points, the pool is ${TUNING.commander.pool}`);
+  }
+  if (!isInt(c.expression, 1, 5)) out.push("Commander expression must be a whole number from 1 to 5");
+  if (!isInt(c.seasoning, 1, 5)) out.push("Commander seasoning must be a whole number from 1 to 5");
+  const regular = c.traits?.regular;
+  if (!Array.isArray(regular)) out.push("Commander traits are missing");
+  else {
+    if (regular.length > TUNING.commander.maxRegular) out.push(`At most ${TUNING.commander.maxRegular} regular traits (has ${regular.length})`);
+    if (new Set(regular).size !== regular.length) out.push("A regular trait is chosen twice");
+  }
+  return out;
+}
+function applyCommanderSetup(commander, c) {
+  commander.body = { ...c.body };
+  commander.bodyXp = { strength: 0, endurance: 0, reflexes: 0 };
+  commander.expression = c.expression;
+  commander.seasoning = c.seasoning;
+  commander.traits = { regular: [...c.traits.regular], ...c.traits.special !== void 0 ? { special: c.traits.special } : {} };
+  commander.archetype = archetypeOf(c.body);
+}
+
 // src/engine/state/create.ts
 function createCampaign(opts) {
-  return {
+  const state = {
     version: 1,
     rng: seedRng(opts.seed),
     day: 1,
@@ -546,6 +631,9 @@ function createCampaign(opts) {
     calendar: { scheduled: [], nightEventsQueue: [] },
     leash: { authorizationsLeft: 0, refreshDay: 1, log: [] }
   };
+  applyCommanderSetup(state.commander, defaultCommanderSetup());
+  state.commander.fileReviewed = true;
+  return state;
 }
 
 // src/engine/world/state.ts
@@ -737,6 +825,7 @@ function validateSetup(r, reg, opts) {
     else if (corp.playable !== true) out.push(`Start "${r.startId}" uses non-playable corporation "${corp.id}"`);
   }
   if (!reg.crimes.has(r.crimeId)) out.push(`Unknown crime "${r.crimeId}"`);
+  if (r.commander !== void 0) out.push(...validateCommanderSetup(r.commander, reg, opts));
   const units = r.units ?? [];
   if (units.length > SETUP_LIMITS.maxUnits) out.push(`At most ${SETUP_LIMITS.maxUnits} units (has ${units.length})`);
   const cards = /* @__PURE__ */ new Set();
@@ -829,6 +918,8 @@ function buildCampaign(r, reg, opts) {
   state.commander.corporationId = corp.id;
   state.commander.crimeId = crime.id;
   state.commander.socialStats = { authority: 1, insight: 1, empathy: 1, cunning: 1 };
+  applyCommanderSetup(state.commander, r.commander ?? defaultCommanderSetup());
+  state.commander.fileReviewed = true;
   state.world.startId = start.id;
   state.settings = { desireBondDefects: opts.desireBondDefects };
   const base = start.startingResources;

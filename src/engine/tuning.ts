@@ -1,5 +1,35 @@
 /** Rule constants of the P2 economy and calendar (draft balance values). Content-like data lives in JSON. */
 export const TUNING = Object.freeze({
+  /** P7: the commander's body, presence and traits (draft balance values). */
+  commander: Object.freeze({
+    pool: 7,
+    creationMax: 4,
+    defaults: Object.freeze({
+      body: Object.freeze({ strength: 3, endurance: 3, reflexes: 2 }),
+      expression: 3,
+      seasoning: 3,
+    }),
+    /** Tenths of a session: one `train` body session = 10; a step costs 3 / 6 / 10 / 15 sessions (index = value − 1). */
+    bodyXpPerSession: 10,
+    bodyXpSteps: Object.freeze([30, 60, 100, 150]),
+    crisisHpBase: 20,
+    crisisHpPerEndurance: 10,
+    crisisHpMin: 10,
+    dodgePerReflex: 0.06,
+    scarChance: 0.15,
+    unnoticedSkip: 0.5,
+    rallyStress: 10,
+    presenceMax: 15,
+    tau: 7,
+    offImageMult: 1.3,
+    earlyDays: 14,
+    exhaustionEndurance: 2,
+    coverStates: Object.freeze(['friend', 'confidant', 'kindred', 'sworn', 'flirting', 'fwb', 'lover', 'devoted', 'secret_affair']),
+    intimidatePerPoint: 0.03,
+    delegateRemarkChance: 0.3,
+    maxTastes: 3,
+    maxRegular: 2,
+  }),
   /** P7a: the change ledger behind trends, stress sources and "last changes" readings. */
   ledger: Object.freeze({ days: 7, max: 150 }),
   upkeep: Object.freeze({ perUnit: 1, commander: 1, doubledByDefect: 'hunger_loop' }),

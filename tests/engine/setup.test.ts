@@ -305,3 +305,26 @@ describe('normalizeTag', () => {
     expect(normalizeTag("Rhea's_tea-time")).toBe("rhea's_tea-time");
   });
 });
+
+describe('commander setup (P7)', () => {
+  it('buildCampaign writes the commander setup and its archetype', () => {
+    const s = ok(result([unit()], { commander: { body: { strength: 4, endurance: 4, reflexes: 2 }, expression: 1, seasoning: 5, traits: { regular: [] } } }));
+    expect(s.commander.body).toEqual({ strength: 4, endurance: 4, reflexes: 2 });
+    expect(s.commander.bodyXp).toEqual({ strength: 0, endurance: 0, reflexes: 0 });
+    expect(s.commander.expression).toBe(1);
+    expect(s.commander.seasoning).toBe(5);
+    expect(s.commander.archetype).toBe('fit');
+    expect(s.commander.fileReviewed).toBe(true);
+  });
+  it('a setup without commander gets 3/3/2, 3, 3', () => {
+    const s = ok(result());
+    expect(s.commander.body).toEqual({ strength: 3, endurance: 3, reflexes: 2 });
+    expect(s.commander.expression).toBe(3);
+    expect(s.commander.seasoning).toBe(3);
+    expect(s.commander.archetype).toBe('average');
+  });
+  it('an invalid commander setup is a setup error and builds nothing', () => {
+    const b = build(result([unit()], { commander: { body: { strength: 5, endurance: 1, reflexes: 1 }, expression: 3, seasoning: 3, traits: { regular: [] } } }));
+    expect(b.ok).toBe(false);
+  });
+});

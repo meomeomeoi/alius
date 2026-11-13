@@ -113,11 +113,11 @@ docs/** (Task 19), tests/** mirror src
   - `applyCommanderSetup(commander, c: CommanderSetup): void` (writes fields, `bodyXp` zeros, archetype).
   - `SetupResult.commander?: CommanderSetup`; `validateSetup` adds its errors; `buildCampaign` applies it (or the defaults) before any unit joins; `createCampaign` writes the defaults and `fileReviewed: true`.
 
-- [ ] **Step 1: Write the failing tests** — `archetype at 4/5/6/7/9/10/12/13` (frail, slight, slight, average, average, fit, fit, hardened); `descriptors read 1 and 5 for every kind`; `unspent points are valid` (1/1/1); `4/4/2 spends exactly 7 and is valid`; `a 5 at creation is rejected`; `spending 8 is rejected`; `expression 0 and seasoning 6 are rejected`; `commanderProfile fills defaults for a commander without P7 fields` (archetype `average`); setup: `buildCampaign writes the commander setup and its archetype`; `a setup without commander gets 3/3/2, 3, 3`.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/commander tests/engine/setup.test.ts` → FAIL.
-- [ ] **Step 3: Implement** the types, tuning block, `profile.ts`, setup and create changes.
-- [ ] **Step 4: Run** `npx vitest run` → whole suite green.
-- [ ] **Step 5: Commit** `feat(engine): commander body, expression, seasoning and archetype`.
+- [x] **Step 1: Write the failing tests** — `archetype at 4/5/6/7/9/10/12/13` (frail, slight, slight, average, average, fit, fit, hardened); `descriptors read 1 and 5 for every kind`; `unspent points are valid` (1/1/1); `4/4/2 spends exactly 7 and is valid`; `a 5 at creation is rejected`; `spending 8 is rejected`; `expression 0 and seasoning 6 are rejected`; `commanderProfile fills defaults for a commander without P7 fields` (archetype `average`); setup: `buildCampaign writes the commander setup and its archetype`; `a setup without commander gets 3/3/2, 3, 3`.
+- [x] **Step 2: Run** `npx vitest run tests/engine/commander tests/engine/setup.test.ts` → FAIL.
+- [x] **Step 3: Implement** the types, tuning block, `profile.ts`, setup and create changes.
+- [x] **Step 4: Run** `npx vitest run` → whole suite green.
+- [x] **Step 5: Commit** `feat(engine): commander body, expression, seasoning and archetype`.
 
 ---
 

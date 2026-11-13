@@ -131,6 +131,8 @@ export interface Unit {
   loadout?: string[];
   /** Set while the unit is broken down: until the expedition ends (P4). */
   breakdown?: { defectId: string; day: number };
+  /** P7: up to 3 taste ids (registry `tastes`) about how the unit reads the commander. */
+  commanderTastes?: string[];
 }
 
 export interface DailyGain {
@@ -163,6 +165,8 @@ export interface Relation {
   marks: MarkInstance[];
   /** A concealed romance (P3): the state it will turn into when discovered, and who must not know. */
   affair?: { as: string; hiddenFrom: string[]; since: number };
+  /** P7: the first day the unit knew the commander (absent in older saves until `commander/seed`). */
+  metDay?: number;
 }
 
 /** A remembered fact (P3). `knownBy` holds unit ids or `'*'` for public; the commander always knows. */
@@ -263,7 +267,26 @@ export interface Commander {
   /** The commander is injured while `day` is below this (P2). */
   injuredUntilDay?: number;
   flags: string[];
+  /** P7: physical stats 1–5 (absent in a P0–P6 save until `commander/seed`; read through `commanderProfile`). */
+  body?: Record<BodyStat, number>;
+  /** P7: training progress in tenths of a session, per stat. */
+  bodyXp?: Record<BodyStat, number>;
+  /** P7: 1 very feminine … 5 very masculine. No mechanical value (overview P11). */
+  expression?: number;
+  /** P7: 1 green … 5 veteran. */
+  seasoning?: number;
+  /** P7: up to 2 regular traits and at most 1 special. */
+  traits?: { regular: string[]; special?: string };
+  /** P7: derived from the body sum, cached. */
+  archetype?: Archetype;
+  /** P7: false until the player has seen the "commander file incomplete" modal of a migrated save. */
+  fileReviewed?: boolean;
+  /** P7: the day (a quiet night's follower) on which the effective Empathy rank is lowered by `sleepless_rank`. */
+  sleeplessDay?: number;
 }
+
+export type BodyStat = 'strength' | 'endurance' | 'reflexes';
+export type Archetype = 'frail' | 'slight' | 'average' | 'fit' | 'hardened';
 
 /** One change of a resource, a unit's stress or a relation axis, recorded by `dispatch` (P7a). */
 export interface LedgerEntry {

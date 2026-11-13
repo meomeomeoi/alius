@@ -1,8 +1,9 @@
 import { seedRng } from '../rng';
 import type { CampaignState } from './types';
+import { applyCommanderSetup, defaultCommanderSetup } from '../commander/profile';
 
 export function createCampaign(opts: { seed: number; commanderName: string }): CampaignState {
-  return {
+  const state: CampaignState = {
     version: 1,
     rng: seedRng(opts.seed),
     day: 1,
@@ -30,4 +31,8 @@ export function createCampaign(opts: { seed: number; commanderName: string }): C
     calendar: { scheduled: [], nightEventsQueue: [] },
     leash: { authorizationsLeft: 0, refreshDay: 1, log: [] },
   };
+  // P7: a new campaign is complete; `commander/seed` is for older saves only.
+  applyCommanderSetup(state.commander, defaultCommanderSetup());
+  state.commander.fileReviewed = true;
+  return state;
 }

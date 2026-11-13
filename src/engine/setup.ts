@@ -2,6 +2,7 @@ import type { Entry, Registries } from '../content/types';
 import { createCampaign } from './state/create';
 import { ensureLeash } from './leash/weekly';
 import { seedWorld } from './world/state';
+import { applyCommanderSetup, defaultCommanderSetup, validateCommanderSetup, type CommanderSetup } from './commander/profile';
 import {
   VALUE_AXES, type CampaignState, type LoyaltyBand, type Relation, type SignatureInstance, type Unit,
 } from './state/types';
@@ -46,6 +47,8 @@ export interface SetupResult {
   startId: string;
   crimeId: string;
   units: UnitSetup[];
+  /** P7: the COMMANDER FILE; absent = the defaults (3/3/2, expression 3, seasoning 3, no traits). */
+  commander?: CommanderSetup;
 }
 
 interface Effect { type?: unknown; [k: string]: unknown }
@@ -137,6 +140,7 @@ export function validateSetup(r: SetupResult, reg: Registries, opts: { desireBon
     else if (corp.playable !== true) out.push(`Start "${r.startId}" uses non-playable corporation "${corp.id}"`);
   }
   if (!reg.crimes.has(r.crimeId)) out.push(`Unknown crime "${r.crimeId}"`);
+  if (r.commander !== undefined) out.push(...validateCommanderSetup(r.commander, reg, opts));
 
   const units = r.units ?? [];
   if (units.length > SETUP_LIMITS.maxUnits) out.push(`At most ${SETUP_LIMITS.maxUnits} units (has ${units.length})`);
@@ -253,6 +257,9 @@ export function buildCampaign(
   state.commander.corporationId = corp.id;
   state.commander.crimeId = crime.id;
   state.commander.socialStats = { authority: 1, insight: 1, empathy: 1, cunning: 1 };
+  // P7: the commander's body is in place before any unit joins.
+  applyCommanderSetup(state.commander, r.commander ?? defaultCommanderSetup());
+  state.commander.fileReviewed = true;
   state.world.startId = start.id;
   state.settings = { desireBondDefects: opts.desireBondDefects };
 
