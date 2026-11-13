@@ -1,4 +1,5 @@
 import { registerAction } from '../dispatch';
+import { applyFactionTraitEffects, applyStartTraitEffects } from '../commander/traits';
 import { applyCommanderSetup, defaultCommanderSetup, validateCommanderSetup, type CommanderSetup } from '../commander/profile';
 
 // Importing this module registers the P7 commander actions.
@@ -31,6 +32,8 @@ registerAction('commander/set_profile', (draft, payload, ctx) => {
   const problems = validateCommanderSetup(c, ctx.registries, { desireBondDefects: draft.settings.desireBondDefects === true });
   if (problems.length > 0) throw new Error(problems.join('; '));
   applyCommanderSetup(draft.commander, c);
+  applyStartTraitEffects(draft, ctx.registries);
+  applyFactionTraitEffects(draft, ctx.registries);
   draft.commander.fileReviewed = true;
   return [{ type: 'commander_profile_set' }];
 });

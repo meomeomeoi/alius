@@ -386,6 +386,23 @@ registerRefs('imageConsistency', (entry) => {
   return out;
 });
 
+// P7: traits name other traits, activities and event types (`unlock_state` and `platonic_threshold` states join with `sworn`, Task 12)
+registerRefs('commanderTraits', (entry) => {
+  const out: Ref[] = [];
+  (entry.exclusiveWith as unknown[] | undefined)?.forEach((id, i) => out.push({ registry: 'commanderTraits', id: String(id), path: `exclusiveWith[${i}]` }));
+  (entry.effects as Array<Record<string, unknown>> | undefined)?.forEach((fx, i) => {
+    const at = `effects[${i}]`;
+    if ((fx.type === 'activity_cost' || fx.type === 'activity_relation') && typeof fx.activityId === 'string') {
+      out.push({ registry: 'activities', id: fx.activityId, path: `${at}.activityId` });
+    } else if (fx.type === 'relation_event_mult' && typeof fx.event === 'string') {
+      out.push({ registry: 'eventDeltas', id: fx.event, path: `${at}.event` });
+    } else if (fx.type === 'platonic_threshold' && Array.isArray(fx.states)) {
+      fx.states.forEach((id, j) => out.push({ registry: 'relationshipStates', id: String(id), path: `${at}.states[${j}]` }));
+    }
+  });
+  return out;
+});
+
 /** Checks that need the whole registry set (reported at `path` of the entry). */
 export interface RegistryCheck { path: string; message: string }
 export type CheckExtractor = (entry: Entry, registries: Record<RegistryName, Map<string, Entry>>) => RegistryCheck[];

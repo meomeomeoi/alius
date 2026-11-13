@@ -5,6 +5,7 @@ import type { CampaignState, Relation, Unit } from '../state/types';
 import { TUNING } from '../tuning';
 import type { EventIntent } from '../relations/intents';
 import { commanderProfile, daysKnown } from './profile';
+import { traitEffects, traitStartingTrust } from './traits';
 
 /**
  * P7: presence and the first impression. Looks matter on first meeting and fade with the days a unit has known the
@@ -51,10 +52,10 @@ export function matchedTastes(state: CampaignState, reg: Registries, unit: Pick<
 
 /**
  * Applied once when a unit joins: Trust moves by round(P × the matched tastes' `presenceMult`), the matched tastes add
- * their offsets, every axis is clamped and the loyalty band is re-based from Trust. Grunts have no tastes, so only
+ * their offsets, the commander's traits add theirs (`starting_trust`, `taste_attraction`), every axis is clamped and the loyalty band is re-based from Trust. Grunts have no tastes, so only
  * their Trust moves.
  */
-export function applyFirstImpression(state: CampaignState, reg: Registries, unit: Pick<Unit, 'commanderTastes'>, rel: Relation): void {
+export function applyFirstImpression(state: CampaignState, reg: Registries, unit: Pick<Unit, 'commanderTastes'> & Partial<Pick<Unit, 'values'>>, rel: Relation): void {
   const matched = matchedTastes(state, reg, unit);
   const mult = matched.reduce((m, t) => m * (typeof t.presenceMult === 'number' ? t.presenceMult : 1), 1);
   let trust = rel.trust + Math.round(presenceOf(state, reg) * mult);
@@ -65,6 +66,11 @@ export function applyFirstImpression(state: CampaignState, reg: Registries, unit
     trust += o?.trust ?? 0;
     affinity += o?.affinity ?? 0;
     attraction += o?.attraction ?? 0;
+  }
+  // traits: `starting_trust` (a unit's values decide), `taste_attraction` (only with a matched drawn_to_* taste)
+  trust += traitStartingTrust(state, reg, unit.values);
+  if (matched.some((t) => t.id.startsWith('drawn_to_'))) {
+    for (const fx of traitEffects(state, reg, 'taste_attraction')) attraction += fx.amount;
   }
   rel.trust = clamp(trust, 0, 100);
   rel.affinity = clamp(affinity, -100, 100);

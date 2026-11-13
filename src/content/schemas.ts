@@ -1095,7 +1095,59 @@ export const ImageConsistencySchema = BaseEntrySchema.extend({
   });
 });
 
-Object.assign(registrySchemas, { presence: PresenceSchema, tastes: TasteSchema, imageConsistency: ImageConsistencySchema });
+// ---------------------------------------------------------------------------------------------
+// P7: commander traits
+
+const traitSocialStat = z.enum(['authority', 'insight', 'empathy', 'cunning']);
+
+/**
+ * What a trait does. The effects are read by the engine at a few hook points (start, join, growth, Crisis, calendar,
+ * Leash, requisition); a trait changes the approach, not the power (the defect rule).
+ */
+export const TraitEffectSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('social_rank'), stat: traitSocialStat, rank: rank5 }).strict(),
+  z.object({
+    type: z.literal('starting_trust'),
+    amount: int.min(-40).max(40),
+    ifValue: z.object({ axis: valueAxis, sign: z.enum(['+', '-']) }).strict().optional(),
+  }).strict(),
+  z.object({ type: z.literal('leash_weekly'), amount: int.min(-3).max(3) }).strict(),
+  z.object({ type: z.literal('seasoning_start'), amount: int.min(-4).max(4) }).strict(),
+  z.object({ type: z.literal('faction_start'), amount: int.min(-40).max(40) }).strict(),
+  z.object({ type: z.literal('taste_attraction'), amount: int.min(-20).max(20) }).strict(),
+  z.object({ type: z.literal('social_growth'), stat: traitSocialStat, mult: z.number().min(0.1).max(3) }).strict(),
+  z.object({ type: z.literal('body_growth'), mult: z.number().min(0.1).max(3) }).strict(),
+  z.object({ type: z.literal('early_trust_gain'), pct: int.min(-100).max(100) }).strict(),
+  z.object({ type: z.literal('crisis_hp'), amount: int.min(-30).max(30) }).strict(),
+  z.object({ type: z.literal('terminate_approval'), amount: z.number().min(-1).max(1) }).strict(),
+  z.object({ type: z.literal('requisition_price'), pct: int.min(-90).max(100) }).strict(),
+  z.object({ type: z.literal('activity_cost'), activityId: str, resource: z.enum(['credits', 'supplies', 'plyx']), amount: int.min(-5).max(5) }).strict(),
+  z.object({ type: z.literal('activity_relation'), activityId: str, axis: z.enum(['trust', 'affinity', 'attraction']), amount: int.min(-10).max(10) }).strict(),
+  z.object({ type: z.literal('relation_event_mult'), event: str, mult: z.number().min(0).max(3), ifTrigger: str.optional() }).strict(),
+  z.object({ type: z.literal('night_slot') }).strict(),
+  z.object({ type: z.literal('sleepless_rank'), stat: traitSocialStat, amount: int.min(-2).max(0) }).strict(),
+  z.object({ type: z.literal('no_romance') }).strict(),
+  z.object({ type: z.literal('platonic_threshold'), states: z.array(str).min(1), pct: int.min(0).max(50) }).strict(),
+  z.object({ type: z.literal('unlock_state'), stateId: str }).strict(),
+]);
+export type TraitEffect = z.infer<typeof TraitEffectSchema>;
+
+export const CommanderTraitSchema = BaseEntrySchema.extend({
+  name: str,
+  kind: z.enum(['regular', 'special']),
+  description: str,
+  upside: str,
+  downside: str,
+  effects: z.array(TraitEffectSchema),
+  /** Free-form notes on where the engine looks at the trait (for authors). */
+  hooks: z.array(str).optional(),
+  exclusiveWith: z.array(str).optional(),
+  requiresSettings: z.object({ desireBondDefects: z.literal(true).optional() }).strict().optional(),
+}).strict();
+
+Object.assign(registrySchemas, {
+  presence: PresenceSchema, tastes: TasteSchema, imageConsistency: ImageConsistencySchema, commanderTraits: CommanderTraitSchema,
+});
 
 export const DESCRIBED_REGISTRIES = [
   'roles', 'skills', 'signatures', 'statuses', 'defects', 'items', 'affixes', 'enemies',

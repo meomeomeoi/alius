@@ -81,9 +81,10 @@ const isInt = (n: unknown, lo: number, hi: number): n is number => typeof n === 
 
 /**
  * One readable message per problem of a commander setup; an empty list means it can be applied. Unspent points are
- * allowed. Trait ids are checked against the registry once it exists (P7 Task 10).
+ * allowed. Traits: known ids of the right kind, at most 2 regular (unique) and one special, no exclusive pair, and the
+ * campaign settings a trait asks for.
  */
-export function validateCommanderSetup(c: CommanderSetup, _reg: Registries, _opts: { desireBondDefects: boolean }): string[] {
+export function validateCommanderSetup(c: CommanderSetup, reg: Registries, opts: { desireBondDefects: boolean }): string[] {
   const out: string[] = [];
   if (typeof c !== 'object' || c === null) return ['The commander file is missing'];
   for (const k of BODY_STATS) {
@@ -102,6 +103,34 @@ export function validateCommanderSetup(c: CommanderSetup, _reg: Registries, _opt
   else {
     if (regular.length > TUNING.commander.maxRegular) out.push(`At most ${TUNING.commander.maxRegular} regular traits (has ${regular.length})`);
     if (new Set(regular).size !== regular.length) out.push('A regular trait is chosen twice');
+    const chosen: string[] = [];
+    for (const id of regular) {
+      const t = reg.commanderTraits.get(id);
+      if (!t) out.push(`Unknown trait "${String(id)}"`);
+      else if (t.kind !== 'regular') out.push(`"${id}" is not a regular trait`);
+      chosen.push(id);
+    }
+    const special = c.traits.special;
+    if (special !== undefined) {
+      const t = reg.commanderTraits.get(special);
+      if (!t) out.push(`Unknown trait "${String(special)}"`);
+      else if (t.kind !== 'special') out.push(`"${special}" is not a special trait`);
+      chosen.push(special);
+    }
+    const reported = new Set<string>();
+    for (const id of chosen) {
+      const t = reg.commanderTraits.get(id);
+      if (!t) continue;
+      for (const other of (t.exclusiveWith as string[] | undefined) ?? []) {
+        const key = [id, other].sort().join('|');
+        if (chosen.includes(other) && !reported.has(key)) {
+          reported.add(key);
+          out.push(`Traits "${[id, other].sort()[0]}" and "${[id, other].sort()[1]}" exclude each other`);
+        }
+      }
+      const needs = t.requiresSettings as { desireBondDefects?: boolean } | undefined;
+      if (needs?.desireBondDefects && !opts.desireBondDefects) out.push(`Trait "${id}" needs the Desire/Bond setting`);
+    }
   }
   return out;
 }

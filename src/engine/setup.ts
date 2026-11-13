@@ -5,6 +5,7 @@ import { ensureLeash } from './leash/weekly';
 import { seedWorld } from './world/state';
 import { initialLoyaltyBand } from './relations/bands';
 import { applyFirstImpression } from './commander/presence';
+import { applyFactionTraitEffects, applyStartTraitEffects } from './commander/traits';
 import { applyCommanderSetup, defaultCommanderSetup, validateCommanderSetup, type CommanderSetup } from './commander/profile';
 import {
   VALUE_AXES, type CampaignState, type Relation, type SignatureInstance, type Unit,
@@ -294,6 +295,7 @@ export function buildCampaign(
       state.resources[fx.resource as keyof typeof state.resources] += fx.amount as number;
     }
   }
+  applyStartTraitEffects(state, reg); // P7: before any unit joins, so presence sees them
   const knowsCrime = crimeKnownByDefault(crime, start);
 
   const used = new Set<string>();
@@ -312,6 +314,7 @@ export function buildCampaign(
   }
   state.roster.activeIds = state.squad.map((u) => u.id);
   seedWorld(state, reg);
+  applyFactionTraitEffects(state, reg); // after the seed: it keeps a standing that is already set
   ensureLeash(state, reg);
   return { ok: true, state };
 }

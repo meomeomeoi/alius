@@ -1,1 +1,214 @@
-[]
+[
+  {
+    "id": "insomniac",
+    "name": "Insomniac",
+    "kind": "regular",
+    "description": "The commander barely sleeps; the night is his to use, at a price.",
+    "upside": "Night slot always available (not only on events).",
+    "downside": "-1 effective Empathy rank on the day after a sleepless night.",
+    "effects": [
+      {
+        "type": "night_slot"
+      },
+      {
+        "type": "sleepless_rank",
+        "stat": "empathy",
+        "amount": -1
+      }
+    ],
+    "hooks": [
+      "quiet_night"
+    ]
+  },
+  {
+    "id": "old_wound",
+    "name": "Old Wound",
+    "kind": "regular",
+    "description": "He has been hurt before and it shows; the squad respects that, and so does the next fight.",
+    "upside": "Seasoning +1 at start; Trust gains +15% for the first 14 days (\"he's seen worse\").",
+    "downside": "Crisis HP -10.",
+    "effects": [
+      {
+        "type": "seasoning_start",
+        "amount": 1
+      },
+      {
+        "type": "early_trust_gain",
+        "pct": 15
+      },
+      {
+        "type": "crisis_hp",
+        "amount": -10
+      }
+    ]
+  },
+  {
+    "id": "silver_tongue",
+    "name": "Silver Tongue",
+    "kind": "regular",
+    "description": "Words come easily to him, and so do half-truths.",
+    "upside": "Cunning grows 50% faster.",
+    "downside": "Units with the trigger \"lies\" punish a detected lie harder.",
+    "effects": [
+      {
+        "type": "social_growth",
+        "stat": "cunning",
+        "mult": 1.5
+      },
+      {
+        "type": "relation_event_mult",
+        "event": "lied_detected",
+        "mult": 1.5,
+        "ifTrigger": "lies"
+      }
+    ]
+  },
+  {
+    "id": "pretty_face",
+    "name": "Pretty Face",
+    "kind": "regular",
+    "description": "People notice him first and judge him second.",
+    "upside": "Matching tastes: starting Attraction +10.",
+    "downside": "Trust gains -10% for the first 14 days (\"corporate doll\").",
+    "effects": [
+      {
+        "type": "taste_attraction",
+        "amount": 10
+      },
+      {
+        "type": "early_trust_gain",
+        "pct": -10
+      }
+    ]
+  },
+  {
+    "id": "bookish",
+    "name": "Bookish",
+    "kind": "regular",
+    "description": "He learns from files and people before he learns from drills.",
+    "upside": "Insight grows 50% faster.",
+    "downside": "Body training XP -30%.",
+    "effects": [
+      {
+        "type": "social_growth",
+        "stat": "insight",
+        "mult": 1.5
+      },
+      {
+        "type": "body_growth",
+        "mult": 0.7
+      }
+    ]
+  },
+  {
+    "id": "field_medic",
+    "name": "Field Medic",
+    "kind": "regular",
+    "description": "He was trained to patch people up, and they remember who did.",
+    "upside": "Medbay actions with a unit give +Affinity; Empathy starts at rank 2.",
+    "downside": "Medbay supplies cost +1.",
+    "effects": [
+      {
+        "type": "activity_relation",
+        "activityId": "medbay",
+        "axis": "affinity",
+        "amount": 3
+      },
+      {
+        "type": "social_rank",
+        "stat": "empathy",
+        "rank": 2
+      },
+      {
+        "type": "activity_cost",
+        "activityId": "medbay",
+        "resource": "supplies",
+        "amount": 1
+      }
+    ]
+  },
+  {
+    "id": "corporate_polish",
+    "name": "Corporate Polish",
+    "kind": "regular",
+    "description": "He speaks the corporation's language fluently, which opens doors and closes hearts.",
+    "upside": "+1 Leash authorization per week; oversight standing +.",
+    "downside": "Units whose values lean against the corporation start with Trust -10.",
+    "effects": [
+      {
+        "type": "leash_weekly",
+        "amount": 1
+      },
+      {
+        "type": "faction_start",
+        "amount": 10
+      },
+      {
+        "type": "starting_trust",
+        "amount": -10,
+        "ifValue": {
+          "axis": "corporate",
+          "sign": "-"
+        }
+      }
+    ],
+    "exclusiveWith": [
+      "street_raised"
+    ]
+  },
+  {
+    "id": "street_raised",
+    "name": "Street-Raised",
+    "kind": "regular",
+    "description": "He grew up below the corporate floors and knows how things really get done.",
+    "upside": "Cunning starts at rank 2; requisition prices -15%.",
+    "downside": "Corporate standing -; the Leash is approved less often.",
+    "effects": [
+      {
+        "type": "social_rank",
+        "stat": "cunning",
+        "rank": 2
+      },
+      {
+        "type": "requisition_price",
+        "pct": -15
+      },
+      {
+        "type": "faction_start",
+        "amount": -10
+      },
+      {
+        "type": "terminate_approval",
+        "amount": -0.1
+      }
+    ],
+    "exclusiveWith": [
+      "corporate_polish"
+    ]
+  },
+  {
+    "id": "vow_of_distance",
+    "name": "Vow of Distance",
+    "kind": "special",
+    "description": "AUTHOR TO WRITE: a vow that keeps the commander from anything romantic and makes a deeper kind of closeness possible.",
+    "upside": "Platonic closeness comes 15% easier; a unique platonic bond (sworn) becomes possible.",
+    "downside": "No romance for this campaign.",
+    "effects": [
+      {
+        "type": "no_romance"
+      },
+      {
+        "type": "platonic_threshold",
+        "states": [
+          "confidant",
+          "kindred"
+        ],
+        "pct": 15
+      },
+      {
+        "type": "unlock_state",
+        "stateId": "sworn"
+      }
+    ]
+  }
+]
