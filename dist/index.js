@@ -1050,9 +1050,9 @@ function validateUnit(u, label2, reg, opts, out, withBaseline = true) {
     }
   }
   const tagCaps = { likes: SETUP_LIMITS.likes, dislikes: SETUP_LIMITS.dislikes, triggers: SETUP_LIMITS.triggers };
-  for (const [field2, cap4] of Object.entries(tagCaps)) {
+  for (const [field2, cap5] of Object.entries(tagCaps)) {
     const tags = u[field2] ?? [];
-    if (tags.length > cap4) out.push(`${label2}: at most ${cap4} ${field2} (has ${tags.length})`);
+    if (tags.length > cap5) out.push(`${label2}: at most ${cap5} ${field2} (has ${tags.length})`);
     for (const t of tags) {
       if (normalizeTag(t) !== t) out.push(`${label2}: ${field2} entry "${t}" is not a normalized tag`);
     }
@@ -1304,7 +1304,7 @@ function gruntRelation(state, reg) {
 }
 
 // src/engine/actions/squad.ts
-var RESYNC_SECTIONS = ["role", "values", "tags", "signature", "defects"];
+var RESYNC_SECTIONS = ["role", "values", "tags", "signature", "defects", "tastes"];
 var isObj2 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var SECTION_OF = {
   roleId: "role",
@@ -1313,7 +1313,8 @@ var SECTION_OF = {
   dislikes: "tags",
   triggers: "tags",
   signature: "signature",
-  defects: "defects"
+  defects: "defects",
+  commanderTastes: "tastes"
 };
 registerAction("squad/resync", (draft, payload, ctx2) => {
   if (!isObj2(payload) || typeof payload.unitId !== "string" || !isObj2(payload.patch)) {
@@ -1333,7 +1334,8 @@ registerAction("squad/resync", (draft, payload, ctx2) => {
     values: patch.values ?? unit.values,
     likes: patch.likes ?? unit.likes,
     dislikes: patch.dislikes ?? unit.dislikes,
-    triggers: patch.triggers ?? unit.triggers
+    triggers: patch.triggers ?? unit.triggers,
+    tastes: patch.commanderTastes ?? unit.commanderTastes
   };
   const errors = validateUnitProfile(next, unit.displayName, ctx2.registries, {
     desireBondDefects: draft.settings.desireBondDefects === true
@@ -1350,6 +1352,10 @@ registerAction("squad/resync", (draft, payload, ctx2) => {
   if (patch.dislikes) unit.dislikes = [...patch.dislikes];
   if (patch.triggers) unit.triggers = [...patch.triggers];
   if (patch.signature) unit.signatureSkill = { ...patch.signature };
+  if (patch.commanderTastes) {
+    if (patch.commanderTastes.length > 0) unit.commanderTastes = [...patch.commanderTastes];
+    else delete unit.commanderTastes;
+  }
   if (patch.defects) {
     unit.defects = patch.defects.map((d) => {
       const kept = unit.defects.find((x) => x.id === d.id);
@@ -2927,12 +2933,12 @@ function enqueueNight(draft, e) {
   return true;
 }
 var EXPIRES_IN_DAYS = 2;
-function specsOf(state, reg, unitId, usable2) {
+function specsOf(state, reg, unitId, usable3) {
   const unit = state.squad.find((u) => u.id === unitId);
   const rel = state.relations[unitId];
   if (!unit || !rel) return [];
   const out = [];
-  const st = usable2.has(rel.stateId) ? reg.relationshipStates.get(rel.stateId) : void 0;
+  const st = usable3.has(rel.stateId) ? reg.relationshipStates.get(rel.stateId) : void 0;
   out.push(...st?.unlocks?.nightEvents ?? []);
   for (const d of unit.defects) out.push(...reg.defects.get(d.id)?.nightEvents ?? []);
   return out;
@@ -2941,11 +2947,11 @@ function rollNight(draft, reg, rng, trigger) {
   const events = [];
   const queue = draft.calendar.nightEventsQueue;
   draft.calendar.nightEventsQueue = queue.filter((e) => e.expiresDay >= draft.day);
-  const usable2 = new Set(availableStates(draft, reg).map((s) => s.id));
+  const usable3 = new Set(availableStates(draft, reg).map((s) => s.id));
   const mult = TUNING.comms.initiativeMult[intimacyOf(draft).initiative];
   for (const u of draft.squad) {
     if (u.kind !== "named" || !isLiving(u)) continue;
-    for (const spec of specsOf(draft, reg, u.id, usable2)) {
+    for (const spec of specsOf(draft, reg, u.id, usable3)) {
       if (spec.trigger !== trigger) continue;
       if (!rng.chance(Math.min(1, spec.chance * mult))) continue;
       const entry = {
@@ -3498,11 +3504,11 @@ function arcPaths(state, reg, unitId, defectId) {
   }
   if (whole !== null) return ARC_PATHS.map((p) => ({ ...base(p), available: false, reason: whole, wanted: false, refuses: false }));
   const stages = allowedStages(state, reg, unitId);
-  const cap4 = stageCap(state, reg);
+  const cap5 = stageCap(state, reg);
   const structural = ARC_PATHS.map((path) => {
     let reason = null;
     if (!stages.includes(path)) reason = "Needs a closer bond.";
-    else if (TUNING.arc.stage[path] > cap4) reason = `The medbay is too basic for this (stage ${TUNING.arc.stage[path]}).`;
+    else if (TUNING.arc.stage[path] > cap5) reason = `The medbay is too basic for this (stage ${TUNING.arc.stage[path]}).`;
     return { path, reason };
   });
   const offered2 = structural.filter((s) => s.reason === null).map((s) => s.path);
@@ -5050,8 +5056,8 @@ function hpGrowth(reg, unit, level) {
 }
 function applyLevelUps(draft, reg, unit) {
   const events = [];
-  const cap4 = levelCap(draft);
-  while (unit.xp >= xpToNext(unit.level) && unit.level < cap4) {
+  const cap5 = levelCap(draft);
+  while (unit.xp >= xpToNext(unit.level) && unit.level < cap5) {
     const before = hpGrowth(reg, unit, unit.level);
     unit.xp -= xpToNext(unit.level);
     unit.level += 1;
@@ -5386,9 +5392,9 @@ var hpPct = (ctx2, cid) => {
   return c.hp / c.maxHp;
 };
 var defOf = (ctx2, cid) => cid === "commander" ? ctx2.cs.commander.def : effectiveStat(ctx2, cid, "def");
-function options(ctx2, cid, usable2) {
+function options(ctx2, cid, usable3) {
   const out = [];
-  for (const { skill, targets } of usable2) for (const t of targets) out.push({ skill, targetCid: t, damage: expectedDamage(ctx2, cid, skill, t) });
+  for (const { skill, targets } of usable3) for (const t of targets) out.push({ skill, targetCid: t, damage: expectedDamage(ctx2, cid, skill, t) });
   return out;
 }
 function heaviest(opts) {
@@ -5404,23 +5410,23 @@ function aggressive(ctx2, cid, opts) {
   const any = first(opts);
   return any ? toAction(any) : null;
 }
-function withoutCommanderIfUnnoticed(ctx2, cid, usable2) {
+function withoutCommanderIfUnnoticed(ctx2, cid, usable3) {
   const { cs } = ctx2;
   const p = cs.presence;
-  if (p?.kind !== "unnoticed" || !p.used || byCid(cs, cid).side !== "enemy") return usable2;
-  if (!usable2.some((u) => u.targets.includes("commander"))) return usable2;
-  if (!ctx2.rng.chance(TUNING.commander.unnoticedSkip)) return usable2;
-  return usable2.map((u) => ({ ...u, targets: u.targets.filter((t) => t !== "commander") })).filter((u) => u.targets.length > 0);
+  if (p?.kind !== "unnoticed" || !p.used || byCid(cs, cid).side !== "enemy") return usable3;
+  if (!usable3.some((u) => u.targets.includes("commander"))) return usable3;
+  if (!ctx2.rng.chance(TUNING.commander.unnoticedSkip)) return usable3;
+  return usable3.map((u) => ({ ...u, targets: u.targets.filter((t) => t !== "commander") })).filter((u) => u.targets.length > 0);
 }
 function chooseAction(ctx2, cid) {
   const { cs } = ctx2;
   const c = byCid(cs, cid);
-  const usable2 = withoutCommanderIfUnnoticed(ctx2, cid, usableSkills(ctx2, cid));
-  if (usable2.length === 0) return { kind: "guard" };
-  const opts = options(ctx2, cid, usable2);
+  const usable3 = withoutCommanderIfUnnoticed(ctx2, cid, usableSkills(ctx2, cid));
+  if (usable3.length === 0) return { kind: "guard" };
+  const opts = options(ctx2, cid, usable3);
   switch (c.aiProfile) {
     case "erratic": {
-      const pick = ctx2.rng.pick(usable2);
+      const pick = ctx2.rng.pick(usable3);
       return { kind: "skill", skillId: pick.skill.id, targetCid: ctx2.rng.pick(pick.targets) };
     }
     case "predator": {
@@ -5436,17 +5442,17 @@ function chooseAction(ctx2, cid) {
       const allies = living(cs, c.side);
       const hurt = allies.filter((a) => a.hp / a.maxHp < 0.5).sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp || a.index - b.index);
       const downed = cs.combatants.filter((a) => a.side === c.side && a.downed);
-      const revive = usable2.find((u) => hasEffect2(u.skill, "revive") && downed.length > 0);
+      const revive = usable3.find((u) => hasEffect2(u.skill, "revive") && downed.length > 0);
       if (revive) return { kind: "skill", skillId: revive.skill.id, targetCid: first(downed.filter((d) => revive.targets.includes(d.cid)))?.cid ?? revive.targets[0] };
       if (hurt.length > 0) {
-        for (const u of usable2) {
+        for (const u of usable3) {
           if (!hasEffect2(u.skill, "heal") && !grantsProtection(u.skill)) continue;
           const target = first(hurt.filter((h2) => u.targets.includes(h2.cid)))?.cid ?? (u.targets.length > 0 && u.skill.targets?.count !== "one" ? u.targets[0] : void 0);
           if (target) return { kind: "skill", skillId: u.skill.id, targetCid: target };
         }
       }
       if (c.side === "squad" && cs.commander && !cs.commander.downed && cs.commander.hp < cs.commander.maxHp) {
-        const guard = usable2.find((u) => grantsProtection(u.skill));
+        const guard = usable3.find((u) => grantsProtection(u.skill));
         if (guard) return { kind: "skill", skillId: guard.skill.id, targetCid: guard.targets[0] };
       }
       break;
@@ -14115,7 +14121,7 @@ registerCallType({
 });
 
 // src/llm/calls/profileImport.ts
-var ALL_SECTIONS = ["role", "values", "tags", "signature", "defects", "baseline"];
+var ALL_SECTIONS = ["role", "values", "tags", "signature", "defects", "baseline", "tastes"];
 var ProfileImportRawSchema = external_exports.object({
   roleCandidates: external_exports.unknown().optional(),
   values: external_exports.unknown().optional(),
@@ -14125,6 +14131,7 @@ var ProfileImportRawSchema = external_exports.object({
   signatureCandidates: external_exports.unknown().optional(),
   defectCandidates: external_exports.unknown().optional(),
   emotionalBaseline: external_exports.unknown().optional(),
+  commanderTastes: external_exports.unknown().optional(),
   notes: external_exports.unknown().optional()
 }).passthrough();
 var VALUE_AXES_TEXT = [
@@ -14141,6 +14148,7 @@ var SCHEMA_PART = {
   tags: '  "likes": ["<short tag>"],      // at most 6\n  "dislikes": ["<short tag>"],   // at most 6\n  "triggers": ["<hard line>"],   // at most 4',
   signature: '  "signatureCandidates": [{ "templateId": "<id from SIGNATURES>", "name": "<in her voice>", "description": "<in her voice>" }],   // exactly 3',
   defects: '  "defectCandidates": [{ "defectId": "<id from DEFECTS>", "origin": "<1-2 in-universe sentences>" }],   // 2 to 3 entries',
+  tastes: `  "commanderTastes": ["<id from TASTES>"],   // at most 3: how she reads the commander's looks and build, only if the card suggests it`,
   baseline: '  "emotionalBaseline": { "trust": 0, "affinity": 0, "attraction": 0 },   // trust 0..40, affinity -20..30, attraction 0..20'
 };
 var has = (i, s) => i.sections.includes(s);
@@ -14177,6 +14185,7 @@ function prompt(raw) {
   if (has(input, "role")) out.push("", "ROLES:", ...input.roles.map((r) => `- ${r.id}: ${r.summary}`));
   if (has(input, "signature")) out.push("", "SIGNATURES (template id: fits characters who are):", ...input.signatures.map((s) => `- ${s.id}: ${s.fits}`));
   if (has(input, "defects")) out.push("", "DEFECTS:", ...input.defects.map((d) => `- ${d.id}: ${d.lore}`));
+  if (has(input, "tastes")) out.push("", "TASTES (id: what it means):", ...input.tastes.map((t) => `- ${t.id}: ${t.description}`));
   out.push("", `Produce the requested sections: ${input.sections.join(", ")}.`);
   return out.join("\n");
 }
@@ -15055,7 +15064,7 @@ function renderCombatScreen(host, ctx2) {
     const cs = state.combat;
     const c = cs.combatants.find((x) => x.cid === cid);
     const e = effCtx(state);
-    const usable2 = new Map(usableSkills(e, cid).map((u) => [u.skill.id, u.targets]));
+    const usable3 = new Map(usableSkills(e, cid).map((u) => [u.skill.id, u.targets]));
     const rows = [];
     for (const id of c.skills) {
       const skill = resolveSkill(reg, c, id);
@@ -15063,11 +15072,11 @@ function renderCombatScreen(host, ctx2) {
       const cd = c.cooldowns[id] ?? 0;
       let reason = null;
       if (cd > 0) reason = `COOLDOWN ${cd}`;
-      else if (!usable2.has(id)) {
+      else if (!usable3.has(id)) {
         const needsCp = (skill.cp ?? 0) > 0 && cs.cp < skill.cp && !c.statuses.some((s) => s.id === "authorized");
         reason = needsCp ? `NEEDS ${skill.cp} CP` : legalTargets(cs, cid, skill, reg).length === 0 ? "NO TARGET" : "UNAVAILABLE";
       }
-      rows.push({ skill, reason, targets: usable2.get(id) ?? [] });
+      rows.push({ skill, reason, targets: usable3.get(id) ?? [] });
     }
     return rows;
   }
@@ -16793,6 +16802,63 @@ function updateSettings(st, patch) {
   return s;
 }
 
+// src/setup/commander.ts
+var PERSONA_CHARS = 6e3;
+var isObj23 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var cap = (v, max) => typeof v === "string" ? v.replace(/<[^>]*>/g, "").trim().slice(0, max) : "";
+function valueOf(kind, v) {
+  if (typeof v !== "string") return null;
+  const i = DESCRIPTORS[kind].findIndex((d) => d.toLowerCase() === v.trim().toLowerCase());
+  return i < 0 ? null : i + 1;
+}
+var LOWER_ORDER = ["reflexes", "endurance", "strength"];
+function sanitizeCommanderImport(raw, reg) {
+  const src = isObj23(raw) ? raw : {};
+  const setup = defaultCommanderSetup();
+  for (const k of BODY_STATS) {
+    const v = valueOf(k, src[k]);
+    if (v !== null) setup.body[k] = Math.min(TUNING.commander.creationMax, v);
+  }
+  while (poolSpent(setup.body) > TUNING.commander.pool) {
+    const top = Math.max(...BODY_STATS.map((k2) => setup.body[k2]));
+    const k = LOWER_ORDER.find((x) => setup.body[x] === top);
+    setup.body[k] -= 1;
+  }
+  setup.expression = valueOf("expression", src.expression) ?? setup.expression;
+  setup.seasoning = valueOf("seasoning", src.seasoning) ?? setup.seasoning;
+  const reasons = {};
+  for (const item of Array.isArray(src.traits) ? src.traits : []) {
+    if (setup.traits.regular.length >= TUNING.commander.maxRegular) break;
+    const id = isObj23(item) && typeof item.id === "string" ? item.id : null;
+    const t = id === null ? void 0 : reg.commanderTraits.get(id);
+    if (!id || !t || t.kind !== "regular" || setup.traits.regular.includes(id)) continue;
+    const excluded = setup.traits.regular.some((kept) => (t.exclusiveWith ?? []).includes(kept) || (reg.commanderTraits.get(kept)?.exclusiveWith ?? []).includes(id));
+    if (excluded) continue;
+    setup.traits.regular.push(id);
+    reasons[id] = cap(item.reason, 200);
+  }
+  return { setup, reasons, notes: cap(src.notes, 300) };
+}
+var usable2 = (raw, result) => isObj23(raw) && ["strength", "endurance", "reflexes", "expression", "seasoning"].some((k) => valueOf(k, raw[k]) !== null) || result.setup.traits.regular.length > 0;
+async function importCommander(st, deps) {
+  const { settings, registries } = deps;
+  try {
+    const description = st.getPersonaDescription().trim().slice(0, PERSONA_CHARS);
+    if (description === "") return { kind: "manual", reason: "the persona has no description" };
+    const input = {
+      persona: { name: st.getPersonaName(), description },
+      traits: [...registries.commanderTraits.values()].filter((t) => t.kind === "regular").map((t) => ({ id: String(t.id), upside: String(t.upside), downside: String(t.downside) }))
+    };
+    const r = await callLlm("commander_import", input, { st, settings });
+    if (!r.ok) return { kind: "manual", reason: r.detail || r.reason };
+    const result = sanitizeCommanderImport(r.value, registries);
+    if (!usable2(r.value, result)) return { kind: "manual", reason: "no usable commander profile in the model's answer" };
+    return { kind: "ok", result };
+  } catch (e) {
+    return { kind: "manual", reason: e instanceof Error ? e.message : String(e) };
+  }
+}
+
 // src/setup/profile.ts
 var CARD_INPUT_TOKENS = 2500;
 var CUT_MARK = "\u2026[truncated]";
@@ -16822,11 +16888,12 @@ function buildImportInput(card2, registries, settings, sections) {
     sections: [...sections],
     roles: [...registries.roles.values()].map((r) => ({ id: r.id, summary: str3(r.summary) })),
     signatures: [...registries.signatures.values()].map((s) => ({ id: s.id, fits: str3(s.fits) })),
-    defects: [...registries.defects.values()].filter((d) => settings.desireBondDefects || d.category !== "desire_bond").map((d) => ({ id: d.id, lore: str3(d.lore) }))
+    defects: [...registries.defects.values()].filter((d) => settings.desireBondDefects || d.category !== "desire_bond").map((d) => ({ id: d.id, lore: str3(d.lore) })),
+    tastes: [...registries.tastes.values()].map((t) => ({ id: t.id, description: str3(t.description) }))
   };
 }
-var isObj23 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
-var cap = (v, max, fallback = "") => typeof v === "string" ? v.trim().slice(0, max) : fallback;
+var isObj24 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var cap2 = (v, max, fallback = "") => typeof v === "string" ? v.trim().slice(0, max) : fallback;
 var num2 = (v, lo, hi, fallback) => typeof v === "number" && Number.isFinite(v) ? Math.min(hi, Math.max(lo, Math.round(v))) : fallback;
 var SECTION_LABEL = { role: "role", signature: "signature", defects: "defects" };
 var VALUE_KEYS = ["pragmatism", "autonomy", "ingroup", "mercy", "corporate", "sacrifice"];
@@ -16841,16 +16908,16 @@ function tagList2(v, max) {
   return out;
 }
 function sanitizeProfile(raw, ctx2) {
-  const src = isObj23(raw) ? raw : {};
+  const src = isObj24(raw) ? raw : {};
   const want = (s) => ctx2.sections.includes(s);
   const dropped = [];
   const missing2 = [];
-  const profile = { roleCandidates: [], signatureCandidates: [], defectCandidates: [], notes: cap(src.notes, 300) };
+  const profile = { roleCandidates: [], signatureCandidates: [], defectCandidates: [], notes: cap2(src.notes, 300) };
   const pick = (list5, section, idKey, max, accept, make) => {
     const out = [];
     const seen = /* @__PURE__ */ new Set();
     for (const item of Array.isArray(list5) ? list5 : []) {
-      const id = isObj23(item) && typeof item[idKey] === "string" ? item[idKey] : null;
+      const id = isObj24(item) && typeof item[idKey] === "string" ? item[idKey] : null;
       if (id === null) {
         dropped.push(`${SECTION_LABEL[section]}:(invalid)`);
         continue;
@@ -16871,7 +16938,7 @@ function sanitizeProfile(raw, ctx2) {
       "roleId",
       2,
       (id) => ctx2.registries.roles.has(id),
-      (roleId, it) => ({ roleId, reason: cap(it.reason, 200) })
+      (roleId, it) => ({ roleId, reason: cap2(it.reason, 200) })
     );
     if (profile.roleCandidates.length === 0) missing2.push("role");
   }
@@ -16886,8 +16953,8 @@ function sanitizeProfile(raw, ctx2) {
         const tpl = ctx2.registries.signatures.get(templateId);
         return {
           templateId,
-          name: cap(it.name, 40, String(tpl.name)) || String(tpl.name),
-          description: cap(it.description, 240, String(tpl.mechanic)) || String(tpl.mechanic)
+          name: cap2(it.name, 40, String(tpl.name)) || String(tpl.name),
+          description: cap2(it.description, 240, String(tpl.mechanic)) || String(tpl.mechanic)
         };
       }
     );
@@ -16903,12 +16970,12 @@ function sanitizeProfile(raw, ctx2) {
         const d = ctx2.registries.defects.get(id);
         return !!d && (ctx2.desireBondDefects || d.category !== "desire_bond");
       },
-      (defectId, it) => ({ defectId, origin: cap(it.origin, 300) })
+      (defectId, it) => ({ defectId, origin: cap2(it.origin, 300) })
     );
     if (profile.defectCandidates.length === 0) missing2.push("defects");
   }
   if (want("values")) {
-    if (isObj23(src.values)) {
+    if (isObj24(src.values)) {
       const v = src.values;
       profile.values = Object.fromEntries(VALUE_KEYS.map((k) => [k, num2(v[k], -3, 3, 0)]));
     } else missing2.push("values");
@@ -16922,8 +16989,19 @@ function sanitizeProfile(raw, ctx2) {
     if (triggers) profile.triggers = triggers;
     if (!likes && !dislikes && !triggers) missing2.push("tags");
   }
+  if (want("tastes")) {
+    const out = [];
+    for (const raw2 of Array.isArray(src.commanderTastes) ? src.commanderTastes : []) {
+      if (typeof raw2 !== "string" || !ctx2.registries.tastes.has(raw2) || out.includes(raw2)) {
+        dropped.push(`tastes:${typeof raw2 === "string" ? raw2 : "(invalid)"}`);
+        continue;
+      }
+      if (out.length < TUNING.commander.maxTastes) out.push(raw2);
+    }
+    profile.commanderTastes = out;
+  }
   if (want("baseline")) {
-    if (isObj23(src.emotionalBaseline)) {
+    if (isObj24(src.emotionalBaseline)) {
       const b = src.emotionalBaseline;
       const lim = SETUP_LIMITS.baseline;
       profile.baseline = {
@@ -16983,6 +17061,8 @@ var Wizard = class {
       commanderName: init.personaName.trim() || "Commander",
       startId: null,
       crimeId: null,
+      commander: defaultCommanderSetup(),
+      commanderImport: { status: "idle", reasons: {} },
       units: [],
       calibrationIndex: 0,
       target: "new_group",
@@ -16994,6 +17074,8 @@ var Wizard = class {
   listeners = /* @__PURE__ */ new Set();
   /** Latest "regenerate" request per unit and section; an older result for the same section is dropped. */
   sectionTokens = /* @__PURE__ */ new Map();
+  /** Bumps whenever a commander prefill is started or becomes stale; a result carrying an older number is ignored. */
+  commanderToken = 0;
   /** Whether Desire/Bond defects are allowed (needed by the manual lists in the UI). */
   get desireBondDefects() {
     return this.deps.desireBondDefects;
@@ -17039,6 +17121,95 @@ var Wizard = class {
     this.s.target = t;
     this.emit();
   }
+  // --- commander file (P7)
+  /** Moves one body stat; a value that breaks the cap of 4, the pool of 7 or the floor of 1 is ignored. */
+  setBody(stat2, value) {
+    if (!BODY_STATS.includes(stat2) || !Number.isInteger(value) || value < 1 || value > TUNING.commander.creationMax) return;
+    const next = { ...this.s.commander.body, [stat2]: value };
+    if (poolSpent(next) > TUNING.commander.pool) return;
+    this.s.commander.body = next;
+    this.emit();
+  }
+  setExpression(n) {
+    if (!Number.isInteger(n) || n < 1 || n > 5) return;
+    this.s.commander.expression = n;
+    this.emit();
+  }
+  setSeasoning(n) {
+    if (!Number.isInteger(n) || n < 1 || n > 5) return;
+    this.s.commander.seasoning = n;
+    this.emit();
+  }
+  /** Picks or drops a trait: at most 2 regular and 1 special, no exclusive pair, no trait the settings do not allow. */
+  toggleTrait(id) {
+    const t = this.deps.registries.commanderTraits.get(id);
+    if (!t) return;
+    const traits = this.s.commander.traits;
+    if (t.kind === "special") {
+      if (traits.special === id) delete traits.special;
+      else if (this.traitAllowed(id, traits.regular)) traits.special = id;
+      else return;
+    } else {
+      const at = traits.regular.indexOf(id);
+      if (at >= 0) traits.regular.splice(at, 1);
+      else if (traits.regular.length >= TUNING.commander.maxRegular) return;
+      else if (this.traitAllowed(id, [...traits.regular, ...traits.special !== void 0 ? [traits.special] : []])) traits.regular.push(id);
+      else return;
+    }
+    this.emit();
+  }
+  /** Whether `id` may join `chosen`: its settings are on and no exclusion links it to a chosen trait (either way). */
+  traitAllowed(id, chosen) {
+    const reg = this.deps.registries.commanderTraits;
+    const t = reg.get(id);
+    if (!t) return false;
+    if (t.requiresSettings?.desireBondDefects && !this.deps.desireBondDefects) return false;
+    const excludes = t.exclusiveWith ?? [];
+    return !chosen.some((c) => excludes.includes(c) || (reg.get(c)?.exclusiveWith ?? []).includes(id));
+  }
+  /** Asks the mechanic model for a commander from the persona text; a late answer after the player moved on is dropped. */
+  prefillFromPersona() {
+    const token = ++this.commanderToken;
+    this.s.commanderImport = { status: "loading", reasons: {} };
+    this.emit();
+    void (async () => {
+      let outcome;
+      try {
+        outcome = this.deps.commanderImporter ? await this.deps.commanderImporter() : { kind: "manual", reason: "no importer" };
+      } catch (e) {
+        outcome = { kind: "manual", reason: errText(e) };
+      }
+      if (this.disposed || token !== this.commanderToken) return;
+      if (outcome.kind === "ok") {
+        this.s.commander = structuredClone(outcome.result.setup);
+        this.s.commanderImport = { status: "ready", reasons: { ...outcome.result.reasons } };
+      } else {
+        this.s.commanderImport = { status: "manual", notice: outcome.reason, reasons: {} };
+      }
+      this.emit();
+    })();
+  }
+  /** A valid random commander (never a special trait). */
+  randomCommander() {
+    this.commanderToken++;
+    const rnd = this.deps.random ?? Math.random;
+    const c = defaultCommanderSetup();
+    c.body = { strength: 1, endurance: 1, reflexes: 1 };
+    for (let spend2 = Math.floor(rnd() * (TUNING.commander.pool + 1)); spend2 > 0; spend2--) {
+      const open2 = BODY_STATS.filter((k) => c.body[k] < TUNING.commander.creationMax);
+      c.body[open2[Math.floor(rnd() * open2.length)]] += 1;
+    }
+    c.expression = 1 + Math.floor(rnd() * 5);
+    c.seasoning = 1 + Math.floor(rnd() * 5);
+    const pool = [...this.deps.registries.commanderTraits.values()].filter((t) => t.kind === "regular").map((t) => String(t.id));
+    for (let want = Math.floor(rnd() * (TUNING.commander.maxRegular + 1)); want > 0 && pool.length > 0; want--) {
+      const id = pool.splice(Math.floor(rnd() * pool.length), 1)[0];
+      if (this.traitAllowed(id, c.traits.regular)) c.traits.regular.push(id);
+    }
+    this.s.commander = c;
+    this.s.commanderImport = { status: "idle", reasons: {} };
+    this.emit();
+  }
   // --- units
   toggleUnit(c) {
     const i = this.s.units.findIndex((u) => u.avatar === c.avatar);
@@ -17059,7 +17230,8 @@ var Wizard = class {
           likes: [],
           dislikes: [],
           triggers: [],
-          baseline: { trust: 20, affinity: 0, attraction: 0 }
+          baseline: { trust: 20, affinity: 0, attraction: 0 },
+          tastes: []
         },
         secondDefect: false,
         regenerating: [],
@@ -17077,6 +17249,10 @@ var Wizard = class {
         if (!this.s.startId) return fail("Choose a starting point.");
         if (!this.s.crimeId) return fail("Choose the commander's crime.");
         return { ok: true };
+      case "commander": {
+        const errors = validateCommanderSetup(this.s.commander, this.deps.registries, { desireBondDefects: this.deps.desireBondDefects });
+        return errors.length === 0 ? { ok: true } : fail(errors[0]);
+      }
       case "units":
         return { ok: true };
       case "calibration": {
@@ -17099,8 +17275,11 @@ var Wizard = class {
   }
   next() {
     if (!this.canAdvance().ok) return;
-    if (this.s.step === "dossier") this.s.step = "units";
-    else if (this.s.step === "units") {
+    if (this.s.step === "dossier") this.s.step = "commander";
+    else if (this.s.step === "commander") {
+      this.commanderToken++;
+      this.s.step = "units";
+    } else if (this.s.step === "units") {
       if (this.s.units.length === 0) this.s.step = "review";
       else {
         this.s.step = "calibration";
@@ -17111,7 +17290,10 @@ var Wizard = class {
     this.emit();
   }
   back() {
-    if (this.s.step === "units") this.s.step = "dossier";
+    if (this.s.step === "commander") {
+      this.commanderToken++;
+      this.s.step = "dossier";
+    } else if (this.s.step === "units") this.s.step = "commander";
     else if (this.s.step === "calibration") this.s.step = "units";
     else if (this.s.step === "review") this.s.step = this.s.units.length === 0 ? "units" : "calibration";
     this.emit();
@@ -17207,6 +17389,7 @@ var Wizard = class {
     else if (section === "defects") c.defectCandidates = p.defectCandidates;
     else if (section === "values") c.values = p.values;
     else if (section === "baseline") c.baseline = p.baseline;
+    else if (section === "tastes") c.commanderTastes = p.commanderTastes;
     else {
       c.likes = p.likes;
       c.dislikes = p.dislikes;
@@ -17246,6 +17429,9 @@ var Wizard = class {
       case "baseline":
         if (p.baseline) ch.baseline = { ...p.baseline };
         break;
+      case "tastes":
+        if (p.commanderTastes) ch.tastes = [...p.commanderTastes];
+        break;
     }
   }
   // --- result
@@ -17258,7 +17444,7 @@ var Wizard = class {
       if (!roleId || !signature) return { result: null, errors: [`${u.displayName}: calibration is incomplete.`] };
       units.push({ cardRef: u.avatar, displayName: u.displayName, roleId, signature, ...structuredClone(rest) });
     }
-    const result = { commanderName: this.s.commanderName, startId, crimeId, units };
+    const result = { commanderName: this.s.commanderName, startId, crimeId, units, commander: structuredClone(this.s.commander) };
     const errors = validateSetup(result, this.deps.registries, { desireBondDefects: this.deps.desireBondDefects });
     return { result: errors.length === 0 ? result : null, errors };
   }
@@ -17482,11 +17668,11 @@ function renderCalibration(host, ctx2) {
   }
   if (shown.has("tags")) {
     host.append(
-      section("tags", "TAGS", ...TAG_FIELDS.map(([key, label2, cap4]) => {
+      section("tags", "TAGS", ...TAG_FIELDS.map(([key, label2, cap5]) => {
         const list5 = ch[key];
         const add = () => {
           const t = normalizeTag(input.value);
-          if (t === null || list5.includes(t) || list5.length >= cap4) return;
+          if (t === null || list5.includes(t) || list5.length >= cap5) return;
           onUpdate({ [key]: [...list5, t] });
         };
         const input = h("input", {
@@ -17495,8 +17681,8 @@ function renderCalibration(host, ctx2) {
           "data-tags": key,
           "data-key": `tag-${key}`,
           "aria-label": `Add ${label2.toLowerCase()}`,
-          placeholder: list5.length >= cap4 ? `max ${cap4}` : "add\u2026",
-          disabled: list5.length >= cap4
+          placeholder: list5.length >= cap5 ? `max ${cap5}` : "add\u2026",
+          disabled: list5.length >= cap5
         });
         input.addEventListener("keydown", (e) => {
           if (e.key !== "Enter") return;
@@ -17506,7 +17692,7 @@ function renderCalibration(host, ctx2) {
         return h(
           "div",
           { class: "alius-tags" },
-          h("span", { class: "alius-field-label" }, `${label2} (${list5.length}/${cap4})`),
+          h("span", { class: "alius-field-label" }, `${label2} (${list5.length}/${cap5})`),
           h("div", { class: "alius-chips" }, ...list5.map((t) => h(
             "span",
             { class: "alius-tagchip" },
@@ -17570,9 +17756,10 @@ function textArea(key, value, max, commit) {
 // src/ui/setup/setupScreen.ts
 var STEPS = [
   ["dossier", "01 DOSSIER"],
-  ["units", "02 UNIT ASSIGNMENT"],
-  ["calibration", "03 PROFILE CALIBRATION"],
-  ["review", "04 REVIEW"]
+  ["commander", "02 COMMANDER FILE"],
+  ["units", "03 UNIT ASSIGNMENT"],
+  ["calibration", "04 PROFILE CALIBRATION"],
+  ["review", "05 REVIEW"]
 ];
 var subscriptions = /* @__PURE__ */ new WeakMap();
 var nameOf5 = (reg, registry2, id) => {
@@ -17613,6 +17800,8 @@ function renderSetupScreen(host, ctx2) {
     switch (s.step) {
       case "dossier":
         return dossier(s);
+      case "commander":
+        return commanderStep();
       case "units":
         return units(s);
       case "calibration":
@@ -17660,6 +17849,9 @@ function renderSetupScreen(host, ctx2) {
         );
       }))
     );
+  }
+  function commanderStep() {
+    return h("div", { class: "alius-setup-body" }, h("p", { class: "alius-hint" }, "COMMANDER FILE"));
   }
   function units(s) {
     const q = search.trim().toLowerCase();
@@ -20138,7 +20330,7 @@ var MINUS = "\u2212";
 function humanize(key) {
   return String(key).replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/[_-]+/g, " ").trim().toLowerCase();
 }
-var cap2 = (s) => s ? s[0].toUpperCase() + s.slice(1) : s;
+var cap3 = (s) => s ? s[0].toUpperCase() + s.slice(1) : s;
 var num3 = (n) => String(Math.round(n * 100) / 100);
 var abs = (n) => num3(Math.abs(n));
 var signed = (n) => n > 0 ? `+${num3(n)}` : n < 0 ? `${MINUS}${abs(n)}` : "\xB10";
@@ -20246,7 +20438,7 @@ function combatBase(e) {
     case "injury_days":
       return `${pctSigned(Number(e.pct))} injury time`;
     default:
-      return cap2(humanize(String(e.type ?? "effect")));
+      return cap3(humanize(String(e.type ?? "effect")));
   }
 }
 var WHEN_TEXT = {
@@ -20297,11 +20489,11 @@ function summarizeActivityEffect(effect, _reg, focus) {
   let s;
   switch (e.type) {
     case "resource":
-      s = `${signed(Number(e.amount))} ${RESOURCE_LABEL[e.resource] ?? cap2(humanize(String(e.resource)))}`;
-      if (e.perStat) s += ` ${signed(Number(e.perStat.per))} per ${cap2(String(e.perStat.stat))} rank`;
+      s = `${signed(Number(e.amount))} ${RESOURCE_LABEL[e.resource] ?? cap3(humanize(String(e.resource)))}`;
+      if (e.perStat) s += ` ${signed(Number(e.perStat.per))} per ${cap3(String(e.perStat.stat))} rank`;
       break;
     case "commander_stat":
-      s = `${signed(Number(e.amount))} ${cap2(String(e.stat))}`;
+      s = `${signed(Number(e.amount))} ${cap3(String(e.stat))}`;
       break;
     case "unit_xp":
       s = `${who} ${signed(Number(e.amount))} XP`;
@@ -20322,10 +20514,10 @@ function summarizeActivityEffect(effect, _reg, focus) {
       s = `${who}: defect upkeep`;
       break;
     case "relation":
-      s = `Companion ${signed(Number(e.amount))} ${cap2(String(e.axis))}`;
+      s = `Companion ${signed(Number(e.amount))} ${cap3(String(e.axis))}`;
       break;
     default:
-      return cap2(humanize(String(e.type ?? "effect")));
+      return cap3(humanize(String(e.type ?? "effect")));
   }
   if (e.scale?.facility) s += ` (more with [[facilities:${e.scale.facility}]])`;
   if (e.when?.focus !== void 0) {
@@ -20378,7 +20570,7 @@ function effectsFor(registry2, entry, reg) {
         ...statLines(e.mods, (stat2, n) => `${pctSigned(n)} ${stat2} per stack`),
         isNum(e.incomingPct) ? `${pctSigned(e.incomingPct)} damage taken` : null,
         ...combat(e.tick, reg).map((l) => `Each turn: ${l}`),
-        ...Array.isArray(e.flags) ? e.flags.map((f) => cap2(humanize(String(f)))) : [],
+        ...Array.isArray(e.flags) ? e.flags.map((f) => cap3(humanize(String(f)))) : [],
         turns
       ]);
     }
@@ -20440,7 +20632,7 @@ function effectsFor(registry2, entry, reg) {
       const mod = (kind, word) => {
         const row = e.modifiers && typeof e.modifiers === "object" ? e.modifiers[kind] : null;
         if (!row || typeof row !== "object") return [];
-        return Object.entries(row).filter(([, n]) => isNum(n)).map(([axis, n]) => `${cap2(axis)} ${word} \xD7${num3(n)}`);
+        return Object.entries(row).filter(([, n]) => isNum(n)).map(([axis, n]) => `${cap3(axis)} ${word} \xD7${num3(n)}`);
       };
       return compact([syn.length ? `Unlocks: ${syn.map((s) => `[[synergies:${s}]]`).join(", ")}` : null, ...mod("gain", "gains"), ...mod("loss", "losses")]);
     }
@@ -20554,7 +20746,7 @@ function readingFor(subject, env) {
 
 // src/analysis/providers/core.ts
 var MINUS2 = "\u2212";
-var cap3 = (s) => s ? s[0].toUpperCase() + s.slice(1) : s;
+var cap4 = (s) => s ? s[0].toUpperCase() + s.slice(1) : s;
 var rawSuffix = (k, n) => {
   const r = k.raw(n);
   return r === null ? "" : ` (${r})`;
@@ -20589,7 +20781,7 @@ var axisProvider = (axis) => (subject, env, knowledge) => {
   };
   const events = relation.history.filter((h2) => h2.kind === "event" && moves(h2.type)).slice(-3).reverse();
   for (const h2 of events) {
-    const cause = typeof env.registries.eventDeltas.get(h2.type)?.cause === "string" ? env.registries.eventDeltas.get(h2.type).cause : cap3(humanize(h2.type));
+    const cause = typeof env.registries.eventDeltas.get(h2.type)?.cause === "string" ? env.registries.eventDeltas.get(h2.type).cause : cap4(humanize(h2.type));
     lines.push(`${cause}${h2.severity ? ` \u2014 ${h2.severity}` : ""}, day ${h2.day}`);
   }
   lines.push(`State: [[relationshipStates:${relation.stateId}]]`);
@@ -22706,7 +22898,8 @@ function createApp(st, deps) {
     values: "Values",
     tags: "Likes, dislikes and triggers",
     signature: "Signature skill",
-    defects: "Defects"
+    defects: "Defects",
+    tastes: "How she reads the commander (tastes)"
   };
   async function resyncUnit(unitId) {
     const unit = state?.squad.find((u) => u.id === unitId);
@@ -22751,7 +22944,8 @@ function createApp(st, deps) {
       values: { ...unit.values },
       likes: [...unit.likes],
       dislikes: [...unit.dislikes],
-      triggers: [...unit.triggers]
+      triggers: [...unit.triggers],
+      tastes: [...unit.commanderTastes ?? []]
     });
     wizard.calibrate(0);
     const body = h("div", { class: "alius-calibration" });
@@ -22782,6 +22976,7 @@ function createApp(st, deps) {
     if (sections.includes("tags")) Object.assign(patch, { likes: c.likes, dislikes: c.dislikes, triggers: c.triggers });
     if (sections.includes("signature") && c.signature) patch.signature = c.signature;
     if (sections.includes("defects")) patch.defects = c.defects;
+    if (sections.includes("tastes")) patch.commanderTastes = c.tastes;
     const current = {
       roleId: unit.roleId,
       values: unit.values,
@@ -22789,7 +22984,8 @@ function createApp(st, deps) {
       dislikes: unit.dislikes,
       triggers: unit.triggers,
       signature: unit.signatureSkill,
-      defects: unit.defects.map((d) => ({ id: d.id, origin: d.origin ?? "" }))
+      defects: unit.defects.map((d) => ({ id: d.id, origin: d.origin ?? "" })),
+      commanderTastes: unit.commanderTastes ?? []
     };
     const unchanged = Object.keys(patch).every(
       (k) => JSON.stringify(patch[k]) === JSON.stringify(current[k])
@@ -22899,6 +23095,7 @@ function createApp(st, deps) {
         registries,
         desireBondDefects: desireBond,
         importer: (avatar, sections) => importProfile(avatar, sections, { st, settings: { ...getSettings(st), desireBondDefects: desireBond }, registries }),
+        commanderImporter: () => importCommander(st, { settings: { ...getSettings(st), desireBondDefects: desireBond }, registries }),
         onChange: () => {
         }
       },
@@ -23926,13 +24123,13 @@ import { editGroup, openGroupById } from "../../../../group-chats.js";
 import { newWorldInfoEntryTemplate } from "../../../../world-info.js";
 
 // src/st/chat.ts
-var isObj24 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj25 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function mapChatMessages(chat, from = 0) {
   if (!Array.isArray(chat)) return [];
   const out = [];
   for (let index = Math.max(0, from); index < chat.length; index++) {
     const m = chat[index];
-    if (!isObj24(m) || m.is_system === true) continue;
+    if (!isObj25(m) || m.is_system === true) continue;
     const avatar = typeof m.original_avatar === "string" && m.original_avatar !== "" ? m.original_avatar : void 0;
     out.push({
       index,
@@ -23949,7 +24146,7 @@ function lastCharacterAvatar(chat) {
   if (!Array.isArray(chat)) return void 0;
   for (let i = chat.length - 1; i >= 0; i--) {
     const m = chat[i];
-    if (isObj24(m) && m.is_user !== true && m.is_system !== true) {
+    if (isObj25(m) && m.is_user !== true && m.is_system !== true) {
       return typeof m.original_avatar === "string" && m.original_avatar !== "" ? m.original_avatar : void 0;
     }
   }
@@ -23985,17 +24182,17 @@ function toStLorebook(book, template) {
 }
 
 // src/st/sprites.ts
-var isObj25 = (v) => typeof v === "object" && v !== null;
+var isObj26 = (v) => typeof v === "object" && v !== null;
 function spriteFolder(avatar, name, overrides) {
   if (!Array.isArray(overrides)) return name;
   const key = avatar.replace(/\.[^.]+$/, "");
-  const hit = overrides.find((o) => isObj25(o) && o.name === key && typeof o.path === "string" && o.path !== "");
+  const hit = overrides.find((o) => isObj26(o) && o.name === key && typeof o.path === "string" && o.path !== "");
   return hit ? hit.path : name;
 }
 function pickSprite(list5, label2) {
   if (!Array.isArray(list5)) return null;
   for (const item of list5) {
-    if (isObj25(item) && item.label === label2 && typeof item.path === "string") return item.path;
+    if (isObj26(item) && item.label === label2 && typeof item.path === "string") return item.path;
   }
   return null;
 }

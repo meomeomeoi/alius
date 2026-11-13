@@ -36,8 +36,8 @@ const run = (state: CampaignState, unitId: string, patch: Record<string, unknown
   dispatch(state, { type: 'squad/resync', payload: { unitId, patch } }, reg);
 
 describe('squad/resync', () => {
-  it('RESYNC_SECTIONS excludes baseline', () => {
-    expect([...RESYNC_SECTIONS]).toEqual(['role', 'values', 'tags', 'signature', 'defects']);
+  it('RESYNC_SECTIONS excludes baseline and includes the P7 tastes', () => {
+    expect([...RESYNC_SECTIONS]).toEqual(['role', 'values', 'tags', 'signature', 'defects', 'tastes']);
   });
 
   it('resync values replaces only values', () => {
@@ -130,6 +130,39 @@ describe('squad/resync', () => {
     expect(r.state.resources).toEqual(s.resources);
     expect(r.state.commander).toEqual(s.commander);
     expect(r.state.roster).toEqual(s.roster);
+  });
+
+  it('tastes re-sync never changes axes', () => {
+    const s = campaign();
+    const r = run(s, 'unit_rhea', { commanderTastes: ['respects_strength', 'drawn_to_older'] });
+    expect(r.events[0]).toMatchObject({ type: 'unit_resynced', sections: ['tastes'] });
+    expect(r.state.squad[0].commanderTastes).toEqual(['respects_strength', 'drawn_to_older']);
+    expect(r.state.relations).toEqual(s.relations);
+    expect(r.state.commander).toEqual(s.commander);
+  });
+
+  it('tastes re-sync can add tastes to a unit that has none and clear them again', () => {
+    const s = campaign();
+    expect(s.squad[0].commanderTastes).toBeUndefined();
+    const added = run(s, 'unit_rhea', { commanderTastes: ['wary_of_brutes'] }).state;
+    expect(added.squad[0].commanderTastes).toEqual(['wary_of_brutes']);
+    const cleared = run(added, 'unit_rhea', { commanderTastes: [] }).state;
+    expect(cleared.squad[0].commanderTastes ?? []).toEqual([]);
+  });
+
+  it('tastes re-sync refuses unknown, repeated and too many tastes and changes nothing', () => {
+    const s = campaign();
+    for (const tastes of [['no_such_taste'], ['wary_of_brutes', 'wary_of_brutes'], ['respects_strength', 'wary_of_brutes', 'protective_of_frail', 'drawn_to_older']]) {
+      const r = run(s, 'unit_rhea', { commanderTastes: tastes });
+      expect(r.events[0]).toMatchObject({ type: 'error' });
+      expect(r.state).toEqual(s);
+    }
+  });
+
+  it('a re-sync of other sections keeps the tastes', () => {
+    const s = campaign();
+    const withTastes = run(s, 'unit_rhea', { commanderTastes: ['respects_strength'] }).state;
+    expect(run(withTastes, 'unit_rhea', { likes: ['rain'] }).state.squad[0].commanderTastes).toEqual(['respects_strength']);
   });
 
   it('unknown patch keys are ignored', () => {

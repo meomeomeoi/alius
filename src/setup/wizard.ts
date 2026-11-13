@@ -1,11 +1,15 @@
 import type { Entry, Registries } from '../content/types';
+import { BODY_STATS, defaultCommanderSetup, poolSpent, validateCommanderSetup, type CommanderSetup } from '../engine/commander/profile';
 import { SETUP_LIMITS, validateSetup, type SetupResult, type UnitSetup } from '../engine/setup';
+import { TUNING } from '../engine/tuning';
 import type { SignatureInstance, Unit } from '../engine/state/types';
 import { ALL_SECTIONS, type ImportSection } from '../llm/calls/profileImport';
 import type { CharacterSummary } from '../st/adapter';
+import type { BodyStat } from '../engine/state/types';
+import type { CommanderImportOutcome } from './commander';
 import type { ImportedProfile, ImportOutcome } from './profile';
 
-export type WizardStep = 'dossier' | 'units' | 'calibration' | 'review';
+export type WizardStep = 'dossier' | 'commander' | 'units' | 'calibration' | 'review';
 export type CalibrationStatus = 'idle' | 'loading' | 'ready' | 'manual';
 
 export interface UnitDraft {
@@ -16,9 +20,11 @@ export interface UnitDraft {
   notice?: string;
   /** null in manual mode. */
   candidates: ImportedProfile | null;
-  choice: Omit<UnitSetup, 'cardRef' | 'displayName' | 'roleId' | 'signature'> & {
+  choice: Omit<UnitSetup, 'cardRef' | 'displayName' | 'roleId' | 'signature' | 'tastes'> & {
     roleId: string | null;
     signature: SignatureInstance | null;
+    /** P7: how this unit reads the commander (ids of registry `tastes`, at most 3). */
+    tastes: string[];
   };
   secondDefect: boolean;
   /** Sections whose "regenerate" import is still running. */
@@ -27,11 +33,21 @@ export interface UnitDraft {
   generation: number;
 }
 
+export interface CommanderImportState {
+  status: 'idle' | 'loading' | 'ready' | 'manual';
+  notice?: string;
+  /** Why the model picked each trait, by trait id. */
+  reasons: Record<string, string>;
+}
+
 export interface WizardState {
   step: WizardStep;
   commanderName: string;
   startId: string | null;
   crimeId: string | null;
+  /** P7: the COMMANDER FILE step. */
+  commander: CommanderSetup;
+  commanderImport: CommanderImportState;
   units: UnitDraft[];
   calibrationIndex: number;
   target: 'new_group' | 'current_group';
@@ -42,6 +58,10 @@ export interface WizardDeps {
   registries: Registries;
   desireBondDefects: boolean;
   importer: (avatar: string, sections: ImportSection[]) => Promise<ImportOutcome>;
+  /** P7: persona → commander. Absent = the prefill is manual. */
+  commanderImporter?: () => Promise<CommanderImportOutcome>;
+  /** P7: a number in [0, 1) for the random commander (default `Math.random`). */
+  random?: () => number;
   onChange: (s: WizardState) => void;
 }
 
@@ -73,6 +93,8 @@ export class Wizard {
   private listeners = new Set<(s: WizardState) => void>();
   /** Latest "regenerate" request per unit and section; an older result for the same section is dropped. */
   private sectionTokens = new Map<UnitDraft, Partial<Record<ImportSection, number>>>();
+  /** Bumps whenever a commander prefill is started or becomes stale; a result carrying an older number is ignored. */
+  private commanderToken = 0;
 
   constructor(private deps: WizardDeps, init: { personaName: string; canBindCurrent: boolean }) {
     this.s = {
@@ -80,6 +102,8 @@ export class Wizard {
       commanderName: init.personaName.trim() || 'Commander',
       startId: null,
       crimeId: null,
+      commander: defaultCommanderSetup(),
+      commanderImport: { status: 'idle', reasons: {} },
       units: [],
       calibrationIndex: 0,
       target: 'new_group',
@@ -142,6 +166,102 @@ export class Wizard {
     this.emit();
   }
 
+  // --- commander file (P7)
+  /** Moves one body stat; a value that breaks the cap of 4, the pool of 7 or the floor of 1 is ignored. */
+  setBody(stat: BodyStat, value: number): void {
+    if (!BODY_STATS.includes(stat) || !Number.isInteger(value) || value < 1 || value > TUNING.commander.creationMax) return;
+    const next = { ...this.s.commander.body, [stat]: value };
+    if (poolSpent(next) > TUNING.commander.pool) return;
+    this.s.commander.body = next;
+    this.emit();
+  }
+
+  setExpression(n: number): void {
+    if (!Number.isInteger(n) || n < 1 || n > 5) return;
+    this.s.commander.expression = n;
+    this.emit();
+  }
+
+  setSeasoning(n: number): void {
+    if (!Number.isInteger(n) || n < 1 || n > 5) return;
+    this.s.commander.seasoning = n;
+    this.emit();
+  }
+
+  /** Picks or drops a trait: at most 2 regular and 1 special, no exclusive pair, no trait the settings do not allow. */
+  toggleTrait(id: string): void {
+    const t = this.deps.registries.commanderTraits.get(id);
+    if (!t) return;
+    const traits = this.s.commander.traits;
+    if (t.kind === 'special') {
+      if (traits.special === id) delete traits.special;
+      else if (this.traitAllowed(id, traits.regular)) traits.special = id;
+      else return;
+    } else {
+      const at = traits.regular.indexOf(id);
+      if (at >= 0) traits.regular.splice(at, 1);
+      else if (traits.regular.length >= TUNING.commander.maxRegular) return;
+      else if (this.traitAllowed(id, [...traits.regular, ...(traits.special !== undefined ? [traits.special] : [])])) traits.regular.push(id);
+      else return;
+    }
+    this.emit();
+  }
+
+  /** Whether `id` may join `chosen`: its settings are on and no exclusion links it to a chosen trait (either way). */
+  private traitAllowed(id: string, chosen: string[]): boolean {
+    const reg = this.deps.registries.commanderTraits;
+    const t = reg.get(id);
+    if (!t) return false;
+    if ((t.requiresSettings as { desireBondDefects?: boolean } | undefined)?.desireBondDefects && !this.deps.desireBondDefects) return false;
+    const excludes = (t.exclusiveWith as string[] | undefined) ?? [];
+    return !chosen.some((c) => excludes.includes(c) || ((reg.get(c)?.exclusiveWith as string[] | undefined) ?? []).includes(id));
+  }
+
+  /** Asks the mechanic model for a commander from the persona text; a late answer after the player moved on is dropped. */
+  prefillFromPersona(): void {
+    const token = ++this.commanderToken;
+    this.s.commanderImport = { status: 'loading', reasons: {} };
+    this.emit();
+    void (async () => {
+      let outcome: CommanderImportOutcome;
+      try {
+        outcome = this.deps.commanderImporter ? await this.deps.commanderImporter() : { kind: 'manual', reason: 'no importer' };
+      } catch (e) {
+        outcome = { kind: 'manual', reason: errText(e) };
+      }
+      if (this.disposed || token !== this.commanderToken) return;
+      if (outcome.kind === 'ok') {
+        this.s.commander = structuredClone(outcome.result.setup);
+        this.s.commanderImport = { status: 'ready', reasons: { ...outcome.result.reasons } };
+      } else {
+        this.s.commanderImport = { status: 'manual', notice: outcome.reason, reasons: {} };
+      }
+      this.emit();
+    })();
+  }
+
+  /** A valid random commander (never a special trait). */
+  randomCommander(): void {
+    this.commanderToken++; // drops a prefill still running
+    const rnd = this.deps.random ?? Math.random;
+    const c = defaultCommanderSetup();
+    c.body = { strength: 1, endurance: 1, reflexes: 1 };
+    for (let spend = Math.floor(rnd() * (TUNING.commander.pool + 1)); spend > 0; spend--) {
+      const open = BODY_STATS.filter((k) => c.body[k] < TUNING.commander.creationMax);
+      c.body[open[Math.floor(rnd() * open.length)]] += 1;
+    }
+    c.expression = 1 + Math.floor(rnd() * 5);
+    c.seasoning = 1 + Math.floor(rnd() * 5);
+    const pool = [...this.deps.registries.commanderTraits.values()].filter((t) => t.kind === 'regular').map((t) => String(t.id));
+    for (let want = Math.floor(rnd() * (TUNING.commander.maxRegular + 1)); want > 0 && pool.length > 0; want--) {
+      const id = pool.splice(Math.floor(rnd() * pool.length), 1)[0];
+      if (this.traitAllowed(id, c.traits.regular)) c.traits.regular.push(id);
+    }
+    this.s.commander = c;
+    this.s.commanderImport = { status: 'idle', reasons: {} };
+    this.emit();
+  }
+
   // --- units
   toggleUnit(c: CharacterSummary): void {
     const i = this.s.units.findIndex((u) => u.avatar === c.avatar);
@@ -163,6 +283,7 @@ export class Wizard {
           dislikes: [],
           triggers: [],
           baseline: { trust: 20, affinity: 0, attraction: 0 },
+          tastes: [],
         },
         secondDefect: false,
         regenerating: [],
@@ -181,6 +302,10 @@ export class Wizard {
         if (!this.s.startId) return fail('Choose a starting point.');
         if (!this.s.crimeId) return fail('Choose the commander\'s crime.');
         return { ok: true };
+      case 'commander': {
+        const errors = validateCommanderSetup(this.s.commander, this.deps.registries, { desireBondDefects: this.deps.desireBondDefects });
+        return errors.length === 0 ? { ok: true } : fail(errors[0]);
+      }
       case 'units':
         return { ok: true };
       case 'calibration': {
@@ -204,8 +329,11 @@ export class Wizard {
 
   next(): void {
     if (!this.canAdvance().ok) return;
-    if (this.s.step === 'dossier') this.s.step = 'units';
-    else if (this.s.step === 'units') {
+    if (this.s.step === 'dossier') this.s.step = 'commander';
+    else if (this.s.step === 'commander') {
+      this.commanderToken++; // a prefill still running belongs to a screen the player left
+      this.s.step = 'units';
+    } else if (this.s.step === 'units') {
       if (this.s.units.length === 0) this.s.step = 'review';
       else {
         this.s.step = 'calibration';
@@ -218,7 +346,10 @@ export class Wizard {
   }
 
   back(): void {
-    if (this.s.step === 'units') this.s.step = 'dossier';
+    if (this.s.step === 'commander') {
+      this.commanderToken++;
+      this.s.step = 'dossier';
+    } else if (this.s.step === 'units') this.s.step = 'commander';
     else if (this.s.step === 'calibration') this.s.step = 'units';
     else if (this.s.step === 'review') this.s.step = this.s.units.length === 0 ? 'units' : 'calibration';
     this.emit();
@@ -325,6 +456,7 @@ export class Wizard {
     else if (section === 'defects') c.defectCandidates = p.defectCandidates;
     else if (section === 'values') c.values = p.values;
     else if (section === 'baseline') c.baseline = p.baseline;
+    else if (section === 'tastes') c.commanderTastes = p.commanderTastes;
     else {
       c.likes = p.likes;
       c.dislikes = p.dislikes;
@@ -365,6 +497,9 @@ export class Wizard {
       case 'baseline':
         if (p.baseline) ch.baseline = { ...p.baseline };
         break;
+      case 'tastes':
+        if (p.commanderTastes) ch.tastes = [...p.commanderTastes];
+        break;
     }
   }
 
@@ -378,7 +513,7 @@ export class Wizard {
       if (!roleId || !signature) return { result: null, errors: [`${u.displayName}: calibration is incomplete.`] };
       units.push({ cardRef: u.avatar, displayName: u.displayName, roleId, signature, ...structuredClone(rest) });
     }
-    const result: SetupResult = { commanderName: this.s.commanderName, startId, crimeId, units };
+    const result: SetupResult = { commanderName: this.s.commanderName, startId, crimeId, units, commander: structuredClone(this.s.commander) };
     const errors = validateSetup(result, this.deps.registries, { desireBondDefects: this.deps.desireBondDefects });
     return { result: errors.length === 0 ? result : null, errors };
   }

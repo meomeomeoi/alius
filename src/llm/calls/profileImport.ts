@@ -2,8 +2,8 @@ import { z } from 'zod';
 import { registerCallType } from '../callTypes';
 import type { CardInfo } from '../../st/adapter';
 
-export type ImportSection = 'role' | 'values' | 'tags' | 'signature' | 'defects' | 'baseline';
-export const ALL_SECTIONS: readonly ImportSection[] = ['role', 'values', 'tags', 'signature', 'defects', 'baseline'];
+export type ImportSection = 'role' | 'values' | 'tags' | 'signature' | 'defects' | 'baseline' | 'tastes';
+export const ALL_SECTIONS: readonly ImportSection[] = ['role', 'values', 'tags', 'signature', 'defects', 'baseline', 'tastes'];
 
 export interface ProfileImportInput {
   card: CardInfo;
@@ -11,6 +11,8 @@ export interface ProfileImportInput {
   roles: Array<{ id: string; summary: string }>;
   signatures: Array<{ id: string; fits: string }>;
   defects: Array<{ id: string; lore: string }>;
+  /** P7: how a unit may read the commander (registry `tastes`). */
+  tastes: Array<{ id: string; description: string }>;
 }
 
 /**
@@ -27,6 +29,7 @@ export const ProfileImportRawSchema = z
     signatureCandidates: z.unknown().optional(),
     defectCandidates: z.unknown().optional(),
     emotionalBaseline: z.unknown().optional(),
+    commanderTastes: z.unknown().optional(),
     notes: z.unknown().optional(),
   })
   .passthrough();
@@ -49,6 +52,8 @@ const SCHEMA_PART: Record<ImportSection, string> = {
     '  "signatureCandidates": [{ "templateId": "<id from SIGNATURES>", "name": "<in her voice>", "description": "<in her voice>" }],   // exactly 3',
   defects:
     '  "defectCandidates": [{ "defectId": "<id from DEFECTS>", "origin": "<1-2 in-universe sentences>" }],   // 2 to 3 entries',
+  tastes:
+    '  "commanderTastes": ["<id from TASTES>"],   // at most 3: how she reads the commander\'s looks and build, only if the card suggests it',
   baseline:
     '  "emotionalBaseline": { "trust": 0, "affinity": 0, "attraction": 0 },   // trust 0..40, affinity -20..30, attraction 0..20',
 };
@@ -90,6 +95,7 @@ function prompt(raw: unknown): string {
   if (has(input, 'role')) out.push('', 'ROLES:', ...input.roles.map((r) => `- ${r.id}: ${r.summary}`));
   if (has(input, 'signature')) out.push('', 'SIGNATURES (template id: fits characters who are):', ...input.signatures.map((s) => `- ${s.id}: ${s.fits}`));
   if (has(input, 'defects')) out.push('', 'DEFECTS:', ...input.defects.map((d) => `- ${d.id}: ${d.lore}`));
+  if (has(input, 'tastes')) out.push('', 'TASTES (id: what it means):', ...input.tastes.map((t) => `- ${t.id}: ${t.description}`));
   out.push('', `Produce the requested sections: ${input.sections.join(', ')}.`);
   return out.join('\n');
 }

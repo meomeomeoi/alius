@@ -21,9 +21,10 @@ export interface SetupScreenCtx {
 
 const STEPS: Array<[WizardStep, string]> = [
   ['dossier', '01 DOSSIER'],
-  ['units', '02 UNIT ASSIGNMENT'],
-  ['calibration', '03 PROFILE CALIBRATION'],
-  ['review', '04 REVIEW'],
+  ['commander', '02 COMMANDER FILE'],
+  ['units', '03 UNIT ASSIGNMENT'],
+  ['calibration', '04 PROFILE CALIBRATION'],
+  ['review', '05 REVIEW'],
 ];
 
 /** One re-render subscription per wizard, so re-registering the screen never stacks listeners. */
@@ -71,6 +72,7 @@ export function renderSetupScreen(host: HTMLElement, ctx: SetupScreenCtx): void 
   function stepBody(s: WizardState): HTMLElement {
     switch (s.step) {
       case 'dossier': return dossier(s);
+      case 'commander': return commanderStep();
       case 'units': return units(s);
       case 'calibration': return calibration(s);
       case 'review': return review(s);
@@ -97,6 +99,11 @@ export function renderSetupScreen(host: HTMLElement, ctx: SetupScreenCtx): void 
           h('p', {}, `PERK: ${perk.text}`), h('p', {}, `FLAW: ${flaw.text}`),
           h('p', { class: 'alius-dim' }, 'Plea: GUILTY'));
       })));
+  }
+
+  /** The COMMANDER FILE form (replaced by the shared form in the next task). */
+  function commanderStep(): HTMLElement {
+    return h('div', { class: 'alius-setup-body' }, h('p', { class: 'alius-hint' }, 'COMMANDER FILE'));
   }
 
   function units(s: WizardState): HTMLElement {

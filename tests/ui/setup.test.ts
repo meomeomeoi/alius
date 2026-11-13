@@ -72,7 +72,8 @@ const action = (m: M, name: string) => q<HTMLButtonElement>(m, `button[data-acti
 function toUnits(m: M) {
   click(q(m, '.alius-start-card[data-id="start_vesper"]'));
   click(q(m, '.alius-crime-card[data-id="mutiny"]'));
-  click(action(m, 'next'));
+  click(action(m, 'next')); // dossier → commander file
+  click(action(m, 'next')); // commander file → units
 }
 async function toCalibration(m: M, count = 1) {
   toUnits(m);
@@ -100,10 +101,10 @@ describe('shell registerScreen', () => {
 });
 
 describe('setup screen', () => {
-  it('shows the title and the four step labels', () => {
+  it('shows the title and the five step labels', () => {
     const m = make();
     expect(m.host.textContent).toContain('CCP INTAKE FORM');
-    for (const l of ['01 DOSSIER', '02 UNIT ASSIGNMENT', '03 PROFILE CALIBRATION', '04 REVIEW']) {
+    for (const l of ['01 DOSSIER', '02 COMMANDER FILE', '03 UNIT ASSIGNMENT', '04 PROFILE CALIBRATION', '05 REVIEW']) {
       expect(m.host.textContent).toContain(l);
     }
     expect(q(m, '[aria-current="step"]')!.textContent).toContain('01 DOSSIER');
@@ -255,7 +256,7 @@ describe('setup screen', () => {
   it('review shows the summary and Confirm deployment', async () => {
     const m = make();
     await toReview(m);
-    expect(q(m, '[aria-current="step"]')!.textContent).toContain('04 REVIEW');
+    expect(q(m, '[aria-current="step"]')!.textContent).toContain('05 REVIEW');
     const pre = q(m, 'pre.alius-review')!.textContent!;
     expect(pre).toContain('Vale');
     expect(pre).toContain('Vesper Somatics');
@@ -319,6 +320,8 @@ describe('setup screen', () => {
 
     toUnits(m);
     expect(action(m, 'back').disabled).toBe(false);
+    click(action(m, 'back'));
+    expect(m.wizard.state.step).toBe('commander');
     click(action(m, 'back'));
     expect(m.wizard.state.step).toBe('dossier');
   });

@@ -13,15 +13,19 @@ import type { DefectInstance } from '../state/types';
 // Importing this module registers the squad actions.
 
 /** Sections a re-sync can replace. The baseline is excluded: relationship axes are engine truth once the campaign runs. */
-export const RESYNC_SECTIONS = ['role', 'values', 'tags', 'signature', 'defects'] as const;
+export const RESYNC_SECTIONS = ['role', 'values', 'tags', 'signature', 'defects', 'tastes'] as const;
 export type ResyncSection = (typeof RESYNC_SECTIONS)[number];
 
-export type ResyncPatch = Partial<Pick<UnitSetup, 'roleId' | 'values' | 'likes' | 'dislikes' | 'triggers' | 'signature' | 'defects'>>;
+export type ResyncPatch = Partial<Pick<UnitSetup, 'roleId' | 'values' | 'likes' | 'dislikes' | 'triggers' | 'signature' | 'defects'>> & {
+  /** P7: replaces the unit's taste ids (an empty list clears them). Never changes an axis. */
+  commanderTastes?: string[];
+};
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 
 const SECTION_OF: Record<keyof ResyncPatch, ResyncSection> = {
   roleId: 'role', values: 'values', likes: 'tags', dislikes: 'tags', triggers: 'tags', signature: 'signature', defects: 'defects',
+  commanderTastes: 'tastes',
 };
 
 registerAction('squad/resync', (draft, payload, ctx) => {
@@ -44,6 +48,7 @@ registerAction('squad/resync', (draft, payload, ctx) => {
     likes: patch.likes ?? unit.likes,
     dislikes: patch.dislikes ?? unit.dislikes,
     triggers: patch.triggers ?? unit.triggers,
+    tastes: patch.commanderTastes ?? unit.commanderTastes,
   };
   const errors = validateUnitProfile(next, unit.displayName, ctx.registries, {
     desireBondDefects: draft.settings.desireBondDefects === true,
@@ -61,6 +66,10 @@ registerAction('squad/resync', (draft, payload, ctx) => {
   if (patch.dislikes) unit.dislikes = [...patch.dislikes];
   if (patch.triggers) unit.triggers = [...patch.triggers];
   if (patch.signature) unit.signatureSkill = { ...patch.signature };
+  if (patch.commanderTastes) {
+    if (patch.commanderTastes.length > 0) unit.commanderTastes = [...patch.commanderTastes];
+    else delete unit.commanderTastes;
+  }
   if (patch.defects) {
     unit.defects = patch.defects.map((d): DefectInstance => {
       const kept = unit.defects.find((x) => x.id === d.id); // keeps arc progress of a defect that stays

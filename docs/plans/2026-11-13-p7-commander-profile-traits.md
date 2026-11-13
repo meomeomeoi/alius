@@ -337,9 +337,9 @@ docs/** (Task 19), tests/** mirror src
 **Interfaces:**
 - Produces: `WizardStep = 'dossier' | 'commander' | 'units' | 'calibration' | 'review'`; `WizardState.commander: CommanderSetup` (default 3/3/2, 3, 3, no traits), `commanderImport: { status: 'idle' | 'loading' | 'ready' | 'manual'; notice?: string; reasons: Record<string, string> }`; methods `setBody(stat, value)` (ignored if it breaks the pool or the 4 cap), `setExpression(n)`, `setSeasoning(n)`, `toggleTrait(id)` (regular/special rules, exclusive pairs refused), `prefillFromPersona()`, `randomCommander()`; `WizardDeps.commanderImporter: () => Promise<…>` and `random: () => number`; `canAdvance('commander')` = `validateCommanderSetup` empty; `UnitDraft.choice.tastes: string[]`; `result().commander` set.
 
-- [ ] **Step 1: Write the failing tests** — `dossier → commander → units`; `setBody refuses a 5 and an 8th point`; `toggling a third regular trait is ignored`; `prefill applies the sanitized import and keeps reasons`; `a late prefill after back/next is ignored` (generation token as in calibration); `randomCommander is valid for 200 seeds`; `the result carries the commander and unit tastes`; profile: `unknown tastes are dropped, at most 3 kept`; resync: `tastes re-sync never changes axes`.
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → green.
-- [ ] **Step 5: Commit** `feat(setup): commander file step and unit tastes in the wizard`.
+- [x] **Step 1: Write the failing tests** — `dossier → commander → units`; `setBody refuses a 5 and an 8th point`; `toggling a third regular trait is ignored`; `prefill applies the sanitized import and keeps reasons`; `a late prefill after back/next is ignored` (generation token as in calibration); `randomCommander is valid for 200 seeds`; `the result carries the commander and unit tastes`; profile: `unknown tastes are dropped, at most 3 kept`; resync: `tastes re-sync never changes axes`.
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → green.
+- [x] **Step 5: Commit** `feat(setup): commander file step and unit tastes in the wizard`.
 
 ---
 

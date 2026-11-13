@@ -223,6 +223,27 @@ describe('importProfile', () => {
 describe('sanitizeProfile', () => {
   const run = (raw: unknown, over = {}) => sanitizeProfile(raw, ctx(over));
 
+  it('tastes (P7): unknown ids are dropped, duplicates collapse, at most 3 are kept', () => {
+    const { profile, dropped, missing } = run({
+      commanderTastes: ['respects_strength', 'no_such_taste', 'respects_strength', 'wary_of_brutes', 'drawn_to_older', 'drawn_to_younger', 42],
+    });
+    expect(profile.commanderTastes).toEqual(['respects_strength', 'wary_of_brutes', 'drawn_to_older']);
+    expect(dropped).toContain('tastes:no_such_taste');
+    expect(missing).not.toContain('tastes');
+  });
+
+  it('tastes: none, an empty list or garbage give an empty list and never block the import', () => {
+    for (const raw of [{}, { commanderTastes: [] }, { commanderTastes: 'respects_strength' }, { commanderTastes: null }]) {
+      const { profile, missing } = run(raw, { sections: ['tastes'] });
+      expect(profile.commanderTastes).toEqual([]);
+      expect(missing).toEqual([]);
+    }
+  });
+
+  it('tastes are only read when the section is asked for', () => {
+    expect(run({ commanderTastes: ['respects_strength'] }, { sections: ['values'] }).profile.commanderTastes).toBeUndefined();
+  });
+
   it('values are rounded and clamped', () => {
     const { profile } = run({ values: { mercy: 7.6, autonomy: 'x', pragmatism: -9, ingroup: 1.4, corporate: null } });
     expect(profile.values).toEqual({ pragmatism: -3, autonomy: 0, ingroup: 1, mercy: 3, corporate: 0, sacrifice: 0 });
@@ -278,7 +299,8 @@ describe('sanitizeProfile', () => {
   });
 
   it('missing lists each requested section with nothing usable', () => {
-    expect(run({}).missing.sort()).toEqual([...ALL_SECTIONS].sort());
+    // the taste list is optional by nature: an empty answer is a valid one, so it is never "missing"
+    expect(run({}).missing.sort()).toEqual(ALL_SECTIONS.filter((x) => x !== 'tastes').sort());
     expect(run({}, { sections: ['signature'] }).missing).toEqual(['signature']);
     expect(run({ values: 'high', likes: 'tea', emotionalBaseline: [] }, { sections: ['values', 'tags', 'baseline'] }).missing.sort())
       .toEqual(['baseline', 'tags', 'values']);
@@ -334,5 +356,32 @@ describe('buildImportInput', () => {
     expect(off.signatures).toHaveLength(12);
     expect(off.roles[0]).toEqual({ id: 'assault', summary: reg.roles.get('assault')!.summary });
     expect(off.sections).toEqual(['defects']);
+  });
+});
+
+describe('the tastes section of the import prompt (P7)', () => {
+  it('lists every taste and asks for at most 3', async () => {
+    const { st, avatar, deps } = setup();
+    st.profileReplies = [fixture('valid')];
+    await importProfile(avatar, [...ALL_SECTIONS], deps);
+    const call = profileCalls(st)[0] as { system: string; prompt: string };
+    expect(call.system).toContain('"commanderTastes"');
+    expect(call.system).toMatch(/at most 3/);
+    expect(call.prompt).toContain('TASTES');
+    for (const id of reg.tastes.keys()) expect(call.prompt).toContain(`- ${id}:`);
+  });
+
+  it('a request for the tastes alone mentions no other section', async () => {
+    const { st, avatar, deps } = setup();
+    st.profileReplies = ['{ "commanderTastes": ["respects_strength"] }'];
+    const r = await importProfile(avatar, ['tastes'], deps);
+    expect(r.kind === 'ok' && r.profile.commanderTastes).toEqual(['respects_strength']);
+    const call = profileCalls(st)[0] as { system: string; prompt: string };
+    expect(call.system).not.toContain('roleCandidates');
+    expect(call.prompt).not.toContain('ROLES:');
+  });
+
+  it('ALL_SECTIONS includes tastes', () => {
+    expect(ALL_SECTIONS).toContain('tastes');
   });
 });

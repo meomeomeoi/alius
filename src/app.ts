@@ -54,6 +54,7 @@ import { callLlm, type LlmResult } from './llm/orchestrator';
 import { getSettings } from './settings';
 import type { Lorebook, StAdapter } from './st/adapter';
 import { buildCampaign, type SetupResult } from './engine/setup';
+import { importCommander } from './setup/commander';
 import { importProfile } from './setup/profile';
 import { Wizard, type WizardState } from './setup/wizard';
 import { renderSetupScreen } from './ui/setup/setupScreen';
@@ -1034,6 +1035,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     tags: 'Likes, dislikes and triggers',
     signature: 'Signature skill',
     defects: 'Defects',
+    tastes: 'How she reads the commander (tastes)',
   };
 
   /** Re-imports chosen sections from the unit's card and applies the player's choices via squad/resync. */
@@ -1080,6 +1082,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       likes: [...unit.likes],
       dislikes: [...unit.dislikes],
       triggers: [...unit.triggers],
+      tastes: [...(unit.commanderTastes ?? [])],
     });
     wizard.calibrate(0);
 
@@ -1115,9 +1118,11 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     if (sections.includes('tags')) Object.assign(patch, { likes: c.likes, dislikes: c.dislikes, triggers: c.triggers });
     if (sections.includes('signature') && c.signature) patch.signature = c.signature;
     if (sections.includes('defects')) patch.defects = c.defects;
+    if (sections.includes('tastes')) patch.commanderTastes = c.tastes;
     const current: ResyncPatch = {
       roleId: unit.roleId, values: unit.values, likes: unit.likes, dislikes: unit.dislikes, triggers: unit.triggers,
       signature: unit.signatureSkill, defects: unit.defects.map((d) => ({ id: d.id, origin: d.origin ?? '' })),
+      commanderTastes: unit.commanderTastes ?? [],
     };
     const unchanged = (Object.keys(patch) as Array<keyof ResyncPatch>).every(
       (k) => JSON.stringify(patch[k]) === JSON.stringify(current[k]),
@@ -1229,6 +1234,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         desireBondDefects: desireBond,
         importer: (avatar, sections) =>
           importProfile(avatar, sections, { st, settings: { ...getSettings(st), desireBondDefects: desireBond }, registries }),
+        commanderImporter: () => importCommander(st, { settings: { ...getSettings(st), desireBondDefects: desireBond }, registries }),
         onChange: () => {},
       },
       { personaName: st.getPersonaName(), canBindCurrent: !!chat?.isGroup && load.kind === 'none' },

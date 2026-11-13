@@ -1,5 +1,6 @@
 import type { Entry, Registries } from '../content/types';
 import { SETUP_LIMITS, normalizeTag } from '../engine/setup';
+import { TUNING } from '../engine/tuning';
 import type { Unit } from '../engine/state/types';
 import type { ImportSection, ProfileImportInput } from '../llm/calls/profileImport';
 import { callLlm } from '../llm/orchestrator';
@@ -48,6 +49,7 @@ export function buildImportInput(
     defects: [...registries.defects.values()]
       .filter((d) => settings.desireBondDefects || d.category !== 'desire_bond')
       .map((d) => ({ id: d.id, lore: str(d.lore) })),
+    tastes: [...registries.tastes.values()].map((t) => ({ id: t.id, description: str(t.description) })),
   };
 }
 
@@ -60,6 +62,8 @@ export interface ImportedProfile {
   signatureCandidates: Array<{ templateId: string; name: string; description: string }>;
   defectCandidates: Array<{ defectId: string; origin: string }>;
   baseline?: { trust: number; affinity: number; attraction: number };
+  /** P7: up to 3 ids of registry `tastes`. */
+  commanderTastes?: string[];
   notes: string;
 }
 
@@ -162,6 +166,19 @@ export function sanitizeProfile(
     if (dislikes) profile.dislikes = dislikes;
     if (triggers) profile.triggers = triggers;
     if (!likes && !dislikes && !triggers) missing.push('tags');
+  }
+
+  if (want('tastes')) {
+    // a taste list is optional by nature: an empty or missing one is a valid answer
+    const out: string[] = [];
+    for (const raw of Array.isArray(src.commanderTastes) ? src.commanderTastes : []) {
+      if (typeof raw !== 'string' || !ctx.registries.tastes.has(raw) || out.includes(raw)) {
+        dropped.push(`tastes:${typeof raw === 'string' ? raw : '(invalid)'}`);
+        continue;
+      }
+      if (out.length < TUNING.commander.maxTastes) out.push(raw);
+    }
+    profile.commanderTastes = out;
   }
 
   if (want('baseline')) {

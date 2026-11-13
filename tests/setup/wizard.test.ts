@@ -5,6 +5,8 @@ import type { Registries } from '../../src/content/types';
 import { ALL_SECTIONS, type ImportSection } from '../../src/llm/calls/profileImport';
 import type { ImportOutcome, ImportedProfile } from '../../src/setup/profile';
 import { Wizard, difficultyHint, manualOptions, type WizardState } from '../../src/setup/wizard';
+import type { CommanderImportOutcome } from '../../src/setup/commander';
+import { validateCommanderSetup } from '../../src/engine/commander/profile';
 
 let reg: Registries;
 beforeAll(async () => {
@@ -33,19 +35,25 @@ function deferred<T>() {
   return { promise, resolve };
 }
 
-function make(opts: { persona?: string; canBind?: boolean; desireBond?: boolean } = {}) {
+function make(opts: { persona?: string; canBind?: boolean; desireBond?: boolean; random?: () => number } = {}) {
   const pending: Array<ReturnType<typeof deferred<ImportOutcome>>> = [];
   const importer = vi.fn((_avatar: string, _sections: ImportSection[]) => {
     const d = deferred<ImportOutcome>();
     pending.push(d);
     return d.promise;
   });
+  const pendingCommander: Array<ReturnType<typeof deferred<CommanderImportOutcome>>> = [];
+  const commanderImporter = vi.fn(() => {
+    const d = deferred<CommanderImportOutcome>();
+    pendingCommander.push(d);
+    return d.promise;
+  });
   const changes: WizardState[] = [];
   const w = new Wizard(
-    { registries: reg, desireBondDefects: opts.desireBond ?? false, importer, onChange: (s) => changes.push(structuredClone(s)) },
+    { registries: reg, desireBondDefects: opts.desireBond ?? false, importer, commanderImporter, random: opts.random, onChange: (s) => changes.push(structuredClone(s)) },
     { personaName: opts.persona ?? 'Vale', canBindCurrent: opts.canBind ?? false },
   );
-  return { w, importer, pending, changes };
+  return { w, importer, pending, pendingCommander, commanderImporter, changes };
 }
 const card = (n: string) => ({ avatar: `${n}.png`, name: n[0].toUpperCase() + n.slice(1) });
 const flush = () => new Promise((r) => setTimeout(r, 0));
@@ -113,11 +121,15 @@ describe('Wizard', () => {
     w.setStart('start_vesper');
     w.setCrime('mutiny');
     w.next();
+    expect(w.state.step).toBe('commander');
+    w.next();
     expect(w.state.step).toBe('units');
     w.next();
     expect(w.state.step).toBe('review');
     w.back();
     expect(w.state.step).toBe('units');
+    w.back();
+    expect(w.state.step).toBe('commander');
     w.back();
     expect(w.state.step).toBe('dossier');
     w.back();
@@ -160,6 +172,7 @@ describe('Wizard', () => {
     w.setCrime('mutiny');
     w.toggleUnit(card('ann'));
     w.toggleUnit(card('bea'));
+    w.next();
     w.next();
     w.next();
     expect(w.state.step).toBe('calibration');
@@ -306,6 +319,7 @@ describe('Wizard', () => {
     m.w.toggleUnit(card('ann'));
     m.w.next();
     m.w.next();
+    m.w.next();
     m.pending[0].resolve(OK);
     await flush();
     expect(m.w.canAdvance()).toEqual({ ok: true });
@@ -333,6 +347,7 @@ describe('Wizard', () => {
     m.w.setStart('start_vesper');
     m.w.setCrime('mutiny');
     m.w.toggleUnit(card('ann'));
+    m.w.next();
     m.w.next();
     m.w.next();
     expect(m.w.canAdvance().ok).toBe(false); // still loading
@@ -410,5 +425,250 @@ describe('manualOptions', () => {
     expect(off.defects).toHaveLength(14);
     expect(off.defects.some((d) => d.category === 'desire_bond')).toBe(false);
     expect(on.defects).toHaveLength(18);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------
+// P7: the COMMANDER FILE step and unit tastes
+
+const IMPORTED_COMMANDER: CommanderImportOutcome = {
+  kind: 'ok',
+  result: {
+    setup: { body: { strength: 4, endurance: 3, reflexes: 2 }, expression: 2, seasoning: 4, traits: { regular: ['old_wound'] } },
+    reasons: { old_wound: 'A limp from an old fight.' },
+    notes: 'ok',
+  },
+};
+/** mulberry32: a small seedable generator for the random commander. */
+const rng = (seed: number) => () => {
+  seed = (seed + 0x6d2b79f5) | 0;
+  let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+};
+const toCommander = () => {
+  const m = make();
+  m.w.setStart('start_vesper');
+  m.w.setCrime('mutiny');
+  m.w.next();
+  expect(m.w.state.step).toBe('commander');
+  return m;
+};
+
+describe('Wizard: commander file (P7)', () => {
+  it('starts with the defaults and an idle import', () => {
+    const { w } = make();
+    expect(w.state.commander).toEqual({ body: { strength: 3, endurance: 3, reflexes: 2 }, expression: 3, seasoning: 3, traits: { regular: [] } });
+    expect(w.state.commanderImport).toEqual({ status: 'idle', reasons: {} });
+  });
+
+  it('dossier → commander → units', () => {
+    const { w } = toCommander();
+    expect(w.canAdvance()).toEqual({ ok: true });
+    w.next();
+    expect(w.state.step).toBe('units');
+  });
+
+  it('setBody refuses a 5 and an 8th point, a 0 and a non-integer', () => {
+    const { w } = make();
+    w.setBody('reflexes', 5);
+    expect(w.state.commander.body.reflexes).toBe(2);
+    w.setBody('strength', 4);
+    w.setBody('endurance', 4);
+    expect(w.state.commander.body).toEqual({ strength: 4, endurance: 4, reflexes: 2 }); // spends exactly 7
+    w.setBody('reflexes', 3); // the 8th point
+    expect(w.state.commander.body.reflexes).toBe(2);
+    w.setBody('endurance', 0);
+    w.setBody('endurance', 2.5);
+    expect(w.state.commander.body.endurance).toBe(4);
+    w.setBody('endurance', 1); // lowering is always fine
+    w.setBody('reflexes', 3);
+    expect(w.state.commander.body).toEqual({ strength: 4, endurance: 1, reflexes: 3 });
+  });
+
+  it('expression and seasoning take 1–5 only', () => {
+    const { w } = make();
+    w.setExpression(5);
+    w.setSeasoning(1);
+    expect([w.state.commander.expression, w.state.commander.seasoning]).toEqual([5, 1]);
+    w.setExpression(6);
+    w.setExpression(0);
+    w.setSeasoning(2.5);
+    expect([w.state.commander.expression, w.state.commander.seasoning]).toEqual([5, 1]);
+  });
+
+  it('toggling a third regular trait is ignored', () => {
+    const { w } = make();
+    w.toggleTrait('insomniac');
+    w.toggleTrait('old_wound');
+    w.toggleTrait('bookish');
+    expect(w.state.commander.traits.regular).toEqual(['insomniac', 'old_wound']);
+    w.toggleTrait('insomniac'); // toggles off
+    w.toggleTrait('bookish');
+    expect(w.state.commander.traits.regular).toEqual(['old_wound', 'bookish']);
+  });
+
+  it('an exclusive pair, an unknown id and a setting-gated trait are refused', () => {
+    const { w } = make();
+    w.toggleTrait('corporate_polish');
+    w.toggleTrait('street_raised');
+    w.toggleTrait('no_such_trait');
+    expect(w.state.commander.traits.regular).toEqual(['corporate_polish']);
+    const gated = new Wizard(
+      { registries: { ...reg, commanderTraits: new Map([...reg.commanderTraits, ['bond', { id: 'bond', kind: 'regular', requiresSettings: { desireBondDefects: true }, effects: [] } as never]]) }, desireBondDefects: false, importer: vi.fn(), onChange: () => {} },
+      { personaName: 'V', canBindCurrent: false },
+    );
+    gated.toggleTrait('bond');
+    expect(gated.state.commander.traits.regular).toEqual([]);
+  });
+
+  it('the special trait: one at a time, toggled off by the same click, never a regular', () => {
+    const { w } = make();
+    w.toggleTrait('vow_of_distance');
+    expect(w.state.commander.traits).toEqual({ regular: [], special: 'vow_of_distance' });
+    w.toggleTrait('insomniac');
+    expect(w.state.commander.traits).toEqual({ regular: ['insomniac'], special: 'vow_of_distance' });
+    w.toggleTrait('vow_of_distance');
+    expect(w.state.commander.traits).toEqual({ regular: ['insomniac'] });
+  });
+
+  it('canAdvance(commander) is the creation validator', () => {
+    const { w } = toCommander();
+    w.state.commander.body = { strength: 4, endurance: 4, reflexes: 4 }; // 9 points: only reachable by hand
+    expect(w.canAdvance().ok).toBe(false);
+    expect(w.canAdvance().reason).toMatch(/pool/);
+    w.next();
+    expect(w.state.step).toBe('commander');
+  });
+
+  it('prefill applies the sanitized import and keeps reasons', async () => {
+    const { w, pendingCommander, commanderImporter } = make();
+    w.prefillFromPersona();
+    expect(w.state.commanderImport.status).toBe('loading');
+    expect(commanderImporter).toHaveBeenCalledTimes(1);
+    pendingCommander[0].resolve(IMPORTED_COMMANDER);
+    await flush();
+    expect(w.state.commander).toEqual({ body: { strength: 4, endurance: 3, reflexes: 2 }, expression: 2, seasoning: 4, traits: { regular: ['old_wound'] } });
+    expect(w.state.commanderImport).toMatchObject({ status: 'ready', reasons: { old_wound: 'A limp from an old fight.' } });
+  });
+
+  it('a manual outcome keeps what the player has and says why', async () => {
+    const { w, pendingCommander } = make();
+    w.setBody('strength', 4);
+    w.prefillFromPersona();
+    pendingCommander[0].resolve({ kind: 'manual', reason: 'the persona has no description' });
+    await flush();
+    expect(w.state.commander.body.strength).toBe(4);
+    expect(w.state.commanderImport).toMatchObject({ status: 'manual', notice: 'the persona has no description' });
+  });
+
+  it('a throwing importer becomes manual', async () => {
+    const { w, commanderImporter, pendingCommander } = make();
+    commanderImporter.mockImplementationOnce(() => Promise.reject(new Error('boom')));
+    w.prefillFromPersona();
+    await flush();
+    expect(w.state.commanderImport).toMatchObject({ status: 'manual', notice: 'boom' });
+    expect(pendingCommander).toHaveLength(0);
+  });
+
+  it('a late prefill after back/next is ignored', async () => {
+    const { w, pendingCommander } = toCommander();
+    w.prefillFromPersona();
+    w.next(); // leaves the step
+    w.back();
+    pendingCommander[0].resolve(IMPORTED_COMMANDER);
+    await flush();
+    expect(w.state.commander.body).toEqual({ strength: 3, endurance: 3, reflexes: 2 });
+    expect(w.state.commanderImport.status).not.toBe('ready');
+  });
+
+  it('only the newest prefill counts, and a disposed wizard ignores the result', async () => {
+    const a = make();
+    a.w.prefillFromPersona();
+    a.w.prefillFromPersona();
+    a.pendingCommander[1].resolve(IMPORTED_COMMANDER);
+    a.pendingCommander[0].resolve({ kind: 'manual', reason: 'old' });
+    await flush();
+    expect(a.w.state.commanderImport.status).toBe('ready');
+    const b = make();
+    b.w.prefillFromPersona();
+    b.w.dispose();
+    b.pendingCommander[0].resolve(IMPORTED_COMMANDER);
+    await flush();
+    expect(b.w.state.commander.seasoning).toBe(3);
+  });
+
+  it('without an importer the prefill is manual', async () => {
+    const w = new Wizard({ registries: reg, desireBondDefects: false, importer: vi.fn(), onChange: () => {} }, { personaName: 'V', canBindCurrent: false });
+    w.prefillFromPersona();
+    await flush();
+    expect(w.state.commanderImport.status).toBe('manual');
+  });
+
+  it('randomCommander is valid for 200 seeds', () => {
+    const seen = { traits: new Set<number>(), spent: new Set<number>() };
+    for (let seed = 1; seed <= 200; seed++) {
+      const { w } = make({ random: rng(seed) });
+      w.randomCommander();
+      const c = w.state.commander;
+      expect(validateCommanderSetup(c, reg, { desireBondDefects: false }), `seed ${seed}`).toEqual([]);
+      expect(c.traits.special).toBeUndefined();
+      seen.traits.add(c.traits.regular.length);
+      seen.spent.add(c.body.strength + c.body.endurance + c.body.reflexes - 3);
+    }
+    expect([...seen.traits].sort()).toEqual([0, 1, 2]);
+    expect(seen.spent.size).toBeGreaterThan(3);
+  });
+
+  it('randomCommander drops a stale prefill and resets the import status', async () => {
+    const { w, pendingCommander } = make({ random: rng(5) });
+    w.prefillFromPersona();
+    w.randomCommander();
+    expect(w.state.commanderImport.status).toBe('idle');
+    pendingCommander[0].resolve(IMPORTED_COMMANDER);
+    await flush();
+    expect(w.state.commanderImport.status).toBe('idle');
+  });
+});
+
+describe('Wizard: result carries the commander and unit tastes (P7)', () => {
+  it('the result has the commander and every unit\'s tastes', async () => {
+    const m = await ready();
+    m.w.setStart('start_vesper');
+    m.w.setCrime('mutiny');
+    m.w.setBody('strength', 4);
+    m.w.toggleTrait('bookish');
+    m.w.update(0, { tastes: ['respects_strength', 'drawn_to_older'] });
+    const r = m.w.result()!;
+    expect(r.commander).toEqual({ body: { strength: 4, endurance: 3, reflexes: 2 }, expression: 3, seasoning: 3, traits: { regular: ['bookish'] } });
+    expect(r.units[0].tastes).toEqual(['respects_strength', 'drawn_to_older']);
+  });
+
+  it('a new unit draft has no tastes; the import preselects its suggestions', async () => {
+    const m = make();
+    m.w.toggleUnit(card('ann'));
+    expect(m.w.state.units[0].choice.tastes).toEqual([]);
+    m.w.calibrate(0);
+    m.pending[0].resolve({ kind: 'ok', profile: { ...PROFILE, commanderTastes: ['wary_of_brutes'] }, dropped: [], missing: [] });
+    await flush();
+    expect(m.w.state.units[0].choice.tastes).toEqual(['wary_of_brutes']);
+  });
+
+  it('a tastes regenerate replaces only the tastes', async () => {
+    const m = await ready();
+    m.w.update(0, { roleId: 'assault' });
+    m.w.regenerate(0, 'tastes');
+    m.pending[1].resolve({ kind: 'ok', profile: { ...PROFILE, commanderTastes: ['protective_of_frail'] }, dropped: [], missing: [] });
+    await flush();
+    expect(m.w.state.units[0].choice.tastes).toEqual(['protective_of_frail']);
+    expect(m.w.state.units[0].choice.roleId).toBe('assault');
+  });
+
+  it('more than three tastes make the review step fail', async () => {
+    const m = await ready();
+    m.w.setStart('start_vesper');
+    m.w.setCrime('mutiny');
+    m.w.update(0, { tastes: ['respects_strength', 'wary_of_brutes', 'protective_of_frail', 'drawn_to_older'] });
+    expect(m.w.result()).toBeNull();
   });
 });
