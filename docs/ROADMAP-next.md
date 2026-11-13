@@ -52,7 +52,12 @@ Rule of thumb from P0–P6: one chunk per session, start each session with the p
 6. §10 Roadmap: special traits beyond P12 (`former_off_spec`, `bound_elsewhere`, `voice_synth`); P13 LEASHSWAP mode replaces the `collared` idea; **Bloom update** (mutation slot on units — type, stage 1–4, visibility, self-attitude; progression clocks; treatment; infection incl. the commander; mark Shared Strain; Latent Strain moves onto these rails; art cost: visible stages need new sprite packs — limit visible stages or keep changes off-sprite).
 7. Mark older package specs as "historical; code is the source of truth where they differ".
 8. §3 Principles or §11 rules: every player-facing stat/option/chip carries `data-analyze` (P7a coverage rule); new values add an analyze provider in the same package.
-9. §8 Settings: the single "explicit scenes allowed" switch is superseded by P9d content categories (all off by default; enabling = full consent; characters' own limits still apply).
+
+## Pending overview changes (apply in the P9d planning session)
+
+1. §8 Settings: the single "explicit scenes allowed" switch is superseded by P9d content categories (all off by default; enabling = full consent; characters' own limits still apply).
+2. §9 Packages table: add P9b, P9c, P9d, P10b with the dependencies above; P13 now also depends on P9b and P9d.
+3. §6 Data model: `Unit.bond` (P9d §1); campaign `hierarchy`, `votes[]` (P9b); world options `squad_assertiveness`, `voting`.
 
 ## Author to-do (can run in parallel)
 
