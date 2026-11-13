@@ -1,6 +1,7 @@
 import type { Conditions } from '../../content/schemas';
 import type { Entry, Registries } from '../../content/types';
 import type { EngineEvent } from '../dispatch';
+import { traitEffects, traitIds } from '../commander/traits';
 import { isLiving } from '../economy';
 import type { CampaignState, HistoryEntry } from '../state/types';
 import { TUNING } from '../tuning';
@@ -61,6 +62,7 @@ export function meets(state: CampaignState, reg: Registries, unitId: string, con
 /** Is this state usable for this unit right now? Romance off hides romantic states; grunts only use `grunts` states. */
 function usable(state: CampaignState, st: Entry, unitId?: string): boolean {
   if (st.romance === true && !intimacyOf(state).romance) return false;
+  if (typeof st.requiresTrait === 'string' && !traitIds(state).includes(st.requiresTrait)) return false; // P7
   if (unitId !== undefined && state.squad.find((u) => u.id === unitId)?.kind === 'grunt' && st.grunts !== true) return false;
   return true;
 }
@@ -81,6 +83,29 @@ export function enterState(draft: CampaignState, unitId: string, stateId: string
   return { type: 'relation_state_changed', unitId, from, to: stateId, why };
 }
 
+/**
+ * P7 platonic thresholds: the lower bounds of the axis ranges of an entry condition are lowered by `pct` percent (rounded
+ * to the nearest integer) for the states a trait names (`platonic_threshold`: confidant, kindred). Upper bounds and a lower
+ * bound of 0 stay; nested `anyOf` alternatives are scaled too. Returns a copy.
+ */
+export function platonicThresholds(state: CampaignState, reg: Registries, stateId: string, cond: Conditions): Conditions {
+  const pct = traitEffects(state, reg, 'platonic_threshold').filter((fx) => fx.states.includes(stateId)).reduce((n, fx) => n + fx.pct, 0);
+  if (pct === 0) return cond;
+  const scale = (c: Conditions): Conditions => {
+    const out: Conditions = { ...c };
+    if (c.axes) {
+      out.axes = {};
+      for (const axis of ['trust', 'affinity', 'attraction'] as const) {
+        const r = c.axes[axis];
+        if (r) out.axes[axis] = [Math.round(r[0] * (1 - pct / 100)), r[1]];
+      }
+    }
+    if (c.anyOf) out.anyOf = c.anyOf.map(scale);
+    return out;
+  };
+  return scale(cond);
+}
+
 const byPriority = (a: Entry, b: Entry): number => (b.priority as number) - (a.priority as number) || String(a.id).localeCompare(String(b.id));
 
 /** Candidates entered through `via`, from the unit's current state, whose condition holds. */
@@ -94,7 +119,7 @@ function candidates(
       if (st.id === cur || !e.via.includes(via)) return false;
       if (via === 'event' && !e.events?.includes(eventType as string)) return false;
       if (e.fromStates && e.fromStates.length > 0 && !e.fromStates.includes(cur)) return false;
-      return meets(draft, reg, unitId, e.when ?? {});
+      return meets(draft, reg, unitId, platonicThresholds(draft, reg, st.id as string, e.when ?? {}));
     })
     .sort(byPriority);
 }
@@ -174,7 +199,7 @@ export function stateForProposal(state: CampaignState, reg: Registries, unitId: 
     const e = entryOf(st);
     let fail: ProposalFailure | null = null;
     if (e.fromStates && e.fromStates.length > 0 && !e.fromStates.includes(rel.stateId)) fail = 'too_soon';
-    else fail = failedGroup(state, reg, unitId, e.when ?? {});
+    else fail = failedGroup(state, reg, unitId, platonicThresholds(state, reg, st.id as string, e.when ?? {}));
     if (fail === null && st.romance === true && committedElsewhere) fail = 'committed';
     if (fail === null) return { stateId: st.id };
     worst = Math.max(worst, ORDER.indexOf(fail as (typeof ORDER)[number]));

@@ -611,6 +611,8 @@ export const RelationshipStateSchema = BaseEntrySchema.extend({
   priority: int,
   /** Available to grunts (Trust-only units); default false. */
   grunts: z.boolean().optional(),
+  /** P7: only a commander with this trait can reach the state. */
+  requiresTrait: str.optional(),
   entry: z.object({
     via: z.array(z.enum(['automatic', 'event', 'proposal'])).min(1),
     /** Empty or absent = from any state. */

@@ -19,12 +19,18 @@ export interface Intimacy {
 }
 
 /** The intimacy settings mirrored into the campaign by `campaign/set_intimacy` (default: romance on, medium initiative). */
-export function intimacyOf(state: CampaignState): Intimacy {
+export function intimacySetting(state: CampaignState): Intimacy {
   const v = state.settings.intimacy as Partial<Intimacy> | undefined;
   return {
     romance: typeof v?.romance === 'boolean' ? v.romance : true,
     initiative: v?.initiative === 'low' || v?.initiative === 'med' || v?.initiative === 'high' ? v.initiative : 'med',
   };
+}
+
+/** What the engine acts on: the stored setting, except that a commander whose trait says `no_romance` (P7) has no romance at all. */
+export function intimacyOf(state: CampaignState): Intimacy {
+  const s = intimacySetting(state);
+  return state.settings.noRomance === true ? { ...s, romance: false } : s;
 }
 
 /** P3 accounting: gains shrink as `1 / (1 + gainedToday / k)`, losses are applied in full. Returns the real change. */

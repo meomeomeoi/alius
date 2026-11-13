@@ -94,7 +94,8 @@ describe('entry conditions, state by state', () => {
   });
   it('every core state except the start state is covered by a case', () => {
     const covered = new Set(cases.map((c) => c.id));
-    for (const id of reg.relationshipStates.keys()) if (id !== 'stranger') expect(covered.has(id), id).toBe(true);
+    // a state that needs a commander trait (sworn) cannot be entered in this world: it is covered by vow.test.ts
+    for (const id of reg.relationshipStates.keys()) if (id !== 'stranger' && reg.relationshipStates.get(id)!.requiresTrait === undefined) expect(covered.has(id), id).toBe(true);
   });
   it('stranger is a start state: no condition ever enters it', () => {
     for (const from of reg.relationshipStates.keys()) {

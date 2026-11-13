@@ -22,7 +22,7 @@ import { emptyRegistries } from './content/types';
 import { dispatch as engineDispatch, type Action, type EngineEvent } from './engine/dispatch';
 import type { CampaignState } from './engine/state/types';
 import { unreadCount } from './engine/dms';
-import { intimacyOf } from './engine/relations/gain';
+import { intimacySetting } from './engine/relations/gain';
 import { activeRosterUnits } from './engine/economy';
 import { generateEncounter } from './engine/combat/encounter';
 import { defaultFormation, squadPower } from './engine/combat/stats';
@@ -194,7 +194,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
   function syncIntimacy(): void {
     if (!state || load.kind !== 'ok') return;
     const s = getSettings(st);
-    const cur = intimacyOf(state);
+    const cur = intimacySetting(state); // the stored setting, not the vow's override
     if (cur.romance === s.romance && cur.initiative === s.romanticInitiative) return;
     api.dispatch({ type: 'campaign/set_intimacy', payload: { romance: s.romance, initiative: s.romanticInitiative } }, { expectChatId: st.getActiveChat()?.chatId });
   }

@@ -301,6 +301,10 @@ function applyFactionTraitEffects(draft, reg) {
     draft.world.factions[own] = clamp((draft.world.factions[own] ?? 0) + fx2.amount, -100, 100);
   }
 }
+function syncTraitSettings(draft, reg) {
+  if (hasTraitEffect(draft, reg, "no_romance")) draft.settings.noRomance = true;
+  else delete draft.settings.noRomance;
+}
 function traitStartingTrust(state, reg, values) {
   let sum = 0;
   for (const fx2 of traitEffects(state, reg, "starting_trust")) {
@@ -1186,6 +1190,7 @@ function buildCampaign(r, reg, opts) {
     }
   }
   applyStartTraitEffects(state, reg);
+  syncTraitSettings(state, reg);
   const knowsCrime = crimeKnownByDefault(crime, start);
   const used = /* @__PURE__ */ new Set();
   for (const u of r.units) {
@@ -2012,12 +2017,16 @@ var relationK = (state) => {
   const k = state.settings.relationK;
   return typeof k === "number" && Number.isFinite(k) && k > 0 ? k : TUNING.relations.k;
 };
-function intimacyOf(state) {
+function intimacySetting(state) {
   const v = state.settings.intimacy;
   return {
     romance: typeof v?.romance === "boolean" ? v.romance : true,
     initiative: v?.initiative === "low" || v?.initiative === "med" || v?.initiative === "high" ? v.initiative : "med"
   };
+}
+function intimacyOf(state) {
+  const s = intimacySetting(state);
+  return state.settings.noRomance === true ? { ...s, romance: false } : s;
 }
 var p3GainHandler = ({ state, relation }, axis, amount) => {
   const [lo, hi] = RANGE2[axis];
@@ -2203,6 +2212,7 @@ function meets(state, reg, unitId, cond) {
 }
 function usable(state, st, unitId) {
   if (st.romance === true && !intimacyOf(state).romance) return false;
+  if (typeof st.requiresTrait === "string" && !traitIds(state).includes(st.requiresTrait)) return false;
   if (unitId !== void 0 && state.squad.find((u) => u.id === unitId)?.kind === "grunt" && st.grunts !== true) return false;
   return true;
 }
@@ -2218,6 +2228,23 @@ function enterState(draft, unitId, stateId, why) {
   pushHistory(draft, unitId, { day: draft.day, kind: "state", type: stateId, detail: why });
   return { type: "relation_state_changed", unitId, from, to: stateId, why };
 }
+function platonicThresholds(state, reg, stateId, cond) {
+  const pct = traitEffects(state, reg, "platonic_threshold").filter((fx2) => fx2.states.includes(stateId)).reduce((n, fx2) => n + fx2.pct, 0);
+  if (pct === 0) return cond;
+  const scale = (c) => {
+    const out = { ...c };
+    if (c.axes) {
+      out.axes = {};
+      for (const axis of ["trust", "affinity", "attraction"]) {
+        const r = c.axes[axis];
+        if (r) out.axes[axis] = [Math.round(r[0] * (1 - pct / 100)), r[1]];
+      }
+    }
+    if (c.anyOf) out.anyOf = c.anyOf.map(scale);
+    return out;
+  };
+  return scale(cond);
+}
 var byPriority = (a, b) => b.priority - a.priority || String(a.id).localeCompare(String(b.id));
 function candidates(draft, reg, unitId, via, eventType) {
   const cur = draft.relations[unitId].stateId;
@@ -2226,7 +2253,7 @@ function candidates(draft, reg, unitId, via, eventType) {
     if (st.id === cur || !e.via.includes(via)) return false;
     if (via === "event" && !e.events?.includes(eventType)) return false;
     if (e.fromStates && e.fromStates.length > 0 && !e.fromStates.includes(cur)) return false;
-    return meets(draft, reg, unitId, e.when ?? {});
+    return meets(draft, reg, unitId, platonicThresholds(draft, reg, st.id, e.when ?? {}));
   }).sort(byPriority);
 }
 function evaluateAutomatic(draft, reg, unitId) {
@@ -2289,7 +2316,7 @@ function stateForProposal(state, reg, unitId, kind) {
     const e = entryOf(st);
     let fail = null;
     if (e.fromStates && e.fromStates.length > 0 && !e.fromStates.includes(rel.stateId)) fail = "too_soon";
-    else fail = failedGroup(state, reg, unitId, e.when ?? {});
+    else fail = failedGroup(state, reg, unitId, platonicThresholds(state, reg, st.id, e.when ?? {}));
     if (fail === null && st.romance === true && committedElsewhere) fail = "committed";
     if (fail === null) return { stateId: st.id };
     worst = Math.max(worst, ORDER.indexOf(fail));
@@ -11523,6 +11550,8 @@ var RelationshipStateSchema = BaseEntrySchema.extend({
   priority: int,
   /** Available to grunts (Trust-only units); default false. */
   grunts: external_exports.boolean().optional(),
+  /** P7: only a commander with this trait can reach the state. */
+  requiresTrait: str2.optional(),
   entry: external_exports.object({
     via: external_exports.array(external_exports.enum(["automatic", "event", "proposal"])).min(1),
     /** Empty or absent = from any state. */
@@ -14037,6 +14066,7 @@ registerAction("commander/set_profile", (draft, payload, ctx2) => {
   if (problems.length > 0) throw new Error(problems.join("; "));
   applyCommanderSetup(draft.commander, c);
   applyStartTraitEffects(draft, ctx2.registries);
+  syncTraitSettings(draft, ctx2.registries);
   applyFactionTraitEffects(draft, ctx2.registries);
   draft.commander.fileReviewed = true;
   return [{ type: "commander_profile_set" }];
@@ -21863,7 +21893,7 @@ function createApp(st, deps) {
   function syncIntimacy() {
     if (!state || load.kind !== "ok") return;
     const s = getSettings(st);
-    const cur = intimacyOf(state);
+    const cur = intimacySetting(state);
     if (cur.romance === s.romance && cur.initiative === s.romanticInitiative) return;
     api.dispatch({ type: "campaign/set_intimacy", payload: { romance: s.romance, initiative: s.romanticInitiative } }, { expectChatId: st.getActiveChat()?.chatId });
   }
@@ -23339,6 +23369,7 @@ registerRefs("relationshipStates", (entry) => {
     conditionRefs(x.when, `exit[${i}].when`, out);
   });
   nightRefs(entry.unlocks?.nightEvents, "unlocks.nightEvents", out);
+  if (typeof entry.requiresTrait === "string") out.push({ registry: "commanderTraits", id: entry.requiresTrait, path: "requiresTrait" });
   return out;
 });
 registerRefs("defects", (entry) => {
@@ -23581,6 +23612,8 @@ registerRefs("commanderTraits", (entry) => {
       out.push({ registry: "activities", id: fx2.activityId, path: `${at}.activityId` });
     } else if (fx2.type === "relation_event_mult" && typeof fx2.event === "string") {
       out.push({ registry: "eventDeltas", id: fx2.event, path: `${at}.event` });
+    } else if (fx2.type === "unlock_state" && typeof fx2.stateId === "string") {
+      out.push({ registry: "relationshipStates", id: fx2.stateId, path: `${at}.stateId` });
     } else if (fx2.type === "platonic_threshold" && Array.isArray(fx2.states)) {
       fx2.states.forEach((id, j) => out.push({ registry: "relationshipStates", id: String(id), path: `${at}.states[${j}]` }));
     }

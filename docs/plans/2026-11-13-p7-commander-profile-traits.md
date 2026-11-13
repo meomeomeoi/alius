@@ -303,9 +303,9 @@ docs/** (Task 19), tests/** mirror src
 **Interfaces:**
 - Produces: `platonicThresholds(state, reg, stateId, cond: Conditions): Conditions` — lower bounds of `axes` ranges × (1 − pct/100), rounded to the nearest integer (55 → 47, 80 → 68); upper bounds untouched.
 
-- [ ] **Step 1: Write the failing tests** — `with the vow no romantic state is reachable from any state` (walk `availableStates` and proposal checks for every romantic proposal kind); `the vow lowers confidant to affinity 47 and kindred to 68`; `sworn is unreachable without the vow and reachable from kindred with it`; `without the vow nothing changes` (graph tests stay green).
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → green.
-- [ ] **Step 5: Commit** `feat(engine): vow of distance and the sworn state`.
+- [x] **Step 1: Write the failing tests** — `with the vow no romantic state is reachable from any state` (walk `availableStates` and proposal checks for every romantic proposal kind); `the vow lowers confidant to affinity 47 and kindred to 68`; `sworn is unreachable without the vow and reachable from kindred with it`; `without the vow nothing changes` (graph tests stay green).
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → green.
+- [x] **Step 5: Commit** `feat(engine): vow of distance and the sworn state`.
 
 ---
 

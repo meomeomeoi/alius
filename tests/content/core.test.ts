@@ -163,14 +163,14 @@ describe('activity cross references', () => {
     expect(r.errors.map((e) => e.message).join('|')).toContain('has no level 2');
   });
 
-  it('core has the 18 relationship states of the spec', async () => {
+  it('core has the 18 relationship states of the spec, plus the P7 state sworn', async () => {
     const { registries: r } = await load();
     expect([...r.relationshipStates.keys()].sort()).toEqual([
       'comrade', 'confidant', 'dependent', 'despises', 'devoted', 'estranged', 'flirting', 'friend', 'fwb', 'kindred',
-      'lover', 'obsessed', 'resentful', 'rival', 'rival_romance', 'secret_affair', 'stranger', 'trusted', 'unrequited',
+      'lover', 'obsessed', 'resentful', 'rival', 'rival_romance', 'secret_affair', 'stranger', 'sworn', 'trusted', 'unrequited',
     ]);
-    // the spec table has 18 rows; its first row (stranger → comrade) is two states
-    expect(r.relationshipStates.size).toBe(19);
+    // the spec table has 18 rows; its first row (stranger → comrade) is two states; `sworn` needs the vow_of_distance trait
+    expect(r.relationshipStates.size).toBe(20);
   });
 
   it('every proposal kind maps to at least one state', async () => {

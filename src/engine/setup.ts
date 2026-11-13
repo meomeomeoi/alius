@@ -5,7 +5,7 @@ import { ensureLeash } from './leash/weekly';
 import { seedWorld } from './world/state';
 import { initialLoyaltyBand } from './relations/bands';
 import { applyFirstImpression } from './commander/presence';
-import { applyFactionTraitEffects, applyStartTraitEffects } from './commander/traits';
+import { applyFactionTraitEffects, applyStartTraitEffects, syncTraitSettings } from './commander/traits';
 import { applyCommanderSetup, defaultCommanderSetup, validateCommanderSetup, type CommanderSetup } from './commander/profile';
 import {
   VALUE_AXES, type CampaignState, type Relation, type SignatureInstance, type Unit,
@@ -296,6 +296,7 @@ export function buildCampaign(
     }
   }
   applyStartTraitEffects(state, reg); // P7: before any unit joins, so presence sees them
+  syncTraitSettings(state, reg);
   const knowsCrime = crimeKnownByDefault(crime, start);
 
   const used = new Set<string>();

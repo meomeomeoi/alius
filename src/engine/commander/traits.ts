@@ -50,6 +50,15 @@ export function applyFactionTraitEffects(draft: CampaignState, reg: Registries):
   }
 }
 
+/**
+ * `no_romance` is read by `intimacyOf`, which has no registry: the campaign mirrors it as `settings.noRomance`.
+ * Call it whenever the commander's traits are set.
+ */
+export function syncTraitSettings(draft: CampaignState, reg: Registries): void {
+  if (hasTraitEffect(draft, reg, 'no_romance')) draft.settings.noRomance = true;
+  else delete draft.settings.noRomance;
+}
+
 /** The summed `starting_trust` of the traits for a unit with these values (no values: only the unconditional ones count). */
 export function traitStartingTrust(state: CampaignState, reg: Registries, values?: Record<string, number>): number {
   let sum = 0;

@@ -117,6 +117,7 @@ registerRefs('relationshipStates', (entry) => {
     conditionRefs(x.when, `exit[${i}].when`, out);
   });
   nightRefs((entry.unlocks as { nightEvents?: unknown } | undefined)?.nightEvents, 'unlocks.nightEvents', out);
+  if (typeof entry.requiresTrait === 'string') out.push({ registry: 'commanderTraits', id: entry.requiresTrait, path: 'requiresTrait' });
   return out;
 });
 
@@ -386,7 +387,7 @@ registerRefs('imageConsistency', (entry) => {
   return out;
 });
 
-// P7: traits name other traits, activities and event types (`unlock_state` and `platonic_threshold` states join with `sworn`, Task 12)
+// P7: traits name other traits, activities, event types and relationship states
 registerRefs('commanderTraits', (entry) => {
   const out: Ref[] = [];
   (entry.exclusiveWith as unknown[] | undefined)?.forEach((id, i) => out.push({ registry: 'commanderTraits', id: String(id), path: `exclusiveWith[${i}]` }));
@@ -396,6 +397,8 @@ registerRefs('commanderTraits', (entry) => {
       out.push({ registry: 'activities', id: fx.activityId, path: `${at}.activityId` });
     } else if (fx.type === 'relation_event_mult' && typeof fx.event === 'string') {
       out.push({ registry: 'eventDeltas', id: fx.event, path: `${at}.event` });
+    } else if (fx.type === 'unlock_state' && typeof fx.stateId === 'string') {
+      out.push({ registry: 'relationshipStates', id: fx.stateId, path: `${at}.stateId` });
     } else if (fx.type === 'platonic_threshold' && Array.isArray(fx.states)) {
       fx.states.forEach((id, j) => out.push({ registry: 'relationshipStates', id: String(id), path: `${at}.states[${j}]` }));
     }

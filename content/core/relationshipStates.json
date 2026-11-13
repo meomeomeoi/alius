@@ -299,6 +299,50 @@
     "promptHint": "The deepest bond that is not romantic: they understand each other without explaining. She is fiercely loyal and unselfconscious around him."
   },
   {
+    "id": "sworn",
+    "name": "Sworn",
+    "description": "AUTHOR TO WRITE: a platonic bond sworn between the commander and one soldier, deeper than any friendship and not romantic.",
+    "group": "platonic",
+    "romance": false,
+    "glyph": "%",
+    "priority": 40,
+    "entry": {
+      "via": [
+        "automatic"
+      ],
+      "fromStates": [
+        "kindred"
+      ],
+      "when": {
+        "axes": {
+          "trust": [
+            70,
+            100
+          ],
+          "affinity": [
+            85,
+            100
+          ]
+        }
+      }
+    },
+    "exit": [],
+    "unlocks": {
+      "synergies": [
+        "kindred_sync"
+      ],
+      "activities": [],
+      "nightEvents": [],
+      "defectArcStages": [
+        "cure",
+        "embrace"
+      ]
+    },
+    "dmChance": 0.15,
+    "promptHint": "AUTHOR TO WRITE: she is sworn to him: loyal beyond duty, close without any romance.",
+    "requiresTrait": "vow_of_distance"
+  },
+  {
     "id": "flirting",
     "name": "Flirting",
     "description": "There is a charge between you. She teases, lingers and tests how you react.",
