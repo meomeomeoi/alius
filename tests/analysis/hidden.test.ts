@@ -1,6 +1,7 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { AnalyzeEnv } from '../../src/analysis/model';
 import { resetKnowledgeRules } from '../../src/analysis/knowledge';
+import { registerCoreProviders } from '../../src/analysis/providers/core';
 import { analyzeProviders, readingFor, registerAnalyzeProvider } from '../../src/analysis/providers';
 import { parseSubject } from '../../src/analysis/subject';
 import type { Registries } from '../../src/content/types';
@@ -12,6 +13,7 @@ import { loadCore } from '../helpers/world';
 let reg: Registries;
 beforeAll(async () => {
   reg = await loadCore();
+  registerCoreProviders();
 });
 afterEach(() => resetKnowledgeRules());
 
@@ -20,6 +22,10 @@ const envOf = (state: AnalyzeEnv['state'], showRawValues = false): AnalyzeEnv =>
 });
 
 describe('hidden state never reaches a reading', () => {
+  it('the core providers are registered, so the checks below are not vacuous', () => {
+    expect([...analyzeProviders().keys()]).toEqual(expect.arrayContaining(['glossary:trust', 'glossary:affinity', 'glossary:attraction', 'glossary:stress']));
+  });
+
   it('no provider shows a sentinel number with raw values off', () => {
     const { state, unitId, sentinels } = hiddenFixture(reg);
     const text = allReadings(envOf(state), unitId);

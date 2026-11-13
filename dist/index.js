@@ -689,9 +689,9 @@ function validateUnit(u, label2, reg, opts, out, withBaseline = true) {
     }
   }
   const tagCaps = { likes: SETUP_LIMITS.likes, dislikes: SETUP_LIMITS.dislikes, triggers: SETUP_LIMITS.triggers };
-  for (const [field2, cap3] of Object.entries(tagCaps)) {
+  for (const [field2, cap4] of Object.entries(tagCaps)) {
     const tags = u[field2] ?? [];
-    if (tags.length > cap3) out.push(`${label2}: at most ${cap3} ${field2} (has ${tags.length})`);
+    if (tags.length > cap4) out.push(`${label2}: at most ${cap4} ${field2} (has ${tags.length})`);
     for (const t of tags) {
       if (normalizeTag(t) !== t) out.push(`${label2}: ${field2} entry "${t}" is not a normalized tag`);
     }
@@ -3094,11 +3094,11 @@ function arcPaths(state, reg, unitId, defectId) {
   }
   if (whole !== null) return ARC_PATHS.map((p) => ({ ...base(p), available: false, reason: whole, wanted: false, refuses: false }));
   const stages = allowedStages(state, reg, unitId);
-  const cap3 = stageCap(state, reg);
+  const cap4 = stageCap(state, reg);
   const structural = ARC_PATHS.map((path) => {
     let reason = null;
     if (!stages.includes(path)) reason = "Needs a closer bond.";
-    else if (TUNING.arc.stage[path] > cap3) reason = `The medbay is too basic for this (stage ${TUNING.arc.stage[path]}).`;
+    else if (TUNING.arc.stage[path] > cap4) reason = `The medbay is too basic for this (stage ${TUNING.arc.stage[path]}).`;
     return { path, reason };
   });
   const offered2 = structural.filter((s) => s.reason === null).map((s) => s.path);
@@ -4563,8 +4563,8 @@ function hpGrowth(reg, unit, level) {
 }
 function applyLevelUps(draft, reg, unit) {
   const events = [];
-  const cap3 = levelCap(draft);
-  while (unit.xp >= xpToNext(unit.level) && unit.level < cap3) {
+  const cap4 = levelCap(draft);
+  while (unit.xp >= xpToNext(unit.level) && unit.level < cap4) {
     const before = hpGrowth(reg, unit, unit.level);
     unit.xp -= xpToNext(unit.level);
     unit.level += 1;
@@ -4786,16 +4786,16 @@ function finalizeCombat(draft, reg, rng, outcome) {
   fireTrigger(ctx2, "onCombatEnd", {});
   const events = [];
   const squad = cs.combatants.filter((c) => c.side === "squad" && c.unitId);
-  const unitOf3 = (c) => draft.squad.find((u) => u.id === c.unitId);
+  const unitOf4 = (c) => draft.squad.find((u) => u.id === c.unitId);
   const unitIdOf2 = (cid) => cs.combatants.find((c) => c.cid === cid)?.unitId;
-  const stressBefore = Object.fromEntries(squad.map((c) => [c.unitId, unitOf3(c).stress]));
+  const stressBefore = Object.fromEntries(squad.map((c) => [c.unitId, unitOf4(c).stress]));
   const injuries = [];
   const deaths = [];
   const breakdowns = [];
   const levelUps = [];
   const lost = outcome !== "won";
   for (const c of squad) {
-    const unit = unitOf3(c);
+    const unit = unitOf4(c);
     unit.stress = Math.min(100, Math.max(0, c.stress + (lost ? TUNING.combat.stress.loss : 0)));
     if (c.breakdown) {
       unit.breakdown = { defectId: c.breakdown.defectId, day: draft.day };
@@ -4824,7 +4824,7 @@ function finalizeCombat(draft, reg, rng, outcome) {
   if (outcome === "won") {
     xp = combatXp(draft, reg, cs);
     for (const c of squad) {
-      const unit = unitOf3(c);
+      const unit = unitOf4(c);
       if (unit.status === "dead") continue;
       unit.xp += xp[unit.id] ?? 0;
       events.push({ type: "xp_gained", unitId: unit.id, amount: xp[unit.id] ?? 0 });
@@ -4870,7 +4870,7 @@ function finalizeCombat(draft, reg, rng, outcome) {
     injuries,
     deaths,
     breakdowns,
-    stressDelta: Object.fromEntries(squad.map((c) => [c.unitId, unitOf3(c).stress - stressBefore[c.unitId]])),
+    stressDelta: Object.fromEntries(squad.map((c) => [c.unitId, unitOf4(c).stress - stressBefore[c.unitId]])),
     relationHints: relationHints(cs, unitIdOf2),
     commanderInjured,
     ...compels.length > 0 ? { compels: [...compels] } : {},
@@ -14138,9 +14138,9 @@ function renderCombatScreen(host, ctx2) {
   let selTarget = null;
   let orderMode = null;
   const sprites = /* @__PURE__ */ new Map();
-  const unitOf3 = (state, c) => state.squad.find((u) => u.id === c.unitId);
+  const unitOf4 = (state, c) => state.squad.find((u) => u.id === c.unitId);
   const nameOf7 = (state, c) => {
-    if (c.side === "squad" || c.unitId !== void 0 && c.enemyId === void 0) return unitOf3(state, c)?.displayName ?? c.nameKey;
+    if (c.side === "squad" || c.unitId !== void 0 && c.enemyId === void 0) return unitOf4(state, c)?.displayName ?? c.nameKey;
     const affixes = (c.nameKey.split("|")[1] ?? "").split(",").filter((a) => a !== "");
     return state.enemyNames?.[c.nameKey] ?? defaultEnemyName(reg, c.enemyId ?? "", affixes);
   };
@@ -14354,7 +14354,7 @@ function renderCombatScreen(host, ctx2) {
       box.append(pre);
       return box;
     }
-    const unit = unitOf3(state, c);
+    const unit = unitOf4(state, c);
     if (!unit) return box;
     if (unit.kind === "grunt" || !unit.cardRef) {
       const pre = h("pre", { class: "alius-cc-ascii" });
@@ -16551,11 +16551,11 @@ function renderCalibration(host, ctx2) {
   }
   if (shown.has("tags")) {
     host.append(
-      section("tags", "TAGS", ...TAG_FIELDS.map(([key, label2, cap3]) => {
+      section("tags", "TAGS", ...TAG_FIELDS.map(([key, label2, cap4]) => {
         const list4 = ch[key];
         const add = () => {
           const t = normalizeTag(input.value);
-          if (t === null || list4.includes(t) || list4.length >= cap3) return;
+          if (t === null || list4.includes(t) || list4.length >= cap4) return;
           onUpdate({ [key]: [...list4, t] });
         };
         const input = h("input", {
@@ -16564,8 +16564,8 @@ function renderCalibration(host, ctx2) {
           "data-tags": key,
           "data-key": `tag-${key}`,
           "aria-label": `Add ${label2.toLowerCase()}`,
-          placeholder: list4.length >= cap3 ? `max ${cap3}` : "add\u2026",
-          disabled: list4.length >= cap3
+          placeholder: list4.length >= cap4 ? `max ${cap4}` : "add\u2026",
+          disabled: list4.length >= cap4
         });
         input.addEventListener("keydown", (e) => {
           if (e.key !== "Enter") return;
@@ -16575,7 +16575,7 @@ function renderCalibration(host, ctx2) {
         return h(
           "div",
           { class: "alius-tags" },
-          h("span", { class: "alius-field-label" }, `${label2} (${list4.length}/${cap3})`),
+          h("span", { class: "alius-field-label" }, `${label2} (${list4.length}/${cap4})`),
           h("div", { class: "alius-chips" }, ...list4.map((t) => h(
             "span",
             { class: "alius-chip" },
@@ -19164,42 +19164,6 @@ function importCampaign(text2) {
   return migrate(raw);
 }
 
-// src/analysis/describe.ts
-var PLAYER_VISIBLE = [...DESCRIBED_REGISTRIES, "glossary"];
-var text = (v) => typeof v === "string" && v.trim() !== "" ? v : null;
-function entryTitle(_registry, entry) {
-  return text(entry.term) ?? text(entry.name) ?? text(entry.label) ?? entry.id;
-}
-function entryText(registry2, entry) {
-  if (registry2 === "glossary") return text(entry.short);
-  const direct = text(entry.description) ?? text(entry.summary);
-  if (direct) return direct;
-  switch (registry2) {
-    case "defects": {
-      const parts = [
-        text(entry.upside) && `Upside: ${entry.upside}`,
-        text(entry.downside) && `Downside: ${entry.downside}`
-      ].filter((p) => !!p);
-      return parts.length ? parts.join(" \xB7 ") : null;
-    }
-    case "signatures":
-      return text(entry.mechanic);
-    case "clocks":
-      return text(entry.label);
-    default:
-      return null;
-  }
-}
-function missingDescriptions(reg) {
-  const out = [];
-  for (const registry2 of PLAYER_VISIBLE) {
-    for (const [id, entry] of reg[registry2]) {
-      if (entryText(registry2, entry) === null) out.push({ registry: registry2, id });
-    }
-  }
-  return out;
-}
-
 // src/analysis/effects.ts
 var MINUS = "\u2212";
 function humanize(key) {
@@ -19487,6 +19451,31 @@ function entryEffects(registry2, entry, reg) {
   }
 }
 
+// src/analysis/ledger.ts
+var LABELS2 = [
+  ["activity/", "activity"],
+  ["calendar/", "day end"],
+  ["scene/", "conversation"],
+  ["intents/", "conversation"],
+  ["dm/", "DMs"],
+  ["night/", "night"],
+  ["combat/", "combat"],
+  ["expedition/", "expedition"],
+  ["item/", "workshop"],
+  ["base/", "base"],
+  ["leash/", "the Leash"],
+  ["loyalty/", "loyalty"],
+  ["dilemma/", "decision"],
+  ["arc/", "defect arc"],
+  ["director/", "world"]
+];
+function ledgerLabel(action) {
+  return LABELS2.find(([prefix]) => action.startsWith(prefix))?.[1] ?? "other";
+}
+function ledgerFor(state, key, sinceDay) {
+  return (state.ledger ?? []).filter((e) => e.key === key && e.day >= sinceDay).reverse();
+}
+
 // src/analysis/knowledge.ts
 var rules = [];
 function holds(check) {
@@ -19512,6 +19501,18 @@ function buildKnowledge(state, settings) {
 
 // src/analysis/providers.ts
 var providers = /* @__PURE__ */ new Map();
+function registerAnalyzeProvider(key, fn) {
+  const list4 = providers.get(key) ?? [];
+  list4.push(fn);
+  providers.set(key, list4);
+  return () => {
+    const cur = providers.get(key);
+    if (!cur) return;
+    const rest = cur.filter((p) => p !== fn);
+    if (rest.length > 0) providers.set(key, rest);
+    else providers.delete(key);
+  };
+}
 function readingFor(subject, env) {
   if (!env.state) return null;
   const knowledge = buildKnowledge(env.state, env.settings);
@@ -19528,6 +19529,116 @@ function readingFor(subject, env) {
     }
   }
   return lines.length > 0 ? { lines } : null;
+}
+
+// src/analysis/providers/core.ts
+var MINUS2 = "\u2212";
+var cap3 = (s) => s ? s[0].toUpperCase() + s.slice(1) : s;
+var rawSuffix = (k, n) => {
+  const r = k.raw(n);
+  return r === null ? "" : ` (${r})`;
+};
+function arrow(k, net) {
+  if (net === 0) return "\u25AC";
+  const r = k.raw(Math.abs(net));
+  return `${net > 0 ? "\u25B2" : "\u25BC"}${r === null ? "" : ` (${net > 0 ? "+" : MINUS2}${r})`}`;
+}
+function unitOf3(state, data) {
+  const id = data.unitId;
+  if (typeof id !== "string") return null;
+  const unit = state.squad.find((u) => u.id === id);
+  const relation = state.relations[id];
+  return unit && relation ? { unit, relation } : null;
+}
+var BAND = { trust: trustBand, affinity: affinityBand, attraction: attractionBand };
+var axisProvider = (axis) => (subject, env, knowledge) => {
+  const state = env.state;
+  const found = unitOf3(state, subject.data);
+  if (!found) return null;
+  const { unit, relation } = found;
+  if (axis !== "trust" && unit.kind === "grunt") return { lines: ["Grunts track Trust only."] };
+  if (axis === "attraction" && !intimacyOf(state).romance) return { lines: ["Romance is off."] };
+  const value = relation[axis];
+  const lines = [`${unit.displayName}: ${BAND[axis](value).toUpperCase()}${rawSuffix(knowledge, value)}`];
+  const net = ledgerFor(state, `axis:${unit.id}:${axis}`, state.day - 2).reduce((sum, e) => sum + e.delta, 0);
+  lines.push(`Trend ${arrow(knowledge, net)}`);
+  const events = relation.history.filter((h2) => h2.kind === "event").slice(-3).reverse();
+  for (const h2 of events) {
+    const cause = typeof env.registries.eventDeltas.get(h2.type)?.cause === "string" ? env.registries.eventDeltas.get(h2.type).cause : cap3(humanize(h2.type));
+    lines.push(`${cause}${h2.severity ? ` \u2014 ${h2.severity}` : ""}, day ${h2.day}`);
+  }
+  lines.push(`State: [[relationshipStates:${relation.stateId}]]`);
+  return { lines };
+};
+function nextStressBand(stress) {
+  return stress < 50 ? "strained" : stress < 80 ? "breaking" : stress < 100 ? "breakdown" : null;
+}
+var stressProvider = (subject, env, knowledge) => {
+  const state = env.state;
+  const found = unitOf3(state, subject.data);
+  if (!found) return null;
+  const { unit } = found;
+  const lines = [`${unit.displayName}: ${stressBand2(unit.stress).toUpperCase()}${rawSuffix(knowledge, unit.stress)}`];
+  const groups = /* @__PURE__ */ new Map();
+  for (const e of ledgerFor(state, `stress:${unit.id}`, state.day - 1)) {
+    const label2 = ledgerLabel(e.action);
+    groups.set(label2, (groups.get(label2) ?? 0) + e.delta);
+  }
+  const moved = [...groups].filter(([, delta]) => delta !== 0);
+  if (moved.length === 0) lines.push("No recent changes");
+  for (const [label2, delta] of moved) {
+    const r = knowledge.raw(Math.abs(delta));
+    lines.push(r === null ? `${delta > 0 ? "rose" : "fell"} \u2014 ${label2}` : `${delta > 0 ? "+" : MINUS2}${r} ${label2}`);
+  }
+  const next = nextStressBand(unit.stress);
+  if (next) {
+    const short = env.registries.glossary.get(`stress_${next}`)?.short;
+    lines.push(`Next: ${typeof short === "string" ? short : next.toUpperCase()}`);
+  }
+  return { lines };
+};
+var registered = false;
+function registerCoreProviders() {
+  if (registered) return;
+  registered = true;
+  for (const axis of ["trust", "affinity", "attraction"]) registerAnalyzeProvider(`glossary:${axis}`, axisProvider(axis));
+  registerAnalyzeProvider("glossary:stress", stressProvider);
+}
+
+// src/analysis/describe.ts
+var PLAYER_VISIBLE = [...DESCRIBED_REGISTRIES, "glossary"];
+var text = (v) => typeof v === "string" && v.trim() !== "" ? v : null;
+function entryTitle(_registry, entry) {
+  return text(entry.term) ?? text(entry.name) ?? text(entry.label) ?? entry.id;
+}
+function entryText(registry2, entry) {
+  if (registry2 === "glossary") return text(entry.short);
+  const direct = text(entry.description) ?? text(entry.summary);
+  if (direct) return direct;
+  switch (registry2) {
+    case "defects": {
+      const parts = [
+        text(entry.upside) && `Upside: ${entry.upside}`,
+        text(entry.downside) && `Downside: ${entry.downside}`
+      ].filter((p) => !!p);
+      return parts.length ? parts.join(" \xB7 ") : null;
+    }
+    case "signatures":
+      return text(entry.mechanic);
+    case "clocks":
+      return text(entry.label);
+    default:
+      return null;
+  }
+}
+function missingDescriptions(reg) {
+  const out = [];
+  for (const registry2 of PLAYER_VISIBLE) {
+    for (const [id, entry] of reg[registry2]) {
+      if (entryText(registry2, entry) === null) out.push({ registry: registry2, id });
+    }
+  }
+  return out;
 }
 
 // src/analysis/model.ts
@@ -20645,6 +20756,7 @@ function createShell(deps) {
 // src/app.ts
 var errText3 = (e) => e instanceof Error ? e.message : String(e);
 function createApp(st, deps) {
+  registerCoreProviders();
   const context = new ContextBuilder();
   let registries = emptyRegistries();
   let contentErrors = [];

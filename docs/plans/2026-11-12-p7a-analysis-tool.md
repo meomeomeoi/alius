@@ -268,9 +268,9 @@ docs/** (Task 16), tests/** mirror src, tests/fixtures/analyze/, tests/helpers/a
   - `glossary:trust|affinity|attraction` with `data.unitId`: line 1 `{Name}: {BAND}` + ` ({raw})`; line 2 trend over `day ≥ state.day − 2` from the ledger: `Trend ▲` / `▼` / `▬` + ` (+7)` only with raw; then the last 3 `history` entries of kind `event`, newest first: `{cause} — {severity}, day {d}` (`cause` = `eventDeltas[type].cause` or the humanized type); then `State: [[relationshipStates:{stateId}]]`. A grunt on Affinity/Attraction: `Grunts track Trust only.`; Attraction with romance off: `Romance is off.`; unknown unit → `null`.
   - `glossary:stress` with `data.unitId`: `{Name}: {BAND}` (+ raw); sources from the ledger since `state.day − 1`, grouped by label: with raw `+12 combat`, without `rose — combat` / `fell — rest`; `Next: {stress_<nextBand>.short}` for the next of 50/80/100 above her stress (none at 100).
 
-- [ ] **Step 1: Write the failing tests** — axes: `bands only with raw values off` (fixture Trust 37: text has `GUARDED`, not `37`); `raw adds the number and the signed trend`; `trend arrows follow the ledger of the last 3 days`; `the last three history events with causes, newest first`; `a grunt has no Affinity reading`; `romance off hides Attraction`. Stress: `band and next threshold`; `sources group by label and hide amounts without raw`; `a save without ledger says No recent changes`. Re-run `tests/analysis/hidden.test.ts` → PASS with providers registered.
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → PASS, suite green.
-- [ ] **Step 5: Commit** `feat(analysis): readings for relationship axes and stress`.
+- [x] **Step 1: Write the failing tests** — axes: `bands only with raw values off` (fixture Trust 37: text has `GUARDED`, not `37`); `raw adds the number and the signed trend`; `trend arrows follow the ledger of the last 3 days`; `the last three history events with causes, newest first`; `a grunt has no Affinity reading`; `romance off hides Attraction`. Stress: `band and next threshold`; `sources group by label and hide amounts without raw`; `a save without ledger says No recent changes`. Re-run `tests/analysis/hidden.test.ts` → PASS with providers registered.
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → PASS, suite green.
+- [x] **Step 5: Commit** `feat(analysis): readings for relationship axes and stress`.
 
 ---
 

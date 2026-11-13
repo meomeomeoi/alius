@@ -58,6 +58,14 @@ afterEach(() => {
 });
 
 describe('app', () => {
+  it('registers the analysis readings and gives the shell its registries (P7a)', async () => {
+    const { shell, deps } = await boot(A);
+    void shell;
+    const { analyzeProviders } = await import('../src/analysis/providers');
+    expect([...analyzeProviders().keys()]).toEqual(expect.arrayContaining(['glossary:trust', 'glossary:stress']));
+    expect(deps().analyze!.registries()).toBeDefined();
+  });
+
   it('start with no campaign gives load none and clears injections', async () => {
     const st = new FakeStAdapter(A);
     st.setInjection('ctx', 'stale', 'in_prompt', 0);

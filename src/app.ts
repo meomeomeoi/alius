@@ -78,6 +78,7 @@ import { renderKeepingFocus } from './ui/focus';
 import {
   createSaver, initCampaign as initCampaignInChat, loadCampaign, writeNewCampaign, METADATA_KEY, type LoadResult,
 } from './st/persistence';
+import { registerCoreProviders } from './analysis/providers/core';
 import { createShell, type ShellApi } from './ui/shell/shell';
 import type { ToastKind } from './ui/shell/toast';
 
@@ -158,6 +159,7 @@ export interface AppDeps {
 const errText = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
 export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
+  registerCoreProviders(); // P7a: the readings of the analysis panel
   const context = new ContextBuilder();
   let registries: Registries = emptyRegistries();
   let contentErrors: ContentError[] = [];
