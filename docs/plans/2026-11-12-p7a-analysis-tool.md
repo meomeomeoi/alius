@@ -360,9 +360,9 @@ Reads `docs/content/roles.md` and `docs/content/defects.md`; texts go into JSON 
 - Modify: `css/95-analyze.css`, `src/ui/analyze/analyzer.ts` (only if a test below fails)
 - Test: `tests/ui/analyzer.test.ts` (extend)
 
-- [ ] **Step 1: Write the failing tests** — `a panel opened inside a modal (Leash request form) sits above it and Esc closes the panel, not the modal`; `the combat screen keeps keyboard control after Esc closed a panel` (next `g` still guards); `a pinned panel survives a combat re-render and rebuilds its reading`; `palette changes recolour the panel` (`data-palette` on the shell root applies).
-- [ ] **Step 2: Run** → FAIL or PASS; fix only what fails. **Step 3: Run** `npx vitest run` → green.
-- [ ] **Step 4: Commit** `fix(ui): analysis panel inside modals and combat`.
+- [x] **Step 1: Write the failing tests** — `a panel opened inside a modal (Leash request form) sits above it and Esc closes the panel, not the modal`; `the combat screen keeps keyboard control after Esc closed a panel` (next `g` still guards); `a pinned panel survives a combat re-render and rebuilds its reading`; `palette changes recolour the panel` (`data-palette` on the shell root applies).
+- [x] **Step 2: Run** → FAIL or PASS; fix only what fails. **Step 3: Run** `npx vitest run` → green.
+- [x] **Step 4: Commit** `fix(ui): analysis panel inside modals and combat`.
 
 ---
 

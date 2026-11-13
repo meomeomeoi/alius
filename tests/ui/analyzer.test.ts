@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest';
+import { readdirSync, readFileSync } from 'node:fs';
 import { animationMs, attachAnalyzer, type Analyzer } from '../../src/ui/analyze/analyzer';
 import { attachCombatKeys } from '../../src/ui/combat/keys';
 import { analyzeAttrs } from '../../src/ui/analyze/mark';
@@ -7,6 +8,13 @@ import { h } from '../../src/ui/dom';
 import { emptyRegistries, type Entry } from '../../src/content/types';
 import { DEFAULT_SETTINGS, type AliusSettings } from '../../src/settings';
 import type { AnalyzeEnv } from '../../src/analysis/model';
+import { registerCoreProviders } from '../../src/analysis/providers/core';
+import type { Registries } from '../../src/content/types';
+import type { CampaignState } from '../../src/engine/state/types';
+import { FakeStAdapter } from '../../src/st/fake';
+import { renderCombatScreen } from '../../src/ui/combat/combatScreen';
+import { createShell } from '../../src/ui/shell/shell';
+import { campaign, loadCore, run } from '../helpers/world';
 
 const GLOSSARY: Entry[] = [
   { id: 'trust', term: 'Trust', short: 'Belief in you. See [[stress]].' },
@@ -485,5 +493,160 @@ describe('lifecycle', () => {
     a.focus();
     key(a, '?');
     expect(panel()).toBeNull();
+  });
+});
+
+
+describe('analysis panel in context (P7a)', () => {
+  let core: Registries;
+  beforeAll(async () => {
+    core = await loadCore();
+    registerCoreProviders();
+  });
+
+  const openCombat = (): CampaignState => {
+    const base = campaign(core, 4);
+    const r = run(base, core, {
+      type: 'combat/start',
+      payload: {
+        encounter: { enemies: [{ enemyId: 'husk', level: 1, affixes: [] }], danger: 1 },
+        formation: { front: ['unit_ann', 'unit_bea', 'unit_cat'], back: ['unit_dee'] },
+      },
+    });
+    r.state.combat!.awaitingCid = 's1';
+    r.state.combat!.cp = 3;
+    return r.state;
+  };
+  const stAdapter = () => {
+    const st = new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' });
+    Object.assign(st.settings, { analyzeAnimation: 'off' });
+    return st;
+  };
+  const hover = (el: Element) => el.dispatchEvent(Object.assign(new Event('pointerover', { bubbles: true }), { pointerType: 'mouse', clientX: 40, clientY: 40 }));
+
+  it('a panel opened inside a modal sits above it and Esc closes the panel, not the modal', async () => {
+    const state = openCombat();
+    const shell = createShell({ st: stAdapter(), getState: () => state, getLoad: () => ({ kind: 'ok', state, chatId: 'c' }), analyze: { registries: () => core } });
+    try {
+      shell.open();
+      const body = h('p', {}, h('span', { class: 'alius-chip', ...analyzeAttrs('glossary:leash_compel') }, 'COMPEL'));
+      let answer: string | null | undefined;
+      void shell.modal({ title: 'OVERSIGHT REQUEST #1', body, actions: [{ label: 'FILE', value: 'file' }] }).then((v) => { answer = v; });
+      const chipEl = document.querySelector('.alius-modal [data-analyze]')!;
+      hover(chipEl);
+      vi.advanceTimersByTime(250);
+      const panelEl = document.querySelector('#alius-shell .alius-analyze')!;
+      expect(panelEl).not.toBeNull();
+      expect(panelEl.textContent).toContain('Compel');
+      // pin it so the pointer need not stay on the chip, then Esc: only the panel goes
+      document.querySelector<HTMLButtonElement>('.alius-analyze-pin')!.click();
+      key(chipEl, 'Escape');
+      expect(document.querySelector('.alius-analyze')).toBeNull();
+      expect(document.querySelector('.alius-modal')).not.toBeNull();
+      expect(answer).toBeUndefined();
+      // the second Esc belongs to the modal
+      key(chipEl, 'Escape');
+      await Promise.resolve();
+      expect(document.querySelector('.alius-modal')).toBeNull();
+      expect(answer).toBeNull();
+    } finally {
+      shell.destroy();
+    }
+  });
+
+  it('the panel stacks above the modal layer in the stylesheet', () => {
+    const z = (css: string) => [...css.matchAll(/z-index:\s*(\d+)/g)].map((m) => Number(m[1]));
+    const analyze = Math.max(...z(readFileSync('css/95-analyze.css', 'utf8')));
+    const others = readdirSync('css').filter((f) => f.endsWith('.css') && f !== '95-analyze.css')
+      .flatMap((f) => z(readFileSync(`css/${f}`, 'utf8').replace(/#alius-shell\s*\{[^}]*z-index:\s*100000[^}]*\}/, '')));
+    expect(others.length).toBeGreaterThan(0);
+    expect(analyze).toBeGreaterThan(Math.max(...others));
+  });
+
+  it('the combat screen keeps keyboard control after Esc closed a panel', () => {
+    const state = openCombat();
+    const onAct = vi.fn();
+    const onClose = vi.fn();
+    const host = h('div');
+    root.append(host);
+    const screen = renderCombatScreen(host, {
+      getState: () => state, registries: core, st: stAdapter(), settings: () => DEFAULT_SETTINGS, onAct, onOrder: vi.fn(), onAuto: vi.fn(),
+      onRetry: vi.fn(), onAccept: vi.fn(), onRetreat: vi.fn(), onClose,
+    });
+    settings = { ...DEFAULT_SETTINGS, analyzeAnimation: 'off' };
+    analyzer = attachAnalyzer(root, { getEnv: () => ({ registries: core, state, settings }) });
+    try {
+      const cp = host.querySelector<HTMLElement>('[data-analyze="glossary:cp"]')!;
+      analyzer.openFor(cp, { x: 5, y: 5 }, { pinned: true });
+      key(cp, 'Escape');
+      expect(document.querySelector('.alius-analyze')).toBeNull();
+      expect(onAct).not.toHaveBeenCalled();
+      // the next key still reaches the combat screen: g guards
+      key(document.body, 'g');
+      expect(onAct).toHaveBeenCalledWith({ kind: 'guard' });
+    } finally {
+      screen.dispose();
+    }
+  });
+
+  it('a pinned panel survives a combat re-render and rebuilds its reading', () => {
+    const state = openCombat();
+    state.squad[0].stress = 0;
+    state.combat!.combatants.find((c) => c.cid === 's1')!.stress = 0;
+    const st = stAdapter();
+    const shell = createShell({ st, getState: () => state, getLoad: () => ({ kind: 'ok', state, chatId: 'c' }), analyze: { registries: () => core } });
+    let screen: ReturnType<typeof renderCombatScreen> | null = null;
+    try {
+      shell.registerScreen(
+        'combat',
+        (host) => {
+          screen = renderCombatScreen(host, {
+            getState: () => state, registries: core, st, settings: () => DEFAULT_SETTINGS, onAct: vi.fn(), onOrder: vi.fn(), onAuto: vi.fn(),
+            onRetry: vi.fn(), onAccept: vi.fn(), onRetreat: vi.fn(), onClose: vi.fn(),
+          });
+        },
+        { refresh: () => { screen!.refresh(); return true; } },
+      );
+      shell.open();
+      shell.showScreen('combat');
+      const stress = document.querySelector<HTMLElement>('.alius-cc[data-cid="s1"] [data-analyze="glossary:stress"]')!;
+      hover(stress);
+      vi.advanceTimersByTime(250);
+      document.querySelector<HTMLButtonElement>('.alius-analyze-pin')!.click();
+      expect(document.querySelector('.alius-analyze')!.textContent).toContain('Ann: CALM');
+      // the fight goes on: more stress, the screen is redrawn (its old chips are gone)
+      state.squad[0].stress = 63;
+      shell.refresh();
+      expect(document.body.contains(stress)).toBe(false);
+      const panelEl = document.querySelector('.alius-analyze')!;
+      expect(panelEl).not.toBeNull();
+      expect(panelEl.textContent).toContain('Ann: STRAINED');
+    } finally {
+      shell.destroy();
+    }
+  });
+
+  it('palette changes recolour the panel: it lives inside the palette root and uses only palette variables', () => {
+    root.remove(); // the shell brings its own #alius-shell
+    const state = openCombat();
+    const shell = createShell({ st: stAdapter(), getState: () => state, getLoad: () => ({ kind: 'ok', state, chatId: 'c' }), analyze: { registries: () => core } });
+    try {
+      shell.registerTab('squad', (host) => host.append(h('span', { class: 'alius-chip', ...analyzeAttrs('glossary:cp') }, 'CP')));
+      shell.open();
+      hover(document.querySelector('#alius-shell [data-analyze="glossary:cp"]')!);
+      vi.advanceTimersByTime(250);
+      const panelEl = document.querySelector('.alius-analyze')!;
+      shell.setPalette('green');
+      const shellRoot = document.getElementById('alius-shell')!;
+      expect(shellRoot.dataset.palette).toBe('green');
+      expect(shellRoot.contains(panelEl)).toBe(true);
+      const css = readFileSync('css/95-analyze.css', 'utf8');
+      expect(css).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
+      expect(css).not.toMatch(/\b(?:rgb|hsl)a?\(\s*\d/);
+      expect(css).toContain('var(--alius-fg)');
+      expect(css).toContain('var(--alius-bg)');
+    } finally {
+      shell.destroy();
+    }
   });
 });
