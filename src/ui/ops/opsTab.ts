@@ -1,7 +1,7 @@
 import type { Entry, Registries } from '../../content/types';
-import { checkActivity, type ActivityRequest } from '../../engine/activities';
+import { activityCost, checkActivity, type ActivityRequest } from '../../engine/activities';
 import { clockText } from '../../engine/calendar';
-import { isLiving } from '../../engine/economy';
+import { isLiving, requisitionCost } from '../../engine/economy';
 import type { CampaignState, Unit } from '../../engine/state/types';
 import { TUNING } from '../../engine/tuning';
 import type { LoadResult } from '../../st/persistence';
@@ -102,7 +102,7 @@ function activityCard(a: Entry, state: CampaignState, ctx: OpsTabCtx): HTMLEleme
     'article',
     { class: 'alius-activity', 'data-activity': String(a.id) },
     h('h3', {}, h('span', { class: 'alius-chip', ...analyzeAttrs(`activities:${String(a.id)}`) }, String(a.name))),
-    h('p', { class: 'alius-dim' }, `${String(a.summary)} — ${costText(a.cost as Record<string, number>)}`),
+    h('p', { class: 'alius-dim' }, `${String(a.summary)} — ${costText(activityCost(state, ctx.registries, a))}`),
     controls,
     reasonEl,
     btn,
@@ -113,13 +113,14 @@ function activityCard(a: Entry, state: CampaignState, ctx: OpsTabCtx): HTMLEleme
 const remembered = new WeakMap<HTMLElement, string>();
 
 function requisition(state: CampaignState, ctx: OpsTabCtx, host: HTMLElement): HTMLElement {
-  const rate = TUNING.requisition.creditsPerSupply;
+  // P7: the engine knows the price (traits change it); the rate shown is the average of ten
+  const rate = +(requisitionCost(state, ctx.registries, 10) / 10).toFixed(2);
   const input = h('input', { type: 'number', name: 'requisition', min: '1', step: '1', value: remembered.get(host) ?? '5', 'aria-label': 'Supplies to requisition' }) as HTMLInputElement;
   const btn = h('button', { type: 'button', class: 'alius-btn alius-option', 'data-requisition': '', ...analyzeNative('glossary:supplies') }, '[ REQUISITION ]') as HTMLButtonElement;
   const sync = () => {
     remembered.set(host, input.value);
     const n = Math.floor(Number(input.value));
-    btn.disabled = !(n >= 1) || n * rate > state.resources.credits;
+    btn.disabled = !(n >= 1) || requisitionCost(state, ctx.registries, n) > state.resources.credits;
   };
   input.addEventListener('input', sync);
   input.addEventListener('change', sync);

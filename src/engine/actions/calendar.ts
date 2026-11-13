@@ -1,5 +1,5 @@
 import { runActivity } from '../activities';
-import { consumeSlots, injureCommander, slotsLeftToday } from '../calendar';
+import { consumeSlots, injureCommander, isQuietNight, slotsLeftToday } from '../calendar';
 import { registerAction } from '../dispatch';
 
 // Importing this module registers the calendar actions.
@@ -21,6 +21,12 @@ registerAction('calendar/consume_slot', (draft, payload, ctx) => {
   const left = slotsLeftToday(draft.slot);
   if (slots > left) throw new Error(`calendar/consume_slot: ${slots} slot(s) requested but only ${left} left in the ${draft.slot}`);
   return consumeSlots(draft, slots, ctx);
+});
+
+/** P7: ends a quiet night without doing anything (no sleepless day). */
+registerAction('calendar/sleep', (draft, _payload, ctx) => {
+  if (!isQuietNight(draft)) throw new Error('There is nothing to sleep through.');
+  return consumeSlots(draft, 1, ctx);
 });
 
 registerAction('activity/do', (draft, payload, ctx) => runActivity(draft, ctx, payload));

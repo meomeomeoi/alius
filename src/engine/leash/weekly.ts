@@ -1,4 +1,5 @@
 import type { Registries } from '../../content/types';
+import { traitEffects } from '../commander/traits';
 import type { EngineEvent } from '../dispatch';
 import type { CampaignState, LeashKind, LeashLogEntry } from '../state/types';
 import { TUNING } from '../tuning';
@@ -40,6 +41,7 @@ export function leashWeekly(state: CampaignState, reg: Registries): number {
   const corp = id === null ? undefined : reg.corporations.get(id);
   const weekly = (corp?.leash as { weekly?: number } | undefined)?.weekly ?? TUNING.leash.weeklyFallback;
   let n = weekly + crimeEffectAmount(reg, state.commander.crimeId, 'leash_weekly');
+  n += traitEffects(state, reg, 'leash_weekly').reduce((sum, fx) => sum + fx.amount, 0); // P7 traits
   if (id !== null) {
     const standing = factionStanding(state, id);
     if (standing >= TUNING.leash.standingStep) n += 1;

@@ -1,3 +1,5 @@
+import type { Registries } from '../content/types';
+import { hasTraitEffect } from './commander/traits';
 import type { EngineCtx, EngineEvent } from './dispatch';
 import { facilityEffect, facilityLevels, isLiving, recoverUnit, rosterCapacityFor, runUpkeep } from './economy';
 import type { CampaignState, Slot } from './state/types';
@@ -99,9 +101,16 @@ function facilityTimers(draft: CampaignState, ctx: EngineCtx): EngineEvent[] {
   return events;
 }
 
-function nightCheck(draft: CampaignState): EngineEvent[] {
+/** P7: the Night slot of an insomniac with no night event: the commander is awake, nobody knocks. */
+export const isQuietNight = (state: CampaignState): boolean => state.slot === 'night' && state.calendar.nightEvent === undefined;
+
+function nightCheck(draft: CampaignState, reg: Registries): EngineEvent[] {
   const events: EngineEvent[] = [];
-  if (draft.calendar.nightEventsQueue.length > 0) {
+  if (draft.calendar.nightEventsQueue.length === 0 && hasTraitEffect(draft, reg, 'night_slot')) {
+    draft.slot = 'night';
+    events.push({ type: 'slot_advanced', from: 'evening', to: 'night', day: draft.day });
+    events.push({ type: 'quiet_night_started', day: draft.day });
+  } else if (draft.calendar.nightEventsQueue.length > 0) {
     draft.calendar.nightEvent = draft.calendar.nightEventsQueue.shift();
     draft.slot = 'night';
     events.push({ type: 'slot_advanced', from: 'evening', to: 'night', day: draft.day });
@@ -121,7 +130,7 @@ function endOfDay(draft: CampaignState, ctx: EngineCtx): EngineEvent[] {
       case 'upkeep': events.push(...runUpkeep(draft, ctx.registries)); break;
       case 'ticks': events.push(...ticks(draft, ctx)); break;
       case 'facility_timers': events.push(...facilityTimers(draft, ctx)); break;
-      case 'night_check': events.push(...nightCheck(draft)); break;
+      case 'night_check': events.push(...nightCheck(draft, ctx.registries)); break;
       case 'autosave': events.push({ type: 'autosave' }); break;
       default:
         for (const fn of hooks[step]) events.push(...runHook(step, fn, draft, ctx));

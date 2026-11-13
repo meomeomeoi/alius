@@ -1,5 +1,6 @@
 import type { Registries } from '../../content/types';
 import { TUNING } from '../tuning';
+import { traitEffects } from './traits';
 import type { Archetype, BodyStat, CampaignState, Commander } from '../state/types';
 
 export type { Archetype, BodyStat };
@@ -150,12 +151,9 @@ export function daysKnown(state: CampaignState, unitId: string): number {
   return Math.max(0, state.day - (state.relations[unitId]?.metDay ?? 1));
 }
 
-/**
- * Multiplier on body training XP; trait effects join in P7 Task 11. `state` and `reg` are already in the signature so
- * the activity code does not change then.
- */
-export function bodyGrowthMult(_state: CampaignState, _reg: Registries): number {
-  return 1;
+/** Multiplier on body training XP from the commander's `body_growth` traits (bookish: 0.7). */
+export function bodyGrowthMult(state: CampaignState, reg: Registries): number {
+  return traitEffects(state, reg, 'body_growth').reduce((m, fx) => m * fx.mult, 1);
 }
 
 /**

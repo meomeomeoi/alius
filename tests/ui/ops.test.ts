@@ -53,7 +53,7 @@ describe('OPS tab', () => {
 
   it('at night only rest and talk can be done', () => {
     const s = campaign(reg, 4);
-    s.slot = 'night';
+    s.slot = 'night'; s.calendar.nightEvent = { id: 'n1', unitId: 'unit_ann', kind: 'talk', priority: 1, framing: 'f', ignore: { event: 'dismissed', severity: 'minor' }, expiresDay: 9 }; // a real night has a knock (without one it is a quiet night, P7)
     const { btn } = render({ state: s });
     const enabled = ['train', 'workshop', 'medbay', 'work', 'scout_net', 'rest', 'mess', 'study'].filter((id) => !btn(id).disabled);
     expect(enabled).toEqual(['rest']);
@@ -131,6 +131,29 @@ describe('OPS tab', () => {
     const s = campaign(reg, 4);
     s.slot = 'evening';
     expect(render({ state: s }).card('mess').textContent).toContain('2 SUPPLIES');
+  });
+
+  it('shows the trait-adjusted cost of an activity (P7)', () => {
+    const s = campaign(reg, 4);
+    s.commander.traits = { regular: ['field_medic'] };
+    expect(render({ state: s }).card('medbay').textContent).toContain('1 SUPPLIES');
+    expect(render({ state: campaign(reg, 4) }).card('medbay').textContent).toContain('FREE');
+  });
+
+  it('shows the trait-adjusted requisition rate and checks the real price (P7)', () => {
+    const s = campaign(reg, 4);
+    s.commander.traits = { regular: ['street_raised'] };
+    s.resources.credits = 26;
+    const { host } = render({ state: s });
+    expect(host.textContent).toContain('2.6 CR per supply');
+    const input = host.querySelector<HTMLInputElement>('input[name="requisition"]')!;
+    const btn = host.querySelector<HTMLButtonElement>('button[data-requisition]')!;
+    input.value = '10'; // 26 credits with the trait (30 without)
+    change(input);
+    expect(btn.disabled).toBe(false);
+    input.value = '11';
+    change(input);
+    expect(btn.disabled).toBe(true);
   });
 
   it('requisition sends the amount', () => {

@@ -270,6 +270,49 @@ var TUNING = Object.freeze({
   })
 });
 
+// src/engine/commander/traits.ts
+function traitIds(state) {
+  const t = state.commander.traits;
+  return t ? [...t.regular, ...t.special !== void 0 ? [t.special] : []] : [];
+}
+function traitEffects(state, reg, type) {
+  const out = [];
+  for (const id of traitIds(state)) {
+    const effects2 = reg.commanderTraits.get(id)?.effects;
+    if (!Array.isArray(effects2)) continue;
+    for (const fx2 of effects2) if (fx2.type === type) out.push(fx2);
+  }
+  return out;
+}
+var hasTraitEffect = (state, reg, type) => traitEffects(state, reg, type).length > 0;
+var clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+function applyStartTraitEffects(draft, reg) {
+  for (const fx2 of traitEffects(draft, reg, "social_rank")) {
+    draft.commander.socialStats[fx2.stat] = Math.max(draft.commander.socialStats[fx2.stat], fx2.rank);
+  }
+  for (const fx2 of traitEffects(draft, reg, "seasoning_start")) {
+    draft.commander.seasoning = clamp((draft.commander.seasoning ?? 3) + fx2.amount, 1, 5);
+  }
+}
+function applyFactionTraitEffects(draft, reg) {
+  const own = draft.commander.corporationId;
+  if (own === null) return;
+  for (const fx2 of traitEffects(draft, reg, "faction_start")) {
+    draft.world.factions[own] = clamp((draft.world.factions[own] ?? 0) + fx2.amount, -100, 100);
+  }
+}
+function traitStartingTrust(state, reg, values) {
+  let sum = 0;
+  for (const fx2 of traitEffects(state, reg, "starting_trust")) {
+    if (fx2.ifValue) {
+      const v = values?.[fx2.ifValue.axis];
+      if (v === void 0 || (fx2.ifValue.sign === "+" ? !(v > 0) : !(v < 0))) continue;
+    }
+    sum += fx2.amount;
+  }
+  return sum;
+}
+
 // src/engine/commander/profile.ts
 var BODY_STATS = Object.freeze(["strength", "endurance", "reflexes"]);
 var DESCRIPTORS = Object.freeze({
@@ -373,8 +416,8 @@ function applyCommanderSetup(commander, c) {
 function daysKnown(state, unitId) {
   return Math.max(0, state.day - (state.relations[unitId]?.metDay ?? 1));
 }
-function bodyGrowthMult(_state, _reg) {
-  return 1;
+function bodyGrowthMult(state, reg) {
+  return traitEffects(state, reg, "body_growth").reduce((m, fx2) => m * fx2.mult, 1);
 }
 function addBodyXp(commander, stat2, amount) {
   const body = commander.body ??= { ...TUNING.commander.defaults.body };
@@ -578,7 +621,14 @@ function rankForPoints(points) {
   });
   return rank;
 }
-var socialRank = (state, stat2) => state.commander.socialStats[stat2];
+function socialRank(state, stat2) {
+  const rank = state.commander.socialStats[stat2];
+  if (state.commander.sleeplessDay !== state.day) return rank;
+  return Math.max(1, rank + (state.commander.sleeplessRank?.[stat2] ?? 0));
+}
+function socialGrowthMult(state, reg, stat2) {
+  return traitEffects(state, reg, "social_growth").filter((fx2) => fx2.stat === stat2).reduce((m, fx2) => m * fx2.mult, 1);
+}
 function addSocialPoints(commander, stat2, amount) {
   const before = commander.socialStats[stat2];
   const points = commander.socialPoints ??= {
@@ -597,48 +647,6 @@ function addSocialPoints(commander, stat2, amount) {
 }
 function meetsSocialRequirements(state, requires) {
   return Object.entries(requires).every(([stat2, min]) => socialRank(state, stat2) >= min);
-}
-
-// src/engine/commander/traits.ts
-function traitIds(state) {
-  const t = state.commander.traits;
-  return t ? [...t.regular, ...t.special !== void 0 ? [t.special] : []] : [];
-}
-function traitEffects(state, reg, type) {
-  const out = [];
-  for (const id of traitIds(state)) {
-    const effects2 = reg.commanderTraits.get(id)?.effects;
-    if (!Array.isArray(effects2)) continue;
-    for (const fx2 of effects2) if (fx2.type === type) out.push(fx2);
-  }
-  return out;
-}
-var clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
-function applyStartTraitEffects(draft, reg) {
-  for (const fx2 of traitEffects(draft, reg, "social_rank")) {
-    draft.commander.socialStats[fx2.stat] = Math.max(draft.commander.socialStats[fx2.stat], fx2.rank);
-  }
-  for (const fx2 of traitEffects(draft, reg, "seasoning_start")) {
-    draft.commander.seasoning = clamp((draft.commander.seasoning ?? 3) + fx2.amount, 1, 5);
-  }
-}
-function applyFactionTraitEffects(draft, reg) {
-  const own = draft.commander.corporationId;
-  if (own === null) return;
-  for (const fx2 of traitEffects(draft, reg, "faction_start")) {
-    draft.world.factions[own] = clamp((draft.world.factions[own] ?? 0) + fx2.amount, -100, 100);
-  }
-}
-function traitStartingTrust(state, reg, values) {
-  let sum = 0;
-  for (const fx2 of traitEffects(state, reg, "starting_trust")) {
-    if (fx2.ifValue) {
-      const v = values?.[fx2.ifValue.axis];
-      if (v === void 0 || (fx2.ifValue.sign === "+" ? !(v > 0) : !(v < 0))) continue;
-    }
-    sum += fx2.amount;
-  }
-  return sum;
 }
 
 // src/engine/commander/presence.ts
@@ -825,6 +833,11 @@ function recoverUnit(draft, u) {
   if (u.status === "injured") u.status = draft.roster.activeIds.includes(u.id) ? "active" : "reserve";
   return { type: "unit_recovered", unitId: u.id };
 }
+function requisitionCost(state, reg, n) {
+  const pct = traitEffects(state, reg, "requisition_price").reduce((sum, fx2) => sum + fx2.pct, 0);
+  const raw = n * TUNING.requisition.creditsPerSupply * Math.max(0, 1 + pct / 100);
+  return Math.max(n, Math.ceil(raw - 1e-9));
+}
 
 // src/engine/state/create.ts
 function createCampaign(opts) {
@@ -940,6 +953,7 @@ function leashWeekly(state, reg) {
   const corp = id === null ? void 0 : reg.corporations.get(id);
   const weekly = corp?.leash?.weekly ?? TUNING.leash.weeklyFallback;
   let n = weekly + crimeEffectAmount(reg, state.commander.crimeId, "leash_weekly");
+  n += traitEffects(state, reg, "leash_weekly").reduce((sum, fx2) => sum + fx2.amount, 0);
   if (id !== null) {
     const standing = factionStanding(state, id);
     if (standing >= TUNING.leash.standingStep) n += 1;
@@ -1467,9 +1481,14 @@ function facilityTimers(draft, ctx2) {
   draft.base.upgrades = pending2;
   return events;
 }
-function nightCheck(draft) {
+var isQuietNight = (state) => state.slot === "night" && state.calendar.nightEvent === void 0;
+function nightCheck(draft, reg) {
   const events = [];
-  if (draft.calendar.nightEventsQueue.length > 0) {
+  if (draft.calendar.nightEventsQueue.length === 0 && hasTraitEffect(draft, reg, "night_slot")) {
+    draft.slot = "night";
+    events.push({ type: "slot_advanced", from: "evening", to: "night", day: draft.day });
+    events.push({ type: "quiet_night_started", day: draft.day });
+  } else if (draft.calendar.nightEventsQueue.length > 0) {
     draft.calendar.nightEvent = draft.calendar.nightEventsQueue.shift();
     draft.slot = "night";
     events.push({ type: "slot_advanced", from: "evening", to: "night", day: draft.day });
@@ -1495,7 +1514,7 @@ function endOfDay(draft, ctx2) {
         events.push(...facilityTimers(draft, ctx2));
         break;
       case "night_check":
-        events.push(...nightCheck(draft));
+        events.push(...nightCheck(draft, ctx2.registries));
         break;
       case "autosave":
         events.push({ type: "autosave" });
@@ -1534,6 +1553,14 @@ var activityHooks = [];
 var registerActivityHook = (fn) => {
   activityHooks.push(fn);
 };
+function activityCost(state, reg, a) {
+  const out = { ...a.cost };
+  for (const fx2 of traitEffects(state, reg, "activity_cost")) {
+    if (fx2.activityId === a.id) out[fx2.resource] = Math.max(0, (out[fx2.resource] ?? 0) + fx2.amount);
+  }
+  for (const k of ["credits", "supplies", "plyx"]) if (out[k] === 0) delete out[k];
+  return out;
+}
 var clamp5 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var asReq = (v) => {
   if (typeof v !== "object" || v === null || Array.isArray(v)) return null;
@@ -1555,7 +1582,8 @@ function checkActivity(state, reg, request) {
   if (!a) return `Unknown activity "${req.activityId}".`;
   const name = String(a.name);
   if (state.calendar.pendingScene) return "A conversation is still open; end it first.";
-  if (!a.slotRules.includes(state.slot)) return `${name} is not available in the ${state.slot}.`;
+  const slot2 = isQuietNight(state) ? "evening" : state.slot;
+  if (!a.slotRules.includes(slot2)) return `${name} is not available in the ${state.slot}.`;
   const need = a.facilityReq;
   if (need && facilityLevel(state, need.id) < need.level) {
     return `${name} needs ${String(reg.facilities.get(need.id)?.name ?? need.id)} level ${need.level}.`;
@@ -1563,7 +1591,7 @@ function checkActivity(state, reg, request) {
   if (a.blockedWhenCommanderInjured === true && state.day < (state.commander.injuredUntilDay ?? 0)) {
     return `The commander is injured; ${name} is blocked until day ${state.commander.injuredUntilDay}.`;
   }
-  const cost = a.cost;
+  const cost = activityCost(state, reg, a);
   for (const k of ["credits", "supplies", "plyx"]) {
     if ((cost[k] ?? 0) > state.resources[k]) return `Not enough ${k} for ${name} (needs ${cost[k]}).`;
   }
@@ -1602,7 +1630,7 @@ function runActivity(draft, ctx2, request) {
   const req = asReq(request);
   const a = reg.activities.get(req.activityId);
   const events = [];
-  const cost = a.cost;
+  const cost = activityCost(draft, reg, a);
   for (const k of ["credits", "supplies", "plyx"]) {
     if (cost[k]) {
       draft.resources[k] -= cost[k];
@@ -1629,12 +1657,12 @@ function runActivity(draft, ctx2, request) {
         break;
       }
       case "commander_stat": {
-        const r = addSocialPoints(draft.commander, fx2.stat, scaled(fx2.amount, draft, reg, fx2.scale));
+        const r = addSocialPoints(draft.commander, fx2.stat, Math.round(scaled(fx2.amount, draft, reg, fx2.scale) * socialGrowthMult(draft, reg, fx2.stat)));
         events.push({ type: "social_gained", stat: fx2.stat, gained: r.gained, rank: r.rank, rankedUp: r.rankedUp });
         break;
       }
       case "commander_body_xp": {
-        const r = addBodyXp(draft.commander, fx2.stat, TUNING.commander.bodyXpPerSession * bodyGrowthMult(draft, reg));
+        const r = addBodyXp(draft.commander, fx2.stat, Math.round(TUNING.commander.bodyXpPerSession * bodyGrowthMult(draft, reg)));
         events.push({ type: "body_trained", stat: fx2.stat, value: r.value, raised: r.gained });
         break;
       }
@@ -1691,6 +1719,20 @@ function runActivity(draft, ctx2, request) {
         break;
     }
   }
+  if (companion) {
+    for (const fx2 of traitEffects(draft, reg, "activity_relation")) {
+      if (fx2.activityId !== a.id || companion.kind === "grunt" && fx2.axis !== "trust") continue;
+      const applied = applyRelationDelta(draft, companion.id, fx2.axis, fx2.amount, `activity:${a.id}`);
+      events.push({ type: "relation_changed", unitId: companion.id, axis: fx2.axis, applied });
+    }
+  }
+  if (isQuietNight(draft)) {
+    const penalty = traitEffects(draft, reg, "sleepless_rank");
+    if (penalty.length > 0) {
+      draft.commander.sleeplessDay = draft.day + 1;
+      draft.commander.sleeplessRank = Object.fromEntries(penalty.map((fx2) => [fx2.stat, fx2.amount]));
+    }
+  }
   events.push({
     type: "activity_done",
     activityId: a.id,
@@ -1728,6 +1770,10 @@ registerAction("calendar/consume_slot", (draft, payload, ctx2) => {
   if (slots > left) throw new Error(`calendar/consume_slot: ${slots} slot(s) requested but only ${left} left in the ${draft.slot}`);
   return consumeSlots(draft, slots, ctx2);
 });
+registerAction("calendar/sleep", (draft, _payload, ctx2) => {
+  if (!isQuietNight(draft)) throw new Error("There is nothing to sleep through.");
+  return consumeSlots(draft, 1, ctx2);
+});
 registerAction("activity/do", (draft, payload, ctx2) => runActivity(draft, ctx2, payload));
 registerAction("commander/injure", (draft, payload) => {
   const days = isObj3(payload) ? payload.days : void 0;
@@ -1759,10 +1805,10 @@ registerAction("base/upgrade", (draft, payload, ctx2) => {
     { type: "upgrade_started", facilityId: id, toLevel: level + 1, days: up.days }
   ];
 });
-registerAction("base/requisition", (draft, payload) => {
+registerAction("base/requisition", (draft, payload, ctx2) => {
   const n = isObj4(payload) ? payload.supplies : void 0;
   if (typeof n !== "number" || !Number.isInteger(n) || n < 1) throw new Error("base/requisition: supplies must be a positive integer");
-  const credits = n * TUNING.requisition.creditsPerSupply;
+  const credits = requisitionCost(draft, ctx2.registries, n);
   if (draft.resources.credits < credits) throw new Error(`Not enough credits: ${n} supplies cost ${credits}.`);
   draft.resources.credits -= credits;
   draft.resources.supplies += n;
@@ -2097,6 +2143,16 @@ function computeDeltas(state, reg, unitId, event) {
   trust *= image;
   affinity *= image;
   attraction *= image;
+  if (trust > 0 && daysKnown(state, unitId) < TUNING.commander.earlyDays) {
+    const pct = traitEffects(state, reg, "early_trust_gain").reduce((n, fx2) => n + fx2.pct, 0);
+    trust *= Math.max(0, 1 + pct / 100);
+  }
+  for (const fx2 of traitEffects(state, reg, "relation_event_mult")) {
+    if (fx2.event !== event.type || fx2.ifTrigger !== void 0 && !unit.triggers.includes(fx2.ifTrigger)) continue;
+    trust *= fx2.mult;
+    affinity *= fx2.mult;
+    attraction *= fx2.mult;
+  }
   if (def.attractionUsesReceptivity === true && attraction > 0) attraction *= receptivity(state, unitId);
   if (unit.kind === "grunt") {
     affinity = 0;
@@ -3319,15 +3375,19 @@ function removeFromService(draft, unitId, status) {
   const waiting2 = draft.dilemmas?.open;
   if (waiting2) waiting2.units = waiting2.units.filter((id) => id !== unitId);
 }
+function terminateChance(state, reg) {
+  const own = state.commander.corporationId;
+  const base = (own === null ? void 0 : reg.corporations.get(own)?.leash?.approval) ?? 0.5;
+  const t = TUNING.leash.terminate;
+  const traits = traitEffects(state, reg, "terminate_approval").reduce((n, fx2) => n + fx2.amount, 0);
+  return clamp9(base + t.approvalPerStanding * (own === null ? 0 : factionStanding(state, own)) + traits, t.approvalMin, t.approvalMax);
+}
 function terminate(draft, ctx2, unitId) {
   const reg = ctx2.registries;
   const why = checkLeash(draft, reg, "terminate", unitId);
   if (why) throw new Error(why);
   const unit = unitOf(draft, unitId);
-  const own = draft.commander.corporationId;
-  const base = (own === null ? void 0 : reg.corporations.get(own)?.leash?.approval) ?? 0.5;
-  const t = TUNING.leash.terminate;
-  const chance = clamp9(base + t.approvalPerStanding * (own === null ? 0 : factionStanding(draft, own)), t.approvalMin, t.approvalMax);
+  const chance = terminateChance(draft, reg);
   if (!ctx2.rng.chance(chance)) {
     loyaltyRecord(draft, unitId).deniedDay = draft.day;
     return { approved: false, events: bookUse(draft, unitId, "terminate", "desertion", "denied") };
@@ -3523,9 +3583,10 @@ function arcDayStep(draft, ctx2) {
 }
 
 // src/engine/combat/crisis.ts
-function commanderMaxHp(state, _reg) {
+function commanderMaxHp(state, reg) {
   const t = TUNING.commander;
-  return Math.max(t.crisisHpMin, t.crisisHpBase + t.crisisHpPerEndurance * commanderProfile(state).body.endurance);
+  const traits = traitEffects(state, reg, "crisis_hp").reduce((n, fx2) => n + fx2.amount, 0);
+  return Math.max(t.crisisHpMin, t.crisisHpBase + t.crisisHpPerEndurance * commanderProfile(state).body.endurance + traits);
 }
 var dodgeChance = (state) => TUNING.commander.dodgePerReflex * commanderProfile(state).body.reflexes;
 function presenceKind(archetype) {
@@ -18154,7 +18215,7 @@ function activityCard(a, state, ctx2) {
     "article",
     { class: "alius-activity", "data-activity": String(a.id) },
     h("h3", {}, h("span", { class: "alius-chip", ...analyzeAttrs(`activities:${String(a.id)}`) }, String(a.name))),
-    h("p", { class: "alius-dim" }, `${String(a.summary)} \u2014 ${costText2(a.cost)}`),
+    h("p", { class: "alius-dim" }, `${String(a.summary)} \u2014 ${costText2(activityCost(state, ctx2.registries, a))}`),
     controls,
     reasonEl,
     btn
@@ -18162,13 +18223,13 @@ function activityCard(a, state, ctx2) {
 }
 var remembered = /* @__PURE__ */ new WeakMap();
 function requisition(state, ctx2, host) {
-  const rate = TUNING.requisition.creditsPerSupply;
+  const rate = +(requisitionCost(state, ctx2.registries, 10) / 10).toFixed(2);
   const input = h("input", { type: "number", name: "requisition", min: "1", step: "1", value: remembered.get(host) ?? "5", "aria-label": "Supplies to requisition" });
   const btn = h("button", { type: "button", class: "alius-btn alius-option", "data-requisition": "", ...analyzeNative("glossary:supplies") }, "[ REQUISITION ]");
   const sync = () => {
     remembered.set(host, input.value);
     const n = Math.floor(Number(input.value));
-    btn.disabled = !(n >= 1) || n * rate > state.resources.credits;
+    btn.disabled = !(n >= 1) || requisitionCost(state, ctx2.registries, n) > state.resources.credits;
   };
   input.addEventListener("input", sync);
   input.addEventListener("change", sync);

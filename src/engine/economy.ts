@@ -1,4 +1,5 @@
 import type { Registries } from '../content/types';
+import { traitEffects } from './commander/traits';
 import type { EngineEvent } from './dispatch';
 import { applyRelationDelta } from './relationGain';
 import type { CampaignState, Unit } from './state/types';
@@ -126,4 +127,14 @@ export function recoverUnit(draft: CampaignState, u: Unit): EngineEvent {
   u.injuries = [];
   if (u.status === 'injured') u.status = draft.roster.activeIds.includes(u.id) ? 'active' : 'reserve';
   return { type: 'unit_recovered', unitId: u.id };
+}
+
+/**
+ * What `n` supplies cost in credits: the fixed rate, changed by the commander's `requisition_price` traits, rounded up and
+ * never below 1 credit per supply.
+ */
+export function requisitionCost(state: CampaignState, reg: Registries, n: number): number {
+  const pct = traitEffects(state, reg, 'requisition_price').reduce((sum, fx) => sum + fx.pct, 0);
+  const raw = n * TUNING.requisition.creditsPerSupply * Math.max(0, 1 + pct / 100);
+  return Math.max(n, Math.ceil(raw - 1e-9));
 }

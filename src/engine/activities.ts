@@ -1,12 +1,13 @@
 import type { Entry, Registries } from '../content/types';
 import type { ActivityEffect } from '../content/schemas';
-import { consumeSlots } from './calendar';
+import { consumeSlots, isQuietNight } from './calendar';
 import type { EngineCtx, EngineEvent } from './dispatch';
 import { activeRosterUnits, facilityEffect, facilityLevel, isLiving, recoverUnit } from './economy';
 import { applyRelationDelta } from './relationGain';
-import { addSocialPoints, socialRank } from './social';
+import { addSocialPoints, socialGrowthMult, socialRank } from './social';
 import type { CampaignState, Unit } from './state/types';
 import { addBodyXp, bodyGrowthMult } from './commander/profile';
+import { traitEffects } from './commander/traits';
 import { TUNING } from './tuning';
 
 export interface ActivityRequest {
@@ -40,6 +41,16 @@ export const resetActivityHooks = (): void => {
   activityHooks.length = 0;
 };
 
+/** What an activity costs the commander now: its own cost plus the `activity_cost` trait effects for it (P7). */
+export function activityCost(state: CampaignState, reg: Registries, a: Entry): Cost {
+  const out: Cost = { ...(a.cost as Cost) };
+  for (const fx of traitEffects(state, reg, 'activity_cost')) {
+    if (fx.activityId === a.id) out[fx.resource] = Math.max(0, (out[fx.resource] ?? 0) + fx.amount);
+  }
+  for (const k of ['credits', 'supplies', 'plyx'] as const) if (out[k] === 0) delete out[k];
+  return out;
+}
+
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
 const asReq = (v: unknown): ActivityRequest | null => {
   if (typeof v !== 'object' || v === null || Array.isArray(v)) return null;
@@ -66,7 +77,9 @@ export function checkActivity(state: CampaignState, reg: Registries, request: un
   const name = String(a.name);
 
   if (state.calendar.pendingScene) return 'A conversation is still open; end it first.';
-  if (!(a.slotRules as string[]).includes(state.slot)) return `${name} is not available in the ${state.slot}.`;
+  // P7: in a quiet night the evening's rules apply
+  const slot = isQuietNight(state) ? 'evening' : state.slot;
+  if (!(a.slotRules as string[]).includes(slot)) return `${name} is not available in the ${state.slot}.`;
   const need = a.facilityReq as { id: string; level: number } | undefined;
   if (need && facilityLevel(state, need.id) < need.level) {
     return `${name} needs ${String(reg.facilities.get(need.id)?.name ?? need.id)} level ${need.level}.`;
@@ -74,7 +87,7 @@ export function checkActivity(state: CampaignState, reg: Registries, request: un
   if (a.blockedWhenCommanderInjured === true && state.day < (state.commander.injuredUntilDay ?? 0)) {
     return `The commander is injured; ${name} is blocked until day ${state.commander.injuredUntilDay}.`;
   }
-  const cost = a.cost as Cost;
+  const cost = activityCost(state, reg, a);
   for (const k of ['credits', 'supplies', 'plyx'] as const) {
     if ((cost[k] ?? 0) > state.resources[k]) return `Not enough ${k} for ${name} (needs ${cost[k]}).`;
   }
@@ -119,7 +132,7 @@ export function runActivity(draft: CampaignState, ctx: EngineCtx, request: unkno
   const a = reg.activities.get(req.activityId) as Entry;
   const events: EngineEvent[] = [];
 
-  const cost = a.cost as Cost;
+  const cost = activityCost(draft, reg, a);
   for (const k of ['credits', 'supplies', 'plyx'] as const) {
     if (cost[k]) {
       draft.resources[k] -= cost[k]!;
@@ -152,12 +165,12 @@ export function runActivity(draft: CampaignState, ctx: EngineCtx, request: unkno
         break;
       }
       case 'commander_stat': {
-        const r = addSocialPoints(draft.commander, fx.stat, scaled(fx.amount, draft, reg, fx.scale));
+        const r = addSocialPoints(draft.commander, fx.stat, Math.round(scaled(fx.amount, draft, reg, fx.scale) * socialGrowthMult(draft, reg, fx.stat)));
         events.push({ type: 'social_gained', stat: fx.stat, gained: r.gained, rank: r.rank, rankedUp: r.rankedUp });
         break;
       }
       case 'commander_body_xp': {
-        const r = addBodyXp(draft.commander, fx.stat, TUNING.commander.bodyXpPerSession * bodyGrowthMult(draft, reg));
+        const r = addBodyXp(draft.commander, fx.stat, Math.round(TUNING.commander.bodyXpPerSession * bodyGrowthMult(draft, reg)));
         events.push({ type: 'body_trained', stat: fx.stat, value: r.value, raised: r.gained });
         break;
       }
@@ -211,6 +224,24 @@ export function runActivity(draft: CampaignState, ctx: EngineCtx, request: unkno
           ...(fx.event === 'scene_requested' ? { origin: 'activity' } : {}),
         });
         break;
+    }
+  }
+
+  // P7: `activity_relation` traits: the companion warms up to a particular activity
+  if (companion) {
+    for (const fx of traitEffects(draft, reg, 'activity_relation')) {
+      if (fx.activityId !== a.id || (companion.kind === 'grunt' && fx.axis !== 'trust')) continue;
+      const applied = applyRelationDelta(draft, companion.id, fx.axis, fx.amount, `activity:${a.id}`);
+      events.push({ type: 'relation_changed', unitId: companion.id, axis: fx.axis, applied });
+    }
+  }
+
+  // P7: a night spent doing something is a night not slept: tomorrow the trait's rank penalty applies
+  if (isQuietNight(draft)) {
+    const penalty = traitEffects(draft, reg, 'sleepless_rank');
+    if (penalty.length > 0) {
+      draft.commander.sleeplessDay = draft.day + 1;
+      draft.commander.sleeplessRank = Object.fromEntries(penalty.map((fx) => [fx.stat, fx.amount]));
     }
   }
 

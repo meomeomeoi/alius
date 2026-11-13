@@ -10,6 +10,7 @@ import { roundAway } from '../relations/gain';
 import { evaluateAutomatic, evaluateEvent, pushHistory } from '../relations/graph';
 import type { EventIntent } from '../relations/intents';
 import type { CampaignState, LeashKind, LeashLogEntry, Unit } from '../state/types';
+import { traitEffects } from '../commander/traits';
 import { TUNING } from '../tuning';
 import { factionStanding } from '../world/state';
 import { crimeEffectAmount, leashLog } from './weekly';
@@ -212,6 +213,15 @@ export function removeFromService(draft: CampaignState, unitId: string, status: 
   if (waiting) waiting.units = waiting.units.filter((id) => id !== unitId);
 }
 
+/** The oversight's approval of a termination: the corporation's base, a little per point of its standing, and the commander's traits. */
+export function terminateChance(state: CampaignState, reg: Registries): number {
+  const own = state.commander.corporationId;
+  const base = (own === null ? undefined : (reg.corporations.get(own)?.leash as { approval: number } | undefined)?.approval) ?? 0.5;
+  const t = TUNING.leash.terminate;
+  const traits = traitEffects(state, reg, 'terminate_approval').reduce((n, fx) => n + fx.amount, 0);
+  return clamp(base + t.approvalPerStanding * (own === null ? 0 : factionStanding(state, own)) + traits, t.approvalMin, t.approvalMax);
+}
+
 /**
  * Asks oversight for a permanent deactivation. The approval roll is the corporation's base plus a little per point of
  * its standing. An approved request costs one authorization; a denied one costs none and cannot be filed again today.
@@ -221,10 +231,7 @@ export function terminate(draft: CampaignState, ctx: EngineCtx, unitId: string):
   const why = checkLeash(draft, reg, 'terminate', unitId);
   if (why) throw new Error(why);
   const unit = unitOf(draft, unitId)!;
-  const own = draft.commander.corporationId;
-  const base = (own === null ? undefined : (reg.corporations.get(own)?.leash as { approval: number } | undefined)?.approval) ?? 0.5;
-  const t = TUNING.leash.terminate;
-  const chance = clamp(base + t.approvalPerStanding * (own === null ? 0 : factionStanding(draft, own)), t.approvalMin, t.approvalMax);
+  const chance = terminateChance(draft, reg);
   if (!ctx.rng.chance(chance)) {
     loyaltyRecord(draft, unitId).deniedDay = draft.day;
     return { approved: false, events: bookUse(draft, unitId, 'terminate', 'desertion', 'denied') };

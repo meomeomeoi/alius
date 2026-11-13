@@ -3,6 +3,7 @@ import type { EngineEvent } from '../dispatch';
 import type { Rng } from '../rng';
 import type { Archetype, CampaignState, BodyStat } from '../state/types';
 import { archetypeOf, commanderProfile } from '../commander/profile';
+import { traitEffects } from '../commander/traits';
 import { TUNING } from '../tuning';
 import type { PresenceKind } from './types';
 
@@ -10,10 +11,11 @@ import type { PresenceKind } from './types';
  * P7: the commander's side of combat. Rules only; the combat modules call these at a few hook points.
  */
 
-/** 20 + 10 × endurance (trait effects join in P7 Task 11), at least `crisisHpMin`. */
-export function commanderMaxHp(state: CampaignState, _reg: Registries): number {
+/** 20 + 10 × endurance + the `crisis_hp` trait effects, at least `crisisHpMin`. */
+export function commanderMaxHp(state: CampaignState, reg: Registries): number {
   const t = TUNING.commander;
-  return Math.max(t.crisisHpMin, t.crisisHpBase + t.crisisHpPerEndurance * commanderProfile(state).body.endurance);
+  const traits = traitEffects(state, reg, 'crisis_hp').reduce((n, fx) => n + fx.amount, 0);
+  return Math.max(t.crisisHpMin, t.crisisHpBase + t.crisisHpPerEndurance * commanderProfile(state).body.endurance + traits);
 }
 
 /** The commander's dodge chance against a hit that reaches him: 6 % × reflexes. */

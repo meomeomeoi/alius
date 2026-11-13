@@ -2,6 +2,8 @@ import type { Registries } from '../../content/types';
 import type { CampaignState, Severity } from '../state/types';
 import { TUNING } from '../tuning';
 import { imageMultiplier } from '../commander/presence';
+import { daysKnown } from '../commander/profile';
+import { traitEffects } from '../commander/traits';
 import { intimacyOf } from './gain';
 import type { EventIntent } from './intents';
 import { SEVERITIES } from './vocab';
@@ -113,6 +115,18 @@ export function computeDeltas(state: CampaignState, reg: Registries, unitId: str
   trust *= image;
   affinity *= image;
   attraction *= image;
+
+  // P7 traits: `early_trust_gain` on Trust gains while the unit is new to him; `relation_event_mult` on one event type
+  if (trust > 0 && daysKnown(state, unitId) < TUNING.commander.earlyDays) {
+    const pct = traitEffects(state, reg, 'early_trust_gain').reduce((n, fx) => n + fx.pct, 0);
+    trust *= Math.max(0, 1 + pct / 100);
+  }
+  for (const fx of traitEffects(state, reg, 'relation_event_mult')) {
+    if (fx.event !== event.type || (fx.ifTrigger !== undefined && !unit.triggers.includes(fx.ifTrigger))) continue;
+    trust *= fx.mult;
+    affinity *= fx.mult;
+    attraction *= fx.mult;
+  }
 
   // receptivity on attraction gains
   if (def.attractionUsesReceptivity === true && attraction > 0) attraction *= receptivity(state, unitId);

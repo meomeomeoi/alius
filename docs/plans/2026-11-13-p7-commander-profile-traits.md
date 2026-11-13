@@ -288,9 +288,9 @@ docs/** (Task 19), tests/** mirror src
 - Consumes: `traitEffects`, `hasTraitEffect` (Task 10).
 - Produces: `activityCost(state, reg, activity: Entry): { credits?: number; supplies?: number; plyx?: number }`; `isQuietNight(state): boolean` (`slot === 'night' && !calendar.nightEvent`); `calendar/sleep {}` (only in a quiet night; error `There is nothing to sleep through.`), event `quiet_night_started`.
 
-- [ ] **Step 1: Write the failing tests** — `silver_tongue gains cunning 1.5× (rounded)`; `bookish trains a body stat in ceil(30/7) sessions`; `field_medic medbay costs 1 supply more and gives the companion +3 affinity`; `old_wound has 10 HP less in Crisis`; `old_wound raises a trust gain by 15% on day 3 and not on day 20`; `pretty_face lowers it by 10%`; `a detected lie costs 1.5× with a lies-triggered unit only`; `corporate_polish gives one more weekly authorization`; `street_raised requisition is 15% cheaper and termination approval 0.1 lower`; quiet night: `an insomniac's empty evening enters a quiet night`; `a quiet night has no night event and night/open refuses`; `an activity in a quiet night makes the next day sleepless and Empathy reads one lower`; `sleep ends the night with no penalty`; `a queued night event still comes first`.
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → green.
-- [ ] **Step 5: Commit** `feat(engine): commander trait hooks and the quiet night`.
+- [x] **Step 1: Write the failing tests** — `silver_tongue gains cunning 1.5× (rounded)`; `bookish trains a body stat in ceil(30/7) sessions`; `field_medic medbay costs 1 supply more and gives the companion +3 affinity`; `old_wound has 10 HP less in Crisis`; `old_wound raises a trust gain by 15% on day 3 and not on day 20`; `pretty_face lowers it by 10%`; `a detected lie costs 1.5× with a lies-triggered unit only`; `corporate_polish gives one more weekly authorization`; `street_raised requisition is 15% cheaper and termination approval 0.1 lower`; quiet night: `an insomniac's empty evening enters a quiet night`; `a quiet night has no night event and night/open refuses`; `an activity in a quiet night makes the next day sleepless and Empathy reads one lower`; `sleep ends the night with no penalty`; `a queued night event still comes first`.
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → green.
+- [x] **Step 5: Commit** `feat(engine): commander trait hooks and the quiet night`.
 
 ---
 

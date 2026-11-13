@@ -1,5 +1,5 @@
 import { GENERATED_NAME, GRUNT_BIO_MAX, generateGrunt, gruntRelation } from '../grunts';
-import { activeRosterUnits, checkRecruit, checkUpgrade, facilityLevel, facilityLevels, isLiving } from '../economy';
+import { activeRosterUnits, checkRecruit, checkUpgrade, facilityLevel, facilityLevels, isLiving, requisitionCost } from '../economy';
 import { registerAction } from '../dispatch';
 import { TUNING } from '../tuning';
 
@@ -26,10 +26,10 @@ registerAction('base/upgrade', (draft, payload, ctx) => {
 });
 
 /** Closes the supply loop until expeditions (P5) bring supplies: credits → supplies at a fixed rate. */
-registerAction('base/requisition', (draft, payload) => {
+registerAction('base/requisition', (draft, payload, ctx) => {
   const n = isObj(payload) ? payload.supplies : undefined;
   if (typeof n !== 'number' || !Number.isInteger(n) || n < 1) throw new Error('base/requisition: supplies must be a positive integer');
-  const credits = n * TUNING.requisition.creditsPerSupply;
+  const credits = requisitionCost(draft, ctx.registries, n);
   if (draft.resources.credits < credits) throw new Error(`Not enough credits: ${n} supplies cost ${credits}.`);
   draft.resources.credits -= credits;
   draft.resources.supplies += n;

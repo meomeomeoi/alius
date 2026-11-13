@@ -226,7 +226,7 @@ describe('rejections leave the state untouched', () => {
 
   it('wrong slot', () => {
     const s = fresh();
-    s.slot = 'night';
+    s.slot = 'night'; s.calendar.nightEvent = { id: 'n1', unitId: 'unit_ann', kind: 'talk', priority: 1, framing: 'f', ignore: { event: 'dismissed', severity: 'minor' }, expiresDay: 9 }; // a real night has a knock (without one it is a quiet night, P7)
     rejected(s, { activityId: 'work' }, /night/i);
     rejected(s, { activityId: 'mess' }, /night/i);
   });
@@ -416,7 +416,7 @@ describe('defect social hooks (P3)', () => {
     registerActivityHook((_d, _c, done) => { calls.push(done.activityId); return []; });
     try {
       const s = fresh();
-      s.slot = 'night';
+      s.slot = 'night'; s.calendar.nightEvent = { id: 'n1', unitId: 'unit_ann', kind: 'talk', priority: 1, framing: 'f', ignore: { event: 'dismissed', severity: 'minor' }, expiresDay: 9 }; // a real night has a knock (without one it is a quiet night, P7)
       rejected(s, { activityId: 'mess' }, /night/i);
       expect(calls).toEqual([]);
       const ok = fresh();

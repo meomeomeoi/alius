@@ -283,6 +283,8 @@ export interface Commander {
   fileReviewed?: boolean;
   /** P7: the day (a quiet night's follower) on which the effective Empathy rank is lowered by `sleepless_rank`. */
   sleeplessDay?: number;
+  /** P7: the rank changes that apply on `sleeplessDay` (copied from the `sleepless_rank` trait effects when the night was spent awake). */
+  sleeplessRank?: Partial<Record<'authority' | 'insight' | 'empathy' | 'cunning', number>>;
 }
 
 export type BodyStat = 'strength' | 'endurance' | 'reflexes';

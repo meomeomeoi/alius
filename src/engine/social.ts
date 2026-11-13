@@ -1,3 +1,5 @@
+import type { Registries } from '../content/types';
+import { traitEffects } from './commander/traits';
 import type { CampaignState, Commander } from './state/types';
 
 export const SOCIAL_STATS = ['authority', 'insight', 'empathy', 'cunning'] as const;
@@ -16,7 +18,17 @@ export function rankForPoints(points: number): number {
   return rank;
 }
 
-export const socialRank = (state: CampaignState, stat: SocialStat): number => state.commander.socialStats[stat];
+/** The effective rank: the stored one, lowered on a sleepless day by the trait's `sleepless_rank` (never below 1). */
+export function socialRank(state: CampaignState, stat: SocialStat): number {
+  const rank = state.commander.socialStats[stat];
+  if (state.commander.sleeplessDay !== state.day) return rank;
+  return Math.max(1, rank + (state.commander.sleeplessRank?.[stat] ?? 0));
+}
+
+/** Multiplier on this stat's activity points from the commander's `social_growth` traits. */
+export function socialGrowthMult(state: CampaignState, reg: Registries, stat: SocialStat): number {
+  return traitEffects(state, reg, 'social_growth').filter((fx) => fx.stat === stat).reduce((m, fx) => m * fx.mult, 1);
+}
 
 /**
  * Adds points to a stat. Without stored points the current rank counts as its threshold, so a rank
