@@ -1009,6 +1009,29 @@ function refreshLeash(draft, reg) {
   return [{ type: "leash_refreshed", left: draft.leash.authorizationsLeft }];
 }
 
+// src/engine/worldOptions/options.ts
+var optionEntries = (reg) => [...reg.worldOptions.values()];
+function pick(option, stored) {
+  return option.choices.find((c) => c.id === stored) ?? option.choices.find((c) => c.id === option.default) ?? option.choices[0];
+}
+function worldChoice(state, reg, optionId) {
+  const option = reg.worldOptions.get(optionId);
+  if (!option) return null;
+  return { option, choice: pick(option, state.world.options?.[optionId]) };
+}
+function defaultWorldOptions(reg) {
+  return Object.fromEntries(optionEntries(reg).map((o) => [o.id, o.default]));
+}
+function validateWorldOptions(options2, reg) {
+  const out = [];
+  for (const [optionId, choiceId] of Object.entries(options2 ?? {})) {
+    const option = reg.worldOptions.get(optionId);
+    if (!option) out.push(`Unknown world option "${optionId}"`);
+    else if (!option.choices.some((c) => c.id === choiceId)) out.push(`Unknown choice "${String(choiceId)}" for world option "${optionId}"`);
+  }
+  return out;
+}
+
 // src/engine/state/types.ts
 var VALUE_AXES = ["pragmatism", "autonomy", "ingroup", "mercy", "corporate", "sacrifice"];
 var RARITIES = ["standard", "refined", "prototype", "corporate", "anomalous"];
@@ -1111,6 +1134,7 @@ function validateSetup(r, reg, opts) {
   }
   if (!reg.crimes.has(r.crimeId)) out.push(`Unknown crime "${r.crimeId}"`);
   if (r.commander !== void 0) out.push(...validateCommanderSetup(r.commander, reg, opts));
+  if (r.world !== void 0) out.push(...validateWorldOptions(r.world.options, reg));
   const units = r.units ?? [];
   if (units.length > SETUP_LIMITS.maxUnits) out.push(`At most ${SETUP_LIMITS.maxUnits} units (has ${units.length})`);
   const cards = /* @__PURE__ */ new Set();
@@ -1207,6 +1231,7 @@ function buildCampaign(r, reg, opts) {
   applyCommanderSetup(state.commander, r.commander ?? defaultCommanderSetup());
   state.commander.fileReviewed = true;
   state.world.startId = start.id;
+  state.world.options = { ...defaultWorldOptions(reg), ...r.world?.options ?? {} };
   state.settings = { desireBondDefects: opts.desireBondDefects };
   const base = start.startingResources;
   for (const k of ["credits", "supplies", "plyx"]) state.resources[k] += base?.[k] ?? 0;
@@ -2311,8 +2336,8 @@ function evaluateAutomatic(draft, reg, unitId) {
   }
   if (target === null) {
     const rank = cur?.priority ?? -1;
-    const pick = candidates(draft, reg, unitId, "automatic").find((st) => st.priority > rank);
-    if (pick) target = pick.id;
+    const pick2 = candidates(draft, reg, unitId, "automatic").find((st) => st.priority > rank);
+    if (pick2) target = pick2.id;
   }
   if (target !== null) events.push(enterState(draft, unitId, target, why));
   const band = nextLoyaltyBand(rel.loyaltyBand, rel.trust);
@@ -2324,8 +2349,8 @@ function evaluateAutomatic(draft, reg, unitId) {
 }
 function evaluateEvent(draft, reg, unitId, eventType) {
   if (!draft.relations[unitId] || !draft.squad.some((u) => u.id === unitId)) return [];
-  const pick = candidates(draft, reg, unitId, "event", eventType)[0];
-  return pick ? [enterState(draft, unitId, pick.id, `event:${eventType}`)] : [];
+  const pick2 = candidates(draft, reg, unitId, "event", eventType)[0];
+  return pick2 ? [enterState(draft, unitId, pick2.id, `event:${eventType}`)] : [];
 }
 var ORDER = ["too_soon", "no_trust", "not_interested", "committed"];
 function failedGroup(state, reg, unitId, cond) {
@@ -4258,8 +4283,8 @@ function breakdownAction(ctx2, cid, opts = {}) {
     case "random_skill": {
       const options2 = c.skills.map((id) => skillById(ctx2.reg, id)).filter((s) => !!s && s.kind !== "passive" && s.kind !== "ultimate" && (c.cooldowns[s.id] ?? 0) === 0).map((s) => ({ s, legal: legalTargets(cs, cid, s, ctx2.reg) })).filter((o) => o.legal.length > 0);
       if (options2.length === 0) return { kind: "pass" };
-      const pick = ctx2.rng.pick(options2);
-      return { kind: "skill", skillId: pick.s.id, targetCid: ctx2.rng.pick(pick.legal) };
+      const pick2 = ctx2.rng.pick(options2);
+      return { kind: "skill", skillId: pick2.s.id, targetCid: ctx2.rng.pick(pick2.legal) };
     }
     default:
       return null;
@@ -5458,8 +5483,8 @@ function chooseAction(ctx2, cid) {
   const opts = options(ctx2, cid, usable3);
   switch (c.aiProfile) {
     case "erratic": {
-      const pick = ctx2.rng.pick(usable3);
-      return { kind: "skill", skillId: pick.skill.id, targetCid: ctx2.rng.pick(pick.targets) };
+      const pick2 = ctx2.rng.pick(usable3);
+      return { kind: "skill", skillId: pick2.skill.id, targetCid: ctx2.rng.pick(pick2.targets) };
     }
     case "predator": {
       const damaging = opts.filter((o) => o.damage > 0);
@@ -5900,14 +5925,14 @@ function buildMission(draft, ctx2, o) {
   const reg = ctx2.registries;
   const tpl = reg.missionTemplates.get(o.templateId);
   const region = reg.regions.get(o.regionId);
-  const pick = (list5) => list5[ctx2.rng.int(0, list5.length - 1)];
+  const pick2 = (list5) => list5[ctx2.rng.int(0, list5.length - 1)];
   const objective = tpl.objectives.find((x) => x.node === o.objectiveNode) ?? tpl.objectives[0];
   const mission = {
     id: nextId(draft, "m"),
     source: o.source,
     templateId: o.templateId,
-    title: (o.title ?? pick(tpl.titles)).slice(0, TUNING.director.titleMax),
-    brief: (o.brief ?? pick(tpl.briefs)).slice(0, TUNING.director.briefMax),
+    title: (o.title ?? pick2(tpl.titles)).slice(0, TUNING.director.titleMax),
+    brief: (o.brief ?? pick2(tpl.briefs)).slice(0, TUNING.director.briefMax),
     regionId: o.regionId,
     danger: clamp11(Math.round(o.danger ?? region.danger), tpl.dangerRange[0], tpl.dangerRange[1]),
     objective: { node: objective.node, condition: objective.condition },
@@ -6814,6 +6839,19 @@ registerDayEndStep("director_tick", (draft, ctx2) => {
   }
   events.push(...openRequest(draft, "day_end"));
   return events;
+});
+registerAction("world/set_option", (draft, payload, ctx2) => {
+  const p = isObj12(payload) ? payload : {};
+  const optionId = typeof p.optionId === "string" ? p.optionId : "";
+  const choiceId = typeof p.choiceId === "string" ? p.choiceId : "";
+  const option = ctx2.registries.worldOptions.get(optionId);
+  if (!option) throw new Error(`Unknown world option "${optionId}".`);
+  if (option.live !== true) throw new Error(`World option "${optionId}" is locked after the campaign start.`);
+  if (!option.choices.some((c) => c.id === choiceId)) throw new Error(`Unknown choice "${choiceId}" for world option "${optionId}".`);
+  const from = worldChoice(draft, ctx2.registries, optionId).choice.id;
+  if (from === choiceId) return [];
+  draft.world.options = { ...draft.world.options ?? {}, [optionId]: choiceId };
+  return [{ type: "world_option_changed", optionId, from, to: choiceId }];
 });
 
 // node_modules/zod/v3/external.js
@@ -12280,11 +12318,11 @@ function choiceOf(state, reg, route, index, scope) {
 function routeChoices(state, reg, check, scope) {
   return check.routes.map((route, i) => choiceOf(state, reg, route, i, scope));
 }
-function resolveRoute(draft, ctx2, check, pick, scope) {
-  const choice = routeChoices(draft, ctx2.registries, check, scope)[pick.route];
-  if (!choice) throw new Error(`The check "${check.id}" has no route ${String(pick.route)}.`);
+function resolveRoute(draft, ctx2, check, pick2, scope) {
+  const choice = routeChoices(draft, ctx2.registries, check, scope)[pick2.route];
+  if (!choice) throw new Error(`The check "${check.id}" has no route ${String(pick2.route)}.`);
   if (choice.disabled) throw new Error(choice.disabled);
-  const route = check.routes[pick.route];
+  const route = check.routes[pick2.route];
   const events = [];
   let passed = true;
   switch (route.kind) {
@@ -12301,9 +12339,9 @@ function resolveRoute(draft, ctx2, check, pick, scope) {
       break;
     }
     case "delegate": {
-      if (typeof pick.unitId !== "string") throw new Error("Pick a unit to ask.");
-      if (!choice.unitIds?.includes(pick.unitId)) throw new Error(`Unit "${pick.unitId}" is not available for this request.`);
-      const unit = draft.squad.find((u) => u.id === pick.unitId);
+      if (typeof pick2.unitId !== "string") throw new Error("Pick a unit to ask.");
+      if (!choice.unitIds?.includes(pick2.unitId)) throw new Error(`Unit "${pick2.unitId}" is not available for this request.`);
+      const unit = draft.squad.find((u) => u.id === pick2.unitId);
       const rel = draft.relations[unit.id];
       const have = TRUST_ORDER.indexOf(trustBand(rel?.trust ?? 0));
       const need = TRUST_ORDER.indexOf(route.cost.trustCheck ?? DEFAULT_TRUST_CHECK);
@@ -12737,8 +12775,8 @@ function draw(rng, list5, used, onlyKind) {
   if (open2.length === 0) return null;
   const total = open2.reduce((s, c) => s + c.weight, 0);
   let r = rng.float() * total;
-  const pick = open2.find((c) => (r -= c.weight) < 0) ?? open2[open2.length - 1];
-  return pick.id;
+  const pick2 = open2.find((c) => (r -= c.weight) < 0) ?? open2[open2.length - 1];
+  return pick2.id;
 }
 function generateNodeMap(reg, rng, input) {
   const region = reg.regions.get(input.regionId);
@@ -14982,7 +15020,7 @@ function renderRoutePicker(ctx2) {
   const lockAll = () => {
     for (const b of buttons) b.setAttribute("aria-disabled", "true");
   };
-  const pick = (p) => {
+  const pick2 = (p) => {
     if (ctx2.locked()) return;
     lockAll();
     ctx2.onPick(p);
@@ -15002,14 +15040,14 @@ function renderRoutePicker(ctx2) {
       ...analyzeNative(r.kind === "delegate" ? "glossary:delegate" : "glossary:check_routes", { kind: r.kind }),
       onclick: () => {
         if (ctx2.locked() || r.disabled !== null) return;
-        if (r.kind !== "delegate") return pick({ route: r.route });
+        if (r.kind !== "delegate") return pick2({ route: r.route });
         units.replaceChildren(...(r.unitIds ?? []).map((id) => {
           const u = h("button", {
             type: "button",
             class: "alius-btn alius-option",
             "data-route-unit": id,
             ...analyzeNative("glossary:delegate"),
-            onclick: () => pick({ route: r.route, unitId: id })
+            onclick: () => pick2({ route: r.route, unitId: id })
           }, `[ ${ctx2.unitName?.(id) ?? id} ]`);
           buttons.push(u);
           return u;
@@ -15039,10 +15077,10 @@ function renderDilemma(host, ctx2) {
       routes: o.routes,
       unitName: ctx2.unitName,
       locked: () => chosen,
-      onPick: (pick) => {
+      onPick: (pick2) => {
         chosen = true;
         for (const b of buttons) b.setAttribute("aria-disabled", "true");
-        ctx2.onChoose(o.index, pick);
+        ctx2.onChoose(o.index, pick2);
       },
       unlock: () => {
         chosen = false;
@@ -17266,7 +17304,7 @@ function sanitizeProfile(raw, ctx2) {
   const dropped = [];
   const missing2 = [];
   const profile = { roleCandidates: [], signatureCandidates: [], defectCandidates: [], notes: cap3(src.notes, 300) };
-  const pick = (list5, section, idKey, max, accept, make) => {
+  const pick2 = (list5, section, idKey, max, accept, make) => {
     const out = [];
     const seen = /* @__PURE__ */ new Set();
     for (const item of Array.isArray(list5) ? list5 : []) {
@@ -17285,7 +17323,7 @@ function sanitizeProfile(raw, ctx2) {
     return out;
   };
   if (want("role")) {
-    profile.roleCandidates = pick(
+    profile.roleCandidates = pick2(
       src.roleCandidates,
       "role",
       "roleId",
@@ -17296,7 +17334,7 @@ function sanitizeProfile(raw, ctx2) {
     if (profile.roleCandidates.length === 0) missing2.push("role");
   }
   if (want("signature")) {
-    profile.signatureCandidates = pick(
+    profile.signatureCandidates = pick2(
       src.signatureCandidates,
       "signature",
       "templateId",
@@ -17314,7 +17352,7 @@ function sanitizeProfile(raw, ctx2) {
     if (profile.signatureCandidates.length === 0) missing2.push("signature");
   }
   if (want("defects")) {
-    profile.defectCandidates = pick(
+    profile.defectCandidates = pick2(
       src.defectCandidates,
       "defects",
       "defectId",
@@ -17962,7 +18000,7 @@ function renderCalibration(host, ctx2) {
     const fromCandidates = !manual && cand && cand.defectCandidates.length > 0;
     const list5 = fromCandidates ? cand.defectCandidates.map((c) => ({ id: c.defectId, origin: c.origin })) : options2.defects.map((d) => ({ id: d.id, origin: "" }));
     const max = draft.secondDefect ? SETUP_LIMITS.maxDefects : 1;
-    const pick = (id, origin) => {
+    const pick2 = (id, origin) => {
       const cur = ch.defects;
       if (cur.some((d) => d.id === id)) return onUpdate({ defects: cur.filter((d) => d.id !== id) });
       const next = cur.length >= max ? [...cur.slice(0, max - 1), { id, origin }] : [...cur, { id, origin }];
@@ -17982,7 +18020,7 @@ function renderCalibration(host, ctx2) {
             "alius-defect-card",
             id,
             ch.defects.some((x) => x.id === id),
-            () => pick(id, origin),
+            () => pick2(id, origin),
             h("strong", {}, nameOf4(d, id)),
             h("span", { class: "alius-dim" }, d ? ` [${String(d.category)}]` : ""),
             ...d ? defectLines(d) : [],
@@ -19534,9 +19572,9 @@ function renderExpeditionScreen(host, ctx2) {
     }
     let picked = false;
     for (const o of options2) {
-      const picker = o.routes && o.disabled === null ? renderRoutePicker({ routes: o.routes, unitName, locked: () => picked, onPick: (pick) => {
+      const picker = o.routes && o.disabled === null ? renderRoutePicker({ routes: o.routes, unitName, locked: () => picked, onPick: (pick2) => {
         picked = true;
-        controller.choose(o.index, pick);
+        controller.choose(o.index, pick2);
       }, unlock: () => {
         picked = false;
       } }) : null;
@@ -19988,10 +20026,10 @@ function renderBaseTab(host, ctx2) {
 
 // src/ui/proposalChips.ts
 var kindLabel = (s) => s.replace(/_/g, " ").toUpperCase();
-function drawProposalChips(host, state, pick, onAnswer) {
+function drawProposalChips(host, state, pick2, onAnswer) {
   host.replaceChildren();
   for (const p of state.proposals ?? []) {
-    if (!pick(p)) continue;
+    if (!pick2(p)) continue;
     const name = (state.squad.find((u) => u.id === p.unitId)?.displayName ?? p.unitId).toUpperCase();
     const buttons = p.needsDisclosure ? [["[OPENLY]", "accept"], ["[SECRETLY]", "accept_secret"], ["[NOT NOW]", "not_now"]] : p.from === "commander" ? [["[NOT NOW]", "not_now"]] : [["[ACCEPT]", "accept"], ["[DECLINE]", "decline"], ["[NOT NOW]", "not_now"]];
     host.append(h(
@@ -22843,13 +22881,13 @@ function createApp(st, deps) {
   async function offerScene(unitId) {
     const chatId = st.getActiveChat()?.chatId;
     if (!state) return;
-    const pick = await pickLocation((o) => shell.modal(o), { registries, state, firstUnitId: unitId, candidates: state.squad });
+    const pick2 = await pickLocation((o) => shell.modal(o), { registries, state, firstUnitId: unitId, candidates: state.squad });
     if (st.getActiveChat()?.chatId !== chatId) return;
-    if (!pick) {
+    if (!pick2) {
       api.dispatch({ type: "calendar/cancel_scene", payload: {} }, { expectChatId: chatId });
       return;
     }
-    await beginScene({ locationId: pick.locationId, participants: pick.participants, origin: "activity" });
+    await beginScene({ locationId: pick2.locationId, participants: pick2.participants, origin: "activity" });
   }
   async function offerGroupScene() {
     const chatId = st.getActiveChat()?.chatId;

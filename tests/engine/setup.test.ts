@@ -331,3 +331,30 @@ describe('commander setup (P7)', () => {
     expect(b.ok).toBe(false);
   });
 });
+
+describe('world options in setup (P8)', () => {
+  it('buildCampaign stores every option, missing keys as defaults', () => {
+    const s = ok(result([unit()], { world: { options: { oversight: 'brutal', disposition: 'hazardous' } } }));
+    expect(s.world.options).toEqual({
+      gender_norms: 'indifferent', offspec_stigma: 'tolerated', oversight: 'brutal', bloom_horror: 'restrained', tone: 'grim', disposition: 'hazardous',
+    });
+  });
+
+  it('a setup without a world block stores the defaults', () => {
+    expect(ok(result()).world.options).toEqual({
+      gender_norms: 'indifferent', offspec_stigma: 'tolerated', oversight: 'standard', bloom_horror: 'restrained', tone: 'grim', disposition: 'guarded',
+    });
+  });
+
+  it('an unknown choice in setup is a validation error', () => {
+    const r = build(result([unit()], { world: { options: { tone: 'sunny', ghost: 'x' } } }));
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.errors).toEqual(expect.arrayContaining(['Unknown choice "sunny" for world option "tone"', 'Unknown world option "ghost"']));
+  });
+
+  it('the world is written before the seed: a hunted world seeds with the options in place', () => {
+    const s = ok(result([unit()], { world: { options: { offspec_stigma: 'hunted' } } }));
+    expect(s.world.seeded).toBe(true);
+    expect(s.world.options!.offspec_stigma).toBe('hunted');
+  });
+});

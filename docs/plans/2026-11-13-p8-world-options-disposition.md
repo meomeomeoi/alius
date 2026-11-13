@@ -178,7 +178,7 @@ docs/** (Task 16), tests/** mirror src
   - `SetupResult.world?: { options: Record<string, string> }`: `validateSetup` adds its errors, and `buildCampaign` writes `world.options` (defaults filled in) **before** `seedWorld`.
   - Action `world/set_option { optionId, choiceId }` (live only; event `world_option_changed { optionId, from, to }`). Errors: `World option "<id>" is locked after the campaign start.` / unknown ids.
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `an old save without options reads every default`
   - `an unknown stored choice reads the default`
   - `buildCampaign stores every option, missing keys as defaults`
@@ -186,10 +186,10 @@ docs/** (Task 16), tests/** mirror src
   - `set_option switches bloom_horror and emits world_option_changed`
   - `set_option refuses a locked option and changes nothing`
   - `worldEffects sums by type across options`
-- [ ] **Step 2: Run** `npx vitest run tests/engine/worldOptions tests/engine/setup.test.ts` and expect FAIL.
-- [ ] **Step 3: Implement** the types, readers, setup changes and action.
-- [ ] **Step 4: Run** `npx vitest run` and expect green.
-- [ ] **Step 5: Commit** `feat(engine): world options state, setup and live switch`.
+- [x] **Step 2: Run** `npx vitest run tests/engine/worldOptions tests/engine/setup.test.ts` and expect FAIL.
+- [x] **Step 3: Implement** the types, readers, setup changes and action.
+- [x] **Step 4: Run** `npx vitest run` and expect green.
+- [x] **Step 5: Commit** `feat(engine): world options state, setup and live switch`.
 
 ### Task 3: Oversight, stigma and norm hooks
 

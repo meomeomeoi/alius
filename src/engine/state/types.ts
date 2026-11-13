@@ -351,6 +351,8 @@ export interface CampaignState {
     /** Named units the story offered that the player has not answered yet (P5). */
     incomingUnits?: number;
     lastExpeditionRegionId?: string;
+    /** P8: the chosen world options, `{ [optionId]: choiceId }`. Absent in old saves, which read every default. */
+    options?: Record<string, string>;
   };
   missions: { offered: Mission[]; active: Mission[]; completed: Mission[] };
   rumors: Rumor[];

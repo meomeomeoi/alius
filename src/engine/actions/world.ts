@@ -4,6 +4,7 @@ import { registerAction } from '../dispatch';
 import { followRumor, registerMissionCompletedHook, runDeadlines } from '../world/missions';
 import { onMissionCompleted } from '../world/spine';
 import { seedWorld } from '../world/state';
+import { worldChoice, type WorldOptionEntry } from '../worldOptions';
 
 // Importing this module registers the world actions (more are added by the expedition and mission modules).
 
@@ -69,4 +70,21 @@ registerDayEndStep('director_tick', (draft, ctx) => {
   }
   events.push(...openRequest(draft, 'day_end'));
   return events;
+});
+
+// ---------------------------------------------------------------------------------------------
+// P8: world options. Every option is fixed when the campaign is built, except the ones marked `live`.
+
+registerAction('world/set_option', (draft, payload, ctx) => {
+  const p = isObj(payload) ? payload : {};
+  const optionId = typeof p.optionId === 'string' ? p.optionId : '';
+  const choiceId = typeof p.choiceId === 'string' ? p.choiceId : '';
+  const option = ctx.registries.worldOptions.get(optionId) as WorldOptionEntry | undefined;
+  if (!option) throw new Error(`Unknown world option "${optionId}".`);
+  if (option.live !== true) throw new Error(`World option "${optionId}" is locked after the campaign start.`);
+  if (!option.choices.some((c) => c.id === choiceId)) throw new Error(`Unknown choice "${choiceId}" for world option "${optionId}".`);
+  const from = worldChoice(draft, ctx.registries, optionId)!.choice.id;
+  if (from === choiceId) return [];
+  draft.world.options = { ...(draft.world.options ?? {}), [optionId]: choiceId };
+  return [{ type: 'world_option_changed', optionId, from, to: choiceId }];
 });

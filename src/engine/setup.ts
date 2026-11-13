@@ -4,6 +4,7 @@ import { TUNING } from './tuning';
 import { ensureLeash } from './leash/weekly';
 import { seedWorld } from './world/state';
 import { initialLoyaltyBand } from './relations/bands';
+import { defaultWorldOptions, validateWorldOptions } from './worldOptions';
 import { applyFirstImpression } from './commander/presence';
 import { applyFactionTraitEffects, applyStartTraitEffects, syncTraitSettings } from './commander/traits';
 import { applyCommanderSetup, defaultCommanderSetup, validateCommanderSetup, type CommanderSetup } from './commander/profile';
@@ -55,6 +56,8 @@ export interface SetupResult {
   units: UnitSetup[];
   /** P7: the COMMANDER FILE; absent = the defaults (3/3/2, expression 3, seasoning 3, no traits). */
   commander?: CommanderSetup;
+  /** P8: the world the player set up; absent = every default. */
+  world?: { options: Record<string, string> };
 }
 
 interface Effect { type?: unknown; [k: string]: unknown }
@@ -160,6 +163,7 @@ export function validateSetup(r: SetupResult, reg: Registries, opts: { desireBon
   }
   if (!reg.crimes.has(r.crimeId)) out.push(`Unknown crime "${r.crimeId}"`);
   if (r.commander !== undefined) out.push(...validateCommanderSetup(r.commander, reg, opts));
+  if (r.world !== undefined) out.push(...validateWorldOptions(r.world.options, reg));
 
   const units = r.units ?? [];
   if (units.length > SETUP_LIMITS.maxUnits) out.push(`At most ${SETUP_LIMITS.maxUnits} units (has ${units.length})`);
@@ -281,6 +285,8 @@ export function buildCampaign(
   applyCommanderSetup(state.commander, r.commander ?? defaultCommanderSetup());
   state.commander.fileReviewed = true;
   state.world.startId = start.id;
+  // P8: every option is stored (missing keys take their default) before anything reads them; they are fixed from here on
+  state.world.options = { ...defaultWorldOptions(reg), ...(r.world?.options ?? {}) };
   state.settings = { desireBondDefects: opts.desireBondDefects };
 
   const base = start.startingResources as Partial<Record<keyof CampaignState['resources'], number>> | undefined;
