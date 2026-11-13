@@ -1,6 +1,6 @@
 import type { Entry, Registries } from '../../content/types';
 import { activityCost, checkActivity, type ActivityRequest } from '../../engine/activities';
-import { clockText } from '../../engine/calendar';
+import { clockText, isQuietNight } from '../../engine/calendar';
 import { isLiving, requisitionCost } from '../../engine/economy';
 import type { CampaignState, Unit } from '../../engine/state/types';
 import { TUNING } from '../../engine/tuning';
@@ -21,6 +21,8 @@ export interface OpsTabCtx {
   onFollowRumor?: (rumorId: string) => void;
   onIntake?: () => void;
   onOpenReport?: () => void;
+  /** P7: ends a quiet night without doing anything. */
+  onSleep?: () => void;
 }
 
 type Focus = { id: string; label: string; units?: { min: number; max: number } };
@@ -159,8 +161,13 @@ export function renderOpsTab(host: HTMLElement, ctx: OpsTabCtx): void {
     h(
       'section',
       { class: 'alius-section alius-ops' },
-      h('h2', {}, clockText(state.day, state.slot)),
+      h('h2', {}, clockText(state.day, state.slot) + (isQuietNight(state) ? ' — QUIET' : '')),
       h('p', { class: 'alius-dim' }, 'Each activity takes this slot. Talking takes it when the scene ends.'),
+      isQuietNight(state) && ctx.onSleep
+        ? h('p', {},
+          h('button', { type: 'button', class: 'alius-btn alius-option', 'data-sleep': '', ...analyzeNative('glossary:quiet_night'), onclick: ctx.onSleep }, '[ SLEEP ]'),
+          ' Nobody knocks tonight. Sleep costs nothing; spending the night awake costs tomorrow.')
+        : null,
       ...all.map((a) => activityCard(a, state, ctx)),
     ),
     requisition(state, ctx, host),

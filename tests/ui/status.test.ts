@@ -62,3 +62,19 @@ describe('status header', () => {
     expect(host.querySelectorAll('.alius-clock')).toHaveLength(1);
   });
 });
+
+describe('status header, quiet night (P7)', () => {
+  it('the shell renders a quiet night', () => {
+    const s = campaign();
+    s.slot = 'night';
+    expect(render(s).textContent).toContain('DAY 012 // NIGHT — QUIET');
+  });
+  it('a night with a knock is a plain NIGHT', () => {
+    const s = campaign();
+    s.slot = 'night';
+    s.calendar.nightEvent = { id: 'n1', unitId: 'unit_ann', kind: 'talk', priority: 1, framing: 'f', ignore: { event: 'dismissed', severity: 'minor' }, expiresDay: 20 };
+    const t = render(s).textContent!;
+    expect(t).toContain('DAY 012 // NIGHT');
+    expect(t).not.toContain('QUIET');
+  });
+});

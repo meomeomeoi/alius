@@ -355,3 +355,38 @@ describe('OPS: mission board and rumor mill', () => {
     expect(render({ state: s }).host.textContent).not.toContain('REPORT READY');
   });
 });
+
+describe('quiet night (P7)', () => {
+  const quiet = (): CampaignState => {
+    const s = campaign(reg, 4);
+    s.commander.traits = { regular: ['insomniac'] };
+    s.slot = 'night';
+    return s;
+  };
+
+  it('the OPS tab says NIGHT — QUIET, offers SLEEP and the evening activities', () => {
+    const onSleep = vi.fn();
+    const { host, card } = render({ state: quiet(), extra: { onSleep } });
+    expect(host.textContent).toContain('DAY 001 // NIGHT — QUIET');
+    const sleep = host.querySelector<HTMLButtonElement>('button[data-sleep]')!;
+    expect(sleep.textContent).toBe('[ SLEEP ]');
+    sleep.click();
+    expect(onSleep).toHaveBeenCalledTimes(1);
+    // `mess` is an afternoon/evening activity: allowed at night only because the rules read as evening
+    expect(card('mess').querySelector<HTMLButtonElement>('button[data-do]')!.disabled).toBe(false);
+  });
+
+  it('a normal night with a knock, or a day slot, has no SLEEP button', () => {
+    expect(render({ state: campaign(reg, 4) }).host.querySelector('button[data-sleep]')).toBeNull();
+    const knock = quiet();
+    knock.calendar.nightEvent = { id: 'n1', unitId: 'unit_ann', kind: 'talk', priority: 1, framing: 'f', ignore: { event: 'dismissed', severity: 'minor' }, expiresDay: 9 };
+    const { host } = render({ state: knock });
+    expect(host.querySelector('button[data-sleep]')).toBeNull();
+    expect(host.textContent).not.toContain('QUIET');
+  });
+
+  it('SLEEP is analyzable', () => {
+    const sleep = render({ state: quiet(), extra: { onSleep: vi.fn() } }).host.querySelector('button[data-sleep]')!;
+    expect(sleep.getAttribute('data-analyze')).toBe('glossary:quiet_night');
+  });
+});

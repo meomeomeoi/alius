@@ -261,6 +261,7 @@ export const CORE_GLOSSARY_IDS: readonly string[] = [
   'danger', 'reward_tier', 'mission_deadline', 'mission_board', 'expedition', 'rumor',
   // P7
   'body_strength', 'body_endurance', 'body_reflexes', 'expression', 'seasoning', 'archetype',
+  'presence_unnoticed', 'presence_steady_voice', 'presence_rally', 'check_routes', 'delegate', 'quiet_night',
 ];
 
 let registered = false;

@@ -1,5 +1,6 @@
 import { canAutoResolve } from '../engine/combat';
 import type { StartPayload } from '../engine/combat/types';
+import type { RoutePick } from '../engine/commander/checks';
 import type { EngineEvent } from '../engine/dispatch';
 import type { CampaignState } from '../engine/state/types';
 import { reportLines, type Formation, type TreatKind } from '../engine/world/expedition';
@@ -15,7 +16,7 @@ export interface ExpeditionController {
   cancelPlan(): void;
   launch(p: { unitIds: string[]; formation: Formation; supplies: number }): boolean;
   move(nodeId: string): void;
-  choose(index: number): void;
+  choose(index: number, route?: RoutePick): void;
   treat(unitId: string, kind: TreatKind): void;
   setFormation(f: Formation): void;
   /** Starts the pending encounter as a P4 combat; `auto` is only requested when the fight can be auto-resolved. */
@@ -62,7 +63,7 @@ export function createExpedition(deps: WorldDeps & {
     },
 
     move(nodeId) { act('expedition/move', { nodeId }); },
-    choose(index) { act('expedition/choose', { option: index }); },
+    choose(index, route) { act('expedition/choose', { option: index, ...(route ? { route } : {}) }); },
     treat(unitId, kind) { act('expedition/treat', { unitId, kind }); },
     setFormation(formation) { act('expedition/set_formation', { formation }); },
 

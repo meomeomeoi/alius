@@ -1,4 +1,4 @@
-import { clockText } from '../../engine/calendar';
+import { clockText, isQuietNight } from '../../engine/calendar';
 import type { CampaignState } from '../../engine/state/types';
 import { analyzeAttrs } from '../analyze/mark';
 import { h } from '../dom';
@@ -16,7 +16,7 @@ export function renderStatusHeader(host: HTMLElement, state: CampaignState | nul
   const injuredDays = (state.commander.injuredUntilDay ?? 0) - state.day;
   const shortage = state.calendar.shortageStreak ?? 0;
   const parts: Array<HTMLElement | null> = [
-    stat('alius-clock', clockText(state.day, state.slot), 'glossary:slots'),
+    stat('alius-clock', clockText(state.day, state.slot) + (isQuietNight(state) ? ' — QUIET' : ''), 'glossary:slots'),
     h('span', { class: 'alius-resources' },
       stat('alius-res', `CR ${r.credits}`, 'glossary:credits'), ' · ',
       stat('alius-res', `SUP ${r.supplies}`, 'glossary:supplies'), ' · ',

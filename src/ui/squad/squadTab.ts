@@ -15,6 +15,7 @@ import type { ArcPath, ArcPathInfo } from '../../engine/arcs';
 import type { LeashKind } from '../../engine/state/types';
 import { stressBand } from '../../engine/combat/stress';
 import { analyzeAttrs, analyzeNative } from '../analyze/mark';
+import { renderCmdrCard } from '../commander/cmdrCard';
 import { h, type Child } from '../dom';
 import { valueBand } from './bands';
 import { renderSkillTree } from './skillTree';
@@ -342,6 +343,7 @@ export function renderSquadTab(host: HTMLElement, ctx: SquadTabCtx): void {
     );
     return;
   }
+  renderCmdrCard(host, { state, registries: ctx.registries, raw: ctx.settings().showRawValues });
   if (state.squad.length === 0) {
     host.append(h('section', { class: 'alius-section' }, h('p', {}, 'NO UNITS ASSIGNED')));
     return;

@@ -33,6 +33,8 @@ export interface CombatScreenCtx {
   onClose(): void;
   /** P6: Compel the unit whose order was just refused. */
   onCompel?(): void;
+  /** P7: the commander's once-per-combat presence action. */
+  onPresence?(): void;
 }
 
 export interface CombatScreen {
@@ -57,6 +59,18 @@ export function renderCombatScreen(host: HTMLElement, ctx: CombatScreenCtx): Com
   const sprites = new Map<string, string | null>();
 
   // ------------------------------------------------------------------------------------------------ helpers
+  const PRESENCE_LABEL = { unnoticed: 'UNNOTICED', steady_voice: 'STEADY VOICE', rally: 'RALLY' } as const;
+  /** P7: the presence button (absent for a combat from before P7 or without a handler). */
+  function presenceButton(cs: NonNullable<CampaignState['combat']>, waiting: boolean): HTMLElement | null {
+    const p = cs.presence;
+    if (!p || !ctx.onPresence) return null;
+    return h('button', {
+      type: 'button', class: 'alius-btn alius-option', 'data-act': 'presence', disabled: p.used || !waiting,
+      title: p.used ? 'Already used in this fight.' : 'Free, once per fight.', ...analyzeNative(`glossary:presence_${p.kind}`),
+      onclick: () => { if (!p.used && waiting) ctx.onPresence!(); },
+    }, `${PRESENCE_LABEL[p.kind]}${p.used ? ' — USED' : ''}`);
+  }
+
   const unitOf = (state: CampaignState, c: Combatant): Unit | undefined => state.squad.find((u) => u.id === c.unitId);
   const nameOf = (state: CampaignState, c: Combatant): string => {
     if (c.side === 'squad' || (c.unitId !== undefined && c.enemyId === undefined)) return unitOf(state, c)?.displayName ?? c.nameKey; // a mutineer keeps her own name
@@ -225,6 +239,7 @@ export function renderCombatScreen(host: HTMLElement, ctx: CombatScreenCtx): Com
       case 'cover': return `R${l.round} ${name(l.actor)} covers the commander`;
       case 'intercept': return `R${l.round} ${name(l.actor)} takes the hit for ${name(l.target)}`;
       case 'miss': return `R${l.round} ${name(l.actor)} misfires`;
+      case 'dodge': return `R${l.round} ${name(l.target)} dodges ${name(l.actor)}'s attack`;
       case 'pass': return `R${l.round} ${name(l.actor)} holds`;
       case 'summon': return `R${l.round} reinforcements arrive`;
       default: return `R${l.round} ${l.kind}`;
@@ -390,6 +405,7 @@ export function renderCombatScreen(host: HTMLElement, ctx: CombatScreenCtx): Com
         h('button', { type: 'button', class: 'alius-btn', 'data-act': 'pass', disabled: !waiting, onclick: () => { const s = ctx.getState(); if (s) act(s, { kind: 'pass' }); } }, '[P] PASS'),
         h('button', { type: 'button', class: `alius-btn${cs.auto ? ' alius-skill-selected' : ''}`, 'data-act': 'auto', onclick: () => ctx.onAuto(!cs.auto) }, `[A] AUTO${cs.auto ? ' ON' : ''}`),
         h('button', { type: 'button', class: 'alius-btn', 'data-act': 'retreat', onclick: () => ctx.onRetreat() }, '[RETREAT]'),
+        presenceButton(cs, !!waiting),
         compelState(state) !== 'none'
           ? h('button', {
             type: 'button', class: 'alius-btn', 'data-act': 'compel', disabled: compelState(state) === 'blocked',

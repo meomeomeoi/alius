@@ -1,3 +1,4 @@
+import type { RoutePick } from '../engine/commander/checks';
 import type { EngineEvent } from '../engine/dispatch';
 import { buildDilemmaDigest } from '../engine/dilemma/flow';
 import { TUNING } from '../engine/tuning';
@@ -8,7 +9,7 @@ export interface DilemmaController {
   /** Answers the open dilemma request, if any. Safe to call often: one run per request id. */
   onRequested(): Promise<void>;
   /** The player's pick of a presented dilemma. Returns the engine's events (empty when nothing is waiting). */
-  choose(index: number): EngineEvent[];
+  choose(index: number, route?: RoutePick): EngineEvent[];
   busy(): boolean;
 }
 
@@ -73,10 +74,10 @@ export function createDilemmas(deps: WorldDeps): DilemmaController {
     }
   }
 
-  function choose(index: number): EngineEvent[] {
+  function choose(index: number, route?: RoutePick): EngineEvent[] {
     const open = deps.app.current().state?.dilemmas?.open;
     if (!open || open.status !== 'presented') return [];
-    const events = deps.app.dispatch({ type: 'dilemma/choose', payload: { id: open.id, index } });
+    const events = deps.app.dispatch({ type: 'dilemma/choose', payload: { id: open.id, index, ...(route ? { route } : {}) } });
     const failed = events.find((e) => e.type === 'error');
     if (failed && failed.message !== 'Stale dilemma answer.') deps.toast('error', String(failed.message ?? failed.code));
     return events;

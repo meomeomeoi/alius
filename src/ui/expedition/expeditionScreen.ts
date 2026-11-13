@@ -8,7 +8,9 @@ import type { AliusSettings } from '../../settings';
 import type { ExpeditionController } from '../../world/expeditionController';
 import { bar } from '../combat/bars';
 import { dilemmaOptions } from '../../engine/dilemma/flow';
+import type { RoutePick } from '../../engine/commander/checks';
 import { renderDilemma } from '../dilemma/dilemmaPanel';
+import { renderRoutePicker } from '../dilemma/routePicker';
 import { h } from '../dom';
 import { renderNodeMap } from './nodeMapView';
 import { newDraft, renderPlanner, type PlannerDraft } from './planner';
@@ -23,7 +25,7 @@ export interface ExpeditionScreenCtx {
   /** True while a recap has been asked for and has not arrived (the report shows COMPILING…). */
   recapPending?: () => boolean;
   /** P6: the player's pick of a generated dilemma for the pending event node. */
-  onDilemmaChoose?: (index: number) => void;
+  onDilemmaChoose?: (index: number, route?: RoutePick) => void;
 }
 
 export interface ExpeditionScreen {
@@ -42,6 +44,8 @@ export function renderExpeditionScreen(host: HTMLElement, ctx: ExpeditionScreenC
   const debriefPick: string[] = [];
   let confirming = false;
   let cover = '';
+
+  const unitName = (id: string): string => ctx.getState()?.squad.find((u) => u.id === id)?.displayName ?? id;
 
   function runView(root: HTMLElement, state: CampaignState): void {
     const exp = state.expedition!;
@@ -158,7 +162,7 @@ export function renderExpeditionScreen(host: HTMLElement, ctx: ExpeditionScreenC
       panel.replaceChildren(slot);
       renderDilemma(slot, {
         title: generated.title ?? fixed?.title ?? 'EVENT', setup: generated.setup ?? fixed?.setup ?? '', scale: generated.scale,
-        waiting: generated.status === 'requested', options: dilemmaOptions(state, reg), onChoose: ctx.onDilemmaChoose,
+        waiting: generated.status === 'requested', options: dilemmaOptions(state, reg), onChoose: ctx.onDilemmaChoose, unitName,
       });
       root.append(panel);
       return;
@@ -168,12 +172,23 @@ export function renderExpeditionScreen(host: HTMLElement, ctx: ExpeditionScreenC
       // the event was removed from the pack under this save: the node resolves as nothing
       panel.append(h('button', { type: 'button', class: 'alius-btn', onclick: () => controller.choose(0) }, '[ CONTINUE ]'));
     }
+    let picked = false;
     for (const o of options) {
+      // P7: a routed option asks how first; the rest choose at once
+      const picker = o.routes && o.disabled === null
+        ? renderRoutePicker({ routes: o.routes, unitName, locked: () => picked, onPick: (pick) => { picked = true; controller.choose(o.index, pick); } })
+        : null;
+      if (picker) picker.hidden = true;
       panel.append(h('div', {},
         h('button', {
           type: 'button', class: 'alius-btn', 'data-option': String(o.index), disabled: o.disabled !== null,
-          onclick: () => { if (o.disabled === null) controller.choose(o.index); },
-        }, `[ ${o.label} ]${o.disabled ? ` — ${o.disabled}` : ''}`),
+          onclick: () => {
+            if (o.disabled !== null) return;
+            if (picker) picker.hidden = !picker.hidden;
+            else controller.choose(o.index);
+          },
+        }, `[ ${o.label} ]${picker ? ' — CHOOSE HOW' : ''}${o.disabled ? ` — ${o.disabled}` : ''}`),
+        picker,
       ));
     }
     root.append(panel);

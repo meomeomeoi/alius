@@ -447,7 +447,8 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     dilemmaHost ??= h('div');
     renderDilemma(dilemmaHost, {
       title: open.title ?? 'DECISION', setup: open.setup ?? '', scale: open.scale, waiting: open.status === 'requested',
-      options: dilemmaOptions(s, registries), onChoose: (i) => void dilemmas.choose(i),
+      options: dilemmaOptions(s, registries), onChoose: (i, route) => void dilemmas.choose(i, route),
+      unitName: (id) => s.squad.find((u) => u.id === id)?.displayName ?? id,
     });
   }
 
@@ -713,6 +714,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       onRetreat: () => void combatDo('combat/retreat'),
       onClose: leaveCombat,
       onCompel: () => void combatDo('combat/compel'),
+      onPresence: () => void combatDo('combat/presence'),
     });
   }
 
@@ -744,7 +746,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       controller: expedition,
       onClose: leaveExpedition,
       recapPending: () => recapPendingFor !== null && recapPendingFor === state?.lastExpedition?.id,
-      onDilemmaChoose: (index) => void dilemmas.choose(index),
+      onDilemmaChoose: (index, route) => void dilemmas.choose(index, route),
     });
   }
 
@@ -1343,6 +1345,33 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         case 'day_started':
           toast('info', `Day ${String(e.day)}.`);
           break;
+        case 'morning_lost':
+          toast('warn', 'You slept through the morning.');
+          break;
+        case 'quiet_night_started':
+          toast('info', 'A quiet night: nobody knocks. Sleep, or spend it awake.');
+          break;
+        case 'body_trained':
+          toast('info', e.raised ? `Your ${String(e.stat)} has improved.` : `Body training: ${String(e.stat)}${Number(e.value) >= 5 ? ' cannot grow any further' : ' is a little better'}.`);
+          break;
+        case 'delegate_remark':
+          toast('info', `${state?.squad.find((u) => u.id === e.unitId)?.displayName ?? 'She'} does it, with a remark about being asked.`);
+          break;
+        case 'delegate_demand':
+          toast('warn', `${state?.squad.find((u) => u.id === e.unitId)?.displayName ?? 'She'} wants something in return. Not yet possible: she refuses.`);
+          break;
+        case 'delegate_refused':
+          toast('warn', `${state?.squad.find((u) => u.id === e.unitId)?.displayName ?? 'She'} refuses.`);
+          break;
+        case 'commander_covered':
+          toast('info', `${state?.squad.find((u) => u.id === e.unitId)?.displayName ?? 'A friend'} covers for you after the long run.`);
+          break;
+        case 'commander_exhausted':
+          toast('warn', 'You are exhausted: tomorrow morning is lost.');
+          break;
+        case 'commander_scarred':
+          toast('warn', e.stat ? `The fight left a scar: your ${String(e.stat)} is worse for it.` : 'The fight left a scar. You are not the same.');
+          break;
         case 'mission_offered':
           if (e.source === 'command' || e.source === 'story') toast('info', `New ${String(e.source)} mission: ${String(e.title)}.`);
           break;
@@ -1487,6 +1516,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       },
       onDismiss: (missionId) => void act({ type: 'mission/dismiss', payload: { missionId } }),
       onFollowRumor: (rumorId) => void act({ type: 'rumor/follow', payload: { rumorId } }),
+      onSleep: () => void act({ type: 'calendar/sleep', payload: {} }),
       onIntake: () => void api.intakeUnit(),
       onOpenReport: () => {
         showExpedition();

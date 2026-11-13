@@ -370,9 +370,9 @@ docs/** (Task 19), tests/** mirror src
 - Consumes: `commanderProfile`, `descriptor`, `routeChoices` via `dilemmaOptions`/`eventOptions` `.routes`, `isQuietNight`.
 - Produces: CMDR card `section.alius-cmdr` — name, crime, body descriptors, expression, seasoning, archetype, trait chips (`commanderTraits:<id>`), empty reputation slot `REPUTATION — NONE ON FILE` (P9 fills it).
 
-- [ ] **Step 1: Write the failing tests** — `the CMDR card shows descriptors and traits, no digits` (raw values off); `with raw values on the stats show their numbers`; `the presence button dispatches combat/presence once`; `a routed option lists its routes and sends { route, unitId }`; `a disabled route shows its reason`; `the shell renders a quiet night`; `SLEEP dispatches calendar/sleep`.
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → green.
-- [ ] **Step 5: Commit** `feat(ui): CMDR card, presence action, route picker and the quiet night`.
+- [x] **Step 1: Write the failing tests** — `the CMDR card shows descriptors and traits, no digits` (raw values off); `with raw values on the stats show their numbers`; `the presence button dispatches combat/presence once`; `a routed option lists its routes and sends { route, unitId }`; `a disabled route shows its reason`; `the shell renders a quiet night`; `SLEEP dispatches calendar/sleep`.
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → green.
+- [x] **Step 5: Commit** `feat(ui): CMDR card, presence action, route picker and the quiet night`.
 
 ---
 

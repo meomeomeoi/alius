@@ -687,5 +687,68 @@
       "body_endurance",
       "body_reflexes"
     ]
+  },
+  {
+    "id": "presence_unnoticed",
+    "term": "Unnoticed",
+    "short": "A slight commander's once-per-fight trick: enemies look past him about half of the time.",
+    "long": "Free, once per combat. For the rest of the fight an enemy that could pick the exposed commander skips him on about half of its decisions. It does nothing if he is not exposed.",
+    "see": [
+      "archetype",
+      "presence_steady_voice",
+      "presence_rally"
+    ]
+  },
+  {
+    "id": "presence_steady_voice",
+    "term": "Steady Voice",
+    "short": "An average commander's once-per-fight trick: his next order costs 1 CP less.",
+    "long": "Free, once per combat. The next order you pay for costs 1 CP less, and can cost nothing. Free orders and repeats do not use it up.",
+    "see": [
+      "archetype",
+      "presence_unnoticed",
+      "presence_rally"
+    ]
+  },
+  {
+    "id": "presence_rally",
+    "term": "Rally",
+    "short": "A fit commander's once-per-fight trick: every standing soldier loses 10 stress at once.",
+    "long": "Free, once per combat. Every soldier still on her feet gets 10 stress relief, which her own traits may change. It needs no exposed commander.",
+    "see": [
+      "archetype",
+      "presence_unnoticed",
+      "presence_steady_voice",
+      "stress"
+    ]
+  },
+  {
+    "id": "check_routes",
+    "term": "Ways through",
+    "short": "A hard task has more than one way: your body, a soldier's help, your rank, a tool or a price.",
+    "long": "Some choices ask how you get it done. A body route needs a physical stat, but there is always another way through: ask a soldier, use your rank, an item, or pay. A weak commander is really weaker, never stuck.",
+    "see": [
+      "delegate",
+      "body_strength"
+    ]
+  },
+  {
+    "id": "delegate",
+    "term": "Ask a unit",
+    "short": "Someone else does it for you. She agrees if she trusts you enough, and it costs her warmth and stress.",
+    "long": "The soldier you ask answers by her Trust in you. Enough Trust and she does it, perhaps with a remark. One band short, she names a price (not yet in the game, so she refuses). Much less, or a breaking loyalty, and she refuses. Only an agreement is paid for.",
+    "see": [
+      "trust",
+      "check_routes"
+    ]
+  },
+  {
+    "id": "quiet_night",
+    "term": "Quiet night",
+    "short": "An insomniac commander is awake with nobody at the door. Sleep, or spend the night and pay for it tomorrow.",
+    "long": "When no one knocks, a commander who cannot sleep gets the Night slot anyway. You can SLEEP it away at no cost, or do an evening activity; a night spent awake lowers his Empathy rank by one the next day.",
+    "see": [
+      "slots"
+    ]
   }
 ]

@@ -14671,10 +14671,10 @@ function createDilemmas(deps) {
       running.delete(key);
     }
   }
-  function choose(index) {
+  function choose(index, route) {
     const open2 = deps.app.current().state?.dilemmas?.open;
     if (!open2 || open2.status !== "presented") return [];
-    const events = deps.app.dispatch({ type: "dilemma/choose", payload: { id: open2.id, index } });
+    const events = deps.app.dispatch({ type: "dilemma/choose", payload: { id: open2.id, index, ...route ? { route } : {} } });
     const failed = events.find((e) => e.type === "error");
     if (failed && failed.message !== "Stale dilemma answer.") deps.toast("error", String(failed.message ?? failed.code));
     return events;
@@ -14837,6 +14837,49 @@ function h(tag2, attrs = {}, ...children) {
   return el;
 }
 
+// src/ui/dilemma/routePicker.ts
+function renderRoutePicker(ctx2) {
+  const root = h("div", { class: "alius-routes" });
+  const units = h("div", { class: "alius-route-units" });
+  const buttons = [];
+  const lockAll = () => {
+    for (const b of buttons) b.setAttribute("aria-disabled", "true");
+  };
+  const pick = (p) => {
+    if (ctx2.locked()) return;
+    lockAll();
+    ctx2.onPick(p);
+  };
+  for (const r of ctx2.routes) {
+    const b = h("button", {
+      type: "button",
+      class: "alius-btn alius-option",
+      "data-route": String(r.route),
+      "aria-disabled": r.disabled !== null ? "true" : null,
+      ...analyzeNative(r.kind === "delegate" ? "glossary:delegate" : "glossary:check_routes", { kind: r.kind }),
+      onclick: () => {
+        if (ctx2.locked() || r.disabled !== null) return;
+        if (r.kind !== "delegate") return pick({ route: r.route });
+        units.replaceChildren(...(r.unitIds ?? []).map((id) => {
+          const u = h("button", {
+            type: "button",
+            class: "alius-btn alius-option",
+            "data-route-unit": id,
+            ...analyzeNative("glossary:delegate"),
+            onclick: () => pick({ route: r.route, unitId: id })
+          }, `[ ${ctx2.unitName?.(id) ?? id} ]`);
+          buttons.push(u);
+          return u;
+        }));
+      }
+    }, `[ ${r.label} ]${r.disabled !== null ? ` \u2014 ${r.disabled}` : ""}`);
+    buttons.push(b);
+    root.append(b);
+  }
+  root.append(units);
+  return root;
+}
+
 // src/ui/dilemma/dilemmaPanel.ts
 var SCALE_LABEL = { minor: "MINOR", major: "MAJOR", defining: "DEFINING" };
 function renderDilemma(host, ctx2) {
@@ -14849,6 +14892,17 @@ function renderDilemma(host, ctx2) {
   const buttons = [];
   const list5 = h("div", { class: "alius-dilemma-options" });
   for (const o of ctx2.options) {
+    const picker = o.routes && o.disabled === null ? renderRoutePicker({
+      routes: o.routes,
+      unitName: ctx2.unitName,
+      locked: () => chosen,
+      onPick: (pick) => {
+        chosen = true;
+        for (const b of buttons) b.setAttribute("aria-disabled", "true");
+        ctx2.onChoose(o.index, pick);
+      }
+    }) : null;
+    if (picker) picker.hidden = true;
     const button = h("button", {
       // soft-disabled (aria-disabled, not `disabled`): a greyed option stays focusable and hoverable, so the analysis panel can
       // explain the requirement that greys it out
@@ -14859,13 +14913,18 @@ function renderDilemma(host, ctx2) {
       ...analyzeNative("glossary:decision_option", { scale: ctx2.scale, ...o.check ? { check: o.check } : {}, ...o.requires ? { requires: o.requires } : {} }),
       onclick: () => {
         if (chosen || o.disabled !== null) return;
+        if (picker) {
+          picker.hidden = !picker.hidden;
+          return;
+        }
         chosen = true;
         for (const b of buttons) b.setAttribute("aria-disabled", "true");
         ctx2.onChoose(o.index);
       }
-    }, `[ ${o.label} ]${o.hasCheck ? " \u2014 CHECK" : ""}${o.disabled !== null ? ` \u2014 ${o.disabled}` : ""}`);
+    }, `[ ${o.label} ]${o.hasCheck ? " \u2014 CHECK" : ""}${picker ? " \u2014 CHOOSE HOW" : ""}${o.disabled !== null ? ` \u2014 ${o.disabled}` : ""}`);
     buttons.push(button);
     list5.append(button);
+    if (picker) list5.append(picker);
   }
   host.append(h(
     "div",
@@ -15065,6 +15124,22 @@ function renderCombatScreen(host, ctx2) {
   let selTarget = null;
   let orderMode = null;
   const sprites = /* @__PURE__ */ new Map();
+  const PRESENCE_LABEL = { unnoticed: "UNNOTICED", steady_voice: "STEADY VOICE", rally: "RALLY" };
+  function presenceButton(cs, waiting2) {
+    const p = cs.presence;
+    if (!p || !ctx2.onPresence) return null;
+    return h("button", {
+      type: "button",
+      class: "alius-btn alius-option",
+      "data-act": "presence",
+      disabled: p.used || !waiting2,
+      title: p.used ? "Already used in this fight." : "Free, once per fight.",
+      ...analyzeNative(`glossary:presence_${p.kind}`),
+      onclick: () => {
+        if (!p.used && waiting2) ctx2.onPresence();
+      }
+    }, `${PRESENCE_LABEL[p.kind]}${p.used ? " \u2014 USED" : ""}`);
+  }
   const unitOf4 = (state, c) => state.squad.find((u) => u.id === c.unitId);
   const nameOf7 = (state, c) => {
     if (c.side === "squad" || c.unitId !== void 0 && c.enemyId === void 0) return unitOf4(state, c)?.displayName ?? c.nameKey;
@@ -15264,6 +15339,8 @@ function renderCombatScreen(host, ctx2) {
         return `R${l.round} ${name(l.actor)} takes the hit for ${name(l.target)}`;
       case "miss":
         return `R${l.round} ${name(l.actor)} misfires`;
+      case "dodge":
+        return `R${l.round} ${name(l.target)} dodges ${name(l.actor)}'s attack`;
       case "pass":
         return `R${l.round} ${name(l.actor)} holds`;
       case "summon":
@@ -15458,6 +15535,7 @@ function renderCombatScreen(host, ctx2) {
       } }, "[P] PASS"),
       h("button", { type: "button", class: `alius-btn${cs.auto ? " alius-skill-selected" : ""}`, "data-act": "auto", onclick: () => ctx2.onAuto(!cs.auto) }, `[A] AUTO${cs.auto ? " ON" : ""}`),
       h("button", { type: "button", class: "alius-btn", "data-act": "retreat", onclick: () => ctx2.onRetreat() }, "[RETREAT]"),
+      presenceButton(cs, !!waiting2),
       compelState(state) !== "none" ? h("button", {
         type: "button",
         class: "alius-btn",
@@ -18146,6 +18224,50 @@ function renderSetupScreen(host, ctx2) {
   render();
 }
 
+// src/ui/commander/cmdrCard.ts
+function renderCmdrCard(host, ctx2) {
+  const { state, registries: reg, raw } = ctx2;
+  const p = commanderProfile(state);
+  const word = (kind, value) => `${descriptor(kind, value)}${raw ? ` (${value})` : ""}`;
+  const stat2 = (label2, address, text2) => [
+    `${label2} `,
+    h("span", { class: "alius-stat", ...analyzeAttrs(address) }, text2)
+  ];
+  const crime = state.commander.crimeId ? reg.crimes.get(state.commander.crimeId) : void 0;
+  const traitIds2 = [...p.traits.regular, ...p.traits.special !== void 0 ? [p.traits.special] : []];
+  host.append(
+    h(
+      "section",
+      { class: "alius-section alius-cmdr" },
+      h("h2", {}, `CMDR \u2014 ${state.commander.name}`),
+      crime ? h("p", {}, "CRIME: ", h("span", { class: "alius-chip", ...analyzeAttrs(`crimes:${crime.id}`) }, String(crime.name))) : null,
+      h(
+        "p",
+        { class: "alius-cmdr-stats" },
+        ...stat2("STRENGTH", "glossary:body_strength", word("strength", p.body.strength)),
+        " \xB7 ",
+        ...stat2("ENDURANCE", "glossary:body_endurance", word("endurance", p.body.endurance)),
+        " \xB7 ",
+        ...stat2("REFLEXES", "glossary:body_reflexes", word("reflexes", p.body.reflexes))
+      ),
+      h(
+        "p",
+        {},
+        ...stat2("EXPRESSION", "glossary:expression", word("expression", p.expression)),
+        " \xB7 ",
+        ...stat2("SEASONING", "glossary:seasoning", word("seasoning", p.seasoning)),
+        " \xB7 BUILD ",
+        h("span", { class: "alius-chip", ...analyzeAttrs("glossary:archetype") }, p.archetype)
+      ),
+      h("p", {}, "TRAITS: ", ...traitIds2.length === 0 ? ["NONE"] : traitIds2.flatMap((id, i) => [
+        i === 0 ? "" : " \xB7 ",
+        h("span", { class: "alius-chip", ...analyzeAttrs(`commanderTraits:${id}`) }, String(reg.commanderTraits.get(id)?.name ?? id))
+      ])),
+      h("p", { class: "alius-dim" }, "REPUTATION \u2014 NONE ON FILE")
+    )
+  );
+}
+
 // src/ui/squad/bands.ts
 function valueBand(v) {
   return v <= -2 ? "LOW" : v >= 2 ? "HIGH" : "MID";
@@ -18485,6 +18607,7 @@ function renderSquadTab(host, ctx2) {
     );
     return;
   }
+  renderCmdrCard(host, { state, registries: ctx2.registries, raw: ctx2.settings().showRawValues });
   if (state.squad.length === 0) {
     host.append(h("section", { class: "alius-section" }, h("p", {}, "NO UNITS ASSIGNED")));
     return;
@@ -18708,8 +18831,14 @@ function renderOpsTab(host, ctx2) {
     h(
       "section",
       { class: "alius-section alius-ops" },
-      h("h2", {}, clockText(state.day, state.slot)),
+      h("h2", {}, clockText(state.day, state.slot) + (isQuietNight(state) ? " \u2014 QUIET" : "")),
       h("p", { class: "alius-dim" }, "Each activity takes this slot. Talking takes it when the scene ends."),
+      isQuietNight(state) && ctx2.onSleep ? h(
+        "p",
+        {},
+        h("button", { type: "button", class: "alius-btn alius-option", "data-sleep": "", ...analyzeNative("glossary:quiet_night"), onclick: ctx2.onSleep }, "[ SLEEP ]"),
+        " Nobody knocks tonight. Sleep costs nothing; spending the night awake costs tomorrow."
+      ) : null,
       ...all.map((a) => activityCard(a, state, ctx2))
     ),
     requisition(state, ctx2, host)
@@ -19095,6 +19224,7 @@ function renderExpeditionScreen(host, ctx2) {
   const debriefPick = [];
   let confirming = false;
   let cover = "";
+  const unitName = (id) => ctx2.getState()?.squad.find((u) => u.id === id)?.displayName ?? id;
   function runView(root, state) {
     const exp = state.expedition;
     const travel = exp.phase === "travel";
@@ -19223,7 +19353,8 @@ function renderExpeditionScreen(host, ctx2) {
         scale: generated.scale,
         waiting: generated.status === "requested",
         options: dilemmaOptions(state, reg),
-        onChoose: ctx2.onDilemmaChoose
+        onChoose: ctx2.onDilemmaChoose,
+        unitName
       });
       root.append(panel);
       return;
@@ -19232,7 +19363,13 @@ function renderExpeditionScreen(host, ctx2) {
     if (options2.length === 0) {
       panel.append(h("button", { type: "button", class: "alius-btn", onclick: () => controller.choose(0) }, "[ CONTINUE ]"));
     }
+    let picked = false;
     for (const o of options2) {
+      const picker = o.routes && o.disabled === null ? renderRoutePicker({ routes: o.routes, unitName, locked: () => picked, onPick: (pick) => {
+        picked = true;
+        controller.choose(o.index, pick);
+      } }) : null;
+      if (picker) picker.hidden = true;
       panel.append(h(
         "div",
         {},
@@ -19242,9 +19379,12 @@ function renderExpeditionScreen(host, ctx2) {
           "data-option": String(o.index),
           disabled: o.disabled !== null,
           onclick: () => {
-            if (o.disabled === null) controller.choose(o.index);
+            if (o.disabled !== null) return;
+            if (picker) picker.hidden = !picker.hidden;
+            else controller.choose(o.index);
           }
-        }, `[ ${o.label} ]${o.disabled ? ` \u2014 ${o.disabled}` : ""}`)
+        }, `[ ${o.label} ]${picker ? " \u2014 CHOOSE HOW" : ""}${o.disabled ? ` \u2014 ${o.disabled}` : ""}`),
+        picker
       ));
     }
     root.append(panel);
@@ -19481,8 +19621,8 @@ function createExpedition(deps) {
     move(nodeId) {
       act("expedition/move", { nodeId });
     },
-    choose(index) {
-      act("expedition/choose", { option: index });
+    choose(index, route) {
+      act("expedition/choose", { option: index, ...route ? { route } : {} });
     },
     treat(unitId, kind) {
       act("expedition/treat", { unitId, kind });
@@ -21643,7 +21783,7 @@ function renderStatusHeader(host, state) {
   const injuredDays = (state.commander.injuredUntilDay ?? 0) - state.day;
   const shortage = state.calendar.shortageStreak ?? 0;
   const parts = [
-    stat("alius-clock", clockText(state.day, state.slot), "glossary:slots"),
+    stat("alius-clock", clockText(state.day, state.slot) + (isQuietNight(state) ? " \u2014 QUIET" : ""), "glossary:slots"),
     h(
       "span",
       { class: "alius-resources" },
@@ -22536,7 +22676,8 @@ function createApp(st, deps) {
       scale: open2.scale,
       waiting: open2.status === "requested",
       options: dilemmaOptions(s, registries),
-      onChoose: (i) => void dilemmas.choose(i)
+      onChoose: (i, route) => void dilemmas.choose(i, route),
+      unitName: (id) => s.squad.find((u) => u.id === id)?.displayName ?? id
     });
   }
   function openDilemmaModal() {
@@ -22781,7 +22922,8 @@ function createApp(st, deps) {
       onAccept: () => void combatDo("combat/accept"),
       onRetreat: () => void combatDo("combat/retreat"),
       onClose: leaveCombat,
-      onCompel: () => void combatDo("combat/compel")
+      onCompel: () => void combatDo("combat/compel"),
+      onPresence: () => void combatDo("combat/presence")
     });
   }
   function showExpedition() {
@@ -22807,7 +22949,7 @@ function createApp(st, deps) {
       controller: expedition,
       onClose: leaveExpedition,
       recapPending: () => recapPendingFor !== null && recapPendingFor === state?.lastExpedition?.id,
-      onDilemmaChoose: (index) => void dilemmas.choose(index)
+      onDilemmaChoose: (index, route) => void dilemmas.choose(index, route)
     });
   }
   function adoptExpedition() {
@@ -23355,6 +23497,33 @@ function createApp(st, deps) {
         case "day_started":
           toast("info", `Day ${String(e.day)}.`);
           break;
+        case "morning_lost":
+          toast("warn", "You slept through the morning.");
+          break;
+        case "quiet_night_started":
+          toast("info", "A quiet night: nobody knocks. Sleep, or spend it awake.");
+          break;
+        case "body_trained":
+          toast("info", e.raised ? `Your ${String(e.stat)} has improved.` : `Body training: ${String(e.stat)}${Number(e.value) >= 5 ? " cannot grow any further" : " is a little better"}.`);
+          break;
+        case "delegate_remark":
+          toast("info", `${state?.squad.find((u) => u.id === e.unitId)?.displayName ?? "She"} does it, with a remark about being asked.`);
+          break;
+        case "delegate_demand":
+          toast("warn", `${state?.squad.find((u) => u.id === e.unitId)?.displayName ?? "She"} wants something in return. Not yet possible: she refuses.`);
+          break;
+        case "delegate_refused":
+          toast("warn", `${state?.squad.find((u) => u.id === e.unitId)?.displayName ?? "She"} refuses.`);
+          break;
+        case "commander_covered":
+          toast("info", `${state?.squad.find((u) => u.id === e.unitId)?.displayName ?? "A friend"} covers for you after the long run.`);
+          break;
+        case "commander_exhausted":
+          toast("warn", "You are exhausted: tomorrow morning is lost.");
+          break;
+        case "commander_scarred":
+          toast("warn", e.stat ? `The fight left a scar: your ${String(e.stat)} is worse for it.` : "The fight left a scar. You are not the same.");
+          break;
         case "mission_offered":
           if (e.source === "command" || e.source === "story") toast("info", `New ${String(e.source)} mission: ${String(e.title)}.`);
           break;
@@ -23496,6 +23665,7 @@ function createApp(st, deps) {
       },
       onDismiss: (missionId) => void act({ type: "mission/dismiss", payload: { missionId } }),
       onFollowRumor: (rumorId) => void act({ type: "rumor/follow", payload: { rumorId } }),
+      onSleep: () => void act({ type: "calendar/sleep", payload: {} }),
       onIntake: () => void api.intakeUnit(),
       onOpenReport: () => {
         showExpedition();

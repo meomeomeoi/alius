@@ -124,3 +124,19 @@ describe('review modal for an old campaign (P7)', () => {
     expect(app.current().state!.commander.fileReviewed).toBe(true);
   });
 });
+
+describe('toasts for the P7 events', () => {
+  it('say what happened: body training and a quiet night', async () => {
+    const st = new FakeStAdapter(GROUP);
+    const c = createCampaign({ seed: 2, commanderName: 'New' });
+    c.commander.traits = { regular: ['insomniac'] };
+    c.slot = 'evening';
+    st.writeMetadata(METADATA_KEY, c);
+    const { app, toasts } = await boot(st, () => 'skip');
+    const dispatch = (type: string, payload: unknown = {}) => app.dispatch({ type, payload } as never);
+    dispatch('activity/do', { activityId: 'train', focus: 'body_strength' });
+    expect(toasts.map((t) => t.text)).toContain('Body training: strength is a little better.');
+    expect(app.current().state!.slot).toBe('night'); // the Evening ran out: nobody knocks, the insomniac stays up
+    expect(toasts.map((t) => t.text)).toContain('A quiet night: nobody knocks. Sleep, or spend it awake.');
+  });
+});

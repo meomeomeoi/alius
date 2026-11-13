@@ -277,3 +277,53 @@ describe('combat screen', () => {
     expect(host.textContent).toBe('');
   });
 });
+
+describe('presence action (P7)', () => {
+  const withPresence = (kind: 'unnoticed' | 'steady_voice' | 'rally', used = false): CampaignState => {
+    const s = open();
+    s.combat!.presence = { kind, used };
+    return s;
+  };
+  const btn = (host: HTMLElement) => host.querySelector<HTMLButtonElement>('button[data-act="presence"]');
+
+  it('the presence button is labelled by the archetype\'s kind', () => {
+    for (const [kind, label] of [['unnoticed', 'UNNOTICED'], ['steady_voice', 'STEADY VOICE'], ['rally', 'RALLY']] as const) {
+      const { host } = mount(withPresence(kind), { onPresence: vi.fn() });
+      expect(btn(host)!.textContent).toContain(label);
+      expect(btn(host)!.getAttribute('data-analyze')).toBe(`glossary:presence_${kind}`);
+      document.body.innerHTML = '';
+    }
+  });
+
+  it('the presence button dispatches once and is disabled after use', () => {
+    const onPresence = vi.fn();
+    const { host, cur, screen } = mount(withPresence('rally'), { onPresence });
+    btn(host)!.click();
+    expect(onPresence).toHaveBeenCalledTimes(1);
+    cur.state = withPresence('rally', true);
+    screen.refresh();
+    expect(btn(host)!.disabled).toBe(true);
+    expect(btn(host)!.textContent).toMatch(/USED/);
+    btn(host)!.click();
+    expect(onPresence).toHaveBeenCalledTimes(1);
+  });
+
+  it('is disabled while no unit awaits input, and hidden without the callback or for a combat from before P7', () => {
+    const idle = withPresence('rally');
+    idle.combat!.awaitingCid = undefined;
+    expect(btn(mount(idle, { onPresence: vi.fn() }).host)!.disabled).toBe(true);
+    document.body.innerHTML = '';
+    expect(btn(mount(withPresence('rally')).host)).toBeNull();
+    document.body.innerHTML = '';
+    const legacy = open();
+    delete legacy.combat!.presence;
+    expect(btn(mount(legacy, { onPresence: vi.fn() }).host)).toBeNull();
+  });
+
+  it('a dodge shows in the log', () => {
+    const s = open();
+    s.combat!.log.push({ round: 1, kind: 'dodge', actor: 'e1', target: 'commander' });
+    const { host } = mount(s);
+    expect(host.querySelector('.alius-combat-log')!.textContent).toMatch(/Commander dodges/);
+  });
+});

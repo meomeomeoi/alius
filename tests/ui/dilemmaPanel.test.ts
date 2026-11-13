@@ -152,3 +152,126 @@ describe('expedition event panel with a dilemma', () => {
     expect(screen(s, false).host.querySelectorAll('[data-option]')).toHaveLength(3);
   });
 });
+
+describe('route picker (P7)', () => {
+  const ROUTES = [
+    { route: 0, kind: 'body' as const, label: 'STRENGTH: Strong or better', disabled: 'Needs strength Strong or better; yours is Average.' },
+    { route: 1, kind: 'delegate' as const, label: 'Ask a unit (Trust: guarded)', disabled: null, unitIds: ['unit_ann', 'unit_bea'] },
+    { route: 2, kind: 'bypass' as const, label: 'Pay 5 credits', disabled: null },
+  ];
+  const routed = () => options([{ routes: ROUTES }, {}]);
+  const names: Record<string, string> = { unit_ann: 'Ann', unit_bea: 'Bea' };
+
+  it('a routed option opens its route list instead of choosing at once', () => {
+    const { host, onChoose } = mount({ options: routed(), unitName: (id) => names[id] ?? id });
+    host.querySelector<HTMLButtonElement>('[data-dilemma-option="0"]')!.click();
+    expect(onChoose).not.toHaveBeenCalled();
+    const routes = [...host.querySelectorAll<HTMLButtonElement>('button[data-route]')];
+    expect(routes.map((b) => b.textContent)).toEqual([
+      '[ STRENGTH: Strong or better ] — Needs strength Strong or better; yours is Average.', '[ Ask a unit (Trust: guarded) ]', '[ Pay 5 credits ]',
+    ]);
+  });
+
+  it('a disabled route shows its reason and cannot be taken', () => {
+    const { host, onChoose } = mount({ options: routed() });
+    host.querySelector<HTMLButtonElement>('[data-dilemma-option="0"]')!.click();
+    const body = host.querySelector<HTMLButtonElement>('button[data-route="0"]')!;
+    expect(body.getAttribute('aria-disabled')).toBe('true');
+    body.click();
+    expect(onChoose).not.toHaveBeenCalled();
+  });
+
+  it('a route without a unit sends { route }', () => {
+    const { host, onChoose } = mount({ options: routed() });
+    host.querySelector<HTMLButtonElement>('[data-dilemma-option="0"]')!.click();
+    host.querySelector<HTMLButtonElement>('button[data-route="2"]')!.click();
+    expect(onChoose).toHaveBeenCalledTimes(1);
+    expect(onChoose).toHaveBeenCalledWith(0, { route: 2 });
+  });
+
+  it('a delegate route asks for a unit first and sends { route, unitId }', () => {
+    const { host, onChoose } = mount({ options: routed(), unitName: (id) => names[id] ?? id });
+    host.querySelector<HTMLButtonElement>('[data-dilemma-option="0"]')!.click();
+    host.querySelector<HTMLButtonElement>('button[data-route="1"]')!.click();
+    expect(onChoose).not.toHaveBeenCalled();
+    const units = [...host.querySelectorAll<HTMLButtonElement>('button[data-route-unit]')];
+    expect(units.map((b) => b.textContent)).toEqual(['[ Ann ]', '[ Bea ]']);
+    units[1].click();
+    expect(onChoose).toHaveBeenCalledTimes(1);
+    expect(onChoose).toHaveBeenCalledWith(0, { route: 1, unitId: 'unit_bea' });
+  });
+
+  it('after a pick every button is locked, and a second click does nothing', () => {
+    const { host, onChoose } = mount({ options: routed() });
+    host.querySelector<HTMLButtonElement>('[data-dilemma-option="0"]')!.click();
+    const bypass = host.querySelector<HTMLButtonElement>('button[data-route="2"]')!;
+    bypass.click();
+    bypass.click();
+    host.querySelector<HTMLButtonElement>('[data-dilemma-option="1"]')!.click();
+    expect(onChoose).toHaveBeenCalledTimes(1);
+  });
+
+  it('an option without routes still chooses at once', () => {
+    const { host, onChoose } = mount({ options: routed() });
+    host.querySelector<HTMLButtonElement>('[data-dilemma-option="1"]')!.click();
+    expect(onChoose).toHaveBeenCalledWith(1);
+  });
+
+  it('route and unit buttons are analyzable, text is not markup', () => {
+    const { host } = mount({ options: options([{ routes: [{ route: 0, kind: 'bypass', label: '<b>Pay</b>', disabled: null }] }]) });
+    host.querySelector<HTMLButtonElement>('[data-dilemma-option="0"]')!.click();
+    expect(host.querySelector('b')).toBeNull();
+    for (const b of host.querySelectorAll('button[data-route]')) expect(b.getAttribute('data-analyze')).toMatch(/^glossary:(check_routes|delegate)$/);
+  });
+});
+
+describe('expedition event with a routed option (P7)', () => {
+  function atCrate(): CampaignState {
+    const { state, mission } = withMission(reg, campaign(reg, 4));
+    const s = structuredClone(depart(reg, state, mission.id));
+    s.commander.body = { strength: 2, endurance: 3, reflexes: 2 };
+    s.expedition!.phase = 'event';
+    s.expedition!.pending = { kind: 'event', nodeId: s.expedition!.map.objectiveId, templateId: 'evt_sealed_crate' };
+    return s;
+  }
+  function screen(state: CampaignState) {
+    const host = h('div');
+    document.body.append(host);
+    const controller = { choose: vi.fn(), move: vi.fn(), treat: vi.fn(), setFormation: vi.fn(), retreat: vi.fn(), return: vi.fn(), planning: vi.fn(() => null) } as unknown as ExpeditionController;
+    renderExpeditionScreen(host, { getState: () => state, registries: reg, settings: () => DEFAULT_SETTINGS, controller, onClose: () => {} });
+    return { host, controller };
+  }
+
+  it('the routed option opens the route list; the plain one still chooses at once', () => {
+    const { host, controller } = screen(atCrate());
+    host.querySelector<HTMLButtonElement>('[data-option="0"]')!.click();
+    expect(controller.choose).not.toHaveBeenCalled();
+    expect([...host.querySelectorAll('button[data-route]')].map((b) => b.getAttribute('data-route'))).toEqual(['0', '1', '2']);
+    host.querySelector<HTMLButtonElement>('[data-option="1"]')!.click();
+    expect(controller.choose).toHaveBeenCalledWith(1);
+  });
+
+  it('a body route below its minimum shows the reason', () => {
+    const { host } = screen(atCrate());
+    host.querySelector<HTMLButtonElement>('[data-option="0"]')!.click();
+    const body = host.querySelector<HTMLButtonElement>('button[data-route="0"]')!;
+    expect(body.textContent).toMatch(/Needs strength Average or better; yours is Slight|Needs strength/);
+    expect(body.getAttribute('aria-disabled')).toBe('true');
+  });
+
+  it('a delegate pick sends the route and the unit to the controller', () => {
+    const { host, controller } = screen(atCrate());
+    host.querySelector<HTMLButtonElement>('[data-option="0"]')!.click();
+    host.querySelector<HTMLButtonElement>('button[data-route="1"]')!.click();
+    const ann = host.querySelector<HTMLButtonElement>('button[data-route-unit="unit_ann"]')!;
+    ann.click();
+    expect(controller.choose).toHaveBeenCalledWith(0, { route: 1, unitId: 'unit_ann' });
+  });
+
+  it('a bypass sends only the route', () => {
+    const { host, controller } = screen(atCrate());
+    host.querySelector<HTMLButtonElement>('[data-option="0"]')!.click();
+    host.querySelector<HTMLButtonElement>('button[data-route="2"]')!.click();
+    expect(controller.choose).toHaveBeenCalledWith(0, { route: 2 });
+  });
+});
