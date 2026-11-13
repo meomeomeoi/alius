@@ -202,3 +202,13 @@ export function traitBlockReason(
   const clash = chosen.find((c) => excludes.includes(c) || ((reg.commanderTraits.get(c)?.exclusiveWith as string[] | undefined) ?? []).includes(id));
   return clash === undefined ? null : `Excluded by ${String(reg.commanderTraits.get(clash)?.name ?? clash)}.`;
 }
+
+/**
+ * The commander as the main model reads him (P7): descriptors only, no numbers, no trait names (traits act through
+ * mechanics, not prompts). SillyTavern has no pronoun field, so none is given.
+ */
+export function commanderLine(state: CampaignState): string {
+  const p = commanderProfile(state);
+  const w = (kind: DescriptorKind, v: number): string => descriptor(kind, v).toLowerCase();
+  return `Commander ${state.commander.name}: ${w('seasoning', p.seasoning)}, ${p.archetype} build, ${w('expression', p.expression)} presentation.`;
+}

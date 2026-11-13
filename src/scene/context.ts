@@ -1,4 +1,6 @@
 import type { Registries } from '../content/types';
+import { firstImpressionWeight } from '../engine/commander/presence';
+import { commanderLine } from '../engine/commander/profile';
 import { retrieveFacts, openPromises } from '../engine/memory';
 import { affinityBand, attractionBand, stressBand, trustBand } from '../engine/relations/bands';
 import { intimacyOf } from '../engine/relations/gain';
@@ -76,7 +78,10 @@ export function registerSceneContext(builder: ContextBuilder, deps: Deps): void 
       const reg = deps.registries();
       const corp = s.commander.corporationId ? reg.corporations.get(s.commander.corporationId) : undefined;
       const notable = SOCIAL_STATS.filter((k) => s.commander.socialStats[k] >= 3).map((k) => `${k} ${s.commander.socialStats[k]}`);
-      const lines = [`Commander: ${s.commander.name}${corp ? ` (${String(corp.name)})` : ''}.${notable.length > 0 ? ` Notable: ${notable.join(', ')}.` : ''}`];
+      const lines = [
+        `Commander: ${s.commander.name}${corp ? ` (${String(corp.name)})` : ''}.${notable.length > 0 ? ` Notable: ${notable.join(', ')}.` : ''}`,
+        commanderLine(s),
+      ];
       const crime = s.commander.crimeId ? reg.crimes.get(s.commander.crimeId) : undefined;
       if (crime) {
         const units = presentUnits(s);
@@ -89,6 +94,8 @@ export function registerSceneContext(builder: ContextBuilder, deps: Deps): void 
           lines.push(`Crime: unknown to ${ignorant.map((u) => u.displayName).join(', ')}.${knows.length > 0 ? ' Do not bring it up while they are present.' : ''}`);
         }
       }
+      // looks matter most on a first meeting: while any present unit is still sizing him up, the model is told so
+      if (presentUnits(s).some((u) => firstImpressionWeight(s, u.id) > 0.5)) lines.push('Units still size him up by appearance.');
       return lines.join('\n');
     },
   });

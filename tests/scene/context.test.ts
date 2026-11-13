@@ -175,3 +175,88 @@ describe('scene directives', () => {
     expect(b.build(s, 1000).directives).not.toMatch(/Romance is disabled/);
   });
 });
+
+describe('commander line and first-impression directive (P7)', () => {
+  const line = (out: string): string => out.split('\n').find((l) => l.startsWith('Commander Vale:'))!;
+  const commander = (w: CampaignState) => {
+    w.commander.body = { strength: 4, endurance: 3, reflexes: 2 }; // sum 9: average
+    w.commander.expression = 2;
+    w.commander.seasoning = 5;
+    w.commander.traits = { regular: ['old_wound', 'bookish'], special: 'vow_of_distance' };
+  };
+
+  it('the commander line uses descriptors and has no digits', () => {
+    const out = block(builder(), inScene([ANN], commander));
+    expect(line(out)).toBe('Commander Vale: veteran, average build, feminine presentation.');
+    expect(line(out)).not.toMatch(/\d/);
+  });
+
+  it('describes the other builds and seasoning in plain words', () => {
+    const cases: Array<[[number, number, number], number, number, string]> = [
+      [[2, 1, 1], 1, 1, 'Commander Vale: green, frail build, very feminine presentation.'],
+      [[4, 4, 4], 4, 3, 'Commander Vale: experienced, fit build, masculine presentation.'],
+      [[5, 4, 4], 3, 5, 'Commander Vale: veteran, hardened build, androgynous presentation.'],
+    ];
+    for (const [body, expression, seasoning, expected] of cases) {
+      const out = block(builder(), inScene([ANN], (w) => {
+        w.commander.body = { strength: body[0], endurance: body[1], reflexes: body[2] };
+        w.commander.expression = expression;
+        w.commander.seasoning = seasoning;
+      }));
+      expect(line(out)).toBe(expected);
+    }
+  });
+
+  it('is the second line of the commander block, right after the first', () => {
+    const lines = block(builder(), inScene([ANN], commander)).split('\n');
+    const at = lines.findIndex((l) => l.startsWith('Commander: Vale'));
+    expect(lines[at + 1]).toMatch(/^Commander Vale:/);
+  });
+
+  it('trait names are not in the line', () => {
+    const out = block(builder(), inScene([ANN], commander));
+    for (const id of ['old_wound', 'bookish', 'vow_of_distance']) {
+      expect(out).not.toContain(String(reg.commanderTraits.get(id)!.name));
+      expect(out).not.toContain(id);
+    }
+  });
+
+  it('a commander from an older save gets the defaults', () => {
+    const out = block(builder(), inScene([ANN], (w) => {
+      for (const k of ['body', 'bodyXp', 'expression', 'seasoning', 'traits', 'archetype'] as const) delete w.commander[k];
+    }));
+    expect(line(out)).toBe('Commander Vale: experienced, average build, androgynous presentation.');
+  });
+
+  it('the directive appears on day 1 and is gone at d = 7 (w ≈ 0.37)', () => {
+    const at = (day: number): string => block(builder(), inScene([ANN], (w) => {
+      w.day = day;
+      w.relations[ANN].metDay = 1;
+    }));
+    expect(at(1)).toContain('Units still size him up by appearance.');
+    expect(at(4)).toContain('Units still size him up by appearance.'); // d = 3: w ≈ 0.65
+    expect(at(6)).not.toContain('Units still size him up by appearance.'); // d = 5: w ≈ 0.49
+    expect(at(8)).not.toContain('Units still size him up by appearance.'); // d = 7
+  });
+
+  it('one unit still new to him is enough, and a longer fade keeps it longer', () => {
+    const out = block(builder(), inScene([ANN, BEA], (w) => {
+      w.day = 20;
+      w.relations[ANN].metDay = 1;
+      w.relations[BEA].metDay = 19;
+    }));
+    expect(out).toContain('Units still size him up by appearance.');
+    const slow = block(builder(), inScene([ANN], (w) => {
+      w.day = 8;
+      w.relations[ANN].metDay = 1;
+      w.settings.firstImpressionTau = 30;
+    }));
+    expect(slow).toContain('Units still size him up by appearance.');
+  });
+
+  it('only units in the scene count, and nothing is said outside a scene', () => {
+    const s = inScene([ANN], (w) => { w.day = 30; w.relations[BEA].metDay = 30; });
+    expect(block(builder(), s)).not.toContain('size him up');
+    expect(block(builder(), campaign(reg, 4))).not.toContain('Commander Vale:');
+  });
+});

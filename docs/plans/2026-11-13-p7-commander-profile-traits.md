@@ -385,9 +385,9 @@ docs/** (Task 19), tests/** mirror src
 **Interfaces:**
 - Produces: `commanderLine(state, reg): string` = `` `Commander ${name}: ${seasoning}, ${archetype} build, ${expression} presentation.` `` (descriptors lower-cased; archetype as its id); appended as the provider's second line. Directive (same provider) when any present unit has `firstImpressionWeight > 0.5`: `Units still size him up by appearance.`
 
-- [ ] **Step 1: Write the failing tests** — `the commander line uses descriptors and has no digits` (`/\d/` fails for a name without digits); `the directive appears on day 1 and is gone at d = 7` (w ≈ 0.37); `trait names are not in the line` (traits act through mechanics, not prompts).
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → green.
-- [ ] **Step 5: Commit** `feat(scene): commander line and first-impression directive`.
+- [x] **Step 1: Write the failing tests** — `the commander line uses descriptors and has no digits` (`/\d/` fails for a name without digits); `the directive appears on day 1 and is gone at d = 7` (w ≈ 0.37); `trait names are not in the line` (traits act through mechanics, not prompts).
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → green.
+- [x] **Step 5: Commit** `feat(scene): commander line and first-impression directive`.
 
 ---
 

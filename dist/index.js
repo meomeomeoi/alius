@@ -453,6 +453,11 @@ function traitBlockReason(reg, traits, id, opts) {
   const clash = chosen.find((c) => excludes.includes(c) || (reg.commanderTraits.get(c)?.exclusiveWith ?? []).includes(id));
   return clash === void 0 ? null : `Excluded by ${String(reg.commanderTraits.get(clash)?.name ?? clash)}.`;
 }
+function commanderLine(state) {
+  const p = commanderProfile(state);
+  const w = (kind, v) => descriptor(kind, v).toLowerCase();
+  return `Commander ${state.commander.name}: ${w("seasoning", p.seasoning)}, ${p.archetype} build, ${w("expression", p.expression)} presentation.`;
+}
 
 // src/engine/ledger.ts
 var RESOURCES = ["credits", "supplies", "plyx"];
@@ -16217,7 +16222,10 @@ function registerSceneContext(builder, deps) {
       const reg = deps.registries();
       const corp = s.commander.corporationId ? reg.corporations.get(s.commander.corporationId) : void 0;
       const notable = SOCIAL_STATS2.filter((k) => s.commander.socialStats[k] >= 3).map((k) => `${k} ${s.commander.socialStats[k]}`);
-      const lines = [`Commander: ${s.commander.name}${corp ? ` (${String(corp.name)})` : ""}.${notable.length > 0 ? ` Notable: ${notable.join(", ")}.` : ""}`];
+      const lines = [
+        `Commander: ${s.commander.name}${corp ? ` (${String(corp.name)})` : ""}.${notable.length > 0 ? ` Notable: ${notable.join(", ")}.` : ""}`,
+        commanderLine(s)
+      ];
       const crime = s.commander.crimeId ? reg.crimes.get(s.commander.crimeId) : void 0;
       if (crime) {
         const units = presentUnits2(s);
@@ -16229,6 +16237,7 @@ function registerSceneContext(builder, deps) {
           lines.push(`Crime: unknown to ${ignorant.map((u) => u.displayName).join(", ")}.${knows.length > 0 ? " Do not bring it up while they are present." : ""}`);
         }
       }
+      if (presentUnits2(s).some((u) => firstImpressionWeight(s, u.id) > 0.5)) lines.push("Units still size him up by appearance.");
       return lines.join("\n");
     }
   });
