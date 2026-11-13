@@ -247,9 +247,9 @@ docs/** (Task 16), tests/** mirror src, tests/fixtures/analyze/, tests/helpers/a
   - `tests/fixtures/analyze/hidden.ts`: `hiddenFixture(reg): { state; sentinels: { numbers: number[]; texts: string[] } }` — a campaign with one unit at Trust 37, Affinity −41, Attraction 23, stress 63 (and ledger entries with deltas 17 and −29), a clock with `visibleToPlayer: false` labelled `SENTINEL_CLOCK`, a fact with tag `sentinel` and text `SENTINEL_FACT` hidden by a registered rule, a disloyalty record with `attempts: 3`, `nextCheckDay: 97`, and an open presented dilemma whose option effects carry `faction` amount 77 and label `SENTINEL_OPTION_EFFECT`.
   - `tests/helpers/analyze.ts`: `SAMPLE_ADDRESS: Record<string, string>` for bare-source keys (`setting` → `setting:showRawValues`); `allReadings(env): string` — every registered key run with `data: { unitId }` of the fixture unit, joined text.
 
-- [ ] **Step 1: Write the failing tests** — `knowledge`: `raw is null with raw values off`; `a hidden clock is not visible`; `a rule hides a fact from facts()`; `reset removes rules`. `hidden` (runs over **every** registered provider, so later packages are checked too): `no provider shows a sentinel number with raw values off`; `no provider shows a sentinel text`; `every bare-source provider has a sample address`; `a throwing provider is skipped`; `no state gives no reading`.
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → PASS (the hidden test passes vacuously until Task 10 registers providers; Task 10 re-runs it).
-- [ ] **Step 5: Commit** `feat(analysis): knowledge filter, provider registry and readings`.
+- [x] **Step 1: Write the failing tests** — `knowledge`: `raw is null with raw values off`; `a hidden clock is not visible`; `a rule hides a fact from facts()`; `reset removes rules`. `hidden` (runs over **every** registered provider, so later packages are checked too): `no provider shows a sentinel number with raw values off`; `no provider shows a sentinel text`; `every bare-source provider has a sample address`; `a throwing provider is skipped`; `no state gives no reading`.
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → PASS (the hidden test passes vacuously until Task 10 registers providers; Task 10 re-runs it).
+- [x] **Step 5: Commit** `feat(analysis): knowledge filter, provider registry and readings`.
 
 ---
 

@@ -19487,6 +19487,49 @@ function entryEffects(registry2, entry, reg) {
   }
 }
 
+// src/analysis/knowledge.ts
+var rules = [];
+function holds(check) {
+  try {
+    return check() !== false;
+  } catch {
+    return true;
+  }
+}
+function buildKnowledge(state, settings) {
+  const showRaw = settings.showRawValues === true;
+  const visibleClocks = new Set((state.world?.clocks ?? []).filter((c) => c.visibleToPlayer).map((c) => c.id));
+  const factVisible = (f) => rules.every((r) => !r.fact || holds(() => r.fact(f, state)));
+  return {
+    showRaw,
+    raw: (n) => showRaw ? String(n) : null,
+    clockVisible: (id) => visibleClocks.has(id),
+    factVisible,
+    flagVisible: (id) => rules.every((r) => !r.flag || holds(() => r.flag(id, state))),
+    facts: () => (state.memory?.facts ?? []).filter(factVisible)
+  };
+}
+
+// src/analysis/providers.ts
+var providers = /* @__PURE__ */ new Map();
+function readingFor(subject, env) {
+  if (!env.state) return null;
+  const knowledge = buildKnowledge(env.state, env.settings);
+  const lines = [];
+  const keys = subject.address === subject.source ? [subject.address] : [subject.address, subject.source];
+  for (const key of keys) {
+    for (const provider of providers.get(key) ?? []) {
+      try {
+        const reading = provider(subject, env, knowledge);
+        if (reading) lines.push(...reading.lines);
+      } catch (e) {
+        console.warn(`analyze provider "${key}" failed`, e);
+      }
+    }
+  }
+  return lines.length > 0 ? { lines } : null;
+}
+
 // src/analysis/model.ts
 var missing = (subject) => ({
   address: subject.address,
@@ -19499,7 +19542,7 @@ var missing = (subject) => ({
   reading: null,
   missing: true
 });
-function glossaryModel(subject, entry) {
+function glossaryModel(subject, entry, env) {
   return {
     address: subject.address,
     source: subject.source,
@@ -19508,7 +19551,7 @@ function glossaryModel(subject, entry) {
     long: typeof entry.long === "string" ? entry.long : null,
     effects: [],
     see: Array.isArray(entry.see) ? entry.see.map(String) : [],
-    reading: null,
+    reading: readingFor(subject, env),
     missing: false
   };
 }
@@ -19516,13 +19559,13 @@ function buildPanelModel(subject, env) {
   const { registries } = env;
   if (subject.source === "setting") {
     const entry2 = registries.glossary.get(`setting_${subject.id}`);
-    return entry2 ? glossaryModel(subject, entry2) : missing(subject);
+    return entry2 ? glossaryModel(subject, entry2, env) : missing(subject);
   }
   if (!REGISTRY_NAMES.includes(subject.source)) return missing(subject);
   const registry2 = subject.source;
   const entry = registries[registry2].get(subject.id);
   if (!entry) return missing(subject);
-  if (registry2 === "glossary") return glossaryModel(subject, entry);
+  if (registry2 === "glossary") return glossaryModel(subject, entry, env);
   return {
     address: subject.address,
     source: subject.source,
@@ -19531,7 +19574,7 @@ function buildPanelModel(subject, env) {
     long: null,
     effects: entryEffects(registry2, entry, registries),
     see: [],
-    reading: null,
+    reading: readingFor(subject, env),
     missing: false
   };
 }

@@ -85,3 +85,25 @@ describe('panel model', () => {
     for (const n of PLAYER_VISIBLE) expect(REGISTRY_NAMES).toContain(n);
   });
 });
+
+describe('panel model readings', () => {
+  it('a registered provider fills the reading, and only with a campaign', async () => {
+    const { registerAnalyzeProvider } = await import('../../src/analysis/providers');
+    const { createCampaign } = await import('../../src/engine/state/create');
+    const e = env({ glossary: [{ id: 'trust', term: 'Trust', short: 's' }], items: [{ id: 'it', name: 'I' }] });
+    const state = createCampaign({ seed: 1, commanderName: 'Vale' });
+    const offs = [
+      registerAnalyzeProvider('glossary:trust', (subject) => ({ lines: [`ctx ${String(subject.data.unitId)}`] })),
+      registerAnalyzeProvider('items', () => ({ lines: ['an item reading'] })),
+    ];
+    try {
+      expect(model('glossary:trust', e, '{"unitId":"u1"}').reading).toBeNull();
+      const withState = { ...e, state };
+      expect(model('glossary:trust', withState, '{"unitId":"u1"}').reading).toEqual({ lines: ['ctx u1'] });
+      expect(model('items:it', withState).reading).toEqual({ lines: ['an item reading'] });
+      expect(model('items:gone', withState).reading).toBeNull();
+    } finally {
+      offs.forEach((off) => off());
+    }
+  });
+});
