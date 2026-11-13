@@ -3,6 +3,7 @@ import { REGISTRY_NAMES } from '../content/types';
 import type { CampaignState } from '../engine/state/types';
 import type { AliusSettings } from '../settings';
 import { entryText, entryTitle } from './describe';
+import { entryEffects } from './effects';
 import type { Subject } from './subject';
 
 /** Everything a panel may read: content, the open campaign (if any) and the settings. */
@@ -62,7 +63,7 @@ export function buildPanelModel(subject: Subject, env: AnalyzeEnv): PanelModel {
     title: entryTitle(registry, entry),
     text: entryText(registry, entry),
     long: null,
-    effects: [], // filled by the effects summary (Task 4)
+    effects: entryEffects(registry, entry, registries),
     see: [],
     reading: null,
     missing: false,
