@@ -36,6 +36,19 @@ var TUNING = Object.freeze({
     maxTastes: 3,
     maxRegular: 2
   }),
+  /** P8: world options and unit disposition. */
+  disposition: Object.freeze({
+    loreMaxChars: 100,
+    worldBlockTokens: 120,
+    /** The setting `intentMinConfidence` is measured against this reference (its default). */
+    confidenceRef: 0.5,
+    /** A commander event of one of these types at `minSeverity` or above is a big gesture. P9 adds more. */
+    bigGesture: Object.freeze({ events: Object.freeze(["protected"]), minSeverity: "major" }),
+    /** A `self` breakdown costs this share of the unit's max HP. */
+    selfHarmPct: 10,
+    /** A stance's gain damping never takes more than this share of a gain. */
+    gainDampMax: 0.8
+  }),
   /** P7a: the change ledger behind trends, stress sources and "last changes" readings. */
   ledger: Object.freeze({ days: 7, max: 150 }),
   upkeep: Object.freeze({ perUnit: 1, commander: 1, doubledByDefect: "hunger_loop" }),
@@ -10889,7 +10902,12 @@ var REGISTRY_NAMES = [
   "commanderTraits",
   "tastes",
   "presence",
-  "imageConsistency"
+  "imageConsistency",
+  // P8
+  "worldOptions",
+  "dispositionLevels",
+  "stanceEffects",
+  "worldPresets"
 ];
 var PackManifestSchema = external_exports.object({
   id: external_exports.string().min(1),
@@ -11816,7 +11834,9 @@ var ClockSchema = BaseEntrySchema.extend({
   regionId: str2.optional(),
   visibleToPlayer: external_exports.boolean(),
   onFill: external_exports.array(WorldEffectSchema),
-  repeat: external_exports.boolean().optional()
+  repeat: external_exports.boolean().optional(),
+  /** P8: the entry exists only while some world choice enables this family. */
+  family: str2.optional()
 }).superRefine((c, ctx2) => {
   if (c.startFilled >= c.segments) ctx2.addIssue({ code: "custom", path: ["startFilled"], message: "startFilled must be below segments" });
 });
@@ -11842,7 +11862,9 @@ var MissionTemplateSchema = BaseEntrySchema.extend({
   failureEffects: external_exports.array(WorldEffectSchema),
   onSuccess: external_exports.array(WorldEffectSchema).optional(),
   titles: external_exports.array(str2.max(60)).min(1),
-  briefs: external_exports.array(str2.max(300)).min(1)
+  briefs: external_exports.array(str2.max(300)).min(1),
+  /** P8: see ClockSchema. */
+  family: str2.optional()
 });
 var TRUST_BANDS = ["none", "low", "guarded", "solid", "high"];
 var CheckRouteSchema = external_exports.discriminatedUnion("kind", [
@@ -11899,7 +11921,9 @@ var DilemmaTemplateSchema = BaseEntrySchema.extend({
   }).strict().optional(),
   /** Declared flags the model may pick among (rule 6). */
   allowedFlags: external_exports.array(str2).optional(),
-  constraints: external_exports.object({ flagPerOption: external_exports.boolean().optional() }).strict().optional()
+  constraints: external_exports.object({ flagPerOption: external_exports.boolean().optional() }).strict().optional(),
+  /** P8: see ClockSchema. */
+  family: str2.optional()
 }).superRefine((d, ctx2) => {
   if (d.scale === "minor" && d.contexts.includes("expedition_event") && d.fixed === void 0) {
     ctx2.addIssue({ code: "custom", path: ["fixed"], message: "a minor expedition event needs a fixed block" });
@@ -12048,6 +12072,105 @@ Object.assign(registrySchemas, {
   imageConsistency: ImageConsistencySchema,
   commanderTraits: CommanderTraitSchema
 });
+var BREAKDOWN_TARGETS = ["self", "default", "allies", "allies_commander", "everyone"];
+var WorldOptionEffectSchema = external_exports.discriminatedUnion("type", [
+  /** The disposition level the world starts with. Exactly one option carries these. */
+  external_exports.object({ type: external_exports.literal("disposition"), levelId: str2 }).strict(),
+  /** Added to the corporation's weekly Leash authorizations (before the 0…5 clamp). */
+  external_exports.object({ type: external_exports.literal("leash_weekly"), amount: int.min(-3).max(3) }).strict(),
+  external_exports.object({ type: external_exports.literal("terminate_approval"), amount: external_exports.number().min(-1).max(1) }).strict(),
+  /** Multiplies the negative faction amounts of a failed command mission. */
+  external_exports.object({ type: external_exports.literal("command_failure_mult"), mult: external_exports.number().min(0.1).max(3) }).strict(),
+  external_exports.object({ type: external_exports.literal("mission_reward_pct"), pct: int.min(-90).max(100) }).strict(),
+  /** The expression the world expects (1 very feminine … 5 very masculine); the commander's distance costs own-corporation standing. */
+  external_exports.object({ type: external_exports.literal("expression_norm"), norm: rank5, standingPerStep: int.min(-10).max(10) }).strict(),
+  external_exports.object({ type: external_exports.literal("enable_family"), family: str2 }).strict(),
+  external_exports.object({ type: external_exports.literal("director_hint"), text: str2.max(200) }).strict(),
+  external_exports.object({ type: external_exports.literal("scene_directive"), text: str2.max(300) }).strict(),
+  /** Weights for the stance a generated grunt rolls under this choice. */
+  external_exports.object({
+    type: external_exports.literal("grunt_stances"),
+    shares: external_exports.number().min(0).max(20),
+    indifferent: external_exports.number().min(0).max(20),
+    opposes: external_exports.number().min(0).max(20)
+  }).strict()
+]);
+var WorldChoiceSchema = external_exports.object({
+  id: external_exports.string().regex(ID_PATTERN, "id must match ^[a-z0-9_:.-]+$"),
+  label: str2,
+  description: str2.max(DESCRIPTION_MAX),
+  /** One short line of the WORLD SETTINGS context block. */
+  lore: str2.max(TUNING.disposition.loreMaxChars),
+  effects: external_exports.array(WorldOptionEffectSchema)
+}).strict();
+var WorldOptionSchema = BaseEntrySchema.extend({
+  label: str2,
+  group: str2,
+  /** A live option can change during the campaign; every other option is fixed when the campaign is built. */
+  live: external_exports.boolean(),
+  /** The option sets each unit's own stance toward it (P8 §3.1). */
+  squadStance: external_exports.boolean().optional(),
+  default: str2,
+  description: str2.max(DESCRIPTION_MAX),
+  choices: external_exports.array(WorldChoiceSchema).min(2)
+}).strict();
+var DispositionLevelSchema = BaseEntrySchema.extend({
+  name: str2,
+  description: str2.max(DESCRIPTION_MAX),
+  rank: int.min(1).max(5),
+  start: external_exports.object({ trust: int.min(-40).max(40), affinity: int.min(-40).max(40) }).strict(),
+  gainMult: external_exports.number().min(0.1).max(3),
+  lossMult: external_exports.number().min(0.1).max(3),
+  minConfidence: external_exports.object({ gain: external_exports.number().min(0).max(1), loss: external_exports.number().min(0).max(1) }).strict(),
+  bandShift: int.min(-20).max(20),
+  bandExitExtra: int.min(0).max(20),
+  stageDaysMult: external_exports.number().min(0.1).max(4),
+  refusalMult: external_exports.number().min(0).max(4),
+  desertionMult: external_exports.number().min(0).max(4),
+  mutiny: external_exports.object({
+    enabled: external_exports.boolean(),
+    states: external_exports.array(str2),
+    minDaysInState: int.min(0).max(14),
+    minSigns: int.min(1).max(6)
+  }).strict(),
+  breakdownTarget: external_exports.enum(BREAKDOWN_TARGETS),
+  bigGestureMult: external_exports.number().min(1).max(4),
+  /** P9 reads this as the unit's Impunity base. */
+  impunityBase: external_exports.number().min(-40).max(40).optional()
+}).strict();
+var STANCES = ["shares", "indifferent", "opposes"];
+var StanceEffectSchema = external_exports.discriminatedUnion("type", [
+  /** Start offsets; with `perNormStep` they are multiplied by the commander's distance from the norm. */
+  external_exports.object({ type: external_exports.literal("start_offset"), trust: int.min(-40).max(40).optional(), affinity: int.min(-40).max(40).optional(), perNormStep: external_exports.boolean().optional() }).strict(),
+  /** Trust and Affinity gains of commander events shrink by this share per step of distance (fading with days known). */
+  external_exports.object({ type: external_exports.literal("gain_damp"), pctPerStep: int.min(0).max(100) }).strict(),
+  /** A start offset for a commander who breaks the norm by at least `minSteps`. */
+  external_exports.object({ type: external_exports.literal("distance_bonus"), minSteps: int.min(1).max(4), affinity: int.min(-40).max(40) }).strict(),
+  external_exports.object({ type: external_exports.literal("value_shift"), axis: valueAxis, amount: int.min(-3).max(3) }).strict(),
+  external_exports.object({ type: external_exports.literal("event_stress"), events: external_exports.array(str2).min(1), amount: int.min(0).max(20) }).strict(),
+  external_exports.object({ type: external_exports.literal("news_stress_mult"), mult: external_exports.number().min(0).max(4) }).strict(),
+  /** `{name}` is the unit's name; `whileEarly` shows it only while the first-impression weight is above 0.5. */
+  external_exports.object({ type: external_exports.literal("directive"), text: str2.max(300), whileEarly: external_exports.boolean().optional() }).strict(),
+  /** Shown when a `shares` and an `opposes` unit are both present (narration only in v1). */
+  external_exports.object({ type: external_exports.literal("friction_directive"), text: str2.max(300) }).strict()
+]);
+var StanceEntrySchema = BaseEntrySchema.extend({
+  option: str2,
+  stance: external_exports.enum(STANCES),
+  strength: external_exports.union([external_exports.literal(1), external_exports.literal(2)]),
+  effects: external_exports.array(StanceEffectSchema)
+}).strict();
+var WorldPresetSchema = BaseEntrySchema.extend({
+  name: str2,
+  description: str2.max(DESCRIPTION_MAX),
+  choices: external_exports.record(str2, str2)
+}).strict();
+Object.assign(registrySchemas, {
+  worldOptions: WorldOptionSchema,
+  dispositionLevels: DispositionLevelSchema,
+  stanceEffects: StanceEntrySchema,
+  worldPresets: WorldPresetSchema
+});
 var DESCRIBED_REGISTRIES = [
   "roles",
   "skills",
@@ -12071,7 +12194,11 @@ var DESCRIBED_REGISTRIES = [
   "synergies",
   // P7
   "commanderTraits",
-  "tastes"
+  "tastes",
+  // P8
+  "worldOptions",
+  "dispositionLevels",
+  "worldPresets"
 ];
 function withDescription(schema) {
   return schema.superRefine((entry, ctx2) => {
@@ -24471,6 +24598,102 @@ registerChecks("items", (entry, regs) => {
   }
   return [{ path: "class", message: `class "${cls}" is not a weapon class or armor weight of any role` }];
 });
+var choicesOf = (entry) => Array.isArray(entry.choices) ? entry.choices : [];
+registerRefs("worldOptions", (entry) => {
+  const out = [];
+  choicesOf(entry).forEach((c, i) => c.effects?.forEach((fx2, j) => {
+    if (fx2.type === "disposition" && typeof fx2.levelId === "string") {
+      out.push({ registry: "dispositionLevels", id: fx2.levelId, path: `choices[${i}].effects[${j}].levelId` });
+    }
+  }));
+  return out;
+});
+registerRefs("dispositionLevels", (entry) => {
+  const states = entry.mutiny?.states;
+  return (states ?? []).map((id, i) => ({ registry: "relationshipStates", id: String(id), path: `mutiny.states[${i}]` }));
+});
+registerRefs("stanceEffects", (entry) => {
+  const out = [];
+  if (typeof entry.option === "string") {
+    out.push({
+      registry: "worldOptions",
+      id: entry.option,
+      path: "option",
+      check: (t) => t.squadStance === true ? null : `option "${t.id}" does not set a squad stance (squadStance is not true)`
+    });
+  }
+  entry.effects?.forEach((fx2, i) => {
+    if (fx2.type === "event_stress" && Array.isArray(fx2.events)) {
+      fx2.events.forEach((id, j) => out.push({ registry: "eventDeltas", id: String(id), path: `effects[${i}].events[${j}]` }));
+    }
+  });
+  return out;
+});
+var worldOptionIds = (regs) => [...regs.worldOptions.keys()];
+var enabledFamilies = (regs) => {
+  const out = /* @__PURE__ */ new Set();
+  for (const o of regs.worldOptions.values()) {
+    for (const c of choicesOf(o)) for (const fx2 of c.effects ?? []) if (fx2.type === "enable_family" && typeof fx2.family === "string") out.add(fx2.family);
+  }
+  return out;
+};
+registerChecks("worldOptions", (entry, regs) => {
+  const out = [];
+  const choices = choicesOf(entry);
+  if (!choices.some((c) => c.id === entry.default)) {
+    out.push({ path: "default", message: `default "${String(entry.default)}" is not one of the choices of "${entry.id}"` });
+  }
+  const ids = choices.map((c) => c.id);
+  ids.forEach((id, i) => {
+    if (ids.indexOf(id) !== i) out.push({ path: `choices[${i}].id`, message: `duplicate choice id "${id}"` });
+  });
+  const carriers = [...regs.worldOptions.values()].filter((o) => choicesOf(o).some((c) => c.effects?.some((fx2) => fx2.type === "disposition")));
+  const first2 = [...regs.worldOptions.values()][0];
+  if (carriers.length === 0 && first2?.id === entry.id) {
+    out.push({ path: "choices", message: "disposition effects must appear on exactly one option, none carries them" });
+  }
+  if (carriers.length > 1 && carriers.some((o) => o.id === entry.id) && carriers[0].id !== entry.id) {
+    out.push({ path: "choices", message: `disposition effects must appear on exactly one option ("${carriers[0].id}" already carries them)` });
+  }
+  if (first2?.id === entry.id) {
+    const chars = [...regs.worldOptions.values()].reduce((sum, o) => sum + Math.max(0, ...choicesOf(o).map((c) => (c.lore ?? "").length)), 0);
+    const tokens = Math.ceil(chars / 4);
+    if (tokens > TUNING.disposition.worldBlockTokens) {
+      out.push({ path: "choices", message: `the longest lore lines add up to about ${tokens} tokens, over the ${TUNING.disposition.worldBlockTokens} tokens of the WORLD SETTINGS block` });
+    }
+  }
+  return out;
+});
+registerChecks("dispositionLevels", (entry, regs) => {
+  const out = [];
+  const levels = [...regs.dispositionLevels.values()];
+  const sameRank = levels.filter((l) => l.rank === entry.rank);
+  if (sameRank.length > 1 && sameRank[0].id !== entry.id) {
+    out.push({ path: "rank", message: `rank ${String(entry.rank)} is already used by level "${sameRank[0].id}"` });
+  }
+  if (levels[0]?.id === entry.id) {
+    for (let r = 1; r <= 5; r++) if (!levels.some((l) => l.rank === r)) out.push({ path: "rank", message: `no level has rank ${r} (ranks 1 to 5 are needed)` });
+  }
+  return out;
+});
+registerChecks("worldPresets", (entry, regs) => {
+  const out = [];
+  const chosen = entry.choices ?? {};
+  for (const optionId of worldOptionIds(regs)) {
+    if (!(optionId in chosen)) out.push({ path: "choices", message: `preset "${entry.id}" does not name option "${optionId}"` });
+  }
+  for (const [optionId, choiceId] of Object.entries(chosen)) {
+    const option = regs.worldOptions.get(optionId);
+    if (!option) out.push({ path: `choices.${optionId}`, message: `preset names unknown option "${optionId}"` });
+    else if (!choicesOf(option).some((c) => c.id === choiceId)) {
+      out.push({ path: `choices.${optionId}`, message: `"${choiceId}" is not a choice of option "${optionId}"` });
+    }
+  }
+  return out;
+});
+for (const registry2 of ["clocks", "missionTemplates", "dilemmaTemplates"]) {
+  registerChecks(registry2, (entry, regs) => typeof entry.family === "string" && !enabledFamilies(regs).has(entry.family) ? [{ path: "family", message: `family "${entry.family}" is not enabled by any world option choice (enable_family)` }] : []);
+}
 function resolveLink(target) {
   const i = target.indexOf(":");
   if (i < 0) return { registry: "glossary", id: target };

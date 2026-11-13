@@ -1,0 +1,157 @@
+[
+  {
+    "id": "kind",
+    "name": "Kind",
+    "description": "Eager to be trusted. They start warm, forgive quickly, rarely refuse or desert, and turn on themselves under strain, never on the squad.",
+    "rank": 1,
+    "start": {
+      "trust": 10,
+      "affinity": 10
+    },
+    "gainMult": 1.2,
+    "lossMult": 0.7,
+    "minConfidence": {
+      "gain": 0.5,
+      "loss": 0.6
+    },
+    "bandShift": -5,
+    "bandExitExtra": 0,
+    "stageDaysMult": 0.8,
+    "refusalMult": 0.5,
+    "desertionMult": 0.5,
+    "mutiny": {
+      "enabled": false,
+      "states": [],
+      "minDaysInState": 2,
+      "minSigns": 2
+    },
+    "breakdownTarget": "self",
+    "bigGestureMult": 1
+  },
+  {
+    "id": "guarded",
+    "name": "Guarded",
+    "description": "Wary but fair. The baseline of the game: trust is earned at an even price.",
+    "rank": 2,
+    "start": {
+      "trust": 0,
+      "affinity": 0
+    },
+    "gainMult": 1,
+    "lossMult": 1,
+    "minConfidence": {
+      "gain": 0.5,
+      "loss": 0.5
+    },
+    "bandShift": 0,
+    "bandExitExtra": 0,
+    "stageDaysMult": 1,
+    "refusalMult": 1,
+    "desertionMult": 1,
+    "mutiny": {
+      "enabled": true,
+      "states": [
+        "despises"
+      ],
+      "minDaysInState": 2,
+      "minSigns": 2
+    },
+    "breakdownTarget": "default",
+    "bigGestureMult": 1
+  },
+  {
+    "id": "prickly",
+    "name": "Prickly",
+    "description": "Slow to forgive. Slights hurt more than kindness helps, and a breakdown can hit the nearest ally.",
+    "rank": 3,
+    "start": {
+      "trust": -10,
+      "affinity": -5
+    },
+    "gainMult": 0.9,
+    "lossMult": 1.3,
+    "minConfidence": {
+      "gain": 0.6,
+      "loss": 0.5
+    },
+    "bandShift": 3,
+    "bandExitExtra": 2,
+    "stageDaysMult": 1.2,
+    "refusalMult": 1.3,
+    "desertionMult": 1.3,
+    "mutiny": {
+      "enabled": true,
+      "states": [
+        "despises"
+      ],
+      "minDaysInState": 2,
+      "minSigns": 2
+    },
+    "breakdownTarget": "allies",
+    "bigGestureMult": 1.2
+  },
+  {
+    "id": "volatile",
+    "name": "Volatile",
+    "description": "Slights are remembered and resentment turns to mutiny sooner. A breakdown can turn on an ally or the commander.",
+    "rank": 4,
+    "start": {
+      "trust": -20,
+      "affinity": -10
+    },
+    "gainMult": 0.8,
+    "lossMult": 1.6,
+    "minConfidence": {
+      "gain": 0.7,
+      "loss": 0.45
+    },
+    "bandShift": 6,
+    "bandExitExtra": 5,
+    "stageDaysMult": 1.5,
+    "refusalMult": 1.7,
+    "desertionMult": 1.7,
+    "mutiny": {
+      "enabled": true,
+      "states": [
+        "despises",
+        "resentful"
+      ],
+      "minDaysInState": 2,
+      "minSigns": 2
+    },
+    "breakdownTarget": "allies_commander",
+    "bigGestureMult": 1.5
+  },
+  {
+    "id": "hazardous",
+    "name": "Hazardous",
+    "description": "Assets that bite when cornered. They start cold, refuse and desert often, and mutiny after one clear warning. A breakdown can hit anyone. Real trust is rare and worth far more.",
+    "rank": 5,
+    "start": {
+      "trust": -30,
+      "affinity": -20
+    },
+    "gainMult": 0.7,
+    "lossMult": 2.0,
+    "minConfidence": {
+      "gain": 0.75,
+      "loss": 0.4
+    },
+    "bandShift": 10,
+    "bandExitExtra": 8,
+    "stageDaysMult": 2.0,
+    "refusalMult": 2.0,
+    "desertionMult": 2.0,
+    "mutiny": {
+      "enabled": true,
+      "states": [
+        "despises",
+        "resentful"
+      ],
+      "minDaysInState": 1,
+      "minSigns": 1
+    },
+    "breakdownTarget": "everyone",
+    "bigGestureMult": 2
+  }
+]

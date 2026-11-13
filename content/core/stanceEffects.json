@@ -1,0 +1,164 @@
+[
+  {
+    "id": "gender_shares_1",
+    "option": "gender_norms",
+    "stance": "shares",
+    "strength": 1,
+    "effects": [
+      {
+        "type": "start_offset",
+        "trust": -2,
+        "affinity": -1,
+        "perNormStep": true
+      },
+      {
+        "type": "gain_damp",
+        "pctPerStep": 8
+      },
+      {
+        "type": "directive",
+        "text": "{name} half-believes the world's idea of how command should look. Early on she measures the commander against it and holds back.",
+        "whileEarly": true
+      }
+    ]
+  },
+  {
+    "id": "gender_opposes_1",
+    "option": "gender_norms",
+    "stance": "opposes",
+    "strength": 1,
+    "effects": [
+      {
+        "type": "distance_bonus",
+        "minSteps": 2,
+        "affinity": 2
+      },
+      {
+        "type": "friction_directive",
+        "text": "Squadmates who hold the old expectations of how command should look clash with those who reject them; let it show as sharp remarks."
+      }
+    ]
+  },
+  {
+    "id": "stigma_shares_1",
+    "option": "offspec_stigma",
+    "stance": "shares",
+    "strength": 1,
+    "effects": [
+      {
+        "type": "event_stress",
+        "events": [
+          "mocked_defect",
+          "insulted"
+        ],
+        "amount": 3
+      },
+      {
+        "type": "news_stress_mult",
+        "mult": 1.5
+      },
+      {
+        "type": "directive",
+        "text": "{name} has taken the world's contempt for off-spec units to heart and speaks of herself as something broken."
+      }
+    ]
+  },
+  {
+    "id": "stigma_opposes_1",
+    "option": "offspec_stigma",
+    "stance": "opposes",
+    "strength": 1,
+    "effects": [
+      {
+        "type": "value_shift",
+        "axis": "corporate",
+        "amount": -1
+      },
+      {
+        "type": "directive",
+        "text": "{name} refuses the world's contempt for off-spec units and answers oversight and the corporation with defiance."
+      }
+    ]
+  },
+  {
+    "id": "gender_shares_2",
+    "option": "gender_norms",
+    "stance": "shares",
+    "strength": 2,
+    "effects": [
+      {
+        "type": "start_offset",
+        "trust": -4,
+        "affinity": -2,
+        "perNormStep": true
+      },
+      {
+        "type": "gain_damp",
+        "pctPerStep": 16
+      },
+      {
+        "type": "directive",
+        "text": "{name} half-believes the world's idea of how command should look. Early on she measures the commander against it and holds back.",
+        "whileEarly": true
+      }
+    ]
+  },
+  {
+    "id": "gender_opposes_2",
+    "option": "gender_norms",
+    "stance": "opposes",
+    "strength": 2,
+    "effects": [
+      {
+        "type": "distance_bonus",
+        "minSteps": 2,
+        "affinity": 4
+      },
+      {
+        "type": "friction_directive",
+        "text": "Squadmates who hold the old expectations of how command should look clash with those who reject them; let it show as sharp remarks."
+      }
+    ]
+  },
+  {
+    "id": "stigma_shares_2",
+    "option": "offspec_stigma",
+    "stance": "shares",
+    "strength": 2,
+    "effects": [
+      {
+        "type": "event_stress",
+        "events": [
+          "mocked_defect",
+          "insulted"
+        ],
+        "amount": 6
+      },
+      {
+        "type": "news_stress_mult",
+        "mult": 2.0
+      },
+      {
+        "type": "directive",
+        "text": "{name} has taken the world's contempt for off-spec units to heart and speaks of herself as something broken."
+      }
+    ]
+  },
+  {
+    "id": "stigma_opposes_2",
+    "option": "offspec_stigma",
+    "stance": "opposes",
+    "strength": 2,
+    "effects": [
+      {
+        "type": "value_shift",
+        "axis": "corporate",
+        "amount": -2
+      },
+      {
+        "type": "directive",
+        "text": "{name} refuses the world's contempt for off-spec units and answers oversight and the corporation with defiance."
+      }
+    ]
+  }
+]

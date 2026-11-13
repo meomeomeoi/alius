@@ -1,0 +1,343 @@
+[
+  {
+    "id": "gender_norms",
+    "label": "Gender norms",
+    "group": "Society",
+    "live": false,
+    "squadStance": true,
+    "default": "indifferent",
+    "description": "How the world judges the way the commander presents. Squad members react only through their own stance, set at import.",
+    "choices": [
+      {
+        "id": "indifferent",
+        "label": "Indifferent",
+        "description": "Nobody cares how the commander presents. Results are what count.",
+        "lore": "Command is judged on results, not on how the commander looks.",
+        "effects": []
+      },
+      {
+        "id": "corporate_machismo",
+        "label": "Corporate machismo",
+        "description": "Corporate command culture expects a hard, masculine bearing. A commander who presents otherwise starts with less standing at their own corporation.",
+        "lore": "Corporations expect a hard, masculine bearing from command.",
+        "effects": [
+          {
+            "type": "expression_norm",
+            "norm": 5,
+            "standingPerStep": -2
+          },
+          {
+            "type": "scene_directive",
+            "text": "Corporate staff and oversight officers treat a soft or feminine bearing in command as a flaw worth remarking on."
+          },
+          {
+            "type": "grunt_stances",
+            "shares": 4,
+            "indifferent": 4,
+            "opposes": 2
+          }
+        ]
+      },
+      {
+        "id": "inverted",
+        "label": "Inverted norms",
+        "description": "Corporate command culture expects a soft, careful bearing. A commander who presents as hard starts with less standing at their own corporation.",
+        "lore": "Command is expected to present softly; hard bearings draw remarks.",
+        "effects": [
+          {
+            "type": "expression_norm",
+            "norm": 1,
+            "standingPerStep": -2
+          },
+          {
+            "type": "scene_directive",
+            "text": "Corporate staff and oversight officers treat a hard or masculine bearing in command as a flaw worth remarking on."
+          },
+          {
+            "type": "grunt_stances",
+            "shares": 4,
+            "indifferent": 4,
+            "opposes": 2
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "offspec_stigma",
+    "label": "Off-spec stigma",
+    "group": "Society",
+    "live": false,
+    "squadStance": true,
+    "default": "tolerated",
+    "description": "How the wider world treats off-spec soldiers. Squad members may share the contempt or reject it, according to their own profile.",
+    "choices": [
+      {
+        "id": "tolerated",
+        "label": "Tolerated",
+        "description": "Off-spec units are a nuisance, not a disgrace. Nothing special happens to them.",
+        "lore": "Off-spec units are a nuisance, not a disgrace.",
+        "effects": []
+      },
+      {
+        "id": "scorned",
+        "label": "Scorned",
+        "description": "Civilians and clerks look down on off-spec units. Missions pay a little less.",
+        "lore": "Off-spec units are looked down on; pay for them is docked.",
+        "effects": [
+          {
+            "type": "mission_reward_pct",
+            "pct": -10
+          },
+          {
+            "type": "scene_directive",
+            "text": "Civilians and clerks treat off-spec units with open contempt and avoid being seen with them."
+          },
+          {
+            "type": "grunt_stances",
+            "shares": 3,
+            "indifferent": 4,
+            "opposes": 3
+          }
+        ]
+      },
+      {
+        "id": "hunted",
+        "label": "Hunted",
+        "description": "Off-spec units are hunted. Purge sweeps reach the districts and the news frightens those who take it to heart.",
+        "lore": "Off-spec units are hunted; purge sweeps hit the districts.",
+        "effects": [
+          {
+            "type": "enable_family",
+            "family": "purge_sweep"
+          },
+          {
+            "type": "scene_directive",
+            "text": "Few outsiders will shelter off-spec units; the sweeps are a daily rumor and a daily fear."
+          },
+          {
+            "type": "grunt_stances",
+            "shares": 2,
+            "indifferent": 3,
+            "opposes": 5
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "oversight",
+    "label": "Oversight",
+    "group": "Corporation",
+    "live": false,
+    "default": "standard",
+    "description": "How hard the corporation's oversight office presses the unit: Leash approvals, penalties for failed command missions and the tone of its messages.",
+    "choices": [
+      {
+        "id": "lenient",
+        "label": "Lenient",
+        "description": "Oversight approves Leash requests readily and forgives failures.",
+        "lore": "Oversight approves Leash requests readily and forgives failure.",
+        "effects": [
+          {
+            "type": "leash_weekly",
+            "amount": 1
+          },
+          {
+            "type": "terminate_approval",
+            "amount": 0.1
+          },
+          {
+            "type": "command_failure_mult",
+            "mult": 0.5
+          },
+          {
+            "type": "scene_directive",
+            "text": "Corporate messages are polite, slow to blame and quick to approve."
+          }
+        ]
+      },
+      {
+        "id": "standard",
+        "label": "Standard",
+        "description": "Oversight is routine: forms, quotas and a cold stamp.",
+        "lore": "Oversight is routine: forms, quotas and a cold stamp.",
+        "effects": []
+      },
+      {
+        "id": "brutal",
+        "label": "Brutal",
+        "description": "Oversight approves few Leash requests and punishes every failed command mission.",
+        "lore": "Oversight is harsh: few approvals, and failure is punished.",
+        "effects": [
+          {
+            "type": "leash_weekly",
+            "amount": -1
+          },
+          {
+            "type": "terminate_approval",
+            "amount": -0.15
+          },
+          {
+            "type": "command_failure_mult",
+            "mult": 1.5
+          },
+          {
+            "type": "scene_directive",
+            "text": "Corporate messages are curt and threatening; every failure is noted."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "bloom_horror",
+    "label": "Bloom horror",
+    "group": "Presentation",
+    "live": true,
+    "default": "restrained",
+    "description": "How explicitly mutants, the Bloom and wounds are described. This can be changed during the campaign.",
+    "choices": [
+      {
+        "id": "restrained",
+        "label": "Restrained",
+        "description": "Mutants and wounds are described briefly, without gore.",
+        "lore": "Mutants and wounds are described with restraint.",
+        "effects": [
+          {
+            "type": "scene_directive",
+            "text": "Describe mutants, the Bloom and wounds briefly and without gore; imply more than you show."
+          }
+        ]
+      },
+      {
+        "id": "graphic",
+        "label": "Graphic",
+        "description": "Mutants and wounds are described explicitly and in physical detail.",
+        "lore": "Mutants and wounds are described in graphic, unflinching detail.",
+        "effects": [
+          {
+            "type": "scene_directive",
+            "text": "Describe mutants, the Bloom and wounds explicitly and in unflinching physical detail."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "tone",
+    "label": "Tone",
+    "group": "Presentation",
+    "live": false,
+    "default": "grim",
+    "description": "How often the story offers small wins, rescues and good news against losses. It steers the story director, not the numbers.",
+    "choices": [
+      {
+        "id": "grim_hope",
+        "label": "Grim hope",
+        "description": "Small wins, rescues and good news come often enough to matter.",
+        "lore": "Small wins, rescues and good news come often enough to matter.",
+        "effects": [
+          {
+            "type": "director_hint",
+            "text": "Offer small wins, rescues and good news regularly alongside the losses."
+          }
+        ]
+      },
+      {
+        "id": "grim",
+        "label": "Grim",
+        "description": "Wins and losses come in rough balance.",
+        "lore": "Wins and losses come in rough balance.",
+        "effects": [
+          {
+            "type": "director_hint",
+            "text": "Balance small wins and good news against losses; neither should dominate."
+          }
+        ]
+      },
+      {
+        "id": "bleak",
+        "label": "Bleak",
+        "description": "Good news is rare and most outcomes cost something.",
+        "lore": "Good news is rare; most outcomes cost something.",
+        "effects": [
+          {
+            "type": "director_hint",
+            "text": "Good news and rescues are rare. Favour losses, shortages and hard trade-offs."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "disposition",
+    "label": "Disposition of the squad",
+    "group": "Soldiers",
+    "live": false,
+    "default": "guarded",
+    "description": "How the defective soldiers meet the commander and how they react to treatment. It changes how fast trust is won and lost, not how strong anyone is.",
+    "choices": [
+      {
+        "id": "kind",
+        "label": "Kind",
+        "description": "Off-spec soldiers are kind at heart, quirks aside. Trust comes easily and breaks slowly.",
+        "lore": "Off-spec soldiers are kind at heart, quirks aside.",
+        "effects": [
+          {
+            "type": "disposition",
+            "levelId": "kind"
+          }
+        ]
+      },
+      {
+        "id": "guarded",
+        "label": "Guarded",
+        "description": "Off-spec soldiers are wary. Trust is earned at a fair price.",
+        "lore": "Off-spec soldiers are wary; trust is earned.",
+        "effects": [
+          {
+            "type": "disposition",
+            "levelId": "guarded"
+          }
+        ]
+      },
+      {
+        "id": "prickly",
+        "label": "Prickly",
+        "description": "Off-spec soldiers are prickly and slow to forgive. Losses weigh more than gains.",
+        "lore": "Off-spec soldiers are prickly and slow to forgive.",
+        "effects": [
+          {
+            "type": "disposition",
+            "levelId": "prickly"
+          }
+        ]
+      },
+      {
+        "id": "volatile",
+        "label": "Volatile",
+        "description": "Off-spec soldiers are volatile. Slights are remembered and mutiny is possible earlier.",
+        "lore": "Off-spec soldiers are volatile; slights are remembered.",
+        "effects": [
+          {
+            "type": "disposition",
+            "levelId": "volatile"
+          }
+        ]
+      },
+      {
+        "id": "hazardous",
+        "label": "Hazardous",
+        "description": "Off-spec soldiers are hazardous assets who bite when cornered. Trust is rare and worth a great deal.",
+        "lore": "Off-spec soldiers are hazardous assets who bite when cornered.",
+        "effects": [
+          {
+            "type": "disposition",
+            "levelId": "hazardous"
+          }
+        ]
+      }
+    ]
+  }
+]

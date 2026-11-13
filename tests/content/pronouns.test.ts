@@ -33,6 +33,24 @@ describe('no pronoun for the commander in content', () => {
     expect(texts.filter(([, t]) => COMMANDER_PRONOUN.test(t)).map(([where]) => where)).toEqual([]);
   });
 
+  it('world options, disposition levels, stance effects and presets (P8)', () => {
+    const optionTexts = [...reg.worldOptions.values()].flatMap((o): Array<[string, string]> => [
+      [`worldOptions:${o.id}.description`, String(o.description ?? '')],
+      ...(o.choices as Array<Record<string, unknown>>).flatMap((c): Array<[string, string]> =>
+        (['label', 'description', 'lore'] as const).map((k): [string, string] => [`worldOptions:${o.id}/${String(c.id)}.${k}`, String(c[k] ?? '')])
+          .concat((c.effects as Array<{ text?: string }>).filter((e) => typeof e.text === 'string').map((e): [string, string] => [`worldOptions:${o.id}/${String(c.id)}.effect`, String(e.text)]))),
+    ]);
+    const texts = [
+      ...optionTexts,
+      ...fields('dispositionLevels', ['name', 'description']),
+      ...fields('worldPresets', ['name', 'description']),
+      ...[...reg.stanceEffects.values()].flatMap((e): Array<[string, string]> =>
+        (e.effects as Array<{ text?: string }>).filter((x) => typeof x.text === 'string').map((x): [string, string] => [`stanceEffects:${e.id}`, String(x.text)])),
+    ];
+    expect(texts.length).toBeGreaterThan(40);
+    expect(texts.filter(([, t]) => COMMANDER_PRONOUN.test(t)).map(([where]) => where)).toEqual([]);
+  });
+
   it('the lorebook that goes to the main model', async () => {
     const { readFile } = await import('node:fs/promises');
     const book = JSON.parse(await readFile('content/core/lorebook.json', 'utf8')) as { entries: Array<{ comment: string; content: string }> };

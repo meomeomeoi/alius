@@ -145,7 +145,7 @@ docs/** (Task 16), tests/** mirror src
   - The three presets as in Global Constraints.
 - Loader checks (`refs.ts`): `default` and every preset choice exist; `disposition` effects name existing levels and appear on exactly one option; level ranks are 1…5 and unique; `stanceEffects.option` is a `squadStance` option; every `family` used by clocks/templates is enabled by some `enable_family`; the sum of the longest lore line per option ≤ 120 estimated tokens (chars / 4).
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `core loads the four registries without errors`
   - `levels carry the spec table` (table-driven over the 5 rows above)
   - `a preset missing an option is a content error`
@@ -153,10 +153,10 @@ docs/** (Task 16), tests/** mirror src
   - `two options with disposition effects are a content error`
   - `an unknown family on a clock is a content error`
   - pronouns: the new registries' text has no he/him/his for the commander
-- [ ] **Step 2: Run** `npx vitest run tests/content` and expect FAIL.
-- [ ] **Step 3: Implement** the schemas, checks, JSON and manifest entries. Lore lines are short, plausible placeholder sentences (see lore §1); list them in Task 16 as author-to-rewrite.
-- [ ] **Step 4: Run** `npx vitest run` and expect the whole suite green (the coverage test may need the two registries in `PLAYER_VISIBLE`, which `DESCRIBED_REGISTRIES` gives).
-- [ ] **Step 5: Commit** `feat(content): world options, disposition levels, stance effects and presets`.
+- [x] **Step 2: Run** `npx vitest run tests/content` and expect FAIL.
+- [x] **Step 3: Implement** the schemas, checks, JSON and manifest entries. Lore lines are short, plausible placeholder sentences (see lore §1); list them in Task 16 as author-to-rewrite.
+- [x] **Step 4: Run** `npx vitest run` and expect the whole suite green (the coverage test may need the two registries in `PLAYER_VISIBLE`, which `DESCRIBED_REGISTRIES` gives).
+- [x] **Step 5: Commit** `feat(content): world options, disposition levels, stance effects and presets`.
 
 ### Task 2: World options in state, setup and the live switch
 

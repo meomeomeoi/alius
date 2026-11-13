@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { EFFECT_TARGETS, STATS, TRIGGERS, ALWAYS_ON_TYPES } from '../engine/combat/types';
 import { EVENT_TYPES, PROPOSAL_KINDS, SEVERITIES } from '../engine/relations/vocab';
 import { VALUE_AXES } from '../engine/state/types';
+import { TUNING } from '../engine/tuning';
 import { DILEMMA_CONTEXTS } from '../engine/dilemma/types';
 import type { WorldEffect } from '../engine/world/types';
 import { REGISTRY_NAMES, type RegistryName } from './types';
@@ -875,6 +876,8 @@ export const ClockSchema = BaseEntrySchema.extend({
   visibleToPlayer: z.boolean(),
   onFill: z.array(WorldEffectSchema),
   repeat: z.boolean().optional(),
+  /** P8: the entry exists only while some world choice enables this family. */
+  family: str.optional(),
 }).superRefine((c, ctx) => {
   if (c.startFilled >= c.segments) ctx.addIssue({ code: 'custom', path: ['startFilled'], message: 'startFilled must be below segments' });
 });
@@ -903,6 +906,8 @@ export const MissionTemplateSchema = BaseEntrySchema.extend({
   onSuccess: z.array(WorldEffectSchema).optional(),
   titles: z.array(str.max(60)).min(1),
   briefs: z.array(str.max(300)).min(1),
+  /** P8: see ClockSchema. */
+  family: str.optional(),
 });
 
 const TRUST_BANDS = ['none', 'low', 'guarded', 'solid', 'high'] as const;
@@ -971,6 +976,8 @@ export const DilemmaTemplateSchema = BaseEntrySchema.extend({
   /** Declared flags the model may pick among (rule 6). */
   allowedFlags: z.array(str).optional(),
   constraints: z.object({ flagPerOption: z.boolean().optional() }).strict().optional(),
+  /** P8: see ClockSchema. */
+  family: str.optional(),
 }).superRefine((d, ctx) => {
   if (d.scale === 'minor' && d.contexts.includes('expedition_event') && d.fixed === undefined) {
     ctx.addIssue({ code: 'custom', path: ['fixed'], message: 'a minor expedition event needs a fixed block' });
@@ -1150,6 +1157,122 @@ Object.assign(registrySchemas, {
   presence: PresenceSchema, tastes: TasteSchema, imageConsistency: ImageConsistencySchema, commanderTraits: CommanderTraitSchema,
 });
 
+// ---------------------------------------------------------------------------------------------
+// P8: world options, disposition levels, stance effects and presets
+
+const BREAKDOWN_TARGETS = ['self', 'default', 'allies', 'allies_commander', 'everyone'] as const;
+
+/**
+ * What a world choice does. The vocabulary is closed: the engine reads effects by type (`worldEffects`), never by
+ * option or choice id. Tone of corporate messages and NPC reactions are lore lines and scene directives, not code.
+ */
+export const WorldOptionEffectSchema = z.discriminatedUnion('type', [
+  /** The disposition level the world starts with. Exactly one option carries these. */
+  z.object({ type: z.literal('disposition'), levelId: str }).strict(),
+  /** Added to the corporation's weekly Leash authorizations (before the 0…5 clamp). */
+  z.object({ type: z.literal('leash_weekly'), amount: int.min(-3).max(3) }).strict(),
+  z.object({ type: z.literal('terminate_approval'), amount: z.number().min(-1).max(1) }).strict(),
+  /** Multiplies the negative faction amounts of a failed command mission. */
+  z.object({ type: z.literal('command_failure_mult'), mult: z.number().min(0.1).max(3) }).strict(),
+  z.object({ type: z.literal('mission_reward_pct'), pct: int.min(-90).max(100) }).strict(),
+  /** The expression the world expects (1 very feminine … 5 very masculine); the commander's distance costs own-corporation standing. */
+  z.object({ type: z.literal('expression_norm'), norm: rank5, standingPerStep: int.min(-10).max(10) }).strict(),
+  z.object({ type: z.literal('enable_family'), family: str }).strict(),
+  z.object({ type: z.literal('director_hint'), text: str.max(200) }).strict(),
+  z.object({ type: z.literal('scene_directive'), text: str.max(300) }).strict(),
+  /** Weights for the stance a generated grunt rolls under this choice. */
+  z.object({
+    type: z.literal('grunt_stances'),
+    shares: z.number().min(0).max(20), indifferent: z.number().min(0).max(20), opposes: z.number().min(0).max(20),
+  }).strict(),
+]);
+export type WorldOptionEffect = z.infer<typeof WorldOptionEffectSchema>;
+
+export const WorldChoiceSchema = z.object({
+  id: z.string().regex(ID_PATTERN, 'id must match ^[a-z0-9_:.-]+$'),
+  label: str,
+  description: str.max(DESCRIPTION_MAX),
+  /** One short line of the WORLD SETTINGS context block. */
+  lore: str.max(TUNING.disposition.loreMaxChars),
+  effects: z.array(WorldOptionEffectSchema),
+}).strict();
+export type WorldChoice = z.infer<typeof WorldChoiceSchema>;
+
+export const WorldOptionSchema = BaseEntrySchema.extend({
+  label: str,
+  group: str,
+  /** A live option can change during the campaign; every other option is fixed when the campaign is built. */
+  live: z.boolean(),
+  /** The option sets each unit's own stance toward it (P8 §3.1). */
+  squadStance: z.boolean().optional(),
+  default: str,
+  description: str.max(DESCRIPTION_MAX),
+  choices: z.array(WorldChoiceSchema).min(2),
+}).strict();
+
+export const DispositionLevelSchema = BaseEntrySchema.extend({
+  name: str,
+  description: str.max(DESCRIPTION_MAX),
+  rank: int.min(1).max(5),
+  start: z.object({ trust: int.min(-40).max(40), affinity: int.min(-40).max(40) }).strict(),
+  gainMult: z.number().min(0.1).max(3),
+  lossMult: z.number().min(0.1).max(3),
+  minConfidence: z.object({ gain: z.number().min(0).max(1), loss: z.number().min(0).max(1) }).strict(),
+  bandShift: int.min(-20).max(20),
+  bandExitExtra: int.min(0).max(20),
+  stageDaysMult: z.number().min(0.1).max(4),
+  refusalMult: z.number().min(0).max(4),
+  desertionMult: z.number().min(0).max(4),
+  mutiny: z.object({
+    enabled: z.boolean(),
+    states: z.array(str),
+    minDaysInState: int.min(0).max(14),
+    minSigns: int.min(1).max(6),
+  }).strict(),
+  breakdownTarget: z.enum(BREAKDOWN_TARGETS),
+  bigGestureMult: z.number().min(1).max(4),
+  /** P9 reads this as the unit's Impunity base. */
+  impunityBase: z.number().min(-40).max(40).optional(),
+}).strict();
+
+export const STANCES = ['shares', 'indifferent', 'opposes'] as const;
+export type Stance = (typeof STANCES)[number];
+
+/** What a unit's own stance toward a world option does to her. Closed vocabulary, read by `stanceEffects`. */
+export const StanceEffectSchema = z.discriminatedUnion('type', [
+  /** Start offsets; with `perNormStep` they are multiplied by the commander's distance from the norm. */
+  z.object({ type: z.literal('start_offset'), trust: int.min(-40).max(40).optional(), affinity: int.min(-40).max(40).optional(), perNormStep: z.boolean().optional() }).strict(),
+  /** Trust and Affinity gains of commander events shrink by this share per step of distance (fading with days known). */
+  z.object({ type: z.literal('gain_damp'), pctPerStep: int.min(0).max(100) }).strict(),
+  /** A start offset for a commander who breaks the norm by at least `minSteps`. */
+  z.object({ type: z.literal('distance_bonus'), minSteps: int.min(1).max(4), affinity: int.min(-40).max(40) }).strict(),
+  z.object({ type: z.literal('value_shift'), axis: valueAxis, amount: int.min(-3).max(3) }).strict(),
+  z.object({ type: z.literal('event_stress'), events: z.array(str).min(1), amount: int.min(0).max(20) }).strict(),
+  z.object({ type: z.literal('news_stress_mult'), mult: z.number().min(0).max(4) }).strict(),
+  /** `{name}` is the unit's name; `whileEarly` shows it only while the first-impression weight is above 0.5. */
+  z.object({ type: z.literal('directive'), text: str.max(300), whileEarly: z.boolean().optional() }).strict(),
+  /** Shown when a `shares` and an `opposes` unit are both present (narration only in v1). */
+  z.object({ type: z.literal('friction_directive'), text: str.max(300) }).strict(),
+]);
+export type StanceEffect = z.infer<typeof StanceEffectSchema>;
+
+export const StanceEntrySchema = BaseEntrySchema.extend({
+  option: str,
+  stance: z.enum(STANCES),
+  strength: z.union([z.literal(1), z.literal(2)]),
+  effects: z.array(StanceEffectSchema),
+}).strict();
+
+export const WorldPresetSchema = BaseEntrySchema.extend({
+  name: str,
+  description: str.max(DESCRIPTION_MAX),
+  choices: z.record(str, str),
+}).strict();
+
+Object.assign(registrySchemas, {
+  worldOptions: WorldOptionSchema, dispositionLevels: DispositionLevelSchema, stanceEffects: StanceEntrySchema, worldPresets: WorldPresetSchema,
+});
+
 /** Player-visible registries whose entries carry an optional `description` (skills and statuses already require one). */
 export const DESCRIBED_REGISTRIES = [
   'roles', 'skills', 'signatures', 'statuses', 'defects', 'items', 'affixes', 'enemies',
@@ -1157,6 +1280,8 @@ export const DESCRIBED_REGISTRIES = [
   'corporations', 'starts', 'relationshipStates', 'locations', 'orders', 'synergies',
   // P7
   'commanderTraits', 'tastes',
+  // P8
+  'worldOptions', 'dispositionLevels', 'worldPresets',
 ] as const satisfies readonly RegistryName[];
 
 /** Adds the optional `description` rule to a registry schema without changing its shape. */

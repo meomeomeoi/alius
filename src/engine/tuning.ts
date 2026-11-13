@@ -30,6 +30,19 @@ export const TUNING = Object.freeze({
     maxTastes: 3,
     maxRegular: 2,
   }),
+  /** P8: world options and unit disposition. */
+  disposition: Object.freeze({
+    loreMaxChars: 100,
+    worldBlockTokens: 120,
+    /** The setting `intentMinConfidence` is measured against this reference (its default). */
+    confidenceRef: 0.5,
+    /** A commander event of one of these types at `minSeverity` or above is a big gesture. P9 adds more. */
+    bigGesture: Object.freeze({ events: Object.freeze(['protected']), minSeverity: 'major' }),
+    /** A `self` breakdown costs this share of the unit's max HP. */
+    selfHarmPct: 10,
+    /** A stance's gain damping never takes more than this share of a gain. */
+    gainDampMax: 0.8,
+  }),
   /** P7a: the change ledger behind trends, stress sources and "last changes" readings. */
   ledger: Object.freeze({ days: 7, max: 150 }),
   upkeep: Object.freeze({ perUnit: 1, commander: 1, doubledByDefect: 'hunger_loop' }),

@@ -1,0 +1,41 @@
+[
+  {
+    "id": "gentle",
+    "name": "Gentle",
+    "description": "A softer world: kind soldiers, lenient oversight and room for hope.",
+    "choices": {
+      "gender_norms": "indifferent",
+      "offspec_stigma": "tolerated",
+      "oversight": "lenient",
+      "bloom_horror": "restrained",
+      "tone": "grim_hope",
+      "disposition": "kind"
+    }
+  },
+  {
+    "id": "standard",
+    "name": "Standard",
+    "description": "The balanced default: wary soldiers, routine oversight and a grim tone.",
+    "choices": {
+      "gender_norms": "indifferent",
+      "offspec_stigma": "tolerated",
+      "oversight": "standard",
+      "bloom_horror": "restrained",
+      "tone": "grim",
+      "disposition": "guarded"
+    }
+  },
+  {
+    "id": "brutal",
+    "name": "Brutal",
+    "description": "A hard world: hazardous soldiers, harsh prejudice, brutal oversight and graphic horror.",
+    "choices": {
+      "gender_norms": "corporate_machismo",
+      "offspec_stigma": "hunted",
+      "oversight": "brutal",
+      "bloom_horror": "graphic",
+      "tone": "bleak",
+      "disposition": "hazardous"
+    }
+  }
+]

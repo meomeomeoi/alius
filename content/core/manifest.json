@@ -38,6 +38,10 @@
     "commanderTraits": "commanderTraits.json",
     "tastes": "tastes.json",
     "presence": "presence.json",
-    "imageConsistency": "imageConsistency.json"
+    "imageConsistency": "imageConsistency.json",
+    "worldOptions": "worldOptions.json",
+    "dispositionLevels": "dispositionLevels.json",
+    "stanceEffects": "stanceEffects.json",
+    "worldPresets": "worldPresets.json"
   }
 }

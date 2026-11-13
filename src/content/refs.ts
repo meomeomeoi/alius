@@ -1,4 +1,5 @@
 import { INTERNAL_HISTORY_TYPES } from '../engine/relations/vocab';
+import { TUNING } from '../engine/tuning';
 import { DESCRIBED_REGISTRIES, type Conditions } from './schemas';
 import { linkTargets } from './links';
 import { REGISTRY_NAMES, type Entry, type RegistryName } from './types';
@@ -445,6 +446,119 @@ registerChecks('items', (entry, regs) => {
   }
   return [{ path: 'class', message: `class "${cls}" is not a weapon class or armor weight of any role` }];
 });
+
+// ---------------------------------------------------------------------------------------------
+// P8: world options, disposition levels, stance effects and presets
+
+interface RawChoice { id: string; lore?: string; effects?: Array<Record<string, unknown>> }
+const choicesOf = (entry: Entry): RawChoice[] => (Array.isArray(entry.choices) ? (entry.choices as RawChoice[]) : []);
+
+registerRefs('worldOptions', (entry) => {
+  const out: Ref[] = [];
+  choicesOf(entry).forEach((c, i) => c.effects?.forEach((fx, j) => {
+    if (fx.type === 'disposition' && typeof fx.levelId === 'string') {
+      out.push({ registry: 'dispositionLevels', id: fx.levelId, path: `choices[${i}].effects[${j}].levelId` });
+    }
+  }));
+  return out;
+});
+
+registerRefs('dispositionLevels', (entry) => {
+  const states = (entry.mutiny as { states?: unknown[] } | undefined)?.states;
+  return (states ?? []).map((id, i) => ({ registry: 'relationshipStates' as const, id: String(id), path: `mutiny.states[${i}]` }));
+});
+
+registerRefs('stanceEffects', (entry) => {
+  const out: Ref[] = [];
+  if (typeof entry.option === 'string') {
+    out.push({
+      registry: 'worldOptions', id: entry.option, path: 'option',
+      check: (t) => (t.squadStance === true ? null : `option "${t.id}" does not set a squad stance (squadStance is not true)`),
+    });
+  }
+  (entry.effects as Array<Record<string, unknown>> | undefined)?.forEach((fx, i) => {
+    if (fx.type === 'event_stress' && Array.isArray(fx.events)) {
+      fx.events.forEach((id, j) => out.push({ registry: 'eventDeltas', id: String(id), path: `effects[${i}].events[${j}]` }));
+    }
+  });
+  return out;
+});
+
+const worldOptionIds = (regs: Record<RegistryName, Map<string, Entry>>) => [...regs.worldOptions.keys()];
+const enabledFamilies = (regs: Record<RegistryName, Map<string, Entry>>): Set<string> => {
+  const out = new Set<string>();
+  for (const o of regs.worldOptions.values()) {
+    for (const c of choicesOf(o)) for (const fx of c.effects ?? []) if (fx.type === 'enable_family' && typeof fx.family === 'string') out.add(fx.family);
+  }
+  return out;
+};
+
+registerChecks('worldOptions', (entry, regs) => {
+  const out: RegistryCheck[] = [];
+  const choices = choicesOf(entry);
+  if (!choices.some((c) => c.id === entry.default)) {
+    out.push({ path: 'default', message: `default "${String(entry.default)}" is not one of the choices of "${entry.id}"` });
+  }
+  const ids = choices.map((c) => c.id);
+  ids.forEach((id, i) => {
+    if (ids.indexOf(id) !== i) out.push({ path: `choices[${i}].id`, message: `duplicate choice id "${id}"` });
+  });
+  // exactly one option carries the disposition choices
+  const carriers = [...regs.worldOptions.values()].filter((o) => choicesOf(o).some((c) => c.effects?.some((fx) => fx.type === 'disposition')));
+  const first = [...regs.worldOptions.values()][0];
+  if (carriers.length === 0 && first?.id === entry.id) {
+    out.push({ path: 'choices', message: 'disposition effects must appear on exactly one option, none carries them' });
+  }
+  if (carriers.length > 1 && carriers.some((o) => o.id === entry.id) && carriers[0].id !== entry.id) {
+    out.push({ path: 'choices', message: `disposition effects must appear on exactly one option ("${carriers[0].id}" already carries them)` });
+  }
+  // the WORLD SETTINGS block holds the longest lore line of each option
+  if (first?.id === entry.id) {
+    const chars = [...regs.worldOptions.values()].reduce((sum, o) => sum + Math.max(0, ...choicesOf(o).map((c) => (c.lore ?? '').length)), 0);
+    const tokens = Math.ceil(chars / 4);
+    if (tokens > TUNING.disposition.worldBlockTokens) {
+      out.push({ path: 'choices', message: `the longest lore lines add up to about ${tokens} tokens, over the ${TUNING.disposition.worldBlockTokens} tokens of the WORLD SETTINGS block` });
+    }
+  }
+  return out;
+});
+
+registerChecks('dispositionLevels', (entry, regs) => {
+  const out: RegistryCheck[] = [];
+  const levels = [...regs.dispositionLevels.values()];
+  const sameRank = levels.filter((l) => l.rank === entry.rank);
+  if (sameRank.length > 1 && sameRank[0].id !== entry.id) {
+    out.push({ path: 'rank', message: `rank ${String(entry.rank)} is already used by level "${sameRank[0].id}"` });
+  }
+  if (levels[0]?.id === entry.id) {
+    for (let r = 1; r <= 5; r++) if (!levels.some((l) => l.rank === r)) out.push({ path: 'rank', message: `no level has rank ${r} (ranks 1 to 5 are needed)` });
+  }
+  return out;
+});
+
+registerChecks('worldPresets', (entry, regs) => {
+  const out: RegistryCheck[] = [];
+  const chosen = (entry.choices ?? {}) as Record<string, string>;
+  for (const optionId of worldOptionIds(regs)) {
+    if (!(optionId in chosen)) out.push({ path: 'choices', message: `preset "${entry.id}" does not name option "${optionId}"` });
+  }
+  for (const [optionId, choiceId] of Object.entries(chosen)) {
+    const option = regs.worldOptions.get(optionId);
+    if (!option) out.push({ path: `choices.${optionId}`, message: `preset names unknown option "${optionId}"` });
+    else if (!choicesOf(option).some((c) => c.id === choiceId)) {
+      out.push({ path: `choices.${optionId}`, message: `"${choiceId}" is not a choice of option "${optionId}"` });
+    }
+  }
+  return out;
+});
+
+// an entry with a `family` exists only while some world choice enables it, so an unreachable family is a content error
+for (const registry of ['clocks', 'missionTemplates', 'dilemmaTemplates'] as const) {
+  registerChecks(registry, (entry, regs) =>
+    typeof entry.family === 'string' && !enabledFamilies(regs).has(entry.family)
+      ? [{ path: 'family', message: `family "${entry.family}" is not enabled by any world option choice (enable_family)` }]
+      : []);
+}
 
 // ---------------------------------------------------------------------------------------------
 // P7a: glossary entries and `[[links]]` in descriptions
