@@ -233,10 +233,18 @@ describe('commander line and first-impression directive (P7)', () => {
       w.day = day;
       w.relations[ANN].metDay = 1;
     }));
-    expect(at(1)).toContain('Units still size him up by appearance.');
-    expect(at(4)).toContain('Units still size him up by appearance.'); // d = 3: w ≈ 0.65
-    expect(at(6)).not.toContain('Units still size him up by appearance.'); // d = 5: w ≈ 0.49
-    expect(at(8)).not.toContain('Units still size him up by appearance.'); // d = 7
+    expect(at(1)).toContain('Units still judge the commander by appearance.');
+    expect(at(4)).toContain('Units still judge the commander by appearance.'); // d = 3: w ≈ 0.65
+    expect(at(6)).not.toContain('Units still judge the commander by appearance.'); // d = 5: w ≈ 0.49
+    expect(at(8)).not.toContain('Units still judge the commander by appearance.'); // d = 7
+  });
+
+  it('the directive and the commander lines name no pronoun (a feminine commander is not "him")', () => {
+    const out = block(builder(), inScene([ANN], (w) => { w.commander.expression = 1; w.day = 1; }));
+    expect(out).toContain('Units still judge the commander by appearance.');
+    const mine = out.split('\n').filter((l) => l.startsWith('Commander Vale:') || l.includes('judge the commander by appearance'));
+    expect(mine.length).toBe(2);
+    for (const l of mine) expect(l).not.toMatch(/\b(he|him|his|she|her|hers)\b/i);
   });
 
   it('one unit still new to him is enough, and a longer fade keeps it longer', () => {
@@ -245,13 +253,13 @@ describe('commander line and first-impression directive (P7)', () => {
       w.relations[ANN].metDay = 1;
       w.relations[BEA].metDay = 19;
     }));
-    expect(out).toContain('Units still size him up by appearance.');
+    expect(out).toContain('Units still judge the commander by appearance.');
     const slow = block(builder(), inScene([ANN], (w) => {
       w.day = 8;
       w.relations[ANN].metDay = 1;
       w.settings.firstImpressionTau = 30;
     }));
-    expect(slow).toContain('Units still size him up by appearance.');
+    expect(slow).toContain('Units still judge the commander by appearance.');
   });
 
   it('only units in the scene count, and nothing is said outside a scene', () => {

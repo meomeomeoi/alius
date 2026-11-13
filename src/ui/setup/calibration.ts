@@ -225,8 +225,8 @@ export function renderCalibration(host: HTMLElement, ctx: CalibrationCtx): void 
           const on = picked.includes(id);
           return h('button', {
             type: 'button', class: 'alius-btn alius-option alius-taste-chip', 'data-taste': id, 'aria-pressed': String(on),
-            disabled: full && !on, title: String(t.description), ...analyzeNative(`tastes:${id}`),
-            onclick: () => onUpdate({ tastes: on ? picked.filter((x) => x !== id) : [...picked, id] }),
+            'aria-disabled': full && !on ? 'true' : null, title: String(t.description), ...analyzeNative(`tastes:${id}`),
+            onclick: () => { if (full && !on) return; onUpdate({ tastes: on ? picked.filter((x) => x !== id) : [...picked, id] }); },
           }, String(t.name), suggested.has(id) ? ' (suggested)' : '');
         }))),
     );

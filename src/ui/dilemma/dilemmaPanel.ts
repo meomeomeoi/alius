@@ -39,6 +39,7 @@ export function renderDilemma(host: HTMLElement, ctx: DilemmaPanelCtx): void {
       ? renderRoutePicker({
         routes: o.routes, unitName: ctx.unitName, locked: () => chosen,
         onPick: (pick) => { chosen = true; for (const b of buttons) b.setAttribute('aria-disabled', 'true'); ctx.onChoose(o.index, pick); },
+        unlock: () => { chosen = false; buttons.forEach((b, i) => { if (ctx.options[i].disabled === null) b.removeAttribute('aria-disabled'); }); },
       })
       : null;
     if (picker) picker.hidden = true;

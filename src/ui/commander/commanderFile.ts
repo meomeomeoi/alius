@@ -85,8 +85,9 @@ export function renderCommanderFile(host: HTMLElement, ctx: CommanderFileCtx): v
     const on = chosen.has(id);
     return h('button', {
       type: 'button', class: `alius-card alius-option alius-trait-card${t.kind === 'special' ? ' alius-trait-special' : ''}`,
-      'data-trait': id, 'aria-pressed': String(on), disabled: blocked !== null, title: blocked,
-      ...analyzeNative(`commanderTraits:${id}`), onclick: () => onChange({ kind: 'trait', id }),
+      // soft-disabled (aria-disabled, not `disabled`): a greyed card stays focusable and hoverable for the analysis panel
+      'data-trait': id, 'aria-pressed': String(on), 'aria-disabled': blocked !== null ? 'true' : null, title: blocked,
+      ...analyzeNative(`commanderTraits:${id}`), onclick: () => { if (blocked === null) onChange({ kind: 'trait', id }); },
     },
       h('strong', {}, String(t.name)),
       t.kind === 'special' ? h('span', { class: 'alius-dim' }, ' SPECIAL') : null,

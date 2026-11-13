@@ -8,6 +8,8 @@ export interface RoutePickerCtx {
   unitName?: (id: string) => string;
   /** True once a pick was sent; every button is then inert. */
   locked: () => boolean;
+  /** The pick went nowhere (the engine refused it and nothing was redrawn): the owner lifts its lock. */
+  unlock?: () => void;
   onPick: (pick: RoutePick) => void;
 }
 
@@ -24,6 +26,14 @@ export function renderRoutePicker(ctx: RoutePickerCtx): HTMLElement {
     if (ctx.locked()) return;
     lockAll();
     ctx.onPick(p);
+    // a pick that went through redraws the screen and detaches this picker; one the engine refused leaves it in place
+    queueMicrotask(() => {
+      if (!root.isConnected) return;
+      ctx.unlock?.();
+      // reopen what was open before the pick: the unit buttons and the routes without a reason
+      const closed = new Set(ctx.routes.filter((r) => r.disabled !== null).map((r) => String(r.route)));
+      for (const b of buttons) if (b.dataset.route === undefined || !closed.has(b.dataset.route)) b.removeAttribute('aria-disabled');
+    });
   };
 
   for (const r of ctx.routes) {

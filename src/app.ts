@@ -453,6 +453,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
   }
 
   function openDilemmaModal(): void {
+    if (reviewOpen) return; // shown again when the review closes
     drawDilemma();
     if (!dilemmaHost || dilemmaModalOpen) return;
     dilemmaModalOpen = true;
@@ -547,7 +548,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
   /** A desertion that stops a departure is a modal over whatever screen is up. */
   function openConfrontationModal(): void {
     const open = state?.disloyalty?.open;
-    if (!open || open.at !== 'mission_start') return;
+    if (!open || open.at !== 'mission_start' || reviewOpen) return;
     const host = h('div');
     const close = () => shell.closeModal?.();
     renderConfrontationPanel(host, close);
@@ -834,6 +835,8 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
 
   /** The chat whose "commander file incomplete" modal was already shown in this session (it never loops). */
   let reviewShownFor: string | null = null;
+  /** The review modal is on screen: the decision and confrontation modals wait (a new modal cancels the open one). */
+  let reviewOpen = false;
 
   /**
    * An older campaign has a default commander file (`commander/seed`) and asks the player once to review it: CONFIRM applies
@@ -871,21 +874,31 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       });
     wizard.subscribe(() => renderKeepingFocus(body, draw));
     draw();
-    const answer = await shell.modal({
-      title: 'Commander file incomplete — review',
-      body: h('div', {}, h('p', {}, 'This campaign began before the commander had a body, an expression and traits. Review his file, or skip to keep the defaults.'), body),
-      actions: [{ label: 'Confirm', value: 'confirm' }, { label: 'Skip', value: 'skip' }],
-    });
-    const commander = structuredClone(wizard.state.commander);
-    wizard.dispose();
-    if (answer !== 'confirm' && answer !== 'skip') return;
-    if (st.getActiveChat()?.chatId !== chatId) return; // the player moved to another chat meanwhile
-    const events = answer === 'confirm'
-      ? api.dispatch({ type: 'commander/set_profile', payload: { commander } }, { expectChatId: chatId })
-      : api.dispatch({ type: 'commander/review_done', payload: {} }, { expectChatId: chatId });
-    const failed = events.find((e) => e.type === 'error');
-    if (failed) toast('error', String(failed.message ?? failed.code));
-    else if (answer === 'confirm') toast('info', 'Commander file updated.');
+    reviewOpen = true;
+    try {
+      const answer = await shell.modal({
+        title: 'Commander file incomplete — review',
+        body: h('div', {}, h('p', {}, 'This campaign began before the commander had a body, an expression and traits. Review his file, or skip to keep the defaults.'), body),
+        actions: [{ label: 'Confirm', value: 'confirm' }, { label: 'Skip', value: 'skip' }],
+      });
+      const commander = structuredClone(wizard.state.commander);
+      wizard.dispose();
+      if (answer !== 'confirm' && answer !== 'skip') return;
+      if (st.getActiveChat()?.chatId !== chatId) return; // the player moved to another chat meanwhile
+      const events = answer === 'confirm'
+        ? api.dispatch({ type: 'commander/set_profile', payload: { commander } }, { expectChatId: chatId })
+        : api.dispatch({ type: 'commander/review_done', payload: {} }, { expectChatId: chatId });
+      const failed = events.find((e) => e.type === 'error');
+      if (failed) toast('error', String(failed.message ?? failed.code));
+      else if (answer === 'confirm') toast('info', 'Commander file updated.');
+    } finally {
+      // whatever was waiting behind the review (a decision, a confrontation) comes back now
+      reviewOpen = false;
+      if (st.getActiveChat()?.chatId === chatId) {
+        openDilemmaModal();
+        openConfrontationModal();
+      }
+    }
   }
 
   /** Everything that follows a (re)load of the campaign: context, badge, scene and the intimacy mirror. */
@@ -915,12 +928,13 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     shell.closeModal?.(); // a modal of the previous chat must not act on this campaign
     dilemmaHost = null;
     dilemmaModalOpen = false;
+    // the review comes first: a modal that opens while it is up would cancel it (and the reverse), so the others wait for it
+    void reviewCommanderFile().catch((e) => console.warn('[Alius] commander review failed', e));
     if (state?.dilemmas?.open) {
       if (state.dilemmas.open.context !== 'expedition_event') openDilemmaModal();
       if (state.dilemmas.open.status === 'requested') void dilemmas.onRequested().catch((e) => console.warn('[Alius] dilemma failed', e));
     }
     openConfrontationModal();
-    void reviewCommanderFile().catch((e) => console.warn('[Alius] commander review failed', e));
   }
 
   function replaceState(next: CampaignState): void {

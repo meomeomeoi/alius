@@ -705,7 +705,7 @@ describe('calibration tastes (P7)', () => {
 
   it('taste chips cap at 3', () => {
     const v = tastesView({ tastes: ['respects_strength', 'wary_of_brutes', 'drawn_to_older'] });
-    expect(v.chip('drawn_to_younger').disabled).toBe(true);
+    expect(v.chip('drawn_to_younger').getAttribute('aria-disabled')).toBe('true'); // soft: still hoverable for the analysis panel
     expect(v.chip('respects_strength').disabled).toBe(false); // a chosen one can always be dropped
     v.chip('drawn_to_younger').click();
     expect(v.onUpdate).not.toHaveBeenCalled();

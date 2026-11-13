@@ -36,7 +36,7 @@
   background: var(--alius-fg);
 }
 
-#alius-shell .alius-trait-card[disabled] {
+#alius-shell .alius-trait-card[aria-disabled='true'] {
   opacity: 0.45;
 }
 
@@ -60,6 +60,6 @@
   background: var(--alius-fg);
 }
 
-#alius-shell .alius-taste-chip[disabled] {
+#alius-shell .alius-taste-chip[aria-disabled='true'] {
   opacity: 0.45;
 }

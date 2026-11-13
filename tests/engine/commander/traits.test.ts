@@ -92,7 +92,36 @@ describe('join-time effects', () => {
     expect(attraction(['pretty_face'], 2, ['drawn_to_feminine'])).toBe(base + 10);
     expect(attraction(['pretty_face'], 4, ['drawn_to_feminine'])).toBe(attraction([], 4, ['drawn_to_feminine'])); // taste not matched
     expect(attraction(['pretty_face'], 2, [])).toBe(attraction([], 2, [])); // no taste
-    expect(attraction(['pretty_face'], 2, ['respects_strength'])).toBe(attraction([], 2, ['respects_strength'])); // not a drawn_to taste
+    expect(attraction(['pretty_face'], 2, ['respects_strength'])).toBe(attraction([], 2, ['respects_strength'])); // a taste that gives no Attraction
+  });
+
+  it('pretty_face reads the data, not the id: any matched taste that gives Attraction counts', () => {
+    const custom: Registries = {
+      ...reg,
+      tastes: new Map([
+        ...reg.tastes,
+        ['fond_of_scars', { id: 'fond_of_scars', name: 'Fond of scars', description: 'x', offsets: { attraction: 5 } } as never],
+        ['drawn_to_nothing', { id: 'drawn_to_nothing', name: 'Drawn to nothing', description: 'x', offsets: { trust: 3 } } as never],
+      ]),
+    };
+    const rel = (taste: string) => {
+      const r = buildCampaign(
+        { commanderName: 'V', startId: 'start_vesper', crimeId: 'mutiny', units: [unitSetup('Ann', { tastes: [taste] } as never)], commander: commander(['pretty_face']) },
+        custom, { desireBondDefects: false, seed: 5 },
+      );
+      if (!r.ok) throw new Error(r.errors.join('; '));
+      return r.state.relations.unit_ann;
+    };
+    const base = (taste: string) => {
+      const r = buildCampaign(
+        { commanderName: 'V', startId: 'start_vesper', crimeId: 'mutiny', units: [unitSetup('Ann', { tastes: [taste] } as never)], commander: commander([]) },
+        custom, { desireBondDefects: false, seed: 5 },
+      );
+      if (!r.ok) throw new Error(r.errors.join('; '));
+      return r.state.relations.unit_ann;
+    };
+    expect(rel('fond_of_scars').attraction - base('fond_of_scars').attraction).toBe(10);
+    expect(rel('drawn_to_nothing').attraction - base('drawn_to_nothing').attraction).toBe(0);
   });
 
   it('a trait\'s join effects reach a later unit through applyFirstImpression', () => {

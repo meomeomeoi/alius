@@ -69,7 +69,8 @@ export function applyFirstImpression(state: CampaignState, reg: Registries, unit
   }
   // traits: `starting_trust` (a unit's values decide), `taste_attraction` (only with a matched drawn_to_* taste)
   trust += traitStartingTrust(state, reg, unit.values);
-  if (matched.some((t) => t.id.startsWith('drawn_to_'))) {
+  // data, not a naming convention: any matched taste that gives Attraction counts
+  if (matched.some((t) => ((t.offsets as { attraction?: number } | undefined)?.attraction ?? 0) > 0)) {
     for (const fx of traitEffects(state, reg, 'taste_attraction')) attraction += fx.amount;
   }
   rel.trust = clamp(trust, 0, 100);

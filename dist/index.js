@@ -713,7 +713,7 @@ function applyFirstImpression(state, reg, unit, rel) {
     attraction += o?.attraction ?? 0;
   }
   trust += traitStartingTrust(state, reg, unit.values);
-  if (matched.some((t) => t.id.startsWith("drawn_to_"))) {
+  if (matched.some((t) => (t.offsets?.attraction ?? 0) > 0)) {
     for (const fx2 of traitEffects(state, reg, "taste_attraction")) attraction += fx2.amount;
   }
   rel.trust = clamp2(trust, 0, 100);
@@ -14857,6 +14857,12 @@ function renderRoutePicker(ctx2) {
     if (ctx2.locked()) return;
     lockAll();
     ctx2.onPick(p);
+    queueMicrotask(() => {
+      if (!root.isConnected) return;
+      ctx2.unlock?.();
+      const closed = new Set(ctx2.routes.filter((r) => r.disabled !== null).map((r) => String(r.route)));
+      for (const b of buttons) if (b.dataset.route === void 0 || !closed.has(b.dataset.route)) b.removeAttribute("aria-disabled");
+    });
   };
   for (const r of ctx2.routes) {
     const b = h("button", {
@@ -14908,6 +14914,12 @@ function renderDilemma(host, ctx2) {
         chosen = true;
         for (const b of buttons) b.setAttribute("aria-disabled", "true");
         ctx2.onChoose(o.index, pick);
+      },
+      unlock: () => {
+        chosen = false;
+        buttons.forEach((b, i) => {
+          if (ctx2.options[i].disabled === null) b.removeAttribute("aria-disabled");
+        });
       }
     }) : null;
     if (picker) picker.hidden = true;
@@ -15136,15 +15148,16 @@ function renderCombatScreen(host, ctx2) {
   function presenceButton(cs, waiting2) {
     const p = cs.presence;
     if (!p || !ctx2.onPresence) return null;
+    const pointless = p.kind === "unnoticed" && !cs.commander;
     return h("button", {
       type: "button",
       class: "alius-btn alius-option",
       "data-act": "presence",
-      disabled: p.used || !waiting2,
-      title: p.used ? "Already used in this fight." : "Free, once per fight.",
+      disabled: p.used || !waiting2 || pointless,
+      title: p.used ? "Already used in this fight." : pointless ? "Nobody is after you in this fight." : "Free, once per fight.",
       ...analyzeNative(`glossary:presence_${p.kind}`),
       onclick: () => {
-        if (!p.used && waiting2) ctx2.onPresence();
+        if (!p.used && waiting2 && !pointless) ctx2.onPresence();
       }
     }, `${PRESENCE_LABEL2[p.kind]}${p.used ? " \u2014 USED" : ""}`);
   }
@@ -16240,7 +16253,7 @@ function registerSceneContext(builder, deps) {
           lines.push(`Crime: unknown to ${ignorant.map((u) => u.displayName).join(", ")}.${knows.length > 0 ? " Do not bring it up while they are present." : ""}`);
         }
       }
-      if (presentUnits2(s).some((u) => firstImpressionWeight(s, u.id) > 0.5)) lines.push("Units still size him up by appearance.");
+      if (presentUnits2(s).some((u) => firstImpressionWeight(s, u.id) > 0.5)) lines.push("Units still judge the commander by appearance.");
       return lines.join("\n");
     }
   });
@@ -16965,12 +16978,15 @@ function renderCommanderFile(host, ctx2) {
       {
         type: "button",
         class: `alius-card alius-option alius-trait-card${t.kind === "special" ? " alius-trait-special" : ""}`,
+        // soft-disabled (aria-disabled, not `disabled`): a greyed card stays focusable and hoverable for the analysis panel
         "data-trait": id,
         "aria-pressed": String(on),
-        disabled: blocked !== null,
+        "aria-disabled": blocked !== null ? "true" : null,
         title: blocked,
         ...analyzeNative(`commanderTraits:${id}`),
-        onclick: () => onChange({ kind: "trait", id })
+        onclick: () => {
+          if (blocked === null) onChange({ kind: "trait", id });
+        }
       },
       h("strong", {}, String(t.name)),
       t.kind === "special" ? h("span", { class: "alius-dim" }, " SPECIAL") : null,
@@ -17376,7 +17392,9 @@ var Wizard = class {
       }
       if (this.disposed || token !== this.commanderToken) return;
       if (outcome.kind === "ok") {
+        const special = this.s.commander.traits.special;
         this.s.commander = structuredClone(outcome.result.setup);
+        if (special !== void 0) this.s.commander.traits.special = special;
         this.s.commanderImport = { status: "ready", reasons: { ...outcome.result.reasons } };
       } else {
         this.s.commanderImport = { status: "manual", notice: outcome.reason, reasons: {} };
@@ -17917,10 +17935,13 @@ function renderCalibration(host, ctx2) {
             class: "alius-btn alius-option alius-taste-chip",
             "data-taste": id,
             "aria-pressed": String(on),
-            disabled: full && !on,
+            "aria-disabled": full && !on ? "true" : null,
             title: String(t.description),
             ...analyzeNative(`tastes:${id}`),
-            onclick: () => onUpdate({ tastes: on ? picked.filter((x) => x !== id) : [...picked, id] })
+            onclick: () => {
+              if (full && !on) return;
+              onUpdate({ tastes: on ? picked.filter((x) => x !== id) : [...picked, id] });
+            }
           }, String(t.name), suggested.has(id) ? " (suggested)" : "");
         }))
       )
@@ -19380,6 +19401,8 @@ function renderExpeditionScreen(host, ctx2) {
       const picker = o.routes && o.disabled === null ? renderRoutePicker({ routes: o.routes, unitName, locked: () => picked, onPick: (pick) => {
         picked = true;
         controller.choose(o.index, pick);
+      }, unlock: () => {
+        picked = false;
       } }) : null;
       if (picker) picker.hidden = true;
       panel.append(h(
@@ -22819,6 +22842,7 @@ function createApp(st, deps) {
     });
   }
   function openDilemmaModal() {
+    if (reviewOpen) return;
     drawDilemma();
     if (!dilemmaHost || dilemmaModalOpen) return;
     dilemmaModalOpen = true;
@@ -22903,7 +22927,7 @@ function createApp(st, deps) {
   }
   function openConfrontationModal() {
     const open2 = state?.disloyalty?.open;
-    if (!open2 || open2.at !== "mission_start") return;
+    if (!open2 || open2.at !== "mission_start" || reviewOpen) return;
     const host = h("div");
     const close = () => shell.closeModal?.();
     renderConfrontationPanel(host, close);
@@ -23159,6 +23183,7 @@ function createApp(st, deps) {
     if (load.kind === "readonly") toast("warn", `Alius campaign in this chat is read-only: ${load.reason}`);
   }
   let reviewShownFor = null;
+  let reviewOpen = false;
   async function reviewCommanderFile() {
     if (!state || load.kind !== "ok" || state.commander.fileReviewed !== false) return;
     const chatId = load.chatId;
@@ -23195,19 +23220,28 @@ function createApp(st, deps) {
     });
     wizard.subscribe(() => renderKeepingFocus(body, draw2));
     draw2();
-    const answer = await shell.modal({
-      title: "Commander file incomplete \u2014 review",
-      body: h("div", {}, h("p", {}, "This campaign began before the commander had a body, an expression and traits. Review his file, or skip to keep the defaults."), body),
-      actions: [{ label: "Confirm", value: "confirm" }, { label: "Skip", value: "skip" }]
-    });
-    const commander = structuredClone(wizard.state.commander);
-    wizard.dispose();
-    if (answer !== "confirm" && answer !== "skip") return;
-    if (st.getActiveChat()?.chatId !== chatId) return;
-    const events = answer === "confirm" ? api.dispatch({ type: "commander/set_profile", payload: { commander } }, { expectChatId: chatId }) : api.dispatch({ type: "commander/review_done", payload: {} }, { expectChatId: chatId });
-    const failed = events.find((e) => e.type === "error");
-    if (failed) toast("error", String(failed.message ?? failed.code));
-    else if (answer === "confirm") toast("info", "Commander file updated.");
+    reviewOpen = true;
+    try {
+      const answer = await shell.modal({
+        title: "Commander file incomplete \u2014 review",
+        body: h("div", {}, h("p", {}, "This campaign began before the commander had a body, an expression and traits. Review his file, or skip to keep the defaults."), body),
+        actions: [{ label: "Confirm", value: "confirm" }, { label: "Skip", value: "skip" }]
+      });
+      const commander = structuredClone(wizard.state.commander);
+      wizard.dispose();
+      if (answer !== "confirm" && answer !== "skip") return;
+      if (st.getActiveChat()?.chatId !== chatId) return;
+      const events = answer === "confirm" ? api.dispatch({ type: "commander/set_profile", payload: { commander } }, { expectChatId: chatId }) : api.dispatch({ type: "commander/review_done", payload: {} }, { expectChatId: chatId });
+      const failed = events.find((e) => e.type === "error");
+      if (failed) toast("error", String(failed.message ?? failed.code));
+      else if (answer === "confirm") toast("info", "Commander file updated.");
+    } finally {
+      reviewOpen = false;
+      if (st.getActiveChat()?.chatId === chatId) {
+        openDilemmaModal();
+        openConfrontationModal();
+      }
+    }
   }
   function afterLoad() {
     if (load.kind === "ok" && state && state.world.seeded !== true) {
@@ -23231,12 +23265,12 @@ function createApp(st, deps) {
     shell.closeModal?.();
     dilemmaHost = null;
     dilemmaModalOpen = false;
+    void reviewCommanderFile().catch((e) => console.warn("[Alius] commander review failed", e));
     if (state?.dilemmas?.open) {
       if (state.dilemmas.open.context !== "expedition_event") openDilemmaModal();
       if (state.dilemmas.open.status === "requested") void dilemmas.onRequested().catch((e) => console.warn("[Alius] dilemma failed", e));
     }
     openConfrontationModal();
-    void reviewCommanderFile().catch((e) => console.warn("[Alius] commander review failed", e));
   }
   function replaceState(next) {
     const chat = st.getActiveChat();

@@ -220,7 +220,10 @@ export class Wizard {
       }
       if (this.disposed || token !== this.commanderToken) return;
       if (outcome.kind === 'ok') {
+        // the model never proposes a special trait: the one the player already chose stays
+        const special = this.s.commander.traits.special;
         this.s.commander = structuredClone(outcome.result.setup);
+        if (special !== undefined) this.s.commander.traits.special = special;
         this.s.commanderImport = { status: 'ready', reasons: { ...outcome.result.reasons } };
       } else {
         this.s.commanderImport = { status: 'manual', notice: outcome.reason, reasons: {} };

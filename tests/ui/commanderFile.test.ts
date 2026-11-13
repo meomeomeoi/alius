@@ -115,8 +115,12 @@ describe('commander file form', () => {
 
   it('a third regular trait is disabled; chosen ones stay enabled to be dropped; the special one is separate', () => {
     const m = render(setup({ traits: { regular: ['old_wound', 'insomniac'] } }));
-    expect(m.trait('bookish').disabled).toBe(true);
+    // soft-disabled (aria-disabled): still focusable and hoverable, so the analysis panel can explain the trait
+    expect(m.trait('bookish').disabled).toBe(false);
+    expect(m.trait('bookish').getAttribute('aria-disabled')).toBe('true');
     expect(m.trait('bookish').title).toMatch(/two regular/i);
+    m.trait('bookish').click();
+    expect(m.onChange).not.toHaveBeenCalled();
     expect(m.trait('old_wound').disabled).toBe(false);
     expect(m.trait('vow_of_distance').disabled).toBe(false);
     expect(m.trait('vow_of_distance').textContent).toMatch(/SPECIAL/);
@@ -124,7 +128,7 @@ describe('commander file form', () => {
 
   it('an exclusive trait is disabled with the reason', () => {
     const m = render(setup({ traits: { regular: ['corporate_polish'] } }));
-    expect(m.trait('street_raised').disabled).toBe(true);
+    expect(m.trait('street_raised').getAttribute('aria-disabled')).toBe('true');
     expect(m.trait('street_raised').title).toMatch(/Corporate Polish/);
   });
 

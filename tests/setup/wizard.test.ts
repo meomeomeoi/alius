@@ -552,6 +552,17 @@ describe('Wizard: commander file (P7)', () => {
     expect(w.state.commanderImport).toMatchObject({ status: 'ready', reasons: { old_wound: 'A limp from an old fight.' } });
   });
 
+  it('a prefill keeps the special trait the player already chose', async () => {
+    const { w, pendingCommander } = make();
+    w.toggleTrait('vow_of_distance');
+    w.prefillFromPersona();
+    pendingCommander[0].resolve(IMPORTED_COMMANDER);
+    await flush();
+    expect(w.state.commander.traits).toEqual({ regular: ['old_wound'], special: 'vow_of_distance' });
+    // and an excluded special is not forced in: the import never carries one, so nothing to clash with
+    expect(validateCommanderSetup(w.state.commander, reg, { desireBondDefects: false })).toEqual([]);
+  });
+
   it('a manual outcome keeps what the player has and says why', async () => {
     const { w, pendingCommander } = make();
     w.setBody('strength', 4);

@@ -211,6 +211,27 @@ describe('route picker (P7)', () => {
     expect(onChoose).toHaveBeenCalledTimes(1);
   });
 
+  it('a pick the engine rejects unlocks the panel (nothing re-rendered it), a pick that went through stays locked', async () => {
+    const { host, onChoose } = mount({ options: routed() });
+    host.querySelector<HTMLButtonElement>('[data-dilemma-option="0"]')!.click();
+    host.querySelector<HTMLButtonElement>('button[data-route="2"]')!.click();
+    expect(onChoose).toHaveBeenCalledTimes(1);
+    await Promise.resolve(); // the host is still in the document: the dispatch changed nothing
+    expect(host.querySelector('button[data-route="2"]')!.getAttribute('aria-disabled')).toBeNull();
+    host.querySelector<HTMLButtonElement>('button[data-route="2"]')!.click();
+    expect(onChoose).toHaveBeenCalledTimes(2);
+
+    // the screen was redrawn by the successful choice: the old buttons are gone and stay inert
+    const ok = mount({ options: routed() });
+    ok.host.querySelector<HTMLButtonElement>('[data-dilemma-option="0"]')!.click();
+    const bypass = ok.host.querySelector<HTMLButtonElement>('button[data-route="2"]')!;
+    bypass.click();
+    ok.host.replaceChildren();
+    await Promise.resolve();
+    bypass.click();
+    expect(ok.onChoose).toHaveBeenCalledTimes(1);
+  });
+
   it('an option without routes still chooses at once', () => {
     const { host, onChoose } = mount({ options: routed() });
     host.querySelector<HTMLButtonElement>('[data-dilemma-option="1"]')!.click();
@@ -266,6 +287,15 @@ describe('expedition event with a routed option (P7)', () => {
     const ann = host.querySelector<HTMLButtonElement>('button[data-route-unit="unit_ann"]')!;
     ann.click();
     expect(controller.choose).toHaveBeenCalledWith(0, { route: 1, unitId: 'unit_ann' });
+  });
+
+  it('a rejected pick leaves the event usable', async () => {
+    const { host, controller } = screen(atCrate());
+    host.querySelector<HTMLButtonElement>('[data-option="0"]')!.click();
+    host.querySelector<HTMLButtonElement>('button[data-route="2"]')!.click();
+    await Promise.resolve();
+    host.querySelector<HTMLButtonElement>('button[data-route="2"]')!.click();
+    expect(controller.choose).toHaveBeenCalledTimes(2);
   });
 
   it('a bypass sends only the route', () => {

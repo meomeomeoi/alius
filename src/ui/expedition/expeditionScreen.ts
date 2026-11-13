@@ -176,7 +176,7 @@ export function renderExpeditionScreen(host: HTMLElement, ctx: ExpeditionScreenC
     for (const o of options) {
       // P7: a routed option asks how first; the rest choose at once
       const picker = o.routes && o.disabled === null
-        ? renderRoutePicker({ routes: o.routes, unitName, locked: () => picked, onPick: (pick) => { picked = true; controller.choose(o.index, pick); } })
+        ? renderRoutePicker({ routes: o.routes, unitName, locked: () => picked, onPick: (pick) => { picked = true; controller.choose(o.index, pick); }, unlock: () => { picked = false; } })
         : null;
       if (picker) picker.hidden = true;
       panel.append(h('div', {},

@@ -64,10 +64,13 @@ export function renderCombatScreen(host: HTMLElement, ctx: CombatScreenCtx): Com
   function presenceButton(cs: NonNullable<CampaignState['combat']>, waiting: boolean): HTMLElement | null {
     const p = cs.presence;
     if (!p || !ctx.onPresence) return null;
+    // Unnoticed only matters while the commander is exposed: do not let the player spend it on nothing
+    const pointless = p.kind === 'unnoticed' && !cs.commander;
     return h('button', {
-      type: 'button', class: 'alius-btn alius-option', 'data-act': 'presence', disabled: p.used || !waiting,
-      title: p.used ? 'Already used in this fight.' : 'Free, once per fight.', ...analyzeNative(`glossary:presence_${p.kind}`),
-      onclick: () => { if (!p.used && waiting) ctx.onPresence!(); },
+      type: 'button', class: 'alius-btn alius-option', 'data-act': 'presence', disabled: p.used || !waiting || pointless,
+      title: p.used ? 'Already used in this fight.' : pointless ? 'Nobody is after you in this fight.' : 'Free, once per fight.',
+      ...analyzeNative(`glossary:presence_${p.kind}`),
+      onclick: () => { if (!p.used && waiting && !pointless) ctx.onPresence!(); },
     }, `${PRESENCE_LABEL[p.kind]}${p.used ? ' — USED' : ''}`);
   }
 

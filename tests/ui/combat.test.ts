@@ -308,6 +308,20 @@ describe('presence action (P7)', () => {
     expect(onPresence).toHaveBeenCalledTimes(1);
   });
 
+  it('Unnoticed is disabled, with the reason, when nobody is after the commander', () => {
+    const noCrisis = withPresence('unnoticed');
+    expect(noCrisis.combat!.commander).toBeUndefined();
+    const b = btn(mount(noCrisis, { onPresence: vi.fn() }).host)!;
+    expect(b.disabled).toBe(true);
+    expect(b.title).toMatch(/Nobody is after you/);
+    document.body.innerHTML = '';
+    const crisis = withPresence('unnoticed');
+    crisis.combat!.commander = { hp: 50, maxHp: 50, def: 10, coverId: 's1', downed: false };
+    expect(btn(mount(crisis, { onPresence: vi.fn() }).host)!.disabled).toBe(false);
+    document.body.innerHTML = '';
+    expect(btn(mount(withPresence('rally'), { onPresence: vi.fn() }).host)!.disabled).toBe(false); // Rally and Steady Voice need no Crisis
+  });
+
   it('is disabled while no unit awaits input, and hidden without the callback or for a combat from before P7', () => {
     const idle = withPresence('rally');
     idle.combat!.awaitingCid = undefined;

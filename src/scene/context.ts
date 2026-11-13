@@ -95,7 +95,7 @@ export function registerSceneContext(builder: ContextBuilder, deps: Deps): void 
         }
       }
       // looks matter most on a first meeting: while any present unit is still sizing him up, the model is told so
-      if (presentUnits(s).some((u) => firstImpressionWeight(s, u.id) > 0.5)) lines.push('Units still size him up by appearance.');
+      if (presentUnits(s).some((u) => firstImpressionWeight(s, u.id) > 0.5)) lines.push('Units still judge the commander by appearance.');
       return lines.join('\n');
     },
   });
