@@ -2,7 +2,7 @@ import type { Entry, Registries, RegistryName } from '../content/types';
 import { REGISTRY_NAMES } from '../content/types';
 import type { CampaignState } from '../engine/state/types';
 import type { AliusSettings } from '../settings';
-import { entryText, entryTitle } from './describe';
+import { entryText, entryTitle, settingGlossaryId } from './describe';
 import { entryEffects } from './effects';
 import { readingFor } from './providers';
 import type { Subject } from './subject';
@@ -50,7 +50,7 @@ function glossaryModel(subject: Subject, entry: Entry, env: AnalyzeEnv): PanelMo
 export function buildPanelModel(subject: Subject, env: AnalyzeEnv): PanelModel {
   const { registries } = env;
   if (subject.source === 'setting') {
-    const entry = registries.glossary.get(`setting_${subject.id}`);
+    const entry = registries.glossary.get(settingGlossaryId(subject.id));
     return entry ? glossaryModel(subject, entry, env) : missing(subject);
   }
   if (!(REGISTRY_NAMES as readonly string[]).includes(subject.source)) return missing(subject);

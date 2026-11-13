@@ -71,7 +71,7 @@ describe('axis readings', () => {
   it('the last three history events with causes, newest first', () => {
     const { state, unitId } = hiddenFixture(reg);
     const eventDeltas = new Map(reg.eventDeltas);
-    eventDeltas.set('praised', { ...reg.eventDeltas.get('praised')!, cause: 'You praised her' });
+    eventDeltas.set('praised', { ...reg.eventDeltas.get('praised')!, cause: 'You praised her warmly' });
     const local = { ...reg, eventDeltas } as Registries;
     state.relations[unitId].history = [
       { day: 1, kind: 'event', type: 'praised', severity: 'minor' },
@@ -83,9 +83,9 @@ describe('axis readings', () => {
     const env: AnalyzeEnv = { registries: local, state, settings: DEFAULT_SETTINGS };
     const lines = readingFor(parseSubject('glossary:trust', JSON.stringify({ unitId }))!, env)!.lines;
     expect(lines.slice(2, 5)).toEqual([
-      'You praised her — major, day 5',
-      'Rejected advance — minor, day 4',
-      'Sided with — moderate, day 3',
+      'You praised her warmly — major, day 5',
+      'You turned down her advance — minor, day 4',
+      'You took her side — moderate, day 3',
     ]);
     expect(lines[5]).toBe(`State: [[relationshipStates:${state.relations[unitId].stateId}]]`);
     expect(lines).toHaveLength(6);

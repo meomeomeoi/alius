@@ -2,6 +2,7 @@
   {
     "id": "armored",
     "name": "Armored",
+    "description": "Plated, with much more DEF than its kind.",
     "appliesTo": "enemy",
     "adjective": "Armored",
     "statPct": {
@@ -12,6 +13,7 @@
   {
     "id": "regenerating",
     "name": "Regenerating",
+    "description": "Heals a little at the start of each of its turns.",
     "appliesTo": "enemy",
     "adjective": "Regenerating",
     "effects": [
@@ -26,6 +28,7 @@
   {
     "id": "reinforcing",
     "name": "Reinforcing",
+    "description": "Each round it may call another [[enemies:husk]] to the fight.",
     "appliesTo": "enemy",
     "adjective": "Reinforcing",
     "effects": [
@@ -41,6 +44,7 @@
   {
     "id": "volatile",
     "name": "Volatile",
+    "description": "When an ally falls it detonates, hitting a whole row.",
     "appliesTo": "enemy",
     "adjective": "Volatile",
     "effects": [
@@ -55,6 +59,7 @@
   {
     "id": "bloom_touched",
     "name": "Bloom-touched",
+    "description": "Its hits can spread [[statuses:infect|Infect]], which feeds on stress.",
     "appliesTo": "enemy",
     "adjective": "Bloom-touched",
     "effects": [
@@ -69,6 +74,7 @@
   {
     "id": "swift",
     "name": "Swift",
+    "description": "Much faster than its kind, so it acts early.",
     "appliesTo": "enemy",
     "adjective": "Swift",
     "statPct": {
@@ -79,6 +85,7 @@
   {
     "id": "elite",
     "name": "Elite",
+    "description": "Tougher and harder-hitting in every way, and it knows an extra skill.",
     "appliesTo": "enemy",
     "adjective": "Elite",
     "statPct": {
@@ -93,6 +100,7 @@
   {
     "id": "honed",
     "name": "Honed",
+    "description": "Adds attack to the weapon or armor it is rolled on.",
     "appliesTo": "item",
     "slots": [
       "weapon"
@@ -105,6 +113,7 @@
   {
     "id": "keen",
     "name": "Keen",
+    "description": "Raises the critical chance of its wearer.",
     "appliesTo": "item",
     "slots": [
       "weapon"
@@ -120,6 +129,7 @@
   {
     "id": "serrated",
     "name": "Serrated",
+    "description": "Hits can make the target bleed.",
     "appliesTo": "item",
     "slots": [
       "weapon"
@@ -137,6 +147,7 @@
   {
     "id": "reinforced",
     "name": "Reinforced",
+    "description": "Adds defense.",
     "appliesTo": "item",
     "slots": [
       "upper",
@@ -150,6 +161,7 @@
   {
     "id": "padded",
     "name": "Padded",
+    "description": "Adds hit points.",
     "appliesTo": "item",
     "slots": [
       "upper",
@@ -163,6 +175,7 @@
   {
     "id": "light_frame",
     "name": "Light Frame",
+    "description": "Adds speed.",
     "appliesTo": "item",
     "slots": [
       "upper",
@@ -176,6 +189,7 @@
   {
     "id": "calming",
     "name": "Calming",
+    "description": "Eases its wearer's stress a little at the start of each round.",
     "appliesTo": "item",
     "effects": [
       {
@@ -189,6 +203,7 @@
   {
     "id": "capacitor",
     "name": "Capacitor",
+    "description": "Grants one Command Point at the start of the fight.",
     "appliesTo": "item",
     "effects": [
       {
@@ -203,6 +218,7 @@
   {
     "id": "bloom_leak",
     "name": "Bloom Leak",
+    "description": "Drawback: it feeds a little stress to its wearer every round.",
     "appliesTo": "item",
     "drawback": true,
     "effects": [
@@ -217,6 +233,7 @@
   {
     "id": "unstable_core",
     "name": "Unstable Core",
+    "description": "Drawback: when its wearer is hit, the core may set her on fire.",
     "appliesTo": "item",
     "drawback": true,
     "effects": [
@@ -233,6 +250,7 @@
   {
     "id": "parasitic",
     "name": "Parasitic",
+    "description": "Drawback: it saps the wearer's hit points.",
     "appliesTo": "item",
     "drawback": true,
     "statPct": {

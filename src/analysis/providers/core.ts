@@ -228,6 +228,17 @@ const decisionProvider: AnalyzeProvider = (subject, env) => {
   return { lines };
 };
 
+/** The glossary concepts the code and the markers address (`glossary:<id>`); `setting_<key>` entries are checked separately. */
+export const CORE_GLOSSARY_IDS: readonly string[] = [
+  'trust', 'affinity', 'attraction', 'stress', 'stress_strained', 'stress_breaking', 'stress_breakdown', 'downed',
+  'loyalty_band', 'relationship_state', 'values', 'value_pragmatism', 'value_autonomy', 'value_ingroup', 'value_mercy',
+  'value_corporate', 'value_sacrifice', 'social_stats', 'authority', 'insight', 'empathy', 'cunning', 'credits',
+  'supplies', 'plyx', 'upkeep', 'slots', 'commander_injury', 'cp', 'leash', 'leash_compel', 'leash_suppress',
+  'leash_terminate', 'defect', 'defect_arc', 'arc_cure', 'arc_manage', 'arc_embrace', 'breakdown', 'stat_hp',
+  'stat_atk', 'stat_def', 'stat_spd', 'stat_crit', 'level_xp', 'skill_points', 'loadout', 'rarity', 'workshop',
+  'roster', 'grunt', 'clearance', 'unknown_node', 'decision_option', 'decision_minor', 'decision_major', 'decision_defining',
+];
+
 let registered = false;
 
 /** Registers the core providers; safe to call more than once. */

@@ -2,16 +2,581 @@
   {
     "id": "trust",
     "term": "Trust",
-    "short": "How much a soldier believes in you as her commander. It decides whether she obeys."
+    "short": "How far a soldier believes in you as her commander. It decides whether she obeys, refuses or walks away.",
+    "long": "Trust runs from 0 to 100. It rises when you keep promises, protect her and decide in ways she respects; it falls when you lie, coerce her or leave people behind. When it drops, her [[loyalty_band|loyalty]] wavers. The Leash can force an order, but it costs Trust.",
+    "see": [
+      "loyalty_band",
+      "leash_compel",
+      "relationship_state"
+    ]
+  },
+  {
+    "id": "affinity",
+    "term": "Affinity",
+    "short": "Personal warmth toward you, from cold to devoted. Unlike Trust it is about the person, not the rank.",
+    "long": "Affinity runs from -100 to 100. It grows through kindness, shared time and being on her side, and sinks through insults, betrayals and coercion. Together with the other axes it decides which [[relationship_state|relationship state]] she can reach.",
+    "see": [
+      "trust",
+      "attraction",
+      "relationship_state"
+    ]
+  },
+  {
+    "id": "attraction",
+    "term": "Attraction",
+    "short": "Romantic or physical interest, 0 to 100. It only grows while romance is switched on and she has reason to like you.",
+    "long": "Attraction opens the romantic relationship states, but never forces them: a state also needs an event or a proposal. Switch romance off in the [[setting:romance|romance setting]] and it stays out of every reading and scene.",
+    "see": [
+      "affinity",
+      "relationship_state"
+    ]
   },
   {
     "id": "stress",
     "term": "Stress",
-    "short": "Strain on a soldier, 0–100. It sharpens her defects and, at the top, breaks her."
+    "short": "Strain on a soldier, 0 to 100. It sharpens her defects and, at the top, breaks her.",
+    "long": "Fights, danger, refused orders and Leash use raise it; rest, calm company and the medbay lower it. It moves her through four bands: calm, strained, breaking and breakdown. Stress is not a relationship axis, but it changes how every defect plays.",
+    "see": [
+      "stress_strained",
+      "stress_breaking",
+      "stress_breakdown",
+      "defect"
+    ]
+  },
+  {
+    "id": "stress_strained",
+    "term": "Strained",
+    "short": "From 50 Stress: the downsides of her defects bite harder and passives tied to Stress start to fire."
+  },
+  {
+    "id": "stress_breaking",
+    "term": "Breaking",
+    "short": "From 80 Stress: each turn she may lose control and act on her defect's breakdown instead of your orders."
+  },
+  {
+    "id": "stress_breakdown",
+    "term": "Breakdown",
+    "short": "At 100 Stress she breaks down: her defect's breakdown plays out until the expedition ends and she is released.",
+    "see": [
+      "breakdown"
+    ]
+  },
+  {
+    "id": "downed",
+    "term": "Downed",
+    "short": "Out of the fight at 0 HP. Some skills can revive her; afterwards she is injured. A downed grunt may die, a named unit never does in combat."
+  },
+  {
+    "id": "loyalty_band",
+    "term": "Loyalty band",
+    "short": "Steady, wavering or breaking: how close she is to refusing orders or leaving.",
+    "long": "It follows Trust with a delay, so it does not flicker: she turns wavering below 25 and breaking below 10, and recovers only at 35 and 20. Wavering units sometimes refuse orders; breaking ones may desert, and from the worst relationship states, mutiny.",
+    "see": [
+      "trust",
+      "leash"
+    ]
+  },
+  {
+    "id": "relationship_state",
+    "term": "Relationship state",
+    "short": "Where your bond with a soldier stands: Stranger, Friend, Rival, Resentful and more. A state is entered through events, not numbers alone.",
+    "long": "States unlock scenes, night visits, combat synergies and defect arcs, and they change how a soldier obeys and speaks. Axes and flags set the stage; an event or a proposal turns the page.",
+    "see": [
+      "trust",
+      "affinity",
+      "attraction"
+    ]
+  },
+  {
+    "id": "values",
+    "term": "Values",
+    "short": "Six axes, from -3 to +3, that describe what a soldier cares about. They decide how she reacts to your decisions.",
+    "see": [
+      "value_pragmatism",
+      "value_autonomy",
+      "value_ingroup",
+      "value_mercy",
+      "value_corporate",
+      "value_sacrifice"
+    ]
+  },
+  {
+    "id": "value_pragmatism",
+    "term": "Pragmatism",
+    "short": "Results over principles. High: accepts ugly means for good ends. Low: refuses to cross lines."
+  },
+  {
+    "id": "value_autonomy",
+    "term": "Autonomy",
+    "short": "Wants to choose for herself. High: bristles at orders and the Leash. Low: at ease being told what to do."
+  },
+  {
+    "id": "value_ingroup",
+    "term": "Ingroup",
+    "short": "Loyalty to the squad. High: no one is left behind. Low: the mission comes first."
+  },
+  {
+    "id": "value_mercy",
+    "term": "Mercy",
+    "short": "Compassion for the weak and the beaten. High: hates needless harm. Low: ruthless."
+  },
+  {
+    "id": "value_corporate",
+    "term": "Corporate",
+    "short": "Faith in the corporation and its rules. High: follows the chain of command. Low: distrusts every contract."
+  },
+  {
+    "id": "value_sacrifice",
+    "term": "Sacrifice",
+    "short": "Willingness to pay a price for others. High: gives herself first. Low: protects her own skin."
+  },
+  {
+    "id": "social_stats",
+    "term": "Social stats",
+    "short": "Your four social ranks, 1 to 5. They gate options and decide social rolls.",
+    "see": [
+      "authority",
+      "insight",
+      "empathy",
+      "cunning"
+    ]
+  },
+  {
+    "id": "authority",
+    "term": "Authority",
+    "short": "Making people follow. Used to talk a deserter down, press an order and hold a room."
+  },
+  {
+    "id": "insight",
+    "term": "Insight",
+    "short": "Reading people and situations. Used to spot lies and hidden motives."
+  },
+  {
+    "id": "empathy",
+    "term": "Empathy",
+    "short": "Understanding and comforting. Used to calm, reach and persuade through care."
+  },
+  {
+    "id": "cunning",
+    "term": "Cunning",
+    "short": "Scheming and bargaining. Used for bluffs and clever deals; it also pays on contract work."
+  },
+  {
+    "id": "credits",
+    "term": "Credits",
+    "short": "Money for upgrades, recruits, crafting and requisitions. Earned from contract work and missions."
+  },
+  {
+    "id": "supplies",
+    "term": "Supplies",
+    "short": "Food, medicine and ammunition. Everyone eats every day; a shortage costs stress and goodwill.",
+    "see": [
+      "upkeep"
+    ]
+  },
+  {
+    "id": "plyx",
+    "term": "Plyx",
+    "short": "Programmable polymer: the material for crafting and upgrading gear. Scarce, and needed for defect arcs."
+  },
+  {
+    "id": "upkeep",
+    "term": "Upkeep",
+    "short": "The supplies the base eats each day: one per living soldier, reserve included, and one for you. A mess hall lowers it.",
+    "long": "A day without enough supplies costs stress and Affinity across the squad, and after three days in a row it costs Trust too. Requisition more supplies with credits, or lower the bill with the mess hall.",
+    "see": [
+      "supplies"
+    ]
+  },
+  {
+    "id": "slots",
+    "term": "Slots",
+    "short": "Time comes in slots: morning, afternoon, evening and, only when something happens, night. Activities, talks and expeditions spend them."
+  },
+  {
+    "id": "commander_injury",
+    "term": "Commander injury",
+    "short": "You are hurt: training and work are blocked until you recover. Lovers and dependents may come to see you."
   },
   {
     "id": "cp",
     "term": "CP",
-    "short": "Command Points: what you spend in combat to give orders."
+    "short": "Command Points, your combat resource. Spend them on orders and ultimates; you gain one each round, up to five."
+  },
+  {
+    "id": "leash",
+    "term": "Leash",
+    "short": "A corporate override you can request: Compel, Suppress or Terminate. Authorizations refill weekly, and every use costs relations.",
+    "long": "Each request goes through an oversight form. Every use is logged, the squad notices, and soldiers who value their autonomy hate it. A soldier you leash may not forgive you.",
+    "see": [
+      "leash_compel",
+      "leash_suppress",
+      "leash_terminate"
+    ]
+  },
+  {
+    "id": "leash_compel",
+    "term": "Compel",
+    "short": "Forces one order: in a scene her next reply complies, in combat it cancels a refusal. Costs Trust and Affinity and adds stress.",
+    "long": "It spends one authorization. The target loses Trust and Affinity and gains stress; witnesses react according to their values, and repeated use can turn her resentful.",
+    "see": [
+      "leash"
+    ]
+  },
+  {
+    "id": "leash_suppress",
+    "term": "Suppress",
+    "short": "Stops a desertion or an attack in progress. Costs a lot of Trust and unsettles the whole squad.",
+    "see": [
+      "leash"
+    ]
+  },
+  {
+    "id": "leash_terminate",
+    "term": "Terminate",
+    "short": "Permanent deactivation. Needs a cause and an oversight approval, and the squad will not forget it.",
+    "see": [
+      "leash"
+    ]
+  },
+  {
+    "id": "defect",
+    "term": "Defect",
+    "short": "A mandatory malfunction every soldier carries: an upside, a downside and a breakdown. It changes how she plays, not how strong she is.",
+    "see": [
+      "defect_arc",
+      "breakdown",
+      "stress"
+    ]
+  },
+  {
+    "id": "defect_arc",
+    "term": "Defect arc",
+    "short": "A personal storyline about a defect: Cure, Manage or Embrace. It opens with trust, medbay level and time.",
+    "see": [
+      "arc_cure",
+      "arc_manage",
+      "arc_embrace"
+    ]
+  },
+  {
+    "id": "arc_cure",
+    "term": "Cure",
+    "short": "Removes the defect, upside included. She may feel like a stranger to herself."
+  },
+  {
+    "id": "arc_manage",
+    "term": "Manage",
+    "short": "Softens the downside and keeps the upside, but needs regular upkeep at the medbay."
+  },
+  {
+    "id": "arc_embrace",
+    "term": "Embrace",
+    "short": "Amplifies both upside and downside, and turns the breakdown into something the squad can use, or fear."
+  },
+  {
+    "id": "breakdown",
+    "term": "Breakdown",
+    "short": "What her defect does at 100 Stress: she stops following orders and acts on the malfunction until released.",
+    "see": [
+      "stress_breakdown"
+    ]
+  },
+  {
+    "id": "stat_hp",
+    "term": "HP",
+    "short": "Hit points. At zero she is downed. Grows with level and gear.",
+    "long": "Role base, plus growth per level, plus gear and percentage bonuses; each injury cuts it by a tenth, up to three injuries. Defects and statuses can change it for a fight.",
+    "see": [
+      "downed",
+      "level_xp"
+    ]
+  },
+  {
+    "id": "stat_atk",
+    "term": "ATK",
+    "short": "Attack. It scales most of the damage she deals.",
+    "long": "Damage is ATK times the skill multiplier, softened by the target's DEF. Weapons, affixes and some defects raise it, and effects that change damage dealt multiply the result.",
+    "see": [
+      "stat_def",
+      "stat_crit"
+    ]
+  },
+  {
+    "id": "stat_def",
+    "term": "DEF",
+    "short": "Defense. It soaks part of every hit she takes.",
+    "long": "Incoming damage is reduced by 100 divided by 100 plus DEF. Armor and some effects raise it; effects that change damage taken apply on top.",
+    "see": [
+      "stat_atk"
+    ]
+  },
+  {
+    "id": "stat_spd",
+    "term": "SPD",
+    "short": "Speed. It decides who acts first each round.",
+    "long": "Higher SPD acts earlier. Heavy armor lowers it by up to three; weapons can add or take away a point or two."
+  },
+  {
+    "id": "stat_crit",
+    "term": "CRIT",
+    "short": "Critical chance, in percent. A critical hit deals one and a half times the damage.",
+    "see": [
+      "stat_atk"
+    ]
+  },
+  {
+    "id": "level_xp",
+    "term": "Level and XP",
+    "short": "Fights give experience; each level adds stats and one skill point. Your clearance caps how high she can go.",
+    "see": [
+      "skill_points",
+      "clearance"
+    ]
+  },
+  {
+    "id": "skill_points",
+    "term": "Skill points",
+    "short": "One per level. Spend them in her skill tree on actives, passives and upgrades. A respec costs plyx and credits."
+  },
+  {
+    "id": "loadout",
+    "term": "Loadout",
+    "short": "The skills she brings into a fight: four actives, plus her signature and ultimate. Change them on her sheet between fights."
+  },
+  {
+    "id": "rarity",
+    "term": "Rarity",
+    "short": "Standard, refined, prototype, corporate or anomalous. Higher rarity means stronger stats and more affix slots; anomalous gear carries a drawback."
+  },
+  {
+    "id": "workshop",
+    "term": "Workshop",
+    "short": "Craft, upgrade, reroll and dismantle gear. Each workshop activity opens a session with a few operations."
+  },
+  {
+    "id": "roster",
+    "term": "Roster",
+    "short": "The four soldiers who go on expeditions. The rest wait in reserve; your barracks decide how many beds you have."
+  },
+  {
+    "id": "grunt",
+    "term": "Grunt",
+    "short": "A generated soldier: ASCII portrait, Trust only, and mortal. Cheap to recruit, and a grunt who drops to zero HP can die."
+  },
+  {
+    "id": "clearance",
+    "term": "Clearance",
+    "short": "A corporate access tier that raises the level cap. Story beats and base upgrades grant it: ten, twenty, thirty, then forty."
+  },
+  {
+    "id": "unknown_node",
+    "term": "Unknown node",
+    "short": "An unscouted spot on the expedition map. What it is shows only when you are near it or step in."
+  },
+  {
+    "id": "decision_option",
+    "term": "Decision option",
+    "short": "One choice in a decision. It tells you what it asks of you, never what it will change.",
+    "see": [
+      "decision_minor",
+      "decision_major",
+      "decision_defining"
+    ]
+  },
+  {
+    "id": "decision_minor",
+    "term": "Minor decision",
+    "short": "A small decision with modest stakes, often met on an expedition."
+  },
+  {
+    "id": "decision_major",
+    "term": "Major decision",
+    "short": "A weighty decision that can shift relations, resources or the world."
+  },
+  {
+    "id": "decision_defining",
+    "term": "Defining decision",
+    "short": "A rare decision the story will remember."
+  },
+  {
+    "id": "setting_mechanic_profile_id",
+    "term": "Mechanic profile",
+    "short": "The connection profile of the mechanic model: it reads conversations and writes structured data."
+  },
+  {
+    "id": "setting_mechanic_think",
+    "term": "Mechanic thinking",
+    "short": "How much the mechanic model may think before it answers. Minimal is cheapest; provider default leaves it alone."
+  },
+  {
+    "id": "setting_mechanic_fallback_to_main",
+    "term": "Fall back to main model",
+    "short": "With no mechanic profile set, use the main model for mechanic calls."
+  },
+  {
+    "id": "setting_request_floor",
+    "term": "Request floor",
+    "short": "The smallest token limit sent on a mechanic call, so models that think have room to finish."
+  },
+  {
+    "id": "setting_budgets",
+    "term": "Output budgets",
+    "short": "Expected output tokens per call type. Lower is cheaper; too low cuts answers short and forces a retry."
+  },
+  {
+    "id": "setting_context_token_cap",
+    "term": "Context cap",
+    "short": "The most tokens the Alius context block may add to each main-model prompt."
+  },
+  {
+    "id": "setting_palette",
+    "term": "Palette",
+    "short": "The phosphor color of the Alius screen: amber, green or white."
+  },
+  {
+    "id": "setting_scanlines",
+    "term": "Scanlines",
+    "short": "Faint CRT scanlines over the screen."
+  },
+  {
+    "id": "setting_flicker",
+    "term": "CRT flicker",
+    "short": "A slight CRT flicker. Turn it off if it strains your eyes."
+  },
+  {
+    "id": "setting_debug",
+    "term": "Debug mode",
+    "short": "Shows model calls, prompts, content errors and the raw campaign state in the SYS tab."
+  },
+  {
+    "id": "setting_edit_lock",
+    "term": "Mechanics edit lock",
+    "short": "Keeps mechanics view-only. Turn it off to edit the campaign state in the debug panel."
+  },
+  {
+    "id": "setting_desire_bond_defects",
+    "term": "Desire/Bond defects",
+    "short": "Allows Desire and Bond defects in imports and lists. A running campaign keeps the value it started with."
+  },
+  {
+    "id": "setting_show_raw_values",
+    "term": "Show raw values",
+    "short": "Shows exact numbers for relationships and stress instead of bands."
+  },
+  {
+    "id": "setting_sprite_mode",
+    "term": "Sprite mode",
+    "short": "How a character's expression is chosen: by SillyTavern's own Expressions, or by the mechanic model."
+  },
+  {
+    "id": "setting_activity_flavor",
+    "term": "Companion vignettes",
+    "short": "A short generated vignette after an activity done with a companion (main model, one call each)."
+  },
+  {
+    "id": "setting_grunt_flavor",
+    "term": "Generated grunt names",
+    "short": "A generated name and one-line bio for newly recruited grunts."
+  },
+  {
+    "id": "setting_intent_mode",
+    "term": "Read the conversation",
+    "short": "When the mechanic model reads a conversation: after every exchange, every few exchanges, or only when the scene ends."
+  },
+  {
+    "id": "setting_intent_every_n",
+    "term": "Every N exchanges",
+    "short": "How many exchanges to wait between readings when the model reads every few exchanges."
+  },
+  {
+    "id": "setting_intent_min_confidence",
+    "term": "Minimum confidence",
+    "short": "Readings the model is less sure of than this are dropped."
+  },
+  {
+    "id": "setting_scene_pacing",
+    "term": "Scene pacing",
+    "short": "After this many exchanges the scene header says time is passing."
+  },
+  {
+    "id": "setting_typing_speed",
+    "term": "Typing speed",
+    "short": "How fast dialogue types out, in characters per second. Zero shows it at once."
+  },
+  {
+    "id": "setting_romance",
+    "term": "Romance",
+    "short": "Switches romantic states, Attraction and proposals on or off."
+  },
+  {
+    "id": "setting_explicit_content",
+    "term": "Explicit scenes allowed",
+    "short": "Tells the main model whether explicit scenes are allowed. What it writes still depends on your model and preset."
+  },
+  {
+    "id": "setting_romantic_initiative",
+    "term": "Romantic initiative",
+    "short": "How often soldiers make romantic moves on their own: low, medium or high."
+  },
+  {
+    "id": "setting_unit_dms",
+    "term": "Units may start DMs",
+    "short": "Lets soldiers start private messages with you on their own."
+  },
+  {
+    "id": "setting_chronicle_compaction",
+    "term": "Compact the chronicle",
+    "short": "Condenses old chronicle lines with the mechanic model instead of just joining them."
+  },
+  {
+    "id": "setting_easy_retry",
+    "term": "Easy retry",
+    "short": "Lets you rewind a lost combat and try again. The story does not remember rewinds."
+  },
+  {
+    "id": "setting_enemy_flavor",
+    "term": "Generated enemy names",
+    "short": "Generated names for affixed enemies. Cached, and never holds up a fight."
+  },
+  {
+    "id": "setting_director_enabled",
+    "term": "Story director",
+    "short": "Lets the mechanic model plan missions, rumors and story beats. Off: the engine's own fallback plans the world."
+  },
+  {
+    "id": "setting_beat_cooldown_days",
+    "term": "Story beat cooldown",
+    "short": "The minimum number of days between two story-beat proposals."
+  },
+  {
+    "id": "setting_expedition_recap",
+    "term": "Expedition recap",
+    "short": "A narrative after-action recap written by the main model. The plain report always exists."
+  },
+  {
+    "id": "setting_dilemmas_enabled",
+    "term": "Generated dilemmas",
+    "short": "Lets the mechanic model write decisions. Off: the authored options of the template are shown."
+  },
+  {
+    "id": "setting_analyze_enabled",
+    "term": "Analysis tool",
+    "short": "Turns the analysis tool on or off: hover, press ? or long-press anything to read what it does."
+  },
+  {
+    "id": "setting_analyze_animation",
+    "term": "Analysis animation",
+    "short": "How long the ANALYZING line plays: full (longer the first time), short, or off."
+  },
+  {
+    "id": "setting_analyze_hover_delay",
+    "term": "Hover delay",
+    "short": "How long to hover before the analysis panel opens, in milliseconds."
+  },
+  {
+    "id": "setting_difficulty",
+    "term": "Difficulty",
+    "short": "Combat difficulty of this campaign: story, normal or hard. It scales enemy health, attack and defense."
   }
 ]

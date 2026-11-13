@@ -47,3 +47,11 @@ export function missingDescriptions(reg: Registries): Array<{ registry: Registry
   }
   return out;
 }
+
+/**
+ * The glossary id that explains a setting: `setting_<key in snake_case>`. Content ids are lower-case
+ * (`ID_PATTERN`), settings keys are camelCase: `showRawValues` → `setting_show_raw_values`.
+ */
+export function settingGlossaryId(key: string): string {
+  return `setting_${key.replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase()}`;
+}

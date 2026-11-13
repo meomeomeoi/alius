@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { buildPanelModel, type AnalyzeEnv } from '../../src/analysis/model';
-import { entryText, entryTitle, missingDescriptions, PLAYER_VISIBLE } from '../../src/analysis/describe';
+import { entryText, entryTitle, missingDescriptions, PLAYER_VISIBLE, settingGlossaryId } from '../../src/analysis/describe';
 import { parseSubject } from '../../src/analysis/subject';
 import { emptyRegistries, REGISTRY_NAMES, type Entry, type RegistryName } from '../../src/content/types';
 import { DESCRIBED_REGISTRIES } from '../../src/content/schemas';
@@ -58,8 +58,8 @@ describe('panel model', () => {
     expect(entryTitle('items', { id: 'bare' })).toBe('bare');
   });
 
-  it('a setting reads its setting_ glossary entry', () => {
-    const e = env({ glossary: [{ id: 'setting_showRawValues', term: 'Show raw values', short: 'Numbers instead of bands.' }] });
+  it('a setting reads its setting_ glossary entry (snake_case id for a camelCase key)', () => {
+    const e = env({ glossary: [{ id: 'setting_show_raw_values', term: 'Show raw values', short: 'Numbers instead of bands.' }] });
     const m = model('setting:showRawValues', e);
     expect(m).toMatchObject({ address: 'setting:showRawValues', source: 'setting', title: 'Show raw values', text: 'Numbers instead of bands.', missing: false });
     expect(model('setting:nothing', e).missing).toBe(true);
@@ -77,6 +77,13 @@ describe('panel model', () => {
     // prototype names are not registries
     expect(model('constructor:x', e).missing).toBe(true);
     expect(model('__proto__:x', e).missing).toBe(true);
+  });
+
+  it('settingGlossaryId turns a camelCase key into a lower-case content id', () => {
+    expect(settingGlossaryId('showRawValues')).toBe('setting_show_raw_values');
+    expect(settingGlossaryId('mechanicProfileId')).toBe('setting_mechanic_profile_id');
+    expect(settingGlossaryId('difficulty')).toBe('setting_difficulty');
+    expect(settingGlossaryId('palette')).toBe('setting_palette');
   });
 
   it('PLAYER_VISIBLE is the 20 described registries plus glossary', () => {

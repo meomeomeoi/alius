@@ -2,6 +2,7 @@
   {
     "id": "combat",
     "name": "Contact",
+    "description": "A contact with hostiles. Fight your way through; the spoils are standard.",
     "glyph": "⚔",
     "kind": "combat",
     "combat": {
@@ -12,6 +13,7 @@
   {
     "id": "elite",
     "name": "Strongpoint",
+    "description": "A strongpoint held by a tougher force. Harder to take, but the loot is better.",
     "glyph": "☠",
     "kind": "combat",
     "combat": {
@@ -23,18 +25,21 @@
   {
     "id": "event",
     "name": "Event",
+    "description": "Something unexpected on the road that calls for a decision.",
     "glyph": "!",
     "kind": "event"
   },
   {
     "id": "cache",
     "name": "Cache",
+    "description": "A stash of supplies and gear to be picked up without a fight.",
     "glyph": "≡",
     "kind": "cache"
   },
   {
     "id": "rest",
     "name": "Rest point",
+    "description": "A quiet place to recover. It costs supplies, but heals and lowers stress.",
     "glyph": "+",
     "kind": "rest",
     "rest": {
@@ -47,6 +52,7 @@
   {
     "id": "unknown",
     "name": "Unknown",
+    "description": "You cannot tell what is here until you are near it or step in.",
     "glyph": "?",
     "kind": "unknown",
     "resolvesTo": {
@@ -58,12 +64,14 @@
   {
     "id": "objective",
     "name": "Objective",
+    "description": "The goal of the mission, at the end of the map.",
     "glyph": "◎",
     "kind": "objective"
   },
   {
     "id": "crisis",
     "name": "Commander Crisis",
+    "description": "A fight in which you are exposed. One unit must cover you; if you fall, the fight is lost.",
     "glyph": "▲",
     "kind": "combat",
     "combat": {

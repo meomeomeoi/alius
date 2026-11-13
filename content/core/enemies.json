@@ -3,6 +3,7 @@
     "id": "husk",
     "categoryId": "mutant_human",
     "name": "Husk",
+    "description": "A human body the Bloom has overrun. Slow, mindless and everywhere.",
     "stats": {
       "base": {
         "hp": 55,
@@ -43,6 +44,7 @@
     "id": "swarmer",
     "categoryId": "mutant_human",
     "name": "Swarmer",
+    "description": "A fast Bloom-infected runner that spits spores to wear down the squad.",
     "stats": {
       "base": {
         "hp": 40,
@@ -82,6 +84,7 @@
     "id": "bloater",
     "categoryId": "mutant_human",
     "name": "Bloater",
+    "description": "A swollen mutant that soaks up damage and shrugs off blows.",
     "stats": {
       "base": {
         "hp": 90,
@@ -122,6 +125,7 @@
     "id": "stalker",
     "categoryId": "mutant_beast",
     "name": "Stalker",
+    "description": "A predatory mutant that picks off the weak from the edges of the fight.",
     "stats": {
       "base": {
         "hp": 60,
@@ -162,6 +166,7 @@
     "id": "hound",
     "categoryId": "mutant_beast",
     "name": "Hound",
+    "description": "A mutant beast that hunts in packs and attacks savagely when its pack is near.",
     "stats": {
       "base": {
         "hp": 50,
@@ -202,6 +207,7 @@
     "id": "brute",
     "categoryId": "mutant_beast",
     "name": "Brute",
+    "description": "A hulking mutant that smashes the front row and roars to rally others.",
     "stats": {
       "base": {
         "hp": 110,
@@ -242,6 +248,7 @@
     "id": "raider",
     "categoryId": "marauder",
     "name": "Raider",
+    "description": "Scavenger fighters in scrap armor. They are not disciplined, but they have grenades.",
     "stats": {
       "base": {
         "hp": 70,
@@ -281,6 +288,7 @@
     "id": "scav_marksman",
     "categoryId": "marauder",
     "name": "Scavenger Marksman",
+    "description": "A scavenger sniper who shoots from the rear and aims for the vulnerable.",
     "stats": {
       "base": {
         "hp": 55,
@@ -321,6 +329,7 @@
     "id": "warlord",
     "categoryId": "marauder",
     "name": "Warlord",
+    "description": "A raider chief who fights in front and shouts his gang into a frenzy.",
     "stats": {
       "base": {
         "hp": 105,
@@ -361,6 +370,7 @@
     "id": "trooper",
     "categoryId": "enemy_soldier",
     "name": "Corporate Trooper",
+    "description": "Standard corporate infantry: disciplined, well armed and good at pinning targets down.",
     "stats": {
       "base": {
         "hp": 80,
@@ -400,6 +410,7 @@
     "id": "shield_trooper",
     "categoryId": "enemy_soldier",
     "name": "Shield Trooper",
+    "description": "A corporate trooper behind a heavy shield, who protects the others.",
     "stats": {
       "base": {
         "hp": 100,
@@ -441,6 +452,7 @@
     "id": "field_officer",
     "categoryId": "enemy_soldier",
     "name": "Field Officer",
+    "description": "A corporate commander who stays back, marks targets and issues orders.",
     "stats": {
       "base": {
         "hp": 75,
@@ -482,6 +494,7 @@
     "id": "rogue_assault",
     "categoryId": "offspec_hostile",
     "name": "Rogue Assault Unit",
+    "description": "An off-spec assault unit that has cut its leash. It fights like one of yours.",
     "stats": {
       "base": {
         "hp": 90,
@@ -522,6 +535,7 @@
     "id": "rogue_medic",
     "categoryId": "offspec_hostile",
     "name": "Rogue Medic Unit",
+    "description": "An off-spec medic unit that keeps its allies on their feet.",
     "stats": {
       "base": {
         "hp": 70,
@@ -563,6 +577,7 @@
     "id": "rogue_specialist",
     "categoryId": "offspec_hostile",
     "name": "Rogue Specialist Unit",
+    "description": "An off-spec specialist that corrodes armor and overloads systems from the back.",
     "stats": {
       "base": {
         "hp": 75,
@@ -604,6 +619,7 @@
     "id": "whisper",
     "categoryId": "anomaly",
     "name": "Whisper",
+    "description": "An anomaly that speaks in the dark and wears down nerves, not bodies.",
     "stats": {
       "base": {
         "hp": 50,
@@ -644,6 +660,7 @@
     "id": "fracture",
     "categoryId": "anomaly",
     "name": "Fracture",
+    "description": "An anomaly that flickers in and out of the world, and strikes at random.",
     "stats": {
       "base": {
         "hp": 80,
@@ -684,6 +701,7 @@
     "id": "echo",
     "categoryId": "anomaly",
     "name": "Echo",
+    "description": "An anomaly that screams in the squad's own voices and mimics what it hears.",
     "stats": {
       "base": {
         "hp": 65,

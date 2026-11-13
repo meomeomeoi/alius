@@ -2,6 +2,7 @@
   {
     "id": "item_blade",
     "name": "Standard Blade",
+    "description": "A plain combat blade for those who fight close. Reliable, with a good chance to crit.",
     "slot": "weapon",
     "class": "Blade",
     "rarity": "standard",
@@ -15,6 +16,7 @@
   {
     "id": "item_pistol",
     "name": "Standard Pistol",
+    "description": "A light sidearm. Quick and accurate, but it does not hit hard.",
     "slot": "weapon",
     "class": "Pistol",
     "rarity": "standard",
@@ -29,6 +31,7 @@
   {
     "id": "item_smg",
     "name": "Standard SMG",
+    "description": "A rapid-fire submachine gun, handy for fast fighters.",
     "slot": "weapon",
     "class": "SMG",
     "rarity": "standard",
@@ -42,6 +45,7 @@
   {
     "id": "item_rifle",
     "name": "Standard Rifle",
+    "description": "A dependable rifle that keeps its user out of the thick of things.",
     "slot": "weapon",
     "class": "Rifle",
     "rarity": "standard",
@@ -55,6 +59,7 @@
   {
     "id": "item_shotgun",
     "name": "Standard Shotgun",
+    "description": "Hits hard at close range, at a small cost in speed.",
     "slot": "weapon",
     "class": "Shotgun",
     "rarity": "standard",
@@ -68,6 +73,7 @@
   {
     "id": "item_precision_rifle",
     "name": "Standard Precision Rifle",
+    "description": "A long-barrelled rifle built for single, well-aimed shots with a high crit chance.",
     "slot": "weapon",
     "class": "Precision Rifle",
     "rarity": "standard",
@@ -81,6 +87,7 @@
   {
     "id": "item_heavy",
     "name": "Standard Heavy Weapon",
+    "description": "A heavy weapon: the most damage in its class, and the slowest to swing.",
     "slot": "weapon",
     "class": "Heavy",
     "rarity": "standard",
@@ -94,6 +101,7 @@
   {
     "id": "item_tech",
     "name": "Standard Emitter",
+    "description": "An emitter that turns corporate tech into a weapon, favoured by specialists and support units.",
     "slot": "weapon",
     "class": "Tech",
     "rarity": "standard",
@@ -107,6 +115,7 @@
   {
     "id": "item_bio",
     "name": "Standard Injector",
+    "description": "An injector rig that doubles as a weapon; it also makes its wearer sturdier.",
     "slot": "weapon",
     "class": "Bio",
     "rarity": "standard",
@@ -120,6 +129,7 @@
   {
     "id": "upper_light",
     "name": "Light Vest",
+    "description": "A light vest: some protection with no cost in speed.",
     "slot": "upper",
     "class": "light",
     "rarity": "standard",
@@ -133,6 +143,7 @@
   {
     "id": "upper_medium",
     "name": "Medium Harness",
+    "description": "A medium harness: better protection, with a slight cost in speed.",
     "slot": "upper",
     "class": "medium",
     "rarity": "standard",
@@ -146,6 +157,7 @@
   {
     "id": "upper_heavy",
     "name": "Heavy Plate",
+    "description": "A heavy plate: the best protection in the armory, but it slows its wearer.",
     "slot": "upper",
     "class": "heavy",
     "rarity": "standard",
@@ -159,6 +171,7 @@
   {
     "id": "lower_light",
     "name": "Light Greaves",
+    "description": "Light greaves: modest protection and no cost in speed.",
     "slot": "lower",
     "class": "light",
     "rarity": "standard",
@@ -172,6 +185,7 @@
   {
     "id": "lower_medium",
     "name": "Medium Greaves",
+    "description": "Medium greaves: solid protection with a slight cost in speed.",
     "slot": "lower",
     "class": "medium",
     "rarity": "standard",
@@ -185,6 +199,7 @@
   {
     "id": "lower_heavy",
     "name": "Heavy Greaves",
+    "description": "Heavy greaves: strong protection, and they slow their wearer down.",
     "slot": "lower",
     "class": "heavy",
     "rarity": "standard",
@@ -198,6 +213,7 @@
   {
     "id": "bloom_fang",
     "name": "Bloom Fang",
+    "description": "A blade grown from Bloom tissue. It cuts deep and its victims keep [[statuses:bleed|bleeding]].",
     "slot": "weapon",
     "class": "Blade",
     "rarity": "anomalous",
@@ -219,6 +235,7 @@
   {
     "id": "whisper_coil",
     "name": "Whisper Coil",
+    "description": "A coil salvaged from an anomaly. Hold it and you hear orders no one gave: one extra Command Point each fight.",
     "slot": "weapon",
     "class": "Tech",
     "rarity": "anomalous",
@@ -240,6 +257,7 @@
   {
     "id": "grafted_plate",
     "name": "Grafted Plate",
+    "description": "Armor with living tissue grafted in. It is heavy, and it slowly heals its wearer.",
     "slot": "upper",
     "class": "heavy",
     "rarity": "anomalous",

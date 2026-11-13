@@ -2,6 +2,7 @@
   {
     "id": "stranger",
     "name": "Stranger",
+    "description": "She does not know you yet. She is polite, guarded and professional.",
     "group": "base",
     "romance": false,
     "glyph": "?",
@@ -43,6 +44,7 @@
   {
     "id": "comrade",
     "name": "Comrade",
+    "description": "She accepts you as her commander and works with you without friction.",
     "group": "base",
     "romance": false,
     "glyph": "=",
@@ -116,6 +118,7 @@
   {
     "id": "trusted",
     "name": "Trusted",
+    "description": "She relies on your judgement and says so. She follows orders without needing them explained.",
     "group": "platonic",
     "romance": false,
     "glyph": "+",
@@ -155,6 +158,7 @@
   {
     "id": "friend",
     "name": "Friend",
+    "description": "She is openly friendly: she teases, checks on you and shares small things about herself.",
     "group": "platonic",
     "romance": false,
     "glyph": "*",
@@ -198,6 +202,7 @@
   {
     "id": "confidant",
     "name": "Confidant",
+    "description": "She tells you things she tells nobody else and expects you to keep them.",
     "group": "platonic",
     "romance": false,
     "glyph": "#",
@@ -240,6 +245,7 @@
   {
     "id": "kindred",
     "name": "Kindred",
+    "description": "The deepest bond that is not romantic. You understand each other without explaining.",
     "group": "platonic",
     "romance": false,
     "glyph": "&",
@@ -295,6 +301,7 @@
   {
     "id": "flirting",
     "name": "Flirting",
+    "description": "There is a charge between you. She teases, lingers and tests how you react.",
     "group": "romantic",
     "romance": true,
     "glyph": "~",
@@ -355,6 +362,7 @@
   {
     "id": "fwb",
     "name": "Casual",
+    "description": "You are physical without commitment, and she insists on keeping it easy.",
     "group": "romantic",
     "romance": true,
     "glyph": "^",
@@ -427,6 +435,7 @@
   {
     "id": "lover",
     "name": "Lover",
+    "description": "She loves you and shows it in her own way: she worries, and she can be possessive.",
     "group": "romantic",
     "romance": true,
     "glyph": "<3",
@@ -515,6 +524,7 @@
   {
     "id": "devoted",
     "name": "Devoted",
+    "description": "She has given you everything and expects the same. Exclusive and intense, and hurt deeply by betrayal.",
     "group": "romantic",
     "romance": true,
     "glyph": "<<",
@@ -595,6 +605,7 @@
   {
     "id": "secret_affair",
     "name": "Secret affair",
+    "description": "You are together in secret. She is careful in front of others and thrilled by the risk.",
     "group": "romantic",
     "romance": true,
     "glyph": "x",
@@ -653,6 +664,7 @@
   {
     "id": "obsessed",
     "name": "Obsessed",
+    "description": "She fixates on you: attention, exclusivity and jealousy. Her moods swing hard.",
     "group": "complex",
     "romance": false,
     "glyph": "@",
@@ -737,6 +749,7 @@
   {
     "id": "dependent",
     "name": "Dependent",
+    "description": "She needs something only you control, and resents that as much as she craves it.",
     "group": "complex",
     "romance": false,
     "glyph": "!",
@@ -800,6 +813,7 @@
   {
     "id": "rival",
     "name": "Rival",
+    "description": "She respects you and fights you on principle: sharp, competitive and never indifferent.",
     "group": "complex",
     "romance": false,
     "glyph": "vs",
@@ -847,6 +861,7 @@
   {
     "id": "rival_romance",
     "name": "Rival romance",
+    "description": "You argue and burn for each other in equal measure. She will not admit you have won anything.",
     "group": "complex",
     "romance": true,
     "glyph": "v<",
@@ -898,6 +913,7 @@
   {
     "id": "unrequited",
     "name": "Unrequited",
+    "description": "She wants more than you gave her, and carries it quietly.",
     "group": "complex",
     "romance": true,
     "glyph": "..",
@@ -951,6 +967,7 @@
   {
     "id": "resentful",
     "name": "Resentful",
+    "description": "You used the Leash on her and she has not forgotten. Cold and formal, and she obeys only on the surface.",
     "group": "negative",
     "romance": false,
     "glyph": "r!",
@@ -996,6 +1013,7 @@
   {
     "id": "estranged",
     "name": "Estranged",
+    "description": "She has turned away from you: curt and distant, and hard to warm up.",
     "group": "negative",
     "romance": false,
     "glyph": "e!",
@@ -1047,6 +1065,7 @@
   {
     "id": "despises",
     "name": "Despises",
+    "description": "She despises you and barely hides it. She obeys because she must, and mutiny is possible.",
     "group": "negative",
     "romance": false,
     "glyph": "d!",

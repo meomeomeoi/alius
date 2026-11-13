@@ -19795,6 +19795,9 @@ function missingDescriptions(reg) {
   }
   return out;
 }
+function settingGlossaryId(key) {
+  return `setting_${key.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase()}`;
+}
 
 // src/analysis/model.ts
 var missing = (subject) => ({
@@ -19824,7 +19827,7 @@ function glossaryModel(subject, entry, env) {
 function buildPanelModel(subject, env) {
   const { registries } = env;
   if (subject.source === "setting") {
-    const entry2 = registries.glossary.get(`setting_${subject.id}`);
+    const entry2 = registries.glossary.get(settingGlossaryId(subject.id));
     return entry2 ? glossaryModel(subject, entry2, env) : missing(subject);
   }
   if (!REGISTRY_NAMES.includes(subject.source)) return missing(subject);

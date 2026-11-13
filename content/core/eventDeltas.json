@@ -1,6 +1,7 @@
 [
   {
     "id": "praised",
+    "cause": "You praised her",
     "rows": {
       "minor": {
         "affinity": 1
@@ -21,6 +22,7 @@
   },
   {
     "id": "insulted",
+    "cause": "You insulted her",
     "rows": {
       "minor": {
         "affinity": -3,
@@ -45,6 +47,7 @@
   },
   {
     "id": "comforted",
+    "cause": "You comforted her",
     "rows": {
       "minor": {
         "trust": 1,
@@ -70,6 +73,7 @@
   },
   {
     "id": "dismissed",
+    "cause": "You dismissed her",
     "rows": {
       "minor": {
         "trust": -1,
@@ -94,6 +98,7 @@
   },
   {
     "id": "listened",
+    "cause": "You listened to her",
     "rows": {
       "minor": {
         "trust": 1,
@@ -119,6 +124,7 @@
   },
   {
     "id": "shared_secret",
+    "cause": "She shared a secret with you",
     "rows": {
       "minor": {
         "trust": 1,
@@ -140,6 +146,7 @@
   },
   {
     "id": "learned_about",
+    "cause": "You showed interest in her",
     "rows": {
       "minor": {
         "affinity": 1
@@ -160,6 +167,7 @@
   },
   {
     "id": "gift",
+    "cause": "You gave her a gift",
     "rows": {
       "minor": {
         "affinity": 2
@@ -180,6 +188,7 @@
   },
   {
     "id": "flirted",
+    "cause": "You flirted",
     "rows": {
       "minor": {
         "attraction": 2
@@ -201,6 +210,7 @@
   },
   {
     "id": "rejected_advance",
+    "cause": "You turned down her advance",
     "rows": {
       "minor": {
         "affinity": -2,
@@ -228,6 +238,7 @@
   },
   {
     "id": "accepted_advance",
+    "cause": "You accepted her advance",
     "rows": {
       "minor": {
         "affinity": 1,
@@ -252,6 +263,7 @@
   },
   {
     "id": "physical_affection",
+    "cause": "You shared physical affection",
     "rows": {
       "minor": {
         "affinity": 1,
@@ -278,6 +290,7 @@
   },
   {
     "id": "sided_with",
+    "cause": "You took her side",
     "rows": {
       "minor": {
         "trust": 1,
@@ -299,6 +312,7 @@
   },
   {
     "id": "sided_against",
+    "cause": "You took the side against her",
     "rows": {
       "minor": {
         "trust": -1,
@@ -322,6 +336,7 @@
   },
   {
     "id": "decision_aligned",
+    "cause": "A decision matched her values",
     "rows": {
       "minor": {
         "trust": 1,
@@ -344,6 +359,7 @@
   },
   {
     "id": "decision_violated",
+    "cause": "A decision went against her values",
     "rows": {
       "minor": {
         "trust": 1,
@@ -366,6 +382,7 @@
   },
   {
     "id": "protected",
+    "cause": "You protected her",
     "rows": {
       "minor": {
         "trust": 2,
@@ -388,6 +405,7 @@
   },
   {
     "id": "endangered",
+    "cause": "You put her in danger",
     "rows": {
       "minor": {
         "trust": -1,
@@ -412,6 +430,7 @@
   },
   {
     "id": "coerced",
+    "cause": "You forced her hand",
     "rows": {
       "minor": {
         "trust": -2,
@@ -437,6 +456,7 @@
   },
   {
     "id": "apologized",
+    "cause": "You apologized",
     "rows": {
       "minor": {
         "trust": 1,
@@ -458,6 +478,7 @@
   },
   {
     "id": "lied_detected",
+    "cause": "She caught you lying",
     "rows": {
       "minor": {
         "trust": -3,
@@ -482,6 +503,7 @@
   },
   {
     "id": "kept_promise",
+    "cause": "You kept a promise",
     "rows": {
       "minor": {
         "trust": 1
@@ -502,6 +524,7 @@
   },
   {
     "id": "broke_promise",
+    "cause": "You broke a promise",
     "rows": {
       "minor": {
         "trust": -2,
@@ -526,6 +549,7 @@
   },
   {
     "id": "mocked_defect",
+    "cause": "Her defect was mocked",
     "rows": {
       "minor": {
         "trust": -1,
@@ -551,6 +575,7 @@
   },
   {
     "id": "accepted_defect",
+    "cause": "You accepted her defect",
     "rows": {
       "minor": {
         "trust": 1,
@@ -576,6 +601,7 @@
   },
   {
     "id": "crime_revealed",
+    "cause": "Your crime came out",
     "rows": {
       "minor": {},
       "moderate": {},
