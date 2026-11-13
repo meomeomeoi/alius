@@ -4,6 +4,7 @@ import { TUNING } from '../tuning';
 import { imageMultiplier } from '../commander/presence';
 import { daysKnown } from '../commander/profile';
 import { traitEffects } from '../commander/traits';
+import { confidenceShift, dispositionFor, dispositionThresholds } from '../worldOptions';
 import { intimacyOf } from './gain';
 import type { EventIntent } from './intents';
 import { SEVERITIES } from './vocab';
@@ -15,6 +16,8 @@ export interface Deltas {
   stress: number;
   /** The severity actually used for the table row (after a trigger escalated it). */
   severity: Severity;
+  /** P8: the event's confidence is below both of the unit's floors, so it counts for nothing (no stress, no history). */
+  dropped?: true;
 }
 
 type Row = { trust?: number; affinity?: number; attraction?: number; stress?: number };
@@ -36,6 +39,8 @@ export function affectedUnits(event: EventIntent, participants: string[]): strin
   return present.has(event.actor) ? [event.actor] : [];
 }
 
+/** Float noise in `0.5 + (setting − 0.5)` must not decide a comparison. */
+const CONFIDENCE_EPS = 1e-9;
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
 /** Avoids −0 so equality checks stay simple. */
 const z = (n: number): number => (n === 0 ? 0 : n);
@@ -56,6 +61,12 @@ export function computeDeltas(state: CampaignState, reg: Registries, unitId: str
   const rel = state.relations[unitId];
   const zero: Deltas = { trust: 0, affinity: 0, attraction: 0, stress: 0, severity: event.severity };
   if (!unit || !rel) return zero;
+
+  // P8: the unit's disposition judges how much the extraction is believed; below both floors the event is dropped for her
+  const level = dispositionFor(state, reg, unit);
+  const floors = dispositionThresholds(level, confidenceShift(state));
+  const believed = (floor: number): boolean => event.confidence + CONFIDENCE_EPS >= floor;
+  if (!believed(Math.min(floors.gain, floors.loss))) return { ...zero, dropped: true };
 
   // tags: only tags the unit really owns count, whatever the model claims
   const tags = event.tags ?? [];
@@ -128,6 +139,14 @@ export function computeDeltas(state: CampaignState, reg: Registries, unitId: str
     attraction *= fx.mult;
   }
 
+  // P8 disposition: a gain is multiplied by the level's gainMult, a loss by its lossMult; a big gesture of the commander also scales the gains
+  const big = event.actor === 'commander' && TUNING.disposition.bigGesture.events.includes(event.type)
+    && SEVERITIES.indexOf(severity) >= SEVERITIES.indexOf(TUNING.disposition.bigGesture.minSeverity as Severity);
+  const byLevel = (v: number): number => (v > 0 ? v * level.gainMult * (big ? level.bigGestureMult : 1) : v < 0 ? v * level.lossMult : v);
+  trust = byLevel(trust);
+  affinity = byLevel(affinity);
+  attraction = byLevel(attraction);
+
   // receptivity on attraction gains
   if (def.attractionUsesReceptivity === true && attraction > 0) attraction *= receptivity(state, unitId);
 
@@ -136,5 +155,10 @@ export function computeDeltas(state: CampaignState, reg: Registries, unitId: str
     affinity = 0;
     attraction = 0;
   }
-  return { trust: z(trust), affinity: z(affinity), attraction: z(attraction), stress: z(stress), severity };
+  // P8: each side of the event must reach its own floor (gains and calming need the gain floor, losses and stress the loss floor)
+  const gainOk = believed(floors.gain);
+  const lossOk = believed(floors.loss);
+  const judged = (v: number): number => (v > 0 ? (gainOk ? v : 0) : v < 0 ? (lossOk ? v : 0) : v);
+  const judgedStress = stress > 0 ? (lossOk ? stress : 0) : stress < 0 ? (gainOk ? stress : 0) : stress;
+  return { trust: z(judged(trust)), affinity: z(judged(affinity)), attraction: z(judged(attraction)), stress: z(judgedStress), severity };
 }

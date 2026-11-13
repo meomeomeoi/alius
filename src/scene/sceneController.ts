@@ -6,6 +6,7 @@ import type { ProposalAnswer } from '../engine/relations/proposals';
 import type { CampaignState, PendingProposal, SceneOrigin, Unit } from '../engine/state/types';
 import { pickEmotion } from '../llm/calls/emotionPick';
 import { extractIntents, type IntentExtractInput } from '../llm/calls/intentExtract';
+import { confidenceFloor } from '../engine/worldOptions';
 import { summarizeScene } from '../llm/calls/sceneSummary';
 import type { AliusSettings } from '../settings';
 import type { ChatMessage, StAdapter } from '../st/adapter';
@@ -200,7 +201,8 @@ export function createSceneController(deps: SceneDeps): SceneController {
     extracting = true;
     let result: Awaited<ReturnType<typeof extractIntents>>;
     try {
-      result = await extractIntents(input, { st, settings: deps.settings() });
+      // P8: the lowest disposition floor moved by the setting; the engine then judges each unit
+      result = await extractIntents(input, { st, settings: deps.settings() }, { minConfidence: confidenceFloor(deps.registries(), deps.settings().intentMinConfidence) });
     } finally {
       extracting = false;
     }

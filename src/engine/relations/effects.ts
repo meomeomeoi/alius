@@ -21,6 +21,7 @@ export function applyEventToUnit(
   if (!unit || !draft.relations[unitId]) return [];
   const events: EngineEvent[] = [];
   const d = computeDeltas(draft, reg, unitId, event);
+  if (d.dropped) return []; // P8: below both of her confidence floors: no stress, no history, no state entry
   const scale = opts.scale ?? 1;
   if (scale !== 1) {
     d.trust *= scale;

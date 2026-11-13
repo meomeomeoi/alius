@@ -88,3 +88,11 @@ registerAction('world/set_option', (draft, payload, ctx) => {
   draft.world.options = { ...(draft.world.options ?? {}), [optionId]: choiceId };
   return [{ type: 'world_option_changed', optionId, from, to: choiceId }];
 });
+
+/** Mirrors the global setting `intentMinConfidence` into the campaign: the engine moves the disposition floors with it. */
+registerAction('campaign/set_min_confidence', (draft, payload) => {
+  const value = isObj(payload) ? payload.value : undefined;
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 1) throw new Error('campaign/set_min_confidence needs { value } from 0 to 1');
+  draft.settings.intentMinConfidence = value;
+  return [];
+});

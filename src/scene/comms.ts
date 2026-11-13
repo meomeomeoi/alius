@@ -6,6 +6,7 @@ import { intimacyOf } from '../engine/relations/gain';
 import type { CampaignState, Unit } from '../engine/state/types';
 import { generateDm, type DmReplyInput } from '../llm/calls/dmReply';
 import { extractIntents } from '../llm/calls/intentExtract';
+import { confidenceFloor } from '../engine/worldOptions';
 import type { SceneController, SceneDeps } from './sceneController';
 
 export interface Comms {
@@ -59,7 +60,7 @@ export function createComms(deps: CommsDeps): Comms {
       units: [{ id: unitId, name: unit.displayName, values: { ...unit.values }, likes: unit.likes, dislikes: unit.dislikes, triggers: unit.triggers, stateId: rel.stateId, defectIds: unit.defects.map((d) => d.id) }],
       openPromises: openPromises(s, [unitId]).map((p) => ({ by: p.by === 'commander' ? s.commander.name : unit.displayName, to: p.to === 'commander' ? s.commander.name : unit.displayName, text: p.text })),
       romance: intimacyOf(s).romance,
-    }, { st, settings: deps.settings() });
+    }, { st, settings: deps.settings() }, { minConfidence: confidenceFloor(deps.registries(), deps.settings().intentMinConfidence) }); // P8: the engine judges per unit
     if (!result || chatId() !== expect) return;
     const intents = { ...result.intents, proposals: result.intents.proposals.filter((p) => p.from !== 'commander') };
     const events = app.dispatch({ type: 'intents/apply', payload: { channel: 'dm', unitId, intents } }, { expectChatId: expect });

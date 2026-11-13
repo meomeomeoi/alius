@@ -728,6 +728,19 @@ function applyDispositionStart(state, reg, unit, rel) {
   rel.trust = clamp3(rel.trust + level.start.trust, 0, 100);
   rel.affinity = clamp3(rel.affinity + level.start.affinity, -100, 100);
 }
+function confidenceShift(state) {
+  const v = state.settings.intentMinConfidence;
+  const setting = typeof v === "number" && Number.isFinite(v) ? clamp3(v, 0, 1) : TUNING.disposition.confidenceRef;
+  return setting - TUNING.disposition.confidenceRef;
+}
+function dispositionThresholds(level, shift) {
+  return { gain: Math.min(1, level.minConfidence.gain + shift), loss: Math.min(1, level.minConfidence.loss + shift) };
+}
+function confidenceFloor(reg, setting) {
+  const levels = [...reg.dispositionLevels.values()];
+  const lowest = levels.length === 0 ? TUNING.disposition.confidenceRef : Math.min(...levels.map((l) => Math.min(l.minConfidence.gain, l.minConfidence.loss)));
+  return clamp3(lowest + (clamp3(setting, 0, 1) - TUNING.disposition.confidenceRef), 0, 1);
+}
 
 // src/engine/social.ts
 var SOCIAL_STATS = ["authority", "insight", "empathy", "cunning"];
@@ -2250,6 +2263,7 @@ function affectedUnits(event, participants) {
   if (event.targets.some((t) => t !== event.actor)) return [];
   return present.has(event.actor) ? [event.actor] : [];
 }
+var CONFIDENCE_EPS = 1e-9;
 var clamp8 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var z = (n) => n === 0 ? 0 : n;
 function receptivity(state, unitId) {
@@ -2262,6 +2276,10 @@ function computeDeltas(state, reg, unitId, event) {
   const rel = state.relations[unitId];
   const zero = { trust: 0, affinity: 0, attraction: 0, stress: 0, severity: event.severity };
   if (!unit || !rel) return zero;
+  const level = dispositionFor(state, reg, unit);
+  const floors = dispositionThresholds(level, confidenceShift(state));
+  const believed = (floor) => event.confidence + CONFIDENCE_EPS >= floor;
+  if (!believed(Math.min(floors.gain, floors.loss))) return { ...zero, dropped: true };
   const tags = event.tags ?? [];
   const triggered = tags.some((t) => unit.triggers.includes(t));
   const liked = tags.some((t) => unit.likes.includes(t));
@@ -2319,12 +2337,21 @@ function computeDeltas(state, reg, unitId, event) {
     affinity *= fx2.mult;
     attraction *= fx2.mult;
   }
+  const big = event.actor === "commander" && TUNING.disposition.bigGesture.events.includes(event.type) && SEVERITIES.indexOf(severity) >= SEVERITIES.indexOf(TUNING.disposition.bigGesture.minSeverity);
+  const byLevel = (v) => v > 0 ? v * level.gainMult * (big ? level.bigGestureMult : 1) : v < 0 ? v * level.lossMult : v;
+  trust = byLevel(trust);
+  affinity = byLevel(affinity);
+  attraction = byLevel(attraction);
   if (def.attractionUsesReceptivity === true && attraction > 0) attraction *= receptivity(state, unitId);
   if (unit.kind === "grunt") {
     affinity = 0;
     attraction = 0;
   }
-  return { trust: z(trust), affinity: z(affinity), attraction: z(attraction), stress: z(stress), severity };
+  const gainOk = believed(floors.gain);
+  const lossOk = believed(floors.loss);
+  const judged = (v) => v > 0 ? gainOk ? v : 0 : v < 0 ? lossOk ? v : 0 : v;
+  const judgedStress = stress > 0 ? lossOk ? stress : 0 : stress < 0 ? gainOk ? stress : 0 : stress;
+  return { trust: z(judged(trust)), affinity: z(judged(affinity)), attraction: z(judged(attraction)), stress: z(judgedStress), severity };
 }
 
 // src/engine/relations/graph.ts
@@ -2338,6 +2365,9 @@ function pushHistory(draft, unitId, h2) {
     const at = rel.history.findIndex((e) => !keep.includes(e.type));
     rel.history.splice(at < 0 ? 0 : at, 1);
   }
+}
+function stageDays(state, reg, unit, days) {
+  return Math.round(days * dispositionFor(state, reg, unit).stageDaysMult);
 }
 function meets(state, reg, unitId, cond) {
   const rel = state.relations[unitId];
@@ -2354,7 +2384,7 @@ function meets(state, reg, unitId, cond) {
   if (cond.flagsNone && cond.flagsNone.some((f) => rel.flags.includes(f))) return false;
   if (cond.defectsAny && !cond.defectsAny.some((id) => unit.defects.some((d) => d.id === id))) return false;
   if (cond.inStates && !cond.inStates.includes(rel.stateId)) return false;
-  if (cond.minDaysInState !== void 0 && state.day - rel.stateSince < cond.minDaysInState) return false;
+  if (cond.minDaysInState !== void 0 && state.day - rel.stateSince < stageDays(state, reg, unit, cond.minDaysInState)) return false;
   if (cond.eventCount) {
     const { type, min, withinDays } = cond.eventCount;
     const n = rel.history.filter((h2) => h2.kind === "event" && h2.type === type && (withinDays === void 0 || state.day - h2.day <= withinDays)).length;
@@ -2488,6 +2518,7 @@ function applyEventToUnit(draft, reg, unitId, event, opts = {}) {
   if (!unit || !draft.relations[unitId]) return [];
   const events = [];
   const d = computeDeltas(draft, reg, unitId, event);
+  if (d.dropped) return [];
   const scale = opts.scale ?? 1;
   if (scale !== 1) {
     d.trust *= scale;
@@ -6957,6 +6988,12 @@ registerAction("world/set_option", (draft, payload, ctx2) => {
   if (from === choiceId) return [];
   draft.world.options = { ...draft.world.options ?? {}, [optionId]: choiceId };
   return [{ type: "world_option_changed", optionId, from, to: choiceId }];
+});
+registerAction("campaign/set_min_confidence", (draft, payload) => {
+  const value = isObj12(payload) ? payload.value : void 0;
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > 1) throw new Error("campaign/set_min_confidence needs { value } from 0 to 1");
+  draft.settings.intentMinConfidence = value;
+  return [];
 });
 
 // node_modules/zod/v3/external.js
@@ -16390,7 +16427,7 @@ function createComms(deps) {
       units: [{ id: unitId, name: unit.displayName, values: { ...unit.values }, likes: unit.likes, dislikes: unit.dislikes, triggers: unit.triggers, stateId: rel.stateId, defectIds: unit.defects.map((d) => d.id) }],
       openPromises: openPromises(s, [unitId]).map((p) => ({ by: p.by === "commander" ? s.commander.name : unit.displayName, to: p.to === "commander" ? s.commander.name : unit.displayName, text: p.text })),
       romance: intimacyOf(s).romance
-    }, { st, settings: deps.settings() });
+    }, { st, settings: deps.settings() }, { minConfidence: confidenceFloor(deps.registries(), deps.settings().intentMinConfidence) });
     if (!result || chatId() !== expect) return;
     const intents = { ...result.intents, proposals: result.intents.proposals.filter((p) => p.from !== "commander") };
     const events = app.dispatch({ type: "intents/apply", payload: { channel: "dm", unitId, intents } }, { expectChatId: expect });
@@ -16792,7 +16829,7 @@ function createSceneController(deps) {
     extracting = true;
     let result;
     try {
-      result = await extractIntents(input, { st, settings: deps.settings() });
+      result = await extractIntents(input, { st, settings: deps.settings() }, { minConfidence: confidenceFloor(deps.registries(), deps.settings().intentMinConfidence) });
     } finally {
       extracting = false;
     }
@@ -22901,6 +22938,12 @@ function createApp(st, deps) {
     if (state.settings.firstImpressionTau === days) return;
     api.dispatch({ type: "campaign/set_first_impression_tau", payload: { days } }, { expectChatId: st.getActiveChat()?.chatId });
   }
+  function syncMinConfidence() {
+    if (!state || load.kind !== "ok") return;
+    const value = getSettings(st).intentMinConfidence;
+    if (state.settings.intentMinConfidence === value) return;
+    api.dispatch({ type: "campaign/set_min_confidence", payload: { value } }, { expectChatId: st.getActiveChat()?.chatId });
+  }
   let sceneScreen = null;
   let onSceneScreen = false;
   let combatScreen = null;
@@ -23540,6 +23583,7 @@ function createApp(st, deps) {
     syncIntimacy();
     syncBeatCooldown();
     syncFirstImpressionTau();
+    syncMinConfidence();
     if (state?.world.director?.pending) void director.onRequested().catch((e) => console.warn("[Alius] director failed", e));
     shell.closeModal?.();
     dilemmaHost = null;
@@ -24056,6 +24100,7 @@ function createApp(st, deps) {
       syncIntimacy();
       syncBeatCooldown();
       syncFirstImpressionTau();
+      syncMinConfidence();
     }
   });
   shell.registerTab(

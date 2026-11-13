@@ -4,5 +4,5 @@ export {
 } from './options';
 export { applyWorldStartEffects, normDistance } from './norm';
 export {
-  applyDispositionStart, bandShift, dispositionById, dispositionFor, worldDispositionLevel, type DispositionLevel,
+  applyDispositionStart, bandShift, confidenceFloor, confidenceShift, dispositionById, dispositionThresholds, dispositionFor, worldDispositionLevel, type DispositionLevel,
 } from './disposition';

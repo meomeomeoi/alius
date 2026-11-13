@@ -219,6 +219,14 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     api.dispatch({ type: 'campaign/set_first_impression_tau', payload: { days } }, { expectChatId: st.getActiveChat()?.chatId });
   }
 
+  /** P8: the confidence setting is global; the pure engine moves the disposition floors with its mirror in the campaign. */
+  function syncMinConfidence(): void {
+    if (!state || load.kind !== 'ok') return;
+    const value = getSettings(st).intentMinConfidence;
+    if (state.settings.intentMinConfidence === value) return;
+    api.dispatch({ type: 'campaign/set_min_confidence', payload: { value } }, { expectChatId: st.getActiveChat()?.chatId });
+  }
+
   let sceneScreen: SceneScreen | null = null;
   /** True while the scene screen (or the night knock) is what the shell shows. */
   let onSceneScreen = false;
@@ -923,6 +931,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     syncIntimacy();
     syncBeatCooldown();
     syncFirstImpressionTau();
+    syncMinConfidence();
     if (state?.world.director?.pending) void director.onRequested().catch((e) => console.warn('[Alius] director failed', e));
     // dilemmas and confrontations that were open when the campaign was saved come back as they were
     shell.closeModal?.(); // a modal of the previous chat must not act on this campaign
@@ -1471,6 +1480,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       syncIntimacy();
       syncBeatCooldown();
       syncFirstImpressionTau();
+      syncMinConfidence();
     },
   });
 

@@ -263,7 +263,7 @@ docs/** (Task 16), tests/** mirror src
   - Action `campaign/set_min_confidence { value }` (0–1), mirrored by the app on load and on change (like `firstImpressionTau`).
   - `meets()` scales `minDaysInState` by the unit's `stageDaysMult`.
 
-- [ ] **Step 1: Write the failing tests** (table-driven, same intent sequence on a kind and a hazardous unit):
+- [x] **Step 1: Write the failing tests** (table-driven, same intent sequence on a kind and a hazardous unit):
   - `losses ×0.7 vs ×2.0, gains ×1.2 vs ×0.7`
   - `a 0.55 gain lands at kind and is cut at hazardous; a 0.45 loss is dropped at kind and lands at hazardous`
   - `an event below both floors leaves no history`
@@ -273,10 +273,10 @@ docs/** (Task 16), tests/** mirror src
   - `floor never exceeds any per-axis floor` (settings 0, 0.5, 1)
   - `engine-made events (confidence 1) always pass`
   - scene: `intent_extract prompts are byte-identical across disposition levels`. Use the scene harness: two campaigns differing only in `world.options.disposition` and one unit's offset/stances; one exchange each; compare the recorded system and prompt strings.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/relations tests/llm/intentExtract.test.ts tests/scene` and expect FAIL.
-- [ ] **Step 3: Implement.** `sceneController` and `comms` pass `opts.minConfidence = confidenceFloor(reg, settings.intentMinConfidence)`. Nothing else about the input changes.
-- [ ] **Step 4: Run** `npx vitest run` and expect green.
-- [ ] **Step 5: Commit** `feat(engine): disposition multipliers, confidence floors and stage timing`.
+- [x] **Step 2: Run** `npx vitest run tests/engine/relations tests/llm/intentExtract.test.ts tests/scene` and expect FAIL.
+- [x] **Step 3: Implement.** `sceneController` and `comms` pass `opts.minConfidence = confidenceFloor(reg, settings.intentMinConfidence)`. Nothing else about the input changes.
+- [x] **Step 4: Run** `npx vitest run` and expect green.
+- [x] **Step 5: Commit** `feat(engine): disposition multipliers, confidence floors and stage timing`.
 
 ### Task 6: Disposition in refusal, desertion and mutiny
 

@@ -384,3 +384,61 @@ describe('dispose', () => {
     expect(h.state().relations[ANN]).toEqual(before);
   });
 });
+
+describe('disposition never reaches the extraction input (P8)', () => {
+  const exchange = async (tweak: (s: CampaignState) => void) => {
+    const h = harness(reg, { tweak });
+    await open(h);
+    h.st.groupReplies = [[reply('Ann', 'Thanks, commander.')]];
+    h.st.mainReplies = [intentJson([praised()])];
+    await h.controller.send('Good work today.');
+    return h;
+  };
+  const extractionCalls = (h: Harness) => h.st.calls.filter((c) => (c.system ?? '').includes('rules referee'));
+
+  it('intent_extract prompts are byte-identical across disposition levels, offsets and stances', async () => {
+    const plain = await exchange(() => {});
+    const harsh = await exchange((s) => {
+      s.world.options = { ...(s.world.options ?? {}), disposition: 'hazardous', gender_norms: 'corporate_machismo', offspec_stigma: 'hunted' };
+      s.squad[0].dispositionOffset = 2;
+      s.squad[0].dispositionReason = 'Bites first.';
+      s.squad[0].worldStances = { gender_norms: { stance: 'shares', strength: 2, reason: 'Raised on the old rules.' } };
+    });
+    const kind = await exchange((s) => {
+      s.world.options = { ...(s.world.options ?? {}), disposition: 'kind' };
+      s.squad[0].dispositionOffset = -2;
+    });
+    const a = extractionCalls(plain);
+    expect(a).toHaveLength(1);
+    for (const other of [harsh, kind]) {
+      const b = extractionCalls(other);
+      expect(b).toHaveLength(1);
+      expect(b[0].system).toBe(a[0].system);
+      expect(b[0].prompt).toBe(a[0].prompt);
+    }
+    for (const word of ['hazardous', 'disposition', 'Bites first', 'machismo', 'Raised on the old rules']) {
+      expect(a[0].system + a[0].prompt).not.toContain(word);
+      expect(extractionCalls(harsh)[0].system + extractionCalls(harsh)[0].prompt).not.toContain(word);
+    }
+  });
+
+  it('the sanitizer floor follows the setting and the lowest level: a 0.45 loss reaches the engine, which judges it per unit', async () => {
+    const insult = (confidence: number) => intentJson([praised(ANN, { type: 'insulted', confidence })]);
+    const run = async (level: string) => {
+      const h = harness(reg, { tweak: (s) => { s.world.options = { ...(s.world.options ?? {}), disposition: level }; } });
+      await open(h);
+      h.st.groupReplies = [[reply('Ann', 'Hm.')]];
+      h.st.mainReplies = [insult(0.45)];
+      const before = h.state().relations[ANN];
+      await h.controller.send('That was careless.');
+      return { before, after: h.state().relations[ANN] };
+    };
+    const g = await run('guarded');
+    const events = (r: CampaignState['relations'][string]) => r.history.filter((h) => h.kind === 'event');
+    expect(events(g.after)).toEqual(events(g.before)); // dropped for her: no history line
+    expect(g.after.affinity).toBe(g.before.affinity);
+    const hz = await run('hazardous');
+    expect(hz.after.affinity).toBeLessThan(hz.before.affinity);
+    expect(hz.after.history.at(-1)).toMatchObject({ type: 'insulted' });
+  });
+});

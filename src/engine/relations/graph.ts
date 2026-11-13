@@ -3,11 +3,11 @@ import type { Entry, Registries } from '../../content/types';
 import type { EngineEvent } from '../dispatch';
 import { traitEffects, traitIds } from '../commander/traits';
 import { isLiving } from '../economy';
-import type { CampaignState, HistoryEntry } from '../state/types';
+import type { CampaignState, HistoryEntry, Unit } from '../state/types';
 import { TUNING } from '../tuning';
 import { intimacyOf } from './gain';
 import { nextLoyaltyBand } from './bands';
-import { bandShift, dispositionById } from '../worldOptions';
+import { bandShift, dispositionById, dispositionFor } from '../worldOptions';
 
 export type ProposalFailure = 'too_soon' | 'no_trust' | 'not_interested' | 'committed' | 'unavailable';
 export type ProposalCheck = { stateId: string } | { fail: ProposalFailure };
@@ -31,6 +31,11 @@ export function pushHistory(draft: CampaignState, unitId: string, h: HistoryEntr
 }
 
 /** Does `unitId` satisfy every key of `cond`? An empty condition holds; an empty `anyOf` never does. */
+/** P8: the days a stage must last, scaled by the unit's disposition (kind quicker, hazardous slower). */
+function stageDays(state: CampaignState, reg: Registries, unit: Unit, days: number): number {
+  return Math.round(days * dispositionFor(state, reg, unit).stageDaysMult);
+}
+
 export function meets(state: CampaignState, reg: Registries, unitId: string, cond: Conditions): boolean {
   const rel = state.relations[unitId];
   const unit = state.squad.find((u) => u.id === unitId);
@@ -46,7 +51,7 @@ export function meets(state: CampaignState, reg: Registries, unitId: string, con
   if (cond.flagsNone && cond.flagsNone.some((f) => rel.flags.includes(f))) return false;
   if (cond.defectsAny && !cond.defectsAny.some((id) => unit.defects.some((d) => d.id === id))) return false;
   if (cond.inStates && !cond.inStates.includes(rel.stateId)) return false;
-  if (cond.minDaysInState !== undefined && state.day - rel.stateSince < cond.minDaysInState) return false;
+  if (cond.minDaysInState !== undefined && state.day - rel.stateSince < stageDays(state, reg, unit, cond.minDaysInState)) return false;
   if (cond.eventCount) {
     const { type, min, withinDays } = cond.eventCount;
     const n = rel.history.filter((h) => h.kind === 'event' && h.type === type && (withinDays === undefined || state.day - h.day <= withinDays)).length;

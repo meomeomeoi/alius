@@ -1,5 +1,6 @@
 import type { Entry, Registries } from '../../content/types';
 import type { CampaignState, Relation, Unit } from '../state/types';
+import { TUNING } from '../tuning';
 import { worldEffects } from './options';
 
 /**
@@ -67,4 +68,29 @@ export function applyDispositionStart(
   const level = dispositionFor(state, reg, unit);
   rel.trust = clamp(rel.trust + level.start.trust, 0, 100);
   rel.affinity = clamp(rel.affinity + level.start.affinity, -100, 100);
+}
+
+/**
+ * The campaign's mirror of the setting `intentMinConfidence` against its default: how far the player moved the table of
+ * confidence floors (a missing setting reads the default, shift 0).
+ */
+export function confidenceShift(state: Pick<CampaignState, 'settings'>): number {
+  const v = state.settings.intentMinConfidence;
+  const setting = typeof v === 'number' && Number.isFinite(v) ? clamp(v, 0, 1) : TUNING.disposition.confidenceRef;
+  return setting - TUNING.disposition.confidenceRef;
+}
+
+/** A level's confidence floors for gains and losses, moved by the setting's shift and capped at 1 (an engine-made event, confidence 1, always passes). */
+export function dispositionThresholds(level: Pick<DispositionLevel, 'minConfidence'>, shift: number): { gain: number; loss: number } {
+  return { gain: Math.min(1, level.minConfidence.gain + shift), loss: Math.min(1, level.minConfidence.loss + shift) };
+}
+
+/**
+ * The floor the extraction sanitizer applies: the lowest floor of any level, moved by the setting. It never drops an event
+ * that some level would read; the engine then judges each axis for each unit (`computeDeltas`).
+ */
+export function confidenceFloor(reg: Registries, setting: number): number {
+  const levels = [...reg.dispositionLevels.values()] as DispositionLevel[];
+  const lowest = levels.length === 0 ? TUNING.disposition.confidenceRef : Math.min(...levels.map((l) => Math.min(l.minConfidence.gain, l.minConfidence.loss)));
+  return clamp(lowest + (clamp(setting, 0, 1) - TUNING.disposition.confidenceRef), 0, 1);
 }

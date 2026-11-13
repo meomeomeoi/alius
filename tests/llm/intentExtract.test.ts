@@ -161,3 +161,17 @@ describe('extractIntents', () => {
     expect(await extractIntents(input(), { st, settings })).toBeNull();
   });
 });
+
+describe('the confidence floor the caller passes (P8)', () => {
+  const lowConfidence = () => JSON.stringify({
+    events: [{ type: 'praised', actor: 'commander', targets: [ANN], severity: 'major', evidence: 'x', confidence: 0.45 }],
+    facts: [], proposals: [], promises: [], emotions: [], stressHints: [],
+  });
+  it('opts.minConfidence replaces the setting as the sanitizer floor', async () => {
+    const { st, settings } = setup();
+    st.mainReplies = [lowConfidence()];
+    expect((await extractIntents(input(), { st, settings }))!.intents.events).toHaveLength(0); // setting 0.5
+    st.mainReplies = [lowConfidence()];
+    expect((await extractIntents(input(), { st, settings }, { minConfidence: 0.4 }))!.intents.events).toHaveLength(1);
+  });
+});
