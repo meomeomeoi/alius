@@ -20,7 +20,8 @@ export function renderNodeMap(host: HTMLElement, view: NodeMapView): void {
       const known = cell.text !== '[ ]';
       const name = known ? view.labels?.[cell.nodeId] ?? 'Known' : 'Unknown';
       const status = cell.state === 'option' ? 'reachable' : cell.state === 'ahead' ? 'ahead' : cell.state;
-      const classes = ['alius-node', `alius-${cell.state}`, ...(cell.state === 'visited' || cell.state === 'current' ? ['alius-path'] : [])].join(' ');
+      // `alius-option` is reserved for the analysis markers (P7a): a reachable node is `alius-reachable`
+      const classes = ['alius-node', cell.state === 'option' ? 'alius-reachable' : `alius-${cell.state}`, ...(cell.state === 'visited' || cell.state === 'current' ? ['alius-path'] : [])].join(' ');
       const attrs = { class: classes, 'data-node': cell.nodeId, 'aria-label': `${name}, ${status}` };
       col.append(cell.state === 'option'
         ? h('button', { ...attrs, type: 'button', onclick: () => view.onMove(cell.nodeId) }, cell.text)

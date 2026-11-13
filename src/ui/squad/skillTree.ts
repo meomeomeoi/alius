@@ -2,6 +2,7 @@ import type { Registries } from '../../content/types';
 import { skillById } from '../../engine/combat/targeting';
 import { checkUnlock, nodeState } from '../../engine/progression';
 import type { CampaignState, Unit } from '../../engine/state/types';
+import { analyzeNative } from '../analyze/mark';
 import { h } from '../dom';
 
 export interface SkillTreeCtx {
@@ -40,7 +41,8 @@ export function renderSkillTree(host: HTMLElement, ctx: SkillTreeCtx): void {
     const desc = n.grants.skill ? skillById(reg, n.grants.skill)?.description ?? '' : 'Upgrades a skill.';
     const afford = st === 'available' && reason === 'READY';
     return h('button', {
-      type: 'button', class: 'alius-tree-node', 'data-node': n.id, 'data-state': st,
+      type: 'button', class: 'alius-tree-node alius-option', 'data-node': n.id, 'data-state': st,
+      ...analyzeNative(`skills:${n.grants.upgrade?.skillId ?? n.grants.skill ?? ''}`),
       title: `${reason} — ${desc} (${n.cost} pt)`, 'aria-disabled': st === 'owned' || !afford ? 'true' : null,
       onclick: () => { if (afford) ctx.onUnlock(n.id); },
     }, `${MARK[st]} ${label(n)} (${n.cost})`);

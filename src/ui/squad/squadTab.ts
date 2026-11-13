@@ -13,7 +13,9 @@ import type { StAdapter } from '../../st/adapter';
 import type { LoadResult } from '../../st/persistence';
 import type { ArcPath, ArcPathInfo } from '../../engine/arcs';
 import type { LeashKind } from '../../engine/state/types';
-import { h } from '../dom';
+import { stressBand } from '../../engine/combat/stress';
+import { analyzeNative } from '../analyze/mark';
+import { h, type Child } from '../dom';
 import { valueBand } from './bands';
 import { renderSkillTree } from './skillTree';
 
@@ -93,7 +95,7 @@ function defectBlock(reg: Registries, d: Unit['defects'][number]): HTMLElement {
   return h(
     'div',
     { class: 'alius-defect' },
-    h('strong', {}, String(def.name)),
+    h('strong', { class: 'alius-chip', ...analyzeNative(`defects:${d.id}`) }, String(def.name)),
     h('span', { class: 'alius-dim' }, ` [${String(def.category)}]`),
     d.origin ? line('Origin', d.origin) : null,
     line('Lore', String(def.lore)),
@@ -111,13 +113,21 @@ function relationLine(unit: Unit, state: CampaignState, ctx: SquadTabCtx): HTMLE
   if (!rel) return null;
   const raw = ctx.settings().showRawValues;
   const num = (n: number) => (raw ? ` (${n})` : '');
-  const parts = [`${String(ctx.registries.relationshipStates.get(rel.stateId)?.name ?? rel.stateId).toUpperCase()}`, `TRUST ${trustBand(rel.trust).toUpperCase()}${num(rel.trust)}`];
+  const live = { unitId: unit.id };
+  const chip = (text: string, address: string, data?: Record<string, unknown>) => h('span', { class: 'alius-chip', ...analyzeNative(address, data) }, text);
+  const parts = [
+    chip(`${String(ctx.registries.relationshipStates.get(rel.stateId)?.name ?? rel.stateId).toUpperCase()}`, `relationshipStates:${rel.stateId}`),
+    chip(`TRUST ${trustBand(rel.trust).toUpperCase()}${num(rel.trust)}`, 'glossary:trust', live),
+  ];
   if (unit.kind !== 'grunt') {
-    parts.push(`AFFINITY ${affinityBand(rel.affinity).toUpperCase()}${num(rel.affinity)}`);
-    if (intimacyOf(state).romance) parts.push(`ATTRACTION ${attractionBand(rel.attraction).toUpperCase()}${num(rel.attraction)}`);
+    parts.push(chip(`AFFINITY ${affinityBand(rel.affinity).toUpperCase()}${num(rel.affinity)}`, 'glossary:affinity', live));
+    if (intimacyOf(state).romance) parts.push(chip(`ATTRACTION ${attractionBand(rel.attraction).toUpperCase()}${num(rel.attraction)}`, 'glossary:attraction', live));
   }
-  return h('p', { class: 'alius-relation' }, parts.join(' · '));
+  return h('p', { class: 'alius-relation' }, ...joinWith(parts, ' · '));
 }
+
+/** Children separated by a text separator, so the text of a line stays as it was before it carried markers. */
+const joinWith = (items: Child[], sep: string): Child[] => items.flatMap((item, i) => (i === 0 ? [item] : [sep, item]));
 
 const SLOTS = ['weapon', 'upper', 'lower'] as const;
 
@@ -137,14 +147,14 @@ function equipmentBlock(unit: Unit, ctx: SquadTabCtx, state: CampaignState): HTM
     const uid = unit.equipment[slot];
     const inst = uid ? state.inventory.find((i) => i.uid === uid) : undefined;
     const tpl = inst ? reg.items.get(inst.itemId) : undefined;
-    let text: string;
+    let text: Child;
     let flag: string | null = null;
     if (!uid) text = 'STANDARD ISSUE';
     else if (!inst || !tpl) {
       text = 'UNKNOWN';
       flag = 'UNKNOWN';
     } else {
-      text = `${String(tpl.name)} [${inst.rarity}]${inst.upgrade > 0 ? ` +${inst.upgrade}` : ''}`;
+      text = h('span', { class: 'alius-chip', ...analyzeNative(`items:${inst.itemId}`) }, `${String(tpl.name)} [${inst.rarity}]${inst.upgrade > 0 ? ` +${inst.upgrade}` : ''}`);
       flag = canEquip(reg, unit, inst);
     }
     const options = state.inventory.filter((i) => reg.items.get(i.itemId)?.slot === slot && canEquip(reg, unit, i) === null);
@@ -162,7 +172,7 @@ function equipmentBlock(unit: Unit, ctx: SquadTabCtx, state: CampaignState): HTM
       });
     }
     return h('div', { class: 'alius-equip-row', 'data-slot': slot },
-      h('span', {}, `${slot.toUpperCase()}: ${text}`),
+      h('span', {}, `${slot.toUpperCase()}: `, text),
       flag ? h('span', { class: 'alius-equip-flag' }, ` ${flag}`) : null,
       picker);
   });
@@ -187,7 +197,7 @@ function loadoutBlock(unit: Unit, ctx: SquadTabCtx): HTMLElement {
       sync();
       ctx.onSetLoadout?.(unit.id, boxes.filter((b) => b.checked).map((b) => b.getAttribute('data-skill')!));
     });
-    return h('label', {}, box, ` ${skillById(reg, id)?.name ?? id}`);
+    return h('label', { class: 'alius-option', ...analyzeNative(`skills:${id}`) }, box, ` ${skillById(reg, id)?.name ?? id}`);
   });
   sync();
   return h('div', { class: 'alius-loadout', 'data-unit': unit.id }, h('p', { class: 'alius-dim' }, `LOADOUT ${chosen.size}/${size}`), ...rows);
@@ -230,7 +240,7 @@ function arcBlock(unit: Unit, d: Unit['defects'][number], ctx: SquadTabCtx): HTM
       type: 'button', class: 'alius-btn', 'data-decide': p.path, disabled: !p.available, title: p.reason ?? undefined,
       onclick: () => ctx.onArc!(unit.id, d.id, p.path, refused),
     }, refused ? `[ ${p.path.toUpperCase()} — WITH LEASH ]` : `[ ${p.path.toUpperCase()} ]`);
-    return h('div', { class: 'alius-arc-path', 'data-path': p.path },
+    return h('div', { class: 'alius-arc-path alius-option', 'data-path': p.path, ...analyzeNative(`glossary:arc_${p.path}`) },
       h('strong', {}, p.path.toUpperCase()),
       h('span', {}, ` — ${p.text}`),
       h('span', { class: 'alius-dim' }, ` · ${costText(p.cost)}`),
@@ -249,7 +259,7 @@ function leashMenu(unit: Unit, ctx: SquadTabCtx): HTMLElement | null {
   if (ctx.canTerminate && ctx.canTerminate(unit.id) === null) kinds.push('terminate');
   return h('details', { class: 'alius-leash-menu', 'data-leash-menu': unit.id },
     h('summary', {}, '[ LEASH ]'),
-    ...kinds.map((kind) => h('button', { type: 'button', class: 'alius-btn', 'data-leash': kind, onclick: () => ctx.onLeash!(unit.id, kind) }, kind.toUpperCase())));
+    ...kinds.map((kind) => h('button', { type: 'button', class: 'alius-btn alius-option', 'data-leash': kind, ...analyzeNative(`glossary:leash_${kind}`), onclick: () => ctx.onLeash!(unit.id, kind) }, kind.toUpperCase())));
 }
 
 function unitBlock(unit: Unit, ctx: SquadTabCtx, state: CampaignState): HTMLElement {
@@ -260,8 +270,12 @@ function unitBlock(unit: Unit, ctx: SquadTabCtx, state: CampaignState): HTMLElem
   const sigTpl = reg.signatures.get(unit.signatureSkill.templateId);
   const values = VALUE_AXES.map((axis) => {
     const v = unit.values[axis];
-    return `${axis.toUpperCase()}: ${raw ? (v > 0 ? `+${v}` : String(v)) : valueBand(v)}`;
+    return h('span', { class: 'alius-stat', ...analyzeNative(`glossary:value_${axis}`) }, `${axis.toUpperCase()}: ${raw ? (v > 0 ? `+${v}` : String(v)) : valueBand(v)}`);
   });
+  const live = { unitId: unit.id };
+  const chip = (text: string, address: string, data?: Record<string, unknown>) => h('span', { class: 'alius-chip', ...analyzeNative(address, data) }, text);
+  const stat = (text: string, address: string, data?: Record<string, unknown>) => h('span', { class: 'alius-stat', ...analyzeNative(address, data) }, text);
+  const roleEntry = reg.roles.get(unit.roleId);
 
   return h(
     'article',
@@ -272,28 +286,32 @@ function unitBlock(unit: Unit, ctx: SquadTabCtx, state: CampaignState): HTMLElem
       { class: 'alius-unit-body' },
       h('h3', { class: 'alius-unit-name' }, unit.displayName),
       unit.kind === 'grunt' ? h('p', { class: 'alius-dim' }, `GRUNT ${unit.designation ?? ''}`.trimEnd()) : null,
-      h('p', {}, `${nameOf(reg.roles.get(unit.roleId), unit.roleId)} · LVL ${unit.level}`),
-      h('p', { class: 'alius-xp' }, `XP ${unit.xp}/${xpToNext(unit.level)} · SKILL POINTS ${unit.skillPoints}`),
+      h('p', {}, roleEntry ? chip(nameOf(roleEntry, unit.roleId), `roles:${unit.roleId}`) : nameOf(roleEntry, unit.roleId), ` · LVL ${unit.level}`),
+      h('p', { class: 'alius-xp' }, chip(`XP ${unit.xp}/${xpToNext(unit.level)}`, 'glossary:level_xp'), ' · ', chip(`SKILL POINTS ${unit.skillPoints}`, 'glossary:skill_points')),
       unit.breakdown
         ? h('p', { class: 'alius-equip-flag' }, `BREAKDOWN: ${String((reg.defects.get(unit.breakdown.defectId)?.breakdown as { name?: string } | undefined)?.name ?? unit.breakdown.defectId)}`)
         : null,
       gone ? h('p', { class: 'alius-equip-flag' }, `STATUS: ${unit.status.toUpperCase()}`) : null,
       relationLine(unit, state, ctx),
-      !gone && state.relations[unit.id] ? h('p', { class: 'alius-loyalty' }, `LOYALTY: ${state.relations[unit.id].loyaltyBand.toUpperCase()}`) : null,
+      !gone && state.relations[unit.id] ? h('p', { class: 'alius-loyalty' }, chip(`LOYALTY: ${state.relations[unit.id].loyaltyBand.toUpperCase()}`, 'glossary:loyalty_band')) : null,
+      gone ? null : h('p', { class: 'alius-stress' }, chip(`STRESS ${stressBand(unit.stress).toUpperCase()}${raw ? ` (${unit.stress})` : ''}`, 'glossary:stress', live)),
       gone ? null : leashMenu(unit, ctx),
       unit.bio ? h('p', { class: 'alius-dim' }, unit.bio) : null,
-      h('p', {}, `HP ${s.hp} · ATK ${s.atk} · DEF ${s.def} · SPD ${s.spd} · CRIT ${s.crit}%`),
+      h('p', {}, ...joinWith([
+        stat(`HP ${s.hp}`, 'glossary:stat_hp', live), stat(`ATK ${s.atk}`, 'glossary:stat_atk', live), stat(`DEF ${s.def}`, 'glossary:stat_def', live),
+        stat(`SPD ${s.spd}`, 'glossary:stat_spd', live), stat(`CRIT ${s.crit}%`, 'glossary:stat_crit', live),
+      ], ' · ')),
       equipmentBlock(unit, ctx, state),
       progressionBlock(unit, ctx, state),
       h('h4', {}, 'DEFECTS'),
       ...unit.defects.flatMap((d) => [defectBlock(reg, d), gone ? null : arcBlock(unit, d, ctx)]),
       h('h4', {}, 'VALUES'),
-      h('p', { class: 'alius-values' }, values.join(' · ')),
+      h('p', { class: 'alius-values' }, ...joinWith(values, ' · ')),
       ...(unit.kind === 'grunt'
         ? []
         : [
             h('h4', {}, 'SIGNATURE'),
-            h('p', {}, h('strong', {}, unit.signatureSkill.name), ` — ${unit.signatureSkill.description}`),
+            h('p', {}, sigTpl ? h('strong', { class: 'alius-chip', ...analyzeNative(`signatures:${unit.signatureSkill.templateId}`) }, unit.signatureSkill.name) : h('strong', {}, unit.signatureSkill.name), ` — ${unit.signatureSkill.description}`),
             h('p', { class: 'alius-dim' }, `Template: ${nameOf(sigTpl, unit.signatureSkill.templateId)} — ${sigTpl ? String(sigTpl.mechanic) : ''}`),
           ]),
       // Re-sync overwrites numbers on a running campaign, so it follows the SYS edit lock.

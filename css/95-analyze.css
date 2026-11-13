@@ -105,3 +105,12 @@
     animation: none;
   }
 }
+
+/* things the analysis tool can explain: a help cursor, and no browser callout on a touch long-press */
+#alius-shell [data-analyze]:not(button):not(label) {
+  cursor: help;
+}
+
+#alius-shell [data-analyze] {
+  -webkit-touch-callout: none;
+}

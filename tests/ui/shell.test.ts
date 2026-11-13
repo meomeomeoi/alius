@@ -602,7 +602,7 @@ describe('analysis tool in the shell (P7a)', () => {
       host.append(chip);
     });
     ctx.shell.open();
-    const chip = document.querySelector<HTMLElement>('#alius-shell [data-analyze]')!;
+    const chip = document.querySelector<HTMLElement>('#alius-shell [data-analyze="glossary:trust"]')!;
     return { ...ctx, chip };
   }
 
@@ -670,7 +670,7 @@ describe('analysis tool in the shell (P7a)', () => {
       shell.refresh();
       expect(panel()).toBeNull();
       // pinned: Shift while leaving
-      const chip2 = document.querySelector<HTMLElement>('#alius-shell [data-analyze]')!;
+      const chip2 = document.querySelector<HTMLElement>('#alius-shell [data-analyze="glossary:trust"]')!;
       pointer('pointerover', chip2);
       vi.advanceTimersByTime(250);
       pointer('pointerout', chip2, { relatedTarget: document.body, shiftKey: true });

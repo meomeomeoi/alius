@@ -6,7 +6,8 @@ import { activeRosterUnits } from '../../engine/economy';
 import type { Stats } from '../../engine/combat/types';
 import { unitStats } from '../../engine/combat/stats';
 import type { CampaignState, ItemInstance } from '../../engine/state/types';
-import { h } from '../dom';
+import { analyzeNative } from '../analyze/mark';
+import { h, type Child } from '../dom';
 
 export interface InvTabCtx {
   getState: () => CampaignState | null;
@@ -50,7 +51,9 @@ export function renderInvTab(host: HTMLElement, ctx: InvTabCtx): void {
     const current = state.inventory.find((i) => i.uid === selected) ?? null;
     if (!current) selected = null;
 
-    const res = h('p', { class: 'alius-inv-res' }, `CREDITS ${state.resources.credits} · SUPPLIES ${state.resources.supplies} · PLYX ${state.resources.plyx}`);
+    const resStat = (text: string, address: string) => h('span', { class: 'alius-stat', ...analyzeNative(address) }, text);
+    const res = h('p', { class: 'alius-inv-res' },
+      resStat(`CREDITS ${state.resources.credits}`, 'glossary:credits'), ' · ', resStat(`SUPPLIES ${state.resources.supplies}`, 'glossary:supplies'), ' · ', resStat(`PLYX ${state.resources.plyx}`, 'glossary:plyx'));
     const filters = h('div', { class: 'alius-inv-filters' },
       ...(['all', 'weapon', 'upper', 'lower'] as const).map((f) =>
         h('button', { type: 'button', class: 'alius-btn', 'data-filter': f, 'aria-pressed': filter === f ? 'true' : 'false', onclick: () => { filter = f; render(); } }, upper(f))));
@@ -59,13 +62,13 @@ export function renderInvTab(host: HTMLElement, ctx: InvTabCtx): void {
       ...(items.length === 0 ? [h('p', { class: 'alius-dim' }, 'NOTHING IN STORAGE')] : items.map((i) => {
         const wearer = equippedBy(state, i.uid);
         return h('button', {
-          type: 'button', class: 'alius-inv-item', 'data-uid': i.uid, 'aria-pressed': selected === i.uid ? 'true' : 'false',
+          type: 'button', class: 'alius-inv-item alius-option', 'data-uid': i.uid, 'aria-pressed': selected === i.uid ? 'true' : 'false', ...analyzeNative(`items:${i.itemId}`),
           onclick: () => { selected = i.uid; render(); },
         },
         h('span', { class: 'alius-inv-name' }, nameOf(i)),
-        h('span', { class: `alius-rarity alius-rarity-${i.rarity}` }, i.rarity),
+        h('span', { class: `alius-rarity alius-rarity-${i.rarity} alius-chip`, ...analyzeNative('glossary:rarity') }, i.rarity),
         h('span', {}, i.upgrade > 0 ? `+${i.upgrade}` : ''),
-        h('span', { class: 'alius-dim' }, i.affixes.map((a) => String(reg.affixes.get(a)?.name ?? a)).join(', ')),
+        h('span', { class: 'alius-dim' }, ...i.affixes.flatMap((a, k): Child[] => [...(k > 0 ? [', '] : []), h('span', { class: 'alius-chip', ...analyzeNative(`affixes:${a}`) }, String(reg.affixes.get(a)?.name ?? a))])),
         h('span', { class: 'alius-dim' }, wearer ? `WORN BY ${wearer.displayName}` : ''));
       })));
 
@@ -85,7 +88,7 @@ export function renderInvTab(host: HTMLElement, ctx: InvTabCtx): void {
     const deltas = STATS.filter((k) => (mine[k] ?? 0) !== (theirs[k] ?? 0) || (mine[k] ?? 0) !== 0)
       .map((k) => {
         const d = (mine[k] ?? 0) - (theirs[k] ?? 0);
-        return h('span', { class: d >= 0 ? 'alius-delta-up' : 'alius-delta-down', 'data-stat': k }, `${upper(k)} ${d > 0 ? '+' : ''}${d}  `);
+        return h('span', { class: `${d >= 0 ? 'alius-delta-up' : 'alius-delta-down'} alius-stat`, 'data-stat': k, ...analyzeNative(`glossary:stat_${k}`) }, `${upper(k)} ${d > 0 ? '+' : ''}${d}  `);
       });
     const picker = h('select', { class: 'alius-input', 'data-compare-unit': 'true', 'aria-label': 'Compare for' },
       ...units.map((u) => h('option', { value: u.id, selected: u.id === compareUnit }, u.displayName))) as HTMLSelectElement;
@@ -122,7 +125,7 @@ export function renderInvTab(host: HTMLElement, ctx: InvTabCtx): void {
       const tpl = reg.items.get(r.itemId as string);
       const cost = r.cost as { credits: number; plyx: number };
       return h('button', {
-        type: 'button', class: 'alius-btn', 'data-recipe': r.id, disabled: reason !== null, title: reason ?? 'Craft',
+        type: 'button', class: 'alius-btn alius-option', 'data-recipe': r.id, ...analyzeNative(`items:${r.itemId as string}`), disabled: reason !== null, title: reason ?? 'Craft',
         onclick: () => ctx.onCraft(r.id),
       }, `${String(tpl?.name ?? r.itemId)} [${String(r.rarity)}] ${cost.credits} CR / ${cost.plyx} PLYX${reason ? ` — ${reason}` : ''}`);
     });
@@ -131,11 +134,11 @@ export function renderInvTab(host: HTMLElement, ctx: InvTabCtx): void {
       const up = refusal(state, reg, 'item/upgrade', { uid: item.uid });
       const dis = refusal(state, reg, 'item/dismantle', { uid: item.uid });
       itemButtons.push(
-        h('button', { type: 'button', class: 'alius-btn', 'data-act': 'upgrade', disabled: up !== null, title: up ?? 'Upgrade', onclick: () => ctx.onUpgrade(item.uid) }, `[UPGRADE +${item.upgrade + 1}]${up ? ` — ${up}` : ''}`),
-        h('button', { type: 'button', class: 'alius-btn', 'data-act': 'dismantle', disabled: dis !== null, title: dis ?? 'Dismantle', onclick: () => ctx.onDismantle(item.uid) }, `[DISMANTLE]${dis ? ` — ${dis}` : ''}`),
+        h('button', { type: 'button', class: 'alius-btn alius-option', 'data-act': 'upgrade', ...analyzeNative('glossary:workshop'), disabled: up !== null, title: up ?? 'Upgrade', onclick: () => ctx.onUpgrade(item.uid) }, `[UPGRADE +${item.upgrade + 1}]${up ? ` — ${up}` : ''}`),
+        h('button', { type: 'button', class: 'alius-btn alius-option', 'data-act': 'dismantle', ...analyzeNative('glossary:workshop'), disabled: dis !== null, title: dis ?? 'Dismantle', onclick: () => ctx.onDismantle(item.uid) }, `[DISMANTLE]${dis ? ` — ${dis}` : ''}`),
         ...item.affixes.map((a, i) => {
           const why = refusal(state, reg, 'item/reroll', { uid: item.uid, affixIndex: i });
-          return h('button', { type: 'button', class: 'alius-btn', 'data-act': 'reroll', 'data-index': String(i), disabled: why !== null, title: why ?? 'Reroll', onclick: () => ctx.onReroll(item.uid, i) }, `[REROLL ${upper(String(reg.affixes.get(a)?.name ?? a))}]${why ? ` — ${why}` : ''}`);
+          return h('button', { type: 'button', class: 'alius-btn alius-option', 'data-act': 'reroll', 'data-index': String(i), ...analyzeNative('glossary:workshop'), disabled: why !== null, title: why ?? 'Reroll', onclick: () => ctx.onReroll(item.uid, i) }, `[REROLL ${upper(String(reg.affixes.get(a)?.name ?? a))}]${why ? ` — ${why}` : ''}`);
         }));
     }
     return h('section', { class: 'alius-section alius-inv-workshop' },

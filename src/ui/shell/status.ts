@@ -1,6 +1,9 @@
 import { clockText } from '../../engine/calendar';
 import type { CampaignState } from '../../engine/state/types';
+import { analyzeAttrs } from '../analyze/mark';
 import { h } from '../dom';
+
+const stat = (cls: string, text: string, address: string): HTMLElement => h('span', { class: `${cls} alius-stat`, ...analyzeAttrs(address) }, text);
 
 /** The PDA header: clock, resources, Leash authorizations and warnings. Replaces the host's content. */
 export function renderStatusHeader(host: HTMLElement, state: CampaignState | null): void {
@@ -13,11 +16,14 @@ export function renderStatusHeader(host: HTMLElement, state: CampaignState | nul
   const injuredDays = (state.commander.injuredUntilDay ?? 0) - state.day;
   const shortage = state.calendar.shortageStreak ?? 0;
   const parts: Array<HTMLElement | null> = [
-    h('span', { class: 'alius-clock' }, clockText(state.day, state.slot)),
-    h('span', { class: 'alius-resources' }, `CR ${r.credits} · SUP ${r.supplies} · PLYX ${r.plyx}`),
-    h('span', { class: 'alius-leash' }, `LEASH ${state.leash.authorizationsLeft}`),
-    injuredDays > 0 ? h('span', { class: 'alius-warn' }, `INJURED ${injuredDays}d`) : null,
-    shortage > 0 ? h('span', { class: 'alius-warn' }, `SHORTAGE ${shortage}d`) : null,
+    stat('alius-clock', clockText(state.day, state.slot), 'glossary:slots'),
+    h('span', { class: 'alius-resources' },
+      stat('alius-res', `CR ${r.credits}`, 'glossary:credits'), ' · ',
+      stat('alius-res', `SUP ${r.supplies}`, 'glossary:supplies'), ' · ',
+      stat('alius-res', `PLYX ${r.plyx}`, 'glossary:plyx')),
+    stat('alius-leash', `LEASH ${state.leash.authorizationsLeft}`, 'glossary:leash'),
+    injuredDays > 0 ? stat('alius-warn', `INJURED ${injuredDays}d`, 'glossary:commander_injury') : null,
+    shortage > 0 ? stat('alius-warn', `SHORTAGE ${shortage}d`, 'glossary:upkeep') : null,
   ];
   host.append(...parts.filter((p): p is HTMLElement => p !== null));
 }

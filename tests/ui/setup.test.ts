@@ -411,7 +411,7 @@ describe('calibration view', () => {
     document.body.append(host);
     const onUpdate = vi.fn();
     renderCalibration(host, { draft: v.draft, registries: reg, desireBondDefects: false, onUpdate, onRegenerate: vi.fn(), onManual: vi.fn() });
-    const chips = [...host.querySelectorAll<HTMLElement>('.alius-chip')];
+    const chips = [...host.querySelectorAll<HTMLElement>('.alius-tagchip')];
     expect(chips.map((c) => c.textContent)).toEqual(['tea×', 'rain×']);
     host.querySelector<HTMLButtonElement>('button[aria-label="Remove tea"]')!.click();
     expect(onUpdate).toHaveBeenCalledWith({ likes: ['rain'] });

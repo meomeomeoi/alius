@@ -3,6 +3,7 @@ import { checkRecruit, checkUpgrade, facilityLevel, facilityLevels, isLiving } f
 import type { CampaignState } from '../../engine/state/types';
 import { TUNING } from '../../engine/tuning';
 import type { LoadResult } from '../../st/persistence';
+import { analyzeNative } from '../analyze/mark';
 import { h } from '../dom';
 
 export interface BaseTabCtx {
@@ -42,7 +43,7 @@ function facilityCard(state: CampaignState, f: Entry, ctx: BaseTabCtx): HTMLElem
   const levels = facilityLevels(ctx.registries, f.id);
   const level = facilityLevel(state, f.id);
   const pending = pendingOf(state, f.id);
-  const card = h('article', { class: 'alius-facility', 'data-facility': f.id }, h('h3', {}, `${String(f.name)} — LEVEL ${level}/${levels.length}`), h('p', { class: 'alius-dim' }, String(f.summary)));
+  const card = h('article', { class: 'alius-facility', 'data-facility': f.id }, h('h3', {}, `${String(f.name)} — `, h('span', { class: 'alius-stat', ...analyzeNative(`facilities:${f.id}`) }, `LEVEL ${level}/${levels.length}`)), h('p', { class: 'alius-dim' }, String(f.summary)));
   if (pending) card.append(h('p', {}, `UPGRADING TO L${pending.toLevel} ^ ${pending.daysLeft}d`));
   if (level >= levels.length) {
     card.append(h('p', { class: 'alius-dim' }, 'MAX LEVEL'));
@@ -53,7 +54,7 @@ function facilityCard(state: CampaignState, f: Entry, ctx: BaseTabCtx): HTMLElem
   card.append(
     h('p', {}, `NEXT: ${up.credits} CR · ${up.plyx} PLYX · ${up.days} DAYS`),
     ...(reason ? [h('p', { class: 'alius-dim alius-reason' }, reason)] : []),
-    h('button', { type: 'button', class: 'alius-btn', 'data-upgrade': f.id, disabled: reason !== null, onclick: () => ctx.onUpgrade(f.id) }, '[ UPGRADE ]'),
+    h('button', { type: 'button', class: 'alius-btn alius-option', 'data-upgrade': f.id, ...analyzeNative(`facilities:${f.id}`), disabled: reason !== null, onclick: () => ctx.onUpgrade(f.id) }, '[ UPGRADE ]'),
   );
   return card;
 }
@@ -79,7 +80,7 @@ function roster(state: CampaignState, ctx: BaseTabCtx): HTMLElement {
         h(
           'button',
           {
-            type: 'button', class: 'alius-btn', 'data-roster-toggle': u.id, disabled: full,
+            type: 'button', class: 'alius-btn alius-option', 'data-roster-toggle': u.id, ...analyzeNative('glossary:roster'), disabled: full,
             title: full ? `The active roster is full (${TUNING.rosterActiveMax})` : '',
             onclick: () => ctx.onSetRoster(on ? active.filter((id) => id !== u.id) : [...active, u.id]),
           },
@@ -90,7 +91,7 @@ function roster(state: CampaignState, ctx: BaseTabCtx): HTMLElement {
   }
   const reason = checkRecruit(state);
   section.append(
-    h('button', { type: 'button', class: 'alius-btn', 'data-recruit': '', disabled: reason !== null, onclick: ctx.onRecruit }, `[ RECRUIT GRUNT (${TUNING.recruit.credits} CR) ]`),
+    h('button', { type: 'button', class: 'alius-btn alius-option', 'data-recruit': '', ...analyzeNative('glossary:grunt'), disabled: reason !== null, onclick: ctx.onRecruit }, `[ RECRUIT GRUNT (${TUNING.recruit.credits} CR) ]`),
     ...(reason ? [h('p', { class: 'alius-dim alius-reason' }, reason)] : []),
   );
   return section;

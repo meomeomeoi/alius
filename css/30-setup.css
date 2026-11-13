@@ -161,12 +161,12 @@
   margin: 4px 0;
 }
 
-#alius-shell .alius-chip {
+#alius-shell .alius-tagchip {
   border: 1px solid var(--alius-dim);
   padding: 0 4px 0 6px;
 }
 
-#alius-shell .alius-chip button {
+#alius-shell .alius-tagchip button {
   background: transparent;
   color: var(--alius-fg);
   border: 0;

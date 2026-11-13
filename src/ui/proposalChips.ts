@@ -20,6 +20,6 @@ export function drawProposalChips(
       : p.from === 'commander' ? [['[NOT NOW]', 'not_now']] : [['[ACCEPT]', 'accept'], ['[DECLINE]', 'decline'], ['[NOT NOW]', 'not_now']];
     host.append(h('div', { class: 'alius-chip-group', 'data-proposal': p.id },
       h('span', { class: 'alius-chip-label' }, p.from === 'unit' ? `${name} PROPOSES: ${kindLabel(p.kind)}` : `${name}: ${kindLabel(p.kind)} — OPENLY OR SECRETLY?`),
-      ...buttons.map(([text, answer]) => h('button', { type: 'button', class: 'alius-btn alius-chip', onclick: () => onAnswer(p.id, answer) }, text))));
+      ...buttons.map(([text, answer]) => h('button', { type: 'button', class: 'alius-btn alius-tagchip', onclick: () => onAnswer(p.id, answer) }, text))));
   }
 }

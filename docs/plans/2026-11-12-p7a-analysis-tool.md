@@ -328,9 +328,9 @@ Reads `docs/content/roles.md` and `docs/content/defects.md`; texts go into JSON 
   - INV: resource line as three stats; item buttons `items:<itemId>` (option); rarity `glossary:rarity` (chip); affix names `affixes:<id>` (chip); compare deltas `glossary:stat_<k>` (stat); recipes `items:<itemId>` (option); upgrade/dismantle/reroll `glossary:workshop` (option).
 - `analyzeCoverage` harness: `markedWithout(host): string[]` — outerHTML snippets of `ANALYZE_MARKERS` elements lacking `data-analyze`; `unresolved(host, env): string[]` — addresses whose `buildPanelModel` is `missing`.
 
-- [ ] **Step 1: Write the failing tests** — for the header, SQUAD (named unit + grunt, raw on and off), BASE and INV rendered from `tests/helpers/world.ts` `campaign(reg, 4)` with an item equipped: `every marker has data-analyze`; `every address resolves in the core pack`; `the screen has at least N markers` (header 5, SQUAD 25, BASE 6, INV 6 — non-vacuous); `the SQUAD stress chip shows a band and no number with raw values off`; plus `hovering a SQUAD trust chip in a real shell shows a reading with the band` (end-to-end through `createShell` + `registerCoreProviders`).
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → PASS; existing UI tests green (update only assertions that read the new stress chip).
-- [ ] **Step 5: Commit** `feat(ui): analysis markers on the header, SQUAD, BASE and INV`.
+- [x] **Step 1: Write the failing tests** — for the header, SQUAD (named unit + grunt, raw on and off), BASE and INV rendered from `tests/helpers/world.ts` `campaign(reg, 4)` with an item equipped: `every marker has data-analyze`; `every address resolves in the core pack`; `the screen has at least N markers` (header 5, SQUAD 25, BASE 6, INV 6 — non-vacuous); `the SQUAD stress chip shows a band and no number with raw values off`; plus `hovering a SQUAD trust chip in a real shell shows a reading with the band` (end-to-end through `createShell` + `registerCoreProviders`).
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → PASS; existing UI tests green (update only assertions that read the new stress chip).
+- [x] **Step 5: Commit** `feat(ui): analysis markers on the header, SQUAD, BASE and INV`.
 
 ---
 

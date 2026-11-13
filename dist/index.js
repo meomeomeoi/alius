@@ -818,8 +818,8 @@ function buildCampaign(r, reg, opts) {
   const crimeEffects = crimeEffectsOf(crime);
   for (const fx2 of [...effectsOf(corp.startingBonus), ...crimeEffects]) {
     if (fx2.type === "social_rank") {
-      const stat = fx2.stat;
-      state.commander.socialStats[stat] = Math.max(state.commander.socialStats[stat], fx2.rank);
+      const stat2 = fx2.stat;
+      state.commander.socialStats[stat2] = Math.max(state.commander.socialStats[stat2], fx2.rank);
     } else if (fx2.type === "resource") {
       state.resources[fx2.resource] += fx2.amount;
     }
@@ -1182,9 +1182,9 @@ function rankForPoints(points) {
   });
   return rank;
 }
-var socialRank = (state, stat) => state.commander.socialStats[stat];
-function addSocialPoints(commander, stat, amount) {
-  const before = commander.socialStats[stat];
+var socialRank = (state, stat2) => state.commander.socialStats[stat2];
+function addSocialPoints(commander, stat2, amount) {
+  const before = commander.socialStats[stat2];
   const points = commander.socialPoints ??= {
     authority: SOCIAL_THRESHOLDS[commander.socialStats.authority - 1] ?? 0,
     insight: SOCIAL_THRESHOLDS[commander.socialStats.insight - 1] ?? 0,
@@ -1192,15 +1192,15 @@ function addSocialPoints(commander, stat, amount) {
     cunning: SOCIAL_THRESHOLDS[commander.socialStats.cunning - 1] ?? 0
   };
   const floor = SOCIAL_THRESHOLDS[before - 1] ?? 0;
-  const next = Math.min(MAX_POINTS, Math.max(points[stat], floor) + amount);
-  const gained = next - Math.max(points[stat], floor);
-  points[stat] = next;
+  const next = Math.min(MAX_POINTS, Math.max(points[stat2], floor) + amount);
+  const gained = next - Math.max(points[stat2], floor);
+  points[stat2] = next;
   const rank = Math.max(before, rankForPoints(next));
-  commander.socialStats[stat] = rank;
+  commander.socialStats[stat2] = rank;
   return { rank, gained, rankedUp: rank > before };
 }
 function meetsSocialRequirements(state, requires) {
-  return Object.entries(requires).every(([stat, min]) => socialRank(state, stat) >= min);
+  return Object.entries(requires).every(([stat2, min]) => socialRank(state, stat2) >= min);
 }
 
 // src/engine/activities.ts
@@ -3460,14 +3460,14 @@ function unitStats(state, reg, unit) {
   for (const k of STATS) out[k] = Math.max(k === "crit" ? 0 : 1, Math.round(out[k] * factor));
   return out;
 }
-function unitStatSteps(state, reg, unit, stat) {
+function unitStatSteps(state, reg, unit, stat2) {
   const role = reg.roles.get(unit.roleId);
   if (!role) throw new Error(`Unknown role "${unit.roleId}" (unit ${unit.id})`);
   const growth = role.growth ?? ZERO;
   const steps = [];
-  let total = unit.baseStats[stat];
+  let total = unit.baseStats[stat2];
   steps.push({ source: "role", label: "Role base", total });
-  const grown = Math.floor(growth[stat] * (unit.level - 1));
+  const grown = Math.floor(growth[stat2] * (unit.level - 1));
   if (grown !== 0) {
     total += grown;
     steps.push({ source: "level", label: `Level ${unit.level}`, total });
@@ -3476,19 +3476,19 @@ function unitStatSteps(state, reg, unit, stat) {
   for (const { inst } of wornItems(state, reg, unit)) {
     const it = itemStats(reg, inst);
     if (!it) continue;
-    const flat = it.stats[stat] ?? 0;
+    const flat = it.stats[stat2] ?? 0;
     if (flat !== 0) {
       total += flat;
       steps.push({ source: "gear", label: `[[items:${inst.itemId}]]`, total });
     }
-    pct += it.statPct[stat] ?? 0;
+    pct += it.statPct[stat2] ?? 0;
   }
   const scaled2 = Math.round(total * (1 + pct / 100));
   if (scaled2 !== total) {
     total = scaled2;
     steps.push({ source: "gear", label: "Gear bonuses", total });
   }
-  if (stat === "spd") {
+  if (stat2 === "spd") {
     const penalty = armorSpdPenalty(state, reg, unit);
     if (penalty !== 0) {
       total += penalty;
@@ -3502,7 +3502,7 @@ function unitStatSteps(state, reg, unit, stat) {
     total = injured;
     steps.push({ source: "injury", label: `Injuries \xD7${stacks}`, total });
   }
-  const floor = stat === "crit" ? 0 : 1;
+  const floor = stat2 === "crit" ? 0 : 1;
   if (total < floor) {
     total = floor;
     steps.push({ source: "floor", label: "Minimum", total });
@@ -3907,21 +3907,21 @@ function activePassives(ctx2, cid, type, targetCid, skillId) {
   if (c.downed) return [];
   return c.passives.filter((p) => p.type === type && p.trigger === void 0 && checkCondition(ctx2, cid, p.when, targetCid, skillId)).map((p) => strain(c, p));
 }
-function effectiveStat(ctx2, cid, stat) {
+function effectiveStat(ctx2, cid, stat2) {
   const c = byCid(ctx2.cs, cid);
-  if (stat === "hp") return c.maxHp;
+  if (stat2 === "hp") return c.maxHp;
   let pct = 0;
-  for (const m of c.mods) if (m.stat === stat) pct += m.pct;
+  for (const m of c.mods) if (m.stat === stat2) pct += m.pct;
   for (const s of c.statuses) {
-    const v = ctx2.reg.statuses.get(s.id)?.mods?.[stat];
+    const v = ctx2.reg.statuses.get(s.id)?.mods?.[stat2];
     if (v) pct += v * s.stacks;
   }
   for (const e of activePassives(ctx2, cid, "stat")) {
-    if (e.stat === stat || e.stat === "all" && stat !== "crit") pct += e.pct + scaleValue(ctx2, cid, e.scale);
+    if (e.stat === stat2 || e.stat === "all" && stat2 !== "crit") pct += e.pct + scaleValue(ctx2, cid, e.scale);
   }
-  const base = c.base[stat];
-  if (stat === "crit") return Math.max(0, base + pct);
-  return Math.max(stat === "def" ? 0 : 1, Math.round(base * (1 + pct / 100)));
+  const base = c.base[stat2];
+  if (stat2 === "crit") return Math.max(0, base + pct);
+  return Math.max(stat2 === "def" ? 0 : 1, Math.round(base * (1 + pct / 100)));
 }
 function outgoingPct(ctx2, cid, targetCid) {
   const c = byCid(ctx2.cs, cid);
@@ -4128,9 +4128,9 @@ function runEffect(ctx2, ownerCid, effect, ev, keyBase) {
         const c = byCid(ctx2.cs, t);
         const pct = e.pct + scaleValue(ctx2, ownerCid, e.scale);
         const stats = e.stat === "all" ? ["atk", "def", "spd"] : [e.stat];
-        for (const stat of stats) {
-          if (stat === "hp") continue;
-          c.mods.push({ stat, pct, ...e.turns !== void 0 ? { turnsLeft: e.turns } : {}, source: ownerCid });
+        for (const stat2 of stats) {
+          if (stat2 === "hp") continue;
+          c.mods.push({ stat: stat2, pct, ...e.turns !== void 0 ? { turnsLeft: e.turns } : {}, source: ownerCid });
         }
       }
       break;
@@ -6525,15 +6525,15 @@ function missionStartCheck(draft, ctx2, unitIds) {
   }
   return null;
 }
-function talkDown(draft, ctx2, stat) {
+function talkDown(draft, ctx2, stat2) {
   const open2 = requireOpen(draft, "desertion");
-  if (stat !== "authority" && stat !== "empathy") throw new Error("Talk her down with Authority or Empathy.");
+  if (stat2 !== "authority" && stat2 !== "empathy") throw new Error("Talk her down with Authority or Empathy.");
   if (open2.talkTried) throw new Error("She has already heard you out: choose another answer.");
   const unit = draft.squad.find((u) => u.id === open2.unitId);
   const rel = draft.relations[open2.unitId];
   const t = TUNING.disloyalty.talkDown;
   const difficulty = t.baseRank + (rel.trust < t.lowTrust ? 1 : 0) + (unit.stress >= t.highStress ? 1 : 0);
-  const chance = clamp12(t.base + t.perRank * (socialRank(draft, stat) - difficulty), t.min, t.max);
+  const chance = clamp12(t.base + t.perRank * (socialRank(draft, stat2) - difficulty), t.min, t.max);
   const success = ctx2.rng.chance(chance);
   const events = [];
   if (success) {
@@ -6542,11 +6542,11 @@ function talkDown(draft, ctx2, stat) {
     events.push(...evaluateAutomatic(draft, ctx2.registries, open2.unitId));
     loyaltyRecord(draft, open2.unitId).nextCheckDay = draft.day + t.pauseDays;
     delete draft.disloyalty.open;
-    events.push({ type: "loyalty_talk_down", unitId: open2.unitId, stat, success, chance });
+    events.push({ type: "loyalty_talk_down", unitId: open2.unitId, stat: stat2, success, chance });
     events.push(...closeNight(draft, ctx2, open2));
   } else {
     open2.talkTried = true;
-    events.push({ type: "loyalty_talk_down", unitId: open2.unitId, stat, success, chance });
+    events.push({ type: "loyalty_talk_down", unitId: open2.unitId, stat: stat2, success, chance });
   }
   return events;
 }
@@ -7501,9 +7501,9 @@ registerAction("scene/order", (draft, payload, ctx2) => {
 });
 registerDayEndStep("director_tick", loyaltyDayStep);
 registerAction("loyalty/talk_down", (draft, payload, ctx2) => {
-  const stat = isObj15(payload) ? payload.stat : void 0;
-  if (stat !== "authority" && stat !== "empathy") throw new Error('loyalty/talk_down needs { stat: "authority" | "empathy" }');
-  return talkDown(draft, ctx2, stat);
+  const stat2 = isObj15(payload) ? payload.stat : void 0;
+  if (stat2 !== "authority" && stat2 !== "empathy") throw new Error('loyalty/talk_down needs { stat: "authority" | "empathy" }');
+  return talkDown(draft, ctx2, stat2);
 });
 registerAction("loyalty/let_go", (draft, _payload, ctx2) => letGo(draft, ctx2));
 registerAction("loyalty/take_back", (draft, _payload, ctx2) => takeBack(draft, ctx2));
@@ -12806,11 +12806,11 @@ function parseOption(raw, index, ctx2, bad) {
   }
   if (raw.requires !== void 0) {
     const r = raw.requires;
-    const stat = isObj17(r) ? r.socialStat ?? r.stat : void 0;
-    if (!isObj17(r) || !SOCIAL_STATS.includes(stat) || typeof r.rank !== "number" || !Number.isInteger(r.rank) || r.rank < 1 || r.rank > 5) {
+    const stat2 = isObj17(r) ? r.socialStat ?? r.stat : void 0;
+    if (!isObj17(r) || !SOCIAL_STATS.includes(stat2) || typeof r.rank !== "number" || !Number.isInteger(r.rank) || r.rank < 1 || r.rank > 5) {
       at("requires needs { socialStat, rank } with a rank from 1 to 5.");
       failed = true;
-    } else option.requires = { stat, rank: r.rank };
+    } else option.requires = { stat: stat2, rank: r.rank };
   }
   if (!failed && option.effects.length === 0) {
     at("An option needs at least one effect besides its check.");
@@ -14648,6 +14648,18 @@ function renderCombatScreen(host, ctx2) {
   };
 }
 
+// src/ui/analyze/mark.ts
+function analyzeNative(address, ctx2) {
+  const { tabindex: _tabindex, ...rest } = analyzeAttrs(address, ctx2);
+  return rest;
+}
+function analyzeAttrs(address, ctx2) {
+  const attrs = { "data-analyze": address };
+  if (ctx2) attrs["data-analyze-ctx"] = JSON.stringify(ctx2);
+  attrs.tabindex = "0";
+  return attrs;
+}
+
 // src/ui/inv/invTab.ts
 var STATS2 = ["hp", "atk", "def", "spd", "crit"];
 function refusal(state, reg, type, payload) {
@@ -14673,7 +14685,16 @@ function renderInvTab(host, ctx2) {
     const items = state.inventory.filter((i) => filter === "all" || slotOf(i) === filter);
     const current = state.inventory.find((i) => i.uid === selected2) ?? null;
     if (!current) selected2 = null;
-    const res = h("p", { class: "alius-inv-res" }, `CREDITS ${state.resources.credits} \xB7 SUPPLIES ${state.resources.supplies} \xB7 PLYX ${state.resources.plyx}`);
+    const resStat = (text2, address) => h("span", { class: "alius-stat", ...analyzeNative(address) }, text2);
+    const res = h(
+      "p",
+      { class: "alius-inv-res" },
+      resStat(`CREDITS ${state.resources.credits}`, "glossary:credits"),
+      " \xB7 ",
+      resStat(`SUPPLIES ${state.resources.supplies}`, "glossary:supplies"),
+      " \xB7 ",
+      resStat(`PLYX ${state.resources.plyx}`, "glossary:plyx")
+    );
     const filters = h(
       "div",
       { class: "alius-inv-filters" },
@@ -14691,18 +14712,19 @@ function renderInvTab(host, ctx2) {
           "button",
           {
             type: "button",
-            class: "alius-inv-item",
+            class: "alius-inv-item alius-option",
             "data-uid": i.uid,
             "aria-pressed": selected2 === i.uid ? "true" : "false",
+            ...analyzeNative(`items:${i.itemId}`),
             onclick: () => {
               selected2 = i.uid;
               render();
             }
           },
           h("span", { class: "alius-inv-name" }, nameOf7(i)),
-          h("span", { class: `alius-rarity alius-rarity-${i.rarity}` }, i.rarity),
+          h("span", { class: `alius-rarity alius-rarity-${i.rarity} alius-chip`, ...analyzeNative("glossary:rarity") }, i.rarity),
           h("span", {}, i.upgrade > 0 ? `+${i.upgrade}` : ""),
-          h("span", { class: "alius-dim" }, i.affixes.map((a) => String(reg.affixes.get(a)?.name ?? a)).join(", ")),
+          h("span", { class: "alius-dim" }, ...i.affixes.flatMap((a, k) => [...k > 0 ? [", "] : [], h("span", { class: "alius-chip", ...analyzeNative(`affixes:${a}`) }, String(reg.affixes.get(a)?.name ?? a))])),
           h("span", { class: "alius-dim" }, wearer ? `WORN BY ${wearer.displayName}` : "")
         );
       })
@@ -14721,7 +14743,7 @@ function renderInvTab(host, ctx2) {
     const theirs = worn && worn.uid !== item.uid ? itemStats(reg, worn)?.stats ?? {} : {};
     const deltas = STATS2.filter((k) => (mine[k] ?? 0) !== (theirs[k] ?? 0) || (mine[k] ?? 0) !== 0).map((k) => {
       const d = (mine[k] ?? 0) - (theirs[k] ?? 0);
-      return h("span", { class: d >= 0 ? "alius-delta-up" : "alius-delta-down", "data-stat": k }, `${upper(k)} ${d > 0 ? "+" : ""}${d}  `);
+      return h("span", { class: `${d >= 0 ? "alius-delta-up" : "alius-delta-down"} alius-stat`, "data-stat": k, ...analyzeNative(`glossary:stat_${k}`) }, `${upper(k)} ${d > 0 ? "+" : ""}${d}  `);
     });
     const picker = h(
       "select",
@@ -14775,8 +14797,9 @@ function renderInvTab(host, ctx2) {
       const cost = r.cost;
       return h("button", {
         type: "button",
-        class: "alius-btn",
+        class: "alius-btn alius-option",
         "data-recipe": r.id,
+        ...analyzeNative(`items:${r.itemId}`),
         disabled: reason !== null,
         title: reason ?? "Craft",
         onclick: () => ctx2.onCraft(r.id)
@@ -14787,11 +14810,11 @@ function renderInvTab(host, ctx2) {
       const up = refusal(state, reg, "item/upgrade", { uid: item.uid });
       const dis = refusal(state, reg, "item/dismantle", { uid: item.uid });
       itemButtons.push(
-        h("button", { type: "button", class: "alius-btn", "data-act": "upgrade", disabled: up !== null, title: up ?? "Upgrade", onclick: () => ctx2.onUpgrade(item.uid) }, `[UPGRADE +${item.upgrade + 1}]${up ? ` \u2014 ${up}` : ""}`),
-        h("button", { type: "button", class: "alius-btn", "data-act": "dismantle", disabled: dis !== null, title: dis ?? "Dismantle", onclick: () => ctx2.onDismantle(item.uid) }, `[DISMANTLE]${dis ? ` \u2014 ${dis}` : ""}`),
+        h("button", { type: "button", class: "alius-btn alius-option", "data-act": "upgrade", ...analyzeNative("glossary:workshop"), disabled: up !== null, title: up ?? "Upgrade", onclick: () => ctx2.onUpgrade(item.uid) }, `[UPGRADE +${item.upgrade + 1}]${up ? ` \u2014 ${up}` : ""}`),
+        h("button", { type: "button", class: "alius-btn alius-option", "data-act": "dismantle", ...analyzeNative("glossary:workshop"), disabled: dis !== null, title: dis ?? "Dismantle", onclick: () => ctx2.onDismantle(item.uid) }, `[DISMANTLE]${dis ? ` \u2014 ${dis}` : ""}`),
         ...item.affixes.map((a, i) => {
           const why = refusal(state, reg, "item/reroll", { uid: item.uid, affixIndex: i });
-          return h("button", { type: "button", class: "alius-btn", "data-act": "reroll", "data-index": String(i), disabled: why !== null, title: why ?? "Reroll", onclick: () => ctx2.onReroll(item.uid, i) }, `[REROLL ${upper(String(reg.affixes.get(a)?.name ?? a))}]${why ? ` \u2014 ${why}` : ""}`);
+          return h("button", { type: "button", class: "alius-btn alius-option", "data-act": "reroll", "data-index": String(i), ...analyzeNative("glossary:workshop"), disabled: why !== null, title: why ?? "Reroll", onclick: () => ctx2.onReroll(item.uid, i) }, `[REROLL ${upper(String(reg.affixes.get(a)?.name ?? a))}]${why ? ` \u2014 ${why}` : ""}`);
         })
       );
     }
@@ -16635,7 +16658,7 @@ function renderCalibration(host, ctx2) {
           h("span", { class: "alius-field-label" }, `${label2} (${list4.length}/${cap4})`),
           h("div", { class: "alius-chips" }, ...list4.map((t) => h(
             "span",
-            { class: "alius-chip" },
+            { class: "alius-tagchip" },
             t,
             h("button", { type: "button", "aria-label": `Remove ${t}`, onclick: () => onUpdate({ [key]: list4.filter((x) => x !== t) }) }, "\xD7")
           ))),
@@ -16943,9 +16966,10 @@ function renderSkillTree(host, ctx2) {
     const afford2 = st === "available" && reason === "READY";
     return h("button", {
       type: "button",
-      class: "alius-tree-node",
+      class: "alius-tree-node alius-option",
       "data-node": n.id,
       "data-state": st,
+      ...analyzeNative(`skills:${n.grants.upgrade?.skillId ?? n.grants.skill ?? ""}`),
       title: `${reason} \u2014 ${desc} (${n.cost} pt)`,
       "aria-disabled": st === "owned" || !afford2 ? "true" : null,
       onclick: () => {
@@ -17016,7 +17040,7 @@ function defectBlock(reg, d) {
   return h(
     "div",
     { class: "alius-defect" },
-    h("strong", {}, String(def.name)),
+    h("strong", { class: "alius-chip", ...analyzeNative(`defects:${d.id}`) }, String(def.name)),
     h("span", { class: "alius-dim" }, ` [${String(def.category)}]`),
     d.origin ? line2("Origin", d.origin) : null,
     line2("Lore", String(def.lore)),
@@ -17032,13 +17056,19 @@ function relationLine(unit, state, ctx2) {
   if (!rel) return null;
   const raw = ctx2.settings().showRawValues;
   const num4 = (n) => raw ? ` (${n})` : "";
-  const parts = [`${String(ctx2.registries.relationshipStates.get(rel.stateId)?.name ?? rel.stateId).toUpperCase()}`, `TRUST ${trustBand(rel.trust).toUpperCase()}${num4(rel.trust)}`];
+  const live = { unitId: unit.id };
+  const chip = (text2, address, data) => h("span", { class: "alius-chip", ...analyzeNative(address, data) }, text2);
+  const parts = [
+    chip(`${String(ctx2.registries.relationshipStates.get(rel.stateId)?.name ?? rel.stateId).toUpperCase()}`, `relationshipStates:${rel.stateId}`),
+    chip(`TRUST ${trustBand(rel.trust).toUpperCase()}${num4(rel.trust)}`, "glossary:trust", live)
+  ];
   if (unit.kind !== "grunt") {
-    parts.push(`AFFINITY ${affinityBand(rel.affinity).toUpperCase()}${num4(rel.affinity)}`);
-    if (intimacyOf(state).romance) parts.push(`ATTRACTION ${attractionBand(rel.attraction).toUpperCase()}${num4(rel.attraction)}`);
+    parts.push(chip(`AFFINITY ${affinityBand(rel.affinity).toUpperCase()}${num4(rel.affinity)}`, "glossary:affinity", live));
+    if (intimacyOf(state).romance) parts.push(chip(`ATTRACTION ${attractionBand(rel.attraction).toUpperCase()}${num4(rel.attraction)}`, "glossary:attraction", live));
   }
-  return h("p", { class: "alius-relation" }, parts.join(" \xB7 "));
+  return h("p", { class: "alius-relation" }, ...joinWith(parts, " \xB7 "));
 }
+var joinWith = (items, sep) => items.flatMap((item, i) => i === 0 ? [item] : [sep, item]);
 var SLOTS = ["weapon", "upper", "lower"];
 function effectiveStats(unit, ctx2, state) {
   try {
@@ -17060,7 +17090,7 @@ function equipmentBlock(unit, ctx2, state) {
       text2 = "UNKNOWN";
       flag = "UNKNOWN";
     } else {
-      text2 = `${String(tpl.name)} [${inst.rarity}]${inst.upgrade > 0 ? ` +${inst.upgrade}` : ""}`;
+      text2 = h("span", { class: "alius-chip", ...analyzeNative(`items:${inst.itemId}`) }, `${String(tpl.name)} [${inst.rarity}]${inst.upgrade > 0 ? ` +${inst.upgrade}` : ""}`);
       flag = canEquip(reg, unit, inst);
     }
     const options2 = state.inventory.filter((i) => reg.items.get(i.itemId)?.slot === slot2 && canEquip(reg, unit, i) === null);
@@ -17081,7 +17111,7 @@ function equipmentBlock(unit, ctx2, state) {
     return h(
       "div",
       { class: "alius-equip-row", "data-slot": slot2 },
-      h("span", {}, `${slot2.toUpperCase()}: ${text2}`),
+      h("span", {}, `${slot2.toUpperCase()}: `, text2),
       flag ? h("span", { class: "alius-equip-flag" }, ` ${flag}`) : null,
       picker
     );
@@ -17105,7 +17135,7 @@ function loadoutBlock(unit, ctx2) {
       sync();
       ctx2.onSetLoadout?.(unit.id, boxes.filter((b) => b.checked).map((b) => b.getAttribute("data-skill")));
     });
-    return h("label", {}, box, ` ${skillById(reg, id)?.name ?? id}`);
+    return h("label", { class: "alius-option", ...analyzeNative(`skills:${id}`) }, box, ` ${skillById(reg, id)?.name ?? id}`);
   });
   sync();
   return h("div", { class: "alius-loadout", "data-unit": unit.id }, h("p", { class: "alius-dim" }, `LOADOUT ${chosen.size}/${size}`), ...rows);
@@ -17153,7 +17183,7 @@ function arcBlock(unit, d, ctx2) {
     }, refused ? `[ ${p.path.toUpperCase()} \u2014 WITH LEASH ]` : `[ ${p.path.toUpperCase()} ]`);
     return h(
       "div",
-      { class: "alius-arc-path", "data-path": p.path },
+      { class: "alius-arc-path alius-option", "data-path": p.path, ...analyzeNative(`glossary:arc_${p.path}`) },
       h("strong", {}, p.path.toUpperCase()),
       h("span", {}, ` \u2014 ${p.text}`),
       h("span", { class: "alius-dim" }, ` \xB7 ${costText(p.cost)}`),
@@ -17173,7 +17203,7 @@ function leashMenu(unit, ctx2) {
     "details",
     { class: "alius-leash-menu", "data-leash-menu": unit.id },
     h("summary", {}, "[ LEASH ]"),
-    ...kinds2.map((kind) => h("button", { type: "button", class: "alius-btn", "data-leash": kind, onclick: () => ctx2.onLeash(unit.id, kind) }, kind.toUpperCase()))
+    ...kinds2.map((kind) => h("button", { type: "button", class: "alius-btn alius-option", "data-leash": kind, ...analyzeNative(`glossary:leash_${kind}`), onclick: () => ctx2.onLeash(unit.id, kind) }, kind.toUpperCase()))
   );
 }
 function unitBlock(unit, ctx2, state) {
@@ -17184,8 +17214,12 @@ function unitBlock(unit, ctx2, state) {
   const sigTpl = reg.signatures.get(unit.signatureSkill.templateId);
   const values = VALUE_AXES.map((axis) => {
     const v = unit.values[axis];
-    return `${axis.toUpperCase()}: ${raw ? v > 0 ? `+${v}` : String(v) : valueBand(v)}`;
+    return h("span", { class: "alius-stat", ...analyzeNative(`glossary:value_${axis}`) }, `${axis.toUpperCase()}: ${raw ? v > 0 ? `+${v}` : String(v) : valueBand(v)}`);
   });
+  const live = { unitId: unit.id };
+  const chip = (text2, address, data) => h("span", { class: "alius-chip", ...analyzeNative(address, data) }, text2);
+  const stat2 = (text2, address, data) => h("span", { class: "alius-stat", ...analyzeNative(address, data) }, text2);
+  const roleEntry = reg.roles.get(unit.roleId);
   return h(
     "article",
     { class: "alius-unit" },
@@ -17195,24 +17229,31 @@ function unitBlock(unit, ctx2, state) {
       { class: "alius-unit-body" },
       h("h3", { class: "alius-unit-name" }, unit.displayName),
       unit.kind === "grunt" ? h("p", { class: "alius-dim" }, `GRUNT ${unit.designation ?? ""}`.trimEnd()) : null,
-      h("p", {}, `${nameOf6(reg.roles.get(unit.roleId), unit.roleId)} \xB7 LVL ${unit.level}`),
-      h("p", { class: "alius-xp" }, `XP ${unit.xp}/${xpToNext(unit.level)} \xB7 SKILL POINTS ${unit.skillPoints}`),
+      h("p", {}, roleEntry ? chip(nameOf6(roleEntry, unit.roleId), `roles:${unit.roleId}`) : nameOf6(roleEntry, unit.roleId), ` \xB7 LVL ${unit.level}`),
+      h("p", { class: "alius-xp" }, chip(`XP ${unit.xp}/${xpToNext(unit.level)}`, "glossary:level_xp"), " \xB7 ", chip(`SKILL POINTS ${unit.skillPoints}`, "glossary:skill_points")),
       unit.breakdown ? h("p", { class: "alius-equip-flag" }, `BREAKDOWN: ${String(reg.defects.get(unit.breakdown.defectId)?.breakdown?.name ?? unit.breakdown.defectId)}`) : null,
       gone ? h("p", { class: "alius-equip-flag" }, `STATUS: ${unit.status.toUpperCase()}`) : null,
       relationLine(unit, state, ctx2),
-      !gone && state.relations[unit.id] ? h("p", { class: "alius-loyalty" }, `LOYALTY: ${state.relations[unit.id].loyaltyBand.toUpperCase()}`) : null,
+      !gone && state.relations[unit.id] ? h("p", { class: "alius-loyalty" }, chip(`LOYALTY: ${state.relations[unit.id].loyaltyBand.toUpperCase()}`, "glossary:loyalty_band")) : null,
+      gone ? null : h("p", { class: "alius-stress" }, chip(`STRESS ${stressBand2(unit.stress).toUpperCase()}${raw ? ` (${unit.stress})` : ""}`, "glossary:stress", live)),
       gone ? null : leashMenu(unit, ctx2),
       unit.bio ? h("p", { class: "alius-dim" }, unit.bio) : null,
-      h("p", {}, `HP ${s.hp} \xB7 ATK ${s.atk} \xB7 DEF ${s.def} \xB7 SPD ${s.spd} \xB7 CRIT ${s.crit}%`),
+      h("p", {}, ...joinWith([
+        stat2(`HP ${s.hp}`, "glossary:stat_hp", live),
+        stat2(`ATK ${s.atk}`, "glossary:stat_atk", live),
+        stat2(`DEF ${s.def}`, "glossary:stat_def", live),
+        stat2(`SPD ${s.spd}`, "glossary:stat_spd", live),
+        stat2(`CRIT ${s.crit}%`, "glossary:stat_crit", live)
+      ], " \xB7 ")),
       equipmentBlock(unit, ctx2, state),
       progressionBlock(unit, ctx2, state),
       h("h4", {}, "DEFECTS"),
       ...unit.defects.flatMap((d) => [defectBlock(reg, d), gone ? null : arcBlock(unit, d, ctx2)]),
       h("h4", {}, "VALUES"),
-      h("p", { class: "alius-values" }, values.join(" \xB7 ")),
+      h("p", { class: "alius-values" }, ...joinWith(values, " \xB7 ")),
       ...unit.kind === "grunt" ? [] : [
         h("h4", {}, "SIGNATURE"),
-        h("p", {}, h("strong", {}, unit.signatureSkill.name), ` \u2014 ${unit.signatureSkill.description}`),
+        h("p", {}, sigTpl ? h("strong", { class: "alius-chip", ...analyzeNative(`signatures:${unit.signatureSkill.templateId}`) }, unit.signatureSkill.name) : h("strong", {}, unit.signatureSkill.name), ` \u2014 ${unit.signatureSkill.description}`),
         h("p", { class: "alius-dim" }, `Template: ${nameOf6(sigTpl, unit.signatureSkill.templateId)} \u2014 ${sigTpl ? String(sigTpl.mechanic) : ""}`)
       ],
       // Re-sync overwrites numbers on a running campaign, so it follows the SYS edit lock.
@@ -17629,7 +17670,7 @@ function renderNodeMap(host, view) {
       const known = cell.text !== "[ ]";
       const name = known ? view.labels?.[cell.nodeId] ?? "Known" : "Unknown";
       const status = cell.state === "option" ? "reachable" : cell.state === "ahead" ? "ahead" : cell.state;
-      const classes = ["alius-node", `alius-${cell.state}`, ...cell.state === "visited" || cell.state === "current" ? ["alius-path"] : []].join(" ");
+      const classes = ["alius-node", cell.state === "option" ? "alius-reachable" : `alius-${cell.state}`, ...cell.state === "visited" || cell.state === "current" ? ["alius-path"] : []].join(" ");
       const attrs = { class: classes, "data-node": cell.nodeId, "aria-label": `${name}, ${status}` };
       col.append(cell.state === "option" ? h("button", { ...attrs, type: "button", onclick: () => view.onMove(cell.nodeId) }, cell.text) : h("span", attrs, cell.text));
     }
@@ -18338,7 +18379,7 @@ function facilityCard(state, f, ctx2) {
   const levels = facilityLevels(ctx2.registries, f.id);
   const level = facilityLevel(state, f.id);
   const pending2 = pendingOf(state, f.id);
-  const card2 = h("article", { class: "alius-facility", "data-facility": f.id }, h("h3", {}, `${String(f.name)} \u2014 LEVEL ${level}/${levels.length}`), h("p", { class: "alius-dim" }, String(f.summary)));
+  const card2 = h("article", { class: "alius-facility", "data-facility": f.id }, h("h3", {}, `${String(f.name)} \u2014 `, h("span", { class: "alius-stat", ...analyzeNative(`facilities:${f.id}`) }, `LEVEL ${level}/${levels.length}`)), h("p", { class: "alius-dim" }, String(f.summary)));
   if (pending2) card2.append(h("p", {}, `UPGRADING TO L${pending2.toLevel} ^ ${pending2.daysLeft}d`));
   if (level >= levels.length) {
     card2.append(h("p", { class: "alius-dim" }, "MAX LEVEL"));
@@ -18349,7 +18390,7 @@ function facilityCard(state, f, ctx2) {
   card2.append(
     h("p", {}, `NEXT: ${up.credits} CR \xB7 ${up.plyx} PLYX \xB7 ${up.days} DAYS`),
     ...reason ? [h("p", { class: "alius-dim alius-reason" }, reason)] : [],
-    h("button", { type: "button", class: "alius-btn", "data-upgrade": f.id, disabled: reason !== null, onclick: () => ctx2.onUpgrade(f.id) }, "[ UPGRADE ]")
+    h("button", { type: "button", class: "alius-btn alius-option", "data-upgrade": f.id, ...analyzeNative(`facilities:${f.id}`), disabled: reason !== null, onclick: () => ctx2.onUpgrade(f.id) }, "[ UPGRADE ]")
   );
   return card2;
 }
@@ -18375,8 +18416,9 @@ function roster(state, ctx2) {
           "button",
           {
             type: "button",
-            class: "alius-btn",
+            class: "alius-btn alius-option",
             "data-roster-toggle": u.id,
+            ...analyzeNative("glossary:roster"),
             disabled: full,
             title: full ? `The active roster is full (${TUNING.rosterActiveMax})` : "",
             onclick: () => ctx2.onSetRoster(on ? active.filter((id) => id !== u.id) : [...active, u.id])
@@ -18388,7 +18430,7 @@ function roster(state, ctx2) {
   }
   const reason = checkRecruit(state);
   section.append(
-    h("button", { type: "button", class: "alius-btn", "data-recruit": "", disabled: reason !== null, onclick: ctx2.onRecruit }, `[ RECRUIT GRUNT (${TUNING.recruit.credits} CR) ]`),
+    h("button", { type: "button", class: "alius-btn alius-option", "data-recruit": "", ...analyzeNative("glossary:grunt"), disabled: reason !== null, onclick: ctx2.onRecruit }, `[ RECRUIT GRUNT (${TUNING.recruit.credits} CR) ]`),
     ...reason ? [h("p", { class: "alius-dim alius-reason" }, reason)] : []
   );
   return section;
@@ -18424,7 +18466,7 @@ function drawProposalChips(host, state, pick, onAnswer) {
       "div",
       { class: "alius-chip-group", "data-proposal": p.id },
       h("span", { class: "alius-chip-label" }, p.from === "unit" ? `${name} PROPOSES: ${kindLabel(p.kind)}` : `${name}: ${kindLabel(p.kind)} \u2014 OPENLY OR SECRETLY?`),
-      ...buttons.map(([text2, answer]) => h("button", { type: "button", class: "alius-btn alius-chip", onclick: () => onAnswer(p.id, answer) }, text2))
+      ...buttons.map(([text2, answer]) => h("button", { type: "button", class: "alius-btn alius-tagchip", onclick: () => onAnswer(p.id, answer) }, text2))
     ));
   }
 }
@@ -19411,7 +19453,7 @@ function facilityLevel2(label2, value) {
 }
 function statLines(stats, format) {
   if (!stats || typeof stats !== "object") return [];
-  return Object.entries(stats).filter(([, n]) => isNum(n)).map(([stat, n]) => format(stat.toUpperCase(), n));
+  return Object.entries(stats).filter(([, n]) => isNum(n)).map(([stat2, n]) => format(stat2.toUpperCase(), n));
 }
 function effectsFor(registry2, entry, reg) {
   const e = entry;
@@ -19427,7 +19469,7 @@ function effectsFor(registry2, entry, reg) {
     case "statuses": {
       const turns = isNum(e.turns) && isNum(e.maxStacks) ? `Lasts ${e.turns} ${plural(e.turns, "turn")}, up to ${e.maxStacks} ${plural(e.maxStacks, "stack")}` : null;
       return compact([
-        ...statLines(e.mods, (stat, n) => `${pctSigned(n)} ${stat} per stack`),
+        ...statLines(e.mods, (stat2, n) => `${pctSigned(n)} ${stat2} per stack`),
         isNum(e.incomingPct) ? `${pctSigned(e.incomingPct)} damage taken` : null,
         ...combat(e.tick, reg).map((l) => `Each turn: ${l}`),
         ...Array.isArray(e.flags) ? e.flags.map((f) => cap2(humanize(String(f)))) : [],
@@ -19435,10 +19477,10 @@ function effectsFor(registry2, entry, reg) {
       ]);
     }
     case "items":
-      return compact([...statLines(e.baseStats, (stat, n) => `${signed(n)} ${stat}`), ...combat(e.effects, reg)]);
+      return compact([...statLines(e.baseStats, (stat2, n) => `${signed(n)} ${stat2}`), ...combat(e.effects, reg)]);
     case "affixes":
       return compact([
-        ...statLines(e.statPct, (stat, n) => `${pctSigned(n)} ${stat}`),
+        ...statLines(e.statPct, (stat2, n) => `${pctSigned(n)} ${stat2}`),
         ...combat(e.effects, reg),
         e.drawback === true ? "Drawback" : null
       ]);
@@ -19654,9 +19696,9 @@ var stressProvider = (subject, env, knowledge) => {
   }
   return { lines };
 };
-function combatLines(state, env, unit, stat) {
+function combatLines(state, env, unit, stat2) {
   const reg = env.registries;
-  const touches = (e) => e.type === "stat" && (e.stat === stat || e.stat === "all") || e.type === "outgoing" && stat === "atk" || e.type === "incoming" && stat === "def";
+  const touches = (e) => e.type === "stat" && (e.stat === stat2 || e.stat === "all") || e.type === "outgoing" && stat2 === "atk" || e.type === "incoming" && stat2 === "def";
   const out = [];
   const add = (list4, source) => {
     if (!Array.isArray(list4)) return;
@@ -19673,15 +19715,15 @@ function combatLines(state, env, unit, stat) {
   }
   return out;
 }
-var statProvider = (stat) => (subject, env) => {
+var statProvider = (stat2) => (subject, env) => {
   const state = env.state;
   const unit = typeof subject.data.unitId === "string" ? state.squad.find((u) => u.id === subject.data.unitId) : void 0;
   if (!unit) return null;
-  const steps = unitStatSteps(state, env.registries, unit, stat);
-  const total = unitStats(state, env.registries, unit)[stat];
-  const lines = [`${unit.displayName}: ${stat.toUpperCase()} ${total}`];
+  const steps = unitStatSteps(state, env.registries, unit, stat2);
+  const total = unitStats(state, env.registries, unit)[stat2];
+  const lines = [`${unit.displayName}: ${stat2.toUpperCase()} ${total}`];
   steps.forEach((step, i) => lines.push(i === 0 ? `${step.label} ${step.total}` : `${step.label} \u2192 ${step.total}`));
-  const combat2 = combatLines(state, env, unit, stat);
+  const combat2 = combatLines(state, env, unit, stat2);
   if (combat2.length > 0) lines.push("In combat:", ...combat2);
   return { lines };
 };
@@ -19734,8 +19776,8 @@ var SOCIAL_STATS3 = ["authority", "insight", "empathy", "cunning"];
 var SCALES = ["minor", "major", "defining"];
 function tag(value) {
   if (!value || typeof value !== "object") return null;
-  const { stat, rank } = value;
-  return typeof stat === "string" && SOCIAL_STATS3.includes(stat) && typeof rank === "number" && Number.isFinite(rank) ? { stat, rank } : null;
+  const { stat: stat2, rank } = value;
+  return typeof stat2 === "string" && SOCIAL_STATS3.includes(stat2) && typeof rank === "number" && Number.isFinite(rank) ? { stat: stat2, rank } : null;
 }
 var decisionProvider = (subject, env) => {
   const state = env.state;
@@ -19754,7 +19796,7 @@ function registerCoreProviders() {
   registered = true;
   for (const axis of ["trust", "affinity", "attraction"]) registerAnalyzeProvider(`glossary:${axis}`, axisProvider(axis));
   registerAnalyzeProvider("glossary:stress", stressProvider);
-  for (const stat of STATS) registerAnalyzeProvider(`glossary:stat_${stat}`, statProvider(stat));
+  for (const stat2 of STATS) registerAnalyzeProvider(`glossary:stat_${stat2}`, statProvider(stat2));
   for (const resource of ["credits", "supplies", "plyx"]) registerAnalyzeProvider(`glossary:${resource}`, resourceProvider(resource));
   registerAnalyzeProvider("setting", settingProvider);
   registerAnalyzeProvider("glossary:decision_option", decisionProvider);
@@ -20280,6 +20322,7 @@ function createRouter() {
 }
 
 // src/ui/shell/status.ts
+var stat = (cls, text2, address) => h("span", { class: `${cls} alius-stat`, ...analyzeAttrs(address) }, text2);
 function renderStatusHeader(host, state) {
   host.replaceChildren();
   if (!state) {
@@ -20290,11 +20333,19 @@ function renderStatusHeader(host, state) {
   const injuredDays = (state.commander.injuredUntilDay ?? 0) - state.day;
   const shortage = state.calendar.shortageStreak ?? 0;
   const parts = [
-    h("span", { class: "alius-clock" }, clockText(state.day, state.slot)),
-    h("span", { class: "alius-resources" }, `CR ${r.credits} \xB7 SUP ${r.supplies} \xB7 PLYX ${r.plyx}`),
-    h("span", { class: "alius-leash" }, `LEASH ${state.leash.authorizationsLeft}`),
-    injuredDays > 0 ? h("span", { class: "alius-warn" }, `INJURED ${injuredDays}d`) : null,
-    shortage > 0 ? h("span", { class: "alius-warn" }, `SHORTAGE ${shortage}d`) : null
+    stat("alius-clock", clockText(state.day, state.slot), "glossary:slots"),
+    h(
+      "span",
+      { class: "alius-resources" },
+      stat("alius-res", `CR ${r.credits}`, "glossary:credits"),
+      " \xB7 ",
+      stat("alius-res", `SUP ${r.supplies}`, "glossary:supplies"),
+      " \xB7 ",
+      stat("alius-res", `PLYX ${r.plyx}`, "glossary:plyx")
+    ),
+    stat("alius-leash", `LEASH ${state.leash.authorizationsLeft}`, "glossary:leash"),
+    injuredDays > 0 ? stat("alius-warn", `INJURED ${injuredDays}d`, "glossary:commander_injury") : null,
+    shortage > 0 ? stat("alius-warn", `SHORTAGE ${shortage}d`, "glossary:upkeep") : null
   ];
   host.append(...parts.filter((p) => p !== null));
 }
@@ -21241,7 +21292,7 @@ function createApp(st, deps) {
       leashLeft: s.leash.authorizationsLeft,
       canFight: open2.kind === "mutiny" && loyalUnits(s, open2.unitId).length > 0,
       canTakeBack: s.squad.filter(isLiving).length >= s.roster.capacity ? `The barracks are full (${s.roster.capacity} beds).` : null,
-      onTalk: (stat) => answer("loyalty/talk_down", { stat }),
+      onTalk: (stat2) => answer("loyalty/talk_down", { stat: stat2 }),
       onLetGo: () => answer("loyalty/let_go"),
       onSuppress: () => void api.fileLeash("suppress", open2.unitId).then(() => afterConfrontation(close)),
       onFight: () => fightMutiny(open2.unitId),

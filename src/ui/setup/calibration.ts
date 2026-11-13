@@ -202,7 +202,7 @@ export function renderCalibration(host: HTMLElement, ctx: CalibrationCtx): void 
         return h('div', { class: 'alius-tags' },
           h('span', { class: 'alius-field-label' }, `${label} (${list.length}/${cap})`),
           h('div', { class: 'alius-chips' }, ...list.map((t) =>
-            h('span', { class: 'alius-chip' }, t,
+            h('span', { class: 'alius-tagchip' }, t,
               h('button', { type: 'button', 'aria-label': `Remove ${t}`, onclick: () => onUpdate({ [key]: list.filter((x) => x !== t) } as CalibrationPatch) }, '×')))),
           input,
           h('button', { type: 'button', class: 'alius-btn', 'data-add-tag': key, onclick: add }, 'Add'));

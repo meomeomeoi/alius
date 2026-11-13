@@ -523,12 +523,12 @@
   margin: 4px 0;
 }
 
-#alius-shell .alius-chip {
+#alius-shell .alius-tagchip {
   border: 1px solid var(--alius-dim);
   padding: 0 4px 0 6px;
 }
 
-#alius-shell .alius-chip button {
+#alius-shell .alius-tagchip button {
   background: transparent;
   color: var(--alius-fg);
   border: 0;
@@ -1189,7 +1189,7 @@
 .alius-nodecol { display: flex; flex-direction: column; gap: 0.2em; }
 .alius-node { font-family: inherit; background: none; border: 0; color: inherit; padding: 0 0.1em; opacity: 0.55; }
 .alius-node.alius-path { opacity: 1; font-weight: bold; text-shadow: 0 0 4px currentColor; }
-button.alius-node.alius-option { opacity: 1; cursor: pointer; border: 1px dashed currentColor; }
+button.alius-node.alius-reachable { opacity: 1; cursor: pointer; border: 1px dashed currentColor; }
 .alius-nodelink { opacity: 0.5; white-space: pre; }
 .alius-party-unit { margin: 0.2em 0; }
 .alius-planner-unit { margin: 0.2em 0; }
@@ -1404,4 +1404,13 @@ button.alius-node.alius-option { opacity: 1; cursor: pointer; border: 1px dashed
   #alius-shell .alius-analyze-wipe {
     animation: none;
   }
+}
+
+/* things the analysis tool can explain: a help cursor, and no browser callout on a touch long-press */
+#alius-shell [data-analyze]:not(button):not(label) {
+  cursor: help;
+}
+
+#alius-shell [data-analyze] {
+  -webkit-touch-callout: none;
 }
