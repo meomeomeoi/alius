@@ -15,6 +15,7 @@ import './engine/actions/arc'; // registers arc/decide and the medbay arc steps 
 import './engine/actions/items'; // registers item/* actions and the workshop hook
 import './engine/actions/commander'; // registers commander/seed, set_profile and review_done (P7)
 import './llm/calls/profileImport'; // registers the profile_import call type
+import './llm/calls/commanderImport'; // registers the commander_import call type (P7)
 import { generateVignette } from './llm/calls/activityVignette'; // registers the activity_vignette call type
 import { generateEnemyFlavor, generateGruntFlavor } from './llm/calls/flavor'; // registers the flavor call type
 import type { ContentError, Registries } from './content/types';

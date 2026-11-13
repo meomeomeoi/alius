@@ -22,6 +22,7 @@ export class FakeStAdapter implements StAdapter {
   members: MemberInfo[] = [];
   cards = new Map<string, CardInfo>();
   personaName = 'User';
+  personaDescription = '';
   characters: CharacterSummary[] = [];
   groups = new Map<string, { name: string; members: string[] }>();
   lorebooks = new Map<string, Lorebook>();
@@ -145,6 +146,10 @@ export class FakeStAdapter implements StAdapter {
 
   getCharacterCard(avatar: string): CardInfo | null {
     return this.cards.get(avatar) ?? null;
+  }
+
+  getPersonaDescription(): string {
+    return this.personaDescription;
   }
 
   getPersonaName(): string {

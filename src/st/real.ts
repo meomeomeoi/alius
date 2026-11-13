@@ -16,6 +16,8 @@ import { reasoningPayload } from './reasoning';
 interface StContext {
   chatId?: string;
   name1?: string;
+  /** `power_user`: `persona_description` is the active persona's text (checked against SillyTavern's st-context.js and power-user.js). */
+  powerUserSettings?: { persona_description?: unknown };
   chat: unknown[];
   stopGeneration(): void;
   updateMessageBlock(messageId: number, message: unknown): void;
@@ -180,6 +182,11 @@ export class RealStAdapter implements StAdapter {
 
   getPersonaName(): string {
     return String(ctx().name1 ?? '');
+  }
+
+  getPersonaDescription(): string {
+    const d = ctx().powerUserSettings?.persona_description;
+    return typeof d === 'string' ? d : '';
   }
 
   listCharacters(): CharacterSummary[] {

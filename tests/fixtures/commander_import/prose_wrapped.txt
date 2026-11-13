@@ -1,0 +1,7 @@
+Sure! Here is the commander profile you asked for:
+
+```json
+{ "strength": "Average", "endurance": "Hardy", "reflexes": "Quick", "expression": "Feminine", "seasoning": "Young", "traits": [{ "id": "silver_tongue", "reason": "Talks her way out of anything." }], "notes": "ok" }
+```
+
+Let me know if you want changes!

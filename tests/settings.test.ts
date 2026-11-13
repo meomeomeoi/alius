@@ -14,7 +14,7 @@ describe('settings', () => {
     expect(s.budgets).toEqual({
       profile_import: 1500, intent_extract: 600, scene_summary: 800, dilemma_generate: 1000,
       director_tick: 1200, flavor: 400, dm_reply: 300, expedition_recap: 700, emotion_pick: 50, ping: 100,
-      activity_vignette: 150, chronicle_compact: 400,
+      activity_vignette: 150, chronicle_compact: 400, commander_import: 600,
     });
     expect(Object.keys(s.budgets).sort()).toEqual([...CALL_TYPE_IDS].sort());
     // and written back so SillyTavern persists them

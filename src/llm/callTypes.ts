@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const CALL_TYPE_IDS = [
   'profile_import', 'intent_extract', 'scene_summary', 'dilemma_generate', 'director_tick',
-  'flavor', 'dm_reply', 'expedition_recap', 'emotion_pick', 'activity_vignette', 'chronicle_compact', 'ping',
+  'flavor', 'dm_reply', 'expedition_recap', 'emotion_pick', 'activity_vignette', 'chronicle_compact', 'commander_import', 'ping',
 ] as const;
 
 export type CallTypeId = (typeof CALL_TYPE_IDS)[number];

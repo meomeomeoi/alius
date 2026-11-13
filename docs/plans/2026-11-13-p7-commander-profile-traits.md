@@ -322,9 +322,9 @@ docs/** (Task 19), tests/** mirror src
   - `sanitizeCommanderImport(raw, reg): { setup: CommanderSetup; reasons: Record<string, string>; notes: string }` — descriptor → value (case-insensitive; unknown → default), each body ≤ 4, then while spent > 7 lower the highest (ties: reflexes, endurance, strength); traits: known regular ids, unique, ≤ 2, first of an exclusive pair kept.
   - `importCommander(st, deps): Promise<{ kind: 'ok'; result } | { kind: 'manual'; reason: string }>` — empty persona or no profile → `manual` (same fail-soft path as `importProfile`).
 
-- [ ] **Step 1: Write the failing tests** — `valid fixture maps descriptors`; `over_pool 5/5/5 becomes 4/3/3`; `hostile: unknown and special trait ids are dropped`; `prose_wrapped parses`; `truncated keeps complete fields or falls back to manual`; `no mechanic profile is manual mode`; `the prompt marks persona text as data`.
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → green.
-- [ ] **Step 5: Commit** `feat(llm): commander_import from the persona`.
+- [x] **Step 1: Write the failing tests** — `valid fixture maps descriptors`; `over_pool 5/5/5 becomes 4/3/3`; `hostile: unknown and special trait ids are dropped`; `prose_wrapped parses`; `truncated keeps complete fields or falls back to manual`; `no mechanic profile is manual mode`; `the prompt marks persona text as data`.
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → green.
+- [x] **Step 5: Commit** `feat(llm): commander_import from the persona`.
 
 ---
 

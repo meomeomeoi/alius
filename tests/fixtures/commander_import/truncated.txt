@@ -1,0 +1,1 @@
+{ "strength": "Strong", "endurance": "Hardy", "reflexes": "Quick", "expression": "Masc

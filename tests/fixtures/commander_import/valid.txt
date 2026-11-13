@@ -1,0 +1,12 @@
+{
+  "strength": "Strong",
+  "endurance": "average",
+  "reflexes": "Slow",
+  "expression": "Androgynous",
+  "seasoning": "Seasoned",
+  "traits": [
+    { "id": "old_wound", "reason": "The persona carries a limp from an old firefight." },
+    { "id": "bookish", "reason": "Always seen with a stack of case files." }
+  ],
+  "notes": "A scarred, quiet officer."
+}

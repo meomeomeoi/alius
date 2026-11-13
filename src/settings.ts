@@ -81,6 +81,7 @@ export const DEFAULT_SETTINGS: AliusSettings = {
     emotion_pick: 50,
     activity_vignette: 150,
     chronicle_compact: 400,
+    commander_import: 600,
     ping: 100,
   },
   contextTokenCap: 1200,

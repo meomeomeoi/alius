@@ -51,6 +51,8 @@ export interface StAdapter {
   listConnectionProfiles(): ProfileInfo[];
   getCharacterCard(avatar: string): CardInfo | null;
   getPersonaName(): string;
+  /** The active persona's description text (P7 `commander_import`); empty when there is none. */
+  getPersonaDescription(): string;
   listCharacters(): CharacterSummary[];
   /** Like getCharacterCard, but loads a lazily-loaded (shallow) character first. */
   loadCharacterCard(avatar: string): Promise<CardInfo | null>;
