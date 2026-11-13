@@ -9,6 +9,8 @@ import { enqueueNight } from '../night';
 import { releaseBreakdowns } from '../progression';
 import { applyIntents } from '../relations';
 import { bankLoot, rollLoot } from '../items';
+import { afterFailedRoute, resolveRoute, routeChoices, routeScope, type RouteChoice, type RoutePick } from '../commander/checks';
+import type { RouteCheck } from '../../content/schemas';
 import { meetsSocialRequirements } from '../social';
 import { nextId } from '../memory';
 import type { Rng } from '../rng';
@@ -593,7 +595,7 @@ export function resolveCombat(draft: CampaignState, ctx: EngineCtx): EngineEvent
 // ---------------------------------------------------------------------------------------------
 // Events
 
-type EventOption = { label: string; requires?: { stat: string; rank: number }; effects: WorldEffect[] };
+type EventOption = { label: string; requires?: { stat: string; rank: number }; routeCheck?: RouteCheck; effects: WorldEffect[] };
 
 /** Minor events the pack offers in this region; the ones a mission pins to its objective are never drawn at random. */
 function eventPool(reg: Registries, regionId: string): Entry[] {
@@ -637,7 +639,7 @@ function optionsOf(state: CampaignState, reg: Registries): { templateId: string;
 }
 
 /** The pending event's options with the reason each is disabled (`null` = available). */
-export function eventOptions(state: CampaignState, reg: Registries): Array<{ index: number; label: string; disabled: string | null }> {
+export function eventOptions(state: CampaignState, reg: Registries): Array<{ index: number; label: string; disabled: string | null; routes?: RouteChoice[] }> {
   const found = optionsOf(state, reg);
   if (!found) return [];
   const exp = state.expedition!;
@@ -653,7 +655,10 @@ export function eventOptions(state: CampaignState, reg: Registries): Array<{ ind
         if (disabled !== null) break;
       }
     }
-    return { index, label: o.label, disabled };
+    // P7: a routed option lists its routes and is closed only when none is open
+    const routes = o.routeCheck ? routeChoices(state, reg, o.routeCheck, routeScope(state)) : undefined;
+    if (disabled === null && routes && routes.every((r) => r.disabled !== null)) disabled = 'No way to do this right now';
+    return { index, label: o.label, disabled, ...(routes ? { routes } : {}) };
   });
 }
 
@@ -667,7 +672,7 @@ export function finishEventNode(draft: CampaignState, nodeId: string, text: stri
 }
 
 /** Picks an option of the pending event: its effects apply, the node is resolved and the run travels on. */
-export function chooseOption(draft: CampaignState, ctx: EngineCtx, index: number): EngineEvent[] {
+export function chooseOption(draft: CampaignState, ctx: EngineCtx, index: number, route?: RoutePick): EngineEvent[] {
   const exp = draft.expedition;
   const found = optionsOf(draft, ctx.registries);
   if (!exp || exp.phase !== 'event' || exp.pending?.kind !== 'event') throw new Error('There is no event to answer.');
@@ -681,7 +686,16 @@ export function chooseOption(draft: CampaignState, ctx: EngineCtx, index: number
   if (!Number.isInteger(index) || !option) throw new Error(`There is no option ${String(index)}.`);
   if (option.disabled !== null) throw new Error(`${option.label}: ${option.disabled}.`);
   const { nodeId, templateId } = exp.pending;
-  const events = applyWorldEffects(draft, ctx, found.options[index].effects, { kind: 'event', id: templateId, label: found.title });
+  const chosen = found.options[index];
+  let effects = chosen.effects;
+  const routeEvents: EngineEvent[] = [];
+  if (chosen.routeCheck) {
+    if (route === undefined) throw new Error('Choose how to do it.');
+    const taken = resolveRoute(draft, ctx, chosen.routeCheck, route, routeScope(draft));
+    routeEvents.push(...taken.events);
+    if (!taken.passed) effects = afterFailedRoute(effects);
+  }
+  const events = [...routeEvents, ...applyWorldEffects(draft, ctx, effects, { kind: 'event', id: templateId, label: found.title })];
   finishEventNode(draft, nodeId, `${found.title}: ${option.label}.`, { templateId, option: option.label });
   events.push({ type: 'expedition_choice', nodeId, templateId, option: index, label: option.label });
   return events;

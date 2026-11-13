@@ -1,7 +1,9 @@
 import type { Registries } from '../../content/types';
 import type { CheckRoute, RouteCheck } from '../../content/schemas';
 import type { EngineCtx, EngineEvent } from '../dispatch';
-import { isLiving } from '../economy';
+import { isCostEffect } from '../../content/schemas';
+import { activeRosterUnits, isLiving } from '../economy';
+import type { WorldEffect } from '../world/types';
 import { trustBand, type TrustBand } from '../relations/bands';
 import { applyRelationDelta } from '../relationGain';
 import { socialRank } from '../social';
@@ -31,6 +33,20 @@ export interface RouteScope {
   /** The units that can be asked (a run: the party). Absent = every living squad unit. */
   unitIds?: string[];
 }
+
+/** Who can be asked: the party in a run, otherwise the living units of the active roster. */
+export function routeScope(state: CampaignState): RouteScope {
+  return { unitIds: state.expedition ? [...state.expedition.party] : activeRosterUnits(state).map((u) => u.id) };
+}
+
+/** What a failed or refused route keeps of an option's effects: the costs and the recorded decision (flags). */
+export function afterFailedRoute(effects: WorldEffect[]): WorldEffect[] {
+  return effects.filter((fx) => isCostEffect(fx) || fx.type === 'flag' || fx.type === 'thread_flag');
+}
+
+/** The stock a bypass pays from: in a run, supplies are the ones carried (the base stores are out of reach). */
+const stockOf = (state: CampaignState, resource: 'credits' | 'supplies' | 'plyx'): number =>
+  resource === 'supplies' && state.expedition ? state.expedition.supplies : state.resources[resource];
 
 const TRUST_ORDER: readonly TrustBand[] = ['none', 'low', 'guarded', 'solid', 'high'];
 const DEFAULT_TRUST_CHECK: TrustBand = 'guarded';
@@ -75,7 +91,7 @@ function choiceOf(state: CampaignState, reg: Registries, route: CheckRoute, inde
       return {
         ...base,
         label: `Pay ${amount} ${resource}`,
-        disabled: state.resources[resource] >= amount ? null : `Not enough ${resource} (needs ${amount}).`,
+        disabled: stockOf(state, resource) >= amount ? null : `Not enough ${resource} (needs ${amount}).`,
       };
     }
     case 'delegate': {
@@ -117,8 +133,11 @@ export function resolveRoute(
     case 'item':
       break;
     case 'bypass': {
-      draft.resources[route.cost.resource] -= route.cost.amount;
-      events.push({ type: 'resource_changed', resource: route.cost.resource, amount: -route.cost.amount });
+      if (route.cost.resource === 'supplies' && draft.expedition) draft.expedition.supplies -= route.cost.amount;
+      else {
+        draft.resources[route.cost.resource] -= route.cost.amount;
+        events.push({ type: 'resource_changed', resource: route.cost.resource, amount: -route.cost.amount });
+      }
       break;
     }
     case 'delegate': {
@@ -152,4 +171,14 @@ export function resolveRoute(
   }
   events.push({ type: 'route_taken', checkId: check.id, kind: route.kind, passed });
   return { passed, events };
+}
+
+/** Reads the `route` part of an action payload: absent → undefined, malformed → an error (the action then changes nothing). */
+export function readRoutePick(v: unknown): RoutePick | undefined {
+  if (v === undefined) return undefined;
+  const o = typeof v === 'object' && v !== null && !Array.isArray(v) ? (v as Record<string, unknown>) : null;
+  if (!o || typeof o.route !== 'number' || !Number.isInteger(o.route) || (o.unitId !== undefined && typeof o.unitId !== 'string')) {
+    throw new Error('A route pick needs { route: number, unitId? }.');
+  }
+  return { route: o.route, ...(o.unitId !== undefined ? { unitId: o.unitId as string } : {}) };
 }

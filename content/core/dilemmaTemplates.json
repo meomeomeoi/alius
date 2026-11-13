@@ -20,7 +20,31 @@
               "type": "party_stress",
               "amount": 10
             }
-          ]
+          ],
+          "routeCheck": {
+            "id": "pry_crate",
+            "routes": [
+              {
+                "kind": "body",
+                "stat": "strength",
+                "min": 3
+              },
+              {
+                "kind": "delegate",
+                "cost": {
+                  "trustCheck": "low",
+                  "stress": 5
+                }
+              },
+              {
+                "kind": "bypass",
+                "cost": {
+                  "resource": "supplies",
+                  "amount": 2
+                }
+              }
+            ]
+          }
         },
         {
           "label": "Burn through the seal",

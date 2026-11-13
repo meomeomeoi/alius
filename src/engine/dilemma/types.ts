@@ -1,3 +1,4 @@
+import type { RouteCheck } from '../../content/schemas';
 import type { SocialStat } from '../social';
 import type { WorldEffect } from '../world/types';
 
@@ -15,6 +16,8 @@ export interface DilemmaOption {
   requires?: { stat: SocialStat; rank: number };
   /** A seeded social check at choice time; on failure the option's non-cost effects are dropped. */
   check?: { stat: SocialStat; rank: number };
+  /** P7: an authored option that asks how the commander gets it done (never on a generated option). */
+  routeCheck?: RouteCheck;
   effects: WorldEffect[];
   /** Magnitudes of the generated effects (empty for authored options). */
   magnitudes: Magnitude[];

@@ -279,6 +279,10 @@ var DESCRIPTORS = Object.freeze({
   expression: Object.freeze(["Very feminine", "Feminine", "Androgynous", "Masculine", "Very masculine"]),
   seasoning: Object.freeze(["Green", "Young", "Experienced", "Seasoned", "Veteran"])
 });
+function descriptor(kind, value) {
+  const list4 = DESCRIPTORS[kind];
+  return list4[Math.min(5, Math.max(1, Math.round(value))) - 1];
+}
 function archetypeOf(body) {
   const sum = BODY_STATS.reduce((n, k) => n + body[k], 0);
   if (sum <= 4) return "frail";
@@ -6519,1217 +6523,6 @@ registerDayEndStep("director_tick", (draft, ctx2) => {
   return events;
 });
 
-// src/engine/loyalty/mutiny.ts
-var SEVERITY_RANK2 = { minor: 0, moderate: 1, major: 2, extreme: 3 };
-var BETRAYALS = ["lied_detected", "broke_promise", "coerced", "decision_violated", "crime_revealed"];
-function mutinyTrigger(state, unitId, minSeverity = "major") {
-  const within = (day) => state.day - day <= TUNING.mutiny.triggerWindowDays;
-  const found = [];
-  const rec = loyaltyOf(state, unitId);
-  if (rec?.trigger && within(rec.trigger.day)) found.push({ kind: rec.trigger.kind, day: rec.trigger.day });
-  for (const h2 of state.relations[unitId]?.history ?? []) {
-    if (h2.kind !== "event" || !BETRAYALS.includes(h2.type) || h2.severity === void 0) continue;
-    if (SEVERITY_RANK2[h2.severity] >= SEVERITY_RANK2[minSeverity] && within(h2.day)) found.push({ kind: "betrayal", day: h2.day });
-  }
-  return found.sort((a, b) => b.day - a.day)[0] ?? null;
-}
-var mutinySigns = (state, unitId) => (loyaltyOf(state, unitId)?.signs ?? []).filter((s) => s.about === "mutiny");
-function mayMutiny(state, unitId) {
-  const unit = state.squad.find((u) => u.id === unitId);
-  const rel = state.relations[unitId];
-  if (!unit || !rel || unit.kind !== "named" || !isLiving(unit)) return false;
-  if (rel.stateId === "despises") return state.day - rel.stateSince >= TUNING.mutiny.minDaysInState;
-  return rel.stateId === "obsessed" && mutinyTrigger(state, unitId, "extreme") !== null;
-}
-function mutinyReady(state, _reg, unitId) {
-  if (!mayMutiny(state, unitId)) return false;
-  if (state.relations[unitId].stateId === "despises" && mutinyTrigger(state, unitId) === null) return false;
-  const signs = mutinySigns(state, unitId);
-  return signs.length >= TUNING.mutiny.minSigns && new Set(signs.map((s) => s.day)).size >= TUNING.mutiny.minSigns;
-}
-function sympathizers(state, unitId) {
-  return state.roster.activeIds.filter((id) => {
-    const u = state.squad.find((x) => x.id === id);
-    const rel = state.relations[id];
-    return id !== unitId && u !== void 0 && rel !== void 0 && u.kind === "named" && isLiving(u) && u.status === "active" && rel.loyaltyBand !== "steady" && rel.trust < TUNING.mutiny.sympathizerTrustBelow;
-  }).sort((a, b) => state.relations[a].trust - state.relations[b].trust).slice(0, TUNING.mutiny.maxSympathizers);
-}
-var groupOf = (open2) => [open2.unitId, ...open2.sympathizers ?? []];
-function loyalUnits(state, unitId) {
-  const open2 = state.disloyalty?.open;
-  const mutineers = /* @__PURE__ */ new Set([unitId, ...open2?.unitId === unitId && open2.sympathizers ? open2.sympathizers : sympathizers(state, unitId)]);
-  return state.roster.activeIds.filter((id) => {
-    const u = state.squad.find((x) => x.id === id);
-    return !mutineers.has(id) && u !== void 0 && isLiving(u) && u.status === "active";
-  });
-}
-var nameOf = (state, id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
-function startMutiny(draft, unitId) {
-  const group = sympathizers(draft, unitId);
-  const entry = {
-    id: nextId(draft, "n"),
-    unitId,
-    kind: "mutiny",
-    priority: TUNING.mutiny.nightPriority,
-    framing: `${nameOf(draft, unitId)} is not alone: voices in the corridor, weapons out of the racks. This is about to turn violent.`,
-    ignore: { event: "dismissed", severity: "major" },
-    expiresDay: draft.day + TUNING.disloyalty.night.expiresInDays
-  };
-  draft.calendar.nightEventsQueue = draft.calendar.nightEventsQueue.filter((n) => !(n.unitId === unitId && n.kind === "mutiny"));
-  enqueueNight(draft, entry);
-  (draft.disloyalty ??= { units: {} }).open = { kind: "mutiny", unitId, day: draft.day, at: "night", nightEntryId: entry.id, sympathizers: group };
-  return [{ type: "mutiny_started", unitId, sympathizers: group }];
-}
-function mutinyDayStep(draft, ctx2) {
-  const events = [];
-  for (const u of draft.squad.filter((x) => x.kind === "named" && isLiving(x))) {
-    const rec = loyaltyOf(draft, u.id);
-    const candidate = draft.relations[u.id]?.stateId === "despises" || draft.relations[u.id]?.stateId === "obsessed" && mutinyTrigger(draft, u.id, "extreme") !== null;
-    if (!candidate) {
-      if (rec?.signs.some((s) => s.about === "mutiny")) rec.signs = rec.signs.filter((s) => s.about !== "mutiny");
-      continue;
-    }
-    const signs = mutinySigns(draft, u.id);
-    const newest = Math.max(-Infinity, ...signs.map((s) => s.day));
-    if (signs.length === 0) events.push(...emitSign(draft, ctx2, u.id, "mutiny", 1));
-    else if (signs.length === 1 && newest < draft.day) events.push(...emitSign(draft, ctx2, u.id, "mutiny", 2));
-    const aged = mutinySigns(draft, u.id);
-    const lastSign = Math.max(-Infinity, ...aged.map((s) => s.day));
-    if (draft.disloyalty?.open || draft.day - lastSign < 1 || !mutinyReady(draft, ctx2.registries, u.id)) continue;
-    if (ctx2.rng.chance(TUNING.mutiny.chancePerDay)) events.push(...startMutiny(draft, u.id));
-  }
-  return events;
-}
-function fightPayload(state, p) {
-  const open2 = requireOpen(state, "mutiny");
-  if (open2.combatId !== void 0) throw new Error("The fight has already been fought: resolve it.");
-  const loyal = new Set(loyalUnits(state, open2.unitId));
-  const ids = [...p.formation.front, ...p.formation.back];
-  if (ids.length === 0) throw new Error("Choose who stands with you.");
-  for (const id of ids) {
-    if (!loyal.has(id)) throw new Error(`${nameOf(state, id)} cannot stand with you: only your able, loyal units can.`);
-  }
-  return {
-    encounter: { enemies: [], mutineers: groupOf(open2).map((unitId) => ({ unitId })), exposesCommander: true, danger: 0 },
-    formation: { front: [...p.formation.front], back: [...p.formation.back] },
-    ...p.coverId !== void 0 ? { coverId: p.coverId } : {},
-    allowRetry: p.allowRetry === true
-  };
-}
-function escape(draft, ctx2, open2, how, commanderHurt) {
-  const events = [];
-  for (const id of groupOf(open2)) {
-    const u = draft.squad.find((x) => x.id === id);
-    if (!u || !isLiving(u)) continue;
-    removeFromService(draft, id, "deserted");
-    const rec = loyaltyRecord(draft, id);
-    rec.desertedDay = draft.day;
-    rec.stance = "hostile";
-    delete rec.returned;
-    rec.signs = rec.signs.filter((s) => s.about !== "mutiny");
-    delete rec.trigger;
-  }
-  if (!commanderHurt && (draft.commander.injuredUntilDay ?? 0) <= draft.day) events.push(...injureCommander(draft, TUNING.combat.commanderInjuryDays));
-  delete draft.disloyalty.open;
-  events.push({ type: "mutiny_escaped", unitId: open2.unitId, sympathizers: open2.sympathizers ?? [], how });
-  events.push(...closeNight(draft, ctx2, open2));
-  return events;
-}
-function yieldToMutiny(draft, ctx2) {
-  const open2 = requireOpen(draft, "mutiny");
-  if (loyalUnits(draft, open2.unitId).length > 0) throw new Error("You still have soldiers who can fight: stand with them or suppress it.");
-  return escape(draft, ctx2, open2, "yield", false);
-}
-function subdue(draft, open2, fought) {
-  for (const id of fought) {
-    const u = draft.squad.find((x) => x.id === id);
-    if (!u || !isLiving(u)) continue;
-    u.status = "injured";
-    u.currentHp = 1;
-    u.injuryDays = Math.max(u.injuryDays ?? 0, TUNING.mutiny.subduedInjuryDays);
-    if (u.injuries.length === 0) u.injuries.push("wounded");
-  }
-  const events = [];
-  const rel = draft.relations[open2.unitId];
-  if (rel && rel.stateId !== "resentful") events.push(enterState(draft, open2.unitId, "resentful", "mutiny_subdued"));
-  const rec = loyaltyRecord(draft, open2.unitId);
-  rec.cause = { kind: "attack", day: draft.day };
-  rec.signs = rec.signs.filter((s) => s.about !== "mutiny");
-  delete rec.trigger;
-  delete draft.disloyalty.open;
-  events.push({ type: "mutiny_subdued", unitId: open2.unitId, sympathizers: open2.sympathizers ?? [] });
-  return events;
-}
-function resolveMutiny(draft, ctx2) {
-  const open2 = requireOpen(draft, "mutiny");
-  if (open2.combatId === void 0) throw new Error("The fight has not been fought yet.");
-  if (draft.combat) throw new Error("The fight is still going on.");
-  const result = draft.lastCombat;
-  if (!result || result.id !== open2.combatId) throw new Error("The result of that fight is no longer available.");
-  const events = result.outcome === "won" ? subdue(draft, open2, (result.mutineers ?? []).map((m) => m.unitId)) : escape(draft, ctx2, open2, result.outcome === "retreated" ? "retreat" : "defeat", result.commanderInjured);
-  if (result.outcome === "won") events.push(...closeNight(draft, ctx2, open2));
-  return events;
-}
-function resolveExpiredMutiny(draft, ctx2, open2) {
-  if (open2.combatId !== void 0 && !draft.combat && draft.lastCombat?.id === open2.combatId) return resolveMutiny(draft, ctx2);
-  return escape(draft, ctx2, open2, "yield", false);
-}
-
-// src/engine/loyalty/desertion.ts
-var clamp12 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
-function desertionChance(state, reg, unitId) {
-  const unit = state.squad.find((u) => u.id === unitId);
-  const rel = state.relations[unitId];
-  if (!unit || !rel) return 0;
-  const t = TUNING.disloyalty.desertion;
-  let p = t.base + t.perTrustBelow * Math.max(0, t.trustRef - rel.trust);
-  p += rel.affinity < 0 ? t.affinityNegative * -rel.affinity : -t.affinityPositive * rel.affinity;
-  p += t.perStressAbove * Math.max(0, unit.stress - t.stressRef);
-  for (const d of unit.defects) p += reg.defects.get(d.id)?.desertionMod ?? 0;
-  return clamp12(p, t.min, t.max);
-}
-function mayDesert(state, unitId) {
-  if (state.disloyalty?.open) return false;
-  const rec = loyaltyOf(state, unitId);
-  if (!rec) return false;
-  if (rec.nextCheckDay !== void 0 && state.day < rec.nextCheckDay) return false;
-  const newest = Math.max(-Infinity, ...rec.signs.filter((s) => s.about === "desertion").map((s) => s.day));
-  return state.day - newest >= TUNING.disloyalty.desertion.minSignAgeDays;
-}
-var nameOf2 = (state, id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
-function startDesertion(draft, unitId, at) {
-  const rec = loyaltyRecord(draft, unitId);
-  rec.attempts += 1;
-  if (rec.attempts >= TUNING.leash.terminate.attemptsForCause) rec.cause = { kind: "desertion", day: draft.day };
-  const open2 = { kind: "desertion", unitId, day: draft.day, at };
-  if (at === "night") {
-    const entry = {
-      id: nextId(draft, "n"),
-      unitId,
-      kind: "desertion",
-      priority: TUNING.disloyalty.night.desertion,
-      framing: `${nameOf2(draft, unitId)} is about to walk out. This is the moment to say something, or to stop her.`,
-      ignore: { event: "dismissed", severity: "moderate" },
-      expiresDay: draft.day + TUNING.disloyalty.night.expiresInDays
-    };
-    draft.calendar.nightEventsQueue = draft.calendar.nightEventsQueue.filter((n) => !(n.unitId === unitId && n.kind === "desertion"));
-    enqueueNight(draft, entry);
-    open2.nightEntryId = entry.id;
-  }
-  (draft.disloyalty ??= { units: {} }).open = open2;
-  return [{ type: "desertion_attempt", unitId, at }];
-}
-function missionStartCheck(draft, ctx2, unitIds) {
-  for (const id of unitIds) {
-    if (draft.relations[id]?.loyaltyBand !== "breaking" || !mayDesert(draft, id)) continue;
-    if (ctx2.rng.chance(desertionChance(draft, ctx2.registries, id))) return startDesertion(draft, id, "mission_start");
-  }
-  return null;
-}
-function talkDown(draft, ctx2, stat2) {
-  const open2 = requireOpen(draft, "desertion");
-  if (stat2 !== "authority" && stat2 !== "empathy") throw new Error("Talk her down with Authority or Empathy.");
-  if (open2.talkTried) throw new Error("She has already heard you out: choose another answer.");
-  const unit = draft.squad.find((u) => u.id === open2.unitId);
-  const rel = draft.relations[open2.unitId];
-  const t = TUNING.disloyalty.talkDown;
-  const difficulty = t.baseRank + (rel.trust < t.lowTrust ? 1 : 0) + (unit.stress >= t.highStress ? 1 : 0);
-  const chance = clamp12(t.base + t.perRank * (socialRank(draft, stat2) - difficulty), t.min, t.max);
-  const success = ctx2.rng.chance(chance);
-  const events = [];
-  if (success) {
-    const applied = applyRelationDelta(draft, open2.unitId, "trust", t.trustGain, "talk_down");
-    if (applied !== 0) events.push({ type: "relation_changed", unitId: open2.unitId, axis: "trust", delta: applied, applied });
-    events.push(...evaluateAutomatic(draft, ctx2.registries, open2.unitId));
-    loyaltyRecord(draft, open2.unitId).nextCheckDay = draft.day + t.pauseDays;
-    delete draft.disloyalty.open;
-    events.push({ type: "loyalty_talk_down", unitId: open2.unitId, stat: stat2, success, chance });
-    events.push(...closeNight(draft, ctx2, open2));
-  } else {
-    open2.talkTried = true;
-    events.push({ type: "loyalty_talk_down", unitId: open2.unitId, stat: stat2, success, chance });
-  }
-  return events;
-}
-function letGo(draft, ctx2) {
-  const open2 = requireOpen(draft, "desertion");
-  const reg = ctx2.registries;
-  const unitId = open2.unitId;
-  const stance = (draft.relations[unitId]?.affinity ?? 0) >= TUNING.disloyalty.comeback.allyAffinity ? "ally" : "hostile";
-  removeFromService(draft, unitId, "deserted");
-  const rec = loyaltyRecord(draft, unitId);
-  rec.desertedDay = draft.day;
-  rec.stance = stance;
-  delete rec.returned;
-  const events = [];
-  const witnesses = draft.squad.filter((u) => u.id !== unitId && u.kind === "named" && isLiving(u));
-  for (const w of witnesses) {
-    events.push(...applyEventToUnit(draft, reg, w.id, {
-      type: "decision_aligned",
-      actor: "commander",
-      targets: [w.id],
-      severity: "moderate",
-      evidence: `let ${nameOf2(draft, unitId)} go`,
-      valueAxes: [{ axis: "autonomy", direction: 1 }, { axis: "mercy", direction: 1 }],
-      confidence: 1
-    }));
-  }
-  for (const w of witnesses) events.push(...evaluateAutomatic(draft, reg, w.id));
-  events.push({ type: "unit_deserted", unitId, stance });
-  events.push(...closeNight(draft, ctx2, open2));
-  return events;
-}
-function takeBack(draft, ctx2) {
-  const open2 = requireOpen(draft, "return");
-  const unit = draft.squad.find((u) => u.id === open2.unitId);
-  if (draft.squad.filter(isLiving).length >= draft.roster.capacity) {
-    throw new Error(`The barracks are full (${draft.roster.capacity} beds). Upgrade them to take ${unit.displayName} back.`);
-  }
-  const stance = loyaltyOf(draft, open2.unitId)?.stance ?? "ally";
-  unit.status = "reserve";
-  draft.relations[open2.unitId].trust = TUNING.disloyalty.comeback.backTrust;
-  const events = evaluateAutomatic(draft, ctx2.registries, open2.unitId);
-  delete draft.disloyalty.units[open2.unitId];
-  delete draft.disloyalty.open;
-  events.push({ type: "deserter_answered", unitId: open2.unitId, stance, taken: true });
-  events.push(...closeNight(draft, ctx2, open2));
-  return events;
-}
-function turnAway(draft, ctx2) {
-  const open2 = requireOpen(draft, "return");
-  const rec = loyaltyRecord(draft, open2.unitId);
-  rec.returned = true;
-  delete draft.disloyalty.open;
-  const events = [{ type: "deserter_answered", unitId: open2.unitId, stance: rec.stance ?? "ally", taken: false }];
-  events.push(...closeNight(draft, ctx2, open2));
-  return events;
-}
-function expiredConfrontation(draft, open2) {
-  if (open2.at === "mission_start") return draft.day > open2.day;
-  const id = open2.nightEntryId;
-  if (id === void 0) return true;
-  return draft.calendar.nightEvent?.id !== id && !draft.calendar.nightEventsQueue.some((n) => n.id === id);
-}
-function comeBack(draft, ctx2, unitId) {
-  const rec = loyaltyRecord(draft, unitId);
-  const name = nameOf2(draft, unitId);
-  const stance = rec.stance ?? "hostile";
-  rec.returned = true;
-  const events = [{ type: "deserter_returned", unitId, stance }];
-  if (stance === "ally") {
-    const entry = {
-      id: nextId(draft, "n"),
-      unitId,
-      kind: "deserter_return",
-      priority: TUNING.disloyalty.night.return,
-      framing: `${name} is at the gate, asking to be let back in.`,
-      ignore: { event: "dismissed", severity: "minor" },
-      expiresDay: draft.day + TUNING.disloyalty.night.expiresInDays
-    };
-    enqueueNight(draft, entry);
-    (draft.disloyalty ??= { units: {} }).open = { kind: "return", unitId, day: draft.day, at: "night", nightEntryId: entry.id };
-  } else {
-    const rumor = postRumor(draft, ctx2, {
-      text: `${name} was seen with armed deserters near the old checkpoints, asking questions about the commander.`,
-      tags: ["loyalty", "deserter"],
-      leadsTo: "none"
-    });
-    if (rumor) events.push(rumorPostedEvent(rumor));
-    events.push(...applyWorldEffects(draft, ctx2, [
-      { type: "clock", clockId: "oversight", by: 1 },
-      { type: "fact", text: `${name} deserted and now runs with armed deserters hostile to the commander.`, tags: ["loyalty", "deserter"], importance: 4 }
-    ], { kind: "event", id: "deserter_return", label: `${name} turned hostile` }));
-  }
-  return events;
-}
-function returns(draft, ctx2) {
-  const events = [];
-  const t = TUNING.disloyalty.comeback;
-  for (const [unitId, rec] of Object.entries(draft.disloyalty?.units ?? {})) {
-    const unit = draft.squad.find((u) => u.id === unitId);
-    if (!unit || unit.status !== "deserted" || rec.desertedDay === void 0 || rec.returned === true) continue;
-    if (draft.day - rec.desertedDay < t.afterDays) continue;
-    const stance = rec.stance ?? "hostile";
-    if (stance === "ally" && draft.disloyalty?.open) continue;
-    if (!ctx2.rng.chance(t.chancePerDay)) continue;
-    events.push(...comeBack(draft, ctx2, unitId));
-  }
-  return events;
-}
-function loyaltyDayStep(draft, ctx2) {
-  const reg = ctx2.registries;
-  const events = [];
-  for (const u of draft.squad.filter(isLiving)) events.push(...evaluateAutomatic(draft, reg, u.id));
-  const open2 = draft.disloyalty?.open;
-  if (open2 && expiredConfrontation(draft, open2)) {
-    if (open2.kind === "desertion") events.push(...letGo(draft, ctx2));
-    else if (open2.kind === "return") events.push(...turnAway(draft, ctx2));
-    else events.push(...resolveExpiredMutiny(draft, ctx2, open2));
-  }
-  for (const u of draft.squad.filter(isLiving)) {
-    const band = draft.relations[u.id]?.loyaltyBand;
-    const rec = loyaltyOf(draft, u.id);
-    if (band !== "breaking" && rec?.signs.some((s) => s.about === "desertion")) {
-      rec.signs = rec.signs.filter((s) => s.about !== "desertion");
-    }
-    if (band !== "wavering" && rec?.nextDoubtDay !== void 0) delete rec.nextDoubtDay;
-    if (band === "wavering" && u.kind === "named") {
-      const wait = loyaltyRecord(draft, u.id);
-      if (wait.nextDoubtDay === void 0) wait.nextDoubtDay = draft.day + TUNING.disloyalty.doubtEveryDays;
-      else if (draft.day >= wait.nextDoubtDay) {
-        events.push(...emitSign(draft, ctx2, u.id, "doubt"));
-        wait.nextDoubtDay = draft.day + TUNING.disloyalty.doubtEveryDays;
-      }
-    }
-    if (band !== "breaking") continue;
-    if (!rec?.signs.some((s) => s.about === "desertion")) {
-      events.push(...emitSign(draft, ctx2, u.id, "desertion"));
-      continue;
-    }
-    if (mayDesert(draft, u.id) && ctx2.rng.chance(desertionChance(draft, reg, u.id))) {
-      events.push(...startDesertion(draft, u.id, "night"));
-    }
-  }
-  events.push(...arcDayStep(draft, ctx2));
-  events.push(...mutinyDayStep(draft, ctx2));
-  events.push(...returns(draft, ctx2));
-  return events;
-}
-
-// src/engine/world/nodeMap.ts
-var OBJECTIVE_ID = "obj";
-function candidates2(reg, region, layer, danger) {
-  const out = [];
-  for (const [id, weight] of Object.entries(region.nodeWeights)) {
-    const def = reg.nodeTypes.get(id);
-    if (!def || def.kind === "objective" || !(weight > 0)) continue;
-    if (layer === 0 && def.firstLayer === false) continue;
-    if (typeof def.minDanger === "number" && danger < def.minDanger) continue;
-    out.push({ id, weight, kind: String(def.kind), maxPerMap: def.maxPerMap });
-  }
-  return out;
-}
-function draw(rng, list4, used, onlyKind) {
-  const open2 = list4.filter((c) => (c.maxPerMap === void 0 || (used.get(c.id) ?? 0) < c.maxPerMap) && (onlyKind === void 0 || c.kind === onlyKind));
-  if (open2.length === 0) return null;
-  const total = open2.reduce((s, c) => s + c.weight, 0);
-  let r = rng.float() * total;
-  const pick = open2.find((c) => (r -= c.weight) < 0) ?? open2[open2.length - 1];
-  return pick.id;
-}
-function generateNodeMap(reg, rng, input) {
-  const region = reg.regions.get(input.regionId);
-  if (!region) throw new Error(`Unknown region "${input.regionId}"`);
-  const [minLayers, maxLayers] = region.layers;
-  const layerCount = rng.int(minLayers, maxLayers);
-  const nodes = {};
-  const layers = [];
-  const used = /* @__PURE__ */ new Map();
-  const bump = (type, by) => used.set(type, (used.get(type) ?? 0) + by);
-  const none = () => {
-    throw new Error(`No playable node type for region "${input.regionId}"`);
-  };
-  for (let l = 0; l < layerCount; l++) {
-    const list4 = candidates2(reg, region, l, input.danger);
-    const size = rng.int(2, 3);
-    const ids = [];
-    for (let i = 0; i < size; i++) {
-      const type = draw(rng, list4, used) ?? none();
-      bump(type, 1);
-      const id = `n${l}_${i}`;
-      nodes[id] = { id, layer: l, type, edges: [], visited: false };
-      ids.push(id);
-    }
-    if (!ids.some((id) => reg.nodeTypes.get(nodes[id].type).kind === "combat")) {
-      bump(nodes[ids[0]].type, -1);
-      const type = draw(rng, list4, used, "combat");
-      if (type === null) bump(nodes[ids[0]].type, 1);
-      else {
-        nodes[ids[0]].type = type;
-        bump(type, 1);
-      }
-    }
-    layers.push(ids);
-  }
-  for (let l = 0; l + 1 < layers.length; l++) {
-    const from = layers[l];
-    const to = layers[l + 1];
-    const edges = from.map((_, i) => [Math.min(i, to.length - 1)]);
-    for (let t = 0; t < to.length; t++) {
-      if (edges.some((e) => e.includes(t))) continue;
-      const order = from.map((_, i) => i).sort((a, b) => Math.abs(a - t) - Math.abs(b - t) || a - b);
-      const donor = order.find((i) => edges[i].length < 2) ?? order[0];
-      edges[donor].push(t);
-    }
-    from.forEach((_, i) => {
-      if (edges[i].length >= 2 || !rng.chance(0.5)) return;
-      const options2 = [edges[i][0] - 1, edges[i][0] + 1].filter((t) => t >= 0 && t < to.length && !edges[i].includes(t));
-      if (options2.length > 0) edges[i].push(options2[rng.int(0, options2.length - 1)]);
-    });
-    from.forEach((id, i) => {
-      nodes[id].edges = [...edges[i]].sort((a, b) => a - b).map((t) => to[t]);
-    });
-  }
-  for (const id of layers[layers.length - 1]) nodes[id].edges = [OBJECTIVE_ID];
-  nodes[OBJECTIVE_ID] = { id: OBJECTIVE_ID, layer: layers.length, type: "objective", edges: [], visited: false };
-  return { layers, objectiveId: OBJECTIVE_ID, nodes };
-}
-function nextNodes(map, at) {
-  return at === null ? [...map.layers[0]] : [...map.nodes[at]?.edges ?? []];
-}
-function visibleTypes(map, at, reveal) {
-  const seen = new Set(Object.values(map.nodes).filter((n) => n.visited).map((n) => n.id));
-  if (at !== null) seen.add(at);
-  let frontier = nextNodes(map, at);
-  for (let depth = 1; depth <= reveal && frontier.length > 0; depth++) {
-    const next = [];
-    for (const id of frontier) {
-      seen.add(id);
-      next.push(...map.nodes[id].edges);
-    }
-    frontier = [...new Set(next)];
-  }
-  return seen;
-}
-function mapRows(map, opts) {
-  const options2 = new Set(nextNodes(map, opts.at));
-  const rows = [...map.layers, [map.objectiveId]];
-  return rows.map((ids) => ids.map((nodeId) => {
-    const node = map.nodes[nodeId];
-    const glyph = opts.visible.has(nodeId) ? String(opts.reg.nodeTypes.get(node.resolvedType ?? node.type)?.glyph ?? "?") : " ";
-    const state = nodeId === opts.at ? "current" : node.visited ? "visited" : options2.has(nodeId) ? "option" : "ahead";
-    return { nodeId, text: `[${glyph}]`, state };
-  }));
-}
-function nodePlayType(map, nodeId, mission) {
-  if (nodeId === map.objectiveId) return mission.objective.node;
-  const node = map.nodes[nodeId];
-  return node.resolvedType ?? node.type;
-}
-
-// src/engine/world/expedition.ts
-function ableParty(state) {
-  return (state.expedition?.party ?? []).filter((id) => {
-    const u = state.squad.find((x) => x.id === id);
-    return u !== void 0 && isLiving(u) && u.status === "active";
-  });
-}
-function formationProblem(ids, f) {
-  const listed = [...f?.front ?? [], ...f?.back ?? []];
-  if (listed.length !== ids.length || new Set(listed).size !== listed.length || !ids.every((id) => listed.includes(id))) {
-    return "The formation must list exactly the units that go.";
-  }
-  if (f.front.length > TUNING.combat.maxPerRow || f.back.length > TUNING.combat.maxPerRow) return `A row holds at most ${TUNING.combat.maxPerRow} units.`;
-  if (f.front.length === 0) return "The front row cannot be empty.";
-  return null;
-}
-var regionName = (r) => String(r.name);
-function poiCooldownReason(state, regionId, poiId) {
-  const last = state.world.regions[regionId]?.poi?.[poiId];
-  if (last === void 0 || state.day >= last + TUNING.world.poiCooldownDays) return null;
-  return `That point of interest cannot be run again before day ${last + TUNING.world.poiCooldownDays}.`;
-}
-function checkDeparture(state, reg, p) {
-  if (state.expedition) return "An expedition is already under way.";
-  if (state.combat) return "A combat is open: finish it first.";
-  if (state.scene) return "A scene is open: end it first.";
-  if (state.calendar.pendingScene) return "A talk still holds the slot: end it first.";
-  if (p.missionId === void 0 === (p.poi === void 0)) return "Choose exactly one of a mission or a point of interest.";
-  let regionId;
-  let templateId;
-  if (p.missionId !== void 0) {
-    const m = state.missions.offered.find((x) => x.id === p.missionId);
-    if (!m) return `Mission "${p.missionId}" is not on the board.`;
-    regionId = m.regionId;
-    templateId = m.templateId;
-  } else {
-    regionId = p.poi.regionId;
-    const region2 = reg.regions.get(regionId);
-    if (!region2) return `Region "${regionId}" no longer exists.`;
-    if (!knownRegions(state, reg).some((r) => r.id === regionId)) return `Region "${regionId}" is not known yet.`;
-    const poi = region2.pointsOfInterest.find((x) => x.id === p.poi.poiId);
-    if (!poi) return `Region "${regionId}" has no point of interest "${p.poi.poiId}".`;
-    const cooldown = poiCooldownReason(state, regionId, poi.id);
-    if (cooldown) return cooldown;
-    templateId = poi.templateId;
-  }
-  const region = reg.regions.get(regionId);
-  if (!region) return `Region "${regionId}" no longer exists.`;
-  const tpl = reg.missionTemplates.get(templateId);
-  if (!tpl) return `The mission template "${templateId}" no longer exists.`;
-  if (p.poi !== void 0 && !tpl.sources.includes("side")) return `The template "${templateId}" is not a side mission.`;
-  const slots = region.travelSlots;
-  if (state.slot === "night") return "Nobody leaves at night.";
-  if (slotsLeftToday(state.slot) < slots) {
-    return `${regionName(region)} takes ${slots} slots: leave in the Morning${slots === 2 ? " or Afternoon" : ""}.`;
-  }
-  return null;
-}
-function checkExpedition(state, reg, p) {
-  const departure = checkDeparture(state, reg, p);
-  if (departure) return departure;
-  const open2 = state.disloyalty?.open;
-  if (open2 && (open2.kind === "desertion" || open2.kind === "mutiny")) {
-    const name = state.squad.find((u) => u.id === open2.unitId)?.displayName ?? open2.unitId;
-    return `${name} is about to ${open2.kind === "desertion" ? "walk" : "attack"}: deal with it first.`;
-  }
-  const ids = p.unitIds ?? [];
-  if (ids.length < 1 || ids.length > TUNING.expedition.partyMax) return `An expedition takes 1 to ${TUNING.expedition.partyMax} units.`;
-  if (new Set(ids).size !== ids.length) return "A unit was listed twice.";
-  for (const id of ids) {
-    const u = state.squad.find((x) => x.id === id);
-    if (!u) return `Unknown unit "${id}".`;
-    if (!isLiving(u) || u.status !== "active") return `${u.displayName} is not available (${u.status}).`;
-    if (u.breakdown) return `${u.displayName} is in a breakdown.`;
-    if (!state.roster.activeIds.includes(id)) return `${u.displayName} is not on the active roster.`;
-  }
-  const formation = formationProblem(ids, p.formation);
-  if (formation) return formation;
-  const maxSupplies = Math.min(state.resources.supplies, TUNING.expedition.suppliesMax);
-  if (!Number.isInteger(p.supplies) || p.supplies < 0 || p.supplies > maxSupplies) {
-    return `Supplies to bring must be a whole number from 0 to ${maxSupplies}.`;
-  }
-  return null;
-}
-function addLog(exp, kind, text2, nodeId, data) {
-  const entry = { n: (exp.log.at(-1)?.n ?? 0) + 1, kind, text: text2 };
-  if (nodeId !== void 0) entry.nodeId = nodeId;
-  if (data !== void 0) entry.data = data;
-  exp.log.push(entry);
-  if (exp.log.length > TUNING.expedition.logMax) exp.log.splice(0, exp.log.length - TUNING.expedition.logMax);
-  return entry;
-}
-function startExpedition(draft, ctx2, p) {
-  const reg = ctx2.registries;
-  const walkOut = missionStartCheck(draft, ctx2, p.unitIds);
-  if (walkOut) return walkOut;
-  let mission;
-  if (p.missionId !== void 0) {
-    const i = draft.missions.offered.findIndex((m) => m.id === p.missionId);
-    [mission] = draft.missions.offered.splice(i, 1);
-  } else {
-    const { regionId, poiId } = p.poi;
-    const poi = reg.regions.get(regionId).pointsOfInterest.find((x) => x.id === poiId);
-    mission = buildMission(draft, ctx2, { templateId: poi.templateId, regionId, source: "side", poiId });
-    const rs = draft.world.regions[regionId] ?? { known: true };
-    draft.world.regions[regionId] = { ...rs, poi: { ...rs.poi ?? {}, [poiId]: draft.day } };
-  }
-  mission.status = "active";
-  draft.missions.active.push(mission);
-  draft.resources.supplies -= p.supplies;
-  const region = reg.regions.get(mission.regionId);
-  const revealDefect = p.unitIds.some((id) => {
-    const u = draft.squad.find((x) => x.id === id);
-    return u?.defects.some((d) => reg.defects.get(d.id)?.expedition?.reveal === 1) === true;
-  });
-  const exp = {
-    id: nextId(draft, "exp"),
-    missionId: mission.id,
-    regionId: mission.regionId,
-    day: draft.day,
-    slots: region.travelSlots,
-    party: [...p.unitIds],
-    formation: { front: [...p.formation.front], back: [...p.formation.back] },
-    supplies: p.supplies,
-    map: generateNodeMap(reg, ctx2.rng, { regionId: mission.regionId, danger: mission.danger }),
-    at: null,
-    path: [],
-    phase: "travel",
-    loot: [],
-    log: [],
-    hints: [],
-    objectiveDone: false,
-    reveal: 1 + (revealDefect ? 1 : 0) + (mission.scouted === true ? 1 : 0)
-  };
-  addLog(exp, "start", `Departed for ${regionName(region)}: ${mission.title}.`);
-  draft.expedition = exp;
-  return [{ type: "expedition_started", expeditionId: exp.id, missionId: mission.id, regionId: mission.regionId, party: exp.party, slots: exp.slots }];
-}
-function resolveUnknownType(reg, rng, typeId) {
-  const weights = Object.entries(reg.nodeTypes.get(typeId)?.resolvesTo ?? {}).filter(([id, w]) => reg.nodeTypes.has(id) && w > 0);
-  const total = weights.reduce((s, [, w]) => s + w, 0);
-  if (total <= 0) return null;
-  let r = rng.float() * total;
-  return (weights.find(([, w]) => (r -= w) < 0) ?? weights[weights.length - 1])[0];
-}
-var describeLoot = (drops, reg) => {
-  if (drops.length === 0) return "nothing";
-  return drops.map((d) => d.kind === "item" ? String(reg.items.get(d.item.itemId)?.name ?? d.item.itemId) : `${d.amount} ${d.kind}`).join(", ");
-};
-function missionOf(draft) {
-  const m = draft.missions.active.find((x) => x.id === draft.expedition.missionId);
-  if (!m) throw new Error("The mission of this expedition is gone.");
-  return m;
-}
-function moveTo(draft, ctx2, nodeId) {
-  const exp = draft.expedition;
-  if (!exp) throw new Error("There is no expedition.");
-  if (exp.phase !== "travel") throw new Error("Finish what is happening here first.");
-  if (!nextNodes(exp.map, exp.at).includes(nodeId)) throw new Error(`Node "${nodeId}" cannot be reached from here.`);
-  const reg = ctx2.registries;
-  const mission = missionOf(draft);
-  const node = exp.map.nodes[nodeId];
-  node.visited = true;
-  exp.at = nodeId;
-  exp.path.push(nodeId);
-  const events = [{ type: "expedition_moved", nodeId }];
-  let playType = nodePlayType(exp.map, nodeId, mission);
-  if (reg.nodeTypes.get(playType)?.kind === "unknown") {
-    const resolved2 = resolveUnknownType(reg, ctx2.rng, playType);
-    if (resolved2 !== null) node.resolvedType = resolved2;
-    playType = resolved2 ?? playType;
-  }
-  const def = reg.nodeTypes.get(playType);
-  const isObjective = nodeId === exp.map.objectiveId;
-  const reach = isObjective && mission.objective.condition === "reach";
-  const kind = def && def.kind !== "unknown" ? String(def.kind) : "nothing";
-  addLog(exp, "move", `Moved to ${def ? String(def.name) : "an empty place"}.`, nodeId);
-  events.push({ type: "expedition_node", nodeId, nodeType: playType, kind });
-  switch (kind) {
-    case "cache": {
-      if (!reg.lootTables.has("loot_cache")) {
-        addLog(exp, "cache", "Nothing here.", nodeId);
-        break;
-      }
-      const drops = rollLoot(draft, reg, ctx2.rng, "loot_cache");
-      exp.loot.push(...drops);
-      addLog(exp, "cache", `Cache opened: ${describeLoot(drops, reg)}.`, nodeId, { drops: drops.length });
-      break;
-    }
-    case "rest": {
-      const rest = def.rest;
-      const able = ableParty(draft);
-      const need = rest.suppliesPerUnit * able.length;
-      if (exp.supplies < need) {
-        addLog(exp, "rest", "No supplies to rest.", nodeId, { need, have: exp.supplies });
-        break;
-      }
-      exp.supplies -= need;
-      for (const id of able) {
-        const u = draft.squad.find((x) => x.id === id);
-        const max = unitStats(draft, reg, u).hp;
-        u.currentHp = Math.min(max, u.currentHp + Math.round(max * rest.hpPct / 100));
-        u.stress = Math.max(0, Math.min(100, u.stress + rest.stress));
-      }
-      addLog(exp, "rest", `The squad rests (${need} supplies).`, nodeId, { spent: need });
-      break;
-    }
-    case "combat":
-      events.push(...enterCombat(draft, ctx2, nodeId, def, mission));
-      break;
-    case "event":
-      events.push(...enterEvent(draft, ctx2, nodeId, isObjective, mission));
-      break;
-    default:
-      addLog(exp, "move", "Nothing here.", nodeId);
-  }
-  const resolved = exp.phase === "travel";
-  if (resolved && (reach || isObjective && kind === "nothing")) exp.objectiveDone = true;
-  return events;
-}
-function setFormation(draft, formation) {
-  const exp = draft.expedition;
-  if (!exp) throw new Error("There is no expedition.");
-  const idle = exp.phase === "travel" || exp.pending?.kind === "combat" && !draft.combat;
-  if (!idle) throw new Error("The formation cannot change right now.");
-  const problem = formationProblem(ableParty(draft), formation);
-  if (problem) throw new Error(problem);
-  exp.formation = { front: [...formation.front], back: [...formation.back] };
-}
-var TREAT_KINDS = ["patch", "calm"];
-function treat(draft, ctx2, unitId, kind) {
-  const exp = draft.expedition;
-  if (!exp) throw new Error("There is no expedition.");
-  if (exp.phase !== "travel") throw new Error("Nobody can be treated right now.");
-  if (!TREAT_KINDS.includes(kind)) throw new Error(`Unknown treatment "${String(kind)}".`);
-  if (!ableParty(draft).includes(unitId)) throw new Error(`Unit "${unitId}" cannot be treated.`);
-  if (exp.supplies < 1) throw new Error("No supplies to spend.");
-  const u = draft.squad.find((x) => x.id === unitId);
-  if (kind === "calm" && u.breakdown) throw new Error(`${u.displayName} is in a breakdown and cannot be calmed.`);
-  exp.supplies -= 1;
-  if (kind === "patch") {
-    const max = unitStats(draft, ctx2.registries, u).hp;
-    u.currentHp = Math.min(max, u.currentHp + Math.round(max * TUNING.expedition.treat.hpPct / 100));
-  } else {
-    u.stress = Math.max(0, u.stress - TUNING.expedition.treat.stress);
-  }
-  addLog(exp, "treat", `${u.displayName}: ${kind === "patch" ? "wounds patched" : "calmed down"}.`, void 0, { unitId, kind });
-  return [{ type: "expedition_treated", unitId, kind }];
-}
-var clamp13 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
-function enterCombat(draft, ctx2, nodeId, def, mission) {
-  const exp = draft.expedition;
-  const reg = ctx2.registries;
-  const combat2 = def.combat;
-  const region = reg.regions.get(exp.regionId);
-  let encounter;
-  try {
-    encounter = generateEncounter(draft, reg, ctx2.rng, {
-      table: region.enemyTable,
-      danger: clamp13(mission.danger + combat2.dangerDelta, 1, 5),
-      squadPower: squadPower(draft, reg, ableParty(draft)),
-      exposesCommander: combat2.exposesCommander,
-      lootTableId: combat2.lootTableId
-    });
-  } catch {
-    addLog(exp, "move", "Nothing here.", nodeId);
-    if (nodeId === exp.map.objectiveId) exp.objectiveDone = true;
-    return [];
-  }
-  exp.pending = { kind: "combat", nodeId, encounter, ...draft.lastCombat ? { prevCombatId: draft.lastCombat.id } : {} };
-  exp.phase = "combat";
-  return [{ type: "expedition_combat", nodeId, encounter }];
-}
-var SEVERITY_RANK3 = { minor: 0, moderate: 1, major: 2, extreme: 3 };
-function dedupeHints(hints) {
-  const byKey = /* @__PURE__ */ new Map();
-  for (const h2 of hints) {
-    const key = `${h2.type}|${h2.actor}|${[...h2.targets].sort().join(",")}`;
-    const kept = byKey.get(key);
-    if (!kept || SEVERITY_RANK3[h2.severity] > SEVERITY_RANK3[kept.severity]) byKey.set(key, h2);
-  }
-  return [...byKey.values()];
-}
-function applyHints(draft, ctx2, exp) {
-  const events = [];
-  const hints = dedupeHints(exp.hints);
-  const size = TUNING.relations.maxEventsPerExchange;
-  for (let i = 0; i < hints.length; i += size) {
-    const batch = hints.slice(i, i + size).map((h2) => ({ ...h2, confidence: 1 }));
-    events.push(...applyIntents(draft, ctx2, { channel: "scene", participants: exp.party, intents: { events: batch } }));
-  }
-  return events;
-}
-var OUTCOME_TEXT = {
-  success: "objective secured",
-  retreated: "the squad pulled back",
-  failed: "the squad was beaten back"
-};
-var unique = (ids) => [...new Set(ids)];
-var logIds = (exp, key) => unique(exp.log.flatMap((l) => l.kind === "combat" ? l.data?.[key] ?? [] : []));
-function endExpedition(draft, ctx2, outcome) {
-  const exp = draft.expedition;
-  if (!exp) throw new Error("There is no expedition.");
-  const reg = ctx2.registries;
-  const events = [];
-  const mission = draft.missions.active.find((m) => m.id === exp.missionId);
-  const region = reg.regions.get(exp.regionId);
-  const regionLabel = region ? regionName(region) : exp.regionId;
-  const nameOf7 = (id) => draft.squad.find((u) => u.id === id)?.displayName ?? id;
-  draft.resources.supplies += exp.supplies;
-  const abandoned = draft.dilemmas?.open;
-  if (abandoned && abandoned.context === "expedition_event") {
-    delete draft.dilemmas.open;
-    events.push({ type: "dilemma_resolved", id: abandoned.id, templateId: abandoned.templateId, nothing: true });
-  }
-  let rewards;
-  if (outcome === "success") {
-    events.push(...bankLoot(draft, exp.loot));
-    if (mission) {
-      events.push(...completeMission(draft, ctx2, mission.id));
-      rewards = draft.missions.completed.find((m) => m.id === mission.id)?.rewards;
-    }
-  } else if (mission) {
-    releaseMission(draft, mission.id);
-  }
-  const released = releaseBreakdowns(draft, exp.party);
-  events.push(...released);
-  for (const e of released) {
-    const unit = draft.squad.find((u) => u.id === e.unitId);
-    if (!unit || unit.kind !== "named") continue;
-    enqueueNight(draft, {
-      id: nextId(draft, "n"),
-      unitId: unit.id,
-      kind: "after_breakdown",
-      priority: TUNING.expedition.breakdownNight.priority,
-      framing: `${unit.displayName} is at your door. She has not slept since the breakdown.`,
-      ignore: { event: "dismissed", severity: "moderate" },
-      expiresDay: draft.day + TUNING.expedition.breakdownNight.expiresInDays
-    });
-  }
-  events.push(...applyHints(draft, ctx2, exp));
-  const injuries = logIds(exp, "injuries");
-  const deaths = logIds(exp, "deaths");
-  const breakdowns = logIds(exp, "breakdowns");
-  const report = {
-    id: `rep_${exp.id}`,
-    missionId: exp.missionId,
-    missionTitle: mission?.title ?? "Unknown mission",
-    regionId: exp.regionId,
-    day: exp.day,
-    outcome,
-    party: [...exp.party],
-    nodes: mission ? exp.path.map((id) => nodePlayType(exp.map, id, mission)) : [],
-    log: structuredClone(exp.log),
-    loot: structuredClone(exp.loot),
-    injuries,
-    deaths,
-    breakdowns,
-    acknowledged: false,
-    debriefed: false
-  };
-  if (rewards) report.rewards = structuredClone(rewards);
-  draft.lastExpedition = report;
-  let line2 = `Expedition to ${regionLabel}: ${OUTCOME_TEXT[outcome]}.`;
-  if (injuries.length > 0) line2 += ` ${injuries.map(nameOf7).join(" and ")} ${injuries.length > 1 ? "were" : "was"} carried back.`;
-  if (deaths.length > 0) line2 += ` ${deaths.map(nameOf7).join(" and ")} did not return.`;
-  addChronicle(draft, { kind: "scene", day: draft.day, text: line2 });
-  const rs = draft.world.regions[exp.regionId] ?? { known: true };
-  draft.world.regions[exp.regionId] = { ...rs, lastVisitedDay: draft.day };
-  draft.world.lastExpeditionRegionId = exp.regionId;
-  delete draft.expedition;
-  events.push(...consumeSlots(draft, exp.slots, ctx2));
-  draft.lastExpedition.day = draft.day;
-  events.push(...openRequest(draft, "expedition"));
-  events.push({ type: "expedition_ended", outcome, reportId: report.id });
-  return events;
-}
-function returnFromExpedition(draft, ctx2) {
-  const exp = draft.expedition;
-  if (!exp) throw new Error("There is no expedition.");
-  if (exp.phase !== "travel") throw new Error("Finish what is happening here first.");
-  if (!exp.objectiveDone) throw new Error("The objective has not been reached yet.");
-  return endExpedition(draft, ctx2, "success");
-}
-function retreatFromExpedition(draft, ctx2) {
-  const exp = draft.expedition;
-  if (!exp) throw new Error("There is no expedition.");
-  if (draft.combat) throw new Error("A fight is going on: it has to be decided first.");
-  const events = [];
-  if (exp.phase === "combat" && exp.pending?.kind === "combat" && draft.lastCombat && draft.lastCombat.id !== exp.pending.prevCombatId) {
-    events.push(...resolveCombat(draft, ctx2));
-    if (!draft.expedition) return events;
-  }
-  addLog(draft.expedition, "retreat", "The squad pulls back.");
-  events.push(...endExpedition(draft, ctx2, "retreated"));
-  return events;
-}
-function cleanRecap(text2) {
-  if (typeof text2 !== "string") return "";
-  return text2.replace(/<\s*(script|style)[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi, " ").replace(/<[^>]*>?/g, " ").replace(/[<>]/g, "").replace(/\s+/g, " ").trim().slice(0, TUNING.expedition.recapMax).trim();
-}
-var OUTCOME_LABEL = { success: "OBJECTIVE SECURED", retreated: "RETREATED", failed: "FAILED: SQUAD BEATEN BACK" };
-function reportLines(report, state, reg) {
-  const nameOf7 = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
-  const region = reg.regions.get(report.regionId);
-  const lines = [
-    "AFTER-ACTION REPORT",
-    `Mission: ${report.missionTitle}`,
-    `Region: ${region ? regionName(region) : report.regionId} // Day ${report.day}`,
-    `Outcome: ${OUTCOME_LABEL[report.outcome]}`,
-    `Squad: ${report.party.map(nameOf7).join(", ")}`
-  ];
-  const route = report.nodes.map((t) => String(reg.nodeTypes.get(t)?.name ?? t));
-  if (route.length > 0) lines.push(`Route: ${route.join(" > ")}`);
-  for (const entry of report.log) lines.push(entry.text);
-  const loot = describeLoot(report.loot, reg);
-  lines.push(report.outcome === "success" ? `Loot banked: ${loot}.` : `Loot lost: ${loot}.`);
-  if (report.rewards) {
-    const r = report.rewards;
-    const parts = [`${r.credits} credits`, `${r.plyx} plyx`, ...r.items];
-    if (r.faction) parts.push(`${r.faction.id} standing +${r.faction.amount}`);
-    if (r.clearance !== void 0) parts.push(`clearance tier ${r.clearance}`);
-    lines.push(`Rewards: ${parts.join(", ")}.`);
-  }
-  if (report.injuries.length > 0) lines.push(`Injured: ${report.injuries.map(nameOf7).join(", ")}.`);
-  if (report.deaths.length > 0) lines.push(`Fallen: ${report.deaths.map(nameOf7).join(", ")}.`);
-  if (report.breakdowns.length > 0) lines.push(`Breakdown: ${report.breakdowns.map(nameOf7).join(", ")}.`);
-  if (report.recap) lines.push("", report.recap);
-  return lines;
-}
-var nodeNumber = (exp) => exp.path.length;
-function hintEvidence(draft, h2, node) {
-  const name = (id) => id === "commander" ? "the commander" : draft.squad.find((u) => u.id === id)?.displayName ?? id;
-  const targets = h2.targets.map(name).join(" and ");
-  if (h2.type === "protected") {
-    return h2.targets.includes("commander") ? `Took the hits meant for the commander at node ${node}.` : `${name(h2.actor)} covered ${targets} at node ${node}.`;
-  }
-  return `${name(h2.actor)} left ${targets} exposed at node ${node}.`;
-}
-function resolveCombat(draft, ctx2) {
-  const exp = draft.expedition;
-  if (!exp || exp.phase !== "combat" || exp.pending?.kind !== "combat") throw new Error("There is no fight to resolve.");
-  if (draft.combat) throw new Error("The fight is still going.");
-  const result = draft.lastCombat;
-  if (!result || result.id === exp.pending.prevCombatId) throw new Error("The fight has not been fought yet.");
-  const nodeId = exp.pending.nodeId;
-  const node = nodeNumber(exp);
-  for (const h2 of result.relationHints) {
-    exp.hints.push({ type: h2.type, actor: h2.actor, targets: [...h2.targets], severity: h2.severity, evidence: hintEvidence(draft, h2, node) });
-  }
-  addLog(exp, "combat", `Fight at node ${node} against ${result.enemies.map((e) => e.name).join(", ")}: ${result.outcome} in ${result.rounds} round(s).`, nodeId, {
-    outcome: result.outcome,
-    rounds: result.rounds,
-    enemies: result.enemies.map((e) => e.name),
-    injuries: [...result.injuries],
-    deaths: [...result.deaths],
-    breakdowns: [...result.breakdowns]
-  });
-  delete exp.pending;
-  if (result.outcome !== "won") {
-    exp.phase = "travel";
-    return endExpedition(draft, ctx2, result.outcome === "lost" ? "failed" : "retreated");
-  }
-  exp.loot.push(...structuredClone(result.loot));
-  const able = ableParty(draft);
-  if (able.length === 0) {
-    exp.phase = "travel";
-    return endExpedition(draft, ctx2, "retreated");
-  }
-  const front = exp.formation.front.filter((id) => able.includes(id));
-  const back = exp.formation.back.filter((id) => able.includes(id));
-  if (front.length === 0) front.push(...back.splice(0, 1));
-  exp.formation = { front, back };
-  if (nodeId === exp.map.objectiveId) exp.objectiveDone = true;
-  exp.phase = "travel";
-  return [];
-}
-function eventPool(reg, regionId) {
-  const pinned = new Set([...reg.missionTemplates.values()].map((t) => t.objectiveEventId).filter((x) => typeof x === "string"));
-  return [...reg.dilemmaTemplates.values()].filter((t) => {
-    const regions = t.regions;
-    return t.scale === "minor" && t.contexts.includes("expedition_event") && !pinned.has(t.id) && (regions === void 0 || regions.includes(regionId));
-  });
-}
-function enterEvent(draft, ctx2, nodeId, isObjective, mission) {
-  const exp = draft.expedition;
-  const reg = ctx2.registries;
-  let templateId;
-  if (isObjective) {
-    const pinned = reg.missionTemplates.get(mission.templateId)?.objectiveEventId;
-    if (typeof pinned === "string" && reg.dilemmaTemplates.has(pinned)) templateId = pinned;
-  }
-  if (templateId === void 0) {
-    const pool = eventPool(reg, exp.regionId);
-    if (pool.length > 0) templateId = String(ctx2.rng.pick(pool).id);
-  }
-  if (templateId === void 0) {
-    addLog(exp, "move", "Nothing here.", nodeId);
-    if (isObjective) exp.objectiveDone = true;
-    return [];
-  }
-  exp.pending = { kind: "event", nodeId, templateId };
-  exp.phase = "event";
-  return [{ type: "expedition_event", nodeId, templateId }];
-}
-var capital = (s) => s.charAt(0).toUpperCase() + s.slice(1);
-function optionsOf(state, reg) {
-  const pending2 = state.expedition?.pending;
-  if (pending2?.kind !== "event") return null;
-  const fixed = reg.dilemmaTemplates.get(pending2.templateId)?.fixed;
-  return fixed ? { templateId: pending2.templateId, title: fixed.title, options: fixed.options } : null;
-}
-function eventOptions(state, reg) {
-  const found = optionsOf(state, reg);
-  if (!found) return [];
-  const exp = state.expedition;
-  return found.options.map((o, index) => {
-    let disabled = null;
-    if (o.requires && !meetsSocialRequirements(state, { [o.requires.stat]: o.requires.rank })) {
-      disabled = `Needs ${capital(o.requires.stat)} ${o.requires.rank}`;
-    }
-    if (disabled === null) {
-      for (const fx2 of o.effects) {
-        if (fx2.type === "carried_supplies" && fx2.amount < 0 && exp.supplies < -fx2.amount) disabled = "Not enough supplies";
-        else if (fx2.type === "resource" && fx2.amount < 0 && state.resources[fx2.resource] < -fx2.amount) disabled = `Not enough ${fx2.resource}`;
-        if (disabled !== null) break;
-      }
-    }
-    return { index, label: o.label, disabled };
-  });
-}
-function finishEventNode(draft, nodeId, text2, data) {
-  const exp = draft.expedition;
-  addLog(exp, "event", text2, nodeId, data);
-  delete exp.pending;
-  exp.phase = "travel";
-  if (nodeId === exp.map.objectiveId) exp.objectiveDone = true;
-}
-function chooseOption(draft, ctx2, index) {
-  const exp = draft.expedition;
-  const found = optionsOf(draft, ctx2.registries);
-  if (!exp || exp.phase !== "event" || exp.pending?.kind !== "event") throw new Error("There is no event to answer.");
-  if (draft.dilemmas?.open?.context === "expedition_event") throw new Error("A decision is waiting: answer it first.");
-  if (!found) {
-    finishEventNode(draft, exp.pending.nodeId, "Nothing here.");
-    return [];
-  }
-  const option = eventOptions(draft, ctx2.registries)[index];
-  if (!Number.isInteger(index) || !option) throw new Error(`There is no option ${String(index)}.`);
-  if (option.disabled !== null) throw new Error(`${option.label}: ${option.disabled}.`);
-  const { nodeId, templateId } = exp.pending;
-  const events = applyWorldEffects(draft, ctx2, found.options[index].effects, { kind: "event", id: templateId, label: found.title });
-  finishEventNode(draft, nodeId, `${found.title}: ${option.label}.`, { templateId, option: option.label });
-  events.push({ type: "expedition_choice", nodeId, templateId, option: index, label: option.label });
-  return events;
-}
-
-// src/engine/actions/expedition.ts
-var isObj13 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
-var strList = (v) => Array.isArray(v) && v.every((x) => typeof x === "string") ? v : null;
-function readFormation(v) {
-  const front = isObj13(v) ? strList(v.front) : null;
-  const back = isObj13(v) ? strList(v.back) : null;
-  if (!front || !back) throw new Error("A formation needs { front: string[], back: string[] }.");
-  return { front, back };
-}
-registerAction("expedition/start", (draft, payload, ctx2) => {
-  if (!isObj13(payload)) throw new Error("expedition/start needs a payload.");
-  const unitIds = strList(payload.unitIds);
-  if (!unitIds) throw new Error("expedition/start needs { unitIds: string[] }.");
-  const p = { unitIds, formation: readFormation(payload.formation), supplies: payload.supplies };
-  if (typeof payload.missionId === "string") p.missionId = payload.missionId;
-  if (isObj13(payload.poi) && typeof payload.poi.regionId === "string" && typeof payload.poi.poiId === "string") {
-    p.poi = { regionId: payload.poi.regionId, poiId: payload.poi.poiId };
-  }
-  const problem = checkExpedition(draft, ctx2.registries, p);
-  if (problem) throw new Error(problem);
-  return startExpedition(draft, ctx2, p);
-});
-registerAction("expedition/move", (draft, payload, ctx2) => {
-  const nodeId = isObj13(payload) ? payload.nodeId : void 0;
-  if (typeof nodeId !== "string") throw new Error("expedition/move needs { nodeId }.");
-  return moveTo(draft, ctx2, nodeId);
-});
-registerAction("expedition/set_formation", (draft, payload) => {
-  setFormation(draft, readFormation(isObj13(payload) ? payload.formation : void 0));
-  return [];
-});
-registerAction("expedition/treat", (draft, payload, ctx2) => {
-  const unitId = isObj13(payload) ? payload.unitId : void 0;
-  const kind = isObj13(payload) ? payload.kind : void 0;
-  if (typeof unitId !== "string" || typeof kind !== "string") throw new Error("expedition/treat needs { unitId, kind }.");
-  return treat(draft, ctx2, unitId, kind);
-});
-registerAction("expedition/resolve_combat", (draft, _payload, ctx2) => resolveCombat(draft, ctx2));
-registerAction("expedition/choose", (draft, payload, ctx2) => {
-  const option = isObj13(payload) ? payload.option : void 0;
-  if (typeof option !== "number") throw new Error("expedition/choose needs { option }.");
-  return chooseOption(draft, ctx2, option);
-});
-registerAction("expedition/return", (draft, _payload, ctx2) => returnFromExpedition(draft, ctx2));
-registerAction("expedition/retreat", (draft, _payload, ctx2) => retreatFromExpedition(draft, ctx2));
-registerAction("expedition/ack_report", (draft) => {
-  if (!draft.lastExpedition) throw new Error("There is no report.");
-  draft.lastExpedition.acknowledged = true;
-  return [];
-});
-registerAction("expedition/mark_debriefed", (draft) => {
-  if (!draft.lastExpedition) throw new Error("There is no report.");
-  draft.lastExpedition.debriefed = true;
-  return [];
-});
-registerAction("expedition/set_recap", (draft, payload) => {
-  const reportId = isObj13(payload) ? payload.reportId : void 0;
-  if (!draft.lastExpedition || reportId !== draft.lastExpedition.id) throw new Error("That report is no longer the last one.");
-  const text2 = cleanRecap(isObj13(payload) ? payload.text : void 0);
-  if (text2 === "") throw new Error("The recap is empty.");
-  draft.lastExpedition.recap = text2;
-  return [{ type: "expedition_recap_set", reportId }];
-});
-
-// src/engine/actions/leash.ts
-registerAction("leash/seed", (draft, _payload, ctx2) => ensureLeash(draft, ctx2.registries));
-registerDayEndStep("mission_deadlines", (draft, ctx2) => [...ensureLeash(draft, ctx2.registries), ...refreshLeash(draft, ctx2.registries)]);
-var isObj14 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
-var unitIdOf = (payload, action) => {
-  const id = isObj14(payload) ? payload.unitId : void 0;
-  if (typeof id !== "string") throw new Error(`${action} needs { unitId }`);
-  return id;
-};
-registerAction("leash/compel", (draft, payload, ctx2) => {
-  const unitId = unitIdOf(payload, "leash/compel");
-  const refusal2 = draft.scene?.refusals?.find((r) => r.unitId === unitId);
-  if (!draft.scene?.participants.includes(unitId) || !refusal2) throw new Error("She has not refused an order in this scene: there is nothing to compel.");
-  const { forced, events } = compel(draft, ctx2, { unitId, context: "scene" });
-  if (forced && draft.scene.refusals) draft.scene.refusals = draft.scene.refusals.filter((r) => r.unitId !== unitId);
-  return [...events, { type: "scene_compelled", unitId, forced }];
-});
-registerAction("leash/suppress", (draft, payload, ctx2) => {
-  const unitId = unitIdOf(payload, "leash/suppress");
-  const open2 = draft.disloyalty?.open;
-  if (!open2 || open2.unitId !== unitId || open2.kind !== "desertion" && open2.kind !== "mutiny") {
-    throw new Error("There is nothing to suppress: no desertion or attack is about to happen.");
-  }
-  const events = suppress(draft, ctx2, { unitId, context: open2.kind });
-  if (open2.at === "night") events.push(...consumeSlots(draft, 1, ctx2));
-  return events;
-});
-registerAction("leash/terminate", (draft, payload, ctx2) => terminate(draft, ctx2, unitIdOf(payload, "leash/terminate")).events);
-
-// src/engine/loyalty/refusal.ts
-var refusalsOf = (effects2) => Array.isArray(effects2) ? effects2.filter((e) => e?.type === "order_refusal") : [];
-function refusalChance(state, reg, unitId, orderId) {
-  const unit = state.squad.find((u) => u.id === unitId);
-  if (!unit) return 0;
-  const found = [0];
-  const take = (e) => {
-    const limited = e.orders !== void 0 && e.orders.length > 0;
-    if (limited && (orderId === void 0 || !e.orders.includes(orderId))) return;
-    found.push(e.chance ?? 0);
-  };
-  for (const { synergyId } of getSynergies(state, reg, [unitId])) {
-    for (const e of refusalsOf(reg.synergies.get(synergyId)?.effects)) take(e);
-  }
-  const strained = unit.stress >= 50;
-  for (const d of unit.defects) {
-    const downside = reg.defects.get(d.id)?.combat?.downside;
-    for (const e of refusalsOf(downside)) take(strained ? amplify(e, TUNING.combat.strainedMult) : e);
-  }
-  return Math.max(...found);
-}
-function orderInScene(draft, ctx2, unitId) {
-  const scene = draft.scene;
-  if (!scene || !scene.participants.includes(unitId)) throw new Error("She is not in the open scene.");
-  const unit = draft.squad.find((u) => u.id === unitId);
-  if (!unit) throw new Error(`Unknown unit "${unitId}".`);
-  if (scene.refusals?.some((r) => r.unitId === unitId && r.exchange === scene.exchanges)) {
-    throw new Error("She has already refused: wait for her answer.");
-  }
-  const chance = refusalChance(draft, ctx2.registries, unitId);
-  const refused = chance > 0 && ctx2.rng.chance(chance);
-  scene.refusals = (scene.refusals ?? []).filter((r) => r.unitId !== unitId);
-  if (refused) scene.refusals.push({ unitId, exchange: scene.exchanges });
-  return [{ type: "scene_order", unitId, refused, chance }];
-}
-
-// src/engine/actions/loyalty.ts
-var isObj15 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
-registerAction("scene/order", (draft, payload, ctx2) => {
-  const unitId = isObj15(payload) ? payload.unitId : void 0;
-  if (typeof unitId !== "string") throw new Error("scene/order needs { unitId }");
-  return orderInScene(draft, ctx2, unitId);
-});
-registerDayEndStep("director_tick", loyaltyDayStep);
-registerAction("loyalty/talk_down", (draft, payload, ctx2) => {
-  const stat2 = isObj15(payload) ? payload.stat : void 0;
-  if (stat2 !== "authority" && stat2 !== "empathy") throw new Error('loyalty/talk_down needs { stat: "authority" | "empathy" }');
-  return talkDown(draft, ctx2, stat2);
-});
-registerAction("loyalty/let_go", (draft, _payload, ctx2) => letGo(draft, ctx2));
-registerAction("loyalty/take_back", (draft, _payload, ctx2) => takeBack(draft, ctx2));
-registerAction("loyalty/turn_away", (draft, _payload, ctx2) => turnAway(draft, ctx2));
-var strList2 = (v) => Array.isArray(v) && v.every((x) => typeof x === "string") ? v : null;
-registerAction("loyalty/fight", (draft, payload, ctx2) => {
-  const p = isObj15(payload) ? payload : {};
-  const f = isObj15(p.formation) ? p.formation : {};
-  const front = strList2(f.front);
-  const back = strList2(f.back);
-  if (!front || !back) throw new Error("loyalty/fight needs { formation: { front, back }, coverId, allowRetry? }");
-  const start = fightPayload(draft, {
-    formation: { front, back },
-    ...typeof p.coverId === "string" ? { coverId: p.coverId } : {},
-    allowRetry: p.allowRetry === true
-  });
-  const events = startCombat(draft, ctx2, start);
-  const id = events.find((e) => e.type === "combat_started")?.id;
-  if (typeof id !== "string") throw new Error("The fight did not start.");
-  draft.disloyalty.open.combatId = id;
-  return events;
-});
-registerAction("loyalty/yield", (draft, _payload, ctx2) => yieldToMutiny(draft, ctx2));
-registerAction("loyalty/resolve_mutiny", (draft, _payload, ctx2) => resolveMutiny(draft, ctx2));
-
 // node_modules/zod/v3/external.js
 var external_exports = {};
 __export(external_exports, {
@@ -12930,6 +11723,1352 @@ for (const name of DESCRIBED_REGISTRIES) {
   registrySchemas[name] = withDescription(registrySchemas[name]);
 }
 
+// src/engine/commander/checks.ts
+function routeScope(state) {
+  return { unitIds: state.expedition ? [...state.expedition.party] : activeRosterUnits(state).map((u) => u.id) };
+}
+function afterFailedRoute(effects2) {
+  return effects2.filter((fx2) => isCostEffect(fx2) || fx2.type === "flag" || fx2.type === "thread_flag");
+}
+var stockOf = (state, resource) => resource === "supplies" && state.expedition ? state.expedition.supplies : state.resources[resource];
+var TRUST_ORDER = ["none", "low", "guarded", "solid", "high"];
+var DEFAULT_TRUST_CHECK = "guarded";
+function askable(state, route, scope) {
+  const roles = route.unitFilter?.roles;
+  return state.squad.filter((u) => isLiving(u) && (scope.unitIds === void 0 || scope.unitIds.includes(u.id)) && (roles === void 0 || roles.includes(u.roleId))).map((u) => u.id);
+}
+function choiceOf(state, reg, route, index, scope) {
+  const base = { route: index, kind: route.kind };
+  switch (route.kind) {
+    case "body": {
+      const have = commanderProfile(state).body[route.stat];
+      return {
+        ...base,
+        label: `${route.stat.toUpperCase()}: ${descriptor(route.stat, route.min)} or better`,
+        disabled: have >= route.min ? null : `Needs ${route.stat} ${descriptor(route.stat, route.min)} or better; yours is ${descriptor(route.stat, have)}.`
+      };
+    }
+    case "social": {
+      const have = socialRank(state, route.stat);
+      return {
+        ...base,
+        label: `${route.stat.toUpperCase()} ${route.min}`,
+        disabled: have >= route.min ? null : `Needs ${route.stat} rank ${route.min}; yours is ${have}.`
+      };
+    }
+    case "item": {
+      const name = String(reg.items.get(route.itemId)?.name ?? route.itemId);
+      return {
+        ...base,
+        label: `Use ${name}`,
+        disabled: state.inventory.some((i) => i.itemId === route.itemId) ? null : `No ${name} in the inventory.`
+      };
+    }
+    case "bypass": {
+      const { resource, amount } = route.cost;
+      return {
+        ...base,
+        label: `Pay ${amount} ${resource}`,
+        disabled: stockOf(state, resource) >= amount ? null : `Not enough ${resource} (needs ${amount}).`
+      };
+    }
+    case "delegate": {
+      const unitIds = askable(state, route, scope);
+      return {
+        ...base,
+        label: `Ask a unit (Trust: ${route.cost.trustCheck ?? DEFAULT_TRUST_CHECK})`,
+        disabled: unitIds.length > 0 ? null : "No unit is available to ask.",
+        unitIds
+      };
+    }
+  }
+}
+function routeChoices(state, reg, check, scope) {
+  return check.routes.map((route, i) => choiceOf(state, reg, route, i, scope));
+}
+function resolveRoute(draft, ctx2, check, pick, scope) {
+  const choice = routeChoices(draft, ctx2.registries, check, scope)[pick.route];
+  if (!choice) throw new Error(`The check "${check.id}" has no route ${String(pick.route)}.`);
+  if (choice.disabled) throw new Error(choice.disabled);
+  const route = check.routes[pick.route];
+  const events = [];
+  let passed = true;
+  switch (route.kind) {
+    case "body":
+    case "social":
+    case "item":
+      break;
+    case "bypass": {
+      if (route.cost.resource === "supplies" && draft.expedition) draft.expedition.supplies -= route.cost.amount;
+      else {
+        draft.resources[route.cost.resource] -= route.cost.amount;
+        events.push({ type: "resource_changed", resource: route.cost.resource, amount: -route.cost.amount });
+      }
+      break;
+    }
+    case "delegate": {
+      if (typeof pick.unitId !== "string") throw new Error("Pick a unit to ask.");
+      if (!choice.unitIds?.includes(pick.unitId)) throw new Error(`Unit "${pick.unitId}" is not available for this request.`);
+      const unit = draft.squad.find((u) => u.id === pick.unitId);
+      const rel = draft.relations[unit.id];
+      const have = TRUST_ORDER.indexOf(trustBand(rel?.trust ?? 0));
+      const need = TRUST_ORDER.indexOf(route.cost.trustCheck ?? DEFAULT_TRUST_CHECK);
+      if (!rel || rel.loyaltyBand === "breaking" || have < need - 1) {
+        passed = false;
+        events.push({ type: "delegate_refused", unitId: unit.id });
+      } else if (have < need) {
+        passed = false;
+        events.push({ type: "delegate_demand", unitId: unit.id });
+      } else {
+        const { affinityCost = 0, stress = 0 } = route.cost;
+        if (affinityCost > 0) {
+          const applied = applyRelationDelta(draft, unit.id, "affinity", -affinityCost, `route:${check.id}`);
+          events.push({ type: "relation_changed", unitId: unit.id, axis: "affinity", applied });
+        }
+        if (stress > 0) {
+          const next = Math.min(100, unit.stress + stress);
+          events.push({ type: "stress_changed", unitId: unit.id, delta: next - unit.stress });
+          unit.stress = next;
+        }
+        if (ctx2.rng.chance(TUNING.commander.delegateRemarkChance)) events.push({ type: "delegate_remark", unitId: unit.id });
+      }
+      break;
+    }
+  }
+  events.push({ type: "route_taken", checkId: check.id, kind: route.kind, passed });
+  return { passed, events };
+}
+function readRoutePick(v) {
+  if (v === void 0) return void 0;
+  const o = typeof v === "object" && v !== null && !Array.isArray(v) ? v : null;
+  if (!o || typeof o.route !== "number" || !Number.isInteger(o.route) || o.unitId !== void 0 && typeof o.unitId !== "string") {
+    throw new Error("A route pick needs { route: number, unitId? }.");
+  }
+  return { route: o.route, ...o.unitId !== void 0 ? { unitId: o.unitId } : {} };
+}
+
+// src/engine/loyalty/mutiny.ts
+var SEVERITY_RANK2 = { minor: 0, moderate: 1, major: 2, extreme: 3 };
+var BETRAYALS = ["lied_detected", "broke_promise", "coerced", "decision_violated", "crime_revealed"];
+function mutinyTrigger(state, unitId, minSeverity = "major") {
+  const within = (day) => state.day - day <= TUNING.mutiny.triggerWindowDays;
+  const found = [];
+  const rec = loyaltyOf(state, unitId);
+  if (rec?.trigger && within(rec.trigger.day)) found.push({ kind: rec.trigger.kind, day: rec.trigger.day });
+  for (const h2 of state.relations[unitId]?.history ?? []) {
+    if (h2.kind !== "event" || !BETRAYALS.includes(h2.type) || h2.severity === void 0) continue;
+    if (SEVERITY_RANK2[h2.severity] >= SEVERITY_RANK2[minSeverity] && within(h2.day)) found.push({ kind: "betrayal", day: h2.day });
+  }
+  return found.sort((a, b) => b.day - a.day)[0] ?? null;
+}
+var mutinySigns = (state, unitId) => (loyaltyOf(state, unitId)?.signs ?? []).filter((s) => s.about === "mutiny");
+function mayMutiny(state, unitId) {
+  const unit = state.squad.find((u) => u.id === unitId);
+  const rel = state.relations[unitId];
+  if (!unit || !rel || unit.kind !== "named" || !isLiving(unit)) return false;
+  if (rel.stateId === "despises") return state.day - rel.stateSince >= TUNING.mutiny.minDaysInState;
+  return rel.stateId === "obsessed" && mutinyTrigger(state, unitId, "extreme") !== null;
+}
+function mutinyReady(state, _reg, unitId) {
+  if (!mayMutiny(state, unitId)) return false;
+  if (state.relations[unitId].stateId === "despises" && mutinyTrigger(state, unitId) === null) return false;
+  const signs = mutinySigns(state, unitId);
+  return signs.length >= TUNING.mutiny.minSigns && new Set(signs.map((s) => s.day)).size >= TUNING.mutiny.minSigns;
+}
+function sympathizers(state, unitId) {
+  return state.roster.activeIds.filter((id) => {
+    const u = state.squad.find((x) => x.id === id);
+    const rel = state.relations[id];
+    return id !== unitId && u !== void 0 && rel !== void 0 && u.kind === "named" && isLiving(u) && u.status === "active" && rel.loyaltyBand !== "steady" && rel.trust < TUNING.mutiny.sympathizerTrustBelow;
+  }).sort((a, b) => state.relations[a].trust - state.relations[b].trust).slice(0, TUNING.mutiny.maxSympathizers);
+}
+var groupOf = (open2) => [open2.unitId, ...open2.sympathizers ?? []];
+function loyalUnits(state, unitId) {
+  const open2 = state.disloyalty?.open;
+  const mutineers = /* @__PURE__ */ new Set([unitId, ...open2?.unitId === unitId && open2.sympathizers ? open2.sympathizers : sympathizers(state, unitId)]);
+  return state.roster.activeIds.filter((id) => {
+    const u = state.squad.find((x) => x.id === id);
+    return !mutineers.has(id) && u !== void 0 && isLiving(u) && u.status === "active";
+  });
+}
+var nameOf = (state, id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
+function startMutiny(draft, unitId) {
+  const group = sympathizers(draft, unitId);
+  const entry = {
+    id: nextId(draft, "n"),
+    unitId,
+    kind: "mutiny",
+    priority: TUNING.mutiny.nightPriority,
+    framing: `${nameOf(draft, unitId)} is not alone: voices in the corridor, weapons out of the racks. This is about to turn violent.`,
+    ignore: { event: "dismissed", severity: "major" },
+    expiresDay: draft.day + TUNING.disloyalty.night.expiresInDays
+  };
+  draft.calendar.nightEventsQueue = draft.calendar.nightEventsQueue.filter((n) => !(n.unitId === unitId && n.kind === "mutiny"));
+  enqueueNight(draft, entry);
+  (draft.disloyalty ??= { units: {} }).open = { kind: "mutiny", unitId, day: draft.day, at: "night", nightEntryId: entry.id, sympathizers: group };
+  return [{ type: "mutiny_started", unitId, sympathizers: group }];
+}
+function mutinyDayStep(draft, ctx2) {
+  const events = [];
+  for (const u of draft.squad.filter((x) => x.kind === "named" && isLiving(x))) {
+    const rec = loyaltyOf(draft, u.id);
+    const candidate = draft.relations[u.id]?.stateId === "despises" || draft.relations[u.id]?.stateId === "obsessed" && mutinyTrigger(draft, u.id, "extreme") !== null;
+    if (!candidate) {
+      if (rec?.signs.some((s) => s.about === "mutiny")) rec.signs = rec.signs.filter((s) => s.about !== "mutiny");
+      continue;
+    }
+    const signs = mutinySigns(draft, u.id);
+    const newest = Math.max(-Infinity, ...signs.map((s) => s.day));
+    if (signs.length === 0) events.push(...emitSign(draft, ctx2, u.id, "mutiny", 1));
+    else if (signs.length === 1 && newest < draft.day) events.push(...emitSign(draft, ctx2, u.id, "mutiny", 2));
+    const aged = mutinySigns(draft, u.id);
+    const lastSign = Math.max(-Infinity, ...aged.map((s) => s.day));
+    if (draft.disloyalty?.open || draft.day - lastSign < 1 || !mutinyReady(draft, ctx2.registries, u.id)) continue;
+    if (ctx2.rng.chance(TUNING.mutiny.chancePerDay)) events.push(...startMutiny(draft, u.id));
+  }
+  return events;
+}
+function fightPayload(state, p) {
+  const open2 = requireOpen(state, "mutiny");
+  if (open2.combatId !== void 0) throw new Error("The fight has already been fought: resolve it.");
+  const loyal = new Set(loyalUnits(state, open2.unitId));
+  const ids = [...p.formation.front, ...p.formation.back];
+  if (ids.length === 0) throw new Error("Choose who stands with you.");
+  for (const id of ids) {
+    if (!loyal.has(id)) throw new Error(`${nameOf(state, id)} cannot stand with you: only your able, loyal units can.`);
+  }
+  return {
+    encounter: { enemies: [], mutineers: groupOf(open2).map((unitId) => ({ unitId })), exposesCommander: true, danger: 0 },
+    formation: { front: [...p.formation.front], back: [...p.formation.back] },
+    ...p.coverId !== void 0 ? { coverId: p.coverId } : {},
+    allowRetry: p.allowRetry === true
+  };
+}
+function escape(draft, ctx2, open2, how, commanderHurt) {
+  const events = [];
+  for (const id of groupOf(open2)) {
+    const u = draft.squad.find((x) => x.id === id);
+    if (!u || !isLiving(u)) continue;
+    removeFromService(draft, id, "deserted");
+    const rec = loyaltyRecord(draft, id);
+    rec.desertedDay = draft.day;
+    rec.stance = "hostile";
+    delete rec.returned;
+    rec.signs = rec.signs.filter((s) => s.about !== "mutiny");
+    delete rec.trigger;
+  }
+  if (!commanderHurt && (draft.commander.injuredUntilDay ?? 0) <= draft.day) events.push(...injureCommander(draft, TUNING.combat.commanderInjuryDays));
+  delete draft.disloyalty.open;
+  events.push({ type: "mutiny_escaped", unitId: open2.unitId, sympathizers: open2.sympathizers ?? [], how });
+  events.push(...closeNight(draft, ctx2, open2));
+  return events;
+}
+function yieldToMutiny(draft, ctx2) {
+  const open2 = requireOpen(draft, "mutiny");
+  if (loyalUnits(draft, open2.unitId).length > 0) throw new Error("You still have soldiers who can fight: stand with them or suppress it.");
+  return escape(draft, ctx2, open2, "yield", false);
+}
+function subdue(draft, open2, fought) {
+  for (const id of fought) {
+    const u = draft.squad.find((x) => x.id === id);
+    if (!u || !isLiving(u)) continue;
+    u.status = "injured";
+    u.currentHp = 1;
+    u.injuryDays = Math.max(u.injuryDays ?? 0, TUNING.mutiny.subduedInjuryDays);
+    if (u.injuries.length === 0) u.injuries.push("wounded");
+  }
+  const events = [];
+  const rel = draft.relations[open2.unitId];
+  if (rel && rel.stateId !== "resentful") events.push(enterState(draft, open2.unitId, "resentful", "mutiny_subdued"));
+  const rec = loyaltyRecord(draft, open2.unitId);
+  rec.cause = { kind: "attack", day: draft.day };
+  rec.signs = rec.signs.filter((s) => s.about !== "mutiny");
+  delete rec.trigger;
+  delete draft.disloyalty.open;
+  events.push({ type: "mutiny_subdued", unitId: open2.unitId, sympathizers: open2.sympathizers ?? [] });
+  return events;
+}
+function resolveMutiny(draft, ctx2) {
+  const open2 = requireOpen(draft, "mutiny");
+  if (open2.combatId === void 0) throw new Error("The fight has not been fought yet.");
+  if (draft.combat) throw new Error("The fight is still going on.");
+  const result = draft.lastCombat;
+  if (!result || result.id !== open2.combatId) throw new Error("The result of that fight is no longer available.");
+  const events = result.outcome === "won" ? subdue(draft, open2, (result.mutineers ?? []).map((m) => m.unitId)) : escape(draft, ctx2, open2, result.outcome === "retreated" ? "retreat" : "defeat", result.commanderInjured);
+  if (result.outcome === "won") events.push(...closeNight(draft, ctx2, open2));
+  return events;
+}
+function resolveExpiredMutiny(draft, ctx2, open2) {
+  if (open2.combatId !== void 0 && !draft.combat && draft.lastCombat?.id === open2.combatId) return resolveMutiny(draft, ctx2);
+  return escape(draft, ctx2, open2, "yield", false);
+}
+
+// src/engine/loyalty/desertion.ts
+var clamp12 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+function desertionChance(state, reg, unitId) {
+  const unit = state.squad.find((u) => u.id === unitId);
+  const rel = state.relations[unitId];
+  if (!unit || !rel) return 0;
+  const t = TUNING.disloyalty.desertion;
+  let p = t.base + t.perTrustBelow * Math.max(0, t.trustRef - rel.trust);
+  p += rel.affinity < 0 ? t.affinityNegative * -rel.affinity : -t.affinityPositive * rel.affinity;
+  p += t.perStressAbove * Math.max(0, unit.stress - t.stressRef);
+  for (const d of unit.defects) p += reg.defects.get(d.id)?.desertionMod ?? 0;
+  return clamp12(p, t.min, t.max);
+}
+function mayDesert(state, unitId) {
+  if (state.disloyalty?.open) return false;
+  const rec = loyaltyOf(state, unitId);
+  if (!rec) return false;
+  if (rec.nextCheckDay !== void 0 && state.day < rec.nextCheckDay) return false;
+  const newest = Math.max(-Infinity, ...rec.signs.filter((s) => s.about === "desertion").map((s) => s.day));
+  return state.day - newest >= TUNING.disloyalty.desertion.minSignAgeDays;
+}
+var nameOf2 = (state, id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
+function startDesertion(draft, unitId, at) {
+  const rec = loyaltyRecord(draft, unitId);
+  rec.attempts += 1;
+  if (rec.attempts >= TUNING.leash.terminate.attemptsForCause) rec.cause = { kind: "desertion", day: draft.day };
+  const open2 = { kind: "desertion", unitId, day: draft.day, at };
+  if (at === "night") {
+    const entry = {
+      id: nextId(draft, "n"),
+      unitId,
+      kind: "desertion",
+      priority: TUNING.disloyalty.night.desertion,
+      framing: `${nameOf2(draft, unitId)} is about to walk out. This is the moment to say something, or to stop her.`,
+      ignore: { event: "dismissed", severity: "moderate" },
+      expiresDay: draft.day + TUNING.disloyalty.night.expiresInDays
+    };
+    draft.calendar.nightEventsQueue = draft.calendar.nightEventsQueue.filter((n) => !(n.unitId === unitId && n.kind === "desertion"));
+    enqueueNight(draft, entry);
+    open2.nightEntryId = entry.id;
+  }
+  (draft.disloyalty ??= { units: {} }).open = open2;
+  return [{ type: "desertion_attempt", unitId, at }];
+}
+function missionStartCheck(draft, ctx2, unitIds) {
+  for (const id of unitIds) {
+    if (draft.relations[id]?.loyaltyBand !== "breaking" || !mayDesert(draft, id)) continue;
+    if (ctx2.rng.chance(desertionChance(draft, ctx2.registries, id))) return startDesertion(draft, id, "mission_start");
+  }
+  return null;
+}
+function talkDown(draft, ctx2, stat2) {
+  const open2 = requireOpen(draft, "desertion");
+  if (stat2 !== "authority" && stat2 !== "empathy") throw new Error("Talk her down with Authority or Empathy.");
+  if (open2.talkTried) throw new Error("She has already heard you out: choose another answer.");
+  const unit = draft.squad.find((u) => u.id === open2.unitId);
+  const rel = draft.relations[open2.unitId];
+  const t = TUNING.disloyalty.talkDown;
+  const difficulty = t.baseRank + (rel.trust < t.lowTrust ? 1 : 0) + (unit.stress >= t.highStress ? 1 : 0);
+  const chance = clamp12(t.base + t.perRank * (socialRank(draft, stat2) - difficulty), t.min, t.max);
+  const success = ctx2.rng.chance(chance);
+  const events = [];
+  if (success) {
+    const applied = applyRelationDelta(draft, open2.unitId, "trust", t.trustGain, "talk_down");
+    if (applied !== 0) events.push({ type: "relation_changed", unitId: open2.unitId, axis: "trust", delta: applied, applied });
+    events.push(...evaluateAutomatic(draft, ctx2.registries, open2.unitId));
+    loyaltyRecord(draft, open2.unitId).nextCheckDay = draft.day + t.pauseDays;
+    delete draft.disloyalty.open;
+    events.push({ type: "loyalty_talk_down", unitId: open2.unitId, stat: stat2, success, chance });
+    events.push(...closeNight(draft, ctx2, open2));
+  } else {
+    open2.talkTried = true;
+    events.push({ type: "loyalty_talk_down", unitId: open2.unitId, stat: stat2, success, chance });
+  }
+  return events;
+}
+function letGo(draft, ctx2) {
+  const open2 = requireOpen(draft, "desertion");
+  const reg = ctx2.registries;
+  const unitId = open2.unitId;
+  const stance = (draft.relations[unitId]?.affinity ?? 0) >= TUNING.disloyalty.comeback.allyAffinity ? "ally" : "hostile";
+  removeFromService(draft, unitId, "deserted");
+  const rec = loyaltyRecord(draft, unitId);
+  rec.desertedDay = draft.day;
+  rec.stance = stance;
+  delete rec.returned;
+  const events = [];
+  const witnesses = draft.squad.filter((u) => u.id !== unitId && u.kind === "named" && isLiving(u));
+  for (const w of witnesses) {
+    events.push(...applyEventToUnit(draft, reg, w.id, {
+      type: "decision_aligned",
+      actor: "commander",
+      targets: [w.id],
+      severity: "moderate",
+      evidence: `let ${nameOf2(draft, unitId)} go`,
+      valueAxes: [{ axis: "autonomy", direction: 1 }, { axis: "mercy", direction: 1 }],
+      confidence: 1
+    }));
+  }
+  for (const w of witnesses) events.push(...evaluateAutomatic(draft, reg, w.id));
+  events.push({ type: "unit_deserted", unitId, stance });
+  events.push(...closeNight(draft, ctx2, open2));
+  return events;
+}
+function takeBack(draft, ctx2) {
+  const open2 = requireOpen(draft, "return");
+  const unit = draft.squad.find((u) => u.id === open2.unitId);
+  if (draft.squad.filter(isLiving).length >= draft.roster.capacity) {
+    throw new Error(`The barracks are full (${draft.roster.capacity} beds). Upgrade them to take ${unit.displayName} back.`);
+  }
+  const stance = loyaltyOf(draft, open2.unitId)?.stance ?? "ally";
+  unit.status = "reserve";
+  draft.relations[open2.unitId].trust = TUNING.disloyalty.comeback.backTrust;
+  const events = evaluateAutomatic(draft, ctx2.registries, open2.unitId);
+  delete draft.disloyalty.units[open2.unitId];
+  delete draft.disloyalty.open;
+  events.push({ type: "deserter_answered", unitId: open2.unitId, stance, taken: true });
+  events.push(...closeNight(draft, ctx2, open2));
+  return events;
+}
+function turnAway(draft, ctx2) {
+  const open2 = requireOpen(draft, "return");
+  const rec = loyaltyRecord(draft, open2.unitId);
+  rec.returned = true;
+  delete draft.disloyalty.open;
+  const events = [{ type: "deserter_answered", unitId: open2.unitId, stance: rec.stance ?? "ally", taken: false }];
+  events.push(...closeNight(draft, ctx2, open2));
+  return events;
+}
+function expiredConfrontation(draft, open2) {
+  if (open2.at === "mission_start") return draft.day > open2.day;
+  const id = open2.nightEntryId;
+  if (id === void 0) return true;
+  return draft.calendar.nightEvent?.id !== id && !draft.calendar.nightEventsQueue.some((n) => n.id === id);
+}
+function comeBack(draft, ctx2, unitId) {
+  const rec = loyaltyRecord(draft, unitId);
+  const name = nameOf2(draft, unitId);
+  const stance = rec.stance ?? "hostile";
+  rec.returned = true;
+  const events = [{ type: "deserter_returned", unitId, stance }];
+  if (stance === "ally") {
+    const entry = {
+      id: nextId(draft, "n"),
+      unitId,
+      kind: "deserter_return",
+      priority: TUNING.disloyalty.night.return,
+      framing: `${name} is at the gate, asking to be let back in.`,
+      ignore: { event: "dismissed", severity: "minor" },
+      expiresDay: draft.day + TUNING.disloyalty.night.expiresInDays
+    };
+    enqueueNight(draft, entry);
+    (draft.disloyalty ??= { units: {} }).open = { kind: "return", unitId, day: draft.day, at: "night", nightEntryId: entry.id };
+  } else {
+    const rumor = postRumor(draft, ctx2, {
+      text: `${name} was seen with armed deserters near the old checkpoints, asking questions about the commander.`,
+      tags: ["loyalty", "deserter"],
+      leadsTo: "none"
+    });
+    if (rumor) events.push(rumorPostedEvent(rumor));
+    events.push(...applyWorldEffects(draft, ctx2, [
+      { type: "clock", clockId: "oversight", by: 1 },
+      { type: "fact", text: `${name} deserted and now runs with armed deserters hostile to the commander.`, tags: ["loyalty", "deserter"], importance: 4 }
+    ], { kind: "event", id: "deserter_return", label: `${name} turned hostile` }));
+  }
+  return events;
+}
+function returns(draft, ctx2) {
+  const events = [];
+  const t = TUNING.disloyalty.comeback;
+  for (const [unitId, rec] of Object.entries(draft.disloyalty?.units ?? {})) {
+    const unit = draft.squad.find((u) => u.id === unitId);
+    if (!unit || unit.status !== "deserted" || rec.desertedDay === void 0 || rec.returned === true) continue;
+    if (draft.day - rec.desertedDay < t.afterDays) continue;
+    const stance = rec.stance ?? "hostile";
+    if (stance === "ally" && draft.disloyalty?.open) continue;
+    if (!ctx2.rng.chance(t.chancePerDay)) continue;
+    events.push(...comeBack(draft, ctx2, unitId));
+  }
+  return events;
+}
+function loyaltyDayStep(draft, ctx2) {
+  const reg = ctx2.registries;
+  const events = [];
+  for (const u of draft.squad.filter(isLiving)) events.push(...evaluateAutomatic(draft, reg, u.id));
+  const open2 = draft.disloyalty?.open;
+  if (open2 && expiredConfrontation(draft, open2)) {
+    if (open2.kind === "desertion") events.push(...letGo(draft, ctx2));
+    else if (open2.kind === "return") events.push(...turnAway(draft, ctx2));
+    else events.push(...resolveExpiredMutiny(draft, ctx2, open2));
+  }
+  for (const u of draft.squad.filter(isLiving)) {
+    const band = draft.relations[u.id]?.loyaltyBand;
+    const rec = loyaltyOf(draft, u.id);
+    if (band !== "breaking" && rec?.signs.some((s) => s.about === "desertion")) {
+      rec.signs = rec.signs.filter((s) => s.about !== "desertion");
+    }
+    if (band !== "wavering" && rec?.nextDoubtDay !== void 0) delete rec.nextDoubtDay;
+    if (band === "wavering" && u.kind === "named") {
+      const wait = loyaltyRecord(draft, u.id);
+      if (wait.nextDoubtDay === void 0) wait.nextDoubtDay = draft.day + TUNING.disloyalty.doubtEveryDays;
+      else if (draft.day >= wait.nextDoubtDay) {
+        events.push(...emitSign(draft, ctx2, u.id, "doubt"));
+        wait.nextDoubtDay = draft.day + TUNING.disloyalty.doubtEveryDays;
+      }
+    }
+    if (band !== "breaking") continue;
+    if (!rec?.signs.some((s) => s.about === "desertion")) {
+      events.push(...emitSign(draft, ctx2, u.id, "desertion"));
+      continue;
+    }
+    if (mayDesert(draft, u.id) && ctx2.rng.chance(desertionChance(draft, reg, u.id))) {
+      events.push(...startDesertion(draft, u.id, "night"));
+    }
+  }
+  events.push(...arcDayStep(draft, ctx2));
+  events.push(...mutinyDayStep(draft, ctx2));
+  events.push(...returns(draft, ctx2));
+  return events;
+}
+
+// src/engine/world/nodeMap.ts
+var OBJECTIVE_ID = "obj";
+function candidates2(reg, region, layer, danger) {
+  const out = [];
+  for (const [id, weight] of Object.entries(region.nodeWeights)) {
+    const def = reg.nodeTypes.get(id);
+    if (!def || def.kind === "objective" || !(weight > 0)) continue;
+    if (layer === 0 && def.firstLayer === false) continue;
+    if (typeof def.minDanger === "number" && danger < def.minDanger) continue;
+    out.push({ id, weight, kind: String(def.kind), maxPerMap: def.maxPerMap });
+  }
+  return out;
+}
+function draw(rng, list4, used, onlyKind) {
+  const open2 = list4.filter((c) => (c.maxPerMap === void 0 || (used.get(c.id) ?? 0) < c.maxPerMap) && (onlyKind === void 0 || c.kind === onlyKind));
+  if (open2.length === 0) return null;
+  const total = open2.reduce((s, c) => s + c.weight, 0);
+  let r = rng.float() * total;
+  const pick = open2.find((c) => (r -= c.weight) < 0) ?? open2[open2.length - 1];
+  return pick.id;
+}
+function generateNodeMap(reg, rng, input) {
+  const region = reg.regions.get(input.regionId);
+  if (!region) throw new Error(`Unknown region "${input.regionId}"`);
+  const [minLayers, maxLayers] = region.layers;
+  const layerCount = rng.int(minLayers, maxLayers);
+  const nodes = {};
+  const layers = [];
+  const used = /* @__PURE__ */ new Map();
+  const bump = (type, by) => used.set(type, (used.get(type) ?? 0) + by);
+  const none = () => {
+    throw new Error(`No playable node type for region "${input.regionId}"`);
+  };
+  for (let l = 0; l < layerCount; l++) {
+    const list4 = candidates2(reg, region, l, input.danger);
+    const size = rng.int(2, 3);
+    const ids = [];
+    for (let i = 0; i < size; i++) {
+      const type = draw(rng, list4, used) ?? none();
+      bump(type, 1);
+      const id = `n${l}_${i}`;
+      nodes[id] = { id, layer: l, type, edges: [], visited: false };
+      ids.push(id);
+    }
+    if (!ids.some((id) => reg.nodeTypes.get(nodes[id].type).kind === "combat")) {
+      bump(nodes[ids[0]].type, -1);
+      const type = draw(rng, list4, used, "combat");
+      if (type === null) bump(nodes[ids[0]].type, 1);
+      else {
+        nodes[ids[0]].type = type;
+        bump(type, 1);
+      }
+    }
+    layers.push(ids);
+  }
+  for (let l = 0; l + 1 < layers.length; l++) {
+    const from = layers[l];
+    const to = layers[l + 1];
+    const edges = from.map((_, i) => [Math.min(i, to.length - 1)]);
+    for (let t = 0; t < to.length; t++) {
+      if (edges.some((e) => e.includes(t))) continue;
+      const order = from.map((_, i) => i).sort((a, b) => Math.abs(a - t) - Math.abs(b - t) || a - b);
+      const donor = order.find((i) => edges[i].length < 2) ?? order[0];
+      edges[donor].push(t);
+    }
+    from.forEach((_, i) => {
+      if (edges[i].length >= 2 || !rng.chance(0.5)) return;
+      const options2 = [edges[i][0] - 1, edges[i][0] + 1].filter((t) => t >= 0 && t < to.length && !edges[i].includes(t));
+      if (options2.length > 0) edges[i].push(options2[rng.int(0, options2.length - 1)]);
+    });
+    from.forEach((id, i) => {
+      nodes[id].edges = [...edges[i]].sort((a, b) => a - b).map((t) => to[t]);
+    });
+  }
+  for (const id of layers[layers.length - 1]) nodes[id].edges = [OBJECTIVE_ID];
+  nodes[OBJECTIVE_ID] = { id: OBJECTIVE_ID, layer: layers.length, type: "objective", edges: [], visited: false };
+  return { layers, objectiveId: OBJECTIVE_ID, nodes };
+}
+function nextNodes(map, at) {
+  return at === null ? [...map.layers[0]] : [...map.nodes[at]?.edges ?? []];
+}
+function visibleTypes(map, at, reveal) {
+  const seen = new Set(Object.values(map.nodes).filter((n) => n.visited).map((n) => n.id));
+  if (at !== null) seen.add(at);
+  let frontier = nextNodes(map, at);
+  for (let depth = 1; depth <= reveal && frontier.length > 0; depth++) {
+    const next = [];
+    for (const id of frontier) {
+      seen.add(id);
+      next.push(...map.nodes[id].edges);
+    }
+    frontier = [...new Set(next)];
+  }
+  return seen;
+}
+function mapRows(map, opts) {
+  const options2 = new Set(nextNodes(map, opts.at));
+  const rows = [...map.layers, [map.objectiveId]];
+  return rows.map((ids) => ids.map((nodeId) => {
+    const node = map.nodes[nodeId];
+    const glyph = opts.visible.has(nodeId) ? String(opts.reg.nodeTypes.get(node.resolvedType ?? node.type)?.glyph ?? "?") : " ";
+    const state = nodeId === opts.at ? "current" : node.visited ? "visited" : options2.has(nodeId) ? "option" : "ahead";
+    return { nodeId, text: `[${glyph}]`, state };
+  }));
+}
+function nodePlayType(map, nodeId, mission) {
+  if (nodeId === map.objectiveId) return mission.objective.node;
+  const node = map.nodes[nodeId];
+  return node.resolvedType ?? node.type;
+}
+
+// src/engine/world/expedition.ts
+function ableParty(state) {
+  return (state.expedition?.party ?? []).filter((id) => {
+    const u = state.squad.find((x) => x.id === id);
+    return u !== void 0 && isLiving(u) && u.status === "active";
+  });
+}
+function formationProblem(ids, f) {
+  const listed = [...f?.front ?? [], ...f?.back ?? []];
+  if (listed.length !== ids.length || new Set(listed).size !== listed.length || !ids.every((id) => listed.includes(id))) {
+    return "The formation must list exactly the units that go.";
+  }
+  if (f.front.length > TUNING.combat.maxPerRow || f.back.length > TUNING.combat.maxPerRow) return `A row holds at most ${TUNING.combat.maxPerRow} units.`;
+  if (f.front.length === 0) return "The front row cannot be empty.";
+  return null;
+}
+var regionName = (r) => String(r.name);
+function poiCooldownReason(state, regionId, poiId) {
+  const last = state.world.regions[regionId]?.poi?.[poiId];
+  if (last === void 0 || state.day >= last + TUNING.world.poiCooldownDays) return null;
+  return `That point of interest cannot be run again before day ${last + TUNING.world.poiCooldownDays}.`;
+}
+function checkDeparture(state, reg, p) {
+  if (state.expedition) return "An expedition is already under way.";
+  if (state.combat) return "A combat is open: finish it first.";
+  if (state.scene) return "A scene is open: end it first.";
+  if (state.calendar.pendingScene) return "A talk still holds the slot: end it first.";
+  if (p.missionId === void 0 === (p.poi === void 0)) return "Choose exactly one of a mission or a point of interest.";
+  let regionId;
+  let templateId;
+  if (p.missionId !== void 0) {
+    const m = state.missions.offered.find((x) => x.id === p.missionId);
+    if (!m) return `Mission "${p.missionId}" is not on the board.`;
+    regionId = m.regionId;
+    templateId = m.templateId;
+  } else {
+    regionId = p.poi.regionId;
+    const region2 = reg.regions.get(regionId);
+    if (!region2) return `Region "${regionId}" no longer exists.`;
+    if (!knownRegions(state, reg).some((r) => r.id === regionId)) return `Region "${regionId}" is not known yet.`;
+    const poi = region2.pointsOfInterest.find((x) => x.id === p.poi.poiId);
+    if (!poi) return `Region "${regionId}" has no point of interest "${p.poi.poiId}".`;
+    const cooldown = poiCooldownReason(state, regionId, poi.id);
+    if (cooldown) return cooldown;
+    templateId = poi.templateId;
+  }
+  const region = reg.regions.get(regionId);
+  if (!region) return `Region "${regionId}" no longer exists.`;
+  const tpl = reg.missionTemplates.get(templateId);
+  if (!tpl) return `The mission template "${templateId}" no longer exists.`;
+  if (p.poi !== void 0 && !tpl.sources.includes("side")) return `The template "${templateId}" is not a side mission.`;
+  const slots = region.travelSlots;
+  if (state.slot === "night") return "Nobody leaves at night.";
+  if (slotsLeftToday(state.slot) < slots) {
+    return `${regionName(region)} takes ${slots} slots: leave in the Morning${slots === 2 ? " or Afternoon" : ""}.`;
+  }
+  return null;
+}
+function checkExpedition(state, reg, p) {
+  const departure = checkDeparture(state, reg, p);
+  if (departure) return departure;
+  const open2 = state.disloyalty?.open;
+  if (open2 && (open2.kind === "desertion" || open2.kind === "mutiny")) {
+    const name = state.squad.find((u) => u.id === open2.unitId)?.displayName ?? open2.unitId;
+    return `${name} is about to ${open2.kind === "desertion" ? "walk" : "attack"}: deal with it first.`;
+  }
+  const ids = p.unitIds ?? [];
+  if (ids.length < 1 || ids.length > TUNING.expedition.partyMax) return `An expedition takes 1 to ${TUNING.expedition.partyMax} units.`;
+  if (new Set(ids).size !== ids.length) return "A unit was listed twice.";
+  for (const id of ids) {
+    const u = state.squad.find((x) => x.id === id);
+    if (!u) return `Unknown unit "${id}".`;
+    if (!isLiving(u) || u.status !== "active") return `${u.displayName} is not available (${u.status}).`;
+    if (u.breakdown) return `${u.displayName} is in a breakdown.`;
+    if (!state.roster.activeIds.includes(id)) return `${u.displayName} is not on the active roster.`;
+  }
+  const formation = formationProblem(ids, p.formation);
+  if (formation) return formation;
+  const maxSupplies = Math.min(state.resources.supplies, TUNING.expedition.suppliesMax);
+  if (!Number.isInteger(p.supplies) || p.supplies < 0 || p.supplies > maxSupplies) {
+    return `Supplies to bring must be a whole number from 0 to ${maxSupplies}.`;
+  }
+  return null;
+}
+function addLog(exp, kind, text2, nodeId, data) {
+  const entry = { n: (exp.log.at(-1)?.n ?? 0) + 1, kind, text: text2 };
+  if (nodeId !== void 0) entry.nodeId = nodeId;
+  if (data !== void 0) entry.data = data;
+  exp.log.push(entry);
+  if (exp.log.length > TUNING.expedition.logMax) exp.log.splice(0, exp.log.length - TUNING.expedition.logMax);
+  return entry;
+}
+function startExpedition(draft, ctx2, p) {
+  const reg = ctx2.registries;
+  const walkOut = missionStartCheck(draft, ctx2, p.unitIds);
+  if (walkOut) return walkOut;
+  let mission;
+  if (p.missionId !== void 0) {
+    const i = draft.missions.offered.findIndex((m) => m.id === p.missionId);
+    [mission] = draft.missions.offered.splice(i, 1);
+  } else {
+    const { regionId, poiId } = p.poi;
+    const poi = reg.regions.get(regionId).pointsOfInterest.find((x) => x.id === poiId);
+    mission = buildMission(draft, ctx2, { templateId: poi.templateId, regionId, source: "side", poiId });
+    const rs = draft.world.regions[regionId] ?? { known: true };
+    draft.world.regions[regionId] = { ...rs, poi: { ...rs.poi ?? {}, [poiId]: draft.day } };
+  }
+  mission.status = "active";
+  draft.missions.active.push(mission);
+  draft.resources.supplies -= p.supplies;
+  const region = reg.regions.get(mission.regionId);
+  const revealDefect = p.unitIds.some((id) => {
+    const u = draft.squad.find((x) => x.id === id);
+    return u?.defects.some((d) => reg.defects.get(d.id)?.expedition?.reveal === 1) === true;
+  });
+  const exp = {
+    id: nextId(draft, "exp"),
+    missionId: mission.id,
+    regionId: mission.regionId,
+    day: draft.day,
+    slots: region.travelSlots,
+    party: [...p.unitIds],
+    formation: { front: [...p.formation.front], back: [...p.formation.back] },
+    supplies: p.supplies,
+    map: generateNodeMap(reg, ctx2.rng, { regionId: mission.regionId, danger: mission.danger }),
+    at: null,
+    path: [],
+    phase: "travel",
+    loot: [],
+    log: [],
+    hints: [],
+    objectiveDone: false,
+    reveal: 1 + (revealDefect ? 1 : 0) + (mission.scouted === true ? 1 : 0)
+  };
+  addLog(exp, "start", `Departed for ${regionName(region)}: ${mission.title}.`);
+  draft.expedition = exp;
+  return [{ type: "expedition_started", expeditionId: exp.id, missionId: mission.id, regionId: mission.regionId, party: exp.party, slots: exp.slots }];
+}
+function resolveUnknownType(reg, rng, typeId) {
+  const weights = Object.entries(reg.nodeTypes.get(typeId)?.resolvesTo ?? {}).filter(([id, w]) => reg.nodeTypes.has(id) && w > 0);
+  const total = weights.reduce((s, [, w]) => s + w, 0);
+  if (total <= 0) return null;
+  let r = rng.float() * total;
+  return (weights.find(([, w]) => (r -= w) < 0) ?? weights[weights.length - 1])[0];
+}
+var describeLoot = (drops, reg) => {
+  if (drops.length === 0) return "nothing";
+  return drops.map((d) => d.kind === "item" ? String(reg.items.get(d.item.itemId)?.name ?? d.item.itemId) : `${d.amount} ${d.kind}`).join(", ");
+};
+function missionOf(draft) {
+  const m = draft.missions.active.find((x) => x.id === draft.expedition.missionId);
+  if (!m) throw new Error("The mission of this expedition is gone.");
+  return m;
+}
+function moveTo(draft, ctx2, nodeId) {
+  const exp = draft.expedition;
+  if (!exp) throw new Error("There is no expedition.");
+  if (exp.phase !== "travel") throw new Error("Finish what is happening here first.");
+  if (!nextNodes(exp.map, exp.at).includes(nodeId)) throw new Error(`Node "${nodeId}" cannot be reached from here.`);
+  const reg = ctx2.registries;
+  const mission = missionOf(draft);
+  const node = exp.map.nodes[nodeId];
+  node.visited = true;
+  exp.at = nodeId;
+  exp.path.push(nodeId);
+  const events = [{ type: "expedition_moved", nodeId }];
+  let playType = nodePlayType(exp.map, nodeId, mission);
+  if (reg.nodeTypes.get(playType)?.kind === "unknown") {
+    const resolved2 = resolveUnknownType(reg, ctx2.rng, playType);
+    if (resolved2 !== null) node.resolvedType = resolved2;
+    playType = resolved2 ?? playType;
+  }
+  const def = reg.nodeTypes.get(playType);
+  const isObjective = nodeId === exp.map.objectiveId;
+  const reach = isObjective && mission.objective.condition === "reach";
+  const kind = def && def.kind !== "unknown" ? String(def.kind) : "nothing";
+  addLog(exp, "move", `Moved to ${def ? String(def.name) : "an empty place"}.`, nodeId);
+  events.push({ type: "expedition_node", nodeId, nodeType: playType, kind });
+  switch (kind) {
+    case "cache": {
+      if (!reg.lootTables.has("loot_cache")) {
+        addLog(exp, "cache", "Nothing here.", nodeId);
+        break;
+      }
+      const drops = rollLoot(draft, reg, ctx2.rng, "loot_cache");
+      exp.loot.push(...drops);
+      addLog(exp, "cache", `Cache opened: ${describeLoot(drops, reg)}.`, nodeId, { drops: drops.length });
+      break;
+    }
+    case "rest": {
+      const rest = def.rest;
+      const able = ableParty(draft);
+      const need = rest.suppliesPerUnit * able.length;
+      if (exp.supplies < need) {
+        addLog(exp, "rest", "No supplies to rest.", nodeId, { need, have: exp.supplies });
+        break;
+      }
+      exp.supplies -= need;
+      for (const id of able) {
+        const u = draft.squad.find((x) => x.id === id);
+        const max = unitStats(draft, reg, u).hp;
+        u.currentHp = Math.min(max, u.currentHp + Math.round(max * rest.hpPct / 100));
+        u.stress = Math.max(0, Math.min(100, u.stress + rest.stress));
+      }
+      addLog(exp, "rest", `The squad rests (${need} supplies).`, nodeId, { spent: need });
+      break;
+    }
+    case "combat":
+      events.push(...enterCombat(draft, ctx2, nodeId, def, mission));
+      break;
+    case "event":
+      events.push(...enterEvent(draft, ctx2, nodeId, isObjective, mission));
+      break;
+    default:
+      addLog(exp, "move", "Nothing here.", nodeId);
+  }
+  const resolved = exp.phase === "travel";
+  if (resolved && (reach || isObjective && kind === "nothing")) exp.objectiveDone = true;
+  return events;
+}
+function setFormation(draft, formation) {
+  const exp = draft.expedition;
+  if (!exp) throw new Error("There is no expedition.");
+  const idle = exp.phase === "travel" || exp.pending?.kind === "combat" && !draft.combat;
+  if (!idle) throw new Error("The formation cannot change right now.");
+  const problem = formationProblem(ableParty(draft), formation);
+  if (problem) throw new Error(problem);
+  exp.formation = { front: [...formation.front], back: [...formation.back] };
+}
+var TREAT_KINDS = ["patch", "calm"];
+function treat(draft, ctx2, unitId, kind) {
+  const exp = draft.expedition;
+  if (!exp) throw new Error("There is no expedition.");
+  if (exp.phase !== "travel") throw new Error("Nobody can be treated right now.");
+  if (!TREAT_KINDS.includes(kind)) throw new Error(`Unknown treatment "${String(kind)}".`);
+  if (!ableParty(draft).includes(unitId)) throw new Error(`Unit "${unitId}" cannot be treated.`);
+  if (exp.supplies < 1) throw new Error("No supplies to spend.");
+  const u = draft.squad.find((x) => x.id === unitId);
+  if (kind === "calm" && u.breakdown) throw new Error(`${u.displayName} is in a breakdown and cannot be calmed.`);
+  exp.supplies -= 1;
+  if (kind === "patch") {
+    const max = unitStats(draft, ctx2.registries, u).hp;
+    u.currentHp = Math.min(max, u.currentHp + Math.round(max * TUNING.expedition.treat.hpPct / 100));
+  } else {
+    u.stress = Math.max(0, u.stress - TUNING.expedition.treat.stress);
+  }
+  addLog(exp, "treat", `${u.displayName}: ${kind === "patch" ? "wounds patched" : "calmed down"}.`, void 0, { unitId, kind });
+  return [{ type: "expedition_treated", unitId, kind }];
+}
+var clamp13 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+function enterCombat(draft, ctx2, nodeId, def, mission) {
+  const exp = draft.expedition;
+  const reg = ctx2.registries;
+  const combat2 = def.combat;
+  const region = reg.regions.get(exp.regionId);
+  let encounter;
+  try {
+    encounter = generateEncounter(draft, reg, ctx2.rng, {
+      table: region.enemyTable,
+      danger: clamp13(mission.danger + combat2.dangerDelta, 1, 5),
+      squadPower: squadPower(draft, reg, ableParty(draft)),
+      exposesCommander: combat2.exposesCommander,
+      lootTableId: combat2.lootTableId
+    });
+  } catch {
+    addLog(exp, "move", "Nothing here.", nodeId);
+    if (nodeId === exp.map.objectiveId) exp.objectiveDone = true;
+    return [];
+  }
+  exp.pending = { kind: "combat", nodeId, encounter, ...draft.lastCombat ? { prevCombatId: draft.lastCombat.id } : {} };
+  exp.phase = "combat";
+  return [{ type: "expedition_combat", nodeId, encounter }];
+}
+var SEVERITY_RANK3 = { minor: 0, moderate: 1, major: 2, extreme: 3 };
+function dedupeHints(hints) {
+  const byKey = /* @__PURE__ */ new Map();
+  for (const h2 of hints) {
+    const key = `${h2.type}|${h2.actor}|${[...h2.targets].sort().join(",")}`;
+    const kept = byKey.get(key);
+    if (!kept || SEVERITY_RANK3[h2.severity] > SEVERITY_RANK3[kept.severity]) byKey.set(key, h2);
+  }
+  return [...byKey.values()];
+}
+function applyHints(draft, ctx2, exp) {
+  const events = [];
+  const hints = dedupeHints(exp.hints);
+  const size = TUNING.relations.maxEventsPerExchange;
+  for (let i = 0; i < hints.length; i += size) {
+    const batch = hints.slice(i, i + size).map((h2) => ({ ...h2, confidence: 1 }));
+    events.push(...applyIntents(draft, ctx2, { channel: "scene", participants: exp.party, intents: { events: batch } }));
+  }
+  return events;
+}
+var OUTCOME_TEXT = {
+  success: "objective secured",
+  retreated: "the squad pulled back",
+  failed: "the squad was beaten back"
+};
+var unique = (ids) => [...new Set(ids)];
+var logIds = (exp, key) => unique(exp.log.flatMap((l) => l.kind === "combat" ? l.data?.[key] ?? [] : []));
+function endExpedition(draft, ctx2, outcome) {
+  const exp = draft.expedition;
+  if (!exp) throw new Error("There is no expedition.");
+  const reg = ctx2.registries;
+  const events = [];
+  const mission = draft.missions.active.find((m) => m.id === exp.missionId);
+  const region = reg.regions.get(exp.regionId);
+  const regionLabel = region ? regionName(region) : exp.regionId;
+  const nameOf7 = (id) => draft.squad.find((u) => u.id === id)?.displayName ?? id;
+  draft.resources.supplies += exp.supplies;
+  const abandoned = draft.dilemmas?.open;
+  if (abandoned && abandoned.context === "expedition_event") {
+    delete draft.dilemmas.open;
+    events.push({ type: "dilemma_resolved", id: abandoned.id, templateId: abandoned.templateId, nothing: true });
+  }
+  let rewards;
+  if (outcome === "success") {
+    events.push(...bankLoot(draft, exp.loot));
+    if (mission) {
+      events.push(...completeMission(draft, ctx2, mission.id));
+      rewards = draft.missions.completed.find((m) => m.id === mission.id)?.rewards;
+    }
+  } else if (mission) {
+    releaseMission(draft, mission.id);
+  }
+  const released = releaseBreakdowns(draft, exp.party);
+  events.push(...released);
+  for (const e of released) {
+    const unit = draft.squad.find((u) => u.id === e.unitId);
+    if (!unit || unit.kind !== "named") continue;
+    enqueueNight(draft, {
+      id: nextId(draft, "n"),
+      unitId: unit.id,
+      kind: "after_breakdown",
+      priority: TUNING.expedition.breakdownNight.priority,
+      framing: `${unit.displayName} is at your door. She has not slept since the breakdown.`,
+      ignore: { event: "dismissed", severity: "moderate" },
+      expiresDay: draft.day + TUNING.expedition.breakdownNight.expiresInDays
+    });
+  }
+  events.push(...applyHints(draft, ctx2, exp));
+  const injuries = logIds(exp, "injuries");
+  const deaths = logIds(exp, "deaths");
+  const breakdowns = logIds(exp, "breakdowns");
+  const report = {
+    id: `rep_${exp.id}`,
+    missionId: exp.missionId,
+    missionTitle: mission?.title ?? "Unknown mission",
+    regionId: exp.regionId,
+    day: exp.day,
+    outcome,
+    party: [...exp.party],
+    nodes: mission ? exp.path.map((id) => nodePlayType(exp.map, id, mission)) : [],
+    log: structuredClone(exp.log),
+    loot: structuredClone(exp.loot),
+    injuries,
+    deaths,
+    breakdowns,
+    acknowledged: false,
+    debriefed: false
+  };
+  if (rewards) report.rewards = structuredClone(rewards);
+  draft.lastExpedition = report;
+  let line2 = `Expedition to ${regionLabel}: ${OUTCOME_TEXT[outcome]}.`;
+  if (injuries.length > 0) line2 += ` ${injuries.map(nameOf7).join(" and ")} ${injuries.length > 1 ? "were" : "was"} carried back.`;
+  if (deaths.length > 0) line2 += ` ${deaths.map(nameOf7).join(" and ")} did not return.`;
+  addChronicle(draft, { kind: "scene", day: draft.day, text: line2 });
+  const rs = draft.world.regions[exp.regionId] ?? { known: true };
+  draft.world.regions[exp.regionId] = { ...rs, lastVisitedDay: draft.day };
+  draft.world.lastExpeditionRegionId = exp.regionId;
+  delete draft.expedition;
+  events.push(...consumeSlots(draft, exp.slots, ctx2));
+  draft.lastExpedition.day = draft.day;
+  events.push(...openRequest(draft, "expedition"));
+  events.push({ type: "expedition_ended", outcome, reportId: report.id });
+  return events;
+}
+function returnFromExpedition(draft, ctx2) {
+  const exp = draft.expedition;
+  if (!exp) throw new Error("There is no expedition.");
+  if (exp.phase !== "travel") throw new Error("Finish what is happening here first.");
+  if (!exp.objectiveDone) throw new Error("The objective has not been reached yet.");
+  return endExpedition(draft, ctx2, "success");
+}
+function retreatFromExpedition(draft, ctx2) {
+  const exp = draft.expedition;
+  if (!exp) throw new Error("There is no expedition.");
+  if (draft.combat) throw new Error("A fight is going on: it has to be decided first.");
+  const events = [];
+  if (exp.phase === "combat" && exp.pending?.kind === "combat" && draft.lastCombat && draft.lastCombat.id !== exp.pending.prevCombatId) {
+    events.push(...resolveCombat(draft, ctx2));
+    if (!draft.expedition) return events;
+  }
+  addLog(draft.expedition, "retreat", "The squad pulls back.");
+  events.push(...endExpedition(draft, ctx2, "retreated"));
+  return events;
+}
+function cleanRecap(text2) {
+  if (typeof text2 !== "string") return "";
+  return text2.replace(/<\s*(script|style)[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi, " ").replace(/<[^>]*>?/g, " ").replace(/[<>]/g, "").replace(/\s+/g, " ").trim().slice(0, TUNING.expedition.recapMax).trim();
+}
+var OUTCOME_LABEL = { success: "OBJECTIVE SECURED", retreated: "RETREATED", failed: "FAILED: SQUAD BEATEN BACK" };
+function reportLines(report, state, reg) {
+  const nameOf7 = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
+  const region = reg.regions.get(report.regionId);
+  const lines = [
+    "AFTER-ACTION REPORT",
+    `Mission: ${report.missionTitle}`,
+    `Region: ${region ? regionName(region) : report.regionId} // Day ${report.day}`,
+    `Outcome: ${OUTCOME_LABEL[report.outcome]}`,
+    `Squad: ${report.party.map(nameOf7).join(", ")}`
+  ];
+  const route = report.nodes.map((t) => String(reg.nodeTypes.get(t)?.name ?? t));
+  if (route.length > 0) lines.push(`Route: ${route.join(" > ")}`);
+  for (const entry of report.log) lines.push(entry.text);
+  const loot = describeLoot(report.loot, reg);
+  lines.push(report.outcome === "success" ? `Loot banked: ${loot}.` : `Loot lost: ${loot}.`);
+  if (report.rewards) {
+    const r = report.rewards;
+    const parts = [`${r.credits} credits`, `${r.plyx} plyx`, ...r.items];
+    if (r.faction) parts.push(`${r.faction.id} standing +${r.faction.amount}`);
+    if (r.clearance !== void 0) parts.push(`clearance tier ${r.clearance}`);
+    lines.push(`Rewards: ${parts.join(", ")}.`);
+  }
+  if (report.injuries.length > 0) lines.push(`Injured: ${report.injuries.map(nameOf7).join(", ")}.`);
+  if (report.deaths.length > 0) lines.push(`Fallen: ${report.deaths.map(nameOf7).join(", ")}.`);
+  if (report.breakdowns.length > 0) lines.push(`Breakdown: ${report.breakdowns.map(nameOf7).join(", ")}.`);
+  if (report.recap) lines.push("", report.recap);
+  return lines;
+}
+var nodeNumber = (exp) => exp.path.length;
+function hintEvidence(draft, h2, node) {
+  const name = (id) => id === "commander" ? "the commander" : draft.squad.find((u) => u.id === id)?.displayName ?? id;
+  const targets = h2.targets.map(name).join(" and ");
+  if (h2.type === "protected") {
+    return h2.targets.includes("commander") ? `Took the hits meant for the commander at node ${node}.` : `${name(h2.actor)} covered ${targets} at node ${node}.`;
+  }
+  return `${name(h2.actor)} left ${targets} exposed at node ${node}.`;
+}
+function resolveCombat(draft, ctx2) {
+  const exp = draft.expedition;
+  if (!exp || exp.phase !== "combat" || exp.pending?.kind !== "combat") throw new Error("There is no fight to resolve.");
+  if (draft.combat) throw new Error("The fight is still going.");
+  const result = draft.lastCombat;
+  if (!result || result.id === exp.pending.prevCombatId) throw new Error("The fight has not been fought yet.");
+  const nodeId = exp.pending.nodeId;
+  const node = nodeNumber(exp);
+  for (const h2 of result.relationHints) {
+    exp.hints.push({ type: h2.type, actor: h2.actor, targets: [...h2.targets], severity: h2.severity, evidence: hintEvidence(draft, h2, node) });
+  }
+  addLog(exp, "combat", `Fight at node ${node} against ${result.enemies.map((e) => e.name).join(", ")}: ${result.outcome} in ${result.rounds} round(s).`, nodeId, {
+    outcome: result.outcome,
+    rounds: result.rounds,
+    enemies: result.enemies.map((e) => e.name),
+    injuries: [...result.injuries],
+    deaths: [...result.deaths],
+    breakdowns: [...result.breakdowns]
+  });
+  delete exp.pending;
+  if (result.outcome !== "won") {
+    exp.phase = "travel";
+    return endExpedition(draft, ctx2, result.outcome === "lost" ? "failed" : "retreated");
+  }
+  exp.loot.push(...structuredClone(result.loot));
+  const able = ableParty(draft);
+  if (able.length === 0) {
+    exp.phase = "travel";
+    return endExpedition(draft, ctx2, "retreated");
+  }
+  const front = exp.formation.front.filter((id) => able.includes(id));
+  const back = exp.formation.back.filter((id) => able.includes(id));
+  if (front.length === 0) front.push(...back.splice(0, 1));
+  exp.formation = { front, back };
+  if (nodeId === exp.map.objectiveId) exp.objectiveDone = true;
+  exp.phase = "travel";
+  return [];
+}
+function eventPool(reg, regionId) {
+  const pinned = new Set([...reg.missionTemplates.values()].map((t) => t.objectiveEventId).filter((x) => typeof x === "string"));
+  return [...reg.dilemmaTemplates.values()].filter((t) => {
+    const regions = t.regions;
+    return t.scale === "minor" && t.contexts.includes("expedition_event") && !pinned.has(t.id) && (regions === void 0 || regions.includes(regionId));
+  });
+}
+function enterEvent(draft, ctx2, nodeId, isObjective, mission) {
+  const exp = draft.expedition;
+  const reg = ctx2.registries;
+  let templateId;
+  if (isObjective) {
+    const pinned = reg.missionTemplates.get(mission.templateId)?.objectiveEventId;
+    if (typeof pinned === "string" && reg.dilemmaTemplates.has(pinned)) templateId = pinned;
+  }
+  if (templateId === void 0) {
+    const pool = eventPool(reg, exp.regionId);
+    if (pool.length > 0) templateId = String(ctx2.rng.pick(pool).id);
+  }
+  if (templateId === void 0) {
+    addLog(exp, "move", "Nothing here.", nodeId);
+    if (isObjective) exp.objectiveDone = true;
+    return [];
+  }
+  exp.pending = { kind: "event", nodeId, templateId };
+  exp.phase = "event";
+  return [{ type: "expedition_event", nodeId, templateId }];
+}
+var capital = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+function optionsOf(state, reg) {
+  const pending2 = state.expedition?.pending;
+  if (pending2?.kind !== "event") return null;
+  const fixed = reg.dilemmaTemplates.get(pending2.templateId)?.fixed;
+  return fixed ? { templateId: pending2.templateId, title: fixed.title, options: fixed.options } : null;
+}
+function eventOptions(state, reg) {
+  const found = optionsOf(state, reg);
+  if (!found) return [];
+  const exp = state.expedition;
+  return found.options.map((o, index) => {
+    let disabled = null;
+    if (o.requires && !meetsSocialRequirements(state, { [o.requires.stat]: o.requires.rank })) {
+      disabled = `Needs ${capital(o.requires.stat)} ${o.requires.rank}`;
+    }
+    if (disabled === null) {
+      for (const fx2 of o.effects) {
+        if (fx2.type === "carried_supplies" && fx2.amount < 0 && exp.supplies < -fx2.amount) disabled = "Not enough supplies";
+        else if (fx2.type === "resource" && fx2.amount < 0 && state.resources[fx2.resource] < -fx2.amount) disabled = `Not enough ${fx2.resource}`;
+        if (disabled !== null) break;
+      }
+    }
+    const routes = o.routeCheck ? routeChoices(state, reg, o.routeCheck, routeScope(state)) : void 0;
+    if (disabled === null && routes && routes.every((r) => r.disabled !== null)) disabled = "No way to do this right now";
+    return { index, label: o.label, disabled, ...routes ? { routes } : {} };
+  });
+}
+function finishEventNode(draft, nodeId, text2, data) {
+  const exp = draft.expedition;
+  addLog(exp, "event", text2, nodeId, data);
+  delete exp.pending;
+  exp.phase = "travel";
+  if (nodeId === exp.map.objectiveId) exp.objectiveDone = true;
+}
+function chooseOption(draft, ctx2, index, route) {
+  const exp = draft.expedition;
+  const found = optionsOf(draft, ctx2.registries);
+  if (!exp || exp.phase !== "event" || exp.pending?.kind !== "event") throw new Error("There is no event to answer.");
+  if (draft.dilemmas?.open?.context === "expedition_event") throw new Error("A decision is waiting: answer it first.");
+  if (!found) {
+    finishEventNode(draft, exp.pending.nodeId, "Nothing here.");
+    return [];
+  }
+  const option = eventOptions(draft, ctx2.registries)[index];
+  if (!Number.isInteger(index) || !option) throw new Error(`There is no option ${String(index)}.`);
+  if (option.disabled !== null) throw new Error(`${option.label}: ${option.disabled}.`);
+  const { nodeId, templateId } = exp.pending;
+  const chosen = found.options[index];
+  let effects2 = chosen.effects;
+  const routeEvents = [];
+  if (chosen.routeCheck) {
+    if (route === void 0) throw new Error("Choose how to do it.");
+    const taken = resolveRoute(draft, ctx2, chosen.routeCheck, route, routeScope(draft));
+    routeEvents.push(...taken.events);
+    if (!taken.passed) effects2 = afterFailedRoute(effects2);
+  }
+  const events = [...routeEvents, ...applyWorldEffects(draft, ctx2, effects2, { kind: "event", id: templateId, label: found.title })];
+  finishEventNode(draft, nodeId, `${found.title}: ${option.label}.`, { templateId, option: option.label });
+  events.push({ type: "expedition_choice", nodeId, templateId, option: index, label: option.label });
+  return events;
+}
+
+// src/engine/actions/expedition.ts
+var isObj13 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var strList = (v) => Array.isArray(v) && v.every((x) => typeof x === "string") ? v : null;
+function readFormation(v) {
+  const front = isObj13(v) ? strList(v.front) : null;
+  const back = isObj13(v) ? strList(v.back) : null;
+  if (!front || !back) throw new Error("A formation needs { front: string[], back: string[] }.");
+  return { front, back };
+}
+registerAction("expedition/start", (draft, payload, ctx2) => {
+  if (!isObj13(payload)) throw new Error("expedition/start needs a payload.");
+  const unitIds = strList(payload.unitIds);
+  if (!unitIds) throw new Error("expedition/start needs { unitIds: string[] }.");
+  const p = { unitIds, formation: readFormation(payload.formation), supplies: payload.supplies };
+  if (typeof payload.missionId === "string") p.missionId = payload.missionId;
+  if (isObj13(payload.poi) && typeof payload.poi.regionId === "string" && typeof payload.poi.poiId === "string") {
+    p.poi = { regionId: payload.poi.regionId, poiId: payload.poi.poiId };
+  }
+  const problem = checkExpedition(draft, ctx2.registries, p);
+  if (problem) throw new Error(problem);
+  return startExpedition(draft, ctx2, p);
+});
+registerAction("expedition/move", (draft, payload, ctx2) => {
+  const nodeId = isObj13(payload) ? payload.nodeId : void 0;
+  if (typeof nodeId !== "string") throw new Error("expedition/move needs { nodeId }.");
+  return moveTo(draft, ctx2, nodeId);
+});
+registerAction("expedition/set_formation", (draft, payload) => {
+  setFormation(draft, readFormation(isObj13(payload) ? payload.formation : void 0));
+  return [];
+});
+registerAction("expedition/treat", (draft, payload, ctx2) => {
+  const unitId = isObj13(payload) ? payload.unitId : void 0;
+  const kind = isObj13(payload) ? payload.kind : void 0;
+  if (typeof unitId !== "string" || typeof kind !== "string") throw new Error("expedition/treat needs { unitId, kind }.");
+  return treat(draft, ctx2, unitId, kind);
+});
+registerAction("expedition/resolve_combat", (draft, _payload, ctx2) => resolveCombat(draft, ctx2));
+registerAction("expedition/choose", (draft, payload, ctx2) => {
+  const option = isObj13(payload) ? payload.option : void 0;
+  if (typeof option !== "number") throw new Error("expedition/choose needs { option }.");
+  return chooseOption(draft, ctx2, option, readRoutePick(isObj13(payload) ? payload.route : void 0));
+});
+registerAction("expedition/return", (draft, _payload, ctx2) => returnFromExpedition(draft, ctx2));
+registerAction("expedition/retreat", (draft, _payload, ctx2) => retreatFromExpedition(draft, ctx2));
+registerAction("expedition/ack_report", (draft) => {
+  if (!draft.lastExpedition) throw new Error("There is no report.");
+  draft.lastExpedition.acknowledged = true;
+  return [];
+});
+registerAction("expedition/mark_debriefed", (draft) => {
+  if (!draft.lastExpedition) throw new Error("There is no report.");
+  draft.lastExpedition.debriefed = true;
+  return [];
+});
+registerAction("expedition/set_recap", (draft, payload) => {
+  const reportId = isObj13(payload) ? payload.reportId : void 0;
+  if (!draft.lastExpedition || reportId !== draft.lastExpedition.id) throw new Error("That report is no longer the last one.");
+  const text2 = cleanRecap(isObj13(payload) ? payload.text : void 0);
+  if (text2 === "") throw new Error("The recap is empty.");
+  draft.lastExpedition.recap = text2;
+  return [{ type: "expedition_recap_set", reportId }];
+});
+
+// src/engine/actions/leash.ts
+registerAction("leash/seed", (draft, _payload, ctx2) => ensureLeash(draft, ctx2.registries));
+registerDayEndStep("mission_deadlines", (draft, ctx2) => [...ensureLeash(draft, ctx2.registries), ...refreshLeash(draft, ctx2.registries)]);
+var isObj14 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var unitIdOf = (payload, action) => {
+  const id = isObj14(payload) ? payload.unitId : void 0;
+  if (typeof id !== "string") throw new Error(`${action} needs { unitId }`);
+  return id;
+};
+registerAction("leash/compel", (draft, payload, ctx2) => {
+  const unitId = unitIdOf(payload, "leash/compel");
+  const refusal2 = draft.scene?.refusals?.find((r) => r.unitId === unitId);
+  if (!draft.scene?.participants.includes(unitId) || !refusal2) throw new Error("She has not refused an order in this scene: there is nothing to compel.");
+  const { forced, events } = compel(draft, ctx2, { unitId, context: "scene" });
+  if (forced && draft.scene.refusals) draft.scene.refusals = draft.scene.refusals.filter((r) => r.unitId !== unitId);
+  return [...events, { type: "scene_compelled", unitId, forced }];
+});
+registerAction("leash/suppress", (draft, payload, ctx2) => {
+  const unitId = unitIdOf(payload, "leash/suppress");
+  const open2 = draft.disloyalty?.open;
+  if (!open2 || open2.unitId !== unitId || open2.kind !== "desertion" && open2.kind !== "mutiny") {
+    throw new Error("There is nothing to suppress: no desertion or attack is about to happen.");
+  }
+  const events = suppress(draft, ctx2, { unitId, context: open2.kind });
+  if (open2.at === "night") events.push(...consumeSlots(draft, 1, ctx2));
+  return events;
+});
+registerAction("leash/terminate", (draft, payload, ctx2) => terminate(draft, ctx2, unitIdOf(payload, "leash/terminate")).events);
+
+// src/engine/loyalty/refusal.ts
+var refusalsOf = (effects2) => Array.isArray(effects2) ? effects2.filter((e) => e?.type === "order_refusal") : [];
+function refusalChance(state, reg, unitId, orderId) {
+  const unit = state.squad.find((u) => u.id === unitId);
+  if (!unit) return 0;
+  const found = [0];
+  const take = (e) => {
+    const limited = e.orders !== void 0 && e.orders.length > 0;
+    if (limited && (orderId === void 0 || !e.orders.includes(orderId))) return;
+    found.push(e.chance ?? 0);
+  };
+  for (const { synergyId } of getSynergies(state, reg, [unitId])) {
+    for (const e of refusalsOf(reg.synergies.get(synergyId)?.effects)) take(e);
+  }
+  const strained = unit.stress >= 50;
+  for (const d of unit.defects) {
+    const downside = reg.defects.get(d.id)?.combat?.downside;
+    for (const e of refusalsOf(downside)) take(strained ? amplify(e, TUNING.combat.strainedMult) : e);
+  }
+  return Math.max(...found);
+}
+function orderInScene(draft, ctx2, unitId) {
+  const scene = draft.scene;
+  if (!scene || !scene.participants.includes(unitId)) throw new Error("She is not in the open scene.");
+  const unit = draft.squad.find((u) => u.id === unitId);
+  if (!unit) throw new Error(`Unknown unit "${unitId}".`);
+  if (scene.refusals?.some((r) => r.unitId === unitId && r.exchange === scene.exchanges)) {
+    throw new Error("She has already refused: wait for her answer.");
+  }
+  const chance = refusalChance(draft, ctx2.registries, unitId);
+  const refused = chance > 0 && ctx2.rng.chance(chance);
+  scene.refusals = (scene.refusals ?? []).filter((r) => r.unitId !== unitId);
+  if (refused) scene.refusals.push({ unitId, exchange: scene.exchanges });
+  return [{ type: "scene_order", unitId, refused, chance }];
+}
+
+// src/engine/actions/loyalty.ts
+var isObj15 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+registerAction("scene/order", (draft, payload, ctx2) => {
+  const unitId = isObj15(payload) ? payload.unitId : void 0;
+  if (typeof unitId !== "string") throw new Error("scene/order needs { unitId }");
+  return orderInScene(draft, ctx2, unitId);
+});
+registerDayEndStep("director_tick", loyaltyDayStep);
+registerAction("loyalty/talk_down", (draft, payload, ctx2) => {
+  const stat2 = isObj15(payload) ? payload.stat : void 0;
+  if (stat2 !== "authority" && stat2 !== "empathy") throw new Error('loyalty/talk_down needs { stat: "authority" | "empathy" }');
+  return talkDown(draft, ctx2, stat2);
+});
+registerAction("loyalty/let_go", (draft, _payload, ctx2) => letGo(draft, ctx2));
+registerAction("loyalty/take_back", (draft, _payload, ctx2) => takeBack(draft, ctx2));
+registerAction("loyalty/turn_away", (draft, _payload, ctx2) => turnAway(draft, ctx2));
+var strList2 = (v) => Array.isArray(v) && v.every((x) => typeof x === "string") ? v : null;
+registerAction("loyalty/fight", (draft, payload, ctx2) => {
+  const p = isObj15(payload) ? payload : {};
+  const f = isObj15(p.formation) ? p.formation : {};
+  const front = strList2(f.front);
+  const back = strList2(f.back);
+  if (!front || !back) throw new Error("loyalty/fight needs { formation: { front, back }, coverId, allowRetry? }");
+  const start = fightPayload(draft, {
+    formation: { front, back },
+    ...typeof p.coverId === "string" ? { coverId: p.coverId } : {},
+    allowRetry: p.allowRetry === true
+  });
+  const events = startCombat(draft, ctx2, start);
+  const id = events.find((e) => e.type === "combat_started")?.id;
+  if (typeof id !== "string") throw new Error("The fight did not start.");
+  draft.disloyalty.open.combatId = id;
+  return events;
+});
+registerAction("loyalty/yield", (draft, _payload, ctx2) => yieldToMutiny(draft, ctx2));
+registerAction("loyalty/resolve_mutiny", (draft, _payload, ctx2) => resolveMutiny(draft, ctx2));
+
 // src/engine/dilemma/effects.ts
 var EFFECT_KINDS = ["resource", "unit_event", "faction", "clock", "flag", "stress", "social_check"];
 var MAGNITUDES = ["small", "medium", "large"];
@@ -13287,10 +13426,16 @@ function resolveNothing(draft, open2) {
 }
 function showFallback(draft, reg, open2) {
   const fixed = reg.dilemmaTemplates.get(open2.templateId)?.fixed;
-  if (!fixed || nothingChoosable(draft, fixed.options)) return resolveNothing(draft, open2);
+  if (!fixed || nothingChoosable(draft, reg, fixed.options)) return resolveNothing(draft, open2);
   open2.title = fixed.title;
   open2.setup = fixed.setup;
-  open2.options = fixed.options.map((o) => ({ label: o.label, ...o.requires ? { requires: { ...o.requires } } : {}, effects: structuredClone(o.effects), magnitudes: [] }));
+  open2.options = fixed.options.map((o) => ({
+    label: o.label,
+    ...o.requires ? { requires: { ...o.requires } } : {},
+    ...o.routeCheck ? { routeCheck: structuredClone(o.routeCheck) } : {},
+    effects: structuredClone(o.effects),
+    magnitudes: []
+  }));
   open2.status = "presented";
   open2.source = "fallback";
   return [{ type: "dilemma_presented", id: open2.id, templateId: open2.templateId, title: open2.title, source: "fallback" }];
@@ -13306,7 +13451,7 @@ function presentDilemma(draft, ctx2, requestId, raw) {
   open2.attempts += 1;
   const parsed = parseDilemmaOutput(raw, { state: draft, reg, template, ...open2.threadId !== void 0 ? { threadId: open2.threadId } : {} });
   const rejections = "rejected" in parsed ? parsed.rejected : validateOptions(parsed.options, open2.scale, unitsOf(draft, open2.units));
-  if (!("rejected" in parsed) && rejections.length === 0 && nothingChoosable(draft, parsed.options)) {
+  if (!("rejected" in parsed) && rejections.length === 0 && nothingChoosable(draft, reg, parsed.options)) {
     rejections.push({ rule: "shape", reason: "No option can be chosen right now: every one costs more than the squad has. Offer at least one the squad can afford." });
   }
   if (!("rejected" in parsed) && rejections.length === 0) {
@@ -13322,7 +13467,8 @@ function presentDilemma(draft, ctx2, requestId, raw) {
   if (!retry) events.push(...showFallback(draft, reg, open2));
   return events;
 }
-function blockedReason(state, o) {
+function blockedReason(state, reg, o) {
+  if (o.routeCheck && routeChoices(state, reg, o.routeCheck, routeScope(state)).every((r) => r.disabled !== null)) return "No way to do this right now";
   if (o.requires && !meetsSocialRequirements(state, { [o.requires.stat]: o.requires.rank })) return `Needs ${capital2(o.requires.stat)} ${o.requires.rank}`;
   for (const fx2 of o.effects) {
     if (fx2.type === "resource" && fx2.amount < 0 && state.resources[fx2.resource] < -fx2.amount) return `Not enough ${fx2.resource}`;
@@ -13330,22 +13476,24 @@ function blockedReason(state, o) {
   }
   return null;
 }
-var nothingChoosable = (state, options2) => options2.every((o) => blockedReason(state, o) !== null);
+var nothingChoosable = (state, reg, options2) => options2.every((o) => blockedReason(state, reg, o) !== null);
 function dilemmaOptions(state, reg) {
   const open2 = state.dilemmas?.open;
   if (!open2 || open2.status !== "presented" || !open2.options) return [];
   return open2.options.map((o, index) => ({
     index,
     label: o.label,
-    disabled: blockedReason(state, o),
+    disabled: blockedReason(state, reg, o),
     hasCheck: o.check !== void 0,
+    // P7: how each route stands (open, or why not); the engine re-checks the pick when it is chosen
+    ...o.routeCheck ? { routes: routeChoices(state, reg, o.routeCheck, routeScope(state)) } : {},
     // the tags only (P7a): what an option would change is never part of this list
     ...o.check ? { check: { stat: o.check.stat, rank: o.check.rank } } : {},
     ...o.requires ? { requires: { stat: o.requires.stat, rank: o.requires.rank } } : {}
   }));
 }
 var isBookkeeping = (fx2) => fx2.type === "flag" || fx2.type === "thread_flag";
-function chooseDilemma(draft, ctx2, id, index) {
+function chooseDilemma(draft, ctx2, id, index, route) {
   const open2 = draft.dilemmas?.open;
   if (!open2 || open2.id !== id || open2.status !== "presented" || !open2.options) throw new Error(STALE);
   const option = dilemmaOptions(draft, ctx2.registries)[index];
@@ -13354,6 +13502,15 @@ function chooseDilemma(draft, ctx2, id, index) {
   const chosen = open2.options[index];
   let effects2 = chosen.effects;
   let checkPassed;
+  let routePassed;
+  const routeEvents = [];
+  if (chosen.routeCheck) {
+    if (route === void 0) throw new Error("Choose how to do it.");
+    const taken = resolveRoute(draft, ctx2, chosen.routeCheck, route, routeScope(draft));
+    routePassed = taken.passed;
+    routeEvents.push(...taken.events);
+    if (!taken.passed) effects2 = afterFailedRoute(effects2);
+  }
   if (chosen.check) {
     const c = TUNING.dilemma.check;
     const chance = clamp15(c.base + c.perRank * (socialRank(draft, chosen.check.stat) - chosen.check.rank), c.min, c.max);
@@ -13361,7 +13518,7 @@ function chooseDilemma(draft, ctx2, id, index) {
     if (!checkPassed) effects2 = effects2.filter((fx2) => isCostEffect(fx2) || isBookkeeping(fx2));
   }
   const title = open2.title ?? open2.templateId;
-  const events = applyWorldEffects(draft, ctx2, effects2, { kind: "event", id: open2.templateId, label: title, units: open2.units });
+  const events = [...routeEvents, ...applyWorldEffects(draft, ctx2, effects2, { kind: "event", id: open2.templateId, label: title, units: open2.units })];
   const affected = [...new Set(events.filter((e) => e.type === "relation_changed").map((e) => String(e.unitId)))];
   const d = draft.dilemmas;
   d.lastDay = draft.day;
@@ -13384,7 +13541,8 @@ function chooseDilemma(draft, ctx2, id, index) {
     label: chosen.label,
     title,
     affected,
-    ...checkPassed !== void 0 ? { checkPassed } : {}
+    ...checkPassed !== void 0 ? { checkPassed } : {},
+    ...routePassed !== void 0 ? { routePassed } : {}
   });
   return events;
 }
@@ -13422,7 +13580,7 @@ registerAction("dilemma/fallback", (draft, payload, ctx2) => {
 });
 registerAction("dilemma/choose", (draft, payload, ctx2) => {
   const p = isObj18(payload) ? payload : {};
-  return chooseDilemma(draft, ctx2, p.id, p.index);
+  return chooseDilemma(draft, ctx2, p.id, p.index, readRoutePick(p.route));
 });
 
 // src/engine/actions/arc.ts

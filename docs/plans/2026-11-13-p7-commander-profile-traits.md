@@ -199,9 +199,9 @@ docs/** (Task 19), tests/** mirror src
 - Consumes: `routeChoices`, `resolveRoute`, `RoutePick` (Task 5).
 - Produces: an option with `routeCheck` and no `route` → error `Choose how to do it.`; a failed route keeps cost effects and drops gains (the P6 failed-check filter); the scope in a run is the party, else living roster units.
 
-- [ ] **Step 1: Write the failing tests** — `choosing a routed option without a route changes nothing`; `a passed body route applies every effect`; `a refused delegate keeps costs and drops the loot`; `expedition/choose with a delegate uses only the party`; `dilemmaOptions lists route choices`; `core: evt_sealed_crate option 0 has a non-body route`.
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → green.
-- [ ] **Step 5: Commit** `feat(engine): route checks in dilemmas and expedition events`.
+- [x] **Step 1: Write the failing tests** — `choosing a routed option without a route changes nothing`; `a passed body route applies every effect`; `a refused delegate keeps costs and drops the loot`; `expedition/choose with a delegate uses only the party`; `dilemmaOptions lists route choices`; `core: evt_sealed_crate option 0 has a non-body route`.
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → green.
+- [x] **Step 5: Commit** `feat(engine): route checks in dilemmas and expedition events`.
 
 ---
 

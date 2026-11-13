@@ -104,6 +104,20 @@ describe('social, item and bypass routes', () => {
   });
 });
 
+describe('bypass in a run', () => {
+  it('supplies are the carried supplies while an expedition is open', () => {
+    const s = fresh();
+    s.resources.supplies = 0;
+    s.expedition = { supplies: 3 } as CampaignState['expedition'];
+    const c = check(BODY, { kind: 'bypass', cost: { resource: 'supplies', amount: 2 } });
+    expect(routeChoices(s, reg, c, {})[1].disabled).toBeNull();
+    const r = resolve(s, c, { route: 1 });
+    expect(r.passed).toBe(true);
+    expect(r.draft.expedition!.supplies).toBe(1);
+    expect(r.draft.resources.supplies).toBe(0);
+  });
+});
+
 describe('delegate routes', () => {
   it('delegate complies at guarded trust and pays affinity and stress', () => {
     const s = fresh();

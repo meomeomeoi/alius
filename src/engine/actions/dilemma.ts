@@ -1,5 +1,6 @@
 import { registerDayEndStep } from '../calendar';
 import { registerAction } from '../dispatch';
+import { readRoutePick } from '../commander/checks';
 import { chooseDilemma, fallbackDilemma, openDilemma, pacingStep, presentDilemma } from '../dilemma/flow';
 import type { DilemmaContext } from '../dilemma/types';
 import './loyalty'; // registered first: pacing runs after the loyalty day step
@@ -28,5 +29,5 @@ registerAction('dilemma/fallback', (draft, payload, ctx) => {
 
 registerAction('dilemma/choose', (draft, payload, ctx) => {
   const p = isObj(payload) ? payload : {};
-  return chooseDilemma(draft, ctx, p.id, p.index);
+  return chooseDilemma(draft, ctx, p.id, p.index, readRoutePick(p.route));
 });

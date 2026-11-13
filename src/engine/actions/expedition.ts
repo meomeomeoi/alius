@@ -1,3 +1,4 @@
+import { readRoutePick } from '../commander/checks';
 import { registerAction } from '../dispatch';
 import {
   checkExpedition, chooseOption, cleanRecap, moveTo, resolveCombat, retreatFromExpedition, returnFromExpedition, setFormation, startExpedition, treat, type StartExpedition, type TreatKind,
@@ -52,7 +53,7 @@ registerAction('expedition/resolve_combat', (draft, _payload, ctx) => resolveCom
 registerAction('expedition/choose', (draft, payload, ctx) => {
   const option = isObj(payload) ? payload.option : undefined;
   if (typeof option !== 'number') throw new Error('expedition/choose needs { option }.');
-  return chooseOption(draft, ctx, option);
+  return chooseOption(draft, ctx, option, readRoutePick(isObj(payload) ? payload.route : undefined));
 });
 
 registerAction('expedition/return', (draft, _payload, ctx) => returnFromExpedition(draft, ctx));

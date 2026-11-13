@@ -5,6 +5,7 @@ import { activeRosterUnits, isLiving } from '../economy';
 import { meetsSocialRequirements, socialRank, type SocialStat } from '../social';
 import type { CampaignState, Unit } from '../state/types';
 import { TUNING } from '../tuning';
+import { afterFailedRoute, resolveRoute, routeChoices, routeScope, type RouteChoice, type RoutePick } from '../commander/checks';
 import { finishEventNode } from '../world/expedition';
 import { applyWorldEffects } from '../world/effects';
 import { currentBeat } from '../world/spine';
@@ -142,12 +143,15 @@ function resolveNothing(draft: CampaignState, open: DilemmaState): EngineEvent[]
 
 function showFallback(draft: CampaignState, reg: Registries, open: DilemmaState): EngineEvent[] {
   const fixed = reg.dilemmaTemplates.get(open.templateId)?.fixed as
-    | { title: string; setup: string; options: Array<{ label: string; requires?: DilemmaOption['requires']; effects: WorldEffect[] }> }
+    | { title: string; setup: string; options: Array<{ label: string; requires?: DilemmaOption['requires']; routeCheck?: DilemmaOption['routeCheck']; effects: WorldEffect[] }> }
     | undefined;
-  if (!fixed || nothingChoosable(draft, fixed.options)) return resolveNothing(draft, open);
+  if (!fixed || nothingChoosable(draft, reg, fixed.options)) return resolveNothing(draft, open);
   open.title = fixed.title;
   open.setup = fixed.setup;
-  open.options = fixed.options.map((o) => ({ label: o.label, ...(o.requires ? { requires: { ...o.requires } } : {}), effects: structuredClone(o.effects), magnitudes: [] }));
+  open.options = fixed.options.map((o) => ({
+    label: o.label, ...(o.requires ? { requires: { ...o.requires } } : {}), ...(o.routeCheck ? { routeCheck: structuredClone(o.routeCheck) } : {}),
+    effects: structuredClone(o.effects), magnitudes: [],
+  }));
   open.status = 'presented';
   open.source = 'fallback';
   return [{ type: 'dilemma_presented', id: open.id, templateId: open.templateId, title: open.title, source: 'fallback' }];
@@ -170,7 +174,7 @@ export function presentDilemma(draft: CampaignState, ctx: EngineCtx, requestId: 
   open.attempts += 1;
   const parsed = parseDilemmaOutput(raw, { state: draft, reg, template, ...(open.threadId !== undefined ? { threadId: open.threadId } : {}) });
   const rejections = 'rejected' in parsed ? parsed.rejected : validateOptions(parsed.options, open.scale, unitsOf(draft, open.units));
-  if (!('rejected' in parsed) && rejections.length === 0 && nothingChoosable(draft, parsed.options)) {
+  if (!('rejected' in parsed) && rejections.length === 0 && nothingChoosable(draft, reg, parsed.options)) {
     rejections.push({ rule: 'shape', reason: 'No option can be chosen right now: every one costs more than the squad has. Offer at least one the squad can afford.' });
   }
   if (!('rejected' in parsed) && rejections.length === 0) {
@@ -191,7 +195,8 @@ export function presentDilemma(draft: CampaignState, ctx: EngineCtx, requestId: 
 // Choosing
 
 /** Why an option cannot be chosen right now (`null` = it can). */
-function blockedReason(state: CampaignState, o: { requires?: DilemmaOption['requires']; effects: WorldEffect[] }): string | null {
+function blockedReason(state: CampaignState, reg: Registries, o: { requires?: DilemmaOption['requires']; routeCheck?: DilemmaOption['routeCheck']; effects: WorldEffect[] }): string | null {
+  if (o.routeCheck && routeChoices(state, reg, o.routeCheck, routeScope(state)).every((r) => r.disabled !== null)) return 'No way to do this right now';
   if (o.requires && !meetsSocialRequirements(state, { [o.requires.stat]: o.requires.rank })) return `Needs ${capital(o.requires.stat)} ${o.requires.rank}`;
   for (const fx of o.effects) {
     if (fx.type === 'resource' && fx.amount < 0 && state.resources[fx.resource] < -fx.amount) return `Not enough ${fx.resource}`;
@@ -201,22 +206,23 @@ function blockedReason(state: CampaignState, o: { requires?: DilemmaOption['requ
 }
 
 /** A dilemma nobody can answer would block time for good: at least one option must be choosable when it is shown. */
-const nothingChoosable = (state: CampaignState, options: Array<{ requires?: DilemmaOption['requires']; effects: WorldEffect[] }>): boolean =>
-  options.every((o) => blockedReason(state, o) !== null);
+const nothingChoosable = (state: CampaignState, reg: Registries, options: Array<{ requires?: DilemmaOption['requires']; routeCheck?: DilemmaOption['routeCheck']; effects: WorldEffect[] }>): boolean =>
+  options.every((o) => blockedReason(state, reg, o) !== null);
 
 /** The presented options with the reason each one is greyed (`null` = available). */
 export function dilemmaOptions(
   state: CampaignState,
   reg: Registries,
-): Array<{ index: number; label: string; disabled: string | null; hasCheck: boolean; check?: { stat: SocialStat; rank: number }; requires?: { stat: SocialStat; rank: number } }> {
-  void reg;
+): Array<{ index: number; label: string; disabled: string | null; hasCheck: boolean; check?: { stat: SocialStat; rank: number }; requires?: { stat: SocialStat; rank: number }; routes?: RouteChoice[] }> {
   const open = state.dilemmas?.open;
   if (!open || open.status !== 'presented' || !open.options) return [];
   return open.options.map((o, index) => ({
     index,
     label: o.label,
-    disabled: blockedReason(state, o),
+    disabled: blockedReason(state, reg, o),
     hasCheck: o.check !== undefined,
+    // P7: how each route stands (open, or why not); the engine re-checks the pick when it is chosen
+    ...(o.routeCheck ? { routes: routeChoices(state, reg, o.routeCheck, routeScope(state)) } : {}),
     // the tags only (P7a): what an option would change is never part of this list
     ...(o.check ? { check: { stat: o.check.stat, rank: o.check.rank } } : {}),
     ...(o.requires ? { requires: { stat: o.requires.stat, rank: o.requires.rank } } : {}),
@@ -226,7 +232,7 @@ export function dilemmaOptions(
 const isBookkeeping = (fx: WorldEffect): boolean => fx.type === 'flag' || fx.type === 'thread_flag';
 
 /** Applies the chosen option once: an optional social check, the effects, the bookkeeping and the node of an expedition event. */
-export function chooseDilemma(draft: CampaignState, ctx: EngineCtx, id: unknown, index: unknown): EngineEvent[] {
+export function chooseDilemma(draft: CampaignState, ctx: EngineCtx, id: unknown, index: unknown, route?: RoutePick): EngineEvent[] {
   const open = draft.dilemmas?.open;
   if (!open || open.id !== id || open.status !== 'presented' || !open.options) throw new Error(STALE);
   const option = dilemmaOptions(draft, ctx.registries)[index as number];
@@ -235,6 +241,16 @@ export function chooseDilemma(draft: CampaignState, ctx: EngineCtx, id: unknown,
   const chosen = open.options[index];
   let effects = chosen.effects;
   let checkPassed: boolean | undefined;
+  let routePassed: boolean | undefined;
+  const routeEvents: EngineEvent[] = [];
+  if (chosen.routeCheck) {
+    // P7: the pick is checked again here (a stale click changes nothing); a failed or refused route keeps the costs
+    if (route === undefined) throw new Error('Choose how to do it.');
+    const taken = resolveRoute(draft, ctx, chosen.routeCheck, route, routeScope(draft));
+    routePassed = taken.passed;
+    routeEvents.push(...taken.events);
+    if (!taken.passed) effects = afterFailedRoute(effects);
+  }
   if (chosen.check) {
     const c = TUNING.dilemma.check;
     const chance = clamp(c.base + c.perRank * (socialRank(draft, chosen.check.stat) - chosen.check.rank), c.min, c.max);
@@ -243,7 +259,7 @@ export function chooseDilemma(draft: CampaignState, ctx: EngineCtx, id: unknown,
     if (!checkPassed) effects = effects.filter((fx) => isCostEffect(fx) || isBookkeeping(fx));
   }
   const title = open.title ?? open.templateId;
-  const events = applyWorldEffects(draft, ctx, effects, { kind: 'event', id: open.templateId, label: title, units: open.units });
+  const events = [...routeEvents, ...applyWorldEffects(draft, ctx, effects, { kind: 'event', id: open.templateId, label: title, units: open.units })];
   const affected = [...new Set(events.filter((e) => e.type === 'relation_changed').map((e) => String(e.unitId)))];
 
   const d = draft.dilemmas!;
@@ -262,6 +278,7 @@ export function chooseDilemma(draft: CampaignState, ctx: EngineCtx, id: unknown,
   events.push({
     type: 'dilemma_resolved', id: open.id, templateId: open.templateId, option: index, label: chosen.label, title, affected,
     ...(checkPassed !== undefined ? { checkPassed } : {}),
+    ...(routePassed !== undefined ? { routePassed } : {}),
   });
   return events;
 }
