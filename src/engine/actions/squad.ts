@@ -1,5 +1,6 @@
 import type { Entry } from '../../content/types';
 import { registerAction } from '../dispatch';
+import { applyFirstImpression } from '../commander/presence';
 import { generateGrunt, gruntRelation } from '../grunts';
 import { livingUnits } from '../economy';
 import {
@@ -102,6 +103,7 @@ registerAction('squad/add_named', (draft, payload, ctx) => {
     knowsCrime: crime ? crimeKnownByDefault(crime, start) : false,
     since: draft.day,
   });
+  applyFirstImpression(draft, reg, unit, draft.relations[unit.id]);
   // dead units leave the active list first, as when a grunt is recruited
   const active = draft.roster.activeIds.filter((id) => draft.squad.some((x) => x.id === id && x.status !== 'dead'));
   if (active.length < TUNING.rosterActiveMax) {

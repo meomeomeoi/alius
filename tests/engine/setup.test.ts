@@ -42,6 +42,8 @@ const four = () => [
   unit({ cardRef: 'a.png', displayName: 'Ann' }), unit({ cardRef: 'b.png', displayName: 'Bea', roleId: 'medic' }),
   unit({ cardRef: 'c.png', displayName: 'Cat', roleId: 'sniper' }), unit({ cardRef: 'd.png', displayName: 'Dee', roleId: 'defender' }),
 ];
+/** No presence rows: these tests are about the crime's own effects, not the commander's presence (P7, tested in commander/presence). */
+const flatReg = (): Registries => ({ ...reg, presence: new Map() });
 /** Copy of the registries with every crime (and optionally start) patched. */
 const patched = (crime: Record<string, unknown>, start: Record<string, unknown> = {}): Registries => ({
   ...reg,
@@ -122,9 +124,9 @@ describe('buildCampaign', () => {
   });
 
   it('experimentation lowers starting trust by 10, clamped at 0', () => {
-    const low = ok(result([unit({ baseline: { trust: 5, affinity: 0, attraction: 0 } })], { crimeId: 'experimentation' }));
+    const low = ok(result([unit({ baseline: { trust: 5, affinity: 0, attraction: 0 } })], { crimeId: 'experimentation' }), OPTS, flatReg());
     expect(low.relations.unit_rhea.trust).toBe(0);
-    const mid = ok(result([unit()], { crimeId: 'experimentation' }));
+    const mid = ok(result([unit()], { crimeId: 'experimentation' }), OPTS, flatReg());
     expect(mid.relations.unit_rhea.trust).toBe(10);
   });
 
@@ -133,7 +135,7 @@ describe('buildCampaign', () => {
       unit({ cardRef: 'a.png', displayName: 'Ann', values: { ...ZERO, pragmatism: 2 } }),
       unit({ cardRef: 'b.png', displayName: 'Bea', values: { ...ZERO, pragmatism: 0 } }),
       unit({ cardRef: 'c.png', displayName: 'Cat', values: { ...ZERO, pragmatism: -2 } }),
-    ], { crimeId: 'purge' }));
+    ], { crimeId: 'purge' }), OPTS, flatReg());
     expect(s.relations.unit_ann.trust).toBe(30);
     expect(s.relations.unit_bea.trust).toBe(20);
     expect(s.relations.unit_cat.trust).toBe(20);
@@ -141,6 +143,7 @@ describe('buildCampaign', () => {
 
   it('starting_trust with a "-" ifValue only hits units below zero on that axis', () => {
     const r2 = patched({}, {});
+    r2.presence = new Map();
     r2.crimes = new Map([['liquidation', {
       ...reg.crimes.get('liquidation')!,
       flaw: { text: 'x', effects: [{ type: 'starting_trust', amount: -10, ifValue: { axis: 'mercy', sign: '-' } }] },
@@ -158,7 +161,7 @@ describe('buildCampaign', () => {
       unit({ cardRef: 'a.png', displayName: 'Ann', baseline: { trust: 5, affinity: -10, attraction: 3 } }),
       unit({ cardRef: 'b.png', displayName: 'Bea', baseline: { trust: 15, affinity: 0, attraction: 0 } }),
       unit({ cardRef: 'c.png', displayName: 'Cat', baseline: { trust: 40, affinity: 30, attraction: 20 } }),
-    ]));
+    ]), OPTS, flatReg());
     expect(s.relations.unit_ann).toEqual({
       trust: 5, affinity: -10, attraction: 3, stateId: INITIAL_RELATION_STATE, stateSince: 1, history: [], flags: [],
       dailyGain: { trust: 0, affinity: 0, attraction: 0 }, loyaltyBand: 'breaking', marks: [], metDay: 1,
@@ -190,7 +193,7 @@ describe('buildCampaign', () => {
   });
 
   it('unknown effect types in a crime are ignored', () => {
-    const s = ok(result([unit()], { crimeId: 'liquidation' }));
+    const s = ok(result([unit()], { crimeId: 'liquidation' }), OPTS, flatReg());
     expect(s.resources).toEqual({ credits: 40, supplies: 30, plyx: 10 });
     expect(s.relations.unit_rhea.trust).toBe(20);
   });

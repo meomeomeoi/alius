@@ -1050,6 +1050,39 @@ export const GlossarySchema = BaseEntrySchema.extend({
 });
 
 /** Player-visible registries whose entries carry an optional `description` (skills and statuses already require one). */
+// ---------------------------------------------------------------------------------------------
+// P7: presence and unit tastes
+
+const ARCHETYPES = ['frail', 'slight', 'average', 'fit', 'hardened'] as const;
+const rank5 = int.min(1).max(5);
+const rangeOf5 = z.tuple([rank5, rank5]).refine(([lo, hi]) => lo <= hi, 'range minimum must not exceed maximum');
+
+/** One row of the presence table: what a factor of the commander contributes to P ∈ [−15, +15]. */
+export const PresenceSchema = BaseEntrySchema.extend({
+  factor: z.enum(['archetype', 'seasoning', 'authority']),
+  /** An archetype id, or the rank/seasoning value as a string. */
+  key: str,
+  presence: int.min(-15).max(15),
+}).strict();
+
+/** How a unit reads the commander. Without `match` it always applies. Expression has no mechanical value except through these. */
+export const TasteSchema = BaseEntrySchema.extend({
+  name: str,
+  description: str,
+  match: z.object({
+    archetypes: z.array(z.enum(ARCHETYPES)).min(1).optional(),
+    expression: rangeOf5.optional(),
+    seasoning: rangeOf5.optional(),
+  }).strict().optional(),
+  offsets: z.object({ trust: int.min(-20).max(20).optional(), affinity: int.min(-20).max(20).optional(), attraction: int.min(-20).max(20).optional() }).strict().optional(),
+  /** Scales the commander's presence for this unit (0 = looks do not matter). */
+  presenceMult: z.number().min(0).max(2).optional(),
+  /** Scales how hard an off-image event lands with this unit. */
+  imageMult: z.number().min(0).max(2).optional(),
+}).strict();
+
+Object.assign(registrySchemas, { presence: PresenceSchema, tastes: TasteSchema });
+
 export const DESCRIBED_REGISTRIES = [
   'roles', 'skills', 'signatures', 'statuses', 'defects', 'items', 'affixes', 'enemies',
   'enemyCategories', 'regions', 'nodeTypes', 'activities', 'facilities', 'crimes',

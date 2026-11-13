@@ -1,0 +1,123 @@
+[
+  {
+    "id": "respects_strength",
+    "name": "Respects strength",
+    "description": "Respects visible strength; a fit or hardened commander gets the benefit of the doubt.",
+    "match": {
+      "archetypes": [
+        "fit",
+        "hardened"
+      ]
+    },
+    "offsets": {
+      "trust": 8
+    },
+    "presenceMult": 1.5
+  },
+  {
+    "id": "wary_of_brutes",
+    "name": "Wary of brutes",
+    "description": "Distrusts physical force; a fit or hardened commander is read as a threat.",
+    "match": {
+      "archetypes": [
+        "fit",
+        "hardened"
+      ]
+    },
+    "offsets": {
+      "trust": -8
+    },
+    "imageMult": 1.5
+  },
+  {
+    "id": "protective_of_frail",
+    "name": "Protective of the frail",
+    "description": "Warms to a commander who looks fragile and wants to look after him.",
+    "match": {
+      "archetypes": [
+        "frail",
+        "slight"
+      ]
+    },
+    "offsets": {
+      "affinity": 8
+    },
+    "imageMult": 1.5
+  },
+  {
+    "id": "drawn_to_feminine",
+    "name": "Drawn to feminine",
+    "description": "Notices a feminine presentation.",
+    "match": {
+      "expression": [
+        1,
+        2
+      ]
+    },
+    "offsets": {
+      "attraction": 10
+    }
+  },
+  {
+    "id": "drawn_to_masculine",
+    "name": "Drawn to masculine",
+    "description": "Notices a masculine presentation.",
+    "match": {
+      "expression": [
+        4,
+        5
+      ]
+    },
+    "offsets": {
+      "attraction": 10
+    }
+  },
+  {
+    "id": "drawn_to_androgynous",
+    "name": "Drawn to androgynous",
+    "description": "Notices an androgynous presentation.",
+    "match": {
+      "expression": [
+        3,
+        3
+      ]
+    },
+    "offsets": {
+      "attraction": 10
+    }
+  },
+  {
+    "id": "drawn_to_older",
+    "name": "Drawn to older",
+    "description": "Notices a seasoned, experienced commander.",
+    "match": {
+      "seasoning": [
+        4,
+        5
+      ]
+    },
+    "offsets": {
+      "attraction": 8
+    }
+  },
+  {
+    "id": "drawn_to_younger",
+    "name": "Drawn to younger",
+    "description": "Notices a young, green commander.",
+    "match": {
+      "seasoning": [
+        1,
+        2
+      ]
+    },
+    "offsets": {
+      "attraction": 8
+    }
+  },
+  {
+    "id": "indifferent_to_looks",
+    "name": "Indifferent to looks",
+    "description": "Does not judge a commander by his looks at all.",
+    "presenceMult": 0
+  }
+]

@@ -119,7 +119,8 @@ describe('generateGrunt', () => {
 });
 
 describe('gruntRelation', () => {
-  const trustFor = (crimeId: string) => gruntRelation(campaign(reg, 1, { crimeId }), reg).trust;
+  // no presence rows: the crime's own effect is what is under test (P7 presence is tested in commander/presence)
+  const trustFor = (crimeId: string) => gruntRelation(campaign(reg, 1, { crimeId }), { ...reg, presence: new Map() }).trust;
 
   it('follows the crime: purge adds, experimentation subtracts', () => {
     expect(trustFor('mutiny')).toBe(TUNING.recruit.baseTrust);

@@ -1,10 +1,13 @@
 import type { Entry, Registries } from '../content/types';
 import { createCampaign } from './state/create';
+import { TUNING } from './tuning';
 import { ensureLeash } from './leash/weekly';
 import { seedWorld } from './world/state';
+import { initialLoyaltyBand } from './relations/bands';
+import { applyFirstImpression } from './commander/presence';
 import { applyCommanderSetup, defaultCommanderSetup, validateCommanderSetup, type CommanderSetup } from './commander/profile';
 import {
-  VALUE_AXES, type CampaignState, type LoyaltyBand, type Relation, type SignatureInstance, type Unit,
+  VALUE_AXES, type CampaignState, type Relation, type SignatureInstance, type Unit,
 } from './state/types';
 
 export const SETUP_LIMITS = {
@@ -40,6 +43,8 @@ export interface UnitSetup {
   dislikes: string[];
   triggers: string[];
   baseline: { trust: number; affinity: number; attraction: number };
+  /** P7: up to 3 ids of registry `tastes` (how the unit reads the commander's looks and build). */
+  tastes?: string[];
 }
 
 export interface SetupResult {
@@ -96,6 +101,19 @@ function validateUnit(
   for (const axis of VALUE_AXES) {
     if (!inRange(u.values?.[axis], SETUP_LIMITS.value)) {
       out.push(`${label}: value "${axis}" must be an integer from -3 to 3`);
+    }
+  }
+
+  if (u.tastes !== undefined) {
+    if (!Array.isArray(u.tastes)) out.push(`${label}: tastes must be a list`);
+    else {
+      if (u.tastes.length > TUNING.commander.maxTastes) out.push(`${label}: at most ${TUNING.commander.maxTastes} tastes (has ${u.tastes.length})`);
+      const seenTastes = new Set<string>();
+      for (const t of u.tastes) {
+        if (!reg.tastes.has(t)) out.push(`${label}: unknown taste "${String(t)}"`);
+        if (seenTastes.has(t)) out.push(`${label}: taste "${String(t)}" is chosen twice`);
+        seenTastes.add(t);
+      }
     }
   }
 
@@ -158,7 +176,6 @@ const slug = (name: string): string => {
   return s === '' ? 'unit' : s;
 };
 
-const bandFor = (trust: number): LoyaltyBand => (trust < 10 ? 'breaking' : trust < 25 ? 'wavering' : 'steady');
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
 
 /** Perk and flaw effects of a crime. */
@@ -195,7 +212,7 @@ export function initialRelation(o: { trust: number; affinity: number; attraction
     history: [],
     flags: o.knowsCrime ? ['knows_crime'] : [],
     dailyGain: { trust: 0, affinity: 0, attraction: 0 },
-    loyaltyBand: bandFor(trust),
+    loyaltyBand: initialLoyaltyBand(trust),
     marks: [],
     metDay: o.since ?? 1,
   };
@@ -233,6 +250,7 @@ export function makeNamedUnit(u: UnitSetup, reg: Registries, usedIds: Set<string
     equipment: {},
     injuries: [],
     status: 'active',
+    ...(u.tastes && u.tastes.length > 0 ? { commanderTastes: [...u.tastes] } : {}),
   };
 }
 
@@ -290,6 +308,7 @@ export function buildCampaign(
       attraction: u.baseline.attraction,
       knowsCrime,
     });
+    applyFirstImpression(state, reg, unit, state.relations[id]);
   }
   state.roster.activeIds = state.squad.map((u) => u.id);
   seedWorld(state, reg);

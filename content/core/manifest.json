@@ -34,6 +34,9 @@
     "rewardTiers": "rewardTiers.json",
     "dilemmaTemplates": "dilemmaTemplates.json",
     "loyaltySigns": "loyaltySigns.json",
-    "glossary": "glossary.json"
+    "glossary": "glossary.json",
+    "commanderTraits": "commanderTraits.json",
+    "tastes": "tastes.json",
+    "presence": "presence.json"
   }
 }

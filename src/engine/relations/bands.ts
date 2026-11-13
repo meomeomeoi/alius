@@ -25,3 +25,6 @@ export function nextLoyaltyBand(current: LoyaltyBand, trust: number): LoyaltyBan
     case 'breaking': return trust >= L.steady ? 'steady' : trust >= L.breakingExit ? 'wavering' : 'breaking';
   }
 }
+
+/** The loyalty band a relation starts in (and is re-based to after a join-time Trust change): <10 breaking, <25 wavering, else steady. */
+export const initialLoyaltyBand = (trust: number): LoyaltyBand => (trust < 10 ? 'breaking' : trust < 25 ? 'wavering' : 'steady');

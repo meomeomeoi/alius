@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-/** Registry names reserved by P0 (`marks` stays empty in v1; see overview §10). `locations` was added by P3, `orders`, `synergies`, `recipes` and `lootTables` by P4, `glossary` by P7a. */
+/** Registry names reserved by P0 (`marks` stays empty in v1; see overview §10). `locations` was added by P3, `orders`, `synergies`, `recipes` and `lootTables` by P4, `glossary` by P7a, `commanderTraits`, `tastes`, `presence` and `imageConsistency` by P7. */
 export const REGISTRY_NAMES = [
   'roles', 'skills', 'signatures', 'statuses', 'defects', 'items', 'affixes', 'enemies',
   'enemyCategories', 'regions', 'nodeTypes', 'activities', 'facilities', 'crimes',
@@ -14,6 +14,8 @@ export const REGISTRY_NAMES = [
   'loyaltySigns',
   // P7a
   'glossary',
+  // P7
+  'commanderTraits', 'tastes', 'presence', 'imageConsistency',
 ] as const;
 
 export type RegistryName = (typeof REGISTRY_NAMES)[number];

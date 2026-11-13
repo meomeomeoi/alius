@@ -1,0 +1,92 @@
+[
+  {
+    "id": "archetype_frail",
+    "factor": "archetype",
+    "key": "frail",
+    "presence": -6
+  },
+  {
+    "id": "archetype_slight",
+    "factor": "archetype",
+    "key": "slight",
+    "presence": -3
+  },
+  {
+    "id": "archetype_average",
+    "factor": "archetype",
+    "key": "average",
+    "presence": 0
+  },
+  {
+    "id": "archetype_fit",
+    "factor": "archetype",
+    "key": "fit",
+    "presence": 3
+  },
+  {
+    "id": "archetype_hardened",
+    "factor": "archetype",
+    "key": "hardened",
+    "presence": 6
+  },
+  {
+    "id": "seasoning_1",
+    "factor": "seasoning",
+    "key": "1",
+    "presence": -4
+  },
+  {
+    "id": "seasoning_2",
+    "factor": "seasoning",
+    "key": "2",
+    "presence": -2
+  },
+  {
+    "id": "seasoning_3",
+    "factor": "seasoning",
+    "key": "3",
+    "presence": 0
+  },
+  {
+    "id": "seasoning_4",
+    "factor": "seasoning",
+    "key": "4",
+    "presence": 2
+  },
+  {
+    "id": "seasoning_5",
+    "factor": "seasoning",
+    "key": "5",
+    "presence": 4
+  },
+  {
+    "id": "authority_1",
+    "factor": "authority",
+    "key": "1",
+    "presence": -2
+  },
+  {
+    "id": "authority_2",
+    "factor": "authority",
+    "key": "2",
+    "presence": 0
+  },
+  {
+    "id": "authority_3",
+    "factor": "authority",
+    "key": "3",
+    "presence": 2
+  },
+  {
+    "id": "authority_4",
+    "factor": "authority",
+    "key": "4",
+    "presence": 3
+  },
+  {
+    "id": "authority_5",
+    "factor": "authority",
+    "key": "5",
+    "presence": 5
+  }
+]
