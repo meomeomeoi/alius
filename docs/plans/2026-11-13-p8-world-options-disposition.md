@@ -206,17 +206,17 @@ docs/** (Task 16), tests/** mirror src
   - Failing a mission with `source === 'command'` scales the negative `faction` amounts of its `failureEffects` by the product of `command_failure_mult` (`roundAway`).
   - `normDistance(state, reg): number | null` (null without an `expression_norm`) and `applyWorldStartEffects(state, reg)`: own corporation standing += `standingPerStep × distance`, called after `seedWorld`.
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `oversight gives 3/2/1 authorizations with a base-2 corporation`
   - `brutal lowers the Terminate approval`
   - `scorned pays 10% less on the same seed`
   - `brutal deepens a failed command mission's faction loss, a side mission is unchanged`
   - `machismo with a very feminine commander starts own standing 8 lower; indifferent changes nothing`
   - `defaults change none of these numbers`
-- [ ] **Step 2: Run** `npx vitest run tests/engine/worldOptions` and expect FAIL.
-- [ ] **Step 3: Implement** the hook points.
-- [ ] **Step 4: Run** `npx vitest run` and expect green.
-- [ ] **Step 5: Commit** `feat(engine): oversight, stigma and norm effects of world options`.
+- [x] **Step 2: Run** `npx vitest run tests/engine/worldOptions` and expect FAIL.
+- [x] **Step 3: Implement** the hook points.
+- [x] **Step 4: Run** `npx vitest run` and expect green.
+- [x] **Step 5: Commit** `feat(engine): oversight, stigma and norm effects of world options`.
 
 ### Task 4: Disposition model, join offsets and loyalty bands
 

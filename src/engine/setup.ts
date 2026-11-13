@@ -4,7 +4,7 @@ import { TUNING } from './tuning';
 import { ensureLeash } from './leash/weekly';
 import { seedWorld } from './world/state';
 import { initialLoyaltyBand } from './relations/bands';
-import { defaultWorldOptions, validateWorldOptions } from './worldOptions';
+import { applyWorldStartEffects, defaultWorldOptions, validateWorldOptions } from './worldOptions';
 import { applyFirstImpression } from './commander/presence';
 import { applyFactionTraitEffects, applyStartTraitEffects, syncTraitSettings } from './commander/traits';
 import { applyCommanderSetup, defaultCommanderSetup, validateCommanderSetup, type CommanderSetup } from './commander/profile';
@@ -322,6 +322,7 @@ export function buildCampaign(
   state.roster.activeIds = state.squad.map((u) => u.id);
   seedWorld(state, reg);
   applyFactionTraitEffects(state, reg); // after the seed: it keeps a standing that is already set
+  applyWorldStartEffects(state, reg); // P8: the world's norm costs the own corporation's standing
   ensureLeash(state, reg);
   return { ok: true, state };
 }

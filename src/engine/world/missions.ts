@@ -7,6 +7,7 @@ import { bankLoot, rollLoot } from '../items';
 import type { CampaignState, LootDrop } from '../state/types';
 import { TUNING } from '../tuning';
 import { applyWorldEffects } from './effects';
+import { worldEffects } from '../worldOptions';
 import { knownRegions } from './state';
 import type { Mission, MissionRewards, MissionSource, Rumor, WorldEffect } from './types';
 
@@ -126,6 +127,19 @@ export function offerMission(draft: CampaignState, ctx: EngineCtx, o: MissionOff
   return { mission, events };
 }
 
+/**
+ * What a failed mission costs. A failed command mission multiplies its negative faction amounts by the oversight's
+ * `command_failure_mult` (rounded away from zero); other missions and other effects are untouched.
+ */
+export function failureEffectsOf(state: CampaignState, reg: Registries, m: Mission): WorldEffect[] {
+  if (m.source !== 'command') return m.failureEffects;
+  const mult = worldEffects(state, reg, 'command_failure_mult').reduce((n, fx) => n * fx.mult, 1);
+  if (mult === 1) return m.failureEffects;
+  return m.failureEffects.map((e) => (e.type === 'faction' && e.amount < 0
+    ? { ...e, amount: Math.sign(e.amount) * Math.round(Math.abs(e.amount) * mult) }
+    : e));
+}
+
 /** Credits and plyx inside the tier's ranges, loot from its table, faction from template + tier, clearance from the template. */
 export function rollRewards(draft: CampaignState, ctx: EngineCtx, m: Mission): { rewards: MissionRewards; drops: LootDrop[] } {
   const reg = ctx.registries;
@@ -146,6 +160,12 @@ export function rollRewards(draft: CampaignState, ctx: EngineCtx, m: Mission): {
   const amount = (tier?.faction as number | undefined) ?? 0;
   if (factionId !== undefined && amount > 0) rewards.faction = { id: factionId, amount };
   if (typeof tpl?.clearance === 'number') rewards.clearance = tpl.clearance;
+  // P8: the world's stigma changes what a mission pays; applied after the rolls, so the rng is untouched
+  const pct = worldEffects(draft, reg, 'mission_reward_pct').reduce((n, fx) => n + fx.pct, 0);
+  if (pct !== 0) {
+    rewards.credits = Math.max(0, Math.round(rewards.credits * (1 + pct / 100)));
+    rewards.plyx = Math.max(0, Math.round(rewards.plyx * (1 + pct / 100)));
+  }
   for (const d of drops) {
     if (d.kind === 'item') rewards.items.push(String(reg.items.get(d.item.itemId)?.name ?? d.item.itemId));
   }
@@ -226,7 +246,7 @@ export function runDeadlines(draft: CampaignState, ctx: EngineCtx): EngineEvent[
     m.outcomeDay = draft.day;
     archive(draft, m);
     events.push({ type: 'mission_failed', missionId: m.id, title: m.title });
-    events.push(...applyWorldEffects(draft, ctx, m.failureEffects, { kind: 'mission', id: m.id, label: m.title }));
+    events.push(...applyWorldEffects(draft, ctx, failureEffectsOf(draft, reg, m), { kind: 'mission', id: m.id, label: m.title }));
   }
   return events;
 }

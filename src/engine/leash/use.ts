@@ -13,6 +13,7 @@ import type { CampaignState, LeashKind, LeashLogEntry, Unit } from '../state/typ
 import { traitEffects } from '../commander/traits';
 import { TUNING } from '../tuning';
 import { factionStanding } from '../world/state';
+import { worldEffects } from '../worldOptions';
 import { crimeEffectAmount, leashLog } from './weekly';
 
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
@@ -218,7 +219,8 @@ export function terminateChance(state: CampaignState, reg: Registries): number {
   const own = state.commander.corporationId;
   const base = (own === null ? undefined : (reg.corporations.get(own)?.leash as { approval: number } | undefined)?.approval) ?? 0.5;
   const t = TUNING.leash.terminate;
-  const traits = traitEffects(state, reg, 'terminate_approval').reduce((n, fx) => n + fx.amount, 0);
+  const traits = traitEffects(state, reg, 'terminate_approval').reduce((n, fx) => n + fx.amount, 0)
+    + worldEffects(state, reg, 'terminate_approval').reduce((n, fx) => n + fx.amount, 0); // P8 oversight
   return clamp(base + t.approvalPerStanding * (own === null ? 0 : factionStanding(state, own)) + traits, t.approvalMin, t.approvalMax);
 }
 

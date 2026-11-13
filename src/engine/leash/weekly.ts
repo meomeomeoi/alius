@@ -4,6 +4,7 @@ import type { EngineEvent } from '../dispatch';
 import type { CampaignState, LeashKind, LeashLogEntry } from '../state/types';
 import { TUNING } from '../tuning';
 import { factionStanding } from '../world/state';
+import { worldEffects } from '../worldOptions';
 
 const KINDS: readonly string[] = ['compel', 'suppress', 'terminate'];
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -42,6 +43,7 @@ export function leashWeekly(state: CampaignState, reg: Registries): number {
   const weekly = (corp?.leash as { weekly?: number } | undefined)?.weekly ?? TUNING.leash.weeklyFallback;
   let n = weekly + crimeEffectAmount(reg, state.commander.crimeId, 'leash_weekly');
   n += traitEffects(state, reg, 'leash_weekly').reduce((sum, fx) => sum + fx.amount, 0); // P7 traits
+  n += worldEffects(state, reg, 'leash_weekly').reduce((sum, fx) => sum + fx.amount, 0); // P8 oversight
   if (id !== null) {
     const standing = factionStanding(state, id);
     if (standing >= TUNING.leash.standingStep) n += 1;
