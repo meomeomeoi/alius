@@ -86,9 +86,9 @@ describe('panel model', () => {
     expect(settingGlossaryId('palette')).toBe('setting_palette');
   });
 
-  it('PLAYER_VISIBLE is the 20 described registries plus glossary', () => {
+  it('PLAYER_VISIBLE is the 22 described registries (20 and the P7 traits and tastes) plus glossary', () => {
     expect([...PLAYER_VISIBLE]).toEqual([...DESCRIBED_REGISTRIES, 'glossary']);
-    expect(PLAYER_VISIBLE).toHaveLength(21);
+    expect(PLAYER_VISIBLE).toHaveLength(23);
     for (const n of PLAYER_VISIBLE) expect(REGISTRY_NAMES).toContain(n);
   });
 });

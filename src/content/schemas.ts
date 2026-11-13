@@ -1051,7 +1051,6 @@ export const GlossarySchema = BaseEntrySchema.extend({
   }
 });
 
-/** Player-visible registries whose entries carry an optional `description` (skills and statuses already require one). */
 // ---------------------------------------------------------------------------------------------
 // P7: presence and unit tastes
 
@@ -1151,10 +1150,13 @@ Object.assign(registrySchemas, {
   presence: PresenceSchema, tastes: TasteSchema, imageConsistency: ImageConsistencySchema, commanderTraits: CommanderTraitSchema,
 });
 
+/** Player-visible registries whose entries carry an optional `description` (skills and statuses already require one). */
 export const DESCRIBED_REGISTRIES = [
   'roles', 'skills', 'signatures', 'statuses', 'defects', 'items', 'affixes', 'enemies',
   'enemyCategories', 'regions', 'nodeTypes', 'activities', 'facilities', 'crimes',
   'corporations', 'starts', 'relationshipStates', 'locations', 'orders', 'synergies',
+  // P7
+  'commanderTraits', 'tastes',
 ] as const satisfies readonly RegistryName[];
 
 /** Adds the optional `description` rule to a registry schema without changing its shape. */

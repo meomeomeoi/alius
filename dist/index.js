@@ -855,8 +855,8 @@ function recoverUnit(draft, u) {
   return { type: "unit_recovered", unitId: u.id };
 }
 function requisitionCost(state, reg, n) {
-  const pct = traitEffects(state, reg, "requisition_price").reduce((sum, fx2) => sum + fx2.pct, 0);
-  const raw = n * TUNING.requisition.creditsPerSupply * Math.max(0, 1 + pct / 100);
+  const pct2 = traitEffects(state, reg, "requisition_price").reduce((sum, fx2) => sum + fx2.pct, 0);
+  const raw = n * TUNING.requisition.creditsPerSupply * Math.max(0, 1 + pct2 / 100);
   return Math.max(n, Math.ceil(raw - 1e-9));
 }
 
@@ -2176,8 +2176,8 @@ function computeDeltas(state, reg, unitId, event) {
   affinity *= image;
   attraction *= image;
   if (trust > 0 && daysKnown(state, unitId) < TUNING.commander.earlyDays) {
-    const pct = traitEffects(state, reg, "early_trust_gain").reduce((n, fx2) => n + fx2.pct, 0);
-    trust *= Math.max(0, 1 + pct / 100);
+    const pct2 = traitEffects(state, reg, "early_trust_gain").reduce((n, fx2) => n + fx2.pct, 0);
+    trust *= Math.max(0, 1 + pct2 / 100);
   }
   for (const fx2 of traitEffects(state, reg, "relation_event_mult")) {
     if (fx2.event !== event.type || fx2.ifTrigger !== void 0 && !unit.triggers.includes(fx2.ifTrigger)) continue;
@@ -2252,15 +2252,15 @@ function enterState(draft, unitId, stateId, why) {
   return { type: "relation_state_changed", unitId, from, to: stateId, why };
 }
 function platonicThresholds(state, reg, stateId, cond) {
-  const pct = traitEffects(state, reg, "platonic_threshold").filter((fx2) => fx2.states.includes(stateId)).reduce((n, fx2) => n + fx2.pct, 0);
-  if (pct === 0) return cond;
+  const pct2 = traitEffects(state, reg, "platonic_threshold").filter((fx2) => fx2.states.includes(stateId)).reduce((n, fx2) => n + fx2.pct, 0);
+  if (pct2 === 0) return cond;
   const scale = (c) => {
     const out = { ...c };
     if (c.axes) {
       out.axes = {};
       for (const axis of ["trust", "affinity", "attraction"]) {
         const r = c.axes[axis];
-        if (r) out.axes[axis] = [Math.round(r[0] * (1 - pct / 100)), r[1]];
+        if (r) out.axes[axis] = [Math.round(r[0] * (1 - pct2 / 100)), r[1]];
       }
     }
     if (c.anyOf) out.anyOf = c.anyOf.map(scale);
@@ -3895,16 +3895,16 @@ function unitStats(state, reg, unit) {
   const growth = role.growth ?? ZERO;
   const out = { ...ZERO };
   for (const k of STATS) out[k] = unit.baseStats[k] + Math.floor(growth[k] * (unit.level - 1));
-  const pct = { ...ZERO };
+  const pct2 = { ...ZERO };
   for (const { inst } of wornItems(state, reg, unit)) {
     const it = itemStats(reg, inst);
     if (!it) continue;
     for (const k of STATS) {
       out[k] += it.stats[k] ?? 0;
-      pct[k] += it.statPct[k] ?? 0;
+      pct2[k] += it.statPct[k] ?? 0;
     }
   }
-  for (const k of STATS) out[k] = Math.round(out[k] * (1 + pct[k] / 100));
+  for (const k of STATS) out[k] = Math.round(out[k] * (1 + pct2[k] / 100));
   out.spd += armorSpdPenalty(state, reg, unit);
   const stacks = Math.min(unit.injuries.length, TUNING.combat.injuryMaxStacks);
   const factor = 1 + TUNING.combat.injuryStatPct * stacks / 100;
@@ -3923,7 +3923,7 @@ function unitStatSteps(state, reg, unit, stat2) {
     total += grown;
     steps.push({ source: "level", label: `Level ${unit.level}`, total });
   }
-  let pct = 0;
+  let pct2 = 0;
   for (const { inst } of wornItems(state, reg, unit)) {
     const it = itemStats(reg, inst);
     if (!it) continue;
@@ -3932,9 +3932,9 @@ function unitStatSteps(state, reg, unit, stat2) {
       total += flat;
       steps.push({ source: "gear", label: `[[items:${inst.itemId}]]`, total });
     }
-    pct += it.statPct[stat2] ?? 0;
+    pct2 += it.statPct[stat2] ?? 0;
   }
-  const scaled2 = Math.round(total * (1 + pct / 100));
+  const scaled2 = Math.round(total * (1 + pct2 / 100));
   if (scaled2 !== total) {
     total = scaled2;
     steps.push({ source: "gear", label: "Gear bonuses", total });
@@ -3976,16 +3976,16 @@ function enemyStats(reg, enemyId, level, affixes, difficulty) {
   if (!tpl) throw new Error(`Unknown enemy "${enemyId}"`);
   const { base, growth } = tpl.stats;
   const diff = TUNING.combat.difficultyMult[difficulty];
-  const pct = { ...ZERO };
+  const pct2 = { ...ZERO };
   for (const id of affixes) {
     const sp = reg.affixes.get(id)?.statPct;
-    if (sp) for (const k of STATS) pct[k] += sp[k] ?? 0;
+    if (sp) for (const k of STATS) pct2[k] += sp[k] ?? 0;
   }
   const out = { ...ZERO };
   for (const k of STATS) {
     const scaled2 = base[k] + growth[k] * (level - 1);
     const d = k === "hp" || k === "atk" || k === "def" ? diff : 1;
-    out[k] = Math.max(k === "hp" || k === "atk" ? 1 : 0, Math.round(scaled2 * d * (1 + pct[k] / 100)));
+    out[k] = Math.max(k === "hp" || k === "atk" ? 1 : 0, Math.round(scaled2 * d * (1 + pct2[k] / 100)));
   }
   return out;
 }
@@ -4361,18 +4361,18 @@ function activePassives(ctx2, cid, type, targetCid, skillId) {
 function effectiveStat(ctx2, cid, stat2) {
   const c = byCid(ctx2.cs, cid);
   if (stat2 === "hp") return c.maxHp;
-  let pct = 0;
-  for (const m of c.mods) if (m.stat === stat2) pct += m.pct;
+  let pct2 = 0;
+  for (const m of c.mods) if (m.stat === stat2) pct2 += m.pct;
   for (const s of c.statuses) {
     const v = ctx2.reg.statuses.get(s.id)?.mods?.[stat2];
-    if (v) pct += v * s.stacks;
+    if (v) pct2 += v * s.stacks;
   }
   for (const e of activePassives(ctx2, cid, "stat")) {
-    if (e.stat === stat2 || e.stat === "all" && stat2 !== "crit") pct += e.pct + scaleValue(ctx2, cid, e.scale);
+    if (e.stat === stat2 || e.stat === "all" && stat2 !== "crit") pct2 += e.pct + scaleValue(ctx2, cid, e.scale);
   }
   const base = c.base[stat2];
-  if (stat2 === "crit") return Math.max(0, base + pct);
-  return Math.max(stat2 === "def" ? 0 : 1, Math.round(base * (1 + pct / 100)));
+  if (stat2 === "crit") return Math.max(0, base + pct2);
+  return Math.max(stat2 === "def" ? 0 : 1, Math.round(base * (1 + pct2 / 100)));
 }
 function outgoingPct(ctx2, cid, targetCid) {
   const c = byCid(ctx2.cs, cid);
@@ -4491,10 +4491,10 @@ function resolveTargets(ctx2, owner, e, ev) {
 function applyEffects(ctx2, ownerCid, effects2, ev, source = "effect") {
   effects2.forEach((e, i) => runEffect(ctx2, ownerCid, e, ev, `${source}:${i}`));
 }
-function heal(ctx2, targetCid, pct) {
+function heal(ctx2, targetCid, pct2) {
   const t = byCid(ctx2.cs, targetCid);
   if (t.downed || t.hp <= 0) return;
-  const amount = Math.max(1, Math.round(t.maxHp * pct / 100));
+  const amount = Math.max(1, Math.round(t.maxHp * pct2 / 100));
   const gained = Math.min(amount, t.maxHp - t.hp);
   t.hp += gained;
   if (gained > 0) ctx2.log({ kind: "heal", target: targetCid, amount: gained });
@@ -4577,11 +4577,11 @@ function runEffect(ctx2, ownerCid, effect, ev, keyBase) {
     case "stat":
       for (const t of targets) {
         const c = byCid(ctx2.cs, t);
-        const pct = e.pct + scaleValue(ctx2, ownerCid, e.scale);
+        const pct2 = e.pct + scaleValue(ctx2, ownerCid, e.scale);
         const stats = e.stat === "all" ? ["atk", "def", "spd"] : [e.stat];
         for (const stat2 of stats) {
           if (stat2 === "hp") continue;
-          c.mods.push({ stat: stat2, pct, ...e.turns !== void 0 ? { turnsLeft: e.turns } : {}, source: ownerCid });
+          c.mods.push({ stat: stat2, pct: pct2, ...e.turns !== void 0 ? { turnsLeft: e.turns } : {}, source: ownerCid });
         }
       }
       break;
@@ -4952,9 +4952,9 @@ function buildCombat(state, reg, rng, p) {
   }
   const ctx2 = makeCtx(cs, state, reg, rng);
   for (const c of cs.combatants.filter((x) => x.side === "squad")) {
-    const pct = activePassives(ctx2, c.cid, "stat").filter((e) => e.stat === "hp" || e.stat === "all").reduce((sum, e) => sum + e.pct, 0);
-    if (pct !== 0) {
-      const maxHp = Math.max(1, Math.round(c.maxHp * (1 + pct / 100)));
+    const pct2 = activePassives(ctx2, c.cid, "stat").filter((e) => e.stat === "hp" || e.stat === "all").reduce((sum, e) => sum + e.pct, 0);
+    if (pct2 !== 0) {
+      const maxHp = Math.max(1, Math.round(c.maxHp * (1 + pct2 / 100)));
       c.hp = Math.max(1, Math.min(maxHp, Math.round(c.hp * (maxHp / c.maxHp))));
       c.maxHp = maxHp;
       c.base = { ...c.base, hp: maxHp };
@@ -5016,10 +5016,10 @@ function applyOrder(ctx2, order, targetCid) {
   if (PROTECTIVE_ORDERS.includes(order.id)) {
     const covered = order.target === "ally" && targetCid ? [targetCid] : living(cs, "squad").filter((c) => c.row === "front").map((c) => c.cid);
     for (const cid of covered) {
-      const pct = woundedBefore.get(cid);
-      if (pct !== void 0 && pct < 0.3) {
+      const pct2 = woundedBefore.get(cid);
+      if (pct2 !== void 0 && pct2 < 0.3) {
         const unitId = byCid(cs, cid).unitId;
-        if (unitId) addHint(ctx2, { type: "protected", actor: "commander", targets: [unitId], severity: severityOfMissing(1 - pct) });
+        if (unitId) addHint(ctx2, { type: "protected", actor: "commander", targets: [unitId], severity: severityOfMissing(1 - pct2) });
       }
     }
   }
@@ -5282,12 +5282,12 @@ function relationHints(cs, unitIdOf2) {
   return out;
 }
 function injuryDaysFor(c) {
-  let pct = 0;
+  let pct2 = 0;
   for (const p of c.passives) {
     if (p.type !== "injury_days") continue;
-    pct += (p.downside === true && c.stress >= 50 ? amplify(p, TUNING.combat.strainedMult) : p).pct;
+    pct2 += (p.downside === true && c.stress >= 50 ? amplify(p, TUNING.combat.strainedMult) : p).pct;
   }
-  return Math.max(1, Math.round(TUNING.combat.injuryDays * (1 + pct / 100)));
+  return Math.max(1, Math.round(TUNING.combat.injuryDays * (1 + pct2 / 100)));
 }
 function finalizeCombat(draft, reg, rng, outcome) {
   const cs = draft.combat;
@@ -12066,7 +12066,10 @@ var DESCRIBED_REGISTRIES = [
   "relationshipStates",
   "locations",
   "orders",
-  "synergies"
+  "synergies",
+  // P7
+  "commanderTraits",
+  "tastes"
 ];
 function withDescription(schema) {
   return schema.superRefine((entry, ctx2) => {
@@ -15129,7 +15132,7 @@ function renderCombatScreen(host, ctx2) {
   let selTarget = null;
   let orderMode = null;
   const sprites = /* @__PURE__ */ new Map();
-  const PRESENCE_LABEL = { unnoticed: "UNNOTICED", steady_voice: "STEADY VOICE", rally: "RALLY" };
+  const PRESENCE_LABEL2 = { unnoticed: "UNNOTICED", steady_voice: "STEADY VOICE", rally: "RALLY" };
   function presenceButton(cs, waiting2) {
     const p = cs.presence;
     if (!p || !ctx2.onPresence) return null;
@@ -15143,7 +15146,7 @@ function renderCombatScreen(host, ctx2) {
       onclick: () => {
         if (!p.used && waiting2) ctx2.onPresence();
       }
-    }, `${PRESENCE_LABEL[p.kind]}${p.used ? " \u2014 USED" : ""}`);
+    }, `${PRESENCE_LABEL2[p.kind]}${p.used ? " \u2014 USED" : ""}`);
   }
   const unitOf4 = (state, c) => state.squad.find((u) => u.id === c.unitId);
   const nameOf7 = (state, c) => {
@@ -20670,10 +20673,10 @@ function scaleUnit(scale) {
       return humanize(String(scale.by));
   }
 }
-function scaledPct(pct, name, scale) {
-  if (!scale || !isNum(scale.per)) return `${pctSigned(pct)} ${name}`;
-  if (pct === 0) return `${signed(scale.per)}% ${name} per ${scaleUnit(scale)}`;
-  return `${pctSigned(pct)} ${name}, ${signed(scale.per)}% per ${scaleUnit(scale)}`;
+function scaledPct(pct2, name, scale) {
+  if (!scale || !isNum(scale.per)) return `${pctSigned(pct2)} ${name}`;
+  if (pct2 === 0) return `${signed(scale.per)}% ${name} per ${scaleUnit(scale)}`;
+  return `${pctSigned(pct2)} ${name}, ${signed(scale.per)}% per ${scaleUnit(scale)}`;
 }
 function combatBase(e) {
   switch (e.type) {
@@ -20935,6 +20938,16 @@ function effectsFor(registry2, entry, reg) {
       return Array.isArray(e.skills) && e.skills.length ? [`Skills: ${e.skills.map((s) => `[[skills:${s}]]`).join(", ")}`] : [];
     case "signatures":
       return typeof e.skill === "string" ? [`[[skills:${e.skill}]]`] : [];
+    case "commanderTraits":
+      return list4(e.effects).map((x) => summarizeTraitEffect(x, reg));
+    case "tastes": {
+      const o = e.offsets && typeof e.offsets === "object" ? e.offsets : {};
+      return compact([
+        ...["trust", "affinity", "attraction"].filter((a) => isNum(o[a]) && o[a] !== 0).map((a) => `${cap4(a)} ${signed(o[a])}`),
+        isNum(e.presenceMult) ? `Presence \xD7${num3(e.presenceMult)}` : null,
+        isNum(e.imageMult) ? `Image consistency \xD7${num3(e.imageMult)}` : null
+      ]);
+    }
     case "relationshipStates": {
       const syn = e.unlocks && typeof e.unlocks === "object" && Array.isArray(e.unlocks.synergies) ? e.unlocks.synergies : [];
       const mod = (kind, word) => {
@@ -20948,46 +20961,62 @@ function effectsFor(registry2, entry, reg) {
       return [];
   }
 }
+function summarizeTraitEffect(e, _reg) {
+  const x = e;
+  const stat2 = (s) => cap4(String(s));
+  switch (x.type) {
+    case "social_rank":
+      return `${stat2(x.stat)} rank ${x.rank} at start`;
+    case "starting_trust": {
+      const iv = x.ifValue;
+      return `Starting Trust ${signed(x.amount)}${iv ? ` with units whose ${iv.axis} value is ${iv.sign === "+" ? "above" : "below"} zero` : ""}`;
+    }
+    case "leash_weekly":
+      return `${signed(x.amount)} Leash ${Math.abs(x.amount) === 1 ? "authorization" : "authorizations"} a week`;
+    case "seasoning_start":
+      return `Seasoning ${signed(x.amount)} at start`;
+    case "faction_start":
+      return `Own corporation standing ${signed(x.amount)} at start`;
+    case "taste_attraction":
+      return `Starting Attraction ${signed(x.amount)} with units whose tastes fit him`;
+    case "social_growth":
+      return `${stat2(x.stat)} grows \xD7${num3(x.mult)} ${x.mult >= 1 ? "faster" : "slower"}`;
+    case "body_growth":
+      return `Body training XP \xD7${num3(x.mult)}`;
+    case "early_trust_gain":
+      return `Trust gains ${pctSigned(x.pct)} for the first ${TUNING.commander.earlyDays} days`;
+    case "crisis_hp":
+      return `Crisis HP ${signed(x.amount)}`;
+    case "terminate_approval":
+      return `Termination approval ${pctSigned(x.amount * 100)}`;
+    case "requisition_price":
+      return `Requisition price ${pctSigned(x.pct)}`;
+    case "activity_cost":
+      return `[[activities:${x.activityId}]] costs ${signed(x.amount)} ${x.resource}`;
+    case "activity_relation":
+      return `[[activities:${x.activityId}]] with a companion: ${cap4(x.axis)} ${signed(x.amount)}`;
+    case "relation_event_mult":
+      return `[[eventDeltas:${x.event}]] lands \xD7${num3(x.mult)}${x.ifTrigger ? ` with units that have the trigger "${x.ifTrigger}"` : ""}`;
+    case "night_slot":
+      return "The Night is always yours: a quiet night when nobody knocks";
+    case "sleepless_rank":
+      return `${stat2(x.stat)} rank ${signed(x.amount)} the day after a night spent awake`;
+    case "no_romance":
+      return "No romance in this campaign";
+    case "platonic_threshold":
+      return `${x.states.map((s) => `[[relationshipStates:${s}]]`).join(", ")} need ${x.pct}% less to reach`;
+    case "unlock_state":
+      return `Unlocks [[relationshipStates:${x.stateId}]]`;
+    default:
+      return humanize(String(x.type));
+  }
+}
 function entryEffects(registry2, entry, reg) {
   try {
     return effectsFor(registry2, entry, reg);
   } catch {
     return [];
   }
-}
-
-// src/analysis/ledger.ts
-var LABELS2 = [
-  ["activity/", "activity"],
-  ["calendar/", "day end"],
-  ["scene/", "conversation"],
-  ["intents/", "conversation"],
-  ["dm/", "DMs"],
-  ["night/", "night"],
-  ["combat/", "combat"],
-  ["expedition/", "expedition"],
-  ["item/", "workshop"],
-  ["base/", "base"],
-  ["leash/", "the Leash"],
-  ["loyalty/", "loyalty"],
-  ["dilemma/", "decision"],
-  ["arc/", "defect arc"],
-  ["director/", "world"],
-  ["world/", "world"],
-  ["rumor/", "world"],
-  ["mission/", "mission"],
-  ["squad/", "squad"],
-  ["roster/", "roster"],
-  ["proposal/", "proposal"],
-  ["relations/", "relationships"],
-  ["commander/", "commander"],
-  ["memory/", "conversation"]
-];
-function ledgerLabel(action) {
-  return LABELS2.find(([prefix]) => action.startsWith(prefix))?.[1] ?? "other";
-}
-function ledgerFor(state, key, sinceDay) {
-  return (state.ledger ?? []).filter((e) => e.key === key && e.day >= sinceDay).reverse();
 }
 
 // src/analysis/knowledge.ts
@@ -21050,6 +21079,105 @@ function readingFor(subject, env) {
   }
   if (lines.length === 0 && needsCampaign) return { lines: ["No campaign loaded."] };
   return lines.length > 0 ? { lines } : null;
+}
+
+// src/analysis/providers/commander.ts
+var WHERE_USED = {
+  strength: "Used by: an Authority talk-down (together with seasoning), body routes of physical checks.",
+  endurance: "Used by: Crisis HP (his HP if a fight reaches him); with low endurance a three-slot expedition exhausts him.",
+  reflexes: "Used by: his chance to dodge a hit that reaches him in Commander Crisis."
+};
+var PRESENCE_LABEL = { unnoticed: ["presence_unnoticed", "Unnoticed"], steady_voice: ["presence_steady_voice", "Steady Voice"], rally: ["presence_rally", "Rally"] };
+var pct = (n) => Math.round(n * 100);
+function bodyProvider(stat2) {
+  return (_subject, env, k) => {
+    const state = env.state;
+    if (!state) return null;
+    const p = commanderProfile(state);
+    const value = p.body[stat2];
+    const lines = [`Now: ${descriptor(stat2, value)}${k.raw(value) !== null ? ` (${k.raw(value)})` : ""}`];
+    if (value >= 5) lines.push("Training: nothing more to train; this stat is at the top.");
+    else {
+      const need = TUNING.commander.bodyXpSteps[value - 1];
+      const have = p.bodyXp[stat2];
+      const share = have / need;
+      lines.push(k.showRaw ? `Training: ${k.raw(have)}/${k.raw(need)} towards ${descriptor(stat2, value + 1)}` : `Training: ${share < 1 / 3 ? "early" : share < 2 / 3 ? "halfway" : "close"} on the way to ${descriptor(stat2, value + 1)}`);
+    }
+    lines.push(WHERE_USED[stat2]);
+    if (stat2 === "endurance" && k.showRaw) lines.push(`Crisis HP: ${k.raw(commanderMaxHp(state, env.registries))}`);
+    if (stat2 === "reflexes" && k.showRaw) lines.push(`Dodge chance: ${k.raw(pct(dodgeChance(state)))}%`);
+    return { lines };
+  };
+}
+function archetypeProvider(_subject, env) {
+  const state = env.state;
+  if (!state) return null;
+  const { archetype } = commanderProfile(state);
+  const [id, label2] = PRESENCE_LABEL[presenceKind(archetype)];
+  const lines = [`Build: ${archetype}`, `Presence action: [[${id}|${label2}]]`];
+  const group = [...env.registries.imageConsistency.values()].find((g) => g.archetypes.includes(archetype));
+  const link = (events) => events.map((e) => `[[eventDeltas:${e}|${e}]]`).join(", ");
+  if (group && group.offImage.length > 0) lines.push(`Out of character for this build: ${link(group.offImage)}. These land harder until they know him.`);
+  if (group && group.inImage.length > 0) lines.push(`In character: ${link(group.inImage)}.`);
+  return { lines };
+}
+function presenceProvider(subject, env, k) {
+  const state = env.state;
+  if (!state) return null;
+  const lines = ["Presence is how he comes across on first meeting: his build, his experience and his Authority."];
+  if (k.showRaw) lines.push(`His presence now: ${k.raw(presenceOf(state, env.registries))}`);
+  const unitId = typeof subject.data.unitId === "string" ? subject.data.unitId : null;
+  const unit = unitId === null ? void 0 : state.squad.find((u) => u.id === unitId);
+  if (unit) {
+    const w = firstImpressionWeight(state, unit.id);
+    const word = w > 0.5 ? "fresh" : w >= 0.1 ? "fading" : "faded";
+    lines.push(`First impression: ${word}${k.showRaw ? ` (${k.raw(pct(w))}%)` : ""}`);
+    const tastes = matchedTastes(state, env.registries, unit);
+    if (tastes.length > 0) lines.push(`Her tastes that fit him: ${tastes.map((t) => `[[tastes:${t.id}|${String(t.name)}]]`).join(", ")}`);
+  }
+  return { lines };
+}
+var registered = false;
+function registerCommanderProviders() {
+  if (registered) return;
+  registered = true;
+  for (const stat2 of ["strength", "endurance", "reflexes"]) registerAnalyzeProvider(`glossary:body_${stat2}`, bodyProvider(stat2));
+  registerAnalyzeProvider("glossary:archetype", archetypeProvider);
+  registerAnalyzeProvider("glossary:presence", presenceProvider);
+}
+
+// src/analysis/ledger.ts
+var LABELS2 = [
+  ["activity/", "activity"],
+  ["calendar/", "day end"],
+  ["scene/", "conversation"],
+  ["intents/", "conversation"],
+  ["dm/", "DMs"],
+  ["night/", "night"],
+  ["combat/", "combat"],
+  ["expedition/", "expedition"],
+  ["item/", "workshop"],
+  ["base/", "base"],
+  ["leash/", "the Leash"],
+  ["loyalty/", "loyalty"],
+  ["dilemma/", "decision"],
+  ["arc/", "defect arc"],
+  ["director/", "world"],
+  ["world/", "world"],
+  ["rumor/", "world"],
+  ["mission/", "mission"],
+  ["squad/", "squad"],
+  ["roster/", "roster"],
+  ["proposal/", "proposal"],
+  ["relations/", "relationships"],
+  ["commander/", "commander"],
+  ["memory/", "conversation"]
+];
+function ledgerLabel(action) {
+  return LABELS2.find(([prefix]) => action.startsWith(prefix))?.[1] ?? "other";
+}
+function ledgerFor(state, key, sinceDay) {
+  return (state.ledger ?? []).filter((e) => e.key === key && e.day >= sinceDay).reverse();
 }
 
 // src/analysis/providers/core.ts
@@ -21229,16 +21357,17 @@ var decisionProvider = (subject, env) => {
   lines.push("What it changes stays uncertain until you choose.");
   return { lines };
 };
-var registered = false;
+var registered2 = false;
 function registerCoreProviders() {
-  if (registered) return;
-  registered = true;
+  if (registered2) return;
+  registered2 = true;
   for (const axis of ["trust", "affinity", "attraction"]) registerAnalyzeProvider(`glossary:${axis}`, axisProvider(axis));
   registerAnalyzeProvider("glossary:stress", stressProvider);
   for (const stat2 of STATS) registerAnalyzeProvider(`glossary:stat_${stat2}`, statProvider(stat2));
   for (const resource of ["credits", "supplies", "plyx"]) registerAnalyzeProvider(`glossary:${resource}`, resourceProvider(resource));
   registerAnalyzeProvider("setting", settingProvider, { stateless: true });
   registerAnalyzeProvider("glossary:decision_option", decisionProvider);
+  registerCommanderProviders();
 }
 
 // src/analysis/describe.ts

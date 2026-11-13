@@ -1,4 +1,5 @@
-import type { ActivityEffect, CombatEffect } from '../content/schemas';
+import type { ActivityEffect, CombatEffect, TraitEffect } from '../content/schemas';
+import { TUNING } from '../engine/tuning';
 import type { Entry, Registries, RegistryName } from '../content/types';
 import type { WorldEffect } from '../engine/world/types';
 
@@ -331,6 +332,16 @@ function effectsFor(registry: RegistryName, entry: Entry, reg: Registries): stri
       return Array.isArray(e.skills) && e.skills.length ? [`Skills: ${e.skills.map((s: unknown) => `[[skills:${s}]]`).join(', ')}`] : [];
     case 'signatures':
       return typeof e.skill === 'string' ? [`[[skills:${e.skill}]]`] : [];
+    case 'commanderTraits':
+      return list(e.effects).map((x) => summarizeTraitEffect(x as unknown as TraitEffect, reg));
+    case 'tastes': {
+      const o = e.offsets && typeof e.offsets === 'object' ? (e.offsets as Loose) : {};
+      return compact([
+        ...(['trust', 'affinity', 'attraction'] as const).filter((a) => isNum(o[a]) && o[a] !== 0).map((a) => `${cap(a)} ${signed(o[a])}`),
+        isNum(e.presenceMult) ? `Presence ×${num(e.presenceMult)}` : null,
+        isNum(e.imageMult) ? `Image consistency ×${num(e.imageMult)}` : null,
+      ]);
+    }
     case 'relationshipStates': {
       const syn = e.unlocks && typeof e.unlocks === 'object' && Array.isArray((e.unlocks as Loose).synergies) ? ((e.unlocks as Loose).synergies as unknown[]) : [];
       const mod = (kind: 'gain' | 'loss', word: string): string[] => {
@@ -342,6 +353,38 @@ function effectsFor(registry: RegistryName, entry: Entry, reg: Registries): stri
     }
     default:
       return [];
+  }
+}
+
+/** One line for a commander trait effect (P7); an effect type this layer does not know gives its humanized name. */
+export function summarizeTraitEffect(e: TraitEffect, _reg: Registries): string {
+  const x = e as unknown as Loose;
+  const stat = (s: unknown): string => cap(String(s));
+  switch (x.type) {
+    case 'social_rank': return `${stat(x.stat)} rank ${x.rank} at start`;
+    case 'starting_trust': {
+      const iv = x.ifValue as { axis: string; sign: string } | undefined;
+      return `Starting Trust ${signed(x.amount)}${iv ? ` with units whose ${iv.axis} value is ${iv.sign === '+' ? 'above' : 'below'} zero` : ''}`;
+    }
+    case 'leash_weekly': return `${signed(x.amount)} Leash ${Math.abs(x.amount) === 1 ? 'authorization' : 'authorizations'} a week`;
+    case 'seasoning_start': return `Seasoning ${signed(x.amount)} at start`;
+    case 'faction_start': return `Own corporation standing ${signed(x.amount)} at start`;
+    case 'taste_attraction': return `Starting Attraction ${signed(x.amount)} with units whose tastes fit him`;
+    case 'social_growth': return `${stat(x.stat)} grows ×${num(x.mult)} ${x.mult >= 1 ? 'faster' : 'slower'}`;
+    case 'body_growth': return `Body training XP ×${num(x.mult)}`;
+    case 'early_trust_gain': return `Trust gains ${pctSigned(x.pct)} for the first ${TUNING.commander.earlyDays} days`;
+    case 'crisis_hp': return `Crisis HP ${signed(x.amount)}`;
+    case 'terminate_approval': return `Termination approval ${pctSigned(x.amount * 100)}`;
+    case 'requisition_price': return `Requisition price ${pctSigned(x.pct)}`;
+    case 'activity_cost': return `[[activities:${x.activityId}]] costs ${signed(x.amount)} ${x.resource}`;
+    case 'activity_relation': return `[[activities:${x.activityId}]] with a companion: ${cap(x.axis)} ${signed(x.amount)}`;
+    case 'relation_event_mult': return `[[eventDeltas:${x.event}]] lands ×${num(x.mult)}${x.ifTrigger ? ` with units that have the trigger "${x.ifTrigger}"` : ''}`;
+    case 'night_slot': return 'The Night is always yours: a quiet night when nobody knocks';
+    case 'sleepless_rank': return `${stat(x.stat)} rank ${signed(x.amount)} the day after a night spent awake`;
+    case 'no_romance': return 'No romance in this campaign';
+    case 'platonic_threshold': return `${(x.states as string[]).map((s) => `[[relationshipStates:${s}]]`).join(', ')} need ${x.pct}% less to reach`;
+    case 'unlock_state': return `Unlocks [[relationshipStates:${x.stateId}]]`;
+    default: return humanize(String(x.type));
   }
 }
 

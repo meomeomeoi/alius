@@ -750,5 +750,55 @@
     "see": [
       "slots"
     ]
+  },
+  {
+    "id": "presence",
+    "term": "Presence",
+    "short": "How the commander comes across to someone who has just met him: build, experience and the weight of his Authority.",
+    "long": "Presence moves a soldier's Trust once, the day she joins, scaled by her tastes. It matters most on first meeting and fades as she gets to know him; what he does matters more and more. It is never shown as a number unless raw values are on.",
+    "see": [
+      "first_impression",
+      "archetype",
+      "seasoning",
+      "authority"
+    ]
+  },
+  {
+    "id": "first_impression",
+    "term": "First impression",
+    "short": "Looks count most the day a soldier meets him and fade with every day she knows him.",
+    "long": "A unit's first impression decays over days (the setting First impression fades). While it lasts, acts that do not fit his build land harder, and the narration is told that the squad is still sizing him up.",
+    "see": [
+      "presence",
+      "image_consistency"
+    ]
+  },
+  {
+    "id": "image_consistency",
+    "term": "Image consistency",
+    "short": "A commander who acts against the picture his build gives makes a bigger impression, for better or worse, until they know him.",
+    "long": "A gentle commander who coerces, or a hard one who comforts, shocks. The effect is strongest at first and fades with the days a unit has known him. Some soldiers' tastes make it stronger. The engine tags the act, never the model.",
+    "see": [
+      "archetype",
+      "first_impression"
+    ]
+  },
+  {
+    "id": "commander_traits",
+    "term": "Traits",
+    "short": "Up to two regular traits and one special one change how the commander plays, not how strong he is.",
+    "long": "Every trait has an upside and a downside. Regular traits shape growth, costs and first impressions; a special trait can reshape the campaign. Picked when the file is made; there is no way to change them later.",
+    "see": [
+      "archetype"
+    ]
+  },
+  {
+    "id": "exhausted",
+    "term": "Exhausted",
+    "short": "A weak commander loses the next morning after a three-slot expedition, unless a close friend in the party covers for him.",
+    "long": "Endurance 2 or less. The squad comes back, he sleeps through the morning and the day starts in the afternoon. A unit that is a friend or closer, in the party and standing, takes the strain instead.",
+    "see": [
+      "body_endurance"
+    ]
   }
 ]

@@ -401,9 +401,9 @@ docs/** (Task 19), tests/** mirror src
 **Interfaces:**
 - Produces: providers `glossary:body_<stat>` (descriptor; next step progress as `knowledge.raw(xp)` or `training: early / halfway / close`; "Where used" lines: Crisis HP / dodge / intimidation / exhaustion as text), `glossary:archetype` (archetype, presence action, image-consistency off-image event names), `glossary:presence` (per `data.unitId`: `First impression: fading` / `faded` from w, no numbers with raw off).
 
-- [ ] **Step 1: Write the failing tests** — `body reading shows the descriptor and hides XP with raw values off`; `archetype reading names the presence action`; `trait effect lines for old_wound read Seasoning +1, Trust gains +15% for 14 days, Crisis HP −10`; `no provider shows a sentinel number with raw values off` (existing harness); `every new glossary entry is within 160/600`; `missingDescriptions is empty for core`.
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → green, including `tests/ui/analyzeCoverage.test.ts`.
-- [ ] **Step 5: Commit** `feat(analysis): commander glossary, trait effects and readings`.
+- [x] **Step 1: Write the failing tests** — `body reading shows the descriptor and hides XP with raw values off`; `archetype reading names the presence action`; `trait effect lines for old_wound read Seasoning +1, Trust gains +15% for 14 days, Crisis HP −10`; `no provider shows a sentinel number with raw values off` (existing harness); `every new glossary entry is within 160/600`; `missingDescriptions is empty for core`.
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → green, including `tests/ui/analyzeCoverage.test.ts`.
+- [x] **Step 5: Commit** `feat(analysis): commander glossary, trait effects and readings`.
 
 ---
 

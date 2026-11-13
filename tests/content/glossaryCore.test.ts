@@ -81,3 +81,24 @@ describe('core glossary and descriptions', () => {
     }
   });
 });
+
+describe('P7 glossary entries and descriptions', () => {
+  it('every new glossary entry is within 160/600', () => {
+    const ids = ['body_strength', 'body_endurance', 'body_reflexes', 'expression', 'seasoning', 'archetype', 'presence', 'first_impression', 'image_consistency',
+      'commander_traits', 'check_routes', 'delegate', 'exhausted', 'quiet_night', 'presence_unnoticed', 'presence_steady_voice', 'presence_rally'];
+    for (const id of ids) {
+      const e = reg.glossary.get(id);
+      expect(e, id).toBeDefined();
+      expect(String(e!.short).length, `${id} short`).toBeLessThanOrEqual(160);
+      expect(String(e!.long ?? '').length, `${id} long`).toBeLessThanOrEqual(600);
+      expect(String(e!.short).length, id).toBeGreaterThan(0);
+    }
+  });
+
+  it('traits and tastes are described registries', async () => {
+    const { DESCRIBED_REGISTRIES } = await import('../../src/content/schemas');
+    expect(DESCRIBED_REGISTRIES).toEqual(expect.arrayContaining(['commanderTraits', 'tastes']));
+    expect(missingDescriptions(reg)).toEqual([]);
+    for (const t of [...reg.commanderTraits.values(), ...reg.tastes.values()]) expect(String(t.description).length, String(t.id)).toBeGreaterThan(0);
+  });
+});

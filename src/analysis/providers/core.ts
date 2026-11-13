@@ -9,6 +9,7 @@ import { intimacyOf } from '../../engine/relations/gain';
 import { socialRank, type SocialStat } from '../../engine/social';
 import type { CampaignState, Relation, Unit } from '../../engine/state/types';
 import { humanize, signed, summarizeCombatEffect } from '../effects';
+import { registerCommanderProviders } from './commander';
 import type { Knowledge } from '../knowledge';
 import { ledgerFor, ledgerLabel } from '../ledger';
 import type { AnalyzeEnv } from '../model';
@@ -262,6 +263,7 @@ export const CORE_GLOSSARY_IDS: readonly string[] = [
   // P7
   'body_strength', 'body_endurance', 'body_reflexes', 'expression', 'seasoning', 'archetype',
   'presence_unnoticed', 'presence_steady_voice', 'presence_rally', 'check_routes', 'delegate', 'quiet_night',
+  'presence', 'first_impression', 'image_consistency', 'commander_traits', 'exhausted',
 ];
 
 let registered = false;
@@ -276,4 +278,5 @@ export function registerCoreProviders(): void {
   for (const resource of ['credits', 'supplies', 'plyx'] as const) registerAnalyzeProvider(`glossary:${resource}`, resourceProvider(resource));
   registerAnalyzeProvider('setting', settingProvider, { stateless: true });
   registerAnalyzeProvider('glossary:decision_option', decisionProvider);
+  registerCommanderProviders(); // P7
 }
