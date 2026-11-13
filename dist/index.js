@@ -4,114 +4,10 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// src/engine/rng.ts
-function splitmix32(a) {
-  return () => {
-    a |= 0;
-    a = a + 2654435769 | 0;
-    let t = a ^ a >>> 16;
-    t = Math.imul(t, 569420461);
-    t = t ^ t >>> 15;
-    t = Math.imul(t, 1935289751);
-    return (t ^ t >>> 15) >>> 0;
-  };
-}
-function seedRng(seed) {
-  const mix = splitmix32(seed);
-  const state = [mix(), mix(), mix(), mix()];
-  const rng = new Rng(state);
-  for (let i = 0; i < 12; i++) rng.float();
-  return rng.state;
-}
-var Rng = class {
-  s;
-  constructor(state) {
-    this.s = [state[0] >>> 0, state[1] >>> 0, state[2] >>> 0, state[3] >>> 0];
-  }
-  get state() {
-    return [this.s[0], this.s[1], this.s[2], this.s[3]];
-  }
-  /** Rewinds the generator to a saved state (easy retry). */
-  restore(state) {
-    this.s = [state[0] >>> 0, state[1] >>> 0, state[2] >>> 0, state[3] >>> 0];
-  }
-  next() {
-    let [a, b, c, d] = this.s;
-    const t = (a + b | 0) + d | 0;
-    d = d + 1 | 0;
-    a = b ^ b >>> 9;
-    b = c + (c << 3) | 0;
-    c = c << 21 | c >>> 11;
-    c = c + t | 0;
-    this.s = [a >>> 0, b >>> 0, c >>> 0, d >>> 0];
-    return t >>> 0;
-  }
-  /** Uniform in [0, 1). */
-  float() {
-    return this.next() / 4294967296;
-  }
-  /** Uniform integer in [min, max], both inclusive. */
-  int(min, max) {
-    return min + Math.floor(this.float() * (max - min + 1));
-  }
-  chance(p) {
-    return this.float() < p;
-  }
-  pick(xs) {
-    if (xs.length === 0) throw new Error("Rng.pick: empty array");
-    return xs[this.int(0, xs.length - 1)];
-  }
-};
-
-// src/engine/dispatch.ts
-var handlers = /* @__PURE__ */ new Map();
-var EXPEDITION_OPEN_PREFIXES = ["expedition/", "combat/", "director/", "debug/", "dilemma/", "relations/commander_injured"];
-var BLOCKED_BY_DILEMMA = ["activity/", "calendar/consume_slot", "scene/start", "expedition/start"];
-function registerAction(type, handler2) {
-  if (handlers.has(type)) throw new Error(`Duplicate action type: ${type}`);
-  handlers.set(type, handler2);
-}
-function dispatch(state, action, registries) {
-  const handler2 = handlers.get(action.type);
-  if (!handler2) {
-    return { state, events: [{ type: "error", code: "unknown_action", action: action.type }] };
-  }
-  if (state.combat && !action.type.startsWith("combat/") && !action.type.startsWith("debug/")) {
-    return { state, events: [{ type: "error", code: "combat_open", message: "A combat is open: finish it first." }] };
-  }
-  if (state.expedition && !EXPEDITION_OPEN_PREFIXES.some((p) => action.type.startsWith(p))) {
-    return {
-      state,
-      events: [{ type: "error", code: "expedition_open", message: "An expedition is under way: finish or abandon it first." }]
-    };
-  }
-  if (state.dilemmas?.open?.status === "presented" && BLOCKED_BY_DILEMMA.some((p) => action.type.startsWith(p))) {
-    return { state, events: [{ type: "error", code: "dilemma_open", message: "A decision is waiting: answer it first." }] };
-  }
-  const draft = structuredClone(state);
-  const rng = new Rng(draft.rng);
-  try {
-    const events = handler2(draft, action.payload, { registries, rng });
-    draft.rng = rng.state;
-    return { state: draft, events };
-  } catch (e) {
-    const message = e instanceof Error ? e.message : String(e);
-    return { state, events: [{ type: "error", code: "handler_failed", message }] };
-  }
-}
-
-// src/engine/actions/debug.ts
-registerAction("debug/noop", () => []);
-registerAction("debug/roll", (_draft, payload, ctx2) => {
-  const sides = payload?.sides;
-  if (typeof sides !== "number" || !Number.isInteger(sides) || sides < 1) {
-    throw new Error("debug/roll requires an integer payload.sides >= 1");
-  }
-  return [{ type: "rolled", value: ctx2.rng.int(1, sides) }];
-});
-
 // src/engine/tuning.ts
 var TUNING = Object.freeze({
+  /** P7a: the change ledger behind trends, stress sources and "last changes" readings. */
+  ledger: Object.freeze({ days: 7, max: 150 }),
   upkeep: Object.freeze({ perUnit: 1, commander: 1, doubledByDefect: "hunger_loop" }),
   shortage: Object.freeze({ stressPerPoint: 4, affinityPerPoint: 1, streakDays: 3, trustPenalty: 5 }),
   /** Per axis per day: full value below `soft`, half value below `hard`, nothing after. */
@@ -343,6 +239,139 @@ var TUNING = Object.freeze({
       embrace: Object.freeze([["autonomy", 1], ["corporate", -1]])
     })
   })
+});
+
+// src/engine/ledger.ts
+var RESOURCES = ["credits", "supplies", "plyx"];
+var AXES = ["trust", "affinity", "attraction"];
+function recordLedger(before, after, action) {
+  const entries = [];
+  const push = (key, delta) => {
+    if (Number.isFinite(delta) && delta !== 0) entries.push({ day: before.day, slot: before.slot, action, key, delta });
+  };
+  for (const r of RESOURCES) push(`res:${r}`, (after.resources?.[r] ?? 0) - (before.resources?.[r] ?? 0));
+  const stressBefore = new Map(before.squad.map((u) => [u.id, u.stress]));
+  for (const u of after.squad) {
+    const was = stressBefore.get(u.id);
+    if (was !== void 0) push(`stress:${u.id}`, (u.stress ?? 0) - (was ?? 0));
+  }
+  for (const [id, rel] of Object.entries(after.relations)) {
+    const was = before.relations[id];
+    if (!was) continue;
+    for (const axis of AXES) push(`axis:${id}:${axis}`, (rel[axis] ?? 0) - (was[axis] ?? 0));
+  }
+  if (entries.length > 0) after.ledger = [...after.ledger ?? [], ...entries];
+  if (!after.ledger) return;
+  const oldest = after.day - (TUNING.ledger.days - 1);
+  const kept = after.ledger.filter((e) => e.day >= oldest);
+  after.ledger = kept.length > TUNING.ledger.max ? kept.slice(kept.length - TUNING.ledger.max) : kept;
+}
+
+// src/engine/rng.ts
+function splitmix32(a) {
+  return () => {
+    a |= 0;
+    a = a + 2654435769 | 0;
+    let t = a ^ a >>> 16;
+    t = Math.imul(t, 569420461);
+    t = t ^ t >>> 15;
+    t = Math.imul(t, 1935289751);
+    return (t ^ t >>> 15) >>> 0;
+  };
+}
+function seedRng(seed) {
+  const mix = splitmix32(seed);
+  const state = [mix(), mix(), mix(), mix()];
+  const rng = new Rng(state);
+  for (let i = 0; i < 12; i++) rng.float();
+  return rng.state;
+}
+var Rng = class {
+  s;
+  constructor(state) {
+    this.s = [state[0] >>> 0, state[1] >>> 0, state[2] >>> 0, state[3] >>> 0];
+  }
+  get state() {
+    return [this.s[0], this.s[1], this.s[2], this.s[3]];
+  }
+  /** Rewinds the generator to a saved state (easy retry). */
+  restore(state) {
+    this.s = [state[0] >>> 0, state[1] >>> 0, state[2] >>> 0, state[3] >>> 0];
+  }
+  next() {
+    let [a, b, c, d] = this.s;
+    const t = (a + b | 0) + d | 0;
+    d = d + 1 | 0;
+    a = b ^ b >>> 9;
+    b = c + (c << 3) | 0;
+    c = c << 21 | c >>> 11;
+    c = c + t | 0;
+    this.s = [a >>> 0, b >>> 0, c >>> 0, d >>> 0];
+    return t >>> 0;
+  }
+  /** Uniform in [0, 1). */
+  float() {
+    return this.next() / 4294967296;
+  }
+  /** Uniform integer in [min, max], both inclusive. */
+  int(min, max) {
+    return min + Math.floor(this.float() * (max - min + 1));
+  }
+  chance(p) {
+    return this.float() < p;
+  }
+  pick(xs) {
+    if (xs.length === 0) throw new Error("Rng.pick: empty array");
+    return xs[this.int(0, xs.length - 1)];
+  }
+};
+
+// src/engine/dispatch.ts
+var handlers = /* @__PURE__ */ new Map();
+var EXPEDITION_OPEN_PREFIXES = ["expedition/", "combat/", "director/", "debug/", "dilemma/", "relations/commander_injured"];
+var BLOCKED_BY_DILEMMA = ["activity/", "calendar/consume_slot", "scene/start", "expedition/start"];
+function registerAction(type, handler2) {
+  if (handlers.has(type)) throw new Error(`Duplicate action type: ${type}`);
+  handlers.set(type, handler2);
+}
+function dispatch(state, action, registries) {
+  const handler2 = handlers.get(action.type);
+  if (!handler2) {
+    return { state, events: [{ type: "error", code: "unknown_action", action: action.type }] };
+  }
+  if (state.combat && !action.type.startsWith("combat/") && !action.type.startsWith("debug/")) {
+    return { state, events: [{ type: "error", code: "combat_open", message: "A combat is open: finish it first." }] };
+  }
+  if (state.expedition && !EXPEDITION_OPEN_PREFIXES.some((p) => action.type.startsWith(p))) {
+    return {
+      state,
+      events: [{ type: "error", code: "expedition_open", message: "An expedition is under way: finish or abandon it first." }]
+    };
+  }
+  if (state.dilemmas?.open?.status === "presented" && BLOCKED_BY_DILEMMA.some((p) => action.type.startsWith(p))) {
+    return { state, events: [{ type: "error", code: "dilemma_open", message: "A decision is waiting: answer it first." }] };
+  }
+  const draft = structuredClone(state);
+  const rng = new Rng(draft.rng);
+  try {
+    const events = handler2(draft, action.payload, { registries, rng });
+    draft.rng = rng.state;
+    recordLedger(state, draft, action.type);
+    return { state: draft, events };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    return { state, events: [{ type: "error", code: "handler_failed", message }] };
+  }
+}
+
+// src/engine/actions/debug.ts
+registerAction("debug/noop", () => []);
+registerAction("debug/roll", (_draft, payload, ctx2) => {
+  const sides = payload?.sides;
+  if (typeof sides !== "number" || !Number.isInteger(sides) || sides < 1) {
+    throw new Error("debug/roll requires an integer payload.sides >= 1");
+  }
+  return [{ type: "rolled", value: ctx2.rng.int(1, sides) }];
 });
 
 // src/engine/relationGain.ts

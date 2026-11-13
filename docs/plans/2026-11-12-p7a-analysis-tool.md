@@ -227,9 +227,9 @@ docs/** (Task 16), tests/** mirror src, tests/fixtures/analyze/, tests/helpers/a
 **Interfaces:**
 - Produces: `interface LedgerEntry { day: number; slot: Slot; action: string; key: string; delta: number }`; `recordLedger(before: CampaignState, after: CampaignState, action: string): void` — appends to `after.ledger` one entry per changed `resources.<r>` (`res:<r>`), unit `stress` (`stress:<unitId>`, units present in both) and relation axis (`axis:<unitId>:<trust|affinity|attraction>`), stamped with `before.day` / `before.slot`; then drops entries with `day < after.day − (days − 1)` and keeps the newest `max`. `dispatch` calls it after a handler returns without throwing.
 
-- [ ] **Step 1: Write the failing tests** — `an activity that pays credits records res:credits with action activity/do`; `a scene intent that moves Trust records axis:<id>:trust`; `day-end upkeep records res:supplies on the day it was eaten`; `a rejected action records nothing` (same state object returned); `combat/act inside an open combat records nothing`; `entries older than 7 days are dropped and at most 150 kept`; `a save without ledger dispatches normally`.
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** `npx vitest run` → green. If an existing test compares whole states after a successful action, compare it without `ledger`; do not change the ledger to dodge it.
-- [ ] **Step 5: Commit** `feat(engine): bounded change ledger for resources, stress and axes`.
+- [x] **Step 1: Write the failing tests** — `an activity that pays credits records res:credits with action activity/do`; `a scene intent that moves Trust records axis:<id>:trust`; `day-end upkeep records res:supplies on the day it was eaten`; `a rejected action records nothing` (same state object returned); `combat/act inside an open combat records nothing`; `entries older than 7 days are dropped and at most 150 kept`; `a save without ledger dispatches normally`.
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** `npx vitest run` → green. If an existing test compares whole states after a successful action, compare it without `ledger`; do not change the ledger to dodge it.
+- [x] **Step 5: Commit** `feat(engine): bounded change ledger for resources, stress and axes`.
 
 ---
 

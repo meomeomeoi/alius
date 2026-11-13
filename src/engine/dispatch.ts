@@ -1,4 +1,5 @@
 import type { Registries } from '../content/types';
+import { recordLedger } from './ledger';
 import { Rng } from './rng';
 import type { CampaignState } from './state/types';
 
@@ -59,6 +60,7 @@ export function dispatch(
   try {
     const events = handler(draft, action.payload, { registries, rng });
     draft.rng = rng.state;
+    recordLedger(state, draft, action.type);
     return { state: draft, events };
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);

@@ -265,6 +265,17 @@ export interface Commander {
   flags: string[];
 }
 
+/** One change of a resource, a unit's stress or a relation axis, recorded by `dispatch` (P7a). */
+export interface LedgerEntry {
+  day: number;
+  slot: Slot;
+  /** The action type that caused it, e.g. `activity/do`. */
+  action: string;
+  /** `res:<resource>`, `stress:<unitId>` or `axis:<unitId>:<axis>`. */
+  key: string;
+  delta: number;
+}
+
 export interface CampaignState {
   version: number;
   rng: RngState;
@@ -322,6 +333,8 @@ export interface CampaignState {
   /** Per unit: the day and how many commander DMs were sent that day (the unit's "social battery", P3). */
   dmMeta?: Record<string, { day: number; sent: number }>;
   memory: { facts: Fact[]; chronicle: ChronicleEntry[]; promises?: PromiseRecord[]; nextId?: number };
+  /** Recent changes of resources, stress and relation axes (P7a): the newest 150 entries of the last 7 days. Absent in older saves. */
+  ledger?: LedgerEntry[];
   /** The open scene, if any (P3). */
   scene?: SceneRecord;
   /** Open proposals waiting for the commander's answer (P3). */
