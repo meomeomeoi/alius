@@ -3460,6 +3460,55 @@ function unitStats(state, reg, unit) {
   for (const k of STATS) out[k] = Math.max(k === "crit" ? 0 : 1, Math.round(out[k] * factor));
   return out;
 }
+function unitStatSteps(state, reg, unit, stat) {
+  const role = reg.roles.get(unit.roleId);
+  if (!role) throw new Error(`Unknown role "${unit.roleId}" (unit ${unit.id})`);
+  const growth = role.growth ?? ZERO;
+  const steps = [];
+  let total = unit.baseStats[stat];
+  steps.push({ source: "role", label: "Role base", total });
+  const grown = Math.floor(growth[stat] * (unit.level - 1));
+  if (grown !== 0) {
+    total += grown;
+    steps.push({ source: "level", label: `Level ${unit.level}`, total });
+  }
+  let pct = 0;
+  for (const { inst } of wornItems(state, reg, unit)) {
+    const it = itemStats(reg, inst);
+    if (!it) continue;
+    const flat = it.stats[stat] ?? 0;
+    if (flat !== 0) {
+      total += flat;
+      steps.push({ source: "gear", label: `[[items:${inst.itemId}]]`, total });
+    }
+    pct += it.statPct[stat] ?? 0;
+  }
+  const scaled2 = Math.round(total * (1 + pct / 100));
+  if (scaled2 !== total) {
+    total = scaled2;
+    steps.push({ source: "gear", label: "Gear bonuses", total });
+  }
+  if (stat === "spd") {
+    const penalty = armorSpdPenalty(state, reg, unit);
+    if (penalty !== 0) {
+      total += penalty;
+      steps.push({ source: "armor", label: "Armor weight", total });
+    }
+  }
+  const stacks = Math.min(unit.injuries.length, TUNING.combat.injuryMaxStacks);
+  const factor = 1 + TUNING.combat.injuryStatPct * stacks / 100;
+  const injured = Math.round(total * factor);
+  if (stacks > 0 && injured !== total) {
+    total = injured;
+    steps.push({ source: "injury", label: `Injuries \xD7${stacks}`, total });
+  }
+  const floor = stat === "crit" ? 0 : 1;
+  if (total < floor) {
+    total = floor;
+    steps.push({ source: "floor", label: "Minimum", total });
+  }
+  return steps;
+}
 function statPower(s) {
   return (s.hp * 0.2 + s.atk * 2 + s.def + s.spd * 1.5) * (1 + s.crit / 200);
 }
@@ -13054,7 +13103,15 @@ var nothingChoosable = (state, options2) => options2.every((o) => blockedReason(
 function dilemmaOptions(state, reg) {
   const open2 = state.dilemmas?.open;
   if (!open2 || open2.status !== "presented" || !open2.options) return [];
-  return open2.options.map((o, index) => ({ index, label: o.label, disabled: blockedReason(state, o), hasCheck: o.check !== void 0 }));
+  return open2.options.map((o, index) => ({
+    index,
+    label: o.label,
+    disabled: blockedReason(state, o),
+    hasCheck: o.check !== void 0,
+    // the tags only (P7a): what an option would change is never part of this list
+    ...o.check ? { check: { stat: o.check.stat, rank: o.check.rank } } : {},
+    ...o.requires ? { requires: { stat: o.requires.stat, rank: o.requires.rank } } : {}
+  }));
 }
 var isBookkeeping = (fx2) => fx2.type === "flag" || fx2.type === "thread_flag";
 function chooseDilemma(draft, ctx2, id, index) {
@@ -13897,8 +13954,8 @@ function createLoyalty(deps) {
 }
 
 // src/ui/dom.ts
-function h(tag, attrs = {}, ...children) {
-  const el = document.createElement(tag);
+function h(tag2, attrs = {}, ...children) {
+  const el = document.createElement(tag2);
   for (const [k, v] of Object.entries(attrs)) {
     if (v === false || v === null || v === void 0) continue;
     if (k === "class") el.className = String(v);
@@ -16356,19 +16413,19 @@ function renderKeepingFocus(host, draw2) {
   const active = document.activeElement;
   let id = null;
   let index = -1;
-  let tag = "";
+  let tag2 = "";
   let caret = null;
   if (active && host.contains(active) && active.matches(CONTROLS)) {
     index = [...host.querySelectorAll(CONTROLS)].indexOf(active);
     id = identity(active);
-    tag = active.tagName;
+    tag2 = active.tagName;
     if (isText(active)) caret = [active.selectionStart, active.selectionEnd];
   }
   draw2();
   if (index < 0) return;
   const controls = [...host.querySelectorAll(CONTROLS)];
   const byId = id ? controls.find((c) => identity(c) === id) : void 0;
-  const byPosition = controls[index]?.tagName === tag ? controls[index] : void 0;
+  const byPosition = controls[index]?.tagName === tag2 ? controls[index] : void 0;
   const target = byId ?? byPosition;
   if (!target) return;
   target.focus();
@@ -17403,8 +17460,8 @@ function renderOpsTab(host, ctx2) {
 // src/ui/map/mapTab.ts
 var SVG_NS = "http://www.w3.org/2000/svg";
 var SOURCE_TAG2 = { command: "COMMAND", story: "STORY", rumor: "RUMOR", side: "SIDE" };
-function svg(tag, attrs) {
-  const el = document.createElementNS(SVG_NS, tag);
+function svg(tag2, attrs) {
+  const el = document.createElementNS(SVG_NS, tag2);
   for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
   return el;
 }
@@ -19597,12 +19654,110 @@ var stressProvider = (subject, env, knowledge) => {
   }
   return { lines };
 };
+function combatLines(state, env, unit, stat) {
+  const reg = env.registries;
+  const touches = (e) => e.type === "stat" && (e.stat === stat || e.stat === "all") || e.type === "outgoing" && stat === "atk" || e.type === "incoming" && stat === "def";
+  const out = [];
+  const add = (list4, source) => {
+    if (!Array.isArray(list4)) return;
+    for (const e of list4) if (e && typeof e === "object" && touches(e)) out.push(`${summarizeCombatEffect(e, reg)} (${source})`);
+  };
+  for (const { inst } of wornItems(state, reg, unit)) {
+    add(reg.items.get(inst.itemId)?.effects, `[[items:${inst.itemId}]]`);
+    for (const id of inst.affixes) add(reg.affixes.get(id)?.effects, `[[affixes:${id}]]`);
+  }
+  for (const d of unit.defects) {
+    const combat2 = reg.defects.get(d.id)?.combat;
+    add(combat2?.upside, `[[defects:${d.id}]]`);
+    add(combat2?.downside, `[[defects:${d.id}]]`);
+  }
+  return out;
+}
+var statProvider = (stat) => (subject, env) => {
+  const state = env.state;
+  const unit = typeof subject.data.unitId === "string" ? state.squad.find((u) => u.id === subject.data.unitId) : void 0;
+  if (!unit) return null;
+  const steps = unitStatSteps(state, env.registries, unit, stat);
+  const total = unitStats(state, env.registries, unit)[stat];
+  const lines = [`${unit.displayName}: ${stat.toUpperCase()} ${total}`];
+  steps.forEach((step, i) => lines.push(i === 0 ? `${step.label} ${step.total}` : `${step.label} \u2192 ${step.total}`));
+  const combat2 = combatLines(state, env, unit, stat);
+  if (combat2.length > 0) lines.push("In combat:", ...combat2);
+  return { lines };
+};
+var resourceProvider = (resource) => (_subject, env) => {
+  const state = env.state;
+  const lines = [`Now ${state.resources[resource]}`];
+  if (resource === "supplies") {
+    const { units, needed } = upkeepNeeded(state, env.registries);
+    lines.push(`Daily upkeep ${needed} (${units} units and you)`);
+  } else {
+    lines.push("No daily upkeep");
+  }
+  const recent = ledgerFor(state, `res:${resource}`, 0).slice(0, 5);
+  if (recent.length === 0) lines.push("No recent changes");
+  for (const e of recent) lines.push(`${signed(e.delta)} \u2014 ${ledgerLabel(e.action)}, day ${e.day}`);
+  return { lines };
+};
+var SETTING_LABELS = {
+  mechanicThink: { min: "minimal", low: "low", auto: "provider default" },
+  spriteMode: { native: "Native Expressions", emotion_pick: "Mechanic emotion pick" },
+  intentMode: { exchange: "after every exchange", every_n: "every N exchanges", scene_end: "at scene end only" },
+  romanticInitiative: { low: "low", med: "medium", high: "high" }
+};
+var SILENT_SETTINGS = /* @__PURE__ */ new Set(["analyzeEnabled", "analyzeAnimation", "analyzeHoverDelay"]);
+var SETTING_LOCKS = {
+  desireBondDefects: (state, settings) => {
+    const own = state.settings.desireBondDefects;
+    return typeof own === "boolean" && own !== settings.desireBondDefects ? `This campaign keeps its own value: ${own ? "on" : "off"}` : void 0;
+  },
+  difficulty: (state) => state.combat ? "Locked while a combat is open" : void 0
+};
+function settingValue(key, value, state) {
+  if (key === "difficulty") return String(state.difficulty);
+  if (key === "budgets") return "per call type";
+  if (typeof value === "boolean") return value ? "on" : "off";
+  if (key === "mechanicProfileId") return value === "" || value === void 0 ? "none" : String(value);
+  return SETTING_LABELS[key]?.[String(value)] ?? String(value);
+}
+var settingProvider = (subject, env) => {
+  const state = env.state;
+  const key = subject.id;
+  const settings = env.settings;
+  if (key !== "difficulty" && !(key in settings)) return null;
+  const lines = [`Now: ${settingValue(key, settings[key], state)}`];
+  if (SILENT_SETTINGS.has(key)) return { lines };
+  lines.push(SETTING_LOCKS[key]?.(state, settings) ?? "Takes effect at once.");
+  return { lines };
+};
+var SOCIAL_STATS3 = ["authority", "insight", "empathy", "cunning"];
+var SCALES = ["minor", "major", "defining"];
+function tag(value) {
+  if (!value || typeof value !== "object") return null;
+  const { stat, rank } = value;
+  return typeof stat === "string" && SOCIAL_STATS3.includes(stat) && typeof rank === "number" && Number.isFinite(rank) ? { stat, rank } : null;
+}
+var decisionProvider = (subject, env) => {
+  const state = env.state;
+  const lines = [];
+  const requires = tag(subject.data.requires);
+  if (requires) lines.push(`Requires [[${requires.stat}]] rank ${requires.rank} (yours: ${socialRank(state, requires.stat)})`);
+  const check = tag(subject.data.check);
+  if (check) lines.push(`Check: [[${check.stat}]] rank ${check.rank} \u2014 rolled when you choose; if it fails, only the costs remain.`);
+  if (typeof subject.data.scale === "string" && SCALES.includes(subject.data.scale)) lines.push(`[[decision_${subject.data.scale}]]`);
+  lines.push("What it changes stays uncertain until you choose.");
+  return { lines };
+};
 var registered = false;
 function registerCoreProviders() {
   if (registered) return;
   registered = true;
   for (const axis of ["trust", "affinity", "attraction"]) registerAnalyzeProvider(`glossary:${axis}`, axisProvider(axis));
   registerAnalyzeProvider("glossary:stress", stressProvider);
+  for (const stat of STATS) registerAnalyzeProvider(`glossary:stat_${stat}`, statProvider(stat));
+  for (const resource of ["credits", "supplies", "plyx"]) registerAnalyzeProvider(`glossary:${resource}`, resourceProvider(resource));
+  registerAnalyzeProvider("setting", settingProvider);
+  registerAnalyzeProvider("glossary:decision_option", decisionProvider);
 }
 
 // src/analysis/describe.ts

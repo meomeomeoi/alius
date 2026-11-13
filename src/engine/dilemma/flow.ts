@@ -2,7 +2,7 @@ import { isCostEffect } from '../../content/schemas';
 import type { Entry, Registries } from '../../content/types';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { activeRosterUnits, isLiving } from '../economy';
-import { meetsSocialRequirements, socialRank } from '../social';
+import { meetsSocialRequirements, socialRank, type SocialStat } from '../social';
 import type { CampaignState, Unit } from '../state/types';
 import { TUNING } from '../tuning';
 import { finishEventNode } from '../world/expedition';
@@ -205,11 +205,22 @@ const nothingChoosable = (state: CampaignState, options: Array<{ requires?: Dile
   options.every((o) => blockedReason(state, o) !== null);
 
 /** The presented options with the reason each one is greyed (`null` = available). */
-export function dilemmaOptions(state: CampaignState, reg: Registries): Array<{ index: number; label: string; disabled: string | null; hasCheck: boolean }> {
+export function dilemmaOptions(
+  state: CampaignState,
+  reg: Registries,
+): Array<{ index: number; label: string; disabled: string | null; hasCheck: boolean; check?: { stat: SocialStat; rank: number }; requires?: { stat: SocialStat; rank: number } }> {
   void reg;
   const open = state.dilemmas?.open;
   if (!open || open.status !== 'presented' || !open.options) return [];
-  return open.options.map((o, index) => ({ index, label: o.label, disabled: blockedReason(state, o), hasCheck: o.check !== undefined }));
+  return open.options.map((o, index) => ({
+    index,
+    label: o.label,
+    disabled: blockedReason(state, o),
+    hasCheck: o.check !== undefined,
+    // the tags only (P7a): what an option would change is never part of this list
+    ...(o.check ? { check: { stat: o.check.stat, rank: o.check.rank } } : {}),
+    ...(o.requires ? { requires: { stat: o.requires.stat, rank: o.requires.rank } } : {}),
+  }));
 }
 
 const isBookkeeping = (fx: WorldEffect): boolean => fx.type === 'flag' || fx.type === 'thread_flag';

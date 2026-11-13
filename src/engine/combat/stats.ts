@@ -2,7 +2,7 @@ import type { Registries } from '../../content/types';
 import { wornItems, itemStats } from '../items';
 import type { CampaignState, Difficulty, Unit } from '../state/types';
 import { TUNING } from '../tuning';
-import type { Encounter, Stats } from './types';
+import type { Encounter, StatName, Stats } from './types';
 import { STATS } from './types';
 
 export type { Stats } from './types';
@@ -46,6 +46,69 @@ export function unitStats(state: CampaignState, reg: Registries, unit: Unit): St
   const factor = 1 + (TUNING.combat.injuryStatPct * stacks) / 100;
   for (const k of STATS) out[k] = Math.max(k === 'crit' ? 0 : 1, Math.round(out[k] * factor));
   return out;
+}
+
+export interface StatStep {
+  source: 'role' | 'level' | 'gear' | 'armor' | 'injury' | 'floor';
+  /** Plain text; a worn item is the link `[[items:<id>]]`. */
+  label: string;
+  /** The stat after this step. */
+  total: number;
+}
+
+/**
+ * How one stat of `unitStats` is built, in the same order: role base, level growth, each worn item's flat
+ * stat, the affix percentages, armor SPD, injuries, the floor. Steps that change nothing are left out and the
+ * last `total` is `unitStats(...)[stat]`.
+ */
+export function unitStatSteps(state: CampaignState, reg: Registries, unit: Unit, stat: StatName): StatStep[] {
+  const role = reg.roles.get(unit.roleId);
+  if (!role) throw new Error(`Unknown role "${unit.roleId}" (unit ${unit.id})`);
+  const growth = (role.growth as Stats | undefined) ?? ZERO;
+  const steps: StatStep[] = [];
+  let total = unit.baseStats[stat];
+  steps.push({ source: 'role', label: 'Role base', total });
+  const grown = Math.floor(growth[stat] * (unit.level - 1));
+  if (grown !== 0) {
+    total += grown;
+    steps.push({ source: 'level', label: `Level ${unit.level}`, total });
+  }
+  let pct = 0;
+  for (const { inst } of wornItems(state, reg, unit)) {
+    const it = itemStats(reg, inst);
+    if (!it) continue;
+    const flat = it.stats[stat] ?? 0;
+    if (flat !== 0) {
+      total += flat;
+      steps.push({ source: 'gear', label: `[[items:${inst.itemId}]]`, total });
+    }
+    pct += it.statPct[stat] ?? 0;
+  }
+  const scaled = Math.round(total * (1 + pct / 100));
+  if (scaled !== total) {
+    total = scaled;
+    steps.push({ source: 'gear', label: 'Gear bonuses', total });
+  }
+  if (stat === 'spd') {
+    const penalty = armorSpdPenalty(state, reg, unit);
+    if (penalty !== 0) {
+      total += penalty;
+      steps.push({ source: 'armor', label: 'Armor weight', total });
+    }
+  }
+  const stacks = Math.min(unit.injuries.length, TUNING.combat.injuryMaxStacks);
+  const factor = 1 + (TUNING.combat.injuryStatPct * stacks) / 100;
+  const injured = Math.round(total * factor);
+  if (stacks > 0 && injured !== total) {
+    total = injured;
+    steps.push({ source: 'injury', label: `Injuries ×${stacks}`, total });
+  }
+  const floor = stat === 'crit' ? 0 : 1;
+  if (total < floor) {
+    total = floor;
+    steps.push({ source: 'floor', label: 'Minimum', total });
+  }
+  return steps;
 }
 
 export function statPower(s: Stats): number {

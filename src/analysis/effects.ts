@@ -21,7 +21,7 @@ const cap = (s: string): string => (s ? s[0].toUpperCase() + s.slice(1) : s);
 const num = (n: number): string => String(Math.round(n * 100) / 100);
 const abs = (n: number): string => num(Math.abs(n));
 /** `+5`, `−5` (U+2212), `±0`. */
-const signed = (n: number): string => (n > 0 ? `+${num(n)}` : n < 0 ? `${MINUS}${abs(n)}` : '±0');
+export const signed = (n: number): string => (n > 0 ? `+${num(n)}` : n < 0 ? `${MINUS}${abs(n)}` : '±0');
 const pctSigned = (n: number): string => `${signed(n)}%`;
 const plural = (n: number, word: string): string => (n === 1 ? word : `${word}s`);
 const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
