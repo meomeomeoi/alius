@@ -120,3 +120,30 @@ export function applyCommanderSetup(commander: Commander, c: CommanderSetup): vo
 export function daysKnown(state: CampaignState, unitId: string): number {
   return Math.max(0, state.day - (state.relations[unitId]?.metDay ?? 1));
 }
+
+/**
+ * Multiplier on body training XP; trait effects join in P7 Task 11. `state` and `reg` are already in the signature so
+ * the activity code does not change then.
+ */
+export function bodyGrowthMult(_state: CampaignState, _reg: Registries): number {
+  return 1;
+}
+
+/**
+ * Adds training XP to a body stat. A step costs `TUNING.commander.bodyXpSteps[value − 1]`; what is left over carries
+ * into the next step, and a stat at 5 takes nothing. Recomputes the archetype. `gained` says whether the stat rose.
+ */
+export function addBodyXp(commander: Commander, stat: BodyStat, amount: number): { value: number; gained: boolean } {
+  const body = (commander.body ??= { ...TUNING.commander.defaults.body });
+  const xp = (commander.bodyXp ??= { strength: 0, endurance: 0, reflexes: 0 });
+  const before = body[stat];
+  if (before >= 5 || !(amount > 0)) return { value: before, gained: false };
+  let pool = xp[stat] + amount;
+  while (body[stat] < 5 && pool >= TUNING.commander.bodyXpSteps[body[stat] - 1]) {
+    pool -= TUNING.commander.bodyXpSteps[body[stat] - 1];
+    body[stat] += 1;
+  }
+  xp[stat] = body[stat] >= 5 ? 0 : pool;
+  commander.archetype = archetypeOf(body);
+  return { value: body[stat], gained: body[stat] > before };
+}

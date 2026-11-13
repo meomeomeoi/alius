@@ -147,9 +147,9 @@ docs/** (Task 19), tests/** mirror src
 **Interfaces:**
 - Produces: `addBodyXp(commander, stat, amount): { value: number; gained: boolean }` (carry-over; nothing at 5; recomputes archetype); activity effect case `commander_body_xp` → `addBodyXp(draft.commander, fx.stat, TUNING.commander.bodyXpPerSession × bodyGrowthMult)` where `bodyGrowthMult(state, reg)` returns 1 until Task 11; event `body_trained { stat, value, raised }`. Ledger records `body:<stat>` deltas.
 
-- [ ] **Step 1: Write the failing tests** — `three sessions raise strength 1 → 2` ; `six more raise 2 → 3`; `xp carries over a step`; `training a stat at 5 changes nothing`; `train with focus body_reflexes needs no units`; `the commander injured blocks body training` (existing rule); ledger: `a raised body stat is recorded as body:<stat>`.
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → green.
-- [ ] **Step 5: Commit** `feat(engine): commander body training`.
+- [x] **Step 1: Write the failing tests** — `three sessions raise strength 1 → 2` ; `six more raise 2 → 3`; `xp carries over a step`; `training a stat at 5 changes nothing`; `train with focus body_reflexes needs no units`; `the commander injured blocks body training` (existing rule); ledger: `a raised body stat is recorded as body:<stat>`.
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → green.
+- [x] **Step 5: Commit** `feat(engine): commander body training`.
 
 ---
 

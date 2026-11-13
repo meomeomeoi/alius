@@ -23,6 +23,18 @@
       {
         "id": "commander",
         "label": "Command drill"
+      },
+      {
+        "id": "body_strength",
+        "label": "Body: strength"
+      },
+      {
+        "id": "body_endurance",
+        "label": "Body: endurance"
+      },
+      {
+        "id": "body_reflexes",
+        "label": "Body: reflexes"
       }
     ],
     "effects": [
@@ -40,6 +52,27 @@
         "amount": 6,
         "when": {
           "focus": "commander"
+        }
+      },
+      {
+        "type": "commander_body_xp",
+        "stat": "strength",
+        "when": {
+          "focus": "body_strength"
+        }
+      },
+      {
+        "type": "commander_body_xp",
+        "stat": "endurance",
+        "when": {
+          "focus": "body_endurance"
+        }
+      },
+      {
+        "type": "commander_body_xp",
+        "stat": "reflexes",
+        "when": {
+          "focus": "body_reflexes"
         }
       }
     ],

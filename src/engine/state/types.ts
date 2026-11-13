@@ -294,7 +294,7 @@ export interface LedgerEntry {
   slot: Slot;
   /** The action type that caused it, e.g. `activity/do`. */
   action: string;
-  /** `res:<resource>`, `stress:<unitId>` or `axis:<unitId>:<axis>`. */
+  /** `res:<resource>`, `stress:<unitId>`, `axis:<unitId>:<axis>` or `body:<stat>` (P7). */
   key: string;
   delta: number;
 }

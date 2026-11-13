@@ -1,4 +1,5 @@
 import type { CampaignState, LedgerEntry } from './state/types';
+import { BODY_STATS } from './commander/profile';
 import { TUNING } from './tuning';
 
 export type { LedgerEntry } from './state/types';
@@ -31,6 +32,9 @@ export function recordLedger(before: CampaignState, after: CampaignState, action
     if (!was) continue;
     for (const axis of AXES) push(`axis:${id}:${axis}`, (rel[axis] ?? 0) - (was[axis] ?? 0));
   }
+
+  // P7: a raised (or scarred) body stat
+  for (const stat of BODY_STATS) push(`body:${stat}`, (after.commander?.body?.[stat] ?? 0) - (before.commander?.body?.[stat] ?? 0));
 
   if (entries.length > 0) after.ledger = [...(after.ledger ?? []), ...entries];
   if (!after.ledger) return;

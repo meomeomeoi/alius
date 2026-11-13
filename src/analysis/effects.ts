@@ -206,6 +206,7 @@ export function summarizeActivityEffect(
     case 'unit_xp': s = `${who} ${signed(Number(e.amount))} XP`; break;
     case 'unit_stress': s = `${who} ${signed(Number(e.amount))} Stress`; break;
     case 'injury_days': s = `${who} ${signed(Number(e.amount))} injury days`; break;
+    case 'commander_body_xp': s = `Body training: ${String(e.stat)}`; break;
     case 'commander_injury_days': s = `Commander ${signed(Number(e.amount))} injury days`; break;
     case 'defect_upkeep': s = `${who}: defect upkeep`; break;
     case 'relation': s = `Companion ${signed(Number(e.amount))} ${cap(String(e.axis))}`; break;

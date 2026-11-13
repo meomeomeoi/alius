@@ -271,6 +271,78 @@ var TUNING = Object.freeze({
   })
 });
 
+// src/engine/commander/profile.ts
+var BODY_STATS = Object.freeze(["strength", "endurance", "reflexes"]);
+var DESCRIPTORS = Object.freeze({
+  strength: Object.freeze(["Feeble", "Slight", "Average", "Strong", "Powerful"]),
+  endurance: Object.freeze(["Fragile", "Delicate", "Average", "Hardy", "Iron"]),
+  reflexes: Object.freeze(["Sluggish", "Slow", "Average", "Quick", "Lightning"]),
+  expression: Object.freeze(["Very feminine", "Feminine", "Androgynous", "Masculine", "Very masculine"]),
+  seasoning: Object.freeze(["Green", "Young", "Experienced", "Seasoned", "Veteran"])
+});
+function archetypeOf(body) {
+  const sum = BODY_STATS.reduce((n, k) => n + body[k], 0);
+  if (sum <= 4) return "frail";
+  if (sum <= 6) return "slight";
+  if (sum <= 9) return "average";
+  if (sum <= 12) return "fit";
+  return "hardened";
+}
+var defaultCommanderSetup = () => ({
+  body: { ...TUNING.commander.defaults.body },
+  expression: TUNING.commander.defaults.expression,
+  seasoning: TUNING.commander.defaults.seasoning,
+  traits: { regular: [] }
+});
+var poolSpent = (body) => BODY_STATS.reduce((n, k) => n + body[k], 0) - BODY_STATS.length;
+var isInt = (n, lo, hi) => typeof n === "number" && Number.isInteger(n) && n >= lo && n <= hi;
+function validateCommanderSetup(c, _reg, _opts) {
+  const out = [];
+  if (typeof c !== "object" || c === null) return ["The commander file is missing"];
+  for (const k of BODY_STATS) {
+    if (!isInt(c.body?.[k], 1, TUNING.commander.creationMax)) {
+      out.push(`Commander ${k} must be a whole number from 1 to ${TUNING.commander.creationMax}`);
+    }
+  }
+  if (BODY_STATS.every((k) => isInt(c.body?.[k], 1, TUNING.commander.creationMax)) && poolSpent(c.body) > TUNING.commander.pool) {
+    out.push(`Commander body spends ${poolSpent(c.body)} points, the pool is ${TUNING.commander.pool}`);
+  }
+  if (!isInt(c.expression, 1, 5)) out.push("Commander expression must be a whole number from 1 to 5");
+  if (!isInt(c.seasoning, 1, 5)) out.push("Commander seasoning must be a whole number from 1 to 5");
+  const regular = c.traits?.regular;
+  if (!Array.isArray(regular)) out.push("Commander traits are missing");
+  else {
+    if (regular.length > TUNING.commander.maxRegular) out.push(`At most ${TUNING.commander.maxRegular} regular traits (has ${regular.length})`);
+    if (new Set(regular).size !== regular.length) out.push("A regular trait is chosen twice");
+  }
+  return out;
+}
+function applyCommanderSetup(commander, c) {
+  commander.body = { ...c.body };
+  commander.bodyXp = { strength: 0, endurance: 0, reflexes: 0 };
+  commander.expression = c.expression;
+  commander.seasoning = c.seasoning;
+  commander.traits = { regular: [...c.traits.regular], ...c.traits.special !== void 0 ? { special: c.traits.special } : {} };
+  commander.archetype = archetypeOf(c.body);
+}
+function bodyGrowthMult(_state, _reg) {
+  return 1;
+}
+function addBodyXp(commander, stat2, amount) {
+  const body = commander.body ??= { ...TUNING.commander.defaults.body };
+  const xp = commander.bodyXp ??= { strength: 0, endurance: 0, reflexes: 0 };
+  const before = body[stat2];
+  if (before >= 5 || !(amount > 0)) return { value: before, gained: false };
+  let pool = xp[stat2] + amount;
+  while (body[stat2] < 5 && pool >= TUNING.commander.bodyXpSteps[body[stat2] - 1]) {
+    pool -= TUNING.commander.bodyXpSteps[body[stat2] - 1];
+    body[stat2] += 1;
+  }
+  xp[stat2] = body[stat2] >= 5 ? 0 : pool;
+  commander.archetype = archetypeOf(body);
+  return { value: body[stat2], gained: body[stat2] > before };
+}
+
 // src/engine/ledger.ts
 var RESOURCES = ["credits", "supplies", "plyx"];
 var AXES = ["trust", "affinity", "attraction"];
@@ -290,6 +362,7 @@ function recordLedger(before, after, action) {
     if (!was) continue;
     for (const axis of AXES) push(`axis:${id}:${axis}`, (rel[axis] ?? 0) - (was[axis] ?? 0));
   }
+  for (const stat2 of BODY_STATS) push(`body:${stat2}`, (after.commander?.body?.[stat2] ?? 0) - (before.commander?.body?.[stat2] ?? 0));
   if (entries.length > 0) after.ledger = [...after.ledger ?? [], ...entries];
   if (!after.ledger) return;
   const oldest = after.day - (TUNING.ledger.days - 1);
@@ -544,61 +617,6 @@ function recoverUnit(draft, u) {
   u.injuries = [];
   if (u.status === "injured") u.status = draft.roster.activeIds.includes(u.id) ? "active" : "reserve";
   return { type: "unit_recovered", unitId: u.id };
-}
-
-// src/engine/commander/profile.ts
-var BODY_STATS = Object.freeze(["strength", "endurance", "reflexes"]);
-var DESCRIPTORS = Object.freeze({
-  strength: Object.freeze(["Feeble", "Slight", "Average", "Strong", "Powerful"]),
-  endurance: Object.freeze(["Fragile", "Delicate", "Average", "Hardy", "Iron"]),
-  reflexes: Object.freeze(["Sluggish", "Slow", "Average", "Quick", "Lightning"]),
-  expression: Object.freeze(["Very feminine", "Feminine", "Androgynous", "Masculine", "Very masculine"]),
-  seasoning: Object.freeze(["Green", "Young", "Experienced", "Seasoned", "Veteran"])
-});
-function archetypeOf(body) {
-  const sum = BODY_STATS.reduce((n, k) => n + body[k], 0);
-  if (sum <= 4) return "frail";
-  if (sum <= 6) return "slight";
-  if (sum <= 9) return "average";
-  if (sum <= 12) return "fit";
-  return "hardened";
-}
-var defaultCommanderSetup = () => ({
-  body: { ...TUNING.commander.defaults.body },
-  expression: TUNING.commander.defaults.expression,
-  seasoning: TUNING.commander.defaults.seasoning,
-  traits: { regular: [] }
-});
-var poolSpent = (body) => BODY_STATS.reduce((n, k) => n + body[k], 0) - BODY_STATS.length;
-var isInt = (n, lo, hi) => typeof n === "number" && Number.isInteger(n) && n >= lo && n <= hi;
-function validateCommanderSetup(c, _reg, _opts) {
-  const out = [];
-  if (typeof c !== "object" || c === null) return ["The commander file is missing"];
-  for (const k of BODY_STATS) {
-    if (!isInt(c.body?.[k], 1, TUNING.commander.creationMax)) {
-      out.push(`Commander ${k} must be a whole number from 1 to ${TUNING.commander.creationMax}`);
-    }
-  }
-  if (BODY_STATS.every((k) => isInt(c.body?.[k], 1, TUNING.commander.creationMax)) && poolSpent(c.body) > TUNING.commander.pool) {
-    out.push(`Commander body spends ${poolSpent(c.body)} points, the pool is ${TUNING.commander.pool}`);
-  }
-  if (!isInt(c.expression, 1, 5)) out.push("Commander expression must be a whole number from 1 to 5");
-  if (!isInt(c.seasoning, 1, 5)) out.push("Commander seasoning must be a whole number from 1 to 5");
-  const regular = c.traits?.regular;
-  if (!Array.isArray(regular)) out.push("Commander traits are missing");
-  else {
-    if (regular.length > TUNING.commander.maxRegular) out.push(`At most ${TUNING.commander.maxRegular} regular traits (has ${regular.length})`);
-    if (new Set(regular).size !== regular.length) out.push("A regular trait is chosen twice");
-  }
-  return out;
-}
-function applyCommanderSetup(commander, c) {
-  commander.body = { ...c.body };
-  commander.bodyXp = { strength: 0, endurance: 0, reflexes: 0 };
-  commander.expression = c.expression;
-  commander.seasoning = c.seasoning;
-  commander.traits = { regular: [...c.traits.regular], ...c.traits.special !== void 0 ? { special: c.traits.special } : {} };
-  commander.archetype = archetypeOf(c.body);
 }
 
 // src/engine/state/create.ts
@@ -1415,6 +1433,11 @@ function runActivity(draft, ctx2, request) {
       case "commander_stat": {
         const r = addSocialPoints(draft.commander, fx2.stat, scaled(fx2.amount, draft, reg, fx2.scale));
         events.push({ type: "social_gained", stat: fx2.stat, gained: r.gained, rank: r.rank, rankedUp: r.rankedUp });
+        break;
+      }
+      case "commander_body_xp": {
+        const r = addBodyXp(draft.commander, fx2.stat, TUNING.commander.bodyXpPerSession * bodyGrowthMult(draft, reg));
+        events.push({ type: "body_trained", stat: fx2.stat, value: r.value, raised: r.gained });
         break;
       }
       case "unit_xp":
@@ -12291,6 +12314,8 @@ var ActivityEffectSchema = external_exports.discriminatedUnion("type", [
   external_exports.object({ type: external_exports.literal("unit_stress"), target: external_exports.enum(["selected", "companion", "roster"]), amount: int, ...amountFields }).strict(),
   external_exports.object({ type: external_exports.literal("injury_days"), target: external_exports.enum(["selected", "companion"]), amount: int, ...amountFields }).strict(),
   external_exports.object({ type: external_exports.literal("commander_injury_days"), amount: int, ...amountFields }).strict(),
+  /** P7: one body training session (tenths of XP come from `TUNING.commander`); the amount is not authored. */
+  external_exports.object({ type: external_exports.literal("commander_body_xp"), stat: external_exports.enum(["strength", "endurance", "reflexes"]), ...amountFields }).strict(),
   external_exports.object({ type: external_exports.literal("defect_upkeep"), target: external_exports.enum(["selected", "companion"]), ...amountFields }).strict(),
   external_exports.object({ type: external_exports.literal("relation"), axis: external_exports.enum(["trust", "affinity", "attraction"]), amount: int, ...amountFields }).strict(),
   external_exports.object({
@@ -19610,6 +19635,9 @@ function summarizeActivityEffect(effect, _reg, focus) {
       break;
     case "injury_days":
       s = `${who} ${signed(Number(e.amount))} injury days`;
+      break;
+    case "commander_body_xp":
+      s = `Body training: ${String(e.stat)}`;
       break;
     case "commander_injury_days":
       s = `Commander ${signed(Number(e.amount))} injury days`;

@@ -6,6 +6,8 @@ import { activeRosterUnits, facilityEffect, facilityLevel, isLiving, recoverUnit
 import { applyRelationDelta } from './relationGain';
 import { addSocialPoints, socialRank } from './social';
 import type { CampaignState, Unit } from './state/types';
+import { addBodyXp, bodyGrowthMult } from './commander/profile';
+import { TUNING } from './tuning';
 
 export interface ActivityRequest {
   activityId: string;
@@ -152,6 +154,11 @@ export function runActivity(draft: CampaignState, ctx: EngineCtx, request: unkno
       case 'commander_stat': {
         const r = addSocialPoints(draft.commander, fx.stat, scaled(fx.amount, draft, reg, fx.scale));
         events.push({ type: 'social_gained', stat: fx.stat, gained: r.gained, rank: r.rank, rankedUp: r.rankedUp });
+        break;
+      }
+      case 'commander_body_xp': {
+        const r = addBodyXp(draft.commander, fx.stat, TUNING.commander.bodyXpPerSession * bodyGrowthMult(draft, reg));
+        events.push({ type: 'body_trained', stat: fx.stat, value: r.value, raised: r.gained });
         break;
       }
       case 'unit_xp':

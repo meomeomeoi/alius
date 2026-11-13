@@ -468,6 +468,8 @@ export const ActivityEffectSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('unit_stress'), target: z.enum(['selected', 'companion', 'roster']), amount: int, ...amountFields }).strict(),
   z.object({ type: z.literal('injury_days'), target: z.enum(['selected', 'companion']), amount: int, ...amountFields }).strict(),
   z.object({ type: z.literal('commander_injury_days'), amount: int, ...amountFields }).strict(),
+  /** P7: one body training session (tenths of XP come from `TUNING.commander`); the amount is not authored. */
+  z.object({ type: z.literal('commander_body_xp'), stat: z.enum(['strength', 'endurance', 'reflexes']), ...amountFields }).strict(),
   z.object({ type: z.literal('defect_upkeep'), target: z.enum(['selected', 'companion']), ...amountFields }).strict(),
   z.object({ type: z.literal('relation'), axis: z.enum(['trust', 'affinity', 'attraction']), amount: int, ...amountFields }).strict(),
   z.object({

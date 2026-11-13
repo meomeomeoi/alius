@@ -31,6 +31,16 @@ describe('change ledger', () => {
     expect(s.ledger).toBeUndefined(); // the input is never touched
   });
 
+  it('a raised body stat is recorded as body:<stat>', () => {
+    const s = fresh();
+    s.commander.body = { strength: 2, endurance: 3, reflexes: 2 };
+    s.commander.bodyXp = { strength: 50, endurance: 0, reflexes: 0 }; // 2 → 3 costs 60
+    const r = run(s, reg, { type: 'activity/do', payload: { activityId: 'train', focus: 'body_strength' } });
+    expect(errors(r.events)).toEqual([]);
+    expect(r.state.commander.body!.strength).toBe(3);
+    expect(r.state.ledger).toContainEqual({ day: s.day, slot: s.slot, action: 'activity/do', key: 'body:strength', delta: 1 });
+  });
+
   it('a scene intent that moves Trust records axis:<id>:trust', () => {
     const s0 = fresh();
     s0.day = 5;
