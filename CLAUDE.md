@@ -15,5 +15,6 @@ SillyTavern extension (TypeScript). Design docs live in `docs/`.
 - Stop at the task boundary you were given; don't start the next chunk.
 - If the plan and the code disagree, stop and report instead of improvising.
 - P5 and P6 are implemented; their rulings and open items are in `docs/packages/P5-world-expeditions-director.md` and `docs/packages/P6-dilemmas-disloyalty-leash.md` (**Implemented as**). Read them before touching `src/engine/world/`, `src/world/`, the expedition UI, or `src/engine/{leash,loyalty,dilemma}/`, `src/engine/arcs.ts`, `src/loyalty/`.
+- P7a (the analysis tool) is implemented; its rulings are in `docs/packages/P7a-analysis-tool.md` (**Implemented as**). From P7 on, every new player-facing stat, chip, option or choice card carries `data-analyze`, has a glossary entry or registry `description`, and live values get an analyze provider that reads through `Knowledge` (overview P12); read the P7a **Implemented as** before touching `src/analysis/`, `src/ui/analyze/` or the `ledger`.
 - When you finish a package, update its spec (status line and an **Implemented as** section), the status table in `docs/00-overview.md` §9, the interface list in §5.4, and add an **Interfaces already provided by <package>** note to the specs of the packages that depend on it.
 - `npm test` rebuilds `dist/index.js` and `style.css`; commit them with your change.

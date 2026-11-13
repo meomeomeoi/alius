@@ -87,3 +87,7 @@ Intimacy settings apply as usual; romance with the warden is allowed and gets de
 
 - Expectation kinds and weights; commander punishment numbers; defiance thresholds.
 - Lore of the controller implant and how intake presents the warden.
+
+## Interfaces already provided by P7a (implemented — use, do not rebuild)
+
+- The WARDEN panel, override buttons (COMPLY / ARGUE / DEFY) and the commander-side Leash carry `data-analyze` with glossary entries; readings for the warden's agenda and state go through `Knowledge` and knowledge rules so the commander never reads what he does not know. Mirrored punishments reuse P9's providers.

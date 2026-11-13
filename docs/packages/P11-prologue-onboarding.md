@@ -55,3 +55,7 @@ Campaign `objectives: [{ id, text, source: 'prologue'|'spine'|'director'|'unit',
 4. Tabs unlock on their conditions with notices; existing campaigns are unaffected.
 5. Objective tracker shows prologue objectives, then director/spine hints after the prologue.
 6. Both starts have their own prologue built from a shared skeleton.
+
+## Interfaces already provided by P7a (implemented — use, do not rebuild)
+
+- Paper forms, the dossier and the objective tracker are built from marked elements (`analyzeAttrs`); `uiUnlocks` must not hide the analysis tool, which is the player's manual. Prologue concepts (intake, exam, objectives) get glossary entries. The tutorial can point at `?` ("focus anything and press ?"; the footer hint already says `? analyze`).

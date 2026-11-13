@@ -1,5 +1,7 @@
 # P7a Analysis Tool Implementation Plan
 
+> **Status: executed** (all 16 tasks ticked, commits on `unstable`). The rulings taken where this plan was silent or wrong are in the spec's **Implemented as** section (`docs/packages/P7a-analysis-tool.md`).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Hover, focus + `?` or long-press any stat, option, chip or setting in the Alius shell → a terminal panel plays a short *analyzing* animation and explains the thing from content data (glossary, registry descriptions, a generated effects summary) plus, for live values, a "Current reading" that shows only what the player may know. No LLM calls.
@@ -373,10 +375,10 @@ Reads `docs/content/roles.md` and `docs/content/defects.md`; texts go into JSON 
 - Create: `docs/MANUAL_TEST_P7a.md`
 - Test: `tests/build.test.ts` (existing)
 
-- [ ] **Step 1:** `npm run build` → `dist/index.js` and `style.css` change and stay tracked.
-- [ ] **Step 2:** Walk the seven acceptance criteria against test names and record them in `docs/MANUAL_TEST_P7a.md` next to the in-SillyTavern steps that cannot be automated (real mouse hover and flip at screen edges; long-press on a phone or touch emulation; `?`/`F1` with the browser's own F1; reduced-motion OS setting; drill-down three levels from Trust; readings before and after a scene that moved Trust; raw values on/off; every back-filled screen).
-- [ ] **Step 3:** `npx vitest run` and `npm run typecheck` → all green; put the counts in the final report.
-- [ ] **Step 4: Commit** `chore: rebuild dist and style, P7a docs and manual checklist`.
+- [x] **Step 1:** `npm run build` → `dist/index.js` and `style.css` change and stay tracked.
+- [x] **Step 2:** Walk the seven acceptance criteria against test names and record them in `docs/MANUAL_TEST_P7a.md` next to the in-SillyTavern steps that cannot be automated (real mouse hover and flip at screen edges; long-press on a phone or touch emulation; `?`/`F1` with the browser's own F1; reduced-motion OS setting; drill-down three levels from Trust; readings before and after a scene that moved Trust; raw values on/off; every back-filled screen).
+- [x] **Step 3:** `npx vitest run` and `npm run typecheck` → all green; put the counts in the final report.
+- [x] **Step 4: Commit** `chore: rebuild dist and style, P7a docs and manual checklist`.
 
 ---
 

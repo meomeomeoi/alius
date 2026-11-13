@@ -94,3 +94,9 @@ When a pattern crosses its threshold and no nickname of that group is active, th
 
 - Punishment list and severity numbers.
 - Nickname names (draft in English).
+
+## Interfaces already provided by P7a (implemented — use, do not rebuild)
+
+- **Impunity reading:** register `registerAnalyzeProvider('glossary:impunity', …)` that shows the stance and the main terms as bands through `Knowledge` (never the raw `impunityRecord` or a warden's expectation without a rule that allows it); `state.ledger` can carry the change history if the term changes go through `dispatch`.
+- **Hidden state:** use `registerKnowledgeRule({ fact?, flag? })` for what the commander does not know (unknown expectations, intercept truth flags). Extend `tests/fixtures/analyze/hidden.ts` with sentinels for the new hidden values; the hidden-state test runs over every registered provider.
+- **UI:** punishment menus, chips with UNDO, demands and nicknames carry `data-analyze`; the `punishments` registry gets `description`s (add it to `DESCRIBED_REGISTRIES` / `PLAYER_VISIBLE`).

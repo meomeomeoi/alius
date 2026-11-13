@@ -94,3 +94,8 @@ New screen **WORLD PARAMETERS** right after the start/corporation choice. It is 
 - Lore text of every choice (stubs ship with placeholders).
 - Whether `gender_norms` should also have a mild effect on enemy targeting (default: no).
 - Stance effect numbers (`stanceEffects`).
+
+## Interfaces already provided by P7a (implemented — use, do not rebuild)
+
+- **WORLD PARAMETERS screen:** give each option and choice card `data-analyze="worldOptions:<id>"` (add `worldOptions` to `DESCRIBED_REGISTRIES` / `PLAYER_VISIBLE` and a `description` per entry; the effects summary is generated). Disposition levels and offsets need glossary entries.
+- **Settings and locks:** the bare-source provider `setting` (in `providers/core.ts`) shows the current value and a lock line from `SETTING_LOCKS`; add a lock there when a world option or setting freezes after campaign start. A new setting needs a SYS `field(label, control, key)` and a glossary entry `setting_<snake_case key>` (`settingGlossaryId`).

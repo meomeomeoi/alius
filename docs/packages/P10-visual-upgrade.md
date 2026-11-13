@@ -66,3 +66,9 @@ One SYS switch "Readable mode": disables scanlines, flicker, dithering and glitc
 ## Author assets (can arrive later; fallbacks ship)
 
 Hub cross-section art (+ optional time-of-day variants), device renders per skin with transparent screen, CC0 textures (optional), UI sounds.
+
+## Interfaces already provided by P7a (implemented — use, do not rebuild)
+
+- **The analysis panel** lives in `src/ui/analyze/` and `css/95-analyze.css`, a child of `#alius-shell`; it uses only palette variables (`--alius-fg/-dim/-bg/-accent`), so device skins that keep those variables recolour it, and its `z-index` (10) must stay above the modal layer. Restyle it with voices there; `renderPanel` builds text nodes only.
+- **Marker classes** `alius-stat`, `alius-chip`, `alius-option` are reserved for analyzable elements; the hub, rooms and device chrome must mark their stats and options too (`analyzeAttrs` / `analyzeNative`).
+- **Motion:** `analyzeAnimation: 'off'` and `prefers-reduced-motion` already show the panel text at once; the P10 reduced-motion setting should feed the same rule (`animationMs`). `[data-analyze]` elements show a help cursor and disable the touch callout.

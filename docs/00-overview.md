@@ -114,7 +114,8 @@ Source layout (TypeScript, same toolchain style as Mundi-Expanded):
 - `src/llm/` — call types, prompt builders, budgets, JSON repair/retry, intent schemas (zod). Call types live in `src/llm/calls/`.
 - `src/setup/` — campaign setup logic that is neither engine nor UI: the card → profile importer and sanitizer, and the pure wizard state model (no DOM; it talks to ST only through the `StAdapter` interface).
 - `src/st/` — the **only** module that touches SillyTavern APIs (context, metadata, events, prompt injection, group members, connection profiles, expressions). Everything else depends on its interface, so ST API changes are fixed in one place.
-- `src/ui/` — the Alius shell and screens (`shell/` incl. the status header, `setup/` wizard, `squad/`, `ops/` and `base/` tabs). UI renderers are plain functions `(host, ctx)`; they ask the engine (`checkActivity`, `checkUpgrade`, `checkRecruit`) why a button is disabled instead of re-implementing rules.
+- `src/analysis/` — the analysis tool's pure layer (P7a): addresses, panel model, effects text, knowledge filter, readings. Imports only `content`, `engine` and the settings type (an architecture test enforces it).
+- `src/ui/` — the Alius shell and screens (`shell/` incl. the status header, `setup/` wizard, `squad/`, `ops/` and `base/` tabs, `analyze/` the analysis panel and its interaction). UI renderers are plain functions `(host, ctx)`; they ask the engine (`checkActivity`, `checkUpgrade`, `checkRecruit`) why a button is disabled instead of re-implementing rules.
 - `content/core/` — the core JSON pack + lorebook stub.
 
 ### 5.1 State and saves
@@ -158,7 +159,7 @@ Before each main-model generation the adapter injects one compact block:
 
 Character card text itself remains SillyTavern's job.
 
-### 5.4 Implemented engine interfaces (P0–P6)
+### 5.4 Implemented engine interfaces (P0–P6, P7a)
 
 Later packages build on these; change them only together with the owning spec.
 
@@ -202,6 +203,13 @@ Later packages build on these; change them only together with the owning spec.
 | `Encounter.mutineers`, `CombatResult.mutineers`, `CombatState.lastRefusal` / `compels`, `applyEventToUnit(…, { scale })`, `EffectSource.units`, world effect `thread_flag`, `finishEventNode` | P6 | Extensions of P3/P4/P5 interfaces (squad units as the enemy side, the order refusal memory, witness scaling, unit events at the base, dynamic thread flags). |
 | `app.dilemmas` (`onRequested`, `choose`), `app.loyalty` (`order`, `compel`, `onSceneOpened`, `onSceneClosed`, `onEvents`), `app.fileLeash(kind, unitId)`, `ShellApi.closeModal()` | P6 | Controllers and the oversight form; `loyaltySigns` is a new registry. |
 
+| `glossary` registry, `description` on 20 registries, `cause` on `eventDeltas`, `[[target\|label]]` links (`parseLinks`, `stripLinks`, `linkTargets`; the loader checks targets), `DESCRIBED_REGISTRIES` | P7a | Explanations are content. A new player-visible registry gets an optional `description` and joins `PLAYER_VISIBLE`; a new concept gets a glossary entry (settings: `setting_<snake_case key>`, `settingGlossaryId`). |
+| `data-analyze="<source>:<id>"` + `data-analyze-ctx`, `analyzeAttrs`, `analyzeNative`, `ANALYZE_MARKERS` (`.alius-stat, .alius-chip, .alius-option`) | P7a | Marks anything explainable (overview P12). Every marked element needs an address that resolves; the coverage test (`tests/ui/analyzeCoverage.test.ts`) fails otherwise. `alius-stat/chip/option` are reserved for markers. |
+| `registerAnalyzeProvider(key, (subject, env, knowledge) => Reading)`, `readingFor`, `buildKnowledge`, `registerKnowledgeRule({ fact?, flag? })`, `registerCoreProviders` | P7a | Live "Current reading" blocks. A provider must take numbers, clocks, facts and flags through `Knowledge` (`tests/analysis/hidden.test.ts` runs over every registered provider). |
+| `buildPanelModel`, `entryEffects`, `summarizeCombatEffect` / `summarizeWorldEffect` / `summarizeActivityEffect` | P7a | Static text and generated effects lines from structured effects. |
+| `attachAnalyzer(root, { getEnv })`, `ShellDeps.analyze: { registries }` | P7a | Hover (delay setting), `?` / F1, long-press, pin, drill-down (depth 3). The shell attaches it on open; `shell.refresh()` refreshes it. |
+| `CampaignState.ledger?`, `recordLedger(before, after, action)`, `TUNING.ledger`, `unitStatSteps(state, reg, unit, stat)`, `dilemmaOptions` (+ `check` / `requires`) | P7a | `dispatch` records changes of resources, unit stress and relation axes (7 days, 150 entries) for trends and "last changes"; `unitStatSteps` explains how a stat is built. |
+
 Events emitted by the day-end pipeline: `director_requested` (P5), `leash_refreshed`, `loyalty_sign`, `desertion_attempt`, `mutiny_started`, `dilemma_requested`, `arc_unlocked` (P6), `mission_failed` / `mission_expired` / `clock_filled` / `leash_changed` (P5), `day_end_step`, `upkeep`, `supply_shortage`, `trust_penalty_event`, `unit_recovered`, `facility_upgraded`, `slot_advanced`, `night_started`, `day_started`, `autosave` (the app flushes the saver on it).
 
 ## 6. Data model (high level)
@@ -233,6 +241,7 @@ Campaign {
   combat?: CombatState        // P4: only combat and rng change while it runs
   lastCombat?: CombatResult   // P4: for P5's recap and debrief
   workshopSession?: { day, opsLeft, companionId? }, enemyNames?: { [enemyId|affixes]: name }   // P4
+  ledger?: [{ day, slot, action, key, delta }]   // P7a: changes of resources (res:<r>), unit stress (stress:<id>) and relation axes (axis:<id>:<axis>); last 7 days, ≤ 150, written by dispatch
 }
 
 Unit {
@@ -298,6 +307,8 @@ P4: **easy retry** (default off) and generated enemy names (default off) are glo
 
 P6: **generated dilemmas** on/off (`dilemmasEnabled`, default on; off = the template's authored block is shown) — SYS › Decisions.
 
+P7a: **analysis tool** on/off (`analyzeEnabled`, default on), **analysis animation** (`analyzeAnimation`: `full` / `short` / `off`, default `full`: 600 ms the first time, 150 ms after) and **hover delay** (`analyzeHoverDelay`, 100–1500 ms, default 250) — SYS › Analysis.
+
 Planned (P7–P10): **first-impression τ** (P7; decay of presence and image consistency, default 7 days) · **dithered portraits** (P10) · **readable mode** (P10; disables scanlines, flicker, dithering and glitch, one font step up) · **reduced motion** (P10; also honours `prefers-reduced-motion`) · **sound volume / mute** (P10; default low) · **device skin override** (P10; default: the skin follows the corporation).
 
 P5: **story director** on/off (`directorEnabled`, default on; off = the engine's fallback plans the world), **story beat cooldown** (`beatCooldownDays`, 1–14, default 3) and **expedition recap** (`expeditionRecap`, default on) — SYS › World.
@@ -315,7 +326,7 @@ Defaults in code: Desire/Bond defects **off**, show raw values **off**, sprite m
 | P4 | Combat, progression, items | P0, P1 (P2 for workshop) | implemented |
 | P5 | World map, expeditions, missions, director | P0–P4 | implemented |
 | P6 | Dilemmas, disloyalty & the Leash | P0–P5 | implemented |
-| P7a | Analysis tool (contextual explanations) | P0–P6 | planned (`plans/2026-11-12-p7a-analysis-tool.md`) |
+| P7a | Analysis tool (contextual explanations) | P0–P6 | implemented |
 | P7 | Commander profile & traits | P0–P6 | spec |
 | P8 | World options & disposition | P0–P7 | spec |
 | P9 | Impunity, discipline, demands, reputation | P0–P8 | spec |

@@ -134,3 +134,9 @@ Special traits other than `vow_of_distance`; reputation/nicknames (P9); diegetic
 - Keep `seasoning` as a slider, or derive it from persona age at import only?
 - Pool size (7) and the "no 5 at creation" rule.
 - Trait list and numbers.
+
+## Interfaces already provided by P7a (implemented — use, do not rebuild)
+
+- **Explain every new value.** Commander body stats, expression, seasoning, archetype and traits each need a glossary entry (or, for the `traits` registry, a `description`; add the registry to `DESCRIBED_REGISTRIES` / `PLAYER_VISIBLE`) and `data-analyze` on every chip and stat of the COMMANDER FILE step and the CMDR card (`analyzeAttrs` for spans, `analyzeNative` for buttons and labels). The coverage test fails otherwise (overview P12).
+- **Readings:** `registerAnalyzeProvider('glossary:<id>', (subject, env, knowledge) => ({ lines }))`. The spec's "where it is used" lines come from `unitStatSteps`-style builders; numbers go through `knowledge.raw()` where they are not already shown on the sheet. Trait effects get their lines from `entryEffects` (extend `effects.ts` for new effect types).
+- **Trends and sources** read `state.ledger` (`ledgerFor`, `ledgerLabel`); body stats that change through a dispatch need no extra code.

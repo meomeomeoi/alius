@@ -31,7 +31,7 @@ content/core/
 
 ### Registry names
 
-`roles, skills, signatures, statuses, defects, items, affixes, enemies, enemyCategories, regions, nodeTypes, activities, facilities, crimes, corporations, starts, relationshipStates, eventDeltas, dilemmaTemplates, settingsPresets, flags, marks, locations, orders, synergies, recipes, lootTables`
+`roles, skills, signatures, statuses, defects, items, affixes, enemies, enemyCategories, regions, nodeTypes, activities, facilities, crimes, corporations, starts, relationshipStates, eventDeltas, dilemmaTemplates, settingsPresets, flags, marks, locations, orders, synergies, recipes, lootTables, missionTemplates, clocks, rewardTiers, loyaltySigns, glossary`
 
 `marks` stays empty in v1 (overview §10). P3 added the `locations` registry name and strict schemas for `relationshipStates`, `eventDeltas` and `locations`; P4 added `orders`, `synergies`, `recipes`, `lootTables` and strict schemas for `skills`, `enemyCategories`, `enemies`, `affixes` and `items` (all below). `flags` and the P1 setup registries (`corporations, starts, crimes, roles, signatures, defects, statuses`) have strict schemas, described below; the other registries accept any entry that has the base fields until a later package replaces their schema and documents it here.
 
@@ -523,6 +523,24 @@ An effect whose target no longer exists is skipped. Effects of a clock that fill
 ## `defects[].expedition` (P5)
 
 `{ "reveal": 1 }` — the node map shows one more step ahead while a party member has the defect (`echo_bleed`).
+
+## `glossary`, `description` and links (P7a)
+
+The analysis panel (hover, `?` or long-press on anything in the shell) explains things from content.
+
+**`glossary`** — one entry per concept: `{ id, term, short, long?, see?: string[] }`. `short` is at most **160** and `long` at most **600** displayed characters (link markup does not count). `see` lists link targets for the "see also" row. Ids that explain a setting are `setting_<key in snake_case>` (`showRawValues` → `setting_show_raw_values`); the code addresses them as `setting:showRawValues`.
+
+**`description`** — an optional string (≤ 600 displayed characters) on `roles, skills, signatures, statuses, defects, items, affixes, enemies, enemyCategories, regions, nodeTypes, activities, facilities, crimes, corporations, starts, relationshipStates, locations, orders, synergies`. The panel shows `description`, else `summary`, else a fallback (defects: upside and downside; signatures: `mechanic`). The panel also adds a generated **effects** summary from the entry's structured effects, so never repeat numbers in the text. An entry with nothing to show is listed in SYS › Debug › Content warnings.
+
+**`cause`** on `eventDeltas` — a one-line reason shown in a relationship's history (≤ 80 chars): `"cause": "You took her side"`.
+
+**Links** — write `[[target]]` or `[[target|label]]` in `short`, `long`, `description` or `see`. `target` is a glossary id (`trust`) or an address `<registry>:<id>` (`items:item_blade`); `setting:<key>` is allowed and not checked by the loader. The loader reports unknown targets and unknown sources like any broken reference.
+
+```json
+{ "id": "trust", "term": "Trust", "short": "How far a soldier believes in you. It decides whether she obeys.",
+  "long": "It rises when you keep promises. When it drops, her [[loyalty_band|loyalty]] wavers.", "see": ["loyalty_band", "leash_compel"] }
+{ "id": "bloom_fang", "name": "Bloom Fang", "description": "A blade grown from Bloom tissue; its victims keep [[statuses:bleed|bleeding]].", … }
+```
 
 ## Lorebook
 
