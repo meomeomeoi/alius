@@ -33,6 +33,13 @@ describe('no pronoun for the commander in content', () => {
     expect(texts.filter(([, t]) => COMMANDER_PRONOUN.test(t)).map(([where]) => where)).toEqual([]);
   });
 
+  it('the lorebook that goes to the main model', async () => {
+    const { readFile } = await import('node:fs/promises');
+    const book = JSON.parse(await readFile('content/core/lorebook.json', 'utf8')) as { entries: Array<{ comment: string; content: string }> };
+    expect(book.entries.length).toBeGreaterThan(3);
+    expect(book.entries.filter((e) => COMMANDER_PRONOUN.test(e.content)).map((e) => e.comment)).toEqual([]);
+  });
+
   it('the P7 glossary entries', () => {
     const ids = ['body_strength', 'body_endurance', 'body_reflexes', 'expression', 'seasoning', 'archetype', 'presence', 'first_impression', 'image_consistency',
       'commander_traits', 'check_routes', 'delegate', 'exhausted', 'quiet_night', 'presence_unnoticed', 'presence_steady_voice', 'presence_rally', 'setting_first_impression_tau'];

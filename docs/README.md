@@ -25,7 +25,7 @@ Quick facts for a new session: state changes only through registered engine acti
 | `MANUAL_TEST_P0.md` … `MANUAL_TEST_P6.md`, `MANUAL_TEST_P7a.md` | Acceptance checklists that must be run by hand inside SillyTavern |
 | `BALANCE_REPORT.md` | Defect neutrality report from `npm run sim -- --neutrality` (P4) |
 | `plans/` | Implementation plans per package (task-by-task; ticked as they are done; a **Status** line on top says when a plan was executed) |
-| `content/lore.md` | **Placeholder** lore & structure (author rewrites) |
+| `content/lore.md` | **Placeholder** lore & structure (author rewrites); §0 holds the rules every text follows (the squad is women, the player is of any gender). **Read it at the start of every session.** |
 | `content/roles.md` | Roles, stats, skills, signatures, CP orders, equipment (draft numbers) |
 | `content/defects.md` | Defect catalog, 18 entries in 5 categories (draft) |
 

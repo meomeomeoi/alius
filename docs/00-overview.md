@@ -8,7 +8,7 @@
 
 ## 1. Vision
 
-The player is a **convicted commander** put in charge of a penal unit of **defective bio-cybernetic soldiers**. He is far weaker than any of them. He does not fight; he gives orders, makes decisions, and lives with the consequences. His authority is real but not absolute: soldiers obey because of trust, or because of the **Leash** — a corporate override he can request at a steep relational cost.
+The player is a **convicted commander** put in charge of a penal unit of **defective bio-cybernetic soldiers** (all women; the player may be of any gender, see `content/lore.md` §0). The commander is far weaker than any of them. The commander does not fight, but gives orders, makes decisions and lives with the consequences. That authority is real but not absolute: soldiers obey because of trust, or because of the **Leash** — a corporate override that can be requested at a steep relational cost.
 
 The core of the experience is **one-on-one conversation** with characters the player brings in as SillyTavern character cards. Mechanics exist to give those conversations stakes, memory, and consequences; they never replace the player's free-text input.
 
@@ -373,4 +373,5 @@ Action/real-time combat (shelved) · permadeath mode · module system for third-
 - Engine code is pure and covered by vitest; LLM code is tested with recorded fixtures (valid, truncated, invalid, hostile outputs).
 - Never let a failed LLM call corrupt state. Never apply an unvalidated intent.
 - Content text from `content/*.md` drafts goes into JSON as data; do not inline it in code.
+- **No pronoun for the commander** in any text the player or the main model reads (UI, glossary, descriptions, prompts, lorebook, directives); the soldiers are women ("she"). Rules and reasons: `content/lore.md` §0. `tests/content/pronouns.test.ts` guards the content.
 - License: MIT for code; content drafts (lore, art) are the author's and may be released under CC BY 4.0.

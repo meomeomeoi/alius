@@ -10,7 +10,7 @@
     {
       "key": [],
       "comment": "leash_protocol",
-      "content": "Every off-spec unit carries a corporate override implant. The commander cannot trigger it himself; he can only file a request to his corporation's oversight office, which approves a limited number per week. Compel: a neural compliance burst, the unit executes one order and remembers being forced. Suppress: full motor lockdown for minutes, stops a desertion or an attack in progress. Terminate: permanent deactivation, approved only with cause, irreversible. Units know exactly who filed the request.",
+      "content": "Every off-spec unit carries a corporate override implant. The commander cannot trigger it personally and can only file a request to the commander's corporation, whose oversight office approves a limited number per week. Compel: a neural compliance burst, the unit executes one order and remembers being forced. Suppress: full motor lockdown for minutes, stops a desertion or an attack in progress. Terminate: permanent deactivation, approved only with cause, irreversible. Units know exactly who filed the request.",
       "constant": true
     },
     {

@@ -2,6 +2,13 @@
 
 > Everything here is a **placeholder** so the engine can be built and tested. The author writes the real lore. What matters for the agent is the **structure**: every section below maps to a registry or lorebook entry, and every `id` is referenced by data. Names in *italics* are placeholders.
 
+## 0. Who is who (rules for every text; the author keeps them when rewriting)
+
+- **The squad is women.** Every soldier, named or grunt, is a woman: text about them uses "she / her". Cards the player imports are female characters.
+- **The player is of any gender.** The commander is the player's persona and may be a man, a woman or anyone else; the game never assumes which. Text that the player or the main model reads (UI, glossary, descriptions, `promptHint`, the lorebook, directives) **never gives the commander a pronoun**: write "the commander", "you", or rephrase. The soldiers' own "she / her" stay. A soldier's feeling about the commander is written as "she ... the commander", never "she ... him".
+- Expression (very feminine … very masculine) is only a description of how the commander presents; it has no mechanical value and does not change this rule.
+- NPCs outside the squad (clerks, officers, enemies) may have any gender the author gives them.
+
 ## 1. Premise (lorebook: `world_premise`, constant)
 
 Decades ago *the Bloom* — a viral agent that rewrites living tissue — turned populations, animals and whole ecosystems into biological monsters. States collapsed; **corporations** did not. They now own cities, laws and armies. Their soldiers are **bio-cybernetic constructs**: grown, augmented, flashed with combat firmware, and owned as assets.
@@ -12,7 +19,7 @@ The scrap leads the scrap. That is the joke every corporate clerk makes about th
 
 ## 2. The Leash (lorebook: `leash_protocol`, constant)
 
-Every off-spec unit carries a corporate override implant. The commander cannot trigger it himself — he can only **file a request** to his corporation's oversight office, which approves a limited number per week.
+Every off-spec unit carries a corporate override implant. The commander cannot trigger it personally and can only **file a request** to the corporation's oversight office, which approves a limited number per week.
 
 - **Compel** — neural compliance burst: the unit executes one order. She remembers being forced.
 - **Suppress** — full motor lockdown for minutes: stops a desertion or an attack in progress.
