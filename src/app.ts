@@ -1339,6 +1339,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     getLoad: () => load,
     replaceState,
     getContentErrors: () => contentErrors,
+    analyze: { registries: () => registries },
     debugTools,
     dispatch: (action) => api.dispatch(action, { expectChatId: st.getActiveChat()?.chatId }),
     onSettingsChanged: () => {

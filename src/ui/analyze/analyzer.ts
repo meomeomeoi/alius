@@ -8,7 +8,7 @@ import { placePanel } from './place';
 /**
  * Interaction of the analysis tool (P7a §1): hover, `?`/F1, long-press, pin and drill-down. One
  * delegated set of listeners on the shell root and on `window`; `destroy()` removes all of them
- * and every timer. Nothing here talks to the engine or to SillyTavern.
+ * and every timer. Nothing here talks to the engine or to the host application.
  */
 
 export const LONG_PRESS_MS = 400;

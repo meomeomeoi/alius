@@ -207,9 +207,9 @@ docs/** (Task 16), tests/** mirror src, tests/fixtures/analyze/, tests/helpers/a
 **Interfaces:**
 - Produces: the analyzer runs whenever the shell is open; `ShellApi` unchanged.
 
-- [ ] **Step 1: Write the failing tests** — shell: `hovering a marked element inside the open shell shows the panel`; `closing the shell removes the panel and its listeners`; `refresh closes a transient panel and keeps a pinned one`; `without analyze deps the shell works as before`. Architecture: `the analysis layer and the analyze UI never reach the LLM or SillyTavern` — every file under `src/analysis` and `src/ui/analyze`: no import path matching `/\/(llm|scene|world|loyalty)\//` or `st:`, `/st/` only as `import type`, no `fetch(` and no `SillyTavern`; `src/analysis` also imports nothing from `/ui/`.
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** `npx vitest run` → PASS; `npm run typecheck`.
-- [ ] **Step 5: Commit** `feat: wire the analysis tool into the shell`.
+- [x] **Step 1: Write the failing tests** — shell: `hovering a marked element inside the open shell shows the panel`; `closing the shell removes the panel and its listeners`; `refresh closes a transient panel and keeps a pinned one`; `without analyze deps the shell works as before`. Architecture: `the analysis layer and the analyze UI never reach the LLM or SillyTavern` — every file under `src/analysis` and `src/ui/analyze`: no import path matching `/\/(llm|scene|world|loyalty)\//` or `st:`, `/st/` only as `import type`, no `fetch(` and no `SillyTavern`; `src/analysis` also imports nothing from `/ui/`.
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** `npx vitest run` → PASS; `npm run typecheck`.
+- [x] **Step 5: Commit** `feat: wire the analysis tool into the shell`.
 
 **Chunk (a) ends here.** Stop and report.
 

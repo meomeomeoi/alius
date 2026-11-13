@@ -1,6 +1,7 @@
 import type { CampaignState } from '../../engine/state/types';
 import { getSettings, updateSettings } from '../../settings';
-import type { ContentError } from '../../content/types';
+import type { ContentError, Registries } from '../../content/types';
+import { attachAnalyzer, type Analyzer } from '../analyze/analyzer';
 import type { StAdapter } from '../../st/adapter';
 import type { LoadResult } from '../../st/persistence';
 import { h } from '../dom';
@@ -52,6 +53,8 @@ export interface ShellDeps {
   debugTools?: Array<{ label: string; run: () => void }>;
   /** Called after the SYS tab changed a setting (the app mirrors intimacy settings into the campaign). */
   onSettingsChanged?: () => void;
+  /** P7a: content for the analysis tool; without it the shell runs without hover explanations. */
+  analyze?: { registries: () => Registries };
 }
 
 const PANEL_ID = 'alius-panel';
@@ -82,6 +85,7 @@ export function createShell(deps: ShellDeps): ShellApi {
   let tabBar: ReturnType<typeof createTabBar> | null = null;
   let panel: HTMLElement | null = null;
   let statusHost: HTMLElement | null = null;
+  let analyzer: Analyzer | null = null;
 
   const isOpen = () => root !== null;
 
@@ -124,6 +128,7 @@ export function createShell(deps: ShellDeps): ShellApi {
         getLoad: deps.getLoad,
         replaceState: deps.replaceState,
         getContentErrors: deps.getContentErrors,
+        getRegistries: deps.analyze?.registries,
         dispatch: deps.dispatch,
         debugTools: deps.debugTools,
         toast,
@@ -191,7 +196,7 @@ export function createShell(deps: ShellDeps): ShellApi {
         h(
           'div',
           { class: 'alius-footer' },
-          h('span', { class: 'alius-frame-corner' }, '╚═ 1-8 tabs · ←/→ move · Alt+Shift+A toggle '),
+          h('span', { class: 'alius-frame-corner' }, '╚═ 1-8 tabs · ←/→ move · ? analyze · Alt+Shift+A toggle '),
           h('span', { class: 'alius-frame-fill', 'aria-hidden': 'true' }, FRAME_FILL),
           h('span', { class: 'alius-frame-corner' }, '╝'),
         ),
@@ -203,6 +208,12 @@ export function createShell(deps: ShellDeps): ShellApi {
     toasts = createToasts(toastHost);
     modals = createModalHost(modalLayer);
     document.body.append(root);
+    const analyze = deps.analyze;
+    if (analyze) {
+      analyzer = attachAnalyzer(root, {
+        getEnv: () => ({ registries: analyze.registries(), state: deps.getState(), settings: getSettings(st) }),
+      });
+    }
     applySettings();
     renderBanner();
     renderView();
@@ -215,6 +226,8 @@ export function createShell(deps: ShellDeps): ShellApi {
     if (!root) return;
     modals?.cancel();
     toasts?.dispose();
+    analyzer?.destroy();
+    analyzer = null;
     root.remove();
     root = null;
     if (previousFocus && document.contains(previousFocus)) previousFocus.focus();
@@ -273,6 +286,7 @@ export function createShell(deps: ShellDeps): ShellApi {
     },
     refresh() {
       if (!root) return;
+      analyzer?.refresh();
       applySettings();
       renderBanner();
       if (router.current() === 'pda' && panel) {

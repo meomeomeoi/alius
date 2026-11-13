@@ -5,6 +5,7 @@ import { FakeStAdapter } from '../../src/st/fake';
 import { createCampaign } from '../../src/engine/state/create';
 import type { CampaignState } from '../../src/engine/state/types';
 import type { LoadResult } from '../../src/st/persistence';
+import { emptyRegistries } from '../../src/content/types';
 
 const CHAT = { chatId: 'c', isGroup: true, groupId: 'g' };
 let shells: Array<{ destroy(): void }> = [];
@@ -578,3 +579,132 @@ describe('SYS combat settings', () => {
     expect(st.settings.analyzeHoverDelay).toBe(600);
   });
 });
+
+describe('analysis tool in the shell (P7a)', () => {
+  const registries = () => {
+    const reg = emptyRegistries();
+    reg.glossary.set('trust', { id: 'trust', term: 'Trust', short: 'Belief in you.' });
+    return reg;
+  };
+  const analyzeDeps = { analyze: { registries } };
+  const pointer = (type: string, target: EventTarget, init: Record<string, unknown> = {}) =>
+    target.dispatchEvent(Object.assign(new Event(type, { bubbles: true, cancelable: true }), { pointerType: 'mouse', clientX: 40, clientY: 40, ...init }));
+  const panel = () => document.querySelector('#alius-shell .alius-analyze');
+
+  /** An open shell whose SQUAD tab shows one marked chip. */
+  function open(extra: Partial<ShellDeps> = analyzeDeps, settings: Record<string, unknown> = { analyzeAnimation: 'off' }) {
+    const ctx = setup({ settings, extra });
+    ctx.shell.registerTab('squad', (host) => {
+      const chip = document.createElement('span');
+      chip.className = 'alius-chip';
+      chip.setAttribute('data-analyze', 'glossary:trust');
+      chip.textContent = 'TRUST';
+      host.append(chip);
+    });
+    ctx.shell.open();
+    const chip = document.querySelector<HTMLElement>('#alius-shell [data-analyze]')!;
+    return { ...ctx, chip };
+  }
+
+  it('hovering a marked element inside the open shell shows the panel', () => {
+    vi.useFakeTimers();
+    try {
+      const { chip } = open();
+      pointer('pointerover', chip);
+      expect(panel()).toBeNull();
+      vi.advanceTimersByTime(250);
+      expect(panel()).not.toBeNull();
+      expect(panel()!.textContent).toContain('Belief in you.');
+      expect(root()!.contains(panel())).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('the footer hints at the analysis key', () => {
+    open();
+    expect(document.querySelector('#alius-shell .alius-footer')!.textContent).toContain('? analyze');
+  });
+
+  it('closing the shell removes the panel and its listeners', () => {
+    vi.useFakeTimers();
+    try {
+      const { shell, chip } = open();
+      pointer('pointerover', chip);
+      vi.advanceTimersByTime(250);
+      expect(panel()).not.toBeNull();
+      const removed = vi.spyOn(window, 'removeEventListener');
+      shell.close();
+      expect(panel()).toBeNull();
+      expect(removed.mock.calls.map((c) => c[0])).toEqual(expect.arrayContaining(['keydown', 'pointerdown', 'pointermove', 'pointerup', 'pointercancel']));
+      removed.mockRestore();
+      expect(vi.getTimerCount()).toBe(0);
+      // reopening starts clean
+      shell.open();
+      expect(panel()).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('a pending hover does not fire after the shell closed', () => {
+    vi.useFakeTimers();
+    try {
+      const { shell, chip } = open();
+      pointer('pointerover', chip);
+      shell.close();
+      vi.advanceTimersByTime(1000);
+      expect(panel()).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('refresh closes a transient panel and keeps a pinned one', () => {
+    vi.useFakeTimers();
+    try {
+      const { shell, chip } = open();
+      pointer('pointerover', chip);
+      vi.advanceTimersByTime(250);
+      expect(panel()).not.toBeNull();
+      shell.refresh();
+      expect(panel()).toBeNull();
+      // pinned: Shift while leaving
+      const chip2 = document.querySelector<HTMLElement>('#alius-shell [data-analyze]')!;
+      pointer('pointerover', chip2);
+      vi.advanceTimersByTime(250);
+      pointer('pointerout', chip2, { relatedTarget: document.body, shiftKey: true });
+      vi.advanceTimersByTime(500);
+      expect(panel()).not.toBeNull();
+      shell.refresh();
+      expect(panel()).not.toBeNull();
+      expect(panel()!.textContent).toContain('Belief in you.');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('without analyze deps the shell works as before', () => {
+    vi.useFakeTimers();
+    try {
+      const { chip, shell } = open({});
+      pointer('pointerover', chip);
+      vi.advanceTimersByTime(1000);
+      expect(panel()).toBeNull();
+      expect(() => shell.refresh()).not.toThrow();
+      expect(() => shell.close()).not.toThrow();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('hands the registries to SYS so Debug can list missing descriptions', () => {
+    const reg = emptyRegistries();
+    reg.items.set('item_a', { id: 'item_a', name: 'Blade' });
+    const { shell } = setup({ settings: { debug: true }, extra: { analyze: { registries: () => reg } } });
+    shell.open();
+    shell.showTab('sys');
+    expect(document.querySelector('#alius-shell .alius-content-warnings')!.textContent).toContain('items · item_a');
+  });
+});
+
