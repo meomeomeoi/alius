@@ -317,25 +317,29 @@ Defaults in code: Desire/Bond defects **off**, show raw values **off**, sprite m
 
 ## 9. Packages
 
-| Pkg | Name | Depends on | Status |
-|---|---|---|---|
-| P0 | Foundation: toolchain, ST adapter, state & saves, content registries, LLM orchestration, Alius shell | — | implemented |
-| P1 | Campaign setup & character import | P0 | implemented |
-| P2 | Calendar, activities, base & economy | P0, P1 | implemented |
-| P3 | Scenes, relationships, memory, PDA comms | P0–P2 | implemented |
-| P4 | Combat, progression, items | P0, P1 (P2 for workshop) | implemented |
-| P5 | World map, expeditions, missions, director | P0–P4 | implemented |
-| P6 | Dilemmas, disloyalty & the Leash | P0–P5 | implemented |
-| P7a | Analysis tool (contextual explanations) | P0–P6 | implemented |
-| P7 | Commander profile & traits | P0–P6 | spec |
-| P8 | World options & disposition | P0–P7 | spec |
-| P9 | Impunity, discipline, demands, reputation | P0–P8 | spec |
-| P10 | Visual upgrade (hub, device skins, voices) | P0–P6 | spec |
-| P11 | Prologue & onboarding | P7, P8, P10 | spec |
-| P12 | Special traits: Secret Frequency, Bloom-induced Paranoia, Web of Debts | P5, P6, P7, P9 | spec |
-| P13 | LEASHSWAP mode | P0, P5, P6, P7, P9, P12 | spec |
+| # | Pkg | Name | Depends on | Status |
+|---|---|---|---|---|
+| 1 | P0 | Foundation: toolchain, ST adapter, state & saves, content registries, LLM orchestration, Alius shell | — | implemented |
+| 2 | P1 | Campaign setup & character import | P0 | implemented |
+| 3 | P2 | Calendar, activities, base & economy | P0, P1 | implemented |
+| 4 | P3 | Scenes, relationships, memory, PDA comms | P0–P2 | implemented |
+| 5 | P4 | Combat, progression, items | P0, P1 (P2 for workshop) | implemented |
+| 6 | P5 | World map, expeditions, missions, director | P0–P4 | implemented |
+| 7 | P6 | Dilemmas, disloyalty & the Leash | P0–P5 | implemented |
+| 8 | P7a | Analysis tool (contextual explanations) | P0–P6 | implemented |
+| 9 | P7 | Commander profile & traits | P0–P6 | spec |
+| 10 | P8 | World options & disposition | P0–P7 | spec |
+| 11 | P9 | Impunity, discipline, demands, reputation | P0–P8 | spec |
+| 12 | P10 | Visual upgrade (hub, device skins, voices) | P0–P6 | spec |
+| 13 | P11 | Prologue & onboarding | P7, P8, P10 | spec |
+| 14 | P9d | Desire & bonds (bond profile, opt-in content categories, lead, Want, relationship rules) | P3, P9 | spec |
+| 15 | P9b | Squad power structure (voting, hierarchy/leader, outside perception, scapegoat) | P8, P9, P9d | spec |
+| 16 | P9c | Personal pressure (device access levels, bookings, tokens, squad secrets, wagers) | P9b, P9d, P10 | spec |
+| 17 | P10b | Intimate immersion UI (telemetry, living DMs, night door, handwriting, device marks) | P10, P9c, P9d | spec |
+| 18 | P12 | Special traits: Secret Frequency, Bloom-induced Paranoia, Web of Debts | P5, P6, P7, P9 | spec |
+| 19 | P13 | LEASHSWAP mode | P0, P5, P6, P7, P9, P9b, P9d, P11, P12 | spec |
 
-Order and session plan for P7a–P13: `ROADMAP-next.md`.
+The table is in implementation order: take the first row whose status is not `implemented`. Why this order, and the session chunks for P7a onward: `ROADMAP-next.md`.
 
 "Implemented" = automated tests pass; the in-SillyTavern checklists `MANUAL_TEST_P*.md` are run by the project owner. Specs of implemented packages are **historical**: the code is the source of truth where they differ. An implemented package's spec ends with an **Implemented as** section (or a status line) listing where the code differs from the original draft: the code wins. Work not yet started has plans only in `docs/plans/` when someone wrote one; if none exists, write it first (see `CLAUDE.md`).
 

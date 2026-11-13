@@ -56,7 +56,7 @@ Rule of thumb from P0–P6: one chunk per session, start each session with the p
 ## Pending overview changes (apply in the P9d planning session)
 
 1. §8 Settings: the single "explicit scenes allowed" switch is superseded by P9d content categories (all off by default; enabling = full consent; characters' own limits still apply).
-2. §9 Packages table: add P9b, P9c, P9d, P10b with the dependencies above; P13 now also depends on P9b and P9d.
+2. ~~§9 Packages table~~ — applied 2026-11-13 (P9b–P9d, P10b added, order column).
 3. §6 Data model: `Unit.bond` (P9d §1); campaign `hierarchy`, `votes[]` (P9b); world options `squad_assertiveness`, `voting`.
 
 ## Author to-do (can run in parallel)
