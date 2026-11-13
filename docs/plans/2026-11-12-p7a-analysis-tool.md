@@ -348,9 +348,9 @@ Reads `docs/content/roles.md` and `docs/content/defects.md`; texts go into JSON 
   - Setup: start cards `starts:<id>`, crime cards `crimes:<id>`; calibration role cards `roles:<id>`, signature cards `signatures:<id>`, defect cards `defects:<id>` (all `alius-option` added next to `alius-card`); value sliders `glossary:value_<axis>`; baseline sliders `glossary:<axis>` (option).
   - SYS: every `field()` gets `alius-option` and `setting:<key>` (budgets → `setting:budgets`, difficulty → `setting:difficulty`).
 
-- [ ] **Step 1: Write the failing tests** — coverage for combat (build as `tests/ui/combat.test.ts` does, with a bleeding, strained unit and a synergy), the node map of a started expedition, the dilemma panel (an option with `check`), the setup wizard (start, crime, calibration steps), SYS: `every marker has data-analyze`, `every address resolves`, minimum counts (combat 10, node map 3, dilemma 2, setup 6, SYS 30); `no network or LLM call happens while every marked element on every screen is analyzed` (`globalThis.fetch` spy and the `FakeStAdapter` request log stay empty; all markers opened through `Analyzer.openFor`).
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** `npx vitest run` → PASS; `npm run typecheck`.
-- [ ] **Step 5: Commit** `feat(ui): analysis markers on combat, expedition nodes, dilemmas, setup and SYS`.
+- [x] **Step 1: Write the failing tests** — coverage for combat (build as `tests/ui/combat.test.ts` does, with a bleeding, strained unit and a synergy), the node map of a started expedition, the dilemma panel (an option with `check`), the setup wizard (start, crime, calibration steps), SYS: `every marker has data-analyze`, `every address resolves`, minimum counts (combat 10, node map 3, dilemma 2, setup 6, SYS 30); `no network or LLM call happens while every marked element on every screen is analyzed` (`globalThis.fetch` spy and the `FakeStAdapter` request log stay empty; all markers opened through `Analyzer.openFor`).
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** `npx vitest run` → PASS; `npm run typecheck`.
+- [x] **Step 5: Commit** `feat(ui): analysis markers on combat, expedition nodes, dilemmas, setup and SYS`.
 
 ---
 

@@ -14,7 +14,7 @@ import type { LoadResult } from '../../st/persistence';
 import type { ArcPath, ArcPathInfo } from '../../engine/arcs';
 import type { LeashKind } from '../../engine/state/types';
 import { stressBand } from '../../engine/combat/stress';
-import { analyzeNative } from '../analyze/mark';
+import { analyzeAttrs, analyzeNative } from '../analyze/mark';
 import { h, type Child } from '../dom';
 import { valueBand } from './bands';
 import { renderSkillTree } from './skillTree';
@@ -95,7 +95,7 @@ function defectBlock(reg: Registries, d: Unit['defects'][number]): HTMLElement {
   return h(
     'div',
     { class: 'alius-defect' },
-    h('strong', { class: 'alius-chip', ...analyzeNative(`defects:${d.id}`) }, String(def.name)),
+    h('strong', { class: 'alius-chip', ...analyzeAttrs(`defects:${d.id}`) }, String(def.name)),
     h('span', { class: 'alius-dim' }, ` [${String(def.category)}]`),
     d.origin ? line('Origin', d.origin) : null,
     line('Lore', String(def.lore)),
@@ -114,7 +114,7 @@ function relationLine(unit: Unit, state: CampaignState, ctx: SquadTabCtx): HTMLE
   const raw = ctx.settings().showRawValues;
   const num = (n: number) => (raw ? ` (${n})` : '');
   const live = { unitId: unit.id };
-  const chip = (text: string, address: string, data?: Record<string, unknown>) => h('span', { class: 'alius-chip', ...analyzeNative(address, data) }, text);
+  const chip = (text: string, address: string, data?: Record<string, unknown>) => h('span', { class: 'alius-chip', ...analyzeAttrs(address, data) }, text);
   const parts = [
     chip(`${String(ctx.registries.relationshipStates.get(rel.stateId)?.name ?? rel.stateId).toUpperCase()}`, `relationshipStates:${rel.stateId}`),
     chip(`TRUST ${trustBand(rel.trust).toUpperCase()}${num(rel.trust)}`, 'glossary:trust', live),
@@ -154,7 +154,7 @@ function equipmentBlock(unit: Unit, ctx: SquadTabCtx, state: CampaignState): HTM
       text = 'UNKNOWN';
       flag = 'UNKNOWN';
     } else {
-      text = h('span', { class: 'alius-chip', ...analyzeNative(`items:${inst.itemId}`) }, `${String(tpl.name)} [${inst.rarity}]${inst.upgrade > 0 ? ` +${inst.upgrade}` : ''}`);
+      text = h('span', { class: 'alius-chip', ...analyzeAttrs(`items:${inst.itemId}`) }, `${String(tpl.name)} [${inst.rarity}]${inst.upgrade > 0 ? ` +${inst.upgrade}` : ''}`);
       flag = canEquip(reg, unit, inst);
     }
     const options = state.inventory.filter((i) => reg.items.get(i.itemId)?.slot === slot && canEquip(reg, unit, i) === null);
@@ -270,11 +270,11 @@ function unitBlock(unit: Unit, ctx: SquadTabCtx, state: CampaignState): HTMLElem
   const sigTpl = reg.signatures.get(unit.signatureSkill.templateId);
   const values = VALUE_AXES.map((axis) => {
     const v = unit.values[axis];
-    return h('span', { class: 'alius-stat', ...analyzeNative(`glossary:value_${axis}`) }, `${axis.toUpperCase()}: ${raw ? (v > 0 ? `+${v}` : String(v)) : valueBand(v)}`);
+    return h('span', { class: 'alius-stat', ...analyzeAttrs(`glossary:value_${axis}`) }, `${axis.toUpperCase()}: ${raw ? (v > 0 ? `+${v}` : String(v)) : valueBand(v)}`);
   });
   const live = { unitId: unit.id };
-  const chip = (text: string, address: string, data?: Record<string, unknown>) => h('span', { class: 'alius-chip', ...analyzeNative(address, data) }, text);
-  const stat = (text: string, address: string, data?: Record<string, unknown>) => h('span', { class: 'alius-stat', ...analyzeNative(address, data) }, text);
+  const chip = (text: string, address: string, data?: Record<string, unknown>) => h('span', { class: 'alius-chip', ...analyzeAttrs(address, data) }, text);
+  const stat = (text: string, address: string, data?: Record<string, unknown>) => h('span', { class: 'alius-stat', ...analyzeAttrs(address, data) }, text);
   const roleEntry = reg.roles.get(unit.roleId);
 
   return h(
@@ -311,7 +311,7 @@ function unitBlock(unit: Unit, ctx: SquadTabCtx, state: CampaignState): HTMLElem
         ? []
         : [
             h('h4', {}, 'SIGNATURE'),
-            h('p', {}, sigTpl ? h('strong', { class: 'alius-chip', ...analyzeNative(`signatures:${unit.signatureSkill.templateId}`) }, unit.signatureSkill.name) : h('strong', {}, unit.signatureSkill.name), ` — ${unit.signatureSkill.description}`),
+            h('p', {}, sigTpl ? h('strong', { class: 'alius-chip', ...analyzeAttrs(`signatures:${unit.signatureSkill.templateId}`) }, unit.signatureSkill.name) : h('strong', {}, unit.signatureSkill.name), ` — ${unit.signatureSkill.description}`),
             h('p', { class: 'alius-dim' }, `Template: ${nameOf(sigTpl, unit.signatureSkill.templateId)} — ${sigTpl ? String(sigTpl.mechanic) : ''}`),
           ]),
       // Re-sync overwrites numbers on a running campaign, so it follows the SYS edit lock.

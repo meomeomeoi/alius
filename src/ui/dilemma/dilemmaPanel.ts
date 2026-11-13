@@ -1,4 +1,6 @@
 import type { DilemmaScale } from '../../engine/dilemma/types';
+import type { SocialStat } from '../../engine/social';
+import { analyzeNative } from '../analyze/mark';
 import { h } from '../dom';
 
 export interface DilemmaPanelCtx {
@@ -7,7 +9,8 @@ export interface DilemmaPanelCtx {
   scale: DilemmaScale;
   /** The model is still writing the options: nothing to choose yet. */
   waiting: boolean;
-  options: Array<{ index: number; label: string; disabled: string | null; hasCheck: boolean }>;
+  /** `check` and `requires` are the option's tags; what it would change is never passed in. */
+  options: Array<{ index: number; label: string; disabled: string | null; hasCheck: boolean; check?: { stat: SocialStat; rank: number }; requires?: { stat: SocialStat; rank: number } }>;
   onChoose(index: number): void;
 }
 
@@ -28,7 +31,8 @@ export function renderDilemma(host: HTMLElement, ctx: DilemmaPanelCtx): void {
   const list = h('div', { class: 'alius-dilemma-options' });
   for (const o of ctx.options) {
     const button = h('button', {
-      type: 'button', class: 'alius-btn', 'data-dilemma-option': String(o.index), disabled: o.disabled !== null,
+      type: 'button', class: 'alius-btn alius-option', 'data-dilemma-option': String(o.index), disabled: o.disabled !== null,
+      ...analyzeNative('glossary:decision_option', { scale: ctx.scale, ...(o.check ? { check: o.check } : {}), ...(o.requires ? { requires: o.requires } : {}) }),
       onclick: () => {
         if (chosen || o.disabled !== null) return;
         chosen = true;

@@ -1,4 +1,5 @@
 import type { MapCell } from '../../engine/world/nodeMap';
+import { analyzeAttrs, analyzeNative } from '../analyze/mark';
 import { h } from '../dom';
 
 export interface NodeMapView {
@@ -8,6 +9,8 @@ export interface NodeMapView {
   onMove: (nodeId: string) => void;
   /** Node type names for the nodes whose type is known (accessibility labels). */
   labels?: Record<string, string>;
+  /** Node id → node type id, for the nodes whose type is known (the analysis tool explains them). */
+  types?: Record<string, string>;
 }
 
 /** Layers left to right joined by `──`; options are buttons, hidden types read `[ ]`, the walked path is highlighted. */
@@ -22,10 +25,11 @@ export function renderNodeMap(host: HTMLElement, view: NodeMapView): void {
       const status = cell.state === 'option' ? 'reachable' : cell.state === 'ahead' ? 'ahead' : cell.state;
       // `alius-option` is reserved for the analysis markers (P7a): a reachable node is `alius-reachable`
       const classes = ['alius-node', cell.state === 'option' ? 'alius-reachable' : `alius-${cell.state}`, ...(cell.state === 'visited' || cell.state === 'current' ? ['alius-path'] : [])].join(' ');
+      const address = known && view.types?.[cell.nodeId] ? `nodeTypes:${view.types[cell.nodeId]}` : 'glossary:unknown_node';
       const attrs = { class: classes, 'data-node': cell.nodeId, 'aria-label': `${name}, ${status}` };
       col.append(cell.state === 'option'
-        ? h('button', { ...attrs, type: 'button', onclick: () => view.onMove(cell.nodeId) }, cell.text)
-        : h('span', attrs, cell.text));
+        ? h('button', { ...attrs, class: `${classes} alius-option`, ...analyzeNative(address), type: 'button', onclick: () => view.onMove(cell.nodeId) }, cell.text)
+        : h('span', { ...attrs, class: `${classes} alius-chip`, ...analyzeAttrs(address) }, cell.text));
     }
     root.append(col);
   });

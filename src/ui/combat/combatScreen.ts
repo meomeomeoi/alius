@@ -13,7 +13,8 @@ import { Rng } from '../../engine/rng';
 import type { CampaignState, Unit } from '../../engine/state/types';
 import type { AliusSettings } from '../../settings';
 import type { StAdapter } from '../../st/adapter';
-import { h } from '../dom';
+import { analyzeAttrs, analyzeNative } from '../analyze/mark';
+import { h, type Child } from '../dom';
 import { cutIn } from '../scene/cutIn';
 import { bar, statusGlyph } from './bars';
 import { attachCombatKeys } from './keys';
@@ -258,7 +259,7 @@ export function renderCombatScreen(host: HTMLElement, ctx: CombatScreenCtx): Com
     return box;
   }
 
-  function card(state: CampaignState, c: Combatant, synergyNames: string[], legal: boolean, selected: boolean): HTMLElement {
+  function card(state: CampaignState, c: Combatant, synergyIds: string[], legal: boolean, selected: boolean): HTMLElement {
     const cs = state.combat!;
     const band = c.side === 'squad' ? stressBand(c.stress) : 'calm';
     const el = h('div', {
@@ -267,15 +268,21 @@ export function renderCombatScreen(host: HTMLElement, ctx: CombatScreenCtx): Com
       role: 'button', tabindex: '-1', onclick: () => { const s = ctx.getState(); if (s) clickCard(s, c.cid); },
     });
     const lines: HTMLElement[] = [h('div', { class: 'alius-cc-name' }, `${nameOf(state, c)}${c.level > 1 ? ` L${c.level}` : ''}`)];
-    lines.push(h('div', { class: 'alius-cc-hp' }, `HP ${bar(c.hp, c.maxHp)} ${c.hp}/${c.maxHp}`));
-    if (c.side === 'squad') lines.push(h('div', { class: 'alius-cc-st' }, `ST ${bar(c.stress, 100)} ${c.stress}`));
-    const tags: string[] = c.statuses.map((s) => statusGlyph(s.id, s.stacks));
-    if (c.downed) tags.push('DOWN');
-    if (band === 'strained') tags.push('STRAINED');
-    if (band === 'breaking') tags.push('BREAKING');
-    if (c.breakdown) tags.push('BREAKDOWN');
-    if (tags.length > 0) lines.push(h('div', { class: 'alius-cc-tags' }, tags.map((t) => `[${t}]`).join(' ')));
-    if (synergyNames.length > 0) lines.push(h('div', { class: 'alius-cc-syn' }, synergyNames.join(' · ')));
+    const live = c.unitId ? { unitId: c.unitId } : undefined;
+    lines.push(h('div', { class: 'alius-cc-hp alius-stat', ...analyzeAttrs('glossary:stat_hp', live) }, `HP ${bar(c.hp, c.maxHp)} ${c.hp}/${c.maxHp}`));
+    if (c.side === 'squad') lines.push(h('div', { class: 'alius-cc-st alius-stat', ...analyzeAttrs('glossary:stress', live) }, `ST ${bar(c.stress, 100)} ${c.stress}`));
+    // tags keep their `[TAG]` text; each one explains itself
+    const tags: Array<{ text: string; address: string }> = c.statuses.map((s) => ({ text: statusGlyph(s.id, s.stacks), address: `statuses:${s.id}` }));
+    if (c.downed) tags.push({ text: 'DOWN', address: 'glossary:downed' });
+    if (band === 'strained') tags.push({ text: 'STRAINED', address: 'glossary:stress_strained' });
+    if (band === 'breaking') tags.push({ text: 'BREAKING', address: 'glossary:stress_breaking' });
+    if (c.breakdown) tags.push({ text: 'BREAKDOWN', address: 'glossary:stress_breakdown' });
+    const chip = (text: string, address: string) => h('span', { class: 'alius-chip', ...analyzeAttrs(address) }, text);
+    const joined = (items: HTMLElement[], sep: string): Child[] => items.flatMap((el, i) => (i === 0 ? [el] : [sep, el]));
+    if (tags.length > 0) lines.push(h('div', { class: 'alius-cc-tags' }, ...joined(tags.map((t) => chip(`[${t.text}]`, t.address)), ' ')));
+    if (synergyIds.length > 0) {
+      lines.push(h('div', { class: 'alius-cc-syn' }, ...joined(synergyIds.map((id) => chip((reg.synergies.get(id)?.name as string | undefined) ?? id, `synergies:${id}`)), ' · ')));
+    }
     el.append(headCrop(state, c), h('div', { class: 'alius-cc-body' }, ...lines));
     return el;
   }
@@ -316,7 +323,7 @@ export function renderCombatScreen(host: HTMLElement, ctx: CombatScreenCtx): Com
     const legal = new Set(targetsOfSelection(state));
     const fielded = cs.combatants.filter((c) => c.side === 'squad' && c.unitId).map((c) => c.unitId!);
     const synergyOf = (unitId?: string): string[] => unitId
-      ? getSynergies(state, reg, fielded).filter((s) => s.unitId === unitId).map((s) => (reg.synergies.get(s.synergyId)?.name as string | undefined) ?? s.synergyId)
+      ? getSynergies(state, reg, fielded).filter((s) => s.unitId === unitId).map((s) => s.synergyId)
       : [];
     const row = (side: 'enemy' | 'squad', r: 'front' | 'back'): HTMLElement => {
       const cards = cs.combatants.filter((c) => c.side === side && c.row === r)
@@ -340,8 +347,8 @@ export function renderCombatScreen(host: HTMLElement, ctx: CombatScreenCtx): Com
     if (waiting) {
       skillRows(state, cs.awaitingCid!).forEach((r, i) => {
         skillButtons.push(h('button', {
-          type: 'button', class: `alius-btn alius-skill${selSkill === r.skill.id ? ' alius-skill-selected' : ''}`,
-          'data-skill': r.skill.id, 'data-key': String(i + 1), disabled: r.reason !== null, title: r.skill.description,
+          type: 'button', class: `alius-btn alius-skill alius-option${selSkill === r.skill.id ? ' alius-skill-selected' : ''}`,
+          'data-skill': r.skill.id, ...analyzeNative(`skills:${r.skill.id}`), 'data-key': String(i + 1), disabled: r.reason !== null, title: r.skill.description,
           onclick: () => {
             const s = ctx.getState();
             if (!s) return;
@@ -360,8 +367,8 @@ export function renderCombatScreen(host: HTMLElement, ctx: CombatScreenCtx): Com
       const blocked = !waiting || !pool.some((t) => checkOrder(e, id, t) === null);
       const cost = waiting ? orderCost(e, id, kind === 'ally' ? cs.awaitingCid : undefined) : (o.cost as number);
       return h('button', {
-        type: 'button', class: `alius-btn alius-order${orderMode === id ? ' alius-skill-selected' : ''}`,
-        'data-order': id, 'data-key': 'QWERT'[i], disabled: blocked,
+        type: 'button', class: `alius-btn alius-order alius-option${orderMode === id ? ' alius-skill-selected' : ''}`,
+        'data-order': id, ...analyzeNative(`orders:${id}`), 'data-key': 'QWERT'[i], disabled: blocked,
         title: String(o.summary),
         onclick: () => {
           const s = ctx.getState();
@@ -398,8 +405,8 @@ export function renderCombatScreen(host: HTMLElement, ctx: CombatScreenCtx): Com
     root.append(
       h('div', { class: 'alius-combat-head' },
         h('span', {}, `ROUND ${cs.round}`),
-        h('span', { class: 'alius-combat-cp' }, `CP ${'●'.repeat(cs.cp)}${'○'.repeat(Math.max(0, 5 - cs.cp))}`),
-        ctx.onCompel ? h('span', { class: 'alius-combat-leash' }, `LEASH ${Math.max(0, state.leash.authorizationsLeft - (cs.compels?.length ?? 0))}`) : null,
+        h('span', { class: 'alius-combat-cp alius-stat', ...analyzeAttrs('glossary:cp') }, `CP ${'●'.repeat(cs.cp)}${'○'.repeat(Math.max(0, 5 - cs.cp))}`),
+        ctx.onCompel ? h('span', { class: 'alius-combat-leash alius-stat', ...analyzeAttrs('glossary:leash') }, `LEASH ${Math.max(0, state.leash.authorizationsLeft - (cs.compels?.length ?? 0))}`) : null,
         cs.phase === 'lost_pending' ? h('span', { class: 'alius-combat-lost' }, 'DEFEAT') : null),
       timeline,
       h('div', { class: 'alius-combat-field' },

@@ -3,7 +3,7 @@ import { checkRecruit, checkUpgrade, facilityLevel, facilityLevels, isLiving } f
 import type { CampaignState } from '../../engine/state/types';
 import { TUNING } from '../../engine/tuning';
 import type { LoadResult } from '../../st/persistence';
-import { analyzeNative } from '../analyze/mark';
+import { analyzeAttrs, analyzeNative } from '../analyze/mark';
 import { h } from '../dom';
 
 export interface BaseTabCtx {
@@ -43,7 +43,7 @@ function facilityCard(state: CampaignState, f: Entry, ctx: BaseTabCtx): HTMLElem
   const levels = facilityLevels(ctx.registries, f.id);
   const level = facilityLevel(state, f.id);
   const pending = pendingOf(state, f.id);
-  const card = h('article', { class: 'alius-facility', 'data-facility': f.id }, h('h3', {}, `${String(f.name)} — `, h('span', { class: 'alius-stat', ...analyzeNative(`facilities:${f.id}`) }, `LEVEL ${level}/${levels.length}`)), h('p', { class: 'alius-dim' }, String(f.summary)));
+  const card = h('article', { class: 'alius-facility', 'data-facility': f.id }, h('h3', {}, `${String(f.name)} — `, h('span', { class: 'alius-stat', ...analyzeAttrs(`facilities:${f.id}`) }, `LEVEL ${level}/${levels.length}`)), h('p', { class: 'alius-dim' }, String(f.summary)));
   if (pending) card.append(h('p', {}, `UPGRADING TO L${pending.toLevel} ^ ${pending.daysLeft}d`));
   if (level >= levels.length) {
     card.append(h('p', { class: 'alius-dim' }, 'MAX LEVEL'));

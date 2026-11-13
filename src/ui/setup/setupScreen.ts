@@ -4,6 +4,7 @@ import { VALUE_AXES } from '../../engine/state/types';
 import type { StAdapter } from '../../st/adapter';
 import { difficultyHint, type UnitDraft, type Wizard, type WizardState, type WizardStep } from '../../setup/wizard';
 import { h } from '../dom';
+import { analyzeNative } from '../analyze/mark';
 import { renderKeepingFocus } from '../focus';
 import type { ModalOpts } from '../shell/modal';
 import { renderCalibration } from './calibration';
@@ -34,8 +35,8 @@ const nameOf = (reg: Registries, registry: 'roles' | 'corporations' | 'starts' |
   return e ? String(e.name) : `UNKNOWN ${id}`;
 };
 
-function card(cls: string, id: string, selected: boolean, onClick: () => void, ...children: Array<HTMLElement | string>): HTMLElement {
-  return h('button', { type: 'button', class: `alius-card ${cls}`, 'data-id': id, 'aria-pressed': String(selected), onclick: onClick }, ...children);
+function card(address: string, cls: string, id: string, selected: boolean, onClick: () => void, ...children: Array<HTMLElement | string>): HTMLElement {
+  return h('button', { type: 'button', class: `alius-card alius-option ${cls}`, 'data-id': id, 'aria-pressed': String(selected), ...analyzeNative(address), onclick: onClick }, ...children);
 }
 
 /** Deployment in flight per wizard. Lives outside the render closure: ST fires chat_changed while the new group opens and the shell re-renders this screen. */
@@ -85,13 +86,13 @@ export function renderSetupScreen(host: HTMLElement, ctx: SetupScreenCtx): void 
       h('h3', {}, 'STARTING POINT'),
       h('div', { class: 'alius-cards' }, ...[...reg.starts.values()].map((st0) => {
         const corp = nameOf(reg, 'corporations', String(st0.corporationId));
-        return card('alius-start-card', st0.id, s.startId === st0.id, () => wizard.setStart(st0.id),
+        return card(`starts:${st0.id}`, 'alius-start-card', st0.id, s.startId === st0.id, () => wizard.setStart(st0.id),
           h('strong', {}, `${corp} — ${String(st0.name)}`), h('p', {}, String(st0.summary)));
       })),
       h('h3', {}, 'CRIME'),
       h('div', { class: 'alius-cards' }, ...[...reg.crimes.values()].map((c) => {
         const perk = c.perk as { text: string }; const flaw = c.flaw as { text: string };
-        return card('alius-crime-card', c.id, s.crimeId === c.id, () => wizard.setCrime(c.id),
+        return card(`crimes:${c.id}`, 'alius-crime-card', c.id, s.crimeId === c.id, () => wizard.setCrime(c.id),
           h('strong', {}, String(c.name)), h('p', {}, String(c.summary)),
           h('p', {}, `PERK: ${perk.text}`), h('p', {}, `FLAW: ${flaw.text}`),
           h('p', { class: 'alius-dim' }, 'Plea: GUILTY'));

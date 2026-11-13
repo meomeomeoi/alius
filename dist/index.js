@@ -13953,6 +13953,18 @@ function createLoyalty(deps) {
   return { order, compel: compel2, onSceneOpened, onSceneClosed, onEvents };
 }
 
+// src/ui/analyze/mark.ts
+function analyzeNative(address, ctx2) {
+  const { tabindex: _tabindex, ...rest } = analyzeAttrs(address, ctx2);
+  return rest;
+}
+function analyzeAttrs(address, ctx2) {
+  const attrs = { "data-analyze": address };
+  if (ctx2) attrs["data-analyze-ctx"] = JSON.stringify(ctx2);
+  attrs.tabindex = "0";
+  return attrs;
+}
+
 // src/ui/dom.ts
 function h(tag2, attrs = {}, ...children) {
   const el = document.createElement(tag2);
@@ -13984,9 +13996,10 @@ function renderDilemma(host, ctx2) {
   for (const o of ctx2.options) {
     const button = h("button", {
       type: "button",
-      class: "alius-btn",
+      class: "alius-btn alius-option",
       "data-dilemma-option": String(o.index),
       disabled: o.disabled !== null,
+      ...analyzeNative("glossary:decision_option", { scale: ctx2.scale, ...o.check ? { check: o.check } : {}, ...o.requires ? { requires: o.requires } : {} }),
       onclick: () => {
         if (chosen || o.disabled !== null) return;
         chosen = true;
@@ -14434,7 +14447,7 @@ function renderCombatScreen(host, ctx2) {
     }
     return box;
   }
-  function card2(state, c, synergyNames, legal, selected2) {
+  function card2(state, c, synergyIds, legal, selected2) {
     const cs = state.combat;
     const band = c.side === "squad" ? stressBand2(c.stress) : "calm";
     const el = h("div", {
@@ -14450,15 +14463,20 @@ function renderCombatScreen(host, ctx2) {
       }
     });
     const lines = [h("div", { class: "alius-cc-name" }, `${nameOf7(state, c)}${c.level > 1 ? ` L${c.level}` : ""}`)];
-    lines.push(h("div", { class: "alius-cc-hp" }, `HP ${bar(c.hp, c.maxHp)} ${c.hp}/${c.maxHp}`));
-    if (c.side === "squad") lines.push(h("div", { class: "alius-cc-st" }, `ST ${bar(c.stress, 100)} ${c.stress}`));
-    const tags = c.statuses.map((s) => statusGlyph(s.id, s.stacks));
-    if (c.downed) tags.push("DOWN");
-    if (band === "strained") tags.push("STRAINED");
-    if (band === "breaking") tags.push("BREAKING");
-    if (c.breakdown) tags.push("BREAKDOWN");
-    if (tags.length > 0) lines.push(h("div", { class: "alius-cc-tags" }, tags.map((t) => `[${t}]`).join(" ")));
-    if (synergyNames.length > 0) lines.push(h("div", { class: "alius-cc-syn" }, synergyNames.join(" \xB7 ")));
+    const live = c.unitId ? { unitId: c.unitId } : void 0;
+    lines.push(h("div", { class: "alius-cc-hp alius-stat", ...analyzeAttrs("glossary:stat_hp", live) }, `HP ${bar(c.hp, c.maxHp)} ${c.hp}/${c.maxHp}`));
+    if (c.side === "squad") lines.push(h("div", { class: "alius-cc-st alius-stat", ...analyzeAttrs("glossary:stress", live) }, `ST ${bar(c.stress, 100)} ${c.stress}`));
+    const tags = c.statuses.map((s) => ({ text: statusGlyph(s.id, s.stacks), address: `statuses:${s.id}` }));
+    if (c.downed) tags.push({ text: "DOWN", address: "glossary:downed" });
+    if (band === "strained") tags.push({ text: "STRAINED", address: "glossary:stress_strained" });
+    if (band === "breaking") tags.push({ text: "BREAKING", address: "glossary:stress_breaking" });
+    if (c.breakdown) tags.push({ text: "BREAKDOWN", address: "glossary:stress_breakdown" });
+    const chip = (text2, address) => h("span", { class: "alius-chip", ...analyzeAttrs(address) }, text2);
+    const joined = (items, sep) => items.flatMap((el2, i) => i === 0 ? [el2] : [sep, el2]);
+    if (tags.length > 0) lines.push(h("div", { class: "alius-cc-tags" }, ...joined(tags.map((t) => chip(`[${t.text}]`, t.address)), " ")));
+    if (synergyIds.length > 0) {
+      lines.push(h("div", { class: "alius-cc-syn" }, ...joined(synergyIds.map((id) => chip(reg.synergies.get(id)?.name ?? id, `synergies:${id}`)), " \xB7 ")));
+    }
     el.append(headCrop(state, c), h("div", { class: "alius-cc-body" }, ...lines));
     return el;
   }
@@ -14495,7 +14513,7 @@ function renderCombatScreen(host, ctx2) {
     }
     const legal = new Set(targetsOfSelection(state));
     const fielded = cs.combatants.filter((c) => c.side === "squad" && c.unitId).map((c) => c.unitId);
-    const synergyOf = (unitId) => unitId ? getSynergies(state, reg, fielded).filter((s) => s.unitId === unitId).map((s) => reg.synergies.get(s.synergyId)?.name ?? s.synergyId) : [];
+    const synergyOf = (unitId) => unitId ? getSynergies(state, reg, fielded).filter((s) => s.unitId === unitId).map((s) => s.synergyId) : [];
     const row = (side, r) => {
       const cards = cs.combatants.filter((c) => c.side === side && c.row === r).map((c) => card2(state, c, side === "squad" ? synergyOf(c.unitId) : [], legal.has(c.cid), selTarget === c.cid));
       if (side === "squad" && r === "back" && cs.commander) {
@@ -14522,8 +14540,9 @@ function renderCombatScreen(host, ctx2) {
       skillRows(state, cs.awaitingCid).forEach((r, i) => {
         skillButtons.push(h("button", {
           type: "button",
-          class: `alius-btn alius-skill${selSkill === r.skill.id ? " alius-skill-selected" : ""}`,
+          class: `alius-btn alius-skill alius-option${selSkill === r.skill.id ? " alius-skill-selected" : ""}`,
           "data-skill": r.skill.id,
+          ...analyzeNative(`skills:${r.skill.id}`),
           "data-key": String(i + 1),
           disabled: r.reason !== null,
           title: r.skill.description,
@@ -14545,8 +14564,9 @@ function renderCombatScreen(host, ctx2) {
       const cost = waiting2 ? orderCost(e, id, kind === "ally" ? cs.awaitingCid : void 0) : o.cost;
       return h("button", {
         type: "button",
-        class: `alius-btn alius-order${orderMode === id ? " alius-skill-selected" : ""}`,
+        class: `alius-btn alius-order alius-option${orderMode === id ? " alius-skill-selected" : ""}`,
         "data-order": id,
+        ...analyzeNative(`orders:${id}`),
         "data-key": "QWERT"[i],
         disabled: blocked,
         title: String(o.summary),
@@ -14604,8 +14624,8 @@ function renderCombatScreen(host, ctx2) {
         "div",
         { class: "alius-combat-head" },
         h("span", {}, `ROUND ${cs.round}`),
-        h("span", { class: "alius-combat-cp" }, `CP ${"\u25CF".repeat(cs.cp)}${"\u25CB".repeat(Math.max(0, 5 - cs.cp))}`),
-        ctx2.onCompel ? h("span", { class: "alius-combat-leash" }, `LEASH ${Math.max(0, state.leash.authorizationsLeft - (cs.compels?.length ?? 0))}`) : null,
+        h("span", { class: "alius-combat-cp alius-stat", ...analyzeAttrs("glossary:cp") }, `CP ${"\u25CF".repeat(cs.cp)}${"\u25CB".repeat(Math.max(0, 5 - cs.cp))}`),
+        ctx2.onCompel ? h("span", { class: "alius-combat-leash alius-stat", ...analyzeAttrs("glossary:leash") }, `LEASH ${Math.max(0, state.leash.authorizationsLeft - (cs.compels?.length ?? 0))}`) : null,
         cs.phase === "lost_pending" ? h("span", { class: "alius-combat-lost" }, "DEFEAT") : null
       ),
       timeline,
@@ -14648,18 +14668,6 @@ function renderCombatScreen(host, ctx2) {
   };
 }
 
-// src/ui/analyze/mark.ts
-function analyzeNative(address, ctx2) {
-  const { tabindex: _tabindex, ...rest } = analyzeAttrs(address, ctx2);
-  return rest;
-}
-function analyzeAttrs(address, ctx2) {
-  const attrs = { "data-analyze": address };
-  if (ctx2) attrs["data-analyze-ctx"] = JSON.stringify(ctx2);
-  attrs.tabindex = "0";
-  return attrs;
-}
-
 // src/ui/inv/invTab.ts
 var STATS2 = ["hp", "atk", "def", "spd", "crit"];
 function refusal(state, reg, type, payload) {
@@ -14685,7 +14693,7 @@ function renderInvTab(host, ctx2) {
     const items = state.inventory.filter((i) => filter === "all" || slotOf(i) === filter);
     const current = state.inventory.find((i) => i.uid === selected2) ?? null;
     if (!current) selected2 = null;
-    const resStat = (text2, address) => h("span", { class: "alius-stat", ...analyzeNative(address) }, text2);
+    const resStat = (text2, address) => h("span", { class: "alius-stat", ...analyzeAttrs(address) }, text2);
     const res = h(
       "p",
       { class: "alius-inv-res" },
@@ -14722,9 +14730,9 @@ function renderInvTab(host, ctx2) {
             }
           },
           h("span", { class: "alius-inv-name" }, nameOf7(i)),
-          h("span", { class: `alius-rarity alius-rarity-${i.rarity} alius-chip`, ...analyzeNative("glossary:rarity") }, i.rarity),
+          h("span", { class: `alius-rarity alius-rarity-${i.rarity} alius-chip`, ...analyzeAttrs("glossary:rarity") }, i.rarity),
           h("span", {}, i.upgrade > 0 ? `+${i.upgrade}` : ""),
-          h("span", { class: "alius-dim" }, ...i.affixes.flatMap((a, k) => [...k > 0 ? [", "] : [], h("span", { class: "alius-chip", ...analyzeNative(`affixes:${a}`) }, String(reg.affixes.get(a)?.name ?? a))])),
+          h("span", { class: "alius-dim" }, ...i.affixes.flatMap((a, k) => [...k > 0 ? [", "] : [], h("span", { class: "alius-chip", ...analyzeAttrs(`affixes:${a}`) }, String(reg.affixes.get(a)?.name ?? a))])),
           h("span", { class: "alius-dim" }, wearer ? `WORN BY ${wearer.displayName}` : "")
         );
       })
@@ -14743,7 +14751,7 @@ function renderInvTab(host, ctx2) {
     const theirs = worn && worn.uid !== item.uid ? itemStats(reg, worn)?.stats ?? {} : {};
     const deltas = STATS2.filter((k) => (mine[k] ?? 0) !== (theirs[k] ?? 0) || (mine[k] ?? 0) !== 0).map((k) => {
       const d = (mine[k] ?? 0) - (theirs[k] ?? 0);
-      return h("span", { class: `${d >= 0 ? "alius-delta-up" : "alius-delta-down"} alius-stat`, "data-stat": k, ...analyzeNative(`glossary:stat_${k}`) }, `${upper(k)} ${d > 0 ? "+" : ""}${d}  `);
+      return h("span", { class: `${d >= 0 ? "alius-delta-up" : "alius-delta-down"} alius-stat`, "data-stat": k, ...analyzeAttrs(`glossary:stat_${k}`) }, `${upper(k)} ${d > 0 ? "+" : ""}${d}  `);
     });
     const picker = h(
       "select",
@@ -16468,15 +16476,15 @@ var TAG_FIELDS = [
 ];
 var BASELINE_FIELDS = ["trust", "affinity", "attraction"];
 var nameOf4 = (e, id) => e ? String(e.name) : `UNKNOWN ${id}`;
-function pickCard(cls, id, selected2, onClick, ...children) {
-  return h("button", { type: "button", class: `alius-card ${cls}`, "data-id": id, "aria-pressed": String(selected2), onclick: onClick }, ...children);
+function pickCard(address, cls, id, selected2, onClick, ...children) {
+  return h("button", { type: "button", class: `alius-card alius-option ${cls}`, "data-id": id, "aria-pressed": String(selected2), ...analyzeNative(address), onclick: onClick }, ...children);
 }
-function slider(label2, attrs, min, max, value, commit) {
+function slider(address, label2, attrs, min, max, value, commit) {
   const shown = h("span", { class: "alius-slider-value" }, String(value));
   const input = h("input", { type: "range", min: String(min), max: String(max), step: "1", value: String(value), ...attrs });
   input.addEventListener("input", () => shown.textContent = input.value);
   input.addEventListener("change", () => commit(Math.round(Number(input.value))));
-  return h("label", { class: "alius-slider" }, h("span", { class: "alius-slider-label" }, label2), input, shown);
+  return h("label", { class: "alius-slider alius-option", ...analyzeNative(address) }, h("span", { class: "alius-slider-label" }, label2), input, shown);
 }
 function renderCalibration(host, ctx2) {
   const { draft, registries: reg, onUpdate } = ctx2;
@@ -16526,6 +16534,7 @@ function renderCalibration(host, ctx2) {
       section("role", "ROLE", h("div", { class: "alius-cards" }, ...list4.map(({ id, reason }) => {
         const role = reg.roles.get(id);
         return pickCard(
+          `roles:${id}`,
           "alius-role-card",
           id,
           ch.roleId === id,
@@ -16547,6 +16556,7 @@ function renderCalibration(host, ctx2) {
         "signature",
         "SIGNATURE SKILL",
         h("div", { class: "alius-cards" }, ...list4.map((c) => pickCard(
+          `signatures:${c.templateId}`,
           "alius-sig-card",
           c.templateId,
           cur?.templateId === c.templateId,
@@ -16594,6 +16604,7 @@ function renderCalibration(host, ctx2) {
         h("div", { class: "alius-cards" }, ...list4.map(({ id, origin }) => {
           const d = reg.defects.get(id);
           return pickCard(
+            `defects:${id}`,
             "alius-defect-card",
             id,
             ch.defects.some((x) => x.id === id),
@@ -16619,6 +16630,7 @@ function renderCalibration(host, ctx2) {
         "values",
         "VALUES",
         h("div", { class: "alius-sliders" }, ...VALUE_AXES.map((axis) => slider(
+          `glossary:value_${axis}`,
           axis.toUpperCase(),
           { "data-axis": axis },
           SETUP_LIMITS.value[0],
@@ -16676,6 +16688,7 @@ function renderCalibration(host, ctx2) {
         h("div", { class: "alius-sliders" }, ...BASELINE_FIELDS.map((k) => {
           const [lo, hi] = SETUP_LIMITS.baseline[k];
           return slider(
+            `glossary:${k}`,
             k.toUpperCase(),
             { "data-baseline": k },
             lo,
@@ -16728,8 +16741,8 @@ var nameOf5 = (reg, registry2, id) => {
   const e = reg[registry2].get(id);
   return e ? String(e.name) : `UNKNOWN ${id}`;
 };
-function card(cls, id, selected2, onClick, ...children) {
-  return h("button", { type: "button", class: `alius-card ${cls}`, "data-id": id, "aria-pressed": String(selected2), onclick: onClick }, ...children);
+function card(address, cls, id, selected2, onClick, ...children) {
+  return h("button", { type: "button", class: `alius-card alius-option ${cls}`, "data-id": id, "aria-pressed": String(selected2), ...analyzeNative(address), onclick: onClick }, ...children);
 }
 var deploying = /* @__PURE__ */ new WeakMap();
 function renderSetupScreen(host, ctx2) {
@@ -16781,6 +16794,7 @@ function renderSetupScreen(host, ctx2) {
       h("div", { class: "alius-cards" }, ...[...reg.starts.values()].map((st0) => {
         const corp = nameOf5(reg, "corporations", String(st0.corporationId));
         return card(
+          `starts:${st0.id}`,
           "alius-start-card",
           st0.id,
           s.startId === st0.id,
@@ -16794,6 +16808,7 @@ function renderSetupScreen(host, ctx2) {
         const perk = c.perk;
         const flaw = c.flaw;
         return card(
+          `crimes:${c.id}`,
           "alius-crime-card",
           c.id,
           s.crimeId === c.id,
@@ -17040,7 +17055,7 @@ function defectBlock(reg, d) {
   return h(
     "div",
     { class: "alius-defect" },
-    h("strong", { class: "alius-chip", ...analyzeNative(`defects:${d.id}`) }, String(def.name)),
+    h("strong", { class: "alius-chip", ...analyzeAttrs(`defects:${d.id}`) }, String(def.name)),
     h("span", { class: "alius-dim" }, ` [${String(def.category)}]`),
     d.origin ? line2("Origin", d.origin) : null,
     line2("Lore", String(def.lore)),
@@ -17057,7 +17072,7 @@ function relationLine(unit, state, ctx2) {
   const raw = ctx2.settings().showRawValues;
   const num4 = (n) => raw ? ` (${n})` : "";
   const live = { unitId: unit.id };
-  const chip = (text2, address, data) => h("span", { class: "alius-chip", ...analyzeNative(address, data) }, text2);
+  const chip = (text2, address, data) => h("span", { class: "alius-chip", ...analyzeAttrs(address, data) }, text2);
   const parts = [
     chip(`${String(ctx2.registries.relationshipStates.get(rel.stateId)?.name ?? rel.stateId).toUpperCase()}`, `relationshipStates:${rel.stateId}`),
     chip(`TRUST ${trustBand(rel.trust).toUpperCase()}${num4(rel.trust)}`, "glossary:trust", live)
@@ -17090,7 +17105,7 @@ function equipmentBlock(unit, ctx2, state) {
       text2 = "UNKNOWN";
       flag = "UNKNOWN";
     } else {
-      text2 = h("span", { class: "alius-chip", ...analyzeNative(`items:${inst.itemId}`) }, `${String(tpl.name)} [${inst.rarity}]${inst.upgrade > 0 ? ` +${inst.upgrade}` : ""}`);
+      text2 = h("span", { class: "alius-chip", ...analyzeAttrs(`items:${inst.itemId}`) }, `${String(tpl.name)} [${inst.rarity}]${inst.upgrade > 0 ? ` +${inst.upgrade}` : ""}`);
       flag = canEquip(reg, unit, inst);
     }
     const options2 = state.inventory.filter((i) => reg.items.get(i.itemId)?.slot === slot2 && canEquip(reg, unit, i) === null);
@@ -17214,11 +17229,11 @@ function unitBlock(unit, ctx2, state) {
   const sigTpl = reg.signatures.get(unit.signatureSkill.templateId);
   const values = VALUE_AXES.map((axis) => {
     const v = unit.values[axis];
-    return h("span", { class: "alius-stat", ...analyzeNative(`glossary:value_${axis}`) }, `${axis.toUpperCase()}: ${raw ? v > 0 ? `+${v}` : String(v) : valueBand(v)}`);
+    return h("span", { class: "alius-stat", ...analyzeAttrs(`glossary:value_${axis}`) }, `${axis.toUpperCase()}: ${raw ? v > 0 ? `+${v}` : String(v) : valueBand(v)}`);
   });
   const live = { unitId: unit.id };
-  const chip = (text2, address, data) => h("span", { class: "alius-chip", ...analyzeNative(address, data) }, text2);
-  const stat2 = (text2, address, data) => h("span", { class: "alius-stat", ...analyzeNative(address, data) }, text2);
+  const chip = (text2, address, data) => h("span", { class: "alius-chip", ...analyzeAttrs(address, data) }, text2);
+  const stat2 = (text2, address, data) => h("span", { class: "alius-stat", ...analyzeAttrs(address, data) }, text2);
   const roleEntry = reg.roles.get(unit.roleId);
   return h(
     "article",
@@ -17253,7 +17268,7 @@ function unitBlock(unit, ctx2, state) {
       h("p", { class: "alius-values" }, ...joinWith(values, " \xB7 ")),
       ...unit.kind === "grunt" ? [] : [
         h("h4", {}, "SIGNATURE"),
-        h("p", {}, sigTpl ? h("strong", { class: "alius-chip", ...analyzeNative(`signatures:${unit.signatureSkill.templateId}`) }, unit.signatureSkill.name) : h("strong", {}, unit.signatureSkill.name), ` \u2014 ${unit.signatureSkill.description}`),
+        h("p", {}, sigTpl ? h("strong", { class: "alius-chip", ...analyzeAttrs(`signatures:${unit.signatureSkill.templateId}`) }, unit.signatureSkill.name) : h("strong", {}, unit.signatureSkill.name), ` \u2014 ${unit.signatureSkill.description}`),
         h("p", { class: "alius-dim" }, `Template: ${nameOf6(sigTpl, unit.signatureSkill.templateId)} \u2014 ${sigTpl ? String(sigTpl.mechanic) : ""}`)
       ],
       // Re-sync overwrites numbers on a running campaign, so it follows the SYS edit lock.
@@ -17671,8 +17686,9 @@ function renderNodeMap(host, view) {
       const name = known ? view.labels?.[cell.nodeId] ?? "Known" : "Unknown";
       const status = cell.state === "option" ? "reachable" : cell.state === "ahead" ? "ahead" : cell.state;
       const classes = ["alius-node", cell.state === "option" ? "alius-reachable" : `alius-${cell.state}`, ...cell.state === "visited" || cell.state === "current" ? ["alius-path"] : []].join(" ");
+      const address = known && view.types?.[cell.nodeId] ? `nodeTypes:${view.types[cell.nodeId]}` : "glossary:unknown_node";
       const attrs = { class: classes, "data-node": cell.nodeId, "aria-label": `${name}, ${status}` };
-      col.append(cell.state === "option" ? h("button", { ...attrs, type: "button", onclick: () => view.onMove(cell.nodeId) }, cell.text) : h("span", attrs, cell.text));
+      col.append(cell.state === "option" ? h("button", { ...attrs, class: `${classes} alius-option`, ...analyzeNative(address), type: "button", onclick: () => view.onMove(cell.nodeId) }, cell.text) : h("span", { ...attrs, class: `${classes} alius-chip`, ...analyzeAttrs(address) }, cell.text));
     }
     root.append(col);
   });
@@ -17881,14 +17897,16 @@ function renderExpeditionScreen(host, ctx2) {
     const travel = exp.phase === "travel";
     const visible = visibleTypes(exp.map, exp.at, exp.reveal);
     const labels = {};
+    const types = {};
     for (const id of visible) {
       const n = exp.map.nodes[id];
       labels[id] = String(reg.nodeTypes.get(n.resolvedType ?? n.type)?.name ?? n.type);
+      types[id] = n.resolvedType ?? n.type;
     }
     const rows = mapRows(exp.map, { at: exp.at, visible, reg });
     const shown = travel ? rows : rows.map((col) => col.map((c) => c.state === "option" ? { ...c, state: "ahead" } : c));
     root.append(h("h2", {}, `[ EXPEDITION ] ${String(reg.regions.get(exp.regionId)?.name ?? exp.regionId)}`));
-    renderNodeMap(root, { rows: shown, edges: {}, onMove: (id) => controller.move(id), labels });
+    renderNodeMap(root, { rows: shown, edges: {}, onMove: (id) => controller.move(id), labels, types });
     root.append(h("p", {}, `SUPPLIES ${exp.supplies} \xB7 LOOT ${exp.loot.length}`));
     const strip = h("div", { class: "alius-party" });
     const able = new Set(ableParty(state));
@@ -18379,7 +18397,7 @@ function facilityCard(state, f, ctx2) {
   const levels = facilityLevels(ctx2.registries, f.id);
   const level = facilityLevel(state, f.id);
   const pending2 = pendingOf(state, f.id);
-  const card2 = h("article", { class: "alius-facility", "data-facility": f.id }, h("h3", {}, `${String(f.name)} \u2014 `, h("span", { class: "alius-stat", ...analyzeNative(`facilities:${f.id}`) }, `LEVEL ${level}/${levels.length}`)), h("p", { class: "alius-dim" }, String(f.summary)));
+  const card2 = h("article", { class: "alius-facility", "data-facility": f.id }, h("h3", {}, `${String(f.name)} \u2014 `, h("span", { class: "alius-stat", ...analyzeAttrs(`facilities:${f.id}`) }, `LEVEL ${level}/${levels.length}`)), h("p", { class: "alius-dim" }, String(f.summary)));
   if (pending2) card2.append(h("p", {}, `UPGRADING TO L${pending2.toLevel} ^ ${pending2.daysLeft}d`));
   if (level >= levels.length) {
     card2.append(h("p", { class: "alius-dim" }, "MAX LEVEL"));
@@ -20352,8 +20370,8 @@ function renderStatusHeader(host, state) {
 
 // src/ui/shell/sysTab.ts
 var errText2 = (e) => e instanceof Error ? e.message : String(e);
-function field(label2, control) {
-  return h("label", { class: "alius-field" }, h("span", { class: "alius-field-label" }, label2), control);
+function field(label2, control, setting) {
+  return h("label", { class: "alius-field alius-option", ...analyzeNative(`setting:${setting}`) }, h("span", { class: "alius-field-label" }, label2), control);
 }
 function renderSysTab(host, ctx2) {
   const { st } = ctx2;
@@ -20430,59 +20448,60 @@ function renderSysTab(host, ctx2) {
       numberInput(`budget:${id}`, settings.budgets[id], (n) => {
         const next = apply({ budgets: { ...getSettings(st).budgets, [id]: n } });
         return next.budgets[id];
-      })
+      }),
+      "budgets"
     )
   );
   const form = h(
     "section",
     { class: "alius-section" },
     h("h2", {}, "[ SETTINGS ]"),
-    field("Mechanic profile", select("mechanicProfileId", profileOptions, settings.mechanicProfileId)),
-    field("Mechanic thinking", select("mechanicThink", [["min", "minimal"], ["low", "low"], ["auto", "provider default"]], settings.mechanicThink)),
-    field("Fall back to main model", checkbox("mechanicFallbackToMain", settings.mechanicFallbackToMain)),
-    field("Request floor (tokens)", numberInput("requestFloor", settings.requestFloor, (n) => apply({ requestFloor: n }).requestFloor)),
-    field("Context cap (tokens)", numberInput("contextTokenCap", settings.contextTokenCap, (n) => apply({ contextTokenCap: n }).contextTokenCap)),
+    field("Mechanic profile", select("mechanicProfileId", profileOptions, settings.mechanicProfileId), "mechanicProfileId"),
+    field("Mechanic thinking", select("mechanicThink", [["min", "minimal"], ["low", "low"], ["auto", "provider default"]], settings.mechanicThink), "mechanicThink"),
+    field("Fall back to main model", checkbox("mechanicFallbackToMain", settings.mechanicFallbackToMain), "mechanicFallbackToMain"),
+    field("Request floor (tokens)", numberInput("requestFloor", settings.requestFloor, (n) => apply({ requestFloor: n }).requestFloor), "requestFloor"),
+    field("Context cap (tokens)", numberInput("contextTokenCap", settings.contextTokenCap, (n) => apply({ contextTokenCap: n }).contextTokenCap), "contextTokenCap"),
     h("h3", {}, "Output budgets (tokens)"),
     h("div", { class: "alius-grid" }, ...budgetInputs),
     h("h3", {}, "Display"),
-    field("Palette", select("palette", [["amber", "amber"], ["green", "green"], ["white", "white"]], settings.palette)),
-    field("Scanlines", checkbox("scanlines", settings.scanlines)),
-    field("CRT flicker", checkbox("flicker", settings.flicker)),
+    field("Palette", select("palette", [["amber", "amber"], ["green", "green"], ["white", "white"]], settings.palette), "palette"),
+    field("Scanlines", checkbox("scanlines", settings.scanlines), "scanlines"),
+    field("CRT flicker", checkbox("flicker", settings.flicker), "flicker"),
     h("h3", {}, "Campaign"),
-    field("Desire/Bond defects", checkbox("desireBondDefects", settings.desireBondDefects)),
-    field("Show raw values", checkbox("showRawValues", settings.showRawValues)),
-    field("Companion vignettes (main model)", checkbox("activityFlavor", settings.activityFlavor)),
-    field("Generated grunt names", checkbox("gruntFlavor", settings.gruntFlavor)),
-    field("Sprite mode", select("spriteMode", [["native", "Native Expressions"], ["emotion_pick", "Mechanic emotion pick"]], settings.spriteMode)),
+    field("Desire/Bond defects", checkbox("desireBondDefects", settings.desireBondDefects), "desireBondDefects"),
+    field("Show raw values", checkbox("showRawValues", settings.showRawValues), "showRawValues"),
+    field("Companion vignettes (main model)", checkbox("activityFlavor", settings.activityFlavor), "activityFlavor"),
+    field("Generated grunt names", checkbox("gruntFlavor", settings.gruntFlavor), "gruntFlavor"),
+    field("Sprite mode", select("spriteMode", [["native", "Native Expressions"], ["emotion_pick", "Mechanic emotion pick"]], settings.spriteMode), "spriteMode"),
     h("h3", {}, "Conversations"),
-    field("Read the conversation", select("intentMode", [["exchange", "after every exchange"], ["every_n", "every N exchanges"], ["scene_end", "at scene end only"]], settings.intentMode)),
-    field("Every N exchanges (2\u201310)", numberInput("intentEveryN", settings.intentEveryN, (n) => apply({ intentEveryN: n }).intentEveryN, { min: "2", max: "10" })),
-    field("Minimum confidence (0\u20131)", decimalInput("intentMinConfidence", settings.intentMinConfidence, { min: "0", max: "1" })),
-    field("Scene pacing (exchanges, \u22655)", numberInput("scenePacing", settings.scenePacing, (n) => apply({ scenePacing: n }).scenePacing, { min: "5" })),
-    field("Typing speed (chars/s, 0 = instant)", numberInput("typingSpeed", settings.typingSpeed, (n) => apply({ typingSpeed: n }).typingSpeed)),
-    field("Units may start DMs", checkbox("unitDms", settings.unitDms)),
-    field("Compact the chronicle with the mechanic model", checkbox("chronicleCompaction", settings.chronicleCompaction)),
+    field("Read the conversation", select("intentMode", [["exchange", "after every exchange"], ["every_n", "every N exchanges"], ["scene_end", "at scene end only"]], settings.intentMode), "intentMode"),
+    field("Every N exchanges (2\u201310)", numberInput("intentEveryN", settings.intentEveryN, (n) => apply({ intentEveryN: n }).intentEveryN, { min: "2", max: "10" }), "intentEveryN"),
+    field("Minimum confidence (0\u20131)", decimalInput("intentMinConfidence", settings.intentMinConfidence, { min: "0", max: "1" }), "intentMinConfidence"),
+    field("Scene pacing (exchanges, \u22655)", numberInput("scenePacing", settings.scenePacing, (n) => apply({ scenePacing: n }).scenePacing, { min: "5" }), "scenePacing"),
+    field("Typing speed (chars/s, 0 = instant)", numberInput("typingSpeed", settings.typingSpeed, (n) => apply({ typingSpeed: n }).typingSpeed), "typingSpeed"),
+    field("Units may start DMs", checkbox("unitDms", settings.unitDms), "unitDms"),
+    field("Compact the chronicle with the mechanic model", checkbox("chronicleCompaction", settings.chronicleCompaction), "chronicleCompaction"),
     h("h3", {}, "Combat"),
-    field("Easy retry (rewind a lost combat)", checkbox("easyRetry", settings.easyRetry)),
-    field("Generated names for affixed enemies", checkbox("enemyFlavor", settings.enemyFlavor)),
-    field("Difficulty (this campaign)", difficultySelect()),
+    field("Easy retry (rewind a lost combat)", checkbox("easyRetry", settings.easyRetry), "easyRetry"),
+    field("Generated names for affixed enemies", checkbox("enemyFlavor", settings.enemyFlavor), "enemyFlavor"),
+    field("Difficulty (this campaign)", difficultySelect(), "difficulty"),
     h("h3", {}, "World"),
-    field("Story director (mechanic model)", checkbox("directorEnabled", settings.directorEnabled)),
-    field("Story beat cooldown (days, 1\u201314)", numberInput("beatCooldownDays", settings.beatCooldownDays, (n) => apply({ beatCooldownDays: n }).beatCooldownDays, { min: "1", max: "14" })),
-    field("Expedition recap (main model)", checkbox("expeditionRecap", settings.expeditionRecap)),
+    field("Story director (mechanic model)", checkbox("directorEnabled", settings.directorEnabled), "directorEnabled"),
+    field("Story beat cooldown (days, 1\u201314)", numberInput("beatCooldownDays", settings.beatCooldownDays, (n) => apply({ beatCooldownDays: n }).beatCooldownDays, { min: "1", max: "14" }), "beatCooldownDays"),
+    field("Expedition recap (main model)", checkbox("expeditionRecap", settings.expeditionRecap), "expeditionRecap"),
     h("h3", {}, "Decisions"),
-    field("Generated dilemmas (mechanic model; off: authored options)", checkbox("dilemmasEnabled", settings.dilemmasEnabled)),
+    field("Generated dilemmas (mechanic model; off: authored options)", checkbox("dilemmasEnabled", settings.dilemmasEnabled), "dilemmasEnabled"),
     h("h3", {}, "Analysis"),
-    field("Analysis tool (hover, ? or long-press)", checkbox("analyzeEnabled", settings.analyzeEnabled)),
-    field("Analysis animation", select("analyzeAnimation", [["full", "full"], ["short", "short"], ["off", "off"]], settings.analyzeAnimation)),
-    field("Hover delay (ms, 100\u20131500)", numberInput("analyzeHoverDelay", settings.analyzeHoverDelay, (n) => apply({ analyzeHoverDelay: n }).analyzeHoverDelay, { min: "100", max: "1500", step: "50" })),
+    field("Analysis tool (hover, ? or long-press)", checkbox("analyzeEnabled", settings.analyzeEnabled), "analyzeEnabled"),
+    field("Analysis animation", select("analyzeAnimation", [["full", "full"], ["short", "short"], ["off", "off"]], settings.analyzeAnimation), "analyzeAnimation"),
+    field("Hover delay (ms, 100\u20131500)", numberInput("analyzeHoverDelay", settings.analyzeHoverDelay, (n) => apply({ analyzeHoverDelay: n }).analyzeHoverDelay, { min: "100", max: "1500", step: "50" }), "analyzeHoverDelay"),
     h("h3", {}, "Intimacy"),
-    field("Romance", checkbox("romance", settings.romance)),
-    field("Explicit scenes allowed", checkbox("explicitContent", settings.explicitContent)),
-    field("Romantic initiative", select("romanticInitiative", [["low", "low"], ["med", "medium"], ["high", "high"]], settings.romanticInitiative)),
+    field("Romance", checkbox("romance", settings.romance), "romance"),
+    field("Explicit scenes allowed", checkbox("explicitContent", settings.explicitContent), "explicitContent"),
+    field("Romantic initiative", select("romanticInitiative", [["low", "low"], ["med", "medium"], ["high", "high"]], settings.romanticInitiative), "romanticInitiative"),
     h("h3", {}, "Developer"),
-    field("Debug mode", checkbox("debug", settings.debug, true)),
-    field("Mechanics edit lock", checkbox("editLock", settings.editLock, true))
+    field("Debug mode", checkbox("debug", settings.debug, true), "debug"),
+    field("Mechanics edit lock", checkbox("editLock", settings.editLock, true), "editLock")
   );
   const fileInput = h("input", { type: "file", accept: "application/json,.json", class: "alius-hidden", tabindex: "-1" });
   fileInput.addEventListener("change", async () => {

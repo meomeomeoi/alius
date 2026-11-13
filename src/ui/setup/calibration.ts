@@ -3,6 +3,7 @@ import { SETUP_LIMITS, normalizeTag } from '../../engine/setup';
 import { VALUE_AXES } from '../../engine/state/types';
 import { ALL_SECTIONS, type ImportSection } from '../../llm/calls/profileImport';
 import { manualOptions, type UnitDraft } from '../../setup/wizard';
+import { analyzeNative } from '../analyze/mark';
 import { h } from '../dom';
 
 type Choice = UnitDraft['choice'];
@@ -28,18 +29,18 @@ const TAG_FIELDS = [
 const BASELINE_FIELDS = ['trust', 'affinity', 'attraction'] as const;
 const nameOf = (e: Entry | undefined, id: string) => (e ? String(e.name) : `UNKNOWN ${id}`);
 
-function pickCard(cls: string, id: string, selected: boolean, onClick: () => void, ...children: Array<HTMLElement | string>): HTMLElement {
-  return h('button', { type: 'button', class: `alius-card ${cls}`, 'data-id': id, 'aria-pressed': String(selected), onclick: onClick }, ...children);
+function pickCard(address: string, cls: string, id: string, selected: boolean, onClick: () => void, ...children: Array<HTMLElement | string>): HTMLElement {
+  return h('button', { type: 'button', class: `alius-card alius-option ${cls}`, 'data-id': id, 'aria-pressed': String(selected), ...analyzeNative(address), onclick: onClick }, ...children);
 }
 
 function slider(
-  label: string, attrs: Record<string, string>, min: number, max: number, value: number, commit: (n: number) => void,
+  address: string, label: string, attrs: Record<string, string>, min: number, max: number, value: number, commit: (n: number) => void,
 ): HTMLElement {
   const shown = h('span', { class: 'alius-slider-value' }, String(value));
   const input = h('input', { type: 'range', min: String(min), max: String(max), step: '1', value: String(value), ...attrs }) as HTMLInputElement;
   input.addEventListener('input', () => (shown.textContent = input.value)); // live number while dragging
   input.addEventListener('change', () => commit(Math.round(Number(input.value)))); // commit on release / key step
-  return h('label', { class: 'alius-slider' }, h('span', { class: 'alius-slider-label' }, label), input, shown);
+  return h('label', { class: 'alius-slider alius-option', ...analyzeNative(address) }, h('span', { class: 'alius-slider-label' }, label), input, shown);
 }
 
 export function renderCalibration(host: HTMLElement, ctx: CalibrationCtx): void {
@@ -102,7 +103,7 @@ export function renderCalibration(host: HTMLElement, ctx: CalibrationCtx): void 
     host.append(
       section('role', 'ROLE', h('div', { class: 'alius-cards' }, ...list.map(({ id, reason }) => {
         const role = reg.roles.get(id);
-        return pickCard('alius-role-card', id, ch.roleId === id, () => onUpdate({ roleId: id }),
+        return pickCard(`roles:${id}`, 'alius-role-card', id, ch.roleId === id, () => onUpdate({ roleId: id }),
           h('strong', {}, nameOf(role, id)),
           h('span', {}, role ? ` — ${String(role.summary)}` : ''),
           reason ? h('em', {}, ` ${reason}`) : '');
@@ -121,7 +122,7 @@ export function renderCalibration(host: HTMLElement, ctx: CalibrationCtx): void 
     host.append(
       section('signature', 'SIGNATURE SKILL',
         h('div', { class: 'alius-cards' }, ...list.map((c) =>
-          pickCard('alius-sig-card', c.templateId, cur?.templateId === c.templateId,
+          pickCard(`signatures:${c.templateId}`, 'alius-sig-card', c.templateId, cur?.templateId === c.templateId,
             () => onUpdate({ signature: { templateId: c.templateId, name: c.name, description: c.description } }),
             h('strong', {}, c.name), h('span', {}, ` — ${c.description}`)))),
         cur
@@ -155,7 +156,7 @@ export function renderCalibration(host: HTMLElement, ctx: CalibrationCtx): void 
         h('label', { class: 'alius-check' }, toggle, ' Add second defect'),
         h('div', { class: 'alius-cards' }, ...list.map(({ id, origin }) => {
           const d = reg.defects.get(id);
-          return pickCard('alius-defect-card', id, ch.defects.some((x) => x.id === id), () => pick(id, origin),
+          return pickCard(`defects:${id}`, 'alius-defect-card', id, ch.defects.some((x) => x.id === id), () => pick(id, origin),
             h('strong', {}, nameOf(d, id)),
             h('span', { class: 'alius-dim' }, d ? ` [${String(d.category)}]` : ''),
             ...(d ? defectLines(d) : []),
@@ -175,7 +176,7 @@ export function renderCalibration(host: HTMLElement, ctx: CalibrationCtx): void 
     host.append(
       section('values', 'VALUES',
         h('div', { class: 'alius-sliders' }, ...VALUE_AXES.map((axis) =>
-          slider(axis.toUpperCase(), { 'data-axis': axis }, SETUP_LIMITS.value[0], SETUP_LIMITS.value[1], ch.values[axis],
+          slider(`glossary:value_${axis}`, axis.toUpperCase(), { 'data-axis': axis }, SETUP_LIMITS.value[0], SETUP_LIMITS.value[1], ch.values[axis],
             (n) => onUpdate({ values: { ...ch.values, [axis]: n } }))))),
     );
   }
@@ -216,7 +217,7 @@ export function renderCalibration(host: HTMLElement, ctx: CalibrationCtx): void 
       section('baseline', 'STARTING AXES',
         h('div', { class: 'alius-sliders' }, ...BASELINE_FIELDS.map((k) => {
           const [lo, hi] = SETUP_LIMITS.baseline[k];
-          return slider(k.toUpperCase(), { 'data-baseline': k }, lo, hi, ch.baseline[k],
+          return slider(`glossary:${k}`, k.toUpperCase(), { 'data-baseline': k }, lo, hi, ch.baseline[k],
             (n) => onUpdate({ baseline: { ...ch.baseline, [k]: n } }));
         }))),
     );

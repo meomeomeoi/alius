@@ -48,15 +48,17 @@ export function renderExpeditionScreen(host: HTMLElement, ctx: ExpeditionScreenC
     const travel = exp.phase === 'travel';
     const visible = visibleTypes(exp.map, exp.at, exp.reveal);
     const labels: Record<string, string> = {};
+    const types: Record<string, string> = {};
     for (const id of visible) {
       const n = exp.map.nodes[id];
       labels[id] = String(reg.nodeTypes.get(n.resolvedType ?? n.type)?.name ?? n.type);
+      types[id] = n.resolvedType ?? n.type;
     }
     const rows = mapRows(exp.map, { at: exp.at, visible, reg });
     // only a calm party can walk on: the options are plain text while something is pending
     const shown = travel ? rows : rows.map((col) => col.map((c) => (c.state === 'option' ? { ...c, state: 'ahead' as const } : c)));
     root.append(h('h2', {}, `[ EXPEDITION ] ${String(reg.regions.get(exp.regionId)?.name ?? exp.regionId)}`));
-    renderNodeMap(root, { rows: shown, edges: {}, onMove: (id) => controller.move(id), labels });
+    renderNodeMap(root, { rows: shown, edges: {}, onMove: (id) => controller.move(id), labels, types });
 
     root.append(h('p', {}, `SUPPLIES ${exp.supplies} · LOOT ${exp.loot.length}`));
     const strip = h('div', { class: 'alius-party' });

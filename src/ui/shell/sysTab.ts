@@ -7,6 +7,7 @@ import { llmLog } from '../../llm/log';
 import { getSettings, updateSettings, type AliusSettings } from '../../settings';
 import type { StAdapter } from '../../st/adapter';
 import { exportCampaign, importCampaign, type LoadResult } from '../../st/persistence';
+import { analyzeNative } from '../analyze/mark';
 import { h } from '../dom';
 import type { ModalOpts } from './modal';
 import type { ToastKind } from './toast';
@@ -30,8 +31,9 @@ export interface SysCtx {
 
 const errText = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
-function field(label: string, control: HTMLElement): HTMLElement {
-  return h('label', { class: 'alius-field' }, h('span', { class: 'alius-field-label' }, label), control);
+/** One settings row; `setting` is the key the analysis tool explains (`setting:<key>`). */
+function field(label: string, control: HTMLElement, setting: keyof AliusSettings | 'difficulty'): HTMLElement {
+  return h('label', { class: 'alius-field alius-option', ...analyzeNative(`setting:${setting}`) }, h('span', { class: 'alius-field-label' }, label), control);
 }
 
 export function renderSysTab(host: HTMLElement, ctx: SysCtx): void {
@@ -120,6 +122,7 @@ export function renderSysTab(host: HTMLElement, ctx: SysCtx): void {
         const next = apply({ budgets: { ...getSettings(st).budgets, [id]: n } });
         return next.budgets[id];
       }),
+      'budgets',
     ),
   );
 
@@ -127,52 +130,52 @@ export function renderSysTab(host: HTMLElement, ctx: SysCtx): void {
     'section',
     { class: 'alius-section' },
     h('h2', {}, '[ SETTINGS ]'),
-    field('Mechanic profile', select('mechanicProfileId', profileOptions, settings.mechanicProfileId)),
-    field('Mechanic thinking', select('mechanicThink', [['min', 'minimal'], ['low', 'low'], ['auto', 'provider default']], settings.mechanicThink)),
-    field('Fall back to main model', checkbox('mechanicFallbackToMain', settings.mechanicFallbackToMain)),
-    field('Request floor (tokens)', numberInput('requestFloor', settings.requestFloor, (n) => apply({ requestFloor: n }).requestFloor)),
-    field('Context cap (tokens)', numberInput('contextTokenCap', settings.contextTokenCap, (n) => apply({ contextTokenCap: n }).contextTokenCap)),
+    field('Mechanic profile', select('mechanicProfileId', profileOptions, settings.mechanicProfileId), 'mechanicProfileId'),
+    field('Mechanic thinking', select('mechanicThink', [['min', 'minimal'], ['low', 'low'], ['auto', 'provider default']], settings.mechanicThink), 'mechanicThink'),
+    field('Fall back to main model', checkbox('mechanicFallbackToMain', settings.mechanicFallbackToMain), 'mechanicFallbackToMain'),
+    field('Request floor (tokens)', numberInput('requestFloor', settings.requestFloor, (n) => apply({ requestFloor: n }).requestFloor), 'requestFloor'),
+    field('Context cap (tokens)', numberInput('contextTokenCap', settings.contextTokenCap, (n) => apply({ contextTokenCap: n }).contextTokenCap), 'contextTokenCap'),
     h('h3', {}, 'Output budgets (tokens)'),
     h('div', { class: 'alius-grid' }, ...budgetInputs),
     h('h3', {}, 'Display'),
-    field('Palette', select('palette', [['amber', 'amber'], ['green', 'green'], ['white', 'white']], settings.palette)),
-    field('Scanlines', checkbox('scanlines', settings.scanlines)),
-    field('CRT flicker', checkbox('flicker', settings.flicker)),
+    field('Palette', select('palette', [['amber', 'amber'], ['green', 'green'], ['white', 'white']], settings.palette), 'palette'),
+    field('Scanlines', checkbox('scanlines', settings.scanlines), 'scanlines'),
+    field('CRT flicker', checkbox('flicker', settings.flicker), 'flicker'),
     h('h3', {}, 'Campaign'),
-    field('Desire/Bond defects', checkbox('desireBondDefects', settings.desireBondDefects)),
-    field('Show raw values', checkbox('showRawValues', settings.showRawValues)),
-    field('Companion vignettes (main model)', checkbox('activityFlavor', settings.activityFlavor)),
-    field('Generated grunt names', checkbox('gruntFlavor', settings.gruntFlavor)),
-    field('Sprite mode', select('spriteMode', [['native', 'Native Expressions'], ['emotion_pick', 'Mechanic emotion pick']], settings.spriteMode)),
+    field('Desire/Bond defects', checkbox('desireBondDefects', settings.desireBondDefects), 'desireBondDefects'),
+    field('Show raw values', checkbox('showRawValues', settings.showRawValues), 'showRawValues'),
+    field('Companion vignettes (main model)', checkbox('activityFlavor', settings.activityFlavor), 'activityFlavor'),
+    field('Generated grunt names', checkbox('gruntFlavor', settings.gruntFlavor), 'gruntFlavor'),
+    field('Sprite mode', select('spriteMode', [['native', 'Native Expressions'], ['emotion_pick', 'Mechanic emotion pick']], settings.spriteMode), 'spriteMode'),
     h('h3', {}, 'Conversations'),
-    field('Read the conversation', select('intentMode', [['exchange', 'after every exchange'], ['every_n', 'every N exchanges'], ['scene_end', 'at scene end only']], settings.intentMode)),
-    field('Every N exchanges (2–10)', numberInput('intentEveryN', settings.intentEveryN, (n) => apply({ intentEveryN: n }).intentEveryN, { min: '2', max: '10' })),
-    field('Minimum confidence (0–1)', decimalInput('intentMinConfidence', settings.intentMinConfidence, { min: '0', max: '1' })),
-    field('Scene pacing (exchanges, ≥5)', numberInput('scenePacing', settings.scenePacing, (n) => apply({ scenePacing: n }).scenePacing, { min: '5' })),
-    field('Typing speed (chars/s, 0 = instant)', numberInput('typingSpeed', settings.typingSpeed, (n) => apply({ typingSpeed: n }).typingSpeed)),
-    field('Units may start DMs', checkbox('unitDms', settings.unitDms)),
-    field('Compact the chronicle with the mechanic model', checkbox('chronicleCompaction', settings.chronicleCompaction)),
+    field('Read the conversation', select('intentMode', [['exchange', 'after every exchange'], ['every_n', 'every N exchanges'], ['scene_end', 'at scene end only']], settings.intentMode), 'intentMode'),
+    field('Every N exchanges (2–10)', numberInput('intentEveryN', settings.intentEveryN, (n) => apply({ intentEveryN: n }).intentEveryN, { min: '2', max: '10' }), 'intentEveryN'),
+    field('Minimum confidence (0–1)', decimalInput('intentMinConfidence', settings.intentMinConfidence, { min: '0', max: '1' }), 'intentMinConfidence'),
+    field('Scene pacing (exchanges, ≥5)', numberInput('scenePacing', settings.scenePacing, (n) => apply({ scenePacing: n }).scenePacing, { min: '5' }), 'scenePacing'),
+    field('Typing speed (chars/s, 0 = instant)', numberInput('typingSpeed', settings.typingSpeed, (n) => apply({ typingSpeed: n }).typingSpeed), 'typingSpeed'),
+    field('Units may start DMs', checkbox('unitDms', settings.unitDms), 'unitDms'),
+    field('Compact the chronicle with the mechanic model', checkbox('chronicleCompaction', settings.chronicleCompaction), 'chronicleCompaction'),
     h('h3', {}, 'Combat'),
-    field('Easy retry (rewind a lost combat)', checkbox('easyRetry', settings.easyRetry)),
-    field('Generated names for affixed enemies', checkbox('enemyFlavor', settings.enemyFlavor)),
-    field('Difficulty (this campaign)', difficultySelect()),
+    field('Easy retry (rewind a lost combat)', checkbox('easyRetry', settings.easyRetry), 'easyRetry'),
+    field('Generated names for affixed enemies', checkbox('enemyFlavor', settings.enemyFlavor), 'enemyFlavor'),
+    field('Difficulty (this campaign)', difficultySelect(), 'difficulty'),
     h('h3', {}, 'World'),
-    field('Story director (mechanic model)', checkbox('directorEnabled', settings.directorEnabled)),
-    field('Story beat cooldown (days, 1–14)', numberInput('beatCooldownDays', settings.beatCooldownDays, (n) => apply({ beatCooldownDays: n }).beatCooldownDays, { min: '1', max: '14' })),
-    field('Expedition recap (main model)', checkbox('expeditionRecap', settings.expeditionRecap)),
+    field('Story director (mechanic model)', checkbox('directorEnabled', settings.directorEnabled), 'directorEnabled'),
+    field('Story beat cooldown (days, 1–14)', numberInput('beatCooldownDays', settings.beatCooldownDays, (n) => apply({ beatCooldownDays: n }).beatCooldownDays, { min: '1', max: '14' }), 'beatCooldownDays'),
+    field('Expedition recap (main model)', checkbox('expeditionRecap', settings.expeditionRecap), 'expeditionRecap'),
     h('h3', {}, 'Decisions'),
-    field('Generated dilemmas (mechanic model; off: authored options)', checkbox('dilemmasEnabled', settings.dilemmasEnabled)),
+    field('Generated dilemmas (mechanic model; off: authored options)', checkbox('dilemmasEnabled', settings.dilemmasEnabled), 'dilemmasEnabled'),
     h('h3', {}, 'Analysis'),
-    field('Analysis tool (hover, ? or long-press)', checkbox('analyzeEnabled', settings.analyzeEnabled)),
-    field('Analysis animation', select('analyzeAnimation', [['full', 'full'], ['short', 'short'], ['off', 'off']], settings.analyzeAnimation)),
-    field('Hover delay (ms, 100–1500)', numberInput('analyzeHoverDelay', settings.analyzeHoverDelay, (n) => apply({ analyzeHoverDelay: n }).analyzeHoverDelay, { min: '100', max: '1500', step: '50' })),
+    field('Analysis tool (hover, ? or long-press)', checkbox('analyzeEnabled', settings.analyzeEnabled), 'analyzeEnabled'),
+    field('Analysis animation', select('analyzeAnimation', [['full', 'full'], ['short', 'short'], ['off', 'off']], settings.analyzeAnimation), 'analyzeAnimation'),
+    field('Hover delay (ms, 100–1500)', numberInput('analyzeHoverDelay', settings.analyzeHoverDelay, (n) => apply({ analyzeHoverDelay: n }).analyzeHoverDelay, { min: '100', max: '1500', step: '50' }), 'analyzeHoverDelay'),
     h('h3', {}, 'Intimacy'),
-    field('Romance', checkbox('romance', settings.romance)),
-    field('Explicit scenes allowed', checkbox('explicitContent', settings.explicitContent)),
-    field('Romantic initiative', select('romanticInitiative', [['low', 'low'], ['med', 'medium'], ['high', 'high']], settings.romanticInitiative)),
+    field('Romance', checkbox('romance', settings.romance), 'romance'),
+    field('Explicit scenes allowed', checkbox('explicitContent', settings.explicitContent), 'explicitContent'),
+    field('Romantic initiative', select('romanticInitiative', [['low', 'low'], ['med', 'medium'], ['high', 'high']], settings.romanticInitiative), 'romanticInitiative'),
     h('h3', {}, 'Developer'),
-    field('Debug mode', checkbox('debug', settings.debug, true)),
-    field('Mechanics edit lock', checkbox('editLock', settings.editLock, true)),
+    field('Debug mode', checkbox('debug', settings.debug, true), 'debug'),
+    field('Mechanics edit lock', checkbox('editLock', settings.editLock, true), 'editLock'),
   );
 
   // --- campaign export / import
