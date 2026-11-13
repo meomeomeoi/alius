@@ -91,3 +91,8 @@ Intimacy settings apply as usual; romance with the warden is allowed and gets de
 ## Interfaces already provided by P7a (implemented — use, do not rebuild)
 
 - The WARDEN panel, override buttons (COMPLY / ARGUE / DEFY) and the commander-side Leash carry `data-analyze` with glossary entries; readings for the warden's agenda and state go through `Knowledge` and knowledge rules so the commander never reads what he does not know. Mirrored punishments reuse P9's providers.
+
+## Interfaces already provided by P7 (implemented — use, do not rebuild)
+
+- **Trait and commander file plumbing:** `commanderTraits` / `traitEffects` / `syncTraitSettings` (campaign-level mirrors of trait effects for code with no registry), the quiet night (`isQuietNight`, `calendar/sleep`) and `calendar.loseMorning` for calendar effects on the commander, `terminateChance`, `leash_weekly` and `activityCost` as examples of trait-aware rules.
+- **Combat:** `cs.presence` and the commander's HP (`commanderMaxHp`) in Commander Crisis.

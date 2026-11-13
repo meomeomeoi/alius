@@ -100,3 +100,10 @@ When a pattern crosses its threshold and no nickname of that group is active, th
 - **Impunity reading:** register `registerAnalyzeProvider('glossary:impunity', …)` that shows the stance and the main terms as bands through `Knowledge` (never the raw `impunityRecord` or a warden's expectation without a rule that allows it); `state.ledger` can carry the change history if the term changes go through `dispatch`.
 - **Hidden state:** use `registerKnowledgeRule({ fact?, flag? })` for what the commander does not know (unknown expectations, intercept truth flags). Extend `tests/fixtures/analyze/hidden.ts` with sentinels for the new hidden values; the hidden-state test runs over every registered provider.
 - **UI:** punishment menus, chips with UNDO, demands and nicknames carry `data-analyze`; the `punishments` registry gets `description`s (add it to `DESCRIBED_REGISTRIES` / `PLAYER_VISIBLE`).
+
+## Interfaces already provided by P7 (implemented — use, do not rebuild)
+
+- **Presence and image consistency** exist: `presenceOf`, `firstImpressionWeight`, `imageMultiplier` (add `commander_enforced` to the `slight_build` group's `offImage` in `imageConsistency.json`, no code). The CMDR card has an empty `REPUTATION — NONE ON FILE` slot for you to fill.
+- **Delegate routes** end in a *demand* when a unit is one Trust band short: `delegate_demand` is emitted and the route fails; replace that refusal with your demands. `Impunity` can join the delegate decision in `resolveRoute` (`engine/commander/checks.ts`).
+- **Intimidation:** `intimidationBonus(state)` (strength and seasoning) already feeds the Authority talk-down; discipline can reuse it.
+- **Traits:** `traitEffects` is the way to read a trait; add effect types to `TraitEffectSchema`, a line to `summarizeTraitEffect`, and hook points that call the reader.

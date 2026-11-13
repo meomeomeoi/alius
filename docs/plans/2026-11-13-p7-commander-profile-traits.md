@@ -414,6 +414,6 @@ docs/** (Task 19), tests/** mirror src
 - Modify: `docs/packages/P7-commander-profile-traits.md` (**Implemented as**: every ruling of **Where the code differs**, plus anything decided during execution), `docs/00-overview.md` (§5.4 P7 interfaces row; §6 fields from planned to implemented incl. `calendar.loseMorning`, `commander.fileReviewed/sleeplessDay`, `Unit.commanderTastes`; §5.2 `commander_import` without "planned"; §8 τ setting implemented; §9 P7 → implemented), `docs/CONTENT.md` (check routes, tastes, traits, presence, image consistency), `docs/BALANCE_REPORT.md` (Crisis HP 60 → 20 + 10 × endurance), `dist/index.js`, `style.css`
 - Test: whole suite
 
-- [ ] **Step 1: Write** `MANUAL_TEST_P7.md`: new campaign through COMMANDER FILE (manual and prefill), CMDR card, body training, a Crisis with each presence kind, the sealed-crate routes (body / delegate / bypass), a 3-slot run with endurance 2, an insomniac quiet night, `vow_of_distance` with romance on, an old campaign's review modal, analysis on every new chip.
-- [ ] **Step 2: Run** `npm run typecheck && npm test` → green; `npm run build` leaves `dist/index.js` and `style.css` updated.
-- [ ] **Step 3: Commit** `docs: P7 implemented-as, overview, content guide and manual checklist`.
+- [x] **Step 1: Write** `MANUAL_TEST_P7.md`: new campaign through COMMANDER FILE (manual and prefill), CMDR card, body training, a Crisis with each presence kind, the sealed-crate routes (body / delegate / bypass), a 3-slot run with endurance 2, an insomniac quiet night, `vow_of_distance` with romance on, an old campaign's review modal, analysis on every new chip.
+- [x] **Step 2: Run** `npm run typecheck && npm test` → green; `npm run build` leaves `dist/index.js` and `style.css` updated.
+- [x] **Step 3: Commit** `docs: P7 implemented-as, overview, content guide and manual checklist`.

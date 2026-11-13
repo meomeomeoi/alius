@@ -141,7 +141,7 @@ Source layout (TypeScript, same toolchain style as Mundi-Expanded):
 | `emotion_pick` | mechanic | Optional sprite emotion classification (when not using native Expressions) | 50 |
 | `chronicle_compact` | mechanic | Day/week chronicle lines → one compact entry (P3; without a profile the lines are joined) | 400 |
 | `activity_vignette` | main | ≤2-line vignette after a companion activity (P2; can be turned off) | 150 |
-| `commander_import` | mechanic | Persona text → commander descriptors, expression, seasoning, 0–2 traits with reasons (P7, planned) | 600 |
+| `commander_import` | mechanic | Persona text → commander descriptors, expression, seasoning, 0–2 traits with reasons (P7) | 600 |
 | *(scene dialogue)* | main | Normal ST generation with injected context | — (ST settings) |
 
 Every budget is a user setting. Every mechanic call: request JSON → validate → on truncation/invalid JSON, one repair attempt (lenient parser) → one retry with budget ×1.5 → fail soft (no state change, toast in debug mode). Where the provider allows it, reasoning/thinking is disabled or capped for mechanic calls.
@@ -159,7 +159,7 @@ Before each main-model generation the adapter injects one compact block:
 
 Character card text itself remains SillyTavern's job.
 
-### 5.4 Implemented engine interfaces (P0–P6, P7a)
+### 5.4 Implemented engine interfaces (P0–P6, P7a, P7)
 
 Later packages build on these; change them only together with the owning spec.
 
@@ -210,7 +210,15 @@ Later packages build on these; change them only together with the owning spec.
 | `attachAnalyzer(root, { getEnv })`, `ShellDeps.analyze: { registries }` | P7a | Hover (delay setting), `?` / F1, long-press, pin, drill-down (depth 3). The shell attaches it on open; `shell.refresh()` refreshes it. |
 | `CampaignState.ledger?`, `recordLedger(before, after, action)`, `TUNING.ledger`, `unitStatSteps(state, reg, unit, stat)`, `dilemmaOptions` (+ `check` / `requires`) | P7a | `dispatch` records changes of resources, unit stress and relation axes (7 days, 150 entries) for trends and "last changes"; `unitStatSteps` explains how a stat is built. |
 
-Events emitted by the day-end pipeline: `director_requested` (P5), `leash_refreshed`, `loyalty_sign`, `desertion_attempt`, `mutiny_started`, `dilemma_requested`, `arc_unlocked` (P6), `mission_failed` / `mission_expired` / `clock_filled` / `leash_changed` (P5), `day_end_step`, `upkeep`, `supply_shortage`, `trust_penalty_event`, `unit_recovered`, `facility_upgraded`, `slot_advanced`, `night_started`, `day_started`, `autosave` (the app flushes the saver on it).
+| `commander/seed`, `commander/set_profile { commander }`, `commander/review_done`, `campaign/set_first_impression_tau { days }`, `commanderProfile(state)`, `daysKnown`, `addBodyXp`, `commanderLine`, `validateCommanderSetup`, `traitBlockReason` | P7 | The commander file: optional state defaults for old saves, the review modal's actions, the single reader of body, expression, seasoning, traits and archetype. |
+| `traitEffects(state, reg, type)`, `hasTraitEffect`, `traitIds`, `applyStartTraitEffects`, `applyFactionTraitEffects`, `syncTraitSettings` | P7 | The only way code reads a commander trait: by effect type, never by trait id (overview P4). Add an effect type to `TraitEffectSchema` and a line in `summarizeTraitEffect`. |
+| `routeChoices`, `resolveRoute`, `routeScope`, `afterFailedRoute`, `routeCheck` on authored event options, `dilemma/choose { route }`, `expedition/choose { route }` | P7 | Checks with several routes (body, delegate, social, item, bypass); the validator rejects a body-only check (principle P10). |
+| `presenceOf`, `firstImpressionWeight`, `matchedTastes`, `applyFirstImpression`, `imageMultiplier`; registries `presence`, `tastes`, `imageConsistency` | P7 | First impressions at join, and the off-image multiplier in `computeDeltas`. A new join site must call `applyFirstImpression`. |
+| `combat/presence`, `cs.presence`, `commanderMaxHp`, `dodgeChance`, `scarCommander` (`engine/combat/crisis.ts`) | P7 | The commander in combat: HP from endurance, dodge, a once-per-fight presence action, scars. |
+| `isQuietNight`, `calendar/sleep`, `calendar.loseMorning`, `activityCost`, `requisitionCost`, `terminateChance`, `socialGrowthMult`, `bodyGrowthMult`, `intimacySetting` (vs `intimacyOf`), `platonicThresholds`, `requiresTrait` on relationship states | P7 | Trait hook points: use these instead of the raw tuning or settings. |
+| `commander_import` call, `importCommander`, `StAdapter.getPersonaDescription`, `WizardStep 'commander'`, `renderCommanderFile`, `renderCmdrCard`, `renderRoutePicker` | P7 | Setup and UI pieces. |
+
+Events emitted by the day-end pipeline: `director_requested` (P5), `leash_refreshed`, `loyalty_sign`, `desertion_attempt`, `mutiny_started`, `dilemma_requested`, `arc_unlocked` (P6), `mission_failed` / `mission_expired` / `clock_filled` / `leash_changed` (P5), `day_end_step`, `upkeep`, `quiet_night_started` / `morning_lost` (P7), `supply_shortage`, `trust_penalty_event`, `unit_recovered`, `facility_upgraded`, `slot_advanced`, `night_started`, `day_started`, `autosave` (the app flushes the saver on it).
 
 ## 6. Data model (high level)
 
@@ -218,7 +226,7 @@ Events emitted by the day-end pipeline: `director_requested` (P5), `leash_refres
 Campaign {
   version, seed/rngState, day, slot, difficulty, settings snapshot
   commander { name, corporationId, crimeId, socialStats{authority,insight,empathy,cunning} /* ranks 1–5 */, socialPoints?{…} /* P2: points behind the ranks */, injuredUntilDay?, flags[],
-              /* P7 (planned): */ body{strength,endurance,reflexes 1–5}, bodyXp{…}, expression 1–5, seasoning 1–5, traits{ regular[≤2], special? }, archetype (derived, cached) }
+              /* P7: optional in old saves, filled by commander/seed: */ body{strength,endurance,reflexes 1–5}, bodyXp{…} /* tenths of a session */, expression 1–5, seasoning 1–5, traits{ regular[≤2], special? }, archetype (derived, cached), fileReviewed?, sleeplessDay?, sleeplessRank? }
   squad: Unit[]            // named + grunts, active and reserve
   roster: { activeIds[≤4], capacity }   // activeIds = expedition roster; capacity = beds, 6 → 10 via barracks; dead units may linger in activeIds until the next recruit/roster change, use activeRosterUnits()
   relations: { [unitId]: Relation }
@@ -232,7 +240,7 @@ Campaign {
   scene?: SceneRecord, proposals?: PendingProposal[]       // P3: the open scene (transcript stays in the ST chat) and open proposals
   onboarding? { prologueId, stepId, completed[], skipped[], done }   // P11 (planned); existing campaigns migrate to done: true
   objectives?: [{ id, text, source: prologue|spine|director|unit, dueDay?, done }]   // P11 (planned)
-  calendar { scheduled[], nightEventsQueue[], nightEvent? /* head entry while the Night slot runs */, pendingScene? /* open talk holding its slot */, shortageStreak? }
+  calendar { scheduled[], nightEventsQueue[], nightEvent? /* head entry while the Night slot runs; absent in a quiet night (P7) */, pendingScene? /* open talk holding its slot */, shortageStreak?, loseMorning? /* P7: the next day starts in the Afternoon */ }
   leash { authorizationsLeft, refreshDay, log[] /* entries { no, unitId, kind, day, context, outcome }, newest 60 */, seq?, seeded? }   // P6
   disloyalty?: { units: { [unitId]: LoyaltyRecord /* signs ≤ 6, attempts, nextCheckDay?, nextDoubtDay?, trigger?, cause?, deniedDay?, desertedDay?, stance?, returned? */ }, open?: Confrontation /* { kind: desertion|mutiny|return, unitId, day, at: night|mission_start, nightEntryId?, talkTried?, sympathizers?, combatId? } */ }   // P6
   dilemmas?: { seq, lastDay?, lastDefiningDay?, definingBeats?[], recent?[] /* 3 */, open?: DilemmaState /* { id, templateId, scale, context, status: requested|presented, attempts, units, threadId?, beatId, title?, setup?, options?, source? } */ }   // P6
@@ -255,6 +263,7 @@ Unit {
   equipment { weapon?, upper?, lower? }
   injuries[], injuryDays?, status: 'active'|'reserve'|'injured'|'deserted'|'dead'|'terminated'
   dispositionOffset?   // P8 (planned): −2…+2 on top of the world disposition level, proposed at import
+  commanderTastes?: string[]   // P7: up to 3 ids of registry `tastes`
 }
 
 Relation {
@@ -264,7 +273,7 @@ Relation {
   dailyGain { trust, affinity, attraction }   // for diminishing returns; zeroed at every day rollover
   loyaltyBand: 'steady'|'wavering'|'breaking'  // with hysteresis; initial value from Trust: <10 breaking, <25 wavering, else steady
   affair?: { as, hiddenFrom[], since }   // P3: a concealed romance until discovered
-  metDay?                // P7 (planned): first day the unit knew the commander (default: her join day)
+  metDay?                // P7: first day the unit knew the commander (default: her join day; back-filled for old saves)
   impunityRecord?        // P9 (planned): stored term of Impunity, −40…40, decays toward 0
   marks: MarkInstance[]  // RESERVED in v1 (always empty), see §10 "Marks"; present so no migration is needed later
 }
@@ -309,7 +318,9 @@ P6: **generated dilemmas** on/off (`dilemmasEnabled`, default on; off = the temp
 
 P7a: **analysis tool** on/off (`analyzeEnabled`, default on), **analysis animation** (`analyzeAnimation`: `full` / `short` / `off`, default `full`: 600 ms the first time, 150 ms after) and **hover delay** (`analyzeHoverDelay`, 100–1500 ms, default 250) — SYS › Analysis.
 
-Planned (P7–P10): **first-impression τ** (P7; decay of presence and image consistency, default 7 days) · **dithered portraits** (P10) · **readable mode** (P10; disables scanlines, flicker, dithering and glitch, one font step up) · **reduced motion** (P10; also honours `prefers-reduced-motion`) · **sound volume / mute** (P10; default low) · **device skin override** (P10; default: the skin follows the corporation).
+P7: **first-impression τ** (`firstImpressionTau`, 1–30, default 7 days; the decay of presence and image consistency) — SYS › Relationships.
+
+Planned (P8–P10): **dithered portraits** (P10) · **readable mode** (P10; disables scanlines, flicker, dithering and glitch, one font step up) · **reduced motion** (P10; also honours `prefers-reduced-motion`) · **sound volume / mute** (P10; default low) · **device skin override** (P10; default: the skin follows the corporation).
 
 P5: **story director** on/off (`directorEnabled`, default on; off = the engine's fallback plans the world), **story beat cooldown** (`beatCooldownDays`, 1–14, default 3) and **expedition recap** (`expeditionRecap`, default on) — SYS › World.
 
@@ -327,7 +338,7 @@ Defaults in code: Desire/Bond defects **off**, show raw values **off**, sprite m
 | 6 | P5 | World map, expeditions, missions, director | P0–P4 | implemented |
 | 7 | P6 | Dilemmas, disloyalty & the Leash | P0–P5 | implemented |
 | 8 | P7a | Analysis tool (contextual explanations) | P0–P6 | implemented |
-| 9 | P7 | Commander profile & traits | P0–P6 | spec |
+| 9 | P7 | Commander profile & traits | P0–P6 | implemented |
 | 10 | P8 | World options & disposition | P0–P7 | spec |
 | 11 | P9 | Impunity, discipline, demands, reputation | P0–P8 | spec |
 | 12 | P10 | Visual upgrade (hub, device skins, voices) | P0–P6 | spec |

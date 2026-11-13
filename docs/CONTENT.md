@@ -530,7 +530,7 @@ The analysis panel (hover, `?` or long-press on anything in the shell) explains 
 
 **`glossary`** — one entry per concept: `{ id, term, short, long?, see?: string[] }`. `short` is at most **160** and `long` at most **600** displayed characters (link markup does not count). `see` lists link targets for the "see also" row. Ids that explain a setting are `setting_<key in snake_case>` (`showRawValues` → `setting_show_raw_values`); the code addresses them as `setting:showRawValues`.
 
-**`description`** — an optional string (≤ 600 displayed characters) on `roles, skills, signatures, statuses, defects, items, affixes, enemies, enemyCategories, regions, nodeTypes, activities, facilities, crimes, corporations, starts, relationshipStates, locations, orders, synergies`. The panel shows `description`, else `summary`, else a fallback (defects: upside and downside; signatures: `mechanic`). The panel also adds a generated **effects** summary from the entry's structured effects, so never repeat numbers in the text. An entry with nothing to show is listed in SYS › Debug › Content warnings.
+**`description`** — an optional string (≤ 600 displayed characters) on `roles, skills, signatures, statuses, defects, items, affixes, enemies, enemyCategories, regions, nodeTypes, activities, facilities, crimes, corporations, starts, relationshipStates, locations, orders, synergies` (P7 adds `commanderTraits`, `tastes`, where it is required). The panel shows `description`, else `summary`, else a fallback (defects: upside and downside; signatures: `mechanic`). The panel also adds a generated **effects** summary from the entry's structured effects, so never repeat numbers in the text. An entry with nothing to show is listed in SYS › Debug › Content warnings.
 
 **`cause`** on `eventDeltas` — a one-line reason shown in a relationship's history (≤ 80 chars): `"cause": "You took her side"`.
 
@@ -541,6 +541,22 @@ The analysis panel (hover, `?` or long-press on anything in the shell) explains 
   "long": "It rises when you keep promises. When it drops, her [[loyalty_band|loyalty]] wavers.", "see": ["loyalty_band", "leash_compel"] }
 { "id": "bloom_fang", "name": "Bloom Fang", "description": "A blade grown from Bloom tissue; its victims keep [[statuses:bleed|bleeding]].", … }
 ```
+
+## Commander content (P7)
+
+**`commanderTraits`** — `{ id, name, kind: 'regular'|'special', description, upside, downside, effects[], hooks?[], exclusiveWith?[], requiresSettings?: { desireBondDefects: true } }`. A campaign picks up to 2 regular and 0–1 special traits. `effects` use a closed vocabulary (one line each in the panel, so never repeat numbers in the text): `social_rank { stat, rank }`, `seasoning_start { amount }`, `faction_start { amount }` (start), `starting_trust { amount, ifValue? }`, `taste_attraction { amount }` (join, only with a matched `drawn_to_*` taste), `social_growth { stat, mult }`, `body_growth { mult }`, `activity_cost { activityId, resource, amount }`, `activity_relation { activityId, axis, amount }` (with a companion), `early_trust_gain { pct }` (Trust gains, first 14 days known), `relation_event_mult { event, mult, ifTrigger? }`, `crisis_hp { amount }`, `leash_weekly { amount }`, `terminate_approval { amount }`, `requisition_price { pct }`, `night_slot {}` + `sleepless_rank { stat, amount }` (quiet nights), `no_romance {}`, `platonic_threshold { states[], pct }`, `unlock_state { stateId }`. `exclusiveWith` must be symmetric. Cross-references (activities, event types, states, other traits) are checked by the loader.
+
+**`tastes`** — how a unit reads the commander: `{ id, name, description, match?: { archetypes?[], expression?: [lo, hi], seasoning?: [lo, hi] }, offsets?: { trust?, affinity?, attraction? } (±20), presenceMult? (0–2), imageMult? (0–2) }`. No `match` = always matches. A unit holds at most 3 (`commanderTastes`). Attraction offsets come only from tastes; expression has no other mechanical effect.
+
+**`presence`** — rows `{ id, factor: 'archetype'|'seasoning'|'authority', key, presence (−15…15) }`; the sum (clamped to ±15) is the commander's presence. Every archetype and every rank/seasoning value 1–5 should have a row (a missing one counts 0).
+
+**`imageConsistency`** — groups `{ id, archetypes[], inImage[], offImage[] }` of event types. An archetype is in exactly one group (the loader checks it). An `offImage` event of the commander multiplies his trust/affinity/attraction deltas by `1 + (1.3·t − 1)·w(d)`; `inImage` is data for the panel text.
+
+**`routeCheck`** on an authored event option (`dilemmaTemplates[].fixed.options[]`): `{ id, routes: [ … ] }`, 1–5 routes of `{ kind: 'body', stat, min }`, `{ kind: 'delegate', unitFilter?: { roles[] }, cost: { trustCheck?, affinityCost?, stress? } }`, `{ kind: 'social', stat, min }`, `{ kind: 'item', itemId }`, `{ kind: 'bypass', cost: { resource, amount } }`. **At least one route must not be `body`** (the schema rejects a body-only check). The option still needs a cost effect.
+
+**`relationshipStates[].requiresTrait`** — the state is reachable only by a commander with that trait (`sworn` needs `vow_of_distance`).
+
+**`activities`**: the effect `{ type: 'commander_body_xp', stat }` (with a focus `when`) trains a body stat; the amount is `TUNING.commander.bodyXpPerSession`, not authored.
 
 ## Lorebook
 

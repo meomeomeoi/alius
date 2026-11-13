@@ -64,3 +64,7 @@ Average combat length within 5 rounds: **FAIL**.
 | compliance_craving | 83.1 % | -1.0 | 9.51 | 30.7 | PASS |
 
 12 of 18 defects within ±5 pp.
+
+## Commander Crisis HP (P7)
+
+The Crisis HP of the commander changed from a flat **60** to **20 + 10 × endurance** (+ trait effects, at least 10): 30 (endurance 1), 50 for the default commander (endurance 3), 70 (endurance 5), 40 with `old_wound`. The default commander therefore has 10 HP less than before, and a 6 % × reflexes dodge chance (12 % by default) on hits that reach him. The harness above does not model Commander Crisis, so its numbers are unchanged; re-run it if the encounter tables are tuned for fights that expose the commander.

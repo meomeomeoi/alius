@@ -99,3 +99,9 @@ New screen **WORLD PARAMETERS** right after the start/corporation choice. It is 
 
 - **WORLD PARAMETERS screen:** give each option and choice card `data-analyze="worldOptions:<id>"` (add `worldOptions` to `DESCRIBED_REGISTRIES` / `PLAYER_VISIBLE` and a `description` per entry; the effects summary is generated). Disposition levels and offsets need glossary entries.
 - **Settings and locks:** the bare-source provider `setting` (in `providers/core.ts`) shows the current value and a lock line from `SETTING_LOCKS`; add a lock there when a world option or setting freezes after campaign start. A new setting needs a SYS `field(label, control, key)` and a glossary entry `setting_<snake_case key>` (`settingGlossaryId`).
+
+## Interfaces already provided by P7 (implemented — use, do not rebuild)
+
+- **Where P7 stops:** the trait framework (`commanderTraits`, `traitEffects`), the commander file and `commander/seed`-style optional state (use the same pattern for `world.options`), `Relation.metDay` and `Unit.commanderTastes`, and `firstImpressionTau`. Disposition offsets belong to P8.
+- **Join sites** that start a relation call `applyFirstImpression(state, reg, unit, relation)` (buildCampaign, `squad/add_named`, `gruntRelation`); a P8 disposition level should add to the baseline before it.
+- **UI:** reuse `renderCommanderFile`-style forms (plain functions, text only) and the glossary/`DESCRIBED_REGISTRIES` rule; the SYS tab has a Relationships section for P7's τ.
