@@ -205,7 +205,7 @@ export interface LogEntry {
   round: number;
   kind:
     | 'skill' | 'hit' | 'crit' | 'miss' | 'heal' | 'status' | 'downed' | 'revived' | 'order' | 'order_refused'
-    | 'cover' | 'intercept' | 'breakdown' | 'stress' | 'summon' | 'pass';
+    | 'cover' | 'intercept' | 'breakdown' | 'stress' | 'summon' | 'pass' | 'dodge';
   actor?: string;
   target?: string;
   amount?: number;
@@ -213,6 +213,9 @@ export interface LogEntry {
   orderId?: string;
   statusId?: string;
 }
+
+/** The presence action an archetype gives the commander (P7). */
+export type PresenceKind = 'unnoticed' | 'steady_voice' | 'rally';
 
 export interface PlannedAction {
   kind: 'skill' | 'guard' | 'swap' | 'pass';
@@ -286,6 +289,8 @@ export interface CombatState {
   inExtra?: boolean;
   /** The last order a unit refused and nothing has been ordered since: what `combat/compel` runs (P6). */
   lastRefusal?: { orderId: string; targetCid: string };
+  /** P7: the once-per-combat presence action (absent in a combat saved before P7: then there is no commander to act). */
+  presence?: { kind: PresenceKind; used: boolean; /** Steady Voice: the next paid order costs 1 CP less. */ steadyVoicePending?: boolean };
   /** Unit ids whose refusals were Compelled in this combat; the Leash is paid when the combat is finalized (P6). */
   compels?: string[];
 }

@@ -12,7 +12,7 @@ const matches = (list: string[] | undefined, orderId: string): boolean => !list 
 
 /**
  * What an order costs: the registry cost plus the `order_cost` passives of the unit it targets that match the order,
- * never below 1.
+ * never below 1; Steady Voice (P7) takes 1 CP off the next paid order.
  */
 export function orderCost(ctx: EffectCtx, orderId: string, targetCid?: string): number {
   const order = orderOf(ctx, orderId);
@@ -21,7 +21,9 @@ export function orderCost(ctx: EffectCtx, orderId: string, targetCid?: string): 
   if (targetCid && targetCid !== 'commander' && ctx.cs.combatants.some((c) => c.cid === targetCid)) {
     for (const e of activePassives(ctx, targetCid, 'order_cost')) if (matches(e.orders, orderId)) cost += e.delta;
   }
-  return Math.max(1, cost);
+  cost = Math.max(1, cost);
+  // P7 Steady Voice: the next paid order is 1 CP cheaper, and may be free
+  return ctx.cs.presence?.steadyVoicePending ? Math.max(0, cost - 1) : cost;
 }
 
 /** Why the order cannot be issued now, or null. Orders are accepted while a squad unit awaits input. */
@@ -88,7 +90,10 @@ function applyOrder(ctx: EffectCtx, order: OrderEntry, targetCid: string | undef
 export function issueOrder(ctx: EffectCtx, orderId: string, targetCid?: string, opts: { free?: boolean; compel?: boolean } = {}): boolean {
   const { cs } = ctx;
   const order = orderOf(ctx, orderId)!;
-  if (!opts.free) cs.cp -= orderCost(ctx, orderId, targetCid);
+  if (!opts.free) {
+    cs.cp -= orderCost(ctx, orderId, targetCid);
+    if (cs.presence?.steadyVoicePending) delete cs.presence.steadyVoicePending;
+  }
   delete cs.lastRefusal; // any later order answers the refusal (P6)
   if (order.target === 'ally' && targetCid && opts.compel !== true) {
     const chance = Math.max(0, ...activePassives(ctx, targetCid, 'order_refusal')

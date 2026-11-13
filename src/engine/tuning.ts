@@ -77,7 +77,6 @@ export const TUNING = Object.freeze({
     initiativeRand: 3,
     strainedMult: 1.5,
     breakingChance: 0.25,
-    commanderHp: 60,
     commanderDef: 10,
     commanderInjuryDays: 3,
     gruntDeathOnWin: 0.1,

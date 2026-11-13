@@ -6,6 +6,8 @@ import { getSynergies } from '../relations';
 import type { CampaignState, Unit } from '../state/types';
 import { TUNING } from '../tuning';
 import { arcScale } from '../arcs';
+import { commanderProfile } from '../commander/profile';
+import { commanderMaxHp, presenceKind } from './crisis';
 import { activePassives, amplify, makeCtx } from './effects';
 import { ownedPassiveIds, ownedUpgrades, unitSkillIds } from './skills';
 import { spawnEnemy, spawnMutineer } from './spawn';
@@ -153,11 +155,13 @@ export function buildCombat(state: CampaignState, reg: Registries, rng: Rng, p: 
     hints: [],
     nextCid: 1,
   };
+  cs.presence = { kind: presenceKind(commanderProfile(state).archetype), used: false };
   for (const e of p.encounter.enemies) spawnEnemy(cs, state, reg, e);
   for (const m of p.encounter.mutineers ?? []) spawnMutineer(cs, state, reg, m);
   if (p.encounter.exposesCommander && p.coverId) {
     const cover = squad.find((c) => c.unitId === p.coverId)!;
-    cs.commander = { hp: TUNING.combat.commanderHp, maxHp: TUNING.combat.commanderHp, def: TUNING.combat.commanderDef, coverId: cover.cid, downed: false };
+    const maxHp = commanderMaxHp(state, reg);
+    cs.commander = { hp: maxHp, maxHp, def: TUNING.combat.commanderDef, coverId: cover.cid, downed: false };
   }
 
   // always-on max-HP passives (stat hp / all) are folded into the starting values

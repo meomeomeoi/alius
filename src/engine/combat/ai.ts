@@ -54,6 +54,19 @@ function aggressive(ctx: EffectCtx, cid: string, opts: Option[]): PlannedAction 
 }
 
 /**
+ * P7 Unnoticed: once used, an enemy that could pick the exposed commander looks past him half of the time (one roll
+ * per decision); it then chooses among the squad only. Skills left without a target drop out.
+ */
+function withoutCommanderIfUnnoticed(ctx: EffectCtx, cid: string, usable: UsableSkill[]): UsableSkill[] {
+  const { cs } = ctx;
+  const p = cs.presence;
+  if (p?.kind !== 'unnoticed' || !p.used || byCid(cs, cid).side !== 'enemy') return usable;
+  if (!usable.some((u) => u.targets.includes('commander'))) return usable;
+  if (!ctx.rng.chance(TUNING.commander.unnoticedSkip)) return usable;
+  return usable.map((u) => ({ ...u, targets: u.targets.filter((t) => t !== 'commander') })).filter((u) => u.targets.length > 0);
+}
+
+/**
  * The action an AI-controlled combatant takes, by its `aiProfile`: `aggressive` the heaviest hit; `predator` a
  * damaging skill on the lowest HP %; `protector` heal/shield/guard/taunt for a wounded ally or an exposed commander,
  * else aggressive; `disruptor` a status skill on a target without it, else aggressive; `stressor` a stress skill on
@@ -63,7 +76,7 @@ function aggressive(ctx: EffectCtx, cid: string, opts: Option[]): PlannedAction 
 export function chooseAction(ctx: EffectCtx, cid: string): PlannedAction {
   const { cs } = ctx;
   const c = byCid(cs, cid);
-  const usable = usableSkills(ctx, cid);
+  const usable = withoutCommanderIfUnnoticed(ctx, cid, usableSkills(ctx, cid));
   if (usable.length === 0) return { kind: 'guard' };
   const opts = options(ctx, cid, usable);
 

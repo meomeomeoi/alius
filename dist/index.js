@@ -83,7 +83,6 @@ var TUNING = Object.freeze({
     initiativeRand: 3,
     strainedMult: 1.5,
     breakingChance: 0.25,
-    commanderHp: 60,
     commanderDef: 10,
     commanderInjuryDays: 3,
     gruntDeathOnWin: 0.1,
@@ -287,6 +286,20 @@ function archetypeOf(body) {
   if (sum <= 9) return "average";
   if (sum <= 12) return "fit";
   return "hardened";
+}
+function commanderProfile(state) {
+  const c = state.commander;
+  const d = TUNING.commander.defaults;
+  const body = { ...d.body, ...c.body ?? {} };
+  const traits = c.traits ?? { regular: [] };
+  return {
+    body,
+    bodyXp: { strength: 0, endurance: 0, reflexes: 0, ...c.bodyXp ?? {} },
+    expression: c.expression ?? d.expression,
+    seasoning: c.seasoning ?? d.seasoning,
+    traits: { regular: [...traits.regular], ...traits.special !== void 0 ? { special: traits.special } : {} },
+    archetype: archetypeOf(body)
+  };
 }
 var defaultCommanderSetup = () => ({
   body: { ...TUNING.commander.defaults.body },
@@ -3338,6 +3351,29 @@ function arcDayStep(draft, ctx2) {
   return events;
 }
 
+// src/engine/combat/crisis.ts
+function commanderMaxHp(state, _reg) {
+  const t = TUNING.commander;
+  return Math.max(t.crisisHpMin, t.crisisHpBase + t.crisisHpPerEndurance * commanderProfile(state).body.endurance);
+}
+var dodgeChance = (state) => TUNING.commander.dodgePerReflex * commanderProfile(state).body.reflexes;
+function presenceKind(archetype) {
+  return archetype === "frail" || archetype === "slight" ? "unnoticed" : archetype === "average" ? "steady_voice" : "rally";
+}
+var SCAR_STATS = ["endurance", "reflexes"];
+function scarCommander(draft, rng) {
+  if (!rng.chance(TUNING.commander.scarChance)) return [];
+  const c = draft.commander;
+  const profile = commanderProfile(draft);
+  c.body = { ...profile.body };
+  const candidates3 = SCAR_STATS.filter((k) => profile.body[k] > 1);
+  const stat2 = candidates3.length > 0 ? rng.pick(candidates3) : null;
+  if (stat2) c.body[stat2] -= 1;
+  c.archetype = archetypeOf(c.body);
+  c.seasoning = Math.min(5, profile.seasoning + 1);
+  return [{ type: "commander_scarred", stat: stat2, seasoning: c.seasoning }];
+}
+
 // src/engine/combat/formulas.ts
 function rollDamage(rng, o) {
   const [lo, hi] = TUNING.combat.variance;
@@ -4466,6 +4502,10 @@ function hitCommander(ctx2, attackerCid, mult, opts) {
     ctx2.log({ kind: "cover", actor: cover.cid, target: "commander" });
     return dealDamage(ctx2, attackerCid, cover.cid, mult, opts);
   }
+  if (ctx2.rng.chance(dodgeChance(ctx2.state))) {
+    ctx2.log({ kind: "dodge", actor: attackerCid, target: "commander" });
+    return { dealt: 0, crit: false, killed: false };
+  }
   const attackerAtk = effectiveStat(ctx2, attackerCid, "atk");
   const amount = opts.pctMaxHp !== void 0 ? Math.max(1, Math.round(cmd.maxHp * opts.pctMaxHp / 100)) : rollDamage(ctx2.rng, { atk: attackerAtk, mult, def: cmd.def, crit: false });
   if (amount >= cmd.hp) {
@@ -4620,11 +4660,13 @@ function buildCombat(state, reg, rng, p) {
     hints: [],
     nextCid: 1
   };
+  cs.presence = { kind: presenceKind(commanderProfile(state).archetype), used: false };
   for (const e of p.encounter.enemies) spawnEnemy(cs, state, reg, e);
   for (const m of p.encounter.mutineers ?? []) spawnMutineer(cs, state, reg, m);
   if (p.encounter.exposesCommander && p.coverId) {
     const cover = squad.find((c) => c.unitId === p.coverId);
-    cs.commander = { hp: TUNING.combat.commanderHp, maxHp: TUNING.combat.commanderHp, def: TUNING.combat.commanderDef, coverId: cover.cid, downed: false };
+    const maxHp = commanderMaxHp(state, reg);
+    cs.commander = { hp: maxHp, maxHp, def: TUNING.combat.commanderDef, coverId: cover.cid, downed: false };
   }
   const ctx2 = makeCtx(cs, state, reg, rng);
   for (const c of cs.combatants.filter((x) => x.side === "squad")) {
@@ -4649,7 +4691,8 @@ function orderCost(ctx2, orderId, targetCid) {
   if (targetCid && targetCid !== "commander" && ctx2.cs.combatants.some((c) => c.cid === targetCid)) {
     for (const e of activePassives(ctx2, targetCid, "order_cost")) if (matches(e.orders, orderId)) cost += e.delta;
   }
-  return Math.max(1, cost);
+  cost = Math.max(1, cost);
+  return ctx2.cs.presence?.steadyVoicePending ? Math.max(0, cost - 1) : cost;
 }
 function checkOrder(ctx2, orderId, targetCid) {
   const { cs } = ctx2;
@@ -4702,7 +4745,10 @@ function applyOrder(ctx2, order, targetCid) {
 function issueOrder(ctx2, orderId, targetCid, opts = {}) {
   const { cs } = ctx2;
   const order = orderOf(ctx2, orderId);
-  if (!opts.free) cs.cp -= orderCost(ctx2, orderId, targetCid);
+  if (!opts.free) {
+    cs.cp -= orderCost(ctx2, orderId, targetCid);
+    if (cs.presence?.steadyVoicePending) delete cs.presence.steadyVoicePending;
+  }
   delete cs.lastRefusal;
   if (order.target === "ally" && targetCid && opts.compel !== true) {
     const chance = Math.max(0, ...activePassives(ctx2, targetCid, "order_refusal").filter((e) => matches(e.orders, orderId)).map((e) => e.chance ?? 0));
@@ -5026,6 +5072,7 @@ function finalizeCombat(draft, reg, rng, outcome) {
   if (cs.commander?.downed) {
     events.push(...injureCommander(draft, TUNING.combat.commanderInjuryDays));
     commanderInjured = true;
+    events.push(...scarCommander(draft, rng));
   }
   const compels = cs.compels ?? [];
   events.push(...settleCompels(draft, { registries: reg, rng }, compels));
@@ -5098,10 +5145,18 @@ function aggressive(ctx2, cid, opts) {
   const any = first(opts);
   return any ? toAction(any) : null;
 }
+function withoutCommanderIfUnnoticed(ctx2, cid, usable2) {
+  const { cs } = ctx2;
+  const p = cs.presence;
+  if (p?.kind !== "unnoticed" || !p.used || byCid(cs, cid).side !== "enemy") return usable2;
+  if (!usable2.some((u) => u.targets.includes("commander"))) return usable2;
+  if (!ctx2.rng.chance(TUNING.commander.unnoticedSkip)) return usable2;
+  return usable2.map((u) => ({ ...u, targets: u.targets.filter((t) => t !== "commander") })).filter((u) => u.targets.length > 0);
+}
 function chooseAction(ctx2, cid) {
   const { cs } = ctx2;
   const c = byCid(cs, cid);
-  const usable2 = usableSkills(ctx2, cid);
+  const usable2 = withoutCommanderIfUnnoticed(ctx2, cid, usableSkills(ctx2, cid));
   if (usable2.length === 0) return { kind: "guard" };
   const opts = options(ctx2, cid, usable2);
   switch (c.aiProfile) {
@@ -5433,6 +5488,19 @@ registerAction("combat/compel", (draft, _payload, ctx2) => {
   if (forced) issueOrder(ectx, refusal2.orderId, refusal2.targetCid, { free: true, compel: true });
   ectx.emit({ type: "combat_compelled", unitId: unit.id, cid: target.cid, forced });
   return settle(draft, ctx2, ectx, start);
+});
+registerAction("combat/presence", (draft, _payload, ctx2) => {
+  const cs = open(draft, "combat/presence");
+  if (cs.phase !== "awaiting" || !cs.awaitingCid) throw new Error("combat/presence: the combat is not running");
+  if (!cs.presence) throw new Error("No commander in this combat.");
+  if (cs.presence.used) throw new Error("The presence action was already used.");
+  const { kind } = cs.presence;
+  cs.presence.used = true;
+  const ectx = makeCtx(cs, draft, ctx2.registries, ctx2.rng);
+  if (kind === "steady_voice") cs.presence.steadyVoicePending = true;
+  else if (kind === "rally") for (const c of living(cs, "squad")) addStress2(ectx, c.cid, -TUNING.commander.rallyStress, "order");
+  ectx.emit({ type: "combat_presence", kind });
+  return ectx.events;
 });
 registerAction("combat/retreat", (draft, _payload, ctx2) => {
   const cs = open(draft, "combat/retreat");

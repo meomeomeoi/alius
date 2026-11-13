@@ -163,10 +163,10 @@ docs/** (Task 19), tests/** mirror src
 - Consumes: `commanderProfile` (Task 1).
 - Produces: `commanderMaxHp(state, reg): number`; `presenceKind(archetype)` (frail/slight → `unnoticed`, average → `steady_voice`, fit/hardened → `rally`); action `combat/presence {}` (errors: `combat/presence: the combat is not running`, `The presence action was already used.`, `No commander in this combat.`); events `combat_presence { kind }`, `commander_scarred { stat: BodyStat | null, seasoning: number }`.
 
-- [ ] **Step 1: Write the failing tests** — `endurance 1 and 5 give 30 and 70 HP`; `reflexes 5 dodges 30% of uncovered hits over a seeded run` (count within a fixed seed, exact number asserted); `a covered hit never rolls a dodge`; `presence kind follows the archetype`; `rally lowers every standing ally's stress by 10`; `steady voice makes one order 1 CP cheaper, then normal`; `unnoticed skips the commander option about half the time` (fixed seed, exact count); `presence twice is rejected and changes nothing`; `a downed commander scars with a fixed seed: endurance −1, seasoning +1`; `a retried combat never scars`.
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** Re-run the combat suite; update only expectations whose seeded sequence moved because of the dodge roll, and name them in the commit body.
-- [ ] **Step 4: Run** `npx vitest run` → green.
-- [ ] **Step 5: Commit** `feat(combat): commander HP from endurance, dodge, presence action and Crisis scars`.
+- [x] **Step 1: Write the failing tests** — `endurance 1 and 5 give 30 and 70 HP`; `reflexes 5 dodges 30% of uncovered hits over a seeded run` (count within a fixed seed, exact number asserted); `a covered hit never rolls a dodge`; `presence kind follows the archetype`; `rally lowers every standing ally's stress by 10`; `steady voice makes one order 1 CP cheaper, then normal`; `unnoticed skips the commander option about half the time` (fixed seed, exact count); `presence twice is rejected and changes nothing`; `a downed commander scars with a fixed seed: endurance −1, seasoning +1`; `a retried combat never scars`.
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** Re-run the combat suite; update only expectations whose seeded sequence moved because of the dodge roll, and name them in the commit body.
+- [x] **Step 4: Run** `npx vitest run` → green.
+- [x] **Step 5: Commit** `feat(combat): commander HP from endurance, dodge, presence action and Crisis scars`.
 
 ---
 

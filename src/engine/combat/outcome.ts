@@ -7,6 +7,7 @@ import { applyLevelUps, combatXp, releaseBreakdowns } from '../progression';
 import type { Rng } from '../rng';
 import type { CampaignState, LootDrop, Severity, Unit } from '../state/types';
 import { TUNING } from '../tuning';
+import { scarCommander } from './crisis';
 import { amplify, fireTrigger, makeCtx } from './effects';
 import { defaultEnemyName } from './encounter';
 import type { CombatOutcome, CombatResult, Combatant, LogEntry, RelationHint } from './types';
@@ -134,6 +135,7 @@ export function finalizeCombat(draft: CampaignState, reg: Registries, rng: Rng, 
   if (cs.commander?.downed) {
     events.push(...injureCommander(draft, TUNING.combat.commanderInjuryDays));
     commanderInjured = true;
+    events.push(...scarCommander(draft, rng));
   }
 
   // P6: the Leash is paid once, here, so an easy retry that discards the attempt never charges (the compels died with it)

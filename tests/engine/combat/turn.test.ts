@@ -127,7 +127,7 @@ describe('buildCombat', () => {
     const bea = cs.combatants.find((c) => c.unitId === 'unit_bea')!;
     expect(bea.breakdown).toMatchObject({ policy: 'attack', ignoresOrders: true });
     expect(bea.stress).toBe(100);
-    expect(cs.commander).toMatchObject({ hp: 60, maxHp: 60, def: 10, downed: false, coverId: cs.combatants.find((c) => c.unitId === 'unit_cat')!.cid });
+    expect(cs.commander).toMatchObject({ hp: 50, maxHp: 50, def: 10, downed: false, coverId: cs.combatants.find((c) => c.unitId === 'unit_cat')!.cid });
   });
 });
 

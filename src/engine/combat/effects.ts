@@ -3,6 +3,7 @@ import type { EngineEvent } from '../dispatch';
 import type { Rng } from '../rng';
 import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
+import { dodgeChance } from './crisis';
 import { rollCrit, rollDamage } from './formulas';
 import { spawnEnemy } from './spawn';
 import { addStress } from './stress';
@@ -644,6 +645,11 @@ function hitCommander(ctx: EffectCtx, attackerCid: string, mult: number, opts: D
   if (isStanding(cover)) {
     ctx.log({ kind: 'cover', actor: cover.cid, target: 'commander' });
     return dealDamage(ctx, attackerCid, cover.cid, mult, opts);
+  }
+  // P7: a hit that reaches the commander himself may be dodged (6 % × reflexes), before any damage or interception
+  if (ctx.rng.chance(dodgeChance(ctx.state))) {
+    ctx.log({ kind: 'dodge', actor: attackerCid, target: 'commander' });
+    return { dealt: 0, crit: false, killed: false };
   }
   const attackerAtk = effectiveStat(ctx, attackerCid, 'atk');
   const amount = opts.pctMaxHp !== undefined

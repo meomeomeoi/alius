@@ -4,7 +4,8 @@ import { buildCombat, checkStart } from '../combat/build';
 import { fireTrigger, makeCtx, type EffectCtx } from '../combat/effects';
 import { checkOrder, issueOrder } from '../combat/orders';
 import { addStress } from '../combat/stress';
-import { isStanding } from '../combat/targeting';
+import { isStanding, living } from '../combat/targeting';
+import { TUNING } from '../tuning';
 import { isLiving } from '../economy';
 import { leashCost } from '../leash/use';
 import { finalizeCombat } from '../combat/outcome';
@@ -118,6 +119,24 @@ registerAction('combat/compel', (draft, _payload, ctx) => {
   if (forced) issueOrder(ectx, refusal.orderId, refusal.targetCid, { free: true, compel: true });
   ectx.emit({ type: 'combat_compelled', unitId: unit.id, cid: target.cid, forced });
   return settle(draft, ctx, ectx, start);
+});
+
+/**
+ * The commander's presence action (P7), once per combat and free: Unnoticed (enemies look past him half of the time),
+ * Steady Voice (the next paid order is 1 CP cheaper) or Rally (-10 stress to every standing squad unit at once).
+ */
+registerAction('combat/presence', (draft, _payload, ctx) => {
+  const cs = open(draft, 'combat/presence');
+  if (cs.phase !== 'awaiting' || !cs.awaitingCid) throw new Error('combat/presence: the combat is not running');
+  if (!cs.presence) throw new Error('No commander in this combat.');
+  if (cs.presence.used) throw new Error('The presence action was already used.');
+  const { kind } = cs.presence;
+  cs.presence.used = true;
+  const ectx = makeCtx(cs, draft, ctx.registries, ctx.rng);
+  if (kind === 'steady_voice') cs.presence.steadyVoicePending = true;
+  else if (kind === 'rally') for (const c of living(cs, 'squad')) addStress(ectx, c.cid, -TUNING.commander.rallyStress, 'order');
+  ectx.emit({ type: 'combat_presence', kind });
+  return ectx.events;
 });
 
 /** Leaves a running combat: finalized as `retreated` (loss rules without easy retry). */

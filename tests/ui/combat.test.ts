@@ -241,7 +241,7 @@ describe('combat screen', () => {
     });
     const { host } = mount(r.state);
     expect(host.querySelector('[data-row="squad-back"] [data-cid="commander"]')!.textContent).toContain('COMMANDER');
-    expect(host.querySelector('[data-row="squad-back"] [data-cid="commander"]')!.textContent).toContain('60/60');
+    expect(host.querySelector('[data-row="squad-back"] [data-cid="commander"]')!.textContent).toContain('50/50');
   });
 
   it('cut-in fires on a breakdown event', async () => {
