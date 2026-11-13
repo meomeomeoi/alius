@@ -234,9 +234,9 @@ docs/** (Task 19), tests/** mirror src
 **Interfaces:**
 - Produces: `imageMultiplier(state, reg, unitId, event: EventIntent): number` (1 unless commander actor + off-image); called in `computeDeltas` after the defect modifiers on trust/affinity/attraction; `campaign/set_first_impression_tau { days }` (1–30, error otherwise).
 
-- [ ] **Step 1: Write the failing tests** — `a frail commander's coerced gets 1.3 at d=0, ≈1.110 at d=7, ≈1.015 at d=21`; `a hardened commander's comforted gets the same curve on a gain`; `an average commander's coerced is unchanged`; `a unit's own event is never off-image`; `a matched wary_of_brutes doubles the extra part` (1 + (1.3·1.5 − 1)·w); `τ = 14 halves the decay at d=7`; schema: `an archetype in two groups is an error`; settings/SYS: `tau defaults to 7 and 0 or 31 fall back`; `the SYS field changes the setting`.
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → green.
-- [ ] **Step 5: Commit** `feat(engine): image consistency fading with days known`.
+- [x] **Step 1: Write the failing tests** — `a frail commander's coerced gets 1.3 at d=0, ≈1.110 at d=7, ≈1.015 at d=21`; `a hardened commander's comforted gets the same curve on a gain`; `an average commander's coerced is unchanged`; `a unit's own event is never off-image`; `a matched wary_of_brutes doubles the extra part` (1 + (1.3·1.5 − 1)·w); `τ = 14 halves the decay at d=7`; schema: `an archetype in two groups is an error`; settings/SYS: `tau defaults to 7 and 0 or 31 fall back`; `the SYS field changes the setting`.
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → green.
+- [x] **Step 5: Commit** `feat(engine): image consistency fading with days known`.
 
 ---
 

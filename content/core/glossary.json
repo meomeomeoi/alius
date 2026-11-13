@@ -622,5 +622,10 @@
     "id": "setting_difficulty",
     "term": "Difficulty",
     "short": "Combat difficulty of this campaign: story, normal or hard. It scales enemy health, attack and defense."
+  },
+  {
+    "id": "setting_first_impression_tau",
+    "term": "First impression fades",
+    "short": "How many days units take to stop judging the commander by his looks. The first meeting counts most."
   }
 ]

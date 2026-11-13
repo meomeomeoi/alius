@@ -1,0 +1,41 @@
+[
+  {
+    "id": "slight_build",
+    "archetypes": [
+      "frail",
+      "slight"
+    ],
+    "inImage": [
+      "comforted",
+      "apologized",
+      "listened"
+    ],
+    "offImage": [
+      "coerced"
+    ]
+  },
+  {
+    "id": "average_build",
+    "archetypes": [
+      "average"
+    ],
+    "inImage": [],
+    "offImage": []
+  },
+  {
+    "id": "strong_build",
+    "archetypes": [
+      "fit",
+      "hardened"
+    ],
+    "inImage": [
+      "coerced",
+      "protected"
+    ],
+    "offImage": [
+      "comforted",
+      "physical_affection",
+      "apologized"
+    ]
+  }
+]

@@ -163,6 +163,8 @@ export function renderSysTab(host: HTMLElement, ctx: SysCtx): void {
     field('Story director (mechanic model)', checkbox('directorEnabled', settings.directorEnabled), 'directorEnabled'),
     field('Story beat cooldown (days, 1–14)', numberInput('beatCooldownDays', settings.beatCooldownDays, (n) => apply({ beatCooldownDays: n }).beatCooldownDays, { min: '1', max: '14' }), 'beatCooldownDays'),
     field('Expedition recap (main model)', checkbox('expeditionRecap', settings.expeditionRecap), 'expeditionRecap'),
+    h('h3', {}, 'Relationships'),
+    field('First impression fades (days, 1–30)', numberInput('firstImpressionTau', settings.firstImpressionTau, (n) => apply({ firstImpressionTau: n }).firstImpressionTau, { min: '1', max: '30' }), 'firstImpressionTau'),
     h('h3', {}, 'Decisions'),
     field('Generated dilemmas (mechanic model; off: authored options)', checkbox('dilemmasEnabled', settings.dilemmasEnabled), 'dilemmasEnabled'),
     h('h3', {}, 'Analysis'),

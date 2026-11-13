@@ -1081,7 +1081,21 @@ export const TasteSchema = BaseEntrySchema.extend({
   imageMult: z.number().min(0).max(2).optional(),
 }).strict();
 
-Object.assign(registrySchemas, { presence: PresenceSchema, tastes: TasteSchema });
+/**
+ * Which event types fit (`inImage`, data for the analysis text) or contradict (`offImage`) the picture a commander's
+ * build gives. An archetype belongs to exactly one group (checked across the registry by the loader).
+ */
+export const ImageConsistencySchema = BaseEntrySchema.extend({
+  archetypes: z.array(z.enum(ARCHETYPES)).min(1),
+  inImage: z.array(str),
+  offImage: z.array(str),
+}).strict().superRefine((g, ctx) => {
+  g.offImage.forEach((e, i) => {
+    if (g.inImage.includes(e)) ctx.addIssue({ code: 'custom', path: ['offImage', i], message: `"${e}" cannot be both in-image and off-image` });
+  });
+});
+
+Object.assign(registrySchemas, { presence: PresenceSchema, tastes: TasteSchema, imageConsistency: ImageConsistencySchema });
 
 export const DESCRIBED_REGISTRIES = [
   'roles', 'skills', 'signatures', 'statuses', 'defects', 'items', 'affixes', 'enemies',

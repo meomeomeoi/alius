@@ -3,6 +3,7 @@ import { initialLoyaltyBand } from '../relations/bands';
 import { socialRank } from '../social';
 import type { CampaignState, Relation, Unit } from '../state/types';
 import { TUNING } from '../tuning';
+import type { EventIntent } from '../relations/intents';
 import { commanderProfile, daysKnown } from './profile';
 
 /**
@@ -69,4 +70,20 @@ export function applyFirstImpression(state: CampaignState, reg: Registries, unit
   rel.affinity = clamp(affinity, -100, 100);
   rel.attraction = clamp(attraction, 0, 100);
   rel.loyaltyBand = initialLoyaltyBand(rel.trust);
+}
+
+/**
+ * Image consistency: an event the commander performs that contradicts the picture his build gives (`imageConsistency`
+ * registry: the archetype's group lists it as `offImage`) lands harder, gains and losses alike. The extra part fades with
+ * the days the unit has known him: `1 + (m·t − 1)·w(d)`, m = `offImageMult`, t = the matched tastes' `imageMult`
+ * product. The engine assigns the tag, never the model. A unit's own events and in-image events are not scaled.
+ */
+export function imageMultiplier(state: CampaignState, reg: Registries, unitId: string, event: EventIntent): number {
+  if (event.actor !== 'commander') return 1;
+  const archetype = commanderProfile(state).archetype;
+  const group = [...reg.imageConsistency.values()].find((g) => (g.archetypes as string[]).includes(archetype));
+  if (!group || !(group.offImage as string[]).includes(event.type)) return 1;
+  const unit = state.squad.find((u) => u.id === unitId);
+  const t = matchedTastes(state, reg, unit ?? {}).reduce((m, taste) => m * (typeof taste.imageMult === 'number' ? taste.imageMult : 1), 1);
+  return 1 + (TUNING.commander.offImageMult * t - 1) * firstImpressionWeight(state, unitId);
 }

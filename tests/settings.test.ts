@@ -110,6 +110,18 @@ describe('settings', () => {
     expect(getSettings(fresh)).toMatchObject({ easyRetry: false, enemyFlavor: true });
   });
 
+  it('firstImpressionTau (P7) defaults to 7 and keeps 1–30 only', () => {
+    const st = new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' });
+    expect(getSettings(st).firstImpressionTau).toBe(7);
+    expect(updateSettings(st, { firstImpressionTau: 14 }).firstImpressionTau).toBe(14);
+    for (const bad of [0, 31, 2.5, '7', null]) expect(updateSettings(st, { firstImpressionTau: bad as never }).firstImpressionTau, String(bad)).toBe(14);
+    expect(updateSettings(st, { firstImpressionTau: 1 }).firstImpressionTau).toBe(1);
+    expect(updateSettings(st, { firstImpressionTau: 30 }).firstImpressionTau).toBe(30);
+    const fresh = new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' });
+    fresh.settings = { firstImpressionTau: 0 };
+    expect(getSettings(fresh).firstImpressionTau).toBe(7);
+  });
+
   it('the P5 settings default on, round-trip and ignore bad values', () => {
     const st = new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' });
     expect(getSettings(st)).toMatchObject({ directorEnabled: true, beatCooldownDays: 3, expeditionRecap: true });

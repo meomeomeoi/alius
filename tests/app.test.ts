@@ -122,6 +122,19 @@ describe('app', () => {
     expect(again.current().state!.commander.fileReviewed).toBe(true);
   });
 
+  it('the first impression setting is mirrored into the campaign on load and on a settings change (P7)', async () => {
+    const st = new FakeStAdapter(A);
+    st.settings.firstImpressionTau = 12;
+    const fs = fakeShell();
+    const app = createApp(st, { loadContent: okContent, shellFactory: fs.factory as never });
+    await app.start();
+    await app.initCampaign();
+    expect(app.current().state!.settings.firstImpressionTau).toBe(12);
+    st.settings.firstImpressionTau = 20;
+    fs.deps().onSettingsChanged?.();
+    expect(app.current().state!.settings.firstImpressionTau).toBe(20);
+  });
+
   it('chat switch reloads the other chat\'s campaign', async () => {
     const { st, app } = await boot(A);
     await app.initCampaign();

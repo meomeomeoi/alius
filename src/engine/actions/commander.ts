@@ -34,3 +34,13 @@ registerAction('commander/set_profile', (draft, payload, ctx) => {
   draft.commander.fileReviewed = true;
   return [{ type: 'commander_profile_set' }];
 });
+
+/** Mirrors the global setting `firstImpressionTau` into the campaign, which is what the pure engine reads. */
+registerAction('campaign/set_first_impression_tau', (draft, payload) => {
+  const days = typeof payload === 'object' && payload !== null ? (payload as { days?: unknown }).days : undefined;
+  if (typeof days !== 'number' || !Number.isInteger(days) || days < 1 || days > 30) {
+    throw new Error('campaign/set_first_impression_tau needs { days } from 1 to 30');
+  }
+  draft.settings.firstImpressionTau = days;
+  return [];
+});

@@ -551,6 +551,22 @@ describe('SYS combat settings', () => {
     expect(box('beatCooldownDays').value).toBe('9');
     expect(st.settings.beatCooldownDays).toBe(9);
   });
+  it('SYS › Relationships: the first impression field changes the setting and snaps back on a bad value', () => {
+    const { shell, st } = setup({});
+    shell.open();
+    shell.showTab('sys');
+    const text = document.querySelector('#alius-shell')!.textContent!;
+    expect(text).toContain('First impression fades (days, 1–30)');
+    const box = document.querySelector<HTMLInputElement>('#alius-shell input[name="firstImpressionTau"]')!;
+    expect(box.value).toBe('7');
+    box.value = '14';
+    box.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(st.settings.firstImpressionTau).toBe(14);
+    box.value = '31';
+    box.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(box.value).toBe('14');
+    expect(st.settings.firstImpressionTau).toBe(14);
+  });
   it('the Analysis section changes the three settings', () => {
     const { shell, st } = setup();
     shell.open();

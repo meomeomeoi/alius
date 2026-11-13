@@ -207,6 +207,14 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     api.dispatch({ type: 'campaign/set_beat_cooldown', payload: { days } }, { expectChatId: st.getActiveChat()?.chatId });
   }
 
+  /** P7: the first-impression decay is a global setting; the pure engine reads its mirror in the campaign. */
+  function syncFirstImpressionTau(): void {
+    if (!state || load.kind !== 'ok') return;
+    const days = getSettings(st).firstImpressionTau;
+    if (state.settings.firstImpressionTau === days) return;
+    api.dispatch({ type: 'campaign/set_first_impression_tau', payload: { days } }, { expectChatId: st.getActiveChat()?.chatId });
+  }
+
   let sceneScreen: SceneScreen | null = null;
   /** True while the scene screen (or the night knock) is what the shell shows. */
   let onSceneScreen = false;
@@ -839,6 +847,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     adoptExpedition();
     syncIntimacy();
     syncBeatCooldown();
+    syncFirstImpressionTau();
     if (state?.world.director?.pending) void director.onRequested().catch((e) => console.warn('[Alius] director failed', e));
     // dilemmas and confrontations that were open when the campaign was saved come back as they were
     shell.closeModal?.(); // a modal of the previous chat must not act on this campaign
@@ -1352,6 +1361,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     onSettingsChanged: () => {
       syncIntimacy();
       syncBeatCooldown();
+      syncFirstImpressionTau();
     },
   });
 

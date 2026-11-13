@@ -377,6 +377,15 @@ registerRefs('starts', (entry) => {
   return out;
 });
 
+// P7: image consistency names event types
+registerRefs('imageConsistency', (entry) => {
+  const out: Ref[] = [];
+  for (const field of ['inImage', 'offImage'] as const) {
+    (entry[field] as unknown[] | undefined)?.forEach((id, i) => out.push({ registry: 'eventDeltas', id: String(id), path: `${field}[${i}]` }));
+  }
+  return out;
+});
+
 /** Checks that need the whole registry set (reported at `path` of the entry). */
 export interface RegistryCheck { path: string; message: string }
 export type CheckExtractor = (entry: Entry, registries: Record<RegistryName, Map<string, Entry>>) => RegistryCheck[];
@@ -391,6 +400,21 @@ export function registerChecks(registry: RegistryName, check: CheckExtractor): v
 export function getCheckExtractors(): ReadonlyMap<RegistryName, CheckExtractor[]> {
   return checkExtractors;
 }
+
+const ALL_ARCHETYPES = ['frail', 'slight', 'average', 'fit', 'hardened'];
+// P7: an archetype belongs to exactly one image group; the first group reports the ones that belong to none
+registerChecks('imageConsistency', (entry, regs) => {
+  const out: RegistryCheck[] = [];
+  const groups = [...regs.imageConsistency.values()];
+  (entry.archetypes as string[]).forEach((a, i) => {
+    const owners = groups.filter((g) => (g.archetypes as string[]).includes(a));
+    if (owners.length > 1) out.push({ path: `archetypes[${i}]`, message: `archetype "${a}" is in more than one group (${owners.map((g) => g.id).join(', ')})` });
+  });
+  if (groups[0]?.id === entry.id) {
+    for (const a of ALL_ARCHETYPES) if (!groups.some((g) => (g.archetypes as string[]).includes(a))) out.push({ path: 'archetypes', message: `archetype "${a}" is in no group` });
+  }
+  return out;
+});
 
 registerChecks('items', (entry, regs) => {
   const cls = String(entry.class);

@@ -342,6 +342,9 @@ function applyCommanderSetup(commander, c) {
   commander.traits = { regular: [...c.traits.regular], ...c.traits.special !== void 0 ? { special: c.traits.special } : {} };
   commander.archetype = archetypeOf(c.body);
 }
+function daysKnown(state, unitId) {
+  return Math.max(0, state.day - (state.relations[unitId]?.metDay ?? 1));
+}
 function bodyGrowthMult(_state, _reg) {
   return 1;
 }
@@ -575,6 +578,10 @@ function presenceOf(state, reg) {
   const sum = row("archetype", profile.archetype) + row("seasoning", String(profile.seasoning)) + row("authority", String(socialRank(state, "authority")));
   return clamp(sum, -TUNING.commander.presenceMax, TUNING.commander.presenceMax);
 }
+function firstImpressionWeight(state, unitId) {
+  const tau = Number(state.settings.firstImpressionTau ?? TUNING.commander.tau);
+  return Math.exp(-daysKnown(state, unitId) / (tau > 0 ? tau : TUNING.commander.tau));
+}
 var inRange = (v, r) => Array.isArray(r) && v >= Number(r[0]) && v <= Number(r[1]);
 function matchedTastes(state, reg, unit) {
   const profile = commanderProfile(state);
@@ -606,6 +613,15 @@ function applyFirstImpression(state, reg, unit, rel) {
   rel.affinity = clamp(affinity, -100, 100);
   rel.attraction = clamp(attraction, 0, 100);
   rel.loyaltyBand = initialLoyaltyBand(rel.trust);
+}
+function imageMultiplier(state, reg, unitId, event) {
+  if (event.actor !== "commander") return 1;
+  const archetype = commanderProfile(state).archetype;
+  const group = [...reg.imageConsistency.values()].find((g) => g.archetypes.includes(archetype));
+  if (!group || !group.offImage.includes(event.type)) return 1;
+  const unit = state.squad.find((u) => u.id === unitId);
+  const t = matchedTastes(state, reg, unit ?? {}).reduce((m, taste) => m * (typeof taste.imageMult === "number" ? taste.imageMult : 1), 1);
+  return 1 + (TUNING.commander.offImageMult * t - 1) * firstImpressionWeight(state, unitId);
 }
 
 // src/engine/relationGain.ts
@@ -1991,6 +2007,10 @@ function computeDeltas(state, reg, unitId, event) {
   trust = scale(trust, "trust");
   affinity = scale(affinity, "affinity");
   attraction = scale(attraction, "attraction");
+  const image = imageMultiplier(state, reg, unitId, event);
+  trust *= image;
+  affinity *= image;
+  attraction *= image;
   if (def.attractionUsesReceptivity === true && attraction > 0) attraction *= receptivity(state, unitId);
   if (unit.kind === "grunt") {
     affinity = 0;
@@ -11773,7 +11793,16 @@ var TasteSchema = BaseEntrySchema.extend({
   /** Scales how hard an off-image event lands with this unit. */
   imageMult: external_exports.number().min(0).max(2).optional()
 }).strict();
-Object.assign(registrySchemas, { presence: PresenceSchema, tastes: TasteSchema });
+var ImageConsistencySchema = BaseEntrySchema.extend({
+  archetypes: external_exports.array(external_exports.enum(ARCHETYPES)).min(1),
+  inImage: external_exports.array(str2),
+  offImage: external_exports.array(str2)
+}).strict().superRefine((g, ctx2) => {
+  g.offImage.forEach((e, i) => {
+    if (g.inImage.includes(e)) ctx2.addIssue({ code: "custom", path: ["offImage", i], message: `"${e}" cannot be both in-image and off-image` });
+  });
+});
+Object.assign(registrySchemas, { presence: PresenceSchema, tastes: TasteSchema, imageConsistency: ImageConsistencySchema });
 var DESCRIBED_REGISTRIES = [
   "roles",
   "skills",
@@ -13809,6 +13838,14 @@ registerAction("commander/set_profile", (draft, payload, ctx2) => {
   applyCommanderSetup(draft.commander, c);
   draft.commander.fileReviewed = true;
   return [{ type: "commander_profile_set" }];
+});
+registerAction("campaign/set_first_impression_tau", (draft, payload) => {
+  const days = typeof payload === "object" && payload !== null ? payload.days : void 0;
+  if (typeof days !== "number" || !Number.isInteger(days) || days < 1 || days > 30) {
+    throw new Error("campaign/set_first_impression_tau needs { days } from 1 to 30");
+  }
+  draft.settings.firstImpressionTau = days;
+  return [];
 });
 
 // src/llm/callTypes.ts
@@ -16390,7 +16427,8 @@ var DEFAULT_SETTINGS = {
   dilemmasEnabled: true,
   analyzeEnabled: true,
   analyzeAnimation: "full",
-  analyzeHoverDelay: 250
+  analyzeHoverDelay: 250,
+  firstImpressionTau: 7
 };
 var fieldSchemas = {
   mechanicProfileId: external_exports.string(),
@@ -16426,7 +16464,8 @@ var fieldSchemas = {
   dilemmasEnabled: external_exports.boolean(),
   analyzeEnabled: external_exports.boolean(),
   analyzeAnimation: external_exports.enum(["full", "short", "off"]),
-  analyzeHoverDelay: external_exports.number().int().min(100).max(1500)
+  analyzeHoverDelay: external_exports.number().int().min(100).max(1500),
+  firstImpressionTau: external_exports.number().int().min(1).max(30)
 };
 var budgetSchema = external_exports.number().int().min(1);
 var isObj22 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -21098,6 +21137,8 @@ function renderSysTab(host, ctx2) {
     field("Story director (mechanic model)", checkbox("directorEnabled", settings.directorEnabled), "directorEnabled"),
     field("Story beat cooldown (days, 1\u201314)", numberInput("beatCooldownDays", settings.beatCooldownDays, (n) => apply({ beatCooldownDays: n }).beatCooldownDays, { min: "1", max: "14" }), "beatCooldownDays"),
     field("Expedition recap (main model)", checkbox("expeditionRecap", settings.expeditionRecap), "expeditionRecap"),
+    h("h3", {}, "Relationships"),
+    field("First impression fades (days, 1\u201330)", numberInput("firstImpressionTau", settings.firstImpressionTau, (n) => apply({ firstImpressionTau: n }).firstImpressionTau, { min: "1", max: "30" }), "firstImpressionTau"),
     h("h3", {}, "Decisions"),
     field("Generated dilemmas (mechanic model; off: authored options)", checkbox("dilemmasEnabled", settings.dilemmasEnabled), "dilemmasEnabled"),
     h("h3", {}, "Analysis"),
@@ -21629,6 +21670,12 @@ function createApp(st, deps) {
     const days = getSettings(st).beatCooldownDays;
     if (state.settings.beatCooldownDays === days) return;
     api.dispatch({ type: "campaign/set_beat_cooldown", payload: { days } }, { expectChatId: st.getActiveChat()?.chatId });
+  }
+  function syncFirstImpressionTau() {
+    if (!state || load.kind !== "ok") return;
+    const days = getSettings(st).firstImpressionTau;
+    if (state.settings.firstImpressionTau === days) return;
+    api.dispatch({ type: "campaign/set_first_impression_tau", payload: { days } }, { expectChatId: st.getActiveChat()?.chatId });
   }
   let sceneScreen = null;
   let onSceneScreen = false;
@@ -22204,6 +22251,7 @@ function createApp(st, deps) {
     adoptExpedition();
     syncIntimacy();
     syncBeatCooldown();
+    syncFirstImpressionTau();
     if (state?.world.director?.pending) void director.onRequested().catch((e) => console.warn("[Alius] director failed", e));
     shell.closeModal?.();
     dilemmaHost = null;
@@ -22686,6 +22734,7 @@ function createApp(st, deps) {
     onSettingsChanged: () => {
       syncIntimacy();
       syncBeatCooldown();
+      syncFirstImpressionTau();
     }
   });
   shell.registerTab(
@@ -23314,6 +23363,13 @@ registerRefs("starts", (entry) => {
   });
   return out;
 });
+registerRefs("imageConsistency", (entry) => {
+  const out = [];
+  for (const field2 of ["inImage", "offImage"]) {
+    entry[field2]?.forEach((id, i) => out.push({ registry: "eventDeltas", id: String(id), path: `${field2}[${i}]` }));
+  }
+  return out;
+});
 var checkExtractors = /* @__PURE__ */ new Map();
 function registerChecks(registry2, check) {
   const list4 = checkExtractors.get(registry2) ?? [];
@@ -23323,6 +23379,19 @@ function registerChecks(registry2, check) {
 function getCheckExtractors() {
   return checkExtractors;
 }
+var ALL_ARCHETYPES = ["frail", "slight", "average", "fit", "hardened"];
+registerChecks("imageConsistency", (entry, regs) => {
+  const out = [];
+  const groups = [...regs.imageConsistency.values()];
+  entry.archetypes.forEach((a, i) => {
+    const owners = groups.filter((g) => g.archetypes.includes(a));
+    if (owners.length > 1) out.push({ path: `archetypes[${i}]`, message: `archetype "${a}" is in more than one group (${owners.map((g) => g.id).join(", ")})` });
+  });
+  if (groups[0]?.id === entry.id) {
+    for (const a of ALL_ARCHETYPES) if (!groups.some((g) => g.archetypes.includes(a))) out.push({ path: "archetypes", message: `archetype "${a}" is in no group` });
+  }
+  return out;
+});
 registerChecks("items", (entry, regs) => {
   const cls = String(entry.class);
   for (const role of regs.roles.values()) {

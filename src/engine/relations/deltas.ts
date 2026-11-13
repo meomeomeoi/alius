@@ -1,6 +1,7 @@
 import type { Registries } from '../../content/types';
 import type { CampaignState, Severity } from '../state/types';
 import { TUNING } from '../tuning';
+import { imageMultiplier } from '../commander/presence';
 import { intimacyOf } from './gain';
 import type { EventIntent } from './intents';
 import { SEVERITIES } from './vocab';
@@ -46,7 +47,7 @@ function receptivity(state: CampaignState, unitId: string): number {
 /**
  * The modifier chain for one unit and one event, before diminishing returns (those belong to the gain handler).
  * Order: tag check (trigger escalates), table row, value alignment, like/dislike, state modifiers, defect
- * modifiers, receptivity. Values are floats.
+ * modifiers, image consistency (P7), receptivity. Values are floats.
  */
 export function computeDeltas(state: CampaignState, reg: Registries, unitId: string, event: EventIntent): Deltas {
   const unit = state.squad.find((u) => u.id === unitId);
@@ -106,6 +107,12 @@ export function computeDeltas(state: CampaignState, reg: Registries, unitId: str
   trust = scale(trust, 'trust');
   affinity = scale(affinity, 'affinity');
   attraction = scale(attraction, 'attraction');
+
+  // P7 image consistency: an off-image act of the commander lands harder while the unit is still sizing him up
+  const image = imageMultiplier(state, reg, unitId, event);
+  trust *= image;
+  affinity *= image;
+  attraction *= image;
 
   // receptivity on attraction gains
   if (def.attractionUsesReceptivity === true && attraction > 0) attraction *= receptivity(state, unitId);

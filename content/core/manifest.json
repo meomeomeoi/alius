@@ -37,6 +37,7 @@
     "glossary": "glossary.json",
     "commanderTraits": "commanderTraits.json",
     "tastes": "tastes.json",
-    "presence": "presence.json"
+    "presence": "presence.json",
+    "imageConsistency": "imageConsistency.json"
   }
 }

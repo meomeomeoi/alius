@@ -54,6 +54,8 @@ export interface AliusSettings {
   expeditionRecap: boolean;
   /** P6: the mechanic model writes dilemmas (off: the authored block of the template is shown). */
   dilemmasEnabled: boolean;
+  /** P7: days a unit takes to stop judging the commander by his looks (decay time of the first impression, 1–30). */
+  firstImpressionTau: number;
   /** P7a: hover, `?` and long-press open the analysis panel. */
   analyzeEnabled: boolean;
   /** P7a: the ANALYZING animation (`full`: 600 ms first time, 150 ms after; `short`: 150 ms; `off`: none). */
@@ -111,6 +113,7 @@ export const DEFAULT_SETTINGS: AliusSettings = {
   analyzeEnabled: true,
   analyzeAnimation: 'full',
   analyzeHoverDelay: 250,
+  firstImpressionTau: 7,
 };
 
 const fieldSchemas = {
@@ -148,6 +151,7 @@ const fieldSchemas = {
   analyzeEnabled: z.boolean(),
   analyzeAnimation: z.enum(['full', 'short', 'off']),
   analyzeHoverDelay: z.number().int().min(100).max(1500),
+  firstImpressionTau: z.number().int().min(1).max(30),
 };
 const budgetSchema = z.number().int().min(1);
 
