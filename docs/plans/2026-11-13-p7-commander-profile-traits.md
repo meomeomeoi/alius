@@ -132,9 +132,9 @@ docs/** (Task 19), tests/** mirror src
 - Consumes: `applyCommanderSetup`, `TUNING.commander.defaults` (Task 1).
 - Produces: `commander/seed {}` — no-op when `commander.body` exists; else writes defaults, `fileReviewed: false`, `metDay` for every relation missing it (`min(stateSince, ...history days)`); event `commander_seeded`. `commander/review_done {}` → `fileReviewed = true`. `commander/set_profile { commander: CommanderSetup }` → only while `fileReviewed === false`, validates, applies, sets `fileReviewed = true` (start-time trait effects join in Task 10). `daysKnown(state, unitId): number` (`state.day − (metDay ?? 1)`, ≥ 0) exported from `profile.ts`.
 
-- [ ] **Step 1: Write the failing tests** — `seed fills a P6 fixture commander and back-fills metDay from history`; `seed is idempotent`; `readers survive a P6 save before seeding` (`commanderProfile`, `daysKnown` on a fixture without fields); `set_profile is refused once reviewed`; `set_profile with a 5 changes nothing`; `review_done marks reviewed`; `a new relation has metDay = its join day`; app: `afterLoad seeds an old campaign once`.
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** `npx vitest run` → green.
-- [ ] **Step 5: Commit** `feat(engine): commander seed for old saves and metDay`.
+- [x] **Step 1: Write the failing tests** — `seed fills a P6 fixture commander and back-fills metDay from history`; `seed is idempotent`; `readers survive a P6 save before seeding` (`commanderProfile`, `daysKnown` on a fixture without fields); `set_profile is refused once reviewed`; `set_profile with a 5 changes nothing`; `review_done marks reviewed`; `a new relation has metDay = its join day`; app: `afterLoad seeds an old campaign once`.
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** `npx vitest run` → green.
+- [x] **Step 5: Commit** `feat(engine): commander seed for old saves and metDay`.
 
 ---
 

@@ -161,7 +161,7 @@ describe('buildCampaign', () => {
     ]));
     expect(s.relations.unit_ann).toEqual({
       trust: 5, affinity: -10, attraction: 3, stateId: INITIAL_RELATION_STATE, stateSince: 1, history: [], flags: [],
-      dailyGain: { trust: 0, affinity: 0, attraction: 0 }, loyaltyBand: 'breaking', marks: [],
+      dailyGain: { trust: 0, affinity: 0, attraction: 0 }, loyaltyBand: 'breaking', marks: [], metDay: 1,
     });
     expect(INITIAL_RELATION_STATE).toBe('stranger');
     expect(s.relations.unit_bea.loyaltyBand).toBe('wavering');

@@ -13,6 +13,7 @@ import './engine/actions/loyalty'; // registers scene/order, loyalty/* actions a
 import './engine/actions/dilemma'; // registers dilemma/* actions and the pacing step, after the loyalty step (P6)
 import './engine/actions/arc'; // registers arc/decide and the medbay arc steps (P6)
 import './engine/actions/items'; // registers item/* actions and the workshop hook
+import './engine/actions/commander'; // registers commander/seed, set_profile and review_done (P7)
 import './llm/calls/profileImport'; // registers the profile_import call type
 import { generateVignette } from './llm/calls/activityVignette'; // registers the activity_vignette call type
 import { generateEnemyFlavor, generateGruntFlavor } from './llm/calls/flavor'; // registers the flavor call type
@@ -826,6 +827,10 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     // a save from before P6 has no Leash week yet: seed it once
     if (load.kind === 'ok' && state && state.leash.seeded !== true) {
       api.dispatch({ type: 'leash/seed', payload: {} }, { expectChatId: load.chatId });
+    }
+    // a save from before P7 has no commander file yet: seed it once (the review modal follows in the UI)
+    if (load.kind === 'ok' && state && state.commander.body === undefined) {
+      api.dispatch({ type: 'commander/seed', payload: {} }, { expectChatId: load.chatId });
     }
     applyContext();
     syncBadges();

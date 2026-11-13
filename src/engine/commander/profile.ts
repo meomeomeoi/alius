@@ -115,3 +115,8 @@ export function applyCommanderSetup(commander: Commander, c: CommanderSetup): vo
   commander.traits = { regular: [...c.traits.regular], ...(c.traits.special !== undefined ? { special: c.traits.special } : {}) };
   commander.archetype = archetypeOf(c.body);
 }
+
+/** Days since the unit first knew the commander (`state.day − metDay`, never below 0); a missing `metDay` counts as day 1. */
+export function daysKnown(state: CampaignState, unitId: string): number {
+  return Math.max(0, state.day - (state.relations[unitId]?.metDay ?? 1));
+}

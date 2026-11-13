@@ -197,6 +197,7 @@ export function initialRelation(o: { trust: number; affinity: number; attraction
     dailyGain: { trust: 0, affinity: 0, attraction: 0 },
     loyaltyBand: bandFor(trust),
     marks: [],
+    metDay: o.since ?? 1,
   };
 }
 

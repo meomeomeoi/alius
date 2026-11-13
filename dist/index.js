@@ -869,7 +869,8 @@ function initialRelation(o) {
     flags: o.knowsCrime ? ["knows_crime"] : [],
     dailyGain: { trust: 0, affinity: 0, attraction: 0 },
     loyaltyBand: bandFor(trust),
-    marks: []
+    marks: [],
+    metDay: o.since ?? 1
   };
 }
 function makeNamedUnit(u, reg, usedIds) {
@@ -13415,6 +13416,32 @@ registerAction("item/dismantle", (draft, payload, ctx2) => {
 });
 registerActivityHook((draft, ctx2, done) => done.activityId === "workshop" ? openWorkshop(draft, ctx2.registries, ctx2.rng, done.companionId) : []);
 
+// src/engine/actions/commander.ts
+registerAction("commander/seed", (draft) => {
+  if (draft.commander.body !== void 0) return [];
+  applyCommanderSetup(draft.commander, defaultCommanderSetup());
+  draft.commander.fileReviewed = false;
+  for (const rel of Object.values(draft.relations)) {
+    if (rel.metDay !== void 0) continue;
+    rel.metDay = Math.min(rel.stateSince, ...rel.history.map((h2) => h2.day));
+  }
+  return [{ type: "commander_seeded" }];
+});
+registerAction("commander/review_done", (draft) => {
+  draft.commander.fileReviewed = true;
+  return [];
+});
+registerAction("commander/set_profile", (draft, payload, ctx2) => {
+  if (draft.commander.fileReviewed !== false) throw new Error("The commander file was already reviewed.");
+  const c = payload?.commander;
+  if (c === void 0) throw new Error("commander/set_profile needs { commander }");
+  const problems = validateCommanderSetup(c, ctx2.registries, { desireBondDefects: draft.settings.desireBondDefects === true });
+  if (problems.length > 0) throw new Error(problems.join("; "));
+  applyCommanderSetup(draft.commander, c);
+  draft.commander.fileReviewed = true;
+  return [{ type: "commander_profile_set" }];
+});
+
 // src/llm/callTypes.ts
 var CALL_TYPE_IDS = [
   "profile_import",
@@ -21794,6 +21821,9 @@ function createApp(st, deps) {
     }
     if (load.kind === "ok" && state && state.leash.seeded !== true) {
       api.dispatch({ type: "leash/seed", payload: {} }, { expectChatId: load.chatId });
+    }
+    if (load.kind === "ok" && state && state.commander.body === void 0) {
+      api.dispatch({ type: "commander/seed", payload: {} }, { expectChatId: load.chatId });
     }
     applyContext();
     syncBadges();

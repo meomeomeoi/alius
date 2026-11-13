@@ -105,6 +105,23 @@ describe('app', () => {
     expect(shell.toasts).toEqual([{ kind: 'info', text: expect.stringMatching(/already/i) }]);
   });
 
+  it('afterLoad seeds an old campaign once', async () => {
+    const old = createCampaign({ seed: 5, commanderName: 'Old' });
+    for (const k of ['body', 'bodyXp', 'expression', 'seasoning', 'traits', 'archetype', 'fileReviewed'] as const) delete old.commander[k];
+    const st = new FakeStAdapter(A);
+    st.writeMetadata(METADATA_KEY, old);
+    const app = createApp(st, { loadContent: okContent, shellFactory: fakeShell().factory as never });
+    await app.start();
+    const c = app.current().state!.commander;
+    expect(c).toMatchObject({ body: { strength: 3, endurance: 3, reflexes: 2 }, fileReviewed: false, archetype: 'average' });
+    // the player reviewed it: a later load does not seed again
+    app.dispatch({ type: 'commander/review_done', payload: {} });
+    await vi.advanceTimersByTimeAsync(600);
+    const again = createApp(st, { loadContent: okContent, shellFactory: fakeShell().factory as never });
+    await again.start();
+    expect(again.current().state!.commander.fileReviewed).toBe(true);
+  });
+
   it('chat switch reloads the other chat\'s campaign', async () => {
     const { st, app } = await boot(A);
     await app.initCampaign();
