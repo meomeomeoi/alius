@@ -205,7 +205,7 @@ export function traitBlockReason(
 
 /**
  * The commander as the main model reads him (P7): descriptors only, no numbers, no trait names (traits act through
- * mechanics, not prompts). SillyTavern has no pronoun field, so none is given.
+ * mechanics, not prompts). The host chat has no pronoun field, so none is given.
  */
 export function commanderLine(state: CampaignState): string {
   const p = commanderProfile(state);
