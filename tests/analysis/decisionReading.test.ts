@@ -49,8 +49,8 @@ describe('decision option readings', () => {
     expect(read({ scale: 'huge', requires: { stat: 'nonsense', rank: 2 }, check: { stat: 'cunning' } })).toEqual([UNCERTAIN]);
   });
 
-  it('is the same without a campaign? no reading, like every provider', () => {
+  it('without a campaign it says so', () => {
     const env: AnalyzeEnv = { registries: reg, state: null, settings: DEFAULT_SETTINGS };
-    expect(readingFor(parseSubject('glossary:decision_option', '{}')!, env)).toBeNull();
+    expect(readingFor(parseSubject('glossary:decision_option', '{}')!, env)).toEqual({ lines: ['No campaign loaded.'] });
   });
 });

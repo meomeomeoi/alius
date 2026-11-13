@@ -43,16 +43,17 @@ function holds(check: () => boolean | undefined): boolean {
   }
 }
 
-export function buildKnowledge(state: CampaignState, settings: AliusSettings): Knowledge {
+/** Without a campaign nothing campaign-bound is visible: no clocks, no facts (settings-only readings still work). */
+export function buildKnowledge(state: CampaignState | null, settings: AliusSettings): Knowledge {
   const showRaw = settings.showRawValues === true;
-  const visibleClocks = new Set((state.world?.clocks ?? []).filter((c) => c.visibleToPlayer).map((c) => c.id));
-  const factVisible = (f: Fact): boolean => rules.every((r) => !r.fact || holds(() => r.fact!(f, state)));
+  const visibleClocks = new Set((state?.world?.clocks ?? []).filter((c) => c.visibleToPlayer).map((c) => c.id));
+  const factVisible = (f: Fact): boolean => state !== null && rules.every((r) => !r.fact || holds(() => r.fact!(f, state)));
   return {
     showRaw,
     raw: (n) => (showRaw ? String(n) : null),
     clockVisible: (id) => visibleClocks.has(id),
     factVisible,
-    flagVisible: (id) => rules.every((r) => !r.flag || holds(() => r.flag!(id, state))),
-    facts: () => (state.memory?.facts ?? []).filter(factVisible),
+    flagVisible: (id) => state === null || rules.every((r) => !r.flag || holds(() => r.flag!(id, state))),
+    facts: () => (state?.memory?.facts ?? []).filter(factVisible),
   };
 }

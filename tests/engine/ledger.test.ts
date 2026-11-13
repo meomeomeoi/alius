@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { Registries } from '../../src/content/types';
 import { defaultFormation } from '../../src/engine/combat/stats';
-import { dispatch } from '../../src/engine/dispatch';
+import { dispatch, registerAction } from '../../src/engine/dispatch';
 import { recordLedger } from '../../src/engine/ledger';
 import type { CampaignState, LedgerEntry } from '../../src/engine/state/types';
 import { TUNING } from '../../src/engine/tuning';
@@ -134,5 +134,38 @@ describe('change ledger', () => {
     // and the next action appends to it
     const r2 = dispatch(r.state, { type: 'activity/do', payload: { activityId: 'work' } }, reg);
     expect(r2.state.ledger!.length).toBeGreaterThanOrEqual(r.state.ledger!.length);
+  });
+});
+
+registerAction('test/break_squad', (draft) => {
+  (draft as unknown as { squad: unknown }).squad = null; // a state the ledger cannot read
+  draft.resources.credits += 1;
+  return [{ type: 'ok' }];
+});
+
+describe('ledger robustness (review)', () => {
+  it('a ledger that cannot be written never turns a valid action into a failure', () => {
+    const s = fresh();
+    const r = dispatch(s, { type: 'test/break_squad' }, reg);
+    expect(errors(r.events)).toEqual([]);
+    expect(r.events).toContainEqual({ type: 'ok' });
+    expect(r.state.resources.credits).toBe(s.resources.credits + 1);
+    expect(r.state.ledger).toBeUndefined();
+  });
+
+  it('a flood of one kind does not push the other kinds out', () => {
+    const before = fresh();
+    before.day = 10;
+    const after = structuredClone(before);
+    after.ledger = [
+      ...Array.from({ length: 5 }, (_, i) => entry(5, 'res:credits', i + 1)),
+      ...Array.from({ length: 146 }, (_, i) => entry(10, `axis:unit_ann:trust`, i + 1)),
+    ];
+    after.resources.plyx += 3;
+    recordLedger(before, after, 'test/flood');
+    expect(after.ledger).toHaveLength(150);
+    expect(after.ledger!.filter((e) => e.key.startsWith('res:'))).toHaveLength(6); // all resource entries survive
+    expect(after.ledger!.filter((e) => e.key.startsWith('axis:'))).toHaveLength(144); // the oldest axis entries went
+    expect(after.ledger!.find((e) => e.key.startsWith('axis:'))!.delta).toBe(3);
   });
 });

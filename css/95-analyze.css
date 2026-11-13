@@ -13,6 +13,8 @@
   line-height: 1.4;
   box-shadow: 0 0 0 1px var(--alius-bg), 0 0 10px var(--alius-dim); /* a phosphor glow in the palette color */
   overflow-wrap: anywhere;
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
 }
 
 #alius-shell .alius-analyze-frame {
@@ -113,4 +115,11 @@
 
 #alius-shell [data-analyze] {
   -webkit-touch-callout: none;
+}
+
+/* a long-press must not start a text selection on a chip or stat */
+#alius-shell span[data-analyze],
+#alius-shell strong[data-analyze] {
+  -webkit-user-select: none;
+  user-select: none;
 }

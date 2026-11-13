@@ -5,6 +5,7 @@ import { isLiving } from '../../engine/economy';
 import type { CampaignState, Unit } from '../../engine/state/types';
 import { TUNING } from '../../engine/tuning';
 import type { LoadResult } from '../../st/persistence';
+import { analyzeAttrs, analyzeNative } from '../analyze/mark';
 import { h } from '../dom';
 import { renderMissionBoard } from './missionBoard';
 
@@ -63,7 +64,7 @@ function activityCard(a: Entry, state: CampaignState, ctx: OpsTabCtx): HTMLEleme
 
   const controls = h('div', { class: 'alius-activity-controls' });
   const reasonEl = h('p', { class: 'alius-dim alius-reason' });
-  const btn = h('button', { type: 'button', class: 'alius-btn', 'data-do': String(a.id) }, '[ DO ]') as HTMLButtonElement;
+  const btn = h('button', { type: 'button', class: 'alius-btn alius-option', 'data-do': String(a.id), ...analyzeNative(`activities:${String(a.id)}`) }, '[ DO ]') as HTMLButtonElement;
 
   const currentFocus = (): Focus | undefined => focusList.find((f) => f.id === focusSel?.value);
   const request = (): ActivityRequest => {
@@ -100,7 +101,7 @@ function activityCard(a: Entry, state: CampaignState, ctx: OpsTabCtx): HTMLEleme
   return h(
     'article',
     { class: 'alius-activity', 'data-activity': String(a.id) },
-    h('h3', {}, String(a.name)),
+    h('h3', {}, h('span', { class: 'alius-chip', ...analyzeAttrs(`activities:${String(a.id)}`) }, String(a.name))),
     h('p', { class: 'alius-dim' }, `${String(a.summary)} — ${costText(a.cost as Record<string, number>)}`),
     controls,
     reasonEl,
@@ -114,7 +115,7 @@ const remembered = new WeakMap<HTMLElement, string>();
 function requisition(state: CampaignState, ctx: OpsTabCtx, host: HTMLElement): HTMLElement {
   const rate = TUNING.requisition.creditsPerSupply;
   const input = h('input', { type: 'number', name: 'requisition', min: '1', step: '1', value: remembered.get(host) ?? '5', 'aria-label': 'Supplies to requisition' }) as HTMLInputElement;
-  const btn = h('button', { type: 'button', class: 'alius-btn', 'data-requisition': '' }, '[ REQUISITION ]') as HTMLButtonElement;
+  const btn = h('button', { type: 'button', class: 'alius-btn alius-option', 'data-requisition': '', ...analyzeNative('glossary:supplies') }, '[ REQUISITION ]') as HTMLButtonElement;
   const sync = () => {
     remembered.set(host, input.value);
     const n = Math.floor(Number(input.value));
@@ -132,7 +133,7 @@ function requisition(state: CampaignState, ctx: OpsTabCtx, host: HTMLElement): H
     { class: 'alius-section' },
     h('h2', {}, 'REQUISITION'),
     h('p', { class: 'alius-dim' }, `Buy supplies for credits: ${rate} CR per supply. The squad eats every day.`),
-    h('label', {}, 'Supplies ', input),
+    h('label', { class: 'alius-option', ...analyzeNative('glossary:supplies') }, 'Supplies ', input),
     ' ',
     btn,
   );

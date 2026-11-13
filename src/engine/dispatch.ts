@@ -60,7 +60,11 @@ export function dispatch(
   try {
     const events = handler(draft, action.payload, { registries, rng });
     draft.rng = rng.state;
-    recordLedger(state, draft, action.type);
+    try {
+      recordLedger(state, draft, action.type);
+    } catch {
+      // the ledger is a convenience for readings: a state it cannot read must never fail a valid action
+    }
     return { state: draft, events };
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);

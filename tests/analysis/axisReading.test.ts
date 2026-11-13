@@ -93,8 +93,8 @@ describe('axis readings', () => {
 
   it('an event without severity has none in its line, and no events means no history lines', () => {
     const { state, unitId } = hiddenFixture(reg);
-    state.relations[unitId].history = [{ day: 4, kind: 'event', type: 'stress_high' }];
-    expect(read('glossary:trust', state, unitId)![2]).toBe('Stress high, day 4');
+    state.relations[unitId].history = [{ day: 4, kind: 'event', type: 'sided_with' }];
+    expect(read('glossary:trust', state, unitId)![2]).toBe('You took her side, day 4');
     state.relations[unitId].history = [];
     const lines = read('glossary:trust', state, unitId)!;
     expect(lines).toHaveLength(3); // name, trend, state
@@ -122,8 +122,32 @@ describe('axis readings', () => {
     expect(read('glossary:trust', state, undefined)).toBeNull();
     expect(read('glossary:trust', state, 42 as unknown as string)).toBeNull();
     const env: AnalyzeEnv = { registries: reg, state: null, settings: DEFAULT_SETTINGS };
-    expect(readingFor(parseSubject('glossary:trust', JSON.stringify({ unitId }))!, env)).toBeNull();
+    expect(readingFor(parseSubject('glossary:trust', JSON.stringify({ unitId }))!, env)).toEqual({ lines: ['No campaign loaded.'] });
     delete (state.relations as Record<string, unknown>)[unitId];
     expect(read('glossary:trust', state, unitId)).toBeNull();
+  });
+});
+
+describe('axis history is about that axis (review)', () => {
+  const history = [
+    { day: 1, kind: 'event' as const, type: 'flirted', severity: 'minor' as const }, // attraction only
+    { day: 2, kind: 'event' as const, type: 'praised', severity: 'major' as const }, // trust and affinity
+    { day: 3, kind: 'event' as const, type: 'stress_high', severity: 'minor' as const }, // an internal marker with no axis row
+    { day: 4, kind: 'event' as const, type: 'rejected_advance', severity: 'minor' as const }, // trust, affinity, attraction
+  ];
+  const events = (address: string) => {
+    const { state, unitId } = hiddenFixture(reg);
+    state.relations[unitId].history = history;
+    return read(address, state, unitId)!.filter((l) => / — .*, day \d/.test(l) || /, day \d/.test(l)).map((l) => l.slice(-5));
+  };
+
+  it('Trust lists only events that move Trust', () => {
+    expect(events('glossary:trust')).toEqual(['day 4', 'day 2']);
+  });
+  it('Attraction lists only events that move Attraction', () => {
+    expect(events('glossary:attraction')).toEqual(['day 4', 'day 1']);
+  });
+  it('Affinity lists the events that move Affinity (flirting does, from moderate up)', () => {
+    expect(events('glossary:affinity')).toEqual(['day 4', 'day 2', 'day 1']);
   });
 });

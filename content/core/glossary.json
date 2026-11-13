@@ -400,6 +400,50 @@
     "short": "A rare decision the story will remember."
   },
   {
+    "id": "danger",
+    "term": "Danger",
+    "short": "How hard the mission's fights are, 1 to 5. Higher danger means tougher enemies and better loot."
+  },
+  {
+    "id": "reward_tier",
+    "term": "Reward tier",
+    "short": "The class of payout for finishing the mission: credits, plyx, loot and standing with the corporation all grow with the tier."
+  },
+  {
+    "id": "mission_deadline",
+    "term": "Deadline",
+    "short": "Days left to start the mission. When they run out the offer lapses, and some missions cost you when they do."
+  },
+  {
+    "id": "mission_board",
+    "term": "Mission board",
+    "short": "Missions on offer. Command and story missions stay posted; side jobs and rumor leads can be dismissed. Comms upgrades make the board bigger.",
+    "see": [
+      "expedition",
+      "danger",
+      "reward_tier",
+      "mission_deadline"
+    ]
+  },
+  {
+    "id": "expedition",
+    "term": "Expedition",
+    "short": "A mission run on a node map: you pick four soldiers, their rows and the supplies to carry, then walk the map. It spends the morning and the afternoon.",
+    "see": [
+      "danger",
+      "unknown_node",
+      "supplies"
+    ]
+  },
+  {
+    "id": "rumor",
+    "term": "Rumor",
+    "short": "Overheard gossip from the base. Some rumors lead to a mission or a place worth scouting; the rest is atmosphere.",
+    "see": [
+      "mission_board"
+    ]
+  },
+  {
     "id": "setting_mechanic_profile_id",
     "term": "Mechanic profile",
     "short": "The connection profile of the mechanic model: it reads conversations and writes structured data."

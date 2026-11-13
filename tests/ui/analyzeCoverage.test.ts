@@ -18,6 +18,9 @@ import { renderCombatScreen } from '../../src/ui/combat/combatScreen';
 import { renderDilemma } from '../../src/ui/dilemma/dilemmaPanel';
 import { renderExpeditionScreen } from '../../src/ui/expedition/expeditionScreen';
 import { renderSysTab } from '../../src/ui/shell/sysTab';
+import { renderOpsTab } from '../../src/ui/ops/opsTab';
+import { offerMission, postRumor } from '../../src/engine/world/missions';
+import { ctxOf } from '../helpers/world';
 import { run } from '../helpers/world';
 import { h } from '../../src/ui/dom';
 import { renderBaseTab } from '../../src/ui/base/baseTab';
@@ -404,6 +407,46 @@ describe('coverage: setup wizard', () => {
     expect(host.querySelector('label.alius-slider input[type="range"][data-axis="mercy"]')).not.toBeNull();
     // tag chips are the legacy tag chips, not analysis markers
     expect(host.querySelector('.alius-tagchip')).not.toBeNull();
+  });
+});
+
+describe('coverage: OPS', () => {
+  function opsWorld(): CampaignState {
+    const s = world();
+    s.slot = 'morning';
+    offerMission(s, ctxOf(s, reg), { templateId: 'tpl_recover', regionId: 'quarantine_d7', source: 'command' });
+    offerMission(s, ctxOf(s, reg), { templateId: 'tpl_recover', regionId: 'quarantine_d7', source: 'side' });
+    postRumor(s, ctxOf(s, reg), { text: 'Something moves in the quarantine zone.', tags: ['bloom'], leadsTo: 'mission', lead: { templateId: 'tpl_recover', regionId: 'quarantine_d7' } });
+    return s;
+  }
+
+  it('activity cards, requisition, missions and rumors are explained', () => {
+    const s = opsWorld();
+    const host = mount();
+    renderOpsTab(host, {
+      getState: () => s, getLoad: () => ({ kind: 'ok', state: s, chatId: 'c' }), registries: reg, onDo: vi.fn(), onRequisition: vi.fn(),
+      onPlan: vi.fn(), onDismiss: vi.fn(), onFollowRumor: vi.fn(),
+    });
+    expect(markedWithout(host)).toEqual([]);
+    expect(unresolved(host, env(s))).toEqual([]);
+    expect(unreachable(host)).toEqual([]);
+    expect(markerCount(host)).toBeGreaterThanOrEqual(25);
+    const addresses = new Set(unitIdsIn(host));
+    for (const id of reg.activities.keys()) expect(addresses.has(`activities:${id}`), id).toBe(true);
+    for (const wanted of ['glossary:supplies', 'glossary:mission_board', 'glossary:expedition', 'glossary:danger', 'glossary:reward_tier', 'glossary:mission_deadline', 'regions:quarantine_d7']) {
+      expect(addresses.has(wanted), wanted).toBe(true);
+    }
+    expect([...addresses].some((a) => a.startsWith('nodeTypes:'))).toBe(true);
+  });
+
+  it('the text of the cards is unchanged', () => {
+    const s = opsWorld();
+    const host = mount();
+    renderOpsTab(host, { getState: () => s, getLoad: () => ({ kind: 'ok', state: s, chatId: 'c' }), registries: reg, onDo: vi.fn(), onRequisition: vi.fn(), onPlan: vi.fn(), onDismiss: vi.fn() });
+    expect(host.querySelector('[data-activity="train"] h3')!.textContent).toBe('Train');
+    expect(host.querySelector('.alius-mission .alius-dim')!.textContent).toMatch(/^.+ · DANGER \d · OBJECTIVE: .+ \(\w+\) · (NO DEADLINE|D-\d+)$/);
+    expect(host.querySelector('.alius-board h2')!.textContent).toMatch(/^MISSION BOARD \d+\/\d+$/);
+    expect(host.querySelector('.alius-mission')!.textContent).toMatch(/REWARD: TIER \d/);
   });
 });
 

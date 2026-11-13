@@ -706,3 +706,83 @@ describe('lifecycle holes found in review', () => {
     expect(onclick).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('review minors: keys and focus', () => {
+  const input = (type: string) => h('input', { type }) as HTMLInputElement;
+
+  it('? works on checkboxes, radios, ranges and selects, and types in text-like fields', () => {
+    setup({ analyzeAnimation: 'off' });
+    for (const type of ['checkbox', 'radio', 'range', 'button']) {
+      const el = input(type);
+      const holder = h('label', { ...analyzeAttrs('glossary:trust') }, el);
+      root.append(holder);
+      el.focus();
+      const e = key(el, '?');
+      expect(e.defaultPrevented, type).toBe(true);
+      expect(panel(), type).not.toBeNull();
+      analyzer!.close();
+    }
+    const select = h('select', {}, h('option', { value: 'a' }, 'a')) as HTMLSelectElement;
+    root.append(h('label', { ...analyzeAttrs('glossary:cp') }, select));
+    select.focus();
+    expect(key(select, '?').defaultPrevented).toBe(true);
+    analyzer!.close();
+    for (const type of ['text', 'number', 'search', 'email', 'password', 'url', 'tel', '']) {
+      const el = input(type);
+      root.append(h('label', { ...analyzeAttrs('glossary:trust') }, el));
+      el.focus();
+      expect(key(el, '?').defaultPrevented, `type "${type}"`).toBe(false);
+    }
+    const area = h('textarea', {}) as HTMLTextAreaElement;
+    root.append(h('label', { ...analyzeAttrs('glossary:trust') }, area));
+    area.focus();
+    expect(key(area, '?').defaultPrevented).toBe(false);
+    expect(panel()).toBeNull();
+  });
+
+  it('Backspace goes back while a checkbox has the focus', () => {
+    const { a } = setup({ analyzeAnimation: 'off' });
+    analyzer!.openFor(a, { x: 0, y: 0 }, { pinned: true });
+    const box = input('checkbox');
+    root.append(box);
+    box.focus();
+    key(box, 'Backspace');
+    expect(panel()).toBeNull();
+  });
+
+  it('a panel opened from the keyboard takes the focus, and Esc gives it back', () => {
+    const { a } = setup({ analyzeAnimation: 'off' });
+    a.focus();
+    key(a, '?');
+    expect(document.activeElement).toBe(panel());
+    key(document.activeElement!, 'Escape');
+    expect(panel()).toBeNull();
+    expect(document.activeElement).toBe(a);
+  });
+
+  it('the focus stays in the panel while drilling down and going back', () => {
+    const { a } = setup({ analyzeAnimation: 'off' });
+    a.focus();
+    key(a, '?');
+    panel()!.querySelector<HTMLButtonElement>('button.alius-analyze-link')!.click();
+    expect(document.activeElement).toBe(panel());
+    key(document.activeElement!, 'Backspace');
+    expect(document.activeElement).toBe(panel());
+  });
+
+  it('a hover or a long-press does not steal the focus', () => {
+    const { a, b } = setup({ analyzeAnimation: 'off' });
+    b.focus();
+    ptr('pointerover', a);
+    vi.advanceTimersByTime(250);
+    expect(panel()).not.toBeNull();
+    expect(document.activeElement).toBe(b);
+  });
+
+  it('the panel scrolls on a small screen and chips cannot be text-selected by a long-press', () => {
+    const css = readFileSync('css/95-analyze.css', 'utf8');
+    expect(css).toMatch(/\.alius-analyze\s*\{[^}]*max-height:/);
+    expect(css).toMatch(/\.alius-analyze\s*\{[^}]*overflow-y:\s*auto/);
+    expect(css).toMatch(/span\[data-analyze\][^{]*\{[^}]*user-select:\s*none/);
+  });
+});

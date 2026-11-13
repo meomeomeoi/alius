@@ -45,9 +45,14 @@ export interface Analyzer {
 
 interface PointerLike { pointerType?: string; clientX: number; clientY: number; shiftKey?: boolean; relatedTarget?: EventTarget | null }
 
+/** Input types the user types text into; a checkbox, radio, range or button is not typing. */
+const TEXT_INPUT_TYPES = new Set(['text', 'search', 'email', 'password', 'url', 'tel', 'number', 'date', 'datetime-local', 'month', 'time', 'week', '']);
+
 const isTyping = (t: EventTarget | null): boolean => {
   const el = t as HTMLElement | null;
-  return !!el && typeof el.tagName === 'string' && (['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName) || el.isContentEditable === true);
+  if (!el || typeof el.tagName !== 'string') return false;
+  if (el.tagName === 'TEXTAREA' || el.isContentEditable === true) return true;
+  return el.tagName === 'INPUT' && TEXT_INPUT_TYPES.has((el as HTMLInputElement).type ?? '');
 };
 
 const prefersReducedMotion = (): boolean =>
@@ -72,6 +77,8 @@ export function attachAnalyzer(root: HTMLElement, deps: AnalyzerDeps): Analyzer 
   let closeTimer: ReturnType<typeof setTimeout> | null = null;
   let animTimer: ReturnType<typeof setTimeout> | null = null;
   let touchTimer: ReturnType<typeof setTimeout> | null = null;
+  /** The element to give the focus back to when a keyboard-opened panel closes. */
+  let restoreFocus: HTMLElement | null = null;
   let touchStart = { x: 0, y: 0 };
   let swallowTimer: ReturnType<typeof setTimeout> | null = null;
   let swallowing = false;
@@ -86,8 +93,11 @@ export function attachAnalyzer(root: HTMLElement, deps: AnalyzerDeps): Analyzer 
     hoverEl = null;
     pinned = false;
     stack = [];
+    const hadFocus = panelEl !== null && panelEl.contains(document.activeElement);
     panelEl?.remove();
     panelEl = null;
+    if (hadFocus && restoreFocus?.isConnected) restoreFocus.focus();
+    restoreFocus = null;
   }
 
   /** The tool is off: nothing reacts, and a panel left open is taken down. */
@@ -105,6 +115,7 @@ export function attachAnalyzer(root: HTMLElement, deps: AnalyzerDeps): Analyzer 
     if (!panelEl || stack.length === 0) return;
     const env = deps.getEnv();
     const models = stack.map((s) => buildPanelModel(s, env));
+    const hadFocus = panelEl.contains(document.activeElement); // a drill or back replaces the focused button
     renderPanel(
       panelEl,
       { model: models[models.length - 1], crumbs: models.map((m) => m.title), canDrill: stack.length < MAX_DEPTH, pinned, analyzingMs, wipe },
@@ -114,6 +125,7 @@ export function attachAnalyzer(root: HTMLElement, deps: AnalyzerDeps): Analyzer 
     const { left, top } = placePanel(anchor, { w: rect.width, h: rect.height }, { w: window.innerWidth, h: window.innerHeight });
     panelEl.style.left = `${left}px`;
     panelEl.style.top = `${top}px`;
+    if (hadFocus) panelEl.focus();
   }
 
   /** Plays the ANALYZING line by the animation rule, then shows the entry. */
@@ -179,7 +191,7 @@ export function attachAnalyzer(root: HTMLElement, deps: AnalyzerDeps): Analyzer 
     stack = [subjectOf(target)];
     pinned = opts?.pinned === true;
     if (!panelEl) {
-      panelEl = h('div', { class: 'alius-analyze' });
+      panelEl = h('div', { class: 'alius-analyze', tabindex: '-1' });
       root.append(panelEl);
     }
     present();
@@ -313,6 +325,9 @@ export function attachAnalyzer(root: HTMLElement, deps: AnalyzerDeps): Analyzer 
     e.preventDefault();
     const rect = el.getBoundingClientRect();
     openFor(el as HTMLElement, { x: rect.left, y: rect.bottom }, { pinned: true });
+    // keyboard users get the panel's links and pin button next in the tab order; Esc brings the focus back
+    restoreFocus = el as HTMLElement;
+    panelEl?.focus();
   };
 
   root.addEventListener('pointerover', onOver);

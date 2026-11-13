@@ -95,10 +95,20 @@ describe('provider registry', () => {
     }
   });
 
-  it('no state gives no reading', () => {
+  it('no state says so for a reading that needs a campaign, and says nothing otherwise', () => {
     const off = registerAnalyzeProvider('glossary:order_test', () => ({ lines: ['x'] }));
     try {
-      expect(readingFor(parseSubject('glossary:order_test')!, envOf(null))).toBeNull();
+      expect(readingFor(parseSubject('glossary:order_test')!, envOf(null))).toEqual({ lines: ['No campaign loaded.'] });
+      expect(readingFor(parseSubject('glossary:nothing_registered')!, envOf(null))).toBeNull();
+    } finally {
+      off();
+    }
+  });
+
+  it('a stateless provider still runs without a campaign', () => {
+    const off = registerAnalyzeProvider('glossary:order_test', (_s, env) => ({ lines: [`state ${env.state === null ? 'none' : 'some'}`] }), { stateless: true });
+    try {
+      expect(readingFor(parseSubject('glossary:order_test')!, envOf(null))).toEqual({ lines: ['state none'] });
     } finally {
       off();
     }

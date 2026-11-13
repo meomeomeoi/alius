@@ -50,7 +50,9 @@ describe('dilemma panel', () => {
   it('a greyed option shows its reason and cannot be chosen', () => {
     const { host, onChoose } = mount({ options: options([{}, { disabled: 'Needs Empathy 3' }]) });
     const grey = buttons(host)[1];
-    expect(grey.disabled).toBe(true);
+    // soft-disabled: still focusable and hoverable, so its requirement can be analyzed
+    expect(grey.disabled).toBe(false);
+    expect(grey.getAttribute('aria-disabled')).toBe('true');
     expect(host.textContent).toContain('Needs Empathy 3');
     grey.click();
     expect(onChoose).not.toHaveBeenCalled();
@@ -62,7 +64,7 @@ describe('dilemma panel', () => {
     a.click();
     expect(onChoose).toHaveBeenCalledTimes(1);
     expect(onChoose).toHaveBeenCalledWith(0);
-    expect(buttons(host).every((x) => x.disabled)).toBe(true);
+    expect(buttons(host).every((x) => x.getAttribute('aria-disabled') === 'true')).toBe(true);
     a.click();
     b.click();
     expect(onChoose).toHaveBeenCalledTimes(1);

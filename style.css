@@ -459,13 +459,15 @@
   border-top: 1px dashed var(--alius-dim);
 }
 
-#alius-shell .alius-btn:disabled {
+#alius-shell .alius-btn:disabled,
+#alius-shell .alius-btn[aria-disabled="true"] {
   color: var(--alius-dim);
   border-color: var(--alius-dim);
   cursor: not-allowed;
 }
 
-#alius-shell .alius-btn:disabled:hover {
+#alius-shell .alius-btn:disabled:hover,
+#alius-shell .alius-btn[aria-disabled="true"]:hover {
   background: transparent;
   color: var(--alius-dim);
 }
@@ -1313,6 +1315,8 @@ button.alius-node.alius-reachable { opacity: 1; cursor: pointer; border: 1px das
   line-height: 1.4;
   box-shadow: 0 0 0 1px var(--alius-bg), 0 0 10px var(--alius-dim); /* a phosphor glow in the palette color */
   overflow-wrap: anywhere;
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
 }
 
 #alius-shell .alius-analyze-frame {
@@ -1413,4 +1417,11 @@ button.alius-node.alius-reachable { opacity: 1; cursor: pointer; border: 1px das
 
 #alius-shell [data-analyze] {
   -webkit-touch-callout: none;
+}
+
+/* a long-press must not start a text selection on a chip or stat */
+#alius-shell span[data-analyze],
+#alius-shell strong[data-analyze] {
+  -webkit-user-select: none;
+  user-select: none;
 }

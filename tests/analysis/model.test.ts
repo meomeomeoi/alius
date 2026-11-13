@@ -104,7 +104,7 @@ describe('panel model readings', () => {
       registerAnalyzeProvider('items', () => ({ lines: ['an item reading'] })),
     ];
     try {
-      expect(model('glossary:trust', e, '{"unitId":"u1"}').reading).toBeNull();
+      expect(model('glossary:trust', e, '{"unitId":"u1"}').reading).toEqual({ lines: ['No campaign loaded.'] });
       const withState = { ...e, state };
       expect(model('glossary:trust', withState, '{"unitId":"u1"}').reading).toEqual({ lines: ['ctx u1'] });
       expect(model('items:it', withState).reading).toEqual({ lines: ['an item reading'] });

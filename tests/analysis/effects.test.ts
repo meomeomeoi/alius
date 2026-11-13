@@ -244,3 +244,35 @@ describe('node types', () => {
     expect(entryEffects('nodeTypes', { id: 'easy', combat: { dangerDelta: -1, lootTableId: 'l' } }, r)).toEqual(['Danger −1']);
   });
 });
+
+describe('refusal targets and conditions (review)', () => {
+  it('names the orders a refusal is about', () => {
+    expect(fx({ type: 'order_refusal', chance: 0.1, orders: ['o1', 'o2'] })).toBe('May refuse [[orders:o1]], [[orders:o2]] (10% chance)');
+    expect(fx({ type: 'order_refusal', chance: 0.1 })).toBe('May refuse orders (10% chance)');
+  });
+
+  it('spells out every condition key', () => {
+    const when = (w: Record<string, unknown>) => fx({ type: 'stat', stat: 'atk', pct: 5, when: w });
+    expect(when({ targetHasStatus: 'bleed' })).toBe('+5% ATK target has [[statuses:bleed]]');
+    expect(when({ selfHasStatus: 'guard' })).toBe('+5% ATK while [[statuses:guard]]');
+    expect(when({ hpAbovePct: 50 })).toBe('+5% ATK above 50% HP');
+    expect(when({ stressMax: 30 })).toBe('+5% ATK at Stress ≤ 30');
+    expect(when({ roundMin: 3 })).toBe('+5% ATK from round 3');
+    expect(when({ rowChanged: true })).toBe('+5% ATK after changing rows');
+    expect(when({ commanderExposed: true })).toBe('+5% ATK while the commander is exposed');
+    expect(when({ notOrderedThisRound: true })).toBe('+5% ATK if not ordered this round');
+    expect(when({ upkeepWithinDays: 3 })).toBe('+5% ATK within 3 days of upkeep');
+    expect(when({ upkeepOlderThanDays: 5 })).toBe('+5% ATK when upkeep is older than 5 days');
+  });
+
+  it('no generated line in the core pack still prints a raw condition', async () => {
+    const { registries } = await loadPacks(['content/core'], async (p) => JSON.parse(await readFile(p, 'utf8')));
+    const raw: string[] = [];
+    for (const name of Object.keys(registries) as RegistryName[]) {
+      for (const entry of (registries as Registries)[name].values()) {
+        for (const line of entryEffects(name, entry, registries)) if (/upkeep within days|target has status|self has status|hp above pct|stress max|round min/.test(line)) raw.push(`${name}:${entry.id} ${line}`);
+      }
+    }
+    expect(raw).toEqual([]);
+  });
+});

@@ -62,8 +62,11 @@ describe('setting readings', () => {
     expect(read('analyzeHoverDelay')![0]).toBe('Now: 250');
   });
 
-  it('an unknown setting gives no reading, and so does no campaign for the campaign-bound ones', () => {
+  it('settings are global: they read without a campaign, the per-campaign ones say so', () => {
     expect(read('nope')).toBeNull();
-    expect(read('showRawValues', {}, null)).toBeNull();
+    expect(read('showRawValues', {}, null)).toEqual(['Now: off', 'Takes effect at once.']);
+    expect(read('palette', { palette: 'green' }, null)).toEqual(['Now: green', 'Takes effect at once.']);
+    expect(read('difficulty', {}, null)).toEqual(['Set per campaign.']);
+    expect(read('desireBondDefects', { desireBondDefects: true }, null)).toEqual(['Now: on', 'Takes effect at once.']);
   });
 });

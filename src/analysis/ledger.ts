@@ -17,6 +17,15 @@ const LABELS: Array<[prefix: string, label: string]> = [
   ['dilemma/', 'decision'],
   ['arc/', 'defect arc'],
   ['director/', 'world'],
+  ['world/', 'world'],
+  ['rumor/', 'world'],
+  ['mission/', 'mission'],
+  ['squad/', 'squad'],
+  ['roster/', 'roster'],
+  ['proposal/', 'proposal'],
+  ['relations/', 'relationships'],
+  ['commander/', 'commander'],
+  ['memory/', 'conversation'],
 ];
 
 export function ledgerLabel(action: string): string {

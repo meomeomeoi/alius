@@ -31,12 +31,14 @@ export function renderDilemma(host: HTMLElement, ctx: DilemmaPanelCtx): void {
   const list = h('div', { class: 'alius-dilemma-options' });
   for (const o of ctx.options) {
     const button = h('button', {
-      type: 'button', class: 'alius-btn alius-option', 'data-dilemma-option': String(o.index), disabled: o.disabled !== null,
+      // soft-disabled (aria-disabled, not `disabled`): a greyed option stays focusable and hoverable, so the analysis panel can
+      // explain the requirement that greys it out
+      type: 'button', class: 'alius-btn alius-option', 'data-dilemma-option': String(o.index), 'aria-disabled': o.disabled !== null ? 'true' : null,
       ...analyzeNative('glossary:decision_option', { scale: ctx.scale, ...(o.check ? { check: o.check } : {}), ...(o.requires ? { requires: o.requires } : {}) }),
       onclick: () => {
         if (chosen || o.disabled !== null) return;
         chosen = true;
-        for (const b of buttons) b.disabled = true;
+        for (const b of buttons) b.setAttribute('aria-disabled', 'true');
         ctx.onChoose(o.index);
       },
     }, `[ ${o.label} ]${o.hasCheck ? ' — CHECK' : ''}${o.disabled !== null ? ` — ${o.disabled}` : ''}`) as HTMLButtonElement;

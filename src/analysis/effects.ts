@@ -104,12 +104,27 @@ function combatBase(e: Loose): string {
       const orders = Array.isArray(e.orders) && e.orders.length ? ` (${e.orders.map((o: string) => `[[orders:${o}]]`).join(', ')})` : '';
       return `Orders ${signed(Number(e.delta))} CP${orders}`;
     }
-    case 'order_refusal': return 'May refuse orders';
+    case 'order_refusal': return Array.isArray(e.orders) && e.orders.length ? `May refuse ${e.orders.map((o: string) => `[[orders:${o}]]`).join(', ')}` : 'May refuse orders';
     case 'loadout_slots': return `+${e.amount} loadout ${plural(Number(e.amount), 'slot')}`;
     case 'injury_days': return `${pctSigned(Number(e.pct))} injury time`;
     default: return cap(humanize(String(e.type ?? 'effect')));
   }
 }
+
+/** How each condition key reads; a key without an entry falls back to its humanized name. */
+const WHEN_TEXT: Record<string, (value: unknown) => string> = {
+  hpBelowPct: (v) => ` below ${v}% HP`,
+  hpAbovePct: (v) => ` above ${v}% HP`,
+  stressMax: (v) => ` at Stress ≤ ${v}`,
+  roundMin: (v) => ` from round ${v}`,
+  targetHasStatus: (v) => ` target has [[statuses:${v}]]`,
+  selfHasStatus: (v) => ` while [[statuses:${v}]]`,
+  rowChanged: (v) => (v === false ? ' unless she changed rows' : ' after changing rows'),
+  commanderExposed: (v) => (v === false ? ' while the commander is covered' : ' while the commander is exposed'),
+  notOrderedThisRound: (v) => (v === false ? ' if ordered this round' : ' if not ordered this round'),
+  upkeepWithinDays: (v) => ` within ${v} days of upkeep`,
+  upkeepOlderThanDays: (v) => ` when upkeep is older than ${v} days`,
+};
 
 function whenSuffix(e: Loose): string {
   const when = e.when as Loose | undefined;
@@ -118,7 +133,7 @@ function whenSuffix(e: Loose): string {
   for (const [key, value] of Object.entries(when)) {
     if (key === 'stressMin') {
       if (e.trigger !== 'onStressThreshold') s += ` at Stress ≥ ${value}`;
-    } else if (key === 'hpBelowPct') s += ` below ${value}% HP`;
+    } else if (WHEN_TEXT[key]) s += WHEN_TEXT[key](value);
     else if (value === true) s += ` ${humanize(key)}`;
     else if (value === false) s += ` not ${humanize(key)}`;
     else s += ` ${humanize(key)} ${value}`;

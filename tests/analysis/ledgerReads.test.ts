@@ -9,7 +9,9 @@ describe('ledger reads', () => {
       'activity/do': 'activity', 'calendar/consume_slot': 'day end', 'scene/exchange': 'conversation', 'intents/apply': 'conversation',
       'dm/send': 'DMs', 'night/open': 'night', 'combat/accept': 'combat', 'expedition/return': 'expedition', 'item/craft': 'workshop',
       'base/upgrade': 'base', 'leash/compel': 'the Leash', 'loyalty/yield': 'loyalty', 'dilemma/choose': 'decision', 'arc/decide': 'defect arc',
-      'director/apply': 'world', 'debug/roll': 'other', 'mystery': 'other', '': 'other',
+      'director/apply': 'world', 'squad/set_flavor': 'squad', 'proposal/answer': 'proposal', 'relations/commander_injured': 'relationships',
+      'mission/dismiss': 'mission', 'roster/set_active': 'roster', 'world/seed': 'world', 'rumor/follow': 'world', 'commander/injure': 'commander', 'memory/compact': 'conversation',
+      'debug/roll': 'other', 'mystery': 'other', '': 'other',
     };
     for (const [action, label] of Object.entries(cases)) expect(ledgerLabel(action), action).toBe(label);
   });

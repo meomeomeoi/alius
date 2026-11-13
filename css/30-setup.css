@@ -97,13 +97,15 @@
   border-top: 1px dashed var(--alius-dim);
 }
 
-#alius-shell .alius-btn:disabled {
+#alius-shell .alius-btn:disabled,
+#alius-shell .alius-btn[aria-disabled="true"] {
   color: var(--alius-dim);
   border-color: var(--alius-dim);
   cursor: not-allowed;
 }
 
-#alius-shell .alius-btn:disabled:hover {
+#alius-shell .alius-btn:disabled:hover,
+#alius-shell .alius-btn[aria-disabled="true"]:hover {
   background: transparent;
   color: var(--alius-dim);
 }

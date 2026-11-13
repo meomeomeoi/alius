@@ -61,6 +61,6 @@ describe('resource readings', () => {
 
   it('no campaign gives no reading', () => {
     const env: AnalyzeEnv = { registries: reg, state: null, settings: DEFAULT_SETTINGS };
-    expect(readingFor(parseSubject('glossary:credits')!, env)).toBeNull();
+    expect(readingFor(parseSubject('glossary:credits')!, env)).toEqual({ lines: ['No campaign loaded.'] });
   });
 });

@@ -264,7 +264,22 @@ function recordLedger(before, after, action) {
   if (!after.ledger) return;
   const oldest = after.day - (TUNING.ledger.days - 1);
   const kept = after.ledger.filter((e) => e.day >= oldest);
-  after.ledger = kept.length > TUNING.ledger.max ? kept.slice(kept.length - TUNING.ledger.max) : kept;
+  after.ledger = capByKind(kept, TUNING.ledger.max);
+}
+var kindOf = (e) => e.key.slice(0, e.key.indexOf(":"));
+function capByKind(list4, max) {
+  if (list4.length <= max) return list4;
+  const counts = /* @__PURE__ */ new Map();
+  for (const e of list4) counts.set(kindOf(e), (counts.get(kindOf(e)) ?? 0) + 1);
+  const drop = /* @__PURE__ */ new Set();
+  for (let over = list4.length - max; over > 0; over--) {
+    let crowded = "";
+    for (const [kind, n] of counts) if (crowded === "" || n > (counts.get(crowded) ?? 0)) crowded = kind;
+    const oldest = list4.find((e) => !drop.has(e) && kindOf(e) === crowded);
+    drop.add(oldest);
+    counts.set(crowded, (counts.get(crowded) ?? 1) - 1);
+  }
+  return list4.filter((e) => !drop.has(e));
 }
 
 // src/engine/rng.ts
@@ -356,7 +371,10 @@ function dispatch(state, action, registries) {
   try {
     const events = handler2(draft, action.payload, { registries, rng });
     draft.rng = rng.state;
-    recordLedger(state, draft, action.type);
+    try {
+      recordLedger(state, draft, action.type);
+    } catch {
+    }
     return { state: draft, events };
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
@@ -13649,13 +13667,13 @@ function registerFlavorKind(kind, impl) {
   if (kinds.has(kind)) throw new Error(`Duplicate flavor kind: ${kind}`);
   kinds.set(kind, impl);
 }
-var kindOf = (input) => kinds.get(String(input?.kind));
+var kindOf2 = (input) => kinds.get(String(input?.kind));
 registerCallType({
   id: "flavor",
   profile: "mechanic",
   json: true,
-  system: (input) => kindOf(input)?.system(input) ?? "Reply with a single JSON object and nothing else.",
-  prompt: (input) => kindOf(input)?.prompt(input) ?? "{}",
+  system: (input) => kindOf2(input)?.system(input) ?? "Reply with a single JSON object and nothing else.",
+  prompt: (input) => kindOf2(input)?.prompt(input) ?? "{}",
   schema: external_exports.object({}).passthrough()
 });
 async function generateFlavor(input, deps) {
@@ -13995,15 +14013,17 @@ function renderDilemma(host, ctx2) {
   const list4 = h("div", { class: "alius-dilemma-options" });
   for (const o of ctx2.options) {
     const button = h("button", {
+      // soft-disabled (aria-disabled, not `disabled`): a greyed option stays focusable and hoverable, so the analysis panel can
+      // explain the requirement that greys it out
       type: "button",
       class: "alius-btn alius-option",
       "data-dilemma-option": String(o.index),
-      disabled: o.disabled !== null,
+      "aria-disabled": o.disabled !== null ? "true" : null,
       ...analyzeNative("glossary:decision_option", { scale: ctx2.scale, ...o.check ? { check: o.check } : {}, ...o.requires ? { requires: o.requires } : {} }),
       onclick: () => {
         if (chosen || o.disabled !== null) return;
         chosen = true;
-        for (const b of buttons) b.disabled = true;
+        for (const b of buttons) b.setAttribute("aria-disabled", "true");
         ctx2.onChoose(o.index);
       }
     }, `[ ${o.label} ]${o.hasCheck ? " \u2014 CHECK" : ""}${o.disabled !== null ? ` \u2014 ${o.disabled}` : ""}`);
@@ -17315,19 +17335,32 @@ function missionCard(m, state, ctx2) {
   const tierRank = reg.rewardTiers.get(m.rewardsTier)?.rank;
   const deadline = m.deadlineDay === void 0 ? "NO DEADLINE" : `D-${Math.max(0, m.deadlineDay - state.day)}`;
   const reason = checkDeparture(state, reg, { missionId: m.id });
+  const chip = (text2, address) => h("span", { class: "alius-chip", ...analyzeAttrs(address) }, text2);
+  const stat2 = (text2, address) => h("span", { class: "alius-stat", ...analyzeAttrs(address) }, text2);
   const card2 = h(
     "article",
     { class: "alius-mission", "data-mission-card": m.id },
     h("h3", {}, `[${SOURCE_TAG[m.source] ?? m.source.toUpperCase()}] ${m.title}`),
-    h("p", { class: "alius-dim" }, `${String(region?.name ?? m.regionId)} \xB7 DANGER ${m.danger} \xB7 OBJECTIVE: ${String(node?.name ?? m.objective.node)} (${m.objective.condition}) \xB7 ${deadline}`),
+    h(
+      "p",
+      { class: "alius-dim" },
+      region ? chip(String(region.name), `regions:${m.regionId}`) : m.regionId,
+      " \xB7 ",
+      stat2(`DANGER ${m.danger}`, "glossary:danger"),
+      " \xB7 OBJECTIVE: ",
+      node ? chip(String(node.name), `nodeTypes:${m.objective.node}`) : m.objective.node,
+      ` (${m.objective.condition}) \xB7 `,
+      stat2(deadline, "glossary:mission_deadline")
+    ),
     h("p", {}, m.brief),
-    h("p", { class: "alius-dim" }, `REWARD: TIER ${String(tierRank ?? m.rewardsTier)}`)
+    h("p", { class: "alius-dim" }, stat2(`REWARD: TIER ${String(tierRank ?? m.rewardsTier)}`, "glossary:reward_tier"))
   );
   if (ctx2.onPlan) {
     card2.append(h("button", {
       type: "button",
-      class: "alius-btn",
+      class: "alius-btn alius-option",
       "data-plan": m.id,
+      ...analyzeNative("glossary:expedition"),
       disabled: reason !== null,
       title: reason ?? "",
       onclick: () => {
@@ -17337,7 +17370,7 @@ function missionCard(m, state, ctx2) {
     if (reason) card2.append(h("p", { class: "alius-dim alius-reason" }, reason));
   }
   if (ctx2.onDismiss && (m.source === "side" || m.source === "rumor")) {
-    card2.append(h("button", { type: "button", class: "alius-btn", "data-dismiss": m.id, onclick: () => ctx2.onDismiss(m.id) }, "[ DISMISS ]"));
+    card2.append(h("button", { type: "button", class: "alius-btn alius-option", "data-dismiss": m.id, ...analyzeNative("glossary:mission_board"), onclick: () => ctx2.onDismiss(m.id) }, "[ DISMISS ]"));
   }
   return card2;
 }
@@ -17352,14 +17385,14 @@ function rumorPost(r, ctx2) {
   if (r.tags.length > 0) post.append(h("p", { class: "alius-dim" }, r.tags.map((t) => `#${t}`).join(" ")));
   if (r.status === "followed") post.append(h("p", { class: "alius-dim" }, "FOLLOWED"));
   else if (r.leadsTo !== "none" && ctx2.onFollowRumor) {
-    post.append(h("button", { type: "button", class: "alius-btn", "data-follow": r.id, onclick: () => ctx2.onFollowRumor(r.id) }, "[ FOLLOW ]"));
+    post.append(h("button", { type: "button", class: "alius-btn alius-option", "data-follow": r.id, ...analyzeNative("glossary:rumor"), onclick: () => ctx2.onFollowRumor(r.id) }, "[ FOLLOW ]"));
   }
   return post;
 }
 function renderMissionBoard(host, state, ctx2) {
   const size = facilityEffect(state, ctx2.registries, "comms", "missionBoardSize");
   const offered2 = state.missions.offered;
-  const board = h("section", { class: "alius-section alius-board" }, h("h2", {}, `MISSION BOARD ${offered2.length}/${size}`));
+  const board = h("section", { class: "alius-section alius-board" }, h("h2", {}, h("span", { class: "alius-stat", ...analyzeAttrs("glossary:mission_board") }, `MISSION BOARD ${offered2.length}/${size}`)));
   if ((state.world.incomingUnits ?? 0) > 0) {
     board.append(h(
       "p",
@@ -17419,7 +17452,7 @@ function activityCard(a, state, ctx2) {
   });
   const controls = h("div", { class: "alius-activity-controls" });
   const reasonEl = h("p", { class: "alius-dim alius-reason" });
-  const btn = h("button", { type: "button", class: "alius-btn", "data-do": String(a.id) }, "[ DO ]");
+  const btn = h("button", { type: "button", class: "alius-btn alius-option", "data-do": String(a.id), ...analyzeNative(`activities:${String(a.id)}`) }, "[ DO ]");
   const currentFocus = () => focusList.find((f) => f.id === focusSel?.value);
   const request = () => {
     const req = { activityId: String(a.id) };
@@ -17453,7 +17486,7 @@ function activityCard(a, state, ctx2) {
   return h(
     "article",
     { class: "alius-activity", "data-activity": String(a.id) },
-    h("h3", {}, String(a.name)),
+    h("h3", {}, h("span", { class: "alius-chip", ...analyzeAttrs(`activities:${String(a.id)}`) }, String(a.name))),
     h("p", { class: "alius-dim" }, `${String(a.summary)} \u2014 ${costText2(a.cost)}`),
     controls,
     reasonEl,
@@ -17464,7 +17497,7 @@ var remembered = /* @__PURE__ */ new WeakMap();
 function requisition(state, ctx2, host) {
   const rate = TUNING.requisition.creditsPerSupply;
   const input = h("input", { type: "number", name: "requisition", min: "1", step: "1", value: remembered.get(host) ?? "5", "aria-label": "Supplies to requisition" });
-  const btn = h("button", { type: "button", class: "alius-btn", "data-requisition": "" }, "[ REQUISITION ]");
+  const btn = h("button", { type: "button", class: "alius-btn alius-option", "data-requisition": "", ...analyzeNative("glossary:supplies") }, "[ REQUISITION ]");
   const sync = () => {
     remembered.set(host, input.value);
     const n = Math.floor(Number(input.value));
@@ -17482,7 +17515,7 @@ function requisition(state, ctx2, host) {
     { class: "alius-section" },
     h("h2", {}, "REQUISITION"),
     h("p", { class: "alius-dim" }, `Buy supplies for credits: ${rate} CR per supply. The squad eats every day.`),
-    h("label", {}, "Supplies ", input),
+    h("label", { class: "alius-option", ...analyzeNative("glossary:supplies") }, "Supplies ", input),
     " ",
     btn
   );
@@ -19388,7 +19421,7 @@ function combatBase(e) {
       return `Orders ${signed(Number(e.delta))} CP${orders}`;
     }
     case "order_refusal":
-      return "May refuse orders";
+      return Array.isArray(e.orders) && e.orders.length ? `May refuse ${e.orders.map((o) => `[[orders:${o}]]`).join(", ")}` : "May refuse orders";
     case "loadout_slots":
       return `+${e.amount} loadout ${plural(Number(e.amount), "slot")}`;
     case "injury_days":
@@ -19397,6 +19430,19 @@ function combatBase(e) {
       return cap2(humanize(String(e.type ?? "effect")));
   }
 }
+var WHEN_TEXT = {
+  hpBelowPct: (v) => ` below ${v}% HP`,
+  hpAbovePct: (v) => ` above ${v}% HP`,
+  stressMax: (v) => ` at Stress \u2264 ${v}`,
+  roundMin: (v) => ` from round ${v}`,
+  targetHasStatus: (v) => ` target has [[statuses:${v}]]`,
+  selfHasStatus: (v) => ` while [[statuses:${v}]]`,
+  rowChanged: (v) => v === false ? " unless she changed rows" : " after changing rows",
+  commanderExposed: (v) => v === false ? " while the commander is covered" : " while the commander is exposed",
+  notOrderedThisRound: (v) => v === false ? " if ordered this round" : " if not ordered this round",
+  upkeepWithinDays: (v) => ` within ${v} days of upkeep`,
+  upkeepOlderThanDays: (v) => ` when upkeep is older than ${v} days`
+};
 function whenSuffix(e) {
   const when = e.when;
   if (!when || typeof when !== "object") return "";
@@ -19404,7 +19450,7 @@ function whenSuffix(e) {
   for (const [key, value] of Object.entries(when)) {
     if (key === "stressMin") {
       if (e.trigger !== "onStressThreshold") s += ` at Stress \u2265 ${value}`;
-    } else if (key === "hpBelowPct") s += ` below ${value}% HP`;
+    } else if (WHEN_TEXT[key]) s += WHEN_TEXT[key](value);
     else if (value === true) s += ` ${humanize(key)}`;
     else if (value === false) s += ` not ${humanize(key)}`;
     else s += ` ${humanize(key)} ${value}`;
@@ -19604,7 +19650,16 @@ var LABELS2 = [
   ["loyalty/", "loyalty"],
   ["dilemma/", "decision"],
   ["arc/", "defect arc"],
-  ["director/", "world"]
+  ["director/", "world"],
+  ["world/", "world"],
+  ["rumor/", "world"],
+  ["mission/", "mission"],
+  ["squad/", "squad"],
+  ["roster/", "roster"],
+  ["proposal/", "proposal"],
+  ["relations/", "relationships"],
+  ["commander/", "commander"],
+  ["memory/", "conversation"]
 ];
 function ledgerLabel(action) {
   return LABELS2.find(([prefix]) => action.startsWith(prefix))?.[1] ?? "other";
@@ -19624,21 +19679,23 @@ function holds(check) {
 }
 function buildKnowledge(state, settings) {
   const showRaw = settings.showRawValues === true;
-  const visibleClocks = new Set((state.world?.clocks ?? []).filter((c) => c.visibleToPlayer).map((c) => c.id));
-  const factVisible = (f) => rules.every((r) => !r.fact || holds(() => r.fact(f, state)));
+  const visibleClocks = new Set((state?.world?.clocks ?? []).filter((c) => c.visibleToPlayer).map((c) => c.id));
+  const factVisible = (f) => state !== null && rules.every((r) => !r.fact || holds(() => r.fact(f, state)));
   return {
     showRaw,
     raw: (n) => showRaw ? String(n) : null,
     clockVisible: (id) => visibleClocks.has(id),
     factVisible,
-    flagVisible: (id) => rules.every((r) => !r.flag || holds(() => r.flag(id, state))),
-    facts: () => (state.memory?.facts ?? []).filter(factVisible)
+    flagVisible: (id) => state === null || rules.every((r) => !r.flag || holds(() => r.flag(id, state))),
+    facts: () => (state?.memory?.facts ?? []).filter(factVisible)
   };
 }
 
 // src/analysis/providers.ts
 var providers = /* @__PURE__ */ new Map();
-function registerAnalyzeProvider(key, fn) {
+var stateless = /* @__PURE__ */ new WeakSet();
+function registerAnalyzeProvider(key, fn, opts) {
+  if (opts?.stateless) stateless.add(fn);
   const list4 = providers.get(key) ?? [];
   list4.push(fn);
   providers.set(key, list4);
@@ -19651,12 +19708,16 @@ function registerAnalyzeProvider(key, fn) {
   };
 }
 function readingFor(subject, env) {
-  if (!env.state) return null;
   const knowledge = buildKnowledge(env.state, env.settings);
   const lines = [];
   const keys = subject.address === subject.source ? [subject.address] : [subject.address, subject.source];
+  let needsCampaign = false;
   for (const key of keys) {
     for (const provider of providers.get(key) ?? []) {
+      if (!env.state && !stateless.has(provider)) {
+        needsCampaign = true;
+        continue;
+      }
       try {
         const reading = provider(subject, env, knowledge);
         if (reading) lines.push(...reading.lines);
@@ -19665,6 +19726,7 @@ function readingFor(subject, env) {
       }
     }
   }
+  if (lines.length === 0 && needsCampaign) return { lines: ["No campaign loaded."] };
   return lines.length > 0 ? { lines } : null;
 }
 
@@ -19699,7 +19761,11 @@ var axisProvider = (axis) => (subject, env, knowledge) => {
   const lines = [`${unit.displayName}: ${BAND[axis](value).toUpperCase()}${rawSuffix(knowledge, value)}`];
   const net = ledgerFor(state, `axis:${unit.id}:${axis}`, state.day - 2).reduce((sum, e) => sum + e.delta, 0);
   lines.push(`Trend ${arrow(knowledge, net)}`);
-  const events = relation.history.filter((h2) => h2.kind === "event").slice(-3).reverse();
+  const moves = (type) => {
+    const rows = env.registries.eventDeltas.get(type)?.rows;
+    return !!rows && Object.values(rows).some((row) => typeof row?.[axis] === "number" && row[axis] !== 0);
+  };
+  const events = relation.history.filter((h2) => h2.kind === "event" && moves(h2.type)).slice(-3).reverse();
   for (const h2 of events) {
     const cause = typeof env.registries.eventDeltas.get(h2.type)?.cause === "string" ? env.registries.eventDeltas.get(h2.type).cause : cap3(humanize(h2.type));
     lines.push(`${cause}${h2.severity ? ` \u2014 ${h2.severity}` : ""}, day ${h2.day}`);
@@ -19708,7 +19774,9 @@ var axisProvider = (axis) => (subject, env, knowledge) => {
   return { lines };
 };
 function nextStressBand(stress) {
-  return stress < 50 ? "strained" : stress < 80 ? "breaking" : stress < 100 ? "breakdown" : null;
+  const now = stressBand2(stress);
+  for (let n = Math.floor(stress) + 1; n <= 100; n++) if (stressBand2(n) !== now) return stressBand2(n);
+  return null;
 }
 function liveStress(state, unit) {
   const fighter = state.combat?.combatants.find((c) => c.side === "squad" && c.unitId === unit.id);
@@ -19810,6 +19878,12 @@ var settingProvider = (subject, env) => {
   const key = subject.id;
   const settings = env.settings;
   if (key !== "difficulty" && !(key in settings)) return null;
+  if (!state) {
+    if (key === "difficulty") return { lines: ["Set per campaign."] };
+    const lines2 = [`Now: ${typeof settings[key] === "boolean" ? settings[key] ? "on" : "off" : key === "budgets" ? "per call type" : key === "mechanicProfileId" && settings[key] === "" ? "none" : SETTING_LABELS[key]?.[String(settings[key])] ?? String(settings[key])}`];
+    if (!SILENT_SETTINGS.has(key)) lines2.push("Takes effect at once.");
+    return { lines: lines2 };
+  }
   const lines = [`Now: ${settingValue(key, settings[key], state)}`];
   if (SILENT_SETTINGS.has(key)) return { lines };
   lines.push(SETTING_LOCKS[key]?.(state, settings) ?? "Takes effect at once.");
@@ -19841,7 +19915,7 @@ function registerCoreProviders() {
   registerAnalyzeProvider("glossary:stress", stressProvider);
   for (const stat2 of STATS) registerAnalyzeProvider(`glossary:stat_${stat2}`, statProvider(stat2));
   for (const resource of ["credits", "supplies", "plyx"]) registerAnalyzeProvider(`glossary:${resource}`, resourceProvider(resource));
-  registerAnalyzeProvider("setting", settingProvider);
+  registerAnalyzeProvider("setting", settingProvider, { stateless: true });
   registerAnalyzeProvider("glossary:decision_option", decisionProvider);
 }
 
@@ -20032,9 +20106,12 @@ function animationMs(mode, seenBefore, reducedMotion2) {
   if (mode === "short") return 150;
   return seenBefore ? 150 : 600;
 }
+var TEXT_INPUT_TYPES = /* @__PURE__ */ new Set(["text", "search", "email", "password", "url", "tel", "number", "date", "datetime-local", "month", "time", "week", ""]);
 var isTyping = (t) => {
   const el = t;
-  return !!el && typeof el.tagName === "string" && (["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName) || el.isContentEditable === true);
+  if (!el || typeof el.tagName !== "string") return false;
+  if (el.tagName === "TEXTAREA" || el.isContentEditable === true) return true;
+  return el.tagName === "INPUT" && TEXT_INPUT_TYPES.has(el.type ?? "");
 };
 var prefersReducedMotion = () => typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 function subjectOf(el) {
@@ -20053,6 +20130,7 @@ function attachAnalyzer(root, deps) {
   let closeTimer = null;
   let animTimer = null;
   let touchTimer = null;
+  let restoreFocus = null;
   let touchStart = { x: 0, y: 0 };
   let swallowTimer = null;
   let swallowing = false;
@@ -20068,8 +20146,11 @@ function attachAnalyzer(root, deps) {
     hoverEl = null;
     pinned = false;
     stack = [];
+    const hadFocus = panelEl !== null && panelEl.contains(document.activeElement);
     panelEl?.remove();
     panelEl = null;
+    if (hadFocus && restoreFocus?.isConnected) restoreFocus.focus();
+    restoreFocus = null;
   }
   function enabled() {
     if (destroyed) return false;
@@ -20084,6 +20165,7 @@ function attachAnalyzer(root, deps) {
     if (!panelEl || stack.length === 0) return;
     const env = deps.getEnv();
     const models = stack.map((s) => buildPanelModel(s, env));
+    const hadFocus = panelEl.contains(document.activeElement);
     renderPanel(
       panelEl,
       { model: models[models.length - 1], crumbs: models.map((m) => m.title), canDrill: stack.length < MAX_DEPTH, pinned, analyzingMs, wipe },
@@ -20093,6 +20175,7 @@ function attachAnalyzer(root, deps) {
     const { left, top } = placePanel(anchor, { w: rect.width, h: rect.height }, { w: window.innerWidth, h: window.innerHeight });
     panelEl.style.left = `${left}px`;
     panelEl.style.top = `${top}px`;
+    if (hadFocus) panelEl.focus();
   }
   function present() {
     animTimer = clear(animTimer);
@@ -20148,7 +20231,7 @@ function attachAnalyzer(root, deps) {
     stack = [subjectOf(target)];
     pinned = opts?.pinned === true;
     if (!panelEl) {
-      panelEl = h("div", { class: "alius-analyze" });
+      panelEl = h("div", { class: "alius-analyze", tabindex: "-1" });
       root.append(panelEl);
     }
     present();
@@ -20269,6 +20352,8 @@ function attachAnalyzer(root, deps) {
     e.preventDefault();
     const rect = el.getBoundingClientRect();
     openFor2(el, { x: rect.left, y: rect.bottom }, { pinned: true });
+    restoreFocus = el;
+    panelEl?.focus();
   };
   root.addEventListener("pointerover", onOver);
   root.addEventListener("pointerout", onOut);

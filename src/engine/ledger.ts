@@ -36,5 +36,26 @@ export function recordLedger(before: CampaignState, after: CampaignState, action
   if (!after.ledger) return;
   const oldest = after.day - (TUNING.ledger.days - 1);
   const kept = after.ledger.filter((e) => e.day >= oldest);
-  after.ledger = kept.length > TUNING.ledger.max ? kept.slice(kept.length - TUNING.ledger.max) : kept;
+  after.ledger = capByKind(kept, TUNING.ledger.max);
+}
+
+const kindOf = (e: LedgerEntry): string => e.key.slice(0, e.key.indexOf(':'));
+
+/**
+ * Keeps at most `max` entries. The oldest entry of the most crowded kind (`res`, `stress`, `axis`) goes first, so a
+ * long conversation cannot push every resource entry out of the ledger.
+ */
+function capByKind(list: LedgerEntry[], max: number): LedgerEntry[] {
+  if (list.length <= max) return list;
+  const counts = new Map<string, number>();
+  for (const e of list) counts.set(kindOf(e), (counts.get(kindOf(e)) ?? 0) + 1);
+  const drop = new Set<LedgerEntry>();
+  for (let over = list.length - max; over > 0; over--) {
+    let crowded = '';
+    for (const [kind, n] of counts) if (crowded === '' || n > (counts.get(crowded) ?? 0)) crowded = kind;
+    const oldest = list.find((e) => !drop.has(e) && kindOf(e) === crowded)!;
+    drop.add(oldest);
+    counts.set(crowded, (counts.get(crowded) ?? 1) - 1);
+  }
+  return list.filter((e) => !drop.has(e));
 }

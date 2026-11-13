@@ -58,7 +58,12 @@ const axisProvider = (axis: Axis): AnalyzeProvider => (subject, env: AnalyzeEnv,
   const net = ledgerFor(state, `axis:${unit.id}:${axis}`, state.day - 2).reduce((sum, e) => sum + e.delta, 0);
   lines.push(`Trend ${arrow(knowledge, net)}`);
 
-  const events = relation.history.filter((h) => h.kind === 'event').slice(-3).reverse();
+  // only events that move this axis (an internal marker or an event with no row for it is not a cause here)
+  const moves = (type: string): boolean => {
+    const rows = env.registries.eventDeltas.get(type)?.rows as Record<string, Record<string, number>> | undefined;
+    return !!rows && Object.values(rows).some((row) => typeof row?.[axis] === 'number' && row[axis] !== 0);
+  };
+  const events = relation.history.filter((h) => h.kind === 'event' && moves(h.type)).slice(-3).reverse();
   for (const h of events) {
     const cause = typeof env.registries.eventDeltas.get(h.type)?.cause === 'string'
       ? (env.registries.eventDeltas.get(h.type)!.cause as string)
@@ -69,9 +74,11 @@ const axisProvider = (axis: Axis): AnalyzeProvider => (subject, env: AnalyzeEnv,
   return { lines };
 };
 
-/** The band a unit enters next as its stress rises (thresholds of the combat bands). */
+/** The band a unit enters next as its stress rises, from the engine's own thresholds. */
 function nextStressBand(stress: number): string | null {
-  return stress < 50 ? 'strained' : stress < 80 ? 'breaking' : stress < 100 ? 'breakdown' : null;
+  const now = stressBand(stress);
+  for (let n = Math.floor(stress) + 1; n <= 100; n++) if (stressBand(n) !== now) return stressBand(n);
+  return null;
 }
 
 /** In a fight the live stress is on the combatant; the unit gets it only when the combat is settled. */
@@ -199,10 +206,17 @@ function settingValue(key: string, value: unknown, state: CampaignState): string
 }
 
 const settingProvider: AnalyzeProvider = (subject, env) => {
-  const state = env.state!;
+  const state = env.state;
   const key = subject.id;
   const settings = env.settings as unknown as Record<string, unknown>;
   if (key !== 'difficulty' && !(key in settings)) return null;
+  if (!state) {
+    // settings are global; only the per-campaign difficulty needs a campaign
+    if (key === 'difficulty') return { lines: ['Set per campaign.'] };
+    const lines = [`Now: ${typeof settings[key] === 'boolean' ? (settings[key] ? 'on' : 'off') : key === 'budgets' ? 'per call type' : key === 'mechanicProfileId' && settings[key] === '' ? 'none' : SETTING_LABELS[key]?.[String(settings[key])] ?? String(settings[key])}`];
+    if (!SILENT_SETTINGS.has(key)) lines.push('Takes effect at once.');
+    return { lines };
+  }
   const lines = [`Now: ${settingValue(key, settings[key], state)}`];
   if (SILENT_SETTINGS.has(key)) return { lines };
   lines.push(SETTING_LOCKS[key]?.(state, settings) ?? 'Takes effect at once.');
@@ -244,6 +258,7 @@ export const CORE_GLOSSARY_IDS: readonly string[] = [
   'leash_terminate', 'defect', 'defect_arc', 'arc_cure', 'arc_manage', 'arc_embrace', 'breakdown', 'stat_hp',
   'stat_atk', 'stat_def', 'stat_spd', 'stat_crit', 'level_xp', 'skill_points', 'loadout', 'rarity', 'workshop',
   'roster', 'grunt', 'clearance', 'unknown_node', 'decision_option', 'decision_minor', 'decision_major', 'decision_defining',
+  'danger', 'reward_tier', 'mission_deadline', 'mission_board', 'expedition', 'rumor',
 ];
 
 let registered = false;
@@ -256,6 +271,6 @@ export function registerCoreProviders(): void {
   registerAnalyzeProvider('glossary:stress', stressProvider);
   for (const stat of STATS) registerAnalyzeProvider(`glossary:stat_${stat}`, statProvider(stat));
   for (const resource of ['credits', 'supplies', 'plyx'] as const) registerAnalyzeProvider(`glossary:${resource}`, resourceProvider(resource));
-  registerAnalyzeProvider('setting', settingProvider);
+  registerAnalyzeProvider('setting', settingProvider, { stateless: true });
   registerAnalyzeProvider('glossary:decision_option', decisionProvider);
 }

@@ -3,7 +3,8 @@ import { facilityEffect } from '../../engine/economy';
 import type { CampaignState } from '../../engine/state/types';
 import { checkDeparture } from '../../engine/world/expedition';
 import type { Mission, Rumor } from '../../engine/world/types';
-import { h } from '../dom';
+import { analyzeAttrs, analyzeNative } from '../analyze/mark';
+import { h, type Child } from '../dom';
 
 export interface MissionBoardCtx {
   registries: Registries;
@@ -30,21 +31,27 @@ function missionCard(m: Mission, state: CampaignState, ctx: MissionBoardCtx): HT
   const tierRank = reg.rewardTiers.get(m.rewardsTier)?.rank;
   const deadline = m.deadlineDay === undefined ? 'NO DEADLINE' : `D-${Math.max(0, m.deadlineDay - state.day)}`;
   const reason = checkDeparture(state, reg, { missionId: m.id });
+  const chip = (text: string, address: string): Child => h('span', { class: 'alius-chip', ...analyzeAttrs(address) }, text);
+  const stat = (text: string, address: string): Child => h('span', { class: 'alius-stat', ...analyzeAttrs(address) }, text);
   const card = h('article', { class: 'alius-mission', 'data-mission-card': m.id },
     h('h3', {}, `[${SOURCE_TAG[m.source] ?? m.source.toUpperCase()}] ${m.title}`),
-    h('p', { class: 'alius-dim' }, `${String(region?.name ?? m.regionId)} · DANGER ${m.danger} · OBJECTIVE: ${String(node?.name ?? m.objective.node)} (${m.objective.condition}) · ${deadline}`),
+    h('p', { class: 'alius-dim' },
+      region ? chip(String(region.name), `regions:${m.regionId}`) : m.regionId,
+      ' · ', stat(`DANGER ${m.danger}`, 'glossary:danger'),
+      ' · OBJECTIVE: ', node ? chip(String(node.name), `nodeTypes:${m.objective.node}`) : m.objective.node, ` (${m.objective.condition}) · `,
+      stat(deadline, 'glossary:mission_deadline')),
     h('p', {}, m.brief),
-    h('p', { class: 'alius-dim' }, `REWARD: TIER ${String(tierRank ?? m.rewardsTier)}`),
+    h('p', { class: 'alius-dim' }, stat(`REWARD: TIER ${String(tierRank ?? m.rewardsTier)}`, 'glossary:reward_tier')),
   );
   if (ctx.onPlan) {
     card.append(h('button', {
-      type: 'button', class: 'alius-btn', 'data-plan': m.id, disabled: reason !== null, title: reason ?? '',
+      type: 'button', class: 'alius-btn alius-option', 'data-plan': m.id, ...analyzeNative('glossary:expedition'), disabled: reason !== null, title: reason ?? '',
       onclick: () => { if (reason === null) ctx.onPlan!(m.id); },
     }, '[ PLAN ]'));
     if (reason) card.append(h('p', { class: 'alius-dim alius-reason' }, reason));
   }
   if (ctx.onDismiss && (m.source === 'side' || m.source === 'rumor')) {
-    card.append(h('button', { type: 'button', class: 'alius-btn', 'data-dismiss': m.id, onclick: () => ctx.onDismiss!(m.id) }, '[ DISMISS ]'));
+    card.append(h('button', { type: 'button', class: 'alius-btn alius-option', 'data-dismiss': m.id, ...analyzeNative('glossary:mission_board'), onclick: () => ctx.onDismiss!(m.id) }, '[ DISMISS ]'));
   }
   return card;
 }
@@ -58,7 +65,7 @@ function rumorPost(r: Rumor, ctx: MissionBoardCtx): HTMLElement {
   if (r.tags.length > 0) post.append(h('p', { class: 'alius-dim' }, r.tags.map((t) => `#${t}`).join(' ')));
   if (r.status === 'followed') post.append(h('p', { class: 'alius-dim' }, 'FOLLOWED'));
   else if (r.leadsTo !== 'none' && ctx.onFollowRumor) {
-    post.append(h('button', { type: 'button', class: 'alius-btn', 'data-follow': r.id, onclick: () => ctx.onFollowRumor!(r.id) }, '[ FOLLOW ]'));
+    post.append(h('button', { type: 'button', class: 'alius-btn alius-option', 'data-follow': r.id, ...analyzeNative('glossary:rumor'), onclick: () => ctx.onFollowRumor!(r.id) }, '[ FOLLOW ]'));
   }
   return post;
 }
@@ -67,7 +74,7 @@ function rumorPost(r: Rumor, ctx: MissionBoardCtx): HTMLElement {
 export function renderMissionBoard(host: HTMLElement, state: CampaignState, ctx: MissionBoardCtx): void {
   const size = facilityEffect(state, ctx.registries, 'comms', 'missionBoardSize');
   const offered = state.missions.offered;
-  const board = h('section', { class: 'alius-section alius-board' }, h('h2', {}, `MISSION BOARD ${offered.length}/${size}`));
+  const board = h('section', { class: 'alius-section alius-board' }, h('h2', {}, h('span', { class: 'alius-stat', ...analyzeAttrs('glossary:mission_board') }, `MISSION BOARD ${offered.length}/${size}`)));
   if ((state.world.incomingUnits ?? 0) > 0) {
     board.append(h('p', { class: 'alius-banner' },
       'INTAKE PENDING: a new unit is waiting. ',
