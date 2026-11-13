@@ -272,7 +272,7 @@ describe('incoming named units (P5)', () => {
     expect(r.state.squad).toHaveLength(s.squad.length + 1);
     const grunt = r.state.squad.at(-1)!;
     expect(grunt.kind).toBe('grunt');
-    expect(r.state.relations[grunt.id]).toEqual(gruntRelation({ ...s, day: 7 }, reg));
+    expect(r.state.relations[grunt.id]).toEqual(gruntRelation({ ...s, day: 7 }, reg, grunt));
     expect(r.state.world.incomingUnits).toBe(0);
     expect(r.events.find((e) => e.type === 'unit_joined')).toEqual({ type: 'unit_joined', unitId: grunt.id, kind: 'grunt' });
     expect(message(dispatch(r.state, { type: 'squad/decline_incoming', payload: {} }, reg))).toBe('No unit is waiting for intake.');

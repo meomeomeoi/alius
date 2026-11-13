@@ -2,6 +2,7 @@ import type { Entry, Registries } from '../content/types';
 import { activeRosterUnits, isLiving } from './economy';
 import type { Rng } from './rng';
 import { applyFirstImpression } from './commander/presence';
+import { applyDispositionStart } from './worldOptions';
 import { crimeEffectsOf, crimeKnownByDefault, initialRelation, startingTrustAdjust } from './setup';
 import { VALUE_AXES, type CampaignState, type Relation, type Unit } from './state/types';
 import { TUNING } from './tuning';
@@ -97,7 +98,7 @@ export function generateGrunt(state: CampaignState, reg: Registries, rng: Rng): 
 }
 
 /** Trust only: the base, plus what the commander's crime does to a unit with neutral values. */
-export function gruntRelation(state: CampaignState, reg: Registries): Relation {
+export function gruntRelation(state: CampaignState, reg: Registries, grunt: Pick<Unit, 'kind' | 'commanderTastes'>): Relation {
   const crime = reg.crimes.get(state.commander.crimeId ?? '') as Entry | undefined;
   const start = reg.starts.get(state.world.startId ?? '') as Entry | undefined;
   const effects = crime ? crimeEffectsOf(crime) : [];
@@ -105,6 +106,7 @@ export function gruntRelation(state: CampaignState, reg: Registries): Relation {
   let trust = TUNING.recruit.baseTrust + startingTrustAdjust(effects, neutral);
   if (effects.some((fx) => fx.type === 'grunt_starting_trust')) trust += TUNING.recruit.gruntCrimeBonus;
   const rel = initialRelation({ trust, affinity: 0, attraction: 0, knowsCrime: crime ? crimeKnownByDefault(crime, start) : false, since: state.day });
-  applyFirstImpression(state, reg, {}, rel); // a grunt has no tastes: only the presence moves his Trust
+  applyDispositionStart(state, reg, grunt, rel); // P8: the world level, before the first impression
+  applyFirstImpression(state, reg, grunt, rel); // a grunt has no tastes: only the presence moves her Trust
   return rel;
 }

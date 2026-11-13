@@ -1,5 +1,6 @@
 import type { Entry, Registries } from '../../content/types';
 import { initialLoyaltyBand } from '../relations/bands';
+import { bandShift, dispositionFor } from '../worldOptions';
 import { socialRank } from '../social';
 import type { CampaignState, Relation, Unit } from '../state/types';
 import { TUNING } from '../tuning';
@@ -55,7 +56,7 @@ export function matchedTastes(state: CampaignState, reg: Registries, unit: Pick<
  * their offsets, the commander's traits add theirs (`starting_trust`, `taste_attraction`), every axis is clamped and the loyalty band is re-based from Trust. Grunts have no tastes, so only
  * their Trust moves.
  */
-export function applyFirstImpression(state: CampaignState, reg: Registries, unit: Pick<Unit, 'commanderTastes'> & Partial<Pick<Unit, 'values'>>, rel: Relation): void {
+export function applyFirstImpression(state: CampaignState, reg: Registries, unit: Pick<Unit, 'commanderTastes'> & Partial<Pick<Unit, 'values' | 'kind' | 'dispositionOffset'>>, rel: Relation): void {
   const matched = matchedTastes(state, reg, unit);
   const mult = matched.reduce((m, t) => m * (typeof t.presenceMult === 'number' ? t.presenceMult : 1), 1);
   let trust = rel.trust + Math.round(presenceOf(state, reg) * mult);
@@ -76,7 +77,7 @@ export function applyFirstImpression(state: CampaignState, reg: Registries, unit
   rel.trust = clamp(trust, 0, 100);
   rel.affinity = clamp(affinity, -100, 100);
   rel.attraction = clamp(attraction, 0, 100);
-  rel.loyaltyBand = initialLoyaltyBand(rel.trust);
+  rel.loyaltyBand = initialLoyaltyBand(rel.trust, bandShift(dispositionFor(state, reg, unit))); // P8: the unit's own thresholds
 }
 
 /**

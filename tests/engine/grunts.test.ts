@@ -119,8 +119,9 @@ describe('generateGrunt', () => {
 });
 
 describe('gruntRelation', () => {
+  const GRUNT = { kind: 'grunt' as const }; // P8: the join site passes the grunt (the world disposition level applies)
   // no presence rows: the crime's own effect is what is under test (P7 presence is tested in commander/presence)
-  const trustFor = (crimeId: string) => gruntRelation(campaign(reg, 1, { crimeId }), { ...reg, presence: new Map() }).trust;
+  const trustFor = (crimeId: string) => gruntRelation(campaign(reg, 1, { crimeId }), { ...reg, presence: new Map() }, GRUNT).trust;
 
   it('follows the crime: purge adds, experimentation subtracts', () => {
     expect(trustFor('mutiny')).toBe(TUNING.recruit.baseTrust);
@@ -129,14 +130,14 @@ describe('gruntRelation', () => {
   });
 
   it('is trust-only: no affinity or attraction, stranger state, steady/wavering band from trust', () => {
-    const r = gruntRelation(campaign(reg, 1), reg);
+    const r = gruntRelation(campaign(reg, 1), reg, GRUNT);
     expect(r).toMatchObject({ affinity: 0, attraction: 0, stateId: 'stranger', marks: [], loyaltyBand: 'steady' });
   });
 
   it('knows_crime follows the crime or start default', () => {
-    expect(gruntRelation(campaign(reg, 1), reg).flags).toEqual([]);
+    expect(gruntRelation(campaign(reg, 1), reg, GRUNT).flags).toEqual([]);
     const known = { ...reg, crimes: new Map([...reg.crimes].map(([k, v]) => [k, { ...v, knownByDefault: true }])) };
-    expect(gruntRelation(campaign(reg, 1), known).flags).toEqual(['knows_crime']);
+    expect(gruntRelation(campaign(reg, 1), known, GRUNT).flags).toEqual(['knows_crime']);
   });
 });
 

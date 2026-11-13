@@ -4,12 +4,12 @@ import { TUNING } from './tuning';
 import { ensureLeash } from './leash/weekly';
 import { seedWorld } from './world/state';
 import { initialLoyaltyBand } from './relations/bands';
-import { applyWorldStartEffects, defaultWorldOptions, validateWorldOptions } from './worldOptions';
+import { applyDispositionStart, applyWorldStartEffects, defaultWorldOptions, validateWorldOptions } from './worldOptions';
 import { applyFirstImpression } from './commander/presence';
 import { applyFactionTraitEffects, applyStartTraitEffects, syncTraitSettings } from './commander/traits';
 import { applyCommanderSetup, defaultCommanderSetup, validateCommanderSetup, type CommanderSetup } from './commander/profile';
 import {
-  VALUE_AXES, type CampaignState, type Relation, type SignatureInstance, type Unit,
+  VALUE_AXES, type CampaignState, type Relation, type SignatureInstance, type Unit, type WorldStance,
 } from './state/types';
 
 export const SETUP_LIMITS = {
@@ -47,6 +47,11 @@ export interface UnitSetup {
   baseline: { trust: number; affinity: number; attraction: number };
   /** P7: up to 3 ids of registry `tastes` (how the unit reads the commander's looks and build). */
   tastes?: string[];
+  /** P8: −2…2 on top of the world disposition level, proposed at import with a one-line reason. */
+  dispositionOffset?: number;
+  dispositionReason?: string;
+  /** P8: her stance toward each `squadStance` world option. */
+  worldStances?: Record<string, WorldStance>;
 }
 
 export interface SetupResult {
@@ -68,6 +73,31 @@ const effectsOf = (part: unknown): Effect[] => {
 
 const inRange = (n: unknown, [lo, hi]: readonly [number, number]): n is number =>
   typeof n === 'number' && Number.isInteger(n) && n >= lo && n <= hi;
+
+export const STANCE_REASON_MAX = 160;
+
+/** P8: the disposition offset and the per-option stances of a unit. */
+function validateDisposition(u: Partial<UnitSetup>, label: string, reg: Registries, out: string[]): void {
+  if (u.dispositionOffset !== undefined && !inRange(u.dispositionOffset, [-2, 2])) {
+    out.push(`${label}: disposition offset must be an integer from -2 to 2`);
+  }
+  if (u.dispositionReason !== undefined && (typeof u.dispositionReason !== 'string' || u.dispositionReason.length > STANCE_REASON_MAX)) {
+    out.push(`${label}: disposition reason must be text of at most ${STANCE_REASON_MAX} characters`);
+  }
+  if (u.worldStances === undefined) return;
+  if (typeof u.worldStances !== 'object' || u.worldStances === null || Array.isArray(u.worldStances)) {
+    out.push(`${label}: world stances must be an object`);
+    return;
+  }
+  for (const [optionId, st] of Object.entries(u.worldStances)) {
+    if (reg.worldOptions.get(optionId)?.squadStance !== true) out.push(`${label}: "${optionId}" is not a world option with a squad stance`);
+    if (!['shares', 'indifferent', 'opposes'].includes(st?.stance)) out.push(`${label}: unknown stance for "${optionId}"`);
+    if (st?.strength !== 1 && st?.strength !== 2) out.push(`${label}: stance strength for "${optionId}" must be 1 or 2`);
+    if (typeof st?.reason !== 'string' || st.reason.length > STANCE_REASON_MAX) {
+      out.push(`${label}: stance reason for "${optionId}" must be text of at most ${STANCE_REASON_MAX} characters`);
+    }
+  }
+}
 
 function validateUnit(
   u: UnitSetup, label: string, reg: Registries, opts: { desireBondDefects: boolean }, out: string[],
@@ -120,6 +150,8 @@ function validateUnit(
       }
     }
   }
+
+  validateDisposition(u, label, reg, out);
 
   const tagCaps = { likes: SETUP_LIMITS.likes, dislikes: SETUP_LIMITS.dislikes, triggers: SETUP_LIMITS.triggers } as const;
   for (const [field, cap] of Object.entries(tagCaps) as Array<[keyof typeof tagCaps, number]>) {
@@ -256,6 +288,9 @@ export function makeNamedUnit(u: UnitSetup, reg: Registries, usedIds: Set<string
     injuries: [],
     status: 'active',
     ...(u.tastes && u.tastes.length > 0 ? { commanderTastes: [...u.tastes] } : {}),
+    ...(u.dispositionOffset !== undefined && u.dispositionOffset !== 0 ? { dispositionOffset: u.dispositionOffset } : {}),
+    ...(u.dispositionReason ? { dispositionReason: u.dispositionReason } : {}),
+    ...(u.worldStances && Object.keys(u.worldStances).length > 0 ? { worldStances: structuredClone(u.worldStances) } : {}),
   };
 }
 
@@ -317,6 +352,7 @@ export function buildCampaign(
       attraction: u.baseline.attraction,
       knowsCrime,
     });
+    applyDispositionStart(state, reg, unit, state.relations[id]); // P8: before the first impression, which re-bases the band
     applyFirstImpression(state, reg, unit, state.relations[id]);
   }
   state.roster.activeIds = state.squad.map((u) => u.id);

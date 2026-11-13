@@ -66,7 +66,7 @@ registerAction('base/recruit_grunt', (draft, _payload, ctx) => {
   const grunt = generateGrunt(draft, ctx.registries, ctx.rng);
   draft.resources.credits -= TUNING.recruit.credits;
   draft.squad.push(grunt);
-  draft.relations[grunt.id] = gruntRelation(draft, ctx.registries);
+  draft.relations[grunt.id] = gruntRelation(draft, ctx.registries, grunt);
   if (grunt.status === 'active') draft.roster.activeIds.push(grunt.id);
   return [
     { type: 'resource_changed', resource: 'credits', amount: -TUNING.recruit.credits },

@@ -7,6 +7,7 @@ import type { CampaignState, HistoryEntry } from '../state/types';
 import { TUNING } from '../tuning';
 import { intimacyOf } from './gain';
 import { nextLoyaltyBand } from './bands';
+import { bandShift, dispositionById } from '../worldOptions';
 
 export type ProposalFailure = 'too_soon' | 'no_trust' | 'not_interested' | 'committed' | 'unavailable';
 export type ProposalCheck = { stateId: string } | { fail: ProposalFailure };
@@ -151,7 +152,7 @@ export function evaluateAutomatic(draft: CampaignState, reg: Registries, unitId:
   }
   if (target !== null) events.push(enterState(draft, unitId, target, why));
 
-  const band = nextLoyaltyBand(rel.loyaltyBand, rel.trust);
+  const band = nextLoyaltyBand(rel.loyaltyBand, rel.trust, bandShift(dispositionById(draft, reg, unitId))); // P8: the unit's own thresholds
   if (band !== rel.loyaltyBand) {
     events.push({ type: 'loyalty_band_changed', unitId, from: rel.loyaltyBand, to: band });
     rel.loyaltyBand = band;

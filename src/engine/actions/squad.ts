@@ -2,6 +2,7 @@ import type { Entry } from '../../content/types';
 import { registerAction } from '../dispatch';
 import { applyFirstImpression } from '../commander/presence';
 import { generateGrunt, gruntRelation } from '../grunts';
+import { applyDispositionStart } from '../worldOptions';
 import { livingUnits } from '../economy';
 import {
   crimeEffectsOf, crimeKnownByDefault, initialRelation, makeNamedUnit, startingTrustAdjust, validateIncomingUnit, validateUnitProfile, type UnitSetup,
@@ -112,6 +113,7 @@ registerAction('squad/add_named', (draft, payload, ctx) => {
     knowsCrime: crime ? crimeKnownByDefault(crime, start) : false,
     since: draft.day,
   });
+  applyDispositionStart(draft, reg, unit, draft.relations[unit.id]); // P8: before the first impression, which re-bases the band
   applyFirstImpression(draft, reg, unit, draft.relations[unit.id]);
   // dead units leave the active list first, as when a grunt is recruited
   const active = draft.roster.activeIds.filter((id) => draft.squad.some((x) => x.id === id && x.status !== 'dead'));
@@ -131,7 +133,7 @@ registerAction('squad/decline_incoming', (draft, _payload, ctx) => {
   if (reason) throw new Error(reason);
   const grunt = generateGrunt(draft, ctx.registries, ctx.rng);
   draft.squad.push(grunt);
-  draft.relations[grunt.id] = gruntRelation(draft, ctx.registries);
+  draft.relations[grunt.id] = gruntRelation(draft, ctx.registries, grunt);
   if (grunt.status === 'active') draft.roster.activeIds.push(grunt.id);
   draft.world.incomingUnits = (draft.world.incomingUnits ?? 0) - 1;
   return [{ type: 'unit_joined', unitId: grunt.id, kind: 'grunt' }];

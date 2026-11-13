@@ -237,16 +237,16 @@ docs/** (Task 16), tests/** mirror src
   - `gruntRelation(state, reg, grunt: Unit)`
   - `applyFirstImpression` re-bases with the unit's shift. `evaluateAutomatic` passes the shift.
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `kind starts +10/+10 and hazardous −30/−20 on the same baseline`, at all three join sites
   - `offset clamps at both ends and grunts ignore it`
   - `per-unit offset changes only that unit's effective level`
   - `a P7 save reads guarded with offset 0`
   - bands, table-driven, kind vs guarded vs hazardous at Trust 19/21/34/36/52/54: enter/exit thresholds as in the rulings
-- [ ] **Step 2: Run** `npx vitest run tests/engine/worldOptions tests/engine/relations` and expect FAIL.
-- [ ] **Step 3: Implement.** Order at a join site: initial relation → `applyDispositionStart` → `applyFirstImpression`.
-- [ ] **Step 4: Run** `npx vitest run` and expect green.
-- [ ] **Step 5: Commit** `feat(engine): unit disposition, join offsets and shifted loyalty bands`.
+- [x] **Step 2: Run** `npx vitest run tests/engine/worldOptions tests/engine/relations` and expect FAIL.
+- [x] **Step 3: Implement.** Order at a join site: initial relation → `applyDispositionStart` → `applyFirstImpression`.
+- [x] **Step 4: Run** `npx vitest run` and expect green.
+- [x] **Step 5: Commit** `feat(engine): unit disposition, join offsets and shifted loyalty bands`.
 
 ### Task 5: Disposition in the delta pipeline and confidence
 

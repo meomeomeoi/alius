@@ -91,6 +91,13 @@ export interface SignatureInstance {
   description: string;
 }
 
+/** A unit's stance toward a world norm (P8 §3.1). */
+export interface WorldStance {
+  stance: 'shares' | 'indifferent' | 'opposes';
+  strength: 1 | 2;
+  reason: string;
+}
+
 export interface Unit {
   id: string;
   kind: UnitKind;
@@ -133,6 +140,12 @@ export interface Unit {
   breakdown?: { defectId: string; day: number };
   /** P7: up to 3 taste ids (registry `tastes`) about how the unit reads the commander. */
   commanderTastes?: string[];
+  /** P8: how far this named unit sits from the world's disposition level, −2…2 (absent = 0). Grunts use the world level. */
+  dispositionOffset?: number;
+  /** P8: the one-line reason for the offset, proposed at import. */
+  dispositionReason?: string;
+  /** P8: her own stance toward each `squadStance` world option (absent = indifferent). */
+  worldStances?: Record<string, WorldStance>;
 }
 
 export interface DailyGain {
