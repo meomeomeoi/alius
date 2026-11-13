@@ -334,6 +334,17 @@ registerRefs('dilemmaTemplates', (entry) => {
   (entry.regions as unknown[] | undefined)?.forEach((id, i) => out.push({ registry: 'regions', id: String(id), path: `regions[${i}]` }));
   const options = (entry.fixed as { options?: Array<{ effects?: unknown }> } | undefined)?.options;
   options?.forEach((o, i) => worldEffectRefs(o.effects, `fixed.options[${i}].effects`, out));
+  // P7: check routes name roles and items
+  (entry.fixed as { options?: Array<{ routeCheck?: { routes?: Array<Record<string, any>> } }> } | undefined)?.options?.forEach((o, i) => {
+    o.routeCheck?.routes?.forEach((r, j) => {
+      const at = `fixed.options[${i}].routeCheck.routes[${j}]`;
+      if (r.kind === 'delegate') {
+        (r.unitFilter?.roles as unknown[] | undefined)?.forEach((id, k) => out.push({ registry: 'roles', id: String(id), path: `${at}.unitFilter.roles[${k}]` }));
+      } else if (r.kind === 'item' && typeof r.itemId === 'string') {
+        out.push({ registry: 'items', id: r.itemId, path: `${at}.itemId` });
+      }
+    });
+  });
   // P6
   (entry.allowedFlags as unknown[] | undefined)?.forEach((id, i) => out.push({ registry: 'flags', id: String(id), path: `allowedFlags[${i}]` }));
   const refs = entry.requiredRefs as { factions?: unknown[]; regions?: unknown[]; clocks?: unknown[] } | undefined;

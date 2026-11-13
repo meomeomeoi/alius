@@ -903,9 +903,44 @@ export const MissionTemplateSchema = BaseEntrySchema.extend({
   briefs: z.array(str.max(300)).min(1),
 });
 
+const TRUST_BANDS = ['none', 'low', 'guarded', 'solid', 'high'] as const;
+
+/** P7: one way to get a check done. Body routes are deterministic (stat ≥ min), like social ones. */
+export const CheckRouteSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('body'), stat: z.enum(['strength', 'endurance', 'reflexes']), min: int.min(1).max(5) }).strict(),
+  z.object({
+    kind: z.literal('delegate'),
+    unitFilter: z.object({ roles: z.array(str).min(1).optional() }).strict().optional(),
+    cost: z.object({
+      trustCheck: z.enum(TRUST_BANDS).optional(),
+      affinityCost: int.min(0).max(20).optional(),
+      stress: int.min(0).max(30).optional(),
+    }).strict(),
+  }).strict(),
+  z.object({ kind: z.literal('social'), stat: socialStat, min: int.min(1).max(5) }).strict(),
+  z.object({ kind: z.literal('item'), itemId: str }).strict(),
+  z.object({
+    kind: z.literal('bypass'),
+    cost: z.object({ resource: z.enum(['credits', 'supplies', 'plyx']), amount: int.min(1) }).strict(),
+  }).strict(),
+]);
+export type CheckRoute = z.infer<typeof CheckRouteSchema>;
+
+/** P7 / overview P10: a check that needs a body stat always declares a route that is not a body stat. */
+export const RouteCheckSchema = z.object({
+  id: str,
+  routes: z.array(CheckRouteSchema).min(1).max(5),
+}).strict().refine((c) => c.routes.some((r) => r.kind !== 'body'), {
+  message: 'a check needs at least one route that is not body (overview P10)',
+  path: ['routes'],
+});
+export type RouteCheck = z.infer<typeof RouteCheckSchema>;
+
 const EventOptionSchema = z.object({
   label: str.max(80),
   requires: z.object({ stat: socialStat, rank: int.min(1).max(5) }).strict().optional(),
+  /** P7: authored options only; generated dilemma options never carry one. */
+  routeCheck: RouteCheckSchema.optional(),
   effects: z.array(WorldEffectSchema),
 }).passthrough();
 

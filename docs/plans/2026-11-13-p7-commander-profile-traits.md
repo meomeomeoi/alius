@@ -183,9 +183,9 @@ docs/** (Task 19), tests/** mirror src
   - `interface RouteChoice { route: number; kind: CheckRoute['kind']; label: string; disabled: string | null; unitIds?: string[] }`; `routeChoices(state, reg, check, scope: { unitIds?: string[] }): RouteChoice[]` — labels: `STRENGTH: Strong or better`, `Ask a unit (Trust: guarded)`, `AUTHORITY 3`, `Use <item name>`, `Pay <n> <resource>`.
   - `interface RoutePick { route: number; unitId?: string }`; `resolveRoute(draft, ctx, check, pick, scope): { passed: boolean; events: EngineEvent[] }` — throws on a disabled or stale pick (message = the disabled reason); delegate per **Where the code differs**; events `route_taken { checkId, kind, passed }`, `delegate_remark { unitId }`, `delegate_demand { unitId }`, `delegate_refused { unitId }`.
 
-- [ ] **Step 1: Write the failing tests** — schema: `a body-only check is rejected`; `body plus delegate is accepted`; `an unknown role in unitFilter is a broken reference`; `an unknown itemId is a broken reference`. Engine: `body passes at min and is disabled below with the descriptor in the reason`; `social reads the effective rank`; `a bypass that cannot be paid is disabled`; `bypass pays and passes`; `item passes only while an instance is owned`; `delegate complies at guarded trust and pays affinity and stress`; `one band below is a demand and does not pass`; `breaking loyalty refuses`; `a delegate outside the party is disabled in a run`; `a stale delegate pick is rejected`.
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → green.
-- [ ] **Step 5: Commit** `feat(engine): check routes with a non-body route rule`.
+- [x] **Step 1: Write the failing tests** — schema: `a body-only check is rejected`; `body plus delegate is accepted`; `an unknown role in unitFilter is a broken reference`; `an unknown itemId is a broken reference`. Engine: `body passes at min and is disabled below with the descriptor in the reason`; `social reads the effective rank`; `a bypass that cannot be paid is disabled`; `bypass pays and passes`; `item passes only while an instance is owned`; `delegate complies at guarded trust and pays affinity and stress`; `one band below is a demand and does not pass`; `breaking loyalty refuses`; `a delegate outside the party is disabled in a run`; `a stale delegate pick is rejected`.
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → green.
+- [x] **Step 5: Commit** `feat(engine): check routes with a non-body route rule`.
 
 ---
 

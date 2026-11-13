@@ -12764,9 +12764,37 @@ var MissionTemplateSchema = BaseEntrySchema.extend({
   titles: external_exports.array(str2.max(60)).min(1),
   briefs: external_exports.array(str2.max(300)).min(1)
 });
+var TRUST_BANDS = ["none", "low", "guarded", "solid", "high"];
+var CheckRouteSchema = external_exports.discriminatedUnion("kind", [
+  external_exports.object({ kind: external_exports.literal("body"), stat: external_exports.enum(["strength", "endurance", "reflexes"]), min: int.min(1).max(5) }).strict(),
+  external_exports.object({
+    kind: external_exports.literal("delegate"),
+    unitFilter: external_exports.object({ roles: external_exports.array(str2).min(1).optional() }).strict().optional(),
+    cost: external_exports.object({
+      trustCheck: external_exports.enum(TRUST_BANDS).optional(),
+      affinityCost: int.min(0).max(20).optional(),
+      stress: int.min(0).max(30).optional()
+    }).strict()
+  }).strict(),
+  external_exports.object({ kind: external_exports.literal("social"), stat: socialStat, min: int.min(1).max(5) }).strict(),
+  external_exports.object({ kind: external_exports.literal("item"), itemId: str2 }).strict(),
+  external_exports.object({
+    kind: external_exports.literal("bypass"),
+    cost: external_exports.object({ resource: external_exports.enum(["credits", "supplies", "plyx"]), amount: int.min(1) }).strict()
+  }).strict()
+]);
+var RouteCheckSchema = external_exports.object({
+  id: str2,
+  routes: external_exports.array(CheckRouteSchema).min(1).max(5)
+}).strict().refine((c) => c.routes.some((r) => r.kind !== "body"), {
+  message: "a check needs at least one route that is not body (overview P10)",
+  path: ["routes"]
+});
 var EventOptionSchema = external_exports.object({
   label: str2.max(80),
   requires: external_exports.object({ stat: socialStat, rank: int.min(1).max(5) }).strict().optional(),
+  /** P7: authored options only; generated dilemma options never carry one. */
+  routeCheck: RouteCheckSchema.optional(),
   effects: external_exports.array(WorldEffectSchema)
 }).passthrough();
 var EXPEDITION_ONLY_EFFECTS = ["carried_supplies", "party_hp", "loot"];
@@ -23003,6 +23031,16 @@ registerRefs("dilemmaTemplates", (entry) => {
   entry.regions?.forEach((id, i) => out.push({ registry: "regions", id: String(id), path: `regions[${i}]` }));
   const options2 = entry.fixed?.options;
   options2?.forEach((o, i) => worldEffectRefs(o.effects, `fixed.options[${i}].effects`, out));
+  entry.fixed?.options?.forEach((o, i) => {
+    o.routeCheck?.routes?.forEach((r, j) => {
+      const at = `fixed.options[${i}].routeCheck.routes[${j}]`;
+      if (r.kind === "delegate") {
+        r.unitFilter?.roles?.forEach((id, k) => out.push({ registry: "roles", id: String(id), path: `${at}.unitFilter.roles[${k}]` }));
+      } else if (r.kind === "item" && typeof r.itemId === "string") {
+        out.push({ registry: "items", id: r.itemId, path: `${at}.itemId` });
+      }
+    });
+  });
   entry.allowedFlags?.forEach((id, i) => out.push({ registry: "flags", id: String(id), path: `allowedFlags[${i}]` }));
   const refs = entry.requiredRefs;
   refs?.factions?.forEach((id, i) => out.push({ registry: "corporations", id: String(id), path: `requiredRefs.factions[${i}]` }));
