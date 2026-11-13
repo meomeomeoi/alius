@@ -3,6 +3,7 @@ import { consumeSlots } from '../calendar';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { isLiving } from '../economy';
 import { arcDayStep } from '../arcs';
+import { intimidationBonus } from '../commander/profile';
 import { removeFromService } from '../leash/use';
 import { nextId } from '../memory';
 import { enqueueNight } from '../night';
@@ -85,7 +86,9 @@ export function talkDown(draft: CampaignState, ctx: EngineCtx, stat: 'authority'
   const rel = draft.relations[open.unitId];
   const t = TUNING.disloyalty.talkDown;
   const difficulty = t.baseRank + (rel.trust < t.lowTrust ? 1 : 0) + (unit.stress >= t.highStress ? 1 : 0);
-  const chance = clamp(t.base + t.perRank * (socialRank(draft, stat) - difficulty), t.min, t.max);
+  // P7: a strong, seasoned commander intimidates better (Authority only), a weak, green one worse
+  const bonus = stat === 'authority' ? intimidationBonus(draft) : 0;
+  const chance = clamp(t.base + t.perRank * (socialRank(draft, stat) - difficulty) + bonus, t.min, t.max);
   const success = ctx.rng.chance(chance);
   const events: EngineEvent[] = [];
   if (success) {

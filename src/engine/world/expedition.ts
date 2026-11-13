@@ -5,6 +5,7 @@ import { unitStats } from '../combat/stats';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { isLiving } from '../economy';
 import { addChronicle } from '../memory';
+import { commanderProfile } from '../commander/profile';
 import { enqueueNight } from '../night';
 import { releaseBreakdowns } from '../progression';
 import { applyIntents } from '../relations';
@@ -462,12 +463,28 @@ export function endExpedition(draft: CampaignState, ctx: EngineCtx, outcome: Exp
   draft.world.regions[exp.regionId] = { ...rs, lastVisitedDay: draft.day };
   draft.world.lastExpeditionRegionId = exp.regionId;
 
+  events.push(...exhaustion(draft, exp));
   delete draft.expedition;
   events.push(...consumeSlots(draft, exp.slots, ctx));
   draft.lastExpedition!.day = draft.day; // the day the squad is back; day-end hooks replace the draft's contents, so not `report` (the day may have ended inside the return)
   events.push(...openRequest(draft, 'expedition'));
   events.push({ type: 'expedition_ended', outcome, reportId: report.id });
   return events;
+}
+
+/**
+ * P7: after a 3-slot run a commander with endurance 2 or less is exhausted and loses the next morning, unless a living
+ * unit of the party in a close state covers for him (the first by party order). Must run before the slots are spent:
+ * the rollover that follows reads `loseMorning`.
+ */
+function exhaustion(draft: CampaignState, exp: ExpeditionState): EngineEvent[] {
+  if (exp.slots < 3 || commanderProfile(draft).body.endurance > TUNING.commander.exhaustionEndurance) return [];
+  const cover = exp.party
+    .map((id) => draft.squad.find((u) => u.id === id))
+    .find((u) => u !== undefined && isLiving(u) && TUNING.commander.coverStates.includes(draft.relations[u.id]?.stateId ?? ''));
+  if (cover) return [{ type: 'commander_covered', unitId: cover.id }];
+  draft.calendar.loseMorning = true;
+  return [{ type: 'commander_exhausted', day: draft.day }];
 }
 
 /** `return` is allowed once the objective is done and nothing is pending. */

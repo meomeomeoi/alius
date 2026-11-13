@@ -249,9 +249,9 @@ docs/** (Task 19), tests/** mirror src
 **Interfaces:**
 - Produces: events `commander_covered { unitId }`, `commander_exhausted { day }`; `intimidationBonus(state): number` (exported from `profile.ts`, used by `talkDown` for `authority` only).
 
-- [ ] **Step 1: Write the failing tests** — `endurance 2 after a 3-slot run loses the next morning`; `a friend in the party covers him instead`; `a 2-slot run never exhausts`; `endurance 3 never exhausts`; `a night event is played before the lost morning`; `strength 5 seasoning 5 adds 0.12 to authority talk-down, empathy unchanged`; `strength 1 seasoning 1 subtracts 0.12`.
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → green; `npm run build` and the architecture test pass.
-- [ ] **Step 5: Commit** `feat(engine): long-run exhaustion and physical intimidation`. **Chunk (a) ends here.**
+- [x] **Step 1: Write the failing tests** — `endurance 2 after a 3-slot run loses the next morning`; `a friend in the party covers him instead`; `a 2-slot run never exhausts`; `endurance 3 never exhausts`; `a night event is played before the lost morning`; `strength 5 seasoning 5 adds 0.12 to authority talk-down, empathy unchanged`; `strength 1 seasoning 1 subtracts 0.12`.
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → green; `npm run build` and the architecture test pass.
+- [x] **Step 5: Commit** `feat(engine): long-run exhaustion and physical intimidation`. **Chunk (a) ends here.**
 
 ---
 

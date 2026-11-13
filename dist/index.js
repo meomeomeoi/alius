@@ -362,6 +362,10 @@ function addBodyXp(commander, stat2, amount) {
   commander.archetype = archetypeOf(body);
   return { value: body[stat2], gained: body[stat2] > before };
 }
+function intimidationBonus(state) {
+  const p = commanderProfile(state);
+  return TUNING.commander.intimidatePerPoint * (p.body.strength - 3 + (p.seasoning - 3));
+}
 
 // src/engine/ledger.ts
 var RESOURCES = ["credits", "supplies", "plyx"];
@@ -1346,7 +1350,13 @@ function rollover(draft) {
   draft.slot = "morning";
   delete draft.calendar.nightEvent;
   for (const r of Object.values(draft.relations)) r.dailyGain = { trust: 0, affinity: 0, attraction: 0 };
-  return [{ type: "day_started", day: draft.day }];
+  const events = [{ type: "day_started", day: draft.day }];
+  if (draft.calendar.loseMorning) {
+    delete draft.calendar.loseMorning;
+    draft.slot = "afternoon";
+    events.push({ type: "morning_lost", day: draft.day });
+  }
+  return events;
 }
 function ticks(draft, ctx2) {
   const events = [];
@@ -12181,7 +12191,8 @@ function talkDown(draft, ctx2, stat2) {
   const rel = draft.relations[open2.unitId];
   const t = TUNING.disloyalty.talkDown;
   const difficulty = t.baseRank + (rel.trust < t.lowTrust ? 1 : 0) + (unit.stress >= t.highStress ? 1 : 0);
-  const chance = clamp13(t.base + t.perRank * (socialRank(draft, stat2) - difficulty), t.min, t.max);
+  const bonus = stat2 === "authority" ? intimidationBonus(draft) : 0;
+  const chance = clamp13(t.base + t.perRank * (socialRank(draft, stat2) - difficulty) + bonus, t.min, t.max);
   const success = ctx2.rng.chance(chance);
   const events = [];
   if (success) {
@@ -12824,12 +12835,20 @@ function endExpedition(draft, ctx2, outcome) {
   const rs = draft.world.regions[exp.regionId] ?? { known: true };
   draft.world.regions[exp.regionId] = { ...rs, lastVisitedDay: draft.day };
   draft.world.lastExpeditionRegionId = exp.regionId;
+  events.push(...exhaustion(draft, exp));
   delete draft.expedition;
   events.push(...consumeSlots(draft, exp.slots, ctx2));
   draft.lastExpedition.day = draft.day;
   events.push(...openRequest(draft, "expedition"));
   events.push({ type: "expedition_ended", outcome, reportId: report.id });
   return events;
+}
+function exhaustion(draft, exp) {
+  if (exp.slots < 3 || commanderProfile(draft).body.endurance > TUNING.commander.exhaustionEndurance) return [];
+  const cover = exp.party.map((id) => draft.squad.find((u) => u.id === id)).find((u) => u !== void 0 && isLiving(u) && TUNING.commander.coverStates.includes(draft.relations[u.id]?.stateId ?? ""));
+  if (cover) return [{ type: "commander_covered", unitId: cover.id }];
+  draft.calendar.loseMorning = true;
+  return [{ type: "commander_exhausted", day: draft.day }];
 }
 function returnFromExpedition(draft, ctx2) {
   const exp = draft.expedition;

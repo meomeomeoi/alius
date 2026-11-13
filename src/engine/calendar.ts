@@ -54,7 +54,14 @@ function rollover(draft: CampaignState): EngineEvent[] {
   draft.slot = 'morning';
   delete draft.calendar.nightEvent;
   for (const r of Object.values(draft.relations)) r.dailyGain = { trust: 0, affinity: 0, attraction: 0 };
-  return [{ type: 'day_started', day: draft.day }];
+  const events: EngineEvent[] = [{ type: 'day_started', day: draft.day }];
+  if (draft.calendar.loseMorning) {
+    // P7: the exhausted commander sleeps through the morning (set when a long run ended; a night event played first)
+    delete draft.calendar.loseMorning;
+    draft.slot = 'afternoon';
+    events.push({ type: 'morning_lost', day: draft.day });
+  }
+  return events;
 }
 
 function ticks(draft: CampaignState, ctx: EngineCtx): EngineEvent[] {

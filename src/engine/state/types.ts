@@ -371,6 +371,8 @@ export interface CampaignState {
     nightEvent?: NightEntry;
     /** A conversation requested by `talk` that has not ended yet; it holds its slot (P2). P3 ends it with `scene_end`. */
     pendingScene?: { unitId: string; day: number; slot: Slot };
+    /** P7: the next day starts in the Afternoon (an exhausted commander slept through the morning). */
+    loseMorning?: boolean;
   };
   /** `log` stays `unknown[]` on purpose: `leashLog(state)` filters the well-formed entries, older saves may hold others. */
   leash: { authorizationsLeft: number; refreshDay: number; log: unknown[]; seq?: number; seeded?: boolean };

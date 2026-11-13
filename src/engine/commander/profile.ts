@@ -147,3 +147,12 @@ export function addBodyXp(commander: Commander, stat: BodyStat, amount: number):
   commander.archetype = archetypeOf(body);
   return { value: body[stat], gained: body[stat] > before };
 }
+
+/**
+ * What the commander's build and experience add to an Authority talk-down chance: 0.03 per point of strength and of
+ * seasoning above 3. Symmetric: a weak, green commander really is weaker here.
+ */
+export function intimidationBonus(state: CampaignState): number {
+  const p = commanderProfile(state);
+  return TUNING.commander.intimidatePerPoint * (p.body.strength - 3 + (p.seasoning - 3));
+}
