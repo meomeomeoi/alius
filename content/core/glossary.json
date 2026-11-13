@@ -627,5 +627,65 @@
     "id": "setting_first_impression_tau",
     "term": "First impression fades",
     "short": "How many days units take to stop judging the commander by his looks. The first meeting counts most."
+  },
+  {
+    "id": "body_strength",
+    "term": "Strength",
+    "short": "How hard the commander hits and how well he holds a line. Shown as a word, never a number.",
+    "long": "Strength helps when he has to push, lift or lean on someone, and it adds to an Authority talk-down together with experience. A weak commander is really weaker here; some checks stay closed to him, but every physical check has another way through. It grows by training, never by itself.",
+    "see": [
+      "body_endurance",
+      "body_reflexes",
+      "archetype"
+    ]
+  },
+  {
+    "id": "body_endurance",
+    "term": "Endurance",
+    "short": "How much punishment and how many hours the commander can take. Shown as a word, never a number.",
+    "long": "Endurance sets his HP if a fight reaches him (Commander Crisis). With low endurance a long expedition exhausts him: he loses the next morning unless a close friend in the party covers for him. It grows by training.",
+    "see": [
+      "body_strength",
+      "body_reflexes",
+      "archetype"
+    ]
+  },
+  {
+    "id": "body_reflexes",
+    "term": "Reflexes",
+    "short": "How quickly the commander gets out of the way. Shown as a word, never a number.",
+    "long": "Reflexes give him a chance to dodge a hit that reaches him in Commander Crisis. The better they are, the more often a blow misses. It grows by training.",
+    "see": [
+      "body_strength",
+      "body_endurance",
+      "archetype"
+    ]
+  },
+  {
+    "id": "expression",
+    "term": "Expression",
+    "short": "How the commander presents himself, from very feminine to very masculine. It has no game bonus or penalty of its own.",
+    "long": "Expression never buffs or weakens anything. It only matters through how each soldier reads it: individual tastes decide who notices, and the story may react to it. Nobody is punished for how he looks."
+  },
+  {
+    "id": "seasoning",
+    "term": "Seasoning",
+    "short": "The commander's visible experience, from green to veteran. It shapes first impressions and the weight of his word.",
+    "long": "Seasoning is how much he has clearly lived through. It adds to his presence on first meeting and, together with Strength, to an Authority talk-down. Scars from a lost Crisis fight can raise it.",
+    "see": [
+      "archetype",
+      "authority"
+    ]
+  },
+  {
+    "id": "archetype",
+    "term": "Build",
+    "short": "The commander's physique in one word, from frail to hardened, worked out from his three body stats.",
+    "long": "Frail, slight, average, fit or hardened. The build decides which presence action he gets in a fight and which acts the squad finds out of character for him: a gentle commander who coerces, or a tough one who comforts, makes a bigger impression until they know him better.",
+    "see": [
+      "body_strength",
+      "body_endurance",
+      "body_reflexes"
+    ]
   }
 ]

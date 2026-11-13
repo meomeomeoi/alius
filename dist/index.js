@@ -441,6 +441,18 @@ function intimidationBonus(state) {
   const p = commanderProfile(state);
   return TUNING.commander.intimidatePerPoint * (p.body.strength - 3 + (p.seasoning - 3));
 }
+function traitBlockReason(reg, traits, id, opts) {
+  const t = reg.commanderTraits.get(id);
+  if (!t) return "Unknown trait.";
+  if (traits.regular.includes(id) || traits.special === id) return null;
+  const needs = t.requiresSettings;
+  if (needs?.desireBondDefects && !opts.desireBondDefects) return "Needs the Desire/Bond setting.";
+  if (t.kind === "regular" && traits.regular.length >= TUNING.commander.maxRegular) return `Two regular traits are already chosen.`;
+  const chosen = [...traits.regular, ...traits.special !== void 0 ? [traits.special] : []];
+  const excludes = t.exclusiveWith ?? [];
+  const clash = chosen.find((c) => excludes.includes(c) || (reg.commanderTraits.get(c)?.exclusiveWith ?? []).includes(id));
+  return clash === void 0 ? null : `Excluded by ${String(reg.commanderTraits.get(clash)?.name ?? clash)}.`;
+}
 
 // src/engine/ledger.ts
 var RESOURCES = ["credits", "supplies", "plyx"];
@@ -1050,9 +1062,9 @@ function validateUnit(u, label2, reg, opts, out, withBaseline = true) {
     }
   }
   const tagCaps = { likes: SETUP_LIMITS.likes, dislikes: SETUP_LIMITS.dislikes, triggers: SETUP_LIMITS.triggers };
-  for (const [field2, cap5] of Object.entries(tagCaps)) {
+  for (const [field2, cap6] of Object.entries(tagCaps)) {
     const tags = u[field2] ?? [];
-    if (tags.length > cap5) out.push(`${label2}: at most ${cap5} ${field2} (has ${tags.length})`);
+    if (tags.length > cap6) out.push(`${label2}: at most ${cap6} ${field2} (has ${tags.length})`);
     for (const t of tags) {
       if (normalizeTag(t) !== t) out.push(`${label2}: ${field2} entry "${t}" is not a normalized tag`);
     }
@@ -3504,11 +3516,11 @@ function arcPaths(state, reg, unitId, defectId) {
   }
   if (whole !== null) return ARC_PATHS.map((p) => ({ ...base(p), available: false, reason: whole, wanted: false, refuses: false }));
   const stages = allowedStages(state, reg, unitId);
-  const cap5 = stageCap(state, reg);
+  const cap6 = stageCap(state, reg);
   const structural = ARC_PATHS.map((path) => {
     let reason = null;
     if (!stages.includes(path)) reason = "Needs a closer bond.";
-    else if (TUNING.arc.stage[path] > cap5) reason = `The medbay is too basic for this (stage ${TUNING.arc.stage[path]}).`;
+    else if (TUNING.arc.stage[path] > cap6) reason = `The medbay is too basic for this (stage ${TUNING.arc.stage[path]}).`;
     return { path, reason };
   });
   const offered2 = structural.filter((s) => s.reason === null).map((s) => s.path);
@@ -5056,8 +5068,8 @@ function hpGrowth(reg, unit, level) {
 }
 function applyLevelUps(draft, reg, unit) {
   const events = [];
-  const cap5 = levelCap(draft);
-  while (unit.xp >= xpToNext(unit.level) && unit.level < cap5) {
+  const cap6 = levelCap(draft);
+  while (unit.xp >= xpToNext(unit.level) && unit.level < cap6) {
     const before = hpGrowth(reg, unit, unit.level);
     unit.xp -= xpToNext(unit.level);
     unit.level += 1;
@@ -16802,10 +16814,114 @@ function updateSettings(st, patch) {
   return s;
 }
 
+// src/ui/commander/commanderFile.ts
+var cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+function renderCommanderFile(host, ctx2) {
+  const { value: c, registries: reg, onChange } = ctx2;
+  host.replaceChildren();
+  const spent = poolSpent(c.body);
+  const left = TUNING.commander.pool - spent;
+  const row = (stat2) => {
+    const v = c.body[stat2];
+    const step = (sign, next, disabled) => h("button", {
+      type: "button",
+      class: "alius-btn alius-step-btn",
+      "data-body": stat2,
+      "data-step": sign,
+      disabled,
+      "aria-label": `${sign === "+" ? "Raise" : "Lower"} ${stat2}`,
+      onclick: () => onChange({ kind: "body", stat: stat2, value: next })
+    }, sign === "+" ? "+" : "\u2212");
+    return h(
+      "div",
+      { class: "alius-cmdr-row" },
+      h("span", { class: "alius-cmdr-label" }, cap(stat2)),
+      step("-", v - 1, v <= 1),
+      h("span", { class: "alius-stat", ...analyzeAttrs(`glossary:body_${stat2}`) }, descriptor(stat2, v)),
+      step("+", v + 1, v >= TUNING.commander.creationMax || left <= 0)
+    );
+  };
+  const archetype = archetypeOf(c.body);
+  host.append(
+    h(
+      "section",
+      { class: "alius-section alius-cmdr-body" },
+      h("h3", {}, "BODY"),
+      ...BODY_STATS.map(row),
+      h("p", { class: "alius-hint" }, `POINTS LEFT ${left}`),
+      h("p", {}, "BUILD: ", h("span", { class: "alius-chip", ...analyzeAttrs("glossary:archetype") }, archetype))
+    )
+  );
+  const picker = (kind, current) => h("div", { class: "alius-cmdr-pick" }, ...DESCRIPTORS[kind].map((word, i) => h("button", {
+    type: "button",
+    class: "alius-btn alius-option",
+    [`data-${kind}`]: String(i + 1),
+    "aria-pressed": String(current === i + 1),
+    ...analyzeNative(`glossary:${kind}`),
+    onclick: () => onChange({ kind, value: i + 1 })
+  }, word)));
+  host.append(
+    h("section", { class: "alius-section" }, h("h3", {}, "EXPRESSION"), picker("expression", c.expression)),
+    h("section", { class: "alius-section" }, h("h3", {}, "SEASONING"), picker("seasoning", c.seasoning))
+  );
+  const chosen = /* @__PURE__ */ new Set([...c.traits.regular, ...c.traits.special !== void 0 ? [c.traits.special] : []]);
+  const reasons = ctx2.importStatus?.reasons ?? {};
+  const card2 = (id) => {
+    const t = reg.commanderTraits.get(id);
+    const blocked = traitBlockReason(reg, c.traits, id, { desireBondDefects: ctx2.desireBondDefects });
+    const on = chosen.has(id);
+    return h(
+      "button",
+      {
+        type: "button",
+        class: `alius-card alius-option alius-trait-card${t.kind === "special" ? " alius-trait-special" : ""}`,
+        "data-trait": id,
+        "aria-pressed": String(on),
+        disabled: blocked !== null,
+        title: blocked,
+        ...analyzeNative(`commanderTraits:${id}`),
+        onclick: () => onChange({ kind: "trait", id })
+      },
+      h("strong", {}, String(t.name)),
+      t.kind === "special" ? h("span", { class: "alius-dim" }, " SPECIAL") : null,
+      h("p", {}, `UP: ${String(t.upside)}`),
+      h("p", {}, `DOWN: ${String(t.downside)}`),
+      on && reasons[id] ? h("p", { class: "alius-dim" }, `Why: ${reasons[id]}`) : null
+    );
+  };
+  const all = [...reg.commanderTraits.values()];
+  host.append(
+    h(
+      "section",
+      { class: "alius-section" },
+      h("h3", {}, "TRAITS"),
+      h("p", { class: "alius-hint" }, `Up to ${TUNING.commander.maxRegular} regular traits and one special. A trait changes how he plays, not how strong he is.`),
+      h("div", { class: "alius-cards" }, ...all.filter((t) => t.kind === "regular").map((t) => card2(t.id))),
+      all.some((t) => t.kind === "special") ? h("h4", {}, "SPECIAL") : null,
+      h("div", { class: "alius-cards" }, ...all.filter((t) => t.kind === "special").map((t) => card2(t.id)))
+    )
+  );
+  const st = ctx2.importStatus;
+  if (ctx2.onPrefill || ctx2.onRandom) {
+    host.append(
+      h(
+        "div",
+        { class: "alius-row alius-cmdr-actions" },
+        ctx2.onPrefill ? h("button", { type: "button", class: "alius-btn", "data-action": "prefill", disabled: st?.status === "loading", onclick: ctx2.onPrefill }, "PREFILL FROM PERSONA") : null,
+        ctx2.onRandom ? h("button", { type: "button", class: "alius-btn", "data-action": "random", onclick: ctx2.onRandom }, "RANDOM COMMANDER") : null
+      )
+    );
+  }
+  const note = (text2) => h("p", { class: "alius-status", role: "status" }, text2);
+  if (st?.status === "loading") host.append(note("READING THE PERSONA\u2026"));
+  else if (st?.status === "manual") host.append(note(`MANUAL \u2014 ${st.notice ?? "fill the form by hand."}`));
+  else if (st?.status === "ready") host.append(note("PREFILLED \u2014 check every field."));
+}
+
 // src/setup/commander.ts
 var PERSONA_CHARS = 6e3;
 var isObj23 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
-var cap = (v, max) => typeof v === "string" ? v.replace(/<[^>]*>/g, "").trim().slice(0, max) : "";
+var cap2 = (v, max) => typeof v === "string" ? v.replace(/<[^>]*>/g, "").trim().slice(0, max) : "";
 function valueOf(kind, v) {
   if (typeof v !== "string") return null;
   const i = DESCRIPTORS[kind].findIndex((d) => d.toLowerCase() === v.trim().toLowerCase());
@@ -16835,9 +16951,9 @@ function sanitizeCommanderImport(raw, reg) {
     const excluded = setup.traits.regular.some((kept) => (t.exclusiveWith ?? []).includes(kept) || (reg.commanderTraits.get(kept)?.exclusiveWith ?? []).includes(id));
     if (excluded) continue;
     setup.traits.regular.push(id);
-    reasons[id] = cap(item.reason, 200);
+    reasons[id] = cap2(item.reason, 200);
   }
-  return { setup, reasons, notes: cap(src.notes, 300) };
+  return { setup, reasons, notes: cap2(src.notes, 300) };
 }
 var usable2 = (raw, result) => isObj23(raw) && ["strength", "endurance", "reflexes", "expression", "seasoning"].some((k) => valueOf(k, raw[k]) !== null) || result.setup.traits.regular.length > 0;
 async function importCommander(st, deps) {
@@ -16893,7 +17009,7 @@ function buildImportInput(card2, registries, settings, sections) {
   };
 }
 var isObj24 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
-var cap2 = (v, max, fallback = "") => typeof v === "string" ? v.trim().slice(0, max) : fallback;
+var cap3 = (v, max, fallback = "") => typeof v === "string" ? v.trim().slice(0, max) : fallback;
 var num2 = (v, lo, hi, fallback) => typeof v === "number" && Number.isFinite(v) ? Math.min(hi, Math.max(lo, Math.round(v))) : fallback;
 var SECTION_LABEL = { role: "role", signature: "signature", defects: "defects" };
 var VALUE_KEYS = ["pragmatism", "autonomy", "ingroup", "mercy", "corporate", "sacrifice"];
@@ -16912,7 +17028,7 @@ function sanitizeProfile(raw, ctx2) {
   const want = (s) => ctx2.sections.includes(s);
   const dropped = [];
   const missing2 = [];
-  const profile = { roleCandidates: [], signatureCandidates: [], defectCandidates: [], notes: cap2(src.notes, 300) };
+  const profile = { roleCandidates: [], signatureCandidates: [], defectCandidates: [], notes: cap3(src.notes, 300) };
   const pick = (list5, section, idKey, max, accept, make) => {
     const out = [];
     const seen = /* @__PURE__ */ new Set();
@@ -16938,7 +17054,7 @@ function sanitizeProfile(raw, ctx2) {
       "roleId",
       2,
       (id) => ctx2.registries.roles.has(id),
-      (roleId, it) => ({ roleId, reason: cap2(it.reason, 200) })
+      (roleId, it) => ({ roleId, reason: cap3(it.reason, 200) })
     );
     if (profile.roleCandidates.length === 0) missing2.push("role");
   }
@@ -16953,8 +17069,8 @@ function sanitizeProfile(raw, ctx2) {
         const tpl = ctx2.registries.signatures.get(templateId);
         return {
           templateId,
-          name: cap2(it.name, 40, String(tpl.name)) || String(tpl.name),
-          description: cap2(it.description, 240, String(tpl.mechanic)) || String(tpl.mechanic)
+          name: cap3(it.name, 40, String(tpl.name)) || String(tpl.name),
+          description: cap3(it.description, 240, String(tpl.mechanic)) || String(tpl.mechanic)
         };
       }
     );
@@ -16970,7 +17086,7 @@ function sanitizeProfile(raw, ctx2) {
         const d = ctx2.registries.defects.get(id);
         return !!d && (ctx2.desireBondDefects || d.category !== "desire_bond");
       },
-      (defectId, it) => ({ defectId, origin: cap2(it.origin, 300) })
+      (defectId, it) => ({ defectId, origin: cap3(it.origin, 300) })
     );
     if (profile.defectCandidates.length === 0) missing2.push("defects");
   }
@@ -17145,27 +17261,16 @@ var Wizard = class {
     const t = this.deps.registries.commanderTraits.get(id);
     if (!t) return;
     const traits = this.s.commander.traits;
-    if (t.kind === "special") {
-      if (traits.special === id) delete traits.special;
-      else if (this.traitAllowed(id, traits.regular)) traits.special = id;
-      else return;
-    } else {
-      const at = traits.regular.indexOf(id);
-      if (at >= 0) traits.regular.splice(at, 1);
-      else if (traits.regular.length >= TUNING.commander.maxRegular) return;
-      else if (this.traitAllowed(id, [...traits.regular, ...traits.special !== void 0 ? [traits.special] : []])) traits.regular.push(id);
-      else return;
-    }
+    if (traits.regular.includes(id)) traits.regular.splice(traits.regular.indexOf(id), 1);
+    else if (traits.special === id) delete traits.special;
+    else if (this.traitAllowed(id)) {
+      if (t.kind === "special") traits.special = id;
+      else traits.regular.push(id);
+    } else return;
     this.emit();
   }
-  /** Whether `id` may join `chosen`: its settings are on and no exclusion links it to a chosen trait (either way). */
-  traitAllowed(id, chosen) {
-    const reg = this.deps.registries.commanderTraits;
-    const t = reg.get(id);
-    if (!t) return false;
-    if (t.requiresSettings?.desireBondDefects && !this.deps.desireBondDefects) return false;
-    const excludes = t.exclusiveWith ?? [];
-    return !chosen.some((c) => excludes.includes(c) || (reg.get(c)?.exclusiveWith ?? []).includes(id));
+  traitAllowed(id, traits = this.s.commander.traits) {
+    return traitBlockReason(this.deps.registries, traits, id, { desireBondDefects: this.deps.desireBondDefects }) === null;
   }
   /** Asks the mechanic model for a commander from the persona text; a late answer after the player moved on is dropped. */
   prefillFromPersona() {
@@ -17204,7 +17309,7 @@ var Wizard = class {
     const pool = [...this.deps.registries.commanderTraits.values()].filter((t) => t.kind === "regular").map((t) => String(t.id));
     for (let want = Math.floor(rnd() * (TUNING.commander.maxRegular + 1)); want > 0 && pool.length > 0; want--) {
       const id = pool.splice(Math.floor(rnd() * pool.length), 1)[0];
-      if (this.traitAllowed(id, c.traits.regular)) c.traits.regular.push(id);
+      if (this.traitAllowed(id, c.traits)) c.traits.regular.push(id);
     }
     this.s.commander = c;
     this.s.commanderImport = { status: "idle", reasons: {} };
@@ -17668,11 +17773,11 @@ function renderCalibration(host, ctx2) {
   }
   if (shown.has("tags")) {
     host.append(
-      section("tags", "TAGS", ...TAG_FIELDS.map(([key, label2, cap5]) => {
+      section("tags", "TAGS", ...TAG_FIELDS.map(([key, label2, cap6]) => {
         const list5 = ch[key];
         const add = () => {
           const t = normalizeTag(input.value);
-          if (t === null || list5.includes(t) || list5.length >= cap5) return;
+          if (t === null || list5.includes(t) || list5.length >= cap6) return;
           onUpdate({ [key]: [...list5, t] });
         };
         const input = h("input", {
@@ -17681,8 +17786,8 @@ function renderCalibration(host, ctx2) {
           "data-tags": key,
           "data-key": `tag-${key}`,
           "aria-label": `Add ${label2.toLowerCase()}`,
-          placeholder: list5.length >= cap5 ? `max ${cap5}` : "add\u2026",
-          disabled: list5.length >= cap5
+          placeholder: list5.length >= cap6 ? `max ${cap6}` : "add\u2026",
+          disabled: list5.length >= cap6
         });
         input.addEventListener("keydown", (e) => {
           if (e.key !== "Enter") return;
@@ -17692,7 +17797,7 @@ function renderCalibration(host, ctx2) {
         return h(
           "div",
           { class: "alius-tags" },
-          h("span", { class: "alius-field-label" }, `${label2} (${list5.length}/${cap5})`),
+          h("span", { class: "alius-field-label" }, `${label2} (${list5.length}/${cap6})`),
           h("div", { class: "alius-chips" }, ...list5.map((t) => h(
             "span",
             { class: "alius-tagchip" },
@@ -17703,6 +17808,32 @@ function renderCalibration(host, ctx2) {
           h("button", { type: "button", class: "alius-btn", "data-add-tag": key, onclick: add }, "Add")
         );
       }))
+    );
+  }
+  if (shown.has("tastes")) {
+    const picked = ch.tastes;
+    const suggested = new Set(!manual && cand ? cand.commanderTastes ?? [] : []);
+    const full = picked.length >= TUNING.commander.maxTastes;
+    host.append(
+      section(
+        "tastes",
+        "HOW SHE READS THE COMMANDER",
+        h("p", { class: "alius-hint" }, `Pick up to ${TUNING.commander.maxTastes} (${picked.length}/${TUNING.commander.maxTastes}). Tastes decide first impressions and who notices his looks; they never change a number by themselves.`),
+        h("div", { class: "alius-tastes" }, ...[...reg.tastes.values()].map((t) => {
+          const id = String(t.id);
+          const on = picked.includes(id);
+          return h("button", {
+            type: "button",
+            class: "alius-btn alius-option alius-taste-chip",
+            "data-taste": id,
+            "aria-pressed": String(on),
+            disabled: full && !on,
+            title: String(t.description),
+            ...analyzeNative(`tastes:${id}`),
+            onclick: () => onUpdate({ tastes: on ? picked.filter((x) => x !== id) : [...picked, id] })
+          }, String(t.name), suggested.has(id) ? " (suggested)" : "");
+        }))
+      )
     );
   }
   if (shown.has("baseline")) {
@@ -17851,7 +17982,23 @@ function renderSetupScreen(host, ctx2) {
     );
   }
   function commanderStep() {
-    return h("div", { class: "alius-setup-body" }, h("p", { class: "alius-hint" }, "COMMANDER FILE"));
+    const body = h("div", { class: "alius-setup-body alius-cmdr" });
+    const apply = (p) => {
+      if (p.kind === "body") wizard.setBody(p.stat, p.value);
+      else if (p.kind === "expression") wizard.setExpression(p.value);
+      else if (p.kind === "seasoning") wizard.setSeasoning(p.value);
+      else wizard.toggleTrait(p.id);
+    };
+    renderCommanderFile(body, {
+      value: wizard.state.commander,
+      registries: reg,
+      desireBondDefects: wizardDesireBond(),
+      onChange: apply,
+      onPrefill: () => wizard.prefillFromPersona(),
+      onRandom: () => wizard.randomCommander(),
+      importStatus: wizard.state.commanderImport
+    });
+    return body;
   }
   function units(s) {
     const q = search.trim().toLowerCase();
@@ -17908,6 +18055,7 @@ function renderSetupScreen(host, ctx2) {
       `COMMANDER   : ${s.commanderName.trim()}`,
       `CORPORATION : ${nameOf5(reg, "corporations", corpId)} \u2014 ${nameOf5(reg, "starts", s.startId)}`,
       `CRIME       : ${nameOf5(reg, "crimes", s.crimeId)} (Plea: GUILTY)`,
+      ...commanderLines(s),
       `SQUAD       : ${s.units.length}/4 \u2014 ${difficultyHint(s.units.length)}`,
       ...s.units.flatMap((u, n) => unitLines(u, n))
     ];
@@ -17929,6 +18077,17 @@ function renderSetupScreen(host, ctx2) {
       );
     }
     return body;
+  }
+  function commanderLines(s) {
+    const c = s.commander;
+    const traits = [...c.traits.regular, ...c.traits.special !== void 0 ? [c.traits.special] : []].map((id) => String(reg.commanderTraits.get(id)?.name ?? id));
+    return [
+      `BODY        : ${descriptor("strength", c.body.strength)} / ${descriptor("endurance", c.body.endurance)} / ${descriptor("reflexes", c.body.reflexes)}`,
+      `EXPRESSION  : ${descriptor("expression", c.expression)}`,
+      `SEASONING   : ${descriptor("seasoning", c.seasoning)}`,
+      `BUILD       : ${archetypeOf(c.body)}`,
+      `TRAITS      : ${traits.join(", ") || "\u2014"}`
+    ];
   }
   function unitLines(u, n) {
     const c = u.choice;
@@ -20330,7 +20489,7 @@ var MINUS = "\u2212";
 function humanize(key) {
   return String(key).replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/[_-]+/g, " ").trim().toLowerCase();
 }
-var cap3 = (s) => s ? s[0].toUpperCase() + s.slice(1) : s;
+var cap4 = (s) => s ? s[0].toUpperCase() + s.slice(1) : s;
 var num3 = (n) => String(Math.round(n * 100) / 100);
 var abs = (n) => num3(Math.abs(n));
 var signed = (n) => n > 0 ? `+${num3(n)}` : n < 0 ? `${MINUS}${abs(n)}` : "\xB10";
@@ -20438,7 +20597,7 @@ function combatBase(e) {
     case "injury_days":
       return `${pctSigned(Number(e.pct))} injury time`;
     default:
-      return cap3(humanize(String(e.type ?? "effect")));
+      return cap4(humanize(String(e.type ?? "effect")));
   }
 }
 var WHEN_TEXT = {
@@ -20489,11 +20648,11 @@ function summarizeActivityEffect(effect, _reg, focus) {
   let s;
   switch (e.type) {
     case "resource":
-      s = `${signed(Number(e.amount))} ${RESOURCE_LABEL[e.resource] ?? cap3(humanize(String(e.resource)))}`;
-      if (e.perStat) s += ` ${signed(Number(e.perStat.per))} per ${cap3(String(e.perStat.stat))} rank`;
+      s = `${signed(Number(e.amount))} ${RESOURCE_LABEL[e.resource] ?? cap4(humanize(String(e.resource)))}`;
+      if (e.perStat) s += ` ${signed(Number(e.perStat.per))} per ${cap4(String(e.perStat.stat))} rank`;
       break;
     case "commander_stat":
-      s = `${signed(Number(e.amount))} ${cap3(String(e.stat))}`;
+      s = `${signed(Number(e.amount))} ${cap4(String(e.stat))}`;
       break;
     case "unit_xp":
       s = `${who} ${signed(Number(e.amount))} XP`;
@@ -20514,10 +20673,10 @@ function summarizeActivityEffect(effect, _reg, focus) {
       s = `${who}: defect upkeep`;
       break;
     case "relation":
-      s = `Companion ${signed(Number(e.amount))} ${cap3(String(e.axis))}`;
+      s = `Companion ${signed(Number(e.amount))} ${cap4(String(e.axis))}`;
       break;
     default:
-      return cap3(humanize(String(e.type ?? "effect")));
+      return cap4(humanize(String(e.type ?? "effect")));
   }
   if (e.scale?.facility) s += ` (more with [[facilities:${e.scale.facility}]])`;
   if (e.when?.focus !== void 0) {
@@ -20570,7 +20729,7 @@ function effectsFor(registry2, entry, reg) {
         ...statLines(e.mods, (stat2, n) => `${pctSigned(n)} ${stat2} per stack`),
         isNum(e.incomingPct) ? `${pctSigned(e.incomingPct)} damage taken` : null,
         ...combat(e.tick, reg).map((l) => `Each turn: ${l}`),
-        ...Array.isArray(e.flags) ? e.flags.map((f) => cap3(humanize(String(f)))) : [],
+        ...Array.isArray(e.flags) ? e.flags.map((f) => cap4(humanize(String(f)))) : [],
         turns
       ]);
     }
@@ -20632,7 +20791,7 @@ function effectsFor(registry2, entry, reg) {
       const mod = (kind, word) => {
         const row = e.modifiers && typeof e.modifiers === "object" ? e.modifiers[kind] : null;
         if (!row || typeof row !== "object") return [];
-        return Object.entries(row).filter(([, n]) => isNum(n)).map(([axis, n]) => `${cap3(axis)} ${word} \xD7${num3(n)}`);
+        return Object.entries(row).filter(([, n]) => isNum(n)).map(([axis, n]) => `${cap4(axis)} ${word} \xD7${num3(n)}`);
       };
       return compact([syn.length ? `Unlocks: ${syn.map((s) => `[[synergies:${s}]]`).join(", ")}` : null, ...mod("gain", "gains"), ...mod("loss", "losses")]);
     }
@@ -20746,7 +20905,7 @@ function readingFor(subject, env) {
 
 // src/analysis/providers/core.ts
 var MINUS2 = "\u2212";
-var cap4 = (s) => s ? s[0].toUpperCase() + s.slice(1) : s;
+var cap5 = (s) => s ? s[0].toUpperCase() + s.slice(1) : s;
 var rawSuffix = (k, n) => {
   const r = k.raw(n);
   return r === null ? "" : ` (${r})`;
@@ -20781,7 +20940,7 @@ var axisProvider = (axis) => (subject, env, knowledge) => {
   };
   const events = relation.history.filter((h2) => h2.kind === "event" && moves(h2.type)).slice(-3).reverse();
   for (const h2 of events) {
-    const cause = typeof env.registries.eventDeltas.get(h2.type)?.cause === "string" ? env.registries.eventDeltas.get(h2.type).cause : cap4(humanize(h2.type));
+    const cause = typeof env.registries.eventDeltas.get(h2.type)?.cause === "string" ? env.registries.eventDeltas.get(h2.type).cause : cap5(humanize(h2.type));
     lines.push(`${cause}${h2.severity ? ` \u2014 ${h2.severity}` : ""}, day ${h2.day}`);
   }
   lines.push(`State: [[relationshipStates:${relation.stateId}]]`);
@@ -22719,6 +22878,57 @@ function createApp(st, deps) {
     if (load.kind === "ok") saver = createSaver(st, load.chatId);
     if (load.kind === "readonly") toast("warn", `Alius campaign in this chat is read-only: ${load.reason}`);
   }
+  let reviewShownFor = null;
+  async function reviewCommanderFile() {
+    if (!state || load.kind !== "ok" || state.commander.fileReviewed !== false) return;
+    const chatId = load.chatId;
+    if (reviewShownFor === chatId) return;
+    reviewShownFor = chatId;
+    const desireBond = state.settings.desireBondDefects === true;
+    const wizard = new Wizard(
+      {
+        registries,
+        desireBondDefects: desireBond,
+        importer: async () => ({ kind: "manual", reason: "not used here" }),
+        commanderImporter: () => importCommander(st, { settings: { ...getSettings(st), desireBondDefects: desireBond }, registries }),
+        onChange: () => {
+        }
+      },
+      { personaName: state.commander.name, canBindCurrent: false }
+    );
+    const p = commanderProfile(state);
+    wizard.state.commander = { body: { ...p.body }, expression: p.expression, seasoning: p.seasoning, traits: { regular: [...p.traits.regular] } };
+    const body = h("div", { class: "alius-cmdr" });
+    const draw2 = () => renderCommanderFile(body, {
+      value: wizard.state.commander,
+      registries,
+      desireBondDefects: desireBond,
+      onChange: (c) => {
+        if (c.kind === "body") wizard.setBody(c.stat, c.value);
+        else if (c.kind === "expression") wizard.setExpression(c.value);
+        else if (c.kind === "seasoning") wizard.setSeasoning(c.value);
+        else wizard.toggleTrait(c.id);
+      },
+      onPrefill: () => wizard.prefillFromPersona(),
+      onRandom: () => wizard.randomCommander(),
+      importStatus: wizard.state.commanderImport
+    });
+    wizard.subscribe(() => renderKeepingFocus(body, draw2));
+    draw2();
+    const answer = await shell.modal({
+      title: "Commander file incomplete \u2014 review",
+      body: h("div", {}, h("p", {}, "This campaign began before the commander had a body, an expression and traits. Review his file, or skip to keep the defaults."), body),
+      actions: [{ label: "Confirm", value: "confirm" }, { label: "Skip", value: "skip" }]
+    });
+    const commander = structuredClone(wizard.state.commander);
+    wizard.dispose();
+    if (answer !== "confirm" && answer !== "skip") return;
+    if (st.getActiveChat()?.chatId !== chatId) return;
+    const events = answer === "confirm" ? api.dispatch({ type: "commander/set_profile", payload: { commander } }, { expectChatId: chatId }) : api.dispatch({ type: "commander/review_done", payload: {} }, { expectChatId: chatId });
+    const failed = events.find((e) => e.type === "error");
+    if (failed) toast("error", String(failed.message ?? failed.code));
+    else if (answer === "confirm") toast("info", "Commander file updated.");
+  }
   function afterLoad() {
     if (load.kind === "ok" && state && state.world.seeded !== true) {
       api.dispatch({ type: "world/seed", payload: {} }, { expectChatId: load.chatId });
@@ -22746,6 +22956,7 @@ function createApp(st, deps) {
       if (state.dilemmas.open.status === "requested") void dilemmas.onRequested().catch((e) => console.warn("[Alius] dilemma failed", e));
     }
     openConfrontationModal();
+    void reviewCommanderFile().catch((e) => console.warn("[Alius] commander review failed", e));
   }
   function replaceState(next) {
     const chat = st.getActiveChat();

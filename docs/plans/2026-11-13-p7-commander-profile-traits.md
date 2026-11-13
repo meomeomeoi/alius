@@ -353,9 +353,9 @@ docs/** (Task 19), tests/** mirror src
 **Interfaces:**
 - Produces: `renderCommanderFile(host, ctx: { value: CommanderSetup; registries; onChange: (patch) => void; onPrefill?: () => void; onRandom?: () => void; importStatus?; reasons? })` — per body stat `−`/`+` buttons and the descriptor (`alius-stat`, `data-analyze="glossary:body_<stat>"`), `POINTS LEFT n` (n is a creation budget, not a stat: allowed), expression and seasoning pickers (descriptor buttons, `alius-option`), live archetype label (`glossary:archetype`), trait cards (`commanderTraits:<id>`, upside/downside, `aria-pressed`), buttons PREFILL FROM PERSONA / RANDOM COMMANDER.
 
-- [ ] **Step 1: Write the failing tests** — `the commander step shows descriptors, never stat numbers` (text of `.alius-stat` matches the descriptor lists); `+ is disabled at 4 and with no points left`; `the archetype label follows the body`; `trait cards toggle and a third regular is disabled`; `every marked element resolves` (coverage helper); calibration: `taste chips cap at 3`; app: `the review modal opens once and skip marks it reviewed`; `confirm applies the profile`.
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → green.
-- [ ] **Step 5: Commit** `feat(ui): commander file in setup and the review modal`.
+- [x] **Step 1: Write the failing tests** — `the commander step shows descriptors, never stat numbers` (text of `.alius-stat` matches the descriptor lists); `+ is disabled at 4 and with no points left`; `the archetype label follows the body`; `trait cards toggle and a third regular is disabled`; `every marked element resolves` (coverage helper); calibration: `taste chips cap at 3`; app: `the review modal opens once and skip marks it reviewed`; `confirm applies the profile`.
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → green.
+- [x] **Step 5: Commit** `feat(ui): commander file in setup and the review modal`.
 
 ---
 

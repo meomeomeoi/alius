@@ -205,7 +205,7 @@ describe('setup screen', () => {
     expect(qa(m, '.alius-sig-card')).toHaveLength(12);
     expect(qa(m, '.alius-defect-card')).toHaveLength(14);
     expect(m.host.textContent).toContain('card not found');
-    expect(qa(m, 'button[data-regenerate]')).toHaveLength(6); // the AI can be retried after a fallback
+    expect(qa(m, 'button[data-regenerate]')).toHaveLength(7); // the AI can be retried after a fallback (six sections and the P7 tastes)
   });
 
   it('manual signature starts as the template name and mechanic', async () => {
@@ -607,5 +607,122 @@ describe('focus, busy state and manual/AI switching (review fixes)', () => {
     m.wizard.setCommanderName('Rook');
     expect(m.host.querySelector('#elsewhere')).not.toBeNull();
     expect(m.host.querySelector('.alius-setup')).toBeNull();
+  });
+});
+
+describe('commander step in the setup screen (P7)', () => {
+  const atCommander = (m: M) => {
+    click(q(m, '.alius-start-card[data-id="start_vesper"]'));
+    click(q(m, '.alius-crime-card[data-id="mutiny"]'));
+    click(action(m, 'next'));
+  };
+
+  it('the commander file is wired to the wizard', () => {
+    const m = make();
+    atCommander(m);
+    expect(q(m, '[aria-current="step"]')!.textContent).toContain('02 COMMANDER FILE');
+    click(q(m, 'button[data-body="strength"][data-step="+"]'));
+    expect(m.wizard.state.commander.body.strength).toBe(4);
+    click(q(m, 'button[data-expression="5"]'));
+    click(q(m, 'button[data-seasoning="1"]'));
+    expect([m.wizard.state.commander.expression, m.wizard.state.commander.seasoning]).toEqual([5, 1]);
+    click(q(m, 'button[data-trait="bookish"]'));
+    expect(m.wizard.state.commander.traits.regular).toEqual(['bookish']);
+    expect(q(m, 'button[data-trait="bookish"]')!.getAttribute('aria-pressed')).toBe('true'); // the screen re-rendered
+  });
+
+  it('RANDOM COMMANDER fills the form with a valid commander', () => {
+    const m = make();
+    atCommander(m);
+    click(q(m, 'button[data-action="random"]'));
+    expect(m.wizard.canAdvance().ok).toBe(true);
+    expect(m.wizard.state.commanderImport.status).toBe('idle');
+  });
+
+  it('PREFILL FROM PERSONA starts the import (manual without an importer) and shows the outcome', async () => {
+    const m = make();
+    atCommander(m);
+    click(q(m, 'button[data-action="prefill"]'));
+    await flush();
+    expect(m.host.textContent).toMatch(/MANUAL/);
+  });
+
+  it('Next from the commander file goes to the units', () => {
+    const m = make();
+    atCommander(m);
+    click(action(m, 'next'));
+    expect(m.wizard.state.step).toBe('units');
+  });
+
+  it('the review lists the commander as descriptors and traits, no stat numbers', async () => {
+    const m = make();
+    atCommander(m);
+    click(q(m, 'button[data-body="strength"][data-step="+"]'));
+    click(q(m, 'button[data-trait="old_wound"]'));
+    click(action(m, 'next'));
+    click(action(m, 'next')); // zero units: review
+    const pre = q(m, 'pre.alius-review')!.textContent!;
+    expect(pre).toMatch(/BODY\s+: Strong \/ Average \/ Slow/);
+    expect(pre).toMatch(/EXPRESSION\s+: Androgynous/);
+    expect(pre).toMatch(/SEASONING\s+: Experienced/);
+    expect(pre).toMatch(/BUILD\s+: average/i);
+    expect(pre).toMatch(/TRAITS\s+: Old Wound/);
+    expect(pre.split('\n').find((l) => l.startsWith('BODY'))).not.toMatch(/\d/);
+  });
+});
+
+describe('calibration tastes (P7)', () => {
+  function tastesView(over: { status?: 'ready' | 'manual'; tastes?: string[]; suggested?: string[] } = {}) {
+    const wizard = new Wizard(
+      { registries: reg, desireBondDefects: false, importer: async () => OK, onChange: () => {} },
+      { personaName: 'V', canBindCurrent: false },
+    );
+    wizard.toggleUnit({ avatar: 'a.png', name: 'Ann' });
+    if (over.status === 'manual') wizard.setManual(0);
+    const draft = wizard.state.units[0];
+    if (over.status !== 'manual') {
+      draft.status = 'ready';
+      draft.candidates = { ...structuredClone(PROFILE), commanderTastes: over.suggested ?? ['respects_strength'] };
+    }
+    draft.choice.tastes = over.tastes ?? [];
+    const host = h('div');
+    document.body.append(host);
+    const onUpdate = vi.fn();
+    const onRegenerate = vi.fn();
+    renderCalibration(host, { draft, registries: reg, desireBondDefects: false, onUpdate, onRegenerate, onManual: vi.fn() });
+    const chip = (id: string) => host.querySelector<HTMLButtonElement>(`button[data-taste="${id}"]`)!;
+    return { host, onUpdate, onRegenerate, chip };
+  }
+
+  it('shows every taste as a chip with its description and marks the chosen and the suggested ones', () => {
+    const v = tastesView({ tastes: ['wary_of_brutes'], suggested: ['respects_strength'] });
+    expect(v.host.querySelectorAll('button[data-taste]')).toHaveLength(reg.tastes.size);
+    expect(v.chip('wary_of_brutes').getAttribute('aria-pressed')).toBe('true');
+    expect(v.chip('respects_strength').getAttribute('aria-pressed')).toBe('false');
+    expect(v.chip('respects_strength').textContent).toMatch(/suggested/i);
+    expect(v.chip('wary_of_brutes').title).toContain(String(reg.tastes.get('wary_of_brutes')!.description));
+  });
+
+  it('taste chips cap at 3', () => {
+    const v = tastesView({ tastes: ['respects_strength', 'wary_of_brutes', 'drawn_to_older'] });
+    expect(v.chip('drawn_to_younger').disabled).toBe(true);
+    expect(v.chip('respects_strength').disabled).toBe(false); // a chosen one can always be dropped
+    v.chip('drawn_to_younger').click();
+    expect(v.onUpdate).not.toHaveBeenCalled();
+  });
+
+  it('a click adds or removes a taste', () => {
+    const v = tastesView({ tastes: ['respects_strength'] });
+    v.chip('drawn_to_older').click();
+    expect(v.onUpdate).toHaveBeenLastCalledWith({ tastes: ['respects_strength', 'drawn_to_older'] });
+    v.chip('respects_strength').click();
+    expect(v.onUpdate).toHaveBeenLastCalledWith({ tastes: [] });
+  });
+
+  it('has its own regenerate button, also in manual mode', () => {
+    const v = tastesView();
+    v.host.querySelector<HTMLButtonElement>('button[data-regenerate="tastes"]')!.click();
+    expect(v.onRegenerate).toHaveBeenCalledWith('tastes');
+    expect(tastesView({ status: 'manual' }).host.querySelector('button[data-regenerate="tastes"]')).not.toBeNull();
   });
 });

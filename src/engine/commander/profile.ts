@@ -183,3 +183,22 @@ export function intimidationBonus(state: CampaignState): number {
   const p = commanderProfile(state);
   return TUNING.commander.intimidatePerPoint * (p.body.strength - 3 + (p.seasoning - 3));
 }
+
+/**
+ * Why `id` cannot be picked next to the traits already chosen, or null when it can (or is already chosen: it may always
+ * be dropped). Used by the wizard and the form, so both agree with `validateCommanderSetup`.
+ */
+export function traitBlockReason(
+  reg: Registries, traits: { regular: string[]; special?: string }, id: string, opts: { desireBondDefects: boolean },
+): string | null {
+  const t = reg.commanderTraits.get(id);
+  if (!t) return 'Unknown trait.';
+  if (traits.regular.includes(id) || traits.special === id) return null;
+  const needs = t.requiresSettings as { desireBondDefects?: boolean } | undefined;
+  if (needs?.desireBondDefects && !opts.desireBondDefects) return 'Needs the Desire/Bond setting.';
+  if (t.kind === 'regular' && traits.regular.length >= TUNING.commander.maxRegular) return `Two regular traits are already chosen.`;
+  const chosen = [...traits.regular, ...(traits.special !== undefined ? [traits.special] : [])];
+  const excludes = (t.exclusiveWith as string[] | undefined) ?? [];
+  const clash = chosen.find((c) => excludes.includes(c) || ((reg.commanderTraits.get(c)?.exclusiveWith as string[] | undefined) ?? []).includes(id));
+  return clash === undefined ? null : `Excluded by ${String(reg.commanderTraits.get(clash)?.name ?? clash)}.`;
+}

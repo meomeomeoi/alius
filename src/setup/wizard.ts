@@ -1,5 +1,5 @@
 import type { Entry, Registries } from '../content/types';
-import { BODY_STATS, defaultCommanderSetup, poolSpent, validateCommanderSetup, type CommanderSetup } from '../engine/commander/profile';
+import { BODY_STATS, defaultCommanderSetup, poolSpent, traitBlockReason, validateCommanderSetup, type CommanderSetup } from '../engine/commander/profile';
 import { SETUP_LIMITS, validateSetup, type SetupResult, type UnitSetup } from '../engine/setup';
 import { TUNING } from '../engine/tuning';
 import type { SignatureInstance, Unit } from '../engine/state/types';
@@ -193,28 +193,17 @@ export class Wizard {
     const t = this.deps.registries.commanderTraits.get(id);
     if (!t) return;
     const traits = this.s.commander.traits;
-    if (t.kind === 'special') {
-      if (traits.special === id) delete traits.special;
-      else if (this.traitAllowed(id, traits.regular)) traits.special = id;
-      else return;
-    } else {
-      const at = traits.regular.indexOf(id);
-      if (at >= 0) traits.regular.splice(at, 1);
-      else if (traits.regular.length >= TUNING.commander.maxRegular) return;
-      else if (this.traitAllowed(id, [...traits.regular, ...(traits.special !== undefined ? [traits.special] : [])])) traits.regular.push(id);
-      else return;
-    }
+    if (traits.regular.includes(id)) traits.regular.splice(traits.regular.indexOf(id), 1);
+    else if (traits.special === id) delete traits.special;
+    else if (this.traitAllowed(id)) {
+      if (t.kind === 'special') traits.special = id;
+      else traits.regular.push(id);
+    } else return;
     this.emit();
   }
 
-  /** Whether `id` may join `chosen`: its settings are on and no exclusion links it to a chosen trait (either way). */
-  private traitAllowed(id: string, chosen: string[]): boolean {
-    const reg = this.deps.registries.commanderTraits;
-    const t = reg.get(id);
-    if (!t) return false;
-    if ((t.requiresSettings as { desireBondDefects?: boolean } | undefined)?.desireBondDefects && !this.deps.desireBondDefects) return false;
-    const excludes = (t.exclusiveWith as string[] | undefined) ?? [];
-    return !chosen.some((c) => excludes.includes(c) || ((reg.get(c)?.exclusiveWith as string[] | undefined) ?? []).includes(id));
+  private traitAllowed(id: string, traits = this.s.commander.traits): boolean {
+    return traitBlockReason(this.deps.registries, traits, id, { desireBondDefects: this.deps.desireBondDefects }) === null;
   }
 
   /** Asks the mechanic model for a commander from the persona text; a late answer after the player moved on is dropped. */
@@ -255,7 +244,7 @@ export class Wizard {
     const pool = [...this.deps.registries.commanderTraits.values()].filter((t) => t.kind === 'regular').map((t) => String(t.id));
     for (let want = Math.floor(rnd() * (TUNING.commander.maxRegular + 1)); want > 0 && pool.length > 0; want--) {
       const id = pool.splice(Math.floor(rnd() * pool.length), 1)[0];
-      if (this.traitAllowed(id, c.traits.regular)) c.traits.regular.push(id);
+      if (this.traitAllowed(id, c.traits)) c.traits.regular.push(id);
     }
     this.s.commander = c;
     this.s.commanderImport = { status: 'idle', reasons: {} };

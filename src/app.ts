@@ -54,6 +54,8 @@ import { callLlm, type LlmResult } from './llm/orchestrator';
 import { getSettings } from './settings';
 import type { Lorebook, StAdapter } from './st/adapter';
 import { buildCampaign, type SetupResult } from './engine/setup';
+import { commanderProfile } from './engine/commander/profile';
+import { renderCommanderFile } from './ui/commander/commanderFile';
 import { importCommander } from './setup/commander';
 import { importProfile } from './setup/profile';
 import { Wizard, type WizardState } from './setup/wizard';
@@ -828,6 +830,62 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     if (load.kind === 'readonly') toast('warn', `Alius campaign in this chat is read-only: ${load.reason}`);
   }
 
+  /** The chat whose "commander file incomplete" modal was already shown in this session (it never loops). */
+  let reviewShownFor: string | null = null;
+
+  /**
+   * An older campaign has a default commander file (`commander/seed`) and asks the player once to review it: CONFIRM applies
+   * the form, SKIP keeps the defaults and never asks again; closing the modal leaves it for the next session.
+   */
+  async function reviewCommanderFile(): Promise<void> {
+    if (!state || load.kind !== 'ok' || state.commander.fileReviewed !== false) return;
+    const chatId = load.chatId;
+    if (reviewShownFor === chatId) return;
+    reviewShownFor = chatId;
+    const desireBond = state.settings.desireBondDefects === true;
+    const wizard = new Wizard(
+      {
+        registries,
+        desireBondDefects: desireBond,
+        importer: async () => ({ kind: 'manual', reason: 'not used here' }),
+        commanderImporter: () => importCommander(st, { settings: { ...getSettings(st), desireBondDefects: desireBond }, registries }),
+        onChange: () => {},
+      },
+      { personaName: state.commander.name, canBindCurrent: false },
+    );
+    const p = commanderProfile(state);
+    wizard.state.commander = { body: { ...p.body }, expression: p.expression, seasoning: p.seasoning, traits: { regular: [...p.traits.regular] } };
+    const body = h('div', { class: 'alius-cmdr' });
+    const draw = () =>
+      renderCommanderFile(body, {
+        value: wizard.state.commander, registries, desireBondDefects: desireBond,
+        onChange: (c) => {
+          if (c.kind === 'body') wizard.setBody(c.stat, c.value);
+          else if (c.kind === 'expression') wizard.setExpression(c.value);
+          else if (c.kind === 'seasoning') wizard.setSeasoning(c.value);
+          else wizard.toggleTrait(c.id);
+        },
+        onPrefill: () => wizard.prefillFromPersona(), onRandom: () => wizard.randomCommander(), importStatus: wizard.state.commanderImport,
+      });
+    wizard.subscribe(() => renderKeepingFocus(body, draw));
+    draw();
+    const answer = await shell.modal({
+      title: 'Commander file incomplete — review',
+      body: h('div', {}, h('p', {}, 'This campaign began before the commander had a body, an expression and traits. Review his file, or skip to keep the defaults.'), body),
+      actions: [{ label: 'Confirm', value: 'confirm' }, { label: 'Skip', value: 'skip' }],
+    });
+    const commander = structuredClone(wizard.state.commander);
+    wizard.dispose();
+    if (answer !== 'confirm' && answer !== 'skip') return;
+    if (st.getActiveChat()?.chatId !== chatId) return; // the player moved to another chat meanwhile
+    const events = answer === 'confirm'
+      ? api.dispatch({ type: 'commander/set_profile', payload: { commander } }, { expectChatId: chatId })
+      : api.dispatch({ type: 'commander/review_done', payload: {} }, { expectChatId: chatId });
+    const failed = events.find((e) => e.type === 'error');
+    if (failed) toast('error', String(failed.message ?? failed.code));
+    else if (answer === 'confirm') toast('info', 'Commander file updated.');
+  }
+
   /** Everything that follows a (re)load of the campaign: context, badge, scene and the intimacy mirror. */
   function afterLoad(): void {
     // a save from before P5 has no world yet: seed it, then everything else sees a complete state
@@ -860,6 +918,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       if (state.dilemmas.open.status === 'requested') void dilemmas.onRequested().catch((e) => console.warn('[Alius] dilemma failed', e));
     }
     openConfrontationModal();
+    void reviewCommanderFile().catch((e) => console.warn('[Alius] commander review failed', e));
   }
 
   function replaceState(next: CampaignState): void {

@@ -7,6 +7,8 @@ import { h } from '../dom';
 import { analyzeNative } from '../analyze/mark';
 import { renderKeepingFocus } from '../focus';
 import type { ModalOpts } from '../shell/modal';
+import { archetypeOf, descriptor } from '../../engine/commander/profile';
+import { renderCommanderFile, type CommanderPatch } from '../commander/commanderFile';
 import { renderCalibration } from './calibration';
 
 export interface SetupScreenCtx {
@@ -101,9 +103,21 @@ export function renderSetupScreen(host: HTMLElement, ctx: SetupScreenCtx): void 
       })));
   }
 
-  /** The COMMANDER FILE form (replaced by the shared form in the next task). */
+  /** The COMMANDER FILE step: the shared form, wired to the wizard. */
   function commanderStep(): HTMLElement {
-    return h('div', { class: 'alius-setup-body' }, h('p', { class: 'alius-hint' }, 'COMMANDER FILE'));
+    const body = h('div', { class: 'alius-setup-body alius-cmdr' });
+    const apply = (p: CommanderPatch): void => {
+      if (p.kind === 'body') wizard.setBody(p.stat, p.value);
+      else if (p.kind === 'expression') wizard.setExpression(p.value);
+      else if (p.kind === 'seasoning') wizard.setSeasoning(p.value);
+      else wizard.toggleTrait(p.id);
+    };
+    renderCommanderFile(body, {
+      value: wizard.state.commander, registries: reg, desireBondDefects: wizardDesireBond(), onChange: apply,
+      onPrefill: () => wizard.prefillFromPersona(), onRandom: () => wizard.randomCommander(),
+      importStatus: wizard.state.commanderImport,
+    });
+    return body;
   }
 
   function units(s: WizardState): HTMLElement {
@@ -149,6 +163,7 @@ export function renderSetupScreen(host: HTMLElement, ctx: SetupScreenCtx): void 
       `COMMANDER   : ${s.commanderName.trim()}`,
       `CORPORATION : ${nameOf(reg, 'corporations', corpId)} — ${nameOf(reg, 'starts', s.startId)}`,
       `CRIME       : ${nameOf(reg, 'crimes', s.crimeId)} (Plea: GUILTY)`,
+      ...commanderLines(s),
       `SQUAD       : ${s.units.length}/4 — ${difficultyHint(s.units.length)}`,
       ...s.units.flatMap((u, n) => unitLines(u, n)),
     ];
@@ -169,6 +184,20 @@ export function renderSetupScreen(host: HTMLElement, ctx: SetupScreenCtx): void 
       );
     }
     return body;
+  }
+
+  /** The commander as descriptors and trait names: never a stat number. */
+  function commanderLines(s: WizardState): string[] {
+    const c = s.commander;
+    const traits = [...c.traits.regular, ...(c.traits.special !== undefined ? [c.traits.special] : [])]
+      .map((id) => String(reg.commanderTraits.get(id)?.name ?? id));
+    return [
+      `BODY        : ${descriptor('strength', c.body.strength)} / ${descriptor('endurance', c.body.endurance)} / ${descriptor('reflexes', c.body.reflexes)}`,
+      `EXPRESSION  : ${descriptor('expression', c.expression)}`,
+      `SEASONING   : ${descriptor('seasoning', c.seasoning)}`,
+      `BUILD       : ${archetypeOf(c.body)}`,
+      `TRAITS      : ${traits.join(', ') || '—'}`,
+    ];
   }
 
   function unitLines(u: UnitDraft, n: number): string[] {

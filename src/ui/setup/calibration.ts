@@ -1,5 +1,6 @@
 import type { Entry, Registries } from '../../content/types';
 import { SETUP_LIMITS, normalizeTag } from '../../engine/setup';
+import { TUNING } from '../../engine/tuning';
 import { VALUE_AXES } from '../../engine/state/types';
 import { ALL_SECTIONS, type ImportSection } from '../../llm/calls/profileImport';
 import { manualOptions, type UnitDraft } from '../../setup/wizard';
@@ -208,6 +209,26 @@ export function renderCalibration(host: HTMLElement, ctx: CalibrationCtx): void 
           input,
           h('button', { type: 'button', class: 'alius-btn', 'data-add-tag': key, onclick: add }, 'Add'));
       })),
+    );
+  }
+
+  // --- tastes (P7): how she reads the commander; at most 3
+  if (shown.has('tastes')) {
+    const picked = ch.tastes;
+    const suggested = new Set(!manual && cand ? cand.commanderTastes ?? [] : []);
+    const full = picked.length >= TUNING.commander.maxTastes;
+    host.append(
+      section('tastes', 'HOW SHE READS THE COMMANDER',
+        h('p', { class: 'alius-hint' }, `Pick up to ${TUNING.commander.maxTastes} (${picked.length}/${TUNING.commander.maxTastes}). Tastes decide first impressions and who notices his looks; they never change a number by themselves.`),
+        h('div', { class: 'alius-tastes' }, ...[...reg.tastes.values()].map((t) => {
+          const id = String(t.id);
+          const on = picked.includes(id);
+          return h('button', {
+            type: 'button', class: 'alius-btn alius-option alius-taste-chip', 'data-taste': id, 'aria-pressed': String(on),
+            disabled: full && !on, title: String(t.description), ...analyzeNative(`tastes:${id}`),
+            onclick: () => onUpdate({ tastes: on ? picked.filter((x) => x !== id) : [...picked, id] }),
+          }, String(t.name), suggested.has(id) ? ' (suggested)' : '');
+        }))),
     );
   }
 

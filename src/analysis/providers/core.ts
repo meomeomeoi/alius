@@ -259,6 +259,8 @@ export const CORE_GLOSSARY_IDS: readonly string[] = [
   'stat_atk', 'stat_def', 'stat_spd', 'stat_crit', 'level_xp', 'skill_points', 'loadout', 'rarity', 'workshop',
   'roster', 'grunt', 'clearance', 'unknown_node', 'decision_option', 'decision_minor', 'decision_major', 'decision_defining',
   'danger', 'reward_tier', 'mission_deadline', 'mission_board', 'expedition', 'rumor',
+  // P7
+  'body_strength', 'body_endurance', 'body_reflexes', 'expression', 'seasoning', 'archetype',
 ];
 
 let registered = false;

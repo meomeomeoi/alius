@@ -1,0 +1,65 @@
+/* Commander file (P7): the form in setup and in the review modal. Palette variables only. */
+#alius-shell .alius-cmdr-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 3px 0;
+}
+
+#alius-shell .alius-cmdr-label {
+  flex: none;
+  width: 9ch;
+  color: var(--alius-dim);
+  letter-spacing: 0.06em;
+}
+
+#alius-shell .alius-step-btn {
+  min-width: 2.4em;
+}
+
+#alius-shell .alius-cmdr-row .alius-stat {
+  flex: none;
+  min-width: 11ch;
+  text-align: center;
+  color: var(--alius-accent);
+}
+
+#alius-shell .alius-cmdr-pick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+#alius-shell .alius-cmdr-pick .alius-option[aria-pressed='true'],
+#alius-shell .alius-trait-card[aria-pressed='true'] {
+  color: var(--alius-bg);
+  background: var(--alius-fg);
+}
+
+#alius-shell .alius-trait-card[disabled] {
+  opacity: 0.45;
+}
+
+#alius-shell .alius-trait-special {
+  border-style: double;
+}
+
+#alius-shell .alius-cmdr-actions {
+  gap: 8px;
+  margin-top: 8px;
+}
+
+#alius-shell .alius-tastes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+#alius-shell .alius-taste-chip[aria-pressed='true'] {
+  color: var(--alius-bg);
+  background: var(--alius-fg);
+}
+
+#alius-shell .alius-taste-chip[disabled] {
+  opacity: 0.45;
+}
