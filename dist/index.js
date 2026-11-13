@@ -957,6 +957,50 @@ function seedWorld(draft, reg) {
   return [{ type: "world_seeded" }];
 }
 
+// src/engine/worldOptions/options.ts
+var optionEntries = (reg) => [...reg.worldOptions.values()];
+function pick(option, stored) {
+  return option.choices.find((c) => c.id === stored) ?? option.choices.find((c) => c.id === option.default) ?? option.choices[0];
+}
+function worldChoice(state, reg, optionId) {
+  const option = reg.worldOptions.get(optionId);
+  if (!option) return null;
+  return { option, choice: pick(option, state.world.options?.[optionId]) };
+}
+function worldChoices(state, reg) {
+  return optionEntries(reg).map((option) => ({ option, choice: pick(option, state.world.options?.[option.id]) }));
+}
+function worldEffects(state, reg, type) {
+  return worldChoices(state, reg).flatMap(({ choice }) => choice.effects.filter((e) => e.type === type));
+}
+function defaultWorldOptions(reg) {
+  return Object.fromEntries(optionEntries(reg).map((o) => [o.id, o.default]));
+}
+function validateWorldOptions(options2, reg) {
+  const out = [];
+  for (const [optionId, choiceId] of Object.entries(options2 ?? {})) {
+    const option = reg.worldOptions.get(optionId);
+    if (!option) out.push(`Unknown world option "${optionId}"`);
+    else if (!option.choices.some((c) => c.id === choiceId)) out.push(`Unknown choice "${String(choiceId)}" for world option "${optionId}"`);
+  }
+  return out;
+}
+
+// src/engine/worldOptions/norm.ts
+var clamp4 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+function normDistance(state, reg) {
+  const norm = worldEffects(state, reg, "expression_norm")[0];
+  if (!norm) return null;
+  return Math.abs(commanderProfile(state).expression - norm.norm);
+}
+function applyWorldStartEffects(draft, reg) {
+  const own = draft.commander.corporationId;
+  const distance = normDistance(draft, reg);
+  if (own === null || distance === null) return;
+  const per = worldEffects(draft, reg, "expression_norm")[0].standingPerStep;
+  draft.world.factions[own] = clamp4((draft.world.factions[own] ?? 0) + per * distance, -100, 100);
+}
+
 // src/engine/leash/weekly.ts
 var KINDS = ["compel", "suppress", "terminate"];
 var isObj = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -988,6 +1032,7 @@ function leashWeekly(state, reg) {
   const weekly = corp?.leash?.weekly ?? TUNING.leash.weeklyFallback;
   let n = weekly + crimeEffectAmount(reg, state.commander.crimeId, "leash_weekly");
   n += traitEffects(state, reg, "leash_weekly").reduce((sum, fx2) => sum + fx2.amount, 0);
+  n += worldEffects(state, reg, "leash_weekly").reduce((sum, fx2) => sum + fx2.amount, 0);
   if (id !== null) {
     const standing = factionStanding(state, id);
     if (standing >= TUNING.leash.standingStep) n += 1;
@@ -1007,29 +1052,6 @@ function refreshLeash(draft, reg) {
   draft.leash.authorizationsLeft = leashWeekly(draft, reg);
   draft.leash.refreshDay += TUNING.leash.refreshDays;
   return [{ type: "leash_refreshed", left: draft.leash.authorizationsLeft }];
-}
-
-// src/engine/worldOptions/options.ts
-var optionEntries = (reg) => [...reg.worldOptions.values()];
-function pick(option, stored) {
-  return option.choices.find((c) => c.id === stored) ?? option.choices.find((c) => c.id === option.default) ?? option.choices[0];
-}
-function worldChoice(state, reg, optionId) {
-  const option = reg.worldOptions.get(optionId);
-  if (!option) return null;
-  return { option, choice: pick(option, state.world.options?.[optionId]) };
-}
-function defaultWorldOptions(reg) {
-  return Object.fromEntries(optionEntries(reg).map((o) => [o.id, o.default]));
-}
-function validateWorldOptions(options2, reg) {
-  const out = [];
-  for (const [optionId, choiceId] of Object.entries(options2 ?? {})) {
-    const option = reg.worldOptions.get(optionId);
-    if (!option) out.push(`Unknown world option "${optionId}"`);
-    else if (!option.choices.some((c) => c.id === choiceId)) out.push(`Unknown choice "${String(choiceId)}" for world option "${optionId}"`);
-  }
-  return out;
 }
 
 // src/engine/state/types.ts
@@ -1149,7 +1171,7 @@ var slug = (name) => {
   const s = name.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
   return s === "" ? "unit" : s;
 };
-var clamp4 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp5 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var crimeEffectsOf = (crime) => [...effectsOf(crime.perk), ...effectsOf(crime.flaw)];
 var crimeKnownByDefault = (crime, start) => crime.knownByDefault === true || start?.crimeKnownByDefault === true;
 function startingTrustAdjust(effects2, values) {
@@ -1166,7 +1188,7 @@ function startingTrustAdjust(effects2, values) {
   return sum;
 }
 function initialRelation(o) {
-  const trust = clamp4(o.trust, 0, 100);
+  const trust = clamp5(o.trust, 0, 100);
   return {
     trust,
     affinity: o.affinity,
@@ -1263,6 +1285,7 @@ function buildCampaign(r, reg, opts) {
   state.roster.activeIds = state.squad.map((u) => u.id);
   seedWorld(state, reg);
   applyFactionTraitEffects(state, reg);
+  applyWorldStartEffects(state, reg);
   ensureLeash(state, reg);
   return { ok: true, state };
 }
@@ -1627,7 +1650,7 @@ function activityCost(state, reg, a) {
   for (const k of ["credits", "supplies", "plyx"]) if (out[k] === 0) delete out[k];
   return out;
 }
-var clamp5 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp6 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var asReq = (v) => {
   if (typeof v !== "object" || v === null || Array.isArray(v)) return null;
   const r = v;
@@ -1741,7 +1764,7 @@ function runActivity(draft, ctx2, request) {
         break;
       case "unit_stress":
         for (const u of unitsOf2(fx2.target)) {
-          const next = clamp5(u.stress + scaled(fx2.amount, draft, reg, fx2.scale), 0, 100);
+          const next = clamp6(u.stress + scaled(fx2.amount, draft, reg, fx2.scale), 0, 100);
           events.push({ type: "stress_changed", unitId: u.id, delta: next - u.stress });
           u.stress = next;
         }
@@ -2156,7 +2179,7 @@ function affectedUnits(event, participants) {
   if (event.targets.some((t) => t !== event.actor)) return [];
   return present.has(event.actor) ? [event.actor] : [];
 }
-var clamp6 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp7 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var z = (n) => n === 0 ? 0 : n;
 function receptivity(state, unitId) {
   const rel = state.relations[unitId];
@@ -2182,7 +2205,7 @@ function computeDeltas(state, reg, unitId, event) {
   const stress = (row.stress ?? 0) + (triggered ? TUNING.relations.triggerStress : 0);
   if (def.valueAligned === true) {
     const sum = (event.valueAxes ?? []).reduce((n, a) => n + unit.values[a.axis] * a.direction, 0);
-    const m = clamp6(sum / 3, -1, 1);
+    const m = clamp7(sum / 3, -1, 1);
     trust = Math.abs(trust) * m;
     affinity = Math.abs(affinity) * m;
     attraction = Math.abs(attraction) * m;
@@ -2388,7 +2411,7 @@ function stateForProposal(state, reg, unitId, kind) {
 }
 
 // src/engine/relations/effects.ts
-var clamp7 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp8 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 function applyEventToUnit(draft, reg, unitId, event, opts = {}) {
   const unit = draft.squad.find((u) => u.id === unitId);
   if (!unit || !draft.relations[unitId]) return [];
@@ -2408,7 +2431,7 @@ function applyEventToUnit(draft, reg, unitId, event, opts = {}) {
   }
   const dStress = roundAway(d.stress);
   if (dStress !== 0) {
-    const next = clamp7(unit.stress + dStress, 0, 100);
+    const next = clamp8(unit.stress + dStress, 0, 100);
     if (next !== unit.stress) events.push({ type: "stress_changed", unitId, delta: next - unit.stress });
     unit.stress = next;
   }
@@ -2674,7 +2697,7 @@ function rollDiscovery(draft, reg, rng, presentIds) {
 }
 
 // src/engine/relations/apply.ts
-var clamp8 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp9 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 function applyIntents(draft, ctx2, p) {
   const reg = ctx2.registries;
   const intents = validateIntents(p.intents, { participants: p.participants, squad: draft.squad });
@@ -2697,7 +2720,7 @@ function applyIntents(draft, ctx2, p) {
   for (const h2 of intents.stressHints) {
     const unit = draft.squad.find((u) => u.id === h2.unitId);
     if (!unit) continue;
-    const next = clamp8(unit.stress + roundAway(stressFromHint(h2.severity, h2.direction)), 0, 100);
+    const next = clamp9(unit.stress + roundAway(stressFromHint(h2.severity, h2.direction)), 0, 100);
     if (next !== unit.stress) events.push({ type: "stress_changed", unitId: unit.id, delta: next - unit.stress });
     unit.stress = next;
     touched.add(unit.id);
@@ -3316,7 +3339,7 @@ function getSynergies(state, reg, unitIds) {
 }
 
 // src/engine/leash/use.ts
-var clamp9 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp10 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var unitOf = (state, id) => state.squad.find((u) => u.id === id);
 function leashCost(state, reg, unitId, kind) {
   const unit = unitOf(state, unitId);
@@ -3380,7 +3403,7 @@ function bookUse(draft, unitId, kind, context, outcome) {
 function addStress(draft, unitId, amount) {
   const u = unitOf(draft, unitId);
   if (!u || amount === 0) return [];
-  const next = clamp9(u.stress + amount, 0, 100);
+  const next = clamp10(u.stress + amount, 0, 100);
   const delta = next - u.stress;
   u.stress = next;
   return delta === 0 ? [] : [{ type: "stress_changed", unitId, delta }];
@@ -3402,7 +3425,7 @@ function payCost(draft, reg, unitId, cost, opts = {}) {
 }
 var witnessScale = (u) => {
   const w = TUNING.leash.witness;
-  return clamp9(w.base + w.autonomy * u.values.autonomy - w.corporate * u.values.corporate, w.min, w.max);
+  return clamp10(w.base + w.autonomy * u.values.autonomy - w.corporate * u.values.corporate, w.min, w.max);
 };
 var COERCED = { type: "coerced", actor: "commander", evidence: "witnessed the Leash", confidence: 1 };
 function compel(draft, ctx2, p) {
@@ -3469,8 +3492,8 @@ function terminateChance(state, reg) {
   const own = state.commander.corporationId;
   const base = (own === null ? void 0 : reg.corporations.get(own)?.leash?.approval) ?? 0.5;
   const t = TUNING.leash.terminate;
-  const traits = traitEffects(state, reg, "terminate_approval").reduce((n, fx2) => n + fx2.amount, 0);
-  return clamp9(base + t.approvalPerStanding * (own === null ? 0 : factionStanding(state, own)) + traits, t.approvalMin, t.approvalMax);
+  const traits = traitEffects(state, reg, "terminate_approval").reduce((n, fx2) => n + fx2.amount, 0) + worldEffects(state, reg, "terminate_approval").reduce((n, fx2) => n + fx2.amount, 0);
+  return clamp10(base + t.approvalPerStanding * (own === null ? 0 : factionStanding(state, own)) + traits, t.approvalMin, t.approvalMax);
 }
 function terminate(draft, ctx2, unitId) {
   const reg = ctx2.registries;
@@ -3515,11 +3538,11 @@ function terminate(draft, ctx2, unitId) {
 
 // src/engine/arcs.ts
 var ARC_PATHS = ["manage", "embrace", "cure"];
-var clamp10 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp11 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var isObj8 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function arcAlignment(unit, path) {
   const sum = TUNING.arc.axes[path].reduce((n, [axis, direction]) => n + unit.values[axis] * direction, 0);
-  return clamp10(sum / 3, -1, 1);
+  return clamp11(sum / 3, -1, 1);
 }
 function wantedPath(unit, paths) {
   const order = [...paths].sort((a, b) => ARC_PATHS.indexOf(a) - ARC_PATHS.indexOf(b));
@@ -5896,7 +5919,7 @@ registerAction("squad/release_breakdowns", (draft, payload) => {
 registerActivityHook((draft, ctx2) => applyAllLevelUps(draft, ctx2.registries));
 
 // src/engine/world/missions.ts
-var clamp11 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp12 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 function checkOffer(state, reg, o) {
   const tpl = reg.missionTemplates.get(o.templateId);
   if (!tpl) return `Unknown mission template "${o.templateId}".`;
@@ -5934,7 +5957,7 @@ function buildMission(draft, ctx2, o) {
     title: (o.title ?? pick2(tpl.titles)).slice(0, TUNING.director.titleMax),
     brief: (o.brief ?? pick2(tpl.briefs)).slice(0, TUNING.director.briefMax),
     regionId: o.regionId,
-    danger: clamp11(Math.round(o.danger ?? region.danger), tpl.dangerRange[0], tpl.dangerRange[1]),
+    danger: clamp12(Math.round(o.danger ?? region.danger), tpl.dangerRange[0], tpl.dangerRange[1]),
     objective: { node: objective.node, condition: objective.condition },
     offeredDay: draft.day,
     rewardsTier: o.rewardsTier ?? lowestTier(reg, tpl.tiers),
@@ -5942,7 +5965,7 @@ function buildMission(draft, ctx2, o) {
     status: "offered"
   };
   if (o.source !== "story" && o.poiId === void 0) {
-    mission.deadlineDay = draft.day + clamp11(o.deadlineDays ?? 7, TUNING.world.deadlineMinDays, TUNING.world.deadlineMaxDays);
+    mission.deadlineDay = draft.day + clamp12(o.deadlineDays ?? 7, TUNING.world.deadlineMinDays, TUNING.world.deadlineMaxDays);
   }
   if (o.threadId !== void 0) mission.threadId = o.threadId;
   if (o.spineBeat !== void 0) mission.spineBeat = o.spineBeat;
@@ -5969,6 +5992,12 @@ function offerMission(draft, ctx2, o) {
   events.push({ type: "mission_offered", missionId: mission.id, source: mission.source, regionId: mission.regionId, title: mission.title });
   return { mission, events };
 }
+function failureEffectsOf(state, reg, m) {
+  if (m.source !== "command") return m.failureEffects;
+  const mult = worldEffects(state, reg, "command_failure_mult").reduce((n, fx2) => n * fx2.mult, 1);
+  if (mult === 1) return m.failureEffects;
+  return m.failureEffects.map((e) => e.type === "faction" && e.amount < 0 ? { ...e, amount: Math.sign(e.amount) * Math.round(Math.abs(e.amount) * mult) } : e);
+}
 function rollRewards(draft, ctx2, m) {
   const reg = ctx2.registries;
   const tpl = reg.missionTemplates.get(m.templateId);
@@ -5988,6 +6017,11 @@ function rollRewards(draft, ctx2, m) {
   const amount = tier?.faction ?? 0;
   if (factionId !== void 0 && amount > 0) rewards.faction = { id: factionId, amount };
   if (typeof tpl?.clearance === "number") rewards.clearance = tpl.clearance;
+  const pct2 = worldEffects(draft, reg, "mission_reward_pct").reduce((n, fx2) => n + fx2.pct, 0);
+  if (pct2 !== 0) {
+    rewards.credits = Math.max(0, Math.round(rewards.credits * (1 + pct2 / 100)));
+    rewards.plyx = Math.max(0, Math.round(rewards.plyx * (1 + pct2 / 100)));
+  }
   for (const d of drops) {
     if (d.kind === "item") rewards.items.push(String(reg.items.get(d.item.itemId)?.name ?? d.item.itemId));
   }
@@ -6056,7 +6090,7 @@ function runDeadlines(draft, ctx2) {
     m.outcomeDay = draft.day;
     archive(draft, m);
     events.push({ type: "mission_failed", missionId: m.id, title: m.title });
-    events.push(...applyWorldEffects(draft, ctx2, m.failureEffects, { kind: "mission", id: m.id, label: m.title }));
+    events.push(...applyWorldEffects(draft, ctx2, failureEffectsOf(draft, reg, m), { kind: "mission", id: m.id, label: m.title }));
   }
   return events;
 }
@@ -6203,7 +6237,7 @@ function checkBeatFlags(draft, ctx2) {
 
 // src/engine/world/effects.ts
 var MAX_EFFECT_DEPTH = 3;
-var clamp12 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp13 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 function partyUnits(draft) {
   if (draft.expedition) {
     return draft.expedition.party.map((id) => draft.squad.find((u) => u.id === id)).filter((u) => u !== void 0 && isLiving(u));
@@ -6253,13 +6287,13 @@ function applyWorldEffects(draft, ctx2, effects2, src) {
       }
       case "carried_supplies": {
         const exp = draft.expedition;
-        if (exp) exp.supplies = clamp12(exp.supplies + fx2.amount, 0, TUNING.expedition.suppliesMax);
+        if (exp) exp.supplies = clamp13(exp.supplies + fx2.amount, 0, TUNING.expedition.suppliesMax);
         break;
       }
       case "faction": {
         if (!reg.corporations.has(fx2.factionId)) break;
         const before = draft.world.factions[fx2.factionId] ?? 0;
-        const after = clamp12(before + fx2.amount, -100, 100);
+        const after = clamp13(before + fx2.amount, -100, 100);
         draft.world.factions[fx2.factionId] = after;
         if (after !== before) events.push({ type: "faction_changed", factionId: fx2.factionId, amount: after - before, standing: after });
         break;
@@ -6290,7 +6324,7 @@ function applyWorldEffects(draft, ctx2, effects2, src) {
       }
       case "party_stress": {
         for (const u of partyUnits(draft)) {
-          const next = clamp12(u.stress + fx2.amount, 0, 100);
+          const next = clamp13(u.stress + fx2.amount, 0, 100);
           if (next !== u.stress) events.push({ type: "stress_changed", unitId: u.id, delta: next - u.stress });
           u.stress = next;
         }
@@ -6445,7 +6479,7 @@ function buildDigest(state, reg) {
 }
 var emptyOutput = () => ({ missionOffers: [], rumors: [], threadUpdates: [], clockAdvances: [] });
 var isObj11 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
-var clamp13 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp14 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 function plain(v, max) {
   if (typeof v !== "string") return "";
   return v.replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim().slice(0, max).trim();
@@ -6515,7 +6549,7 @@ function validateDirectorOutput(state, reg, raw, opts) {
         offer.danger = o.danger;
       }
       if (typeof o.deadlineDays === "number" && Number.isFinite(o.deadlineDays)) {
-        offer.deadlineDays = clamp13(Math.round(o.deadlineDays), TUNING.world.deadlineMinDays, TUNING.world.deadlineMaxDays);
+        offer.deadlineDays = clamp14(Math.round(o.deadlineDays), TUNING.world.deadlineMinDays, TUNING.world.deadlineMaxDays);
       }
       const title = plain(o.title, TUNING.director.titleMax);
       if (title !== "") offer.title = title;
@@ -6709,7 +6743,7 @@ function applyDirectorOutput(draft, ctx2, out, opts = {}) {
 function answerRequest(draft, ctx2, requestId, raw, opts = {}) {
   const pending2 = draft.world.director?.pending;
   if (!pending2 || pending2.id !== requestId) throw new Error("Stale director answer.");
-  const cooldownDays = Number.isFinite(opts.cooldownDays) ? clamp13(Math.round(opts.cooldownDays), 1, 14) : beatCooldownDays(draft);
+  const cooldownDays = Number.isFinite(opts.cooldownDays) ? clamp14(Math.round(opts.cooldownDays), 1, 14) : beatCooldownDays(draft);
   const { output, rejected } = validateDirectorOutput(draft, ctx2.registries, raw(pending2), {
     cooldownDays,
     only: pending2.reason === "scout" ? "rumors" : void 0
@@ -12536,7 +12570,7 @@ function resolveExpiredMutiny(draft, ctx2, open2) {
 }
 
 // src/engine/loyalty/desertion.ts
-var clamp14 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp15 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 function desertionChance(state, reg, unitId) {
   const unit = state.squad.find((u) => u.id === unitId);
   const rel = state.relations[unitId];
@@ -12546,7 +12580,7 @@ function desertionChance(state, reg, unitId) {
   p += rel.affinity < 0 ? t.affinityNegative * -rel.affinity : -t.affinityPositive * rel.affinity;
   p += t.perStressAbove * Math.max(0, unit.stress - t.stressRef);
   for (const d of unit.defects) p += reg.defects.get(d.id)?.desertionMod ?? 0;
-  return clamp14(p, t.min, t.max);
+  return clamp15(p, t.min, t.max);
 }
 function mayDesert(state, unitId) {
   if (state.disloyalty?.open) return false;
@@ -12595,7 +12629,7 @@ function talkDown(draft, ctx2, stat2) {
   const t = TUNING.disloyalty.talkDown;
   const difficulty = t.baseRank + (rel.trust < t.lowTrust ? 1 : 0) + (unit.stress >= t.highStress ? 1 : 0);
   const bonus = stat2 === "authority" ? intimidationBonus(draft) : 0;
-  const chance = clamp14(t.base + t.perRank * (socialRank(draft, stat2) - difficulty) + bonus, t.min, t.max);
+  const chance = clamp15(t.base + t.perRank * (socialRank(draft, stat2) - difficulty) + bonus, t.min, t.max);
   const success = ctx2.rng.chance(chance);
   const events = [];
   if (success) {
@@ -13117,7 +13151,7 @@ function treat(draft, ctx2, unitId, kind) {
   addLog(exp, "treat", `${u.displayName}: ${kind === "patch" ? "wounds patched" : "calmed down"}.`, void 0, { unitId, kind });
   return [{ type: "expedition_treated", unitId, kind }];
 }
-var clamp15 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp16 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 function enterCombat(draft, ctx2, nodeId, def, mission) {
   const exp = draft.expedition;
   const reg = ctx2.registries;
@@ -13127,7 +13161,7 @@ function enterCombat(draft, ctx2, nodeId, def, mission) {
   try {
     encounter = generateEncounter(draft, reg, ctx2.rng, {
       table: region.enemyTable,
-      danger: clamp15(mission.danger + combat2.dangerDelta, 1, 5),
+      danger: clamp16(mission.danger + combat2.dangerDelta, 1, 5),
       squadPower: squadPower(draft, reg, ableParty(draft)),
       exposesCommander: combat2.exposesCommander,
       lootTableId: combat2.lootTableId
@@ -13681,7 +13715,7 @@ function toWorldEffect(raw, ctx2) {
 
 // src/engine/dilemma/validate.ts
 var isObj17 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
-var clamp16 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp17 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var cutWords3 = (text2, max) => text2.split(" ").filter(Boolean).slice(0, max).join(" ");
 function parseOption(raw, index, ctx2, bad) {
   const at = (reason, rule = "shape") => void bad.push({ rule, option: index, reason });
@@ -13773,7 +13807,7 @@ function parseDilemmaOutput(raw, ctx2) {
 function alignment(fx2, unit) {
   if (fx2.valueAxes && fx2.valueAxes.length > 0) {
     const sum = fx2.valueAxes.reduce((n, a) => n + (unit.values[a.axis] ?? 0) * a.direction, 0);
-    return clamp16(sum / 3, -1, 1);
+    return clamp17(sum / 3, -1, 1);
   }
   return ["sided_against", "decision_violated", "endangered", "coerced", "dismissed", "insulted", "lied_detected", "broke_promise", "mocked_defect", "crime_revealed", "rejected_advance"].includes(fx2.event) ? -1 : 1;
 }
@@ -13867,7 +13901,7 @@ function checkDefining(state, beatId) {
 }
 
 // src/engine/dilemma/flow.ts
-var clamp17 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp18 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var STALE = "Stale dilemma answer.";
 var capital2 = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 function presentUnits(state) {
@@ -14054,7 +14088,7 @@ function chooseDilemma(draft, ctx2, id, index, route) {
   }
   if (chosen.check) {
     const c = TUNING.dilemma.check;
-    const chance = clamp17(c.base + c.perRank * (socialRank(draft, chosen.check.stat) - chosen.check.rank), c.min, c.max);
+    const chance = clamp18(c.base + c.perRank * (socialRank(draft, chosen.check.stat) - chosen.check.rank), c.min, c.max);
     checkPassed = ctx2.rng.chance(chance);
     if (!checkPassed) effects2 = effects2.filter((fx2) => isCostEffect(fx2) || isBookkeeping(fx2));
   }
