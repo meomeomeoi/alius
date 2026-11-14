@@ -73,30 +73,76 @@ describe('impunityOf', () => {
       s.leash.authorizationsLeft = 0;
       expect(val(s).terms.leash).toBe(18);
     });
-    it('the never-used bonus waits a week: none on day 1 to 7, +8 from day 8', () => {
-      for (const [day, want] of [[1, 0], [7, 0], [8, 8], [30, 8]] as const) {
+    it('the never-used bonus grows smoothly over the first week: 0, 1, 2, 3, 5, 6, 7 on days 1 to 7, +8 from day 8', () => {
+      const at = (day: number) => { const s = fresh(); s.day = day; return val(s).terms.leash; };
+      expect([1, 2, 3, 4, 5, 6, 7, 8, 9, 30].map(at)).toEqual([0, 1, 2, 3, 5, 6, 7, 8, 8, 8]);
+    });
+    it('it fades the same way after the first use: nothing is cancelled at once', () => {
+      // used on day 3 with 2 left: the credit earned by then (2) is held while the week fills, then fades over a week
+      const at = (day: number) => {
         const s = fresh();
         s.day = day;
-        expect(val(s).terms.leash, `day ${day}`).toBe(want);
-      }
+        s.leash.authorizationsLeft = 2;
+        s.leash.log = [{ no: 1, unitId: B, kind: 'compel', day: 3, context: 'scene', outcome: 'done' }];
+        return val(s).terms.leash - (day - 3 < 7 ? -10 : 0); // the recent-use −10 is its own term, added on top
+      };
+      const credits = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(at);
+      expect(credits[0]).toBe(2);
+      expect(credits.every((c, i) => i === 0 || c <= credits[i - 1] + 1)).toBe(true);
+      expect(credits.at(-1)).toBe(0);
     });
-    it('0 authorizations left still reads +10 before the week is over', () => {
+    it('it fades from the full +8 after a use made later, and a Leash used long ago gives none', () => {
+      const s = fresh();
+      s.day = 40;
+      s.leash.authorizationsLeft = 2;
+      s.leash.log = [{ no: 1, unitId: B, kind: 'compel', day: 40, context: 'scene', outcome: 'done' }];
+      expect(val(s).terms.leash).toBe(8 - 10); // the day of the use: all of it still there, and the fresh scare
+      s.day = 43;
+      expect(val(s).terms.leash).toBe(Math.round(8 * (1 - 3 / 7)) - 10);
+      s.day = 47;
+      expect(val(s).terms.leash).toBe(0);
+      s.day = 90;
+      expect(val(s).terms.leash).toBe(0);
+    });
+    it('a trimmed log with a sequence number still reads as used a long time ago', () => {
+      const s = fresh();
+      s.day = 90;
+      s.leash.authorizationsLeft = 2;
+      s.leash.seq = 5;
+      s.leash.log = [];
+      expect(val(s).terms.leash).toBe(0);
+    });
+    it('increases and decreases add up: the stored record, the ramp and a Leash use never cancel each other', () => {
+      const day4 = (record: number) => { const s = setRecord(fresh(), A, record); s.day = 4; return val(s); };
+      expect(day4(0).terms.leash).toBe(3);
+      expect(day4(-12).terms.leash).toBe(3); // the ramp does not care about the record
+      expect(day4(-12).value).toBe(day4(0).value - 12);
+      expect(day4(12).value).toBe(day4(0).value + 12);
+      const withUse = fresh();
+      withUse.day = 4;
+      withUse.leash.authorizationsLeft = 2;
+      withUse.leash.log = [{ no: 1, unitId: B, kind: 'compel', day: 4, context: 'scene', outcome: 'done' }];
+      setRecord(withUse, A, -20);
+      // 35 base − 20 record + (3 credit − 10 recent use) = 8
+      expect(val(withUse).value).toBe(35 - 20 + 3 - 10);
+    });
+    it('0 authorizations left adds its +10 to the ramp, whatever the day', () => {
       const s = fresh();
       s.day = 3;
       s.leash.authorizationsLeft = 0;
-      expect(val(s).terms.leash).toBe(10);
+      expect(val(s).terms.leash).toBe(10 + 2);
     });
     it('never used needs an empty log and no sequence number', () => {
       const s = fresh();
       s.leash.seq = 2;
       expect(val(s).terms.leash).toBe(0);
     });
-    it('a done use 3 days ago with 0 left cancels out; 8 days ago with 2 left is 0', () => {
+    it('a done use 3 days ago with 0 left: +10 empty, −10 scare, and 5 of the bluff credit still fading; 8 days ago with 2 left is 0', () => {
       const s = fresh();
       s.day = 12;
       s.leash.authorizationsLeft = 0;
       logEntry(s, { day: 9 });
-      expect(val(s).terms.leash).toBe(0);
+      expect(val(s).terms.leash).toBe(10 - 10 + Math.round(8 * (1 - 3 / 7)));
       const t = fresh();
       t.day = 12;
       t.leash.authorizationsLeft = 2;
@@ -107,22 +153,23 @@ describe('impunityOf', () => {
       const s = fresh();
       s.day = 12;
       s.leash.authorizationsLeft = 2;
+      const credit = (ago: number) => Math.round(8 * Math.max(0, 1 - ago / 7)); // the bluff credit is fading on its own
       logEntry(s, { day: 9 });
-      expect(val(s).terms.leash).toBe(-10);
-      expect(val(s, C).terms.leash).toBe(-10);
+      expect(val(s).terms.leash).toBe(-10 + credit(3));
+      expect(val(s, C).terms.leash).toBe(-10 + credit(3));
       s.leash.log = [];
       logEntry(s, { day: 6 }); // 6 days ago: the last day it counts
-      expect(val(s).terms.leash).toBe(-10);
+      expect(val(s).terms.leash).toBe(-10 + credit(6));
       s.leash.log = [];
       logEntry(s, { day: 5 }); // 7 days ago: over
       expect(val(s).terms.leash).toBe(0);
     });
-    it('a failed or denied request is not a use', () => {
+    it('a failed or denied request is no fresh scare (only a done use is), though the credit starts to fade', () => {
       const s = fresh();
       s.leash.authorizationsLeft = 2;
       logEntry(s, { outcome: 'failed' });
       logEntry(s, { outcome: 'denied', no: 2 });
-      expect(val(s).terms.leash).toBe(0);
+      expect(val(s).terms.leash).toBe(8); // no −10; asked today, so all of the credit is still there
     });
   });
 

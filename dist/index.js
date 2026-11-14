@@ -65,8 +65,8 @@ var TUNING = Object.freeze({
     /** `R` of an enforcement whose measure the registry no longer has. */
     enforcedFallback: -8,
     leashEnforced: -20,
-    /** `neverUsed` applies from `neverUsedFromDay` (a week of no use before the squad takes the Leash for a bluff). */
-    leash: Object.freeze({ noneLeft: 10, neverUsed: 8, neverUsedFromDay: 8, recentUse: -10, recentDays: 7 }),
+    /** `neverUsed` is the credit of a Leash nobody has used: it grows to its full value over `bluffDays` days and fades the same way after the first use. */
+    leash: Object.freeze({ noneLeft: 10, neverUsed: 8, bluffDays: 7, recentUse: -10, recentDays: 7 }),
     defectUpkeep: 10,
     contagion: 0.3,
     secret: 5,
@@ -2716,7 +2716,10 @@ function leashTerm(state) {
   const log = leashLog(state);
   let l = 0;
   if (state.leash.authorizationsLeft <= 0) l += T.noneLeft;
-  if (log.length === 0 && (state.leash.seq ?? 0) === 0 && state.day >= T.neverUsedFromDay) l += T.neverUsed;
+  const firstUse = log.length > 0 ? Math.min(...log.map((e) => e.day)) : (state.leash.seq ?? 0) > 0 ? Number.NEGATIVE_INFINITY : void 0;
+  const grown = Math.min(T.bluffDays, Math.max(0, state.day - 1)) / T.bluffDays;
+  const faded = firstUse === void 0 ? 0 : Math.min(T.bluffDays, Math.max(0, state.day - firstUse)) / T.bluffDays;
+  l += Math.round(T.neverUsed * Math.max(0, grown - faded));
   if (log.some((e) => e.outcome === "done" && state.day - e.day >= 0 && state.day - e.day < T.recentDays)) l += T.recentUse;
   return l;
 }

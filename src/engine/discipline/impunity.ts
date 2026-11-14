@@ -38,13 +38,18 @@ function baseOf(state: CampaignState, reg: Registries, unit: Unit): number {
   return own + nick;
 }
 
-/** L: an empty Leash, and one nobody has used for a week, look like a bluff; a use in the last days is fresh in every unit's mind. */
+/** L: an empty Leash looks like a bluff, and so does one nobody has used (a credit that builds over the first week); a use in the last days is fresh in every unit's mind. */
 function leashTerm(state: CampaignState): number {
   const T = TUNING.impunity.leash;
   const log = leashLog(state);
   let l = 0;
   if (state.leash.authorizationsLeft <= 0) l += T.noneLeft;
-  if (log.length === 0 && (state.leash.seq ?? 0) === 0 && state.day >= T.neverUsedFromDay) l += T.neverUsed;
+  // the bluff credit: it grows over the first `bluffDays` days and, after the first use, fades over as many; a plain sum with
+  // every other term, so a punishment, a scare or the stored record never cancels it and it never cancels them
+  const firstUse = log.length > 0 ? Math.min(...log.map((e) => e.day)) : (state.leash.seq ?? 0) > 0 ? Number.NEGATIVE_INFINITY : undefined;
+  const grown = Math.min(T.bluffDays, Math.max(0, state.day - 1)) / T.bluffDays;
+  const faded = firstUse === undefined ? 0 : Math.min(T.bluffDays, Math.max(0, state.day - firstUse)) / T.bluffDays;
+  l += Math.round(T.neverUsed * Math.max(0, grown - faded));
   if (log.some((e) => e.outcome === 'done' && state.day - e.day >= 0 && state.day - e.day < T.recentDays)) l += T.recentUse;
   return l;
 }

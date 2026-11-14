@@ -59,8 +59,8 @@ export const TUNING = Object.freeze({
     /** `R` of an enforcement whose measure the registry no longer has. */
     enforcedFallback: -8,
     leashEnforced: -20,
-    /** `neverUsed` applies from `neverUsedFromDay` (a week of no use before the squad takes the Leash for a bluff). */
-    leash: Object.freeze({ noneLeft: 10, neverUsed: 8, neverUsedFromDay: 8, recentUse: -10, recentDays: 7 }),
+    /** `neverUsed` is the credit of a Leash nobody has used: it grows to its full value over `bluffDays` days and fades the same way after the first use. */
+    leash: Object.freeze({ noneLeft: 10, neverUsed: 8, bluffDays: 7, recentUse: -10, recentDays: 7 }),
     defectUpkeep: 10,
     contagion: 0.3,
     secret: 5,
