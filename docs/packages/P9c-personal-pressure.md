@@ -71,3 +71,10 @@ Outcomes apply as engine effects; "a day of obedience" for the commander = his n
 - **Restrictions:** `restrictionReason(state, unitId, use, activityId?)` is the one reader of confinement, bench, no-leave and duty; call it before booking a unit.
 - **Impunity:** `impunityOf` and `commandStance` for who may blackmail or pressure whom; leverage secrets are flags with `leverage: true` (`S` of Impunity), so a squad secret that a unit holds over the commander raises her Impunity with no code.
 - **Hidden state:** the stored R, the deed counters and who sabotaged are never in a reading; add sentinels to `tests/fixtures/analyze/hidden.ts` for new hidden values.
+
+## Interfaces already provided by P10 (implemented — use, do not rebuild)
+
+- **The device:** the PDA is a layer over the hub (`ShellApi.setDevice/isDeviceUp`, `ShellDeps.onDevice`); `.alius-device[data-skin][data-kind][data-preset][data-up]` › `.alius-device-chrome` (decor, `aria-hidden`, ignores the pointer) + `.alius-device-screen`. Skins are the `deviceSkins` registry (`bindTo: { corporationId | traitId | unlockFlag }`, at most one key) chosen by `pickSkin`; **access levels are not in P10**: P9c adds its own data and reads the skin through `pickSkin` only.
+- **Voices:** `renderVoiceCard`, `renderBubble`, `unitAccent` (6 fixed accents by `fnv1a` of the unit id; P10b may make them data). A squad secret shown as a document is a `paper` card with `redact` ranges.
+- **Whereabouts:** `whereabouts(state, reg)` is derived and stateless; bookings that decide where a unit is would replace step 5 (the routine pick) with a stored schedule — keep the signature and the reasons (`injured`, `confined`, `duty`, `night`, `routine`, `expedition`, `nowhere`).
+- **Hub model:** `tonightItems` lists at most 6 lines in a fixed order and must never reveal a value the PDA does not show; add new kinds at the end of its order with an `analyze` address.

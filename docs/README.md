@@ -20,9 +20,10 @@ Quick facts for a new session: state changes only through registered engine acti
 | `packages/P5-world-expeditions-director.md` | World map, missions, rumors, node-map expeditions, director, spine (**implemented**) |
 | `packages/P6-dilemmas-disloyalty-leash.md` | Validated dilemmas, refusals/desertion/mutiny, the Leash, defect arcs (**implemented**) |
 | `packages/P7a-analysis-tool.md` | Analysis tool: hover / `?` / long-press explanations from content, readings, change ledger, coverage rule (**implemented**) |
+| `packages/P10-visual-upgrade.md` | Hub home screen, the PDA as a device with faction skins, four voices, dithered portraits, semantic colour, motion, sound, bundled fonts (**implemented**) |
 | `packages/P7-…` … `P13-…` | Specs of the planned packages (see `ROADMAP-next.md`; each ends with **Interfaces already provided by P7a**) |
 | `CONTENT.md` | How to add content: pack layout, effects, every registry's fields with an example, the lorebook format |
-| `MANUAL_TEST_P0.md` … `MANUAL_TEST_P6.md`, `MANUAL_TEST_P7a.md` | Acceptance checklists that must be run by hand inside SillyTavern |
+| `MANUAL_TEST_P0.md` … `MANUAL_TEST_P6.md`, `MANUAL_TEST_P7a.md`, `MANUAL_TEST_P10.md` | Acceptance checklists that must be run by hand inside SillyTavern |
 | `BALANCE_REPORT.md` | Defect neutrality report from `npm run sim -- --neutrality` (P4) |
 | `plans/` | Implementation plans per package (task-by-task; ticked as they are done; a **Status** line on top says when a plan was executed) |
 | `content/lore.md` | **Placeholder** lore & structure (author rewrites); §0 holds the rules every text follows (the squad is women, the player is of any gender). **Read it at the start of every session.** |

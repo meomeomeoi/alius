@@ -50,3 +50,11 @@ Each named unit gets a handwriting font at import (from a bundled OFL set of ~6 
 4. Handwriting fonts assigned and changeable; notes appear on the hub; rule notes sign/tear.
 5. Stickers, wallpaper, contact name and pinned notes follow P9c access levels; peeling is reported.
 6. Reduced motion and readable mode (P10) also disable night/door/typing animations.
+
+## Interfaces already provided by P10 (implemented — use, do not rebuild)
+
+- **Device and skins:** `renderChrome(chrome, screen, device, skin, assetUrl?)` dresses the device (decor classes are drawn by `css/17-skins.css`; noise layers come from `src/ui/fx.ts`); an `image` skin uses `frameSize` + `screenRect` (percent via `screenBox`) and falls back to the built-in `ccp_standard`. Stickers, wallpaper and device marks go in the chrome (it ignores the pointer and is `aria-hidden`), never over the screen.
+- **Voices:** `renderVoiceCard` / `renderBubble` (personal voice: her bubble left with her accent, the commander's right). Hand fonts replace `--alius-font-type` for notes (the paper voice reads it); `unitAccent` is a fixed list of 6 and may become data.
+- **Hub:** rooms, markers (`renderMarker`, tone + state glyph + tone glyph), the room panel and `tonightItems` are the hooks for telemetry and notes on the hub; whereabouts are derived (stored schedules are open item P10b). The marker ring reads `--alius-danger/-warn/-trust/-affinity/-bond`.
+- **Motion, sound, readability:** `motionReduced` / `visualFlags`; night/door/typing animations must honour them (readable mode drops scanlines, flicker, dithering and the glitch). Sound ids are the fixed eight of `uiSounds`.
+- **Boot:** `playBoot(screen, { reduced, skinLabel })` is 600 ms, skippable, once per `open()`.

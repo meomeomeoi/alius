@@ -630,3 +630,76 @@ The model only chooses `kind`, `target`, `direction` and a `magnitude` word; the
 ## Leash numbers in other registries (P6)
 
 `crimes[].flaw|perk.effects`: `{ "type": "leash_weekly", "amount": −1 }` changes the weekly authorizations; `{ "type": "leash_trust_cost", "amount": 5 }` adds Trust to every Leash use. `synergies`: `loyalty_wavering` and `loyalty_breaking` carry the refusal chance of the loyalty bands (15 % / 35 %). `flags`: `leashed` and `arc_raised` are relation flags set by the engine.
+
+## `hubRooms` (P10)
+
+The outpost cross-section on the hub. Code reads rooms by `hosts`, `activityIds`, `sceneLocationId`, `facilityId` and `weights`, never by id, so a pack can add or replace rooms by data.
+
+| Field | Type | |
+|---|---|---|
+| `label`, `description` | string | Shown on the room and in its panel and analysis reading (`description` ≤ 600; no pronoun for the commander). |
+| `rect` | `{ x, y, w, h }`, numbers 0–100 | Position in percent of the cross-section; `x + w` and `y + h` must be ≤ 100. Rects should not overlap. |
+| `sceneLocationId` | `locations` id | Where a scene starts when the player presses TALK in this room. The room is also closed in a slot its location is closed in. |
+| `facilityId?` | `facilities` id | The routine pick skips the room while this facility is below level 1 (absent facility = always built). |
+| `activityIds?` | `activities` ids | Their cards appear in the room panel, as in the OPS tab. |
+| `weights` | `{ morning?, afternoon?, evening?, night? }`, ints 0–5 | Routine weight per slot (0 or absent = nobody picks the room then). |
+| `likeTags?` | strings | A soldier with one of these among her `likes` weighs the room +2. Tags are free-form lowercase words from the card import. |
+| `hosts?` | `injured`, `confined`, `duty`, `night` | The room that holds a soldier in that condition. Each of the four must be hosted by exactly one room of the pack. |
+| `commanderCell?` | boolean | Marks the commander's own quarters (display only). |
+
+```json
+{ "id": "medbay", "label": "MEDBAY", "description": "Where the injured lie up and defects are worked on.",
+  "rect": { "x": 34, "y": 46, "w": 32, "h": 32 }, "sceneLocationId": "medbay", "facilityId": "medbay",
+  "activityIds": ["medbay"], "weights": { "morning": 1, "afternoon": 1, "evening": 0, "night": 0 },
+  "likeTags": ["medicine"], "hosts": ["injured"] }
+```
+
+Where a unit is each slot is **derived**, not stored: away on an expedition → injured → confined → on extra duty in its slot → night → a weighted pick (the weight, +2 per liked tag) over rooms that are open and built, chosen by a hash of day, slot and unit id. The loader checks every id and the four hosts.
+
+## `deviceSkins` (P10)
+
+The casing of the PDA. The skin is chosen by: the SYS override → a skin bound to one of the commander's traits → to an unlock flag (world or commander) → to the commander's corporation → `ccp_standard` (which every pack that ships skins must contain). Ties go to registry order.
+
+| Field | Type | |
+|---|---|---|
+| `name`, `description` | string | Shown in SYS and the analysis panel. |
+| `kind` | `css` \| `image` | |
+| `cssPreset` | `ccp_standard` \| `kestrel` \| `vesper` | Required for `css`: which decor `css/17-skins.css` draws. A new preset needs CSS and a decor builder in `src/ui/device/chrome.ts`. |
+| `frameImage`, `frameSize { w, h }`, `screenRect { x, y, w, h }` | | Required for `image`: a front view with a transparent screen cut-out. `screenRect` is in **pixels of the frame image** and must stay inside `frameSize`; the screen keeps its place at any window size (percentages). |
+| `overlay?` | `{ image, blend: overlay\|multiply, opacity 0–1 }` | An optional texture over the casing. |
+| `ledColor`, `accent` | `#rrggbb` | The light and the casing accent (`--device-led`, `--device-accent`). |
+| `label?` | string | The engraved model name and the first boot line. |
+| `bindTo?` | `{ corporationId \| traitId \| unlockFlag }` | At most one key; the loader checks it against the registry. |
+
+```json
+{ "id": "vesper", "name": "Vesper Somatics", "description": "White ceramic and a teal light ring.", "kind": "css",
+  "cssPreset": "vesper", "ledColor": "#3fd6c4", "accent": "#8fb9b2", "label": "VESPER", "bindTo": { "corporationId": "vesper" } }
+```
+
+An `image` skin whose frame fails to load falls back to the built-in `ccp_standard` chrome.
+
+## `uiSounds` (P10)
+
+Eight fixed ids (`open`, `close`, `tab`, `notify`, `alert`, `stamp`, `typing`, `hum`); this registry is not player-visible (no `description`).
+
+| Field | Type | |
+|---|---|---|
+| `id` | one of the eight | |
+| `synth` | `{ wave: sine\|square\|triangle\|sawtooth, freq, endFreq?, ms, gain 0–1 }` | The WebAudio fallback: a wave, a frequency sweep, a length and the peak gain (before the volume setting). |
+| `file?` | path | Played instead of the synth when present and it loads (a failed load falls back to the synth). The hum is always synthesized. |
+
+Effective peak gain = `soundVolume / 100 × synth.gain`; muted or volume 0 plays nothing.
+
+## Art, audio and fonts (P10)
+
+All paths are relative to the extension folder and are requested only from there.
+
+| What | Path | If missing |
+|---|---|---|
+| Hub cross-section | `content/core/art/hub/base_<slot>.png` (`morning`, `afternoon`, `evening`, `night`), else `content/core/art/hub/base.png` | The CSS blueprint (rooms stay where `rect` puts them). |
+| Device frame / overlay | the skin's `frameImage` and `overlay.image` | `ccp_standard` chrome / no overlay. |
+| UI sound files | an entry's `file` (suggested `content/core/audio/<id>.ogg`) | The synth. |
+| Fonts | `fonts/*.woff2`, licences in `fonts/LICENSES/` | The fallbacks in `--alius-font*`. |
+
+Fonts are latin woff2 subsets from the `@fontsource` packages: IBM Plex Mono (400, 600), Saira Stencil One (400), Inter (300, 400, 600) — SIL OFL — and Special Elite (400) — Apache-2.0. Declare new ones in `css/01-fonts.css` with a relative `url("fonts/…")` and `font-display: swap`; `tests/assets.test.ts` fails on a missing file, a remote url, an `@import`, a font over 120 KB or a missing licence file.
+

@@ -115,7 +115,7 @@ Source layout (TypeScript, same toolchain style as Mundi-Expanded):
 - `src/setup/` — campaign setup logic that is neither engine nor UI: the card → profile importer and sanitizer, and the pure wizard state model (no DOM; it talks to ST only through the `StAdapter` interface).
 - `src/st/` — the **only** module that touches SillyTavern APIs (context, metadata, events, prompt injection, group members, connection profiles, expressions). Everything else depends on its interface, so ST API changes are fixed in one place.
 - `src/analysis/` — the analysis tool's pure layer (P7a): addresses, panel model, effects text, knowledge filter, readings. Imports only `content`, `engine` and the settings type (an architecture test enforces it).
-- `src/ui/` — the Alius shell and screens (`shell/` incl. the status header, `setup/` wizard, `squad/`, `ops/` and `base/` tabs, `analyze/` the analysis panel and its interaction). UI renderers are plain functions `(host, ctx)`; they ask the engine (`checkActivity`, `checkUpgrade`, `checkRecruit`) why a button is disabled instead of re-implementing rules.
+- `src/ui/` — the Alius shell and screens (`shell/` incl. the status header, `setup/` wizard, `squad/`, `ops/` and `base/` tabs, `analyze/` the analysis panel and its interaction); P10: `hub/` the home screen and room panel, `device/` skins, chrome and boot, `voice/` `VoiceCard`, `portrait/` dithered portraits, `sound/` UI sounds, `motion.ts` the one reader of reduced motion and readable mode). `src/engine/hub.ts` holds the derived whereabouts. Bundled fonts live in `fonts/`. UI renderers are plain functions `(host, ctx)`; they ask the engine (`checkActivity`, `checkUpgrade`, `checkRecruit`) why a button is disabled instead of re-implementing rules.
 - `content/core/` — the core JSON pack + lorebook stub.
 
 ### 5.1 State and saves
@@ -160,7 +160,7 @@ Before each main-model generation the adapter injects one compact block:
 
 Character card text itself remains SillyTavern's job.
 
-### 5.4 Implemented engine interfaces (P0–P6, P7a, P7, P8, P9)
+### 5.4 Implemented engine interfaces (P0–P6, P7a, P7, P8, P9, P10)
 
 Later packages build on these; change them only together with the owning spec.
 
@@ -231,6 +231,14 @@ Later packages build on these; change them only together with the owning spec.
 | `openDemand`, `rollDemands`, `eligibleTemplates`, `demandChance`, `grantProblem`, `deliverDemand`, `answerDemand`, registry `demandTemplates` (6), actions `demand/roll`, `demand/deliver`, `demand/answer` | P9 | Demands (`resource`, `privilege`, `exclusion`, `item`, `information`, `interpersonal`) and the *owed* demand of a delegate one Trust band short. |
 | `countDeed`, `deedsOf`, `DEED_COUNTERS`, `patternHolds`, `patternScore`, `reputationDayStep`, `introduceNickname`, registry `reputations` (7), action `reputation/introduce { unitId }`, `commanderLine` (nickname clause) | P9 | Deeds are counted where they happen; patterns queue one pending nickname; it is introduced in a private scene and enters the commander line and the CMDR card. |
 | `createDiscipline` / `app.discipline` (`onEvents`, `onSceneOpened`, `onSceneClosed`, `punish`, `undo`, `onSlotAdvanced`, `answerDemand`, `talkDemand`), `disciplineDirectives`, `reputationDirectives`, `clearDisciplineDirectives`, `renderDisciplineMenu`, `drawDisciplineChips`, `drawDemandChips`, `registerDisciplineProviders` | P9 | The non-engine layer: directives (`loyalty:`, `refusal:`, `threat:`, `discipline:`, `demand:`, `reputation:`, `nickname`), toasts, wording, chips and the DISCIPLINE menu. Events: `defiance_noted`, `defiance_settled`, `threat_registered`, `threat_kept`, `threat_lapsed`, `discipline_applied`, `discipline_undone`, `restriction_started`, `restriction_ended`, `covert_sabotage`, `demand_opened`, `demand_delivered`, `demand_resolved`, `nickname_pending`, `nickname_given`, `nickname_dropped`, `impunity_changed`. |
+| `whereabouts(state, reg)` → `Whereabout[]` (`{ unitId, roomId \| null, reason }`), `fnv1a`, registry `hubRooms` (`rect`, `sceneLocationId`, `facilityId?`, `activityIds?`, `weights`, `likeTags?`, `hosts?`, `commanderCell?`) | P10 | Where each living unit is this slot, derived and stateless (no RNG): away, injured, confined, duty, night, else a weighted hash pick. P10b may replace the last step with a stored schedule. |
+| `ScreenId 'hub'`, `ShellApi.registerHub / isDeviceUp / setDevice`, `toast(kind, text, { voice, title })`, `ShellDeps.{ skin, sound, onDevice }`, `app.talkAt(unitId, locationId)`, `app.endSlot()` | P10 | The hub is the home screen and the PDA a device layer over it: `showScreen('pda')` raises it, `'hub'` lowers it. `talkAt` starts the talk activity and the scene at a room's location without the picker; `endSlot` passes the slot after a confirm (a quiet night is slept through). |
+| `currentObjective(state, reg)`, `tonightItems`, `markerTone`, `endSlotBlock`, `latestOversight` (`src/ui/hub/model.ts`) | P10 | Pure view models of the hub. `currentObjective` is a stub: P11 replaces its body and keeps the signature. |
+| registry `deviceSkins`, `pickSkin(state, reg, override)`, `screenBox(skin)`, `renderChrome`, setting `deviceSkin` | P10 | The PDA casing: `css` presets (`ccp_standard`, `kestrel`, `vesper`) or `image` skins with `frameSize` + `screenRect`; chosen by override → trait → flag → corporation → `ccp_standard`. |
+| `renderVoiceCard`, `renderBubble`, `unitAccent`, `VOICE_OF`, `Voice` | P10 | The four voices (terminal, corporate, paper, personal); sources declare their voice in `VOICE_OF` (P11 intake forms are `paper`). |
+| `unitPortrait`, `portraitOptions`, `ditherBayer4`, `PALETTE_RGB`, setting `ditheredPortraits` | P10 | PDA portraits dithered into the phosphor palette, cached per card, palette and size. |
+| `createSound`, `SoundId`, registry `uiSounds` (hidden), settings `soundVolume`, `soundMuted`, `ambientHum` | P10 | UI sounds synthesized with WebAudio; an entry's `file` is played when present. |
+| `motionReduced(settings)`, `visualFlags(settings)`, settings `readableMode`, `reducedMotion` | P10 | The one reader of reduced motion (setting OR system) and readable mode; everything that animates asks here. |
 
 Events emitted by the day-end pipeline: `director_requested` (P5), `leash_refreshed`, `loyalty_sign`, `desertion_attempt`, `mutiny_started`, `dilemma_requested`, `arc_unlocked` (P6), `mission_failed` / `mission_expired` / `clock_filled` / `leash_changed` (P5), `day_end_step`, `upkeep`, `quiet_night_started` / `morning_lost` (P7), `supply_shortage`, `trust_penalty_event`, `unit_recovered`, `facility_upgraded`, `slot_advanced`, `night_started`, `day_started`, `autosave` (the app flushes the saver on it).
 
@@ -341,7 +349,7 @@ P9: **demand wording** (`demandWording`, default on; the mechanic model puts a s
 
 P8: **minimum confidence** (`intentMinConfidence`, 0–1, default 0.5) now also moves the disposition table: the extraction sanitizer drops events below the lowest level floor + (setting − 0.5), and the engine judges each event per unit against its own level's gain and loss floors moved by the same amount (mirrored into the campaign by `campaign/set_min_confidence`). The world options are fixed at campaign start except the live `bloom_horror` (SYS › World options).
 
-Planned (P10): **dithered portraits** (P10) · **readable mode** (P10; disables scanlines, flicker, dithering and glitch, one font step up) · **reduced motion** (P10; also honours `prefers-reduced-motion`) · **sound volume / mute** (P10; default low) · **device skin override** (P10; default: the skin follows the corporation).
+P10: **dithered portraits** (`ditheredPortraits`, default on; SYS › Display) · **readable mode** (`readableMode`, default off; no scanlines, flicker, dithering or glitch, text 17 px) · **reduced motion** (`reducedMotion`, default off; also follows `prefers-reduced-motion`) · **device skin** (`deviceSkin`, default empty = follow the corporation; SYS › Display) · **sound** (`soundVolume` 0–100, default 20; `soundMuted`, default off; `ambientHum`, default off; SYS › Sound).
 
 P5: **story director** on/off (`directorEnabled`, default on; off = the engine's fallback plans the world), **story beat cooldown** (`beatCooldownDays`, 1–14, default 3) and **expedition recap** (`expeditionRecap`, default on) — SYS › World.
 
@@ -362,7 +370,7 @@ Defaults in code: Desire/Bond defects **off**, show raw values **off**, sprite m
 | 9 | P7 | Commander profile & traits | P0–P6 | implemented |
 | 10 | P8 | World options & disposition | P0–P7 | implemented |
 | 11 | P9 | Impunity, discipline, demands, reputation | P0–P8 | implemented |
-| 12 | P10 | Visual upgrade (hub, device skins, voices) | P0–P6 | spec |
+| 12 | P10 | Visual upgrade (hub, device skins, voices) | P0–P6 | implemented |
 | 13 | P11 | Prologue & onboarding | P7, P8, P10 | spec |
 | 14 | P9d | Desire & bonds (bond profile, opt-in content categories, lead, Want, relationship rules) | P3, P9 | spec |
 | 15 | P9b | Squad power structure (voting, hierarchy/leader, outside perception, scapegoat) | P8, P9, P9d | spec |
