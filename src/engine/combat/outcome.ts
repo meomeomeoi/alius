@@ -1,4 +1,5 @@
 import type { Registries } from '../../content/types';
+import { countDeed } from '../discipline/deeds';
 import { injureCommander } from '../calendar';
 import type { EngineEvent } from '../dispatch';
 import { bankLoot, rollLoot } from '../items';
@@ -95,6 +96,7 @@ export function finalizeCombat(draft: CampaignState, reg: Registries, rng: Rng, 
       unit.status = 'dead';
       unit.currentHp = 0;
       deaths.push(unit.id);
+      countDeed(draft, 'grunts_lost'); // P9: a conscript spent
       continue;
     }
     unit.currentHp = 1;

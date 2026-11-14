@@ -778,6 +778,6 @@ describe('core content pack: P6 content', () => {
     expect(r.imageConsistency.get('slight_build')!.offImage).toContain('commander_enforced');
     expect(r.punishments.size).toBe(6);
     expect(r.demandTemplates.size).toBe(6);
-    expect(r.reputations.size).toBe(0);
+    expect(r.reputations.size).toBe(7);
   });
 });

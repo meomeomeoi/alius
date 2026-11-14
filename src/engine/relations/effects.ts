@@ -1,5 +1,6 @@
 import type { Registries } from '../../content/types';
 import type { EngineEvent } from '../dispatch';
+import { countDeed } from '../discipline/deeds';
 import { applyRelationDelta } from '../relationGain';
 import type { CampaignState } from '../state/types';
 import { computeDeltas } from './deltas';
@@ -41,6 +42,12 @@ export function applyEventToUnit(
     unit.stress = next;
   }
   pushHistory(draft, unitId, { day: draft.day, kind: 'event', type: event.type, severity: d.severity });
+  // P9: what the squad will remember the commander for
+  if (event.actor === 'commander') {
+    if (event.type === 'protected' && (d.severity === 'major' || d.severity === 'extreme')) countDeed(draft, 'protected');
+    else if (event.type === 'kept_promise') countDeed(draft, 'promises_kept');
+    else if (event.type === 'broke_promise') countDeed(draft, 'promises_broken');
+  }
   events.push(...evaluateEvent(draft, reg, unitId, event.type));
   return events;
 }

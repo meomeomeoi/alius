@@ -601,15 +601,15 @@ chips: the three buttons, the `OWED` mark, `GRANT` soft-disabled with the reason
 **Interfaces:**
 - Produces: `DEED_COUNTERS`, `countDeed(draft, counter, n = 1): void`, `deedsOf(state): Record<DeedCounter, number>`; `ReputationSchema` (rulings section; `pattern.sum` and `against` are checked against `DEED_COUNTERS`; `min ≥ 1`; `minShare` needs `against`); `reputations` joins `REGISTRY_NAMES` and `DESCRIBED_REGISTRIES`; `TUNING.reputation = { maxActive: 2, trustPerWeight: 2, affinityPerWeight: 3 }`; `patternHolds(state, entry): boolean`, `patternScore(state, entry): number`; `reputationDayStep(draft, ctx): EngineEvent[]` (`nickname_pending { id, replaces? }`, `nickname_dropped { id }` for an active one that no longer holds and has no successor after 7 days — it then simply leaves); `introduceNickname(draft, ctx, unitId): EngineEvent[]`; action `reputation/introduce { unitId }` (needs a pending nickname and `unitId` as the only participant of the open scene) → `nickname_given { id, name, unitId, replaced? }`; `impunityOf` adds the active nicknames' `impunityBase` to `terms.base`.
 
-- [ ] **Step 1: Write the failing tests** — **acceptance 7 (engine half)**
+- [x] **Step 1: Write the failing tests** — **acceptance 7 (engine half)**
 
 deeds, one per site: `a done compel, suppress and approved terminate count`, `a failed burst does not`; `a grunt killed in combat counts grunts_lost, a named unit does not`; `a commander protected/major counts once per unit it lands on, a moderate one does not`; `kept_promise and broke_promise of the commander count`; `a settled defiance counts defiance_tolerated, a cancelled one does not`; `a brig counts punish_4 and its undo takes it back`; `grant, refuse, a kept and a lapsed threat count`.
 patterns: `leash_holder holds at four Leash uses` (3 → no); `merchant needs the share` (4 granted, 2 refused → 0.67 → no; 4 and 1 → yes); `a met pattern queues one pending nickname at day end` and `never a second while one is pending`; `no pending while its group has an active nickname that scores at least as high`; `a third group waits while two are active and both still hold`; `it replaces an active nickname that no longer holds`;
 introduce: `the pending nickname becomes active with its name copied` (`commander.reputation.active[0]` = `{ id, name, sinceDay, by }`), `a public fact names it`, `each named unit reacts once by her values` (draft row of `leash_holder`: `{ axis: 'autonomy', sign: '+', weight: -2 }`; a unit with autonomy +2 loses 4 Trust and 6 Affinity through `applyRelationDelta`, a unit with autonomy 0 or below is untouched; a second introduce of the same id never reacts again), `refused in a group scene, with no scene, or with nothing pending`; `an active nickname moves every unit's impunity base` (`leash_holder` → 30 on a guarded world).
 
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** `npm test` → PASS.
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** `npm test` → PASS.
 
-- [ ] **Step 5: Commit** `feat(engine): commander deeds, reputation patterns and the nickname moment`
+- [x] **Step 5: Commit** `feat(engine): commander deeds, reputation patterns and the nickname moment`
 
 ---
 

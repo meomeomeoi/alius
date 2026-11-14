@@ -1,0 +1,190 @@
+[
+  {
+    "id": "leash_holder",
+    "name": "the Leash-Hand",
+    "group": "force",
+    "description": "AUTHOR TO WRITE: the squad knows the commander as someone who reaches for the Leash.",
+    "pattern": {
+      "sum": [
+        "leash_compel",
+        "leash_suppress",
+        "leash_terminate"
+      ],
+      "min": 4
+    },
+    "effects": {
+      "impunityBase": -5,
+      "directive": "AUTHOR TO WRITE: the squad knows the commander reaches for the Leash.",
+      "valueReactions": [
+        {
+          "axis": "autonomy",
+          "sign": "+",
+          "weight": -2
+        }
+      ]
+    }
+  },
+  {
+    "id": "iron_rule",
+    "name": "Iron Rule",
+    "group": "force",
+    "description": "AUTHOR TO WRITE: the squad knows the commander answers defiance with real punishments.",
+    "pattern": {
+      "sum": [
+        "punish_2",
+        "punish_3",
+        "punish_4"
+      ],
+      "min": 6
+    },
+    "effects": {
+      "impunityBase": -8,
+      "valueReactions": [
+        {
+          "axis": "autonomy",
+          "sign": "+",
+          "weight": -1
+        },
+        {
+          "axis": "corporate",
+          "sign": "+",
+          "weight": 1
+        }
+      ]
+    }
+  },
+  {
+    "id": "soft_touch",
+    "name": "Soft Touch",
+    "group": "authority",
+    "description": "AUTHOR TO WRITE: the squad knows the commander lets defiance pass and backs down.",
+    "pattern": {
+      "sum": [
+        "defiance_tolerated",
+        "threats_empty"
+      ],
+      "min": 5
+    },
+    "effects": {
+      "impunityBase": 8,
+      "valueReactions": [
+        {
+          "axis": "mercy",
+          "sign": "+",
+          "weight": 1
+        },
+        {
+          "axis": "corporate",
+          "sign": "+",
+          "weight": -1
+        }
+      ]
+    }
+  },
+  {
+    "id": "merchant",
+    "name": "the Merchant",
+    "group": "authority",
+    "description": "AUTHOR TO WRITE: the squad knows the commander buys loyalty by granting demands.",
+    "pattern": {
+      "sum": [
+        "demands_granted"
+      ],
+      "min": 4,
+      "against": [
+        "demands_refused"
+      ],
+      "minShare": 0.75
+    },
+    "effects": {
+      "impunityBase": 5,
+      "valueReactions": [
+        {
+          "axis": "pragmatism",
+          "sign": "+",
+          "weight": 1
+        }
+      ]
+    }
+  },
+  {
+    "id": "meatgrinder",
+    "name": "Meatgrinder",
+    "group": "losses",
+    "description": "AUTHOR TO WRITE: the squad knows the commander spends conscripts without a second thought.",
+    "pattern": {
+      "sum": [
+        "grunts_lost"
+      ],
+      "min": 3
+    },
+    "effects": {
+      "valueReactions": [
+        {
+          "axis": "mercy",
+          "sign": "+",
+          "weight": -2
+        },
+        {
+          "axis": "ingroup",
+          "sign": "+",
+          "weight": -1
+        }
+      ]
+    }
+  },
+  {
+    "id": "shield",
+    "name": "the Shield",
+    "group": "losses",
+    "description": "AUTHOR TO WRITE: the squad knows the commander steps in front of them.",
+    "pattern": {
+      "sum": [
+        "protected"
+      ],
+      "min": 3
+    },
+    "effects": {
+      "valueReactions": [
+        {
+          "axis": "ingroup",
+          "sign": "+",
+          "weight": 2
+        },
+        {
+          "axis": "sacrifice",
+          "sign": "+",
+          "weight": 1
+        }
+      ]
+    }
+  },
+  {
+    "id": "liar",
+    "name": "Liar",
+    "group": "word",
+    "description": "AUTHOR TO WRITE: the squad knows the commander's word is not worth much.",
+    "pattern": {
+      "sum": [
+        "promises_broken",
+        "threats_empty"
+      ],
+      "min": 4,
+      "against": [
+        "promises_kept",
+        "threats_kept"
+      ],
+      "minShare": 0.5
+    },
+    "effects": {
+      "impunityBase": 3,
+      "valueReactions": [
+        {
+          "axis": "corporate",
+          "sign": "+",
+          "weight": -1
+        }
+      ]
+    }
+  }
+]

@@ -8,6 +8,7 @@ import type { EventIntent } from '../relations/intents';
 import { SEVERITIES } from '../relations/vocab';
 import type { CampaignState, DisciplineState, Inverse, PendingDefiance, PendingThreat, Severity } from '../state/types';
 import { TUNING } from '../tuning';
+import { countDeed, deedsOf } from './deeds';
 import { impunityOf } from './impunity';
 import { punishmentFor } from './perception';
 import { applyPunishment, checkPunish } from './punish';
@@ -80,6 +81,7 @@ export function dropDefiance(draft: CampaignState, unitId: string): PendingDefia
 
 /** Nobody answered it: `R` rises by the severity's amount. */
 function settleOne(draft: CampaignState, d: PendingDefiance): EngineEvent[] {
+  countDeed(draft, 'defiance_tolerated');
   return [
     { type: 'defiance_settled', unitId: d.unitId, tolerated: true },
     ...addRecord(draft, d.unitId, TUNING.impunity.defied[d.severity], 'defiance_tolerated'),
@@ -114,8 +116,13 @@ export function captureInverse(draft: CampaignState, unitId: string, fn: () => E
     trust: rel.trust, affinity: rel.affinity, attraction: rel.attraction, daily: { ...rel.dailyGain }, stateId: rel.stateId,
     stateSince: rel.stateSince, band: rel.loyaltyBand, history: rel.history.length, stress: unit.stress, record: recordOf(draft, unitId),
   } : undefined;
+  const deedsBefore = deedsOf(draft);
   const events = fn();
   const inverse: Inverse = {};
+  const moved: NonNullable<Inverse['deeds']> = {};
+  const deedsAfter = deedsOf(draft);
+  for (const k of Object.keys(deedsAfter) as Array<keyof typeof deedsAfter>) if (deedsAfter[k] !== deedsBefore[k]) moved[k] = deedsAfter[k] - deedsBefore[k];
+  if (Object.keys(moved).length > 0) inverse.deeds = moved;
   const after = draft.relations[unitId];
   const unitAfter = draft.squad.find((u) => u.id === unitId);
   if (!before || !after || !unitAfter) return { events, inverse };
@@ -175,6 +182,7 @@ export function registerThreat(draft: CampaignState, ctx: EngineCtx, unitId: str
  */
 export function lapseThreat(draft: CampaignState, ctx: EngineCtx, threat: PendingThreat): EngineEvent[] {
   removeThreat(draft, threat.id);
+  countDeed(draft, 'threats_empty'); // nobody carried it out
   const sev = measureSeverity(ctx.registries, threat.measure);
   const severity: Severity = threat.measure === 'leash' || (sev !== null && sev >= 3) ? 'major' : 'moderate';
   return [
@@ -213,6 +221,7 @@ export function enforce(
   if (threat && keepsThreat(ctx.registries, threat, e)) {
     removeThreat(draft, threat.id);
     removed.threat = threat;
+    countDeed(draft, 'threats_kept');
     events.push({ type: 'threat_kept', threatId: threat.id, unitId, measure: threat.measure });
   }
   return { events, removed };
@@ -274,6 +283,7 @@ export function applyDisciplineEvent(
       const threat = unitThreat(draft, unitId);
       if (threat) {
         removeThreat(draft, threat.id);
+        countDeed(draft, 'threats_empty');
         events.push({ type: 'threat_lapsed', threatId: threat.id, unitId, measure: threat.measure, by: 'yield' });
       }
       break;

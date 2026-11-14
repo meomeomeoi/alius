@@ -45,6 +45,7 @@
     "worldPresets": "worldPresets.json",
     "commandStances": "commandStances.json",
     "punishments": "punishments.json",
-    "demandTemplates": "demandTemplates.json"
+    "demandTemplates": "demandTemplates.json",
+    "reputations": "reputations.json"
   }
 }

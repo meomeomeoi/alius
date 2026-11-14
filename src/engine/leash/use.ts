@@ -2,6 +2,7 @@ import type { Registries } from '../../content/types';
 import { consumeSlots } from '../calendar';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { isLiving } from '../economy';
+import { countDeed } from '../discipline/deeds';
 import { enforce, forgetUnit } from '../discipline/record';
 import { loyaltyOf, loyaltyRecord } from '../loyalty/state';
 import { addChronicle, addFact } from '../memory';
@@ -103,6 +104,7 @@ function bookUse(
     draft.leash.authorizationsLeft = Math.max(0, draft.leash.authorizationsLeft - 1);
     events.push({ type: 'leash_changed', amount: -1, left: draft.leash.authorizationsLeft });
   }
+  if (outcome === 'done') countDeed(draft, kind === 'compel' ? 'leash_compel' : kind === 'suppress' ? 'leash_suppress' : 'leash_terminate');
   if (outcome === 'done') events.push(...enforce(draft, ctx, unitId, { measure: 'leash', severity: 4, recordDelta: TUNING.impunity.leashEnforced }).events);
   return events;
 }

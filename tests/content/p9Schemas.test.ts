@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CommandStanceSchema, CrimeSchema, DemandTemplateSchema, DispositionLevelSchema, FlagSchema, PunishmentSchema, RelationshipStateSchema } from '../../src/content/schemas';
+import { CommandStanceSchema, CrimeSchema, DemandTemplateSchema, DispositionLevelSchema, FlagSchema, PunishmentSchema, ReputationSchema, RelationshipStateSchema } from '../../src/content/schemas';
 import { loadPacks } from '../../src/content/loader';
 import { readFile } from 'node:fs/promises';
 
@@ -144,6 +144,32 @@ describe('demand templates (P9)', () => {
     expect(text).toMatch(/unknown flag "no_such_flag"/);
     expect(text).toMatch(/unknown relationship state "no_such_state"/);
     expect(text).toMatch(/grantCost\[0\]\.flagId/);
+  });
+});
+
+describe('reputations (P9)', () => {
+  const rep = { id: 'x', name: 'X', group: 'g', description: 'd', pattern: { sum: ['protected'], min: 3 }, effects: {} };
+  it('the seven core entries parse', async () => {
+    const { registries, errors } = await loadPacks(['content/core'], async (p) => JSON.parse(await readFile(p, 'utf8')));
+    expect(errors).toEqual([]);
+    for (const e of registries.reputations.values()) expect(ReputationSchema.safeParse(e).success, e.id).toBe(true);
+  });
+  it('the pattern counters are checked against the deed counters, min is at least 1', () => {
+    expect(ReputationSchema.safeParse(rep).success).toBe(true);
+    expect(ReputationSchema.safeParse({ ...rep, pattern: { sum: ['kisses'], min: 3 } }).success).toBe(false);
+    expect(ReputationSchema.safeParse({ ...rep, pattern: { sum: ['protected'], min: 0 } }).success).toBe(false);
+    expect(ReputationSchema.safeParse({ ...rep, pattern: { sum: [], min: 3 } }).success).toBe(false);
+    expect(ReputationSchema.safeParse({ ...rep, pattern: { sum: ['protected'], min: 3, against: ['grunts_lost'] } }).success).toBe(true);
+  });
+  it('minShare needs against, and is a share', () => {
+    expect(ReputationSchema.safeParse({ ...rep, pattern: { sum: ['protected'], min: 3, minShare: 0.5 } }).success).toBe(false);
+    expect(ReputationSchema.safeParse({ ...rep, pattern: { sum: ['protected'], min: 3, against: ['grunts_lost'], minShare: 1.5 } }).success).toBe(false);
+  });
+  it('effects are closed and typed', () => {
+    expect(ReputationSchema.safeParse({ ...rep, effects: { impunityBase: -5, directive: 'x', valueReactions: [{ axis: 'autonomy', sign: '+', weight: -2 }] } }).success).toBe(true);
+    expect(ReputationSchema.safeParse({ ...rep, effects: { power: 9 } }).success).toBe(false);
+    expect(ReputationSchema.safeParse({ ...rep, effects: { valueReactions: [{ axis: 'charm', sign: '+', weight: 1 }] } }).success).toBe(false);
+    expect(ReputationSchema.safeParse({ ...rep, effects: { impunityBase: 99 } }).success).toBe(false);
   });
 });
 

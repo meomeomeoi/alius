@@ -69,6 +69,12 @@ describe('no pronoun for the commander in content', () => {
     expect(texts.filter(([, t]) => COMMANDER_PRONOUN.test(t) || /commander[^.]*\btheir\b/i.test(t)).map(([where]) => where)).toEqual([]);
   });
 
+  it('reputations (P9): names, descriptions and the directive of every effect', () => {
+    const texts = [...fields('reputations', ['name', 'description']), ...[...reg.reputations.values()].map((e): [string, string] => [`reputations:${e.id}.directive`, String((e.effects as { directive?: string }).directive ?? '')])];
+    expect(texts).toHaveLength(21);
+    expect(texts.filter(([, t]) => COMMANDER_PRONOUN.test(t) || /commander[^.]*\btheir\b/i.test(t)).map(([where]) => where)).toEqual([]);
+  });
+
   it('crimes: the commander is of any gender (summary, perk and flaw texts)', () => {
     const texts = [...reg.crimes.values()].flatMap((c): Array<[string, string]> => [
       [`crimes:${c.id}.summary`, String(c.summary ?? '')],

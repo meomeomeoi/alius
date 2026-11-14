@@ -11,6 +11,7 @@ import { RARITIES, type CampaignState, type Demand, type Unit } from '../state/t
 import { TUNING } from '../tuning';
 import { dispositionFor } from '../worldOptions';
 import { inAcquaintance } from './acquaintance';
+import { countDeed } from './deeds';
 import { impunityOf } from './impunity';
 import { addRecord, disciplineOf, holdDefiance } from './record';
 import { addRestriction } from './restrictions';
@@ -215,12 +216,14 @@ export function answerDemand(draft: CampaignState, ctx: EngineCtx, demandId: str
     events.push(...applyEventToUnit(draft, reg, unit.id, {
       type: 'granted_demand', actor: 'commander', targets: [unit.id], severity: tpl.costly === true ? 'major' : 'minor', templateId: demand.templateId, evidence: 'a demand was granted', confidence: 1,
     }));
+    countDeed(draft, 'demands_granted');
     if (demand.impunityDriven) events.push(...addRecord(draft, unit.id, TUNING.demands.grantRecord, 'demand_granted'));
   } else {
     const high = (impunityOf(draft, reg, unit.id)?.value ?? 0) >= TUNING.impunity.stance.impunityHigh;
     events.push(...applyEventToUnit(draft, reg, unit.id, {
       type: 'refused_demand', actor: 'commander', targets: [unit.id], severity: 'moderate', templateId: demand.templateId, evidence: 'a demand was refused', confidence: 1,
     }, { scale: high ? TUNING.demands.refuseHighMult : 1 }));
+    countDeed(draft, 'demands_refused');
     if (high) events.push(...holdDefiance(draft, unit.id, 'moderate', 'demand'));
     if (demand.owed) {
       events.push(...applyEventToUnit(draft, reg, unit.id, { type: 'broke_promise', actor: 'commander', targets: [unit.id], severity: 'moderate', evidence: 'an owed demand was refused', confidence: 1 }));

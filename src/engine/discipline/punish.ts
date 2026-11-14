@@ -8,6 +8,7 @@ import { evaluateAutomatic } from '../relations/graph';
 import { SEVERITIES } from '../relations/vocab';
 import type { Application, CampaignState, DisciplineChannel, Inverse, Restriction } from '../state/types';
 import { TUNING } from '../tuning';
+import { countDeed } from './deeds';
 import { perceptionOf, punishmentFor } from './perception';
 import { captureInverse, disciplineOf, enforce } from './record';
 import { addRestriction, dutySlot } from './restrictions';
@@ -89,6 +90,7 @@ export function applyPunishment(draft: CampaignState, ctx: EngineCtx, p: PunishP
     const k = perceptionOf(reg, unit, pun);
     const enforced = enforce(draft, ctx, p.unitId, { measure: p.measure, severity, recordDelta: Math.round(Number(pun.impunityDelta) * k) });
     out.push(...enforced.events);
+    countDeed(draft, `punish_${severity}` as 'punish_1');
     if (enforced.removed.defiance) extra.defiance = enforced.removed.defiance;
     if (enforced.removed.threat) extra.threat = enforced.removed.threat;
     // the side effects

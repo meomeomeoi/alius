@@ -3,6 +3,7 @@ import { registerAction } from '../dispatch';
 import { disciplineDayStep } from '../discipline/dayStep';
 import { answerDemand, deliverDemand, rollDemands } from '../discipline/demands';
 import { applyPunishment } from '../discipline/punish';
+import { introduceNickname } from '../discipline/reputation';
 import { undoApplication, undoThreat } from '../discipline/undo';
 
 // Importing this module registers the P9 discipline actions and its day-end step. The step is registered after the loyalty
@@ -43,4 +44,13 @@ registerAction('demand/deliver', (draft, payload) => {
 registerAction('demand/answer', (draft, payload, ctx) => {
   if (!isObj(payload) || typeof payload.demandId !== 'string' || (payload.answer !== 'grant' && payload.answer !== 'refuse')) throw new Error('demand/answer needs { demandId, answer: "grant" | "refuse" }');
   return answerDemand(draft, ctx, payload.demandId, payload.answer);
+});
+
+// ---------------------------------------------------------------------------------------------
+// Reputation
+
+/** The first time a unit calls the commander by a new nickname, in a private scene with her. */
+registerAction('reputation/introduce', (draft, payload, ctx) => {
+  if (!isObj(payload) || typeof payload.unitId !== 'string') throw new Error('reputation/introduce needs { unitId }');
+  return introduceNickname(draft, ctx, payload.unitId);
 });

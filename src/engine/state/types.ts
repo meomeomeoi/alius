@@ -304,7 +304,7 @@ export interface Commander {
   deeds?: Partial<Record<DeedCounter, number>>;
   /** P9: the nicknames the squad gives the commander (at most 2 active) and the one waiting for its scene. */
   reputation?: {
-    active: Array<{ id: string; name: string; sinceDay: number; by?: string }>;
+    active: Array<{ id: string; name: string; sinceDay: number; by?: string; /** The day its pattern stopped holding (it leaves a week later without a successor). */ lapsedDay?: number }>;
     pending?: { id: string; queuedDay: number; replaces?: string };
   };
 }

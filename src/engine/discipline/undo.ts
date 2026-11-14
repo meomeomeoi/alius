@@ -1,5 +1,6 @@
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import type { CampaignState, Inverse } from '../state/types';
+import { countDeed } from './deeds';
 import { addRecord, disciplineOf } from './record';
 import { removeRestrictions } from './restrictions';
 
@@ -61,6 +62,7 @@ function revertInverse(draft: CampaignState, ctx: EngineCtx, unitId: string, app
     const delta = inv.resources?.[resource];
     if (delta) draft.resources[resource] = Math.max(0, draft.resources[resource] - delta);
   }
+  for (const [counter, n] of Object.entries(inv.deeds ?? {})) countDeed(draft, counter as 'protected', -n);
   if (applicationId !== null && inv.restrictionIds) removeRestrictions(draft, (r) => r.applicationId === applicationId);
   const d = disciplineOf(draft);
   if (inv.defiance && !d.defiance.some((x) => x.unitId === unitId)) d.defiance.push(structuredClone(inv.defiance));

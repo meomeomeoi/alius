@@ -16,3 +16,5 @@ export { commandStance, stanceEntry, type CommandStance } from './stance';
 export { applyPunishment, checkPunish, perceptionOf, type PunishParams } from './punish';
 export { canUndo, undoApplication, undoThreat } from './undo';
 export { answerDemand, deliverDemand, demandChance, eligibleTemplates, grantProblem, openDemand, rollDemands } from './demands';
+export { countDeed, deedsOf } from './deeds';
+export { introduceNickname, patternHolds, patternScore, reputationDayStep } from './reputation';

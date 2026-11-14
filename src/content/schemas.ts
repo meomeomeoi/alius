@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { EFFECT_TARGETS, STATS, TRIGGERS, ALWAYS_ON_TYPES } from '../engine/combat/types';
 import { ALL_EVENT_TYPES, EVENT_TYPES, PROPOSAL_KINDS, SEVERITIES } from '../engine/relations/vocab';
-import { RARITIES } from '../engine/state/types';
+import { DEED_COUNTERS, RARITIES } from '../engine/state/types';
 import { VALUE_AXES } from '../engine/state/types';
 import { TUNING } from '../engine/tuning';
 import { DILEMMA_CONTEXTS } from '../engine/dilemma/types';
@@ -1375,8 +1375,33 @@ export const DemandTemplateSchema = BaseEntrySchema.extend({
   weight: z.number().min(0.1).max(20),
 }).strict();
 
+const deedCounter = z.enum(DEED_COUNTERS);
+
+/** A nickname the squad can give the commander from counted deeds (P9 §6). */
+export const ReputationSchema = BaseEntrySchema.extend({
+  name: str,
+  /** One nickname per group is active at a time. */
+  group: str,
+  description: str.max(DESCRIPTION_MAX),
+  pattern: z.object({
+    sum: z.array(deedCounter).min(1),
+    min: int.min(1),
+    against: z.array(deedCounter).min(1).optional(),
+    /** With `against`: `Σ sum / (Σ sum + Σ against)` must reach this. */
+    minShare: z.number().min(0).max(1).optional(),
+  }).strict(),
+  effects: z.object({
+    impunityBase: z.number().min(-40).max(40).optional(),
+    directive: str.max(200).optional(),
+    valueReactions: z.array(z.object({ axis: valueAxis, sign: z.enum(['+', '-']), weight: int.min(-3).max(3) }).strict()).optional(),
+  }).strict(),
+}).strict().superRefine((r, ctx) => {
+  if (r.pattern.minShare !== undefined && r.pattern.against === undefined) ctx.addIssue({ code: 'custom', path: ['pattern', 'minShare'], message: 'minShare needs against' });
+});
+
 Object.assign(registrySchemas, {
   commandStances: CommandStanceSchema,
+  reputations: ReputationSchema,
   demandTemplates: DemandTemplateSchema,
   punishments: PunishmentSchema,
   worldOptions: WorldOptionSchema, dispositionLevels: DispositionLevelSchema, stanceEffects: StanceEntrySchema, worldPresets: WorldPresetSchema,
@@ -1392,7 +1417,7 @@ export const DESCRIBED_REGISTRIES = [
   // P8
   'worldOptions', 'dispositionLevels', 'worldPresets',
   // P9
-  'commandStances', 'punishments', 'demandTemplates',
+  'commandStances', 'punishments', 'demandTemplates', 'reputations',
 ] as const satisfies readonly RegistryName[];
 
 /** Adds the optional `description` rule to a registry schema without changing its shape. */

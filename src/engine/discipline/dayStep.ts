@@ -2,6 +2,7 @@ import type { EngineCtx, EngineEvent } from '../dispatch';
 import { isLiving } from '../economy';
 import type { CampaignState } from '../state/types';
 import { demandDayStep } from './demands';
+import { reputationDayStep } from './reputation';
 import { decayRecords, lapseThreat, settleDefiance } from './record';
 import { expireRestrictions } from './restrictions';
 import { sabotageDayStep } from './sabotage';
@@ -9,7 +10,7 @@ import { sabotageDayStep } from './sabotage';
 /**
  * The day-end step of discipline (P9), after the loyalty step. In this order: held defiance settles (the ones that belong
  * to no scene, and those whose scene is gone), threats whose deadline is today lapse into a yield, records decay, covert
- * sabotage fires, restrictions that are over end. Later tasks append demands and reputation.
+ * sabotage fires, restrictions that are over end, demands are delivered and expire, nicknames are queued.
  */
 export function disciplineDayStep(draft: CampaignState, ctx: EngineCtx): EngineEvent[] {
   const events: EngineEvent[] = [];
@@ -30,5 +31,6 @@ export function disciplineDayStep(draft: CampaignState, ctx: EngineCtx): EngineE
   events.push(...sabotageDayStep(draft, ctx));
   events.push(...expireRestrictions(draft));
   events.push(...demandDayStep(draft, ctx));
+  events.push(...reputationDayStep(draft, ctx));
   return events;
 }

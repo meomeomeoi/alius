@@ -88,6 +88,8 @@ var TUNING = Object.freeze({
     sabotage: Object.freeze({ chancePerDay: 0.12, cooldownDays: 3, supplies: 2, credits: 10, gearChance: 0.5, gearSupplies: 2 }),
     applicationsMax: 20
   }),
+  /** P9: the squad's nicknames for the commander. A unit reacts once: Trust `trustPerWeight × weight`, Affinity `affinityPerWeight × weight`. */
+  reputation: Object.freeze({ maxActive: 2, trustPerWeight: 2, affinityPerWeight: 3, leaveAfterDays: 7 }),
   /** P9: demands (draft balance values). `baseChance` is the daily chance at Impunity 50 on a guarded world with a stance weight of 1. */
   demands: Object.freeze({
     baseChance: 0.04,
@@ -763,6 +765,24 @@ function applyWorldStartEffects(draft, reg) {
 // src/engine/state/types.ts
 var VALUE_AXES = ["pragmatism", "autonomy", "ingroup", "mercy", "corporate", "sacrifice"];
 var RARITIES = ["standard", "refined", "prototype", "corporate", "anomalous"];
+var DEED_COUNTERS = [
+  "leash_compel",
+  "leash_suppress",
+  "leash_terminate",
+  "grunts_lost",
+  "protected",
+  "defiance_tolerated",
+  "punish_1",
+  "punish_2",
+  "punish_3",
+  "punish_4",
+  "promises_kept",
+  "promises_broken",
+  "demands_granted",
+  "demands_refused",
+  "threats_kept",
+  "threats_empty"
+];
 
 // src/engine/worldOptions/stances.ts
 var INDIFFERENT = { stance: "indifferent", strength: 1, reason: "" };
@@ -802,9 +822,9 @@ function rollGruntStances(state, reg, rng) {
     if (option.squadStance !== true || isNeutralChoice(choice)) continue;
     const weights = choice.effects.find((e) => e.type === "grunt_stances");
     if (!weights || weights.type !== "grunt_stances") continue;
-    const total = weights.shares + weights.indifferent + weights.opposes;
-    if (total <= 0) continue;
-    const roll = rng.float() * total;
+    const total2 = weights.shares + weights.indifferent + weights.opposes;
+    if (total2 <= 0) continue;
+    const roll = rng.float() * total2;
     const stance = roll < weights.shares ? "shares" : roll < weights.shares + weights.indifferent ? "indifferent" : "opposes";
     out[option.id] = { stance, strength: 1, reason: "" };
   }
@@ -1031,10 +1051,10 @@ function upkeepNeeded(state, reg) {
   const needed = Math.max(0, raw - facilityEffect(state, reg, "mess_hall", "upkeepReduction"));
   return { units: units.length, needed };
 }
-function spread(total, n, offset) {
+function spread(total2, n, offset) {
   if (n <= 0) return [];
-  const base = Math.floor(total / n);
-  const extra = total - base * n;
+  const base = Math.floor(total2 / n);
+  const extra = total2 - base * n;
   const out = new Array(n).fill(base);
   for (let i = 0; i < extra; i++) out[((offset % n + n) % n + i) % n] += 1;
   return out;
@@ -2013,6 +2033,25 @@ function revealCrime(draft, reg, unitIds) {
   return events;
 }
 
+// src/engine/discipline/deeds.ts
+function countDeed(draft, counter, n = 1) {
+  const now = draft.commander.deeds?.[counter] ?? 0;
+  const next = Math.max(0, now + n);
+  if (next === now) return;
+  const deeds = draft.commander.deeds ??= {};
+  if (next === 0) delete deeds[counter];
+  else deeds[counter] = next;
+  if (Object.keys(deeds).length === 0) delete draft.commander.deeds;
+}
+function deedsOf(state) {
+  const out = {};
+  for (const c of DEED_COUNTERS) {
+    const v = state.commander.deeds?.[c];
+    out[c] = typeof v === "number" && Number.isFinite(v) ? v : 0;
+  }
+  return out;
+}
+
 // src/engine/discipline/perception.ts
 var punishmentFor = (reg, measure) => measure === void 0 ? void 0 : reg.punishments.get(measure);
 function perceptionOf(_reg, unit, punishment) {
@@ -2416,6 +2455,11 @@ function applyEventToUnit(draft, reg, unitId, event, opts = {}) {
     unit.stress = next;
   }
   pushHistory(draft, unitId, { day: draft.day, kind: "event", type: event.type, severity: d.severity });
+  if (event.actor === "commander") {
+    if (event.type === "protected" && (d.severity === "major" || d.severity === "extreme")) countDeed(draft, "protected");
+    else if (event.type === "kept_promise") countDeed(draft, "promises_kept");
+    else if (event.type === "broke_promise") countDeed(draft, "promises_broken");
+  }
   events.push(...evaluateEvent(draft, reg, unitId, event.type));
   return events;
 }
@@ -2564,6 +2608,7 @@ function applyPunishment(draft, ctx2, p) {
     const k = perceptionOf(reg, unit, pun);
     const enforced = enforce(draft, ctx2, p.unitId, { measure: p.measure, severity, recordDelta: Math.round(Number(pun.impunityDelta) * k) });
     out.push(...enforced.events);
+    countDeed(draft, `punish_${severity}`);
     if (enforced.removed.defiance) extra.defiance = enforced.removed.defiance;
     if (enforced.removed.threat) extra.threat = enforced.removed.threat;
     for (const fx2 of effectsOf2(reg, p.measure)) {
@@ -2664,6 +2709,7 @@ function dropDefiance(draft, unitId) {
   return i < 0 ? void 0 : list5.splice(i, 1)[0];
 }
 function settleOne(draft, d) {
+  countDeed(draft, "defiance_tolerated");
   return [
     { type: "defiance_settled", unitId: d.unitId, tolerated: true },
     ...addRecord(draft, d.unitId, TUNING.impunity.defied[d.severity], "defiance_tolerated")
@@ -2692,8 +2738,13 @@ function captureInverse(draft, unitId, fn) {
     stress: unit.stress,
     record: recordOf(draft, unitId)
   } : void 0;
+  const deedsBefore = deedsOf(draft);
   const events = fn();
   const inverse = {};
+  const moved = {};
+  const deedsAfter = deedsOf(draft);
+  for (const k of Object.keys(deedsAfter)) if (deedsAfter[k] !== deedsBefore[k]) moved[k] = deedsAfter[k] - deedsBefore[k];
+  if (Object.keys(moved).length > 0) inverse.deeds = moved;
   const after = draft.relations[unitId];
   const unitAfter = draft.squad.find((u) => u.id === unitId);
   if (!before || !after || !unitAfter) return { events, inverse };
@@ -2748,6 +2799,7 @@ function registerThreat(draft, ctx2, unitId, event, src) {
 }
 function lapseThreat(draft, ctx2, threat) {
   removeThreat(draft, threat.id);
+  countDeed(draft, "threats_empty");
   const sev = measureSeverity(ctx2.registries, threat.measure);
   const severity = threat.measure === "leash" || sev !== null && sev >= 3 ? "major" : "moderate";
   return [
@@ -2778,6 +2830,7 @@ function enforce(draft, ctx2, unitId, e) {
   if (threat && keepsThreat(ctx2.registries, threat, e)) {
     removeThreat(draft, threat.id);
     removed.threat = threat;
+    countDeed(draft, "threats_kept");
     events.push({ type: "threat_kept", threatId: threat.id, unitId, measure: threat.measure });
   }
   return { events, removed };
@@ -2822,6 +2875,7 @@ function applyDisciplineEvent(draft, ctx2, unitId, event, src) {
       const threat = unitThreat(draft, unitId);
       if (threat) {
         removeThreat(draft, threat.id);
+        countDeed(draft, "threats_empty");
         events.push({ type: "threat_lapsed", threatId: threat.id, unitId, measure: threat.measure, by: "yield" });
       }
       break;
@@ -3344,11 +3398,11 @@ function rollLoot(draft, reg, rng, tableId, opts = {}) {
   const table = reg.lootTables.get(tableId);
   if (!table) throw new Error(`Unknown loot table "${tableId}"`);
   const entries = table.entries;
-  const total = entries.reduce((s, e) => s + e.weight, 0);
+  const total2 = entries.reduce((s, e) => s + e.weight, 0);
   const drops = [];
   const rolls = table.rolls + (opts.extraRolls ?? 0);
   for (let i = 0; i < rolls; i++) {
-    let r = rng.float() * total;
+    let r = rng.float() * total2;
     const entry = entries.find((e) => (r -= e.weight) < 0) ?? entries[entries.length - 1];
     if (entry.kind === "item") {
       const tplRarity = reg.items.get(entry.itemId)?.rarity;
@@ -3487,8 +3541,8 @@ function openDemand(draft, ctx2, unitId, opts = {}) {
   const last = [...draft.discipline?.demandLog ?? []].reverse().find((e) => e.unitId === unitId)?.templateId;
   if (pool.length > 1) pool = pool.filter((t) => t.id !== last);
   if (pool.length === 0) return null;
-  const total = pool.reduce((s, t) => s + Number(t.weight), 0);
-  let r = ctx2.rng.float() * total;
+  const total2 = pool.reduce((s, t) => s + Number(t.weight), 0);
+  let r = ctx2.rng.float() * total2;
   const tpl = pool.find((t) => (r -= Number(t.weight)) < 0) ?? pool[pool.length - 1];
   const stance = commandStance(draft, reg, unitId);
   const demand = {
@@ -3607,6 +3661,7 @@ function answerDemand(draft, ctx2, demandId, answer, opts = {}) {
       evidence: "a demand was granted",
       confidence: 1
     }));
+    countDeed(draft, "demands_granted");
     if (demand.impunityDriven) events.push(...addRecord(draft, unit.id, TUNING.demands.grantRecord, "demand_granted"));
   } else {
     const high = (impunityOf(draft, reg, unit.id)?.value ?? 0) >= TUNING.impunity.stance.impunityHigh;
@@ -3619,6 +3674,7 @@ function answerDemand(draft, ctx2, demandId, answer, opts = {}) {
       evidence: "a demand was refused",
       confidence: 1
     }, { scale: high ? TUNING.demands.refuseHighMult : 1 }));
+    countDeed(draft, "demands_refused");
     if (high) events.push(...holdDefiance(draft, unit.id, "moderate", "demand"));
     if (demand.owed) {
       events.push(...applyEventToUnit(draft, reg, unit.id, { type: "broke_promise", actor: "commander", targets: [unit.id], severity: "moderate", evidence: "an owed demand was refused", confidence: 1 }));
@@ -3638,6 +3694,105 @@ function demandDayStep(draft, ctx2) {
     events.push(...answerDemand(draft, ctx2, demand.id, "refuse", { expired: true }));
   }
   d.demandLog = d.demandLog.filter((e) => draft.day - e.day < TUNING.demands.weekDays);
+  return events;
+}
+
+// src/engine/discipline/reputation.ts
+var patternOf = (e) => e.pattern;
+var total = (deeds, list5) => (list5 ?? []).reduce((n, c) => n + (deeds[c] ?? 0), 0);
+function patternHolds(state, entry) {
+  const p = patternOf(entry);
+  const deeds = deedsOf(state);
+  const sum = total(deeds, p.sum);
+  if (sum < p.min) return false;
+  if (p.against === void 0) return true;
+  const against = total(deeds, p.against);
+  return sum / (sum + against) >= (p.minShare ?? 0);
+}
+function patternScore(state, entry) {
+  const p = patternOf(entry);
+  return total(deedsOf(state), p.sum) / p.min;
+}
+function reputationDayStep(draft, ctx2) {
+  const reg = ctx2.registries;
+  const events = [];
+  const rep = draft.commander.reputation;
+  const lookup = (id) => reg.reputations.get(id);
+  if (rep) {
+    for (const a of [...rep.active]) {
+      const e = lookup(a.id);
+      if (e && patternHolds(draft, e)) {
+        delete a.lapsedDay;
+        continue;
+      }
+      a.lapsedDay ??= draft.day;
+      if (draft.day - a.lapsedDay >= TUNING.reputation.leaveAfterDays && rep.pending?.replaces !== a.id) {
+        rep.active = rep.active.filter((x) => x.id !== a.id);
+        events.push({ type: "nickname_dropped", id: a.id });
+      }
+    }
+  }
+  if (rep?.pending) return events;
+  const active = rep?.active ?? [];
+  const holding = (id) => {
+    const e = lookup(id);
+    return e !== void 0 && patternHolds(draft, e);
+  };
+  const candidates3 = [...reg.reputations.values()].filter((e) => !active.some((a) => a.id === e.id) && patternHolds(draft, e)).sort((a, b) => patternScore(draft, b) - patternScore(draft, a));
+  for (const c of candidates3) {
+    const sameGroup = active.find((a) => lookup(a.id)?.group === c.group);
+    let replaces;
+    if (!sameGroup) {
+      if (active.length < TUNING.reputation.maxActive) replaces = void 0;
+      else {
+        const gone = active.find((a) => !holding(a.id));
+        if (!gone) continue;
+        replaces = gone.id;
+      }
+    } else {
+      const old = lookup(sameGroup.id);
+      if (holding(sameGroup.id) && old && patternScore(draft, c) <= patternScore(draft, old)) continue;
+      replaces = sameGroup.id;
+    }
+    draft.commander.reputation = { active: rep?.active ?? [], pending: { id: String(c.id), queuedDay: draft.day, ...replaces !== void 0 ? { replaces } : {} } };
+    events.push({ type: "nickname_pending", id: String(c.id), ...replaces !== void 0 ? { replaces } : {} });
+    break;
+  }
+  return events;
+}
+function introduceNickname(draft, ctx2, unitId) {
+  const reg = ctx2.registries;
+  const rep = draft.commander.reputation;
+  const pending2 = rep?.pending;
+  if (!rep || !pending2) throw new Error("No nickname is waiting.");
+  const scene = draft.scene;
+  if (!scene || scene.participants.length !== 1 || scene.participants[0] !== unitId) throw new Error("A nickname is introduced in a private scene with the unit who says it.");
+  const entry = reg.reputations.get(pending2.id);
+  if (!entry) {
+    delete rep.pending;
+    return [];
+  }
+  const name = String(entry.name);
+  rep.active = rep.active.filter((a) => a.id !== pending2.replaces);
+  rep.active.push({ id: pending2.id, name, sinceDay: draft.day, by: unitId });
+  delete rep.pending;
+  addFact(draft, { about: ["commander"], text: `The squad has started calling the commander "${name}".`, tags: ["reputation"], importance: 3, day: draft.day, knownBy: ["*"] });
+  const events = [];
+  const reactions = entry.effects?.valueReactions ?? [];
+  const flag = `nickname_reacted:${pending2.id}`;
+  for (const u of draft.squad.filter((x) => x.kind === "named" && isLiving(x))) {
+    const rel = draft.relations[u.id];
+    if (!rel || rel.flags.includes(flag)) continue;
+    rel.flags.push(flag);
+    for (const r of reactions) {
+      const v = u.values[r.axis];
+      if (r.sign === "+" ? !(v > 0) : !(v < 0)) continue;
+      applyRelationDelta(draft, u.id, "trust", r.weight * TUNING.reputation.trustPerWeight, `nickname:${pending2.id}`);
+      applyRelationDelta(draft, u.id, "affinity", r.weight * TUNING.reputation.affinityPerWeight, `nickname:${pending2.id}`);
+    }
+    events.push(...evaluateAutomatic(draft, reg, u.id));
+  }
+  events.push({ type: "nickname_given", id: pending2.id, name, unitId, ...pending2.replaces !== void 0 ? { replaced: pending2.replaces } : {} });
   return events;
 }
 
@@ -3722,6 +3877,7 @@ function disciplineDayStep(draft, ctx2) {
   events.push(...sabotageDayStep(draft, ctx2));
   events.push(...expireRestrictions(draft));
   events.push(...demandDayStep(draft, ctx2));
+  events.push(...reputationDayStep(draft, ctx2));
   return events;
 }
 
@@ -3772,6 +3928,7 @@ function revertInverse(draft, ctx2, unitId, applicationId, inv) {
     const delta = inv.resources?.[resource];
     if (delta) draft.resources[resource] = Math.max(0, draft.resources[resource] - delta);
   }
+  for (const [counter, n] of Object.entries(inv.deeds ?? {})) countDeed(draft, counter, -n);
   if (applicationId !== null && inv.restrictionIds) removeRestrictions(draft, (r) => r.applicationId === applicationId);
   const d = disciplineOf(draft);
   if (inv.defiance && !d.defiance.some((x) => x.unitId === unitId)) d.defiance.push(structuredClone(inv.defiance));
@@ -4607,6 +4764,7 @@ function bookUse(draft, ctx2, unitId, kind, context, outcome) {
     draft.leash.authorizationsLeft = Math.max(0, draft.leash.authorizationsLeft - 1);
     events.push({ type: "leash_changed", amount: -1, left: draft.leash.authorizationsLeft });
   }
+  if (outcome === "done") countDeed(draft, kind === "compel" ? "leash_compel" : kind === "suppress" ? "leash_suppress" : "leash_terminate");
   if (outcome === "done") events.push(...enforce(draft, ctx2, unitId, { measure: "leash", severity: 4, recordDelta: TUNING.impunity.leashEnforced }).events);
   return events;
 }
@@ -5190,12 +5348,12 @@ function unitStatSteps(state, reg, unit, stat2) {
   if (!role) throw new Error(`Unknown role "${unit.roleId}" (unit ${unit.id})`);
   const growth = role.growth ?? ZERO;
   const steps = [];
-  let total = unit.baseStats[stat2];
-  steps.push({ source: "role", label: "Role base", total });
+  let total2 = unit.baseStats[stat2];
+  steps.push({ source: "role", label: "Role base", total: total2 });
   const grown = Math.floor(growth[stat2] * (unit.level - 1));
   if (grown !== 0) {
-    total += grown;
-    steps.push({ source: "level", label: `Level ${unit.level}`, total });
+    total2 += grown;
+    steps.push({ source: "level", label: `Level ${unit.level}`, total: total2 });
   }
   let pct2 = 0;
   for (const { inst } of wornItems(state, reg, unit)) {
@@ -5203,34 +5361,34 @@ function unitStatSteps(state, reg, unit, stat2) {
     if (!it) continue;
     const flat = it.stats[stat2] ?? 0;
     if (flat !== 0) {
-      total += flat;
-      steps.push({ source: "gear", label: `[[items:${inst.itemId}]]`, total });
+      total2 += flat;
+      steps.push({ source: "gear", label: `[[items:${inst.itemId}]]`, total: total2 });
     }
     pct2 += it.statPct[stat2] ?? 0;
   }
-  const scaled2 = Math.round(total * (1 + pct2 / 100));
-  if (scaled2 !== total) {
-    total = scaled2;
-    steps.push({ source: "gear", label: "Gear bonuses", total });
+  const scaled2 = Math.round(total2 * (1 + pct2 / 100));
+  if (scaled2 !== total2) {
+    total2 = scaled2;
+    steps.push({ source: "gear", label: "Gear bonuses", total: total2 });
   }
   if (stat2 === "spd") {
     const penalty = armorSpdPenalty(state, reg, unit);
     if (penalty !== 0) {
-      total += penalty;
-      steps.push({ source: "armor", label: "Armor weight", total });
+      total2 += penalty;
+      steps.push({ source: "armor", label: "Armor weight", total: total2 });
     }
   }
   const stacks = Math.min(unit.injuries.length, TUNING.combat.injuryMaxStacks);
   const factor = 1 + TUNING.combat.injuryStatPct * stacks / 100;
-  const injured = Math.round(total * factor);
-  if (stacks > 0 && injured !== total) {
-    total = injured;
-    steps.push({ source: "injury", label: `Injuries \xD7${stacks}`, total });
+  const injured = Math.round(total2 * factor);
+  if (stacks > 0 && injured !== total2) {
+    total2 = injured;
+    steps.push({ source: "injury", label: `Injuries \xD7${stacks}`, total: total2 });
   }
   const floor = stat2 === "crit" ? 0 : 1;
-  if (total < floor) {
-    total = floor;
-    steps.push({ source: "floor", label: "Minimum", total });
+  if (total2 < floor) {
+    total2 = floor;
+    steps.push({ source: "floor", label: "Minimum", total: total2 });
   }
   return steps;
 }
@@ -6520,11 +6678,11 @@ function generateEncounter(state, reg, rng, input) {
     weighted.push({ id, weight: w * FREQUENCY[cat.frequency] });
   }
   if (weighted.length === 0) throw new Error("The enemy table has no known category with enemies.");
-  const total = weighted.reduce((s, c) => s + c.weight, 0);
+  const total2 = weighted.reduce((s, c) => s + c.weight, 0);
   const affixPool = [...reg.affixes.values()].filter((a) => a.appliesTo === "enemy" && (a.id !== "elite" || danger >= 3)).map((a) => a.id);
   const maxAffixes = Math.min(2, danger - 1);
   const draw2 = () => {
-    let r = rng.float() * total;
+    let r = rng.float() * total2;
     const cat = weighted.find((c) => (r -= c.weight) < 0) ?? weighted[weighted.length - 1];
     const enemyId = rng.pick(byCategory.get(cat.id));
     const affixes = [];
@@ -6621,6 +6779,7 @@ function finalizeCombat(draft, reg, rng, outcome) {
       unit.status = "dead";
       unit.currentHp = 0;
       deaths.push(unit.id);
+      countDeed(draft, "grunts_lost");
       continue;
     }
     unit.currentHp = 1;
@@ -7903,7 +8062,7 @@ function validateDirectorOutput(state, reg, raw, opts) {
     }
     output.threadUpdates.push(update);
   });
-  let total = 0;
+  let total2 = 0;
   const perClock = /* @__PURE__ */ new Map();
   list5("clockAdvances").forEach((c, i) => {
     const part = `clockAdvances[${i}]`;
@@ -7915,9 +8074,9 @@ function validateDirectorOutput(state, reg, raw, opts) {
     if (c.by !== 1 && c.by !== 2) return reject(part, "by must be exactly 1 or 2");
     const by = c.by;
     if ((perClock.get(clock.id) ?? 0) + by > TUNING.director.maxClockPerClock) return reject(part, `at most ${TUNING.director.maxClockPerClock} on one clock`);
-    if (total + by > TUNING.director.maxClockTotal) return reject(part, `at most ${TUNING.director.maxClockTotal} clock segments in all`);
+    if (total2 + by > TUNING.director.maxClockTotal) return reject(part, `at most ${TUNING.director.maxClockTotal} clock segments in all`);
     perClock.set(clock.id, (perClock.get(clock.id) ?? 0) + by);
-    total += by;
+    total2 += by;
     output.clockAdvances.push({ clockId: clock.id, by, reason: plain(c.reason, TUNING.director.reasonMax) });
   });
   return { output, rejected };
@@ -13613,8 +13772,30 @@ var DemandTemplateSchema = BaseEntrySchema.extend({
   }).strict(),
   weight: external_exports.number().min(0.1).max(20)
 }).strict();
+var deedCounter = external_exports.enum(DEED_COUNTERS);
+var ReputationSchema = BaseEntrySchema.extend({
+  name: str2,
+  /** One nickname per group is active at a time. */
+  group: str2,
+  description: str2.max(DESCRIPTION_MAX),
+  pattern: external_exports.object({
+    sum: external_exports.array(deedCounter).min(1),
+    min: int2.min(1),
+    against: external_exports.array(deedCounter).min(1).optional(),
+    /** With `against`: `Σ sum / (Σ sum + Σ against)` must reach this. */
+    minShare: external_exports.number().min(0).max(1).optional()
+  }).strict(),
+  effects: external_exports.object({
+    impunityBase: external_exports.number().min(-40).max(40).optional(),
+    directive: str2.max(200).optional(),
+    valueReactions: external_exports.array(external_exports.object({ axis: valueAxis, sign: external_exports.enum(["+", "-"]), weight: int2.min(-3).max(3) }).strict()).optional()
+  }).strict()
+}).strict().superRefine((r, ctx2) => {
+  if (r.pattern.minShare !== void 0 && r.pattern.against === void 0) ctx2.addIssue({ code: "custom", path: ["pattern", "minShare"], message: "minShare needs against" });
+});
 Object.assign(registrySchemas, {
   commandStances: CommandStanceSchema,
+  reputations: ReputationSchema,
   demandTemplates: DemandTemplateSchema,
   punishments: PunishmentSchema,
   worldOptions: WorldOptionSchema,
@@ -13653,7 +13834,8 @@ var DESCRIBED_REGISTRIES = [
   // P9
   "commandStances",
   "punishments",
-  "demandTemplates"
+  "demandTemplates",
+  "reputations"
 ];
 function withDescription(schema) {
   return schema.superRefine((entry, ctx2) => {
@@ -14209,8 +14391,8 @@ function candidates2(reg, region, layer, danger) {
 function draw(rng, list5, used, onlyKind) {
   const open2 = list5.filter((c) => (c.maxPerMap === void 0 || (used.get(c.id) ?? 0) < c.maxPerMap) && (onlyKind === void 0 || c.kind === onlyKind));
   if (open2.length === 0) return null;
-  const total = open2.reduce((s, c) => s + c.weight, 0);
-  let r = rng.float() * total;
+  const total2 = open2.reduce((s, c) => s + c.weight, 0);
+  let r = rng.float() * total2;
   const pick2 = open2.find((c) => (r -= c.weight) < 0) ?? open2[open2.length - 1];
   return pick2.id;
 }
@@ -14449,9 +14631,9 @@ function startExpedition(draft, ctx2, p) {
 }
 function resolveUnknownType(reg, rng, typeId) {
   const weights = Object.entries(reg.nodeTypes.get(typeId)?.resolvesTo ?? {}).filter(([id, w]) => reg.nodeTypes.has(id) && w > 0);
-  const total = weights.reduce((s, [, w]) => s + w, 0);
-  if (total <= 0) return null;
-  let r = rng.float() * total;
+  const total2 = weights.reduce((s, [, w]) => s + w, 0);
+  if (total2 <= 0) return null;
+  let r = rng.float() * total2;
   return (weights.find(([, w]) => (r -= w) < 0) ?? weights[weights.length - 1])[0];
 }
 var describeLoot = (drops, reg) => {
@@ -15087,6 +15269,10 @@ registerAction("demand/deliver", (draft, payload) => {
 registerAction("demand/answer", (draft, payload, ctx2) => {
   if (!isObj16(payload) || typeof payload.demandId !== "string" || payload.answer !== "grant" && payload.answer !== "refuse") throw new Error('demand/answer needs { demandId, answer: "grant" | "refuse" }');
   return answerDemand(draft, ctx2, payload.demandId, payload.answer);
+});
+registerAction("reputation/introduce", (draft, payload, ctx2) => {
+  if (!isObj16(payload) || typeof payload.unitId !== "string") throw new Error("reputation/introduce needs { unitId }");
+  return introduceNickname(draft, ctx2, payload.unitId);
 });
 
 // src/engine/dilemma/effects.ts
@@ -16459,8 +16645,8 @@ function refusalReason(state, reg, unitId) {
   const stateSynergies = reg.relationshipStates.get(rel?.stateId ?? "")?.unlocks?.synergies ?? [];
   const fromState = Math.max(0, ...stateSynergies.map((id) => refusalOf(reg, id)));
   const fromBand = band === "steady" ? 0 : refusalOf(reg, TUNING.disloyalty.bandSynergy[band]);
-  const total = rawRefusalChance(state, reg, unitId);
-  if (total > Math.max(fromState, fromBand) + 1e-9) return "her defect resists orders";
+  const total2 = rawRefusalChance(state, reg, unitId);
+  if (total2 > Math.max(fromState, fromBand) + 1e-9) return "her defect resists orders";
   if (fromState > 0 && fromState >= fromBand) return STATE_REASON[rel?.stateId ?? ""] ?? "she resents the commander";
   if (band === "breaking") return "she no longer trusts the commander";
   if (band === "wavering") return "she openly doubts the commander's authority";
@@ -22752,12 +22938,12 @@ function renderSceneScreen(host, ctx2) {
         const idx = animating;
         const msg = idx === null ? void 0 : messages.find((m) => m.index === idx) ?? controller.transcript().find((m) => m.index === idx);
         if (idx === null || !msg) return stopTyping();
-        const total = visibleLength(msg.text);
-        const shown = Math.min(total, Math.floor((Date.now() - started) * ctx2.settings().typingSpeed / 1e3));
+        const total2 = visibleLength(msg.text);
+        const shown = Math.min(total2, Math.floor((Date.now() - started) * ctx2.settings().typingSpeed / 1e3));
         progress.set(idx, shown);
         const el = log.querySelector(`.alius-line[data-index="${idx}"] .alius-text`);
         if (el) fillText(el, msg.text, shown);
-        if (shown >= total) {
+        if (shown >= total2) {
           progress.delete(idx);
           stopTyping();
         }
@@ -24007,8 +24193,8 @@ var statProvider = (stat2) => (subject, env) => {
   const unit = typeof subject.data.unitId === "string" ? state.squad.find((u) => u.id === subject.data.unitId) : void 0;
   if (!unit) return null;
   const steps = unitStatSteps(state, env.registries, unit, stat2);
-  const total = unitStats(state, env.registries, unit)[stat2];
-  const lines = [`${unit.displayName}: ${stat2.toUpperCase()} ${total}`];
+  const total2 = unitStats(state, env.registries, unit)[stat2];
+  const lines = [`${unit.displayName}: ${stat2.toUpperCase()} ${total2}`];
   steps.forEach((step, i) => lines.push(i === 0 ? `${step.label} ${step.total}` : `${step.label} \u2192 ${step.total}`));
   const combat2 = combatLines(state, env, unit, stat2);
   if (combat2.length > 0) lines.push("In combat:", ...combat2);

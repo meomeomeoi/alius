@@ -82,6 +82,8 @@ export const TUNING = Object.freeze({
     sabotage: Object.freeze({ chancePerDay: 0.12, cooldownDays: 3, supplies: 2, credits: 10, gearChance: 0.5, gearSupplies: 2 }),
     applicationsMax: 20,
   }),
+  /** P9: the squad's nicknames for the commander. A unit reacts once: Trust `trustPerWeight × weight`, Affinity `affinityPerWeight × weight`. */
+  reputation: Object.freeze({ maxActive: 2, trustPerWeight: 2, affinityPerWeight: 3, leaveAfterDays: 7 }),
   /** P9: demands (draft balance values). `baseChance` is the daily chance at Impunity 50 on a guarded world with a stance weight of 1. */
   demands: Object.freeze({
     baseChance: 0.04, maxChance: 0.5, perWeek: 2, weekDays: 7, maxOpen: 2, expiresInDays: 2, grantRecord: 4, refuseHighMult: 1.5, textMax: 240,
