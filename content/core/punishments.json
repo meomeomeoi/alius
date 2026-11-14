@@ -1,0 +1,132 @@
+[
+  {
+    "id": "verbal",
+    "label": "Reprimand",
+    "description": "A formal dressing-down, on the record. It costs nothing but pride, and it shows the commander is paying attention.",
+    "severity": 1,
+    "impunityDelta": -8,
+    "deltas": {
+      "trust": 0,
+      "affinity": -2,
+      "stress": 3
+    },
+    "sideEffects": [],
+    "perception": [],
+    "dispositionScaling": "loss"
+  },
+  {
+    "id": "revoke_rations",
+    "label": "Rations revoked",
+    "description": "Her rations are cut for the day and the supply goes back to the stores. It stings most for a soldier who lives for her meals.",
+    "severity": 2,
+    "impunityDelta": -10,
+    "deltas": {
+      "trust": -2,
+      "affinity": -4,
+      "stress": 6
+    },
+    "sideEffects": [
+      {
+        "type": "resource",
+        "resource": "supplies",
+        "amount": 1
+      }
+    ],
+    "perception": [
+      {
+        "tag": "food_love",
+        "multiplier": 1.5
+      }
+    ],
+    "dispositionScaling": "loss"
+  },
+  {
+    "id": "revoke_leave",
+    "label": "Leave revoked",
+    "description": "No free time with anyone for two days, apart from talking and the medbay.",
+    "severity": 2,
+    "impunityDelta": -12,
+    "deltas": {
+      "trust": -2,
+      "affinity": -5,
+      "stress": 5
+    },
+    "sideEffects": [
+      {
+        "type": "no_leave",
+        "days": 2
+      }
+    ],
+    "perception": [],
+    "dispositionScaling": "loss"
+  },
+  {
+    "id": "extra_duty",
+    "label": "Extra duty",
+    "description": "She works a slot for the base instead of resting, and the base is paid five credits for it.",
+    "severity": 2,
+    "impunityDelta": -12,
+    "deltas": {
+      "trust": -1,
+      "affinity": -3,
+      "stress": 8
+    },
+    "sideEffects": [
+      {
+        "type": "duty"
+      },
+      {
+        "type": "resource",
+        "resource": "credits",
+        "amount": 5
+      }
+    ],
+    "perception": [],
+    "dispositionScaling": "loss"
+  },
+  {
+    "id": "bench",
+    "label": "Benched",
+    "description": "She is left out of the next expedition. It hurts a soldier who lives for combat twice as much.",
+    "severity": 3,
+    "impunityDelta": -15,
+    "deltas": {
+      "trust": -4,
+      "affinity": -5,
+      "stress": 6
+    },
+    "sideEffects": [
+      {
+        "type": "bench"
+      }
+    ],
+    "perception": [
+      {
+        "tag": "lives_for_combat",
+        "multiplier": 2
+      }
+    ],
+    "dispositionScaling": "loss"
+  },
+  {
+    "id": "brig",
+    "label": "Brig",
+    "description": "She is locked up for one to three days: no scenes, no companions, no expeditions. The heaviest consequence short of the Leash.",
+    "severity": 4,
+    "impunityDelta": -20,
+    "deltas": {
+      "trust": -6,
+      "affinity": -8,
+      "stress": 12
+    },
+    "sideEffects": [
+      {
+        "type": "confine",
+        "minDays": 1,
+        "maxDays": 3
+      }
+    ],
+    "perception": [],
+    "dispositionScaling": "loss"
+  }
+]

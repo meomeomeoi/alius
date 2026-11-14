@@ -776,6 +776,7 @@ describe('core content pack: P6 content', () => {
     expect(r.relationshipStates.get('dependent')!.dependency).toBe(15);
     expect(r.flags.get('knows_crime')!.leverage).toBe(true);
     expect(r.imageConsistency.get('slight_build')!.offImage).toContain('commander_enforced');
-    for (const t of ['punishments', 'demandTemplates', 'reputations'] as const) expect(r[t].size, t).toBe(0);
+    expect(r.punishments.size).toBe(6);
+    for (const t of ['demandTemplates', 'reputations'] as const) expect(r[t].size, t).toBe(0);
   });
 });

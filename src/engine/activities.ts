@@ -9,6 +9,7 @@ import type { CampaignState, Unit } from './state/types';
 import { addBodyXp, bodyGrowthMult } from './commander/profile';
 import { traitEffects } from './commander/traits';
 import { TUNING } from './tuning';
+import { restrictionReason } from './discipline/restrictions';
 
 export interface ActivityRequest {
   activityId: string;
@@ -97,7 +98,7 @@ export function checkActivity(state: CampaignState, reg: Registries, request: un
     if (mode === 'none') return `${name} cannot be done with a companion.`;
     const c = state.squad.find((u) => u.id === req.companionId);
     if (!c || !isLiving(c)) return `Companion "${req.companionId}" is not available.`;
-    return null;
+    return restrictionReason(state, c.id, 'companion', req.activityId); // P9: the brig, no leave, extra duty
   }
   if (mode === 'required') return `${name} needs a companion.`;
 

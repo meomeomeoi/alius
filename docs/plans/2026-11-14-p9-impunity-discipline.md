@@ -387,14 +387,14 @@ reading without raw values: lines `Stance: Defiant-loyal`, `Impunity: high`, the
 - Produces: `PunishmentSchema` and `PunishmentEffectSchema` (the vocabulary and table of the rulings section; `confine.minDays ≤ maxDays`, 1…7; `perception[].multiplier` 0.5…3; at most one of `confine` / `bench` / `duty` / `no_leave` per entry); `punishments` joins `REGISTRY_NAMES` and `DESCRIBED_REGISTRIES`; `restrictionReason(state, unitId, use: 'scene' | 'companion' | 'expedition', activityId?: string): string | null`; `addRestriction(draft, r): EngineEvent[]`; `removeRestrictions(draft, pick): Restriction[]`; `expireRestrictions(draft): EngineEvent[]` (day step, `restriction_ended`); `dutySlot(state): { day: number; slot: Slot }`.
 - Hook points: `scene/start` (participant), `checkActivity` (companion; `talk` and `medbay` pass `no_leave`), `expedition/start` check (party) and, on a successful start, removal of every `benched` restriction of units not in the party.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 schema: the six core entries parse; `two exclusive side effects are rejected`; `an unknown side effect type is rejected`. Reasons (exact): confined `{Name} is in the brig until day {n}.` · duty `{Name} is on extra duty this slot.` · no_leave `{Name} has no leave until day {n}.` · benched `{Name} is benched for the next expedition.`
 `a confined unit cannot join a scene, be a companion or leave on a run until the day after untilDay`; `no_leave blocks rest and mess with her and allows talk and medbay`; `benched ends when a run starts without her and stays when the start is refused`; `duty covers the current slot, or the next one while a scene holds the slot` (applied in the evening with a scene open → next day's morning); `expired restrictions are dropped by the day step`; `removeFromService forgets her` (restriction, threat, held defiance gone) — Review Focus 3.
 
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** `npm test` → PASS.
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** `npm test` → PASS.
 
-- [ ] **Step 5: Commit** `feat(content): punishments registry and unit restrictions`
+- [x] **Step 5: Commit** `feat(content): punishments registry and unit restrictions`
 
 ---
 

@@ -20,6 +20,7 @@ import { TUNING } from '../tuning';
 import { familyEnabled } from '../worldOptions';
 import { applyWorldEffects } from './effects';
 import { openRequest } from './director';
+import { removeRestrictions, restrictionReason } from '../discipline/restrictions';
 import { gearFault, GEAR_FAULT_LOG } from '../discipline/sabotage';
 import { missionStartCheck } from '../loyalty/desertion';
 import { buildMission, completeMission, releaseMission } from './missions';
@@ -129,6 +130,8 @@ export function checkExpedition(state: CampaignState, reg: Registries, p: StartE
     if (!isLiving(u) || u.status !== 'active') return `${u.displayName} is not available (${u.status}).`;
     if (u.breakdown) return `${u.displayName} is in a breakdown.`;
     if (!state.roster.activeIds.includes(id)) return `${u.displayName} is not on the active roster.`;
+    const held = restrictionReason(state, id, 'expedition'); // P9: the brig, a bench, extra duty
+    if (held) return held;
   }
   const formation = formationProblem(ids, p.formation);
   if (formation) return formation;
@@ -196,6 +199,8 @@ export function startExpedition(draft: CampaignState, ctx: EngineCtx, p: StartEx
   };
   addLog(exp, 'start', `Departed for ${regionName(region)}: ${mission.title}.`);
   draft.expedition = exp;
+  // P9: a bench lasts until a run leaves without the unit
+  removeRestrictions(draft, (r) => r.kind === 'benched' && !p.unitIds.includes(r.unitId));
   // P9: a gear fault a covert unit left behind may bite now (it is cleared either way)
   const faults = gearFault(draft, ctx);
   if (faults.length > 0) addLog(exp, 'event', GEAR_FAULT_LOG);

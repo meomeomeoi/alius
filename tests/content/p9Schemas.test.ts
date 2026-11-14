@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CommandStanceSchema, CrimeSchema, DispositionLevelSchema, FlagSchema, RelationshipStateSchema } from '../../src/content/schemas';
+import { CommandStanceSchema, CrimeSchema, DispositionLevelSchema, FlagSchema, PunishmentSchema, RelationshipStateSchema } from '../../src/content/schemas';
 import { loadPacks } from '../../src/content/loader';
 import { readFile } from 'node:fs/promises';
 
@@ -65,5 +65,42 @@ describe('command stance loader check', () => {
     });
     expect(errors.map((e) => e.message).join('\n')).toMatch(/no command stance "fearful"/);
     expect(errors.map((e) => e.message).join('\n')).toMatch(/no command stance "indifferent"/);
+  });
+});
+
+describe('punishments (P9)', () => {
+  const entry = {
+    id: 'brig', label: 'Brig', description: 'Locked up.', severity: 4, impunityDelta: -20, deltas: { trust: -6, affinity: -8, stress: 12 },
+    sideEffects: [{ type: 'confine', minDays: 1, maxDays: 3 }], perception: [{ tag: 'lives_for_combat', multiplier: 2 }], dispositionScaling: 'loss',
+  };
+  it('the six core entries parse and come in ladder order', async () => {
+    const { registries, errors } = await loadPacks(['content/core'], async (p) => JSON.parse(await readFile(p, 'utf8')));
+    expect(errors).toEqual([]);
+    expect([...registries.punishments.keys()]).toEqual(['verbal', 'revoke_rations', 'revoke_leave', 'extra_duty', 'bench', 'brig']);
+    for (const e of registries.punishments.values()) expect(PunishmentSchema.safeParse(e).success, e.id).toBe(true);
+  });
+  it('a valid entry parses', () => {
+    expect(PunishmentSchema.safeParse(entry).success).toBe(true);
+    expect(PunishmentSchema.safeParse({ ...entry, sideEffects: [], perception: [] }).success).toBe(true);
+  });
+  it('two exclusive side effects are rejected', () => {
+    expect(PunishmentSchema.safeParse({ ...entry, sideEffects: [{ type: 'confine', minDays: 1, maxDays: 2 }, { type: 'bench' }] }).success).toBe(false);
+    expect(PunishmentSchema.safeParse({ ...entry, sideEffects: [{ type: 'no_leave', days: 2 }, { type: 'duty' }] }).success).toBe(false);
+    expect(PunishmentSchema.safeParse({ ...entry, sideEffects: [{ type: 'duty' }, { type: 'resource', resource: 'credits', amount: 5 }] }).success).toBe(true);
+  });
+  it('an unknown side effect type is rejected, and so are a strange field and bad days', () => {
+    expect(PunishmentSchema.safeParse({ ...entry, sideEffects: [{ type: 'teleport' }] }).success).toBe(false);
+    expect(PunishmentSchema.safeParse({ ...entry, sideEffects: [{ type: 'bench', days: 2 }] }).success).toBe(false);
+    expect(PunishmentSchema.safeParse({ ...entry, sideEffects: [{ type: 'confine', minDays: 3, maxDays: 1 }] }).success).toBe(false);
+    expect(PunishmentSchema.safeParse({ ...entry, sideEffects: [{ type: 'confine', minDays: 0, maxDays: 3 }] }).success).toBe(false);
+    expect(PunishmentSchema.safeParse({ ...entry, sideEffects: [{ type: 'confine', minDays: 1, maxDays: 8 }] }).success).toBe(false);
+    expect(PunishmentSchema.safeParse({ ...entry, sideEffects: [{ type: 'no_leave', days: 8 }] }).success).toBe(false);
+  });
+  it('severity 1 to 4, a perception multiplier 0.5 to 3, a known scaling', () => {
+    expect([0, 5, 2.5].map((severity) => PunishmentSchema.safeParse({ ...entry, severity }).success)).toEqual([false, false, false]);
+    expect([0.4, 3.1].map((multiplier) => PunishmentSchema.safeParse({ ...entry, perception: [{ tag: 'x', multiplier }] }).success)).toEqual([false, false]);
+    expect([0.5, 3].map((multiplier) => PunishmentSchema.safeParse({ ...entry, perception: [{ tag: 'x', multiplier }] }).success)).toEqual([true, true]);
+    expect(PunishmentSchema.safeParse({ ...entry, dispositionScaling: 'none' }).success).toBe(true);
+    expect(PunishmentSchema.safeParse({ ...entry, dispositionScaling: 'double' }).success).toBe(false);
   });
 });

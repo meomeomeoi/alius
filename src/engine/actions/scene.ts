@@ -3,7 +3,7 @@ import { registerAction } from '../dispatch';
 import { isLiving } from '../economy';
 import { addChronicle, addFact, applyCompaction, nextId, revealCrime } from '../memory';
 import { applyIntents } from '../relations/apply';
-import { settleDefiance } from '../discipline';
+import { restrictionReason, settleDefiance } from '../discipline';
 import { installRelationAccounting } from '../relations/gain';
 import { evaluateAutomatic, pushHistory } from '../relations/graph';
 import { validateIntents } from '../relations/intents';
@@ -60,6 +60,8 @@ registerAction('scene/start', (draft, payload, ctx) => {
     const u = draft.squad.find((x) => x.id === id);
     if (!u || !isLiving(u)) throw new Error(`Participant "${id}" is not available.`);
     if (u.kind === 'grunt') throw new Error(`${u.displayName} is a grunt without a character card; grunts cannot take part in scenes.`);
+    const held = restrictionReason(draft, id, 'scene'); // P9: the brig and extra duty
+    if (held) throw new Error(held);
   }
   const participants = ids as string[];
   const pending = draft.calendar.pendingScene;

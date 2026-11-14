@@ -57,6 +57,12 @@ describe('no pronoun for the commander in content', () => {
     expect(texts.filter(([, t]) => COMMANDER_PRONOUN.test(t) || /commander[^.]*\btheir\b/i.test(t)).map(([where]) => where)).toEqual([]);
   });
 
+  it('punishments (P9)', () => {
+    const texts = fields('punishments', ['label', 'description']);
+    expect(texts).toHaveLength(12);
+    expect(texts.filter(([, t]) => COMMANDER_PRONOUN.test(t) || /commander[^.]*\btheir\b/i.test(t)).map(([where]) => where)).toEqual([]);
+  });
+
   it('crimes: the commander is of any gender (summary, perk and flaw texts)', () => {
     const texts = [...reg.crimes.values()].flatMap((c): Array<[string, string]> => [
       [`crimes:${c.id}.summary`, String(c.summary ?? '')],

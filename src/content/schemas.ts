@@ -1297,8 +1297,47 @@ export const CommandStanceSchema = BaseEntrySchema.extend({
   demandWeight: z.number().min(0).max(3),
 }).strict();
 
+/** What a punishment does besides moving numbers. The vocabulary is closed; the engine reads effects by type, never by id. */
+export const PunishmentEffectSchema = z.discriminatedUnion('type', [
+  /** The unit is locked up: no scene, companion or expedition for a number of days the commander picks in this range. */
+  z.object({ type: z.literal('confine'), minDays: int.min(1).max(7), maxDays: int.min(1).max(7) }).strict(),
+  /** No leave: she cannot be the companion of an activity except `talk` and `medbay`. */
+  z.object({ type: z.literal('no_leave'), days: int.min(1).max(7) }).strict(),
+  /** Excluded from the next expedition. */
+  z.object({ type: z.literal('bench') }).strict(),
+  /** Works one slot: no scene, companion or expedition during it. */
+  z.object({ type: z.literal('duty') }).strict(),
+  /** The base gains (or pays) a resource. */
+  z.object({ type: z.literal('resource'), resource: z.enum(['credits', 'supplies', 'plyx']), amount: int }).strict(),
+]);
+export type PunishmentEffect = z.infer<typeof PunishmentEffectSchema>;
+
+const EXCLUSIVE_EFFECTS: readonly string[] = ['confine', 'no_leave', 'bench', 'duty'];
+
+export const PunishmentSchema = BaseEntrySchema.extend({
+  label: str,
+  description: str.max(DESCRIPTION_MAX),
+  severity: int.min(1).max(4),
+  /** Added to her Impunity record (negative: it deters). */
+  impunityDelta: int.min(-40).max(0),
+  deltas: z.object({ trust: z.number(), affinity: z.number(), stress: z.number() }).strict(),
+  sideEffects: z.array(PunishmentEffectSchema),
+  /** A tag among her likes, dislikes or triggers multiplies the deltas and the deterrence (the highest match wins). */
+  perception: z.array(z.object({ tag: str, multiplier: z.number().min(0.5).max(3) }).strict()),
+  /** `none` skips the disposition's loss multiplier (a cost the world cannot soften or sharpen). */
+  dispositionScaling: z.enum(['loss', 'none']),
+}).strict().superRefine((p, ctx) => {
+  if (p.sideEffects.filter((e) => EXCLUSIVE_EFFECTS.includes(e.type)).length > 1) {
+    ctx.addIssue({ code: 'custom', path: ['sideEffects'], message: 'at most one of confine, no_leave, bench and duty per punishment' });
+  }
+  p.sideEffects.forEach((e, i) => {
+    if (e.type === 'confine' && e.minDays > e.maxDays) ctx.addIssue({ code: 'custom', path: ['sideEffects', i], message: 'minDays must not exceed maxDays' });
+  });
+});
+
 Object.assign(registrySchemas, {
   commandStances: CommandStanceSchema,
+  punishments: PunishmentSchema,
   worldOptions: WorldOptionSchema, dispositionLevels: DispositionLevelSchema, stanceEffects: StanceEntrySchema, worldPresets: WorldPresetSchema,
 });
 
@@ -1312,7 +1351,7 @@ export const DESCRIBED_REGISTRIES = [
   // P8
   'worldOptions', 'dispositionLevels', 'worldPresets',
   // P9
-  'commandStances',
+  'commandStances', 'punishments',
 ] as const satisfies readonly RegistryName[];
 
 /** Adds the optional `description` rule to a registry schema without changing its shape. */

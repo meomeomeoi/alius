@@ -18,7 +18,7 @@ export const REGISTRY_NAMES = [
   'commanderTraits', 'tastes', 'presence', 'imageConsistency',
   // P8
   'worldOptions', 'dispositionLevels', 'stanceEffects', 'worldPresets',
-  // P9 (`punishments`, `demandTemplates` and `reputations` get their schemas and files in later tasks)
+  // P9 (`demandTemplates` and `reputations` get their schemas and files in chunk (c))
   'commandStances', 'punishments', 'demandTemplates', 'reputations',
 ] as const;
 
