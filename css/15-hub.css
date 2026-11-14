@@ -122,16 +122,6 @@
   padding: 2px 6px 6px;
 }
 
-/* a narrow cross-section: the label keeps a readable size and the rooms their touch height */
-@container hub (max-width: 480px) {
-  #alius-shell .alius-room-label {
-    font-size: 0.65em;
-    letter-spacing: 1px;
-    min-height: 1.8em;
-  }
-  #alius-shell .alius-hub-stage { min-height: 360px; }
-}
-
 /* markers */
 #alius-shell .alius-marker {
   display: inline-flex;
@@ -185,7 +175,7 @@
   left: clamp(0px, var(--panel-x, 0%), calc(100% - min(420px, 92%)));
   top: var(--panel-y, 10%);
   width: min(420px, 92%);
-  max-height: 90%;
+  max-height: calc(100% - var(--panel-y, 10%)); /* scrolls inside the cross-section instead of running past it */
   overflow: auto;
   pointer-events: auto;
   background: var(--alius-bg);
@@ -280,4 +270,21 @@
 
 #alius-shell .alius-end {
   padding: 6px 10px;
+}
+
+/* a narrow cross-section: the label keeps a readable size and the rooms their touch height */
+@container hub (max-width: 480px) {
+  #alius-shell .alius-room-label {
+    font-size: 0.65em;
+    letter-spacing: 1px;
+    min-height: 1.8em;
+  }
+  #alius-shell .alius-hub-stage { min-height: 420px; }
+  /* the room panel fills the cross-section so its buttons are reachable without scrolling past the description */
+  #alius-shell .alius-room-panel {
+    left: 0;
+    top: 0;
+    width: 100%;
+    max-height: 100%;
+  }
 }
