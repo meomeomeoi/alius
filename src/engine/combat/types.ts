@@ -141,6 +141,9 @@ export interface Mod {
   source: string;
 }
 
+/** Who an attacking breakdown goes for. The last three come only from the unit's disposition (P8), never from a defect. */
+export type BreakdownTarget = 'nearest_enemy' | 'strongest_enemy' | 'nearest_any' | 'nearest_ally' | 'self' | 'allies_commander' | 'everyone';
+
 export type BreakdownPolicy =
   | 'skip' | 'repeat_last' | 'random_skill' | 'attack' | 'await_order' | 'twice_then_shutdown' | 'normal';
 
@@ -168,7 +171,7 @@ export interface Combatant {
   breakdown?: {
     defectId: string;
     policy: BreakdownPolicy;
-    target?: 'nearest_enemy' | 'strongest_enemy' | 'nearest_any' | 'nearest_ally';
+    target?: BreakdownTarget;
     ignoresOrders: boolean;
     once?: boolean;
     used?: boolean;
@@ -205,7 +208,7 @@ export interface LogEntry {
   round: number;
   kind:
     | 'skill' | 'hit' | 'crit' | 'miss' | 'heal' | 'status' | 'downed' | 'revived' | 'order' | 'order_refused'
-    | 'cover' | 'intercept' | 'breakdown' | 'stress' | 'summon' | 'pass' | 'dodge';
+    | 'cover' | 'intercept' | 'breakdown' | 'stress' | 'summon' | 'pass' | 'dodge' | 'self_harm';
   actor?: string;
   target?: string;
   amount?: number;
@@ -218,7 +221,8 @@ export interface LogEntry {
 export type PresenceKind = 'unnoticed' | 'steady_voice' | 'rally';
 
 export interface PlannedAction {
-  kind: 'skill' | 'guard' | 'swap' | 'pass';
+  /** `self_harm` (P8): a breakdown turned on herself; the amount is `TUNING.disposition.selfHarmPct` of her max HP. */
+  kind: 'skill' | 'guard' | 'swap' | 'pass' | 'self_harm';
   skillId?: string;
   targetCid?: string;
 }

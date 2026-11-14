@@ -80,6 +80,13 @@ export function performAction(ctx: EffectCtx, cid: string, action: PlannedAction
     ctx.log({ kind: 'pass', actor: cid });
     return;
   }
+  if (action.kind === 'self_harm') {
+    // P8: the loss is a share of max HP, at least 1 and never below 1 HP left
+    const loss = Math.min(Math.max(1, Math.round((c.maxHp * TUNING.disposition.selfHarmPct) / 100)), Math.max(0, c.hp - 1));
+    c.hp -= loss;
+    ctx.log({ kind: 'self_harm', actor: cid, amount: loss });
+    return;
+  }
   if (action.kind === 'guard') {
     applyStatus(ctx, cid, 'guard', 2, 1, cid);
     ctx.log({ kind: 'pass', actor: cid });
@@ -101,7 +108,7 @@ export function performAction(ctx: EffectCtx, cid: string, action: PlannedAction
 
   let targets: string[];
   const t = skill.targets!;
-  if (opts.trusted && action.targetCid && byCid(cs, action.targetCid)) {
+  if (opts.trusted && action.targetCid && (action.targetCid === 'commander' ? cs.commander !== undefined && !cs.commander.downed : byCid(cs, action.targetCid))) {
     targets = [action.targetCid];
   } else if (t.side === 'self' || t.count === 'all') {
     targets = expandTargets(cs, cid, skill, action.targetCid, reg);

@@ -309,17 +309,17 @@ docs/** (Task 16), tests/** mirror src
 - Consumes: `dispositionFor`.
 - Produces: the `Combatant.breakdown.target` union + `'self' | 'allies_commander' | 'everyone'` (schema of defects unchanged: these are never authored); `PlannedAction` + `{ kind: 'self_harm' }`; log kind `self_harm`; `breakdownTargetFor(ctx, c): target` applied in `enterBreakdown` / `makeBreakdown` for attack-type policies.
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `kind: an attacking breakdown hurts herself for 10% and never below 1 HP`
   - `guarded keeps the defect's own target`
   - `prickly hits the nearest ally`
   - `volatile may pick the exposed commander and never a downed one` (pin seeds by searching, P7 rule)
   - `hazardous picks among everyone standing`
   - `a skip-policy breakdown is unchanged at every level`
-- [ ] **Step 2: Run** `npx vitest run tests/engine/combat` and expect FAIL.
-- [ ] **Step 3: Implement.** `self_harm` resolves in `turn.ts` like a pass plus the HP change and log.
-- [ ] **Step 4: Run** `npx vitest run` and expect green.
-- [ ] **Step 5: Commit** `feat(combat): breakdown targets follow disposition`.
+- [x] **Step 2: Run** `npx vitest run tests/engine/combat` and expect FAIL.
+- [x] **Step 3: Implement.** `self_harm` resolves in `turn.ts` like a pass plus the HP change and log.
+- [x] **Step 4: Run** `npx vitest run` and expect green.
+- [x] **Step 5: Commit** `feat(combat): breakdown targets follow disposition`.
 
 ### Task 8: Per-unit world stances
 

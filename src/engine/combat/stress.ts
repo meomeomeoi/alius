@@ -1,8 +1,9 @@
 import type { Registries } from '../../content/types';
 import { TUNING } from '../tuning';
 import { activePassives, applyEffects, applyStatus, fireTrigger, effectiveStat, type EffectCtx } from './effects';
-import { byCid, legalTargets, nearest, skillById } from './targeting';
-import type { BreakdownPolicy, Combatant, EffectSpec, PlannedAction } from './types';
+import { dispositionFor, type DispositionLevel } from '../worldOptions';
+import { byCid, hasFlag, isStanding, legalTargets, nearest, skillById } from './targeting';
+import type { BreakdownPolicy, BreakdownTarget, Combatant, EffectSpec, PlannedAction } from './types';
 
 export type StressBand = 'calm' | 'strained' | 'breaking' | 'breakdown';
 
@@ -41,7 +42,7 @@ export function addStress(ctx: EffectCtx, cid: string, amount: number, _source: 
 
 interface BreakdownSpec {
   policy: BreakdownPolicy;
-  target?: 'nearest_enemy' | 'strongest_enemy' | 'nearest_any' | 'nearest_ally';
+  target?: BreakdownTarget;
   ignoresOrders: boolean;
   once?: boolean;
   onEnter: EffectSpec[];
@@ -60,11 +61,31 @@ function defectBreakdown(ctx: EffectCtx, c: Combatant): { defectId: string; spec
   return null;
 }
 
-/** The breakdown state a unit carries for `defectId` (used when a combat restores `Unit.breakdown`). */
-export function makeBreakdown(reg: Registries, defectId: string): NonNullable<Combatant['breakdown']> {
+/** Policies whose action is an attack: the only ones a disposition level changes the target of (`repeat_last` only in its fallback). */
+const ATTACKING: readonly BreakdownPolicy[] = ['attack', 'twice_then_shutdown', 'repeat_last'];
+const LEVEL_TARGET: Record<DispositionLevel['breakdownTarget'], BreakdownTarget | null> = {
+  default: null, allies: 'nearest_ally', self: 'self', allies_commander: 'allies_commander', everyone: 'everyone',
+};
+
+/** P8: the target an attacking breakdown goes for: the defect's own unless her disposition level overrides it. */
+export function breakdownTargetFor(
+  level: Pick<DispositionLevel, 'breakdownTarget'> | undefined, policy: BreakdownPolicy, own: BreakdownTarget | undefined,
+): BreakdownTarget | undefined {
+  const override = level ? LEVEL_TARGET[level.breakdownTarget] : null;
+  return override !== null && ATTACKING.includes(policy) ? override : own;
+}
+
+const levelOf = (ctx: EffectCtx, c: Combatant): DispositionLevel | undefined => {
+  const unit = c.unitId ? ctx.state.squad.find((u) => u.id === c.unitId) : undefined;
+  return unit ? dispositionFor(ctx.state, ctx.reg, unit) : undefined;
+};
+
+/** The breakdown state a unit carries for `defectId` (used when a combat restores `Unit.breakdown`); `level` is her disposition level. */
+export function makeBreakdown(reg: Registries, defectId: string, level?: Pick<DispositionLevel, 'breakdownTarget'>): NonNullable<Combatant['breakdown']> {
   const spec = (reg.defects.get(defectId)?.combat as { breakdown?: BreakdownSpec } | undefined)?.breakdown ?? FALLBACK;
+  const target = breakdownTargetFor(level, spec.policy, spec.target);
   return {
-    defectId, policy: spec.policy, ...(spec.target ? { target: spec.target } : {}), ignoresOrders: spec.ignoresOrders,
+    defectId, policy: spec.policy, ...(target ? { target } : {}), ignoresOrders: spec.ignoresOrders,
     ...(spec.once ? { once: true } : {}), actionEffects: spec.actionEffects,
   };
 }
@@ -80,7 +101,7 @@ export function enterBreakdown(ctx: EffectCtx, cid: string): void {
   const spec = found?.spec ?? FALLBACK;
   const defectId = found?.defectId ?? 'unknown';
   c.stress = 100;
-  c.breakdown = makeBreakdown(ctx.reg, found ? defectId : 'unknown');
+  c.breakdown = makeBreakdown(ctx.reg, found ? defectId : 'unknown', levelOf(ctx, c));
   if (!found) c.breakdown = { defectId, policy: 'skip', ignoresOrders: true, actionEffects: [] };
   ctx.log({ kind: 'breakdown', target: cid });
   const name = (ctx.reg.defects.get(defectId)?.breakdown as { name?: string } | undefined)?.name ?? 'BREAKDOWN';
@@ -111,7 +132,8 @@ function basicAttack(ctx: EffectCtx, c: Combatant): { skillId: string; legal: st
   return null;
 }
 
-function attackAction(ctx: EffectCtx, c: Combatant, target: NonNullable<Combatant['breakdown']>['target']): PlannedAction {
+function attackAction(ctx: EffectCtx, c: Combatant, target: BreakdownTarget | undefined): PlannedAction {
+  if (target === 'self') return { kind: 'self_harm' }; // P8: she hurts herself, not the fight
   const atk = basicAttack(ctx, c);
   if (!atk) return { kind: 'pass' };
   const { cs } = ctx;
@@ -122,6 +144,13 @@ function attackAction(ctx: EffectCtx, c: Combatant, target: NonNullable<Combatan
       .sort((a, b) => effectiveStat(ctx, b.cid, 'atk') - effectiveStat(ctx, a.cid, 'atk') || b.hp - a.hp || a.index - b.index)[0]?.cid;
   } else if (target === 'nearest_ally') {
     targetCid = nearest(cs, c.cid, c.side, ctx.reg);
+  } else if (target === 'allies_commander' || target === 'everyone') {
+    // P8: the nearest ally (or everyone standing but herself), and the commander while he is exposed and not down
+    const pool = target === 'everyone'
+      ? cs.combatants.filter((x) => x.cid !== c.cid && isStanding(x) && !hasFlag(x, ctx.reg, 'untargetable')).map((x) => x.cid)
+      : [nearest(cs, c.cid, c.side, ctx.reg)].filter((id): id is string => id !== undefined);
+    if (cs.commander && !cs.commander.downed) pool.push('commander');
+    targetCid = pool.length > 1 ? ctx.rng.pick(pool) : pool[0];
   } else if (target === 'nearest_any') {
     const any = nearest(cs, c.cid, 'any', ctx.reg);
     targetCid = any && byCid(cs, any).side !== c.side && !atk.legal.includes(any) ? nearestOf(ctx, atk.legal) : any;
@@ -138,8 +167,11 @@ export function breakdownAction(ctx: EffectCtx, cid: string, opts: { breaking?: 
   const { cs } = ctx;
   const c = byCid(cs, cid);
   const real = c.breakdown;
-  let b: { policy: BreakdownPolicy; target?: NonNullable<Combatant['breakdown']>['target'] } | undefined = real;
-  if (!b && opts.breaking) b = defectBreakdown(ctx, c)?.spec;
+  let b: { policy: BreakdownPolicy; target?: BreakdownTarget } | undefined = real;
+  if (!b && opts.breaking) {
+    const spec = defectBreakdown(ctx, c)?.spec;
+    if (spec) b = { policy: spec.policy, target: breakdownTargetFor(levelOf(ctx, c), spec.policy, spec.target) };
+  }
   if (!b) return null;
   if (real?.once && real.used) return null;
 
@@ -170,7 +202,7 @@ export function breakdownAction(ctx: EffectCtx, cid: string, opts: { breaking?: 
         const near = nearestOf(ctx, legal);
         if (near) return { kind: 'skill', skillId: sk.id, targetCid: near };
       }
-      return attackAction(ctx, c, 'nearest_enemy');
+      return attackAction(ctx, c, b.target ?? 'nearest_enemy');
     }
     case 'random_skill': {
       const options = c.skills

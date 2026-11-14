@@ -4313,12 +4313,29 @@ function defectBreakdown(ctx2, c) {
   }
   return null;
 }
-function makeBreakdown(reg, defectId) {
+var ATTACKING = ["attack", "twice_then_shutdown", "repeat_last"];
+var LEVEL_TARGET = {
+  default: null,
+  allies: "nearest_ally",
+  self: "self",
+  allies_commander: "allies_commander",
+  everyone: "everyone"
+};
+function breakdownTargetFor(level, policy, own) {
+  const override = level ? LEVEL_TARGET[level.breakdownTarget] : null;
+  return override !== null && ATTACKING.includes(policy) ? override : own;
+}
+var levelOf = (ctx2, c) => {
+  const unit = c.unitId ? ctx2.state.squad.find((u) => u.id === c.unitId) : void 0;
+  return unit ? dispositionFor(ctx2.state, ctx2.reg, unit) : void 0;
+};
+function makeBreakdown(reg, defectId, level) {
   const spec = reg.defects.get(defectId)?.combat?.breakdown ?? FALLBACK;
+  const target = breakdownTargetFor(level, spec.policy, spec.target);
   return {
     defectId,
     policy: spec.policy,
-    ...spec.target ? { target: spec.target } : {},
+    ...target ? { target } : {},
     ignoresOrders: spec.ignoresOrders,
     ...spec.once ? { once: true } : {},
     actionEffects: spec.actionEffects
@@ -4331,7 +4348,7 @@ function enterBreakdown(ctx2, cid) {
   const spec = found?.spec ?? FALLBACK;
   const defectId = found?.defectId ?? "unknown";
   c.stress = 100;
-  c.breakdown = makeBreakdown(ctx2.reg, found ? defectId : "unknown");
+  c.breakdown = makeBreakdown(ctx2.reg, found ? defectId : "unknown", levelOf(ctx2, c));
   if (!found) c.breakdown = { defectId, policy: "skip", ignoresOrders: true, actionEffects: [] };
   ctx2.log({ kind: "breakdown", target: cid });
   const name = ctx2.reg.defects.get(defectId)?.breakdown?.name ?? "BREAKDOWN";
@@ -4356,6 +4373,7 @@ function basicAttack(ctx2, c) {
   return null;
 }
 function attackAction(ctx2, c, target) {
+  if (target === "self") return { kind: "self_harm" };
   const atk = basicAttack(ctx2, c);
   if (!atk) return { kind: "pass" };
   const { cs } = ctx2;
@@ -4364,6 +4382,10 @@ function attackAction(ctx2, c, target) {
     targetCid = atk.legal.map((id) => byCid(cs, id)).sort((a, b) => effectiveStat(ctx2, b.cid, "atk") - effectiveStat(ctx2, a.cid, "atk") || b.hp - a.hp || a.index - b.index)[0]?.cid;
   } else if (target === "nearest_ally") {
     targetCid = nearest(cs, c.cid, c.side, ctx2.reg);
+  } else if (target === "allies_commander" || target === "everyone") {
+    const pool = target === "everyone" ? cs.combatants.filter((x) => x.cid !== c.cid && isStanding(x) && !hasFlag(x, ctx2.reg, "untargetable")).map((x) => x.cid) : [nearest(cs, c.cid, c.side, ctx2.reg)].filter((id) => id !== void 0);
+    if (cs.commander && !cs.commander.downed) pool.push("commander");
+    targetCid = pool.length > 1 ? ctx2.rng.pick(pool) : pool[0];
   } else if (target === "nearest_any") {
     const any = nearest(cs, c.cid, "any", ctx2.reg);
     targetCid = any && byCid(cs, any).side !== c.side && !atk.legal.includes(any) ? nearestOf(ctx2, atk.legal) : any;
@@ -4375,7 +4397,10 @@ function breakdownAction(ctx2, cid, opts = {}) {
   const c = byCid(cs, cid);
   const real = c.breakdown;
   let b = real;
-  if (!b && opts.breaking) b = defectBreakdown(ctx2, c)?.spec;
+  if (!b && opts.breaking) {
+    const spec = defectBreakdown(ctx2, c)?.spec;
+    if (spec) b = { policy: spec.policy, target: breakdownTargetFor(levelOf(ctx2, c), spec.policy, spec.target) };
+  }
   if (!b) return null;
   if (real?.once && real.used) return null;
   const finish = (a) => {
@@ -4409,7 +4434,7 @@ function breakdownAction(ctx2, cid, opts = {}) {
         const near = nearestOf(ctx2, legal);
         if (near) return { kind: "skill", skillId: sk.id, targetCid: near };
       }
-      return attackAction(ctx2, c, "nearest_enemy");
+      return attackAction(ctx2, c, b.target ?? "nearest_enemy");
     }
     case "random_skill": {
       const options2 = c.skills.map((id) => skillById(ctx2.reg, id)).filter((s) => !!s && s.kind !== "passive" && s.kind !== "ultimate" && (c.cooldowns[s.id] ?? 0) === 0).map((s) => ({ s, legal: legalTargets(cs, cid, s, ctx2.reg) })).filter((o) => o.legal.length > 0);
@@ -5081,7 +5106,7 @@ function squadCombatant(state, reg, unit, index, row, synergies) {
     passives,
     downed: false,
     aiProfile: role.aiProfile ?? "aggressive",
-    ...unit.breakdown ? { breakdown: makeBreakdown(reg, unit.breakdown.defectId) } : {},
+    ...unit.breakdown ? { breakdown: makeBreakdown(reg, unit.breakdown.defectId, dispositionFor(state, reg, unit)) } : {},
     usedLimits: [],
     upgrades: ownedUpgrades(reg, unit)
   };
@@ -5726,6 +5751,12 @@ function performAction(ctx2, cid, action, opts = {}) {
     ctx2.log({ kind: "pass", actor: cid });
     return;
   }
+  if (action.kind === "self_harm") {
+    const loss = Math.min(Math.max(1, Math.round(c.maxHp * TUNING.disposition.selfHarmPct / 100)), Math.max(0, c.hp - 1));
+    c.hp -= loss;
+    ctx2.log({ kind: "self_harm", actor: cid, amount: loss });
+    return;
+  }
   if (action.kind === "guard") {
     applyStatus(ctx2, cid, "guard", 2, 1, cid);
     ctx2.log({ kind: "pass", actor: cid });
@@ -5745,7 +5776,7 @@ function performAction(ctx2, cid, action, opts = {}) {
   if (cpCost > 0 && !authorized && cs.cp < cpCost) throw new Error(`${skill.name} needs ${cpCost} CP.`);
   let targets;
   const t = skill.targets;
-  if (opts.trusted && action.targetCid && byCid(cs, action.targetCid)) {
+  if (opts.trusted && action.targetCid && (action.targetCid === "commander" ? cs.commander !== void 0 && !cs.commander.downed : byCid(cs, action.targetCid))) {
     targets = [action.targetCid];
   } else if (t.side === "self" || t.count === "all") {
     targets = expandTargets(cs, cid, skill, action.targetCid, reg);
@@ -15692,6 +15723,8 @@ function renderCombatScreen(host, ctx2) {
         return `R${l.round} ${name(l.target)} dodges ${name(l.actor)}'s attack`;
       case "pass":
         return `R${l.round} ${name(l.actor)} holds`;
+      case "self_harm":
+        return `R${l.round} ${name(l.actor)} turns on herself for ${l.amount ?? 0}`;
       case "summon":
         return `R${l.round} reinforcements arrive`;
       default:

@@ -244,6 +244,7 @@ export function renderCombatScreen(host: HTMLElement, ctx: CombatScreenCtx): Com
       case 'miss': return `R${l.round} ${name(l.actor)} misfires`;
       case 'dodge': return `R${l.round} ${name(l.target)} dodges ${name(l.actor)}'s attack`;
       case 'pass': return `R${l.round} ${name(l.actor)} holds`;
+      case 'self_harm': return `R${l.round} ${name(l.actor)} turns on herself for ${l.amount ?? 0}`;
       case 'summon': return `R${l.round} reinforcements arrive`;
       default: return `R${l.round} ${l.kind}`;
     }

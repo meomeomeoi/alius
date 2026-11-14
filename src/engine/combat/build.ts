@@ -12,6 +12,7 @@ import { activePassives, amplify, makeCtx } from './effects';
 import { ownedPassiveIds, ownedUpgrades, unitSkillIds } from './skills';
 import { spawnEnemy, spawnMutineer } from './spawn';
 import { unitStats } from './stats';
+import { dispositionFor } from '../worldOptions';
 import { makeBreakdown } from './stress';
 import { skillById } from './targeting';
 import type { CombatState, Combatant, EffectSpec, StartPayload } from './types';
@@ -119,7 +120,7 @@ function squadCombatant(
     passives,
     downed: false,
     aiProfile: (role.aiProfile as string | undefined) ?? 'aggressive',
-    ...(unit.breakdown ? { breakdown: makeBreakdown(reg, unit.breakdown.defectId) } : {}),
+    ...(unit.breakdown ? { breakdown: makeBreakdown(reg, unit.breakdown.defectId, dispositionFor(state, reg, unit)) } : {}),
     usedLimits: [],
     upgrades: ownedUpgrades(reg, unit),
   };
