@@ -1120,8 +1120,8 @@ function recoverUnit(draft, u) {
   return { type: "unit_recovered", unitId: u.id };
 }
 function requisitionCost(state, reg, n) {
-  const pct3 = traitEffects(state, reg, "requisition_price").reduce((sum, fx2) => sum + fx2.pct, 0);
-  const raw = n * TUNING.requisition.creditsPerSupply * Math.max(0, 1 + pct3 / 100);
+  const pct4 = traitEffects(state, reg, "requisition_price").reduce((sum, fx2) => sum + fx2.pct, 0);
+  const raw = n * TUNING.requisition.creditsPerSupply * Math.max(0, 1 + pct4 / 100);
   return Math.max(n, Math.ceil(raw - 1e-9));
 }
 
@@ -2238,8 +2238,8 @@ function computeDeltas(state, reg, unitId, event) {
   affinity *= image;
   attraction *= image;
   if (trust > 0 && daysKnown(state, unitId) < TUNING.commander.earlyDays) {
-    const pct3 = traitEffects(state, reg, "early_trust_gain").reduce((n, fx2) => n + fx2.pct, 0);
-    trust *= Math.max(0, 1 + pct3 / 100);
+    const pct4 = traitEffects(state, reg, "early_trust_gain").reduce((n, fx2) => n + fx2.pct, 0);
+    trust *= Math.max(0, 1 + pct4 / 100);
   }
   for (const fx2 of traitEffects(state, reg, "relation_event_mult")) {
     if (fx2.event !== event.type || fx2.ifTrigger !== void 0 && !unit.triggers.includes(fx2.ifTrigger)) continue;
@@ -2249,9 +2249,9 @@ function computeDeltas(state, reg, unitId, event) {
   }
   if (event.actor === "commander") {
     const distance = normDistance(state, reg) ?? 0;
-    const pct3 = stanceEffects(state, reg, unit, "gain_damp").reduce((n, fx2) => n + fx2.pctPerStep, 0);
-    if (distance > 0 && pct3 > 0) {
-      const damp = 1 - Math.min(TUNING.disposition.gainDampMax, pct3 / 100 * distance) * firstImpressionWeight(state, unitId);
+    const pct4 = stanceEffects(state, reg, unit, "gain_damp").reduce((n, fx2) => n + fx2.pctPerStep, 0);
+    if (distance > 0 && pct4 > 0) {
+      const damp = 1 - Math.min(TUNING.disposition.gainDampMax, pct4 / 100 * distance) * firstImpressionWeight(state, unitId);
       if (trust > 0) trust *= damp;
       if (affinity > 0) affinity *= damp;
     }
@@ -2335,15 +2335,15 @@ function enterState(draft, unitId, stateId, why) {
   return { type: "relation_state_changed", unitId, from, to: stateId, why };
 }
 function platonicThresholds(state, reg, stateId, cond) {
-  const pct3 = traitEffects(state, reg, "platonic_threshold").filter((fx2) => fx2.states.includes(stateId)).reduce((n, fx2) => n + fx2.pct, 0);
-  if (pct3 === 0) return cond;
+  const pct4 = traitEffects(state, reg, "platonic_threshold").filter((fx2) => fx2.states.includes(stateId)).reduce((n, fx2) => n + fx2.pct, 0);
+  if (pct4 === 0) return cond;
   const scale = (c) => {
     const out = { ...c };
     if (c.axes) {
       out.axes = {};
       for (const axis of ["trust", "affinity", "attraction"]) {
         const r = c.axes[axis];
-        if (r) out.axes[axis] = [Math.round(r[0] * (1 - pct3 / 100)), r[1]];
+        if (r) out.axes[axis] = [Math.round(r[0] * (1 - pct4 / 100)), r[1]];
       }
     }
     if (c.anyOf) out.anyOf = c.anyOf.map(scale);
@@ -5357,16 +5357,16 @@ function unitStats(state, reg, unit) {
   const growth = role.growth ?? ZERO;
   const out = { ...ZERO };
   for (const k of STATS) out[k] = unit.baseStats[k] + Math.floor(growth[k] * (unit.level - 1));
-  const pct3 = { ...ZERO };
+  const pct4 = { ...ZERO };
   for (const { inst } of wornItems(state, reg, unit)) {
     const it = itemStats(reg, inst);
     if (!it) continue;
     for (const k of STATS) {
       out[k] += it.stats[k] ?? 0;
-      pct3[k] += it.statPct[k] ?? 0;
+      pct4[k] += it.statPct[k] ?? 0;
     }
   }
-  for (const k of STATS) out[k] = Math.round(out[k] * (1 + pct3[k] / 100));
+  for (const k of STATS) out[k] = Math.round(out[k] * (1 + pct4[k] / 100));
   out.spd += armorSpdPenalty(state, reg, unit);
   const stacks = Math.min(unit.injuries.length, TUNING.combat.injuryMaxStacks);
   const factor = 1 + TUNING.combat.injuryStatPct * stacks / 100;
@@ -5385,7 +5385,7 @@ function unitStatSteps(state, reg, unit, stat3) {
     total2 += grown;
     steps.push({ source: "level", label: `Level ${unit.level}`, total: total2 });
   }
-  let pct3 = 0;
+  let pct4 = 0;
   for (const { inst } of wornItems(state, reg, unit)) {
     const it = itemStats(reg, inst);
     if (!it) continue;
@@ -5394,9 +5394,9 @@ function unitStatSteps(state, reg, unit, stat3) {
       total2 += flat;
       steps.push({ source: "gear", label: `[[items:${inst.itemId}]]`, total: total2 });
     }
-    pct3 += it.statPct[stat3] ?? 0;
+    pct4 += it.statPct[stat3] ?? 0;
   }
-  const scaled2 = Math.round(total2 * (1 + pct3 / 100));
+  const scaled2 = Math.round(total2 * (1 + pct4 / 100));
   if (scaled2 !== total2) {
     total2 = scaled2;
     steps.push({ source: "gear", label: "Gear bonuses", total: total2 });
@@ -5438,16 +5438,16 @@ function enemyStats(reg, enemyId, level, affixes, difficulty) {
   if (!tpl) throw new Error(`Unknown enemy "${enemyId}"`);
   const { base, growth } = tpl.stats;
   const diff = TUNING.combat.difficultyMult[difficulty];
-  const pct3 = { ...ZERO };
+  const pct4 = { ...ZERO };
   for (const id of affixes) {
     const sp = reg.affixes.get(id)?.statPct;
-    if (sp) for (const k of STATS) pct3[k] += sp[k] ?? 0;
+    if (sp) for (const k of STATS) pct4[k] += sp[k] ?? 0;
   }
   const out = { ...ZERO };
   for (const k of STATS) {
     const scaled2 = base[k] + growth[k] * (level - 1);
     const d = k === "hp" || k === "atk" || k === "def" ? diff : 1;
-    out[k] = Math.max(k === "hp" || k === "atk" ? 1 : 0, Math.round(scaled2 * d * (1 + pct3[k] / 100)));
+    out[k] = Math.max(k === "hp" || k === "atk" ? 1 : 0, Math.round(scaled2 * d * (1 + pct4[k] / 100)));
   }
   return out;
 }
@@ -5848,18 +5848,18 @@ function activePassives(ctx2, cid, type, targetCid, skillId) {
 function effectiveStat(ctx2, cid, stat3) {
   const c = byCid(ctx2.cs, cid);
   if (stat3 === "hp") return c.maxHp;
-  let pct3 = 0;
-  for (const m of c.mods) if (m.stat === stat3) pct3 += m.pct;
+  let pct4 = 0;
+  for (const m of c.mods) if (m.stat === stat3) pct4 += m.pct;
   for (const s of c.statuses) {
     const v = ctx2.reg.statuses.get(s.id)?.mods?.[stat3];
-    if (v) pct3 += v * s.stacks;
+    if (v) pct4 += v * s.stacks;
   }
   for (const e of activePassives(ctx2, cid, "stat")) {
-    if (e.stat === stat3 || e.stat === "all" && stat3 !== "crit") pct3 += e.pct + scaleValue(ctx2, cid, e.scale);
+    if (e.stat === stat3 || e.stat === "all" && stat3 !== "crit") pct4 += e.pct + scaleValue(ctx2, cid, e.scale);
   }
   const base = c.base[stat3];
-  if (stat3 === "crit") return Math.max(0, base + pct3);
-  return Math.max(stat3 === "def" ? 0 : 1, Math.round(base * (1 + pct3 / 100)));
+  if (stat3 === "crit") return Math.max(0, base + pct4);
+  return Math.max(stat3 === "def" ? 0 : 1, Math.round(base * (1 + pct4 / 100)));
 }
 function outgoingPct(ctx2, cid, targetCid) {
   const c = byCid(ctx2.cs, cid);
@@ -5978,10 +5978,10 @@ function resolveTargets(ctx2, owner, e, ev) {
 function applyEffects(ctx2, ownerCid, effects2, ev, source = "effect") {
   effects2.forEach((e, i) => runEffect(ctx2, ownerCid, e, ev, `${source}:${i}`));
 }
-function heal(ctx2, targetCid, pct3) {
+function heal(ctx2, targetCid, pct4) {
   const t = byCid(ctx2.cs, targetCid);
   if (t.downed || t.hp <= 0) return;
-  const amount = Math.max(1, Math.round(t.maxHp * pct3 / 100));
+  const amount = Math.max(1, Math.round(t.maxHp * pct4 / 100));
   const gained = Math.min(amount, t.maxHp - t.hp);
   t.hp += gained;
   if (gained > 0) ctx2.log({ kind: "heal", target: targetCid, amount: gained });
@@ -6064,11 +6064,11 @@ function runEffect(ctx2, ownerCid, effect, ev, keyBase) {
     case "stat":
       for (const t of targets) {
         const c = byCid(ctx2.cs, t);
-        const pct3 = e.pct + scaleValue(ctx2, ownerCid, e.scale);
+        const pct4 = e.pct + scaleValue(ctx2, ownerCid, e.scale);
         const stats = e.stat === "all" ? ["atk", "def", "spd"] : [e.stat];
         for (const stat3 of stats) {
           if (stat3 === "hp") continue;
-          c.mods.push({ stat: stat3, pct: pct3, ...e.turns !== void 0 ? { turnsLeft: e.turns } : {}, source: ownerCid });
+          c.mods.push({ stat: stat3, pct: pct4, ...e.turns !== void 0 ? { turnsLeft: e.turns } : {}, source: ownerCid });
         }
       }
       break;
@@ -6439,9 +6439,9 @@ function buildCombat(state, reg, rng, p) {
   }
   const ctx2 = makeCtx(cs, state, reg, rng);
   for (const c of cs.combatants.filter((x) => x.side === "squad")) {
-    const pct3 = activePassives(ctx2, c.cid, "stat").filter((e) => e.stat === "hp" || e.stat === "all").reduce((sum, e) => sum + e.pct, 0);
-    if (pct3 !== 0) {
-      const maxHp = Math.max(1, Math.round(c.maxHp * (1 + pct3 / 100)));
+    const pct4 = activePassives(ctx2, c.cid, "stat").filter((e) => e.stat === "hp" || e.stat === "all").reduce((sum, e) => sum + e.pct, 0);
+    if (pct4 !== 0) {
+      const maxHp = Math.max(1, Math.round(c.maxHp * (1 + pct4 / 100)));
       c.hp = Math.max(1, Math.min(maxHp, Math.round(c.hp * (maxHp / c.maxHp))));
       c.maxHp = maxHp;
       c.base = { ...c.base, hp: maxHp };
@@ -6503,10 +6503,10 @@ function applyOrder(ctx2, order, targetCid) {
   if (PROTECTIVE_ORDERS.includes(order.id)) {
     const covered = order.target === "ally" && targetCid ? [targetCid] : living(cs, "squad").filter((c) => c.row === "front").map((c) => c.cid);
     for (const cid of covered) {
-      const pct3 = woundedBefore.get(cid);
-      if (pct3 !== void 0 && pct3 < 0.3) {
+      const pct4 = woundedBefore.get(cid);
+      if (pct4 !== void 0 && pct4 < 0.3) {
         const unitId = byCid(cs, cid).unitId;
-        if (unitId) addHint(ctx2, { type: "protected", actor: "commander", targets: [unitId], severity: severityOfMissing(1 - pct3) });
+        if (unitId) addHint(ctx2, { type: "protected", actor: "commander", targets: [unitId], severity: severityOfMissing(1 - pct4) });
       }
     }
   }
@@ -6771,12 +6771,12 @@ function relationHints(cs, unitIdOf3) {
   return out;
 }
 function injuryDaysFor(c) {
-  let pct3 = 0;
+  let pct4 = 0;
   for (const p of c.passives) {
     if (p.type !== "injury_days") continue;
-    pct3 += (p.downside === true && c.stress >= 50 ? amplify(p, TUNING.combat.strainedMult) : p).pct;
+    pct4 += (p.downside === true && c.stress >= 50 ? amplify(p, TUNING.combat.strainedMult) : p).pct;
   }
-  return Math.max(1, Math.round(TUNING.combat.injuryDays * (1 + pct3 / 100)));
+  return Math.max(1, Math.round(TUNING.combat.injuryDays * (1 + pct4 / 100)));
 }
 function finalizeCombat(draft, reg, rng, outcome) {
   const cs = draft.combat;
@@ -7451,10 +7451,10 @@ function rollRewards(draft, ctx2, m) {
   const amount = tier?.faction ?? 0;
   if (factionId !== void 0 && amount > 0) rewards.faction = { id: factionId, amount };
   if (typeof tpl?.clearance === "number") rewards.clearance = tpl.clearance;
-  const pct3 = worldEffects(draft, reg, "mission_reward_pct").reduce((n, fx2) => n + fx2.pct, 0);
-  if (pct3 !== 0) {
-    rewards.credits = Math.max(0, Math.round(rewards.credits * (1 + pct3 / 100)));
-    rewards.plyx = Math.max(0, Math.round(rewards.plyx * (1 + pct3 / 100)));
+  const pct4 = worldEffects(draft, reg, "mission_reward_pct").reduce((n, fx2) => n + fx2.pct, 0);
+  if (pct4 !== 0) {
+    rewards.credits = Math.max(0, Math.round(rewards.credits * (1 + pct4 / 100)));
+    rewards.plyx = Math.max(0, Math.round(rewards.plyx * (1 + pct4 / 100)));
   }
   for (const d of drops) {
     if (d.kind === "item") rewards.items.push(String(reg.items.get(d.item.itemId)?.name ?? d.item.itemId));
@@ -21518,6 +21518,40 @@ function renderOpsTab(host, ctx2) {
   );
 }
 
+// src/ui/device/skins.ts
+var FALLBACK_SKIN = "ccp_standard";
+var BUILT_IN_SKIN = {
+  id: FALLBACK_SKIN,
+  name: "CCP standard issue",
+  description: "Corporate-surplus handheld.",
+  kind: "css",
+  cssPreset: "ccp_standard",
+  ledColor: "#ffb000",
+  accent: "#d8cb98",
+  label: "CCP-PDA MK.III"
+};
+function pickSkin(state, reg, override) {
+  const skins = [...reg.deviceSkins.values()];
+  const chosen = override ? reg.deviceSkins.get(override) : void 0;
+  if (chosen) return chosen;
+  const fallback = reg.deviceSkins.get(FALLBACK_SKIN) ?? BUILT_IN_SKIN;
+  if (!state) return fallback;
+  const bound = (key, holds2) => skins.find((s) => {
+    const v = s.bindTo?.[key];
+    return typeof v === "string" && holds2(v);
+  });
+  const traits = traitIds(state);
+  const flags = /* @__PURE__ */ new Set([...state.world.flags, ...state.commander.flags]);
+  return bound("traitId", (v) => traits.includes(v)) ?? bound("unlockFlag", (v) => flags.has(v)) ?? bound("corporationId", (v) => v === state.commander.corporationId) ?? fallback;
+}
+var pct2 = (part, whole) => `${+(part / whole * 100).toFixed(3)}%`;
+function screenBox(skin) {
+  const size = skin.frameSize;
+  const rect = skin.screenRect;
+  if (skin.kind !== "image" || !size || !rect) return null;
+  return { left: pct2(rect.x, size.w), top: pct2(rect.y, size.h), width: pct2(rect.w, size.w), height: pct2(rect.h, size.h) };
+}
+
 // src/engine/hub.ts
 function fnv1a(s) {
   let h2 = 2166136261;
@@ -23935,10 +23969,10 @@ function scaleUnit(scale) {
       return humanize(String(scale.by));
   }
 }
-function scaledPct(pct3, name, scale) {
-  if (!scale || !isNum(scale.per)) return `${pctSigned(pct3)} ${name}`;
-  if (pct3 === 0) return `${signed(scale.per)}% ${name} per ${scaleUnit(scale)}`;
-  return `${pctSigned(pct3)} ${name}, ${signed(scale.per)}% per ${scaleUnit(scale)}`;
+function scaledPct(pct4, name, scale) {
+  if (!scale || !isNum(scale.per)) return `${pctSigned(pct4)} ${name}`;
+  if (pct4 === 0) return `${signed(scale.per)}% ${name} per ${scaleUnit(scale)}`;
+  return `${pctSigned(pct4)} ${name}, ${signed(scale.per)}% per ${scaleUnit(scale)}`;
 }
 function combatBase(e) {
   switch (e.type) {
@@ -24459,7 +24493,7 @@ var WHERE_USED = {
   reflexes: "Used by: the chance to dodge a hit that reaches the commander in Commander Crisis."
 };
 var PRESENCE_LABEL = { unnoticed: ["presence_unnoticed", "Unnoticed"], steady_voice: ["presence_steady_voice", "Steady Voice"], rally: ["presence_rally", "Rally"] };
-var pct2 = (n) => Math.round(n * 100);
+var pct3 = (n) => Math.round(n * 100);
 function bodyProvider(stat3) {
   return (_subject, env, k) => {
     const state = env.state;
@@ -24476,7 +24510,7 @@ function bodyProvider(stat3) {
     }
     lines.push(WHERE_USED[stat3]);
     if (stat3 === "endurance" && k.showRaw) lines.push(`Crisis HP: ${k.raw(commanderMaxHp(state, env.registries))}`);
-    if (stat3 === "reflexes" && k.showRaw) lines.push(`Dodge chance: ${k.raw(pct2(dodgeChance(state)))}%`);
+    if (stat3 === "reflexes" && k.showRaw) lines.push(`Dodge chance: ${k.raw(pct3(dodgeChance(state)))}%`);
     return { lines };
   };
 }
@@ -24502,7 +24536,7 @@ function presenceProvider(subject, env, k) {
   if (unit) {
     const w = firstImpressionWeight(state, unit.id);
     const word = w > 0.5 ? "fresh" : w >= 0.1 ? "fading" : "faded";
-    lines.push(`First impression: ${word}${k.showRaw ? ` (${k.raw(pct2(w))}%)` : ""}`);
+    lines.push(`First impression: ${word}${k.showRaw ? ` (${k.raw(pct3(w))}%)` : ""}`);
     const tastes = matchedTastes(state, env.registries, unit);
     if (tastes.length > 0) lines.push(`Her tastes that fit the commander: ${tastes.map((t) => `[[tastes:${t.id}|${String(t.name)}]]`).join(", ")}`);
   }
@@ -25368,6 +25402,105 @@ function attachAnalyzer(root, deps) {
   };
 }
 
+// src/ui/device/chrome.ts
+var SVG_NS2 = "http://www.w3.org/2000/svg";
+var fxSeq = 0;
+function svg2(tag2, attrs) {
+  const el = document.createElementNS(SVG_NS2, tag2);
+  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+  return el;
+}
+function noise(cls, f) {
+  const id = `alius-fx-${++fxSeq}`;
+  const layer = svg2("svg", { class: `alius-fx ${cls}`, "aria-hidden": "true", width: "100%", height: "100%", preserveAspectRatio: "none" });
+  const filter = svg2("filter", { id, x: "0", y: "0", width: "100%", height: "100%" });
+  filter.append(svg2("feTurbulence", {
+    type: "fractalNoise",
+    baseFrequency: f.frequency,
+    numOctaves: String(f.octaves),
+    seed: String(f.seed ?? 1),
+    stitchTiles: "stitch"
+  }));
+  layer.append(filter, svg2("rect", { width: "100%", height: "100%", filter: `url(#${id})` }));
+  return layer;
+}
+var bit = (cls, text2) => h("span", { class: cls }, text2);
+var many = (n, cls) => Array.from({ length: n }, () => bit(cls));
+var PRESETS = {
+  // olive-grey surplus: rubber bumpers, side grips, two slotted screws, a worn sticker and a barcode
+  ccp_standard: () => [
+    noise("alius-grain", { frequency: "0.85", octaves: 3 }),
+    noise("alius-mottle", { frequency: "0.012", octaves: 2, seed: 4 }),
+    ...many(2, "alius-bumper"),
+    ...many(2, "alius-grip"),
+    ...many(2, "alius-screw"),
+    ...many(3, "alius-scratch"),
+    bit("alius-grille"),
+    bit("alius-sticker", "VOID IF OPENED"),
+    bit("alius-barcode")
+  ],
+  // steel and grime: a hazard stripe, amber corner plates, six hex bolts and vents
+  kestrel: () => [
+    noise("alius-brushed", { frequency: "0.9 0.04", octaves: 2 }),
+    noise("alius-grime-layer", { frequency: "0.018", octaves: 3, seed: 7 }),
+    bit("alius-hazard"),
+    ...many(2, "alius-corner"),
+    ...many(6, "alius-bolt"),
+    ...many(2, "alius-grime"),
+    bit("alius-vents")
+  ],
+  // ceramic: no screws, a home button and a teal light ring around the screen
+  vesper: () => [
+    noise("alius-ceramic", { frequency: "1.1", octaves: 2 }),
+    bit("alius-ring"),
+    bit("alius-home")
+  ]
+};
+function clearImageLayout(device, screen) {
+  device.style.removeProperty("--device-ratio");
+  for (const k of ["position", "left", "top", "width", "height"]) screen.style[k] = "";
+}
+function renderChrome(chrome, screen, device, skin, assetUrl) {
+  chrome.replaceChildren();
+  chrome.setAttribute("aria-hidden", "true");
+  const box = screenBox(skin);
+  if (skin.kind === "image" && (!assetUrl || !box || typeof skin.frameImage !== "string")) {
+    renderChrome(chrome, screen, device, BUILT_IN_SKIN);
+    return;
+  }
+  device.dataset.skin = String(skin.id);
+  device.dataset.kind = String(skin.kind);
+  device.dataset.preset = skin.kind === "css" ? String(skin.cssPreset) : "image";
+  device.style.setProperty("--device-led", String(skin.ledColor));
+  device.style.setProperty("--device-accent", String(skin.accent));
+  if (skin.kind === "image" && assetUrl && box) {
+    const size = skin.frameSize;
+    device.style.setProperty("--device-ratio", `${size.w} / ${size.h}`);
+    screen.style.position = "absolute";
+    screen.style.left = box.left;
+    screen.style.top = box.top;
+    screen.style.width = box.width;
+    screen.style.height = box.height;
+    const frame = h("img", { class: "alius-device-frame", alt: "", draggable: "false", src: assetUrl(String(skin.frameImage)) });
+    frame.addEventListener("error", () => renderChrome(chrome, screen, device, BUILT_IN_SKIN));
+    chrome.append(frame);
+    const overlay = skin.overlay;
+    if (overlay) {
+      const layer = h("div", { class: "alius-device-overlay" });
+      layer.style.backgroundImage = `url("${assetUrl(overlay.image)}")`;
+      layer.style.mixBlendMode = overlay.blend;
+      layer.style.opacity = String(overlay.opacity);
+      chrome.append(layer);
+    }
+    chrome.append(h("span", { class: "alius-led" }));
+    return;
+  }
+  clearImageLayout(device, screen);
+  const decor = PRESETS[String(skin.cssPreset)] ?? PRESETS.ccp_standard;
+  chrome.append(...decor().filter((n) => n !== null), bit("alius-led"), bit("alius-device-label", String(skin.label ?? skin.name)));
+  chrome.lastElementChild?.setAttribute("aria-hidden", "true");
+}
+
 // src/ui/shell/keys.ts
 function isEditable2(t) {
   const el = t;
@@ -25445,33 +25578,6 @@ function createRouter() {
       else host.append(h("pre", { class: "alius-stub" }, stubText(current.toUpperCase())));
     }
   };
-}
-
-// src/ui/device/skins.ts
-var FALLBACK_SKIN = "ccp_standard";
-var BUILT_IN = {
-  id: FALLBACK_SKIN,
-  name: "CCP standard issue",
-  description: "Corporate-surplus handheld.",
-  kind: "css",
-  cssPreset: "ccp_standard",
-  ledColor: "#ffb000",
-  accent: "#d8cb98",
-  label: "CCP-PDA MK.III"
-};
-function pickSkin(state, reg, override) {
-  const skins = [...reg.deviceSkins.values()];
-  const chosen = override ? reg.deviceSkins.get(override) : void 0;
-  if (chosen) return chosen;
-  const fallback = reg.deviceSkins.get(FALLBACK_SKIN) ?? BUILT_IN;
-  if (!state) return fallback;
-  const bound = (key, holds2) => skins.find((s) => {
-    const v = s.bindTo?.[key];
-    return typeof v === "string" && holds2(v);
-  });
-  const traits = traitIds(state);
-  const flags = /* @__PURE__ */ new Set([...state.world.flags, ...state.commander.flags]);
-  return bound("traitId", (v) => traits.includes(v)) ?? bound("unlockFlag", (v) => flags.has(v)) ?? bound("corporationId", (v) => v === state.commander.corporationId) ?? fallback;
 }
 
 // src/ui/shell/sysTab.ts
@@ -25914,8 +26020,16 @@ function createShell(deps) {
     if (toasts) toasts.show(kind, text2, opts);
     else st.toast(kind === "story" ? "info" : kind, text2);
   }
+  function applySkin() {
+    const chrome = device?.querySelector(".alius-device-chrome");
+    const screen = device?.querySelector(".alius-device-screen");
+    if (!device || !chrome || !screen) return;
+    const wanted = deps.skin?.();
+    renderChrome(chrome, screen, device, wanted?.skin ?? BUILT_IN_SKIN, wanted?.assetUrl);
+  }
   function applySettings() {
     if (!root) return;
+    applySkin();
     const s = getSettings(st);
     root.dataset.palette = s.palette;
     root.classList.toggle("alius-scanlines", s.scanlines);
@@ -26008,6 +26122,7 @@ function createShell(deps) {
     device = h("div", { class: "alius-device", "data-skin": "ccp_standard", "data-up": String(up) }, chrome, screen);
     hubHost = h("div", { class: "alius-hub-host" });
     host.append(hubHost, device);
+    applySkin();
     applyDevice(up);
     updateNarrow();
     renderHub2();
@@ -27473,6 +27588,7 @@ function createApp(st, deps) {
     replaceState,
     getContentErrors: () => contentErrors,
     analyze: { registries: () => registries },
+    skin: () => ({ skin: pickSkin(state, registries, getSettings(st).deviceSkin), assetUrl: deps.assetUrl }),
     debugTools,
     dispatch: (action) => api.dispatch(action, { expectChatId: st.getActiveChat()?.chatId }),
     onSettingsChanged: () => {

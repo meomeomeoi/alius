@@ -1,0 +1,278 @@
+/*
+ * The casing of the device, one block per preset (`data-preset`). The screen inside is always the phosphor terminal, so the
+ * palette variables still recolour it. The hex values are the casing's own materials, ported from the reference renders,
+ * not palette colours. Everything on the chrome ignores the pointer: it can never cover a control.
+ */
+#alius-shell .alius-device-chrome > * {
+  position: absolute;
+  pointer-events: none;
+}
+
+#alius-shell .alius-fx {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+#alius-shell .alius-led {
+  top: 11px;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--device-led, #ffb000);
+  box-shadow: 0 0 8px 2px color-mix(in srgb, var(--device-led, #ffb000) 55%, transparent);
+}
+
+#alius-shell .alius-device-label {
+  top: 10px;
+  left: calc(50% + 18px);
+  font-family: var(--alius-font-stencil, var(--alius-font));
+  font-size: 0.7em;
+  letter-spacing: 0.25em;
+  white-space: nowrap;
+}
+
+/* the screen's bezel and glass are shared; each preset sets its own colours */
+#alius-shell .alius-device[data-kind="css"] .alius-device-screen {
+  border: 0;
+}
+
+#alius-shell .alius-device[data-kind="css"] .alius-device-screen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(118deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 28%, transparent 34%);
+}
+
+/* ---- ccp_standard: worn olive-grey surplus ---- */
+#alius-shell .alius-device[data-preset="ccp_standard"] {
+  border-radius: 38px 38px 0 0;
+  padding: 30px 34px 0;
+  background:
+    radial-gradient(120% 60% at 20% 0%, rgba(255, 255, 255, 0.07), transparent 60%),
+    linear-gradient(165deg, #3b3a36 0%, #2c2b28 38%, #22211f 70%, #1b1a18 100%);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.14), inset 2px 0 0 rgba(255, 255, 255, 0.05), inset -2px 0 0 rgba(0, 0, 0, 0.5),
+    inset 0 0 0 6px rgba(0, 0, 0, 0.18), 0 0 0 1px #0a0a09, 0 -24px 70px rgba(0, 0, 0, 0.75);
+}
+
+#alius-shell .alius-device[data-preset="ccp_standard"] .alius-device-screen {
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 0 0 10px #070706, inset 0 4px 10px rgba(0, 0, 0, 0.95), 0 11px 0 10px rgba(255, 255, 255, 0.10);
+}
+
+#alius-shell .alius-device[data-preset="ccp_standard"] .alius-device-label { color: #d8cb98; top: 4px; }
+#alius-shell .alius-device[data-preset="ccp_standard"] .alius-led { top: 5px; }
+
+#alius-shell .alius-device[data-preset="ccp_standard"] .alius-bumper {
+  top: 0;
+  width: 86px;
+  height: 86px;
+  background: linear-gradient(145deg, #1d1c1a, #121211);
+}
+#alius-shell .alius-device[data-preset="ccp_standard"] .alius-bumper:nth-of-type(1) { left: 0; border-radius: 38px 0 28px 0; }
+#alius-shell .alius-device[data-preset="ccp_standard"] .alius-bumper:nth-of-type(2) { right: 0; border-radius: 0 38px 0 28px; }
+
+#alius-shell .alius-device[data-preset="ccp_standard"] .alius-grip {
+  top: 30%;
+  width: 14px;
+  height: 340px;
+  max-height: 40%;
+  background: repeating-linear-gradient(0deg, #141413 0 3px, #2f2e2b 3px 5px, #1c1b19 5px 7px);
+}
+#alius-shell .alius-device[data-preset="ccp_standard"] .alius-grip:nth-of-type(1) { left: 6px; }
+#alius-shell .alius-device[data-preset="ccp_standard"] .alius-grip:nth-of-type(2) { right: 6px; }
+
+#alius-shell .alius-device[data-preset="ccp_standard"] .alius-screw {
+  top: 12px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #9a978e, #4a4842 55%, #1a1917);
+}
+#alius-shell .alius-device[data-preset="ccp_standard"] .alius-screw::after {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 6px;
+  width: 10px;
+  height: 2px;
+  background: #1a1917;
+  transform: rotate(35deg);
+}
+#alius-shell .alius-device[data-preset="ccp_standard"] .alius-screw:nth-of-type(1) { left: 100px; }
+#alius-shell .alius-device[data-preset="ccp_standard"] .alius-screw:nth-of-type(2) { right: 100px; }
+#alius-shell .alius-device[data-preset="ccp_standard"] .alius-screw:nth-of-type(2)::after { transform: rotate(-60deg); }
+
+#alius-shell .alius-device[data-preset="ccp_standard"] .alius-scratch {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+}
+#alius-shell .alius-device[data-preset="ccp_standard"] .alius-scratch:nth-of-type(1) { top: 40%; left: 4%; width: 7%; transform: rotate(-12deg); }
+#alius-shell .alius-device[data-preset="ccp_standard"] .alius-scratch:nth-of-type(2) { top: 55%; right: 3%; width: 5%; transform: rotate(20deg); }
+#alius-shell .alius-device[data-preset="ccp_standard"] .alius-scratch:nth-of-type(3) { top: 12%; right: 20%; width: 6%; background: rgba(255, 255, 255, 0.06); }
+
+#alius-shell .alius-device[data-preset="ccp_standard"] .alius-grille {
+  top: 8px;
+  left: 130px;
+  width: 54px;
+  height: 14px;
+  background: radial-gradient(circle, #0c0c0b 1.4px, transparent 1.6px) 0 0 / 6px 6px;
+}
+
+#alius-shell .alius-device[data-preset="ccp_standard"] .alius-sticker {
+  top: 6px;
+  right: 130px;
+  padding: 1px 8px;
+  background: #3a3320;
+  color: #d8cb98;
+  font-size: 0.6em;
+  letter-spacing: 0.1em;
+  transform: rotate(-4deg);
+  clip-path: polygon(0 8%, 6% 0, 100% 6%, 98% 100%, 4% 94%);
+}
+
+#alius-shell .alius-device[data-preset="ccp_standard"] .alius-barcode {
+  top: 8px;
+  right: 260px;
+  width: 54px;
+  height: 14px;
+  background: repeating-linear-gradient(90deg, #cfc7a8 0 2px, transparent 2px 4px, #cfc7a8 4px 5px, transparent 5px 8px);
+  opacity: 0.8;
+}
+
+#alius-shell .alius-device[data-preset="ccp_standard"] .alius-grain { mix-blend-mode: overlay; opacity: 0.22; }
+#alius-shell .alius-device[data-preset="ccp_standard"] .alius-mottle { mix-blend-mode: overlay; opacity: 0.35; }
+
+/* ---- kestrel: steel, hazard stripe, hex bolts, grime ---- */
+#alius-shell .alius-device[data-preset="kestrel"] {
+  border-radius: 22px 22px 0 0;
+  padding: 44px 40px 0;
+  background:
+    radial-gradient(90% 50% at 30% 0%, rgba(255, 255, 255, 0.10), transparent 60%),
+    linear-gradient(170deg, #6a6d6f 0%, #4b4e50 30%, #36383a 65%, #262829 100%);
+  box-shadow: 0 0 0 1px #0a0a0a, 0 -24px 70px rgba(0, 0, 0, 0.75);
+}
+
+#alius-shell .alius-device[data-preset="kestrel"] .alius-device-screen {
+  border-radius: 6px 6px 0 0;
+  box-shadow: 0 0 0 12px #0a0a0a, 0 0 0 15px #1a1b1c, 0 0 0 16px rgba(255, 255, 255, 0.12);
+}
+
+#alius-shell .alius-device[data-preset="kestrel"] .alius-device-label { color: #e8ad0c; }
+/* the model plate sits on the stripe, where there is room: the bezel takes the rest of the top margin */
+#alius-shell .alius-device[data-preset="kestrel"] .alius-led { left: 40px; top: 6px; }
+#alius-shell .alius-device[data-preset="kestrel"] .alius-device-label {
+  left: 62px;
+  top: 3px;
+  padding: 0 8px;
+  background: #151515;
+  line-height: 14px;
+}
+
+#alius-shell .alius-device[data-preset="kestrel"] .alius-hazard {
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 20px;
+  border-radius: 22px 22px 0 0;
+  background: repeating-linear-gradient(-45deg, #e8ad0c 0 16px, #151515 16px 32px);
+  opacity: 0.9;
+}
+
+#alius-shell .alius-device[data-preset="kestrel"] .alius-corner {
+  top: 20px;
+  width: 70px;
+  height: 70px;
+  background: #e8ad0c;
+  opacity: 0.85;
+}
+#alius-shell .alius-device[data-preset="kestrel"] .alius-corner:nth-of-type(1) { left: 0; clip-path: polygon(0 0, 100% 0, 0 100%); }
+#alius-shell .alius-device[data-preset="kestrel"] .alius-corner:nth-of-type(2) { right: 0; clip-path: polygon(0 0, 100% 0, 100% 100%); }
+
+#alius-shell .alius-device[data-preset="kestrel"] .alius-bolt {
+  width: 20px;
+  height: 20px;
+  clip-path: polygon(25% 5%, 75% 5%, 100% 50%, 75% 95%, 25% 95%, 0 50%);
+  background: radial-gradient(circle at 40% 35%, #b9bcbd, #5c5f61 60%, #2b2c2d);
+}
+#alius-shell .alius-device[data-preset="kestrel"] .alius-bolt:nth-of-type(1) { top: 26px; left: 10px; }
+#alius-shell .alius-device[data-preset="kestrel"] .alius-bolt:nth-of-type(2) { top: 26px; right: 10px; }
+#alius-shell .alius-device[data-preset="kestrel"] .alius-bolt:nth-of-type(3) { top: 45%; left: 10px; }
+#alius-shell .alius-device[data-preset="kestrel"] .alius-bolt:nth-of-type(4) { top: 45%; right: 10px; }
+#alius-shell .alius-device[data-preset="kestrel"] .alius-bolt:nth-of-type(5) { top: 75%; left: 10px; }
+#alius-shell .alius-device[data-preset="kestrel"] .alius-bolt:nth-of-type(6) { top: 75%; right: 10px; }
+
+#alius-shell .alius-device[data-preset="kestrel"] .alius-vents {
+  top: 28px;
+  right: 80px;
+  width: 80px;
+  height: 10px;
+  background: repeating-linear-gradient(90deg, #1b1c1d 0 4px, transparent 4px 8px);
+}
+
+#alius-shell .alius-device[data-preset="kestrel"] .alius-grime {
+  width: 90px;
+  height: 60px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(0, 0, 0, 0.28), transparent);
+}
+#alius-shell .alius-device[data-preset="kestrel"] .alius-grime:nth-of-type(1) { left: 6%; bottom: 20%; }
+#alius-shell .alius-device[data-preset="kestrel"] .alius-grime:nth-of-type(2) { right: 8%; top: 38%; }
+
+#alius-shell .alius-device[data-preset="kestrel"] .alius-brushed { mix-blend-mode: overlay; opacity: 0.18; }
+#alius-shell .alius-device[data-preset="kestrel"] .alius-grime-layer { mix-blend-mode: multiply; opacity: 0.5; }
+
+/* ---- vesper: white ceramic, teal light ring, no screws ---- */
+#alius-shell .alius-device[data-preset="vesper"] {
+  border-radius: 64px 64px 0 0;
+  padding: 40px 38px 0;
+  background:
+    radial-gradient(70% 40% at 35% 0%, rgba(255, 255, 255, 0.9), transparent 70%),
+    radial-gradient(60% 50% at 100% 30%, rgba(170, 230, 222, 0.18), transparent 70%),
+    linear-gradient(175deg, #f3f4f1 0%, #e2e5e1 40%, #c9cdc9 85%, #b5bab6 100%);
+  box-shadow: 0 0 0 1px #9aa09c, 0 -24px 70px rgba(0, 0, 0, 0.6);
+}
+
+#alius-shell .alius-device[data-preset="vesper"] .alius-device-screen {
+  border-radius: 34px 34px 0 0;
+  box-shadow: 0 0 0 14px #0b0c0c, 0 0 0 16px #a9b0ac, 0 0 0 18px rgba(255, 255, 255, 0.7), 0 0 18px 18px rgba(63, 214, 196, 0.35);
+}
+
+#alius-shell .alius-device[data-preset="vesper"] .alius-device-label {
+  font-family: var(--alius-font-sans, system-ui, sans-serif);
+  font-weight: 300;
+  letter-spacing: 12px;
+  color: #6d7572;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 5px;
+}
+#alius-shell .alius-device[data-preset="vesper"] .alius-led { display: none; }
+
+#alius-shell .alius-device[data-preset="vesper"] .alius-home {
+  top: -4px;
+  left: 50%;
+  width: 54px;
+  height: 20px;
+  border-radius: 12px;
+  transform: translateX(-50%);
+  border: 20px solid transparent;
+  box-sizing: content-box;
+  box-shadow: inset 0 0 0 2px #8fb9b2;
+  opacity: 0.0;
+}
+
+#alius-shell .alius-device[data-preset="vesper"] .alius-ring {
+  inset: 18px 22px 0;
+  border-radius: 50px 50px 0 0;
+  box-shadow: inset 0 0 0 2px rgba(143, 185, 178, 0.55);
+}
+
+#alius-shell .alius-device[data-preset="vesper"] .alius-ceramic { mix-blend-mode: multiply; opacity: 0.12; }
+
+@media (prefers-reduced-motion: reduce) {
+  #alius-shell .alius-device-chrome * { animation: none; transition: none; }
+}

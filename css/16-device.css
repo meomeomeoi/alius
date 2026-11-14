@@ -39,6 +39,28 @@
   width: auto;
 }
 
+/* an image skin: the frame sets the size (its aspect ratio), the screen sits on the cut-out by percent */
+#alius-shell .alius-device[data-kind="image"] {
+  bottom: auto;
+  height: auto;
+  aspect-ratio: var(--device-ratio, auto);
+}
+
+#alius-shell .alius-device[data-kind="image"] .alius-device-screen {
+  padding: 0;
+  border: 0;
+}
+
+#alius-shell .alius-device-frame,
+#alius-shell .alius-device-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  user-select: none;
+}
+
 #alius-shell .alius-device-chrome {
   position: absolute;
   inset: 0;

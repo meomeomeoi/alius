@@ -68,6 +68,7 @@ import { Wizard, type WizardState } from './setup/wizard';
 import { renderSetupScreen } from './ui/setup/setupScreen';
 import { portrait, renderSquadTab } from './ui/squad/squadTab';
 import { renderOpsTab, type OpsTabCtx } from './ui/ops/opsTab';
+import { pickSkin } from './ui/device/skins';
 import { renderHub } from './ui/hub/hubScreen';
 import { endSlotBlock } from './ui/hub/model';
 import { renderMapTab } from './ui/map/mapTab';
@@ -1537,6 +1538,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     replaceState,
     getContentErrors: () => contentErrors,
     analyze: { registries: () => registries },
+    skin: () => ({ skin: pickSkin(state, registries, getSettings(st).deviceSkin), assetUrl: deps.assetUrl }),
     debugTools,
     dispatch: (action) => api.dispatch(action, { expectChatId: st.getActiveChat()?.chatId }),
     onSettingsChanged: () => {

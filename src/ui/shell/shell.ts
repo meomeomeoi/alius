@@ -4,6 +4,9 @@ import type { ContentError, Registries } from '../../content/types';
 import { attachAnalyzer, type Analyzer } from '../analyze/analyzer';
 import type { StAdapter } from '../../st/adapter';
 import type { LoadResult } from '../../st/persistence';
+import { renderChrome } from '../device/chrome';
+import { BUILT_IN_SKIN } from '../device/skins';
+import type { Entry } from '../../content/types';
 import { h } from '../dom';
 import { isControl, isEditable } from './keys';
 import { createModalHost, type ModalOpts } from './modal';
@@ -66,6 +69,8 @@ export interface ShellDeps {
   onSettingsChanged?: () => void;
   /** P7a: content for the analysis tool; without it the shell runs without hover explanations. */
   analyze?: { registries: () => Registries };
+  /** P10: the casing of the PDA, asked again on every refresh and settings change (absent: the built-in `ccp_standard`). */
+  skin?: () => { skin: Entry; assetUrl?: (path: string) => string };
   /** Called when the device goes up or down (sound and boot hooks). */
   onDevice?(up: boolean): void;
 }
@@ -107,8 +112,18 @@ export function createShell(deps: ShellDeps): ShellApi {
     else st.toast(kind === 'story' ? 'info' : kind, text);
   }
 
+  /** Dresses the device in the skin the app asks for; the device itself is not rebuilt. */
+  function applySkin(): void {
+    const chrome = device?.querySelector<HTMLElement>('.alius-device-chrome');
+    const screen = device?.querySelector<HTMLElement>('.alius-device-screen');
+    if (!device || !chrome || !screen) return;
+    const wanted = deps.skin?.();
+    renderChrome(chrome, screen, device, wanted?.skin ?? BUILT_IN_SKIN, wanted?.assetUrl);
+  }
+
   function applySettings(): void {
     if (!root) return;
+    applySkin();
     const s = getSettings(st);
     root.dataset.palette = s.palette;
     root.classList.toggle('alius-scanlines', s.scanlines);
@@ -218,6 +233,7 @@ export function createShell(deps: ShellDeps): ShellApi {
     device = h('div', { class: 'alius-device', 'data-skin': 'ccp_standard', 'data-up': String(up) }, chrome, screen);
     hubHost = h('div', { class: 'alius-hub-host' });
     host.append(hubHost, device);
+    applySkin();
     applyDevice(up);
     updateNarrow();
     renderHub();

@@ -6,7 +6,7 @@ import type { CampaignState } from '../../engine/state/types';
 export const FALLBACK_SKIN = 'ccp_standard';
 
 /** Used only when a pack ships no skins at all; the core pack's `ccp_standard` is the same. */
-const BUILT_IN: Entry = {
+export const BUILT_IN_SKIN: Entry = {
   id: FALLBACK_SKIN, name: 'CCP standard issue', description: 'Corporate-surplus handheld.', kind: 'css', cssPreset: 'ccp_standard',
   ledColor: '#ffb000', accent: '#d8cb98', label: 'CCP-PDA MK.III',
 };
@@ -20,7 +20,7 @@ export function pickSkin(state: CampaignState | null, reg: Registries, override:
   const skins = [...reg.deviceSkins.values()];
   const chosen = override ? reg.deviceSkins.get(override) : undefined;
   if (chosen) return chosen;
-  const fallback = reg.deviceSkins.get(FALLBACK_SKIN) ?? BUILT_IN;
+  const fallback = reg.deviceSkins.get(FALLBACK_SKIN) ?? BUILT_IN_SKIN;
   if (!state) return fallback;
   const bound = (key: 'traitId' | 'unlockFlag' | 'corporationId', holds: (v: string) => boolean): Entry | undefined =>
     skins.find((s) => {
