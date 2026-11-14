@@ -261,6 +261,26 @@ export interface DmMessage {
   initiated?: boolean;
 }
 
+/** P11: progress through a prologue (the registry entry `prologueId`). Wizard steps are already in `completed` or `skipped` when the campaign is built. */
+export interface OnboardingState {
+  prologueId: string;
+  /** The current step; once `done` it stays on the last step (`free`). */
+  stepId: string;
+  /** The day the current step began (the `next_day` completion compares against it). */
+  stepDay: number;
+  completed: string[];
+  skipped: string[];
+  done: boolean;
+  /** Named units the commander has had their first words with. */
+  spoken?: string[];
+  /** Coach hints the player dismissed. */
+  hintsSeen?: string[];
+  /** The soldier who leads the guided first evening. */
+  guideUnitId?: string;
+  /** The tutorial run the `expedition` step offered. */
+  tutorialMissionId?: string;
+}
+
 export interface NightEntry {
   id: string;
   unitId: string;
@@ -530,6 +550,11 @@ export interface CampaignState {
   combat?: CombatState;
   /** The last finished combat, for P5's recap and debrief (P4). */
   lastCombat?: CombatResult;
+  /**
+   * P11: where the campaign is in its prologue. Absent = there is no prologue (an old campaign, or a start without one):
+   * nothing is locked and no step is shown. Written by `buildCampaign`, moved only by the `onboarding/*` actions.
+   */
+  onboarding?: OnboardingState;
   /** An open workshop session of a given day (P4). */
   workshopSession?: { day: number; opsLeft: number; companionId?: string };
   /** Cached display names of affixed enemies, keyed `enemyId|affixes` (P4; at most 100). */

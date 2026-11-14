@@ -16,12 +16,19 @@ import '../../src/engine/actions/combat';
 import '../../src/engine/actions/progression';
 import '../../src/engine/actions/world';
 import '../../src/engine/actions/expedition';
+import '../../src/engine/actions/onboarding';
 
 export async function loadCore(): Promise<Registries> {
   const r = await loadPacks(['content/core'], async (p) => JSON.parse(await readFile(p, 'utf8')));
   if (r.errors.length > 0) throw new Error(JSON.stringify(r.errors));
   return r.registries;
 }
+
+const prologueIdFor = (reg: Registries, startId: string): string => {
+  const p = [...reg.prologues.values()].find((e) => e.startId === startId);
+  if (!p) throw new Error(`no prologue for ${startId}`);
+  return p.id;
+};
 
 const ZERO = { pragmatism: 0, autonomy: 0, ingroup: 0, mercy: 0, corporate: 0, sacrifice: 0 };
 export const unitSetup = (name: string, over: Partial<UnitSetup> = {}): UnitSetup => ({
@@ -33,12 +40,16 @@ export const unitSetup = (name: string, over: Partial<UnitSetup> = {}): UnitSetu
 });
 
 /** A P1-built campaign (no P2 fields set by hand): `n` named units, Vesper start, mutiny crime. */
-export function campaign(reg: Registries, n = 4, opts: { crimeId?: string; startId?: string } = {}): CampaignState {
+export function campaign(
+  reg: Registries, n = 4,
+  opts: { crimeId?: string; startId?: string; /** P11: write `onboarding` for the start's prologue (default: none, as every older test expects). */ onboarding?: 'prologue' | 'veteran' } = {},
+): CampaignState {
   const names = ['Ann', 'Bea', 'Cat', 'Dee', 'Eve', 'Fay'];
   const r = buildCampaign(
     {
       commanderName: 'Vale', startId: opts.startId ?? 'start_vesper', crimeId: opts.crimeId ?? 'mutiny',
       units: names.slice(0, Math.min(n, 4)).map((nm) => unitSetup(nm)),
+      ...(opts.onboarding !== undefined ? { onboarding: { prologueId: prologueIdFor(reg, opts.startId ?? 'start_vesper'), veteran: opts.onboarding === 'veteran' } } : {}),
     },
     reg, { desireBondDefects: false, seed: 11 },
   );

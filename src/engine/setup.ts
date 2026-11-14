@@ -1,5 +1,7 @@
 import type { Entry, Registries } from '../content/types';
 import { createCampaign } from './state/create';
+import { Rng } from './rng';
+import { enterStep, initialOnboarding, stepIndex } from './onboarding';
 import { TUNING } from './tuning';
 import { ensureLeash } from './leash/weekly';
 import { seedWorld } from './world/state';
@@ -63,6 +65,8 @@ export interface SetupResult {
   commander?: CommanderSetup;
   /** P8: the world the player set up; absent = every default. */
   world?: { options: Record<string, string> };
+  /** P11: start the campaign inside this prologue (`veteran`: the wizard steps count as skipped). Absent = no prologue. */
+  onboarding?: { prologueId: string; veteran: boolean };
 }
 
 interface Effect { type?: unknown; [k: string]: unknown }
@@ -196,6 +200,11 @@ export function validateSetup(r: SetupResult, reg: Registries, opts: { desireBon
   if (!reg.crimes.has(r.crimeId)) out.push(`Unknown crime "${r.crimeId}"`);
   if (r.commander !== undefined) out.push(...validateCommanderSetup(r.commander, reg, opts));
   if (r.world !== undefined) out.push(...validateWorldOptions(r.world.options, reg));
+  if (r.onboarding !== undefined) {
+    const p = reg.prologues.get(r.onboarding.prologueId);
+    if (!p) out.push(`Unknown prologue "${r.onboarding.prologueId}"`);
+    else if (p.startId !== r.startId) out.push(`Prologue "${p.id}" belongs to start "${String(p.startId)}", not "${r.startId}"`);
+  }
 
   const units = r.units ?? [];
   if (units.length > SETUP_LIMITS.maxUnits) out.push(`At most ${SETUP_LIMITS.maxUnits} units (has ${units.length})`);
@@ -360,5 +369,12 @@ export function buildCampaign(
   applyFactionTraitEffects(state, reg); // after the seed: it keeps a standing that is already set
   applyWorldStartEffects(state, reg); // P8: the world's norm costs the own corporation's standing
   ensureLeash(state, reg);
+  if (r.onboarding !== undefined) {
+    // P11: the prologue starts on its first campaign step; scene and expedition steps with nobody to meet are skipped now
+    state.onboarding = initialOnboarding(reg, r.onboarding.prologueId, { veteran: r.onboarding.veteran, day: state.day });
+    const rng = new Rng(state.rng);
+    enterStep(state, { registries: reg, rng }, stepIndex(state, reg));
+    state.rng = rng.state;
+  }
   return { ok: true, state };
 }

@@ -130,7 +130,7 @@ Glossary: `prologue`, `intake_interview`, `medical_exam`, `personnel_dossier`, `
   - `advance(draft, ctx): EngineEvent[]` (internal: moves to the next step, applies auto-skips, entry effects; Tasks 7 and 8 add entry effects through `registerStepEntry(kind, fn)`)
   - actions `onboarding/complete_step { stepId }`, `onboarding/skip_step { stepId }`, `onboarding/mark_spoken { unitId }`, `onboarding/hint_seen { hintId }`; events `onboarding_step_completed { stepId }`, `onboarding_step_skipped { stepId }`, `onboarding_step_started { stepId }`, `onboarding_done`, `onboarding_spoken { unitId }`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `state.test.ts` (core content via `loadCore`):
 - `buildCampaign without onboarding writes none and onboardingDone is true` (old saves and every existing test);
@@ -147,13 +147,13 @@ Glossary: `prologue`, `intake_interview`, `medical_exam`, `personnel_dossier`, `
 - `mark_spoken rejects a grunt, a dead unit and a repeat`; `hint_seen is idempotent`;
 - `every onboarding action is refused once done` (`/prologue is over/`).
 
-- [ ] **Step 2: Run** `npx vitest run tests/engine/onboarding` → FAIL.
+- [x] **Step 2: Run** `npx vitest run tests/engine/onboarding` → FAIL.
 
-- [ ] **Step 3: Implement** the readers and actions per Interfaces and the rulings ("Completion conditions", "Auto-skips"). `buildCampaign` writes `onboarding` only when `r.onboarding` is given. `advance` skips forward in a loop (auto-skip rules), sets `stepDay = draft.day`, and on `free` pushes it to `completed` and sets `done`.
+- [x] **Step 3: Implement** the readers and actions per Interfaces and the rulings ("Completion conditions", "Auto-skips"). `buildCampaign` writes `onboarding` only when `r.onboarding` is given. `advance` skips forward in a loop (auto-skip rules), sets `stepDay = draft.day`, and on `free` pushes it to `completed` and sets `done`.
 
-- [ ] **Step 4: Run** `npx vitest run tests/engine` → PASS; `npm test` → green.
+- [x] **Step 4: Run** `npx vitest run tests/engine` → PASS; `npm test` → green.
 
-- [ ] **Step 5: Commit** `feat(engine): onboarding state, steps and actions`
+- [x] **Step 5: Commit** `feat(engine): onboarding state, steps and actions`
 
 ---
 

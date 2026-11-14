@@ -15,6 +15,7 @@ import './engine/actions/dilemma'; // registers dilemma/* actions and the pacing
 import './engine/actions/arc'; // registers arc/decide and the medbay arc steps (P6)
 import './engine/actions/items'; // registers item/* actions and the workshop hook
 import './engine/actions/commander'; // registers commander/seed, set_profile and review_done (P7)
+import './engine/actions/onboarding'; // registers onboarding/* actions (P11)
 import './llm/calls/profileImport'; // registers the profile_import call type
 import './llm/calls/commanderImport'; // registers the commander_import call type (P7)
 import { generateVignette } from './llm/calls/activityVignette'; // registers the activity_vignette call type
