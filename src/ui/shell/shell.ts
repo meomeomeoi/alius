@@ -125,13 +125,19 @@ export function createShell(deps: ShellDeps): ShellApi {
     else st.toast(kind === 'story' ? 'info' : kind, text);
   }
 
+  /** What the device wears now, so a refresh that changes nothing does not build the casing (and request its frame) again. */
+  let dressed: { device: HTMLElement; skin: Entry; assetUrl: ((path: string) => string) | undefined } | null = null;
+
   /** Dresses the device in the skin the app asks for; the device itself is not rebuilt. */
   function applySkin(): void {
     const chrome = device?.querySelector<HTMLElement>('.alius-device-chrome');
     const screen = device?.querySelector<HTMLElement>('.alius-device-screen');
     if (!device || !chrome || !screen) return;
     const wanted = deps.skin?.();
-    renderChrome(chrome, screen, device, wanted?.skin ?? BUILT_IN_SKIN, wanted?.assetUrl);
+    const skin = wanted?.skin ?? BUILT_IN_SKIN;
+    if (dressed && dressed.device === device && dressed.skin === skin && dressed.assetUrl === wanted?.assetUrl) return;
+    renderChrome(chrome, screen, device, skin, wanted?.assetUrl);
+    dressed = { device, skin, assetUrl: wanted?.assetUrl };
   }
 
   function applySettings(): void {
@@ -243,8 +249,18 @@ export function createShell(deps: ShellDeps): ShellApi {
     if (titleEl) titleEl.textContent = router.current() === 'hub' ? '╔═[ ALIUS // OUTPOST ]' : '╔═[ ALIUS // PDA ]';
   }
 
+  /**
+   * At a narrow width the raised device covers the whole hub: the hub then leaves the focus order (`inert`), so Shift+Tab
+   * from the tab bar does not walk into buttons nobody can see. Wide, the hub's left column stays beside the device.
+   */
+  function syncHubInert(): void {
+    const covered = device?.dataset.up === 'true' && window.innerWidth <= NARROW_PX;
+    hubHost?.toggleAttribute('inert', covered);
+  }
+
   function updateNarrow(): void {
     device?.classList.toggle('alius-device-narrow', window.innerWidth <= NARROW_PX);
+    syncHubInert();
   }
 
   /** Puts the device up or down (data, `inert`, `aria-hidden`); the slide itself is CSS. */
@@ -258,6 +274,7 @@ export function createShell(deps: ShellDeps): ShellApi {
       device.setAttribute('inert', '');
       device.setAttribute('aria-hidden', 'true');
     }
+    syncHubInert();
   }
 
   function renderHub(): void {

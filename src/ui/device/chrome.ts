@@ -38,6 +38,10 @@ const PRESETS: Record<string, () => Array<Node | null>> = {
   ],
 };
 
+/** Frames that failed to load this session: dressing again goes straight to the fallback instead of requesting them again. */
+const failedFrames = new Set<string>();
+export const clearFailedFrames = (): void => failedFrames.clear();
+
 /** Forgets what an image skin put on the screen and the device. */
 function clearImageLayout(device: HTMLElement, screen: HTMLElement): void {
   device.style.removeProperty('--device-ratio');
@@ -56,7 +60,7 @@ export function renderChrome(
   chrome.replaceChildren();
   chrome.setAttribute('aria-hidden', 'true');
   const box = screenBox(skin);
-  if (skin.kind === 'image' && (!assetUrl || !box || typeof skin.frameImage !== 'string')) {
+  if (skin.kind === 'image' && (!assetUrl || !box || typeof skin.frameImage !== 'string' || failedFrames.has(skin.frameImage))) {
     renderChrome(chrome, screen, device, BUILT_IN_SKIN);
     return;
   }
@@ -76,7 +80,10 @@ export function renderChrome(
     screen.style.width = box.width;
     screen.style.height = box.height;
     const frame = h('img', { class: 'alius-device-frame', alt: '', draggable: 'false', src: assetUrl(String(skin.frameImage)) });
-    frame.addEventListener('error', () => renderChrome(chrome, screen, device, BUILT_IN_SKIN));
+    frame.addEventListener('error', () => {
+      failedFrames.add(String(skin.frameImage));
+      renderChrome(chrome, screen, device, BUILT_IN_SKIN);
+    });
     chrome.append(frame);
     const overlay = skin.overlay as { image: string; blend: 'overlay' | 'multiply'; opacity: number } | undefined;
     if (overlay) {

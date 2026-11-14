@@ -1,19 +1,21 @@
 // @vitest-environment jsdom
-import { afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { Entry, Registries } from '../../src/content/types';
 import { createCampaign } from '../../src/engine/state/create';
 import { FakeStAdapter } from '../../src/st/fake';
 import { getSettings, updateSettings } from '../../src/settings';
-import { renderChrome } from '../../src/ui/device/chrome';
+import { clearFailedFrames, renderChrome } from '../../src/ui/device/chrome';
 import { pickSkin } from '../../src/ui/device/skins';
 import { createShell, type ShellApi } from '../../src/ui/shell/shell';
 import { loadCore } from '../helpers/world';
+import { readFileSync } from 'node:fs';
 
 let reg: Registries;
 beforeAll(async () => {
   reg = await loadCore();
 });
 let shells: ShellApi[] = [];
+beforeEach(() => clearFailedFrames());
 afterEach(() => {
   shells.forEach((s) => s.destroy());
   shells = [];
@@ -190,6 +192,28 @@ describe('renderChrome: image skins', () => {
     expect(p.screen.style.position).toBe('');
   });
 
+  it('a frame that failed is remembered: dressing again does not request it again', () => {
+    const p = parts();
+    renderChrome(p.chrome, p.screen, p.device, image, (path) => path);
+    p.chrome.querySelector('img.alius-device-frame')!.dispatchEvent(new Event('error'));
+    expect(p.device.dataset.skin).toBe('ccp_standard');
+    renderChrome(p.chrome, p.screen, p.device, image, (path) => path);
+    expect(p.chrome.querySelector('img.alius-device-frame')).toBeNull();
+    expect(p.device.dataset.skin).toBe('ccp_standard');
+    expect(p.screen.style.position).toBe('');
+    // another device gets the same answer without a request
+    const q = parts();
+    renderChrome(q.chrome, q.screen, q.device, image, (path) => path);
+    expect(q.chrome.querySelector('img.alius-device-frame')).toBeNull();
+    expect(q.device.dataset.skin).toBe('ccp_standard');
+  });
+
+  it('a frame that never failed is still requested', () => {
+    const p = parts();
+    renderChrome(p.chrome, p.screen, p.device, image, (path) => path);
+    expect(p.chrome.querySelector('img.alius-device-frame')).not.toBeNull();
+  });
+
   it('an image skin without an assetUrl falls back to ccp_standard at once', () => {
     const p = parts();
     renderChrome(p.chrome, p.screen, p.device, image);
@@ -246,6 +270,41 @@ describe('the shell wears the skin', () => {
     expect(device().dataset.skin).toBe('ccp_standard');
   });
 
+  it('a refresh does not dress the device again: the decor nodes are the same, and a changed skin is dressed', () => {
+    const { st, shell } = shellWith((s) => pickSkin(null, reg, getSettings(s).deviceSkin));
+    shell.open();
+    const led = device().querySelector('.alius-led');
+    const layers = [...device().querySelectorAll('svg.alius-fx')];
+    expect(layers.length).toBeGreaterThan(0);
+    shell.refresh();
+    shell.refresh();
+    expect(device().querySelector('.alius-led')).toBe(led);
+    expect([...device().querySelectorAll('svg.alius-fx')]).toEqual(layers);
+    updateSettings(st, { deviceSkin: 'kestrel' });
+    shell.refresh();
+    expect(device().dataset.skin).toBe('kestrel');
+    expect(device().querySelector('.alius-led')).not.toBe(led);
+  });
+
+  it('a broken frame does not flip the layout on every refresh', () => {
+    const framed: Entry = { id: 'framed', name: 'Framed', description: 'd', kind: 'image', frameImage: 'content/core/art/device/framed.png', frameSize: { w: 1000, h: 1600 }, screenRect: { x: 100, y: 240, w: 800, h: 1200 }, ledColor: '#ff3b1f', accent: '#e8ad0c' };
+    const st = new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' });
+    const state = createCampaign({ seed: 1, commanderName: 'Vale' });
+    const shell = createShell({ st, getState: () => state, getLoad: () => ({ kind: 'ok', state, chatId: 'c' }), skin: () => ({ skin: framed, assetUrl: (p) => p }) });
+    shells.push(shell);
+    shell.open();
+    const frame = device().querySelector('img.alius-device-frame')!;
+    expect(frame).not.toBeNull();
+    frame.dispatchEvent(new Event('error'));
+    expect(device().dataset.skin).toBe('ccp_standard');
+    for (let i = 0; i < 3; i++) {
+      shell.refresh();
+      expect(device().querySelector('img.alius-device-frame')).toBeNull(); // no new request
+      expect(device().dataset.skin).toBe('ccp_standard');
+      expect(device().querySelector<HTMLElement>('.alius-device-screen')!.style.position).toBe('');
+    }
+  });
+
   it('a refresh keeps the casing and does not rebuild the device', () => {
     const { shell } = shellWith(() => skin('kestrel'));
     shell.open();
@@ -253,5 +312,29 @@ describe('the shell wears the skin', () => {
     shell.refresh();
     expect(device()).toBe(before);
     expect(device().querySelectorAll('.alius-bolt')).toHaveLength(6);
+  });
+});
+
+describe('the ccp_standard top strip (css/17-skins.css)', () => {
+  const css = readFileSync('css/17-skins.css', 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  const body = (sel: string) => [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].find((m) => m[1].trim() === sel)?.[2] ?? '';
+  const px = (s: string, prop: string) => Number(new RegExp(`${prop}:\\s*(\\d+)px`).exec(s)?.[1]);
+  const CCP = '#alius-shell .alius-device[data-preset="ccp_standard"]';
+
+  it('the model label is centred and the decor sits clear of it (barcode and sticker further out than the label)', () => {
+    const base = '#alius-shell .alius-device-label';
+    expect(body(base)).toMatch(/left:\s*50%/);
+    expect(body(base)).toMatch(/translateX\(-50%\)/);
+    expect(px(body(`${CCP} .alius-barcode`), 'right')).toBeGreaterThanOrEqual(200);
+    expect(px(body(`${CCP} .alius-sticker`), 'right')).toBeGreaterThanOrEqual(90);
+    expect(px(body(`${CCP} .alius-sticker`), 'right')).toBeLessThan(px(body(`${CCP} .alius-barcode`), 'right'));
+  });
+
+  it('on a narrow screen the sticker, barcode, grille and screws are dropped instead of overlapping the label', () => {
+    const media = /@media\s*\(max-width:\s*(\d+)px\)\s*\{([\s\S]*?)\n\}/.exec(css);
+    expect(media, 'a max-width media block').not.toBeNull();
+    expect(Number(media![1])).toBeGreaterThanOrEqual(600);
+    for (const cls of ['.alius-sticker', '.alius-barcode', '.alius-grille', '.alius-screw']) expect(media![2]).toContain(cls);
+    expect(media![2]).toMatch(/display:\s*none/);
   });
 });

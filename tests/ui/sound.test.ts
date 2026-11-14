@@ -66,11 +66,13 @@ const entry = (id: SoundId, over: Record<string, unknown> = {}): Entry => ({ id,
 const withSounds = (entries: Entry[]): Registries => ({ ...reg, uiSounds: new Map(entries.map((e): [string, Entry] => [e.id as string, e])) });
 const settings = (over: Partial<AliusSettings> = {}): AliusSettings => ({ ...DEFAULT_SETTINGS, ...over });
 
-function setup(over: Partial<AliusSettings> = {}, entries: Entry[] = [entry('open')], extra: { assetUrl?: (p: string) => string } = {}) {
+function setup(over: Partial<AliusSettings> = {}, entries: Entry[] = [entry('open')], extra: { assetUrl?: (p: string) => string; gesture?: boolean } = {}) {
   const audio = fakeAudio();
   let current = settings(over);
   const make = vi.fn(audio.make);
-  const sound = createSound({ settings: () => current, registries: () => withSounds(entries), audio: make, ...extra });
+  const sound = createSound({ settings: () => current, registries: () => withSounds(entries), audio: make, ...(extra.assetUrl ? { assetUrl: extra.assetUrl } : {}) });
+  // the player has already clicked or pressed a key (browsers only let audio start after that)
+  if (extra.gesture !== false) document.dispatchEvent(new Event('pointerdown'));
   return { audio, sound, make, set: (o: Partial<AliusSettings>) => { current = settings({ ...current, ...o }); } };
 }
 
@@ -85,6 +87,53 @@ afterEach(() => {
 
 const flush = async () => { await vi.advanceTimersByTimeAsync(0); };
 const peak = (g: { gain: Param }) => Math.max(...g.gain.linear, 0);
+
+describe('no audio before a user gesture', () => {
+  it('play and the hum are silent, and make no AudioContext, until the first pointer press or key', () => {
+    const { make, audio, sound } = setup({ ambientHum: true }, [entry('open'), entry('hum', { synth: { wave: 'sine', freq: 50, ms: 1000, gain: 0.08 } })], { gesture: false });
+    sound.play('open');
+    sound.startHum();
+    expect(make).not.toHaveBeenCalled();
+    expect(audio.rec.oscillators).toHaveLength(0);
+    document.dispatchEvent(new Event('pointerdown'));
+    // the hum that was asked for starts with the first gesture
+    expect(make).toHaveBeenCalledTimes(1);
+    expect(audio.rec.oscillators).toHaveLength(1);
+    sound.play('open');
+    expect(audio.rec.oscillators).toHaveLength(2);
+  });
+
+  it.each(['pointerdown', 'keydown', 'touchstart'])('a %s counts as the gesture', (type) => {
+    const { make, sound } = setup({}, [entry('open')], { gesture: false });
+    sound.play('open');
+    expect(make).not.toHaveBeenCalled();
+    document.dispatchEvent(new Event(type));
+    sound.play('open');
+    expect(make).toHaveBeenCalledTimes(1);
+  });
+
+  it('a hum that is no longer wanted at the first gesture does not start', () => {
+    const { make, sound, set } = setup({ ambientHum: true }, [entry('hum', { synth: { wave: 'sine', freq: 50, ms: 1000, gain: 0.08 } })], { gesture: false });
+    sound.startHum();
+    set({ ambientHum: false });
+    document.dispatchEvent(new Event('pointerdown'));
+    expect(make).not.toHaveBeenCalled();
+  });
+
+  it('the browser\'s own record of a past user activation also counts', () => {
+    vi.stubGlobal('navigator', { userActivation: { hasBeenActive: true } });
+    const { make, sound } = setup({}, [entry('open')], { gesture: false });
+    sound.play('open');
+    expect(make).toHaveBeenCalledTimes(1);
+  });
+
+  it('dispose removes the gesture listeners', () => {
+    const spy = vi.spyOn(document, 'removeEventListener');
+    const { sound } = setup({}, [entry('open')], { gesture: false });
+    sound.dispose();
+    expect(spy.mock.calls.map(([t]) => t)).toEqual(expect.arrayContaining(['pointerdown', 'keydown', 'touchstart']));
+  });
+});
 
 describe('createSound', () => {
   it('no AudioContext is created before the first play', () => {

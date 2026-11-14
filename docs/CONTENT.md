@@ -20,6 +20,7 @@ content/core/
   "version": "0.0.1",
   "priority": 0,
   "lorebook": "lorebook.json",
+  "art": { "hub": ["art/hub/base.png", "art/hub/base_night.png"] },
   "files": { "flags": "flags.json", "roles": "roles.json" }
 }
 ```
@@ -27,6 +28,7 @@ content/core/
 - `id`, `name`, `version`: non-empty strings.
 - `priority`: number. Packs load in ascending priority; **a later (higher) pack overrides earlier ones by entry id**.
 - `lorebook` (optional): path of a compact lorebook file, see [Lorebook](#lorebook). Only the highest-priority pack that declares one is used.
+- `art` (optional, P10): art the pack ships, so the UI never probes for a file that is not there (a missing file would only log a 404). `hub`: the hub cross-section images as paths under the pack folder (`base.png`, `base_<slot>.png`; at most 8; only `.png`, no URL, no `..`). A later pack's file of the same name replaces an earlier one. A pack without `art` shows the CSS blueprint and requests nothing.
 - `files`: maps a registry name to a file path **relative to the pack folder**. Only the registry names below are accepted; a typo is reported as an error. Registries you do not list stay empty.
 
 ### Registry names
@@ -696,7 +698,7 @@ All paths are relative to the extension folder and are requested only from there
 
 | What | Path | If missing |
 |---|---|---|
-| Hub cross-section | `content/core/art/hub/base_<slot>.png` (`morning`, `afternoon`, `evening`, `night`), else `content/core/art/hub/base.png` | The CSS blueprint (rooms stay where `rect` puts them). |
+| Hub cross-section | `content/core/art/hub/base_<slot>.png` (`morning`, `afternoon`, `evening`, `night`), else `content/core/art/hub/base.png` — **and listed in the manifest's `art.hub`** (an unlisted file is never requested) | The CSS blueprint (rooms stay where `rect` puts them). |
 | Device frame / overlay | the skin's `frameImage` and `overlay.image` | `ccp_standard` chrome / no overlay. |
 | UI sound files | an entry's `file` (suggested `content/core/audio/<id>.ogg`) | The synth. |
 | Fonts | `fonts/*.woff2`, licences in `fonts/LICENSES/` | The fallbacks in `--alius-font*`. |

@@ -62,6 +62,10 @@ export function createSound(deps: SoundDeps): Sound {
   let disposed = false;
   let lastTick = -Infinity;
   let hum: { stop(): void; gain: ParamLike } | null = null;
+  /** The player has pressed or touched something: browsers only let audio start after that (and warn in the console otherwise). */
+  let gestured = false;
+  /** The hum was asked for before the first gesture: it starts with it. */
+  let humWanted = false;
   const files = new Map<string, Promise<unknown>>();
 
   const level = (): number => {
@@ -69,8 +73,20 @@ export function createSound(deps: SoundDeps): Sound {
     return s.soundMuted ? 0 : s.soundVolume / 100;
   };
 
+  const GESTURES = ['pointerdown', 'keydown', 'touchstart'] as const;
+  const userActive = (): boolean => gestured || (typeof navigator !== 'undefined' && navigator.userActivation?.hasBeenActive === true);
+  const stopWatching = (): void => {
+    if (typeof document !== 'undefined') for (const t of GESTURES) document.removeEventListener(t, onGesture, true);
+  };
+  function onGesture(): void {
+    gestured = true;
+    stopWatching();
+    if (humWanted) api.startHum(); // asked for before anyone touched the page: it starts now
+  }
+  if (typeof document !== 'undefined') for (const t of GESTURES) document.addEventListener(t, onGesture, true);
+
   function audio(): AudioContextLike | null {
-    if (disposed || unavailable) return null;
+    if (disposed || unavailable || !userActive()) return null;
     if (!ctx) {
       try {
         ctx = (deps.audio ?? browserAudio)();
@@ -133,7 +149,7 @@ export function createSound(deps: SoundDeps): Sound {
     hum = null;
   }
 
-  return {
+  const api: Sound = {
     play(id) {
       if (id === 'hum') return; // the hum has its own switch (startHum)
       const entry = deps.registries().uiSounds.get(id);
@@ -155,7 +171,9 @@ export function createSound(deps: SoundDeps): Sound {
 
     startHum() {
       const volume = level();
-      if (!deps.settings().ambientHum || volume <= 0) return stopHum();
+      humWanted = deps.settings().ambientHum && volume > 0;
+      if (!humWanted) return stopHum();
+      if (!userActive()) return; // no context before a gesture; onGesture starts it
       const entry = deps.registries().uiSounds.get('hum');
       if (!entry) return;
       const s = entry.synth as { wave: string; freq: number; gain: number };
@@ -180,6 +198,8 @@ export function createSound(deps: SoundDeps): Sound {
 
     dispose() {
       stopHum();
+      stopWatching();
+      humWanted = false;
       disposed = true;
       try {
         void ctx?.close?.()?.catch?.(() => undefined);
@@ -188,4 +208,5 @@ export function createSound(deps: SoundDeps): Sound {
       }
     },
   };
+  return api;
 }

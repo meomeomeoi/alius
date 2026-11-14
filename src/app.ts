@@ -175,7 +175,7 @@ export interface AliusApp {
 }
 
 export interface AppDeps {
-  loadContent: () => Promise<{ registries: Registries; errors: ContentError[]; lorebook?: Lorebook | null }>;
+  loadContent: () => Promise<{ registries: Registries; errors: ContentError[]; lorebook?: Lorebook | null; art?: { hub: string[] } }>;
   shellFactory?: typeof createShell;
   /** URL of a file shipped with the extension (the optional world map image). */
   assetUrl?: (path: string) => string;
@@ -190,7 +190,9 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
   const context = new ContextBuilder();
   let registries: Registries = emptyRegistries();
   let contentErrors: ContentError[] = [];
-  let lorebook: Lorebook | null = null; // installed into new campaigns by deployCampaign (P1 Task 8)
+  let lorebook: Lorebook | null = null;
+  /** The hub art the packs declare (extension-relative paths); none declared = the blueprint, nothing requested. */
+  let hubArt: string[] = []; // installed into new campaigns by deployCampaign (P1 Task 8)
   let load: LoadResult = { kind: 'none' };
   let state: CampaignState | null = null;
   let saver: ReturnType<typeof createSaver> | null = null;
@@ -1635,6 +1637,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       registries,
       settings: () => getSettings(st),
       assetUrl: deps.assetUrl,
+      art: { hub: hubArt },
       ops: opsCtx(),
       onTalk: (unitId, locationId) => void api.talkAt(unitId, locationId),
       onEndSlot: () => void api.endSlot(),
@@ -1857,6 +1860,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         const r = await deps.loadContent();
         registries = r.registries;
         lorebook = r.lorebook ?? null;
+        hubArt = r.art?.hub ?? [];
         contentErrors = r.errors;
       } catch (e) {
         contentErrors = [{ pack: '(loader)', file: '', path: '', message: errText(e) }];

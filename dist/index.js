@@ -12450,6 +12450,14 @@ var PackManifestSchema = external_exports.object({
   priority: external_exports.number(),
   /** Compact lorebook file (see LorebookSchema); the highest-priority pack that declares one wins. */
   lorebook: external_exports.string().min(1).optional(),
+  /**
+   * Art the pack ships, so the UI never has to probe for it (a missing file would only log a 404): `hub` lists the
+   * hub cross-section images (`base.png`, `base_<slot>.png`) as paths under the pack folder. Only `.png` files, no
+   * remote URL, no parent path.
+   */
+  art: external_exports.object({
+    hub: external_exports.array(external_exports.string().regex(/^[A-Za-z0-9_][A-Za-z0-9_./-]*\.png$/, "a .png path under the pack folder").refine((p) => !p.includes("..") && !p.includes("//"), "no parent path")).max(8).optional()
+  }).strict().optional(),
   files: external_exports.object(
     Object.fromEntries(REGISTRY_NAMES.map((n) => [n, external_exports.string().min(1).optional()]))
   ).strict()
@@ -21816,13 +21824,26 @@ function createSound(deps) {
   let disposed = false;
   let lastTick = -Infinity;
   let hum = null;
+  let gestured = false;
+  let humWanted = false;
   const files = /* @__PURE__ */ new Map();
   const level = () => {
     const s = deps.settings();
     return s.soundMuted ? 0 : s.soundVolume / 100;
   };
+  const GESTURES = ["pointerdown", "keydown", "touchstart"];
+  const userActive = () => gestured || typeof navigator !== "undefined" && navigator.userActivation?.hasBeenActive === true;
+  const stopWatching = () => {
+    if (typeof document !== "undefined") for (const t of GESTURES) document.removeEventListener(t, onGesture, true);
+  };
+  function onGesture() {
+    gestured = true;
+    stopWatching();
+    if (humWanted) api.startHum();
+  }
+  if (typeof document !== "undefined") for (const t of GESTURES) document.addEventListener(t, onGesture, true);
   function audio() {
-    if (disposed || unavailable) return null;
+    if (disposed || unavailable || !userActive()) return null;
     if (!ctx2) {
       try {
         ctx2 = (deps.audio ?? browserAudio)();
@@ -21880,7 +21901,7 @@ function createSound(deps) {
     }
     hum = null;
   }
-  return {
+  const api = {
     play(id) {
       if (id === "hum") return;
       const entry = deps.registries().uiSounds.get(id);
@@ -21901,7 +21922,9 @@ function createSound(deps) {
     },
     startHum() {
       const volume = level();
-      if (!deps.settings().ambientHum || volume <= 0) return stopHum();
+      humWanted = deps.settings().ambientHum && volume > 0;
+      if (!humWanted) return stopHum();
+      if (!userActive()) return;
       const entry = deps.registries().uiSounds.get("hum");
       if (!entry) return;
       const s = entry.synth;
@@ -21924,6 +21947,8 @@ function createSound(deps) {
     stopHum,
     dispose() {
       stopHum();
+      stopWatching();
+      humWanted = false;
       disposed = true;
       try {
         void ctx2?.close?.()?.catch?.(() => void 0);
@@ -21931,6 +21956,7 @@ function createSound(deps) {
       }
     }
   };
+  return api;
 }
 
 // src/ui/shell/status.ts
@@ -21982,20 +22008,23 @@ function loads(url) {
   }
   return p;
 }
-var candidates3 = (assetUrl, slot2) => [`content/core/art/hub/base_${slot2}.png`, "content/core/art/hub/base.png"].map((p) => assetUrl(p));
-function peekHubArt(assetUrl, slot2) {
+function candidates3(assetUrl, slot2, declared) {
+  const named = (name) => declared.find((p) => p.split("/").pop() === name);
+  return [named(`base_${slot2}.png`), named("base.png")].filter((p) => p !== void 0).map((p) => assetUrl(p));
+}
+function peekHubArt(assetUrl, slot2, declared) {
   if (!assetUrl) return null;
   let unknown2 = false;
-  for (const url of candidates3(assetUrl, slot2)) {
+  for (const url of candidates3(assetUrl, slot2, declared)) {
     const ok = found.get(url);
     if (ok === true) return url;
     if (ok === void 0) unknown2 = true;
   }
   return unknown2 ? void 0 : null;
 }
-async function probeHubArt(assetUrl, slot2) {
+async function probeHubArt(assetUrl, slot2, declared) {
   if (!assetUrl) return null;
-  for (const url of candidates3(assetUrl, slot2)) if (await loads(url)) return url;
+  for (const url of candidates3(assetUrl, slot2, declared)) if (await loads(url)) return url;
   return null;
 }
 
@@ -22185,10 +22214,11 @@ function crossSection(ctx2, state, here, onRoom) {
     bg.style.backgroundImage = cssUrl(url);
     caption.remove();
   };
-  const known = peekHubArt(ctx2.assetUrl, slot2);
+  const declared = ctx2.art?.hub ?? [];
+  const known = declared.length > 0 ? peekHubArt(ctx2.assetUrl, slot2, declared) : null;
   if (typeof known === "string") showArt(known);
   else if (known === void 0) {
-    void probeHubArt(ctx2.assetUrl, slot2).then((url) => {
+    void probeHubArt(ctx2.assetUrl, slot2, declared).then((url) => {
       if (url && bg.isConnected) showArt(url);
     });
   }
@@ -22206,7 +22236,18 @@ function crossSection(ctx2, state, here, onRoom) {
         style: `left:${r.x}%;top:${r.y}%;width:${r.w}%;height:${r.h}%`,
         onclick: () => onRoom(String(room.id))
       },
-      h("button", { type: "button", class: "alius-room-label alius-chip", ...analyzeNative(`hubRooms:${String(room.id)}`) }, String(room.label)),
+      h(
+        "div",
+        { class: "alius-room-head" },
+        h("button", {
+          type: "button",
+          class: "alius-room-label alius-chip",
+          "aria-label": inside.length > 0 ? `${String(room.label)}, ${inside.length} here` : String(room.label),
+          ...analyzeNative(`hubRooms:${String(room.id)}`)
+        }, String(room.label)),
+        // a small room can hold more markers than fit: it scrolls, and the count keeps the number in view
+        inside.length > 0 ? h("span", { class: "alius-room-count", "aria-hidden": "true" }, String(inside.length)) : null
+      ),
       h("div", { class: "alius-room-markers" }, ...inside.map((u) => renderMarker(state, reg, u)))
     );
     return el;
@@ -22287,7 +22328,7 @@ function sideColumn(ctx2, state, readOnly) {
     block2 !== null && end ? h("p", { class: "alius-dim alius-reason alius-end-reason" }, block2) : null
   );
 }
-function renderHub(host, _device, ctx2) {
+function renderHub(host, device, ctx2) {
   teardown.get(host)?.();
   teardown.delete(host);
   host.replaceChildren();
@@ -22336,6 +22377,7 @@ function renderHub(host, _device, ctx2) {
     const e = ev;
     if (!host.isConnected) return teardown.get(host)?.();
     if (e.key !== "Escape" || !openRoom.has(host)) return;
+    if (device.dataset.up === "true") return;
     const el = e.target;
     if (el && ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName)) return;
     if (document.querySelector(".alius-modal-backdrop")) return;
@@ -22347,7 +22389,7 @@ function renderHub(host, _device, ctx2) {
     if (!host.isConnected) return teardown.get(host)?.();
     if (!openRoom.has(host)) return;
     const el = ev.target;
-    if (el && typeof el.closest === "function" && el.closest(".alius-room-panel, .alius-room, .alius-analyze")) return;
+    if (el && typeof el.closest === "function" && el.closest(".alius-room-panel, .alius-room, .alius-analyze, .alius-modal-layer, .alius-toasts")) return;
     close();
   };
   window.addEventListener("keydown", onKey, true);
@@ -25819,6 +25861,7 @@ var PRESETS = {
     bit("alius-home")
   ]
 };
+var failedFrames = /* @__PURE__ */ new Set();
 function clearImageLayout(device, screen) {
   device.style.removeProperty("--device-ratio");
   for (const k of ["position", "left", "top", "width", "height"]) screen.style[k] = "";
@@ -25827,7 +25870,7 @@ function renderChrome(chrome, screen, device, skin, assetUrl) {
   chrome.replaceChildren();
   chrome.setAttribute("aria-hidden", "true");
   const box = screenBox(skin);
-  if (skin.kind === "image" && (!assetUrl || !box || typeof skin.frameImage !== "string")) {
+  if (skin.kind === "image" && (!assetUrl || !box || typeof skin.frameImage !== "string" || failedFrames.has(skin.frameImage))) {
     renderChrome(chrome, screen, device, BUILT_IN_SKIN);
     return;
   }
@@ -25845,7 +25888,10 @@ function renderChrome(chrome, screen, device, skin, assetUrl) {
     screen.style.width = box.width;
     screen.style.height = box.height;
     const frame = h("img", { class: "alius-device-frame", alt: "", draggable: "false", src: assetUrl(String(skin.frameImage)) });
-    frame.addEventListener("error", () => renderChrome(chrome, screen, device, BUILT_IN_SKIN));
+    frame.addEventListener("error", () => {
+      failedFrames.add(String(skin.frameImage));
+      renderChrome(chrome, screen, device, BUILT_IN_SKIN);
+    });
     chrome.append(frame);
     const overlay = skin.overlay;
     if (overlay) {
@@ -26399,12 +26445,16 @@ function createShell(deps) {
       deps.sound?.play(kind === "warn" || kind === "error" ? "alert" : "notify");
     } else st.toast(kind === "story" ? "info" : kind, text2);
   }
+  let dressed = null;
   function applySkin() {
     const chrome = device?.querySelector(".alius-device-chrome");
     const screen = device?.querySelector(".alius-device-screen");
     if (!device || !chrome || !screen) return;
     const wanted = deps.skin?.();
-    renderChrome(chrome, screen, device, wanted?.skin ?? BUILT_IN_SKIN, wanted?.assetUrl);
+    const skin = wanted?.skin ?? BUILT_IN_SKIN;
+    if (dressed && dressed.device === device && dressed.skin === skin && dressed.assetUrl === wanted?.assetUrl) return;
+    renderChrome(chrome, screen, device, skin, wanted?.assetUrl);
+    dressed = { device, skin, assetUrl: wanted?.assetUrl };
   }
   function applySettings() {
     if (!root) return;
@@ -26500,8 +26550,13 @@ function createShell(deps) {
   function updateTitle() {
     if (titleEl) titleEl.textContent = router.current() === "hub" ? "\u2554\u2550[ ALIUS // OUTPOST ]" : "\u2554\u2550[ ALIUS // PDA ]";
   }
+  function syncHubInert() {
+    const covered = device?.dataset.up === "true" && window.innerWidth <= NARROW_PX;
+    hubHost?.toggleAttribute("inert", covered);
+  }
   function updateNarrow() {
     device?.classList.toggle("alius-device-narrow", window.innerWidth <= NARROW_PX);
+    syncHubInert();
   }
   function applyDevice(up) {
     if (!device) return;
@@ -26513,6 +26568,7 @@ function createShell(deps) {
       device.setAttribute("inert", "");
       device.setAttribute("aria-hidden", "true");
     }
+    syncHubInert();
   }
   function renderHub2() {
     const target = hubHost;
@@ -26797,6 +26853,7 @@ function createApp(st, deps) {
   let registries = emptyRegistries();
   let contentErrors = [];
   let lorebook = null;
+  let hubArt = [];
   let load = { kind: "none" };
   let state = null;
   let saver = null;
@@ -28128,6 +28185,7 @@ function createApp(st, deps) {
     registries,
     settings: () => getSettings(st),
     assetUrl: deps.assetUrl,
+    art: { hub: hubArt },
     ops: opsCtx(),
     onTalk: (unitId, locationId) => void api.talkAt(unitId, locationId),
     onEndSlot: () => void api.endSlot(),
@@ -28342,6 +28400,7 @@ function createApp(st, deps) {
         const r = await deps.loadContent();
         registries = r.registries;
         lorebook = r.lorebook ?? null;
+        hubArt = r.art?.hub ?? [];
         contentErrors = r.errors;
       } catch (e) {
         contentErrors = [{ pack: "(loader)", file: "", path: "", message: errText3(e) }];
@@ -28997,6 +29056,13 @@ var settle2 = (fetchJson2, path) => fetchJson2(path).then(
   (value) => ({ ok: true, value }),
   (e) => ({ ok: false, message: e instanceof Error ? e.message : String(e) })
 );
+function collectArt(packs) {
+  const hub = /* @__PURE__ */ new Map();
+  for (const { root, manifest } of packs) {
+    for (const file of manifest.art?.hub ?? []) hub.set(file.split("/").pop(), `${root}/${file}`);
+  }
+  return { hub: [...hub.values()] };
+}
 async function loadPacks(packRoots, fetchJson2) {
   const errors = [];
   const manifestResults = await Promise.all(packRoots.map((root) => settle2(fetchJson2, `${root}/manifest.json`)));
@@ -29146,7 +29212,7 @@ async function loadPacks(packRoots, fetchJson2) {
       }
     }
   }
-  return { registries, errors, lorebook };
+  return { registries, errors, lorebook, art: collectArt(packs) };
 }
 
 // src/st/real.ts

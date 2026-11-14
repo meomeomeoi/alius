@@ -338,6 +338,24 @@ describe('hub and device', () => {
     expect(device().classList.contains('alius-device-narrow')).toBe(true);
   });
 
+  it('at a narrow width the hub behind the raised device leaves the focus order (inert); wide, it stays usable', () => {
+    const hubHost = () => q('.alius-hub-host')!;
+    const { shell } = setup();
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1000 });
+    shell.open();
+    expect(hubHost().hasAttribute('inert')).toBe(false); // device down: the hub is the screen
+    shell.showScreen('pda');
+    expect(hubHost().hasAttribute('inert')).toBe(true);
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1400 });
+    window.dispatchEvent(new Event('resize'));
+    expect(hubHost().hasAttribute('inert')).toBe(false); // the hub's left column is beside the device
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1000 });
+    window.dispatchEvent(new Event('resize'));
+    expect(hubHost().hasAttribute('inert')).toBe(true);
+    shell.setDevice(false);
+    expect(hubHost().hasAttribute('inert')).toBe(false);
+  });
+
   it('stacking: hub, device, toasts, modal layer, in that DOM order', () => {
     const { shell } = setup();
     shell.open();

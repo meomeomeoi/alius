@@ -94,11 +94,30 @@
   flex-direction: column;
   border: 1px solid var(--alius-dim);
   cursor: pointer;
-  overflow: hidden;
+  overflow: auto; /* a small room with a crowd scrolls; the count in its head says how many are inside */
+  scrollbar-width: thin;
 }
 
 #alius-shell .alius-room:hover {
   border-color: var(--alius-fg);
+}
+
+/* the label and the head count stay in view while the markers scroll */
+#alius-shell .alius-room-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  background: var(--alius-bg);
+}
+
+#alius-shell .alius-room-count {
+  padding: 0 6px;
+  font-size: 0.75em;
+  color: var(--alius-accent);
 }
 
 #alius-shell .alius-room-label {

@@ -428,11 +428,30 @@
   flex-direction: column;
   border: 1px solid var(--alius-dim);
   cursor: pointer;
-  overflow: hidden;
+  overflow: auto; /* a small room with a crowd scrolls; the count in its head says how many are inside */
+  scrollbar-width: thin;
 }
 
 #alius-shell .alius-room:hover {
   border-color: var(--alius-fg);
+}
+
+/* the label and the head count stay in view while the markers scroll */
+#alius-shell .alius-room-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  background: var(--alius-bg);
+}
+
+#alius-shell .alius-room-count {
+  padding: 0 6px;
+  font-size: 0.75em;
+  color: var(--alius-accent);
 }
 
 #alius-shell .alius-room-label {
@@ -740,7 +759,8 @@
 
 #alius-shell .alius-device-label {
   top: 10px;
-  left: calc(50% + 18px);
+  left: 50%;
+  transform: translateX(-50%); /* centred: the decor of each casing is placed relative to it */
   font-family: var(--alius-font-stencil, var(--alius-font));
   font-size: 0.7em;
   letter-spacing: 0.25em;
@@ -778,7 +798,7 @@
 }
 
 #alius-shell .alius-device[data-preset="ccp_standard"] .alius-device-label { color: #d8cb98; top: 4px; }
-#alius-shell .alius-device[data-preset="ccp_standard"] .alius-led { top: 5px; }
+#alius-shell .alius-device[data-preset="ccp_standard"] .alius-led { top: 5px; left: calc(50% - 88px); }
 
 #alius-shell .alius-device[data-preset="ccp_standard"] .alius-bumper {
   top: 0;
@@ -838,7 +858,7 @@
 
 #alius-shell .alius-device[data-preset="ccp_standard"] .alius-sticker {
   top: 6px;
-  right: 130px;
+  right: 118px;
   padding: 1px 8px;
   background: #3a3320;
   color: #d8cb98;
@@ -850,8 +870,8 @@
 
 #alius-shell .alius-device[data-preset="ccp_standard"] .alius-barcode {
   top: 8px;
-  right: 260px;
-  width: 54px;
+  right: 232px;
+  width: 44px;
   height: 14px;
   background: repeating-linear-gradient(90deg, #cfc7a8 0 2px, transparent 2px 4px, #cfc7a8 4px 5px, transparent 5px 8px);
   opacity: 0.8;
@@ -986,6 +1006,13 @@
 }
 
 #alius-shell .alius-device[data-preset="vesper"] .alius-ceramic { mix-blend-mode: multiply; opacity: 0.12; }
+
+/* a narrow device has no room beside the centred label: the small decor is dropped instead of overlapping it */
+@media (max-width: 760px) {
+  #alius-shell .alius-device[data-preset="ccp_standard"] :is(.alius-sticker, .alius-barcode, .alius-grille, .alius-screw) {
+    display: none;
+  }
+}
 
 @media (prefers-reduced-motion: reduce) {
   #alius-shell .alius-device-chrome * { animation: none; transition: none; }

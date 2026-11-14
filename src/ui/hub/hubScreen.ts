@@ -24,6 +24,8 @@ export interface HubCtx {
   settings: () => AliusSettings;
   /** Resolves a file shipped with the extension (hub art); without it the blueprint always shows. */
   assetUrl?: (path: string) => string;
+  /** The art the packs declare in their manifests (`hub`: extension-relative paths); nothing declared = the blueprint, no request. */
+  art?: { hub: readonly string[] };
   /** The cards of a room's activities are the OPS tab's, so they need its context. */
   ops: OpsTabCtx;
   onTalk(unitId: string, locationId: string): void;
@@ -78,10 +80,11 @@ function crossSection(
     bg.style.backgroundImage = cssUrl(url);
     caption.remove();
   };
-  const known = peekHubArt(ctx.assetUrl, slot);
+  const declared = ctx.art?.hub ?? [];
+  const known = declared.length > 0 ? peekHubArt(ctx.assetUrl, slot, declared) : null;
   if (typeof known === 'string') showArt(known);
   else if (known === undefined) {
-    void probeHubArt(ctx.assetUrl, slot).then((url) => {
+    void probeHubArt(ctx.assetUrl, slot, declared).then((url) => {
       if (url && bg.isConnected) showArt(url);
     });
   }
@@ -97,7 +100,15 @@ function crossSection(
         style: `left:${r.x}%;top:${r.y}%;width:${r.w}%;height:${r.h}%`,
         onclick: () => onRoom(String(room.id)),
       },
-      h('button', { type: 'button', class: 'alius-room-label alius-chip', ...analyzeNative(`hubRooms:${String(room.id)}`) }, String(room.label)),
+      h(
+        'div', { class: 'alius-room-head' },
+        h('button', {
+          type: 'button', class: 'alius-room-label alius-chip', 'aria-label': inside.length > 0 ? `${String(room.label)}, ${inside.length} here` : String(room.label),
+          ...analyzeNative(`hubRooms:${String(room.id)}`),
+        }, String(room.label)),
+        // a small room can hold more markers than fit: it scrolls, and the count keeps the number in view
+        inside.length > 0 ? h('span', { class: 'alius-room-count', 'aria-hidden': 'true' }, String(inside.length)) : null,
+      ),
       h('div', { class: 'alius-room-markers' }, ...inside.map((u) => renderMarker(state, reg, u))),
     );
     return el;
@@ -179,7 +190,7 @@ function sideColumn(ctx: HubCtx, state: CampaignState, readOnly: boolean): HTMLE
  * order, what is waiting tonight and the two buttons that matter (open the PDA, end the slot). The device element is
  * the shell's: it is only handed over for reference.
  */
-export function renderHub(host: HTMLElement, _device: HTMLElement, ctx: HubCtx): void {
+export function renderHub(host: HTMLElement, device: HTMLElement, ctx: HubCtx): void {
   teardown.get(host)?.();
   teardown.delete(host);
   host.replaceChildren();
@@ -232,6 +243,7 @@ export function renderHub(host: HTMLElement, _device: HTMLElement, ctx: HubCtx):
     const e = ev as KeyboardEvent;
     if (!host.isConnected) return teardown.get(host)?.();
     if (e.key !== 'Escape' || !openRoom.has(host)) return;
+    if (device.dataset.up === 'true') return; // the raised device is on top of the room panel: Escape lowers it first
     const el = e.target as HTMLElement | null;
     if (el && ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName)) return;
     if (document.querySelector('.alius-modal-backdrop')) return; // a modal closes first
@@ -243,7 +255,8 @@ export function renderHub(host: HTMLElement, _device: HTMLElement, ctx: HubCtx):
     if (!host.isConnected) return teardown.get(host)?.();
     if (!openRoom.has(host)) return;
     const el = ev.target as Element | null;
-    if (el && typeof el.closest === 'function' && el.closest('.alius-room-panel, .alius-room, .alius-analyze')) return;
+    // a press in the panel, a room, the analysis panel, a modal or a toast is not a press "outside"
+    if (el && typeof el.closest === 'function' && el.closest('.alius-room-panel, .alius-room, .alius-analyze, .alius-modal-layer, .alius-toasts')) return;
     close();
   };
   window.addEventListener('keydown', onKey, true);

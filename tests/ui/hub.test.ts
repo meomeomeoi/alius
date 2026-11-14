@@ -40,7 +40,7 @@ interface Mounted {
   rerender(): void;
 }
 
-function mount(opts: { state?: CampaignState | null; readonly?: boolean; registries?: Registries; assetUrl?: (p: string) => string; width?: number } = {}): Mounted {
+function mount(opts: { state?: CampaignState | null; readonly?: boolean; registries?: Registries; assetUrl?: (p: string) => string; art?: string[]; width?: number } = {}): Mounted {
   const state = opts.state === undefined ? campaign(reg, 4) : opts.state;
   const onTalk = vi.fn();
   const onEndSlot = vi.fn();
@@ -53,6 +53,7 @@ function mount(opts: { state?: CampaignState | null; readonly?: boolean; registr
     registries,
     settings: () => ({ ...DEFAULT_SETTINGS }),
     assetUrl: opts.assetUrl,
+    art: opts.art ? { hub: opts.art } : undefined,
     ops: {
       getState: () => state, getLoad: () => (state ? { kind: 'ok', state, chatId: 'c' } : { kind: 'none' }), registries,
       onDo, onRequisition: vi.fn(),
@@ -195,15 +196,22 @@ describe('hub screen', () => {
     expect(m.host.textContent).toContain('SECTION A-A · NOT TO SCALE');
   });
 
+  it('a pack that declares no hub art costs no probe at all (nothing is requested blind)', async () => {
+    const m = mount({ assetUrl: (p) => `/ext/${p}` });
+    await flush();
+    expect(vi.mocked(probeHubArt)).not.toHaveBeenCalled();
+    expect(m.host.querySelector('.alius-hub-blueprint')).not.toBeNull();
+  });
+
   it('hub art that loads replaces the blueprint grid', async () => {
     vi.mocked(probeHubArt).mockResolvedValue('/ext/content/core/art/hub/base.png');
-    const m = mount({ assetUrl: (p) => `/ext/${p}` });
+    const m = mount({ assetUrl: (p) => `/ext/${p}`, art: ['content/core/art/hub/base.png'] });
     await flush();
     const art = m.host.querySelector<HTMLElement>('.alius-hub-art')!;
     expect(art).not.toBeNull();
     expect(art.style.backgroundImage).toContain('/ext/content/core/art/hub/base.png');
     expect(m.host.querySelector('.alius-hub-blueprint')).toBeNull();
-    expect(vi.mocked(probeHubArt)).toHaveBeenCalledWith(expect.any(Function), 'morning');
+    expect(vi.mocked(probeHubArt)).toHaveBeenCalledWith(expect.any(Function), 'morning', ['content/core/art/hub/base.png']);
   });
 
   it('clicking a room opens its panel with who is there, TALK and its activity cards', () => {
@@ -290,6 +298,52 @@ describe('hub screen', () => {
       keydown(select, 'Escape');
       expect(panel(m)).not.toBeNull();
     }
+  });
+
+  it('Escape goes to the device while it is up (the room panel is hidden behind it), and to the panel once it is down', () => {
+    const s = staged();
+    const m = mount({ state: s });
+    room(m, 'medbay').click();
+    m.device.dataset.up = 'true';
+    expect(keydown(document.body, 'Escape').defaultPrevented).toBe(false);
+    expect(panel(m)).not.toBeNull();
+    m.device.dataset.up = 'false';
+    expect(keydown(document.body, 'Escape').defaultPrevented).toBe(true);
+    expect(panel(m)).toBeNull();
+  });
+
+  it('a press inside a modal or on a toast does not close the room panel; a press elsewhere does', () => {
+    const s = staged();
+    const m = mount({ state: s });
+    const shellRoot = document.getElementById('alius-shell')!;
+    const layer = h('div', { class: 'alius-modal-layer' }, h('div', { class: 'alius-modal-backdrop' }, h('div', { class: 'alius-modal' }, h('button', {}, 'OK'))));
+    const toasts = h('div', { class: 'alius-toasts' }, h('div', { class: 'alius-toast' }, 'hi'));
+    shellRoot.append(layer, toasts);
+    room(m, 'medbay').click();
+    for (const target of [layer.querySelector('button')!, layer.querySelector('.alius-modal-backdrop')!, toasts.querySelector('.alius-toast')!]) {
+      target.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+      expect(panel(m), target.className || target.tagName).not.toBeNull();
+    }
+    document.body.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    expect(panel(m)).toBeNull();
+  });
+
+  it('a crowded room says how many are in it, so clipped markers are not a secret', () => {
+    const s = campaign(reg, 4);
+    for (const u of s.squad) u.status = 'injured';
+    const m = mount({ state: s });
+    const medbay = room(m, 'medbay');
+    expect(medbay.querySelector('.alius-room-count')!.textContent).toBe('4');
+    expect(medbay.querySelector('.alius-room-label')!.getAttribute('aria-label')).toBe('MEDBAY, 4 here');
+    expect(room(m, 'mess').querySelector('.alius-room-count')).toBeNull();
+    expect(room(m, 'mess').querySelector('.alius-room-label')!.getAttribute('aria-label')).toBe('MESS HALL');
+  });
+
+  it('rooms scroll instead of cutting their markers off', () => {
+    const css = readFileSync('css/15-hub.css', 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+    const rule = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].find((r) => r[1].trim() === '#alius-shell .alius-room');
+    expect(rule![2]).toMatch(/overflow:\s*auto/);
+    expect(rule![2]).not.toMatch(/overflow:\s*hidden/);
   });
 
   it('Escape with no panel open is not consumed (the shell lowers the device)', () => {
@@ -452,9 +506,9 @@ describe('time of day', () => {
   it.each<Slot>(['morning', 'afternoon', 'evening', 'night'])('probes the art of the %s', async (slot) => {
     const s = campaign(reg, 4);
     s.slot = slot;
-    const m = mount({ state: s, assetUrl: (p) => p });
+    const m = mount({ state: s, assetUrl: (p) => p, art: ['content/core/art/hub/base.png'] });
     await flush();
-    expect(vi.mocked(probeHubArt)).toHaveBeenCalledWith(expect.any(Function), slot);
+    expect(vi.mocked(probeHubArt)).toHaveBeenCalledWith(expect.any(Function), slot, ['content/core/art/hub/base.png']);
     expect(m.host.querySelector<HTMLElement>('.alius-hub')!.dataset.slot).toBe(slot);
   });
 });

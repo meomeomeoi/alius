@@ -34,6 +34,15 @@ export const PackManifestSchema = z
     priority: z.number(),
     /** Compact lorebook file (see LorebookSchema); the highest-priority pack that declares one wins. */
     lorebook: z.string().min(1).optional(),
+    /**
+     * Art the pack ships, so the UI never has to probe for it (a missing file would only log a 404): `hub` lists the
+     * hub cross-section images (`base.png`, `base_<slot>.png`) as paths under the pack folder. Only `.png` files, no
+     * remote URL, no parent path.
+     */
+    art: z.object({
+      hub: z.array(z.string().regex(/^[A-Za-z0-9_][A-Za-z0-9_./-]*\.png$/, 'a .png path under the pack folder').refine((p) => !p.includes('..') && !p.includes('//'), 'no parent path'))
+        .max(8).optional(),
+    }).strict().optional(),
     files: z.object(
       Object.fromEntries(REGISTRY_NAMES.map((n) => [n, z.string().min(1).optional()])) as Record<
         RegistryName,

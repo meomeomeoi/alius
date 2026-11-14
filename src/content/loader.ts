@@ -37,10 +37,21 @@ const settle = (fetchJson: Fetch, path: string) =>
     (e: unknown) => ({ ok: false as const, message: e instanceof Error ? e.message : String(e) }),
   );
 
+/** The art the packs declared, as extension-relative paths (a later pack's file of the same name replaces an earlier one). */
+export interface PackArt { hub: string[] }
+
+function collectArt(packs: Array<{ root: string; manifest: PackManifest }>): PackArt {
+  const hub = new Map<string, string>();
+  for (const { root, manifest } of packs) {
+    for (const file of manifest.art?.hub ?? []) hub.set(file.split('/').pop() as string, `${root}/${file}`);
+  }
+  return { hub: [...hub.values()] };
+}
+
 export async function loadPacks(
   packRoots: string[],
   fetchJson: Fetch,
-): Promise<{ registries: Registries; errors: ContentError[]; lorebook: PackLorebook | null }> {
+): Promise<{ registries: Registries; errors: ContentError[]; lorebook: PackLorebook | null; art: PackArt }> {
   const errors: ContentError[] = [];
 
   // 1. manifests
@@ -207,5 +218,5 @@ export async function loadPacks(
     }
   }
 
-  return { registries, errors, lorebook };
+  return { registries, errors, lorebook, art: collectArt(packs) };
 }
