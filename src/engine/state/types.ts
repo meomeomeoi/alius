@@ -352,7 +352,10 @@ export interface Inverse {
   /** The state and loyalty band the application caused (put back only while she is still in them). */
   state?: { from: string; to: string; sinceFrom: number };
   loyaltyBand?: { from: LoyaltyBand; to: LoyaltyBand };
-  historyEntries?: number;
+  /** The history lines the application wrote (UNDO removes exactly these). */
+  history?: HistoryEntry[];
+  /** `state.discipline` did not exist before: UNDO drops it again once it is empty, so the save looks untouched. */
+  createdDiscipline?: true;
   restrictionIds?: string[];
   resources?: { credits?: number; supplies?: number; plyx?: number };
   deeds?: Partial<Record<DeedCounter, number>>;

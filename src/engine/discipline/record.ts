@@ -3,11 +3,14 @@ import type { EngineCtx, EngineEvent } from '../dispatch';
 import { isLiving } from '../economy';
 import { nextId } from '../memory';
 import { applyEventToUnit } from '../relations/effects';
+import { evaluateAutomatic } from '../relations/graph';
 import type { EventIntent } from '../relations/intents';
 import { SEVERITIES } from '../relations/vocab';
 import type { CampaignState, DisciplineState, Inverse, PendingDefiance, PendingThreat, Severity } from '../state/types';
 import { TUNING } from '../tuning';
 import { impunityOf } from './impunity';
+import { punishmentFor } from './perception';
+import { applyPunishment, checkPunish } from './punish';
 
 /** The stored term `R` of a unit's Impunity (P9): −40…40, absent = 0. */
 export const recordOf = (state: Pick<CampaignState, 'relations'>, unitId: string): number => state.relations[unitId]?.impunityRecord ?? 0;
@@ -127,7 +130,7 @@ export function captureInverse(draft: CampaignState, unitId: string, fn: () => E
   if (Object.keys(daily).length > 0) inverse.dailyGain = daily;
   if (after.stateId !== before.stateId) inverse.state = { from: before.stateId, to: after.stateId, sinceFrom: before.stateSince };
   if (after.loyaltyBand !== before.band) inverse.loyaltyBand = { from: before.band, to: after.loyaltyBand };
-  if (after.history.length !== before.history) inverse.historyEntries = after.history.length - before.history;
+  if (after.history.length > before.history) inverse.history = structuredClone(after.history.slice(before.history));
   return { events, inverse };
 }
 
@@ -151,7 +154,9 @@ function measureSeverity(reg: Registries, measure: string): number | null {
 export function registerThreat(draft: CampaignState, ctx: EngineCtx, unitId: string, event: EventIntent, src: DisciplineSource): EngineEvent[] {
   const reg = ctx.registries;
   const believed = (impunityOf(draft, reg, unitId)?.value ?? 100) < TUNING.impunity.believeBelow; // fixed now: what she believes of this threat
-  const { events, inverse } = captureInverse(draft, unitId, () => applyEventToUnit(draft, reg, unitId, event));
+  const created = draft.discipline === undefined;
+  const { events, inverse } = captureInverse(draft, unitId, () => [...applyEventToUnit(draft, reg, unitId, event), ...evaluateAutomatic(draft, reg, unitId)]);
+  if (created) inverse.createdDiscipline = true;
   const measure = event.measure ?? 'unspecified';
   const old = unitThreat(draft, unitId);
   const threat: PendingThreat = {
@@ -246,6 +251,16 @@ export function applyDisciplineEvent(
   const unit = draft.squad.find((u) => u.id === unitId);
   if (!unit || unit.kind !== 'named') return [];
   if (event.type === 'threatened') return registerThreat(draft, ctx, unitId, event, src);
+  // a punishment read from dialogue is a full application (the registry row, the side effects, an UNDO record); one that
+  // cannot be imposed (the same measure today, a brig already running) is skipped as if it had not been said
+  if (event.type === 'commander_enforced' && punishmentFor(ctx.registries, event.measure ?? 'verbal')) {
+    const measure = event.measure ?? 'verbal';
+    if (checkPunish(draft, ctx.registries, unitId, measure) !== null) return [];
+    return applyPunishment(draft, ctx, {
+      unitId, measure, source: 'dialogue', channel: src.channel,
+      ...(src.channel === 'scene' && src.sceneId !== undefined ? { sceneId: src.sceneId } : {}), ...(src.messageRef !== undefined ? { messageRef: src.messageRef } : {}),
+    });
+  }
   const events = applyEventToUnit(draft, ctx.registries, unitId, event);
   switch (event.type) {
     case 'defied':

@@ -4,6 +4,7 @@ import type { EngineCtx, EngineEvent } from '../dispatch';
 import { isLiving } from '../economy';
 import { addFact, nextId } from '../memory';
 import { applyEventToUnit } from '../relations/effects';
+import { evaluateAutomatic } from '../relations/graph';
 import { SEVERITIES } from '../relations/vocab';
 import type { Application, CampaignState, DisciplineChannel, Inverse, Restriction } from '../state/types';
 import { TUNING } from '../tuning';
@@ -78,6 +79,7 @@ export function applyPunishment(draft: CampaignState, ctx: EngineCtx, p: PunishP
   const id = nextId(draft, 'ap');
   const events: EngineEvent[] = [];
   const extra: Inverse = {};
+  if (draft.discipline === undefined) extra.createdDiscipline = true;
 
   const { events: changed, inverse } = captureInverse(draft, p.unitId, () => {
     const out = applyEventToUnit(draft, reg, p.unitId, {
@@ -109,6 +111,8 @@ export function applyPunishment(draft: CampaignState, ctx: EngineCtx, p: PunishP
         }
       }
     }
+    // her bands and states follow the new numbers now, so UNDO can put back what this application moved
+    out.push(...evaluateAutomatic(draft, reg, p.unitId));
     return out;
   });
   events.push(...changed);

@@ -14,3 +14,4 @@ export { gearFault, GEAR_FAULT_LOG, isCovert, queueSabotage, sabotageDayStep } f
 export { acquaintanceDays, inAcquaintance } from './acquaintance';
 export { commandStance, stanceEntry, type CommandStance } from './stance';
 export { applyPunishment, checkPunish, perceptionOf, type PunishParams } from './punish';
+export { canUndo, undoApplication, undoThreat } from './undo';

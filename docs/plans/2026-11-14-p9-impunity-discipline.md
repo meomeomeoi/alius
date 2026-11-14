@@ -440,7 +440,7 @@ schema: the six core entries parse; `two exclusive side effects are rejected`; `
 **Interfaces:**
 - Produces: `applyDisciplineEvent` now routes `commander_enforced` to `applyPunishment` (source `dialogue`, `days` = the entry's `minDays`, a refused `checkPunish` → the event is skipped) and `threatened` to `registerThreat`; `undoApplication(draft, ctx, id): EngineEvent[]`, `undoThreat(draft, ctx, id): EngineEvent[]`; action `discipline/undo { id }` (an application id `ap_…` or a threat id `th_…`) → `discipline_undone { id, unitId }`; `canUndo(state, id): string | null`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `a dialogue punishment logs an application with the message ref` (`intents/apply` with `commander_enforced`, measure `revoke_rations`, confidence 0.8, `messageRef: 'chat:7'` → application `{ source: 'dialogue', channel: 'scene', messageRef: 'chat:7' }`, no fact written);
 `undo restores the exact previous state` — **acceptance 4**:
@@ -455,9 +455,9 @@ run for `revoke_rations`, `brig` (which also moves her loyalty band in the fixtu
 `undoing a threat removes it and reverts its deltas`; `a lapsed or kept threat cannot be undone`;
 `a garbled measure never applies an unknown punishment` (measure `"brig; drop table"` → `verbal`), `0.59 logs nothing` — Review Focus 4.
 
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** `npm test` → PASS.
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** `npm test` → PASS.
 
-- [ ] **Step 5: Commit** `feat(engine): dialogue punishments, application records and exact undo`
+- [x] **Step 5: Commit** `feat(engine): dialogue punishments, application records and exact undo`
 
 ---
 
