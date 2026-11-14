@@ -2773,6 +2773,10 @@ function impunityOf(state, reg, unitId) {
   const sum = terms.base + terms.record + terms.leash + terms.presence + terms.dependency + terms.contagion + terms.leverage;
   return { value: clamp10(Math.round(sum), 0, 100), terms };
 }
+function impunityBand(value) {
+  const B = TUNING.impunity.bands;
+  return value < B.low ? "cowed" : value < B.high ? "low" : value < B.brazen ? "high" : "brazen";
+}
 
 // src/engine/discipline/record.ts
 var recordOf = (state, unitId) => state.relations[unitId]?.impunityRecord ?? 0;
@@ -6023,7 +6027,7 @@ function mergeHints(into, more) {
     else if (RANK.indexOf(h2.severity) > RANK.indexOf(have.severity)) have.severity = h2.severity;
   }
 }
-function relationHints(cs, unitIdOf2) {
+function relationHints(cs, unitIdOf3) {
   const out = [];
   mergeHints(out, cs.hints);
   const cmd = cs.commander;
@@ -6036,7 +6040,7 @@ function relationHints(cs, unitIdOf2) {
     }
   }
   for (const c of cs.combatants) {
-    const id = c.side === "squad" ? unitIdOf2(c.cid) : void 0;
+    const id = c.side === "squad" ? unitIdOf3(c.cid) : void 0;
     if (id && c.downed) mergeHints(out, [{ type: "endangered", actor: "commander", targets: [id], severity: "major" }]);
   }
   return out;
@@ -6057,7 +6061,7 @@ function finalizeCombat(draft, reg, rng, outcome) {
   const events = [];
   const squad = cs.combatants.filter((c) => c.side === "squad" && c.unitId);
   const unitOf4 = (c) => draft.squad.find((u) => u.id === c.unitId);
-  const unitIdOf2 = (cid) => cs.combatants.find((c) => c.cid === cid)?.unitId;
+  const unitIdOf3 = (cid) => cs.combatants.find((c) => c.cid === cid)?.unitId;
   const stressBefore = Object.fromEntries(squad.map((c) => [c.unitId, unitOf4(c).stress]));
   const injuries = [];
   const deaths = [];
@@ -6142,7 +6146,7 @@ function finalizeCombat(draft, reg, rng, outcome) {
     deaths,
     breakdowns,
     stressDelta: Object.fromEntries(squad.map((c) => [c.unitId, unitOf4(c).stress - stressBefore[c.unitId]])),
-    relationHints: relationHints(cs, unitIdOf2),
+    relationHints: relationHints(cs, unitIdOf3),
     commanderInjured,
     ...compels.length > 0 ? { compels: [...compels] } : {},
     ...mutineers.length > 0 ? { mutineers } : {}
@@ -13037,7 +13041,9 @@ var DESCRIBED_REGISTRIES = [
   // P8
   "worldOptions",
   "dispositionLevels",
-  "worldPresets"
+  "worldPresets",
+  // P9
+  "commandStances"
 ];
 function withDescription(schema) {
   return schema.superRefine((entry, ctx2) => {
@@ -19978,6 +19984,20 @@ function leashMenu(unit, ctx2) {
     ...kinds2.map((kind) => h("button", { type: "button", class: "alius-btn alius-option", "data-leash": kind, ...analyzeNative(`glossary:leash_${kind}`), onclick: () => ctx2.onLeash(unit.id, kind) }, kind.toUpperCase()))
   );
 }
+function disciplineLine(unit, state, ctx2) {
+  const found = impunityOf(state, ctx2.registries, unit.id);
+  if (!found) return null;
+  const live = { unitId: unit.id };
+  const stance = commandStance(state, ctx2.registries, unit.id);
+  const entry = stance === null ? void 0 : stanceEntry(ctx2.registries, stance);
+  const raw = ctx2.settings().showRawValues;
+  const parts = [];
+  if (stance !== null && entry) {
+    parts.push(h("span", { class: "alius-chip", "data-stance": unit.id, ...analyzeAttrs(`commandStances:${stance}`, live) }, `STANCE: ${String(entry.name).toUpperCase()}`));
+  }
+  parts.push(h("span", { class: "alius-chip", "data-impunity": unit.id, ...analyzeAttrs("glossary:impunity", live) }, `IMPUNITY: ${impunityBand(found.value).toUpperCase()}${raw ? ` (${found.value})` : ""}`));
+  return h("p", { class: "alius-discipline" }, ...joinWith(parts, " \xB7 "));
+}
 function unitBlock(unit, ctx2, state) {
   const gone = unit.status === "dead" || unit.status === "deserted" || unit.status === "terminated";
   const reg = ctx2.registries;
@@ -20008,6 +20028,7 @@ function unitBlock(unit, ctx2, state) {
       relationLine(unit, state, ctx2),
       !gone && state.relations[unit.id] ? h("p", { class: "alius-loyalty" }, chip(`LOYALTY: ${state.relations[unit.id].loyaltyBand.toUpperCase()}`, "glossary:loyalty_band")) : null,
       gone ? null : h("p", { class: "alius-disposition" }, h("span", { class: "alius-chip", "data-disposition": unit.id, ...analyzeAttrs("glossary:disposition", live) }, `Disposition: ${String(dispositionFor(state, reg, unit).name)}`)),
+      gone ? null : disciplineLine(unit, state, ctx2),
       gone ? null : h("p", { class: "alius-stress" }, chip(`STRESS ${stressBand2(unit.stress).toUpperCase()}${raw ? ` (${unit.stress})` : ""}`, "glossary:stress", live)),
       gone ? null : leashMenu(unit, ctx2),
       unit.bio ? h("p", { class: "alius-dim" }, unit.bio) : null,
@@ -22705,6 +22726,63 @@ function registerCommanderProviders() {
   registerAnalyzeProvider("glossary:presence", presenceProvider);
 }
 
+// src/analysis/providers/discipline.ts
+var unitIdOf2 = (subject) => typeof subject.data.unitId === "string" ? subject.data.unitId : null;
+function numberOf(k, n) {
+  const r = k.raw(Math.abs(n));
+  return r === null ? "" : ` (${n < 0 ? "\u2212" : "+"}${r})`;
+}
+function termLines(t, k) {
+  const out = [];
+  const disposition = t.base - TUNING.impunity.defaultBase;
+  if (disposition !== 0) out.push(`Disposition: ${disposition > 0 ? "raises it" : "lowers it"}${numberOf(k, disposition)}`);
+  if (t.record !== 0) out.push(`Record: ${t.record > 0 ? "she has been getting away with things" : "she has been brought to heel"}${numberOf(k, t.record)}`);
+  if (t.leash !== 0) out.push(`The Leash: ${t.leash > 0 ? "looks like an empty threat" : "was used recently"}${numberOf(k, t.leash)}`);
+  if (t.presence !== 0) out.push(`Presence: the commander's presence ${t.presence < 0 ? "holds her back" : "invites it"}${numberOf(k, t.presence)}`);
+  if (t.dependency !== 0) out.push(`Dependency: she needs the commander${numberOf(k, t.dependency)}`);
+  if (t.contagion !== 0) out.push(`Squad mood: ${t.contagion > 0 ? "the others are getting bolder" : "the others are careful"}${numberOf(k, t.contagion)}`);
+  if (t.leverage !== 0) out.push(`Leverage: she holds something over the commander${numberOf(k, t.leverage)}`);
+  return out;
+}
+function impunityProvider(subject, env, k) {
+  const state = env.state;
+  const id = unitIdOf2(subject);
+  if (!state || id === null) return null;
+  const found = impunityOf(state, env.registries, id);
+  if (!found) return null;
+  const stance = commandStance(state, env.registries, id);
+  const entry = stance === null ? void 0 : stanceEntry(env.registries, stance);
+  const lines = [];
+  if (entry) lines.push(`Stance: ${String(entry.name)}`);
+  lines.push(k.showRaw ? `Impunity: ${k.raw(found.value)}` : `Impunity: ${impunityBand(found.value)}`);
+  lines.push(...termLines(found.terms, k));
+  return { lines };
+}
+function stanceProvider(subject, env, k) {
+  const state = env.state;
+  const id = unitIdOf2(subject);
+  if (!state || id === null) return null;
+  const found = impunityOf(state, env.registries, id);
+  const rel = state.relations[id];
+  const stance = commandStance(state, env.registries, id);
+  if (!found || !rel || stance === null) return null;
+  const entry = stanceEntry(env.registries, stance);
+  return {
+    lines: [
+      `Her stance now: ${String(entry?.name ?? stance)}`,
+      `Trust: ${trustBand(rel.trust)}${k.showRaw ? ` (${k.raw(rel.trust)})` : ""}`,
+      k.showRaw ? `Impunity: ${k.raw(found.value)}` : `Impunity: ${impunityBand(found.value)}`
+    ]
+  };
+}
+var registered2 = false;
+function registerDisciplineProviders() {
+  if (registered2) return;
+  registered2 = true;
+  registerAnalyzeProvider("glossary:impunity", impunityProvider);
+  registerAnalyzeProvider("commandStances", stanceProvider);
+}
+
 // src/analysis/providers/world.ts
 function rawLines(effects2, k) {
   if (!k.showRaw) return [];
@@ -22754,10 +22832,10 @@ function dispositionProvider(subject, env, k) {
   }
   return { lines };
 }
-var registered2 = false;
+var registered3 = false;
 function registerWorldProviders() {
-  if (registered2) return;
-  registered2 = true;
+  if (registered3) return;
+  registered3 = true;
   registerAnalyzeProvider("worldOptions", worldOptionProvider);
   registerAnalyzeProvider("glossary:disposition", dispositionProvider);
 }
@@ -22973,10 +23051,10 @@ var decisionProvider = (subject, env) => {
   lines.push("What it changes stays uncertain until you choose.");
   return { lines };
 };
-var registered3 = false;
+var registered4 = false;
 function registerCoreProviders() {
-  if (registered3) return;
-  registered3 = true;
+  if (registered4) return;
+  registered4 = true;
   for (const axis of ["trust", "affinity", "attraction"]) registerAnalyzeProvider(`glossary:${axis}`, axisProvider(axis));
   registerAnalyzeProvider("glossary:stress", stressProvider);
   for (const stat2 of STATS) registerAnalyzeProvider(`glossary:stat_${stat2}`, statProvider(stat2));
@@ -22985,6 +23063,7 @@ function registerCoreProviders() {
   registerAnalyzeProvider("glossary:decision_option", decisionProvider);
   registerCommanderProviders();
   registerWorldProviders();
+  registerDisciplineProviders();
 }
 
 // src/analysis/describe.ts

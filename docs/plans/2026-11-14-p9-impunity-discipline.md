@@ -359,13 +359,13 @@ sabotage: `a queued sabotage fires at the next day end` (one of: supplies −2, 
 **Interfaces:**
 - Produces: `registerDisciplineProviders()` (called by `registerCoreProviders`); providers `glossary:impunity` and `commandStances` (both read `subject.data.unitId`); `commandStances` joins `DESCRIBED_REGISTRIES`; glossary entries `impunity`, `command_stance`, `impunity_record`, `leverage`, `threat`, `covert_sabotage`; SQUAD chips for a named living unit: `STANCE: <NAME>` (`data-stance`, `commandStances:<id>`, ctx `{ unitId }`) and `IMPUNITY: <BAND>` (`data-impunity`, `glossary:impunity`, ctx `{ unitId }`).
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 reading without raw values: lines `Stance: Defiant-loyal`, `Impunity: high`, then one line per non-zero term in words only — `Disposition: raises it` / `lowers it` (base against 35), `Record: she has been getting away with things` / `she has been brought to heel`, `The Leash: looks like an empty threat` / `was used recently`, `Presence: the commander's presence holds her back` / `invites it`, `Dependency: she needs the commander`, `Squad mood: the others are getting bolder` / `the others are careful`, `Leverage: she holds something over the commander`; no digit anywhere in the lines. With raw values: `Impunity: 62` and each term with its number through `k.raw`. `a grunt has no reading`. Hidden fixture: add `impunityRecord: 31`, `discipline.sabotage.queued: [{ unitId, day: 8 }]`, `commander.deeds.threats_empty: 53`; sentinels gain `31` and `53`; the hidden-state test stays green over every provider. UI: the two chips exist with resolving addresses; a grunt card has neither.
 
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** `npm test` → PASS (coverage and hidden tests included).
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** `npm test` → PASS (coverage and hidden tests included).
 
-- [ ] **Step 5: Commit** `feat(analysis): impunity and command stance readings, SQUAD chips` — **end of chunk (a)**
+- [x] **Step 5: Commit** `feat(analysis): impunity and command stance readings, SQUAD chips` — **end of chunk (a)**
 
 ---
 

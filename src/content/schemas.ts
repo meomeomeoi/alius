@@ -1309,6 +1309,8 @@ export const DESCRIBED_REGISTRIES = [
   'commanderTraits', 'tastes',
   // P8
   'worldOptions', 'dispositionLevels', 'worldPresets',
+  // P9
+  'commandStances',
 ] as const satisfies readonly RegistryName[];
 
 /** Adds the optional `description` rule to a registry schema without changing its shape. */

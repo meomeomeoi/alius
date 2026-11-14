@@ -1300,6 +1300,15 @@
 .alius-loadout label { display: block; }
 .alius-equip-flag { color: var(--alius-warn, #f55); }
 
+/* Discipline: stance and impunity chips (P9). Palette variables only. */
+#alius-shell .alius-discipline .alius-chip[data-stance] {
+  color: var(--alius-accent);
+}
+
+#alius-shell .alius-discipline .alius-chip[data-impunity] {
+  color: var(--alius-dim);
+}
+
 /* P5: world map, mission board, expeditions */
 .alius-map { position: relative; max-width: 100%; }
 .alius-map-img { display: block; width: 100%; height: auto; }

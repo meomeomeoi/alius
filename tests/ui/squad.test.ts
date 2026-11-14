@@ -11,6 +11,7 @@ import type { LoadResult } from '../../src/st/persistence';
 import { h } from '../../src/ui/dom';
 import { valueBand } from '../../src/ui/squad/bands';
 import { renderSquadTab } from '../../src/ui/squad/squadTab';
+import { markedWithout, unresolved } from '../helpers/analyzeCoverage';
 
 let reg: Registries;
 beforeAll(async () => {
@@ -472,5 +473,59 @@ describe('the disposition chip (P8)', () => {
     delete s.world.options;
     const host = render({ state: s }).host;
     expect(host.querySelector('.alius-chip[data-disposition]')!.textContent).toBe('Disposition: Guarded');
+  });
+});
+
+describe('the stance and impunity chips (P9)', () => {
+  it('a named living unit has both chips with addresses that resolve', () => {
+    const s = campaign([unit(), unit({ cardRef: 'kay.png', displayName: 'Kay' })]);
+    const { host } = render({ state: s });
+    const stance = [...host.querySelectorAll<HTMLElement>('.alius-chip[data-stance]')];
+    const imp = [...host.querySelectorAll<HTMLElement>('.alius-chip[data-impunity]')];
+    expect(stance.map((c) => c.dataset.stance)).toEqual(['unit_rhea', 'unit_kay']);
+    expect(imp.map((c) => c.dataset.impunity)).toEqual(['unit_rhea', 'unit_kay']);
+    // Trust 20 and Impunity 43 on a guarded world: fearful and low
+    expect(stance[0].textContent).toBe('STANCE: FEARFUL');
+    expect(stance[0].getAttribute('data-analyze')).toBe('commandStances:fearful');
+    expect(JSON.parse(stance[0].getAttribute('data-analyze-ctx')!)).toEqual({ unitId: 'unit_rhea' });
+    expect(imp[0].textContent).toBe('IMPUNITY: LOW');
+    expect(imp[0].getAttribute('data-analyze')).toBe('glossary:impunity');
+    expect(JSON.parse(imp[0].getAttribute('data-analyze-ctx')!)).toEqual({ unitId: 'unit_rhea' });
+    expect(markedWithout(host)).toEqual([]);
+    expect(unresolved(host, { registries: reg, state: s, settings: { ...getSettings(new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' })), showRawValues: false } })).toEqual([]);
+  });
+
+  it('the chips follow the numbers: a bold, trusting unit is defiant-loyal and brazen', () => {
+    const s = campaign();
+    s.relations.unit_rhea.trust = 70;
+    s.relations.unit_rhea.impunityRecord = 40;
+    const { host } = render({ state: s });
+    expect(host.querySelector('.alius-chip[data-stance]')!.textContent).toBe('STANCE: DEFIANT-LOYAL');
+    expect(host.querySelector('.alius-chip[data-impunity]')!.textContent).toBe('IMPUNITY: BRAZEN');
+  });
+
+  it('raw values add the number to the impunity chip', () => {
+    const s = campaign();
+    expect(render({ state: s, raw: true }).host.querySelector('.alius-chip[data-impunity]')!.textContent).toBe('IMPUNITY: LOW (43)');
+  });
+
+  it('a grunt card has neither, and neither does a dead unit', () => {
+    const g = campaign();
+    g.squad.push({ ...structuredClone(g.squad[0]), id: 'grunt_k_117', kind: 'grunt', displayName: 'Mara', designation: 'K-117', cardRef: undefined });
+    g.relations.grunt_k_117 = structuredClone(g.relations.unit_rhea);
+    const hostG = render({ state: g }).host;
+    expect(hostG.querySelectorAll('.alius-chip[data-stance]')).toHaveLength(1);
+    const grunt = [...hostG.querySelectorAll('article.alius-unit')].find((a) => a.textContent!.includes('Mara'))!;
+    expect(grunt.querySelector('[data-stance], [data-impunity]')).toBeNull();
+    const d = campaign();
+    d.squad[0].status = 'dead';
+    expect(render({ state: d }).host.querySelector('[data-stance], [data-impunity]')).toBeNull();
+  });
+
+  it('a pack with no command stances shows no stance chip but still the impunity one', () => {
+    const none: Registries = { ...reg, commandStances: new Map() };
+    const host = render({ state: campaign(), registries: none }).host;
+    expect(host.querySelector('.alius-chip[data-stance]')).toBeNull();
+    expect(host.querySelector('.alius-chip[data-impunity]')).not.toBeNull();
   });
 });

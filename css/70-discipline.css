@@ -1,0 +1,8 @@
+/* Discipline: stance and impunity chips (P9). Palette variables only. */
+#alius-shell .alius-discipline .alius-chip[data-stance] {
+  color: var(--alius-accent);
+}
+
+#alius-shell .alius-discipline .alius-chip[data-impunity] {
+  color: var(--alius-dim);
+}

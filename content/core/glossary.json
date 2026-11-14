@@ -840,5 +840,66 @@
       "disposition",
       "world_stance"
     ]
+  },
+  {
+    "id": "impunity",
+    "term": "Impunity",
+    "short": "How safe a soldier feels defying the commander: what she expects to happen to her if she does. It is not Trust.",
+    "long": "Trust asks whether she believes in the commander's orders; Impunity asks what it costs her to ignore them. It grows when defiance goes unanswered, when threats are not carried out, when the Leash looks like a bluff and when the rest of the squad grows bold. It shrinks when the commander follows through, when she needs the commander, and when the commander's presence holds her back. The game shows it in words: cowed, low, high or brazen.",
+    "see": [
+      "command_stance",
+      "impunity_record",
+      "leverage",
+      "threat"
+    ]
+  },
+  {
+    "id": "command_stance",
+    "term": "Command stance",
+    "short": "How a soldier relates to the commander's authority, from Trust and Impunity: disciplined, defiant but loyal, fearful or openly defiant.",
+    "long": "High Trust with low Impunity: she obeys by the book and objects on the record. High Trust with high Impunity: she argues, does it her own way and will not abandon the commander. Low Trust with low Impunity: she complies in silence, sabotages quietly and would run rather than fight. Low Trust with high Impunity: she mocks, makes demands, ignores orders and may mutiny. The stance shapes how she refuses an order, how often she makes demands and what she does when she breaks.",
+    "see": [
+      "impunity",
+      "trust",
+      "covert_sabotage"
+    ]
+  },
+  {
+    "id": "impunity_record",
+    "term": "Record",
+    "short": "The part of Impunity that remembers: defiance nobody answered raises it, a carried-out punishment lowers it, and it fades by a point a day.",
+    "long": "Each soldier keeps her own record. Letting a defiance pass, backing down from a threat or giving way raises it; imposing a consequence, or the Leash, lowers it. Every day it moves one step back toward nothing. The squad's mood adds a little of the others' records to hers.",
+    "see": [
+      "impunity",
+      "threat"
+    ]
+  },
+  {
+    "id": "leverage",
+    "term": "Leverage",
+    "short": "A secret a soldier holds over the commander, such as the crime she learned about. Each one makes her feel safer defying the commander.",
+    "long": "A secret counts only while someone else in the squad does not share it. Once everybody knows, it is no leverage at all.",
+    "see": [
+      "impunity"
+    ]
+  },
+  {
+    "id": "threat",
+    "term": "Threat",
+    "short": "A consequence the commander warned of but did not impose. If it is not carried out by the end of the next day, the squad sees the commander back down.",
+    "long": "The game shows whether she believes the threat. Carrying it out, or using the Leash, keeps it. Letting it lapse counts as backing down and raises her Impunity.",
+    "see": [
+      "impunity",
+      "impunity_record"
+    ]
+  },
+  {
+    "id": "covert_sabotage",
+    "term": "Covert sabotage",
+    "short": "A fearful soldier's quiet protest: missing supplies or credits, or a faulty pack on the next run. Nobody sees who did it.",
+    "long": "A soldier who is afraid of the commander and cannot say no may say yes and undermine the order instead. The loss is small and the game never names who was behind it.",
+    "see": [
+      "command_stance"
+    ]
   }
 ]

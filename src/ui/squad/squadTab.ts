@@ -16,6 +16,7 @@ import type { LeashKind } from '../../engine/state/types';
 import { stressBand } from '../../engine/combat/stress';
 import { analyzeAttrs, analyzeNative } from '../analyze/mark';
 import { dispositionFor } from '../../engine/worldOptions';
+import { commandStance, impunityBand, impunityOf, stanceEntry } from '../../engine/discipline';
 import { renderCmdrCard } from '../commander/cmdrCard';
 import { h, type Child } from '../dom';
 import { valueBand } from './bands';
@@ -264,6 +265,22 @@ function leashMenu(unit: Unit, ctx: SquadTabCtx): HTMLElement | null {
     ...kinds.map((kind) => h('button', { type: 'button', class: 'alius-btn alius-option', 'data-leash': kind, ...analyzeNative(`glossary:leash_${kind}`), onclick: () => ctx.onLeash!(unit.id, kind) }, kind.toUpperCase())));
 }
 
+/** P9: her command stance and how safe she feels defying the commander; a grunt has neither. */
+function disciplineLine(unit: Unit, state: CampaignState, ctx: SquadTabCtx): HTMLElement | null {
+  const found = impunityOf(state, ctx.registries, unit.id);
+  if (!found) return null;
+  const live = { unitId: unit.id };
+  const stance = commandStance(state, ctx.registries, unit.id);
+  const entry = stance === null ? undefined : stanceEntry(ctx.registries, stance);
+  const raw = ctx.settings().showRawValues;
+  const parts: Child[] = [];
+  if (stance !== null && entry) {
+    parts.push(h('span', { class: 'alius-chip', 'data-stance': unit.id, ...analyzeAttrs(`commandStances:${stance}`, live) }, `STANCE: ${String(entry.name).toUpperCase()}`));
+  }
+  parts.push(h('span', { class: 'alius-chip', 'data-impunity': unit.id, ...analyzeAttrs('glossary:impunity', live) }, `IMPUNITY: ${impunityBand(found.value).toUpperCase()}${raw ? ` (${found.value})` : ''}`));
+  return h('p', { class: 'alius-discipline' }, ...joinWith(parts, ' · '));
+}
+
 function unitBlock(unit: Unit, ctx: SquadTabCtx, state: CampaignState): HTMLElement {
   const gone = unit.status === 'dead' || unit.status === 'deserted' || unit.status === 'terminated';
   const reg = ctx.registries;
@@ -297,6 +314,7 @@ function unitBlock(unit: Unit, ctx: SquadTabCtx, state: CampaignState): HTMLElem
       relationLine(unit, state, ctx),
       !gone && state.relations[unit.id] ? h('p', { class: 'alius-loyalty' }, chip(`LOYALTY: ${state.relations[unit.id].loyaltyBand.toUpperCase()}`, 'glossary:loyalty_band')) : null,
       gone ? null : h('p', { class: 'alius-disposition' }, h('span', { class: 'alius-chip', 'data-disposition': unit.id, ...analyzeAttrs('glossary:disposition', live) }, `Disposition: ${String(dispositionFor(state, reg, unit).name)}`)),
+      gone ? null : disciplineLine(unit, state, ctx),
       gone ? null : h('p', { class: 'alius-stress' }, chip(`STRESS ${stressBand(unit.stress).toUpperCase()}${raw ? ` (${unit.stress})` : ''}`, 'glossary:stress', live)),
       gone ? null : leashMenu(unit, ctx),
       unit.bio ? h('p', { class: 'alius-dim' }, unit.bio) : null,

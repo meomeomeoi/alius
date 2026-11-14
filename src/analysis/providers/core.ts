@@ -10,6 +10,7 @@ import { socialRank, type SocialStat } from '../../engine/social';
 import type { CampaignState, Relation, Unit } from '../../engine/state/types';
 import { humanize, signed, summarizeCombatEffect } from '../effects';
 import { registerCommanderProviders } from './commander';
+import { registerDisciplineProviders } from './discipline';
 import { registerWorldProviders } from './world';
 import type { Knowledge } from '../knowledge';
 import { ledgerFor, ledgerLabel } from '../ledger';
@@ -267,6 +268,8 @@ export const CORE_GLOSSARY_IDS: readonly string[] = [
   'presence', 'first_impression', 'image_consistency', 'commander_traits', 'exhausted',
   // P8
   'disposition', 'disposition_offset', 'world_stance', 'world_settings',
+  // P9
+  'impunity', 'command_stance', 'impunity_record', 'leverage', 'threat', 'covert_sabotage',
 ];
 
 let registered = false;
@@ -283,4 +286,5 @@ export function registerCoreProviders(): void {
   registerAnalyzeProvider('glossary:decision_option', decisionProvider);
   registerCommanderProviders(); // P7
   registerWorldProviders(); // P8
+  registerDisciplineProviders(); // P9
 }

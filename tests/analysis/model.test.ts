@@ -86,9 +86,10 @@ describe('panel model', () => {
     expect(settingGlossaryId('palette')).toBe('setting_palette');
   });
 
-  it('PLAYER_VISIBLE is the 25 described registries (20, the P7 traits and tastes, the P8 world options, levels and presets) plus glossary', () => {
+  it('PLAYER_VISIBLE is the 26 described registries (20, the P7 traits and tastes, the P8 world options, levels and presets, the P9 command stances) plus glossary', () => {
     expect([...PLAYER_VISIBLE]).toEqual([...DESCRIBED_REGISTRIES, 'glossary']);
-    expect(PLAYER_VISIBLE).toHaveLength(26);
+    expect(PLAYER_VISIBLE).toHaveLength(27);
+    expect(PLAYER_VISIBLE).toContain('commandStances');
     for (const n of PLAYER_VISIBLE) expect(REGISTRY_NAMES).toContain(n);
   });
 });

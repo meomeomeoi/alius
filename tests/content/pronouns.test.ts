@@ -87,6 +87,14 @@ describe('no pronoun for the commander in content', () => {
     expect(bad).toEqual([]);
   });
 
+  it('the P9 glossary entries', () => {
+    const ids = ['impunity', 'command_stance', 'impunity_record', 'leverage', 'threat', 'covert_sabotage'];
+    const bad = ids.flatMap((id) => (['short', 'long'] as const).map((k): [string, string] => [`glossary:${id}.${k}`, String(reg.glossary.get(id)?.[k] ?? '')]))
+      .filter(([, t]) => COMMANDER_PRONOUN.test(t) || /commander[^.]*\btheir\b/i.test(t)).map(([where]) => where);
+    expect(ids.every((id) => reg.glossary.has(id))).toBe(true);
+    expect(bad).toEqual([]);
+  });
+
   it('generated trait and taste effect lines', () => {
     const lines = [
       ...[...reg.commanderTraits.values()].flatMap((e) => entryEffects('commanderTraits', e, reg)),

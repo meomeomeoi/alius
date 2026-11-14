@@ -19,7 +19,10 @@ export function hiddenFixture(reg: Registries): { state: CampaignState; unitId: 
   state.day = 8;
   const unit = state.squad[0];
   unit.stress = 63;
-  Object.assign(state.relations[unit.id], { trust: 37, affinity: -41, attraction: 23 });
+  Object.assign(state.relations[unit.id], { trust: 37, affinity: -41, attraction: 23, impunityRecord: 31 });
+  // P9: the stored term of her Impunity, a queued covert sabotage and the commander's counted deeds are never shown
+  state.discipline = { defiance: [], threats: [], applications: [], restrictions: [], demands: [], demandLog: [], sabotage: { queued: [{ unitId: unit.id, day: 8 }] } };
+  state.commander.deeds = { threats_empty: 53 };
 
   state.ledger = [
     { day: 8, slot: 'morning', action: 'scene/exchange', key: `axis:${unit.id}:trust`, delta: 17 },
@@ -51,7 +54,7 @@ export function hiddenFixture(reg: Registries): { state: CampaignState; unitId: 
     state,
     unitId: unit.id,
     sentinels: {
-      numbers: [37, 41, 23, 63, 17, 29, 97, 77],
+      numbers: [37, 41, 23, 63, 17, 29, 97, 77, 31, 53],
       texts: ['SENTINEL_CLOCK', 'SENTINEL_FACT', 'SENTINEL_OPTION_EFFECT'],
     },
   };
