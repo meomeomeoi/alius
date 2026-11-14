@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { TUNING } from '../../src/engine/tuning';
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   EXPRESSION_LABELS, extractIntents, sanitizeIntentOutput, type IntentExtractInput,
@@ -74,9 +75,9 @@ describe('sanitizeIntentOutput', () => {
     expect(Object.keys(r.intents.facts[0]).sort()).toEqual(['about', 'importance', 'tags', 'text']);
     expect(r.intents.stressHints).toEqual([]);
   });
-  it('hostile: 50 events → 6', () => {
+  it('hostile: 50 events are bounded at the read ceiling (the engine cuts to six after judging each unit)', () => {
     const r = sanitize(JSON.parse(fixture('hostile_flood')));
-    expect(r.intents.events).toHaveLength(6);
+    expect(r.intents.events).toHaveLength(TUNING.relations.maxEventsRead);
   });
   it('romantic proposals are dropped when romance is off', () => {
     const raw = { proposals: [
@@ -173,5 +174,14 @@ describe('the confidence floor the caller passes (P8)', () => {
     expect((await extractIntents(input(), { st, settings }))!.intents.events).toHaveLength(0); // setting 0.5
     st.mainReplies = [lowConfidence()];
     expect((await extractIntents(input(), { st, settings }, { minConfidence: 0.4 }))!.intents.events).toHaveLength(1);
+  });
+});
+
+describe('the sanitizer leaves the event cap to the engine (P8)', () => {
+  it('more than six believed events pass through; the engine judges them per unit and then takes six', () => {
+    const events = Array.from({ length: 9 }, () => ({ type: 'praised', actor: 'commander', targets: [ANN], severity: 'minor', evidence: 'x', confidence: 0.9 }));
+    expect(sanitize({ events }).intents.events).toHaveLength(9);
+    const flood = Array.from({ length: 500 }, () => events[0]);
+    expect(sanitize({ events: flood }).intents.events.length).toBeLessThanOrEqual(TUNING.relations.maxEventsRead); // a hostile flood is still bounded
   });
 });

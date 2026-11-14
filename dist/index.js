@@ -72,6 +72,8 @@ var TUNING = Object.freeze({
     likeMult: 1.5,
     stressHint: Object.freeze({ minor: 2, moderate: 5, major: 10, extreme: 18 }),
     maxEventsPerExchange: 6,
+    /** P8: events read from one answer before the per-unit judgement (a hostile flood is bounded); the judged ones are then cut to `maxEventsPerExchange`. */
+    maxEventsRead: 40,
     loyalty: Object.freeze({ steady: 35, waveringEnter: 25, breakingEnter: 10, breakingExit: 20 }),
     crime: Object.freeze({ trustPerWeight: 3, affinityPerWeight: 5 }),
     affair: Object.freeze({ base: 0.04, perOther: 0.04, partnerPresent: 0.15 })
@@ -2703,7 +2705,7 @@ function validateIntents(raw, ctx2) {
     const tags = tagsOf(e.tags);
     if (tags.length > 0) intent.tags = tags;
     out.events.push(intent);
-    if (out.events.length >= TUNING.relations.maxEventsPerExchange) break;
+    if (out.events.length >= (ctx2.maxEvents ?? TUNING.relations.maxEventsPerExchange)) break;
   }
   for (const f of arr(raw.facts)) {
     if (!isObj5(f) || typeof f.text !== "string") continue;
@@ -2909,13 +2911,16 @@ function rollDiscovery(draft, reg, rng, presentIds) {
 var clamp10 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 function applyIntents(draft, ctx2, p) {
   const reg = ctx2.registries;
-  const intents = validateIntents(p.intents, { participants: p.participants, squad: draft.squad });
+  const intents = validateIntents(p.intents, { participants: p.participants, squad: draft.squad, maxEvents: TUNING.relations.maxEventsRead });
   const events = [];
   const touched = /* @__PURE__ */ new Set();
   const landed = [];
-  for (const e of intents.events) {
+  const judged = intents.events.map((e) => {
     const units = affectedUnits(e, p.participants);
-    const believed = units.filter((id) => computeDeltas(draft, reg, id, e).dropped !== true);
+    return { e, units, believed: units.filter((id) => computeDeltas(draft, reg, id, e).dropped !== true) };
+  }).filter((j) => j.units.length === 0 || j.believed.length > 0).slice(0, TUNING.relations.maxEventsPerExchange);
+  intents.events = judged.map((j) => j.e);
+  for (const { e, believed } of judged) {
     for (const id of believed) {
       events.push(...applyEventToUnit(draft, reg, id, e));
       touched.add(id);
@@ -16555,7 +16560,7 @@ function sanitizeIntentOutput(raw, ctx2) {
   const src = parsed.success ? parsed.data : { events: [], facts: [], proposals: [], promises: [], emotions: [], stressHints: [] };
   const events = src.events.filter((e) => isObj21(e) && typeof e.confidence === "number" && e.confidence >= ctx2.minConfidence);
   const proposals2 = src.proposals.filter((p) => ctx2.romance || !(isObj21(p) && ROMANTIC_PROPOSALS.includes(p.kind)));
-  const intents = validateIntents({ ...src, events, proposals: proposals2 }, { participants: ctx2.participants, squad: ctx2.squad });
+  const intents = validateIntents({ ...src, events, proposals: proposals2 }, { participants: ctx2.participants, squad: ctx2.squad, maxEvents: TUNING.relations.maxEventsRead });
   const emotions = [];
   for (const e of src.emotions) {
     if (isObj21(e) && typeof e.unitId === "string" && ctx2.participants.includes(e.unitId) && typeof e.label === "string" && LABELS.includes(e.label)) {

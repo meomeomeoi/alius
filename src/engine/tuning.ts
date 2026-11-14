@@ -66,6 +66,8 @@ export const TUNING = Object.freeze({
     likeMult: 1.5,
     stressHint: Object.freeze({ minor: 2, moderate: 5, major: 10, extreme: 18 }),
     maxEventsPerExchange: 6,
+    /** P8: events read from one answer before the per-unit judgement (a hostile flood is bounded); the judged ones are then cut to `maxEventsPerExchange`. */
+    maxEventsRead: 40,
     loyalty: Object.freeze({ steady: 35, waveringEnter: 25, breakingEnter: 10, breakingExit: 20 }),
     crime: Object.freeze({ trustPerWeight: 3, affinityPerWeight: 5 }),
     affair: Object.freeze({ base: 0.04, perOther: 0.04, partnerPresent: 0.15 }),

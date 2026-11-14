@@ -90,7 +90,9 @@ const clamp01 = (n: unknown): number => (typeof n === 'number' && Number.isFinit
  * ids that are not scene participants (or not in the squad), unit→unit events, events without evidence,
  * `valueAxes` on non-decision events. Text is length-capped and kept as text, nothing else is read.
  */
-export function validateIntents(raw: unknown, ctx: { participants: string[]; squad: Array<{ id: string }> }): Intents {
+export function validateIntents(
+  raw: unknown, ctx: { participants: string[]; squad: Array<{ id: string }>; /** Events kept; default `maxEventsPerExchange`. The P8 callers read more and let `applyIntents` cut after the judgement. */ maxEvents?: number },
+): Intents {
   const out = emptyIntents();
   if (!isObj(raw)) return out;
   const known = new Set(ctx.squad.map((u) => u.id));
@@ -120,7 +122,7 @@ export function validateIntents(raw: unknown, ctx: { participants: string[]; squ
     const tags = tagsOf(e.tags);
     if (tags.length > 0) intent.tags = tags;
     out.events.push(intent);
-    if (out.events.length >= TUNING.relations.maxEventsPerExchange) break;
+    if (out.events.length >= (ctx.maxEvents ?? TUNING.relations.maxEventsPerExchange)) break;
   }
 
   for (const f of arr(raw.facts)) {

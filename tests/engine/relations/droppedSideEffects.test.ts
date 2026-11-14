@@ -47,3 +47,37 @@ describe('an event dropped for a unit has none of its side effects (P8)', () => 
     expect(ofType(h.events, 'intents_applied')[0].landed).toEqual(['crime_revealed']);
   });
 });
+
+describe('dropped events do not take event slots (P8)', () => {
+  const CAP = 6;
+  const low = (n: number) => Array.from({ length: n }, () => ev('insulted', 0.45));
+  const real = (n: number) => Array.from({ length: n }, () => ev('praised', 0.8));
+
+  it('six believed events land even when weaker ones come first', () => {
+    const r = apply(at('guarded'), [...low(4), ...real(8)]);
+    const applied = ofType(r.events, 'intents_applied')[0];
+    expect(applied.landed).toEqual(Array(CAP).fill('praised'));
+    expect(applied.counts).toMatchObject({ events: CAP });
+    expect(r.state.relations[ANN].history.filter((h) => h.kind === 'event' && h.type === 'praised')).toHaveLength(CAP);
+    expect(r.state.relations[ANN].history.filter((h) => h.type === 'insulted')).toHaveLength(0);
+  });
+
+  it('at hazardous the same low-confidence events are believed and use the slots', () => {
+    const r = apply(at('hazardous'), [...low(4), ...real(8)]);
+    const landed = ofType(r.events, 'intents_applied')[0].landed as string[];
+    expect(landed.filter((t) => t === 'insulted')).toHaveLength(4);
+    expect(landed).toHaveLength(CAP);
+  });
+
+  it('the slots a dropped event would have used stay free for promise-derived events', () => {
+    const intents = { events: low(6), promises: [{ by: 'commander', to: ANN, text: 'bring the medicine', kind: 'kept' }] };
+    const r = run(at('guarded'), reg, { type: 'intents/apply', payload: { channel: 'dm', unitId: ANN, intents } });
+    expect(errors(r.events)).toEqual([]);
+    expect(ofType(r.events, 'intents_applied')[0].counts).toMatchObject({ events: 0, promises: 1 });
+  });
+
+  it('a hostile flood is bounded before the judgement', () => {
+    const r = apply(at('guarded'), real(5000));
+    expect(ofType(r.events, 'intents_applied')[0].landed).toHaveLength(CAP);
+  });
+});

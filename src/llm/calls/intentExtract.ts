@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { EVENT_TYPES, PROPOSAL_KINDS, ROMANTIC_PROPOSALS, SEVERITIES } from '../../engine/relations/vocab';
 import { validateIntents, type Intents } from '../../engine/relations/intents';
 import { VALUE_AXES } from '../../engine/state/types';
+import { TUNING } from '../../engine/tuning';
 import type { AliusSettings } from '../../settings';
 import type { StAdapter } from '../../st/adapter';
 import { registerCallType } from '../callTypes';
@@ -120,7 +121,8 @@ export function sanitizeIntentOutput(
   const src = parsed.success ? parsed.data : { events: [], facts: [], proposals: [], promises: [], emotions: [], stressHints: [] };
   const events = src.events.filter((e) => isObj(e) && typeof e.confidence === 'number' && e.confidence >= ctx.minConfidence);
   const proposals = src.proposals.filter((p) => ctx.romance || !(isObj(p) && (ROMANTIC_PROPOSALS as readonly string[]).includes(p.kind as string)));
-  const intents = validateIntents({ ...src, events, proposals }, { participants: ctx.participants, squad: ctx.squad });
+  // the engine judges each event per unit before it cuts the list to six (a dropped event must not take a slot)
+  const intents = validateIntents({ ...src, events, proposals }, { participants: ctx.participants, squad: ctx.squad, maxEvents: TUNING.relations.maxEventsRead });
   const emotions: Array<{ unitId: string; label: ExpressionLabel }> = [];
   for (const e of src.emotions) {
     if (isObj(e) && typeof e.unitId === 'string' && ctx.participants.includes(e.unitId) && typeof e.label === 'string' && LABELS.includes(e.label)) {

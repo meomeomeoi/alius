@@ -25,16 +25,21 @@ export interface ApplyParams {
  */
 export function applyIntents(draft: CampaignState, ctx: EngineCtx, p: ApplyParams): EngineEvent[] {
   const reg = ctx.registries;
-  const intents = validateIntents(p.intents, { participants: p.participants, squad: draft.squad });
+  const intents = validateIntents(p.intents, { participants: p.participants, squad: draft.squad, maxEvents: TUNING.relations.maxEventsRead });
   const events: EngineEvent[] = [];
   const touched = new Set<string>();
   /** Types of the events that landed on at least one unit (P8: an event dropped for every unit is not here). */
   const landed: string[] = [];
 
-  for (const e of intents.events) {
+  // P8: each event is judged per unit first; one that is dropped for every unit it targets takes no slot, and only then
+  // are the first `maxEventsPerExchange` of the rest applied (an event that targets nobody keeps its slot, as before)
+  const judged = intents.events.map((e) => {
     const units = affectedUnits(e, p.participants);
-    // P8: below both of a unit's confidence floors the event does not exist for her: no deltas, and none of its side effects
-    const believed = units.filter((id) => computeDeltas(draft, reg, id, e).dropped !== true);
+    return { e, units, believed: units.filter((id) => computeDeltas(draft, reg, id, e).dropped !== true) };
+  }).filter((j) => j.units.length === 0 || j.believed.length > 0).slice(0, TUNING.relations.maxEventsPerExchange);
+  intents.events = judged.map((j) => j.e);
+
+  for (const { e, believed } of judged) {
     for (const id of believed) {
       events.push(...applyEventToUnit(draft, reg, id, e));
       touched.add(id);
