@@ -1,6 +1,6 @@
 import type { Entry } from '../../content/types';
 import { h } from '../dom';
-import { noise } from '../fx';
+import { cssUrl, noise } from '../fx';
 import { BUILT_IN_SKIN, screenBox } from './skins';
 
 const bit = (cls: string, text?: string): HTMLElement => h('span', { class: cls }, text);
@@ -81,7 +81,7 @@ export function renderChrome(
     const overlay = skin.overlay as { image: string; blend: 'overlay' | 'multiply'; opacity: number } | undefined;
     if (overlay) {
       const layer = h('div', { class: 'alius-device-overlay' });
-      layer.style.backgroundImage = `url("${assetUrl(overlay.image)}")`;
+      layer.style.backgroundImage = cssUrl(assetUrl(overlay.image));
       layer.style.mixBlendMode = overlay.blend;
       layer.style.opacity = String(overlay.opacity);
       chrome.append(layer);

@@ -1,7 +1,25 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 
-const css = readFileSync('style.css', 'utf8');
+/**
+ * `tests/build.test.ts` rewrites `style.css` and `dist/index.js` while the suite runs, so a read can land in the middle
+ * of a write: read until two reads a moment apart agree.
+ */
+async function stable(file: string): Promise<string> {
+  for (let i = 0; i < 40; i++) {
+    const a = readFileSync(file, 'utf8');
+    await new Promise((r) => setTimeout(r, 25));
+    if (a.length > 0 && a === readFileSync(file, 'utf8')) return a;
+  }
+  throw new Error(`${file} never settled`);
+}
+
+let css = '';
+let bundle = '';
+beforeAll(async () => {
+  css = await stable('style.css');
+  bundle = await stable('dist/index.js');
+});
 const FAMILIES = ['ibm-plex-mono', 'saira-stencil-one', 'inter', 'special-elite'];
 
 describe('bundled assets (spec P10 §6, acceptance 7)', () => {
@@ -26,9 +44,8 @@ describe('bundled assets (spec P10 §6, acceptance 7)', () => {
   });
 
   it('the bundle names no font CDN', () => {
-    const js = readFileSync('dist/index.js', 'utf8');
-    expect(js).not.toContain('fonts.googleapis');
-    expect(js).not.toContain('fonts.gstatic');
+    expect(bundle).not.toContain('fonts.googleapis');
+    expect(bundle).not.toContain('fonts.gstatic');
   });
 
   it('each bundled font family ships its licence text (OFL, or Apache-2.0 for Special Elite)', () => {

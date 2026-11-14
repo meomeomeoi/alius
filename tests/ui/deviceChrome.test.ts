@@ -171,6 +171,15 @@ describe('renderChrome: image skins', () => {
     expect(o.style.backgroundImage).toContain('/ext/content/core/art/device/grime.png');
   });
 
+  it('a path with a quote or a backslash cannot break out of the css url()', () => {
+    const p = parts();
+    renderChrome(p.chrome, p.screen, p.device, { ...image, overlay: { image: 'a"b\\c.png', blend: 'multiply', opacity: 0.4 } }, (path) => `/ext/${path}`);
+    const style = p.chrome.querySelector<HTMLElement>('.alius-device-overlay')!.getAttribute('style') ?? '';
+    expect(style).toContain('%22');
+    expect(style).toContain('%5C');
+    expect(style.match(/"/g) ?? []).toHaveLength(2); // only the url("…") delimiters remain
+  });
+
   it('a frame image that fails shows the ccp_standard chrome', () => {
     const p = parts();
     renderChrome(p.chrome, p.screen, p.device, image, (path) => path);

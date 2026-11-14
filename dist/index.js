@@ -17365,6 +17365,9 @@ function noise(cls, f) {
   layer.append(filter, svg("rect", { width: "100%", height: "100%", filter: `url(#${id})` }));
   return layer;
 }
+function cssUrl(path) {
+  return `url("${path.replace(/["\\\n\r]/g, (c) => encodeURIComponent(c))}")`;
+}
 
 // src/ui/voice/voiceCard.ts
 var UNIT_ACCENTS = ["#ff9ec7", "#ffb86b", "#8fd6ff", "#b6e88a", "#d0a8ff", "#7ee7d0"];
@@ -22179,7 +22182,7 @@ function crossSection(ctx2, state, here, onRoom) {
   const caption = h("span", { class: "alius-hub-caption", "aria-hidden": "true" }, "SECTION A-A \xB7 NOT TO SCALE");
   const showArt = (url) => {
     bg.className = "alius-hub-bg alius-hub-art";
-    bg.style.backgroundImage = `url("${url}")`;
+    bg.style.backgroundImage = cssUrl(url);
     caption.remove();
   };
   const known = peekHubArt(ctx2.assetUrl, slot2);
@@ -25845,7 +25848,7 @@ function renderChrome(chrome, screen, device, skin, assetUrl) {
     const overlay = skin.overlay;
     if (overlay) {
       const layer = h("div", { class: "alius-device-overlay" });
-      layer.style.backgroundImage = `url("${assetUrl(overlay.image)}")`;
+      layer.style.backgroundImage = cssUrl(assetUrl(overlay.image));
       layer.style.mixBlendMode = overlay.blend;
       layer.style.opacity = String(overlay.opacity);
       chrome.append(layer);

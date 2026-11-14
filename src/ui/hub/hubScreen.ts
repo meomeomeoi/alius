@@ -9,6 +9,7 @@ import type { OpsTabCtx } from '../ops/opsTab';
 import { renderStatusHeader } from '../shell/status';
 import type { TabId } from '../shell/tabs';
 import { peekHubArt, probeHubArt } from './art';
+import { cssUrl } from '../fx';
 import { renderVoiceCard } from '../voice/voiceCard';
 import { renderMarker } from './marker';
 import {
@@ -74,7 +75,7 @@ function crossSection(
   const caption = h('span', { class: 'alius-hub-caption', 'aria-hidden': 'true' }, 'SECTION A-A · NOT TO SCALE');
   const showArt = (url: string): void => {
     bg.className = 'alius-hub-bg alius-hub-art';
-    bg.style.backgroundImage = `url("${url}")`;
+    bg.style.backgroundImage = cssUrl(url);
     caption.remove();
   };
   const known = peekHubArt(ctx.assetUrl, slot);

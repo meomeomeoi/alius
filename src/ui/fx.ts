@@ -21,3 +21,8 @@ export function noise(cls: string, f: { frequency: string; octaves: number; seed
   layer.append(filter, svg('rect', { width: '100%', height: '100%', filter: `url(#${id})` }));
   return layer;
 }
+
+/** A CSS `url("…")` for a path or URL, with quotes, backslashes and line breaks percent-encoded so it cannot end the string early. */
+export function cssUrl(path: string): string {
+  return `url("${path.replace(/["\\\n\r]/g, (c) => encodeURIComponent(c))}")`;
+}
