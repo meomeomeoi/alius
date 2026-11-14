@@ -3,6 +3,7 @@ import type { Registries } from '../../src/content/types';
 import type { CampaignState } from '../../src/engine/state/types';
 import { DEBUG_NOT_ROLLED_BACK } from '../../src/scene/sceneController';
 import { ANN, BEA, CAT, harness, intentJson, praised, reply, summaryJson, type Harness } from '../helpers/sceneHarness';
+import { campaign } from '../helpers/world';
 import { setRecord, setRelation } from '../helpers/discipline';
 import { loadCore } from '../helpers/world';
 
@@ -461,3 +462,87 @@ describe('an extreme event dropped for every unit shows no cut-in (P8)', () => {
     expect((await run('hazardous')).length).toBeGreaterThan(0);
   });
 });
+
+describe('discipline read from the transcript (P9)', () => {
+  const enforced = (measure = 'revoke_rations', over: Record<string, unknown> = {}) => ({
+    type: 'commander_enforced', actor: 'commander', targets: [ANN], severity: 'moderate', evidence: 'no more rations', confidence: 0.9, measure, ...over,
+  });
+  const threatened = (measure = 'brig') => ({ ...enforced(measure), type: 'threatened' });
+  const setup = async (settings = {}) => {
+    const h = harness(reg, { settings });
+    await open(h);
+    h.st.groupReplies = [[reply('Ann', 'first answer')]];
+    h.st.swipeReplies = [reply('Ann', 'second answer')];
+    h.st.on('message_swiped', (i) => h.controller.onSwipe(i as number));
+    return h;
+  };
+
+  it('a dialogue punishment logs an application with the chat message ref and raises a discipline UI event, but no directive', async () => {
+    const h = await setup();
+    h.st.mainReplies = [intentJson([enforced()])];
+    await h.controller.send('No more rations today.');
+    const app = h.state().discipline!.applications[0];
+    expect(app).toMatchObject({ source: 'dialogue', channel: 'scene', measure: 'revoke_rations', unitId: ANN });
+    expect(app.messageRef).toMatch(/^chat:\d+$/);
+    expect(h.ui).toContainEqual({ type: 'discipline' });
+    expect(h.context.build(h.state(), 5000).directives).not.toContain('imposed');
+  });
+
+  it('a threat raises it too', async () => {
+    const h = await setup();
+    h.st.mainReplies = [intentJson([threatened()])];
+    await h.controller.send('Or it is the brig.');
+    expect(h.state().discipline!.threats).toHaveLength(1);
+    expect(h.ui).toContainEqual({ type: 'discipline' });
+  });
+
+  it('a punishment below the confidence floor logs nothing and raises nothing', async () => {
+    const h = await setup();
+    h.st.mainReplies = [intentJson([enforced('brig', { confidence: 0.59 })])];
+    await h.controller.send('Maybe the brig.');
+    expect(h.state().discipline?.applications ?? []).toEqual([]);
+    expect(h.ui.filter((e) => e.type === 'discipline')).toEqual([]);
+  });
+
+  it('swipe after a logged punishment removes the application, and the re-read reply logs it again once', async () => {
+    const h = await setup();
+    h.st.mainReplies = [intentJson([enforced()]), intentJson([enforced()])];
+    const start = structuredClone(h.state().relations[ANN]);
+    await h.controller.send('No more rations.');
+    expect(h.state().discipline!.applications).toHaveLength(1);
+    await h.st.swipeLast('right');
+    await h.controller.idle();
+    const after = h.state();
+    expect(after.discipline!.applications).toHaveLength(1); // undone once, logged once
+    expect(after.relations[ANN].history.filter((x) => x.type === 'commander_enforced')).toHaveLength(1);
+    expect(after.relations[ANN].trust).toBe(start.trust - 2);
+    expect(h.st.mainReplies).toEqual([]);
+  });
+
+  it('with a swipe that reads nothing the application is simply gone', async () => {
+    const h = await setup();
+    h.st.mainReplies = [intentJson([enforced()]), intentJson([])];
+    await h.controller.send('No more rations.');
+    await h.st.swipeLast('right');
+    await h.controller.idle();
+    expect(h.state().discipline?.applications ?? []).toEqual([]);
+    expect(h.state().resources.supplies).toBe(campaign(reg, 4).resources.supplies);
+  });
+
+  it('undo then swipe reverts once: the swipe is not rolled back (something changed since), the record stays at its start value', async () => {
+    const h = await setup({ debug: true });
+    h.st.mainReplies = [intentJson([enforced('brig')]), intentJson([])];
+    const start = h.state().relations[ANN].impunityRecord;
+    await h.controller.send('The brig for you.');
+    const id = h.state().discipline!.applications[0].id;
+    expect(h.state().relations[ANN].impunityRecord).toBe(-20);
+    h.dispatch({ type: 'discipline/undo', payload: { id } });
+    expect(h.state().relations[ANN].impunityRecord).toBe(start);
+    const afterUndo = structuredClone(h.state().relations[ANN]);
+    await h.st.swipeLast('right');
+    await h.controller.idle();
+    expect(h.state().relations[ANN]).toEqual(afterUndo); // not reverted a second time, not below
+    expect(h.toasts.some((t) => t.text === DEBUG_NOT_ROLLED_BACK)).toBe(true);
+  });
+});
+

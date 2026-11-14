@@ -98,3 +98,71 @@ describe('scene lifecycle', () => {
     expect(ctx.build(h.state(), 5000).directives).toBe('');
   });
 });
+
+describe('punish and undo (P9)', () => {
+  const BEA = 'unit_bea';
+  it('a menu punishment in a scene sets the reply directive for her next reply', () => {
+    const r = rig();
+    expect(r.discipline.punish(ANN, 'brig', 2)).toBe(true);
+    expect(dirs(r)).toContain('The commander has imposed Brig on Ann. React in character; stance: Fearful.');
+    expect(r.refresh).toHaveBeenCalled();
+    expect(r.h.state().discipline!.applications[0]).toMatchObject({ source: 'menu', channel: 'scene' });
+    r.ctx.onReplyReceived();
+    expect(dirs(r)).not.toContain('imposed');
+  });
+
+  it('the directive names the stance she is in after the punishment', () => {
+    const r = rig((s) => { s.relations[ANN].trust = 60; setRecord(s, ANN, 20); }); // trusting and bold
+    r.discipline.punish(ANN, 'verbal');
+    expect(dirs(r)).toMatch(/stance: (Disciplined|Defiant-loyal|Indifferent)\./);
+  });
+
+  it('outside a scene it sets none and toasts', () => {
+    const r = rig();
+    expect(r.discipline.punish(BEA, 'revoke_rations')).toBe(true);
+    expect(dirs(r)).toBe('');
+    expect(r.h.toasts).toEqual([{ kind: 'info', text: 'The commander imposed Rations revoked on Bea.' }]);
+    expect(r.h.state().discipline!.applications[0].channel).toBe('pda');
+  });
+
+  it('a punishment the engine refuses toasts the reason and changes nothing', () => {
+    const r = rig();
+    expect(r.discipline.punish(ANN, 'verbal')).toBe(true);
+    const before = r.h.state();
+    expect(r.discipline.punish(ANN, 'verbal')).toBe(false);
+    expect(r.h.state()).toBe(before);
+    expect(r.h.toasts.at(-1)).toEqual({ kind: 'error', text: 'Ann was already given Reprimand today.' });
+    expect(r.discipline.punish(ANN, 'guillotine')).toBe(false);
+  });
+
+  it('undo reverts a dialogue punishment, clears the directive and says so', () => {
+    const r = rig();
+    r.h.app().dispatch({ type: 'intents/apply', payload: { channel: 'scene', messageRef: 'chat:3', intents: { events: [{ type: 'commander_enforced', actor: 'commander', targets: [ANN], severity: 'moderate', evidence: 'x', confidence: 0.9, measure: 'revoke_rations' }] } } });
+    const app = r.h.state().discipline!.applications[0];
+    r.ctx.setDirective({ id: `discipline:${ANN}`, text: 'PUNISH TEXT', expiresAfter: 'next_reply' });
+    r.ctx.setDirective({ id: `threat:${ANN}`, text: 'THREAT TEXT', expiresAfter: 'next_reply' });
+    expect(r.discipline.undo(app.id)).toBe(true);
+    expect(r.h.state().discipline).toBeUndefined();
+    expect(dirs(r)).not.toContain('PUNISH TEXT');
+    expect(r.h.toasts.at(-1)).toEqual({ kind: 'info', text: 'Undone.' });
+  });
+
+  it('undoing a threat also drops its directive', () => {
+    const r = rig();
+    r.discipline.onEvents(threaten(r, 'brig'));
+    const id = r.h.state().discipline!.threats[0].id;
+    expect(dirs(r)).toContain('threat');
+    expect(r.discipline.undo(id)).toBe(true);
+    expect(dirs(r)).not.toContain('(Brig)');
+    expect(r.h.state().discipline?.threats ?? []).toEqual([]);
+  });
+
+  it('an undo the engine refuses toasts the reason', () => {
+    const r = rig();
+    r.discipline.punish(ANN, 'verbal'); // a menu punishment
+    expect(r.discipline.undo(r.h.state().discipline!.applications[0].id)).toBe(false);
+    expect(r.h.toasts.at(-1)).toEqual({ kind: 'error', text: 'Only a punishment read from dialogue can be undone.' });
+    expect(r.discipline.undo('ap999')).toBe(false);
+  });
+});
+

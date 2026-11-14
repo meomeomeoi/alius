@@ -470,15 +470,15 @@ run for `revoke_rations`, `brig` (which also moves her loyalty band in the fixtu
 **Interfaces:**
 - Produces: `DisciplineController.punish(unitId, measure, days?): boolean`, `.undo(id): boolean`; `punishDirective(unitId, name, label, stanceName): Directive` (id `discipline:<unitId>`, `next_reply`; text `The commander has imposed {label} on {name}. React in character; stance: {stance}.`); `SceneUiEvent` gains `{ type: 'discipline' }` (redraw the chips); `comms.readExchange` passes `messageRef` and `measures` and no longer filters these events out.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `a menu punishment in a scene sets the reply directive for her next reply`; `outside a scene it sets none and toasts`; `a dialogue punishment sets no directive (her reply already reacted) and raises a discipline UI event`; `undo clears the directive of that application`;
 `swipe after a logged punishment removes the application` (the P3 rollback restores the state before the reading; `discipline.applications` is empty; the re-read reply logs it again once) and `undo then swipe reverts once` (toast `DEBUG_NOT_ROLLED_BACK` in debug mode, record back at its start value, not below) — Review Focus 1;
 `a threat written in a DM is registered with channel dm` and `a punishment written in a DM applies` (fake mechanic reply with the event; `messageRef` starts with `dm:`).
 
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** `npm test` → PASS.
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** `npm test` → PASS.
 
-- [ ] **Step 5: Commit** `feat(discipline): reply directive, DM channel and rollback of logged discipline`
+- [x] **Step 5: Commit** `feat(discipline): reply directive, DM channel and rollback of logged discipline`
 
 ---
 

@@ -144,3 +144,32 @@ describe('night', () => {
     expect(BEA).toBeDefined();
   });
 });
+
+describe('discipline read from a DM (P9)', () => {
+  const event = (type: string, measure: string) => ({ type, actor: 'commander', targets: [ANN], severity: 'moderate', evidence: 'x', confidence: 0.9, measure });
+  it('a threat written in a DM is registered with channel dm', async () => {
+    const h = harness(reg);
+    h.st.mainReplies = ['We will see.', intentJson([event('threatened', 'brig')])];
+    await h.comms.send(ANN, 'Do that again and it is the brig.');
+    expect(h.state().discipline!.threats).toEqual([expect.objectContaining({ unitId: ANN, measure: 'brig', channel: 'dm' })]);
+    expect(h.ui).toContainEqual({ type: 'discipline' });
+  });
+
+  it('a punishment written in a DM applies, with a dm message ref', async () => {
+    const h = harness(reg);
+    h.st.mainReplies = ['Understood.', intentJson([event('commander_enforced', 'revoke_rations')])];
+    await h.comms.send(ANN, 'Your rations are revoked.');
+    const app = h.state().discipline!.applications[0];
+    expect(app).toMatchObject({ unitId: ANN, measure: 'revoke_rations', source: 'dialogue', channel: 'dm' });
+    expect(app.messageRef).toMatch(/^dm:/);
+    expect(h.ui).toContainEqual({ type: 'discipline' });
+  });
+
+  it('the extraction prompt lists the measures', async () => {
+    const h = harness(reg);
+    h.st.mainReplies = ['ok', intentJson([])];
+    await h.comms.send(ANN, 'hi');
+    expect((h.st.calls[1] as { system: string }).system).toContain('MEASURE: verbal, revoke_rations, revoke_leave, extra_duty, bench, brig, leash, unspecified');
+  });
+});
+

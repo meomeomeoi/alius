@@ -71,6 +71,8 @@ export function createComms(deps: CommsDeps): Comms {
       if (e.type === 'proposal_offered') {
         const p = state()?.proposals?.find((x) => x.id === e.proposalId);
         if (p) deps.onUi({ type: 'chips', proposal: p });
+      } else if (e.type === 'discipline_applied' || e.type === 'threat_registered') {
+        deps.onUi({ type: 'discipline' });
       } else if (e.type === 'relation_changed') {
         deps.onUi({ type: 'pulse', unitId, axis: e.axis as 'trust' | 'affinity' | 'attraction', up: Number(e.delta) > 0, delta: Number(e.delta) });
       }

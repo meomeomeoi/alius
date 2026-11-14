@@ -29,6 +29,11 @@ export function threatDirective(unitId: string, name: string, label: string, bel
   };
 }
 
+/** A menu punishment just imposed: for her next reply only (a punishment read from dialogue needs none, her reply already reacted). */
+export function punishDirective(unitId: string, name: string, label: string, stanceName: string): Directive {
+  return { id: `discipline:${unitId}`, expiresAfter: 'next_reply', text: `The commander has imposed ${label} on ${name}. React in character; stance: ${stanceName}.` };
+}
+
 /** The label of a measure: a punishment's own, the Leash, or the generic word for a threat that named nothing. */
 export function measureLabel(reg: Registries, measure: string): string {
   if (measure === 'leash') return 'The Leash';

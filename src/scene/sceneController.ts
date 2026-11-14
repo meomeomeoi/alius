@@ -22,7 +22,9 @@ export type SceneUiEvent =
   | { type: 'chips'; proposal: PendingProposal }
   | { type: 'cut_in'; kind: string }
   | { type: 'pacing' }
-  | { type: 'transcript' };
+  | { type: 'transcript' }
+  /** P9: a punishment or a threat was logged, or one was undone: the chips are drawn from the state again. */
+  | { type: 'discipline' };
 
 export type Toast = (kind: 'info' | 'warn' | 'error', text: string) => void;
 
@@ -119,6 +121,11 @@ export function createSceneController(deps: SceneDeps): SceneController {
           break;
         case 'relation_state_changed':
           deps.onUi({ type: 'cut_in', kind: `state:${String(e.to)}` });
+          break;
+        case 'discipline_applied':
+        case 'threat_registered':
+        case 'discipline_undone':
+          deps.onUi({ type: 'discipline' });
           break;
         case 'proposal_offered': {
           const p = s.proposals?.find((x) => x.id === e.proposalId);

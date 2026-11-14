@@ -16088,6 +16088,9 @@ function threatDirective(unitId, name, label2, believed) {
     text: believed ? `${name} believes the commander's threat (${label2}) will be carried out.` : `${name} does not believe the commander's threat (${label2}) will be carried out, and it shows.`
   };
 }
+function punishDirective(unitId, name, label2, stanceName) {
+  return { id: `discipline:${unitId}`, expiresAfter: "next_reply", text: `The commander has imposed ${label2} on ${name}. React in character; stance: ${stanceName}.` };
+}
 function measureLabel(reg, measure) {
   if (measure === "leash") return "The Leash";
   const label2 = reg.punishments.get(measure)?.label;
@@ -16272,7 +16275,44 @@ function createDiscipline(deps) {
     clearDisciplineDirectives(deps.context);
     deps.refreshContext();
   }
-  return { onEvents, onSceneOpened, onSceneClosed };
+  const failure = (events) => events.find((e) => e.type === "error");
+  function punish(unitId, measure, days) {
+    const events = deps.app.dispatch({ type: "discipline/punish", payload: { unitId, measure, ...days !== void 0 ? { days } : {} } });
+    const bad = failure(events);
+    if (bad) {
+      deps.toast("error", String(bad.message ?? bad.code));
+      return false;
+    }
+    const state = deps.app.current().state;
+    const reg = deps.registries();
+    const name = nameOf9(unitId);
+    const label2 = measureLabel(reg, measure);
+    if (state?.scene?.participants.includes(unitId)) {
+      const stance = commandStance(state, reg, unitId);
+      deps.context.setDirective(punishDirective(unitId, name, label2, String(stance === null ? "" : stanceEntry(reg, stance)?.name ?? stance)));
+      deps.refreshContext();
+    } else {
+      deps.toast("info", `The commander imposed ${label2} on ${name}.`);
+    }
+    return true;
+  }
+  function undo(id) {
+    const unitId = deps.app.current().state?.discipline?.applications.find((a) => a.id === id)?.unitId ?? deps.app.current().state?.discipline?.threats.find((t) => t.id === id)?.unitId;
+    const events = deps.app.dispatch({ type: "discipline/undo", payload: { id } });
+    const bad = failure(events);
+    if (bad) {
+      deps.toast("error", String(bad.message ?? bad.code));
+      return false;
+    }
+    if (unitId !== void 0) {
+      deps.context.clearDirective(`discipline:${unitId}`);
+      if (id.startsWith("th")) deps.context.clearDirective(`threat:${unitId}`);
+    }
+    deps.refreshContext();
+    deps.toast("info", "Undone.");
+    return true;
+  }
+  return { onEvents, onSceneOpened, onSceneClosed, punish, undo };
 }
 
 // src/ui/analyze/mark.ts
@@ -17596,6 +17636,8 @@ function createComms(deps) {
       if (e.type === "proposal_offered") {
         const p = state()?.proposals?.find((x) => x.id === e.proposalId);
         if (p) deps.onUi({ type: "chips", proposal: p });
+      } else if (e.type === "discipline_applied" || e.type === "threat_registered") {
+        deps.onUi({ type: "discipline" });
       } else if (e.type === "relation_changed") {
         deps.onUi({ type: "pulse", unitId, axis: e.axis, up: Number(e.delta) > 0, delta: Number(e.delta) });
       }
@@ -17917,6 +17959,11 @@ function createSceneController(deps) {
           break;
         case "relation_state_changed":
           deps.onUi({ type: "cut_in", kind: `state:${String(e.to)}` });
+          break;
+        case "discipline_applied":
+        case "threat_registered":
+        case "discipline_undone":
+          deps.onUi({ type: "discipline" });
           break;
         case "proposal_offered": {
           const p = s.proposals?.find((x) => x.id === e.proposalId);
@@ -22400,6 +22447,7 @@ function renderSceneScreen(host, ctx2) {
           if (banner) drawBanner();
           break;
         case "chips":
+        case "discipline":
         case "transcript":
           refresh();
           break;

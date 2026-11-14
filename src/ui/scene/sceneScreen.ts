@@ -447,6 +447,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
           if (banner) drawBanner();
           break;
         case 'chips':
+        case 'discipline':
         case 'transcript':
           refresh();
           break;
