@@ -667,3 +667,16 @@ describe('world options in the app (P8)', () => {
     expect(t.state().settings.intentMinConfidence).toBe(0.4);
   });
 });
+
+
+describe('the confidence mirror after a rollback (P8 review follow-up)', () => {
+  it('restoring a snapshot taken under the old setting re-mirrors the current one', async () => {
+    const t = await boot();
+    const before = structuredClone(t.state()); // taken while the setting was the default 0.5
+    t.st.settings.intentMinConfidence = 0.7;
+    t.settingsChanged();
+    expect(t.state().settings.intentMinConfidence).toBe(0.7);
+    expect(t.app.restoreSnapshot(before, t.state())).toBe(true);
+    expect(t.state().settings.intentMinConfidence).toBe(0.7); // not the stale 0.5
+  });
+});

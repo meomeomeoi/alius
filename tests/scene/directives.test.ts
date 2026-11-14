@@ -9,9 +9,9 @@ describe('proposal directives', () => {
   });
   it.each([
     ['too_soon', 'too soon'],
-    ['no_trust', 'she does not trust him enough'],
+    ['no_trust', 'she does not trust the commander enough'],
     ['not_interested', 'she is not interested'],
-    ['committed', 'he is already committed to someone else'],
+    ['committed', 'the commander is already committed to someone else'],
   ] as const)('declining for %s', (reason, text) => {
     const t = proposalDirectiveText('Rhea', 'fwb', { receptive: false, reason });
     expect(t).toContain("Rhea DECLINES the commander's proposal (fwb).");

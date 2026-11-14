@@ -826,10 +826,23 @@ describe('calibration: disposition and stances (P8)', () => {
     expect(chips(haz.host).map((c) => c.textContent)).toEqual(['Prickly', 'Volatile', 'Hazardous', 'Hazardous', 'Hazardous']);
   });
 
+  it('chips that would read as the same level are greyed: only the one nearest to zero stays usable', () => {
+    const disabled = (host: HTMLElement) => chips(host).filter((c) => c.getAttribute('aria-disabled') === 'true').map((c) => c.dataset.offset);
+    expect(disabled(view({ ...HUNTED, disposition: 'kind' }).host)).toEqual(['-2', '-1']);        // Kind Kind Kind Guarded Prickly
+    expect(disabled(view({ ...HUNTED, disposition: 'hazardous' }).host)).toEqual(['1', '2']);     // Prickly Volatile Hazardous ×3
+    expect(disabled(view({ ...HUNTED, disposition: 'volatile' }).host)).toEqual(['2']);           // +1 and +2 are both Hazardous
+    expect(disabled(view({ ...HUNTED, disposition: 'guarded' }).host)).toEqual(['-2']);         // −2 and −1 are both Kind
+    expect(disabled(view({ ...HUNTED, disposition: 'prickly' }).host)).toEqual([]);
+    const v = view({ ...HUNTED, disposition: 'hazardous' });
+    v.host.querySelector<HTMLElement>('.alius-offset-chip[data-offset="2"]')!.click();
+    expect(v.onUpdate).not.toHaveBeenCalled(); // a greyed chip does nothing
+    expect(v.host.querySelector('.alius-offset-chip[data-offset="2"]')!.getAttribute('title')).toMatch(/same as/i);
+  });
+
   it('clicking a chip and typing a reason call onUpdate; the imported reason is shown', () => {
     const v = view(HUNTED, { dispositionOffset: { offset: -1, reason: 'Wants to be trusted.' } });
-    v.host.querySelector<HTMLElement>('.alius-offset-chip[data-offset="2"]')!.click();
-    expect(v.onUpdate).toHaveBeenCalledWith({ dispositionOffset: 2 });
+    v.host.querySelector<HTMLElement>('.alius-offset-chip[data-offset="1"]')!.click();
+    expect(v.onUpdate).toHaveBeenCalledWith({ dispositionOffset: 1 });
     expect(v.host.textContent).toContain('Wants to be trusted.');
     const reason = v.host.querySelector<HTMLInputElement>('input[data-key="disposition-reason"]')!;
     reason.value = 'Hard.';

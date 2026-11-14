@@ -5,9 +5,9 @@ import {
 
 describe('loyalty directives: exact texts', () => {
   it('refusal', () => {
-    expect(refusalDirective('unit_ann', 'Ann', 'she openly doubts his authority')).toEqual({
+    expect(refusalDirective('unit_ann', 'Ann', 'she openly doubts the commander\'s authority')).toEqual({
       id: 'refusal:unit_ann', expiresAfter: 'scene',
-      text: "Ann REFUSES the commander's order this scene. Reason: she openly doubts his authority. She will not comply under persuasion; only the Leash can force her.",
+      text: "Ann REFUSES the commander's order this scene. Reason: she openly doubts the commander's authority. She will not comply under persuasion; only the Leash can force her.",
     });
   });
 
@@ -27,7 +27,7 @@ describe('loyalty directives: exact texts', () => {
       id: 'leash_trauma:unit_ann', expiresAfter: 'scene', text: 'Ann remembers being forced through the Leash; she will not pretend otherwise.',
     });
     expect(bandDirective('unit_ann', 'Ann', 'wavering')).toEqual({
-      id: 'loyalty:unit_ann', expiresAfter: 'scene', text: 'Ann openly doubts the commander in this scene; she questions his decisions aloud.',
+      id: 'loyalty:unit_ann', expiresAfter: 'scene', text: 'Ann openly doubts the commander in this scene; she questions the commander\'s decisions aloud.',
     });
     expect(bandDirective('unit_ann', 'Ann', 'breaking')!.text).toBe(
       'Ann is close to leaving the unit: she is cold and watchful, and if pressed she says she is thinking of going.',

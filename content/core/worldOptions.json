@@ -18,7 +18,7 @@
       {
         "id": "corporate_machismo",
         "label": "Corporate machismo",
-        "description": "Corporate command culture expects a hard, masculine bearing. A commander who presents otherwise starts with less standing at their own corporation.",
+        "description": "Corporate command culture expects a hard, masculine bearing. A commander who presents otherwise starts with less standing at the commander's own corporation.",
         "lore": "Corporations expect a hard, masculine bearing from command.",
         "effects": [
           {
@@ -41,7 +41,7 @@
       {
         "id": "inverted",
         "label": "Inverted norms",
-        "description": "Corporate command culture expects a soft, careful bearing. A commander who presents as hard starts with less standing at their own corporation.",
+        "description": "Corporate command culture expects a soft, careful bearing. A commander who presents as hard starts with less standing at the commander's own corporation.",
         "lore": "Command is expected to present softly; hard bearings draw remarks.",
         "effects": [
           {

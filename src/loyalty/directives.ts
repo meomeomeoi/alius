@@ -26,7 +26,7 @@ export const traumaDirective = (unitId: string, name: string): Directive => ({
 
 /** Only a wavering or breaking unit has a band directive. */
 export function bandDirective(unitId: string, name: string, band: LoyaltyBand): Directive | null {
-  if (band === 'wavering') return { id: `loyalty:${unitId}`, expiresAfter: 'scene', text: `${name} openly doubts the commander in this scene; she questions his decisions aloud.` };
+  if (band === 'wavering') return { id: `loyalty:${unitId}`, expiresAfter: 'scene', text: `${name} openly doubts the commander in this scene; she questions the commander's decisions aloud.` };
   if (band === 'breaking') {
     return { id: `loyalty:${unitId}`, expiresAfter: 'scene', text: `${name} is close to leaving the unit: she is cold and watchful, and if pressed she says she is thinking of going.` };
   }
@@ -40,7 +40,7 @@ export const aftermathDirective = (title: string, label: string, expiresAfter: D
 });
 
 const STATE_REASON: Record<string, string> = {
-  resentful: 'she resents him', estranged: 'she wants nothing from him', despises: 'she despises him',
+  resentful: 'she resents the commander', estranged: 'she wants nothing from the commander', despises: 'she despises the commander',
 };
 
 const refusalOf = (reg: Registries, synergyId: string): number => {
@@ -59,8 +59,8 @@ export function refusalReason(state: CampaignState, reg: Registries, unitId: str
   const fromBand = band === 'steady' ? 0 : refusalOf(reg, TUNING.disloyalty.bandSynergy[band]);
   const total = rawRefusalChance(state, reg, unitId); // the source chance: her disposition scales how often, not why
   if (total > Math.max(fromState, fromBand) + 1e-9) return 'her defect resists orders';
-  if (fromState > 0 && fromState >= fromBand) return STATE_REASON[rel?.stateId ?? ''] ?? 'she resents him';
-  if (band === 'breaking') return 'she no longer trusts him';
-  if (band === 'wavering') return 'she openly doubts his authority';
+  if (fromState > 0 && fromState >= fromBand) return STATE_REASON[rel?.stateId ?? ''] ?? 'she resents the commander';
+  if (band === 'breaking') return 'she no longer trusts the commander';
+  if (band === 'wavering') return 'she openly doubts the commander\'s authority';
   return 'her defect resists orders';
 }

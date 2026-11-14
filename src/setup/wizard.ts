@@ -196,8 +196,17 @@ export class Wizard {
   /** A calibrated unit's offset and stances were read against the old world: offer a re-import. */
   private worldChanged(before: Record<string, string>): void {
     const after = this.s.world.options;
-    if (Object.keys(after).every((k) => after[k] === before[k])) return;
-    for (const u of this.s.units) if (u.status === 'ready' || u.status === 'manual') u.worldStale = true;
+    const reg = this.deps.registries;
+    // only the disposition and the squad-stance options are read into a unit's offset and stances
+    const matters = Object.keys(after).some((id) => {
+      if (after[id] === before[id]) return false;
+      const option = reg.worldOptions.get(id);
+      return option !== undefined && (option.squadStance === true
+        || (option.choices as Array<{ effects: Array<{ type: string }> }>).some((c) => c.effects.some((e) => e.type === 'disposition')));
+    });
+    if (!matters) return;
+    // a unit still being imported will land with an answer read against the old world: mark her too
+    for (const u of this.s.units) if (u.status === 'ready' || u.status === 'manual' || u.status === 'loading') u.worldStale = true;
   }
 
   /** Sets every option from a preset of the registry (an unknown id changes nothing). */
@@ -237,22 +246,28 @@ export class Wizard {
   refreshWorldSections(index: number): void {
     const u = this.s.units[index];
     if (!u || (u.status !== 'ready' && u.status !== 'manual')) return;
-    for (const section of ['disposition', 'stances'] as const) {
-      const token = ++generationCounter;
-      this.sectionTokens.set(u, { ...this.sectionTokens.get(u), [section]: token });
-    }
+    const mine = { disposition: ++generationCounter, stances: ++generationCounter };
+    this.sectionTokens.set(u, { ...this.sectionTokens.get(u), ...mine });
     delete u.worldStale;
     void this.run(u, ['disposition', 'stances'], (outcome) => {
+      // each section keeps only the newest request: a later re-import or regenerate of it makes this answer stale
+      const now = this.sectionTokens.get(u);
+      const own = { disposition: now?.disposition === mine.disposition, stances: now?.stances === mine.stances };
+      if (!own.disposition && !own.stances) return;
       if (outcome.kind === 'manual') {
         u.notice = outcome.reason;
-        u.worldStale = true; // nothing was refreshed
+        if (own.disposition && own.stances) u.worldStale = true; // nothing was refreshed
         return;
       }
       if (u.candidates === null) u.candidates = emptyProfile();
-      u.candidates.dispositionOffset = outcome.profile.dispositionOffset;
-      u.candidates.worldStances = outcome.profile.worldStances;
-      this.preselect(u, outcome.profile, 'disposition');
-      this.preselect(u, outcome.profile, 'stances');
+      if (own.disposition) {
+        u.candidates.dispositionOffset = outcome.profile.dispositionOffset;
+        this.preselect(u, outcome.profile, 'disposition');
+      }
+      if (own.stances) {
+        u.candidates.worldStances = outcome.profile.worldStances;
+        this.preselect(u, outcome.profile, 'stances');
+      }
     });
   }
 

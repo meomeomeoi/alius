@@ -2,7 +2,7 @@
   {
     "id": "liquidation",
     "name": "Asset Liquidation",
-    "summary": "Sacrificed his previous squad to complete an objective.",
+    "summary": "Sacrificed a previous squad to complete an objective.",
     "perk": {
       "text": "+1 CP at combat start.",
       "effects": [
@@ -87,7 +87,7 @@
       ]
     },
     "flaw": {
-      "text": "Units start with lower Trust; distrust spikes when he touches their implants.",
+      "text": "Units start with lower Trust; distrust spikes when their implants are touched.",
       "effects": [
         {
           "type": "starting_trust",
@@ -164,7 +164,7 @@
       ]
     },
     "flaw": {
-      "text": "Leash requests cost more Trust (units see him as a hypocrite).",
+      "text": "Leash requests cost more Trust (units see the commander as a hypocrite).",
       "effects": [
         {
           "type": "leash_trust_cost",
@@ -204,7 +204,7 @@
       ]
     },
     "flaw": {
-      "text": "Somatic-defect units distrust him (+stress around him).",
+      "text": "Somatic-defect units distrust the commander (+stress around the commander).",
       "effects": [
         {
           "type": "somatic_stress_aura"

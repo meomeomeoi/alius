@@ -128,8 +128,8 @@ describe('effect lines', () => {
     expect(lines).toEqual([
       'Soldiers are Hazardous', 'More Leash authorizations each week', 'Termination requests are approved less often',
       'Failed command missions cost less standing', 'Missions pay less',
-      'Command is expected to look masculine; a commander who presents differently starts with less standing at their own corporation',
-      'Command is expected to look feminine; a commander who presents differently starts with less standing at their own corporation',
+      'Command is expected to look masculine; a commander who presents differently starts with less standing at the commander\'s own corporation',
+      'Command is expected to look feminine; a commander who presents differently starts with less standing at the commander\'s own corporation',
       'Adds the Purge sweep events to the world', 'Story tone: Rare good news.', 'The story model is told how this world feels',
       'Generated soldiers lean for or against the norm',
     ]);

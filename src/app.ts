@@ -1816,6 +1816,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       state = snap;
       load = { kind: 'ok', state: snap, chatId: load.chatId };
       saver?.save(snap);
+      syncMinConfidence(); // the snapshot may carry the mirror of an older setting (P8)
       applyContext();
       syncBadges();
       shell.refresh();

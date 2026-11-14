@@ -128,6 +128,19 @@ describe('world directives', () => {
     expect(at(30)).not.toContain('half-believes');
   });
 
+  it('the early norm directive is not shown while the commander matches the norm (distance 0)', () => {
+    const at = (expression: number) => {
+      const s = world(MACHISMO, { present: [ANN], stances: { [ANN]: { gender_norms: shares() } }, day: 1 });
+      s.commander.expression = expression;
+      const b = builderFor();
+      worldDirectives(b, s, reg);
+      return b.build(s, 5000).directives;
+    };
+    expect(at(5)).not.toContain('half-believes'); // expression 5 is the machismo norm
+    expect(at(4)).toContain('half-believes');
+    expect(at(1)).toContain('half-believes');
+  });
+
   it('a directive that is not "early" stays: the stigma stance speaks at any time', () => {
     const s = world({ offspec_stigma: 'scorned' }, { present: [ANN], stances: { [ANN]: { offspec_stigma: shares(2) } }, day: 40 });
     const b = builderFor();

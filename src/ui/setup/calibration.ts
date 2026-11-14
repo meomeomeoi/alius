@@ -248,11 +248,16 @@ export function renderCalibration(host: HTMLElement, ctx: CalibrationCtx): void 
       section('disposition', 'DISPOSITION',
         h('p', { class: 'alius-hint' }, `World level: ${String(worldLevel.name)}. The offset moves only this unit, up to two steps either way.`),
         h('div', { class: 'alius-offset-row' }, ...[-2, -1, 0, 1, 2].map((o) => {
-          const level = dispositionFor(holder, reg, { kind: 'named', dispositionOffset: o });
+          const levelOf = (x: number) => dispositionFor(holder, reg, { kind: 'named', dispositionOffset: x });
+          const level = levelOf(o);
+          // at the ends of the scale several offsets make the same level: only the one nearest to zero stays usable
+          const same = [0, -1, 1, -2, 2].find((x) => Math.abs(x) < Math.abs(o) && levelOf(x).id === level.id);
           return h('button', {
             type: 'button', class: 'alius-btn alius-option alius-offset-chip', 'data-offset': String(o), 'aria-pressed': String(offset === o),
-            title: String(level.description), ...analyzeNative(`dispositionLevels:${level.id}`),
-            onclick: () => onUpdate({ dispositionOffset: o }),
+            'aria-disabled': same !== undefined ? 'true' : null,
+            title: same !== undefined ? `Same as ${same > 0 ? '+' : ''}${same}: the scale ends here.` : String(level.description),
+            ...analyzeNative(`dispositionLevels:${level.id}`),
+            onclick: () => { if (same === undefined) onUpdate({ dispositionOffset: o }); },
           }, String(level.name));
         })),
         h('label', { class: 'alius-field' }, h('span', { class: 'alius-field-label' }, 'Reason'),

@@ -412,7 +412,7 @@ export function summarizeWorldOptionEffect(effect: unknown, reg: Registries): st
     case 'mission_reward_pct': return x.pct < 0 ? 'Missions pay less' : 'Missions pay more';
     case 'expression_norm': {
       const look = x.norm >= 4 ? 'masculine' : x.norm <= 2 ? 'feminine' : 'balanced';
-      return `Command is expected to look ${look}; a commander who presents differently starts with less standing at their own corporation`;
+      return `Command is expected to look ${look}; a commander who presents differently starts with less standing at the commander's own corporation`;
     }
     case 'enable_family': return `Adds the ${cap(humanize(String(x.family)))} events to the world`;
     case 'director_hint': return `Story tone: ${String(x.text)}`;

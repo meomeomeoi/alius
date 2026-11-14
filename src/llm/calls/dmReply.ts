@@ -23,9 +23,9 @@ const FACTS_USED = 3;
 const HISTORY_USED = 6;
 
 /** Shared with the scene directives: what she does when the commander floods her inbox. */
-export const SNAP_TEXT = 'He has sent her too many messages today: she snaps at him, curt and irritated, and may refuse to talk right now.';
+export const SNAP_TEXT = 'The commander has sent her too many messages today: she snaps at the commander, curt and irritated, and may refuse to talk right now.';
 const MODE_TEXT: Record<DmReplyInput['mode'], string> = {
-  reply: 'She answers his last message.',
+  reply: 'She answers the commander\'s last message.',
   snap: SNAP_TEXT,
   initiate: 'She writes first: she starts the conversation herself, for her own reasons, without waiting to be asked.',
 };
@@ -58,7 +58,7 @@ registerCallType<string>({
     const i = raw as DmReplyInput;
     const out = [
       `Time: ${i.slotText}`,
-      `How she sees him: ${i.stateHint}`,
+      `How she sees the commander: ${i.stateHint}`,
       `Trust: ${i.bands.trust}; warmth: ${i.bands.affinity}; attraction: ${i.bands.attraction}; stress: ${i.bands.stress}.`,
     ];
     const facts = i.recentFacts.slice(0, FACTS_USED);

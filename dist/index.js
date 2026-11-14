@@ -15206,7 +15206,7 @@ var traumaDirective = (unitId, name) => ({
   text: `${name} remembers being forced through the Leash; she will not pretend otherwise.`
 });
 function bandDirective(unitId, name, band) {
-  if (band === "wavering") return { id: `loyalty:${unitId}`, expiresAfter: "scene", text: `${name} openly doubts the commander in this scene; she questions his decisions aloud.` };
+  if (band === "wavering") return { id: `loyalty:${unitId}`, expiresAfter: "scene", text: `${name} openly doubts the commander in this scene; she questions the commander's decisions aloud.` };
   if (band === "breaking") {
     return { id: `loyalty:${unitId}`, expiresAfter: "scene", text: `${name} is close to leaving the unit: she is cold and watchful, and if pressed she says she is thinking of going.` };
   }
@@ -15218,9 +15218,9 @@ var aftermathDirective = (title, label2, expiresAfter = "next_reply") => ({
   text: `The commander has just decided "${title}": ${label2}. Narrate the immediate aftermath; the decision is final and cannot be talked back.`
 });
 var STATE_REASON = {
-  resentful: "she resents him",
-  estranged: "she wants nothing from him",
-  despises: "she despises him"
+  resentful: "she resents the commander",
+  estranged: "she wants nothing from the commander",
+  despises: "she despises the commander"
 };
 var refusalOf = (reg, synergyId) => {
   const effects2 = reg.synergies.get(synergyId)?.effects;
@@ -15234,9 +15234,9 @@ function refusalReason(state, reg, unitId) {
   const fromBand = band === "steady" ? 0 : refusalOf(reg, TUNING.disloyalty.bandSynergy[band]);
   const total = rawRefusalChance(state, reg, unitId);
   if (total > Math.max(fromState, fromBand) + 1e-9) return "her defect resists orders";
-  if (fromState > 0 && fromState >= fromBand) return STATE_REASON[rel?.stateId ?? ""] ?? "she resents him";
-  if (band === "breaking") return "she no longer trusts him";
-  if (band === "wavering") return "she openly doubts his authority";
+  if (fromState > 0 && fromState >= fromBand) return STATE_REASON[rel?.stateId ?? ""] ?? "she resents the commander";
+  if (band === "breaking") return "she no longer trusts the commander";
+  if (band === "wavering") return "she openly doubts the commander's authority";
   return "her defect resists orders";
 }
 
@@ -16398,9 +16398,9 @@ async function runCompaction(deps) {
 var DM_MAX = 400;
 var FACTS_USED = 3;
 var HISTORY_USED = 6;
-var SNAP_TEXT = "He has sent her too many messages today: she snaps at him, curt and irritated, and may refuse to talk right now.";
+var SNAP_TEXT = "The commander has sent her too many messages today: she snaps at the commander, curt and irritated, and may refuse to talk right now.";
 var MODE_TEXT = {
-  reply: "She answers his last message.",
+  reply: "She answers the commander's last message.",
   snap: SNAP_TEXT,
   initiate: "She writes first: she starts the conversation herself, for her own reasons, without waiting to be asked."
 };
@@ -16430,7 +16430,7 @@ registerCallType({
     const i = raw;
     const out = [
       `Time: ${i.slotText}`,
-      `How she sees him: ${i.stateHint}`,
+      `How she sees the commander: ${i.stateHint}`,
       `Trust: ${i.bands.trust}; warmth: ${i.bands.affinity}; attraction: ${i.bands.attraction}; stress: ${i.bands.stress}.`
     ];
     const facts = i.recentFacts.slice(0, FACTS_USED);
@@ -16878,9 +16878,9 @@ async function summarizeScene(input, deps) {
 // src/scene/directives.ts
 var REASON_TEXT = {
   too_soon: "too soon",
-  no_trust: "she does not trust him enough",
+  no_trust: "she does not trust the commander enough",
   not_interested: "she is not interested",
-  committed: "he is already committed to someone else",
+  committed: "the commander is already committed to someone else",
   unavailable: "it is not something she would consider"
 };
 function proposalDirectiveText(unitName, kind, result) {
@@ -17896,8 +17896,14 @@ var Wizard = class {
   /** A calibrated unit's offset and stances were read against the old world: offer a re-import. */
   worldChanged(before) {
     const after = this.s.world.options;
-    if (Object.keys(after).every((k) => after[k] === before[k])) return;
-    for (const u of this.s.units) if (u.status === "ready" || u.status === "manual") u.worldStale = true;
+    const reg = this.deps.registries;
+    const matters = Object.keys(after).some((id) => {
+      if (after[id] === before[id]) return false;
+      const option = reg.worldOptions.get(id);
+      return option !== void 0 && (option.squadStance === true || option.choices.some((c) => c.effects.some((e) => e.type === "disposition")));
+    });
+    if (!matters) return;
+    for (const u of this.s.units) if (u.status === "ready" || u.status === "manual" || u.status === "loading") u.worldStale = true;
   }
   /** Sets every option from a preset of the registry (an unknown id changes nothing). */
   applyPreset(id) {
@@ -17933,22 +17939,27 @@ var Wizard = class {
   refreshWorldSections(index) {
     const u = this.s.units[index];
     if (!u || u.status !== "ready" && u.status !== "manual") return;
-    for (const section of ["disposition", "stances"]) {
-      const token = ++generationCounter;
-      this.sectionTokens.set(u, { ...this.sectionTokens.get(u), [section]: token });
-    }
+    const mine = { disposition: ++generationCounter, stances: ++generationCounter };
+    this.sectionTokens.set(u, { ...this.sectionTokens.get(u), ...mine });
     delete u.worldStale;
     void this.run(u, ["disposition", "stances"], (outcome) => {
+      const now = this.sectionTokens.get(u);
+      const own = { disposition: now?.disposition === mine.disposition, stances: now?.stances === mine.stances };
+      if (!own.disposition && !own.stances) return;
       if (outcome.kind === "manual") {
         u.notice = outcome.reason;
-        u.worldStale = true;
+        if (own.disposition && own.stances) u.worldStale = true;
         return;
       }
       if (u.candidates === null) u.candidates = emptyProfile();
-      u.candidates.dispositionOffset = outcome.profile.dispositionOffset;
-      u.candidates.worldStances = outcome.profile.worldStances;
-      this.preselect(u, outcome.profile, "disposition");
-      this.preselect(u, outcome.profile, "stances");
+      if (own.disposition) {
+        u.candidates.dispositionOffset = outcome.profile.dispositionOffset;
+        this.preselect(u, outcome.profile, "disposition");
+      }
+      if (own.stances) {
+        u.candidates.worldStances = outcome.profile.worldStances;
+        this.preselect(u, outcome.profile, "stances");
+      }
     });
   }
   // --- commander file (P7)
@@ -18586,15 +18597,20 @@ function renderCalibration(host, ctx2) {
         "DISPOSITION",
         h("p", { class: "alius-hint" }, `World level: ${String(worldLevel.name)}. The offset moves only this unit, up to two steps either way.`),
         h("div", { class: "alius-offset-row" }, ...[-2, -1, 0, 1, 2].map((o) => {
-          const level = dispositionFor(holder, reg, { kind: "named", dispositionOffset: o });
+          const levelOf2 = (x) => dispositionFor(holder, reg, { kind: "named", dispositionOffset: x });
+          const level = levelOf2(o);
+          const same = [0, -1, 1, -2, 2].find((x) => Math.abs(x) < Math.abs(o) && levelOf2(x).id === level.id);
           return h("button", {
             type: "button",
             class: "alius-btn alius-option alius-offset-chip",
             "data-offset": String(o),
             "aria-pressed": String(offset === o),
-            title: String(level.description),
+            "aria-disabled": same !== void 0 ? "true" : null,
+            title: same !== void 0 ? `Same as ${same > 0 ? "+" : ""}${same}: the scale ends here.` : String(level.description),
             ...analyzeNative(`dispositionLevels:${level.id}`),
-            onclick: () => onUpdate({ dispositionOffset: o })
+            onclick: () => {
+              if (same === void 0) onUpdate({ dispositionOffset: o });
+            }
           }, String(level.name));
         })),
         h(
@@ -20151,7 +20167,7 @@ function renderExpeditionScreen(host, ctx2) {
         cover = select.value;
         render();
       });
-      panel.append(h("p", { class: "alius-banner" }, "The commander is exposed: someone must cover him."), select);
+      panel.append(h("p", { class: "alius-banner" }, "The commander is exposed: someone must cover the commander."), select);
     }
     const coverId = needsCover && cover !== "" ? cover : void 0;
     const blocked = needsCover && coverId === void 0;
@@ -20412,7 +20428,7 @@ function worldDirectives(builder, state, reg) {
     for (const u of present) {
       for (const fx2 of optionStanceEffects(state, reg, u, option.id)) {
         if (fx2.type !== "directive") continue;
-        if (fx2.whileEarly === true && firstImpressionWeight(state, u.id) <= EARLY_WEIGHT) continue;
+        if (fx2.whileEarly === true && (firstImpressionWeight(state, u.id) <= EARLY_WEIGHT || normDistance(state, reg) === 0)) continue;
         builder.setDirective({ id: `stance:${u.id}:${option.id}`, text: fx2.text.replaceAll("{name}", u.displayName), expiresAfter: "scene" });
       }
     }
@@ -21899,7 +21915,7 @@ function summarizeWorldOptionEffect(effect, reg) {
       return x.pct < 0 ? "Missions pay less" : "Missions pay more";
     case "expression_norm": {
       const look = x.norm >= 4 ? "masculine" : x.norm <= 2 ? "feminine" : "balanced";
-      return `Command is expected to look ${look}; a commander who presents differently starts with less standing at their own corporation`;
+      return `Command is expected to look ${look}; a commander who presents differently starts with less standing at the commander's own corporation`;
     }
     case "enable_family":
       return `Adds the ${cap4(humanize(String(x.family)))} events to the world`;
@@ -25106,6 +25122,7 @@ function createApp(st, deps) {
       state = snap;
       load = { kind: "ok", state: snap, chatId: load.chatId };
       saver?.save(snap);
+      syncMinConfidence();
       applyContext();
       syncBadges();
       shell.refresh();

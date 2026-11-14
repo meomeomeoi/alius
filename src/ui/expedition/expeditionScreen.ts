@@ -139,7 +139,7 @@ export function renderExpeditionScreen(host: HTMLElement, ctx: ExpeditionScreenC
       ) as HTMLSelectElement;
       select.value = cover;
       select.addEventListener('change', () => { cover = select.value; render(); });
-      panel.append(h('p', { class: 'alius-banner' }, 'The commander is exposed: someone must cover him.'), select);
+      panel.append(h('p', { class: 'alius-banner' }, 'The commander is exposed: someone must cover the commander.'), select);
     }
     const coverId = needsCover && cover !== '' ? cover : undefined;
     const blocked = needsCover && coverId === undefined;

@@ -10,7 +10,7 @@ const setup = () => {
   return { st, settings: getSettings(st) };
 };
 const input = (over: Partial<DmReplyInput> = {}): DmReplyInput => ({
-  unitName: 'Rhea', commanderName: 'Vale', stateHint: 'She trusts him and says so plainly.',
+  unitName: 'Rhea', commanderName: 'Vale', stateHint: 'She trusts the commander and says so plainly.',
   bands: { trust: 'solid', affinity: 'warm', attraction: 'faint', stress: 'tense' },
   recentFacts: ['She keeps a photo.', 'She hates sirens.', 'She owes Kara.', 'a fourth fact'], slotText: 'DAY 003 // EVENING',
   history: Array.from({ length: 9 }, (_, i) => ({ from: i % 2 ? 'unit' as const : 'commander' as const, text: `history ${i}` })), mode: 'reply', ...over,

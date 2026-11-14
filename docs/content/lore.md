@@ -52,12 +52,12 @@ Each start = a corporation + an opening situation + a **spine** of 5–8 milesto
 
 | id | Crime | Perk | Flaw | Value triggers (units with these values react) |
 |---|---|---|---|---|
-| `liquidation` | *Asset Liquidation* — sacrificed his previous squad to complete an objective | +1 CP at combat start | Units start with −10 Trust once they learn of it | `sacrifice +`, `ingroup +` react negatively |
+| `liquidation` | *Asset Liquidation* — sacrificed a previous squad to complete an objective | +1 CP at combat start | Units start with −10 Trust once they learn of it | `sacrifice +`, `ingroup +` react negatively |
 | `smuggling` | *Data Smuggling* — sold corporate secrets | +25% credits from missions | Oversight approves fewer Leash requests (−1/week) | `corporate +` negative, `corporate −` positive |
-| `experimentation` | *Unsanctioned Experimentation* — ran illegal trials on off-spec units | Medbay actions more effective; defect arcs unlock earlier | Units start with lower Trust; distrust spikes when he touches their implants | `autonomy +`, `mercy +` negative |
+| `experimentation` | *Unsanctioned Experimentation* — ran illegal trials on off-spec units | Medbay actions more effective; defect arcs unlock earlier | Units start with lower Trust; distrust spikes when their implants are touched | `autonomy +`, `mercy +` negative |
 | `purge` | *Sector Purge* — followed an extermination order too well | Grunts and units with `pragmatism +` start with +Trust | Civilians-related dilemmas hit harder | `mercy +` strongly negative |
-| `mutiny` | *Mutiny* — led a revolt against a superior | Authority starts at rank 2 | Leash requests cost more Trust (units see him as a hypocrite) | `autonomy +` positive, `corporate +` negative |
-| `strain_trade` | *Strain Trafficking* — sold Bloom samples | Starts with extra Plyx and a black-market contact | Somatic-defect units distrust him (+stress around him) | `mercy +`, `sacrifice +` negative |
+| `mutiny` | *Mutiny* — led a revolt against a superior | Authority starts at rank 2 | Leash requests cost more Trust (units see the commander as a hypocrite) | `autonomy +` positive, `corporate +` negative |
+| `strain_trade` | *Strain Trafficking* — sold Bloom samples | Starts with extra Plyx and a black-market contact | Somatic-defect units distrust the commander (+stress around the commander) | `mercy +`, `sacrifice +` negative |
 
 Fields: `id, name, summary, perk (effect ids), flaw (effect ids), valueReactions [{axis, sign, weight}], knownByDefault: false` (units learn it via events → flag `knows_crime`).
 

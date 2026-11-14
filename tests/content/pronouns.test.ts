@@ -51,6 +51,21 @@ describe('no pronoun for the commander in content', () => {
     expect(texts.filter(([, t]) => COMMANDER_PRONOUN.test(t)).map(([where]) => where)).toEqual([]);
   });
 
+  it('crimes: the commander is of any gender (summary, perk and flaw texts)', () => {
+    const texts = [...reg.crimes.values()].flatMap((c): Array<[string, string]> => [
+      [`crimes:${c.id}.summary`, String(c.summary ?? '')],
+      [`crimes:${c.id}.perk`, String((c.perk as { text?: string } | undefined)?.text ?? '')],
+      [`crimes:${c.id}.flaw`, String((c.flaw as { text?: string } | undefined)?.text ?? '')],
+    ]);
+    expect(texts.length).toBe(reg.crimes.size * 3);
+    expect(texts.filter(([, t]) => COMMANDER_PRONOUN.test(t)).map(([where]) => where)).toEqual([]);
+  });
+
+  it('world option texts do not say "their" for the commander either', () => {
+    const texts = [...reg.worldOptions.values()].flatMap((o) => [String(o.description), ...(o.choices as Array<{ description: string }>).map((c) => c.description)]);
+    expect(texts.filter((t) => /commander[^.]*\btheir\b/i.test(t))).toEqual([]);
+  });
+
   it('the lorebook that goes to the main model', async () => {
     const { readFile } = await import('node:fs/promises');
     const book = JSON.parse(await readFile('content/core/lorebook.json', 'utf8')) as { entries: Array<{ comment: string; content: string }> };
@@ -90,5 +105,20 @@ describe('no pronoun for the commander in readings', () => {
         expect(text, `${a} raw=${raw}`).not.toMatch(COMMANDER_PRONOUN);
       }
     }
+  });
+});
+
+
+describe('no pronoun for the commander in the text modules the main model and the player read', () => {
+  // string literals of these modules reach the player or the prompt; comments are skipped
+  const FILES = [
+    'src/scene/directives.ts', 'src/llm/calls/dmReply.ts', 'src/loyalty/directives.ts', 'src/ui/expedition/expeditionScreen.ts',
+    'src/analysis/effects.ts', 'src/world/optionsContext.ts', 'src/ui/setup/worldParams.ts', 'src/ui/setup/calibration.ts',
+  ];
+  it.each(FILES)('%s', async (file) => {
+    const { readFile } = await import('node:fs/promises');
+    const lines = (await readFile(file, 'utf8')).split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l));
+    const bad = lines.filter((l) => /\b(he|him|his|himself)\b/i.test(l) || /commander[^.'`]*\btheir\b/i.test(l));
+    expect(bad.map((l) => l.trim().slice(0, 100))).toEqual([]);
   });
 });

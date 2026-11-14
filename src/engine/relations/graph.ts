@@ -30,12 +30,12 @@ export function pushHistory(draft: CampaignState, unitId: string, h: HistoryEntr
   }
 }
 
-/** Does `unitId` satisfy every key of `cond`? An empty condition holds; an empty `anyOf` never does. */
 /** P8: the days a stage must last, scaled by the unit's disposition (kind quicker, hazardous slower). */
 function stageDays(state: CampaignState, reg: Registries, unit: Unit, days: number): number {
   return Math.round(days * dispositionFor(state, reg, unit).stageDaysMult);
 }
 
+/** Does `unitId` satisfy every key of `cond`? An empty condition holds; an empty `anyOf` never does. */
 export function meets(state: CampaignState, reg: Registries, unitId: string, cond: Conditions): boolean {
   const rel = state.relations[unitId];
   const unit = state.squad.find((u) => u.id === unitId);

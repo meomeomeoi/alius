@@ -2,7 +2,7 @@ import type { Registries } from '../content/types';
 import { firstImpressionWeight } from '../engine/commander/presence';
 import type { CampaignState } from '../engine/state/types';
 import { TUNING } from '../engine/tuning';
-import { optionStanceEffects, stanceOf, worldChoices } from '../engine/worldOptions';
+import { normDistance, optionStanceEffects, stanceOf, worldChoices } from '../engine/worldOptions';
 import type { ContextBuilder } from '../llm/context';
 import { estTokens } from '../llm/text';
 
@@ -63,7 +63,8 @@ export function worldDirectives(builder: ContextBuilder, state: CampaignState, r
     for (const u of present) {
       for (const fx of optionStanceEffects(state, reg, u, option.id)) {
         if (fx.type !== 'directive') continue;
-        if (fx.whileEarly === true && firstImpressionWeight(state, u.id) <= EARLY_WEIGHT) continue;
+        // an early-days directive is about a commander who departs from the norm: none while the commander matches it
+        if (fx.whileEarly === true && (firstImpressionWeight(state, u.id) <= EARLY_WEIGHT || normDistance(state, reg) === 0)) continue;
         builder.setDirective({ id: `stance:${u.id}:${option.id}`, text: fx.text.replaceAll('{name}', u.displayName), expiresAfter: 'scene' });
       }
     }

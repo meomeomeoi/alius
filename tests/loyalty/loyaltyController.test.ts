@@ -58,7 +58,7 @@ describe('orders in a scene', () => {
   it('a refused order sets the refusal directive for the scene and a compel replaces it for the next reply', () => {
     const r = rig((s) => setRelation(s, ANN, { band: 'breaking', trust: 5 }));
     refuse(r);
-    expect(dirs(r)).toContain("Ann REFUSES the commander's order this scene. Reason: she no longer trusts him.");
+    expect(dirs(r)).toContain("Ann REFUSES the commander's order this scene. Reason: she no longer trusts the commander.");
     expect(r.refresh).toHaveBeenCalled();
     expect(r.loyalty.compel(ANN)).toBe(true);
     expect(dirs(r)).toContain('Ann has just been COMPELLED through the Leash');
@@ -90,11 +90,11 @@ describe('orders in a scene', () => {
       refuse(r);
       return /Reason: ([^.]+)\./.exec(dirs(r))![1];
     };
-    expect(reasonOf((s) => setRelation(s, ANN, { band: 'wavering', trust: 20 }))).toBe('she openly doubts his authority');
-    expect(reasonOf((s) => setRelation(s, ANN, { band: 'breaking', trust: 5 }))).toBe('she no longer trusts him');
-    expect(reasonOf((s) => setRelation(s, ANN, { band: 'wavering', trust: 20, stateId: 'resentful' }))).toBe('she resents him'); // a tie goes to the state's friction
-    expect(reasonOf((s) => setRelation(s, ANN, { band: 'steady', trust: 50, stateId: 'estranged' }))).toBe('she wants nothing from him');
-    expect(reasonOf((s) => setRelation(s, ANN, { band: 'steady', trust: 50, stateId: 'despises' }))).toBe('she despises him');
+    expect(reasonOf((s) => setRelation(s, ANN, { band: 'wavering', trust: 20 }))).toBe('she openly doubts the commander\'s authority');
+    expect(reasonOf((s) => setRelation(s, ANN, { band: 'breaking', trust: 5 }))).toBe('she no longer trusts the commander');
+    expect(reasonOf((s) => setRelation(s, ANN, { band: 'wavering', trust: 20, stateId: 'resentful' }))).toBe('she resents the commander'); // a tie goes to the state's friction
+    expect(reasonOf((s) => setRelation(s, ANN, { band: 'steady', trust: 50, stateId: 'estranged' }))).toBe('she wants nothing from the commander');
+    expect(reasonOf((s) => setRelation(s, ANN, { band: 'steady', trust: 50, stateId: 'despises' }))).toBe('she despises the commander');
     expect(reasonOf((s) => { s.squad[0].defects = [{ id: 'imprint_fracture' }]; })).toBe('her defect resists orders');
   });
 
@@ -122,7 +122,7 @@ describe('scene directives', () => {
     });
     r.loyalty.onSceneOpened();
     const d = dirs(r);
-    expect(d).toContain('Ann openly doubts the commander in this scene; she questions his decisions aloud.');
+    expect(d).toContain('Ann openly doubts the commander in this scene; she questions the commander\'s decisions aloud.');
     expect(d).toContain('Ann remembers being forced through the Leash; she will not pretend otherwise.');
     expect(d).not.toContain('Bea');
     expect(r.refresh).toHaveBeenCalled();

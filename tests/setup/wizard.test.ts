@@ -814,3 +814,71 @@ describe('the world step and presets (P8)', () => {
     expect(r.units[0]).toMatchObject({ dispositionOffset: -1, dispositionReason: 'Eager.', worldStances: { offspec_stigma: { stance: 'shares', strength: 1, reason: 'Edited.' } } });
   });
 });
+
+
+describe('the world sections after a world change (P8 review follow-ups)', () => {
+  const calibrated = async (stage: 'ready' | 'loading' = 'ready') => {
+    const m = make();
+    m.w.setStart('start_vesper');
+    m.w.setCrime('mutiny');
+    m.w.toggleUnit(card('rhea'));
+    m.w.calibrate(0);
+    if (stage === 'ready') { m.pending[0].resolve(OK); await flush(); }
+    return m;
+  };
+  const withWorld = (profile: Partial<ImportedProfile>): ImportOutcome => ({ kind: 'ok', profile: { ...PROFILE, ...profile }, dropped: [], missing: [] });
+
+  it('only a change to the disposition or a squad-stance option marks units stale', async () => {
+    for (const [option, choice, stale] of [['tone', 'bleak', false], ['oversight', 'brutal', false], ['bloom_horror', 'graphic', false],
+      ['disposition', 'volatile', true], ['gender_norms', 'inverted', true], ['offspec_stigma', 'scorned', true]] as const) {
+      const { w } = await calibrated();
+      w.setWorldOption(option, choice);
+      expect(w.state.units[0].worldStale, `${option}=${choice}`).toBe(stale ? true : undefined);
+    }
+  });
+
+  it('a unit whose import is still running is marked too, and keeps the mark when the answer lands', async () => {
+    const { w, pending } = await calibrated('loading');
+    w.setWorldOption('disposition', 'hazardous');
+    expect(w.state.units[0].worldStale).toBe(true);
+    pending[0].resolve(OK);
+    await flush();
+    expect(w.state.units[0].status).toBe('ready');
+    expect(w.state.units[0].worldStale).toBe(true);
+  });
+
+  it('a unit that was never imported (idle) is not marked: she will be read against the new world', () => {
+    const { w } = make();
+    w.toggleUnit(card('mira'));
+    w.setWorldOption('disposition', 'hazardous');
+    expect(w.state.units[0].worldStale).toBeUndefined();
+  });
+
+  it('the newest re-import wins even when an older one answers last', async () => {
+    const { w, pending, importer } = await calibrated();
+    w.setWorldOption('disposition', 'hazardous');
+    w.refreshWorldSections(0); // pending[1]
+    w.setWorldOption('disposition', 'volatile');
+    w.refreshWorldSections(0); // pending[2]
+    expect(importer).toHaveBeenCalledTimes(3);
+    pending[2].resolve(withWorld({ dispositionOffset: { offset: -1, reason: 'new' } }));
+    await flush();
+    pending[1].resolve(withWorld({ dispositionOffset: { offset: 2, reason: 'old' } }));
+    await flush();
+    expect(w.state.units[0].choice.dispositionOffset).toBe(-1);
+    expect(w.state.units[0].choice.dispositionReason).toBe('new');
+  });
+
+  it('a regenerate of the stances started after a re-import is not overwritten by the older re-import', async () => {
+    const { w, pending } = await calibrated();
+    w.applyPreset('brutal');
+    w.refreshWorldSections(0); // pending[1]
+    w.regenerate(0, 'stances'); // pending[2]
+    pending[2].resolve(withWorld({ worldStances: { gender_norms: { stance: 'opposes', strength: 2, reason: 'newer' } } }));
+    await flush();
+    pending[1].resolve(withWorld({ worldStances: { gender_norms: { stance: 'shares', strength: 1, reason: 'older' } }, dispositionOffset: { offset: 1, reason: 'r' } }));
+    await flush();
+    expect(w.state.units[0].choice.worldStances!.gender_norms.reason).toBe('newer');
+    expect(w.state.units[0].choice.dispositionOffset).toBe(1); // the disposition part of the older answer is still the newest for that section
+  });
+});

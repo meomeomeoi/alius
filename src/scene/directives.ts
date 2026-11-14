@@ -6,9 +6,9 @@ export type ProposalResult = { receptive: true } | { receptive: false; reason: P
 
 const REASON_TEXT: Record<ProposalFailure, string> = {
   too_soon: 'too soon',
-  no_trust: 'she does not trust him enough',
+  no_trust: 'she does not trust the commander enough',
   not_interested: 'she is not interested',
-  committed: 'he is already committed to someone else',
+  committed: 'the commander is already committed to someone else',
   unavailable: 'it is not something she would consider',
 };
 
