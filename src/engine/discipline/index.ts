@@ -10,4 +10,5 @@ export {
 /** The words an extracted `measure` may take: every punishment id, plus `leash` and `unspecified` (neither is a registry id). */
 export const measureList = (reg: Registries): string[] => [...reg.punishments.keys(), 'leash', 'unspecified'];
 export { gearFault, GEAR_FAULT_LOG, isCovert, queueSabotage, sabotageDayStep } from './sabotage';
+export { acquaintanceDays, inAcquaintance } from './acquaintance';
 export { commandStance, stanceEntry, type CommandStance } from './stance';

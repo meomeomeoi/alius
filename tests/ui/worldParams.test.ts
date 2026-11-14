@@ -29,10 +29,59 @@ function make() {
 const qa = (host: HTMLElement, sel: string) => [...host.querySelectorAll<HTMLElement>(sel)];
 const card = (host: HTMLElement, option: string, choice: string) => host.querySelector<HTMLElement>(`.alius-world-choice[data-option="${option}"][data-id="${choice}"]`)!;
 
+describe('a long scale is a slider (P9: the acquaintance period)', () => {
+  const slider = (host: HTMLElement) => host.querySelector<HTMLInputElement>('input[type="range"][data-option="acquaintance"]')!;
+  const shown = (host: HTMLElement) => host.querySelector('[data-option-value="acquaintance"]')!.textContent;
+
+  it('the acquaintance option is one slider from 0 to 14 days, not fifteen cards', () => {
+    const { host } = make();
+    expect(qa(host, '.alius-world-choice[data-option="acquaintance"]')).toHaveLength(0);
+    expect([slider(host).min, slider(host).max, slider(host).value]).toEqual(['0', '14', '7']); // the default is 7 days
+    expect(shown(host)).toBe('Seven days');
+    expect(host.textContent).toContain('LOCKED AT START');
+  });
+
+  it('moving it stores the choice, the label follows and the screen redraws on the new value', () => {
+    const { wizard, host } = make();
+    const input = slider(host);
+    input.value = '10';
+    input.dispatchEvent(new Event('change'));
+    expect(wizard.state.world.options.acquaintance).toBe('d10');
+    expect(slider(host).value).toBe('10');
+    expect(shown(host)).toBe('Ten days');
+    slider(host).value = '0';
+    slider(host).dispatchEvent(new Event('change'));
+    expect(wizard.state.world.options.acquaintance).toBe('d0');
+    expect(shown(host)).toBe('No grace period');
+    slider(host).value = '1';
+    slider(host).dispatchEvent(new Event('change'));
+    expect(shown(host)).toBe('One day');
+  });
+
+  it('the live number follows the thumb while it is dragged', () => {
+    const { host } = make();
+    slider(host).value = '12';
+    slider(host).dispatchEvent(new Event('input'));
+    expect(shown(host)).toBe('Twelve days');
+  });
+
+  it('it is marked for analysis with the current choice, and a preset sets it', () => {
+    const { wizard, host } = make();
+    const label = host.querySelector('.alius-slider[data-option="acquaintance"]')!;
+    expect(label.getAttribute('data-analyze')).toBe('worldOptions:acquaintance');
+    expect(JSON.parse(label.getAttribute('data-analyze-ctx')!)).toEqual({ choice: 'd7' });
+    wizard.applyPreset('gentle');
+    expect(slider(host).value).toBe('10');
+    wizard.applyPreset('brutal');
+    expect(slider(host).value).toBe('3');
+  });
+});
+
 describe('the WORLD PARAMETERS screen', () => {
   it('world step renders every option and marks the chosen card', () => {
     const { host } = make();
     for (const option of reg.worldOptions.values()) {
+      if ((option.choices as unknown[]).length > 6) continue; // a long scale is a slider, tested below
       const cards = qa(host, `.alius-world-choice[data-option="${option.id}"]`);
       expect(cards.map((c) => c.dataset.id), String(option.id)).toEqual((option.choices as Array<{ id: string }>).map((c) => c.id));
       const pressed = cards.filter((c) => c.getAttribute('aria-pressed') === 'true').map((c) => c.dataset.id);
@@ -89,7 +138,7 @@ describe('the WORLD PARAMETERS screen', () => {
     wizard.applyPreset('brutal');
     const items = qa(host, '.alius-world-summary li').map((li) => li.textContent!);
     expect(items).toEqual(wizard.worldSummary());
-    expect(items).toHaveLength(6);
+    expect(items).toHaveLength(7); // the brutal preset also shortens the acquaintance period to three days
     for (const t of items) expect(t).not.toMatch(/\d/);
     // the screen is a meta screen: no fiction voice, no pronoun for the commander
     expect(host.textContent).not.toMatch(/\b(he|him|his)\b/i);

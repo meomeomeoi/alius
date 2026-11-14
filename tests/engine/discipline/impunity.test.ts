@@ -18,14 +18,25 @@ const A = 'unit_ann';
 const B = 'unit_bea';
 const C = 'unit_cat';
 const D = 'unit_dee';
-const fresh = (): CampaignState => campaign(reg, 4);
+/** Day 8: a week has passed, so a Leash nobody has used reads as a bluff (+8). */
+const fresh = (): CampaignState => {
+  const s = campaign(reg, 4);
+  s.day = 8;
+  return s;
+};
 const val = (s: CampaignState, id = A, r: Registries = reg) => impunityOf(s, r, id)!;
 const logEntry = (s: CampaignState, over: Record<string, unknown> = {}) => {
   s.leash.log.push({ no: 1, unitId: B, kind: 'compel', day: s.day, context: 'scene', outcome: 'done', ...over });
 };
 
 describe('impunityOf', () => {
-  it('a fresh unit on a guarded world with a Leash never used reads 35 + 0 + 8', () => {
+  it('on day 1 a fresh unit on a guarded world reads just its base, 35', () => {
+    const s = campaign(reg, 4);
+    expect(val(s).value).toBe(35);
+    expect(val(s).terms).toEqual({ base: 35, record: 0, leash: 0, presence: 0, dependency: 0, contagion: 0, leverage: 0 });
+  });
+
+  it('a fresh unit on a guarded world with a Leash never used for a week reads 35 + 0 + 8', () => {
     const s = fresh();
     expect(val(s).value).toBe(43);
     expect(val(s).terms).toEqual({ base: 35, record: 0, leash: 8, presence: 0, dependency: 0, contagion: 0, leverage: 0 });
@@ -61,6 +72,19 @@ describe('impunityOf', () => {
       const s = fresh();
       s.leash.authorizationsLeft = 0;
       expect(val(s).terms.leash).toBe(18);
+    });
+    it('the never-used bonus waits a week: none on day 1 to 7, +8 from day 8', () => {
+      for (const [day, want] of [[1, 0], [7, 0], [8, 8], [30, 8]] as const) {
+        const s = fresh();
+        s.day = day;
+        expect(val(s).terms.leash, `day ${day}`).toBe(want);
+      }
+    });
+    it('0 authorizations left still reads +10 before the week is over', () => {
+      const s = fresh();
+      s.day = 3;
+      s.leash.authorizationsLeft = 0;
+      expect(val(s).terms.leash).toBe(10);
     });
     it('never used needs an empty log and no sequence number', () => {
       const s = fresh();

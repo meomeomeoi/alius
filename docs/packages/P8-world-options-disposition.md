@@ -138,7 +138,7 @@ Engine: `src/engine/worldOptions/{options,disposition,stances,norm,index}.ts`, `
 - **The mutiny day step has its own state flow:** the relationship graph moves a unit (e.g. `resentful` → `despises`) during the same step, so tests of "cannot mutiny from X" must look at one step or at `mutinyReady`.
 - **The disposition never reaches `intent_extract`.** `tests/scene/sceneController.test.ts` compares the prompts byte for byte; keep it that way (overview P2).
 - **Stale choices.** `world.options` may hold a choice the pack no longer has; every reader falls back to the default. A family clock in a save outlives its family.
-- **Option ids in tests:** `worldOptions` order is `gender_norms, offspec_stigma, oversight, bloom_horror, tone, disposition`; the UI and the lore block follow registry order.
+- **Option ids in tests:** `worldOptions` order is `gender_norms, offspec_stigma, oversight, bloom_horror, tone, disposition, acquaintance`; the UI and the lore block follow registry order. `acquaintance` (P9) is a 15-choice scale (`d0`…`d14`), drawn as a slider (more than 6 choices), has no `lore` line (`WorldChoice.lore` is optional) and its effect `acquaintance_grace { days }` is read by `acquaintanceDays` in `engine/discipline/`.
 - **Process:** `deployCampaign` seeds the campaign with `Math.random()`, so app tests must switch unit DMs off (`st.settings.unitDms = false`) when they count LLM calls.
 
 ### Open items

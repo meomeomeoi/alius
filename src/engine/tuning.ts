@@ -59,7 +59,8 @@ export const TUNING = Object.freeze({
     /** `R` of an enforcement whose measure the registry no longer has. */
     enforcedFallback: -8,
     leashEnforced: -20,
-    leash: Object.freeze({ noneLeft: 10, neverUsed: 8, recentUse: -10, recentDays: 7 }),
+    /** `neverUsed` applies from `neverUsedFromDay` (a week of no use before the squad takes the Leash for a bluff). */
+    leash: Object.freeze({ noneLeft: 10, neverUsed: 8, neverUsedFromDay: 8, recentUse: -10, recentDays: 7 }),
     defectUpkeep: 10,
     contagion: 0.3,
     secret: 5,
@@ -68,7 +69,7 @@ export const TUNING = Object.freeze({
       trustHigh: 45,
       impunityHigh: 50,
       /** The zone where she does not much care who commands her: Trust from `trustMin` up to (not including) `trustHigh`, Impunity inside the range. */
-      indifferent: Object.freeze({ trustMin: 30, impunityMin: 40, impunityMax: 59 }),
+      indifferent: Object.freeze({ trustMin: 30, impunityMin: 35, impunityMax: 59 }),
     }),
     /** A threat is believed while Impunity is below this. */
     believeBelow: 50,
@@ -77,7 +78,8 @@ export const TUNING = Object.freeze({
     mutinyMin: 60,
     desertInsteadBelow: 30,
     bands: Object.freeze({ low: 30, high: 50, brazen: 60 }),
-    sabotage: Object.freeze({ chancePerDay: 0.12, supplies: 2, credits: 10, gearChance: 0.5, gearSupplies: 2 }),
+    /** `chancePerDay` is the chance at Impunity 0; it falls to 0 at `stance.impunityHigh`. At most one random sabotage in `cooldownDays` days. */
+    sabotage: Object.freeze({ chancePerDay: 0.12, cooldownDays: 3, supplies: 2, credits: 10, gearChance: 0.5, gearSupplies: 2 }),
     applicationsMax: 20,
   }),
   /** P7a: the change ledger behind trends, stress sources and "last changes" readings. */

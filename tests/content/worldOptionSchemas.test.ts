@@ -16,7 +16,7 @@ beforeAll(async () => {
 describe('world option registries in core', () => {
   it('core loads the four registries without errors', () => {
     for (const n of ['worldOptions', 'dispositionLevels', 'stanceEffects', 'worldPresets']) expect(REGISTRY_NAMES).toContain(n);
-    expect([...reg.worldOptions.keys()]).toEqual(['gender_norms', 'offspec_stigma', 'oversight', 'bloom_horror', 'tone', 'disposition']);
+    expect([...reg.worldOptions.keys()]).toEqual(['gender_norms', 'offspec_stigma', 'oversight', 'bloom_horror', 'tone', 'disposition', 'acquaintance']);
     expect([...reg.dispositionLevels.keys()]).toEqual(['kind', 'guarded', 'prickly', 'volatile', 'hazardous']);
     expect([...reg.worldPresets.keys()].sort()).toEqual(['brutal', 'gentle', 'standard']);
     expect(reg.stanceEffects.size).toBeGreaterThanOrEqual(8);
@@ -26,8 +26,8 @@ describe('world option registries in core', () => {
     const o = (id: string) => reg.worldOptions.get(id)!;
     expect([...reg.worldOptions.values()].filter((x) => x.live === true).map((x) => x.id)).toEqual(['bloom_horror']);
     expect([...reg.worldOptions.values()].filter((x) => x.squadStance === true).map((x) => x.id)).toEqual(['gender_norms', 'offspec_stigma']);
-    expect(['gender_norms', 'offspec_stigma', 'oversight', 'bloom_horror', 'tone', 'disposition'].map((id) => o(id).default))
-      .toEqual(['indifferent', 'tolerated', 'standard', 'restrained', 'grim', 'guarded']);
+    expect(['gender_norms', 'offspec_stigma', 'oversight', 'bloom_horror', 'tone', 'disposition', 'acquaintance'].map((id) => o(id).default))
+      .toEqual(['indifferent', 'tolerated', 'standard', 'restrained', 'grim', 'guarded', 'd7']);
     const choices = (id: string) => (o(id).choices as Array<{ id: string }>).map((c) => c.id);
     expect(choices('gender_norms')).toEqual(['indifferent', 'corporate_machismo', 'inverted']);
     expect(choices('offspec_stigma')).toEqual(['tolerated', 'scorned', 'hunted']);
@@ -35,17 +35,34 @@ describe('world option registries in core', () => {
     expect(choices('bloom_horror')).toEqual(['restrained', 'graphic']);
     expect(choices('tone')).toEqual(['grim_hope', 'grim', 'bleak']);
     expect(choices('disposition')).toEqual(['kind', 'guarded', 'prickly', 'volatile', 'hazardous']);
+    expect(choices('acquaintance')).toEqual(Array.from({ length: 15 }, (_, n) => `d${n}`));
+  });
+
+  it('acquaintance: 0 to 14 days, one effect each, locked at start, in the Soldiers group', () => {
+    const o = reg.worldOptions.get('acquaintance')!;
+    expect(o.group).toBe('Soldiers');
+    expect(o.live).not.toBe(true);
+    const choices = o.choices as Array<{ id: string; effects: unknown[]; lore?: string }>;
+    choices.forEach((c, n) => expect(c.effects, c.id).toEqual([{ type: 'acquaintance_grace', days: n }]));
+    expect(choices.every((c) => c.lore === undefined)).toBe(true); // the main model is not told: no WORLD SETTINGS line
+  });
+
+  it('the acquaintance_grace effect takes whole days from 0 to 14', () => {
+    const ok = (days: unknown) => WorldOptionEffectSchema.safeParse({ type: 'acquaintance_grace', days }).success;
+    expect([0, 1, 7, 14].map(ok)).toEqual([true, true, true, true]);
+    expect([-1, 15, 1.5, '7', undefined].map(ok)).toEqual([false, false, false, false, false]);
+    expect(WorldOptionEffectSchema.safeParse({ type: 'acquaintance_grace', days: 3, extra: 1 }).success).toBe(false);
   });
 
   it('the presets are the spec presets', () => {
     expect(reg.worldPresets.get('gentle')!.choices).toEqual({
-      gender_norms: 'indifferent', offspec_stigma: 'tolerated', oversight: 'lenient', bloom_horror: 'restrained', tone: 'grim_hope', disposition: 'kind',
+      gender_norms: 'indifferent', offspec_stigma: 'tolerated', oversight: 'lenient', bloom_horror: 'restrained', tone: 'grim_hope', disposition: 'kind', acquaintance: 'd10',
     });
     expect(reg.worldPresets.get('standard')!.choices).toEqual({
-      gender_norms: 'indifferent', offspec_stigma: 'tolerated', oversight: 'standard', bloom_horror: 'restrained', tone: 'grim', disposition: 'guarded',
+      gender_norms: 'indifferent', offspec_stigma: 'tolerated', oversight: 'standard', bloom_horror: 'restrained', tone: 'grim', disposition: 'guarded', acquaintance: 'd7',
     });
     expect(reg.worldPresets.get('brutal')!.choices).toEqual({
-      gender_norms: 'corporate_machismo', offspec_stigma: 'hunted', oversight: 'brutal', bloom_horror: 'graphic', tone: 'bleak', disposition: 'hazardous',
+      gender_norms: 'corporate_machismo', offspec_stigma: 'hunted', oversight: 'brutal', bloom_horror: 'graphic', tone: 'bleak', disposition: 'hazardous', acquaintance: 'd3',
     });
   });
 
@@ -250,7 +267,7 @@ describe('world option loader checks', () => {
   });
 
   it('core lore lines fit the block with room to spare', () => {
-    const longest = [...reg.worldOptions.values()].map((o) => Math.max(...(o.choices as Array<{ lore: string }>).map((c) => c.lore.length)));
+    const longest = [...reg.worldOptions.values()].map((o) => Math.max(...(o.choices as Array<{ lore?: string }>).map((c) => (c.lore ?? '').length)));
     expect(longest.reduce((a, b) => a + b, 0) / 4).toBeLessThanOrEqual(120);
   });
 });

@@ -339,5 +339,180 @@
         ]
       }
     ]
+  },
+  {
+    "id": "acquaintance",
+    "label": "Getting acquainted",
+    "group": "Soldiers",
+    "live": false,
+    "default": "d7",
+    "description": "How long a soldier holds back covert protest after she meets a new commander, from none to two weeks. While it lasts, the chance that she sabotages in secret is zero.",
+    "choices": [
+      {
+        "id": "d0",
+        "label": "No grace period",
+        "description": "Soldiers may start secret protest from the first day.",
+        "effects": [
+          {
+            "type": "acquaintance_grace",
+            "days": 0
+          }
+        ]
+      },
+      {
+        "id": "d1",
+        "label": "One day",
+        "description": "For the first one day after a soldier meets the commander she plays no covert tricks: the chance of secret sabotage is zero.",
+        "effects": [
+          {
+            "type": "acquaintance_grace",
+            "days": 1
+          }
+        ]
+      },
+      {
+        "id": "d2",
+        "label": "Two days",
+        "description": "For the first two days after a soldier meets the commander she plays no covert tricks: the chance of secret sabotage is zero.",
+        "effects": [
+          {
+            "type": "acquaintance_grace",
+            "days": 2
+          }
+        ]
+      },
+      {
+        "id": "d3",
+        "label": "Three days",
+        "description": "For the first three days after a soldier meets the commander she plays no covert tricks: the chance of secret sabotage is zero.",
+        "effects": [
+          {
+            "type": "acquaintance_grace",
+            "days": 3
+          }
+        ]
+      },
+      {
+        "id": "d4",
+        "label": "Four days",
+        "description": "For the first four days after a soldier meets the commander she plays no covert tricks: the chance of secret sabotage is zero.",
+        "effects": [
+          {
+            "type": "acquaintance_grace",
+            "days": 4
+          }
+        ]
+      },
+      {
+        "id": "d5",
+        "label": "Five days",
+        "description": "For the first five days after a soldier meets the commander she plays no covert tricks: the chance of secret sabotage is zero.",
+        "effects": [
+          {
+            "type": "acquaintance_grace",
+            "days": 5
+          }
+        ]
+      },
+      {
+        "id": "d6",
+        "label": "Six days",
+        "description": "For the first six days after a soldier meets the commander she plays no covert tricks: the chance of secret sabotage is zero.",
+        "effects": [
+          {
+            "type": "acquaintance_grace",
+            "days": 6
+          }
+        ]
+      },
+      {
+        "id": "d7",
+        "label": "Seven days",
+        "description": "For the first seven days after a soldier meets the commander she plays no covert tricks: the chance of secret sabotage is zero.",
+        "effects": [
+          {
+            "type": "acquaintance_grace",
+            "days": 7
+          }
+        ]
+      },
+      {
+        "id": "d8",
+        "label": "Eight days",
+        "description": "For the first eight days after a soldier meets the commander she plays no covert tricks: the chance of secret sabotage is zero.",
+        "effects": [
+          {
+            "type": "acquaintance_grace",
+            "days": 8
+          }
+        ]
+      },
+      {
+        "id": "d9",
+        "label": "Nine days",
+        "description": "For the first nine days after a soldier meets the commander she plays no covert tricks: the chance of secret sabotage is zero.",
+        "effects": [
+          {
+            "type": "acquaintance_grace",
+            "days": 9
+          }
+        ]
+      },
+      {
+        "id": "d10",
+        "label": "Ten days",
+        "description": "For the first ten days after a soldier meets the commander she plays no covert tricks: the chance of secret sabotage is zero.",
+        "effects": [
+          {
+            "type": "acquaintance_grace",
+            "days": 10
+          }
+        ]
+      },
+      {
+        "id": "d11",
+        "label": "Eleven days",
+        "description": "For the first eleven days after a soldier meets the commander she plays no covert tricks: the chance of secret sabotage is zero.",
+        "effects": [
+          {
+            "type": "acquaintance_grace",
+            "days": 11
+          }
+        ]
+      },
+      {
+        "id": "d12",
+        "label": "Twelve days",
+        "description": "For the first twelve days after a soldier meets the commander she plays no covert tricks: the chance of secret sabotage is zero.",
+        "effects": [
+          {
+            "type": "acquaintance_grace",
+            "days": 12
+          }
+        ]
+      },
+      {
+        "id": "d13",
+        "label": "Thirteen days",
+        "description": "For the first thirteen days after a soldier meets the commander she plays no covert tricks: the chance of secret sabotage is zero.",
+        "effects": [
+          {
+            "type": "acquaintance_grace",
+            "days": 13
+          }
+        ]
+      },
+      {
+        "id": "d14",
+        "label": "Fourteen days",
+        "description": "For the first fourteen days after a soldier meets the commander she plays no covert tricks: the chance of secret sabotage is zero.",
+        "effects": [
+          {
+            "type": "acquaintance_grace",
+            "days": 14
+          }
+        ]
+      }
+    ]
   }
 ]

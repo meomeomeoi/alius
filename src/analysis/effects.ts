@@ -418,6 +418,7 @@ export function summarizeWorldOptionEffect(effect: unknown, reg: Registries): st
     case 'director_hint': return `Story tone: ${String(x.text)}`;
     case 'scene_directive': return 'The story model is told how this world feels';
     case 'grunt_stances': return 'Generated soldiers lean for or against the norm';
+    case 'acquaintance_grace': return x.days === 0 ? 'Soldiers may start secret protest from the first day' : 'Soldiers hold back secret protest while they get to know a new commander';
     default: return cap(humanize(String(x.type ?? 'effect')));
   }
 }

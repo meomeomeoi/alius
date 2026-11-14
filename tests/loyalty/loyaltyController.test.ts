@@ -213,7 +213,8 @@ describe('dilemma aftermath', () => {
 });
 
 describe('covert refusals and stance refusals (P9)', () => {
-  const fearful = (s: CampaignState) => { setRelation(s, ANN, { band: 'breaking', trust: 5 }); setRecord(s, ANN, 0); };
+  // she is past the acquaintance period (none), or the hidden refusal would queue nothing
+  const fearful = (s: CampaignState) => { setRelation(s, ANN, { band: 'breaking', trust: 5 }); setRecord(s, ANN, 0); s.world.options = { ...(s.world.options ?? {}), acquaintance: 'd0' }; };
   /** Orders ANN until the engine's roll hides a refusal (she is `fearful` and `breaking`, 35 %). */
   function covertOrder(r: Rig): boolean {
     for (let seed = 1; seed <= 100; seed++) {

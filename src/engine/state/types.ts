@@ -405,7 +405,7 @@ export interface DisciplineState {
   /** The newest `TUNING.impunity.applicationsMax` applications. */
   applications: Application[];
   restrictions: Restriction[];
-  sabotage?: { queued: Array<{ unitId: string; day: number }>; gear?: { unitId: string; day: number } };
+  sabotage?: { queued: Array<{ unitId: string; day: number }>; gear?: { unitId: string; day: number }; /** The day of the last sabotage (the cooldown of the random roll). */ lastDay?: number };
   demands: Demand[];
   /** Days on which a demand opened, per unit (the last 7 days), for the weekly cap. */
   demandLog: Array<{ unitId: string; day: number }>;

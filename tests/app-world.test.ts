@@ -583,7 +583,7 @@ describe('world options in the app (P8)', () => {
     expect(await t.app.deployCampaign(result, 'new_group')).toBe(true);
     await settle();
     expect(t.state().world.options).toEqual({
-      gender_norms: 'corporate_machismo', offspec_stigma: 'hunted', oversight: 'brutal', bloom_horror: 'restrained', tone: 'grim', disposition: 'hazardous',
+      gender_norms: 'corporate_machismo', offspec_stigma: 'hunted', oversight: 'brutal', bloom_horror: 'restrained', tone: 'grim', disposition: 'hazardous', acquaintance: 'd7',
     });
     // the hunted world seeded its purge clock, and the injected context carries the lore lines
     expect(t.state().world.clocks.some((c) => c.id === 'purge_sweep')).toBe(true);

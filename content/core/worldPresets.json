@@ -9,7 +9,8 @@
       "oversight": "lenient",
       "bloom_horror": "restrained",
       "tone": "grim_hope",
-      "disposition": "kind"
+      "disposition": "kind",
+      "acquaintance": "d10"
     }
   },
   {
@@ -22,7 +23,8 @@
       "oversight": "standard",
       "bloom_horror": "restrained",
       "tone": "grim",
-      "disposition": "guarded"
+      "disposition": "guarded",
+      "acquaintance": "d7"
     }
   },
   {
@@ -35,7 +37,8 @@
       "oversight": "brutal",
       "bloom_horror": "graphic",
       "tone": "bleak",
-      "disposition": "hazardous"
+      "disposition": "hazardous",
+      "acquaintance": "d3"
     }
   }
 ]

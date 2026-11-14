@@ -26,7 +26,7 @@ describe('reading world options', () => {
     expect(s.world.options).toBeUndefined();
     const read = Object.fromEntries(worldChoices(s, reg).map(({ option, choice }) => [option.id, choice.id]));
     expect(read).toEqual({
-      gender_norms: 'indifferent', offspec_stigma: 'tolerated', oversight: 'standard', bloom_horror: 'restrained', tone: 'grim', disposition: 'guarded',
+      gender_norms: 'indifferent', offspec_stigma: 'tolerated', oversight: 'standard', bloom_horror: 'restrained', tone: 'grim', disposition: 'guarded', acquaintance: 'd7',
     });
     expect(defaultWorldOptions(reg)).toEqual(read);
   });

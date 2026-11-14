@@ -3,6 +3,9 @@ import type { Wizard } from '../../setup/wizard';
 import { analyzeNative } from '../analyze/mark';
 import { h } from '../dom';
 
+/** More choices than this are drawn as a slider instead of cards. */
+const MAX_CARDS = 6;
+
 export interface WorldParamsCtx {
   wizard: Wizard;
   registries: Registries;
@@ -22,6 +25,18 @@ export function renderWorldParams(host: HTMLElement, ctx: WorldParamsCtx): void 
   const groups: string[] = [];
   for (const o of options) if (!groups.includes(String(o.group))) groups.push(String(o.group));
 
+  /** A long scale (more than `MAX_CARDS` choices) is one slider over the choices, in order. */
+  const scale = (o: (typeof options)[number], chosen: string): HTMLElement => {
+    const choices = o.choices as Array<{ id: string; label: string }>;
+    const at = Math.max(0, choices.findIndex((c) => c.id === chosen));
+    const shown = h('span', { class: 'alius-slider-value', 'data-option-value': o.id }, choices[at].label);
+    const input = h('input', { type: 'range', min: '0', max: String(choices.length - 1), step: '1', value: String(at), 'data-option': o.id }) as HTMLInputElement;
+    input.addEventListener('input', () => (shown.textContent = choices[Math.round(Number(input.value))]?.label ?? '')); // live label while dragging
+    input.addEventListener('change', () => wizard.setWorldOption(o.id, choices[Math.round(Number(input.value))].id)); // commit on release / key step
+    return h('label', { class: 'alius-slider alius-option', 'data-option': o.id, ...analyzeNative(`worldOptions:${o.id}`, { choice: chosen }) },
+      h('span', { class: 'alius-slider-label' }, String(o.label)), input, shown);
+  };
+
   const optionBlock = (o: (typeof options)[number]): HTMLElement => {
     const live = o.live === true;
     const chosen = world.options[o.id] ?? String(o.default);
@@ -31,7 +46,7 @@ export function renderWorldParams(host: HTMLElement, ctx: WorldParamsCtx): void 
         h('span', { class: 'alius-lock', 'data-live': String(live), title: live ? 'This option can be changed during the campaign.' : 'This option is fixed when the campaign starts.' },
           live ? 'CHANGEABLE LATER' : 'LOCKED AT START')),
       h('p', { class: 'alius-dim' }, String(o.description)),
-      h('div', { class: 'alius-cards' }, ...(o.choices as Array<{ id: string; label: string; description: string }>).map((c) =>
+      (o.choices as unknown[]).length > MAX_CARDS ? scale(o, chosen) : h('div', { class: 'alius-cards' }, ...(o.choices as Array<{ id: string; label: string; description: string }>).map((c) =>
         h('button', {
           type: 'button', class: 'alius-card alius-option alius-world-choice', 'data-option': o.id, 'data-id': c.id,
           'aria-pressed': String(chosen === c.id), ...analyzeNative(`worldOptions:${o.id}`, { choice: c.id }),

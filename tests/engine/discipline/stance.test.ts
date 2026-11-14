@@ -17,6 +17,7 @@ beforeAll(async () => {
 const [ANN, BEA] = ['unit_ann', 'unit_bea'];
 const fresh = (): CampaignState => {
   const s = campaign(reg, 4);
+  s.day = 20; // past the acquaintance days of the default world
   s.leash.authorizationsLeft = 3;
   return s;
 };
@@ -46,15 +47,15 @@ describe('commandStance', () => {
     expect(commandStance(at(29, 50), reg, ANN)).toBe('open_defiance');
   });
 
-  it('indifferent: Trust 30–44 with Impunity 40–59 (she does not much care who commands her)', () => {
-    for (const [trust, impunity] of [[30, 40], [44, 49], [35, 50], [44, 59], [30, 59]] as const) {
+  it('indifferent: Trust 30–44 with Impunity 35–59 (she does not much care who commands her)', () => {
+    for (const [trust, impunity] of [[30, 35], [44, 49], [35, 50], [44, 59], [30, 59]] as const) {
       expect(commandStance(at(trust, impunity), reg, ANN), `${trust}/${impunity}`).toBe('indifferent');
     }
   });
 
   it('just outside the indifferent zone she is one of the four again', () => {
     expect(commandStance(at(29, 45), reg, ANN)).toBe('fearful'); // Trust under 30
-    expect(commandStance(at(35, 39), reg, ANN)).toBe('fearful'); // Impunity under 40
+    expect(commandStance(at(35, 34), reg, ANN)).toBe('fearful'); // Impunity under 35
     expect(commandStance(at(35, 60), reg, ANN)).toBe('open_defiance'); // Impunity over 59
     expect(commandStance(at(45, 45), reg, ANN)).toBe('disciplined'); // Trust 45 leaves the zone
     expect(commandStance(at(44, 60), reg, ANN)).toBe('open_defiance');
@@ -160,6 +161,20 @@ describe('refused orders and the stance', () => {
     expect(ofType(r.events, 'scene_order')[0].covert).toBeUndefined();
     expect(r.state.scene!.refusals).toHaveLength(1);
     expect(r.state.discipline?.sabotage?.queued ?? []).toEqual([]);
+  });
+
+  it('a hidden refusal inside the acquaintance period still looks accepted but queues no sabotage', () => {
+    const s = sceneWith('fearful');
+    s.world.options = { ...(s.world.options ?? {}), acquaintance: 'd14' };
+    s.day = 3;
+    s.relations[ANN].metDay = 1; // known for 2 days
+    const r = order(s, seedFor(s, true));
+    expect(ofType(r.events, 'scene_order')).toMatchObject([{ unitId: ANN, refused: false, covert: true }]);
+    expect(r.state.scene!.refusals ?? []).toEqual([]);
+    expect(r.state.discipline?.sabotage?.queued ?? []).toEqual([]);
+    s.world.options = { ...s.world.options, acquaintance: 'd0' };
+    const after = order(s, seedFor(s, true));
+    expect(after.state.discipline!.sabotage!.queued).toHaveLength(1);
   });
 
   it('a fearful compliance queues nothing', () => {

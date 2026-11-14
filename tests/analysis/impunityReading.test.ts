@@ -24,7 +24,12 @@ const env = (state: CampaignState | null, raw = false, r: Registries = reg): Ana
 const read = (s: CampaignState, address: string, raw = false, unitId = A, r: Registries = reg): string[] =>
   readingFor(parseSubject(address, JSON.stringify({ unitId }))!, env(s, raw, r))?.lines ?? [];
 const impunity = (s: CampaignState, raw = false, unitId = A, r: Registries = reg) => read(s, 'glossary:impunity', raw, unitId, r);
-const fresh = (): CampaignState => campaign(reg, 4);
+/** Day 8: a week has passed, so a Leash nobody has used reads as a bluff (+8). */
+const fresh = (): CampaignState => {
+  const s = campaign(reg, 4);
+  s.day = 8;
+  return s;
+};
 
 describe('the impunity reading without raw values', () => {
   it('names the stance and the band, and has no digit anywhere', () => {

@@ -695,8 +695,8 @@ describe('Wizard: result carries the commander and unit tastes (P7)', () => {
 
 describe('the world step and presets (P8)', () => {
   const dossier = (w: Wizard) => { w.setStart('start_vesper'); w.setCrime('mutiny'); };
-  const STANDARD = { gender_norms: 'indifferent', offspec_stigma: 'tolerated', oversight: 'standard', bloom_horror: 'restrained', tone: 'grim', disposition: 'guarded' };
-  const BRUTAL = { gender_norms: 'corporate_machismo', offspec_stigma: 'hunted', oversight: 'brutal', bloom_horror: 'graphic', tone: 'bleak', disposition: 'hazardous' };
+  const STANDARD = { gender_norms: 'indifferent', offspec_stigma: 'tolerated', oversight: 'standard', bloom_horror: 'restrained', tone: 'grim', disposition: 'guarded', acquaintance: 'd7' };
+  const BRUTAL = { gender_norms: 'corporate_machismo', offspec_stigma: 'hunted', oversight: 'brutal', bloom_horror: 'graphic', tone: 'bleak', disposition: 'hazardous', acquaintance: 'd3' };
 
   it('the order is dossier, world, commander, units, calibration, review; the world starts as Standard', () => {
     const { w } = make();
@@ -716,7 +716,7 @@ describe('the world step and presets (P8)', () => {
     w.applyPreset('brutal');
     expect(w.state.world).toEqual({ options: BRUTAL, preset: 'brutal' });
     w.applyPreset('gentle');
-    expect(w.state.world.options).toEqual({ gender_norms: 'indifferent', offspec_stigma: 'tolerated', oversight: 'lenient', bloom_horror: 'restrained', tone: 'grim_hope', disposition: 'kind' });
+    expect(w.state.world.options).toEqual({ gender_norms: 'indifferent', offspec_stigma: 'tolerated', oversight: 'lenient', bloom_horror: 'restrained', tone: 'grim_hope', disposition: 'kind', acquaintance: 'd10' });
     w.applyPreset('ghost');
     expect(w.state.world.preset).toBe('gentle'); // an unknown preset changes nothing
   });
@@ -753,12 +753,12 @@ describe('the world step and presets (P8)', () => {
     expect(w.worldSummary()).toEqual([]);
     w.applyPreset('brutal');
     const lines = w.worldSummary();
-    expect(lines).toHaveLength(6);
+    expect(lines).toHaveLength(7); // the five of the preset, the tone... and the acquaintance period (three days, not the default seven)
     for (const line of lines) expect(line).not.toMatch(/\d/);
     const desc = (opt: string, choice: string) => String((reg.worldOptions.get(opt)!.choices as Array<{ id: string; description: string }>).find((c) => c.id === choice)!.description);
     expect(lines[0]).toBe(desc('gender_norms', 'corporate_machismo'));
     w.setWorldOption('tone', 'grim');
-    expect(w.worldSummary()).toHaveLength(5);
+    expect(w.worldSummary()).toHaveLength(6);
   });
 
   it('the importer gets the world', async () => {
@@ -923,9 +923,9 @@ describe('Wizard: the stance a unit would start in (P9)', () => {
     expect(stanceAt(15, 2)).toBe('open_defiance'); // wary and bold
     expect(stanceAt(35, 0)).toBe('indifferent'); // does not much care
     expect(stanceAt(55, 0)).toBe('disciplined'); // accepts the commander, knows her place
-    // bold and accepting: offset +1 puts her one level harder, whose start takes 10 Trust off, so the card needs 55 or more
-    expect(stanceAt(60, 1)).toBe('defiant_loyal');
-    expect(stanceAt(55, 2)).toBe('open_defiance'); // two levels harder takes 20 off: 35 Trust is not accepting
+    expect(stanceAt(60, 1)).toBe('disciplined'); // one level harder is still only Impunity 45, short of 50
+    expect(stanceAt(55, 2)).toBe('indifferent'); // two levels harder: Impunity 55, but the start takes 20 Trust off: 35 Trust, she shrugs
+    // defiant_loyal (Trust 45 and Impunity 50) is not a day-1 stance: it is earned in play, as the Leash comes to look like a bluff
   });
 
   it('does not change the draft or the wizard', async () => {

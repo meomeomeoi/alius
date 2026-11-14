@@ -1,6 +1,8 @@
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { isLiving } from '../economy';
 import { addFact } from '../memory';
+import { inAcquaintance } from './acquaintance';
+import { impunityOf } from './impunity';
 import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
 import { disciplineOf } from './record';
@@ -31,8 +33,10 @@ export function isCovert(state: CampaignState, reg: import('../../content/types'
 }
 
 /**
- * The day-end part of covert sabotage: every queued sabotage fires, and each covert unit (`fearful`) rolls `chancePerDay`
- * otherwise. At most one sabotage a day, whatever the number of units. The kind is a seeded pick among small resource
+ * The day-end part of covert sabotage: every queued sabotage fires, and otherwise each covert unit (`fearful`) rolls
+ * `chancePerDay × (50 − Impunity) / 50`: the more afraid she is, the likelier. A unit still in the world's acquaintance
+ * period never rolls, and after a sabotage the random roll rests for `cooldownDays` days (a hidden refusal is not held back).
+ * At most one sabotage a day, whatever the number of units. The kind is a seeded pick among small resource
  * losses and a gear fault (stored for the next expedition; only one waits). Each writes one anonymous public fact and the
  * event `covert_sabotage { kind }`: nothing says who did it. Draws nothing while nobody is queued or covert.
  */
@@ -41,10 +45,13 @@ export function sabotageDayStep(draft: CampaignState, ctx: EngineCtx): EngineEve
   const queued = draft.discipline?.sabotage?.queued ?? [];
   let fire = queued.length > 0;
   if (draft.discipline?.sabotage) draft.discipline.sabotage.queued = [];
-  if (!fire) {
+  const last = draft.discipline?.sabotage?.lastDay;
+  const resting = last !== undefined && draft.day - last < T.cooldownDays;
+  if (!fire && !resting) {
     for (const u of draft.squad) {
-      if (u.kind !== 'named' || !isLiving(u) || !isCovert(draft, ctx.registries, u.id)) continue;
-      if (ctx.rng.chance(T.chancePerDay)) {
+      if (u.kind !== 'named' || !isLiving(u) || !isCovert(draft, ctx.registries, u.id) || inAcquaintance(draft, ctx.registries, u.id)) continue;
+      const depth = (TUNING.impunity.stance.impunityHigh - (impunityOf(draft, ctx.registries, u.id)?.value ?? TUNING.impunity.stance.impunityHigh)) / TUNING.impunity.stance.impunityHigh;
+      if (depth > 0 && ctx.rng.chance(T.chancePerDay * depth)) {
         fire = true;
         break; // one a day
       }
@@ -63,6 +70,9 @@ export function sabotageDayStep(draft: CampaignState, ctx: EngineCtx): EngineEve
     d.sabotage ??= { queued: [] };
     d.sabotage.gear = { unitId: by, day: draft.day };
   }
+  const d = disciplineOf(draft);
+  d.sabotage ??= { queued: [] };
+  d.sabotage.lastDay = draft.day;
   addFact(draft, { about: ['world'], text: FACT_TEXT[kind], tags: ['sabotage'], importance: 2, day: draft.day, knownBy: ['*'] });
   return [{ type: 'covert_sabotage', kind }];
 }

@@ -23,6 +23,7 @@ const EARLY_WEIGHT = 0.5;
 export function worldSettingsLine(state: CampaignState, reg: Registries): string {
   const lines: string[] = [];
   for (const { choice } of worldChoices(state, reg)) {
+    if (choice.lore === undefined) continue; // some choices are for the engine only
     const next = `${PREFIX}${[...lines, choice.lore].join(' ')}`;
     if (estTokens(next) > TUNING.disposition.worldBlockTokens) continue; // a line that does not fit is dropped whole
     lines.push(choice.lore);

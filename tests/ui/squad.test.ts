@@ -484,7 +484,7 @@ describe('the stance and impunity chips (P9)', () => {
     const imp = [...host.querySelectorAll<HTMLElement>('.alius-chip[data-impunity]')];
     expect(stance.map((c) => c.dataset.stance)).toEqual(['unit_rhea', 'unit_kay']);
     expect(imp.map((c) => c.dataset.impunity)).toEqual(['unit_rhea', 'unit_kay']);
-    // Trust 20 and Impunity 43 on a guarded world: fearful and low
+    // Trust 20 and Impunity 35 on a guarded world on day 1: fearful and low
     expect(stance[0].textContent).toBe('STANCE: FEARFUL');
     expect(stance[0].getAttribute('data-analyze')).toBe('commandStances:fearful');
     expect(JSON.parse(stance[0].getAttribute('data-analyze-ctx')!)).toEqual({ unitId: 'unit_rhea' });
@@ -506,7 +506,7 @@ describe('the stance and impunity chips (P9)', () => {
 
   it('raw values add the number to the impunity chip', () => {
     const s = campaign();
-    expect(render({ state: s, raw: true }).host.querySelector('.alius-chip[data-impunity]')!.textContent).toBe('IMPUNITY: LOW (43)');
+    expect(render({ state: s, raw: true }).host.querySelector('.alius-chip[data-impunity]')!.textContent).toBe('IMPUNITY: LOW (35)');
   });
 
   it('a grunt card has neither, and neither does a dead unit', () => {

@@ -65,7 +65,8 @@ var TUNING = Object.freeze({
     /** `R` of an enforcement whose measure the registry no longer has. */
     enforcedFallback: -8,
     leashEnforced: -20,
-    leash: Object.freeze({ noneLeft: 10, neverUsed: 8, recentUse: -10, recentDays: 7 }),
+    /** `neverUsed` applies from `neverUsedFromDay` (a week of no use before the squad takes the Leash for a bluff). */
+    leash: Object.freeze({ noneLeft: 10, neverUsed: 8, neverUsedFromDay: 8, recentUse: -10, recentDays: 7 }),
     defectUpkeep: 10,
     contagion: 0.3,
     secret: 5,
@@ -74,7 +75,7 @@ var TUNING = Object.freeze({
       trustHigh: 45,
       impunityHigh: 50,
       /** The zone where she does not much care who commands her: Trust from `trustMin` up to (not including) `trustHigh`, Impunity inside the range. */
-      indifferent: Object.freeze({ trustMin: 30, impunityMin: 40, impunityMax: 59 })
+      indifferent: Object.freeze({ trustMin: 30, impunityMin: 35, impunityMax: 59 })
     }),
     /** A threat is believed while Impunity is below this. */
     believeBelow: 50,
@@ -83,7 +84,8 @@ var TUNING = Object.freeze({
     mutinyMin: 60,
     desertInsteadBelow: 30,
     bands: Object.freeze({ low: 30, high: 50, brazen: 60 }),
-    sabotage: Object.freeze({ chancePerDay: 0.12, supplies: 2, credits: 10, gearChance: 0.5, gearSupplies: 2 }),
+    /** `chancePerDay` is the chance at Impunity 0; it falls to 0 at `stance.impunityHigh`. At most one random sabotage in `cooldownDays` days. */
+    sabotage: Object.freeze({ chancePerDay: 0.12, cooldownDays: 3, supplies: 2, credits: 10, gearChance: 0.5, gearSupplies: 2 }),
     applicationsMax: 20
   }),
   /** P7a: the change ledger behind trends, stress sources and "last changes" readings. */
@@ -2714,7 +2716,7 @@ function leashTerm(state) {
   const log = leashLog(state);
   let l = 0;
   if (state.leash.authorizationsLeft <= 0) l += T.noneLeft;
-  if (log.length === 0 && (state.leash.seq ?? 0) === 0) l += T.neverUsed;
+  if (log.length === 0 && (state.leash.seq ?? 0) === 0 && state.day >= T.neverUsedFromDay) l += T.neverUsed;
   if (log.some((e) => e.outcome === "done" && state.day - e.day >= 0 && state.day - e.day < T.recentDays)) l += T.recentUse;
   return l;
 }
@@ -2994,6 +2996,17 @@ function applyDisciplineEvent(draft, ctx2, unitId, event, src) {
   return events;
 }
 
+// src/engine/discipline/acquaintance.ts
+function acquaintanceDays(state, reg) {
+  const days = worldEffects(state, reg, "acquaintance_grace")[0]?.days;
+  return typeof days === "number" && Number.isFinite(days) ? Math.max(0, Math.min(14, Math.trunc(days))) : 0;
+}
+function inAcquaintance(state, reg, unitId) {
+  const unit = state.squad.find((u) => u.id === unitId);
+  if (!unit || unit.kind !== "named" || !state.relations[unitId]) return false;
+  return daysKnown(state, unitId) < acquaintanceDays(state, reg);
+}
+
 // src/engine/discipline/stance.ts
 function commandStance(state, reg, unitId) {
   const i = impunityOf(state, reg, unitId);
@@ -3029,10 +3042,13 @@ function sabotageDayStep(draft, ctx2) {
   const queued = draft.discipline?.sabotage?.queued ?? [];
   let fire = queued.length > 0;
   if (draft.discipline?.sabotage) draft.discipline.sabotage.queued = [];
-  if (!fire) {
+  const last = draft.discipline?.sabotage?.lastDay;
+  const resting = last !== void 0 && draft.day - last < T.cooldownDays;
+  if (!fire && !resting) {
     for (const u of draft.squad) {
-      if (u.kind !== "named" || !isLiving(u) || !isCovert(draft, ctx2.registries, u.id)) continue;
-      if (ctx2.rng.chance(T.chancePerDay)) {
+      if (u.kind !== "named" || !isLiving(u) || !isCovert(draft, ctx2.registries, u.id) || inAcquaintance(draft, ctx2.registries, u.id)) continue;
+      const depth = (TUNING.impunity.stance.impunityHigh - (impunityOf(draft, ctx2.registries, u.id)?.value ?? TUNING.impunity.stance.impunityHigh)) / TUNING.impunity.stance.impunityHigh;
+      if (depth > 0 && ctx2.rng.chance(T.chancePerDay * depth)) {
         fire = true;
         break;
       }
@@ -3046,10 +3062,13 @@ function sabotageDayStep(draft, ctx2) {
   else if (kind === "credits") draft.resources.credits = Math.max(0, draft.resources.credits - T.credits);
   else {
     const by = queued[0]?.unitId ?? draft.squad.find((u) => u.kind === "named" && isLiving(u) && isCovert(draft, ctx2.registries, u.id))?.id ?? "";
-    const d = disciplineOf(draft);
-    d.sabotage ??= { queued: [] };
-    d.sabotage.gear = { unitId: by, day: draft.day };
+    const d2 = disciplineOf(draft);
+    d2.sabotage ??= { queued: [] };
+    d2.sabotage.gear = { unitId: by, day: draft.day };
   }
+  const d = disciplineOf(draft);
+  d.sabotage ??= { queued: [] };
+  d.sabotage.lastDay = draft.day;
   addFact(draft, { about: ["world"], text: FACT_TEXT[kind], tags: ["sabotage"], importance: 2, day: draft.day, knownBy: ["*"] });
   return [{ type: "covert_sabotage", kind }];
 }
@@ -12925,6 +12944,8 @@ var WorldOptionEffectSchema = external_exports.discriminatedUnion("type", [
   external_exports.object({ type: external_exports.literal("enable_family"), family: str2 }).strict(),
   external_exports.object({ type: external_exports.literal("director_hint"), text: str2.max(200) }).strict(),
   external_exports.object({ type: external_exports.literal("scene_directive"), text: str2.max(300) }).strict(),
+  /** P9: days after she first met the commander during which a soldier does no covert sabotage (0 = none). */
+  external_exports.object({ type: external_exports.literal("acquaintance_grace"), days: int2.min(0).max(14) }).strict(),
   /** Weights for the stance a generated grunt rolls under this choice. */
   external_exports.object({
     type: external_exports.literal("grunt_stances"),
@@ -12937,8 +12958,8 @@ var WorldChoiceSchema = external_exports.object({
   id: external_exports.string().regex(ID_PATTERN, "id must match ^[a-z0-9_:.-]+$"),
   label: str2,
   description: str2.max(DESCRIPTION_MAX),
-  /** One short line of the WORLD SETTINGS context block. */
-  lore: str2.max(TUNING.disposition.loreMaxChars),
+  /** One short line of the WORLD SETTINGS context block; a choice without one (the acquaintance period) adds nothing to the prompt. */
+  lore: str2.max(TUNING.disposition.loreMaxChars).optional(),
   effects: external_exports.array(WorldOptionEffectSchema)
 }).strict();
 var WorldOptionSchema = BaseEntrySchema.extend({
@@ -14409,7 +14430,7 @@ function orderInScene(draft, ctx2, unitId) {
   scene.refusals = (scene.refusals ?? []).filter((r) => r.unitId !== unitId);
   if (!refused) return [{ type: "scene_order", unitId, refused, chance }];
   if (unit.kind === "named" && isCovert(draft, ctx2.registries, unitId)) {
-    queueSabotage(draft, unitId);
+    if (!inAcquaintance(draft, ctx2.registries, unitId)) queueSabotage(draft, unitId);
     return [{ type: "scene_order", unitId, refused: false, chance, covert: true }];
   }
   scene.refusals.push({ unitId, exchange: scene.exchanges });
@@ -19398,6 +19419,7 @@ function textArea(key, value, max, commit) {
 }
 
 // src/ui/setup/worldParams.ts
+var MAX_CARDS = 6;
 function renderWorldParams(host, ctx2) {
   const { wizard, registries: reg } = ctx2;
   const world = wizard.state.world;
@@ -19405,6 +19427,21 @@ function renderWorldParams(host, ctx2) {
   const options2 = [...reg.worldOptions.values()];
   const groups = [];
   for (const o of options2) if (!groups.includes(String(o.group))) groups.push(String(o.group));
+  const scale = (o, chosen) => {
+    const choices = o.choices;
+    const at = Math.max(0, choices.findIndex((c) => c.id === chosen));
+    const shown = h("span", { class: "alius-slider-value", "data-option-value": o.id }, choices[at].label);
+    const input = h("input", { type: "range", min: "0", max: String(choices.length - 1), step: "1", value: String(at), "data-option": o.id });
+    input.addEventListener("input", () => shown.textContent = choices[Math.round(Number(input.value))]?.label ?? "");
+    input.addEventListener("change", () => wizard.setWorldOption(o.id, choices[Math.round(Number(input.value))].id));
+    return h(
+      "label",
+      { class: "alius-slider alius-option", "data-option": o.id, ...analyzeNative(`worldOptions:${o.id}`, { choice: chosen }) },
+      h("span", { class: "alius-slider-label" }, String(o.label)),
+      input,
+      shown
+    );
+  };
   const optionBlock = (o) => {
     const live = o.live === true;
     const chosen = world.options[o.id] ?? String(o.default);
@@ -19422,7 +19459,7 @@ function renderWorldParams(host, ctx2) {
         )
       ),
       h("p", { class: "alius-dim" }, String(o.description)),
-      h("div", { class: "alius-cards" }, ...o.choices.map((c) => h("button", {
+      o.choices.length > MAX_CARDS ? scale(o, chosen) : h("div", { class: "alius-cards" }, ...o.choices.map((c) => h("button", {
         type: "button",
         class: "alius-card alius-option alius-world-choice",
         "data-option": o.id,
@@ -21086,6 +21123,7 @@ var EARLY_WEIGHT = 0.5;
 function worldSettingsLine(state, reg) {
   const lines = [];
   for (const { choice } of worldChoices(state, reg)) {
+    if (choice.lore === void 0) continue;
     const next = `${PREFIX}${[...lines, choice.lore].join(" ")}`;
     if (estTokens(next) > TUNING.disposition.worldBlockTokens) continue;
     lines.push(choice.lore);
@@ -22614,6 +22652,8 @@ function summarizeWorldOptionEffect(effect, reg) {
       return "The story model is told how this world feels";
     case "grunt_stances":
       return "Generated soldiers lean for or against the norm";
+    case "acquaintance_grace":
+      return x.days === 0 ? "Soldiers may start secret protest from the first day" : "Soldiers hold back secret protest while they get to know a new commander";
     default:
       return cap4(humanize(String(x.type ?? "effect")));
   }
@@ -22854,6 +22894,7 @@ function rawLines(effects2, k) {
     else if (fx2.type === "terminate_approval") out.push(`Termination approval: ${k.raw(Math.round(n(fx2.amount) * 100))}%`);
     else if (fx2.type === "command_failure_mult") out.push(`Failed command mission losses: \xD7${k.raw(n(fx2.mult))}`);
     else if (fx2.type === "mission_reward_pct") out.push(`Mission rewards: ${k.raw(n(fx2.pct))}%`);
+    else if (fx2.type === "acquaintance_grace") out.push(`Acquaintance period: ${k.raw(n(fx2.days))} days`);
     else if (fx2.type === "expression_norm") out.push(`Expression norm: ${k.raw(n(fx2.norm))}, standing per step: ${k.raw(n(fx2.standingPerStep))}`);
   }
   return out;

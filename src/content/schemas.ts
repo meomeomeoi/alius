@@ -1192,6 +1192,8 @@ export const WorldOptionEffectSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('enable_family'), family: str }).strict(),
   z.object({ type: z.literal('director_hint'), text: str.max(200) }).strict(),
   z.object({ type: z.literal('scene_directive'), text: str.max(300) }).strict(),
+  /** P9: days after she first met the commander during which a soldier does no covert sabotage (0 = none). */
+  z.object({ type: z.literal('acquaintance_grace'), days: int.min(0).max(14) }).strict(),
   /** Weights for the stance a generated grunt rolls under this choice. */
   z.object({
     type: z.literal('grunt_stances'),
@@ -1204,8 +1206,8 @@ export const WorldChoiceSchema = z.object({
   id: z.string().regex(ID_PATTERN, 'id must match ^[a-z0-9_:.-]+$'),
   label: str,
   description: str.max(DESCRIPTION_MAX),
-  /** One short line of the WORLD SETTINGS context block. */
-  lore: str.max(TUNING.disposition.loreMaxChars),
+  /** One short line of the WORLD SETTINGS context block; a choice without one (the acquaintance period) adds nothing to the prompt. */
+  lore: str.max(TUNING.disposition.loreMaxChars).optional(),
   effects: z.array(WorldOptionEffectSchema),
 }).strict();
 export type WorldChoice = z.infer<typeof WorldChoiceSchema>;

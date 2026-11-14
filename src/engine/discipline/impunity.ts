@@ -38,13 +38,13 @@ function baseOf(state: CampaignState, reg: Registries, unit: Unit): number {
   return own + nick;
 }
 
-/** L: an empty Leash and one never used look like a bluff; a use in the last days is fresh in every unit's mind. */
+/** L: an empty Leash, and one nobody has used for a week, look like a bluff; a use in the last days is fresh in every unit's mind. */
 function leashTerm(state: CampaignState): number {
   const T = TUNING.impunity.leash;
   const log = leashLog(state);
   let l = 0;
   if (state.leash.authorizationsLeft <= 0) l += T.noneLeft;
-  if (log.length === 0 && (state.leash.seq ?? 0) === 0) l += T.neverUsed;
+  if (log.length === 0 && (state.leash.seq ?? 0) === 0 && state.day >= T.neverUsedFromDay) l += T.neverUsed;
   if (log.some((e) => e.outcome === 'done' && state.day - e.day >= 0 && state.day - e.day < T.recentDays)) l += T.recentUse;
   return l;
 }

@@ -71,6 +71,14 @@ describe('world option readings', () => {
     }
   });
 
+  it('the acquaintance period reads in words, and in days with raw values', () => {
+    const s = worldOf({ acquaintance: 'd3' });
+    const words = panel('worldOptions:acquaintance', { choice: 'd3' }, env(s)).reading!.lines.join('\n');
+    expect(words).toContain('Now: Three days');
+    expect(words).not.toMatch(DIGITS);
+    expect(panel('worldOptions:acquaintance', { choice: 'd3' }, env(s, true)).reading!.lines.join('\n')).toContain('Acquaintance period: 3 days');
+  });
+
   it('raw values give the numbers', () => {
     const s = worldOf({ oversight: 'brutal', offspec_stigma: 'scorned' });
     const o = panel('worldOptions:oversight', { choice: 'brutal' }, env(s, true)).reading!.lines.join('\n');

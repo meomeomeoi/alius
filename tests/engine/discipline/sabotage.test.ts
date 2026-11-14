@@ -6,7 +6,8 @@ import type { CampaignState } from '../../../src/engine/state/types';
 import { TUNING } from '../../../src/engine/tuning';
 import { campaign, errors, loadCore, ofType, run } from '../../helpers/loyalty';
 import { depart, payload, withMission } from '../../helpers/expedition';
-import { noPresence, withStance } from '../../helpers/discipline';
+import { impunityOf } from '../../../src/engine/discipline';
+import { noPresence, setRecord, withStance } from '../../helpers/discipline';
 
 let base: Registries;
 let reg: Registries;
@@ -18,6 +19,7 @@ beforeAll(async () => {
 const [ANN, BEA, CAT] = ['unit_ann', 'unit_bea', 'unit_cat'];
 const fresh = (seed = 1): CampaignState => {
   const s = campaign(reg, 4);
+  s.day = 20; // every unit has known the commander for 19 days: past any acquaintance period
   s.rng = seedRng(seed);
   s.resources.supplies = 20;
   s.resources.credits = 100;
@@ -124,17 +126,37 @@ describe('the daily roll of a fearful unit', () => {
     expect(s).toEqual(before);
   });
 
-  it('a fearful unit rolls 12 % a day (1000 seeded days stay within 0.08–0.16)', () => {
+  /** How often the sabotage step fires over 1500 seeded days with `s` as given. */
+  const rate = (s0: CampaignState): number => {
     let fired = 0;
-    const s0 = calm(fresh(), ANN);
-    withStance(s0, reg, ANN, 'fearful');
-    for (let seed = 1; seed <= 1000; seed++) {
+    for (let seed = 1; seed <= 1500; seed++) {
       const s = structuredClone(s0);
       s.rng = seedRng(seed);
       if (ofType(step(s), 'covert_sabotage').length > 0) fired += 1;
     }
-    expect(fired / 1000).toBeGreaterThan(0.08);
-    expect(fired / 1000).toBeLessThan(0.16);
+    return fired / 1500;
+  };
+  const onlyFearful = (impunity: number): CampaignState => {
+    const s = calm(fresh(), ANN);
+    withStance(s, reg, ANN, 'fearful');
+    setRecord(s, ANN, 0);
+    setRecord(s, ANN, impunity - impunityOf(s, reg, ANN)!.value);
+    return s;
+  };
+
+  it('the chance is 12 % × (50 − Impunity) / 50: a cowed unit 12 %, a deeply afraid one 7 %, a barely afraid one 2 %', () => {
+    expect(rate(onlyFearful(0))).toBeGreaterThan(0.09);
+    expect(rate(onlyFearful(0))).toBeLessThan(0.15);
+    expect(rate(onlyFearful(20))).toBeGreaterThan(0.045); // 0.072
+    expect(rate(onlyFearful(20))).toBeLessThan(0.10);
+    expect(rate(onlyFearful(40))).toBeGreaterThan(0.005); // 0.024
+    expect(rate(onlyFearful(40))).toBeLessThan(0.05);
+  });
+
+  it('a fresh squad on day 20 is far quieter than the flat 12 % per unit was', () => {
+    const s = fresh();
+    for (const u of s.squad) { setRecord(s, u.id, 0); s.relations[u.id].trust = 10; } // Impunity 35: afraid, just
+    expect(rate(s)).toBeLessThan(0.15); // four units at 3.6 % each, not 40 %
   });
 
   it('a unit who is not fearful never rolls; a dead fearful unit neither', () => {
@@ -218,5 +240,106 @@ describe('the gear fault at the next expedition start', () => {
     const same = setup(3);
     same.state.discipline!.sabotage = { queued: [] };
     expect(depart(reg, same.state, same.mission.id).rng).toEqual(plain.rng);
+  });
+});
+
+describe('the cooldown between sabotages', () => {
+  const afraid = (): CampaignState => {
+    const s = calm(fresh(), ANN);
+    withStance(s, reg, ANN, 'fearful');
+    setRecord(s, ANN, -40); // Impunity 0: the full 12 %
+    return s;
+  };
+  /** The first seed whose roll fires on `s`. */
+  const firingSeed = (s0: CampaignState): number => {
+    for (let seed = 1; seed < 400; seed++) {
+      const s = structuredClone(s0);
+      s.rng = seedRng(seed);
+      if (ofType(step(s), 'covert_sabotage').length > 0) return seed;
+    }
+    throw new Error('no seed fires');
+  };
+
+  it('after a sabotage the next two days roll nothing and draw nothing; the third day rolls again', () => {
+    const s = afraid();
+    s.rng = seedRng(firingSeed(s));
+    expect(ofType(step(s), 'covert_sabotage')).toHaveLength(1);
+    expect(s.discipline!.sabotage!.lastDay).toBe(20);
+    for (const day of [21, 22]) {
+      s.day = day;
+      const rng = s.rng;
+      expect(step(s), `day ${day}`).toEqual([]);
+      expect(s.rng, `day ${day}`).toEqual(rng);
+    }
+    s.day = 23;
+    const rng = s.rng;
+    step(s);
+    expect(s.rng).not.toEqual(rng); // the roll is back
+  });
+
+  it('a queued sabotage (a hidden refusal) is not held back by the cooldown, and starts one', () => {
+    const s = afraid();
+    s.discipline = { defiance: [], threats: [], applications: [], restrictions: [], demands: [], demandLog: [], sabotage: { queued: [], lastDay: 19 } };
+    queueSabotage(s, ANN);
+    expect(ofType(step(s), 'covert_sabotage')).toHaveLength(1);
+    expect(s.discipline!.sabotage!.lastDay).toBe(20);
+  });
+
+  it('an old save with no lastDay rolls at once', () => {
+    const s = afraid();
+    delete s.discipline;
+    expect(() => step(s)).not.toThrow();
+  });
+});
+
+describe('the acquaintance period of the world (P9)', () => {
+  const withGrace = (s: CampaignState, choice: string): CampaignState => {
+    s.world.options = { ...(s.world.options ?? {}), acquaintance: choice };
+    return s;
+  };
+  const afraid = (choice: string, day: number): CampaignState => {
+    const s = withGrace(calm(fresh(), ANN), choice);
+    withStance(s, reg, ANN, 'fearful');
+    setRecord(s, ANN, -40);
+    s.day = day;
+    s.relations[ANN].metDay = 1;
+    return s;
+  };
+  const fires = (s0: CampaignState): number => {
+    let n = 0;
+    for (let seed = 1; seed <= 400; seed++) {
+      const s = structuredClone(s0);
+      s.rng = seedRng(seed);
+      if (ofType(step(s), 'covert_sabotage').length > 0) n += 1;
+    }
+    return n;
+  };
+
+  it('while she has known the commander for fewer days than the setting, the chance is 0 and nothing is drawn', () => {
+    for (const day of [1, 7, 14]) {
+      const s = afraid('d14', day); // known for day − 1 days: 0, 6, 13 < 14
+      const rng = s.rng;
+      expect(step(s), `day ${day}`).toEqual([]);
+      expect(s.rng, `day ${day}`).toEqual(rng);
+      expect(fires(s), `day ${day}`).toBe(0);
+    }
+  });
+
+  it('on the day the period is over the chance is back', () => {
+    expect(fires(afraid('d14', 15))).toBeGreaterThan(20); // known for 14 days
+    expect(fires(afraid('d3', 4))).toBeGreaterThan(20); // known for 3 days
+    expect(fires(afraid('d3', 3))).toBe(0); // known for 2
+  });
+
+  it('a period of 0 days never protects anybody', () => {
+    expect(fires(afraid('d0', 1))).toBeGreaterThan(20);
+  });
+
+  it('it counts from the day she met the commander, per unit', () => {
+    const s = afraid('d7', 10);
+    s.relations[ANN].metDay = 9; // met a day ago
+    expect(fires(s)).toBe(0);
+    s.relations[ANN].metDay = 1; // met nine days ago
+    expect(fires(s)).toBeGreaterThan(20);
   });
 });

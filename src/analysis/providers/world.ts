@@ -22,6 +22,7 @@ function rawLines(effects: Fx[], k: Knowledge): string[] {
     else if (fx.type === 'terminate_approval') out.push(`Termination approval: ${k.raw(Math.round(n(fx.amount) * 100))}%`);
     else if (fx.type === 'command_failure_mult') out.push(`Failed command mission losses: ×${k.raw(n(fx.mult))}`);
     else if (fx.type === 'mission_reward_pct') out.push(`Mission rewards: ${k.raw(n(fx.pct))}%`);
+    else if (fx.type === 'acquaintance_grace') out.push(`Acquaintance period: ${k.raw(n(fx.days))} days`);
     else if (fx.type === 'expression_norm') out.push(`Expression norm: ${k.raw(n(fx.norm))}, standing per step: ${k.raw(n(fx.standingPerStep))}`);
   }
   return out;

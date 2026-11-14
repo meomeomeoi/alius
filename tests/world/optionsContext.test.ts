@@ -49,7 +49,7 @@ describe('the WORLD SETTINGS block', () => {
   });
 
   it('every combination of choices fits the token cap (the longest line of each option)', () => {
-    const longest = [...reg.worldOptions.values()].map((o) => (o.choices as Array<{ lore: string }>).reduce((a, c) => (c.lore.length > a.length ? c.lore : a), ''));
+    const longest = [...reg.worldOptions.values()].map((o) => (o.choices as Array<{ lore?: string }>).reduce((a, c) => ((c.lore ?? '').length > a.length ? (c.lore ?? '') : a), ''));
     expect(estTokens(`World settings: ${longest.join(' ')}`)).toBeLessThanOrEqual(TUNING.disposition.worldBlockTokens);
   });
 
