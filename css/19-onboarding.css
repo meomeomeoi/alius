@@ -68,3 +68,30 @@
   margin: 12px 0 0;
   text-align: left;
 }
+
+/* the hub's prologue card */
+#alius-shell .alius-onboarding-host {
+  margin-bottom: 8px;
+}
+
+#alius-shell .alius-onboarding .alius-onboarding-objective {
+  margin: 0 0 6px;
+}
+
+#alius-shell .alius-onboarding-units {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+#alius-shell .alius-onboarding-unit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin: 3px 0;
+}
+
+#alius-shell .alius-onboarding-name {
+  min-width: 7em;
+}

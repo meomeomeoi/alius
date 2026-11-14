@@ -43,6 +43,8 @@ import { createDilemmas, type DilemmaController } from './loyalty/dilemmaControl
 import { createLoyalty, type LoyaltyController } from './loyalty/loyaltyController';
 import { clearDisciplineDirectives, disciplineDirectives } from './discipline/context';
 import { createDiscipline, type DisciplineController } from './discipline/controller';
+import { createOnboarding, type OnboardingController } from './onboarding/controller';
+import { renderOnboardingCard } from './ui/onboarding/card';
 import { isQuietNight } from './engine/calendar';
 import { restrictionReason } from './engine/discipline';
 import { renderDilemma } from './ui/dilemma/dilemmaPanel';
@@ -169,6 +171,8 @@ export interface AliusApp {
   loyalty: LoyaltyController;
   /** Stance and threat directives (P9). */
   discipline: DisciplineController;
+  /** P11: the prologue's scenes, coach hints and guided evening. */
+  onboarding: OnboardingController;
   /**
    * Files a Leash request through the oversight form, then runs the action. Refused (with a toast) before the form
    * opens when it cannot apply; resolves false when withdrawn or refused by the engine.
@@ -306,6 +310,19 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
   const dilemmas = createDilemmas(worldDeps);
   const loyalty = createLoyalty({ ...worldDeps, context, refreshContext: applyContext });
   const discipline = createDiscipline({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o) });
+  const onboarding = createOnboarding({
+    ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o), modal: (o) => shell.modal(o),
+    endScene: async () => {
+      await scene.end();
+      leaveScene();
+    },
+    // after a reload the card offers RESUME SCENE: the screen is the scene's, as `adoptScene` leaves it
+    resumeScene: () => {
+      scene.resume();
+      showScene();
+      shell.open();
+    },
+  });
   const expedition = createExpedition({ ...worldDeps, startCombat: (p) => api.startCombat(p), startScene: (o) => beginScene(o) });
   let expeditionScreen: ExpeditionScreen | null = null;
   /** True while the expedition screen is what the shell shows. */
@@ -339,10 +356,12 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     context.clearMatching((d) => d.id === 'night' || d.id.startsWith('proposal:'));
     loyalty.onSceneClosed(); // refusal, band, trauma and aftermath directives belong to one scene of one campaign (P6)
     discipline.onSceneClosed(); // so do the stance and threat directives (P9)
+    onboarding.onSceneClosed(); // and the prologue's goal and wrap directives (P11)
     if (state?.scene) {
       scene.resume();
       loyalty.onSceneOpened();
       discipline.onSceneOpened();
+      onboarding.onSceneOpened();
       showScene();
     } else if (state && state.slot === 'night' && state.calendar.nightEvent && confrontationNight(state)) {
       showScene(); // a confrontation is waiting: its panel comes back after a reload
@@ -364,6 +383,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     }
     loyalty.onSceneOpened();
     discipline.onSceneOpened();
+    onboarding.onSceneOpened();
     showScene();
     shell.open();
     return true;
@@ -438,6 +458,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         if (e.type === 'unit_terminated') removeFromChat(String(e.unitId), `${state?.squad.find((u) => u.id === e.unitId)?.displayName ?? 'A unit'} DEACTIVATED`);
       }
       discipline.onEvents(events);
+      onboarding.onEvents(events); // the line-up and first words: the cap question and the step completing when the scene closes (P11)
       if (has('scene_ended') || has('scene_aborted')) {
         loyalty.onSceneClosed();
         discipline.onSceneClosed();
@@ -1643,6 +1664,9 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       assetUrl: deps.assetUrl,
       art: { hub: hubArt },
       ops: opsCtx(),
+      onboardingCard: (host) => {
+        if (state) renderOnboardingCard(host, { state, registries, controller: onboarding, readOnly: load.kind === 'readonly' });
+      },
       onTalk: (unitId, locationId) => void api.talkAt(unitId, locationId),
       onEndSlot: () => void api.endSlot(),
       onOpenPda: (tab) => (tab ? shell.showTab(tab) : shell.setDevice(true)),
@@ -1716,6 +1740,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     dilemmas,
     loyalty,
     discipline,
+    onboarding,
     fileLeash,
     intakeUnit,
     startScene: beginScene,

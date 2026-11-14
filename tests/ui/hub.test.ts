@@ -88,6 +88,22 @@ function staged(): CampaignState {
   return s;
 }
 
+describe('hub screen: the prologue card (P11)', () => {
+  it('draws the onboarding card above the objective, and nothing when the app draws nothing', () => {
+    const m = mount();
+    expect(m.host.querySelector('.alius-onboarding-host')).toBeNull();
+    m.ctx.onboardingCard = (host) => host.append(h('section', { class: 'alius-onboarding' }, 'STEP'));
+    m.rerender();
+    const side = m.host.querySelector('.alius-hub-side')!;
+    expect(side.firstElementChild!.className).toBe('alius-onboarding-host');
+    expect(side.querySelector('.alius-onboarding')!.textContent).toBe('STEP');
+    expect(side.children[1].classList.contains('alius-objective')).toBe(true);
+    m.ctx.onboardingCard = () => {};
+    m.rerender();
+    expect(m.host.querySelector('.alius-onboarding-host')).toBeNull();
+  });
+});
+
 describe('hub screen', () => {
   it('renders top bar, cross-section, rooms and the right column', () => {
     const m = mount();

@@ -17298,6 +17298,159 @@ function createDiscipline(deps) {
   return { onEvents, onSceneOpened, onSceneClosed, punish, undo, onSlotAdvanced, answerDemand: answerDemand2, talkDemand };
 }
 
+// src/onboarding/controller.ts
+var GOAL_DIRECTIVE = "prologue:goal";
+var WRAP_DIRECTIVE = "prologue:wrap";
+var WRAP_TEXT = "Bring this scene to a natural close within the next reply or two; do not open new topics.";
+function sceneLocation(state, reg, step) {
+  const open3 = (l) => {
+    const slots = l.slots;
+    return slots === void 0 || slots.includes(state.slot);
+  };
+  const own = step.locationId === void 0 ? void 0 : reg.locations.get(step.locationId);
+  if (own && open3(own)) return String(own.id);
+  const first2 = [...reg.locations.values()].find(open3);
+  return String((first2 ?? own)?.id ?? step.locationId ?? "");
+}
+function createOnboarding(deps) {
+  const state = () => deps.app.current().state;
+  const chatId = () => deps.st.getActiveChat()?.chatId;
+  const reg = () => deps.registries();
+  let tracked = null;
+  const asked = /* @__PURE__ */ new Set();
+  const clearDirectives = () => deps.context.clearMatching((d) => d.id.startsWith("prologue:"));
+  function setGoal(step) {
+    if (step.directive) deps.context.setDirective({ id: GOAL_DIRECTIVE, text: step.directive, expiresAfter: "scene" });
+    deps.refreshContext();
+  }
+  const dispatch2 = (type, payload, expect) => {
+    const events = deps.app.dispatch({ type, payload }, { expectChatId: expect });
+    const failed2 = events.find((e) => e.type === "error");
+    if (failed2 && failed2.code !== "chat_changed") deps.toast("error", String(failed2.message ?? failed2.code));
+    return events;
+  };
+  const failed = (events) => events.some((e) => e.type === "error");
+  function completeIfDone(expect) {
+    const s = state();
+    if (!s) return;
+    const step = currentStep(s, reg());
+    if (!step || completionReason(s, reg(), step) !== null) return;
+    dispatch2("onboarding/complete_step", { stepId: step.id }, expect);
+  }
+  function candidates4(s) {
+    return livingNamed(s).filter((u) => restrictionReason(s, u.id, "scene") === null).map((u) => u.id).slice(0, TUNING.scene.maxParticipants);
+  }
+  async function open3(step, participants) {
+    const s = state();
+    if (!s) return false;
+    const ok = await deps.startScene({ locationId: sceneLocation(s, reg(), step), participants, origin: "prologue", consumesSlot: false });
+    if (!ok) return false;
+    setGoal(step);
+    return true;
+  }
+  return {
+    async startLineup() {
+      const s = state();
+      const step = s ? currentStep(s, reg()) : null;
+      if (!s || !step || step.kind !== "scene" || step.perUnit === true || s.scene) return false;
+      const who = candidates4(s);
+      if (who.length === 0) {
+        deps.toast("warn", "Nobody is free for the line-up right now.");
+        return false;
+      }
+      return open3(step, who);
+    },
+    async talkFirstWords(unitId) {
+      const s = state();
+      const step = s ? currentStep(s, reg()) : null;
+      if (!s || !step || step.kind !== "scene" || step.perUnit !== true || s.scene) return false;
+      if (!livingNamed(s).some((u) => u.id === unitId) || s.onboarding?.spoken?.includes(unitId)) return false;
+      const held = restrictionReason(s, unitId, "scene");
+      if (held) {
+        deps.toast("warn", held);
+        return false;
+      }
+      return open3(step, [unitId]);
+    },
+    skipFirstWords(unitId) {
+      const expect = chatId();
+      const events = dispatch2("onboarding/mark_spoken", { unitId }, expect);
+      if (failed(events)) return;
+      completeIfDone(expect);
+    },
+    async skipStep() {
+      const s = state();
+      const step = s ? currentStep(s, reg()) : null;
+      if (!s || !step) return;
+      const expect = chatId();
+      const answer = await deps.modal({
+        title: "Skip this step?",
+        body: `${step.title ?? "This step"} will be left out of the prologue.`,
+        actions: [{ label: "SKIP", value: "skip" }, { label: "Keep it", value: "keep" }]
+      });
+      if (answer !== "skip" || chatId() !== expect) return;
+      dispatch2("onboarding/skip_step", { stepId: step.id }, expect);
+    },
+    resumeScene() {
+      deps.resumeScene();
+    },
+    onSceneOpened() {
+      const s = state();
+      const scene = s?.scene;
+      if (!s || !scene || scene.origin !== "prologue") return;
+      tracked = { sceneId: scene.id, participants: [...scene.participants] };
+      const step = currentStep(s, reg());
+      if (step) setGoal(step);
+    },
+    onSceneClosed() {
+      tracked = null;
+      clearDirectives();
+      deps.refreshContext();
+    },
+    onEvents(events) {
+      const s = state();
+      if (!s) return;
+      if (events.some((e) => e.type === "scene_exchange") && s.scene?.origin === "prologue") {
+        const step = currentStep(s, reg());
+        const scene = s.scene;
+        if (step?.exchangeCap !== void 0 && scene.exchanges >= step.exchangeCap && !asked.has(scene.id)) {
+          asked.add(scene.id);
+          deps.context.setDirective({ id: WRAP_DIRECTIVE, text: WRAP_TEXT, expiresAfter: "scene" });
+          deps.refreshContext();
+          const expect = chatId();
+          void deps.modal({
+            title: "Move on?",
+            body: "This is a good place to leave it. Keep talking, or move on.",
+            actions: [{ label: "MOVE ON", value: "move" }, { label: "Keep talking", value: "keep" }]
+          }).then(async (answer) => {
+            if (answer === "move" && chatId() === expect && state()?.scene?.id === scene.id) await deps.endScene();
+          });
+        }
+      }
+      const ended = events.find((e) => e.type === "scene_ended" && tracked !== null && e.sceneId === tracked.sceneId);
+      const aborted = events.some((e) => e.type === "scene_aborted");
+      if (ended && tracked) {
+        const done = tracked;
+        tracked = null;
+        clearDirectives();
+        deps.refreshContext();
+        const expect = chatId();
+        const step = currentStep(s, reg());
+        if (step?.perUnit === true) {
+          for (const unitId of done.participants) {
+            if (!s.onboarding?.spoken?.includes(unitId)) dispatch2("onboarding/mark_spoken", { unitId }, expect);
+          }
+        }
+        completeIfDone(expect);
+      } else if (aborted && tracked) {
+        tracked = null;
+        clearDirectives();
+        deps.refreshContext();
+      }
+    }
+  };
+}
+
 // src/ui/analyze/mark.ts
 function analyzeNative(address, ctx2) {
   const { tabindex: _tabindex, ...rest } = analyzeAttrs(address, ctx2);
@@ -17325,6 +17478,192 @@ function h(tag2, attrs = {}, ...children) {
     el.append(typeof c === "string" ? document.createTextNode(c) : c);
   }
   return el;
+}
+
+// src/ui/voice/sources.ts
+var VOICE_OF = {
+  toast: "terminal",
+  dm: "personal",
+  unit_note: "personal",
+  chronicle: "paper",
+  dossier: "paper",
+  commander_file: "paper",
+  oversight: "corporate",
+  leash_verdict: "corporate",
+  corporate_mail: "corporate",
+  // P11
+  intake_form: "paper"
+};
+
+// src/engine/hub.ts
+function fnv1a(s) {
+  let h2 = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h2 ^= s.charCodeAt(i);
+    h2 = Math.imul(h2, 16777619) >>> 0;
+  }
+  return h2 >>> 0;
+}
+var roomsOf = (reg) => [...reg.hubRooms.values()];
+var hostOf = (rooms, host) => rooms.find((r) => (r.hosts ?? []).includes(host));
+var isInjured = (u) => u.status === "injured" || (u.injuryDays ?? 0) > 0;
+function routineWeight(state, reg, room, unit) {
+  const base = (room.weights ?? {})[state.slot] ?? 0;
+  if (base <= 0) return 0;
+  const open3 = (reg.locations.get(room.sceneLocationId)?.slots ?? []).includes(state.slot);
+  if (!open3) return 0;
+  if (typeof room.facilityId === "string" && facilityLevel(state, room.facilityId) < 1) return 0;
+  const liked = (room.likeTags ?? []).some((t) => unit.likes.some((l) => l.toLowerCase() === t.toLowerCase()));
+  return base + (liked ? 2 : 0);
+}
+function place(state, reg, rooms, unit) {
+  const here = (room, reason) => room ? { unitId: unit.id, roomId: room.id, reason } : null;
+  if (state.expedition?.party.includes(unit.id)) return { unitId: unit.id, roomId: null, reason: "expedition" };
+  const held = activeRestrictions(state, unit.id);
+  const found2 = (isInjured(unit) ? here(hostOf(rooms, "injured"), "injured") : null) ?? (held.some((r) => r.kind === "confined") ? here(hostOf(rooms, "confined"), "confined") : null) ?? (held.some((r) => r.kind === "duty") ? here(hostOf(rooms, "duty"), "duty") : null) ?? (state.slot === "night" ? here(hostOf(rooms, "night"), "night") : null);
+  if (found2) return found2;
+  const weights = rooms.map((room) => routineWeight(state, reg, room, unit));
+  const total2 = weights.reduce((a, b) => a + b, 0);
+  if (total2 <= 0) return { unitId: unit.id, roomId: null, reason: "nowhere" };
+  let pick2 = fnv1a(`${state.day}|${state.slot}|${unit.id}`) % total2;
+  for (let i = 0; i < rooms.length; i++) {
+    if (pick2 < weights[i]) return { unitId: unit.id, roomId: rooms[i].id, reason: "routine" };
+    pick2 -= weights[i];
+  }
+  return { unitId: unit.id, roomId: null, reason: "nowhere" };
+}
+function whereabouts(state, reg) {
+  const rooms = roomsOf(reg);
+  return livingUnits(state).map((u) => place(state, reg, rooms, u));
+}
+
+// src/ui/fx.ts
+var SVG_NS = "http://www.w3.org/2000/svg";
+var fxSeq = 0;
+function svg(tag2, attrs) {
+  const el = document.createElementNS(SVG_NS, tag2);
+  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+  return el;
+}
+function noise(cls, f) {
+  const id = `alius-fx-${++fxSeq}`;
+  const layer = svg("svg", { class: `alius-fx ${cls}`, "aria-hidden": "true", width: "100%", height: "100%", preserveAspectRatio: "none" });
+  const filter = svg("filter", { id, x: "0", y: "0", width: "100%", height: "100%" });
+  filter.append(svg("feTurbulence", {
+    type: "fractalNoise",
+    baseFrequency: f.frequency,
+    numOctaves: String(f.octaves),
+    seed: String(f.seed ?? 1),
+    stitchTiles: "stitch"
+  }));
+  layer.append(filter, svg("rect", { width: "100%", height: "100%", filter: `url(#${id})` }));
+  return layer;
+}
+function cssUrl(path) {
+  return `url("${path.replace(/["\\\n\r]/g, (c) => encodeURIComponent(c))}")`;
+}
+
+// src/ui/voice/voiceCard.ts
+var UNIT_ACCENTS = ["#ff9ec7", "#ffb86b", "#8fd6ff", "#b6e88a", "#d0a8ff", "#7ee7d0"];
+var unitAccent = (unitId) => UNIT_ACCENTS[fnv1a(unitId) % UNIT_ACCENTS.length];
+function redacted(text2, ranges) {
+  const parts = [];
+  let cursor = 0;
+  for (const [from, to] of [...ranges].sort((a, b) => a[0] - b[0])) {
+    const start = Math.max(0, from);
+    const end = Math.min(text2.length, to);
+    if (end <= start || start < cursor) continue;
+    if (start > cursor) parts.push(text2.slice(cursor, start));
+    parts.push(h("span", { class: "alius-redact", "aria-label": "redacted" }, "\u2588".repeat(end - start)));
+    cursor = end;
+  }
+  if (cursor < text2.length) parts.push(text2.slice(cursor));
+  return parts;
+}
+function renderVoiceCard(o) {
+  const head = o.title || o.meta || o.from ? h(
+    "header",
+    { class: "alius-voice-head" },
+    o.title ? h(o.level === 3 ? "h3" : "h2", { class: "alius-voice-title" }, o.title) : null,
+    o.from ? h("span", { class: "alius-voice-from" }, o.from) : null,
+    o.meta ? h("span", { class: "alius-voice-meta" }, o.meta) : null
+  ) : null;
+  const body = h("div", { class: "alius-voice-body" });
+  if (typeof o.body === "string") body.append(...(o.redact?.length ? redacted(o.body, o.redact) : [o.body]).filter((c) => c !== null && c !== void 0));
+  else body.append(o.body);
+  const card2 = h(
+    "article",
+    { class: `alius-voice alius-voice-${o.voice}`, "data-voice": o.voice },
+    o.voice === "paper" ? noise("alius-fibre", { frequency: "0.04 0.9", octaves: 2, seed: 3 }) : null,
+    head,
+    body,
+    o.stamp ? h("span", { class: "alius-stamp" }, o.stamp) : null
+  );
+  if (o.accent) card2.style.setProperty("--voice-accent", o.accent);
+  return card2;
+}
+function renderBubble(text2, mine, accent) {
+  const bubble = h(
+    "div",
+    { class: `alius-bubble alius-voice alius-voice-personal ${mine ? "is-mine" : "is-hers"}`, "data-voice": "personal" },
+    h("span", { class: "alius-msg-text" }, text2)
+  );
+  bubble.style.setProperty("--bubble-accent", accent);
+  return bubble;
+}
+
+// src/ui/onboarding/card.ts
+function glossaryOf(step) {
+  if (step.kind === "scene") return step.perUnit === true ? "glossary:first_words" : "glossary:lineup";
+  if (step.kind === "expedition") return "glossary:tutorial_expedition";
+  return "glossary:prologue";
+}
+var button = (label2, action, address, onclick, disabled) => h("button", {
+  type: "button",
+  class: "alius-btn alius-option",
+  "data-action": action,
+  disabled: disabled !== void 0 && disabled !== false,
+  title: typeof disabled === "string" ? disabled : null,
+  ...analyzeNative(address),
+  onclick
+}, label2);
+function renderOnboardingCard(host, ctx2) {
+  host.replaceChildren();
+  const { state, registries: reg, controller } = ctx2;
+  if (ctx2.readOnly) return;
+  const step = currentStep(state, reg);
+  if (!step) return;
+  const address = glossaryOf(step);
+  const scene = state.scene;
+  const mine = scene?.origin === "prologue";
+  const body = h("div", { class: "alius-onboarding-body" }, step.objective ? h("p", { class: "alius-onboarding-objective" }, step.objective) : null);
+  const skip = () => step.skippable ? button("[ SKIP ]", "skip", address, () => void controller.skipStep(), scene !== void 0 && !mine) : null;
+  if (mine) {
+    body.append(h("div", { class: "alius-row" }, button("[ RESUME SCENE ]", "resume", address, () => controller.resumeScene())));
+  } else if (step.kind === "scene" && step.perUnit === true) {
+    const spoken = new Set(state.onboarding?.spoken ?? []);
+    body.append(h("ul", { class: "alius-onboarding-units" }, ...livingNamed(state).map((u) => {
+      const done = spoken.has(u.id);
+      const held = restrictionReason(state, u.id, "scene");
+      return h(
+        "li",
+        { class: "alius-onboarding-unit", "data-unit": u.id },
+        h("span", { class: "alius-onboarding-name" }, `${done ? "\u2713 " : ""}${u.displayName}`),
+        done ? null : button("[ TALK ]", "talk", address, () => void controller.talkFirstWords(u.id), held ?? scene !== void 0),
+        done ? null : button("[ SKIP ]", "skip-unit", address, () => controller.skipFirstWords(u.id)),
+        held && !done ? h("span", { class: "alius-dim alius-reason" }, held) : null
+      );
+    })));
+    body.append(h("div", { class: "alius-row" }, skip()));
+  } else if (step.kind === "scene") {
+    body.append(h("div", { class: "alius-row" }, button("[ BEGIN LINE-UP ]", "begin", address, () => void controller.startLineup(), scene !== void 0), skip()));
+  } else {
+    body.append(h("div", { class: "alius-row" }, skip()));
+  }
+  const card2 = renderVoiceCard({ voice: VOICE_OF.toast, title: step.title ?? "PROLOGUE", meta: "PROLOGUE", level: 3, body });
+  card2.classList.add("alius-onboarding", "alius-stat");
+  for (const [k, v] of Object.entries(analyzeAttrs("glossary:prologue"))) card2.setAttribute(k, v);
+  host.append(card2);
 }
 
 // src/ui/dilemma/routePicker.ts
@@ -17405,7 +17744,7 @@ function renderDilemma(host, ctx2) {
       }
     }) : null;
     if (picker) picker.hidden = true;
-    const button = h("button", {
+    const button2 = h("button", {
       // soft-disabled (aria-disabled, not `disabled`): a greyed option stays focusable and hoverable, so the analysis panel can
       // explain the requirement that greys it out
       type: "button",
@@ -17424,8 +17763,8 @@ function renderDilemma(host, ctx2) {
         ctx2.onChoose(o.index);
       }
     }, `[ ${o.label} ]${o.hasCheck ? " \u2014 CHECK" : ""}${picker ? " \u2014 CHOOSE HOW" : ""}${o.disabled !== null ? ` \u2014 ${o.disabled}` : ""}`);
-    buttons.push(button);
-    list5.append(button);
+    buttons.push(button2);
+    list5.append(button2);
     if (picker) list5.append(picker);
   }
   host.append(h(
@@ -17586,123 +17925,6 @@ function visualFlags(s, media) {
   const motion = !motionReduced(s, media);
   const plain2 = s.readableMode;
   return { scanlines: !plain2 && s.scanlines, flicker: !plain2 && s.flicker, glitch: !plain2 && motion, dither: !plain2 && s.ditheredPortraits, motion };
-}
-
-// src/engine/hub.ts
-function fnv1a(s) {
-  let h2 = 2166136261;
-  for (let i = 0; i < s.length; i++) {
-    h2 ^= s.charCodeAt(i);
-    h2 = Math.imul(h2, 16777619) >>> 0;
-  }
-  return h2 >>> 0;
-}
-var roomsOf = (reg) => [...reg.hubRooms.values()];
-var hostOf = (rooms, host) => rooms.find((r) => (r.hosts ?? []).includes(host));
-var isInjured = (u) => u.status === "injured" || (u.injuryDays ?? 0) > 0;
-function routineWeight(state, reg, room, unit) {
-  const base = (room.weights ?? {})[state.slot] ?? 0;
-  if (base <= 0) return 0;
-  const open3 = (reg.locations.get(room.sceneLocationId)?.slots ?? []).includes(state.slot);
-  if (!open3) return 0;
-  if (typeof room.facilityId === "string" && facilityLevel(state, room.facilityId) < 1) return 0;
-  const liked = (room.likeTags ?? []).some((t) => unit.likes.some((l) => l.toLowerCase() === t.toLowerCase()));
-  return base + (liked ? 2 : 0);
-}
-function place(state, reg, rooms, unit) {
-  const here = (room, reason) => room ? { unitId: unit.id, roomId: room.id, reason } : null;
-  if (state.expedition?.party.includes(unit.id)) return { unitId: unit.id, roomId: null, reason: "expedition" };
-  const held = activeRestrictions(state, unit.id);
-  const found2 = (isInjured(unit) ? here(hostOf(rooms, "injured"), "injured") : null) ?? (held.some((r) => r.kind === "confined") ? here(hostOf(rooms, "confined"), "confined") : null) ?? (held.some((r) => r.kind === "duty") ? here(hostOf(rooms, "duty"), "duty") : null) ?? (state.slot === "night" ? here(hostOf(rooms, "night"), "night") : null);
-  if (found2) return found2;
-  const weights = rooms.map((room) => routineWeight(state, reg, room, unit));
-  const total2 = weights.reduce((a, b) => a + b, 0);
-  if (total2 <= 0) return { unitId: unit.id, roomId: null, reason: "nowhere" };
-  let pick2 = fnv1a(`${state.day}|${state.slot}|${unit.id}`) % total2;
-  for (let i = 0; i < rooms.length; i++) {
-    if (pick2 < weights[i]) return { unitId: unit.id, roomId: rooms[i].id, reason: "routine" };
-    pick2 -= weights[i];
-  }
-  return { unitId: unit.id, roomId: null, reason: "nowhere" };
-}
-function whereabouts(state, reg) {
-  const rooms = roomsOf(reg);
-  return livingUnits(state).map((u) => place(state, reg, rooms, u));
-}
-
-// src/ui/fx.ts
-var SVG_NS = "http://www.w3.org/2000/svg";
-var fxSeq = 0;
-function svg(tag2, attrs) {
-  const el = document.createElementNS(SVG_NS, tag2);
-  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
-  return el;
-}
-function noise(cls, f) {
-  const id = `alius-fx-${++fxSeq}`;
-  const layer = svg("svg", { class: `alius-fx ${cls}`, "aria-hidden": "true", width: "100%", height: "100%", preserveAspectRatio: "none" });
-  const filter = svg("filter", { id, x: "0", y: "0", width: "100%", height: "100%" });
-  filter.append(svg("feTurbulence", {
-    type: "fractalNoise",
-    baseFrequency: f.frequency,
-    numOctaves: String(f.octaves),
-    seed: String(f.seed ?? 1),
-    stitchTiles: "stitch"
-  }));
-  layer.append(filter, svg("rect", { width: "100%", height: "100%", filter: `url(#${id})` }));
-  return layer;
-}
-function cssUrl(path) {
-  return `url("${path.replace(/["\\\n\r]/g, (c) => encodeURIComponent(c))}")`;
-}
-
-// src/ui/voice/voiceCard.ts
-var UNIT_ACCENTS = ["#ff9ec7", "#ffb86b", "#8fd6ff", "#b6e88a", "#d0a8ff", "#7ee7d0"];
-var unitAccent = (unitId) => UNIT_ACCENTS[fnv1a(unitId) % UNIT_ACCENTS.length];
-function redacted(text2, ranges) {
-  const parts = [];
-  let cursor = 0;
-  for (const [from, to] of [...ranges].sort((a, b) => a[0] - b[0])) {
-    const start = Math.max(0, from);
-    const end = Math.min(text2.length, to);
-    if (end <= start || start < cursor) continue;
-    if (start > cursor) parts.push(text2.slice(cursor, start));
-    parts.push(h("span", { class: "alius-redact", "aria-label": "redacted" }, "\u2588".repeat(end - start)));
-    cursor = end;
-  }
-  if (cursor < text2.length) parts.push(text2.slice(cursor));
-  return parts;
-}
-function renderVoiceCard(o) {
-  const head = o.title || o.meta || o.from ? h(
-    "header",
-    { class: "alius-voice-head" },
-    o.title ? h(o.level === 3 ? "h3" : "h2", { class: "alius-voice-title" }, o.title) : null,
-    o.from ? h("span", { class: "alius-voice-from" }, o.from) : null,
-    o.meta ? h("span", { class: "alius-voice-meta" }, o.meta) : null
-  ) : null;
-  const body = h("div", { class: "alius-voice-body" });
-  if (typeof o.body === "string") body.append(...(o.redact?.length ? redacted(o.body, o.redact) : [o.body]).filter((c) => c !== null && c !== void 0));
-  else body.append(o.body);
-  const card2 = h(
-    "article",
-    { class: `alius-voice alius-voice-${o.voice}`, "data-voice": o.voice },
-    o.voice === "paper" ? noise("alius-fibre", { frequency: "0.04 0.9", octaves: 2, seed: 3 }) : null,
-    head,
-    body,
-    o.stamp ? h("span", { class: "alius-stamp" }, o.stamp) : null
-  );
-  if (o.accent) card2.style.setProperty("--voice-accent", o.accent);
-  return card2;
-}
-function renderBubble(text2, mine, accent) {
-  const bubble = h(
-    "div",
-    { class: `alius-bubble alius-voice alius-voice-personal ${mine ? "is-mine" : "is-hers"}`, "data-voice": "personal" },
-    h("span", { class: "alius-msg-text" }, text2)
-  );
-  bubble.style.setProperty("--bubble-accent", accent);
-  return bubble;
 }
 
 // src/ui/leash/requestForm.ts
@@ -20998,21 +21220,6 @@ function textArea(key, value, max, commit) {
   return el;
 }
 
-// src/ui/voice/sources.ts
-var VOICE_OF = {
-  toast: "terminal",
-  dm: "personal",
-  unit_note: "personal",
-  chronicle: "paper",
-  dossier: "paper",
-  commander_file: "paper",
-  oversight: "corporate",
-  leash_verdict: "corporate",
-  corporate_mail: "corporate",
-  // P11
-  intake_form: "paper"
-};
-
 // src/ui/setup/shared.ts
 var nameOf7 = (reg, registry2, id) => {
   if (!id) return "\u2014";
@@ -21658,18 +21865,18 @@ function renderDisciplineMenu(ctx2) {
       );
     }
     const why = checkPunish(state, reg, unitId, id, days ? Number(days.value) : void 0);
-    const button = h("button", {
+    const button2 = h("button", {
       type: "button",
       class: "alius-btn alius-option",
       "data-punish": id,
       ...analyzeNative(`punishments:${id}`, { unitId }),
       ...why !== null ? { "aria-disabled": "true", title: why } : {},
       onclick: () => {
-        if (button.getAttribute("aria-disabled") === "true") return;
+        if (button2.getAttribute("aria-disabled") === "true") return;
         ctx2.onPunish(id, days ? Number(days.value) : void 0);
       }
     }, String(e.label).toUpperCase());
-    return h("div", { class: "alius-punish-row" }, button, days);
+    return h("div", { class: "alius-punish-row" }, button2, days);
   });
   return h("details", { class: "alius-discipline", "data-discipline-menu": unitId }, h("summary", {}, "[ DISCIPLINE ]"), ...rows);
 }
@@ -21738,7 +21945,7 @@ function renderSkillTree(host, ctx2) {
     if (n.grants.upgrade) return `${skillById(reg, n.grants.upgrade.skillId)?.name ?? n.grants.upgrade.skillId} +`;
     return skillById(reg, n.grants.skill ?? "")?.name ?? n.grants.skill ?? n.id;
   };
-  const button = (n) => {
+  const button2 = (n) => {
     const st = nodeState(state, reg, unit, n.id);
     const reason = st === "owned" ? "UNLOCKED" : checkUnlock(state, reg, unit.id, n.id) ?? "READY";
     const desc = n.grants.skill ? skillById(reg, n.grants.skill)?.description ?? "" : "Upgrades a skill.";
@@ -21760,11 +21967,11 @@ function renderSkillTree(host, ctx2) {
   for (let tier = 1; tier <= 5; tier++) {
     for (let b = 0; b < 3; b++) {
       const n = tree.find((x) => x.branch === b && x.tier === tier);
-      root.append(n ? button(n) : h("span", {}));
+      root.append(n ? button2(n) : h("span", {}));
     }
   }
   const ult = tree.find((n) => n.branch === null);
-  if (ult) root.append(h("div", { class: "alius-tree-ult" }, button(ult)));
+  if (ult) root.append(h("div", { class: "alius-tree-ult" }, button2(ult)));
   host.append(root);
 }
 
@@ -21913,7 +22120,7 @@ function arcBlock(unit, d, ctx2) {
   if (!paths.some((p) => p.available)) return null;
   const rows = paths.map((p) => {
     const refused = p.available && p.refuses;
-    const button = h("button", {
+    const button2 = h("button", {
       type: "button",
       class: "alius-btn",
       "data-decide": p.path,
@@ -21930,7 +22137,7 @@ function arcBlock(unit, d, ctx2) {
       p.wanted ? h("span", { class: "alius-arc-mark" }, " SHE WANTS THIS") : null,
       refused ? h("span", { class: "alius-arc-mark is-refused" }, " SHE REFUSES \u2014 LEASH ONLY") : null,
       !p.available && p.reason ? h("span", { class: "alius-equip-flag" }, ` ${p.reason}`) : null,
-      button
+      button2
     );
   });
   return h("details", { class: "alius-arc", "data-arc": d.id }, h("summary", {}, "[ DECIDE ARC ]"), ...rows);
@@ -22658,7 +22865,7 @@ function renderRoomPanel(room, state, ctx2, here, opts) {
     const reason = opts.readOnly || unit.kind !== "named" || !talk ? null : talkBlock(state, reg, unit, room);
     const canTalk = !opts.readOnly && unit.kind === "named" && talk !== void 0;
     const avatar = ctx2.avatar(unit);
-    const button = canTalk ? h("button", {
+    const button2 = canTalk ? h("button", {
       type: "button",
       class: "alius-btn alius-option",
       "data-talk": unit.id,
@@ -22674,7 +22881,7 @@ function renderRoomPanel(room, state, ctx2, here, opts) {
       avatar ? h("span", { class: "alius-room-avatar" }, avatar) : null,
       renderMarker(state, reg, unit),
       h("span", { class: "alius-room-name" }, unit.kind === "grunt" ? `${unit.displayName} (grunt)` : unit.displayName),
-      button,
+      button2,
       reason !== null && canTalk ? h("span", { class: "alius-dim alius-reason" }, reason) : null
     );
   });
@@ -22811,9 +23018,12 @@ function sideColumn(ctx2, state, readOnly) {
     }
   }, `END ${slotName} \u25B8`);
   const who = oversight ? state.squad.find((u) => u.id === oversight.unitId)?.displayName ?? oversight.unitId : "";
+  const prologue = h("div", { class: "alius-onboarding-host" });
+  ctx2.onboardingCard?.(prologue);
   return h(
     "aside",
     { class: "alius-hub-side" },
+    prologue.childElementCount > 0 ? prologue : null,
     stat2(
       "alius-objective",
       "glossary:objective",
@@ -23989,7 +24199,7 @@ function drawDemandChips(host, state, reg, pick2, on) {
     if (d.status !== "open" || !pick2({ unitId: d.unitId })) continue;
     const name = (state.squad.find((u) => u.id === d.unitId)?.displayName ?? d.unitId).toUpperCase();
     const why = grantProblem(state, reg, d.id);
-    const button = (kind, text2, run, disabled = false, title) => {
+    const button2 = (kind, text2, run, disabled = false, title) => {
       const b = h("button", {
         type: "button",
         class: "alius-btn alius-tagchip",
@@ -24007,9 +24217,9 @@ function drawDemandChips(host, state, reg, pick2, on) {
       { class: "alius-chip-group", "data-demand-group": d.id },
       h("span", { class: "alius-chip", "data-demand": d.id, ...analyzeAttrs(`demandTemplates:${d.templateId}`, { unitId: d.unitId }) }, `${name} DEMANDS: ${d.text}`),
       d.owed ? h("span", { class: "alius-chip", "data-owed": d.id, ...analyzeAttrs("glossary:owed_demand") }, "OWED") : null,
-      button("grant", "[GRANT]", () => on.grant(d.id), why !== null, why ?? void 0),
-      button("refuse", "[REFUSE]", () => on.refuse(d.id)),
-      on.talk ? button("talk", "[TALK]", () => on.talk(d.id)) : null
+      button2("grant", "[GRANT]", () => on.grant(d.id), why !== null, why ?? void 0),
+      button2("refuse", "[REFUSE]", () => on.refuse(d.id)),
+      on.talk ? button2("talk", "[TALK]", () => on.talk(d.id)) : null
     ));
   }
 }
@@ -27445,6 +27655,23 @@ function createApp(st, deps) {
   const dilemmas = createDilemmas(worldDeps);
   const loyalty = createLoyalty({ ...worldDeps, context, refreshContext: applyContext });
   const discipline = createDiscipline({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o) });
+  const onboarding = createOnboarding({
+    ...worldDeps,
+    context,
+    refreshContext: applyContext,
+    startScene: (o) => beginScene(o),
+    modal: (o) => shell.modal(o),
+    endScene: async () => {
+      await scene.end();
+      leaveScene();
+    },
+    // after a reload the card offers RESUME SCENE: the screen is the scene's, as `adoptScene` leaves it
+    resumeScene: () => {
+      scene.resume();
+      showScene();
+      shell.open();
+    }
+  });
   const expedition = createExpedition({ ...worldDeps, startCombat: (p) => api.startCombat(p), startScene: (o) => beginScene(o) });
   let expeditionScreen = null;
   let onExpeditionScreen = false;
@@ -27470,10 +27697,12 @@ function createApp(st, deps) {
     context.clearMatching((d) => d.id === "night" || d.id.startsWith("proposal:"));
     loyalty.onSceneClosed();
     discipline.onSceneClosed();
+    onboarding.onSceneClosed();
     if (state?.scene) {
       scene.resume();
       loyalty.onSceneOpened();
       discipline.onSceneOpened();
+      onboarding.onSceneOpened();
       showScene();
     } else if (state && state.slot === "night" && state.calendar.nightEvent && confrontationNight(state)) {
       showScene();
@@ -27493,6 +27722,7 @@ function createApp(st, deps) {
     }
     loyalty.onSceneOpened();
     discipline.onSceneOpened();
+    onboarding.onSceneOpened();
     showScene();
     shell.open();
     return true;
@@ -27556,6 +27786,7 @@ function createApp(st, deps) {
         if (e.type === "unit_terminated") removeFromChat(String(e.unitId), `${state?.squad.find((u) => u.id === e.unitId)?.displayName ?? "A unit"} DEACTIVATED`);
       }
       discipline.onEvents(events);
+      onboarding.onEvents(events);
       if (has2("scene_ended") || has2("scene_aborted")) {
         loyalty.onSceneClosed();
         discipline.onSceneClosed();
@@ -28691,6 +28922,9 @@ function createApp(st, deps) {
     assetUrl: deps.assetUrl,
     art: { hub: hubArt },
     ops: opsCtx(),
+    onboardingCard: (host2) => {
+      if (state) renderOnboardingCard(host2, { state, registries, controller: onboarding, readOnly: load.kind === "readonly" });
+    },
     onTalk: (unitId, locationId) => void api.talkAt(unitId, locationId),
     onEndSlot: () => void api.endSlot(),
     onOpenPda: (tab) => tab ? shell.showTab(tab) : shell.setDevice(true),
@@ -28767,6 +29001,7 @@ function createApp(st, deps) {
     dilemmas,
     loyalty,
     discipline,
+    onboarding,
     fileLeash,
     intakeUnit,
     startScene: beginScene,

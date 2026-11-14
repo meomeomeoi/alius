@@ -28,6 +28,8 @@ export interface HubCtx {
   art?: { hub: readonly string[] };
   /** The cards of a room's activities are the OPS tab's, so they need its context. */
   ops: OpsTabCtx;
+  /** P11: draws the prologue card (nothing once the prologue is done); the hub puts it above the objective and redraws it with the hub. */
+  onboardingCard?: (host: HTMLElement) => void;
   onTalk(unitId: string, locationId: string): void;
   onEndSlot(): void;
   onOpenPda(tab?: TabId): void;
@@ -157,8 +159,11 @@ function sideColumn(ctx: HubCtx, state: CampaignState, readOnly: boolean): HTMLE
     }, `END ${slotName} ▸`);
 
   const who = oversight ? state.squad.find((u) => u.id === oversight.unitId)?.displayName ?? oversight.unitId : '';
+  const prologue = h('div', { class: 'alius-onboarding-host' });
+  ctx.onboardingCard?.(prologue);
   return h(
     'aside', { class: 'alius-hub-side' },
+    prologue.childElementCount > 0 ? prologue : null,
     stat('alius-objective', 'glossary:objective',
       h('div', { class: 'alius-card-label' }, 'OBJECTIVE'),
       objective ? h('div', { class: 'alius-card-title' }, objective.text) : h('div', { class: 'alius-card-title' }, 'NO STANDING ORDERS'),

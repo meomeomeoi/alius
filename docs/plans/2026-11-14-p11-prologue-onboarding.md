@@ -252,7 +252,7 @@ Existing `wizard.test.ts` tests run in veteran mode: set `setMode('veteran')` wh
 - Consumes: `currentStep`, `completionReason`, actions (Task 2); `startScene`, `context.setDirective/clearDirective`, `shell.modal`, `restrictionReason`.
 - Produces: `createOnboarding(deps): OnboardingController` with `startLineup(): Promise<boolean>`, `talkFirstWords(unitId): Promise<boolean>`, `skipFirstWords(unitId): void`, `skipStep(): Promise<void>` (confirm modal), `onEvents(events): void`, `onSceneClosed(): void`; `sceneLocation(state, reg, step): string` (the step's location if open this slot, else the first location open now); `renderOnboardingCard(host, ctx: { state, registries, controller, readOnly })`; directive ids `prologue:goal`, `prologue:wrap`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Controller (worldHarness-style app with the fake adapter):
 - `startLineup starts a prologue scene with every living named unit at the step location and sets prologue:goal`;
@@ -267,10 +267,10 @@ Card:
 - `card after reload shows resume for an open prologue scene` (`[RESUME SCENE]` → `app.scene.resume()` + scene screen);
 - nothing is drawn when `onboardingDone`; buttons carry `data-analyze` (`glossary:lineup`, `glossary:first_words`).
 
-- [ ] **Step 2: Run** `npx vitest run tests/onboarding tests/ui/onboardingCard.test.ts` → FAIL.
-- [ ] **Step 3: Implement.** Cap check in `onEvents` on `scene_exchange` when `state.scene.origin === 'prologue'` and `exchanges >= step.exchangeCap`; the controller remembers per scene id that it asked. Completion dispatches go through `app.dispatch` with `expectChatId`.
-- [ ] **Step 4: Run** `npm test` → green.
-- [ ] **Step 5: Commit** `feat(onboarding): line-up and first words with soft caps`
+- [x] **Step 2: Run** `npx vitest run tests/onboarding tests/ui/onboardingCard.test.ts` → FAIL.
+- [x] **Step 3: Implement.** Cap check in `onEvents` on `scene_exchange` when `state.scene.origin === 'prologue'` and `exchanges >= step.exchangeCap`; the controller remembers per scene id that it asked. Completion dispatches go through `app.dispatch` with `expectChatId`.
+- [x] **Step 4: Run** `npm test` → green.
+- [x] **Step 5: Commit** `feat(onboarding): line-up and first words with soft caps`
 
 ---
 
