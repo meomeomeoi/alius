@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFile } from 'node:fs/promises';
 import { loadPacks } from '../../src/content/loader';
-import { EVENT_TYPES, PROPOSAL_KINDS } from '../../src/engine/relations/vocab';
+import { ALL_EVENT_TYPES, PROPOSAL_KINDS } from '../../src/engine/relations/vocab';
 
 const load = () => loadPacks(['content/core'], async (path) => JSON.parse(await readFile(path, 'utf8')));
 
@@ -195,12 +195,13 @@ describe('activity cross references', () => {
 
   it('every event type has all four severity rows', async () => {
     const { registries: r } = await load();
-    for (const t of EVENT_TYPES) {
+    for (const t of ALL_EVENT_TYPES) {
       const e = r.eventDeltas.get(t);
       expect(e, t).toBeDefined();
       expect(Object.keys(e!.rows as object).sort(), t).toEqual(['extreme', 'major', 'minor', 'moderate']);
     }
-    expect(r.eventDeltas.size).toBe(EVENT_TYPES.length);
+    expect(r.eventDeltas.size).toBe(ALL_EVENT_TYPES.length);
+    expect(ALL_EVENT_TYPES).toHaveLength(32);
   });
 
   it('table rows from the spec', async () => {
@@ -763,5 +764,18 @@ describe('core content pack: P6 content', () => {
     expect(signs.filter((s) => s.about === 'desertion').length).toBeGreaterThanOrEqual(3);
     expect(signs.filter((s) => s.about === 'mutiny' && s.level === 1).length).toBeGreaterThanOrEqual(2);
     expect(signs.filter((s) => s.about === 'mutiny' && s.level === 2).length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('P9: impunity bases, command stances, dependency, leverage and image consistency', async () => {
+    const { registries: r } = await load();
+    const byRank = [...r.dispositionLevels.values()].sort((a, b) => (a.rank as number) - (b.rank as number));
+    expect(byRank.map((l) => l.impunityBase)).toEqual([25, 35, 45, 55, 65]);
+    expect([...r.commandStances.keys()].sort()).toEqual(['defiant_loyal', 'disciplined', 'fearful', 'open_defiance']);
+    expect(r.commandStances.get('fearful')!.covert).toBe(true);
+    expect(r.commandStances.get('disciplined')!.covert).toBeUndefined();
+    expect(r.relationshipStates.get('dependent')!.dependency).toBe(15);
+    expect(r.flags.get('knows_crime')!.leverage).toBe(true);
+    expect(r.imageConsistency.get('slight_build')!.offImage).toContain('commander_enforced');
+    for (const t of ['punishments', 'demandTemplates', 'reputations'] as const) expect(r[t].size, t).toBe(0);
   });
 });

@@ -852,7 +852,8 @@
       "defectArcStages": []
     },
     "dmChance": 0.25,
-    "promptHint": "She needs something only the commander controls and resents that as much as she craves it. Pride and need pull against each other."
+    "promptHint": "She needs something only the commander controls and resents that as much as she craves it. Pride and need pull against each other.",
+    "dependency": 15
   },
   {
     "id": "rival",

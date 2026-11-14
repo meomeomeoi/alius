@@ -608,5 +608,112 @@
       "major": {},
       "extreme": {}
     }
+  },
+  {
+    "id": "defied",
+    "cause": "She defied the commander",
+    "rows": {
+      "minor": {},
+      "moderate": {},
+      "major": {
+        "stress": 2
+      },
+      "extreme": {
+        "stress": 4
+      }
+    }
+  },
+  {
+    "id": "commander_enforced",
+    "cause": "The commander imposed a consequence",
+    "rows": {
+      "minor": {
+        "affinity": -2,
+        "stress": 3
+      },
+      "moderate": {
+        "trust": -2,
+        "affinity": -4,
+        "stress": 6
+      },
+      "major": {
+        "trust": -4,
+        "affinity": -5,
+        "stress": 8
+      },
+      "extreme": {
+        "trust": -6,
+        "affinity": -8,
+        "stress": 12
+      }
+    }
+  },
+  {
+    "id": "commander_yielded",
+    "cause": "The commander backed down",
+    "rows": {
+      "minor": {
+        "trust": -1,
+        "affinity": 1
+      },
+      "moderate": {
+        "trust": -2,
+        "affinity": 1
+      },
+      "major": {
+        "trust": -4,
+        "affinity": 2
+      },
+      "extreme": {
+        "trust": -6,
+        "affinity": 2
+      }
+    }
+  },
+  {
+    "id": "threatened",
+    "cause": "The commander made a threat",
+    "rows": {
+      "minor": {
+        "trust": -1,
+        "affinity": -1,
+        "stress": 2
+      },
+      "moderate": {
+        "trust": -2,
+        "affinity": -2,
+        "stress": 4
+      },
+      "major": {
+        "trust": -3,
+        "affinity": -4,
+        "stress": 6
+      },
+      "extreme": {
+        "trust": -5,
+        "affinity": -6,
+        "stress": 8
+      }
+    }
+  },
+  {
+    "id": "granted_demand",
+    "cause": "The commander granted her demand",
+    "rows": {
+      "minor": {},
+      "moderate": {},
+      "major": {},
+      "extreme": {}
+    }
+  },
+  {
+    "id": "refused_demand",
+    "cause": "The commander refused her demand",
+    "rows": {
+      "minor": {},
+      "moderate": {},
+      "major": {},
+      "extreme": {}
+    }
   }
 ]

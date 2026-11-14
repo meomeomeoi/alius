@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { EFFECT_TARGETS, STATS, TRIGGERS, ALWAYS_ON_TYPES } from '../engine/combat/types';
-import { EVENT_TYPES, PROPOSAL_KINDS, SEVERITIES } from '../engine/relations/vocab';
+import { ALL_EVENT_TYPES, EVENT_TYPES, PROPOSAL_KINDS, SEVERITIES } from '../engine/relations/vocab';
 import { VALUE_AXES } from '../engine/state/types';
 import { TUNING } from '../engine/tuning';
 import { DILEMMA_CONTEXTS } from '../engine/dilemma/types';
@@ -23,6 +23,8 @@ export const FlagSchema = BaseEntrySchema.extend({
   description: z.string().min(1),
   mutuallyExclusiveWith: z.array(z.string()).optional(),
   setBy: z.array(z.string()).optional(),
+  /** P9: a relation flag that is something the unit holds over the commander (a secret): +5 Impunity each, whoever else does not know. */
+  leverage: z.boolean().optional(),
 });
 
 /** Checked on the resolved (merged) entry. Later packages replace the base schemas below. */
@@ -183,6 +185,8 @@ export const CrimeSchema = BaseEntrySchema.extend({
   flaw: textWithEffects,
   valueReactions: z.array(z.object({ axis: valueAxis, sign: z.enum(['+', '-']), weight: int.min(-3).max(3) })),
   knownByDefault: z.boolean(),
+  /** P9: `false` = knowing this crime gives a unit no leverage (default: it is damaging). */
+  damaging: z.boolean().optional(),
 });
 
 
@@ -447,6 +451,10 @@ export const RESERVED_EVENT_TYPES: readonly string[] = [
   'deserter_returned', 'deserter_answered', 'mutiny_started', 'mutiny_subdued', 'mutiny_escaped',
   'thread_flag_set', 'dilemma_requested', 'dilemma_rejected', 'dilemma_presented', 'dilemma_resolved',
   'arc_decided', 'arc_step', 'arc_completed', 'arc_unlocked',
+  // P9
+  'impunity_changed', 'defiance_noted', 'defiance_settled', 'threat_registered', 'threat_kept', 'threat_lapsed',
+  'discipline_applied', 'discipline_undone', 'restriction_started', 'restriction_ended', 'covert_sabotage',
+  'demand_opened', 'demand_delivered', 'demand_resolved', 'nickname_pending', 'nickname_given', 'nickname_dropped',
 ];
 
 const slotEnum = z.enum(['morning', 'afternoon', 'evening', 'night']);
@@ -614,6 +622,8 @@ export const RelationshipStateSchema = BaseEntrySchema.extend({
   priority: int,
   /** Available to grunts (Trust-only units); default false. */
   grunts: z.boolean().optional(),
+  /** P9: how much of her Impunity this state takes away (she needs the commander). */
+  dependency: int.min(0).max(40).optional(),
   /** P7: only a commander with this trait can reach the state. */
   requiresTrait: str.optional(),
   entry: z.object({
@@ -648,7 +658,7 @@ const eventRow = z.object({
 }).strict();
 
 export const EventDeltaSchema = BaseEntrySchema.extend({
-  id: z.enum(EVENT_TYPES),
+  id: z.enum(ALL_EVENT_TYPES),
   /** P7a: one-line cause shown in relationship history readings; absent = the humanized event id. */
   cause: str.max(80).optional(),
   rows: z.object({ minor: eventRow, moderate: eventRow, major: eventRow, extreme: eventRow }).strict(),
@@ -1233,8 +1243,8 @@ export const DispositionLevelSchema = BaseEntrySchema.extend({
   }).strict(),
   breakdownTarget: z.enum(BREAKDOWN_TARGETS),
   bigGestureMult: z.number().min(1).max(4),
-  /** P9 reads this as the unit's Impunity base. */
-  impunityBase: z.number().min(-40).max(40).optional(),
+  /** P9: the unit's Impunity base (0…100; a pack that omits it reads `TUNING.impunity.defaultBase`). */
+  impunityBase: z.number().min(0).max(100).optional(),
 }).strict();
 
 export const STANCES = ['shares', 'indifferent', 'opposes'] as const;
@@ -1271,7 +1281,22 @@ export const WorldPresetSchema = BaseEntrySchema.extend({
   choices: z.record(str, str),
 }).strict();
 
+export const COMMAND_STANCE_IDS = ['disciplined', 'defiant_loyal', 'fearful', 'open_defiance'] as const;
+
+/** P9: one of the four stances Trust × Impunity gives a unit. `{name}` is the unit's name, `{reason}` the reason of a refusal. */
+export const CommandStanceSchema = BaseEntrySchema.extend({
+  id: z.enum(COMMAND_STANCE_IDS),
+  name: str,
+  description: str.max(DESCRIPTION_MAX),
+  directive: str.max(300),
+  refusal: str.max(300),
+  /** The unit hides her refusals and sabotages quietly instead. */
+  covert: z.boolean().optional(),
+  demandWeight: z.number().min(0).max(3),
+}).strict();
+
 Object.assign(registrySchemas, {
+  commandStances: CommandStanceSchema,
   worldOptions: WorldOptionSchema, dispositionLevels: DispositionLevelSchema, stanceEffects: StanceEntrySchema, worldPresets: WorldPresetSchema,
 });
 

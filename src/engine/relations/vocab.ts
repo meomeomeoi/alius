@@ -1,13 +1,21 @@
 import type { Severity } from '../state/types';
 
-/** The 26 event types the mechanic model may report (P3 spec §3). Content (`eventDeltas`) must have a row for each. */
+/** The 30 event types the mechanic model may report (26 of P3 spec §3, plus the four of P9). Content (`eventDeltas`) must have a row for each. */
 export const EVENT_TYPES = [
   'praised', 'insulted', 'comforted', 'dismissed', 'listened', 'shared_secret', 'learned_about', 'gift', 'flirted',
   'rejected_advance', 'accepted_advance', 'physical_affection', 'sided_with', 'sided_against', 'decision_aligned',
   'decision_violated', 'protected', 'endangered', 'coerced', 'apologized', 'lied_detected', 'kept_promise',
   'broke_promise', 'mocked_defect', 'accepted_defect', 'crime_revealed',
+  // P9: discipline
+  'defied', 'commander_enforced', 'commander_yielded', 'threatened',
 ] as const;
-export type EventType = (typeof EVENT_TYPES)[number];
+
+/** P9: events only the engine makes (a demand granted or refused). Never offered to the model; `validateIntents` rejects them. */
+export const ENGINE_EVENT_TYPES = ['granted_demand', 'refused_demand'] as const;
+
+/** Every type that has an `eventDeltas` row: what the model may report and what only the engine writes. */
+export const ALL_EVENT_TYPES = [...EVENT_TYPES, ...ENGINE_EVENT_TYPES] as const;
+export type EventType = (typeof ALL_EVENT_TYPES)[number];
 
 export const PROPOSAL_KINDS = [
   'friendship_deepen', 'confide', 'date', 'fwb', 'romance', 'exclusive', 'break_up', 'reconcile', 'rivalry', 'secret_affair',

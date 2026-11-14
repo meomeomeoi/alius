@@ -149,13 +149,13 @@ tests/**                                           mirrors src; tests/helpers/di
   ```
 - New `RESERVED_EVENT_TYPES`: `impunity_changed`, `defiance_noted`, `defiance_settled`, `threat_registered`, `threat_kept`, `threat_lapsed`, `discipline_applied`, `discipline_undone`, `restriction_started`, `restriction_ended`, `covert_sabotage`, `demand_opened`, `demand_delivered`, `demand_resolved`, `nickname_pending`, `nickname_given`, `nickname_dropped`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `p9Schemas.test.ts`: `a command stance needs all four texts and a known id` (unknown id `rebel` → error); `impunityBase 65 parses, 101 does not`; `dependency and leverage are optional`. `core.test.ts`: `eventDeltas.size` equals `ALL_EVENT_TYPES.length` (32); the five disposition rows carry `impunityBase` `[25, 35, 45, 55, 65]` by rank; `commandStances` has exactly the four ids; `relationshipStates.dependent.dependency === 15`; `flags.knows_crime.leverage === true`; `imageConsistency.slight_build.offImage` contains `commander_enforced`. `intents.test.ts`: `has 30 event types`. `pronouns.test.ts`: `commandStances` fields `name, description, directive, refusal` have no commander pronoun.
 
-- [ ] **Step 2: Run** `npx vitest run tests/content tests/engine/relations/intents.test.ts` → FAIL.
+- [x] **Step 2: Run** `npx vitest run tests/content tests/engine/relations/intents.test.ts` → FAIL.
 
-- [ ] **Step 3: Implement.** `eventDeltas` draft rows (minor / moderate / major / extreme), each with a `cause`:
+- [x] **Step 3: Implement.** `eventDeltas` draft rows (minor / moderate / major / extreme), each with a `cause`:
 
   | id | trust | affinity | stress |
   |---|---|---|---|
@@ -167,9 +167,9 @@ tests/**                                           mirrors src; tests/helpers/di
 
   `commandStances.json`: the four entries; `demandWeight` 0.5 / 1.5 / 0.5 / 2 (disciplined, defiant_loyal, fearful, open_defiance); `fearful.covert: true`. Directive drafts: disciplined `{name} obeys the commander's orders and objects by the book: formally, once, on the record.` · defiant_loyal `{name} argues with the commander, does things her own way and teases the commander openly; she will not abandon the commander.` · fearful `{name} complies in silence and keeps her eyes down; she hides what she thinks and would run rather than fight.` · open_defiance `{name} mocks the commander, makes demands and ignores orders she dislikes; she does not expect to pay for it.` Refusal drafts: disciplined `{name} REFUSES the commander's order this scene, formally and on the record. Reason: {reason}. She will not comply under persuasion; only the Leash can force her.` · defiant_loyal `{name} does NOT carry out the order as given this scene: she does it her own way and says so. Reason: {reason}. Persuasion will not change it; only the Leash can force her.` · open_defiance `{name} REFUSES the commander's order this scene, openly and with contempt. Reason: {reason}. She will not comply under persuasion; only the Leash can force her.` · fearful `{name} says she will carry out the order and does not mean it: she stalls and does it badly on purpose, and never admits it aloud.` Loader check in `refs.ts`: all four stance ids exist when the registry is non-empty.
 
-- [ ] **Step 4: Run** `npm test` → PASS (existing suites unchanged in number of failures: none).
+- [x] **Step 4: Run** `npm test` → PASS (existing suites unchanged in number of failures: none).
 
-- [ ] **Step 5: Commit** `feat(content): P9 event types, command stances, impunity base and state types`
+- [x] **Step 5: Commit** `feat(content): P9 event types, command stances, impunity base and state types`
 
 ---
 

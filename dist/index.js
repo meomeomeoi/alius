@@ -51,6 +51,36 @@ var TUNING = Object.freeze({
     /** A disposition-scaled refusal chance never exceeds this. */
     refusalCap: 0.95
   }),
+  /** P9: Impunity, stances and covert sabotage (spec numbers verbatim; the rest are draft balance values). */
+  impunity: Object.freeze({
+    recordMin: -40,
+    recordMax: 40,
+    decayPerDay: 1,
+    /** Used when a pack's disposition level carries no `impunityBase`. */
+    defaultBase: 35,
+    /** `R` gained when a defiance goes unanswered, by severity. */
+    defied: Object.freeze({ minor: 3, moderate: 5, major: 8, extreme: 12 }),
+    /** `R` gained when the commander backs down (minor and moderate read 6, major and extreme read 10). */
+    yielded: Object.freeze({ minor: 6, moderate: 6, major: 10, extreme: 10 }),
+    /** `R` of an enforcement whose measure the registry no longer has. */
+    enforcedFallback: -8,
+    leashEnforced: -20,
+    leash: Object.freeze({ noneLeft: 10, neverUsed: 8, recentUse: -10, recentDays: 7 }),
+    defectUpkeep: 10,
+    contagion: 0.3,
+    secret: 5,
+    secretCap: 15,
+    stance: Object.freeze({ trustHigh: 45, impunityHigh: 50 }),
+    /** A threat is believed while Impunity is below this. */
+    believeBelow: 50,
+    /** `commander_enforced` and `threatened` below this confidence are dropped for every unit. */
+    minConfidence: 0.6,
+    mutinyMin: 60,
+    desertInsteadBelow: 30,
+    bands: Object.freeze({ low: 30, high: 50, brazen: 60 }),
+    sabotage: Object.freeze({ chancePerDay: 0.12, supplies: 2, credits: 10, gearChance: 0.5, gearSupplies: 2 }),
+    applicationsMax: 20
+  }),
   /** P7a: the change ledger behind trends, stress sources and "last changes" readings. */
   ledger: Object.freeze({ days: 7, max: 150 }),
   upkeep: Object.freeze({ perUnit: 1, commander: 1, doubledByDefect: "hunger_loop" }),
@@ -2334,8 +2364,15 @@ var EVENT_TYPES = [
   "broke_promise",
   "mocked_defect",
   "accepted_defect",
-  "crime_revealed"
+  "crime_revealed",
+  // P9: discipline
+  "defied",
+  "commander_enforced",
+  "commander_yielded",
+  "threatened"
 ];
+var ENGINE_EVENT_TYPES = ["granted_demand", "refused_demand"];
+var ALL_EVENT_TYPES = [...EVENT_TYPES, ...ENGINE_EVENT_TYPES];
 var PROPOSAL_KINDS = [
   "friendship_deepen",
   "confide",
@@ -11250,7 +11287,12 @@ var REGISTRY_NAMES = [
   "worldOptions",
   "dispositionLevels",
   "stanceEffects",
-  "worldPresets"
+  "worldPresets",
+  // P9 (`punishments`, `demandTemplates` and `reputations` get their schemas and files in later tasks)
+  "commandStances",
+  "punishments",
+  "demandTemplates",
+  "reputations"
 ];
 var PackManifestSchema = external_exports.object({
   id: external_exports.string().min(1),
@@ -11304,7 +11346,9 @@ var FlagSchema = BaseEntrySchema.extend({
   scope: external_exports.enum(["world", "commander", "relation"]),
   description: external_exports.string().min(1),
   mutuallyExclusiveWith: external_exports.array(external_exports.string()).optional(),
-  setBy: external_exports.array(external_exports.string()).optional()
+  setBy: external_exports.array(external_exports.string()).optional(),
+  /** P9: a relation flag that is something the unit holds over the commander (a secret): +5 Impunity each, whoever else does not know. */
+  leverage: external_exports.boolean().optional()
 });
 var registrySchemas = Object.fromEntries(
   REGISTRY_NAMES.map((n) => [n, BaseEntrySchema])
@@ -11445,7 +11489,9 @@ var CrimeSchema = BaseEntrySchema.extend({
   perk: textWithEffects,
   flaw: textWithEffects,
   valueReactions: external_exports.array(external_exports.object({ axis: valueAxis, sign: external_exports.enum(["+", "-"]), weight: int.min(-3).max(3) })),
-  knownByDefault: external_exports.boolean()
+  knownByDefault: external_exports.boolean(),
+  /** P9: `false` = knowing this crime gives a unit no leverage (default: it is damaging). */
+  damaging: external_exports.boolean().optional()
 });
 var num = external_exports.number();
 var rowEnum = external_exports.enum(["front", "back"]);
@@ -11801,7 +11847,25 @@ var RESERVED_EVENT_TYPES = [
   "arc_decided",
   "arc_step",
   "arc_completed",
-  "arc_unlocked"
+  "arc_unlocked",
+  // P9
+  "impunity_changed",
+  "defiance_noted",
+  "defiance_settled",
+  "threat_registered",
+  "threat_kept",
+  "threat_lapsed",
+  "discipline_applied",
+  "discipline_undone",
+  "restriction_started",
+  "restriction_ended",
+  "covert_sabotage",
+  "demand_opened",
+  "demand_delivered",
+  "demand_resolved",
+  "nickname_pending",
+  "nickname_given",
+  "nickname_dropped"
 ];
 var slotEnum = external_exports.enum(["morning", "afternoon", "evening", "night"]);
 var socialStat = external_exports.enum(["authority", "insight", "empathy", "cunning"]);
@@ -11939,6 +12003,8 @@ var RelationshipStateSchema = BaseEntrySchema.extend({
   priority: int,
   /** Available to grunts (Trust-only units); default false. */
   grunts: external_exports.boolean().optional(),
+  /** P9: how much of her Impunity this state takes away (she needs the commander). */
+  dependency: int.min(0).max(40).optional(),
   /** P7: only a commander with this trait can reach the state. */
   requiresTrait: str2.optional(),
   entry: external_exports.object({
@@ -11974,7 +12040,7 @@ var eventRow = external_exports.object({
   stress: external_exports.number().optional()
 }).strict();
 var EventDeltaSchema = BaseEntrySchema.extend({
-  id: external_exports.enum(EVENT_TYPES),
+  id: external_exports.enum(ALL_EVENT_TYPES),
   /** P7a: one-line cause shown in relationship history readings; absent = the humanized event id. */
   cause: str2.max(80).optional(),
   rows: external_exports.object({ minor: eventRow, moderate: eventRow, major: eventRow, extreme: eventRow }).strict(),
@@ -12481,8 +12547,8 @@ var DispositionLevelSchema = BaseEntrySchema.extend({
   }).strict(),
   breakdownTarget: external_exports.enum(BREAKDOWN_TARGETS),
   bigGestureMult: external_exports.number().min(1).max(4),
-  /** P9 reads this as the unit's Impunity base. */
-  impunityBase: external_exports.number().min(-40).max(40).optional()
+  /** P9: the unit's Impunity base (0…100; a pack that omits it reads `TUNING.impunity.defaultBase`). */
+  impunityBase: external_exports.number().min(0).max(100).optional()
 }).strict();
 var STANCES = ["shares", "indifferent", "opposes"];
 var StanceEffectSchema = external_exports.discriminatedUnion("type", [
@@ -12511,7 +12577,19 @@ var WorldPresetSchema = BaseEntrySchema.extend({
   description: str2.max(DESCRIPTION_MAX),
   choices: external_exports.record(str2, str2)
 }).strict();
+var COMMAND_STANCE_IDS = ["disciplined", "defiant_loyal", "fearful", "open_defiance"];
+var CommandStanceSchema = BaseEntrySchema.extend({
+  id: external_exports.enum(COMMAND_STANCE_IDS),
+  name: str2,
+  description: str2.max(DESCRIPTION_MAX),
+  directive: str2.max(300),
+  refusal: str2.max(300),
+  /** The unit hides her refusals and sabotages quietly instead. */
+  covert: external_exports.boolean().optional(),
+  demandWeight: external_exports.number().min(0).max(3)
+}).strict();
 Object.assign(registrySchemas, {
+  commandStances: CommandStanceSchema,
   worldOptions: WorldOptionSchema,
   dispositionLevels: DispositionLevelSchema,
   stanceEffects: StanceEntrySchema,
@@ -25598,6 +25676,11 @@ registerChecks("dispositionLevels", (entry, regs) => {
     for (let r = 1; r <= 5; r++) if (!levels.some((l) => l.rank === r)) out.push({ path: "rank", message: `no level has rank ${r} (ranks 1 to 5 are needed)` });
   }
   return out;
+});
+registerChecks("commandStances", (entry, regs) => {
+  const first2 = [...regs.commandStances.values()][0];
+  if (first2?.id !== entry.id) return [];
+  return COMMAND_STANCE_IDS.filter((id) => !regs.commandStances.has(id)).map((id) => ({ path: "id", message: `no command stance "${id}" (all four are needed: ${COMMAND_STANCE_IDS.join(", ")})` }));
 });
 registerChecks("worldPresets", (entry, regs) => {
   const out = [];

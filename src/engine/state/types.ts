@@ -180,6 +180,8 @@ export interface Relation {
   affair?: { as: string; hiddenFrom: string[]; since: number };
   /** P7: the first day the unit knew the commander (absent in older saves until `commander/seed`). */
   metDay?: number;
+  /** P9: the stored term `R` of her Impunity, −40…40 (absent = 0); decays 1 a day toward 0. */
+  impunityRecord?: number;
 }
 
 /** A remembered fact (P3). `knownBy` holds unit ids or `'*'` for public; the commander always knows. */
@@ -298,6 +300,115 @@ export interface Commander {
   sleeplessDay?: number;
   /** P7: the rank changes that apply on `sleeplessDay` (copied from the `sleepless_rank` trait effects when the night was spent awake). */
   sleeplessRank?: Partial<Record<'authority' | 'insight' | 'empathy' | 'cunning', number>>;
+  /** P9: counters of the commander's deeds (absent = all 0). Reputations are read from them. */
+  deeds?: Partial<Record<DeedCounter, number>>;
+  /** P9: the nicknames the squad gives the commander (at most 2 active) and the one waiting for its scene. */
+  reputation?: {
+    active: Array<{ id: string; name: string; sinceDay: number; by?: string }>;
+    pending?: { id: string; queuedDay: number; replaces?: string };
+  };
+}
+
+export const DEED_COUNTERS = [
+  'leash_compel', 'leash_suppress', 'leash_terminate', 'grunts_lost', 'protected', 'defiance_tolerated',
+  'punish_1', 'punish_2', 'punish_3', 'punish_4', 'promises_kept', 'promises_broken',
+  'demands_granted', 'demands_refused', 'threats_kept', 'threats_empty',
+] as const;
+export type DeedCounter = (typeof DEED_COUNTERS)[number];
+
+export type DisciplineChannel = 'scene' | 'dm' | 'pda';
+
+/** A defiance whose `R` gain waits for the commander's answer (P9): it settles when the scene ends or at the next day end. */
+export interface PendingDefiance {
+  unitId: string;
+  severity: Severity;
+  day: number;
+  source: 'intent' | 'order' | 'demand';
+  sceneId?: string;
+}
+
+/** A threat the commander made and has not carried out yet; it lapses into a yield at the end of the next day. */
+export interface PendingThreat {
+  id: string;
+  unitId: string;
+  /** A `punishments` id, `leash` or `unspecified`. */
+  measure: string;
+  day: number;
+  deadlineDay: number;
+  /** Fixed at registration: her Impunity was below `TUNING.impunity.believeBelow`. */
+  believed: boolean;
+  channel: DisciplineChannel;
+  sceneId?: string;
+  messageRef?: string;
+  inverse: Inverse;
+}
+
+/** What an application changed, so UNDO can put exactly that back (P9). Every number is the applied delta after clamps. */
+export interface Inverse {
+  axes?: { trust?: number; affinity?: number; attraction?: number };
+  stress?: number;
+  record?: number;
+  dailyGain?: { trust?: number; affinity?: number; attraction?: number };
+  /** The state and loyalty band the application caused (put back only while she is still in them). */
+  state?: { from: string; to: string; sinceFrom: number };
+  loyaltyBand?: { from: LoyaltyBand; to: LoyaltyBand };
+  historyEntries?: number;
+  restrictionIds?: string[];
+  resources?: { credits?: number; supplies?: number; plyx?: number };
+  deeds?: Partial<Record<DeedCounter, number>>;
+  factId?: string;
+  /** Copies of what the application removed. */
+  defiance?: PendingDefiance;
+  threat?: PendingThreat;
+}
+
+export interface Application {
+  id: string;
+  unitId: string;
+  measure: string;
+  source: 'menu' | 'dialogue';
+  channel: DisciplineChannel;
+  day: number;
+  sceneId?: string;
+  messageRef?: string;
+  inverse: Inverse;
+}
+
+export interface Restriction {
+  unitId: string;
+  kind: 'confined' | 'no_leave' | 'benched' | 'duty';
+  untilDay?: number;
+  day?: number;
+  slot?: Slot;
+  applicationId?: string;
+  demandId?: string;
+}
+
+export interface Demand {
+  id: string;
+  unitId: string;
+  templateId: string;
+  text: string;
+  day: number;
+  expiresDay: number;
+  status: 'undelivered' | 'open';
+  /** Opened by a delegate that complied one Trust band short: refusing it adds a broken promise. */
+  owed?: boolean;
+  /** Her stance at opening was `open_defiance` or `defiant_loyal`: granting it gives `R` +4. */
+  impunityDriven: boolean;
+  dmId?: string;
+}
+
+export interface DisciplineState {
+  defiance: PendingDefiance[];
+  threats: PendingThreat[];
+  /** The newest `TUNING.impunity.applicationsMax` applications. */
+  applications: Application[];
+  restrictions: Restriction[];
+  sabotage?: { queued: Array<{ unitId: string; day: number }>; gear?: { unitId: string; day: number } };
+  demands: Demand[];
+  /** Days on which a demand opened, per unit (the last 7 days), for the weekly cap. */
+  demandLog: Array<{ unitId: string; day: number }>;
 }
 
 export type BodyStat = 'strength' | 'endurance' | 'reflexes';
@@ -393,6 +504,8 @@ export interface CampaignState {
   };
   /** `log` stays `unknown[]` on purpose: `leashLog(state)` filters the well-formed entries, older saves may hold others. */
   leash: { authorizationsLeft: number; refreshDay: number; log: unknown[]; seq?: number; seeded?: boolean };
+  /** P9: pending defiance, threats, applications, restrictions, sabotage and demands. Created on first write; absent in older saves. */
+  discipline?: DisciplineState;
   /** Loyalty, signs and open confrontations (P6). Absent in older saves. */
   disloyalty?: { units: Record<string, LoyaltyRecord>; open?: Confrontation };
   /** Dilemma bookkeeping and the open dilemma (P6). Absent in older saves. */

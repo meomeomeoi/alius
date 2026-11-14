@@ -6,7 +6,8 @@
     "setBy": [
       "start",
       "event"
-    ]
+    ],
+    "leverage": true
   },
   {
     "id": "shared_secret",

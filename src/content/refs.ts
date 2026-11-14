@@ -1,6 +1,6 @@
 import { INTERNAL_HISTORY_TYPES } from '../engine/relations/vocab';
 import { TUNING } from '../engine/tuning';
-import { DESCRIBED_REGISTRIES, type Conditions } from './schemas';
+import { COMMAND_STANCE_IDS, DESCRIBED_REGISTRIES, type Conditions } from './schemas';
 import { linkTargets } from './links';
 import { REGISTRY_NAMES, type Entry, type RegistryName } from './types';
 
@@ -534,6 +534,12 @@ registerChecks('dispositionLevels', (entry, regs) => {
     for (let r = 1; r <= 5; r++) if (!levels.some((l) => l.rank === r)) out.push({ path: 'rank', message: `no level has rank ${r} (ranks 1 to 5 are needed)` });
   }
   return out;
+});
+
+registerChecks('commandStances', (entry, regs) => {
+  const first = [...regs.commandStances.values()][0];
+  if (first?.id !== entry.id) return [];
+  return COMMAND_STANCE_IDS.filter((id) => !regs.commandStances.has(id)).map((id) => ({ path: 'id', message: `no command stance "${id}" (all four are needed: ${COMMAND_STANCE_IDS.join(', ')})` }));
 });
 
 registerChecks('worldPresets', (entry, regs) => {

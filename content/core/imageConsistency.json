@@ -11,7 +11,8 @@
       "listened"
     ],
     "offImage": [
-      "coerced"
+      "coerced",
+      "commander_enforced"
     ]
   },
   {

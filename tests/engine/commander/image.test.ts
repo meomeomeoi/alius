@@ -125,7 +125,7 @@ describe('ImageConsistencySchema and the core groups', () => {
     const all = [...reg.imageConsistency.values()].flatMap((g) => g.archetypes as string[]);
     expect(all.sort()).toEqual(['average', 'fit', 'frail', 'hardened', 'slight']);
     expect([...reg.imageConsistency.keys()].sort()).toEqual(['average_build', 'slight_build', 'strong_build']);
-    expect(reg.imageConsistency.get('slight_build')!.offImage).toEqual(['coerced']);
+    expect(reg.imageConsistency.get('slight_build')!.offImage).toEqual(['coerced', 'commander_enforced']);
     expect(reg.imageConsistency.get('strong_build')!.offImage).toEqual(['comforted', 'physical_affection', 'apologized']);
     expect(reg.imageConsistency.get('average_build')!.offImage).toEqual([]);
   });

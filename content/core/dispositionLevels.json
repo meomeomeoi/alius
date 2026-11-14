@@ -26,7 +26,8 @@
       "minSigns": 2
     },
     "breakdownTarget": "self",
-    "bigGestureMult": 1
+    "bigGestureMult": 1,
+    "impunityBase": 25
   },
   {
     "id": "guarded",
@@ -57,7 +58,8 @@
       "minSigns": 2
     },
     "breakdownTarget": "default",
-    "bigGestureMult": 1
+    "bigGestureMult": 1,
+    "impunityBase": 35
   },
   {
     "id": "prickly",
@@ -88,7 +90,8 @@
       "minSigns": 2
     },
     "breakdownTarget": "allies",
-    "bigGestureMult": 1.2
+    "bigGestureMult": 1.2,
+    "impunityBase": 45
   },
   {
     "id": "volatile",
@@ -120,7 +123,8 @@
       "minSigns": 2
     },
     "breakdownTarget": "allies_commander",
-    "bigGestureMult": 1.5
+    "bigGestureMult": 1.5,
+    "impunityBase": 55
   },
   {
     "id": "hazardous",
@@ -152,6 +156,7 @@
       "minSigns": 1
     },
     "breakdownTarget": "everyone",
-    "bigGestureMult": 2
+    "bigGestureMult": 2,
+    "impunityBase": 65
   }
 ]

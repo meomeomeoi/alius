@@ -42,6 +42,7 @@
     "worldOptions": "worldOptions.json",
     "dispositionLevels": "dispositionLevels.json",
     "stanceEffects": "stanceEffects.json",
-    "worldPresets": "worldPresets.json"
+    "worldPresets": "worldPresets.json",
+    "commandStances": "commandStances.json"
   }
 }

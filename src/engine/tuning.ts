@@ -45,6 +45,36 @@ export const TUNING = Object.freeze({
     /** A disposition-scaled refusal chance never exceeds this. */
     refusalCap: 0.95,
   }),
+  /** P9: Impunity, stances and covert sabotage (spec numbers verbatim; the rest are draft balance values). */
+  impunity: Object.freeze({
+    recordMin: -40,
+    recordMax: 40,
+    decayPerDay: 1,
+    /** Used when a pack's disposition level carries no `impunityBase`. */
+    defaultBase: 35,
+    /** `R` gained when a defiance goes unanswered, by severity. */
+    defied: Object.freeze({ minor: 3, moderate: 5, major: 8, extreme: 12 }),
+    /** `R` gained when the commander backs down (minor and moderate read 6, major and extreme read 10). */
+    yielded: Object.freeze({ minor: 6, moderate: 6, major: 10, extreme: 10 }),
+    /** `R` of an enforcement whose measure the registry no longer has. */
+    enforcedFallback: -8,
+    leashEnforced: -20,
+    leash: Object.freeze({ noneLeft: 10, neverUsed: 8, recentUse: -10, recentDays: 7 }),
+    defectUpkeep: 10,
+    contagion: 0.3,
+    secret: 5,
+    secretCap: 15,
+    stance: Object.freeze({ trustHigh: 45, impunityHigh: 50 }),
+    /** A threat is believed while Impunity is below this. */
+    believeBelow: 50,
+    /** `commander_enforced` and `threatened` below this confidence are dropped for every unit. */
+    minConfidence: 0.6,
+    mutinyMin: 60,
+    desertInsteadBelow: 30,
+    bands: Object.freeze({ low: 30, high: 50, brazen: 60 }),
+    sabotage: Object.freeze({ chancePerDay: 0.12, supplies: 2, credits: 10, gearChance: 0.5, gearSupplies: 2 }),
+    applicationsMax: 20,
+  }),
   /** P7a: the change ledger behind trends, stress sources and "last changes" readings. */
   ledger: Object.freeze({ days: 7, max: 150 }),
   upkeep: Object.freeze({ perUnit: 1, commander: 1, doubledByDefect: 'hunger_loop' }),
