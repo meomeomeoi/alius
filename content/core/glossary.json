@@ -980,5 +980,87 @@
     "see": [
       "demand"
     ]
+  },
+  {
+    "id": "hub",
+    "term": "Hub",
+    "short": "The outpost seen as a cross-section: its rooms, who is in them right now, and what needs you today.",
+    "long": "The hub is the home screen. Each room shows the soldiers who are there this slot. Tap a room to see who is present, talk to someone or start an activity. Open the [[pda_device|PDA]] for the full tabs. [[whereabouts|Where soldiers are]] can change every slot.",
+    "see": [
+      "whereabouts",
+      "marker_tone",
+      "pda_device"
+    ]
+  },
+  {
+    "id": "whereabouts",
+    "term": "Whereabouts",
+    "short": "Where a soldier is this slot. It follows her injuries, orders and tastes, and can change when the slot or the day does.",
+    "long": "Nobody keeps a timetable. Where a soldier is comes from what the outpost knows: the injured lie in the medbay, a confined soldier stays in quarters, a soldier on duty works her shift, and at night everyone sleeps. Otherwise she drifts to rooms that are open and that she likes. Reopening the screen never moves her; only a new slot or day does.",
+    "see": [
+      "hub",
+      "end_slot",
+      "away"
+    ]
+  },
+  {
+    "id": "marker_tone",
+    "term": "Marker ring",
+    "short": "The ring and symbol on a soldier's marker: ! danger, ♥ bond, + trust, * affinity, ~ warning, · nothing notable.",
+    "long": "The ring colour is always paired with a symbol, so it never has to be read by colour alone. ! means stress is high, she is injured or her loyalty is breaking. ♥ is a romantic bond. + is a trusting friendship. * is strong personal warmth. ~ means a cold relationship or rising stress. The state glyph beside it names her [[relationship_state|relationship state]].",
+    "see": [
+      "hub",
+      "stress",
+      "relationship_state"
+    ]
+  },
+  {
+    "id": "objective",
+    "term": "Objective",
+    "short": "What the outpost is working toward right now: the story mission in progress, or the nearest deadline.",
+    "long": "The hub shows one standing order. A mission that advances the story comes first; otherwise the mission with the nearest deadline. With no missions on the board it reads NO STANDING ORDERS.",
+    "see": [
+      "hub",
+      "tonight"
+    ]
+  },
+  {
+    "id": "tonight",
+    "term": "Tonight",
+    "short": "What is waiting for you by the end of the day: knocks at the door, unread messages, answers owed and deadlines.",
+    "long": "The list shows only what you could already learn from the PDA. It never reveals what a soldier is hiding. A mission due today or tomorrow, a shortage or an injury may also appear here.",
+    "see": [
+      "hub",
+      "objective"
+    ]
+  },
+  {
+    "id": "end_slot",
+    "term": "End slot",
+    "short": "Pass the current slot without doing anything. The time is spent and nothing is gained.",
+    "long": "Use it when there is nothing worth doing. It costs the slot like any other action, and the day moves on when the last slot is gone. A quiet night is spent asleep instead. It is blocked while a conversation, an expedition, a decision or a late visitor is waiting.",
+    "see": [
+      "whereabouts",
+      "hub"
+    ]
+  },
+  {
+    "id": "pda_device",
+    "term": "PDA",
+    "short": "Your handheld. It slides up over the hub and holds every tab; its casing follows your corporation.",
+    "long": "Press Tab, or the OPEN PDA button, to raise it, and Tab or Esc to lower it. Number keys 1 to 8 open a tab directly. The casing is only a skin: it changes nothing in the game, and you can pick another in SYS.",
+    "see": [
+      "hub"
+    ]
+  },
+  {
+    "id": "away",
+    "term": "Away",
+    "short": "Out on an expedition. A soldier who is away is in no room and cannot be talked to until the squad returns.",
+    "long": "The AWAY strip lists the party of an open expedition. They are back on the hub when it ends.",
+    "see": [
+      "whereabouts",
+      "hub"
+    ]
   }
 ]

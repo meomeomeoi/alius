@@ -1,6 +1,6 @@
 import { INTERNAL_HISTORY_TYPES } from '../engine/relations/vocab';
 import { TUNING } from '../engine/tuning';
-import { COMMAND_STANCE_IDS, DESCRIBED_REGISTRIES, type Conditions } from './schemas';
+import { COMMAND_STANCE_IDS, DESCRIBED_REGISTRIES, HUB_HOSTS, type Conditions } from './schemas';
 import { linkTargets } from './links';
 import { REGISTRY_NAMES, type Entry, type RegistryName } from './types';
 
@@ -576,6 +576,34 @@ for (const registry of ['clocks', 'missionTemplates', 'dilemmaTemplates'] as con
       ? [{ path: 'family', message: `family "${entry.family}" is not enabled by any world option choice (enable_family)` }]
       : []);
 }
+
+// ---------------------------------------------------------------------------------------------
+// P10: hub rooms name a location, a facility, activities; the four hosts each sit in one room
+
+registerRefs('hubRooms', (entry) => {
+  const out: Ref[] = [];
+  if (typeof entry.sceneLocationId === 'string') out.push({ registry: 'locations', id: entry.sceneLocationId, path: 'sceneLocationId' });
+  if (typeof entry.facilityId === 'string') out.push({ registry: 'facilities', id: entry.facilityId, path: 'facilityId' });
+  (entry.activityIds as unknown[] | undefined)?.forEach((id, i) => out.push({ registry: 'activities', id: String(id), path: `activityIds[${i}]` }));
+  return out;
+});
+
+registerChecks('hubRooms', (entry, regs) => {
+  const out: RegistryCheck[] = [];
+  const rooms = [...regs.hubRooms.values()];
+  const hostsOf = (e: Entry) => ((e.hosts ?? []) as string[]);
+  ((entry.hosts ?? []) as string[]).forEach((host, i) => {
+    const others = rooms.filter((r) => r.id !== entry.id && hostsOf(r).includes(host));
+    if (others.length > 0) out.push({ path: `hosts[${i}]`, message: `"${host}" is hosted by more than one room (also ${others.map((r) => `"${r.id}"`).join(', ')})` });
+  });
+  // the registry-wide rule is reported once, on the first room
+  if (rooms[0]?.id === entry.id) {
+    for (const host of HUB_HOSTS) {
+      if (!rooms.some((r) => hostsOf(r).includes(host))) out.push({ path: 'hosts', message: `no room hosts "${host}" (all of ${HUB_HOSTS.join(', ')} are needed)` });
+    }
+  }
+  return out;
+});
 
 // ---------------------------------------------------------------------------------------------
 // P7a: glossary entries and `[[links]]` in descriptions

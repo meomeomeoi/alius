@@ -1,0 +1,90 @@
+[
+  {
+    "id": "roof",
+    "label": "ROOF",
+    "description": "Open sky, a rusted rail and the only place on the outpost where nobody listens.",
+    "rect": { "x": 0, "y": 0, "w": 100, "h": 12 },
+    "sceneLocationId": "roof",
+    "weights": { "morning": 0, "afternoon": 1, "evening": 2, "night": 0 },
+    "likeTags": ["quiet", "smoking", "sky"]
+  },
+  {
+    "id": "quarters",
+    "label": "QUARTERS",
+    "description": "Bunk rooms and the commander's cell. A soldier sent here has nowhere else to go.",
+    "rect": { "x": 0, "y": 14, "w": 74, "h": 30 },
+    "sceneLocationId": "quarters_unit",
+    "facilityId": "barracks",
+    "activityIds": ["rest", "study"],
+    "weights": { "morning": 2, "afternoon": 1, "evening": 2, "night": 1 },
+    "likeTags": ["sleep", "books"],
+    "hosts": ["confined", "night"],
+    "commanderCell": true
+  },
+  {
+    "id": "comms",
+    "label": "COMMS",
+    "description": "A humming rack of corporate radios and one chair that always seems to be taken.",
+    "rect": { "x": 76, "y": 14, "w": 24, "h": 30 },
+    "sceneLocationId": "comms_room",
+    "facilityId": "comms",
+    "activityIds": ["scout_net"],
+    "weights": { "morning": 1, "afternoon": 1, "evening": 0, "night": 0 },
+    "likeTags": ["tech", "music"]
+  },
+  {
+    "id": "mess",
+    "label": "MESS HALL",
+    "description": "Long tables, a dented serving line and whatever the stew is today.",
+    "rect": { "x": 0, "y": 46, "w": 32, "h": 32 },
+    "sceneLocationId": "mess_hall",
+    "facilityId": "mess_hall",
+    "activityIds": ["mess"],
+    "weights": { "morning": 3, "afternoon": 1, "evening": 3, "night": 0 },
+    "likeTags": ["food", "company"]
+  },
+  {
+    "id": "medbay",
+    "label": "MEDBAY",
+    "description": "Where the injured lie up and defects are worked on. A soldier on the cot is not going anywhere.",
+    "rect": { "x": 34, "y": 46, "w": 32, "h": 32 },
+    "sceneLocationId": "medbay",
+    "facilityId": "medbay",
+    "activityIds": ["medbay"],
+    "weights": { "morning": 1, "afternoon": 1, "evening": 0, "night": 0 },
+    "likeTags": ["medicine"],
+    "hosts": ["injured"]
+  },
+  {
+    "id": "workshop",
+    "label": "WORKSHOP",
+    "description": "Benches, a plyx press and the smell of hot solder. Duty shifts end up here.",
+    "rect": { "x": 68, "y": 46, "w": 32, "h": 32 },
+    "sceneLocationId": "workshop",
+    "facilityId": "workshop",
+    "activityIds": ["workshop"],
+    "weights": { "morning": 2, "afternoon": 2, "evening": 1, "night": 0 },
+    "likeTags": ["tech", "machines"],
+    "hosts": ["duty"]
+  },
+  {
+    "id": "garage",
+    "label": "GARAGE",
+    "description": "Two stripped transports and a floor nobody has ever managed to get clean.",
+    "rect": { "x": 0, "y": 80, "w": 66, "h": 20 },
+    "sceneLocationId": "garage",
+    "activityIds": ["work"],
+    "weights": { "morning": 1, "afternoon": 1, "evening": 0, "night": 0 },
+    "likeTags": ["machines", "vehicles"]
+  },
+  {
+    "id": "training",
+    "label": "TRAINING YARD",
+    "description": "Packed dirt, scarred targets and a rack of weapons that have all been fired in anger.",
+    "rect": { "x": 68, "y": 80, "w": 32, "h": 20 },
+    "sceneLocationId": "training_yard",
+    "activityIds": ["train"],
+    "weights": { "morning": 3, "afternoon": 2, "evening": 0, "night": 0 },
+    "likeTags": ["fitness", "weapons"]
+  }
+]

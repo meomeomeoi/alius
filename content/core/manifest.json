@@ -46,6 +46,7 @@
     "commandStances": "commandStances.json",
     "punishments": "punishments.json",
     "demandTemplates": "demandTemplates.json",
-    "reputations": "reputations.json"
+    "reputations": "reputations.json",
+    "hubRooms": "hubRooms.json"
   }
 }

@@ -781,3 +781,53 @@ describe('core content pack: P6 content', () => {
     expect(r.reputations.size).toBe(7);
   });
 });
+
+describe('core content pack: P10 hub rooms', () => {
+  const rect = (r: unknown) => r as { x: number; y: number; w: number; h: number };
+
+  it('hubRooms has 8 rooms, each pointing at an existing location, facility and activities', async () => {
+    const { registries: r } = await load();
+    expect(r.hubRooms.size).toBe(8);
+    for (const room of r.hubRooms.values()) {
+      expect(r.locations.has(room.sceneLocationId as string), `${room.id} location`).toBe(true);
+      if (room.facilityId) expect(r.facilities.has(room.facilityId as string), `${room.id} facility`).toBe(true);
+      for (const a of (room.activityIds ?? []) as string[]) expect(r.activities.has(a), `${room.id} activity ${a}`).toBe(true);
+    }
+  });
+
+  it('every host appears on exactly one room', async () => {
+    const { registries: r } = await load();
+    for (const host of ['injured', 'confined', 'duty', 'night']) {
+      const rooms = [...r.hubRooms.values()].filter((x) => ((x.hosts ?? []) as string[]).includes(host));
+      expect(rooms.map((x) => x.id), host).toHaveLength(1);
+    }
+    expect(r.hubRooms.get('medbay')!.hosts).toEqual(['injured']);
+    expect(r.hubRooms.get('workshop')!.hosts).toEqual(['duty']);
+    expect(r.hubRooms.get('quarters')!.hosts).toEqual(['confined', 'night']);
+  });
+
+  it('quarters is the commander cell and nothing else is', async () => {
+    const { registries: r } = await load();
+    expect([...r.hubRooms.values()].filter((x) => x.commanderCell === true).map((x) => x.id)).toEqual(['quarters']);
+  });
+
+  it('the room rects do not overlap', async () => {
+    const { registries: r } = await load();
+    const rooms = [...r.hubRooms.values()];
+    for (let i = 0; i < rooms.length; i++) {
+      for (let j = i + 1; j < rooms.length; j++) {
+        const a = rect(rooms[i].rect);
+        const b = rect(rooms[j].rect);
+        const overlap = a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+        expect(overlap, `${rooms[i].id} vs ${rooms[j].id}`).toBe(false);
+      }
+    }
+  });
+
+  it('the hub glossary concepts exist', async () => {
+    const { registries: r } = await load();
+    for (const id of ['hub', 'whereabouts', 'marker_tone', 'objective', 'tonight', 'end_slot', 'pda_device', 'away']) {
+      expect(r.glossary.has(id), id).toBe(true);
+    }
+  });
+});

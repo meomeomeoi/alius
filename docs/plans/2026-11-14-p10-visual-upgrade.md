@@ -97,13 +97,13 @@ Rulings taken while planning; those marked **user** were answered by the user on
 **Interfaces:**
 - Produces: `REGISTRY_NAMES` + `'hubRooms'` (P10 comment); `HubRoomSchema` = `{ id, label: str, description: str, rect: { x, y, w, h } (numbers 0–100, x + w ≤ 100, y + h ≤ 100), sceneLocationId: str, facilityId?: str, activityIds?: str[], weights: Partial<Record<Slot, int 0–5>>, likeTags?: str[], hosts?: Array<'injured'|'confined'|'duty'|'night'>, commanderCell?: boolean }`; `hubRooms` in `DESCRIBED_REGISTRIES`. Loader checks: `sceneLocationId` ∈ `locations`, `facilityId` ∈ `facilities`, each `activityIds` ∈ `activities`, each `hosts` value on at most one room (when the registry is non-empty, each of the four is on exactly one).
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `hubSchemas.test.ts`: `a rect past the right edge is rejected` (`x: 80, w: 30`); `weights above 5 are rejected`; `an unknown host is rejected`; loader (fixture pack): `an unknown sceneLocationId is an error naming the room`; `two rooms hosting injured is an error`; `an unknown activity id is an error`. `core.test.ts`: `hubRooms has 8 rooms`; every host appears exactly once; `quarters.commanderCell === true`; the core room rects do not overlap (pairwise). `pronouns.test.ts`: `hubRooms` fields `label, description` have no commander pronoun.
 
-- [ ] **Step 2: Run** `npx vitest run tests/content` → FAIL.
+- [x] **Step 2: Run** `npx vitest run tests/content` → FAIL.
 
-- [ ] **Step 3: Implement.** `hubRooms.json` (rects in % of the cross-section, from direction A):
+- [x] **Step 3: Implement.** `hubRooms.json` (rects in % of the cross-section, from direction A):
 
   | id | label | sceneLocationId | facilityId | rect x,y,w,h | activityIds | weights m/a/e/n | likeTags | hosts |
   |---|---|---|---|---|---|---|---|---|
@@ -118,7 +118,7 @@ Rulings taken while planning; those marked **user** were answered by the user on
 
   `quarters.commanderCell: true`. Descriptions are one sentence each, in the setting's voice, no commander pronoun (e.g. medbay: `Where the injured lie up and defects are worked on. A soldier on the cot is not going anywhere.`). Before writing `likeTags`, list the tags `unit.likes` actually uses (`grep -h likes content/core src/setup`) and keep only tags that occur; an unused tag is harmless but useless. Glossary entries (`short` + `long`): `hub` (the outpost cross-section, the home screen), `whereabouts` (where a soldier is this slot and why it can change), `marker_tone` (the ring and glyph legend), `objective`, `tonight`, `end_slot` (passing a slot costs it and gives nothing), `pda_device`, `away` (out on an expedition).
 
-- [ ] **Step 4: Run** `npm test` → PASS. **Step 5: Commit** `feat(content): hubRooms registry and the eight core rooms`
+- [x] **Step 4: Run** `npm test` → PASS. **Step 5: Commit** `feat(content): hubRooms registry and the eight core rooms`
 
 ---
 

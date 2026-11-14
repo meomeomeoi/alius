@@ -51,6 +51,12 @@ describe('no pronoun for the commander in content', () => {
     expect(texts.filter(([, t]) => COMMANDER_PRONOUN.test(t)).map(([where]) => where)).toEqual([]);
   });
 
+  it('hub rooms (P10)', () => {
+    const texts = fields('hubRooms', ['label', 'description']);
+    expect(texts).toHaveLength(16);
+    expect(texts.filter(([, t]) => COMMANDER_PRONOUN.test(t) || /commander[^.]*\btheir\b/i.test(t)).map(([where]) => where)).toEqual([]);
+  });
+
   it('command stances (P9)', () => {
     const texts = fields('commandStances', ['name', 'description', 'directive', 'refusal']);
     expect(texts).toHaveLength(20);

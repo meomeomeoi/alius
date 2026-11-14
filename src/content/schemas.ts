@@ -1407,6 +1407,39 @@ Object.assign(registrySchemas, {
   worldOptions: WorldOptionSchema, dispositionLevels: DispositionLevelSchema, stanceEffects: StanceEntrySchema, worldPresets: WorldPresetSchema,
 });
 
+// ---------------------------------------------------------------------------------------------
+// P10: hub rooms
+
+/** Who a room can be asked to host regardless of the routine: the injured, the confined, the soldier on duty, anyone at night. */
+export const HUB_HOSTS = ['injured', 'confined', 'duty', 'night'] as const;
+export type HubHost = (typeof HUB_HOSTS)[number];
+
+const pct = z.number().min(0).max(100);
+
+/** A room of the outpost cross-section. Code reads rooms by `hosts`, `activityIds` and `sceneLocationId`, never by id. */
+export const HubRoomSchema = BaseEntrySchema.extend({
+  label: str,
+  description: str.max(DESCRIPTION_MAX),
+  /** Position over the cross-section, in percent of its width and height. */
+  rect: z.object({ x: pct, y: pct, w: pct, h: pct }).strict().refine((r) => r.x + r.w <= 100 && r.y + r.h <= 100, 'the rect must stay inside the cross-section (x + w and y + h at most 100)'),
+  sceneLocationId: str,
+  /** The room is skipped by the routine pick while this facility is below level 1 (absent = always there). */
+  facilityId: str.optional(),
+  /** Activities offered in the room panel. */
+  activityIds: z.array(str).optional(),
+  /** Routine weight per slot (0 = nobody picks it then). */
+  weights: z.object({
+    morning: int.min(0).max(5).optional(), afternoon: int.min(0).max(5).optional(),
+    evening: int.min(0).max(5).optional(), night: int.min(0).max(5).optional(),
+  }).strict(),
+  /** A soldier who likes one of these tags weighs the room up. */
+  likeTags: z.array(str).optional(),
+  hosts: z.array(z.enum(HUB_HOSTS)).optional(),
+  commanderCell: z.boolean().optional(),
+}).strict();
+
+Object.assign(registrySchemas, { hubRooms: HubRoomSchema });
+
 /** Player-visible registries whose entries carry an optional `description` (skills and statuses already require one). */
 export const DESCRIBED_REGISTRIES = [
   'roles', 'skills', 'signatures', 'statuses', 'defects', 'items', 'affixes', 'enemies',
@@ -1418,6 +1451,8 @@ export const DESCRIBED_REGISTRIES = [
   'worldOptions', 'dispositionLevels', 'worldPresets',
   // P9
   'commandStances', 'punishments', 'demandTemplates', 'reputations',
+  // P10
+  'hubRooms',
 ] as const satisfies readonly RegistryName[];
 
 /** Adds the optional `description` rule to a registry schema without changing its shape. */
