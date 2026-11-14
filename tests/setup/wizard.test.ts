@@ -35,6 +35,7 @@ function deferred<T>() {
   return { promise, resolve };
 }
 
+/** These tests walk the classic steps: the wizard is made in veteran mode (the prologue mode has its own file, wizardPrologue.test.ts). */
 function make(opts: { persona?: string; canBind?: boolean; desireBond?: boolean; random?: () => number } = {}) {
   const pending: Array<ReturnType<typeof deferred<ImportOutcome>>> = [];
   const importer = vi.fn((_avatar: string, _sections: ImportSection[], _world: Record<string, string>) => {
@@ -53,6 +54,7 @@ function make(opts: { persona?: string; canBind?: boolean; desireBond?: boolean;
     { registries: reg, desireBondDefects: opts.desireBond ?? false, importer, commanderImporter, random: opts.random, onChange: (s) => changes.push(structuredClone(s)) },
     { personaName: opts.persona ?? 'Vale', canBindCurrent: opts.canBind ?? false },
   );
+  w.setMode('veteran');
   return { w, importer, pending, pendingCommander, commanderImporter, changes };
 }
 const card = (n: string) => ({ avatar: `${n}.png`, name: n[0].toUpperCase() + n.slice(1) });

@@ -2,6 +2,7 @@ import type { Entry, Registries } from '../content/types';
 import { BODY_STATS, defaultCommanderSetup, poolSpent, traitBlockReason, validateCommanderSetup, type CommanderSetup } from '../engine/commander/profile';
 import { commandStance, impunityBand, impunityOf, stanceEntry, type CommandStance } from '../engine/discipline';
 import { SETUP_LIMITS, buildCampaign, validateSetup, type SetupResult, type UnitSetup } from '../engine/setup';
+import { prologueFor, stepsOf, type StepWithId } from '../engine/onboarding';
 import { TUNING } from '../engine/tuning';
 import type { SignatureInstance, Unit } from '../engine/state/types';
 import { ALL_SECTIONS, type ImportSection } from '../llm/calls/profileImport';
@@ -11,7 +12,18 @@ import { defaultWorldOptions } from '../engine/worldOptions';
 import type { CommanderImportOutcome } from './commander';
 import type { ImportedProfile, ImportOutcome } from './profile';
 
-export type WizardStep = 'dossier' | 'world' | 'commander' | 'units' | 'calibration' | 'review';
+/**
+ * `commander` and `review` are the veteran intake's plain forms; `cold_open`, `intake`, `exam` and `file` are the in-world
+ * steps of a prologue (P11). `file` is the dossier the commander signs to deploy.
+ */
+export type WizardStep = 'dossier' | 'world' | 'commander' | 'units' | 'calibration' | 'review' | 'cold_open' | 'intake' | 'exam' | 'file';
+/** P11: `prologue` plays the in-world intake after calibration; `veteran` is the classic wizard (and skips the tutorial). */
+export type WizardMode = 'prologue' | 'veteran';
+
+const STEPS_BY_MODE: Record<WizardMode, readonly WizardStep[]> = {
+  prologue: ['dossier', 'world', 'units', 'calibration', 'cold_open', 'intake', 'exam', 'file'],
+  veteran: ['dossier', 'world', 'commander', 'units', 'calibration', 'review'],
+};
 export type CalibrationStatus = 'idle' | 'loading' | 'ready' | 'manual';
 
 export interface UnitDraft {
@@ -49,6 +61,8 @@ export interface CommanderImportState {
 
 export interface WizardState {
   step: WizardStep;
+  /** P11: `prologue` while the chosen start has one (the default), else `veteran`. */
+  mode: WizardMode;
   commanderName: string;
   startId: string | null;
   crimeId: string | null;
@@ -118,6 +132,7 @@ export class Wizard {
   constructor(private deps: WizardDeps, init: { personaName: string; canBindCurrent: boolean }) {
     this.s = {
       step: 'dossier',
+      mode: this.deps.registries.prologues.size > 0 ? 'prologue' : 'veteran',
       commanderName: init.personaName.trim() || 'Commander',
       startId: null,
       crimeId: null,
@@ -179,7 +194,46 @@ export class Wizard {
   setStart(id: string): void {
     if (!this.deps.registries.starts.has(id)) return;
     this.s.startId = id;
+    // a start with no prologue has nothing to play in fiction: the classic wizard it is
+    if (prologueFor(this.deps.registries, id) === null) this.s.mode = 'veteran';
     this.emit();
+  }
+
+  /** The prologue entry of the chosen start, or null (no start yet, or the start has none). */
+  private prologue() {
+    return this.s.startId ? prologueFor(this.deps.registries, this.s.startId) : null;
+  }
+
+  /**
+   * Switches between the prologue and the veteran intake. Only on the dossier (the steps after it differ), and `prologue`
+   * only when the chosen start has one. Every entered field is kept.
+   */
+  setMode(mode: WizardMode): void {
+    if ((mode !== 'prologue' && mode !== 'veteran') || this.s.step !== 'dossier' || this.s.mode === mode) return;
+    if (mode === 'prologue' && this.prologue() === null && this.s.startId !== null) return;
+    if (mode === 'prologue' && this.deps.registries.prologues.size === 0) return;
+    this.s.mode = mode;
+    this.emit();
+  }
+
+  /** The steps of the current mode, in order (calibration is skipped by `next` and `back` when no unit was chosen). */
+  stepsFor(): WizardStep[] {
+    return [...STEPS_BY_MODE[this.s.mode]];
+  }
+
+  /** The prologue step behind the current in-world step: the cold open, the intake, the exam or the dossier. */
+  prologueStep(): StepWithId | null {
+    const entry = this.s.mode === 'prologue' ? this.prologue() : null;
+    if (!entry) return null;
+    const steps = stepsOf(entry);
+    const has = (st: StepWithId, ...fields: string[]) => (st.fields ?? []).some((f) => fields.includes(f));
+    switch (this.s.step) {
+      case 'cold_open': return steps.find((st) => st.kind === 'paper_form' && (st.fields ?? []).length === 0) ?? null;
+      case 'intake': return steps.find((st) => has(st, 'crime', 'name')) ?? null;
+      case 'exam': return steps.find((st) => has(st, 'body', 'expression', 'seasoning', 'traits')) ?? null;
+      case 'file': return steps.find((st) => st.kind === 'dossier') ?? null;
+      default: return null;
+    }
   }
 
   setCrime(id: string): void {
@@ -409,12 +463,20 @@ export class Wizard {
     const fail = (reason: string) => ({ ok: false, reason });
     switch (this.s.step) {
       case 'dossier':
+        // the prologue asks for the name and the crime in fiction (the intake), so only the start is chosen here
+        if (this.s.mode === 'prologue') return this.s.startId ? { ok: true } : fail('Choose a starting point.');
         if (this.s.commanderName.trim() === '') return fail('Enter the commander\'s name.');
         if (!this.s.startId) return fail('Choose a starting point.');
         if (!this.s.crimeId) return fail('Choose the commander\'s crime.');
         return { ok: true };
-      case 'world':
+      case 'intake':
+        if (this.s.commanderName.trim() === '') return fail('Enter the commander\'s name.');
+        if (!this.s.crimeId) return fail('Choose the commander\'s crime.');
         return { ok: true };
+      case 'world':
+      case 'cold_open':
+        return { ok: true };
+      case 'exam':
       case 'commander': {
         const errors = validateCommanderSetup(this.s.commander, this.deps.registries, { desireBondDefects: this.deps.desireBondDefects });
         return errors.length === 0 ? { ok: true } : fail(errors[0]);
@@ -431,6 +493,7 @@ export class Wizard {
         }
         return { ok: true };
       }
+      case 'file':
       case 'review': {
         const busy = this.s.units.find((u) => u.regenerating.length > 0);
         if (busy) return fail(`${busy.displayName} is still regenerating.`);
@@ -440,33 +503,34 @@ export class Wizard {
     }
   }
 
+  /** Where `next`/`back` go from here: the neighbour in the mode's order, jumping over calibration when no unit was chosen. */
+  private neighbour(dir: 1 | -1): WizardStep | null {
+    const order = STEPS_BY_MODE[this.s.mode];
+    let i = order.indexOf(this.s.step) + dir;
+    if (order[i] === 'calibration' && this.s.units.length === 0) i += dir;
+    return order[i] ?? null;
+  }
+
   next(): void {
     if (!this.canAdvance().ok) return;
-    if (this.s.step === 'dossier') this.s.step = 'world';
-    else if (this.s.step === 'world') this.s.step = 'commander';
-    else if (this.s.step === 'commander') {
-      this.commanderToken++; // a prefill still running belongs to a screen the player left
-      this.s.step = 'units';
-    } else if (this.s.step === 'units') {
-      if (this.s.units.length === 0) this.s.step = 'review';
-      else {
-        this.s.step = 'calibration';
-        this.s.calibrationIndex = 0;
-        // every unit imports at once: the waits would otherwise add up as the player pages through
-        for (let i = 0; i < this.s.units.length; i++) this.calibrate(i);
-      }
-    } else if (this.s.step === 'calibration') this.s.step = 'review';
+    const to = this.neighbour(1);
+    if (to === null) return;
+    const from = this.s.step;
+    if (from === 'commander' || from === 'exam') this.commanderToken++; // a prefill still running belongs to a screen the player left
+    this.s.step = to;
+    if (to === 'calibration') {
+      this.s.calibrationIndex = 0;
+      // every unit imports at once: the waits would otherwise add up as the player pages through
+      for (let i = 0; i < this.s.units.length; i++) this.calibrate(i);
+    }
     this.emit();
   }
 
   back(): void {
-    if (this.s.step === 'world') this.s.step = 'dossier';
-    else if (this.s.step === 'commander') {
-      this.commanderToken++;
-      this.s.step = 'world';
-    } else if (this.s.step === 'units') this.s.step = 'commander';
-    else if (this.s.step === 'calibration') this.s.step = 'units';
-    else if (this.s.step === 'review') this.s.step = this.s.units.length === 0 ? 'units' : 'calibration';
+    const to = this.neighbour(-1);
+    if (to === null) return;
+    if (this.s.step === 'commander' || this.s.step === 'exam') this.commanderToken++;
+    this.s.step = to;
     this.emit();
   }
 
@@ -640,6 +704,9 @@ export class Wizard {
       units.push({ cardRef: u.avatar, displayName: u.displayName, roleId, signature, ...structuredClone(rest) });
     }
     const result: SetupResult = { commanderName: this.s.commanderName, startId, crimeId, units, commander: structuredClone(this.s.commander), world: { options: { ...this.s.world.options } } };
+    // P11: a start with a prologue always starts inside it; the veteran intake only marks the wizard steps as skipped
+    const prologue = prologueFor(this.deps.registries, startId);
+    if (prologue) result.onboarding = { prologueId: prologue.id, veteran: this.s.mode === 'veteran' };
     const errors = validateSetup(result, this.deps.registries, { desireBondDefects: this.deps.desireBondDefects });
     return { result: errors.length === 0 ? result : null, errors };
   }

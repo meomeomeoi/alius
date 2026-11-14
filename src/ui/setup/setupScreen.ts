@@ -81,6 +81,8 @@ export function renderSetupScreen(host: HTMLElement, ctx: SetupScreenCtx): void 
       case 'units': return units(s);
       case 'calibration': return calibration(s);
       case 'review': return review(s);
+      // P11: the in-world steps get their bodies in the next commit (src/ui/setup/prologueSteps.ts)
+      case 'cold_open': case 'intake': case 'exam': case 'file': return h('div', { class: 'alius-setup-body' });
     }
   }
 

@@ -51,6 +51,7 @@ function make(opts: { canBind?: boolean; outcome?: ImportOutcome; characters?: n
     { registries: reg, desireBondDefects: false, importer: importer as never, onChange: () => {} },
     { personaName: 'Vale', canBindCurrent: opts.canBind ?? false },
   );
+  wizard.setMode('veteran'); // the classic steps; the in-world steps are tested in setupPrologue.test.ts
   const host = h('div', { id: 'host' });
   document.body.append(host);
   const onCancel = vi.fn();

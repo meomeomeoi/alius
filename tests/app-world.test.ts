@@ -602,8 +602,7 @@ describe('world options in the app (P8)', () => {
     expect(host.textContent).toContain('WORLD PARAMETERS');
     click('.alius-world-preset[data-id="brutal"]');
     expect(t.app.setupState()!.world.preset).toBe('brutal');
-    click('button[data-action="next"]'); // → commander file
-    click('button[data-action="next"]'); // → units
+    click('button[data-action="next"]'); // → units (the prologue asks for the commander file after calibration)
     click('input[data-avatar="rhea.png"]');
     t.st.mainReplies = [WORLD_IMPORT];
     click('button[data-action="next"]'); // → calibration: the import starts

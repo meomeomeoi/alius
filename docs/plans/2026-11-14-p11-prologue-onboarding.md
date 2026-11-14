@@ -167,7 +167,7 @@ Glossary: `prologue`, `intake_interview`, `medical_exam`, `personnel_dossier`, `
 - Consumes: `prologueFor`, `stepsOf`, `isWizardStep` (Task 2).
 - Produces: `WizardStep` adds `'cold_open' | 'intake' | 'exam' | 'file'`; `WizardState.mode: 'prologue' | 'veteran'`; `Wizard.setMode(mode)` (prologue refused when `prologueFor(reg, startId)` is null); `Wizard.stepsFor(): WizardStep[]`; `Wizard.prologueStep(): (PrologueStep & { id }) | null` (the prologue step behind the current fiction step); `result()` includes `onboarding: { prologueId, veteran }` whenever the start has a prologue.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `wizardPrologue.test.ts`:
 - `default mode is prologue when the start has one` and `start without prologue forces veteran` (registries copy with `prologues` emptied; `setMode('prologue')` changes nothing);
@@ -181,13 +181,13 @@ Glossary: `prologue`, `intake_interview`, `medical_exam`, `personnel_dossier`, `
 - `switching mode on the dossier keeps every entered field`.
 Existing `wizard.test.ts` tests run in veteran mode: set `setMode('veteran')` where they assume the old order.
 
-- [ ] **Step 2: Run** `npx vitest run tests/setup` → FAIL.
+- [x] **Step 2: Run** `npx vitest run tests/setup` → FAIL.
 
-- [ ] **Step 3: Implement.** `next()`/`back()` walk `stepsFor()`; the import kick-off that today happens on leaving `units` stays there; the commander-prefill token bump that happens on leaving `commander` also happens on leaving `exam`. `canAdvance` for `intake` checks name + crime, for `exam` the commander validator, for `cold_open` always ok, for `file` the old `review` rule.
+- [x] **Step 3: Implement.** `next()`/`back()` walk `stepsFor()`; the import kick-off that today happens on leaving `units` stays there; the commander-prefill token bump that happens on leaving `commander` also happens on leaving `exam`. `canAdvance` for `intake` checks name + crime, for `exam` the commander validator, for `cold_open` always ok, for `file` the old `review` rule.
 
-- [ ] **Step 4: Run** `npx vitest run tests/setup` → PASS; `npm test` → green.
+- [x] **Step 4: Run** `npx vitest run tests/setup` → PASS; `npm test` → green.
 
-- [ ] **Step 5: Commit** `feat(setup): prologue mode in the wizard`
+- [x] **Step 5: Commit** `feat(setup): prologue mode in the wizard`
 
 ---
 
