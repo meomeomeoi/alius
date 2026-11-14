@@ -1,6 +1,7 @@
 import { registerAction } from '../dispatch';
 import { completionReason, currentStep, enterStep, livingNamed, stepIndex } from '../onboarding';
 import { stepsOf } from '../onboarding/prologue';
+import { withdrawTutorial } from '../onboarding/tutorial';
 import type { CampaignState } from '../state/types';
 
 // Importing this module registers the P11 `onboarding/*` actions. Each one is refused once the prologue is over (or was never there).
@@ -37,6 +38,7 @@ registerAction('onboarding/skip_step', (draft, payload, ctx) => {
   const step = currentFor(draft, ctx, payload, 'onboarding/skip_step');
   if (!step.skippable) throw new Error('This step cannot be skipped.');
   const o = open(draft);
+  if (step.kind === 'expedition') withdrawTutorial(draft); // the patrol is not going out: it leaves the board
   o.skipped.push(step.id);
   return [{ type: 'onboarding_step_skipped', stepId: step.id }, ...enterStep(draft, ctx, stepIndex(draft, ctx.registries, step.id) + 1, step.kind === 'expedition')];
 });

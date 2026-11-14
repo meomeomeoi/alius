@@ -14,6 +14,7 @@ export interface OnboardingCardController {
   skipFirstWords(unitId: string): void;
   skipStep(): Promise<void>;
   resumeScene(): void;
+  launchTutorial(): boolean;
 }
 
 export interface OnboardingCardCtx {
@@ -69,6 +70,13 @@ export function renderOnboardingCard(host: HTMLElement, ctx: OnboardingCardCtx):
     body.append(h('div', { class: 'alius-row' }, skip()));
   } else if (step.kind === 'scene') {
     body.append(h('div', { class: 'alius-row' }, button('[ BEGIN LINE-UP ]', 'begin', address, () => void controller.startLineup(), scene !== undefined), skip()));
+  } else if (step.kind === 'expedition') {
+    const out = state.expedition !== undefined;
+    body.append(h('div', { class: 'alius-row' },
+      out
+        ? button('[ RESUME PATROL ]', 'resume-run', address, () => controller.launchTutorial())
+        : button('[ LAUNCH TUTORIAL ]', 'launch', address, () => controller.launchTutorial(), scene !== undefined),
+      out ? null : skip()));
   } else {
     body.append(h('div', { class: 'alius-row' }, skip()));
   }

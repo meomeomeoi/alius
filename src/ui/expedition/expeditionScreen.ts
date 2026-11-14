@@ -12,6 +12,7 @@ import type { RoutePick } from '../../engine/commander/checks';
 import { renderDilemma } from '../dilemma/dilemmaPanel';
 import { renderRoutePicker } from '../dilemma/routePicker';
 import { h } from '../dom';
+import { coachStrip, type CoachCtx } from '../onboarding/coach';
 import { renderNodeMap } from './nodeMapView';
 import { newDraft, renderPlanner, type PlannerDraft } from './planner';
 import { renderReport } from './report';
@@ -26,6 +27,8 @@ export interface ExpeditionScreenCtx {
   recapPending?: () => boolean;
   /** P6: the player's pick of a generated dilemma for the pending event node. */
   onDilemmaChoose?: (index: number, route?: RoutePick) => void;
+  /** P11: the tutorial's coach strip at the top of the run view. */
+  coach?: CoachCtx;
 }
 
 export interface ExpeditionScreen {
@@ -205,6 +208,8 @@ export function renderExpeditionScreen(host: HTMLElement, ctx: ExpeditionScreenC
       return;
     }
     if (state.expedition) {
+      const strip = coachStrip(ctx.coach, 'expedition');
+      if (strip) root.append(strip);
       runView(root, state);
       return;
     }

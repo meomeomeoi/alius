@@ -23,6 +23,8 @@ export interface OnboardingController {
   skipStep(): Promise<void>;
   /** [RESUME SCENE] after a reload. */
   resumeScene(): void;
+  /** [LAUNCH TUTORIAL] (or [RESUME PATROL] while it is out): opens the planner for the tutorial mission, or the open run. */
+  launchTutorial(): boolean;
   /** Reads the events of one dispatch: exchange caps and a closed prologue scene. */
   onEvents(events: EngineEvent[]): void;
   /** A scene opened (by this controller or after a reload): picks up the goal directive and the tracking. */
@@ -150,6 +152,23 @@ export function createOnboarding(deps: OnboardingDeps): OnboardingController {
       deps.resumeScene();
     },
 
+    launchTutorial() {
+      const s = state();
+      const step = s ? currentStep(s, reg()) : null;
+      if (!s || !step || step.kind !== 'expedition') return false;
+      if (s.expedition) {
+        deps.openExpedition();
+        return true;
+      }
+      const id = s.onboarding?.tutorialMissionId;
+      if (id === undefined || !s.missions.offered.some((m) => m.id === id)) {
+        deps.toast('warn', 'The patrol is no longer on the board. Skip this step to go on.');
+        return false;
+      }
+      deps.openExpedition(id);
+      return true;
+    },
+
     onSceneOpened() {
       const s = state();
       const scene = s?.scene;
@@ -168,6 +187,8 @@ export function createOnboarding(deps: OnboardingDeps): OnboardingController {
     onEvents(events) {
       const s = state();
       if (!s) return;
+      // the patrol is back, however it went (a lost or abandoned tutorial never blocks the prologue)
+      if (events.some((e) => e.type === 'expedition_ended') && currentStep(s, reg())?.kind === 'expedition') completeIfDone(chatId());
       // the cap: the main model is told to wind down and the player is asked once
       if (events.some((e) => e.type === 'scene_exchange') && s.scene?.origin === 'prologue') {
         const step = currentStep(s, reg());

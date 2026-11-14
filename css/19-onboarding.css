@@ -95,3 +95,16 @@
 #alius-shell .alius-onboarding-name {
   min-width: 7em;
 }
+
+/* the coach strip at the top of the combat and expedition screens */
+#alius-shell .alius-coach-host {
+  margin-bottom: 8px;
+}
+
+#alius-shell .alius-coach {
+  margin-bottom: 4px;
+}
+
+#alius-shell .alius-coach .alius-coach-text {
+  margin: 0 0 4px;
+}

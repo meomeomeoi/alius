@@ -284,15 +284,15 @@ Card:
 **Interfaces:**
 - Produces: `buildFixedMap(layers: Array<Array<{ type: string; eventId?: string }>>): NodeMap` (ids `n{l}_{i}`, every node links to every node of the next layer, last layer → `obj`, objective node as `generateNodeMap` makes it); `isTutorialRun(state, reg): boolean`; entering an `expedition` step offers the mission with `buildMission(…, { templateId: step.expeditionId, regionId: step.regionId, source: 'command' })`, deletes its `deadlineDay`, pushes it to `missions.offered` without the board check, stores `onboarding.tutorialMissionId`; skipping the step removes that mission from `offered` (if not started); `coachHints(state, reg, screen: 'combat' | 'expedition'): Hint[]`; `renderCoach(host, hints, onSeen(hintId))`; controller `launchTutorial()` (→ `app.expedition.plan({ missionId })`).
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 - fixedMap: `buildFixedMap gives combat → event → obj with eventId on the event node`; `a run of tutorial_patrol uses the fixed map (no rng draw for the map)`; `the event node opens evt_tutorial_choice`;
 - tutorial: `entering the tutorial step offers tutorial_patrol in the step region with no deadline`; `checkOffer refuses a tutorial template` (director output with `tutorial_patrol` → rejected, nothing offered); `skip_step removes the offered tutorial mission`; `tutorial still offered on day 3`; `returning completes nothing until complete_step; then tutorial_returned holds`;
 - app/controller: `combats of a tutorial run allow retry with easyRetry off`; `a non-tutorial combat still follows the setting`; `card shows [LAUNCH TUTORIAL] and [SKIP]`; `the expedition return completes the step`;
 - coach: `unseen hints of the screen render with data-analyze glossary ids`; `GOT IT dispatches hint_seen and the hint disappears`; `no coach outside the tutorial run`.
-- [ ] **Step 2: Run** the four files → FAIL.
-- [ ] **Step 3: Implement.** The controller completes the step on `expedition_ended` (any outcome: success, retreat or failure — a lost or abandoned tutorial never blocks the prologue) once `completionReason` is null.
-- [ ] **Step 4: Run** `npm test` → green.
-- [ ] **Step 5: Commit** `feat(onboarding): fixed tutorial expedition with coach hints`
+- [x] **Step 2: Run** the four files → FAIL.
+- [x] **Step 3: Implement.** The controller completes the step on `expedition_ended` (any outcome: success, retreat or failure — a lost or abandoned tutorial never blocks the prologue) once `completionReason` is null.
+- [x] **Step 4: Run** `npm test` → green.
+- [x] **Step 5: Commit** `feat(onboarding): fixed tutorial expedition with coach hints`
 
 ---
 

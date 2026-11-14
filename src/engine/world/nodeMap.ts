@@ -92,6 +92,24 @@ export function generateNodeMap(reg: Registries, rng: Rng, input: { regionId: st
   return { layers, objectiveId: OBJECTIVE_ID, nodes };
 }
 
+/**
+ * An authored map (P11 tutorial): the given layers, every node linked to every node of the next layer, the last layer
+ * linked to the objective node. Ids are `n<layer>_<i>` like a generated map; draws nothing from the rng.
+ */
+export function buildFixedMap(layers: ReadonlyArray<ReadonlyArray<{ type: string; eventId?: string }>>): NodeMap {
+  const nodes: Record<string, MapNode> = {};
+  const ids: string[][] = layers.map((layer, l) => layer.map((_, i) => `n${l}_${i}`));
+  layers.forEach((layer, l) => layer.forEach((spec, i) => {
+    const id = ids[l][i];
+    nodes[id] = {
+      id, layer: l, type: spec.type, ...(spec.eventId !== undefined ? { eventId: spec.eventId } : {}),
+      edges: l + 1 < ids.length ? [...ids[l + 1]] : [OBJECTIVE_ID], visited: false,
+    };
+  }));
+  nodes[OBJECTIVE_ID] = { id: OBJECTIVE_ID, layer: ids.length, type: 'objective', edges: [], visited: false };
+  return { layers: ids, objectiveId: OBJECTIVE_ID, nodes };
+}
+
 /** The nodes the party may enter next: the first layer from the entrance, else the edges of where it stands. */
 export function nextNodes(map: NodeMap, at: string | null): string[] {
   return at === null ? [...map.layers[0]] : [...(map.nodes[at]?.edges ?? [])];

@@ -15,6 +15,7 @@ import type { AliusSettings } from '../../settings';
 import type { StAdapter } from '../../st/adapter';
 import { analyzeAttrs, analyzeNative } from '../analyze/mark';
 import { h, type Child } from '../dom';
+import { coachStrip, type CoachCtx } from '../onboarding/coach';
 import { cutIn } from '../scene/cutIn';
 import { bar, statusGlyph } from './bars';
 import { attachCombatKeys } from './keys';
@@ -35,6 +36,8 @@ export interface CombatScreenCtx {
   onCompel?(): void;
   /** P7: the commander's once-per-combat presence action. */
   onPresence?(): void;
+  /** P11: the tutorial's coach strip at the top of the battlefield. */
+  coach?: CoachCtx;
 }
 
 export interface CombatScreen {
@@ -422,6 +425,8 @@ export function renderCombatScreen(host: HTMLElement, ctx: CombatScreenCtx): Com
     const logBox = h('div', { class: 'alius-combat-log', 'aria-label': 'Combat log' },
       ...cs.log.slice(-LOG_LINES).map((l) => { const d = h('div', { class: 'alius-log-line' }); d.textContent = logLine(state, l); return d; }));
 
+    const coach = coachStrip(ctx.coach, 'combat');
+    if (coach) root.append(coach);
     root.append(
       h('div', { class: 'alius-combat-head' },
         h('span', {}, `ROUND ${cs.round}`),

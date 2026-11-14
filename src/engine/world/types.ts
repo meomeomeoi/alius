@@ -131,6 +131,8 @@ export interface MapNode {
   type: string;
   /** What an `unknown` node turned out to be (set on entry). */
   resolvedType?: string;
+  /** P11: an event node of a fixed (tutorial) map opens this dilemma template instead of drawing one. */
+  eventId?: string;
   edges: string[];
   visited: boolean;
 }

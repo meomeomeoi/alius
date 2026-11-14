@@ -16,9 +16,12 @@ export type Handler = (draft: CampaignState, payload: unknown, ctx: EngineCtx) =
 
 const handlers = new Map<string, Handler>();
 
+/** P11: dismissing a coach hint touches nothing but `onboarding.hintsSeen`, so it may run while a combat or an expedition is open. */
+const ONBOARDING_HINT = 'onboarding/hint_seen';
+
 /** Action families that may run while `state.expedition` is open. */
 /** `relations/commander_injured` is the night-visit roll after a Commander Crisis, which can only happen inside a run. */
-const EXPEDITION_OPEN_PREFIXES = ['expedition/', 'combat/', 'director/', 'debug/', 'dilemma/', 'relations/commander_injured'];
+const EXPEDITION_OPEN_PREFIXES = ['expedition/', 'combat/', 'director/', 'debug/', 'dilemma/', 'relations/commander_injured', ONBOARDING_HINT];
 
 /** Actions that spend time or start something: refused while a presented dilemma waits for its answer (P6). */
 const BLOCKED_BY_DILEMMA = ['activity/', 'calendar/consume_slot', 'scene/start', 'expedition/start'];
@@ -42,7 +45,7 @@ export function dispatch(
     return { state, events: [{ type: 'error', code: 'unknown_action', action: action.type }] };
   }
   // while a combat is open only combat/* (and debug/*) may run: anything else would change what a retry rebuilds
-  if (state.combat && !action.type.startsWith('combat/') && !action.type.startsWith('debug/')) {
+  if (state.combat && !action.type.startsWith('combat/') && !action.type.startsWith('debug/') && action.type !== ONBOARDING_HINT) {
     return { state, events: [{ type: 'error', code: 'combat_open', message: 'A combat is open: finish it first.' }] };
   }
   // an open expedition confines the campaign: its slots are spent once, on return (P5)

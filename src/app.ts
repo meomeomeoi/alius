@@ -44,6 +44,7 @@ import { createLoyalty, type LoyaltyController } from './loyalty/loyaltyControll
 import { clearDisciplineDirectives, disciplineDirectives } from './discipline/context';
 import { createDiscipline, type DisciplineController } from './discipline/controller';
 import { createOnboarding, type OnboardingController } from './onboarding/controller';
+import { coachHints, isTutorialRun } from './engine/onboarding';
 import { renderOnboardingCard } from './ui/onboarding/card';
 import { isQuietNight } from './engine/calendar';
 import { restrictionReason } from './engine/discipline';
@@ -315,6 +316,11 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     endScene: async () => {
       await scene.end();
       leaveScene();
+    },
+    openExpedition: (missionId) => {
+      if (missionId !== undefined) expedition.plan({ missionId });
+      showExpedition();
+      shell.open();
     },
     // after a reload the card offers RESUME SCENE: the screen is the scene's, as `adoptScene` leaves it
     resumeScene: () => {
@@ -806,10 +812,17 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       onClose: leaveCombat,
       onCompel: () => void combatDo('combat/compel'),
       onPresence: () => void combatDo('combat/presence'),
+      coach: coachCtx,
     });
   }
 
   // ---------------------------------------------------------------------------------------------- expeditions (P5)
+
+  /** P11: the tutorial's tips for the combat and expedition screens; dismissing one is the only onboarding action a run allows. */
+  const coachCtx = {
+    hints: (screen: 'combat' | 'expedition') => (state ? coachHints(state, registries, screen) : []),
+    onSeen: (hintId: string) => void act({ type: 'onboarding/hint_seen', payload: { hintId } }),
+  };
 
   function showExpedition(): void {
     onExpeditionScreen = true;
@@ -838,6 +851,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       onClose: leaveExpedition,
       recapPending: () => recapPendingFor !== null && recapPendingFor === state?.lastExpedition?.id,
       onDilemmaChoose: (index, route) => void dilemmas.choose(index, route),
+      coach: coachCtx,
     });
   }
 
@@ -1750,7 +1764,8 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         return false;
       }
       const chatId = st.getActiveChat()?.chatId;
-      const payload: StartPayload = { ...opts, allowRetry: getSettings(st).easyRetry };
+      // P11: a combat of the tutorial run can always be retried (stress and injuries still count)
+      const payload: StartPayload = { ...opts, allowRetry: getSettings(st).easyRetry || isTutorialRun(state, registries) };
       const events = api.dispatch({ type: 'combat/start', payload }, { expectChatId: chatId });
       const failed = events.find((e) => e.type === 'error');
       if (failed) {

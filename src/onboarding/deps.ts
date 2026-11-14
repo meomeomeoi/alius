@@ -14,6 +14,8 @@ export interface OnboardingDeps extends WorldDeps {
   endScene(): Promise<void>;
   /** Raises the open scene's screen (after a reload the card offers RESUME SCENE). */
   resumeScene(): void;
+  /** Shows the expedition screen: the planner for this mission, or the open run when none is given. */
+  openExpedition(missionId?: string): void;
   modal(o: ModalOpts): Promise<string | null>;
 }
 

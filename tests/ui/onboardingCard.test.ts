@@ -26,7 +26,7 @@ function mount(tweak: (s: CampaignState) => void = () => {}, readOnly = false) {
   tweak(state);
   const controller: OnboardingCardController = {
     startLineup: vi.fn(async () => true), talkFirstWords: vi.fn(async () => true), skipFirstWords: vi.fn(),
-    skipStep: vi.fn(async () => {}), resumeScene: vi.fn(),
+    skipStep: vi.fn(async () => {}), resumeScene: vi.fn(), launchTutorial: vi.fn(() => true),
   };
   const host = h('div');
   document.body.append(host);
@@ -79,6 +79,24 @@ describe('the prologue card', () => {
     expect(talk.disabled).toBe(true);
     expect(row.textContent).toMatch(/brig|confined|cell|duty|held/i);
     expect((row.querySelector('button[data-action="skip-unit"]') as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('the tutorial step shows [LAUNCH TUTORIAL] and [SKIP]', () => {
+    const m = mount((s) => { s.onboarding!.stepId = 'tutorial'; });
+    expect(m.host.textContent).toContain('SHAKEDOWN PATROL');
+    byText(m.host, 'LAUNCH TUTORIAL')!.click();
+    expect(m.controller.launchTutorial).toHaveBeenCalledTimes(1);
+    byText(m.host, 'SKIP')!.click();
+    expect(m.controller.skipStep).toHaveBeenCalledTimes(1);
+    expect(m.host.querySelector('[data-analyze="glossary:tutorial_expedition"]')).not.toBeNull();
+  });
+
+  it('while the patrol is out the card offers only to go back to it', () => {
+    const m = mount((s) => { s.onboarding!.stepId = 'tutorial'; s.expedition = { id: 'exp_1' } as never; });
+    expect(byText(m.host, 'LAUNCH TUTORIAL')).toBeUndefined();
+    expect(byText(m.host, 'SKIP')).toBeUndefined();
+    byText(m.host, 'RESUME PATROL')!.click();
+    expect(m.controller.launchTutorial).toHaveBeenCalledTimes(1);
   });
 
   it('card after reload shows resume for an open prologue scene', () => {

@@ -24,9 +24,9 @@ import { removeRestrictions, restrictionReason } from '../discipline/restriction
 import { gearFault, GEAR_FAULT_LOG } from '../discipline/sabotage';
 import { missionStartCheck } from '../loyalty/desertion';
 import { buildMission, completeMission, releaseMission } from './missions';
-import { generateNodeMap, nextNodes, nodePlayType } from './nodeMap';
+import { buildFixedMap, generateNodeMap, nextNodes, nodePlayType } from './nodeMap';
 import { knownRegions } from './state';
-import type { ExpeditionLogEntry, ExpeditionReport, ExpeditionState, Mission, QueuedIntent, WorldEffect } from './types';
+import type { ExpeditionLogEntry, ExpeditionReport, ExpeditionState, Mission, NodeMap, QueuedIntent, WorldEffect } from './types';
 
 export interface Formation { front: string[]; back: string[] }
 
@@ -152,6 +152,12 @@ export function addLog(exp: ExpeditionState, kind: ExpeditionLogEntry['kind'], t
   return entry;
 }
 
+/** The map of a run: a template's authored `fixedMap` (the tutorial) as it is, any other mission's drawn from its region. */
+function mapFor(reg: Registries, rng: Rng, mission: Mission): NodeMap {
+  const fixed = (reg.missionTemplates.get(mission.templateId)?.fixedMap as { layers: Array<Array<{ type: string; eventId?: string }>> } | undefined);
+  return fixed ? buildFixedMap(fixed.layers) : generateNodeMap(reg, rng, { regionId: mission.regionId, danger: mission.danger });
+}
+
 /** Opens an expedition: the mission becomes active, supplies leave the stores, the map is drawn. Slots are spent on return. */
 export function startExpedition(draft: CampaignState, ctx: EngineCtx, p: StartExpedition): EngineEvent[] {
   const reg = ctx.registries;
@@ -187,7 +193,7 @@ export function startExpedition(draft: CampaignState, ctx: EngineCtx, p: StartEx
     party: [...p.unitIds],
     formation: { front: [...p.formation.front], back: [...p.formation.back] },
     supplies: p.supplies,
-    map: generateNodeMap(reg, ctx.rng, { regionId: mission.regionId, danger: mission.danger }),
+    map: mapFor(reg, ctx.rng, mission),
     at: null,
     path: [],
     phase: 'travel',
@@ -649,7 +655,9 @@ function enterEvent(draft: CampaignState, ctx: EngineCtx, nodeId: string, isObje
   const exp = draft.expedition!;
   const reg = ctx.registries;
   let templateId: string | undefined;
-  if (isObjective) {
+  const pinnedHere = exp.map.nodes[nodeId]?.eventId; // P11: a fixed map names the event of its node
+  if (pinnedHere !== undefined && reg.dilemmaTemplates.has(pinnedHere)) templateId = pinnedHere;
+  else if (isObjective) {
     const pinned = reg.missionTemplates.get(mission.templateId)?.objectiveEventId;
     if (typeof pinned === 'string' && reg.dilemmaTemplates.has(pinned)) templateId = pinned;
   }
