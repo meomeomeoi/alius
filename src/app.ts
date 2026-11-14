@@ -67,6 +67,7 @@ import { renderExpeditionScreen, type ExpeditionScreen } from './ui/expedition/e
 import './llm/calls/directorTick'; // registers the director_tick call type
 import './llm/calls/expeditionRecap'; // registers the expedition_recap call type
 import { registerWorldContext } from './world/context';
+import { clearWorldDirectives, registerWorldOptionsContext, worldDirectives } from './world/optionsContext';
 import { createDirector, type DirectorController } from './world/directorController';
 import { createExpedition, type ExpeditionController } from './world/expeditionController';
 import { renderBaseTab } from './ui/base/baseTab';
@@ -179,11 +180,15 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
   const toast = (kind: ToastKind, text: string) => shell.toast(kind, text);
 
   function applyContext(): void {
+    // P8: the world directives follow the open scene, the days known and a live option change, so they are refreshed with every render
+    if (state) worldDirectives(context, state, registries);
+    else clearWorldDirectives(context);
     context.apply(st, state, getSettings(st).contextTokenCap);
   }
 
   registerSceneContext(context, { registries: () => registries, settings: () => getSettings(st) });
   registerWorldContext(context, { registries: () => registries });
+  registerWorldOptionsContext(context, { registries: () => registries });
 
   /** The COMMS tab shows how many messages from units are unread. */
   function syncBadges(): void {

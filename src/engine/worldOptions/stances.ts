@@ -37,6 +37,15 @@ export function stanceEffects<T extends StanceEffect['type']>(
   return out;
 }
 
+/** The effects of her stance toward ONE option (the world directives show them per option). */
+export function optionStanceEffects(state: Pick<CampaignState, 'world'>, reg: Registries, unit: StanceHolder, optionId: string): StanceEffect[] {
+  const s = stanceOf(state, reg, unit, optionId);
+  if (!s || s.stance === 'indifferent') return [];
+  return [...reg.stanceEffects.values()]
+    .filter((e) => e.option === optionId && e.stance === s.stance && e.strength === s.strength)
+    .flatMap((e) => e.effects as StanceEffect[]);
+}
+
 /** Her values as she judges the commander's decisions: the stored values shifted by her stances (`value_shift`), each clamped to −3…3. */
 export function effectiveValues(
   state: Pick<CampaignState, 'world'>, reg: Registries, unit: StanceHolder & Pick<Unit, 'values'>,

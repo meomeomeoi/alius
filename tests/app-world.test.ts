@@ -544,3 +544,27 @@ describe('minor fixes', () => {
     expect(t.sh.toasts.some((x) => /leash/i.test(x.text))).toBe(true);
   });
 });
+
+describe('world options in the injected context (P8)', () => {
+  it('the WORLD SETTINGS block and the Bloom directive are injected without a scene, and a live switch replaces them', async () => {
+    const t = await boot();
+    const ctx = () => t.st.injections.get('ctx')!.text;
+    const dir = () => t.st.injections.get('dir')?.text ?? '';
+    expect(ctx()).toContain('World settings: ');
+    expect(ctx()).toContain('Mutants and wounds are described with restraint.');
+    expect(dir()).toContain('without gore');
+    const events = t.app.dispatch({ type: 'world/set_option', payload: { optionId: 'bloom_horror', choiceId: 'graphic' } });
+    expect(events.some((e) => e.type === 'world_option_changed')).toBe(true);
+    expect(ctx()).toContain('graphic, unflinching detail');
+    expect(ctx()).not.toContain('described with restraint');
+    expect(dir()).toContain('unflinching physical detail');
+    expect(dir()).not.toContain('without gore');
+  });
+
+  it('a locked option cannot be switched from the app either', async () => {
+    const t = await boot();
+    const events = t.app.dispatch({ type: 'world/set_option', payload: { optionId: 'oversight', choiceId: 'brutal' } });
+    expect(events.find((e) => e.type === 'error')).toMatchObject({ message: 'World option "oversight" is locked after the campaign start.' });
+    expect(t.state().world.options!.oversight).toBe('standard');
+  });
+});

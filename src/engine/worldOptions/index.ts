@@ -6,4 +6,4 @@ export { applyWorldStartEffects, normDistance } from './norm';
 export {
   applyDispositionStart, bandShift, confidenceFloor, confidenceShift, dispositionById, dispositionThresholds, scaleRefusal, dispositionFor, worldDispositionLevel, type DispositionLevel,
 } from './disposition';
-export { effectiveValues, rollGruntStances, stanceEffects, stanceOf } from './stances';
+export { effectiveValues, optionStanceEffects, rollGruntStances, stanceEffects, stanceOf } from './stances';

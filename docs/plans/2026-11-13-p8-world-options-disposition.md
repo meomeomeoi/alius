@@ -392,17 +392,17 @@ docs/** (Task 16), tests/** mirror src
   - `worldDirectives(builder, state, reg)`: sets `world:<optionId>` (`scene_directive`), `stance:<unitId>:<optionId>` (present units, `whileEarly` honoured) and `friction:<optionId>`; clears its own ids first.
   - `clearWorldDirectives(builder)`.
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `the block lists the current lore lines in option order and fits 120 tokens`
   - `it renders outside a scene`
   - `switching bloom_horror replaces its directive`
   - `a shares unit's early directive disappears after w(d) ≤ 0.5`
   - `friction appears only with a shares and an opposes unit present`
   - `no directive text contains he/him/his`
-- [ ] **Step 2: Run** `npx vitest run tests/world` and expect FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** `npx vitest run` and expect green.
-- [ ] **Step 5: Commit** `feat(context): world settings block and world directives`. **End of chunk (a).**
+- [x] **Step 2: Run** `npx vitest run tests/world` and expect FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** `npx vitest run` and expect green.
+- [x] **Step 5: Commit** `feat(context): world settings block and world directives`. **End of chunk (a).**
 
 ---
 

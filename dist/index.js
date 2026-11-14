@@ -731,6 +731,11 @@ function stanceEffects(state, reg, unit, type) {
   }
   return out;
 }
+function optionStanceEffects(state, reg, unit, optionId) {
+  const s = stanceOf(state, reg, unit, optionId);
+  if (!s || s.stance === "indifferent") return [];
+  return [...reg.stanceEffects.values()].filter((e) => e.option === optionId && e.stance === s.stance && e.strength === s.strength).flatMap((e) => e.effects);
+}
 function effectiveValues(state, reg, unit) {
   const values = { ...unit.values };
   for (const fx2 of stanceEffects(state, reg, unit, "value_shift")) {
@@ -20047,6 +20052,57 @@ function registerWorldContext(builder, deps) {
   });
 }
 
+// src/world/optionsContext.ts
+var PREFIX = "World settings: ";
+var WORLD_PRIORITY = 85;
+var OWN_PREFIXES = ["world:", "stance:", "friction:"];
+var EARLY_WEIGHT = 0.5;
+function worldSettingsLine(state, reg) {
+  const lines = [];
+  for (const { choice } of worldChoices(state, reg)) {
+    const next = `${PREFIX}${[...lines, choice.lore].join(" ")}`;
+    if (estTokens(next) > TUNING.disposition.worldBlockTokens) continue;
+    lines.push(choice.lore);
+  }
+  return `${PREFIX}${lines.join(" ")}`;
+}
+function registerWorldOptionsContext(builder, deps) {
+  builder.register({
+    id: "world_settings",
+    priority: WORLD_PRIORITY,
+    render: (s) => {
+      const line2 = worldSettingsLine(s, deps.registries());
+      return line2 === PREFIX ? null : line2;
+    }
+  });
+}
+function clearWorldDirectives(builder) {
+  builder.clearMatching((d) => OWN_PREFIXES.some((p) => d.id.startsWith(p)));
+}
+function worldDirectives(builder, state, reg) {
+  clearWorldDirectives(builder);
+  for (const { option, choice } of worldChoices(state, reg)) {
+    const texts = choice.effects.flatMap((e) => e.type === "scene_directive" ? [e.text] : []);
+    if (texts.length > 0) builder.setDirective({ id: `world:${option.id}`, text: texts.join(" "), expiresAfter: "manual" });
+  }
+  const present = (state.scene?.participants ?? []).map((id) => state.squad.find((u) => u.id === id)).filter((u) => u !== void 0);
+  for (const option of reg.worldOptions.values()) {
+    if (option.squadStance !== true) continue;
+    for (const u of present) {
+      for (const fx2 of optionStanceEffects(state, reg, u, option.id)) {
+        if (fx2.type !== "directive") continue;
+        if (fx2.whileEarly === true && firstImpressionWeight(state, u.id) <= EARLY_WEIGHT) continue;
+        builder.setDirective({ id: `stance:${u.id}:${option.id}`, text: fx2.text.replaceAll("{name}", u.displayName), expiresAfter: "scene" });
+      }
+    }
+    const stances = present.map((u) => stanceOf(state, reg, u, option.id)?.stance);
+    if (stances.includes("shares") && stances.includes("opposes")) {
+      const friction = present.flatMap((u) => optionStanceEffects(state, reg, u, option.id)).find((fx2) => fx2.type === "friction_directive");
+      if (friction && friction.type === "friction_directive") builder.setDirective({ id: `friction:${option.id}`, text: friction.text, expiresAfter: "scene" });
+    }
+  }
+}
+
 // src/world/directorController.ts
 function createDirector(deps) {
   const running = /* @__PURE__ */ new Set();
@@ -23058,10 +23114,13 @@ function createApp(st, deps) {
   let setup = null;
   const toast = (kind, text2) => shell.toast(kind, text2);
   function applyContext() {
+    if (state) worldDirectives(context, state, registries);
+    else clearWorldDirectives(context);
     context.apply(st, state, getSettings(st).contextTokenCap);
   }
   registerSceneContext(context, { registries: () => registries, settings: () => getSettings(st) });
   registerWorldContext(context, { registries: () => registries });
+  registerWorldOptionsContext(context, { registries: () => registries });
   function syncBadges() {
     shell.setTabBadge("comms", state ? unreadCount(state) : 0);
     const fresh = state ? state.missions.offered.filter((m) => (m.source === "command" || m.source === "story") && !seenOffers.has(m.id)).length : 0;
