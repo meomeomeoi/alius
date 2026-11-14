@@ -305,15 +305,15 @@ Card:
 **Interfaces:**
 - Produces: `guideUnit(state): string | null`; `lockedTabs(state, reg): Set<TabId>` (engine-side it takes `string` tab ids: the engine must not import `TabId`; the UI narrows); `unlockedBetween(before, after, reg): Entry[]` (the `uiUnlocks` entries whose tab went from locked to open); `Comms.initiate(unitId): Promise<void>`; `ShellApi.setTabLocked(id: TabId, locked: boolean): void`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 - evening: `debrief step completes only after the tutorial report is debriefed`; `entering first_evening picks the guide by Affinity, then Trust, then squad order`; `with nightKnock the guide's visit is queued with the authored framing`; `next_day completes first_evening and free sets done`;
 - unlocks: `prologue day 1: squad, comms open; ops, map, base, inv locked`; `skipping or finishing the tutorial opens ops and map`; `day 2 opens base and inv`; `done opens all`; `old save locks nothing`; `no onboarding locks nothing`; `unlockedBetween lists ops and map after the tutorial`;
 - UI: `a locked tab reads OFFLINE, is aria-disabled and showTab does nothing`; `digit key on a locked tab does nothing`; `room panel hides activities while ops is locked`; `an unlock shows a terminal toast with the notice`;
 - controller: `entering first_evening sends one initiated DM from the guide` (fake DM generator called once with `'initiate'`); `the card shows {name} wants to talk with [TALK] → app.talkAt`.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.** `comms.initiate` is the body of the existing initiative loop for one unit, without the roll (no-op when `unitDms` is off). The debrief card button calls `app.expedition.debrief(party)`; the controller completes `debrief` on `expedition/mark_debriefed` success and `first_evening` on `day_started`.
-- [ ] **Step 4: Run** `npm test` → green.
-- [ ] **Step 5: Commit** `feat(onboarding): guided first evening and progressive unlocks`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.** `comms.initiate` is the body of the existing initiative loop for one unit, without the roll (no-op when `unitDms` is off). The debrief card button calls `app.expedition.debrief(party)`; the controller completes `debrief` on `expedition/mark_debriefed` success and `first_evening` on `day_started`.
+- [x] **Step 4: Run** `npm test` → green.
+- [x] **Step 5: Commit** `feat(onboarding): guided first evening and progressive unlocks`
 
 ---
 

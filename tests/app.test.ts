@@ -31,7 +31,7 @@ function fakeShell() {
     tabRenderers: new Map<string, unknown>(),
     registerTab(id: string, render: unknown) { shell.tabRenderers.set(id, render); },
     registerHub() {}, registerScreen(id: string, render: unknown) { shell.screenRenderers.set(id, render); },
-    setTabBadge() {},
+    setTabLocked() {}, setTabBadge() {},
     toast(kind: string, text: string) { toasts.push({ kind, text }); },
     modal: async () => null,
     setPalette() {},

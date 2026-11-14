@@ -12,7 +12,7 @@ export const TAB_LABELS: Record<TabId, string> = {
 export const tabStub = (id: TabId) => h('pre', { class: 'alius-stub' }, stubText(TAB_LABELS[id]));
 
 /** Builds the tab bar (WAI-ARIA tabs, roving tabindex, ←/→ with wrap-around). */
-export function createTabBar(opts: { onSelect: (id: TabId) => void; panelId: string }) {
+export function createTabBar(opts: { onSelect: (id: TabId) => void; panelId: string; isLocked?: (id: TabId) => boolean }) {
   const buttons = new Map<TabId, HTMLElement>();
   const bar = h('div', { class: 'alius-tabbar', role: 'tablist', 'aria-label': 'Alius sections' });
   TAB_IDS.forEach((id, i) => {
@@ -36,7 +36,13 @@ export function createTabBar(opts: { onSelect: (id: TabId) => void; panelId: str
     const at = TAB_IDS.findIndex((id) => buttons.get(id) === ev.target);
     if (at < 0) return;
     ev.preventDefault();
-    const next = TAB_IDS[(at + (ev.key === 'ArrowRight' ? 1 : TAB_IDS.length - 1)) % TAB_IDS.length];
+    // a tab that is offline is stepped over (P11)
+    let next = TAB_IDS[(at + (ev.key === 'ArrowRight' ? 1 : TAB_IDS.length - 1)) % TAB_IDS.length];
+    for (let i = 0; i < TAB_IDS.length && opts.isLocked?.(next); i++) {
+      const from = TAB_IDS.indexOf(next);
+      next = TAB_IDS[(from + (ev.key === 'ArrowRight' ? 1 : TAB_IDS.length - 1)) % TAB_IDS.length];
+    }
+    if (opts.isLocked?.(next)) return;
     opts.onSelect(next);
     buttons.get(next)!.focus();
   });
@@ -52,6 +58,20 @@ export function createTabBar(opts: { onSelect: (id: TabId) => void; panelId: str
         btn.append(' ', h('span', { class: 'alius-badge' }, n > 99 ? '99+' : String(n)));
         btn.setAttribute('aria-label', `${TAB_LABELS[id]}, ${n > 99 ? '99+' : n} unread`);
       } else btn.removeAttribute('aria-label');
+    },
+    /** P11: a locked tab reads OFFLINE and cannot be chosen (`aria-disabled`; the shell refuses it too). */
+    setLocked(id: TabId, locked: boolean): void {
+      const btn = buttons.get(id);
+      if (!btn) return;
+      btn.querySelector('.alius-offline')?.remove();
+      if (locked) {
+        btn.setAttribute('aria-disabled', 'true');
+        btn.classList.add('is-offline');
+        btn.append(' ', h('span', { class: 'alius-offline' }, 'OFFLINE'));
+      } else {
+        btn.removeAttribute('aria-disabled');
+        btn.classList.remove('is-offline');
+      }
     },
     setSelected(id: TabId): void {
       for (const [tid, btn] of buttons) {

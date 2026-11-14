@@ -1,6 +1,7 @@
 import type { Entry, Registries } from '../content/types';
 import { restrictionReason } from '../engine/discipline';
 import type { EngineEvent } from '../engine/dispatch';
+import { whereabouts } from '../engine/hub';
 import { completionReason, currentStep, livingNamed, type StepWithId } from '../engine/onboarding';
 import type { CampaignState } from '../engine/state/types';
 import { TUNING } from '../engine/tuning';
@@ -23,6 +24,10 @@ export interface OnboardingController {
   skipStep(): Promise<void>;
   /** [RESUME SCENE] after a reload. */
   resumeScene(): void;
+  /** [DEBRIEF]: the debrief scene with the party of the tutorial patrol. */
+  debriefTutorial(): Promise<boolean>;
+  /** [TALK] with the guide of the first evening, in the room she is in. */
+  talkGuide(): Promise<boolean>;
   /** [LAUNCH TUTORIAL] (or [RESUME PATROL] while it is out): opens the planner for the tutorial mission, or the open run. */
   launchTutorial(): boolean;
   /** Reads the events of one dispatch: exchange caps and a closed prologue scene. */
@@ -61,6 +66,8 @@ export function createOnboarding(deps: OnboardingDeps): OnboardingController {
   let tracked: { sceneId: string; participants: string[] } | null = null;
   /** Scenes the cap question was already asked in. */
   const asked = new Set<string>();
+  /** The guide's first DM waits for the open scene to close. */
+  let guideDmDue: string | null = null;
 
   const clearDirectives = (): void => deps.context.clearMatching((d) => d.id.startsWith('prologue:'));
 
@@ -85,6 +92,22 @@ export function createOnboarding(deps: OnboardingDeps): OnboardingController {
     const step = currentStep(s, reg());
     if (!step || completionReason(s, reg(), step) !== null) return;
     dispatch('onboarding/complete_step', { stepId: step.id }, expect);
+  }
+
+  /** Completes the current step when it is the kind an event settles (`completion`) and its condition holds. */
+  function completeOn(completion: StepWithId['completion'], expect: string | undefined): void {
+    const s = state();
+    if (s && currentStep(s, reg())?.completion === completion) completeIfDone(expect);
+  }
+
+  /** The guide of the first evening writes first (once, and not into the middle of a scene). */
+  function sendGuideDm(guideId: string): void {
+    if (state()?.scene) {
+      guideDmDue = guideId;
+      return;
+    }
+    guideDmDue = null;
+    void deps.initiateDm(guideId);
   }
 
   /** The units the step's scene can take: living, named, not held back by discipline, at most one scene's worth. */
@@ -152,6 +175,28 @@ export function createOnboarding(deps: OnboardingDeps): OnboardingController {
       deps.resumeScene();
     },
 
+    async debriefTutorial() {
+      const s = state();
+      const step = s ? currentStep(s, reg()) : null;
+      const report = s?.lastExpedition;
+      if (!s || !step || step.completion !== 'debriefed' || !report || report.missionId !== s.onboarding?.tutorialMissionId) return false;
+      const who = report.party.filter((id) => livingNamed(s).some((u) => u.id === id) && restrictionReason(s, id, 'scene') === null).slice(0, TUNING.scene.maxParticipants);
+      if (who.length === 0) {
+        deps.toast('warn', 'Nobody from the patrol is free to debrief.');
+        return false;
+      }
+      return deps.debrief(who);
+    },
+
+    async talkGuide() {
+      const s = state();
+      const id = s?.onboarding?.guideUnitId;
+      if (!s || id === undefined || !livingNamed(s).some((u) => u.id === id)) return false;
+      const room = whereabouts(s, reg()).find((w) => w.unitId === id)?.roomId;
+      const location = (room ? reg().hubRooms.get(room)?.sceneLocationId : undefined) ?? 'quarters_unit';
+      return deps.talkAt(id, String(location));
+    },
+
     launchTutorial() {
       const s = state();
       const step = s ? currentStep(s, reg()) : null;
@@ -187,6 +232,16 @@ export function createOnboarding(deps: OnboardingDeps): OnboardingController {
     onEvents(events) {
       const s = state();
       if (!s) return;
+      // the debrief was held (from the card or the report), or the evening is over
+      if (events.some((e) => e.type === 'expedition_debriefed')) completeOn('debriefed', chatId());
+      if (events.some((e) => e.type === 'day_started')) completeOn('next_day', chatId());
+      // the first evening began: the guide writes first
+      if (events.some((e) => e.type === 'onboarding_step_started')) {
+        const step = currentStep(s, reg());
+        const guide = s.onboarding?.guideUnitId;
+        if (step?.completion === 'next_day' && guide !== undefined && events.some((e) => e.type === 'onboarding_step_started' && e.stepId === step.id)) sendGuideDm(guide);
+      }
+      if (guideDmDue !== null && events.some((e) => e.type === 'scene_ended' || e.type === 'scene_aborted') && !s.scene) sendGuideDm(guideDmDue);
       // the patrol is back, however it went (a lost or abandoned tutorial never blocks the prologue)
       if (events.some((e) => e.type === 'expedition_ended') && currentStep(s, reg())?.kind === 'expedition') completeIfDone(chatId());
       // the cap: the main model is told to wind down and the player is asked once

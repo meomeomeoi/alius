@@ -16,6 +16,12 @@ export interface OnboardingDeps extends WorldDeps {
   resumeScene(): void;
   /** Shows the expedition screen: the planner for this mission, or the open run when none is given. */
   openExpedition(missionId?: string): void;
+  /** One unit writes first (the guided evening); a no-op when unit DMs are off. */
+  initiateDm(unitId: string): Promise<void>;
+  /** The hub's TALK: a talk activity with her at that location (spends the slot). */
+  talkAt(unitId: string, locationId: string): Promise<boolean>;
+  /** Opens the debrief scene with these units (and marks the report debriefed). */
+  debrief(unitIds: string[]): Promise<boolean>;
   modal(o: ModalOpts): Promise<string | null>;
 }
 

@@ -55,7 +55,7 @@ function scriptedShell() {
     showScreen(id: string) { screens.push(id); }, showTab() {},
     registerTab(id: string, r: (host: HTMLElement) => void) { tabRenderers.set(id, r); },
     registerHub() {}, registerScreen(id: string, r: (host: HTMLElement) => void) { screenRenderers.set(id, r); },
-    setTabBadge() {},
+    setTabLocked() {}, setTabBadge() {},
     toast(kind: string, text: string) { toasts.push({ kind, text }); },
     async modal(opts: ModalOpts) {
       modals.push(opts);

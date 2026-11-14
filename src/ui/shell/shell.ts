@@ -47,6 +47,8 @@ export interface ShellApi {
   ): void;
   /** Shows a small unread count on a tab (0 clears it). */
   setTabBadge(id: TabId, count: number): void;
+  /** P11: a locked tab reads OFFLINE; showing it (by click, key or `showTab`) does nothing until it is unlocked. */
+  setTabLocked(id: TabId, locked: boolean): void;
   toast(kind: ToastKind, text: string, opts?: ToastOpts): void;
   modal(opts: ModalOpts): Promise<string | null>;
   /** Closes the open modal (its promise resolves `null`). */
@@ -103,6 +105,8 @@ export function createShell(deps: ShellDeps): ShellApi {
   let toasts: ReturnType<typeof createToasts> | null = null;
   let modals: ReturnType<typeof createModalHost> | null = null;
   let tabBar: ReturnType<typeof createTabBar> | null = null;
+  /** Tabs the prologue has not opened yet. */
+  const lockedTabs = new Set<TabId>();
   let panel: HTMLElement | null = null;
   let statusHost: HTMLElement | null = null;
   let analyzer: Analyzer | null = null;
@@ -216,6 +220,7 @@ export function createShell(deps: ShellDeps): ShellApi {
   }
 
   function selectTab(id: TabId): void {
+    if (lockedTabs.has(id)) return;
     const changed = id !== tab;
     tab = id;
     tabBar?.setSelected(id);
@@ -297,8 +302,9 @@ export function createShell(deps: ShellDeps): ShellApi {
 
   /** The hub with the device inside it: used by both the `hub` and the `pda` route (they differ only in `up`). */
   function buildLayer(host: HTMLElement, up: boolean): void {
-    tabBar = createTabBar({ onSelect: selectTab, panelId: PANEL_ID });
+    tabBar = createTabBar({ onSelect: selectTab, panelId: PANEL_ID, isLocked: (id) => lockedTabs.has(id) });
     for (const [id, n] of badges) tabBar.setBadge(id, n);
+    for (const id of lockedTabs) tabBar.setLocked(id, true);
     panel = h('div', { class: 'alius-screen', id: PANEL_ID, role: 'tabpanel', tabindex: '0' });
     statusHost = h('div', { class: 'alius-status' });
     const chrome = h('div', { class: 'alius-device-chrome', 'aria-hidden': 'true' });
@@ -442,6 +448,7 @@ export function createShell(deps: ShellDeps): ShellApi {
       maybeBoot();
     },
     showTab(id) {
+      if (lockedTabs.has(id)) return;
       tab = id;
       if (!isOpen()) {
         router.go('pda'); // open() then lands on the PDA at this tab
@@ -472,6 +479,12 @@ export function createShell(deps: ShellDeps): ShellApi {
       if (opts?.refresh) screenRefresh.set(id, opts.refresh);
       else screenRefresh.delete(id);
       if (isOpen() && router.current() === id) renderView();
+    },
+    setTabLocked(id, locked) {
+      if (locked === lockedTabs.has(id)) return;
+      if (locked) lockedTabs.add(id);
+      else lockedTabs.delete(id);
+      tabBar?.setLocked(id, locked);
     },
     setTabBadge(id, count) {
       if (count > 0) badges.set(id, count);

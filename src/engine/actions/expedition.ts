@@ -69,7 +69,7 @@ registerAction('expedition/ack_report', (draft) => {
 registerAction('expedition/mark_debriefed', (draft) => {
   if (!draft.lastExpedition) throw new Error('There is no report.');
   draft.lastExpedition.debriefed = true;
-  return [];
+  return [{ type: 'expedition_debriefed', reportId: draft.lastExpedition.id }];
 });
 
 /** The main model's narrative recap, stored on the report it belongs to (a late answer for an older report is refused). */

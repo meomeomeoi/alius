@@ -15,6 +15,8 @@ export interface OnboardingCardController {
   skipStep(): Promise<void>;
   resumeScene(): void;
   launchTutorial(): boolean;
+  debriefTutorial(): Promise<boolean>;
+  talkGuide(): Promise<boolean>;
 }
 
 export interface OnboardingCardCtx {
@@ -77,6 +79,15 @@ export function renderOnboardingCard(host: HTMLElement, ctx: OnboardingCardCtx):
         ? button('[ RESUME PATROL ]', 'resume-run', address, () => controller.launchTutorial())
         : button('[ LAUNCH TUTORIAL ]', 'launch', address, () => controller.launchTutorial(), scene !== undefined),
       out ? null : skip()));
+  } else if (step.kind === 'guided_slot' && step.completion === 'debriefed') {
+    body.append(h('div', { class: 'alius-row' }, button('[ DEBRIEF ]', 'debrief', address, () => void controller.debriefTutorial(), scene !== undefined), skip()));
+  } else if (step.kind === 'guided_slot') {
+    const guide = state.squad.find((u) => u.id === state.onboarding?.guideUnitId);
+    const here = guide !== undefined && livingNamed(state).some((u) => u.id === guide.id);
+    body.append(h('div', { class: 'alius-row' },
+      here ? h('span', { class: 'alius-onboarding-guide' }, `${guide.displayName} wants to talk.`) : null,
+      here ? button('[ TALK ]', 'talk-guide', address, () => void controller.talkGuide(), scene !== undefined) : null,
+      skip()));
   } else {
     body.append(h('div', { class: 'alius-row' }, skip()));
   }

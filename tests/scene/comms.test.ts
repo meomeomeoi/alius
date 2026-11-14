@@ -116,6 +116,34 @@ describe('initiative', () => {
   });
 });
 
+describe('initiate (P11: one unit, no roll)', () => {
+  it('sends one initiated DM from the unit without rolling the initiative', async () => {
+    const h = harness(reg);
+    h.st.mainReplies = ['Hey, commander. Got a minute?'];
+    await h.comms.initiate(ANN);
+    expect(h.actions).not.toContain('dm/roll_initiative');
+    const dms = Object.values(h.state().dms).flat();
+    expect(dms).toHaveLength(1);
+    expect(dms[0]).toMatchObject({ from: ANN, text: 'Hey, commander. Got a minute?', initiated: true, read: false });
+    expect(h.st.calls).toHaveLength(1);
+    expect((h.st.calls[0] as { system: string }).system).toMatch(/writes first/);
+  });
+
+  it('is a no-op with unit DMs off', async () => {
+    const h = harness(reg, { settings: { unitDms: false } });
+    await h.comms.initiate(ANN);
+    expect(h.st.calls).toHaveLength(0);
+    expect(unreadCount(h.state())).toBe(0);
+  });
+
+  it('a failed generation or an unknown unit leaves no message', async () => {
+    const h = harness(reg);
+    await h.comms.initiate(ANN);
+    await h.comms.initiate('ghost');
+    expect(unreadCount(h.state())).toBe(0);
+  });
+});
+
 describe('night', () => {
   const night = (s: ReturnType<Harness['state']>) => {
     s.slot = 'night';

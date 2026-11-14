@@ -39,7 +39,7 @@ function rig(tweak: (s: CampaignState) => void = () => {}, answer: string | null
     return events;
   };
   const deps: OnboardingDeps = {
-    ...h.deps, context: ctx, refreshContext: vi.fn(), modal: modal as never, resumeScene: resume, openExpedition: vi.fn(),
+    ...h.deps, context: ctx, refreshContext: vi.fn(), modal: modal as never, resumeScene: resume, openExpedition: vi.fn(), initiateDm: vi.fn(async () => {}), talkAt: vi.fn(async () => true), debrief: vi.fn(async () => true),
     startScene: async (o) => {
       const events = act('scene/start', { ...o, startIndex: 0 });
       if (events.some((e) => e.type === 'error')) return false;
@@ -192,7 +192,7 @@ describe('line-up', () => {
     // a fresh controller and context, as after a reload: the scene is in the state, the memory is gone
     const ctx2 = new ContextBuilder();
     const modal2 = vi.fn(async () => 'keep');
-    const ob2 = createOnboarding({ ...r.h.deps, context: ctx2, refreshContext: vi.fn(), modal: modal2 as never, resumeScene: vi.fn(), openExpedition: vi.fn(), startScene: async () => true, endScene: async () => {} });
+    const ob2 = createOnboarding({ ...r.h.deps, context: ctx2, refreshContext: vi.fn(), modal: modal2 as never, resumeScene: vi.fn(), openExpedition: vi.fn(), initiateDm: vi.fn(async () => {}), talkAt: vi.fn(async () => true), debrief: vi.fn(async () => true), startScene: async () => true, endScene: async () => {} });
     ob2.onSceneOpened();
     expect(ctx2.build(r.h.state(), 5000).directives).toContain(lineup(r));
     const ended = r.h.app().dispatch({ type: 'scene/end', payload: {} });

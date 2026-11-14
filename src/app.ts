@@ -44,7 +44,8 @@ import { createLoyalty, type LoyaltyController } from './loyalty/loyaltyControll
 import { clearDisciplineDirectives, disciplineDirectives } from './discipline/context';
 import { createDiscipline, type DisciplineController } from './discipline/controller';
 import { createOnboarding, type OnboardingController } from './onboarding/controller';
-import { coachHints, isTutorialRun } from './engine/onboarding';
+import { coachHints, isTutorialRun, lockedTabs, unlockedBetween } from './engine/onboarding';
+import { TAB_IDS } from './ui/shell/tabs';
 import { renderOnboardingCard } from './ui/onboarding/card';
 import { isQuietNight } from './engine/calendar';
 import { restrictionReason } from './engine/discipline';
@@ -233,7 +234,19 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
   registerWorldOptionsContext(context, { registries: () => registries });
 
   /** The COMMS tab shows how many messages from units are unread. */
+  /** P11: the tabs the prologue has not opened yet read OFFLINE (no campaign, an old one or a finished prologue: all open). */
+  function syncLocks(): void {
+    const locked = state ? lockedTabs(state, registries) : new Set<string>();
+    for (const id of TAB_IDS) shell.setTabLocked(id, locked.has(id));
+  }
+
+  /** P11: a tab that just came online says so, in the terminal voice. */
+  function announceUnlocks(before: CampaignState, after: CampaignState): void {
+    for (const row of unlockedBetween(before, after, registries)) toast('info', String(row.notice), { voice: VOICE_OF.toast });
+  }
+
   function syncBadges(): void {
+    syncLocks();
     shell.setTabBadge('comms', state ? unreadCount(state) : 0);
     // new story and command offers since the OPS tab was last shown
     const fresh = state ? state.missions.offered.filter((m) => (m.source === 'command' || m.source === 'story') && !seenOffers.has(m.id)).length : 0;
@@ -317,6 +330,9 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       await scene.end();
       leaveScene();
     },
+    initiateDm: (unitId) => comms.initiate(unitId),
+    talkAt: (unitId, locationId) => api.talkAt(unitId, locationId),
+    debrief: (unitIds) => expedition.debrief(unitIds),
     openExpedition: (missionId) => {
       if (missionId !== undefined) expedition.plan({ missionId });
       showExpedition();
@@ -1950,6 +1966,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
           ? [{ type: 'error', code: 'read_only', message: 'Campaign is read-only.' }]
           : [{ type: 'error', code: 'no_campaign', message: 'No Alius campaign in this chat.' }];
       }
+      const before = state;
       const r = engineDispatch(state, action, registries);
       if (r.state !== state) {
         state = r.state;
@@ -1961,6 +1978,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         }
       }
       reportEvents(r.events);
+      if (r.state !== before) announceUnlocks(before, r.state);
       applyContext();
       syncBadges();
       drawDilemma();

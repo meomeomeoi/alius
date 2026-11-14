@@ -1,5 +1,6 @@
 import type { Entry, Registries } from '../../content/types';
 import { checkActivity } from '../../engine/activities';
+import { lockedTabs } from '../../engine/onboarding';
 import { restrictionReason } from '../../engine/discipline/restrictions';
 import type { Whereabout } from '../../engine/hub';
 import type { CampaignState, Unit } from '../../engine/state/types';
@@ -63,7 +64,8 @@ export function renderRoomPanel(
     );
   });
 
-  const cards = opts.readOnly
+  // P11: the activity cards are the OPS module's; while it is offline the room offers talk and nothing else
+  const cards = opts.readOnly || lockedTabs(state, reg).has('ops')
     ? []
     : ((room.activityIds ?? []) as string[]).map((id) => reg.activities.get(id)).filter((a): a is Entry => a !== undefined)
       .map((a) => activityCard(a, state, ctx.ops));

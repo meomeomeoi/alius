@@ -46,7 +46,7 @@ function scriptedShell() {
     showTab(id: string) { tabs.push(id); },
     registerTab(id: string, r: (host: HTMLElement) => void) { tabRenderers.set(id, r); },
     registerHub() {}, registerScreen(id: string, r: (host: HTMLElement) => void) { screenRenderers.set(id, r); },
-    setTabBadge() {},
+    setTabLocked() {}, setTabBadge() {},
     toast(kind: string, text: string) { toasts.push({ kind, text }); },
     async modal() { return null; },
     setPalette() {}, refresh: vi.fn(), destroy() {},

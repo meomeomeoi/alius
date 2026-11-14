@@ -41,7 +41,7 @@ describe('the controller and the tutorial run', () => {
     const openExpedition = vi.fn();
     const ob = createOnboarding({
       ...h.deps, context: new ContextBuilder(), refreshContext: vi.fn(), modal: vi.fn(async () => null) as never, resumeScene: vi.fn(),
-      openExpedition, startScene: async () => true, endScene: async () => {},
+      openExpedition, initiateDm: vi.fn(async () => {}), talkAt: vi.fn(async () => true), debrief: vi.fn(async () => true), startScene: async () => true, endScene: async () => {},
     });
     const act = (type: string, payload?: unknown): EngineEvent[] => {
       const events = h.app().dispatch({ type, payload });
@@ -119,7 +119,7 @@ describe('combats of the tutorial run (in the app)', () => {
     st.characters = [{ avatar: 'rhea.png', name: 'Rhea' }, { avatar: 'mira.png', name: 'Mira' }];
     for (const [avatar, name] of [['rhea.png', 'Rhea'], ['mira.png', 'Mira']]) st.cards.set(avatar, { avatar, name, description: 'd', personality: 'p', scenario: '', creatorNotes: '' });
     const shell = {
-      open: vi.fn(), close() {}, isOpen: () => true, showScreen() {}, showTab() {}, registerTab() {}, registerHub() {}, registerScreen() {}, setTabBadge() {},
+      open: vi.fn(), close() {}, isOpen: () => true, showScreen() {}, showTab() {}, registerTab() {}, registerHub() {}, registerScreen() {}, setTabLocked() {}, setTabBadge() {},
       toast() {}, async modal() { return null; }, setPalette() {}, refresh: vi.fn(), destroy() {},
     };
     const app: AliusApp = createApp(st, { loadContent: async () => content, shellFactory: () => shell as never });

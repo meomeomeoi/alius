@@ -52,7 +52,7 @@ async function boot() {
     showScreen(id: string) { screens.push(id); }, showTab() {},
     registerTab(id: string, r: (host: HTMLElement) => void) { tabRenderers.set(id, r); },
     registerHub() {}, registerScreen(id: string, r: (host: HTMLElement) => void) { screenRenderers.set(id, r); },
-    setTabBadge(id: string, n: number) { badges.set(id, n); },
+    setTabLocked() {}, setTabBadge(id: string, n: number) { badges.set(id, n); },
     toast(kind: string, text: string) { toasts.push({ kind, text }); },
     async modal(o: { title: string; body: Node | string }) {
       modalTitles.push(o.title);

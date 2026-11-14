@@ -54,7 +54,7 @@ async function boot() {
     showScreen(id: string) { screens.push(id); }, showTab() {},
     registerTab() {}, registerHub(r: (host: HTMLElement, device: HTMLElement) => void) { hubRender = r; },
     registerScreen(id: string, r: (host: HTMLElement) => void) { screenRenderers.set(id, r); },
-    setTabBadge() {}, isDeviceUp: () => false, setDevice() {},
+    setTabLocked() {}, setTabBadge() {}, isDeviceUp: () => false, setDevice() {},
     toast(kind: string, text: string, opts?: { voice?: string }) { toasts.push({ kind, text, voice: opts?.voice }); },
     async modal(o: { title: string; body: Node | string; actions: Array<{ label: string; value: string }> }) {
       modalTitles.push(o.title);
@@ -224,7 +224,7 @@ describe('voices of the app\'s toasts', () => {
 describe('the real shell opens on the hub', () => {
   it('opening the shell after a reload shows the hub with the device down', async () => {
     const st = newStore();
-    const first = createApp(st, { loadContent: async () => content, shellFactory: () => ({ open() {}, close() {}, isOpen: () => false, showScreen() {}, showTab() {}, registerTab() {}, registerHub() {}, registerScreen() {}, setTabBadge() {}, toast() {}, async modal() { return null; }, setPalette() {}, refresh() {}, destroy() {} }) as never });
+    const first = createApp(st, { loadContent: async () => content, shellFactory: () => ({ open() {}, close() {}, isOpen: () => false, showScreen() {}, showTab() {}, registerTab() {}, registerHub() {}, registerScreen() {}, setTabLocked() {}, setTabBadge() {}, toast() {}, async modal() { return null; }, setPalette() {}, refresh() {}, destroy() {} }) as never });
     await first.start();
     expect(await first.deployCampaign(setupResult(), 'new_group')).toBe(true);
 

@@ -26,7 +26,7 @@ function mount(tweak: (s: CampaignState) => void = () => {}, readOnly = false) {
   tweak(state);
   const controller: OnboardingCardController = {
     startLineup: vi.fn(async () => true), talkFirstWords: vi.fn(async () => true), skipFirstWords: vi.fn(),
-    skipStep: vi.fn(async () => {}), resumeScene: vi.fn(), launchTutorial: vi.fn(() => true),
+    skipStep: vi.fn(async () => {}), resumeScene: vi.fn(), launchTutorial: vi.fn(() => true), debriefTutorial: vi.fn(async () => true), talkGuide: vi.fn(async () => true),
   };
   const host = h('div');
   document.body.append(host);
@@ -97,6 +97,29 @@ describe('the prologue card', () => {
     expect(byText(m.host, 'SKIP')).toBeUndefined();
     byText(m.host, 'RESUME PATROL')!.click();
     expect(m.controller.launchTutorial).toHaveBeenCalledTimes(1);
+  });
+
+  it('the debrief step shows [DEBRIEF] and [SKIP]', () => {
+    const m = mount((s) => { s.onboarding!.stepId = 'debrief'; });
+    byText(m.host, 'DEBRIEF')!.click();
+    expect(m.controller.debriefTutorial).toHaveBeenCalledTimes(1);
+    expect(byText(m.host, 'SKIP')).toBeDefined();
+  });
+
+  it('the first evening shows who wants to talk, with [TALK]', () => {
+    const m = mount((s) => { s.onboarding!.stepId = 'first_evening'; s.onboarding!.guideUnitId = 'unit_bea'; });
+    expect(m.host.textContent).toContain('Bea wants to talk.');
+    byText(m.host, 'TALK')!.click();
+    expect(m.controller.talkGuide).toHaveBeenCalledTimes(1);
+    expect(markedWithout(m.host)).toEqual([]);
+    expect(unresolved(m.host, env(m.state))).toEqual([]);
+  });
+
+  it('the first evening without a guide shows only the way to skip', () => {
+    const m = mount((s) => { s.onboarding!.stepId = 'first_evening'; });
+    expect(m.host.querySelector('.alius-onboarding-guide')).toBeNull();
+    expect(byText(m.host, 'TALK')).toBeUndefined();
+    expect(byText(m.host, 'SKIP')).toBeDefined();
   });
 
   it('card after reload shows resume for an open prologue scene', () => {

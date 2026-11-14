@@ -15,6 +15,8 @@ export interface Comms {
   send(unitId: string, text: string): Promise<void>;
   /** After a slot transition: some units start a DM on their own. */
   onSlotAdvanced(): Promise<void>;
+  /** P11: one unit writes first, without the roll (the guided evening). A no-op with unit DMs off or when nothing is generated. */
+  initiate(unitId: string): Promise<void>;
   /** Opens the knock: starts the night scene with the unit at the door. */
   openNight(): Promise<void>;
   /** Ignores the knock: the entry's consequence applies and the day rolls over. */
@@ -80,6 +82,17 @@ export function createComms(deps: CommsDeps): Comms {
     deps.onUi({ type: 'transcript' });
   }
 
+  /** She writes first: generated from her state, delivered as an unread DM. Nothing is stored when the model gives nothing. */
+  async function initiateOne(unitId: string, expect: string | undefined): Promise<void> {
+    const s = state();
+    const unit = s?.squad.find((u) => u.id === unitId);
+    if (!s || !unit || chatId() !== expect) return;
+    const text = await generateDm(replyInput(s, deps, unit, 'initiate'), { st, settings: deps.settings() });
+    if (text === null || chatId() !== expect) return;
+    const r = app.dispatch({ type: 'dm/receive', payload: { unitId, text, initiated: true } }, { expectChatId: expect });
+    if (!failed(r)) deps.onUi({ type: 'transcript' });
+  }
+
   return {
     async send(unitId, text) {
       const expect = chatId();
@@ -106,14 +119,14 @@ export function createComms(deps: CommsDeps): Comms {
       if (failed(rolled)) return;
       const ids = (rolled.find((e) => e.type === 'dm_initiative')?.unitIds as string[] | undefined) ?? [];
       for (const unitId of ids) {
-        const s = state();
-        const unit = s?.squad.find((u) => u.id === unitId);
-        if (!s || !unit || chatId() !== expect) return;
-        const text = await generateDm(replyInput(s, deps, unit, 'initiate'), { st, settings: deps.settings() });
-        if (text === null || chatId() !== expect) continue;
-        const r = app.dispatch({ type: 'dm/receive', payload: { unitId, text, initiated: true } }, { expectChatId: expect });
-        if (!failed(r)) deps.onUi({ type: 'transcript' });
+        if (chatId() !== expect) return;
+        await initiateOne(unitId, expect);
       }
+    },
+
+    async initiate(unitId) {
+      if (!deps.settings().unitDms) return;
+      await initiateOne(unitId, chatId());
     },
 
     async openNight() {

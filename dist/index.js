@@ -7002,6 +7002,7 @@ function stepsOf(entry) {
 var isWizardStep = (step) => WIZARD_KINDS.includes(step.kind);
 
 // src/engine/onboarding/state.ts
+var onboardingDone = (state) => state.onboarding === void 0 || state.onboarding.done;
 var livingNamed = (state) => state.squad.filter((u) => u.kind === "named" && isLiving(u));
 function currentStep(state, reg) {
   const o = state.onboarding;
@@ -8486,6 +8487,107 @@ registerStepEntry("expedition", (draft, ctx2, step) => {
   if (draft.onboarding) draft.onboarding.tutorialMissionId = mission.id;
   return [{ type: "mission_offered", missionId: mission.id, source: mission.source, regionId: mission.regionId, title: mission.title }];
 });
+
+// src/engine/night.ts
+function enqueueNight(draft, e) {
+  const queue = draft.calendar.nightEventsQueue;
+  if (queue.some((q) => q.unitId === e.unitId && q.kind === e.kind)) return false;
+  queue.push(e);
+  const ranked = queue.map((q, i) => ({ q, i })).sort((a, b) => b.q.priority - a.q.priority || a.i - b.i);
+  queue.splice(0, queue.length, ...ranked.map((x) => x.q));
+  return true;
+}
+var EXPIRES_IN_DAYS = 2;
+function specsOf(state, reg, unitId, usable3) {
+  const unit = state.squad.find((u) => u.id === unitId);
+  const rel = state.relations[unitId];
+  if (!unit || !rel) return [];
+  const out = [];
+  const st = usable3.has(rel.stateId) ? reg.relationshipStates.get(rel.stateId) : void 0;
+  out.push(...st?.unlocks?.nightEvents ?? []);
+  for (const d of unit.defects) out.push(...reg.defects.get(d.id)?.nightEvents ?? []);
+  return out;
+}
+function rollNight(draft, reg, rng, trigger) {
+  const events = [];
+  const queue = draft.calendar.nightEventsQueue;
+  draft.calendar.nightEventsQueue = queue.filter((e) => e.expiresDay >= draft.day);
+  const usable3 = new Set(availableStates(draft, reg).map((s) => s.id));
+  const mult = TUNING.comms.initiativeMult[intimacyOf(draft).initiative];
+  for (const u of draft.squad) {
+    if (u.kind !== "named" || !isLiving(u)) continue;
+    for (const spec of specsOf(draft, reg, u.id, usable3)) {
+      if (spec.trigger !== trigger) continue;
+      if (!rng.chance(Math.min(1, spec.chance * mult))) continue;
+      const entry = {
+        id: nextId(draft, "n"),
+        unitId: u.id,
+        kind: spec.kind,
+        priority: spec.priority,
+        framing: spec.framing.replace("{name}", u.displayName),
+        ignore: { ...spec.ignore },
+        expiresDay: draft.day + EXPIRES_IN_DAYS
+      };
+      if (enqueueNight(draft, entry)) events.push({ type: "night_queued", entry });
+    }
+  }
+  return events;
+}
+
+// src/engine/onboarding/evening.ts
+function guideUnit(state) {
+  let best = null;
+  for (const u of state.squad) {
+    if (u.kind !== "named" || !isLiving(u)) continue;
+    const r = state.relations[u.id];
+    if (!r) continue;
+    if (best === null || r.affinity > best.affinity || r.affinity === best.affinity && r.trust > best.trust) {
+      best = { id: u.id, affinity: r.affinity, trust: r.trust };
+    }
+  }
+  return best?.id ?? null;
+}
+registerStepEntry("guided_slot", (draft, _ctx, step) => {
+  if (step.completion !== "next_day" || !draft.onboarding) return [];
+  const id = guideUnit(draft);
+  if (id === null) return [];
+  draft.onboarding.guideUnitId = id;
+  if (!step.nightKnock) return [];
+  const unit = draft.squad.find((u) => u.id === id);
+  const entry = {
+    id: nextId(draft, "n"),
+    unitId: id,
+    kind: "visit",
+    priority: 5,
+    framing: step.nightKnock.framing.replace("{name}", unit.displayName),
+    ignore: { event: step.nightKnock.ignore.event, severity: step.nightKnock.ignore.severity },
+    expiresDay: draft.day + 1
+  };
+  return enqueueNight(draft, entry) ? [{ type: "night_queued", entry }] : [];
+});
+
+// src/engine/onboarding/unlocks.ts
+var conditionOf = (row) => row.condition ?? {};
+var tabOf = (row) => String(row.target.tab);
+function holds(state, c) {
+  if (c.minDay !== void 0 && state.day < c.minDay) return false;
+  if (c.afterStep !== void 0) {
+    const o = state.onboarding;
+    if (!o || !(o.completed.includes(c.afterStep) || o.skipped.includes(c.afterStep))) return false;
+  }
+  return true;
+}
+function lockedTabs(state, reg) {
+  const out = /* @__PURE__ */ new Set();
+  if (onboardingDone(state)) return out;
+  for (const row of reg.uiUnlocks.values()) if (!holds(state, conditionOf(row))) out.add(tabOf(row));
+  return out;
+}
+function unlockedBetween(before, after, reg) {
+  const was = lockedTabs(before, reg);
+  const now = lockedTabs(after, reg);
+  return [...reg.uiUnlocks.values()].filter((row) => was.has(tabOf(row)) && !now.has(tabOf(row)));
+}
 
 // src/engine/leash/weekly.ts
 var KINDS = ["compel", "suppress", "terminate"];
@@ -11113,52 +11215,6 @@ registerAction("memory/compact", (draft, payload) => {
   const entry = applyCompaction(draft, { kind, day, toDay, text: text2 });
   return [{ type: "chronicle_compacted", kind, day, toDay: entry.toDay ?? null }];
 });
-
-// src/engine/night.ts
-function enqueueNight(draft, e) {
-  const queue = draft.calendar.nightEventsQueue;
-  if (queue.some((q) => q.unitId === e.unitId && q.kind === e.kind)) return false;
-  queue.push(e);
-  const ranked = queue.map((q, i) => ({ q, i })).sort((a, b) => b.q.priority - a.q.priority || a.i - b.i);
-  queue.splice(0, queue.length, ...ranked.map((x) => x.q));
-  return true;
-}
-var EXPIRES_IN_DAYS = 2;
-function specsOf(state, reg, unitId, usable3) {
-  const unit = state.squad.find((u) => u.id === unitId);
-  const rel = state.relations[unitId];
-  if (!unit || !rel) return [];
-  const out = [];
-  const st = usable3.has(rel.stateId) ? reg.relationshipStates.get(rel.stateId) : void 0;
-  out.push(...st?.unlocks?.nightEvents ?? []);
-  for (const d of unit.defects) out.push(...reg.defects.get(d.id)?.nightEvents ?? []);
-  return out;
-}
-function rollNight(draft, reg, rng, trigger) {
-  const events = [];
-  const queue = draft.calendar.nightEventsQueue;
-  draft.calendar.nightEventsQueue = queue.filter((e) => e.expiresDay >= draft.day);
-  const usable3 = new Set(availableStates(draft, reg).map((s) => s.id));
-  const mult = TUNING.comms.initiativeMult[intimacyOf(draft).initiative];
-  for (const u of draft.squad) {
-    if (u.kind !== "named" || !isLiving(u)) continue;
-    for (const spec of specsOf(draft, reg, u.id, usable3)) {
-      if (spec.trigger !== trigger) continue;
-      if (!rng.chance(Math.min(1, spec.chance * mult))) continue;
-      const entry = {
-        id: nextId(draft, "n"),
-        unitId: u.id,
-        kind: spec.kind,
-        priority: spec.priority,
-        framing: spec.framing.replace("{name}", u.displayName),
-        ignore: { ...spec.ignore },
-        expiresDay: draft.day + EXPIRES_IN_DAYS
-      };
-      if (enqueueNight(draft, entry)) events.push({ type: "night_queued", entry });
-    }
-  }
-  return events;
-}
 
 // src/engine/loyalty/state.ts
 var blank = () => ({ signs: [], attempts: 0 });
@@ -15517,7 +15573,7 @@ registerAction("expedition/ack_report", (draft) => {
 registerAction("expedition/mark_debriefed", (draft) => {
   if (!draft.lastExpedition) throw new Error("There is no report.");
   draft.lastExpedition.debriefed = true;
-  return [];
+  return [{ type: "expedition_debriefed", reportId: draft.lastExpedition.id }];
 });
 registerAction("expedition/set_recap", (draft, payload) => {
   const reportId = isObj13(payload) ? payload.reportId : void 0;
@@ -17354,6 +17410,48 @@ function createDiscipline(deps) {
   return { onEvents, onSceneOpened, onSceneClosed, punish, undo, onSlotAdvanced, answerDemand: answerDemand2, talkDemand };
 }
 
+// src/engine/hub.ts
+function fnv1a(s) {
+  let h2 = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h2 ^= s.charCodeAt(i);
+    h2 = Math.imul(h2, 16777619) >>> 0;
+  }
+  return h2 >>> 0;
+}
+var roomsOf = (reg) => [...reg.hubRooms.values()];
+var hostOf = (rooms, host) => rooms.find((r) => (r.hosts ?? []).includes(host));
+var isInjured = (u) => u.status === "injured" || (u.injuryDays ?? 0) > 0;
+function routineWeight(state, reg, room, unit) {
+  const base = (room.weights ?? {})[state.slot] ?? 0;
+  if (base <= 0) return 0;
+  const open3 = (reg.locations.get(room.sceneLocationId)?.slots ?? []).includes(state.slot);
+  if (!open3) return 0;
+  if (typeof room.facilityId === "string" && facilityLevel(state, room.facilityId) < 1) return 0;
+  const liked = (room.likeTags ?? []).some((t) => unit.likes.some((l) => l.toLowerCase() === t.toLowerCase()));
+  return base + (liked ? 2 : 0);
+}
+function place(state, reg, rooms, unit) {
+  const here = (room, reason) => room ? { unitId: unit.id, roomId: room.id, reason } : null;
+  if (state.expedition?.party.includes(unit.id)) return { unitId: unit.id, roomId: null, reason: "expedition" };
+  const held = activeRestrictions(state, unit.id);
+  const found2 = (isInjured(unit) ? here(hostOf(rooms, "injured"), "injured") : null) ?? (held.some((r) => r.kind === "confined") ? here(hostOf(rooms, "confined"), "confined") : null) ?? (held.some((r) => r.kind === "duty") ? here(hostOf(rooms, "duty"), "duty") : null) ?? (state.slot === "night" ? here(hostOf(rooms, "night"), "night") : null);
+  if (found2) return found2;
+  const weights = rooms.map((room) => routineWeight(state, reg, room, unit));
+  const total2 = weights.reduce((a, b) => a + b, 0);
+  if (total2 <= 0) return { unitId: unit.id, roomId: null, reason: "nowhere" };
+  let pick2 = fnv1a(`${state.day}|${state.slot}|${unit.id}`) % total2;
+  for (let i = 0; i < rooms.length; i++) {
+    if (pick2 < weights[i]) return { unitId: unit.id, roomId: rooms[i].id, reason: "routine" };
+    pick2 -= weights[i];
+  }
+  return { unitId: unit.id, roomId: null, reason: "nowhere" };
+}
+function whereabouts(state, reg) {
+  const rooms = roomsOf(reg);
+  return livingUnits(state).map((u) => place(state, reg, rooms, u));
+}
+
 // src/onboarding/controller.ts
 var GOAL_DIRECTIVE = "prologue:goal";
 var WRAP_DIRECTIVE = "prologue:wrap";
@@ -17374,6 +17472,7 @@ function createOnboarding(deps) {
   const reg = () => deps.registries();
   let tracked = null;
   const asked = /* @__PURE__ */ new Set();
+  let guideDmDue = null;
   const clearDirectives = () => deps.context.clearMatching((d) => d.id.startsWith("prologue:"));
   function setGoal(step) {
     if (step.directive) deps.context.setDirective({ id: GOAL_DIRECTIVE, text: step.directive, expiresAfter: "scene" });
@@ -17392,6 +17491,18 @@ function createOnboarding(deps) {
     const step = currentStep(s, reg());
     if (!step || completionReason(s, reg(), step) !== null) return;
     dispatch2("onboarding/complete_step", { stepId: step.id }, expect);
+  }
+  function completeOn(completion, expect) {
+    const s = state();
+    if (s && currentStep(s, reg())?.completion === completion) completeIfDone(expect);
+  }
+  function sendGuideDm(guideId) {
+    if (state()?.scene) {
+      guideDmDue = guideId;
+      return;
+    }
+    guideDmDue = null;
+    void deps.initiateDm(guideId);
   }
   function candidates4(s) {
     return livingNamed(s).filter((u) => restrictionReason(s, u.id, "scene") === null).map((u) => u.id).slice(0, TUNING.scene.maxParticipants);
@@ -17450,6 +17561,26 @@ function createOnboarding(deps) {
     resumeScene() {
       deps.resumeScene();
     },
+    async debriefTutorial() {
+      const s = state();
+      const step = s ? currentStep(s, reg()) : null;
+      const report = s?.lastExpedition;
+      if (!s || !step || step.completion !== "debriefed" || !report || report.missionId !== s.onboarding?.tutorialMissionId) return false;
+      const who = report.party.filter((id) => livingNamed(s).some((u) => u.id === id) && restrictionReason(s, id, "scene") === null).slice(0, TUNING.scene.maxParticipants);
+      if (who.length === 0) {
+        deps.toast("warn", "Nobody from the patrol is free to debrief.");
+        return false;
+      }
+      return deps.debrief(who);
+    },
+    async talkGuide() {
+      const s = state();
+      const id = s?.onboarding?.guideUnitId;
+      if (!s || id === void 0 || !livingNamed(s).some((u) => u.id === id)) return false;
+      const room = whereabouts(s, reg()).find((w) => w.unitId === id)?.roomId;
+      const location = (room ? reg().hubRooms.get(room)?.sceneLocationId : void 0) ?? "quarters_unit";
+      return deps.talkAt(id, String(location));
+    },
     launchTutorial() {
       const s = state();
       const step = s ? currentStep(s, reg()) : null;
@@ -17482,6 +17613,14 @@ function createOnboarding(deps) {
     onEvents(events) {
       const s = state();
       if (!s) return;
+      if (events.some((e) => e.type === "expedition_debriefed")) completeOn("debriefed", chatId());
+      if (events.some((e) => e.type === "day_started")) completeOn("next_day", chatId());
+      if (events.some((e) => e.type === "onboarding_step_started")) {
+        const step = currentStep(s, reg());
+        const guide = s.onboarding?.guideUnitId;
+        if (step?.completion === "next_day" && guide !== void 0 && events.some((e) => e.type === "onboarding_step_started" && e.stepId === step.id)) sendGuideDm(guide);
+      }
+      if (guideDmDue !== null && events.some((e) => e.type === "scene_ended" || e.type === "scene_aborted") && !s.scene) sendGuideDm(guideDmDue);
       if (events.some((e) => e.type === "expedition_ended") && currentStep(s, reg())?.kind === "expedition") completeIfDone(chatId());
       if (events.some((e) => e.type === "scene_exchange") && s.scene?.origin === "prologue") {
         const step = currentStep(s, reg());
@@ -17524,18 +17663,6 @@ function createOnboarding(deps) {
   };
 }
 
-// src/ui/analyze/mark.ts
-function analyzeNative(address, ctx2) {
-  const { tabindex: _tabindex, ...rest } = analyzeAttrs(address, ctx2);
-  return rest;
-}
-function analyzeAttrs(address, ctx2) {
-  const attrs = { "data-analyze": address };
-  if (ctx2) attrs["data-analyze-ctx"] = JSON.stringify(ctx2);
-  attrs.tabindex = "0";
-  return attrs;
-}
-
 // src/ui/dom.ts
 function h(tag2, attrs = {}, ...children) {
   const el = document.createElement(tag2);
@@ -17553,6 +17680,131 @@ function h(tag2, attrs = {}, ...children) {
   return el;
 }
 
+// src/ui/shell/router.ts
+function stubText(name) {
+  const lines = [name, "NO DATA // MODULE OFFLINE"];
+  const inner = Math.max(...lines.map((l) => l.length)) + 4;
+  const rule = `+${"-".repeat(inner)}+`;
+  return [rule, ...lines.map((l) => `|  ${l.padEnd(inner - 2)}|`), rule].join("\n");
+}
+function createRouter() {
+  const renderers = /* @__PURE__ */ new Map();
+  let current = "hub";
+  return {
+    current: () => current,
+    go(id) {
+      current = id;
+    },
+    register(id, render) {
+      renderers.set(id, render);
+    },
+    render(host) {
+      host.replaceChildren();
+      const render = renderers.get(current);
+      if (render) render(host);
+      else host.append(h("pre", { class: "alius-stub" }, stubText(current.toUpperCase())));
+    }
+  };
+}
+
+// src/ui/shell/tabs.ts
+var TAB_IDS = ["squad", "ops", "map", "comms", "base", "inv", "log", "sys"];
+var TAB_LABELS = {
+  squad: "SQUAD",
+  ops: "OPS",
+  map: "MAP",
+  comms: "COMMS",
+  base: "BASE",
+  inv: "INV",
+  log: "LOG",
+  sys: "SYS"
+};
+var tabStub = (id) => h("pre", { class: "alius-stub" }, stubText(TAB_LABELS[id]));
+function createTabBar(opts) {
+  const buttons = /* @__PURE__ */ new Map();
+  const bar2 = h("div", { class: "alius-tabbar", role: "tablist", "aria-label": "Alius sections" });
+  TAB_IDS.forEach((id, i) => {
+    if (i > 0) bar2.append(h("span", { class: "alius-sep", "aria-hidden": "true" }, " \xB7 "));
+    const btn = h(
+      "button",
+      {
+        type: "button",
+        class: "alius-tab",
+        role: "tab",
+        id: `alius-tab-${id}`,
+        "aria-controls": opts.panelId,
+        "aria-selected": "false",
+        tabindex: "-1",
+        onclick: () => opts.onSelect(id)
+      },
+      TAB_LABELS[id]
+    );
+    buttons.set(id, btn);
+    bar2.append(btn);
+  });
+  bar2.addEventListener("keydown", (e) => {
+    const ev = e;
+    if (ev.key !== "ArrowRight" && ev.key !== "ArrowLeft") return;
+    const at = TAB_IDS.findIndex((id) => buttons.get(id) === ev.target);
+    if (at < 0) return;
+    ev.preventDefault();
+    let next = TAB_IDS[(at + (ev.key === "ArrowRight" ? 1 : TAB_IDS.length - 1)) % TAB_IDS.length];
+    for (let i = 0; i < TAB_IDS.length && opts.isLocked?.(next); i++) {
+      const from = TAB_IDS.indexOf(next);
+      next = TAB_IDS[(from + (ev.key === "ArrowRight" ? 1 : TAB_IDS.length - 1)) % TAB_IDS.length];
+    }
+    if (opts.isLocked?.(next)) return;
+    opts.onSelect(next);
+    buttons.get(next).focus();
+  });
+  return {
+    element: bar2,
+    /** Shows a small count on a tab (0 clears it); counts above 99 read `99+`. */
+    setBadge(id, n) {
+      const btn = buttons.get(id);
+      if (!btn) return;
+      btn.querySelector(".alius-badge")?.remove();
+      if (n > 0) {
+        btn.append(" ", h("span", { class: "alius-badge" }, n > 99 ? "99+" : String(n)));
+        btn.setAttribute("aria-label", `${TAB_LABELS[id]}, ${n > 99 ? "99+" : n} unread`);
+      } else btn.removeAttribute("aria-label");
+    },
+    /** P11: a locked tab reads OFFLINE and cannot be chosen (`aria-disabled`; the shell refuses it too). */
+    setLocked(id, locked) {
+      const btn = buttons.get(id);
+      if (!btn) return;
+      btn.querySelector(".alius-offline")?.remove();
+      if (locked) {
+        btn.setAttribute("aria-disabled", "true");
+        btn.classList.add("is-offline");
+        btn.append(" ", h("span", { class: "alius-offline" }, "OFFLINE"));
+      } else {
+        btn.removeAttribute("aria-disabled");
+        btn.classList.remove("is-offline");
+      }
+    },
+    setSelected(id) {
+      for (const [tid, btn] of buttons) {
+        const on = tid === id;
+        btn.setAttribute("aria-selected", String(on));
+        btn.tabIndex = on ? 0 : -1;
+      }
+    }
+  };
+}
+
+// src/ui/analyze/mark.ts
+function analyzeNative(address, ctx2) {
+  const { tabindex: _tabindex, ...rest } = analyzeAttrs(address, ctx2);
+  return rest;
+}
+function analyzeAttrs(address, ctx2) {
+  const attrs = { "data-analyze": address };
+  if (ctx2) attrs["data-analyze-ctx"] = JSON.stringify(ctx2);
+  attrs.tabindex = "0";
+  return attrs;
+}
+
 // src/ui/voice/sources.ts
 var VOICE_OF = {
   toast: "terminal",
@@ -17567,48 +17819,6 @@ var VOICE_OF = {
   // P11
   intake_form: "paper"
 };
-
-// src/engine/hub.ts
-function fnv1a(s) {
-  let h2 = 2166136261;
-  for (let i = 0; i < s.length; i++) {
-    h2 ^= s.charCodeAt(i);
-    h2 = Math.imul(h2, 16777619) >>> 0;
-  }
-  return h2 >>> 0;
-}
-var roomsOf = (reg) => [...reg.hubRooms.values()];
-var hostOf = (rooms, host) => rooms.find((r) => (r.hosts ?? []).includes(host));
-var isInjured = (u) => u.status === "injured" || (u.injuryDays ?? 0) > 0;
-function routineWeight(state, reg, room, unit) {
-  const base = (room.weights ?? {})[state.slot] ?? 0;
-  if (base <= 0) return 0;
-  const open3 = (reg.locations.get(room.sceneLocationId)?.slots ?? []).includes(state.slot);
-  if (!open3) return 0;
-  if (typeof room.facilityId === "string" && facilityLevel(state, room.facilityId) < 1) return 0;
-  const liked = (room.likeTags ?? []).some((t) => unit.likes.some((l) => l.toLowerCase() === t.toLowerCase()));
-  return base + (liked ? 2 : 0);
-}
-function place(state, reg, rooms, unit) {
-  const here = (room, reason) => room ? { unitId: unit.id, roomId: room.id, reason } : null;
-  if (state.expedition?.party.includes(unit.id)) return { unitId: unit.id, roomId: null, reason: "expedition" };
-  const held = activeRestrictions(state, unit.id);
-  const found2 = (isInjured(unit) ? here(hostOf(rooms, "injured"), "injured") : null) ?? (held.some((r) => r.kind === "confined") ? here(hostOf(rooms, "confined"), "confined") : null) ?? (held.some((r) => r.kind === "duty") ? here(hostOf(rooms, "duty"), "duty") : null) ?? (state.slot === "night" ? here(hostOf(rooms, "night"), "night") : null);
-  if (found2) return found2;
-  const weights = rooms.map((room) => routineWeight(state, reg, room, unit));
-  const total2 = weights.reduce((a, b) => a + b, 0);
-  if (total2 <= 0) return { unitId: unit.id, roomId: null, reason: "nowhere" };
-  let pick2 = fnv1a(`${state.day}|${state.slot}|${unit.id}`) % total2;
-  for (let i = 0; i < rooms.length; i++) {
-    if (pick2 < weights[i]) return { unitId: unit.id, roomId: rooms[i].id, reason: "routine" };
-    pick2 -= weights[i];
-  }
-  return { unitId: unit.id, roomId: null, reason: "nowhere" };
-}
-function whereabouts(state, reg) {
-  const rooms = roomsOf(reg);
-  return livingUnits(state).map((u) => place(state, reg, rooms, u));
-}
 
 // src/ui/fx.ts
 var SVG_NS = "http://www.w3.org/2000/svg";
@@ -17737,6 +17947,18 @@ function renderOnboardingCard(host, ctx2) {
       { class: "alius-row" },
       out ? button("[ RESUME PATROL ]", "resume-run", address, () => controller.launchTutorial()) : button("[ LAUNCH TUTORIAL ]", "launch", address, () => controller.launchTutorial(), scene !== void 0),
       out ? null : skip()
+    ));
+  } else if (step.kind === "guided_slot" && step.completion === "debriefed") {
+    body.append(h("div", { class: "alius-row" }, button("[ DEBRIEF ]", "debrief", address, () => void controller.debriefTutorial(), scene !== void 0), skip()));
+  } else if (step.kind === "guided_slot") {
+    const guide = state.squad.find((u) => u.id === state.onboarding?.guideUnitId);
+    const here = guide !== void 0 && livingNamed(state).some((u) => u.id === guide.id);
+    body.append(h(
+      "div",
+      { class: "alius-row" },
+      here ? h("span", { class: "alius-onboarding-guide" }, `${guide.displayName} wants to talk.`) : null,
+      here ? button("[ TALK ]", "talk-guide", address, () => void controller.talkGuide(), scene !== void 0) : null,
+      skip()
     ));
   } else {
     body.append(h("div", { class: "alius-row" }, skip()));
@@ -19229,6 +19451,15 @@ function createComms(deps) {
     }
     deps.onUi({ type: "transcript" });
   }
+  async function initiateOne(unitId, expect) {
+    const s = state();
+    const unit = s?.squad.find((u) => u.id === unitId);
+    if (!s || !unit || chatId() !== expect) return;
+    const text2 = await generateDm(replyInput(s, deps, unit, "initiate"), { st, settings: deps.settings() });
+    if (text2 === null || chatId() !== expect) return;
+    const r = app.dispatch({ type: "dm/receive", payload: { unitId, text: text2, initiated: true } }, { expectChatId: expect });
+    if (!failed(r)) deps.onUi({ type: "transcript" });
+  }
   return {
     async send(unitId, text2) {
       const expect = chatId();
@@ -19254,14 +19485,13 @@ function createComms(deps) {
       if (failed(rolled)) return;
       const ids = rolled.find((e) => e.type === "dm_initiative")?.unitIds ?? [];
       for (const unitId of ids) {
-        const s = state();
-        const unit = s?.squad.find((u) => u.id === unitId);
-        if (!s || !unit || chatId() !== expect) return;
-        const text2 = await generateDm(replyInput(s, deps, unit, "initiate"), { st, settings: deps.settings() });
-        if (text2 === null || chatId() !== expect) continue;
-        const r = app.dispatch({ type: "dm/receive", payload: { unitId, text: text2, initiated: true } }, { expectChatId: expect });
-        if (!failed(r)) deps.onUi({ type: "transcript" });
+        if (chatId() !== expect) return;
+        await initiateOne(unitId, expect);
       }
+    },
+    async initiate(unitId) {
+      if (!deps.settings().unitDms) return;
+      await initiateOne(unitId, chatId());
     },
     async openNight() {
       const events = app.dispatch({ type: "night/open", payload: {} }, { expectChatId: chatId() });
@@ -22624,9 +22854,9 @@ function pickSkin(state, reg, override) {
   if (chosen) return chosen;
   const fallback = reg.deviceSkins.get(FALLBACK_SKIN) ?? BUILT_IN_SKIN;
   if (!state) return fallback;
-  const bound = (key, holds2) => skins.find((s) => {
+  const bound = (key, holds3) => skins.find((s) => {
     const v = s.bindTo?.[key];
-    return typeof v === "string" && holds2(v);
+    return typeof v === "string" && holds3(v);
   });
   const traits = traitIds(state);
   const flags = /* @__PURE__ */ new Set([...state.world.flags, ...state.commander.flags]);
@@ -22992,7 +23222,7 @@ function renderRoomPanel(room, state, ctx2, here, opts) {
       reason !== null && canTalk ? h("span", { class: "alius-dim alius-reason" }, reason) : null
     );
   });
-  const cards = opts.readOnly ? [] : (room.activityIds ?? []).map((id) => reg.activities.get(id)).filter((a) => a !== void 0).map((a) => activityCard(a, state, ctx2.ops));
+  const cards = opts.readOnly || lockedTabs(state, reg).has("ops") ? [] : (room.activityIds ?? []).map((id) => reg.activities.get(id)).filter((a) => a !== void 0).map((a) => activityCard(a, state, ctx2.ops));
   return h(
     "section",
     { class: "alius-room-panel", "data-room": String(room.id), role: "region", "aria-label": `${String(room.label)} room` },
@@ -25656,7 +25886,7 @@ function entryEffects2(registry2, entry, reg, data) {
 
 // src/analysis/knowledge.ts
 var rules = [];
-function holds(check) {
+function holds2(check) {
   try {
     return check() !== false;
   } catch {
@@ -25666,13 +25896,13 @@ function holds(check) {
 function buildKnowledge(state, settings) {
   const showRaw = settings.showRawValues === true;
   const visibleClocks = new Set((state?.world?.clocks ?? []).filter((c) => c.visibleToPlayer).map((c) => c.id));
-  const factVisible = (f) => state !== null && rules.every((r) => !r.fact || holds(() => r.fact(f, state)));
+  const factVisible = (f) => state !== null && rules.every((r) => !r.fact || holds2(() => r.fact(f, state)));
   return {
     showRaw,
     raw: (n) => showRaw ? String(n) : null,
     clockVisible: (id) => visibleClocks.has(id),
     factVisible,
-    flagVisible: (id) => state === null || rules.every((r) => !r.flag || holds(() => r.flag(id, state))),
+    flagVisible: (id) => state === null || rules.every((r) => !r.flag || holds2(() => r.flag(id, state))),
     facts: () => (state?.memory?.facts ?? []).filter(factVisible)
   };
 }
@@ -26802,33 +27032,6 @@ function createModalHost(layer) {
   };
 }
 
-// src/ui/shell/router.ts
-function stubText(name) {
-  const lines = [name, "NO DATA // MODULE OFFLINE"];
-  const inner = Math.max(...lines.map((l) => l.length)) + 4;
-  const rule = `+${"-".repeat(inner)}+`;
-  return [rule, ...lines.map((l) => `|  ${l.padEnd(inner - 2)}|`), rule].join("\n");
-}
-function createRouter() {
-  const renderers = /* @__PURE__ */ new Map();
-  let current = "hub";
-  return {
-    current: () => current,
-    go(id) {
-      current = id;
-    },
-    register(id, render) {
-      renderers.set(id, render);
-    },
-    render(host) {
-      host.replaceChildren();
-      const render = renderers.get(current);
-      if (render) render(host);
-      else host.append(h("pre", { class: "alius-stub" }, stubText(current.toUpperCase())));
-    }
-  };
-}
-
 // src/ui/shell/sysTab.ts
 var errText2 = (e) => e instanceof Error ? e.message : String(e);
 function field(label2, control, setting) {
@@ -27157,73 +27360,6 @@ ${e.parsed === void 0 ? "(none)" : JSON.stringify(e.parsed, null, 2)}`)
   host.append(form, backup, debugHost);
 }
 
-// src/ui/shell/tabs.ts
-var TAB_IDS = ["squad", "ops", "map", "comms", "base", "inv", "log", "sys"];
-var TAB_LABELS = {
-  squad: "SQUAD",
-  ops: "OPS",
-  map: "MAP",
-  comms: "COMMS",
-  base: "BASE",
-  inv: "INV",
-  log: "LOG",
-  sys: "SYS"
-};
-var tabStub = (id) => h("pre", { class: "alius-stub" }, stubText(TAB_LABELS[id]));
-function createTabBar(opts) {
-  const buttons = /* @__PURE__ */ new Map();
-  const bar2 = h("div", { class: "alius-tabbar", role: "tablist", "aria-label": "Alius sections" });
-  TAB_IDS.forEach((id, i) => {
-    if (i > 0) bar2.append(h("span", { class: "alius-sep", "aria-hidden": "true" }, " \xB7 "));
-    const btn = h(
-      "button",
-      {
-        type: "button",
-        class: "alius-tab",
-        role: "tab",
-        id: `alius-tab-${id}`,
-        "aria-controls": opts.panelId,
-        "aria-selected": "false",
-        tabindex: "-1",
-        onclick: () => opts.onSelect(id)
-      },
-      TAB_LABELS[id]
-    );
-    buttons.set(id, btn);
-    bar2.append(btn);
-  });
-  bar2.addEventListener("keydown", (e) => {
-    const ev = e;
-    if (ev.key !== "ArrowRight" && ev.key !== "ArrowLeft") return;
-    const at = TAB_IDS.findIndex((id) => buttons.get(id) === ev.target);
-    if (at < 0) return;
-    ev.preventDefault();
-    const next = TAB_IDS[(at + (ev.key === "ArrowRight" ? 1 : TAB_IDS.length - 1)) % TAB_IDS.length];
-    opts.onSelect(next);
-    buttons.get(next).focus();
-  });
-  return {
-    element: bar2,
-    /** Shows a small count on a tab (0 clears it); counts above 99 read `99+`. */
-    setBadge(id, n) {
-      const btn = buttons.get(id);
-      if (!btn) return;
-      btn.querySelector(".alius-badge")?.remove();
-      if (n > 0) {
-        btn.append(" ", h("span", { class: "alius-badge" }, n > 99 ? "99+" : String(n)));
-        btn.setAttribute("aria-label", `${TAB_LABELS[id]}, ${n > 99 ? "99+" : n} unread`);
-      } else btn.removeAttribute("aria-label");
-    },
-    setSelected(id) {
-      for (const [tid, btn] of buttons) {
-        const on = tid === id;
-        btn.setAttribute("aria-selected", String(on));
-        btn.tabIndex = on ? 0 : -1;
-      }
-    }
-  };
-}
-
 // src/ui/shell/toast.ts
 var LIFETIME_MS = { info: 4e3, warn: 6e3, error: 9e3, story: 14e3 };
 function createToasts(host) {
@@ -27264,6 +27400,7 @@ function createShell(deps) {
   let toasts = null;
   let modals = null;
   let tabBar = null;
+  const lockedTabs2 = /* @__PURE__ */ new Set();
   let panel = null;
   let statusHost = null;
   let analyzer = null;
@@ -27360,6 +27497,7 @@ function createShell(deps) {
     }, 120);
   }
   function selectTab(id) {
+    if (lockedTabs2.has(id)) return;
     const changed = id !== tab;
     tab = id;
     tabBar?.setSelected(id);
@@ -27420,8 +27558,9 @@ function createShell(deps) {
     target?.focus();
   }
   function buildLayer(host, up) {
-    tabBar = createTabBar({ onSelect: selectTab, panelId: PANEL_ID });
+    tabBar = createTabBar({ onSelect: selectTab, panelId: PANEL_ID, isLocked: (id) => lockedTabs2.has(id) });
     for (const [id, n] of badges) tabBar.setBadge(id, n);
+    for (const id of lockedTabs2) tabBar.setLocked(id, true);
     panel = h("div", { class: "alius-screen", id: PANEL_ID, role: "tabpanel", tabindex: "0" });
     statusHost = h("div", { class: "alius-status" });
     const chrome = h("div", { class: "alius-device-chrome", "aria-hidden": "true" });
@@ -27556,6 +27695,7 @@ function createShell(deps) {
       maybeBoot();
     },
     showTab(id) {
+      if (lockedTabs2.has(id)) return;
       tab = id;
       if (!isOpen()) {
         router.go("pda");
@@ -27586,6 +27726,12 @@ function createShell(deps) {
       if (opts?.refresh) screenRefresh.set(id, opts.refresh);
       else screenRefresh.delete(id);
       if (isOpen() && router.current() === id) renderView();
+    },
+    setTabLocked(id, locked) {
+      if (locked === lockedTabs2.has(id)) return;
+      if (locked) lockedTabs2.add(id);
+      else lockedTabs2.delete(id);
+      tabBar?.setLocked(id, locked);
     },
     setTabBadge(id, count) {
       if (count > 0) badges.set(id, count);
@@ -27699,7 +27845,15 @@ function createApp(st, deps) {
   registerSceneContext(context, { registries: () => registries, settings: () => getSettings(st) });
   registerWorldContext(context, { registries: () => registries });
   registerWorldOptionsContext(context, { registries: () => registries });
+  function syncLocks() {
+    const locked = state ? lockedTabs(state, registries) : /* @__PURE__ */ new Set();
+    for (const id of TAB_IDS) shell.setTabLocked(id, locked.has(id));
+  }
+  function announceUnlocks(before, after) {
+    for (const row of unlockedBetween(before, after, registries)) toast("info", String(row.notice), { voice: VOICE_OF.toast });
+  }
   function syncBadges() {
+    syncLocks();
     shell.setTabBadge("comms", state ? unreadCount(state) : 0);
     const fresh = state ? state.missions.offered.filter((m) => (m.source === "command" || m.source === "story") && !seenOffers.has(m.id)).length : 0;
     shell.setTabBadge("ops", fresh);
@@ -27774,6 +27928,9 @@ function createApp(st, deps) {
       await scene.end();
       leaveScene();
     },
+    initiateDm: (unitId) => comms.initiate(unitId),
+    talkAt: (unitId, locationId) => api.talkAt(unitId, locationId),
+    debrief: (unitIds) => expedition.debrief(unitIds),
     openExpedition: (missionId) => {
       if (missionId !== void 0) expedition.plan({ missionId });
       showExpedition();
@@ -29296,6 +29453,7 @@ function createApp(st, deps) {
       if (!state) {
         return load.kind === "readonly" ? [{ type: "error", code: "read_only", message: "Campaign is read-only." }] : [{ type: "error", code: "no_campaign", message: "No Alius campaign in this chat." }];
       }
+      const before = state;
       const r = dispatch(state, action, registries);
       if (r.state !== state) {
         state = r.state;
@@ -29305,6 +29463,7 @@ function createApp(st, deps) {
         }
       }
       reportEvents(r.events);
+      if (r.state !== before) announceUnlocks(before, r.state);
       applyContext();
       syncBadges();
       drawDilemma();
