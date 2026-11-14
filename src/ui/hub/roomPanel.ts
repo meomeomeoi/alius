@@ -1,0 +1,84 @@
+import type { Entry, Registries } from '../../content/types';
+import { checkActivity } from '../../engine/activities';
+import { restrictionReason } from '../../engine/discipline/restrictions';
+import type { Whereabout } from '../../engine/hub';
+import type { CampaignState, Unit } from '../../engine/state/types';
+import { analyzeAttrs, analyzeNative } from '../analyze/mark';
+import { h } from '../dom';
+import { activityCard } from '../ops/opsTab';
+import type { HubCtx } from './hubScreen';
+import { renderMarker } from './marker';
+import { endSlotBlock } from './model';
+
+/** The activity that opens a conversation: found by what it does (`startsScene`, companion required), never by id. */
+export function talkActivity(reg: Registries): Entry | undefined {
+  return [...reg.activities.values()].find((a) => a.startsScene === true && a.companion === 'required');
+}
+
+/** Why she cannot be talked to in this room right now, or `null`. The first reason that applies wins. */
+export function talkBlock(state: CampaignState, reg: Registries, unit: Unit, room: Entry): string | null {
+  const open = endSlotBlock(state);
+  if (open) return open;
+  const restricted = restrictionReason(state, unit.id, 'scene');
+  if (restricted) return restricted;
+  const slots = reg.locations.get(room.sceneLocationId as string)?.slots as string[] | undefined;
+  if (slots && !slots.includes(state.slot)) return `Closed this ${state.slot}.`;
+  const talk = talkActivity(reg);
+  return talk ? checkActivity(state, reg, { activityId: String(talk.id), companionId: unit.id }) : 'Nobody can be talked to here.';
+}
+
+/**
+ * The panel of one room: who is there (with a TALK button for each named soldier) and the activities the room offers,
+ * as the same cards the OPS tab shows. A read-only campaign gets the list and nothing to press.
+ */
+export function renderRoomPanel(
+  room: Entry, state: CampaignState, ctx: HubCtx, here: Whereabout[], opts: { readOnly: boolean; onClose: () => void },
+): HTMLElement {
+  const reg = ctx.registries;
+  const people = here.filter((w) => w.roomId === room.id)
+    .map((w) => state.squad.find((u) => u.id === w.unitId))
+    .filter((u): u is Unit => u !== undefined);
+  const talk = talkActivity(reg);
+
+  const rows = people.map((unit) => {
+    const reason = opts.readOnly || unit.kind !== 'named' || !talk ? null : talkBlock(state, reg, unit, room);
+    const canTalk = !opts.readOnly && unit.kind === 'named' && talk !== undefined;
+    const avatar = ctx.avatar(unit);
+    const button = canTalk
+      ? h('button', {
+        type: 'button', class: 'alius-btn alius-option', 'data-talk': unit.id, 'aria-disabled': reason !== null ? 'true' : null,
+        ...analyzeNative(`activities:${String(talk!.id)}`),
+        onclick: () => {
+          if (reason === null) ctx.onTalk(unit.id, String(room.sceneLocationId));
+        },
+      }, '[ TALK ]')
+      : null;
+    return h(
+      'li', { class: 'alius-room-person', 'data-unit': unit.id },
+      avatar ? h('span', { class: 'alius-room-avatar' }, avatar) : null,
+      renderMarker(state, reg, unit),
+      h('span', { class: 'alius-room-name' }, unit.kind === 'grunt' ? `${unit.displayName} (grunt)` : unit.displayName),
+      button,
+      reason !== null && canTalk ? h('span', { class: 'alius-dim alius-reason' }, reason) : null,
+    );
+  });
+
+  const cards = opts.readOnly
+    ? []
+    : ((room.activityIds ?? []) as string[]).map((id) => reg.activities.get(id)).filter((a): a is Entry => a !== undefined)
+      .map((a) => activityCard(a, state, ctx.ops));
+
+  return h(
+    'section',
+    { class: 'alius-room-panel', 'data-room': String(room.id), role: 'region', 'aria-label': `${String(room.label)} room` },
+    h(
+      'div', { class: 'alius-room-panel-head' },
+      h('h2', {}, h('span', { class: 'alius-chip', ...analyzeAttrs(`hubRooms:${String(room.id)}`) }, String(room.label))),
+      h('button', { type: 'button', class: 'alius-btn', 'data-close-room': '', 'aria-label': `Close ${String(room.label)}`, onclick: opts.onClose }, '[X]'),
+    ),
+    h('p', { class: 'alius-dim' }, String(room.description)),
+    h('h3', {}, 'HERE'),
+    people.length > 0 ? h('ul', { class: 'alius-room-people' }, ...rows) : h('p', { class: 'alius-dim' }, 'Nobody is here.'),
+    ...(cards.length > 0 ? [h('h3', {}, 'ACTIVITIES'), ...cards] : []),
+  );
+}

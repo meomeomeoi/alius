@@ -241,6 +241,290 @@
 }
 
 /*
+ * The hub: the outpost cross-section (the blueprint is the fallback when there is no art) and a right column. Colours
+ * come from the palette variables only, never from the reference canvas. Rooms are placed in percent of the stage.
+ */
+#alius-shell .alius-hub {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 0 56px;
+  min-height: 100%;
+}
+
+#alius-shell .alius-hub-topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 16px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--alius-dim);
+}
+
+#alius-shell .alius-hub-logo {
+  font-family: var(--alius-font-stencil, var(--alius-font));
+  letter-spacing: 0.2em;
+  color: var(--alius-accent);
+}
+
+#alius-shell .alius-hub-where {
+  color: var(--alius-dim);
+}
+
+#alius-shell .alius-hub-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin-left: auto;
+}
+
+#alius-shell .alius-hub-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 1200px) {
+  #alius-shell .alius-hub-body { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* cross-section */
+#alius-shell .alius-hub-main {
+  container-type: inline-size;
+  container-name: hub;
+}
+
+#alius-shell .alius-hub-stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  min-height: 300px;
+  border: 1px solid var(--alius-dim);
+  overflow: visible;
+}
+
+#alius-shell .alius-hub-bg {
+  position: absolute;
+  inset: 0;
+  background-color: var(--alius-bg);
+}
+
+#alius-shell .alius-hub-blueprint {
+  background-image:
+    repeating-linear-gradient(0deg, color-mix(in srgb, var(--alius-fg) 5%, transparent) 0 1px, transparent 1px 32px),
+    repeating-linear-gradient(90deg, color-mix(in srgb, var(--alius-fg) 5%, transparent) 0 1px, transparent 1px 32px);
+}
+
+#alius-shell .alius-hub-art {
+  background-size: cover;
+  background-position: center;
+}
+
+#alius-shell .alius-hub-caption {
+  position: absolute;
+  right: 6px;
+  bottom: 4px;
+  font-size: 0.7em;
+  letter-spacing: 0.15em;
+  color: var(--alius-dim);
+}
+
+#alius-shell .alius-room {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--alius-dim);
+  cursor: pointer;
+  overflow: hidden;
+}
+
+#alius-shell .alius-room:hover {
+  border-color: var(--alius-fg);
+}
+
+#alius-shell .alius-room-label {
+  align-self: flex-start;
+  background: transparent;
+  color: var(--alius-dim);
+  border: 0;
+  font: inherit;
+  font-size: 0.75em;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  min-height: 1.5em;
+  cursor: pointer;
+}
+
+#alius-shell .alius-room-markers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 2px 6px 6px;
+}
+
+/* a narrow cross-section: the label keeps a readable size and the rooms their touch height */
+@container hub (max-width: 480px) {
+  #alius-shell .alius-room-label {
+    font-size: 0.65em;
+    letter-spacing: 1px;
+    min-height: 1.8em;
+  }
+  #alius-shell .alius-hub-stage { min-height: 360px; }
+}
+
+/* markers */
+#alius-shell .alius-marker {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
+#alius-shell .alius-marker-ring {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid var(--alius-ring, var(--alius-dim));
+  font-size: 0.8em;
+}
+
+#alius-shell .alius-marker-glyphs {
+  font-size: 0.8em;
+  color: var(--alius-dim);
+  white-space: nowrap;
+}
+
+#alius-shell .alius-marker[data-tone="danger"] { --alius-ring: var(--alius-danger, var(--alius-err)); }
+#alius-shell .alius-marker[data-tone="bond"] { --alius-ring: var(--alius-bond, var(--alius-accent)); }
+#alius-shell .alius-marker[data-tone="trust"] { --alius-ring: var(--alius-trust, var(--alius-fg)); }
+#alius-shell .alius-marker[data-tone="affinity"] { --alius-ring: var(--alius-affinity, var(--alius-accent)); }
+#alius-shell .alius-marker[data-tone="warn"] { --alius-ring: var(--alius-warn, var(--alius-accent)); }
+
+#alius-shell .alius-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 4px 6px;
+  border: 1px dashed var(--alius-dim);
+}
+
+/* room panel */
+#alius-shell .alius-room-panel-host {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+#alius-shell .alius-room-panel {
+  position: absolute;
+  left: clamp(0px, var(--panel-x, 0%), calc(100% - min(420px, 92%)));
+  top: var(--panel-y, 10%);
+  width: min(420px, 92%);
+  max-height: 90%;
+  overflow: auto;
+  pointer-events: auto;
+  background: var(--alius-bg);
+  border: 2px double var(--alius-fg);
+  padding: 8px 12px;
+  z-index: 2;
+}
+
+#alius-shell .alius-room-panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+#alius-shell .alius-room-people {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+#alius-shell .alius-room-person {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  padding: 4px 0;
+}
+
+#alius-shell .alius-room-avatar img {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+}
+
+#alius-shell .alius-btn[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+#alius-shell .alius-btn[aria-disabled="true"]:hover {
+  background: transparent;
+  color: var(--alius-fg);
+}
+
+/* right column */
+#alius-shell .alius-hub-side {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+#alius-shell .alius-objective,
+#alius-shell .alius-oversight {
+  border: 1px solid var(--alius-dim);
+  padding: 8px 10px;
+}
+
+#alius-shell .alius-card-label {
+  color: var(--alius-dim);
+  letter-spacing: 0.15em;
+  font-size: 0.8em;
+}
+
+#alius-shell .alius-card-title {
+  color: var(--alius-accent);
+}
+
+#alius-shell .alius-tonight ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+#alius-shell .alius-tonight-item {
+  padding: 2px 0;
+}
+
+#alius-shell .alius-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  color: var(--alius-dim);
+  font-size: 0.85em;
+}
+
+#alius-shell .alius-open-pda {
+  background: var(--alius-fg);
+  color: var(--alius-bg);
+  padding: 6px 10px;
+  letter-spacing: 0.1em;
+}
+
+#alius-shell .alius-end {
+  padding: 6px 10px;
+}
+
+/*
  * The hub is the home screen; the PDA is a device that slides up over it. This file is layout only: the casing of each
  * skin lives in 17-skins.css. Stacking inside #alius-shell: hub 0 → device 1 → toasts 2 → modals 3 → analysis panel 10.
  */

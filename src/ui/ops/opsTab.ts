@@ -34,7 +34,8 @@ const costText = (cost: Record<string, number | undefined>): string => {
 };
 const unitLabel = (u: Unit) => (u.kind === 'grunt' ? `${u.displayName} (grunt)` : u.displayName);
 
-function activityCard(a: Entry, state: CampaignState, ctx: OpsTabCtx): HTMLElement {
+/** One activity as the OPS tab shows it; the hub's room panel reuses it for the activities of a room. */
+export function activityCard(a: Entry, state: CampaignState, ctx: OpsTabCtx): HTMLElement {
   const mode = a.companion as 'none' | 'optional' | 'required';
   const focusList = (a.focus as Focus[] | undefined) ?? [];
   const living = state.squad.filter(isLiving);

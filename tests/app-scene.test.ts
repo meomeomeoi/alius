@@ -51,7 +51,7 @@ async function boot() {
     open() { shell.opened++; }, close() {}, isOpen: () => false,
     showScreen(id: string) { screens.push(id); }, showTab() {},
     registerTab(id: string, r: (host: HTMLElement) => void) { tabRenderers.set(id, r); },
-    registerScreen(id: string, r: (host: HTMLElement) => void) { screenRenderers.set(id, r); },
+    registerHub() {}, registerScreen(id: string, r: (host: HTMLElement) => void) { screenRenderers.set(id, r); },
     setTabBadge(id: string, n: number) { badges.set(id, n); },
     toast(kind: string, text: string) { toasts.push({ kind, text }); },
     async modal(o: { title: string; body: Node | string }) {
@@ -151,7 +151,7 @@ describe('scenes in the app', () => {
     await flush();
     expect(t.state().day).toBe(2);
     expect(t.state().slot).toBe('morning');
-    expect(t.screens.at(-1)).toBe('pda');
+    expect(t.screens.at(-1)).toBe('hub');
   });
 
   it('opening the knock starts a night scene', async () => {
@@ -229,7 +229,7 @@ describe('scenes in the app', () => {
     await t.app.performActivity({ activityId: 'talk', companionId: RHEA });
     t.screens.length = 0;
     t.st.switchChat({ chatId: 'elsewhere', isGroup: true, groupId: 'gx' });
-    expect(t.screens.at(-1)).toBe('pda');
+    expect(t.screens.at(-1)).toBe('hub');
   });
 
   it('day_started runs compaction', async () => {

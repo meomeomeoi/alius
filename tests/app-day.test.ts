@@ -39,7 +39,7 @@ function scriptedShell() {
   const shell = {
     open() {}, close() {}, isOpen: () => false, showScreen() {}, showTab() {},
     registerTab(id: string, r: (host: HTMLElement) => void) { tabRenderers.set(id, r); },
-    registerScreen() {}, setTabBadge() {},
+    registerHub() {}, registerScreen() {}, setTabBadge() {},
     toast(kind: string, text: string) { toasts.push({ kind, text }); },
     async modal() { return null; },
     setPalette() {}, refresh, destroy() {},

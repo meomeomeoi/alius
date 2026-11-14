@@ -200,7 +200,7 @@ Update existing shell/app tests that click tabs right after `open()` to call `sh
   - `probeHubArt(assetUrl, slot): Promise<string | null>` (cached per URL for the session).
   - `AliusApp.talkAt(unitId: string, locationId: string): Promise<boolean>`; `AliusApp.endSlot(): Promise<void>`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `hub.test.ts`: `renders top bar, cross-section, rooms and the right column` — **acceptance 1** (8 `.alius-room[data-room]`, `.alius-objective`, `.alius-tonight`, `[data-open-pda]`, `[data-end-slot]` labelled `END MORNING ▸` on a morning); `markers sit in the room whereabouts says` (`.alius-room[data-room="medbay"] .alius-marker[data-unit=<injured id>]`); `a marker shows the state glyph and the tone glyph and carries data-tone` (no marker whose only content is colour: every marker has non-empty text); `away units are in the AWAY strip`; `missing hub art falls back to the blueprint` (probe resolves `null` → `.alius-hub-blueprint`; resolves a URL → `background-image` on `.alius-hub-art` and no blueprint grid); `clicking a room opens its panel with who is there, TALK and its activity cards`; `TALK is aria-disabled with the restriction reason for a confined unit`; `TALK is disabled with Closed this night. when the location is closed`; `END is aria-disabled with the endSlotBlock reason`; `renders without a campaign` (`NO ACTIVE CAMPAIGN IN THIS CHAT`, no END/TALK); `read-only shows the banner and no actions`; `everyone away shows the AWAY strip and empty rooms`; `rooms stay labelled at 360 px` (host width 360: every room has a visible `.alius-room-label`; CSS sets `min-height` and `font-size` via container query — assert the class names only); `long-press on a marker analyzes, a tap opens the room` (with `attachAnalyzer`: a 600 ms pointerdown on a marker opens `.alius-analyze` and not `.alius-room-panel`; a click opens the panel); `the newest oversight card shows only today or yesterday`.
 
@@ -208,15 +208,15 @@ Update existing shell/app tests that click tabs right after `open()` to call `sh
 
 `analyzeCoverage.test.ts`: render the hub (with an open room panel) into the coverage sweep: every `.alius-stat/.alius-chip/.alius-option` resolves.
 
-- [ ] **Step 2: Run** → FAIL.
+- [x] **Step 2: Run** → FAIL.
 
-- [ ] **Step 3: Implement.** Analyze addresses: rooms `hubRooms:<id>` (`alius-chip`); markers `relationshipStates:<stateId>` with `data-analyze-ctx {"unitId": …}` for named units, `glossary:whereabouts` for grunts (`alius-chip`); tone legend chips `glossary:marker_tone`; objective `glossary:objective` (`alius-stat`); each Tonight item its `analyze` address; END `glossary:end_slot` and OPEN PDA `glossary:pda_device` (`alius-option`, `analyzeNative`); AWAY strip `glossary:away`. No new provider: the existing state and stress providers read through `Knowledge`.
+- [x] **Step 3: Implement.** Analyze addresses: rooms `hubRooms:<id>` (`alius-chip`); markers `relationshipStates:<stateId>` with `data-analyze-ctx {"unitId": …}` for named units, `glossary:whereabouts` for grunts (`alius-chip`); tone legend chips `glossary:marker_tone`; objective `glossary:objective` (`alius-stat`); each Tonight item its `analyze` address; END `glossary:end_slot` and OPEN PDA `glossary:pda_device` (`alius-option`, `analyzeNative`); AWAY strip `glossary:away`. No new provider: the existing state and stress providers read through `Knowledge`.
 
   Top bar: `ALIUS` (stencil font var, Task 7), `CCP OUTPOST // {corporation name}`, then `renderStatusHeader` output (reused, so the clock/resources/Leash/warnings and their analyze marks stay single-sourced). Blueprint fallback, from direction A: background `repeating-linear-gradient(0deg, rgba(255,176,0,.05) 0 1px, transparent 1px 32px), repeating-linear-gradient(90deg, …same…), var(--alius-bg)`, rooms `1px solid` in `--alius-dim`, room labels uppercase with `letter-spacing: 3px`, a corner caption `SECTION A-A · NOT TO SCALE`; colours from palette variables, never the canvas hexes. Right column (380 px; stacks under the cross-section at ≤ 1200 px): objective card, Tonight list, oversight card (plain until Task 9 voices it), legend, `OPEN PDA  [TAB]` (primary), `END {SLOT} ▸`. Marker: 32 px circle, 2 px ring `var(--alius-<tone>)`, two-letter initials or `GR`, glyphs after the name. Room panel: an in-hub panel (not a modal) anchored to the room, closed by Escape (before the device rule), a `[X]`, or clicking outside.
 
   App: register the hub with `shell.registerHub`; `talkAt` sets a one-shot `presetLocation` consumed by `offerScene` (skips `pickLocation`); change the "return home" `showScreen('pda')` calls to `'hub'` per the ruling.
 
-- [ ] **Step 4: Run** `npm test` → PASS. **Step 5: Commit** `feat(hub): outpost hub with rooms, markers, room panel, objective and tonight`
+- [x] **Step 4: Run** `npm test` → PASS. **Step 5: Commit** `feat(hub): outpost hub with rooms, markers, room panel, objective and tonight`
 
 ---
 

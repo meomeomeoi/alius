@@ -54,7 +54,7 @@ function scriptedShell() {
     open: vi.fn(), close() {}, isOpen: () => true,
     showScreen(id: string) { screens.push(id); }, showTab() {},
     registerTab(id: string, r: (host: HTMLElement) => void) { tabRenderers.set(id, r); },
-    registerScreen(id: string, r: (host: HTMLElement) => void) { screenRenderers.set(id, r); },
+    registerHub() {}, registerScreen(id: string, r: (host: HTMLElement) => void) { screenRenderers.set(id, r); },
     setTabBadge() {},
     toast(kind: string, text: string) { toasts.push({ kind, text }); },
     async modal(opts: ModalOpts) {
@@ -263,7 +263,7 @@ describe('confrontations', () => {
     btn(host, '[LET HER GO]')!.click();
     expect(t.state().squad.find((u) => u.id === RHEA)!.status).toBe('deserted');
     expect(t.state().slot).toBe('morning');
-    expect(t.sh.screens.at(-1)).toBe('pda');
+    expect(t.sh.screens.at(-1)).toBe('hub');
   });
 
   it('a failed talk-down keeps the panel without the talk options', async () => {

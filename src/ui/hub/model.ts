@@ -15,6 +15,9 @@ export type MarkerTone = 'danger' | 'bond' | 'trust' | 'affinity' | 'warn' | 'ne
 /** The symbol that travels with every tone, so colour is never the only carrier. */
 export const TONE_GLYPH: Record<MarkerTone, string> = { danger: '!', bond: '♥', trust: '+', affinity: '*', warn: '~', neutral: '·' };
 
+/** The word that names each tone, for the legend and for screen readers. */
+export const TONE_LABEL: Record<MarkerTone, string> = { danger: 'danger', bond: 'bond', trust: 'trust', affinity: 'affinity', warn: 'warning', neutral: 'steady' };
+
 const isInjured = (u: Unit): boolean => u.status === 'injured' || (u.injuryDays ?? 0) > 0;
 
 /**

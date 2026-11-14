@@ -19,6 +19,7 @@ import { renderDilemma } from '../../src/ui/dilemma/dilemmaPanel';
 import { renderExpeditionScreen } from '../../src/ui/expedition/expeditionScreen';
 import { renderSysTab } from '../../src/ui/shell/sysTab';
 import { renderOpsTab } from '../../src/ui/ops/opsTab';
+import { renderHub, type HubCtx } from '../../src/ui/hub/hubScreen';
 import { offerMission, postRumor } from '../../src/engine/world/missions';
 import { ctxOf } from '../helpers/world';
 import { run } from '../helpers/world';
@@ -521,6 +522,43 @@ describe('coverage: SYS', () => {
   });
 });
 
+describe('coverage: hub (P10)', () => {
+  /** A hub with an injured and a confined unit, a unit away, a story mission, a message, a supply shortage and a Leash entry. */
+  function hubWorld(): CampaignState {
+    const s = world();
+    s.slot = 'morning';
+    s.squad[1].status = 'injured';
+    s.expedition = { party: [s.squad[3].id] } as unknown as CampaignState['expedition'];
+    s.missions.active = [{ id: 'm1', title: 'Hold the line', deadlineDay: s.day + 1, spineBeat: 'b1', status: 'active' } as never];
+    s.dms[s.squad[2].id] = [{ id: 'd1', from: s.squad[2].id, text: 'hi', day: s.day, slot: 'morning', read: false }];
+    s.world.incomingUnits = 1;
+    s.leash.log = [{ no: 1, unitId: s.squad[0].id, kind: 'compel', day: s.day, context: 'scene', outcome: 'done' }];
+    return s;
+  }
+  const hubCtx = (s: CampaignState): HubCtx => ({
+    getState: () => s, getLoad: () => ({ kind: 'ok', state: s, chatId: 'c' }), registries: reg, settings: () => ({ ...DEFAULT_SETTINGS }),
+    ops: { getState: () => s, getLoad: () => ({ kind: 'ok', state: s, chatId: 'c' }), registries: reg, onDo: vi.fn(), onRequisition: vi.fn() },
+    onTalk: vi.fn(), onEndSlot: vi.fn(), onOpenPda: vi.fn(), avatar: () => null,
+  });
+
+  it('every marker has data-analyze, every address resolves, and the hub with a room panel open is not vacuous', () => {
+    const s = hubWorld();
+    const host = mount();
+    renderHub(host, h('div'), hubCtx(s));
+    host.querySelector<HTMLElement>('.alius-room[data-room="medbay"]')!.click();
+    expect(host.querySelector('.alius-room-panel')).not.toBeNull();
+    expect(markedWithout(host)).toEqual([]);
+    expect(unresolved(host, env(s))).toEqual([]);
+    expect(unreachable(host)).toEqual([]);
+    expect(markerCount(host)).toBeGreaterThanOrEqual(25);
+    const addresses = new Set(unitIdsIn(host));
+    for (const wanted of ['glossary:objective', 'glossary:end_slot', 'glossary:pda_device', 'glossary:marker_tone', 'glossary:away', 'glossary:tonight', 'glossary:leash', 'hubRooms:medbay']) {
+      expect(addresses.has(wanted), wanted).toBe(true);
+    }
+    for (const id of reg.hubRooms.keys()) expect(addresses.has(`hubRooms:${id}`), id).toBe(true);
+  });
+});
+
 describe('analysis makes no network or model call', () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
@@ -559,6 +597,13 @@ describe('analysis makes no network or model call', () => {
         options: [{ index: 0, label: 'Push', disabled: null, hasCheck: true, check: { stat: 'authority', rank: 3 } }],
       });
       renderSysTab(addHost(), { st, getState: () => s, getLoad: () => ({ kind: 'ok', state: s, chatId: 'c' }), dispatch: () => [], toast: vi.fn(), modal: async () => null, onSettingsChanged: vi.fn() });
+      const hubHost = addHost();
+      renderHub(hubHost, h('div'), {
+        getState: () => s, getLoad: () => ({ kind: 'ok', state: s, chatId: 'c' }), registries: reg, settings: () => getSettings(st),
+        ops: { getState: () => s, getLoad: () => ({ kind: 'ok', state: s, chatId: 'c' }), registries: reg, onDo: vi.fn(), onRequisition: vi.fn() },
+        onTalk: vi.fn(), onEndSlot: vi.fn(), onOpenPda: vi.fn(), avatar: () => null,
+      });
+      hubHost.querySelector<HTMLElement>('.alius-room[data-room="mess"]')!.click();
 
       const analyzer = attachAnalyzer(root, { getEnv: () => ({ registries: reg, state: s, settings: getSettings(st) }) });
       const marked = [...root.querySelectorAll<HTMLElement>('[data-analyze]')];

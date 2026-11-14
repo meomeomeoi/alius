@@ -26,7 +26,7 @@ function scriptedShell(answer: (o: ModalOpts) => string | null | Promise<string 
   const modals: ModalOpts[] = [];
   const toasts: Array<{ kind: string; text: string }> = [];
   const shell = {
-    open() {}, close() {}, isOpen: () => true, showScreen() {}, showTab() {}, registerTab() {}, registerScreen() {}, setTabBadge() {},
+    open() {}, close() {}, isOpen: () => true, showScreen() {}, showTab() {}, registerTab() {}, registerHub() {}, registerScreen() {}, setTabBadge() {},
     toast(kind: string, text: string) { toasts.push({ kind, text }); },
     async modal(o: ModalOpts) {
       modals.push(o);

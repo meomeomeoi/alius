@@ -45,7 +45,7 @@ function scriptedShell() {
     showScreen(id: string) { screens.push(id); },
     showTab(id: string) { tabs.push(id); },
     registerTab(id: string, r: (host: HTMLElement) => void) { tabRenderers.set(id, r); },
-    registerScreen(id: string, r: (host: HTMLElement) => void) { screenRenderers.set(id, r); },
+    registerHub() {}, registerScreen(id: string, r: (host: HTMLElement) => void) { screenRenderers.set(id, r); },
     setTabBadge() {},
     toast(kind: string, text: string) { toasts.push({ kind, text }); },
     async modal() { return null; },
@@ -131,7 +131,7 @@ describe('combat in the app', () => {
     expect(t.state().combat?.awaitingCid !== cid || t.state().lastCombat !== undefined || t.state().combat!.round > 1).toBe(true);
   });
 
-  it('orders and AUTO from the screen reach the engine; a finished combat leaves a result and CONTINUE returns to the PDA', async () => {
+  it('orders and AUTO from the screen reach the engine; a finished combat leaves a result and CONTINUE returns to the hub', async () => {
     const t = await boot();
     t.app.startCombat(t.payload());
     const host = t.mountCombat();
@@ -146,7 +146,7 @@ describe('combat in the app', () => {
     expect(result.textContent).toContain('COMBAT REPORT');
     t.screens.length = 0;
     result.querySelector<HTMLElement>('[data-act="continue"]')!.click();
-    expect(t.screens).toEqual(['pda']);
+    expect(t.screens).toEqual(['hub']);
     expect(t.state().lastCombat).toBeDefined();
   });
 
@@ -180,7 +180,7 @@ describe('combat in the app', () => {
     t.app.startCombat(t.payload());
     t.screens.length = 0;
     t.st.switchChat({ chatId: 'elsewhere', isGroup: true, groupId: 'gx' });
-    expect(t.screens).toEqual(['pda']);
+    expect(t.screens).toEqual(['hub']);
   });
 
   it('a late combat dispatch for another chat is dropped', async () => {

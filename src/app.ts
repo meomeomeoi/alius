@@ -42,6 +42,7 @@ import { createDilemmas, type DilemmaController } from './loyalty/dilemmaControl
 import { createLoyalty, type LoyaltyController } from './loyalty/loyaltyController';
 import { clearDisciplineDirectives, disciplineDirectives } from './discipline/context';
 import { createDiscipline, type DisciplineController } from './discipline/controller';
+import { isQuietNight } from './engine/calendar';
 import { restrictionReason } from './engine/discipline';
 import { renderDilemma } from './ui/dilemma/dilemmaPanel';
 import { fileLeashRequest } from './ui/leash/requestForm';
@@ -65,8 +66,10 @@ import { importProfile, stanceOptionIds } from './setup/profile';
 import { defaultWorldOptions } from './engine/worldOptions';
 import { Wizard, type WizardState } from './setup/wizard';
 import { renderSetupScreen } from './ui/setup/setupScreen';
-import { renderSquadTab } from './ui/squad/squadTab';
-import { renderOpsTab } from './ui/ops/opsTab';
+import { portrait, renderSquadTab } from './ui/squad/squadTab';
+import { renderOpsTab, type OpsTabCtx } from './ui/ops/opsTab';
+import { renderHub } from './ui/hub/hubScreen';
+import { endSlotBlock } from './ui/hub/model';
 import { renderMapTab } from './ui/map/mapTab';
 import { renderExpeditionScreen, type ExpeditionScreen } from './ui/expedition/expeditionScreen';
 import './llm/calls/directorTick'; // registers the director_tick call type
@@ -119,6 +122,13 @@ export interface AliusApp {
   setupState(): WizardState | null;
   /** Does an activity (OPS tab). Shows the error, or — with a companion and vignettes on — a short generated vignette. */
   performActivity(req: ActivityRequest): Promise<EngineEvent[]>;
+  /**
+   * The hub's TALK: starts the talk activity with her and opens the scene at `locationId` without asking where.
+   * Refused (with a toast, spending nothing) while a restriction, an open scene or the like stands in the way.
+   */
+  talkAt(unitId: string, locationId: string): Promise<boolean>;
+  /** The hub's END: after a confirmation, passes the slot (a quiet night is slept through instead). */
+  endSlot(): Promise<void>;
   /** Recruits a grunt (BASE tab) and, if enabled, asks for a generated name and bio. */
   recruitGrunt(): Promise<EngineEvent[]>;
   upgradeFacility(facilityId: string): EngineEvent[];
@@ -302,7 +312,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       return;
     }
     onSceneScreen = false;
-    shell.showScreen('pda');
+    shell.showScreen('hub');
   }
 
   /** After a (re)load: pick up an open scene, or leave the scene screen of another chat. */
@@ -323,7 +333,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       showScene(); // a confrontation is waiting: its panel comes back after a reload
     } else if (onSceneScreen) {
       onSceneScreen = false;
-      shell.showScreen('pda');
+      shell.showScreen('hub');
     }
   }
 
@@ -344,11 +354,18 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     return true;
   }
 
+  /** The room the hub's TALK was pressed in: the next `offerScene` takes it instead of asking (used once). */
+  let presetLocation: string | null = null;
+
   /** `talk`: where, and who else? Cancelling gives the slot back. */
   async function offerScene(unitId: string): Promise<void> {
     const chatId = st.getActiveChat()?.chatId;
     if (!state) return;
-    const pick = await pickLocation((o) => shell.modal(o), { registries, state, firstUnitId: unitId, candidates: state.squad });
+    const preset = presetLocation;
+    presetLocation = null;
+    const pick = preset !== null
+      ? { locationId: preset, participants: [unitId] }
+      : await pickLocation((o) => shell.modal(o), { registries, state, firstUnitId: unitId, candidates: state.squad });
     if (st.getActiveChat()?.chatId !== chatId) return;
     if (!pick) {
       api.dispatch({ type: 'calendar/cancel_scene', payload: {} }, { expectChatId: chatId });
@@ -707,10 +724,10 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       // a fight of an expedition: its result becomes part of the run (once), then the run goes on
       expedition.afterCombat();
       if (state?.expedition) showExpedition();
-      else shell.showScreen('pda'); // the run ended with the fight: the report follows
+      else shell.showScreen('hub'); // the run ended with the fight: the report follows
       return;
     }
-    shell.showScreen('pda');
+    shell.showScreen('hub');
   }
 
   /** After a (re)load: an open combat is shown again, a combat screen of another chat is left. */
@@ -720,7 +737,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     if (state?.combat) showCombat();
     else if (onCombatScreen) {
       onCombatScreen = false;
-      shell.showScreen('pda');
+      shell.showScreen('hub');
     }
   }
 
@@ -772,7 +789,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       showScene();
       return;
     }
-    shell.showScreen('pda');
+    shell.showScreen('hub');
   }
 
   function renderExpeditionView(host: HTMLElement): void {
@@ -797,7 +814,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       expedition.afterCombat();
     } else if (onExpeditionScreen) {
       onExpeditionScreen = false;
-      shell.showScreen('pda');
+      shell.showScreen('hub');
     }
   }
 
@@ -1378,7 +1395,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         modal: (o) => shell.modal(o),
         onCancel: () => {
           if (setup?.wizard === wizard) endSetup();
-          shell.showScreen('pda');
+          shell.showScreen('hub');
         },
         onConfirm: async (r, target) => {
           await deployCampaign(r, target);
@@ -1571,30 +1588,45 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       return false;
     },
   });
+  /** What the OPS tab and the hub's room panels (the same activity cards) need. */
+  const opsCtx = (): OpsTabCtx => ({
+    getState: () => state,
+    getLoad: () => load,
+    registries,
+    onDo: (req) => void api.performActivity(req),
+    onRequisition: (n) => api.requisition(n),
+    onPlan: (missionId) => {
+      expedition.plan({ missionId });
+      showExpedition();
+      shell.open();
+    },
+    onDismiss: (missionId) => void act({ type: 'mission/dismiss', payload: { missionId } }),
+    onFollowRumor: (rumorId) => void act({ type: 'rumor/follow', payload: { rumorId } }),
+    onSleep: () => void act({ type: 'calendar/sleep', payload: {} }),
+    onIntake: () => void api.intakeUnit(),
+    onOpenReport: () => {
+      showExpedition();
+      shell.open();
+    },
+  });
   shell.registerTab('ops', (host) => {
     for (const m of state?.missions.offered ?? []) seenOffers.add(m.id);
     shell.setTabBadge('ops', 0);
-    renderOpsTab(host, {
+    renderOpsTab(host, opsCtx());
+  });
+  shell.registerHub((host, device) =>
+    renderHub(host, device, {
       getState: () => state,
       getLoad: () => load,
       registries,
-      onDo: (req) => void api.performActivity(req),
-      onRequisition: (n) => api.requisition(n),
-      onPlan: (missionId) => {
-        expedition.plan({ missionId });
-        showExpedition();
-        shell.open();
-      },
-      onDismiss: (missionId) => void act({ type: 'mission/dismiss', payload: { missionId } }),
-      onFollowRumor: (rumorId) => void act({ type: 'rumor/follow', payload: { rumorId } }),
-      onSleep: () => void act({ type: 'calendar/sleep', payload: {} }),
-      onIntake: () => void api.intakeUnit(),
-      onOpenReport: () => {
-        showExpedition();
-        shell.open();
-      },
-    });
-  });
+      settings: () => getSettings(st),
+      assetUrl: deps.assetUrl,
+      ops: opsCtx(),
+      onTalk: (unitId, locationId) => void api.talkAt(unitId, locationId),
+      onEndSlot: () => void api.endSlot(),
+      onOpenPda: (tab) => (tab ? shell.showTab(tab) : shell.setDevice(true)),
+      avatar: (unit) => portrait(st, unit),
+    }));
   shell.registerTab('map', (host) =>
     renderMapTab(host, {
       getState: () => state,
@@ -1720,6 +1752,45 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       // the commander may have switched chats while the model was writing
       if (text && st.getActiveChat()?.chatId === chatId) toast('story', text);
       return events;
+    },
+
+    async talkAt(unitId, locationId) {
+      const s = state;
+      const talk = [...registries.activities.values()].find((a) => a.startsScene === true && a.companion === 'required');
+      if (!s || load.kind !== 'ok' || !talk || !s.squad.some((u) => u.id === unitId)) return false;
+      const why = endSlotBlock(s) ?? restrictionReason(s, unitId, 'scene');
+      if (why) {
+        toast('warn', why);
+        return false;
+      }
+      presetLocation = locationId;
+      try {
+        const events = await api.performActivity({ activityId: String(talk.id), companionId: unitId });
+        return events.some((e) => e.type === 'scene_requested') && state?.scene !== undefined;
+      } finally {
+        presetLocation = null;
+      }
+    },
+
+    async endSlot() {
+      const chatId = st.getActiveChat()?.chatId;
+      const s = state;
+      if (!s || load.kind !== 'ok') return;
+      const why = endSlotBlock(s);
+      if (why) {
+        toast('warn', why);
+        return;
+      }
+      const slot = s.slot;
+      const answer = await shell.modal({
+        title: `End the ${slot}?`,
+        body: `End the ${slot} without doing anything?`,
+        actions: [{ label: `[ END ${slot.toUpperCase()} ]`, value: 'end' }, { label: 'Cancel', value: 'cancel' }],
+      });
+      const now = state;
+      if (answer !== 'end' || !now || st.getActiveChat()?.chatId !== chatId) return;
+      // a quiet night is slept through; every other slot is passed
+      act(isQuietNight(now) ? { type: 'calendar/sleep', payload: {} } : { type: 'calendar/consume_slot', payload: { slots: 1, reason: 'pass' } });
     },
 
     async recruitGrunt() {

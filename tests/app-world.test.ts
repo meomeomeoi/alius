@@ -58,7 +58,7 @@ function scriptedShell() {
     showScreen(id: string) { screens.push(id); },
     showTab() {},
     registerTab(id: string, r: (host: HTMLElement) => void) { tabRenderers.set(id, r); },
-    registerScreen(id: string, r: (host: HTMLElement) => void) { screenRenderers.set(id, r); },
+    registerHub() {}, registerScreen(id: string, r: (host: HTMLElement) => void) { screenRenderers.set(id, r); },
     setTabBadge(id: string, n: number) { badges.set(id, n); },
     toast(kind: string, text: string) { toasts.push({ kind, text }); },
     async modal(opts: ModalOpts) {
@@ -351,7 +351,7 @@ describe('expeditions', () => {
     expect(t.sh.toasts.filter((x) => x.kind === 'error')).toEqual([]);
   });
 
-  it('retreat returns to the PDA with the mission back on the board', async () => {
+  it('retreat returns to the hub with the mission back on the board', async () => {
     const t = await boot();
     const id = t.offer();
     t.launch('cache', id);
@@ -363,7 +363,7 @@ describe('expeditions', () => {
     expect(t.sh.screens.at(-1)).toBe('expedition'); // the report first
     const host = t.mount('expedition');
     click(btn(host, 'CLOSE'));
-    expect(t.sh.screens.at(-1)).toBe('pda');
+    expect(t.sh.screens.at(-1)).toBe('hub');
     expect(t.state().lastExpedition!.acknowledged).toBe(true);
   });
 

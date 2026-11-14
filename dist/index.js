@@ -491,19 +491,19 @@ function daysKnown(state, unitId) {
 function bodyGrowthMult(state, reg) {
   return traitEffects(state, reg, "body_growth").reduce((m, fx2) => m * fx2.mult, 1);
 }
-function addBodyXp(commander, stat2, amount) {
+function addBodyXp(commander, stat3, amount) {
   const body = commander.body ??= { ...TUNING.commander.defaults.body };
   const xp = commander.bodyXp ??= { strength: 0, endurance: 0, reflexes: 0 };
-  const before = body[stat2];
+  const before = body[stat3];
   if (before >= 5 || !(amount > 0)) return { value: before, gained: false };
-  let pool = xp[stat2] + amount;
-  while (body[stat2] < 5 && pool >= TUNING.commander.bodyXpSteps[body[stat2] - 1]) {
-    pool -= TUNING.commander.bodyXpSteps[body[stat2] - 1];
-    body[stat2] += 1;
+  let pool = xp[stat3] + amount;
+  while (body[stat3] < 5 && pool >= TUNING.commander.bodyXpSteps[body[stat3] - 1]) {
+    pool -= TUNING.commander.bodyXpSteps[body[stat3] - 1];
+    body[stat3] += 1;
   }
-  xp[stat2] = body[stat2] >= 5 ? 0 : pool;
+  xp[stat3] = body[stat3] >= 5 ? 0 : pool;
   commander.archetype = archetypeOf(body);
-  return { value: body[stat2], gained: body[stat2] > before };
+  return { value: body[stat3], gained: body[stat3] > before };
 }
 function intimidationBonus(state) {
   const p = commanderProfile(state);
@@ -549,7 +549,7 @@ function recordLedger(before, after, action) {
     for (const axis of AXES) push(`axis:${id}:${axis}`, (rel[axis] ?? 0) - (was[axis] ?? 0));
     push(`record:${id}`, (rel.impunityRecord ?? 0) - (was.impunityRecord ?? 0));
   }
-  if (before.commander?.body !== void 0 && after.commander?.body !== void 0) for (const stat2 of BODY_STATS) push(`body:${stat2}`, (after.commander?.body?.[stat2] ?? 0) - (before.commander?.body?.[stat2] ?? 0));
+  if (before.commander?.body !== void 0 && after.commander?.body !== void 0) for (const stat3 of BODY_STATS) push(`body:${stat3}`, (after.commander?.body?.[stat3] ?? 0) - (before.commander?.body?.[stat3] ?? 0));
   if (entries.length > 0) after.ledger = [...after.ledger ?? [], ...entries];
   if (!after.ledger) return;
   const oldest = after.day - (TUNING.ledger.days - 1);
@@ -789,8 +789,8 @@ var DEED_COUNTERS = [
 // src/engine/worldOptions/stances.ts
 var INDIFFERENT = { stance: "indifferent", strength: 1, reason: "" };
 function stanceOf(state, reg, unit, optionId) {
-  const found = worldChoice(state, reg, optionId);
-  if (!found || found.option.squadStance !== true || isNeutralChoice(found.choice)) return null;
+  const found2 = worldChoice(state, reg, optionId);
+  if (!found2 || found2.option.squadStance !== true || isNeutralChoice(found2.choice)) return null;
   return unit.worldStances?.[optionId] ?? INDIFFERENT;
 }
 function stanceEffects(state, reg, unit, type) {
@@ -838,9 +838,9 @@ var DEFAULT_RANK = 2;
 var clamp3 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 function levelByRank(reg, rank) {
   const levels = [...reg.dispositionLevels.values()];
-  const found = levels.find((l) => l.rank === rank) ?? levels.find((l) => l.rank === DEFAULT_RANK) ?? levels[0];
-  if (!found) throw new Error("The content has no disposition levels.");
-  return found;
+  const found2 = levels.find((l) => l.rank === rank) ?? levels.find((l) => l.rank === DEFAULT_RANK) ?? levels[0];
+  if (!found2) throw new Error("The content has no disposition levels.");
+  return found2;
 }
 function worldDispositionLevel(state, reg) {
   const id = worldEffects(state, reg, "disposition")[0]?.levelId;
@@ -907,16 +907,16 @@ function rankForPoints(points) {
   });
   return rank;
 }
-function socialRank(state, stat2) {
-  const rank = state.commander.socialStats[stat2];
+function socialRank(state, stat3) {
+  const rank = state.commander.socialStats[stat3];
   if (state.commander.sleeplessDay !== state.day) return rank;
-  return Math.max(1, rank + (state.commander.sleeplessRank?.[stat2] ?? 0));
+  return Math.max(1, rank + (state.commander.sleeplessRank?.[stat3] ?? 0));
 }
-function socialGrowthMult(state, reg, stat2) {
-  return traitEffects(state, reg, "social_growth").filter((fx2) => fx2.stat === stat2).reduce((m, fx2) => m * fx2.mult, 1);
+function socialGrowthMult(state, reg, stat3) {
+  return traitEffects(state, reg, "social_growth").filter((fx2) => fx2.stat === stat3).reduce((m, fx2) => m * fx2.mult, 1);
 }
-function addSocialPoints(commander, stat2, amount) {
-  const before = commander.socialStats[stat2];
+function addSocialPoints(commander, stat3, amount) {
+  const before = commander.socialStats[stat3];
   const points = commander.socialPoints ??= {
     authority: SOCIAL_THRESHOLDS[commander.socialStats.authority - 1] ?? 0,
     insight: SOCIAL_THRESHOLDS[commander.socialStats.insight - 1] ?? 0,
@@ -924,15 +924,15 @@ function addSocialPoints(commander, stat2, amount) {
     cunning: SOCIAL_THRESHOLDS[commander.socialStats.cunning - 1] ?? 0
   };
   const floor = SOCIAL_THRESHOLDS[before - 1] ?? 0;
-  const next = Math.min(MAX_POINTS, Math.max(points[stat2], floor) + amount);
-  const gained = next - Math.max(points[stat2], floor);
-  points[stat2] = next;
+  const next = Math.min(MAX_POINTS, Math.max(points[stat3], floor) + amount);
+  const gained = next - Math.max(points[stat3], floor);
+  points[stat3] = next;
   const rank = Math.max(before, rankForPoints(next));
-  commander.socialStats[stat2] = rank;
+  commander.socialStats[stat3] = rank;
   return { rank, gained, rankedUp: rank > before };
 }
 function meetsSocialRequirements(state, requires) {
-  return Object.entries(requires).every(([stat2, min]) => socialRank(state, stat2) >= min);
+  return Object.entries(requires).every(([stat3, min]) => socialRank(state, stat3) >= min);
 }
 
 // src/engine/commander/presence.ts
@@ -1490,8 +1490,8 @@ function buildCampaign(r, reg, opts) {
   const crimeEffects = crimeEffectsOf(crime);
   for (const fx2 of [...effectsOf(corp.startingBonus), ...crimeEffects]) {
     if (fx2.type === "social_rank") {
-      const stat2 = fx2.stat;
-      state.commander.socialStats[stat2] = Math.max(state.commander.socialStats[stat2], fx2.rank);
+      const stat3 = fx2.stat;
+      state.commander.socialStats[stat3] = Math.max(state.commander.socialStats[stat3], fx2.rank);
     } else if (fx2.type === "resource") {
       state.resources[fx2.resource] += fx2.amount;
     }
@@ -3589,11 +3589,11 @@ function openDemand(draft, ctx2, unitId, opts = {}) {
 function rollDemands(draft, ctx2) {
   const reg = ctx2.registries;
   if ((draft.discipline?.demands.length ?? 0) >= TUNING.demands.maxOpen) return [];
-  const candidates3 = namedLiving2(draft).filter((u) => !hasOpen(draft, u.id) && openedThisWeek(draft, u.id) < TUNING.demands.perWeek && !inAcquaintance(draft, reg, u.id) && demandChance(draft, reg, u.id) > 0);
-  if (candidates3.length === 0) return [];
-  const start = ctx2.rng.int(0, candidates3.length - 1);
-  for (let k = 0; k < candidates3.length; k++) {
-    const u = candidates3[(start + k) % candidates3.length];
+  const candidates4 = namedLiving2(draft).filter((u) => !hasOpen(draft, u.id) && openedThisWeek(draft, u.id) < TUNING.demands.perWeek && !inAcquaintance(draft, reg, u.id) && demandChance(draft, reg, u.id) > 0);
+  if (candidates4.length === 0) return [];
+  const start = ctx2.rng.int(0, candidates4.length - 1);
+  for (let k = 0; k < candidates4.length; k++) {
+    const u = candidates4[(start + k) % candidates4.length];
     if (!ctx2.rng.chance(demandChance(draft, reg, u.id))) continue;
     const opened = openDemand(draft, ctx2, u.id);
     if (opened) return opened.events;
@@ -3767,8 +3767,8 @@ function reputationDayStep(draft, ctx2) {
     const e = lookup(id);
     return e !== void 0 && patternHolds(draft, e);
   };
-  const candidates3 = [...reg.reputations.values()].filter((e) => !active.some((a) => a.id === e.id) && patternHolds(draft, e)).sort((a, b) => patternScore(draft, b) - patternScore(draft, a));
-  for (const c of candidates3) {
+  const candidates4 = [...reg.reputations.values()].filter((e) => !active.some((a) => a.id === e.id) && patternHolds(draft, e)).sort((a, b) => patternScore(draft, b) - patternScore(draft, a));
+  for (const c of candidates4) {
     const sameGroup = active.find((a) => lookup(a.id)?.group === c.group);
     let replaces;
     if (!sameGroup) {
@@ -5077,8 +5077,8 @@ function arcDayStep(draft, ctx2) {
   for (const u of draft.squad) {
     const rel = draft.relations[u.id];
     if (u.kind !== "named" || !isLiving(u) || !rel || rel.flags.includes("arc_raised")) continue;
-    const found = u.defects.find((d) => arcPaths(draft, ctx2.registries, u.id, d.id).some((p) => p.reason === null || p.reason.startsWith("Not enough")));
-    if (!found) continue;
+    const found2 = u.defects.find((d) => arcPaths(draft, ctx2.registries, u.id, d.id).some((p) => p.reason === null || p.reason.startsWith("Not enough")));
+    if (!found2) continue;
     rel.flags.push("arc_raised");
     enqueueNight(draft, {
       id: nextId(draft, "n"),
@@ -5089,7 +5089,7 @@ function arcDayStep(draft, ctx2) {
       ignore: { event: "dismissed", severity: "moderate" },
       expiresDay: draft.day + TUNING.disloyalty.night.expiresInDays
     });
-    events.push({ type: "arc_unlocked", unitId: u.id, defectId: found.id });
+    events.push({ type: "arc_unlocked", unitId: u.id, defectId: found2.id });
   }
   return events;
 }
@@ -5110,12 +5110,12 @@ function scarCommander(draft, rng) {
   const c = draft.commander;
   const profile = commanderProfile(draft);
   c.body = { ...profile.body };
-  const candidates3 = SCAR_STATS.filter((k) => profile.body[k] > 1);
-  const stat2 = candidates3.length > 0 ? rng.pick(candidates3) : null;
-  if (stat2) c.body[stat2] -= 1;
+  const candidates4 = SCAR_STATS.filter((k) => profile.body[k] > 1);
+  const stat3 = candidates4.length > 0 ? rng.pick(candidates4) : null;
+  if (stat3) c.body[stat3] -= 1;
   c.archetype = archetypeOf(c.body);
   c.seasoning = Math.min(5, profile.seasoning + 1);
-  return [{ type: "commander_scarred", stat: stat2, seasoning: c.seasoning }];
+  return [{ type: "commander_scarred", stat: stat3, seasoning: c.seasoning }];
 }
 
 // src/engine/combat/formulas.ts
@@ -5373,14 +5373,14 @@ function unitStats(state, reg, unit) {
   for (const k of STATS) out[k] = Math.max(k === "crit" ? 0 : 1, Math.round(out[k] * factor));
   return out;
 }
-function unitStatSteps(state, reg, unit, stat2) {
+function unitStatSteps(state, reg, unit, stat3) {
   const role = reg.roles.get(unit.roleId);
   if (!role) throw new Error(`Unknown role "${unit.roleId}" (unit ${unit.id})`);
   const growth = role.growth ?? ZERO;
   const steps = [];
-  let total2 = unit.baseStats[stat2];
+  let total2 = unit.baseStats[stat3];
   steps.push({ source: "role", label: "Role base", total: total2 });
-  const grown = Math.floor(growth[stat2] * (unit.level - 1));
+  const grown = Math.floor(growth[stat3] * (unit.level - 1));
   if (grown !== 0) {
     total2 += grown;
     steps.push({ source: "level", label: `Level ${unit.level}`, total: total2 });
@@ -5389,19 +5389,19 @@ function unitStatSteps(state, reg, unit, stat2) {
   for (const { inst } of wornItems(state, reg, unit)) {
     const it = itemStats(reg, inst);
     if (!it) continue;
-    const flat = it.stats[stat2] ?? 0;
+    const flat = it.stats[stat3] ?? 0;
     if (flat !== 0) {
       total2 += flat;
       steps.push({ source: "gear", label: `[[items:${inst.itemId}]]`, total: total2 });
     }
-    pct3 += it.statPct[stat2] ?? 0;
+    pct3 += it.statPct[stat3] ?? 0;
   }
   const scaled2 = Math.round(total2 * (1 + pct3 / 100));
   if (scaled2 !== total2) {
     total2 = scaled2;
     steps.push({ source: "gear", label: "Gear bonuses", total: total2 });
   }
-  if (stat2 === "spd") {
+  if (stat3 === "spd") {
     const penalty = armorSpdPenalty(state, reg, unit);
     if (penalty !== 0) {
       total2 += penalty;
@@ -5415,7 +5415,7 @@ function unitStatSteps(state, reg, unit, stat2) {
     total2 = injured;
     steps.push({ source: "injury", label: `Injuries \xD7${stacks}`, total: total2 });
   }
-  const floor = stat2 === "crit" ? 0 : 1;
+  const floor = stat3 === "crit" ? 0 : 1;
   if (total2 < floor) {
     total2 = floor;
     steps.push({ source: "floor", label: "Minimum", total: total2 });
@@ -5635,12 +5635,12 @@ function makeBreakdown(reg, defectId, level) {
 function enterBreakdown(ctx2, cid) {
   const c = byCid(ctx2.cs, cid);
   if (c.breakdown || c.side !== "squad") return;
-  const found = defectBreakdown(ctx2, c);
-  const spec = found?.spec ?? FALLBACK;
-  const defectId = found?.defectId ?? "unknown";
+  const found2 = defectBreakdown(ctx2, c);
+  const spec = found2?.spec ?? FALLBACK;
+  const defectId = found2?.defectId ?? "unknown";
   c.stress = 100;
-  c.breakdown = makeBreakdown(ctx2.reg, found ? defectId : "unknown", levelOf(ctx2, c));
-  if (!found) c.breakdown = { defectId, policy: "skip", ignoresOrders: true, actionEffects: [] };
+  c.breakdown = makeBreakdown(ctx2.reg, found2 ? defectId : "unknown", levelOf(ctx2, c));
+  if (!found2) c.breakdown = { defectId, policy: "skip", ignoresOrders: true, actionEffects: [] };
   ctx2.log({ kind: "breakdown", target: cid });
   const name = ctx2.reg.defects.get(defectId)?.breakdown?.name ?? "BREAKDOWN";
   ctx2.emit({ type: "combat_cutin", kind: "breakdown", unitId: c.unitId, cid, text: name });
@@ -5845,21 +5845,21 @@ function activePassives(ctx2, cid, type, targetCid, skillId) {
   if (c.downed) return [];
   return c.passives.filter((p) => p.type === type && p.trigger === void 0 && checkCondition(ctx2, cid, p.when, targetCid, skillId)).map((p) => strain(c, p));
 }
-function effectiveStat(ctx2, cid, stat2) {
+function effectiveStat(ctx2, cid, stat3) {
   const c = byCid(ctx2.cs, cid);
-  if (stat2 === "hp") return c.maxHp;
+  if (stat3 === "hp") return c.maxHp;
   let pct3 = 0;
-  for (const m of c.mods) if (m.stat === stat2) pct3 += m.pct;
+  for (const m of c.mods) if (m.stat === stat3) pct3 += m.pct;
   for (const s of c.statuses) {
-    const v = ctx2.reg.statuses.get(s.id)?.mods?.[stat2];
+    const v = ctx2.reg.statuses.get(s.id)?.mods?.[stat3];
     if (v) pct3 += v * s.stacks;
   }
   for (const e of activePassives(ctx2, cid, "stat")) {
-    if (e.stat === stat2 || e.stat === "all" && stat2 !== "crit") pct3 += e.pct + scaleValue(ctx2, cid, e.scale);
+    if (e.stat === stat3 || e.stat === "all" && stat3 !== "crit") pct3 += e.pct + scaleValue(ctx2, cid, e.scale);
   }
-  const base = c.base[stat2];
-  if (stat2 === "crit") return Math.max(0, base + pct3);
-  return Math.max(stat2 === "def" ? 0 : 1, Math.round(base * (1 + pct3 / 100)));
+  const base = c.base[stat3];
+  if (stat3 === "crit") return Math.max(0, base + pct3);
+  return Math.max(stat3 === "def" ? 0 : 1, Math.round(base * (1 + pct3 / 100)));
 }
 function outgoingPct(ctx2, cid, targetCid) {
   const c = byCid(ctx2.cs, cid);
@@ -6066,9 +6066,9 @@ function runEffect(ctx2, ownerCid, effect, ev, keyBase) {
         const c = byCid(ctx2.cs, t);
         const pct3 = e.pct + scaleValue(ctx2, ownerCid, e.scale);
         const stats = e.stat === "all" ? ["atk", "def", "spd"] : [e.stat];
-        for (const stat2 of stats) {
-          if (stat2 === "hp") continue;
-          c.mods.push({ stat: stat2, pct: pct3, ...e.turns !== void 0 ? { turnsLeft: e.turns } : {}, source: ownerCid });
+        for (const stat3 of stats) {
+          if (stat3 === "hp") continue;
+          c.mods.push({ stat: stat3, pct: pct3, ...e.turns !== void 0 ? { turnsLeft: e.turns } : {}, source: ownerCid });
         }
       }
       break;
@@ -14042,14 +14042,14 @@ var SEVERITY_RANK2 = { minor: 0, moderate: 1, major: 2, extreme: 3 };
 var BETRAYALS = ["lied_detected", "broke_promise", "coerced", "decision_violated", "crime_revealed"];
 function mutinyTrigger(state, unitId, minSeverity = "major") {
   const within = (day) => state.day - day <= TUNING.mutiny.triggerWindowDays;
-  const found = [];
+  const found2 = [];
   const rec = loyaltyOf(state, unitId);
-  if (rec?.trigger && within(rec.trigger.day)) found.push({ kind: rec.trigger.kind, day: rec.trigger.day });
+  if (rec?.trigger && within(rec.trigger.day)) found2.push({ kind: rec.trigger.kind, day: rec.trigger.day });
   for (const h2 of state.relations[unitId]?.history ?? []) {
     if (h2.kind !== "event" || !BETRAYALS.includes(h2.type) || h2.severity === void 0) continue;
-    if (SEVERITY_RANK2[h2.severity] >= SEVERITY_RANK2[minSeverity] && within(h2.day)) found.push({ kind: "betrayal", day: h2.day });
+    if (SEVERITY_RANK2[h2.severity] >= SEVERITY_RANK2[minSeverity] && within(h2.day)) found2.push({ kind: "betrayal", day: h2.day });
   }
-  return found.sort((a, b) => b.day - a.day)[0] ?? null;
+  return found2.sort((a, b) => b.day - a.day)[0] ?? null;
 }
 var mutinySigns = (state, unitId) => (loyaltyOf(state, unitId)?.signs ?? []).filter((s) => s.about === "mutiny");
 function mutinyRules(state, reg, unitId) {
@@ -14263,16 +14263,16 @@ function missionStartCheck(draft, ctx2, unitIds) {
   }
   return null;
 }
-function talkDown(draft, ctx2, stat2) {
+function talkDown(draft, ctx2, stat3) {
   const open2 = requireOpen(draft, "desertion");
-  if (stat2 !== "authority" && stat2 !== "empathy") throw new Error("Talk her down with Authority or Empathy.");
+  if (stat3 !== "authority" && stat3 !== "empathy") throw new Error("Talk her down with Authority or Empathy.");
   if (open2.talkTried) throw new Error("She has already heard you out: choose another answer.");
   const unit = draft.squad.find((u) => u.id === open2.unitId);
   const rel = draft.relations[open2.unitId];
   const t = TUNING.disloyalty.talkDown;
   const difficulty = t.baseRank + (rel.trust < t.lowTrust ? 1 : 0) + (unit.stress >= t.highStress ? 1 : 0);
-  const bonus = stat2 === "authority" ? intimidationBonus(draft) : 0;
-  const chance = clamp19(t.base + t.perRank * (socialRank(draft, stat2) - difficulty) + bonus, t.min, t.max);
+  const bonus = stat3 === "authority" ? intimidationBonus(draft) : 0;
+  const chance = clamp19(t.base + t.perRank * (socialRank(draft, stat3) - difficulty) + bonus, t.min, t.max);
   const success = ctx2.rng.chance(chance);
   const events = [];
   if (success) {
@@ -14281,11 +14281,11 @@ function talkDown(draft, ctx2, stat2) {
     events.push(...evaluateAutomatic(draft, ctx2.registries, open2.unitId));
     loyaltyRecord(draft, open2.unitId).nextCheckDay = draft.day + t.pauseDays;
     delete draft.disloyalty.open;
-    events.push({ type: "loyalty_talk_down", unitId: open2.unitId, stat: stat2, success, chance });
+    events.push({ type: "loyalty_talk_down", unitId: open2.unitId, stat: stat3, success, chance });
     events.push(...closeNight(draft, ctx2, open2));
   } else {
     open2.talkTried = true;
-    events.push({ type: "loyalty_talk_down", unitId: open2.unitId, stat: stat2, success, chance });
+    events.push({ type: "loyalty_talk_down", unitId: open2.unitId, stat: stat3, success, chance });
   }
   return events;
 }
@@ -15071,10 +15071,10 @@ function optionsOf(state, reg) {
   return fixed ? { templateId: pending2.templateId, title: fixed.title, options: fixed.options } : null;
 }
 function eventOptions(state, reg) {
-  const found = optionsOf(state, reg);
-  if (!found) return [];
+  const found2 = optionsOf(state, reg);
+  if (!found2) return [];
   const exp = state.expedition;
-  return found.options.map((o, index) => {
+  return found2.options.map((o, index) => {
     let disabled = null;
     if (o.requires && !meetsSocialRequirements(state, { [o.requires.stat]: o.requires.rank })) {
       disabled = `Needs ${capital(o.requires.stat)} ${o.requires.rank}`;
@@ -15100,10 +15100,10 @@ function finishEventNode(draft, nodeId, text2, data) {
 }
 function chooseOption(draft, ctx2, index, route) {
   const exp = draft.expedition;
-  const found = optionsOf(draft, ctx2.registries);
+  const found2 = optionsOf(draft, ctx2.registries);
   if (!exp || exp.phase !== "event" || exp.pending?.kind !== "event") throw new Error("There is no event to answer.");
   if (draft.dilemmas?.open?.context === "expedition_event") throw new Error("A decision is waiting: answer it first.");
-  if (!found) {
+  if (!found2) {
     finishEventNode(draft, exp.pending.nodeId, "Nothing here.");
     return [];
   }
@@ -15111,7 +15111,7 @@ function chooseOption(draft, ctx2, index, route) {
   if (!Number.isInteger(index) || !option) throw new Error(`There is no option ${String(index)}.`);
   if (option.disabled !== null) throw new Error(`${option.label}: ${option.disabled}.`);
   const { nodeId, templateId } = exp.pending;
-  const chosen = found.options[index];
+  const chosen = found2.options[index];
   let effects2 = chosen.effects;
   const routeEvents = [];
   if (chosen.routeCheck) {
@@ -15120,8 +15120,8 @@ function chooseOption(draft, ctx2, index, route) {
     routeEvents.push(...taken.events);
     if (!taken.passed) effects2 = afterFailedRoute(effects2);
   }
-  const events = [...routeEvents, ...applyWorldEffects(draft, ctx2, effects2, { kind: "event", id: templateId, label: found.title })];
-  finishEventNode(draft, nodeId, `${found.title}: ${option.label}.`, { templateId, option: option.label });
+  const events = [...routeEvents, ...applyWorldEffects(draft, ctx2, effects2, { kind: "event", id: templateId, label: found2.title })];
+  finishEventNode(draft, nodeId, `${found2.title}: ${option.label}.`, { templateId, option: option.label });
   events.push({ type: "expedition_choice", nodeId, templateId, option: index, label: option.label });
   return events;
 }
@@ -15224,11 +15224,11 @@ var refusalsOf = (effects2) => Array.isArray(effects2) ? effects2.filter((e) => 
 function rawRefusalChance(state, reg, unitId, orderId) {
   const unit = state.squad.find((u) => u.id === unitId);
   if (!unit) return 0;
-  const found = [0];
+  const found2 = [0];
   const take = (e) => {
     const limited = e.orders !== void 0 && e.orders.length > 0;
     if (limited && (orderId === void 0 || !e.orders.includes(orderId))) return;
-    found.push(e.chance ?? 0);
+    found2.push(e.chance ?? 0);
   };
   for (const { synergyId } of getSynergies(state, reg, [unitId])) {
     for (const e of refusalsOf(reg.synergies.get(synergyId)?.effects)) take(e);
@@ -15238,7 +15238,7 @@ function rawRefusalChance(state, reg, unitId, orderId) {
     const downside = reg.defects.get(d.id)?.combat?.downside;
     for (const e of refusalsOf(downside)) take(strained ? amplify(e, TUNING.combat.strainedMult) : e);
   }
-  return Math.max(...found);
+  return Math.max(...found2);
 }
 function refusalChance(state, reg, unitId, orderId) {
   return scaleRefusal(state, reg, unitId, rawRefusalChance(state, reg, unitId, orderId));
@@ -15272,9 +15272,9 @@ registerAction("scene/order", (draft, payload, ctx2) => {
 });
 registerDayEndStep("director_tick", loyaltyDayStep);
 registerAction("loyalty/talk_down", (draft, payload, ctx2) => {
-  const stat2 = isObj15(payload) ? payload.stat : void 0;
-  if (stat2 !== "authority" && stat2 !== "empathy") throw new Error('loyalty/talk_down needs { stat: "authority" | "empathy" }');
-  return talkDown(draft, ctx2, stat2);
+  const stat3 = isObj15(payload) ? payload.stat : void 0;
+  if (stat3 !== "authority" && stat3 !== "empathy") throw new Error('loyalty/talk_down needs { stat: "authority" | "empathy" }');
+  return talkDown(draft, ctx2, stat3);
 });
 registerAction("loyalty/let_go", (draft, _payload, ctx2) => letGo(draft, ctx2));
 registerAction("loyalty/take_back", (draft, _payload, ctx2) => takeBack(draft, ctx2));
@@ -15441,11 +15441,11 @@ function parseOption(raw, index, ctx2, bad) {
   }
   if (raw.requires !== void 0) {
     const r = raw.requires;
-    const stat2 = isObj18(r) ? r.socialStat ?? r.stat : void 0;
-    if (!isObj18(r) || !SOCIAL_STATS.includes(stat2) || typeof r.rank !== "number" || !Number.isInteger(r.rank) || r.rank < 1 || r.rank > 5) {
+    const stat3 = isObj18(r) ? r.socialStat ?? r.stat : void 0;
+    if (!isObj18(r) || !SOCIAL_STATS.includes(stat3) || typeof r.rank !== "number" || !Number.isInteger(r.rank) || r.rank < 1 || r.rank > 5) {
       at("requires needs { socialStat, rank } with a rank from 1 to 5.");
       failed = true;
-    } else option.requires = { stat: stat2, rank: r.rank };
+    } else option.requires = { stat: stat3, rank: r.rank };
   }
   if (!failed && option.effects.length === 0) {
     at("An option needs at least one effect besides its check.");
@@ -18359,8 +18359,8 @@ function registerSceneContext(builder, deps) {
       if (!s.scene) return null;
       const loc = deps.registries().locations.get(s.scene.locationId);
       const units = presentUnits2(s);
-      const place = loc?.perUnit === true && units[0] ? `${units[0].displayName}'s quarters` : String(loc?.name ?? s.scene.locationId);
-      return `Scene: ${place}, Day ${s.day} ${SLOT_LABEL2[s.slot]}. Present: ${units.map((u) => u.displayName).join(", ")}. ${s.scene.mode === "group" ? "Group" : "Private"}.`;
+      const place2 = loc?.perUnit === true && units[0] ? `${units[0].displayName}'s quarters` : String(loc?.name ?? s.scene.locationId);
+      return `Scene: ${place2}, Day ${s.day} ${SLOT_LABEL2[s.slot]}. Present: ${units.map((u) => u.displayName).join(", ")}. ${s.scene.mode === "group" ? "Group" : "Private"}.`;
     }
   });
   builder.register({
@@ -19094,23 +19094,23 @@ function renderCommanderFile(host, ctx2) {
   host.replaceChildren();
   const spent = poolSpent(c.body);
   const left = TUNING.commander.pool - spent;
-  const row = (stat2) => {
-    const v = c.body[stat2];
+  const row = (stat3) => {
+    const v = c.body[stat3];
     const step = (sign, next, disabled) => h("button", {
       type: "button",
       class: "alius-btn alius-step-btn",
-      "data-body": stat2,
+      "data-body": stat3,
       "data-step": sign,
       disabled,
-      "aria-label": `${sign === "+" ? "Raise" : "Lower"} ${stat2}`,
-      onclick: () => onChange({ kind: "body", stat: stat2, value: next })
+      "aria-label": `${sign === "+" ? "Raise" : "Lower"} ${stat3}`,
+      onclick: () => onChange({ kind: "body", stat: stat3, value: next })
     }, sign === "+" ? "+" : "\u2212");
     return h(
       "div",
       { class: "alius-cmdr-row" },
-      h("span", { class: "alius-cmdr-label" }, cap(stat2)),
+      h("span", { class: "alius-cmdr-label" }, cap(stat3)),
       step("-", v - 1, v <= 1),
-      h("span", { class: "alius-stat", ...analyzeAttrs(`glossary:body_${stat2}`) }, descriptor(stat2, v)),
+      h("span", { class: "alius-stat", ...analyzeAttrs(`glossary:body_${stat3}`) }, descriptor(stat3, v)),
       step("+", v + 1, v >= TUNING.commander.creationMax || left <= 0)
     );
   };
@@ -19637,9 +19637,9 @@ var Wizard = class {
   }
   // --- commander file (P7)
   /** Moves one body stat; a value that breaks the cap of 4, the pool of 7 or the floor of 1 is ignored. */
-  setBody(stat2, value) {
-    if (!BODY_STATS.includes(stat2) || !Number.isInteger(value) || value < 1 || value > TUNING.commander.creationMax) return;
-    const next = { ...this.s.commander.body, [stat2]: value };
+  setBody(stat3, value) {
+    if (!BODY_STATS.includes(stat3) || !Number.isInteger(value) || value < 1 || value > TUNING.commander.creationMax) return;
+    const next = { ...this.s.commander.body, [stat3]: value };
     if (poolSpent(next) > TUNING.commander.pool) return;
     this.s.commander.body = next;
     this.emit();
@@ -20839,7 +20839,7 @@ function renderCmdrCard(host, ctx2) {
   const { state, registries: reg, raw } = ctx2;
   const p = commanderProfile(state);
   const word = (kind, value) => `${descriptor(kind, value)}${raw ? ` (${value})` : ""}`;
-  const stat2 = (label2, address, text2) => [
+  const stat3 = (label2, address, text2) => [
     `${label2} `,
     h("span", { class: "alius-stat", ...analyzeAttrs(address) }, text2)
   ];
@@ -20855,18 +20855,18 @@ function renderCmdrCard(host, ctx2) {
       h(
         "p",
         { class: "alius-cmdr-stats" },
-        ...stat2("STRENGTH", "glossary:body_strength", word("strength", p.body.strength)),
+        ...stat3("STRENGTH", "glossary:body_strength", word("strength", p.body.strength)),
         " \xB7 ",
-        ...stat2("ENDURANCE", "glossary:body_endurance", word("endurance", p.body.endurance)),
+        ...stat3("ENDURANCE", "glossary:body_endurance", word("endurance", p.body.endurance)),
         " \xB7 ",
-        ...stat2("REFLEXES", "glossary:body_reflexes", word("reflexes", p.body.reflexes))
+        ...stat3("REFLEXES", "glossary:body_reflexes", word("reflexes", p.body.reflexes))
       ),
       h(
         "p",
         {},
-        ...stat2("EXPRESSION", "glossary:expression", word("expression", p.expression)),
+        ...stat3("EXPRESSION", "glossary:expression", word("expression", p.expression)),
         " \xB7 ",
-        ...stat2("SEASONING", "glossary:seasoning", word("seasoning", p.seasoning)),
+        ...stat3("SEASONING", "glossary:seasoning", word("seasoning", p.seasoning)),
         " \xB7 BUILD ",
         h("span", { class: "alius-chip", ...analyzeAttrs("glossary:archetype") }, p.archetype)
       ),
@@ -21148,8 +21148,8 @@ function leashMenu(unit, ctx2) {
   );
 }
 function disciplineLine(unit, state, ctx2) {
-  const found = impunityOf(state, ctx2.registries, unit.id);
-  if (!found) return null;
+  const found2 = impunityOf(state, ctx2.registries, unit.id);
+  if (!found2) return null;
   const live = { unitId: unit.id };
   const stance = commandStance(state, ctx2.registries, unit.id);
   const entry = stance === null ? void 0 : stanceEntry(ctx2.registries, stance);
@@ -21158,7 +21158,7 @@ function disciplineLine(unit, state, ctx2) {
   if (stance !== null && entry) {
     parts.push(h("span", { class: "alius-chip", "data-stance": unit.id, ...analyzeAttrs(`commandStances:${stance}`, live) }, `STANCE: ${String(entry.name).toUpperCase()}`));
   }
-  parts.push(h("span", { class: "alius-chip", "data-impunity": unit.id, ...analyzeAttrs("glossary:impunity", live) }, `IMPUNITY: ${impunityBand(found.value).toUpperCase()}${raw ? ` (${found.value})` : ""}`));
+  parts.push(h("span", { class: "alius-chip", "data-impunity": unit.id, ...analyzeAttrs("glossary:impunity", live) }, `IMPUNITY: ${impunityBand(found2.value).toUpperCase()}${raw ? ` (${found2.value})` : ""}`));
   return h("p", { class: "alius-stance-line" }, ...joinWith(parts, " \xB7 "));
 }
 var RESTRICTION_LABEL = { confined: "IN THE BRIG", no_leave: "NO LEAVE", benched: "BENCHED", duty: "EXTRA DUTY" };
@@ -21179,7 +21179,7 @@ function unitBlock(unit, ctx2, state) {
   });
   const live = { unitId: unit.id };
   const chip = (text2, address, data) => h("span", { class: "alius-chip", ...analyzeAttrs(address, data) }, text2);
-  const stat2 = (text2, address, data) => h("span", { class: "alius-stat", ...analyzeAttrs(address, data) }, text2);
+  const stat3 = (text2, address, data) => h("span", { class: "alius-stat", ...analyzeAttrs(address, data) }, text2);
   const roleEntry = reg.roles.get(unit.roleId);
   return h(
     "article",
@@ -21204,11 +21204,11 @@ function unitBlock(unit, ctx2, state) {
       gone ? null : leashMenu(unit, ctx2),
       unit.bio ? h("p", { class: "alius-dim" }, unit.bio) : null,
       h("p", {}, ...joinWith([
-        stat2(`HP ${s.hp}`, "glossary:stat_hp", live),
-        stat2(`ATK ${s.atk}`, "glossary:stat_atk", live),
-        stat2(`DEF ${s.def}`, "glossary:stat_def", live),
-        stat2(`SPD ${s.spd}`, "glossary:stat_spd", live),
-        stat2(`CRIT ${s.crit}%`, "glossary:stat_crit", live)
+        stat3(`HP ${s.hp}`, "glossary:stat_hp", live),
+        stat3(`ATK ${s.atk}`, "glossary:stat_atk", live),
+        stat3(`DEF ${s.def}`, "glossary:stat_def", live),
+        stat3(`SPD ${s.spd}`, "glossary:stat_spd", live),
+        stat3(`CRIT ${s.crit}%`, "glossary:stat_crit", live)
       ], " \xB7 ")),
       equipmentBlock(unit, ctx2, state),
       progressionBlock(unit, ctx2, state),
@@ -21267,7 +21267,7 @@ function missionCard(m, state, ctx2) {
   const deadline = m.deadlineDay === void 0 ? "NO DEADLINE" : `D-${Math.max(0, m.deadlineDay - state.day)}`;
   const reason = checkDeparture(state, reg, { missionId: m.id });
   const chip = (text2, address) => h("span", { class: "alius-chip", ...analyzeAttrs(address) }, text2);
-  const stat2 = (text2, address) => h("span", { class: "alius-stat", ...analyzeAttrs(address) }, text2);
+  const stat3 = (text2, address) => h("span", { class: "alius-stat", ...analyzeAttrs(address) }, text2);
   const card2 = h(
     "article",
     { class: "alius-mission", "data-mission-card": m.id },
@@ -21277,14 +21277,14 @@ function missionCard(m, state, ctx2) {
       { class: "alius-dim" },
       region ? chip(String(region.name), `regions:${m.regionId}`) : m.regionId,
       " \xB7 ",
-      stat2(`DANGER ${m.danger}`, "glossary:danger"),
+      stat3(`DANGER ${m.danger}`, "glossary:danger"),
       " \xB7 OBJECTIVE: ",
       node ? chip(String(node.name), `nodeTypes:${m.objective.node}`) : m.objective.node,
       ` (${m.objective.condition}) \xB7 `,
-      stat2(deadline, "glossary:mission_deadline")
+      stat3(deadline, "glossary:mission_deadline")
     ),
     h("p", {}, m.brief),
-    h("p", { class: "alius-dim" }, stat2(`REWARD: TIER ${String(tierRank ?? m.rewardsTier)}`, "glossary:reward_tier"))
+    h("p", { class: "alius-dim" }, stat3(`REWARD: TIER ${String(tierRank ?? m.rewardsTier)}`, "glossary:reward_tier"))
   );
   if (ctx2.onPlan) {
     card2.append(h("button", {
@@ -21481,6 +21481,465 @@ function renderOpsTab(host, ctx2) {
     ),
     requisition(state, ctx2, host)
   );
+}
+
+// src/engine/hub.ts
+function fnv1a(s) {
+  let h2 = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h2 ^= s.charCodeAt(i);
+    h2 = Math.imul(h2, 16777619) >>> 0;
+  }
+  return h2 >>> 0;
+}
+var roomsOf = (reg) => [...reg.hubRooms.values()];
+var hostOf = (rooms, host) => rooms.find((r) => (r.hosts ?? []).includes(host));
+var isInjured = (u) => u.status === "injured" || (u.injuryDays ?? 0) > 0;
+function routineWeight(state, reg, room, unit) {
+  const base = (room.weights ?? {})[state.slot] ?? 0;
+  if (base <= 0) return 0;
+  const open2 = (reg.locations.get(room.sceneLocationId)?.slots ?? []).includes(state.slot);
+  if (!open2) return 0;
+  if (typeof room.facilityId === "string" && facilityLevel(state, room.facilityId) < 1) return 0;
+  const liked = (room.likeTags ?? []).some((t) => unit.likes.some((l) => l.toLowerCase() === t.toLowerCase()));
+  return base + (liked ? 2 : 0);
+}
+function place(state, reg, rooms, unit) {
+  const here = (room, reason) => room ? { unitId: unit.id, roomId: room.id, reason } : null;
+  if (state.expedition?.party.includes(unit.id)) return { unitId: unit.id, roomId: null, reason: "expedition" };
+  const held = activeRestrictions(state, unit.id);
+  const found2 = (isInjured(unit) ? here(hostOf(rooms, "injured"), "injured") : null) ?? (held.some((r) => r.kind === "confined") ? here(hostOf(rooms, "confined"), "confined") : null) ?? (held.some((r) => r.kind === "duty") ? here(hostOf(rooms, "duty"), "duty") : null) ?? (state.slot === "night" ? here(hostOf(rooms, "night"), "night") : null);
+  if (found2) return found2;
+  const weights = rooms.map((room) => routineWeight(state, reg, room, unit));
+  const total2 = weights.reduce((a, b) => a + b, 0);
+  if (total2 <= 0) return { unitId: unit.id, roomId: null, reason: "nowhere" };
+  let pick2 = fnv1a(`${state.day}|${state.slot}|${unit.id}`) % total2;
+  for (let i = 0; i < rooms.length; i++) {
+    if (pick2 < weights[i]) return { unitId: unit.id, roomId: rooms[i].id, reason: "routine" };
+    pick2 -= weights[i];
+  }
+  return { unitId: unit.id, roomId: null, reason: "nowhere" };
+}
+function whereabouts(state, reg) {
+  const rooms = roomsOf(reg);
+  return livingUnits(state).map((u) => place(state, reg, rooms, u));
+}
+
+// src/ui/shell/status.ts
+var stat = (cls, text2, address) => h("span", { class: `${cls} alius-stat`, ...analyzeAttrs(address) }, text2);
+function renderStatusHeader(host, state) {
+  host.replaceChildren();
+  if (!state) {
+    host.append(h("span", { class: "alius-clock" }, "NO CAMPAIGN"));
+    return;
+  }
+  const r = state.resources;
+  const injuredDays = (state.commander.injuredUntilDay ?? 0) - state.day;
+  const shortage = state.calendar.shortageStreak ?? 0;
+  const parts = [
+    stat("alius-clock", clockText(state.day, state.slot) + (isQuietNight(state) ? " \u2014 QUIET" : ""), "glossary:slots"),
+    h(
+      "span",
+      { class: "alius-resources" },
+      stat("alius-res", `CR ${r.credits}`, "glossary:credits"),
+      " \xB7 ",
+      stat("alius-res", `SUP ${r.supplies}`, "glossary:supplies"),
+      " \xB7 ",
+      stat("alius-res", `PLYX ${r.plyx}`, "glossary:plyx")
+    ),
+    stat("alius-leash", `LEASH ${state.leash.authorizationsLeft}`, "glossary:leash"),
+    injuredDays > 0 ? stat("alius-warn", `INJURED ${injuredDays}d`, "glossary:commander_injury") : null,
+    shortage > 0 ? stat("alius-warn", `SHORTAGE ${shortage}d`, "glossary:upkeep") : null
+  ];
+  host.append(...parts.filter((p) => p !== null));
+}
+
+// src/ui/hub/art.ts
+var tried = /* @__PURE__ */ new Map();
+var found = /* @__PURE__ */ new Map();
+function loads(url) {
+  let p = tried.get(url);
+  if (!p) {
+    p = new Promise((resolve) => {
+      if (typeof Image === "undefined") return resolve(false);
+      const img = new Image();
+      img.onload = () => resolve(true);
+      img.onerror = () => resolve(false);
+      img.src = url;
+    }).then((ok) => {
+      found.set(url, ok);
+      return ok;
+    });
+    tried.set(url, p);
+  }
+  return p;
+}
+var candidates3 = (assetUrl, slot2) => [`content/core/art/hub/base_${slot2}.png`, "content/core/art/hub/base.png"].map((p) => assetUrl(p));
+function peekHubArt(assetUrl, slot2) {
+  if (!assetUrl) return null;
+  let unknown2 = false;
+  for (const url of candidates3(assetUrl, slot2)) {
+    const ok = found.get(url);
+    if (ok === true) return url;
+    if (ok === void 0) unknown2 = true;
+  }
+  return unknown2 ? void 0 : null;
+}
+async function probeHubArt(assetUrl, slot2) {
+  if (!assetUrl) return null;
+  for (const url of candidates3(assetUrl, slot2)) if (await loads(url)) return url;
+  return null;
+}
+
+// src/ui/hub/model.ts
+var TONE_GLYPH = { danger: "!", bond: "\u2665", trust: "+", affinity: "*", warn: "~", neutral: "\xB7" };
+var TONE_LABEL = { danger: "danger", bond: "bond", trust: "trust", affinity: "affinity", warn: "warning", neutral: "steady" };
+var isInjured2 = (u) => u.status === "injured" || (u.injuryDays ?? 0) > 0;
+function markerTone(state, reg, unit) {
+  const rel = state.relations[unit.id];
+  if (unit.stress >= 80 || isInjured2(unit) || rel?.loyaltyBand === "breaking") return "danger";
+  const st = rel ? reg.relationshipStates.get(rel.stateId) : void 0;
+  if (st?.romance === true) return "bond";
+  if (st?.group === "platonic") return "trust";
+  if (st?.group === "negative" || unit.stress >= 50) return "warn";
+  if (rel && affinityBand(rel.affinity) === "devoted") return "affinity";
+  return "neutral";
+}
+var dueIn = (m, day) => m.deadlineDay === void 0 ? null : m.deadlineDay - day;
+function currentObjective(state, _reg) {
+  const active = state.missions.active;
+  const pick2 = active.find((m) => m.spineBeat !== void 0) ?? [...active].filter((m) => m.deadlineDay !== void 0).sort((a, b) => a.deadlineDay - b.deadlineDay)[0] ?? active[0] ?? state.missions.offered.find((m) => m.spineBeat !== void 0);
+  return pick2 ? { text: pick2.title, dueDays: dueIn(pick2, state.day), missionId: pick2.id } : null;
+}
+var TONIGHT_MAX = 6;
+var KNOCK_KIND = "we_need_to_talk";
+var unreadFrom = (state, unitId) => (state.dms[unitId] ?? []).filter((m) => m.from !== "commander" && !m.read).length;
+function tonightItems(state, _reg) {
+  const out = [];
+  const living2 = state.squad.filter(isLiving);
+  const nameOf9 = (id) => living2.find((u) => u.id === id)?.displayName ?? "";
+  for (const e of state.calendar.nightEventsQueue) {
+    if (e.kind !== KNOCK_KIND || e.expiresDay < state.day || !nameOf9(e.unitId)) continue;
+    out.push({ kind: "knock", text: `${nameOf9(e.unitId)} will knock tonight.`, unitId: e.unitId, tone: "warn", analyze: "glossary:tonight" });
+  }
+  for (const u of living2) {
+    const n = unreadFrom(state, u.id);
+    if (n > 0) out.push({ kind: "dm", text: `${u.displayName}: ${n} unread message${n === 1 ? "" : "s"}.`, unitId: u.id, tone: "neutral", analyze: "glossary:tonight" });
+  }
+  for (const d of state.discipline?.demands ?? []) {
+    if (d.status !== "open" || !nameOf9(d.unitId)) continue;
+    out.push({ kind: "demand", text: `${nameOf9(d.unitId)} is waiting for an answer.`, unitId: d.unitId, tone: "warn", analyze: "glossary:demand" });
+  }
+  if ((state.world.incomingUnits ?? 0) > 0) out.push({ kind: "intake", text: "A new unit is waiting for intake.", tone: "neutral", analyze: "glossary:tonight" });
+  for (const m of [...state.missions.active, ...state.missions.offered]) {
+    const due = dueIn(m, state.day);
+    if (due === null || due < 0 || due > 1) continue;
+    out.push({ kind: "deadline", text: `${m.title}: due ${due === 0 ? "today" : "tomorrow"}.`, tone: due === 0 ? "danger" : "warn", analyze: "glossary:mission_deadline" });
+  }
+  const shortage = state.calendar.shortageStreak ?? 0;
+  if (shortage > 0) out.push({ kind: "warning", text: `SHORTAGE ${shortage}d`, tone: "danger", analyze: "glossary:upkeep" });
+  const injured = (state.commander.injuredUntilDay ?? 0) - state.day;
+  if (injured > 0) out.push({ kind: "warning", text: `INJURED ${injured}d`, tone: "danger", analyze: "glossary:commander_injury" });
+  return out.slice(0, TONIGHT_MAX);
+}
+function endSlotBlock(state) {
+  if (state.scene) return "A conversation is open.";
+  if (state.calendar.pendingScene) return "A talk is waiting for its scene.";
+  if (state.expedition) return "The squad is out.";
+  if (state.dilemmas?.open?.status === "presented") return "A decision is waiting.";
+  if (state.calendar.nightEvent) return "Someone is at the door.";
+  return null;
+}
+function latestOversight(state) {
+  const recent = leashLog(state).filter((e) => e.day >= state.day - 1);
+  return recent.reduce((best, e) => best === null || e.no > best.no ? e : best, null);
+}
+
+// src/ui/hub/marker.ts
+function initialsOf(unit) {
+  if (unit.kind === "grunt") return "GR";
+  const words3 = unit.displayName.trim().split(/\s+/).filter(Boolean);
+  const letters = words3.length >= 2 ? `${words3[0][0]}${words3[1][0]}` : (words3[0] ?? "?").slice(0, 2);
+  return letters.toUpperCase();
+}
+function renderMarker(state, reg, unit) {
+  const tone = markerTone(state, reg, unit);
+  const rel = state.relations[unit.id];
+  const st = unit.kind === "named" && rel ? reg.relationshipStates.get(rel.stateId) : void 0;
+  const glyphs = [st ? String(st.glyph) : "", TONE_GLYPH[tone]].filter(Boolean).join(" ");
+  const analyze = st && rel ? analyzeAttrs(`relationshipStates:${rel.stateId}`, { unitId: unit.id }) : analyzeAttrs("glossary:whereabouts");
+  return h(
+    "span",
+    {
+      class: "alius-marker alius-chip",
+      "data-unit": unit.id,
+      "data-tone": tone,
+      "aria-label": `${unit.displayName}${st ? `, ${String(st.name)}` : ""}, ${TONE_LABEL[tone]}`,
+      ...analyze
+    },
+    h("span", { class: "alius-marker-ring", "aria-hidden": "true" }, initialsOf(unit)),
+    h("span", { class: "alius-marker-glyphs", "aria-hidden": "true" }, glyphs)
+  );
+}
+
+// src/ui/hub/roomPanel.ts
+function talkActivity(reg) {
+  return [...reg.activities.values()].find((a) => a.startsScene === true && a.companion === "required");
+}
+function talkBlock(state, reg, unit, room) {
+  const open2 = endSlotBlock(state);
+  if (open2) return open2;
+  const restricted = restrictionReason(state, unit.id, "scene");
+  if (restricted) return restricted;
+  const slots = reg.locations.get(room.sceneLocationId)?.slots;
+  if (slots && !slots.includes(state.slot)) return `Closed this ${state.slot}.`;
+  const talk = talkActivity(reg);
+  return talk ? checkActivity(state, reg, { activityId: String(talk.id), companionId: unit.id }) : "Nobody can be talked to here.";
+}
+function renderRoomPanel(room, state, ctx2, here, opts) {
+  const reg = ctx2.registries;
+  const people = here.filter((w) => w.roomId === room.id).map((w) => state.squad.find((u) => u.id === w.unitId)).filter((u) => u !== void 0);
+  const talk = talkActivity(reg);
+  const rows = people.map((unit) => {
+    const reason = opts.readOnly || unit.kind !== "named" || !talk ? null : talkBlock(state, reg, unit, room);
+    const canTalk = !opts.readOnly && unit.kind === "named" && talk !== void 0;
+    const avatar = ctx2.avatar(unit);
+    const button = canTalk ? h("button", {
+      type: "button",
+      class: "alius-btn alius-option",
+      "data-talk": unit.id,
+      "aria-disabled": reason !== null ? "true" : null,
+      ...analyzeNative(`activities:${String(talk.id)}`),
+      onclick: () => {
+        if (reason === null) ctx2.onTalk(unit.id, String(room.sceneLocationId));
+      }
+    }, "[ TALK ]") : null;
+    return h(
+      "li",
+      { class: "alius-room-person", "data-unit": unit.id },
+      avatar ? h("span", { class: "alius-room-avatar" }, avatar) : null,
+      renderMarker(state, reg, unit),
+      h("span", { class: "alius-room-name" }, unit.kind === "grunt" ? `${unit.displayName} (grunt)` : unit.displayName),
+      button,
+      reason !== null && canTalk ? h("span", { class: "alius-dim alius-reason" }, reason) : null
+    );
+  });
+  const cards = opts.readOnly ? [] : (room.activityIds ?? []).map((id) => reg.activities.get(id)).filter((a) => a !== void 0).map((a) => activityCard(a, state, ctx2.ops));
+  return h(
+    "section",
+    { class: "alius-room-panel", "data-room": String(room.id), role: "region", "aria-label": `${String(room.label)} room` },
+    h(
+      "div",
+      { class: "alius-room-panel-head" },
+      h("h2", {}, h("span", { class: "alius-chip", ...analyzeAttrs(`hubRooms:${String(room.id)}`) }, String(room.label))),
+      h("button", { type: "button", class: "alius-btn", "data-close-room": "", "aria-label": `Close ${String(room.label)}`, onclick: opts.onClose }, "[X]")
+    ),
+    h("p", { class: "alius-dim" }, String(room.description)),
+    h("h3", {}, "HERE"),
+    people.length > 0 ? h("ul", { class: "alius-room-people" }, ...rows) : h("p", { class: "alius-dim" }, "Nobody is here."),
+    ...cards.length > 0 ? [h("h3", {}, "ACTIVITIES"), ...cards] : []
+  );
+}
+
+// src/ui/hub/hubScreen.ts
+var openRoom = /* @__PURE__ */ new WeakMap();
+var teardown = /* @__PURE__ */ new WeakMap();
+var LEGEND_TONES = ["danger", "bond", "trust", "affinity", "warn"];
+var stat2 = (cls, address, ...children) => h("div", { class: `${cls} alius-stat`, ...analyzeAttrs(address) }, ...children);
+var dueText = (days) => days === null ? "NO DEADLINE" : days < 0 ? "OVERDUE" : days === 0 ? "DUE TODAY" : `DUE IN ${days} DAY${days === 1 ? "" : "S"}`;
+function topBar(ctx2, state) {
+  const corp = state?.commander.corporationId ? ctx2.registries.corporations.get(state.commander.corporationId) : void 0;
+  const status = h("div", { class: "alius-hub-status" });
+  renderStatusHeader(status, state);
+  return h(
+    "header",
+    { class: "alius-hub-topbar" },
+    h("span", { class: "alius-hub-logo" }, "ALIUS"),
+    h("span", { class: "alius-hub-where" }, `CCP OUTPOST${corp ? ` // ${String(corp.name)}` : ""}`),
+    status
+  );
+}
+function strip(cls, address, label2, state, reg, units) {
+  return h(
+    "div",
+    { class: `alius-strip ${cls}` },
+    h("span", { class: "alius-chip", ...analyzeAttrs(address) }, label2),
+    ...units.map((u) => renderMarker(state, reg, u))
+  );
+}
+function crossSection(ctx2, state, here, onRoom) {
+  const reg = ctx2.registries;
+  const slot2 = state.slot;
+  const bg = h("div", { class: "alius-hub-bg alius-hub-blueprint", "aria-hidden": "true" });
+  const caption = h("span", { class: "alius-hub-caption", "aria-hidden": "true" }, "SECTION A-A \xB7 NOT TO SCALE");
+  const showArt = (url) => {
+    bg.className = "alius-hub-bg alius-hub-art";
+    bg.style.backgroundImage = `url("${url}")`;
+    caption.remove();
+  };
+  const known = peekHubArt(ctx2.assetUrl, slot2);
+  if (typeof known === "string") showArt(known);
+  else if (known === void 0) {
+    void probeHubArt(ctx2.assetUrl, slot2).then((url) => {
+      if (url && bg.isConnected) showArt(url);
+    });
+  }
+  const unitOf4 = (id) => state.squad.find((u) => u.id === id);
+  const rooms = [...reg.hubRooms.values()].map((room) => {
+    const r = room.rect;
+    const inside = here.filter((w) => w.roomId === room.id).map((w) => unitOf4(w.unitId)).filter((u) => u !== void 0);
+    const el = h(
+      "div",
+      {
+        class: "alius-room",
+        "data-room": String(room.id),
+        role: "group",
+        "aria-label": String(room.label),
+        style: `left:${r.x}%;top:${r.y}%;width:${r.w}%;height:${r.h}%`,
+        onclick: () => onRoom(String(room.id))
+      },
+      h("button", { type: "button", class: "alius-room-label alius-chip", ...analyzeNative(`hubRooms:${String(room.id)}`) }, String(room.label)),
+      h("div", { class: "alius-room-markers" }, ...inside.map((u) => renderMarker(state, reg, u)))
+    );
+    return el;
+  });
+  const away = here.filter((w) => w.reason === "expedition").map((w) => unitOf4(w.unitId)).filter((u) => u !== void 0);
+  const elsewhere = here.filter((w) => w.reason === "nowhere").map((w) => unitOf4(w.unitId)).filter((u) => u !== void 0);
+  const panelHost = h("div", { class: "alius-room-panel-host" });
+  const stage = h("div", { class: "alius-hub-stage", "data-slot": slot2 }, bg, ...rooms, caption, panelHost);
+  const section = h(
+    "section",
+    { class: "alius-hub-main", "aria-label": "Outpost cross-section" },
+    stage,
+    away.length > 0 ? strip("alius-away", "glossary:away", "AWAY", state, reg, away) : null,
+    elsewhere.length > 0 ? strip("alius-elsewhere", "glossary:whereabouts", "ELSEWHERE", state, reg, elsewhere) : null
+  );
+  return { section, panelHost };
+}
+function sideColumn(ctx2, state, readOnly) {
+  const objective = currentObjective(state, ctx2.registries);
+  const items = tonightItems(state, ctx2.registries);
+  const oversight = latestOversight(state);
+  const block2 = readOnly ? "This campaign is read-only." : endSlotBlock(state);
+  const slotName = state.slot.toUpperCase();
+  const end = readOnly ? null : h("button", {
+    type: "button",
+    class: "alius-btn alius-option alius-end",
+    "data-end-slot": "",
+    "aria-disabled": block2 !== null ? "true" : null,
+    ...analyzeNative("glossary:end_slot"),
+    onclick: () => {
+      if (block2 === null) ctx2.onEndSlot();
+    }
+  }, `END ${slotName} \u25B8`);
+  const who = oversight ? state.squad.find((u) => u.id === oversight.unitId)?.displayName ?? oversight.unitId : "";
+  return h(
+    "aside",
+    { class: "alius-hub-side" },
+    stat2(
+      "alius-objective",
+      "glossary:objective",
+      h("div", { class: "alius-card-label" }, "OBJECTIVE"),
+      objective ? h("div", { class: "alius-card-title" }, objective.text) : h("div", { class: "alius-card-title" }, "NO STANDING ORDERS"),
+      objective ? h("div", { class: "alius-dim" }, dueText(objective.dueDays)) : null
+    ),
+    h(
+      "section",
+      { class: "alius-tonight" },
+      h("h2", {}, "TONIGHT"),
+      items.length === 0 ? h("p", { class: "alius-dim" }, "Nothing is waiting.") : h("ul", {}, ...items.map((i) => h("li", { class: "alius-tonight-item alius-stat", "data-tone": i.tone, ...analyzeAttrs(i.analyze) }, `${TONE_GLYPH[i.tone]} ${i.text}`)))
+    ),
+    oversight ? stat2(
+      "alius-oversight",
+      "glossary:leash",
+      h("div", { class: "alius-card-label" }, "OVERSIGHT"),
+      h("div", {}, `Request #${String(oversight.no).padStart(4, "0")}: ${oversight.kind.toUpperCase()} ${who} \u2014 ${oversight.outcome}.`)
+    ) : null,
+    h(
+      "div",
+      { class: "alius-legend" },
+      ...LEGEND_TONES.map((t) => h("span", { class: "alius-chip", "data-tone": t, ...analyzeAttrs("glossary:marker_tone") }, `${TONE_GLYPH[t]} ${TONE_LABEL[t].toUpperCase()}`))
+    ),
+    h("button", {
+      type: "button",
+      class: "alius-btn alius-option alius-open-pda",
+      "data-open-pda": "",
+      ...analyzeNative("glossary:pda_device"),
+      onclick: () => ctx2.onOpenPda()
+    }, "OPEN PDA  [TAB]"),
+    end,
+    block2 !== null && end ? h("p", { class: "alius-dim alius-reason alius-end-reason" }, block2) : null
+  );
+}
+function renderHub(host, _device, ctx2) {
+  teardown.get(host)?.();
+  teardown.delete(host);
+  host.replaceChildren();
+  const load = ctx2.getLoad();
+  const state = ctx2.getState();
+  const root = h("div", { class: "alius-hub", "data-slot": state?.slot ?? "morning" });
+  host.append(root);
+  root.append(topBar(ctx2, state));
+  const openPda = () => h("button", {
+    type: "button",
+    class: "alius-btn alius-option alius-open-pda",
+    "data-open-pda": "",
+    ...analyzeNative("glossary:pda_device"),
+    onclick: () => ctx2.onOpenPda()
+  }, "OPEN PDA  [TAB]");
+  if (!state) {
+    root.append(h("section", { class: "alius-section alius-hub-empty" }, h("p", {}, "NO ACTIVE CAMPAIGN IN THIS CHAT"), openPda()));
+    return;
+  }
+  const readOnly = load.kind === "readonly";
+  if (readOnly) root.append(h("p", { class: "alius-banner" }, `READ-ONLY: ${load.reason}`));
+  const here = whereabouts(state, ctx2.registries);
+  const showPanel = () => {
+    panelHost.replaceChildren();
+    const id = openRoom.get(host);
+    const room = id !== void 0 ? ctx2.registries.hubRooms.get(id) : void 0;
+    if (!room) return;
+    const r = room.rect;
+    const panel = renderRoomPanel(room, state, ctx2, here, { readOnly, onClose: close });
+    panel.style.setProperty("--panel-x", `${r.x}%`);
+    panel.style.setProperty("--panel-y", `${Math.min(r.y + r.h * 0.25, 60)}%`);
+    panelHost.append(panel);
+  };
+  const open2 = (id) => {
+    openRoom.set(host, id);
+    showPanel();
+  };
+  function close() {
+    openRoom.delete(host);
+    showPanel();
+  }
+  const { section, panelHost } = crossSection(ctx2, state, here, open2);
+  root.append(h("div", { class: "alius-hub-body" }, section, sideColumn(ctx2, state, readOnly)));
+  showPanel();
+  const onKey = (ev) => {
+    const e = ev;
+    if (!host.isConnected) return teardown.get(host)?.();
+    if (e.key !== "Escape" || !openRoom.has(host)) return;
+    const el = e.target;
+    if (el && ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName)) return;
+    if (document.querySelector(".alius-modal-backdrop")) return;
+    e.preventDefault();
+    e.stopPropagation();
+    close();
+  };
+  const onDown = (ev) => {
+    if (!host.isConnected) return teardown.get(host)?.();
+    if (!openRoom.has(host)) return;
+    const el = ev.target;
+    if (el && typeof el.closest === "function" && el.closest(".alius-room-panel, .alius-room, .alius-analyze")) return;
+    close();
+  };
+  window.addEventListener("keydown", onKey, true);
+  window.addEventListener("pointerdown", onDown, true);
+  teardown.set(host, () => {
+    window.removeEventListener("keydown", onKey, true);
+    window.removeEventListener("pointerdown", onDown, true);
+  });
 }
 
 // src/ui/map/mapTab.ts
@@ -21820,10 +22279,10 @@ function renderReport(host, ctx2) {
   else if (ctx2.recapPending) root.append(h("p", { class: "alius-dim" }, "COMPILING\u2026"));
   for (const line2 of lines.slice(1)) root.append(h("p", { class: "alius-report-line" }, line2));
   if (state.slot !== "night" && !report.debriefed) {
-    const candidates3 = report.party.map((id) => state.squad.find((u) => u.id === id)).filter((u) => u !== void 0 && u.kind === "named" && u.status !== "dead" && u.status !== "deserted" && u.status !== "terminated");
+    const candidates4 = report.party.map((id) => state.squad.find((u) => u.id === id)).filter((u) => u !== void 0 && u.kind === "named" && u.status !== "dead" && u.status !== "deserted" && u.status !== "terminated");
     const full = ctx2.debriefPick.length >= DEBRIEF_MAX;
     const section = h("div", { class: "alius-debrief" }, h("h3", {}, "DEBRIEF"));
-    for (const u of candidates3) {
+    for (const u of candidates4) {
       const on = ctx2.debriefPick.includes(u.id);
       const box = h("input", { type: "checkbox", "data-debrief": u.id, checked: on, disabled: !on && full });
       box.checked = on;
@@ -21879,7 +22338,7 @@ function renderExpeditionScreen(host, ctx2) {
     root.append(h("h2", {}, `[ EXPEDITION ] ${String(reg.regions.get(exp.regionId)?.name ?? exp.regionId)}`));
     renderNodeMap(root, { rows: shown, edges: {}, onMove: (id) => controller.move(id), labels, types });
     root.append(h("p", {}, `SUPPLIES ${exp.supplies} \xB7 LOOT ${exp.loot.length}`));
-    const strip = h("div", { class: "alius-party" });
+    const strip2 = h("div", { class: "alius-party" });
     const able = new Set(ableParty(state));
     for (const id of exp.party) {
       const u = state.squad.find((x) => x.id === id);
@@ -21909,9 +22368,9 @@ function renderExpeditionScreen(host, ctx2) {
           }, "[ ROW ]")
         );
       }
-      strip.append(line2);
+      strip2.append(line2);
     }
-    root.append(strip);
+    root.append(strip2);
     if (exp.phase === "combat") combatPanel(root, state);
     if (exp.phase === "event") eventPanel(root, state);
     root.append(h("div", { class: "alius-log" }, ...exp.log.slice(-LOG_LINES2).map((l) => h("p", { class: "alius-dim" }, l.text))));
@@ -23630,7 +24089,7 @@ function facilityLevel2(label2, value) {
 }
 function statLines(stats, format) {
   if (!stats || typeof stats !== "object") return [];
-  return Object.entries(stats).filter(([, n]) => isNum(n)).map(([stat2, n]) => format(stat2.toUpperCase(), n));
+  return Object.entries(stats).filter(([, n]) => isNum(n)).map(([stat3, n]) => format(stat3.toUpperCase(), n));
 }
 function effectsFor(registry2, entry, reg, data) {
   const e = entry;
@@ -23646,7 +24105,7 @@ function effectsFor(registry2, entry, reg, data) {
     case "statuses": {
       const turns = isNum(e.turns) && isNum(e.maxStacks) ? `Lasts ${e.turns} ${plural(e.turns, "turn")}, up to ${e.maxStacks} ${plural(e.maxStacks, "stack")}` : null;
       return compact([
-        ...statLines(e.mods, (stat2, n) => `${pctSigned(n)} ${stat2} per stack`),
+        ...statLines(e.mods, (stat3, n) => `${pctSigned(n)} ${stat3} per stack`),
         isNum(e.incomingPct) ? `${pctSigned(e.incomingPct)} damage taken` : null,
         ...combat(e.tick, reg).map((l) => `Each turn: ${l}`),
         ...Array.isArray(e.flags) ? e.flags.map((f) => cap4(humanize(String(f)))) : [],
@@ -23654,10 +24113,10 @@ function effectsFor(registry2, entry, reg, data) {
       ]);
     }
     case "items":
-      return compact([...statLines(e.baseStats, (stat2, n) => `${signed(n)} ${stat2}`), ...combat(e.effects, reg)]);
+      return compact([...statLines(e.baseStats, (stat3, n) => `${signed(n)} ${stat3}`), ...combat(e.effects, reg)]);
     case "affixes":
       return compact([
-        ...statLines(e.statPct, (stat2, n) => `${pctSigned(n)} ${stat2}`),
+        ...statLines(e.statPct, (stat3, n) => `${pctSigned(n)} ${stat3}`),
         ...combat(e.effects, reg),
         e.drawback === true ? "Drawback" : null
       ]);
@@ -23743,10 +24202,10 @@ function effectsFor(registry2, entry, reg, data) {
 }
 function summarizeTraitEffect(e, _reg) {
   const x = e;
-  const stat2 = (s) => cap4(String(s));
+  const stat3 = (s) => cap4(String(s));
   switch (x.type) {
     case "social_rank":
-      return `${stat2(x.stat)} rank ${x.rank} at start`;
+      return `${stat3(x.stat)} rank ${x.rank} at start`;
     case "starting_trust": {
       const iv = x.ifValue;
       return `Starting Trust ${signed(x.amount)}${iv ? ` with units whose ${iv.axis} value is ${iv.sign === "+" ? "above" : "below"} zero` : ""}`;
@@ -23760,7 +24219,7 @@ function summarizeTraitEffect(e, _reg) {
     case "taste_attraction":
       return `Starting Attraction ${signed(x.amount)} with units whose tastes fit the commander`;
     case "social_growth":
-      return `${stat2(x.stat)} grows \xD7${num3(x.mult)} ${x.mult >= 1 ? "faster" : "slower"}`;
+      return `${stat3(x.stat)} grows \xD7${num3(x.mult)} ${x.mult >= 1 ? "faster" : "slower"}`;
     case "body_growth":
       return `Body training XP \xD7${num3(x.mult)}`;
     case "early_trust_gain":
@@ -23780,7 +24239,7 @@ function summarizeTraitEffect(e, _reg) {
     case "night_slot":
       return "The Night is always yours: a quiet night when nobody knocks";
     case "sleepless_rank":
-      return `${stat2(x.stat)} rank ${signed(x.amount)} the day after a night spent awake`;
+      return `${stat3(x.stat)} rank ${signed(x.amount)} the day after a night spent awake`;
     case "no_romance":
       return "No romance in this campaign";
     case "platonic_threshold":
@@ -23966,23 +24425,23 @@ var WHERE_USED = {
 };
 var PRESENCE_LABEL = { unnoticed: ["presence_unnoticed", "Unnoticed"], steady_voice: ["presence_steady_voice", "Steady Voice"], rally: ["presence_rally", "Rally"] };
 var pct2 = (n) => Math.round(n * 100);
-function bodyProvider(stat2) {
+function bodyProvider(stat3) {
   return (_subject, env, k) => {
     const state = env.state;
     if (!state) return null;
     const p = commanderProfile(state);
-    const value = p.body[stat2];
-    const lines = [`Now: ${descriptor(stat2, value)}${k.raw(value) !== null ? ` (${k.raw(value)})` : ""}`];
+    const value = p.body[stat3];
+    const lines = [`Now: ${descriptor(stat3, value)}${k.raw(value) !== null ? ` (${k.raw(value)})` : ""}`];
     if (value >= 5) lines.push("Training: nothing more to train; this stat is at the top.");
     else {
       const need = TUNING.commander.bodyXpSteps[value - 1];
-      const have = p.bodyXp[stat2];
+      const have = p.bodyXp[stat3];
       const share = have / need;
-      lines.push(k.showRaw ? `Training: ${k.raw(have)}/${k.raw(need)} towards ${descriptor(stat2, value + 1)}` : `Training: ${share < 1 / 3 ? "early" : share < 2 / 3 ? "halfway" : "close"} on the way to ${descriptor(stat2, value + 1)}`);
+      lines.push(k.showRaw ? `Training: ${k.raw(have)}/${k.raw(need)} towards ${descriptor(stat3, value + 1)}` : `Training: ${share < 1 / 3 ? "early" : share < 2 / 3 ? "halfway" : "close"} on the way to ${descriptor(stat3, value + 1)}`);
     }
-    lines.push(WHERE_USED[stat2]);
-    if (stat2 === "endurance" && k.showRaw) lines.push(`Crisis HP: ${k.raw(commanderMaxHp(state, env.registries))}`);
-    if (stat2 === "reflexes" && k.showRaw) lines.push(`Dodge chance: ${k.raw(pct2(dodgeChance(state)))}%`);
+    lines.push(WHERE_USED[stat3]);
+    if (stat3 === "endurance" && k.showRaw) lines.push(`Crisis HP: ${k.raw(commanderMaxHp(state, env.registries))}`);
+    if (stat3 === "reflexes" && k.showRaw) lines.push(`Dodge chance: ${k.raw(pct2(dodgeChance(state)))}%`);
     return { lines };
   };
 }
@@ -24018,7 +24477,7 @@ var registered = false;
 function registerCommanderProviders() {
   if (registered) return;
   registered = true;
-  for (const stat2 of ["strength", "endurance", "reflexes"]) registerAnalyzeProvider(`glossary:body_${stat2}`, bodyProvider(stat2));
+  for (const stat3 of ["strength", "endurance", "reflexes"]) registerAnalyzeProvider(`glossary:body_${stat3}`, bodyProvider(stat3));
   registerAnalyzeProvider("glossary:archetype", archetypeProvider);
   registerAnalyzeProvider("glossary:presence", presenceProvider);
 }
@@ -24045,30 +24504,30 @@ function impunityProvider(subject, env, k) {
   const state = env.state;
   const id = unitIdOf2(subject);
   if (!state || id === null) return null;
-  const found = impunityOf(state, env.registries, id);
-  if (!found) return null;
+  const found2 = impunityOf(state, env.registries, id);
+  if (!found2) return null;
   const stance = commandStance(state, env.registries, id);
   const entry = stance === null ? void 0 : stanceEntry(env.registries, stance);
   const lines = [];
   if (entry) lines.push(`Stance: ${String(entry.name)}`);
-  lines.push(k.showRaw ? `Impunity: ${k.raw(found.value)}` : `Impunity: ${impunityBand(found.value)}`);
-  lines.push(...termLines(found.terms, k));
+  lines.push(k.showRaw ? `Impunity: ${k.raw(found2.value)}` : `Impunity: ${impunityBand(found2.value)}`);
+  lines.push(...termLines(found2.terms, k));
   return { lines };
 }
 function stanceProvider(subject, env, k) {
   const state = env.state;
   const id = unitIdOf2(subject);
   if (!state || id === null) return null;
-  const found = impunityOf(state, env.registries, id);
+  const found2 = impunityOf(state, env.registries, id);
   const rel = state.relations[id];
   const stance = commandStance(state, env.registries, id);
-  if (!found || !rel || stance === null) return null;
+  if (!found2 || !rel || stance === null) return null;
   const entry = stanceEntry(env.registries, stance);
   return {
     lines: [
       `Her stance now: ${String(entry?.name ?? stance)}`,
       `Trust: ${trustBand(rel.trust)}${k.showRaw ? ` (${k.raw(rel.trust)})` : ""}`,
-      k.showRaw ? `Impunity: ${k.raw(found.value)}` : `Impunity: ${impunityBand(found.value)}`
+      k.showRaw ? `Impunity: ${k.raw(found2.value)}` : `Impunity: ${impunityBand(found2.value)}`
     ]
   };
 }
@@ -24227,9 +24686,9 @@ function unitOf3(state, data) {
 var BAND = { trust: trustBand, affinity: affinityBand, attraction: attractionBand };
 var axisProvider = (axis) => (subject, env, knowledge) => {
   const state = env.state;
-  const found = unitOf3(state, subject.data);
-  if (!found) return null;
-  const { unit, relation } = found;
+  const found2 = unitOf3(state, subject.data);
+  if (!found2) return null;
+  const { unit, relation } = found2;
   if (axis !== "trust" && unit.kind === "grunt") return { lines: ["Grunts track Trust only."] };
   if (axis === "attraction" && !intimacyOf(state).romance) return { lines: ["Romance is off."] };
   const value = relation[axis];
@@ -24259,9 +24718,9 @@ function liveStress(state, unit) {
 }
 var stressProvider = (subject, env, knowledge) => {
   const state = env.state;
-  const found = unitOf3(state, subject.data);
-  if (!found) return null;
-  const { unit } = found;
+  const found2 = unitOf3(state, subject.data);
+  if (!found2) return null;
+  const { unit } = found2;
   const stress = liveStress(state, unit);
   const lines = [`${unit.displayName}: ${stressBand2(stress).toUpperCase()}${rawSuffix(knowledge, stress)}`];
   const groups = /* @__PURE__ */ new Map();
@@ -24282,9 +24741,9 @@ var stressProvider = (subject, env, knowledge) => {
   }
   return { lines };
 };
-function combatLines(state, env, unit, stat2) {
+function combatLines(state, env, unit, stat3) {
   const reg = env.registries;
-  const touches = (e) => e.type === "stat" && (e.stat === stat2 || e.stat === "all") || e.type === "outgoing" && stat2 === "atk" || e.type === "incoming" && stat2 === "def";
+  const touches = (e) => e.type === "stat" && (e.stat === stat3 || e.stat === "all") || e.type === "outgoing" && stat3 === "atk" || e.type === "incoming" && stat3 === "def";
   const out = [];
   const add = (list5, source) => {
     if (!Array.isArray(list5)) return;
@@ -24301,15 +24760,15 @@ function combatLines(state, env, unit, stat2) {
   }
   return out;
 }
-var statProvider = (stat2) => (subject, env) => {
+var statProvider = (stat3) => (subject, env) => {
   const state = env.state;
   const unit = typeof subject.data.unitId === "string" ? state.squad.find((u) => u.id === subject.data.unitId) : void 0;
   if (!unit) return null;
-  const steps = unitStatSteps(state, env.registries, unit, stat2);
-  const total2 = unitStats(state, env.registries, unit)[stat2];
-  const lines = [`${unit.displayName}: ${stat2.toUpperCase()} ${total2}`];
+  const steps = unitStatSteps(state, env.registries, unit, stat3);
+  const total2 = unitStats(state, env.registries, unit)[stat3];
+  const lines = [`${unit.displayName}: ${stat3.toUpperCase()} ${total2}`];
   steps.forEach((step, i) => lines.push(i === 0 ? `${step.label} ${step.total}` : `${step.label} \u2192 ${step.total}`));
-  const combat2 = combatLines(state, env, unit, stat2);
+  const combat2 = combatLines(state, env, unit, stat3);
   if (combat2.length > 0) lines.push("In combat:", ...combat2);
   return { lines };
 };
@@ -24368,8 +24827,8 @@ var SOCIAL_STATS3 = ["authority", "insight", "empathy", "cunning"];
 var SCALES = ["minor", "major", "defining"];
 function tag(value) {
   if (!value || typeof value !== "object") return null;
-  const { stat: stat2, rank } = value;
-  return typeof stat2 === "string" && SOCIAL_STATS3.includes(stat2) && typeof rank === "number" && Number.isFinite(rank) ? { stat: stat2, rank } : null;
+  const { stat: stat3, rank } = value;
+  return typeof stat3 === "string" && SOCIAL_STATS3.includes(stat3) && typeof rank === "number" && Number.isFinite(rank) ? { stat: stat3, rank } : null;
 }
 var decisionProvider = (subject, env) => {
   const state = env.state;
@@ -24388,7 +24847,7 @@ function registerCoreProviders() {
   registered4 = true;
   for (const axis of ["trust", "affinity", "attraction"]) registerAnalyzeProvider(`glossary:${axis}`, axisProvider(axis));
   registerAnalyzeProvider("glossary:stress", stressProvider);
-  for (const stat2 of STATS) registerAnalyzeProvider(`glossary:stat_${stat2}`, statProvider(stat2));
+  for (const stat3 of STATS) registerAnalyzeProvider(`glossary:stat_${stat3}`, statProvider(stat3));
   for (const resource of ["credits", "supplies", "plyx"]) registerAnalyzeProvider(`glossary:${resource}`, resourceProvider(resource));
   registerAnalyzeProvider("setting", settingProvider, { stateless: true });
   registerAnalyzeProvider("glossary:decision_option", decisionProvider);
@@ -24952,35 +25411,6 @@ function createRouter() {
   };
 }
 
-// src/ui/shell/status.ts
-var stat = (cls, text2, address) => h("span", { class: `${cls} alius-stat`, ...analyzeAttrs(address) }, text2);
-function renderStatusHeader(host, state) {
-  host.replaceChildren();
-  if (!state) {
-    host.append(h("span", { class: "alius-clock" }, "NO CAMPAIGN"));
-    return;
-  }
-  const r = state.resources;
-  const injuredDays = (state.commander.injuredUntilDay ?? 0) - state.day;
-  const shortage = state.calendar.shortageStreak ?? 0;
-  const parts = [
-    stat("alius-clock", clockText(state.day, state.slot) + (isQuietNight(state) ? " \u2014 QUIET" : ""), "glossary:slots"),
-    h(
-      "span",
-      { class: "alius-resources" },
-      stat("alius-res", `CR ${r.credits}`, "glossary:credits"),
-      " \xB7 ",
-      stat("alius-res", `SUP ${r.supplies}`, "glossary:supplies"),
-      " \xB7 ",
-      stat("alius-res", `PLYX ${r.plyx}`, "glossary:plyx")
-    ),
-    stat("alius-leash", `LEASH ${state.leash.authorizationsLeft}`, "glossary:leash"),
-    injuredDays > 0 ? stat("alius-warn", `INJURED ${injuredDays}d`, "glossary:commander_injury") : null,
-    shortage > 0 ? stat("alius-warn", `SHORTAGE ${shortage}d`, "glossary:upkeep") : null
-  ];
-  host.append(...parts.filter((p) => p !== null));
-}
-
 // src/ui/shell/sysTab.ts
 var errText2 = (e) => e instanceof Error ? e.message : String(e);
 function field(label2, control, setting) {
@@ -25490,7 +25920,7 @@ function createShell(deps) {
       device.setAttribute("aria-hidden", "true");
     }
   }
-  function renderHub() {
+  function renderHub2() {
     if (!hubHost || !device) return;
     hubHost.replaceChildren();
     hubRender(hubHost, device);
@@ -25511,7 +25941,7 @@ function createShell(deps) {
     host.append(hubHost, device);
     applyDevice(up);
     updateNarrow();
-    renderHub();
+    renderHub2();
     renderStatus();
     tabBar.setSelected(tab);
     renderTab();
@@ -25613,7 +26043,7 @@ function createShell(deps) {
         renderedScreen = id;
         applyDevice(id === "pda");
         updateTitle();
-        renderHub();
+        renderHub2();
         renderStatus();
         renderTab();
         focusDevice(id === "pda");
@@ -25636,7 +26066,7 @@ function createShell(deps) {
     },
     registerHub(render) {
       hubRender = render;
-      if (isOpen() && onHubLayer()) renderHub();
+      if (isOpen() && onHubLayer()) renderHub2();
     },
     isDeviceUp,
     setDevice(up) {
@@ -25676,7 +26106,7 @@ function createShell(deps) {
       applySettings();
       renderBanner();
       if (onHubLayer() && panel) {
-        renderHub();
+        renderHub2();
         renderStatus();
         renderTab();
       } else {
@@ -25841,7 +26271,7 @@ function createApp(st, deps) {
       return;
     }
     onSceneScreen = false;
-    shell.showScreen("pda");
+    shell.showScreen("hub");
   }
   function adoptScene() {
     sceneScreen?.dispose();
@@ -25859,7 +26289,7 @@ function createApp(st, deps) {
       showScene();
     } else if (onSceneScreen) {
       onSceneScreen = false;
-      shell.showScreen("pda");
+      shell.showScreen("hub");
     }
   }
   async function beginScene(opts) {
@@ -25877,10 +26307,13 @@ function createApp(st, deps) {
     shell.open();
     return true;
   }
+  let presetLocation = null;
   async function offerScene(unitId) {
     const chatId = st.getActiveChat()?.chatId;
     if (!state) return;
-    const pick2 = await pickLocation((o) => shell.modal(o), { registries, state, firstUnitId: unitId, candidates: state.squad });
+    const preset = presetLocation;
+    presetLocation = null;
+    const pick2 = preset !== null ? { locationId: preset, participants: [unitId] } : await pickLocation((o) => shell.modal(o), { registries, state, firstUnitId: unitId, candidates: state.squad });
     if (st.getActiveChat()?.chatId !== chatId) return;
     if (!pick2) {
       api.dispatch({ type: "calendar/cancel_scene", payload: {} }, { expectChatId: chatId });
@@ -26097,7 +26530,7 @@ function createApp(st, deps) {
       leashLeft: s.leash.authorizationsLeft,
       canFight: open2.kind === "mutiny" && loyalUnits(s, open2.unitId).length > 0,
       canTakeBack: s.squad.filter(isLiving).length >= s.roster.capacity ? `The barracks are full (${s.roster.capacity} beds).` : null,
-      onTalk: (stat2) => answer("loyalty/talk_down", { stat: stat2 }),
+      onTalk: (stat3) => answer("loyalty/talk_down", { stat: stat3 }),
       onLetGo: () => answer("loyalty/let_go"),
       onSuppress: () => void api.fileLeash("suppress", open2.unitId).then(() => afterConfrontation(close)),
       onFight: () => fightMutiny(open2.unitId),
@@ -26222,10 +26655,10 @@ function createApp(st, deps) {
     if (state?.expedition) {
       expedition.afterCombat();
       if (state?.expedition) showExpedition();
-      else shell.showScreen("pda");
+      else shell.showScreen("hub");
       return;
     }
-    shell.showScreen("pda");
+    shell.showScreen("hub");
   }
   function adoptCombat() {
     combatScreen?.dispose();
@@ -26233,7 +26666,7 @@ function createApp(st, deps) {
     if (state?.combat) showCombat();
     else if (onCombatScreen) {
       onCombatScreen = false;
-      shell.showScreen("pda");
+      shell.showScreen("hub");
     }
   }
   function combatDo(type, payload) {
@@ -26281,7 +26714,7 @@ function createApp(st, deps) {
       showScene();
       return;
     }
-    shell.showScreen("pda");
+    shell.showScreen("hub");
   }
   function renderExpeditionView(host) {
     expeditionScreen?.dispose();
@@ -26303,7 +26736,7 @@ function createApp(st, deps) {
       expedition.afterCombat();
     } else if (onExpeditionScreen) {
       onExpeditionScreen = false;
-      shell.showScreen("pda");
+      shell.showScreen("hub");
     }
   }
   function startRecap() {
@@ -26835,7 +27268,7 @@ function createApp(st, deps) {
         modal: (o) => shell.modal(o),
         onCancel: () => {
           if (setup?.wizard === wizard) endSetup();
-          shell.showScreen("pda");
+          shell.showScreen("hub");
         },
         onConfirm: async (r, target) => {
           await deployCampaign(r, target);
@@ -27023,30 +27456,43 @@ function createApp(st, deps) {
       return false;
     }
   });
+  const opsCtx = () => ({
+    getState: () => state,
+    getLoad: () => load,
+    registries,
+    onDo: (req) => void api.performActivity(req),
+    onRequisition: (n) => api.requisition(n),
+    onPlan: (missionId) => {
+      expedition.plan({ missionId });
+      showExpedition();
+      shell.open();
+    },
+    onDismiss: (missionId) => void act({ type: "mission/dismiss", payload: { missionId } }),
+    onFollowRumor: (rumorId) => void act({ type: "rumor/follow", payload: { rumorId } }),
+    onSleep: () => void act({ type: "calendar/sleep", payload: {} }),
+    onIntake: () => void api.intakeUnit(),
+    onOpenReport: () => {
+      showExpedition();
+      shell.open();
+    }
+  });
   shell.registerTab("ops", (host) => {
     for (const m of state?.missions.offered ?? []) seenOffers.add(m.id);
     shell.setTabBadge("ops", 0);
-    renderOpsTab(host, {
-      getState: () => state,
-      getLoad: () => load,
-      registries,
-      onDo: (req) => void api.performActivity(req),
-      onRequisition: (n) => api.requisition(n),
-      onPlan: (missionId) => {
-        expedition.plan({ missionId });
-        showExpedition();
-        shell.open();
-      },
-      onDismiss: (missionId) => void act({ type: "mission/dismiss", payload: { missionId } }),
-      onFollowRumor: (rumorId) => void act({ type: "rumor/follow", payload: { rumorId } }),
-      onSleep: () => void act({ type: "calendar/sleep", payload: {} }),
-      onIntake: () => void api.intakeUnit(),
-      onOpenReport: () => {
-        showExpedition();
-        shell.open();
-      }
-    });
+    renderOpsTab(host, opsCtx());
   });
+  shell.registerHub((host, device) => renderHub(host, device, {
+    getState: () => state,
+    getLoad: () => load,
+    registries,
+    settings: () => getSettings(st),
+    assetUrl: deps.assetUrl,
+    ops: opsCtx(),
+    onTalk: (unitId, locationId) => void api.talkAt(unitId, locationId),
+    onEndSlot: () => void api.endSlot(),
+    onOpenPda: (tab) => tab ? shell.showTab(tab) : shell.setDevice(true),
+    avatar: (unit) => portrait(st, unit)
+  }));
   shell.registerTab(
     "map",
     (host) => renderMapTab(host, {
@@ -27173,6 +27619,42 @@ function createApp(st, deps) {
       );
       if (text2 && st.getActiveChat()?.chatId === chatId) toast("story", text2);
       return events;
+    },
+    async talkAt(unitId, locationId) {
+      const s = state;
+      const talk = [...registries.activities.values()].find((a) => a.startsScene === true && a.companion === "required");
+      if (!s || load.kind !== "ok" || !talk || !s.squad.some((u) => u.id === unitId)) return false;
+      const why = endSlotBlock(s) ?? restrictionReason(s, unitId, "scene");
+      if (why) {
+        toast("warn", why);
+        return false;
+      }
+      presetLocation = locationId;
+      try {
+        const events = await api.performActivity({ activityId: String(talk.id), companionId: unitId });
+        return events.some((e) => e.type === "scene_requested") && state?.scene !== void 0;
+      } finally {
+        presetLocation = null;
+      }
+    },
+    async endSlot() {
+      const chatId = st.getActiveChat()?.chatId;
+      const s = state;
+      if (!s || load.kind !== "ok") return;
+      const why = endSlotBlock(s);
+      if (why) {
+        toast("warn", why);
+        return;
+      }
+      const slot2 = s.slot;
+      const answer = await shell.modal({
+        title: `End the ${slot2}?`,
+        body: `End the ${slot2} without doing anything?`,
+        actions: [{ label: `[ END ${slot2.toUpperCase()} ]`, value: "end" }, { label: "Cancel", value: "cancel" }]
+      });
+      const now = state;
+      if (answer !== "end" || !now || st.getActiveChat()?.chatId !== chatId) return;
+      act(isQuietNight(now) ? { type: "calendar/sleep", payload: {} } : { type: "calendar/consume_slot", payload: { slots: 1, reason: "pass" } });
     },
     async recruitGrunt() {
       const chatId = st.getActiveChat()?.chatId;

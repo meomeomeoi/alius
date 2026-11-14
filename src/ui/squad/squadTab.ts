@@ -55,7 +55,7 @@ const spriteCache = new WeakMap<StAdapter, Map<string, { url: string | null; at:
 const MISSING_SPRITE_RETRY_MS = 30_000;
 
 /** Neutral sprite if the card has one, else the avatar; a failed load also falls back to the avatar. */
-function portrait(st: StAdapter, unit: Unit): HTMLElement | null {
+export function portrait(st: StAdapter, unit: Unit): HTMLElement | null {
   if (unit.kind === 'grunt') {
     return unit.asciiPortrait ? h('pre', { class: 'alius-ascii', 'aria-label': `Portrait of ${unit.displayName}` }, unit.asciiPortrait) : null;
   }
