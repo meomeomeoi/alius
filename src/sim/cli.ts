@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { loadPacks } from '../content/loader';
 import { formatReport, neutralityReport, runBatch } from './harness';
 
-/** `npm run sim -- [--runs N] [--seed N] [--level N] [--danger N] [--defect id] [--neutrality] [--out path]` */
+/** `npm run sim -- [--runs N] [--seed N] [--level N] [--danger N] [--defect id] [--world preset] [--neutrality] [--out path]` */
 async function main(argv: string[]): Promise<void> {
   const opt = (name: string, fallback: string): string => {
     const i = argv.indexOf(`--${name}`);
@@ -22,9 +22,10 @@ async function main(argv: string[]): Promise<void> {
     text = formatReport(neutralityReport(registries, { runs, seed, level, danger }));
   } else {
     const defectId = argv.includes('--defect') ? opt('defect', '') : null;
-    const r = runBatch(registries, { runs, seed, level, danger, defectId });
+    const world = argv.includes('--world') ? opt('world', '') : undefined;
+    const r = runBatch(registries, { runs, seed, level, danger, defectId, world });
     text = [
-      `${runs} combats, squad level ${level}, danger ${danger}${defectId ? `, defect ${defectId}` : ''}`,
+      `${runs} combats, squad level ${level}, danger ${danger}${defectId ? `, defect ${defectId}` : ''}${world ? `, world ${world}` : ''}`,
       `win rate ${(r.winRate * 100).toFixed(1)} %, average ${r.avgRounds.toFixed(2)} rounds, end stress ${r.avgEndStress.toFixed(1)}`,
     ].join('\n') + '\n';
   }

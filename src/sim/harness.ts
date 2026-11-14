@@ -41,13 +41,16 @@ function spendPoints(state: CampaignState, reg: Registries, unitId: string): voi
  * A fixture campaign: assault and defender in front, sniper and medic behind, all at `level`, skill points spent,
  * standard-issue gear (no items), each carrying `defectId` — or no defect with `null`/undefined.
  */
-export function fixtureSquad(reg: Registries, opts: { level: number; defectId?: string | null }): CampaignState {
+export function fixtureSquad(reg: Registries, opts: { level: number; defectId?: string | null; /** A `worldPresets` id (P8); absent = the default world. */ world?: string }): CampaignState {
   const startId = [...reg.starts.values()].find((s) => reg.corporations.get(s.corporationId as string)?.playable === true)?.id;
   const crimeId = [...reg.crimes.keys()][0];
   if (!startId || !crimeId) throw new Error('The content pack needs a playable start and a crime.');
+  const preset = opts.world === undefined ? undefined : reg.worldPresets.get(opts.world);
+  if (opts.world !== undefined && !preset) throw new Error(`Unknown world preset "${opts.world}".`);
   const built = buildCampaign(
     {
       commanderName: 'Harness', startId, crimeId,
+      ...(preset ? { world: { options: { ...(preset.choices as Record<string, string>) } } } : {}),
       units: SQUAD.map((u) => ({
         cardRef: `${u.name.toLowerCase()}.png`, displayName: u.name, roleId: u.roleId,
         signature: { templateId: u.signature, name: u.signature, description: 'Harness signature.' },
@@ -100,8 +103,8 @@ export function simulate(reg: Registries, opts: { seed: number; state: CampaignS
 export interface BatchResult { winRate: number; avgRounds: number; avgEndStress: number }
 
 /** `runs` combats, run `i` seeded `seed + i`. */
-export function runBatch(reg: Registries, opts: { runs: number; seed: number; level: number; danger: number; defectId?: string | null }): BatchResult {
-  const state = fixtureSquad(reg, { level: opts.level, defectId: opts.defectId });
+export function runBatch(reg: Registries, opts: { runs: number; seed: number; level: number; danger: number; defectId?: string | null; world?: string }): BatchResult {
+  const state = fixtureSquad(reg, { level: opts.level, defectId: opts.defectId, world: opts.world });
   let wins = 0;
   let rounds = 0;
   let stress = 0;

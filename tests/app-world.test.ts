@@ -568,3 +568,102 @@ describe('world options in the injected context (P8)', () => {
     expect(t.state().world.options!.oversight).toBe('standard');
   });
 });
+
+describe('world options in the app (P8)', () => {
+  const HUNTED = { gender_norms: 'corporate_machismo', offspec_stigma: 'hunted', disposition: 'hazardous' };
+  const WORLD_IMPORT = JSON.stringify({
+    ...JSON.parse(IMPORT_REPLY),
+    dispositionOffset: { offset: 1, reason: 'Bites first.' },
+    worldStances: { offspec_stigma: { stance: 'shares', strength: 1, reason: 'Believes the posters.' } },
+  });
+
+  it('a new campaign from the wizard stores the chosen world', async () => {
+    const t = await boot({ deploy: false });
+    const result = { ...setupResult(), world: { options: { ...HUNTED, oversight: 'brutal' } } };
+    expect(await t.app.deployCampaign(result, 'new_group')).toBe(true);
+    await settle();
+    expect(t.state().world.options).toEqual({
+      gender_norms: 'corporate_machismo', offspec_stigma: 'hunted', oversight: 'brutal', bloom_horror: 'restrained', tone: 'grim', disposition: 'hazardous',
+    });
+    // the hunted world seeded its purge clock, and the injected context carries the lore lines
+    expect(t.state().world.clocks.some((c) => c.id === 'purge_sweep')).toBe(true);
+    expect(t.st.injections.get('ctx')!.text).toContain('hazardous assets');
+  });
+
+  it('the new-campaign wizard starts as Standard and its importer is given the chosen world', async () => {
+    const t = await boot({ deploy: false });
+    t.app.openSetup();
+    const host = t.mount('setup');
+    const click = (sel: string) => (host.querySelector<HTMLElement>(sel) ?? (() => { throw new Error(`no ${sel}`); })()).click();
+    expect(t.app.setupState()!.world.preset).toBe('standard');
+    click('.alius-start-card[data-id="start_vesper"]');
+    click('.alius-crime-card[data-id="mutiny"]');
+    click('button[data-action="next"]'); // → WORLD PARAMETERS
+    expect(host.textContent).toContain('WORLD PARAMETERS');
+    click('.alius-world-preset[data-id="brutal"]');
+    expect(t.app.setupState()!.world.preset).toBe('brutal');
+    click('button[data-action="next"]'); // → commander file
+    click('button[data-action="next"]'); // → units
+    click('input[data-avatar="rhea.png"]');
+    t.st.mainReplies = [WORLD_IMPORT];
+    click('button[data-action="next"]'); // → calibration: the import starts
+    await settle();
+    const call = t.st.calls.find((c) => (c.system ?? '').includes('roleCandidates')) as { system: string; prompt: string };
+    expect(call.system).toContain('worldStances');
+    expect(call.prompt).toContain('Hazardous');
+    expect(call.prompt).toContain('- offspec_stigma:');
+    const unit = t.app.setupState()!.units[0];
+    expect(unit.choice.dispositionOffset).toBe(1);
+    expect(unit.choice.worldStances!.offspec_stigma.stance).toBe('shares');
+  });
+
+  it('intake asks for stances under hunted, and the joined unit carries them', async () => {
+    const t = await boot();
+    t.edit((s) => { s.world.options = { ...s.world.options, ...HUNTED }; s.world.incomingUnits = 1; });
+    t.st.mainReplies = [WORLD_IMPORT];
+    t.sh.script.push(
+      async (opts) => {
+        (opts.body as HTMLElement).querySelector<HTMLSelectElement>('select')!.value = 'zed.png';
+        return 'pick';
+      },
+      async () => { await flush(); await flush(); return 'apply'; },
+    );
+    await t.app.intakeUnit();
+    const call = t.st.calls.find((c) => (c.system ?? '').includes('roleCandidates')) as { system: string; prompt: string };
+    expect(call.system).toContain('worldStances');
+    expect(call.prompt).toContain('- offspec_stigma:');
+    const added = t.state().squad.find((u) => u.cardRef === 'zed.png')!;
+    expect(added.dispositionOffset).toBe(1);
+    // both norms are non-neutral here: the one the card says nothing about reads indifferent
+    expect(added.worldStances).toEqual({
+      gender_norms: { stance: 'indifferent', strength: 1, reason: '' },
+      offspec_stigma: { stance: 'shares', strength: 1, reason: 'Believes the posters.' },
+    });
+  });
+
+  it('intake in a neutral world does not ask for stances', async () => {
+    const t = await boot();
+    t.edit((s) => { s.world.incomingUnits = 1; });
+    t.st.mainReplies = [IMPORT_REPLY];
+    t.sh.script.push(
+      async (opts) => { (opts.body as HTMLElement).querySelector<HTMLSelectElement>('select')!.value = 'zed.png'; return 'pick'; },
+      async () => { await flush(); await flush(); return 'apply'; },
+    );
+    await t.app.intakeUnit();
+    const call = t.st.calls.find((c) => (c.system ?? '').includes('roleCandidates')) as { system: string };
+    expect(call.system).not.toContain('worldStances');
+    expect(call.system).toContain('dispositionOffset');
+  });
+
+  it('changing the confidence setting mirrors into the campaign', async () => {
+    const st = new FakeStAdapter(SOLO);
+    st.settings.intentMinConfidence = 0.65;
+    const t = await boot({ st });
+    expect(t.state().settings.intentMinConfidence).toBe(0.65); // mirrored on load
+    t.st.settings.intentMinConfidence = 0.4;
+    t.settingsChanged();
+    expect(t.state().settings.intentMinConfidence).toBe(0.4);
+    t.settingsChanged(); // unchanged: no second dispatch is needed, and nothing breaks
+    expect(t.state().settings.intentMinConfidence).toBe(0.4);
+  });
+});

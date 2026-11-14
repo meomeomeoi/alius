@@ -517,15 +517,15 @@ docs/** (Task 16), tests/** mirror src
 **Interfaces:**
 - Produces: on load and on setting change, the app dispatches `campaign/set_min_confidence`; the wizard's importer and `intakeUnit` pass the campaign's world to `profile_import`; `world_option_changed` refreshes directives and the context; the sim harness can run `--world brutal` (preset id).
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `a new campaign from the wizard stores the chosen world`
   - `intake asks for stances under hunted`
   - `changing the confidence setting mirrors into the campaign`
   - `harness runs with the brutal preset`
-- [ ] **Step 2: Run** `npx vitest run tests/app-world.test.ts tests/sim` and expect FAIL.
-- [ ] **Step 3: Implement**, and write `MANUAL_TEST_P8.md` (wizard world step, presets, calibration offset/stances, a scene showing the WORLD SETTINGS block, a live `bloom_horror` switch, SYS locks, a hazardous run).
-- [ ] **Step 4: Run** `npm test` and expect green, with `dist/` and `style.css` rebuilt.
-- [ ] **Step 5: Commit** `feat(app): wire world options, intake stances and confidence mirror`.
+- [x] **Step 2: Run** `npx vitest run tests/app-world.test.ts tests/sim` and expect FAIL.
+- [x] **Step 3: Implement**, and write `MANUAL_TEST_P8.md` (wizard world step, presets, calibration offset/stances, a scene showing the WORLD SETTINGS block, a live `bloom_horror` switch, SYS locks, a hazardous run).
+- [x] **Step 4: Run** `npm test` and expect green, with `dist/` and `style.css` rebuilt.
+- [x] **Step 5: Commit** `feat(app): wire world options, intake stances and confidence mirror`.
 
 ### Task 16: Docs
 

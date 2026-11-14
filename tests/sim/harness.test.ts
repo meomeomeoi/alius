@@ -90,3 +90,26 @@ describe('neutrality report', () => {
     expect(forced).toContain('17 of 18 defects within ±5 pp.');
   });
 });
+
+describe('the world in the harness (P8)', () => {
+  it('fixtureSquad builds the squad in a preset world and refuses an unknown one', () => {
+    const s = fixtureSquad(reg, { level: 3, world: 'brutal' });
+    expect(s.world.options).toEqual({
+      gender_norms: 'corporate_machismo', offspec_stigma: 'hunted', oversight: 'brutal', bloom_horror: 'graphic', tone: 'bleak', disposition: 'hazardous',
+    });
+    expect(fixtureSquad(reg, { level: 3 }).world.options!.disposition).toBe('guarded');
+    expect(() => fixtureSquad(reg, { level: 3, world: 'ghost' })).toThrow(/unknown world preset "ghost"/i);
+  });
+
+  it('harness runs with the brutal preset: deterministic, and a hazardous squad breaks down differently', () => {
+    const run = (world?: string) => runBatch(reg, { runs: 60, seed: 11, level: 5, danger: 4, defectId: 'rage_governor', world });
+    const a = run('brutal');
+    expect(run('brutal')).toEqual(a);
+    expect(a.winRate).toBeGreaterThanOrEqual(0);
+    expect(a.winRate).toBeLessThanOrEqual(1);
+    // a standard world is the P4 harness unchanged
+    expect(run('standard')).toEqual(run(undefined));
+    // the hazardous level changes what a breakdown does, so the numbers move
+    expect(JSON.stringify(a)).not.toBe(JSON.stringify(run(undefined)));
+  });
+});
