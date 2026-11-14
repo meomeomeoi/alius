@@ -1,8 +1,42 @@
 /* Discipline: stance and impunity chips (P9). Palette variables only. */
-#alius-shell .alius-discipline .alius-chip[data-stance] {
+#alius-shell .alius-stance-line .alius-chip[data-stance] {
   color: var(--alius-accent);
 }
 
-#alius-shell .alius-discipline .alius-chip[data-impunity] {
+#alius-shell .alius-stance-line .alius-chip[data-impunity] {
   color: var(--alius-dim);
+}
+
+#alius-shell .alius-restrictions .alius-chip {
+  color: var(--alius-accent);
+}
+
+#alius-shell details.alius-discipline {
+  margin: 4px 0;
+}
+
+#alius-shell .alius-punish-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin: 2px 0;
+}
+
+#alius-shell .alius-punish-row [aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+#alius-shell .alius-discipline-chips .alius-chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin: 4px 0;
+}
+
+#alius-shell .alius-discipline-units {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
 }

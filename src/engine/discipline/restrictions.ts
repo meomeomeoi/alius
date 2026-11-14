@@ -35,6 +35,12 @@ export function restrictionReason(state: CampaignState, unitId: string, use: Res
   return null;
 }
 
+/** The restrictions that hold for her right now (an expired brig and a duty of another slot are not listed). */
+export function activeRestrictions(state: CampaignState, unitId: string): Restriction[] {
+  return (state.discipline?.restrictions ?? []).filter((r) => r.unitId === unitId && (
+    r.kind === 'benched' || ((r.kind === 'confined' || r.kind === 'no_leave') && state.day <= (r.untilDay ?? -1)) || (r.kind === 'duty' && r.day === state.day && r.slot === state.slot)));
+}
+
 export function addRestriction(draft: CampaignState, r: Restriction): EngineEvent[] {
   disciplineOf(draft).restrictions.push(r);
   return [{ type: 'restriction_started', unitId: r.unitId, kind: r.kind, ...(r.untilDay !== undefined ? { untilDay: r.untilDay } : {}) }];

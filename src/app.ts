@@ -436,6 +436,8 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         controller: scene, getState: () => state, registries, st, settings: () => getSettings(st), onEnded: leaveScene,
         onOrder: (unitId) => loyalty.order(unitId),
         onCompel: (unitId) => void api.fileLeash('compel', unitId),
+        onPunish: (unitId, measure, days) => void discipline.punish(unitId, measure, days),
+        onUndoDiscipline: (id) => void discipline.undo(id),
       });
       return;
     }
@@ -1543,6 +1545,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       onArc: (unitId, defectId, path, compel) => void decideArc(unitId, defectId, path, compel),
       arcPaths: (unitId, defectId) => (state ? arcPaths(state, registries, unitId, defectId) : []),
       canTerminate: (unitId) => (state ? checkLeash(state, registries, 'terminate', unitId) : 'No campaign.'),
+      onPunish: (unitId, measure, days) => void discipline.punish(unitId, measure, days),
     }),
   );
   shell.registerTab('inv', (host) =>
@@ -1625,6 +1628,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       getState: () => state,
       registries,
       onSend: (unitId, text) => void comms.send(unitId, text),
+      onUndoDiscipline: (id) => void discipline.undo(id),
       onRead: (unitId) => {
         const unit = state?.dms[unitId];
         if (unit?.some((m) => m.from !== 'commander' && !m.read)) api.dispatch({ type: 'dm/read', payload: { unitId } }, { expectChatId: st.getActiveChat()?.chatId });

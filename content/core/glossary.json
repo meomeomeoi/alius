@@ -901,5 +901,36 @@
     "see": [
       "command_stance"
     ]
+  },
+  {
+    "id": "discipline",
+    "term": "Discipline",
+    "short": "The commander's consequences below the Leash: a reprimand, revoked rations or leave, extra duty, a bench, the brig. They cost relations and lower her Impunity.",
+    "long": "Pick a measure from the DISCIPLINE menu, or say it in the conversation and the game reads it. A soldier takes it harder when it touches something she cares about. A threat that is never carried out counts as backing down.",
+    "see": [
+      "impunity",
+      "discipline_logged",
+      "restriction",
+      "threat"
+    ]
+  },
+  {
+    "id": "discipline_logged",
+    "term": "Discipline logged",
+    "short": "The game read a punishment in your words and applied it. If it misunderstood, UNDO puts back exactly what it changed.",
+    "long": "A chip appears whenever the game registers a punishment or a threat, whatever the display settings say. UNDO is offered on the same day and, in a scene, while the scene is open; it leaves no memory of the moment.",
+    "see": [
+      "discipline",
+      "threat"
+    ]
+  },
+  {
+    "id": "restriction",
+    "term": "Restriction",
+    "short": "What a punishment keeps a soldier from for a while: the brig, no leave, a bench for the next expedition or a slot of extra duty.",
+    "long": "The brig keeps her out of scenes, companions and expeditions. No leave keeps her from being anyone's companion except for talking and the medbay. A bench leaves her out of the next expedition. Extra duty covers one slot.",
+    "see": [
+      "discipline"
+    ]
   }
 ]

@@ -7,6 +7,8 @@ import type { AliusSettings } from '../../settings';
 import type { ChatMessage, StAdapter } from '../../st/adapter';
 import { h } from '../dom';
 import { drawProposalChips, kindLabel } from '../proposalChips';
+import { drawDisciplineChips } from '../discipline/chips';
+import { renderDisciplineMenu } from '../discipline/menu';
 import { cutIn } from './cutIn';
 
 export interface SceneScreenCtx {
@@ -23,6 +25,9 @@ export interface SceneScreenCtx {
   onOrder?: (unitId: string) => boolean;
   /** P6: forces her refused order through the Leash. */
   onCompel?: (unitId: string) => void;
+  /** P9: the DISCIPLINE menu of each unit in the scene, and UNDO on a chip (the app dispatches the engine actions). */
+  onPunish?: (unitId: string, measure: string, days?: number) => void;
+  onUndoDiscipline?: (id: string) => void;
 }
 
 export interface SceneScreen {
@@ -100,6 +105,8 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
   let hud: HTMLElement;
   let log: HTMLElement;
   let chips: HTMLElement;
+  let disciplineChips: HTMLElement;
+  let disciplineMenus: HTMLElement;
   let banner: HTMLElement;
   let busyHost: HTMLElement;
   let caption: HTMLElement;
@@ -176,6 +183,20 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
   function drawChips(s: CampaignState): void {
     const ids = new Set(s.scene?.participants ?? []);
     drawProposalChips(chips, s, (p) => p.channel === 'scene' && ids.has(p.unitId), (id, answer) => controller.answer(id, answer));
+  }
+
+  /** P9: what the game understood of the commander's words (always shown) and the DISCIPLINE menu of everybody present. */
+  function drawDiscipline(s: CampaignState): void {
+    const ids = new Set(s.scene?.participants ?? []);
+    drawDisciplineChips(disciplineChips, s, registries, (c) => ids.has(c.unitId) && (c.channel !== 'scene' || c.sceneId === s.scene?.id), (id) => ctx.onUndoDiscipline?.(id));
+    if (!ctx.onPunish) return;
+    // an open menu stays open across a redraw
+    const open = new Set([...disciplineMenus.querySelectorAll<HTMLDetailsElement>('details[open]')].map((d) => d.dataset.disciplineMenu));
+    disciplineMenus.replaceChildren(...present(s).filter((u) => u.kind === 'named').map((u) => {
+      const menu = renderDisciplineMenu({ state: s, registries, unitId: u.id, onPunish: (measure, days) => ctx.onPunish!(u.id, measure, days) }) as HTMLDetailsElement;
+      if (open.has(u.id)) menu.open = true;
+      return h('div', { class: 'alius-discipline-unit' }, h('span', { class: 'alius-dim' }, u.displayName), menu);
+    }));
   }
 
   function stopTyping(): void {
@@ -305,6 +326,8 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     hud = h('div', { class: 'alius-hud' });
     log = h('div', { class: 'alius-transcript', role: 'log', 'aria-live': 'polite', tabindex: '0' });
     chips = h('div', { class: 'alius-chips' });
+    disciplineChips = h('div', { class: 'alius-chips alius-discipline-chips' });
+    disciplineMenus = h('div', { class: 'alius-discipline-units' });
     banner = h('div', { class: 'alius-pacing-host' });
     busyHost = h('div', { class: 'alius-busy-host' });
     caption = h('div', { class: 'alius-stage-caption' });
@@ -382,6 +405,8 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
       hud,
       log,
       chips,
+      disciplineChips,
+      disciplineMenus,
       h('div', { class: 'alius-cmd' }, h('span', { class: 'alius-prompt' }, 'CMD>'), input, orderToggle, orderWho, propose, who),
     );
     drawBackground(s);
@@ -414,6 +439,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     drawHud(s);
     drawLog(s);
     drawChips(s);
+    drawDiscipline(s);
     drawBanner();
   }
 

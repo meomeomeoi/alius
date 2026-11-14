@@ -16,7 +16,8 @@ import type { LeashKind } from '../../engine/state/types';
 import { stressBand } from '../../engine/combat/stress';
 import { analyzeAttrs, analyzeNative } from '../analyze/mark';
 import { dispositionFor } from '../../engine/worldOptions';
-import { commandStance, impunityBand, impunityOf, stanceEntry } from '../../engine/discipline';
+import { activeRestrictions, commandStance, impunityBand, impunityOf, stanceEntry } from '../../engine/discipline';
+import { renderDisciplineMenu } from '../discipline/menu';
 import { renderCmdrCard } from '../commander/cmdrCard';
 import { h, type Child } from '../dom';
 import { valueBand } from './bands';
@@ -42,6 +43,8 @@ export interface SquadTabCtx {
   arcPaths?: (unitId: string, defectId: string) => ArcPathInfo[];
   /** `null` when oversight would hear a termination request (there is cause), else why not. */
   canTerminate?: (unitId: string) => string | null;
+  /** P9: the DISCIPLINE menu (a punishment from the menu: the commander's own click). */
+  onPunish?: (unitId: string, measure: string, days?: number) => void;
 }
 
 const unknown = (id: string) => `UNKNOWN ${id}`;
@@ -278,7 +281,17 @@ function disciplineLine(unit: Unit, state: CampaignState, ctx: SquadTabCtx): HTM
     parts.push(h('span', { class: 'alius-chip', 'data-stance': unit.id, ...analyzeAttrs(`commandStances:${stance}`, live) }, `STANCE: ${String(entry.name).toUpperCase()}`));
   }
   parts.push(h('span', { class: 'alius-chip', 'data-impunity': unit.id, ...analyzeAttrs('glossary:impunity', live) }, `IMPUNITY: ${impunityBand(found.value).toUpperCase()}${raw ? ` (${found.value})` : ''}`));
-  return h('p', { class: 'alius-discipline' }, ...joinWith(parts, ' · '));
+  return h('p', { class: 'alius-stance-line' }, ...joinWith(parts, ' · '));
+}
+
+const RESTRICTION_LABEL = { confined: 'IN THE BRIG', no_leave: 'NO LEAVE', benched: 'BENCHED', duty: 'EXTRA DUTY' } as const;
+
+/** P9: what the commander's discipline currently keeps her from, one chip each. */
+function restrictionLine(unit: Unit, state: CampaignState): HTMLElement | null {
+  const list = activeRestrictions(state, unit.id);
+  if (list.length === 0) return null;
+  return h('p', { class: 'alius-restrictions' }, ...joinWith(list.map((r) =>
+    h('span', { class: 'alius-chip', 'data-restriction': r.kind, ...analyzeAttrs('glossary:restriction', { unitId: unit.id }) }, RESTRICTION_LABEL[r.kind])), ' · '));
 }
 
 function unitBlock(unit: Unit, ctx: SquadTabCtx, state: CampaignState): HTMLElement {
@@ -315,6 +328,8 @@ function unitBlock(unit: Unit, ctx: SquadTabCtx, state: CampaignState): HTMLElem
       !gone && state.relations[unit.id] ? h('p', { class: 'alius-loyalty' }, chip(`LOYALTY: ${state.relations[unit.id].loyaltyBand.toUpperCase()}`, 'glossary:loyalty_band')) : null,
       gone ? null : h('p', { class: 'alius-disposition' }, h('span', { class: 'alius-chip', 'data-disposition': unit.id, ...analyzeAttrs('glossary:disposition', live) }, `Disposition: ${String(dispositionFor(state, reg, unit).name)}`)),
       gone ? null : disciplineLine(unit, state, ctx),
+      gone ? null : restrictionLine(unit, state),
+      gone || !ctx.onPunish || unit.kind !== 'named' ? null : renderDisciplineMenu({ state, registries: reg, unitId: unit.id, onPunish: (measure, days) => ctx.onPunish!(unit.id, measure, days) }),
       gone ? null : h('p', { class: 'alius-stress' }, chip(`STRESS ${stressBand(unit.stress).toUpperCase()}${raw ? ` (${unit.stress})` : ''}`, 'glossary:stress', live)),
       gone ? null : leashMenu(unit, ctx),
       unit.bio ? h('p', { class: 'alius-dim' }, unit.bio) : null,

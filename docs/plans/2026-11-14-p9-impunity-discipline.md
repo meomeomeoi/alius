@@ -496,14 +496,14 @@ run for `revoke_rations`, `brig` (which also moves her loyalty band in the fixtu
   - `SquadTabCtx.onPunish?`, `SceneScreenCtx.onPunish?` / `onUndoDiscipline?`, `CommsTabCtx.onUndoDiscipline?`; SQUAD restriction chips (`IN THE BRIG`, `NO LEAVE`, `BENCHED`, `EXTRA DUTY`; `glossary:restriction`).
   - `summarizePunishment(entry): string[]` (words only) and a `punishments` provider: with a `unitId` it adds `She takes this harder than most.` when `perceptionOf > 1`, and the numbers only through `Knowledge`. Glossary: `discipline`, `discipline_logged`, `restriction`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 menu: six buttons in ladder order with resolving addresses; clicking `brig` with the select at 2 calls `onPunish('brig', 2)`; a measure already imposed today is `aria-disabled` and its click does nothing; a grunt card has no menu.
 chips — **acceptance 4 and 5**: `a dialogue punishment draws DISCIPLINE LOGGED — Rations revoked (Ann) with UNDO`; `a believed threat reads She believes it, an unbelieved one She doesn't buy it`; `chips are drawn with show raw values off`; `clicking UNDO calls onUndo with the id and the chip is gone after the refresh`; `a menu punishment draws no chip`; `after a reload the chips are drawn from the state again` — Review Focus 5; the scene draws only chips of its participants, a COMMS thread only its unit's `dm` chips.
 
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** `npm test` → PASS (coverage test included).
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** `npm test` → PASS (coverage test included).
 
-- [ ] **Step 5: Commit** `feat(ui): DISCIPLINE menu, logged and threat chips with UNDO` — **end of chunk (b)**
+- [x] **Step 5: Commit** `feat(ui): DISCIPLINE menu, logged and threat chips with UNDO` — **end of chunk (b)**
 
 ---
 

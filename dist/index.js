@@ -2849,6 +2849,9 @@ function restrictionReason(state, unitId, use, activityId) {
   }
   return null;
 }
+function activeRestrictions(state, unitId) {
+  return (state.discipline?.restrictions ?? []).filter((r) => r.unitId === unitId && (r.kind === "benched" || (r.kind === "confined" || r.kind === "no_leave") && state.day <= (r.untilDay ?? -1) || r.kind === "duty" && r.day === state.day && r.slot === state.slot));
+}
 function addRestriction(draft, r) {
   disciplineOf(draft).restrictions.push(r);
   return [{ type: "restriction_started", unitId: r.unitId, kind: r.kind, ...r.untilDay !== void 0 ? { untilDay: r.untilDay } : {} }];
@@ -20150,6 +20153,39 @@ function renderSetupScreen(host, ctx2) {
   render();
 }
 
+// src/ui/discipline/menu.ts
+var confineOf = (entry) => (entry.sideEffects ?? []).find((e) => e.type === "confine");
+function renderDisciplineMenu(ctx2) {
+  const { state, registries: reg, unitId } = ctx2;
+  const entries = [...reg.punishments.values()].map((e, i) => ({ e, i })).sort((a, b) => Number(a.e.severity) - Number(b.e.severity) || a.i - b.i).map((x) => x.e);
+  const rows = entries.map((e) => {
+    const id = String(e.id);
+    const confine = confineOf(e);
+    let days = null;
+    if (confine) {
+      days = h(
+        "select",
+        { class: "alius-select", "data-brig-days": id, "aria-label": `Days of ${String(e.label)}` },
+        ...Array.from({ length: confine.maxDays - confine.minDays + 1 }, (_, n) => h("option", { value: String(confine.minDays + n) }, String(confine.minDays + n)))
+      );
+    }
+    const why = checkPunish(state, reg, unitId, id, days ? Number(days.value) : void 0);
+    const button = h("button", {
+      type: "button",
+      class: "alius-btn alius-option",
+      "data-punish": id,
+      ...analyzeNative(`punishments:${id}`, { unitId }),
+      ...why !== null ? { "aria-disabled": "true", title: why } : {},
+      onclick: () => {
+        if (button.getAttribute("aria-disabled") === "true") return;
+        ctx2.onPunish(id, days ? Number(days.value) : void 0);
+      }
+    }, String(e.label).toUpperCase());
+    return h("div", { class: "alius-punish-row" }, button, days);
+  });
+  return h("details", { class: "alius-discipline", "data-discipline-menu": unitId }, h("summary", {}, "[ DISCIPLINE ]"), ...rows);
+}
+
 // src/ui/commander/cmdrCard.ts
 function renderCmdrCard(host, ctx2) {
   const { state, registries: reg, raw } = ctx2;
@@ -20471,7 +20507,13 @@ function disciplineLine(unit, state, ctx2) {
     parts.push(h("span", { class: "alius-chip", "data-stance": unit.id, ...analyzeAttrs(`commandStances:${stance}`, live) }, `STANCE: ${String(entry.name).toUpperCase()}`));
   }
   parts.push(h("span", { class: "alius-chip", "data-impunity": unit.id, ...analyzeAttrs("glossary:impunity", live) }, `IMPUNITY: ${impunityBand(found.value).toUpperCase()}${raw ? ` (${found.value})` : ""}`));
-  return h("p", { class: "alius-discipline" }, ...joinWith(parts, " \xB7 "));
+  return h("p", { class: "alius-stance-line" }, ...joinWith(parts, " \xB7 "));
+}
+var RESTRICTION_LABEL = { confined: "IN THE BRIG", no_leave: "NO LEAVE", benched: "BENCHED", duty: "EXTRA DUTY" };
+function restrictionLine(unit, state) {
+  const list5 = activeRestrictions(state, unit.id);
+  if (list5.length === 0) return null;
+  return h("p", { class: "alius-restrictions" }, ...joinWith(list5.map((r) => h("span", { class: "alius-chip", "data-restriction": r.kind, ...analyzeAttrs("glossary:restriction", { unitId: unit.id }) }, RESTRICTION_LABEL[r.kind])), " \xB7 "));
 }
 function unitBlock(unit, ctx2, state) {
   const gone = unit.status === "dead" || unit.status === "deserted" || unit.status === "terminated";
@@ -20504,6 +20546,8 @@ function unitBlock(unit, ctx2, state) {
       !gone && state.relations[unit.id] ? h("p", { class: "alius-loyalty" }, chip(`LOYALTY: ${state.relations[unit.id].loyaltyBand.toUpperCase()}`, "glossary:loyalty_band")) : null,
       gone ? null : h("p", { class: "alius-disposition" }, h("span", { class: "alius-chip", "data-disposition": unit.id, ...analyzeAttrs("glossary:disposition", live) }, `Disposition: ${String(dispositionFor(state, reg, unit).name)}`)),
       gone ? null : disciplineLine(unit, state, ctx2),
+      gone ? null : restrictionLine(unit, state),
+      gone || !ctx2.onPunish || unit.kind !== "named" ? null : renderDisciplineMenu({ state, registries: reg, unitId: unit.id, onPunish: (measure, days) => ctx2.onPunish(unit.id, measure, days) }),
       gone ? null : h("p", { class: "alius-stress" }, chip(`STRESS ${stressBand2(unit.stress).toUpperCase()}${raw ? ` (${unit.stress})` : ""}`, "glossary:stress", live)),
       gone ? null : leashMenu(unit, ctx2),
       unit.bio ? h("p", { class: "alius-dim" }, unit.bio) : null,
@@ -21829,6 +21873,31 @@ function drawProposalChips(host, state, pick2, onAnswer) {
   }
 }
 
+// src/ui/discipline/chips.ts
+function drawDisciplineChips(host, state, reg, pick2, onUndo) {
+  host.replaceChildren();
+  const name = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
+  const group = (id, unitId, address, text2) => h(
+    "div",
+    { class: "alius-chip-group", "data-discipline": id },
+    h("span", { class: "alius-chip", "data-chip-unit": unitId, ...analyzeAttrs(address, { unitId }) }, text2),
+    canUndo(state, id) === null ? h("button", { type: "button", class: "alius-btn alius-tagchip", "data-undo": id, onclick: () => onUndo(id) }, "[UNDO \u2014 not what I meant]") : null
+  );
+  for (const a of state.discipline?.applications ?? []) {
+    if (a.source !== "dialogue" || a.day !== state.day || !pick2({ channel: a.channel, unitId: a.unitId, ...a.sceneId !== void 0 ? { sceneId: a.sceneId } : {} })) continue;
+    host.append(group(a.id, a.unitId, "glossary:discipline_logged", `DISCIPLINE LOGGED \u2014 ${measureLabel(reg, a.measure)} (${name(a.unitId)})`));
+  }
+  for (const t of state.discipline?.threats ?? []) {
+    if (!pick2({ channel: t.channel, unitId: t.unitId, ...t.sceneId !== void 0 ? { sceneId: t.sceneId } : {} })) continue;
+    host.append(group(
+      t.id,
+      t.unitId,
+      "glossary:threat",
+      `THREAT REGISTERED \u2014 ${measureLabel(reg, t.measure)} (${name(t.unitId)}) \xB7 ${t.believed ? "She believes it" : "She doesn't buy it"}`
+    ));
+  }
+}
+
 // src/ui/comms/commsTab.ts
 var selected = /* @__PURE__ */ new WeakMap();
 var drafts = /* @__PURE__ */ new WeakMap();
@@ -21879,6 +21948,8 @@ function renderCommsTab(host, ctx2) {
     }
     const chips = h("div", { class: "alius-chips" });
     drawProposalChips(chips, state, (p) => p.channel === "dm" && p.unitId === current, ctx2.onAnswer);
+    const disciplineChips = h("div", { class: "alius-chips alius-discipline-chips" });
+    drawDisciplineChips(disciplineChips, state, ctx2.registries, (c) => c.channel === "dm" && c.unitId === current, (id) => ctx2.onUndoDiscipline?.(id));
     const input = h("input", { type: "text", name: "dm", class: "alius-input", autocomplete: "off", "aria-label": `Message ${unit.displayName}` });
     input.value = drafts.get(host) ?? "";
     input.addEventListener("input", () => drafts.set(host, input.value));
@@ -21892,7 +21963,7 @@ function renderCommsTab(host, ctx2) {
     input.addEventListener("keydown", (e) => {
       if (e.key === "Enter") send();
     });
-    thread.append(chips, h("div", { class: "alius-cmd" }, h("span", { class: "alius-prompt" }, "MSG>"), input, h("button", { type: "button", class: "alius-btn", "data-action": "send", onclick: send }, "[SEND]")));
+    thread.append(chips, disciplineChips, h("div", { class: "alius-cmd" }, h("span", { class: "alius-prompt" }, "MSG>"), input, h("button", { type: "button", class: "alius-btn", "data-action": "send", onclick: send }, "[SEND]")));
     if (unread(state, current) > 0) queueMicrotask(() => ctx2.onRead(unit.id));
   }
   host.append(h("section", { class: "alius-section alius-comms" }, h("h2", {}, "[ PDA COMMS ]"), h("div", { class: "alius-comms-body" }, list5, thread)));
@@ -22084,6 +22155,8 @@ function renderSceneScreen(host, ctx2) {
   let hud;
   let log;
   let chips;
+  let disciplineChips;
+  let disciplineMenus;
   let banner;
   let busyHost;
   let caption;
@@ -22164,6 +22237,17 @@ function renderSceneScreen(host, ctx2) {
   function drawChips(s) {
     const ids = new Set(s.scene?.participants ?? []);
     drawProposalChips(chips, s, (p) => p.channel === "scene" && ids.has(p.unitId), (id, answer) => controller.answer(id, answer));
+  }
+  function drawDiscipline(s) {
+    const ids = new Set(s.scene?.participants ?? []);
+    drawDisciplineChips(disciplineChips, s, registries, (c) => ids.has(c.unitId) && (c.channel !== "scene" || c.sceneId === s.scene?.id), (id) => ctx2.onUndoDiscipline?.(id));
+    if (!ctx2.onPunish) return;
+    const open2 = new Set([...disciplineMenus.querySelectorAll("details[open]")].map((d) => d.dataset.disciplineMenu));
+    disciplineMenus.replaceChildren(...present(s).filter((u) => u.kind === "named").map((u) => {
+      const menu = renderDisciplineMenu({ state: s, registries, unitId: u.id, onPunish: (measure, days) => ctx2.onPunish(u.id, measure, days) });
+      if (open2.has(u.id)) menu.open = true;
+      return h("div", { class: "alius-discipline-unit" }, h("span", { class: "alius-dim" }, u.displayName), menu);
+    }));
   }
   function stopTyping() {
     if (timer) clearInterval(timer);
@@ -22296,6 +22380,8 @@ function renderSceneScreen(host, ctx2) {
     hud = h("div", { class: "alius-hud" });
     log = h("div", { class: "alius-transcript", role: "log", "aria-live": "polite", tabindex: "0" });
     chips = h("div", { class: "alius-chips" });
+    disciplineChips = h("div", { class: "alius-chips alius-discipline-chips" });
+    disciplineMenus = h("div", { class: "alius-discipline-units" });
     banner = h("div", { class: "alius-pacing-host" });
     busyHost = h("div", { class: "alius-busy-host" });
     caption = h("div", { class: "alius-stage-caption" });
@@ -22381,6 +22467,8 @@ function renderSceneScreen(host, ctx2) {
       hud,
       log,
       chips,
+      disciplineChips,
+      disciplineMenus,
       h("div", { class: "alius-cmd" }, h("span", { class: "alius-prompt" }, "CMD>"), input, orderToggle, orderWho, propose, who)
     );
     drawBackground(s);
@@ -22411,6 +22499,7 @@ function renderSceneScreen(host, ctx2) {
     drawHud(s);
     drawLog(s);
     drawChips(s);
+    drawDiscipline(s);
     drawBanner();
   }
   function pulse(e) {
@@ -22932,6 +23021,8 @@ function effectsFor(registry2, entry, reg, data) {
     }
     case "dispositionLevels":
       return summarizeDispositionLevel(entry);
+    case "punishments":
+      return summarizePunishment(entry);
     case "commanderTraits":
       return list4(e.effects).map((x) => summarizeTraitEffect(x, reg));
     case "tastes": {
@@ -23035,6 +23126,28 @@ function summarizeWorldOptionEffect(effect, reg) {
     default:
       return cap4(humanize(String(x.type ?? "effect")));
   }
+}
+function summarizePunishment(entry) {
+  const e = entry;
+  const weight = ["light", "firm", "heavy", "severe"][Math.min(3, Math.max(0, Number(e.severity) - 1))] ?? "firm";
+  const d = e.deltas && typeof e.deltas === "object" ? e.deltas : {};
+  const costs = [isNum(d.trust) && d.trust < 0 ? "Trust" : null, isNum(d.affinity) && d.affinity < 0 ? "Affinity" : null].filter((x) => x !== null);
+  const out = [`Weight: ${weight}`];
+  if (costs.length > 0) out.push(`Costs her ${costs.join(" and ")}`);
+  if (isNum(d.stress) && d.stress > 0) out.push("Stresses her");
+  out.push("Makes her think twice about defying the commander");
+  const resource = (r) => String(r);
+  for (const fx2 of Array.isArray(e.sideEffects) ? e.sideEffects : []) {
+    if (fx2.type === "confine") out.push("Confines her for a few days (you pick): no scenes, companions or expeditions");
+    else if (fx2.type === "no_leave") out.push("No leave for a couple of days: she can still talk and visit the medbay");
+    else if (fx2.type === "bench") out.push("She is left out of the next expedition");
+    else if (fx2.type === "duty") out.push("She works one slot for the base");
+    else if (fx2.type === "resource" && isNum(fx2.amount)) out.push(`The base ${fx2.amount > 0 ? "gains" : "pays"} ${{ credits: "credits", supplies: "a supply", plyx: "plyx" }[resource(fx2.resource)] ?? resource(fx2.resource)}`);
+  }
+  for (const p of Array.isArray(e.perception) ? e.perception : []) {
+    out.push(`${isNum(p.multiplier) && p.multiplier < 1 ? "Lands lighter" : "Lands harder"} on soldiers who care about ${humanize(String(p.tag)).toLowerCase()}`);
+  }
+  return out;
 }
 function summarizeDispositionLevel(entry) {
   const e = entry;
@@ -23254,12 +23367,31 @@ function stanceProvider(subject, env, k) {
     ]
   };
 }
+function punishmentProvider(subject, env, k) {
+  const state = env.state;
+  const id = unitIdOf2(subject);
+  const pun = env.registries.punishments.get(subject.id);
+  const unit = id === null ? void 0 : state?.squad.find((u) => u.id === id);
+  if (!state || !pun || !unit || unit.kind !== "named") return null;
+  const lines = [];
+  const perception = perceptionOf(env.registries, unit, pun);
+  if (perception > 1) lines.push("She takes this harder than most.");
+  else if (perception < 1) lines.push("She takes this lighter than most.");
+  if (k.showRaw) {
+    const d = pun.deltas;
+    const n = (v) => `${v < 0 ? "\u2212" : "+"}${k.raw(Math.abs(Math.round(v * perception * 10) / 10))}`;
+    lines.push(`Trust ${n(d.trust)}, Affinity ${n(d.affinity)}, stress ${n(d.stress)}`);
+    lines.push(`Impunity ${n(Number(pun.impunityDelta))}`);
+  }
+  return lines.length > 0 ? { lines } : null;
+}
 var registered2 = false;
 function registerDisciplineProviders() {
   if (registered2) return;
   registered2 = true;
   registerAnalyzeProvider("glossary:impunity", impunityProvider);
   registerAnalyzeProvider("commandStances", stanceProvider);
+  registerAnalyzeProvider("punishments", punishmentProvider);
 }
 
 // src/analysis/providers/world.ts
@@ -25001,7 +25133,9 @@ function createApp(st, deps) {
         settings: () => getSettings(st),
         onEnded: leaveScene,
         onOrder: (unitId) => loyalty.order(unitId),
-        onCompel: (unitId) => void api.fileLeash("compel", unitId)
+        onCompel: (unitId) => void api.fileLeash("compel", unitId),
+        onPunish: (unitId, measure, days) => void discipline.punish(unitId, measure, days),
+        onUndoDiscipline: (id) => void discipline.undo(id)
       });
       return;
     }
@@ -26029,7 +26163,8 @@ function createApp(st, deps) {
       onLeash: (unitId, kind) => void api.fileLeash(kind, unitId),
       onArc: (unitId, defectId, path, compel2) => void decideArc2(unitId, defectId, path, compel2),
       arcPaths: (unitId, defectId) => state ? arcPaths(state, registries, unitId, defectId) : [],
-      canTerminate: (unitId) => state ? checkLeash(state, registries, "terminate", unitId) : "No campaign."
+      canTerminate: (unitId) => state ? checkLeash(state, registries, "terminate", unitId) : "No campaign.",
+      onPunish: (unitId, measure, days) => void discipline.punish(unitId, measure, days)
     })
   );
   shell.registerTab(
@@ -26115,6 +26250,7 @@ function createApp(st, deps) {
       getState: () => state,
       registries,
       onSend: (unitId, text2) => void comms.send(unitId, text2),
+      onUndoDiscipline: (id) => void discipline.undo(id),
       onRead: (unitId) => {
         const unit = state?.dms[unitId];
         if (unit?.some((m) => m.from !== "commander" && !m.read)) api.dispatch({ type: "dm/read", payload: { unitId } }, { expectChatId: st.getActiveChat()?.chatId });

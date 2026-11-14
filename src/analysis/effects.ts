@@ -342,6 +342,8 @@ function effectsFor(registry: RegistryName, entry: Entry, reg: Registries, data?
     }
     case 'dispositionLevels':
       return summarizeDispositionLevel(entry);
+    case 'punishments':
+      return summarizePunishment(entry);
     case 'commanderTraits':
       return list(e.effects).map((x) => summarizeTraitEffect(x as unknown as TraitEffect, reg));
     case 'tastes': {
@@ -421,6 +423,30 @@ export function summarizeWorldOptionEffect(effect: unknown, reg: Registries): st
     case 'acquaintance_grace': return x.days === 0 ? 'Soldiers may start secret protest from the first day' : 'Soldiers hold back secret protest while they get to know a new commander';
     default: return cap(humanize(String(x.type ?? 'effect')));
   }
+}
+
+/** A punishment in words (P9): how heavy it is, what it does to her and what else it brings. No figures: the numbers are the provider's, through `Knowledge`. */
+export function summarizePunishment(entry: Entry): string[] {
+  const e = entry as Loose;
+  const weight = ['light', 'firm', 'heavy', 'severe'][Math.min(3, Math.max(0, Number(e.severity) - 1))] ?? 'firm';
+  const d = (e.deltas && typeof e.deltas === 'object' ? (e.deltas as Loose) : {});
+  const costs = [isNum(d.trust) && d.trust < 0 ? 'Trust' : null, isNum(d.affinity) && d.affinity < 0 ? 'Affinity' : null].filter((x): x is string => x !== null);
+  const out = [`Weight: ${weight}`];
+  if (costs.length > 0) out.push(`Costs her ${costs.join(' and ')}`);
+  if (isNum(d.stress) && d.stress > 0) out.push('Stresses her');
+  out.push('Makes her think twice about defying the commander');
+  const resource = (r: unknown): string => String(r);
+  for (const fx of Array.isArray(e.sideEffects) ? (e.sideEffects as Loose[]) : []) {
+    if (fx.type === 'confine') out.push('Confines her for a few days (you pick): no scenes, companions or expeditions');
+    else if (fx.type === 'no_leave') out.push('No leave for a couple of days: she can still talk and visit the medbay');
+    else if (fx.type === 'bench') out.push('She is left out of the next expedition');
+    else if (fx.type === 'duty') out.push('She works one slot for the base');
+    else if (fx.type === 'resource' && isNum(fx.amount)) out.push(`The base ${fx.amount > 0 ? 'gains' : 'pays'} ${({ credits: 'credits', supplies: 'a supply', plyx: 'plyx' } as Record<string, string>)[resource(fx.resource)] ?? resource(fx.resource)}`);
+  }
+  for (const p of Array.isArray(e.perception) ? (e.perception as Loose[]) : []) {
+    out.push(`${isNum(p.multiplier) && p.multiplier < 1 ? 'Lands lighter' : 'Lands harder'} on soldiers who care about ${humanize(String(p.tag)).toLowerCase()}`);
+  }
+  return out;
 }
 
 /** A disposition level in words, as a difference from the baseline (guarded says nothing special). */

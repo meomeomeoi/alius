@@ -1,4 +1,4 @@
-import { impunityBand, impunityOf, commandStance, stanceEntry, type ImpunityTerms } from '../../engine/discipline';
+import { impunityBand, impunityOf, commandStance, perceptionOf, stanceEntry, type ImpunityTerms } from '../../engine/discipline';
 import { trustBand } from '../../engine/relations/bands';
 import { TUNING } from '../../engine/tuning';
 import type { Knowledge } from '../knowledge';
@@ -65,6 +65,25 @@ function stanceProvider(subject: Subject, env: AnalyzeEnv, k: Knowledge): { line
   };
 }
 
+function punishmentProvider(subject: Subject, env: AnalyzeEnv, k: Knowledge): { lines: string[] } | null {
+  const state = env.state;
+  const id = unitIdOf(subject);
+  const pun = env.registries.punishments.get(subject.id);
+  const unit = id === null ? undefined : state?.squad.find((u) => u.id === id);
+  if (!state || !pun || !unit || unit.kind !== 'named') return null;
+  const lines: string[] = [];
+  const perception = perceptionOf(env.registries, unit, pun);
+  if (perception > 1) lines.push('She takes this harder than most.');
+  else if (perception < 1) lines.push('She takes this lighter than most.');
+  if (k.showRaw) {
+    const d = pun.deltas as { trust: number; affinity: number; stress: number };
+    const n = (v: number): string => `${v < 0 ? '−' : '+'}${k.raw(Math.abs(Math.round(v * perception * 10) / 10))}`;
+    lines.push(`Trust ${n(d.trust)}, Affinity ${n(d.affinity)}, stress ${n(d.stress)}`);
+    lines.push(`Impunity ${n(Number(pun.impunityDelta))}`);
+  }
+  return lines.length > 0 ? { lines } : null;
+}
+
 let registered = false;
 
 /** Registers the discipline readings; safe to call more than once (the core registration calls it). */
@@ -73,4 +92,5 @@ export function registerDisciplineProviders(): void {
   registered = true;
   registerAnalyzeProvider('glossary:impunity', impunityProvider);
   registerAnalyzeProvider('commandStances', stanceProvider);
+  registerAnalyzeProvider('punishments', punishmentProvider);
 }

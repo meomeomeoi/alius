@@ -485,3 +485,63 @@ describe('location picker', () => {
     expect(offered).toEqual([BEA, CAT]);
   });
 });
+
+describe('discipline in the scene (P9)', () => {
+  const dialogue = (s: CampaignState, events: unknown[]): CampaignState => run(s, reg, { type: 'intents/apply', payload: { channel: 'scene', intents: { events } } }).state;
+  const enforced = { type: 'commander_enforced', actor: 'commander', targets: [ANN], severity: 'moderate', evidence: 'no more', confidence: 0.9, measure: 'revoke_rations' };
+  function sceneWith(opts: { participants?: string[]; punish?: boolean } = {}) {
+    let state = campaign(reg, 4);
+    state = run(state, reg, { type: 'scene/start', payload: { locationId: 'mess_hall', participants: opts.participants ?? [ANN], origin: 'event', startIndex: 0 } }).state;
+    const st = new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' });
+    const controller = { send: vi.fn(), propose: vi.fn(), answer: vi.fn(), end: vi.fn(async () => {}), edit: vi.fn(), stop: vi.fn(), onEdited: vi.fn(), transcript: () => [], onSwipe: vi.fn() } as unknown as SceneController;
+    const onPunish = vi.fn();
+    const onUndoDiscipline = vi.fn();
+    const host = h('div');
+    document.body.append(host);
+    const screen = renderSceneScreen(host, {
+      controller, getState: () => state, registries: reg, st, settings: () => ({ ...DEFAULT_SETTINGS, typingSpeed: 0 }), onEnded: vi.fn(),
+      ...(opts.punish === false ? {} : { onPunish, onUndoDiscipline }),
+    });
+    return { host, screen, onPunish, onUndoDiscipline, set: (s2: CampaignState) => { state = s2; }, state: () => state };
+  }
+
+  it('a DISCIPLINE menu for each unit in the scene', () => {
+    const t = sceneWith({ participants: [ANN, BEA] });
+    expect([...t.host.querySelectorAll<HTMLElement>('details[data-discipline-menu]')].map((d) => d.dataset.disciplineMenu)).toEqual([ANN, BEA]);
+    t.host.querySelector<HTMLButtonElement>(`details[data-discipline-menu="${BEA}"] button[data-punish="bench"]`)!.click();
+    expect(t.onPunish).toHaveBeenCalledWith(BEA, 'bench', undefined);
+  });
+
+  it('no menu without the callback', () => {
+    expect(sceneWith({ punish: false }).host.querySelector('details[data-discipline-menu]')).toBeNull();
+  });
+
+  it('a logged punishment and its UNDO appear on the discipline event, and clicking UNDO calls the callback', () => {
+    const t = sceneWith();
+    expect(t.host.querySelector('[data-discipline]')).toBeNull();
+    t.set(dialogue(t.state(), [enforced]));
+    t.screen.handle({ type: 'discipline' });
+    const chip = t.host.querySelector<HTMLElement>('.alius-chip[data-chip-unit]')!;
+    expect(chip.textContent).toBe('DISCIPLINE LOGGED — Rations revoked (Ann)');
+    t.host.querySelector<HTMLButtonElement>('button[data-undo]')!.click();
+    expect(t.onUndoDiscipline).toHaveBeenCalledWith(t.state().discipline!.applications[0].id);
+  });
+
+  it('a threat chip shows whether she believed it', () => {
+    const t = sceneWith();
+    t.set(dialogue(t.state(), [{ ...enforced, type: 'threatened', measure: 'brig' }]));
+    t.screen.handle({ type: 'discipline' });
+    expect(t.host.textContent).toMatch(/THREAT REGISTERED — Brig \(Ann\) · She (believes it|doesn't buy it)/);
+  });
+
+  it('the chips of units that are not in the scene are not drawn', () => {
+    const t = sceneWith({ participants: [ANN] });
+    t.set(dialogue(t.state(), [enforced]));
+    const other = structuredClone(t.state());
+    other.discipline!.applications[0].unitId = BEA;
+    t.set(other);
+    t.screen.handle({ type: 'discipline' });
+    expect(t.host.querySelector('.alius-chip[data-chip-unit]')).toBeNull();
+  });
+});
+

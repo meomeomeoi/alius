@@ -437,6 +437,19 @@ describe('the Leash in scenes', () => {
     for (const gone of ['THREAT TEXT', 'DISCIPLINE TEXT', 'Rhea ']) expect(t.directives()).not.toContain(gone);
   });
 
+  it('the DISCIPLINE menu in a scene punishes through the app: reply directive, restriction chip, UNDO refused for a menu punishment (P9)', async () => {
+    const t = await boot();
+    expect(await t.app.startScene({ locationId: 'mess_hall', participants: [RHEA], origin: 'event' })).toBe(true);
+    const host = t.mount('scene');
+    expect(host.querySelector(`details[data-discipline-menu="${RHEA}"]`)).not.toBeNull();
+    host.querySelector<HTMLButtonElement>(`details[data-discipline-menu="${RHEA}"] button[data-punish="verbal"]`)!.click();
+    await settle();
+    expect(t.state().discipline!.applications).toEqual([expect.objectContaining({ unitId: RHEA, measure: 'verbal', source: 'menu', channel: 'scene' })]);
+    expect(t.directives()).toContain('The commander has imposed Reprimand on Rhea.');
+    expect(t.app.discipline.undo(t.state().discipline!.applications[0].id)).toBe(false);
+    expect(t.sh.toasts.at(-1)).toEqual({ kind: 'error', text: 'Only a punishment read from dialogue can be undone.' });
+  });
+
   it('a chat switch clears refusal, trauma and aftermath directives', async () => {
     const t = await boot();
     for (const [id, text] of [['refusal:unit_rhea', 'REFUSAL TEXT'], ['loyalty:unit_rhea', 'BAND TEXT'], ['leash_trauma:unit_rhea', 'TRAUMA TEXT'], ['dilemma', 'AFTERMATH TEXT']] as const) {

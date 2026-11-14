@@ -4,7 +4,8 @@ import type { Registries } from '../../src/content/types';
 import type { CampaignState } from '../../src/engine/state/types';
 import { renderCommsTab } from '../../src/ui/comms/commsTab';
 import { h } from '../../src/ui/dom';
-import { campaign, loadCore } from '../helpers/world';
+import { campaign, loadCore, run } from '../helpers/world';
+import '../../src/engine/actions/discipline';
 
 let reg: Registries;
 beforeAll(async () => {
@@ -131,3 +132,42 @@ describe('COMMS tab', () => {
     expect(render({ state: s }).host.textContent).toMatch(/NO CONTACTS/);
   });
 });
+
+describe('discipline chips in a thread (P9)', () => {
+  const ev = (type: string, measure: string) => ({ type, actor: 'commander', targets: [ANN], severity: 'moderate', evidence: 'x', confidence: 0.9, measure });
+  const withDm = (events: unknown[]): CampaignState => run(campaign(reg, 4), reg, { type: 'intents/apply', payload: { channel: 'dm', unitId: ANN, intents: { events } } }).state;
+
+  it('the thread of the unit shows its dm chips and UNDO calls back', () => {
+    const s = withDm([ev('commander_enforced', 'revoke_rations'), ev('threatened', 'brig')]);
+    const onUndoDiscipline = vi.fn();
+    const host = h('div');
+    document.body.append(host);
+    renderCommsTab(host, { getState: () => s, registries: reg, onSend: vi.fn(), onRead: vi.fn(), onAnswer: vi.fn(), onUndoDiscipline });
+    host.querySelector<HTMLElement>(`button[data-unit="${ANN}"]`)!.click();
+    const text = host.querySelector('.alius-thread')!.textContent!;
+    expect(text).toContain('DISCIPLINE LOGGED — Rations revoked (Ann)');
+    expect(text).toContain('THREAT REGISTERED — Brig (Ann)');
+    host.querySelector<HTMLButtonElement>('button[data-undo]')!.click();
+    expect(onUndoDiscipline).toHaveBeenCalledWith(s.discipline!.applications[0].id);
+  });
+
+  it("another unit's thread does not show them", () => {
+    const s = withDm([ev('commander_enforced', 'revoke_rations')]);
+    const host = h('div');
+    document.body.append(host);
+    renderCommsTab(host, { getState: () => s, registries: reg, onSend: vi.fn(), onRead: vi.fn(), onAnswer: vi.fn(), onUndoDiscipline: vi.fn() });
+    host.querySelector<HTMLElement>(`button[data-unit="${BEA}"]`)!.click();
+    expect(host.querySelector('.alius-thread')!.textContent).not.toContain('DISCIPLINE LOGGED');
+  });
+
+  it('scene chips are not drawn in a thread', () => {
+    const s = run(run(campaign(reg, 4), reg, { type: 'scene/start', payload: { locationId: 'mess_hall', participants: [ANN], origin: 'event', startIndex: 0 } }).state, reg,
+      { type: 'intents/apply', payload: { channel: 'scene', intents: { events: [ev('commander_enforced', 'verbal')] } } }).state;
+    const host = h('div');
+    document.body.append(host);
+    renderCommsTab(host, { getState: () => s, registries: reg, onSend: vi.fn(), onRead: vi.fn(), onAnswer: vi.fn(), onUndoDiscipline: vi.fn() });
+    host.querySelector<HTMLElement>(`button[data-unit="${ANN}"]`)!.click();
+    expect(host.querySelector('.alius-thread')!.textContent).not.toContain('DISCIPLINE LOGGED');
+  });
+});
+

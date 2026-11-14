@@ -529,3 +529,63 @@ describe('the stance and impunity chips (P9)', () => {
     expect(host.querySelector('.alius-chip[data-impunity]')).not.toBeNull();
   });
 });
+
+describe('the DISCIPLINE menu and restriction chips in SQUAD (P9)', () => {
+  const renderWith = (s: CampaignState, onPunish?: (unitId: string, measure: string, days?: number) => void) => {
+    const st = new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' });
+    const host = h('div');
+    document.body.append(host);
+    renderSquadTab(host, {
+      st, getState: () => s, getLoad: () => ({ kind: 'ok', state: s, chatId: 'c' }), registries: reg, settings: () => getSettings(st), onNewCampaign: () => {}, ...(onPunish ? { onPunish } : {}),
+    });
+    return host;
+  };
+
+  it('a named living unit has the menu when the app can punish, a grunt and a dead unit have none', () => {
+    const s = campaign([unit(), unit({ cardRef: 'kay.png', displayName: 'Kay' })]);
+    s.squad.push({ ...structuredClone(s.squad[0]), id: 'grunt_k_117', kind: 'grunt', displayName: 'Mara', designation: 'K-117', cardRef: undefined });
+    s.relations.grunt_k_117 = structuredClone(s.relations.unit_rhea);
+    s.squad[1].status = 'dead';
+    const host = renderWith(s, vi.fn());
+    expect([...host.querySelectorAll<HTMLElement>('details[data-discipline-menu]')].map((d) => d.dataset.disciplineMenu)).toEqual(['unit_rhea']);
+  });
+
+  it('without an onPunish callback there is no menu', () => {
+    expect(renderWith(campaign()).querySelector('details[data-discipline-menu]')).toBeNull();
+  });
+
+  it('a click calls onPunish with the unit, the measure and the days', () => {
+    const onPunish = vi.fn();
+    const host = renderWith(campaign(), onPunish);
+    host.querySelector<HTMLButtonElement>('button[data-punish="revoke_rations"]')!.click();
+    expect(onPunish).toHaveBeenCalledWith('unit_rhea', 'revoke_rations', undefined);
+    host.querySelector<HTMLSelectElement>('select[data-brig-days]')!.value = '3';
+    host.querySelector<HTMLButtonElement>('button[data-punish="brig"]')!.click();
+    expect(onPunish).toHaveBeenLastCalledWith('unit_rhea', 'brig', 3);
+  });
+
+  it('restrictions are chips: IN THE BRIG, NO LEAVE, BENCHED, EXTRA DUTY, analyzable', () => {
+    const s = campaign([unit(), unit({ cardRef: 'kay.png', displayName: 'Kay' }), unit({ cardRef: 'lee.png', displayName: 'Lee' }), unit({ cardRef: 'may.png', displayName: 'May' })]);
+    s.day = 5;
+    s.discipline = { defiance: [], threats: [], applications: [], demands: [], demandLog: [], restrictions: [
+      { unitId: 'unit_rhea', kind: 'confined', untilDay: 6 }, { unitId: 'unit_kay', kind: 'no_leave', untilDay: 6 },
+      { unitId: 'unit_lee', kind: 'benched' }, { unitId: 'unit_may', kind: 'duty', day: s.day, slot: s.slot },
+    ] };
+    const host = renderWith(s);
+    const chips = [...host.querySelectorAll<HTMLElement>('.alius-chip[data-restriction]')];
+    expect(chips.map((c) => [c.dataset.restriction, c.textContent])).toEqual([
+      ['confined', 'IN THE BRIG'], ['no_leave', 'NO LEAVE'], ['benched', 'BENCHED'], ['duty', 'EXTRA DUTY'],
+    ]);
+    expect(chips[0].getAttribute('data-analyze')).toBe('glossary:restriction');
+    expect(JSON.parse(chips[0].getAttribute('data-analyze-ctx')!)).toEqual({ unitId: 'unit_rhea' });
+    expect(markedWithout(host)).toEqual([]);
+  });
+
+  it('an expired restriction shows no chip', () => {
+    const s = campaign();
+    s.day = 9;
+    s.discipline = { defiance: [], threats: [], applications: [], demands: [], demandLog: [], restrictions: [{ unitId: 'unit_rhea', kind: 'confined', untilDay: 6 }, { unitId: 'unit_rhea', kind: 'duty', day: 8, slot: 'morning' }] };
+    expect(renderWith(s).querySelector('[data-restriction]')).toBeNull();
+  });
+});
+

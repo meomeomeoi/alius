@@ -8,6 +8,7 @@ export const SAMPLE_ADDRESS: Record<string, string> = {
   setting: 'setting:showRawValues',
   worldOptions: 'worldOptions:oversight', // P8
   commandStances: 'commandStances:disciplined', // P9
+  punishments: 'punishments:verbal', // P9
 };
 
 /** The address a registered provider key is run with: the key itself when it is an address, else its sample. */

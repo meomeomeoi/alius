@@ -163,3 +163,57 @@ describe('the command stance panel', () => {
     expect(read(s, 'commandStances:fearful', false, 'grunt_1')).toEqual([]);
   });
 });
+
+describe('the punishment panels (P9)', () => {
+  const panel = (address: string, s: CampaignState | null, raw = false, data: Record<string, unknown> = { unitId: A }) =>
+    buildPanelModel(parseSubject(address, JSON.stringify(data))!, env(s, raw));
+  const digits = /\d/;
+
+  it('the registry entry gives its description and effects in words, never a figure', () => {
+    for (const id of ['verbal', 'revoke_rations', 'revoke_leave', 'extra_duty', 'bench', 'brig']) {
+      const m = panel(`punishments:${id}`, fresh());
+      expect(m.missing, id).toBe(false);
+      expect(m.text!.length, id).toBeGreaterThan(10);
+      expect(m.effects.length, id).toBeGreaterThan(0);
+      expect([m.text, ...m.effects].join('\n'), id).not.toMatch(digits);
+    }
+    const brig = panel('punishments:brig', fresh()).effects.join('\n');
+    expect(brig).toMatch(/Confines her/);
+    expect(panel('punishments:bench', fresh()).effects.join('\n')).toMatch(/left out of the next expedition/i);
+    expect(panel('punishments:extra_duty', fresh()).effects.join('\n')).toMatch(/one slot/);
+    expect(panel('punishments:revoke_rations', fresh()).effects.join('\n')).toMatch(/gains a supply/);
+  });
+
+  it('perception is named in words ("lives for combat")', () => {
+    expect(panel('punishments:bench', fresh()).effects.join('\n')).toMatch(/lives for combat/i);
+  });
+
+  it('with a unit it adds "She takes this harder than most." when her tags match, and nothing otherwise', () => {
+    const s = fresh();
+    s.squad[0].likes = ['lives_for_combat'];
+    const reading = (id: string, unit = A) => (panel(`punishments:${id}`, s, false, { unitId: unit }).reading?.lines ?? []).join('\n');
+    expect(reading('bench')).toContain('She takes this harder than most.');
+    expect(reading('brig')).not.toContain('harder');
+    expect(reading('bench', B)).not.toContain('harder');
+    expect(panel('punishments:bench', s, false, {}).reading).toBeNull(); // a link without a unit has no reading
+  });
+
+  it('the numbers appear only with raw values on', () => {
+    const s = fresh();
+    s.squad[0].likes = ['lives_for_combat'];
+    const off = (panel('punishments:bench', s, false).reading?.lines ?? []).join('\n');
+    expect(off).not.toMatch(digits);
+    const on = (panel('punishments:bench', s, true).reading?.lines ?? []).join('\n');
+    expect(on).toContain('Trust −8');
+    expect(on).toContain('Impunity −30');
+  });
+
+  it('the new glossary entries exist', () => {
+    for (const id of ['discipline', 'discipline_logged', 'restriction']) {
+      const m = panel(`glossary:${id}`, fresh());
+      expect(m.missing, id).toBe(false);
+      expect(m.text, id).toBeTruthy();
+    }
+  });
+});
+
