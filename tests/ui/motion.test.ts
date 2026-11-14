@@ -51,6 +51,11 @@ describe('visualFlags', () => {
     expect(visualFlags({ ...S, scanlines: true, flicker: true }, () => false)).toEqual({ scanlines: true, flicker: true, glitch: true, dither: true, motion: true });
   });
 
+  it('dithering also needs the ditheredPortraits setting', () => {
+    expect(visualFlags({ ...S, ditheredPortraits: false }, () => false).dither).toBe(false);
+    expect(visualFlags({ ...S, ditheredPortraits: true }, () => false).dither).toBe(true);
+  });
+
   it('readable mode turns scanlines, flicker, glitch and dithering off and leaves motion alone', () => {
     const f = visualFlags({ ...S, scanlines: true, flicker: true, readableMode: true }, () => false);
     expect(f).toEqual({ scanlines: false, flicker: false, glitch: false, dither: false, motion: true });

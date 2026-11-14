@@ -196,4 +196,13 @@ describe('settings', () => {
     st.settings = { readableMode: true, reducedMotion: 'yes' };
     expect(getSettings(st)).toMatchObject({ readableMode: true, reducedMotion: false });
   });
+
+  it('ditheredPortraits defaults to true and must be a boolean', () => {
+    const st = new FakeStAdapter();
+    expect(getSettings(st).ditheredPortraits).toBe(true);
+    st.settings = { ditheredPortraits: false };
+    expect(getSettings(st).ditheredPortraits).toBe(false);
+    st.settings = { ditheredPortraits: 'no' };
+    expect(getSettings(st).ditheredPortraits).toBe(true);
+  });
 });

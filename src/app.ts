@@ -66,7 +66,8 @@ import { importProfile, stanceOptionIds } from './setup/profile';
 import { defaultWorldOptions } from './engine/worldOptions';
 import { Wizard, type WizardState } from './setup/wizard';
 import { renderSetupScreen } from './ui/setup/setupScreen';
-import { portrait, renderSquadTab } from './ui/squad/squadTab';
+import { renderSquadTab } from './ui/squad/squadTab';
+import { portraitOptions, unitPortrait } from './ui/portrait/portrait';
 import { renderOpsTab, type OpsTabCtx } from './ui/ops/opsTab';
 import { pickSkin } from './ui/device/skins';
 import { renderHub } from './ui/hub/hubScreen';
@@ -1635,7 +1636,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       onTalk: (unitId, locationId) => void api.talkAt(unitId, locationId),
       onEndSlot: () => void api.endSlot(),
       onOpenPda: (tab) => (tab ? shell.showTab(tab) : shell.setDevice(true)),
-      avatar: (unit) => portrait(st, unit),
+      avatar: (unit) => unitPortrait(st, unit, portraitOptions(getSettings(st), 40)),
     }));
   shell.registerTab('map', (host) =>
     renderMapTab(host, {
@@ -1681,6 +1682,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         if (unit?.some((m) => m.from !== 'commander' && !m.read)) api.dispatch({ type: 'dm/read', payload: { unitId } }, { expectChatId: st.getActiveChat()?.chatId });
       },
       onAnswer: (proposalId, answer) => void act({ type: 'proposal/answer', payload: { proposalId, answer } }),
+      avatar: (unit) => unitPortrait(st, unit, portraitOptions(getSettings(st), 32)),
     }),
   );
   shell.registerTab('log', (host) => renderLogTab(host, { getState: () => state }));

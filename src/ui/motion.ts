@@ -24,5 +24,5 @@ export interface VisualFlags {
 export function visualFlags(s: AliusSettings, media?: () => boolean): VisualFlags {
   const motion = !motionReduced(s, media);
   const plain = s.readableMode;
-  return { scanlines: !plain && s.scanlines, flicker: !plain && s.flicker, glitch: !plain && motion, dither: !plain, motion };
+  return { scanlines: !plain && s.scanlines, flicker: !plain && s.flicker, glitch: !plain && motion, dither: !plain && s.ditheredPortraits, motion };
 }

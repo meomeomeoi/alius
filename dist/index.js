@@ -17192,7 +17192,8 @@ var DEFAULT_SETTINGS = {
   firstImpressionTau: 7,
   deviceSkin: "",
   readableMode: false,
-  reducedMotion: false
+  reducedMotion: false,
+  ditheredPortraits: true
 };
 var fieldSchemas = {
   mechanicProfileId: external_exports.string(),
@@ -17233,7 +17234,8 @@ var fieldSchemas = {
   firstImpressionTau: external_exports.number().int().min(1).max(30),
   deviceSkin: external_exports.string(),
   readableMode: external_exports.boolean(),
-  reducedMotion: external_exports.boolean()
+  reducedMotion: external_exports.boolean(),
+  ditheredPortraits: external_exports.boolean()
 };
 var budgetSchema = external_exports.number().int().min(1);
 var isObj22 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -17276,7 +17278,7 @@ function motionReduced(s, media = systemReduced) {
 function visualFlags(s, media) {
   const motion = !motionReduced(s, media);
   const plain2 = s.readableMode;
-  return { scanlines: !plain2 && s.scanlines, flicker: !plain2 && s.flicker, glitch: !plain2 && motion, dither: !plain2, motion };
+  return { scanlines: !plain2 && s.scanlines, flicker: !plain2 && s.flicker, glitch: !plain2 && motion, dither: !plain2 && s.ditheredPortraits, motion };
 }
 
 // src/engine/hub.ts
@@ -20977,6 +20979,119 @@ function renderSetupScreen(host, ctx2) {
   render();
 }
 
+// src/ui/portrait/dither.ts
+var BAYER4 = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+var PALETTE_RGB = {
+  amber: [[18, 12, 2], [210, 146, 0], [255, 176, 0]],
+  green: [[2, 18, 8], [43, 207, 85], [51, 255, 102]],
+  white: [[11, 11, 11], [180, 180, 180], [232, 232, 232]]
+};
+function ditherBayer4(src, w, h2, levels) {
+  const out = new Uint8ClampedArray(src.length);
+  for (let y = 0; y < h2; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4;
+      if (src[i + 3] < 128) continue;
+      const l2 = (0.2126 * src[i] + 0.7152 * src[i + 1] + 0.0722 * src[i + 2]) / 255 * 2;
+      const base = Math.min(1, Math.floor(l2));
+      const threshold = (BAYER4[y % 4 * 4 + x % 4] + 0.5) / 16;
+      const [r, g, b] = levels[l2 - base > threshold ? base + 1 : base];
+      out[i] = r;
+      out[i + 1] = g;
+      out[i + 2] = b;
+      out[i + 3] = 255;
+    }
+  }
+  return out;
+}
+
+// src/ui/portrait/portrait.ts
+function portraitOptions(s, size) {
+  return { palette: s.palette, dither: visualFlags(s).dither, ...size !== void 0 ? { size } : {} };
+}
+var RETRY_MS = 3e4;
+var spriteCache = /* @__PURE__ */ new WeakMap();
+var dithered = /* @__PURE__ */ new Map();
+function showDithered(img, url) {
+  img.setAttribute("src", url);
+  img.classList.add("alius-portrait-dithered");
+}
+function ditherWhenLoaded(img, key, palette, size) {
+  const hit = dithered.get(key);
+  if (hit?.url) return showDithered(img, hit.url);
+  if (hit?.failedAt !== void 0 && Date.now() - hit.failedAt < RETRY_MS) return;
+  const run = () => {
+    const again = dithered.get(key);
+    if (again?.url) return showDithered(img, again.url);
+    try {
+      const canvas = document.createElement("canvas");
+      canvas.width = size;
+      canvas.height = size;
+      const ctx2 = canvas.getContext("2d");
+      const nw = img.naturalWidth;
+      const nh = img.naturalHeight;
+      if (!ctx2 || !nw || !nh) throw new Error("nothing to draw on or from");
+      const side = Math.min(nw, nh);
+      ctx2.drawImage(img, (nw - side) / 2, 0, side, side, 0, 0, size, size);
+      const src = ctx2.getImageData(0, 0, size, size);
+      const out = ctx2.createImageData(size, size);
+      out.data.set(ditherBayer4(src.data, size, size, PALETTE_RGB[palette]));
+      ctx2.putImageData(out, 0, 0);
+      const url = canvas.toDataURL("image/png");
+      dithered.set(key, { url });
+      showDithered(img, url);
+    } catch {
+      dithered.set(key, { failedAt: Date.now() });
+    }
+  };
+  if (img.complete && img.naturalWidth > 0) run();
+  else img.addEventListener("load", run, { once: true });
+}
+function unitPortrait(st, unit, o) {
+  if (unit.kind === "grunt") {
+    return unit.asciiPortrait ? h("pre", { class: "alius-ascii", "aria-label": `Portrait of ${unit.displayName}` }, unit.asciiPortrait) : null;
+  }
+  if (!unit.cardRef) return null;
+  const card2 = unit.cardRef;
+  const size = o.size ?? 96;
+  const key = `${card2}|${o.palette}|${size}`;
+  const avatar = st.getAvatarUrl(card2);
+  let cache = spriteCache.get(st);
+  if (!cache) spriteCache.set(st, cache = /* @__PURE__ */ new Map());
+  const known = cache.get(card2);
+  const cached = o.dither ? dithered.get(key)?.url : void 0;
+  const img = h("img", { class: "alius-portrait", src: cached ?? known?.url ?? avatar, alt: unit.displayName, width: String(size), height: String(size) });
+  if (cached) {
+    img.classList.add("alius-portrait-dithered");
+    return img;
+  }
+  let usingAvatar = !known?.url;
+  const settle3 = () => {
+    if (o.dither) ditherWhenLoaded(img, key, o.palette, size);
+  };
+  img.addEventListener("error", () => {
+    if (usingAvatar) return;
+    usingAvatar = true;
+    img.setAttribute("src", avatar);
+  });
+  if (known && (known.url || Date.now() - known.at < RETRY_MS)) {
+    settle3();
+    return img;
+  }
+  st.getSpriteUrl(card2, "neutral").then(
+    (url) => {
+      cache.set(card2, { url: url || null, at: Date.now() });
+      if (url) {
+        usingAvatar = false;
+        img.setAttribute("src", url);
+      }
+      settle3();
+    },
+    () => settle3()
+  );
+  return img;
+}
+
 // src/ui/discipline/menu.ts
 var confineOf = (entry) => (entry.sideEffects ?? []).find((e) => e.type === "confine");
 function renderDisciplineMenu(ctx2) {
@@ -21107,45 +21222,6 @@ function renderSkillTree(host, ctx2) {
 // src/ui/squad/squadTab.ts
 var unknown = (id) => `UNKNOWN ${id}`;
 var nameOf8 = (e, id) => e ? String(e.name) : unknown(id);
-var spriteCache = /* @__PURE__ */ new WeakMap();
-var MISSING_SPRITE_RETRY_MS = 3e4;
-function portrait(st, unit) {
-  if (unit.kind === "grunt") {
-    return unit.asciiPortrait ? h("pre", { class: "alius-ascii", "aria-label": `Portrait of ${unit.displayName}` }, unit.asciiPortrait) : null;
-  }
-  if (!unit.cardRef) return null;
-  const card2 = unit.cardRef;
-  const avatar = st.getAvatarUrl(card2);
-  let cache = spriteCache.get(st);
-  if (!cache) spriteCache.set(st, cache = /* @__PURE__ */ new Map());
-  const known = cache.get(card2);
-  const img = h("img", { class: "alius-portrait", src: known?.url ?? avatar, alt: unit.displayName, width: "96", height: "96" });
-  let usingAvatar = !known?.url;
-  if (known && (known.url || Date.now() - known.at < MISSING_SPRITE_RETRY_MS)) {
-    img.addEventListener("error", () => {
-      if (usingAvatar) return;
-      usingAvatar = true;
-      img.setAttribute("src", avatar);
-    });
-    return img;
-  }
-  img.addEventListener("error", () => {
-    if (usingAvatar) return;
-    usingAvatar = true;
-    img.setAttribute("src", avatar);
-  });
-  st.getSpriteUrl(card2, "neutral").then(
-    (url) => {
-      cache.set(card2, { url: url || null, at: Date.now() });
-      if (!url) return;
-      usingAvatar = false;
-      img.setAttribute("src", url);
-    },
-    () => {
-    }
-  );
-  return img;
-}
 function defectBlock(reg, d) {
   const def = reg.defects.get(d.id);
   if (!def) return h("div", { class: "alius-defect" }, h("strong", {}, unknown(d.id)));
@@ -21373,7 +21449,7 @@ function unitBlock(unit, ctx2, state) {
   return h(
     "article",
     { class: "alius-unit" },
-    portrait(ctx2.st, unit),
+    unitPortrait(ctx2.st, unit, portraitOptions(ctx2.settings())),
     h(
       "div",
       { class: "alius-unit-body" },
@@ -23255,6 +23331,8 @@ function renderCommsTab(host, ctx2) {
     const n = unread(state, u.id);
     const dot = n > 0 ? h("span", { class: "alius-dot", "aria-label": `${n} unread` }, "\u25CF") : null;
     const row = h("button", { type: "button", class: `alius-btn alius-contact${u.id === current ? " is-open" : ""}`, "data-unit": u.id, onclick: () => open2(u.id) }, u.displayName, " ", dot);
+    const face = ctx2.avatar?.(u);
+    if (face) row.prepend(h("span", { class: "alius-contact-avatar" }, face));
     row.style.setProperty("--unit-accent", unitAccent(u.id));
     return row;
   }));
@@ -25847,6 +25925,7 @@ function renderSysTab(host, ctx2) {
     field("CRT flicker", checkbox("flicker", settings.flicker), "flicker"),
     field("Readable mode (no scanlines, flicker, dithering or glitch; larger text)", checkbox("readableMode", settings.readableMode), "readableMode"),
     field("Reduce motion (also follows the system setting)", checkbox("reducedMotion", settings.reducedMotion), "reducedMotion"),
+    field("Dithered portraits (PDA)", checkbox("ditheredPortraits", settings.ditheredPortraits), "ditheredPortraits"),
     field("Device skin", select("deviceSkin", skinOptions, skinOptions.some(([v]) => v === settings.deviceSkin) ? settings.deviceSkin : ""), "deviceSkin"),
     h("h3", {}, "Campaign"),
     field("Desire/Bond defects", checkbox("desireBondDefects", settings.desireBondDefects), "desireBondDefects"),
@@ -27859,7 +27938,7 @@ function createApp(st, deps) {
     onTalk: (unitId, locationId) => void api.talkAt(unitId, locationId),
     onEndSlot: () => void api.endSlot(),
     onOpenPda: (tab) => tab ? shell.showTab(tab) : shell.setDevice(true),
-    avatar: (unit) => portrait(st, unit)
+    avatar: (unit) => unitPortrait(st, unit, portraitOptions(getSettings(st), 40))
   }));
   shell.registerTab(
     "map",
@@ -27908,7 +27987,8 @@ function createApp(st, deps) {
         const unit = state?.dms[unitId];
         if (unit?.some((m) => m.from !== "commander" && !m.read)) api.dispatch({ type: "dm/read", payload: { unitId } }, { expectChatId: st.getActiveChat()?.chatId });
       },
-      onAnswer: (proposalId, answer) => void act({ type: "proposal/answer", payload: { proposalId, answer } })
+      onAnswer: (proposalId, answer) => void act({ type: "proposal/answer", payload: { proposalId, answer } }),
+      avatar: (unit) => unitPortrait(st, unit, portraitOptions(getSettings(st), 32))
     })
   );
   shell.registerTab("log", (host) => renderLogTab(host, { getState: () => state }));

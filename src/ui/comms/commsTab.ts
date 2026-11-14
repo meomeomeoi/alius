@@ -19,6 +19,8 @@ export interface CommsTabCtx {
   /** P9: [GRANT] / [REFUSE] / [TALK] on her demand. */
   onAnswerDemand?: (demandId: string, answer: 'grant' | 'refuse') => void;
   onTalkDemand?: (demandId: string) => void;
+  /** P10: a small portrait for each contact row (absent = none). */
+  avatar?: (unit: Unit) => HTMLElement | null;
 }
 
 /** The open thread and the half-typed text survive a re-render (the tab redraws after every action). */
@@ -58,6 +60,8 @@ export function renderCommsTab(host: HTMLElement, ctx: CommsTabCtx): void {
     const n = unread(state, u.id);
     const dot = n > 0 ? h('span', { class: 'alius-dot', 'aria-label': `${n} unread` }, '●') : null;
     const row = h('button', { type: 'button', class: `alius-btn alius-contact${u.id === current ? ' is-open' : ''}`, 'data-unit': u.id, onclick: () => open(u.id) }, u.displayName, ' ', dot);
+    const face = ctx.avatar?.(u);
+    if (face) row.prepend(h('span', { class: 'alius-contact-avatar' }, face));
     row.style.setProperty('--unit-accent', unitAccent(u.id));
     return row;
   }));

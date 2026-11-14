@@ -70,6 +70,8 @@ export interface AliusSettings {
   readableMode: boolean;
   /** P10: nothing slides, fades, boots or types out (also on when the system asks for reduced motion). */
   reducedMotion: boolean;
+  /** P10: PDA portraits are ordered-dithered into the phosphor palette (off in readable mode). */
+  ditheredPortraits: boolean;
 }
 
 export const DEFAULT_SETTINGS: AliusSettings = {
@@ -127,6 +129,7 @@ export const DEFAULT_SETTINGS: AliusSettings = {
   deviceSkin: '',
   readableMode: false,
   reducedMotion: false,
+  ditheredPortraits: true,
 };
 
 const fieldSchemas = {
@@ -169,6 +172,7 @@ const fieldSchemas = {
   deviceSkin: z.string(),
   readableMode: z.boolean(),
   reducedMotion: z.boolean(),
+  ditheredPortraits: z.boolean(),
 };
 const budgetSchema = z.number().int().min(1);
 

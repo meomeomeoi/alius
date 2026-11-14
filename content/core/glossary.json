@@ -1098,5 +1098,14 @@
     "see": [
       "marker_tone"
     ]
+  },
+  {
+    "id": "setting_dithered_portraits",
+    "term": "Dithered portraits",
+    "short": "PDA portraits are redrawn in the three tones of your phosphor palette. Scenes keep full colour.",
+    "long": "The portrait is turned into a pattern of dots in the screen's own colours, like an old terminal image. It is switched off by Readable mode.",
+    "see": [
+      "setting_readable_mode"
+    ]
   }
 ]

@@ -14,6 +14,7 @@ import type { LoadResult } from '../../st/persistence';
 import type { ArcPath, ArcPathInfo } from '../../engine/arcs';
 import type { LeashKind } from '../../engine/state/types';
 import { stressBand } from '../../engine/combat/stress';
+import { portraitOptions, unitPortrait } from '../portrait/portrait';
 import { renderVoiceCard } from '../voice/voiceCard';
 import { analyzeAttrs, analyzeNative } from '../analyze/mark';
 import { dispositionFor } from '../../engine/worldOptions';
@@ -50,48 +51,6 @@ export interface SquadTabCtx {
 
 const unknown = (id: string) => `UNKNOWN ${id}`;
 const nameOf = (e: Entry | undefined, id: string) => (e ? String(e.name) : unknown(id));
-
-/** Sprite lookups per adapter: a found sprite is kept, a missing one is not asked for again for a while. */
-const spriteCache = new WeakMap<StAdapter, Map<string, { url: string | null; at: number }>>();
-const MISSING_SPRITE_RETRY_MS = 30_000;
-
-/** Neutral sprite if the card has one, else the avatar; a failed load also falls back to the avatar. */
-export function portrait(st: StAdapter, unit: Unit): HTMLElement | null {
-  if (unit.kind === 'grunt') {
-    return unit.asciiPortrait ? h('pre', { class: 'alius-ascii', 'aria-label': `Portrait of ${unit.displayName}` }, unit.asciiPortrait) : null;
-  }
-  if (!unit.cardRef) return null;
-  const card = unit.cardRef;
-  const avatar = st.getAvatarUrl(card);
-  let cache = spriteCache.get(st);
-  if (!cache) spriteCache.set(st, (cache = new Map()));
-  const known = cache.get(card);
-  const img = h('img', { class: 'alius-portrait', src: known?.url ?? avatar, alt: unit.displayName, width: '96', height: '96' }) as HTMLImageElement;
-  let usingAvatar = !known?.url;
-  if (known && (known.url || Date.now() - known.at < MISSING_SPRITE_RETRY_MS)) {
-    img.addEventListener('error', () => {
-      if (usingAvatar) return;
-      usingAvatar = true;
-      img.setAttribute('src', avatar);
-    });
-    return img;
-  }
-  img.addEventListener('error', () => {
-    if (usingAvatar) return;
-    usingAvatar = true;
-    img.setAttribute('src', avatar);
-  });
-  st.getSpriteUrl(card, 'neutral').then(
-    (url) => {
-      cache!.set(card, { url: url || null, at: Date.now() });
-      if (!url) return;
-      usingAvatar = false;
-      img.setAttribute('src', url);
-    },
-    () => {},
-  );
-  return img;
-}
 
 function defectBlock(reg: Registries, d: Unit['defects'][number]): HTMLElement {
   const def = reg.defects.get(d.id);
@@ -327,7 +286,7 @@ function unitBlock(unit: Unit, ctx: SquadTabCtx, state: CampaignState): HTMLElem
   return h(
     'article',
     { class: 'alius-unit' },
-    portrait(ctx.st, unit),
+    unitPortrait(ctx.st, unit, portraitOptions(ctx.settings())),
     h(
       'div',
       { class: 'alius-unit-body' },

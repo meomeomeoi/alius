@@ -374,15 +374,15 @@ schemas: `a css skin without cssPreset is rejected`; `an image skin whose screen
   - `unitPortrait(st: StAdapter, unit: Unit, o: { palette; dither: boolean; size?: number }): HTMLElement | null` (grunt → ASCII as today; named → `img`; when `dither`, the image is replaced by the cached dithered data URL once ready); `clearPortraitCache(): void` (tests).
   - Setting `ditheredPortraits` (default `true`); SYS › Display `Dithered portraits (PDA)`; glossary `setting_dithered_portraits`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `dither.test.ts`: a flat 50 % grey 4×4 image gives exactly the half of the pixels at `fg`-side levels predicted by the matrix (assert the exact output array for one 4×4 block); pure black → all bg, pure white → all fg; transparent pixels stay transparent; `PALETTE_RGB` equals the hex values parsed from `css/00-vars.css` (CSS helper). `portrait.test.ts` (stub `HTMLCanvasElement.prototype.getContext` with a fake 2D context): `the dithered portrait is cached per unit, palette and size` (second call does not draw); `a palette change makes a new one`; `a tainted canvas falls back and is not retried for 30 s` (`getImageData` throws `SecurityError`; the plain `img` stays; a second call within 30 s does not touch the canvas; after 30 s it tries again); `no canvas → plain image, no throw`; `dither off or readable mode → plain image` — **acceptance 5**; `grunts keep the ASCII portrait`. squad: the unit file shows the dithered image when the setting is on.
 
-- [ ] **Step 2: Run** → FAIL.
+- [x] **Step 2: Run** → FAIL.
 
-- [ ] **Step 3: Implement.** Draw the sprite into a `size × size` canvas (`object-fit: cover` crop from the top centre, default size 96), `getImageData` → `ditherBayer4` → `putImageData` → `toDataURL('image/png')`. Display with `image-rendering: pixelated`.
+- [x] **Step 3: Implement.** Draw the sprite into a `size × size` canvas (`object-fit: cover` crop from the top centre, default size 96), `getImageData` → `ditherBayer4` → `putImageData` → `toDataURL('image/png')`. Display with `image-rendering: pixelated`.
 
-- [ ] **Step 4: Run** `npm test` → PASS. **Step 5: Commit** `feat(ui): ordered-dither portraits in the phosphor palette`
+- [x] **Step 4: Run** `npm test` → PASS. **Step 5: Commit** `feat(ui): ordered-dither portraits in the phosphor palette`
 
 ---
 

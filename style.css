@@ -1560,6 +1560,23 @@
   color: var(--alius-dim);
 }
 
+/* P10: the dithered portrait is a small bitmap: keep its pixels crisp */
+#alius-shell .alius-portrait-dithered {
+  image-rendering: pixelated;
+}
+
+#alius-shell .alius-contact-avatar {
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+
+#alius-shell .alius-contact-avatar img {
+  width: 24px;
+  height: 24px;
+  object-fit: cover;
+}
+
 /* Status header, OPS and BASE tabs (P2). Palette variables only. */
 #alius-shell .alius-status {
   flex: none;
