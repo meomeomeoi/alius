@@ -134,7 +134,7 @@ Rulings taken while planning; those marked **user** were answered by the user on
   - `src/engine/hub.ts`: `fnv1a(s: string): number`; `type Whereabout = { unitId: string; roomId: string | null; reason: 'injured' | 'confined' | 'duty' | 'night' | 'routine' | 'expedition' | 'nowhere' }`; `whereabouts(state: CampaignState, reg: Registries): Whereabout[]` (living units in squad order; `roomId: null` with `expedition`, or `nowhere` when no room qualifies).
   - `src/ui/hub/model.ts`: `type MarkerTone = 'danger' | 'bond' | 'trust' | 'affinity' | 'warn' | 'neutral'`; `markerTone(state, reg, unit: Unit): MarkerTone`; `TONE_GLYPH: Record<MarkerTone, string>` (`! ♥ + * ~` and `·`); `currentObjective(state, reg): { text: string; dueDays: number | null; missionId: string } | null`; `type TonightItem = { kind: 'knock' | 'dm' | 'demand' | 'intake' | 'deadline' | 'warning'; text: string; unitId?: string; tone: MarkerTone; analyze: string }`; `tonightItems(state, reg): TonightItem[]` (≤ 6); `endSlotBlock(state): string | null`; `latestOversight(state): LeashLogEntry | null` (newest entry with `day ≥ state.day − 1`).
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `hub.test.ts` (core content, `campaign(reg, 4)`):
 ```ts
@@ -148,11 +148,11 @@ for (const w of a.filter((x) => x.reason === 'routine')) expect(roomWeight(reg, 
 
 `hubModel.test.ts`: tone table — stress 85 → `danger`; `lover` → `bond`; `friend` → `trust`; `comrade` with Affinity 70 → `affinity`; `resentful` → `warn`; stress 55 `comrade` → `warn`; fresh `stranger` → `neutral`; injured `lover` → `danger` (danger wins). `currentObjective`: spine-beat mission wins over a nearer deadline; no missions → `null`; `dueDays` = `deadlineDay − day`. `tonightItems`: a queued `talk` night entry gives `Rhea will knock tonight.`; a queued `desertion` entry gives **nothing** (hidden kind); two unread DMs give `Rhea: 2 unread messages.`; more than 6 sources → 6 items in the order of the ruling; the item texts pass the commander-pronoun guard of `tests/content/pronouns.test.ts`. `endSlotBlock`: open scene → `A conversation is open.`; `pendingScene` → `A talk is waiting for its scene.`; expedition → `The squad is out.`; presented dilemma → `A decision is waiting.`; `calendar.nightEvent` set → `Someone is at the door.`; read-only is handled by the caller; otherwise `null`. `latestOversight`: an entry from 2 days ago → `null`.
 
-- [ ] **Step 2: Run** `npx vitest run tests/engine/hub.test.ts tests/ui/hubModel.test.ts` → FAIL.
+- [x] **Step 2: Run** `npx vitest run tests/engine/hub.test.ts tests/ui/hubModel.test.ts` → FAIL.
 
-- [ ] **Step 3: Implement** as in the rulings. `whereabouts` sorts candidate rooms in registry order before the weighted pick so the result does not depend on `Map` insertion quirks across packs.
+- [x] **Step 3: Implement** as in the rulings. `whereabouts` sorts candidate rooms in registry order before the weighted pick so the result does not depend on `Map` insertion quirks across packs.
 
-- [ ] **Step 4: Run** `npm test` → PASS. **Step 5: Commit** `feat(hub): derived whereabouts, marker tones, objective and tonight models`
+- [x] **Step 4: Run** `npm test` → PASS. **Step 5: Commit** `feat(hub): derived whereabouts, marker tones, objective and tonight models`
 
 ---
 
