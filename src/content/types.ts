@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-/** Registry names reserved by P0 (`marks` stays empty in v1; see overview §10). `locations` was added by P3, `orders`, `synergies`, `recipes` and `lootTables` by P4, `glossary` by P7a, `commanderTraits`, `tastes`, `presence` and `imageConsistency` by P7, `worldOptions`, `dispositionLevels`, `stanceEffects` and `worldPresets` by P8, `commandStances`, `punishments`, `demandTemplates` and `reputations` by P9, `hubRooms` by P10. */
+/** Registry names reserved by P0 (`marks` stays empty in v1; see overview §10). `locations` was added by P3, `orders`, `synergies`, `recipes` and `lootTables` by P4, `glossary` by P7a, `commanderTraits`, `tastes`, `presence` and `imageConsistency` by P7, `worldOptions`, `dispositionLevels`, `stanceEffects` and `worldPresets` by P8, `commandStances`, `punishments`, `demandTemplates` and `reputations` by P9, `hubRooms` and `deviceSkins` by P10. */
 export const REGISTRY_NAMES = [
   'roles', 'skills', 'signatures', 'statuses', 'defects', 'items', 'affixes', 'enemies',
   'enemyCategories', 'regions', 'nodeTypes', 'activities', 'facilities', 'crimes',
@@ -20,8 +20,8 @@ export const REGISTRY_NAMES = [
   'worldOptions', 'dispositionLevels', 'stanceEffects', 'worldPresets',
   // P9 (`demandTemplates` and `reputations` get their schemas and files in chunk (c))
   'commandStances', 'punishments', 'demandTemplates', 'reputations',
-  // P10 (`deviceSkins` and `uiSounds` come with later chunks)
-  'hubRooms',
+  // P10 (`uiSounds` comes with chunk (c))
+  'hubRooms', 'deviceSkins',
 ] as const;
 
 export type RegistryName = (typeof REGISTRY_NAMES)[number];

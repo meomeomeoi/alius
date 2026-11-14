@@ -1062,5 +1062,14 @@
       "whereabouts",
       "hub"
     ]
+  },
+  {
+    "id": "setting_device_skin",
+    "term": "Device skin",
+    "short": "The casing of your PDA. It follows your corporation unless you pick another here. It changes nothing in the game.",
+    "long": "Each corporation issues its own handset: standard CCP surplus, Kestrel-Ward steel or Vesper ceramic. Leave this on the campaign's own to follow your corporation, or pick any casing you like. The screen inside looks the same in every one.",
+    "see": [
+      "pda_device"
+    ]
   }
 ]

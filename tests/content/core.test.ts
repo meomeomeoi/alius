@@ -831,3 +831,25 @@ describe('core content pack: P10 hub rooms', () => {
     }
   });
 });
+
+describe('core content pack: P10 device skins', () => {
+  it('ccp_standard, kestrel and vesper are css skins bound to the corporation they are named for', async () => {
+    const { registries: r } = await load();
+    expect([...r.deviceSkins.keys()]).toEqual(['ccp_standard', 'kestrel', 'vesper']);
+    expect(r.deviceSkins.get('ccp_standard')!.bindTo).toBeUndefined();
+    expect(r.deviceSkins.get('kestrel')!.bindTo).toEqual({ corporationId: 'kestrel' });
+    expect(r.deviceSkins.get('vesper')!.bindTo).toEqual({ corporationId: 'vesper' });
+    for (const skin of r.deviceSkins.values()) {
+      expect(skin.kind, String(skin.id)).toBe('css');
+      expect(skin.cssPreset, String(skin.id)).toBe(skin.id);
+    }
+    expect(r.deviceSkins.get('ccp_standard')!.ledColor).toBe('#ffb000');
+    expect(r.deviceSkins.get('kestrel')!.label).toBe('KESTREL-WARD · KW-7');
+  });
+
+  it('the device skin setting has a glossary entry', async () => {
+    const { registries: r } = await load();
+    expect(r.glossary.has('setting_device_skin')).toBe(true);
+  });
+});
+

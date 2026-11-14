@@ -1,0 +1,34 @@
+[
+  {
+    "id": "ccp_standard",
+    "name": "CCP standard issue",
+    "description": "Corporate-surplus handheld: olive-grey shell, rubber bumpers, screws someone has already tried to open.",
+    "kind": "css",
+    "cssPreset": "ccp_standard",
+    "ledColor": "#ffb000",
+    "accent": "#d8cb98",
+    "label": "CCP-PDA MK.III"
+  },
+  {
+    "id": "kestrel",
+    "name": "Kestrel-Ward KW-7",
+    "description": "Steel casing, hazard stripe, hex bolts and the grime of a quota floor.",
+    "kind": "css",
+    "cssPreset": "kestrel",
+    "ledColor": "#ff3b1f",
+    "accent": "#e8ad0c",
+    "label": "KESTREL-WARD · KW-7",
+    "bindTo": { "corporationId": "kestrel" }
+  },
+  {
+    "id": "vesper",
+    "name": "Vesper Somatics",
+    "description": "White ceramic and a teal light ring. No screws: it is not meant to be opened.",
+    "kind": "css",
+    "cssPreset": "vesper",
+    "ledColor": "#3fd6c4",
+    "accent": "#8fb9b2",
+    "label": "VESPER",
+    "bindTo": { "corporationId": "vesper" }
+  }
+]

@@ -64,6 +64,8 @@ export interface AliusSettings {
   analyzeAnimation: 'full' | 'short' | 'off';
   /** P7a: hover time before the panel opens, ms (100–1500). */
   analyzeHoverDelay: number;
+  /** P10: a `deviceSkins` id for the PDA casing; empty follows the campaign (an id the pack lost reads as empty at use). */
+  deviceSkin: string;
 }
 
 export const DEFAULT_SETTINGS: AliusSettings = {
@@ -118,6 +120,7 @@ export const DEFAULT_SETTINGS: AliusSettings = {
   analyzeAnimation: 'full',
   analyzeHoverDelay: 250,
   firstImpressionTau: 7,
+  deviceSkin: '',
 };
 
 const fieldSchemas = {
@@ -157,6 +160,7 @@ const fieldSchemas = {
   analyzeAnimation: z.enum(['full', 'short', 'off']),
   analyzeHoverDelay: z.number().int().min(100).max(1500),
   firstImpressionTau: z.number().int().min(1).max(30),
+  deviceSkin: z.string(),
 };
 const budgetSchema = z.number().int().min(1);
 

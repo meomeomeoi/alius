@@ -9,6 +9,7 @@ import type { StAdapter } from '../../st/adapter';
 import { exportCampaign, importCampaign, type LoadResult } from '../../st/persistence';
 import { analyzeAttrs, analyzeNative } from '../analyze/mark';
 import { worldChoice } from '../../engine/worldOptions';
+import { pickSkin } from '../device/skins';
 import { h } from '../dom';
 import type { ModalOpts } from './modal';
 import type { ToastKind } from './toast';
@@ -146,6 +147,12 @@ export function renderSysTab(host: HTMLElement, ctx: SysCtx): void {
     ['', '(none — use main model if fallback is on)'],
     ...profiles.map((p): [string, string] => [p.id, `${p.name} (${p.api}${p.model ? ' / ' + p.model : ''})`]),
   ];
+  // P10: the casing of the PDA; empty follows the campaign's corporation
+  const skinReg = ctx.getRegistries?.();
+  const skinOptions: Array<[string, string]> = [
+    ['', skinReg ? `Follow the campaign (${String(pickSkin(ctx.getState(), skinReg, '').name)})` : 'Follow the campaign'],
+    ...[...(skinReg?.deviceSkins.values() ?? [])].map((s): [string, string] => [String(s.id), String(s.name)]),
+  ];
   const budgetInputs = CALL_TYPE_IDS.map((id) =>
     field(
       id,
@@ -172,6 +179,7 @@ export function renderSysTab(host: HTMLElement, ctx: SysCtx): void {
     field('Palette', select('palette', [['amber', 'amber'], ['green', 'green'], ['white', 'white']], settings.palette), 'palette'),
     field('Scanlines', checkbox('scanlines', settings.scanlines), 'scanlines'),
     field('CRT flicker', checkbox('flicker', settings.flicker), 'flicker'),
+    field('Device skin', select('deviceSkin', skinOptions, skinOptions.some(([v]) => v === settings.deviceSkin) ? settings.deviceSkin : ''), 'deviceSkin'),
     h('h3', {}, 'Campaign'),
     field('Desire/Bond defects', checkbox('desireBondDefects', settings.desireBondDefects), 'desireBondDefects'),
     field('Show raw values', checkbox('showRawValues', settings.showRawValues), 'showRawValues'),

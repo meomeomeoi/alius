@@ -200,8 +200,9 @@ const SETTING_LOCKS: Record<string, (state: CampaignState, settings: Record<stri
   difficulty: (state) => (state.combat ? 'Locked while a combat is open' : undefined),
 };
 
-function settingValue(key: string, value: unknown, state: CampaignState): string {
-  if (key === 'difficulty') return String(state.difficulty);
+function settingValue(key: string, value: unknown, state: CampaignState | null): string {
+  if (key === 'difficulty') return state ? String(state.difficulty) : 'set per campaign';
+  if (key === 'deviceSkin') return value === '' || value === undefined ? 'follows the campaign' : String(value);
   if (key === 'budgets') return 'per call type';
   if (typeof value === 'boolean') return value ? 'on' : 'off';
   if (key === 'mechanicProfileId') return value === '' || value === undefined ? 'none' : String(value);
@@ -216,7 +217,7 @@ const settingProvider: AnalyzeProvider = (subject, env) => {
   if (!state) {
     // settings are global; only the per-campaign difficulty needs a campaign
     if (key === 'difficulty') return { lines: ['Set per campaign.'] };
-    const lines = [`Now: ${typeof settings[key] === 'boolean' ? (settings[key] ? 'on' : 'off') : key === 'budgets' ? 'per call type' : key === 'mechanicProfileId' && settings[key] === '' ? 'none' : SETTING_LABELS[key]?.[String(settings[key])] ?? String(settings[key])}`];
+    const lines = [`Now: ${settingValue(key, settings[key], null)}`];
     if (!SILENT_SETTINGS.has(key)) lines.push('Takes effect at once.');
     return { lines };
   }

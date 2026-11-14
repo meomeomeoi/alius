@@ -178,4 +178,15 @@ describe('settings', () => {
     fresh.settings = { analyzeHoverDelay: 5000, analyzeAnimation: 'x' };
     expect(getSettings(fresh)).toMatchObject({ analyzeHoverDelay: 250, analyzeAnimation: 'full' });
   });
+
+  it('deviceSkin defaults to empty and keeps any string', () => {
+    const st = new FakeStAdapter();
+    expect(getSettings(st).deviceSkin).toBe('');
+    st.settings = { deviceSkin: 'vesper' };
+    expect(getSettings(st).deviceSkin).toBe('vesper');
+    st.settings = { deviceSkin: 'some_pack_skin_that_is_gone' };
+    expect(getSettings(st).deviceSkin).toBe('some_pack_skin_that_is_gone');
+    st.settings = { deviceSkin: 7 };
+    expect(getSettings(st).deviceSkin).toBe('');
+  });
 });

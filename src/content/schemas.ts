@@ -1440,6 +1440,50 @@ export const HubRoomSchema = BaseEntrySchema.extend({
 
 Object.assign(registrySchemas, { hubRooms: HubRoomSchema });
 
+// ---------------------------------------------------------------------------------------------
+// P10: device skins
+
+const hex = z.string().regex(/^#[0-9a-fA-F]{6}$/, 'a colour is #rrggbb');
+export const CSS_PRESETS = ['ccp_standard', 'kestrel', 'vesper'] as const;
+
+/**
+ * The casing of the PDA. A `css` skin names one of the presets the stylesheet draws; an `image` skin is a rendered frame
+ * with a transparent cut-out, and `screenRect` (pixels in the frame image) says where the screen sits, so the screen
+ * keeps its place at any window size. Code reads skins by `bindTo` and `kind`, never by id (the fallback `ccp_standard`
+ * excepted).
+ */
+export const DeviceSkinSchema = BaseEntrySchema.extend({
+  name: str,
+  description: str.max(DESCRIPTION_MAX),
+  kind: z.enum(['css', 'image']),
+  cssPreset: z.enum(CSS_PRESETS).optional(),
+  frameImage: str.optional(),
+  frameSize: z.object({ w: int.min(1), h: int.min(1) }).strict().optional(),
+  screenRect: z.object({ x: int.min(0), y: int.min(0), w: int.min(1), h: int.min(1) }).strict().optional(),
+  overlay: z.object({ image: str, blend: z.enum(['overlay', 'multiply']), opacity: z.number().min(0).max(1) }).strict().optional(),
+  ledColor: hex,
+  accent: hex,
+  /** The model name engraved on the casing. */
+  label: str.optional(),
+  /** At most one key: the corporation, commander trait or unlock flag that brings the skin. */
+  bindTo: z.object({ corporationId: str.optional(), traitId: str.optional(), unlockFlag: str.optional() }).strict()
+    .refine((b) => Object.values(b).filter((v) => v !== undefined).length <= 1, 'bindTo takes at most one of corporationId, traitId and unlockFlag').optional(),
+}).strict().superRefine((skin, ctx) => {
+  const issue = (path: Array<string | number>, message: string) => ctx.addIssue({ code: 'custom', path, message });
+  if (skin.kind === 'css') {
+    if (skin.cssPreset === undefined) issue(['cssPreset'], 'a css skin needs a cssPreset');
+    return;
+  }
+  if (skin.frameImage === undefined) issue(['frameImage'], 'an image skin needs a frameImage');
+  if (skin.frameSize === undefined) issue(['frameSize'], 'an image skin needs a frameSize');
+  if (skin.screenRect === undefined) issue(['screenRect'], 'an image skin needs a screenRect');
+  if (skin.frameSize && skin.screenRect && (skin.screenRect.x + skin.screenRect.w > skin.frameSize.w || skin.screenRect.y + skin.screenRect.h > skin.frameSize.h)) {
+    issue(['screenRect'], 'the screenRect must stay inside the frame (x + w and y + h within frameSize)');
+  }
+});
+
+Object.assign(registrySchemas, { deviceSkins: DeviceSkinSchema });
+
 /** Player-visible registries whose entries carry an optional `description` (skills and statuses already require one). */
 export const DESCRIBED_REGISTRIES = [
   'roles', 'skills', 'signatures', 'statuses', 'defects', 'items', 'affixes', 'enemies',
@@ -1452,7 +1496,7 @@ export const DESCRIBED_REGISTRIES = [
   // P9
   'commandStances', 'punishments', 'demandTemplates', 'reputations',
   // P10
-  'hubRooms',
+  'hubRooms', 'deviceSkins',
 ] as const satisfies readonly RegistryName[];
 
 /** Adds the optional `description` rule to a registry schema without changing its shape. */

@@ -236,15 +236,15 @@ Update existing shell/app tests that click tabs right after `open()` to call `sh
   - Setting `deviceSkin` (default `''`, schema `z.string()`; an id not in the registry reads as `''` at use, not at load, so a removed pack does not lose the choice).
   - SYS › Display: `Device skin` select: `Follow the campaign ({resolved name})` + every skin by name; `field(…, 'deviceSkin')`; each option carries nothing extra (the field is the analyzable unit).
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 schemas: `a css skin without cssPreset is rejected`; `an image skin whose screenRect leaves the frame is rejected` (`frameSize 1000×1600`, `x 900, w 200`); `bindTo with two keys is rejected`; loader: `an unknown corporationId in bindTo is an error`; `a pack without ccp_standard is an error`. core: `deviceSkins` has `ccp_standard` (no `bindTo`), `kestrel` (`bindTo.corporationId: 'kestrel'`), `vesper` (`bindTo.corporationId: 'vesper'`), all `kind: 'css'`. `deviceSkins.test.ts`: `a Kestrel campaign gets kestrel, a Vesper campaign vesper` — **acceptance 3**; `an Aurum or null corporation gets ccp_standard`; `the override wins`; `an override that is not a skin is ignored`; `a trait binding beats the corporation` and `a flag binding beats the corporation` (fixture skins); `no campaign → override or ccp_standard`; `screenBox` of `{ frameSize: 1000×1600, screenRect: { x: 100, y: 240, w: 800, h: 1200 } }` is `{ left: '10%', top: '15%', width: '80%', height: '75%' }`. settings: `deviceSkin defaults to empty and keeps any string`.
 
-- [ ] **Step 2: Run** → FAIL.
+- [x] **Step 2: Run** → FAIL.
 
-- [ ] **Step 3: Implement.** Core entries: `ccp_standard` — name `CCP standard issue`, label `CCP-PDA MK.III`, LED `#ffb000`, accent `#d8cb98`, description `Corporate-surplus handheld: olive-grey shell, rubber bumpers, screws someone has already tried to open.`; `kestrel` — name `Kestrel-Ward KW-7`, label `KESTREL-WARD · KW-7`, LED `#ff3b1f`, accent `#e8ad0c`, description `Steel casing, hazard stripe, hex bolts and the grime of a quota floor.`; `vesper` — name `Vesper Somatics`, label `VESPER`, LED `#3fd6c4`, accent `#8fb9b2`, description `White ceramic and a teal light ring. No screws: it is not meant to be opened.` Glossary: `setting_device_skin`.
+- [x] **Step 3: Implement.** Core entries: `ccp_standard` — name `CCP standard issue`, label `CCP-PDA MK.III`, LED `#ffb000`, accent `#d8cb98`, description `Corporate-surplus handheld: olive-grey shell, rubber bumpers, screws someone has already tried to open.`; `kestrel` — name `Kestrel-Ward KW-7`, label `KESTREL-WARD · KW-7`, LED `#ff3b1f`, accent `#e8ad0c`, description `Steel casing, hazard stripe, hex bolts and the grime of a quota floor.`; `vesper` — name `Vesper Somatics`, label `VESPER`, LED `#3fd6c4`, accent `#8fb9b2`, description `White ceramic and a teal light ring. No screws: it is not meant to be opened.` Glossary: `setting_device_skin`.
 
-- [ ] **Step 4: Run** `npm test` → PASS. **Step 5: Commit** `feat(device): deviceSkins registry, skin choice and the screen box`
+- [x] **Step 4: Run** `npm test` → PASS. **Step 5: Commit** `feat(device): deviceSkins registry, skin choice and the screen box`
 
 ---
 

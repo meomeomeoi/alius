@@ -605,6 +605,23 @@ registerChecks('hubRooms', (entry, regs) => {
   return out;
 });
 
+// P10: device skins bind to a corporation, a trait or a flag; the fallback skin must exist
+registerRefs('deviceSkins', (entry) => {
+  const out: Ref[] = [];
+  const bind = (entry.bindTo ?? {}) as { corporationId?: string; traitId?: string; unlockFlag?: string };
+  if (typeof bind.corporationId === 'string') out.push({ registry: 'corporations', id: bind.corporationId, path: 'bindTo.corporationId' });
+  if (typeof bind.traitId === 'string') out.push({ registry: 'commanderTraits', id: bind.traitId, path: 'bindTo.traitId' });
+  if (typeof bind.unlockFlag === 'string') out.push({ registry: 'flags', id: bind.unlockFlag, path: 'bindTo.unlockFlag' });
+  return out;
+});
+
+registerChecks('deviceSkins', (entry, regs) => {
+  const first = [...regs.deviceSkins.values()][0];
+  return first?.id === entry.id && !regs.deviceSkins.has('ccp_standard')
+    ? [{ path: 'id', message: 'no skin "ccp_standard" (the fallback skin is needed whenever a pack ships skins)' }]
+    : [];
+});
+
 // ---------------------------------------------------------------------------------------------
 // P7a: glossary entries and `[[links]]` in descriptions
 

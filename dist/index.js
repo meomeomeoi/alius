@@ -12438,8 +12438,9 @@ var REGISTRY_NAMES = [
   "punishments",
   "demandTemplates",
   "reputations",
-  // P10 (`deviceSkins` and `uiSounds` come with later chunks)
-  "hubRooms"
+  // P10 (`uiSounds` comes with chunk (c))
+  "hubRooms",
+  "deviceSkins"
 ];
 var PackManifestSchema = external_exports.object({
   id: external_exports.string().min(1),
@@ -13860,6 +13861,37 @@ var HubRoomSchema = BaseEntrySchema.extend({
   commanderCell: external_exports.boolean().optional()
 }).strict();
 Object.assign(registrySchemas, { hubRooms: HubRoomSchema });
+var hex = external_exports.string().regex(/^#[0-9a-fA-F]{6}$/, "a colour is #rrggbb");
+var CSS_PRESETS = ["ccp_standard", "kestrel", "vesper"];
+var DeviceSkinSchema = BaseEntrySchema.extend({
+  name: str2,
+  description: str2.max(DESCRIPTION_MAX),
+  kind: external_exports.enum(["css", "image"]),
+  cssPreset: external_exports.enum(CSS_PRESETS).optional(),
+  frameImage: str2.optional(),
+  frameSize: external_exports.object({ w: int2.min(1), h: int2.min(1) }).strict().optional(),
+  screenRect: external_exports.object({ x: int2.min(0), y: int2.min(0), w: int2.min(1), h: int2.min(1) }).strict().optional(),
+  overlay: external_exports.object({ image: str2, blend: external_exports.enum(["overlay", "multiply"]), opacity: external_exports.number().min(0).max(1) }).strict().optional(),
+  ledColor: hex,
+  accent: hex,
+  /** The model name engraved on the casing. */
+  label: str2.optional(),
+  /** At most one key: the corporation, commander trait or unlock flag that brings the skin. */
+  bindTo: external_exports.object({ corporationId: str2.optional(), traitId: str2.optional(), unlockFlag: str2.optional() }).strict().refine((b) => Object.values(b).filter((v) => v !== void 0).length <= 1, "bindTo takes at most one of corporationId, traitId and unlockFlag").optional()
+}).strict().superRefine((skin, ctx2) => {
+  const issue = (path, message) => ctx2.addIssue({ code: "custom", path, message });
+  if (skin.kind === "css") {
+    if (skin.cssPreset === void 0) issue(["cssPreset"], "a css skin needs a cssPreset");
+    return;
+  }
+  if (skin.frameImage === void 0) issue(["frameImage"], "an image skin needs a frameImage");
+  if (skin.frameSize === void 0) issue(["frameSize"], "an image skin needs a frameSize");
+  if (skin.screenRect === void 0) issue(["screenRect"], "an image skin needs a screenRect");
+  if (skin.frameSize && skin.screenRect && (skin.screenRect.x + skin.screenRect.w > skin.frameSize.w || skin.screenRect.y + skin.screenRect.h > skin.frameSize.h)) {
+    issue(["screenRect"], "the screenRect must stay inside the frame (x + w and y + h within frameSize)");
+  }
+});
+Object.assign(registrySchemas, { deviceSkins: DeviceSkinSchema });
 var DESCRIBED_REGISTRIES = [
   "roles",
   "skills",
@@ -13894,7 +13926,8 @@ var DESCRIBED_REGISTRIES = [
   "demandTemplates",
   "reputations",
   // P10
-  "hubRooms"
+  "hubRooms",
+  "deviceSkins"
 ];
 function withDescription(schema) {
   return schema.superRefine((entry, ctx2) => {
@@ -19014,7 +19047,8 @@ var DEFAULT_SETTINGS = {
   analyzeEnabled: true,
   analyzeAnimation: "full",
   analyzeHoverDelay: 250,
-  firstImpressionTau: 7
+  firstImpressionTau: 7,
+  deviceSkin: ""
 };
 var fieldSchemas = {
   mechanicProfileId: external_exports.string(),
@@ -19052,7 +19086,8 @@ var fieldSchemas = {
   analyzeEnabled: external_exports.boolean(),
   analyzeAnimation: external_exports.enum(["full", "short", "off"]),
   analyzeHoverDelay: external_exports.number().int().min(100).max(1500),
-  firstImpressionTau: external_exports.number().int().min(1).max(30)
+  firstImpressionTau: external_exports.number().int().min(1).max(30),
+  deviceSkin: external_exports.string()
 };
 var budgetSchema = external_exports.number().int().min(1);
 var isObj23 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -24801,7 +24836,8 @@ var SETTING_LOCKS = {
   difficulty: (state) => state.combat ? "Locked while a combat is open" : void 0
 };
 function settingValue(key, value, state) {
-  if (key === "difficulty") return String(state.difficulty);
+  if (key === "difficulty") return state ? String(state.difficulty) : "set per campaign";
+  if (key === "deviceSkin") return value === "" || value === void 0 ? "follows the campaign" : String(value);
   if (key === "budgets") return "per call type";
   if (typeof value === "boolean") return value ? "on" : "off";
   if (key === "mechanicProfileId") return value === "" || value === void 0 ? "none" : String(value);
@@ -24814,7 +24850,7 @@ var settingProvider = (subject, env) => {
   if (key !== "difficulty" && !(key in settings)) return null;
   if (!state) {
     if (key === "difficulty") return { lines: ["Set per campaign."] };
-    const lines2 = [`Now: ${typeof settings[key] === "boolean" ? settings[key] ? "on" : "off" : key === "budgets" ? "per call type" : key === "mechanicProfileId" && settings[key] === "" ? "none" : SETTING_LABELS[key]?.[String(settings[key])] ?? String(settings[key])}`];
+    const lines2 = [`Now: ${settingValue(key, settings[key], null)}`];
     if (!SILENT_SETTINGS.has(key)) lines2.push("Takes effect at once.");
     return { lines: lines2 };
   }
@@ -25411,6 +25447,33 @@ function createRouter() {
   };
 }
 
+// src/ui/device/skins.ts
+var FALLBACK_SKIN = "ccp_standard";
+var BUILT_IN = {
+  id: FALLBACK_SKIN,
+  name: "CCP standard issue",
+  description: "Corporate-surplus handheld.",
+  kind: "css",
+  cssPreset: "ccp_standard",
+  ledColor: "#ffb000",
+  accent: "#d8cb98",
+  label: "CCP-PDA MK.III"
+};
+function pickSkin(state, reg, override) {
+  const skins = [...reg.deviceSkins.values()];
+  const chosen = override ? reg.deviceSkins.get(override) : void 0;
+  if (chosen) return chosen;
+  const fallback = reg.deviceSkins.get(FALLBACK_SKIN) ?? BUILT_IN;
+  if (!state) return fallback;
+  const bound = (key, holds2) => skins.find((s) => {
+    const v = s.bindTo?.[key];
+    return typeof v === "string" && holds2(v);
+  });
+  const traits = traitIds(state);
+  const flags = /* @__PURE__ */ new Set([...state.world.flags, ...state.commander.flags]);
+  return bound("traitId", (v) => traits.includes(v)) ?? bound("unlockFlag", (v) => flags.has(v)) ?? bound("corporationId", (v) => v === state.commander.corporationId) ?? fallback;
+}
+
 // src/ui/shell/sysTab.ts
 var errText2 = (e) => e instanceof Error ? e.message : String(e);
 function field(label2, control, setting) {
@@ -25520,6 +25583,11 @@ function renderSysTab(host, ctx2) {
     ["", "(none \u2014 use main model if fallback is on)"],
     ...profiles.map((p) => [p.id, `${p.name} (${p.api}${p.model ? " / " + p.model : ""})`])
   ];
+  const skinReg = ctx2.getRegistries?.();
+  const skinOptions = [
+    ["", skinReg ? `Follow the campaign (${String(pickSkin(ctx2.getState(), skinReg, "").name)})` : "Follow the campaign"],
+    ...[...skinReg?.deviceSkins.values() ?? []].map((s) => [String(s.id), String(s.name)])
+  ];
   const budgetInputs = CALL_TYPE_IDS.map(
     (id) => field(
       id,
@@ -25545,6 +25613,7 @@ function renderSysTab(host, ctx2) {
     field("Palette", select("palette", [["amber", "amber"], ["green", "green"], ["white", "white"]], settings.palette), "palette"),
     field("Scanlines", checkbox("scanlines", settings.scanlines), "scanlines"),
     field("CRT flicker", checkbox("flicker", settings.flicker), "flicker"),
+    field("Device skin", select("deviceSkin", skinOptions, skinOptions.some(([v]) => v === settings.deviceSkin) ? settings.deviceSkin : ""), "deviceSkin"),
     h("h3", {}, "Campaign"),
     field("Desire/Bond defects", checkbox("desireBondDefects", settings.desireBondDefects), "desireBondDefects"),
     field("Show raw values", checkbox("showRawValues", settings.showRawValues), "showRawValues"),
@@ -28285,6 +28354,18 @@ registerChecks("hubRooms", (entry, regs) => {
     }
   }
   return out;
+});
+registerRefs("deviceSkins", (entry) => {
+  const out = [];
+  const bind = entry.bindTo ?? {};
+  if (typeof bind.corporationId === "string") out.push({ registry: "corporations", id: bind.corporationId, path: "bindTo.corporationId" });
+  if (typeof bind.traitId === "string") out.push({ registry: "commanderTraits", id: bind.traitId, path: "bindTo.traitId" });
+  if (typeof bind.unlockFlag === "string") out.push({ registry: "flags", id: bind.unlockFlag, path: "bindTo.unlockFlag" });
+  return out;
+});
+registerChecks("deviceSkins", (entry, regs) => {
+  const first2 = [...regs.deviceSkins.values()][0];
+  return first2?.id === entry.id && !regs.deviceSkins.has("ccp_standard") ? [{ path: "id", message: 'no skin "ccp_standard" (the fallback skin is needed whenever a pack ships skins)' }] : [];
 });
 function resolveLink(target) {
   const i = target.indexOf(":");

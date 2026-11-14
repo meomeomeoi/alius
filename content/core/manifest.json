@@ -47,6 +47,7 @@
     "punishments": "punishments.json",
     "demandTemplates": "demandTemplates.json",
     "reputations": "reputations.json",
-    "hubRooms": "hubRooms.json"
+    "hubRooms": "hubRooms.json",
+    "deviceSkins": "deviceSkins.json"
   }
 }
