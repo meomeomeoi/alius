@@ -260,7 +260,7 @@ export function renderCalibration(host: HTMLElement, ctx: CalibrationCtx): void 
             title: same !== undefined ? `Same as ${same > 0 ? '+' : ''}${same}: the scale ends here.` : String(level.description),
             ...analyzeNative(`dispositionLevels:${level.id}`),
             onclick: () => { if (same === undefined) onUpdate({ dispositionOffset: o }); },
-          }, String(level.name));
+          }, `${o > 0 ? '+' : o < 0 ? '−' : ''}${Math.abs(o)} ${String(level.name)}`);
         })),
         h('label', { class: 'alius-field' }, h('span', { class: 'alius-field-label' }, 'Reason'),
           textInput('disposition-reason', ch.dispositionReason ?? '', 160, (v) => onUpdate({ dispositionReason: v }))),

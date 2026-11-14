@@ -21475,7 +21475,7 @@ function renderCalibration(host, ctx2) {
             onclick: () => {
               if (same === void 0) onUpdate({ dispositionOffset: o });
             }
-          }, String(level.name));
+          }, `${o > 0 ? "+" : o < 0 ? "\u2212" : ""}${Math.abs(o)} ${String(level.name)}`);
         })),
         h(
           "label",
@@ -26775,6 +26775,11 @@ function attachAnalyzer(root, deps) {
     if (!enabled() || e.pointerType === "touch") return;
     const t = ev.target;
     if (!t || typeof t.closest !== "function") return;
+    const titled = t.closest("[data-analyze][title]");
+    if (titled && root.contains(titled)) {
+      titled.setAttribute("data-title", titled.getAttribute("title") ?? "");
+      titled.removeAttribute("title");
+    }
     if (panelEl?.contains(t)) {
       closeTimer = clear(closeTimer);
       return;

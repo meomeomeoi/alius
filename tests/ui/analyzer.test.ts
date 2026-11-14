@@ -787,3 +787,18 @@ describe('review minors: keys and focus', () => {
     expect(css).toMatch(/span\[data-analyze\][^{]*\{[^}]*user-select:\s*none/);
   });
 });
+
+describe('native tooltips (title) next to the panel', () => {
+  it('hovering an analysable element moves its title to data-title', () => {
+    const host = document.createElement('div');
+    host.id = 'r';
+    host.innerHTML = '<button data-analyze="glossary:trust" title="native tip" tabindex="0">x</button>';
+    document.body.append(host);
+    const a = attachAnalyzer(host, { getEnv: () => ({ registries: {} as never, state: null, settings: DEFAULT_SETTINGS }), reducedMotion: () => true });
+    host.querySelector('button')!.dispatchEvent(new Event('pointerover', { bubbles: true }));
+    const b = host.querySelector('button')!;
+    expect(b.hasAttribute('title')).toBe(false);
+    expect(b.getAttribute('data-title')).toBe('native tip');
+    a.destroy();
+  });
+});

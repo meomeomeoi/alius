@@ -204,6 +204,12 @@ export function attachAnalyzer(root: HTMLElement, deps: AnalyzerDeps): Analyzer 
     if (!enabled() || e.pointerType === 'touch') return;
     const t = ev.target as Element | null;
     if (!t || typeof t.closest !== 'function') return;
+    // the browser's own tooltip would pile on top of the panel: the title moves to `data-title` (the panel says the same)
+    const titled = t.closest('[data-analyze][title]');
+    if (titled && root.contains(titled)) {
+      titled.setAttribute('data-title', titled.getAttribute('title') ?? '');
+      titled.removeAttribute('title');
+    }
     if (panelEl?.contains(t)) {
       closeTimer = clear(closeTimer);
       return;

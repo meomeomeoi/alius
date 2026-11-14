@@ -830,7 +830,7 @@ describe('calibration: disposition and stances (P8)', () => {
   it('the offset row shows five chips with the effective level names, the chosen one pressed', () => {
     const v = view(HUNTED, {}, { dispositionOffset: 1 }); // world volatile (rank 4)
     expect(chips(v.host).map((c) => c.dataset.offset)).toEqual(['-2', '-1', '0', '1', '2']);
-    expect(chips(v.host).map((c) => c.textContent)).toEqual(['Guarded', 'Prickly', 'Volatile', 'Hazardous', 'Hazardous']); // +2 clamps at rank 5
+    expect(chips(v.host).map((c) => c.textContent)).toEqual(['−2 Guarded', '−1 Prickly', '0 Volatile', '+1 Hazardous', '+2 Hazardous']); // +2 clamps at rank 5
     expect(chips(v.host).map((c) => c.getAttribute('aria-pressed'))).toEqual(['false', 'false', 'false', 'true', 'false']);
     expect(chips(v.host).map((c) => c.getAttribute('data-analyze'))).toEqual(['dispositionLevels:guarded', 'dispositionLevels:prickly', 'dispositionLevels:volatile', 'dispositionLevels:hazardous', 'dispositionLevels:hazardous']);
     expect(v.host.textContent).toContain('World level: Volatile');
@@ -838,9 +838,9 @@ describe('calibration: disposition and stances (P8)', () => {
 
   it('the offset chips clamp at the ends of the scale', () => {
     const kind = view({ ...HUNTED, disposition: 'kind' });
-    expect(chips(kind.host).map((c) => c.textContent)).toEqual(['Kind', 'Kind', 'Kind', 'Guarded', 'Prickly']);
+    expect(chips(kind.host).map((c) => c.textContent)).toEqual(['−2 Kind', '−1 Kind', '0 Kind', '+1 Guarded', '+2 Prickly']);
     const haz = view({ ...HUNTED, disposition: 'hazardous' });
-    expect(chips(haz.host).map((c) => c.textContent)).toEqual(['Prickly', 'Volatile', 'Hazardous', 'Hazardous', 'Hazardous']);
+    expect(chips(haz.host).map((c) => c.textContent)).toEqual(['−2 Prickly', '−1 Volatile', '0 Hazardous', '+1 Hazardous', '+2 Hazardous']);
   });
 
   it('chips that would read as the same level are greyed: only the one nearest to zero stays usable', () => {

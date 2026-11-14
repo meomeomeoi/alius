@@ -1494,6 +1494,12 @@
   color: var(--alius-err);
 }
 
+/* a one-line text field fills the row (a reason or a name is read whole, not through a keyhole) */
+#alius-shell .alius-field > .alius-input {
+  flex: 1;
+  min-width: 14em;
+}
+
 /* CCP intake wizard (P1). Palette variables only. */
 #alius-shell .alius-setup {
   height: 100%;
