@@ -39,6 +39,16 @@ export function demandDirective(unitId: string, name: string, text: string): Dir
   return { id: `demand:${unitId}`, expiresAfter: 'scene', text: `${name} demands something of the commander and presses it this scene: "${text}"` };
 }
 
+/** The first time a unit calls the commander by a new nickname (private scene, her next reply only). */
+export function nicknameDirective(unitName: string, nickname: string): Directive {
+  return { id: 'nickname', expiresAfter: 'next_reply', text: `${unitName} calls the commander "${nickname}" for the first time.` };
+}
+
+/** What an active nickname's own text tells the model for as long as the nickname is held (scene-long). */
+export function reputationDirective(id: string, text: string): Directive {
+  return { id: `reputation:${id}`, expiresAfter: 'scene', text };
+}
+
 /** The label of a measure: a punishment's own, the Leash, or the generic word for a threat that named nothing. */
 export function measureLabel(reg: Registries, measure: string): string {
   if (measure === 'leash') return 'The Leash';

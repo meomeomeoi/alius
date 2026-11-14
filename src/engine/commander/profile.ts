@@ -205,10 +205,13 @@ export function traitBlockReason(
 
 /**
  * The commander as the main model reads him (P7): descriptors only, no numbers, no trait names (traits act through
- * mechanics, not prompts). The host chat has no pronoun field, so none is given.
+ * mechanics, not prompts), and the nicknames the squad has given (P9; the names are mirrored in the state, no digit, no pronoun).
+ * The host chat has no pronoun field, so none is given.
  */
 export function commanderLine(state: CampaignState): string {
   const p = commanderProfile(state);
   const w = (kind: DescriptorKind, v: number): string => descriptor(kind, v).toLowerCase();
-  return `Commander ${state.commander.name}: ${w('seasoning', p.seasoning)}, ${p.archetype} build, ${w('expression', p.expression)} presentation.`;
+  const names = (state.commander.reputation?.active ?? []).map((a) => `"${a.name}"`);
+  const known = names.length > 0 ? ` Known in the squad as ${names.join(' and ')}.` : '';
+  return `Commander ${state.commander.name}: ${w('seasoning', p.seasoning)}, ${p.archetype} build, ${w('expression', p.expression)} presentation.${known}`;
 }

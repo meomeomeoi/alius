@@ -524,7 +524,9 @@ function traitBlockReason(reg, traits, id, opts) {
 function commanderLine(state) {
   const p = commanderProfile(state);
   const w = (kind, v) => descriptor(kind, v).toLowerCase();
-  return `Commander ${state.commander.name}: ${w("seasoning", p.seasoning)}, ${p.archetype} build, ${w("expression", p.expression)} presentation.`;
+  const names = (state.commander.reputation?.active ?? []).map((a) => `"${a.name}"`);
+  const known = names.length > 0 ? ` Known in the squad as ${names.join(" and ")}.` : "";
+  return `Commander ${state.commander.name}: ${w("seasoning", p.seasoning)}, ${p.archetype} build, ${w("expression", p.expression)} presentation.${known}`;
 }
 
 // src/engine/ledger.ts
@@ -16591,6 +16593,12 @@ function punishDirective(unitId, name, label2, stanceName) {
 function demandDirective(unitId, name, text2) {
   return { id: `demand:${unitId}`, expiresAfter: "scene", text: `${name} demands something of the commander and presses it this scene: "${text2}"` };
 }
+function nicknameDirective(unitName, nickname) {
+  return { id: "nickname", expiresAfter: "next_reply", text: `${unitName} calls the commander "${nickname}" for the first time.` };
+}
+function reputationDirective(id, text2) {
+  return { id: `reputation:${id}`, expiresAfter: "scene", text: text2 };
+}
 function measureLabel(reg, measure) {
   if (measure === "leash") return "The Leash";
   const label2 = reg.punishments.get(measure)?.label;
@@ -16731,9 +16739,9 @@ function createLoyalty(deps) {
 }
 
 // src/discipline/context.ts
-var OWN_PREFIXES = ["loyalty:", "threat:", "discipline:", "demand:"];
+var OWN_PREFIXES = ["loyalty:", "threat:", "discipline:", "demand:", "reputation:"];
 function clearDisciplineDirectives(builder) {
-  builder.clearMatching((d) => OWN_PREFIXES.some((p) => d.id.startsWith(p)));
+  builder.clearMatching((d) => d.id === "nickname" || OWN_PREFIXES.some((p) => d.id.startsWith(p)));
 }
 function disciplineDirectives(builder, state, reg) {
   const present = new Set(state.scene?.participants ?? []);
@@ -16749,6 +16757,13 @@ function disciplineDirectives(builder, state, reg) {
   for (const d of state.discipline?.demands ?? []) {
     const unit = state.squad.find((u) => u.id === d.unitId);
     if (d.status === "open" && present.has(d.unitId) && unit) builder.setDirective(demandDirective(d.unitId, unit.displayName, d.text));
+  }
+}
+function reputationDirectives(builder, state, reg) {
+  builder.clearMatching((d) => d.id.startsWith("reputation:"));
+  for (const a of state.commander.reputation?.active ?? []) {
+    const text2 = reg.reputations.get(a.id)?.effects?.directive;
+    if (typeof text2 === "string" && text2 !== "") builder.setDirective(reputationDirective(a.id, text2));
   }
 }
 
@@ -16835,7 +16850,18 @@ function createDiscipline(deps) {
     const state2 = deps.app.current().state;
     if (!state2?.scene) return;
     disciplineDirectives(deps.context, state2, deps.registries());
+    introduceNickname2(state2);
+    reputationDirectives(deps.context, deps.app.current().state ?? state2, deps.registries());
     deps.refreshContext();
+  }
+  function introduceNickname2(state2) {
+    const only = state2.scene?.participants.length === 1 ? state2.scene.participants[0] : void 0;
+    if (only === void 0 || !state2.commander.reputation?.pending) return;
+    if (state2.squad.find((u) => u.id === only)?.kind !== "named") return;
+    const events = deps.app.dispatch({ type: "reputation/introduce", payload: { unitId: only } });
+    const given = events.find((e) => e.type === "nickname_given");
+    if (!given) return;
+    deps.context.setDirective(nicknameDirective(nameOf9(only), String(given.name)));
   }
   function onSceneClosed() {
     clearDisciplineDirectives(deps.context);
@@ -20761,6 +20787,7 @@ function renderCmdrCard(host, ctx2) {
     h("span", { class: "alius-stat", ...analyzeAttrs(address) }, text2)
   ];
   const crime = state.commander.crimeId ? reg.crimes.get(state.commander.crimeId) : void 0;
+  const reputation = state.commander.reputation?.active ?? [];
   const traitIds2 = [...p.traits.regular, ...p.traits.special !== void 0 ? [p.traits.special] : []];
   host.append(
     h(
@@ -20790,7 +20817,10 @@ function renderCmdrCard(host, ctx2) {
         i === 0 ? "" : " \xB7 ",
         h("span", { class: "alius-chip", ...analyzeAttrs(`commanderTraits:${id}`) }, String(reg.commanderTraits.get(id)?.name ?? id))
       ])),
-      h("p", { class: "alius-dim" }, "REPUTATION \u2014 NONE ON FILE")
+      reputation.length === 0 ? h("p", { class: "alius-dim" }, "REPUTATION \u2014 NONE ON FILE") : h("p", {}, "REPUTATION \u2014 ", ...reputation.flatMap((a, i) => [
+        i === 0 ? "" : " \xB7 ",
+        h("span", { class: "alius-chip", ...analyzeAttrs(`reputations:${a.id}`) }, a.name)
+      ]))
     )
   );
 }
@@ -23629,6 +23659,8 @@ function effectsFor(registry2, entry, reg, data) {
       return summarizeDispositionLevel(entry);
     case "punishments":
       return summarizePunishment(entry);
+    case "reputations":
+      return summarizeReputation(entry);
     case "commanderTraits":
       return list4(e.effects).map((x) => summarizeTraitEffect(x, reg));
     case "tastes": {
@@ -23752,6 +23784,16 @@ function summarizePunishment(entry) {
   }
   for (const p of Array.isArray(e.perception) ? e.perception : []) {
     out.push(`${isNum(p.multiplier) && p.multiplier < 1 ? "Lands lighter" : "Lands harder"} on soldiers who care about ${humanize(String(p.tag)).toLowerCase()}`);
+  }
+  return out;
+}
+function summarizeReputation(entry) {
+  const fx2 = entry.effects && typeof entry.effects === "object" ? entry.effects : {};
+  const out = [];
+  if (isNum(fx2.impunityBase) && fx2.impunityBase !== 0) out.push(`Units expect to get away with ${fx2.impunityBase > 0 ? "more" : "less"}`);
+  for (const r of Array.isArray(fx2.valueReactions) ? fx2.valueReactions : []) {
+    if (!isNum(r.weight) || r.weight === 0) continue;
+    out.push(`Units who ${r.sign === "-" ? "lean against" : "value"} ${String(r.axis)} think ${r.weight > 0 ? "better" : "worse"} of the commander`);
   }
   return out;
 }
@@ -23991,6 +24033,19 @@ function punishmentProvider(subject, env, k) {
   }
   return lines.length > 0 ? { lines } : null;
 }
+function reputationProvider(subject, env, k) {
+  const state = env.state;
+  const held = state?.commander.reputation?.active.find((a) => a.id === subject.id);
+  const entry = env.registries.reputations.get(subject.id);
+  if (!state || !held || !entry) return null;
+  const lines = [`Held since day ${held.sinceDay}`];
+  const p = entry.pattern;
+  if (p && k.showRaw) {
+    const deeds = deedsOf(state);
+    lines.push(`Counted: ${k.raw(p.sum.reduce((n, c) => n + (deeds[c] ?? 0), 0))} of ${k.raw(p.min)}`);
+  }
+  return { lines };
+}
 var registered2 = false;
 function registerDisciplineProviders() {
   if (registered2) return;
@@ -23998,6 +24053,7 @@ function registerDisciplineProviders() {
   registerAnalyzeProvider("glossary:impunity", impunityProvider);
   registerAnalyzeProvider("commandStances", stanceProvider);
   registerAnalyzeProvider("punishments", punishmentProvider);
+  registerAnalyzeProvider("reputations", reputationProvider);
 }
 
 // src/analysis/providers/world.ts

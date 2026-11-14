@@ -213,6 +213,16 @@ describe('commander line and first-impression directive (P7)', () => {
     expect(lines[at + 1]).toMatch(/^Commander Vale:/);
   });
 
+  it('an active nickname joins the line and the block; a pending one does not', () => {
+    const out = block(builder(), inScene([ANN], (w) => {
+      commander(w);
+      w.commander.reputation = { active: [{ id: 'iron_rule', name: 'Iron Rule', sinceDay: 3 }], pending: { id: 'shield', queuedDay: 5 } };
+    }));
+    expect(line(out)).toBe('Commander Vale: veteran, average build, feminine presentation. Known in the squad as "Iron Rule".');
+    expect(line(out)).not.toMatch(/\d/);
+    expect(out).not.toContain('Shield');
+  });
+
   it('trait names are not in the line', () => {
     const out = block(builder(), inScene([ANN], commander));
     for (const id of ['old_wound', 'bookish', 'vow_of_distance']) {

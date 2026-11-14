@@ -207,3 +207,41 @@ describe('trait and taste effect lines', () => {
     expect(summarizeTraitEffect({ type: 'mystery' } as never, reg)).toBe('mystery');
   });
 });
+
+describe('reputation readings (P9)', () => {
+  const withNickname = (): CampaignState => {
+    const s = world();
+    s.commander.reputation = { active: [{ id: 'iron_rule', name: 'Iron Rule', sinceDay: 7 }] };
+    s.commander.deeds = { punish_2: 4, punish_3: 2, punish_4: 0 };
+    return s;
+  };
+
+  it('effect lines are words only', () => {
+    const lines = entryEffects('reputations', reg.reputations.get('iron_rule')!, reg);
+    expect(lines).toContain('Units expect to get away with less');
+    expect(lines.join('\n')).not.toMatch(/\d/);
+    expect(entryEffects('reputations', reg.reputations.get('soft_touch')!, reg)).toContain('Units expect to get away with more');
+    expect(entryEffects('reputations', reg.reputations.get('leash_holder')!, reg)).toContain('Units who value autonomy think worse of the commander');
+  });
+
+  it('says since when, and shows no counter without raw values', () => {
+    const text = reading('reputations:iron_rule', withNickname());
+    expect(text).toContain('Held since day 7');
+    expect(text).not.toMatch(/punish|\d+\/\d+/i);
+  });
+
+  it('with raw values the counters of its pattern appear', () => {
+    const text = reading('reputations:iron_rule', withNickname(), true);
+    expect(text).toContain('Held since day 7');
+    expect(text).toMatch(/6\/6|Counted: 6 of 6/);
+  });
+
+  it('a nickname the commander does not hold has no reading', () => {
+    expect(reading('reputations:shield', withNickname())).toBe('');
+  });
+
+  it('the glossary has reputation and nickname', () => {
+    expect(panel('glossary:reputation', null).missing).toBe(false);
+    expect(panel('glossary:nickname', null).missing).toBe(false);
+  });
+});

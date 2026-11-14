@@ -344,6 +344,8 @@ function effectsFor(registry: RegistryName, entry: Entry, reg: Registries, data?
       return summarizeDispositionLevel(entry);
     case 'punishments':
       return summarizePunishment(entry);
+    case 'reputations':
+      return summarizeReputation(entry);
     case 'commanderTraits':
       return list(e.effects).map((x) => summarizeTraitEffect(x as unknown as TraitEffect, reg));
     case 'tastes': {
@@ -445,6 +447,18 @@ export function summarizePunishment(entry: Entry): string[] {
   }
   for (const p of Array.isArray(e.perception) ? (e.perception as Loose[]) : []) {
     out.push(`${isNum(p.multiplier) && p.multiplier < 1 ? 'Lands lighter' : 'Lands harder'} on soldiers who care about ${humanize(String(p.tag)).toLowerCase()}`);
+  }
+  return out;
+}
+
+/** A nickname in words (P9): what it does to how bold soldiers feel and how some of them think of the commander. No figures. */
+export function summarizeReputation(entry: Entry): string[] {
+  const fx = ((entry as Loose).effects && typeof (entry as Loose).effects === 'object' ? (entry as Loose).effects : {}) as Loose;
+  const out: string[] = [];
+  if (isNum(fx.impunityBase) && fx.impunityBase !== 0) out.push(`Units expect to get away with ${fx.impunityBase > 0 ? 'more' : 'less'}`);
+  for (const r of Array.isArray(fx.valueReactions) ? (fx.valueReactions as Loose[]) : []) {
+    if (!isNum(r.weight) || r.weight === 0) continue;
+    out.push(`Units who ${r.sign === '-' ? 'lean against' : 'value'} ${String(r.axis)} think ${r.weight > 0 ? 'better' : 'worse'} of the commander`);
   }
   return out;
 }

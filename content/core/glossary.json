@@ -954,6 +954,25 @@
     ]
   },
   {
+    "id": "reputation",
+    "term": "Reputation",
+    "short": "What the squad has learned to say about the commander from what the commander does, kept as nicknames.",
+    "long": "The game counts deeds: Leash requests, conscripts lost, defiance let pass, punishments, demands granted or refused. When a pattern is clear enough, one soldier says the nickname aloud for the first time, and from then on it is on the commander file. Up to two are held at once, one per kind; a nickname that stops being earned fades after a week, and a stronger pattern of its kind takes its place. A nickname shifts how bold soldiers feel and how soldiers with certain values think of the commander.",
+    "see": [
+      "nickname",
+      "impunity"
+    ]
+  },
+  {
+    "id": "nickname",
+    "term": "Nickname",
+    "short": "A name the squad gives the commander once a pattern of deeds is clear. It is said aloud first in a private scene.",
+    "long": "Nicknames come from deeds, not from choices on a menu. The first one waits for a quiet moment with one soldier; a group scene never introduces it. It is then public: every soldier knows it, and the commander line the main model reads carries it. Some soldiers like what it says about the commander and some do not. Each soldier's Trust moves once, by her own values.",
+    "see": [
+      "reputation"
+    ]
+  },
+  {
     "id": "setting_demand_wording",
     "term": "Demand wording",
     "short": "Lets the mechanic model put a soldier's demand into her own words. Off, the written text is used as it is.",

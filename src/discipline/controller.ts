@@ -2,9 +2,9 @@ import type { EngineEvent } from '../engine/dispatch';
 import type { CampaignState } from '../engine/state/types';
 import { commandStance, stanceEntry } from '../engine/discipline';
 import { generateDemandFlavor } from '../llm/calls/flavor';
-import { clearDisciplineDirectives, disciplineDirectives } from './context';
+import { clearDisciplineDirectives, disciplineDirectives, reputationDirectives } from './context';
 import type { DisciplineDeps } from './deps';
-import { measureLabel, punishDirective, threatDirective } from './directives';
+import { measureLabel, nicknameDirective, punishDirective, threatDirective } from './directives';
 
 export type { DisciplineDeps } from './deps';
 
@@ -117,7 +117,20 @@ export function createDiscipline(deps: DisciplineDeps): DisciplineController {
     const state = deps.app.current().state;
     if (!state?.scene) return;
     disciplineDirectives(deps.context, state, deps.registries());
+    introduceNickname(state);
+    reputationDirectives(deps.context, deps.app.current().state ?? state, deps.registries());
     deps.refreshContext();
+  }
+
+  /** A nickname waits for a private scene: the unit in it says it for the first time (the engine makes it active). */
+  function introduceNickname(state: CampaignState): void {
+    const only = state.scene?.participants.length === 1 ? state.scene.participants[0] : undefined;
+    if (only === undefined || !state.commander.reputation?.pending) return;
+    if (state.squad.find((u) => u.id === only)?.kind !== 'named') return;
+    const events = deps.app.dispatch({ type: 'reputation/introduce', payload: { unitId: only } });
+    const given = events.find((e) => e.type === 'nickname_given');
+    if (!given) return;
+    deps.context.setDirective(nicknameDirective(nameOf(only), String(given.name)));
   }
 
   function onSceneClosed(): void {

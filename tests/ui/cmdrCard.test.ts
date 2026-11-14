@@ -63,6 +63,24 @@ describe('CMDR card', () => {
     expect(text).toContain('REPUTATION — NONE ON FILE');
   });
 
+  it('lists each active nickname as an analyzable chip', () => {
+    const s = world();
+    s.commander.reputation = { active: [{ id: 'iron_rule', name: 'Iron Rule', sinceDay: 3 }, { id: 'shield', name: 'Shield', sinceDay: 4 }] };
+    const host = card(s);
+    const chips = [...host.querySelectorAll('[data-analyze^="reputations:"]')];
+    expect(chips.map((c) => c.getAttribute('data-analyze'))).toEqual(['reputations:iron_rule', 'reputations:shield']);
+    expect(chips.map((c) => c.textContent)).toEqual(['Iron Rule', 'Shield']); // the names the squad said, mirrored in the state
+    expect(host.textContent).not.toContain('NONE ON FILE');
+    expect(host.textContent).toContain('REPUTATION — ');
+    expect(unresolved(host, env(s))).toEqual([]);
+  });
+
+  it('a pending nickname is not on the card yet', () => {
+    const s = world();
+    s.commander.reputation = { active: [], pending: { id: 'shield', queuedDay: 5 } };
+    expect(card(s).textContent).toContain('REPUTATION — NONE ON FILE');
+  });
+
   it('with raw values on the stats show their numbers', () => {
     const host = card(world(), true);
     expect(host.querySelector('[data-analyze="glossary:body_strength"]')!.textContent).toBe('Strong (4)');

@@ -622,13 +622,13 @@ introduce: `the pending nickname becomes active with its name copied` (`commande
 **Interfaces:**
 - Produces: `commanderLine(state)` appends ` Known in the squad as "{name}".` (two: `"{a}" and "{b}"`); `nicknameDirective(unitName, nickname): Directive` (id `nickname`, `next_reply`): `{Unit} calls the commander "{name}" for the first time.`; `DisciplineController.onSceneOpened()` dispatches `reputation/introduce` when a nickname is pending and the scene is private, then sets the directive; the entry's own `effects.directive` (when present) is set as `reputation:<id>` for scenes while the nickname is active; CMDR card line `REPUTATION — ` + one `alius-chip` per active nickname (`reputations:<id>`) or `NONE ON FILE`; `summarizeReputation(entry): string[]` (words only: `Units expect to get away with more` / `less`, `Units who value {axis} think better / worse of the commander`); a `reputations` provider: `Held since day {n}` and, with raw values, the counters of its pattern through `k.raw`; glossary `reputation`, `nickname`.
 
-- [ ] **Step 1: Write the failing tests** — **acceptance 7**
+- [x] **Step 1: Write the failing tests** — **acceptance 7**
 
 `the next private scene introduces the pending nickname through a directive` (exact text with her name and the nickname; gone after her reply); `a group scene introduces nothing and the nickname stays pending`; `the commander line carries the active nickname and still has no digit and no pronoun`; `the context block of a scene shows it`; `the CMDR card shows the chip with a resolving address, and NONE ON FILE without one`; `the reading shows no counter without raw values` (hidden test stays green with `threats_empty: 53`).
 
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** `npm test` → PASS.
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** `npm test` → PASS.
 
-- [ ] **Step 5: Commit** `feat(discipline): nickname moment, context line and CMDR reputation`
+- [x] **Step 5: Commit** `feat(discipline): nickname moment, context line and CMDR reputation`
 
 ---
 

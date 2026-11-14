@@ -13,7 +13,7 @@ export interface CmdrCardCtx {
 
 /**
  * The CMDR dossier (P7): crime, body, expression, seasoning, build and traits, as descriptors; numbers only with raw
- * values. Text from content goes in as text. The reputation slot stays empty until P9 fills it.
+ * values. Text from content goes in as text. The reputation line (P9) lists each nickname the squad has given as a chip.
  */
 export function renderCmdrCard(host: HTMLElement, ctx: CmdrCardCtx): void {
   const { state, registries: reg, raw } = ctx;
@@ -24,6 +24,7 @@ export function renderCmdrCard(host: HTMLElement, ctx: CmdrCardCtx): void {
     `${label} `, h('span', { class: 'alius-stat', ...analyzeAttrs(address) }, text),
   ];
   const crime = state.commander.crimeId ? reg.crimes.get(state.commander.crimeId) : undefined;
+  const reputation = state.commander.reputation?.active ?? [];
   const traitIds = [...p.traits.regular, ...(p.traits.special !== undefined ? [p.traits.special] : [])];
 
   host.append(
@@ -46,6 +47,11 @@ export function renderCmdrCard(host: HTMLElement, ctx: CmdrCardCtx): void {
           i === 0 ? '' : ' · ',
           h('span', { class: 'alius-chip', ...analyzeAttrs(`commanderTraits:${id}`) }, String(reg.commanderTraits.get(id)?.name ?? id)),
         ]))),
-      h('p', { class: 'alius-dim' }, 'REPUTATION — NONE ON FILE')),
+      reputation.length === 0
+        ? h('p', { class: 'alius-dim' }, 'REPUTATION — NONE ON FILE')
+        : h('p', {}, 'REPUTATION — ', ...reputation.flatMap((a, i): Child[] => [
+          i === 0 ? '' : ' · ',
+          h('span', { class: 'alius-chip', ...analyzeAttrs(`reputations:${a.id}`) }, a.name),
+        ]))),
   );
 }

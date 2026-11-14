@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { loadPacks } from '../../../src/content/loader';
 import type { Registries } from '../../../src/content/types';
 import {
-  DESCRIPTORS, archetypeOf, commanderProfile, descriptor, poolSpent, validateCommanderSetup,
+  DESCRIPTORS, archetypeOf, commanderLine, commanderProfile, descriptor, poolSpent, validateCommanderSetup,
   type CommanderSetup,
 } from '../../../src/engine/commander/profile';
 import { TUNING } from '../../../src/engine/tuning';
@@ -92,5 +92,29 @@ describe('commanderProfile', () => {
     expect(p.seasoning).toBe(3);
     expect(p.traits).toEqual({ regular: [] });
     expect(p.archetype).toBe('average');
+  });
+});
+
+describe('commanderLine and nicknames (P9)', () => {
+  const base = () => createCampaign({ seed: 1, commanderName: 'Vale' });
+  it('has no nickname clause without reputation', () => {
+    expect(commanderLine(base())).not.toContain('Known in the squad');
+  });
+  it('one nickname', () => {
+    const s = base();
+    s.commander.reputation = { active: [{ id: 'iron_rule', name: 'Iron Rule', sinceDay: 3 }] };
+    expect(commanderLine(s)).toMatch(/ Known in the squad as "Iron Rule"\.$/);
+  });
+  it('two nicknames', () => {
+    const s = base();
+    s.commander.reputation = { active: [{ id: 'iron_rule', name: 'Iron Rule', sinceDay: 3 }, { id: 'shield', name: 'Shield', sinceDay: 4 }] };
+    expect(commanderLine(s)).toMatch(/ Known in the squad as "Iron Rule" and "Shield"\.$/);
+  });
+  it('a pending nickname is not in the line yet; no digit, no pronoun', () => {
+    const s = base();
+    s.commander.reputation = { active: [{ id: 'iron_rule', name: 'Iron Rule', sinceDay: 3 }], pending: { id: 'shield', queuedDay: 5 } };
+    const line = commanderLine(s);
+    expect(line).not.toContain('Shield');
+    expect(line).not.toMatch(/\d|\b(he|him|his|she|her)\b/i);
   });
 });

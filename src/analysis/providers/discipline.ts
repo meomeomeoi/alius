@@ -1,3 +1,5 @@
+import { deedsOf } from '../../engine/discipline/deeds';
+import type { DeedCounter } from '../../engine/state/types';
 import { impunityBand, impunityOf, commandStance, perceptionOf, stanceEntry, type ImpunityTerms } from '../../engine/discipline';
 import { trustBand } from '../../engine/relations/bands';
 import { TUNING } from '../../engine/tuning';
@@ -84,6 +86,21 @@ function punishmentProvider(subject: Subject, env: AnalyzeEnv, k: Knowledge): { 
   return lines.length > 0 ? { lines } : null;
 }
 
+/** A nickname the commander holds: since when and, with raw values, the counters of its pattern (never the pattern's thresholds in words). */
+function reputationProvider(subject: Subject, env: AnalyzeEnv, k: Knowledge): { lines: string[] } | null {
+  const state = env.state;
+  const held = state?.commander.reputation?.active.find((a) => a.id === subject.id);
+  const entry = env.registries.reputations.get(subject.id);
+  if (!state || !held || !entry) return null;
+  const lines = [`Held since day ${held.sinceDay}`];
+  const p = entry.pattern as { sum: DeedCounter[]; min: number } | undefined;
+  if (p && k.showRaw) {
+    const deeds = deedsOf(state);
+    lines.push(`Counted: ${k.raw(p.sum.reduce((n, c) => n + (deeds[c] ?? 0), 0))} of ${k.raw(p.min)}`);
+  }
+  return { lines };
+}
+
 let registered = false;
 
 /** Registers the discipline readings; safe to call more than once (the core registration calls it). */
@@ -93,4 +110,5 @@ export function registerDisciplineProviders(): void {
   registerAnalyzeProvider('glossary:impunity', impunityProvider);
   registerAnalyzeProvider('commandStances', stanceProvider);
   registerAnalyzeProvider('punishments', punishmentProvider);
+  registerAnalyzeProvider('reputations', reputationProvider);
 }

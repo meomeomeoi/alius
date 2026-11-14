@@ -269,7 +269,7 @@ export const CORE_GLOSSARY_IDS: readonly string[] = [
   // P8
   'disposition', 'disposition_offset', 'world_stance', 'world_settings',
   // P9
-  'impunity', 'command_stance', 'impunity_record', 'leverage', 'threat', 'covert_sabotage', 'discipline', 'discipline_logged', 'restriction', 'demand', 'owed_demand',
+  'impunity', 'command_stance', 'impunity_record', 'leverage', 'threat', 'covert_sabotage', 'discipline', 'discipline_logged', 'restriction', 'demand', 'owed_demand', 'reputation', 'nickname',
 ];
 
 let registered = false;
