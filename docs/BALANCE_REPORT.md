@@ -68,3 +68,7 @@ Average combat length within 5 rounds: **FAIL**.
 ## Commander Crisis HP (P7)
 
 The Crisis HP of the commander changed from a flat **60** to **20 + 10 × endurance** (+ trait effects, at least 10): 30 (endurance 1), 50 for the default commander (endurance 3), 70 (endurance 5), 40 with `old_wound`. The default commander therefore has 10 HP less than before, and a 6 % × reflexes dodge chance (12 % by default) on hits that reach him. The harness above does not model Commander Crisis, so its numbers are unchanged; re-run it if the encounter tables are tuned for fights that expose the commander.
+
+## Disposition and world options (P8)
+
+At the default world (every option at its default, disposition `guarded`) every P8 hook is the identity: the figures above are unchanged and the harness makes no new rng draw. `npm run sim -- --world brutal` (or `gentle`, `standard`) runs the same fixture squad in a preset world; only the breakdown target of the disposition level can change a combat result (`kind`: she hurts herself, `prickly` and up: allies, the exposed commander or anyone), so the numbers move only for squads that break down. The relationship, loyalty and economy parameters of the levels are covered by table-driven unit tests (`tests/engine/relations/disposition.test.ts`, `tests/engine/loyalty/disposition.test.ts`), not by the harness. The disposition numbers are the draft table of the spec; tune them in tests.

@@ -64,3 +64,10 @@ Campaign `objectives: [{ id, text, source: 'prologue'|'spine'|'director'|'unit',
 
 - **Creation fields exist:** `CommanderSetup` (body, expression, seasoning, traits), `validateCommanderSetup`, `buildCampaign` (optional `commander`), `commander_import` and `importCommander`, `renderCommanderFile` (temporary wizard step `commander`, a plain function). A diegetic intake should drive the same `Wizard` methods (`setBody`, `setExpression`, `setSeasoning`, `toggleTrait`, `prefillFromPersona`, `randomCommander`).
 - **Old campaigns** have `commander.fileReviewed` (false until the review modal is answered); new ones start `true`. `onboarding` should migrate to `done: true` the same way.
+
+## Interfaces already provided by P8 (implemented — use, do not rebuild)
+
+- **The world screen exists:** `renderWorldParams(host, { wizard, registries })` (a plain function over the `Wizard`; the step is `world`, between the dossier and the commander file). A diegetic intake should drive the same `Wizard` methods: `applyPreset(id)`, `setWorldOption(optionId, choiceId)`, `worldSummary()`. The screen is a meta screen (plain labels, no fiction voice) and must stay outside the fiction (see §1).
+- **Reads of the world:** `worldChoice(state, reg, optionId)`, `worldEffects`, `familyEnabled`; `dispositionFor` for a unit's level. `world.options` is written by `buildCampaign` from `SetupResult.world`; an old campaign reads every default.
+- **Calibration** now carries the offset and stance rows (`renderCalibration` with `world`); a world change after calibration marks units `worldStale` and `Wizard.refreshWorldSections(i)` re-imports them. The importer receives the wizard's world: `importer(avatar, sections, world)`.
+- **Dispositions in the opening scenes:** the lore line of each choice is in the context from the first reply (provider `world_settings`); a stance `directive` with `whileEarly` shows while the unit is still sizing the commander up, so a first-words scene needs no extra text.

@@ -532,6 +532,6 @@ docs/** (Task 16), tests/** mirror src
 **Files:**
 - Modify: `docs/packages/P8-world-options-disposition.md` (status, **Implemented as** with the rulings above, open items: lore lines, stance numbers, purge text, big-gesture events waiting for P9), `docs/00-overview.md` (§5.4 rows, §6 `world.options` and unit fields no longer "planned", §8 confidence semantics, §9 status), `docs/packages/P9-impunity-discipline.md`, `P9b-power-structure.md`, `P11-prologue-onboarding.md` (**Interfaces already provided by P8**: `dispositionFor`, `impunityBase`, `bigGesture.events`, `renderWorldParams`, `worldChoice`, `familyEnabled`), `docs/BALANCE_REPORT.md` (a short note on disposition at defaults = unchanged).
 
-- [ ] **Step 1:** Write the docs.
-- [ ] **Step 2: Run** `npm test` and expect green.
-- [ ] **Step 3: Commit** `docs: P8 implemented-as, overview and dependent specs`.
+- [x] **Step 1:** Write the docs.
+- [x] **Step 2: Run** `npm test` and expect green.
+- [x] **Step 3: Commit** `docs: P8 implemented-as, overview and dependent specs`.

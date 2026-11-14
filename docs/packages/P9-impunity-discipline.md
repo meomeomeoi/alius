@@ -107,3 +107,12 @@ When a pattern crosses its threshold and no nickname of that group is active, th
 - **Delegate routes** end in a *demand* when a unit is one Trust band short: `delegate_demand` is emitted and the route fails; replace that refusal with your demands. `Impunity` can join the delegate decision in `resolveRoute` (`engine/commander/checks.ts`).
 - **Intimidation:** `intimidationBonus(state)` (strength and seasoning) already feeds the Authority talk-down; discipline can reuse it.
 - **Traits:** `traitEffects` is the way to read a trait; add effect types to `TraitEffectSchema`, a line to `summarizeTraitEffect`, and hook points that call the reader.
+
+## Interfaces already provided by P8 (implemented — use, do not rebuild)
+
+- **Disposition:** `dispositionFor(state, reg, unit)` (the unit's effective level: world rank + her offset, grunts use the world) and `dispositionById(state, reg, unitId)` return the level entry; `dispositionLevels[].impunityBase` is in the schema and unread (add it to the five rows, then read it for the Impunity base). Punishment scaling can read `lossMult`, `refusalMult` and `desertionMult` from the same entry.
+- **Big gestures:** `TUNING.disposition.bigGesture = { events: ['protected'], minSeverity: 'major' }` — add "granted costly demand" and "shielded from oversight" event types to `events`; `computeDeltas` then applies the level's `bigGestureMult` to the positive axes of those commander events.
+- **Confidence:** a new intent type is judged per unit against the level's gain and loss floors (`dispositionThresholds`); an engine-made event uses confidence 1 and always passes.
+- **Refusals:** `refusalChance` is scaled by the unit's level; `rawRefusalChance` is the source. Demands that replace the P7 delegate refusal should go through `scaleRefusal` if they roll.
+- **Stances:** `stanceOf(state, reg, unit, optionId)` and `stanceEffects` (`event_stress`, `value_shift`, `directive`) are the way a unit's reaction to a world norm is read; an oversight-defiance stance (`offspec_stigma` · `opposes`) already shifts her `corporate` value for judging decisions.
+- **Analysis and context:** world directives use ids `world:`, `stance:` and `friction:`; keep new directive ids out of those prefixes (`worldDirectives` clears them on every refresh).

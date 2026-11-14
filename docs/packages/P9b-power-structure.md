@@ -59,3 +59,9 @@ Campaign: `world.options.squad_assertiveness`, `world.options.voting`; `hierarch
 4. Outside actors address the leader; a feat suppresses it for 14 days.
 5. Scapegoat choice applies both branches' consequences.
 6. With `voting` off and no leader, gameplay is unchanged from P9.
+
+## Interfaces already provided by P8 (implemented — use, do not rebuild)
+
+- **Adding the world option:** `squad_assertiveness` is one more entry of `content/core/worldOptions.json` (`{ id, label, group, live, default, description, choices[{ id, label, description, lore ≤ 100 characters, effects[] }] }`); the six existing options already fill most of the 120-token WORLD SETTINGS block (the loader rejects lore lines that together exceed it), so keep the new lore line short. Choice effects use the closed vocabulary `WorldOptionEffectSchema`; a new effect type needs a schema entry, a reader (`worldEffects(state, reg, type)`, never by choice id) and a line in `summarizeWorldOptionEffect`. A preset names every option (`worldPresets`: the loader checks it), so "Assertive squad" is a new preset entry that sets `high` and the voting choice.
+- **The WORLD PARAMETERS screen** (`renderWorldParams`) draws any option by its `group`; a new group appears as a new heading. The option cards carry `data-analyze="worldOptions:<id>"` with the choice in the context.
+- **Disposition and stances** are read with `dispositionFor` / `stanceOf`; the ballot rules can use a unit's effective level (`refusalMult`) next to her values.

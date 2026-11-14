@@ -155,11 +155,12 @@ Before each main-model generation the adapter injects one compact block:
 - Commander summary: crime (as known to this unit), corporation, notable social stat ranks.
 - Retrieved facts: top-k by relevance (participants, tags, recency, importance).
 - World line: 1–3 sentences from active threads/clocks relevant to the scene.
+- World settings: one `World settings:` line of at most 120 tokens (the lore line of each chosen world option), present in and out of a scene (P8).
 - Directives block, phrased as hard constraints: e.g. `Rhea REFUSES the current order this scene. Reason: you left Unit K-117 behind. She will not comply under persuasion; only the Leash can force her.`
 
 Character card text itself remains SillyTavern's job.
 
-### 5.4 Implemented engine interfaces (P0–P6, P7a, P7)
+### 5.4 Implemented engine interfaces (P0–P6, P7a, P7, P8)
 
 Later packages build on these; change them only together with the owning spec.
 
@@ -218,6 +219,12 @@ Later packages build on these; change them only together with the owning spec.
 | `isQuietNight`, `calendar/sleep`, `calendar.loseMorning`, `activityCost`, `requisitionCost`, `terminateChance`, `socialGrowthMult`, `bodyGrowthMult`, `intimacySetting` (vs `intimacyOf`), `platonicThresholds`, `requiresTrait` on relationship states | P7 | Trait hook points: use these instead of the raw tuning or settings. |
 | `commander_import` call, `importCommander`, `StAdapter.getPersonaDescription`, `WizardStep 'commander'`, `renderCommanderFile`, `renderCmdrCard`, `renderRoutePicker` | P7 | Setup and UI pieces. |
 
+| `world.options`, `worldChoice(state, reg, optionId)`, `worldChoices`, `worldEffects(state, reg, type)`, `isNeutralChoice`, `defaultWorldOptions`, `validateWorldOptions`, `familyEnabled`, `activeFamilies`, `world/set_option { optionId, choiceId }` (live options only), `campaign/set_min_confidence { value }` | P8 | World options: the stored choice or the option's default, effects read by type. `SetupResult.world` writes them before the world is seeded. |
+| `dispositionFor(state, reg, unit)`, `dispositionById`, `worldDispositionLevel`, `bandShift`, `applyDispositionStart`, `scaleRefusal`, `mutinyRules`, `confidenceFloor`, `confidenceShift`, `dispositionThresholds`, `TUNING.disposition` | P8 | A unit's effective level and its parameters (multipliers, confidence floors, loyalty bands, stage timing, refusal, desertion, mutiny, breakdown target, big gesture). A new join site calls `applyDispositionStart` before `applyFirstImpression`. |
+| `stanceOf`, `stanceEffects`, `optionStanceEffects`, `effectiveValues`, `rollGruntStances`, `normDistance`, `applyWorldStartEffects` | P8 | Per-unit stances toward the world's norms and the commander's distance from the expected expression. |
+| `renderWorldParams`, `worldSettingsLine`, `registerWorldOptionsContext`, `worldDirectives`, `clearWorldDirectives`, `WizardStep 'world'`, `Wizard.applyPreset / setWorldOption / worldSummary / refreshWorldSections`, `importProfile(…, { world })`, sections `disposition` / `stances` | P8 | The WORLD PARAMETERS step, the WORLD SETTINGS block and directives, the world-aware import. |
+| `breakdownTargetFor`, `PlannedAction 'self_harm'`, log kind `self_harm`, world effect `stigma_news`, `faction` effect id `own` | P8 | Extensions of P4 and P5 interfaces. |
+
 Events emitted by the day-end pipeline: `director_requested` (P5), `leash_refreshed`, `loyalty_sign`, `desertion_attempt`, `mutiny_started`, `dilemma_requested`, `arc_unlocked` (P6), `mission_failed` / `mission_expired` / `clock_filled` / `leash_changed` (P5), `day_end_step`, `upkeep`, `quiet_night_started` / `morning_lost` (P7), `supply_shortage`, `trust_penalty_event`, `unit_recovered`, `facility_upgraded`, `slot_advanced`, `night_started`, `day_started`, `autosave` (the app flushes the saver on it).
 
 ## 6. Data model (high level)
@@ -233,7 +240,7 @@ Campaign {
   resources { credits, supplies, plyx }
   base { facilities: { [id]: level } /* absent = level 1 */, upgrades?: { facilityId, toLevel, daysLeft }[] }
   inventory: ItemInstance[]   // P4: { uid, itemId, rarity, upgrade, affixes[] }; itemSeq? counts uids
-  world { regions{ [id]: { known, lastVisitedDay?, poi? } }, clocks[] /* { id, label, segments, filled, regionId?, visibleToPlayer, filledDay? } */, threads[] /* { id, title, status, flags[{id,description}], relatedUnits, relatedRegions, createdDay } */, factions{standing −100…100}, flags[], spineProgress /* beats completed */, spine?{ proposed?, proposedDay?, lastProposalDay? }, director?{ pending?, lastTickDay?, seq? }, incomingUnits?, lastExpeditionRegionId?, seeded?, startId?, clearanceTier? /* P4 reads, P5 writes: level cap tier 0–3 */, options? /* P8 (planned): { [optionId]: choiceId } */ }
+  world { regions{ [id]: { known, lastVisitedDay?, poi? } }, clocks[] /* { id, label, segments, filled, regionId?, visibleToPlayer, filledDay? } */, threads[] /* { id, title, status, flags[{id,description}], relatedUnits, relatedRegions, createdDay } */, factions{standing −100…100}, flags[], spineProgress /* beats completed */, spine?{ proposed?, proposedDay?, lastProposalDay? }, director?{ pending?, lastTickDay?, seq? }, incomingUnits?, lastExpeditionRegionId?, seeded?, startId?, clearanceTier? /* P4 reads, P5 writes: level cap tier 0–3 */, options? /* P8: { [optionId]: choiceId }, every option once the campaign is built; absent in old saves (defaults) */ }
   missions { offered[] /* the board */, active[], completed[] /* newest 30 */ }   // Mission: { id, source, templateId, title, brief, regionId, danger, objective, deadlineDay?, rewardsTier, failureEffects, threadId?, spineBeat?, poiId?, scouted?, status, rewards? }
   rumors[] /* newest 20 */, dms: { [unitId]: DmMessage[] }, dmMeta?: { [unitId]: { day, sent } }   // P3: the unit's daily "social battery"
   memory { facts[], chronicle[], promises?[], nextId? }   // P3
@@ -262,7 +269,8 @@ Unit {
   likes[], dislikes[], triggers[]   // tags
   equipment { weapon?, upper?, lower? }
   injuries[], injuryDays?, status: 'active'|'reserve'|'injured'|'deserted'|'dead'|'terminated'
-  dispositionOffset?   // P8 (planned): −2…+2 on top of the world disposition level, proposed at import
+  dispositionOffset?, dispositionReason?   // P8: −2…+2 on top of the world disposition level (absent = 0), proposed at import with a one-line reason
+  worldStances?: { [optionId]: { stance: 'shares'|'indifferent'|'opposes', strength: 1|2, reason } }   // P8: her stance toward each squad-stance world option (absent = indifferent)
   commanderTastes?: string[]   // P7: up to 3 ids of registry `tastes`
 }
 
@@ -320,7 +328,9 @@ P7a: **analysis tool** on/off (`analyzeEnabled`, default on), **analysis animati
 
 P7: **first-impression τ** (`firstImpressionTau`, 1–30, default 7 days; the decay of presence and image consistency) — SYS › Relationships.
 
-Planned (P8–P10): **dithered portraits** (P10) · **readable mode** (P10; disables scanlines, flicker, dithering and glitch, one font step up) · **reduced motion** (P10; also honours `prefers-reduced-motion`) · **sound volume / mute** (P10; default low) · **device skin override** (P10; default: the skin follows the corporation).
+P8: **minimum confidence** (`intentMinConfidence`, 0–1, default 0.5) now also moves the disposition table: the extraction sanitizer drops events below the lowest level floor + (setting − 0.5), and the engine judges each event per unit against its own level's gain and loss floors moved by the same amount (mirrored into the campaign by `campaign/set_min_confidence`). The world options are fixed at campaign start except the live `bloom_horror` (SYS › World options).
+
+Planned (P10): **dithered portraits** (P10) · **readable mode** (P10; disables scanlines, flicker, dithering and glitch, one font step up) · **reduced motion** (P10; also honours `prefers-reduced-motion`) · **sound volume / mute** (P10; default low) · **device skin override** (P10; default: the skin follows the corporation).
 
 P5: **story director** on/off (`directorEnabled`, default on; off = the engine's fallback plans the world), **story beat cooldown** (`beatCooldownDays`, 1–14, default 3) and **expedition recap** (`expeditionRecap`, default on) — SYS › World.
 
@@ -339,7 +349,7 @@ Defaults in code: Desire/Bond defects **off**, show raw values **off**, sprite m
 | 7 | P6 | Dilemmas, disloyalty & the Leash | P0–P5 | implemented |
 | 8 | P7a | Analysis tool (contextual explanations) | P0–P6 | implemented |
 | 9 | P7 | Commander profile & traits | P0–P6 | implemented |
-| 10 | P8 | World options & disposition | P0–P7 | spec |
+| 10 | P8 | World options & disposition | P0–P7 | implemented |
 | 11 | P9 | Impunity, discipline, demands, reputation | P0–P8 | spec |
 | 12 | P10 | Visual upgrade (hub, device skins, voices) | P0–P6 | spec |
 | 13 | P11 | Prologue & onboarding | P7, P8, P10 | spec |
