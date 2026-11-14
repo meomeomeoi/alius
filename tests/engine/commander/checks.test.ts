@@ -150,14 +150,52 @@ describe('delegate routes', () => {
     expect(remarks).toBeLessThan(55);
   });
 
-  it('one band below is a demand and does not pass', () => {
+  it('one band short: she complies and an owed demand opens', () => {
     const s = fresh();
     setTrust(s, ANN, 20, 'wavering'); // low (10–24) is one band below guarded
     const r = resolve(s, check(BODY, DELEGATE), { route: 1, unitId: ANN });
-    expect(r.passed).toBe(false);
+    expect(r.passed).toBe(true);
     expect(r.error).toBeNull();
-    expect(ofType(r.events, 'delegate_demand')).toEqual([{ type: 'delegate_demand', unitId: ANN }]);
-    expect(r.draft.relations[ANN].affinity).toBe(s.relations[ANN].affinity); // nothing was paid
+    const demand = r.draft.discipline!.demands[0];
+    expect(demand).toMatchObject({ unitId: ANN, owed: true, status: 'undelivered' });
+    expect(ofType(r.events, 'delegate_demand')).toEqual([{ type: 'delegate_demand', unitId: ANN, demandId: demand.id }]);
+    expect(ofType(r.events, 'demand_opened')).toHaveLength(1);
+    expect(ofType(r.events, 'route_taken')).toMatchObject([{ passed: true }]);
+    expect(r.draft.relations[ANN].affinity).toBe(s.relations[ANN].affinity - 3); // the compliance costs were paid
+    expect(r.draft.squad.find((u) => u.id === ANN)!.stress).toBe(s.squad.find((u) => u.id === ANN)!.stress + 5);
+    expect(ofType(r.events, 'delegate_remark')).toEqual([]); // no remark: the demand is her answer
+  });
+
+  it('with a demand already open she refuses, and nothing is paid', () => {
+    const s = fresh();
+    setTrust(s, ANN, 20, 'wavering');
+    const first = resolve(s, check(BODY, DELEGATE), { route: 1, unitId: ANN }).draft;
+    const r = resolve(first, check(BODY, DELEGATE), { route: 1, unitId: ANN });
+    expect(r.passed).toBe(false);
+    expect(ofType(r.events, 'delegate_refused')).toEqual([{ type: 'delegate_refused', unitId: ANN }]);
+    expect(r.draft.relations[ANN].affinity).toBe(first.relations[ANN].affinity);
+    expect(r.draft.discipline!.demands).toHaveLength(1);
+  });
+
+  it('with no eligible template she refuses as before', () => {
+    const s = fresh();
+    setTrust(s, ANN, 20, 'wavering');
+    const bare = { ...reg, demandTemplates: new Map() } as typeof reg;
+    const draft = structuredClone(s);
+    const r = resolveRoute(draft, ctxOf(draft, bare), check(BODY, DELEGATE), { route: 1, unitId: ANN }, {});
+    expect(r.passed).toBe(false);
+    expect(ofType(r.events, 'delegate_refused')).toHaveLength(1);
+    expect(draft.relations[ANN].affinity).toBe(s.relations[ANN].affinity);
+    expect(draft.discipline?.demands ?? []).toEqual([]);
+  });
+
+  it('at or above the band no demand opens', () => {
+    const s = fresh();
+    setTrust(s, ANN, 30); // guarded
+    const r = resolve(s, check(BODY, DELEGATE), { route: 1, unitId: ANN });
+    expect(r.passed).toBe(true);
+    expect(r.draft.discipline?.demands ?? []).toEqual([]);
+    expect(ofType(r.events, 'delegate_demand')).toEqual([]);
   });
 
   it('two bands below refuses', () => {

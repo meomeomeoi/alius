@@ -555,13 +555,13 @@ chips — **acceptance 4 and 5**: `a dialogue punishment draws DISCIPLINE LOGGED
 - Consumes: `openDemand(draft, ctx, unitId, { owed: true })`.
 - Produces: `resolveRoute` — one band short: `openDemand` succeeds → `passed: true`, the compliance costs, events `delegate_demand { unitId, demandId }` + `demand_opened`; it returns `null` → `passed: false`, `delegate_refused`. Toast: `{Name} does it, and will want something for it.`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `one band short: she complies and an owed demand opens` (`route_taken.passed === true`, `discipline.demands[0].owed === true`, the affinity cost was paid); `with an open demand already, she refuses` (`delegate_refused`, nothing paid); `no eligible template → she refuses`; `two bands short and breaking loyalty refuse as before`; `at or above the band no demand opens`.
 
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement** (the template pick is a new `ctx.rng` draw on this branch only; update seeded expectations that hit it and name them in the commit). **Step 4: Run** `npm test` → PASS.
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement** (the template pick is a new `ctx.rng` draw on this branch only; update seeded expectations that hit it and name them in the commit). **Step 4: Run** `npm test` → PASS.
 
-- [ ] **Step 5: Commit** `feat(engine): a delegate one band short complies and opens an owed demand`
+- [x] **Step 5: Commit** `feat(engine): a delegate one band short complies and opens an owed demand`
 
 ---
 

@@ -5,6 +5,7 @@ import { isCostEffect } from '../../content/schemas';
 import { activeRosterUnits, isLiving } from '../economy';
 import type { WorldEffect } from '../world/types';
 import { trustBand, type TrustBand } from '../relations/bands';
+import { openDemand } from '../discipline/demands';
 import { applyRelationDelta } from '../relationGain';
 import { socialRank } from '../social';
 import type { CampaignState } from '../state/types';
@@ -114,8 +115,8 @@ export function routeChoices(state: CampaignState, reg: Registries, check: Route
 /**
  * Takes a route. Throws with the closed route's reason (or `Unit … is not available`) on a stale or disabled pick, so
  * the action changes nothing. A delegate request goes through the unit's loyalty and Trust: loyalty `breaking` refuses;
- * Trust at or above the check's band complies (sometimes with a remark); exactly one band below is a demand (a
- * refusal until P9 gives it a price); lower refuses. Only a compliance pays the affinity and stress cost.
+ * Trust at or above the check's band complies (sometimes with a remark); exactly one band below complies too and opens an
+ * owed demand for her (P9; with no demand to open she refuses); lower refuses. Only a compliance pays the affinity and stress cost.
  */
 export function resolveRoute(
   draft: CampaignState, ctx: EngineCtx, check: RouteCheck, pick: RoutePick, scope: RouteScope,
@@ -147,13 +148,14 @@ export function resolveRoute(
       const rel = draft.relations[unit.id];
       const have = TRUST_ORDER.indexOf(trustBand(rel?.trust ?? 0));
       const need = TRUST_ORDER.indexOf(route.cost.trustCheck ?? DEFAULT_TRUST_CHECK);
-      if (!rel || rel.loyaltyBand === 'breaking' || have < need - 1) {
+      // P9: one band short she does it anyway and bills later: an owed demand opens (none to ask for, or one already open: she refuses)
+      const short = rel !== undefined && rel.loyaltyBand !== 'breaking' && have === need - 1;
+      const owed = short ? openDemand(draft, ctx, unit.id, { owed: true }) : null;
+      if (!rel || rel.loyaltyBand === 'breaking' || have < need - 1 || (short && !owed)) {
         passed = false;
         events.push({ type: 'delegate_refused', unitId: unit.id });
-      } else if (have < need) {
-        passed = false;
-        events.push({ type: 'delegate_demand', unitId: unit.id });
       } else {
+        if (owed) events.push({ type: 'delegate_demand', unitId: unit.id, demandId: owed.demand.id }, ...owed.events);
         const { affinityCost = 0, stress = 0 } = route.cost;
         if (affinityCost > 0) {
           const applied = applyRelationDelta(draft, unit.id, 'affinity', -affinityCost, `route:${check.id}`);
@@ -164,7 +166,7 @@ export function resolveRoute(
           events.push({ type: 'stress_changed', unitId: unit.id, delta: next - unit.stress });
           unit.stress = next;
         }
-        if (ctx.rng.chance(TUNING.commander.delegateRemarkChance)) events.push({ type: 'delegate_remark', unitId: unit.id });
+        if (!owed && ctx.rng.chance(TUNING.commander.delegateRemarkChance)) events.push({ type: 'delegate_remark', unitId: unit.id });
       }
       break;
     }

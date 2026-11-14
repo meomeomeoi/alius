@@ -13754,13 +13754,13 @@ function resolveRoute(draft, ctx2, check, pick2, scope) {
       const rel = draft.relations[unit.id];
       const have = TRUST_ORDER.indexOf(trustBand(rel?.trust ?? 0));
       const need = TRUST_ORDER.indexOf(route.cost.trustCheck ?? DEFAULT_TRUST_CHECK);
-      if (!rel || rel.loyaltyBand === "breaking" || have < need - 1) {
+      const short = rel !== void 0 && rel.loyaltyBand !== "breaking" && have === need - 1;
+      const owed = short ? openDemand(draft, ctx2, unit.id, { owed: true }) : null;
+      if (!rel || rel.loyaltyBand === "breaking" || have < need - 1 || short && !owed) {
         passed = false;
         events.push({ type: "delegate_refused", unitId: unit.id });
-      } else if (have < need) {
-        passed = false;
-        events.push({ type: "delegate_demand", unitId: unit.id });
       } else {
+        if (owed) events.push({ type: "delegate_demand", unitId: unit.id, demandId: owed.demand.id }, ...owed.events);
         const { affinityCost = 0, stress = 0 } = route.cost;
         if (affinityCost > 0) {
           const applied = applyRelationDelta(draft, unit.id, "affinity", -affinityCost, `route:${check.id}`);
@@ -13771,7 +13771,7 @@ function resolveRoute(draft, ctx2, check, pick2, scope) {
           events.push({ type: "stress_changed", unitId: unit.id, delta: next - unit.stress });
           unit.stress = next;
         }
-        if (ctx2.rng.chance(TUNING.commander.delegateRemarkChance)) events.push({ type: "delegate_remark", unitId: unit.id });
+        if (!owed && ctx2.rng.chance(TUNING.commander.delegateRemarkChance)) events.push({ type: "delegate_remark", unitId: unit.id });
       }
       break;
     }
@@ -26318,7 +26318,7 @@ function createApp(st, deps) {
           toast("info", `${state?.squad.find((u) => u.id === e.unitId)?.displayName ?? "She"} does it, with a remark about being asked.`);
           break;
         case "delegate_demand":
-          toast("warn", `${state?.squad.find((u) => u.id === e.unitId)?.displayName ?? "She"} wants something in return. Not yet possible: she refuses.`);
+          toast("info", `${state?.squad.find((u) => u.id === e.unitId)?.displayName ?? "She"} does it, and will want something for it.`);
           break;
         case "delegate_refused":
           toast("warn", `${state?.squad.find((u) => u.id === e.unitId)?.displayName ?? "She"} refuses.`);

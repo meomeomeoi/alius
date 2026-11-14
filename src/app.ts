@@ -1424,7 +1424,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
           toast('info', `${state?.squad.find((u) => u.id === e.unitId)?.displayName ?? 'She'} does it, with a remark about being asked.`);
           break;
         case 'delegate_demand':
-          toast('warn', `${state?.squad.find((u) => u.id === e.unitId)?.displayName ?? 'She'} wants something in return. Not yet possible: she refuses.`);
+          toast('info', `${state?.squad.find((u) => u.id === e.unitId)?.displayName ?? 'She'} does it, and will want something for it.`);
           break;
         case 'delegate_refused':
           toast('warn', `${state?.squad.find((u) => u.id === e.unitId)?.displayName ?? 'She'} refuses.`);
