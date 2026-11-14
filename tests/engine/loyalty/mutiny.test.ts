@@ -1,11 +1,13 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { Registries } from '../../../src/content/types';
 import { loyaltyDayStep } from '../../../src/engine/loyalty/desertion';
-import { loyalUnits, mutinyReady, mutinyTrigger, sympathizers } from '../../../src/engine/loyalty/mutiny';
+import { loyalUnits, mutinyAllowed, mutinyDayStep, mutinyReady, mutinyTrigger, sympathizers } from '../../../src/engine/loyalty/mutiny';
 import { loyaltyRecord } from '../../../src/engine/loyalty/state';
 import { seedRng } from '../../../src/engine/rng';
 import type { CampaignState } from '../../../src/engine/state/types';
+import { impunityOf } from '../../../src/engine/discipline';
 import { campaign, ctxOf, errors, loadCore, ofType, run, setRelation } from '../../helpers/loyalty';
+import { setRecord } from '../../helpers/discipline';
 
 let reg: Registries;
 let base: CampaignState;
@@ -36,6 +38,7 @@ function brewing(opts: { seed?: number; inState?: number; triggerAgo?: number | 
   const s = clone(opts.seed);
   const state = opts.state ?? 'despises';
   setRelation(s, ANN, { trust: 5, affinity: -70, stateId: state, band: 'breaking', stateSince: s.day - (opts.inState ?? 5) });
+  setRecord(s, ANN, 40); // P9: a mutiny needs Impunity of 60 or more; she has been getting away with things
   const rec = loyaltyRecord(s, ANN);
   if (opts.triggerAgo !== null) rec.trigger = { kind: 'leash', day: s.day - (opts.triggerAgo ?? 1) };
   const n = opts.signs ?? 2;
@@ -502,5 +505,87 @@ describe('mutiny follows disposition (P8)', () => {
     const kindUnit = at('guarded', brewing());
     unit(kindUnit).dispositionOffset = -1; // kind
     expect(mutinyReady(kindUnit, reg, ANN)).toBe(false);
+  });
+});
+
+describe('mutiny and desertion follow Impunity (P9)', () => {
+  /** Sets her Impunity to exactly `value` through the stored record (and returns the state). */
+  function withImpunity(s: CampaignState, value: number): CampaignState {
+    setRecord(s, ANN, 0);
+    setRecord(s, ANN, value - impunityOf(s, reg, ANN)!.value);
+    expect(impunityOf(s, reg, ANN)!.value).toBe(value);
+    return s;
+  }
+  /** A brewing mutiny a day after the trigger; with `deserting` a desertion sign a day old, so a desertion attempt may roll. */
+  const ready = (seed: number, value: number, deserting = false): CampaignState => {
+    const s = withSympathizers(brewing({ seed }));
+    s.day += 1;
+    loyaltyRecord(s, ANN).trigger = { kind: 'leash', day: s.day };
+    if (deserting) loyaltyRecord(s, ANN).signs.push({ day: s.day - 2, about: 'desertion', kind: 'fact', signId: 'sign_desertion_fact_1' });
+    return withImpunity(s, value);
+  };
+  /** Only the mutiny rule (the loyalty step has its own desertion roll): `n` seeded days. */
+  const days = (value: number, deserting: boolean, n = 25) => {
+    const out = { mutiny: 0, desertion: 0 };
+    for (let seed = 1; seed <= n; seed++) {
+      const s = ready(seed, value, deserting);
+      const events = mutinyDayStep(s, ctxOf(s, reg));
+      out.mutiny += ofType(events, 'mutiny_started').length;
+      out.desertion += ofType(events, 'desertion_attempt').length;
+    }
+    return out;
+  };
+
+  it('a ready unit with impunity 59 does not mutiny; with 60 she can', () => {
+    expect(days(59, false).mutiny).toBe(0);
+    expect(days(60, false).mutiny).toBeGreaterThan(5);
+  });
+
+  it('a ready, breaking unit with impunity 29 attempts desertion instead of a mutiny', () => {
+    const r = days(29, true);
+    expect(r.mutiny).toBe(0);
+    expect(r.desertion).toBeGreaterThan(5);
+    expect(r.desertion).toBeLessThan(25);
+  });
+
+  it('between 30 and 59 nothing fires from the mutiny rule and her signs stay', () => {
+    for (const value of [30, 45, 59]) {
+      const s = ready(4, value, true);
+      const events = mutinyDayStep(s, ctxOf(s, reg));
+      expect(ofType(events, 'mutiny_started'), String(value)).toEqual([]);
+      expect(ofType(events, 'desertion_attempt'), String(value)).toEqual([]);
+      expect(loyaltyRecord(s, ANN).signs.filter((x) => x.about === 'mutiny'), String(value)).toHaveLength(2);
+    }
+  });
+
+  it('a desertion attempt still needs the desertion pause to be over', () => {
+    const s = ready(2, 20, true);
+    loyaltyRecord(s, ANN).nextCheckDay = s.day + 3;
+    for (let seed = 1; seed <= 20; seed++) {
+      const t = structuredClone(s);
+      t.rng = seedRng(seed);
+      expect(ofType(mutinyDayStep(t, ctxOf(t, reg)), 'desertion_attempt')).toEqual([]);
+    }
+  });
+
+  it('mutinyAllowed: mutiny from 60, desertion below 30 only while breaking, otherwise none', () => {
+    const at = (value: number, band: 'steady' | 'wavering' | 'breaking' = 'breaking') => {
+      const s = ready(1, value, true);
+      s.relations[ANN].loyaltyBand = band;
+      return mutinyAllowed(s, reg, ANN);
+    };
+    expect(at(60)).toBe('mutiny');
+    expect(at(60, 'wavering')).toBe('mutiny'); // the P6/P8 readiness decides the rest
+    expect(at(59)).toBe('none');
+    expect(at(30)).toBe('none');
+    expect(at(29)).toBe('desert');
+    expect(at(29, 'wavering')).toBe('none');
+    expect(at(0, 'steady')).toBe('none');
+    const notReady = ready(1, 29, true);
+    delete loyaltyRecord(notReady, ANN).trigger;
+    expect(mutinyAllowed(notReady, reg, ANN)).toBe('none');
+    const grunt = ready(1, 29, true);
+    grunt.squad.find((u) => u.id === ANN)!.kind = 'grunt';
+    expect(mutinyAllowed(grunt, reg, ANN)).toBe('none');
   });
 });

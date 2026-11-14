@@ -2,6 +2,8 @@ import type { Registries } from '../../content/types';
 import { amplify } from '../combat/effects';
 import type { EffectSpec } from '../combat/types';
 import type { EngineCtx, EngineEvent } from '../dispatch';
+import { holdDefiance } from '../discipline/record';
+import { isCovert, queueSabotage } from '../discipline/sabotage';
 import { getSynergies } from '../relations';
 import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
@@ -46,7 +48,9 @@ export function refusalChance(state: CampaignState, reg: Registries, unitId: str
 /**
  * An out-of-combat order to her in the open scene (a fixed scene control, not an intent): rolls her refusal before the
  * player's message goes out. A refusal is stored until she is answered (`leash/compel`) or the next exchange; a
- * compliance clears an older refusal of hers.
+ * compliance clears an older refusal of hers. P9: a refusal holds a moderate defiance (it settles when the scene ends,
+ * unless the commander enforces); a unit whose command stance is covert (fearful) refuses in secret instead: nothing is
+ * stored, the order looks accepted, one covert sabotage is queued and no defiance is held.
  */
 export function orderInScene(draft: CampaignState, ctx: EngineCtx, unitId: string): EngineEvent[] {
   const scene = draft.scene;
@@ -59,6 +63,11 @@ export function orderInScene(draft: CampaignState, ctx: EngineCtx, unitId: strin
   const chance = refusalChance(draft, ctx.registries, unitId);
   const refused = chance > 0 && ctx.rng.chance(chance);
   scene.refusals = (scene.refusals ?? []).filter((r) => r.unitId !== unitId);
-  if (refused) scene.refusals.push({ unitId, exchange: scene.exchanges });
-  return [{ type: 'scene_order', unitId, refused, chance }];
+  if (!refused) return [{ type: 'scene_order', unitId, refused, chance }];
+  if (unit.kind === 'named' && isCovert(draft, ctx.registries, unitId)) {
+    queueSabotage(draft, unitId);
+    return [{ type: 'scene_order', unitId, refused: false, chance, covert: true }];
+  }
+  scene.refusals.push({ unitId, exchange: scene.exchanges });
+  return [{ type: 'scene_order', unitId, refused, chance }, ...(unit.kind === 'named' ? holdDefiance(draft, unitId, 'moderate', 'order', scene.id) : [])];
 }

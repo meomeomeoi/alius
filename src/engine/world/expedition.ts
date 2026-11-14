@@ -20,6 +20,7 @@ import { TUNING } from '../tuning';
 import { familyEnabled } from '../worldOptions';
 import { applyWorldEffects } from './effects';
 import { openRequest } from './director';
+import { gearFault, GEAR_FAULT_LOG } from '../discipline/sabotage';
 import { missionStartCheck } from '../loyalty/desertion';
 import { buildMission, completeMission, releaseMission } from './missions';
 import { generateNodeMap, nextNodes, nodePlayType } from './nodeMap';
@@ -195,7 +196,10 @@ export function startExpedition(draft: CampaignState, ctx: EngineCtx, p: StartEx
   };
   addLog(exp, 'start', `Departed for ${regionName(region)}: ${mission.title}.`);
   draft.expedition = exp;
-  return [{ type: 'expedition_started', expeditionId: exp.id, missionId: mission.id, regionId: mission.regionId, party: exp.party, slots: exp.slots }];
+  // P9: a gear fault a covert unit left behind may bite now (it is cleared either way)
+  const faults = gearFault(draft, ctx);
+  if (faults.length > 0) addLog(exp, 'event', GEAR_FAULT_LOG);
+  return [...faults, { type: 'expedition_started', expeditionId: exp.id, missionId: mission.id, regionId: mission.regionId, party: exp.party, slots: exp.slots }];
 }
 
 /** What an `unknown` node turns out to be: a draw over its `resolvesTo` weights, skipping types the pack no longer has. */

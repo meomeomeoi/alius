@@ -304,20 +304,20 @@ Leash: `a done compel gives the target −20, cancels her held defiance and keep
   - `queueSabotage(draft, unitId)`, `sabotageDayStep(draft, ctx): EngineEvent[]`, `gearFault(draft, ctx): EngineEvent[]` (called inside `expedition/start` after the party is accepted).
   - `mutinyReady` unchanged; new `mutinyAllowed(state, reg, unitId): 'mutiny' | 'desert' | 'none'` used by `mutinyDayStep`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 stance quadrants — **acceptance 3** (Trust, Impunity → stance): `(60, 20) disciplined`, `(60, 70) defiant_loyal`, `(20, 20) fearful`, `(20, 70) open_defiance`, edges `(45, 50) defiant_loyal`, `(44, 49) fearful`; grunt → `null`.
 refusal: `a refused order holds a moderate defiance` (non-fearful; `scene.refusals` has her; after `scene/end` record +5); `a compel after the refusal cancels it` (record −20 after the scene); `a fearful refusal is hidden` (seed searched so the roll refuses: event `refused: false, covert: true`, `scene.refusals` empty, no held defiance, `discipline.sabotage.queued` has her); `a fearful compliance queues nothing`.
 mutiny: `a ready unit with impunity 59 does not mutiny` (20 seeded day ends, no `mutiny_started`); `with 60 she can`; `breaking with impunity 29 attempts desertion instead` (`desertion_attempt`, never `mutiny_started`); `between 30 and 59 nothing fires and her signs stay`.
 sabotage: `a queued sabotage fires at the next day end` (one of: supplies −2, credits −10, a waiting gear fault), `writes an anonymous fact` (the fact text contains no squad member's `displayName`, `knownBy: ['*']`), `never takes a resource below 0`, `at most one a day` (three fearful units, queued twice → one event); `no fearful unit, nothing queued → no rng draw` (rng state equal to a run without the step's roll); `a gear fault costs 2 carried supplies at the next expedition start half the time and is cleared either way` (two searched seeds).
 
-- [ ] **Step 2: Run** → FAIL.
+- [x] **Step 2: Run** → FAIL.
 
-- [ ] **Step 3: Implement.** Existing mutiny tests expect a mutiny from fixtures whose Impunity is below 60: give those units `impunityRecord: 40` through `setRecord` in the fixtures (not in the rule), and say so in the commit message. Fact texts (drafts): `The supply count came up short. Nobody saw anything.` · `Credits are missing from the outpost account. The log shows nothing.` · `Someone has been at the gear lockers.` Expedition log line: `Gear fault: a sealed pack turned out to be empty.`
+- [x] **Step 3: Implement.** Existing mutiny tests expect a mutiny from fixtures whose Impunity is below 60: give those units `impunityRecord: 40` through `setRecord` in the fixtures (not in the rule), and say so in the commit message. Fact texts (drafts): `The supply count came up short. Nobody saw anything.` · `Credits are missing from the outpost account. The log shows nothing.` · `Someone has been at the gear lockers.` Expedition log line: `Gear fault: a sealed pack turned out to be empty.`
 
-- [ ] **Step 4: Run** `npm test` → PASS; `npm run sim` still prints its report.
+- [x] **Step 4: Run** `npm test` → PASS; `npm run sim` still prints its report.
 
-- [ ] **Step 5: Commit** `feat(engine): command stances, hidden fearful refusals, mutiny gate and covert sabotage`
+- [x] **Step 5: Commit** `feat(engine): command stances, hidden fearful refusals, mutiny gate and covert sabotage`
 
 ---
 

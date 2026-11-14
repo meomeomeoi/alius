@@ -2985,6 +2985,73 @@ function applyDisciplineEvent(draft, ctx2, unitId, event, src) {
   return events;
 }
 
+// src/engine/discipline/stance.ts
+function commandStance(state, reg, unitId) {
+  const i = impunityOf(state, reg, unitId);
+  const rel = state.relations[unitId];
+  if (!i || !rel) return null;
+  const T = TUNING.impunity.stance;
+  const trustHigh = rel.trust >= T.trustHigh;
+  const impunityHigh = i.value >= T.impunityHigh;
+  return trustHigh ? impunityHigh ? "defiant_loyal" : "disciplined" : impunityHigh ? "open_defiance" : "fearful";
+}
+var stanceEntry = (reg, stance) => reg.commandStances.get(stance);
+
+// src/engine/discipline/sabotage.ts
+var FACT_TEXT = {
+  supplies: "The supply count came up short. Nobody saw anything.",
+  credits: "Credits are missing from the outpost account. The log shows nothing.",
+  gear: "Someone has been at the gear lockers."
+};
+var GEAR_FAULT_LOG = "Gear fault: a sealed pack turned out to be empty.";
+function queueSabotage(draft, unitId) {
+  const d = disciplineOf(draft);
+  d.sabotage ??= { queued: [] };
+  d.sabotage.queued.push({ unitId, day: draft.day });
+}
+function isCovert(state, reg, unitId) {
+  const stance = commandStance(state, reg, unitId);
+  return stance !== null && stanceEntry(reg, stance)?.covert === true;
+}
+function sabotageDayStep(draft, ctx2) {
+  const T = TUNING.impunity.sabotage;
+  const queued = draft.discipline?.sabotage?.queued ?? [];
+  let fire = queued.length > 0;
+  if (draft.discipline?.sabotage) draft.discipline.sabotage.queued = [];
+  if (!fire) {
+    for (const u of draft.squad) {
+      if (u.kind !== "named" || !isLiving(u) || !isCovert(draft, ctx2.registries, u.id)) continue;
+      if (ctx2.rng.chance(T.chancePerDay)) {
+        fire = true;
+        break;
+      }
+    }
+  }
+  if (!fire) return [];
+  const waiting2 = draft.discipline?.sabotage?.gear !== void 0;
+  const kinds2 = waiting2 ? ["supplies", "credits"] : ["supplies", "credits", "gear"];
+  const kind = ctx2.rng.pick(kinds2);
+  if (kind === "supplies") draft.resources.supplies = Math.max(0, draft.resources.supplies - T.supplies);
+  else if (kind === "credits") draft.resources.credits = Math.max(0, draft.resources.credits - T.credits);
+  else {
+    const by = queued[0]?.unitId ?? draft.squad.find((u) => u.kind === "named" && isLiving(u) && isCovert(draft, ctx2.registries, u.id))?.id ?? "";
+    const d = disciplineOf(draft);
+    d.sabotage ??= { queued: [] };
+    d.sabotage.gear = { unitId: by, day: draft.day };
+  }
+  addFact(draft, { about: ["world"], text: FACT_TEXT[kind], tags: ["sabotage"], importance: 2, day: draft.day, knownBy: ["*"] });
+  return [{ type: "covert_sabotage", kind }];
+}
+function gearFault(draft, ctx2) {
+  const sab = draft.discipline?.sabotage;
+  if (!sab?.gear) return [];
+  delete sab.gear;
+  const exp = draft.expedition;
+  if (!exp || !ctx2.rng.chance(TUNING.impunity.sabotage.gearChance)) return [];
+  exp.supplies = Math.max(0, exp.supplies - TUNING.impunity.sabotage.gearSupplies);
+  return [{ type: "covert_sabotage", kind: "gear", fired: true }];
+}
+
 // src/engine/discipline/dayStep.ts
 function disciplineDayStep(draft, ctx2) {
   const events = [];
@@ -3002,6 +3069,7 @@ function disciplineDayStep(draft, ctx2) {
     events.push(...lapseThreat(draft, ctx2, threat));
   }
   decayRecords(draft);
+  events.push(...sabotageDayStep(draft, ctx2));
   return events;
 }
 
@@ -13146,6 +13214,14 @@ function mutinyReady(state, reg, unitId) {
   const signs = mutinySigns(state, unitId);
   return signs.length >= rules2.minSigns && new Set(signs.map((s) => s.day)).size >= rules2.minSigns;
 }
+function mutinyAllowed(state, reg, unitId) {
+  if (!mutinyReady(state, reg, unitId)) return "none";
+  const value = impunityOf(state, reg, unitId)?.value;
+  if (value === void 0) return "none";
+  if (value >= TUNING.impunity.mutinyMin) return "mutiny";
+  if (state.relations[unitId]?.loyaltyBand === "breaking" && value < TUNING.impunity.desertInsteadBelow) return "desert";
+  return "none";
+}
 function sympathizers(state, unitId) {
   return state.roster.activeIds.filter((id) => {
     const u = state.squad.find((x) => x.id === id);
@@ -13196,8 +13272,11 @@ function mutinyDayStep(draft, ctx2) {
     else if (signs.length === 1 && rules2.minSigns >= 2 && newest < draft.day) events.push(...emitSign(draft, ctx2, u.id, "mutiny", 2));
     const aged = mutinySigns(draft, u.id);
     const lastSign = Math.max(-Infinity, ...aged.map((s) => s.day));
-    if (draft.disloyalty?.open || draft.day - lastSign < 1 || !mutinyReady(draft, ctx2.registries, u.id)) continue;
-    if (ctx2.rng.chance(TUNING.mutiny.chancePerDay)) events.push(...startMutiny(draft, u.id));
+    if (draft.disloyalty?.open || draft.day - lastSign < 1) continue;
+    const verdict = mutinyAllowed(draft, ctx2.registries, u.id);
+    if (verdict === "none" || verdict === "desert" && !mayDesert(draft, u.id)) continue;
+    if (!ctx2.rng.chance(TUNING.mutiny.chancePerDay)) continue;
+    events.push(...verdict === "mutiny" ? startMutiny(draft, u.id) : startDesertion(draft, u.id, "night"));
   }
   return events;
 }
@@ -13745,7 +13824,9 @@ function startExpedition(draft, ctx2, p) {
   };
   addLog(exp, "start", `Departed for ${regionName(region)}: ${mission.title}.`);
   draft.expedition = exp;
-  return [{ type: "expedition_started", expeditionId: exp.id, missionId: mission.id, regionId: mission.regionId, party: exp.party, slots: exp.slots }];
+  const faults = gearFault(draft, ctx2);
+  if (faults.length > 0) addLog(exp, "event", GEAR_FAULT_LOG);
+  return [...faults, { type: "expedition_started", expeditionId: exp.id, missionId: mission.id, regionId: mission.regionId, party: exp.party, slots: exp.slots }];
 }
 function resolveUnknownType(reg, rng, typeId) {
   const weights = Object.entries(reg.nodeTypes.get(typeId)?.resolvesTo ?? {}).filter(([id, w]) => reg.nodeTypes.has(id) && w > 0);
@@ -14313,8 +14394,13 @@ function orderInScene(draft, ctx2, unitId) {
   const chance = refusalChance(draft, ctx2.registries, unitId);
   const refused = chance > 0 && ctx2.rng.chance(chance);
   scene.refusals = (scene.refusals ?? []).filter((r) => r.unitId !== unitId);
-  if (refused) scene.refusals.push({ unitId, exchange: scene.exchanges });
-  return [{ type: "scene_order", unitId, refused, chance }];
+  if (!refused) return [{ type: "scene_order", unitId, refused, chance }];
+  if (unit.kind === "named" && isCovert(draft, ctx2.registries, unitId)) {
+    queueSabotage(draft, unitId);
+    return [{ type: "scene_order", unitId, refused: false, chance, covert: true }];
+  }
+  scene.refusals.push({ unitId, exchange: scene.exchanges });
+  return [{ type: "scene_order", unitId, refused, chance }, ...unit.kind === "named" ? holdDefiance(draft, unitId, "moderate", "order", scene.id) : []];
 }
 
 // src/engine/actions/loyalty.ts

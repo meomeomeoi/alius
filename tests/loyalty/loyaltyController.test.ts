@@ -7,6 +7,7 @@ import { ContextBuilder } from '../../src/llm/context';
 import { createLoyalty } from '../../src/loyalty/loyaltyController';
 import type { LoyaltyDeps } from '../../src/loyalty/deps';
 import { campaign, loadCore, setRelation } from '../helpers/loyalty';
+import { setRecord } from '../helpers/discipline';
 import { worldHarness, type WorldHarness } from '../helpers/worldApp';
 
 let reg: Registries;
@@ -21,6 +22,8 @@ beforeAll(async () => {
     setRelation(base, u.id, { trust: 60, affinity: 20, stateId: 'comrade', band: 'steady', stateSince: 1 });
   }
   base.leash.authorizationsLeft = 3;
+  // P9: a unit at Trust 5 who refuses is `fearful` and refuses in secret; Ann has been getting away with things (visible refusals)
+  setRecord(base, ANN, 40);
 });
 
 interface Rig { h: WorldHarness; ctx: ContextBuilder; refresh: ReturnType<typeof vi.fn>; loyalty: ReturnType<typeof createLoyalty> }

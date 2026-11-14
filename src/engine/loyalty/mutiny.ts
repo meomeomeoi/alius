@@ -3,6 +3,7 @@ import { injureCommander } from '../calendar';
 import type { StartPayload } from '../combat/types';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { isLiving } from '../economy';
+import { impunityOf } from '../discipline/impunity';
 import { removeFromService } from '../leash/use';
 import { nextId } from '../memory';
 import { enqueueNight } from '../night';
@@ -10,6 +11,7 @@ import { enterState } from '../relations/graph';
 import type { CampaignState, Confrontation, Severity } from '../state/types';
 import { TUNING } from '../tuning';
 import { dispositionById } from '../worldOptions';
+import { startDesertion, mayDesert } from './desertion';
 import { closeNight, emitSign, loyaltyOf, loyaltyRecord, requireOpen } from './state';
 
 const SEVERITY_RANK: Record<Severity, number> = { minor: 0, moderate: 1, major: 2, extreme: 3 };
@@ -65,6 +67,20 @@ export function mutinyReady(state: CampaignState, reg: Registries, unitId: strin
   if (rules.states.includes(state.relations[unitId].stateId) && mutinyTrigger(state, unitId) === null) return false;
   const signs = mutinySigns(state, unitId);
   return signs.length >= rules.minSigns && new Set(signs.map((s) => s.day)).size >= rules.minSigns;
+}
+
+/**
+ * P9: what a unit that is ready by the P6/P8 rules does about it. A mutiny needs Impunity ≥ 60 (she expects no price); a
+ * breaking unit with Impunity < 30 has nothing to gain from a fight and walks instead (`desert`); between the two nothing
+ * fires and her signs stay.
+ */
+export function mutinyAllowed(state: CampaignState, reg: Registries, unitId: string): 'mutiny' | 'desert' | 'none' {
+  if (!mutinyReady(state, reg, unitId)) return 'none';
+  const value = impunityOf(state, reg, unitId)?.value;
+  if (value === undefined) return 'none';
+  if (value >= TUNING.impunity.mutinyMin) return 'mutiny';
+  if (state.relations[unitId]?.loyaltyBand === 'breaking' && value < TUNING.impunity.desertInsteadBelow) return 'desert';
+  return 'none';
 }
 
 /** Other named active units whose loyalty has loosened and whose Trust is low: they side with her (at most 2, lowest Trust first). */
@@ -127,8 +143,11 @@ export function mutinyDayStep(draft: CampaignState, ctx: EngineCtx): EngineEvent
     // she is telegraphed: the newest sign is at least a day old
     const aged = mutinySigns(draft, u.id);
     const lastSign = Math.max(-Infinity, ...aged.map((s) => s.day));
-    if (draft.disloyalty?.open || draft.day - lastSign < 1 || !mutinyReady(draft, ctx.registries, u.id)) continue;
-    if (ctx.rng.chance(TUNING.mutiny.chancePerDay)) events.push(...startMutiny(draft, u.id));
+    if (draft.disloyalty?.open || draft.day - lastSign < 1) continue;
+    const verdict = mutinyAllowed(draft, ctx.registries, u.id); // P9: Impunity decides between a mutiny, a desertion and nothing
+    if (verdict === 'none' || (verdict === 'desert' && !mayDesert(draft, u.id))) continue;
+    if (!ctx.rng.chance(TUNING.mutiny.chancePerDay)) continue;
+    events.push(...(verdict === 'mutiny' ? startMutiny(draft, u.id) : startDesertion(draft, u.id, 'night')));
   }
   return events;
 }
