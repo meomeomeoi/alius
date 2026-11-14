@@ -921,6 +921,16 @@ export const MissionTemplateSchema = BaseEntrySchema.extend({
   briefs: z.array(str.max(300)).min(1),
   /** P8: see ClockSchema. */
   family: str.optional(),
+  /** P11: the tutorial run of the prologue. Never offered by the director, the fallback or rumors; needs a `fixedMap`. */
+  tutorial: z.literal(true).optional(),
+  /** P11: an authored node map: 1 to 4 layers of 1 to 3 nodes, then the objective node. `eventId` pins an event node's template. */
+  fixedMap: z.object({
+    layers: z.array(z.array(z.object({ type: str, eventId: str.optional() }).strict()).min(1).max(3)).min(1).max(4),
+  }).strict().optional(),
+}).superRefine((t, ctx) => {
+  if (t.tutorial === true && t.fixedMap === undefined) {
+    ctx.addIssue({ code: 'custom', path: ['fixedMap'], message: 'a tutorial template needs a fixedMap' });
+  }
 });
 
 const TRUST_BANDS = ['none', 'low', 'guarded', 'solid', 'high'] as const;
@@ -1507,6 +1517,121 @@ export const UiSoundSchema = BaseEntrySchema.extend({
 }).strict();
 
 Object.assign(registrySchemas, { uiSounds: UiSoundSchema });
+
+// ---------------------------------------------------------------------------------------------
+// P11: prologues and UI unlocks
+
+/** The commander-creation fields an intake step can own (a closed enum: the wizard methods behind them are fixed code). */
+export const PROLOGUE_FIELDS = ['crime', 'name', 'body', 'expression', 'seasoning', 'traits'] as const;
+export type PrologueField = (typeof PROLOGUE_FIELDS)[number];
+export const STEP_KINDS = ['paper_form', 'scene', 'expedition', 'dossier', 'guided_slot', 'free'] as const;
+export type StepKind = (typeof STEP_KINDS)[number];
+/** What the engine checks before it lets a step complete (see `onboarding/complete_step`). */
+export const COMPLETIONS = ['manual', 'no_open_scene', 'all_spoken', 'tutorial_returned', 'debriefed', 'next_day'] as const;
+export type Completion = (typeof COMPLETIONS)[number];
+/** Steps played in the setup wizard (in memory) rather than in the campaign. */
+export const WIZARD_KINDS: readonly StepKind[] = ['paper_form', 'dossier'];
+const isWizardKind = (k: StepKind): boolean => WIZARD_KINDS.includes(k);
+
+/** The tabs of the PDA. Kept in step with `TAB_IDS` in `ui/shell/tabs.ts` by a test (the content layer must not import the UI). */
+export const UI_TAB_IDS = ['squad', 'ops', 'map', 'comms', 'base', 'inv', 'log', 'sys'] as const;
+
+export const PrologueStepSchema = z.object({
+  kind: z.enum(STEP_KINDS),
+  voice: z.enum(['terminal', 'corporate', 'paper', 'personal']),
+  title: str.max(60).optional(),
+  authoredText: z.array(str.max(400)).max(8).optional(),
+  /** Named lines the screens look up by key (`ask_crime`, `dictate`...); `{KEY}` placeholders are filled by code. */
+  lines: z.record(z.string().regex(ID_PATTERN), str.max(200)).optional(),
+  /** The scene goal, injected as a hard directive while the step's scene runs. */
+  directive: str.max(400).optional(),
+  fields: z.array(z.enum(PROLOGUE_FIELDS)).optional(),
+  expeditionId: str.optional(),
+  regionId: str.optional(),
+  locationId: str.optional(),
+  exchangeCap: int.min(1).max(12).optional(),
+  /** One scene per living named unit instead of one scene for all. */
+  perUnit: z.boolean().optional(),
+  objective: str.max(100).optional(),
+  hints: z.array(z.object({
+    id: str, screen: z.enum(['combat', 'expedition']), glossaryId: str, text: str.max(200),
+  }).strict()).max(4).optional(),
+  nightKnock: z.object({
+    framing: str.max(200),
+    ignore: z.object({ event: str, severity: severityEnum }).strict(),
+  }).strict().optional(),
+  completion: z.enum(COMPLETIONS),
+  skippable: z.boolean(),
+}).strict();
+export type PrologueStep = z.infer<typeof PrologueStepSchema>;
+
+/**
+ * One prologue: wizard steps first (the last of them the only dossier), campaign steps next, `free` last. A prologue is
+ * an object of steps plus `order` so that `extends` can merge a skeleton with per-start overrides (arrays are replaced
+ * by the loader, objects merge). `startId` is absent on the skeleton and present on an entry a start uses.
+ */
+export const PrologueSchema = BaseEntrySchema.extend({
+  startId: str.optional(),
+  order: z.array(str).min(2),
+  steps: z.record(z.string().regex(ID_PATTERN), PrologueStepSchema),
+}).superRefine((p, ctx) => {
+  const issue = (path: Array<string | number>, message: string) => ctx.addIssue({ code: 'custom', path, message });
+  let broken = false;
+  p.order.forEach((id, i) => {
+    if (!(id in p.steps)) { issue(['order'], `order lists "${id}" (position ${i + 1}), which is not in steps`); broken = true; }
+  });
+  for (const id of Object.keys(p.steps)) {
+    if (!p.order.includes(id)) issue(['order'], `step "${id}" is missing from order`);
+  }
+  if (new Set(p.order).size !== p.order.length) issue(['order'], 'order lists a step twice');
+  if (broken) return;
+  const list = p.order.map((id) => ({ id, step: p.steps[id] }));
+
+  // wizard steps first, exactly one dossier and it ends them
+  const firstCampaign = list.findIndex((x) => !isWizardKind(x.step.kind));
+  const lateWizard = list.findIndex((x, i) => firstCampaign >= 0 && i > firstCampaign && isWizardKind(x.step.kind));
+  if (lateWizard >= 0) issue(['order'], `wizard step "${list[lateWizard].id}" comes after a campaign step (paper forms and the dossier must all be first)`);
+  const dossiers = list.filter((x) => x.step.kind === 'dossier');
+  const wizardSteps = list.filter((x) => isWizardKind(x.step.kind));
+  if (dossiers.length !== 1) issue(['order'], `a prologue has exactly one dossier step (found ${dossiers.length})`);
+  else if (wizardSteps[wizardSteps.length - 1].id !== dossiers[0].id) issue(['order'], `the dossier "${dossiers[0].id}" must be the last wizard step`);
+  const frees = list.filter((x) => x.step.kind === 'free');
+  if (frees.length !== 1 || list[list.length - 1].step.kind !== 'free') issue(['order'], 'a prologue ends with exactly one free step');
+
+  // each creation field at most once; every field once for an entry a start uses
+  const seen = new Map<string, number>();
+  for (const { step } of list) for (const f of step.fields ?? []) seen.set(f, (seen.get(f) ?? 0) + 1);
+  for (const [f, n] of seen) if (n > 1) issue(['steps'], `field "${f}" is listed more than once`);
+  if (p.startId !== undefined) {
+    for (const f of PROLOGUE_FIELDS) if (!seen.has(f)) issue(['steps'], `no step asks for the field "${f}" (an entry with startId covers every field once)`);
+  }
+
+  for (const { id, step } of list) {
+    const at = (field: string) => ['steps', id, field];
+    if (step.kind === 'scene') {
+      if (step.locationId === undefined) issue(at('locationId'), 'a scene step needs a locationId');
+      if (step.exchangeCap === undefined) issue(at('exchangeCap'), 'a scene step needs an exchangeCap');
+    }
+    if (step.kind === 'expedition') {
+      if (step.expeditionId === undefined) issue(at('expeditionId'), 'an expedition step needs an expeditionId');
+      if (step.regionId === undefined) issue(at('regionId'), 'an expedition step needs a regionId');
+    }
+    if (step.kind === 'paper_form' && step.completion !== 'manual') issue(at('completion'), 'a paper_form completes manually');
+    if (step.perUnit === true && step.completion !== 'all_spoken') issue(at('completion'), 'a perUnit step completes with all_spoken');
+  }
+});
+export type Prologue = z.infer<typeof PrologueSchema>;
+
+/** A PDA tab opens when its condition holds; a tab with no row is always open. */
+export const UiUnlockSchema = BaseEntrySchema.extend({
+  target: z.object({ tab: z.enum(UI_TAB_IDS) }).strict(),
+  condition: z.object({ minDay: int.min(1).optional(), afterStep: str.optional() }).strict()
+    .refine((c) => c.minDay !== undefined || c.afterStep !== undefined, 'a condition needs minDay or afterStep'),
+  /** Shown in the terminal voice when the tab opens. */
+  notice: str.max(160),
+}).strict();
+
+Object.assign(registrySchemas, { prologues: PrologueSchema, uiUnlocks: UiUnlockSchema });
 
 /** Player-visible registries whose entries carry an optional `description` (skills and statuses already require one). */
 export const DESCRIBED_REGISTRIES = [

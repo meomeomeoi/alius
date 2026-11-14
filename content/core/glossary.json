@@ -1017,8 +1017,8 @@
   {
     "id": "objective",
     "term": "Objective",
-    "short": "What the outpost is working toward right now: the story mission in progress, or the nearest deadline.",
-    "long": "The hub shows one standing order. A mission that advances the story comes first; otherwise the mission with the nearest deadline. With no missions on the board it reads NO STANDING ORDERS.",
+    "short": "What the outpost is working toward right now: the current prologue step, the story, a lead from the director, or a soldier who wants to talk.",
+    "long": "The hub shows one standing order. During the [[prologue]] it is the current step. Afterwards a story beat that is ready comes first, then the director's latest lead, then soldiers waiting on an answer. With nothing to follow it falls back to the mission with the nearest deadline, and reads NO STANDING ORDERS when there is none.",
     "see": [
       "hub",
       "tonight"
@@ -1133,6 +1133,107 @@
     "long": "It follows the volume and the mute setting and stops when you close the shell.",
     "see": [
       "setting_sound_volume"
+    ]
+  },
+  {
+    "id": "prologue",
+    "term": "Prologue",
+    "short": "The opening of a new campaign: intake, medical exam and dossier, a line-up with the squad, a short patrol and a first evening.",
+    "long": "Everything before the first free day is guided. Each stage has a [[objective]] on the hub, and the PDA tabs open one by one. A repeat player can take the [[veteran_intake]] and skip the patrol.",
+    "see": [
+      "intake_interview",
+      "medical_exam",
+      "personnel_dossier",
+      "veteran_intake"
+    ]
+  },
+  {
+    "id": "intake_interview",
+    "term": "Intake interview",
+    "short": "The clerk asks for the article of the conviction and a name for the record.",
+    "long": "The article decides the commander's crime and perk; the name is how soldiers will address the commander. Both can be changed on the dossier before signing.",
+    "see": [
+      "personnel_dossier"
+    ]
+  },
+  {
+    "id": "medical_exam",
+    "term": "Medical exam",
+    "short": "The medic dictates what the examination finds: build, how the commander presents, and notes for the file.",
+    "long": "Build is the three body stats, presentation is the expression, and notes are the commander traits you choose. The wording on each line comes from the numbers.",
+    "see": [
+      "body_strength",
+      "expression",
+      "commander_traits"
+    ]
+  },
+  {
+    "id": "personnel_dossier",
+    "term": "Personnel dossier",
+    "short": "The commander's whole file. Review it, change what you like, then sign to deploy.",
+    "see": [
+      "intake_interview",
+      "medical_exam"
+    ]
+  },
+  {
+    "id": "veteran_intake",
+    "term": "Veteran intake",
+    "short": "The classic setup form instead of the in-world intake, and no tutorial patrol.",
+    "long": "It fills in the same commander fields as the intake, medical exam and dossier, just as plain forms. The line-up and first words still happen.",
+    "see": [
+      "prologue"
+    ]
+  },
+  {
+    "id": "lineup",
+    "term": "Line-up",
+    "short": "The first meeting with the whole squad. It runs about six exchanges, then offers to move on.",
+    "long": "You can keep talking or end it. The line-up never uses up a slot.",
+    "see": [
+      "first_words"
+    ]
+  },
+  {
+    "id": "first_words",
+    "term": "First words",
+    "short": "A short private exchange with each soldier, two or three replies each.",
+    "long": "You can skip any soldier. It never uses up a slot.",
+    "see": [
+      "lineup"
+    ]
+  },
+  {
+    "id": "tutorial_expedition",
+    "term": "Shakedown patrol",
+    "short": "A short authored expedition: one fight, one decision, the objective. It teaches the combat and expedition screens.",
+    "long": "A lost or abandoned patrol does not block the story. Combats in it can always be retried; stress and injuries still count.",
+    "see": [
+      "expedition",
+      "rows",
+      "cp"
+    ]
+  },
+  {
+    "id": "module_offline",
+    "term": "Module offline",
+    "short": "A PDA tab that has not come online yet.",
+    "long": "Tabs open on a day or after a story step, with a notice when they do. LOG and SYS are always open."
+  },
+  {
+    "id": "coach_hint",
+    "term": "Coach hint",
+    "short": "A one-line tip that appears at the top of a screen during the shakedown patrol.",
+    "long": "Press GOT IT to dismiss it. Focus anything and press ? for more."
+  },
+  {
+    "id": "rows",
+    "term": "Rows",
+    "short": "Each side stands in a front or a back row, three to a row.",
+    "long": "Melee skills hit only the front row while anyone stands in it; ranged skills reach either row. Set the formation before an expedition.",
+    "see": [
+      "loadout",
+      "cp"
     ]
   }
 ]

@@ -624,9 +624,20 @@ export function resolveCombat(draft: CampaignState, ctx: EngineCtx): EngineEvent
 
 type EventOption = { label: string; requires?: { stat: string; rank: number }; routeCheck?: RouteCheck; effects: WorldEffect[] };
 
+/** Events named by the fixed (tutorial) map of a mission template: they play only on that map. */
+export function fixedMapEvents(reg: Registries): Set<string> {
+  const out = new Set<string>();
+  for (const t of reg.missionTemplates.values()) {
+    const layers = (t.fixedMap as { layers?: Array<Array<{ eventId?: string }>> } | undefined)?.layers ?? [];
+    for (const layer of layers) for (const node of layer) if (node.eventId !== undefined) out.add(node.eventId);
+  }
+  return out;
+}
+
 /** Minor events the pack offers in this region; the ones a mission pins to its objective are never drawn at random. */
 export function eventPool(state: CampaignState, reg: Registries, regionId: string): Entry[] {
   const pinned = new Set([...reg.missionTemplates.values()].map((t) => t.objectiveEventId).filter((x): x is string => typeof x === 'string'));
+  for (const id of fixedMapEvents(reg)) pinned.add(id);
   return [...reg.dilemmaTemplates.values()].filter((t) => {
     const regions = t.regions as string[] | undefined;
     return t.scale === 'minor' && (t.contexts as string[]).includes('expedition_event') && !pinned.has(t.id)

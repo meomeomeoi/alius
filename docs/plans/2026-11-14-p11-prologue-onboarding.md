@@ -83,7 +83,7 @@ Rulings marked **user** were answered by the user on 2026-11-14. Task 10 copies 
 **Interfaces:**
 - Produces: `PROLOGUE_FIELDS = ['crime','name','body','expression','seasoning','traits'] as const`; `STEP_KINDS = ['paper_form','scene','expedition','dossier','guided_slot','free'] as const`; `COMPLETIONS = ['manual','no_open_scene','all_spoken','tutorial_returned','debriefed','next_day'] as const`; `WIZARD_KINDS = ['paper_form','dossier']`; `PrologueStepSchema`, `PrologueSchema`, `UiUnlockSchema`; types `PrologueStep`, `Prologue` (`z.infer`). Step fields: `kind, voice ('terminal'|'corporate'|'paper'|'personal'), title?: str≤60, authoredText?: str≤400[] ≤8, lines?: Record<str, str≤200>, directive?: str≤400, fields?: PrologueField[], expeditionId?, regionId?, locationId?, exchangeCap?: int 1–12, perUnit?: boolean, objective?: str≤100, hints?: {id, screen: 'combat'|'expedition', glossaryId, text: str≤200}[] ≤4, nightKnock?: { framing: str≤200, ignore: { event, severity } }, completion, skippable: boolean`. Prologue: `{ id, startId?, order: str[] (≥2), steps: Record<str, Step> }`. `MissionTemplateSchema` gains `tutorial?: true`, `fixedMap?: { layers: Array<Array<{ type: str; eventId?: str }>> }` (1–4 layers, 1–3 nodes each).
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `prologueSchemas.test.ts` (build a minimal valid prologue in the test and mutate it):
 - `valid skeleton parses`;
@@ -96,9 +96,9 @@ Rulings marked **user** were answered by the user on 2026-11-14. Task 10 copies 
 `core.test.ts`: `core prologues: both starts have one, built from prologue_skeleton` (each `starts` id appears as exactly one `startId`; both raw entries have `extends: 'prologue_skeleton'`); `core uiUnlocks: squad,comms day 1; ops,map after tutorial; base,inv day 2; no entry for log or sys`; refs: `unknown expeditionId / locationId / regionId / glossaryId / startId / afterStep reported` (loader errors name the path).
 `pronouns.test.ts`: add `prologues` (every string under `steps`) and `uiUnlocks.notice` to the scanned fields.
 
-- [ ] **Step 2: Run** `npx vitest run tests/content` → FAIL (schemas and files missing).
+- [x] **Step 2: Run** `npx vitest run tests/content` → FAIL (schemas and files missing).
 
-- [ ] **Step 3: Implement schemas, refs and content**
+- [x] **Step 3: Implement schemas, refs and content**
 
 Schemas per Interfaces, with the `superRefine` rules the tests name (`afterStep` is checked by refs against the step ids of every prologue). Refs: `startId → starts`, `expeditionId → missionTemplates`, `regionId → regions`, `locationId → locations`, `hints[].glossaryId → glossary`, `nightKnock.ignore.event → eventDeltas` types (same check the night specs use), `fixedMap` node `type → nodeTypes` (kind not `objective`), `eventId → dilemmaTemplates` with context `expedition_event`.
 `prologues.json`: `prologue_skeleton` with `order` `cold_open, intake, exam, dossier, lineup, first_words, tutorial, debrief, first_evening, free`; kinds/completions: `cold_open` paper_form/manual (no fields), `intake` paper_form/manual fields `[crime,name]`, `exam` paper_form/manual fields `[body,expression,seasoning,traits]`, `dossier` dossier/manual, `lineup` scene/no_open_scene `locationId: garage`, `exchangeCap: 6`, skippable, `first_words` scene `perUnit`/all_spoken `locationId: quarters_unit`, `exchangeCap: 3`, skippable, `tutorial` expedition/tutorial_returned `expeditionId: tutorial_patrol`, 3 hints (rows → glossary for rows, CP orders, stress; use existing glossary ids, add missing ones), skippable, `debrief` guided_slot/debriefed, skippable, `first_evening` guided_slot/next_day with `nightKnock`, skippable, `free` free/manual. Wizard steps are not skippable (veteran mode replaces them). `lines` keys used by Task 4: intake `ask_crime`, `ask_name`, `confirm_owner` (`{CORPORATION}` placeholder); exam `intro`, `dictate` (`{FIELD}: {VALUE}. Write it down.` style, placeholders `{FIELD}` `{VALUE}`), `traits_note`; dossier `sign_prompt`. `prologue_vesper` / `prologue_kestrel`: `extends` the skeleton, own `startId`, `steps.tutorial.regionId` (`quarantine_d7` / `kestrel_corridor`), and their own `cold_open.authoredText`, `intake.lines`, `lineup.directive` (the scene goal), `objective` texts.
@@ -107,9 +107,9 @@ Schemas per Interfaces, with the `superRefine` rules the tests name (`afterStep`
 Glossary: `prologue`, `intake_interview`, `medical_exam`, `personnel_dossier`, `veteran_intake`, `lineup`, `first_words`, `tutorial_expedition`, `module_offline`, `coach_hint`, plus any missing combat ids the hints name; update `objective` to describe the sources.
 `docs/content/prologue.md`: every string above, per start, headed `DRAFT — author will rewrite`; JSON mirrors it.
 
-- [ ] **Step 4: Run** `npx vitest run tests/content` → PASS; `npm test` → green.
+- [x] **Step 4: Run** `npx vitest run tests/content` → PASS; `npm test` → green.
 
-- [ ] **Step 5: Commit** `feat(content): prologues, uiUnlocks and the tutorial patrol`
+- [x] **Step 5: Commit** `feat(content): prologues, uiUnlocks and the tutorial patrol`
 
 ---
 

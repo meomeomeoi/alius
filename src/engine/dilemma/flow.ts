@@ -7,7 +7,7 @@ import type { CampaignState, Unit } from '../state/types';
 import { TUNING } from '../tuning';
 import { familyEnabled } from '../worldOptions';
 import { afterFailedRoute, resolveRoute, routeChoices, routeScope, type RouteChoice, type RoutePick } from '../commander/checks';
-import { finishEventNode } from '../world/expedition';
+import { finishEventNode, fixedMapEvents } from '../world/expedition';
 import { applyWorldEffects } from '../world/effects';
 import { currentBeat } from '../world/spine';
 import { clockById, knownRegions } from '../world/state';
@@ -80,8 +80,9 @@ export function buildDilemmaDigest(state: CampaignState, reg: Registries, d: Dil
 export function eligibleTemplates(state: CampaignState, reg: Registries, contexts: DilemmaContext[]): Entry[] {
   const recent = state.dilemmas?.recent ?? [];
   const present = presentUnits(state).length;
+  const onFixedMaps = fixedMapEvents(reg); // P11: the tutorial's event is asked only by its own map
   return [...reg.dilemmaTemplates.values()].filter((t) => {
-    if (t.generate === undefined || t.scale === 'defining' || recent.includes(String(t.id))) return false;
+    if (t.generate === undefined || t.scale === 'defining' || recent.includes(String(t.id)) || onFixedMaps.has(String(t.id))) return false;
     if (!familyEnabled(state, reg, t)) return false; // P8: an event family only in a world that enables it
     if (!(t.contexts as string[]).some((c) => (contexts as string[]).includes(c))) return false;
     const need = t.requiredRefs as { units?: number; factions?: string[]; regions?: string[]; clocks?: string[] } | undefined;

@@ -1,0 +1,218 @@
+[
+  {
+    "id": "prologue_skeleton",
+    "order": [
+      "cold_open",
+      "intake",
+      "exam",
+      "dossier",
+      "lineup",
+      "first_words",
+      "tutorial",
+      "debrief",
+      "first_evening",
+      "free"
+    ],
+    "steps": {
+      "cold_open": {
+        "kind": "paper_form",
+        "voice": "paper",
+        "title": "TRANSFER ORDER",
+        "authoredText": [
+          "The transport has no windows. Restraints hold your wrists to the bench; the guard across from you has stopped looking up.",
+          "A speaker reads the sentence aloud: the charge, the article, the reduction offered for every mission survived.",
+          "The door opens on the Correctional Command Program outpost. Someone is waiting with a clipboard."
+        ],
+        "completion": "manual",
+        "skippable": false
+      },
+      "intake": {
+        "kind": "paper_form",
+        "voice": "paper",
+        "title": "INTAKE INTERVIEW",
+        "lines": {
+          "ask_crime": "Article under which you were convicted?",
+          "ask_name": "Name for the record?",
+          "confirm_owner": "Your sentence is held by {CORPORATION}. Confirm."
+        },
+        "fields": [
+          "crime",
+          "name"
+        ],
+        "completion": "manual",
+        "skippable": false
+      },
+      "exam": {
+        "kind": "paper_form",
+        "voice": "paper",
+        "title": "MEDICAL EXAMINATION",
+        "lines": {
+          "intro": "Stand on the mark. Arms out. This will take a minute.",
+          "dictate": "{FIELD}: {VALUE}. Write it down.",
+          "traits_note": "Notes for the file. Two at most; the file keeps what it is given."
+        },
+        "fields": [
+          "body",
+          "expression",
+          "seasoning",
+          "traits"
+        ],
+        "completion": "manual",
+        "skippable": false
+      },
+      "dossier": {
+        "kind": "dossier",
+        "voice": "paper",
+        "title": "PERSONNEL DOSSIER",
+        "lines": {
+          "sign_prompt": "Review the file. Once it is signed, the file is filed and you deploy."
+        },
+        "completion": "manual",
+        "skippable": false
+      },
+      "lineup": {
+        "kind": "scene",
+        "voice": "personal",
+        "title": "LINE-UP",
+        "directive": "This is the first meeting between the commander and the squad, in the garage straight after arrival. Each soldier sizes up the commander in her own way and says so in character; none of them knows yet whether the commander is worth following. Keep it a first meeting: no mission talk, no promises.",
+        "locationId": "garage",
+        "exchangeCap": 6,
+        "objective": "Stand before the squad at the line-up.",
+        "completion": "no_open_scene",
+        "skippable": true
+      },
+      "first_words": {
+        "kind": "scene",
+        "voice": "personal",
+        "title": "FIRST WORDS",
+        "directive": "A short private exchange, the first time the commander and this soldier speak alone. She answers as herself and reveals one real thing about her attitude to the commander; keep it brief and leave the rest unsaid.",
+        "locationId": "quarters_unit",
+        "exchangeCap": 3,
+        "perUnit": true,
+        "objective": "Say a few words to each soldier.",
+        "completion": "all_spoken",
+        "skippable": true
+      },
+      "tutorial": {
+        "kind": "expedition",
+        "voice": "terminal",
+        "title": "SHAKEDOWN PATROL",
+        "expeditionId": "tutorial_patrol",
+        "regionId": "quarantine_d7",
+        "objective": "Take the shakedown patrol out and bring it back.",
+        "hints": [
+          {
+            "id": "hint_rows",
+            "screen": "combat",
+            "glossaryId": "rows",
+            "text": "Soldiers fight from the front or the back row. Melee reaches only the front while anyone stands there."
+          },
+          {
+            "id": "hint_cp",
+            "screen": "combat",
+            "glossaryId": "cp",
+            "text": "Command Points pay for your orders. You gain one each round; spend them when an order changes the fight."
+          },
+          {
+            "id": "hint_stress",
+            "screen": "expedition",
+            "glossaryId": "stress",
+            "text": "Fights and danger raise stress. A strained soldier plays her defects harder, so watch the bars between nodes."
+          }
+        ],
+        "completion": "tutorial_returned",
+        "skippable": true
+      },
+      "debrief": {
+        "kind": "guided_slot",
+        "voice": "terminal",
+        "title": "DEBRIEF",
+        "objective": "File the after-action report for the patrol.",
+        "completion": "debriefed",
+        "skippable": true
+      },
+      "first_evening": {
+        "kind": "guided_slot",
+        "voice": "personal",
+        "title": "FIRST EVENING",
+        "objective": "Spend the evening with whoever wants to talk.",
+        "nightKnock": {
+          "framing": "{name} is at the door, and it is not about duty.",
+          "ignore": {
+            "event": "dismissed",
+            "severity": "minor"
+          }
+        },
+        "completion": "next_day",
+        "skippable": true
+      },
+      "free": {
+        "kind": "free",
+        "voice": "terminal",
+        "title": "FREE PLAY",
+        "completion": "manual",
+        "skippable": false
+      }
+    }
+  },
+  {
+    "id": "prologue_vesper",
+    "extends": "prologue_skeleton",
+    "startId": "start_vesper",
+    "steps": {
+      "cold_open": {
+        "authoredText": [
+          "The transport smells of disinfectant and wet concrete. Restraints hold your wrists to the bench, and the guard across from you wears a Vesper Somatics sleeve patch.",
+          "A speaker reads the sentence aloud in a pleasant voice: the charge, the article, the reduction offered for every mission survived.",
+          "Through the slot of a window the District 7 quarantine wall goes by, green with growth. The Correctional Command Program outpost is the last clean building on the road.",
+          "A clerk waits at the gate with a clipboard and a sample case. The case, you are told, is not your concern yet."
+        ]
+      },
+      "intake": {
+        "lines": {
+          "ask_crime": "Article under which Vesper Somatics has convicted you?",
+          "ask_name": "Name for the record. The clean kind of record.",
+          "confirm_owner": "Your sentence is held by {CORPORATION}, and so is everything you are about to touch. Confirm."
+        }
+      },
+      "lineup": {
+        "directive": "This is the first meeting between the commander and the squad, in the outpost garage, a few streets from the District 7 quarantine wall. Vesper Somatics assigned the unit to secure Bloom samples; the soldiers know they are off-spec assets under a convicted officer, and each says what she makes of that in character. Keep it a first meeting: no mission talk, no promises.",
+        "objective": "Stand before the squad in the garage."
+      },
+      "tutorial": {
+        "regionId": "quarantine_d7",
+        "objective": "Walk the quarantine edge and bring the patrol back."
+      }
+    }
+  },
+  {
+    "id": "prologue_kestrel",
+    "extends": "prologue_skeleton",
+    "startId": "start_kestrel",
+    "steps": {
+      "cold_open": {
+        "authoredText": [
+          "The transport is a cargo carrier with benches welded to the floor. Restraints hold your wrists to a rail, and the guard across from you is mouthing numbers at the floor. Quotas, probably.",
+          "A speaker reads the sentence aloud, flat as a shift report: the charge, the article, the reduction offered for every mission survived.",
+          "Down the carrier ramp the Corridor K-12 mine mouth is a black seam in the hillside, with pylons and floodlights dragged up to it.",
+          "A foreman waits at the gate with a clipboard and a clock. The clock, you are told, is already running."
+        ]
+      },
+      "intake": {
+        "lines": {
+          "ask_crime": "Article under which Kestrel-Ward has convicted you?",
+          "ask_name": "Name. For the ledger.",
+          "confirm_owner": "Your sentence is held by {CORPORATION}. The quota is not negotiable. Confirm."
+        }
+      },
+      "lineup": {
+        "directive": "This is the first meeting between the commander and the squad, in the outpost garage beside the Corridor K-12 mine road. Kestrel-Ward has set a quota deadline; the soldiers know they are expendable off-spec assets under a convicted officer, and each says what she makes of that in character. Keep it a first meeting: no mission talk, no promises.",
+        "objective": "Stand before the squad in the garage."
+      },
+      "tutorial": {
+        "regionId": "kestrel_corridor",
+        "objective": "Walk the corridor mouth and bring the patrol back."
+      }
+    }
+  }
+]

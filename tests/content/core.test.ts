@@ -628,8 +628,8 @@ describe('core content: P5 world', () => {
     const events = [...r.dilemmaTemplates.values()];
     const expeditionEvents = events.filter((e) => (e.contexts as string[]).includes('expedition_event'));
     for (const e of expeditionEvents) {
-      // P6: the two beat-4 choices are defining; every other expedition event stays minor
-      expect(e.scale).toBe(String(e.id).endsWith('_choice') ? 'defining' : 'minor');
+      // P6: the two beat-4 choices are defining; every other expedition event stays minor (P11: so is the tutorial's `_choice`)
+      expect(e.scale).toBe(String(e.id).endsWith('_choice') && e.id !== 'evt_tutorial_choice' ? 'defining' : 'minor');
     }
     const real = expeditionEvents.filter((e) => !e.flavor && !String(e.id).endsWith('_choice'));
     expect(real.length).toBeGreaterThanOrEqual(6);
@@ -853,3 +853,109 @@ describe('core content pack: P10 device skins', () => {
   });
 });
 
+
+describe('core content pack: P11 prologues and unlocks', () => {
+  it('core prologues: both starts have one, built from prologue_skeleton', async () => {
+    const { registries: r } = await load();
+    const raw = JSON.parse(await readFile('content/core/prologues.json', 'utf8')) as Array<{ id: string; extends?: string; startId?: string }>;
+    for (const start of r.starts.keys()) {
+      expect([...r.prologues.values()].filter((p) => p.startId === start), start).toHaveLength(1);
+    }
+    const skeleton = r.prologues.get('prologue_skeleton')!;
+    expect(skeleton.startId).toBeUndefined();
+    expect(raw.filter((e) => e.startId !== undefined)).toHaveLength(2);
+    for (const e of raw.filter((x) => x.startId !== undefined)) expect(e.extends, e.id).toBe('prologue_skeleton');
+    expect(r.prologues.size).toBe(3);
+  });
+
+  it('the skeleton follows the planned order, kinds and completions', async () => {
+    const { registries: r } = await load();
+    const sk = r.prologues.get('prologue_skeleton')!;
+    expect(sk.order).toEqual(['cold_open', 'intake', 'exam', 'dossier', 'lineup', 'first_words', 'tutorial', 'debrief', 'first_evening', 'free']);
+    const steps = sk.steps as Record<string, { kind: string; completion: string; skippable: boolean }>;
+    expect(Object.fromEntries(Object.entries(steps).map(([id, s]) => [id, [s.kind, s.completion]]))).toEqual({
+      cold_open: ['paper_form', 'manual'], intake: ['paper_form', 'manual'], exam: ['paper_form', 'manual'], dossier: ['dossier', 'manual'],
+      lineup: ['scene', 'no_open_scene'], first_words: ['scene', 'all_spoken'], tutorial: ['expedition', 'tutorial_returned'],
+      debrief: ['guided_slot', 'debriefed'], first_evening: ['guided_slot', 'next_day'], free: ['free', 'manual'],
+    });
+    for (const id of ['cold_open', 'intake', 'exam', 'dossier', 'free']) expect(steps[id].skippable, id).toBe(false);
+    for (const id of ['lineup', 'first_words', 'tutorial', 'debrief', 'first_evening']) expect(steps[id].skippable, id).toBe(true);
+  });
+
+  it('each start overrides the tutorial region and its own texts', async () => {
+    const { registries: r } = await load();
+    const by = (startId: string) => [...r.prologues.values()].find((p) => p.startId === startId)!;
+    const steps = (p: { [k: string]: unknown }) => p.steps as Record<string, { regionId?: string; authoredText?: string[]; lines?: Record<string, string>; directive?: string; objective?: string }>;
+    expect(steps(by('start_vesper')).tutorial.regionId).toBe('quarantine_d7');
+    expect(steps(by('start_kestrel')).tutorial.regionId).toBe('kestrel_corridor');
+    for (const p of [by('start_vesper'), by('start_kestrel')]) {
+      const s = steps(p);
+      expect(s.cold_open.authoredText!.length, String(p.id)).toBeGreaterThan(0);
+      expect(Object.keys(s.intake.lines!).sort()).toEqual(['ask_crime', 'ask_name', 'confirm_owner']);
+      expect(s.lineup.directive, String(p.id)).toBeTruthy();
+      expect(s.lineup.objective, String(p.id)).toBeTruthy();
+    }
+    expect(steps(by('start_vesper')).cold_open.authoredText).not.toEqual(steps(by('start_kestrel')).cold_open.authoredText);
+  });
+
+  it('the dictate, traits_note and sign_prompt lines exist with their placeholders', async () => {
+    const { registries: r } = await load();
+    const steps = r.prologues.get('prologue_skeleton')!.steps as Record<string, { lines?: Record<string, string> }>;
+    expect(Object.keys(steps.exam.lines!).sort()).toEqual(['dictate', 'intro', 'traits_note']);
+    expect(steps.exam.lines!.dictate).toContain('{FIELD}');
+    expect(steps.exam.lines!.dictate).toContain('{VALUE}');
+    expect(steps.dossier.lines!.sign_prompt).toBeTruthy();
+    for (const p of r.prologues.values()) {
+      if (p.startId === undefined) continue;
+      expect((p.steps as Record<string, { lines: Record<string, string> }>).intake.lines.confirm_owner, String(p.id)).toContain('{CORPORATION}');
+    }
+  });
+
+  it('the tutorial step has three hints that point at glossary entries and a night knock for the first evening', async () => {
+    const { registries: r } = await load();
+    const steps = r.prologues.get('prologue_skeleton')!.steps as Record<string, { hints?: Array<{ id: string; screen: string; glossaryId: string }>; nightKnock?: unknown }>;
+    expect(steps.tutorial.hints).toHaveLength(3);
+    for (const h of steps.tutorial.hints!) expect(r.glossary.has(h.glossaryId), h.id).toBe(true);
+    expect(new Set(steps.tutorial.hints!.map((h) => h.id)).size).toBe(3);
+    expect(steps.first_evening.nightKnock).toBeDefined();
+  });
+
+  it('core uiUnlocks: squad,comms day 1; ops,map after tutorial; base,inv day 2; no entry for log or sys', async () => {
+    const { registries: r } = await load();
+    const rows = [...r.uiUnlocks.values()].map((u) => ({ tab: (u.target as { tab: string }).tab, ...(u.condition as Record<string, unknown>) }));
+    const by = (tab: string) => rows.filter((x) => x.tab === tab);
+    for (const tab of ['squad', 'comms']) expect(by(tab), tab).toEqual([{ tab, minDay: 1 }]);
+    for (const tab of ['ops', 'map']) expect(by(tab), tab).toEqual([{ tab, afterStep: 'tutorial' }]);
+    for (const tab of ['base', 'inv']) expect(by(tab), tab).toEqual([{ tab, minDay: 2 }]);
+    expect(by('log')).toEqual([]);
+    expect(by('sys')).toEqual([]);
+    for (const u of r.uiUnlocks.values()) expect(String(u.notice).length, String(u.id)).toBeGreaterThan(0);
+  });
+
+  it('the tutorial patrol is a fixed combat, event, objective run in both tutorial regions', async () => {
+    const { registries: r } = await load();
+    const t = r.missionTemplates.get('tutorial_patrol')!;
+    expect(t.tutorial).toBe(true);
+    expect(t.sources).toEqual(['command']);
+    expect(t.dangerRange).toEqual([1, 1]);
+    expect(t.regions).toEqual(['quarantine_d7', 'kestrel_corridor']);
+    expect(t.failureEffects).toEqual([]);
+    expect(t.fixedMap).toEqual({ layers: [[{ type: 'combat' }], [{ type: 'event', eventId: 'evt_tutorial_choice' }]] });
+    const evt = r.dilemmaTemplates.get('evt_tutorial_choice')!;
+    expect(evt.scale).toBe('minor');
+    expect(evt.contexts).toEqual(['expedition_event']);
+    expect(evt.generate).toBeDefined();
+    const options = (evt.fixed as { options: Array<{ routeCheck?: { routes: Array<{ kind: string }> } }> }).options;
+    expect(options).toHaveLength(2);
+    expect(options.some((o) => o.routeCheck?.routes.some((x) => x.kind !== 'body'))).toBe(true);
+  });
+
+  it('the prologue glossary concepts exist', async () => {
+    const { registries: r } = await load();
+    for (const id of ['prologue', 'intake_interview', 'medical_exam', 'personnel_dossier', 'veteran_intake', 'lineup', 'first_words', 'tutorial_expedition', 'module_offline', 'coach_hint', 'rows']) {
+      expect(r.glossary.has(id), id).toBe(true);
+    }
+    const objective = r.glossary.get('objective')!;
+    expect(`${String(objective.short)} ${String(objective.long)}`).toMatch(/prologue/i);
+  });
+});

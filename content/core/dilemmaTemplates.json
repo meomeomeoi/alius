@@ -1346,5 +1346,73 @@
         }
       ]
     }
+  },
+  {
+    "id": "evt_tutorial_choice",
+    "scale": "minor",
+    "contexts": [
+      "expedition_event"
+    ],
+    "fixed": {
+      "title": "Blocked passage",
+      "setup": "A collapsed service gantry blocks the patrol route. There is a way over and a long way round.",
+      "options": [
+        {
+          "label": "Clear it the quick way",
+          "effects": [
+            {
+              "type": "party_stress",
+              "amount": 5
+            },
+            {
+              "type": "resource",
+              "resource": "credits",
+              "amount": 20
+            }
+          ],
+          "routeCheck": {
+            "id": "clear_gantry",
+            "routes": [
+              {
+                "kind": "body",
+                "stat": "strength",
+                "min": 3
+              },
+              {
+                "kind": "delegate",
+                "cost": {
+                  "trustCheck": "low",
+                  "stress": 5
+                }
+              },
+              {
+                "kind": "bypass",
+                "cost": {
+                  "resource": "supplies",
+                  "amount": 1
+                }
+              }
+            ]
+          }
+        },
+        {
+          "label": "Take the long way round",
+          "effects": [
+            {
+              "type": "carried_supplies",
+              "amount": -1
+            },
+            {
+              "type": "party_stress",
+              "amount": -5
+            }
+          ]
+        }
+      ]
+    },
+    "generate": {
+      "brief": "The patrol route is blocked by debris. One option is quicker but wears on the squad; the other costs time and supplies. Keep it small: this is the first decision the commander makes in the field."
+    },
+    "optionCount": 2
   }
 ]

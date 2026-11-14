@@ -7356,6 +7356,7 @@ var clamp16 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 function checkOffer(state, reg, o) {
   const tpl = reg.missionTemplates.get(o.templateId);
   if (!tpl) return `Unknown mission template "${o.templateId}".`;
+  if (tpl.tutorial === true) return `Template "${o.templateId}" is a tutorial run and is never offered on the board.`;
   if (!familyEnabled(state, reg, tpl)) return `Template "${o.templateId}" belongs to an event family this world does not use.`;
   const region = reg.regions.get(o.regionId);
   if (!region) return `Unknown region "${o.regionId}".`;
@@ -7906,7 +7907,7 @@ function buildDigest(state, reg) {
     boardRoom: boardRoom(state, reg),
     rumorRoom: rumorRoom(state, reg),
     regions: knownRegions(state, reg).map((r) => ({ id: String(r.id), name: String(r.name), danger: r.danger })),
-    templates: [...reg.missionTemplates.values()].filter((t) => t.sources.some((s) => s !== "story") && familyEnabled(state, reg, t)).map((t) => ({
+    templates: [...reg.missionTemplates.values()].filter((t) => t.tutorial !== true && t.sources.some((s) => s !== "story") && familyEnabled(state, reg, t)).map((t) => ({
       id: String(t.id),
       sources: [...t.sources],
       ...t.regions ? { regions: [...t.regions] } : {},
@@ -12441,7 +12442,10 @@ var REGISTRY_NAMES = [
   // P10
   "hubRooms",
   "deviceSkins",
-  "uiSounds"
+  "uiSounds",
+  // P11
+  "prologues",
+  "uiUnlocks"
 ];
 var PackManifestSchema = external_exports.object({
   id: external_exports.string().min(1),
@@ -13433,7 +13437,17 @@ var MissionTemplateSchema = BaseEntrySchema.extend({
   titles: external_exports.array(str2.max(60)).min(1),
   briefs: external_exports.array(str2.max(300)).min(1),
   /** P8: see ClockSchema. */
-  family: str2.optional()
+  family: str2.optional(),
+  /** P11: the tutorial run of the prologue. Never offered by the director, the fallback or rumors; needs a `fixedMap`. */
+  tutorial: external_exports.literal(true).optional(),
+  /** P11: an authored node map: 1 to 4 layers of 1 to 3 nodes, then the objective node. `eventId` pins an event node's template. */
+  fixedMap: external_exports.object({
+    layers: external_exports.array(external_exports.array(external_exports.object({ type: str2, eventId: str2.optional() }).strict()).min(1).max(3)).min(1).max(4)
+  }).strict().optional()
+}).superRefine((t, ctx2) => {
+  if (t.tutorial === true && t.fixedMap === void 0) {
+    ctx2.addIssue({ code: "custom", path: ["fixedMap"], message: "a tutorial template needs a fixedMap" });
+  }
 });
 var TRUST_BANDS = ["none", "low", "guarded", "solid", "high"];
 var CheckRouteSchema = external_exports.discriminatedUnion("kind", [
@@ -13914,6 +13928,97 @@ var UiSoundSchema = BaseEntrySchema.extend({
   }).strict()
 }).strict();
 Object.assign(registrySchemas, { uiSounds: UiSoundSchema });
+var PROLOGUE_FIELDS = ["crime", "name", "body", "expression", "seasoning", "traits"];
+var STEP_KINDS = ["paper_form", "scene", "expedition", "dossier", "guided_slot", "free"];
+var COMPLETIONS = ["manual", "no_open_scene", "all_spoken", "tutorial_returned", "debriefed", "next_day"];
+var WIZARD_KINDS = ["paper_form", "dossier"];
+var isWizardKind = (k) => WIZARD_KINDS.includes(k);
+var UI_TAB_IDS = ["squad", "ops", "map", "comms", "base", "inv", "log", "sys"];
+var PrologueStepSchema = external_exports.object({
+  kind: external_exports.enum(STEP_KINDS),
+  voice: external_exports.enum(["terminal", "corporate", "paper", "personal"]),
+  title: str2.max(60).optional(),
+  authoredText: external_exports.array(str2.max(400)).max(8).optional(),
+  /** Named lines the screens look up by key (`ask_crime`, `dictate`...); `{KEY}` placeholders are filled by code. */
+  lines: external_exports.record(external_exports.string().regex(ID_PATTERN), str2.max(200)).optional(),
+  /** The scene goal, injected as a hard directive while the step's scene runs. */
+  directive: str2.max(400).optional(),
+  fields: external_exports.array(external_exports.enum(PROLOGUE_FIELDS)).optional(),
+  expeditionId: str2.optional(),
+  regionId: str2.optional(),
+  locationId: str2.optional(),
+  exchangeCap: int2.min(1).max(12).optional(),
+  /** One scene per living named unit instead of one scene for all. */
+  perUnit: external_exports.boolean().optional(),
+  objective: str2.max(100).optional(),
+  hints: external_exports.array(external_exports.object({
+    id: str2,
+    screen: external_exports.enum(["combat", "expedition"]),
+    glossaryId: str2,
+    text: str2.max(200)
+  }).strict()).max(4).optional(),
+  nightKnock: external_exports.object({
+    framing: str2.max(200),
+    ignore: external_exports.object({ event: str2, severity: severityEnum }).strict()
+  }).strict().optional(),
+  completion: external_exports.enum(COMPLETIONS),
+  skippable: external_exports.boolean()
+}).strict();
+var PrologueSchema = BaseEntrySchema.extend({
+  startId: str2.optional(),
+  order: external_exports.array(str2).min(2),
+  steps: external_exports.record(external_exports.string().regex(ID_PATTERN), PrologueStepSchema)
+}).superRefine((p, ctx2) => {
+  const issue = (path, message) => ctx2.addIssue({ code: "custom", path, message });
+  let broken = false;
+  p.order.forEach((id, i) => {
+    if (!(id in p.steps)) {
+      issue(["order"], `order lists "${id}" (position ${i + 1}), which is not in steps`);
+      broken = true;
+    }
+  });
+  for (const id of Object.keys(p.steps)) {
+    if (!p.order.includes(id)) issue(["order"], `step "${id}" is missing from order`);
+  }
+  if (new Set(p.order).size !== p.order.length) issue(["order"], "order lists a step twice");
+  if (broken) return;
+  const list5 = p.order.map((id) => ({ id, step: p.steps[id] }));
+  const firstCampaign = list5.findIndex((x) => !isWizardKind(x.step.kind));
+  const lateWizard = list5.findIndex((x, i) => firstCampaign >= 0 && i > firstCampaign && isWizardKind(x.step.kind));
+  if (lateWizard >= 0) issue(["order"], `wizard step "${list5[lateWizard].id}" comes after a campaign step (paper forms and the dossier must all be first)`);
+  const dossiers = list5.filter((x) => x.step.kind === "dossier");
+  const wizardSteps = list5.filter((x) => isWizardKind(x.step.kind));
+  if (dossiers.length !== 1) issue(["order"], `a prologue has exactly one dossier step (found ${dossiers.length})`);
+  else if (wizardSteps[wizardSteps.length - 1].id !== dossiers[0].id) issue(["order"], `the dossier "${dossiers[0].id}" must be the last wizard step`);
+  const frees = list5.filter((x) => x.step.kind === "free");
+  if (frees.length !== 1 || list5[list5.length - 1].step.kind !== "free") issue(["order"], "a prologue ends with exactly one free step");
+  const seen = /* @__PURE__ */ new Map();
+  for (const { step } of list5) for (const f of step.fields ?? []) seen.set(f, (seen.get(f) ?? 0) + 1);
+  for (const [f, n] of seen) if (n > 1) issue(["steps"], `field "${f}" is listed more than once`);
+  if (p.startId !== void 0) {
+    for (const f of PROLOGUE_FIELDS) if (!seen.has(f)) issue(["steps"], `no step asks for the field "${f}" (an entry with startId covers every field once)`);
+  }
+  for (const { id, step } of list5) {
+    const at = (field2) => ["steps", id, field2];
+    if (step.kind === "scene") {
+      if (step.locationId === void 0) issue(at("locationId"), "a scene step needs a locationId");
+      if (step.exchangeCap === void 0) issue(at("exchangeCap"), "a scene step needs an exchangeCap");
+    }
+    if (step.kind === "expedition") {
+      if (step.expeditionId === void 0) issue(at("expeditionId"), "an expedition step needs an expeditionId");
+      if (step.regionId === void 0) issue(at("regionId"), "an expedition step needs a regionId");
+    }
+    if (step.kind === "paper_form" && step.completion !== "manual") issue(at("completion"), "a paper_form completes manually");
+    if (step.perUnit === true && step.completion !== "all_spoken") issue(at("completion"), "a perUnit step completes with all_spoken");
+  }
+});
+var UiUnlockSchema = BaseEntrySchema.extend({
+  target: external_exports.object({ tab: external_exports.enum(UI_TAB_IDS) }).strict(),
+  condition: external_exports.object({ minDay: int2.min(1).optional(), afterStep: str2.optional() }).strict().refine((c) => c.minDay !== void 0 || c.afterStep !== void 0, "a condition needs minDay or afterStep"),
+  /** Shown in the terminal voice when the tab opens. */
+  notice: str2.max(160)
+}).strict();
+Object.assign(registrySchemas, { prologues: PrologueSchema, uiUnlocks: UiUnlockSchema });
 var DESCRIBED_REGISTRIES = [
   "roles",
   "skills",
@@ -15090,8 +15195,17 @@ function resolveCombat(draft, ctx2) {
   exp.phase = "travel";
   return [];
 }
+function fixedMapEvents(reg) {
+  const out = /* @__PURE__ */ new Set();
+  for (const t of reg.missionTemplates.values()) {
+    const layers = t.fixedMap?.layers ?? [];
+    for (const layer of layers) for (const node of layer) if (node.eventId !== void 0) out.add(node.eventId);
+  }
+  return out;
+}
 function eventPool(state, reg, regionId) {
   const pinned = new Set([...reg.missionTemplates.values()].map((t) => t.objectiveEventId).filter((x) => typeof x === "string"));
+  for (const id of fixedMapEvents(reg)) pinned.add(id);
   return [...reg.dilemmaTemplates.values()].filter((t) => {
     const regions = t.regions;
     return t.scale === "minor" && t.contexts.includes("expedition_event") && !pinned.has(t.id) && (regions === void 0 || regions.includes(regionId)) && familyEnabled(state, reg, t);
@@ -15683,8 +15797,9 @@ function buildDilemmaDigest(state, reg, d) {
 function eligibleTemplates2(state, reg, contexts) {
   const recent = state.dilemmas?.recent ?? [];
   const present = presentUnits(state).length;
+  const onFixedMaps = fixedMapEvents(reg);
   return [...reg.dilemmaTemplates.values()].filter((t) => {
-    if (t.generate === void 0 || t.scale === "defining" || recent.includes(String(t.id))) return false;
+    if (t.generate === void 0 || t.scale === "defining" || recent.includes(String(t.id)) || onFixedMaps.has(String(t.id))) return false;
     if (!familyEnabled(state, reg, t)) return false;
     if (!t.contexts.some((c) => contexts.includes(c))) return false;
     const need = t.requiredRefs;
@@ -28998,6 +29113,52 @@ registerRefs("deviceSkins", (entry) => {
 registerChecks("deviceSkins", (entry, regs) => {
   const first2 = [...regs.deviceSkins.values()][0];
   return first2?.id === entry.id && !regs.deviceSkins.has("ccp_standard") ? [{ path: "id", message: 'no skin "ccp_standard" (the fallback skin is needed whenever a pack ships skins)' }] : [];
+});
+registerRefs("prologues", (entry) => {
+  const out = [];
+  if (typeof entry.startId === "string") out.push({ registry: "starts", id: entry.startId, path: "startId" });
+  for (const [stepId, step] of Object.entries(entry.steps ?? {})) {
+    const at = `steps.${stepId}`;
+    if (typeof step.expeditionId === "string") out.push({ registry: "missionTemplates", id: step.expeditionId, path: `${at}.expeditionId` });
+    if (typeof step.regionId === "string") out.push({ registry: "regions", id: step.regionId, path: `${at}.regionId` });
+    if (typeof step.locationId === "string") out.push({ registry: "locations", id: step.locationId, path: `${at}.locationId` });
+    step.hints?.forEach((h2, i) => {
+      if (typeof h2.glossaryId === "string") out.push({ registry: "glossary", id: h2.glossaryId, path: `${at}.hints[${i}].glossaryId` });
+    });
+    if (typeof step.nightKnock?.ignore?.event === "string") out.push({ registry: "eventDeltas", id: step.nightKnock.ignore.event, path: `${at}.nightKnock.ignore.event` });
+  }
+  return out;
+});
+registerChecks("uiUnlocks", (entry, regs) => {
+  const step = entry.condition?.afterStep;
+  if (typeof step !== "string") return [];
+  return [...regs.prologues.values()].filter((p) => !(step in (p.steps ?? {}))).map((p) => ({ path: "condition.afterStep", message: `afterStep "${step}" is not a step of prologue "${p.id}"` }));
+});
+registerRefs("missionTemplates", (entry) => {
+  const out = [];
+  const layers = entry.fixedMap?.layers;
+  layers?.forEach((layer, l) => layer.forEach((node, n) => {
+    const at = `fixedMap.layers[${l}][${n}]`;
+    if (typeof node.type === "string") {
+      const type = node.type;
+      out.push({
+        registry: "nodeTypes",
+        id: type,
+        path: `${at}.type`,
+        check: (t) => t.kind === "objective" ? `node type "${type}" has kind "objective"; the map adds the objective node itself` : null
+      });
+    }
+    if (typeof node.eventId === "string") {
+      const eventId = node.eventId;
+      out.push({
+        registry: "dilemmaTemplates",
+        id: eventId,
+        path: `${at}.eventId`,
+        check: (t) => t.contexts.includes("expedition_event") ? null : `dilemma template "${eventId}" is not an expedition_event`
+      });
+    }
+  }));
+  return out;
 });
 function resolveLink(target) {
   const i = target.indexOf(":");

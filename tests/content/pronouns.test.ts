@@ -87,6 +87,19 @@ describe('no pronoun for the commander in content', () => {
     expect(texts.filter(([, t]) => COMMANDER_PRONOUN.test(t) || /commander[^.]*\btheir\b/i.test(t)).map(([where]) => where)).toEqual([]);
   });
 
+  it('prologues and unlock notices (P11)', () => {
+    const strings = (v: unknown, at: string): Array<[string, string]> =>
+      typeof v === 'string' ? [[at, v]]
+        : Array.isArray(v) ? v.flatMap((x, i) => strings(x, `${at}[${i}]`))
+          : v !== null && typeof v === 'object' ? Object.entries(v).flatMap(([k, x]) => strings(x, `${at}.${k}`)) : [];
+    const texts = [
+      ...[...reg.prologues.values()].flatMap((p) => strings(p.steps, `prologues:${p.id}`)),
+      ...fields('uiUnlocks', ['notice']),
+    ];
+    expect(texts.length).toBeGreaterThan(40);
+    expect(texts.filter(([, t]) => COMMANDER_PRONOUN.test(t) || /commander[^.]*\btheir\b/i.test(t)).map(([where]) => where)).toEqual([]);
+  });
+
   it('crimes: the commander is of any gender (summary, perk and flaw texts)', () => {
     const texts = [...reg.crimes.values()].flatMap((c): Array<[string, string]> => [
       [`crimes:${c.id}.summary`, String(c.summary ?? '')],
@@ -119,6 +132,14 @@ describe('no pronoun for the commander in content', () => {
 
   it('the P9 glossary entries', () => {
     const ids = ['impunity', 'command_stance', 'impunity_record', 'leverage', 'threat', 'covert_sabotage', 'discipline', 'discipline_logged', 'restriction', 'demand', 'owed_demand', 'reputation', 'nickname'];
+    const bad = ids.flatMap((id) => (['short', 'long'] as const).map((k): [string, string] => [`glossary:${id}.${k}`, String(reg.glossary.get(id)?.[k] ?? '')]))
+      .filter(([, t]) => COMMANDER_PRONOUN.test(t) || /commander[^.]*\btheir\b/i.test(t)).map(([where]) => where);
+    expect(ids.every((id) => reg.glossary.has(id))).toBe(true);
+    expect(bad).toEqual([]);
+  });
+
+  it('the P11 glossary entries and the rewritten objective entry', () => {
+    const ids = ['prologue', 'intake_interview', 'medical_exam', 'personnel_dossier', 'veteran_intake', 'lineup', 'first_words', 'tutorial_expedition', 'module_offline', 'coach_hint', 'rows', 'objective'];
     const bad = ids.flatMap((id) => (['short', 'long'] as const).map((k): [string, string] => [`glossary:${id}.${k}`, String(reg.glossary.get(id)?.[k] ?? '')]))
       .filter(([, t]) => COMMANDER_PRONOUN.test(t) || /commander[^.]*\btheir\b/i.test(t)).map(([where]) => where);
     expect(ids.every((id) => reg.glossary.has(id))).toBe(true);

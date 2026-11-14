@@ -74,7 +74,7 @@ export function buildDigest(state: CampaignState, reg: Registries): Digest {
     rumorRoom: rumorRoom(state, reg),
     regions: knownRegions(state, reg).map((r) => ({ id: String(r.id), name: String(r.name), danger: r.danger as number })),
     templates: [...reg.missionTemplates.values()]
-      .filter((t) => (t.sources as string[]).some((s) => s !== 'story') && familyEnabled(state, reg, t))
+      .filter((t) => t.tutorial !== true && (t.sources as string[]).some((s) => s !== 'story') && familyEnabled(state, reg, t))
       .map((t) => ({
         id: String(t.id), sources: [...(t.sources as string[])], ...(t.regions ? { regions: [...(t.regions as string[])] } : {}),
         objectives: (t.objectives as Array<{ node: string }>).map((o) => o.node), tiers: [...(t.tiers as string[])],

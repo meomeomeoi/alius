@@ -623,6 +623,63 @@ registerChecks('deviceSkins', (entry, regs) => {
 });
 
 // ---------------------------------------------------------------------------------------------
+// P11: prologues name a start, templates, a region, locations, glossary entries and night events; unlock rows name steps
+
+interface StepRefs {
+  expeditionId?: unknown; regionId?: unknown; locationId?: unknown;
+  hints?: Array<{ glossaryId?: unknown }>; nightKnock?: { ignore?: { event?: unknown } };
+}
+
+registerRefs('prologues', (entry) => {
+  const out: Ref[] = [];
+  if (typeof entry.startId === 'string') out.push({ registry: 'starts', id: entry.startId, path: 'startId' });
+  for (const [stepId, step] of Object.entries((entry.steps ?? {}) as Record<string, StepRefs>)) {
+    const at = `steps.${stepId}`;
+    if (typeof step.expeditionId === 'string') out.push({ registry: 'missionTemplates', id: step.expeditionId, path: `${at}.expeditionId` });
+    if (typeof step.regionId === 'string') out.push({ registry: 'regions', id: step.regionId, path: `${at}.regionId` });
+    if (typeof step.locationId === 'string') out.push({ registry: 'locations', id: step.locationId, path: `${at}.locationId` });
+    step.hints?.forEach((h, i) => {
+      if (typeof h.glossaryId === 'string') out.push({ registry: 'glossary', id: h.glossaryId, path: `${at}.hints[${i}].glossaryId` });
+    });
+    if (typeof step.nightKnock?.ignore?.event === 'string') out.push({ registry: 'eventDeltas', id: step.nightKnock.ignore.event, path: `${at}.nightKnock.ignore.event` });
+  }
+  return out;
+});
+
+// an `afterStep` must be a step of every prologue, or a unit could never open the tab for some start
+registerChecks('uiUnlocks', (entry, regs) => {
+  const step = (entry.condition as { afterStep?: unknown } | undefined)?.afterStep;
+  if (typeof step !== 'string') return [];
+  return [...regs.prologues.values()]
+    .filter((p) => !(step in ((p.steps ?? {}) as Record<string, unknown>)))
+    .map((p) => ({ path: 'condition.afterStep', message: `afterStep "${step}" is not a step of prologue "${p.id}"` }));
+});
+
+// a fixed map names node types (never the objective, which the map adds itself) and event templates that fit an expedition
+registerRefs('missionTemplates', (entry) => {
+  const out: Ref[] = [];
+  const layers = (entry.fixedMap as { layers?: Array<Array<{ type?: unknown; eventId?: unknown }>> } | undefined)?.layers;
+  layers?.forEach((layer, l) => layer.forEach((node, n) => {
+    const at = `fixedMap.layers[${l}][${n}]`;
+    if (typeof node.type === 'string') {
+      const type = node.type;
+      out.push({
+        registry: 'nodeTypes', id: type, path: `${at}.type`,
+        check: (t) => (t.kind === 'objective' ? `node type "${type}" has kind "objective"; the map adds the objective node itself` : null),
+      });
+    }
+    if (typeof node.eventId === 'string') {
+      const eventId = node.eventId;
+      out.push({
+        registry: 'dilemmaTemplates', id: eventId, path: `${at}.eventId`,
+        check: (t) => ((t.contexts as string[]).includes('expedition_event') ? null : `dilemma template "${eventId}" is not an expedition_event`),
+      });
+    }
+  }));
+  return out;
+});
+
+// ---------------------------------------------------------------------------------------------
 // P7a: glossary entries and `[[links]]` in descriptions
 
 /** What a link target points at: a registry entry, nothing to check (`setting:`), or an unknown source. */

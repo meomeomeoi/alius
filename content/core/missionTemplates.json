@@ -564,5 +564,52 @@
       "Off-spec civilians are trapped in a district a sweep team will reach by morning. Reach them and bring them out.",
       "A safehouse is about to be raided. Get there first."
     ]
+  },
+  {
+    "id": "tutorial_patrol",
+    "name": "Shakedown patrol",
+    "sources": [
+      "command"
+    ],
+    "regions": [
+      "quarantine_d7",
+      "kestrel_corridor"
+    ],
+    "objectives": [
+      {
+        "node": "cache",
+        "condition": "reach"
+      }
+    ],
+    "dangerRange": [
+      1,
+      1
+    ],
+    "tiers": [
+      "tier_1"
+    ],
+    "failureEffects": [],
+    "tutorial": true,
+    "fixedMap": {
+      "layers": [
+        [
+          {
+            "type": "combat"
+          }
+        ],
+        [
+          {
+            "type": "event",
+            "eventId": "evt_tutorial_choice"
+          }
+        ]
+      ]
+    },
+    "titles": [
+      "Shakedown patrol"
+    ],
+    "briefs": [
+      "A short patrol past the outpost fence. Nothing here should kill a squad, which is why Command uses it to find out what this one is."
+    ]
   }
 ]

@@ -273,6 +273,9 @@ export const CORE_GLOSSARY_IDS: readonly string[] = [
   'impunity', 'command_stance', 'impunity_record', 'leverage', 'threat', 'covert_sabotage', 'discipline', 'discipline_logged', 'restriction', 'demand', 'owed_demand', 'reputation', 'nickname',
   // P10 (the hub addresses these; Task 4)
   'hub', 'whereabouts', 'marker_tone', 'objective', 'tonight', 'end_slot', 'pda_device', 'away', 'semantic_colours',
+  // P11 (the prologue screens, the hub card and the coach strip address these)
+  'prologue', 'intake_interview', 'medical_exam', 'personnel_dossier', 'veteran_intake', 'lineup', 'first_words', 'tutorial_expedition',
+  'module_offline', 'coach_hint', 'rows',
 ];
 
 let registered = false;

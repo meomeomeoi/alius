@@ -49,6 +49,8 @@
     "reputations": "reputations.json",
     "hubRooms": "hubRooms.json",
     "deviceSkins": "deviceSkins.json",
-    "uiSounds": "uiSounds.json"
+    "uiSounds": "uiSounds.json",
+    "prologues": "prologues.json",
+    "uiUnlocks": "uiUnlocks.json"
   }
 }

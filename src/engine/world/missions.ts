@@ -31,6 +31,7 @@ export interface MissionOffer {
 }
 
 type Template = Entry & {
+  tutorial?: true;
   sources: MissionSource[]; regions?: string[]; objectives: Array<{ node: string; condition: 'win' | 'reach' }>;
   dangerRange: [number, number]; tiers: string[]; titles: string[]; briefs: string[]; failureEffects: WorldEffect[];
 };
@@ -39,6 +40,7 @@ type Template = Entry & {
 export function checkOffer(state: CampaignState, reg: Registries, o: MissionOffer): string | null {
   const tpl = reg.missionTemplates.get(o.templateId) as Template | undefined;
   if (!tpl) return `Unknown mission template "${o.templateId}".`;
+  if (tpl.tutorial === true) return `Template "${o.templateId}" is a tutorial run and is never offered on the board.`; // P11
   if (!familyEnabled(state, reg, tpl)) return `Template "${o.templateId}" belongs to an event family this world does not use.`; // P8
   const region = reg.regions.get(o.regionId);
   if (!region) return `Unknown region "${o.regionId}".`;

@@ -1,0 +1,62 @@
+[
+  {
+    "id": "unlock_squad",
+    "target": {
+      "tab": "squad"
+    },
+    "condition": {
+      "minDay": 1
+    },
+    "notice": "MODULE ONLINE: SQUAD"
+  },
+  {
+    "id": "unlock_comms",
+    "target": {
+      "tab": "comms"
+    },
+    "condition": {
+      "minDay": 1
+    },
+    "notice": "MODULE ONLINE: COMMS"
+  },
+  {
+    "id": "unlock_ops",
+    "target": {
+      "tab": "ops"
+    },
+    "condition": {
+      "afterStep": "tutorial"
+    },
+    "notice": "MODULE ONLINE: OPS"
+  },
+  {
+    "id": "unlock_map",
+    "target": {
+      "tab": "map"
+    },
+    "condition": {
+      "afterStep": "tutorial"
+    },
+    "notice": "MODULE ONLINE: MAP"
+  },
+  {
+    "id": "unlock_base",
+    "target": {
+      "tab": "base"
+    },
+    "condition": {
+      "minDay": 2
+    },
+    "notice": "MODULE ONLINE: BASE"
+  },
+  {
+    "id": "unlock_inv",
+    "target": {
+      "tab": "inv"
+    },
+    "condition": {
+      "minDay": 2
+    },
+    "notice": "MODULE ONLINE: INV"
+  }
+]
