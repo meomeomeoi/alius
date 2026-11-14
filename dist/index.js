@@ -17800,7 +17800,7 @@ function createTabBar(opts) {
     }
     if (opts.isLocked?.(next)) return;
     opts.onSelect(next);
-    buttons.get(next).focus();
+    buttons.get(next).focus({ preventScroll: true });
   });
   return {
     element: bar2,
@@ -21200,7 +21200,7 @@ function renderKeepingFocus(host, draw2) {
   const byPosition = controls[index]?.tagName === tag2 ? controls[index] : void 0;
   const target = byId ?? byPosition;
   if (!target) return;
-  target.focus();
+  target.focus({ preventScroll: true });
   if (caret && isText(target) && caret[0] !== null && caret[1] !== null) {
     try {
       target.setSelectionRange(caret[0], caret[1]);
@@ -27622,7 +27622,7 @@ function createShell(deps) {
   }
   function focusDevice(up) {
     const target = up ? root?.querySelector('.alius-tab[aria-selected="true"]') : root?.querySelector("[data-open-pda]");
-    target?.focus();
+    target?.focus({ preventScroll: true });
   }
   function buildLayer(host, up) {
     tabBar = createTabBar({ onSelect: selectTab, panelId: PANEL_ID, isLocked: (id) => lockedTabs2.has(id) });
@@ -27663,6 +27663,12 @@ function createShell(deps) {
     const modalLayer = h("div", { class: "alius-modal-layer" });
     bannerHost = h("div", { class: "alius-banner-host" });
     view = h("div", { class: "alius-view" });
+    view.addEventListener("scroll", () => {
+      if (view && (view.scrollTop !== 0 || view.scrollLeft !== 0)) {
+        view.scrollTop = 0;
+        view.scrollLeft = 0;
+      }
+    });
     root = h(
       "div",
       { id: "alius-shell", role: "application", "aria-label": "Alius" },
@@ -27708,7 +27714,7 @@ function createShell(deps) {
     bootPlayed = false;
     maybeBoot();
     const focusTarget = (isDeviceUp() ? root.querySelector('.alius-tab[aria-selected="true"]') : root.querySelector("[data-open-pda]")) ?? root.querySelector(".alius-close");
-    focusTarget?.focus();
+    focusTarget?.focus({ preventScroll: true });
   }
   function close() {
     if (!root) return;

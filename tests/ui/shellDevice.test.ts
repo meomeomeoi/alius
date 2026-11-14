@@ -437,3 +437,50 @@ describe('the device never hides the end of a tab', () => {
   });
 });
 
+describe('the slide never scrolls the view', () => {
+  /** Every focus() the shell makes while the device moves: a focus without preventScroll scrolls the clipped view to the (off-screen) device. */
+  function focusCalls(run: () => void): Array<{ el: HTMLElement; options: unknown }> {
+    const calls: Array<{ el: HTMLElement; options: unknown }> = [];
+    const original = HTMLElement.prototype.focus;
+    HTMLElement.prototype.focus = function (this: HTMLElement, options?: FocusOptions) {
+      calls.push({ el: this, options });
+      return original.call(this, options);
+    };
+    try { run(); } finally { HTMLElement.prototype.focus = original; }
+    return calls;
+  }
+
+  it('raising and lowering the device focus without scrolling', () => {
+    const { shell } = setup();
+    shell.open();
+    const up = focusCalls(() => shell.setDevice(true));
+    expect(up.length).toBeGreaterThan(0);
+    expect(up.every((c) => (c.options as FocusOptions | undefined)?.preventScroll === true)).toBe(true);
+    const down = focusCalls(() => shell.setDevice(false));
+    expect(down.length).toBeGreaterThan(0);
+    expect(down.every((c) => (c.options as FocusOptions | undefined)?.preventScroll === true)).toBe(true);
+  });
+
+  it('opening the shell and arrowing between tabs focus without scrolling too', () => {
+    const { shell } = setup();
+    const opened = focusCalls(() => shell.open());
+    expect(opened.every((c) => (c.options as FocusOptions | undefined)?.preventScroll === true)).toBe(true);
+    shell.setDevice(true);
+    const tab = q('.alius-tab[aria-selected="true"]')!;
+    const arrow = focusCalls(() => tab.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true })));
+    expect(arrow.length).toBeGreaterThan(0);
+    expect(arrow.every((c) => (c.options as FocusOptions | undefined)?.preventScroll === true)).toBe(true);
+  });
+
+  it('the view puts itself back if something scrolls it anyway', () => {
+    const { shell } = setup();
+    shell.open();
+    const view = q('.alius-view')!;
+    let top = 0;
+    Object.defineProperty(view, 'scrollTop', { configurable: true, get: () => top, set: (v: number) => { top = v; } });
+    top = 46;
+    view.dispatchEvent(new Event('scroll'));
+    expect(top).toBe(0);
+  });
+});
+

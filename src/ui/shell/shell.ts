@@ -297,7 +297,8 @@ export function createShell(deps: ShellDeps): ShellApi {
     const target = up
       ? root?.querySelector<HTMLElement>('.alius-tab[aria-selected="true"]')
       : root?.querySelector<HTMLElement>('[data-open-pda]');
-    target?.focus();
+    // never scroll: the device is still below the clipped view while it slides up, and a scrolling focus drags the view (and the hub) with it
+    target?.focus({ preventScroll: true });
   }
 
   /** The hub with the device inside it: used by both the `hub` and the `pda` route (they differ only in `up`). */
@@ -344,6 +345,13 @@ export function createShell(deps: ShellDeps): ShellApi {
     const modalLayer = h('div', { class: 'alius-modal-layer' });
     bannerHost = h('div', { class: 'alius-banner-host' });
     view = h('div', { class: 'alius-view' });
+    // the view is clipped (overflow hidden) and must never scroll: anything that tries (a focus, a find) is put back at once
+    view.addEventListener('scroll', () => {
+      if (view && (view.scrollTop !== 0 || view.scrollLeft !== 0)) {
+        view.scrollTop = 0;
+        view.scrollLeft = 0;
+      }
+    });
     root = h(
       'div',
       { id: 'alius-shell', role: 'application', 'aria-label': 'Alius' },
@@ -391,7 +399,7 @@ export function createShell(deps: ShellDeps): ShellApi {
     // SillyTavern keeps focus in its chat box; pull it into the shell so keys do not leak behind the overlay.
     const focusTarget = (isDeviceUp() ? root.querySelector<HTMLElement>('.alius-tab[aria-selected="true"]') : root.querySelector<HTMLElement>('[data-open-pda]'))
       ?? root.querySelector<HTMLElement>('.alius-close');
-    focusTarget?.focus();
+    focusTarget?.focus({ preventScroll: true });
   }
 
   function close(): void {

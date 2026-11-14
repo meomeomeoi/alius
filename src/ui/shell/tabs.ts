@@ -44,7 +44,7 @@ export function createTabBar(opts: { onSelect: (id: TabId) => void; panelId: str
     }
     if (opts.isLocked?.(next)) return;
     opts.onSelect(next);
-    buttons.get(next)!.focus();
+    buttons.get(next)!.focus({ preventScroll: true });
   });
 
   return {

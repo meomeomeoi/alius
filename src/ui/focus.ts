@@ -38,7 +38,7 @@ export function renderKeepingFocus(host: HTMLElement, draw: () => void): void {
   const byPosition = controls[index]?.tagName === tag ? controls[index] : undefined;
   const target = byId ?? byPosition;
   if (!target) return;
-  target.focus();
+  target.focus({ preventScroll: true }); // it was in view before the redraw; a scrolling focus would drag the clipped shell view
   if (caret && isText(target) && caret[0] !== null && caret[1] !== null) {
     try {
       target.setSelectionRange(caret[0], caret[1]);
