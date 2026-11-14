@@ -1,0 +1,328 @@
+// @vitest-environment jsdom
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createCampaign } from '../../src/engine/state/create';
+import { FakeStAdapter } from '../../src/st/fake';
+import type { LoadResult } from '../../src/st/persistence';
+import { createShell, type ShellDeps } from '../../src/ui/shell/shell';
+import { isControl, isEditable } from '../../src/ui/shell/keys';
+import { VOICE_OF } from '../../src/ui/voice/sources';
+
+const CHAT = { chatId: 'c', isGroup: true, groupId: 'g' };
+let shells: Array<{ destroy(): void }> = [];
+
+function setup(extra: Partial<ShellDeps> = {}) {
+  const st = new FakeStAdapter(CHAT);
+  const state = createCampaign({ seed: 1, commanderName: 'Vale' });
+  const load: LoadResult = { kind: 'ok', state, chatId: 'c' };
+  const shell = createShell({ st, getState: () => state, getLoad: () => load, ...extra });
+  shells.push(shell);
+  return { st, shell, state };
+}
+
+const q = <T extends HTMLElement = HTMLElement>(sel: string): T | null => document.querySelector<T>(`#alius-shell ${sel}`);
+const device = () => q('.alius-device')!;
+const selected = () => q('.alius-tab[aria-selected="true"]')?.textContent;
+/** Dispatches a keydown on `target`; returns whether the shell called preventDefault. */
+const press = (target: EventTarget, k: string, init: KeyboardEventInit = {}): boolean => {
+  const ev = new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true, ...init });
+  target.dispatchEvent(ev);
+  return ev.defaultPrevented;
+};
+
+afterEach(() => {
+  shells.forEach((s) => s.destroy());
+  shells = [];
+  document.body.innerHTML = '';
+});
+
+describe('hub and device', () => {
+  it('open shows the hub with the device down', () => {
+    const { shell } = setup();
+    shell.open();
+    expect(q('.alius-hub-host')).not.toBeNull();
+    expect(device().dataset.up).toBe('false');
+    expect(device().hasAttribute('inert')).toBe(true);
+    expect(device().getAttribute('aria-hidden')).toBe('true');
+    expect(shell.isDeviceUp()).toBe(false);
+    expect(q('.alius-frame-corner')!.textContent).toBe('╔═[ ALIUS // OUTPOST ]');
+  });
+
+  it("showScreen('pda') raises the device with the selected tab", () => {
+    const { shell } = setup();
+    shell.open();
+    shell.showScreen('pda');
+    expect(shell.isDeviceUp()).toBe(true);
+    expect(device().dataset.up).toBe('true');
+    expect(device().hasAttribute('inert')).toBe(false);
+    expect(device().hasAttribute('aria-hidden')).toBe(false);
+    expect(selected()).toBe('SQUAD');
+    expect(q('.alius-frame-corner')!.textContent).toBe('╔═[ ALIUS // PDA ]');
+    expect([...document.querySelectorAll('#alius-shell .alius-tab')].map((t) => t.textContent)).toHaveLength(8);
+  });
+
+  it("showTab('comms') from the hub raises the device on COMMS", () => {
+    const { shell } = setup();
+    shell.open();
+    shell.showTab('comms');
+    expect(shell.isDeviceUp()).toBe(true);
+    expect(selected()).toBe('COMMS');
+  });
+
+  it("showTab before open() makes open() land on that tab with the device up", () => {
+    const { shell } = setup();
+    shell.showTab('inv');
+    shell.open();
+    expect(shell.isDeviceUp()).toBe(true);
+    expect(selected()).toBe('INV');
+  });
+
+  it('setDevice(false) lowers it and focus returns to the OPEN PDA button', () => {
+    const onDevice = vi.fn();
+    const { shell } = setup({ onDevice });
+    shell.open();
+    shell.setDevice(true);
+    shell.setDevice(false);
+    expect(shell.isDeviceUp()).toBe(false);
+    expect(device().dataset.up).toBe('false');
+    expect(document.activeElement).toBe(q('[data-open-pda]'));
+    expect(onDevice.mock.calls).toEqual([[true], [false]]);
+  });
+
+  it('the OPEN PDA button raises the device', () => {
+    const { shell } = setup();
+    shell.open();
+    q('[data-open-pda]')!.click();
+    expect(shell.isDeviceUp()).toBe(true);
+  });
+
+  it('Tab on the hub background raises the device, Tab on a button moves focus', () => {
+    const { shell } = setup();
+    shell.open();
+    expect(press(q('[data-open-pda]')!, 'Tab')).toBe(false);
+    expect(shell.isDeviceUp()).toBe(false);
+    expect(press(document.getElementById('alius-shell')!, 'Tab')).toBe(true);
+    expect(shell.isDeviceUp()).toBe(true);
+  });
+
+  it('Tab on the device screen lowers it, Tab on a tab button does not', () => {
+    const { shell } = setup();
+    shell.open();
+    shell.showScreen('pda');
+    expect(press(q('.alius-tab')!, 'Tab')).toBe(false);
+    expect(shell.isDeviceUp()).toBe(true);
+    expect(press(q('.alius-device-screen')!, 'Tab')).toBe(true);
+    expect(shell.isDeviceUp()).toBe(false);
+    shell.showScreen('pda');
+    expect(press(q('#alius-panel')!, 'Tab')).toBe(true);
+    expect(shell.isDeviceUp()).toBe(false);
+  });
+
+  it('Shift+Tab, and Tab with Ctrl, Alt or Meta, never toggle', () => {
+    const { shell } = setup();
+    shell.open();
+    const rootEl = document.getElementById('alius-shell')!;
+    for (const init of [{ shiftKey: true }, { ctrlKey: true }, { altKey: true }, { metaKey: true }]) {
+      expect(press(rootEl, 'Tab', init)).toBe(false);
+    }
+    expect(shell.isDeviceUp()).toBe(false);
+  });
+
+  it('keys while typing: Tab, 3 and Escape inside an input or a textarea change nothing', () => {
+    const { shell } = setup();
+    shell.open();
+    shell.showScreen('pda');
+    const input = document.createElement('input');
+    const number = document.createElement('input');
+    number.type = 'number';
+    const area = document.createElement('textarea');
+    q('#alius-panel')!.append(input, number, area);
+    for (const el of [input, number, area]) {
+      for (const k of ['Tab', '3', 'Escape']) {
+        press(el, k);
+        expect(shell.isDeviceUp(), `${el.tagName} ${k}`).toBe(true);
+        expect(selected(), `${el.tagName} ${k}`).toBe('SQUAD');
+      }
+    }
+  });
+
+  it('1-8 on the hub open the device at that tab, inside the device they keep selecting tabs', () => {
+    const { shell } = setup();
+    shell.open();
+    press(document.getElementById('alius-shell')!, '4');
+    expect(shell.isDeviceUp()).toBe(true);
+    expect(selected()).toBe('COMMS');
+    press(document.getElementById('alius-shell')!, '8');
+    expect(selected()).toBe('SYS');
+    expect(shell.isDeviceUp()).toBe(true);
+  });
+
+  it('1-8 with a modifier do nothing', () => {
+    const { shell } = setup();
+    shell.open();
+    press(document.getElementById('alius-shell')!, '2', { ctrlKey: true });
+    expect(shell.isDeviceUp()).toBe(false);
+  });
+
+  it('escape order: an open modal closes first, then Escape lowers the device', async () => {
+    const { shell } = setup();
+    shell.open();
+    shell.showScreen('pda');
+    const answer = shell.modal({ title: 'T', body: 'b', actions: [{ label: 'OK', value: 'ok' }] });
+    press(document.body, 'Escape');
+    expect(await answer).toBeNull();
+    expect(shell.isDeviceUp()).toBe(true);
+    press(document.body, 'Escape');
+    expect(shell.isDeviceUp()).toBe(false);
+  });
+
+  it('Escape on the hub with the device down does nothing', () => {
+    const { shell } = setup();
+    shell.open();
+    expect(press(document.body, 'Escape')).toBe(false);
+    expect(shell.isOpen()).toBe(true);
+  });
+
+  it('registerTab still re-renders the current tab while up', () => {
+    const { shell } = setup();
+    shell.open();
+    shell.showScreen('pda');
+    shell.registerTab('squad', (host) => { host.textContent = 'ROSTER HERE'; });
+    expect(q('#alius-panel')!.textContent).toBe('ROSTER HERE');
+    shell.registerTab('squad', (host) => { host.textContent = 'ROSTER TWO'; });
+    expect(q('#alius-panel')!.textContent).toBe('ROSTER TWO');
+  });
+
+  it('refresh() keeps the device state', () => {
+    const { shell } = setup();
+    shell.open();
+    shell.showTab('ops');
+    shell.refresh();
+    expect(shell.isDeviceUp()).toBe(true);
+    expect(selected()).toBe('OPS');
+    shell.setDevice(false);
+    shell.refresh();
+    expect(shell.isDeviceUp()).toBe(false);
+    expect(device().dataset.up).toBe('false');
+  });
+
+  it('registerHub renders the hub, gets the device element and refresh() re-renders only the hub host', () => {
+    const { shell } = setup();
+    const seen: HTMLElement[] = [];
+    let n = 0;
+    shell.registerHub((host, dev) => {
+      seen.push(dev);
+      n++;
+      host.textContent = `HUB ${n}`;
+    });
+    shell.open();
+    expect(q('.alius-hub-host')!.textContent).toBe('HUB 1');
+    const before = device();
+    shell.refresh();
+    expect(q('.alius-hub-host')!.textContent).toBe('HUB 2');
+    expect(device()).toBe(before); // the device is not rebuilt, so focus inside it survives a refresh
+    expect(seen.every((d) => d === before)).toBe(true);
+  });
+
+  it('the scene screen hides the hub; showScreen("hub") comes back with the device down', () => {
+    const { shell } = setup();
+    shell.registerScreen('scene', (host) => { host.textContent = 'SCENE'; });
+    shell.open();
+    shell.showScreen('pda');
+    shell.showScreen('scene');
+    expect(q('.alius-hub-host')).toBeNull();
+    expect(q('.alius-device')).toBeNull();
+    expect(shell.isDeviceUp()).toBe(false);
+    expect(q('.alius-view')!.textContent).toBe('SCENE');
+    shell.showScreen('hub');
+    expect(q('.alius-hub-host')).not.toBeNull();
+    expect(device().dataset.up).toBe('false');
+  });
+
+  it('Tab on a full-window screen does nothing', () => {
+    const { shell } = setup();
+    shell.registerScreen('scene', (host) => { host.textContent = 'SCENE'; });
+    shell.open();
+    shell.showScreen('scene');
+    expect(press(document.getElementById('alius-shell')!, 'Tab')).toBe(false);
+  });
+
+  it('the device is full width at 1000 px and not at 1400 px', () => {
+    const { shell } = setup();
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1000 });
+    shell.open();
+    expect(device().classList.contains('alius-device-narrow')).toBe(true);
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1400 });
+    window.dispatchEvent(new Event('resize'));
+    expect(device().classList.contains('alius-device-narrow')).toBe(false);
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 1100 });
+    window.dispatchEvent(new Event('resize'));
+    expect(device().classList.contains('alius-device-narrow')).toBe(true);
+  });
+
+  it('stacking: hub, device, toasts, modal layer, in that DOM order', () => {
+    const { shell } = setup();
+    shell.open();
+    const order = [...document.querySelectorAll('#alius-shell .alius-hub-host, #alius-shell .alius-device, #alius-shell .alius-toasts, #alius-shell .alius-modal-layer')]
+      .map((el) => el.className.split(' ')[0]);
+    expect(order).toEqual(['alius-hub-host', 'alius-device', 'alius-toasts', 'alius-modal-layer']);
+  });
+
+  it('the footer names the keys', () => {
+    const { shell } = setup();
+    shell.open();
+    expect(q('.alius-footer')!.textContent).toContain('TAB pda · 1-8 tabs · ←/→ move · ? analyze · Esc back · Alt+Shift+A toggle');
+  });
+
+  it('toasts keep a voice in data-voice, terminal by default', () => {
+    const { shell } = setup();
+    shell.open();
+    shell.toast('info', 'plain');
+    shell.toast('info', 'from oversight', { voice: 'corporate', title: 'OVERSIGHT' });
+    const toasts = [...document.querySelectorAll<HTMLElement>('#alius-shell .alius-toast')];
+    expect(toasts.map((t) => t.dataset.voice)).toEqual(['terminal', 'corporate']);
+    expect(toasts[1].textContent).toContain('OVERSIGHT');
+    expect(toasts[1].textContent).toContain('from oversight');
+  });
+
+  it('destroy removes the resize listener and the key listener', () => {
+    const { shell } = setup();
+    shell.open();
+    const spy = vi.spyOn(window, 'removeEventListener');
+    shell.destroy();
+    expect(spy.mock.calls.some(([type]) => type === 'resize')).toBe(true);
+    spy.mockRestore();
+  });
+});
+
+describe('keys helpers', () => {
+  it('isControl is true for buttons, links, inputs, selects, textareas, summaries and contenteditable', () => {
+    const mk = (tag: string, attrs: Record<string, string> = {}) => {
+      const el = document.createElement(tag);
+      for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+      return el;
+    };
+    for (const el of [mk('button'), mk('a', { href: '#' }), mk('input'), mk('select'), mk('textarea'), mk('summary'), mk('div', { role: 'button' })]) {
+      expect(isControl(el), el.outerHTML).toBe(true);
+    }
+    for (const el of [mk('div'), mk('section', { tabindex: '0' }), document.body]) expect(isControl(el), el.outerHTML).toBe(false);
+    expect(isControl(null)).toBe(false);
+    expect(isControl(window)).toBe(false);
+  });
+
+  it('isEditable is true for inputs, textareas and selects only', () => {
+    expect(isEditable(document.createElement('input'))).toBe(true);
+    expect(isEditable(document.createElement('textarea'))).toBe(true);
+    expect(isEditable(document.createElement('select'))).toBe(true);
+    expect(isEditable(document.createElement('button'))).toBe(false);
+    expect(isEditable(null)).toBe(false);
+  });
+});
+
+describe('voice sources', () => {
+  it('VOICE_OF names the voice of each source', () => {
+    expect(VOICE_OF).toEqual({
+      toast: 'terminal', dm: 'personal', unit_note: 'personal', chronicle: 'paper', dossier: 'paper', commander_file: 'paper',
+      oversight: 'corporate', leash_verdict: 'corporate', corporate_mail: 'corporate', intake_form: 'paper',
+    });
+  });
+});

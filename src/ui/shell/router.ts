@@ -1,6 +1,6 @@
 import { h } from '../dom';
 
-export type ScreenId = 'pda' | 'scene' | 'combat' | 'expedition' | 'setup';
+export type ScreenId = 'hub' | 'pda' | 'scene' | 'combat' | 'expedition' | 'setup';
 
 type Render = (host: HTMLElement) => void;
 
@@ -14,7 +14,7 @@ export function stubText(name: string): string {
 /** Maps screens to renderers; screens nobody registered show an offline stub. */
 export function createRouter() {
   const renderers = new Map<ScreenId, Render>();
-  let current: ScreenId = 'pda';
+  let current: ScreenId = 'hub';
   return {
     current: () => current,
     go(id: ScreenId): void {

@@ -224,6 +224,7 @@ describe('focus', () => {
     const { shell } = setup();
     shell.open();
     expect(root()!.contains(document.activeElement)).toBe(true);
+    shell.showScreen('pda'); // the shell opens on the hub; the PDA is raised before its tabs take the focus
     expect(document.activeElement).toBe(tabs()[0]);
     key(document.activeElement!, '3'); // not an editable field: the hotkey works
     expect(selected()).toBe('MAP');

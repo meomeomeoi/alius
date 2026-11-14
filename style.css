@@ -240,6 +240,68 @@
   margin-top: 14px;
 }
 
+/*
+ * The hub is the home screen; the PDA is a device that slides up over it. This file is layout only: the casing of each
+ * skin lives in 17-skins.css. Stacking inside #alius-shell: hub 0 → device 1 → toasts 2 → modals 3 → analysis panel 10.
+ */
+#alius-shell .alius-view {
+  position: relative;
+  overflow: hidden;
+}
+
+#alius-shell .alius-hub-host {
+  position: relative;
+  z-index: 0;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+#alius-shell .alius-device {
+  position: absolute;
+  z-index: 1;
+  top: 56px;
+  bottom: -40px; /* bleeds off-screen, as the held handset does in the reference */
+  right: 48px;
+  width: clamp(720px, 55vw, 980px);
+  display: flex;
+  flex-direction: column;
+  transform: translateY(calc(100% + 40px));
+  transition: transform 260ms ease-out;
+}
+
+#alius-shell .alius-device[data-up="true"] {
+  transform: translateY(0);
+}
+
+/* the window is too narrow for a hub column beside the device: it takes the full width */
+#alius-shell .alius-device.alius-device-narrow {
+  left: 8px;
+  right: 8px;
+  width: auto;
+}
+
+#alius-shell .alius-device-chrome {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+#alius-shell .alius-device-screen {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 0 12px;
+  background: var(--alius-bg);
+  border: var(--alius-line);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #alius-shell .alius-device { transition: none; }
+}
+
 /* Tab bar */
 #alius-shell .alius-tabbar {
   flex: none;

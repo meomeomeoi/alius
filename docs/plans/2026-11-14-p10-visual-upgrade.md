@@ -171,17 +171,17 @@ for (const w of a.filter((x) => x.reason === 'routine')) expect(roomWeight(reg, 
   - `ShellDeps.onDevice?(up: boolean): void` (sound and boot hook for Tasks 8 and 11).
   - `keys.ts`: `isControl(el: EventTarget | null): boolean`; `isEditable` moves here from `shell.ts`.
 
-- [ ] **Step 1: Write the failing tests** (`shellDevice.test.ts`, jsdom, `FakeStAdapter`)
+- [x] **Step 1: Write the failing tests** (`shellDevice.test.ts`, jsdom, `FakeStAdapter`)
 
 `open shows the hub with the device down` (`.alius-hub` present, `.alius-device[data-up="false"]` has `inert`); `showScreen('pda') raises the device with the selected tab` — **acceptance 2**; `showTab('comms') from the hub raises the device on COMMS`; `setDevice(false) lowers it and focus returns to the OPEN PDA button`; `Tab on the hub background raises the device, Tab on a button moves focus` (dispatch `keydown` with `target` = shell root vs. a button; assert `isDeviceUp()` and that `preventDefault` was / was not called); `Tab on the device screen lowers it`; `keys while typing`: `Tab`, `3`, `Escape` with target = DM input, SYS number input, a textarea → no device or tab change; `escape order`: modal open → Escape closes the modal only; then Escape lowers the device; `1–8 on the hub open the device at that tab`; `registerTab still re-renders the current tab while up`; `refresh() keeps the device state`; `scene screen hides the hub; showScreen('hub') comes back with the device down`; `the device is full width at 1000 px` (set `window.innerWidth` and assert the `alius-device-narrow` class the shell toggles on `resize`; CSS does the rest); stacking: computed classes only — assert DOM order hub → device → toasts → modal layer (the analysis panel appends last as today).
 
 Update existing shell/app tests that click tabs right after `open()` to call `shell.showScreen('pda')` (or `showTab`) first. Do not change their assertions. Name the touched files in the commit message.
 
-- [ ] **Step 2: Run** `npx vitest run tests/ui/shellDevice.test.ts` → FAIL.
+- [x] **Step 2: Run** `npx vitest run tests/ui/shellDevice.test.ts` → FAIL.
 
-- [ ] **Step 3: Implement.** The `pda` and `hub` routes both call the registered hub renderer (until Task 4 registers one, a minimal default hub: an `OPEN PDA [TAB]` button and the device) and then set the device state. The tab bar/status/panel are built once per hub render inside `.alius-device-screen` (same code as today's `pda` route). The title bar reads `╔═[ ALIUS // OUTPOST ]` on the hub and `╔═[ ALIUS // PDA ]` while the device is up; the footer reads `╚═ TAB pda · 1-8 tabs · ←/→ move · ? analyze · Esc back · Alt+Shift+A toggle `. Slide: `transform: translateY(calc(100% + 40px))` → `translateY(0)`, `transition: transform 260ms ease-out` (disabled under reduced motion in Task 8). Layout per the device-size ruling.
+- [x] **Step 3: Implement.** The `pda` and `hub` routes both call the registered hub renderer (until Task 4 registers one, a minimal default hub: an `OPEN PDA [TAB]` button and the device) and then set the device state. The tab bar/status/panel are built once per hub render inside `.alius-device-screen` (same code as today's `pda` route). The title bar reads `╔═[ ALIUS // OUTPOST ]` on the hub and `╔═[ ALIUS // PDA ]` while the device is up; the footer reads `╚═ TAB pda · 1-8 tabs · ←/→ move · ? analyze · Esc back · Alt+Shift+A toggle `. Slide: `transform: translateY(calc(100% + 40px))` → `translateY(0)`, `transition: transform 260ms ease-out` (disabled under reduced motion in Task 8). Layout per the device-size ruling.
 
-- [ ] **Step 4: Run** `npm test` → PASS. **Step 5: Commit** `feat(shell): hub home screen with the PDA as a device layer`
+- [x] **Step 4: Run** `npm test` → PASS. **Step 5: Commit** `feat(shell): hub home screen with the PDA as a device layer`
 
 ---
 

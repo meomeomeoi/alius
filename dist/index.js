@@ -24873,6 +24873,22 @@ function attachAnalyzer(root, deps) {
   };
 }
 
+// src/ui/shell/keys.ts
+function isEditable2(t) {
+  const el = t;
+  if (!el || typeof el.tagName !== "string") return false;
+  return ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName) || el.isContentEditable === true;
+}
+var CONTROL_TAGS = ["BUTTON", "A", "INPUT", "SELECT", "TEXTAREA", "SUMMARY"];
+var CONTROL_ROLES = ["button", "link", "tab", "menuitem", "checkbox", "radio", "switch", "option"];
+function isControl(t) {
+  const el = t;
+  if (!el || typeof el.tagName !== "string") return false;
+  if (CONTROL_TAGS.includes(el.tagName) || el.isContentEditable === true) return true;
+  const role = el.getAttribute?.("role");
+  return role !== null && role !== void 0 && CONTROL_ROLES.includes(role);
+}
+
 // src/ui/shell/modal.ts
 function createModalHost(layer) {
   let cancelCurrent = null;
@@ -24918,7 +24934,7 @@ function stubText(name) {
 }
 function createRouter() {
   const renderers = /* @__PURE__ */ new Map();
-  let current = "pda";
+  let current = "hub";
   return {
     current: () => current,
     go(id) {
@@ -25352,8 +25368,10 @@ var LIFETIME_MS = { info: 4e3, warn: 6e3, error: 9e3, story: 14e3 };
 function createToasts(host) {
   const timers = /* @__PURE__ */ new Set();
   return {
-    show(kind, text2) {
-      const el = h("div", { class: `alius-toast alius-toast-${kind}`, role: kind === "error" ? "alert" : "status" }, text2);
+    show(kind, text2, opts = {}) {
+      const el = h("div", { class: `alius-toast alius-toast-${kind}`, role: kind === "error" ? "alert" : "status", "data-voice": opts.voice ?? "terminal" });
+      if (opts.title) el.append(h("strong", { class: "alius-toast-title" }, `${opts.title} `));
+      el.append(text2);
       const remove = () => el.remove();
       el.addEventListener("click", remove);
       host.append(el);
@@ -25369,11 +25387,7 @@ function createToasts(host) {
 // src/ui/shell/shell.ts
 var PANEL_ID = "alius-panel";
 var FRAME_FILL = "\u2550".repeat(300);
-function isEditable2(t) {
-  const el = t;
-  if (!el || typeof el.tagName !== "string") return false;
-  return ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName) || el.isContentEditable === true;
-}
+var NARROW_PX = 1200;
 function createShell(deps) {
   const { st } = deps;
   const router = createRouter();
@@ -25392,9 +25406,13 @@ function createShell(deps) {
   let panel = null;
   let statusHost = null;
   let analyzer = null;
+  let titleEl = null;
+  let hubHost = null;
+  let device = null;
+  let hubRender = defaultHub;
   const isOpen = () => root !== null;
-  function toast(kind, text2) {
-    if (toasts) toasts.show(kind, text2);
+  function toast(kind, text2, opts) {
+    if (toasts) toasts.show(kind, text2, opts);
     else st.toast(kind === "story" ? "info" : kind, text2);
   }
   function applySettings() {
@@ -25450,24 +25468,67 @@ function createShell(deps) {
     tabBar?.setSelected(id);
     renderTab();
   }
-  router.register("pda", (host) => {
+  function defaultHub(host) {
+    host.append(h("button", { type: "button", class: "alius-btn alius-open-pda", "data-open-pda": true, onclick: () => api.setDevice(true) }, "OPEN PDA [TAB]"));
+  }
+  const isDeviceUp = () => isOpen() && router.current() === "pda";
+  const onHubLayer = () => router.current() === "hub" || router.current() === "pda";
+  function updateTitle() {
+    if (titleEl) titleEl.textContent = router.current() === "hub" ? "\u2554\u2550[ ALIUS // OUTPOST ]" : "\u2554\u2550[ ALIUS // PDA ]";
+  }
+  function updateNarrow() {
+    device?.classList.toggle("alius-device-narrow", window.innerWidth <= NARROW_PX);
+  }
+  function applyDevice(up) {
+    if (!device) return;
+    device.dataset.up = String(up);
+    if (up) {
+      device.removeAttribute("inert");
+      device.removeAttribute("aria-hidden");
+    } else {
+      device.setAttribute("inert", "");
+      device.setAttribute("aria-hidden", "true");
+    }
+  }
+  function renderHub() {
+    if (!hubHost || !device) return;
+    hubHost.replaceChildren();
+    hubRender(hubHost, device);
+  }
+  function focusDevice(up) {
+    const target = up ? root?.querySelector('.alius-tab[aria-selected="true"]') : root?.querySelector("[data-open-pda]");
+    target?.focus();
+  }
+  function buildLayer(host, up) {
     tabBar = createTabBar({ onSelect: selectTab, panelId: PANEL_ID });
     for (const [id, n] of badges) tabBar.setBadge(id, n);
     panel = h("div", { class: "alius-screen", id: PANEL_ID, role: "tabpanel", tabindex: "0" });
     statusHost = h("div", { class: "alius-status" });
-    host.append(statusHost, tabBar.element, panel);
+    const chrome = h("div", { class: "alius-device-chrome", "aria-hidden": "true" });
+    const screen = h("div", { class: "alius-device-screen" }, statusHost, tabBar.element, panel);
+    device = h("div", { class: "alius-device", "data-skin": "ccp_standard", "data-up": String(up) }, chrome, screen);
+    hubHost = h("div", { class: "alius-hub-host" });
+    host.append(hubHost, device);
+    applyDevice(up);
+    updateNarrow();
+    renderHub();
     renderStatus();
     tabBar.setSelected(tab);
     renderTab();
-  });
+  }
+  router.register("hub", (host) => buildLayer(host, false));
+  router.register("pda", (host) => buildLayer(host, true));
   function renderView() {
     if (!root) return;
     analyzer?.refresh();
     tabBar = null;
     panel = null;
     statusHost = null;
+    hubHost = null;
+    device = null;
     router.render(view);
     renderedScreen = router.current();
+    updateTitle();
   }
   function open2() {
     if (root) return;
@@ -25484,7 +25545,7 @@ function createShell(deps) {
         h(
           "div",
           { class: "alius-titlebar" },
-          h("span", { class: "alius-frame-corner" }, "\u2554\u2550[ ALIUS // PDA ]"),
+          titleEl = h("span", { class: "alius-frame-corner" }, "\u2554\u2550[ ALIUS // OUTPOST ]"),
           h("span", { class: "alius-frame-fill", "aria-hidden": "true" }, FRAME_FILL),
           h("button", { type: "button", class: "alius-btn alius-close", "aria-label": "Close Alius", onclick: close }, "[X]"),
           h("span", { class: "alius-frame-corner" }, "\u2550\u2557")
@@ -25494,7 +25555,7 @@ function createShell(deps) {
         h(
           "div",
           { class: "alius-footer" },
-          h("span", { class: "alius-frame-corner" }, "\u255A\u2550 1-8 tabs \xB7 \u2190/\u2192 move \xB7 ? analyze \xB7 Alt+Shift+A toggle "),
+          h("span", { class: "alius-frame-corner" }, "\u255A\u2550 TAB pda \xB7 1-8 tabs \xB7 \u2190/\u2192 move \xB7 ? analyze \xB7 Esc back \xB7 Alt+Shift+A toggle "),
           h("span", { class: "alius-frame-fill", "aria-hidden": "true" }, FRAME_FILL),
           h("span", { class: "alius-frame-corner" }, "\u255D")
         )
@@ -25515,7 +25576,8 @@ function createShell(deps) {
     applySettings();
     renderBanner();
     renderView();
-    const focusTarget = root.querySelector('.alius-tab[aria-selected="true"]') ?? root.querySelector(".alius-close");
+    window.addEventListener("resize", updateNarrow);
+    const focusTarget = (isDeviceUp() ? root.querySelector('.alius-tab[aria-selected="true"]') : root.querySelector("[data-open-pda]")) ?? root.querySelector(".alius-close");
     focusTarget?.focus();
   }
   function close() {
@@ -25524,6 +25586,7 @@ function createShell(deps) {
     toasts?.dispose();
     analyzer?.destroy();
     analyzer = null;
+    window.removeEventListener("resize", updateNarrow);
     root.remove();
     root = null;
     if (previousFocus && document.contains(previousFocus)) previousFocus.focus();
@@ -25533,6 +25596,9 @@ function createShell(deps) {
     tabBar = null;
     panel = null;
     statusHost = null;
+    hubHost = null;
+    device = null;
+    titleEl = null;
     renderedScreen = null;
   }
   const api = {
@@ -25540,22 +25606,47 @@ function createShell(deps) {
     close,
     isOpen,
     showScreen(id) {
+      const wasUp = isDeviceUp();
+      const inPlace = isOpen() && (id === "pda" || id === "hub") && onHubLayer() && renderedScreen !== null && device !== null;
       router.go(id);
-      renderView();
+      if (inPlace) {
+        renderedScreen = id;
+        applyDevice(id === "pda");
+        updateTitle();
+        renderHub();
+        renderStatus();
+        renderTab();
+        focusDevice(id === "pda");
+      } else {
+        renderView();
+      }
+      if (isOpen() && isDeviceUp() !== wasUp) deps.onDevice?.(isDeviceUp());
     },
     showTab(id) {
       tab = id;
-      if (!isOpen()) return;
-      if (router.current() !== "pda") {
+      if (!isOpen()) {
         router.go("pda");
-        renderView();
-      } else {
-        selectTab(id);
+        return;
       }
+      if (router.current() === "pda") selectTab(id);
+      else {
+        tabBar?.setSelected(id);
+        api.showScreen("pda");
+      }
+    },
+    registerHub(render) {
+      hubRender = render;
+      if (isOpen() && onHubLayer()) renderHub();
+    },
+    isDeviceUp,
+    setDevice(up) {
+      if (!isOpen() || up === isDeviceUp()) return;
+      if (up) api.showScreen("pda");
+      else if (router.current() === "pda") api.showScreen("hub");
     },
     registerTab(id, render) {
       tabRenderers.set(id, render);
-      if (isOpen() && router.current() === "pda" && tab === id) renderTab();
+      if (isOpen() && onHubLayer() && tab === id) renderTab();
     },
     registerScreen(id, render, opts) {
       router.register(id, render);
@@ -25584,7 +25675,8 @@ function createShell(deps) {
       analyzer?.refresh();
       applySettings();
       renderBanner();
-      if (router.current() === "pda" && panel) {
+      if (onHubLayer() && panel) {
+        renderHub();
         renderStatus();
         renderTab();
       } else {
@@ -25612,8 +25704,29 @@ function createShell(deps) {
       modals.cancel();
       return;
     }
-    if (/^[1-8]$/.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey && !isEditable2(e.target) && !modals?.isOpen()) {
-      if (router.current() === "pda") selectTab(TAB_IDS[Number(e.key) - 1]);
+    if (modals?.isOpen()) return;
+    const plain2 = !e.ctrlKey && !e.metaKey && !e.altKey;
+    const typing = isEditable2(e.target);
+    const where = router.current();
+    if (e.key === "Escape") {
+      if (where === "pda" && !typing) {
+        e.preventDefault();
+        api.setDevice(false);
+      }
+      return;
+    }
+    if (e.key === "Tab") {
+      if (!plain2 || e.shiftKey || isControl(e.target) || typing) return;
+      if (where === "hub" || where === "pda") {
+        e.preventDefault();
+        api.setDevice(where === "hub");
+      }
+      return;
+    }
+    if (/^[1-8]$/.test(e.key) && plain2 && !typing) {
+      const id = TAB_IDS[Number(e.key) - 1];
+      if (where === "pda") selectTab(id);
+      else if (where === "hub") api.showTab(id);
     }
   }
   document.addEventListener("keydown", onKeyDown);
