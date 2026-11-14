@@ -414,7 +414,7 @@ schema: the six core entries parse; `two exclusive side effects are rejected`; `
   - `applyPunishment(draft, ctx, p: { unitId: string; measure: string; days?: number; source: 'menu' | 'dialogue'; channel: 'scene' | 'dm' | 'pda'; sceneId?: string; messageRef?: string }): EngineEvents` → `discipline_applied { applicationId, unitId, measure, source }` + the relation, stress, restriction, resource and record events; stores the `Application` with its `inverse` (newest 20).
   - Action `discipline/punish { unitId, measure, days? }` (source `menu`; channel `scene` when she is in the open scene, else `pda`). A menu application writes the public fact `The commander imposed {label} on {name}.`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `a menu punishment applies the registry deltas` — **acceptance 4** (guarded unit, no tags, empty presence, `average` build, Trust 50, Affinity 10, stress 20; `brig`, 2 days → Trust 44, Affinity 2, stress 32, record −20, restriction `confined` until `day + 2`, event `discipline_applied`);
 `disposition scales the cost` — **acceptance 8** (hazardous unit, `brig` → Trust −12, Affinity −16; an entry with `dispositionScaling: 'none'` → −6 / −8);
@@ -425,9 +425,9 @@ schema: the six core entries parse; `two exclusive side effects are rejected`; `
 `a punishment cancels held defiance and keeps a matching threat` (threat `revoke_leave`, punishment `brig` → kept; threat `brig`, punishment `verbal` → still pending);
 `no rng draw` (rng state unchanged by `discipline/punish`).
 
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** `npm test` → PASS.
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** `npm test` → PASS.
 
-- [ ] **Step 5: Commit** `feat(engine): punishments applied through the delta chain`
+- [x] **Step 5: Commit** `feat(engine): punishments applied through the delta chain`
 
 ---
 

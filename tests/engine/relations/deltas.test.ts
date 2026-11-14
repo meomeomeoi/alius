@@ -193,3 +193,28 @@ describe('computeDeltas', () => {
     expect(d(world(), event(), 'ghost')).toMatchObject({ trust: 0, affinity: 0, attraction: 0, stress: 0 });
   });
 });
+
+describe('a punishment in the delta chain (P9)', () => {
+  const enforced = (measure: string | undefined, severity: EventIntent['severity'] = 'minor'): EventIntent =>
+    event({ type: 'commander_enforced', severity, ...(measure !== undefined ? { measure } : {}) });
+
+  it('a known measure takes the punishment row and the severity of its rung, whatever severity was guessed', () => {
+    const s = world();
+    const brig = d(s, enforced('brig', 'minor'));
+    expect(brig).toMatchObject({ trust: -6, affinity: -8, stress: 12, severity: 'extreme' });
+    expect(d(s, enforced('verbal', 'extreme')).severity).toBe('minor');
+  });
+
+  it('a measure the registry does not have falls back to the commander_enforced row at the given severity', () => {
+    const s = world();
+    expect(d(s, enforced('gone', 'moderate'))).toMatchObject({ trust: -2, affinity: -4, stress: 6, severity: 'moderate' });
+    expect(d(s, enforced(undefined, 'major'))).toMatchObject({ trust: -4, affinity: -5, stress: 8 });
+  });
+
+  it('a trigger tag does not escalate a punishment (perception does that job)', () => {
+    const s = world();
+    unit(s, ANN).triggers = ['fire'];
+    expect(d(s, { ...enforced('verbal'), tags: ['fire'] }).severity).toBe('minor');
+  });
+});
+

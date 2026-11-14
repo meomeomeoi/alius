@@ -5,6 +5,7 @@ import { firstImpressionWeight, imageMultiplier } from '../commander/presence';
 import { daysKnown } from '../commander/profile';
 import { traitEffects } from '../commander/traits';
 import { confidenceShift, dispositionFor, dispositionThresholds, effectiveValues, normDistance, stanceEffects } from '../worldOptions';
+import { perceptionOf, punishmentFor } from '../discipline/perception';
 import { intimacyOf } from './gain';
 import type { EventIntent } from './intents';
 import { SEVERITIES } from './vocab';
@@ -22,6 +23,22 @@ export interface Deltas {
 
 type Row = { trust?: number; affinity?: number; attraction?: number; stress?: number };
 type Mods = { gain?: Partial<Record<'trust' | 'affinity' | 'attraction', number>>; loss?: Partial<Record<'trust' | 'affinity' | 'attraction', number>> };
+
+/**
+ * The table row an event moves a unit by (P9): a `commander_enforced` with a measure the registry knows takes the
+ * punishment's own deltas times her perception of it (the same tags that make it hit harder make it deter more); every
+ * other event, and a measure the registry no longer has, reads the `eventDeltas` row of its severity.
+ */
+export function rowFor(state: CampaignState, reg: Registries, unitId: string, event: EventIntent, severity: Severity): Row | undefined {
+  const pun = event.type === 'commander_enforced' ? punishmentFor(reg, event.measure) : undefined;
+  const unit = state.squad.find((u) => u.id === unitId);
+  if (pun && unit) {
+    const k = perceptionOf(reg, unit, pun);
+    const d = pun.deltas as { trust: number; affinity: number; stress: number };
+    return { trust: d.trust * k, affinity: d.affinity * k, stress: d.stress * k };
+  }
+  return (reg.eventDeltas.get(event.type)?.rows as Record<Severity, Row> | undefined)?.[severity];
+}
 
 export const escalate = (sev: Severity): Severity => SEVERITIES[Math.min(SEVERITIES.length - 1, SEVERITIES.indexOf(sev) + 1)];
 
@@ -73,11 +90,13 @@ export function computeDeltas(state: CampaignState, reg: Registries, unitId: str
   const triggered = tags.some((t) => unit.triggers.includes(t));
   const liked = tags.some((t) => unit.likes.includes(t));
   const disliked = tags.some((t) => unit.dislikes.includes(t));
-  const severity = triggered ? escalate(event.severity) : event.severity;
+  const pun = event.type === 'commander_enforced' ? punishmentFor(reg, event.measure) : undefined;
+  // a punishment has a severity of its own (the ladder's), whatever severity an extraction guessed
+  const severity: Severity = pun ? SEVERITIES[Number(pun.severity) - 1] ?? event.severity : triggered ? escalate(event.severity) : event.severity;
 
   const def = reg.eventDeltas.get(event.type);
-  const row = (def?.rows as Record<Severity, Row> | undefined)?.[severity];
-  if (!def || !row) return { ...zero, severity };
+  const row = rowFor(state, reg, unitId, event, severity);
+  if (!row) return { ...zero, severity };
 
   let trust = row.trust ?? 0;
   let affinity = row.affinity ?? 0;
@@ -87,7 +106,7 @@ export function computeDeltas(state: CampaignState, reg: Registries, unitId: str
   for (const fx of stanceEffects(state, reg, unit, 'event_stress')) if (fx.events.includes(event.type)) stress += fx.amount;
 
   // 1. value alignment: the row holds magnitudes, the sign comes from the unit's values
-  if (def.valueAligned === true) {
+  if (def?.valueAligned === true) {
     const values = effectiveValues(state, reg, unit); // P8: her stance may shift how she weighs a value
     const sum = (event.valueAxes ?? []).reduce((n, a) => n + values[a.axis] * a.direction, 0);
     const m = clamp(sum / 3, -1, 1);
@@ -156,13 +175,13 @@ export function computeDeltas(state: CampaignState, reg: Registries, unitId: str
   // P8 disposition: a gain is multiplied by the level's gainMult, a loss by its lossMult; a big gesture of the commander also scales the gains
   const big = event.actor === 'commander' && TUNING.disposition.bigGesture.events.includes(event.type)
     && SEVERITIES.indexOf(severity) >= SEVERITIES.indexOf(TUNING.disposition.bigGesture.minSeverity as Severity);
-  const byLevel = (v: number): number => (v > 0 ? v * level.gainMult * (big ? level.bigGestureMult : 1) : v < 0 ? v * level.lossMult : v);
+  const byLevel = (v: number): number => (pun?.dispositionScaling === 'none' ? v : v > 0 ? v * level.gainMult * (big ? level.bigGestureMult : 1) : v < 0 ? v * level.lossMult : v);
   trust = byLevel(trust);
   affinity = byLevel(affinity);
   attraction = byLevel(attraction);
 
   // receptivity on attraction gains
-  if (def.attractionUsesReceptivity === true && attraction > 0) attraction *= receptivity(state, unitId);
+  if (def?.attractionUsesReceptivity === true && attraction > 0) attraction *= receptivity(state, unitId);
 
   // grunts are Trust-only
   if (unit.kind === 'grunt') {

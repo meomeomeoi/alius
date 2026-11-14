@@ -13,3 +13,4 @@ export { addRestriction, dutySlot, expireRestrictions, removeRestrictions, restr
 export { gearFault, GEAR_FAULT_LOG, isCovert, queueSabotage, sabotageDayStep } from './sabotage';
 export { acquaintanceDays, inAcquaintance } from './acquaintance';
 export { commandStance, stanceEntry, type CommandStance } from './stance';
+export { applyPunishment, checkPunish, perceptionOf, type PunishParams } from './punish';

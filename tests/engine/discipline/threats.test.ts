@@ -9,15 +9,7 @@ let base: Registries;
 let reg: Registries;
 beforeAll(async () => {
   base = await loadCore();
-  // the punishments registry arrives with Task 8: these two entries stand in for its severities
-  reg = {
-    ...base,
-    punishments: new Map([
-      ['verbal', { id: 'verbal', severity: 1 }],
-      ['revoke_rations', { id: 'revoke_rations', severity: 2 }],
-      ['brig', { id: 'brig', severity: 4 }],
-    ]),
-  };
+  reg = base;
 });
 
 const [ANN, BEA] = ['unit_ann', 'unit_bea'];
