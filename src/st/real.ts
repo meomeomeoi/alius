@@ -297,6 +297,10 @@ export class RealStAdapter implements StAdapter {
     await this.slash(sendCommand(text));
   }
 
+  async triggerReplies(): Promise<void> {
+    await this.slash('/trigger await=true');
+  }
+
   async regenerateLast(): Promise<void> {
     await this.slash('/regenerate await=true');
   }

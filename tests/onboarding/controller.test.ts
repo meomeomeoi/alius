@@ -202,6 +202,28 @@ describe('line-up', () => {
   });
 });
 
+describe('the squad speaks first', () => {
+  it('startOpening is asked once the scene is open and the goal directive is set', async () => {
+    const r = rig();
+    const seen: Array<{ open: boolean; goal: boolean }> = [];
+    const deps = {
+      ...r.h.deps, context: r.ctx, refreshContext: vi.fn(), modal: vi.fn(async () => null) as never, resumeScene: vi.fn(), openExpedition: vi.fn(),
+      initiateDm: vi.fn(async () => {}), talkAt: vi.fn(async () => true), debrief: vi.fn(async () => true), endScene: async () => {},
+      startScene: async (o: never) => { r.h.app().dispatch({ type: 'scene/start', payload: { ...(o as object), startIndex: 0 } }); return true; },
+      startOpening: vi.fn(async () => { seen.push({ open: r.h.state().scene !== undefined, goal: r.ctx.build(r.h.state(), 5000).directives.includes(lineup(r)) }); }),
+    };
+    const ob = createOnboarding(deps);
+    expect(await ob.startLineup()).toBe(true);
+    expect(deps.startOpening).toHaveBeenCalledTimes(1);
+    expect(seen).toEqual([{ open: true, goal: true }]);
+  });
+
+  it('a scene that did not open asks for nothing', async () => {
+    const r = rig((s) => { s.squad.forEach((u) => { u.status = 'dead'; }); });
+    expect(await r.ob.startLineup()).toBe(false);
+  });
+});
+
 describe('first words', () => {
   const atFirstWords = (tweak: (s: CampaignState) => void = () => {}) => rig((s) => { s.onboarding!.stepId = 'first_words'; tweak(s); });
 

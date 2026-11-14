@@ -221,6 +221,17 @@ export class FakeStAdapter implements StAdapter {
     return this.chatMessages.length;
   }
 
+  /** Consumes the next scripted group reply set without a user message. */
+  async triggerReplies(): Promise<void> {
+    if (this.failSend) throw new Error('FakeStAdapter: trigger failed');
+    for (const r of this.groupReplies.shift() ?? []) {
+      const index = this.chatMessages.length;
+      this.chatMessages.push({ isUser: false, name: r.name, avatar: r.avatar, text: r.text, index, swipeId: 0 });
+      this.emit('message_received', this.chatMessages[index]);
+    }
+    this.emit('group_wrapper_finished');
+  }
+
   async sendUserMessage(text: string): Promise<void> {
     if (this.failSend) throw new Error('FakeStAdapter: send failed');
     const push = (m: Omit<ChatMessage, 'index' | 'swipeId'>): number => {

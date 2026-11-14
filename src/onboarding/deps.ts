@@ -10,6 +10,8 @@ export interface OnboardingDeps extends WorldDeps {
   refreshContext(): void;
   /** Opens a scene through the app (screen, loyalty and discipline hooks). Resolves whether it opened. */
   startScene(o: StartOptions): Promise<boolean>;
+  /** Lets the group speak first in the scene that just opened (the goal directive is already set). Absent = the commander speaks first. */
+  startOpening?(): Promise<void>;
   /** Ends the open scene the way the player's END does (summary, chronicle). */
   endScene(): Promise<void>;
   /** Raises the open scene's screen (after a reload the card offers RESUME SCENE). */

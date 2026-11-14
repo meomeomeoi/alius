@@ -330,6 +330,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       await scene.end();
       leaveScene();
     },
+    startOpening: () => scene.opening(),
     initiateDm: (unitId) => comms.initiate(unitId),
     talkAt: (unitId, locationId) => api.talkAt(unitId, locationId),
     debrief: (unitIds) => expedition.debrief(unitIds),

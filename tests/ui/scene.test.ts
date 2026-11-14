@@ -582,6 +582,7 @@ describe('empty scene hint', () => {
     s.scene!.origin = 'prologue';
     setState(s);
     screen.refresh();
+    expect(q('.alius-scene-hint')!.textContent).toContain('speak first');
     expect(q('.alius-scene-hint')!.textContent).toContain('offer to move on');
   });
 

@@ -50,6 +50,8 @@ export interface StartOptions {
 export interface SceneController {
   start(opts: StartOptions): Promise<boolean>;
   send(text: string): Promise<void>;
+  /** The group speaks first (a scene whose goal is set before the commander says anything). Not an exchange: nothing is counted. */
+  opening(): Promise<void>;
   /** The commander proposes something; the engine decides at once and the result becomes a directive for her next reply. */
   propose(kind: string, unitId?: string): void;
   answer(proposalId: string, answer: ProposalAnswer): void;
@@ -362,6 +364,37 @@ export function createSceneController(deps: SceneDeps): SceneController {
       void run.finally(() => {
         if (inflight === run) inflight = null;
       });
+      return run;
+    },
+
+    opening() {
+      if (pending || !state()?.scene) return Promise.resolve();
+      pending = true;
+      const run = (async () => {
+        const expect = chatId();
+        try {
+          const before = st.chatLength();
+          try {
+            await st.triggerReplies();
+          } catch (e) {
+            deps.toast('error', `Could not start the conversation: ${e instanceof Error ? e.message : String(e)}`);
+            return;
+          }
+          if (disposed || chatId() !== expect || !state()?.scene) return;
+          const replies = st.getChatMessages(before).filter((m) => !m.isUser);
+          deps.onUi({ type: 'transcript' });
+          if (replies.length === 0) {
+            deps.toast('warn', 'Nobody spoke first. Say something to start, or use ↻ to try again.');
+            return;
+          }
+          await showSprites(replies, false);
+          deps.onUi({ type: 'transcript' });
+        } finally {
+          pending = false;
+        }
+      })();
+      inflight = run;
+      void run.finally(() => { if (inflight === run) inflight = null; });
       return run;
     },
 

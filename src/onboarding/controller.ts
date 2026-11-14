@@ -121,6 +121,8 @@ export function createOnboarding(deps: OnboardingDeps): OnboardingController {
     const ok = await deps.startScene({ locationId: sceneLocation(s, reg(), step), participants, origin: 'prologue', consumesSlot: false });
     if (!ok) return false;
     setGoal(step);
+    // the squad speaks first, from the goal: nobody has to know they are expected to begin
+    void deps.startOpening?.();
     return true;
   }
 

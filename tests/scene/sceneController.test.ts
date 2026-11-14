@@ -546,3 +546,44 @@ describe('discipline read from the transcript (P9)', () => {
   });
 });
 
+describe('opening: the group speaks first', () => {
+  it('the replies arrive with no user message and count as no exchange', async () => {
+    const h = harness(reg);
+    h.dispatch({ type: 'activity/do', payload: { activityId: 'talk', companionId: ANN } });
+    await h.controller.start({ locationId: 'quarters_commander', participants: [ANN], origin: 'activity' });
+    h.st.groupReplies = [[reply('Ann', 'You are the new commander?')]];
+    await h.controller.opening();
+    expect(h.controller.transcript().map((m) => [m.isUser, m.text])).toEqual([[false, 'You are the new commander?']]);
+    expect(h.state().scene!.exchanges).toBe(0);
+    expect(h.ui).toContainEqual({ type: 'transcript' });
+    expect(h.st.calls).toHaveLength(0); // no model call for the opening itself
+  });
+
+  it('a send is refused while the opening runs, and an opening is refused while a send runs', async () => {
+    const h = harness(reg);
+    h.dispatch({ type: 'activity/do', payload: { activityId: 'talk', companionId: ANN } });
+    await h.controller.start({ locationId: 'quarters_commander', participants: [ANN], origin: 'activity' });
+    h.st.groupReplies = [[reply('Ann', 'Hm.')]];
+    const opening = h.controller.opening();
+    await h.controller.send('hello'); // pending: ignored
+    await opening;
+    expect(h.controller.transcript().some((m) => m.isUser)).toBe(false);
+  });
+
+  it('nobody speaking warns and changes nothing', async () => {
+    const h = harness(reg);
+    h.dispatch({ type: 'activity/do', payload: { activityId: 'talk', companionId: ANN } });
+    await h.controller.start({ locationId: 'quarters_commander', participants: [ANN], origin: 'activity' });
+    await h.controller.opening();
+    expect(h.toasts.some((t) => /Nobody spoke first/.test(t.text))).toBe(true);
+    expect(h.state().scene!.exchanges).toBe(0);
+  });
+
+  it('does nothing without an open scene', async () => {
+    const h = harness(reg);
+    h.st.groupReplies = [[reply('Ann', 'Hm.')]];
+    await h.controller.opening();
+    expect(h.controller.transcript()).toEqual([]);
+  });
+});
+

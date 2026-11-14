@@ -17558,6 +17558,7 @@ function createOnboarding(deps) {
     const ok = await deps.startScene({ locationId: sceneLocation(s, reg(), step), participants, origin: "prologue", consumesSlot: false });
     if (!ok) return false;
     setGoal(step);
+    void deps.startOpening?.();
     return true;
   }
   return {
@@ -20030,6 +20031,38 @@ function createSceneController(deps) {
       if (text2.trim() === "" || pending2 || !state()?.scene) return Promise.resolve();
       pending2 = true;
       const run = sendNow(text2.trim());
+      inflight = run;
+      void run.finally(() => {
+        if (inflight === run) inflight = null;
+      });
+      return run;
+    },
+    opening() {
+      if (pending2 || !state()?.scene) return Promise.resolve();
+      pending2 = true;
+      const run = (async () => {
+        const expect = chatId();
+        try {
+          const before = st.chatLength();
+          try {
+            await st.triggerReplies();
+          } catch (e) {
+            deps.toast("error", `Could not start the conversation: ${e instanceof Error ? e.message : String(e)}`);
+            return;
+          }
+          if (disposed || chatId() !== expect || !state()?.scene) return;
+          const replies = st.getChatMessages(before).filter((m) => !m.isUser);
+          deps.onUi({ type: "transcript" });
+          if (replies.length === 0) {
+            deps.toast("warn", "Nobody spoke first. Say something to start, or use \u21BB to try again.");
+            return;
+          }
+          await showSprites(replies, false);
+          deps.onUi({ type: "transcript" });
+        } finally {
+          pending2 = false;
+        }
+      })();
       inflight = run;
       void run.finally(() => {
         if (inflight === run) inflight = null;
@@ -25070,12 +25103,8 @@ function renderSceneScreen(host, ctx2) {
       return h("div", { class: `alius-line${m.isUser ? " is-user" : ""}`, "data-index": m.index }, speaker, " ", text2, " ", edit);
     }));
     if (messages.length === 0) {
-      log.append(h(
-        "p",
-        { class: "alius-dim alius-scene-hint" },
-        "Nobody speaks until you do. Type below and press Enter to say something to them; the replies appear here.",
-        s.scene?.origin === "prologue" ? " Talk for a few exchanges; the game will offer to move on. [END TRANSMISSION] closes the scene whenever you like." : " [END TRANSMISSION] closes the scene."
-      ));
+      const prologue = s.scene?.origin === "prologue";
+      log.append(h("p", { class: "alius-dim alius-scene-hint" }, prologue ? "The squad is about to speak first. Answer them below (Enter sends); \u2039 \u21BB \u203A above swap their last reply. Talk for a few exchanges; the game will offer to move on, and [END TRANSMISSION] closes the scene whenever you like." : "Nobody speaks until you do. Type below and press Enter to say something to them; the replies appear here. [END TRANSMISSION] closes the scene."));
     }
     const box = log.querySelector("textarea.alius-edit-box");
     if (box && (editing?.focus || boxHadFocus)) {
@@ -28014,6 +28043,7 @@ function createApp(st, deps) {
       await scene.end();
       leaveScene();
     },
+    startOpening: () => scene.opening(),
     initiateDm: (unitId) => comms.initiate(unitId),
     talkAt: (unitId, locationId) => api.talkAt(unitId, locationId),
     debrief: (unitIds) => expedition.debrief(unitIds),
@@ -30668,6 +30698,9 @@ var RealStAdapter = class {
   }
   async sendUserMessage(text2) {
     await this.slash(sendCommand(text2));
+  }
+  async triggerReplies() {
+    await this.slash("/trigger await=true");
   }
   async regenerateLast() {
     await this.slash("/regenerate await=true");
