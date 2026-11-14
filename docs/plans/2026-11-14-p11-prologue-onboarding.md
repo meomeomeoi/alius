@@ -345,7 +345,7 @@ Card:
 - Modify: `docs/packages/P11-prologue-onboarding.md` (status line + **Implemented as**: the rulings above, open items, non-obvious things), `docs/00-overview.md` (§5.4 rows for P11 interfaces, §6 `onboarding`/`objectives` no longer "planned", §9 status `implemented`), `docs/ROADMAP-next.md` (P11 done), `docs/CONTENT.md` (how to write a prologue and unlock rows), `docs/packages/P13-leashswap-mode.md` (**Interfaces already provided by P11**), this plan (ticks)
 - Create: `docs/MANUAL_TEST_P11.md`
 
-- [ ] **Step 1:** Write `MANUAL_TEST_P11.md`: new campaign in prologue mode for each start end to end (acceptance 1, 6); veteran + tutorial skip compared field by field with a prologue run (acceptance 2); caps and directives visible in the prompt inspector (acceptance 3); tab unlock notices day 1/after tutorial/day 2 and an old campaign untouched (acceptance 4); objectives during and after the prologue incl. a director hint (acceptance 5); reload mid line-up and mid tutorial.
-- [ ] **Step 2:** Update the docs listed above. Open items: `hubRoom`/`feature` unlock targets; author prose for both starts; a "replay prologue" option.
-- [ ] **Step 3: Run** `npm test` → green (pronoun and coverage tests included).
-- [ ] **Step 4: Commit** `docs: P11 implemented-as, overview, content guide and manual checklist`
+- [x] **Step 1:** Write `MANUAL_TEST_P11.md`: new campaign in prologue mode for each start end to end (acceptance 1, 6); veteran + tutorial skip compared field by field with a prologue run (acceptance 2); caps and directives visible in the prompt inspector (acceptance 3); tab unlock notices day 1/after tutorial/day 2 and an old campaign untouched (acceptance 4); objectives during and after the prologue incl. a director hint (acceptance 5); reload mid line-up and mid tutorial.
+- [x] **Step 2:** Update the docs listed above. Open items: `hubRoom`/`feature` unlock targets; author prose for both starts; a "replay prologue" option.
+- [x] **Step 3: Run** `npm test` → green (pronoun and coverage tests included).
+- [x] **Step 4: Commit** `docs: P11 implemented-as, overview, content guide and manual checklist`

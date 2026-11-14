@@ -11,7 +11,7 @@ P0–P6 are done. These packages bring the base to a proper starting level befor
 | 2 | **P8** World options & disposition | Disposition is the base for Impunity (P9) and changes the P3/P6 parameters P9 builds on. |
 | 3 | **P9** Impunity, discipline, demands, reputation | Needs P7 presence and P8 disposition. |
 | 4 | **P10** Visual upgrade | Independent of P7–P9 logic, but P11 is built from its voices (paper forms, dossier) and its hub. |
-| 5 | **P11** Prologue & onboarding | Assembles P7 (creation fields), P8 (world screen) and P10 (paper voice, hub, objective panel). |
+| 5 | **P11** Prologue & onboarding (**done**) | Assembles P7 (creation fields), P8 (world screen) and P10 (paper voice, hub, objective panel). |
 | 5b | **P9d** Desire & bonds | Defines the bond profile and opt-in content categories that P9b/P9c read; needs P9 and P3. Implement before P9b/P9c. |
 | 5c | **P9b** Squad power structure | Voting, hierarchy/leader, outside perception, scapegoat; needs P9, P8, P9d §1. |
 | 5d | **P9c** Personal pressure | Device access levels, bookings, inverted courtship, tokens, squad secrets, wagers; needs P9b, P9d, P10. |
@@ -66,6 +66,6 @@ Rule of thumb from P0–P6: one chunk per session, start each session with the p
 - Lore lines for every world option choice (P8).
 - Punishment and nickname lists (P9).
 - Art: hub cross-section; device renders with transparent screen per skin (optional); CC0 textures/sounds (optional).
-- Prologue texts for both starts (P11).
+- Prologue texts for both starts (P11): every string is a placeholder in `docs/content/prologue.md`; the JSON mirrors it.
 - Content category list and descriptions (P9d); relationship rule templates; token kinds; vote reasons wording (P9b/P9c).
 - Handler character and `defector_arc` beats (P12); warden expectations, controller-implant lore (P13).

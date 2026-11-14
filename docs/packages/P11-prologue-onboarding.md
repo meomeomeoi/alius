@@ -1,6 +1,6 @@
 # P11 — Prologue & Onboarding
 
-**Depends on:** P7 (commander profile), P8 (world options), P10 (voices, hub). **Read:** overview; this file; `content/lore.md`.
+**Status: implemented** (plan: `docs/plans/2026-11-14-p11-prologue-onboarding.md`; see **Implemented as** at the end; where it differs from the draft, the code wins). **Depends on:** P7 (commander profile), P8 (world options), P10 (voices, hub). **Read:** overview; this file; `content/lore.md`.
 
 ## Goal
 
@@ -79,3 +79,45 @@ Campaign `objectives: [{ id, text, source: 'prologue'|'spine'|'director'|'unit',
 - **The hub and the device:** the shell opens on the hub (device down); `showScreen('hub')` returns home after a full-window screen, `showScreen('pda')`/`showTab(id)` raise the device. A prologue that needs the whole window registers a screen with `registerScreen` as the wizard does. `app.talkAt` and `app.endSlot` exist for the hub; the room panel reads rooms from the `hubRooms` registry.
 - **Reduced motion and readable mode:** ask `motionReduced(settings)` / `visualFlags(settings)` (`src/ui/motion.ts`), never `matchMedia` directly. Typing and boot-like effects must be instant under reduced motion.
 - **Sound:** `createSound` is created once by the app; call `play('stamp')` (or another `SoundId`) through it. New sounds are `uiSounds` entries for the eight ids only; a new id needs `SOUND_IDS`.
+
+## Implemented as
+
+**State** (`version` stays 1; both fields optional, **absent `onboarding` = done**, so an older save needs no migration and nothing in it is locked): `CampaignState.onboarding? { prologueId, stepId, stepDay, completed[], skipped[], done, spoken?[], hintsSeen?[], guideUnitId?, tutorialMissionId? }` and `objectives? [{ id, text, source: 'director', dueDay?, done }]` (only the director's hints are stored; the other sources are read from where they live).
+
+**Engine** (pure, `src/engine/onboarding/`): `prologue.ts` (`prologueFor`, `stepsOf`, `isWizardStep`), `state.ts` (`onboardingDone`, `currentStep`, `completionReason`, `initialOnboarding`, `enterStep`, `registerStepEntry`, `livingNamed`), `tutorial.ts` (`isTutorialRun`, `coachHints`, `withdrawTutorial`; the `expedition` entry effect), `evening.ts` (`guideUnit`; the `guided_slot` entry effect), `unlocks.ts` (`lockedTabs`, `unlockedBetween`), `objectives.ts` (`objectiveList`; `waitingDemands` lives in `engine/hub.ts`). Actions `onboarding/{complete_step,skip_step,mark_spoken,hint_seen}` (`src/engine/actions/onboarding.ts`); events `onboarding_step_{started,completed,skipped}`, `onboarding_done`, `onboarding_spoken`, `objective_set`, `expedition_debriefed`. World: `buildFixedMap`, `MapNode.eventId`, `fixedMapEvents`; `DirectorOutput.objectiveHint`. `SetupResult.onboarding? { prologueId, veteran }`; `TUNING.scene.maxParticipants = 4`; `SceneOrigin 'prologue'`.
+
+**Content:** registries `prologues` (`prologue_skeleton`, `prologue_vesper`, `prologue_kestrel` by `extends`; a prologue is `{ order[], steps{} }` so the loader's object merge works) and `uiUnlocks` (six rows); template `tutorial_patrol` (`tutorial: true`, `fixedMap`), dilemma `evt_tutorial_choice`; glossary `prologue`, `intake_interview`, `medical_exam`, `personnel_dossier`, `veteran_intake`, `lineup`, `first_words`, `tutorial_expedition`, `module_offline`, `coach_hint`, `rows` and a rewritten `objective`. Every string is a placeholder in `docs/content/prologue.md`.
+
+**UI / app:** `src/setup/wizard.ts` (mode, `stepsFor`, `prologueStep`, `jumpTo`), `src/ui/setup/{prologueSteps,shared}.ts` and `setupScreen.ts`, `src/onboarding/{controller,deps}.ts` (`app.onboarding`), `src/ui/onboarding/{card,coach}.ts`, locked tabs in `src/ui/shell/{tabs,shell}.ts`, `Comms.initiate`, `css/19-onboarding.css`. Setting: none.
+
+### What changed against the draft (rulings)
+- **The intake happens before deployment.** Name, crime and the commander profile are inputs of `buildCampaign` (first impressions, `knows_crime`, the disposition start read them at build), so cold open, intake, exam and dossier are *wizard* steps (in memory); `[SIGN]` is the old Confirm deployment. Prologue wizard order: `dossier` (start + the Veteran toggle) → `world` → `units` → `calibration` → `cold_open` → `intake` → `exam` → `file`. Veteran mode is today's order. A start with no prologue forces veteran. Calibration in prologue mode has no crime, so `previewStart` is `null` there (no stance line).
+- **Wizard vs campaign steps by kind:** `paper_form` and `dossier` are wizard steps, `scene`, `expedition`, `guided_slot` and `free` live in the campaign; `buildCampaign` writes every wizard step as `completed` (prologue) or `skipped` (veteran). The wizard finds the screen's step by `kind`/`fields`, never by id.
+- **Line-up size (user):** the scene limit is 4 everywhere (`TUNING.scene.maxParticipants`: `scene/start`, the mess linger, the decision talk, the debrief picker). A `prologue`-origin scene never consumes a slot.
+- **Soft exchange caps (user):** at `exchangeCap` the controller sets directive `prologue:wrap` and asks `Move on?` once (`MOVE ON` / `Keep talking`); the goal is directive `prologue:goal` (both `expiresAfter: 'scene'`). The cap never ends a scene by itself.
+- **Tutorial is safe (user):** every combat of a tutorial run is retryable (`allowRetry` = easy-retry setting OR `isTutorialRun`); stress and injuries still count. The patrol has no deadline and bypasses the board size; a lost or abandoned run still completes the step.
+- **Tutorial content stays out of ordinary play:** `checkOffer` refuses `tutorial` templates, the director digest omits them and `eventPool`/`eligibleTemplates` skip the events named by a `fixedMap`. (The plan put this in Task 7; it moved to Task 1 because adding the content without it leaked the patrol into old campaigns.)
+- **Completion conditions** are a closed enum checked by the engine (`manual`, `no_open_scene`, `all_spoken`, `tutorial_returned`, `debriefed`, `next_day`); `complete_step` throws the reason when not met and refuses a stale step id (`Stale onboarding step.`). Entering a `scene` or `expedition` step with no living named unit skips it; skipping the expedition also skips the `debriefed` step.
+- **Guided evening:** entering a `guided_slot` step that completes on `next_day` picks the guide (highest Affinity, ties Trust, then squad order) and, with a `nightKnock`, queues her visit (`visit`, priority 5, expires tomorrow). The controller has her send one initiated DM (`Comms.initiate`, no roll; after an open scene closes).
+- **Unlocks:** a tab with no `uiUnlocks` row (LOG, SYS) is always open; a tab is locked while the prologue is not done and some row for it fails (`minDay`, `afterStep` = step in `completed` or `skipped`). Locked tabs read `OFFLINE`, are `aria-disabled` and refuse click, `showTab`, the digit keys and the arrow keys; the room panel drops its activity cards while OPS is locked; an unlock shows a terminal toast. Only `tab` targets ship.
+- **Objectives:** `objectiveList` merges the prologue step, the proposed beat's goal, the open director lead and unit entries (the guide, open demands); `currentObjective` returns its first or the old mission pick (`source: 'mission'`).
+- **`objectiveHint`:** plain text, at most 100 characters and 16 words (rejected, not cut), `dueDays` a whole number 1–14, rejected during the prologue and in scout answers; one lead open at a time, the newest ten finished ones kept.
+- **Coach hints** come from the tutorial step's `hints`; `onboarding/hint_seen` is the only onboarding action `dispatch()` lets through while a combat or an expedition is open.
+- **Plan defect fixed:** `tutorial_patrol` objectives are `{ node: 'cache', condition: 'reach' }`; `obj` is a map id, not a node type.
+- **Added beyond the plan:** `Wizard.jumpTo`, `expedition_debriefed` (so the debrief step completes however the debrief was held), `Comms.initiate`, `OnboardingController.{onSceneOpened, resumeScene, launchTutorial, debriefTutorial, talkGuide}`, `ShellApi.setTabLocked`.
+
+### Non-obvious things to know before touching P11 code
+- **Data, not ids:** nothing tests a prologue, step, start, region, location or template id; steps are read by `kind`, `completion`, `fields`, `perUnit`, unlocks by `target.tab`, the tutorial by `missionTemplates[].tutorial`. Only the six `fields` names, the tab ids and the `SoundId`s are fixed.
+- **One mover:** `enterStep(draft, ctx, index, afterSkippedExpedition)` is the only code that changes the current step (complete, skip and `buildCampaign` all call it). New step kinds hook in with `registerStepEntry(kind, fn)`.
+- The controller completes a step only from an event of its own kind (`expedition_ended` only on an expedition step, `day_started` only on a `next_day` step, `scene_ended` only for the scene it was tracking), otherwise an ordinary scene or run during the prologue would complete the wrong step. `onSceneClosed` is the chat-switch clear (`adoptScene`); a normal close goes through `onEvents`.
+- A prologue scene's directives (`prologue:goal`, `prologue:wrap`) are `scene`-scoped; keep other directive ids away from `prologue:`.
+- Wizard tests that walk the classic order call `setMode('veteran')`; the default is the prologue.
+- `style.css` and `dist/index.js` are rebuilt by `npm test`; commit them.
+
+### Open items
+- **Author prose** for both starts (every string is a placeholder), and the shared skeleton's neutral text.
+- **`hubRoom` / `feature` unlock targets** (no consumer yet; only `tab`).
+- A **"replay prologue"** option for a finished campaign.
+- Typing sound for the cold open (`typing` is a `SoundId` but is not played there).
+- Not yet run by hand in SillyTavern: see `docs/MANUAL_TEST_P11.md`.
+

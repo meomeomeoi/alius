@@ -680,6 +680,30 @@ The casing of the PDA. The skin is chosen by: the SYS override → a skin bound 
 
 An `image` skin whose frame fails to load falls back to the built-in `ccp_standard` chrome.
 
+## `prologues` and `uiUnlocks` (P11)
+
+A prologue is one entry per start, built from a shared skeleton: `prologue_skeleton` has every step; `prologue_<start>` has `extends: "prologue_skeleton"`, its own `startId` and only the steps (and fields of steps) it changes. The loader merges objects and **replaces arrays**, so write `order` and `authoredText` whole.
+
+```jsonc
+{ "id": "prologue_vesper", "extends": "prologue_skeleton", "startId": "start_vesper",
+  "steps": { "tutorial": { "regionId": "quarantine_d7", "objective": "Walk the quarantine edge and bring the patrol back." } } }
+```
+
+| Field | Type | |
+|---|---|---|
+| `id`, `extends?` | | An entry with a `startId` is the prologue that start uses (exactly one per start); the skeleton has none. |
+| `startId?` | a `starts` id | |
+| `order` | step ids, ≥ 2 | Wizard steps first (`paper_form` and `dossier` kinds, **exactly one dossier, the last of them**), then campaign steps, `free` **last**. |
+| `steps` | `{ [stepId]: step }` | Every id in `order` has a step and the other way round. |
+
+A **step**: `kind` (`paper_form`, `scene`, `expedition`, `dossier`, `guided_slot`, `free`), `voice` (`terminal`, `corporate`, `paper`, `personal`), `completion` (`manual`, `no_open_scene`, `all_spoken`, `tutorial_returned`, `debriefed`, `next_day`; a `paper_form` is `manual`, a `perUnit` scene `all_spoken`), `skippable`, and as needed `title` (≤ 60), `authoredText` (≤ 8 lines of ≤ 400), `lines` (`{ key: text ≤ 200 }`; code looks up `ask_crime`, `ask_name`, `confirm_owner` with `{CORPORATION}`, `intro`, `dictate` with `{FIELD}` / `{VALUE}`, `traits_note`, `sign_prompt`), `directive` (the scene goal, ≤ 400, the main model reads it as a hard constraint), `fields` (`crime`, `name`, `body`, `expression`, `seasoning`, `traits`: each at most once in a prologue, **all six once** in an entry with a `startId`), `locationId` + `exchangeCap` (1–12; required for a `scene`), `perUnit`, `expeditionId` + `regionId` (required for an `expedition`; the template needs `tutorial: true`), `objective` (≤ 100; what the hub shows during the step), `hints` (≤ 4 of `{ id, screen: combat|expedition, glossaryId, text }`), `nightKnock` (`{ framing with {name}, ignore: { event, severity } }`).
+
+**No pronoun for the commander** in any of it (soldiers are "she"); `tests/content/pronouns.test.ts` scans `steps` and every `notice`. Every id is checked against its registry on load.
+
+**Tutorial run:** a `missionTemplates` entry with `"tutorial": true` and a `fixedMap` `{ layers: [[{ type, eventId? }, …], …] }` (1–4 layers of 1–3 nodes; `type` a node type that is not `objective`, `eventId` a `dilemmaTemplates` entry with context `expedition_event`; every node links to every node of the next layer, the objective node follows and plays as the template's `objectives[0].node`). It is never offered by the board, the director, the fallback or a rumor; the events a fixed map names are never drawn at random. Give its event `generate.brief` and a `fixed` block (the usual dilemma rules apply).
+
+**`uiUnlocks`** `{ id, target: { tab }, condition: { minDay?, afterStep? }, notice ≤ 160 }`: `tab` is one of `squad ops map comms base inv log sys`; `afterStep` names a step of **every** prologue (done or skipped). A tab with several rows needs all of them to hold; a tab with no row (LOG, SYS) is always open. The notice is shown in the terminal voice when the tab comes online. Locked tabs exist only while a prologue is under way.
+
 ## `uiSounds` (P10)
 
 Eight fixed ids (`open`, `close`, `tab`, `notify`, `alert`, `stamp`, `typing`, `hum`); this registry is not player-visible (no `description`).

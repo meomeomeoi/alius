@@ -160,7 +160,7 @@ Before each main-model generation the adapter injects one compact block:
 
 Character card text itself remains SillyTavern's job.
 
-### 5.4 Implemented engine interfaces (P0–P6, P7a, P7, P8, P9, P10)
+### 5.4 Implemented engine interfaces (P0–P6, P7a, P7, P8, P9, P10, P11)
 
 Later packages build on these; change them only together with the owning spec.
 
@@ -233,12 +233,18 @@ Later packages build on these; change them only together with the owning spec.
 | `createDiscipline` / `app.discipline` (`onEvents`, `onSceneOpened`, `onSceneClosed`, `punish`, `undo`, `onSlotAdvanced`, `answerDemand`, `talkDemand`), `disciplineDirectives`, `reputationDirectives`, `clearDisciplineDirectives`, `renderDisciplineMenu`, `drawDisciplineChips`, `drawDemandChips`, `registerDisciplineProviders` | P9 | The non-engine layer: directives (`loyalty:`, `refusal:`, `threat:`, `discipline:`, `demand:`, `reputation:`, `nickname`), toasts, wording, chips and the DISCIPLINE menu. Events: `defiance_noted`, `defiance_settled`, `threat_registered`, `threat_kept`, `threat_lapsed`, `discipline_applied`, `discipline_undone`, `restriction_started`, `restriction_ended`, `covert_sabotage`, `demand_opened`, `demand_delivered`, `demand_resolved`, `nickname_pending`, `nickname_given`, `nickname_dropped`, `impunity_changed`. |
 | `whereabouts(state, reg)` → `Whereabout[]` (`{ unitId, roomId \| null, reason }`), `fnv1a`, registry `hubRooms` (`rect`, `sceneLocationId`, `facilityId?`, `activityIds?`, `weights`, `likeTags?`, `hosts?`, `commanderCell?`) | P10 | Where each living unit is this slot, derived and stateless (no RNG): away, injured, confined, duty, night, else a weighted hash pick. P10b may replace the last step with a stored schedule. |
 | `ScreenId 'hub'`, `ShellApi.registerHub / isDeviceUp / setDevice`, `toast(kind, text, { voice, title })`, `ShellDeps.{ skin, sound, onDevice }`, `app.talkAt(unitId, locationId)`, `app.endSlot()` | P10 | The hub is the home screen and the PDA a device layer over it: `showScreen('pda')` raises it, `'hub'` lowers it. `talkAt` starts the talk activity and the scene at a room's location without the picker; `endSlot` passes the slot after a confirm (a quiet night is slept through). |
-| `currentObjective(state, reg)`, `tonightItems`, `markerTone`, `endSlotBlock`, `latestOversight` (`src/ui/hub/model.ts`) | P10 | Pure view models of the hub. `currentObjective` is a stub: P11 replaces its body and keeps the signature. |
+| `currentObjective(state, reg)`, `tonightItems`, `markerTone`, `endSlotBlock`, `latestOversight` (`src/ui/hub/model.ts`) | P10 | Pure view models of the hub. `currentObjective` reads P11's `objectiveList` and falls back to the old mission pick (`source: 'mission'`). |
 | registry `deviceSkins`, `pickSkin(state, reg, override)`, `screenBox(skin)`, `renderChrome`, setting `deviceSkin` | P10 | The PDA casing: `css` presets (`ccp_standard`, `kestrel`, `vesper`) or `image` skins with `frameSize` + `screenRect`; chosen by override → trait → flag → corporation → `ccp_standard`. |
 | `renderVoiceCard`, `renderBubble`, `unitAccent`, `VOICE_OF`, `Voice` | P10 | The four voices (terminal, corporate, paper, personal); sources declare their voice in `VOICE_OF` (P11 intake forms are `paper`). |
 | `unitPortrait`, `portraitOptions`, `ditherBayer4`, `PALETTE_RGB`, setting `ditheredPortraits` | P10 | PDA portraits dithered into the phosphor palette, cached per card, palette and size. |
 | `createSound`, `SoundId`, registry `uiSounds` (hidden), settings `soundVolume`, `soundMuted`, `ambientHum` | P10 | UI sounds synthesized with WebAudio; an entry's `file` is played when present. |
 | `motionReduced(settings)`, `visualFlags(settings)`, settings `readableMode`, `reducedMotion` | P10 | The one reader of reduced motion (setting OR system) and readable mode; everything that animates asks here. |
+
+| `onboardingDone`, `currentStep`, `completionReason`, `initialOnboarding`, `enterStep`, `registerStepEntry(kind, fn)`, `prologueFor`, `stepsOf`, `isWizardStep`, actions `onboarding/complete_step { stepId }`, `skip_step { stepId }`, `mark_spoken { unitId }`, `hint_seen { hintId }`, registries `prologues` (`order` + `steps`, per start by `extends`) and `uiUnlocks` | P11 | The prologue: wizard steps (`paper_form`, `dossier`) run before deployment, campaign steps (`scene`, `expedition`, `guided_slot`, `free`) after it. The engine checks each step's completion (closed enum) and `enterStep` is the only mover. **Absent `onboarding` = done.** Events: `onboarding_step_started / _completed / _skipped`, `onboarding_done`, `onboarding_spoken`. |
+| `lockedTabs(state, reg)`, `unlockedBetween(before, after, reg)`, `ShellApi.setTabLocked(id, locked)`, `isTutorialRun`, `coachHints(state, reg, screen)`, `guideUnit`, `buildFixedMap`, `missionTemplates[].{tutorial, fixedMap}`, `MapNode.eventId` | P11 | Progressive unlocks by `target.tab` (`minDay`, `afterStep`), the fixed tutorial run and its coach tips, the guide of the first evening, authored node maps. |
+| `objectiveList(state, reg)`, `waitingDemands(state)`, `StoredObjective`, `DirectorOutput.objectiveHint { text, dueDays? }`, event `objective_set` | P11 | The objective tracker: prologue step, proposed beat, the director's single open lead, units waiting. Only the lead is stored (`objectives`). |
+| `createOnboarding` / `app.onboarding` (`startLineup`, `talkFirstWords`, `skipFirstWords`, `skipStep`, `debriefTutorial`, `talkGuide`, `launchTutorial`, `onEvents`, `onSceneOpened`, `onSceneClosed`), `Comms.initiate(unitId)`, scene origin `prologue`, `TUNING.scene.maxParticipants` (4) | P11 | The non-engine layer: line-up and first words with soft caps (directives `prologue:goal`, `prologue:wrap`), the tutorial launch, the guide's DM and the step completions that events settle. |
+| `Wizard.{ mode, setMode, stepsFor, prologueStep, jumpTo }`, `renderColdOpen / renderIntake / renderExam / renderFile`, `fillLine`, `renderOnboardingCard`, `renderCoach` | P11 | The in-world intake (paper voice) over the same Wizard methods, the hub's prologue card and the coach strip. |
 
 Events emitted by the day-end pipeline: `director_requested` (P5), `leash_refreshed`, `loyalty_sign`, `desertion_attempt`, `mutiny_started`, `dilemma_requested`, `arc_unlocked` (P6), `mission_failed` / `mission_expired` / `clock_filled` / `leash_changed` (P5), `day_end_step`, `upkeep`, `quiet_night_started` / `morning_lost` (P7), `supply_shortage`, `trust_penalty_event`, `unit_recovered`, `facility_upgraded`, `slot_advanced`, `night_started`, `day_started`, `autosave` (the app flushes the saver on it).
 
@@ -261,8 +267,8 @@ Campaign {
   rumors[] /* newest 20 */, dms: { [unitId]: DmMessage[] }, dmMeta?: { [unitId]: { day, sent } }   // P3: the unit's daily "social battery"
   memory { facts[], chronicle[], promises?[], nextId? }   // P3
   scene?: SceneRecord, proposals?: PendingProposal[]       // P3: the open scene (transcript stays in the ST chat) and open proposals
-  onboarding? { prologueId, stepId, completed[], skipped[], done }   // P11 (planned); existing campaigns migrate to done: true
-  objectives?: [{ id, text, source: prologue|spine|director|unit, dueDay?, done }]   // P11 (planned)
+  onboarding? { prologueId, stepId, stepDay, completed[], skipped[], done, spoken?[], hintsSeen?[], guideUnitId?, tutorialMissionId? }   // P11; absent = done (older campaigns are unaffected, nothing is locked)
+  objectives?: [{ id, text, source: 'director', dueDay?, done }]   // P11: only the director's leads (≤ 1 open, 10 finished kept); prologue, spine and unit objectives are read live by objectiveList
   calendar { scheduled[], nightEventsQueue[], nightEvent? /* head entry while the Night slot runs; absent in a quiet night (P7) */, pendingScene? /* open talk holding its slot */, shortageStreak?, loseMorning? /* P7: the next day starts in the Afternoon */ }
   leash { authorizationsLeft, refreshDay, log[] /* entries { no, unitId, kind, day, context, outcome }, newest 60 */, seq?, seeded? }   // P6
   disloyalty?: { units: { [unitId]: LoyaltyRecord /* signs ≤ 6, attempts, nextCheckDay?, nextDoubtDay?, trigger?, cause?, deniedDay?, desertedDay?, stance?, returned? */ }, open?: Confrontation /* { kind: desertion|mutiny|return, unitId, day, at: night|mission_start, nightEntryId?, talkTried?, sympathizers?, combatId? } */ }   // P6
@@ -371,7 +377,7 @@ Defaults in code: Desire/Bond defects **off**, show raw values **off**, sprite m
 | 10 | P8 | World options & disposition | P0–P7 | implemented |
 | 11 | P9 | Impunity, discipline, demands, reputation | P0–P8 | implemented |
 | 12 | P10 | Visual upgrade (hub, device skins, voices) | P0–P6 | implemented |
-| 13 | P11 | Prologue & onboarding | P7, P8, P10 | spec |
+| 13 | P11 | Prologue & onboarding | P7, P8, P10 | implemented |
 | 14 | P9d | Desire & bonds (bond profile, opt-in content categories, lead, Want, relationship rules) | P3, P9 | spec |
 | 15 | P9b | Squad power structure (voting, hierarchy/leader, outside perception, scapegoat) | P8, P9, P9d | spec |
 | 16 | P9c | Personal pressure (device access levels, bookings, tokens, squad secrets, wagers) | P9b, P9d, P10 | spec |

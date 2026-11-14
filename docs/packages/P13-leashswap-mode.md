@@ -102,3 +102,11 @@ Intimacy settings apply as usual; romance with the warden is allowed and gets de
 - **Roles swap, rules stay:** Impunity (`impunityOf`), the command stance (`commandStance`), enforcement (`enforce`, `applyPunishment`, `discipline/punish`, `discipline/undo`), restrictions (`restrictionReason`), demands (`openDemand`, `demand/answer`) and deeds/nicknames (`countDeed`, `reputations`) all act on a **named unit and the commander**. A mode in which the player is the leashed one must reuse these readers with the other direction of authority rather than copy the rules.
 - **Directives and chips:** `app.discipline` (directives, toasts, chips, UNDO) is the UI path; the directive ids are P9's.
 - **The Leash is an enforcement:** every `done` use gives R −20 and keeps a pending threat (`bookUse` in `engine/leash/use.ts`), and counts `leash_*` deeds.
+
+## Interfaces already provided by P11 (implemented — use, do not rebuild)
+
+- **The intake is data and steps:** registry `prologues` (`order` + `steps`, per start by `extends`), `stepsOf`, `registerStepEntry(kind, fn)` for an entry effect, `onboarding/*` actions and the completion enum. A warden reveal is another `scene` or `guided_slot` step (or an entry effect) in the prologue of the LEASHSWAP start, not a new mechanism; wizard steps are `paper_form` and `dossier` kinds and run before deployment.
+- **The in-world forms:** `renderColdOpen / renderIntake / renderExam / renderFile` (`src/ui/setup/prologueSteps.ts`, `paper` voice, lines by key and `{PLACEHOLDER}` via `fillLine`), the Veteran toggle and `Wizard.{setMode, stepsFor, prologueStep, jumpTo}`.
+- **Prologue scenes:** `app.onboarding` (`startLineup`, `talkFirstWords`, soft caps with `prologue:goal` / `prologue:wrap`), scene origin `prologue` (never takes a slot), `TUNING.scene.maxParticipants` = 4, `Comms.initiate(unitId)` for one initiated DM without the roll.
+- **Unlocks and objectives:** registry `uiUnlocks` (`target.tab`, `minDay`, `afterStep`), `lockedTabs`, `ShellApi.setTabLocked`; `objectiveList` / `currentObjective` (sources `prologue`, `spine`, `director`, `unit`) and the director's `objectiveHint`.
+
