@@ -261,6 +261,16 @@ export interface DmMessage {
   initiated?: boolean;
 }
 
+/** P11: a lead the director set (`objectiveHint`). At most one is open; the newest finished ones are kept for the log. */
+export interface StoredObjective {
+  id: string;
+  text: string;
+  source: 'director';
+  /** The day it is due, when the director gave a number of days. */
+  dueDay?: number;
+  done: boolean;
+}
+
 /** P11: progress through a prologue (the registry entry `prologueId`). Wizard steps are already in `completed` or `skipped` when the campaign is built. */
 export interface OnboardingState {
   prologueId: string;
@@ -555,6 +565,11 @@ export interface CampaignState {
    * nothing is locked and no step is shown. Written by `buildCampaign`, moved only by the `onboarding/*` actions.
    */
   onboarding?: OnboardingState;
+  /**
+   * P11: only the director's hints are stored; prologue, spine and unit objectives are read from where they already
+   * live (`objectiveList`). Absent in an older save.
+   */
+  objectives?: StoredObjective[];
   /** An open workshop session of a given day (P4). */
   workshopSession?: { day: number; opsLeft: number; companionId?: string };
   /** Cached display names of affixed enemies, keyed `enemyId|affixes` (P4; at most 100). */

@@ -5,3 +5,5 @@ export {
 export { coachHints, isTutorialRun, withdrawTutorial, type CoachHint } from './tutorial';
 export { guideUnit } from './evening';
 export { lockedTabs, unlockedBetween } from './unlocks';
+export { objectiveList, type ObjectiveSource, type ObjectiveView } from './objectives';
+export { waitingDemands } from '../hub';

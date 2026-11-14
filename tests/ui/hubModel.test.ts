@@ -90,20 +90,20 @@ describe('currentObjective', () => {
     const s = campaign(reg, 4);
     s.day = 5;
     s.missions.active = [mission({ id: 'near', title: 'Near', deadlineDay: 6 }), mission({ id: 'beat', title: 'Beat', spineBeat: 'b1', deadlineDay: 20 })];
-    expect(currentObjective(s, reg)).toEqual({ text: 'Beat', dueDays: 15, missionId: 'beat' });
+    expect(currentObjective(s, reg)).toEqual({ text: 'Beat', dueDays: 15, missionId: 'beat', source: 'mission' });
   });
 
   it('without a spine beat the nearest deadline wins; dueDays is deadlineDay minus day', () => {
     const s = campaign(reg, 4);
     s.day = 5;
     s.missions.active = [mission({ id: 'far', title: 'Far', deadlineDay: 12 }), mission({ id: 'near', title: 'Near', deadlineDay: 7 }), mission({ id: 'open', title: 'Open' })];
-    expect(currentObjective(s, reg)).toEqual({ text: 'Near', dueDays: 2, missionId: 'near' });
+    expect(currentObjective(s, reg)).toEqual({ text: 'Near', dueDays: 2, missionId: 'near', source: 'mission' });
   });
 
   it('an active mission without a deadline has dueDays null', () => {
     const s = campaign(reg, 4);
     s.missions.active = [mission({ id: 'open', title: 'Open' })];
-    expect(currentObjective(s, reg)).toEqual({ text: 'Open', dueDays: null, missionId: 'open' });
+    expect(currentObjective(s, reg)).toEqual({ text: 'Open', dueDays: null, missionId: 'open', source: 'mission' });
   });
 
   it('falls back to an offered spine-beat mission, then to null', () => {
@@ -113,6 +113,28 @@ describe('currentObjective', () => {
     expect(currentObjective(s, reg)?.missionId).toBe('story');
     s.missions.offered = [mission({ id: 'plain', title: 'Plain', status: 'offered' })];
     expect(currentObjective(s, reg)).toBeNull();
+  });
+
+  it('old save objective unchanged: a plain campaign reads exactly as before, with the mission as its source', () => {
+    const s = campaign(reg, 4);
+    expect(s.onboarding).toBeUndefined();
+    expect(s.objectives).toBeUndefined();
+    s.day = 5;
+    s.missions.active = [mission({ id: 'm', title: 'Hold', deadlineDay: 9 })];
+    expect(currentObjective(s, reg)).toEqual({ text: 'Hold', dueDays: 4, missionId: 'm', source: 'mission' });
+  });
+
+  it('the prologue step comes first, then the director hint; missions are only the fallback', () => {
+    const s = campaign(reg, 4, { onboarding: 'prologue' });
+    s.missions.active = [mission({ id: 'm', title: 'Hold', deadlineDay: 9 })];
+    expect(currentObjective(s, reg)).toMatchObject({ source: 'prologue', dueDays: null });
+    expect(currentObjective(s, reg)!.missionId).toBeUndefined();
+    s.onboarding!.done = true;
+    s.day = 5;
+    s.objectives = [{ id: 'o', text: 'Scout east.', source: 'director', dueDay: 7, done: false }];
+    expect(currentObjective(s, reg)).toEqual({ text: 'Scout east.', dueDays: 2, source: 'director' });
+    s.objectives[0].done = true;
+    expect(currentObjective(s, reg)).toMatchObject({ source: 'mission', missionId: 'm' });
   });
 
   it('no missions gives null', () => {

@@ -1,6 +1,6 @@
 import type { Entry, Registries } from '../content/types';
 import { activeRestrictions } from './discipline/restrictions';
-import { facilityLevel, livingUnits } from './economy';
+import { facilityLevel, isLiving, livingUnits } from './economy';
 import type { CampaignState, Slot, Unit } from './state/types';
 
 /** FNV-1a, 32 bit. The hub's only source of "randomness": a stable function of its input, never a draw from the campaign RNG. */
@@ -11,6 +11,11 @@ export function fnv1a(s: string): number {
     h = Math.imul(h, 0x01000193) >>> 0;
   }
   return h >>> 0;
+}
+
+/** Demands waiting for the commander's answer: open ones of soldiers who are still with the squad (the Tonight list and the objectives read this). */
+export function waitingDemands(state: CampaignState): Array<NonNullable<CampaignState['discipline']>['demands'][number]> {
+  return (state.discipline?.demands ?? []).filter((d) => d.status === 'open' && state.squad.some((u) => u.id === d.unitId && isLiving(u)));
 }
 
 export interface Whereabout {

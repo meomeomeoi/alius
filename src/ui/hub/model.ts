@@ -1,5 +1,6 @@
 import type { Registries } from '../../content/types';
 import { isLiving } from '../../engine/economy';
+import { objectiveList, waitingDemands, type ObjectiveSource } from '../../engine/onboarding';
 import { leashLog } from '../../engine/leash/weekly';
 import { affinityBand } from '../../engine/relations/bands';
 import type { CampaignState, LeashLogEntry, Unit } from '../../engine/state/types';
@@ -35,22 +36,26 @@ export function markerTone(state: CampaignState, reg: Registries, unit: Unit): M
   return 'neutral';
 }
 
-export interface Objective { text: string; dueDays: number | null; missionId: string }
+/** The hub's standing order. `source` says where it came from; `missionId` only the mission fallback has. */
+export interface Objective { text: string; dueDays: number | null; source: ObjectiveSource | 'mission'; missionId?: string }
 
 const dueIn = (m: Mission, day: number): number | null => (m.deadlineDay === undefined ? null : m.deadlineDay - day);
 
 /**
- * The standing order: the active story mission, else the active mission with the nearest deadline, else an offered
- * story mission, else nothing. P11 replaces the body and keeps the signature.
+ * The standing order: the first of the objective list (prologue step, proposed beat, the director's lead, a soldier
+ * waiting), else the old mission pick (the active story mission, else the active mission with the nearest deadline, else
+ * an offered story mission), else nothing. An older save has no list, so it reads exactly as it did.
  */
-export function currentObjective(state: CampaignState, _reg: Registries): Objective | null {
+export function currentObjective(state: CampaignState, reg: Registries): Objective | null {
+  const first = objectiveList(state, reg)[0];
+  if (first) return { text: first.text, dueDays: first.dueDays, source: first.source };
   const active = state.missions.active;
   const pick =
     active.find((m) => m.spineBeat !== undefined)
     ?? [...active].filter((m) => m.deadlineDay !== undefined).sort((a, b) => (a.deadlineDay as number) - (b.deadlineDay as number))[0]
     ?? active[0]
     ?? state.missions.offered.find((m) => m.spineBeat !== undefined);
-  return pick ? { text: pick.title, dueDays: dueIn(pick, state.day), missionId: pick.id } : null;
+  return pick ? { text: pick.title, dueDays: dueIn(pick, state.day), source: 'mission', missionId: pick.id } : null;
 }
 
 export interface TonightItem {
@@ -83,8 +88,7 @@ export function tonightItems(state: CampaignState, _reg: Registries): TonightIte
     const n = unreadFrom(state, u.id);
     if (n > 0) out.push({ kind: 'dm', text: `${u.displayName}: ${n} unread message${n === 1 ? '' : 's'}.`, unitId: u.id, tone: 'neutral', analyze: 'glossary:tonight' });
   }
-  for (const d of state.discipline?.demands ?? []) {
-    if (d.status !== 'open' || !nameOf(d.unitId)) continue;
+  for (const d of waitingDemands(state)) {
     out.push({ kind: 'demand', text: `${nameOf(d.unitId)} is waiting for an answer.`, unitId: d.unitId, tone: 'warn', analyze: 'glossary:demand' });
   }
   if ((state.world.incomingUnits ?? 0) > 0) out.push({ kind: 'intake', text: 'A new unit is waiting for intake.', tone: 'neutral', analyze: 'glossary:tonight' });

@@ -2,6 +2,7 @@ import type { Entry, Registries } from '../../content/types';
 import { activityCost, checkActivity, type ActivityRequest } from '../../engine/activities';
 import { clockText, isQuietNight } from '../../engine/calendar';
 import { isLiving, requisitionCost } from '../../engine/economy';
+import { objectiveList, type ObjectiveSource } from '../../engine/onboarding';
 import type { CampaignState, Unit } from '../../engine/state/types';
 import { TUNING } from '../../engine/tuning';
 import type { LoadResult } from '../../st/persistence';
@@ -144,6 +145,20 @@ function requisition(state: CampaignState, ctx: OpsTabCtx, host: HTMLElement): H
 }
 
 /** The OPS tab: today's slot and everything the commander can spend it on. */
+const SOURCE_LABEL: Record<ObjectiveSource, string> = { prologue: 'PROLOGUE', spine: 'STORY', director: 'LEAD', unit: 'UNIT' };
+
+const dueLabel = (days: number): string => (days < 0 ? 'OVERDUE' : days === 0 ? 'DUE TODAY' : `DUE IN ${days} DAY${days === 1 ? '' : 'S'}`);
+
+/** P11: every objective the tracker knows, each with where it came from; nothing is drawn when there is nothing to follow. */
+function renderObjectives(host: HTMLElement, state: CampaignState, reg: Registries): void {
+  const list = objectiveList(state, reg);
+  if (list.length === 0) return;
+  host.append(h('section', { class: 'alius-section alius-objectives' },
+    h('h2', {}, 'OBJECTIVES'),
+    h('ul', {}, ...list.map((o) => h('li', { class: 'alius-objective-row alius-stat', 'data-source': o.source, ...analyzeAttrs('glossary:objective') },
+      h('span', { class: 'alius-dim' }, `[${SOURCE_LABEL[o.source]}] `), o.text, o.dueDays !== null ? h('span', { class: 'alius-dim' }, ` — ${dueLabel(o.dueDays)}`) : null)))));
+}
+
 export function renderOpsTab(host: HTMLElement, ctx: OpsTabCtx): void {
   host.replaceChildren();
   const load = ctx.getLoad();
@@ -157,6 +172,7 @@ export function renderOpsTab(host: HTMLElement, ctx: OpsTabCtx): void {
     return;
   }
   const all = [...ctx.registries.activities.values()];
+  renderObjectives(host, state, ctx.registries);
   renderMissionBoard(host, state, ctx);
   host.append(
     h(

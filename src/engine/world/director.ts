@@ -2,6 +2,7 @@ import type { Entry, Registries } from '../../content/types';
 import { advanceClock } from './clocks';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { nextId } from '../memory';
+import { onboardingDone } from '../onboarding/state';
 import type { Rng } from '../rng';
 import { normalizeTag } from '../setup';
 import type { CampaignState } from '../state/types';
@@ -113,6 +114,8 @@ export interface DirectorOutput {
   threadUpdates: Array<{ threadId: string; title?: string; status?: ThreadStatus; addFlags?: Array<{ slug: string; description: string }> }>;
   clockAdvances: Array<{ clockId: string; by: 1 | 2; reason: string }>;
   storyBeatProposal?: { beatId: string; framing: string };
+  /** P11: one plain-text lead for the commander (the objective tracker's director source); never during the prologue. */
+  objectiveHint?: { text: string; dueDays?: number };
 }
 
 export const emptyOutput = (): DirectorOutput => ({ missionOffers: [], rumors: [], threadUpdates: [], clockAdvances: [] });
@@ -182,6 +185,19 @@ export function validateDirectorOutput(
       }
     }
   }
+  // P11: a lead for the objective tracker. The prologue owns the objective until it is over; a scout answer carries rumors only.
+  if (!only && raw.objectiveHint !== undefined) {
+    const hint = raw.objectiveHint;
+    const text = isObj(hint) ? plain(hint.text, 100) : '';
+    const days = isObj(hint) ? hint.dueDays : undefined;
+    if (!onboardingDone(state)) reject('objectiveHint', 'the prologue is not over: it sets the objective');
+    else if (!isObj(hint) || text === '') reject('objectiveHint', 'the hint needs a text');
+    else if (isObj(hint) && typeof hint.text === 'string' && plain(hint.text, 10_000).length > 100) reject('objectiveHint', 'the text is longer than 100 characters');
+    else if (text.split(' ').length > 16) reject('objectiveHint', 'the text is longer than 16 words');
+    else if (days !== undefined && !(Number.isInteger(days) && (days as number) >= 1 && (days as number) <= 14)) reject('objectiveHint', 'dueDays is a whole number from 1 to 14');
+    else output.objectiveHint = { text, ...(days !== undefined ? { dueDays: days as number } : {}) };
+  }
+
   const current = currentBeat(state, reg)?.id;
   const beatOpen = (id: string): boolean => id === current && (state.world.spine?.proposed === id || proposedNow === id);
 
@@ -344,6 +360,20 @@ export function trimThreads(draft: CampaignState): void {
   });
 }
 
+/** How many finished leads the campaign keeps. */
+const OBJECTIVES_DONE_KEPT = 10;
+
+/** Makes a lead the single open director objective: the previous one is done, the newest finished ones are kept. */
+function setObjective(draft: CampaignState, hint: NonNullable<DirectorOutput['objectiveHint']>): EngineEvent {
+  const list = (draft.objectives ??= []);
+  for (const o of list) o.done = true;
+  const id = nextId(draft, 'ob');
+  list.push({ id, text: hint.text, source: 'director', ...(hint.dueDays !== undefined ? { dueDay: draft.day + hint.dueDays } : {}), done: false });
+  const finished = list.filter((o) => o.done);
+  draft.objectives = [...finished.slice(-OBJECTIVES_DONE_KEPT), ...list.filter((o) => !o.done)];
+  return { type: 'objective_set', id, text: hint.text };
+}
+
 export function applyDirectorOutput(draft: CampaignState, ctx: EngineCtx, out: DirectorOutput, opts: { fallback?: boolean } = {}): EngineEvent[] {
   const events: EngineEvent[] = [];
   let threads = 0;
@@ -375,6 +405,8 @@ export function applyDirectorOutput(draft: CampaignState, ctx: EngineCtx, out: D
     events.push(...proposeBeat(draft, ctx, proposal.beatId, proposal.framing));
     beat = proposal.beatId;
   }
+
+  if (out.objectiveHint) events.push(setObjective(draft, out.objectiveHint));
 
   let commandTaken = false;
   for (const o of out.missionOffers) {

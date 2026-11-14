@@ -327,15 +327,15 @@ Card:
 **Interfaces:**
 - Produces: `type ObjectiveSource = 'prologue' | 'spine' | 'director' | 'unit'`; `interface StoredObjective { id: string; text: string; source: 'director'; dueDay?: number; done: boolean }`; `interface ObjectiveView { id: string; text: string; source: ObjectiveSource; dueDays: number | null }`; `objectiveList(state, reg): ObjectiveView[]`; `Objective = { text: string; dueDays: number | null; source: ObjectiveSource | 'mission'; missionId?: string }`; `DirectorOutput.objectiveHint?: { text: string; dueDays?: number }`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 - list: `prologue step objective first`; `then the proposed spine beat goal`; `then the open director hint with dueDays`; `then the guide wants to talk and waiting demands`; `old save objective unchanged` (no onboarding/objectives → `currentObjective` = P10's result + `source: 'mission'`);
 - director: `a valid hint becomes the open director objective and the previous one is done`; `text over 16 words, empty text or dueDays 0 are rejected (listed in rejected)`; `a hint during the prologue is rejected`; `done objectives are kept at most 10`; `fallbackOutput has no hint`;
 - llm: `directorTick shape keeps objectiveHint` and `the prompt mentions objectiveHint once`;
 - OPS: `OBJECTIVES lists every entry with a source label and data-analyze glossary:objective`; hub card unchanged for a mission fallback.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.** Extract the hub's "waiting for an answer" demand predicate from `tonightItems` into a shared function and use it in both places. Prompt line: `objectiveHint (optional): { "text": the single most useful next thing for the commander, imperative, at most 12 words, no numbers; "dueDays"?: 1-14 }.`
-- [ ] **Step 4: Run** `npm test` → green.
-- [ ] **Step 5: Commit** `feat(objectives): objective tracker and the director's hint`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.** Extract the hub's "waiting for an answer" demand predicate from `tonightItems` into a shared function and use it in both places. Prompt line: `objectiveHint (optional): { "text": the single most useful next thing for the commander, imperative, at most 12 words, no numbers; "dueDays"?: 1-14 }.`
+- [x] **Step 4: Run** `npm test` → green.
+- [x] **Step 5: Commit** `feat(objectives): objective tracker and the director's hint`
 
 ---
 

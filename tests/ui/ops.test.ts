@@ -4,6 +4,7 @@ import type { Registries } from '../../src/content/types';
 import type { CampaignState } from '../../src/engine/state/types';
 import type { LoadResult } from '../../src/st/persistence';
 import { h } from '../../src/ui/dom';
+import { markedWithout } from '../helpers/analyzeCoverage';
 import { renderOpsTab, type OpsTabCtx } from '../../src/ui/ops/opsTab';
 import { offerMission } from '../../src/engine/world/missions';
 import { postRumor } from '../../src/engine/world/missions';
@@ -33,6 +34,40 @@ const change = (el: HTMLSelectElement | HTMLInputElement, value?: string) => {
   if (value !== undefined) el.value = value;
   el.dispatchEvent(new Event('change', { bubbles: true }));
 };
+
+describe('OPS tab: OBJECTIVES (P11)', () => {
+  const objectives = (host: HTMLElement) => [...host.querySelectorAll<HTMLElement>('.alius-objectives li')];
+
+  it('lists every entry with a source label and data-analyze glossary:objective', () => {
+    const s = campaign(reg, 4, { onboarding: 'prologue' });
+    s.onboarding!.stepId = 'first_evening';
+    s.onboarding!.guideUnitId = 'unit_bea';
+    const { host } = render({ state: s });
+    const rows = objectives(host);
+    expect(rows.map((r) => r.dataset.source)).toEqual(['prologue', 'unit']);
+    expect(rows[0].textContent).toContain('PROLOGUE');
+    expect(rows[1].textContent).toContain('UNIT');
+    expect(rows[1].textContent).toContain('Bea wants to talk.');
+    for (const r of rows) expect(r.getAttribute('data-analyze')).toBe('glossary:objective');
+    expect(markedWithout(host)).toEqual([]);
+  });
+
+  it('shows the director hint with its due days', () => {
+    const s = campaign(reg, 4);
+    s.day = 3;
+    s.objectives = [{ id: 'o', text: 'Scout the east gate.', source: 'director', dueDay: 6, done: false }];
+    const rows = objectives(render({ state: s }).host);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].dataset.source).toBe('director');
+    expect(rows[0].textContent).toContain('Scout the east gate.');
+    expect(rows[0].textContent).toContain('DUE IN 3 DAYS');
+  });
+
+  it('draws no section for a campaign with nothing to follow', () => {
+    const { host } = render();
+    expect(host.querySelector('.alius-objectives')).toBeNull();
+  });
+});
 
 describe('OPS tab', () => {
   it('lists every activity with the day clock, in registry order', () => {

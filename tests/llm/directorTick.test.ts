@@ -159,3 +159,28 @@ describe('world hints (P8)', () => {
     expect(st.calls[0].system).toContain('Follow the world hints in the digest; entries of families listed there are part of this world.');
   });
 });
+
+describe('director_tick objectiveHint (P11)', () => {
+  it('directorTick shape keeps objectiveHint', async () => {
+    const { out } = await run(JSON.stringify({ objectiveHint: { text: 'Scout the east gate.', dueDays: 3 }, rumors: [] }));
+    expect(out!.objectiveHint).toEqual({ text: 'Scout the east gate.', dueDays: 3 });
+    const r = validated(out);
+    expect(r.rejected).toEqual([]);
+    expect(r.output.objectiveHint).toEqual({ text: 'Scout the east gate.', dueDays: 3 });
+  });
+
+  it('a malformed hint passes the shape and is rejected by the engine, not by the call', async () => {
+    const { out } = await run(JSON.stringify({ objectiveHint: 'go east', rumors: [] }));
+    expect(out).not.toBeNull();
+    expect(validated(out).rejected.map((x) => x.part)).toEqual(['objectiveHint']);
+  });
+
+  it('the prompt mentions objectiveHint once', async () => {
+    const { st } = await run(fixture('valid'));
+    const system = (st.calls[0] as { system: string }).system;
+    expect(system.match(/objectiveHint/g)).toHaveLength(1);
+    expect(system).toContain('at most 12 words');
+    expect(system).toContain('"dueDays"?: 1-14');
+  });
+});
+
