@@ -219,7 +219,7 @@ export interface ChronicleEntry {
   slot?: Slot;
 }
 
-export type SceneOrigin = 'activity' | 'night' | 'mess' | 'event' | 'debrief';
+export type SceneOrigin = 'activity' | 'night' | 'mess' | 'event' | 'debrief' | 'prologue';
 
 /** The open scene (P3). The transcript stays in the ST chat; only the start index is stored. */
 export interface SceneRecord {

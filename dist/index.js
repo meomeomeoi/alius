@@ -104,6 +104,8 @@ var TUNING = Object.freeze({
   }),
   /** P7a: the change ledger behind trends, stress sources and "last changes" readings. */
   ledger: Object.freeze({ days: 7, max: 150 }),
+  /** P11: how many soldiers one scene can hold (the line-up takes the whole squad of four). */
+  scene: Object.freeze({ maxParticipants: 4 }),
   upkeep: Object.freeze({ perUnit: 1, commander: 1, doubledByDefect: "hunger_loop" }),
   shortage: Object.freeze({ stressPerPoint: 4, affinityPerPoint: 1, streakDays: 3, trustPenalty: 5 }),
   /** Per axis per day: full value below `soft`, half value below `hard`, nothing after. */
@@ -10243,7 +10245,7 @@ function applyIntents(draft, ctx2, p) {
 // src/engine/actions/scene.ts
 installRelationAccounting();
 var isObj6 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
-var ORIGINS = ["activity", "night", "mess", "event", "debrief"];
+var ORIGINS = ["activity", "night", "mess", "event", "debrief", "prologue"];
 var CHRONICLE_LINE_MAX = 240;
 registerDayEndStep("dm_rumors", (draft, ctx2) => {
   const events = [];
@@ -10272,8 +10274,8 @@ registerAction("scene/start", (draft, payload, ctx2) => {
   const slots = loc.slots;
   if (slots && !slots.includes(draft.slot)) throw new Error(`${String(loc.name)} is not available in the ${draft.slot} (slot).`);
   const ids = payload.participants;
-  if (!Array.isArray(ids) || ids.length < 1 || ids.length > 3 || !ids.every((x) => typeof x === "string")) {
-    throw new Error("A scene has 1 to 3 participants.");
+  if (!Array.isArray(ids) || ids.length < 1 || ids.length > TUNING.scene.maxParticipants || !ids.every((x) => typeof x === "string")) {
+    throw new Error(`A scene has 1 to ${TUNING.scene.maxParticipants} participants.`);
   }
   if (new Set(ids).size !== ids.length) throw new Error("A participant was listed twice.");
   for (const id of ids) {
@@ -10300,7 +10302,8 @@ registerAction("scene/start", (draft, payload, ctx2) => {
     participants,
     mode: participants.length > 1 ? "group" : "private",
     origin,
-    consumesSlot: payload.consumesSlot !== false,
+    consumesSlot: origin !== "prologue" && payload.consumesSlot !== false,
+    // P11: the prologue's scenes never cost a slot
     startIndex: start,
     readIndex: start,
     exchanges: 0,
@@ -23240,7 +23243,7 @@ function renderPlanner(host, ctx2) {
 }
 
 // src/ui/expedition/report.ts
-var DEBRIEF_MAX = 3;
+var DEBRIEF_MAX = TUNING.scene.maxParticipants;
 function renderReport(host, ctx2) {
   const { state, controller } = ctx2;
   const report = state.lastExpedition;
@@ -27513,7 +27516,7 @@ function createApp(st, deps) {
     const s = state;
     if (!s) return;
     const named = (ids2) => ids2.map((id) => s.squad.find((u) => u.id === id)).filter((u) => u && u.kind === "named" && u.status !== "dead" && u.status !== "deserted" && u.status !== "terminated" && restrictionReason(s, u.id, "scene") === null);
-    const ids = [...new Set(named(s.roster.activeIds).map((u) => u.id))].slice(0, 3);
+    const ids = [...new Set(named(s.roster.activeIds).map((u) => u.id))].slice(0, TUNING.scene.maxParticipants);
     if (ids.length === 0) return;
     const answer = await shell.modal({
       title: "Linger at the table?",
@@ -27660,7 +27663,7 @@ function createApp(st, deps) {
     const ids = resolved.affected.filter((id) => {
       const u = s.squad.find((x) => x.id === id);
       return u !== void 0 && u.kind === "named" && isLiving(u) && restrictionReason(s, id, "scene") === null;
-    }).slice(0, 3);
+    }).slice(0, TUNING.scene.maxParticipants);
     if (ids.length === 0) return;
     const names = ids.map((id) => s.squad.find((u) => u.id === id).displayName).join(", ");
     toast("info", `Your decision "${String(resolved.title)}" moved ${names}.`);

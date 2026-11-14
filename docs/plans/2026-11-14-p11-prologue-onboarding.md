@@ -233,11 +233,11 @@ Existing `wizard.test.ts` tests run in veteran mode: set `setMode('veteran')` wh
 **Interfaces:**
 - Produces: `scene/start` accepts 1–`TUNING.scene.maxParticipants` participants and origin `prologue` (error text `A scene has 1 to 4 participants.`); a `prologue` scene never consumes a slot (`consumesSlot` forced false).
 
-- [ ] **Step 1: Write the failing tests:** `four participants are accepted`; `five are refused /1 to 4/` (replaces the old `/1 to 3/` case); `prologue origin starts with consumesSlot false even if asked true`; `ending a prologue scene keeps the slot`.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/scene.test.ts` → FAIL.
-- [ ] **Step 3: Implement**; grep `slice(0, 3)` at participant call sites and use the constant.
-- [ ] **Step 4: Run** `npm test` → green.
-- [ ] **Step 5: Commit** `feat(scene): four participants and the prologue origin`
+- [x] **Step 1: Write the failing tests:** `four participants are accepted`; `five are refused /1 to 4/` (replaces the old `/1 to 3/` case); `prologue origin starts with consumesSlot false even if asked true`; `ending a prologue scene keeps the slot`.
+- [x] **Step 2: Run** `npx vitest run tests/engine/scene.test.ts` → FAIL.
+- [x] **Step 3: Implement**; grep `slice(0, 3)` at participant call sites and use the constant.
+- [x] **Step 4: Run** `npm test` → green.
+- [x] **Step 5: Commit** `feat(scene): four participants and the prologue origin`
 
 ---
 

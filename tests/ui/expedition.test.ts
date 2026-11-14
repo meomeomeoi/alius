@@ -454,13 +454,14 @@ describe('report', () => {
     expect(btn(mount(done).host, 'DEBRIEF')).toBeUndefined();
   });
 
-  it('at most three units can be picked for a debrief', () => {
+  it('the whole party of four can be picked for a debrief (a scene holds four)', () => {
     const s = finished();
     const m = mount(s);
     const boxes = [...m.host.querySelectorAll<HTMLInputElement>('input[data-debrief]')];
     expect(boxes.length).toBe(4);
-    for (const b of boxes.slice(0, 3)) { b.checked = true; b.dispatchEvent(new Event('change', { bubbles: true })); }
-    expect([...m.host.querySelectorAll<HTMLInputElement>('input[data-debrief]')].filter((b) => !b.checked).every((b) => b.disabled)).toBe(true);
+    for (const b of boxes) { b.checked = true; b.dispatchEvent(new Event('change', { bubbles: true })); }
+    const after = [...m.host.querySelectorAll<HTMLInputElement>('input[data-debrief]')];
+    expect(after.every((b) => b.checked && !b.disabled)).toBe(true);
   });
 
   it('CLOSE acknowledges', () => {

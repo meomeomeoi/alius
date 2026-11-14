@@ -45,14 +45,14 @@ describe('scene/start', () => {
     expect(r.state.calendar.pendingScene).toMatchObject({ unitId: ANN, slot: 'morning' });
   });
 
-  it('rejects a grunt, a dead unit, a fourth participant, an unknown location, a second open scene', () => {
+  it('rejects a grunt, a dead unit, a fifth participant, an unknown location, a second open scene', () => {
     const s = fresh();
     s.squad.find((u) => u.id === DEE)!.status = 'dead';
     const grunt = run(s, reg, { type: 'base/recruit_grunt', payload: {} });
     const g = grunt.state.squad.find((u) => u.kind === 'grunt');
     rejected(s, { type: 'scene/start', payload: { locationId: 'mess_hall', participants: [DEE], origin: 'event', startIndex: 0 } }, /not available/);
     if (g) rejected(grunt.state, { type: 'scene/start', payload: { locationId: 'mess_hall', participants: [g.id], origin: 'event', startIndex: 0 } }, /grunt|character card/);
-    rejected(s, { type: 'scene/start', payload: { locationId: 'mess_hall', participants: [ANN, BEA, CAT, DEE], origin: 'event', startIndex: 0 } }, /1 to 3/);
+    rejected(s, { type: 'scene/start', payload: { locationId: 'mess_hall', participants: [ANN, BEA, CAT, DEE, 'unit_eve'], origin: 'event', startIndex: 0 } }, /1 to 4/);
     rejected(s, { type: 'scene/start', payload: { locationId: 'nowhere', participants: [ANN], origin: 'event', startIndex: 0 } }, /location/);
     rejected(s, { type: 'scene/start', payload: { locationId: 'mess_hall', participants: [ANN, ANN], origin: 'event', startIndex: 0 } }, /twice/);
     rejected(s, { type: 'scene/start', payload: { locationId: 'mess_hall', participants: ['ghost'], origin: 'event', startIndex: 0 } }, /unknown|not available/);
@@ -60,6 +60,35 @@ describe('scene/start', () => {
     rejected(s, { type: 'scene/start', payload: { locationId: 'mess_hall', participants: [ANN], origin: 'event', startIndex: -1 } }, /startIndex/);
     const open = start(s).state;
     rejected(open, { type: 'scene/start', payload: { locationId: 'mess_hall', participants: [BEA], origin: 'event', startIndex: 0 } }, /already open/);
+  });
+
+  it('four participants are accepted', () => {
+    const r = start(fresh(), { participants: [ANN, BEA, CAT, DEE] });
+    expect(errors(r.events)).toEqual([]);
+    expect(r.state.scene).toMatchObject({ mode: 'group', participants: [ANN, BEA, CAT, DEE] });
+  });
+
+  it('five are refused /1 to 4/', () => {
+    const s = campaign(reg, 5);
+    s.squad.find((u) => u.id === 'unit_eve')!.status = 'active';
+    rejected(s, { type: 'scene/start', payload: { locationId: 'mess_hall', participants: [ANN, BEA, CAT, DEE, 'unit_eve'], origin: 'event', startIndex: 0 } }, /A scene has 1 to 4 participants\./);
+  });
+
+  it('prologue origin starts with consumesSlot false even if asked true', () => {
+    const r = start(fresh(), { origin: 'prologue', locationId: 'garage', consumesSlot: true, participants: [ANN, BEA, CAT, DEE] });
+    expect(errors(r.events)).toEqual([]);
+    expect(r.state.scene).toMatchObject({ origin: 'prologue', consumesSlot: false });
+  });
+
+  it('ending a prologue scene keeps the slot', () => {
+    const s = fresh();
+    const started = start(s, { origin: 'prologue', locationId: 'garage', consumesSlot: true }).state;
+    const ended = run(started, reg, { type: 'scene/end', payload: {} });
+    expect(errors(ended.events)).toEqual([]);
+    expect(ofType(ended.events, 'scene_ended')).toEqual([{ type: 'scene_ended', sceneId: 's1', consumed: false }]);
+    expect(ended.state.slot).toBe(s.slot);
+    expect(ended.state.day).toBe(s.day);
+    expect(ended.state.calendar.pendingScene).toBeUndefined();
   });
 
   it('rejects a location closed in this slot', () => {

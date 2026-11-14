@@ -66,6 +66,7 @@ import { importCommander } from './setup/commander';
 import { importProfile, stanceOptionIds } from './setup/profile';
 import { defaultWorldOptions } from './engine/worldOptions';
 import { Wizard, type WizardState } from './setup/wizard';
+import { TUNING } from './engine/tuning';
 import { renderSetupScreen } from './ui/setup/setupScreen';
 import { renderSquadTab } from './ui/squad/squadTab';
 import { portraitOptions, unitPortrait } from './ui/portrait/portrait';
@@ -388,14 +389,14 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     await beginScene({ locationId: pick.locationId, participants: pick.participants, origin: 'activity' });
   }
 
-  /** After a group meal: an optional scene with up to three of the squad that does not use a slot. */
+  /** After a group meal: an optional scene with up to four of the squad that does not use a slot. */
   async function offerGroupScene(): Promise<void> {
     const chatId = st.getActiveChat()?.chatId;
     const s = state;
     if (!s) return;
     const named = (ids: string[]) => ids.map((id) => s.squad.find((u) => u.id === id)).filter((u) => u && u.kind === 'named' && u.status !== 'dead' && u.status !== 'deserted' && u.status !== 'terminated' && restrictionReason(s, u.id, 'scene') === null);
     // the squad lingering over the meal is the active roster; reserve and injured units are elsewhere
-    const ids = [...new Set(named(s.roster.activeIds).map((u) => u!.id))].slice(0, 3);
+    const ids = [...new Set(named(s.roster.activeIds).map((u) => u!.id))].slice(0, TUNING.scene.maxParticipants);
     if (ids.length === 0) return;
     const answer = await shell.modal({
       title: 'Linger at the table?',
@@ -537,7 +538,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     const ids = (resolved.affected as string[]).filter((id) => {
       const u = s.squad.find((x) => x.id === id);
       return u !== undefined && u.kind === 'named' && isLiving(u) && restrictionReason(s, id, 'scene') === null; // not the one in the brig
-    }).slice(0, 3);
+    }).slice(0, TUNING.scene.maxParticipants);
     if (ids.length === 0) return;
     const names = ids.map((id) => s.squad.find((u) => u.id === id)!.displayName).join(', ');
     toast('info', `Your decision "${String(resolved.title)}" moved ${names}.`);

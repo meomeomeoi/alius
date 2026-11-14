@@ -1,3 +1,4 @@
+import { TUNING } from '../../engine/tuning';
 import type { Registries } from '../../content/types';
 import { reportLines } from '../../engine/world/expedition';
 import type { CampaignState } from '../../engine/state/types';
@@ -15,7 +16,7 @@ export interface ReportCtx {
   debriefPick: string[];
 }
 
-const DEBRIEF_MAX = 3;
+const DEBRIEF_MAX = TUNING.scene.maxParticipants;
 
 /** The AFTER-ACTION REPORT: the deterministic lines, the recap when there is one, debrief and close. */
 export function renderReport(host: HTMLElement, ctx: ReportCtx): void {

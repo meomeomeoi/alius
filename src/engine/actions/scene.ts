@@ -18,7 +18,7 @@ import { TUNING } from '../tuning';
 installRelationAccounting();
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
-const ORIGINS: readonly SceneOrigin[] = ['activity', 'night', 'mess', 'event', 'debrief'];
+const ORIGINS: readonly SceneOrigin[] = ['activity', 'night', 'mess', 'event', 'debrief', 'prologue'];
 const CHRONICLE_LINE_MAX = 240;
 
 /** Once a day: units under extreme stress get a `stress_high` mark; every unit is re-evaluated (catches P2's axis changes). */
@@ -52,8 +52,8 @@ registerAction('scene/start', (draft, payload, ctx) => {
   const slots = loc.slots as string[] | undefined;
   if (slots && !slots.includes(draft.slot)) throw new Error(`${String(loc.name)} is not available in the ${draft.slot} (slot).`);
   const ids = payload.participants;
-  if (!Array.isArray(ids) || ids.length < 1 || ids.length > 3 || !ids.every((x) => typeof x === 'string')) {
-    throw new Error('A scene has 1 to 3 participants.');
+  if (!Array.isArray(ids) || ids.length < 1 || ids.length > TUNING.scene.maxParticipants || !ids.every((x) => typeof x === 'string')) {
+    throw new Error(`A scene has 1 to ${TUNING.scene.maxParticipants} participants.`);
   }
   if (new Set(ids).size !== ids.length) throw new Error('A participant was listed twice.');
   for (const id of ids as string[]) {
@@ -76,7 +76,8 @@ registerAction('scene/start', (draft, payload, ctx) => {
   const sceneId = nextId(draft, 's');
   draft.scene = {
     id: sceneId, day: draft.day, slot: draft.slot, locationId: loc.id, participants, mode: participants.length > 1 ? 'group' : 'private',
-    origin, consumesSlot: payload.consumesSlot !== false, startIndex: start, readIndex: start, exchanges: 0,
+    origin, consumesSlot: origin !== 'prologue' && payload.consumesSlot !== false, // P11: the prologue's scenes never cost a slot
+    startIndex: start, readIndex: start, exchanges: 0,
     ...(typeof payload.nightEntryId === 'string' ? { nightEntryId: payload.nightEntryId } : {}),
   };
   draft.calendar.pendingScene ??= { unitId: participants[0], day: draft.day, slot: draft.slot };
