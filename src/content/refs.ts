@@ -245,7 +245,7 @@ function worldEffectRefs(list: unknown, path: string, out: Ref[]): void {
   list.forEach((fx: Record<string, unknown>, i) => {
     if (!fx || typeof fx !== 'object') return;
     const at = `${path}[${i}]`;
-    if (fx.type === 'faction' && typeof fx.factionId === 'string') out.push({ registry: 'corporations', id: fx.factionId, path: `${at}.factionId` });
+    if (fx.type === 'faction' && typeof fx.factionId === 'string' && fx.factionId !== 'own') out.push({ registry: 'corporations', id: fx.factionId, path: `${at}.factionId` });
     if (fx.type === 'clock' && typeof fx.clockId === 'string') out.push({ registry: 'clocks', id: fx.clockId, path: `${at}.clockId` });
     if (fx.type === 'flag' && typeof fx.flagId === 'string') {
       const flagId = fx.flagId;

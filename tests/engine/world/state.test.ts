@@ -30,7 +30,8 @@ describe('seedWorld', () => {
   it('creates every clock at its start value, factions at 0 with the own corporation at 10, and knows the start region', () => {
     const s = p4Save();
     const events = seedWorld(s, reg);
-    expect(s.world.clocks.map((c) => c.id).sort()).toEqual([...reg.clocks.keys()].sort());
+    // P8: a clock of an event family exists only in a world that enables it (the default world does not)
+    expect(s.world.clocks.map((c) => c.id).sort()).toEqual([...reg.clocks.values()].filter((c) => c.family === undefined).map((c) => String(c.id)).sort());
     for (const c of s.world.clocks) {
       const def = reg.clocks.get(c.id)!;
       expect(c.filled).toBe(def.startFilled);

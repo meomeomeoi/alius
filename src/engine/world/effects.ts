@@ -7,6 +7,7 @@ import { applyEventToUnit } from '../relations/effects';
 import { evaluateAutomatic } from '../relations/graph';
 import type { CampaignState, LootDrop, Unit } from '../state/types';
 import { TUNING } from '../tuning';
+import { stanceEffects } from '../worldOptions';
 import { advanceClock } from './clocks';
 import { offerMission } from './missions';
 import { checkBeatFlags } from './spine';
@@ -25,6 +26,9 @@ export interface EffectSource {
 }
 
 export const MAX_EFFECT_DEPTH = 3;
+
+/** P8: a `faction` effect with this id moves the commander's own corporation (content shared by every start, like the purge sweep). */
+export const OWN_FACTION = 'own';
 
 const clamp = (n: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, n));
 
@@ -96,11 +100,12 @@ export function applyWorldEffects(
         break;
       }
       case 'faction': {
-        if (!reg.corporations.has(fx.factionId)) break;
-        const before = draft.world.factions[fx.factionId] ?? 0;
+        const factionId = fx.factionId === OWN_FACTION ? draft.commander.corporationId ?? '' : fx.factionId;
+        if (!reg.corporations.has(factionId)) break;
+        const before = draft.world.factions[factionId] ?? 0;
         const after = clamp(before + fx.amount, -100, 100);
-        draft.world.factions[fx.factionId] = after;
-        if (after !== before) events.push({ type: 'faction_changed', factionId: fx.factionId, amount: after - before, standing: after });
+        draft.world.factions[factionId] = after;
+        if (after !== before) events.push({ type: 'faction_changed', factionId, amount: after - before, standing: after });
         break;
       }
       case 'clock':
@@ -130,6 +135,16 @@ export function applyWorldEffects(
       case 'party_stress': {
         for (const u of partyUnits(draft)) {
           const next = clamp(u.stress + fx.amount, 0, 100);
+          if (next !== u.stress) events.push({ type: 'stress_changed', unitId: u.id, delta: next - u.stress });
+          u.stress = next;
+        }
+        break;
+      }
+      case 'stigma_news': {
+        for (const u of draft.squad) {
+          if (!isLiving(u)) continue;
+          const mult = stanceEffects(draft, reg, u, 'news_stress_mult').reduce((m, x) => m * x.mult, 1);
+          const next = clamp(u.stress + Math.round(fx.amount * mult), 0, 100);
           if (next !== u.stress) events.push({ type: 'stress_changed', unitId: u.id, delta: next - u.stress });
           u.stress = next;
         }

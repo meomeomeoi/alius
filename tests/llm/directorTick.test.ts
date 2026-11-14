@@ -150,3 +150,12 @@ describe('director_tick call', () => {
     expect((st.calls[0] as { prompt: string }).prompt).toMatch(/rumors only/i);
   });
 });
+
+describe('world hints (P8)', () => {
+  it('the system prompt mentions world hints', async () => {
+    const st = new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' });
+    st.mainReplies = ['{}'];
+    await runDirectorTick(digestInput(), { st, settings: getSettings(st) });
+    expect(st.calls[0].system).toContain('Follow the world hints in the digest; entries of families listed there are part of this world.');
+  });
+});

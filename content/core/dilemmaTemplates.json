@@ -1086,5 +1086,265 @@
         }
       ]
     }
+  },
+  {
+    "id": "dil_purge_census",
+    "scale": "major",
+    "contexts": [
+      "base",
+      "director"
+    ],
+    "family": "purge_sweep",
+    "generate": {
+      "brief": "A census team arrives at the outpost with a sweep order and wants to know how many off-spec soldiers live here."
+    },
+    "optionCount": 3,
+    "fixed": {
+      "title": "The census",
+      "setup": "A census team stands at the gate with a sweep order. They want a list of every off-spec soldier in the outpost, and they are not leaving without something to write down.",
+      "options": [
+        {
+          "label": "Give them a doctored list",
+          "effects": [
+            {
+              "type": "resource",
+              "resource": "credits",
+              "amount": -30
+            },
+            {
+              "type": "clock",
+              "clockId": "purge_sweep",
+              "by": -1
+            },
+            {
+              "type": "unit_event",
+              "event": "decision_aligned",
+              "severity": "moderate",
+              "targets": "named",
+              "valueAxes": [
+                {
+                  "axis": "mercy",
+                  "direction": 1
+                },
+                {
+                  "axis": "autonomy",
+                  "direction": 1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Hand over the real roster",
+          "effects": [
+            {
+              "type": "party_stress",
+              "amount": 10
+            },
+            {
+              "type": "resource",
+              "resource": "credits",
+              "amount": 40
+            },
+            {
+              "type": "unit_event",
+              "event": "decision_violated",
+              "severity": "moderate",
+              "targets": "named",
+              "valueAxes": [
+                {
+                  "axis": "mercy",
+                  "direction": 1
+                },
+                {
+                  "axis": "ingroup",
+                  "direction": 1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Strip their truck and send them away",
+          "effects": [
+            {
+              "type": "clock",
+              "clockId": "purge_sweep",
+              "by": 1
+            },
+            {
+              "type": "resource",
+              "resource": "plyx",
+              "amount": 6
+            },
+            {
+              "type": "unit_event",
+              "event": "decision_aligned",
+              "severity": "moderate",
+              "targets": "named",
+              "valueAxes": [
+                {
+                  "axis": "ingroup",
+                  "direction": 1
+                },
+                {
+                  "axis": "autonomy",
+                  "direction": 1
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "dil_purge_shelter",
+    "scale": "major",
+    "contexts": [
+      "base",
+      "director"
+    ],
+    "family": "purge_sweep",
+    "generate": {
+      "brief": "Off-spec civilians beg for a place to hide while the sweep passes through the district."
+    },
+    "optionCount": 3,
+    "fixed": {
+      "title": "Shelter",
+      "setup": "A handful of off-spec civilians reach the perimeter at night. A sweep is two streets away and they have nowhere left to hide.",
+      "options": [
+        {
+          "label": "Hide them in the outpost",
+          "effects": [
+            {
+              "type": "resource",
+              "resource": "supplies",
+              "amount": -10
+            },
+            {
+              "type": "clock",
+              "clockId": "purge_sweep",
+              "by": 1
+            },
+            {
+              "type": "resource",
+              "resource": "plyx",
+              "amount": 4
+            },
+            {
+              "type": "unit_event",
+              "event": "decision_aligned",
+              "severity": "moderate",
+              "targets": "named",
+              "valueAxes": [
+                {
+                  "axis": "mercy",
+                  "direction": 1
+                },
+                {
+                  "axis": "ingroup",
+                  "direction": 1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Turn them away",
+          "effects": [
+            {
+              "type": "party_stress",
+              "amount": 8
+            },
+            {
+              "type": "clock",
+              "clockId": "oversight",
+              "by": -1
+            },
+            {
+              "type": "unit_event",
+              "event": "decision_violated",
+              "severity": "moderate",
+              "targets": "named",
+              "valueAxes": [
+                {
+                  "axis": "mercy",
+                  "direction": 1
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "label": "Pay a smuggler to move them on",
+          "effects": [
+            {
+              "type": "resource",
+              "resource": "credits",
+              "amount": -40
+            },
+            {
+              "type": "clock",
+              "clockId": "purge_sweep",
+              "by": -1
+            },
+            {
+              "type": "unit_event",
+              "event": "decision_aligned",
+              "severity": "minor",
+              "targets": "named",
+              "valueAxes": [
+                {
+                  "axis": "pragmatism",
+                  "direction": 1
+                },
+                {
+                  "axis": "mercy",
+                  "direction": 1
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "evt_purge_checkpoint",
+    "scale": "minor",
+    "contexts": [
+      "expedition_event"
+    ],
+    "family": "purge_sweep",
+    "fixed": {
+      "title": "Sweep checkpoint",
+      "setup": "A sweep team has closed the road and is checking every convoy for off-spec soldiers. The party would not pass an inspection.",
+      "options": [
+        {
+          "label": "Pay the sweep team to look away",
+          "effects": [
+            {
+              "type": "resource",
+              "resource": "credits",
+              "amount": -40
+            }
+          ]
+        },
+        {
+          "label": "Take the long way round",
+          "effects": [
+            {
+              "type": "carried_supplies",
+              "amount": -1
+            },
+            {
+              "type": "party_stress",
+              "amount": 5
+            }
+          ]
+        }
+      ]
+    }
   }
 ]

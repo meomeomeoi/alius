@@ -7,7 +7,7 @@ import { bankLoot, rollLoot } from '../items';
 import type { CampaignState, LootDrop } from '../state/types';
 import { TUNING } from '../tuning';
 import { applyWorldEffects } from './effects';
-import { worldEffects } from '../worldOptions';
+import { familyEnabled, worldEffects } from '../worldOptions';
 import { knownRegions } from './state';
 import type { Mission, MissionRewards, MissionSource, Rumor, WorldEffect } from './types';
 
@@ -39,6 +39,7 @@ type Template = Entry & {
 export function checkOffer(state: CampaignState, reg: Registries, o: MissionOffer): string | null {
   const tpl = reg.missionTemplates.get(o.templateId) as Template | undefined;
   if (!tpl) return `Unknown mission template "${o.templateId}".`;
+  if (!familyEnabled(state, reg, tpl)) return `Template "${o.templateId}" belongs to an event family this world does not use.`; // P8
   const region = reg.regions.get(o.regionId);
   if (!region) return `Unknown region "${o.regionId}".`;
   if (!knownRegions(state, reg).some((r) => r.id === o.regionId)) return `Region "${o.regionId}" is not known yet.`;

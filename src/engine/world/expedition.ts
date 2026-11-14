@@ -17,6 +17,7 @@ import { nextId } from '../memory';
 import type { Rng } from '../rng';
 import type { CampaignState, LootDrop, Unit } from '../state/types';
 import { TUNING } from '../tuning';
+import { familyEnabled } from '../worldOptions';
 import { applyWorldEffects } from './effects';
 import { openRequest } from './director';
 import { missionStartCheck } from '../loyalty/desertion';
@@ -615,12 +616,12 @@ export function resolveCombat(draft: CampaignState, ctx: EngineCtx): EngineEvent
 type EventOption = { label: string; requires?: { stat: string; rank: number }; routeCheck?: RouteCheck; effects: WorldEffect[] };
 
 /** Minor events the pack offers in this region; the ones a mission pins to its objective are never drawn at random. */
-function eventPool(reg: Registries, regionId: string): Entry[] {
+export function eventPool(state: CampaignState, reg: Registries, regionId: string): Entry[] {
   const pinned = new Set([...reg.missionTemplates.values()].map((t) => t.objectiveEventId).filter((x): x is string => typeof x === 'string'));
   return [...reg.dilemmaTemplates.values()].filter((t) => {
     const regions = t.regions as string[] | undefined;
     return t.scale === 'minor' && (t.contexts as string[]).includes('expedition_event') && !pinned.has(t.id)
-      && (regions === undefined || regions.includes(regionId));
+      && (regions === undefined || regions.includes(regionId)) && familyEnabled(state, reg, t); // P8: families
   });
 }
 
@@ -633,7 +634,7 @@ function enterEvent(draft: CampaignState, ctx: EngineCtx, nodeId: string, isObje
     if (typeof pinned === 'string' && reg.dilemmaTemplates.has(pinned)) templateId = pinned;
   }
   if (templateId === undefined) {
-    const pool = eventPool(reg, exp.regionId);
+    const pool = eventPool(draft, reg, exp.regionId);
     if (pool.length > 0) templateId = String(ctx.rng.pick(pool).id);
   }
   if (templateId === undefined) {

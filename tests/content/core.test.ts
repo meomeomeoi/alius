@@ -663,7 +663,7 @@ describe('core content: P5 world', () => {
 
   it('clocks, reward tiers and node types follow the plan numbers', async () => {
     const { registries: r } = await load();
-    expect([...r.clocks.keys()].sort()).toEqual(['bloom_d7', 'corridor_quota', 'garden_wake', 'oversight', 'sable_operation']);
+    expect([...r.clocks.keys()].sort()).toEqual(['bloom_d7', 'corridor_quota', 'garden_wake', 'oversight', 'purge_sweep', 'sable_operation']); // P8 adds the purge family clock
     expect(r.clocks.get('oversight')!.repeat).toBe(true);
     expect(r.clocks.get('bloom_d7')!.segments).toBe(8);
     expect(r.clocks.get('garden_wake')!.visibleToPlayer).toBe(false);

@@ -24,6 +24,7 @@ const MIN: Record<string, Record<string, unknown>> = {
   fact: { type: 'fact', text: 'Something happened.', tags: ['world'], importance: 3 },
   offer_mission: { type: 'offer_mission', templateId: 'tpl_sweep', source: 'command' },
   thread_flag: { type: 'thread_flag', threadId: 't1', flagId: 'thread:t1:saw_it', description: 'Saw it.' },
+  stigma_news: { type: 'stigma_news', amount: 10 },
 };
 
 describe('world-effect vocabulary', () => {

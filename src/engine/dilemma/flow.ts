@@ -5,6 +5,7 @@ import { activeRosterUnits, isLiving } from '../economy';
 import { meetsSocialRequirements, socialRank, type SocialStat } from '../social';
 import type { CampaignState, Unit } from '../state/types';
 import { TUNING } from '../tuning';
+import { familyEnabled } from '../worldOptions';
 import { afterFailedRoute, resolveRoute, routeChoices, routeScope, type RouteChoice, type RoutePick } from '../commander/checks';
 import { finishEventNode } from '../world/expedition';
 import { applyWorldEffects } from '../world/effects';
@@ -81,6 +82,7 @@ export function eligibleTemplates(state: CampaignState, reg: Registries, context
   const present = presentUnits(state).length;
   return [...reg.dilemmaTemplates.values()].filter((t) => {
     if (t.generate === undefined || t.scale === 'defining' || recent.includes(String(t.id))) return false;
+    if (!familyEnabled(state, reg, t)) return false; // P8: an event family only in a world that enables it
     if (!(t.contexts as string[]).some((c) => (contexts as string[]).includes(c))) return false;
     const need = t.requiredRefs as { units?: number; factions?: string[]; regions?: string[]; clocks?: string[] } | undefined;
     if (!need) return true;

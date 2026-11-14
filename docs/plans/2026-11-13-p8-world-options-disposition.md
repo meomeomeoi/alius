@@ -366,17 +366,17 @@ docs/** (Task 16), tests/** mirror src
   - the core family content (ids in the rulings), copying the shapes of `dil_informant` (generated base dilemma), `evt_checkpoint` (expedition event) and `tpl_recover` (mission). `purge_sweep` clock: visible, 6 segments, `onFill` = `stigma_news 10` + own-faction −5.
   - Director system prompt line: `Follow the world hints in the digest; entries of families listed there are part of this world.`
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `the purge clock is seeded only under hunted`
   - `family templates are not drawn by the director, pacing or the event pool under tolerated`
   - `stigma_news stresses a shares unit more than an indifferent one`
   - `a family clock in a save survives with the family off`
   - digest: `world hints carry the tone choice's director_hint`
   - director: `the system prompt mentions world hints`
-- [ ] **Step 2: Run** `npx vitest run tests/engine tests/llm/directorTick.test.ts` and expect FAIL.
-- [ ] **Step 3: Implement** the filters at the five sites and the content (placeholder text, pronoun rule).
-- [ ] **Step 4: Run** `npx vitest run` and expect green.
-- [ ] **Step 5: Commit** `feat(world): event families and the purge sweep`.
+- [x] **Step 2: Run** `npx vitest run tests/engine tests/llm/directorTick.test.ts` and expect FAIL.
+- [x] **Step 3: Implement** the filters at the five sites and the content (placeholder text, pronoun rule).
+- [x] **Step 4: Run** `npx vitest run` and expect green.
+- [x] **Step 5: Commit** `feat(world): event families and the purge sweep`.
 
 ### Task 10: WORLD SETTINGS block and world directives
 

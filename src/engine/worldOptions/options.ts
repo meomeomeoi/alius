@@ -60,3 +60,17 @@ export function validateWorldOptions(options: Record<string, string> | undefined
   }
   return out;
 }
+
+/** The event families some current choice enables (`enable_family`), each once, in option order. */
+export function activeFamilies(state: WorldHolder, reg: Registries): string[] {
+  return [...new Set(worldEffects(state, reg, 'enable_family').map((e) => e.family))];
+}
+
+/**
+ * Whether an entry (a clock, mission template or dilemma template) may be drawn: one without a `family` always may, one with
+ * a family only while some current choice enables it. Entries already in a save keep running when their family goes off.
+ */
+export function familyEnabled(state: WorldHolder, reg: Registries, entry: object): boolean {
+  const family = (entry as { family?: unknown }).family;
+  return typeof family !== 'string' || activeFamilies(state, reg).includes(family);
+}

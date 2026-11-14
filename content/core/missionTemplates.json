@@ -523,5 +523,46 @@
     ],
     "objectiveEventId": "evt_kestrel_choice",
     "factionId": "kestrel"
+  },
+  {
+    "id": "tpl_purge_extraction",
+    "name": "Extraction",
+    "family": "purge_sweep",
+    "sources": [
+      "command",
+      "rumor",
+      "side"
+    ],
+    "objectives": [
+      {
+        "node": "cache",
+        "condition": "reach"
+      }
+    ],
+    "dangerRange": [
+      2,
+      4
+    ],
+    "tiers": [
+      "tier_1",
+      "tier_2",
+      "tier_3"
+    ],
+    "failureEffects": [
+      {
+        "type": "clock",
+        "clockId": "purge_sweep",
+        "by": 1
+      }
+    ],
+    "titles": [
+      "Pull them out",
+      "Extraction before the sweep",
+      "Get them out of the district"
+    ],
+    "briefs": [
+      "Off-spec civilians are trapped in a district a sweep team will reach by morning. Reach them and bring them out.",
+      "A safehouse is about to be raided. Get there first."
+    ]
   }
 ]

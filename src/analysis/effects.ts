@@ -167,7 +167,8 @@ export function summarizeWorldEffect(effect: WorldEffect, reg: Registries): stri
   if (NO_LINE_WORLD.has(e.type)) return null;
   switch (e.type) {
     case 'resource': return `${signed(Number(e.amount))} ${RESOURCE_LABEL[e.resource] ?? cap(humanize(String(e.resource)))}`;
-    case 'faction': return `${signed(Number(e.amount))} standing with [[corporations:${e.factionId}]]`;
+    case 'faction': return e.factionId === 'own' ? `${signed(Number(e.amount))} standing with your own corporation` : `${signed(Number(e.amount))} standing with [[corporations:${e.factionId}]]`;
+    case 'stigma_news': return `${signed(Number(e.amount))} Stress to every unit, more for those who take the news to heart`;
     case 'clock': {
       const clock = reg.clocks.get(String(e.clockId));
       if (clock && clock.visibleToPlayer === true) return `${String(clock.label)} ${signed(Number(e.by))}`;

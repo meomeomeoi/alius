@@ -104,6 +104,7 @@ const WorldEffectUnion = z.discriminatedUnion('type', [
     type: z.literal('offer_mission'), templateId: str, regionId: str.optional(), source: z.enum(['command', 'story', 'rumor', 'side']),
   }).strict(),
   // P6: a dynamic flag in the namespace of the thread it belongs to (overview §6.1)
+  z.object({ type: z.literal('stigma_news'), amount: worldInt.min(1).max(30) }).strict(),
   z.object({ type: z.literal('thread_flag'), threadId: str, flagId: z.string().regex(/^thread:[^:]+:[a-z0-9_]+$/, 'flagId must be thread:<threadId>:<slug>'), description: str.max(120) }).strict(),
 ]);
 
@@ -121,6 +122,7 @@ export function isCostEffect(e: WorldEffect): boolean {
     case 'party_hp': return e.pct < 0;
     case 'leash': return e.amount < 0;
     case 'party_stress': return e.amount > 0;
+    case 'stigma_news': return true;
     case 'clock': return e.by > 0;
     case 'unit_event': return COST_EVENTS.includes(e.event);
     default: return false;

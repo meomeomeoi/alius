@@ -8,6 +8,8 @@ export const WORLD_EFFECT_TYPES = [
   'leash', 'thread', 'unit_event', 'incoming_unit', 'fact', 'offer_mission',
   // P6
   'thread_flag',
+  // P8
+  'stigma_news',
 ] as const;
 export type WorldEffectType = (typeof WORLD_EFFECT_TYPES)[number];
 
@@ -45,7 +47,9 @@ export type WorldEffect =
   | { type: 'fact'; text: string; tags: string[]; importance: number }
   | { type: 'offer_mission'; templateId: string; regionId?: string; source: MissionSource }
   /** P6: a dynamic flag in a thread's namespace (`thread:<threadId>:<slug>`) with its one-line description. */
-  | { type: 'thread_flag'; threadId: string; flagId: string; description: string };
+  | { type: 'thread_flag'; threadId: string; flagId: string; description: string }
+  /** P8: the sweep reaches the squad: every living unit takes `amount` stress, times her `news_stress_mult` stance effects. */
+  | { type: 'stigma_news'; amount: number };
 
 // ---------------------------------------------------------------------------------------------
 // State shapes (campaign state `version: 1`; every P5 field is optional or empty in older saves).

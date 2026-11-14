@@ -6,6 +6,7 @@ import type { Rng } from '../rng';
 import { normalizeTag } from '../setup';
 import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
+import { activeFamilies, familyEnabled, worldEffects } from '../worldOptions';
 import {
   boardRoom, checkOffer, offerMission, postRumor, rumorCap, rumorPostedEvent, type MissionOffer,
 } from './missions';
@@ -31,6 +32,8 @@ export interface Digest {
   regions: Array<{ id: string; name: string; danger: number }>;
   templates: Array<{ id: string; sources: string[]; regions?: string[]; objectives: string[]; tiers: string[] }>;
   lastExpedition?: { regionId: string; outcome: string; missionTitle: string };
+  /** P8: the tone hints the director follows and the event families this world uses. */
+  world: { hints: string[]; families: string[] };
 }
 
 /** Flags shown per thread (the newest ones) — the digest has to stay small. */
@@ -71,11 +74,12 @@ export function buildDigest(state: CampaignState, reg: Registries): Digest {
     rumorRoom: rumorRoom(state, reg),
     regions: knownRegions(state, reg).map((r) => ({ id: String(r.id), name: String(r.name), danger: r.danger as number })),
     templates: [...reg.missionTemplates.values()]
-      .filter((t) => (t.sources as string[]).some((s) => s !== 'story'))
+      .filter((t) => (t.sources as string[]).some((s) => s !== 'story') && familyEnabled(state, reg, t))
       .map((t) => ({
         id: String(t.id), sources: [...(t.sources as string[])], ...(t.regions ? { regions: [...(t.regions as string[])] } : {}),
         objectives: (t.objectives as Array<{ node: string }>).map((o) => o.node), tiers: [...(t.tiers as string[])],
       })),
+    world: { hints: worldEffects(state, reg, 'director_hint').map((e) => e.text), families: activeFamilies(state, reg) },
   };
   if (beat && digest.phase === 'spine') {
     digest.beat = { id: beat.id, title: beat.title, goal: beat.goal, ready: beatReady(state, reg, beat), proposed: state.world.spine?.proposed === beat.id };

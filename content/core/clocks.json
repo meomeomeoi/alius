@@ -85,5 +85,24 @@
         "importance": 5
       }
     ]
+  },
+  {
+    "id": "purge_sweep",
+    "label": "Purge sweep",
+    "segments": 6,
+    "startFilled": 0,
+    "visibleToPlayer": true,
+    "family": "purge_sweep",
+    "onFill": [
+      {
+        "type": "stigma_news",
+        "amount": 10
+      },
+      {
+        "type": "faction",
+        "factionId": "own",
+        "amount": -5
+      }
+    ]
   }
 ]
