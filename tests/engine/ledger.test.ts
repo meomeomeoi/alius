@@ -198,3 +198,25 @@ describe('ledger robustness (review)', () => {
     expect(after.ledger!.find((e) => e.key.startsWith('axis:'))!.delta).toBe(3);
   });
 });
+
+describe('the impunity record in the ledger (P9)', () => {
+  it('a change of impunityRecord by −8 writes record:<unitId>', () => {
+    const before = fresh();
+    const after = structuredClone(before);
+    after.relations[ANN].impunityRecord = -8;
+    recordLedger(before, after, 'test/record');
+    expect(after.ledger).toEqual([{ day: before.day, slot: before.slot, action: 'test/record', key: `record:${ANN}`, delta: -8 }]);
+  });
+
+  it('a record that moves back to nothing records the difference; an unchanged one records nothing', () => {
+    const before = fresh();
+    before.relations[ANN].impunityRecord = 5;
+    const after = structuredClone(before);
+    delete after.relations[ANN].impunityRecord;
+    recordLedger(before, after, 'test/record');
+    expect(after.ledger).toEqual([{ day: before.day, slot: before.slot, action: 'test/record', key: `record:${ANN}`, delta: -5 }]);
+    const same = structuredClone(before);
+    recordLedger(before, same, 'test/record');
+    expect(same.ledger).toBeUndefined();
+  });
+});

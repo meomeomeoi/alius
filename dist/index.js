@@ -524,6 +524,7 @@ function recordLedger(before, after, action) {
     const was = before.relations[id];
     if (!was) continue;
     for (const axis of AXES) push(`axis:${id}:${axis}`, (rel[axis] ?? 0) - (was[axis] ?? 0));
+    push(`record:${id}`, (rel.impunityRecord ?? 0) - (was.impunityRecord ?? 0));
   }
   if (before.commander?.body !== void 0 && after.commander?.body !== void 0) for (const stat2 of BODY_STATS) push(`body:${stat2}`, (after.commander?.body?.[stat2] ?? 0) - (before.commander?.body?.[stat2] ?? 0));
   if (entries.length > 0) after.ledger = [...after.ledger ?? [], ...entries];

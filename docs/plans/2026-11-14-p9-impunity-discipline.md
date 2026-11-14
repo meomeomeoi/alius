@@ -190,7 +190,7 @@ tests/**                                           mirrors src; tests/helpers/di
   - `recordOf(state, unitId): number`; `addRecord(draft, unitId, amount, reason: string): EngineEvent[]` (clamps to ±40, emits `impunity_changed { unitId, delta, reason }` when the applied delta ≠ 0); `decayRecords(draft): void` (each record 1 toward 0); `disciplineOf(draft): NonNullable<CampaignState['discipline']>`.
   - `tests/helpers/discipline.ts`: `setRecord(state, unitId, n)`, `withStance(state, reg, unitId, stance)` (sets Trust 60 / 20 and the record so the value lands at 70 / 20), re-exports of `tests/helpers/loyalty`.
 
-- [ ] **Step 1: Write the failing tests** (campaign `campaign(reg, 4)` with `{ ...reg, presence: new Map() }` so `P = 0`, guarded world, Leash never used, so a fresh unit reads `35 + 0 + 8 = 43`)
+- [x] **Step 1: Write the failing tests** (campaign `campaign(reg, 4)` with `{ ...reg, presence: new Map() }` so `P = 0`, guarded world, Leash never used, so a fresh unit reads `35 + 0 + 8 = 43`)
 
 ```ts
 expect(impunityOf(s, reg, a)!.value).toBe(43);
@@ -208,11 +208,11 @@ setRecord(s, a, 40); /* + every positive term */ expect(impunityOf(s, reg, a)!.v
 ```
 `addRecord clamps at ±40 and reports the applied delta`; `decayRecords moves 3 → 2, −1 → 0, 0 stays`; `a save without impunityRecord reads 0`. Ledger: a dispatch that changes `impunityRecord` by −8 writes `{ key: 'record:<unitId>', delta: -8 }`.
 
-- [ ] **Step 2: Run** `npx vitest run tests/engine/discipline/impunity.test.ts` → FAIL (module not found).
+- [x] **Step 2: Run** `npx vitest run tests/engine/discipline/impunity.test.ts` → FAIL (module not found).
 
-- [ ] **Step 3: Implement.** `ledger.ts`: a fourth kind `record` beside `res` / `stress` / `axis`, same eviction rule.
+- [x] **Step 3: Implement.** `ledger.ts`: a fourth kind `record` beside `res` / `stress` / `axis`, same eviction rule.
 
-- [ ] **Step 4: Run** → PASS. **Step 5: Commit** `feat(engine): impunity as a computed value with one stored term`
+- [x] **Step 4: Run** → PASS. **Step 5: Commit** `feat(engine): impunity as a computed value with one stored term`
 
 ---
 

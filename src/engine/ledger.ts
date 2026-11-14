@@ -31,6 +31,8 @@ export function recordLedger(before: CampaignState, after: CampaignState, action
     const was = before.relations[id];
     if (!was) continue;
     for (const axis of AXES) push(`axis:${id}:${axis}`, (rel[axis] ?? 0) - (was[axis] ?? 0));
+    // P9: the stored term of her Impunity
+    push(`record:${id}`, (rel.impunityRecord ?? 0) - (was.impunityRecord ?? 0));
   }
 
   // P7: a raised (or scarred) body stat; the migration that first writes the body (`commander/seed`) is not training
@@ -46,7 +48,7 @@ export function recordLedger(before: CampaignState, after: CampaignState, action
 const kindOf = (e: LedgerEntry): string => e.key.slice(0, e.key.indexOf(':'));
 
 /**
- * Keeps at most `max` entries. The oldest entry of the most crowded kind (`res`, `stress`, `axis`) goes first, so a
+ * Keeps at most `max` entries. The oldest entry of the most crowded kind (`res`, `stress`, `axis`, `record`) goes first, so a
  * long conversation cannot push every resource entry out of the ledger.
  */
 function capByKind(list: LedgerEntry[], max: number): LedgerEntry[] {
