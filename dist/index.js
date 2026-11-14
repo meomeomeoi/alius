@@ -25757,7 +25757,7 @@ function attachAnalyzer(root, deps) {
 // src/ui/device/boot.ts
 var STEP_MS = 150;
 function playBoot(screen, opts) {
-  if (opts.reduced) return Promise.resolve();
+  if (opts.reduced || opts.signal?.aborted) return Promise.resolve();
   return new Promise((resolve) => {
     const overlay = h("div", { class: "alius-boot", "aria-hidden": "true" });
     screen.append(overlay);
@@ -25771,6 +25771,7 @@ function playBoot(screen, opts) {
       timers.forEach(clearTimeout);
       document.removeEventListener("keydown", finish);
       document.removeEventListener("pointerdown", finish);
+      opts.signal?.removeEventListener("abort", finish);
       overlay.remove();
       resolve();
     };
@@ -25781,6 +25782,7 @@ function playBoot(screen, opts) {
     timers.push(setTimeout(finish, STEP_MS * 4));
     document.addEventListener("keydown", finish);
     document.addEventListener("pointerdown", finish);
+    opts.signal?.addEventListener("abort", finish);
   });
 }
 
@@ -25870,6 +25872,10 @@ function isEditable2(t) {
 }
 var CONTROL_TAGS = ["BUTTON", "A", "INPUT", "SELECT", "TEXTAREA", "SUMMARY"];
 var CONTROL_ROLES = ["button", "link", "tab", "menuitem", "checkbox", "radio", "switch", "option"];
+function isInsideOverlay(t) {
+  const el = t;
+  return !!el && typeof el.closest === "function" && el.closest('.alius-device, [role="dialog"], .alius-analyze') !== null;
+}
 function isControl(t) {
   const el = t;
   if (!el || typeof el.tagName !== "string") return false;
@@ -26381,6 +26387,7 @@ function createShell(deps) {
   let analyzer = null;
   let titleEl = null;
   let bootPlayed = false;
+  let bootAbort = null;
   let glitchTimer = null;
   let hubHost = null;
   let device = null;
@@ -26425,12 +26432,16 @@ function createShell(deps) {
     if (statusHost) renderStatusHeader(statusHost, deps.getState());
   }
   function renderTab() {
-    if (!panel) return;
+    const target = panel;
+    if (!target) return;
     analyzer?.refresh();
-    panel.replaceChildren();
-    panel.setAttribute("aria-labelledby", `alius-tab-${tab}`);
+    renderKeepingFocus(target, () => drawTab(target));
+  }
+  function drawTab(panel2) {
+    panel2.replaceChildren();
+    panel2.setAttribute("aria-labelledby", `alius-tab-${tab}`);
     if (tab === "sys") {
-      renderSysTab(panel, {
+      renderSysTab(panel2, {
         st,
         getState: deps.getState,
         getLoad: deps.getLoad,
@@ -26449,8 +26460,8 @@ function createShell(deps) {
       return;
     }
     const render = tabRenderers.get(tab);
-    if (render) render(panel);
-    else panel.append(tabStub(tab));
+    if (render) render(panel2);
+    else panel2.append(tabStub(tab));
   }
   function glitch() {
     const target = panel;
@@ -26478,7 +26489,8 @@ function createShell(deps) {
     if (!screen) return;
     bootPlayed = true;
     const skin = deps.skin?.().skin ?? BUILT_IN_SKIN;
-    void playBoot(screen, { reduced: motionReduced(getSettings(st)), skinLabel: String(skin.label ?? skin.name) });
+    bootAbort = new AbortController();
+    void playBoot(screen, { reduced: motionReduced(getSettings(st)), skinLabel: String(skin.label ?? skin.name), signal: bootAbort.signal });
   }
   function defaultHub(host) {
     host.append(h("button", { type: "button", class: "alius-btn alius-open-pda", "data-open-pda": true, onclick: () => api.setDevice(true) }, "OPEN PDA [TAB]"));
@@ -26503,9 +26515,13 @@ function createShell(deps) {
     }
   }
   function renderHub2() {
-    if (!hubHost || !device) return;
-    hubHost.replaceChildren();
-    hubRender(hubHost, device);
+    const target = hubHost;
+    if (!target || !device) return;
+    const dev = device;
+    renderKeepingFocus(target, () => {
+      target.replaceChildren();
+      hubRender(target, dev);
+    });
   }
   function focusDevice(up) {
     const target = up ? root?.querySelector('.alius-tab[aria-selected="true"]') : root?.querySelector("[data-open-pda]");
@@ -26527,7 +26543,7 @@ function createShell(deps) {
     renderHub2();
     renderStatus();
     tabBar.setSelected(tab);
-    renderTab();
+    if (up) renderTab();
   }
   router.register("hub", (host) => buildLayer(host, false));
   router.register("pda", (host) => buildLayer(host, true));
@@ -26606,6 +26622,8 @@ function createShell(deps) {
     window.removeEventListener("resize", updateNarrow);
     if (glitchTimer !== null) clearTimeout(glitchTimer);
     glitchTimer = null;
+    bootAbort?.abort();
+    bootAbort = null;
     root.remove();
     root = null;
     if (previousFocus && document.contains(previousFocus)) previousFocus.focus();
@@ -26634,7 +26652,7 @@ function createShell(deps) {
         updateTitle();
         renderHub2();
         renderStatus();
-        renderTab();
+        if (id === "pda") renderTab();
         focusDevice(id === "pda");
       } else {
         renderView();
@@ -26669,7 +26687,7 @@ function createShell(deps) {
     },
     registerTab(id, render) {
       tabRenderers.set(id, render);
-      if (isOpen() && onHubLayer() && tab === id) renderTab();
+      if (isOpen() && isDeviceUp() && tab === id) renderTab();
     },
     registerScreen(id, render, opts) {
       router.register(id, render);
@@ -26701,7 +26719,7 @@ function createShell(deps) {
       if (onHubLayer() && panel) {
         renderHub2();
         renderStatus();
-        renderTab();
+        if (isDeviceUp()) renderTab();
       } else {
         const inPlace = screenRefresh.get(router.current());
         if (inPlace && renderedScreen === router.current() && inPlace(view)) return;
@@ -26739,7 +26757,7 @@ function createShell(deps) {
       return;
     }
     if (e.key === "Tab") {
-      if (!plain2 || e.shiftKey || isControl(e.target) || typing) return;
+      if (!plain2 || e.shiftKey || isControl(e.target) || isInsideOverlay(e.target) || typing) return;
       if (where === "hub" || where === "pda") {
         e.preventDefault();
         api.setDevice(where === "hub");

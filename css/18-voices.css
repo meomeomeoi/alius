@@ -113,6 +113,48 @@
   user-select: none;
 }
 
+/*
+ * Inside the light voices every descendant that the phosphor screen coloured (dim text, chips, stats, headings, buttons,
+ * fields) takes the voice's colours instead: amber on paper or on the glossy card would be about 1.5:1.
+ */
+#alius-shell .alius-voice-corporate :is(h2, h3, h4, .alius-chip, .alius-stat, .alius-option, .alius-reason, .alius-card-label),
+#alius-shell .alius-voice-paper :is(h2, h3, h4, .alius-chip, .alius-stat, .alius-option, .alius-reason, .alius-card-label) {
+  color: var(--voice-fg);
+}
+
+#alius-shell .alius-voice-corporate .alius-dim,
+#alius-shell .alius-voice-paper .alius-dim {
+  color: var(--voice-dim);
+}
+
+#alius-shell .alius-voice-corporate .alius-btn,
+#alius-shell .alius-voice-paper .alius-btn {
+  color: var(--voice-fg);
+  background: transparent;
+  border-color: var(--voice-fg);
+}
+
+#alius-shell .alius-voice-corporate .alius-btn:hover,
+#alius-shell .alius-voice-paper .alius-btn:hover {
+  color: var(--voice-bg);
+  background: var(--voice-fg);
+}
+
+#alius-shell .alius-voice-corporate .alius-input,
+#alius-shell .alius-voice-corporate select,
+#alius-shell .alius-voice-paper .alius-input,
+#alius-shell .alius-voice-paper select {
+  color: var(--voice-fg);
+  background: var(--voice-bg);
+  border-color: var(--voice-dim);
+}
+
+#alius-shell .alius-voice-corporate .alius-banner,
+#alius-shell .alius-voice-paper .alius-banner {
+  color: #7a1212;
+  border-color: #7a1212;
+}
+
 /* ---- personal: warm messenger bubbles, the unit's accent ---- */
 #alius-shell .alius-voice-personal {
   --voice-bg: #241c2b;

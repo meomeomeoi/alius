@@ -117,6 +117,37 @@ describe('playBoot', () => {
     await vi.advanceTimersByTimeAsync(600);
   });
 
+  it('an abort signal ends it at once: no timers and no listeners left', async () => {
+    const screen = document.createElement('div');
+    document.body.append(screen);
+    const spy = vi.spyOn(document, 'removeEventListener');
+    const ctrl = new AbortController();
+    const p = playBoot(screen, { reduced: false, skinLabel: 'X', signal: ctrl.signal });
+    await vi.advanceTimersByTimeAsync(100);
+    ctrl.abort();
+    await p;
+    expect(screen.querySelector('.alius-boot')).toBeNull();
+    expect(vi.getTimerCount()).toBe(0);
+    expect(spy.mock.calls.map(([t]) => t)).toEqual(expect.arrayContaining(['keydown', 'pointerdown']));
+    // an already aborted signal draws nothing
+    const again = document.createElement('div');
+    await playBoot(again, { reduced: false, skinLabel: 'X', signal: ctrl.signal });
+    expect(again.querySelector('.alius-boot')).toBeNull();
+  });
+
+  it('closing the shell during the boot ends it (nothing runs on after close)', async () => {
+    const st = new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' });
+    const state = createCampaign({ seed: 1, commanderName: 'Vale' });
+    const shell = createShell({ st, getState: () => state, getLoad: () => ({ kind: 'ok', state, chatId: 'c' }) });
+    shells.push(shell);
+    shell.open();
+    shell.showScreen('pda');
+    expect(document.querySelector('#alius-shell .alius-boot')).not.toBeNull();
+    shell.close();
+    vi.advanceTimersByTime(0); // jsdom's own zero-delay focus bookkeeping; the boot's timers (150-600 ms) would remain
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
   it('removes its key listeners when it ends', async () => {
     const spy = vi.spyOn(document, 'removeEventListener');
     const screen = document.createElement('div');

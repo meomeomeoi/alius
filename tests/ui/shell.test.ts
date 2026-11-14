@@ -98,6 +98,7 @@ describe('shell', () => {
   it('a registered tab renders its content, also if registered while shown', () => {
     const { shell } = setup();
     shell.open();
+    shell.showScreen('pda'); // the hub opens first; the tab is drawn once the PDA is raised
     shell.registerTab('squad', (host) => { host.textContent = 'ROSTER HERE'; });
     expect(document.querySelector('#alius-shell .alius-screen')!.textContent).toBe('ROSTER HERE');
   });
@@ -621,6 +622,7 @@ describe('analysis tool in the shell (P7a)', () => {
       host.append(chip);
     });
     ctx.shell.open();
+    ctx.shell.showScreen('pda'); // the hub opens first; the tab is drawn once the PDA is raised
     const chip = document.querySelector<HTMLElement>('#alius-shell [data-analyze="glossary:trust"]')!;
     return { ...ctx, chip };
   }
@@ -740,6 +742,7 @@ describe('analysis panel and tab switches (final review)', () => {
         host.append(chip);
       });
       shell.open();
+      shell.showScreen('pda'); // the hub opens first; the tab is drawn once the PDA is raised
       const chip = document.querySelector<HTMLElement>('#alius-shell [data-analyze="glossary:trust"]')!;
       chip.dispatchEvent(Object.assign(new Event('pointerover', { bubbles: true }), { pointerType: 'mouse', clientX: 5, clientY: 5 }));
       vi.advanceTimersByTime(250);

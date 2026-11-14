@@ -164,3 +164,22 @@ describe('voice contrast (css/18-voices.css)', () => {
     expect(card.querySelector('svg.alius-fibre filter')).not.toBeNull();
   });
 });
+
+describe('descendants of the light voices keep the voice colours (spec §7: 4.5:1 in every voice)', () => {
+  const css = readFileSync('css/18-voices.css', 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  const rules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((m) => ({ selector: m[1].trim(), body: m[2] }));
+  const rule = (voice: string, cls: string) => rules.find((r) => r.selector.includes(voice) && r.selector.includes(cls));
+
+  it.each(['alius-voice-corporate', 'alius-voice-paper'])('%s: dim text, chips, stats, buttons and headings are not left in the phosphor colours', (voice) => {
+    expect(rule(voice, '.alius-dim')?.body, `${voice} .alius-dim`).toMatch(/color:\s*var\(--voice-dim\)/);
+    for (const cls of ['.alius-chip', '.alius-stat', 'h3', '.alius-btn', '.alius-input']) {
+      expect(rule(voice, cls)?.body, `${voice} ${cls}`).toMatch(/color:\s*var\(--voice-fg\)/);
+    }
+  });
+
+  it('the phosphor colours used by those descendants really are the problem (so the rule above matters)', () => {
+    const light = cssVars('css/18-voices.css', '#alius-shell .alius-voice-paper');
+    expect(contrastRatio('#ffb000', light['--voice-bg'])).toBeLessThan(4.5);
+  });
+});
+

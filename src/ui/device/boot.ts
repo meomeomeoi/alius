@@ -4,11 +4,11 @@ import { h } from '../dom';
 const STEP_MS = 150;
 
 /**
- * The PDA boot: three lines typed over the screen, then a fade. Any key or press ends it at once; `reduced` skips it
+ * The PDA boot: three lines typed over the screen, then a fade. Any key or press ends it at once, and so does aborting `signal` (the shell closing); `reduced` skips it
  * (nothing is drawn). Resolves when it is gone.
  */
-export function playBoot(screen: HTMLElement, opts: { reduced: boolean; skinLabel: string }): Promise<void> {
-  if (opts.reduced) return Promise.resolve();
+export function playBoot(screen: HTMLElement, opts: { reduced: boolean; skinLabel: string; signal?: AbortSignal }): Promise<void> {
+  if (opts.reduced || opts.signal?.aborted) return Promise.resolve();
   return new Promise((resolve) => {
     const overlay = h('div', { class: 'alius-boot', 'aria-hidden': 'true' });
     screen.append(overlay);
@@ -22,6 +22,7 @@ export function playBoot(screen: HTMLElement, opts: { reduced: boolean; skinLabe
       timers.forEach(clearTimeout);
       document.removeEventListener('keydown', finish);
       document.removeEventListener('pointerdown', finish);
+      opts.signal?.removeEventListener('abort', finish);
       overlay.remove();
       resolve();
     };
@@ -32,5 +33,6 @@ export function playBoot(screen: HTMLElement, opts: { reduced: boolean; skinLabe
     timers.push(setTimeout(finish, STEP_MS * 4));
     document.addEventListener('keydown', finish);
     document.addEventListener('pointerdown', finish);
+    opts.signal?.addEventListener('abort', finish);
   });
 }

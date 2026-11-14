@@ -11,7 +11,8 @@ import type { SoundId } from '../sound/sound';
 import { BUILT_IN_SKIN } from '../device/skins';
 import type { Entry } from '../../content/types';
 import { h } from '../dom';
-import { isControl, isEditable } from './keys';
+import { renderKeepingFocus } from '../focus';
+import { isControl, isEditable, isInsideOverlay } from './keys';
 import { createModalHost, type ModalOpts } from './modal';
 import { createRouter, type ScreenId } from './router';
 import { renderStatusHeader } from './status';
@@ -108,6 +109,7 @@ export function createShell(deps: ShellDeps): ShellApi {
   let titleEl: HTMLElement | null = null;
   /** The boot plays on the first device-up after `open()` only. */
   let bootPlayed = false;
+  let bootAbort: AbortController | null = null;
   let glitchTimer: ReturnType<typeof setTimeout> | null = null;
   let hubHost: HTMLElement | null = null;
   let device: HTMLElement | null = null;
@@ -161,8 +163,14 @@ export function createShell(deps: ShellDeps): ShellApi {
   }
 
   function renderTab(): void {
-    if (!panel) return;
+    const target = panel;
+    if (!target) return;
     analyzer?.refresh(); // the tab is redrawn: a transient panel would point at removed elements
+    // the focus stays on the same control through the redraw (every action refreshes the shell)
+    renderKeepingFocus(target, () => drawTab(target));
+  }
+
+  function drawTab(panel: HTMLElement): void {
     panel.replaceChildren();
     panel.setAttribute('aria-labelledby', `alius-tab-${tab}`);
     if (tab === 'sys') {
@@ -219,7 +227,8 @@ export function createShell(deps: ShellDeps): ShellApi {
     if (!screen) return;
     bootPlayed = true;
     const skin = deps.skin?.().skin ?? BUILT_IN_SKIN;
-    void playBoot(screen, { reduced: motionReduced(getSettings(st)), skinLabel: String(skin.label ?? skin.name) });
+    bootAbort = new AbortController();
+    void playBoot(screen, { reduced: motionReduced(getSettings(st)), skinLabel: String(skin.label ?? skin.name), signal: bootAbort.signal });
   }
 
   /** Until the hub screen registers itself: a button that raises the device. */
@@ -252,9 +261,14 @@ export function createShell(deps: ShellDeps): ShellApi {
   }
 
   function renderHub(): void {
-    if (!hubHost || !device) return;
-    hubHost.replaceChildren();
-    hubRender(hubHost, device);
+    const target = hubHost;
+    if (!target || !device) return;
+    const dev = device;
+    // a redraw must not drop the keyboard focus (the next Tab would then toggle the device by surprise)
+    renderKeepingFocus(target, () => {
+      target.replaceChildren();
+      hubRender(target, dev);
+    });
   }
 
   function focusDevice(up: boolean): void {
@@ -281,7 +295,8 @@ export function createShell(deps: ShellDeps): ShellApi {
     renderHub();
     renderStatus();
     tabBar.setSelected(tab);
-    renderTab();
+    // a tab is drawn only while the device is up: its renderer may mark messages read or clear a badge nobody saw
+    if (up) renderTab();
   }
 
   router.register('hub', (host) => buildLayer(host, false));
@@ -366,6 +381,8 @@ export function createShell(deps: ShellDeps): ShellApi {
     window.removeEventListener('resize', updateNarrow);
     if (glitchTimer !== null) clearTimeout(glitchTimer);
     glitchTimer = null;
+    bootAbort?.abort();
+    bootAbort = null;
     root.remove();
     root = null;
     if (previousFocus && document.contains(previousFocus)) previousFocus.focus();
@@ -396,7 +413,7 @@ export function createShell(deps: ShellDeps): ShellApi {
         updateTitle();
         renderHub();
         renderStatus();
-        renderTab();
+        if (id === 'pda') renderTab();
         focusDevice(id === 'pda');
       } else {
         renderView();
@@ -431,7 +448,7 @@ export function createShell(deps: ShellDeps): ShellApi {
     },
     registerTab(id, render) {
       tabRenderers.set(id, render);
-      if (isOpen() && onHubLayer() && tab === id) renderTab();
+      if (isOpen() && isDeviceUp() && tab === id) renderTab();
     },
     registerScreen(id, render, opts) {
       router.register(id, render);
@@ -463,7 +480,7 @@ export function createShell(deps: ShellDeps): ShellApi {
       if (onHubLayer() && panel) {
         renderHub();
         renderStatus();
-        renderTab();
+        if (isDeviceUp()) renderTab();
       } else {
         const inPlace = screenRefresh.get(router.current());
         if (inPlace && renderedScreen === router.current() && inPlace(view)) return;
@@ -503,7 +520,7 @@ export function createShell(deps: ShellDeps): ShellApi {
     }
     if (e.key === 'Tab') {
       // Tab toggles the device only from a place that is not a control; elsewhere it moves focus as usual
-      if (!plain || e.shiftKey || isControl(e.target) || typing) return;
+      if (!plain || e.shiftKey || isControl(e.target) || isInsideOverlay(e.target) || typing) return;
       if (where === 'hub' || where === 'pda') {
         e.preventDefault();
         api.setDevice(where === 'hub');

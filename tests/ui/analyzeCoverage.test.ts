@@ -639,6 +639,7 @@ describe('coverage: end to end', () => {
         st, getState: () => s, getLoad: () => ({ kind: 'ok', state: s, chatId: 'c' }), registries: reg, settings: () => getSettings(st), onNewCampaign: vi.fn(),
       }));
       shell.open();
+      shell.showScreen('pda'); // the hub opens first; the tab is drawn once the PDA is raised
       const chip = document.querySelector<HTMLElement>('#alius-shell [data-analyze="glossary:trust"]')!;
       chip.dispatchEvent(Object.assign(new Event('pointerover', { bubbles: true }), { pointerType: 'mouse', clientX: 30, clientY: 30 }));
       vi.advanceTimersByTime(250);

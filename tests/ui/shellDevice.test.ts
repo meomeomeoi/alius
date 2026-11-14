@@ -6,6 +6,7 @@ import type { LoadResult } from '../../src/st/persistence';
 import { createShell, type ShellDeps } from '../../src/ui/shell/shell';
 import { isControl, isEditable } from '../../src/ui/shell/keys';
 import { VOICE_OF } from '../../src/ui/voice/sources';
+import { readFileSync } from 'node:fs';
 
 const CHAT = { chatId: 'c', isGroup: true, groupId: 'g' };
 let shells: Array<{ destroy(): void }> = [];
@@ -104,16 +105,63 @@ describe('hub and device', () => {
     expect(shell.isDeviceUp()).toBe(true);
   });
 
-  it('Tab on the device screen lowers it, Tab on a tab button does not', () => {
+  it('Tab inside the device (screen, panel, tab bar) moves focus and never lowers it', () => {
     const { shell } = setup();
     shell.open();
     shell.showScreen('pda');
-    expect(press(q('.alius-tab')!, 'Tab')).toBe(false);
-    expect(shell.isDeviceUp()).toBe(true);
-    expect(press(q('.alius-device-screen')!, 'Tab')).toBe(true);
-    expect(shell.isDeviceUp()).toBe(false);
+    for (const el of [q('.alius-tab')!, q('.alius-device-screen')!, q('#alius-panel')!]) {
+      expect(press(el, 'Tab'), el.className || el.id).toBe(false);
+      expect(shell.isDeviceUp()).toBe(true);
+    }
+  });
+
+  it('Tab from the shell root or the page body lowers the raised device', () => {
+    const { shell } = setup();
+    shell.open();
     shell.showScreen('pda');
-    expect(press(q('#alius-panel')!, 'Tab')).toBe(true);
+    expect(press(document.getElementById('alius-shell')!, 'Tab')).toBe(true);
+    expect(shell.isDeviceUp()).toBe(false);
+    expect(press(document.body, 'Tab')).toBe(true);
+    expect(shell.isDeviceUp()).toBe(true);
+  });
+
+  it('Tab inside the analysis panel (a dialog) moves to its links and never toggles the device', () => {
+    const { shell } = setup();
+    shell.open();
+    shell.showScreen('pda');
+    const dialog = document.createElement('div');
+    dialog.className = 'alius-analyze';
+    dialog.setAttribute('role', 'dialog');
+    dialog.tabIndex = -1;
+    document.getElementById('alius-shell')!.append(dialog);
+    expect(press(dialog, 'Tab')).toBe(false);
+    expect(shell.isDeviceUp()).toBe(true);
+  });
+
+  it('a refresh keeps the focus on the control inside the tab, so the next Tab moves on instead of toggling', () => {
+    const { shell } = setup();
+    shell.registerTab('squad', (host) => {
+      host.append(...['a', 'b', 'c'].map((k) => Object.assign(document.createElement('button'), { textContent: k, className: 'alius-btn' })).map((b) => { b.dataset.key = b.textContent!; return b; }));
+    });
+    shell.open();
+    shell.showScreen('pda');
+    const second = q<HTMLButtonElement>('#alius-panel button[data-key="b"]')!;
+    second.focus();
+    expect(document.activeElement).toBe(second);
+    shell.refresh();
+    expect((document.activeElement as HTMLElement).dataset.key).toBe('b');
+    expect(press(document.activeElement!, 'Tab')).toBe(false);
+    expect(shell.isDeviceUp()).toBe(true);
+  });
+
+  it('a refresh on the hub keeps the focus on OPEN PDA, so Tab does not raise the device by surprise', () => {
+    const { shell } = setup();
+    shell.open();
+    const open = q<HTMLElement>('[data-open-pda]')!;
+    open.focus();
+    shell.refresh();
+    expect(document.activeElement).toBe(q('[data-open-pda]'));
+    expect(press(document.activeElement!, 'Tab')).toBe(false);
     expect(shell.isDeviceUp()).toBe(false);
   });
 
@@ -180,6 +228,37 @@ describe('hub and device', () => {
     shell.open();
     expect(press(document.body, 'Escape')).toBe(false);
     expect(shell.isOpen()).toBe(true);
+  });
+
+  it('a tab is drawn only while the device is up: the hub never renders it unseen', () => {
+    const { shell } = setup();
+    let draws = 0;
+    shell.registerTab('squad', (host) => { draws++; host.textContent = `SQUAD ${draws}`; });
+    shell.open();
+    expect(draws).toBe(0); // device down: nothing draws (a tab renderer may mark messages read or clear a badge)
+    shell.refresh();
+    shell.refresh();
+    expect(draws).toBe(0);
+    shell.showScreen('pda');
+    expect(draws).toBe(1);
+    expect(q('#alius-panel')!.textContent).toBe('SQUAD 1');
+    shell.refresh();
+    expect(draws).toBe(2);
+    shell.setDevice(false);
+    shell.refresh();
+    shell.registerTab('squad', (host) => { draws++; host.textContent = 'again'; });
+    expect(draws).toBe(2); // lowered: still nothing
+    shell.showTab('squad'); // raising draws it once
+    expect(draws).toBe(3);
+  });
+
+  it('1-8 on the hub draws only the tab that was asked for', () => {
+    const { shell } = setup();
+    const drawn: string[] = [];
+    for (const id of ['squad', 'ops', 'comms'] as const) shell.registerTab(id, (host) => { drawn.push(id); host.textContent = id; });
+    shell.open();
+    press(document.getElementById('alius-shell')!, '2');
+    expect(drawn).toEqual(['ops']);
   });
 
   it('registerTab still re-renders the current tab while up', () => {
@@ -326,3 +405,17 @@ describe('voice sources', () => {
     });
   });
 });
+
+describe('the device never hides the end of a tab', () => {
+  it('the panel of a bleeding device (css casing) has bottom padding that clears the 40 px it runs off-screen', () => {
+    const css = readFileSync('css/16-device.css', 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+    const bleed = Number(/bottom:\s*-(\d+)px/.exec(css)?.[1]);
+    expect(bleed).toBeGreaterThan(0);
+    const rule = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].find((m) => /alius-device[^,{]*\.alius-screen/.test(m[1]) && /padding-bottom/.test(m[2]));
+    expect(rule, 'a padding-bottom rule for the panel inside the device').toBeDefined();
+    const pad = Number(/padding-bottom:\s*(\d+)px/.exec(rule![2])?.[1]);
+    expect(pad).toBeGreaterThanOrEqual(bleed + 8);
+    expect(rule![1]).toMatch(/:not\(\[data-kind="image"\]\)/); // an image skin does not bleed
+  });
+});
+

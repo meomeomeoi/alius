@@ -61,6 +61,11 @@
   user-select: none;
 }
 
+/* a casing that bleeds 40 px off the bottom: the panel keeps that much clear so the end of a tab can be scrolled into view */
+#alius-shell .alius-device:not([data-kind="image"]) .alius-screen {
+  padding-bottom: 56px;
+}
+
 #alius-shell .alius-device-chrome {
   position: absolute;
   inset: 0;

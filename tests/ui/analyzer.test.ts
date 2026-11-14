@@ -633,6 +633,7 @@ describe('analysis panel in context (P7a)', () => {
     try {
       shell.registerTab('squad', (host) => host.append(h('span', { class: 'alius-chip', ...analyzeAttrs('glossary:cp') }, 'CP')));
       shell.open();
+      shell.showScreen('pda'); // the hub opens first; the tab is drawn once the PDA is raised
       hover(document.querySelector('#alius-shell [data-analyze="glossary:cp"]')!);
       vi.advanceTimersByTime(250);
       const panelEl = document.querySelector('.alius-analyze')!;
