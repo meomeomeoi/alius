@@ -13,6 +13,10 @@ export interface EventIntent {
   severity: Severity;
   valueAxes?: Array<{ axis: ValueAxis; direction: -1 | 1 }>;
   tags?: string[];
+  /** P9: a `punishments` id, `leash` or `unspecified`; only on `commander_enforced` and `threatened`. */
+  measure?: string;
+  /** P9: the demand template of an engine-made `granted_demand` / `refused_demand`. */
+  templateId?: string;
   evidence: string;
   /** 0–1; the LLM sanitizer drops low-confidence events, the engine keeps the number for the debug log. */
   confidence: number;
@@ -63,6 +67,10 @@ const MAX_TAGS = 8;
 const MAX_PROMISES = 3;
 const MAX_PROPOSALS = 3;
 const DECISION_TYPES: readonly string[] = ['decision_aligned', 'decision_violated'];
+/** P9: the commander is the actor and one unit the target. `defied` is the opposite: a unit is the actor and nobody is the target. */
+const COMMANDER_DISCIPLINE: readonly string[] = ['commander_enforced', 'commander_yielded', 'threatened'];
+/** Measure words that are not a registry id: the Leash is only ever filed through its form, and a threat may name no measure. */
+const NO_MEASURE_ENFORCEMENT: readonly string[] = ['leash', 'unspecified'];
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 const arr = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
@@ -91,7 +99,14 @@ const clamp01 = (n: unknown): number => (typeof n === 'number' && Number.isFinit
  * `valueAxes` on non-decision events. Text is length-capped and kept as text, nothing else is read.
  */
 export function validateIntents(
-  raw: unknown, ctx: { participants: string[]; squad: Array<{ id: string }>; /** Events kept; default `maxEventsPerExchange`. The P8 callers read more and let `applyIntents` cut after the judgement. */ maxEvents?: number },
+  raw: unknown,
+  ctx: {
+    participants: string[]; squad: Array<{ id: string }>;
+    /** Events kept; default `maxEventsPerExchange`. The P8 callers read more and let `applyIntents` cut after the judgement. */
+    maxEvents?: number;
+    /** P9: the words `measure` may take (`measureList`). Without a list only the fallbacks exist: `verbal` on an enforcement, `unspecified` on a threat. */
+    measures?: string[];
+  },
 ): Intents {
   const out = emptyIntents();
   if (!isObj(raw)) return out;
@@ -109,7 +124,15 @@ export function validateIntents(
     if (actor === null) continue;
     const targets = [...new Set(arr(e.targets).filter(isUnit))].filter((t) => t !== actor);
     if (actor === 'commander' ? targets.length === 0 : arr(e.targets).some((t) => isUnit(t) && t !== actor)) continue;
+    if (type === 'defied' ? actor === 'commander' : COMMANDER_DISCIPLINE.includes(type) && actor !== 'commander') continue;
     const intent: EventIntent = { type, actor, targets, severity, evidence, confidence: clamp01(e.confidence) };
+    if (type === 'commander_enforced' || type === 'threatened') {
+      const word = typeof e.measure === 'string' ? e.measure : '';
+      const listed = (ctx.measures ?? []).includes(word);
+      intent.measure = type === 'commander_enforced'
+        ? (listed && !NO_MEASURE_ENFORCEMENT.includes(word) ? word : 'verbal')
+        : (listed ? word : 'unspecified');
+    }
     if (DECISION_TYPES.includes(type)) {
       const axes: NonNullable<EventIntent['valueAxes']> = [];
       for (const a of arr(e.valueAxes)) {

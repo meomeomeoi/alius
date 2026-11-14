@@ -35,6 +35,8 @@ export interface IntentExtractInput {
   units: IntentUnitInput[];
   openPromises: Array<{ by: string; to: string; text: string }>;
   romance: boolean;
+  /** P9: the words a `measure` may take (the punishments, `leash`, `unspecified`). */
+  measures: string[];
 }
 
 /** Lenient on purpose: every array defaults to [], unknown keys are stripped; the sanitizer and the engine do the real checking. */
@@ -57,7 +59,8 @@ function system(raw: unknown): string {
     '{',
     '  "events": [{ "type": EVENT_TYPE, "actor": "commander" | "<unit id>", "targets": ["<unit id>"], "severity": SEVERITY,',
     '               "valueAxes": [{ "axis": VALUE_AXIS, "direction": -1 | 1 }],   // only for decision_aligned / decision_violated',
-    '               "tags": ["<tag from the unit\'s likes/dislikes/triggers>"], "evidence": "<at most 20 words, quoted from the exchange>", "confidence": 0.0-1.0 }],',
+    '               "tags": ["<tag from the unit\'s likes/dislikes/triggers>"], "evidence": "<at most 20 words, quoted from the exchange>", "confidence": 0.0-1.0,',
+    '               "measure": MEASURE }],   // only for commander_enforced / threatened',
     '  "facts": [{ "about": ["<unit id>"] | "world" | "commander", "text": "<one sentence>", "importance": 1-5, "tags": ["<tag>"] }],',
     '  "proposals": [{ "from": "commander" | "<unit id>", "to": "commander" | "<unit id>", "kind": PROPOSAL_KIND, "evidence": "<short quote>" }],',
     '  "promises": [{ "by": "commander" | "<unit id>", "to": "commander" | "<unit id>", "text": "<the promise>", "kind": "made" | "kept" | "broken" }],',
@@ -68,10 +71,15 @@ function system(raw: unknown): string {
     `EVENT_TYPE: ${EVENT_TYPES.join(', ')}`,
     `SEVERITY: ${SEVERITIES.join(', ')}`,
     `VALUE_AXIS: ${VALUE_AXES.join(', ')}`,
+    `MEASURE: ${(input.measures ?? []).join(', ')}`,
     `PROPOSAL_KIND: ${proposalKinds.join(', ')}`,
     `EXPRESSION_LABEL: ${EXPRESSION_LABELS.join(', ')}`,
     '',
     'Rules: "actor" is "commander" when the commander does it to a unit; a unit\'s own act toward the commander (shared_secret, apologized) has that unit as actor and no targets.',
+    '"defied": a unit refuses, mocks or ignores an order or the commander\'s authority; the unit is the actor, no targets.',
+    '"commander_enforced": the commander actually imposes a consequence on a unit now (not a warning); set "measure".',
+    '"threatened": the commander warns of a consequence without imposing it; set "measure" ("unspecified" when none is named).',
+    '"commander_yielded": the commander backs down after defiance or after a threat.',
     'Events between two units are not reported. "evidence" is required and at most 20 words, quoted from the exchange. Use only the unit ids you are given.',
     'Set "confidence" honestly; weak or ambiguous readings get a low number. Skip events you cannot support with a quote.',
   ].join('\n');
@@ -115,14 +123,14 @@ const LABELS: readonly string[] = EXPRESSION_LABELS;
  */
 export function sanitizeIntentOutput(
   raw: unknown,
-  ctx: { participants: string[]; squad: Array<{ id: string }>; minConfidence: number; romance: boolean },
+  ctx: { participants: string[]; squad: Array<{ id: string }>; minConfidence: number; romance: boolean; measures?: string[] },
 ): { intents: Intents; emotions: Array<{ unitId: string; label: ExpressionLabel }> } {
   const parsed = IntentExtractRawSchema.safeParse(raw);
   const src = parsed.success ? parsed.data : { events: [], facts: [], proposals: [], promises: [], emotions: [], stressHints: [] };
   const events = src.events.filter((e) => isObj(e) && typeof e.confidence === 'number' && e.confidence >= ctx.minConfidence);
   const proposals = src.proposals.filter((p) => ctx.romance || !(isObj(p) && (ROMANTIC_PROPOSALS as readonly string[]).includes(p.kind as string)));
   // the engine judges each event per unit before it cuts the list to six (a dropped event must not take a slot)
-  const intents = validateIntents({ ...src, events, proposals }, { participants: ctx.participants, squad: ctx.squad, maxEvents: TUNING.relations.maxEventsRead });
+  const intents = validateIntents({ ...src, events, proposals }, { participants: ctx.participants, squad: ctx.squad, maxEvents: TUNING.relations.maxEventsRead, ...(ctx.measures ? { measures: ctx.measures } : {}) });
   const emotions: Array<{ unitId: string; label: ExpressionLabel }> = [];
   for (const e of src.emotions) {
     if (isObj(e) && typeof e.unitId === 'string' && ctx.participants.includes(e.unitId) && typeof e.label === 'string' && LABELS.includes(e.label)) {
@@ -141,6 +149,6 @@ export async function extractIntents(
   const ids = input.units.map((u) => u.id);
   return sanitizeIntentOutput(r.value, {
     participants: ids, squad: ids.map((id) => ({ id })),
-    minConfidence: opts.minConfidence ?? deps.settings.intentMinConfidence, romance: input.romance,
+    minConfidence: opts.minConfidence ?? deps.settings.intentMinConfidence, romance: input.romance, measures: input.measures,
   });
 }

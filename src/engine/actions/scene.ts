@@ -3,6 +3,7 @@ import { registerAction } from '../dispatch';
 import { isLiving } from '../economy';
 import { addChronicle, addFact, applyCompaction, nextId, revealCrime } from '../memory';
 import { applyIntents } from '../relations/apply';
+import { settleDefiance } from '../discipline';
 import { installRelationAccounting } from '../relations/gain';
 import { evaluateAutomatic, pushHistory } from '../relations/graph';
 import { validateIntents } from '../relations/intents';
@@ -89,7 +90,10 @@ registerAction('intents/apply', (draft, payload, ctx) => {
   if (!isObj(payload)) throw new Error('intents/apply needs a payload');
   if (payload.channel === 'scene') {
     if (!draft.scene) throw new Error('intents/apply: no scene is open');
-    const events = applyIntents(draft, ctx, { channel: 'scene', participants: draft.scene.participants, intents: payload.intents, sceneId: draft.scene.id });
+    const events = applyIntents(draft, ctx, {
+      channel: 'scene', participants: draft.scene.participants, intents: payload.intents, sceneId: draft.scene.id,
+      ...(typeof payload.messageRef === 'string' ? { messageRef: payload.messageRef } : {}),
+    });
     // the controller reports how far it has read, in the same step, so a rollback restores the pointer with the deltas
     if (typeof payload.readIndex === 'number' && Number.isInteger(payload.readIndex) && payload.readIndex >= 0) draft.scene.readIndex = payload.readIndex;
     return events;
@@ -97,7 +101,10 @@ registerAction('intents/apply', (draft, payload, ctx) => {
   if (payload.channel === 'dm') {
     const unit = draft.squad.find((u) => u.id === payload.unitId);
     if (!unit || unit.kind !== 'named' || !isLiving(unit)) throw new Error('intents/apply: a dm needs a named living unit');
-    const events = applyIntents(draft, ctx, { channel: 'dm', participants: [unit.id], intents: payload.intents });
+    const events = applyIntents(draft, ctx, {
+      channel: 'dm', participants: [unit.id], intents: payload.intents,
+      ...(typeof payload.messageRef === 'string' ? { messageRef: payload.messageRef } : {}),
+    });
     events.push(...rollDiscovery(draft, ctx.registries, ctx.rng, [unit.id]));
     return events;
   }
@@ -132,6 +139,8 @@ registerAction('scene/end', (draft, payload, ctx) => {
 
   events.push(...rollDiscovery(draft, reg, ctx.rng, scene.participants));
   events.push(...expireSceneProposals(draft, scene.participants));
+  // P9: a defiance nobody answered in this scene settles now
+  events.push(...settleDefiance(draft, ctx, { sceneId: scene.id }));
   delete draft.scene;
   delete draft.calendar.pendingScene;
   events.push({ type: 'scene_ended', sceneId: scene.id, consumed: scene.consumesSlot });
@@ -139,13 +148,14 @@ registerAction('scene/end', (draft, payload, ctx) => {
   return events;
 });
 
-registerAction('scene/abort', (draft) => {
+registerAction('scene/abort', (draft, _payload, ctx) => {
   const scene = draft.scene;
   if (!scene) throw new Error('scene/abort: no scene is open');
+  const settled = settleDefiance(draft, ctx, { sceneId: scene.id });
   delete draft.scene;
   // an activity talk keeps its hold so the app can cancel it with `calendar/cancel_scene`
   if (scene.origin !== 'activity') delete draft.calendar.pendingScene;
-  return [{ type: 'scene_aborted', sceneId: scene.id }, ...expireSceneProposals(draft, scene.participants)];
+  return [{ type: 'scene_aborted', sceneId: scene.id }, ...settled, ...expireSceneProposals(draft, scene.participants)];
 });
 
 registerAction('proposal/commander', (draft, payload, ctx) => {

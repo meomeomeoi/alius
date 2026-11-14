@@ -20,7 +20,8 @@ const unit = (id: string, name: string) => ({
 const input = (over: Partial<IntentExtractInput> = {}): IntentExtractInput => ({
   commanderName: 'Vale', channel: 'scene',
   exchange: [{ speaker: 'Vale', text: 'You did not have to carry that alone.' }, { speaker: 'Ann', text: 'I know. Thank you.' }],
-  units: [unit(ANN, 'Ann'), unit(BEA, 'Bea')], openPromises: [{ by: 'commander', to: ANN, text: 'bring the medicine' }], romance: true, ...over,
+  units: [unit(ANN, 'Ann'), unit(BEA, 'Bea')], openPromises: [{ by: 'commander', to: ANN, text: 'bring the medicine' }], romance: true,
+  measures: ['verbal', 'brig', 'leash', 'unspecified'], ...over,
 });
 const setup = () => {
   const st = new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' });
@@ -183,5 +184,35 @@ describe('the sanitizer leaves the event cap to the engine (P8)', () => {
     expect(sanitize({ events }).intents.events).toHaveLength(9);
     const flood = Array.from({ length: 500 }, () => events[0]);
     expect(sanitize({ events: flood }).intents.events.length).toBeLessThanOrEqual(TUNING.relations.maxEventsRead); // a hostile flood is still bounded
+  });
+});
+
+describe('P9: discipline events in the extraction prompt', () => {
+  const systemOf = async (over: Partial<IntentExtractInput> = {}) => {
+    const { st, settings } = setup();
+    st.mainReplies = ['{"events":[]}'];
+    await extractIntents(input(over), { st, settings });
+    return st.calls[0].system ?? '';
+  };
+
+  it('the system text lists the four event types and a MEASURE line with the given measures', async () => {
+    const sys = await systemOf();
+    for (const t of ['defied', 'commander_enforced', 'commander_yielded', 'threatened']) expect(sys, t).toContain(t);
+    expect(sys).toContain('"measure": MEASURE');
+    expect(sys).toContain('MEASURE: verbal, brig, leash, unspecified');
+    expect(await systemOf({ measures: ['verbal', 'unspecified'] })).toContain('MEASURE: verbal, unspecified');
+    expect(sys).not.toContain('granted_demand');
+    expect(sys).not.toContain('refused_demand');
+  });
+
+  it('keeps an enforcement with its measure and normalizes a bad measure', () => {
+    const raw = {
+      events: [
+        { type: 'commander_enforced', actor: 'commander', targets: [ANN], severity: 'moderate', evidence: 'x', confidence: 0.9, measure: 'brig' },
+        { type: 'threatened', actor: 'commander', targets: [ANN], severity: 'moderate', evidence: 'x', confidence: 0.9, measure: 'guillotine' },
+      ],
+    };
+    const r = sanitize(raw, { measures: ['verbal', 'brig', 'leash', 'unspecified'] });
+    expect(r.intents.events.map((e) => [e.type, e.measure])).toEqual([['commander_enforced', 'brig'], ['threatened', 'unspecified']]);
   });
 });

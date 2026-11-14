@@ -2689,6 +2689,85 @@ function applyEventToUnit(draft, reg, unitId, event, opts = {}) {
   return events;
 }
 
+// src/engine/discipline/record.ts
+var recordOf = (state, unitId) => state.relations[unitId]?.impunityRecord ?? 0;
+function disciplineOf(draft) {
+  draft.discipline ??= { defiance: [], threats: [], applications: [], restrictions: [], demands: [], demandLog: [] };
+  return draft.discipline;
+}
+function setRecord(draft, unitId, value) {
+  const rel = draft.relations[unitId];
+  if (!rel) return;
+  if (value === 0) delete rel.impunityRecord;
+  else rel.impunityRecord = value;
+}
+function addRecord(draft, unitId, amount, reason) {
+  if (!draft.relations[unitId]) return [];
+  const T = TUNING.impunity;
+  const before = recordOf(draft, unitId);
+  const after = Math.min(T.recordMax, Math.max(T.recordMin, before + amount));
+  const delta = after - before;
+  if (delta === 0) return [];
+  setRecord(draft, unitId, after);
+  return [{ type: "impunity_changed", unitId, delta, reason }];
+}
+function holdDefiance(draft, unitId, severity, source, sceneId) {
+  if (draft.squad.find((u) => u.id === unitId)?.kind !== "named") return [];
+  const list5 = disciplineOf(draft).defiance;
+  const held = list5.find((d) => d.unitId === unitId);
+  const next = { unitId, severity, day: draft.day, source, ...sceneId !== void 0 ? { sceneId } : {} };
+  if (held) {
+    if (SEVERITIES.indexOf(severity) <= SEVERITIES.indexOf(held.severity)) return [];
+    list5[list5.indexOf(held)] = next;
+  } else list5.push(next);
+  return [{ type: "defiance_noted", unitId, severity, source }];
+}
+function dropDefiance(draft, unitId) {
+  const list5 = draft.discipline?.defiance;
+  const i = list5?.findIndex((d) => d.unitId === unitId) ?? -1;
+  return i < 0 ? void 0 : list5.splice(i, 1)[0];
+}
+function settleOne(draft, d) {
+  return [
+    { type: "defiance_settled", unitId: d.unitId, tolerated: true },
+    ...addRecord(draft, d.unitId, TUNING.impunity.defied[d.severity], "defiance_tolerated")
+  ];
+}
+function settleDefiance(draft, _ctx, filter) {
+  const list5 = draft.discipline?.defiance;
+  if (!list5 || list5.length === 0) return [];
+  const match = (d) => filter.all === true ? true : filter.sceneId !== void 0 ? d.sceneId === filter.sceneId : d.sceneId === void 0;
+  const settling = list5.filter(match);
+  draft.discipline.defiance = list5.filter((d) => !match(d));
+  return settling.flatMap((d) => settleOne(draft, d));
+}
+function applyDisciplineEvent(draft, ctx2, unitId, event, src) {
+  const unit = draft.squad.find((u) => u.id === unitId);
+  if (!unit || unit.kind !== "named") return [];
+  const events = applyEventToUnit(draft, ctx2.registries, unitId, event);
+  switch (event.type) {
+    case "defied":
+      events.push(...holdDefiance(draft, unitId, event.severity, "intent", src.channel === "scene" ? src.sceneId : void 0));
+      break;
+    case "commander_yielded": {
+      events.push(...addRecord(draft, unitId, TUNING.impunity.yielded[event.severity], "commander_yielded"));
+      const held = dropDefiance(draft, unitId);
+      if (held) events.push(...settleOne(draft, held));
+      break;
+    }
+    case "commander_enforced":
+      events.push(...addRecord(draft, unitId, TUNING.impunity.enforcedFallback, "commander_enforced"));
+      dropDefiance(draft, unitId);
+      break;
+    default:
+      break;
+  }
+  return events;
+}
+
+// src/engine/discipline/index.ts
+var measureList = (reg) => [...reg.punishments.keys(), "leash", "unspecified"];
+
 // src/engine/relations/intents.ts
 var emptyIntents = () => ({ events: [], facts: [], proposals: [], promises: [], stressHints: [] });
 var EVIDENCE_WORDS = 20;
@@ -2697,6 +2776,8 @@ var MAX_TAGS = 8;
 var MAX_PROMISES = 3;
 var MAX_PROPOSALS = 3;
 var DECISION_TYPES = ["decision_aligned", "decision_violated"];
+var COMMANDER_DISCIPLINE = ["commander_enforced", "commander_yielded", "threatened"];
+var NO_MEASURE_ENFORCEMENT = ["leash", "unspecified"];
 var isObj5 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var arr = (v) => Array.isArray(v) ? v : [];
 var oneOf = (list5, v) => typeof v === "string" && list5.includes(v) ? v : null;
@@ -2730,7 +2811,13 @@ function validateIntents(raw, ctx2) {
     if (actor === null) continue;
     const targets = [...new Set(arr(e.targets).filter(isUnit))].filter((t) => t !== actor);
     if (actor === "commander" ? targets.length === 0 : arr(e.targets).some((t) => isUnit(t) && t !== actor)) continue;
+    if (type === "defied" ? actor === "commander" : COMMANDER_DISCIPLINE.includes(type) && actor !== "commander") continue;
     const intent = { type, actor, targets, severity, evidence, confidence: clamp01(e.confidence) };
+    if (type === "commander_enforced" || type === "threatened") {
+      const word = typeof e.measure === "string" ? e.measure : "";
+      const listed = (ctx2.measures ?? []).includes(word);
+      intent.measure = type === "commander_enforced" ? listed && !NO_MEASURE_ENFORCEMENT.includes(word) ? word : "verbal" : listed ? word : "unspecified";
+    }
     if (DECISION_TYPES.includes(type)) {
       const axes = [];
       for (const a of arr(e.valueAxes)) {
@@ -2947,20 +3034,24 @@ function rollDiscovery(draft, reg, rng, presentIds) {
 
 // src/engine/relations/apply.ts
 var clamp10 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var DISCIPLINE_EVENTS = ["defied", "commander_enforced", "commander_yielded", "threatened"];
+var GATED_EVENTS = ["commander_enforced", "threatened"];
+var CONFIDENCE_EPS2 = 1e-9;
 function applyIntents(draft, ctx2, p) {
   const reg = ctx2.registries;
-  const intents = validateIntents(p.intents, { participants: p.participants, squad: draft.squad, maxEvents: TUNING.relations.maxEventsRead });
+  const intents = validateIntents(p.intents, { participants: p.participants, squad: draft.squad, maxEvents: TUNING.relations.maxEventsRead, measures: measureList(reg) });
   const events = [];
   const touched = /* @__PURE__ */ new Set();
   const landed = [];
   const judged = intents.events.map((e) => {
     const units = affectedUnits(e, p.participants);
-    return { e, units, believed: units.filter((id) => computeDeltas(draft, reg, id, e).dropped !== true) };
+    const gated = GATED_EVENTS.includes(e.type) && e.confidence + CONFIDENCE_EPS2 < TUNING.impunity.minConfidence;
+    return { e, units, believed: gated ? [] : units.filter((id) => computeDeltas(draft, reg, id, e).dropped !== true) };
   }).filter((j) => j.units.length === 0 || j.believed.length > 0).slice(0, TUNING.relations.maxEventsPerExchange);
   intents.events = judged.map((j) => j.e);
   for (const { e, believed } of judged) {
     for (const id of believed) {
-      events.push(...applyEventToUnit(draft, reg, id, e));
+      events.push(...DISCIPLINE_EVENTS.includes(e.type) ? applyDisciplineEvent(draft, ctx2, id, e, { channel: p.channel, ...p.sceneId ? { sceneId: p.sceneId } : {}, ...p.messageRef ? { messageRef: p.messageRef } : {} }) : applyEventToUnit(draft, reg, id, e));
       touched.add(id);
     }
     if (believed.length > 0) landed.push(e.type);
@@ -3112,14 +3203,25 @@ registerAction("intents/apply", (draft, payload, ctx2) => {
   if (!isObj6(payload)) throw new Error("intents/apply needs a payload");
   if (payload.channel === "scene") {
     if (!draft.scene) throw new Error("intents/apply: no scene is open");
-    const events = applyIntents(draft, ctx2, { channel: "scene", participants: draft.scene.participants, intents: payload.intents, sceneId: draft.scene.id });
+    const events = applyIntents(draft, ctx2, {
+      channel: "scene",
+      participants: draft.scene.participants,
+      intents: payload.intents,
+      sceneId: draft.scene.id,
+      ...typeof payload.messageRef === "string" ? { messageRef: payload.messageRef } : {}
+    });
     if (typeof payload.readIndex === "number" && Number.isInteger(payload.readIndex) && payload.readIndex >= 0) draft.scene.readIndex = payload.readIndex;
     return events;
   }
   if (payload.channel === "dm") {
     const unit = draft.squad.find((u) => u.id === payload.unitId);
     if (!unit || unit.kind !== "named" || !isLiving(unit)) throw new Error("intents/apply: a dm needs a named living unit");
-    const events = applyIntents(draft, ctx2, { channel: "dm", participants: [unit.id], intents: payload.intents });
+    const events = applyIntents(draft, ctx2, {
+      channel: "dm",
+      participants: [unit.id],
+      intents: payload.intents,
+      ...typeof payload.messageRef === "string" ? { messageRef: payload.messageRef } : {}
+    });
     events.push(...rollDiscovery(draft, ctx2.registries, ctx2.rng, [unit.id]));
     return events;
   }
@@ -3158,18 +3260,20 @@ registerAction("scene/end", (draft, payload, ctx2) => {
   }
   events.push(...rollDiscovery(draft, reg, ctx2.rng, scene.participants));
   events.push(...expireSceneProposals(draft, scene.participants));
+  events.push(...settleDefiance(draft, ctx2, { sceneId: scene.id }));
   delete draft.scene;
   delete draft.calendar.pendingScene;
   events.push({ type: "scene_ended", sceneId: scene.id, consumed: scene.consumesSlot });
   if (scene.consumesSlot) events.push(...consumeSlots(draft, 1, ctx2));
   return events;
 });
-registerAction("scene/abort", (draft) => {
+registerAction("scene/abort", (draft, _payload, ctx2) => {
   const scene = draft.scene;
   if (!scene) throw new Error("scene/abort: no scene is open");
+  const settled = settleDefiance(draft, ctx2, { sceneId: scene.id });
   delete draft.scene;
   if (scene.origin !== "activity") delete draft.calendar.pendingScene;
-  return [{ type: "scene_aborted", sceneId: scene.id }, ...expireSceneProposals(draft, scene.participants)];
+  return [{ type: "scene_aborted", sceneId: scene.id }, ...settled, ...expireSceneProposals(draft, scene.participants)];
 });
 registerAction("proposal/commander", (draft, payload, ctx2) => {
   if (!isObj6(payload) || typeof payload.unitId !== "string") throw new Error("proposal/commander needs { unitId, kind, channel }");
@@ -16583,7 +16687,8 @@ function system3(raw) {
     "{",
     '  "events": [{ "type": EVENT_TYPE, "actor": "commander" | "<unit id>", "targets": ["<unit id>"], "severity": SEVERITY,',
     '               "valueAxes": [{ "axis": VALUE_AXIS, "direction": -1 | 1 }],   // only for decision_aligned / decision_violated',
-    `               "tags": ["<tag from the unit's likes/dislikes/triggers>"], "evidence": "<at most 20 words, quoted from the exchange>", "confidence": 0.0-1.0 }],`,
+    `               "tags": ["<tag from the unit's likes/dislikes/triggers>"], "evidence": "<at most 20 words, quoted from the exchange>", "confidence": 0.0-1.0,`,
+    '               "measure": MEASURE }],   // only for commander_enforced / threatened',
     '  "facts": [{ "about": ["<unit id>"] | "world" | "commander", "text": "<one sentence>", "importance": 1-5, "tags": ["<tag>"] }],',
     '  "proposals": [{ "from": "commander" | "<unit id>", "to": "commander" | "<unit id>", "kind": PROPOSAL_KIND, "evidence": "<short quote>" }],',
     '  "promises": [{ "by": "commander" | "<unit id>", "to": "commander" | "<unit id>", "text": "<the promise>", "kind": "made" | "kept" | "broken" }],',
@@ -16594,10 +16699,15 @@ function system3(raw) {
     `EVENT_TYPE: ${EVENT_TYPES.join(", ")}`,
     `SEVERITY: ${SEVERITIES.join(", ")}`,
     `VALUE_AXIS: ${VALUE_AXES.join(", ")}`,
+    `MEASURE: ${(input.measures ?? []).join(", ")}`,
     `PROPOSAL_KIND: ${proposalKinds.join(", ")}`,
     `EXPRESSION_LABEL: ${EXPRESSION_LABELS.join(", ")}`,
     "",
     `Rules: "actor" is "commander" when the commander does it to a unit; a unit's own act toward the commander (shared_secret, apologized) has that unit as actor and no targets.`,
+    `"defied": a unit refuses, mocks or ignores an order or the commander's authority; the unit is the actor, no targets.`,
+    '"commander_enforced": the commander actually imposes a consequence on a unit now (not a warning); set "measure".',
+    '"threatened": the commander warns of a consequence without imposing it; set "measure" ("unspecified" when none is named).',
+    '"commander_yielded": the commander backs down after defiance or after a threat.',
     'Events between two units are not reported. "evidence" is required and at most 20 words, quoted from the exchange. Use only the unit ids you are given.',
     'Set "confidence" honestly; weak or ambiguous readings get a low number. Skip events you cannot support with a quote.'
   ].join("\n");
@@ -16639,7 +16749,7 @@ function sanitizeIntentOutput(raw, ctx2) {
   const src = parsed.success ? parsed.data : { events: [], facts: [], proposals: [], promises: [], emotions: [], stressHints: [] };
   const events = src.events.filter((e) => isObj21(e) && typeof e.confidence === "number" && e.confidence >= ctx2.minConfidence);
   const proposals2 = src.proposals.filter((p) => ctx2.romance || !(isObj21(p) && ROMANTIC_PROPOSALS.includes(p.kind)));
-  const intents = validateIntents({ ...src, events, proposals: proposals2 }, { participants: ctx2.participants, squad: ctx2.squad, maxEvents: TUNING.relations.maxEventsRead });
+  const intents = validateIntents({ ...src, events, proposals: proposals2 }, { participants: ctx2.participants, squad: ctx2.squad, maxEvents: TUNING.relations.maxEventsRead, ...ctx2.measures ? { measures: ctx2.measures } : {} });
   const emotions = [];
   for (const e of src.emotions) {
     if (isObj21(e) && typeof e.unitId === "string" && ctx2.participants.includes(e.unitId) && typeof e.label === "string" && LABELS.includes(e.label)) {
@@ -16656,7 +16766,8 @@ async function extractIntents(input, deps, opts = {}) {
     participants: ids,
     squad: ids.map((id) => ({ id })),
     minConfidence: opts.minConfidence ?? deps.settings.intentMinConfidence,
-    romance: input.romance
+    romance: input.romance,
+    measures: input.measures
   });
 }
 
@@ -16697,11 +16808,13 @@ function createComms(deps) {
       exchange: [{ speaker: s.commander.name, text: commanderText }, { speaker: unit.displayName, text: reply }],
       units: [{ id: unitId, name: unit.displayName, values: { ...unit.values }, likes: unit.likes, dislikes: unit.dislikes, triggers: unit.triggers, stateId: rel.stateId, defectIds: unit.defects.map((d) => d.id) }],
       openPromises: openPromises(s, [unitId]).map((p) => ({ by: p.by === "commander" ? s.commander.name : unit.displayName, to: p.to === "commander" ? s.commander.name : unit.displayName, text: p.text })),
-      romance: intimacyOf(s).romance
+      romance: intimacyOf(s).romance,
+      measures: measureList(deps.registries())
     }, { st, settings: deps.settings() }, { minConfidence: confidenceFloor(deps.registries(), deps.settings().intentMinConfidence) });
     if (!result || chatId() !== expect) return;
     const intents = { ...result.intents, proposals: result.intents.proposals.filter((p) => p.from !== "commander") };
-    const events = app.dispatch({ type: "intents/apply", payload: { channel: "dm", unitId, intents } }, { expectChatId: expect });
+    const lastId = threadOf(s, unitId).at(-1)?.id;
+    const events = app.dispatch({ type: "intents/apply", payload: { channel: "dm", unitId, intents, ...lastId ? { messageRef: `dm:${lastId}` } : {} } }, { expectChatId: expect });
     for (const e of events) {
       if (e.type === "proposal_offered") {
         const p = state()?.proposals?.find((x) => x.id === e.proposalId);
@@ -17094,7 +17207,8 @@ function createSceneController(deps) {
       exchange: messages.map((m) => ({ speaker: m.isUser ? s0.commander.name : m.name, text: m.text })),
       units,
       openPromises: openPromises(s0, scene.participants, scene.participants).map((p) => ({ by: nm(p.by), to: nm(p.to), text: p.text })),
-      romance: intimacyOf(s0).romance
+      romance: intimacyOf(s0).romance,
+      measures: measureList(deps.registries())
     };
     swipedWhileExtracting.clear();
     extracting = true;
@@ -17118,7 +17232,7 @@ function createSceneController(deps) {
     const from = extracted;
     const before = state();
     if (!before || !before.scene) return false;
-    const events = dispatch2({ type: "intents/apply", payload: { channel: "scene", intents: result.intents, readIndex: nextPointer } }, expect);
+    const events = dispatch2({ type: "intents/apply", payload: { channel: "scene", intents: result.intents, readIndex: nextPointer, messageRef: `chat:${lastReply.index}` } }, expect);
     if (events.some((e) => e.type === "error")) return false;
     const after = state();
     extracted = nextPointer;

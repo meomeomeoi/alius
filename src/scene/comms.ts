@@ -1,5 +1,6 @@
 import { clockText } from '../engine/calendar';
 import { threadOf } from '../engine/dms';
+import { measureList } from '../engine/discipline';
 import { openPromises, retrieveFacts } from '../engine/memory';
 import { affinityBand, attractionBand, stressBand, trustBand } from '../engine/relations/bands';
 import { intimacyOf } from '../engine/relations/gain';
@@ -59,11 +60,13 @@ export function createComms(deps: CommsDeps): Comms {
       exchange: [{ speaker: s.commander.name, text: commanderText }, { speaker: unit.displayName, text: reply }],
       units: [{ id: unitId, name: unit.displayName, values: { ...unit.values }, likes: unit.likes, dislikes: unit.dislikes, triggers: unit.triggers, stateId: rel.stateId, defectIds: unit.defects.map((d) => d.id) }],
       openPromises: openPromises(s, [unitId]).map((p) => ({ by: p.by === 'commander' ? s.commander.name : unit.displayName, to: p.to === 'commander' ? s.commander.name : unit.displayName, text: p.text })),
-      romance: intimacyOf(s).romance,
+      romance: intimacyOf(s).romance, measures: measureList(deps.registries()),
     }, { st, settings: deps.settings() }, { minConfidence: confidenceFloor(deps.registries(), deps.settings().intentMinConfidence) }); // P8: the engine judges per unit
     if (!result || chatId() !== expect) return;
     const intents = { ...result.intents, proposals: result.intents.proposals.filter((p) => p.from !== 'commander') };
-    const events = app.dispatch({ type: 'intents/apply', payload: { channel: 'dm', unitId, intents } }, { expectChatId: expect });
+    // P9: what the reading logs (a punishment, a threat) points back at her reply
+    const lastId = threadOf(s, unitId).at(-1)?.id;
+    const events = app.dispatch({ type: 'intents/apply', payload: { channel: 'dm', unitId, intents, ...(lastId ? { messageRef: `dm:${lastId}` } : {}) } }, { expectChatId: expect });
     for (const e of events) {
       if (e.type === 'proposal_offered') {
         const p = state()?.proposals?.find((x) => x.id === e.proposalId);

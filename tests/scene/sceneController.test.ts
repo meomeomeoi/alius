@@ -3,6 +3,7 @@ import type { Registries } from '../../src/content/types';
 import type { CampaignState } from '../../src/engine/state/types';
 import { DEBUG_NOT_ROLLED_BACK } from '../../src/scene/sceneController';
 import { ANN, BEA, CAT, harness, intentJson, praised, reply, summaryJson, type Harness } from '../helpers/sceneHarness';
+import { setRecord, setRelation } from '../helpers/discipline';
 import { loadCore } from '../helpers/world';
 
 let reg: Registries;
@@ -408,9 +409,12 @@ describe('disposition never reaches the extraction input (P8)', () => {
       s.world.options = { ...(s.world.options ?? {}), disposition: 'kind' };
       s.squad[0].dispositionOffset = -2;
     });
+    // P9: Impunity and the command stance never reach the extraction input either
+    const fearful = await exchange((s) => { setRelation(s, ANN, { trust: 15 }); setRecord(s, ANN, -40); });
+    const brazen = await exchange((s) => { setRelation(s, ANN, { trust: 15 }); setRecord(s, ANN, 40); });
     const a = extractionCalls(plain);
     expect(a).toHaveLength(1);
-    for (const other of [harsh, kind]) {
+    for (const other of [harsh, kind, fearful, brazen]) {
       const b = extractionCalls(other);
       expect(b).toHaveLength(1);
       expect(b[0].system).toBe(a[0].system);

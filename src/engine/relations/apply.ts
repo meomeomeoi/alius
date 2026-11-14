@@ -4,6 +4,8 @@ import { addFact, recordPromise, revealCrime } from '../memory';
 import { roundAway } from './gain';
 import { affectedUnits, computeDeltas, stressFromHint } from './deltas';
 import { applyEventToUnit } from './effects';
+import { applyDisciplineEvent } from '../discipline/record';
+import { measureList } from '../discipline';
 import { evaluateAutomatic } from './graph';
 import { validateIntents } from './intents';
 import { commanderProposal, offerProposal } from './proposals';
@@ -16,7 +18,14 @@ export interface ApplyParams {
   participants: string[];
   intents: unknown;
   sceneId?: string;
+  /** P9: where the reply that was read sits (scene: `chat:<index>`, DM: `dm:<message id>`), kept by what a reading logs. */
+  messageRef?: string;
 }
+
+const DISCIPLINE_EVENTS: readonly string[] = ['defied', 'commander_enforced', 'commander_yielded', 'threatened'];
+/** The events of the commander's side whose reading is only trusted at `TUNING.impunity.minConfidence`. */
+const GATED_EVENTS: readonly string[] = ['commander_enforced', 'threatened'];
+const CONFIDENCE_EPS = 1e-9;
 
 /**
  * Turns what the mechanic model reported into state changes. Everything is re-validated first; nothing outside the
@@ -25,7 +34,7 @@ export interface ApplyParams {
  */
 export function applyIntents(draft: CampaignState, ctx: EngineCtx, p: ApplyParams): EngineEvent[] {
   const reg = ctx.registries;
-  const intents = validateIntents(p.intents, { participants: p.participants, squad: draft.squad, maxEvents: TUNING.relations.maxEventsRead });
+  const intents = validateIntents(p.intents, { participants: p.participants, squad: draft.squad, maxEvents: TUNING.relations.maxEventsRead, measures: measureList(reg) });
   const events: EngineEvent[] = [];
   const touched = new Set<string>();
   /** Types of the events that landed on at least one unit (P8: an event dropped for every unit is not here). */
@@ -35,13 +44,17 @@ export function applyIntents(draft: CampaignState, ctx: EngineCtx, p: ApplyParam
   // are the first `maxEventsPerExchange` of the rest applied (an event that targets nobody keeps its slot, as before)
   const judged = intents.events.map((e) => {
     const units = affectedUnits(e, p.participants);
-    return { e, units, believed: units.filter((id) => computeDeltas(draft, reg, id, e).dropped !== true) };
+    // P9: a punishment or a threat the model is not sure about is dropped for every unit, before the cut to six
+    const gated = GATED_EVENTS.includes(e.type) && e.confidence + CONFIDENCE_EPS < TUNING.impunity.minConfidence;
+    return { e, units, believed: gated ? [] : units.filter((id) => computeDeltas(draft, reg, id, e).dropped !== true) };
   }).filter((j) => j.units.length === 0 || j.believed.length > 0).slice(0, TUNING.relations.maxEventsPerExchange);
   intents.events = judged.map((j) => j.e);
 
   for (const { e, believed } of judged) {
     for (const id of believed) {
-      events.push(...applyEventToUnit(draft, reg, id, e));
+      events.push(...(DISCIPLINE_EVENTS.includes(e.type)
+        ? applyDisciplineEvent(draft, ctx, id, e, { channel: p.channel, ...(p.sceneId ? { sceneId: p.sceneId } : {}), ...(p.messageRef ? { messageRef: p.messageRef } : {}) })
+        : applyEventToUnit(draft, reg, id, e)));
       touched.add(id);
     }
     if (believed.length > 0) landed.push(e.type);

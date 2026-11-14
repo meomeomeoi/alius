@@ -1,5 +1,6 @@
 import type { Registries } from '../content/types';
 import type { EngineEvent } from '../engine/dispatch';
+import { measureList } from '../engine/discipline';
 import { openPromises } from '../engine/memory';
 import { intimacyOf } from '../engine/relations/gain';
 import type { ProposalAnswer } from '../engine/relations/proposals';
@@ -195,7 +196,7 @@ export function createSceneController(deps: SceneDeps): SceneController {
       commanderName: s0.commander.name, channel: 'scene',
       exchange: messages.map((m) => ({ speaker: m.isUser ? s0.commander.name : m.name, text: m.text })),
       units, openPromises: openPromises(s0, scene.participants, scene.participants).map((p) => ({ by: nm(p.by), to: nm(p.to), text: p.text })),
-      romance: intimacyOf(s0).romance,
+      romance: intimacyOf(s0).romance, measures: measureList(deps.registries()),
     };
     swipedWhileExtracting.clear();
     extracting = true;
@@ -221,7 +222,7 @@ export function createSceneController(deps: SceneDeps): SceneController {
     const from = extracted;
     const before = state();
     if (!before || !before.scene) return false;
-    const events = dispatch({ type: 'intents/apply', payload: { channel: 'scene', intents: result.intents, readIndex: nextPointer } }, expect);
+    const events = dispatch({ type: 'intents/apply', payload: { channel: 'scene', intents: result.intents, readIndex: nextPointer, messageRef: `chat:${lastReply.index}` } }, expect);
     if (events.some((e) => e.type === 'error')) return false;
     const after = state();
     extracted = nextPointer;

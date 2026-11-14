@@ -231,7 +231,7 @@ setRecord(s, a, 40); /* + every positive term */ expect(impunityOf(s, reg, a)!.v
   - `applyDisciplineEvent(draft, ctx, unitId, event, src: { channel: 'scene' | 'dm'; sceneId?: string; messageRef?: string }): EngineEvent[]` in `record.ts`: the single entry `applyIntents` calls for the four types instead of `applyEventToUnit`. This task: `defied` → row + hold; `commander_yielded` → row + `addRecord(yielded[severity])` + settle her held defiance as tolerated; `commander_enforced` → row + `addRecord(enforcedFallback)` + `dropDefiance`; `threatened` → row only (Task 4 registers the threat).
   - `intents/apply` payload gains `messageRef?: string` (scene: `chat:<lastReplyIndex>`, DM: `dm:<her message id>`), passed on by the two controllers.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 validator: `defied needs a unit actor and no targets` (commander actor → dropped); `commander_enforced, commander_yielded and threatened need the commander and a target`; `an unknown measure reads verbal on an enforcement and unspecified on a threat` (`measures: ['verbal', 'brig', 'leash', 'unspecified']`; inputs `'guillotine'`, `42`, missing); `leash on an enforcement reads verbal`; `granted_demand from the model is dropped`.
 engine (`intents/apply` in an open scene):
@@ -244,16 +244,16 @@ engine (`intents/apply` in an open scene):
 `a grunt target is ignored`.
 prompt: the system text lists the four types and a `MEASURE:` line with the given measures; `prompts are identical for a fearful and an openly defiant unit` (same input, records −40 and +40).
 
-- [ ] **Step 2: Run** → FAIL.
+- [x] **Step 2: Run** → FAIL.
 
-- [ ] **Step 3: Implement.** Prompt additions (exact):
+- [x] **Step 3: Implement.** Prompt additions (exact):
   - shape line: `"measure": MEASURE,   // only for commander_enforced / threatened`
   - `MEASURE: ${input.measures.join(', ')}`
   - rules: `"defied": a unit refuses, mocks or ignores an order or the commander's authority; the unit is the actor, no targets.` · `"commander_enforced": the commander actually imposes a consequence on a unit now (not a warning); set "measure".` · `"threatened": the commander warns of a consequence without imposing it; set "measure" ("unspecified" when none is named).` · `"commander_yielded": the commander backs down after defiance or after a threat.`
 
   In `applyIntents` the confidence gate sits in the `judged` filter (before the cut to six).
 
-- [ ] **Step 4: Run** `npm test` → PASS. **Step 5: Commit** `feat(engine): defied, enforced, yielded and threatened intents with held defiance`
+- [x] **Step 4: Run** `npm test` → PASS. **Step 5: Commit** `feat(engine): defied, enforced, yielded and threatened intents with held defiance`
 
 ---
 
