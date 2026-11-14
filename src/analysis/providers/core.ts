@@ -10,6 +10,7 @@ import { socialRank, type SocialStat } from '../../engine/social';
 import type { CampaignState, Relation, Unit } from '../../engine/state/types';
 import { humanize, signed, summarizeCombatEffect } from '../effects';
 import { registerCommanderProviders } from './commander';
+import { registerWorldProviders } from './world';
 import type { Knowledge } from '../knowledge';
 import { ledgerFor, ledgerLabel } from '../ledger';
 import type { AnalyzeEnv } from '../model';
@@ -281,4 +282,5 @@ export function registerCoreProviders(): void {
   registerAnalyzeProvider('setting', settingProvider, { stateless: true });
   registerAnalyzeProvider('glossary:decision_option', decisionProvider);
   registerCommanderProviders(); // P7
+  registerWorldProviders(); // P8
 }

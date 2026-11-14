@@ -7,7 +7,8 @@ import { llmLog } from '../../llm/log';
 import { getSettings, updateSettings, type AliusSettings } from '../../settings';
 import type { StAdapter } from '../../st/adapter';
 import { exportCampaign, importCampaign, type LoadResult } from '../../st/persistence';
-import { analyzeNative } from '../analyze/mark';
+import { analyzeAttrs, analyzeNative } from '../analyze/mark';
+import { worldChoice } from '../../engine/worldOptions';
 import { h } from '../dom';
 import type { ModalOpts } from './modal';
 import type { ToastKind } from './toast';
@@ -109,6 +110,36 @@ export function renderSysTab(host: HTMLElement, ctx: SysCtx): void {
     return el;
   };
 
+  /** P8: every world option read-only with its lock; a live one is a select that goes through the engine. */
+  const worldOptionRows = (): HTMLElement[] => {
+    const state = ctx.getState();
+    const reg = ctx.getRegistries?.();
+    if (!state || !reg || reg.worldOptions.size === 0) return [h('p', { class: 'alius-dim' }, 'World options are set when a campaign is started.')];
+    return [...reg.worldOptions.values()].map((option) => {
+      const id = String(option.id);
+      const current = worldChoice(state, reg, id)!.choice;
+      const live = option.live === true;
+      let control: HTMLElement;
+      if (live && ctx.dispatch) {
+        const el = h('select', { name: `world:${id}`, class: 'alius-input' },
+          ...(option.choices as Array<{ id: string; label: string }>).map((c) => h('option', { value: c.id, selected: c.id === current.id }, c.label))) as HTMLSelectElement;
+        el.value = current.id;
+        el.addEventListener('change', () => {
+          const events = ctx.dispatch?.({ type: 'world/set_option', payload: { optionId: id, choiceId: el.value } }) ?? [];
+          const err = events.find((e) => e.type === 'error');
+          if (err) {
+            ctx.toast('warn', String(err.message ?? 'The option could not be changed.'));
+            el.value = ctx.getState() ? worldChoice(ctx.getState()!, reg, id)!.choice.id : current.id;
+          }
+        });
+        control = el;
+      } else control = h('span', { class: 'alius-world-value' }, String(current.label));
+      return h('div', { class: 'alius-field alius-option alius-world-row', 'data-option': id, ...analyzeAttrs(`worldOptions:${id}`) },
+        h('span', { class: 'alius-field-label' }, String(option.label)), control,
+        h('span', { class: 'alius-lock', 'data-live': String(live) }, live ? 'CHANGEABLE LATER' : 'LOCKED AT START'));
+    });
+  };
+
   // --- settings form
   const profiles = st.listConnectionProfiles();
   const profileOptions: Array<[string, string]> = [
@@ -163,6 +194,8 @@ export function renderSysTab(host: HTMLElement, ctx: SysCtx): void {
     field('Story director (mechanic model)', checkbox('directorEnabled', settings.directorEnabled), 'directorEnabled'),
     field('Story beat cooldown (days, 1–14)', numberInput('beatCooldownDays', settings.beatCooldownDays, (n) => apply({ beatCooldownDays: n }).beatCooldownDays, { min: '1', max: '14' }), 'beatCooldownDays'),
     field('Expedition recap (main model)', checkbox('expeditionRecap', settings.expeditionRecap), 'expeditionRecap'),
+    h('h3', {}, 'World options'),
+    ...worldOptionRows(),
     h('h3', {}, 'Relationships'),
     field('First impression fades (days, 1–30)', numberInput('firstImpressionTau', settings.firstImpressionTau, (n) => apply({ firstImpressionTau: n }).firstImpressionTau, { min: '1', max: '30' }), 'firstImpressionTau'),
     h('h3', {}, 'Decisions'),

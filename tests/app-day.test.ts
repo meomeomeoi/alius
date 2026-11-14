@@ -51,6 +51,7 @@ async function boot() {
   const st = new FakeStAdapter(SOLO);
   st.characters = [{ avatar: 'rhea.png', name: 'Rhea' }];
   st.cards.set('rhea.png', { avatar: 'rhea.png', name: 'Rhea', description: 'd', personality: 'p', scenario: '', creatorNotes: '' });
+  st.settings.unitDms = false; // the campaign seed is random: a spontaneous unit DM on a slot change would make the call counts below flaky
   const sh = scriptedShell();
   const app = createApp(st, { loadContent: async () => content, shellFactory: () => sh.shell as never });
   await app.start();

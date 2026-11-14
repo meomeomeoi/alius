@@ -256,7 +256,7 @@ function statLines(stats: unknown, format: (stat: string, n: number) => string):
   return Object.entries(stats as Loose).filter(([, n]) => isNum(n)).map(([stat, n]) => format(stat.toUpperCase(), n as number));
 }
 
-function effectsFor(registry: RegistryName, entry: Entry, reg: Registries): string[] {
+function effectsFor(registry: RegistryName, entry: Entry, reg: Registries, data?: Record<string, unknown>): string[] {
   const e = entry as Loose;
   switch (registry) {
     case 'skills': {
@@ -333,6 +333,15 @@ function effectsFor(registry: RegistryName, entry: Entry, reg: Registries): stri
       return Array.isArray(e.skills) && e.skills.length ? [`Skills: ${e.skills.map((s: unknown) => `[[skills:${s}]]`).join(', ')}`] : [];
     case 'signatures':
       return typeof e.skill === 'string' ? [`[[skills:${e.skill}]]`] : [];
+    case 'worldOptions': {
+      // a choice card shows that choice's effects; the option itself shows every choice that has some
+      const choices = list(e.choices) as Array<{ id: string; label: string; effects?: unknown[] }>;
+      const lines = (c: { effects?: unknown[] }): string[] => (Array.isArray(c.effects) ? c.effects : []).map((fx) => summarizeWorldOptionEffect(fx as never, reg));
+      if (typeof data?.choice === 'string') return lines(choices.find((c) => c.id === data.choice) ?? {});
+      return choices.filter((c) => lines(c).length > 0).map((c) => `${c.label}: ${lines(c).join('; ')}`);
+    }
+    case 'dispositionLevels':
+      return summarizeDispositionLevel(entry);
     case 'commanderTraits':
       return list(e.effects).map((x) => summarizeTraitEffect(x as unknown as TraitEffect, reg));
     case 'tastes': {
@@ -389,10 +398,68 @@ export function summarizeTraitEffect(e: TraitEffect, _reg: Registries): string {
   }
 }
 
-/** The generated effects lines of a registry entry (never throws; an entry that cannot be read gives no lines). */
-export function entryEffects(registry: RegistryName, entry: Entry, reg: Registries): string[] {
+// ---------------------------------------------------------------------------------------------
+// P8: world options and disposition levels. Words only: the numbers come from a provider, through `Knowledge`.
+
+/** One line for the effect of a world choice, with no figure in it. */
+export function summarizeWorldOptionEffect(effect: unknown, reg: Registries): string {
+  const x = (effect ?? {}) as Loose;
+  switch (x.type) {
+    case 'disposition': return `Soldiers are ${String(reg.dispositionLevels.get(String(x.levelId))?.name ?? humanize(String(x.levelId)))}`;
+    case 'leash_weekly': return x.amount > 0 ? 'More Leash authorizations each week' : 'Fewer Leash authorizations each week';
+    case 'terminate_approval': return x.amount > 0 ? 'Termination requests are approved more often' : 'Termination requests are approved less often';
+    case 'command_failure_mult': return x.mult > 1 ? 'Failed command missions cost more standing' : 'Failed command missions cost less standing';
+    case 'mission_reward_pct': return x.pct < 0 ? 'Missions pay less' : 'Missions pay more';
+    case 'expression_norm': {
+      const look = x.norm >= 4 ? 'masculine' : x.norm <= 2 ? 'feminine' : 'balanced';
+      return `Command is expected to look ${look}; a commander who presents differently starts with less standing at their own corporation`;
+    }
+    case 'enable_family': return `Adds the ${cap(humanize(String(x.family)))} events to the world`;
+    case 'director_hint': return `Story tone: ${String(x.text)}`;
+    case 'scene_directive': return 'The story model is told how this world feels';
+    case 'grunt_stances': return 'Generated soldiers lean for or against the norm';
+    default: return cap(humanize(String(x.type ?? 'effect')));
+  }
+}
+
+/** A disposition level in words, as a difference from the baseline (guarded says nothing special). */
+export function summarizeDispositionLevel(entry: Entry): string[] {
+  const e = entry as Loose;
+  const out: string[] = [];
+  const start = e.start && typeof e.start === 'object' ? (e.start as Loose) : {};
+  if (isNum(start.trust)) {
+    if (start.trust >= 5) out.push('Starts out trusting');
+    else if (start.trust <= -25) out.push('Starts out hostile');
+    else if (start.trust <= -5) out.push('Starts out wary');
+  }
+  if (isNum(e.lossMult)) out.push(...(e.lossMult > 1 ? ['Slights and betrayals weigh more'] : e.lossMult < 1 ? ['Slights and betrayals weigh less'] : []));
+  if (isNum(e.gainMult)) out.push(...(e.gainMult > 1 ? ['Kindness earns more'] : e.gainMult < 1 ? ['Kindness earns less'] : []));
+  const conf = e.minConfidence && typeof e.minConfidence === 'object' ? (e.minConfidence as Loose) : {};
+  if (isNum(conf.gain) && conf.gain > 0.5) out.push('Believes kind acts only when they are clear');
+  if (isNum(conf.loss)) out.push(...(conf.loss < 0.5 ? ['Believes the worst on thin evidence'] : conf.loss > 0.5 ? ['Believes bad news only when it is clear'] : []));
+  if (isNum(e.bandShift)) out.push(...(e.bandShift > 0 ? ['Loyalty breaks sooner and recovers later'] : e.bandShift < 0 ? ['Loyalty is steadier'] : []));
+  if (isNum(e.stageDaysMult)) out.push(...(e.stageDaysMult > 1 ? ['Relationships move on more slowly'] : e.stageDaysMult < 1 ? ['Relationships move on faster'] : []));
+  if (isNum(e.refusalMult) && e.refusalMult !== 1) out.push(e.refusalMult > 1 ? 'Refuses orders and deserts more often' : 'Refuses orders and deserts less often');
+  const mut = e.mutiny && typeof e.mutiny === 'object' ? (e.mutiny as Loose) : null;
+  if (mut) {
+    if (mut.enabled === false) out.push('Never mutinies');
+    else if (Array.isArray(mut.states) && mut.states.length > 1) {
+      out.push(`Can mutiny from ${(mut.states as string[]).join(' and ')}${mut.minSigns === 1 ? ', after one clear warning' : ''}`);
+    }
+  }
+  const target: Record<string, string> = {
+    self: 'Under a breakdown she turns on herself', allies: 'Under a breakdown she may hit an ally',
+    allies_commander: 'Under a breakdown she may turn on an ally or the commander', everyone: 'Under a breakdown she may turn on anyone',
+  };
+  if (typeof e.breakdownTarget === 'string' && target[e.breakdownTarget]) out.push(target[e.breakdownTarget]);
+  if (isNum(e.bigGestureMult) && e.bigGestureMult > 1) out.push('A big gesture counts for more');
+  return out;
+}
+
+/** The generated effects lines of a registry entry (never throws; an entry that cannot be read gives no lines). `data` is the element's analysis context. */
+export function entryEffects(registry: RegistryName, entry: Entry, reg: Registries, data?: Record<string, unknown>): string[] {
   try {
-    return effectsFor(registry, entry, reg);
+    return effectsFor(registry, entry, reg, data);
   } catch {
     return [];
   }

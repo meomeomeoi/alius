@@ -5,7 +5,8 @@ import { FakeStAdapter } from '../../src/st/fake';
 import { createCampaign } from '../../src/engine/state/create';
 import type { CampaignState } from '../../src/engine/state/types';
 import type { LoadResult } from '../../src/st/persistence';
-import { emptyRegistries } from '../../src/content/types';
+import { emptyRegistries, type Registries } from '../../src/content/types';
+import { loadCore } from '../helpers/world';
 
 const CHAT = { chatId: 'c', isGroup: true, groupId: 'g' };
 let shells: Array<{ destroy(): void }> = [];
@@ -746,5 +747,69 @@ describe('analysis panel and tab switches (final review)', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+
+describe('SYS world options (P8)', () => {
+  const sys = async (state: CampaignState | null, extra: Partial<ShellDeps> = {}) => {
+    const reg: Registries = await loadCore();
+    const out = setup({ state, extra: { analyze: { registries: () => reg }, ...extra } });
+    out.shell.open();
+    out.shell.showTab('sys');
+    return { ...out, reg };
+  };
+  const row = (id: string) => document.querySelector<HTMLElement>(`#alius-shell .alius-world-row[data-option="${id}"]`);
+
+  it('SYS lists options read-only and switches bloom_horror', async () => {
+    const state = createCampaign({ seed: 1, commanderName: 'Vale' });
+    state.world.options = { oversight: 'brutal', disposition: 'hazardous' };
+    const dispatch = vi.fn((action: { type: string; payload?: unknown }) => {
+      const p = action.payload as { optionId: string; choiceId: string };
+      state.world.options = { ...state.world.options, [p.optionId]: p.choiceId };
+      return [{ type: 'world_option_changed', optionId: p.optionId, from: 'restrained', to: p.choiceId }];
+    });
+    const { reg } = await sys(state, { dispatch });
+    // every option is listed with its current choice; stored choices and defaults both read
+    expect([...document.querySelectorAll('#alius-shell .alius-world-row')].map((r) => (r as HTMLElement).dataset.option)).toEqual([...reg.worldOptions.keys()]);
+    expect(row('oversight')!.textContent).toContain('Brutal');
+    expect(row('disposition')!.textContent).toContain('Hazardous');
+    expect(row('tone')!.textContent).toContain('Grim');
+    expect(row('oversight')!.querySelector('select')).toBeNull(); // locked: read-only text
+    expect(row('oversight')!.textContent).toContain('LOCKED AT START');
+    expect(row('oversight')!.getAttribute('data-analyze')).toBe('worldOptions:oversight');
+    // the live option is a select that goes through the engine
+    const select = row('bloom_horror')!.querySelector<HTMLSelectElement>('select[name="world:bloom_horror"]')!;
+    expect([...select.options].map((o) => o.value)).toEqual(['restrained', 'graphic']);
+    expect(select.value).toBe('restrained');
+    select.value = 'graphic';
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(dispatch).toHaveBeenCalledWith({ type: 'world/set_option', payload: { optionId: 'bloom_horror', choiceId: 'graphic' } });
+    expect(state.world.options!.bloom_horror).toBe('graphic');
+  });
+
+  it('a refused switch snaps back and says why', async () => {
+    const state = createCampaign({ seed: 1, commanderName: 'Vale' });
+    const dispatch = vi.fn(() => [{ type: 'error', message: 'The campaign is read-only.' }]);
+    await sys(state, { dispatch });
+    const select = row('bloom_horror')!.querySelector<HTMLSelectElement>('select')!;
+    select.value = 'graphic';
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(select.value).toBe('restrained');
+    expect(document.body.textContent).toContain('read-only');
+  });
+
+  it('without a campaign the section says there are no world options yet', async () => {
+    await sys(null);
+    expect(document.querySelectorAll('#alius-shell .alius-world-row')).toHaveLength(0);
+    expect(document.querySelector('#alius-shell')!.textContent).toContain('World options are set when a campaign is started.');
+  });
+
+  it('an old save without options reads every default as locked', async () => {
+    const state = createCampaign({ seed: 1, commanderName: 'Vale' });
+    delete state.world.options;
+    await sys(state);
+    expect(row('disposition')!.textContent).toContain('Guarded');
+    expect(row('disposition')!.textContent).toContain('LOCKED AT START');
   });
 });

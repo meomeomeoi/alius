@@ -6,6 +6,7 @@ import type { Sentinels } from '../fixtures/analyze/hidden';
 /** An address for every provider registered under a bare source (not an exact address). */
 export const SAMPLE_ADDRESS: Record<string, string> = {
   setting: 'setting:showRawValues',
+  worldOptions: 'worldOptions:oversight', // P8
 };
 
 /** The address a registered provider key is run with: the key itself when it is an address, else its sample. */

@@ -64,7 +64,7 @@ export function buildPanelModel(subject: Subject, env: AnalyzeEnv): PanelModel {
     title: entryTitle(registry, entry),
     text: entryText(registry, entry),
     long: null,
-    effects: entryEffects(registry, entry, registries),
+    effects: entryEffects(registry, entry, registries, subject.data),
     see: [],
     reading: readingFor(subject, env),
     missing: false,

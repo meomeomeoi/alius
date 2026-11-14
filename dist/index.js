@@ -21724,7 +21724,7 @@ function statLines(stats, format) {
   if (!stats || typeof stats !== "object") return [];
   return Object.entries(stats).filter(([, n]) => isNum(n)).map(([stat2, n]) => format(stat2.toUpperCase(), n));
 }
-function effectsFor(registry2, entry, reg) {
+function effectsFor(registry2, entry, reg, data) {
   const e = entry;
   switch (registry2) {
     case "skills": {
@@ -21798,6 +21798,14 @@ function effectsFor(registry2, entry, reg) {
       return Array.isArray(e.skills) && e.skills.length ? [`Skills: ${e.skills.map((s) => `[[skills:${s}]]`).join(", ")}`] : [];
     case "signatures":
       return typeof e.skill === "string" ? [`[[skills:${e.skill}]]`] : [];
+    case "worldOptions": {
+      const choices = list4(e.choices);
+      const lines = (c) => (Array.isArray(c.effects) ? c.effects : []).map((fx2) => summarizeWorldOptionEffect(fx2, reg));
+      if (typeof data?.choice === "string") return lines(choices.find((c) => c.id === data.choice) ?? {});
+      return choices.filter((c) => lines(c).length > 0).map((c) => `${c.label}: ${lines(c).join("; ")}`);
+    }
+    case "dispositionLevels":
+      return summarizeDispositionLevel(entry);
     case "commanderTraits":
       return list4(e.effects).map((x) => summarizeTraitEffect(x, reg));
     case "tastes": {
@@ -21871,9 +21879,72 @@ function summarizeTraitEffect(e, _reg) {
       return humanize(String(x.type));
   }
 }
-function entryEffects(registry2, entry, reg) {
+function summarizeWorldOptionEffect(effect, reg) {
+  const x = effect ?? {};
+  switch (x.type) {
+    case "disposition":
+      return `Soldiers are ${String(reg.dispositionLevels.get(String(x.levelId))?.name ?? humanize(String(x.levelId)))}`;
+    case "leash_weekly":
+      return x.amount > 0 ? "More Leash authorizations each week" : "Fewer Leash authorizations each week";
+    case "terminate_approval":
+      return x.amount > 0 ? "Termination requests are approved more often" : "Termination requests are approved less often";
+    case "command_failure_mult":
+      return x.mult > 1 ? "Failed command missions cost more standing" : "Failed command missions cost less standing";
+    case "mission_reward_pct":
+      return x.pct < 0 ? "Missions pay less" : "Missions pay more";
+    case "expression_norm": {
+      const look = x.norm >= 4 ? "masculine" : x.norm <= 2 ? "feminine" : "balanced";
+      return `Command is expected to look ${look}; a commander who presents differently starts with less standing at their own corporation`;
+    }
+    case "enable_family":
+      return `Adds the ${cap4(humanize(String(x.family)))} events to the world`;
+    case "director_hint":
+      return `Story tone: ${String(x.text)}`;
+    case "scene_directive":
+      return "The story model is told how this world feels";
+    case "grunt_stances":
+      return "Generated soldiers lean for or against the norm";
+    default:
+      return cap4(humanize(String(x.type ?? "effect")));
+  }
+}
+function summarizeDispositionLevel(entry) {
+  const e = entry;
+  const out = [];
+  const start = e.start && typeof e.start === "object" ? e.start : {};
+  if (isNum(start.trust)) {
+    if (start.trust >= 5) out.push("Starts out trusting");
+    else if (start.trust <= -25) out.push("Starts out hostile");
+    else if (start.trust <= -5) out.push("Starts out wary");
+  }
+  if (isNum(e.lossMult)) out.push(...e.lossMult > 1 ? ["Slights and betrayals weigh more"] : e.lossMult < 1 ? ["Slights and betrayals weigh less"] : []);
+  if (isNum(e.gainMult)) out.push(...e.gainMult > 1 ? ["Kindness earns more"] : e.gainMult < 1 ? ["Kindness earns less"] : []);
+  const conf = e.minConfidence && typeof e.minConfidence === "object" ? e.minConfidence : {};
+  if (isNum(conf.gain) && conf.gain > 0.5) out.push("Believes kind acts only when they are clear");
+  if (isNum(conf.loss)) out.push(...conf.loss < 0.5 ? ["Believes the worst on thin evidence"] : conf.loss > 0.5 ? ["Believes bad news only when it is clear"] : []);
+  if (isNum(e.bandShift)) out.push(...e.bandShift > 0 ? ["Loyalty breaks sooner and recovers later"] : e.bandShift < 0 ? ["Loyalty is steadier"] : []);
+  if (isNum(e.stageDaysMult)) out.push(...e.stageDaysMult > 1 ? ["Relationships move on more slowly"] : e.stageDaysMult < 1 ? ["Relationships move on faster"] : []);
+  if (isNum(e.refusalMult) && e.refusalMult !== 1) out.push(e.refusalMult > 1 ? "Refuses orders and deserts more often" : "Refuses orders and deserts less often");
+  const mut = e.mutiny && typeof e.mutiny === "object" ? e.mutiny : null;
+  if (mut) {
+    if (mut.enabled === false) out.push("Never mutinies");
+    else if (Array.isArray(mut.states) && mut.states.length > 1) {
+      out.push(`Can mutiny from ${mut.states.join(" and ")}${mut.minSigns === 1 ? ", after one clear warning" : ""}`);
+    }
+  }
+  const target = {
+    self: "Under a breakdown she turns on herself",
+    allies: "Under a breakdown she may hit an ally",
+    allies_commander: "Under a breakdown she may turn on an ally or the commander",
+    everyone: "Under a breakdown she may turn on anyone"
+  };
+  if (typeof e.breakdownTarget === "string" && target[e.breakdownTarget]) out.push(target[e.breakdownTarget]);
+  if (isNum(e.bigGestureMult) && e.bigGestureMult > 1) out.push("A big gesture counts for more");
+  return out;
+}
+function entryEffects(registry2, entry, reg, data) {
   try {
-    return effectsFor(registry2, entry, reg);
+    return effectsFor(registry2, entry, reg, data);
   } catch {
     return [];
   }
@@ -22004,6 +22075,63 @@ function registerCommanderProviders() {
   for (const stat2 of ["strength", "endurance", "reflexes"]) registerAnalyzeProvider(`glossary:body_${stat2}`, bodyProvider(stat2));
   registerAnalyzeProvider("glossary:archetype", archetypeProvider);
   registerAnalyzeProvider("glossary:presence", presenceProvider);
+}
+
+// src/analysis/providers/world.ts
+function rawLines(effects2, k) {
+  if (!k.showRaw) return [];
+  const out = [];
+  for (const fx2 of effects2) {
+    const n = (v) => Number(v);
+    if (fx2.type === "leash_weekly") out.push(`Leash authorizations per week: ${k.raw(n(fx2.amount))}`);
+    else if (fx2.type === "terminate_approval") out.push(`Termination approval: ${k.raw(Math.round(n(fx2.amount) * 100))}%`);
+    else if (fx2.type === "command_failure_mult") out.push(`Failed command mission losses: \xD7${k.raw(n(fx2.mult))}`);
+    else if (fx2.type === "mission_reward_pct") out.push(`Mission rewards: ${k.raw(n(fx2.pct))}%`);
+    else if (fx2.type === "expression_norm") out.push(`Expression norm: ${k.raw(n(fx2.norm))}, standing per step: ${k.raw(n(fx2.standingPerStep))}`);
+  }
+  return out;
+}
+function worldOptionProvider(subject, env, k) {
+  const state = env.state;
+  if (!state) return null;
+  const current = worldChoice(state, env.registries, subject.id);
+  if (!current) return null;
+  const lines = [`Now: ${String(current.choice.label)}`];
+  const shownId = typeof subject.data.choice === "string" ? subject.data.choice : current.choice.id;
+  const shown = current.option.choices.find((c) => c.id === shownId) ?? current.choice;
+  if (shown.id !== current.choice.id) lines.push(`This choice: ${String(shown.label)}`);
+  lines.push(current.option.live === true ? "Can change during the campaign." : "Locked at campaign start.");
+  lines.push(...shown.effects.map((fx2) => summarizeWorldOptionEffect(fx2, env.registries)));
+  lines.push(...rawLines(shown.effects, k));
+  return { lines };
+}
+function dispositionProvider(subject, env, k) {
+  const state = env.state;
+  if (!state) return null;
+  const reg = env.registries;
+  const lines = [`World level: ${String(worldDispositionLevel(state, reg).name)}`];
+  const unitId = typeof subject.data.unitId === "string" ? subject.data.unitId : null;
+  const unit = unitId === null ? void 0 : state.squad.find((u) => u.id === unitId);
+  if (!unit) return { lines };
+  const level = dispositionById(state, reg, unit.id);
+  lines.push(`Her level: ${String(level.name)}`);
+  if (unit.kind === "named") {
+    const offset = unit.dispositionOffset ?? 0;
+    if (offset === 0) lines.push("Offset: none, she follows the world");
+    else lines.push(`Offset: ${offset < 0 ? "kinder" : "harder"} than the world${unit.dispositionReason ? ` (${unit.dispositionReason})` : ""}`);
+    if (k.showRaw) {
+      lines.push(`Offset: ${k.raw(offset)}`);
+      lines.push(`Rank: ${k.raw(Number(dispositionFor(state, reg, unit).rank))} of 5`);
+    }
+  }
+  return { lines };
+}
+var registered2 = false;
+function registerWorldProviders() {
+  if (registered2) return;
+  registered2 = true;
+  registerAnalyzeProvider("worldOptions", worldOptionProvider);
+  registerAnalyzeProvider("glossary:disposition", dispositionProvider);
 }
 
 // src/analysis/ledger.ts
@@ -22217,10 +22345,10 @@ var decisionProvider = (subject, env) => {
   lines.push("What it changes stays uncertain until you choose.");
   return { lines };
 };
-var registered2 = false;
+var registered3 = false;
 function registerCoreProviders() {
-  if (registered2) return;
-  registered2 = true;
+  if (registered3) return;
+  registered3 = true;
   for (const axis of ["trust", "affinity", "attraction"]) registerAnalyzeProvider(`glossary:${axis}`, axisProvider(axis));
   registerAnalyzeProvider("glossary:stress", stressProvider);
   for (const stat2 of STATS) registerAnalyzeProvider(`glossary:stat_${stat2}`, statProvider(stat2));
@@ -22228,6 +22356,7 @@ function registerCoreProviders() {
   registerAnalyzeProvider("setting", settingProvider, { stateless: true });
   registerAnalyzeProvider("glossary:decision_option", decisionProvider);
   registerCommanderProviders();
+  registerWorldProviders();
 }
 
 // src/analysis/describe.ts
@@ -22311,7 +22440,7 @@ function buildPanelModel(subject, env) {
     title: entryTitle(registry2, entry),
     text: entryText(registry2, entry),
     long: null,
-    effects: entryEffects(registry2, entry, registries),
+    effects: entryEffects(registry2, entry, registries, subject.data),
     see: [],
     reading: readingFor(subject, env),
     missing: false
@@ -22867,6 +22996,41 @@ function renderSysTab(host, ctx2) {
     });
     return el;
   };
+  const worldOptionRows = () => {
+    const state = ctx2.getState();
+    const reg = ctx2.getRegistries?.();
+    if (!state || !reg || reg.worldOptions.size === 0) return [h("p", { class: "alius-dim" }, "World options are set when a campaign is started.")];
+    return [...reg.worldOptions.values()].map((option) => {
+      const id = String(option.id);
+      const current = worldChoice(state, reg, id).choice;
+      const live = option.live === true;
+      let control;
+      if (live && ctx2.dispatch) {
+        const el = h(
+          "select",
+          { name: `world:${id}`, class: "alius-input" },
+          ...option.choices.map((c) => h("option", { value: c.id, selected: c.id === current.id }, c.label))
+        );
+        el.value = current.id;
+        el.addEventListener("change", () => {
+          const events = ctx2.dispatch?.({ type: "world/set_option", payload: { optionId: id, choiceId: el.value } }) ?? [];
+          const err = events.find((e) => e.type === "error");
+          if (err) {
+            ctx2.toast("warn", String(err.message ?? "The option could not be changed."));
+            el.value = ctx2.getState() ? worldChoice(ctx2.getState(), reg, id).choice.id : current.id;
+          }
+        });
+        control = el;
+      } else control = h("span", { class: "alius-world-value" }, String(current.label));
+      return h(
+        "div",
+        { class: "alius-field alius-option alius-world-row", "data-option": id, ...analyzeAttrs(`worldOptions:${id}`) },
+        h("span", { class: "alius-field-label" }, String(option.label)),
+        control,
+        h("span", { class: "alius-lock", "data-live": String(live) }, live ? "CHANGEABLE LATER" : "LOCKED AT START")
+      );
+    });
+  };
   const profiles = st.listConnectionProfiles();
   const profileOptions = [
     ["", "(none \u2014 use main model if fallback is on)"],
@@ -22919,6 +23083,8 @@ function renderSysTab(host, ctx2) {
     field("Story director (mechanic model)", checkbox("directorEnabled", settings.directorEnabled), "directorEnabled"),
     field("Story beat cooldown (days, 1\u201314)", numberInput("beatCooldownDays", settings.beatCooldownDays, (n) => apply({ beatCooldownDays: n }).beatCooldownDays, { min: "1", max: "14" }), "beatCooldownDays"),
     field("Expedition recap (main model)", checkbox("expeditionRecap", settings.expeditionRecap), "expeditionRecap"),
+    h("h3", {}, "World options"),
+    ...worldOptionRows(),
     h("h3", {}, "Relationships"),
     field("First impression fades (days, 1\u201330)", numberInput("firstImpressionTau", settings.firstImpressionTau, (n) => apply({ firstImpressionTau: n }).firstImpressionTau, { min: "1", max: "30" }), "firstImpressionTau"),
     h("h3", {}, "Decisions"),

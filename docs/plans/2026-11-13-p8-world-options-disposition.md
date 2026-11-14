@@ -498,15 +498,15 @@ docs/** (Task 16), tests/** mirror src
   - Providers: `worldOptions` (description, current choice, `Locked at campaign start.` / `Can change during the campaign.`, effect lines); `glossary:disposition` with `{ unitId }` (world level, offset reason, effective level name; numbers only through `knowledge.raw()`).
   - Glossary ids `disposition`, `disposition_offset`, `world_stance`, `world_settings`, `setting_intent_min_confidence` (if missing).
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `SYS lists options read-only and switches bloom_horror`
   - `locked option reading says locked`
   - `disposition reading shows names, not numbers, without raw values`
   - `hidden test passes for the new providers`
-- [ ] **Step 2: Run** `npx vitest run tests/analysis tests/ui/shell.test.ts` and expect FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** `npx vitest run` and expect green.
-- [ ] **Step 5: Commit** `feat(analysis): world option and disposition readings, SYS world options`.
+- [x] **Step 2: Run** `npx vitest run tests/analysis tests/ui/shell.test.ts` and expect FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** `npx vitest run` and expect green.
+- [x] **Step 5: Commit** `feat(analysis): world option and disposition readings, SYS world options`.
 
 ### Task 15: App wiring and manual checklist
 
