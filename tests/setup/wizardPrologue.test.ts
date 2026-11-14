@@ -295,3 +295,38 @@ describe('result', () => {
     expect(w.previewStart(0)).not.toBeNull();
   });
 });
+
+describe('jumpTo', () => {
+  it('goes back to an earlier step of the mode, keeping what was entered', () => {
+    const w = make();
+    walkTo(w, 'file');
+    w.setCommanderName('Ash');
+    w.jumpTo('intake');
+    expect(w.state.step).toBe('intake');
+    expect(w.state.commanderName).toBe('Ash');
+    w.jumpTo('file'); // forward is not allowed: only `next` moves forward
+    expect(w.state.step).toBe('intake');
+  });
+
+  it('refuses a step that is not part of the mode', () => {
+    const w = make();
+    walkTo(w, 'file');
+    w.jumpTo('review');
+    w.jumpTo('commander');
+    expect(w.state.step).toBe('file');
+  });
+
+  it('leaving the exam drops a prefill still running', async () => {
+    const calls: Array<(v: unknown) => void> = [];
+    const wz = new Wizard(
+      { registries: reg, desireBondDefects: false, importer: vi.fn(), commanderImporter: () => new Promise((r) => calls.push(r as never)), onChange: () => {} },
+      { personaName: 'Vale', canBindCurrent: false },
+    );
+    walkTo(wz, 'exam');
+    wz.prefillFromPersona();
+    wz.jumpTo('intake');
+    calls[0]({ kind: 'ok', result: { setup: { body: { strength: 4, endurance: 1, reflexes: 1 }, expression: 1, seasoning: 1, traits: { regular: [] } }, reasons: {}, notes: '', personaName: '' } });
+    await new Promise((r) => setTimeout(r, 0));
+    expect(wz.state.commander.body.strength).not.toBe(4);
+  });
+});

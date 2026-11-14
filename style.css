@@ -1263,6 +1263,77 @@
 #alius-shell.alius-readable .alius-fibre { display: none; }
 #alius-shell.alius-readable .alius-stamp { transform: none; }
 
+/*
+ * P11: the prologue's paper forms (cold open, intake, medical exam, signed dossier) and, later, the hub card, the coach
+ * strip and locked tabs. The paper voice supplies colours; this file only lays the forms out. Typing reveals are CSS so the
+ * text is always whole in the DOM; reduced motion (`alius-reduced-motion`) and readable mode show every line at once.
+ */
+#alius-shell .alius-inworld > * + * {
+  margin-top: 10px;
+}
+
+#alius-shell .alius-clerk,
+#alius-shell .alius-medic-line {
+  margin: 8px 0 4px;
+  font-style: italic;
+}
+
+#alius-shell .alius-clerk.alius-dim {
+  font-style: normal;
+}
+
+#alius-shell .alius-dictate {
+  margin: 2px 0;
+}
+
+#alius-shell .alius-cold-line {
+  margin: 0 0 10px;
+}
+
+/* typing: each line is revealed left to right by its own length (`--type-ms`), after the lines before it (`--type-delay`) */
+#alius-shell .alius-cold-line.is-typing {
+  display: block;
+  overflow: hidden;
+  animation: alius-cold-type var(--type-ms, 0) steps(40, end) both;
+  animation-duration: calc(var(--type-ms, 0) * 1ms);
+  animation-delay: calc(var(--type-delay, 0) * 1ms);
+}
+
+@keyframes alius-cold-type {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+.alius-reduced-motion #alius-shell .alius-cold-line.is-typing,
+#alius-shell.alius-readable .alius-cold-line.is-typing {
+  animation: none;
+  clip-path: none;
+}
+
+#alius-shell .alius-dossier .alius-review {
+  margin: 0 0 8px;
+  white-space: pre-wrap;
+}
+
+#alius-shell .alius-dossier .alius-row {
+  margin-top: 8px;
+}
+
+#alius-shell .alius-sign {
+  font-weight: bold;
+}
+
+#alius-shell .alius-veteran {
+  display: block;
+  margin: 12px 0 0;
+  text-align: left;
+}
+
 /* Tab bar */
 #alius-shell .alius-tabbar {
   flex: none;

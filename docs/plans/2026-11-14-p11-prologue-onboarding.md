@@ -202,7 +202,7 @@ Existing `wizard.test.ts` tests run in veteran mode: set `setMode('veteran')` wh
 - Consumes: `renderVoiceCard`, `renderCommanderFile`, `descriptor`, `analyzeNative`, `motionReduced`, `Sound.play('stamp')`, Wizard (Task 3).
 - Produces: `renderColdOpen(host, ctx)`, `renderIntake(host, ctx)`, `renderExam(host, ctx)`, `renderFile(host, ctx)` with `ctx: { wizard: Wizard; registries: Registries; settings: AliusSettings; sound?: Sound }`; `fillLine(template: string, vars: Record<string, string>): string` (replaces `{KEY}`; unknown keys stay); `SetupScreenCtx` gains `settings: () => AliusSettings` and `sound?: Sound`.
 
-- [ ] **Step 1: Write the failing tests** (jsdom, core content, a Wizard in prologue mode)
+- [x] **Step 1: Write the failing tests** (jsdom, core content, a Wizard in prologue mode)
 - `cold open shows every authoredText line in a paper card` (`article.alius-voice-paper`, lines in order) and `lines appear at once under reduced motion`;
 - `intake: crime cards drive setCrime` (click → `wizard.state.crimeId`), `name input drives setCommanderName`, `the owner line names the start's corporation` (`fillLine` of `confirm_owner`);
 - `exam: a body change shows the dictate line with the descriptor` (e.g. strength 1 → text contains `descriptor('strength', 1)`), `trait toggles go through toggleTrait`, `persona prefill button calls prefillFromPersona`;
@@ -210,13 +210,13 @@ Existing `wizard.test.ts` tests run in veteran mode: set `setMode('veteran')` wh
 - `dossier step: the Veteran toggle switches mode and the step list`;
 - coverage: every `.alius-option` / `.alius-chip` / `.alius-stat` in the four screens resolves (`markedWithout`, `unresolved` helpers).
 
-- [ ] **Step 2: Run** `npx vitest run tests/ui/setupPrologue.test.ts` → FAIL.
+- [x] **Step 2: Run** `npx vitest run tests/ui/setupPrologue.test.ts` → FAIL.
 
-- [ ] **Step 3: Implement.** Each screen is a `paper` `VoiceCard` (title from `step.title`, clerk/medic lines as dim lines above the fields); intake reuses the dossier's crime cards (same `card()` helper, move it to a shared export) and name input; exam = medic `intro`, one dictate line per body stat/expression/seasoning (live from the wizard state), then `renderCommanderFile` wired exactly as `commanderStep()` with `traits_note` above it; file = `review()`'s lines (extract `reviewLines(wizard, reg): string[]` from `setupScreen.ts`), the `sign_prompt`, target radios, `[SIGN]` (→ the existing confirm path, stamp `FILED`, `play('stamp')`). Typing reveal of the cold open at 60 chars/s unless `motionReduced`.
+- [x] **Step 3: Implement.** Each screen is a `paper` `VoiceCard` (title from `step.title`, clerk/medic lines as dim lines above the fields); intake reuses the dossier's crime cards (same `card()` helper, move it to a shared export) and name input; exam = medic `intro`, one dictate line per body stat/expression/seasoning (live from the wizard state), then `renderCommanderFile` wired exactly as `commanderStep()` with `traits_note` above it; file = `review()`'s lines (extract `reviewLines(wizard, reg): string[]` from `setupScreen.ts`), the `sign_prompt`, target radios, `[SIGN]` (→ the existing confirm path, stamp `FILED`, `play('stamp')`). Typing reveal of the cold open at 60 chars/s unless `motionReduced`.
 
-- [ ] **Step 4: Run** `npx vitest run tests/ui` → PASS; `npm test` → green.
+- [x] **Step 4: Run** `npx vitest run tests/ui` → PASS; `npm test` → green.
 
-- [ ] **Step 5: Commit** `feat(ui): in-world intake forms and the signed dossier`
+- [x] **Step 5: Commit** `feat(ui): in-world intake forms and the signed dossier`
 
 **Chunk (a) ends here.**
 

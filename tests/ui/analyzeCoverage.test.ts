@@ -366,16 +366,20 @@ const PROFILE: ImportedProfile = {
 };
 
 describe('coverage: setup wizard', () => {
-  const wizard = () => new Wizard(
-    { registries: reg, desireBondDefects: false, importer: async () => ({ kind: 'ok', profile: PROFILE, dropped: [], missing: [] }), onChange: () => {} },
-    { personaName: 'Vale', canBindCurrent: false },
-  );
+  const wizard = () => {
+    const w = new Wizard(
+      { registries: reg, desireBondDefects: false, importer: async () => ({ kind: 'ok', profile: PROFILE, dropped: [], missing: [] }), onChange: () => {} },
+      { personaName: 'Vale', canBindCurrent: false },
+    );
+    w.setMode('veteran'); // the classic dossier shows the crime cards; the prologue's screens are covered below
+    return w;
+  };
 
   it('start and crime cards', () => {
     const st = new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' });
     const host = h('div');
     document.body.append(host);
-    renderSetupScreen(host, { wizard: wizard(), registries: reg, st, onCancel: vi.fn(), onConfirm: vi.fn(async () => {}), modal: vi.fn(async () => null) as never });
+    renderSetupScreen(host, { wizard: wizard(), registries: reg, st, settings: () => DEFAULT_SETTINGS, onCancel: vi.fn(), onConfirm: vi.fn(async () => {}), modal: vi.fn(async () => null) as never });
     expect(markedWithout(host)).toEqual([]);
     expect(unresolved(host, env(null))).toEqual([]);
     expect(unreachable(host)).toEqual([]);
@@ -426,7 +430,7 @@ describe('coverage: world parameters and disposition controls (P8)', () => {
     expect(w.state.step).toBe('world');
     const host = h('div');
     document.body.append(host);
-    renderSetupScreen(host, { wizard: w, registries: reg, st, onCancel: vi.fn(), onConfirm: vi.fn(async () => {}), modal: vi.fn(async () => null) as never });
+    renderSetupScreen(host, { wizard: w, registries: reg, st, settings: () => DEFAULT_SETTINGS, onCancel: vi.fn(), onConfirm: vi.fn(async () => {}), modal: vi.fn(async () => null) as never });
     expect(markerCount(host)).toBeGreaterThanOrEqual(reg.worldPresets.size + 15);
     expect(markedWithout(host)).toEqual([]);
     expect(unresolved(host, env(null))).toEqual([]);
@@ -653,3 +657,36 @@ describe('coverage: end to end', () => {
     }
   });
 });
+
+describe('coverage: the prologue screens (P11)', () => {
+  const screen = (step: 'dossier' | 'cold_open' | 'intake' | 'exam' | 'file', canBind = false): HTMLElement => {
+    const st = new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' });
+    const w = new Wizard(
+      { registries: reg, desireBondDefects: false, importer: async () => ({ kind: 'ok', profile: PROFILE, dropped: [], missing: [] }), onChange: () => {} },
+      { personaName: 'Vale', canBindCurrent: canBind },
+    );
+    w.setStart('start_vesper');
+    w.setCrime('mutiny');
+    for (let i = 0; i < 12 && w.state.step !== step; i++) w.next();
+    expect(w.state.step).toBe(step);
+    const host = mount();
+    renderSetupScreen(host, { wizard: w, registries: reg, st, settings: () => DEFAULT_SETTINGS, onCancel: vi.fn(), onConfirm: vi.fn(async () => {}), modal: vi.fn(async () => null) as never });
+    return host;
+  };
+
+  it.each(['dossier', 'cold_open', 'intake', 'exam', 'file'] as const)('%s: every option, chip and stat is marked, resolves and can be reached', (step) => {
+    const host = screen(step, step === 'file');
+    expect(markedWithout(host)).toEqual([]);
+    expect(unresolved(host, env(null))).toEqual([]);
+    expect(unreachable(host)).toEqual([]);
+  });
+
+  it('the intake marks the crime cards, the exam its controls, the dossier its buttons and the dossier step the veteran toggle', () => {
+    const addresses = (step: Parameters<typeof screen>[0]) => unitIdsIn(screen(step));
+    expect(addresses('intake').filter((a) => a.startsWith('crimes:'))).toHaveLength(reg.crimes.size);
+    expect(addresses('exam')).toEqual(expect.arrayContaining(['glossary:body_strength', 'glossary:expression', 'glossary:seasoning']));
+    expect(addresses('file')).toEqual(expect.arrayContaining(['glossary:personnel_dossier', 'glossary:intake_interview', 'glossary:medical_exam']));
+    expect(addresses('dossier')).toContain('glossary:veteran_intake');
+  });
+});
+

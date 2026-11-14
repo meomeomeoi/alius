@@ -7279,9 +7279,9 @@ function validateUnit(u, label2, reg, opts, out, withBaseline = true) {
   }
   validateDisposition(u, label2, reg, out);
   const tagCaps = { likes: SETUP_LIMITS.likes, dislikes: SETUP_LIMITS.dislikes, triggers: SETUP_LIMITS.triggers };
-  for (const [field2, cap6] of Object.entries(tagCaps)) {
+  for (const [field2, cap7] of Object.entries(tagCaps)) {
     const tags = u[field2] ?? [];
-    if (tags.length > cap6) out.push(`${label2}: at most ${cap6} ${field2} (has ${tags.length})`);
+    if (tags.length > cap7) out.push(`${label2}: at most ${cap7} ${field2} (has ${tags.length})`);
     for (const t of tags) {
       if (normalizeTag(t) !== t) out.push(`${label2}: ${field2} entry "${t}" is not a normalized tag`);
     }
@@ -10869,11 +10869,11 @@ function arcPaths(state, reg, unitId, defectId) {
   }
   if (whole !== null) return ARC_PATHS.map((p) => ({ ...base(p), available: false, reason: whole, wanted: false, refuses: false }));
   const stages = allowedStages(state, reg, unitId);
-  const cap6 = stageCap(state, reg);
+  const cap7 = stageCap(state, reg);
   const structural = ARC_PATHS.map((path) => {
     let reason = null;
     if (!stages.includes(path)) reason = "Needs a closer bond.";
-    else if (TUNING.arc.stage[path] > cap6) reason = `The medbay is too basic for this (stage ${TUNING.arc.stage[path]}).`;
+    else if (TUNING.arc.stage[path] > cap7) reason = `The medbay is too basic for this (stage ${TUNING.arc.stage[path]}).`;
     return { path, reason };
   });
   const offered2 = structural.filter((s) => s.reason === null).map((s) => s.path);
@@ -12404,8 +12404,8 @@ function hpGrowth(reg, unit, level) {
 }
 function applyLevelUps(draft, reg, unit) {
   const events = [];
-  const cap6 = levelCap(draft);
-  while (unit.xp >= xpToNext(unit.level) && unit.level < cap6) {
+  const cap7 = levelCap(draft);
+  while (unit.xp >= xpToNext(unit.level) && unit.level < cap7) {
     const before = hpGrowth(reg, unit, unit.level);
     unit.xp -= xpToNext(unit.level);
     unit.level += 1;
@@ -17739,10 +17739,10 @@ async function fileLeashRequest(shell, o) {
     line("AUTHORIZATIONS REMAINING", "remaining", String(o.left)),
     line("CONSEQUENCE", "consequence", consequence(o))
   );
-  const paper = (inner) => renderVoiceCard({ voice: "paper", meta: "CCP OVERSIGHT OFFICE \xB7 FORM OR-7", body: inner });
+  const paper2 = (inner) => renderVoiceCard({ voice: "paper", meta: "CCP OVERSIGHT OFFICE \xB7 FORM OR-7", body: inner });
   const choice = await shell.modal({
     title,
-    body: paper(form),
+    body: paper2(form),
     actions: [
       { label: "[ FILE REQUEST ]", value: "file", ...o.left < 1 ? { disabled: NO_AUTHORIZATIONS } : {} },
       { label: "[ WITHDRAW ]", value: "withdraw" }
@@ -17751,7 +17751,7 @@ async function fileLeashRequest(shell, o) {
   if (choice !== "file") return false;
   const delay = o.delayMs ?? (motionReduced(o.settings ?? DEFAULT_SETTINGS) ? 0 : 1800);
   const status = h("div", { class: "alius-form-status", "aria-live": "polite" });
-  void shell.modal({ title, body: paper(h("div", { class: "alius-form" }, form, status)), actions: [] });
+  void shell.modal({ title, body: paper2(h("div", { class: "alius-form" }, form, status)), actions: [] });
   const add = (text2) => void status.append(h("div", { class: "alius-form-line" }, text2));
   add("TRANSMITTING\u2026");
   if (delay > 0) await sleep(delay / 3);
@@ -20343,6 +20343,15 @@ var Wizard = class {
     }
     this.emit();
   }
+  /** Goes back to an earlier step of the current mode (the dossier's EDIT links); forward only through `next`, which checks the step. */
+  jumpTo(step) {
+    const order = STEPS_BY_MODE[this.s.mode];
+    const to = order.indexOf(step);
+    if (to < 0 || to >= order.indexOf(this.s.step)) return;
+    if (this.s.step === "commander" || this.s.step === "exam") this.commanderToken++;
+    this.s.step = step;
+    this.emit();
+  }
   back() {
     const to = this.neighbour(-1);
     if (to === null) return;
@@ -20768,11 +20777,11 @@ function renderCalibration(host, ctx2) {
   }
   if (shown.has("tags")) {
     host.append(
-      section("tags", "TAGS", ...TAG_FIELDS.map(([key, label2, cap6]) => {
+      section("tags", "TAGS", ...TAG_FIELDS.map(([key, label2, cap7]) => {
         const list5 = ch[key];
         const add = () => {
           const t = normalizeTag(input.value);
-          if (t === null || list5.includes(t) || list5.length >= cap6) return;
+          if (t === null || list5.includes(t) || list5.length >= cap7) return;
           onUpdate({ [key]: [...list5, t] });
         };
         const input = h("input", {
@@ -20781,8 +20790,8 @@ function renderCalibration(host, ctx2) {
           "data-tags": key,
           "data-key": `tag-${key}`,
           "aria-label": `Add ${label2.toLowerCase()}`,
-          placeholder: list5.length >= cap6 ? `max ${cap6}` : "add\u2026",
-          disabled: list5.length >= cap6
+          placeholder: list5.length >= cap7 ? `max ${cap7}` : "add\u2026",
+          disabled: list5.length >= cap7
         });
         input.addEventListener("keydown", (e) => {
           if (e.key !== "Enter") return;
@@ -20792,7 +20801,7 @@ function renderCalibration(host, ctx2) {
         return h(
           "div",
           { class: "alius-tags" },
-          h("span", { class: "alius-field-label" }, `${label2} (${list5.length}/${cap6})`),
+          h("span", { class: "alius-field-label" }, `${label2} (${list5.length}/${cap7})`),
           h("div", { class: "alius-chips" }, ...list5.map((t) => h(
             "span",
             { class: "alius-tagchip" },
@@ -20986,6 +20995,216 @@ function textArea(key, value, max, commit) {
   return el;
 }
 
+// src/ui/voice/sources.ts
+var VOICE_OF = {
+  toast: "terminal",
+  dm: "personal",
+  unit_note: "personal",
+  chronicle: "paper",
+  dossier: "paper",
+  commander_file: "paper",
+  oversight: "corporate",
+  leash_verdict: "corporate",
+  corporate_mail: "corporate",
+  // P11
+  intake_form: "paper"
+};
+
+// src/ui/setup/shared.ts
+var nameOf7 = (reg, registry2, id) => {
+  if (!id) return "\u2014";
+  const e = reg[registry2].get(id);
+  return e ? String(e.name) : `UNKNOWN ${id}`;
+};
+function card(address, cls, id, selected2, onClick, ...children) {
+  return h("button", { type: "button", class: `alius-card alius-option ${cls}`, "data-id": id, "aria-pressed": String(selected2), ...analyzeNative(address), onclick: onClick }, ...children);
+}
+function crimeCards(wizard, reg) {
+  const selected2 = wizard.state.crimeId;
+  return h("div", { class: "alius-cards" }, ...[...reg.crimes.values()].map((c) => {
+    const perk = c.perk;
+    const flaw = c.flaw;
+    return card(
+      `crimes:${c.id}`,
+      "alius-crime-card",
+      c.id,
+      selected2 === c.id,
+      () => wizard.setCrime(c.id),
+      h("strong", {}, String(c.name)),
+      h("p", {}, String(c.summary)),
+      h("p", {}, `PERK: ${perk.text}`),
+      h("p", {}, `FLAW: ${flaw.text}`),
+      h("p", { class: "alius-dim" }, "Plea: GUILTY")
+    );
+  }));
+}
+function commanderLines(s, reg) {
+  const c = s.commander;
+  const traits = [...c.traits.regular, ...c.traits.special !== void 0 ? [c.traits.special] : []].map((id) => String(reg.commanderTraits.get(id)?.name ?? id));
+  return [
+    `BODY        : ${descriptor("strength", c.body.strength)} / ${descriptor("endurance", c.body.endurance)} / ${descriptor("reflexes", c.body.reflexes)}`,
+    `EXPRESSION  : ${descriptor("expression", c.expression)}`,
+    `SEASONING   : ${descriptor("seasoning", c.seasoning)}`,
+    `BUILD       : ${archetypeOf(c.body)}`,
+    `TRAITS      : ${traits.join(", ") || "\u2014"}`
+  ];
+}
+function unitLines(wizard, reg, u, n) {
+  const c = u.choice;
+  const preview = wizard.previewStart(n);
+  const values = VALUE_AXES.map((a) => `${a.slice(0, 4).toUpperCase()} ${c.values[a] > 0 ? "+" : ""}${c.values[a]}`).join("  ");
+  return [
+    "",
+    `[${n + 1}] ${u.displayName} \u2014 ${nameOf7(reg, "roles", c.roleId)}`,
+    `    SIGNATURE : ${c.signature ? c.signature.name : "\u2014"}`,
+    `    DEFECTS   : ${c.defects.map((d) => nameOf7(reg, "defects", d.id)).join(", ") || "\u2014"}`,
+    `    VALUES    : ${values}`,
+    `    START     : TRUST ${c.baseline.trust}  AFFINITY ${c.baseline.affinity}  ATTRACTION ${c.baseline.attraction}`,
+    ...preview ? [`    STANCE    : ${preview.stanceName.toUpperCase()} (TRUST ${preview.trust}, IMPUNITY ${preview.impunity})`] : []
+  ];
+}
+function reviewLines(wizard, reg) {
+  const s = wizard.state;
+  const corpId = s.startId ? String(reg.starts.get(s.startId)?.corporationId ?? "") : null;
+  return [
+    `COMMANDER   : ${s.commanderName.trim()}`,
+    `CORPORATION : ${nameOf7(reg, "corporations", corpId)} \u2014 ${nameOf7(reg, "starts", s.startId)}`,
+    `CRIME       : ${nameOf7(reg, "crimes", s.crimeId)} (Plea: GUILTY)`,
+    ...commanderLines(s, reg),
+    `SQUAD       : ${s.units.length}/4 \u2014 ${difficultyHint(s.units.length)}`,
+    ...s.units.flatMap((u, n) => unitLines(wizard, reg, u, n))
+  ];
+}
+function targetChooser(wizard) {
+  const s = wizard.state;
+  if (!s.canBindCurrent) return null;
+  const radio = (value, label2) => {
+    const r = h("input", { type: "radio", name: "target", value, checked: s.target === value });
+    r.addEventListener("change", () => wizard.setTarget(value));
+    return h("label", { class: "alius-check" }, r, ` ${label2}`);
+  };
+  return h(
+    "div",
+    { class: "alius-target" },
+    radio("new_group", "Create a new group chat"),
+    radio("current_group", "Use this group chat"),
+    s.target === "current_group" ? h("p", { class: "alius-hint" }, "Members of this group that you did not select will be set inactive. Selected cards that are not in the group are added.") : null
+  );
+}
+
+// src/ui/setup/prologueSteps.ts
+var TYPING_CPS = 60;
+var LINE_GAP_MS = 300;
+function fillLine(template, vars) {
+  return template.replace(/\{([A-Z_]+)\}/g, (whole, key) => Object.prototype.hasOwnProperty.call(vars, key) ? vars[key] : whole);
+}
+var paper = (title, meta, body, stamp2) => renderVoiceCard({ voice: VOICE_OF.intake_form, title, meta, body, level: 2, ...stamp2 !== void 0 ? { stamp: stamp2 } : {} });
+var linesOf = (ctx2) => ctx2.wizard.prologueStep()?.lines ?? {};
+var clerk = (text2, cls = "alius-clerk") => text2 ? h("p", { class: cls }, text2) : null;
+function renderColdOpen(host, ctx2) {
+  const step = ctx2.wizard.prologueStep();
+  const reduced = motionReduced(ctx2.settings);
+  let delay = 0;
+  const lines = (step?.authoredText ?? []).map((text2) => {
+    const p = h("p", { class: reduced ? "alius-cold-line" : "alius-cold-line is-typing" }, text2);
+    if (!reduced) {
+      const ms = Math.round(text2.length / TYPING_CPS * 1e3);
+      p.style.setProperty("--type-ms", String(ms));
+      p.style.setProperty("--type-delay", String(delay));
+      delay += ms + LINE_GAP_MS;
+    }
+    return p;
+  });
+  host.replaceChildren(paper(step?.title, "TRANSFER FILE", h("div", { class: "alius-cold-open" }, ...lines)));
+}
+function renderIntake(host, ctx2) {
+  const { wizard, registries: reg } = ctx2;
+  const step = wizard.prologueStep();
+  const lines = linesOf(ctx2);
+  const s = wizard.state;
+  const corporation = nameOf7(reg, "corporations", s.startId ? String(reg.starts.get(s.startId)?.corporationId ?? "") : null);
+  const name = h("input", { type: "text", class: "alius-input", "data-key": "name", maxlength: "60" });
+  name.value = s.commanderName;
+  name.addEventListener("input", () => wizard.setCommanderName(name.value));
+  const body = h(
+    "div",
+    { class: "alius-intake" },
+    clerk(lines.ask_crime),
+    crimeCards(wizard, reg),
+    h("label", { class: "alius-field" }, h("span", { class: "alius-field-label alius-clerk" }, lines.ask_name ?? "Name for the record"), name),
+    clerk(lines.confirm_owner ? fillLine(lines.confirm_owner, { CORPORATION: corporation }) : void 0)
+  );
+  host.replaceChildren(paper(step?.title, "FORM CCP-1", body));
+}
+var cap4 = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+function renderExam(host, ctx2) {
+  const { wizard, registries: reg } = ctx2;
+  const step = wizard.prologueStep();
+  const lines = linesOf(ctx2);
+  const c = wizard.state.commander;
+  const dictate = (kind, value) => h("p", { class: "alius-dictate" }, fillLine(lines.dictate ?? "{FIELD}: {VALUE}.", { FIELD: cap4(kind), VALUE: descriptor(kind, value) }));
+  const dictated = h(
+    "div",
+    { class: "alius-medic" },
+    clerk(lines.intro, "alius-medic-line"),
+    dictate("strength", c.body.strength),
+    dictate("endurance", c.body.endurance),
+    dictate("reflexes", c.body.reflexes),
+    dictate("expression", c.expression),
+    dictate("seasoning", c.seasoning)
+  );
+  const file = h("div", { class: "alius-setup-body alius-cmdr" });
+  const apply = (p) => {
+    if (p.kind === "body") wizard.setBody(p.stat, p.value);
+    else if (p.kind === "expression") wizard.setExpression(p.value);
+    else if (p.kind === "seasoning") wizard.setSeasoning(p.value);
+    else wizard.toggleTrait(p.id);
+  };
+  renderCommanderFile(file, {
+    value: c,
+    registries: reg,
+    desireBondDefects: wizard.desireBondDefects,
+    onChange: apply,
+    onPrefill: () => wizard.prefillFromPersona(),
+    onRandom: () => wizard.randomCommander(),
+    importStatus: wizard.state.commanderImport
+  });
+  host.replaceChildren(paper(step?.title, "MEDICAL FILE", dictated), clerk(lines.traits_note, "alius-clerk alius-dim") ?? h("span"), file);
+}
+function renderFile(host, ctx2) {
+  const { wizard, registries: reg } = ctx2;
+  const step = wizard.prologueStep();
+  const lines = linesOf(ctx2);
+  const ok = wizard.canAdvance().ok;
+  const edit = (action, label2, address, to) => h("button", { type: "button", class: "alius-btn", "data-action": action, disabled: ctx2.filed, ...analyzeNative(address), onclick: () => wizard.jumpTo(to) }, label2);
+  const body = h(
+    "div",
+    { class: "alius-dossier" },
+    h("pre", { class: "alius-review" }, reviewLines(wizard, reg).join("\n")),
+    clerk(lines.sign_prompt),
+    h(
+      "div",
+      { class: "alius-row" },
+      edit("edit-intake", "[ EDIT INTAKE ]", "glossary:intake_interview", "intake"),
+      edit("edit-exam", "[ EDIT EXAM ]", "glossary:medical_exam", "exam")
+    ),
+    targetChooser(wizard),
+    h(
+      "div",
+      { class: "alius-row" },
+      h("button", {
+        type: "button",
+        class: "alius-btn alius-sign",
+        "data-action": "sign",
+        disabled: !ok || ctx2.filed,
+        ...analyzeNative("glossary:personnel_dossier"),
+        onclick: ctx2.onSign
+      }, ctx2.filed ? "FILING\u2026" : "[ SIGN ]")
+    )
+  );
+  host.replaceChildren(paper(step?.title, "PERSONNEL RECORD", body, ctx2.filed ? "FILED" : void 0));
+}
+
 // src/ui/setup/worldParams.ts
 var MAX_CARDS = 6;
 function renderWorldParams(host, ctx2) {
@@ -21067,23 +21286,20 @@ function renderWorldParams(host, ctx2) {
 }
 
 // src/ui/setup/setupScreen.ts
-var STEPS = [
-  ["dossier", "01 DOSSIER"],
-  ["world", "02 WORLD PARAMETERS"],
-  ["commander", "03 COMMANDER FILE"],
-  ["units", "04 UNIT ASSIGNMENT"],
-  ["calibration", "05 PROFILE CALIBRATION"],
-  ["review", "06 REVIEW"]
-];
-var subscriptions = /* @__PURE__ */ new WeakMap();
-var nameOf7 = (reg, registry2, id) => {
-  if (!id) return "\u2014";
-  const e = reg[registry2].get(id);
-  return e ? String(e.name) : `UNKNOWN ${id}`;
+var STEP_LABELS = {
+  dossier: "DOSSIER",
+  world: "WORLD PARAMETERS",
+  commander: "COMMANDER FILE",
+  units: "UNIT ASSIGNMENT",
+  calibration: "PROFILE CALIBRATION",
+  review: "REVIEW",
+  cold_open: "TRANSPORT",
+  intake: "INTAKE INTERVIEW",
+  exam: "MEDICAL EXAM",
+  file: "PERSONNEL DOSSIER"
 };
-function card(address, cls, id, selected2, onClick, ...children) {
-  return h("button", { type: "button", class: `alius-card alius-option ${cls}`, "data-id": id, "aria-pressed": String(selected2), ...analyzeNative(address), onclick: onClick }, ...children);
-}
+var subscriptions = /* @__PURE__ */ new WeakMap();
+var filing = /* @__PURE__ */ new WeakMap();
 var deploying = /* @__PURE__ */ new WeakMap();
 function renderSetupScreen(host, ctx2) {
   const { wizard, registries: reg, st } = ctx2;
@@ -21101,7 +21317,7 @@ function renderSetupScreen(host, ctx2) {
         "div",
         { class: "alius-setup" },
         title,
-        h("ol", { class: "alius-steps" }, ...STEPS.map(([id, label2]) => h("li", { class: "alius-step", "aria-current": s.step === id ? "step" : null }, label2))),
+        h("ol", { class: "alius-steps" }, ...wizard.stepsFor().map((id, i) => h("li", { class: "alius-step", "aria-current": s.step === id ? "step" : null }, `${String(i + 1).padStart(2, "0")} ${STEP_LABELS[id]}`))),
         stepBody(s),
         footer(s)
       );
@@ -21124,13 +21340,20 @@ function renderSetupScreen(host, ctx2) {
         return calibration(s);
       case "review":
         return review(s);
-      // P11: the in-world steps get their bodies in the next commit (src/ui/setup/prologueSteps.ts)
       case "cold_open":
+        return inWorld(renderColdOpen);
       case "intake":
+        return inWorld(renderIntake);
       case "exam":
+        return inWorld(renderExam);
       case "file":
-        return h("div", { class: "alius-setup-body" });
+        return inWorld((body, c) => renderFile(body, { ...c, filed: filing.get(wizard) === true, onSign: () => void sign() }));
     }
+  }
+  function inWorld(draw2) {
+    const body = h("div", { class: "alius-setup-body alius-inworld" });
+    draw2(body, { wizard, registries: reg, settings: ctx2.settings(), ...ctx2.sound ? { sound: ctx2.sound } : {} });
+    return body;
   }
   function worldStep() {
     const body = h("div", { class: "alius-world-host" });
@@ -21138,13 +21361,23 @@ function renderSetupScreen(host, ctx2) {
     return body;
   }
   function dossier(s) {
+    const classic = s.mode === "veteran";
     const name = h("input", { type: "text", class: "alius-input", "data-key": "name", maxlength: "60" });
     name.value = s.commanderName;
     name.addEventListener("input", () => wizard.setCommanderName(name.value));
+    const hasPrologue = s.startId !== null ? [...reg.prologues.values()].some((p) => p.startId === s.startId) : reg.prologues.size > 0;
+    const veteran = hasPrologue ? h("button", {
+      type: "button",
+      class: "alius-btn alius-option alius-veteran",
+      "data-action": "veteran",
+      "aria-pressed": String(classic),
+      ...analyzeNative("glossary:veteran_intake"),
+      onclick: () => wizard.setMode(classic ? "prologue" : "veteran")
+    }, classic ? "[X] VETERAN INTAKE: plain forms, no patrol" : "[ ] VETERAN INTAKE: plain forms, no patrol") : null;
     return h(
       "div",
       { class: "alius-setup-body" },
-      h("label", { class: "alius-field" }, h("span", { class: "alius-field-label" }, "Commander name"), name),
+      classic ? h("label", { class: "alius-field" }, h("span", { class: "alius-field-label" }, "Commander name"), name) : null,
       h("h3", {}, "STARTING POINT"),
       h("div", { class: "alius-cards" }, ...[...reg.starts.values()].map((st0) => {
         const corp = nameOf7(reg, "corporations", String(st0.corporationId));
@@ -21158,23 +21391,9 @@ function renderSetupScreen(host, ctx2) {
           h("p", {}, String(st0.summary))
         );
       })),
-      h("h3", {}, "CRIME"),
-      h("div", { class: "alius-cards" }, ...[...reg.crimes.values()].map((c) => {
-        const perk = c.perk;
-        const flaw = c.flaw;
-        return card(
-          `crimes:${c.id}`,
-          "alius-crime-card",
-          c.id,
-          s.crimeId === c.id,
-          () => wizard.setCrime(c.id),
-          h("strong", {}, String(c.name)),
-          h("p", {}, String(c.summary)),
-          h("p", {}, `PERK: ${perk.text}`),
-          h("p", {}, `FLAW: ${flaw.text}`),
-          h("p", { class: "alius-dim" }, "Plea: GUILTY")
-        );
-      }))
+      veteran,
+      classic ? h("h3", {}, "CRIME") : null,
+      classic ? crimeCards(wizard, reg) : null
     );
   }
   function commanderStep() {
@@ -21249,59 +21468,29 @@ function renderSetupScreen(host, ctx2) {
     );
   }
   function review(s) {
-    const corpId = s.startId ? String(reg.starts.get(s.startId)?.corporationId ?? "") : null;
-    const lines = [
-      `COMMANDER   : ${s.commanderName.trim()}`,
-      `CORPORATION : ${nameOf7(reg, "corporations", corpId)} \u2014 ${nameOf7(reg, "starts", s.startId)}`,
-      `CRIME       : ${nameOf7(reg, "crimes", s.crimeId)} (Plea: GUILTY)`,
-      ...commanderLines(s),
-      `SQUAD       : ${s.units.length}/4 \u2014 ${difficultyHint(s.units.length)}`,
-      ...s.units.flatMap((u, n) => unitLines(u, n))
-    ];
-    const body = h("div", { class: "alius-setup-body" }, h("pre", { class: "alius-review" }, lines.join("\n")));
-    if (s.canBindCurrent) {
-      const radio = (value, label2) => {
-        const r = h("input", { type: "radio", name: "target", value, checked: s.target === value });
-        r.addEventListener("change", () => wizard.setTarget(value));
-        return h("label", { class: "alius-check" }, r, ` ${label2}`);
-      };
-      body.append(
-        h(
-          "div",
-          { class: "alius-target" },
-          radio("new_group", "Create a new group chat"),
-          radio("current_group", "Use this group chat"),
-          s.target === "current_group" ? h("p", { class: "alius-hint" }, "Members of this group that you did not select will be set inactive. Selected cards that are not in the group are added.") : null
-        )
-      );
-    }
+    const body = h("div", { class: "alius-setup-body" }, h("pre", { class: "alius-review" }, reviewLines(wizard, reg).join("\n")));
+    const target = targetChooser(wizard);
+    if (target) body.append(target);
     return body;
   }
-  function commanderLines(s) {
-    const c = s.commander;
-    const traits = [...c.traits.regular, ...c.traits.special !== void 0 ? [c.traits.special] : []].map((id) => String(reg.commanderTraits.get(id)?.name ?? id));
-    return [
-      `BODY        : ${descriptor("strength", c.body.strength)} / ${descriptor("endurance", c.body.endurance)} / ${descriptor("reflexes", c.body.reflexes)}`,
-      `EXPRESSION  : ${descriptor("expression", c.expression)}`,
-      `SEASONING   : ${descriptor("seasoning", c.seasoning)}`,
-      `BUILD       : ${archetypeOf(c.body)}`,
-      `TRAITS      : ${traits.join(", ") || "\u2014"}`
-    ];
+  async function deploy(stamped) {
+    const result = wizard.result();
+    if (!result || deploying.get(wizard)) return;
+    deploying.set(wizard, true);
+    if (stamped) {
+      filing.set(wizard, true);
+      ctx2.sound?.play("stamp");
+    }
+    wizard.refresh();
+    try {
+      await ctx2.onConfirm(result, wizard.state.target);
+    } finally {
+      deploying.set(wizard, false);
+      filing.set(wizard, false);
+      wizard.refresh();
+    }
   }
-  function unitLines(u, n) {
-    const c = u.choice;
-    const preview = wizard.previewStart(n);
-    const values = VALUE_AXES.map((a) => `${a.slice(0, 4).toUpperCase()} ${c.values[a] > 0 ? "+" : ""}${c.values[a]}`).join("  ");
-    return [
-      "",
-      `[${n + 1}] ${u.displayName} \u2014 ${nameOf7(reg, "roles", c.roleId)}`,
-      `    SIGNATURE : ${c.signature ? c.signature.name : "\u2014"}`,
-      `    DEFECTS   : ${c.defects.map((d) => nameOf7(reg, "defects", d.id)).join(", ") || "\u2014"}`,
-      `    VALUES    : ${values}`,
-      `    START     : TRUST ${c.baseline.trust}  AFFINITY ${c.baseline.affinity}  ATTRACTION ${c.baseline.attraction}`,
-      ...preview ? [`    STANCE    : ${preview.stanceName.toUpperCase()} (TRUST ${preview.trust}, IMPUNITY ${preview.impunity})`] : []
-    ];
-  }
+  const sign = () => deploy(true);
   function footer(s) {
     const adv = wizard.canAdvance();
     const btn = (action, label2, onclick, disabled = false) => h("button", { type: "button", class: "alius-btn", "data-action": action, disabled, onclick }, label2);
@@ -21318,26 +21507,15 @@ function renderSetupScreen(host, ctx2) {
     ];
     if (s.step === "review") {
       const busy = deploying.get(wizard) === true;
-      buttons.push(btn("confirm", busy ? "DEPLOYING\u2026" : "Confirm deployment", async () => {
-        const result = wizard.result();
-        if (!result || deploying.get(wizard)) return;
-        deploying.set(wizard, true);
-        wizard.refresh();
-        try {
-          await ctx2.onConfirm(result, s.target);
-        } finally {
-          deploying.set(wizard, false);
-          wizard.refresh();
-        }
-      }, !adv.ok || busy));
-    } else {
+      buttons.push(btn("confirm", busy ? "DEPLOYING\u2026" : "Confirm deployment", () => void deploy(false), !adv.ok || busy));
+    } else if (s.step !== "file") {
       buttons.push(btn("next", "Next", () => wizard.next(), !adv.ok));
     }
     return h(
       "div",
       { class: "alius-setup-footer" },
       !adv.ok && adv.reason ? h("p", { class: "alius-hint" }, adv.reason) : null,
-      s.step === "review" && deploying.get(wizard) ? h("p", { class: "alius-hint", role: "status" }, "DEPLOYING \u2014 please wait.") : null,
+      (s.step === "review" || s.step === "file") && deploying.get(wizard) ? h("p", { class: "alius-hint", role: "status" }, "DEPLOYING \u2014 please wait.") : null,
       h("div", { class: "alius-row" }, ...buttons)
     );
   }
@@ -24667,7 +24845,7 @@ var MINUS = "\u2212";
 function humanize(key) {
   return String(key).replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/[_-]+/g, " ").trim().toLowerCase();
 }
-var cap4 = (s) => s ? s[0].toUpperCase() + s.slice(1) : s;
+var cap5 = (s) => s ? s[0].toUpperCase() + s.slice(1) : s;
 var num3 = (n) => String(Math.round(n * 100) / 100);
 var abs = (n) => num3(Math.abs(n));
 var signed = (n) => n > 0 ? `+${num3(n)}` : n < 0 ? `${MINUS}${abs(n)}` : "\xB10";
@@ -24775,7 +24953,7 @@ function combatBase(e) {
     case "injury_days":
       return `${pctSigned(Number(e.pct))} injury time`;
     default:
-      return cap4(humanize(String(e.type ?? "effect")));
+      return cap5(humanize(String(e.type ?? "effect")));
   }
 }
 var WHEN_TEXT = {
@@ -24826,11 +25004,11 @@ function summarizeActivityEffect(effect, _reg, focus) {
   let s;
   switch (e.type) {
     case "resource":
-      s = `${signed(Number(e.amount))} ${RESOURCE_LABEL[e.resource] ?? cap4(humanize(String(e.resource)))}`;
-      if (e.perStat) s += ` ${signed(Number(e.perStat.per))} per ${cap4(String(e.perStat.stat))} rank`;
+      s = `${signed(Number(e.amount))} ${RESOURCE_LABEL[e.resource] ?? cap5(humanize(String(e.resource)))}`;
+      if (e.perStat) s += ` ${signed(Number(e.perStat.per))} per ${cap5(String(e.perStat.stat))} rank`;
       break;
     case "commander_stat":
-      s = `${signed(Number(e.amount))} ${cap4(String(e.stat))}`;
+      s = `${signed(Number(e.amount))} ${cap5(String(e.stat))}`;
       break;
     case "unit_xp":
       s = `${who} ${signed(Number(e.amount))} XP`;
@@ -24851,10 +25029,10 @@ function summarizeActivityEffect(effect, _reg, focus) {
       s = `${who}: defect upkeep`;
       break;
     case "relation":
-      s = `Companion ${signed(Number(e.amount))} ${cap4(String(e.axis))}`;
+      s = `Companion ${signed(Number(e.amount))} ${cap5(String(e.axis))}`;
       break;
     default:
-      return cap4(humanize(String(e.type ?? "effect")));
+      return cap5(humanize(String(e.type ?? "effect")));
   }
   if (e.scale?.facility) s += ` (more with [[facilities:${e.scale.facility}]])`;
   if (e.when?.focus !== void 0) {
@@ -24907,7 +25085,7 @@ function effectsFor(registry2, entry, reg, data) {
         ...statLines(e.mods, (stat3, n) => `${pctSigned(n)} ${stat3} per stack`),
         isNum(e.incomingPct) ? `${pctSigned(e.incomingPct)} damage taken` : null,
         ...combat(e.tick, reg).map((l) => `Each turn: ${l}`),
-        ...Array.isArray(e.flags) ? e.flags.map((f) => cap4(humanize(String(f)))) : [],
+        ...Array.isArray(e.flags) ? e.flags.map((f) => cap5(humanize(String(f)))) : [],
         turns
       ]);
     }
@@ -24981,7 +25159,7 @@ function effectsFor(registry2, entry, reg, data) {
     case "tastes": {
       const o = e.offsets && typeof e.offsets === "object" ? e.offsets : {};
       return compact([
-        ...["trust", "affinity", "attraction"].filter((a) => isNum(o[a]) && o[a] !== 0).map((a) => `${cap4(a)} ${signed(o[a])}`),
+        ...["trust", "affinity", "attraction"].filter((a) => isNum(o[a]) && o[a] !== 0).map((a) => `${cap5(a)} ${signed(o[a])}`),
         isNum(e.presenceMult) ? `Presence \xD7${num3(e.presenceMult)}` : null,
         isNum(e.imageMult) ? `Image consistency \xD7${num3(e.imageMult)}` : null
       ]);
@@ -24991,7 +25169,7 @@ function effectsFor(registry2, entry, reg, data) {
       const mod = (kind, word) => {
         const row = e.modifiers && typeof e.modifiers === "object" ? e.modifiers[kind] : null;
         if (!row || typeof row !== "object") return [];
-        return Object.entries(row).filter(([, n]) => isNum(n)).map(([axis, n]) => `${cap4(axis)} ${word} \xD7${num3(n)}`);
+        return Object.entries(row).filter(([, n]) => isNum(n)).map(([axis, n]) => `${cap5(axis)} ${word} \xD7${num3(n)}`);
       };
       return compact([syn.length ? `Unlocks: ${syn.map((s) => `[[synergies:${s}]]`).join(", ")}` : null, ...mod("gain", "gains"), ...mod("loss", "losses")]);
     }
@@ -25001,7 +25179,7 @@ function effectsFor(registry2, entry, reg, data) {
 }
 function summarizeTraitEffect(e, _reg) {
   const x = e;
-  const stat3 = (s) => cap4(String(s));
+  const stat3 = (s) => cap5(String(s));
   switch (x.type) {
     case "social_rank":
       return `${stat3(x.stat)} rank ${x.rank} at start`;
@@ -25032,7 +25210,7 @@ function summarizeTraitEffect(e, _reg) {
     case "activity_cost":
       return `[[activities:${x.activityId}]] costs ${signed(x.amount)} ${x.resource}`;
     case "activity_relation":
-      return `[[activities:${x.activityId}]] with a companion: ${cap4(x.axis)} ${signed(x.amount)}`;
+      return `[[activities:${x.activityId}]] with a companion: ${cap5(x.axis)} ${signed(x.amount)}`;
     case "relation_event_mult":
       return `[[eventDeltas:${x.event}]] lands \xD7${num3(x.mult)}${x.ifTrigger ? ` with units that have the trigger "${x.ifTrigger}"` : ""}`;
     case "night_slot":
@@ -25067,7 +25245,7 @@ function summarizeWorldOptionEffect(effect, reg) {
       return `Command is expected to look ${look}; a commander who presents differently starts with less standing at the commander's own corporation`;
     }
     case "enable_family":
-      return `Adds the ${cap4(humanize(String(x.family)))} events to the world`;
+      return `Adds the ${cap5(humanize(String(x.family)))} events to the world`;
     case "director_hint":
       return `Story tone: ${String(x.text)}`;
     case "scene_directive":
@@ -25077,7 +25255,7 @@ function summarizeWorldOptionEffect(effect, reg) {
     case "acquaintance_grace":
       return x.days === 0 ? "Soldiers may start secret protest from the first day" : "Soldiers hold back secret protest while they get to know a new commander";
     default:
-      return cap4(humanize(String(x.type ?? "effect")));
+      return cap5(humanize(String(x.type ?? "effect")));
   }
 }
 function summarizePunishment(entry) {
@@ -25465,7 +25643,7 @@ function ledgerFor(state, key, sinceDay) {
 
 // src/analysis/providers/core.ts
 var MINUS2 = "\u2212";
-var cap5 = (s) => s ? s[0].toUpperCase() + s.slice(1) : s;
+var cap6 = (s) => s ? s[0].toUpperCase() + s.slice(1) : s;
 var rawSuffix = (k, n) => {
   const r = k.raw(n);
   return r === null ? "" : ` (${r})`;
@@ -25500,7 +25678,7 @@ var axisProvider = (axis) => (subject, env, knowledge) => {
   };
   const events = relation.history.filter((h2) => h2.kind === "event" && moves(h2.type)).slice(-3).reverse();
   for (const h2 of events) {
-    const cause = typeof env.registries.eventDeltas.get(h2.type)?.cause === "string" ? env.registries.eventDeltas.get(h2.type).cause : cap5(humanize(h2.type));
+    const cause = typeof env.registries.eventDeltas.get(h2.type)?.cause === "string" ? env.registries.eventDeltas.get(h2.type).cause : cap6(humanize(h2.type));
     lines.push(`${cause}${h2.severity ? ` \u2014 ${h2.severity}` : ""}, day ${h2.day}`);
   }
   lines.push(`State: [[relationshipStates:${relation.stateId}]]`);
@@ -27166,21 +27344,6 @@ function createShell(deps) {
   return api;
 }
 
-// src/ui/voice/sources.ts
-var VOICE_OF = {
-  toast: "terminal",
-  dm: "personal",
-  unit_note: "personal",
-  chronicle: "paper",
-  dossier: "paper",
-  commander_file: "paper",
-  oversight: "corporate",
-  leash_verdict: "corporate",
-  corporate_mail: "corporate",
-  // P11
-  intake_form: "paper"
-};
-
 // src/app.ts
 var errText3 = (e) => e instanceof Error ? e.message : String(e);
 function createApp(st, deps) {
@@ -28296,6 +28459,8 @@ function createApp(st, deps) {
         wizard,
         registries,
         st,
+        settings: () => getSettings(st),
+        sound,
         modal: (o) => shell.modal(o),
         onCancel: () => {
           if (setup?.wizard === wizard) endSetup();

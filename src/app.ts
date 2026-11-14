@@ -1406,6 +1406,8 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         wizard,
         registries,
         st,
+        settings: () => getSettings(st),
+        sound,
         modal: (o) => shell.modal(o),
         onCancel: () => {
           if (setup?.wizard === wizard) endSetup();

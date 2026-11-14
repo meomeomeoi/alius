@@ -526,6 +526,16 @@ export class Wizard {
     this.emit();
   }
 
+  /** Goes back to an earlier step of the current mode (the dossier's EDIT links); forward only through `next`, which checks the step. */
+  jumpTo(step: WizardStep): void {
+    const order = STEPS_BY_MODE[this.s.mode];
+    const to = order.indexOf(step);
+    if (to < 0 || to >= order.indexOf(this.s.step)) return;
+    if (this.s.step === 'commander' || this.s.step === 'exam') this.commanderToken++;
+    this.s.step = step;
+    this.emit();
+  }
+
   back(): void {
     const to = this.neighbour(-1);
     if (to === null) return;

@@ -597,8 +597,7 @@ describe('world options in the app (P8)', () => {
     const click = (sel: string) => (host.querySelector<HTMLElement>(sel) ?? (() => { throw new Error(`no ${sel}`); })()).click();
     expect(t.app.setupState()!.world.preset).toBe('standard');
     click('.alius-start-card[data-id="start_vesper"]');
-    click('.alius-crime-card[data-id="mutiny"]');
-    click('button[data-action="next"]'); // → WORLD PARAMETERS
+    click('button[data-action="next"]'); // → WORLD PARAMETERS (the prologue asks for the crime later, at the intake)
     expect(host.textContent).toContain('WORLD PARAMETERS');
     click('.alius-world-preset[data-id="brutal"]');
     expect(t.app.setupState()!.world.preset).toBe('brutal');

@@ -1,15 +1,17 @@
 import type { Registries } from '../../content/types';
 import type { SetupResult } from '../../engine/setup';
-import { VALUE_AXES } from '../../engine/state/types';
 import type { StAdapter } from '../../st/adapter';
-import { difficultyHint, type UnitDraft, type Wizard, type WizardState, type WizardStep } from '../../setup/wizard';
+import { difficultyHint, type Wizard, type WizardState, type WizardStep } from '../../setup/wizard';
+import type { AliusSettings } from '../../settings';
 import { h } from '../dom';
 import { analyzeNative } from '../analyze/mark';
 import { renderKeepingFocus } from '../focus';
 import type { ModalOpts } from '../shell/modal';
-import { archetypeOf, descriptor } from '../../engine/commander/profile';
+import type { Sound } from '../sound/sound';
 import { renderCommanderFile, type CommanderPatch } from '../commander/commanderFile';
 import { renderCalibration } from './calibration';
+import { renderColdOpen, renderExam, renderFile, renderIntake, type PrologueStepCtx } from './prologueSteps';
+import { card, crimeCards, nameOf, reviewLines, targetChooser } from './shared';
 import { renderWorldParams } from './worldParams';
 
 export interface SetupScreenCtx {
@@ -20,29 +22,23 @@ export interface SetupScreenCtx {
   onConfirm: (r: SetupResult, target: 'new_group' | 'current_group') => Promise<void>;
   /** Used for the "Discard intake form?" confirmation. */
   modal: (opts: ModalOpts) => Promise<string | null>;
+  /** P11: read on every draw (the cold open types out unless motion is reduced). */
+  settings: () => AliusSettings;
+  /** P11: the stamp when the dossier is signed. */
+  sound?: Sound;
 }
 
-const STEPS: Array<[WizardStep, string]> = [
-  ['dossier', '01 DOSSIER'],
-  ['world', '02 WORLD PARAMETERS'],
-  ['commander', '03 COMMANDER FILE'],
-  ['units', '04 UNIT ASSIGNMENT'],
-  ['calibration', '05 PROFILE CALIBRATION'],
-  ['review', '06 REVIEW'],
-];
+/** Step labels; the list shows the steps of the wizard's mode, numbered in order. */
+const STEP_LABELS: Record<WizardStep, string> = {
+  dossier: 'DOSSIER', world: 'WORLD PARAMETERS', commander: 'COMMANDER FILE', units: 'UNIT ASSIGNMENT', calibration: 'PROFILE CALIBRATION', review: 'REVIEW',
+  cold_open: 'TRANSPORT', intake: 'INTAKE INTERVIEW', exam: 'MEDICAL EXAM', file: 'PERSONNEL DOSSIER',
+};
 
 /** One re-render subscription per wizard, so re-registering the screen never stacks listeners. */
 const subscriptions = new WeakMap<Wizard, () => void>();
 
-const nameOf = (reg: Registries, registry: 'roles' | 'corporations' | 'starts' | 'crimes' | 'defects', id: string | null) => {
-  if (!id) return '—';
-  const e = reg[registry].get(id);
-  return e ? String(e.name) : `UNKNOWN ${id}`;
-};
-
-function card(address: string, cls: string, id: string, selected: boolean, onClick: () => void, ...children: Array<HTMLElement | string>): HTMLElement {
-  return h('button', { type: 'button', class: `alius-card alius-option ${cls}`, 'data-id': id, 'aria-pressed': String(selected), ...analyzeNative(address), onclick: onClick }, ...children);
-}
+/** The signed dossier is being filed (P11): the stamp shows while this is set. */
+const filing = new WeakMap<Wizard, boolean>();
 
 /** Deployment in flight per wizard. Lives outside the render closure: ST fires chat_changed while the new group opens and the shell re-renders this screen. */
 const deploying = new WeakMap<Wizard, boolean>();
@@ -63,8 +59,8 @@ export function renderSetupScreen(host: HTMLElement, ctx: SetupScreenCtx): void 
       title = h('h2', { class: 'alius-setup-title', tabindex: '-1' }, 'CCP INTAKE FORM');
       root = h('div', { class: 'alius-setup' },
           title,
-          h('ol', { class: 'alius-steps' }, ...STEPS.map(([id, label]) =>
-            h('li', { class: 'alius-step', 'aria-current': s.step === id ? 'step' : null }, label))),
+          h('ol', { class: 'alius-steps' }, ...wizard.stepsFor().map((id, i) =>
+            h('li', { class: 'alius-step', 'aria-current': s.step === id ? 'step' : null }, `${String(i + 1).padStart(2, '0')} ${STEP_LABELS[id]}`))),
           stepBody(s),
           footer(s));
       host.append(root);
@@ -81,9 +77,18 @@ export function renderSetupScreen(host: HTMLElement, ctx: SetupScreenCtx): void 
       case 'units': return units(s);
       case 'calibration': return calibration(s);
       case 'review': return review(s);
-      // P11: the in-world steps get their bodies in the next commit (src/ui/setup/prologueSteps.ts)
-      case 'cold_open': case 'intake': case 'exam': case 'file': return h('div', { class: 'alius-setup-body' });
+      case 'cold_open': return inWorld(renderColdOpen);
+      case 'intake': return inWorld(renderIntake);
+      case 'exam': return inWorld(renderExam);
+      case 'file': return inWorld((body, c) => renderFile(body, { ...c, filed: filing.get(wizard) === true, onSign: () => void sign() }));
     }
+  }
+
+  /** One of the paper steps of the prologue, drawn into its own body. */
+  function inWorld(draw: (host: HTMLElement, ctx: PrologueStepCtx) => void): HTMLElement {
+    const body = h('div', { class: 'alius-setup-body alius-inworld' });
+    draw(body, { wizard, registries: reg, settings: ctx.settings(), ...(ctx.sound ? { sound: ctx.sound } : {}) });
+    return body;
   }
 
   /** The WORLD PARAMETERS step: drawn by its own renderer, redrawn with the screen. */
@@ -94,25 +99,29 @@ export function renderSetupScreen(host: HTMLElement, ctx: SetupScreenCtx): void 
   }
 
   function dossier(s: WizardState): HTMLElement {
+    const classic = s.mode === 'veteran';
     const name = h('input', { type: 'text', class: 'alius-input', 'data-key': 'name', maxlength: '60' }) as HTMLInputElement;
     name.value = s.commanderName;
     name.addEventListener('input', () => wizard.setCommanderName(name.value));
+    // P11: a start with a prologue offers the veteran intake; the prologue asks for the name and the crime in fiction
+    const hasPrologue = s.startId !== null ? [...reg.prologues.values()].some((p) => p.startId === s.startId) : reg.prologues.size > 0;
+    const veteran = hasPrologue
+      ? h('button', {
+        type: 'button', class: 'alius-btn alius-option alius-veteran', 'data-action': 'veteran', 'aria-pressed': String(classic),
+        ...analyzeNative('glossary:veteran_intake'), onclick: () => wizard.setMode(classic ? 'prologue' : 'veteran'),
+      }, classic ? '[X] VETERAN INTAKE: plain forms, no patrol' : '[ ] VETERAN INTAKE: plain forms, no patrol')
+      : null;
     return h('div', { class: 'alius-setup-body' },
-      h('label', { class: 'alius-field' }, h('span', { class: 'alius-field-label' }, 'Commander name'), name),
+      classic ? h('label', { class: 'alius-field' }, h('span', { class: 'alius-field-label' }, 'Commander name'), name) : null,
       h('h3', {}, 'STARTING POINT'),
       h('div', { class: 'alius-cards' }, ...[...reg.starts.values()].map((st0) => {
         const corp = nameOf(reg, 'corporations', String(st0.corporationId));
         return card(`starts:${st0.id}`, 'alius-start-card', st0.id, s.startId === st0.id, () => wizard.setStart(st0.id),
           h('strong', {}, `${corp} — ${String(st0.name)}`), h('p', {}, String(st0.summary)));
       })),
-      h('h3', {}, 'CRIME'),
-      h('div', { class: 'alius-cards' }, ...[...reg.crimes.values()].map((c) => {
-        const perk = c.perk as { text: string }; const flaw = c.flaw as { text: string };
-        return card(`crimes:${c.id}`, 'alius-crime-card', c.id, s.crimeId === c.id, () => wizard.setCrime(c.id),
-          h('strong', {}, String(c.name)), h('p', {}, String(c.summary)),
-          h('p', {}, `PERK: ${perk.text}`), h('p', {}, `FLAW: ${flaw.text}`),
-          h('p', { class: 'alius-dim' }, 'Plea: GUILTY'));
-      })));
+      veteran,
+      classic ? h('h3', {}, 'CRIME') : null,
+      classic ? crimeCards(wizard, reg) : null);
   }
 
   /** The COMMANDER FILE step: the shared form, wired to the wizard. */
@@ -172,62 +181,31 @@ export function renderSetupScreen(host: HTMLElement, ctx: SetupScreenCtx): void 
   }
 
   function review(s: WizardState): HTMLElement {
-    const corpId = s.startId ? String(reg.starts.get(s.startId)?.corporationId ?? '') : null;
-    const lines = [
-      `COMMANDER   : ${s.commanderName.trim()}`,
-      `CORPORATION : ${nameOf(reg, 'corporations', corpId)} — ${nameOf(reg, 'starts', s.startId)}`,
-      `CRIME       : ${nameOf(reg, 'crimes', s.crimeId)} (Plea: GUILTY)`,
-      ...commanderLines(s),
-      `SQUAD       : ${s.units.length}/4 — ${difficultyHint(s.units.length)}`,
-      ...s.units.flatMap((u, n) => unitLines(u, n)),
-    ];
-    const body = h('div', { class: 'alius-setup-body' }, h('pre', { class: 'alius-review' }, lines.join('\n')));
-    if (s.canBindCurrent) {
-      const radio = (value: 'new_group' | 'current_group', label: string) => {
-        const r = h('input', { type: 'radio', name: 'target', value, checked: s.target === value }) as HTMLInputElement;
-        r.addEventListener('change', () => wizard.setTarget(value));
-        return h('label', { class: 'alius-check' }, r, ` ${label}`);
-      };
-      body.append(
-        h('div', { class: 'alius-target' },
-          radio('new_group', 'Create a new group chat'),
-          radio('current_group', 'Use this group chat'),
-          s.target === 'current_group'
-            ? h('p', { class: 'alius-hint' }, 'Members of this group that you did not select will be set inactive. Selected cards that are not in the group are added.')
-            : null),
-      );
-    }
+    const body = h('div', { class: 'alius-setup-body' }, h('pre', { class: 'alius-review' }, reviewLines(wizard, reg).join('\n')));
+    const target = targetChooser(wizard);
+    if (target) body.append(target);
     return body;
   }
 
-  /** The commander as descriptors and trait names: never a stat number. */
-  function commanderLines(s: WizardState): string[] {
-    const c = s.commander;
-    const traits = [...c.traits.regular, ...(c.traits.special !== undefined ? [c.traits.special] : [])]
-      .map((id) => String(reg.commanderTraits.get(id)?.name ?? id));
-    return [
-      `BODY        : ${descriptor('strength', c.body.strength)} / ${descriptor('endurance', c.body.endurance)} / ${descriptor('reflexes', c.body.reflexes)}`,
-      `EXPRESSION  : ${descriptor('expression', c.expression)}`,
-      `SEASONING   : ${descriptor('seasoning', c.seasoning)}`,
-      `BUILD       : ${archetypeOf(c.body)}`,
-      `TRAITS      : ${traits.join(', ') || '—'}`,
-    ];
+  /** Builds and deploys the campaign (the veteran CONFIRM and the dossier's SIGN). The stamp shows while it runs. */
+  async function deploy(stamped: boolean): Promise<void> {
+    const result = wizard.result();
+    if (!result || deploying.get(wizard)) return;
+    deploying.set(wizard, true);
+    if (stamped) {
+      filing.set(wizard, true);
+      ctx.sound?.play('stamp');
+    }
+    wizard.refresh();
+    try {
+      await ctx.onConfirm(result, wizard.state.target);
+    } finally {
+      deploying.set(wizard, false);
+      filing.set(wizard, false);
+      wizard.refresh(); // reaches whichever render of this screen is current, or none if it was left
+    }
   }
-
-  function unitLines(u: UnitDraft, n: number): string[] {
-    const c = u.choice;
-    const preview = wizard.previewStart(n); // P9: the stance she would start in
-    const values = VALUE_AXES.map((a) => `${a.slice(0, 4).toUpperCase()} ${c.values[a] > 0 ? '+' : ''}${c.values[a]}`).join('  ');
-    return [
-      '',
-      `[${n + 1}] ${u.displayName} — ${nameOf(reg, 'roles', c.roleId)}`,
-      `    SIGNATURE : ${c.signature ? c.signature.name : '—'}`,
-      `    DEFECTS   : ${c.defects.map((d) => nameOf(reg, 'defects', d.id)).join(', ') || '—'}`,
-      `    VALUES    : ${values}`,
-      `    START     : TRUST ${c.baseline.trust}  AFFINITY ${c.baseline.affinity}  ATTRACTION ${c.baseline.attraction}`,
-      ...(preview ? [`    STANCE    : ${preview.stanceName.toUpperCase()} (TRUST ${preview.trust}, IMPUNITY ${preview.impunity})`] : []),
-    ];
-  }
+  const sign = (): Promise<void> => deploy(true);
 
   function footer(s: WizardState): HTMLElement {
     const adv = wizard.canAdvance();
@@ -246,24 +224,14 @@ export function renderSetupScreen(host: HTMLElement, ctx: SetupScreenCtx): void 
     ];
     if (s.step === 'review') {
       const busy = deploying.get(wizard) === true;
-      buttons.push(btn('confirm', busy ? 'DEPLOYING…' : 'Confirm deployment', async () => {
-        const result = wizard.result();
-        if (!result || deploying.get(wizard)) return;
-        deploying.set(wizard, true);
-        wizard.refresh();
-        try {
-          await ctx.onConfirm(result, s.target);
-        } finally {
-          deploying.set(wizard, false);
-          wizard.refresh(); // reaches whichever render of this screen is current, or none if it was left
-        }
-      }, !adv.ok || busy));
-    } else {
+      buttons.push(btn('confirm', busy ? 'DEPLOYING…' : 'Confirm deployment', () => void deploy(false), !adv.ok || busy));
+    } else if (s.step !== 'file') {
+      // the signed dossier ends the prologue's steps: SIGN, inside the form, is its only way on
       buttons.push(btn('next', 'Next', () => wizard.next(), !adv.ok));
     }
     return h('div', { class: 'alius-setup-footer' },
       !adv.ok && adv.reason ? h('p', { class: 'alius-hint' }, adv.reason) : null,
-      s.step === 'review' && deploying.get(wizard) ? h('p', { class: 'alius-hint', role: 'status' }, 'DEPLOYING — please wait.') : null,
+      (s.step === 'review' || s.step === 'file') && deploying.get(wizard) ? h('p', { class: 'alius-hint', role: 'status' }, 'DEPLOYING — please wait.') : null,
       h('div', { class: 'alius-row' }, ...buttons));
   }
 

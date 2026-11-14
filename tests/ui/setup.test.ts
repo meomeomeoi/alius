@@ -6,6 +6,7 @@ import type { Registries } from '../../src/content/types';
 import { createCampaign } from '../../src/engine/state/create';
 import type { SetupResult } from '../../src/engine/setup';
 import type { ImportOutcome, ImportedProfile } from '../../src/setup/profile';
+import { DEFAULT_SETTINGS } from '../../src/settings';
 import { Wizard } from '../../src/setup/wizard';
 import { FakeStAdapter } from '../../src/st/fake';
 import { h } from '../../src/ui/dom';
@@ -57,7 +58,7 @@ function make(opts: { canBind?: boolean; outcome?: ImportOutcome; characters?: n
   const onCancel = vi.fn();
   const onConfirm = vi.fn(async (_r: SetupResult, _t: 'new_group' | 'current_group') => {});
   const modal = vi.fn(async (_o: unknown): Promise<string | null> => 'discard');
-  renderSetupScreen(host, { wizard, registries: reg, st, onCancel, onConfirm, modal: modal as never });
+  renderSetupScreen(host, { wizard, registries: reg, st, settings: () => DEFAULT_SETTINGS, onCancel, onConfirm, modal: modal as never });
   return { st, wizard, host, importer, onCancel, onConfirm, modal };
 }
 type M = ReturnType<typeof make>;
@@ -541,7 +542,7 @@ describe('focus, busy state and manual/AI switching (review fixes)', () => {
     click(action(m, 'confirm'));
     expect(m.onConfirm).toHaveBeenCalledTimes(1);
     // ST fires chat_changed -> the shell re-renders the screen with the same wizard
-    renderSetupScreen(m.host, { wizard: m.wizard, registries: reg, st: m.st, onCancel: m.onCancel, onConfirm: m.onConfirm, modal: m.modal as never });
+    renderSetupScreen(m.host, { wizard: m.wizard, registries: reg, st: m.st, settings: () => DEFAULT_SETTINGS, onCancel: m.onCancel, onConfirm: m.onConfirm, modal: m.modal as never });
     expect(action(m, 'confirm').disabled).toBe(true);
     expect(m.host.textContent).toContain('DEPLOYING');
     action(m, 'confirm').click();
@@ -612,7 +613,7 @@ describe('focus, busy state and manual/AI switching (review fixes)', () => {
     let fail!: () => void;
     m.onConfirm.mockImplementation(() => new Promise<void>((r) => (fail = r)));
     click(action(m, 'confirm'));
-    renderSetupScreen(m.host, { wizard: m.wizard, registries: reg, st: m.st, onCancel: m.onCancel, onConfirm: m.onConfirm, modal: m.modal as never });
+    renderSetupScreen(m.host, { wizard: m.wizard, registries: reg, st: m.st, settings: () => DEFAULT_SETTINGS, onCancel: m.onCancel, onConfirm: m.onConfirm, modal: m.modal as never });
     expect(action(m, 'confirm').disabled).toBe(true);
     fail();
     await flush();
