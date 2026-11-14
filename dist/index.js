@@ -2912,15 +2912,18 @@ function applyIntents(draft, ctx2, p) {
   const intents = validateIntents(p.intents, { participants: p.participants, squad: draft.squad });
   const events = [];
   const touched = /* @__PURE__ */ new Set();
+  const landed = [];
   for (const e of intents.events) {
     const units = affectedUnits(e, p.participants);
-    for (const id of units) {
+    const believed = units.filter((id) => computeDeltas(draft, reg, id, e).dropped !== true);
+    for (const id of believed) {
       events.push(...applyEventToUnit(draft, reg, id, e));
       touched.add(id);
     }
-    if (e.type === "crime_revealed") events.push(...revealCrime(draft, reg, units));
+    if (believed.length > 0) landed.push(e.type);
+    if (e.type === "crime_revealed") events.push(...revealCrime(draft, reg, believed));
     if (e.type === "shared_secret" && e.actor !== "commander") {
-      for (const id of units) {
+      for (const id of believed) {
         const flags = draft.relations[id].flags;
         if (!flags.includes("shared_secret")) flags.push("shared_secret");
       }
@@ -2984,7 +2987,8 @@ function applyIntents(draft, ctx2, p) {
       proposals: intents.proposals.length,
       promises: intents.promises.length,
       stressHints: intents.stressHints.length
-    }
+    },
+    landed
   });
   return events;
 }
@@ -17034,7 +17038,8 @@ function createSceneController(deps) {
     if (events.some((e) => e.type === "error")) return false;
     const after = state();
     extracted = nextPointer;
-    const directives = reflect(events, result.intents.events.filter((e) => e.severity === "extreme").map((e) => e.type));
+    const landed = events.find((e) => e.type === "intents_applied")?.landed ?? result.intents.events.map((e) => e.type);
+    const directives = reflect(events, result.intents.events.filter((e) => e.severity === "extreme" && landed.includes(e.type)).map((e) => e.type));
     if (after && after !== before) lastApply = { lastReplyIndex: lastReply.index, from, before, after, directives };
     if (deps.settings().spriteMode === "emotion_pick") {
       for (const em of result.emotions) deps.onUi({ type: "sprite", unitId: em.unitId, label: em.label });

@@ -2,7 +2,7 @@ import type { EngineCtx, EngineEvent } from '../dispatch';
 import type { CampaignState } from '../state/types';
 import { addFact, recordPromise, revealCrime } from '../memory';
 import { roundAway } from './gain';
-import { affectedUnits, stressFromHint } from './deltas';
+import { affectedUnits, computeDeltas, stressFromHint } from './deltas';
 import { applyEventToUnit } from './effects';
 import { evaluateAutomatic } from './graph';
 import { validateIntents } from './intents';
@@ -28,16 +28,21 @@ export function applyIntents(draft: CampaignState, ctx: EngineCtx, p: ApplyParam
   const intents = validateIntents(p.intents, { participants: p.participants, squad: draft.squad });
   const events: EngineEvent[] = [];
   const touched = new Set<string>();
+  /** Types of the events that landed on at least one unit (P8: an event dropped for every unit is not here). */
+  const landed: string[] = [];
 
   for (const e of intents.events) {
     const units = affectedUnits(e, p.participants);
-    for (const id of units) {
+    // P8: below both of a unit's confidence floors the event does not exist for her: no deltas, and none of its side effects
+    const believed = units.filter((id) => computeDeltas(draft, reg, id, e).dropped !== true);
+    for (const id of believed) {
       events.push(...applyEventToUnit(draft, reg, id, e));
       touched.add(id);
     }
-    if (e.type === 'crime_revealed') events.push(...revealCrime(draft, reg, units));
+    if (believed.length > 0) landed.push(e.type);
+    if (e.type === 'crime_revealed') events.push(...revealCrime(draft, reg, believed));
     if (e.type === 'shared_secret' && e.actor !== 'commander') {
-      for (const id of units) {
+      for (const id of believed) {
         const flags = draft.relations[id].flags;
         if (!flags.includes('shared_secret')) flags.push('shared_secret');
       }
@@ -103,6 +108,7 @@ export function applyIntents(draft: CampaignState, ctx: EngineCtx, p: ApplyParam
       events: intents.events.length, facts: storedFacts, proposals: intents.proposals.length,
       promises: intents.promises.length, stressHints: intents.stressHints.length,
     },
+    landed,
   });
   return events;
 }

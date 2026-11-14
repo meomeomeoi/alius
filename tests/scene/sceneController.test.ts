@@ -442,3 +442,18 @@ describe('disposition never reaches the extraction input (P8)', () => {
     expect(hz.after.history.at(-1)).toMatchObject({ type: 'insulted' });
   });
 });
+
+describe('an extreme event dropped for every unit shows no cut-in (P8)', () => {
+  it('guarded: a 0.45 extreme insult is dropped (no cut-in); hazardous: it lands (cut-in)', async () => {
+    const run = async (level: string) => {
+      const h = harness(reg, { tweak: (s) => { s.world.options = { ...(s.world.options ?? {}), disposition: level }; } });
+      await open(h);
+      h.st.groupReplies = [[reply('Ann', '...')]];
+      h.st.mainReplies = [intentJson([praised(ANN, { type: 'insulted', severity: 'extreme', confidence: 0.45 })])];
+      await h.controller.send('You are worthless.');
+      return h.ui.filter((e) => e.type === 'cut_in');
+    };
+    expect(await run('guarded')).toEqual([]);
+    expect((await run('hazardous')).length).toBeGreaterThan(0);
+  });
+});

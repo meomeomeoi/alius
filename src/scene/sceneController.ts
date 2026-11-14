@@ -225,7 +225,9 @@ export function createSceneController(deps: SceneDeps): SceneController {
     if (events.some((e) => e.type === 'error')) return false;
     const after = state();
     extracted = nextPointer;
-    const directives = reflect(events, result.intents.events.filter((e) => e.severity === 'extreme').map((e) => e.type));
+    // P8: an extreme event that was dropped for every unit shows no cut-in
+    const landed = (events.find((e) => e.type === 'intents_applied')?.landed as string[] | undefined) ?? result.intents.events.map((e) => e.type);
+    const directives = reflect(events, result.intents.events.filter((e) => e.severity === 'extreme' && landed.includes(e.type)).map((e) => e.type));
     if (after && after !== before) lastApply = { lastReplyIndex: lastReply.index, from, before, after, directives };
     if (deps.settings().spriteMode === 'emotion_pick') {
       for (const em of result.emotions) deps.onUi({ type: 'sprite', unitId: em.unitId, label: em.label });
