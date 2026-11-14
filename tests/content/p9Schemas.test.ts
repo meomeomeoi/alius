@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CommandStanceSchema, CrimeSchema, DispositionLevelSchema, FlagSchema, PunishmentSchema, RelationshipStateSchema } from '../../src/content/schemas';
+import { CommandStanceSchema, CrimeSchema, DemandTemplateSchema, DispositionLevelSchema, FlagSchema, PunishmentSchema, RelationshipStateSchema } from '../../src/content/schemas';
 import { loadPacks } from '../../src/content/loader';
 import { readFile } from 'node:fs/promises';
 
@@ -104,3 +104,46 @@ describe('punishments (P9)', () => {
     expect(PunishmentSchema.safeParse({ ...entry, dispositionScaling: 'double' }).success).toBe(false);
   });
 });
+
+describe('demand templates (P9)', () => {
+  const tpl = {
+    id: 'double_ration', kind: 'resource', text: 'I want more food.', description: 'She asks for more food.', grantCost: [{ type: 'resource', resource: 'supplies', amount: 2 }],
+    grantDeltas: { trust: 2, affinity: 3 }, refuseDeltas: { trust: -2, affinity: -3, stress: 3 }, conditions: {}, weight: 3,
+  };
+  it('the six core entries parse', async () => {
+    const { registries, errors } = await loadPacks(['content/core'], async (p) => JSON.parse(await readFile(p, 'utf8')));
+    expect(errors).toEqual([]);
+    for (const e of registries.demandTemplates.values()) expect(DemandTemplateSchema.safeParse(e).success, e.id).toBe(true);
+  });
+  it('every cost type parses and an unknown one does not', () => {
+    const costs = [
+      { type: 'resource', resource: 'credits', amount: 20 }, { type: 'squad_stress', amount: 2 }, { type: 'relation_flag', flagId: 'own_room' }, { type: 'bench_self' },
+      { type: 'equip_item', slot: 'weapon', minRarity: 'refined' }, { type: 'reveal_crime' }, { type: 'other_unit_event', event: 'dismissed', severity: 'moderate' },
+    ];
+    for (const c of costs) expect(DemandTemplateSchema.safeParse({ ...tpl, grantCost: [c] }).success, c.type).toBe(true);
+    expect(DemandTemplateSchema.safeParse({ ...tpl, grantCost: [{ type: 'teleport' }] }).success).toBe(false);
+    expect(DemandTemplateSchema.safeParse({ ...tpl, grantCost: [{ type: 'equip_item', slot: 'hat', minRarity: 'refined' }] }).success).toBe(false);
+    expect(DemandTemplateSchema.safeParse({ ...tpl, grantCost: [{ type: 'resource', resource: 'credits', amount: 0 }] }).success).toBe(false);
+  });
+  it('the kind is one of six, the text at most 240, the weight positive, the conditions closed', () => {
+    expect(DemandTemplateSchema.safeParse({ ...tpl, kind: 'gossip' }).success).toBe(false);
+    expect(DemandTemplateSchema.safeParse({ ...tpl, text: 'x'.repeat(241) }).success).toBe(false);
+    expect(DemandTemplateSchema.safeParse({ ...tpl, weight: 0 }).success).toBe(false);
+    expect(DemandTemplateSchema.safeParse({ ...tpl, conditions: { moon: 'full' } }).success).toBe(false);
+    expect(DemandTemplateSchema.safeParse({ ...tpl, conditions: { impunity: [60, 40] } }).success).toBe(false);
+    expect(DemandTemplateSchema.safeParse({ ...tpl, conditions: { stances: ['rebel'] } }).success).toBe(false);
+    expect(DemandTemplateSchema.safeParse({ ...tpl, conditions: { stances: ['fearful'], impunity: [0, 50], dispositionRanks: [1, 3], tagsAny: ['a'], statesAny: ['friend'], flagsNone: ['knows_crime'] }, costly: true }).success).toBe(true);
+  });
+  it('a flag or a state the pack does not have is a content error', async () => {
+    const files: Record<string, unknown> = {
+      'mem/manifest.json': { id: 'mem', name: 'Mem', version: '1', priority: 0, files: { demandTemplates: 'd.json' } },
+      'mem/d.json': [{ ...tpl, conditions: { flagsNone: ['no_such_flag'], statesAny: ['no_such_state'] }, grantCost: [{ type: 'relation_flag', flagId: 'no_such_flag' }] }],
+    };
+    const { errors } = await loadPacks(['mem'], async (p) => { if (!(p in files)) throw new Error(`404 ${p}`); return files[p]; });
+    const text = errors.map((e) => `${e.path}: ${e.message}`).join('\n');
+    expect(text).toMatch(/unknown flag "no_such_flag"/);
+    expect(text).toMatch(/unknown relationship state "no_such_state"/);
+    expect(text).toMatch(/grantCost\[0\]\.flagId/);
+  });
+});
+

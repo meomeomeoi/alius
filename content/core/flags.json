@@ -120,5 +120,13 @@
     "setBy": [
       "event"
     ]
+  },
+  {
+    "id": "own_room",
+    "scope": "relation",
+    "description": "The unit has been given a room of her own.",
+    "setBy": [
+      "event"
+    ]
   }
 ]

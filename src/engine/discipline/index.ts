@@ -15,3 +15,4 @@ export { acquaintanceDays, inAcquaintance } from './acquaintance';
 export { commandStance, stanceEntry, type CommandStance } from './stance';
 export { applyPunishment, checkPunish, perceptionOf, type PunishParams } from './punish';
 export { canUndo, undoApplication, undoThreat } from './undo';
+export { answerDemand, deliverDemand, demandChance, eligibleTemplates, grantProblem, openDemand, rollDemands } from './demands';

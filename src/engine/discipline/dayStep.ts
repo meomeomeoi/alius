@@ -1,6 +1,7 @@
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { isLiving } from '../economy';
 import type { CampaignState } from '../state/types';
+import { demandDayStep } from './demands';
 import { decayRecords, lapseThreat, settleDefiance } from './record';
 import { expireRestrictions } from './restrictions';
 import { sabotageDayStep } from './sabotage';
@@ -28,5 +29,6 @@ export function disciplineDayStep(draft: CampaignState, ctx: EngineCtx): EngineE
   decayRecords(draft);
   events.push(...sabotageDayStep(draft, ctx));
   events.push(...expireRestrictions(draft));
+  events.push(...demandDayStep(draft, ctx));
   return events;
 }

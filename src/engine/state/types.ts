@@ -411,7 +411,7 @@ export interface DisciplineState {
   sabotage?: { queued: Array<{ unitId: string; day: number }>; gear?: { unitId: string; day: number }; /** The day of the last sabotage (the cooldown of the random roll). */ lastDay?: number };
   demands: Demand[];
   /** Days on which a demand opened, per unit (the last 7 days), for the weekly cap. */
-  demandLog: Array<{ unitId: string; day: number }>;
+  demandLog: Array<{ unitId: string; day: number; /** Her last template is not picked again. */ templateId?: string }>;
 }
 
 export type BodyStat = 'strength' | 'endurance' | 'reflexes';

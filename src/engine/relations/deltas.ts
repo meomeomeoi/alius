@@ -37,6 +37,12 @@ export function rowFor(state: CampaignState, reg: Registries, unitId: string, ev
     const d = pun.deltas as { trust: number; affinity: number; stress: number };
     return { trust: d.trust * k, affinity: d.affinity * k, stress: d.stress * k };
   }
+  // an answered demand moves her by what the template says (the engine events carry its id)
+  if ((event.type === 'granted_demand' || event.type === 'refused_demand') && event.templateId !== undefined) {
+    const t = reg.demandTemplates.get(event.templateId);
+    const d = t?.[event.type === 'granted_demand' ? 'grantDeltas' : 'refuseDeltas'] as Row | undefined;
+    if (d) return { trust: d.trust ?? 0, affinity: d.affinity ?? 0, stress: d.stress ?? 0 };
+  }
   return (reg.eventDeltas.get(event.type)?.rows as Record<Severity, Row> | undefined)?.[severity];
 }
 

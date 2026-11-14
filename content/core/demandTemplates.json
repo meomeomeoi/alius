@@ -1,0 +1,160 @@
+[
+  {
+    "id": "double_ration",
+    "kind": "resource",
+    "text": "AUTHOR TO WRITE: I want double rations. Starting tonight.",
+    "description": "AUTHOR TO WRITE: a soldier asks for a bigger share of the food.",
+    "grantCost": [
+      {
+        "type": "resource",
+        "resource": "supplies",
+        "amount": 2
+      }
+    ],
+    "grantDeltas": {
+      "trust": 2,
+      "affinity": 3
+    },
+    "refuseDeltas": {
+      "trust": -2,
+      "affinity": -3,
+      "stress": 3
+    },
+    "conditions": {},
+    "weight": 3
+  },
+  {
+    "id": "own_room",
+    "kind": "privilege",
+    "text": "AUTHOR TO WRITE: I want a room of my own. I am done sleeping in the barracks.",
+    "description": "AUTHOR TO WRITE: a soldier asks for a room of her own, at the squad's expense.",
+    "grantCost": [
+      {
+        "type": "resource",
+        "resource": "credits",
+        "amount": 20
+      },
+      {
+        "type": "squad_stress",
+        "amount": 2
+      },
+      {
+        "type": "relation_flag",
+        "flagId": "own_room"
+      }
+    ],
+    "grantDeltas": {
+      "trust": 4,
+      "affinity": 5
+    },
+    "refuseDeltas": {
+      "trust": -3,
+      "affinity": -4,
+      "stress": 5
+    },
+    "conditions": {
+      "flagsNone": [
+        "own_room"
+      ]
+    },
+    "weight": 1,
+    "costly": true
+  },
+  {
+    "id": "skip_next_run",
+    "kind": "exclusion",
+    "text": "AUTHOR TO WRITE: Do not put me on the next run.",
+    "description": "AUTHOR TO WRITE: a soldier asks to be left out of the next expedition.",
+    "grantCost": [
+      {
+        "type": "bench_self"
+      }
+    ],
+    "grantDeltas": {
+      "trust": 3,
+      "affinity": 2
+    },
+    "refuseDeltas": {
+      "trust": -3,
+      "affinity": -3,
+      "stress": 4
+    },
+    "conditions": {},
+    "weight": 2
+  },
+  {
+    "id": "claim_weapon",
+    "kind": "item",
+    "text": "AUTHOR TO WRITE: Give me that rifle. I will use it better than anyone.",
+    "description": "AUTHOR TO WRITE: a soldier asks for a better weapon from the stash.",
+    "grantCost": [
+      {
+        "type": "equip_item",
+        "slot": "weapon",
+        "minRarity": "refined"
+      }
+    ],
+    "grantDeltas": {
+      "trust": 3,
+      "affinity": 4
+    },
+    "refuseDeltas": {
+      "trust": -3,
+      "affinity": -4,
+      "stress": 5
+    },
+    "conditions": {},
+    "weight": 1
+  },
+  {
+    "id": "back_off",
+    "kind": "interpersonal",
+    "text": "AUTHOR TO WRITE: Keep the others out of my business. Tell them to back off.",
+    "description": "AUTHOR TO WRITE: a soldier asks the commander to put another soldier in her place.",
+    "grantCost": [
+      {
+        "type": "other_unit_event",
+        "event": "dismissed",
+        "severity": "moderate"
+      }
+    ],
+    "grantDeltas": {
+      "trust": 2,
+      "affinity": 4
+    },
+    "refuseDeltas": {
+      "trust": -2,
+      "affinity": -3,
+      "stress": 4
+    },
+    "conditions": {},
+    "weight": 1
+  },
+  {
+    "id": "tell_crime",
+    "kind": "information",
+    "text": "AUTHOR TO WRITE: Tell me what you were convicted for. I want to hear it from you.",
+    "description": "AUTHOR TO WRITE: a soldier asks to be told the commander's crime.",
+    "grantCost": [
+      {
+        "type": "reveal_crime"
+      }
+    ],
+    "grantDeltas": {
+      "trust": 4,
+      "affinity": 3
+    },
+    "refuseDeltas": {
+      "trust": -3,
+      "affinity": -2,
+      "stress": 4
+    },
+    "conditions": {
+      "flagsNone": [
+        "knows_crime"
+      ]
+    },
+    "weight": 1,
+    "costly": true
+  }
+]

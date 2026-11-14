@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { EFFECT_TARGETS, STATS, TRIGGERS, ALWAYS_ON_TYPES } from '../engine/combat/types';
 import { ALL_EVENT_TYPES, EVENT_TYPES, PROPOSAL_KINDS, SEVERITIES } from '../engine/relations/vocab';
+import { RARITIES } from '../engine/state/types';
 import { VALUE_AXES } from '../engine/state/types';
 import { TUNING } from '../engine/tuning';
 import { DILEMMA_CONTEXTS } from '../engine/dilemma/types';
@@ -1335,8 +1336,48 @@ export const PunishmentSchema = BaseEntrySchema.extend({
   });
 });
 
+/** What granting a demand costs. The vocabulary is closed; the engine reads costs by type, never by template id. */
+export const DemandCostSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('resource'), resource: z.enum(['credits', 'supplies', 'plyx']), amount: int.min(1).max(500) }).strict(),
+  /** Every other living unit gains this much stress. */
+  z.object({ type: z.literal('squad_stress'), amount: int.min(1).max(30) }).strict(),
+  z.object({ type: z.literal('relation_flag'), flagId: str }).strict(),
+  /** She is left out of the next expedition. */
+  z.object({ type: z.literal('bench_self') }).strict(),
+  /** An unworn item of the commander's stash of at least this rarity goes to her. */
+  z.object({ type: z.literal('equip_item'), slot: z.enum(['weapon', 'upper', 'lower']), minRarity: z.enum(RARITIES) }).strict(),
+  z.object({ type: z.literal('reveal_crime') }).strict(),
+  /** One other named living unit (the one with the lowest Affinity) takes an event from the commander. */
+  z.object({ type: z.literal('other_unit_event'), event: z.enum(EVENT_TYPES), severity: z.enum(['minor', 'moderate', 'major', 'extreme']) }).strict(),
+]);
+export type DemandCost = z.infer<typeof DemandCostSchema>;
+
+const intRange = (lo: number, hi: number) => z.tuple([int.min(lo).max(hi), int.min(lo).max(hi)]).refine(([a, b]) => a <= b, 'the range must run from low to high');
+
+export const DemandTemplateSchema = BaseEntrySchema.extend({
+  kind: z.enum(['resource', 'privilege', 'exclusion', 'item', 'information', 'interpersonal']),
+  /** Her words, a fallback when the wording call is off or fails. `{name}` is her name. */
+  text: str.max(TUNING.demands.textMax),
+  description: str.max(DESCRIPTION_MAX),
+  grantCost: z.array(DemandCostSchema),
+  grantDeltas: z.object({ trust: z.number(), affinity: z.number() }).strict(),
+  refuseDeltas: z.object({ trust: z.number(), affinity: z.number(), stress: z.number() }).strict(),
+  /** A costly grant counts as a big gesture of the commander. */
+  costly: z.boolean().optional(),
+  conditions: z.object({
+    stances: z.array(z.enum(COMMAND_STANCE_IDS)).optional(),
+    impunity: intRange(0, 100).optional(),
+    dispositionRanks: intRange(1, 5).optional(),
+    tagsAny: z.array(str).optional(),
+    statesAny: z.array(str).optional(),
+    flagsNone: z.array(str).optional(),
+  }).strict(),
+  weight: z.number().min(0.1).max(20),
+}).strict();
+
 Object.assign(registrySchemas, {
   commandStances: CommandStanceSchema,
+  demandTemplates: DemandTemplateSchema,
   punishments: PunishmentSchema,
   worldOptions: WorldOptionSchema, dispositionLevels: DispositionLevelSchema, stanceEffects: StanceEntrySchema, worldPresets: WorldPresetSchema,
 });
@@ -1351,7 +1392,7 @@ export const DESCRIBED_REGISTRIES = [
   // P8
   'worldOptions', 'dispositionLevels', 'worldPresets',
   // P9
-  'commandStances', 'punishments',
+  'commandStances', 'punishments', 'demandTemplates',
 ] as const satisfies readonly RegistryName[];
 
 /** Adds the optional `description` rule to a registry schema without changing its shape. */

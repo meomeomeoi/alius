@@ -1,6 +1,7 @@
 import { registerDayEndStep } from '../calendar';
 import { registerAction } from '../dispatch';
 import { disciplineDayStep } from '../discipline/dayStep';
+import { answerDemand, deliverDemand, rollDemands } from '../discipline/demands';
 import { applyPunishment } from '../discipline/punish';
 import { undoApplication, undoThreat } from '../discipline/undo';
 
@@ -26,4 +27,20 @@ registerAction('discipline/punish', (draft, payload, ctx) => {
 registerAction('discipline/undo', (draft, payload, ctx) => {
   if (!isObj(payload) || typeof payload.id !== 'string') throw new Error('discipline/undo needs { id }');
   return payload.id.startsWith('th') ? undoThreat(draft, ctx, payload.id) : undoApplication(draft, ctx, payload.id);
+});
+
+// ---------------------------------------------------------------------------------------------
+// Demands
+
+/** The app rolls after a slot change (never during an expedition: the dispatcher refuses the family then). */
+registerAction('demand/roll', (draft, _payload, ctx) => rollDemands(draft, ctx));
+
+registerAction('demand/deliver', (draft, payload) => {
+  if (!isObj(payload) || typeof payload.demandId !== 'string') throw new Error('demand/deliver needs { demandId }');
+  return deliverDemand(draft, payload.demandId, typeof payload.text === 'string' ? payload.text : undefined);
+});
+
+registerAction('demand/answer', (draft, payload, ctx) => {
+  if (!isObj(payload) || typeof payload.demandId !== 'string' || (payload.answer !== 'grant' && payload.answer !== 'refuse')) throw new Error('demand/answer needs { demandId, answer: "grant" | "refuse" }');
+  return answerDemand(draft, ctx, payload.demandId, payload.answer);
 });

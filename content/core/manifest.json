@@ -44,6 +44,7 @@
     "stanceEffects": "stanceEffects.json",
     "worldPresets": "worldPresets.json",
     "commandStances": "commandStances.json",
-    "punishments": "punishments.json"
+    "punishments": "punishments.json",
+    "demandTemplates": "demandTemplates.json"
   }
 }

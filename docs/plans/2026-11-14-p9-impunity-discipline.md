@@ -523,7 +523,7 @@ chips — **acceptance 4 and 5**: `a dialogue punishment draws DISCIPLINE LOGGED
   - `rowFor` reads `grantDeltas` / `refuseDeltas` for the two engine event types through `event.templateId`;
   - the day step delivers undelivered demands with their template text and expires old ones.
 
-- [ ] **Step 1: Write the failing tests** — **acceptance 6**
+- [x] **Step 1: Write the failing tests** — **acceptance 6**
 
 `chance grows with impunity and disposition` (I 50, guarded, weight 1 → 0.04; I 100, hazardous, `open_defiance` weight 2 → 0.32; never above 0.5; a grunt → 0);
 `conditions filter templates` (a `stances: ['open_defiance']` template is not eligible for a `disciplined` unit; `flagsNone: ['knows_crime']` hides `tell_crime` once she knows; `claim_weapon` needs an unequipped weapon of rarity ≥ `refined`);
@@ -539,9 +539,9 @@ chips — **acceptance 4 and 5**: `a dialogue punishment draws DISCIPLINE LOGGED
 `a cost that cannot be paid refuses the grant and changes nothing` (`Not enough supplies (needs 2).`) — Review Focus 6;
 `an open demand expires after two days as a refusal` (`expired: true`).
 
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement** (draft template numbers: `grantDeltas` trust 2 / affinity 3, costly ones 4 / 6; `refuseDeltas` −2 / −3 / stress 4; weights 3, 1, 2, 1, 2, 1 in the order of the rulings section). **Step 4: Run** `npm test` → PASS.
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement** (draft template numbers: `grantDeltas` trust 2 / affinity 3, costly ones 4 / 6; `refuseDeltas` −2 / −3 / stress 4; weights 3, 1, 2, 1, 2, 1 in the order of the rulings section). **Step 4: Run** `npm test` → PASS.
 
-- [ ] **Step 5: Commit** `feat(engine): unit demands with caps, costs, grant and refuse`
+- [x] **Step 5: Commit** `feat(engine): unit demands with caps, costs, grant and refuse`
 
 ---
 

@@ -37,7 +37,7 @@ export const TUNING = Object.freeze({
     /** The setting `intentMinConfidence` is measured against this reference (its default). */
     confidenceRef: 0.5,
     /** A commander event of one of these types at `minSeverity` or above is a big gesture. P9 adds more. */
-    bigGesture: Object.freeze({ events: Object.freeze(['protected']), minSeverity: 'major' }),
+    bigGesture: Object.freeze({ events: Object.freeze(['protected', 'granted_demand'] as readonly string[]), minSeverity: 'major' }),
     /** A `self` breakdown costs this share of the unit's max HP. */
     selfHarmPct: 10,
     /** A stance's gain damping never takes more than this share of a gain. */
@@ -81,6 +81,10 @@ export const TUNING = Object.freeze({
     /** `chancePerDay` is the chance at Impunity 0; it falls to 0 at `stance.impunityHigh`. At most one random sabotage in `cooldownDays` days. */
     sabotage: Object.freeze({ chancePerDay: 0.12, cooldownDays: 3, supplies: 2, credits: 10, gearChance: 0.5, gearSupplies: 2 }),
     applicationsMax: 20,
+  }),
+  /** P9: demands (draft balance values). `baseChance` is the daily chance at Impunity 50 on a guarded world with a stance weight of 1. */
+  demands: Object.freeze({
+    baseChance: 0.04, maxChance: 0.5, perWeek: 2, weekDays: 7, maxOpen: 2, expiresInDays: 2, grantRecord: 4, refuseHighMult: 1.5, textMax: 240,
   }),
   /** P7a: the change ledger behind trends, stress sources and "last changes" readings. */
   ledger: Object.freeze({ days: 7, max: 150 }),

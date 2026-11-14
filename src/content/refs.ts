@@ -536,6 +536,17 @@ registerChecks('dispositionLevels', (entry, regs) => {
   return out;
 });
 
+registerChecks('demandTemplates', (entry, regs) => {
+  const out: RegistryCheck[] = [];
+  const cond = (entry.conditions ?? {}) as { statesAny?: string[]; flagsNone?: string[] };
+  for (const id of cond.statesAny ?? []) if (!regs.relationshipStates.has(id)) out.push({ path: 'conditions.statesAny', message: `unknown relationship state "${id}"` });
+  for (const id of cond.flagsNone ?? []) if (!regs.flags.has(id)) out.push({ path: 'conditions.flagsNone', message: `unknown flag "${id}"` });
+  ((entry.grantCost ?? []) as Array<{ type: string; flagId?: string }>).forEach((c, i) => {
+    if (c.type === 'relation_flag' && c.flagId !== undefined && !regs.flags.has(c.flagId)) out.push({ path: `grantCost[${i}].flagId`, message: `unknown flag "${c.flagId}"` });
+  });
+  return out;
+});
+
 registerChecks('commandStances', (entry, regs) => {
   const first = [...regs.commandStances.values()][0];
   if (first?.id !== entry.id) return [];
