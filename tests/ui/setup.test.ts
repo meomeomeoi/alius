@@ -72,7 +72,8 @@ const action = (m: M, name: string) => q<HTMLButtonElement>(m, `button[data-acti
 function toUnits(m: M) {
   click(q(m, '.alius-start-card[data-id="start_vesper"]'));
   click(q(m, '.alius-crime-card[data-id="mutiny"]'));
-  click(action(m, 'next')); // dossier → commander file
+  click(action(m, 'next')); // dossier → world parameters
+  click(action(m, 'next')); // world parameters → commander file
   click(action(m, 'next')); // commander file → units
 }
 async function toCalibration(m: M, count = 1) {
@@ -101,10 +102,10 @@ describe('shell registerScreen', () => {
 });
 
 describe('setup screen', () => {
-  it('shows the title and the five step labels', () => {
+  it('shows the title and the six step labels', () => {
     const m = make();
     expect(m.host.textContent).toContain('CCP INTAKE FORM');
-    for (const l of ['01 DOSSIER', '02 COMMANDER FILE', '03 UNIT ASSIGNMENT', '04 PROFILE CALIBRATION', '05 REVIEW']) {
+    for (const l of ['01 DOSSIER', '02 WORLD PARAMETERS', '03 COMMANDER FILE', '04 UNIT ASSIGNMENT', '05 PROFILE CALIBRATION', '06 REVIEW']) {
       expect(m.host.textContent).toContain(l);
     }
     expect(q(m, '[aria-current="step"]')!.textContent).toContain('01 DOSSIER');
@@ -235,7 +236,7 @@ describe('setup screen', () => {
     const m = make();
     await toCalibration(m);
     click(q(m, 'button[data-regenerate="signature"]'));
-    expect(m.importer).toHaveBeenLastCalledWith('c0.png', ['signature']);
+    expect(m.importer).toHaveBeenLastCalledWith('c0.png', ['signature'], expect.anything());
     expect(m.host.textContent).toContain('[ REGENERATE ]');
     expect(m.host.textContent).toContain('[ MANUAL ]');
   });
@@ -256,7 +257,7 @@ describe('setup screen', () => {
   it('review shows the summary and Confirm deployment', async () => {
     const m = make();
     await toReview(m);
-    expect(q(m, '[aria-current="step"]')!.textContent).toContain('05 REVIEW');
+    expect(q(m, '[aria-current="step"]')!.textContent).toContain('06 REVIEW');
     const pre = q(m, 'pre.alius-review')!.textContent!;
     expect(pre).toContain('Vale');
     expect(pre).toContain('Vesper Somatics');
@@ -322,6 +323,8 @@ describe('setup screen', () => {
     expect(action(m, 'back').disabled).toBe(false);
     click(action(m, 'back'));
     expect(m.wizard.state.step).toBe('commander');
+    click(action(m, 'back'));
+    expect(m.wizard.state.step).toBe('world');
     click(action(m, 'back'));
     expect(m.wizard.state.step).toBe('dossier');
   });
@@ -549,7 +552,7 @@ describe('focus, busy state and manual/AI switching (review fixes)', () => {
     await toCalibration(m);
     m.importer.mockClear();
     click(q(m, 'button[data-regenerate="signature"]'));
-    expect(m.importer).toHaveBeenCalledWith('c0.png', ['signature']);
+    expect(m.importer).toHaveBeenCalledWith('c0.png', ['signature'], expect.anything());
   });
 
   it('a section shows REGENERATING… and its button is disabled while the import runs', async () => {
@@ -614,13 +617,14 @@ describe('commander step in the setup screen (P7)', () => {
   const atCommander = (m: M) => {
     click(q(m, '.alius-start-card[data-id="start_vesper"]'));
     click(q(m, '.alius-crime-card[data-id="mutiny"]'));
-    click(action(m, 'next'));
+    click(action(m, 'next')); // → world parameters
+    click(action(m, 'next')); // → commander file
   };
 
   it('the commander file is wired to the wizard', () => {
     const m = make();
     atCommander(m);
-    expect(q(m, '[aria-current="step"]')!.textContent).toContain('02 COMMANDER FILE');
+    expect(q(m, '[aria-current="step"]')!.textContent).toContain('03 COMMANDER FILE');
     click(q(m, 'button[data-body="strength"][data-step="+"]'));
     expect(m.wizard.state.commander.body.strength).toBe(4);
     click(q(m, 'button[data-expression="5"]'));

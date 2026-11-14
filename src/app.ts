@@ -1337,8 +1337,8 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       {
         registries,
         desireBondDefects: desireBond,
-        importer: (avatar, sections) =>
-          importProfile(avatar, sections, { st, settings: { ...getSettings(st), desireBondDefects: desireBond }, registries }),
+        importer: (avatar, sections, world) =>
+          importProfile(avatar, sections, { st, settings: { ...getSettings(st), desireBondDefects: desireBond }, registries, world }),
         commanderImporter: () => importCommander(st, { settings: { ...getSettings(st), desireBondDefects: desireBond }, registries }),
         onChange: () => {},
       },

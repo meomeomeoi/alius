@@ -448,16 +448,16 @@ docs/** (Task 16), tests/** mirror src
   - the importer gets the world (`WizardDeps.importer(avatar, sections, world)`)
   - `build()` sends `SetupResult.world` and the unit fields
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `presets set every option`
   - `manual changes after a preset persist across back/next`
   - `the summary has one description per non-default choice and no digits`
   - `changing the world after calibration marks stances stale (re-import offered)`
   - `build carries offsets and stances`
-- [ ] **Step 2: Run** `npx vitest run tests/setup/wizard.test.ts` and expect FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** `npx vitest run` and expect green.
-- [ ] **Step 5: Commit** `feat(setup): world step and presets in the wizard`.
+- [x] **Step 2: Run** `npx vitest run tests/setup/wizard.test.ts` and expect FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** `npx vitest run` and expect green.
+- [x] **Step 5: Commit** `feat(setup): world step and presets in the wizard`.
 
 ### Task 13: WORLD PARAMETERS screen and calibration controls
 

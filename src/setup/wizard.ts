@@ -6,10 +6,11 @@ import type { SignatureInstance, Unit } from '../engine/state/types';
 import { ALL_SECTIONS, type ImportSection } from '../llm/calls/profileImport';
 import type { CharacterSummary } from '../st/adapter';
 import type { BodyStat } from '../engine/state/types';
+import { defaultWorldOptions } from '../engine/worldOptions';
 import type { CommanderImportOutcome } from './commander';
 import type { ImportedProfile, ImportOutcome } from './profile';
 
-export type WizardStep = 'dossier' | 'commander' | 'units' | 'calibration' | 'review';
+export type WizardStep = 'dossier' | 'world' | 'commander' | 'units' | 'calibration' | 'review';
 export type CalibrationStatus = 'idle' | 'loading' | 'ready' | 'manual';
 
 export interface UnitDraft {
@@ -31,6 +32,8 @@ export interface UnitDraft {
   regenerating: ImportSection[];
   /** Bumps on every (re)import; results carrying an older number are ignored. */
   generation: number;
+  /** P8: the world changed after this unit was calibrated, so her offset and stances may be out of date (a re-import is offered). */
+  worldStale?: true;
 }
 
 export interface CommanderImportState {
@@ -51,6 +54,8 @@ export interface WizardState {
   /** P7: the COMMANDER FILE step. */
   commander: CommanderSetup;
   commanderImport: CommanderImportState;
+  /** P8: the world options (every option has a choice) and the preset they still equal, if any. */
+  world: { options: Record<string, string>; preset: string | null };
   units: UnitDraft[];
   calibrationIndex: number;
   target: 'new_group' | 'current_group';
@@ -60,7 +65,8 @@ export interface WizardState {
 export interface WizardDeps {
   registries: Registries;
   desireBondDefects: boolean;
-  importer: (avatar: string, sections: ImportSection[]) => Promise<ImportOutcome>;
+  /** `world` is the wizard's current world options (P8), so a stance is read against the world the player chose. */
+  importer: (avatar: string, sections: ImportSection[], world: Record<string, string>) => Promise<ImportOutcome>;
   /** P7: persona → commander. Absent = the prefill is manual. */
   commanderImporter?: () => Promise<CommanderImportOutcome>;
   /** P7: a number in [0, 1) for the random commander (default `Math.random`). */
@@ -107,11 +113,20 @@ export class Wizard {
       crimeId: null,
       commander: defaultCommanderSetup(),
       commanderImport: { status: 'idle', reasons: {} },
+      world: this.startingWorld(),
       units: [],
       calibrationIndex: 0,
       target: 'new_group',
       canBindCurrent: init.canBindCurrent,
     };
+  }
+
+  /** The Standard preset when the content has one, else every option's default. */
+  private startingWorld(): WizardState['world'] {
+    const reg = this.deps.registries;
+    const standard = reg.worldPresets.get('standard');
+    if (standard) return { options: { ...defaultWorldOptions(reg), ...(standard.choices as Record<string, string>) }, preset: 'standard' };
+    return { options: defaultWorldOptions(reg), preset: null };
   }
 
   /** Whether Desire/Bond defects are allowed (needed by the manual lists in the UI). */
@@ -167,6 +182,78 @@ export class Wizard {
     if (t === 'current_group' && !this.s.canBindCurrent) return;
     this.s.target = t;
     this.emit();
+  }
+
+  // --- world (P8)
+  private presetOf(options: Record<string, string>): string | null {
+    for (const p of this.deps.registries.worldPresets.values()) {
+      const c = p.choices as Record<string, string>;
+      if (Object.keys(options).length === Object.keys(c).length && Object.entries(c).every(([k, v]) => options[k] === v)) return String(p.id);
+    }
+    return null;
+  }
+
+  /** A calibrated unit's offset and stances were read against the old world: offer a re-import. */
+  private worldChanged(before: Record<string, string>): void {
+    const after = this.s.world.options;
+    if (Object.keys(after).every((k) => after[k] === before[k])) return;
+    for (const u of this.s.units) if (u.status === 'ready' || u.status === 'manual') u.worldStale = true;
+  }
+
+  /** Sets every option from a preset of the registry (an unknown id changes nothing). */
+  applyPreset(id: string): void {
+    const preset = this.deps.registries.worldPresets.get(id);
+    if (!preset) return;
+    const before = { ...this.s.world.options };
+    this.s.world = { options: { ...defaultWorldOptions(this.deps.registries), ...(preset.choices as Record<string, string>) }, preset: id };
+    this.worldChanged(before);
+    this.emit();
+  }
+
+  /** Sets one option's choice; the preset mark follows (null unless the options still equal one). Unknown ids are ignored. */
+  setWorldOption(optionId: string, choiceId: string): void {
+    const option = this.deps.registries.worldOptions.get(optionId);
+    if (!option || !(option.choices as Array<{ id: string }>).some((c) => c.id === choiceId)) return;
+    const before = { ...this.s.world.options };
+    const options = { ...before, [optionId]: choiceId };
+    this.s.world = { options, preset: this.presetOf(options) };
+    this.worldChanged(before);
+    this.emit();
+  }
+
+  /** "What this changes": the description of every choice that is not its option's default, never a number. */
+  worldSummary(): string[] {
+    const out: string[] = [];
+    for (const option of this.deps.registries.worldOptions.values()) {
+      const chosen = this.s.world.options[option.id] ?? String(option.default);
+      if (chosen === option.default) continue;
+      const choice = (option.choices as Array<{ id: string; description: string }>).find((c) => c.id === chosen);
+      if (choice) out.push(choice.description);
+    }
+    return out;
+  }
+
+  /** Re-imports the offset and stances of one unit against the current world and clears her stale mark. */
+  refreshWorldSections(index: number): void {
+    const u = this.s.units[index];
+    if (!u || (u.status !== 'ready' && u.status !== 'manual')) return;
+    for (const section of ['disposition', 'stances'] as const) {
+      const token = ++generationCounter;
+      this.sectionTokens.set(u, { ...this.sectionTokens.get(u), [section]: token });
+    }
+    delete u.worldStale;
+    void this.run(u, ['disposition', 'stances'], (outcome) => {
+      if (outcome.kind === 'manual') {
+        u.notice = outcome.reason;
+        u.worldStale = true; // nothing was refreshed
+        return;
+      }
+      if (u.candidates === null) u.candidates = emptyProfile();
+      u.candidates.dispositionOffset = outcome.profile.dispositionOffset;
+      u.candidates.worldStances = outcome.profile.worldStances;
+      this.preselect(u, outcome.profile, 'disposition');
+      this.preselect(u, outcome.profile, 'stances');
+    });
   }
 
   // --- commander file (P7)
@@ -301,6 +388,8 @@ export class Wizard {
         if (!this.s.startId) return fail('Choose a starting point.');
         if (!this.s.crimeId) return fail('Choose the commander\'s crime.');
         return { ok: true };
+      case 'world':
+        return { ok: true };
       case 'commander': {
         const errors = validateCommanderSetup(this.s.commander, this.deps.registries, { desireBondDefects: this.deps.desireBondDefects });
         return errors.length === 0 ? { ok: true } : fail(errors[0]);
@@ -328,7 +417,8 @@ export class Wizard {
 
   next(): void {
     if (!this.canAdvance().ok) return;
-    if (this.s.step === 'dossier') this.s.step = 'commander';
+    if (this.s.step === 'dossier') this.s.step = 'world';
+    else if (this.s.step === 'world') this.s.step = 'commander';
     else if (this.s.step === 'commander') {
       this.commanderToken++; // a prefill still running belongs to a screen the player left
       this.s.step = 'units';
@@ -345,9 +435,10 @@ export class Wizard {
   }
 
   back(): void {
-    if (this.s.step === 'commander') {
+    if (this.s.step === 'world') this.s.step = 'dossier';
+    else if (this.s.step === 'commander') {
       this.commanderToken++;
-      this.s.step = 'dossier';
+      this.s.step = 'world';
     } else if (this.s.step === 'units') this.s.step = 'commander';
     else if (this.s.step === 'calibration') this.s.step = 'units';
     else if (this.s.step === 'review') this.s.step = this.s.units.length === 0 ? 'units' : 'calibration';
@@ -412,7 +503,7 @@ export class Wizard {
     const gen = u.generation;
     let outcome: ImportOutcome;
     try {
-      outcome = await this.deps.importer(u.avatar, sections);
+      outcome = await this.deps.importer(u.avatar, sections, { ...this.s.world.options });
     } catch (e) {
       outcome = { kind: 'manual', reason: errText(e) };
     }
@@ -523,7 +614,7 @@ export class Wizard {
       if (!roleId || !signature) return { result: null, errors: [`${u.displayName}: calibration is incomplete.`] };
       units.push({ cardRef: u.avatar, displayName: u.displayName, roleId, signature, ...structuredClone(rest) });
     }
-    const result: SetupResult = { commanderName: this.s.commanderName, startId, crimeId, units, commander: structuredClone(this.s.commander) };
+    const result: SetupResult = { commanderName: this.s.commanderName, startId, crimeId, units, commander: structuredClone(this.s.commander), world: { options: { ...this.s.world.options } } };
     const errors = validateSetup(result, this.deps.registries, { desireBondDefects: this.deps.desireBondDefects });
     return { result: errors.length === 0 ? result : null, errors };
   }

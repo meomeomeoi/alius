@@ -23,10 +23,11 @@ export interface SetupScreenCtx {
 
 const STEPS: Array<[WizardStep, string]> = [
   ['dossier', '01 DOSSIER'],
-  ['commander', '02 COMMANDER FILE'],
-  ['units', '03 UNIT ASSIGNMENT'],
-  ['calibration', '04 PROFILE CALIBRATION'],
-  ['review', '05 REVIEW'],
+  ['world', '02 WORLD PARAMETERS'],
+  ['commander', '03 COMMANDER FILE'],
+  ['units', '04 UNIT ASSIGNMENT'],
+  ['calibration', '05 PROFILE CALIBRATION'],
+  ['review', '06 REVIEW'],
 ];
 
 /** One re-render subscription per wizard, so re-registering the screen never stacks listeners. */
@@ -74,6 +75,7 @@ export function renderSetupScreen(host: HTMLElement, ctx: SetupScreenCtx): void 
   function stepBody(s: WizardState): HTMLElement {
     switch (s.step) {
       case 'dossier': return dossier(s);
+      case 'world': return h('div', { class: 'alius-setup-body' }, h('p', { class: 'alius-hint' }, 'The Standard world is selected.')); // the WORLD PARAMETERS screen follows (P8 Task 13)
       case 'commander': return commanderStep();
       case 'units': return units(s);
       case 'calibration': return calibration(s);
