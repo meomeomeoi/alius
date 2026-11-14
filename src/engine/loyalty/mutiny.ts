@@ -9,6 +9,7 @@ import { enqueueNight } from '../night';
 import { enterState } from '../relations/graph';
 import type { CampaignState, Confrontation, Severity } from '../state/types';
 import { TUNING } from '../tuning';
+import { dispositionById } from '../worldOptions';
 import { closeNight, emitSign, loyaltyOf, loyaltyRecord, requireOpen } from './state';
 
 const SEVERITY_RANK: Record<Severity, number> = { minor: 0, moderate: 1, major: 2, extreme: 3 };
@@ -35,21 +36,35 @@ export function mutinyTrigger(state: CampaignState, unitId: string, minSeverity:
 
 const mutinySigns = (state: CampaignState, unitId: string) => (loyaltyOf(state, unitId)?.signs ?? []).filter((s) => s.about === 'mutiny');
 
+/**
+ * P8: when a mutiny can come from her. Her disposition level decides if it can at all, from which relationship states, after
+ * how many days in the state and how many warning signs. `despises` at the guarded level is the P6 rule.
+ */
+export function mutinyRules(state: CampaignState, reg: Registries, unitId: string): { enabled: boolean; states: string[]; minDaysInState: number; minSigns: number } {
+  return dispositionById(state, reg, unitId).mutiny;
+}
+
 /** Whether she is in a state a mutiny can come from right now (before signs are counted). */
-function mayMutiny(state: CampaignState, unitId: string): boolean {
+function mayMutiny(state: CampaignState, reg: Registries, unitId: string): boolean {
   const unit = state.squad.find((u) => u.id === unitId);
   const rel = state.relations[unitId];
   if (!unit || !rel || unit.kind !== 'named' || !isLiving(unit)) return false;
-  if (rel.stateId === 'despises') return state.day - rel.stateSince >= TUNING.mutiny.minDaysInState;
+  const rules = mutinyRules(state, reg, unitId);
+  if (!rules.enabled) return false;
+  if (rules.states.includes(rel.stateId)) return state.day - rel.stateSince >= rules.minDaysInState;
   return rel.stateId === 'obsessed' && mutinyTrigger(state, unitId, 'extreme') !== null;
 }
 
-/** Named, living, `despises` for 2 days (or `obsessed` with an extreme trigger), a trigger in the last 3 days and 2 signs on different days. */
-export function mutinyReady(state: CampaignState, _reg: Registries, unitId: string): boolean {
-  if (!mayMutiny(state, unitId)) return false;
-  if (state.relations[unitId].stateId === 'despises' && mutinyTrigger(state, unitId) === null) return false;
+/**
+ * Named, living, in one of her level's mutiny states for its days (or `obsessed` with an extreme trigger), a trigger in the
+ * last 3 days and the level's number of signs on different days (guarded: `despises`, 2 days, 2 signs).
+ */
+export function mutinyReady(state: CampaignState, reg: Registries, unitId: string): boolean {
+  if (!mayMutiny(state, reg, unitId)) return false;
+  const rules = mutinyRules(state, reg, unitId);
+  if (rules.states.includes(state.relations[unitId].stateId) && mutinyTrigger(state, unitId) === null) return false;
   const signs = mutinySigns(state, unitId);
-  return signs.length >= TUNING.mutiny.minSigns && new Set(signs.map((s) => s.day)).size >= TUNING.mutiny.minSigns;
+  return signs.length >= rules.minSigns && new Set(signs.map((s) => s.day)).size >= rules.minSigns;
 }
 
 /** Other named active units whose loyalty has loosened and whose Trust is low: they side with her (at most 2, lowest Trust first). */
@@ -97,8 +112,10 @@ export function mutinyDayStep(draft: CampaignState, ctx: EngineCtx): EngineEvent
   const events: EngineEvent[] = [];
   for (const u of draft.squad.filter((x) => x.kind === 'named' && isLiving(x))) {
     const rec = loyaltyOf(draft, u.id);
-    const candidate = draft.relations[u.id]?.stateId === 'despises'
-      || (draft.relations[u.id]?.stateId === 'obsessed' && mutinyTrigger(draft, u.id, 'extreme') !== null);
+    const rules = mutinyRules(draft, ctx.registries, u.id);
+    const stateId = draft.relations[u.id]?.stateId;
+    const candidate = rules.enabled && (rules.states.includes(stateId ?? '')
+      || (stateId === 'obsessed' && mutinyTrigger(draft, u.id, 'extreme') !== null));
     if (!candidate) {
       if (rec?.signs.some((s) => s.about === 'mutiny')) rec.signs = rec.signs.filter((s) => s.about !== 'mutiny'); // a fresh warning next time
       continue;
@@ -106,7 +123,7 @@ export function mutinyDayStep(draft: CampaignState, ctx: EngineCtx): EngineEvent
     const signs = mutinySigns(draft, u.id);
     const newest = Math.max(-Infinity, ...signs.map((s) => s.day));
     if (signs.length === 0) events.push(...emitSign(draft, ctx, u.id, 'mutiny', 1));
-    else if (signs.length === 1 && newest < draft.day) events.push(...emitSign(draft, ctx, u.id, 'mutiny', 2));
+    else if (signs.length === 1 && rules.minSigns >= 2 && newest < draft.day) events.push(...emitSign(draft, ctx, u.id, 'mutiny', 2));
     // she is telegraphed: the newest sign is at least a day old
     const aged = mutinySigns(draft, u.id);
     const lastSign = Math.max(-Infinity, ...aged.map((s) => s.day));

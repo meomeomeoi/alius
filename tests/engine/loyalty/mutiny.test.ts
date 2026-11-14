@@ -411,3 +411,96 @@ describe('outcomes', () => {
     expect(over.disloyalty!.open).toBeUndefined();
   });
 });
+
+describe('mutiny follows disposition (P8)', () => {
+  const at = (level: string, s: CampaignState): CampaignState => {
+    s.world.options = { ...(s.world.options ?? {}), disposition: level };
+    return s;
+  };
+  /** The first 400 day steps with a fresh trigger each day: how many days a mutiny started. */
+  const started = (make: (seed: number) => CampaignState): number => {
+    let n = 0;
+    for (let seed = 1; seed <= 40; seed++) {
+      const s = withSympathizers(make(seed));
+      for (let i = 0; i < 10; i++) {
+        s.day += 1;
+        loyaltyRecord(s, ANN).trigger = { kind: 'leash', day: s.day };
+        if (ofType(step(s), 'mutiny_started').length > 0) { n += 1; break; }
+        delete s.disloyalty?.open;
+      }
+    }
+    return n;
+  };
+
+  it('guarded keeps the P6 numbers', () => {
+    expect(mutinyReady(at('guarded', brewing({ inState: 1 })), reg, ANN)).toBe(false);
+    expect(mutinyReady(at('guarded', brewing({ inState: 2 })), reg, ANN)).toBe(true);
+    expect(mutinyReady(at('guarded', brewing({ signs: 1 })), reg, ANN)).toBe(false);
+    expect(mutinyReady(at('guarded', brewing({ state: 'resentful' })), reg, ANN)).toBe(false);
+    expect(mutinyReady(at('prickly', brewing({ state: 'resentful' })), reg, ANN)).toBe(false);
+  });
+
+  it('mutiny is impossible at kind even when despises with a trigger and signs', () => {
+    const ready = brewing();
+    expect(mutinyReady(at('guarded', structuredClone(ready)), reg, ANN)).toBe(true);
+    expect(mutinyReady(at('kind', ready), reg, ANN)).toBe(false);
+    expect(mutinyReady(at('kind', brewing({ state: 'obsessed', inState: 0 })), reg, ANN)).toBe(false); // the obsessed path is off too
+    expect(started((seed) => at('kind', brewing({ seed })))).toBe(0);
+    expect(started((seed) => at('guarded', brewing({ seed })))).toBeGreaterThan(10);
+  });
+
+  it('kind clears the leftover warning signs instead of building towards a mutiny', () => {
+    const s = at('kind', brewing());
+    s.day += 1;
+    step(s);
+    expect(loyaltyRecord(s, ANN).signs.filter((x) => x.about === 'mutiny')).toEqual([]);
+  });
+
+  it('resentful cannot mutiny at prickly and can at volatile', () => {
+    expect(mutinyReady(at('prickly', brewing({ state: 'resentful' })), reg, ANN)).toBe(false);
+    expect(mutinyReady(at('volatile', brewing({ state: 'resentful' })), reg, ANN)).toBe(true);
+    expect(mutinyReady(at('hazardous', brewing({ state: 'resentful' })), reg, ANN)).toBe(true);
+    // one day step while she is still resentful: no mutiny at prickly (the step may later move her to despises, which is a different state)
+    for (let seed = 1; seed <= 30; seed++) {
+      const s = withSympathizers(at('prickly', brewing({ seed, state: 'resentful' })));
+      s.day += 1;
+      loyaltyRecord(s, ANN).trigger = { kind: 'leash', day: s.day };
+      const before = s.relations[ANN].stateId;
+      const ev = ofType(step(s), 'mutiny_started');
+      if (before === 'resentful' && s.relations[ANN].stateId === 'resentful') expect(ev, `seed ${seed}`).toEqual([]);
+    }
+    // a listed state still needs a trigger, like despises today
+    expect(mutinyReady(at('volatile', brewing({ state: 'resentful', triggerAgo: null })), reg, ANN)).toBe(false);
+    // and an unlisted state (estranged) never mutinies
+    expect(mutinyReady(at('hazardous', brewing({ state: 'estranged' })), reg, ANN)).toBe(false);
+  });
+
+  it('hazardous mutinies after one sign a day old and one day in state', () => {
+    expect(mutinyReady(at('volatile', brewing({ inState: 1, signs: 1 })), reg, ANN)).toBe(false);
+    expect(mutinyReady(at('hazardous', brewing({ inState: 1, signs: 1 })), reg, ANN)).toBe(true);
+    expect(mutinyReady(at('hazardous', brewing({ inState: 0, signs: 1 })), reg, ANN)).toBe(false);
+    expect(mutinyReady(at('hazardous', brewing({ inState: 1, signs: 0 })), reg, ANN)).toBe(false);
+  });
+
+  it('hazardous: the day step leaves one sign, and the unit may strike the next day', () => {
+    const s = withSympathizers(at('hazardous', brewing({ inState: 1, signs: 0 })));
+    loyaltyRecord(s, ANN).trigger = { kind: 'leash', day: s.day };
+    expect(ofType(step(s), 'mutiny_started')).toEqual([]); // the first sign is only a warning
+    const signs = loyaltyRecord(s, ANN).signs.filter((x) => x.about === 'mutiny');
+    expect(signs).toHaveLength(1);
+    s.day += 1;
+    loyaltyRecord(s, ANN).trigger = { kind: 'leash', day: s.day };
+    step(s);
+    expect(loyaltyRecord(s, ANN).signs.filter((x) => x.about === 'mutiny')).toHaveLength(1); // no second sign is needed
+    expect(mutinyReady(s, reg, ANN)).toBe(true);
+  });
+
+  it('a unit\'s own offset moves only her mutiny rules', () => {
+    const s = at('guarded', brewing({ state: 'resentful' }));
+    unit(s).dispositionOffset = 2; // volatile
+    expect(mutinyReady(s, reg, ANN)).toBe(true);
+    const kindUnit = at('guarded', brewing());
+    unit(kindUnit).dispositionOffset = -1; // kind
+    expect(mutinyReady(kindUnit, reg, ANN)).toBe(false);
+  });
+});

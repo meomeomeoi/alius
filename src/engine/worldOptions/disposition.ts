@@ -94,3 +94,9 @@ export function confidenceFloor(reg: Registries, setting: number): number {
   const lowest = levels.length === 0 ? TUNING.disposition.confidenceRef : Math.min(...levels.map((l) => Math.min(l.minConfidence.gain, l.minConfidence.loss)));
   return clamp(lowest + (clamp(setting, 0, 1) - TUNING.disposition.confidenceRef), 0, 1);
 }
+
+/** Her disposition scales a refusal chance (capped at 0.95); a multiplier of 1 changes nothing. */
+export function scaleRefusal(state: Pick<CampaignState, 'world' | 'squad'>, reg: Registries, unitId: string, chance: number): number {
+  const mult = dispositionById(state, reg, unitId).refusalMult;
+  return mult === 1 ? chance : Math.min(TUNING.disposition.refusalCap, chance * mult);
+}

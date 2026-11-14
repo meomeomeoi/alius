@@ -1,5 +1,5 @@
 import type { Registries } from '../content/types';
-import { refusalChance } from '../engine/loyalty/refusal';
+import { rawRefusalChance } from '../engine/loyalty/refusal';
 import type { CampaignState, LoyaltyBand } from '../engine/state/types';
 import { TUNING } from '../engine/tuning';
 import type { Directive } from '../llm/context';
@@ -57,7 +57,7 @@ export function refusalReason(state: CampaignState, reg: Registries, unitId: str
   const stateSynergies = (reg.relationshipStates.get(rel?.stateId ?? '')?.unlocks as { synergies?: string[] } | undefined)?.synergies ?? [];
   const fromState = Math.max(0, ...stateSynergies.map((id) => refusalOf(reg, id)));
   const fromBand = band === 'steady' ? 0 : refusalOf(reg, TUNING.disloyalty.bandSynergy[band]);
-  const total = refusalChance(state, reg, unitId);
+  const total = rawRefusalChance(state, reg, unitId); // the source chance: her disposition scales how often, not why
   if (total > Math.max(fromState, fromBand) + 1e-9) return 'her defect resists orders';
   if (fromState > 0 && fromState >= fromBand) return STATE_REASON[rel?.stateId ?? ''] ?? 'she resents him';
   if (band === 'breaking') return 'she no longer trusts him';

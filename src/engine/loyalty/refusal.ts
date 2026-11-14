@@ -5,6 +5,7 @@ import type { EngineCtx, EngineEvent } from '../dispatch';
 import { getSynergies } from '../relations';
 import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
+import { scaleRefusal } from '../worldOptions';
 
 type Refusal = { chance?: number; orders?: string[] };
 
@@ -12,12 +13,12 @@ const refusalsOf = (effects: unknown): Array<Refusal & { type: string }> =>
   Array.isArray(effects) ? (effects as Array<Refusal & { type: string }>).filter((e) => e?.type === 'order_refusal') : [];
 
 /**
- * The chance that she refuses an order: the highest `order_refusal` chance among the synergies of her relationship
+ * The source chance that she refuses an order, before her disposition: the highest `order_refusal` chance among the synergies of her relationship
  * state and loyalty band and the combat downsides of her defects (strained ones amplified, as in combat). An effect
  * limited to named orders only counts when `orderId` is one of them; without an `orderId` (an order in a scene) only
  * unrestricted effects count.
  */
-export function refusalChance(state: CampaignState, reg: Registries, unitId: string, orderId?: string): number {
+export function rawRefusalChance(state: CampaignState, reg: Registries, unitId: string, orderId?: string): number {
   const unit = state.squad.find((u) => u.id === unitId);
   if (!unit) return 0;
   const found: number[] = [0];
@@ -35,6 +36,11 @@ export function refusalChance(state: CampaignState, reg: Registries, unitId: str
     for (const e of refusalsOf(downside)) take(strained ? amplify(e as unknown as EffectSpec, TUNING.combat.strainedMult) as Refusal : e);
   }
   return Math.max(...found);
+}
+
+/** The chance that she refuses an order, as she will roll it: the source chance scaled by her disposition. */
+export function refusalChance(state: CampaignState, reg: Registries, unitId: string, orderId?: string): number {
+  return scaleRefusal(state, reg, unitId, rawRefusalChance(state, reg, unitId, orderId));
 }
 
 /**

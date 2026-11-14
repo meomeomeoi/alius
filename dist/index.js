@@ -47,7 +47,9 @@ var TUNING = Object.freeze({
     /** A `self` breakdown costs this share of the unit's max HP. */
     selfHarmPct: 10,
     /** A stance's gain damping never takes more than this share of a gain. */
-    gainDampMax: 0.8
+    gainDampMax: 0.8,
+    /** A disposition-scaled refusal chance never exceeds this. */
+    refusalCap: 0.95
   }),
   /** P7a: the change ledger behind trends, stress sources and "last changes" readings. */
   ledger: Object.freeze({ days: 7, max: 150 }),
@@ -740,6 +742,10 @@ function confidenceFloor(reg, setting) {
   const levels = [...reg.dispositionLevels.values()];
   const lowest = levels.length === 0 ? TUNING.disposition.confidenceRef : Math.min(...levels.map((l) => Math.min(l.minConfidence.gain, l.minConfidence.loss)));
   return clamp3(lowest + (clamp3(setting, 0, 1) - TUNING.disposition.confidenceRef), 0, 1);
+}
+function scaleRefusal(state, reg, unitId, chance) {
+  const mult = dispositionById(state, reg, unitId).refusalMult;
+  return mult === 1 ? chance : Math.min(TUNING.disposition.refusalCap, chance * mult);
 }
 
 // src/engine/social.ts
@@ -5198,7 +5204,9 @@ function issueOrder(ctx2, orderId, targetCid, opts = {}) {
   }
   delete cs.lastRefusal;
   if (order.target === "ally" && targetCid && opts.compel !== true) {
-    const chance = Math.max(0, ...activePassives(ctx2, targetCid, "order_refusal").filter((e) => matches(e.orders, orderId)).map((e) => e.chance ?? 0));
+    const source = Math.max(0, ...activePassives(ctx2, targetCid, "order_refusal").filter((e) => matches(e.orders, orderId)).map((e) => e.chance ?? 0));
+    const unitId = byCid(cs, targetCid).unitId;
+    const chance = unitId === void 0 ? source : scaleRefusal(ctx2.state, ctx2.reg, unitId, source);
     if (chance > 0 && ctx2.rng.chance(chance)) {
       ctx2.log({ kind: "order_refused", orderId, target: targetCid });
       ctx2.emit({ type: "order_refused", orderId, cid: targetCid, unitId: byCid(cs, targetCid).unitId });
@@ -12536,18 +12544,24 @@ function mutinyTrigger(state, unitId, minSeverity = "major") {
   return found.sort((a, b) => b.day - a.day)[0] ?? null;
 }
 var mutinySigns = (state, unitId) => (loyaltyOf(state, unitId)?.signs ?? []).filter((s) => s.about === "mutiny");
-function mayMutiny(state, unitId) {
+function mutinyRules(state, reg, unitId) {
+  return dispositionById(state, reg, unitId).mutiny;
+}
+function mayMutiny(state, reg, unitId) {
   const unit = state.squad.find((u) => u.id === unitId);
   const rel = state.relations[unitId];
   if (!unit || !rel || unit.kind !== "named" || !isLiving(unit)) return false;
-  if (rel.stateId === "despises") return state.day - rel.stateSince >= TUNING.mutiny.minDaysInState;
+  const rules2 = mutinyRules(state, reg, unitId);
+  if (!rules2.enabled) return false;
+  if (rules2.states.includes(rel.stateId)) return state.day - rel.stateSince >= rules2.minDaysInState;
   return rel.stateId === "obsessed" && mutinyTrigger(state, unitId, "extreme") !== null;
 }
-function mutinyReady(state, _reg, unitId) {
-  if (!mayMutiny(state, unitId)) return false;
-  if (state.relations[unitId].stateId === "despises" && mutinyTrigger(state, unitId) === null) return false;
+function mutinyReady(state, reg, unitId) {
+  if (!mayMutiny(state, reg, unitId)) return false;
+  const rules2 = mutinyRules(state, reg, unitId);
+  if (rules2.states.includes(state.relations[unitId].stateId) && mutinyTrigger(state, unitId) === null) return false;
   const signs = mutinySigns(state, unitId);
-  return signs.length >= TUNING.mutiny.minSigns && new Set(signs.map((s) => s.day)).size >= TUNING.mutiny.minSigns;
+  return signs.length >= rules2.minSigns && new Set(signs.map((s) => s.day)).size >= rules2.minSigns;
 }
 function sympathizers(state, unitId) {
   return state.roster.activeIds.filter((id) => {
@@ -12586,7 +12600,9 @@ function mutinyDayStep(draft, ctx2) {
   const events = [];
   for (const u of draft.squad.filter((x) => x.kind === "named" && isLiving(x))) {
     const rec = loyaltyOf(draft, u.id);
-    const candidate = draft.relations[u.id]?.stateId === "despises" || draft.relations[u.id]?.stateId === "obsessed" && mutinyTrigger(draft, u.id, "extreme") !== null;
+    const rules2 = mutinyRules(draft, ctx2.registries, u.id);
+    const stateId = draft.relations[u.id]?.stateId;
+    const candidate = rules2.enabled && (rules2.states.includes(stateId ?? "") || stateId === "obsessed" && mutinyTrigger(draft, u.id, "extreme") !== null);
     if (!candidate) {
       if (rec?.signs.some((s) => s.about === "mutiny")) rec.signs = rec.signs.filter((s) => s.about !== "mutiny");
       continue;
@@ -12594,7 +12610,7 @@ function mutinyDayStep(draft, ctx2) {
     const signs = mutinySigns(draft, u.id);
     const newest = Math.max(-Infinity, ...signs.map((s) => s.day));
     if (signs.length === 0) events.push(...emitSign(draft, ctx2, u.id, "mutiny", 1));
-    else if (signs.length === 1 && newest < draft.day) events.push(...emitSign(draft, ctx2, u.id, "mutiny", 2));
+    else if (signs.length === 1 && rules2.minSigns >= 2 && newest < draft.day) events.push(...emitSign(draft, ctx2, u.id, "mutiny", 2));
     const aged = mutinySigns(draft, u.id);
     const lastSign = Math.max(-Infinity, ...aged.map((s) => s.day));
     if (draft.disloyalty?.open || draft.day - lastSign < 1 || !mutinyReady(draft, ctx2.registries, u.id)) continue;
@@ -12688,7 +12704,7 @@ function desertionChance(state, reg, unitId) {
   p += rel.affinity < 0 ? t.affinityNegative * -rel.affinity : -t.affinityPositive * rel.affinity;
   p += t.perStressAbove * Math.max(0, unit.stress - t.stressRef);
   for (const d of unit.defects) p += reg.defects.get(d.id)?.desertionMod ?? 0;
-  return clamp16(p, t.min, t.max);
+  return clamp16(p * dispositionById(state, reg, unitId).desertionMult, t.min, t.max);
 }
 function mayDesert(state, unitId) {
   if (state.disloyalty?.open) return false;
@@ -13681,7 +13697,7 @@ registerAction("leash/terminate", (draft, payload, ctx2) => terminate(draft, ctx
 
 // src/engine/loyalty/refusal.ts
 var refusalsOf = (effects2) => Array.isArray(effects2) ? effects2.filter((e) => e?.type === "order_refusal") : [];
-function refusalChance(state, reg, unitId, orderId) {
+function rawRefusalChance(state, reg, unitId, orderId) {
   const unit = state.squad.find((u) => u.id === unitId);
   if (!unit) return 0;
   const found = [0];
@@ -13699,6 +13715,9 @@ function refusalChance(state, reg, unitId, orderId) {
     for (const e of refusalsOf(downside)) take(strained ? amplify(e, TUNING.combat.strainedMult) : e);
   }
   return Math.max(...found);
+}
+function refusalChance(state, reg, unitId, orderId) {
+  return scaleRefusal(state, reg, unitId, rawRefusalChance(state, reg, unitId, orderId));
 }
 function orderInScene(draft, ctx2, unitId) {
   const scene = draft.scene;
@@ -15047,7 +15066,7 @@ function refusalReason(state, reg, unitId) {
   const stateSynergies = reg.relationshipStates.get(rel?.stateId ?? "")?.unlocks?.synergies ?? [];
   const fromState = Math.max(0, ...stateSynergies.map((id) => refusalOf(reg, id)));
   const fromBand = band === "steady" ? 0 : refusalOf(reg, TUNING.disloyalty.bandSynergy[band]);
-  const total = refusalChance(state, reg, unitId);
+  const total = rawRefusalChance(state, reg, unitId);
   if (total > Math.max(fromState, fromBand) + 1e-9) return "her defect resists orders";
   if (fromState > 0 && fromState >= fromBand) return STATE_REASON[rel?.stateId ?? ""] ?? "she resents him";
   if (band === "breaking") return "she no longer trusts him";

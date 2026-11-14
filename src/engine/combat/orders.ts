@@ -1,5 +1,6 @@
 import type { Severity } from '../state/types';
 import { TUNING } from '../tuning';
+import { scaleRefusal } from '../worldOptions';
 import { activePassives, applyEffects, type EffectCtx } from './effects';
 import { addStress } from './stress';
 import { byCid, hasFlag, isStanding, living } from './targeting';
@@ -96,8 +97,10 @@ export function issueOrder(ctx: EffectCtx, orderId: string, targetCid?: string, 
   }
   delete cs.lastRefusal; // any later order answers the refusal (P6)
   if (order.target === 'ally' && targetCid && opts.compel !== true) {
-    const chance = Math.max(0, ...activePassives(ctx, targetCid, 'order_refusal')
+    const source = Math.max(0, ...activePassives(ctx, targetCid, 'order_refusal')
       .filter((e) => matches(e.orders, orderId)).map((e) => e.chance ?? 0));
+    const unitId = byCid(cs, targetCid).unitId;
+    const chance = unitId === undefined ? source : scaleRefusal(ctx.state, ctx.reg, unitId, source); // P8: her disposition
     if (chance > 0 && ctx.rng.chance(chance)) {
       ctx.log({ kind: 'order_refused', orderId, target: targetCid });
       ctx.emit({ type: 'order_refused', orderId, cid: targetCid, unitId: byCid(cs, targetCid).unitId });

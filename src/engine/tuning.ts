@@ -42,6 +42,8 @@ export const TUNING = Object.freeze({
     selfHarmPct: 10,
     /** A stance's gain damping never takes more than this share of a gain. */
     gainDampMax: 0.8,
+    /** A disposition-scaled refusal chance never exceeds this. */
+    refusalCap: 0.95,
   }),
   /** P7a: the change ledger behind trends, stress sources and "last changes" readings. */
   ledger: Object.freeze({ days: 7, max: 150 }),

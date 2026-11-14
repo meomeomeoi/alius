@@ -14,6 +14,7 @@ import { socialRank } from '../social';
 import type { CampaignState, Confrontation } from '../state/types';
 import { TUNING } from '../tuning';
 import { applyWorldEffects } from '../world/effects';
+import { dispositionById } from '../worldOptions';
 import { postRumor, rumorPostedEvent } from '../world/missions';
 import { mutinyDayStep, resolveExpiredMutiny } from './mutiny';
 import { closeNight, emitSign, loyaltyOf, loyaltyRecord, requireOpen } from './state';
@@ -30,7 +31,7 @@ export function desertionChance(state: CampaignState, reg: Registries, unitId: s
   p += rel.affinity < 0 ? t.affinityNegative * -rel.affinity : -t.affinityPositive * rel.affinity;
   p += t.perStressAbove * Math.max(0, unit.stress - t.stressRef);
   for (const d of unit.defects) p += (reg.defects.get(d.id)?.desertionMod as number | undefined) ?? 0;
-  return clamp(p, t.min, t.max);
+  return clamp(p * dispositionById(state, reg, unitId).desertionMult, t.min, t.max); // P8: her disposition scales the raw chance
 }
 
 /** Whether a desertion check may run for her now: nothing is open, the pause is over, and a sign at least a day old was given. */

@@ -288,16 +288,16 @@ docs/** (Task 16), tests/** mirror src
 - Consumes: `dispositionById`.
 - Produces: `refusalChance` × `refusalMult` (≤ 0.95); `desertionChance` = `clamp(p × desertionMult, min, max)`; `mutinyRules(state, reg, unitId): { enabled; states; minDaysInState; minSigns }`, read by `mayMutiny`, `mutinyReady` and `mutinyDayStep` (candidate test, sign clearing). The `obsessed` path stays only where `enabled`.
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `refusal and desertion scale ×0.5 at kind and ×2 at hazardous, within their clamps`
   - `mutiny is impossible at kind even when despises with a trigger and signs`
   - `resentful cannot mutiny at prickly and can at volatile`
   - `hazardous mutinies after one sign a day old and one day in state`
   - `guarded keeps the P6 numbers` (existing mutiny tests unchanged)
-- [ ] **Step 2: Run** `npx vitest run tests/engine/loyalty` and expect FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** `npx vitest run` and expect green.
-- [ ] **Step 5: Commit** `feat(engine): disposition in refusals, desertion and mutiny`.
+- [x] **Step 2: Run** `npx vitest run tests/engine/loyalty` and expect FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** `npx vitest run` and expect green.
+- [x] **Step 5: Commit** `feat(engine): disposition in refusals, desertion and mutiny`.
 
 ### Task 7: Breakdown targeting by disposition
 
