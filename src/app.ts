@@ -40,6 +40,8 @@ import { CONFRONTATION_KINDS } from './engine/loyalty/state';
 import type { LeashKind } from './engine/state/types';
 import { createDilemmas, type DilemmaController } from './loyalty/dilemmaController';
 import { createLoyalty, type LoyaltyController } from './loyalty/loyaltyController';
+import { clearDisciplineDirectives, disciplineDirectives } from './discipline/context';
+import { createDiscipline, type DisciplineController } from './discipline/controller';
 import { renderDilemma } from './ui/dilemma/dilemmaPanel';
 import { fileLeashRequest } from './ui/leash/requestForm';
 import { renderConfrontation } from './ui/loyalty/confrontation';
@@ -148,6 +150,8 @@ export interface AliusApp {
   dilemmas: DilemmaController;
   /** Refusals, Leash directives and decision aftermath in scenes (P6). */
   loyalty: LoyaltyController;
+  /** Stance and threat directives (P9). */
+  discipline: DisciplineController;
   /**
    * Files a Leash request through the oversight form, then runs the action. Refused (with a toast) before the form
    * opens when it cannot apply; resolves false when withdrawn or refused by the engine.
@@ -183,8 +187,13 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
 
   function applyContext(): void {
     // P8: the world directives follow the open scene, the days known and a live option change, so they are refreshed with every render
-    if (state) worldDirectives(context, state, registries);
-    else clearWorldDirectives(context);
+    if (state) {
+      worldDirectives(context, state, registries);
+      disciplineDirectives(context, state, registries); // P9: the stance of every unit in the open scene replaces her band text
+    } else {
+      clearWorldDirectives(context);
+      clearDisciplineDirectives(context);
+    }
     context.apply(st, state, getSettings(st).contextTokenCap);
   }
 
@@ -270,6 +279,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
   const director = createDirector(worldDeps);
   const dilemmas = createDilemmas(worldDeps);
   const loyalty = createLoyalty({ ...worldDeps, context, refreshContext: applyContext });
+  const discipline = createDiscipline({ ...worldDeps, context, refreshContext: applyContext });
   const expedition = createExpedition({ ...worldDeps, startCombat: (p) => api.startCombat(p), startScene: (o) => beginScene(o) });
   let expeditionScreen: ExpeditionScreen | null = null;
   /** True while the expedition screen is what the shell shows. */
@@ -302,9 +312,11 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     clearSceneDirectives(context);
     context.clearMatching((d) => d.id === 'night' || d.id.startsWith('proposal:'));
     loyalty.onSceneClosed(); // refusal, band, trauma and aftermath directives belong to one scene of one campaign (P6)
+    discipline.onSceneClosed(); // so do the stance and threat directives (P9)
     if (state?.scene) {
       scene.resume();
       loyalty.onSceneOpened();
+      discipline.onSceneOpened();
       showScene();
     } else if (state && state.slot === 'night' && state.calendar.nightEvent && confrontationNight(state)) {
       showScene(); // a confrontation is waiting: its panel comes back after a reload
@@ -325,6 +337,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       return false;
     }
     loyalty.onSceneOpened();
+    discipline.onSceneOpened();
     showScene();
     shell.open();
     return true;
@@ -391,7 +404,11 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         if (e.type === 'unit_deserted') removeFromChat(String(e.unitId), `${state?.squad.find((u) => u.id === e.unitId)?.displayName ?? 'A unit'} HAS DESERTED`);
         if (e.type === 'unit_terminated') removeFromChat(String(e.unitId), `${state?.squad.find((u) => u.id === e.unitId)?.displayName ?? 'A unit'} DEACTIVATED`);
       }
-      if (has('scene_ended') || has('scene_aborted')) loyalty.onSceneClosed();
+      discipline.onEvents(events);
+      if (has('scene_ended') || has('scene_aborted')) {
+        loyalty.onSceneClosed();
+        discipline.onSceneClosed();
+      }
       if (has('commander_injured')) api.dispatch({ type: 'relations/commander_injured', payload: {} }, { expectChatId: chatId });
       if (has('night_started') && state?.slot === 'night' && !state.scene) {
         showScene();
@@ -1635,6 +1652,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     director,
     dilemmas,
     loyalty,
+    discipline,
     fileLeash,
     intakeUnit,
     startScene: beginScene,

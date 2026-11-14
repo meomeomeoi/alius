@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { createApp, type AliusApp } from '../src/app';
 import { loadPacks } from '../src/content/loader';
+import { commandStance, stanceEntry } from '../src/engine/discipline';
 import { loyaltyRecord } from '../src/engine/loyalty/state';
 import { seedRng } from '../src/engine/rng';
 import type { SetupResult } from '../src/engine/setup';
@@ -396,14 +397,44 @@ describe('the Leash in scenes', () => {
     expect(t.sh.toasts.filter((x) => x.kind !== 'info').length).toBeGreaterThanOrEqual(3);
   });
 
-  it('a scene with a wavering unit carries the band directive and closing it clears it', async () => {
+  it('a scene with a wavering unit carries her stance directive, not the band text, and closing it clears it', async () => {
     const t = await boot();
     t.edit((s) => { Object.assign(s.relations[RHEA], { loyaltyBand: 'wavering', trust: 20 }); });
     expect(await t.app.startScene({ locationId: 'mess_hall', participants: [RHEA], origin: 'event' })).toBe(true);
-    expect(t.directives()).toContain('Rhea openly doubts the commander in this scene');
+    const stance = commandStance(t.state(), content.registries, RHEA)!;
+    const text = String(stanceEntry(content.registries, stance)!.directive).replaceAll('{name}', 'Rhea');
+    expect(t.directives()).toContain(text);
+    expect(t.directives()).not.toContain('openly doubts the commander in this scene');
     await t.app.scene.end();
     await settle();
-    expect(t.directives()).not.toContain('openly doubts');
+    expect(t.directives()).not.toContain(text);
+  });
+
+  it('a stance that changes during the scene is told on the next render (P9)', async () => {
+    const t = await boot();
+    t.edit((s) => { Object.assign(s.relations[RHEA], { trust: 60 }); delete s.relations[RHEA].impunityRecord; });
+    expect(await t.app.startScene({ locationId: 'mess_hall', participants: [RHEA], origin: 'event' })).toBe(true);
+    const before = commandStance(t.state(), content.registries, RHEA)!;
+    t.edit((s) => { s.relations[RHEA].impunityRecord = 40; s.relations[RHEA].trust = 10; });
+    t.app.refreshContext();
+    const after = commandStance(t.state(), content.registries, RHEA)!;
+    expect(after).toBe('open_defiance');
+    expect(before).not.toBe(after);
+    const text = (st: string) => String(stanceEntry(content.registries, st as never)!.directive).replaceAll('{name}', 'Rhea');
+    expect(t.directives()).toContain(text(after));
+    expect(t.directives()).not.toContain(text(before));
+  });
+
+  it('a threat directive and the stance directive do not survive a chat switch (P9)', async () => {
+    const t = await boot();
+    expect(await t.app.startScene({ locationId: 'mess_hall', participants: [RHEA], origin: 'event' })).toBe(true);
+    t.app.context.setDirective({ id: 'threat:unit_rhea', text: 'THREAT TEXT', expiresAfter: 'next_reply' });
+    t.app.context.setDirective({ id: 'discipline:unit_rhea', text: 'DISCIPLINE TEXT', expiresAfter: 'next_reply' });
+    t.app.refreshContext();
+    expect(t.directives()).toContain('THREAT TEXT');
+    t.st.emit('chat_changed');
+    await settle();
+    for (const gone of ['THREAT TEXT', 'DISCIPLINE TEXT', 'Rhea ']) expect(t.directives()).not.toContain(gone);
   });
 
   it('a chat switch clears refusal, trauma and aftermath directives', async () => {

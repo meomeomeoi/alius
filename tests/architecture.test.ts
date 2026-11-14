@@ -39,6 +39,24 @@ describe('architecture', () => {
     }
   });
 
+  it('the discipline layer talks to ST only through the adapter type and never touches the UI (P9)', () => {
+    const files = tsFiles('src/discipline');
+    expect(files.length).toBeGreaterThan(0);
+    for (const file of files) {
+      const text = readFileSync(file, 'utf8');
+      const imports = [...text.matchAll(/^import\s+(type\s+)?[^;]*?from\s+['"]([^'"]+)['"]/gm)].map((m) => ({ isType: m[1] !== undefined, path: m[2] }));
+      for (const { isType, path } of imports) {
+        expect(path, `${file} imports ${path}`).not.toMatch(/\/ui\//);
+        expect(path, `${file} imports ${path}`).not.toMatch(/st\/real$/);
+        expect(path, `${file} imports ${path}`).not.toMatch(/^st:/);
+        if (/\/st\//.test(path) || /\/st$/.test(path)) expect(isType, `${file} must use import type for ${path}`).toBe(true);
+      }
+      for (const id of ['window', 'document', 'SillyTavern']) {
+        expect(text, `${file} uses ${id}`).not.toMatch(new RegExp(`\\b${id}\\b`));
+      }
+    }
+  });
+
   it('the sim layer imports only engine and content', () => {
     const files = tsFiles('src/sim');
     expect(files.length).toBeGreaterThan(0);

@@ -1,0 +1,37 @@
+import type { Entry, Registries } from '../content/types';
+import type { LoyaltyBand } from '../engine/state/types';
+import type { Directive } from '../llm/context';
+
+/** The P6 sentence a unit on the edge of leaving adds to whatever her stance says. */
+const LEAVING = 'She is close to leaving the unit: if pressed she says she is thinking of going.';
+
+const fill = (text: unknown, vars: Record<string, string>): string =>
+  Object.entries(vars).reduce((t, [k, v]) => t.replaceAll(`{${k}}`, v), String(text ?? ''));
+
+/** What the main model is told about how a unit relates to the commander's authority (replaces the loyalty band text). */
+export function stanceDirective(unitId: string, name: string, entry: Entry, band: LoyaltyBand): Directive {
+  const text = fill(entry.directive, { name });
+  return { id: `loyalty:${unitId}`, expiresAfter: 'scene', text: band === 'breaking' ? `${text} ${LEAVING}` : text };
+}
+
+/** A refused order, in the form her stance gives it (open, formal, her own way, or a quiet stall). Same id as the P6 refusal. */
+export function stanceRefusalDirective(unitId: string, name: string, entry: Entry, reason: string): Directive {
+  return { id: `refusal:${unitId}`, expiresAfter: 'scene', text: fill(entry.refusal, { name, reason }) };
+}
+
+/** The threat that was just made and what she makes of it: for the next reply only. */
+export function threatDirective(unitId: string, name: string, label: string, believed: boolean): Directive {
+  return {
+    id: `threat:${unitId}`, expiresAfter: 'next_reply',
+    text: believed
+      ? `${name} believes the commander's threat (${label}) will be carried out.`
+      : `${name} does not believe the commander's threat (${label}) will be carried out, and it shows.`,
+  };
+}
+
+/** The label of a measure: a punishment's own, the Leash, or the generic word for a threat that named nothing. */
+export function measureLabel(reg: Registries, measure: string): string {
+  if (measure === 'leash') return 'The Leash';
+  const label = reg.punishments.get(measure)?.label;
+  return typeof label === 'string' && label !== '' ? label : 'Consequences';
+}

@@ -15703,6 +15703,29 @@ function createDilemmas(deps) {
   return { onRequested, choose, busy: () => running.size > 0 };
 }
 
+// src/discipline/directives.ts
+var LEAVING = "She is close to leaving the unit: if pressed she says she is thinking of going.";
+var fill = (text2, vars) => Object.entries(vars).reduce((t, [k, v]) => t.replaceAll(`{${k}}`, v), String(text2 ?? ""));
+function stanceDirective(unitId, name, entry, band) {
+  const text2 = fill(entry.directive, { name });
+  return { id: `loyalty:${unitId}`, expiresAfter: "scene", text: band === "breaking" ? `${text2} ${LEAVING}` : text2 };
+}
+function stanceRefusalDirective(unitId, name, entry, reason) {
+  return { id: `refusal:${unitId}`, expiresAfter: "scene", text: fill(entry.refusal, { name, reason }) };
+}
+function threatDirective(unitId, name, label2, believed) {
+  return {
+    id: `threat:${unitId}`,
+    expiresAfter: "next_reply",
+    text: believed ? `${name} believes the commander's threat (${label2}) will be carried out.` : `${name} does not believe the commander's threat (${label2}) will be carried out, and it shows.`
+  };
+}
+function measureLabel(reg, measure) {
+  if (measure === "leash") return "The Leash";
+  const label2 = reg.punishments.get(measure)?.label;
+  return typeof label2 === "string" && label2 !== "" ? label2 : "Consequences";
+}
+
 // src/loyalty/directives.ts
 var refusalDirective = (unitId, name, reason) => ({
   id: `refusal:${unitId}`,
@@ -15772,10 +15795,17 @@ function createLoyalty(deps) {
       toastFailure(bad);
       return false;
     }
-    const refused = events.find((e) => e.type === "scene_order")?.refused === true;
+    const result = events.find((e) => e.type === "scene_order");
+    const refused = result?.refused === true;
+    const covert = result?.covert === true;
     const state = deps.app.current().state;
-    if (refused && state) deps.context.setDirective(refusalDirective(unitId, nameOf7(unitId), refusalReason(state, deps.registries(), unitId)));
-    else deps.context.clearDirective(`refusal:${unitId}`);
+    if ((refused || covert) && state) {
+      const reg = deps.registries();
+      const stance = commandStance(state, reg, unitId);
+      const entry = stance === null ? void 0 : stanceEntry(reg, stance);
+      const reason = refusalReason(state, reg, unitId);
+      deps.context.setDirective(entry ? stanceRefusalDirective(unitId, nameOf7(unitId), entry, reason) : refusalDirective(unitId, nameOf7(unitId), reason));
+    } else deps.context.clearDirective(`refusal:${unitId}`);
     deps.refreshContext();
     return refused;
   }
@@ -15827,6 +15857,54 @@ function createLoyalty(deps) {
     if (set) deps.refreshContext();
   }
   return { order, compel: compel2, onSceneOpened, onSceneClosed, onEvents };
+}
+
+// src/discipline/context.ts
+var OWN_PREFIXES = ["loyalty:", "threat:", "discipline:"];
+function clearDisciplineDirectives(builder) {
+  builder.clearMatching((d) => OWN_PREFIXES.some((p) => d.id.startsWith(p)));
+}
+function disciplineDirectives(builder, state, reg) {
+  const present = new Set(state.scene?.participants ?? []);
+  builder.clearMatching((d) => d.id.startsWith("loyalty:") && !present.has(d.id.slice("loyalty:".length)));
+  for (const id of present) {
+    const unit = state.squad.find((u) => u.id === id);
+    const stance = commandStance(state, reg, id);
+    const entry = stance === null ? void 0 : stanceEntry(reg, stance);
+    if (!unit || !entry) continue;
+    builder.setDirective(stanceDirective(id, unit.displayName, entry, state.relations[id]?.loyaltyBand ?? "steady"));
+  }
+}
+
+// src/discipline/controller.ts
+function createDiscipline(deps) {
+  const nameOf7 = (unitId) => deps.app.current().state?.squad.find((u) => u.id === unitId)?.displayName ?? unitId;
+  function onEvents(events) {
+    let set = false;
+    for (const e of events) {
+      if (e.type === "threat_registered") {
+        const unitId = String(e.unitId);
+        deps.context.setDirective(threatDirective(unitId, nameOf7(unitId), measureLabel(deps.registries(), String(e.measure)), e.believed === true));
+        set = true;
+      } else if (e.type === "threat_lapsed") {
+        deps.toast("info", `A threat lapsed: ${nameOf7(String(e.unitId))} saw the commander back down.`);
+      } else if (e.type === "covert_sabotage" && deps.settings().debug) {
+        deps.toast("info", `Covert sabotage (${String(e.kind)}).`);
+      }
+    }
+    if (set) deps.refreshContext();
+  }
+  function onSceneOpened() {
+    const state = deps.app.current().state;
+    if (!state?.scene) return;
+    disciplineDirectives(deps.context, state, deps.registries());
+    deps.refreshContext();
+  }
+  function onSceneClosed() {
+    clearDisciplineDirectives(deps.context);
+    deps.refreshContext();
+  }
+  return { onEvents, onSceneOpened, onSceneClosed };
 }
 
 // src/ui/analyze/mark.ts
@@ -20921,7 +20999,7 @@ function registerWorldContext(builder, deps) {
 // src/world/optionsContext.ts
 var PREFIX = "World settings: ";
 var WORLD_PRIORITY = 85;
-var OWN_PREFIXES = ["world:", "stance:", "friction:"];
+var OWN_PREFIXES2 = ["world:", "stance:", "friction:"];
 var EARLY_WEIGHT = 0.5;
 function worldSettingsLine(state, reg) {
   const lines = [];
@@ -20943,7 +21021,7 @@ function registerWorldOptionsContext(builder, deps) {
   });
 }
 function clearWorldDirectives(builder) {
-  builder.clearMatching((d) => OWN_PREFIXES.some((p) => d.id.startsWith(p)));
+  builder.clearMatching((d) => OWN_PREFIXES2.some((p) => d.id.startsWith(p)));
 }
 function worldDirectives(builder, state, reg) {
   clearWorldDirectives(builder);
@@ -24146,8 +24224,13 @@ function createApp(st, deps) {
   let setup = null;
   const toast = (kind, text2) => shell.toast(kind, text2);
   function applyContext() {
-    if (state) worldDirectives(context, state, registries);
-    else clearWorldDirectives(context);
+    if (state) {
+      worldDirectives(context, state, registries);
+      disciplineDirectives(context, state, registries);
+    } else {
+      clearWorldDirectives(context);
+      clearDisciplineDirectives(context);
+    }
     context.apply(st, state, getSettings(st).contextTokenCap);
   }
   registerSceneContext(context, { registries: () => registries, settings: () => getSettings(st) });
@@ -24217,6 +24300,7 @@ function createApp(st, deps) {
   const director = createDirector(worldDeps);
   const dilemmas = createDilemmas(worldDeps);
   const loyalty = createLoyalty({ ...worldDeps, context, refreshContext: applyContext });
+  const discipline = createDiscipline({ ...worldDeps, context, refreshContext: applyContext });
   const expedition = createExpedition({ ...worldDeps, startCombat: (p) => api.startCombat(p), startScene: (o) => beginScene(o) });
   let expeditionScreen = null;
   let onExpeditionScreen = false;
@@ -24241,9 +24325,11 @@ function createApp(st, deps) {
     clearSceneDirectives(context);
     context.clearMatching((d) => d.id === "night" || d.id.startsWith("proposal:"));
     loyalty.onSceneClosed();
+    discipline.onSceneClosed();
     if (state?.scene) {
       scene.resume();
       loyalty.onSceneOpened();
+      discipline.onSceneOpened();
       showScene();
     } else if (state && state.slot === "night" && state.calendar.nightEvent && confrontationNight(state)) {
       showScene();
@@ -24262,6 +24348,7 @@ function createApp(st, deps) {
       return false;
     }
     loyalty.onSceneOpened();
+    discipline.onSceneOpened();
     showScene();
     shell.open();
     return true;
@@ -24321,7 +24408,11 @@ function createApp(st, deps) {
         if (e.type === "unit_deserted") removeFromChat(String(e.unitId), `${state?.squad.find((u) => u.id === e.unitId)?.displayName ?? "A unit"} HAS DESERTED`);
         if (e.type === "unit_terminated") removeFromChat(String(e.unitId), `${state?.squad.find((u) => u.id === e.unitId)?.displayName ?? "A unit"} DEACTIVATED`);
       }
-      if (has2("scene_ended") || has2("scene_aborted")) loyalty.onSceneClosed();
+      discipline.onEvents(events);
+      if (has2("scene_ended") || has2("scene_aborted")) {
+        loyalty.onSceneClosed();
+        discipline.onSceneClosed();
+      }
       if (has2("commander_injured")) api.dispatch({ type: "relations/commander_injured", payload: {} }, { expectChatId: chatId });
       if (has2("night_started") && state?.slot === "night" && !state.scene) {
         showScene();
@@ -25491,6 +25582,7 @@ function createApp(st, deps) {
     director,
     dilemmas,
     loyalty,
+    discipline,
     fileLeash,
     intakeUnit,
     startScene: beginScene,

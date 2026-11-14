@@ -1,4 +1,6 @@
 import type { EngineEvent } from '../engine/dispatch';
+import { stanceRefusalDirective } from '../discipline/directives';
+import { commandStance, stanceEntry } from '../engine/discipline';
 import { leashLog } from '../engine/leash/weekly';
 import { TUNING } from '../engine/tuning';
 import type { LoyaltyDeps } from './deps';
@@ -37,10 +39,17 @@ export function createLoyalty(deps: LoyaltyDeps): LoyaltyController {
       toastFailure(bad);
       return false;
     }
-    const refused = events.find((e) => e.type === 'scene_order')?.refused === true;
+    const result = events.find((e) => e.type === 'scene_order');
+    const refused = result?.refused === true;
+    const covert = result?.covert === true; // P9: a fearful unit says yes and does it badly; the player sees an accepted order
     const state = deps.app.current().state;
-    if (refused && state) deps.context.setDirective(refusalDirective(unitId, nameOf(unitId), refusalReason(state, deps.registries(), unitId)));
-    else deps.context.clearDirective(`refusal:${unitId}`);
+    if ((refused || covert) && state) {
+      const reg = deps.registries();
+      const stance = commandStance(state, reg, unitId);
+      const entry = stance === null ? undefined : stanceEntry(reg, stance);
+      const reason = refusalReason(state, reg, unitId);
+      deps.context.setDirective(entry ? stanceRefusalDirective(unitId, nameOf(unitId), entry, reason) : refusalDirective(unitId, nameOf(unitId), reason));
+    } else deps.context.clearDirective(`refusal:${unitId}`);
     deps.refreshContext();
     return refused;
   }

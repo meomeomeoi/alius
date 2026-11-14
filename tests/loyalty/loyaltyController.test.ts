@@ -61,7 +61,8 @@ describe('orders in a scene', () => {
   it('a refused order sets the refusal directive for the scene and a compel replaces it for the next reply', () => {
     const r = rig((s) => setRelation(s, ANN, { band: 'breaking', trust: 5 }));
     refuse(r);
-    expect(dirs(r)).toContain("Ann REFUSES the commander's order this scene. Reason: she no longer trusts the commander.");
+    // Ann has Trust 5 and a record of 40: open defiance, so the refusal is open and contemptuous (P9)
+    expect(dirs(r)).toContain("Ann REFUSES the commander's order this scene, openly and with contempt. Reason: she no longer trusts the commander.");
     expect(r.refresh).toHaveBeenCalled();
     expect(r.loyalty.compel(ANN)).toBe(true);
     expect(dirs(r)).toContain('Ann has just been COMPELLED through the Leash');
@@ -208,5 +209,53 @@ describe('dilemma aftermath', () => {
     r.loyalty.onEvents([{ type: 'dilemma_resolved', id: 'dl1', templateId: 'x', nothing: true }, { type: 'leash_changed', amount: -1, left: 2 }]);
     expect(dirs(r)).toBe('');
     expect(r.refresh).not.toHaveBeenCalled();
+  });
+});
+
+describe('covert refusals and stance refusals (P9)', () => {
+  const fearful = (s: CampaignState) => { setRelation(s, ANN, { band: 'breaking', trust: 5 }); setRecord(s, ANN, 0); };
+  /** Orders ANN until the engine's roll hides a refusal (she is `fearful` and `breaking`, 35 %). */
+  function covertOrder(r: Rig): boolean {
+    for (let seed = 1; seed <= 100; seed++) {
+      r.h.setState((s) => { s.rng = seedRng(seed); delete s.scene!.refusals; });
+      const before = r.h.log.length;
+      const refused = r.loyalty.order(ANN);
+      const e = r.h.log.length > before ? r.h.state().discipline?.sabotage?.queued.length ?? 0 : 0;
+      if (!refused && e > 0) return true;
+    }
+    throw new Error('no seed hides a refusal');
+  }
+
+  it('a covert refusal sets the fearful refusal text and reports no refusal', () => {
+    const r = rig(fearful);
+    expect(covertOrder(r)).toBe(true);
+    expect(dirs(r)).toContain('Ann says she will carry out the order and does not mean it');
+    expect(dirs(r)).not.toContain('REFUSES');
+    expect(r.h.state().scene!.refusals ?? []).toEqual([]);
+    expect(r.refresh).toHaveBeenCalled();
+  });
+
+  it('a later compliant order clears the covert text', () => {
+    const r = rig(fearful);
+    covertOrder(r);
+    for (let seed = 1; seed <= 100; seed++) {
+      r.h.setState((s) => { s.rng = seedRng(seed); delete s.scene!.refusals; });
+      const queued = r.h.state().discipline?.sabotage?.queued.length ?? 0;
+      r.loyalty.order(ANN);
+      if ((r.h.state().discipline?.sabotage?.queued.length ?? 0) === queued && !dirs(r).includes('does not mean it')) return;
+    }
+    throw new Error('never complied');
+  });
+
+  it('a unit whose stance the content does not describe keeps the P6 refusal text', () => {
+    const none: Registries = { ...reg, commandStances: new Map() };
+    const s = structuredClone(base);
+    setRelation(s, ANN, { band: 'breaking', trust: 5 });
+    const h = worldHarness(none, s);
+    h.app().dispatch({ type: 'scene/start', payload: { locationId: 'mess_hall', participants: [ANN, BEA], origin: 'event', startIndex: 0 } });
+    const ctx = new ContextBuilder();
+    const rg: Rig = { h, ctx, refresh: vi.fn(), loyalty: createLoyalty({ ...h.deps, registries: () => none, context: ctx, refreshContext: vi.fn() }) };
+    refuse(rg);
+    expect(dirs(rg)).toContain("Ann REFUSES the commander's order this scene. Reason: she no longer trusts the commander.");
   });
 });

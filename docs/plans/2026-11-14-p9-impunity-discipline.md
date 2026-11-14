@@ -339,13 +339,13 @@ sabotage: `a queued sabotage fires at the next day end` (one of: supplies −2, 
   - `interface DisciplineController { onEvents(events: EngineEvent[]): void; onSceneOpened(): void; onSceneClosed(): void }`, `createDiscipline(deps: DisciplineDeps): DisciplineController`; `AliusApp.discipline`. This task: `onEvents` sets the threat directive from `threat_registered` and, in debug mode, toasts `covert_sabotage`; otherwise the app toasts `A threat lapsed: {name} saw the commander back down.` on `threat_lapsed`.
   - `LoyaltyController.order`: on `refused` uses `stanceRefusalDirective`; on `covert` sets the fearful `refusal` text under the same id and returns `false`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `the directive of a participant matches her quadrant` (four fixtures, the exact registry text with her name) — **acceptance 3**; `a stance change during a scene replaces the text on the next render`; `a wavering unit shows the stance text, not the P6 wavering text`; `a breaking unit gets the stance text plus the leaving sentence`; `a covert refusal sets the fearful refusal text and reports no refusal`; `a believed and an unbelieved threat give the two texts`; `directives are cleared when the scene closes and when another chat loads`; architecture: `src/discipline` imports no `/ui/`, no `st/real`, no `st:`.
 
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** `npm test` → PASS.
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** `npm test` → PASS.
 
-- [ ] **Step 5: Commit** `feat(discipline): stance and threat directives, refusal form, app wiring`
+- [x] **Step 5: Commit** `feat(discipline): stance and threat directives, refusal form, app wiring`
 
 ---
 
