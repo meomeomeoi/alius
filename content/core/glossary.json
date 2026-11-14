@@ -1107,5 +1107,32 @@
     "see": [
       "setting_readable_mode"
     ]
+  },
+  {
+    "id": "setting_sound_volume",
+    "term": "Sound volume",
+    "short": "How loud the PDA's small sounds are, 0 to 100. The default is low.",
+    "long": "Covers the device, tab and notification sounds, the typing ticks, the stamp and the ambient hum. Nothing plays until you do something that makes a sound.",
+    "see": [
+      "setting_sound_muted",
+      "setting_ambient_hum"
+    ]
+  },
+  {
+    "id": "setting_sound_muted",
+    "term": "Mute",
+    "short": "Silences every sound of the extension without changing the volume.",
+    "see": [
+      "setting_sound_volume"
+    ]
+  },
+  {
+    "id": "setting_ambient_hum",
+    "term": "Ambient hum",
+    "short": "A very low engine hum that plays while the shell is open. Off by default.",
+    "long": "It follows the volume and the mute setting and stops when you close the shell.",
+    "see": [
+      "setting_sound_volume"
+    ]
   }
 ]

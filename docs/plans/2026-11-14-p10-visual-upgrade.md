@@ -400,15 +400,15 @@ schemas: `a css skin without cssPreset is rejected`; `an image skin whose screen
   - Settings `soundVolume` (int 0–100, default **20**), `soundMuted` (false), `ambientHum` (false); SYS › Sound: volume (number 0–100, step 5), mute, ambient hum; glossary `setting_sound_volume`, `setting_sound_muted`, `setting_ambient_hum`.
   - `ShellDeps.sound?: { play(id: SoundId): void; startHum(): void; stopHum(): void }`: device up → `open`, down → `close`, tab change → `tab`, toast `info`/`story` → `notify`, `warn`/`error` → `alert`; `open()` starts the hum when enabled, `close()` stops it.
 
-- [ ] **Step 1: Write the failing tests** (fake `AudioContextLike` that records oscillators, gains and buffer sources)
+- [x] **Step 1: Write the failing tests** (fake `AudioContextLike` that records oscillators, gains and buffer sources)
 
 `no AudioContext is created before the first play`; `gain = volume/100 × entry.gain` (volume 20, entry .5 → .1); `muted or volume 0 plays nothing`; `a file entry plays the file; a file that fails to load falls back to the synth` (fake `fetch`/`decodeAudioData` rejection); `typing ticks are at most one per 60 ms` (fake timers: 10 calls in 50 ms → 1); `the hum loops while the shell is open and stops on close`; `the hum never starts with ambientHum off`; shell wiring: device up/down, tab change, a warn toast each play their id once; core: `uiSounds` has the 8 ids, none with a `file`; settings defaults.
 
-- [ ] **Step 2: Run** → FAIL.
+- [x] **Step 2: Run** → FAIL.
 
-- [ ] **Step 3: Implement.** Synth drafts (`wave, freq → endFreq, ms, gain`): open `triangle 420→880, 90, .5`; close `triangle 880→420, 90, .5`; tab `square 1200, 25, .25`; notify `sine 660→990, 120, .4`; alert `square 220, 180, .45`; stamp `sawtooth 90→60, 70, .6`; typing `square 2000, 8, .15`; hum `sine 50, loop, .08`. Envelope: 5 ms attack, exponential release to the end.
+- [x] **Step 3: Implement.** Synth drafts (`wave, freq → endFreq, ms, gain`): open `triangle 420→880, 90, .5`; close `triangle 880→420, 90, .5`; tab `square 1200, 25, .25`; notify `sine 660→990, 120, .4`; alert `square 220, 180, .45`; stamp `sawtooth 90→60, 70, .6`; typing `square 2000, 8, .15`; hum `sine 50, loop, .08`. Envelope: 5 ms attack, exponential release to the end.
 
-- [ ] **Step 4: Run** `npm test` → PASS. **Step 5: Commit** `feat(ui): UI sounds with a WebAudio fallback, volume, mute and ambient hum`
+- [x] **Step 4: Run** `npm test` → PASS. **Step 5: Commit** `feat(ui): UI sounds with a WebAudio fallback, volume, mute and ambient hum`
 
 ---
 

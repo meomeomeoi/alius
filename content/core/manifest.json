@@ -48,6 +48,7 @@
     "demandTemplates": "demandTemplates.json",
     "reputations": "reputations.json",
     "hubRooms": "hubRooms.json",
-    "deviceSkins": "deviceSkins.json"
+    "deviceSkins": "deviceSkins.json",
+    "uiSounds": "uiSounds.json"
   }
 }

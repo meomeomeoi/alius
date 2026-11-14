@@ -1,0 +1,10 @@
+[
+  { "id": "open", "synth": { "wave": "triangle", "freq": 420, "endFreq": 880, "ms": 90, "gain": 0.5 } },
+  { "id": "close", "synth": { "wave": "triangle", "freq": 880, "endFreq": 420, "ms": 90, "gain": 0.5 } },
+  { "id": "tab", "synth": { "wave": "square", "freq": 1200, "ms": 25, "gain": 0.25 } },
+  { "id": "notify", "synth": { "wave": "sine", "freq": 660, "endFreq": 990, "ms": 120, "gain": 0.4 } },
+  { "id": "alert", "synth": { "wave": "square", "freq": 220, "ms": 180, "gain": 0.45 } },
+  { "id": "stamp", "synth": { "wave": "sawtooth", "freq": 90, "endFreq": 60, "ms": 70, "gain": 0.6 } },
+  { "id": "typing", "synth": { "wave": "square", "freq": 2000, "ms": 8, "gain": 0.15 } },
+  { "id": "hum", "synth": { "wave": "sine", "freq": 50, "ms": 1000, "gain": 0.08 } }
+]

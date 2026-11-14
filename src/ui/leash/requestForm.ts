@@ -26,6 +26,8 @@ export interface LeashFormOpts {
   settings?: AliusSettings;
   /** The corporation's name for the verdict card's header (`{CORPORATION} · OVERSIGHT`). */
   corporation?: string;
+  /** Called when the verdict card appears (the app plays the stamp). */
+  onVerdict?: () => void;
   /** The last line of the review (default `APPROVED`). */
   verdict?: string;
 }
@@ -97,6 +99,7 @@ export async function fileLeashRequest(shell: LeashFormShell, o: LeashFormOpts):
   status.append(renderVoiceCard({
     voice: 'corporate', title: `${(o.corporation ?? 'CCP').toUpperCase()} · OVERSIGHT`, body: o.verdict ?? 'APPROVED', level: 3,
   }));
+  o.onVerdict?.();
   if (delay > 0) await sleep(delay / 3);
   shell.closeModal();
   return true;

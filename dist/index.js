@@ -12438,9 +12438,10 @@ var REGISTRY_NAMES = [
   "punishments",
   "demandTemplates",
   "reputations",
-  // P10 (`uiSounds` comes with chunk (c))
+  // P10
   "hubRooms",
-  "deviceSkins"
+  "deviceSkins",
+  "uiSounds"
 ];
 var PackManifestSchema = external_exports.object({
   id: external_exports.string().min(1),
@@ -13892,6 +13893,19 @@ var DeviceSkinSchema = BaseEntrySchema.extend({
   }
 });
 Object.assign(registrySchemas, { deviceSkins: DeviceSkinSchema });
+var SOUND_IDS = ["open", "close", "tab", "notify", "alert", "stamp", "typing", "hum"];
+var UiSoundSchema = BaseEntrySchema.extend({
+  id: external_exports.enum(SOUND_IDS),
+  file: str2.optional(),
+  synth: external_exports.object({
+    wave: external_exports.enum(["sine", "square", "triangle", "sawtooth"]),
+    freq: external_exports.number().positive().max(2e4),
+    endFreq: external_exports.number().positive().max(2e4).optional(),
+    ms: int2.min(1).max(5e3),
+    gain: external_exports.number().min(0).max(1)
+  }).strict()
+}).strict();
+Object.assign(registrySchemas, { uiSounds: UiSoundSchema });
 var DESCRIBED_REGISTRIES = [
   "roles",
   "skills",
@@ -17193,7 +17207,10 @@ var DEFAULT_SETTINGS = {
   deviceSkin: "",
   readableMode: false,
   reducedMotion: false,
-  ditheredPortraits: true
+  ditheredPortraits: true,
+  soundVolume: 20,
+  soundMuted: false,
+  ambientHum: false
 };
 var fieldSchemas = {
   mechanicProfileId: external_exports.string(),
@@ -17235,7 +17252,10 @@ var fieldSchemas = {
   deviceSkin: external_exports.string(),
   readableMode: external_exports.boolean(),
   reducedMotion: external_exports.boolean(),
-  ditheredPortraits: external_exports.boolean()
+  ditheredPortraits: external_exports.boolean(),
+  soundVolume: external_exports.number().int().min(0).max(100),
+  soundMuted: external_exports.boolean(),
+  ambientHum: external_exports.boolean()
 };
 var budgetSchema = external_exports.number().int().min(1);
 var isObj22 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -17456,6 +17476,7 @@ async function fileLeashRequest(shell, o) {
     body: o.verdict ?? "APPROVED",
     level: 3
   }));
+  o.onVerdict?.();
   if (delay > 0) await sleep(delay / 3);
   shell.closeModal();
   return true;
@@ -21777,6 +21798,138 @@ function screenBox(skin) {
   return { left: pct2(rect.x, size.w), top: pct2(rect.y, size.h), width: pct2(rect.w, size.w), height: pct2(rect.h, size.h) };
 }
 
+// src/ui/sound/sound.ts
+var TYPING_GAP_MS = 60;
+var ATTACK_S = 5e-3;
+var SILENCE = 1e-4;
+function browserAudio() {
+  const g = globalThis;
+  const Ctor = g.AudioContext ?? g.webkitAudioContext;
+  return Ctor ? new Ctor() : null;
+}
+function createSound(deps) {
+  let ctx2 = null;
+  let unavailable = false;
+  let disposed = false;
+  let lastTick = -Infinity;
+  let hum = null;
+  const files = /* @__PURE__ */ new Map();
+  const level = () => {
+    const s = deps.settings();
+    return s.soundMuted ? 0 : s.soundVolume / 100;
+  };
+  function audio() {
+    if (disposed || unavailable) return null;
+    if (!ctx2) {
+      try {
+        ctx2 = (deps.audio ?? browserAudio)();
+      } catch {
+        ctx2 = null;
+      }
+      if (!ctx2) {
+        unavailable = true;
+        return null;
+      }
+    }
+    if (ctx2.state === "suspended") void ctx2.resume?.()?.catch?.(() => void 0);
+    return ctx2;
+  }
+  function synth(c, e, peak) {
+    const t = c.currentTime;
+    const dur = e.ms / 1e3;
+    const osc = c.createOscillator();
+    osc.type = e.wave;
+    osc.frequency.setValueAtTime(e.freq, t);
+    if (e.endFreq !== void 0) osc.frequency.exponentialRampToValueAtTime(e.endFreq, t + dur);
+    const g = c.createGain();
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(peak, t + Math.min(ATTACK_S, dur / 2));
+    g.gain.exponentialRampToValueAtTime(SILENCE, t + dur);
+    osc.connect(g);
+    g.connect(c.destination);
+    osc.start(t);
+    osc.stop(t + dur + 0.02);
+  }
+  async function playFile(c, url, peak) {
+    let decoded = files.get(url);
+    if (!decoded) {
+      decoded = (async () => {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`audio ${url}: ${res.status}`);
+        return c.decodeAudioData(await res.arrayBuffer());
+      })();
+      files.set(url, decoded);
+    }
+    const buffer = await decoded;
+    const src = c.createBufferSource();
+    src.buffer = buffer;
+    const g = c.createGain();
+    g.gain.setValueAtTime(peak, c.currentTime);
+    src.connect(g);
+    g.connect(c.destination);
+    src.start();
+  }
+  function stopHum() {
+    if (!hum) return;
+    try {
+      hum.stop();
+    } catch {
+    }
+    hum = null;
+  }
+  return {
+    play(id) {
+      if (id === "hum") return;
+      const entry = deps.registries().uiSounds.get(id);
+      const volume = level();
+      if (!entry || volume <= 0) return;
+      if (id === "typing") {
+        const now = Date.now();
+        if (now - lastTick < TYPING_GAP_MS) return;
+        lastTick = now;
+      }
+      const c = audio();
+      if (!c) return;
+      const s = entry.synth;
+      const peak = volume * s.gain;
+      const url = typeof entry.file === "string" && deps.assetUrl ? deps.assetUrl(entry.file) : null;
+      if (url) void playFile(c, url, peak).catch(() => synth(c, s, peak));
+      else synth(c, s, peak);
+    },
+    startHum() {
+      const volume = level();
+      if (!deps.settings().ambientHum || volume <= 0) return stopHum();
+      const entry = deps.registries().uiSounds.get("hum");
+      if (!entry) return;
+      const s = entry.synth;
+      if (hum) {
+        hum.gain.value = volume * s.gain;
+        return;
+      }
+      const c = audio();
+      if (!c) return;
+      const osc = c.createOscillator();
+      osc.type = s.wave;
+      osc.frequency.setValueAtTime(s.freq, c.currentTime);
+      const g = c.createGain();
+      g.gain.value = volume * s.gain;
+      osc.connect(g);
+      g.connect(c.destination);
+      osc.start();
+      hum = { stop: () => osc.stop(), gain: g.gain };
+    },
+    stopHum,
+    dispose() {
+      stopHum();
+      disposed = true;
+      try {
+        void ctx2?.close?.()?.catch?.(() => void 0);
+      } catch {
+      }
+    }
+  };
+}
+
 // src/ui/shell/status.ts
 var stat = (cls, text2, address) => h("span", { class: `${cls} alius-stat`, ...analyzeAttrs(address) }, text2);
 function renderStatusHeader(host, state) {
@@ -23750,6 +23903,7 @@ function renderSceneScreen(host, ctx2) {
         if (idx === null || !msg) return stopTyping();
         const total2 = visibleLength(msg.text);
         const shown = Math.min(total2, Math.floor((Date.now() - started) * typingSpeed() / 1e3));
+        if (shown > (progress.get(idx) ?? 0)) ctx2.sound?.play("typing");
         progress.set(idx, shown);
         const el = log.querySelector(`.alius-line[data-index="${idx}"] .alius-text`);
         if (el) fillText(el, msg.text, shown);
@@ -25927,6 +26081,10 @@ function renderSysTab(host, ctx2) {
     field("Reduce motion (also follows the system setting)", checkbox("reducedMotion", settings.reducedMotion), "reducedMotion"),
     field("Dithered portraits (PDA)", checkbox("ditheredPortraits", settings.ditheredPortraits), "ditheredPortraits"),
     field("Device skin", select("deviceSkin", skinOptions, skinOptions.some(([v]) => v === settings.deviceSkin) ? settings.deviceSkin : ""), "deviceSkin"),
+    h("h3", {}, "Sound"),
+    field("Volume (0\u2013100)", numberInput("soundVolume", settings.soundVolume, (n) => apply({ soundVolume: n }).soundVolume, { min: "0", max: "100", step: "5" }), "soundVolume"),
+    field("Mute", checkbox("soundMuted", settings.soundMuted), "soundMuted"),
+    field("Ambient hum", checkbox("ambientHum", settings.ambientHum), "ambientHum"),
     h("h3", {}, "Campaign"),
     field("Desire/Bond defects", checkbox("desireBondDefects", settings.desireBondDefects), "desireBondDefects"),
     field("Show raw values", checkbox("showRawValues", settings.showRawValues), "showRawValues"),
@@ -26226,8 +26384,10 @@ function createShell(deps) {
   let hubRender = defaultHub;
   const isOpen = () => root !== null;
   function toast(kind, text2, opts) {
-    if (toasts) toasts.show(kind, text2, opts);
-    else st.toast(kind === "story" ? "info" : kind, text2);
+    if (toasts) {
+      toasts.show(kind, text2, opts);
+      deps.sound?.play(kind === "warn" || kind === "error" ? "alert" : "notify");
+    } else st.toast(kind === "story" ? "info" : kind, text2);
   }
   function applySkin() {
     const chrome = device?.querySelector(".alius-device-chrome");
@@ -26246,6 +26406,7 @@ function createShell(deps) {
     root.classList.toggle("alius-flicker", flags.flicker);
     root.classList.toggle("alius-readable", s.readableMode);
     root.classList.toggle("alius-reduced-motion", motionReduced(s));
+    deps.sound?.startHum();
   }
   function renderBanner() {
     if (!root) return;
@@ -26303,7 +26464,10 @@ function createShell(deps) {
     tab = id;
     tabBar?.setSelected(id);
     renderTab();
-    if (changed) glitch();
+    if (changed) {
+      glitch();
+      deps.sound?.play("tab");
+    }
   }
   function maybeBoot() {
     if (bootPlayed || !isDeviceUp()) return;
@@ -26432,6 +26596,7 @@ function createShell(deps) {
   function close() {
     if (!root) return;
     modals?.cancel();
+    deps.sound?.stopHum();
     toasts?.dispose();
     analyzer?.destroy();
     analyzer = null;
@@ -26471,7 +26636,10 @@ function createShell(deps) {
       } else {
         renderView();
       }
-      if (isOpen() && isDeviceUp() !== wasUp) deps.onDevice?.(isDeviceUp());
+      if (isOpen() && isDeviceUp() !== wasUp) {
+        deps.onDevice?.(isDeviceUp());
+        deps.sound?.play(isDeviceUp() ? "open" : "close");
+      }
       maybeBoot();
     },
     showTab(id) {
@@ -26841,6 +27009,7 @@ function createApp(st, deps) {
         st,
         settings: () => getSettings(st),
         onEnded: leaveScene,
+        sound,
         onOrder: (unitId) => loyalty.order(unitId),
         onCompel: (unitId) => void api.fileLeash("compel", unitId),
         onPunish: (unitId, measure, days) => void discipline.punish(unitId, measure, days),
@@ -27055,6 +27224,7 @@ function createApp(st, deps) {
       delayMs: deps.leashDelayMs,
       settings: getSettings(st),
       corporation: corporationName(s),
+      onVerdict: () => sound.play("stamp"),
       ...kind === "terminate" ? { verdict: "UNDER REVIEW" } : {}
     });
     if (!filed || st.getActiveChat()?.chatId !== chatId) return false;
@@ -27082,7 +27252,8 @@ function createApp(st, deps) {
         showNumbers: getSettings(st).showRawValues,
         delayMs: deps.leashDelayMs,
         settings: getSettings(st),
-        corporation: corporationName(s)
+        corporation: corporationName(s),
+        onVerdict: () => sound.play("stamp")
       });
       if (!filed || st.getActiveChat()?.chatId !== chatId) return;
     }
@@ -27843,7 +28014,9 @@ function createApp(st, deps) {
     return events;
   }
   const SHORT_NAME = (reg, registry2, id) => String(reg[registry2].get(id)?.name ?? id);
+  const sound = createSound({ settings: () => getSettings(st), registries: () => registries, assetUrl: deps.assetUrl });
   const shell = (deps.shellFactory ?? createShell)({
+    sound,
     st,
     getState: () => state,
     getLoad: () => load,

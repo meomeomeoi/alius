@@ -70,6 +70,7 @@ import { renderSquadTab } from './ui/squad/squadTab';
 import { portraitOptions, unitPortrait } from './ui/portrait/portrait';
 import { renderOpsTab, type OpsTabCtx } from './ui/ops/opsTab';
 import { pickSkin } from './ui/device/skins';
+import { createSound } from './ui/sound/sound';
 import { renderHub } from './ui/hub/hubScreen';
 import { endSlotBlock } from './ui/hub/model';
 import { renderMapTab } from './ui/map/mapTab';
@@ -462,7 +463,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     const s = state;
     if (s?.scene) {
       sceneScreen = renderSceneScreen(host, {
-        controller: scene, getState: () => state, registries, st, settings: () => getSettings(st), onEnded: leaveScene,
+        controller: scene, getState: () => state, registries, st, settings: () => getSettings(st), onEnded: leaveScene, sound,
         onOrder: (unitId) => loyalty.order(unitId),
         onCompel: (unitId) => void api.fileLeash('compel', unitId),
         onPunish: (unitId, measure, days) => void discipline.punish(unitId, measure, days),
@@ -687,7 +688,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       kind, unitName: unit.displayName, no: nextLeashNo(s), left: s.leash.authorizationsLeft,
       ...(kind !== 'terminate' ? { cost: leashCost(s, registries, unitId, kind) } : {}),
       ...(cause ? { cause: cause.kind === 'attack' ? 'ATTACKED THE UNIT' : 'REPEATED DESERTION ATTEMPTS' } : {}),
-      showNumbers: getSettings(st).showRawValues, delayMs: deps.leashDelayMs, settings: getSettings(st), corporation: corporationName(s),
+      showNumbers: getSettings(st).showRawValues, delayMs: deps.leashDelayMs, settings: getSettings(st), corporation: corporationName(s), onVerdict: () => sound.play('stamp'),
       ...(kind === 'terminate' ? { verdict: 'UNDER REVIEW' } : {}),
     });
     if (!filed || st.getActiveChat()?.chatId !== chatId) return false;
@@ -709,7 +710,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       if (why) return void toast('warn', why);
       const filed = await fileLeashRequest(shell, {
         kind: 'compel', unitName: unit.displayName, no: nextLeashNo(s), left: s.leash.authorizationsLeft, cost: leashCost(s, registries, unitId, 'compel'),
-        cause: `FORCED ${path.toUpperCase()} OF A DEFECT`, showNumbers: getSettings(st).showRawValues, delayMs: deps.leashDelayMs, settings: getSettings(st), corporation: corporationName(s),
+        cause: `FORCED ${path.toUpperCase()} OF A DEFECT`, showNumbers: getSettings(st).showRawValues, delayMs: deps.leashDelayMs, settings: getSettings(st), corporation: corporationName(s), onVerdict: () => sound.play('stamp'),
       });
       if (!filed || st.getActiveChat()?.chatId !== chatId) return;
     }
@@ -1540,7 +1541,9 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
 
   const SHORT_NAME = (reg: Registries, registry: 'roles' | 'defects', id: string): string => String(reg[registry].get(id)?.name ?? id);
 
+  const sound = createSound({ settings: () => getSettings(st), registries: () => registries, assetUrl: deps.assetUrl });
   const shell = (deps.shellFactory ?? createShell)({
+    sound,
     st,
     getState: () => state,
     getLoad: () => load,

@@ -1484,6 +1484,30 @@ export const DeviceSkinSchema = BaseEntrySchema.extend({
 
 Object.assign(registrySchemas, { deviceSkins: DeviceSkinSchema });
 
+// ---------------------------------------------------------------------------------------------
+// P10: UI sounds (not player-visible: no description, not in DESCRIBED_REGISTRIES)
+
+/** The sounds the shell knows how to ask for; code names these ids, never an entry's contents. */
+export const SOUND_IDS = ['open', 'close', 'tab', 'notify', 'alert', 'stamp', 'typing', 'hum'] as const;
+
+/**
+ * One UI sound. v1 ships no audio files: `synth` describes a WebAudio fallback (a wave, a frequency sweep, a length and a
+ * peak gain), and `file` (a path under the extension) is played instead when present and it loads.
+ */
+export const UiSoundSchema = BaseEntrySchema.extend({
+  id: z.enum(SOUND_IDS),
+  file: str.optional(),
+  synth: z.object({
+    wave: z.enum(['sine', 'square', 'triangle', 'sawtooth']),
+    freq: z.number().positive().max(20000),
+    endFreq: z.number().positive().max(20000).optional(),
+    ms: int.min(1).max(5000),
+    gain: z.number().min(0).max(1),
+  }).strict(),
+}).strict();
+
+Object.assign(registrySchemas, { uiSounds: UiSoundSchema });
+
 /** Player-visible registries whose entries carry an optional `description` (skills and statuses already require one). */
 export const DESCRIBED_REGISTRIES = [
   'roles', 'skills', 'signatures', 'statuses', 'defects', 'items', 'affixes', 'enemies',

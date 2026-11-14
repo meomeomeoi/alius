@@ -205,4 +205,15 @@ describe('settings', () => {
     st.settings = { ditheredPortraits: 'no' };
     expect(getSettings(st).ditheredPortraits).toBe(true);
   });
+
+  it('the sound settings default to a low volume, unmuted, no hum, and are validated', () => {
+    const st = new FakeStAdapter();
+    expect(getSettings(st)).toMatchObject({ soundVolume: 20, soundMuted: false, ambientHum: false });
+    st.settings = { soundVolume: 55, soundMuted: true, ambientHum: true };
+    expect(getSettings(st)).toMatchObject({ soundVolume: 55, soundMuted: true, ambientHum: true });
+    for (const bad of [101, -1, 12.5, 'loud']) {
+      st.settings = { soundVolume: bad };
+      expect(getSettings(st).soundVolume, String(bad)).toBe(20);
+    }
+  });
 });

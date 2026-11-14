@@ -25,7 +25,7 @@ const [ANN, BEA, CAT] = ['unit_ann', 'unit_bea', 'unit_cat'];
 
 const msg = (index: number, over: Partial<ChatMessage> = {}): ChatMessage => ({ index, isUser: false, name: 'Ann', avatar: 'ann.png', text: 'hi', swipeId: 0, ...over });
 
-function setup(opts: { participants?: string[]; messages?: ChatMessage[]; settings?: Partial<AliusSettings>; tweak?: (s: CampaignState) => void; locationId?: string } = {}) {
+function setup(opts: { participants?: string[]; messages?: ChatMessage[]; settings?: Partial<AliusSettings>; tweak?: (s: CampaignState) => void; locationId?: string; sound?: { play: (id: 'typing') => void } } = {}) {
   let state = campaign(reg, 4);
   opts.tweak?.(state);
   const r = run(state, reg, { type: 'scene/start', payload: { locationId: opts.locationId ?? 'mess_hall', participants: opts.participants ?? [ANN], origin: 'event', startIndex: 0 } });
@@ -49,7 +49,7 @@ function setup(opts: { participants?: string[]; messages?: ChatMessage[]; settin
   const host = h('div');
   document.body.append(host);
   const onEnded = vi.fn();
-  const screen = renderSceneScreen(host, { controller, getState: () => state, registries: reg, st, settings: () => settings, onEnded });
+  const screen = renderSceneScreen(host, { controller, getState: () => state, registries: reg, st, settings: () => settings, onEnded, sound: opts.sound });
   return {
     host, st, controller, screen, swipe, regen, onEnded, messages, settings,
     setState: (s: CampaignState) => { state = s; },
@@ -126,6 +126,21 @@ describe('scene screen', () => {
     expect(q('.alius-text')!.textContent).toContain('<script>');
     expect(q('.alius-speaker')!.textContent).toBe('<I>ANN</I> //');
     expect((window as unknown as { __pwned?: number }).__pwned).toBeUndefined();
+  });
+
+  it('typing a reply out ticks the typing sound, and an instant reply is silent', () => {
+    const play = vi.fn();
+    const messages: ChatMessage[] = [msg(0, { isUser: true, name: 'Vale', avatar: undefined, text: 'Hi' })];
+    const typed = setup({ messages, settings: { typingSpeed: 20 }, sound: { play } });
+    messages.push(msg(1, { text: 'abcdefghij' }));
+    typed.screen.handle({ type: 'transcript' });
+    vi.advanceTimersByTime(250);
+    expect(play).toHaveBeenCalledWith('typing');
+    const quiet = vi.fn();
+    const instant = setup({ messages: [msg(0, { text: 'Hello there' })], sound: { play: quiet } });
+    instant.screen.handle({ type: 'transcript' });
+    vi.advanceTimersByTime(250);
+    expect(quiet).not.toHaveBeenCalled();
   });
 
   it('typing is instant under reduced motion, whatever the typing speed', () => {

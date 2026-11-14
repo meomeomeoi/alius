@@ -72,6 +72,11 @@ export interface AliusSettings {
   reducedMotion: boolean;
   /** P10: PDA portraits are ordered-dithered into the phosphor palette (off in readable mode). */
   ditheredPortraits: boolean;
+  /** P10: UI sound volume, 0–100 (default low). */
+  soundVolume: number;
+  soundMuted: boolean;
+  /** P10: a low engine hum while the shell is open. */
+  ambientHum: boolean;
 }
 
 export const DEFAULT_SETTINGS: AliusSettings = {
@@ -130,6 +135,9 @@ export const DEFAULT_SETTINGS: AliusSettings = {
   readableMode: false,
   reducedMotion: false,
   ditheredPortraits: true,
+  soundVolume: 20,
+  soundMuted: false,
+  ambientHum: false,
 };
 
 const fieldSchemas = {
@@ -173,6 +181,9 @@ const fieldSchemas = {
   readableMode: z.boolean(),
   reducedMotion: z.boolean(),
   ditheredPortraits: z.boolean(),
+  soundVolume: z.number().int().min(0).max(100),
+  soundMuted: z.boolean(),
+  ambientHum: z.boolean(),
 };
 const budgetSchema = z.number().int().min(1);
 

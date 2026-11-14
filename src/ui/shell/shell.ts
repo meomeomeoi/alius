@@ -7,6 +7,7 @@ import type { LoadResult } from '../../st/persistence';
 import { playBoot } from '../device/boot';
 import { renderChrome } from '../device/chrome';
 import { motionReduced, visualFlags } from '../motion';
+import type { SoundId } from '../sound/sound';
 import { BUILT_IN_SKIN } from '../device/skins';
 import type { Entry } from '../../content/types';
 import { h } from '../dom';
@@ -73,7 +74,9 @@ export interface ShellDeps {
   analyze?: { registries: () => Registries };
   /** P10: the casing of the PDA, asked again on every refresh and settings change (absent: the built-in `ccp_standard`). */
   skin?: () => { skin: Entry; assetUrl?: (path: string) => string };
-  /** Called when the device goes up or down (sound and boot hooks). */
+  /** P10: the UI sounds the shell asks for (device, tabs, toasts, hum); absent = silent. */
+  sound?: { play(id: SoundId): void; startHum(): void; stopHum(): void };
+  /** Called when the device goes up or down. */
   onDevice?(up: boolean): void;
 }
 
@@ -113,7 +116,10 @@ export function createShell(deps: ShellDeps): ShellApi {
   const isOpen = () => root !== null;
 
   function toast(kind: ToastKind, text: string, opts?: ToastOpts): void {
-    if (toasts) toasts.show(kind, text, opts);
+    if (toasts) {
+      toasts.show(kind, text, opts);
+      deps.sound?.play(kind === 'warn' || kind === 'error' ? 'alert' : 'notify');
+    }
     else st.toast(kind === 'story' ? 'info' : kind, text);
   }
 
@@ -136,6 +142,7 @@ export function createShell(deps: ShellDeps): ShellApi {
     root.classList.toggle('alius-flicker', flags.flicker);
     root.classList.toggle('alius-readable', s.readableMode);
     root.classList.toggle('alius-reduced-motion', motionReduced(s));
+    deps.sound?.startHum(); // the hum follows ambientHum, mute and volume (and starts with the shell)
   }
 
   function renderBanner(): void {
@@ -199,7 +206,10 @@ export function createShell(deps: ShellDeps): ShellApi {
     tab = id;
     tabBar?.setSelected(id);
     renderTab();
-    if (changed) glitch();
+    if (changed) {
+      glitch();
+      deps.sound?.play('tab');
+    }
   }
 
   /** The boot over the device screen, once per `open()`, the first time the device is up. */
@@ -349,6 +359,7 @@ export function createShell(deps: ShellDeps): ShellApi {
   function close(): void {
     if (!root) return;
     modals?.cancel();
+    deps.sound?.stopHum();
     toasts?.dispose();
     analyzer?.destroy();
     analyzer = null;
@@ -390,7 +401,10 @@ export function createShell(deps: ShellDeps): ShellApi {
       } else {
         renderView();
       }
-      if (isOpen() && isDeviceUp() !== wasUp) deps.onDevice?.(isDeviceUp());
+      if (isOpen() && isDeviceUp() !== wasUp) {
+        deps.onDevice?.(isDeviceUp());
+        deps.sound?.play(isDeviceUp() ? 'open' : 'close');
+      }
       maybeBoot();
     },
     showTab(id) {

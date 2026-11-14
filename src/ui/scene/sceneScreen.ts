@@ -18,6 +18,8 @@ export interface SceneScreenCtx {
   registries: Registries;
   st: StAdapter;
   settings: () => AliusSettings;
+  /** P10: the typing tick while a reply is typed out (rate-limited by the player). */
+  sound?: { play(id: 'typing'): void };
   /** Called after [END TRANSMISSION] finished (the app returns to the PDA). */
   onEnded: () => void;
   /** Resolves an asset path of a location background against the extension folder. */
@@ -287,6 +289,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
         if (idx === null || !msg) return stopTyping();
         const total = visibleLength(msg.text);
         const shown = Math.min(total, Math.floor(((Date.now() - started) * typingSpeed()) / 1000));
+        if (shown > (progress.get(idx) ?? 0)) ctx.sound?.play('typing');
         progress.set(idx, shown);
         const el = log.querySelector<HTMLElement>(`.alius-line[data-index="${idx}"] .alius-text`);
         if (el) fillText(el, msg.text, shown);

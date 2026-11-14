@@ -25,6 +25,20 @@ const button = (label: string) => buttons().find((b) => b.textContent === label)
 const text = () => dialog()?.textContent ?? '';
 
 describe('oversight request form', () => {
+  it('the verdict calls onVerdict once (the stamp sound)', async () => {
+    const onVerdict = vi.fn();
+    const p = fileLeashRequest(shell, { ...base, onVerdict });
+    button('[ FILE REQUEST ]').click();
+    await p;
+    expect(onVerdict).toHaveBeenCalledTimes(1);
+    // a withdrawn request has no verdict
+    const withdrawn = vi.fn();
+    const q = fileLeashRequest(shell, { ...base, onVerdict: withdrawn });
+    button('[ WITHDRAW ]').click();
+    await q;
+    expect(withdrawn).not.toHaveBeenCalled();
+  });
+
   it('the review delay is 0 under the reducedMotion setting (media query false)', async () => {
     vi.useFakeTimers();
     vi.stubGlobal('matchMedia', () => ({ matches: false }));
