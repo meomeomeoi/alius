@@ -1,0 +1,202 @@
+/*
+ * The four voices (spec P10 §3), shared by VoiceCard, bubbles and toasts. `terminal` reads the palette; the others bring
+ * their own colours (corporate: cold and glossy; paper: a file; personal: a messenger). Text is >= 4.5:1 on each.
+ */
+#alius-shell .alius-voice {
+  position: relative;
+  box-sizing: border-box;
+  background: var(--voice-bg);
+  color: var(--voice-fg);
+}
+
+#alius-shell .alius-voice-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 12px;
+  margin-bottom: 6px;
+}
+
+/* two classes: beats the older per-screen colours (heading and post-head rules) that assumed the phosphor background */
+#alius-shell .alius-voice .alius-voice-title {
+  margin: 0;
+  font-size: 1em;
+  font-weight: normal;
+  color: var(--voice-fg);
+}
+
+#alius-shell .alius-voice .alius-voice-meta,
+#alius-shell .alius-voice .alius-voice-from {
+  color: var(--voice-dim);
+  font-size: 0.85em;
+}
+
+#alius-shell .alius-voice-body {
+  position: relative;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* ---- terminal: the phosphor palette ---- */
+#alius-shell .alius-voice-terminal {
+  --voice-bg: var(--alius-bg);
+  --voice-fg: var(--alius-fg);
+  --voice-dim: var(--alius-dim);
+  border: 1px solid var(--alius-dim);
+  padding: 6px 10px;
+}
+
+/* ---- corporate: light glossy card, clean sans, cold ---- */
+#alius-shell .alius-voice-corporate {
+  --voice-bg: #f4f5f7;
+  --voice-fg: #1b1d22;
+  --voice-dim: #3f4550;
+  --voice-head: #3c4a5c;
+  padding: 16px 18px;
+  border-radius: 14px;
+  font-family: var(--alius-font-sans, system-ui, sans-serif);
+  box-shadow: inset 0 1px 0 #ffffff, 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+#alius-shell .alius-voice.alius-voice-corporate .alius-voice-title {
+  color: var(--voice-head);
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+/* ---- paper: aged paper, a typewriter, stamps and redaction ---- */
+#alius-shell .alius-voice-paper {
+  --voice-bg: #efe6cf;
+  --voice-fg: #2b241a;
+  --voice-dim: #5a4e3a;
+  --voice-stamp: #8b1e1e;
+  padding: 12px 16px;
+  font-family: var(--alius-font-type, "Courier New", monospace);
+  isolation: isolate;
+}
+
+#alius-shell .alius-voice-paper .alius-fibre {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: 0.16;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+}
+
+#alius-shell .alius-voice-paper .alius-voice-head {
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--voice-dim);
+}
+
+#alius-shell .alius-stamp {
+  position: absolute;
+  right: 12px;
+  bottom: 8px;
+  padding: 1px 10px;
+  border: 2px solid var(--voice-stamp, #8b1e1e);
+  color: var(--voice-stamp, #8b1e1e);
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  transform: rotate(-6deg);
+  pointer-events: none;
+}
+
+#alius-shell .alius-voice-corporate .alius-stamp {
+  --voice-stamp: #3c4a5c;
+}
+
+#alius-shell .alius-redact {
+  background: #1a1a1a;
+  color: #1a1a1a;
+  user-select: none;
+}
+
+/* ---- personal: warm messenger bubbles, the unit's accent ---- */
+#alius-shell .alius-voice-personal {
+  --voice-bg: #241c2b;
+  --voice-fg: #f5e6f0;
+  --voice-dim: #c9b3c4;
+  --bubble-bg: #3a2c44;
+  --bubble-fg: #f5e6f0;
+  font-family: var(--alius-font-sans, system-ui, sans-serif);
+}
+
+#alius-shell .alius-bubble {
+  max-width: 80%;
+  padding: 6px 12px;
+}
+
+#alius-shell .alius-bubble.is-hers {
+  align-self: flex-start;
+  background: var(--bubble-bg);
+  color: var(--bubble-fg);
+  border-radius: 16px 16px 16px 4px;
+  border-left: 3px solid var(--bubble-accent, var(--voice-dim));
+}
+
+#alius-shell .alius-bubble.is-mine {
+  align-self: flex-end;
+  background: var(--alius-bg);
+  color: var(--alius-fg);
+  border: 1px solid var(--alius-fg);
+  border-radius: 16px 16px 4px 16px;
+}
+
+#alius-shell .alius-bubble .alius-msg-meta {
+  display: block;
+  font-size: 0.75em;
+  color: var(--bubble-accent, var(--voice-dim));
+}
+
+#alius-shell .alius-bubble.is-mine .alius-msg-meta {
+  color: var(--alius-dim);
+}
+
+#alius-shell .alius-thread.alius-voice-personal {
+  background: var(--voice-bg);
+  padding: 10px;
+  border-radius: 10px;
+  color: var(--voice-fg);
+}
+
+#alius-shell .alius-contact {
+  border-left: 3px solid var(--unit-accent, var(--alius-dim));
+}
+
+#alius-shell .alius-contact .alius-dot {
+  color: var(--unit-accent, var(--alius-accent));
+}
+
+/* ---- toasts by voice ---- */
+#alius-shell .alius-toast[data-voice="corporate"] {
+  background: #f4f5f7;
+  color: #1b1d22;
+  border: 1px solid #3c4a5c;
+  border-radius: 10px;
+  font-family: var(--alius-font-sans, system-ui, sans-serif);
+}
+
+#alius-shell .alius-toast[data-voice="paper"] {
+  background: #efe6cf;
+  color: #2b241a;
+  border: 1px solid #5a4e3a;
+  font-family: var(--alius-font-type, "Courier New", monospace);
+}
+
+#alius-shell .alius-toast[data-voice="personal"] {
+  background: #3a2c44;
+  color: #f5e6f0;
+  border: 0;
+  border-radius: 16px 16px 16px 4px;
+  font-family: var(--alius-font-sans, system-ui, sans-serif);
+}
+
+#alius-shell .alius-toast-title {
+  letter-spacing: 0.1em;
+}
+
+/* ---- readable mode: plain paper, upright stamps, the same colours ---- */
+#alius-shell.alius-readable .alius-fibre { display: none; }
+#alius-shell.alius-readable .alius-stamp { transform: none; }

@@ -385,6 +385,8 @@ describe('hub screen', () => {
     expect(card.textContent).toContain('COMPEL');
     expect(card.textContent).toContain(s.squad[0].displayName);
     expect(card.textContent).toContain('done');
+    expect(card.classList.contains('alius-voice-corporate')).toBe(true);
+    expect(card.getAttribute('data-analyze')).toBe('glossary:leash');
   });
 
   it('rooms stay labelled at 360 px', () => {

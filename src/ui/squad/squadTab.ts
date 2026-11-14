@@ -14,6 +14,7 @@ import type { LoadResult } from '../../st/persistence';
 import type { ArcPath, ArcPathInfo } from '../../engine/arcs';
 import type { LeashKind } from '../../engine/state/types';
 import { stressBand } from '../../engine/combat/stress';
+import { renderVoiceCard } from '../voice/voiceCard';
 import { analyzeAttrs, analyzeNative } from '../analyze/mark';
 import { dispositionFor } from '../../engine/worldOptions';
 import { activeRestrictions, commandStance, impunityBand, impunityOf, stanceEntry } from '../../engine/discipline';
@@ -309,6 +310,20 @@ function unitBlock(unit: Unit, ctx: SquadTabCtx, state: CampaignState): HTMLElem
   const stat = (text: string, address: string, data?: Record<string, unknown>) => h('span', { class: 'alius-stat', ...analyzeAttrs(address, data) }, text);
   const roleEntry = reg.roles.get(unit.roleId);
 
+  // the unit's header is a paper dossier: name, role and level, experience, and the flags that mark her state
+  const dossier = renderVoiceCard({
+    voice: 'paper', title: unit.displayName, level: 3,
+    body: h('div', {},
+      unit.kind === 'grunt' ? h('p', { class: 'alius-dim' }, `GRUNT ${unit.designation ?? ''}`.trimEnd()) : null,
+      h('p', {}, roleEntry ? chip(nameOf(roleEntry, unit.roleId), `roles:${unit.roleId}`) : nameOf(roleEntry, unit.roleId), ` · LVL ${unit.level}`),
+      h('p', { class: 'alius-xp' }, chip(`XP ${unit.xp}/${xpToNext(unit.level)}`, 'glossary:level_xp'), ' · ', chip(`SKILL POINTS ${unit.skillPoints}`, 'glossary:skill_points')),
+      unit.breakdown
+        ? h('p', { class: 'alius-equip-flag' }, `BREAKDOWN: ${String((reg.defects.get(unit.breakdown.defectId)?.breakdown as { name?: string } | undefined)?.name ?? unit.breakdown.defectId)}`)
+        : null,
+      gone ? h('p', { class: 'alius-equip-flag' }, `STATUS: ${unit.status.toUpperCase()}`) : null),
+  });
+  dossier.querySelector('.alius-voice-title')!.classList.add('alius-unit-name');
+
   return h(
     'article',
     { class: 'alius-unit' },
@@ -316,14 +331,7 @@ function unitBlock(unit: Unit, ctx: SquadTabCtx, state: CampaignState): HTMLElem
     h(
       'div',
       { class: 'alius-unit-body' },
-      h('h3', { class: 'alius-unit-name' }, unit.displayName),
-      unit.kind === 'grunt' ? h('p', { class: 'alius-dim' }, `GRUNT ${unit.designation ?? ''}`.trimEnd()) : null,
-      h('p', {}, roleEntry ? chip(nameOf(roleEntry, unit.roleId), `roles:${unit.roleId}`) : nameOf(roleEntry, unit.roleId), ` · LVL ${unit.level}`),
-      h('p', { class: 'alius-xp' }, chip(`XP ${unit.xp}/${xpToNext(unit.level)}`, 'glossary:level_xp'), ' · ', chip(`SKILL POINTS ${unit.skillPoints}`, 'glossary:skill_points')),
-      unit.breakdown
-        ? h('p', { class: 'alius-equip-flag' }, `BREAKDOWN: ${String((reg.defects.get(unit.breakdown.defectId)?.breakdown as { name?: string } | undefined)?.name ?? unit.breakdown.defectId)}`)
-        : null,
-      gone ? h('p', { class: 'alius-equip-flag' }, `STATUS: ${unit.status.toUpperCase()}`) : null,
+      dossier,
       relationLine(unit, state, ctx),
       !gone && state.relations[unit.id] ? h('p', { class: 'alius-loyalty' }, chip(`LOYALTY: ${state.relations[unit.id].loyaltyBand.toUpperCase()}`, 'glossary:loyalty_band')) : null,
       gone ? null : h('p', { class: 'alius-disposition' }, h('span', { class: 'alius-chip', 'data-disposition': unit.id, ...analyzeAttrs('glossary:disposition', live) }, `Disposition: ${String(dispositionFor(state, reg, unit).name)}`)),

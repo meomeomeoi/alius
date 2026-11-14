@@ -285,22 +285,6 @@
   gap: 6px;
 }
 
-#alius-shell .alius-msg {
-  max-width: 80%;
-  padding: 4px 8px;
-  border: 1px solid var(--alius-dim);
-}
-
-#alius-shell .alius-msg.is-commander {
-  align-self: flex-end;
-  color: var(--alius-dim);
-}
-
-#alius-shell .alius-msg.is-unit {
-  align-self: flex-start;
-  border-color: var(--alius-fg);
-}
-
 #alius-shell .alius-msg-meta {
   display: block;
   font-size: 12px;
@@ -312,13 +296,12 @@
   overflow-wrap: anywhere;
 }
 
-#alius-shell .alius-post {
-  padding: 8px 0;
-  border-bottom: 1px dashed var(--alius-dim);
+/* a chronicle post is a paper card (18-voices.css); only the spacing between posts is the log's own */
+#alius-shell .alius-post + .alius-post {
+  margin-top: 8px;
 }
 
 #alius-shell .alius-post-head {
-  color: var(--alius-accent);
   letter-spacing: 0.08em;
 }
 

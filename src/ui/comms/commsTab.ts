@@ -6,6 +6,7 @@ import type { CampaignState, Unit } from '../../engine/state/types';
 import { h } from '../dom';
 import { drawProposalChips } from '../proposalChips';
 import { drawDemandChips, drawDisciplineChips } from '../discipline/chips';
+import { renderBubble, unitAccent } from '../voice/voiceCard';
 
 export interface CommsTabCtx {
   getState: () => CampaignState | null;
@@ -56,20 +57,24 @@ export function renderCommsTab(host: HTMLElement, ctx: CommsTabCtx): void {
   const list = h('div', { class: 'alius-threads', role: 'list' }, ...contacts.map((u) => {
     const n = unread(state, u.id);
     const dot = n > 0 ? h('span', { class: 'alius-dot', 'aria-label': `${n} unread` }, '●') : null;
-    return h('button', { type: 'button', class: `alius-btn alius-contact${u.id === current ? ' is-open' : ''}`, 'data-unit': u.id, onclick: () => open(u.id) }, u.displayName, ' ', dot);
+    const row = h('button', { type: 'button', class: `alius-btn alius-contact${u.id === current ? ' is-open' : ''}`, 'data-unit': u.id, onclick: () => open(u.id) }, u.displayName, ' ', dot);
+    row.style.setProperty('--unit-accent', unitAccent(u.id));
+    return row;
   }));
 
-  const thread = h('div', { class: 'alius-thread', role: 'log', 'aria-live': 'polite' });
+  const thread = h('div', { class: 'alius-thread alius-voice alius-voice-personal', 'data-voice': 'personal', role: 'log', 'aria-live': 'polite' });
   if (!current) {
     thread.append(h('p', { class: 'alius-dim' }, 'SELECT A CONTACT'));
   } else {
     const unit = contacts.find((u) => u.id === current)!;
     thread.append(h('h3', {}, `// ${unit.displayName.toUpperCase()}`));
+    const accent = unitAccent(unit.id);
     for (const m of state.dms[current] ?? []) {
-      const text = h('span', { class: 'alius-msg-text' });
-      text.textContent = m.text;
-      thread.append(h('div', { class: `alius-msg ${m.from === 'commander' ? 'is-commander' : 'is-unit'}` },
-        h('span', { class: 'alius-msg-meta' }, `${stamp(m.day, m.slot)}${m.initiated ? ' · SHE WROTE FIRST' : ''}`), text));
+      const mine = m.from === 'commander';
+      const bubble = renderBubble(m.text, mine, accent);
+      bubble.classList.add('alius-msg', mine ? 'is-commander' : 'is-unit');
+      bubble.prepend(h('span', { class: 'alius-msg-meta' }, `${stamp(m.day, m.slot)}${m.initiated ? ' · SHE WROTE FIRST' : ''}`));
+      thread.append(bubble);
     }
     const chips = h('div', { class: 'alius-chips' });
     drawProposalChips(chips, state, (p) => p.channel === 'dm' && p.unitId === current, ctx.onAnswer);

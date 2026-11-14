@@ -9,6 +9,7 @@ import type { OpsTabCtx } from '../ops/opsTab';
 import { renderStatusHeader } from '../shell/status';
 import type { TabId } from '../shell/tabs';
 import { peekHubArt, probeHubArt } from './art';
+import { renderVoiceCard } from '../voice/voiceCard';
 import { renderMarker } from './marker';
 import {
   currentObjective, endSlotBlock, latestOversight, TONE_GLYPH, TONE_LABEL, tonightItems, type MarkerTone,
@@ -115,6 +116,17 @@ function crossSection(
   return { section, panelHost };
 }
 
+/** Today's (or yesterday's) Leash request, in the corporation's own voice. */
+function oversightCard(ctx: HubCtx, state: CampaignState, no: number, what: string): HTMLElement {
+  const corp = state.commander.corporationId ? ctx.registries.corporations.get(state.commander.corporationId) : undefined;
+  const card = renderVoiceCard({
+    voice: 'corporate', title: `${String(corp?.name ?? 'CCP').toUpperCase()} · OVERSIGHT`, level: 3, body: `Request #${String(no).padStart(4, '0')}: ${what}.`,
+  });
+  card.classList.add('alius-oversight', 'alius-stat');
+  for (const [k, v] of Object.entries(analyzeAttrs('glossary:leash'))) card.setAttribute(k, v);
+  return card;
+}
+
 function sideColumn(ctx: HubCtx, state: CampaignState, readOnly: boolean): HTMLElement {
   const objective = currentObjective(state, ctx.registries);
   const items = tonightItems(state, ctx.registries);
@@ -146,11 +158,7 @@ function sideColumn(ctx: HubCtx, state: CampaignState, readOnly: boolean): HTMLE
         ? h('p', { class: 'alius-dim' }, 'Nothing is waiting.')
         : h('ul', {}, ...items.map((i) => h('li', { class: 'alius-tonight-item alius-stat', 'data-tone': i.tone, ...analyzeAttrs(i.analyze) }, `${TONE_GLYPH[i.tone]} ${i.text}`))),
     ),
-    oversight
-      ? stat('alius-oversight', 'glossary:leash',
-        h('div', { class: 'alius-card-label' }, 'OVERSIGHT'),
-        h('div', {}, `Request #${String(oversight.no).padStart(4, '0')}: ${oversight.kind.toUpperCase()} ${who} — ${oversight.outcome}.`))
-      : null,
+    oversight ? oversightCard(ctx, state, oversight.no, `${oversight.kind.toUpperCase()} ${who} — ${oversight.outcome}`) : null,
     h(
       'div', { class: 'alius-legend' },
       h('span', { class: 'alius-chip', ...analyzeAttrs('glossary:semantic_colours') }, 'LEGEND'),

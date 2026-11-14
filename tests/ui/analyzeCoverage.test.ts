@@ -164,7 +164,7 @@ describe('coverage: SQUAD', () => {
   it('the existing unit text is unchanged', () => {
     const s = world();
     const host = squad(s, false);
-    const unit = host.querySelector('article')!;
+    const unit = host.querySelector('article.alius-unit')!; // not just `article`: VoiceCards are articles too
     const text = unit.textContent!;
     expect(text).toMatch(/TRUST [A-Z]+ · AFFINITY [A-Z]+ · ATTRACTION [A-Z]+/);
     expect(text).toContain('LOYALTY: ');

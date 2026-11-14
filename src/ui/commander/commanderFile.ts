@@ -7,6 +7,7 @@ import type { BodyStat } from '../../engine/state/types';
 import type { CommanderImportState } from '../../setup/wizard';
 import { analyzeAttrs, analyzeNative } from '../analyze/mark';
 import { h } from '../dom';
+import { renderVoiceCard } from '../voice/voiceCard';
 
 /** What the form asks its owner to change; the owner (wizard or review modal) applies and re-renders. */
 export type CommanderPatch =
@@ -37,6 +38,10 @@ const cap = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
 export function renderCommanderFile(host: HTMLElement, ctx: CommanderFileCtx): void {
   const { value: c, registries: reg, onChange } = ctx;
   host.replaceChildren();
+  host.append(renderVoiceCard({
+    voice: 'paper', title: 'COMMANDER FILE', meta: 'PERSONNEL RECORD', level: 2,
+    body: 'The corporation reads a commander as descriptors. Fill in the file; none of it is a number.',
+  }));
 
   // --- body
   const spent = poolSpent(c.body);

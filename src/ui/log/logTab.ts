@@ -1,6 +1,7 @@
 import { leashLog } from '../../engine/leash/weekly';
 import type { ChronicleEntry, CampaignState } from '../../engine/state/types';
 import { h } from '../dom';
+import { renderVoiceCard } from '../voice/voiceCard';
 
 export interface LogTabCtx {
   getState: () => CampaignState | null;
@@ -33,9 +34,12 @@ export function renderLogTab(host: HTMLElement, ctx: LogTabCtx): void {
     return;
   }
   const posts = chronicleOrder(state.memory.chronicle).map((e) => {
-    const text = h('div', { class: 'alius-post-text' });
-    text.textContent = e.text;
-    return h('article', { class: `alius-post is-${e.kind}`, 'data-entry': e.id }, h('div', { class: 'alius-post-head' }, heading(e)), text);
+    const post = renderVoiceCard({ voice: 'paper', title: heading(e), body: e.text, level: 3 });
+    post.classList.add('alius-post', `is-${e.kind}`);
+    post.dataset.entry = e.id;
+    post.querySelector('.alius-voice-title')!.classList.add('alius-post-head');
+    post.querySelector('.alius-voice-body')!.classList.add('alius-post-text');
+    return post;
   });
   host.append(h('section', { class: 'alius-section alius-log-thread' },
     h('h2', {}, '[ CCP INCIDENT LOG ]'),
@@ -47,10 +51,11 @@ export function renderLogTab(host: HTMLElement, ctx: LogTabCtx): void {
 function oversightLog(state: CampaignState): HTMLElement {
   const entries = leashLog(state).sort((a, b) => b.no - a.no);
   const nameOf = (id: string): string => state.squad.find((u) => u.id === id)?.displayName ?? id;
-  return h('section', { class: 'alius-section alius-oversight-log' },
-    h('h2', {}, '[ OVERSIGHT LOG ]'),
-    entries.length > 0
-      ? h('div', {}, ...entries.map((e) => h('p', { class: 'alius-oversight-entry', 'data-no': String(e.no) },
-        `#${String(e.no).padStart(4, '0')} DAY ${day3(e.day)} ${e.kind.toUpperCase()} ${nameOf(e.unitId)} — ${String(e.outcome).toUpperCase()}`)))
-      : h('p', { class: 'alius-dim' }, 'NO REQUESTS FILED'));
+  const body = entries.length > 0
+    ? h('div', {}, ...entries.map((e) => h('p', { class: 'alius-oversight-entry', 'data-no': String(e.no) },
+      `#${String(e.no).padStart(4, '0')} DAY ${day3(e.day)} ${e.kind.toUpperCase()} ${nameOf(e.unitId)} — ${String(e.outcome).toUpperCase()}`)))
+    : h('p', { class: 'alius-dim' }, 'NO REQUESTS FILED');
+  const log = renderVoiceCard({ voice: 'corporate', title: 'OVERSIGHT LOG', body });
+  log.classList.add('alius-section', 'alius-oversight-log');
+  return log;
 }

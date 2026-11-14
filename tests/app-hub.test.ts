@@ -42,7 +42,7 @@ function newStore(): FakeStAdapter {
 
 async function boot() {
   const st = newStore();
-  const toasts: Array<{ kind: string; text: string }> = [];
+  const toasts: Array<{ kind: string; text: string; voice?: string }> = [];
   const screens: string[] = [];
   const modalTitles: string[] = [];
   const answers = new Map<string, string | null>([['Start a conversation', 'ok']]);
@@ -55,7 +55,7 @@ async function boot() {
     registerTab() {}, registerHub(r: (host: HTMLElement, device: HTMLElement) => void) { hubRender = r; },
     registerScreen(id: string, r: (host: HTMLElement) => void) { screenRenderers.set(id, r); },
     setTabBadge() {}, isDeviceUp: () => false, setDevice() {},
-    toast(kind: string, text: string) { toasts.push({ kind, text }); },
+    toast(kind: string, text: string, opts?: { voice?: string }) { toasts.push({ kind, text, voice: opts?.voice }); },
     async modal(o: { title: string; body: Node | string; actions: Array<{ label: string; value: string }> }) {
       modalTitles.push(o.title);
       modalActions.push(o.actions.map((a) => a.label));
@@ -192,6 +192,32 @@ describe('hub actions in the app', () => {
     host.querySelector<HTMLButtonElement>('button[data-action="end"]')!.click();
     await vi.waitFor(() => expect(t.screens.at(-1)).toBe('hub'));
     expect(t.state().scene).toBeUndefined();
+  });
+});
+
+describe('voices of the app\'s toasts', () => {
+  async function filed() {
+    const t = await boot();
+    // a unit that attacked has given oversight a cause, so the request is decided (approved or denied)
+    t.setState((s) => { s.disloyalty = { units: { [RHEA]: { signs: [], attempts: 0, cause: { kind: 'attack', day: s.day } } } }; });
+    t.app.dispatch({ type: 'leash/terminate', payload: { unitId: RHEA } });
+    return t;
+  }
+
+  it('the outcome of a Leash request is in the corporate voice, and so is a changed authorization count', async () => {
+    const t = await filed();
+    const request = t.toasts.filter((x) => /^Oversight request|^Oversight denied/.test(x.text));
+    expect(request.length).toBeGreaterThan(0);
+    expect(request.every((x) => x.voice === 'corporate')).toBe(true);
+    const counts = t.toasts.filter((x) => /^Leash authorizations/.test(x.text));
+    expect(counts.every((x) => x.voice === 'corporate')).toBe(true);
+  });
+
+  it('other toasts stay terminal (no voice given)', async () => {
+    const t = await boot();
+    t.setState((s) => { s.discipline = { defiance: [], threats: [], applications: [], restrictions: [{ unitId: RHEA, kind: 'confined', untilDay: s.day + 3 }], demands: [], demandLog: [] }; });
+    await t.app.talkAt(RHEA, 'mess_hall');
+    expect(t.toasts.at(-1)!.voice).toBeUndefined();
   });
 });
 

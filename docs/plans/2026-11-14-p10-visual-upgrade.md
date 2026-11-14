@@ -342,20 +342,20 @@ schemas: `a css skin without cssPreset is rejected`; `an image skin whose screen
   - `unitAccent(unitId: string): string` (one of 6 fixed accents by `fnv1a`).
   - `VOICE_OF` (the ruling's table); `LeashFormOpts.corporation?: string` (verdict card header `{CORPORATION} · OVERSIGHT`).
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `voiceCard.test.ts`: `each voice renders with its class and data-voice` — **acceptance 4**; `text is set as text` (a body `<b>x</b>` string appears literally); `a stamp renders`; `redact covers the given range and keeps the text out of textContent`; contrast (CSS helper): for each voice `--voice-fg` and `--voice-dim` vs `--voice-bg` ≥ 4.5 in every palette that the voice inherits (terminal reads the palette; corporate, paper and personal define their own); each of the 6 accents vs its bubble background ≥ 4.5. `voices.test.ts` / extended screens: `COMMS threads are personal bubbles with the unit's accent` (`.alius-thread .alius-voice-personal`, her bubbles left, the commander's right); `LOG chronicle posts are paper and the oversight log is corporate`; `the oversight form is paper and its verdict a corporate card with the corporation name`; `the SQUAD unit header is a paper dossier`; `the CMDR card is paper`; `a corporate toast carries data-voice="corporate"`; `the app toasts Leash outcomes and leash_refreshed in the corporate voice and DM arrivals in the personal voice`; `the hub shows today's oversight entry as a corporate card`; every existing analyze mark inside re-voiced blocks is kept (coverage test stays green).
 
-- [ ] **Step 2: Run** → FAIL.
+- [x] **Step 2: Run** → FAIL.
 
-- [ ] **Step 3: Implement.** Looks (from the spec table and the canvas):
+- [x] **Step 3: Implement.** Looks (from the spec table and the canvas):
   - `terminal`: palette variables, `--alius-font`, box-drawing borders, scanlines as configured.
   - `corporate`: `--voice-bg: #f4f5f7`, `--voice-fg: #1b1d22`, `--voice-dim: #3f4550`, header `#3c4a5c`, radius 14 px, padding `16px 18px`, `--alius-font-sans`, header `font-weight: 600; letter-spacing: 2px` uppercase `{CORPORATION} · OVERSIGHT`.
   - `paper`: `--voice-bg: #efe6cf` with a subtle inline-SVG fibre filter, `--voice-fg: #2b241a`, `--voice-dim: #5a4e3a`, `--alius-font-type`, a 1 px rule under the title, stamps in `#8b1e1e` at −6°, redaction bars `#1a1a1a`, handwritten notes use the same type font in italic until P10b brings hand fonts.
   - `personal`: thread background `#241c2b`, her bubble `#3a2c44` / `#f5e6f0`, radius `16px 16px 16px 4px`; the commander's bubble uses the palette `--alius-fg` on `--alius-bg` text, radius `16px 16px 4px 16px`; `--alius-font-sans`; the unit's accent on the contact row's left border and the unread dot.
   Readable mode drops the paper fibre and stamps' rotation, keeps the colours.
 
-- [ ] **Step 4: Run** `npm test` → PASS. **Step 5: Commit** `feat(ui): four voices through VoiceCard for comms, log, oversight, dossiers and toasts`
+- [x] **Step 4: Run** `npm test` → PASS. **Step 5: Commit** `feat(ui): four voices through VoiceCard for comms, log, oversight, dossiers and toasts`
 
 ---
 

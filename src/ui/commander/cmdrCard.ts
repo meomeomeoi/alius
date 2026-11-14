@@ -3,6 +3,7 @@ import { commanderProfile, descriptor } from '../../engine/commander/profile';
 import type { CampaignState } from '../../engine/state/types';
 import { analyzeAttrs } from '../analyze/mark';
 import { h, type Child } from '../dom';
+import { renderVoiceCard } from '../voice/voiceCard';
 
 export interface CmdrCardCtx {
   state: CampaignState;
@@ -27,9 +28,7 @@ export function renderCmdrCard(host: HTMLElement, ctx: CmdrCardCtx): void {
   const reputation = state.commander.reputation?.active ?? [];
   const traitIds = [...p.traits.regular, ...(p.traits.special !== undefined ? [p.traits.special] : [])];
 
-  host.append(
-    h('section', { class: 'alius-section alius-cmdr' },
-      h('h2', {}, `CMDR — ${state.commander.name}`),
+  const file = h('div', {},
       crime
         ? h('p', {}, 'CRIME: ', h('span', { class: 'alius-chip', ...analyzeAttrs(`crimes:${crime.id}`) }, String(crime.name)))
         : null,
@@ -52,6 +51,6 @@ export function renderCmdrCard(host: HTMLElement, ctx: CmdrCardCtx): void {
         : h('p', {}, 'REPUTATION — ', ...reputation.flatMap((a, i): Child[] => [
           i === 0 ? '' : ' · ',
           h('span', { class: 'alius-chip', ...analyzeAttrs(`reputations:${a.id}`) }, a.name),
-        ]))),
-  );
+        ])));
+  host.append(h('section', { class: 'alius-section alius-cmdr' }, renderVoiceCard({ voice: 'paper', title: `CMDR — ${state.commander.name}`, body: file })));
 }

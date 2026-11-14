@@ -17279,6 +17279,120 @@ function visualFlags(s, media) {
   return { scanlines: !plain2 && s.scanlines, flicker: !plain2 && s.flicker, glitch: !plain2 && motion, dither: !plain2, motion };
 }
 
+// src/engine/hub.ts
+function fnv1a(s) {
+  let h2 = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h2 ^= s.charCodeAt(i);
+    h2 = Math.imul(h2, 16777619) >>> 0;
+  }
+  return h2 >>> 0;
+}
+var roomsOf = (reg) => [...reg.hubRooms.values()];
+var hostOf = (rooms, host) => rooms.find((r) => (r.hosts ?? []).includes(host));
+var isInjured = (u) => u.status === "injured" || (u.injuryDays ?? 0) > 0;
+function routineWeight(state, reg, room, unit) {
+  const base = (room.weights ?? {})[state.slot] ?? 0;
+  if (base <= 0) return 0;
+  const open2 = (reg.locations.get(room.sceneLocationId)?.slots ?? []).includes(state.slot);
+  if (!open2) return 0;
+  if (typeof room.facilityId === "string" && facilityLevel(state, room.facilityId) < 1) return 0;
+  const liked = (room.likeTags ?? []).some((t) => unit.likes.some((l) => l.toLowerCase() === t.toLowerCase()));
+  return base + (liked ? 2 : 0);
+}
+function place(state, reg, rooms, unit) {
+  const here = (room, reason) => room ? { unitId: unit.id, roomId: room.id, reason } : null;
+  if (state.expedition?.party.includes(unit.id)) return { unitId: unit.id, roomId: null, reason: "expedition" };
+  const held = activeRestrictions(state, unit.id);
+  const found2 = (isInjured(unit) ? here(hostOf(rooms, "injured"), "injured") : null) ?? (held.some((r) => r.kind === "confined") ? here(hostOf(rooms, "confined"), "confined") : null) ?? (held.some((r) => r.kind === "duty") ? here(hostOf(rooms, "duty"), "duty") : null) ?? (state.slot === "night" ? here(hostOf(rooms, "night"), "night") : null);
+  if (found2) return found2;
+  const weights = rooms.map((room) => routineWeight(state, reg, room, unit));
+  const total2 = weights.reduce((a, b) => a + b, 0);
+  if (total2 <= 0) return { unitId: unit.id, roomId: null, reason: "nowhere" };
+  let pick2 = fnv1a(`${state.day}|${state.slot}|${unit.id}`) % total2;
+  for (let i = 0; i < rooms.length; i++) {
+    if (pick2 < weights[i]) return { unitId: unit.id, roomId: rooms[i].id, reason: "routine" };
+    pick2 -= weights[i];
+  }
+  return { unitId: unit.id, roomId: null, reason: "nowhere" };
+}
+function whereabouts(state, reg) {
+  const rooms = roomsOf(reg);
+  return livingUnits(state).map((u) => place(state, reg, rooms, u));
+}
+
+// src/ui/fx.ts
+var SVG_NS = "http://www.w3.org/2000/svg";
+var fxSeq = 0;
+function svg(tag2, attrs) {
+  const el = document.createElementNS(SVG_NS, tag2);
+  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+  return el;
+}
+function noise(cls, f) {
+  const id = `alius-fx-${++fxSeq}`;
+  const layer = svg("svg", { class: `alius-fx ${cls}`, "aria-hidden": "true", width: "100%", height: "100%", preserveAspectRatio: "none" });
+  const filter = svg("filter", { id, x: "0", y: "0", width: "100%", height: "100%" });
+  filter.append(svg("feTurbulence", {
+    type: "fractalNoise",
+    baseFrequency: f.frequency,
+    numOctaves: String(f.octaves),
+    seed: String(f.seed ?? 1),
+    stitchTiles: "stitch"
+  }));
+  layer.append(filter, svg("rect", { width: "100%", height: "100%", filter: `url(#${id})` }));
+  return layer;
+}
+
+// src/ui/voice/voiceCard.ts
+var UNIT_ACCENTS = ["#ff9ec7", "#ffb86b", "#8fd6ff", "#b6e88a", "#d0a8ff", "#7ee7d0"];
+var unitAccent = (unitId) => UNIT_ACCENTS[fnv1a(unitId) % UNIT_ACCENTS.length];
+function redacted(text2, ranges) {
+  const parts = [];
+  let cursor = 0;
+  for (const [from, to] of [...ranges].sort((a, b) => a[0] - b[0])) {
+    const start = Math.max(0, from);
+    const end = Math.min(text2.length, to);
+    if (end <= start || start < cursor) continue;
+    if (start > cursor) parts.push(text2.slice(cursor, start));
+    parts.push(h("span", { class: "alius-redact", "aria-label": "redacted" }, "\u2588".repeat(end - start)));
+    cursor = end;
+  }
+  if (cursor < text2.length) parts.push(text2.slice(cursor));
+  return parts;
+}
+function renderVoiceCard(o) {
+  const head = o.title || o.meta || o.from ? h(
+    "header",
+    { class: "alius-voice-head" },
+    o.title ? h(o.level === 3 ? "h3" : "h2", { class: "alius-voice-title" }, o.title) : null,
+    o.from ? h("span", { class: "alius-voice-from" }, o.from) : null,
+    o.meta ? h("span", { class: "alius-voice-meta" }, o.meta) : null
+  ) : null;
+  const body = h("div", { class: "alius-voice-body" });
+  if (typeof o.body === "string") body.append(...(o.redact?.length ? redacted(o.body, o.redact) : [o.body]).filter((c) => c !== null && c !== void 0));
+  else body.append(o.body);
+  const card2 = h(
+    "article",
+    { class: `alius-voice alius-voice-${o.voice}`, "data-voice": o.voice },
+    o.voice === "paper" ? noise("alius-fibre", { frequency: "0.04 0.9", octaves: 2, seed: 3 }) : null,
+    head,
+    body,
+    o.stamp ? h("span", { class: "alius-stamp" }, o.stamp) : null
+  );
+  if (o.accent) card2.style.setProperty("--voice-accent", o.accent);
+  return card2;
+}
+function renderBubble(text2, mine, accent) {
+  const bubble = h(
+    "div",
+    { class: `alius-bubble alius-voice alius-voice-personal ${mine ? "is-mine" : "is-hers"}`, "data-voice": "personal" },
+    h("span", { class: "alius-msg-text" }, text2)
+  );
+  bubble.style.setProperty("--bubble-accent", accent);
+  return bubble;
+}
+
 // src/ui/leash/requestForm.ts
 var ACTION = {
   compel: "COMPEL \u2014 NEURAL COMPLIANCE BURST",
@@ -17316,9 +17430,10 @@ async function fileLeashRequest(shell, o) {
     line("AUTHORIZATIONS REMAINING", "remaining", String(o.left)),
     line("CONSEQUENCE", "consequence", consequence(o))
   );
+  const paper = (inner) => renderVoiceCard({ voice: "paper", meta: "CCP OVERSIGHT OFFICE \xB7 FORM OR-7", body: inner });
   const choice = await shell.modal({
     title,
-    body: form,
+    body: paper(form),
     actions: [
       { label: "[ FILE REQUEST ]", value: "file", ...o.left < 1 ? { disabled: NO_AUTHORIZATIONS } : {} },
       { label: "[ WITHDRAW ]", value: "withdraw" }
@@ -17327,13 +17442,18 @@ async function fileLeashRequest(shell, o) {
   if (choice !== "file") return false;
   const delay = o.delayMs ?? (motionReduced(o.settings ?? DEFAULT_SETTINGS) ? 0 : 1800);
   const status = h("div", { class: "alius-form-status", "aria-live": "polite" });
-  void shell.modal({ title, body: h("div", { class: "alius-form" }, form, status), actions: [] });
+  void shell.modal({ title, body: paper(h("div", { class: "alius-form" }, form, status)), actions: [] });
   const add = (text2) => void status.append(h("div", { class: "alius-form-line" }, text2));
   add("TRANSMITTING\u2026");
   if (delay > 0) await sleep(delay / 3);
   add("OVERSIGHT REVIEW\u2026");
   if (delay > 0) await sleep(delay / 3);
-  add(o.verdict ?? "APPROVED");
+  status.append(renderVoiceCard({
+    voice: "corporate",
+    title: `${(o.corporation ?? "CCP").toUpperCase()} \xB7 OVERSIGHT`,
+    body: o.verdict ?? "APPROVED",
+    level: 3
+  }));
   if (delay > 0) await sleep(delay / 3);
   shell.closeModal();
   return true;
@@ -19141,6 +19261,13 @@ var cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 function renderCommanderFile(host, ctx2) {
   const { value: c, registries: reg, onChange } = ctx2;
   host.replaceChildren();
+  host.append(renderVoiceCard({
+    voice: "paper",
+    title: "COMMANDER FILE",
+    meta: "PERSONNEL RECORD",
+    level: 2,
+    body: "The corporation reads a commander as descriptors. Fill in the file; none of it is a number."
+  }));
   const spent = poolSpent(c.body);
   const left = TUNING.commander.pool - spent;
   const row = (stat3) => {
@@ -20895,40 +21022,38 @@ function renderCmdrCard(host, ctx2) {
   const crime = state.commander.crimeId ? reg.crimes.get(state.commander.crimeId) : void 0;
   const reputation = state.commander.reputation?.active ?? [];
   const traitIds2 = [...p.traits.regular, ...p.traits.special !== void 0 ? [p.traits.special] : []];
-  host.append(
+  const file = h(
+    "div",
+    {},
+    crime ? h("p", {}, "CRIME: ", h("span", { class: "alius-chip", ...analyzeAttrs(`crimes:${crime.id}`) }, String(crime.name))) : null,
     h(
-      "section",
-      { class: "alius-section alius-cmdr" },
-      h("h2", {}, `CMDR \u2014 ${state.commander.name}`),
-      crime ? h("p", {}, "CRIME: ", h("span", { class: "alius-chip", ...analyzeAttrs(`crimes:${crime.id}`) }, String(crime.name))) : null,
-      h(
-        "p",
-        { class: "alius-cmdr-stats" },
-        ...stat3("STRENGTH", "glossary:body_strength", word("strength", p.body.strength)),
-        " \xB7 ",
-        ...stat3("ENDURANCE", "glossary:body_endurance", word("endurance", p.body.endurance)),
-        " \xB7 ",
-        ...stat3("REFLEXES", "glossary:body_reflexes", word("reflexes", p.body.reflexes))
-      ),
-      h(
-        "p",
-        {},
-        ...stat3("EXPRESSION", "glossary:expression", word("expression", p.expression)),
-        " \xB7 ",
-        ...stat3("SEASONING", "glossary:seasoning", word("seasoning", p.seasoning)),
-        " \xB7 BUILD ",
-        h("span", { class: "alius-chip", ...analyzeAttrs("glossary:archetype") }, p.archetype)
-      ),
-      h("p", {}, "TRAITS: ", ...traitIds2.length === 0 ? ["NONE"] : traitIds2.flatMap((id, i) => [
-        i === 0 ? "" : " \xB7 ",
-        h("span", { class: "alius-chip", ...analyzeAttrs(`commanderTraits:${id}`) }, String(reg.commanderTraits.get(id)?.name ?? id))
-      ])),
-      reputation.length === 0 ? h("p", { class: "alius-dim" }, "REPUTATION \u2014 NONE ON FILE") : h("p", {}, "REPUTATION \u2014 ", ...reputation.flatMap((a, i) => [
-        i === 0 ? "" : " \xB7 ",
-        h("span", { class: "alius-chip", ...analyzeAttrs(`reputations:${a.id}`) }, a.name)
-      ]))
-    )
+      "p",
+      { class: "alius-cmdr-stats" },
+      ...stat3("STRENGTH", "glossary:body_strength", word("strength", p.body.strength)),
+      " \xB7 ",
+      ...stat3("ENDURANCE", "glossary:body_endurance", word("endurance", p.body.endurance)),
+      " \xB7 ",
+      ...stat3("REFLEXES", "glossary:body_reflexes", word("reflexes", p.body.reflexes))
+    ),
+    h(
+      "p",
+      {},
+      ...stat3("EXPRESSION", "glossary:expression", word("expression", p.expression)),
+      " \xB7 ",
+      ...stat3("SEASONING", "glossary:seasoning", word("seasoning", p.seasoning)),
+      " \xB7 BUILD ",
+      h("span", { class: "alius-chip", ...analyzeAttrs("glossary:archetype") }, p.archetype)
+    ),
+    h("p", {}, "TRAITS: ", ...traitIds2.length === 0 ? ["NONE"] : traitIds2.flatMap((id, i) => [
+      i === 0 ? "" : " \xB7 ",
+      h("span", { class: "alius-chip", ...analyzeAttrs(`commanderTraits:${id}`) }, String(reg.commanderTraits.get(id)?.name ?? id))
+    ])),
+    reputation.length === 0 ? h("p", { class: "alius-dim" }, "REPUTATION \u2014 NONE ON FILE") : h("p", {}, "REPUTATION \u2014 ", ...reputation.flatMap((a, i) => [
+      i === 0 ? "" : " \xB7 ",
+      h("span", { class: "alius-chip", ...analyzeAttrs(`reputations:${a.id}`) }, a.name)
+    ]))
   );
+  host.append(h("section", { class: "alius-section alius-cmdr" }, renderVoiceCard({ voice: "paper", title: `CMDR \u2014 ${state.commander.name}`, body: file })));
 }
 
 // src/ui/squad/bands.ts
@@ -21230,6 +21355,21 @@ function unitBlock(unit, ctx2, state) {
   const chip = (text2, address, data) => h("span", { class: "alius-chip", ...analyzeAttrs(address, data) }, text2);
   const stat3 = (text2, address, data) => h("span", { class: "alius-stat", ...analyzeAttrs(address, data) }, text2);
   const roleEntry = reg.roles.get(unit.roleId);
+  const dossier = renderVoiceCard({
+    voice: "paper",
+    title: unit.displayName,
+    level: 3,
+    body: h(
+      "div",
+      {},
+      unit.kind === "grunt" ? h("p", { class: "alius-dim" }, `GRUNT ${unit.designation ?? ""}`.trimEnd()) : null,
+      h("p", {}, roleEntry ? chip(nameOf8(roleEntry, unit.roleId), `roles:${unit.roleId}`) : nameOf8(roleEntry, unit.roleId), ` \xB7 LVL ${unit.level}`),
+      h("p", { class: "alius-xp" }, chip(`XP ${unit.xp}/${xpToNext(unit.level)}`, "glossary:level_xp"), " \xB7 ", chip(`SKILL POINTS ${unit.skillPoints}`, "glossary:skill_points")),
+      unit.breakdown ? h("p", { class: "alius-equip-flag" }, `BREAKDOWN: ${String(reg.defects.get(unit.breakdown.defectId)?.breakdown?.name ?? unit.breakdown.defectId)}`) : null,
+      gone ? h("p", { class: "alius-equip-flag" }, `STATUS: ${unit.status.toUpperCase()}`) : null
+    )
+  });
+  dossier.querySelector(".alius-voice-title").classList.add("alius-unit-name");
   return h(
     "article",
     { class: "alius-unit" },
@@ -21237,12 +21377,7 @@ function unitBlock(unit, ctx2, state) {
     h(
       "div",
       { class: "alius-unit-body" },
-      h("h3", { class: "alius-unit-name" }, unit.displayName),
-      unit.kind === "grunt" ? h("p", { class: "alius-dim" }, `GRUNT ${unit.designation ?? ""}`.trimEnd()) : null,
-      h("p", {}, roleEntry ? chip(nameOf8(roleEntry, unit.roleId), `roles:${unit.roleId}`) : nameOf8(roleEntry, unit.roleId), ` \xB7 LVL ${unit.level}`),
-      h("p", { class: "alius-xp" }, chip(`XP ${unit.xp}/${xpToNext(unit.level)}`, "glossary:level_xp"), " \xB7 ", chip(`SKILL POINTS ${unit.skillPoints}`, "glossary:skill_points")),
-      unit.breakdown ? h("p", { class: "alius-equip-flag" }, `BREAKDOWN: ${String(reg.defects.get(unit.breakdown.defectId)?.breakdown?.name ?? unit.breakdown.defectId)}`) : null,
-      gone ? h("p", { class: "alius-equip-flag" }, `STATUS: ${unit.status.toUpperCase()}`) : null,
+      dossier,
       relationLine(unit, state, ctx2),
       !gone && state.relations[unit.id] ? h("p", { class: "alius-loyalty" }, chip(`LOYALTY: ${state.relations[unit.id].loyaltyBand.toUpperCase()}`, "glossary:loyalty_band")) : null,
       gone ? null : h("p", { class: "alius-disposition" }, h("span", { class: "alius-chip", "data-disposition": unit.id, ...analyzeAttrs("glossary:disposition", live) }, `Disposition: ${String(dispositionFor(state, reg, unit).name)}`)),
@@ -21566,48 +21701,6 @@ function screenBox(skin) {
   return { left: pct2(rect.x, size.w), top: pct2(rect.y, size.h), width: pct2(rect.w, size.w), height: pct2(rect.h, size.h) };
 }
 
-// src/engine/hub.ts
-function fnv1a(s) {
-  let h2 = 2166136261;
-  for (let i = 0; i < s.length; i++) {
-    h2 ^= s.charCodeAt(i);
-    h2 = Math.imul(h2, 16777619) >>> 0;
-  }
-  return h2 >>> 0;
-}
-var roomsOf = (reg) => [...reg.hubRooms.values()];
-var hostOf = (rooms, host) => rooms.find((r) => (r.hosts ?? []).includes(host));
-var isInjured = (u) => u.status === "injured" || (u.injuryDays ?? 0) > 0;
-function routineWeight(state, reg, room, unit) {
-  const base = (room.weights ?? {})[state.slot] ?? 0;
-  if (base <= 0) return 0;
-  const open2 = (reg.locations.get(room.sceneLocationId)?.slots ?? []).includes(state.slot);
-  if (!open2) return 0;
-  if (typeof room.facilityId === "string" && facilityLevel(state, room.facilityId) < 1) return 0;
-  const liked = (room.likeTags ?? []).some((t) => unit.likes.some((l) => l.toLowerCase() === t.toLowerCase()));
-  return base + (liked ? 2 : 0);
-}
-function place(state, reg, rooms, unit) {
-  const here = (room, reason) => room ? { unitId: unit.id, roomId: room.id, reason } : null;
-  if (state.expedition?.party.includes(unit.id)) return { unitId: unit.id, roomId: null, reason: "expedition" };
-  const held = activeRestrictions(state, unit.id);
-  const found2 = (isInjured(unit) ? here(hostOf(rooms, "injured"), "injured") : null) ?? (held.some((r) => r.kind === "confined") ? here(hostOf(rooms, "confined"), "confined") : null) ?? (held.some((r) => r.kind === "duty") ? here(hostOf(rooms, "duty"), "duty") : null) ?? (state.slot === "night" ? here(hostOf(rooms, "night"), "night") : null);
-  if (found2) return found2;
-  const weights = rooms.map((room) => routineWeight(state, reg, room, unit));
-  const total2 = weights.reduce((a, b) => a + b, 0);
-  if (total2 <= 0) return { unitId: unit.id, roomId: null, reason: "nowhere" };
-  let pick2 = fnv1a(`${state.day}|${state.slot}|${unit.id}`) % total2;
-  for (let i = 0; i < rooms.length; i++) {
-    if (pick2 < weights[i]) return { unitId: unit.id, roomId: rooms[i].id, reason: "routine" };
-    pick2 -= weights[i];
-  }
-  return { unitId: unit.id, roomId: null, reason: "nowhere" };
-}
-function whereabouts(state, reg) {
-  const rooms = roomsOf(reg);
-  return livingUnits(state).map((u) => place(state, reg, rooms, u));
-}
-
 // src/ui/shell/status.ts
 var stat = (cls, text2, address) => h("span", { class: `${cls} alius-stat`, ...analyzeAttrs(address) }, text2);
 function renderStatusHeader(host, state) {
@@ -21899,6 +21992,18 @@ function crossSection(ctx2, state, here, onRoom) {
   );
   return { section, panelHost };
 }
+function oversightCard(ctx2, state, no, what) {
+  const corp = state.commander.corporationId ? ctx2.registries.corporations.get(state.commander.corporationId) : void 0;
+  const card2 = renderVoiceCard({
+    voice: "corporate",
+    title: `${String(corp?.name ?? "CCP").toUpperCase()} \xB7 OVERSIGHT`,
+    level: 3,
+    body: `Request #${String(no).padStart(4, "0")}: ${what}.`
+  });
+  card2.classList.add("alius-oversight", "alius-stat");
+  for (const [k, v] of Object.entries(analyzeAttrs("glossary:leash"))) card2.setAttribute(k, v);
+  return card2;
+}
 function sideColumn(ctx2, state, readOnly) {
   const objective = currentObjective(state, ctx2.registries);
   const items = tonightItems(state, ctx2.registries);
@@ -21932,12 +22037,7 @@ function sideColumn(ctx2, state, readOnly) {
       h("h2", {}, "TONIGHT"),
       items.length === 0 ? h("p", { class: "alius-dim" }, "Nothing is waiting.") : h("ul", {}, ...items.map((i) => h("li", { class: "alius-tonight-item alius-stat", "data-tone": i.tone, ...analyzeAttrs(i.analyze) }, `${TONE_GLYPH[i.tone]} ${i.text}`)))
     ),
-    oversight ? stat2(
-      "alius-oversight",
-      "glossary:leash",
-      h("div", { class: "alius-card-label" }, "OVERSIGHT"),
-      h("div", {}, `Request #${String(oversight.no).padStart(4, "0")}: ${oversight.kind.toUpperCase()} ${who} \u2014 ${oversight.outcome}.`)
-    ) : null,
+    oversight ? oversightCard(ctx2, state, oversight.no, `${oversight.kind.toUpperCase()} ${who} \u2014 ${oversight.outcome}`) : null,
     h(
       "div",
       { class: "alius-legend" },
@@ -22027,10 +22127,10 @@ function renderHub(host, _device, ctx2) {
 }
 
 // src/ui/map/mapTab.ts
-var SVG_NS = "http://www.w3.org/2000/svg";
+var SVG_NS2 = "http://www.w3.org/2000/svg";
 var SOURCE_TAG2 = { command: "COMMAND", story: "STORY", rumor: "RUMOR", side: "SIDE" };
-function svg(tag2, attrs) {
-  const el = document.createElementNS(SVG_NS, tag2);
+function svg2(tag2, attrs) {
+  const el = document.createElementNS(SVG_NS2, tag2);
   for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
   return el;
 }
@@ -22129,12 +22229,12 @@ function renderMapTab(host, ctx2) {
       useImage = false;
       drawMap();
     });
-    const overlay = svg("svg", { viewBox: "0 0 100 100", preserveAspectRatio: "none", class: "alius-map-overlay" });
+    const overlay = svg2("svg", { viewBox: "0 0 100 100", preserveAspectRatio: "none", class: "alius-map-overlay" });
     for (const r of regions) {
       const id = String(r.id);
       const points = r.mapHotspot.map(([x, y]) => `${x},${y}`).join(" ");
       const isKnown = knownIds.has(id);
-      const poly = svg("polygon", {
+      const poly = svg2("polygon", {
         points,
         "data-region": id,
         class: `alius-hotspot${isKnown ? "" : " alius-nosignal"}${current?.id === id ? " alius-selected" : ""}`,
@@ -23154,23 +23254,23 @@ function renderCommsTab(host, ctx2) {
   const list5 = h("div", { class: "alius-threads", role: "list" }, ...contacts.map((u) => {
     const n = unread(state, u.id);
     const dot = n > 0 ? h("span", { class: "alius-dot", "aria-label": `${n} unread` }, "\u25CF") : null;
-    return h("button", { type: "button", class: `alius-btn alius-contact${u.id === current ? " is-open" : ""}`, "data-unit": u.id, onclick: () => open2(u.id) }, u.displayName, " ", dot);
+    const row = h("button", { type: "button", class: `alius-btn alius-contact${u.id === current ? " is-open" : ""}`, "data-unit": u.id, onclick: () => open2(u.id) }, u.displayName, " ", dot);
+    row.style.setProperty("--unit-accent", unitAccent(u.id));
+    return row;
   }));
-  const thread = h("div", { class: "alius-thread", role: "log", "aria-live": "polite" });
+  const thread = h("div", { class: "alius-thread alius-voice alius-voice-personal", "data-voice": "personal", role: "log", "aria-live": "polite" });
   if (!current) {
     thread.append(h("p", { class: "alius-dim" }, "SELECT A CONTACT"));
   } else {
     const unit = contacts.find((u) => u.id === current);
     thread.append(h("h3", {}, `// ${unit.displayName.toUpperCase()}`));
+    const accent = unitAccent(unit.id);
     for (const m of state.dms[current] ?? []) {
-      const text2 = h("span", { class: "alius-msg-text" });
-      text2.textContent = m.text;
-      thread.append(h(
-        "div",
-        { class: `alius-msg ${m.from === "commander" ? "is-commander" : "is-unit"}` },
-        h("span", { class: "alius-msg-meta" }, `${stamp(m.day, m.slot)}${m.initiated ? " \xB7 SHE WROTE FIRST" : ""}`),
-        text2
-      ));
+      const mine = m.from === "commander";
+      const bubble = renderBubble(m.text, mine, accent);
+      bubble.classList.add("alius-msg", mine ? "is-commander" : "is-unit");
+      bubble.prepend(h("span", { class: "alius-msg-meta" }, `${stamp(m.day, m.slot)}${m.initiated ? " \xB7 SHE WROTE FIRST" : ""}`));
+      thread.append(bubble);
     }
     const chips = h("div", { class: "alius-chips" });
     drawProposalChips(chips, state, (p) => p.channel === "dm" && p.unitId === current, ctx2.onAnswer);
@@ -23224,9 +23324,12 @@ function renderLogTab(host, ctx2) {
     return;
   }
   const posts = chronicleOrder(state.memory.chronicle).map((e) => {
-    const text2 = h("div", { class: "alius-post-text" });
-    text2.textContent = e.text;
-    return h("article", { class: `alius-post is-${e.kind}`, "data-entry": e.id }, h("div", { class: "alius-post-head" }, heading(e)), text2);
+    const post = renderVoiceCard({ voice: "paper", title: heading(e), body: e.text, level: 3 });
+    post.classList.add("alius-post", `is-${e.kind}`);
+    post.dataset.entry = e.id;
+    post.querySelector(".alius-voice-title").classList.add("alius-post-head");
+    post.querySelector(".alius-voice-body").classList.add("alius-post-text");
+    return post;
   });
   host.append(h(
     "section",
@@ -23238,16 +23341,14 @@ function renderLogTab(host, ctx2) {
 function oversightLog(state) {
   const entries = leashLog(state).sort((a, b) => b.no - a.no);
   const nameOf9 = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
-  return h(
-    "section",
-    { class: "alius-section alius-oversight-log" },
-    h("h2", {}, "[ OVERSIGHT LOG ]"),
-    entries.length > 0 ? h("div", {}, ...entries.map((e) => h(
-      "p",
-      { class: "alius-oversight-entry", "data-no": String(e.no) },
-      `#${String(e.no).padStart(4, "0")} DAY ${day3(e.day)} ${e.kind.toUpperCase()} ${nameOf9(e.unitId)} \u2014 ${String(e.outcome).toUpperCase()}`
-    ))) : h("p", { class: "alius-dim" }, "NO REQUESTS FILED")
-  );
+  const body = entries.length > 0 ? h("div", {}, ...entries.map((e) => h(
+    "p",
+    { class: "alius-oversight-entry", "data-no": String(e.no) },
+    `#${String(e.no).padStart(4, "0")} DAY ${day3(e.day)} ${e.kind.toUpperCase()} ${nameOf9(e.unitId)} \u2014 ${String(e.outcome).toUpperCase()}`
+  ))) : h("p", { class: "alius-dim" }, "NO REQUESTS FILED");
+  const log = renderVoiceCard({ voice: "corporate", title: "OVERSIGHT LOG", body });
+  log.classList.add("alius-section", "alius-oversight-log");
+  return log;
 }
 
 // src/ui/night/knock.ts
@@ -25449,27 +25550,6 @@ function playBoot(screen, opts) {
 }
 
 // src/ui/device/chrome.ts
-var SVG_NS2 = "http://www.w3.org/2000/svg";
-var fxSeq = 0;
-function svg2(tag2, attrs) {
-  const el = document.createElementNS(SVG_NS2, tag2);
-  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
-  return el;
-}
-function noise(cls, f) {
-  const id = `alius-fx-${++fxSeq}`;
-  const layer = svg2("svg", { class: `alius-fx ${cls}`, "aria-hidden": "true", width: "100%", height: "100%", preserveAspectRatio: "none" });
-  const filter = svg2("filter", { id, x: "0", y: "0", width: "100%", height: "100%" });
-  filter.append(svg2("feTurbulence", {
-    type: "fractalNoise",
-    baseFrequency: f.frequency,
-    numOctaves: String(f.octaves),
-    seed: String(f.seed ?? 1),
-    stitchTiles: "stitch"
-  }));
-  layer.append(filter, svg2("rect", { width: "100%", height: "100%", filter: `url(#${id})` }));
-  return layer;
-}
 var bit = (cls, text2) => h("span", { class: cls }, text2);
 var many = (n, cls) => Array.from({ length: n }, () => bit(cls));
 var PRESETS = {
@@ -26426,6 +26506,21 @@ function createShell(deps) {
   return api;
 }
 
+// src/ui/voice/sources.ts
+var VOICE_OF = {
+  toast: "terminal",
+  dm: "personal",
+  unit_note: "personal",
+  chronicle: "paper",
+  dossier: "paper",
+  commander_file: "paper",
+  oversight: "corporate",
+  leash_verdict: "corporate",
+  corporate_mail: "corporate",
+  // P11
+  intake_form: "paper"
+};
+
 // src/app.ts
 var errText3 = (e) => e instanceof Error ? e.message : String(e);
 function createApp(st, deps) {
@@ -26439,7 +26534,12 @@ function createApp(st, deps) {
   let saver = null;
   let started = false;
   let setup = null;
-  const toast = (kind, text2) => shell.toast(kind, text2);
+  const toast = (kind, text2, opts) => shell.toast(kind, text2, opts);
+  const OVERSIGHT = { voice: VOICE_OF.oversight };
+  const corporationName = (s) => {
+    const id = s.commander.corporationId;
+    return id ? registries.corporations.get(id)?.name : void 0;
+  };
   function applyContext() {
     if (state) {
       worldDirectives(context, state, registries);
@@ -26875,13 +26975,14 @@ function createApp(st, deps) {
       showNumbers: getSettings(st).showRawValues,
       delayMs: deps.leashDelayMs,
       settings: getSettings(st),
+      corporation: corporationName(s),
       ...kind === "terminate" ? { verdict: "UNDER REVIEW" } : {}
     });
     if (!filed || st.getActiveChat()?.chatId !== chatId) return false;
     if (kind === "compel") return loyalty.compel(unitId);
     const events = act({ type: kind === "suppress" ? "leash/suppress" : "leash/terminate", payload: { unitId } });
     if (events.some((e) => e.type === "error")) return false;
-    if (events.some((e) => e.type === "leash_used" && e.outcome === "denied")) toast("warn", `Oversight denied the termination of ${unit.displayName}.`);
+    if (events.some((e) => e.type === "leash_used" && e.outcome === "denied")) toast("warn", `Oversight denied the termination of ${unit.displayName}.`, OVERSIGHT);
     return true;
   }
   async function decideArc2(unitId, defectId, path, compel2) {
@@ -26901,7 +27002,8 @@ function createApp(st, deps) {
         cause: `FORCED ${path.toUpperCase()} OF A DEFECT`,
         showNumbers: getSettings(st).showRawValues,
         delayMs: deps.leashDelayMs,
-        settings: getSettings(st)
+        settings: getSettings(st),
+        corporation: corporationName(s)
       });
       if (!filed || st.getActiveChat()?.chatId !== chatId) return;
     }
@@ -27607,15 +27709,15 @@ function createApp(st, deps) {
           toast("info", "A story milestone was reached.");
           break;
         case "leash_changed":
-          toast("warn", `Leash authorizations: ${String(e.left)} left.`);
+          toast("warn", `Leash authorizations: ${String(e.left)} left.`, OVERSIGHT);
           break;
         case "leash_used": {
           const who = state?.squad.find((u) => u.id === e.unitId)?.displayName ?? String(e.unitId);
-          toast("info", `Oversight request #${String(e.no).padStart(4, "0")}: ${KIND_WORD[e.kind] ?? String(e.kind)} ${who} \u2014 ${String(e.outcome)}.`);
+          toast("info", `Oversight request #${String(e.no).padStart(4, "0")}: ${KIND_WORD[e.kind] ?? String(e.kind)} ${who} \u2014 ${String(e.outcome)}.`, OVERSIGHT);
           break;
         }
         case "leash_refreshed":
-          toast("info", `A new week: ${String(e.left)} Leash authorizations.`);
+          toast("info", `A new week: ${String(e.left)} Leash authorizations.`, OVERSIGHT);
           break;
         case "loyalty_sign": {
           const who = state?.squad.find((u) => u.id === e.unitId)?.displayName ?? "A unit";

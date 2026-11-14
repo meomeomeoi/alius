@@ -95,7 +95,8 @@ import {
 } from './st/persistence';
 import { registerCoreProviders } from './analysis/providers/core';
 import { createShell, type ShellApi } from './ui/shell/shell';
-import type { ToastKind } from './ui/shell/toast';
+import type { ToastKind, ToastOpts } from './ui/shell/toast';
+import { VOICE_OF } from './ui/voice/sources';
 
 export interface AliusApp {
   start(): Promise<void>;
@@ -195,7 +196,14 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
   /** The open intake wizard and the chat it was opened in (the only chat that "bind" may write to). */
   let setup: { wizard: Wizard; chatId: string | null; createdGroupId?: string } | null = null;
 
-  const toast = (kind: ToastKind, text: string) => shell.toast(kind, text);
+  const toast = (kind: ToastKind, text: string, opts?: ToastOpts) => shell.toast(kind, text, opts);
+  /** What the corporation's oversight office says: Leash requests, outcomes and the weekly refill. */
+  const OVERSIGHT: ToastOpts = { voice: VOICE_OF.oversight };
+
+  const corporationName = (s: CampaignState): string | undefined => {
+    const id = s.commander.corporationId;
+    return id ? (registries.corporations.get(id)?.name as string | undefined) : undefined;
+  };
 
   function applyContext(): void {
     // P8: the world directives follow the open scene, the days known and a live option change, so they are refreshed with every render
@@ -678,14 +686,14 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       kind, unitName: unit.displayName, no: nextLeashNo(s), left: s.leash.authorizationsLeft,
       ...(kind !== 'terminate' ? { cost: leashCost(s, registries, unitId, kind) } : {}),
       ...(cause ? { cause: cause.kind === 'attack' ? 'ATTACKED THE UNIT' : 'REPEATED DESERTION ATTEMPTS' } : {}),
-      showNumbers: getSettings(st).showRawValues, delayMs: deps.leashDelayMs, settings: getSettings(st),
+      showNumbers: getSettings(st).showRawValues, delayMs: deps.leashDelayMs, settings: getSettings(st), corporation: corporationName(s),
       ...(kind === 'terminate' ? { verdict: 'UNDER REVIEW' } : {}),
     });
     if (!filed || st.getActiveChat()?.chatId !== chatId) return false;
     if (kind === 'compel') return loyalty.compel(unitId);
     const events = act({ type: kind === 'suppress' ? 'leash/suppress' : 'leash/terminate', payload: { unitId } });
     if (events.some((e) => e.type === 'error')) return false;
-    if (events.some((e) => e.type === 'leash_used' && e.outcome === 'denied')) toast('warn', `Oversight denied the termination of ${unit.displayName}.`);
+    if (events.some((e) => e.type === 'leash_used' && e.outcome === 'denied')) toast('warn', `Oversight denied the termination of ${unit.displayName}.`, OVERSIGHT);
     return true;
   }
 
@@ -700,7 +708,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       if (why) return void toast('warn', why);
       const filed = await fileLeashRequest(shell, {
         kind: 'compel', unitName: unit.displayName, no: nextLeashNo(s), left: s.leash.authorizationsLeft, cost: leashCost(s, registries, unitId, 'compel'),
-        cause: `FORCED ${path.toUpperCase()} OF A DEFECT`, showNumbers: getSettings(st).showRawValues, delayMs: deps.leashDelayMs, settings: getSettings(st),
+        cause: `FORCED ${path.toUpperCase()} OF A DEFECT`, showNumbers: getSettings(st).showRawValues, delayMs: deps.leashDelayMs, settings: getSettings(st), corporation: corporationName(s),
       });
       if (!filed || st.getActiveChat()?.chatId !== chatId) return;
     }
@@ -1472,15 +1480,15 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
           toast('info', 'A story milestone was reached.');
           break;
         case 'leash_changed':
-          toast('warn', `Leash authorizations: ${String(e.left)} left.`);
+          toast('warn', `Leash authorizations: ${String(e.left)} left.`, OVERSIGHT);
           break;
         case 'leash_used': {
           const who = state?.squad.find((u) => u.id === e.unitId)?.displayName ?? String(e.unitId);
-          toast('info', `Oversight request #${String(e.no).padStart(4, '0')}: ${KIND_WORD[e.kind as LeashKind] ?? String(e.kind)} ${who} — ${String(e.outcome)}.`);
+          toast('info', `Oversight request #${String(e.no).padStart(4, '0')}: ${KIND_WORD[e.kind as LeashKind] ?? String(e.kind)} ${who} — ${String(e.outcome)}.`, OVERSIGHT);
           break;
         }
         case 'leash_refreshed':
-          toast('info', `A new week: ${String(e.left)} Leash authorizations.`);
+          toast('info', `A new week: ${String(e.left)} Leash authorizations.`, OVERSIGHT);
           break;
         case 'loyalty_sign': {
           const who = state?.squad.find((u) => u.id === e.unitId)?.displayName ?? 'A unit';

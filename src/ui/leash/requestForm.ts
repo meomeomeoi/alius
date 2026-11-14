@@ -2,6 +2,7 @@ import type { LeashKind } from '../../engine/state/types';
 import { DEFAULT_SETTINGS, type AliusSettings } from '../../settings';
 import { h } from '../dom';
 import { motionReduced } from '../motion';
+import { renderVoiceCard } from '../voice/voiceCard';
 import type { ModalOpts } from '../shell/modal';
 
 /** The two shell functions the form needs. */
@@ -23,6 +24,8 @@ export interface LeashFormOpts {
   delayMs?: number;
   /** The settings that decide whether the review plays out (`reducedMotion`); the defaults when absent. */
   settings?: AliusSettings;
+  /** The corporation's name for the verdict card's header (`{CORPORATION} · OVERSIGHT`). */
+  corporation?: string;
   /** The last line of the review (default `APPROVED`). */
   verdict?: string;
 }
@@ -73,8 +76,9 @@ export async function fileLeashRequest(shell: LeashFormShell, o: LeashFormOpts):
     line('AUTHORIZATIONS REMAINING', 'remaining', String(o.left)),
     line('CONSEQUENCE', 'consequence', consequence(o)),
   );
+  const paper = (inner: Node): HTMLElement => renderVoiceCard({ voice: 'paper', meta: 'CCP OVERSIGHT OFFICE · FORM OR-7', body: inner });
   const choice = await shell.modal({
-    title, body: form,
+    title, body: paper(form),
     actions: [
       { label: '[ FILE REQUEST ]', value: 'file', ...(o.left < 1 ? { disabled: NO_AUTHORIZATIONS } : {}) },
       { label: '[ WITHDRAW ]', value: 'withdraw' },
@@ -84,13 +88,15 @@ export async function fileLeashRequest(shell: LeashFormShell, o: LeashFormOpts):
 
   const delay = o.delayMs ?? (motionReduced(o.settings ?? DEFAULT_SETTINGS) ? 0 : 1800);
   const status = h('div', { class: 'alius-form-status', 'aria-live': 'polite' });
-  void shell.modal({ title, body: h('div', { class: 'alius-form' }, form, status), actions: [] });
+  void shell.modal({ title, body: paper(h('div', { class: 'alius-form' }, form, status)), actions: [] });
   const add = (text: string): void => void status.append(h('div', { class: 'alius-form-line' }, text));
   add('TRANSMITTING…');
   if (delay > 0) await sleep(delay / 3);
   add('OVERSIGHT REVIEW…');
   if (delay > 0) await sleep(delay / 3);
-  add(o.verdict ?? 'APPROVED');
+  status.append(renderVoiceCard({
+    voice: 'corporate', title: `${(o.corporation ?? 'CCP').toUpperCase()} · OVERSIGHT`, body: o.verdict ?? 'APPROVED', level: 3,
+  }));
   if (delay > 0) await sleep(delay / 3);
   shell.closeModal();
   return true;
