@@ -1,8 +1,10 @@
 import type { Registries } from '../../content/types';
 
 export { impunityBand, impunityOf, leverageOf, type ImpunityTerms } from './impunity';
+export { disciplineDayStep } from './dayStep';
 export {
-  addRecord, applyDisciplineEvent, decayRecords, disciplineOf, dropDefiance, holdDefiance, recordOf, settleDefiance,
+  addRecord, applyDisciplineEvent, captureInverse, decayRecords, disciplineOf, dropDefiance, enforce, forgetUnit, holdDefiance, lapseThreat,
+  recordOf, registerThreat, settleDefiance,
 } from './record';
 
 /** The words an extracted `measure` may take: every punishment id, plus `leash` and `unspecified` (neither is a registry id). */

@@ -1,9 +1,13 @@
+import type { Registries } from '../../content/types';
 import type { EngineCtx, EngineEvent } from '../dispatch';
+import { isLiving } from '../economy';
+import { nextId } from '../memory';
 import { applyEventToUnit } from '../relations/effects';
 import type { EventIntent } from '../relations/intents';
-import type { CampaignState, DisciplineState, PendingDefiance, Severity } from '../state/types';
-import { TUNING } from '../tuning';
 import { SEVERITIES } from '../relations/vocab';
+import type { CampaignState, DisciplineState, Inverse, PendingDefiance, PendingThreat, Severity } from '../state/types';
+import { TUNING } from '../tuning';
+import { impunityOf } from './impunity';
 
 /** The stored term `R` of a unit's Impunity (P9): −40…40, absent = 0. */
 export const recordOf = (state: Pick<CampaignState, 'relations'>, unitId: string): number => state.relations[unitId]?.impunityRecord ?? 0;
@@ -93,6 +97,137 @@ export function settleDefiance(draft: CampaignState, _ctx: EngineCtx, filter: { 
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
+// What one application changed, so UNDO can put exactly that back.
+
+/**
+ * Runs `fn` (which changes one unit) and reports what it did to her relation, stress and record as an `Inverse`: the
+ * applied deltas after every clamp, the dailyGain change, the state and loyalty band it moved her to and how many history
+ * lines it wrote. Reverting these numbers only (not a snapshot) leaves later changes alone.
+ */
+export function captureInverse(draft: CampaignState, unitId: string, fn: () => EngineEvent[]): { events: EngineEvent[]; inverse: Inverse } {
+  const rel = draft.relations[unitId];
+  const unit = draft.squad.find((u) => u.id === unitId);
+  const before = rel && unit ? {
+    trust: rel.trust, affinity: rel.affinity, attraction: rel.attraction, daily: { ...rel.dailyGain }, stateId: rel.stateId,
+    stateSince: rel.stateSince, band: rel.loyaltyBand, history: rel.history.length, stress: unit.stress, record: recordOf(draft, unitId),
+  } : undefined;
+  const events = fn();
+  const inverse: Inverse = {};
+  const after = draft.relations[unitId];
+  const unitAfter = draft.squad.find((u) => u.id === unitId);
+  if (!before || !after || !unitAfter) return { events, inverse };
+  const axes: NonNullable<Inverse['axes']> = {};
+  for (const a of ['trust', 'affinity', 'attraction'] as const) if (after[a] !== before[a]) axes[a] = after[a] - before[a];
+  if (Object.keys(axes).length > 0) inverse.axes = axes;
+  if (unitAfter.stress !== before.stress) inverse.stress = unitAfter.stress - before.stress;
+  const record = recordOf(draft, unitId) - before.record;
+  if (record !== 0) inverse.record = record;
+  const daily: NonNullable<Inverse['dailyGain']> = {};
+  for (const a of ['trust', 'affinity', 'attraction'] as const) if (after.dailyGain[a] !== before.daily[a]) daily[a] = after.dailyGain[a] - before.daily[a];
+  if (Object.keys(daily).length > 0) inverse.dailyGain = daily;
+  if (after.stateId !== before.stateId) inverse.state = { from: before.stateId, to: after.stateId, sinceFrom: before.stateSince };
+  if (after.loyaltyBand !== before.band) inverse.loyaltyBand = { from: before.band, to: after.loyaltyBand };
+  if (after.history.length !== before.history) inverse.historyEntries = after.history.length - before.history;
+  return { events, inverse };
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Threats
+
+const unitThreat = (draft: CampaignState, unitId: string): PendingThreat | undefined => draft.discipline?.threats.find((t) => t.unitId === unitId);
+const removeThreat = (draft: CampaignState, id: string): void => {
+  if (draft.discipline) draft.discipline.threats = draft.discipline.threats.filter((t) => t.id !== id);
+};
+
+/** The severity of a measure: a punishment's, `leash` above them all, `unspecified` below. A word the registry no longer has is unknown (`null`). */
+function measureSeverity(reg: Registries, measure: string): number | null {
+  if (measure === 'leash') return 5;
+  if (measure === 'unspecified') return 0;
+  const sev = reg.punishments.get(measure)?.severity;
+  return typeof sev === 'number' ? sev : null;
+}
+
+/** Applies a `threatened` event: the row, then one pending threat (a new one replaces the measure and keeps the older deadline). */
+export function registerThreat(draft: CampaignState, ctx: EngineCtx, unitId: string, event: EventIntent, src: DisciplineSource): EngineEvent[] {
+  const reg = ctx.registries;
+  const believed = (impunityOf(draft, reg, unitId)?.value ?? 100) < TUNING.impunity.believeBelow; // fixed now: what she believes of this threat
+  const { events, inverse } = captureInverse(draft, unitId, () => applyEventToUnit(draft, reg, unitId, event));
+  const measure = event.measure ?? 'unspecified';
+  const old = unitThreat(draft, unitId);
+  const threat: PendingThreat = {
+    id: nextId(draft, 'th'), unitId, measure, day: draft.day, deadlineDay: old?.deadlineDay ?? draft.day + 1, believed, channel: src.channel,
+    ...(src.sceneId !== undefined ? { sceneId: src.sceneId } : {}), ...(src.messageRef !== undefined ? { messageRef: src.messageRef } : {}), inverse,
+  };
+  const d = disciplineOf(draft);
+  d.threats = [...d.threats.filter((t) => t.unitId !== unitId), threat];
+  events.push({ type: 'threat_registered', threatId: threat.id, unitId, measure, believed });
+  return events;
+}
+
+/**
+ * A threat nobody carried out: it ends and the engine makes the `commander_yielded` for it (major when the measure was the
+ * Leash or a punishment of severity 3 or more, else moderate).
+ */
+export function lapseThreat(draft: CampaignState, ctx: EngineCtx, threat: PendingThreat): EngineEvent[] {
+  removeThreat(draft, threat.id);
+  const sev = measureSeverity(ctx.registries, threat.measure);
+  const severity: Severity = threat.measure === 'leash' || (sev !== null && sev >= 3) ? 'major' : 'moderate';
+  return [
+    { type: 'threat_lapsed', threatId: threat.id, unitId: threat.unitId, measure: threat.measure },
+    ...applyDisciplineEvent(draft, ctx, threat.unitId, {
+      type: 'commander_yielded', actor: 'commander', targets: [threat.unitId], severity, evidence: 'the threat was not carried out', confidence: 1,
+    }, { channel: threat.channel === 'dm' ? 'dm' : 'scene' }),
+  ];
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Enforcement: the one place a consequence touches `R`, the held defiance and a pending threat.
+
+/** An enforcement of this measure keeps her pending threat? The same measure, an equal or heavier one, any on an unspecified threat, always the Leash. */
+function keepsThreat(reg: Registries, threat: PendingThreat, e: { measure: string; severity: number }): boolean {
+  if (e.measure === 'leash' || threat.measure === e.measure || threat.measure === 'unspecified') return true;
+  const threatSeverity = measureSeverity(reg, threat.measure);
+  return threatSeverity !== null && threatSeverity <= e.severity;
+}
+
+/**
+ * The commander carried out a consequence on her (a punishment, a Leash use): `R` moves by `recordDelta`, her held defiance
+ * is removed with no gain, and a pending threat that this enforcement carries out is kept (`threat_kept`). Returns copies
+ * of what it removed, for UNDO. Named living units only.
+ */
+export function enforce(
+  draft: CampaignState, ctx: EngineCtx, unitId: string, e: { measure: string; severity: 1 | 2 | 3 | 4; recordDelta: number },
+): { events: EngineEvent[]; removed: { defiance?: PendingDefiance; threat?: PendingThreat } } {
+  const unit = draft.squad.find((u) => u.id === unitId);
+  if (!unit || unit.kind !== 'named' || !isLiving(unit)) return { events: [], removed: {} };
+  const events = addRecord(draft, unitId, e.recordDelta, `enforced:${e.measure}`);
+  const removed: { defiance?: PendingDefiance; threat?: PendingThreat } = {};
+  const defiance = dropDefiance(draft, unitId);
+  if (defiance) removed.defiance = defiance;
+  const threat = unitThreat(draft, unitId);
+  if (threat && keepsThreat(ctx.registries, threat, e)) {
+    removeThreat(draft, threat.id);
+    removed.threat = threat;
+    events.push({ type: 'threat_kept', threatId: threat.id, unitId, measure: threat.measure });
+  }
+  return { events, removed };
+}
+
+/** She is no longer in the squad: everything pending on her goes (held defiance, threats, restrictions, demands, sabotage). */
+export function forgetUnit(draft: CampaignState, unitId: string): void {
+  const d = draft.discipline;
+  if (!d) return;
+  d.defiance = d.defiance.filter((x) => x.unitId !== unitId);
+  d.threats = d.threats.filter((x) => x.unitId !== unitId);
+  d.restrictions = d.restrictions.filter((x) => x.unitId !== unitId);
+  d.demands = d.demands.filter((x) => x.unitId !== unitId);
+  if (d.sabotage) {
+    d.sabotage.queued = d.sabotage.queued.filter((x) => x.unitId !== unitId);
+    if (d.sabotage.gear?.unitId === unitId) delete d.sabotage.gear;
+  }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
 // The four P9 intents. `applyIntents` calls this instead of `applyEventToUnit` for them.
 
 export interface DisciplineSource {
@@ -110,6 +245,7 @@ export function applyDisciplineEvent(
 ): EngineEvent[] {
   const unit = draft.squad.find((u) => u.id === unitId);
   if (!unit || unit.kind !== 'named') return [];
+  if (event.type === 'threatened') return registerThreat(draft, ctx, unitId, event, src);
   const events = applyEventToUnit(draft, ctx.registries, unitId, event);
   switch (event.type) {
     case 'defied':
@@ -119,14 +255,24 @@ export function applyDisciplineEvent(
       events.push(...addRecord(draft, unitId, TUNING.impunity.yielded[event.severity], 'commander_yielded'));
       const held = dropDefiance(draft, unitId);
       if (held) events.push(...settleOne(draft, held));
+      // backing down ends her pending threat at once (the yield above is its yield: the lapse does not make another)
+      const threat = unitThreat(draft, unitId);
+      if (threat) {
+        removeThreat(draft, threat.id);
+        events.push({ type: 'threat_lapsed', threatId: threat.id, unitId, measure: threat.measure, by: 'yield' });
+      }
       break;
     }
-    case 'commander_enforced':
-      events.push(...addRecord(draft, unitId, TUNING.impunity.enforcedFallback, 'commander_enforced'));
-      dropDefiance(draft, unitId);
+    case 'commander_enforced': {
+      const measure = event.measure ?? 'verbal';
+      const sev = measureSeverity(ctx.registries, measure);
+      events.push(...enforce(draft, ctx, unitId, {
+        measure, severity: (sev !== null && sev >= 1 && sev <= 4 ? sev : 1) as 1 | 2 | 3 | 4, recordDelta: TUNING.impunity.enforcedFallback,
+      }).events);
       break;
+    }
     default:
-      break; // `threatened`: the row only (task 4 registers the threat)
+      break; // `defied` holds its defiance above; `threatened` returned earlier
   }
   return events;
 }

@@ -2,6 +2,7 @@ import type { Registries } from '../../content/types';
 import { consumeSlots } from '../calendar';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { isLiving } from '../economy';
+import { enforce, forgetUnit } from '../discipline/record';
 import { loyaltyOf, loyaltyRecord } from '../loyalty/state';
 import { addChronicle, addFact } from '../memory';
 import { applyRelationDelta } from '../relationGain';
@@ -84,9 +85,13 @@ function nextNo(draft: CampaignState): number {
   return n;
 }
 
-/** Spends an authorization (unless denied), writes the log entry and reports both. */
+/**
+ * Spends an authorization (unless denied), writes the log entry and reports both. A use that is `done` is an enforcement
+ * (P9): the target's Impunity record falls by `TUNING.impunity.leashEnforced`, her held defiance is dropped and a pending
+ * threat on her is kept. A terminated unit is gone by now, so nothing is left to enforce on.
+ */
 function bookUse(
-  draft: CampaignState, unitId: string, kind: LeashKind, context: LeashLogEntry['context'], outcome: LeashLogEntry['outcome'],
+  draft: CampaignState, ctx: EngineCtx, unitId: string, kind: LeashKind, context: LeashLogEntry['context'], outcome: LeashLogEntry['outcome'],
 ): EngineEvent[] {
   const events: EngineEvent[] = [];
   const no = nextNo(draft);
@@ -98,6 +103,7 @@ function bookUse(
     draft.leash.authorizationsLeft = Math.max(0, draft.leash.authorizationsLeft - 1);
     events.push({ type: 'leash_changed', amount: -1, left: draft.leash.authorizationsLeft });
   }
+  if (outcome === 'done') events.push(...enforce(draft, ctx, unitId, { measure: 'leash', severity: 4, recordDelta: TUNING.impunity.leashEnforced }).events);
   return events;
 }
 
@@ -155,7 +161,7 @@ export function compel(
     events.push(...applyEventToUnit(draft, reg, w, { ...COERCED, targets: [w], severity: 'moderate' }, { scale: witnessScale(unit) }));
   }
   for (const id of [p.unitId, ...witnesses]) events.push(...evaluateAutomatic(draft, reg, id));
-  events.push(...bookUse(draft, p.unitId, 'compel', p.context, forced ? 'done' : 'failed'));
+  events.push(...bookUse(draft, ctx, p.unitId, 'compel', p.context, forced ? 'done' : 'failed'));
   return { forced, events };
 }
 
@@ -168,7 +174,7 @@ export function settleCompels(draft: CampaignState, ctx: EngineCtx, unitIds: str
   for (const unitId of unitIds) {
     if (draft.leash.authorizationsLeft < 1) break;
     const unit = unitOf(draft, unitId);
-    if (!unit || !isLiving(unit)) events.push(...bookUse(draft, unitId, 'compel', 'combat', 'done'));
+    if (!unit || !isLiving(unit)) events.push(...bookUse(draft, ctx, unitId, 'compel', 'combat', 'done'));
     else events.push(...compel(draft, ctx, { unitId, context: 'combat', skipStress: true, roll: false }).events);
   }
   return events;
@@ -187,7 +193,7 @@ export function suppress(draft: CampaignState, ctx: EngineCtx, p: { unitId: stri
   events.push(...evaluateAutomatic(draft, reg, p.unitId));
   if (draft.disloyalty?.open?.unitId === p.unitId) delete draft.disloyalty.open;
   loyaltyRecord(draft, p.unitId).nextCheckDay = draft.day + TUNING.disloyalty.desertion.pauseDays;
-  events.push(...bookUse(draft, p.unitId, 'suppress', p.context, 'done'));
+  events.push(...bookUse(draft, ctx, p.unitId, 'suppress', p.context, 'done'));
   return events;
 }
 
@@ -212,6 +218,7 @@ export function removeFromService(draft: CampaignState, unitId: string, status: 
   if (draft.calendar.nightEvent?.unitId === unitId) delete draft.calendar.nightEvent;
   const waiting = draft.dilemmas?.open;
   if (waiting) waiting.units = waiting.units.filter((id) => id !== unitId);
+  forgetUnit(draft, unitId); // P9: held defiance, threats, restrictions, demands and sabotage that pointed at her
 }
 
 /** The oversight's approval of a termination: the corporation's base, a little per point of its standing, and the commander's traits. */
@@ -236,12 +243,12 @@ export function terminate(draft: CampaignState, ctx: EngineCtx, unitId: string):
   const chance = terminateChance(draft, reg);
   if (!ctx.rng.chance(chance)) {
     loyaltyRecord(draft, unitId).deniedDay = draft.day;
-    return { approved: false, events: bookUse(draft, unitId, 'terminate', 'desertion', 'denied') };
+    return { approved: false, events: bookUse(draft, ctx, unitId, 'terminate', 'desertion', 'denied') };
   }
   const events: EngineEvent[] = [];
   const herNight = draft.slot === 'night' && draft.calendar.nightEvent?.unitId === unitId;
   removeFromService(draft, unitId, 'terminated');
-  events.push(...bookUse(draft, unitId, 'terminate', 'desertion', 'done'));
+  events.push(...bookUse(draft, ctx, unitId, 'terminate', 'desertion', 'done'));
   if (herNight) events.push(...consumeSlots(draft, 1, ctx)); // her night is over: the day rolls on instead of waiting for her
   const reactors = draft.squad.filter((u) => u.id !== unitId && u.kind === 'named' && isLiving(u));
   for (const u of reactors) {

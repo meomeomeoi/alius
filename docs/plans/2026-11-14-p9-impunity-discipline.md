@@ -272,7 +272,7 @@ prompt: the system text lists the four types and a `MEASURE:` line with the give
   - `disciplineDayStep(draft, ctx): EngineEvent[]`, registered with `registerDayEndStep('director_tick', …)` after the loyalty step (import order in `app.ts`: after `./engine/actions/loyalty`). Order inside: settle non-scene defiance → lapse threats with `deadlineDay ≤ day` → `decayRecords`. Later tasks append sabotage, restrictions, demands and reputation.
   - `forgetUnit(draft, unitId): void` (her defiance, threats, later restrictions and demands), called by `removeFromService`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `a threat lapses into commander_yielded at the end of the next day` (threat on day 3; `endDay` → day 4, still pending; `endDay` → day 5: no threat, record +6 for an `unspecified` threat, history has `commander_yielded`, event `threat_lapsed`) — **acceptance 2**;
 `a brig or leash threat lapses as major` (+10);
@@ -284,9 +284,9 @@ prompt: the system text lists the four types and a `MEASURE:` line with the give
 `an old save runs the day step` (delete `discipline`, `impunityRecord`; `endDay` gives no `day_end_step_failed`);
 Leash: `a done compel gives the target −20, cancels her held defiance and keeps a leash threat`; `a failed burst and a denied terminate change no record`; `combat compels are counted when the fight is settled` (`settleCompels`).
 
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** `npm test` → PASS.
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** `npm test` → PASS.
 
-- [ ] **Step 5: Commit** `feat(engine): pending threats, discipline day step and the Leash as enforcement`
+- [x] **Step 5: Commit** `feat(engine): pending threats, discipline day step and the Leash as enforcement`
 
 ---
 

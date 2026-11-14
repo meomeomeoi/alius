@@ -1,9 +1,10 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { Registries } from '../../../src/content/types';
-import { leashCost, witnessesOf, removeFromService } from '../../../src/engine/leash/use';
+import { leashCost, removeFromService, settleCompels, witnessesOf } from '../../../src/engine/leash/use';
+import { disciplineOf, holdDefiance, recordOf } from '../../../src/engine/discipline';
 import { leashLog } from '../../../src/engine/leash/weekly';
 import { loyaltyRecord } from '../../../src/engine/loyalty/state';
-import { seedRng } from '../../../src/engine/rng';
+import { Rng, seedRng } from '../../../src/engine/rng';
 import type { CampaignState } from '../../../src/engine/state/types';
 import { campaign, errors, loadCore, ofType, run, setRelation, withDefect } from '../../helpers/loyalty';
 
@@ -365,5 +366,70 @@ describe('removeFromService', () => {
     const s = refusalScene(clone());
     expect(() => removeFromService(s, ANN, 'terminated')).toThrow(/scene/);
     expect(s.squad.find((u) => u.id === ANN)!.status).toBe('active');
+  });
+});
+
+describe('the Leash as enforcement (P9)', () => {
+  it('a done compel gives the target −20, cancels her held defiance and keeps a leash threat', () => {
+    const s = refusalScene(clone());
+    holdDefiance(s, ANN, 'moderate', 'order', s.scene!.id);
+    disciplineOf(s).threats.push({ id: 'th9', unitId: ANN, measure: 'leash', day: s.day, deadlineDay: s.day + 1, believed: true, channel: 'scene', inverse: {} });
+    const r = compel(s);
+    expect(errors(r.events)).toEqual([]);
+    expect(recordOf(r.state, ANN)).toBe(-20);
+    expect(r.state.discipline!.defiance).toEqual([]);
+    expect(r.state.discipline!.threats).toEqual([]);
+    expect(ofType(r.events, 'threat_kept')).toMatchObject([{ unitId: ANN, measure: 'leash' }]);
+    expect(ofType(r.events, 'impunity_changed')).toMatchObject([{ unitId: ANN, delta: -20 }]);
+    // her scene ends with nothing to settle
+    expect(recordOf(run(r.state, reg, { type: 'scene/end' }).state, ANN)).toBe(-20);
+  });
+
+  it('a Leash use keeps a threat whatever its measure', () => {
+    const s = refusalScene(clone());
+    disciplineOf(s).threats.push({ id: 'th9', unitId: ANN, measure: 'brig', day: s.day, deadlineDay: s.day + 1, believed: false, channel: 'scene', inverse: {} });
+    expect(compel(s).state.discipline!.threats).toEqual([]);
+  });
+
+  it('a failed burst changes no record', () => {
+    const failing = withRegs((d) => d.set('echo_bleed', { ...(reg.defects.get('echo_bleed') as object), id: 'echo_bleed', leash: { costMult: 1, failChance: 1 } } as never));
+    const s = refusalScene(clone());
+    const r = compel(s, failing);
+    expect(ofType(r.events, 'scene_compelled')[0].forced).toBe(false);
+    expect(recordOf(r.state, ANN)).toBe(0);
+  });
+
+  it('a denied terminate changes no record', () => {
+    const s = clone();
+    loyaltyRecord(s, ANN).cause = { kind: 'attack', day: s.day };
+    s.rng = seedRng(1);
+    const r = run(s, { ...reg, corporations: new Map([...reg.corporations].map(([id, c]) => [id, { ...c, leash: { approval: 0 } }])) }, { type: 'leash/terminate', payload: { unitId: ANN } });
+    expect(errors(r.events)).toEqual([]);
+    expect(recordOf(r.state, ANN)).toBe(0);
+  });
+
+  it('a suppress gives −20 too', () => {
+    const s = clone();
+    s.disloyalty = { units: {}, open: { kind: 'desertion', unitId: ANN, day: s.day, at: 'mission_start' } };
+    const r = run(s, reg, { type: 'leash/suppress', payload: { unitId: ANN } });
+    expect(errors(r.events)).toEqual([]);
+    expect(recordOf(r.state, ANN)).toBe(-20);
+  });
+
+  it('combat compels are counted when the fight is settled (settleCompels)', () => {
+    const d = clone();
+    const events = settleCompels(d, { registries: reg, rng: new Rng(seedRng(3)) }, [ANN]);
+    expect(events.some((e) => e.type === 'leash_used')).toBe(true);
+    expect(recordOf(d, ANN)).toBe(-20);
+    const gone = clone();
+    gone.squad.find((u) => u.id === BEA)!.status = 'dead';
+    settleCompels(gone, { registries: reg, rng: new Rng(seedRng(3)) }, [BEA]);
+    expect(recordOf(gone, BEA)).toBe(0); // she is gone: the authorization is spent, nothing else
+  });
+
+  it('the record never goes below −40', () => {
+    const s = refusalScene(clone());
+    s.relations[ANN].impunityRecord = -35;
+    expect(recordOf(compel(s).state, ANN)).toBe(-40);
   });
 });
