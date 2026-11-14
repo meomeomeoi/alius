@@ -279,7 +279,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
   const director = createDirector(worldDeps);
   const dilemmas = createDilemmas(worldDeps);
   const loyalty = createLoyalty({ ...worldDeps, context, refreshContext: applyContext });
-  const discipline = createDiscipline({ ...worldDeps, context, refreshContext: applyContext });
+  const discipline = createDiscipline({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o) });
   const expedition = createExpedition({ ...worldDeps, startCombat: (p) => api.startCombat(p), startScene: (o) => beginScene(o) });
   let expeditionScreen: ExpeditionScreen | null = null;
   /** True while the expedition screen is what the shell shows. */
@@ -415,6 +415,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         shell.open();
       }
       if (has('slot_advanced')) void comms.onSlotAdvanced().catch(warn('unit DMs'));
+      if (has('slot_advanced')) void discipline.onSlotAdvanced().catch(warn('demands'));
       if (has('director_requested') || (has('combat_ended') && state?.world.director?.pending)) void director.onRequested().catch(warn('director'));
       if (has('rumors_requested')) api.dispatch({ type: 'director/request', payload: { reason: 'scout' } }, { expectChatId: chatId });
       if (has('expedition_ended')) {
@@ -438,6 +439,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         onCompel: (unitId) => void api.fileLeash('compel', unitId),
         onPunish: (unitId, measure, days) => void discipline.punish(unitId, measure, days),
         onUndoDiscipline: (id) => void discipline.undo(id),
+        onAnswerDemand: (id, answer) => void discipline.answerDemand(id, answer),
       });
       return;
     }
@@ -1629,6 +1631,8 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       registries,
       onSend: (unitId, text) => void comms.send(unitId, text),
       onUndoDiscipline: (id) => void discipline.undo(id),
+      onAnswerDemand: (id, answer) => void discipline.answerDemand(id, answer),
+      onTalkDemand: (id) => void discipline.talkDemand(id).then((ok) => { if (ok) shell.open(); }),
       onRead: (unitId) => {
         const unit = state?.dms[unitId];
         if (unit?.some((m) => m.from !== 'commander' && !m.read)) api.dispatch({ type: 'dm/read', payload: { unitId } }, { expectChatId: st.getActiveChat()?.chatId });

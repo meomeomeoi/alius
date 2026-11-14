@@ -1,10 +1,11 @@
 import type { Registries } from '../../content/types';
+import { unreadOf } from '../../engine/dms';
 import { isLiving } from '../../engine/economy';
 import type { ProposalAnswer } from '../../engine/relations/proposals';
 import type { CampaignState, Unit } from '../../engine/state/types';
 import { h } from '../dom';
 import { drawProposalChips } from '../proposalChips';
-import { drawDisciplineChips } from '../discipline/chips';
+import { drawDemandChips, drawDisciplineChips } from '../discipline/chips';
 
 export interface CommsTabCtx {
   getState: () => CampaignState | null;
@@ -14,13 +15,18 @@ export interface CommsTabCtx {
   onAnswer: (proposalId: string, answer: ProposalAnswer) => void;
   /** P9: UNDO on a discipline chip. */
   onUndoDiscipline?: (id: string) => void;
+  /** P9: [GRANT] / [REFUSE] / [TALK] on her demand. */
+  onAnswerDemand?: (demandId: string, answer: 'grant' | 'refuse') => void;
+  onTalkDemand?: (demandId: string) => void;
 }
 
 /** The open thread and the half-typed text survive a re-render (the tab redraws after every action). */
 const selected = new WeakMap<HTMLElement, string>();
 const drafts = new WeakMap<HTMLElement, string>();
 
-const unread = (state: CampaignState, id: string): number => (state.dms[id] ?? []).filter((m) => m.from !== 'commander' && !m.read).length;
+/** The dot on a contact counts a waiting demand too; marking a thread read must look at the messages only (a demand stays until answered). */
+const unread = unreadOf;
+const unreadMessages = (state: CampaignState, id: string): number => (state.dms[id] ?? []).filter((m) => m.from !== 'commander' && !m.read).length;
 const stamp = (day: number, slot: string): string => `DAY ${String(day).padStart(3, '0')} // ${slot.toUpperCase()}`;
 
 /** The COMMS tab: a retro messenger with one thread per named, living unit. */
@@ -82,9 +88,13 @@ export function renderCommsTab(host: HTMLElement, ctx: CommsTabCtx): void {
     input.addEventListener('keydown', (e) => {
       if ((e as KeyboardEvent).key === 'Enter') send();
     });
-    thread.append(chips, disciplineChips, h('div', { class: 'alius-cmd' }, h('span', { class: 'alius-prompt' }, 'MSG>'), input, h('button', { type: 'button', class: 'alius-btn', 'data-action': 'send', onclick: send }, '[SEND]')));
+    const demandChips = h('div', { class: 'alius-chips alius-discipline-chips' });
+    drawDemandChips(demandChips, state, ctx.registries, (c) => c.unitId === current, {
+      grant: (id) => ctx.onAnswerDemand?.(id, 'grant'), refuse: (id) => ctx.onAnswerDemand?.(id, 'refuse'), talk: (id) => ctx.onTalkDemand?.(id),
+    });
+    thread.append(chips, disciplineChips, demandChips, h('div', { class: 'alius-cmd' }, h('span', { class: 'alius-prompt' }, 'MSG>'), input, h('button', { type: 'button', class: 'alius-btn', 'data-action': 'send', onclick: send }, '[SEND]')));
     // messages that arrived while the thread was open: mark them read (after this render, so it cannot re-enter it)
-    if (unread(state, current) > 0) queueMicrotask(() => ctx.onRead(unit.id));
+    if (unreadMessages(state, current) > 0) queueMicrotask(() => ctx.onRead(unit.id));
   }
   host.append(h('section', { class: 'alius-section alius-comms' }, h('h2', {}, '[ PDA COMMS ]'), h('div', { class: 'alius-comms-body' }, list, thread)));
 }

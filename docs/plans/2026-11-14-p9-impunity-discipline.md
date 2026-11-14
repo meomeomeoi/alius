@@ -579,15 +579,15 @@ chips — **acceptance 4 and 5**: `a dialogue punishment draws DISCIPLINE LOGGED
   - `drawDemandChips(host, state, registries, pick, on: { grant(id); refuse(id); talk(id) })`: label `{NAME} DEMANDS: {text}` (`alius-chip`, `demandTemplates:<id>`, ctx `{ unitId }`), `OWED` mark for an owed one, buttons `[GRANT] [REFUSE] [TALK]` (`data-demand-answer`); `[GRANT]` is `aria-disabled` with `grantProblem`'s reason; `[TALK]` is absent inside a scene. Glossary: `demand`, `owed_demand`.
   - COMMS tab badge counts open demands delivered by DM as unread until answered.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 flavor: `a valid answer gives the text`, `markup and a 400-character answer are cut to plain 240`, `the prompt wraps the template text in <demand> and names no pronoun for the commander`;
 controller: `a slot change rolls, words and delivers` (fake mechanic reply `{"text":"I want double rations. Starting tonight."}` → the DM carries that text); `wording off or a failed call delivers the template text with no second call`; `nothing is rolled during an expedition`; `a chat switch between roll and delivery drops the delivery` (the engine delivers it at day end); `grant and refuse dispatch demand/answer and clear the directive`; `TALK opens a private scene with the demand directive and keeps the demand open`; `a demand of a unit in the open scene sets the directive at once`;
 chips: the three buttons, the `OWED` mark, `GRANT` soft-disabled with the reason and inert, addresses resolve; drawn in the scene for participants and in the unit's COMMS thread.
 
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** `npm test` → PASS.
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** `npm test` → PASS.
 
-- [ ] **Step 5: Commit** `feat(discipline): demand wording, delivery, TALK and chips`
+- [x] **Step 5: Commit** `feat(discipline): demand wording, delivery, TALK and chips`
 
 ---
 

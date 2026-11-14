@@ -197,6 +197,7 @@ export function renderSysTab(host: HTMLElement, ctx: SysCtx): void {
     h('h3', {}, 'World options'),
     ...worldOptionRows(),
     h('h3', {}, 'Relationships'),
+    field('The mechanic model words soldiers\' demands', checkbox('demandWording', settings.demandWording), 'demandWording'),
     field('First impression fades (days, 1–30)', numberInput('firstImpressionTau', settings.firstImpressionTau, (n) => apply({ firstImpressionTau: n }).firstImpressionTau, { min: '1', max: '30' }), 'firstImpressionTau'),
     h('h3', {}, 'Decisions'),
     field('Generated dilemmas (mechanic model; off: authored options)', checkbox('dilemmasEnabled', settings.dilemmasEnabled), 'dilemmasEnabled'),

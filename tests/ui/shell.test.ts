@@ -462,9 +462,10 @@ describe('P3 shell additions', () => {
     toggle(input('explicitContent') as HTMLInputElement);
     toggle(input('unitDms') as HTMLInputElement);
     toggle(input('chronicleCompaction') as HTMLInputElement);
+    toggle(input('demandWording') as HTMLInputElement);
     expect(st.settings).toMatchObject({
       intentMode: 'every_n', intentEveryN: 5, intentMinConfidence: 0.3, scenePacing: 12, typingSpeed: 0, romanticInitiative: 'high',
-      romance: false, explicitContent: true, unitDms: false, chronicleCompaction: false,
+      romance: false, explicitContent: true, unitDms: false, chronicleCompaction: false, demandWording: false,
     });
   });
 

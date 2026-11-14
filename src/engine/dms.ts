@@ -36,9 +36,20 @@ export function dmMode(state: CampaignState, unitId: string): 'reply' | 'snap' |
   return n <= TUNING.comms.snapAfter ? 'reply' : n <= TUNING.comms.battery ? 'snap' : 'ignore';
 }
 
-/** Messages from units the commander has not opened yet. */
+/** The messages that carry an open demand: they count as unread until the demand is answered, not twice. */
+const demandMessages = (state: CampaignState, unitId?: string): Map<string, string> => new Map(
+  (state.discipline?.demands ?? []).filter((d) => d.status === 'open' && d.dmId !== undefined && (unitId === undefined || d.unitId === unitId)).map((d) => [d.dmId!, d.unitId]));
+
+/** Unread messages from one unit, plus her open demand if it was delivered by DM (read or not, until it is answered). */
+export function unreadOf(state: CampaignState, unitId: string): number {
+  const carriers = demandMessages(state, unitId);
+  return (state.dms[unitId] ?? []).filter((m) => m.from !== 'commander' && !m.read && !carriers.has(m.id)).length + carriers.size;
+}
+
+/** Messages from units the commander has not opened yet, and demands by DM that wait for an answer. */
 export function unreadCount(state: CampaignState): number {
-  return Object.values(state.dms).reduce((n, thread) => n + thread.filter((m) => m.from !== 'commander' && !m.read).length, 0);
+  const ids = new Set([...Object.keys(state.dms), ...(state.discipline?.demands ?? []).map((d) => d.unitId)]);
+  return [...ids].reduce((n, id) => n + unreadOf(state, id), 0);
 }
 
 const isNamedLiving = (state: CampaignState, id: string): boolean => {

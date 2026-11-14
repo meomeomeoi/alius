@@ -932,5 +932,34 @@
     "see": [
       "discipline"
     ]
+  },
+  {
+    "id": "demand",
+    "term": "Demand",
+    "short": "Something a soldier asks of the commander: more food, a room, to be left out of a run, a weapon. Grant it, refuse it or talk it over.",
+    "long": "A soldier who feels safe asking will ask. Granting costs something and buys goodwill; refusing costs relations, more so with a soldier who feels safe, and may turn into open defiance. A demand left unanswered for two days counts as a refusal. TALK opens a conversation and keeps the demand open.",
+    "see": [
+      "owed_demand",
+      "impunity",
+      "discipline"
+    ]
+  },
+  {
+    "id": "owed_demand",
+    "term": "Owed demand",
+    "short": "The price of a favor a soldier did while she was not yet willing. She will want something for it, and refusing breaks a promise.",
+    "long": "When the commander asks a soldier who trusts a little less than the task needs, she may do it anyway and bill later. Refusing what she then asks counts as breaking a promise.",
+    "see": [
+      "demand"
+    ]
+  },
+  {
+    "id": "setting_demand_wording",
+    "term": "Demand wording",
+    "short": "Lets the mechanic model put a soldier's demand into her own words. Off, the written text is used as it is.",
+    "long": "Costs one short model call per demand. The rules decide what she asks for; the model only chooses the words.",
+    "see": [
+      "demand"
+    ]
   }
 ]

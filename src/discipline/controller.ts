@@ -1,5 +1,7 @@
 import type { EngineEvent } from '../engine/dispatch';
+import type { CampaignState } from '../engine/state/types';
 import { commandStance, stanceEntry } from '../engine/discipline';
+import { generateDemandFlavor } from '../llm/calls/flavor';
 import { clearDisciplineDirectives, disciplineDirectives } from './context';
 import type { DisciplineDeps } from './deps';
 import { measureLabel, punishDirective, threatDirective } from './directives';
@@ -13,6 +15,12 @@ export interface DisciplineController {
   onSceneClosed(): void;
   /** The menu path: imposes a measure (and the days of a brig) on a unit. Toasts and returns false when the engine refuses. */
   punish(unitId: string, measure: string, days?: number): boolean;
+  /** After a slot change: rolls for demands, words each new one (when the setting is on and the model answers) and delivers it. */
+  onSlotAdvanced(): Promise<void>;
+  /** [GRANT] or [REFUSE]. Toasts the reason and returns false when the engine refuses. */
+  answerDemand(demandId: string, answer: 'grant' | 'refuse'): boolean;
+  /** [TALK]: opens a private scene with her (her quarters) while the demand stays open. */
+  talkDemand(demandId: string): Promise<boolean>;
   /** UNDO — not what I meant: an application read from dialogue or a threat. Toasts and returns false when it cannot be undone. */
   undo(id: string): boolean;
 }
@@ -25,6 +33,67 @@ export interface DisciplineController {
 export function createDiscipline(deps: DisciplineDeps): DisciplineController {
   const nameOf = (unitId: string): string => deps.app.current().state?.squad.find((u) => u.id === unitId)?.displayName ?? unitId;
 
+  const chatId = (): string | undefined => deps.st.getActiveChat()?.chatId;
+  const state = (): CampaignState | null => deps.app.current().state;
+  const syncDirectives = (): void => {
+    const s = state();
+    if (s?.scene) disciplineDirectives(deps.context, s, deps.registries());
+    deps.refreshContext();
+  };
+
+  /** Words one undelivered demand (setting on, model answers) and delivers it; a chat that changed meanwhile drops it (the day end delivers it). */
+  async function wordAndDeliver(demandId: string, expect: string | undefined): Promise<void> {
+    const s = state();
+    const demand = s?.discipline?.demands.find((d) => d.id === demandId);
+    if (!s || !demand || demand.status !== 'undelivered') return;
+    const reg = deps.registries();
+    let text: string | undefined;
+    if (deps.settings().demandWording) {
+      const stance = commandStance(s, reg, demand.unitId);
+      const unit = s.squad.find((u) => u.id === demand.unitId);
+      try {
+        text = (await generateDemandFlavor({
+          kind: 'demand', unitName: unit?.displayName ?? demand.unitId, stateHint: String(reg.relationshipStates.get(s.relations[demand.unitId]?.stateId ?? '')?.promptHint ?? ''),
+          stanceName: String((stance === null ? undefined : stanceEntry(reg, stance)?.name) ?? ''), demand: demand.text,
+        }, { st: deps.st, settings: deps.settings() })) ?? undefined;
+      } catch {
+        text = undefined; // a failed call never blocks the demand: the template text is used
+      }
+    }
+    if (chatId() !== expect) return;
+    const events = deps.app.dispatch({ type: 'demand/deliver', payload: { demandId, ...(text !== undefined ? { text } : {}) } }, { expectChatId: expect });
+    if (events.some((e) => e.type === 'error')) return;
+    syncDirectives();
+  }
+
+  async function onSlotAdvanced(): Promise<void> {
+    const expect = chatId();
+    const s = state();
+    if (!s || s.expedition || s.combat || s.dilemmas?.open?.status === 'presented') return;
+    const events = deps.app.dispatch({ type: 'demand/roll', payload: {} }, { expectChatId: expect });
+    if (events.some((e) => e.type === 'error')) return;
+    for (const e of events) if (e.type === 'demand_opened') await wordAndDeliver(String(e.demandId), expect);
+  }
+
+  function answerDemand(demandId: string, answer: 'grant' | 'refuse'): boolean {
+    const events = deps.app.dispatch({ type: 'demand/answer', payload: { demandId, answer } }, { expectChatId: chatId() });
+    const bad = events.find((e) => e.type === 'error');
+    if (bad) {
+      deps.toast('error', String(bad.message ?? bad.code));
+      return false;
+    }
+    syncDirectives();
+    return true;
+  }
+
+  async function talkDemand(demandId: string): Promise<boolean> {
+    const demand = state()?.discipline?.demands.find((d) => d.id === demandId && d.status === 'open');
+    if (!demand || !deps.startScene) return false;
+    const ok = await deps.startScene({ locationId: 'quarters_unit', participants: [demand.unitId], origin: 'event' });
+    if (ok) syncDirectives();
+    return ok;
+  }
+
   function onEvents(events: EngineEvent[]): void {
     let set = false;
     for (const e of events) {
@@ -32,6 +101,9 @@ export function createDiscipline(deps: DisciplineDeps): DisciplineController {
         const unitId = String(e.unitId);
         deps.context.setDirective(threatDirective(unitId, nameOf(unitId), measureLabel(deps.registries(), String(e.measure)), e.believed === true));
         set = true;
+      } else if (e.type === 'delegate_demand' && typeof e.demandId === 'string') {
+        // a favor she did on credit (a delegate one band short): her demand is worded and delivered like any other
+        void wordAndDeliver(e.demandId, chatId()).catch(() => {});
       } else if (e.type === 'threat_lapsed') {
         deps.toast('info', `A threat lapsed: ${nameOf(String(e.unitId))} saw the commander back down.`);
       } else if (e.type === 'covert_sabotage' && deps.settings().debug) {
@@ -95,5 +167,5 @@ export function createDiscipline(deps: DisciplineDeps): DisciplineController {
     return true;
   }
 
-  return { onEvents, onSceneOpened, onSceneClosed, punish, undo };
+  return { onEvents, onSceneOpened, onSceneClosed, punish, undo, onSlotAdvanced, answerDemand, talkDemand };
 }

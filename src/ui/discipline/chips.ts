@@ -1,5 +1,5 @@
 import type { Registries } from '../../content/types';
-import { canUndo } from '../../engine/discipline';
+import { canUndo, grantProblem } from '../../engine/discipline';
 import type { CampaignState } from '../../engine/state/types';
 import { measureLabel } from '../../discipline/directives';
 import { analyzeAttrs } from '../analyze/mark';
@@ -37,5 +37,42 @@ export function drawDisciplineChips(
     if (!pick({ channel: t.channel, unitId: t.unitId, ...(t.sceneId !== undefined ? { sceneId: t.sceneId } : {}) })) continue;
     host.append(group(t.id, t.unitId, 'glossary:threat',
       `THREAT REGISTERED — ${measureLabel(reg, t.measure)} (${name(t.unitId)}) · ${t.believed ? 'She believes it' : "She doesn't buy it"}`));
+  }
+}
+
+export interface DemandHandlers {
+  grant: (demandId: string) => void;
+  refuse: (demandId: string) => void;
+  /** Absent inside a scene: she is already there. */
+  talk?: (demandId: string) => void;
+}
+
+/**
+ * Draws her open demands (P9) into `host`, from the state alone: `{NAME} DEMANDS: {text}`, an OWED mark for a favor she
+ * did on credit, and `[GRANT] [REFUSE] [TALK]`. `[GRANT]` is soft-disabled (`aria-disabled`, the reason in the title) while
+ * the engine would refuse it; `[TALK]` opens a conversation and keeps the demand open. An undelivered demand is not shown yet.
+ */
+export function drawDemandChips(
+  host: HTMLElement, state: CampaignState, reg: Registries, pick: (c: { unitId: string }) => boolean, on: DemandHandlers,
+): void {
+  host.replaceChildren();
+  for (const d of state.discipline?.demands ?? []) {
+    if (d.status !== 'open' || !pick({ unitId: d.unitId })) continue;
+    const name = (state.squad.find((u) => u.id === d.unitId)?.displayName ?? d.unitId).toUpperCase();
+    const why = grantProblem(state, reg, d.id);
+    const button = (kind: 'grant' | 'refuse' | 'talk', text: string, run: () => void, disabled = false, title?: string): HTMLElement => {
+      const b = h('button', {
+        type: 'button', class: 'alius-btn alius-tagchip', 'data-demand-answer': kind, 'data-demand': d.id,
+        ...(disabled ? { 'aria-disabled': 'true', ...(title ? { title } : {}) } : {}),
+        onclick: () => { if (b.getAttribute('aria-disabled') !== 'true') run(); },
+      }, text);
+      return b;
+    };
+    host.append(h('div', { class: 'alius-chip-group', 'data-demand-group': d.id },
+      h('span', { class: 'alius-chip', 'data-demand': d.id, ...analyzeAttrs(`demandTemplates:${d.templateId}`, { unitId: d.unitId }) }, `${name} DEMANDS: ${d.text}`),
+      d.owed ? h('span', { class: 'alius-chip', 'data-owed': d.id, ...analyzeAttrs('glossary:owed_demand') }, 'OWED') : null,
+      button('grant', '[GRANT]', () => on.grant(d.id), why !== null, why ?? undefined),
+      button('refuse', '[REFUSE]', () => on.refuse(d.id)),
+      on.talk ? button('talk', '[TALK]', () => on.talk!(d.id)) : null));
   }
 }

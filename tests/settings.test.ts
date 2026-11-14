@@ -83,6 +83,16 @@ describe('settings', () => {
     expect(s.budgets.chronicle_compact).toBe(400);
   });
 
+  it('P9: demandWording defaults to on, a bad value falls back, an update is kept', () => {
+    const st = new FakeStAdapter();
+    expect(getSettings(st).demandWording).toBe(true);
+    st.settings = { demandWording: 'sure' };
+    expect(getSettings(st).demandWording).toBe(true);
+    st.settings = { demandWording: false };
+    expect(getSettings(st).demandWording).toBe(false);
+    expect(updateSettings(st, { demandWording: true }).demandWording).toBe(true);
+  });
+
   it('P3: invalid values fall back, valid ones are kept', () => {
     const st = new FakeStAdapter();
     st.settings = {

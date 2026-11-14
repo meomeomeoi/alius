@@ -156,3 +156,27 @@ describe('initiative', () => {
     expect(r.state.rng).not.toEqual(fresh().rng);
   });
 });
+
+describe('unread counts with open demands (P9)', () => {
+  it('a demand delivered by DM counts as unread until it is answered, not twice', async () => {
+    const { unreadCount, unreadOf } = await import('../../src/engine/dms');
+    const s = campaign(reg, 4);
+    s.dms[ANN] = [{ id: 'm1', from: ANN, text: 'hey', day: 1, slot: 'morning', read: false }, { id: 'm2', from: ANN, text: 'I want a room.', day: 1, slot: 'morning', read: false, initiated: true }];
+    s.discipline = { defiance: [], threats: [], applications: [], restrictions: [], demandLog: [], demands: [{ id: 'd1', unitId: ANN, templateId: 'own_room', text: 'I want a room.', day: 1, expiresDay: 3, status: 'open', impunityDriven: false, dmId: 'm2' }] };
+    expect(unreadCount(s)).toBe(2); // the plain message and the demand
+    expect(unreadOf(s, ANN)).toBe(2);
+    s.dms[ANN].forEach((m) => { m.read = true; });
+    expect(unreadCount(s)).toBe(1); // read, but not answered
+    expect(unreadOf(s, ANN)).toBe(1);
+    s.discipline.demands = [];
+    expect(unreadCount(s)).toBe(0);
+  });
+
+  it('a demand delivered in a scene (no DM) adds nothing', async () => {
+    const { unreadCount } = await import('../../src/engine/dms');
+    const s = campaign(reg, 4);
+    s.discipline = { defiance: [], threats: [], applications: [], restrictions: [], demandLog: [], demands: [{ id: 'd1', unitId: ANN, templateId: 'own_room', text: 'x', day: 1, expiresDay: 3, status: 'open', impunityDriven: false }] };
+    expect(unreadCount(s)).toBe(0);
+  });
+});
+

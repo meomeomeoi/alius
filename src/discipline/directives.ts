@@ -34,6 +34,11 @@ export function punishDirective(unitId: string, name: string, label: string, sta
   return { id: `discipline:${unitId}`, expiresAfter: 'next_reply', text: `The commander has imposed ${label} on ${name}. React in character; stance: ${stanceName}.` };
 }
 
+/** A demand she is pressing in this scene (from the state, so it survives a reload and a chat switch). */
+export function demandDirective(unitId: string, name: string, text: string): Directive {
+  return { id: `demand:${unitId}`, expiresAfter: 'scene', text: `${name} demands something of the commander and presses it this scene: "${text}"` };
+}
+
 /** The label of a measure: a punishment's own, the Leash, or the generic word for a threat that named nothing. */
 export function measureLabel(reg: Registries, measure: string): string {
   if (measure === 'leash') return 'The Leash';
