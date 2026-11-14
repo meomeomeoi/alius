@@ -53,7 +53,7 @@ describe('no pronoun for the commander in content', () => {
 
   it('command stances (P9)', () => {
     const texts = fields('commandStances', ['name', 'description', 'directive', 'refusal']);
-    expect(texts).toHaveLength(16);
+    expect(texts).toHaveLength(20);
     expect(texts.filter(([, t]) => COMMANDER_PRONOUN.test(t) || /commander[^.]*\btheir\b/i.test(t)).map(([where]) => where)).toEqual([]);
   });
 

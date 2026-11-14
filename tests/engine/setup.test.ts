@@ -270,7 +270,8 @@ describe('validateSetup', () => {
   it('out-of-range value or baseline rejected', () => {
     expect(errs(result([unit({ values: { ...ZERO, mercy: 4 } })])).join()).toContain('mercy');
     expect(errs(result([unit({ values: { ...ZERO, mercy: 1.5 } })])).join()).toContain('mercy');
-    expect(errs(result([unit({ baseline: { trust: 41, affinity: 0, attraction: 0 } })])).join()).toContain('trust');
+    expect(errs(result([unit({ baseline: { trust: 61, affinity: 0, attraction: 0 } })])).join()).toContain('trust');
+    expect(errs(result([unit({ baseline: { trust: 60, affinity: 0, attraction: 0 } })])).join()).not.toContain('trust'); // an accepting card may start at 60
     expect(errs(result([unit({ baseline: { trust: 20, affinity: -21, attraction: 0 } })])).join()).toContain('affinity');
     expect(errs(result([unit({ baseline: { trust: 20, affinity: 0, attraction: 21 } })])).join()).toContain('attraction');
     expect(errs(result([unit({ baseline: { trust: 20.5, affinity: 0, attraction: 0 } })])).length).toBeGreaterThan(0);

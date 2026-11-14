@@ -856,8 +856,8 @@
   {
     "id": "command_stance",
     "term": "Command stance",
-    "short": "How a soldier relates to the commander's authority, from Trust and Impunity: disciplined, defiant but loyal, fearful or openly defiant.",
-    "long": "High Trust with low Impunity: she obeys by the book and objects on the record. High Trust with high Impunity: she argues, does it her own way and will not abandon the commander. Low Trust with low Impunity: she complies in silence, sabotages quietly and would run rather than fight. Low Trust with high Impunity: she mocks, makes demands, ignores orders and may mutiny. The stance shapes how she refuses an order, how often she makes demands and what she does when she breaks.",
+    "short": "How a soldier relates to the commander's authority, from Trust and Impunity: disciplined, defiant but loyal, fearful, openly defiant or indifferent.",
+    "long": "High Trust with low Impunity: she obeys by the book and objects on the record. High Trust with high Impunity: she argues, does it her own way and will not abandon the commander. Low Trust with low Impunity: she complies in silence, sabotages quietly and would run rather than fight. Low Trust with high Impunity: she mocks, makes demands, ignores orders and may mutiny. Middling Trust and Impunity: she does not much care who commands her, and simply does what is asked. The stance shapes how she refuses an order, how often she makes demands and what she does when she breaks.",
     "see": [
       "impunity",
       "trust",

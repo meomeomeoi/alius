@@ -261,7 +261,8 @@ describe('sanitizeProfile', () => {
 
   it('baseline is clamped to setup ranges', () => {
     const { profile } = run({ emotionalBaseline: { trust: 95, affinity: -50, attraction: 3.6 } });
-    expect(profile.baseline).toEqual({ trust: 40, affinity: -20, attraction: 4 });
+    expect(profile.baseline).toEqual({ trust: 60, affinity: -20, attraction: 4 });
+    expect(run({ emotionalBaseline: { trust: 45, affinity: 0, attraction: 0 } }).profile.baseline!.trust).toBe(45); // an accepting card keeps its 45
   });
 
   it('candidates are capped: 2 roles, 3 signatures, 3 defects', () => {
@@ -387,6 +388,32 @@ describe('the tastes section of the import prompt (P7)', () => {
   });
 });
 
+
+describe('the trust and boldness guidance of the import prompt (P9)', () => {
+  it('trust runs 0..60 and the prompt names the four ways a card meets a new commander', async () => {
+    const { st, avatar, deps } = setup();
+    st.profileReplies = [fixture('valid')];
+    await importProfile(avatar, [...ALL_SECTIONS], { ...deps, world: { disposition: 'guarded' } }); // the offset is asked for only when the world is known
+    const system = (profileCalls(st)[0] as { system: string }).system;
+    expect(system).toContain('trust 0..60');
+    expect(system).not.toContain('trust 0..40');
+    expect(system).toMatch(/hostile/);
+    expect(system).toMatch(/wary/);
+    expect(system).toMatch(/neutral/);
+    expect(system).toMatch(/accepting/);
+    expect(system).toMatch(/bold/); // the offset is how bold she is with the commander
+    expect(system).not.toMatch(/\b(he|him|his)\b/i);
+  });
+
+  it('the guidance is only given when the sections it explains are asked for', async () => {
+    const { st, avatar, deps } = setup();
+    st.profileReplies = ['{ "commanderTastes": [] }'];
+    await importProfile(avatar, ['tastes'], deps);
+    const system = (profileCalls(st)[0] as { system: string }).system;
+    expect(system).not.toContain('accepting');
+    expect(system).not.toContain('bold');
+  });
+});
 
 describe('the world sections of the import (P8)', () => {
   const HUNTED = { gender_norms: 'corporate_machismo', offspec_stigma: 'hunted', disposition: 'hazardous' };

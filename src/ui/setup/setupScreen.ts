@@ -159,6 +159,7 @@ export function renderSetupScreen(host: HTMLElement, ctx: SetupScreenCtx): void 
       onUpdate: (patch) => wizard.update(i, patch),
       onRegenerate: (section) => wizard.regenerate(i, section),
       onManual: () => wizard.setManual(i),
+      startPreview: wizard.previewStart(i),
     });
     return h('div', { class: 'alius-setup-body' },
       h('div', { class: 'alius-pager' },
@@ -213,6 +214,7 @@ export function renderSetupScreen(host: HTMLElement, ctx: SetupScreenCtx): void 
 
   function unitLines(u: UnitDraft, n: number): string[] {
     const c = u.choice;
+    const preview = wizard.previewStart(n); // P9: the stance she would start in
     const values = VALUE_AXES.map((a) => `${a.slice(0, 4).toUpperCase()} ${c.values[a] > 0 ? '+' : ''}${c.values[a]}`).join('  ');
     return [
       '',
@@ -221,6 +223,7 @@ export function renderSetupScreen(host: HTMLElement, ctx: SetupScreenCtx): void 
       `    DEFECTS   : ${c.defects.map((d) => nameOf(reg, 'defects', d.id)).join(', ') || '—'}`,
       `    VALUES    : ${values}`,
       `    START     : TRUST ${c.baseline.trust}  AFFINITY ${c.baseline.affinity}  ATTRACTION ${c.baseline.attraction}`,
+      ...(preview ? [`    STANCE    : ${preview.stanceName.toUpperCase()} (TRUST ${preview.trust}, IMPUNITY ${preview.impunity})`] : []),
     ];
   }
 

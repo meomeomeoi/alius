@@ -770,7 +770,7 @@ describe('core content pack: P6 content', () => {
     const { registries: r } = await load();
     const byRank = [...r.dispositionLevels.values()].sort((a, b) => (a.rank as number) - (b.rank as number));
     expect(byRank.map((l) => l.impunityBase)).toEqual([25, 35, 45, 55, 65]);
-    expect([...r.commandStances.keys()].sort()).toEqual(['defiant_loyal', 'disciplined', 'fearful', 'open_defiance']);
+    expect([...r.commandStances.keys()].sort()).toEqual(['defiant_loyal', 'disciplined', 'fearful', 'indifferent', 'open_defiance']);
     expect(r.commandStances.get('fearful')!.covert).toBe(true);
     expect(r.commandStances.get('disciplined')!.covert).toBeUndefined();
     expect(r.relationshipStates.get('dependent')!.dependency).toBe(15);

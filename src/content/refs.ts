@@ -539,7 +539,7 @@ registerChecks('dispositionLevels', (entry, regs) => {
 registerChecks('commandStances', (entry, regs) => {
   const first = [...regs.commandStances.values()][0];
   if (first?.id !== entry.id) return [];
-  return COMMAND_STANCE_IDS.filter((id) => !regs.commandStances.has(id)).map((id) => ({ path: 'id', message: `no command stance "${id}" (all four are needed: ${COMMAND_STANCE_IDS.join(', ')})` }));
+  return COMMAND_STANCE_IDS.filter((id) => !regs.commandStances.has(id)).map((id) => ({ path: 'id', message: `no command stance "${id}" (all of them are needed: ${COMMAND_STANCE_IDS.join(', ')})` }));
 });
 
 registerChecks('worldPresets', (entry, regs) => {

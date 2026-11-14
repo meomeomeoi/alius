@@ -64,7 +64,12 @@ export const TUNING = Object.freeze({
     contagion: 0.3,
     secret: 5,
     secretCap: 15,
-    stance: Object.freeze({ trustHigh: 45, impunityHigh: 50 }),
+    stance: Object.freeze({
+      trustHigh: 45,
+      impunityHigh: 50,
+      /** The zone where she does not much care who commands her: Trust from `trustMin` up to (not including) `trustHigh`, Impunity inside the range. */
+      indifferent: Object.freeze({ trustMin: 30, impunityMin: 40, impunityMax: 59 }),
+    }),
     /** A threat is believed while Impunity is below this. */
     believeBelow: 50,
     /** `commander_enforced` and `threatened` below this confidence are dropped for every unit. */

@@ -64,5 +64,6 @@ describe('command stance loader check', () => {
       return files[p];
     });
     expect(errors.map((e) => e.message).join('\n')).toMatch(/no command stance "fearful"/);
+    expect(errors.map((e) => e.message).join('\n')).toMatch(/no command stance "indifferent"/);
   });
 });

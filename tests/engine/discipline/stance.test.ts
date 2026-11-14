@@ -5,7 +5,7 @@ import { impunityOf } from '../../../src/engine/discipline';
 import { seedRng } from '../../../src/engine/rng';
 import type { CampaignState } from '../../../src/engine/state/types';
 import { campaign, errors, loadCore, ofType, run, setRelation } from '../../helpers/loyalty';
-import { noPresence, setRecord, withStance } from '../../helpers/discipline';
+import { noPresence, setRecord, withStance, type StanceName } from '../../helpers/discipline';
 
 let base: Registries;
 let reg: Registries;
@@ -32,18 +32,32 @@ function at(trust: number, impunity: number, id = ANN): CampaignState {
 }
 
 describe('commandStance', () => {
-  it('Trust × Impunity gives the four quadrants', () => {
+  it('Trust × Impunity gives the four quadrants (away from the indifferent zone)', () => {
     expect(commandStance(at(60, 20), reg, ANN)).toBe('disciplined');
     expect(commandStance(at(60, 70), reg, ANN)).toBe('defiant_loyal');
     expect(commandStance(at(20, 20), reg, ANN)).toBe('fearful');
     expect(commandStance(at(20, 70), reg, ANN)).toBe('open_defiance');
   });
 
-  it('the edges: Trust 45 and Impunity 50 are high, 44 and 49 are low', () => {
+  it('the edges of the four: Trust 45 and Impunity 50 are high', () => {
     expect(commandStance(at(45, 50), reg, ANN)).toBe('defiant_loyal');
-    expect(commandStance(at(44, 49), reg, ANN)).toBe('fearful');
     expect(commandStance(at(45, 49), reg, ANN)).toBe('disciplined');
-    expect(commandStance(at(44, 50), reg, ANN)).toBe('open_defiance');
+    expect(commandStance(at(29, 49), reg, ANN)).toBe('fearful');
+    expect(commandStance(at(29, 50), reg, ANN)).toBe('open_defiance');
+  });
+
+  it('indifferent: Trust 30–44 with Impunity 40–59 (she does not much care who commands her)', () => {
+    for (const [trust, impunity] of [[30, 40], [44, 49], [35, 50], [44, 59], [30, 59]] as const) {
+      expect(commandStance(at(trust, impunity), reg, ANN), `${trust}/${impunity}`).toBe('indifferent');
+    }
+  });
+
+  it('just outside the indifferent zone she is one of the four again', () => {
+    expect(commandStance(at(29, 45), reg, ANN)).toBe('fearful'); // Trust under 30
+    expect(commandStance(at(35, 39), reg, ANN)).toBe('fearful'); // Impunity under 40
+    expect(commandStance(at(35, 60), reg, ANN)).toBe('open_defiance'); // Impunity over 59
+    expect(commandStance(at(45, 45), reg, ANN)).toBe('disciplined'); // Trust 45 leaves the zone
+    expect(commandStance(at(44, 60), reg, ANN)).toBe('open_defiance');
   });
 
   it('a grunt, a dead unit and an unknown id have no stance', () => {
@@ -57,7 +71,7 @@ describe('commandStance', () => {
   });
 
   it('withStance puts a unit in each quadrant', () => {
-    for (const stance of ['disciplined', 'defiant_loyal', 'fearful', 'open_defiance'] as const) {
+    for (const stance of ['disciplined', 'defiant_loyal', 'fearful', 'open_defiance', 'indifferent'] as const) {
       expect(commandStance(withStance(fresh(), reg, ANN, stance), reg, ANN), stance).toBe(stance);
     }
   });
@@ -65,6 +79,7 @@ describe('commandStance', () => {
   it('stanceEntry reads the registry', () => {
     expect(stanceEntry(reg, 'fearful')?.covert).toBe(true);
     expect(stanceEntry(reg, 'disciplined')?.covert).toBeUndefined();
+    expect(stanceEntry(reg, 'indifferent')?.covert).toBeUndefined();
     expect(stanceEntry({ ...reg, commandStances: new Map() }, 'fearful')).toBeUndefined();
   });
 });
@@ -72,7 +87,7 @@ describe('commandStance', () => {
 // ---------------------------------------------------------------------------------------------------------------------
 
 /** She is in a scene and unsteady enough to refuse about a third of her orders (band breaking = 0.35). */
-function sceneWith(stance: 'disciplined' | 'defiant_loyal' | 'fearful' | 'open_defiance'): CampaignState {
+function sceneWith(stance: StanceName): CampaignState {
   const s = withStance(fresh(), reg, ANN, stance);
   s.relations[ANN].loyaltyBand = 'breaking';
   const r = run(s, reg, { type: 'scene/start', payload: { locationId: 'mess_hall', participants: [ANN], origin: 'event', startIndex: 0 } });
@@ -136,6 +151,15 @@ describe('refused orders and the stance', () => {
     expect(r.state.scene!.refusals ?? []).toEqual([]);
     expect(r.state.discipline?.defiance ?? []).toEqual([]);
     expect(r.state.discipline!.sabotage!.queued).toEqual([{ unitId: ANN, day: s.day }]);
+  });
+
+  it('an indifferent unit refuses in the open, with its own form and no sabotage', () => {
+    const s = sceneWith('indifferent');
+    const r = order(s, seedFor(s, true));
+    expect(ofType(r.events, 'scene_order')[0]).toMatchObject({ refused: true });
+    expect(ofType(r.events, 'scene_order')[0].covert).toBeUndefined();
+    expect(r.state.scene!.refusals).toHaveLength(1);
+    expect(r.state.discipline?.sabotage?.queued ?? []).toEqual([]);
   });
 
   it('a fearful compliance queues nothing', () => {

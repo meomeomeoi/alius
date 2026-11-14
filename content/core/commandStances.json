@@ -31,5 +31,13 @@
     "directive": "{name} mocks the commander, makes demands and ignores orders she dislikes; she does not expect to pay for it.",
     "refusal": "{name} REFUSES the commander's order this scene, openly and with contempt. Reason: {reason}. She will not comply under persuasion; only the Leash can force her.",
     "demandWeight": 2
+  },
+  {
+    "id": "indifferent",
+    "name": "Indifferent",
+    "description": "Middling Trust and Impunity: she neither fears nor challenges the commander. She does what is asked without fuss, keeps her own counsel and does not much care who is in command.",
+    "directive": "{name} does not much care who commands her: she does what is asked without fuss and keeps her own counsel.",
+    "refusal": "{name} does NOT carry out the order this scene: she shrugs it off, because it is not worth her trouble. Reason: {reason}. Persuasion will not change it; only the Leash can force her.",
+    "demandWeight": 1
   }
 ]

@@ -1281,9 +1281,9 @@ export const WorldPresetSchema = BaseEntrySchema.extend({
   choices: z.record(str, str),
 }).strict();
 
-export const COMMAND_STANCE_IDS = ['disciplined', 'defiant_loyal', 'fearful', 'open_defiance'] as const;
+export const COMMAND_STANCE_IDS = ['disciplined', 'defiant_loyal', 'fearful', 'open_defiance', 'indifferent'] as const;
 
-/** P9: one of the four stances Trust × Impunity gives a unit. `{name}` is the unit's name, `{reason}` the reason of a refusal. */
+/** P9: one of the five stances Trust × Impunity gives a unit. `{name}` is the unit's name, `{reason}` the reason of a refusal. */
 export const CommandStanceSchema = BaseEntrySchema.extend({
   id: z.enum(COMMAND_STANCE_IDS),
   name: str,

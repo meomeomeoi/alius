@@ -70,7 +70,12 @@ var TUNING = Object.freeze({
     contagion: 0.3,
     secret: 5,
     secretCap: 15,
-    stance: Object.freeze({ trustHigh: 45, impunityHigh: 50 }),
+    stance: Object.freeze({
+      trustHigh: 45,
+      impunityHigh: 50,
+      /** The zone where she does not much care who commands her: Trust from `trustMin` up to (not including) `trustHigh`, Impunity inside the range. */
+      indifferent: Object.freeze({ trustMin: 30, impunityMin: 40, impunityMax: 59 })
+    }),
     /** A threat is believed while Impunity is below this. */
     believeBelow: 50,
     /** `commander_enforced` and `threatened` below this confidence are dropped for every unit. */
@@ -1230,7 +1235,7 @@ var SETUP_LIMITS = {
   triggers: 4,
   tagLength: 32,
   value: [-3, 3],
-  baseline: { trust: [0, 40], affinity: [-20, 30], attraction: [0, 20] }
+  baseline: { trust: [0, 60], affinity: [-20, 30], attraction: [0, 20] }
 };
 var INITIAL_RELATION_STATE = "stranger";
 function normalizeTag(s) {
@@ -2995,6 +3000,8 @@ function commandStance(state, reg, unitId) {
   const rel = state.relations[unitId];
   if (!i || !rel) return null;
   const T = TUNING.impunity.stance;
+  const Z = T.indifferent;
+  if (rel.trust >= Z.trustMin && rel.trust < T.trustHigh && i.value >= Z.impunityMin && i.value <= Z.impunityMax) return "indifferent";
   const trustHigh = rel.trust >= T.trustHigh;
   const impunityHigh = i.value >= T.impunityHigh;
   return trustHigh ? impunityHigh ? "defiant_loyal" : "disciplined" : impunityHigh ? "open_defiance" : "fearful";
@@ -12996,7 +13003,7 @@ var WorldPresetSchema = BaseEntrySchema.extend({
   description: str2.max(DESCRIPTION_MAX),
   choices: external_exports.record(str2, str2)
 }).strict();
-var COMMAND_STANCE_IDS = ["disciplined", "defiant_loyal", "fearful", "open_defiance"];
+var COMMAND_STANCE_IDS = ["disciplined", "defiant_loyal", "fearful", "open_defiance", "indifferent"];
 var CommandStanceSchema = BaseEntrySchema.extend({
   id: external_exports.enum(COMMAND_STANCE_IDS),
   name: str2,
@@ -15180,7 +15187,7 @@ var SCHEMA_PART = {
   tastes: `  "commanderTastes": ["<id from TASTES>"],   // at most 3: how she reads the commander's looks and build, only if the card suggests it`,
   disposition: `  "dispositionOffset": { "offset": 0, "reason": "<one sentence>" },   // integer -2..2: how much kinder (negative) or harder (positive) she is than the world's default soldier; 0 when the card does not say`,
   stances: '  "worldStances": { "<id from WORLD OPTIONS>": { "stance": "shares"|"indifferent"|"opposes", "strength": 1|2, "reason": "<one sentence>" } },   // one entry per option listed',
-  baseline: '  "emotionalBaseline": { "trust": 0, "affinity": 0, "attraction": 0 },   // trust 0..40, affinity -20..30, attraction 0..20'
+  baseline: '  "emotionalBaseline": { "trust": 0, "affinity": 0, "attraction": 0 },   // trust 0..60, affinity -20..30, attraction 0..20'
 };
 var has = (i, s) => i.sections.includes(s);
 function system(raw) {
@@ -15198,6 +15205,10 @@ function system(raw) {
   }
   if (has(input, "disposition")) {
     lines.push("", "The disposition offset compares her with the default soldier of the world described under WORLD: negative if the card shows her kinder, more trusting or more eager than that, positive if harder, more hostile or more dangerous.");
+    lines.push("It is also how bold she is with a new commander: negative if she is meek or eager to please, positive if she is bold or defiant, 0 if the card does not say.");
+  }
+  if (has(input, "baseline")) {
+    lines.push("", "The starting trust is how readily she accepts a new commander: 0-10 hostile, 15-30 wary, 30-40 neutral, 45-60 accepting. Most cards are wary or neutral; give 45 or more only when the card shows she respects authority or welcomes this commander.");
   }
   if (has(input, "stances")) {
     lines.push("", "A stance says whether she shares, ignores or rejects one of the world's norms (listed under WORLD OPTIONS). Strength 2 is a strong, defining stance. A card that says nothing means indifferent, not the world's norm.");
@@ -18913,6 +18924,41 @@ var Wizard = class {
     const errors = validateSetup(result, this.deps.registries, { desireBondDefects: this.deps.desireBondDefects });
     return { result: errors.length === 0 ? result : null, errors };
   }
+  /**
+   * The command stance, Trust and Impunity a unit would have on day 1: the campaign is built as a throwaway with this unit
+   * alone (so the world's disposition, her offset, her baseline Trust, the crime and the commander's presence all count)
+   * and read through the engine. `null` until the start and the crime are chosen and while her draft is incomplete or
+   * invalid. Changes nothing.
+   */
+  previewStart(index) {
+    const { startId, crimeId } = this.s;
+    const u = this.s.units[index];
+    if (!startId || !crimeId || !u) return null;
+    const { roleId, signature, ...rest } = u.choice;
+    if (!roleId || !signature) return null;
+    const result = {
+      commanderName: this.s.commanderName,
+      startId,
+      crimeId,
+      commander: structuredClone(this.s.commander),
+      world: { options: { ...this.s.world.options } },
+      units: [{ cardRef: u.avatar, displayName: u.displayName, roleId, signature, ...structuredClone(rest) }]
+    };
+    const built = buildCampaign(result, this.deps.registries, { desireBondDefects: this.deps.desireBondDefects, seed: 1 });
+    if (!built.ok) return null;
+    const id = built.state.squad[0]?.id;
+    if (id === void 0) return null;
+    const stance = commandStance(built.state, this.deps.registries, id);
+    const impunity = impunityOf(built.state, this.deps.registries, id);
+    if (stance === null || impunity === null) return null;
+    return {
+      stance,
+      stanceName: String(stanceEntry(this.deps.registries, stance)?.name ?? stance),
+      trust: built.state.relations[id].trust,
+      impunity: impunity.value,
+      band: impunityBand(impunity.value)
+    };
+  }
   /** The finished setup, or null unless `validateSetup` passes. */
   result() {
     return this.build().result;
@@ -19311,6 +19357,18 @@ function renderCalibration(host, ctx2) {
       )
     );
   }
+  if (ctx2.startPreview) {
+    const p = ctx2.startPreview;
+    host.append(h(
+      "p",
+      { class: "alius-start-stance" },
+      h(
+        "span",
+        { class: "alius-chip", "data-start-stance": p.stance, ...analyzeAttrs(`commandStances:${p.stance}`) },
+        `STARTING STANCE: ${p.stanceName.toUpperCase()} \u2014 TRUST ${p.trust}, IMPUNITY ${p.impunity} (${p.band.toUpperCase()})`
+      )
+    ));
+  }
   if (cand?.notes) host.append(h("p", { class: "alius-notes" }, `NOTES: ${cand.notes}`));
 }
 function defectLines(d) {
@@ -19563,7 +19621,8 @@ function renderSetupScreen(host, ctx2) {
       onRefreshWorld: () => wizard.refreshWorldSections(i),
       onUpdate: (patch) => wizard.update(i, patch),
       onRegenerate: (section) => wizard.regenerate(i, section),
-      onManual: () => wizard.setManual(i)
+      onManual: () => wizard.setManual(i),
+      startPreview: wizard.previewStart(i)
     });
     return h(
       "div",
@@ -19620,6 +19679,7 @@ function renderSetupScreen(host, ctx2) {
   }
   function unitLines(u, n) {
     const c = u.choice;
+    const preview = wizard.previewStart(n);
     const values = VALUE_AXES.map((a) => `${a.slice(0, 4).toUpperCase()} ${c.values[a] > 0 ? "+" : ""}${c.values[a]}`).join("  ");
     return [
       "",
@@ -19627,7 +19687,8 @@ function renderSetupScreen(host, ctx2) {
       `    SIGNATURE : ${c.signature ? c.signature.name : "\u2014"}`,
       `    DEFECTS   : ${c.defects.map((d) => nameOf5(reg, "defects", d.id)).join(", ") || "\u2014"}`,
       `    VALUES    : ${values}`,
-      `    START     : TRUST ${c.baseline.trust}  AFFINITY ${c.baseline.affinity}  ATTRACTION ${c.baseline.attraction}`
+      `    START     : TRUST ${c.baseline.trust}  AFFINITY ${c.baseline.affinity}  ATTRACTION ${c.baseline.attraction}`,
+      ...preview ? [`    STANCE    : ${preview.stanceName.toUpperCase()} (TRUST ${preview.trust}, IMPUNITY ${preview.impunity})`] : []
     ];
   }
   function footer(s) {
@@ -26297,7 +26358,7 @@ registerChecks("dispositionLevels", (entry, regs) => {
 registerChecks("commandStances", (entry, regs) => {
   const first2 = [...regs.commandStances.values()][0];
   if (first2?.id !== entry.id) return [];
-  return COMMAND_STANCE_IDS.filter((id) => !regs.commandStances.has(id)).map((id) => ({ path: "id", message: `no command stance "${id}" (all four are needed: ${COMMAND_STANCE_IDS.join(", ")})` }));
+  return COMMAND_STANCE_IDS.filter((id) => !regs.commandStances.has(id)).map((id) => ({ path: "id", message: `no command stance "${id}" (all of them are needed: ${COMMAND_STANCE_IDS.join(", ")})` }));
 });
 registerChecks("worldPresets", (entry, regs) => {
   const out = [];

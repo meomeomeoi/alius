@@ -66,7 +66,7 @@ const SCHEMA_PART: Record<ImportSection, string> = {
   stances:
     '  "worldStances": { "<id from WORLD OPTIONS>": { "stance": "shares"|"indifferent"|"opposes", "strength": 1|2, "reason": "<one sentence>" } },   // one entry per option listed',
   baseline:
-    '  "emotionalBaseline": { "trust": 0, "affinity": 0, "attraction": 0 },   // trust 0..40, affinity -20..30, attraction 0..20',
+    '  "emotionalBaseline": { "trust": 0, "affinity": 0, "attraction": 0 },   // trust 0..60, affinity -20..30, attraction 0..20',
 };
 
 const has = (i: ProfileImportInput, s: ImportSection) => i.sections.includes(s);
@@ -86,6 +86,10 @@ function system(raw: unknown): string {
   }
   if (has(input, 'disposition')) {
     lines.push('', 'The disposition offset compares her with the default soldier of the world described under WORLD: negative if the card shows her kinder, more trusting or more eager than that, positive if harder, more hostile or more dangerous.');
+    lines.push('It is also how bold she is with a new commander: negative if she is meek or eager to please, positive if she is bold or defiant, 0 if the card does not say.');
+  }
+  if (has(input, 'baseline')) {
+    lines.push('', 'The starting trust is how readily she accepts a new commander: 0-10 hostile, 15-30 wary, 30-40 neutral, 45-60 accepting. Most cards are wary or neutral; give 45 or more only when the card shows she respects authority or welcomes this commander.');
   }
   if (has(input, 'stances')) {
     lines.push('', 'A stance says whether she shares, ignores or rejects one of the world\'s norms (listed under WORLD OPTIONS). Strength 2 is a strong, defining stance. A card that says nothing means indifferent, not the world\'s norm.');

@@ -5,8 +5,8 @@ import { VALUE_AXES, type WorldStance } from '../../engine/state/types';
 import { dispositionFor, worldDispositionLevel, worldChoice } from '../../engine/worldOptions';
 import { stanceOptionIds } from '../../setup/profile';
 import { ALL_SECTIONS, type ImportSection } from '../../llm/calls/profileImport';
-import { manualOptions, type UnitDraft } from '../../setup/wizard';
-import { analyzeNative } from '../analyze/mark';
+import { manualOptions, type StartPreview, type UnitDraft } from '../../setup/wizard';
+import { analyzeAttrs, analyzeNative } from '../analyze/mark';
 import { h } from '../dom';
 
 type Choice = UnitDraft['choice'];
@@ -25,6 +25,8 @@ export interface CalibrationCtx {
   onUpdate: (patch: CalibrationPatch) => void;
   onRegenerate: (section: ImportSection) => void;
   onManual: () => void;
+  /** P9: the stance she would start in with the values above (the wizard computes it; absent when not known). */
+  startPreview?: StartPreview | null;
 }
 
 const TAG_FIELDS = [
@@ -313,6 +315,14 @@ export function renderCalibration(host: HTMLElement, ctx: CalibrationCtx): void 
             (n) => onUpdate({ baseline: { ...ch.baseline, [k]: n } }));
         }))),
     );
+  }
+
+  // P9: what the numbers above add up to on day 1, so a card that starts fearful (or defiant) is seen before the campaign exists
+  if (ctx.startPreview) {
+    const p = ctx.startPreview;
+    host.append(h('p', { class: 'alius-start-stance' },
+      h('span', { class: 'alius-chip', 'data-start-stance': p.stance, ...analyzeAttrs(`commandStances:${p.stance}`) },
+        `STARTING STANCE: ${p.stanceName.toUpperCase()} — TRUST ${p.trust}, IMPUNITY ${p.impunity} (${p.band.toUpperCase()})`)));
   }
 
   if (cand?.notes) host.append(h('p', { class: 'alius-notes' }, `NOTES: ${cand.notes}`));

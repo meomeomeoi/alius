@@ -15,7 +15,7 @@ import {
 export const SETUP_LIMITS = {
   maxUnits: 4, maxDefects: 2, likes: 6, dislikes: 6, triggers: 4, tagLength: 32,
   value: [-3, 3],
-  baseline: { trust: [0, 40], affinity: [-20, 30], attraction: [0, 20] },
+  baseline: { trust: [0, 60], affinity: [-20, 30], attraction: [0, 20] },
 } as const;
 
 /** Entry state of the P3 relationship graph. */

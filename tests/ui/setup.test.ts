@@ -254,6 +254,21 @@ describe('setup screen', () => {
     click(action(m, 'next'));
   }
 
+  it('the calibration step shows the stance the unit would start in, with Trust and Impunity (P9)', async () => {
+    const m = make();
+    await toCalibration(m);
+    const line = q(m, '[data-start-stance]')!;
+    expect(line.textContent).toMatch(/^STARTING STANCE: [A-Z -]+ — TRUST \d+, IMPUNITY \d+ \([A-Z]+\)$/);
+    expect(line.getAttribute('data-analyze')).toMatch(/^commandStances:/);
+    expect(line.classList.contains('alius-chip')).toBe(true);
+  });
+
+  it('review lists the stance of every unit (P9)', async () => {
+    const m = make();
+    await toReview(m);
+    expect(q(m, 'pre.alius-review')!.textContent).toMatch(/STANCE\s+: [A-Z -]+ \(TRUST \d+, IMPUNITY \d+\)/);
+  });
+
   it('review shows the summary and Confirm deployment', async () => {
     const m = make();
     await toReview(m);
@@ -375,7 +390,7 @@ describe('calibration view', () => {
   it('baseline sliders use the setup bounds', () => {
     const v = view();
     const b = (k: string) => v.host.querySelector<HTMLInputElement>(`input[type="range"][data-baseline="${k}"]`)!;
-    expect([b('trust').min, b('trust').max]).toEqual(['0', '40']);
+    expect([b('trust').min, b('trust').max]).toEqual(['0', '60']);
     expect([b('affinity').min, b('affinity').max]).toEqual(['-20', '30']);
     expect([b('attraction').min, b('attraction').max]).toEqual(['0', '20']);
     b('affinity').value = '7';

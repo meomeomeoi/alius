@@ -1,6 +1,7 @@
 import type { Entry, Registries } from '../content/types';
 import { BODY_STATS, defaultCommanderSetup, poolSpent, traitBlockReason, validateCommanderSetup, type CommanderSetup } from '../engine/commander/profile';
-import { SETUP_LIMITS, validateSetup, type SetupResult, type UnitSetup } from '../engine/setup';
+import { commandStance, impunityBand, impunityOf, stanceEntry, type CommandStance } from '../engine/discipline';
+import { SETUP_LIMITS, buildCampaign, validateSetup, type SetupResult, type UnitSetup } from '../engine/setup';
 import { TUNING } from '../engine/tuning';
 import type { SignatureInstance, Unit } from '../engine/state/types';
 import { ALL_SECTIONS, type ImportSection } from '../llm/calls/profileImport';
@@ -95,6 +96,15 @@ const errText = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
 /** Unique across wizards, so a late result can never match a different draft. */
 let generationCounter = 0;
+
+/** The stance a unit would start in if the campaign were built now (P9): shown while calibrating and in the review. */
+export interface StartPreview {
+  stance: CommandStance;
+  stanceName: string;
+  trust: number;
+  impunity: number;
+  band: string;
+}
 
 export class Wizard {
   private s: WizardState;
@@ -632,6 +642,35 @@ export class Wizard {
     const result: SetupResult = { commanderName: this.s.commanderName, startId, crimeId, units, commander: structuredClone(this.s.commander), world: { options: { ...this.s.world.options } } };
     const errors = validateSetup(result, this.deps.registries, { desireBondDefects: this.deps.desireBondDefects });
     return { result: errors.length === 0 ? result : null, errors };
+  }
+
+  /**
+   * The command stance, Trust and Impunity a unit would have on day 1: the campaign is built as a throwaway with this unit
+   * alone (so the world's disposition, her offset, her baseline Trust, the crime and the commander's presence all count)
+   * and read through the engine. `null` until the start and the crime are chosen and while her draft is incomplete or
+   * invalid. Changes nothing.
+   */
+  previewStart(index: number): StartPreview | null {
+    const { startId, crimeId } = this.s;
+    const u = this.s.units[index];
+    if (!startId || !crimeId || !u) return null;
+    const { roleId, signature, ...rest } = u.choice;
+    if (!roleId || !signature) return null;
+    const result: SetupResult = {
+      commanderName: this.s.commanderName, startId, crimeId, commander: structuredClone(this.s.commander), world: { options: { ...this.s.world.options } },
+      units: [{ cardRef: u.avatar, displayName: u.displayName, roleId, signature, ...structuredClone(rest) }],
+    };
+    const built = buildCampaign(result, this.deps.registries, { desireBondDefects: this.deps.desireBondDefects, seed: 1 });
+    if (!built.ok) return null;
+    const id = built.state.squad[0]?.id;
+    if (id === undefined) return null;
+    const stance = commandStance(built.state, this.deps.registries, id);
+    const impunity = impunityOf(built.state, this.deps.registries, id);
+    if (stance === null || impunity === null) return null;
+    return {
+      stance, stanceName: String(stanceEntry(this.deps.registries, stance)?.name ?? stance), trust: built.state.relations[id].trust,
+      impunity: impunity.value, band: impunityBand(impunity.value),
+    };
   }
 
   /** The finished setup, or null unless `validateSetup` passes. */

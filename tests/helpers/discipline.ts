@@ -1,9 +1,10 @@
 import type { Registries } from '../../src/content/types';
+import { commandStance } from '../../src/engine/discipline';
 import { impunityOf } from '../../src/engine/discipline/impunity';
 import type { CampaignState } from '../../src/engine/state/types';
 import { setRelation } from './loyalty';
 
-export type StanceName = 'disciplined' | 'defiant_loyal' | 'fearful' | 'open_defiance';
+export type StanceName = 'disciplined' | 'defiant_loyal' | 'fearful' | 'open_defiance' | 'indifferent';
 
 export * from './loyalty';
 
@@ -19,20 +20,27 @@ export function setRecord(state: CampaignState, unitId: string, n: number): Camp
   return state;
 }
 
+/** The Trust and Impunity each stance is put at. */
+const TARGETS: Record<StanceName, { trust: number; impunity: number }> = {
+  disciplined: { trust: 60, impunity: 20 },
+  defiant_loyal: { trust: 60, impunity: 70 },
+  fearful: { trust: 20, impunity: 20 },
+  open_defiance: { trust: 20, impunity: 70 },
+  indifferent: { trust: 35, impunity: 50 },
+};
+
 /**
- * Puts a unit in one of the four stances: Trust 60 (high) or 20 (low), and the record that lands her Impunity at 70 or 20.
+ * Puts a unit in one of the five stances: the Trust and the record that land her Impunity where that stance lives.
  * Moving her record also moves the contagion term of the others.
  */
 export function withStance(state: CampaignState, reg: Registries, unitId: string, stance: StanceName): CampaignState {
-  const highTrust = stance === 'disciplined' || stance === 'defiant_loyal';
-  const highImpunity = stance === 'defiant_loyal' || stance === 'open_defiance';
-  setRelation(state, unitId, { trust: highTrust ? 60 : 20 });
+  const want = TARGETS[stance];
+  setRelation(state, unitId, { trust: want.trust });
   setRecord(state, unitId, 0);
   const at0 = impunityOf(state, reg, unitId);
   if (!at0) throw new Error(`${unitId} has no Impunity`);
-  const want = highImpunity ? 70 : 20;
-  setRecord(state, unitId, Math.max(-40, Math.min(40, want - at0.value)));
-  const now = impunityOf(state, reg, unitId)!.value;
-  if (highImpunity !== now >= 50) throw new Error(`could not reach ${stance} for ${unitId} (Impunity ${now})`);
+  setRecord(state, unitId, Math.max(-40, Math.min(40, want.impunity - at0.value)));
+  const now = commandStance(state, reg, unitId);
+  if (now !== stance) throw new Error(`could not reach ${stance} for ${unitId} (got ${String(now)}, Impunity ${impunityOf(state, reg, unitId)!.value})`);
   return state;
 }

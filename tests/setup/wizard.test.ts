@@ -882,3 +882,57 @@ describe('the world sections after a world change (P8 review follow-ups)', () =>
     expect(w.state.units[0].choice.dispositionOffset).toBe(1); // the disposition part of the older answer is still the newest for that section
   });
 });
+
+describe('Wizard: the stance a unit would start in (P9)', () => {
+  const started = async () => {
+    const m = await ready();
+    m.w.setStart('start_vesper');
+    m.w.setCrime('mutiny');
+    return m;
+  };
+
+  it('is null until the start and the crime are chosen, and for a unit without a role or signature', async () => {
+    const m = await ready();
+    expect(m.w.previewStart(0)).toBeNull();
+    m.w.setStart('start_vesper');
+    m.w.setCrime('mutiny');
+    expect(m.w.previewStart(0)).not.toBeNull();
+    expect(m.w.previewStart(5)).toBeNull();
+    m.w.update(0, { roleId: null });
+    expect(m.w.previewStart(0)).toBeNull();
+  });
+
+  it('reads Trust, Impunity and the stance the built campaign would give her', async () => {
+    const m = await started();
+    m.w.update(0, { baseline: { trust: 20, affinity: 0, attraction: 0 }, dispositionOffset: 0 });
+    const p = m.w.previewStart(0)!;
+    expect(p.stance).toBe('fearful');
+    expect(p.stanceName).toBe('Fearful');
+    expect(p.trust).toBeGreaterThan(0);
+    expect(p.impunity).toBeGreaterThan(0);
+    expect(p.band).toMatch(/^(cowed|low|high|brazen)$/);
+  });
+
+  it('follows the baseline Trust and the offset: the five ways a card can meet a new commander', async () => {
+    const m = await started();
+    const stanceAt = (trust: number, offset: number) => {
+      m.w.update(0, { baseline: { trust, affinity: 0, attraction: 0 }, dispositionOffset: offset });
+      return m.w.previewStart(0)!.stance;
+    };
+    expect(stanceAt(10, -1)).toBe('fearful'); // wary and meek
+    expect(stanceAt(15, 2)).toBe('open_defiance'); // wary and bold
+    expect(stanceAt(35, 0)).toBe('indifferent'); // does not much care
+    expect(stanceAt(55, 0)).toBe('disciplined'); // accepts the commander, knows her place
+    // bold and accepting: offset +1 puts her one level harder, whose start takes 10 Trust off, so the card needs 55 or more
+    expect(stanceAt(60, 1)).toBe('defiant_loyal');
+    expect(stanceAt(55, 2)).toBe('open_defiance'); // two levels harder takes 20 off: 35 Trust is not accepting
+  });
+
+  it('does not change the draft or the wizard', async () => {
+    const m = await started();
+    const before = structuredClone(m.w.state);
+    m.w.previewStart(0);
+    expect(m.w.state).toEqual(before);
+  });
+});
+

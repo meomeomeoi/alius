@@ -46,6 +46,9 @@ describe('the directive builders', () => {
     expect(d.id).toBe(`refusal:${ANN}`);
     expect(d.expiresAfter).toBe('scene');
     expect(d.text).toBe("Ann REFUSES the commander's order this scene, openly and with contempt. Reason: she despises the commander. She will not comply under persuasion; only the Leash can force her.");
+    expect(stanceRefusalDirective(ANN, 'Ann', entry('indifferent'), 'she does not care').text).toBe(
+      "Ann does NOT carry out the order this scene: she shrugs it off, because it is not worth her trouble. Reason: she does not care. Persuasion will not change it; only the Leash can force her.",
+    );
     expect(stanceRefusalDirective(ANN, 'Ann', entry('fearful'), 'anything').text).toBe(
       'Ann says she will carry out the order and does not mean it: she stalls and does it badly on purpose, and never admits it aloud.',
     );
@@ -69,7 +72,7 @@ describe('the directive builders', () => {
 
 describe('disciplineDirectives', () => {
   it('the directive of a participant matches her quadrant', () => {
-    for (const stance of ['disciplined', 'defiant_loyal', 'fearful', 'open_defiance'] as const) {
+    for (const stance of ['disciplined', 'defiant_loyal', 'fearful', 'open_defiance', 'indifferent'] as const) {
       const s = sceneState((x) => withStance(x, reg, ANN, stance));
       expect(commandStance(s, reg, ANN)).toBe(stance);
       const b = new ContextBuilder();
