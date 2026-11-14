@@ -3,7 +3,7 @@ import type { Registries } from '../../content/types';
 import type { Rng } from '../rng';
 import type { CampaignState, Unit, WorldStance } from '../state/types';
 import { VALUE_AXES } from '../state/types';
-import { isNeutralChoice, worldChoice, worldChoices } from './options';
+import { isNeutralChoice, worldChoice, worldChoices, type WorldHolder } from './options';
 
 /**
  * Per-unit stances toward the world's norms (P8 §3.1). A norm reaches a unit only through her own stance, set at
@@ -15,7 +15,7 @@ type StanceHolder = Pick<Unit, 'worldStances'>;
 const INDIFFERENT: WorldStance = { stance: 'indifferent', strength: 1, reason: '' };
 
 /** Her stance toward one `squadStance` option; null for any other option and under a neutral choice. Absent = indifferent. */
-export function stanceOf(state: Pick<CampaignState, 'world'>, reg: Registries, unit: StanceHolder, optionId: string): WorldStance | null {
+export function stanceOf(state: WorldHolder, reg: Registries, unit: StanceHolder, optionId: string): WorldStance | null {
   const found = worldChoice(state, reg, optionId);
   if (!found || found.option.squadStance !== true || isNeutralChoice(found.choice)) return null;
   return unit.worldStances?.[optionId] ?? INDIFFERENT;
@@ -23,7 +23,7 @@ export function stanceOf(state: Pick<CampaignState, 'world'>, reg: Registries, u
 
 /** The effects of the given type of every stance she holds (registry `stanceEffects`), in option order. */
 export function stanceEffects<T extends StanceEffect['type']>(
-  state: Pick<CampaignState, 'world'>, reg: Registries, unit: StanceHolder, type: T,
+  state: WorldHolder, reg: Registries, unit: StanceHolder, type: T,
 ): Array<Extract<StanceEffect, { type: T }>> {
   const out: Array<Extract<StanceEffect, { type: T }>> = [];
   for (const option of reg.worldOptions.values()) {
@@ -38,7 +38,7 @@ export function stanceEffects<T extends StanceEffect['type']>(
 }
 
 /** The effects of her stance toward ONE option (the world directives show them per option). */
-export function optionStanceEffects(state: Pick<CampaignState, 'world'>, reg: Registries, unit: StanceHolder, optionId: string): StanceEffect[] {
+export function optionStanceEffects(state: WorldHolder, reg: Registries, unit: StanceHolder, optionId: string): StanceEffect[] {
   const s = stanceOf(state, reg, unit, optionId);
   if (!s || s.stance === 'indifferent') return [];
   return [...reg.stanceEffects.values()]
@@ -48,7 +48,7 @@ export function optionStanceEffects(state: Pick<CampaignState, 'world'>, reg: Re
 
 /** Her values as she judges the commander's decisions: the stored values shifted by her stances (`value_shift`), each clamped to −3…3. */
 export function effectiveValues(
-  state: Pick<CampaignState, 'world'>, reg: Registries, unit: StanceHolder & Pick<Unit, 'values'>,
+  state: WorldHolder, reg: Registries, unit: StanceHolder & Pick<Unit, 'values'>,
 ): Unit['values'] {
   const values = { ...unit.values };
   for (const fx of stanceEffects(state, reg, unit, 'value_shift')) {
@@ -62,7 +62,7 @@ export function effectiveValues(
  * A grunt's stance toward each non-neutral `squadStance` option: one weighted roll per option from the choice's
  * `grunt_stances`, strength 1, no reason. Under neutral choices nothing is drawn and the result is undefined.
  */
-export function rollGruntStances(state: Pick<CampaignState, 'world'>, reg: Registries, rng: Rng): Record<string, WorldStance> | undefined {
+export function rollGruntStances(state: WorldHolder, reg: Registries, rng: Rng): Record<string, WorldStance> | undefined {
   const out: Record<string, WorldStance> = {};
   for (const { option, choice } of worldChoices(state, reg)) {
     if (option.squadStance !== true || isNeutralChoice(choice)) continue;

@@ -2,7 +2,7 @@ import type { Entry, Registries } from '../../content/types';
 import type { CampaignState, Relation, Unit } from '../state/types';
 import { TUNING } from '../tuning';
 import { normDistance } from './norm';
-import { worldEffects } from './options';
+import { worldEffects, type WorldHolder } from './options';
 import { stanceEffects } from './stances';
 
 /**
@@ -10,7 +10,7 @@ import { stanceEffects } from './stances';
  * world sets one level; each named unit may sit up to two ranks away from it; grunts use the world level.
  */
 
-type StateLike = Pick<CampaignState, 'world'>;
+type StateLike = WorldHolder;
 export type DispositionLevel = Entry & {
   rank: number;
   start: { trust: number; affinity: number };

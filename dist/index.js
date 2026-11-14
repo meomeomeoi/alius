@@ -1543,7 +1543,7 @@ function gruntRelation(state, reg, grunt) {
 }
 
 // src/engine/actions/squad.ts
-var RESYNC_SECTIONS = ["role", "values", "tags", "signature", "defects", "tastes"];
+var RESYNC_SECTIONS = ["role", "values", "tags", "signature", "defects", "tastes", "disposition", "stances"];
 var isObj2 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var SECTION_OF = {
   roleId: "role",
@@ -1553,7 +1553,10 @@ var SECTION_OF = {
   triggers: "tags",
   signature: "signature",
   defects: "defects",
-  commanderTastes: "tastes"
+  commanderTastes: "tastes",
+  dispositionOffset: "disposition",
+  dispositionReason: "disposition",
+  worldStances: "stances"
 };
 registerAction("squad/resync", (draft, payload, ctx2) => {
   if (!isObj2(payload) || typeof payload.unitId !== "string" || !isObj2(payload.patch)) {
@@ -1574,7 +1577,10 @@ registerAction("squad/resync", (draft, payload, ctx2) => {
     likes: patch.likes ?? unit.likes,
     dislikes: patch.dislikes ?? unit.dislikes,
     triggers: patch.triggers ?? unit.triggers,
-    tastes: patch.commanderTastes ?? unit.commanderTastes
+    tastes: patch.commanderTastes ?? unit.commanderTastes,
+    dispositionOffset: patch.dispositionOffset ?? unit.dispositionOffset,
+    dispositionReason: patch.dispositionReason ?? unit.dispositionReason,
+    worldStances: patch.worldStances ?? unit.worldStances
   };
   const errors = validateUnitProfile(next, unit.displayName, ctx2.registries, {
     desireBondDefects: draft.settings.desireBondDefects === true
@@ -1594,6 +1600,18 @@ registerAction("squad/resync", (draft, payload, ctx2) => {
   if (patch.commanderTastes) {
     if (patch.commanderTastes.length > 0) unit.commanderTastes = [...patch.commanderTastes];
     else delete unit.commanderTastes;
+  }
+  if (patch.dispositionOffset !== void 0) {
+    if (patch.dispositionOffset !== 0) unit.dispositionOffset = patch.dispositionOffset;
+    else delete unit.dispositionOffset;
+  }
+  if (patch.dispositionReason !== void 0) {
+    if (patch.dispositionReason !== "") unit.dispositionReason = patch.dispositionReason;
+    else delete unit.dispositionReason;
+  }
+  if (patch.worldStances !== void 0) {
+    if (Object.keys(patch.worldStances).length > 0) unit.worldStances = structuredClone(patch.worldStances);
+    else delete unit.worldStances;
   }
   if (patch.defects) {
     unit.defects = patch.defects.map((d) => {
@@ -14601,7 +14619,7 @@ registerCallType({
 });
 
 // src/llm/calls/profileImport.ts
-var ALL_SECTIONS = ["role", "values", "tags", "signature", "defects", "baseline", "tastes"];
+var ALL_SECTIONS = ["role", "values", "tags", "signature", "defects", "baseline", "tastes", "disposition", "stances"];
 var ProfileImportRawSchema = external_exports.object({
   roleCandidates: external_exports.unknown().optional(),
   values: external_exports.unknown().optional(),
@@ -14612,6 +14630,8 @@ var ProfileImportRawSchema = external_exports.object({
   defectCandidates: external_exports.unknown().optional(),
   emotionalBaseline: external_exports.unknown().optional(),
   commanderTastes: external_exports.unknown().optional(),
+  dispositionOffset: external_exports.unknown().optional(),
+  worldStances: external_exports.unknown().optional(),
   notes: external_exports.unknown().optional()
 }).passthrough();
 var VALUE_AXES_TEXT = [
@@ -14629,6 +14649,8 @@ var SCHEMA_PART = {
   signature: '  "signatureCandidates": [{ "templateId": "<id from SIGNATURES>", "name": "<in her voice>", "description": "<in her voice>" }],   // exactly 3',
   defects: '  "defectCandidates": [{ "defectId": "<id from DEFECTS>", "origin": "<1-2 in-universe sentences>" }],   // 2 to 3 entries',
   tastes: `  "commanderTastes": ["<id from TASTES>"],   // at most 3: how she reads the commander's looks and build, only if the card suggests it`,
+  disposition: `  "dispositionOffset": { "offset": 0, "reason": "<one sentence>" },   // integer -2..2: how much kinder (negative) or harder (positive) she is than the world's default soldier; 0 when the card does not say`,
+  stances: '  "worldStances": { "<id from WORLD OPTIONS>": { "stance": "shares"|"indifferent"|"opposes", "strength": 1|2, "reason": "<one sentence>" } },   // one entry per option listed',
   baseline: '  "emotionalBaseline": { "trust": 0, "affinity": 0, "attraction": 0 },   // trust 0..40, affinity -20..30, attraction 0..20'
 };
 var has = (i, s) => i.sections.includes(s);
@@ -14644,6 +14666,12 @@ function system(raw) {
   ];
   if (has(input, "signature")) {
     lines.push("Signature name and description are written in the character's voice and must not change the template's numbers.");
+  }
+  if (has(input, "disposition")) {
+    lines.push("", "The disposition offset compares her with the default soldier of the world described under WORLD: negative if the card shows her kinder, more trusting or more eager than that, positive if harder, more hostile or more dangerous.");
+  }
+  if (has(input, "stances")) {
+    lines.push("", "A stance says whether she shares, ignores or rejects one of the world's norms (listed under WORLD OPTIONS). Strength 2 is a strong, defining stance. A card that says nothing means indifferent, not the world's norm.");
   }
   if (has(input, "values")) lines.push("", "Value axes:", VALUE_AXES_TEXT);
   lines.push("", "Output JSON shape:", "{", parts.join(",\n"), "}");
@@ -14666,6 +14694,8 @@ function prompt(raw) {
   if (has(input, "signature")) out.push("", "SIGNATURES (template id: fits characters who are):", ...input.signatures.map((s) => `- ${s.id}: ${s.fits}`));
   if (has(input, "defects")) out.push("", "DEFECTS:", ...input.defects.map((d) => `- ${d.id}: ${d.lore}`));
   if (has(input, "tastes")) out.push("", "TASTES (id: what it means):", ...input.tastes.map((t) => `- ${t.id}: ${t.description}`));
+  if (has(input, "disposition") && input.world) out.push("", `WORLD: soldiers of this world are "${input.world.disposition.name}": ${input.world.disposition.description}`);
+  if (has(input, "stances") && input.world) out.push("", "WORLD OPTIONS (id: current choice, what it means):", ...input.world.options.map((o) => `- ${o.id}: ${o.label} = ${o.choice}. ${o.description}`));
   out.push("", `Produce the requested sections: ${input.sections.join(", ")}.`);
   return out.join("\n");
 }
@@ -17567,11 +17597,27 @@ function truncateCard(card2, maxTokens) {
   });
   return out;
 }
-function buildImportInput(card2, registries, settings, sections) {
+function stanceOptionIds(registries, world) {
+  if (!world) return [];
+  return worldChoices({ world: { options: world } }, registries).filter(({ option, choice }) => option.squadStance === true && !isNeutralChoice(choice)).map(({ option }) => option.id);
+}
+function worldImportInfo(registries, world) {
   const str3 = (v) => typeof v === "string" ? v : "";
+  const level = worldDispositionLevel({ world: { options: world } }, registries);
+  const picked = worldChoices({ world: { options: world } }, registries);
+  return {
+    disposition: { name: str3(level.name), description: str3(level.description) },
+    options: picked.filter(({ option, choice }) => option.squadStance === true && !isNeutralChoice(choice)).map(({ option, choice }) => ({ id: option.id, label: str3(option.label), choice: str3(choice.label), description: str3(choice.description) }))
+  };
+}
+function buildImportInput(card2, registries, settings, sections, world) {
+  const str3 = (v) => typeof v === "string" ? v : "";
+  const info = world ? worldImportInfo(registries, world) : void 0;
+  const asked = sections.filter((s) => s !== "disposition" && s !== "stances" || info !== void 0 && (s === "disposition" || info.options.length > 0));
   return {
     card: card2,
-    sections: [...sections],
+    sections: asked,
+    ...info ? { world: info } : {},
     roles: [...registries.roles.values()].map((r) => ({ id: r.id, summary: str3(r.summary) })),
     signatures: [...registries.signatures.values()].map((s) => ({ id: s.id, fits: str3(s.fits) })),
     defects: [...registries.defects.values()].filter((d) => settings.desireBondDefects || d.category !== "desire_bond").map((d) => ({ id: d.id, lore: str3(d.lore) })),
@@ -17581,6 +17627,8 @@ function buildImportInput(card2, registries, settings, sections) {
 var isObj24 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var cap3 = (v, max, fallback = "") => typeof v === "string" ? v.trim().slice(0, max) : fallback;
 var num2 = (v, lo, hi, fallback) => typeof v === "number" && Number.isFinite(v) ? Math.min(hi, Math.max(lo, Math.round(v))) : fallback;
+var STANCE_REASON_MAX2 = 160;
+var STANCE_WORDS = ["shares", "indifferent", "opposes"];
 var SECTION_LABEL = { role: "role", signature: "signature", defects: "defects" };
 var VALUE_KEYS = ["pragmatism", "autonomy", "ingroup", "mercy", "corporate", "sacrifice"];
 function tagList2(v, max) {
@@ -17686,6 +17734,23 @@ function sanitizeProfile(raw, ctx2) {
     }
     profile.commanderTastes = out;
   }
+  if (want("disposition") && isObj24(src.dispositionOffset) && typeof src.dispositionOffset.offset === "number" && Number.isFinite(src.dispositionOffset.offset)) {
+    profile.dispositionOffset = { offset: num2(src.dispositionOffset.offset, -2, 2, 0), reason: cap3(src.dispositionOffset.reason, STANCE_REASON_MAX2) };
+  }
+  if (want("stances")) {
+    const ids = stanceOptionIds(ctx2.registries, ctx2.world);
+    if (ids.length > 0) {
+      const given = isObj24(src.worldStances) ? src.worldStances : {};
+      for (const key of Object.keys(given)) if (!ids.includes(key)) dropped.push(`stances:${key}`);
+      const out = {};
+      for (const id of ids) {
+        const e = given[id];
+        const stance = isObj24(e) && typeof e.stance === "string" && STANCE_WORDS.includes(e.stance) ? e.stance : null;
+        out[id] = stance === null ? { stance: "indifferent", strength: 1, reason: "" } : { stance, strength: e.strength === 2 ? 2 : 1, reason: cap3(e.reason, STANCE_REASON_MAX2) };
+      }
+      profile.worldStances = out;
+    }
+  }
   if (want("baseline")) {
     if (isObj24(src.emotionalBaseline)) {
       const b = src.emotionalBaseline;
@@ -17704,8 +17769,8 @@ async function importProfile(avatar, sections, deps) {
   try {
     const loaded = await st.loadCharacterCard(avatar);
     if (!loaded) return { kind: "manual", reason: "card not found" };
-    const input = buildImportInput(truncateCard(loaded, CARD_INPUT_TOKENS), registries, settings, sections);
-    const ctx2 = { registries, desireBondDefects: settings.desireBondDefects, sections };
+    const input = buildImportInput(truncateCard(loaded, CARD_INPUT_TOKENS), registries, settings, sections, deps.world);
+    const ctx2 = { registries, desireBondDefects: settings.desireBondDefects, sections: input.sections, world: deps.world };
     const attempt = async () => {
       const r = await callLlm("profile_import", input, { st, settings });
       if (!r.ok) return { ok: false, reason: r.detail || r.reason };
@@ -18072,6 +18137,8 @@ var Wizard = class {
     else if (section === "values") c.values = p.values;
     else if (section === "baseline") c.baseline = p.baseline;
     else if (section === "tastes") c.commanderTastes = p.commanderTastes;
+    else if (section === "disposition") c.dispositionOffset = p.dispositionOffset;
+    else if (section === "stances") c.worldStances = p.worldStances;
     else {
       c.likes = p.likes;
       c.dislikes = p.dislikes;
@@ -18113,6 +18180,15 @@ var Wizard = class {
         break;
       case "tastes":
         if (p.commanderTastes) ch.tastes = [...p.commanderTastes];
+        break;
+      case "disposition":
+        if (p.dispositionOffset) {
+          ch.dispositionOffset = p.dispositionOffset.offset;
+          ch.dispositionReason = p.dispositionOffset.reason;
+        }
+        break;
+      case "stances":
+        if (p.worldStances) ch.worldStances = structuredClone(p.worldStances);
         break;
     }
   }
@@ -23955,26 +24031,30 @@ function createApp(st, deps) {
     tags: "Likes, dislikes and triggers",
     signature: "Signature skill",
     defects: "Defects",
-    tastes: "How she reads the commander (tastes)"
+    tastes: "How she reads the commander (tastes)",
+    disposition: "How hard or kind she is for this world (disposition offset)",
+    stances: "Her stance toward the world's norms"
   };
   async function resyncUnit(unitId) {
     const unit = state?.squad.find((u) => u.id === unitId);
     if (!state || !unit?.cardRef) return;
     const startChatId = st.getActiveChat()?.chatId;
     const desireBond = state.settings.desireBondDefects === true;
-    const boxes = RESYNC_SECTIONS.map((s) => h("input", { type: "checkbox", "data-section": s, checked: true }));
+    const world = state.world.options ?? defaultWorldOptions(registries);
+    const offered2 = RESYNC_SECTIONS.filter((s) => s !== "stances" || stanceOptionIds(registries, world).length > 0);
+    const boxes = offered2.map((s) => h("input", { type: "checkbox", "data-section": s, checked: true }));
     const picker = await shell.modal({
       title: "Re-sync from card",
       body: h(
         "div",
         {},
         h("p", {}, "Choose what to re-import from the character card. Relationship numbers are never changed."),
-        ...RESYNC_SECTIONS.map((s, i) => h("label", { class: "alius-check" }, boxes[i], ` ${RESYNC_LABELS[s]}`))
+        ...offered2.map((s, i) => h("label", { class: "alius-check" }, boxes[i], ` ${RESYNC_LABELS[s]}`))
       ),
       actions: [{ label: "Import", value: "go" }, { label: "Cancel", value: "cancel" }]
     });
     if (picker !== "go") return;
-    const sections = RESYNC_SECTIONS.filter((_, i) => boxes[i].checked);
+    const sections = offered2.filter((_, i) => boxes[i].checked);
     if (sections.length === 0) return toast("warn", "Choose at least one section to re-sync.");
     const wizard = new Wizard(
       {
@@ -23984,7 +24064,8 @@ function createApp(st, deps) {
         importer: (avatar, wanted) => importProfile(avatar, wanted.length > 1 ? [...sections] : wanted, {
           st,
           settings: { ...getSettings(st), desireBondDefects: desireBond },
-          registries
+          registries,
+          world
         }),
         onChange: () => {
         }
@@ -24001,7 +24082,10 @@ function createApp(st, deps) {
       likes: [...unit.likes],
       dislikes: [...unit.dislikes],
       triggers: [...unit.triggers],
-      tastes: [...unit.commanderTastes ?? []]
+      tastes: [...unit.commanderTastes ?? []],
+      ...unit.dispositionOffset !== void 0 ? { dispositionOffset: unit.dispositionOffset } : {},
+      ...unit.dispositionReason !== void 0 ? { dispositionReason: unit.dispositionReason } : {},
+      ...unit.worldStances !== void 0 ? { worldStances: structuredClone(unit.worldStances) } : {}
     });
     wizard.calibrate(0);
     const body = h("div", { class: "alius-calibration" });
@@ -24033,7 +24117,15 @@ function createApp(st, deps) {
     if (sections.includes("signature") && c.signature) patch.signature = c.signature;
     if (sections.includes("defects")) patch.defects = c.defects;
     if (sections.includes("tastes")) patch.commanderTastes = c.tastes;
+    if (sections.includes("disposition")) {
+      patch.dispositionOffset = c.dispositionOffset ?? 0;
+      patch.dispositionReason = c.dispositionReason ?? "";
+    }
+    if (sections.includes("stances")) patch.worldStances = c.worldStances ?? {};
     const current = {
+      dispositionOffset: unit.dispositionOffset ?? 0,
+      dispositionReason: unit.dispositionReason ?? "",
+      worldStances: unit.worldStances ?? {},
       roleId: unit.roleId,
       values: unit.values,
       likes: unit.likes,
@@ -24090,7 +24182,7 @@ function createApp(st, deps) {
       {
         registries,
         desireBondDefects: desireBond,
-        importer: (avatar, sections) => importProfile(avatar, sections, { st, settings: { ...getSettings(st), desireBondDefects: desireBond }, registries }),
+        importer: (avatar, sections) => importProfile(avatar, sections, { st, settings: { ...getSettings(st), desireBondDefects: desireBond }, registries, world: s.world.options ?? defaultWorldOptions(registries) }),
         onChange: () => {
         }
       },

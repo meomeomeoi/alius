@@ -2,8 +2,8 @@ import { z } from 'zod';
 import { registerCallType } from '../callTypes';
 import type { CardInfo } from '../../st/adapter';
 
-export type ImportSection = 'role' | 'values' | 'tags' | 'signature' | 'defects' | 'baseline' | 'tastes';
-export const ALL_SECTIONS: readonly ImportSection[] = ['role', 'values', 'tags', 'signature', 'defects', 'baseline', 'tastes'];
+export type ImportSection = 'role' | 'values' | 'tags' | 'signature' | 'defects' | 'baseline' | 'tastes' | 'disposition' | 'stances';
+export const ALL_SECTIONS: readonly ImportSection[] = ['role', 'values', 'tags', 'signature', 'defects', 'baseline', 'tastes', 'disposition', 'stances'];
 
 export interface ProfileImportInput {
   card: CardInfo;
@@ -13,6 +13,11 @@ export interface ProfileImportInput {
   defects: Array<{ id: string; lore: string }>;
   /** P7: how a unit may read the commander (registry `tastes`). */
   tastes: Array<{ id: string; description: string }>;
+  /**
+   * P8: the world the unit joins. Present only when the caller knows one; `options` lists the squad-stance options whose
+   * current choice is not neutral (the `stances` section is asked for only when there is one).
+   */
+  world?: { disposition: { name: string; description: string }; options: Array<{ id: string; label: string; choice: string; description: string }> };
 }
 
 /**
@@ -30,6 +35,8 @@ export const ProfileImportRawSchema = z
     defectCandidates: z.unknown().optional(),
     emotionalBaseline: z.unknown().optional(),
     commanderTastes: z.unknown().optional(),
+    dispositionOffset: z.unknown().optional(),
+    worldStances: z.unknown().optional(),
     notes: z.unknown().optional(),
   })
   .passthrough();
@@ -54,6 +61,10 @@ const SCHEMA_PART: Record<ImportSection, string> = {
     '  "defectCandidates": [{ "defectId": "<id from DEFECTS>", "origin": "<1-2 in-universe sentences>" }],   // 2 to 3 entries',
   tastes:
     '  "commanderTastes": ["<id from TASTES>"],   // at most 3: how she reads the commander\'s looks and build, only if the card suggests it',
+  disposition:
+    '  "dispositionOffset": { "offset": 0, "reason": "<one sentence>" },   // integer -2..2: how much kinder (negative) or harder (positive) she is than the world\'s default soldier; 0 when the card does not say',
+  stances:
+    '  "worldStances": { "<id from WORLD OPTIONS>": { "stance": "shares"|"indifferent"|"opposes", "strength": 1|2, "reason": "<one sentence>" } },   // one entry per option listed',
   baseline:
     '  "emotionalBaseline": { "trust": 0, "affinity": 0, "attraction": 0 },   // trust 0..40, affinity -20..30, attraction 0..20',
 };
@@ -72,6 +83,12 @@ function system(raw: unknown): string {
   ];
   if (has(input, 'signature')) {
     lines.push('Signature name and description are written in the character\'s voice and must not change the template\'s numbers.');
+  }
+  if (has(input, 'disposition')) {
+    lines.push('', 'The disposition offset compares her with the default soldier of the world described under WORLD: negative if the card shows her kinder, more trusting or more eager than that, positive if harder, more hostile or more dangerous.');
+  }
+  if (has(input, 'stances')) {
+    lines.push('', 'A stance says whether she shares, ignores or rejects one of the world\'s norms (listed under WORLD OPTIONS). Strength 2 is a strong, defining stance. A card that says nothing means indifferent, not the world\'s norm.');
   }
   if (has(input, 'values')) lines.push('', 'Value axes:', VALUE_AXES_TEXT);
   lines.push('', 'Output JSON shape:', '{', parts.join(',\n'), '}');
@@ -96,6 +113,8 @@ function prompt(raw: unknown): string {
   if (has(input, 'signature')) out.push('', 'SIGNATURES (template id: fits characters who are):', ...input.signatures.map((s) => `- ${s.id}: ${s.fits}`));
   if (has(input, 'defects')) out.push('', 'DEFECTS:', ...input.defects.map((d) => `- ${d.id}: ${d.lore}`));
   if (has(input, 'tastes')) out.push('', 'TASTES (id: what it means):', ...input.tastes.map((t) => `- ${t.id}: ${t.description}`));
+  if (has(input, 'disposition') && input.world) out.push('', `WORLD: soldiers of this world are "${input.world.disposition.name}": ${input.world.disposition.description}`);
+  if (has(input, 'stances') && input.world) out.push('', 'WORLD OPTIONS (id: current choice, what it means):', ...input.world.options.map((o) => `- ${o.id}: ${o.label} = ${o.choice}. ${o.description}`));
   out.push('', `Produce the requested sections: ${input.sections.join(', ')}.`);
   return out.join('\n');
 }

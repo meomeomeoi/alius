@@ -36,8 +36,8 @@ const run = (state: CampaignState, unitId: string, patch: Record<string, unknown
   dispatch(state, { type: 'squad/resync', payload: { unitId, patch } }, reg);
 
 describe('squad/resync', () => {
-  it('RESYNC_SECTIONS excludes baseline and includes the P7 tastes', () => {
-    expect([...RESYNC_SECTIONS]).toEqual(['role', 'values', 'tags', 'signature', 'defects', 'tastes']);
+  it('RESYNC_SECTIONS excludes baseline and includes the P7 tastes and the P8 disposition and stances', () => {
+    expect([...RESYNC_SECTIONS]).toEqual(['role', 'values', 'tags', 'signature', 'defects', 'tastes', 'disposition', 'stances']);
   });
 
   it('resync values replaces only values', () => {
@@ -287,5 +287,36 @@ describe('incoming named units (P5)', () => {
     expect(second.world.incomingUnits).toBe(0);
     expect(message(add(second, zed({ cardRef: 'xe.png', displayName: 'Xe' })))).toBe('No unit is waiting for intake.');
     expect(second.squad.filter((u) => u.kind === 'named')).toHaveLength(4);
+  });
+});
+
+
+describe('squad/resync of the P8 sections', () => {
+  const stances = { gender_norms: { stance: 'shares' as const, strength: 2 as const, reason: 'Raised in the barracks.' } };
+  it('re-sync writes offset and stances without moving axes', () => {
+    const s = campaign(true);
+    const before = structuredClone(s.relations.unit_rhea);
+    const r = run(s, 'unit_rhea', { dispositionOffset: -1, dispositionReason: 'Eager.', worldStances: stances });
+    expect(r.events).toEqual([{ type: 'unit_resynced', unitId: 'unit_rhea', sections: ['disposition', 'stances'] }]);
+    const u = r.state.squad.find((x) => x.id === 'unit_rhea')!;
+    expect(u.dispositionOffset).toBe(-1);
+    expect(u.dispositionReason).toBe('Eager.');
+    expect(u.worldStances).toEqual(stances);
+    expect(r.state.relations.unit_rhea).toEqual(before);
+  });
+  it('offset 0 and empty values clear the fields', () => {
+    const s = campaign(true);
+    const a = run(s, 'unit_rhea', { dispositionOffset: 2, dispositionReason: 'Hard.', worldStances: stances }).state;
+    const b = run(a, 'unit_rhea', { dispositionOffset: 0, dispositionReason: '', worldStances: {} });
+    const u = b.state.squad.find((x) => x.id === 'unit_rhea')!;
+    expect('dispositionOffset' in u || 'dispositionReason' in u || 'worldStances' in u).toBe(false);
+  });
+  it('invalid offsets and unknown stance options are refused and change nothing', () => {
+    const s = campaign(true);
+    for (const patch of [{ dispositionOffset: 3 }, { worldStances: { tone: { stance: 'shares', strength: 1, reason: '' } } }]) {
+      const r = run(s, 'unit_rhea', patch as never);
+      expect(r.events[0]).toMatchObject({ type: 'error' });
+      expect(r.state).toEqual(s);
+    }
   });
 });

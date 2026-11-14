@@ -57,7 +57,8 @@ import { buildCampaign, type SetupResult } from './engine/setup';
 import { commanderProfile } from './engine/commander/profile';
 import { renderCommanderFile } from './ui/commander/commanderFile';
 import { importCommander } from './setup/commander';
-import { importProfile } from './setup/profile';
+import { importProfile, stanceOptionIds } from './setup/profile';
+import { defaultWorldOptions } from './engine/worldOptions';
 import { Wizard, type WizardState } from './setup/wizard';
 import { renderSetupScreen } from './ui/setup/setupScreen';
 import { renderSquadTab } from './ui/squad/squadTab';
@@ -1125,6 +1126,8 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     signature: 'Signature skill',
     defects: 'Defects',
     tastes: 'How she reads the commander (tastes)',
+    disposition: 'How hard or kind she is for this world (disposition offset)',
+    stances: 'Her stance toward the world\'s norms',
   };
 
   /** Re-imports chosen sections from the unit's card and applies the player's choices via squad/resync. */
@@ -1134,17 +1137,21 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     const startChatId = st.getActiveChat()?.chatId;
     const desireBond = state.settings.desireBondDefects === true;
 
+    // P8: the world the unit lives in; the stances section only makes sense while some norm is not neutral
+    const world = state.world.options ?? defaultWorldOptions(registries);
+    const offered = RESYNC_SECTIONS.filter((s) => s !== 'stances' || stanceOptionIds(registries, world).length > 0);
+
     // 1. which sections
-    const boxes = RESYNC_SECTIONS.map((s) => h('input', { type: 'checkbox', 'data-section': s, checked: true }) as HTMLInputElement);
+    const boxes = offered.map((s) => h('input', { type: 'checkbox', 'data-section': s, checked: true }) as HTMLInputElement);
     const picker = await shell.modal({
       title: 'Re-sync from card',
       body: h('div', {},
         h('p', {}, 'Choose what to re-import from the character card. Relationship numbers are never changed.'),
-        ...RESYNC_SECTIONS.map((s, i) => h('label', { class: 'alius-check' }, boxes[i], ` ${RESYNC_LABELS[s]}`))),
+        ...offered.map((s, i) => h('label', { class: 'alius-check' }, boxes[i], ` ${RESYNC_LABELS[s]}`))),
       actions: [{ label: 'Import', value: 'go' }, { label: 'Cancel', value: 'cancel' }],
     });
     if (picker !== 'go') return;
-    const sections = RESYNC_SECTIONS.filter((_, i) => boxes[i].checked);
+    const sections = offered.filter((_, i) => boxes[i].checked);
     if (sections.length === 0) return toast('warn', 'Choose at least one section to re-sync.');
 
     // 2. a one-unit wizard does the import and the preselection; it starts from the unit's current profile
@@ -1155,7 +1162,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         // the first call imports every re-sync section, a "regenerate" asks for one
         importer: (avatar, wanted) =>
           importProfile(avatar, wanted.length > 1 ? [...sections] : wanted, {
-            st, settings: { ...getSettings(st), desireBondDefects: desireBond }, registries,
+            st, settings: { ...getSettings(st), desireBondDefects: desireBond }, registries, world,
           }),
         onChange: () => {},
       },
@@ -1172,6 +1179,9 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       dislikes: [...unit.dislikes],
       triggers: [...unit.triggers],
       tastes: [...(unit.commanderTastes ?? [])],
+      ...(unit.dispositionOffset !== undefined ? { dispositionOffset: unit.dispositionOffset } : {}),
+      ...(unit.dispositionReason !== undefined ? { dispositionReason: unit.dispositionReason } : {}),
+      ...(unit.worldStances !== undefined ? { worldStances: structuredClone(unit.worldStances) } : {}),
     });
     wizard.calibrate(0);
 
@@ -1208,7 +1218,13 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     if (sections.includes('signature') && c.signature) patch.signature = c.signature;
     if (sections.includes('defects')) patch.defects = c.defects;
     if (sections.includes('tastes')) patch.commanderTastes = c.tastes;
+    if (sections.includes('disposition')) {
+      patch.dispositionOffset = c.dispositionOffset ?? 0;
+      patch.dispositionReason = c.dispositionReason ?? '';
+    }
+    if (sections.includes('stances')) patch.worldStances = c.worldStances ?? {};
     const current: ResyncPatch = {
+      dispositionOffset: unit.dispositionOffset ?? 0, dispositionReason: unit.dispositionReason ?? '', worldStances: unit.worldStances ?? {},
       roleId: unit.roleId, values: unit.values, likes: unit.likes, dislikes: unit.dislikes, triggers: unit.triggers,
       signature: unit.signatureSkill, defects: unit.defects.map((d) => ({ id: d.id, origin: d.origin ?? '' })),
       commanderTastes: unit.commanderTastes ?? [],
@@ -1259,7 +1275,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         registries,
         desireBondDefects: desireBond,
         importer: (avatar, sections) =>
-          importProfile(avatar, sections, { st, settings: { ...getSettings(st), desireBondDefects: desireBond }, registries }),
+          importProfile(avatar, sections, { st, settings: { ...getSettings(st), desireBondDefects: desireBond }, registries, world: s.world.options ?? defaultWorldOptions(registries) }),
         onChange: () => {},
       },
       { personaName: '', canBindCurrent: false },

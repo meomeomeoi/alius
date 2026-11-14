@@ -456,6 +456,8 @@ export class Wizard {
     else if (section === 'values') c.values = p.values;
     else if (section === 'baseline') c.baseline = p.baseline;
     else if (section === 'tastes') c.commanderTastes = p.commanderTastes;
+    else if (section === 'disposition') c.dispositionOffset = p.dispositionOffset;
+    else if (section === 'stances') c.worldStances = p.worldStances;
     else {
       c.likes = p.likes;
       c.dislikes = p.dislikes;
@@ -498,6 +500,15 @@ export class Wizard {
         break;
       case 'tastes':
         if (p.commanderTastes) ch.tastes = [...p.commanderTastes];
+        break;
+      case 'disposition':
+        if (p.dispositionOffset) {
+          ch.dispositionOffset = p.dispositionOffset.offset;
+          ch.dispositionReason = p.dispositionOffset.reason;
+        }
+        break;
+      case 'stances':
+        if (p.worldStances) ch.worldStances = structuredClone(p.worldStances);
         break;
     }
   }

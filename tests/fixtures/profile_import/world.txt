@@ -1,0 +1,85 @@
+{
+  "roleCandidates": [
+    {
+      "roleId": "defender",
+      "reason": "Protective and stubborn."
+    },
+    {
+      "roleId": "assault",
+      "reason": "Aggressive when cornered."
+    }
+  ],
+  "values": {
+    "pragmatism": -1,
+    "autonomy": 1,
+    "ingroup": 3,
+    "mercy": 1,
+    "corporate": -2,
+    "sacrifice": 2
+  },
+  "likes": [
+    "quiet nights",
+    "old songs",
+    "clean rifles"
+  ],
+  "dislikes": [
+    "corporate talk",
+    "being thanked"
+  ],
+  "triggers": [
+    "abandoned squadmates"
+  ],
+  "signatureCandidates": [
+    {
+      "templateId": "sig_last_stand",
+      "name": "Litany of the Lost",
+      "description": "She reads names aloud and refuses to fall."
+    },
+    {
+      "templateId": "sig_shared_pain",
+      "name": "Carry It",
+      "description": "She takes the blow meant for another."
+    },
+    {
+      "templateId": "sig_anchor_words",
+      "name": "Count Me",
+      "description": "Her voice pulls someone back from the edge."
+    }
+  ],
+  "defectCandidates": [
+    {
+      "defectId": "threat_saturation",
+      "origin": "Three tours on the Ashway never let her stand down."
+    },
+    {
+      "defectId": "compulsive_protocol",
+      "origin": "Drill loops outlasted the war that made them."
+    },
+    {
+      "defectId": "pain_inversion",
+      "origin": "The Bloom burned her pain wiring out."
+    }
+  ],
+  "emotionalBaseline": {
+    "trust": 10,
+    "affinity": 0,
+    "attraction": 0
+  },
+  "notes": "Veteran. Slow to trust.",
+  "dispositionOffset": {
+    "offset": -1,
+    "reason": "She wants to be trusted and shows it."
+  },
+  "worldStances": {
+    "gender_norms": {
+      "stance": "shares",
+      "strength": 2,
+      "reason": "Raised in the corporate barracks, she half-believes the old rules."
+    },
+    "offspec_stigma": {
+      "stance": "opposes",
+      "strength": 1,
+      "reason": "She calls the stigma a lie the corporations tell."
+    }
+  }
+}

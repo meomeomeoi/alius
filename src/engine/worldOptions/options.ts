@@ -8,7 +8,8 @@ import type { CampaignState } from '../state/types';
  * option or choice id (overview P4).
  */
 
-type WorldHolder = Pick<CampaignState, 'world'>;
+/** Anything with the chosen options: a campaign, or a wizard's choices (`{ world: { options } }`). */
+export type WorldHolder = { world: Pick<CampaignState['world'], 'options'> };
 export type WorldOptionEntry = Entry & { choices: WorldChoice[]; default: string };
 
 /** Effect types that make a `squadStance` choice non-neutral: the stances of a unit only count under such a choice. */

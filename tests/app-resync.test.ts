@@ -255,3 +255,48 @@ describe('re-sync flow', () => {
     expect(t.app.current().state).toBe(before); // not even a no-op dispatch
   });
 });
+
+describe('re-sync of the world sections (P8)', () => {
+  const WORLD_REPLY = JSON.stringify({
+    dispositionOffset: { offset: 2, reason: 'She bites first.' },
+    worldStances: { offspec_stigma: { stance: 'shares', strength: 2, reason: 'She believes what they say about her kind.' } },
+  });
+  const hunted = (t: Awaited<ReturnType<typeof boot>>) => {
+    const s = structuredClone(t.app.current().state!);
+    s.world.options = { ...s.world.options, offspec_stigma: 'hunted' };
+    t.app.replaceState(s);
+  };
+
+  it('asks for the offset and the stances of the campaign\'s world and writes them without moving an axis', async () => {
+    const t = await boot();
+    hunted(t);
+    const relationBefore = structuredClone(t.app.current().state!.relations.unit_rhea);
+    t.st.mainReplies = [WORLD_REPLY];
+    t.script.push(keepOnly('disposition', 'stances'), applyAfterImport());
+    t.clickResync();
+    await t.settle(2);
+    const call = t.st.calls[0];
+    expect(call.system).toContain('dispositionOffset');
+    expect(call.system).toContain('worldStances');
+    expect(call.prompt).toContain('- offspec_stigma:');
+    const u = t.app.current().state!.squad[0];
+    expect(u.dispositionOffset).toBe(2);
+    expect(u.dispositionReason).toBe('She bites first.');
+    expect(u.worldStances).toEqual({ offspec_stigma: { stance: 'shares', strength: 2, reason: 'She believes what they say about her kind.' } });
+    expect(t.app.current().state!.relations.unit_rhea).toEqual(relationBefore);
+  });
+
+  it('in a world with no norm to take a stance on, the stances box is not offered', async () => {
+    const t = await boot();
+    t.st.mainReplies = [WORLD_REPLY];
+    let boxes: string[] = [];
+    t.script.push(async (opts: ModalOpts) => {
+      boxes = [...(opts.body as HTMLElement).querySelectorAll<HTMLInputElement>('input[type="checkbox"]')].map((b) => b.dataset.section!);
+      return null;
+    });
+    t.clickResync();
+    await t.settle(1);
+    expect(boxes).toContain('disposition');
+    expect(boxes).not.toContain('stances');
+  });
+});

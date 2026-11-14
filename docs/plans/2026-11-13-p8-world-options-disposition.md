@@ -422,15 +422,15 @@ docs/** (Task 16), tests/** mirror src
   - `ImportedProfile.dispositionOffset?`, `.worldStances?`
   - Re-sync patch fields `dispositionOffset`, `dispositionReason`, `worldStances`. Axes are never re-based.
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `world fixture yields offset −1 and a shares stance with reasons`
   - `an offset of 5 clamps to 2; an unknown option is dropped`
   - `stances are not requested in a neutral world`
   - `re-sync writes offset and stances without moving axes`
-- [ ] **Step 2: Run** `npx vitest run tests/setup tests/engine/squad.test.ts` and expect FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** `npx vitest run` and expect green.
-- [ ] **Step 5: Commit** `feat(setup): disposition offset and world stances in profile import`.
+- [x] **Step 2: Run** `npx vitest run tests/setup tests/engine/squad.test.ts` and expect FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** `npx vitest run` and expect green.
+- [x] **Step 5: Commit** `feat(setup): disposition offset and world stances in profile import`.
 
 ### Task 12: Wizard `world` step model and presets
 

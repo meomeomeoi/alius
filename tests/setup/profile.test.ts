@@ -300,7 +300,8 @@ describe('sanitizeProfile', () => {
 
   it('missing lists each requested section with nothing usable', () => {
     // the taste list is optional by nature: an empty answer is a valid one, so it is never "missing"
-    expect(run({}).missing.sort()).toEqual(ALL_SECTIONS.filter((x) => x !== 'tastes').sort());
+    // the world sections (offset, stances) are optional too: a missing one means offset 0 / indifferent
+    expect(run({}).missing.sort()).toEqual(ALL_SECTIONS.filter((x) => x !== 'tastes' && x !== 'disposition' && x !== 'stances').sort());
     expect(run({}, { sections: ['signature'] }).missing).toEqual(['signature']);
     expect(run({ values: 'high', likes: 'tea', emotionalBaseline: [] }, { sections: ['values', 'tags', 'baseline'] }).missing.sort())
       .toEqual(['baseline', 'tags', 'values']);
@@ -383,5 +384,113 @@ describe('the tastes section of the import prompt (P7)', () => {
 
   it('ALL_SECTIONS includes tastes', () => {
     expect(ALL_SECTIONS).toContain('tastes');
+  });
+});
+
+
+describe('the world sections of the import (P8)', () => {
+  const HUNTED = { gender_norms: 'corporate_machismo', offspec_stigma: 'hunted', disposition: 'hazardous' };
+  const worldCtx = (world: Record<string, string> | undefined, sections: ImportSection[] = [...ALL_SECTIONS]) => ({ ...ctx({ sections }), world });
+
+  it('world fixture yields offset −1 and a shares stance with reasons', async () => {
+    const { st, avatar, deps } = setup();
+    st.profileReplies = [fixture('world')];
+    const r = await importProfile(avatar, [...ALL_SECTIONS], { ...deps, world: HUNTED });
+    expect(r.kind).toBe('ok');
+    if (r.kind !== 'ok') return;
+    expect(r.profile.dispositionOffset).toEqual({ offset: -1, reason: 'She wants to be trusted and shows it.' });
+    expect(r.profile.worldStances).toEqual({
+      gender_norms: { stance: 'shares', strength: 2, reason: 'Raised in the corporate barracks, she half-believes the old rules.' },
+      offspec_stigma: { stance: 'opposes', strength: 1, reason: 'She calls the stigma a lie the corporations tell.' },
+    });
+    expect(r.dropped).toEqual([]);
+    expect(r.missing).toEqual([]);
+  });
+
+  it('an offset of 5 clamps to 2; an unknown option is dropped', () => {
+    const { profile, dropped } = sanitizeProfile({
+      dispositionOffset: { offset: 5, reason: 'x'.repeat(300) },
+      worldStances: { ghost_option: { stance: 'shares', strength: 1, reason: 'r' }, tone: { stance: 'shares', strength: 1, reason: 'r' },
+        gender_norms: { stance: 'loves', strength: 9, reason: 'y'.repeat(300) } },
+    }, worldCtx(HUNTED, ['disposition', 'stances']));
+    expect(profile.dispositionOffset).toEqual({ offset: 2, reason: 'x'.repeat(160) });
+    expect(profile.worldStances!.ghost_option).toBeUndefined();
+    expect(profile.worldStances!.tone).toBeUndefined();
+    expect(dropped).toEqual(expect.arrayContaining(['stances:ghost_option', 'stances:tone']));
+    // an unknown stance word becomes indifferent (strength 1, empty reason)
+    expect(profile.worldStances!.gender_norms).toEqual({ stance: 'indifferent', strength: 1, reason: '' });
+    // a missing stance is filled the same way
+    expect(profile.worldStances!.offspec_stigma).toEqual({ stance: 'indifferent', strength: 1, reason: '' });
+  });
+
+  it('offsets are integers: −1.6 rounds to −2, a string or nothing is no offset', () => {
+    const off = (v: unknown) => sanitizeProfile({ dispositionOffset: v }, worldCtx(HUNTED, ['disposition'])).profile.dispositionOffset;
+    expect(off({ offset: -1.6, reason: 'r' })).toEqual({ offset: -2, reason: 'r' });
+    expect(off({ offset: '2', reason: 'r' })).toBeUndefined();
+    expect(off('high')).toBeUndefined();
+    expect(off(undefined)).toBeUndefined();
+    expect(off({ offset: 1 })).toEqual({ offset: 1, reason: '' });
+  });
+
+  it('stance strength is 1 or 2; other numbers read as 1', () => {
+    const st = (strength: unknown) => sanitizeProfile({ worldStances: { gender_norms: { stance: 'opposes', strength, reason: 'r' } } }, worldCtx(HUNTED, ['stances'])).profile.worldStances!.gender_norms.strength;
+    expect([st(2), st(1), st(3), st('2'), st(undefined)]).toEqual([2, 1, 1, 1, 1]);
+  });
+
+  it('the world sections are only read when asked for, and stances only for non-neutral options', () => {
+    const none = sanitizeProfile({ dispositionOffset: { offset: 1, reason: 'r' }, worldStances: { gender_norms: { stance: 'shares', strength: 1, reason: 'r' } } },
+      worldCtx(HUNTED, ['values']));
+    expect(none.profile.dispositionOffset).toBeUndefined();
+    expect(none.profile.worldStances).toBeUndefined();
+    const neutral = sanitizeProfile({ worldStances: { gender_norms: { stance: 'shares', strength: 1, reason: 'r' } } }, worldCtx({}, ['stances']));
+    expect(neutral.profile.worldStances).toBeUndefined();
+  });
+
+  it('stances are not requested in a neutral world', async () => {
+    const { st, avatar, deps } = setup();
+    st.profileReplies = [fixture('valid')];
+    await importProfile(avatar, [...ALL_SECTIONS], { ...deps, world: {} });
+    const call = profileCalls(st)[0] as { system: string; prompt: string };
+    expect(call.system).not.toContain('worldStances');
+    expect(call.prompt).not.toContain('WORLD OPTIONS');
+    expect(call.system).toContain('dispositionOffset'); // the offset is always asked for when a world is given
+    const input = buildImportInput(card('detailed'), reg, getSettings(new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' })), [...ALL_SECTIONS], {});
+    expect(input.sections).not.toContain('stances');
+    expect(input.world!.options).toEqual([]);
+  });
+
+  it('without a world neither section is requested (callers that know no world)', async () => {
+    const { st, avatar, deps } = setup();
+    st.profileReplies = [fixture('valid')];
+    await importProfile(avatar, [...ALL_SECTIONS], deps);
+    const call = profileCalls(st)[0] as { system: string };
+    expect(call.system).not.toContain('dispositionOffset');
+    expect(call.system).not.toContain('worldStances');
+  });
+
+  it('under a non-neutral world the prompt names the level and the options, and says a silent card means indifferent', async () => {
+    const { st, avatar, deps } = setup();
+    st.profileReplies = [fixture('world')];
+    await importProfile(avatar, [...ALL_SECTIONS], { ...deps, world: HUNTED });
+    const call = profileCalls(st)[0] as { system: string; prompt: string };
+    expect(call.system).toContain('worldStances');
+    expect(call.system).toMatch(/says nothing means indifferent, not the world's norm/);
+    expect(call.prompt).toContain('WORLD:');
+    expect(call.prompt).toContain('Hazardous');
+    expect(call.prompt).toContain('WORLD OPTIONS');
+    expect(call.prompt).toContain('- gender_norms:');
+    expect(call.prompt).toContain('- offspec_stigma:');
+    expect(call.prompt).not.toContain('- tone:');
+    expect(call.system + call.prompt).not.toMatch(/\b(he|him|his)\b/i);
+  });
+
+  it('a request for the world sections alone mentions no other section', async () => {
+    const { st, avatar, deps } = setup();
+    st.profileReplies = ['{ "dispositionOffset": { "offset": 1, "reason": "r" } }'];
+    const r = await importProfile(avatar, ['disposition'], { ...deps, world: HUNTED });
+    expect(r.kind === 'ok' && r.profile.dispositionOffset).toEqual({ offset: 1, reason: 'r' });
+    const call = profileCalls(st)[0] as { system: string; prompt: string };
+    expect(call.system).not.toContain('roleCandidates');
+    expect(call.prompt).not.toContain('ROLES:');
   });
 });

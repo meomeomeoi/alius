@@ -8,25 +8,29 @@ import {
   crimeEffectsOf, crimeKnownByDefault, initialRelation, makeNamedUnit, startingTrustAdjust, validateIncomingUnit, validateUnitProfile, type UnitSetup,
 } from '../setup';
 import { TUNING } from '../tuning';
-import type { CampaignState } from '../state/types';
+import type { CampaignState, WorldStance } from '../state/types';
 import type { DefectInstance } from '../state/types';
 
 // Importing this module registers the squad actions.
 
 /** Sections a re-sync can replace. The baseline is excluded: relationship axes are engine truth once the campaign runs. */
-export const RESYNC_SECTIONS = ['role', 'values', 'tags', 'signature', 'defects', 'tastes'] as const;
+export const RESYNC_SECTIONS = ['role', 'values', 'tags', 'signature', 'defects', 'tastes', 'disposition', 'stances'] as const;
 export type ResyncSection = (typeof RESYNC_SECTIONS)[number];
 
 export type ResyncPatch = Partial<Pick<UnitSetup, 'roleId' | 'values' | 'likes' | 'dislikes' | 'triggers' | 'signature' | 'defects'>> & {
   /** P7: replaces the unit's taste ids (an empty list clears them). Never changes an axis. */
   commanderTastes?: string[];
+  /** P8: the unit's offset from the world level (0 clears it), its reason ('' clears it) and its stances ({} clears them). Never changes an axis. */
+  dispositionOffset?: number;
+  dispositionReason?: string;
+  worldStances?: Record<string, WorldStance>;
 };
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 
 const SECTION_OF: Record<keyof ResyncPatch, ResyncSection> = {
   roleId: 'role', values: 'values', likes: 'tags', dislikes: 'tags', triggers: 'tags', signature: 'signature', defects: 'defects',
-  commanderTastes: 'tastes',
+  commanderTastes: 'tastes', dispositionOffset: 'disposition', dispositionReason: 'disposition', worldStances: 'stances',
 };
 
 registerAction('squad/resync', (draft, payload, ctx) => {
@@ -50,6 +54,9 @@ registerAction('squad/resync', (draft, payload, ctx) => {
     dislikes: patch.dislikes ?? unit.dislikes,
     triggers: patch.triggers ?? unit.triggers,
     tastes: patch.commanderTastes ?? unit.commanderTastes,
+    dispositionOffset: patch.dispositionOffset ?? unit.dispositionOffset,
+    dispositionReason: patch.dispositionReason ?? unit.dispositionReason,
+    worldStances: patch.worldStances ?? unit.worldStances,
   };
   const errors = validateUnitProfile(next, unit.displayName, ctx.registries, {
     desireBondDefects: draft.settings.desireBondDefects === true,
@@ -70,6 +77,18 @@ registerAction('squad/resync', (draft, payload, ctx) => {
   if (patch.commanderTastes) {
     if (patch.commanderTastes.length > 0) unit.commanderTastes = [...patch.commanderTastes];
     else delete unit.commanderTastes;
+  }
+  if (patch.dispositionOffset !== undefined) {
+    if (patch.dispositionOffset !== 0) unit.dispositionOffset = patch.dispositionOffset;
+    else delete unit.dispositionOffset;
+  }
+  if (patch.dispositionReason !== undefined) {
+    if (patch.dispositionReason !== '') unit.dispositionReason = patch.dispositionReason;
+    else delete unit.dispositionReason;
+  }
+  if (patch.worldStances !== undefined) {
+    if (Object.keys(patch.worldStances).length > 0) unit.worldStances = structuredClone(patch.worldStances);
+    else delete unit.worldStances;
   }
   if (patch.defects) {
     unit.defects = patch.defects.map((d): DefectInstance => {
