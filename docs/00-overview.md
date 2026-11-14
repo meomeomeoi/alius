@@ -131,11 +131,11 @@ Source layout (TypeScript, same toolchain style as Mundi-Expanded):
 | Call type | Profile | Purpose | Default budget (output tokens) |
 |---|---|---|---|
 | `profile_import` | mechanic | Card → role/values/defect candidates/signature skill picks | 1500 |
-| `intent_extract` | mechanic | Exchange/scene → list of intents | 600 |
+| `intent_extract` | mechanic | Exchange/scene → list of intents (P9: four more types, `defied`, `commander_enforced`, `commander_yielded`, `threatened`, with a `measure` field; 30 reportable types) | 600 |
 | `scene_summary` | mechanic | Scene → facts + chronicle entry | 800 |
 | `dilemma_generate` | mechanic | Context + template → dilemma structure | 1000 |
 | `director_tick` | mechanic | World digest → mission offers, rumors, thread updates, clock advances, story-beat proposal (P5; the engine validates every id and never reads amounts) | 1200 |
-| `flavor` | mechanic | Names/descriptions for generated things (grunts, affixed enemies, items); one `kind` per use | 400 |
+| `flavor` | mechanic | Names/descriptions for generated things (grunts, affixed enemies, items, a soldier's demand in her voice: kind `demand`, P9, setting `demandWording`); one `kind` per use | 400 |
 | `dm_reply` | main | Short PDA message | 300 |
 | `expedition_recap` | main | After-action report lines → narrative recap (P5; optional, setting `expeditionRecap`) | 700 |
 | `emotion_pick` | mechanic | Optional sprite emotion classification (when not using native Expressions) | 50 |
@@ -160,7 +160,7 @@ Before each main-model generation the adapter injects one compact block:
 
 Character card text itself remains SillyTavern's job.
 
-### 5.4 Implemented engine interfaces (P0–P6, P7a, P7, P8)
+### 5.4 Implemented engine interfaces (P0–P6, P7a, P7, P8, P9)
 
 Later packages build on these; change them only together with the owning spec.
 
@@ -224,6 +224,13 @@ Later packages build on these; change them only together with the owning spec.
 | `stanceOf`, `stanceEffects`, `optionStanceEffects`, `effectiveValues`, `rollGruntStances`, `normDistance`, `applyWorldStartEffects` | P8 | Per-unit stances toward the world's norms and the commander's distance from the expected expression. |
 | `renderWorldParams`, `worldSettingsLine`, `registerWorldOptionsContext`, `worldDirectives`, `clearWorldDirectives`, `WizardStep 'world'`, `Wizard.applyPreset / setWorldOption / worldSummary / refreshWorldSections`, `importProfile(…, { world })`, sections `disposition` / `stances` | P8 | The WORLD PARAMETERS step, the WORLD SETTINGS block and directives, the world-aware import. |
 | `breakdownTargetFor`, `PlannedAction 'self_harm'`, log kind `self_harm`, world effect `stigma_news`, `faction` effect id `own` | P8 | Extensions of P4 and P5 interfaces. |
+| `impunityOf(state, reg, unitId)` → `{ value, terms }`, `leverageOf`, `impunityBand`, `commandStance(state, reg, unitId)`, `stanceEntry`, registries `commandStances` (5), `TUNING.impunity` | P9 | Impunity is computed (base + R + L − P·w(d) − D + C + S); only `Relation.impunityRecord` is stored. The command stance (`disciplined`, `defiant_loyal`, `fearful`, `open_defiance`, `indifferent`) is Trust × Impunity and drives the directive, the refusal form, mutiny, desertion, sabotage and demand frequency. `stanceOf` stays P8's. |
+| `enforce`, `holdDefiance`, `settleDefiance`, `dropDefiance`, `registerThreat`, `lapseThreat`, `addRecord`, `decayRecords`, `forgetUnit`, `disciplineOf`, `applyDisciplineEvent` | P9 | The one place an enforcement touches R, a held defiance and a pending threat. `ENGINE_EVENT_TYPES` (`granted_demand`, `refused_demand`) are never offered to the model. |
+| `applyPunishment`, `checkPunish`, `perceptionOf`, `canUndo`, `undoApplication`, `undoThreat`, `restrictionReason`, `addRestriction`, `activeRestrictions`, `dutySlot`, `measureList`, registry `punishments` (6), actions `discipline/punish { unitId, measure, days? }`, `discipline/undo { id }` | P9 | Punishments run through `computeDeltas` as `commander_enforced`; applications store an `Inverse` for exact UNDO. Restrictions (confined, no_leave, benched, duty) are read by the scene, activity, expedition and companion checks. |
+| `queueSabotage`, `sabotageDayStep`, `gearFault`, `isCovert`, `acquaintanceDays`, `inAcquaintance`, `disciplineDayStep` | P9 | Covert sabotage of `fearful` units (anonymous facts), the acquaintance grace and the discipline day step (on `director_tick`). |
+| `openDemand`, `rollDemands`, `eligibleTemplates`, `demandChance`, `grantProblem`, `deliverDemand`, `answerDemand`, registry `demandTemplates` (6), actions `demand/roll`, `demand/deliver`, `demand/answer` | P9 | Demands (`resource`, `privilege`, `exclusion`, `item`, `information`, `interpersonal`) and the *owed* demand of a delegate one Trust band short. |
+| `countDeed`, `deedsOf`, `DEED_COUNTERS`, `patternHolds`, `patternScore`, `reputationDayStep`, `introduceNickname`, registry `reputations` (7), action `reputation/introduce { unitId }`, `commanderLine` (nickname clause) | P9 | Deeds are counted where they happen; patterns queue one pending nickname; it is introduced in a private scene and enters the commander line and the CMDR card. |
+| `createDiscipline` / `app.discipline` (`onEvents`, `onSceneOpened`, `onSceneClosed`, `punish`, `undo`, `onSlotAdvanced`, `answerDemand`, `talkDemand`), `disciplineDirectives`, `reputationDirectives`, `clearDisciplineDirectives`, `renderDisciplineMenu`, `drawDisciplineChips`, `drawDemandChips`, `registerDisciplineProviders` | P9 | The non-engine layer: directives (`loyalty:`, `refusal:`, `threat:`, `discipline:`, `demand:`, `reputation:`, `nickname`), toasts, wording, chips and the DISCIPLINE menu. Events: `defiance_noted`, `defiance_settled`, `threat_registered`, `threat_kept`, `threat_lapsed`, `discipline_applied`, `discipline_undone`, `restriction_started`, `restriction_ended`, `covert_sabotage`, `demand_opened`, `demand_delivered`, `demand_resolved`, `nickname_pending`, `nickname_given`, `nickname_dropped`, `impunity_changed`. |
 
 Events emitted by the day-end pipeline: `director_requested` (P5), `leash_refreshed`, `loyalty_sign`, `desertion_attempt`, `mutiny_started`, `dilemma_requested`, `arc_unlocked` (P6), `mission_failed` / `mission_expired` / `clock_filled` / `leash_changed` (P5), `day_end_step`, `upkeep`, `quiet_night_started` / `morning_lost` (P7), `supply_shortage`, `trust_penalty_event`, `unit_recovered`, `facility_upgraded`, `slot_advanced`, `night_started`, `day_started`, `autosave` (the app flushes the saver on it).
 
@@ -233,7 +240,8 @@ Events emitted by the day-end pipeline: `director_requested` (P5), `leash_refres
 Campaign {
   version, seed/rngState, day, slot, difficulty, settings snapshot
   commander { name, corporationId, crimeId, socialStats{authority,insight,empathy,cunning} /* ranks 1–5 */, socialPoints?{…} /* P2: points behind the ranks */, injuredUntilDay?, flags[],
-              /* P7: optional in old saves, filled by commander/seed: */ body{strength,endurance,reflexes 1–5}, bodyXp{…} /* tenths of a session */, expression 1–5, seasoning 1–5, traits{ regular[≤2], special? }, archetype (derived, cached), fileReviewed?, sleeplessDay?, sleeplessRank? }
+              /* P7: optional in old saves, filled by commander/seed: */ body{strength,endurance,reflexes 1–5}, bodyXp{…} /* tenths of a session */, expression 1–5, seasoning 1–5, traits{ regular[≤2], special? }, archetype (derived, cached), fileReviewed?, sleeplessDay?, sleeplessRank?,
+              /* P9: */ deeds?{ [DeedCounter]: n }, reputation?{ active[{ id, name, sinceDay, by?, lapsedDay? }], pending?{ id, queuedDay, replaces? } } }
   squad: Unit[]            // named + grunts, active and reserve
   roster: { activeIds[≤4], capacity }   // activeIds = expedition roster; capacity = beds, 6 → 10 via barracks; dead units may linger in activeIds until the next recruit/roster change, use activeRosterUnits()
   relations: { [unitId]: Relation }
@@ -256,7 +264,8 @@ Campaign {
   combat?: CombatState        // P4: only combat and rng change while it runs
   lastCombat?: CombatResult   // P4: for P5's recap and debrief
   workshopSession?: { day, opsLeft, companionId? }, enemyNames?: { [enemyId|affixes]: name }   // P4
-  ledger?: [{ day, slot, action, key, delta }]   // P7a: changes of resources (res:<r>), unit stress (stress:<id>) and relation axes (axis:<id>:<axis>); last 7 days, ≤ 150, written by dispatch
+  ledger?: [{ day, slot, action, key, delta }]   // P7a: changes of resources (res:<r>), unit stress (stress:<id>), relation axes (axis:<id>:<axis>) and, from P9, the stored Impunity term (record:<id>); last 7 days, ≤ 150, written by dispatch
+  discipline?: { defiance[], threats[], applications[] /* newest 20, each with its Inverse */, restrictions[], sabotage?{ queued[], gear?, lastDay? }, demands[], demandLog[] }   // P9; absent in old saves
 }
 
 Unit {
@@ -282,7 +291,7 @@ Relation {
   loyaltyBand: 'steady'|'wavering'|'breaking'  // with hysteresis; initial value from Trust: <10 breaking, <25 wavering, else steady
   affair?: { as, hiddenFrom[], since }   // P3: a concealed romance until discovered
   metDay?                // P7: first day the unit knew the commander (default: her join day; back-filled for old saves)
-  impunityRecord?        // P9 (planned): stored term of Impunity, −40…40, decays toward 0
+  impunityRecord?        // P9: stored term R of Impunity, −40…40, decays toward 0 by 1/day, absent = 0
   marks: MarkInstance[]  // RESERVED in v1 (always empty), see §10 "Marks"; present so no migration is needed later
 }
 ```
@@ -328,6 +337,8 @@ P7a: **analysis tool** on/off (`analyzeEnabled`, default on), **analysis animati
 
 P7: **first-impression τ** (`firstImpressionTau`, 1–30, default 7 days; the decay of presence and image consistency) — SYS › Relationships.
 
+P9: **demand wording** (`demandWording`, default on; the mechanic model puts a soldier's demand into her own words, off = the template text) — SYS › Relationships. The world option `acquaintance` (0–14 days) is a P8 world option.
+
 P8: **minimum confidence** (`intentMinConfidence`, 0–1, default 0.5) now also moves the disposition table: the extraction sanitizer drops events below the lowest level floor + (setting − 0.5), and the engine judges each event per unit against its own level's gain and loss floors moved by the same amount (mirrored into the campaign by `campaign/set_min_confidence`). The world options are fixed at campaign start except the live `bloom_horror` (SYS › World options).
 
 Planned (P10): **dithered portraits** (P10) · **readable mode** (P10; disables scanlines, flicker, dithering and glitch, one font step up) · **reduced motion** (P10; also honours `prefers-reduced-motion`) · **sound volume / mute** (P10; default low) · **device skin override** (P10; default: the skin follows the corporation).
@@ -350,7 +361,7 @@ Defaults in code: Desire/Bond defects **off**, show raw values **off**, sprite m
 | 8 | P7a | Analysis tool (contextual explanations) | P0–P6 | implemented |
 | 9 | P7 | Commander profile & traits | P0–P6 | implemented |
 | 10 | P8 | World options & disposition | P0–P7 | implemented |
-| 11 | P9 | Impunity, discipline, demands, reputation | P0–P8 | spec |
+| 11 | P9 | Impunity, discipline, demands, reputation | P0–P8 | implemented |
 | 12 | P10 | Visual upgrade (hub, device skins, voices) | P0–P6 | spec |
 | 13 | P11 | Prologue & onboarding | P7, P8, P10 | spec |
 | 14 | P9d | Desire & bonds (bond profile, opt-in content categories, lead, Want, relationship rules) | P3, P9 | spec |

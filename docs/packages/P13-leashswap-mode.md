@@ -96,3 +96,9 @@ Intimacy settings apply as usual; romance with the warden is allowed and gets de
 
 - **Trait and commander file plumbing:** `commanderTraits` / `traitEffects` / `syncTraitSettings` (campaign-level mirrors of trait effects for code with no registry), the quiet night (`isQuietNight`, `calendar/sleep`) and `calendar.loseMorning` for calendar effects on the commander, `terminateChance`, `leash_weekly` and `activityCost` as examples of trait-aware rules.
 - **Combat:** `cs.presence` and the commander's HP (`commanderMaxHp`) in Commander Crisis.
+
+## Interfaces already provided by P9 (implemented — use, do not rebuild)
+
+- **Roles swap, rules stay:** Impunity (`impunityOf`), the command stance (`commandStance`), enforcement (`enforce`, `applyPunishment`, `discipline/punish`, `discipline/undo`), restrictions (`restrictionReason`), demands (`openDemand`, `demand/answer`) and deeds/nicknames (`countDeed`, `reputations`) all act on a **named unit and the commander**. A mode in which the player is the leashed one must reuse these readers with the other direction of authority rather than copy the rules.
+- **Directives and chips:** `app.discipline` (directives, toasts, chips, UNDO) is the UI path; the directive ids are P9's.
+- **The Leash is an enforcement:** every `done` use gives R −20 and keeps a pending threat (`bookUse` in `engine/leash/use.ts`), and counts `leash_*` deeds.

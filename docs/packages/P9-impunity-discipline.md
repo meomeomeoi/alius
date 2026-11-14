@@ -1,6 +1,6 @@
 # P9 — Impunity, Discipline, Demands & Reputation
 
-**Depends on:** P0–P8. **Read:** overview; this file; P3 (intents, deltas), P6 (disloyalty, Leash) as implemented.
+**Status: implemented** (plan: `docs/plans/2026-11-14-p9-impunity-discipline.md`; see **Implemented as** at the end; where it differs from the draft, the code wins). **Depends on:** P0–P8. **Read:** overview; this file; P3 (intents, deltas), P6 (disloyalty, Leash) as implemented.
 
 ## Goal
 
@@ -116,3 +116,54 @@ When a pattern crosses its threshold and no nickname of that group is active, th
 - **Refusals:** `refusalChance` is scaled by the unit's level; `rawRefusalChance` is the source. Demands that replace the P7 delegate refusal should go through `scaleRefusal` if they roll.
 - **Stances:** `stanceOf(state, reg, unit, optionId)` and `stanceEffects` (`event_stress`, `value_shift`, `directive`) are the way a unit's reaction to a world norm is read; an oversight-defiance stance (`offspec_stigma` · `opposes`) already shifts her `corporate` value for judging decisions.
 - **Analysis and context:** world directives use ids `world:`, `stance:` and `friction:`; keep new directive ids out of those prefixes (`worldDirectives` clears them on every refresh).
+
+## Implemented as
+
+Engine: `src/engine/discipline/{impunity,record,stance,acquaintance,sabotage,restrictions,perception,punish,undo,demands,deeds,reputation,dayStep,index}.ts`, `src/engine/actions/discipline.ts` (`discipline/punish`, `discipline/undo`, `demand/roll`, `demand/deliver`, `demand/answer`, `reputation/introduce`; the day step runs on `director_tick`). Wiring layer `src/discipline/{directives,context,controller,deps}.ts` (`app.discipline`). UI `src/ui/discipline/{menu,chips}.ts`, SQUAD / scene / COMMS / wizard hooks, `css/70-discipline.css`. Analysis `src/analysis/providers/discipline.ts`. Content: registries `commandStances` (5), `punishments` (6), `demandTemplates` (6), `reputations` (7); world option `acquaintance`; `flags.json` `leverage`; `dispositionLevels[].impunityBase`; `eventDeltas` rows for the four new intents and the two engine events. Every number, nickname and demand text is a draft; the texts are marked `AUTHOR TO WRITE`.
+
+### State
+- `Relation.impunityRecord?` (R, −40…40, deleted at 0, absent = 0). `Commander.deeds?` (16 counters, `DEED_COUNTERS`) and `Commander.reputation?` (`{ active: [{ id, name, sinceDay, by?, lapsedDay? }], pending?: { id, queuedDay, replaces? } }`; the **name** is mirrored because `commanderLine` has no registry). `CampaignState.discipline?` (`defiance`, `threats`, `applications` (newest 20), `restrictions`, `sabotage?`, `demands`, `demandLog`); `disciplineOf(draft)` creates it on first write. Version stays 1; every reader tolerates the missing fields.
+- Impunity is never stored whole: `impunityOf(state, reg, unitId)` returns `{ value, terms }`; only R is persisted. `I = clamp(base + R + L − P·w(d) − D + C + S, 0, 100)` with the terms of the plan's rulings (base from the disposition level plus the active nicknames' `impunityBase`; L = +10 with no authorizations left, the smooth bluff credit, −10 for 7 days after a Leash use; P = presence × first-impression weight; D = relationship-state `dependency` (core: `dependent` 15) + 10 for `need_controlled` / a `manage` defect; C = 0.3 × mean R of the others; S = 5 per leverage secret, cap 15, from flags with `leverage: true` and a concealed affair).
+
+### What changed against the draft (rulings; the plan's ruling section holds the full text)
+- **Names.** P8 owns `stanceOf` (world stances); P9's is `commandStance(state, reg, unitId)` over the registry `commandStances`, UI label `STANCE`.
+- **Five stances, not four (user).** `indifferent` = Trust 30–44 and Impunity 35–59: mild directive, open refusal, no sabotage, no mutiny. Import baseline Trust is 0…60; the wizard shows the starting stance (`Wizard.previewStart`).
+- **Leash "never used" is a smooth credit (user).** `round(8 × min(7, day − 1) / 7)` growing over the first week and fading over 7 days after the first request (`TUNING.impunity.leash.bluffDays`, `neverUsed`); it adds to every other term, nothing cancels anything.
+- **Acquaintance period (user).** World option `acquaintance` (0…14 days, default 7; presets 10 / 7 / 3): during it a unit rolls no random sabotage, queues none from a hidden refusal and rolls no demand. It does not delay mutiny or desertion.
+- **Held defiance.** A `defied` applies its row at once and is held; R moves when it settles (scene end or day end). An enforcement before that removes it. A refused order holds `defied / moderate`. Fearful refusals are hidden (nothing in `scene.refusals`, `covert: true`, one sabotage queued).
+- **Leash = enforcement (user):** R −20, held defiance removed, a pending threat is kept.
+- **Pending threats:** one per unit, deadline end of the next day, lapse into an engine `commander_yielded` (deed `threats_empty`); belief is fixed at registration (`I < 50`).
+- **Punishments go through `computeDeltas`** (a `commander_enforced` event whose row comes from the registry × perception; image consistency, state, defect and disposition multipliers all apply; `dispositionScaling: 'none'` skips only the last).
+- **Exact UNDO** reverts the stored `Inverse` (applied deltas after clamps, R, history lines, deeds, restrictions, resources, the held defiance and threat it removed, `createdDiscipline`) and never restores a snapshot, so later changes stay. Dialogue applications and threats only, same day, scene still open. Menu applications cannot be undone. The ledger keeps both lines.
+- **Demands:** `demand/roll` is its own action (after `slot_advanced`, no open expedition); two phases (`undelivered` → worded by `flavor` kind `demand`, setting `demandWording` → `open`, DM when she is not in the scene). A demand lives through the next day and then counts as refused. Grant pays the cost, fires `granted_demand`, R +4 when impunity-driven; refuse fires `refused_demand` (× 1.5 at `I ≥ 50`) and may hold a `defied`. TALK opens a private scene with her; the chips stay.
+- **Delegate:** one Trust band short she now **does it** and an *owed* demand opens (refusing it adds `broke_promise`); with no eligible template or an open demand she refuses as before.
+- **Reputation:** counters at every site; patterns are `sum ≥ min` with an optional ratio; the day step queues one pending nickname (best score per group, at most two active); the next private scene with one named unit introduces it (`reputation/introduce` from `DisciplineController.onSceneOpened`). A lapsed nickname leaves 7 days after its pattern stopped holding unless a successor replaces it.
+- **Big gestures:** `TUNING.disposition.bigGesture.events` = `['protected', 'granted_demand']`.
+
+### Non-obvious things to know before touching P9 code
+- **`stanceOf` is P8's, `commandStance` is P9's.** The directive id `loyalty:<unitId>` is shared with P6's band text and replaces it; a unit whose stance the content does not describe keeps the band text.
+- **Punishments are `commander_enforced` events.** Their row comes from the `punishments` registry (`rowFor` in `computeDeltas`); the `eventDeltas` row is only the fallback. `enforce()` is the one place an enforcement touches R, held defiance and a pending threat.
+- **A held defiance moves R only when it settles.** Tests of "defied raises R" must close the scene or run a day step.
+- **A fearful refusal leaves no trace in `scene.refusals`.** The event says `refused: false, covert: true`; the only visible results are the main-model text and a later anonymous sabotage fact. No provider says who sabotaged anything.
+- **UNDO reverts deltas, never a snapshot.** Anything that changes state inside a punishment or threat (including `evaluateAutomatic`) must run inside the captured block, or UNDO will not be exact. The exact-state test ignores only `ledger` and `memory.nextId`.
+- **Mutiny fixtures need `impunityRecord`.** A unit mutinies only with `I ≥ 60` (or deserts at `I < 30` and `breaking`); P6 tests that built a mutineer from Trust alone set `impunityRecord: 40`.
+- **`demand/roll` is its own action**, not part of the day step; `director_tick` carries the day step only.
+- **Directive ids:** `loyalty:`, `refusal:`, `threat:`, `discipline:`, `demand:`, `reputation:` and `nickname`; none starts with `world:`, `stance:` or `friction:`. `clearDisciplineDirectives` clears exactly these.
+- **`commanderLine` reads the nickname name mirrored in the state.** The CMDR chip shows the same name; the registry name is only used when the nickname is introduced.
+- **A nickname is introduced only in a scene with exactly one named unit.** A commander who only talks in groups never hears it; it stays pending.
+- **Unread counts a waiting DM demand** once, as the demand, until it is answered; marking a thread read only looks at plain messages.
+- **The day-end order** is: settle defiance → lapse threats → decay records → sabotage → expire restrictions → demands → reputation. A lapse's +6 therefore reads 5 at the end of that day.
+- **New seeded draws:** the discipline day step, the demand roll and the delegate-demand pick draw from `ctx.rng`; a seeded test whose day count crosses them moves and must be updated knowingly.
+- **Hidden state:** the stored R, the deed counters, the sabotage queue and who sabotaged never appear in a reading; `tests/fixtures/analyze/hidden.ts` carries sentinels (`impunityRecord: 31`, `threats_empty: 53`, `punish_2: 59`).
+- **Content shapes:** read effects and costs by type, never by id. `flags[].leverage: true` is how another package adds a secret to S (no code). `crimes[].damaging: false` removes a crime from S.
+
+### Open items
+- Combat refusals are not `defied` (only `combat` and `rng` change during a fight).
+- The gear fault is a supply loss at the next `expedition/start`, not a combat status.
+- "Shielded from oversight" has no producer (left to P9b).
+- Grunts are outside discipline (no Impunity, no demands, no nickname reactions).
+- Punishment chips are drawn for today's applications only; threat chips for every pending threat.
+- The bluff credit fades after the first Leash request; the author may prefer it to stay.
+- `defiant_loyal` is not a day-1 stance; it is earned in play (a harder offset also lowers the start Trust through P8).
+- Every number (ladder, stance weights, sabotage chance, demand chance, thresholds) and every text (nicknames, demands, directives) is a draft marked `AUTHOR TO WRITE`.
+- Real `intent_extract` recall for the four new types and real `flavor` wording are checked by hand (`docs/MANUAL_TEST_P9.md`).

@@ -81,3 +81,10 @@ Discovered by **oversight** → `defining` dilemma (become a double agent / conf
 
 - **The trait framework is built:** `commanderTraits` with `kind: 'special'`, `TraitEffectSchema`, `traitEffects`, `validateCommanderSetup` (kind, exclusion, `requiresSettings`), `traitBlockReason`, the review/wizard UI, `vow_of_distance` as the proof (`no_romance` → `settings.noRomance` → `intimacyOf`, `requiresTrait` on states, `platonic_threshold`). New special traits add effect types in code only when no existing one fits.
 - Special traits are never proposed by `commander_import`.
+
+## Interfaces already provided by P9 (implemented — use, do not rebuild)
+
+- **Leverage:** a secret a unit holds over the commander is a relation flag with `"leverage": true` in `flags.json`; every such flag adds 5 to her Impunity (cap 15) through `leverageOf`. P12's Secret Frequency and Web of Debts add their flags this way and need no code for `S`.
+- **Impunity, stance and deeds:** `impunityOf`, `commandStance`, `countDeed` (a new counter is `DEED_COUNTERS` plus the call site) and the `reputations` registry (a trait-driven nickname is JSON). `impunityBase` of an active nickname feeds the base.
+- **Demands:** `openDemand` and `demandTemplates` (conditions can name flags with `flagsNone`); a debt can be a demand.
+- **Hidden state:** `registerKnowledgeRule` and the hidden-state fixture; the stored R and the counters are never shown.

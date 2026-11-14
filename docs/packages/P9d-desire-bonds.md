@@ -75,3 +75,10 @@ Each romantic/`fwb` relation has `publicity: 'secret'|'known'|'public'`, plus ea
 6. Rules: proposal, negotiation, compliance tracking and breaking consequences.
 7. New defects pass the balance harness neutrality check.
 8. Publicity states, preferences and reactions work; `claimed` forces public.
+
+## Interfaces already provided by P9 (implemented — use, do not rebuild)
+
+- **Impunity terms:** `S` counts a concealed affair (a fact tagged `affair` with her in `knownBy`) while a hidden partner does not know; `D` reads the relationship state's `dependency` field (a new state sets it in JSON). A bond or a Want that makes her depend on the commander uses these, not a new term.
+- **Demands:** a Want can be a demand template (`kind: 'interpersonal'` or `'privilege'`), with `conditions.tagsAny` / `statesAny`; the refuse and grant paths already move R, Trust and Affinity.
+- **Disposition and confidence:** a new intent type is judged per unit by the disposition's floors; engine-made events use confidence 1.
+- **Directives:** do not use ids starting with `loyalty:`, `refusal:`, `threat:`, `discipline:`, `demand:`, `reputation:`, `nickname`, `world:`, `stance:`, `friction:`.

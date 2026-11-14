@@ -64,3 +64,10 @@ Outcomes apply as engine effects; "a day of obedience" for the commander = his n
 5. Squad secrets: directive keeps them out of replies (fixture test on context), discovery routes fire, all three responses work.
 6. Wagers: all five games resolve; sparring uses the P4 engine; stakes never include disabled content categories; a day of obedience pre-selects her choices.
 7. Units without a suitable bond profile never use these mechanics (test).
+
+## Interfaces already provided by P9 (implemented — use, do not rebuild)
+
+- **Demands:** `openDemand(draft, ctx, unitId, { owed? })` (a weighted seeded pick among the eligible templates; null when none, one is open or the weekly cap is reached), `answerDemand`, registry `demandTemplates` (cost vocabulary is closed; a new cost type is a code change in `DemandCostSchema` and `grantProblem`/`answerDemand`). A booking that is refused goes through the refuse path (`refused_demand`, a held `defied` at `I ≥ 50`); the chips `[GRANT] [REFUSE] [TALK]` (`drawDemandChips`) and the DM delivery already exist.
+- **Restrictions:** `restrictionReason(state, unitId, use, activityId?)` is the one reader of confinement, bench, no-leave and duty; call it before booking a unit.
+- **Impunity:** `impunityOf` and `commandStance` for who may blackmail or pressure whom; leverage secrets are flags with `leverage: true` (`S` of Impunity), so a squad secret that a unit holds over the commander raises her Impunity with no code.
+- **Hidden state:** the stored R, the deed counters and who sabotaged are never in a reading; add sentinels to `tests/fixtures/analyze/hidden.ts` for new hidden values.
