@@ -276,6 +276,12 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
       }, '✎');
       return h('div', { class: `alius-line${m.isUser ? ' is-user' : ''}`, 'data-index': m.index }, speaker, ' ', text, ' ', edit);
     }));
+    // an empty scene waits for the commander: say so, or nobody knows what to do (the prologue's scenes are the first the player sees)
+    if (messages.length === 0) {
+      log.append(h('p', { class: 'alius-dim alius-scene-hint' },
+        'Nobody speaks until you do. Type below and press Enter to say something to them; the replies appear here.',
+        s.scene?.origin === 'prologue' ? ' Talk for a few exchanges; the game will offer to move on. [END TRANSMISSION] closes the scene whenever you like.' : ' [END TRANSMISSION] closes the scene.'));
+    }
     const box = log.querySelector<HTMLTextAreaElement>('textarea.alius-edit-box');
     if (box && (editing?.focus || boxHadFocus)) {
       box.focus();

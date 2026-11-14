@@ -568,3 +568,26 @@ describe('discipline in the scene (P9)', () => {
   });
 });
 
+describe('empty scene hint', () => {
+  it('an empty scene says nobody speaks until the commander does, and how to end it', () => {
+    const { q } = setup();
+    const hint = q('.alius-scene-hint')!;
+    expect(hint.textContent).toContain('Nobody speaks until you do');
+    expect(hint.textContent).toContain('END TRANSMISSION');
+  });
+
+  it('the prologue scenes add that the game offers to move on', () => {
+    const { q, setState, state, screen } = setup();
+    const s = structuredClone(state());
+    s.scene!.origin = 'prologue';
+    setState(s);
+    screen.refresh();
+    expect(q('.alius-scene-hint')!.textContent).toContain('offer to move on');
+  });
+
+  it('no hint once somebody has spoken', () => {
+    const { q } = setup({ messages: [{ index: 0, name: 'Ann', isUser: false, text: 'Hello.' } as never] });
+    expect(q('.alius-scene-hint')).toBeNull();
+  });
+});
+
