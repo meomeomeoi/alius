@@ -286,15 +286,15 @@ schemas: `a css skin without cssPreset is rejected`; `an image skin whose screen
 **Interfaces:**
 - Produces: CSS variables on `#alius-shell`: `--alius-font` (IBM Plex Mono first, unchanged fallbacks), `--alius-font-stencil: "Saira Stencil One", var(--alius-font)`, `--alius-font-sans: "Inter", system-ui, sans-serif`, `--alius-font-type: "Special Elite", "Courier New", monospace`.
 
-- [ ] **Step 1: Write the failing test** (`assets.test.ts`, node)
+- [x] **Step 1: Write the failing test** (`assets.test.ts`, node)
 
 `every font url in style.css exists on disk` (parse `url("fonts/…")`, resolve from the repo root); `style.css has no remote url and no @import` (`/url\(\s*['"]?(https?:)?\/\//` and `/@import/` do not match); `the bundle names no font CDN` (`dist/index.js` contains neither `fonts.googleapis` nor `fonts.gstatic`); `each bundled font has its OFL licence` (`fonts/LICENSES/<family>.txt` exists for the four families); `woff2 files are under 120 KB each`.
 
-- [ ] **Step 2: Run** `npx vitest run tests/assets.test.ts` → FAIL.
+- [x] **Step 2: Run** `npx vitest run tests/assets.test.ts` → FAIL.
 
-- [ ] **Step 3: Implement.** In the scratchpad: `npm pack @fontsource/ibm-plex-mono @fontsource/saira-stencil-one @fontsource/inter @fontsource/special-elite`, extract, copy **latin** subsets only: IBM Plex Mono 400 and 600, Saira Stencil One 400, Inter 300, 400 and 600, Special Elite 400 → `fonts/<family>-<weight>.woff2`; copy each package's `LICENSE` to `fonts/LICENSES/<family>.txt`. `@font-face` with `font-display: swap` and `url("fonts/…")` (relative to `style.css`, which SillyTavern loads from the extension folder). Do not add the packages to `package.json`.
+- [x] **Step 3: Implement.** In the scratchpad: `npm pack @fontsource/ibm-plex-mono @fontsource/saira-stencil-one @fontsource/inter @fontsource/special-elite`, extract, copy **latin** subsets only: IBM Plex Mono 400 and 600, Saira Stencil One 400, Inter 300, 400 and 600, Special Elite 400 → `fonts/<family>-<weight>.woff2`; copy each package's `LICENSE` to `fonts/LICENSES/<family>.txt`. `@font-face` with `font-display: swap` and `url("fonts/…")` (relative to `style.css`, which SillyTavern loads from the extension folder). Do not add the packages to `package.json`.
 
-- [ ] **Step 4: Run** `npm test` → PASS. **Step 5: Commit** `feat(ui): bundle the OFL fonts and guard against remote assets`
+- [x] **Step 4: Run** `npm test` → PASS. **Step 5: Commit** `feat(ui): bundle the OFL fonts and guard against remote assets`
 
 ---
 
