@@ -1,10 +1,10 @@
 import type { Registries } from '../../content/types';
 import type { CampaignState, Severity } from '../state/types';
 import { TUNING } from '../tuning';
-import { imageMultiplier } from '../commander/presence';
+import { firstImpressionWeight, imageMultiplier } from '../commander/presence';
 import { daysKnown } from '../commander/profile';
 import { traitEffects } from '../commander/traits';
-import { confidenceShift, dispositionFor, dispositionThresholds } from '../worldOptions';
+import { confidenceShift, dispositionFor, dispositionThresholds, effectiveValues, normDistance, stanceEffects } from '../worldOptions';
 import { intimacyOf } from './gain';
 import type { EventIntent } from './intents';
 import { SEVERITIES } from './vocab';
@@ -82,11 +82,14 @@ export function computeDeltas(state: CampaignState, reg: Registries, unitId: str
   let trust = row.trust ?? 0;
   let affinity = row.affinity ?? 0;
   let attraction = row.attraction ?? 0;
-  const stress = (row.stress ?? 0) + (triggered ? TUNING.relations.triggerStress : 0);
+  let stress = (row.stress ?? 0) + (triggered ? TUNING.relations.triggerStress : 0);
+  // P8 stances: contempt events weigh on a unit who has taken the world's stigma to heart
+  for (const fx of stanceEffects(state, reg, unit, 'event_stress')) if (fx.events.includes(event.type)) stress += fx.amount;
 
   // 1. value alignment: the row holds magnitudes, the sign comes from the unit's values
   if (def.valueAligned === true) {
-    const sum = (event.valueAxes ?? []).reduce((n, a) => n + unit.values[a.axis] * a.direction, 0);
+    const values = effectiveValues(state, reg, unit); // P8: her stance may shift how she weighs a value
+    const sum = (event.valueAxes ?? []).reduce((n, a) => n + values[a.axis] * a.direction, 0);
     const m = clamp(sum / 3, -1, 1);
     trust = Math.abs(trust) * m;
     affinity = Math.abs(affinity) * m;
@@ -137,6 +140,17 @@ export function computeDeltas(state: CampaignState, reg: Registries, unitId: str
     trust *= fx.mult;
     affinity *= fx.mult;
     attraction *= fx.mult;
+  }
+
+  // P8 stances: while she is still sizing the commander up, a distance from the world's norm damps the Trust and Affinity he earns
+  if (event.actor === 'commander') {
+    const distance = normDistance(state, reg) ?? 0;
+    const pct = stanceEffects(state, reg, unit, 'gain_damp').reduce((n, fx) => n + fx.pctPerStep, 0);
+    if (distance > 0 && pct > 0) {
+      const damp = 1 - Math.min(TUNING.disposition.gainDampMax, (pct / 100) * distance) * firstImpressionWeight(state, unitId);
+      if (trust > 0) trust *= damp;
+      if (affinity > 0) affinity *= damp;
+    }
   }
 
   // P8 disposition: a gain is multiplied by the level's gainMult, a loss by its lossMult; a big gesture of the commander also scales the gains

@@ -1,7 +1,9 @@
 import type { Entry, Registries } from '../../content/types';
 import type { CampaignState, Relation, Unit } from '../state/types';
 import { TUNING } from '../tuning';
+import { normDistance } from './norm';
 import { worldEffects } from './options';
+import { stanceEffects } from './stances';
 
 /**
  * The disposition of the squad (P8 §3): a set of engine parameters read from the `dispositionLevels` registry. The
@@ -59,15 +61,27 @@ export function bandShift(level: Pick<DispositionLevel, 'bandShift' | 'bandExitE
 }
 
 /**
- * At a join site: adds the level's start offsets to a fresh relation (clamped). Call it right before
- * `applyFirstImpression`, which re-bases the loyalty band with the unit's shift.
+ * At a join site: adds the level's start offsets and her stances' start offsets to a fresh relation (clamped). A stance's
+ * `start_offset` with `perNormStep` counts the commander's distance from the world's norm; `distance_bonus` needs a
+ * minimum distance. Call it right before `applyFirstImpression`, which re-bases the loyalty band with her shift.
  */
 export function applyDispositionStart(
-  state: StateLike, reg: Registries, unit: Partial<Pick<Unit, 'kind' | 'dispositionOffset'>>, rel: Relation,
+  state: CampaignState, reg: Registries, unit: Partial<Pick<Unit, 'kind' | 'dispositionOffset' | 'worldStances'>>, rel: Relation,
 ): void {
   const level = dispositionFor(state, reg, unit);
-  rel.trust = clamp(rel.trust + level.start.trust, 0, 100);
-  rel.affinity = clamp(rel.affinity + level.start.affinity, -100, 100);
+  const distance = normDistance(state, reg) ?? 0;
+  let trust = level.start.trust;
+  let affinity = level.start.affinity;
+  for (const fx of stanceEffects(state, reg, unit, 'start_offset')) {
+    const steps = fx.perNormStep === true ? distance : 1;
+    trust += (fx.trust ?? 0) * steps;
+    affinity += (fx.affinity ?? 0) * steps;
+  }
+  for (const fx of stanceEffects(state, reg, unit, 'distance_bonus')) {
+    if (distance >= fx.minSteps) affinity += fx.affinity;
+  }
+  rel.trust = clamp(rel.trust + trust, 0, 100);
+  rel.affinity = clamp(rel.affinity + affinity, -100, 100);
 }
 
 /**

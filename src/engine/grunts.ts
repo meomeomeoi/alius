@@ -2,7 +2,7 @@ import type { Entry, Registries } from '../content/types';
 import { activeRosterUnits, isLiving } from './economy';
 import type { Rng } from './rng';
 import { applyFirstImpression } from './commander/presence';
-import { applyDispositionStart } from './worldOptions';
+import { applyDispositionStart, rollGruntStances } from './worldOptions';
 import { crimeEffectsOf, crimeKnownByDefault, initialRelation, startingTrustAdjust } from './setup';
 import { VALUE_AXES, type CampaignState, type Relation, type Unit } from './state/types';
 import { TUNING } from './tuning';
@@ -71,7 +71,7 @@ export function generateGrunt(state: CampaignState, reg: Registries, rng: Rng): 
   const average = living.length === 0 ? 1 : living.reduce((n, u) => n + u.level, 0) / living.length;
   const stats = role.baseStats as Unit['baseStats'];
 
-  return {
+  const unit: Unit = {
     id: idFor(designation),
     kind: 'grunt',
     displayName: designation,
@@ -95,10 +95,14 @@ export function generateGrunt(state: CampaignState, reg: Registries, rng: Rng): 
     injuries: [],
     status: activeRosterUnits(state).length < TUNING.rosterActiveMax ? 'active' : 'reserve',
   };
+  // P8: a stance toward each non-neutral world norm, rolled last so every other draw is where it was; none under neutral choices
+  const worldStances = rollGruntStances(state, reg, rng);
+  if (worldStances) unit.worldStances = worldStances;
+  return unit;
 }
 
 /** Trust only: the base, plus what the commander's crime does to a unit with neutral values. */
-export function gruntRelation(state: CampaignState, reg: Registries, grunt: Pick<Unit, 'kind' | 'commanderTastes'>): Relation {
+export function gruntRelation(state: CampaignState, reg: Registries, grunt: Pick<Unit, 'kind' | 'commanderTastes' | 'worldStances'>): Relation {
   const crime = reg.crimes.get(state.commander.crimeId ?? '') as Entry | undefined;
   const start = reg.starts.get(state.world.startId ?? '') as Entry | undefined;
   const effects = crime ? crimeEffectsOf(crime) : [];

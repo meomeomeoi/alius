@@ -654,6 +654,7 @@ var initialLoyaltyBand = (trust, shift = NO_SHIFT) => {
 };
 
 // src/engine/worldOptions/options.ts
+var NON_NEUTRAL = ["expression_norm", "enable_family", "mission_reward_pct"];
 var optionEntries = (reg) => [...reg.worldOptions.values()];
 function pick(option, stored) {
   return option.choices.find((c) => c.id === stored) ?? option.choices.find((c) => c.id === option.default) ?? option.choices[0];
@@ -668,6 +669,9 @@ function worldChoices(state, reg) {
 }
 function worldEffects(state, reg, type) {
   return worldChoices(state, reg).flatMap(({ choice }) => choice.effects.filter((e) => e.type === type));
+}
+function isNeutralChoice(choice) {
+  return !choice.effects.some((e) => NON_NEUTRAL.includes(e.type));
 }
 function defaultWorldOptions(reg) {
   return Object.fromEntries(optionEntries(reg).map((o) => [o.id, o.default]));
@@ -695,6 +699,52 @@ function applyWorldStartEffects(draft, reg) {
   if (own === null || distance === null) return;
   const per = worldEffects(draft, reg, "expression_norm")[0].standingPerStep;
   draft.world.factions[own] = clamp2((draft.world.factions[own] ?? 0) + per * distance, -100, 100);
+}
+
+// src/engine/state/types.ts
+var VALUE_AXES = ["pragmatism", "autonomy", "ingroup", "mercy", "corporate", "sacrifice"];
+var RARITIES = ["standard", "refined", "prototype", "corporate", "anomalous"];
+
+// src/engine/worldOptions/stances.ts
+var INDIFFERENT = { stance: "indifferent", strength: 1, reason: "" };
+function stanceOf(state, reg, unit, optionId) {
+  const found = worldChoice(state, reg, optionId);
+  if (!found || found.option.squadStance !== true || isNeutralChoice(found.choice)) return null;
+  return unit.worldStances?.[optionId] ?? INDIFFERENT;
+}
+function stanceEffects(state, reg, unit, type) {
+  const out = [];
+  for (const option of reg.worldOptions.values()) {
+    const s = stanceOf(state, reg, unit, option.id);
+    if (!s || s.stance === "indifferent") continue;
+    for (const entry of reg.stanceEffects.values()) {
+      if (entry.option !== option.id || entry.stance !== s.stance || entry.strength !== s.strength) continue;
+      for (const fx2 of entry.effects) if (fx2.type === type) out.push(fx2);
+    }
+  }
+  return out;
+}
+function effectiveValues(state, reg, unit) {
+  const values = { ...unit.values };
+  for (const fx2 of stanceEffects(state, reg, unit, "value_shift")) {
+    if (!VALUE_AXES.includes(fx2.axis)) continue;
+    values[fx2.axis] = Math.min(3, Math.max(-3, values[fx2.axis] + fx2.amount));
+  }
+  return values;
+}
+function rollGruntStances(state, reg, rng) {
+  const out = {};
+  for (const { option, choice } of worldChoices(state, reg)) {
+    if (option.squadStance !== true || isNeutralChoice(choice)) continue;
+    const weights = choice.effects.find((e) => e.type === "grunt_stances");
+    if (!weights || weights.type !== "grunt_stances") continue;
+    const total = weights.shares + weights.indifferent + weights.opposes;
+    if (total <= 0) continue;
+    const roll = rng.float() * total;
+    const stance = roll < weights.shares ? "shares" : roll < weights.shares + weights.indifferent ? "indifferent" : "opposes";
+    out[option.id] = { stance, strength: 1, reason: "" };
+  }
+  return Object.keys(out).length > 0 ? out : void 0;
 }
 
 // src/engine/worldOptions/disposition.ts
@@ -727,8 +777,19 @@ function bandShift(level) {
 }
 function applyDispositionStart(state, reg, unit, rel) {
   const level = dispositionFor(state, reg, unit);
-  rel.trust = clamp3(rel.trust + level.start.trust, 0, 100);
-  rel.affinity = clamp3(rel.affinity + level.start.affinity, -100, 100);
+  const distance = normDistance(state, reg) ?? 0;
+  let trust = level.start.trust;
+  let affinity = level.start.affinity;
+  for (const fx2 of stanceEffects(state, reg, unit, "start_offset")) {
+    const steps = fx2.perNormStep === true ? distance : 1;
+    trust += (fx2.trust ?? 0) * steps;
+    affinity += (fx2.affinity ?? 0) * steps;
+  }
+  for (const fx2 of stanceEffects(state, reg, unit, "distance_bonus")) {
+    if (distance >= fx2.minSteps) affinity += fx2.affinity;
+  }
+  rel.trust = clamp3(rel.trust + trust, 0, 100);
+  rel.affinity = clamp3(rel.affinity + affinity, -100, 100);
 }
 function confidenceShift(state) {
   const v = state.settings.intentMinConfidence;
@@ -1115,10 +1176,6 @@ function refreshLeash(draft, reg) {
   return [{ type: "leash_refreshed", left: draft.leash.authorizationsLeft }];
 }
 
-// src/engine/state/types.ts
-var VALUE_AXES = ["pragmatism", "autonomy", "ingroup", "mercy", "corporate", "sacrifice"];
-var RARITIES = ["standard", "refined", "prototype", "corporate", "anomalous"];
-
 // src/engine/setup.ts
 var SETUP_LIMITS = {
   maxUnits: 4,
@@ -1432,7 +1489,7 @@ function generateGrunt(state, reg, rng) {
   const living2 = state.squad.filter(isLiving);
   const average = living2.length === 0 ? 1 : living2.reduce((n, u) => n + u.level, 0) / living2.length;
   const stats = role.baseStats;
-  return {
+  const unit = {
     id: idFor(designation),
     kind: "grunt",
     displayName: designation,
@@ -1456,6 +1513,9 @@ function generateGrunt(state, reg, rng) {
     injuries: [],
     status: activeRosterUnits(state).length < TUNING.rosterActiveMax ? "active" : "reserve"
   };
+  const worldStances = rollGruntStances(state, reg, rng);
+  if (worldStances) unit.worldStances = worldStances;
+  return unit;
 }
 function gruntRelation(state, reg, grunt) {
   const crime = reg.crimes.get(state.commander.crimeId ?? "");
@@ -2297,9 +2357,11 @@ function computeDeltas(state, reg, unitId, event) {
   let trust = row.trust ?? 0;
   let affinity = row.affinity ?? 0;
   let attraction = row.attraction ?? 0;
-  const stress = (row.stress ?? 0) + (triggered ? TUNING.relations.triggerStress : 0);
+  let stress = (row.stress ?? 0) + (triggered ? TUNING.relations.triggerStress : 0);
+  for (const fx2 of stanceEffects(state, reg, unit, "event_stress")) if (fx2.events.includes(event.type)) stress += fx2.amount;
   if (def.valueAligned === true) {
-    const sum = (event.valueAxes ?? []).reduce((n, a) => n + unit.values[a.axis] * a.direction, 0);
+    const values = effectiveValues(state, reg, unit);
+    const sum = (event.valueAxes ?? []).reduce((n, a) => n + values[a.axis] * a.direction, 0);
     const m = clamp8(sum / 3, -1, 1);
     trust = Math.abs(trust) * m;
     affinity = Math.abs(affinity) * m;
@@ -2342,6 +2404,15 @@ function computeDeltas(state, reg, unitId, event) {
     trust *= fx2.mult;
     affinity *= fx2.mult;
     attraction *= fx2.mult;
+  }
+  if (event.actor === "commander") {
+    const distance = normDistance(state, reg) ?? 0;
+    const pct2 = stanceEffects(state, reg, unit, "gain_damp").reduce((n, fx2) => n + fx2.pctPerStep, 0);
+    if (distance > 0 && pct2 > 0) {
+      const damp = 1 - Math.min(TUNING.disposition.gainDampMax, pct2 / 100 * distance) * firstImpressionWeight(state, unitId);
+      if (trust > 0) trust *= damp;
+      if (affinity > 0) affinity *= damp;
+    }
   }
   const big = event.actor === "commander" && TUNING.disposition.bigGesture.events.includes(event.type) && SEVERITIES.indexOf(severity) >= SEVERITIES.indexOf(TUNING.disposition.bigGesture.minSeverity);
   const byLevel = (v) => v > 0 ? v * level.gainMult * (big ? level.bigGestureMult : 1) : v < 0 ? v * level.lossMult : v;

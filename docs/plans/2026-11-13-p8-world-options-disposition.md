@@ -338,7 +338,7 @@ docs/** (Task 16), tests/** mirror src
   - In `computeDeltas`: `gain_damp` on commander-event Trust and Affinity gains, `event_stress` on stress, `effectiveValues` for value alignment.
   - Start offsets (`start_offset`, `distance_bonus`) inside `applyDispositionStart`.
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `an indifferent unit's deltas are unchanged under machismo`
   - `a shares unit's Trust gain is damped by 1 − 0.08·d_norm·w(d) at d = 0, 7, 21` (three exact values)
   - `shares starts lower by distance; opposes gets the affinity bonus only at ≥ 2 steps`
@@ -346,10 +346,10 @@ docs/** (Task 16), tests/** mirror src
   - `offspec shares: mocked_defect adds 3 stress per strength`
   - `offspec opposes: a decision against corporate lands as if corporate were one lower`
   - `grunts roll a stance under hunted and make no draw under tolerated`
-- [ ] **Step 2: Run** `npx vitest run tests/engine/worldOptions` and expect FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** `npx vitest run` and expect green.
-- [ ] **Step 5: Commit** `feat(engine): per-unit world stances`.
+- [x] **Step 2: Run** `npx vitest run tests/engine/worldOptions` and expect FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** `npx vitest run` and expect green.
+- [x] **Step 5: Commit** `feat(engine): per-unit world stances`.
 
 ### Task 9: Event families and the purge sweep
 
