@@ -1071,5 +1071,32 @@
     "see": [
       "pda_device"
     ]
+  },
+  {
+    "id": "setting_readable_mode",
+    "term": "Readable mode",
+    "short": "Switches off scanlines, flicker, dithered portraits and the tab glitch, and makes the text larger.",
+    "long": "Use it when the terminal look gets in the way of reading. Colours and layout stay as they are. It does not stop slides and fades: for those use Reduce motion.",
+    "see": [
+      "setting_reduced_motion"
+    ]
+  },
+  {
+    "id": "setting_reduced_motion",
+    "term": "Reduce motion",
+    "short": "Nothing slides, fades, boots or types out. It also follows the system's reduced-motion setting.",
+    "long": "With it on the PDA appears at once, the boot is skipped, replies show in full and the oversight review does not play out. The analysis panel shows its text without the ANALYZING line.",
+    "see": [
+      "setting_readable_mode"
+    ]
+  },
+  {
+    "id": "semantic_colours",
+    "term": "Semantic colours",
+    "short": "Five tones for rings, pips and bars: danger, bond, trust, affinity and warning. A symbol always goes with the colour.",
+    "long": "! danger, ♥ bond, + trust, * affinity, ~ warning. The tones differ in brightness as well as hue, so they can be told apart without colour vision. Nothing is ever shown by colour alone.",
+    "see": [
+      "marker_tone"
+    ]
   }
 ]

@@ -1,0 +1,59 @@
+/*
+ * Motion, readable mode and the boot. Everything that moves stops under `alius-reduced-motion` (the SYS setting, or the
+ * system's `prefers-reduced-motion`, through `motionReduced`). Readable mode drops the CRT effects and raises the text.
+ */
+.alius-reduced-motion *,
+.alius-reduced-motion *::before,
+.alius-reduced-motion *::after {
+  animation: none !important;
+  transition: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #alius-shell *,
+  #alius-shell *::before,
+  #alius-shell *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* readable mode: no scanlines (also not added by the shell), no flicker, one step larger text */
+#alius-shell.alius-readable {
+  font-size: 17px;
+}
+
+#alius-shell.alius-readable::after {
+  display: none;
+}
+
+#alius-shell.alius-readable .alius-frame {
+  animation: none;
+}
+
+/* a 120 ms glitch when a tab changes: two clipped slices and a 2 px shift */
+@keyframes alius-glitch {
+  0% { clip-path: inset(12% 0 62% 0); transform: translateX(2px); }
+  50% { clip-path: inset(58% 0 14% 0); transform: translateX(-2px); }
+  100% { clip-path: inset(0 0 0 0); transform: none; }
+}
+
+#alius-shell .alius-glitch {
+  animation: alius-glitch 120ms steps(2, end) 1;
+}
+
+/* the boot over the device screen: three lines, then a fade (600 ms in all) */
+#alius-shell .alius-boot {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  padding: 16px 18px;
+  background: var(--alius-bg);
+  color: var(--alius-fg);
+  opacity: 1;
+  transition: opacity 150ms linear;
+}
+
+#alius-shell .alius-boot-fade {
+  opacity: 0;
+}

@@ -17137,6 +17137,148 @@ function renderDilemma(host, ctx2) {
   ));
 }
 
+// src/settings.ts
+var DEFAULT_SETTINGS = {
+  mechanicProfileId: "",
+  mechanicThink: "min",
+  mechanicFallbackToMain: true,
+  requestFloor: 2e3,
+  budgets: {
+    profile_import: 1500,
+    intent_extract: 600,
+    scene_summary: 800,
+    dilemma_generate: 1e3,
+    director_tick: 1200,
+    flavor: 400,
+    dm_reply: 300,
+    expedition_recap: 700,
+    emotion_pick: 50,
+    activity_vignette: 150,
+    chronicle_compact: 400,
+    commander_import: 600,
+    ping: 100
+  },
+  contextTokenCap: 1200,
+  palette: "amber",
+  scanlines: true,
+  flicker: false,
+  debug: false,
+  editLock: true,
+  desireBondDefects: false,
+  showRawValues: false,
+  spriteMode: "native",
+  activityFlavor: true,
+  gruntFlavor: true,
+  intentMode: "exchange",
+  intentEveryN: 3,
+  intentMinConfidence: 0.5,
+  scenePacing: 30,
+  typingSpeed: 60,
+  romance: true,
+  explicitContent: false,
+  romanticInitiative: "med",
+  unitDms: true,
+  chronicleCompaction: true,
+  demandWording: true,
+  easyRetry: false,
+  enemyFlavor: false,
+  directorEnabled: true,
+  beatCooldownDays: 3,
+  expeditionRecap: true,
+  dilemmasEnabled: true,
+  analyzeEnabled: true,
+  analyzeAnimation: "full",
+  analyzeHoverDelay: 250,
+  firstImpressionTau: 7,
+  deviceSkin: "",
+  readableMode: false,
+  reducedMotion: false
+};
+var fieldSchemas = {
+  mechanicProfileId: external_exports.string(),
+  mechanicThink: external_exports.enum(["min", "low", "auto"]),
+  mechanicFallbackToMain: external_exports.boolean(),
+  requestFloor: external_exports.number().int().min(0),
+  contextTokenCap: external_exports.number().int().min(1),
+  palette: external_exports.enum(["amber", "green", "white"]),
+  scanlines: external_exports.boolean(),
+  flicker: external_exports.boolean(),
+  debug: external_exports.boolean(),
+  editLock: external_exports.boolean(),
+  desireBondDefects: external_exports.boolean(),
+  showRawValues: external_exports.boolean(),
+  spriteMode: external_exports.enum(["native", "emotion_pick"]),
+  activityFlavor: external_exports.boolean(),
+  gruntFlavor: external_exports.boolean(),
+  intentMode: external_exports.enum(["exchange", "every_n", "scene_end"]),
+  intentEveryN: external_exports.number().int().min(2).max(10),
+  intentMinConfidence: external_exports.number().min(0).max(1),
+  scenePacing: external_exports.number().int().min(5),
+  typingSpeed: external_exports.number().min(0),
+  romance: external_exports.boolean(),
+  explicitContent: external_exports.boolean(),
+  romanticInitiative: external_exports.enum(["low", "med", "high"]),
+  unitDms: external_exports.boolean(),
+  chronicleCompaction: external_exports.boolean(),
+  demandWording: external_exports.boolean(),
+  easyRetry: external_exports.boolean(),
+  enemyFlavor: external_exports.boolean(),
+  directorEnabled: external_exports.boolean(),
+  beatCooldownDays: external_exports.number().int().min(1).max(14),
+  expeditionRecap: external_exports.boolean(),
+  dilemmasEnabled: external_exports.boolean(),
+  analyzeEnabled: external_exports.boolean(),
+  analyzeAnimation: external_exports.enum(["full", "short", "off"]),
+  analyzeHoverDelay: external_exports.number().int().min(100).max(1500),
+  firstImpressionTau: external_exports.number().int().min(1).max(30),
+  deviceSkin: external_exports.string(),
+  readableMode: external_exports.boolean(),
+  reducedMotion: external_exports.boolean()
+};
+var budgetSchema = external_exports.number().int().min(1);
+var isObj22 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+function merge(base, over) {
+  const src = isObj22(over) ? over : {};
+  const out = { ...base };
+  for (const [key, schema] of Object.entries(fieldSchemas)) {
+    const parsed = schema.safeParse(src[key]);
+    if (parsed.success) out[key] = parsed.data;
+  }
+  const budgets = { ...base.budgets };
+  const srcBudgets = isObj22(src.budgets) ? src.budgets : {};
+  for (const id of CALL_TYPE_IDS) {
+    const parsed = budgetSchema.safeParse(srcBudgets[id]);
+    if (parsed.success) budgets[id] = parsed.data;
+  }
+  out.budgets = budgets;
+  return out;
+}
+function store(st, s) {
+  Object.assign(st.getSettings(), s);
+}
+function getSettings(st) {
+  const s = merge(DEFAULT_SETTINGS, st.getSettings());
+  store(st, s);
+  return s;
+}
+function updateSettings(st, patch) {
+  const s = merge(getSettings(st), patch);
+  store(st, s);
+  st.saveSettings();
+  return s;
+}
+
+// src/ui/motion.ts
+var systemReduced = () => typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches === true;
+function motionReduced(s, media = systemReduced) {
+  return s.reducedMotion || media();
+}
+function visualFlags(s, media) {
+  const motion = !motionReduced(s, media);
+  const plain2 = s.readableMode;
+  return { scanlines: !plain2 && s.scanlines, flicker: !plain2 && s.flicker, glitch: !plain2 && motion, dither: !plain2, motion };
+}
+
 // src/ui/leash/requestForm.ts
 var ACTION = {
   compel: "COMPEL \u2014 NEURAL COMPLIANCE BURST",
@@ -17150,7 +17292,6 @@ var DEFAULT_GROUNDS = {
 };
 var NO_AUTHORIZATIONS = "NO AUTHORIZATIONS REMAIN THIS WEEK";
 var sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-var reducedMotion = () => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
 function consequence(o) {
   const c = o.cost;
   if (o.kind === "terminate") return "IRREVERSIBLE. THE SQUAD WILL REMEMBER.";
@@ -17184,7 +17325,7 @@ async function fileLeashRequest(shell, o) {
     ]
   });
   if (choice !== "file") return false;
-  const delay = o.delayMs ?? (reducedMotion() ? 0 : 1800);
+  const delay = o.delayMs ?? (motionReduced(o.settings ?? DEFAULT_SETTINGS) ? 0 : 1800);
   const status = h("div", { class: "alius-form-status", "aria-live": "polite" });
   void shell.modal({ title, body: h("div", { class: "alius-form" }, form, status), actions: [] });
   const add = (text2) => void status.append(h("div", { class: "alius-form-line" }, text2));
@@ -18241,17 +18382,17 @@ registerCallType({
   prompt: prompt3,
   schema: IntentExtractRawSchema
 });
-var isObj22 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj23 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var LABELS = EXPRESSION_LABELS;
 function sanitizeIntentOutput(raw, ctx2) {
   const parsed = IntentExtractRawSchema.safeParse(raw);
   const src = parsed.success ? parsed.data : { events: [], facts: [], proposals: [], promises: [], emotions: [], stressHints: [] };
-  const events = src.events.filter((e) => isObj22(e) && typeof e.confidence === "number" && e.confidence >= ctx2.minConfidence);
-  const proposals2 = src.proposals.filter((p) => ctx2.romance || !(isObj22(p) && ROMANTIC_PROPOSALS.includes(p.kind)));
+  const events = src.events.filter((e) => isObj23(e) && typeof e.confidence === "number" && e.confidence >= ctx2.minConfidence);
+  const proposals2 = src.proposals.filter((p) => ctx2.romance || !(isObj23(p) && ROMANTIC_PROPOSALS.includes(p.kind)));
   const intents = validateIntents({ ...src, events, proposals: proposals2 }, { participants: ctx2.participants, squad: ctx2.squad, maxEvents: TUNING.relations.maxEventsRead, ...ctx2.measures ? { measures: ctx2.measures } : {} });
   const emotions = [];
   for (const e of src.emotions) {
-    if (isObj22(e) && typeof e.unitId === "string" && ctx2.participants.includes(e.unitId) && typeof e.label === "string" && LABELS.includes(e.label)) {
+    if (isObj23(e) && typeof e.unitId === "string" && ctx2.participants.includes(e.unitId) && typeof e.label === "string" && LABELS.includes(e.label)) {
       emotions.push({ unitId: e.unitId, label: e.label });
     }
   }
@@ -18993,133 +19134,6 @@ function createSceneController(deps) {
     });
   });
   return controller;
-}
-
-// src/settings.ts
-var DEFAULT_SETTINGS = {
-  mechanicProfileId: "",
-  mechanicThink: "min",
-  mechanicFallbackToMain: true,
-  requestFloor: 2e3,
-  budgets: {
-    profile_import: 1500,
-    intent_extract: 600,
-    scene_summary: 800,
-    dilemma_generate: 1e3,
-    director_tick: 1200,
-    flavor: 400,
-    dm_reply: 300,
-    expedition_recap: 700,
-    emotion_pick: 50,
-    activity_vignette: 150,
-    chronicle_compact: 400,
-    commander_import: 600,
-    ping: 100
-  },
-  contextTokenCap: 1200,
-  palette: "amber",
-  scanlines: true,
-  flicker: false,
-  debug: false,
-  editLock: true,
-  desireBondDefects: false,
-  showRawValues: false,
-  spriteMode: "native",
-  activityFlavor: true,
-  gruntFlavor: true,
-  intentMode: "exchange",
-  intentEveryN: 3,
-  intentMinConfidence: 0.5,
-  scenePacing: 30,
-  typingSpeed: 60,
-  romance: true,
-  explicitContent: false,
-  romanticInitiative: "med",
-  unitDms: true,
-  chronicleCompaction: true,
-  demandWording: true,
-  easyRetry: false,
-  enemyFlavor: false,
-  directorEnabled: true,
-  beatCooldownDays: 3,
-  expeditionRecap: true,
-  dilemmasEnabled: true,
-  analyzeEnabled: true,
-  analyzeAnimation: "full",
-  analyzeHoverDelay: 250,
-  firstImpressionTau: 7,
-  deviceSkin: ""
-};
-var fieldSchemas = {
-  mechanicProfileId: external_exports.string(),
-  mechanicThink: external_exports.enum(["min", "low", "auto"]),
-  mechanicFallbackToMain: external_exports.boolean(),
-  requestFloor: external_exports.number().int().min(0),
-  contextTokenCap: external_exports.number().int().min(1),
-  palette: external_exports.enum(["amber", "green", "white"]),
-  scanlines: external_exports.boolean(),
-  flicker: external_exports.boolean(),
-  debug: external_exports.boolean(),
-  editLock: external_exports.boolean(),
-  desireBondDefects: external_exports.boolean(),
-  showRawValues: external_exports.boolean(),
-  spriteMode: external_exports.enum(["native", "emotion_pick"]),
-  activityFlavor: external_exports.boolean(),
-  gruntFlavor: external_exports.boolean(),
-  intentMode: external_exports.enum(["exchange", "every_n", "scene_end"]),
-  intentEveryN: external_exports.number().int().min(2).max(10),
-  intentMinConfidence: external_exports.number().min(0).max(1),
-  scenePacing: external_exports.number().int().min(5),
-  typingSpeed: external_exports.number().min(0),
-  romance: external_exports.boolean(),
-  explicitContent: external_exports.boolean(),
-  romanticInitiative: external_exports.enum(["low", "med", "high"]),
-  unitDms: external_exports.boolean(),
-  chronicleCompaction: external_exports.boolean(),
-  demandWording: external_exports.boolean(),
-  easyRetry: external_exports.boolean(),
-  enemyFlavor: external_exports.boolean(),
-  directorEnabled: external_exports.boolean(),
-  beatCooldownDays: external_exports.number().int().min(1).max(14),
-  expeditionRecap: external_exports.boolean(),
-  dilemmasEnabled: external_exports.boolean(),
-  analyzeEnabled: external_exports.boolean(),
-  analyzeAnimation: external_exports.enum(["full", "short", "off"]),
-  analyzeHoverDelay: external_exports.number().int().min(100).max(1500),
-  firstImpressionTau: external_exports.number().int().min(1).max(30),
-  deviceSkin: external_exports.string()
-};
-var budgetSchema = external_exports.number().int().min(1);
-var isObj23 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
-function merge(base, over) {
-  const src = isObj23(over) ? over : {};
-  const out = { ...base };
-  for (const [key, schema] of Object.entries(fieldSchemas)) {
-    const parsed = schema.safeParse(src[key]);
-    if (parsed.success) out[key] = parsed.data;
-  }
-  const budgets = { ...base.budgets };
-  const srcBudgets = isObj23(src.budgets) ? src.budgets : {};
-  for (const id of CALL_TYPE_IDS) {
-    const parsed = budgetSchema.safeParse(srcBudgets[id]);
-    if (parsed.success) budgets[id] = parsed.data;
-  }
-  out.budgets = budgets;
-  return out;
-}
-function store(st, s) {
-  Object.assign(st.getSettings(), s);
-}
-function getSettings(st) {
-  const s = merge(DEFAULT_SETTINGS, st.getSettings());
-  store(st, s);
-  return s;
-}
-function updateSettings(st, patch) {
-  const s = merge(getSettings(st), patch);
-  store(st, s);
-  st.saveSettings();
-  return s;
 }
 
 // src/ui/commander/commanderFile.ts
@@ -21927,6 +21941,7 @@ function sideColumn(ctx2, state, readOnly) {
     h(
       "div",
       { class: "alius-legend" },
+      h("span", { class: "alius-chip", ...analyzeAttrs("glossary:semantic_colours") }, "LEGEND"),
       ...LEGEND_TONES.map((t) => h("span", { class: "alius-chip", "data-tone": t, ...analyzeAttrs("glossary:marker_tone") }, `${TONE_GLYPH[t]} ${TONE_LABEL[t].toUpperCase()}`))
     ),
     h("button", {
@@ -23351,6 +23366,7 @@ function fillText(el, text2, visible) {
 var visibleLength = (text2) => segments(text2).reduce((n, s) => n + s.text.length, 0);
 function renderSceneScreen(host, ctx2) {
   const { controller, registries, st } = ctx2;
+  const typingSpeed = () => motionReduced(ctx2.settings()) ? 0 : ctx2.settings().typingSpeed;
   host.replaceChildren();
   const root = h("div", { class: "alius-scene" });
   host.append(root);
@@ -23489,7 +23505,7 @@ function renderSceneScreen(host, ctx2) {
   function drawLog(s) {
     const messages = controller.transcript();
     const lastIndex = messages.length > 0 ? messages[messages.length - 1].index : -1;
-    const speed = ctx2.settings().typingSpeed;
+    const speed = typingSpeed();
     if (pending2) {
       stopTyping();
       if (lastIndex > seen) seen = lastIndex;
@@ -23554,7 +23570,7 @@ function renderSceneScreen(host, ctx2) {
         const msg = idx === null ? void 0 : messages.find((m) => m.index === idx) ?? controller.transcript().find((m) => m.index === idx);
         if (idx === null || !msg) return stopTyping();
         const total2 = visibleLength(msg.text);
-        const shown = Math.min(total2, Math.floor((Date.now() - started) * ctx2.settings().typingSpeed / 1e3));
+        const shown = Math.min(total2, Math.floor((Date.now() - started) * typingSpeed() / 1e3));
         progress.set(idx, shown);
         const el = log.querySelector(`.alius-line[data-index="${idx}"] .alius-text`);
         if (el) fillText(el, msg.text, shown);
@@ -25108,8 +25124,8 @@ var MAX_DEPTH = 3;
 var SWALLOW_GRACE_MS = 350;
 var SWALLOW_MAX_MS = 1e4;
 var ANALYZE = "[data-analyze]";
-function animationMs(mode, seenBefore, reducedMotion2) {
-  if (reducedMotion2 || mode === "off") return 0;
+function animationMs(mode, seenBefore, reducedMotion) {
+  if (reducedMotion || mode === "off") return 0;
   if (mode === "short") return 150;
   return seenBefore ? 150 : 600;
 }
@@ -25400,6 +25416,36 @@ function attachAnalyzer(root, deps) {
       close();
     }
   };
+}
+
+// src/ui/device/boot.ts
+var STEP_MS = 150;
+function playBoot(screen, opts) {
+  if (opts.reduced) return Promise.resolve();
+  return new Promise((resolve) => {
+    const overlay = h("div", { class: "alius-boot", "aria-hidden": "true" });
+    screen.append(overlay);
+    const lines = [`${opts.skinLabel} // BOOT`, "LINK ........ OK", "CCP OVERSIGHT HANDSHAKE ........ OK"];
+    const show = (i) => void overlay.append(h("div", { class: "alius-boot-line" }, lines[i]));
+    const timers = [];
+    let over = false;
+    const finish = () => {
+      if (over) return;
+      over = true;
+      timers.forEach(clearTimeout);
+      document.removeEventListener("keydown", finish);
+      document.removeEventListener("pointerdown", finish);
+      overlay.remove();
+      resolve();
+    };
+    show(0);
+    timers.push(setTimeout(() => show(1), STEP_MS));
+    timers.push(setTimeout(() => show(2), STEP_MS * 2));
+    timers.push(setTimeout(() => overlay.classList.add("alius-boot-fade"), STEP_MS * 3));
+    timers.push(setTimeout(finish, STEP_MS * 4));
+    document.addEventListener("keydown", finish);
+    document.addEventListener("pointerdown", finish);
+  });
 }
 
 // src/ui/device/chrome.ts
@@ -25719,6 +25765,8 @@ function renderSysTab(host, ctx2) {
     field("Palette", select("palette", [["amber", "amber"], ["green", "green"], ["white", "white"]], settings.palette), "palette"),
     field("Scanlines", checkbox("scanlines", settings.scanlines), "scanlines"),
     field("CRT flicker", checkbox("flicker", settings.flicker), "flicker"),
+    field("Readable mode (no scanlines, flicker, dithering or glitch; larger text)", checkbox("readableMode", settings.readableMode), "readableMode"),
+    field("Reduce motion (also follows the system setting)", checkbox("reducedMotion", settings.reducedMotion), "reducedMotion"),
     field("Device skin", select("deviceSkin", skinOptions, skinOptions.some(([v]) => v === settings.deviceSkin) ? settings.deviceSkin : ""), "deviceSkin"),
     h("h3", {}, "Campaign"),
     field("Desire/Bond defects", checkbox("desireBondDefects", settings.desireBondDefects), "desireBondDefects"),
@@ -26012,6 +26060,8 @@ function createShell(deps) {
   let statusHost = null;
   let analyzer = null;
   let titleEl = null;
+  let bootPlayed = false;
+  let glitchTimer = null;
   let hubHost = null;
   let device = null;
   let hubRender = defaultHub;
@@ -26031,9 +26081,12 @@ function createShell(deps) {
     if (!root) return;
     applySkin();
     const s = getSettings(st);
+    const flags = visualFlags(s);
     root.dataset.palette = s.palette;
-    root.classList.toggle("alius-scanlines", s.scanlines);
-    root.classList.toggle("alius-flicker", s.flicker);
+    root.classList.toggle("alius-scanlines", flags.scanlines);
+    root.classList.toggle("alius-flicker", flags.flicker);
+    root.classList.toggle("alius-readable", s.readableMode);
+    root.classList.toggle("alius-reduced-motion", motionReduced(s));
   }
   function renderBanner() {
     if (!root) return;
@@ -26076,10 +26129,30 @@ function createShell(deps) {
     if (render) render(panel);
     else panel.append(tabStub(tab));
   }
+  function glitch() {
+    const target = panel;
+    if (!target || !visualFlags(getSettings(st)).glitch) return;
+    target.classList.add("alius-glitch");
+    if (glitchTimer !== null) clearTimeout(glitchTimer);
+    glitchTimer = setTimeout(() => {
+      glitchTimer = null;
+      target.classList.remove("alius-glitch");
+    }, 120);
+  }
   function selectTab(id) {
+    const changed = id !== tab;
     tab = id;
     tabBar?.setSelected(id);
     renderTab();
+    if (changed) glitch();
+  }
+  function maybeBoot() {
+    if (bootPlayed || !isDeviceUp()) return;
+    const screen = device?.querySelector(".alius-device-screen");
+    if (!screen) return;
+    bootPlayed = true;
+    const skin = deps.skin?.().skin ?? BUILT_IN_SKIN;
+    void playBoot(screen, { reduced: motionReduced(getSettings(st)), skinLabel: String(skin.label ?? skin.name) });
   }
   function defaultHub(host) {
     host.append(h("button", { type: "button", class: "alius-btn alius-open-pda", "data-open-pda": true, onclick: () => api.setDevice(true) }, "OPEN PDA [TAB]"));
@@ -26184,13 +26257,16 @@ function createShell(deps) {
     const analyze = deps.analyze;
     if (analyze) {
       analyzer = attachAnalyzer(root, {
-        getEnv: () => ({ registries: analyze.registries(), state: deps.getState(), settings: getSettings(st) })
+        getEnv: () => ({ registries: analyze.registries(), state: deps.getState(), settings: getSettings(st) }),
+        reducedMotion: () => motionReduced(getSettings(st))
       });
     }
     applySettings();
     renderBanner();
     renderView();
     window.addEventListener("resize", updateNarrow);
+    bootPlayed = false;
+    maybeBoot();
     const focusTarget = (isDeviceUp() ? root.querySelector('.alius-tab[aria-selected="true"]') : root.querySelector("[data-open-pda]")) ?? root.querySelector(".alius-close");
     focusTarget?.focus();
   }
@@ -26201,6 +26277,8 @@ function createShell(deps) {
     analyzer?.destroy();
     analyzer = null;
     window.removeEventListener("resize", updateNarrow);
+    if (glitchTimer !== null) clearTimeout(glitchTimer);
+    glitchTimer = null;
     root.remove();
     root = null;
     if (previousFocus && document.contains(previousFocus)) previousFocus.focus();
@@ -26235,6 +26313,7 @@ function createShell(deps) {
         renderView();
       }
       if (isOpen() && isDeviceUp() !== wasUp) deps.onDevice?.(isDeviceUp());
+      maybeBoot();
     },
     showTab(id) {
       tab = id;
@@ -26795,6 +26874,7 @@ function createApp(st, deps) {
       ...cause ? { cause: cause.kind === "attack" ? "ATTACKED THE UNIT" : "REPEATED DESERTION ATTEMPTS" } : {},
       showNumbers: getSettings(st).showRawValues,
       delayMs: deps.leashDelayMs,
+      settings: getSettings(st),
       ...kind === "terminate" ? { verdict: "UNDER REVIEW" } : {}
     });
     if (!filed || st.getActiveChat()?.chatId !== chatId) return false;
@@ -26820,7 +26900,8 @@ function createApp(st, deps) {
         cost: leashCost(s, registries, unitId, "compel"),
         cause: `FORCED ${path.toUpperCase()} OF A DEFECT`,
         showNumbers: getSettings(st).showRawValues,
-        delayMs: deps.leashDelayMs
+        delayMs: deps.leashDelayMs,
+        settings: getSettings(st)
       });
       if (!filed || st.getActiveChat()?.chatId !== chatId) return;
     }

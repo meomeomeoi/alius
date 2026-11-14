@@ -179,6 +179,8 @@ export function renderSysTab(host: HTMLElement, ctx: SysCtx): void {
     field('Palette', select('palette', [['amber', 'amber'], ['green', 'green'], ['white', 'white']], settings.palette), 'palette'),
     field('Scanlines', checkbox('scanlines', settings.scanlines), 'scanlines'),
     field('CRT flicker', checkbox('flicker', settings.flicker), 'flicker'),
+    field('Readable mode (no scanlines, flicker, dithering or glitch; larger text)', checkbox('readableMode', settings.readableMode), 'readableMode'),
+    field('Reduce motion (also follows the system setting)', checkbox('reducedMotion', settings.reducedMotion), 'reducedMotion'),
     field('Device skin', select('deviceSkin', skinOptions, skinOptions.some(([v]) => v === settings.deviceSkin) ? settings.deviceSkin : ''), 'deviceSkin'),
     h('h3', {}, 'Campaign'),
     field('Desire/Bond defects', checkbox('desireBondDefects', settings.desireBondDefects), 'desireBondDefects'),

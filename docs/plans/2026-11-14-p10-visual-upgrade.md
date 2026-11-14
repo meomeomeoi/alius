@@ -316,15 +316,15 @@ schemas: `a css skin without cssPreset is rejected`; `an image skin whose screen
   - CSS vars per palette: `--alius-danger`, `--alius-warn`, `--alius-trust`, `--alius-affinity`, `--alius-bond`.
   - `tests/helpers/css.ts`: `cssVars(file: string, selector: string): Record<string, string>`; `luminance(hex)`, `contrastRatio(a, b)`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `palette.test.ts`: for each palette (`amber`, `green`, `white`): each semantic var vs `--alius-bg` ≥ **4.5:1**; the five semantic colours differ **in lightness**: sorted relative luminances, each adjacent pair has a contrast ratio ≥ **1.25** (colour-blind safe); `--alius-fg`, `--alius-dim`, `--alius-accent` vs bg stay ≥ 7:1. `motion.test.ts`: `motionReduced` true by setting, true by media, false otherwise; `visualFlags` with readable mode → scanlines/flicker/glitch/dither false and `motion` unchanged; shell: `readable mode sets alius-readable and drops scanlines and flicker` — **acceptance 6**; `reduced motion sets alius-reduced-motion`; `boot shows on the first device-up only, ends on a key, and lasts ≤ 600 ms` (fake timers: all three lines by 450 ms, gone by 600 ms); `no boot under reduced motion`; `a tab change adds alius-glitch for 120 ms, never in readable mode`. scene: `typing is instant under reduced motion`. leash form: `the review delay is 0 under the reducedMotion setting` (media query false). analyzer: `animationMs is 0 under the setting` (through the dep). settings: the two defaults.
 
-- [ ] **Step 2: Run** → FAIL.
+- [x] **Step 2: Run** → FAIL.
 
-- [ ] **Step 3: Implement.** Draft amber values (tune until the test passes; keep hue families): danger `#ff6a4a`, warn `#e0a030`, trust `#7fb8ff`, affinity `#ffd27a`, bond `#ff9ac0`; derive green/white sets the same way. `12-motion.css`: `.alius-reduced-motion *, .alius-reduced-motion *::before, .alius-reduced-motion *::after { animation: none !important; transition: none !important; }` and the same under `@media (prefers-reduced-motion: reduce)`; `.alius-readable { font-size: 17px; }`, `.alius-readable::after { display: none; }` (scanlines), no flicker animation. Glitch keyframes: 120 ms, two `clip-path` slices + 2 px `translateX`. SYS › Display: `Readable mode (no scanlines, flicker, dithering or glitch; larger text)`, `Reduce motion (also follows the system setting)`. Glossary: `setting_readable_mode`, `setting_reduced_motion`, `semantic_colours` (what each tone means; the glyphs).
+- [x] **Step 3: Implement.** Draft amber values (tune until the test passes; keep hue families): danger `#ff6a4a`, warn `#e0a030`, trust `#7fb8ff`, affinity `#ffd27a`, bond `#ff9ac0`; derive green/white sets the same way. `12-motion.css`: `.alius-reduced-motion *, .alius-reduced-motion *::before, .alius-reduced-motion *::after { animation: none !important; transition: none !important; }` and the same under `@media (prefers-reduced-motion: reduce)`; `.alius-readable { font-size: 17px; }`, `.alius-readable::after { display: none; }` (scanlines), no flicker animation. Glitch keyframes: 120 ms, two `clip-path` slices + 2 px `translateX`. SYS › Display: `Readable mode (no scanlines, flicker, dithering or glitch; larger text)`, `Reduce motion (also follows the system setting)`. Glossary: `setting_readable_mode`, `setting_reduced_motion`, `semantic_colours` (what each tone means; the glyphs).
 
-- [ ] **Step 4: Run** `npm test` → PASS. **Step 5: Commit** `feat(ui): semantic colours, readable mode, reduced motion, boot and tab glitch`
+- [x] **Step 4: Run** `npm test` → PASS. **Step 5: Commit** `feat(ui): semantic colours, readable mode, reduced motion, boot and tab glitch`
 
 ---
 

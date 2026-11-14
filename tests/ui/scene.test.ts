@@ -128,6 +128,14 @@ describe('scene screen', () => {
     expect((window as unknown as { __pwned?: number }).__pwned).toBeUndefined();
   });
 
+  it('typing is instant under reduced motion, whatever the typing speed', () => {
+    const messages: ChatMessage[] = [msg(0, { isUser: true, name: 'Vale', avatar: undefined, text: 'Hi' })];
+    const t = setup({ messages, settings: { typingSpeed: 20, reducedMotion: true } });
+    messages.push(msg(1, { text: 'abcdefghij' }));
+    t.screen.handle({ type: 'transcript' });
+    expect(t.qa('.alius-text').at(-1)!.textContent).toBe('abcdefghij');
+  });
+
   it('typing speed 0 renders instantly; a positive speed types the newest reply out', () => {
     const instant = setup({ messages: [msg(0, { text: 'Hello there' })] });
     expect(instant.q('.alius-text')!.textContent).toBe('Hello there');

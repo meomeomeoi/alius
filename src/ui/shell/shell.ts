@@ -4,7 +4,9 @@ import type { ContentError, Registries } from '../../content/types';
 import { attachAnalyzer, type Analyzer } from '../analyze/analyzer';
 import type { StAdapter } from '../../st/adapter';
 import type { LoadResult } from '../../st/persistence';
+import { playBoot } from '../device/boot';
 import { renderChrome } from '../device/chrome';
+import { motionReduced, visualFlags } from '../motion';
 import { BUILT_IN_SKIN } from '../device/skins';
 import type { Entry } from '../../content/types';
 import { h } from '../dom';
@@ -101,6 +103,9 @@ export function createShell(deps: ShellDeps): ShellApi {
   let statusHost: HTMLElement | null = null;
   let analyzer: Analyzer | null = null;
   let titleEl: HTMLElement | null = null;
+  /** The boot plays on the first device-up after `open()` only. */
+  let bootPlayed = false;
+  let glitchTimer: ReturnType<typeof setTimeout> | null = null;
   let hubHost: HTMLElement | null = null;
   let device: HTMLElement | null = null;
   let hubRender: (host: HTMLElement, device: HTMLElement) => void = defaultHub;
@@ -125,9 +130,12 @@ export function createShell(deps: ShellDeps): ShellApi {
     if (!root) return;
     applySkin();
     const s = getSettings(st);
+    const flags = visualFlags(s);
     root.dataset.palette = s.palette;
-    root.classList.toggle('alius-scanlines', s.scanlines);
-    root.classList.toggle('alius-flicker', s.flicker);
+    root.classList.toggle('alius-scanlines', flags.scanlines);
+    root.classList.toggle('alius-flicker', flags.flicker);
+    root.classList.toggle('alius-readable', s.readableMode);
+    root.classList.toggle('alius-reduced-motion', motionReduced(s));
   }
 
   function renderBanner(): void {
@@ -174,10 +182,34 @@ export function createShell(deps: ShellDeps): ShellApi {
     else panel.append(tabStub(tab));
   }
 
+  /** A 120 ms glitch on the panel when the tab changes (not in readable mode or under reduced motion). */
+  function glitch(): void {
+    const target = panel;
+    if (!target || !visualFlags(getSettings(st)).glitch) return;
+    target.classList.add('alius-glitch');
+    if (glitchTimer !== null) clearTimeout(glitchTimer);
+    glitchTimer = setTimeout(() => {
+      glitchTimer = null;
+      target.classList.remove('alius-glitch');
+    }, 120);
+  }
+
   function selectTab(id: TabId): void {
+    const changed = id !== tab;
     tab = id;
     tabBar?.setSelected(id);
     renderTab();
+    if (changed) glitch();
+  }
+
+  /** The boot over the device screen, once per `open()`, the first time the device is up. */
+  function maybeBoot(): void {
+    if (bootPlayed || !isDeviceUp()) return;
+    const screen = device?.querySelector<HTMLElement>('.alius-device-screen');
+    if (!screen) return;
+    bootPlayed = true;
+    const skin = deps.skin?.().skin ?? BUILT_IN_SKIN;
+    void playBoot(screen, { reduced: motionReduced(getSettings(st)), skinLabel: String(skin.label ?? skin.name) });
   }
 
   /** Until the hub screen registers itself: a button that raises the device. */
@@ -299,12 +331,15 @@ export function createShell(deps: ShellDeps): ShellApi {
     if (analyze) {
       analyzer = attachAnalyzer(root, {
         getEnv: () => ({ registries: analyze.registries(), state: deps.getState(), settings: getSettings(st) }),
+        reducedMotion: () => motionReduced(getSettings(st)),
       });
     }
     applySettings();
     renderBanner();
     renderView();
     window.addEventListener('resize', updateNarrow);
+    bootPlayed = false;
+    maybeBoot();
     // SillyTavern keeps focus in its chat box; pull it into the shell so keys do not leak behind the overlay.
     const focusTarget = (isDeviceUp() ? root.querySelector<HTMLElement>('.alius-tab[aria-selected="true"]') : root.querySelector<HTMLElement>('[data-open-pda]'))
       ?? root.querySelector<HTMLElement>('.alius-close');
@@ -318,6 +353,8 @@ export function createShell(deps: ShellDeps): ShellApi {
     analyzer?.destroy();
     analyzer = null;
     window.removeEventListener('resize', updateNarrow);
+    if (glitchTimer !== null) clearTimeout(glitchTimer);
+    glitchTimer = null;
     root.remove();
     root = null;
     if (previousFocus && document.contains(previousFocus)) previousFocus.focus();
@@ -354,6 +391,7 @@ export function createShell(deps: ShellDeps): ShellApi {
         renderView();
       }
       if (isOpen() && isDeviceUp() !== wasUp) deps.onDevice?.(isDeviceUp());
+      maybeBoot();
     },
     showTab(id) {
       tab = id;

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { DEFAULT_SETTINGS } from '../../src/settings';
 import { h } from '../../src/ui/dom';
 import { fileLeashRequest, type LeashFormShell } from '../../src/ui/leash/requestForm';
 import { createModalHost } from '../../src/ui/shell/modal';
@@ -24,6 +25,18 @@ const button = (label: string) => buttons().find((b) => b.textContent === label)
 const text = () => dialog()?.textContent ?? '';
 
 describe('oversight request form', () => {
+  it('the review delay is 0 under the reducedMotion setting (media query false)', async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal('matchMedia', () => ({ matches: false }));
+    const { delayMs: _drop, ...noDelay } = base;
+    const p = fileLeashRequest(shell, { ...noDelay, settings: { ...DEFAULT_SETTINGS, reducedMotion: true } });
+    await vi.advanceTimersByTimeAsync(0);
+    button('[ FILE REQUEST ]').click();
+    // no timer is needed to finish: the whole review runs at once
+    await expect(p).resolves.toBe(true);
+    vi.unstubAllGlobals();
+  });
+
   it('the form shows the request number, subject and remaining authorizations', () => {
     void fileLeashRequest(shell, { ...base, cause: 'She refused a direct order.' });
     expect(layer.querySelector('.alius-modal-title')!.textContent).toBe('OVERSIGHT REQUEST #0007');

@@ -6,6 +6,7 @@ import type { SceneController, SceneUiEvent } from '../../scene/sceneController'
 import type { AliusSettings } from '../../settings';
 import type { ChatMessage, StAdapter } from '../../st/adapter';
 import { h } from '../dom';
+import { motionReduced } from '../motion';
 import { drawProposalChips, kindLabel } from '../proposalChips';
 import { drawDemandChips, drawDisciplineChips } from '../discipline/chips';
 import { renderDisciplineMenu } from '../discipline/menu';
@@ -84,6 +85,8 @@ const visibleLength = (text: string): number => segments(text).reduce((n, s) => 
 
 export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): SceneScreen {
   const { controller, registries, st } = ctx;
+  /** Characters per second; instant (0) under reduced motion. */
+  const typingSpeed = (): number => (motionReduced(ctx.settings()) ? 0 : ctx.settings().typingSpeed);
   host.replaceChildren();
   const root = h('div', { class: 'alius-scene' });
   host.append(root);
@@ -226,7 +229,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
   function drawLog(s: CampaignState): void {
     const messages: ChatMessage[] = controller.transcript();
     const lastIndex = messages.length > 0 ? messages[messages.length - 1].index : -1;
-    const speed = ctx.settings().typingSpeed;
+    const speed = typingSpeed();
     if (pending) {
       // the reply is streaming in: show it as it grows and do not type it out again afterwards
       stopTyping();
@@ -283,7 +286,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
         const msg = idx === null ? undefined : messages.find((m) => m.index === idx) ?? controller.transcript().find((m) => m.index === idx);
         if (idx === null || !msg) return stopTyping();
         const total = visibleLength(msg.text);
-        const shown = Math.min(total, Math.floor(((Date.now() - started) * ctx.settings().typingSpeed) / 1000));
+        const shown = Math.min(total, Math.floor(((Date.now() - started) * typingSpeed()) / 1000));
         progress.set(idx, shown);
         const el = log.querySelector<HTMLElement>(`.alius-line[data-index="${idx}"] .alius-text`);
         if (el) fillText(el, msg.text, shown);

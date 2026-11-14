@@ -678,7 +678,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       kind, unitName: unit.displayName, no: nextLeashNo(s), left: s.leash.authorizationsLeft,
       ...(kind !== 'terminate' ? { cost: leashCost(s, registries, unitId, kind) } : {}),
       ...(cause ? { cause: cause.kind === 'attack' ? 'ATTACKED THE UNIT' : 'REPEATED DESERTION ATTEMPTS' } : {}),
-      showNumbers: getSettings(st).showRawValues, delayMs: deps.leashDelayMs,
+      showNumbers: getSettings(st).showRawValues, delayMs: deps.leashDelayMs, settings: getSettings(st),
       ...(kind === 'terminate' ? { verdict: 'UNDER REVIEW' } : {}),
     });
     if (!filed || st.getActiveChat()?.chatId !== chatId) return false;
@@ -700,7 +700,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       if (why) return void toast('warn', why);
       const filed = await fileLeashRequest(shell, {
         kind: 'compel', unitName: unit.displayName, no: nextLeashNo(s), left: s.leash.authorizationsLeft, cost: leashCost(s, registries, unitId, 'compel'),
-        cause: `FORCED ${path.toUpperCase()} OF A DEFECT`, showNumbers: getSettings(st).showRawValues, delayMs: deps.leashDelayMs,
+        cause: `FORCED ${path.toUpperCase()} OF A DEFECT`, showNumbers: getSettings(st).showRawValues, delayMs: deps.leashDelayMs, settings: getSettings(st),
       });
       if (!filed || st.getActiveChat()?.chatId !== chatId) return;
     }

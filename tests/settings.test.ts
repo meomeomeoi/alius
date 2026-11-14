@@ -189,4 +189,11 @@ describe('settings', () => {
     st.settings = { deviceSkin: 7 };
     expect(getSettings(st).deviceSkin).toBe('');
   });
+
+  it('readableMode and reducedMotion default to false and must be booleans', () => {
+    const st = new FakeStAdapter();
+    expect(getSettings(st)).toMatchObject({ readableMode: false, reducedMotion: false });
+    st.settings = { readableMode: true, reducedMotion: 'yes' };
+    expect(getSettings(st)).toMatchObject({ readableMode: true, reducedMotion: false });
+  });
 });

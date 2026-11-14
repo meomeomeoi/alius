@@ -1,5 +1,7 @@
 import type { LeashKind } from '../../engine/state/types';
+import { DEFAULT_SETTINGS, type AliusSettings } from '../../settings';
 import { h } from '../dom';
+import { motionReduced } from '../motion';
 import type { ModalOpts } from '../shell/modal';
 
 /** The two shell functions the form needs. */
@@ -19,6 +21,8 @@ export interface LeashFormOpts {
   showNumbers: boolean;
   /** How long the "review" takes to show (default 1800; 0 when the user prefers reduced motion). */
   delayMs?: number;
+  /** The settings that decide whether the review plays out (`reducedMotion`); the defaults when absent. */
+  settings?: AliusSettings;
   /** The last line of the review (default `APPROVED`). */
   verdict?: string;
 }
@@ -36,7 +40,6 @@ const DEFAULT_GROUNDS: Record<LeashKind, string> = {
 export const NO_AUTHORIZATIONS = 'NO AUTHORIZATIONS REMAIN THIS WEEK';
 
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
-const reducedMotion = (): boolean => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
 
 /** The consequence in words; numbers only when the player chose to see raw values. */
 function consequence(o: LeashFormOpts): string {
@@ -79,7 +82,7 @@ export async function fileLeashRequest(shell: LeashFormShell, o: LeashFormOpts):
   });
   if (choice !== 'file') return false;
 
-  const delay = o.delayMs ?? (reducedMotion() ? 0 : 1800);
+  const delay = o.delayMs ?? (motionReduced(o.settings ?? DEFAULT_SETTINGS) ? 0 : 1800);
   const status = h('div', { class: 'alius-form-status', 'aria-live': 'polite' });
   void shell.modal({ title, body: h('div', { class: 'alius-form' }, form, status), actions: [] });
   const add = (text: string): void => void status.append(h('div', { class: 'alius-form-line' }, text));

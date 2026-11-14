@@ -272,7 +272,7 @@ export const CORE_GLOSSARY_IDS: readonly string[] = [
   // P9
   'impunity', 'command_stance', 'impunity_record', 'leverage', 'threat', 'covert_sabotage', 'discipline', 'discipline_logged', 'restriction', 'demand', 'owed_demand', 'reputation', 'nickname',
   // P10 (the hub addresses these; Task 4)
-  'hub', 'whereabouts', 'marker_tone', 'objective', 'tonight', 'end_slot', 'pda_device', 'away',
+  'hub', 'whereabouts', 'marker_tone', 'objective', 'tonight', 'end_slot', 'pda_device', 'away', 'semantic_colours',
 ];
 
 let registered = false;

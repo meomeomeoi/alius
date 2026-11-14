@@ -10,6 +10,12 @@
   --alius-accent: #ffd060;
   --alius-err: #ff8a5c;
   --alius-line: 1px solid var(--alius-fg);
+  /* semantic colours (spec P10 §5): different in lightness, not hue alone; always paired with a glyph or a label */
+  --alius-danger: #fc2200;
+  --alius-warn: #ec9616;
+  --alius-trust: #3b97ff;
+  --alius-affinity: #fed300;
+  --alius-bond: #fda4c9;
 }
 
 #alius-shell[data-palette="green"] {
@@ -18,6 +24,11 @@
   --alius-bg: #021208;
   --alius-accent: #8dffaa;
   --alius-err: #ff8a8a;
+  --alius-danger: #fc2200;
+  --alius-warn: #ec9616;
+  --alius-trust: #3b97ff;
+  --alius-affinity: #fed300;
+  --alius-bond: #fda4c9;
 }
 
 #alius-shell[data-palette="white"] {
@@ -26,4 +37,9 @@
   --alius-bg: #0b0b0b;
   --alius-accent: #ffffff;
   --alius-err: #ff9a9a;
+  --alius-danger: #fc2200;
+  --alius-warn: #ec9616;
+  --alius-trust: #3b97ff;
+  --alius-affinity: #fed300;
+  --alius-bond: #fda4c9;
 }

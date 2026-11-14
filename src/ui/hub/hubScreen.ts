@@ -153,6 +153,7 @@ function sideColumn(ctx: HubCtx, state: CampaignState, readOnly: boolean): HTMLE
       : null,
     h(
       'div', { class: 'alius-legend' },
+      h('span', { class: 'alius-chip', ...analyzeAttrs('glossary:semantic_colours') }, 'LEGEND'),
       ...LEGEND_TONES.map((t) => h('span', { class: 'alius-chip', 'data-tone': t, ...analyzeAttrs('glossary:marker_tone') }, `${TONE_GLYPH[t]} ${TONE_LABEL[t].toUpperCase()}`)),
     ),
     h('button', {
