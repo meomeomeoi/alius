@@ -354,6 +354,8 @@ export interface Inverse {
   loyaltyBand?: { from: LoyaltyBand; to: LoyaltyBand };
   /** The history lines the application wrote (UNDO removes exactly these). */
   history?: HistoryEntry[];
+  /** A full history drops its oldest lines when new ones arrive: the lines it dropped and where they were (UNDO puts them back). */
+  historyDropped?: Array<{ at: number; line: HistoryEntry }>;
   /** `state.discipline` did not exist before: UNDO drops it again once it is empty, so the save looks untouched. */
   createdDiscipline?: true;
   restrictionIds?: string[];

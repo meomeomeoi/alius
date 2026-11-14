@@ -9,7 +9,7 @@ export type CommandStance = 'disciplined' | 'defiant_loyal' | 'fearful' | 'open_
 /**
  * Trust ≥ 45 is high, Impunity ≥ 50 is high: high Trust and low Impunity obeys by the book (`disciplined`), high both
  * argues and does it her way (`defiant_loyal`), low both is silent and sabotages (`fearful`), low Trust and high
- * Impunity defies openly (`open_defiance`). Between them lies a zone (Trust 30–44, Impunity 40–59) where she neither
+ * Impunity defies openly (`open_defiance`). Between them lies a zone (Trust 30–44, Impunity 35–59) where she neither
  * fears nor challenges the commander and simply does not much care (`indifferent`). `null` for a grunt, a unit that is not living and an unknown id.
  */
 export function commandStance(state: CampaignState, reg: Registries, unitId: string): CommandStance | null {

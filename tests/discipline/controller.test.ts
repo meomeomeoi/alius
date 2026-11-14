@@ -44,6 +44,13 @@ describe('threat directives', () => {
     expect(dirs(bold)).toContain("Ann does not believe the commander's threat (Consequences) will be carried out, and it shows.");
   });
 
+  it('a threat read from a DM sets no scene directive', () => {
+    const r = rig();
+    r.discipline.onEvents([{ type: 'threat_registered', threatId: 'th1', unitId: ANN, measure: 'brig', believed: true, channel: 'dm' }]);
+    expect(dirs(r)).toBe('');
+    expect(r.refresh).not.toHaveBeenCalled();
+  });
+
   it('the directive lasts for one reply', () => {
     const r = rig();
     r.discipline.onEvents(threaten(r, 'leash'));

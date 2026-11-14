@@ -60,7 +60,8 @@ registerAction('scene/start', (draft, payload, ctx) => {
     const u = draft.squad.find((x) => x.id === id);
     if (!u || !isLiving(u)) throw new Error(`Participant "${id}" is not available.`);
     if (u.kind === 'grunt') throw new Error(`${u.displayName} is a grunt without a character card; grunts cannot take part in scenes.`);
-    const held = restrictionReason(draft, id, 'scene'); // P9: the brig and extra duty
+    // P9: the brig and extra duty. A night knock is an event that happens to the commander, so it is not held back.
+    const held = origin === 'night' ? null : restrictionReason(draft, id, 'scene');
     if (held) throw new Error(held);
   }
   const participants = ids as string[];

@@ -84,6 +84,19 @@ describe('UNDO restores the exact previous state', () => {
     exact((s) => s, 'revoke_rations', 'dm');
   });
 
+  it('a full history: the old lines the punishment pushed out come back too', () => {
+    const full = (s: CampaignState) => {
+      s.relations[ANN].history = Array.from({ length: 60 }, (_, i) => ({ day: 1 + (i % 3), kind: 'event' as const, type: 'talked', detail: `line ${i}` }));
+      return s;
+    };
+    for (const measure of ['verbal', 'brig']) {
+      const { applied, undone } = exact(full, measure);
+      expect(applied.relations[ANN].history).toHaveLength(60); // the new lines displaced old ones
+      expect(applied.relations[ANN].history[0].detail).not.toBe('line 0');
+      expect(undone.relations[ANN].history[0].detail).toBe('line 0');
+    }
+  });
+
   it('a record that was already there comes back to the same value, not to zero', () => {
     const { undone } = exact((s) => setRecord(s, ANN, 12), 'brig');
     expect(recordOf(undone, ANN)).toBe(12);
@@ -178,6 +191,19 @@ describe('UNDO of a threat', () => {
     expect(errors(r.events)).toEqual([]);
     expect(ofType(r.events, 'discipline_undone')).toEqual([{ type: 'discipline_undone', id, unitId: ANN }]);
     expect(strip(r.state)).toEqual(strip(before));
+  });
+
+  it('a threat that replaced an older one gives it back, with its deadline', () => {
+    const first = threatened(inScene(world()));
+    const firstThreat = structuredClone(first.discipline!.threats[0]);
+    const second = read(first, [ev('threatened', { measure: 'verbal' })]).state;
+    expect(second.discipline!.threats).toHaveLength(1);
+    const id = second.discipline!.threats[0].id;
+    expect(id).not.toBe(firstThreat.id);
+    const r = undo(second, id);
+    expect(errors(r.events)).toEqual([]);
+    expect(r.state.discipline!.threats).toEqual([firstThreat]);
+    expect(strip(r.state)).toEqual(strip(first));
   });
 
   it('a lapsed or kept threat cannot be undone', () => {

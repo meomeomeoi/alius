@@ -42,6 +42,7 @@ import { createDilemmas, type DilemmaController } from './loyalty/dilemmaControl
 import { createLoyalty, type LoyaltyController } from './loyalty/loyaltyController';
 import { clearDisciplineDirectives, disciplineDirectives } from './discipline/context';
 import { createDiscipline, type DisciplineController } from './discipline/controller';
+import { restrictionReason } from './engine/discipline';
 import { renderDilemma } from './ui/dilemma/dilemmaPanel';
 import { fileLeashRequest } from './ui/leash/requestForm';
 import { renderConfrontation } from './ui/loyalty/confrontation';
@@ -361,7 +362,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     const chatId = st.getActiveChat()?.chatId;
     const s = state;
     if (!s) return;
-    const named = (ids: string[]) => ids.map((id) => s.squad.find((u) => u.id === id)).filter((u) => u && u.kind === 'named' && u.status !== 'dead' && u.status !== 'deserted' && u.status !== 'terminated');
+    const named = (ids: string[]) => ids.map((id) => s.squad.find((u) => u.id === id)).filter((u) => u && u.kind === 'named' && u.status !== 'dead' && u.status !== 'deserted' && u.status !== 'terminated' && restrictionReason(s, u.id, 'scene') === null);
     // the squad lingering over the meal is the active roster; reserve and injured units are elsewhere
     const ids = [...new Set(named(s.roster.activeIds).map((u) => u!.id))].slice(0, 3);
     if (ids.length === 0) return;
@@ -504,7 +505,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     if (!resolved || !s || s.scene || s.combat || s.expedition) return;
     const ids = (resolved.affected as string[]).filter((id) => {
       const u = s.squad.find((x) => x.id === id);
-      return u !== undefined && u.kind === 'named' && isLiving(u);
+      return u !== undefined && u.kind === 'named' && isLiving(u) && restrictionReason(s, id, 'scene') === null; // not the one in the brig
     }).slice(0, 3);
     if (ids.length === 0) return;
     const names = ids.map((id) => s.squad.find((u) => u.id === id)!.displayName).join(', ');

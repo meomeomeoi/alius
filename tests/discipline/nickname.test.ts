@@ -19,6 +19,7 @@ function rig(participants: string[], tweak: (s: CampaignState) => void = () => {
   const s = campaign(reg, 4);
   s.day = 20;
   s.commander.reputation = { active: [], pending: { id: 'iron_rule', queuedDay: 19 } };
+  s.commander.deeds = { punish_2: 6 }; // the pattern that queued it still holds
   tweak(s);
   const h = worldHarness(reg, s, {});
   h.app().dispatch({ type: 'scene/start', payload: { locationId: 'mess_hall', participants, origin: 'event', startIndex: 0 } });

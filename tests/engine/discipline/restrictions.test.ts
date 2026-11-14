@@ -22,6 +22,19 @@ const restrict = (s: CampaignState, r: Restriction): CampaignState => { addRestr
 const confined = (s: CampaignState, untilDay: number) => restrict(s, { unitId: ANN, kind: 'confined', untilDay });
 const talk = (s: CampaignState, unit = BEA) => run(s, reg, { type: 'activity/do', payload: { activityId: 'talk', companionId: unit } });
 
+describe('a night knock is not held back', () => {
+  it('a confined unit still opens the night scene the engine queued, but not an ordinary scene', () => {
+    const s = fresh();
+    confined(s, 9);
+    const ordinary = run(s, reg, { type: 'scene/start', payload: { locationId: 'quarters_commander', participants: [ANN], origin: 'event', startIndex: 0 } });
+    expect(errors(ordinary.events)).toHaveLength(1);
+    s.slot = 'night';
+    const night = run(s, reg, { type: 'scene/start', payload: { locationId: 'quarters_commander', participants: [ANN], origin: 'night', startIndex: 0, nightEntryId: 'n1' } });
+    expect(errors(night.events)).toEqual([]);
+    expect(night.state.scene).toMatchObject({ origin: 'night', participants: [ANN] });
+  });
+});
+
 describe('restrictionReason', () => {
   it('the exact reasons', () => {
     const s = fresh();

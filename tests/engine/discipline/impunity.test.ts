@@ -248,6 +248,12 @@ describe('impunityOf', () => {
       expect(leverageOf(s, reg, A)).toEqual(['knows_crime']);
       expect(leverageOf(s, reg, B)).toEqual([]);
     });
+    it('with no other named unit the secret still counts', () => {
+      const s = fresh();
+      s.squad = s.squad.filter((u) => u.id === A);
+      s.relations[A].flags.push('knows_crime');
+      expect(val(s).terms.leverage).toBe(5);
+    });
     it('when every living named unit knows it is no secret: 0', () => {
       const s = fresh();
       for (const id of [A, B, C, D]) s.relations[id].flags.push('knows_crime');

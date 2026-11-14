@@ -98,7 +98,8 @@ export function leverageOf(state: CampaignState, reg: Registries, unitId: string
     if ((reg.flags.get(flag) as { leverage?: boolean } | undefined)?.leverage !== true) continue;
     if (flag === CRIME_FLAG && (crime as { damaging?: boolean } | undefined)?.damaging === false) continue;
     // a secret everybody shares is no leverage
-    if (named.every((u) => u.id === unitId || state.relations[u.id]?.flags.includes(flag))) continue;
+    const others = named.filter((u) => u.id !== unitId);
+    if (others.length > 0 && others.every((u) => state.relations[u.id]?.flags.includes(flag))) continue;
     out.push(flag);
   }
   const affairs = concealedAffairs(state, reg);

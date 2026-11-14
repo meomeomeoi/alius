@@ -97,7 +97,7 @@ export function createDiscipline(deps: DisciplineDeps): DisciplineController {
   function onEvents(events: EngineEvent[]): void {
     let set = false;
     for (const e of events) {
-      if (e.type === 'threat_registered') {
+      if (e.type === 'threat_registered' && (e.channel ?? 'scene') === 'scene') { // a DM reply never reads the context, so the directive would leak into the next scene
         const unitId = String(e.unitId);
         deps.context.setDirective(threatDirective(unitId, nameOf(unitId), measureLabel(deps.registries(), String(e.measure)), e.believed === true));
         set = true;

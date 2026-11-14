@@ -55,6 +55,7 @@ function revertInverse(draft: CampaignState, ctx: EngineCtx, unitId: string, app
       const at = rel.history.map((h) => JSON.stringify(h)).lastIndexOf(JSON.stringify(line));
       if (at >= 0) rel.history.splice(at, 1);
     }
+    for (const { at, line } of inv.historyDropped ?? []) rel.history.splice(Math.min(at, rel.history.length), 0, structuredClone(line));
   }
   if (unit && inv.stress) unit.stress = clamp(unit.stress - inv.stress, 0, 100);
   if (inv.record) events.push(...addRecord(draft, unitId, -inv.record, 'undo'));

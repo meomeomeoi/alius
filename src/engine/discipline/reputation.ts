@@ -55,7 +55,12 @@ export function reputationDayStep(draft: CampaignState, ctx: EngineCtx): EngineE
       }
     }
   }
-  if (rep?.pending) return events;
+  if (rep?.pending) {
+    // a pattern that stopped holding while it waited (a ratio, an UNDO) is not said aloud: the queue is free again
+    const waiting = lookup(rep.pending.id);
+    if (waiting && patternHolds(draft, waiting)) return events;
+    delete rep.pending;
+  }
 
   const active = rep?.active ?? [];
   const holding = (id: string): boolean => { const e = lookup(id); return e !== undefined && patternHolds(draft, e); };
@@ -97,8 +102,8 @@ export function introduceNickname(draft: CampaignState, ctx: EngineCtx, unitId: 
   const scene = draft.scene;
   if (!scene || scene.participants.length !== 1 || scene.participants[0] !== unitId) throw new Error('A nickname is introduced in a private scene with the unit who says it.');
   const entry = reg.reputations.get(pending.id);
-  if (!entry) {
-    delete rep.pending; // the pack no longer has it
+  if (!entry || !patternHolds(draft, entry)) {
+    delete rep.pending; // the pack no longer has it, or the pattern stopped holding while it waited
     return [];
   }
   const name = String(entry.name);

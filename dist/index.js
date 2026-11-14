@@ -2529,7 +2529,8 @@ function leverageOf(state, reg, unitId) {
   for (const flag of rel.flags) {
     if (reg.flags.get(flag)?.leverage !== true) continue;
     if (flag === CRIME_FLAG && crime?.damaging === false) continue;
-    if (named.every((u) => u.id === unitId || state.relations[u.id]?.flags.includes(flag))) continue;
+    const others = named.filter((u) => u.id !== unitId);
+    if (others.length > 0 && others.every((u) => state.relations[u.id]?.flags.includes(flag))) continue;
     out.push(flag);
   }
   const affairs = concealedAffairs(state, reg);
@@ -2736,7 +2737,7 @@ function captureInverse(draft, unitId, fn) {
     stateId: rel.stateId,
     stateSince: rel.stateSince,
     band: rel.loyaltyBand,
-    history: rel.history.length,
+    history: rel.history.map((h2) => JSON.stringify(h2)),
     stress: unit.stress,
     record: recordOf(draft, unitId)
   } : void 0;
@@ -2761,7 +2762,27 @@ function captureInverse(draft, unitId, fn) {
   if (Object.keys(daily).length > 0) inverse.dailyGain = daily;
   if (after.stateId !== before.stateId) inverse.state = { from: before.stateId, to: after.stateId, sinceFrom: before.stateSince };
   if (after.loyaltyBand !== before.band) inverse.loyaltyBand = { from: before.band, to: after.loyaltyBand };
-  if (after.history.length > before.history) inverse.history = structuredClone(after.history.slice(before.history));
+  const kept = /* @__PURE__ */ new Map();
+  for (const k of before.history) kept.set(k, (kept.get(k) ?? 0) + 1);
+  const added = [];
+  const stillThere = /* @__PURE__ */ new Map();
+  for (const h2 of after.history) {
+    const k = JSON.stringify(h2);
+    const left = kept.get(k) ?? 0;
+    if (left > 0) {
+      kept.set(k, left - 1);
+      stillThere.set(k, (stillThere.get(k) ?? 0) + 1);
+    } else added.push(h2);
+  }
+  if (added.length > 0) inverse.history = structuredClone(added);
+  const dropped = [];
+  const seen = /* @__PURE__ */ new Map();
+  before.history.forEach((k, at) => {
+    const n = (seen.get(k) ?? 0) + 1;
+    seen.set(k, n);
+    if (n > (stillThere.get(k) ?? 0)) dropped.push({ at, line: JSON.parse(k) });
+  });
+  if (dropped.length > 0) inverse.historyDropped = dropped;
   return { events, inverse };
 }
 var unitThreat = (draft, unitId) => draft.discipline?.threats.find((t) => t.unitId === unitId);
@@ -2782,6 +2803,7 @@ function registerThreat(draft, ctx2, unitId, event, src) {
   if (created) inverse.createdDiscipline = true;
   const measure = event.measure ?? "unspecified";
   const old = unitThreat(draft, unitId);
+  if (old) inverse.threat = structuredClone(old);
   const threat = {
     id: nextId(draft, "th"),
     unitId,
@@ -2796,7 +2818,7 @@ function registerThreat(draft, ctx2, unitId, event, src) {
   };
   const d = disciplineOf(draft);
   d.threats = [...d.threats.filter((t) => t.unitId !== unitId), threat];
-  events.push({ type: "threat_registered", threatId: threat.id, unitId, measure, believed });
+  events.push({ type: "threat_registered", threatId: threat.id, unitId, measure, believed, channel: src.channel });
   return events;
 }
 function lapseThreat(draft, ctx2, threat) {
@@ -3539,6 +3561,7 @@ function openDemand(draft, ctx2, unitId, opts = {}) {
   const reg = ctx2.registries;
   const unit = draft.squad.find((u) => u.id === unitId);
   if (!unit || unit.kind !== "named" || !isLiving(unit) || hasOpen(draft, unitId) || openedThisWeek(draft, unitId) >= TUNING.demands.perWeek) return null;
+  if (restrictionReason(draft, unitId, "scene") !== null) return null;
   let pool = eligibleTemplates(draft, reg, unitId);
   const last = [...draft.discipline?.demandLog ?? []].reverse().find((e) => e.unitId === unitId)?.templateId;
   if (pool.length > 1) pool = pool.filter((t) => t.id !== last);
@@ -3734,7 +3757,11 @@ function reputationDayStep(draft, ctx2) {
       }
     }
   }
-  if (rep?.pending) return events;
+  if (rep?.pending) {
+    const waiting2 = lookup(rep.pending.id);
+    if (waiting2 && patternHolds(draft, waiting2)) return events;
+    delete rep.pending;
+  }
   const active = rep?.active ?? [];
   const holding = (id) => {
     const e = lookup(id);
@@ -3770,7 +3797,7 @@ function introduceNickname(draft, ctx2, unitId) {
   const scene = draft.scene;
   if (!scene || scene.participants.length !== 1 || scene.participants[0] !== unitId) throw new Error("A nickname is introduced in a private scene with the unit who says it.");
   const entry = reg.reputations.get(pending2.id);
-  if (!entry) {
+  if (!entry || !patternHolds(draft, entry)) {
     delete rep.pending;
     return [];
   }
@@ -3923,6 +3950,7 @@ function revertInverse(draft, ctx2, unitId, applicationId, inv) {
       const at = rel.history.map((h2) => JSON.stringify(h2)).lastIndexOf(JSON.stringify(line2));
       if (at >= 0) rel.history.splice(at, 1);
     }
+    for (const { at, line: line2 } of inv.historyDropped ?? []) rel.history.splice(Math.min(at, rel.history.length), 0, structuredClone(line2));
   }
   if (unit && inv.stress) unit.stress = clamp12(unit.stress - inv.stress, 0, 100);
   if (inv.record) events.push(...addRecord(draft, unitId, -inv.record, "undo"));
@@ -4366,7 +4394,7 @@ registerAction("scene/start", (draft, payload, ctx2) => {
     const u = draft.squad.find((x) => x.id === id);
     if (!u || !isLiving(u)) throw new Error(`Participant "${id}" is not available.`);
     if (u.kind === "grunt") throw new Error(`${u.displayName} is a grunt without a character card; grunts cannot take part in scenes.`);
-    const held = restrictionReason(draft, id, "scene");
+    const held = origin === "night" ? null : restrictionReason(draft, id, "scene");
     if (held) throw new Error(held);
   }
   const participants = ids;
@@ -16831,7 +16859,7 @@ function createDiscipline(deps) {
   function onEvents(events) {
     let set = false;
     for (const e of events) {
-      if (e.type === "threat_registered") {
+      if (e.type === "threat_registered" && (e.channel ?? "scene") === "scene") {
         const unitId = String(e.unitId);
         deps.context.setDirective(threatDirective(unitId, nameOf9(unitId), measureLabel(deps.registries(), String(e.measure)), e.believed === true));
         set = true;
@@ -25722,7 +25750,7 @@ function createApp(st, deps) {
     const chatId = st.getActiveChat()?.chatId;
     const s = state;
     if (!s) return;
-    const named = (ids2) => ids2.map((id) => s.squad.find((u) => u.id === id)).filter((u) => u && u.kind === "named" && u.status !== "dead" && u.status !== "deserted" && u.status !== "terminated");
+    const named = (ids2) => ids2.map((id) => s.squad.find((u) => u.id === id)).filter((u) => u && u.kind === "named" && u.status !== "dead" && u.status !== "deserted" && u.status !== "terminated" && restrictionReason(s, u.id, "scene") === null);
     const ids = [...new Set(named(s.roster.activeIds).map((u) => u.id))].slice(0, 3);
     if (ids.length === 0) return;
     const answer = await shell.modal({
@@ -25868,7 +25896,7 @@ function createApp(st, deps) {
     if (!resolved || !s || s.scene || s.combat || s.expedition) return;
     const ids = resolved.affected.filter((id) => {
       const u = s.squad.find((x) => x.id === id);
-      return u !== void 0 && u.kind === "named" && isLiving(u);
+      return u !== void 0 && u.kind === "named" && isLiving(u) && restrictionReason(s, id, "scene") === null;
     }).slice(0, 3);
     if (ids.length === 0) return;
     const names = ids.map((id) => s.squad.find((u) => u.id === id).displayName).join(", ");

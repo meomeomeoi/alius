@@ -149,6 +149,16 @@ describe('opening a demand', () => {
     expect(opened(withStance(world(), reg, ANN, 'defiant_loyal'), ANN, 'double_ration').demand.impunityDriven).toBe(true);
   });
 
+  it('returns null for a unit in the brig or on duty: its TALK could never open a scene', () => {
+    for (const kind of ['confined', 'duty'] as const) {
+      const s = world();
+      disciplineOf(s).restrictions.push({ unitId: ANN, kind, day: s.day, slot: s.slot, untilDay: s.day + 2 });
+      expect(openDemand(s, ctxOf(s, only('double_ration')), ANN), kind).toBeNull();
+    }
+    const free = world();
+    expect(openDemand(free, ctxOf(free, only('double_ration')), ANN)).not.toBeNull();
+  });
+
   it('returns null with no eligible template, with a demand already open, and over the weekly cap', () => {
     const s = world();
     expect(openDemand(structuredClone(s), ctxOf(s, only()), ANN)).toBeNull();

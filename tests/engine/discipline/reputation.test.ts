@@ -136,12 +136,30 @@ describe('the nickname moment', () => {
   const pendingState = (id = 'leash_holder'): CampaignState => {
     const s = fresh();
     s.commander.reputation = { active: [], pending: { id, queuedDay: 19 } };
+    // it was queued because its pattern held, and it still does
+    const p = entry(id).pattern as { sum: string[]; min: number };
+    countDeed(s, p.sum[0] as never, p.min);
     return s;
   };
   const inScene = (s: CampaignState, ids = [ANN]): CampaignState =>
     run(s, reg, { type: 'scene/start', payload: { locationId: 'mess_hall', participants: ids, origin: 'event', startIndex: 0 } }).state;
   const introduce = (s: CampaignState, unitId = ANN) => run(s, reg, { type: 'reputation/introduce', payload: { unitId } });
 
+  it('a pending nickname whose pattern stopped holding is not said aloud and the queue is free', () => {
+    const s = fresh();
+    s.commander.reputation = { active: [], pending: { id: 'merchant', queuedDay: 19 } }; // nothing granted: the pattern does not hold
+    const r = introduce(inScene(s));
+    expect(errors(r.events)).toEqual([]);
+    expect(ofType(r.events, 'nickname_given')).toEqual([]);
+    expect(r.state.commander.reputation).toEqual({ active: [] });
+  });
+  it('the day step drops a waiting nickname that no longer holds and queues the one that does', () => {
+    const s = deed(fresh(), { leash_compel: 4 });
+    s.commander.reputation = { active: [], pending: { id: 'merchant', queuedDay: 19 } };
+    const events = step(s);
+    expect(ofType(events, 'nickname_pending')).toEqual([{ type: 'nickname_pending', id: 'leash_holder' }]);
+    expect(s.commander.reputation!.pending!.id).toBe('leash_holder');
+  });
   it('the pending nickname becomes active with its name copied', () => {
     const r = introduce(inScene(pendingState()));
     expect(errors(r.events)).toEqual([]);
@@ -177,7 +195,7 @@ describe('the nickname moment', () => {
     expect(again.state.relations[ANN].trust).toBe(trust);
   });
   it('replaces the nickname it replaces', () => {
-    const s = fresh();
+    const s = deed(fresh(), { punish_2: 6 });
     s.commander.reputation = { active: [{ id: 'leash_holder', name: 'old', sinceDay: 2 }, { id: 'shield', name: 'the Shield', sinceDay: 3 }], pending: { id: 'iron_rule', queuedDay: 19, replaces: 'leash_holder' } };
     const r = introduce(inScene(s));
     expect(r.state.commander.reputation!.active.map((x) => x.id)).toEqual(['shield', 'iron_rule']);

@@ -106,15 +106,15 @@ export function settleDefiance(draft: CampaignState, _ctx: EngineCtx, filter: { 
 
 /**
  * Runs `fn` (which changes one unit) and reports what it did to her relation, stress and record as an `Inverse`: the
- * applied deltas after every clamp, the dailyGain change, the state and loyalty band it moved her to and how many history
- * lines it wrote. Reverting these numbers only (not a snapshot) leaves later changes alone.
+ * applied deltas after every clamp, the dailyGain change, the state and loyalty band it moved her to and the history
+ * lines it wrote (and the old ones a full log dropped for them). Reverting these numbers only (not a snapshot) leaves later changes alone.
  */
 export function captureInverse(draft: CampaignState, unitId: string, fn: () => EngineEvent[]): { events: EngineEvent[]; inverse: Inverse } {
   const rel = draft.relations[unitId];
   const unit = draft.squad.find((u) => u.id === unitId);
   const before = rel && unit ? {
     trust: rel.trust, affinity: rel.affinity, attraction: rel.attraction, daily: { ...rel.dailyGain }, stateId: rel.stateId,
-    stateSince: rel.stateSince, band: rel.loyaltyBand, history: rel.history.length, stress: unit.stress, record: recordOf(draft, unitId),
+    stateSince: rel.stateSince, band: rel.loyaltyBand, history: rel.history.map((h) => JSON.stringify(h)), stress: unit.stress, record: recordOf(draft, unitId),
   } : undefined;
   const deedsBefore = deedsOf(draft);
   const events = fn();
@@ -137,7 +137,25 @@ export function captureInverse(draft: CampaignState, unitId: string, fn: () => E
   if (Object.keys(daily).length > 0) inverse.dailyGain = daily;
   if (after.stateId !== before.stateId) inverse.state = { from: before.stateId, to: after.stateId, sinceFrom: before.stateSince };
   if (after.loyaltyBand !== before.band) inverse.loyaltyBand = { from: before.band, to: after.loyaltyBand };
-  if (after.history.length > before.history) inverse.history = structuredClone(after.history.slice(before.history));
+  // lines are compared as a multiset: a full log drops old lines while the new ones arrive, so the length alone says nothing
+  const kept = new Map<string, number>();
+  for (const k of before.history) kept.set(k, (kept.get(k) ?? 0) + 1);
+  const added: typeof after.history = [];
+  const stillThere = new Map<string, number>();
+  for (const h of after.history) {
+    const k = JSON.stringify(h);
+    const left = kept.get(k) ?? 0;
+    if (left > 0) { kept.set(k, left - 1); stillThere.set(k, (stillThere.get(k) ?? 0) + 1); } else added.push(h);
+  }
+  if (added.length > 0) inverse.history = structuredClone(added);
+  const dropped: NonNullable<Inverse['historyDropped']> = [];
+  const seen = new Map<string, number>();
+  before.history.forEach((k, at) => {
+    const n = (seen.get(k) ?? 0) + 1;
+    seen.set(k, n);
+    if (n > (stillThere.get(k) ?? 0)) dropped.push({ at, line: JSON.parse(k) as typeof after.history[number] });
+  });
+  if (dropped.length > 0) inverse.historyDropped = dropped;
   return { events, inverse };
 }
 
@@ -166,13 +184,14 @@ export function registerThreat(draft: CampaignState, ctx: EngineCtx, unitId: str
   if (created) inverse.createdDiscipline = true;
   const measure = event.measure ?? 'unspecified';
   const old = unitThreat(draft, unitId);
+  if (old) inverse.threat = structuredClone(old); // UNDO of the new threat gives the older one back
   const threat: PendingThreat = {
     id: nextId(draft, 'th'), unitId, measure, day: draft.day, deadlineDay: old?.deadlineDay ?? draft.day + 1, believed, channel: src.channel,
     ...(src.sceneId !== undefined ? { sceneId: src.sceneId } : {}), ...(src.messageRef !== undefined ? { messageRef: src.messageRef } : {}), inverse,
   };
   const d = disciplineOf(draft);
   d.threats = [...d.threats.filter((t) => t.unitId !== unitId), threat];
-  events.push({ type: 'threat_registered', threatId: threat.id, unitId, measure, believed });
+  events.push({ type: 'threat_registered', threatId: threat.id, unitId, measure, believed, channel: src.channel });
   return events;
 }
 

@@ -14,7 +14,7 @@ import { inAcquaintance } from './acquaintance';
 import { countDeed } from './deeds';
 import { impunityOf } from './impunity';
 import { addRecord, disciplineOf, holdDefiance } from './record';
-import { addRestriction } from './restrictions';
+import { addRestriction, restrictionReason } from './restrictions';
 import { commandStance, stanceEntry } from './stance';
 
 /** Stances whose demands are "buying loyalty" when granted. */
@@ -83,12 +83,13 @@ export function eligibleTemplates(state: CampaignState, reg: Registries, unitId:
 /**
  * Opens a demand for her: a weighted, seeded pick among the eligible templates (never her last one while another exists).
  * It opens `undelivered`; the app words it and delivers it, or the day step delivers the template text. `null` when she is
- * not a named living unit, already has an open demand, is over `perWeek` openings this week or nothing is eligible.
+ * not a named living unit, cannot take part in a scene (the brig, extra duty), already has an open demand, is over `perWeek` openings this week or nothing is eligible.
  */
 export function openDemand(draft: CampaignState, ctx: EngineCtx, unitId: string, opts: { owed?: boolean } = {}): { demand: Demand; events: EngineEvent[] } | null {
   const reg = ctx.registries;
   const unit = draft.squad.find((u) => u.id === unitId);
   if (!unit || unit.kind !== 'named' || !isLiving(unit) || hasOpen(draft, unitId) || openedThisWeek(draft, unitId) >= TUNING.demands.perWeek) return null;
+  if (restrictionReason(draft, unitId, 'scene') !== null) return null; // in the brig or on duty she cannot be talked to: its [TALK] would always fail
   let pool = eligibleTemplates(draft, reg, unitId);
   const last = [...(draft.discipline?.demandLog ?? [])].reverse().find((e) => e.unitId === unitId)?.templateId;
   if (pool.length > 1) pool = pool.filter((t) => t.id !== last);
