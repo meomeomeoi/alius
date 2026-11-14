@@ -18570,6 +18570,93 @@ function renderCalibration(host, ctx2) {
       )
     );
   }
+  if (shown.has("disposition") && ctx2.world) {
+    const holder = { world: { options: ctx2.world } };
+    const worldLevel = worldDispositionLevel(holder, reg);
+    const offset = ch.dispositionOffset ?? 0;
+    const proposed = !manual && cand?.dispositionOffset ? cand.dispositionOffset.reason : "";
+    host.append(
+      section(
+        "disposition",
+        "DISPOSITION",
+        h("p", { class: "alius-hint" }, `World level: ${String(worldLevel.name)}. The offset moves only this unit, up to two steps either way.`),
+        h("div", { class: "alius-offset-row" }, ...[-2, -1, 0, 1, 2].map((o) => {
+          const level = dispositionFor(holder, reg, { kind: "named", dispositionOffset: o });
+          return h("button", {
+            type: "button",
+            class: "alius-btn alius-option alius-offset-chip",
+            "data-offset": String(o),
+            "aria-pressed": String(offset === o),
+            title: String(level.description),
+            ...analyzeNative(`dispositionLevels:${level.id}`),
+            onclick: () => onUpdate({ dispositionOffset: o })
+          }, String(level.name));
+        })),
+        h(
+          "label",
+          { class: "alius-field" },
+          h("span", { class: "alius-field-label" }, "Reason"),
+          textInput("disposition-reason", ch.dispositionReason ?? "", 160, (v) => onUpdate({ dispositionReason: v }))
+        ),
+        proposed ? h("p", { class: "alius-dim" }, `From the card: ${proposed}`) : null,
+        draft.worldStale ? h(
+          "p",
+          { class: "alius-stale", role: "status" },
+          "The world changed since this unit was imported. ",
+          h("button", { type: "button", class: "alius-btn", "data-action": "refresh-world", onclick: () => ctx2.onRefreshWorld?.() }, "[ RE-IMPORT FOR THIS WORLD ]")
+        ) : null
+      )
+    );
+  }
+  const stanceIds = ctx2.world ? stanceOptionIds(reg, ctx2.world) : [];
+  if (shown.has("stances") && stanceIds.length > 0) {
+    const holder = { world: { options: ctx2.world } };
+    const current = (id) => ch.worldStances?.[id] ?? { stance: "indifferent", strength: 1, reason: "" };
+    const write = (id, next) => onUpdate({ worldStances: { ...ch.worldStances ?? {}, [id]: { ...current(id), ...next } } });
+    host.append(
+      section(
+        "stances",
+        "STANCE TOWARD THE WORLD",
+        h("p", { class: "alius-hint" }, "A norm reaches a unit only through her own stance. A card that says nothing means indifferent."),
+        ...stanceIds.map((id) => {
+          const opt = reg.worldOptions.get(id);
+          const choice = worldChoice(holder, reg, id).choice;
+          const cur = current(id);
+          const imported = !manual && cand?.worldStances?.[id]?.reason ? cand.worldStances[id].reason : "";
+          const chip = (attrs, label2, on, disabled, apply) => h("button", {
+            type: "button",
+            class: "alius-btn alius-option alius-stance-chip",
+            "data-option": id,
+            ...attrs,
+            "aria-pressed": String(on),
+            "aria-disabled": disabled ? "true" : null,
+            ...analyzeNative("glossary:world_stance"),
+            onclick: () => {
+              if (!disabled) apply();
+            }
+          }, label2);
+          return h(
+            "div",
+            { class: "alius-stance-row", "data-option": id },
+            h("strong", {}, `${String(opt.label)}: ${String(choice.label)}`),
+            h(
+              "div",
+              { class: "alius-stance-chips" },
+              ...["shares", "indifferent", "opposes"].map((st) => chip({ "data-stance": st }, st === "shares" ? "Shares it" : st === "opposes" ? "Rejects it" : "Indifferent", cur.stance === st, false, () => write(id, { stance: st }))),
+              ...[1, 2].map((n) => chip({ "data-strength": String(n) }, n === 1 ? "Mild" : "Strong", cur.strength === n, cur.stance === "indifferent", () => write(id, { strength: n })))
+            ),
+            h(
+              "label",
+              { class: "alius-field" },
+              h("span", { class: "alius-field-label" }, "Reason"),
+              textInput(`stance-reason-${id}`, cur.reason, 160, (v) => write(id, { reason: v }))
+            ),
+            imported ? h("p", { class: "alius-dim" }, `From the card: ${imported}`) : null
+          );
+        })
+      )
+    );
+  }
   if (shown.has("baseline")) {
     host.append(
       section(
@@ -18616,6 +18703,70 @@ function textArea(key, value, max, commit) {
   el.value = value;
   el.addEventListener("input", () => commit(el.value));
   return el;
+}
+
+// src/ui/setup/worldParams.ts
+function renderWorldParams(host, ctx2) {
+  const { wizard, registries: reg } = ctx2;
+  const world = wizard.state.world;
+  host.replaceChildren();
+  const options2 = [...reg.worldOptions.values()];
+  const groups = [];
+  for (const o of options2) if (!groups.includes(String(o.group))) groups.push(String(o.group));
+  const optionBlock = (o) => {
+    const live = o.live === true;
+    const chosen = world.options[o.id] ?? String(o.default);
+    return h(
+      "div",
+      { class: "alius-world-option", "data-option": o.id },
+      h(
+        "div",
+        { class: "alius-world-head" },
+        h("h4", {}, String(o.label)),
+        h(
+          "span",
+          { class: "alius-lock", "data-live": String(live), title: live ? "This option can be changed during the campaign." : "This option is fixed when the campaign starts." },
+          live ? "CHANGEABLE LATER" : "LOCKED AT START"
+        )
+      ),
+      h("p", { class: "alius-dim" }, String(o.description)),
+      h("div", { class: "alius-cards" }, ...o.choices.map((c) => h("button", {
+        type: "button",
+        class: "alius-card alius-option alius-world-choice",
+        "data-option": o.id,
+        "data-id": c.id,
+        "aria-pressed": String(chosen === c.id),
+        ...analyzeNative(`worldOptions:${o.id}`, { choice: c.id }),
+        onclick: () => wizard.setWorldOption(o.id, c.id)
+      }, h("strong", {}, c.label), h("p", {}, c.description))))
+    );
+  };
+  const summary = wizard.worldSummary();
+  host.append(h(
+    "div",
+    { class: "alius-setup-body alius-world" },
+    h("h3", {}, "WORLD PARAMETERS"),
+    h("p", { class: "alius-hint" }, "Set the world before the campaign starts. Locked options cannot be changed afterwards. Pick a preset and adjust any option."),
+    h("div", { class: "alius-presets" }, ...[...reg.worldPresets.values()].map((p) => h("button", {
+      type: "button",
+      class: "alius-btn alius-option alius-world-preset",
+      "data-id": p.id,
+      "aria-pressed": String(world.preset === p.id),
+      title: String(p.description),
+      ...analyzeNative(`worldPresets:${p.id}`),
+      onclick: () => wizard.applyPreset(String(p.id))
+    }, String(p.name)))),
+    ...groups.flatMap((g) => [
+      h("h3", {}, g.toUpperCase()),
+      ...options2.filter((o) => String(o.group) === g).map(optionBlock)
+    ]),
+    h(
+      "section",
+      { class: "alius-section alius-world-summary" },
+      h("h3", {}, "WHAT THIS CHANGES"),
+      summary.length === 0 ? h("p", { class: "alius-dim" }, "Nothing differs from the default world.") : h("ul", {}, ...summary.map((line2) => h("li", {}, line2)))
+    )
+  ));
 }
 
 // src/ui/setup/setupScreen.ts
@@ -18667,8 +18818,7 @@ function renderSetupScreen(host, ctx2) {
       case "dossier":
         return dossier(s);
       case "world":
-        return h("div", { class: "alius-setup-body" }, h("p", { class: "alius-hint" }, "The Standard world is selected."));
-      // the WORLD PARAMETERS screen follows (P8 Task 13)
+        return worldStep();
       case "commander":
         return commanderStep();
       case "units":
@@ -18678,6 +18828,11 @@ function renderSetupScreen(host, ctx2) {
       case "review":
         return review(s);
     }
+  }
+  function worldStep() {
+    const body = h("div", { class: "alius-world-host" });
+    renderWorldParams(body, { wizard, registries: reg });
+    return body;
   }
   function dossier(s) {
     const name = h("input", { type: "text", class: "alius-input", "data-key": "name", maxlength: "60" });
@@ -18770,6 +18925,8 @@ function renderSetupScreen(host, ctx2) {
       draft,
       registries: reg,
       desireBondDefects: wizardDesireBond(),
+      world: s.world.options,
+      onRefreshWorld: () => wizard.refreshWorldSections(i),
       onUpdate: (patch) => wizard.update(i, patch),
       onRegenerate: (section) => wizard.regenerate(i, section),
       onManual: () => wizard.setManual(i)
@@ -19222,6 +19379,7 @@ function unitBlock(unit, ctx2, state) {
       gone ? h("p", { class: "alius-equip-flag" }, `STATUS: ${unit.status.toUpperCase()}`) : null,
       relationLine(unit, state, ctx2),
       !gone && state.relations[unit.id] ? h("p", { class: "alius-loyalty" }, chip(`LOYALTY: ${state.relations[unit.id].loyaltyBand.toUpperCase()}`, "glossary:loyalty_band")) : null,
+      gone ? null : h("p", { class: "alius-disposition" }, h("span", { class: "alius-chip", "data-disposition": unit.id, ...analyzeAttrs("glossary:disposition", live) }, `Disposition: ${String(dispositionFor(state, reg, unit).name)}`)),
       gone ? null : h("p", { class: "alius-stress" }, chip(`STRESS ${stressBand2(unit.stress).toUpperCase()}${raw ? ` (${unit.stress})` : ""}`, "glossary:stress", live)),
       gone ? null : leashMenu(unit, ctx2),
       unit.bio ? h("p", { class: "alius-dim" }, unit.bio) : null,
@@ -24175,6 +24333,7 @@ function createApp(st, deps) {
       draft: wizard.state.units[0],
       registries,
       desireBondDefects: desireBond,
+      world,
       sections: [...sections],
       onUpdate: (p) => wizard.update(0, p),
       onRegenerate: (s) => wizard.regenerate(0, s),
@@ -24277,6 +24436,7 @@ function createApp(st, deps) {
       draft: wizard.state.units[0],
       registries,
       desireBondDefects: desireBond,
+      world: s.world.options ?? defaultWorldOptions(registries),
       onUpdate: (p) => wizard.update(0, p),
       onRegenerate: (section) => wizard.regenerate(0, section),
       onManual: () => wizard.setManual(0)

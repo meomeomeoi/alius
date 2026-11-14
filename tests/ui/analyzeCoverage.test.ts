@@ -410,6 +410,56 @@ describe('coverage: setup wizard', () => {
   });
 });
 
+describe('coverage: world parameters and disposition controls (P8)', () => {
+  const wiz = () => new Wizard(
+    { registries: reg, desireBondDefects: false, importer: async () => ({ kind: 'ok', profile: PROFILE, dropped: [], missing: [] }), onChange: () => {} },
+    { personaName: 'Vale', canBindCurrent: false },
+  );
+
+  it('the WORLD PARAMETERS step: every card and preset is marked, resolves and can be reached', () => {
+    const st = new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' });
+    const w = wiz();
+    w.setStart('start_vesper');
+    w.setCrime('mutiny');
+    w.next();
+    expect(w.state.step).toBe('world');
+    const host = h('div');
+    document.body.append(host);
+    renderSetupScreen(host, { wizard: w, registries: reg, st, onCancel: vi.fn(), onConfirm: vi.fn(async () => {}), modal: vi.fn(async () => null) as never });
+    expect(markerCount(host)).toBeGreaterThanOrEqual(reg.worldPresets.size + 15);
+    expect(markedWithout(host)).toEqual([]);
+    expect(unresolved(host, env(null))).toEqual([]);
+    expect(unreachable(host)).toEqual([]);
+    const addresses = unitIdsIn(host);
+    expect(addresses).toEqual(expect.arrayContaining(['worldOptions:disposition', 'worldOptions:oversight', 'worldPresets:brutal']));
+  });
+
+  it('calibration under a hunted world: offset chips, stance chips', () => {
+    const w = wiz();
+    for (const [k, v] of Object.entries({ gender_norms: 'inverted', offspec_stigma: 'hunted', disposition: 'prickly' })) w.setWorldOption(k, v);
+    w.toggleUnit({ avatar: 'a.png', name: 'Ann' });
+    const draft = w.state.units[0];
+    draft.status = 'ready';
+    draft.candidates = structuredClone(PROFILE);
+    const host = h('div');
+    document.body.append(host);
+    renderCalibration(host, { draft, registries: reg, desireBondDefects: false, world: w.state.world.options, onUpdate: vi.fn(), onRegenerate: vi.fn(), onManual: vi.fn() });
+    expect(markedWithout(host)).toEqual([]);
+    expect(unresolved(host, env(null))).toEqual([]);
+    expect(unreachable(host)).toEqual([]);
+    expect(host.querySelectorAll('.alius-offset-chip')).toHaveLength(5);
+    expect(host.querySelectorAll('.alius-stance-chip')).toHaveLength(10);
+    expect(unitIdsIn(host)).toEqual(expect.arrayContaining(['glossary:world_stance', 'dispositionLevels:prickly']));
+  });
+
+  it('the SQUAD disposition chip resolves with the unit in its context', () => {
+    const host = squad(world(), false);
+    expect(markedWithout(host)).toEqual([]);
+    expect(unresolved(host, env(world()))).toEqual([]);
+    expect(host.querySelectorAll('.alius-chip[data-disposition]').length).toBeGreaterThan(0);
+  });
+});
+
 describe('coverage: OPS', () => {
   function opsWorld(): CampaignState {
     const s = world();

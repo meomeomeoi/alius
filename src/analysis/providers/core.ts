@@ -264,6 +264,8 @@ export const CORE_GLOSSARY_IDS: readonly string[] = [
   'body_strength', 'body_endurance', 'body_reflexes', 'expression', 'seasoning', 'archetype',
   'presence_unnoticed', 'presence_steady_voice', 'presence_rally', 'check_routes', 'delegate', 'quiet_night',
   'presence', 'first_impression', 'image_consistency', 'commander_traits', 'exhausted',
+  // P8
+  'disposition', 'disposition_offset', 'world_stance', 'world_settings',
 ];
 
 let registered = false;

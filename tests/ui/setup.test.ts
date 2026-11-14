@@ -206,7 +206,7 @@ describe('setup screen', () => {
     expect(qa(m, '.alius-sig-card')).toHaveLength(12);
     expect(qa(m, '.alius-defect-card')).toHaveLength(14);
     expect(m.host.textContent).toContain('card not found');
-    expect(qa(m, 'button[data-regenerate]')).toHaveLength(7); // the AI can be retried after a fallback (six sections and the P7 tastes)
+    expect(qa(m, 'button[data-regenerate]')).toHaveLength(8); // the AI can be retried after a fallback (six sections, the P7 tastes and the P8 disposition; no stances in the Standard world)
   });
 
   it('manual signature starts as the template name and mechanic', async () => {
@@ -743,5 +743,146 @@ describe('tastes wording (P7)', () => {
     renderCalibration(host, { draft, registries: reg, desireBondDefects: false, onUpdate: vi.fn(), onRegenerate: vi.fn(), onManual: vi.fn() });
     const section = host.querySelector('[data-section="tastes"]')!.textContent!;
     expect(section).not.toMatch(/\b(he|him|his|himself)\b/i);
+  });
+});
+
+describe('calibration: disposition and stances (P8)', () => {
+  const HUNTED = { gender_norms: 'corporate_machismo', offspec_stigma: 'hunted', disposition: 'volatile' };
+  function view(world: Record<string, string> | undefined, over: Partial<ImportedProfile> = {}, choice: Record<string, unknown> = {}, stale = false) {
+    const wizard = new Wizard(
+      { registries: reg, desireBondDefects: false, importer: async () => OK, onChange: () => {} },
+      { personaName: 'V', canBindCurrent: false },
+    );
+    wizard.toggleUnit({ avatar: 'a.png', name: 'Ann' });
+    const draft = wizard.state.units[0];
+    draft.status = 'ready';
+    draft.candidates = { ...structuredClone(PROFILE), ...over };
+    Object.assign(draft.choice, choice);
+    if (stale) draft.worldStale = true;
+    const host = h('div');
+    document.body.append(host);
+    const onUpdate = vi.fn();
+    const onRefreshWorld = vi.fn();
+    renderCalibration(host, { draft, registries: reg, desireBondDefects: false, world, onUpdate, onRegenerate: vi.fn(), onManual: vi.fn(), onRefreshWorld });
+    return { host, onUpdate, onRefreshWorld };
+  }
+  const chips = (host: HTMLElement) => [...host.querySelectorAll<HTMLElement>('.alius-offset-chip')];
+
+  it('calibration edits offset and stances and they persist into build', async () => {
+    // through the real wizard: pick the offset and a stance, then build
+    const wizard = new Wizard(
+      { registries: reg, desireBondDefects: false, importer: async () => OK, onChange: () => {} },
+      { personaName: 'V', canBindCurrent: false },
+    );
+    wizard.setStart('start_vesper');
+    wizard.setCrime('mutiny');
+    for (const [k, v] of Object.entries(HUNTED)) wizard.setWorldOption(k, v);
+    wizard.toggleUnit({ avatar: 'a.png', name: 'Ann' });
+    wizard.calibrate(0);
+    await flush();
+    const host = h('div');
+    document.body.append(host);
+    const draw = () => renderCalibration(host, {
+      draft: wizard.state.units[0], registries: reg, desireBondDefects: false, world: wizard.state.world.options,
+      onUpdate: (p) => wizard.update(0, p), onRegenerate: () => {}, onManual: () => {},
+    });
+    wizard.subscribe(draw);
+    draw();
+    host.querySelector<HTMLElement>('.alius-offset-chip[data-offset="-1"]')!.click();
+    const reason = host.querySelector<HTMLInputElement>('input[data-key="disposition-reason"]')!;
+    reason.value = 'Eager to prove herself.';
+    reason.dispatchEvent(new Event('input'));
+    host.querySelector<HTMLElement>('.alius-stance-chip[data-option="gender_norms"][data-stance="shares"]')!.click();
+    host.querySelector<HTMLElement>('.alius-stance-chip[data-option="gender_norms"][data-strength="2"]')!.click();
+    const sr = host.querySelector<HTMLInputElement>('input[data-key="stance-reason-gender_norms"]')!;
+    sr.value = 'Barracks upbringing.';
+    sr.dispatchEvent(new Event('input'));
+    const ch = wizard.state.units[0].choice;
+    expect(ch.dispositionOffset).toBe(-1);
+    expect(ch.dispositionReason).toBe('Eager to prove herself.');
+    expect(ch.worldStances!.gender_norms).toEqual({ stance: 'shares', strength: 2, reason: 'Barracks upbringing.' });
+    // the build carries them
+    wizard.state.units[0].choice.roleId ??= 'defender';
+    const r = wizard.result();
+    expect(r).not.toBeNull();
+    expect(r!.units[0]).toMatchObject({ dispositionOffset: -1, dispositionReason: 'Eager to prove herself.' });
+    expect(r!.units[0].worldStances!.gender_norms).toEqual({ stance: 'shares', strength: 2, reason: 'Barracks upbringing.' });
+    expect(r!.world!.options).toMatchObject(HUNTED);
+  });
+
+  it('the offset row shows five chips with the effective level names, the chosen one pressed', () => {
+    const v = view(HUNTED, {}, { dispositionOffset: 1 }); // world volatile (rank 4)
+    expect(chips(v.host).map((c) => c.dataset.offset)).toEqual(['-2', '-1', '0', '1', '2']);
+    expect(chips(v.host).map((c) => c.textContent)).toEqual(['Guarded', 'Prickly', 'Volatile', 'Hazardous', 'Hazardous']); // +2 clamps at rank 5
+    expect(chips(v.host).map((c) => c.getAttribute('aria-pressed'))).toEqual(['false', 'false', 'false', 'true', 'false']);
+    expect(chips(v.host).map((c) => c.getAttribute('data-analyze'))).toEqual(['dispositionLevels:guarded', 'dispositionLevels:prickly', 'dispositionLevels:volatile', 'dispositionLevels:hazardous', 'dispositionLevels:hazardous']);
+    expect(v.host.textContent).toContain('World level: Volatile');
+  });
+
+  it('the offset chips clamp at the ends of the scale', () => {
+    const kind = view({ ...HUNTED, disposition: 'kind' });
+    expect(chips(kind.host).map((c) => c.textContent)).toEqual(['Kind', 'Kind', 'Kind', 'Guarded', 'Prickly']);
+    const haz = view({ ...HUNTED, disposition: 'hazardous' });
+    expect(chips(haz.host).map((c) => c.textContent)).toEqual(['Prickly', 'Volatile', 'Hazardous', 'Hazardous', 'Hazardous']);
+  });
+
+  it('clicking a chip and typing a reason call onUpdate; the imported reason is shown', () => {
+    const v = view(HUNTED, { dispositionOffset: { offset: -1, reason: 'Wants to be trusted.' } });
+    v.host.querySelector<HTMLElement>('.alius-offset-chip[data-offset="2"]')!.click();
+    expect(v.onUpdate).toHaveBeenCalledWith({ dispositionOffset: 2 });
+    expect(v.host.textContent).toContain('Wants to be trusted.');
+    const reason = v.host.querySelector<HTMLInputElement>('input[data-key="disposition-reason"]')!;
+    reason.value = 'Hard.';
+    reason.dispatchEvent(new Event('input'));
+    expect(v.onUpdate).toHaveBeenLastCalledWith({ dispositionReason: 'Hard.' });
+  });
+
+  it('a stance row per non-neutral squad option, none in a neutral world', () => {
+    const rows = (host: HTMLElement) => [...host.querySelectorAll<HTMLElement>('.alius-stance-row')].map((r) => r.dataset.option);
+    expect(rows(view(HUNTED).host)).toEqual(['gender_norms', 'offspec_stigma']);
+    expect(rows(view({ ...HUNTED, gender_norms: 'indifferent' }).host)).toEqual(['offspec_stigma']);
+    const neutral = view({ gender_norms: 'indifferent', offspec_stigma: 'tolerated', disposition: 'guarded' });
+    expect(rows(neutral.host)).toEqual([]);
+    expect(neutral.host.querySelector('[data-section="stances"]')).toBeNull();
+    expect(neutral.host.querySelector('[data-section="disposition"]')).not.toBeNull(); // the offset is always shown when a world is known
+  });
+
+  it('stance chips write the whole stance, keep strength and reason, and mark glossary:world_stance', () => {
+    const v = view(HUNTED, {}, { worldStances: { gender_norms: { stance: 'opposes', strength: 2, reason: 'No.' } } });
+    const chip = (opt: string, attr: string, val: string) => v.host.querySelector<HTMLElement>(`.alius-stance-chip[data-option="${opt}"][data-${attr}="${val}"]`)!;
+    expect(chip('gender_norms', 'stance', 'opposes').getAttribute('aria-pressed')).toBe('true');
+    expect(chip('gender_norms', 'strength', '2').getAttribute('aria-pressed')).toBe('true');
+    expect(chip('gender_norms', 'stance', 'opposes').getAttribute('data-analyze')).toBe('glossary:world_stance');
+    chip('gender_norms', 'stance', 'shares').click();
+    expect(v.onUpdate).toHaveBeenLastCalledWith({ worldStances: { gender_norms: { stance: 'shares', strength: 2, reason: 'No.' } } });
+    // an option without a stance reads indifferent; strength is greyed out then (aria-disabled, P7 rule)
+    expect(chip('offspec_stigma', 'stance', 'indifferent').getAttribute('aria-pressed')).toBe('true');
+    expect(chip('offspec_stigma', 'strength', '2').getAttribute('aria-disabled')).toBe('true');
+    chip('offspec_stigma', 'strength', '2').click();
+    expect(v.onUpdate).toHaveBeenCalledTimes(1); // the greyed chip does nothing
+  });
+
+  it('a stale unit offers the re-import for this world', () => {
+    const fresh = view(HUNTED);
+    expect(fresh.host.querySelector('[data-action="refresh-world"]')).toBeNull();
+    const stale = view(HUNTED, {}, {}, true);
+    const btn = stale.host.querySelector<HTMLElement>('[data-action="refresh-world"]')!;
+    expect(stale.host.textContent).toContain('The world changed since this unit was imported');
+    btn.click();
+    expect(stale.onRefreshWorld).toHaveBeenCalledTimes(1);
+  });
+
+  it('without a world (old callers) neither section is drawn', () => {
+    const v = view(undefined);
+    expect(v.host.querySelector('[data-section="disposition"]')).toBeNull();
+    expect(v.host.querySelector('[data-section="stances"]')).toBeNull();
+  });
+
+  it('every new chip carries data-analyze and none is a pronoun for the commander', () => {
+    const v = view(HUNTED);
+    const marked = [...v.host.querySelectorAll('.alius-offset-chip, .alius-stance-chip')];
+    expect(marked.length).toBeGreaterThan(10);
+    for (const el of marked) expect(el.hasAttribute('data-analyze')).toBe(true);
+    expect(v.host.textContent).not.toMatch(/\b(he|him|his)\b/i);
   });
 });

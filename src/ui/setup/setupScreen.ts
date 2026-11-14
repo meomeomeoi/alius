@@ -10,6 +10,7 @@ import type { ModalOpts } from '../shell/modal';
 import { archetypeOf, descriptor } from '../../engine/commander/profile';
 import { renderCommanderFile, type CommanderPatch } from '../commander/commanderFile';
 import { renderCalibration } from './calibration';
+import { renderWorldParams } from './worldParams';
 
 export interface SetupScreenCtx {
   wizard: Wizard;
@@ -75,12 +76,19 @@ export function renderSetupScreen(host: HTMLElement, ctx: SetupScreenCtx): void 
   function stepBody(s: WizardState): HTMLElement {
     switch (s.step) {
       case 'dossier': return dossier(s);
-      case 'world': return h('div', { class: 'alius-setup-body' }, h('p', { class: 'alius-hint' }, 'The Standard world is selected.')); // the WORLD PARAMETERS screen follows (P8 Task 13)
+      case 'world': return worldStep();
       case 'commander': return commanderStep();
       case 'units': return units(s);
       case 'calibration': return calibration(s);
       case 'review': return review(s);
     }
+  }
+
+  /** The WORLD PARAMETERS step: drawn by its own renderer, redrawn with the screen. */
+  function worldStep(): HTMLElement {
+    const body = h('div', { class: 'alius-world-host' });
+    renderWorldParams(body, { wizard, registries: reg });
+    return body;
   }
 
   function dossier(s: WizardState): HTMLElement {
@@ -146,7 +154,8 @@ export function renderSetupScreen(host: HTMLElement, ctx: SetupScreenCtx): void 
     const draft = s.units[i];
     const body = h('div', { class: 'alius-calibration' });
     renderCalibration(body, {
-      draft, registries: reg, desireBondDefects: wizardDesireBond(),
+      draft, registries: reg, desireBondDefects: wizardDesireBond(), world: s.world.options,
+      onRefreshWorld: () => wizard.refreshWorldSections(i),
       onUpdate: (patch) => wizard.update(i, patch),
       onRegenerate: (section) => wizard.regenerate(i, section),
       onManual: () => wizard.setManual(i),

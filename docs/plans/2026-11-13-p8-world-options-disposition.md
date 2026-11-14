@@ -472,17 +472,17 @@ docs/** (Task 16), tests/** mirror src
   - Calibration: a disposition offset row (−2…+2 chips showing the effective level **name**, `dispositionLevels:<id>`, with the reason), and a stance row per non-neutral `squadStance` option (three chips × strength, reason text, `glossary:world_stance`).
   - SQUAD unit card: a disposition chip (`glossary:disposition` with `{ unitId }`).
 
-- [ ] **Step 1: Write the failing tests:**
+- [x] **Step 1: Write the failing tests:**
   - `world step renders every option and marks the chosen card`
   - `a preset click selects its choices`
   - `locked options show the lock`
   - `calibration edits offset and stances and they persist into build`
   - `the squad card shows the level name`
   - coverage: `tests/ui/analyzeCoverage.test.ts` passes with the new screens
-- [ ] **Step 2: Run** `npx vitest run tests/ui` and expect FAIL.
-- [ ] **Step 3: Implement.** Use `aria-disabled` for greyed chips (P7 rule).
-- [ ] **Step 4: Run** `npx vitest run` and expect green.
-- [ ] **Step 5: Commit** `feat(ui): WORLD PARAMETERS screen and disposition controls`.
+- [x] **Step 2: Run** `npx vitest run tests/ui` and expect FAIL.
+- [x] **Step 3: Implement.** Use `aria-disabled` for greyed chips (P7 rule).
+- [x] **Step 4: Run** `npx vitest run` and expect green.
+- [x] **Step 5: Commit** `feat(ui): WORLD PARAMETERS screen and disposition controls`.
 
 ### Task 14: SYS world options, analysis readings and glossary
 

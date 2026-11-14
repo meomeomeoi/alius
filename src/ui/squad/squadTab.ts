@@ -15,6 +15,7 @@ import type { ArcPath, ArcPathInfo } from '../../engine/arcs';
 import type { LeashKind } from '../../engine/state/types';
 import { stressBand } from '../../engine/combat/stress';
 import { analyzeAttrs, analyzeNative } from '../analyze/mark';
+import { dispositionFor } from '../../engine/worldOptions';
 import { renderCmdrCard } from '../commander/cmdrCard';
 import { h, type Child } from '../dom';
 import { valueBand } from './bands';
@@ -295,6 +296,7 @@ function unitBlock(unit: Unit, ctx: SquadTabCtx, state: CampaignState): HTMLElem
       gone ? h('p', { class: 'alius-equip-flag' }, `STATUS: ${unit.status.toUpperCase()}`) : null,
       relationLine(unit, state, ctx),
       !gone && state.relations[unit.id] ? h('p', { class: 'alius-loyalty' }, chip(`LOYALTY: ${state.relations[unit.id].loyaltyBand.toUpperCase()}`, 'glossary:loyalty_band')) : null,
+      gone ? null : h('p', { class: 'alius-disposition' }, h('span', { class: 'alius-chip', 'data-disposition': unit.id, ...analyzeAttrs('glossary:disposition', live) }, `Disposition: ${String(dispositionFor(state, reg, unit).name)}`)),
       gone ? null : h('p', { class: 'alius-stress' }, chip(`STRESS ${stressBand(unit.stress).toUpperCase()}${raw ? ` (${unit.stress})` : ''}`, 'glossary:stress', live)),
       gone ? null : leashMenu(unit, ctx),
       unit.bio ? h('p', { class: 'alius-dim' }, unit.bio) : null,

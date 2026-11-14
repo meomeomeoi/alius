@@ -1179,6 +1179,74 @@
   #alius-shell .alius-busy-text::after { animation: none; }
 }
 
+/* World parameters and disposition controls (P8). Palette variables only. */
+#alius-shell .alius-world-option {
+  margin: 0 0 14px;
+}
+
+#alius-shell .alius-world-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+}
+
+#alius-shell .alius-world-head h4 {
+  margin: 0;
+}
+
+#alius-shell .alius-lock {
+  color: var(--alius-dim);
+  font-size: 0.8em;
+  letter-spacing: 0.05em;
+}
+
+#alius-shell .alius-lock[data-live="true"] {
+  color: var(--alius-accent);
+}
+
+#alius-shell .alius-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+#alius-shell .alius-world-preset[aria-pressed="true"],
+#alius-shell .alius-offset-chip[aria-pressed="true"],
+#alius-shell .alius-stance-chip[aria-pressed="true"] {
+  color: var(--alius-bg);
+  background: var(--alius-accent);
+}
+
+#alius-shell .alius-world-summary ul {
+  margin: 4px 0 0;
+  padding-left: 1.2em;
+}
+
+#alius-shell .alius-offset-row,
+#alius-shell .alius-stance-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 4px 0;
+}
+
+#alius-shell .alius-stance-row {
+  margin: 0 0 12px;
+}
+
+#alius-shell .alius-offset-chip[aria-disabled="true"],
+#alius-shell .alius-stance-chip[aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+#alius-shell .alius-stale {
+  color: var(--alius-err);
+}
+
 /* P4: combat screen, INV tab and SQUAD progression views */
 .alius-combat { display: flex; flex-direction: column; gap: 6px; font-family: inherit; }
 .alius-combat-head { display: flex; gap: 16px; align-items: baseline; border-bottom: 1px dashed var(--alius-dim, #777); padding-bottom: 4px; }

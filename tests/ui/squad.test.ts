@@ -455,3 +455,22 @@ describe('P4 progression views', () => {
     expect(view(s).host.textContent).toContain('BREAKDOWN: Hostile Read');
   });
 });
+
+describe('the disposition chip (P8)', () => {
+  it('the squad card shows the level name of the unit, with her own offset', () => {
+    const s = campaign([unit(), unit({ cardRef: 'kay.png', displayName: 'Kay', dispositionOffset: 2 })]);
+    s.world.options = { ...s.world.options, disposition: 'guarded' };
+    const host = render({ state: s }).host;
+    const chips = [...host.querySelectorAll<HTMLElement>('.alius-chip[data-disposition]')];
+    expect(chips.map((c) => [c.dataset.disposition, c.textContent])).toEqual([['unit_rhea', 'Disposition: Guarded'], ['unit_kay', 'Disposition: Volatile']]);
+    expect(chips[1].getAttribute('data-analyze')).toBe('glossary:disposition');
+    expect(JSON.parse(chips[1].getAttribute('data-analyze-ctx')!)).toEqual({ unitId: 'unit_kay' });
+  });
+
+  it('a P7 save without options reads guarded', () => {
+    const s = campaign();
+    delete s.world.options;
+    const host = render({ state: s }).host;
+    expect(host.querySelector('.alius-chip[data-disposition]')!.textContent).toBe('Disposition: Guarded');
+  });
+});

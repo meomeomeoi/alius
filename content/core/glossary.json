@@ -800,5 +800,45 @@
     "see": [
       "body_endurance"
     ]
+  },
+  {
+    "id": "disposition",
+    "term": "Disposition",
+    "short": "How hard the defective soldiers are to win and to keep: how fast Trust is gained and lost, and how often they refuse, desert or mutiny.",
+    "long": "The world sets a level from kind to hazardous. It changes how fast Trust and Affinity are won and lost, how easily loyalty breaks, how long a relationship waits before it moves on, how likely refusals and desertions are, and who a breakdown turns on. It changes none of a soldier's combat stats. Each named soldier may sit up to two levels away from the world's level; grunts follow the world.",
+    "see": [
+      "disposition_offset",
+      "world_stance",
+      "world_settings"
+    ]
+  },
+  {
+    "id": "disposition_offset",
+    "term": "Disposition offset",
+    "short": "How far one soldier sits from the world's disposition, from two steps kinder to two steps harder, proposed from her character card.",
+    "long": "The offset is proposed when the card is imported, with a one-line reason, and the player can change it. A soldier two steps kinder than a hazardous world reads as a prickly one. The offset moves only her own rules, never another soldier's.",
+    "see": [
+      "disposition"
+    ]
+  },
+  {
+    "id": "world_stance",
+    "term": "World stance",
+    "short": "Whether a soldier shares, ignores or rejects one of the world's norms. A norm reaches the squad only through each soldier's own stance.",
+    "long": "Stances are proposed from the character card and can be edited. A soldier who shares a norm starts colder toward a commander who breaks it and warms up as the days pass; one who rejects it may like the commander better for breaking it. Strength 2 is a stronger stance. A stance does nothing while the world's setting for that norm is neutral.",
+    "see": [
+      "disposition",
+      "world_settings"
+    ]
+  },
+  {
+    "id": "world_settings",
+    "term": "World settings",
+    "short": "The options chosen before the campaign: prejudices, oversight, tone and the disposition of the squad. Most are fixed when the campaign starts.",
+    "long": "The world's options are written into the campaign when it starts and cannot be changed afterwards, except those marked as changeable (how graphic the Bloom is described). Their short lore lines are part of what the story model is told on every reply.",
+    "see": [
+      "disposition",
+      "world_stance"
+    ]
   }
 ]

@@ -1,7 +1,9 @@
 import type { Entry, Registries } from '../../content/types';
 import { SETUP_LIMITS, normalizeTag } from '../../engine/setup';
 import { TUNING } from '../../engine/tuning';
-import { VALUE_AXES } from '../../engine/state/types';
+import { VALUE_AXES, type WorldStance } from '../../engine/state/types';
+import { dispositionFor, worldDispositionLevel, worldChoice } from '../../engine/worldOptions';
+import { stanceOptionIds } from '../../setup/profile';
 import { ALL_SECTIONS, type ImportSection } from '../../llm/calls/profileImport';
 import { manualOptions, type UnitDraft } from '../../setup/wizard';
 import { analyzeNative } from '../analyze/mark';
@@ -16,6 +18,10 @@ export interface CalibrationCtx {
   desireBondDefects: boolean;
   /** Limits the sections shown (used by re-sync). Default: all. */
   sections?: ImportSection[];
+  /** P8: the world's choices; without it the disposition and stance sections are not drawn. */
+  world?: Record<string, string>;
+  /** P8: re-import the offset and stances against the current world (offered on a stale unit). */
+  onRefreshWorld?: () => void;
   onUpdate: (patch: CalibrationPatch) => void;
   onRegenerate: (section: ImportSection) => void;
   onManual: () => void;
@@ -229,6 +235,66 @@ export function renderCalibration(host: HTMLElement, ctx: CalibrationCtx): void 
             onclick: () => { if (full && !on) return; onUpdate({ tastes: on ? picked.filter((x) => x !== id) : [...picked, id] }); },
           }, String(t.name), suggested.has(id) ? ' (suggested)' : '');
         }))),
+    );
+  }
+
+  // --- disposition (P8): the unit's offset from the world's level, shown as the level it makes her
+  if (shown.has('disposition') && ctx.world) {
+    const holder = { world: { options: ctx.world } };
+    const worldLevel = worldDispositionLevel(holder, reg);
+    const offset = ch.dispositionOffset ?? 0;
+    const proposed = !manual && cand?.dispositionOffset ? cand.dispositionOffset.reason : '';
+    host.append(
+      section('disposition', 'DISPOSITION',
+        h('p', { class: 'alius-hint' }, `World level: ${String(worldLevel.name)}. The offset moves only this unit, up to two steps either way.`),
+        h('div', { class: 'alius-offset-row' }, ...[-2, -1, 0, 1, 2].map((o) => {
+          const level = dispositionFor(holder, reg, { kind: 'named', dispositionOffset: o });
+          return h('button', {
+            type: 'button', class: 'alius-btn alius-option alius-offset-chip', 'data-offset': String(o), 'aria-pressed': String(offset === o),
+            title: String(level.description), ...analyzeNative(`dispositionLevels:${level.id}`),
+            onclick: () => onUpdate({ dispositionOffset: o }),
+          }, String(level.name));
+        })),
+        h('label', { class: 'alius-field' }, h('span', { class: 'alius-field-label' }, 'Reason'),
+          textInput('disposition-reason', ch.dispositionReason ?? '', 160, (v) => onUpdate({ dispositionReason: v }))),
+        proposed ? h('p', { class: 'alius-dim' }, `From the card: ${proposed}`) : null,
+        draft.worldStale
+          ? h('p', { class: 'alius-stale', role: 'status' }, 'The world changed since this unit was imported. ',
+              h('button', { type: 'button', class: 'alius-btn', 'data-action': 'refresh-world', onclick: () => ctx.onRefreshWorld?.() }, '[ RE-IMPORT FOR THIS WORLD ]'))
+          : null),
+    );
+  }
+
+  // --- stances (P8): one row per squad-stance option whose choice is not neutral
+  const stanceIds = ctx.world ? stanceOptionIds(reg, ctx.world) : [];
+  if (shown.has('stances') && stanceIds.length > 0) {
+    const holder = { world: { options: ctx.world! } };
+    const current = (id: string): WorldStance => ch.worldStances?.[id] ?? { stance: 'indifferent', strength: 1, reason: '' };
+    const write = (id: string, next: Partial<WorldStance>) => onUpdate({ worldStances: { ...(ch.worldStances ?? {}), [id]: { ...current(id), ...next } } });
+    host.append(
+      section('stances', 'STANCE TOWARD THE WORLD',
+        h('p', { class: 'alius-hint' }, 'A norm reaches a unit only through her own stance. A card that says nothing means indifferent.'),
+        ...stanceIds.map((id) => {
+          const opt = reg.worldOptions.get(id)!;
+          const choice = worldChoice(holder, reg, id)!.choice;
+          const cur = current(id);
+          const imported = !manual && cand?.worldStances?.[id]?.reason ? cand.worldStances[id].reason : '';
+          const chip = (attrs: Record<string, string>, label: string, on: boolean, disabled: boolean, apply: () => void) => h('button', {
+            type: 'button', class: 'alius-btn alius-option alius-stance-chip', 'data-option': id, ...attrs, 'aria-pressed': String(on),
+            'aria-disabled': disabled ? 'true' : null, ...analyzeNative('glossary:world_stance'),
+            onclick: () => { if (!disabled) apply(); },
+          }, label);
+          return h('div', { class: 'alius-stance-row', 'data-option': id },
+            h('strong', {}, `${String(opt.label)}: ${String(choice.label)}`),
+            h('div', { class: 'alius-stance-chips' },
+              ...(['shares', 'indifferent', 'opposes'] as const).map((st) =>
+                chip({ 'data-stance': st }, st === 'shares' ? 'Shares it' : st === 'opposes' ? 'Rejects it' : 'Indifferent', cur.stance === st, false, () => write(id, { stance: st }))),
+              ...([1, 2] as const).map((n) =>
+                chip({ 'data-strength': String(n) }, n === 1 ? 'Mild' : 'Strong', cur.strength === n, cur.stance === 'indifferent', () => write(id, { strength: n })))),
+            h('label', { class: 'alius-field' }, h('span', { class: 'alius-field-label' }, 'Reason'),
+              textInput(`stance-reason-${id}`, cur.reason, 160, (v) => write(id, { reason: v }))),
+            imported ? h('p', { class: 'alius-dim' }, `From the card: ${imported}`) : null);
+        })),
     );
   }
 
