@@ -16,7 +16,12 @@ export const EVENT_TYPES = [
 export const ENGINE_EVENT_TYPES = ['granted_demand', 'refused_demand', 'followed_lead', 'rule_accepted', 'rule_refused',
   // P9b: the squad leader overruled by the commander, endorsed, and a challenge won or lost
   'leader_overruled', 'leader_endorsed', 'challenge_won', 'challenge_lost',
+  // P9b: the commander took the blame for her (a scapegoat dilemma); never reported by the model
+  'shielded',
 ] as const;
+
+/** The event types a world effect (`unit_event`) may apply: what the model reports, plus `shielded` (the engine's own, from a scapegoat dilemma). */
+export const WORLD_EFFECT_EVENT_TYPES = [...EVENT_TYPES, 'shielded'] as const;
 
 /** Every type that has an `eventDeltas` row: what the model may report and what only the engine writes. */
 export const ALL_EVENT_TYPES = [...EVENT_TYPES, ...ENGINE_EVENT_TYPES] as const;

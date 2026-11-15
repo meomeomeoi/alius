@@ -34,6 +34,11 @@ function subjectProblem(state: CampaignState, ctx: EngineCtx, kind: VoteKind, su
   if (kind === 'mission' && !missionById(state, subject)) return `There is no mission "${subject}" to vote on.`;
   if (kind === 'upgrade' && !reg.facilities.has(subject)) return `There is no facility "${subject}" to vote on.`;
   if (kind === 'punish' && !isNamedLiving(state, subject)) return `There is no soldier "${subject}" to vote on.`;
+  if (kind === 'scapegoat') {
+    const open = state.dilemmas?.open;
+    if (open?.context !== 'scapegoat' || open.status !== 'presented') return 'There is no scapegoat decision waiting.';
+    if (!open.options?.some((o) => o.id === subject)) return `There is no answer "${subject}" to vote on.`;
+  }
   if (kind === 'rations') {
     if (!RATION_MODES.includes(subject as never)) return `There is no ration mode "${subject}" to vote on.`;
     if (!rationsVotable(state, ctx.registries)) return 'There is no shortage: the rations are set freely.';

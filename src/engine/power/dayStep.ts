@@ -1,6 +1,7 @@
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
+import { openQueuedScapegoat } from './scapegoat';
 import { computeHierarchy } from './standing';
 import { logVote, powerOf } from './state';
 
@@ -10,7 +11,7 @@ import { logVote, powerOf } from './state';
  *  - an open vote that nobody carried, dropped or overruled is dropped (an overruled one is logged as overruled);
  *  - every grudge from an overruled vote ends;
  *  - the hierarchy is recomputed when it was never computed or a week has passed.
- * (The queued scapegoat joins this step in chunk (c).)
+ *  - a queued scapegoat case opens when nothing else waits.
  */
 export function powerDayStep(draft: CampaignState, ctx: EngineCtx): EngineEvent[] {
   const power = powerOf(draft);
@@ -26,6 +27,7 @@ export function powerDayStep(draft: CampaignState, ctx: EngineCtx): EngineEvent[
     events.push({ type: 'grudges_ended', unitIds: Object.keys(power.grudges) });
     delete power.grudges;
   }
+  events.push(...openQueuedScapegoat(draft, ctx));
   const computed = power.hierarchy?.computedDay;
   if (computed === undefined || draft.day - computed >= TUNING.power.standing.recomputeDays) events.push(...computeHierarchy(draft, ctx.registries));
   return events;

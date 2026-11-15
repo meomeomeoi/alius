@@ -485,6 +485,8 @@ export interface Restriction {
   slot?: Slot;
   applicationId?: string;
   demandId?: string;
+  /** P9b: `oversight` = corporate oversight confined her (a scapegoat dilemma); no application, no Impunity record. */
+  source?: 'oversight';
 }
 
 export interface Demand {

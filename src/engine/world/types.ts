@@ -40,9 +40,12 @@ export type WorldEffect =
       type: 'unit_event';
       event: EventType;
       severity: Severity;
-      targets: 'party' | 'named';
+      /** P9b: `subject` / `witnesses` are for a scapegoat dilemma (see `EffectSource`). */
+      targets: 'party' | 'named' | 'subject' | 'witnesses';
       valueAxes?: Array<{ axis: string; direction: -1 | 1 }>;
     }
+  /** P9b: oversight confines the scapegoat's subject for `days` and adds `stress` (no Impunity record). */
+  | { type: 'oversight_punish'; days: number; stress: number }
   | { type: 'incoming_unit' }
   | { type: 'fact'; text: string; tags: string[]; importance: number }
   | { type: 'offer_mission'; templateId: string; regionId?: string; source: MissionSource }
@@ -114,7 +117,7 @@ export interface Mission {
   outcomeDay?: number;
   rewards?: MissionRewards;
   /** P9b: the squad vote that chose this run and the FOR voter who carried it (the one a scapegoat case is about). */
-  decidedBy?: { voteId: string; unitId: string };
+  decidedBy?: { voteId: string; unitId: string; /** The other soldiers who voted for it and are still in service. */ witnessIds?: string[] };
 }
 
 export interface Rumor {

@@ -37,7 +37,7 @@ export const TUNING = Object.freeze({
     /** The setting `intentMinConfidence` is measured against this reference (its default). */
     confidenceRef: 0.5,
     /** A commander event of one of these types at `minSeverity` or above is a big gesture. P9 adds more. */
-    bigGesture: Object.freeze({ events: Object.freeze(['protected', 'granted_demand'] as readonly string[]), minSeverity: 'major' }),
+    bigGesture: Object.freeze({ events: Object.freeze(['protected', 'granted_demand', 'shielded'] as readonly string[]), minSeverity: 'major' }),
     /** A `self` breakdown costs this share of the unit's max HP. */
     selfHarmPct: 10,
     /** A stance's gain damping never takes more than this share of a gain. */

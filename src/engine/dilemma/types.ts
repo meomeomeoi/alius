@@ -3,7 +3,7 @@ import type { SocialStat } from '../social';
 import type { WorldEffect } from '../world/types';
 
 /** Where a dilemma can come from (P6). The content schema checks `dilemmaTemplates[].contexts` against this list. */
-export const DILEMMA_CONTEXTS = ['expedition_event', 'base', 'mission_outcome', 'defect_arc', 'director'] as const;
+export const DILEMMA_CONTEXTS = ['expedition_event', 'base', 'mission_outcome', 'defect_arc', 'director', 'scapegoat'] as const;
 export type DilemmaContext = (typeof DILEMMA_CONTEXTS)[number];
 
 export type DilemmaScale = 'minor' | 'major' | 'defining';
@@ -11,6 +11,8 @@ export type Magnitude = 'small' | 'medium' | 'large';
 
 /** One choice of a presented dilemma. Every number in `effects` came from the engine's magnitude table, never from a model. */
 export interface DilemmaOption {
+  /** P9b: the slug of an authored option the engine tells apart (a scapegoat's `take_blame` / `shift_blame`). */
+  id?: string;
   label: string;
   /** Greyed out below this social rank. */
   requires?: { stat: SocialStat; rank: number };

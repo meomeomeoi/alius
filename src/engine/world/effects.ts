@@ -2,6 +2,7 @@ import type { EngineCtx, EngineEvent } from '../dispatch';
 import { activeRosterUnits, isLiving } from '../economy';
 import { unitStats } from '../combat/stats';
 import { bankLoot, rollLoot } from '../items';
+import { addRestriction } from '../discipline/restrictions';
 import { addFact } from '../memory';
 import { applyEventToUnit } from '../relations/effects';
 import { evaluateAutomatic } from '../relations/graph';
@@ -23,6 +24,9 @@ export interface EffectSource {
   label?: string;
   /** Who a `unit_event` outside an expedition touches (P6: the units present at a dilemma); default the active roster. */
   units?: string[];
+  /** P9b: the unit a scapegoat dilemma is about and the others who backed her decision (`unit_event` targets `subject` / `witnesses`, `oversight_punish`). */
+  subjectId?: string;
+  witnessIds?: string[];
 }
 
 export const MAX_EFFECT_DEPTH = 3;
@@ -49,7 +53,10 @@ function partyUnits(draft: CampaignState): Unit[] {
 function applyUnitEventAtBase(
   draft: CampaignState, ctx: EngineCtx, fx: Extract<WorldEffect, { type: 'unit_event' }>, src: EffectSource,
 ): EngineEvent[] {
-  const ids = src.units ?? activeRosterUnits(draft).map((u) => u.id);
+  // P9b: a scapegoat dilemma names who it is about; with none named the effect touches nobody
+  const ids = fx.targets === 'subject' ? (src.subjectId !== undefined ? [src.subjectId] : [])
+    : fx.targets === 'witnesses' ? src.witnessIds ?? []
+      : src.units ?? activeRosterUnits(draft).map((u) => u.id);
   const targets = ids.filter((id) => {
     const u = draft.squad.find((x) => x.id === id);
     return u !== undefined && isLiving(u) && (fx.targets === 'party' || u.kind === 'named');
@@ -184,7 +191,7 @@ export function applyWorldEffects(
       }
       case 'unit_event': {
         const exp = draft.expedition;
-        if (!exp) {
+        if (!exp || fx.targets === 'subject' || fx.targets === 'witnesses') {
           events.push(...applyUnitEventAtBase(draft, ctx, fx, src));
           break;
         }
@@ -203,6 +210,15 @@ export function applyWorldEffects(
         if (!thread || thread.flags.length >= TUNING.world.threadFlagsMax || thread.flags.some((f) => f.id === fx.flagId)) break;
         thread.flags.push({ id: fx.flagId, description: fx.description });
         events.push({ type: 'thread_flag_set', threadId: fx.threadId, flagId: fx.flagId });
+        break;
+      }
+      case 'oversight_punish': {
+        const unit = src.subjectId === undefined ? undefined : draft.squad.find((u) => u.id === src.subjectId);
+        if (!unit || unit.kind !== 'named' || !isLiving(unit)) break;
+        events.push(...addRestriction(draft, { unitId: unit.id, kind: 'confined', untilDay: draft.day + fx.days, source: 'oversight' }));
+        const next = clamp(unit.stress + fx.stress, 0, 100);
+        if (next !== unit.stress) events.push({ type: 'stress_changed', unitId: unit.id, delta: next - unit.stress });
+        unit.stress = next;
         break;
       }
       case 'incoming_unit':

@@ -1,4 +1,5 @@
 import { noteFeat } from '../power/outside';
+import { failedRunPenalty, scapegoatAfterFailure } from '../power/scapegoat';
 import { smotherRefusal } from '../bonds/smother';
 import type { Entry, Registries } from '../../content/types';
 import { checkRunRoster } from '../bonds/rules';
@@ -442,6 +443,7 @@ export function endExpedition(draft: CampaignState, ctx: EngineCtx, outcome: Exp
       if (mission.source === 'command' && (exp.orders ?? 0) >= 1) events.push(...noteFeat(draft, reg, 'ordered_mission'));
     }
   } else if (mission) {
+    if (outcome === 'failed') events.push(...failedRunPenalty(draft, ctx, mission)); // P9b: oversight punishes a failed run the squad chose
     releaseMission(draft, mission.id);
   }
 
@@ -495,6 +497,7 @@ export function endExpedition(draft: CampaignState, ctx: EngineCtx, outcome: Exp
   events.push(...exhaustion(draft, exp));
   delete draft.expedition;
   events.push(...consumeSlots(draft, exp.slots, ctx));
+  if (outcome === 'failed' && mission) events.push(...scapegoatAfterFailure(draft, ctx, mission)); // P9b
   draft.lastExpedition!.day = draft.day; // the day the squad is back; day-end hooks replace the draft's contents, so not `report` (the day may have ended inside the return)
   events.push(...openRequest(draft, 'expedition'));
   events.push({ type: 'expedition_ended', outcome, reportId: report.id });

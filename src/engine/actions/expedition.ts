@@ -1,3 +1,4 @@
+import { markDecidedBy } from '../power/scapegoat';
 import { readRoutePick } from '../commander/checks';
 import { registerAction } from '../dispatch';
 import {
@@ -27,7 +28,9 @@ registerAction('expedition/start', (draft, payload, ctx) => {
   }
   const problem = checkExpedition(draft, ctx.registries, p);
   if (problem) throw new Error(problem);
-  return startExpedition(draft, ctx, p);
+  const events = startExpedition(draft, ctx, p);
+  if (p.missionId !== undefined) markDecidedBy(draft, p.missionId, payload.voteId); // P9b: who answers for a mission the squad voted for
+  return events;
 });
 
 registerAction('expedition/move', (draft, payload, ctx) => {

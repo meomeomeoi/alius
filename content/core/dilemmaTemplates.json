@@ -1414,5 +1414,68 @@
       "brief": "The patrol route is blocked by debris. One option is quicker but wears on the squad; the other costs time and supplies. Keep it small: this is the first decision the commander makes in the field."
     },
     "optionCount": 2
+  },
+  {
+    "id": "scapegoat_mission",
+    "scale": "major",
+    "contexts": [
+      "scapegoat"
+    ],
+    "fixed": {
+      "title": "Oversight wants a name",
+      "setup": "AUTHOR TO WRITE: {mission} went wrong and oversight is asking who answered for it. {name} carried the squad's vote for it. Either the commander answers for the decision, or oversight is given a name.",
+      "options": [
+        {
+          "id": "take_blame",
+          "label": "TAKE THE BLAME",
+          "effects": [
+            {
+              "type": "faction",
+              "factionId": "own",
+              "amount": -5
+            },
+            {
+              "type": "leash",
+              "amount": -1
+            },
+            {
+              "type": "unit_event",
+              "event": "shielded",
+              "severity": "major",
+              "targets": "subject"
+            },
+            {
+              "type": "unit_event",
+              "event": "shielded",
+              "severity": "moderate",
+              "targets": "witnesses"
+            }
+          ]
+        },
+        {
+          "id": "shift_blame",
+          "label": "SHIFT IT",
+          "effects": [
+            {
+              "type": "oversight_punish",
+              "days": 2,
+              "stress": 10
+            },
+            {
+              "type": "unit_event",
+              "event": "sided_against",
+              "severity": "extreme",
+              "targets": "subject"
+            },
+            {
+              "type": "unit_event",
+              "event": "sided_against",
+              "severity": "moderate",
+              "targets": "witnesses"
+            }
+          ]
+        }
+      ]
+    }
   }
 ]

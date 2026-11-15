@@ -147,13 +147,13 @@ function resolveNothing(draft: CampaignState, open: DilemmaState): EngineEvent[]
 
 function showFallback(draft: CampaignState, reg: Registries, open: DilemmaState): EngineEvent[] {
   const fixed = reg.dilemmaTemplates.get(open.templateId)?.fixed as
-    | { title: string; setup: string; options: Array<{ label: string; requires?: DilemmaOption['requires']; routeCheck?: DilemmaOption['routeCheck']; effects: WorldEffect[] }> }
+    | { title: string; setup: string; options: Array<{ id?: string; label: string; requires?: DilemmaOption['requires']; routeCheck?: DilemmaOption['routeCheck']; effects: WorldEffect[] }> }
     | undefined;
   if (!fixed || nothingChoosable(draft, reg, fixed.options)) return resolveNothing(draft, open);
   open.title = fixed.title;
   open.setup = fixed.setup;
   open.options = fixed.options.map((o) => ({
-    label: o.label, ...(o.requires ? { requires: { ...o.requires } } : {}), ...(o.routeCheck ? { routeCheck: structuredClone(o.routeCheck) } : {}),
+    ...(o.id !== undefined ? { id: o.id } : {}), label: o.label, ...(o.requires ? { requires: { ...o.requires } } : {}), ...(o.routeCheck ? { routeCheck: structuredClone(o.routeCheck) } : {}),
     effects: structuredClone(o.effects), magnitudes: [],
   }));
   open.status = 'presented';
@@ -263,7 +263,10 @@ export function chooseDilemma(draft: CampaignState, ctx: EngineCtx, id: unknown,
     if (!checkPassed) effects = effects.filter((fx) => isCostEffect(fx) || isBookkeeping(fx));
   }
   const title = open.title ?? open.templateId;
-  const events = [...routeEvents, ...applyWorldEffects(draft, ctx, effects, { kind: 'event', id: open.templateId, label: title, units: open.units })];
+  const events = [...routeEvents, ...applyWorldEffects(draft, ctx, effects, {
+    kind: 'event', id: open.templateId, label: title, units: open.units,
+    ...(open.subjectId !== undefined ? { subjectId: open.subjectId } : {}), ...(open.witnessIds !== undefined ? { witnessIds: open.witnessIds } : {}),
+  })];
   const affected = [...new Set(events.filter((e) => e.type === 'relation_changed').map((e) => String(e.unitId)))];
 
   const d = draft.dilemmas!;

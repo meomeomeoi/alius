@@ -3,6 +3,7 @@ import { registerDayEndStep } from '../calendar';
 import { addRecord } from '../discipline/record';
 import { countermandOpen } from '../power/leader';
 import { challenge, endorse } from '../power/moves';
+import { scapegoatOptionId } from '../power/scapegoat';
 import { TUNING } from '../tuning';
 import { applyEventToUnit } from '../relations/effects';
 import { evaluateAutomatic } from '../relations/graph';
@@ -116,5 +117,13 @@ registerAction('power/endorse', (draft, _payload, ctx) => endorse(draft, ctx));
 
 /** CHALLENGE the squad leader on a social or body stat: one seeded roll. */
 registerAction('power/challenge', (draft, payload, ctx) => challenge(draft, ctx, isObj(payload) ? payload.stat : undefined));
+
+/** Answering a scapegoat case goes to a vote: the subject is the chosen option. */
+registerVoteGate('dilemma/choose', (state, payload) => {
+  const open = state.dilemmas?.open;
+  if (!open || open.context !== 'scapegoat' || open.status !== 'presented' || !isObj(payload) || typeof payload.index !== 'number') return null;
+  const answer = scapegoatOptionId(open.options?.[payload.index]);
+  return answer === null ? null : { kind: 'scapegoat', subject: answer };
+});
 
 export const GATED_KINDS: readonly VoteKind[] = VOTE_KINDS;

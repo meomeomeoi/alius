@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { EFFECT_TARGETS, STATS, TRIGGERS, ALWAYS_ON_TYPES } from '../engine/combat/types';
-import { ALL_EVENT_TYPES, EVENT_TYPES, PROPOSAL_KINDS, SEVERITIES } from '../engine/relations/vocab';
+import { ALL_EVENT_TYPES, EVENT_TYPES, PROPOSAL_KINDS, SEVERITIES, WORLD_EFFECT_EVENT_TYPES } from '../engine/relations/vocab';
 import { DEED_COUNTERS, RARITIES } from '../engine/state/types';
 import { BALLOT_TERMS, OUTSIDE_TRIGGERS, VALUE_AXES, VOTE_KINDS } from '../engine/state/types';
 import { TUNING } from '../engine/tuning';
@@ -103,11 +103,14 @@ const WorldEffectUnion = z.discriminatedUnion('type', [
   z.object({ type: z.literal('thread'), threadId: str, status: z.enum(['open', 'resolved', 'failed', 'dormant']) }).strict(),
   z.object({
     type: z.literal('unit_event'),
-    event: z.enum(EVENT_TYPES),
+    event: z.enum(WORLD_EFFECT_EVENT_TYPES),
     severity: z.enum(['minor', 'moderate', 'major', 'extreme']),
-    targets: z.enum(['party', 'named']),
+    /** P9b: `subject` and `witnesses` only inside a `scapegoat` dilemma (the unit who answers for it, the others who backed it). */
+    targets: z.enum(['party', 'named', 'subject', 'witnesses']),
     valueAxes: z.array(z.object({ axis: z.enum(VALUE_AXES), direction: z.union([z.literal(-1), z.literal(1)]) }).strict()).optional(),
   }).strict(),
+  /** P9b: oversight confines the scapegoat's subject for a few days and strains her; no Impunity record, not a punishment of the commander's. */
+  z.object({ type: z.literal('oversight_punish'), days: worldInt.min(1).max(3), stress: worldInt.min(0).max(20) }).strict(),
   z.object({ type: z.literal('incoming_unit') }).strict(),
   z.object({ type: z.literal('fact'), text: str.max(200), tags: z.array(str), importance: worldInt.min(1).max(5) }).strict(),
   z.object({
@@ -132,7 +135,7 @@ export function isCostEffect(e: WorldEffect): boolean {
     case 'party_hp': return e.pct < 0;
     case 'leash': return e.amount < 0;
     case 'party_stress': return e.amount > 0;
-    case 'stigma_news': return true;
+    case 'stigma_news': case 'oversight_punish': return true;
     case 'clock': return e.by > 0;
     case 'unit_event': return COST_EVENTS.includes(e.event);
     default: return false;
@@ -1001,6 +1004,8 @@ export const RouteCheckSchema = z.object({
 export type RouteCheck = z.infer<typeof RouteCheckSchema>;
 
 const EventOptionSchema = z.object({
+  /** P9b: the scapegoat's two answers are told apart by this slug (`take_blame`, `shift_blame`); other options carry none. */
+  id: z.string().regex(ID_PATTERN, 'id must match ^[a-z0-9_:.-]+$').optional(),
   label: str.max(80),
   requires: z.object({ stat: socialStat, rank: int.min(1).max(5) }).strict().optional(),
   /** P7: authored options only; generated dilemma options never carry one. */
@@ -1056,6 +1061,14 @@ export const DilemmaTemplateSchema = BaseEntrySchema.extend({
       if (EXPEDITION_ONLY_EFFECTS.includes(e.type)) {
         ctx.addIssue({ code: 'custom', path: ['fixed', 'options', i, 'effects', j, 'type'], message: `"${e.type}" is only meaningful in an expedition event` });
       }
+    }));
+  }
+  if (!d.contexts.includes('scapegoat')) {
+    options.forEach((o, i) => o.effects.forEach((e, j) => {
+      if (e.type === 'unit_event' && (e.targets === 'subject' || e.targets === 'witnesses')) {
+        ctx.addIssue({ code: 'custom', path: ['fixed', 'options', i, 'effects', j, 'targets'], message: `"${e.targets}" targets only exist in a scapegoat dilemma` });
+      }
+      if (e.type === 'oversight_punish') ctx.addIssue({ code: 'custom', path: ['fixed', 'options', i, 'effects', j, 'type'], message: '"oversight_punish" only exists in a scapegoat dilemma' });
     }));
   }
   if (d.flavor === true) {

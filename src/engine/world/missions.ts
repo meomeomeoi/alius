@@ -1,3 +1,4 @@
+import { scapegoatAfterFailure } from '../power/scapegoat';
 import type { Entry, Registries } from '../../content/types';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { facilityEffect } from '../economy';
@@ -250,6 +251,7 @@ export function runDeadlines(draft: CampaignState, ctx: EngineCtx): EngineEvent[
     archive(draft, m);
     events.push({ type: 'mission_failed', missionId: m.id, title: m.title });
     events.push(...applyWorldEffects(draft, ctx, failureEffectsOf(draft, reg, m), { kind: 'mission', id: m.id, label: m.title }));
+    events.push(...scapegoatAfterFailure(draft, ctx, m)); // P9b: a failure the squad chose
   }
   return events;
 }

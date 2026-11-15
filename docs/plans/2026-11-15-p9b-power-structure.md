@@ -691,7 +691,7 @@ tests/**                                                        mirrors src; tes
   - event type `shielded`
 - Consumes: `addRestriction` (source `oversight`), `applyWorldEffects`, `failureEffectsOf`, `carryVote` (Task 3 sets `decidedBy`).
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `a passed mission vote marks decidedBy with the strongest FOR voter; an overruled one does not`
   - `a decided command mission that expires opens the scapegoat`
   - `a decided command run that ends failed costs the new standing penalty × command_failure_mult and opens the scapegoat`
@@ -704,10 +704,10 @@ tests/**                                                        mirrors src; tes
   - `subject/witnesses targets on a non-scapegoat template are a load error`
   - `shielded is a big gesture`
   - `pacing never draws a scapegoat template`
-- [ ] **Step 2: Run** `npx vitest run tests/engine/power/scapegoat.test.ts tests/engine/dilemma tests/content` and confirm FAIL.
-- [ ] **Step 3: Implement.** `EventOptionSchema` gains an optional `id` (slug), used by `scapegoat_mission`. Option texts are `AUTHOR TO WRITE` drafts; the numbers are the rulings' drafts.
-- [ ] **Step 4: Run** the tests, then `npm test`. Expect PASS. `EVENT_TYPES` grows by one; update the counts in the vocab tests knowingly.
-- [ ] **Step 5: Tick and commit:** `feat(power): scapegoat after a failure the squad chose`.
+- [x] **Step 2: Run** `npx vitest run tests/engine/power/scapegoat.test.ts tests/engine/dilemma tests/content` and confirm FAIL.
+- [x] **Step 3: Implement.** `EventOptionSchema` gains an optional `id` (slug), used by `scapegoat_mission`. Option texts are `AUTHOR TO WRITE` drafts; the numbers are the rulings' drafts.
+- [x] **Step 4: Run** the tests, then `npm test`. Expect PASS. `EVENT_TYPES` grows by one; update the counts in the vocab tests knowingly.
+- [x] **Step 5: Tick and commit:** `feat(power): scapegoat after a failure the squad chose`.
 
 ### Task 13: Scapegoat in the dilemma panel
 
