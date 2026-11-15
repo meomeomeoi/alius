@@ -25525,6 +25525,7 @@ function renderSetupScreen(host, ctx2) {
     if (root && !host.contains(root)) return;
     const s = wizard.state;
     let title;
+    const scrollTop = root !== null && lastStep === s.step ? root.scrollTop : 0;
     renderKeepingFocus(host, () => {
       host.replaceChildren();
       title = h("h2", { class: "alius-setup-title", tabindex: "-1" }, "CCP INTAKE FORM");
@@ -25537,6 +25538,7 @@ function renderSetupScreen(host, ctx2) {
         footer(s)
       );
       host.append(root);
+      root.scrollTop = scrollTop;
     });
     if (lastStep !== null && lastStep !== s.step) title.focus();
     lastStep = s.step;

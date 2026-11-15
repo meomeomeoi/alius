@@ -347,6 +347,35 @@ describe('setup screen', () => {
   });
 });
 
+describe('the world step keeps its scroll position', () => {
+  const scroller = (m: M) => q(m, '.alius-setup')!;
+
+  it('choosing a world option (a card or a preset) leaves the page where it was', () => {
+    const m = make();
+    click(q(m, '.alius-start-card[data-id="start_vesper"]'));
+    click(q(m, '.alius-crime-card[data-id="mutiny"]'));
+    click(action(m, 'next')); // dossier → world parameters
+    expect(m.wizard.state.step).toBe('world');
+    scroller(m).scrollTop = 420;
+    click(q(m, '.alius-world-choice[data-option="bloom_horror"][data-id="graphic"]'));
+    expect(m.wizard.state.world.options.bloom_horror).toBe('graphic');
+    expect(scroller(m).scrollTop).toBe(420);
+    click(q(m, '.alius-world-preset[data-id="brutal"]'));
+    expect(scroller(m).scrollTop).toBe(420);
+  });
+
+  it('going to another step starts at the top', () => {
+    const m = make();
+    click(q(m, '.alius-start-card[data-id="start_vesper"]'));
+    click(q(m, '.alius-crime-card[data-id="mutiny"]'));
+    click(action(m, 'next'));
+    scroller(m).scrollTop = 420;
+    click(action(m, 'next')); // world parameters → commander file
+    expect(m.wizard.state.step).toBe('commander');
+    expect(scroller(m).scrollTop).toBe(0);
+  });
+});
+
 describe('calibration view', () => {
   function view(over: { status?: 'ready' | 'manual'; sections?: Array<'role' | 'values' | 'tags' | 'signature' | 'defects' | 'baseline'> } = {}) {
     const wizard = new Wizard(
