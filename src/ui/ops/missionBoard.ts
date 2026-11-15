@@ -5,6 +5,7 @@ import { checkDeparture } from '../../engine/world/expedition';
 import type { Mission, Rumor } from '../../engine/world/types';
 import { analyzeAttrs, analyzeNative } from '../analyze/mark';
 import { h, type Child } from '../dom';
+import { herCallChip } from '../power/chips';
 
 export interface MissionBoardCtx {
   registries: Registries;
@@ -40,6 +41,7 @@ function missionCard(m: Mission, state: CampaignState, ctx: MissionBoardCtx): HT
       ' · ', stat(`DANGER ${m.danger}`, 'glossary:danger'),
       ' · OBJECTIVE: ', node ? chip(String(node.name), `nodeTypes:${m.objective.node}`) : m.objective.node, ` (${m.objective.condition}) · `,
       stat(deadline, 'glossary:mission_deadline')),
+    herCallChip(state, m),
     h('p', {}, m.brief),
     h('p', { class: 'alius-dim' }, stat(`REWARD: TIER ${String(tierRank ?? m.rewardsTier)}`, 'glossary:reward_tier')),
   );

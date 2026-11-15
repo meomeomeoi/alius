@@ -91,3 +91,16 @@
   padding: 0;
   list-style: none;
 }
+
+/* P9e: the notice of a decision a soldier took on her own, and the chip a bad call leaves on the mission */
+#alius-shell .alius-event [data-her-call] {
+  margin: 6px 0;
+}
+
+#alius-shell .alius-event [data-her-call] .alius-btn {
+  margin-top: 6px;
+}
+
+#alius-shell [data-her-call-chip] {
+  white-space: nowrap;
+}

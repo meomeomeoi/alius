@@ -13,6 +13,8 @@ import { renderDilemma } from '../dilemma/dilemmaPanel';
 import { renderRoutePicker } from '../dilemma/routePicker';
 import { h } from '../dom';
 import { coachStrip, type CoachCtx } from '../onboarding/coach';
+import { herCallChip } from '../power/chips';
+import { renderHerCallCard } from './herCallCard';
 import { renderNodeMap } from './nodeMapView';
 import { newDraft, renderPlanner, type PlannerDraft } from './planner';
 import { renderReport } from './report';
@@ -67,6 +69,9 @@ export function renderExpeditionScreen(host: HTMLElement, ctx: ExpeditionScreenC
     root.append(h('h2', {}, `[ EXPEDITION ] ${String(reg.regions.get(exp.regionId)?.name ?? exp.regionId)}`));
     renderNodeMap(root, { rows: shown, edges: {}, onMove: (id) => controller.move(id), labels, types });
 
+    const marked = state.missions.active.find((m) => m.id === exp.missionId);
+    const chip = marked ? herCallChip(state, marked) : null;
+    if (chip) root.append(h('p', {}, chip));
     root.append(h('p', {}, `SUPPLIES ${exp.supplies} · LOOT ${exp.loot.length}`));
     const strip = h('div', { class: 'alius-party' });
     const able = new Set(ableParty(state));
@@ -156,6 +161,12 @@ export function renderExpeditionScreen(host: HTMLElement, ctx: ExpeditionScreenC
   function eventPanel(root: HTMLElement, state: CampaignState): void {
     const pending = state.expedition!.pending;
     if (pending?.kind !== 'event') return;
+    // P9e: a soldier took the decision herself: the notice replaces the options
+    const notice = renderHerCallCard(state, reg, () => controller.ackHerCall());
+    if (notice) {
+      root.append(h('section', { class: 'alius-section alius-event' }, notice));
+      return;
+    }
     const fixed = reg.dilemmaTemplates.get(pending.templateId)?.fixed as { title: string; setup: string } | undefined;
     const panel = h('section', { class: 'alius-section alius-event' }, h('h3', {}, fixed?.title ?? 'EVENT'), h('p', {}, fixed?.setup ?? ''));
     const generated = state.dilemmas?.open;

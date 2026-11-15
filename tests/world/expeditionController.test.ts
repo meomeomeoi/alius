@@ -206,6 +206,26 @@ describe('ending', () => {
   });
 });
 
+describe('her call (P9e)', () => {
+  it('ackHerCall closes the node a soldier decided on her own, and nothing else', () => {
+    const s = atCombat();
+    s.expedition!.map.nodes.n0_0.type = 'event';
+    s.expedition!.phase = 'event';
+    s.expedition!.at = 'n0_0';
+    s.expedition!.pending = { kind: 'event', nodeId: 'n0_0', templateId: 'evt_hc_route', herCall: { unitId: s.roster.activeIds[0], outcome: 'good' } };
+    const h = worldHarness(reg, s);
+    const exp = make(h);
+    exp.ackHerCall();
+    expect(acts(h)).toEqual(['expedition/ack_her_call']);
+    expect(h.state().expedition!.pending).toBeUndefined();
+    expect(h.state().expedition!.phase).toBe('travel');
+    expect(h.state().lastExpedition).toBeUndefined();
+    // with nothing to acknowledge the engine refuses and the controller only toasts
+    exp.ackHerCall();
+    expect(h.toasts.some((t) => t.kind === 'error')).toBe(true);
+  });
+});
+
 describe('recap', () => {
   const done = (): CampaignState => {
     const { state, mission } = withMission(reg, base);

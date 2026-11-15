@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { HerCallSpec } from '../../src/content/schemas';
 import { isCostEffect } from '../../src/content/schemas';
-import type { Registries } from '../../src/content/types';
+import type { Entry, Registries } from '../../src/content/types';
 import { CORE_GLOSSARY_IDS } from '../../src/analysis/providers/core';
 import { herCallCandidates } from '../../src/engine/power/herCall';
 import { ableParty, eventPool } from '../../src/engine/world/expedition';
@@ -17,7 +17,7 @@ beforeAll(async () => {
 });
 
 const herCalls = (r: Registries = reg) => [...r.dilemmaTemplates.values()].filter((t) => t.herCall !== undefined);
-const specOf = (t: { herCall?: unknown }) => t.herCall as HerCallSpec;
+const specOf = (t: Entry) => t.herCall as HerCallSpec;
 const poolIds = (s: ReturnType<typeof campaign>, r: Registries): string[] => [...r.regions.keys()].flatMap((rid) => eventPool(s, r, rid).map((t) => String(t.id)));
 const without = (): Registries => ({ ...reg, dilemmaTemplates: new Map([...reg.dilemmaTemplates].filter(([, t]) => t.herCall === undefined)) });
 

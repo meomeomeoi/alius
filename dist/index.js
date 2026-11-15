@@ -20524,7 +20524,9 @@ var VOICE_OF = {
   // P11
   intake_form: "paper",
   // P9b: the VOTE panel is the oversight office's tally sheet
-  squad_vote: "corporate"
+  squad_vote: "corporate",
+  // P9e: a soldier's own decision in the field reads as her, not as the system
+  her_call: "personal"
 };
 
 // src/ui/power/votePanel.ts
@@ -26367,6 +26369,12 @@ function drawCountermandChips(host, state, reg, onAnswer) {
     h("button", { type: "button", class: "alius-btn alius-option", "data-countermand": "overrule", ...analyzeNative("glossary:countermand"), onclick: () => onAnswer("overrule") }, "[OVERRULE]")
   ));
 }
+function herCallChip(state, mission) {
+  const by = mission.decidedBy;
+  if (by?.source !== "her_call") return null;
+  const name = state.squad.find((u) => u.id === by.unitId)?.displayName ?? by.unitId;
+  return h("span", { class: "alius-chip", "data-her-call-chip": mission.id, ...analyzeAttrs("glossary:her_call", { unitId: by.unitId, missionId: mission.id }) }, `ON HER CALL: ${name}`);
+}
 
 // src/ui/ops/missionBoard.ts
 var SOURCE_TAG = { command: "COMMAND", story: "STORY", rumor: "RUMOR", side: "SIDE" };
@@ -26398,6 +26406,7 @@ function missionCard(m, state, ctx2) {
       ` (${m.objective.condition}) \xB7 `,
       stat3(deadline, "glossary:mission_deadline")
     ),
+    herCallChip(state, m),
     h("p", {}, m.brief),
     h("p", { class: "alius-dim" }, stat3(`REWARD: TIER ${String(tierRank ?? m.rewardsTier)}`, "glossary:reward_tier"))
   );
@@ -27419,6 +27428,32 @@ function renderMapTab(host, ctx2) {
   }
 }
 
+// src/ui/expedition/herCallCard.ts
+function renderHerCallCard(state, reg, onAck) {
+  const exp = state.expedition;
+  const pending2 = exp?.pending;
+  if (!exp || pending2?.kind !== "event" || !pending2.herCall) return null;
+  const { unitId, outcome } = pending2.herCall;
+  const template = reg.dilemmaTemplates.get(pending2.templateId);
+  const title = template?.fixed?.title ?? "A decision in the field";
+  const said = herCallSpecOf(template)?.outcomes.find((o) => o.id === outcome)?.text;
+  const name = state.squad.find((u) => u.id === unitId)?.displayName ?? unitId;
+  const mission = state.missions.active.find((m) => m.id === exp.missionId);
+  const marked = outcome === "bad" && mission?.decidedBy?.source === "her_call" && mission.decidedBy.nodeId === pending2.nodeId;
+  const ctx2 = { unitId, nodeId: pending2.nodeId, missionId: exp.missionId };
+  const body = h(
+    "div",
+    {},
+    h("p", {}, said ? `${name} took the decision herself: ${said}` : `${name} took the decision herself.`),
+    marked ? h("p", { class: "alius-banner" }, "Oversight will want a name if this run fails.") : null,
+    h("button", { type: "button", class: "alius-btn alius-option", "data-ack-her-call": "", ...analyzeNative("glossary:her_call", ctx2), onclick: onAck }, "[ ACKNOWLEDGE ]")
+  );
+  const card2 = renderVoiceCard({ voice: VOICE_OF.her_call, title, body, accent: unitAccent(unitId), level: 3 });
+  card2.setAttribute("data-her-call", pending2.nodeId);
+  for (const [k, v] of Object.entries(analyzeAttrs("glossary:her_call", ctx2))) card2.setAttribute(k, v);
+  return card2;
+}
+
 // src/ui/expedition/nodeMapView.ts
 function renderNodeMap(host, view) {
   const root = h("div", { class: "alius-nodemap", role: "group", "aria-label": "Expedition map" });
@@ -27652,6 +27687,9 @@ function renderExpeditionScreen(host, ctx2) {
     const shown = travel ? rows : rows.map((col) => col.map((c) => c.state === "option" ? { ...c, state: "ahead" } : c));
     root.append(h("h2", {}, `[ EXPEDITION ] ${String(reg.regions.get(exp.regionId)?.name ?? exp.regionId)}`));
     renderNodeMap(root, { rows: shown, edges: {}, onMove: (id) => controller.move(id), labels, types });
+    const marked = state.missions.active.find((m) => m.id === exp.missionId);
+    const chip = marked ? herCallChip(state, marked) : null;
+    if (chip) root.append(h("p", {}, chip));
     root.append(h("p", {}, `SUPPLIES ${exp.supplies} \xB7 LOOT ${exp.loot.length}`));
     const strip2 = h("div", { class: "alius-party" });
     const able = new Set(ableParty(state));
@@ -27753,6 +27791,11 @@ function renderExpeditionScreen(host, ctx2) {
   function eventPanel(root, state) {
     const pending2 = state.expedition.pending;
     if (pending2?.kind !== "event") return;
+    const notice = renderHerCallCard(state, reg, () => controller.ackHerCall());
+    if (notice) {
+      root.append(h("section", { class: "alius-section alius-event" }, notice));
+      return;
+    }
     const fixed = reg.dilemmaTemplates.get(pending2.templateId)?.fixed;
     const panel = h("section", { class: "alius-section alius-event" }, h("h3", {}, fixed?.title ?? "EVENT"), h("p", {}, fixed?.setup ?? ""));
     const generated = state.dilemmas?.open;
@@ -28144,6 +28187,9 @@ function createExpedition(deps) {
     },
     acknowledge() {
       act("expedition/ack_report");
+    },
+    ackHerCall() {
+      act("expedition/ack_her_call");
     },
     async requestRecap() {
       const s = state();

@@ -27,6 +27,8 @@ export interface ExpeditionController {
   return(): void;
   requestRecap(): Promise<void>;
   acknowledge(): void;
+  /** P9e: closes an event node a soldier decided on her own (`acknowledge` is the after-action report's). */
+  ackHerCall(): void;
   debrief(unitIds: string[]): Promise<boolean>;
 }
 
@@ -104,6 +106,7 @@ export function createExpedition(deps: WorldDeps & {
     retreat() { act('expedition/retreat'); },
     return() { act('expedition/return'); },
     acknowledge() { act('expedition/ack_report'); },
+    ackHerCall() { act('expedition/ack_her_call'); },
 
     async requestRecap() {
       const s = state();
