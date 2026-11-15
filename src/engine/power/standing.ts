@@ -8,7 +8,9 @@ import { addFact } from '../memory';
 import type { CampaignState, Hierarchy, Unit } from '../state/types';
 import { TUNING } from '../tuning';
 import { compatibility } from './ballot';
-import { powerOf } from './state';
+import { leaderOf, powerOf } from './state';
+
+export { leaderOf };
 
 /**
  * Merit, standing and the squad leader (P9b §3). A unit's standing is `0.4 × merit + 0.3 × respect + 0.3 × Impunity`, times
@@ -83,13 +85,6 @@ export function standingOf(state: CampaignState, reg: Registries, unitId: string
   const bonus = state.power?.hierarchy?.standingBonus;
   const extra = bonus && bonus.unitId === unitId && bonus.untilDay > state.day ? bonus.amount : 0;
   return Math.round(100 * raw * S.factor[bond.leadStyle]) + extra;
-}
-
-/** The squad leader, or null: the unit the hierarchy names, if she is still a named unit in service. */
-export function leaderOf(state: Pick<CampaignState, 'power' | 'squad'>): Unit | null {
-  const id = state.power?.hierarchy?.leaderId;
-  const unit = id === undefined ? undefined : state.squad.find((u) => u.id === id);
-  return unit && unit.kind === 'named' && isLiving(unit) ? unit : null;
 }
 
 const nameOf = (state: CampaignState, id: string): string => state.squad.find((u) => u.id === id)?.displayName ?? id;

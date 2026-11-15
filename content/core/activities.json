@@ -94,7 +94,8 @@
       }
     ],
     "flavor": "short",
-    "wantRelief": 15
+    "wantRelief": 15,
+    "countermandable": true
   },
   {
     "id": "workshop",
@@ -249,7 +250,8 @@
       }
     ],
     "companionEffects": [],
-    "flavor": "none"
+    "flavor": "none",
+    "countermandable": true
   },
   {
     "id": "scout_net",
@@ -319,7 +321,8 @@
         "amount": 2
       }
     ],
-    "flavor": "short"
+    "flavor": "short",
+    "countermandable": true
   },
   {
     "id": "mess",
@@ -395,7 +398,8 @@
       }
     ],
     "companionEffects": [],
-    "flavor": "none"
+    "flavor": "none",
+    "countermandable": true
   },
   {
     "id": "talk",

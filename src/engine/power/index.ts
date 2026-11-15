@@ -5,3 +5,4 @@ export { carryVote, dropVote, openVote, overruleVote, voteFor, type OverruleMean
 export { powerDayStep } from './dayStep';
 export { rationsVotable, RATION_MODES, rationsOf, setRations } from './rations';
 export { computeHierarchy, leaderOf, meritOf, recordMerit, respectOf, standingOf } from './standing';
+export { countermandChance, countermandOpen, leaderVoteWeight, privilegeScale, rollCountermand } from './leader';

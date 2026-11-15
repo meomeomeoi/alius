@@ -2,6 +2,8 @@ import type { Entry, Registries } from '../../content/types';
 import { firstImpressionWeight, presenceOf } from '../commander/presence';
 import { isLiving } from '../economy';
 import { leashLog } from '../leash/weekly';
+import { privilegeScale } from '../power/leader';
+import { leaderOf } from '../power/state';
 import type { CampaignState, Unit } from '../state/types';
 import { TUNING } from '../tuning';
 import { dispositionFor } from '../worldOptions';
@@ -63,10 +65,15 @@ function dependencyTerm(state: CampaignState, reg: Registries, unit: Unit): numb
 }
 
 /** C: how bold the rest of the squad is. */
-function contagionTerm(state: CampaignState, unit: Unit): number {
+function contagionTerm(state: CampaignState, reg: Registries, unit: Unit): number {
   const others = namedLiving(state).filter((u) => u.id !== unit.id);
   if (others.length === 0) return 0;
-  const mean = others.reduce((sum, u) => sum + recordOf(state, u.id), 0) / others.length;
+  // P9b: the squad leader's record counts with weight `1 + privilegeScale` (2 at normal), everyone else's with 1
+  const leaderId = leaderOf(state)?.id;
+  const leaderWeight = 1 + privilegeScale(state, reg);
+  const weight = (u: Unit): number => (u.id === leaderId ? leaderWeight : 1);
+  const total = others.reduce((sum, u) => sum + weight(u), 0);
+  const mean = others.reduce((sum, u) => sum + weight(u) * recordOf(state, u.id), 0) / total;
   return int(TUNING.impunity.contagion * mean);
 }
 
@@ -123,7 +130,7 @@ export function impunityOf(state: CampaignState, reg: Registries, unitId: string
     leash: leashTerm(state),
     presence: int(-presenceOf(state, reg) * firstImpressionWeight(state, unitId)),
     dependency: int(-dependencyTerm(state, reg, unit)),
-    contagion: contagionTerm(state, unit),
+    contagion: contagionTerm(state, reg, unit),
     leverage: Math.min(T.secretCap, leverageOf(state, reg, unitId).length * T.secret),
   };
   const sum = terms.base + terms.record + terms.leash + terms.presence + terms.dependency + terms.contagion + terms.leverage;

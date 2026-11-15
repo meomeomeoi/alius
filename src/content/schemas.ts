@@ -521,6 +521,8 @@ export const ActivitySchema = BaseEntrySchema.extend({
   blockedWhenCommanderInjured: z.boolean().optional(),
   /** P9d: how much a companion's Want falls when she shares this activity (absent: the default of `TUNING.bonds.want.relief`). */
   wantRelief: int.min(0).max(100).optional(),
+  /** P9b: the squad leader may countermand this minor, non-combat order when it names another unit. */
+  countermandable: z.boolean().optional(),
 }).superRefine((a, ctx) => {
   const issue = (path: Array<string | number>, message: string) => ctx.addIssue({ code: 'custom', path, message });
   if (a.companion === 'none' && a.companionEffects.length > 0) issue(['companionEffects'], 'companion "none" cannot have companionEffects');

@@ -225,7 +225,8 @@ describe('weights and the tally', () => {
     expect(g).toMatchObject({ vote: 'abstain', weight: 0 });
     expect(t.ballots.map((b) => b.unitId)).toEqual([ANN, 'grunt_1']);
     withLeader(s, ANN);
-    expect(tallyVote(s, flat, 'upgrade', 'barracks').ballots.find((b) => b.unitId === 'grunt_1')!.vote).toBe('abstain'); // following the leader is chunk (b)
+    // with a leader she follows her vote at 0.5 (the leader's own tests are in leader.test.ts)
+    expect(tallyVote(s, flat, 'upgrade', 'barracks').ballots.find((b) => b.unitId === 'grunt_1')).toMatchObject({ vote: 'for', weight: 0.5 });
   });
 
   it('a squad of only grunts, only injured or nobody: the vote passes on the commander weight alone or by the ballots', () => {

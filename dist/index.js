@@ -779,6 +779,11 @@ function defectAllowedFor(reg, defectId, bond) {
 function powerOf(draft) {
   return draft.power ??= { votes: { log: [], seq: 0 } };
 }
+function leaderOf(state) {
+  const id = state.power?.hierarchy?.leaderId;
+  const unit = id === void 0 ? void 0 : state.squad.find((u) => u.id === id);
+  return unit && unit.kind === "named" && isLiving(unit) ? unit : null;
+}
 var RATION_MODES = ["equal", "fighters_first", "commander_short"];
 var rationsOf = (state) => state.base.rations !== void 0 && RATION_MODES.includes(state.base.rations) ? state.base.rations : "equal";
 function grudgeHolds(state, unitId) {
@@ -824,6 +829,7 @@ function forgetPower(draft, unitId) {
     if (h2.deposed?.unitId === unitId) delete h2.deposed;
     if (h2.standingBonus?.unitId === unitId) delete h2.standingBonus;
   }
+  if (power.countermand && (power.countermand.leaderId === unitId || power.countermand.unitId === unitId)) delete power.countermand;
   if (power.merit) {
     power.merit = power.merit.filter((m) => m.unitId !== unitId);
     if (power.merit.length === 0) delete power.merit;
@@ -5292,7 +5298,18 @@ var EVENT_TYPES = [
   "rule_broken",
   "compromise_reached"
 ];
-var ENGINE_EVENT_TYPES = ["granted_demand", "refused_demand", "followed_lead", "rule_accepted", "rule_refused"];
+var ENGINE_EVENT_TYPES = [
+  "granted_demand",
+  "refused_demand",
+  "followed_lead",
+  "rule_accepted",
+  "rule_refused",
+  // P9b: the squad leader overruled by the commander, endorsed, and a challenge won or lost
+  "leader_overruled",
+  "leader_endorsed",
+  "challenge_won",
+  "challenge_lost"
+];
 var ALL_EVENT_TYPES = [...EVENT_TYPES, ...ENGINE_EVENT_TYPES];
 var PROPOSAL_KINDS = [
   "friendship_deepen",
@@ -6041,7 +6058,9 @@ var ActivitySchema = BaseEntrySchema.extend({
   startsScene: external_exports.boolean().optional(),
   blockedWhenCommanderInjured: external_exports.boolean().optional(),
   /** P9d: how much a companion's Want falls when she shares this activity (absent: the default of `TUNING.bonds.want.relief`). */
-  wantRelief: int.min(0).max(100).optional()
+  wantRelief: int.min(0).max(100).optional(),
+  /** P9b: the squad leader may countermand this minor, non-combat order when it names another unit. */
+  countermandable: external_exports.boolean().optional()
 }).superRefine((a, ctx2) => {
   const issue = (path, message) => ctx2.addIssue({ code: "custom", path, message });
   if (a.companion === "none" && a.companionEffects.length > 0) issue(["companionEffects"], 'companion "none" cannot have companionEffects');
@@ -8788,6 +8807,36 @@ function refreshLeash(draft, reg) {
   return [{ type: "leash_refreshed", left: draft.leash.authorizationsLeft }];
 }
 
+// src/engine/power/leader.ts
+function privilegeScale(state, reg) {
+  if (!leaderOf(state)) return 1;
+  return assertiveness(state, reg).privilegeMult * (state.power?.hierarchy?.endorsed === true ? TUNING.power.endorse.multiplier : 1);
+}
+function leaderVoteWeight(state, reg) {
+  return TUNING.power.vote.leaderWeight * privilegeScale(state, reg);
+}
+function countermandChance(state, reg) {
+  if (!leaderOf(state)) return 0;
+  const C = TUNING.power.countermand;
+  return Math.min(C.cap, C.chance * privilegeScale(state, reg));
+}
+function countermandOpen(state) {
+  const c = state.power?.countermand;
+  return c !== void 0 && c.day === state.day && c.slot === state.slot ? c : null;
+}
+function rollCountermand(draft, ctx2, req) {
+  const leader = leaderOf(draft);
+  if (!leader) return null;
+  if (ctx2.registries.activities.get(req.activityId)?.countermandable !== true) return null;
+  const named = (id) => draft.squad.some((u) => u.id === id && u.kind === "named") && id !== leader.id;
+  const unitId = (req.companionId !== void 0 ? [req.companionId] : req.unitIds ?? []).find(named);
+  if (unitId === void 0) return null;
+  if (!ctx2.rng.chance(countermandChance(draft, ctx2.registries))) return null;
+  const { countermandChecked: _skip, ...payload } = req;
+  powerOf(draft).countermand = { leaderId: leader.id, unitId, payload, day: draft.day, slot: draft.slot };
+  return [{ type: "countermanded", leaderId: leader.id, unitId, activityId: req.activityId }];
+}
+
 // src/engine/discipline/restrictions.ts
 var NOT_LEAVE = ["talk", "medbay"];
 var nameOf = (state, id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
@@ -9234,10 +9283,14 @@ function dependencyTerm(state, reg, unit) {
   const upkeep = rel?.flags.includes("need_controlled") === true || unit.defects.some((d) => d.arc === "manage");
   return (Number.isFinite(stateDep) ? stateDep : 0) + (upkeep ? TUNING.impunity.defectUpkeep : 0);
 }
-function contagionTerm(state, unit) {
+function contagionTerm(state, reg, unit) {
   const others = namedLiving(state).filter((u) => u.id !== unit.id);
   if (others.length === 0) return 0;
-  const mean = others.reduce((sum, u) => sum + recordOf(state, u.id), 0) / others.length;
+  const leaderId = leaderOf(state)?.id;
+  const leaderWeight = 1 + privilegeScale(state, reg);
+  const weight = (u) => u.id === leaderId ? leaderWeight : 1;
+  const total2 = others.reduce((sum, u) => sum + weight(u), 0);
+  const mean = others.reduce((sum, u) => sum + weight(u) * recordOf(state, u.id), 0) / total2;
   return int2(TUNING.impunity.contagion * mean);
 }
 function concealedAffairs(state, reg) {
@@ -9283,7 +9336,7 @@ function impunityOf(state, reg, unitId) {
     leash: leashTerm(state),
     presence: int2(-presenceOf(state, reg) * firstImpressionWeight(state, unitId)),
     dependency: int2(-dependencyTerm(state, reg, unit)),
-    contagion: contagionTerm(state, unit),
+    contagion: contagionTerm(state, reg, unit),
     leverage: Math.min(T.secretCap, leverageOf(state, reg, unitId).length * T.secret)
   };
   const sum = terms.base + terms.record + terms.leash + terms.presence + terms.dependency + terms.contagion + terms.leverage;
@@ -10830,7 +10883,12 @@ function commanderVoteWeight(state, reg) {
   return (V.commanderBase + V.commanderPerRank * (socialRank(state, "authority") - 1)) * assertiveness(state, reg).commanderVoteMult;
 }
 function ballotFor(state, reg, unit, kind, subject) {
-  if (unit.kind !== "named") return { unitId: unit.id, vote: "abstain", weight: 0, score: 0, term: "values" };
+  if (unit.kind !== "named") {
+    const leader = leaderOf(state);
+    if (!leader) return { unitId: unit.id, vote: "abstain", weight: 0, score: 0, term: "values" };
+    const led = ballotFor(state, reg, leader, kind, subject);
+    return { unitId: unit.id, vote: led.vote, weight: TUNING.power.vote.gruntWeight, score: led.score, term: led.term };
+  }
   const B2 = TUNING.power.ballot;
   const lean = leanFor(state, reg, kind, subject);
   const values = effectiveValues(state, reg, unit);
@@ -10853,7 +10911,7 @@ function ballotFor(state, reg, unit, kind, subject) {
   let term = "values";
   for (const t of BALLOT_TERMS) if (Math.abs(parts[t]) > Math.abs(parts[term])) term = t;
   const score = BALLOT_TERMS.reduce((sum, t) => sum + parts[t], 0);
-  return { unitId: unit.id, vote: score >= 0 ? "for" : "against", weight: 1, score, term };
+  return { unitId: unit.id, vote: score >= 0 ? "for" : "against", weight: leaderOf(state)?.id === unit.id ? leaderVoteWeight(state, reg) : 1, score, term };
 }
 function tallyVote(state, reg, kind, subject) {
   const ballots = state.roster.activeIds.map((id) => state.squad.find((u) => u.id === id)).filter((u) => u !== void 0 && isLiving(u)).map((u) => ballotFor(state, reg, u, kind, subject));
@@ -11361,6 +11419,10 @@ function runActivity(draft, ctx2, request) {
   const req = asReq(request);
   const a = reg.activities.get(req.activityId);
   const events = [];
+  if (req.countermandChecked !== true) {
+    const countermanded = rollCountermand(draft, ctx2, req);
+    if (countermanded) return countermanded;
+  }
   const cost = activityCost(draft, reg, a);
   for (const k of ["credits", "supplies", "plyx"]) {
     if (cost[k]) {
@@ -17307,6 +17369,7 @@ function powerDayStep(draft, ctx2) {
     delete power.votes.open;
     events.push({ type: "vote_dropped", voteId: open3.id, reason: "day_end" });
   }
+  if (power.countermand) delete power.countermand;
   if (power.grudges) {
     events.push({ type: "grudges_ended", unitIds: Object.keys(power.grudges) });
     delete power.grudges;
@@ -17361,6 +17424,29 @@ registerVoteGate("rations/set", (state, payload, reg) => {
 registerAction("rations/set", (draft, payload) => {
   if (!isObj20(payload)) throw new Error("rations/set needs { mode }");
   return setRations(draft, payload.mode);
+});
+registerAction("power/countermand", (draft, payload, ctx2) => {
+  if (!isObj20(payload) || payload.answer !== "accept" && payload.answer !== "overrule") throw new Error('power/countermand needs { answer: "accept" | "overrule" }');
+  const open3 = countermandOpen(draft);
+  if (!open3) {
+    if (draft.power) delete draft.power.countermand;
+    throw new Error("There is no countermand to answer.");
+  }
+  delete draft.power.countermand;
+  if (payload.answer === "accept") return [{ type: "countermand_accepted", leaderId: open3.leaderId, unitId: open3.unitId }];
+  const events = runActivity(draft, ctx2, { ...open3.payload, countermandChecked: true });
+  events.push(...applyEventToUnit(draft, ctx2.registries, open3.leaderId, {
+    type: "leader_overruled",
+    actor: "commander",
+    targets: [open3.leaderId],
+    severity: "moderate",
+    evidence: "overruled the squad leader's call",
+    confidence: 1
+  }));
+  events.push(...addRecord(draft, open3.leaderId, TUNING.power.countermand.overruleRecord, "leader_overruled"));
+  events.push(...evaluateAutomatic(draft, ctx2.registries, open3.leaderId));
+  events.push({ type: "countermand_overruled", leaderId: open3.leaderId, unitId: open3.unitId });
+  return events;
 });
 
 // src/engine/dilemma/effects.ts

@@ -201,7 +201,7 @@ describe('activity cross references', () => {
       expect(Object.keys(e!.rows as object).sort(), t).toEqual(['extreme', 'major', 'minor', 'moderate']);
     }
     expect(r.eventDeltas.size).toBe(ALL_EVENT_TYPES.length);
-    expect(ALL_EVENT_TYPES).toHaveLength(38); // P9d: 33 the model reports, 5 only the engine writes
+    expect(ALL_EVENT_TYPES).toHaveLength(42); // P9b: 33 the model reports, 9 only the engine writes (P9d: 5, P9b: the leader's four)
   });
 
   it('table rows from the spec', async () => {

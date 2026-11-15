@@ -558,7 +558,7 @@ tests/**                                                        mirrors src; tes
   - events `countermanded`, `countermand_accepted`, `countermand_overruled`
 - Consumes: `leaderOf` (Task 7), `applyEventToUnit`, `addRecord`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `the leader's vote weighs 1.5 at normal, 2.25 at high, 0.75 at low`
   - `grunts follow the leader's vote at 0.5`
   - `contagion counts the leader's record twice at normal`
@@ -568,10 +568,10 @@ tests/**                                                        mirrors src; tes
   - `ACCEPT drops it; OVERRULE runs the activity once and applies leader_overruled and +3 record`
   - `a countermand left open is dropped at the next slot`
   - `privileges scale with the option` (acceptance 3: chance at low / normal / high)
-- [ ] **Step 2: Run** `npx vitest run tests/engine/power/leader.test.ts tests/engine/discipline` and confirm FAIL.
-- [ ] **Step 3: Implement.** `runActivity` calls `rollCountermand` first, unless the payload has `countermandChecked: true`. The `eventDeltas` rows are drafts.
-- [ ] **Step 4: Run** the tests, then `npm test`. P9 Impunity tests must stay green (no leader means no change).
-- [ ] **Step 5: Tick and commit:** `feat(power): leader privileges and countermand`.
+- [x] **Step 2: Run** `npx vitest run tests/engine/power/leader.test.ts tests/engine/discipline` and confirm FAIL.
+- [x] **Step 3: Implement.** `runActivity` calls `rollCountermand` first, unless the payload has `countermandChecked: true`. The `eventDeltas` rows are drafts.
+- [x] **Step 4: Run** the tests, then `npm test`. P9 Impunity tests must stay green (no leader means no change).
+- [x] **Step 5: Tick and commit:** `feat(power): leader privileges and countermand`.
 
 ### Task 9: Endorse and challenge
 

@@ -1,4 +1,10 @@
+import { runActivity } from '../activities';
 import { registerDayEndStep } from '../calendar';
+import { addRecord } from '../discipline/record';
+import { countermandOpen } from '../power/leader';
+import { TUNING } from '../tuning';
+import { applyEventToUnit } from '../relations/effects';
+import { evaluateAutomatic } from '../relations/graph';
 import { punishmentFor } from '../discipline/perception';
 import { registerAction, registerVoteGate } from '../dispatch';
 import { rationsVotable, RATION_MODES, setRations } from '../power/rations';
@@ -79,6 +85,29 @@ registerVoteGate('rations/set', (state, payload, reg) => {
 registerAction('rations/set', (draft, payload) => {
   if (!isObj(payload)) throw new Error('rations/set needs { mode }');
   return setRations(draft, payload.mode);
+});
+
+// ---------------------------------------------------------------------------------------------
+// The leader's moves
+
+/** ACCEPT drops a countermand; OVERRULE runs the activity once (not rolled again) and costs the leader Trust and the commander Impunity with her. */
+registerAction('power/countermand', (draft, payload, ctx) => {
+  if (!isObj(payload) || (payload.answer !== 'accept' && payload.answer !== 'overrule')) throw new Error('power/countermand needs { answer: "accept" | "overrule" }');
+  const open = countermandOpen(draft);
+  if (!open) {
+    if (draft.power) delete draft.power.countermand;
+    throw new Error('There is no countermand to answer.');
+  }
+  delete draft.power!.countermand;
+  if (payload.answer === 'accept') return [{ type: 'countermand_accepted', leaderId: open.leaderId, unitId: open.unitId }];
+  const events = runActivity(draft, ctx, { ...(open.payload as object), countermandChecked: true });
+  events.push(...applyEventToUnit(draft, ctx.registries, open.leaderId, {
+    type: 'leader_overruled', actor: 'commander', targets: [open.leaderId], severity: 'moderate', evidence: "overruled the squad leader's call", confidence: 1,
+  }));
+  events.push(...addRecord(draft, open.leaderId, TUNING.power.countermand.overruleRecord, 'leader_overruled'));
+  events.push(...evaluateAutomatic(draft, ctx.registries, open.leaderId));
+  events.push({ type: 'countermand_overruled', leaderId: open.leaderId, unitId: open.unitId });
+  return events;
 });
 
 export const GATED_KINDS: readonly VoteKind[] = VOTE_KINDS;

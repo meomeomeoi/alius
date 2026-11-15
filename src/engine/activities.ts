@@ -1,3 +1,4 @@
+import { rollCountermand } from './power/leader';
 import type { Entry, Registries } from '../content/types';
 import type { ActivityEffect } from '../content/schemas';
 import { consumeSlots, isQuietNight } from './calendar';
@@ -18,6 +19,8 @@ export interface ActivityRequest {
   /** Squad units picked for the alone variant (when the chosen focus asks for units). */
   unitIds?: string[];
   focus?: string;
+  /** P9b: the leader's countermand was answered (OVERRULE): run the activity without rolling it again. */
+  countermandChecked?: boolean;
 }
 
 type Cost = { credits?: number; supplies?: number; plyx?: number };
@@ -132,6 +135,12 @@ export function runActivity(draft: CampaignState, ctx: EngineCtx, request: unkno
   const req = asReq(request) as ActivityRequest;
   const a = reg.activities.get(req.activityId) as Entry;
   const events: EngineEvent[] = [];
+
+  // P9b: the squad leader may countermand a minor order (nothing happens, no slot is spent); draws rng only while a leader exists
+  if (req.countermandChecked !== true) {
+    const countermanded = rollCountermand(draft, ctx, req);
+    if (countermanded) return countermanded;
+  }
 
   const cost = activityCost(draft, reg, a);
   for (const k of ['credits', 'supplies', 'plyx'] as const) {

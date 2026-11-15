@@ -819,5 +819,55 @@
         "stress": 6
       }
     }
+  },
+  {
+    "id": "leader_overruled",
+    "cause": "The commander overruled her call",
+    "rows": {
+      "minor": {},
+      "moderate": {
+        "trust": -3
+      },
+      "major": {},
+      "extreme": {}
+    }
+  },
+  {
+    "id": "leader_endorsed",
+    "cause": "The commander made her second-in-command",
+    "rows": {
+      "minor": {},
+      "moderate": {},
+      "major": {
+        "trust": 4,
+        "affinity": 3
+      },
+      "extreme": {}
+    }
+  },
+  {
+    "id": "challenge_won",
+    "cause": "She lost the challenge to the commander",
+    "rows": {
+      "minor": {},
+      "moderate": {
+        "affinity": -3,
+        "stress": 5
+      },
+      "major": {},
+      "extreme": {}
+    }
+  },
+  {
+    "id": "challenge_lost",
+    "cause": "She won the challenge against the commander",
+    "rows": {
+      "minor": {
+        "trust": -2
+      },
+      "moderate": {},
+      "major": {},
+      "extreme": {}
+    }
   }
 ]

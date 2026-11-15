@@ -7,7 +7,9 @@ import { BALLOT_TERMS, VALUE_AXES, VOTE_KINDS, type Ballot, type BallotTerm, typ
 import { TUNING } from '../tuning';
 import { effectiveValues } from '../worldOptions/stances';
 import { missionById } from '../world/missions';
+import { leaderVoteWeight } from './leader';
 import { assertiveness } from './options';
+import { leaderOf } from './state';
 
 /**
  * Ballots and the tally of a squad vote (P9b §2). Everything here is pure and draws no rng: a ballot is a score from the
@@ -81,9 +83,17 @@ export function commanderVoteWeight(state: CampaignState, reg: Registries): numb
   return (V.commanderBase + V.commanderPerRank * (socialRank(state, 'authority') - 1)) * assertiveness(state, reg).commanderVoteMult;
 }
 
-/** One named unit's ballot. A grunt abstains (weight 0): she follows a leader only in chunk (b). */
+/**
+ * One unit's ballot. A named unit weighs 1 (the leader: her privileged weight). A grunt follows the leader's vote at 0.5, or
+ * abstains (weight 0) when there is no leader.
+ */
 export function ballotFor(state: CampaignState, reg: Registries, unit: Unit, kind: VoteKind, subject: string): Ballot {
-  if (unit.kind !== 'named') return { unitId: unit.id, vote: 'abstain', weight: 0, score: 0, term: 'values' };
+  if (unit.kind !== 'named') {
+    const leader = leaderOf(state);
+    if (!leader) return { unitId: unit.id, vote: 'abstain', weight: 0, score: 0, term: 'values' };
+    const led = ballotFor(state, reg, leader, kind, subject);
+    return { unitId: unit.id, vote: led.vote, weight: TUNING.power.vote.gruntWeight, score: led.score, term: led.term };
+  }
   const B = TUNING.power.ballot;
   const lean = leanFor(state, reg, kind, subject);
   const values = effectiveValues(state, reg, unit);
@@ -103,7 +113,7 @@ export function ballotFor(state: CampaignState, reg: Registries, unit: Unit, kin
   let term: BallotTerm = 'values';
   for (const t of BALLOT_TERMS) if (Math.abs(parts[t]) > Math.abs(parts[term])) term = t;
   const score = BALLOT_TERMS.reduce((sum, t) => sum + parts[t], 0);
-  return { unitId: unit.id, vote: score >= 0 ? 'for' : 'against', weight: 1, score, term };
+  return { unitId: unit.id, vote: score >= 0 ? 'for' : 'against', weight: leaderOf(state)?.id === unit.id ? leaderVoteWeight(state, reg) : 1, score, term };
 }
 
 /**

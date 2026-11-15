@@ -1,5 +1,5 @@
 import { isLiving } from '../economy';
-import type { CampaignState, PowerState, RationMode, Vote, VoteLogEntry } from '../state/types';
+import type { CampaignState, PowerState, RationMode, Unit, Vote, VoteLogEntry } from '../state/types';
 import { TUNING } from '../tuning';
 
 /**
@@ -10,6 +10,13 @@ import { TUNING } from '../tuning';
 /** The power state, created on the first write (a save without it reads as no votes, no hierarchy, no merit). */
 export function powerOf(draft: CampaignState): PowerState {
   return (draft.power ??= { votes: { log: [], seq: 0 } });
+}
+
+/** The squad leader, or null: the unit the hierarchy names, if she is still a named unit in service. */
+export function leaderOf(state: Pick<CampaignState, 'power' | 'squad'>): Unit | null {
+  const id = state.power?.hierarchy?.leaderId;
+  const unit = id === undefined ? undefined : state.squad.find((u) => u.id === id);
+  return unit && unit.kind === 'named' && isLiving(unit) ? unit : null;
 }
 
 /** How a shortage is shared out. */
@@ -74,6 +81,7 @@ export function forgetPower(draft: CampaignState, unitId: string): void {
     if (h.deposed?.unitId === unitId) delete h.deposed;
     if (h.standingBonus?.unitId === unitId) delete h.standingBonus;
   }
+  if (power.countermand && (power.countermand.leaderId === unitId || power.countermand.unitId === unitId)) delete power.countermand;
   if (power.merit) {
     power.merit = power.merit.filter((m) => m.unitId !== unitId);
     if (power.merit.length === 0) delete power.merit;

@@ -21,6 +21,7 @@ export function powerDayStep(draft: CampaignState, ctx: EngineCtx): EngineEvent[
     delete power.votes.open;
     events.push({ type: 'vote_dropped', voteId: open.id, reason: 'day_end' });
   }
+  if (power.countermand) delete power.countermand; // a countermand left open does not survive the day
   if (power.grudges) {
     events.push({ type: 'grudges_ended', unitIds: Object.keys(power.grudges) });
     delete power.grudges;

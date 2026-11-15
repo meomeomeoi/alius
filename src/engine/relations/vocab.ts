@@ -12,8 +12,11 @@ export const EVENT_TYPES = [
   'rule_kept', 'rule_broken', 'compromise_reached',
 ] as const;
 
-/** P9: events only the engine makes (a demand granted or refused; P9d: the commander followed her lead). Never offered to the model; `validateIntents` rejects them. */
-export const ENGINE_EVENT_TYPES = ['granted_demand', 'refused_demand', 'followed_lead', 'rule_accepted', 'rule_refused'] as const;
+/** P9: events only the engine makes (a demand granted or refused; P9d: the commander followed her lead; P9b: the leader's moves). Never offered to the model; `validateIntents` rejects them. */
+export const ENGINE_EVENT_TYPES = ['granted_demand', 'refused_demand', 'followed_lead', 'rule_accepted', 'rule_refused',
+  // P9b: the squad leader overruled by the commander, endorsed, and a challenge won or lost
+  'leader_overruled', 'leader_endorsed', 'challenge_won', 'challenge_lost',
+] as const;
 
 /** Every type that has an `eventDeltas` row: what the model may report and what only the engine writes. */
 export const ALL_EVENT_TYPES = [...EVENT_TYPES, ...ENGINE_EVENT_TYPES] as const;
