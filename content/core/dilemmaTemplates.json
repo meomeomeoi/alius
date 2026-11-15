@@ -1416,6 +1416,363 @@
     "optionCount": 2
   },
   {
+    "id": "evt_hc_route",
+    "scale": "minor",
+    "contexts": [
+      "expedition_event"
+    ],
+    "fixed": {
+      "title": "Two ways round the collapse",
+      "setup": "AUTHOR TO WRITE: A collapsed gallery splits the way ahead. The short route runs under unstable ceiling; the long one burns supplies the squad cannot spare.",
+      "options": [
+        {
+          "label": "Take the short way under the ceiling",
+          "effects": [
+            {
+              "type": "party_stress",
+              "amount": 5
+            }
+          ]
+        },
+        {
+          "label": "Go round by the dry road",
+          "effects": [
+            {
+              "type": "carried_supplies",
+              "amount": -1
+            }
+          ]
+        }
+      ]
+    },
+    "herCall": {
+      "trigger": {
+        "minLeadRank": 2
+      },
+      "outcomes": [
+        {
+          "id": "good",
+          "lean": {
+            "pragmatism": 1,
+            "autonomy": 1
+          },
+          "text": "leads the squad over a route of her own; it saves the day's march.",
+          "effects": [
+            {
+              "type": "party_stress",
+              "amount": -5
+            }
+          ]
+        },
+        {
+          "id": "bad",
+          "lean": {
+            "autonomy": 2
+          },
+          "text": "takes the squad down a route of her own; it is a dead end and the supplies go on the way back.",
+          "effects": [
+            {
+              "type": "carried_supplies",
+              "amount": -2
+            },
+            {
+              "type": "party_stress",
+              "amount": 10
+            }
+          ]
+        }
+      ],
+      "defectTilt": [
+        {
+          "category": "neural",
+          "shift": -0.1
+        }
+      ]
+    }
+  },
+  {
+    "id": "evt_hc_prisoner",
+    "scale": "minor",
+    "contexts": [
+      "expedition_event"
+    ],
+    "fixed": {
+      "title": "A captured scavenger",
+      "setup": "AUTHOR TO WRITE: The squad holds a scavenger caught at the edge of the camp. Nobody has said what happens to the prisoner next.",
+      "options": [
+        {
+          "label": "Hold and question the prisoner",
+          "effects": [
+            {
+              "type": "party_stress",
+              "amount": 5
+            }
+          ]
+        },
+        {
+          "label": "Release the prisoner with a ration",
+          "effects": [
+            {
+              "type": "carried_supplies",
+              "amount": -1
+            }
+          ]
+        }
+      ]
+    },
+    "herCall": {
+      "trigger": {
+        "stances": [
+          "open_defiance",
+          "defiant_loyal"
+        ],
+        "minImpunity": 50
+      },
+      "outcomes": [
+        {
+          "id": "good",
+          "lean": {
+            "mercy": 2
+          },
+          "text": "lets the scavenger go; the scavenger leaves a cache of salvage as thanks.",
+          "effects": [
+            {
+              "type": "loot",
+              "tableId": "loot_cache"
+            }
+          ]
+        },
+        {
+          "id": "bad",
+          "lean": {
+            "mercy": 1,
+            "ingroup": -1
+          },
+          "text": "lets the scavenger go; the scavenger comes back with friends and the squad is ambushed.",
+          "effects": [
+            {
+              "type": "party_hp",
+              "pct": -10
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "evt_hc_cache",
+    "scale": "minor",
+    "contexts": [
+      "expedition_event"
+    ],
+    "fixed": {
+      "title": "A sealed cache",
+      "setup": "AUTHOR TO WRITE: A sealed cache sits in the open, its lock half rusted through. Opening it properly would take time the squad may not have.",
+      "options": [
+        {
+          "label": "Cut the seal with care",
+          "effects": [
+            {
+              "type": "party_hp",
+              "pct": -5
+            }
+          ]
+        },
+        {
+          "label": "Leave it sealed and move on",
+          "effects": [
+            {
+              "type": "party_stress",
+              "amount": 5
+            }
+          ]
+        }
+      ]
+    },
+    "herCall": {
+      "trigger": {
+        "minLeadRank": 2
+      },
+      "outcomes": [
+        {
+          "id": "good",
+          "lean": {
+            "pragmatism": 1
+          },
+          "text": "breaks the cache open without waiting; it is full.",
+          "effects": [
+            {
+              "type": "loot",
+              "tableId": "loot_cache"
+            }
+          ]
+        },
+        {
+          "id": "bad",
+          "lean": {
+            "autonomy": 1,
+            "pragmatism": -1
+          },
+          "text": "breaks the cache open without waiting; it is rigged.",
+          "effects": [
+            {
+              "type": "party_hp",
+              "pct": -10
+            },
+            {
+              "type": "party_stress",
+              "amount": 5
+            }
+          ]
+        }
+      ],
+      "defectTilt": [
+        {
+          "category": "cybernetic",
+          "shift": 0.1
+        }
+      ]
+    }
+  },
+  {
+    "id": "evt_hc_fallback",
+    "scale": "minor",
+    "contexts": [
+      "expedition_event"
+    ],
+    "fixed": {
+      "title": "Fire from the ridge",
+      "setup": "AUTHOR TO WRITE: Fire comes down from a ridge nobody scouted. Someone has to decide whether the squad holds or falls back.",
+      "options": [
+        {
+          "label": "Fall back to the last cover",
+          "effects": [
+            {
+              "type": "carried_supplies",
+              "amount": -1
+            }
+          ]
+        },
+        {
+          "label": "Hold the line",
+          "effects": [
+            {
+              "type": "party_hp",
+              "pct": -10
+            }
+          ]
+        }
+      ]
+    },
+    "herCall": {
+      "trigger": {
+        "minLeadRank": 2,
+        "stances": [
+          "defiant_loyal"
+        ],
+        "minImpunity": 50
+      },
+      "outcomes": [
+        {
+          "id": "good",
+          "lean": {
+            "ingroup": 2
+          },
+          "text": "calls the fallback and the others follow; nobody is left behind.",
+          "effects": [
+            {
+              "type": "party_stress",
+              "amount": -10
+            }
+          ]
+        },
+        {
+          "id": "bad",
+          "lean": {
+            "sacrifice": -1,
+            "ingroup": 1
+          },
+          "text": "calls the fallback and the others follow; the packs are dropped on the way.",
+          "effects": [
+            {
+              "type": "carried_supplies",
+              "amount": -3
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "evt_hc_orders",
+    "scale": "minor",
+    "contexts": [
+      "expedition_event"
+    ],
+    "fixed": {
+      "title": "Who leads the next stretch",
+      "setup": "AUTHOR TO WRITE: The squad argues over who leads the next stretch. The argument is not about the way; it is about who is heard.",
+      "options": [
+        {
+          "label": "Take the lead yourself",
+          "effects": [
+            {
+              "type": "party_stress",
+              "amount": 5
+            }
+          ]
+        },
+        {
+          "label": "Stop and settle it",
+          "effects": [
+            {
+              "type": "carried_supplies",
+              "amount": -1
+            }
+          ]
+        }
+      ]
+    },
+    "herCall": {
+      "trigger": {
+        "stances": [
+          "open_defiance"
+        ],
+        "minImpunity": 50
+      },
+      "outcomes": [
+        {
+          "id": "good",
+          "lean": {
+            "autonomy": 1,
+            "ingroup": 1
+          },
+          "text": "gives the others orders of her own; the stretch goes quietly.",
+          "effects": [
+            {
+              "type": "party_stress",
+              "amount": -5
+            }
+          ]
+        },
+        {
+          "id": "bad",
+          "lean": {
+            "autonomy": 2,
+            "corporate": -1
+          },
+          "text": "gives the others orders of her own; half of them do not take it well.",
+          "effects": [
+            {
+              "type": "party_stress",
+              "amount": 10
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
     "id": "scapegoat_mission",
     "scale": "major",
     "contexts": [

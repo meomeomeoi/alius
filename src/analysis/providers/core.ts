@@ -283,6 +283,8 @@ export const CORE_GLOSSARY_IDS: readonly string[] = [
   // P9b (the WORLD PARAMETERS cards and the VOTE panel address these)
   'squad_power', 'voting', 'vote', 'rations',
   'standing', 'squad_leader', 'countermand', 'endorse', 'challenge', 'outside_perception', 'scapegoat',
+  // P9e
+  'her_call', 'ask_first',
 ];
 
 let registered = false;

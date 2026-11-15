@@ -238,3 +238,25 @@ describe('no pronoun for the commander in the text modules the main model and th
     expect(bad.map((l) => l.trim().slice(0, 100))).toEqual([]);
   });
 });
+
+describe('no pronoun for the commander in the her-call content (P9e)', () => {
+  it('every her-call event text, outcome text and the her_call / ask_first glossary entries', () => {
+    const texts: Array<[string, string]> = [
+      ...[...reg.dilemmaTemplates.values()].filter((t) => t.herCall !== undefined).flatMap((t): Array<[string, string]> => {
+        const fixed = t.fixed as { title: string; setup: string; options: Array<{ label: string }> };
+        const outcomes = (t.herCall as { outcomes: Array<{ id: string; text: string }> }).outcomes;
+        return [
+          [`${String(t.id)}.title`, fixed.title], [`${String(t.id)}.setup`, fixed.setup],
+          ...fixed.options.map((o, i): [string, string] => [`${String(t.id)}.option${i}`, o.label]),
+          ...outcomes.map((o): [string, string] => [`${String(t.id)}.${o.id}`, o.text]),
+        ];
+      }),
+      ...['her_call', 'ask_first'].flatMap((id): Array<[string, string]> => {
+        const g = reg.glossary.get(id)!;
+        return [[`glossary:${id}.short`, String(g.short ?? '')], [`glossary:${id}.long`, String(g.long ?? '')]];
+      }),
+    ];
+    expect(texts).toHaveLength(5 * 6 + 2 * 2);
+    expect(texts.filter(([, t]) => COMMANDER_PRONOUN.test(t) || /commander[^.]*\btheir\b/i.test(t)).map(([where]) => where)).toEqual([]);
+  });
+});

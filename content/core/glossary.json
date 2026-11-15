@@ -1418,5 +1418,25 @@
       "vote",
       "leash"
     ]
+  },
+  {
+    "id": "her_call",
+    "term": "Her call",
+    "short": "A soldier with a will of her own sometimes takes a decision in the field herself. A bad one marks the run: if it fails, oversight wants a name.",
+    "long": "AUTHOR TO WRITE: At an event on a run, a soldier who pushes for power, or who defies the commander openly, may decide for the squad without asking. The engine picks who and how it turns out, from her values and her Impunity; nobody rolls and nothing is offered to choose. A good call earns her merit and boldness and blames nobody. A bad call costs the run (supplies, stress, wounds) and marks a command mission: if the run later fails, oversight asks for a name and the commander answers for her or shifts it onto her. The ASK ME FIRST order stops it for one soldier.",
+    "see": [
+      "ask_first",
+      "scapegoat",
+      "impunity"
+    ]
+  },
+  {
+    "id": "ask_first",
+    "term": "Ask me first",
+    "short": "A standing order: she must ask before deciding anything in the field. Giving it costs her Trust; it holds until it is lifted.",
+    "long": "AUTHOR TO WRITE: While the order holds she never takes a decision on her own at an event, however bold she is. Giving it goes against her values and costs Trust once, like an overruled decision; lifting it is free. It can only be given or lifted at the base, and a run that is under way reads it live at every node.",
+    "see": [
+      "her_call"
+    ]
   }
 ]
