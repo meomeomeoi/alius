@@ -2,6 +2,7 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { Registries } from '../../src/content/types';
 import type { CampaignState } from '../../src/engine/state/types';
+import { getSettings } from '../../src/settings';
 import { FakeStAdapter } from '../../src/st/fake';
 import { renderSysTab, type SysCtx } from '../../src/ui/shell/sysTab';
 import { campaign, loadCore } from '../helpers/world';
@@ -23,7 +24,7 @@ function draw(state: CampaignState | null, over: Partial<SysCtx> = {}) {
     st, getState: () => state, getLoad: () => ({ kind: 'none' }), getRegistries: () => reg, dispatch,
     toast: () => {}, modal: async () => null, onSettingsChanged: () => {}, ...over,
   });
-  return { host, dispatch, row: (id: string) => host.querySelector<HTMLButtonElement>(`button[data-category="${id}"]`) };
+  return { host, dispatch, st, row: (id: string) => host.querySelector<HTMLButtonElement>(`button[data-category="${id}"]`) };
 }
 
 describe('SYS › Content (P9d)', () => {
@@ -67,5 +68,17 @@ describe('SYS › Content (P9d)', () => {
     expect(v.host.textContent).not.toContain('Explicit scenes allowed');
     expect(v.host.querySelector('input[name="explicitContent"]')).toBeNull();
     expect(v.host.querySelector('[data-analyze="setting:explicitContent"]')).toBeNull();
+  });
+});
+
+describe('SYS › Relationships (Task 12)', () => {
+  it('has a ruleWording row that is explained and toggles the setting', () => {
+    const v = draw(campaign(reg, 4));
+    const box = v.host.querySelector<HTMLInputElement>('input[name="ruleWording"]')!;
+    expect(box.checked).toBe(true);
+    expect(box.closest('label')!.getAttribute('data-analyze')).toBe('setting:ruleWording');
+    box.checked = false;
+    box.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(getSettings(v.st).ruleWording).toBe(false);
   });
 });

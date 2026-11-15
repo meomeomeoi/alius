@@ -109,6 +109,11 @@ export function answerRule(draft: CampaignState, ctx: EngineCtx, ruleId: string,
   return events;
 }
 
+/** A proposal the app did not deliver (a chat switch, the setting off, a failed call) is delivered with the template's text at the next day end. */
+export function deliverStaleRules(draft: CampaignState): EngineEvent[] {
+  return rulesOf(draft).filter((r) => r.status === 'proposed' && !r.delivered && r.day < draft.day).flatMap((r) => deliverRule(draft, r.id));
+}
+
 /** A scene with her that ends while her rule is still being negotiated puts it back as a proposal. */
 export function returnNegotiations(draft: CampaignState, participants: string[]): EngineEvent[] {
   const back = rulesOf(draft).filter((r) => r.status === 'negotiating' && participants.includes(r.unitId));

@@ -217,3 +217,14 @@ describe('settings', () => {
     }
   });
 });
+
+describe('P9d ruleWording', () => {
+  it('defaults to on, a bad value falls back, an update is kept', () => {
+    const st = new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' });
+    expect(getSettings(st).ruleWording).toBe(true);
+    st.settings = { ruleWording: 'sure' };
+    expect(getSettings(st).ruleWording).toBe(true);
+    updateSettings(st, { ruleWording: false });
+    expect(getSettings(st).ruleWording).toBe(false);
+  });
+});

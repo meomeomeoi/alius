@@ -589,3 +589,56 @@ describe('the DISCIPLINE menu and restriction chips in SQUAD (P9)', () => {
   });
 });
 
+
+describe('the dossier bond block (P9d)', () => {
+  const bonded = (over: { want?: number; rules?: NonNullable<CampaignState['bonds']>['rules']; bond?: boolean } = {}): CampaignState => {
+    const s = campaign();
+    const id = s.squad[0].id;
+    s.relations[id].stateId = 'lover';
+    if (over.bond !== false) s.squad[0].bond = { leadStyle: 'dominant', attachment: 'intense', desire: 'high', caretaker: false, ownLimits: { categories: [] }, publicity: 'known' };
+    if (over.want !== undefined) s.relations[id].want = over.want;
+    if (over.rules) s.bonds = { rules: over.rules };
+    return s;
+  };
+  const rule = (over: object = {}) => ({ id: 'r1', unitId: 'unit_rhea', templateId: 'report_evening', text: 'Report to me every evening.', status: 'active' as const, day: 1, brokenCount: 2, ...over });
+
+  it('shows the lead style, attachment and desire as chips that carry data-analyze', () => {
+    const { host } = render({ state: bonded() });
+    const chips = [...host.querySelectorAll<HTMLElement>('.alius-bond .alius-chip[data-bond]')];
+    expect(chips.map((c) => c.textContent)).toEqual(['LEADS: DOMINANT', 'ATTACHES: INTENSE', 'DESIRE: HIGH']);
+    for (const c of chips) expect(c.getAttribute('data-analyze')).toBe('glossary:bond_profile');
+  });
+
+  it('shows the Want as a band word, and the number only with raw values', () => {
+    const state = bonded({ want: 72 });
+    const plain = render({ state }).host.querySelector('.alius-bond [data-want]')!;
+    expect(plain.textContent).toBe('WANT: ACHING');
+    expect(plain.getAttribute('data-analyze')).toBe('glossary:want');
+    document.body.innerHTML = '';
+    expect(render({ state, raw: true }).host.querySelector('.alius-bond [data-want]')!.textContent).toBe('WANT: ACHING (72)');
+  });
+
+  it('no Want chip for a unit Want does not run for', () => {
+    expect(render({ state: bonded({ bond: false, want: undefined }) }).host.querySelector('.alius-bond [data-want]')).toBeNull();
+    const calm = bonded();
+    expect(render({ state: calm }).host.querySelector('.alius-bond [data-want]')!.textContent).toBe('WANT: CALM');
+  });
+
+  it('lists her rules with status and broken count; suspended ones are hidden', () => {
+    const { host } = render({ state: bonded({ rules: [rule(), rule({ id: 'r2', templateId: 'hands_off_gear', text: 'Hands off my kit.', status: 'negotiating', brokenCount: 0 }), rule({ id: 'r3', status: 'suspended' })] }) });
+    const items = [...host.querySelectorAll<HTMLElement>('.alius-bond [data-rule]')];
+    expect(items.map((i) => i.textContent)).toEqual(['ACTIVE — Report to me every evening. (broken 2×)', 'NEGOTIATING — Hands off my kit.']);
+    expect(items[0].getAttribute('data-analyze')).toBe('relationshipRuleTemplates:report_evening');
+    expect(JSON.parse(items[0].getAttribute('data-analyze-ctx')!)).toEqual({ unitId: 'unit_rhea', ruleId: 'r1' });
+  });
+
+  it('is text only and every marked element resolves in the analysis panel', () => {
+    const { host } = render({ state: bonded({ want: 50, rules: [rule({ text: '<img src=x onerror=alert(1)>' })] }) });
+    expect(host.querySelectorAll('.alius-bond img')).toHaveLength(0);
+    expect(markedWithout(host)).toEqual([]);
+  });
+
+  it('a unit without a bond profile, a rule or Want shows no block', () => {
+    expect(render({ state: bonded({ bond: false }) }).host.querySelector('.alius-bond')).toBeNull();
+  });
+});

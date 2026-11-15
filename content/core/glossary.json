@@ -1275,5 +1275,21 @@
       "lead",
       "demand"
     ]
+  },
+  {
+    "id": "relationship_rules",
+    "term": "Relationship rules",
+    "short": "A soldier who leads in a close bond may ask the commander to live by a rule. Accept it, negotiate a version, or refuse; a broken rule costs trust and warmth.",
+    "long": "AUTHOR TO WRITE: A leading partner proposes a rule in her own words, in the scene or as a message. Accepting makes it binding: some rules the game checks itself (a day without contact, a run taken without her), others it reads from what you say and do. A broken rule lowers her Trust and Affinity and stresses her, and others who saw it remember. You can negotiate: you talk it through and agree a version both can keep. She asks for no more than three at a time, and none that you have switched off.",
+    "see": [
+      "lead",
+      "want",
+      "content_categories"
+    ]
+  },
+  {
+    "id": "setting_rule_wording",
+    "term": "Rule wording",
+    "short": "The mechanic model puts a soldier's rule proposal into her own words. Off, the proposal uses the template text as it is."
   }
 ]

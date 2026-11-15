@@ -2,7 +2,7 @@ import type { EngineCtx, EngineEvent } from '../dispatch';
 import type { CampaignState } from '../state/types';
 import { releaseWantBreakdowns, startCrossedBreakdowns } from './breakdown';
 import { openDesireDemands } from './desire';
-import { checkDailyContact, rollRules } from './rules';
+import { checkDailyContact, deliverStaleRules, rollRules } from './rules';
 import { wantStep } from './want';
 
 /**
@@ -13,6 +13,7 @@ import { wantStep } from './want';
  */
 export function bondsDayStep(draft: CampaignState, ctx: EngineCtx): EngineEvent[] {
   return [
+    ...deliverStaleRules(draft),
     ...releaseWantBreakdowns(draft),
     ...wantStep(draft, ctx.registries),
     ...startCrossedBreakdowns(draft, ctx),

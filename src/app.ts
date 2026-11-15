@@ -43,6 +43,7 @@ import type { LeashKind } from './engine/state/types';
 import { createDilemmas, type DilemmaController } from './loyalty/dilemmaController';
 import { createLoyalty, type LoyaltyController } from './loyalty/loyaltyController';
 import { clearDisciplineDirectives, disciplineDirectives } from './discipline/context';
+import { createBonds, type BondsController } from './bonds/controller';
 import { createDiscipline, type DisciplineController } from './discipline/controller';
 import { createOnboarding, type OnboardingController } from './onboarding/controller';
 import { coachHints, isTutorialRun, lockedTabs, unlockedBetween } from './engine/onboarding';
@@ -175,6 +176,8 @@ export interface AliusApp {
   loyalty: LoyaltyController;
   /** Stance and threat directives (P9). */
   discipline: DisciplineController;
+  /** P9d: rule proposals (wording, delivery, the three answers). */
+  bonds: BondsController;
   /** P11: the prologue's scenes, coach hints and guided evening. */
   onboarding: OnboardingController;
   /**
@@ -330,6 +333,12 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
   const dilemmas = createDilemmas(worldDeps);
   const loyalty = createLoyalty({ ...worldDeps, context, refreshContext: applyContext });
   const discipline = createDiscipline({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o) });
+  const bonds = createBonds({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o) });
+  /** P9d: the three answers to a rule proposal, from a scene or the COMMS thread. */
+  const answerRule = (ruleId: string, how: 'accept' | 'negotiate' | 'refuse'): void => {
+    if (how === 'negotiate') void bonds.negotiateRule(ruleId).then((ok) => { if (ok) shell.open(); });
+    else void bonds.answerRule(ruleId, how);
+  };
   const onboarding = createOnboarding({
     ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o), modal: (o) => shell.modal(o),
     endScene: async () => {
@@ -488,6 +497,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         if (e.type === 'unit_terminated') removeFromChat(String(e.unitId), `${state?.squad.find((u) => u.id === e.unitId)?.displayName ?? 'A unit'} DEACTIVATED`);
       }
       discipline.onEvents(events);
+      bonds.onEvents(events); // P9d: a new rule proposal is worded and delivered
       onboarding.onEvents(events); // the line-up and first words: the cap question and the step completing when the scene closes (P11)
       if (has('scene_ended') || has('scene_aborted')) {
         loyalty.onSceneClosed();
@@ -524,6 +534,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         onPunish: (unitId, measure, days) => void discipline.punish(unitId, measure, days),
         onUndoDiscipline: (id) => void discipline.undo(id),
         onAnswerDemand: (id, answer) => void discipline.answerDemand(id, answer),
+        onAnswerRule: answerRule,
       });
       return;
     }
@@ -1765,6 +1776,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       onUndoDiscipline: (id) => void discipline.undo(id),
       onAnswerDemand: (id, answer) => void discipline.answerDemand(id, answer),
       onTalkDemand: (id) => void discipline.talkDemand(id).then((ok) => { if (ok) shell.open(); }),
+      onAnswerRule: answerRule,
       onRead: (unitId) => {
         const unit = state?.dms[unitId];
         if (unit?.some((m) => m.from !== 'commander' && !m.read)) api.dispatch({ type: 'dm/read', payload: { unitId } }, { expectChatId: st.getActiveChat()?.chatId });
@@ -1794,6 +1806,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     dilemmas,
     loyalty,
     discipline,
+    bonds,
     onboarding,
     fileLeash,
     intakeUnit,

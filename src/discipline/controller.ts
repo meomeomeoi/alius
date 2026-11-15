@@ -109,6 +109,9 @@ export function createDiscipline(deps: DisciplineDeps): DisciplineController {
       } else if (e.type === 'delegate_demand' && typeof e.demandId === 'string') {
         // a favor she did on credit (a delegate one band short): her demand is worded and delivered like any other
         void wordAndDeliver(e.demandId, chatId()).catch(() => {});
+      } else if (e.type === 'demand_opened' && typeof e.demandId === 'string' && state()?.discipline?.demands.some((d) => d.id === e.demandId && deps.registries().demandTemplates.get(d.templateId)?.kind === 'desire')) {
+        // P9d: her want arrives from the day end (the daily roll never opens it): worded and delivered like any other demand
+        void wordAndDeliver(e.demandId, chatId()).catch(() => {});
       } else if (e.type === 'threat_lapsed') {
         deps.toast('info', `A threat lapsed: ${nameOf(String(e.unitId))} saw the commander back down.`);
       } else if (e.type === 'covert_sabotage' && deps.settings().debug) {

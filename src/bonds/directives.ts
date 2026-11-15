@@ -5,7 +5,7 @@ import type { CampaignState } from '../engine/state/types';
 import type { ContextBuilder } from '../llm/context';
 
 // The non-engine layer of P9d (like `src/discipline/`): it turns engine state into the lines the main model reads.
-// Directive ids owned here: `content` (manual), `limits:<unitId>`, `lead` and `boundary:<n>` (scene). `ask:<unitId>` is the
+// Directive ids owned here: `content` (manual), `limits:<unitId>`, `lead`, `boundary:<n>` and `rule:<unitId>` (scene). `ask:<unitId>` is the
 // ASK chip's one-reply directive (set by the scene controller). Later tasks add `want:`, `rule:`, `publicity:` and
 // `co_command:`, each cleared by the function that sets it.
 
@@ -38,7 +38,7 @@ const wantSet = new WeakMap<ContextBuilder, Set<string>>();
  * of categories reaches the next generation. With no campaign (`null`) it clears them all.
  */
 export function bondsDirectives(builder: ContextBuilder, state: CampaignState | null, reg: Registries): void {
-  builder.clearMatching((d) => d.id.startsWith('limits:') || d.id.startsWith('boundary:'));
+  builder.clearMatching((d) => d.id.startsWith('limits:') || d.id.startsWith('boundary:') || d.id.startsWith('rule:'));
   builder.clearDirective('lead');
   for (const id of wantSet.get(builder) ?? []) builder.clearDirective(id);
   wantSet.set(builder, new Set());
@@ -70,6 +70,19 @@ export function bondsDirectives(builder: ContextBuilder, state: CampaignState | 
     if (!unit || (band !== 'aching' && band !== 'desperate')) continue;
     builder.setDirective({ id: `want:${id}`, expiresAfter: 'manual', text: `${unit.displayName} is restless and irritable with unmet want; it colours how she speaks to the commander.` });
     wantSet.get(builder)!.add(`want:${id}`);
+  }
+
+  // a rule she proposed: pressed in the scene she is in, or negotiated there (from state, so it survives a reload)
+  for (const rule of state.bonds?.rules ?? []) {
+    const unit = state.squad.find((u) => u.id === rule.unitId);
+    if (!unit || !state.scene.participants.includes(unit.id) || (rule.status !== 'negotiating' && !(rule.status === 'proposed' && rule.delivered === true))) continue;
+    const text = clean(rule.text);
+    builder.setDirective({
+      id: `rule:${unit.id}`, expiresAfter: 'scene',
+      text: rule.status === 'negotiating'
+        ? `${unit.displayName} proposed a rule: "${text}" She and the commander negotiate it now; they settle on a version both can live with.`
+        : `${unit.displayName} has proposed a rule and presses it this scene: "${text}".`,
+    });
   }
 
   // who leads a romantic scene (decided by the engine, never by the model) and the boundaries the commander set in it

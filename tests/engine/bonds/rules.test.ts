@@ -420,3 +420,19 @@ describe('content categories and rules (Review Focus 3)', () => {
     expect(d.bonds!.rules.find((x) => x.id === act.id)!.brokenCount).toBe(0);
   });
 });
+
+describe('proposals the app never delivered', () => {
+  it('the next day step delivers the template text, but never on the day it was proposed', () => {
+    const s = world();
+    const r = rule(s, 'report_evening', 'proposed');
+    r.day = 10;
+    const same = structuredClone(s);
+    bondsDayStep(same, { registries: reg, rng: new Rng(same.rng) });
+    expect(same.bonds!.rules.find((x) => x.id === r.id)!.delivered).not.toBe(true);
+    const later = { ...structuredClone(s), day: 11 };
+    const events = bondsDayStep(later, { registries: reg, rng: new Rng(later.rng) });
+    expect(later.bonds!.rules.find((x) => x.id === r.id)).toMatchObject({ delivered: true });
+    expect(ofType(events, 'rule_delivered')).toHaveLength(1);
+    expect(later.dms[ANN].at(-1)!.text).toBe(r.text);
+  });
+});

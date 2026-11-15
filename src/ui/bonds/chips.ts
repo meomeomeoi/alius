@@ -1,5 +1,5 @@
 import type { Registries } from '../../content/types';
-import type { SceneRecord } from '../../engine/state/types';
+import type { CampaignState, SceneRecord } from '../../engine/state/types';
 import { TUNING } from '../../engine/tuning';
 import { analyzeAttrs, analyzeNative } from '../analyze/mark';
 import { h } from '../dom';
@@ -72,4 +72,37 @@ export function drawLeadChips(host: HTMLElement, scene: Pick<SceneRecord, 'lead'
     redraw();
   };
   host.append(h('div', { class: 'alius-lead-limit' }, input, ' ', chip('limit-set', '[SET]', send)));
+}
+
+export interface RuleChipHandlers {
+  accept(ruleId: string): void;
+  negotiate(ruleId: string): void;
+  refuse(ruleId: string): void;
+}
+
+/**
+ * The proposals of leading partners waiting for an answer (P9d): `{NAME} PROPOSES A RULE: text` with [ACCEPT] [NEGOTIATE] [REFUSE].
+ * Drawn from the state alone, only for delivered proposals of the units `pick` accepts. [ACCEPT] is soft-disabled (`aria-disabled`)
+ * while she already holds the most rules a unit may. Text only.
+ */
+export function drawRuleChips(host: HTMLElement, state: CampaignState, reg: Registries, pick: (c: { unitId: string }) => boolean, on: RuleChipHandlers): void {
+  host.replaceChildren();
+  for (const rule of state.bonds?.rules ?? []) {
+    if (rule.status !== 'proposed' || rule.delivered !== true || !pick({ unitId: rule.unitId })) continue;
+    const name = (state.squad.find((u) => u.id === rule.unitId)?.displayName ?? rule.unitId).toUpperCase();
+    const full = state.bonds!.rules.filter((r) => r.unitId === rule.unitId && r.status === 'active').length >= TUNING.bonds.rules.maxActive;
+    const button = (kind: 'accept' | 'negotiate' | 'refuse', text: string, run: () => void, soft = false): HTMLElement => {
+      const b = h('button', {
+        type: 'button', class: 'alius-btn alius-tagchip', 'data-rule-answer': kind, 'data-rule': rule.id,
+        ...(soft ? { 'aria-disabled': 'true', title: `She holds ${TUNING.bonds.rules.maxActive} rules already.` } : {}), ...analyzeNative('glossary:relationship_rules'),
+        onclick: () => { if (b.getAttribute('aria-disabled') !== 'true') run(); },
+      }, text);
+      return b;
+    };
+    host.append(h('div', { class: 'alius-chip-group', 'data-rule-group': rule.id },
+      h('span', { class: 'alius-chip', 'data-rule': rule.id, ...analyzeAttrs(`relationshipRuleTemplates:${rule.templateId}`, { unitId: rule.unitId, ruleId: rule.id }) }, `${name} PROPOSES A RULE: ${rule.text}`),
+      button('accept', '[ACCEPT]', () => on.accept(rule.id), full),
+      button('negotiate', '[NEGOTIATE]', () => on.negotiate(rule.id)),
+      button('refuse', '[REFUSE]', () => on.refuse(rule.id))));
+  }
 }

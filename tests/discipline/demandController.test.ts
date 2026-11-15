@@ -196,3 +196,27 @@ describe('POSTPONE on her want (P9d)', () => {
     expect(dirs(r)).not.toContain('trying to be patient');
   });
 });
+
+describe('a desire demand opened by the day end (P9d)', () => {
+  it('is worded and delivered when its demand_opened event arrives; an ordinary one from the same kind of event is left to the roll', async () => {
+    const r = rig({ wording: false });
+    const { openDemand } = await import('../../src/engine/discipline/demands');
+    let id = '';
+    r.h.setState((s) => { id = openDemand(s, { registries: reg, rng: new Rng(s.rng) }, ANN, { desire: true })!.demand.id; });
+    expect(demands(r)[0].status).toBe('undelivered');
+    r.discipline.onEvents([{ type: 'demand_opened', demandId: id, unitId: ANN }]);
+    await new Promise((res) => setTimeout(res, 0));
+    expect(demands(r)[0]).toMatchObject({ id, status: 'open' });
+    expect(r.h.state().dms[ANN].at(-1)).toMatchObject({ initiated: true });
+  });
+
+  it('an ordinary demand_opened event does nothing here', async () => {
+    const r = rig({ wording: false });
+    const { openDemand } = await import('../../src/engine/discipline/demands');
+    let id = '';
+    r.h.setState((s) => { id = openDemand(s, { registries: reg, rng: new Rng(s.rng) }, ANN)!.demand.id; });
+    r.discipline.onEvents([{ type: 'demand_opened', demandId: id, unitId: ANN }]);
+    await new Promise((res) => setTimeout(res, 0));
+    expect(demands(r)[0].status).toBe('undelivered');
+  });
+});

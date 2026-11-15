@@ -1,4 +1,5 @@
 import type { Entry, Registries } from '../../content/types';
+import { wantBand, wantEligible, wantOf } from '../../engine/bonds';
 import { knownSkills, loadoutSize, respecCost, xpToNext } from '../../engine/progression';
 import { activeLoadout } from '../../engine/combat/skills';
 import { skillById } from '../../engine/combat/targeting';
@@ -254,6 +255,31 @@ function restrictionLine(unit: Unit, state: CampaignState): HTMLElement | null {
     h('span', { class: 'alius-chip', 'data-restriction': r.kind, ...analyzeAttrs('glossary:restriction', { unitId: unit.id }) }, RESTRICTION_LABEL[r.kind])), ' · '));
 }
 
+/**
+ * The bond part of a dossier (P9d): her lead style, attachment and desire as chips, her Want as a band word (the number only
+ * with raw values) while Want runs for her or is stored, and her rules with status and how often each was broken (suspended
+ * ones are hidden). Nothing for a unit with none of these.
+ */
+function bondBlock(unit: Unit, state: CampaignState, ctx: SquadTabCtx): HTMLElement | null {
+  if (unit.kind !== 'named') return null;
+  const reg = ctx.registries;
+  const raw = ctx.settings().showRawValues;
+  const live = { unitId: unit.id };
+  const rules = (state.bonds?.rules ?? []).filter((r) => r.unitId === unit.id && (r.status === 'active' || r.status === 'negotiating' || (r.status === 'proposed' && r.delivered === true)));
+  const showWant = wantEligible(state, reg, unit.id) || wantOf(state, unit.id) > 0;
+  if (unit.bond === undefined && !showWant && rules.length === 0) return null;
+  const chip = (text: string, address: string, extra: Record<string, string> = {}) => h('span', { class: 'alius-chip', ...extra, ...analyzeAttrs(address, live) }, text);
+  const bond = unit.bond;
+  return h('div', { class: 'alius-bond' },
+    bond ? h('p', {}, chip(`LEADS: ${bond.leadStyle.toUpperCase()}`, 'glossary:bond_profile', { 'data-bond': 'lead' }), ' ', chip(`ATTACHES: ${bond.attachment.toUpperCase()}`, 'glossary:bond_profile', { 'data-bond': 'attachment' }), ' ', chip(`DESIRE: ${bond.desire.toUpperCase()}`, 'glossary:bond_profile', { 'data-bond': 'desire' })) : null,
+    showWant ? h('p', {}, chip(`WANT: ${wantBand(wantOf(state, unit.id)).toUpperCase()}${raw ? ` (${wantOf(state, unit.id)})` : ''}`, 'glossary:want', { 'data-want': unit.id })) : null,
+    rules.length > 0
+      ? h('ul', { class: 'alius-rules' }, ...rules.map((r) => h('li', {}, h('span', {
+        class: 'alius-chip', 'data-rule': r.id, ...analyzeAttrs(`relationshipRuleTemplates:${r.templateId}`, { unitId: unit.id, ruleId: r.id }),
+      }, `${r.status === 'negotiating' ? 'NEGOTIATING' : r.status === 'proposed' ? 'PROPOSED' : 'ACTIVE'} — ${r.text}${r.brokenCount > 0 ? ` (broken ${r.brokenCount}×)` : ''}`))))
+      : null);
+}
+
 function unitBlock(unit: Unit, ctx: SquadTabCtx, state: CampaignState): HTMLElement {
   const gone = unit.status === 'dead' || unit.status === 'deserted' || unit.status === 'terminated';
   const reg = ctx.registries;
@@ -294,6 +320,7 @@ function unitBlock(unit: Unit, ctx: SquadTabCtx, state: CampaignState): HTMLElem
       relationLine(unit, state, ctx),
       !gone && state.relations[unit.id] ? h('p', { class: 'alius-loyalty' }, chip(`LOYALTY: ${state.relations[unit.id].loyaltyBand.toUpperCase()}`, 'glossary:loyalty_band')) : null,
       gone ? null : h('p', { class: 'alius-disposition' }, h('span', { class: 'alius-chip', 'data-disposition': unit.id, ...analyzeAttrs('glossary:disposition', live) }, `Disposition: ${String(dispositionFor(state, reg, unit).name)}`)),
+      gone ? null : bondBlock(unit, state, ctx),
       gone ? null : disciplineLine(unit, state, ctx),
       gone ? null : restrictionLine(unit, state),
       gone || !ctx.onPunish || unit.kind !== 'named' ? null : renderDisciplineMenu({ state, registries: reg, unitId: unit.id, onPunish: (measure, days) => ctx.onPunish!(unit.id, measure, days) }),

@@ -8,6 +8,7 @@ import { Rng } from '../../src/engine/rng';
 import type { CampaignState } from '../../src/engine/state/types';
 import { DEFAULT_SETTINGS } from '../../src/settings';
 import { drawDemandChips } from '../../src/ui/discipline/chips';
+import { drawRuleChips } from '../../src/ui/bonds/chips';
 import { h } from '../../src/ui/dom';
 import { renderSceneScreen } from '../../src/ui/scene/sceneScreen';
 import { renderCommsTab } from '../../src/ui/comms/commsTab';
@@ -170,5 +171,81 @@ describe('desire demand chips (P9d)', () => {
   it('an ordinary demand keeps GRANT / REFUSE', () => {
     const d = draw(withDemand('double_ration'));
     expect([d.btn('grant')!.textContent, d.btn('refuse')!.textContent]).toEqual(['[GRANT]', '[REFUSE]']);
+  });
+});
+
+describe('rule chips (P9d)', () => {
+  const withRule = (status: 'proposed' | 'active' = 'proposed', delivered = true): CampaignState => {
+    const s = campaign(reg, 4);
+    s.bonds = { rules: [{ id: 'r1', unitId: ANN, templateId: 'report_evening', text: 'Report to me every evening.', status, day: 1, brokenCount: 0, ...(delivered ? { delivered: true } : {}) }] };
+    return s;
+  };
+  const drawRules = (s: CampaignState, pick: (c: { unitId: string }) => boolean = () => true) => {
+    const handlers = { accept: vi.fn(), negotiate: vi.fn(), refuse: vi.fn() };
+    const host = h('div');
+    document.body.append(host);
+    drawRuleChips(host, s, reg, pick, handlers);
+    return { host, handlers, btn: (k: string) => host.querySelector<HTMLButtonElement>(`button[data-rule-answer="${k}"]`) };
+  };
+
+  it('a delivered proposal shows ACCEPT / NEGOTIATE / REFUSE with data-analyze and calls the handlers', () => {
+    const d = drawRules(withRule());
+    expect(['accept', 'negotiate', 'refuse'].map((k) => d.btn(k)!.textContent)).toEqual(['[ACCEPT]', '[NEGOTIATE]', '[REFUSE]']);
+    for (const k of ['accept', 'negotiate', 'refuse']) expect(d.btn(k)!.getAttribute('data-analyze'), k).toBe('glossary:relationship_rules');
+    d.btn('accept')!.click();
+    d.btn('negotiate')!.click();
+    d.btn('refuse')!.click();
+    expect(d.handlers.accept).toHaveBeenCalledWith('r1');
+    expect(d.handlers.negotiate).toHaveBeenCalledWith('r1');
+    expect(d.handlers.refuse).toHaveBeenCalledWith('r1');
+    const label = d.host.querySelector('.alius-chip[data-rule]')!;
+    expect(label.textContent).toBe('ANN PROPOSES A RULE: Report to me every evening.');
+    expect(label.getAttribute('data-analyze')).toBe('relationshipRuleTemplates:report_evening');
+  });
+
+  it('nothing for an undelivered proposal, an active rule or a unit outside this place', () => {
+    expect(drawRules(withRule('proposed', false)).host.querySelectorAll('[data-rule]')).toHaveLength(0);
+    expect(drawRules(withRule('active')).host.querySelectorAll('[data-rule]')).toHaveLength(0);
+    expect(drawRules(withRule(), (c) => c.unitId === BEA).host.querySelectorAll('[data-rule]')).toHaveLength(0);
+  });
+
+  it('ACCEPT is soft-disabled while she already holds three rules', () => {
+    const s = withRule();
+    for (const [i, t] of ['hands_off_gear', 'no_other_tokens', 'name_me_first'].entries()) s.bonds!.rules.push({ id: `a${i}`, unitId: ANN, templateId: t, text: 't', status: 'active', day: 1, brokenCount: 0 });
+    const d = drawRules(s);
+    expect(d.btn('accept')!.getAttribute('aria-disabled')).toBe('true');
+    d.btn('accept')!.click();
+    expect(d.handlers.accept).not.toHaveBeenCalled();
+    expect(d.btn('refuse')!.getAttribute('aria-disabled')).toBeNull();
+  });
+
+  it('is text only', () => {
+    const s = withRule();
+    s.bonds!.rules[0].text = '<b>bold</b>';
+    expect(drawRules(s).host.querySelectorAll('b')).toHaveLength(0);
+  });
+
+  it('appears in a scene with her and in the COMMS thread, and resolves in the analysis panel', () => {
+    const s = withRule();
+    const run2 = run(s, reg, { type: 'scene/start', payload: { locationId: 'mess_hall', participants: [ANN], origin: 'event', startIndex: 0 } });
+    const st = new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' });
+    const host = h('div');
+    document.body.append(host);
+    const onAnswerRule = vi.fn();
+    const controller = { send: vi.fn(), propose: vi.fn(), answer: vi.fn(), end: vi.fn(), edit: vi.fn(), stop: vi.fn(), onEdited: vi.fn(), transcript: () => [], onSwipe: vi.fn(), resume: vi.fn(), idle: vi.fn(), dispose: vi.fn(), start: vi.fn() } as unknown as SceneController;
+    renderSceneScreen(host, { controller, getState: () => run2.state, registries: reg, st, settings: () => ({ ...DEFAULT_SETTINGS, typingSpeed: 0 }), onEnded: vi.fn(), onAnswerRule });
+    host.querySelector<HTMLButtonElement>('button[data-rule-answer="negotiate"]')!.click();
+    expect(onAnswerRule).toHaveBeenCalledWith('r1', 'negotiate');
+    expect(markedWithout(host)).toEqual([]);
+    expect(unresolved(host, { registries: reg, state: run2.state, settings: DEFAULT_SETTINGS } as AnalyzeEnv)).toEqual([]);
+    const comms = h('div');
+    document.body.append(comms);
+    const state2 = structuredClone(s);
+    state2.dms[ANN] = [{ id: 'm1', from: ANN, text: 'Report to me every evening.', day: 1, slot: 'morning', read: true }];
+    const onAnswer = vi.fn();
+    renderCommsTab(comms, { getState: () => state2, registries: reg, onSend: vi.fn(), onRead: vi.fn(), onAnswer: vi.fn(), onAnswerRule: onAnswer } as never);
+    comms.querySelector<HTMLButtonElement>(`button[data-unit="${ANN}"]`)!.click();
+    comms.querySelector<HTMLButtonElement>('button[data-rule-answer="accept"]')!.click();
+    expect(onAnswer).toHaveBeenCalledWith('r1', 'accept');
   });
 });

@@ -3,7 +3,7 @@ import { unreadOf } from '../../engine/dms';
 import { isLiving } from '../../engine/economy';
 import type { ProposalAnswer } from '../../engine/relations/proposals';
 import type { CampaignState, Unit } from '../../engine/state/types';
-import { drawViolation, violationLabels } from '../bonds/chips';
+import { drawRuleChips, drawViolation, violationLabels } from '../bonds/chips';
 import { h } from '../dom';
 import { drawProposalChips } from '../proposalChips';
 import { drawDemandChips, drawDisciplineChips } from '../discipline/chips';
@@ -20,6 +20,8 @@ export interface CommsTabCtx {
   /** P9: [GRANT] / [REFUSE] / [TALK] on her demand. */
   onAnswerDemand?: (demandId: string, answer: 'grant' | 'refuse') => void;
   onTalkDemand?: (demandId: string) => void;
+  /** P9d: [ACCEPT] / [NEGOTIATE] / [REFUSE] on a rule she proposed. */
+  onAnswerRule?: (ruleId: string, answer: 'accept' | 'negotiate' | 'refuse') => void;
   /** P10: a small portrait for each contact row (absent = none). */
   avatar?: (unit: Unit) => HTMLElement | null;
 }
@@ -104,7 +106,11 @@ export function renderCommsTab(host: HTMLElement, ctx: CommsTabCtx): void {
     drawDemandChips(demandChips, state, ctx.registries, (c) => c.unitId === current, {
       grant: (id) => ctx.onAnswerDemand?.(id, 'grant'), refuse: (id) => ctx.onAnswerDemand?.(id, 'refuse'), talk: (id) => ctx.onTalkDemand?.(id),
     });
-    thread.append(chips, disciplineChips, demandChips, h('div', { class: 'alius-cmd' }, h('span', { class: 'alius-prompt' }, 'MSG>'), input, h('button', { type: 'button', class: 'alius-btn', 'data-action': 'send', onclick: send }, '[SEND]')));
+    const ruleChips = h('div', { class: 'alius-chips alius-discipline-chips' });
+    drawRuleChips(ruleChips, state, ctx.registries, (c) => c.unitId === current, {
+      accept: (id) => ctx.onAnswerRule?.(id, 'accept'), negotiate: (id) => ctx.onAnswerRule?.(id, 'negotiate'), refuse: (id) => ctx.onAnswerRule?.(id, 'refuse'),
+    });
+    thread.append(chips, disciplineChips, demandChips, ruleChips, h('div', { class: 'alius-cmd' }, h('span', { class: 'alius-prompt' }, 'MSG>'), input, h('button', { type: 'button', class: 'alius-btn', 'data-action': 'send', onclick: send }, '[SEND]')));
     // messages that arrived while the thread was open: mark them read (after this render, so it cannot re-enter it)
     if (unreadMessages(state, current) > 0) queueMicrotask(() => ctx.onRead(unit.id));
   }

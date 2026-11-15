@@ -618,16 +618,16 @@ tests/**                                           mirrors src; tests/helpers/bo
 - Consumes: `rollRules`, `deliverRule`, `answerRule`, `wantBand`.
 - Produces: `bondsController(deps)` with `onEvents(events)`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `a proposed rule is worded once and delivered as a DM when she is not in the scene`
   - `the template text is used when wording fails or is off`
   - `ACCEPT / NEGOTIATE / REFUSE chips in a scene and in COMMS carry data-analyze`
   - `the dossier shows the bond chips, the Want band (number only with raw values) and active rules`
   - `the Want provider shows a band, never a number, unless raw values are on` (`hidden.test`)
-- [ ] **Step 2: Run** and confirm FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** `npm test` and confirm PASS.
-- [ ] **Step 5: Commit** `feat(ui): relationship rule chips, wording and the dossier bond block`.
+- [x] **Step 2: Run** and confirm FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** `npm test` and confirm PASS.
+- [x] **Step 5: Commit** `feat(ui): relationship rule chips, wording and the dossier bond block`.
 
 ---
 

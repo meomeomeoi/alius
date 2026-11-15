@@ -1,4 +1,4 @@
-import { bondOf, enabledCategories, leadScoreParts } from '../../engine/bonds';
+import { bondOf, enabledCategories, leadScoreParts, rulesOf, wantBand, wantEligible, wantOf } from '../../engine/bonds';
 import type { Registries } from '../../content/types';
 import { TUNING } from '../../engine/tuning';
 import type { Knowledge } from '../knowledge';
@@ -64,10 +64,51 @@ function leadProvider(_subject: Subject, env: AnalyzeEnv, k: Knowledge): { lines
   return { lines };
 }
 
+/** What the band does, in words (the numbers behind them are draft balance values). */
+const WANT_EFFECT: Record<string, string> = {
+  calm: '',
+  restless: 'She writes first more often and may come to the door.',
+  aching: 'She is irritable and under stress, and it colours how she speaks to the commander.',
+  desperate: 'Her defect may break her for a day.',
+};
+
+/** Her Want as a band word; the number only through `Knowledge` (raw values on). */
+function wantProvider(subject: Subject, env: AnalyzeEnv, k: Knowledge): { lines: string[] } | null {
+  const unitId = typeof subject.data.unitId === 'string' ? subject.data.unitId : null;
+  const state = env.state;
+  if (!state || unitId === null || (!wantEligible(state, env.registries, unitId) && wantOf(state, unitId) === 0)) return null;
+  const n = wantOf(state, unitId);
+  const band = wantBand(n);
+  const raw = k.raw(n);
+  const lines = [`Her want: ${band}${raw !== null ? ` (${raw})` : ''}.`];
+  if (WANT_EFFECT[band] !== '') lines.push(WANT_EFFECT[band]);
+  return { lines };
+}
+
+const CHECK_TEXT: Record<string, string> = {
+  daily_contact: 'The game checks it: a day without a scene or a message to her breaks it.',
+  run_without_asking: 'The game checks it: sending a romantic partner of someone else on a run without her breaks it.',
+  intent: 'The game reads it from what you say and do in a talk.',
+};
+
+/** One of her rules: its status, how often it was broken and how the game judges it. */
+function ruleProvider(subject: Subject, env: AnalyzeEnv): { lines: string[] } | null {
+  const state = env.state;
+  const ruleId = typeof subject.data.ruleId === 'string' ? subject.data.ruleId : null;
+  const rule = state && ruleId !== null ? rulesOf(state).find((r) => r.id === ruleId) : undefined;
+  if (!rule) return null;
+  const status = rule.status === 'negotiating' ? 'being negotiated' : rule.status;
+  const broken = rule.brokenCount === 0 ? 'Never broken.' : rule.brokenCount === 1 ? 'Broken once.' : `Broken ${rule.brokenCount} times.`;
+  const check = String(env.registries.relationshipRuleTemplates.get(rule.templateId)?.check ?? '');
+  return { lines: [`Her rule: ${status}. ${broken}`, ...(CHECK_TEXT[check] ? [CHECK_TEXT[check]] : [])] };
+}
+
 /** Registers the P9d readings (called from `registerCoreProviders`). */
 export function registerBondsProviders(): void {
   registerAnalyzeProvider('contentCategories', categoryProvider);
   registerAnalyzeProvider('glossary:content_categories', categoriesGlossaryProvider);
   registerAnalyzeProvider('glossary:bond_profile', bondProvider);
   registerAnalyzeProvider('glossary:lead', leadProvider);
+  registerAnalyzeProvider('glossary:want', wantProvider);
+  registerAnalyzeProvider('relationshipRuleTemplates', ruleProvider);
 }

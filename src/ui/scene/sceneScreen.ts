@@ -6,7 +6,7 @@ import type { SceneController, SceneUiEvent } from '../../scene/sceneController'
 import type { AliusSettings } from '../../settings';
 import type { ChatMessage, StAdapter } from '../../st/adapter';
 import { h } from '../dom';
-import { drawLeadChips, drawViolation, violationLabels } from '../bonds/chips';
+import { drawLeadChips, drawRuleChips, drawViolation, violationLabels } from '../bonds/chips';
 import { motionReduced } from '../motion';
 import { drawProposalChips, kindLabel } from '../proposalChips';
 import { drawDemandChips, drawDisciplineChips } from '../discipline/chips';
@@ -34,6 +34,8 @@ export interface SceneScreenCtx {
   onUndoDiscipline?: (id: string) => void;
   /** P9: [GRANT] / [REFUSE] on the demand of a unit in the scene. */
   onAnswerDemand?: (demandId: string, answer: 'grant' | 'refuse') => void;
+  /** P9d: [ACCEPT] / [NEGOTIATE] / [REFUSE] on a rule proposed by a unit in the scene. */
+  onAnswerRule?: (ruleId: string, answer: 'accept' | 'negotiate' | 'refuse') => void;
 }
 
 export interface SceneScreen {
@@ -116,6 +118,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
   let disciplineChips: HTMLElement;
   let demandChips: HTMLElement;
   let leadChips: HTMLElement;
+  let ruleChips: HTMLElement;
   let disciplineMenus: HTMLElement;
   let banner: HTMLElement;
   let busyHost: HTMLElement;
@@ -197,6 +200,9 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     drawLeadChips(leadChips, intimacyOf(s).romance ? s.scene : undefined, {
       follow: () => controller.follow?.(), ask: () => controller.ask?.(), limit: (text) => controller.limit?.(text),
     }, pending);
+    drawRuleChips(ruleChips, s, registries, (c) => ids.has(c.unitId), {
+      accept: (id) => ctx.onAnswerRule?.(id, 'accept'), negotiate: (id) => ctx.onAnswerRule?.(id, 'negotiate'), refuse: (id) => ctx.onAnswerRule?.(id, 'refuse'),
+    });
   }
 
   /** P9: what the game understood of the commander's words (always shown) and the DISCIPLINE menu of everybody present. */
@@ -354,6 +360,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     log = h('div', { class: 'alius-transcript', role: 'log', 'aria-live': 'polite', tabindex: '0' });
     chips = h('div', { class: 'alius-chips' });
     leadChips = h('div', { class: 'alius-chips alius-lead-host' });
+    ruleChips = h('div', { class: 'alius-chips alius-discipline-chips' });
     disciplineChips = h('div', { class: 'alius-chips alius-discipline-chips' });
     demandChips = h('div', { class: 'alius-chips alius-discipline-chips' });
     disciplineMenus = h('div', { class: 'alius-discipline-units' });
@@ -435,6 +442,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
       log,
       chips,
       leadChips,
+      ruleChips,
       disciplineChips,
       demandChips,
       disciplineMenus,
