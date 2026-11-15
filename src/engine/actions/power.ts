@@ -2,6 +2,7 @@ import { runActivity } from '../activities';
 import { registerDayEndStep } from '../calendar';
 import { addRecord } from '../discipline/record';
 import { countermandOpen } from '../power/leader';
+import { setAskFirst } from '../power/herCall';
 import { challenge, endorse } from '../power/moves';
 import { scapegoatOptionId } from '../power/scapegoat';
 import { TUNING } from '../tuning';
@@ -117,6 +118,12 @@ registerAction('power/endorse', (draft, _payload, ctx) => endorse(draft, ctx));
 
 /** CHALLENGE the squad leader on a social or body stat: one seeded roll. */
 registerAction('power/challenge', (draft, payload, ctx) => challenge(draft, ctx, isObj(payload) ? payload.stat : undefined));
+
+/** P9e: the standing order "ask me first" (base only: the expedition guard refuses it during a run). */
+registerAction('power/ask_first', (draft, payload, ctx) => {
+  if (!isObj(payload) || typeof payload.unitId !== 'string' || typeof payload.on !== 'boolean') throw new Error('power/ask_first needs { unitId, on }.');
+  return setAskFirst(draft, ctx, payload.unitId, payload.on);
+});
 
 /** Answering a scapegoat case goes to a vote: the subject is the chosen option. */
 registerVoteGate('dilemma/choose', (state, payload) => {

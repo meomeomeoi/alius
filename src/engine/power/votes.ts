@@ -51,7 +51,7 @@ function subjectProblem(state: CampaignState, ctx: EngineCtx, kind: VoteKind, su
  * takes its sign from how her values line up with these axes, so a soldier who voted against and was overruled always pays, in
  * proportion to how strongly she holds her values (up to the full row at a total weight of 3).
  */
-const againstHerValues = (draft: CampaignState, reg: EngineCtx['registries'], unit: Unit): Array<{ axis: (typeof VALUE_AXES)[number]; direction: 1 | -1 }> => {
+export const againstHerValues = (draft: CampaignState, reg: EngineCtx['registries'], unit: Unit): Array<{ axis: (typeof VALUE_AXES)[number]; direction: 1 | -1 }> => {
   const values = effectiveValues(draft, reg, unit);
   return VALUE_AXES.filter((a) => values[a] !== 0).map((axis) => ({ axis, direction: values[axis] > 0 ? -1 : 1 }));
 };

@@ -1415,6 +1415,10 @@ function forgetPower(draft, unitId) {
     if (h2.deposed?.unitId === unitId) delete h2.deposed;
     if (h2.standingBonus?.unitId === unitId) delete h2.standingBonus;
   }
+  if (power.askFirst) {
+    delete power.askFirst[unitId];
+    if (Object.keys(power.askFirst).length === 0) delete power.askFirst;
+  }
   if (power.countermand && (power.countermand.leaderId === unitId || power.countermand.unitId === unitId)) delete power.countermand;
   if (power.merit) {
     power.merit = power.merit.filter((m) => m.unitId !== unitId);
@@ -16897,6 +16901,32 @@ function applyHerCall(draft, ctx2, p) {
   events.push({ type: "her_call", nodeId: p.nodeId, templateId: p.templateId, unitId: call.unitId, outcome: call.outcome, missionId: exp.missionId, marked });
   return events;
 }
+function setAskFirst(draft, ctx2, unitId, on) {
+  const reg = ctx2.registries;
+  if (!on) {
+    if (!askFirstHolds(draft, unitId)) throw new Error("There is no such order.");
+    const power = powerOf(draft);
+    delete power.askFirst[unitId];
+    if (Object.keys(power.askFirst).length === 0) delete power.askFirst;
+    return [{ type: "ask_first_set", unitId, on: false }];
+  }
+  const unit = unitOf3(draft, unitId);
+  if (!unit || unit.kind !== "named" || !isLiving(unit)) throw new Error("There is no such soldier to give that order to.");
+  if (askFirstHolds(draft, unitId)) throw new Error("She is already under that order.");
+  (powerOf(draft).askFirst ??= {})[unitId] = draft.day;
+  const events = applyEventToUnit(draft, reg, unitId, {
+    type: "decision_violated",
+    actor: "commander",
+    targets: [unitId],
+    severity: TUNING.herCall.askFirst.severity,
+    evidence: "ordered to ask first",
+    confidence: 1,
+    valueAxes: againstHerValues(draft, reg, unit)
+  });
+  events.push(...evaluateAutomatic(draft, reg, unitId));
+  events.push({ type: "ask_first_set", unitId, on: true });
+  return events;
+}
 
 // src/engine/loyalty/mutiny.ts
 var SEVERITY_RANK2 = { minor: 0, moderate: 1, major: 2, extreme: 3 };
@@ -18483,6 +18513,10 @@ registerAction("power/countermand", (draft, payload, ctx2) => {
 });
 registerAction("power/endorse", (draft, _payload, ctx2) => endorse(draft, ctx2));
 registerAction("power/challenge", (draft, payload, ctx2) => challenge(draft, ctx2, isObj20(payload) ? payload.stat : void 0));
+registerAction("power/ask_first", (draft, payload, ctx2) => {
+  if (!isObj20(payload) || typeof payload.unitId !== "string" || typeof payload.on !== "boolean") throw new Error("power/ask_first needs { unitId, on }.");
+  return setAskFirst(draft, ctx2, payload.unitId, payload.on);
+});
 registerVoteGate("dilemma/choose", (state, payload) => {
   const open3 = state.dilemmas?.open;
   if (!open3 || open3.context !== "scapegoat" || open3.status !== "presented" || !isObj20(payload) || typeof payload.index !== "number") return null;

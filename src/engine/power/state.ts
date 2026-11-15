@@ -94,6 +94,10 @@ export function forgetPower(draft: CampaignState, unitId: string): void {
     if (h.deposed?.unitId === unitId) delete h.deposed;
     if (h.standingBonus?.unitId === unitId) delete h.standingBonus;
   }
+  if (power.askFirst) {
+    delete power.askFirst[unitId];
+    if (Object.keys(power.askFirst).length === 0) delete power.askFirst;
+  }
   if (power.countermand && (power.countermand.leaderId === unitId || power.countermand.unitId === unitId)) delete power.countermand;
   if (power.merit) {
     power.merit = power.merit.filter((m) => m.unitId !== unitId);

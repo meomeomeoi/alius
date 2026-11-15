@@ -11,4 +11,4 @@ export { changeLeader } from './standing';
 export { CO_COMMAND, dropCoCommand } from './state';
 export { failedRunPenalty, markDecidedBy, openQueuedScapegoat, openScapegoat, responsibleFor, scapegoatAfterFailure, scapegoatOptionId } from './scapegoat';
 export { negotiationHolds, noteFeat, outsideActive, outsideSuppressedFor } from './outside';
-export { actorWeight, applyHerCall, askFirstHolds, markHerCall, herCallCandidates, herCallChance, herCallOdds, herCallSpecOf, rollHerCall } from './herCall';
+export { actorWeight, applyHerCall, askFirstHolds, markHerCall, herCallCandidates, herCallChance, herCallOdds, herCallSpecOf, rollHerCall, setAskFirst } from './herCall';

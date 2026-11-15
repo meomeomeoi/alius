@@ -7,6 +7,8 @@ import { commandStance } from '../discipline/stance';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { isLiving } from '../economy';
 import { addFact } from '../memory';
+import { applyEventToUnit } from '../relations/effects';
+import { evaluateAutomatic } from '../relations/graph';
 import type { Rng } from '../rng';
 import { VALUE_AXES, type CampaignState, type Unit } from '../state/types';
 import { TUNING } from '../tuning';
@@ -15,6 +17,7 @@ import { applyWorldEffects } from '../world/effects';
 import type { Mission } from '../world/types';
 import { assertiveness } from './options';
 import { leaderOf, powerOf } from './state';
+import { againstHerValues } from './votes';
 
 /**
  * Her call (P9e): at an expedition event node of a her-call template a soldier with a will of her own may act on her own. Who may,
@@ -149,5 +152,32 @@ export function applyHerCall(
   }
   (exp.herCalls ??= []).push({ nodeId: p.nodeId, unitId: call.unitId, outcome: call.outcome, templateId: p.templateId, odds: call.odds });
   events.push({ type: 'her_call', nodeId: p.nodeId, templateId: p.templateId, unitId: call.unitId, outcome: call.outcome, missionId: exp.missionId, marked });
+  return events;
+}
+
+/**
+ * The standing order "ask me first" (P9e). Giving it to a named living soldier who is not under it costs Trust now, like an overruled
+ * decision: one `decision_violated` (severity `TUNING.herCall.askFirst.severity`) against her own values. Lifting it is free. While it
+ * holds she is never a candidate for a her-call. Draws no rng.
+ */
+export function setAskFirst(draft: CampaignState, ctx: EngineCtx, unitId: string, on: boolean): EngineEvent[] {
+  const reg = ctx.registries;
+  if (!on) {
+    if (!askFirstHolds(draft, unitId)) throw new Error('There is no such order.');
+    const power = powerOf(draft);
+    delete power.askFirst![unitId];
+    if (Object.keys(power.askFirst!).length === 0) delete power.askFirst;
+    return [{ type: 'ask_first_set', unitId, on: false }];
+  }
+  const unit = unitOf(draft, unitId);
+  if (!unit || unit.kind !== 'named' || !isLiving(unit)) throw new Error('There is no such soldier to give that order to.');
+  if (askFirstHolds(draft, unitId)) throw new Error('She is already under that order.');
+  (powerOf(draft).askFirst ??= {})[unitId] = draft.day;
+  const events = applyEventToUnit(draft, reg, unitId, {
+    type: 'decision_violated', actor: 'commander', targets: [unitId], severity: TUNING.herCall.askFirst.severity, evidence: 'ordered to ask first', confidence: 1,
+    valueAxes: againstHerValues(draft, reg, unit),
+  });
+  events.push(...evaluateAutomatic(draft, reg, unitId));
+  events.push({ type: 'ask_first_set', unitId, on: true });
   return events;
 }
