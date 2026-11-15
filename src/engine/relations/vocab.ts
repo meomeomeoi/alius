@@ -1,6 +1,6 @@
 import type { Severity } from '../state/types';
 
-/** The 30 event types the mechanic model may report (26 of P3 spec §3, plus the four of P9). Content (`eventDeltas`) must have a row for each. */
+/** The 33 event types the mechanic model may report (26 of P3 spec §3, the four of P9, the three of P9d). Content (`eventDeltas`) must have a row for each. */
 export const EVENT_TYPES = [
   'praised', 'insulted', 'comforted', 'dismissed', 'listened', 'shared_secret', 'learned_about', 'gift', 'flirted',
   'rejected_advance', 'accepted_advance', 'physical_affection', 'sided_with', 'sided_against', 'decision_aligned',
@@ -8,10 +8,12 @@ export const EVENT_TYPES = [
   'broke_promise', 'mocked_defect', 'accepted_defect', 'crime_revealed',
   // P9: discipline
   'defied', 'commander_enforced', 'commander_yielded', 'threatened',
+  // P9d: relationship rules (the model reports whether a rule was kept or broken, or a compromise reached)
+  'rule_kept', 'rule_broken', 'compromise_reached',
 ] as const;
 
 /** P9: events only the engine makes (a demand granted or refused; P9d: the commander followed her lead). Never offered to the model; `validateIntents` rejects them. */
-export const ENGINE_EVENT_TYPES = ['granted_demand', 'refused_demand', 'followed_lead'] as const;
+export const ENGINE_EVENT_TYPES = ['granted_demand', 'refused_demand', 'followed_lead', 'rule_accepted', 'rule_refused'] as const;
 
 /** Every type that has an `eventDeltas` row: what the model may report and what only the engine writes. */
 export const ALL_EVENT_TYPES = [...EVENT_TYPES, ...ENGINE_EVENT_TYPES] as const;

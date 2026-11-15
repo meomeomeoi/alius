@@ -17,6 +17,9 @@ export interface EventIntent {
   measure?: string;
   /** P9: the demand template of an engine-made `granted_demand` / `refused_demand`. */
   templateId?: string;
+  /** P9d: the rule a `rule_kept` / `rule_broken` / `compromise_reached` is about, and the agreed text of a compromise. */
+  ruleId?: string;
+  text?: string;
   evidence: string;
   /** 0–1; the LLM sanitizer drops low-confidence events, the engine keeps the number for the debug log. */
   confidence: number;
@@ -67,6 +70,8 @@ const MAX_TAGS = 8;
 const MAX_PROMISES = 3;
 const MAX_PROPOSALS = 3;
 const DECISION_TYPES: readonly string[] = ['decision_aligned', 'decision_violated'];
+/** P9d: events about a relationship rule. */
+const RULE_EVENTS: readonly string[] = ['rule_kept', 'rule_broken', 'compromise_reached'];
 /** P9: the commander is the actor and one unit the target. `defied` is the opposite: a unit is the actor and nobody is the target. */
 const COMMANDER_DISCIPLINE: readonly string[] = ['commander_enforced', 'commander_yielded', 'threatened'];
 /** Measure words that are not a registry id: the Leash is only ever filed through its form, and a threat may name no measure. */
@@ -106,6 +111,8 @@ export function validateIntents(
     maxEvents?: number;
     /** P9: the words `measure` may take (`measureList`). Without a list only the fallbacks exist: `verbal` on an enforcement, `unspecified` on a threat. */
     measures?: string[];
+    /** P9d: the rules the model may report on (active and negotiating ones). Without it a rule event is dropped. */
+    rules?: Array<{ id: string; unitId: string }>;
   },
 ): Intents {
   const out = emptyIntents();
@@ -126,6 +133,13 @@ export function validateIntents(
     if (actor === 'commander' ? targets.length === 0 : arr(e.targets).some((t) => isUnit(t) && t !== actor)) continue;
     if (type === 'defied' ? actor === 'commander' : COMMANDER_DISCIPLINE.includes(type) && actor !== 'commander') continue;
     const intent: EventIntent = { type, actor, targets, severity, evidence, confidence: clamp01(e.confidence) };
+    if (RULE_EVENTS.includes(type)) {
+      // a rule event names a rule of one of the units it lands on; an unknown or missing id drops it
+      const rule = typeof e.ruleId === 'string' ? (ctx.rules ?? []).find((r) => r.id === e.ruleId && targets.includes(r.unitId)) : undefined;
+      if (actor !== 'commander' || !rule) continue;
+      intent.ruleId = rule.id;
+      if (type === 'compromise_reached') intent.text = typeof e.text === 'string' ? e.text.replace(/\s+/g, ' ').trim().slice(0, TUNING.bonds.rules.textMax).trim() : '';
+    }
     if (type === 'commander_enforced' || type === 'threatened') {
       const word = typeof e.measure === 'string' ? e.measure : '';
       const listed = (ctx.measures ?? []).includes(word);

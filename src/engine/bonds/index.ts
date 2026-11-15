@@ -7,6 +7,7 @@ export {
   ATTACHMENTS, bondOf, bondTierOf, defectAllowedFor, DESIRE_LEVELS, desireRank, LEAD_STYLES, leadRank, MODEST_BOND, PUBLICITY_LEVELS, validateBond,
 } from './profile';
 export { bondsDayStep } from './dayStep';
+export { activeRules, answerRule, applyRuleEvent, checkDailyContact, checkRunRoster, deliverRule, returnNegotiations, RULE_EVENT_TYPES, rollRules, rulesOf, syncRulesWithContent } from './rules';
 export { openDesireDemands } from './desire';
 export { publicityMismatch } from './publicity';
 export { releaseWantBreakdowns, startCrossedBreakdowns, startWantBreakdown, wantBreakdownSpec, type WantBreakdownSpec } from './breakdown';

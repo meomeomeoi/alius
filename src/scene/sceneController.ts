@@ -1,6 +1,6 @@
 import type { Registries } from '../content/types';
 import type { EngineEvent } from '../engine/dispatch';
-import { disabledCategories, ownLimitLabels } from '../engine/bonds';
+import { disabledCategories, ownLimitLabels, rulesOf } from '../engine/bonds';
 import { measureList } from '../engine/discipline';
 import { openPromises } from '../engine/memory';
 import { intimacyOf } from '../engine/relations/gain';
@@ -184,7 +184,9 @@ export function createSceneController(deps: SceneDeps): SceneController {
       const labels = unitById(s, id) ? ownLimitLabels(unitById(s, id)!, reg) : [];
       if (labels.length > 0) limits[id] = labels;
     }
-    return { ...(excluded.length > 0 ? { excluded } : {}), ...(Object.keys(limits).length > 0 ? { limits } : {}) };
+    // P9d: the rules she lives by (and any being negotiated) so the reading can say whether one was kept or broken
+    const rules = rulesOf(s).filter((r) => (r.status === 'active' || r.status === 'negotiating') && participants.includes(r.unitId)).map((r) => ({ id: r.id, unitId: r.unitId, text: r.text, status: r.status as 'active' | 'negotiating' }));
+    return { ...(excluded.length > 0 ? { excluded } : {}), ...(Object.keys(limits).length > 0 ? { limits } : {}), ...(rules.length > 0 ? { rules } : {}) };
   }
 
   function unitInput(s: CampaignState, id: string): IntentExtractInput['units'][number] | null {

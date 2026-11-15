@@ -592,7 +592,7 @@ tests/**                                           mirrors src; tests/helpers/bo
   - `applyRuleEvent(draft, ctx, ev)`
   - `activeRules(state, unitId): Rule[]`
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `only assertive or dominant units in romantic or close states propose rules` (acceptance 1)
   - `at most one open proposal and three active rules per unit`
   - `accept activates; refuse applies rule_refused; negotiate opens a scene and compromise_reached sets the agreed text`
@@ -603,10 +603,10 @@ tests/**                                           mirrors src; tests/helpers/bo
   - `rule_broken with an unknown ruleId is dropped`
   - `a rule tagged with a disabled category is never proposed; an active one is suspended and returns on re-enable` (Review Focus 3)
   - `removeFromService drops her rules`
-- [ ] **Step 2: Run** `npx vitest run tests/engine/bonds/rules.test.ts` and confirm FAIL.
-- [ ] **Step 3: Implement.** Template texts are `AUTHOR TO WRITE` drafts of the spec's four examples plus `name_me_first`.
-- [ ] **Step 4: Run** `npm test` and confirm PASS. Update the "has 30 event types" test to 33 knowingly.
-- [ ] **Step 5: Commit** `feat(engine): relationship rules, negotiation and compliance`.
+- [x] **Step 2: Run** `npx vitest run tests/engine/bonds/rules.test.ts` and confirm FAIL.
+- [x] **Step 3: Implement.** Template texts are `AUTHOR TO WRITE` drafts of the spec's four examples plus `name_me_first`.
+- [x] **Step 4: Run** `npm test` and confirm PASS. Update the "has 30 event types" test to 33 knowingly.
+- [x] **Step 5: Commit** `feat(engine): relationship rules, negotiation and compliance`.
 
 ### Task 12: Rules in scenes, DMs and the dossier
 

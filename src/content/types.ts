@@ -24,8 +24,8 @@ export const REGISTRY_NAMES = [
   'hubRooms', 'deviceSkins', 'uiSounds',
   // P11
   'prologues', 'uiUnlocks',
-  // P9d (`relationshipRuleTemplates` joins in chunk (b))
-  'contentCategories',
+  // P9d
+  'contentCategories', 'relationshipRuleTemplates',
 ] as const;
 
 export type RegistryName = (typeof REGISTRY_NAMES)[number];

@@ -733,5 +733,91 @@
         "affinity": 5
       }
     }
+  },
+  {
+    "id": "rule_kept",
+    "cause": "You kept her rule",
+    "rows": {
+      "minor": {},
+      "moderate": {},
+      "major": {},
+      "extreme": {}
+    }
+  },
+  {
+    "id": "rule_broken",
+    "cause": "You broke her rule",
+    "rows": {
+      "minor": {},
+      "moderate": {},
+      "major": {},
+      "extreme": {}
+    }
+  },
+  {
+    "id": "compromise_reached",
+    "cause": "You reached a compromise with her",
+    "rows": {
+      "minor": {
+        "trust": 2,
+        "affinity": 2
+      },
+      "moderate": {
+        "trust": 3,
+        "affinity": 3
+      },
+      "major": {
+        "trust": 4,
+        "affinity": 4
+      },
+      "extreme": {
+        "trust": 5,
+        "affinity": 5
+      }
+    }
+  },
+  {
+    "id": "rule_accepted",
+    "cause": "You accepted her rule",
+    "rows": {
+      "minor": {
+        "affinity": 3
+      },
+      "moderate": {
+        "affinity": 4
+      },
+      "major": {
+        "affinity": 5
+      },
+      "extreme": {
+        "affinity": 6
+      }
+    }
+  },
+  {
+    "id": "rule_refused",
+    "cause": "You refused her rule",
+    "rows": {
+      "minor": {
+        "trust": -1,
+        "affinity": -3,
+        "stress": 3
+      },
+      "moderate": {
+        "trust": -2,
+        "affinity": -4,
+        "stress": 4
+      },
+      "major": {
+        "trust": -3,
+        "affinity": -5,
+        "stress": 5
+      },
+      "extreme": {
+        "trust": -4,
+        "affinity": -6,
+        "stress": 6
+      }
+    }
   }
 ]

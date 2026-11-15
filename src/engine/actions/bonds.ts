@@ -1,5 +1,6 @@
 import { setCategories } from '../bonds/content';
 import { bondsDayStep } from '../bonds/dayStep';
+import { answerRule, deliverRule } from '../bonds/rules';
 import { followLead, setSceneLimit } from '../bonds/scene';
 import { relieveWant } from '../bonds/want';
 import { registerActivityHook } from '../activities';
@@ -28,6 +29,20 @@ registerAction('bonds/follow', (draft, _payload, ctx) => followLead(draft, ctx))
 registerAction('bonds/limit', (draft, payload) => {
   if (!isObj(payload) || typeof payload.text !== 'string') throw new Error('bonds/limit needs { text }');
   return setSceneLimit(draft, payload.text);
+});
+
+/** A proposal reaches the commander (the app words it and delivers it, or the day step's text is used). Draws no rng. */
+registerAction('bonds/deliver_rule', (draft, payload) => {
+  if (!isObj(payload) || typeof payload.ruleId !== 'string') throw new Error('bonds/deliver_rule needs { ruleId }');
+  return deliverRule(draft, payload.ruleId, typeof payload.text === 'string' ? payload.text : undefined);
+});
+
+/** ACCEPT / NEGOTIATE / REFUSE on a delivered proposal. Draws no rng. */
+registerAction('bonds/answer_rule', (draft, payload, ctx) => {
+  if (!isObj(payload) || typeof payload.ruleId !== 'string' || (payload.answer !== 'accept' && payload.answer !== 'negotiate' && payload.answer !== 'refuse')) {
+    throw new Error('bonds/answer_rule needs { ruleId, answer: "accept" | "negotiate" | "refuse" }');
+  }
+  return answerRule(draft, ctx, payload.ruleId, payload.answer);
 });
 
 /** The player switches content categories on or off (SYS, setup). Applies from the next generation; draws no rng. */

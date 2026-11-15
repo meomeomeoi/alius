@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { loadPacks } from '../../src/content/loader';
 import type { Registries } from '../../src/content/types';
-import { CONTENT_GATED_REGISTRIES } from '../../src/engine/bonds';
+import { CONTENT_GATED_REGISTRIES, rollRules } from '../../src/engine/bonds';
 import { eligibleTemplates as dilemmaTemplates } from '../../src/engine/dilemma/flow';
 import { DILEMMA_CONTEXTS } from '../../src/engine/dilemma/types';
 import { measureList, openDemand } from '../../src/engine/discipline';
@@ -26,6 +26,7 @@ export async function loadGate(): Promise<Registries> {
 
 /** The ids of the fixture pack's tagged entries, per gated registry, and the category each carries. */
 export const GATE_FIXTURE: Record<string, { ids: string[]; category: string }> = {
+  relationshipRuleTemplates: { ids: ['gate_rule'], category: 'public_humiliation' },
   demandTemplates: { ids: ['gate_demand'], category: 'humiliation' },
   punishments: { ids: ['gate_punish'], category: 'degrading_language' },
   dilemmaTemplates: { ids: ['gate_dilemma', 'gate_event'], category: 'restraint' },
@@ -52,6 +53,19 @@ export function withBond(state: CampaignState, unitId: string, bond: Partial<Bon
  * picks from it. Random pickers are run over 50 seeds. A registry that joins `CONTENT_GATED_REGISTRIES` needs a probe here.
  */
 export const GATE_PROBES: Record<(typeof CONTENT_GATED_REGISTRIES)[number], (state: CampaignState, reg: Registries) => string[]> = {
+  relationshipRuleTemplates: (state, reg) => {
+    // an assertive lover is the one unit that can be proposed to; the roll is seeded, so run it over 50 seeds
+    const s = structuredClone(state);
+    s.relations[s.squad[0].id].stateId = 'lover';
+    withBond(s, s.squad[0].id, { leadStyle: 'dominant' });
+    const seen = new Set<string>();
+    for (let seed = 1; seed <= 50; seed++) {
+      const d = structuredClone(s);
+      rollRules(d, { registries: reg, rng: new Rng(seedRng(seed)) });
+      for (const r of d.bonds?.rules ?? []) seen.add(r.templateId);
+    }
+    return [...seen];
+  },
   demandTemplates: (state, reg) => {
     const seen = new Set<string>();
     for (let seed = 1; seed <= 50; seed++) {

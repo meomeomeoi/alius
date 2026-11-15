@@ -299,3 +299,47 @@ describe('content violations and own limits (P9d)', () => {
     expect(r!.sceneTone).toBe('intimate');
   });
 });
+
+describe('rules in extraction (P9d Task 11)', () => {
+  const RULES = [
+    { id: 'r1', unitId: ANN, text: 'Report to me every evening.', status: 'active' as const },
+    { id: 'r2', unitId: BEA, text: 'Ask me before a night run.', status: 'negotiating' as const },
+  ];
+  const ev = (type: string, ruleId: unknown, extra: object = {}) => ({ type, actor: 'commander', targets: [ANN], severity: 'minor', evidence: 'quoted words', confidence: 0.9, ruleId, ...extra });
+
+  it('lists the rules in force and the ones being negotiated, with guidance and the three event types', async () => {
+    const { st, settings } = setup();
+    st.mainReplies = ['{}'];
+    await extractIntents(input({ rules: RULES }), { st, settings });
+    const text = (st.calls[0].system ?? '') + st.calls[0].prompt;
+    expect(text).toContain('r1 (active) — unit_ann: Report to me every evening.');
+    expect(text).toContain('r2 (negotiating) — unit_bea: Ask me before a night run.');
+    expect(text).toMatch(/EVENT_TYPE:[^\n]*rule_kept, rule_broken, compromise_reached/);
+    expect(text).toContain('"ruleId"');
+    expect(text).toMatch(/compromise_reached/);
+  });
+
+  it('without rules the three event types are not offered and nothing about rules is said', async () => {
+    const { st, settings } = setup();
+    st.mainReplies = ['{}'];
+    await extractIntents(input(), { st, settings });
+    const text = (st.calls[0].system ?? '') + st.calls[0].prompt;
+    for (const w of ['rule_kept', 'rule_broken', 'compromise_reached', 'ruleId']) expect(text).not.toContain(w);
+  });
+
+  it('a rule event is kept only with a known rule of a unit it lands on, and the agreed text is cut and cleaned', () => {
+    const rules = [{ id: 'r1', unitId: ANN }, { id: 'r2', unitId: BEA }];
+    const r = sanitize({ events: [ev('rule_broken', 'r1'), ev('rule_kept', 'zz'), ev('rule_broken', 'r2'), ev('compromise_reached', 'r1', { text: '  A  version\nof it. ' + 'x'.repeat(300) })] }, { rules });
+    expect(r.intents.events.map((e) => [e.type, e.ruleId])).toEqual([['rule_broken', 'r1'], ['compromise_reached', 'r1']]);
+    expect(r.intents.events[1].text!.startsWith('A version of it.')).toBe(true);
+    expect(r.intents.events[1].text!.length).toBeLessThanOrEqual(160);
+    expect(sanitize({ events: [ev('rule_broken', 'r1')] }).intents.events).toEqual([]);
+  });
+
+  it('extractIntents hands the rules to the sanitizer', async () => {
+    const { st, settings } = setup();
+    st.mainReplies = [JSON.stringify({ events: [ev('rule_broken', 'r1')] })];
+    const r = await extractIntents(input({ rules: RULES }), { st, settings });
+    expect(r!.intents.events.map((e) => e.type)).toEqual(['rule_broken']);
+  });
+});

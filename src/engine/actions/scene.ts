@@ -1,4 +1,5 @@
 import { raiseTone, startTone } from '../bonds/scene';
+import { returnNegotiations } from '../bonds/rules';
 import { relieveAtSceneEnd } from '../bonds/want';
 import { markDmViolation, markSceneViolation } from '../bonds/violations';
 import { consumeSlots, registerDayEndStep } from '../calendar';
@@ -84,6 +85,7 @@ registerAction('scene/start', (draft, payload, ctx) => {
     ...(typeof payload.nightEntryId === 'string' ? { nightEntryId: payload.nightEntryId } : {}),
   };
   draft.calendar.pendingScene ??= { unitId: participants[0], day: draft.day, slot: draft.slot };
+  for (const id of participants) if (draft.relations[id]) draft.relations[id].contactDay = draft.day; // P9d: judges a daily-contact rule
   return [{ type: 'scene_started', sceneId, participants, locationId: loc.id }, ...startTone(draft, reg)]; // P9d: a romantic partner or a Want visit opens a romantic scene and decides its lead
 });
 
@@ -149,6 +151,7 @@ registerAction('scene/end', (draft, payload, ctx) => {
   }
 
   events.push(...relieveAtSceneEnd(draft, scene)); // P9d: a romantic or intimate scene with her lowers her Want
+  events.push(...returnNegotiations(draft, scene.participants)); // P9d: a negotiation nobody finished is a proposal again
   events.push(...rollDiscovery(draft, reg, ctx.rng, scene.participants));
   events.push(...expireSceneProposals(draft, scene.participants));
   // P9: a defiance nobody answered in this scene settles now

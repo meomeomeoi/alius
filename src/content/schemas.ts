@@ -1672,6 +1672,27 @@ export const ContentCategorySchema = BaseEntrySchema.extend({
 
 registrySchemas.contentCategories = ContentCategorySchema;
 
+/**
+ * A rule a leading partner can propose to the commander (P9d §5). `check` says how compliance is judged: the engine itself
+ * (`daily_contact`, `run_without_asking`) or only what the mechanic model reads in the talk (`intent`). `keepDeltas` and
+ * `breakDeltas` are what a kept and a broken rule do to her.
+ */
+export const RelationshipRuleTemplateSchema = BaseEntrySchema.extend({
+  text: str.max(160),
+  description: str.max(DESCRIPTION_MAX),
+  check: z.enum(['daily_contact', 'run_without_asking', 'intent']),
+  keepDeltas: z.object({ trust: z.number(), affinity: z.number() }).strict(),
+  breakDeltas: z.object({ trust: z.number(), affinity: z.number(), stress: z.number() }).strict(),
+  conditions: z.object({
+    minLead: z.enum(['assertive', 'dominant']).optional(),
+    tiers: z.array(z.enum(['romantic', 'close'])).min(1).optional(),
+  }).strict(),
+  weight: z.number().min(0.1).max(20),
+  contentTags,
+}).strict();
+
+registrySchemas.relationshipRuleTemplates = RelationshipRuleTemplateSchema;
+
 /** Player-visible registries whose entries carry an optional `description` (skills and statuses already require one). */
 export const DESCRIBED_REGISTRIES = [
   'roles', 'skills', 'signatures', 'statuses', 'defects', 'items', 'affixes', 'enemies',
@@ -1686,7 +1707,7 @@ export const DESCRIBED_REGISTRIES = [
   // P10
   'hubRooms', 'deviceSkins',
   // P9d
-  'contentCategories',
+  'contentCategories', 'relationshipRuleTemplates',
 ] as const satisfies readonly RegistryName[];
 
 /** Adds the optional `description` rule to a registry schema without changing its shape. */

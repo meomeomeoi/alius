@@ -3,9 +3,10 @@ import type { EngineEvent } from '../dispatch';
 import type { CampaignState, Unit } from '../state/types';
 import { TUNING } from '../tuning';
 import { bondOf } from './profile';
+import { syncRulesWithContent } from './rules';
 
 /** Registries whose entries may carry `contentTags` (and the night specs of defects and relationship states do too). */
-export const CONTENT_GATED_REGISTRIES = ['demandTemplates', 'punishments', 'dilemmaTemplates', 'missionTemplates', 'clocks'] as const satisfies readonly RegistryName[];
+export const CONTENT_GATED_REGISTRIES = ['relationshipRuleTemplates', 'demandTemplates', 'punishments', 'dilemmaTemplates', 'missionTemplates', 'clocks'] as const satisfies readonly RegistryName[];
 
 /** Anything the gate can read: a campaign, or a holder with only some of it (a wizard's world choices carry neither). */
 export type ContentHolder = { content?: { enabled: string[] }; squad?: ReadonlyArray<Pick<Unit, 'id' | 'kind' | 'bond'>> };
@@ -48,6 +49,7 @@ export function setCategories(draft: CampaignState, reg: Registries, enabled: st
   draft.content = { enabled: next };
   if (added.length === 0 && removed.length === 0) return [];
   if (removed.length > 0) withdrawTagged(draft, reg, removed);
+  syncRulesWithContent(draft, reg); // P9d: proposals under a removed category go, active rules are suspended; suspended ones come back when allowed
   return [{ type: 'content_changed', added, removed }];
 }
 

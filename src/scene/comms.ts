@@ -1,5 +1,5 @@
 import { clockText } from '../engine/calendar';
-import { disabledCategories, ownLimitLabels } from '../engine/bonds';
+import { disabledCategories, ownLimitLabels, rulesOf } from '../engine/bonds';
 import { threadOf } from '../engine/dms';
 import { measureList } from '../engine/discipline';
 import { openPromises, retrieveFacts } from '../engine/memory';
@@ -60,6 +60,7 @@ export function createComms(deps: CommsDeps): Comms {
     if (!s || !unit || !rel || chatId() !== expect) return;
     const excluded = disabledCategories(s, deps.registries());
     const limitLabels = ownLimitLabels(unit, deps.registries());
+    const ruleList = rulesOf(s).filter((r) => (r.status === 'active' || r.status === 'negotiating') && r.unitId === unitId).map((r) => ({ id: r.id, unitId: r.unitId, text: r.text, status: r.status as 'active' | 'negotiating' }));
     const result = await extractIntents({
       commanderName: s.commander.name, channel: 'dm',
       exchange: [{ speaker: s.commander.name, text: commanderText }, { speaker: unit.displayName, text: reply }],
@@ -67,6 +68,7 @@ export function createComms(deps: CommsDeps): Comms {
       openPromises: openPromises(s, [unitId]).map((p) => ({ by: p.by === 'commander' ? s.commander.name : unit.displayName, to: p.to === 'commander' ? s.commander.name : unit.displayName, text: p.text })),
       romance: intimacyOf(s).romance, measures: measureList(deps.registries(), s),
       ...(excluded.length > 0 ? { excluded } : {}), ...(limitLabels.length > 0 ? { limits: { [unitId]: limitLabels } } : {}), // P9d
+      ...(ruleList.length > 0 ? { rules: ruleList } : {}),
     }, { st, settings: deps.settings() }, { minConfidence: confidenceFloor(deps.registries(), deps.settings().intentMinConfidence) }); // P8: the engine judges per unit
     if (!result || chatId() !== expect) return;
     const intents = { ...result.intents, proposals: result.intents.proposals.filter((p) => p.from !== 'commander') };

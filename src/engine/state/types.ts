@@ -124,6 +124,9 @@ export interface Rule {
   day: number;
   brokenCount: number;
   lastBrokenDay?: number;
+  /** The proposal reached the commander (a DM from her, or said in the scene); only a delivered proposal can be answered. */
+  delivered?: boolean;
+  dmId?: string;
 }
 
 /** P9d: who leads a romantic scene. */
@@ -223,6 +226,8 @@ export interface Relation {
   want?: number;
   /** P9d: the day Want last crossed the breakdown band (so a breakdown starts once per crossing). */
   wantBreakDay?: number;
+  /** P9d: the last day the commander shared a scene with her or wrote to her (judges a `daily_contact` rule). */
+  contactDay?: number;
   /** P9d: how open the relationship is; set while she is in a `romantic` tier state. */
   publicity?: { level: Publicity; commanderPref?: Publicity; since: number };
 }

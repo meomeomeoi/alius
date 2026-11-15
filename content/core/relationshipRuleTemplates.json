@@ -1,0 +1,115 @@
+[
+  {
+    "id": "report_evening",
+    "text": "AUTHOR TO WRITE: Report to me every evening, even if it is only a word.",
+    "description": "AUTHOR TO WRITE: she asks the commander to check in with her at the end of every day.",
+    "check": "daily_contact",
+    "keepDeltas": {
+      "trust": 1,
+      "affinity": 1
+    },
+    "breakDeltas": {
+      "trust": -2,
+      "affinity": -3,
+      "stress": 3
+    },
+    "conditions": {
+      "minLead": "assertive",
+      "tiers": [
+        "romantic",
+        "close"
+      ]
+    },
+    "weight": 3
+  },
+  {
+    "id": "hands_off_gear",
+    "text": "AUTHOR TO WRITE: Nobody touches your gear but me.",
+    "description": "AUTHOR TO WRITE: she wants to be the only one who handles the commander's kit.",
+    "check": "intent",
+    "keepDeltas": {
+      "trust": 1,
+      "affinity": 1
+    },
+    "breakDeltas": {
+      "trust": -2,
+      "affinity": -3,
+      "stress": 3
+    },
+    "conditions": {
+      "minLead": "assertive",
+      "tiers": [
+        "romantic",
+        "close"
+      ]
+    },
+    "weight": 2
+  },
+  {
+    "id": "ask_before_runs",
+    "text": "AUTHOR TO WRITE: Ask me before you take anyone else on a night run.",
+    "description": "AUTHOR TO WRITE: she wants to be asked before the commander takes a rival out on a run.",
+    "check": "run_without_asking",
+    "keepDeltas": {
+      "trust": 1,
+      "affinity": 2
+    },
+    "breakDeltas": {
+      "trust": -3,
+      "affinity": -4,
+      "stress": 4
+    },
+    "conditions": {
+      "minLead": "assertive",
+      "tiers": [
+        "romantic"
+      ]
+    },
+    "weight": 2
+  },
+  {
+    "id": "no_other_tokens",
+    "text": "AUTHOR TO WRITE: You do not wear other girls' tokens.",
+    "description": "AUTHOR TO WRITE: she does not want the commander carrying another soldier's keepsake.",
+    "check": "intent",
+    "keepDeltas": {
+      "trust": 1,
+      "affinity": 2
+    },
+    "breakDeltas": {
+      "trust": -3,
+      "affinity": -4,
+      "stress": 4
+    },
+    "conditions": {
+      "minLead": "dominant",
+      "tiers": [
+        "romantic"
+      ]
+    },
+    "weight": 1
+  },
+  {
+    "id": "name_me_first",
+    "text": "AUTHOR TO WRITE: When you give a name for the squad's trust, mine comes first.",
+    "description": "AUTHOR TO WRITE: she wants to be the first the commander names and turns to.",
+    "check": "intent",
+    "keepDeltas": {
+      "trust": 1,
+      "affinity": 1
+    },
+    "breakDeltas": {
+      "trust": -2,
+      "affinity": -3,
+      "stress": 3
+    },
+    "conditions": {
+      "minLead": "assertive",
+      "tiers": [
+        "romantic",
+        "close"
+      ]
+    },
+    "weight": 2
+  }
+]

@@ -8,6 +8,7 @@
     "punishments": "punishments.json",
     "dilemmaTemplates": "dilemmaTemplates.json",
     "missionTemplates": "missionTemplates.json",
-    "clocks": "clocks.json"
+    "clocks": "clocks.json",
+    "relationshipRuleTemplates": "relationshipRuleTemplates.json"
   }
 }

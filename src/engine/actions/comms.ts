@@ -65,6 +65,7 @@ registerAction('dm/send', (draft, payload) => {
   const unit = namedUnit(draft, payload.unitId);
   const text = textOf(payload.text);
   pushMessage(draft, unit.id, { from: 'commander', text, day: draft.day, slot: draft.slot, read: true });
+  if (draft.relations[unit.id]) draft.relations[unit.id].contactDay = draft.day; // P9d: judges a daily-contact rule
   countSent(draft, unit.id);
   return [{ type: 'dm_sent', unitId: unit.id, mode: dmMode(draft, unit.id) }];
 });

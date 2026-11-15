@@ -1,4 +1,5 @@
 import type { Entry, Registries } from '../../content/types';
+import { checkRunRoster } from '../bonds/rules';
 import { relieveWant } from '../bonds/want';
 import { consumeSlots, slotsLeftToday } from '../calendar';
 import { generateEncounter, squadPower } from '../combat';
@@ -211,7 +212,8 @@ export function startExpedition(draft: CampaignState, ctx: EngineCtx, p: StartEx
   // P9: a gear fault a covert unit left behind may bite now (it is cleared either way)
   const faults = gearFault(draft, ctx);
   if (faults.length > 0) addLog(exp, 'event', GEAR_FAULT_LOG);
-  return [...faults, { type: 'expedition_started', expeditionId: exp.id, missionId: mission.id, regionId: mission.regionId, party: exp.party, slots: exp.slots }];
+  const roster = checkRunRoster(draft, ctx, p.unitIds); // P9d: a rule of ask-before-runs she holds may be broken by this party
+  return [...faults, ...roster, { type: 'expedition_started', expeditionId: exp.id, missionId: mission.id, regionId: mission.regionId, party: exp.party, slots: exp.slots }];
 }
 
 /** What an `unknown` node turns out to be: a draw over its `resolvesTo` weights, skipping types the pack no longer has. */
