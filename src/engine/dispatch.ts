@@ -78,6 +78,12 @@ export function dispatch(
     if (decision) {
       const named = (action.payload as { voteId?: unknown } | null | undefined)?.voteId;
       if (!voteFor(state, decision.kind, decision.subject, named)) {
+        // a refusal the action would give anyway comes first: no vote (and no overrule) should be paid for an action that cannot run
+        try {
+          handler(structuredClone(state), action.payload, { registries, rng: new Rng(state.rng) });
+        } catch (e) {
+          return { state, events: [{ type: 'error', code: 'handler_failed', message: e instanceof Error ? e.message : String(e) }] };
+        }
         return { state, events: [{ type: 'error', code: 'vote_needed', kind: decision.kind, subject: decision.subject }] };
       }
       voteId = named as string;

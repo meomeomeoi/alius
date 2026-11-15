@@ -1,5 +1,5 @@
 import { noteFeat } from '../power/outside';
-import { failedRunPenalty, scapegoatAfterFailure } from '../power/scapegoat';
+import { failedRunPenalty, openScapegoat, takeScapegoatCase } from '../power/scapegoat';
 import { smotherRefusal } from '../bonds/smother';
 import type { Entry, Registries } from '../../content/types';
 import { checkRunRoster } from '../bonds/rules';
@@ -496,8 +496,10 @@ export function endExpedition(draft: CampaignState, ctx: EngineCtx, outcome: Exp
 
   events.push(...exhaustion(draft, exp));
   delete draft.expedition;
+  // P9b: spend the mark on the live mission now: a day end inside the return replaces the draft's contents, and a stale copy would leave it set
+  const scapegoat = outcome === 'failed' && mission ? takeScapegoatCase(mission) : null;
   events.push(...consumeSlots(draft, exp.slots, ctx));
-  if (outcome === 'failed' && mission) events.push(...scapegoatAfterFailure(draft, ctx, mission)); // P9b
+  if (scapegoat) events.push(...openScapegoat(draft, ctx, scapegoat));
   draft.lastExpedition!.day = draft.day; // the day the squad is back; day-end hooks replace the draft's contents, so not `report` (the day may have ended inside the return)
   events.push(...openRequest(draft, 'expedition'));
   events.push({ type: 'expedition_ended', outcome, reportId: report.id });

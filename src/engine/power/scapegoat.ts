@@ -18,10 +18,10 @@ import { powerOf } from './state';
 const TEMPLATE_ID = 'scapegoat_mission';
 
 /** The unit who answers for a passed vote: the FOR voter with the largest `weight × score` (named, in the vote's order); null when nobody voted for it. */
-export function responsibleFor(vote: Vote): string | null {
+export function responsibleFor(vote: Vote, isNamed: (unitId: string) => boolean = () => true): string | null {
   let best: { id: string; value: number } | null = null;
   for (const b of vote.ballots) {
-    if (b.vote !== 'for' || b.weight <= 0) continue;
+    if (b.vote !== 'for' || b.weight <= 0 || !isNamed(b.unitId)) continue;
     const value = b.weight * b.score;
     if (best === null || value > best.value) best = { id: b.unitId, value };
   }
@@ -45,7 +45,7 @@ export function markDecidedBy(draft: CampaignState, missionId: string, voteId: u
   delete m.decidedBy;
   const vote = draft.power?.votes.open;
   if (m.source !== 'command' || !vote || vote.id !== voteId || vote.kind !== 'mission' || vote.subject !== missionId || vote.status !== 'passed') return;
-  const unitId = responsibleFor(vote);
+  const unitId = responsibleFor(vote, (id) => named(draft, id));
   if (unitId === null) return;
   m.decidedBy = {
     voteId: vote.id, unitId,
@@ -85,12 +85,18 @@ export function openScapegoat(draft: CampaignState, ctx: EngineCtx, p: { mission
   return [{ type: 'dilemma_presented', id: d.open.id, templateId: TEMPLATE_ID, title: d.open.title, source: 'fallback' }];
 }
 
-/** After a failure the squad chose: a command mission with a `decidedBy` opens the case once, and the mark is spent. */
-export function scapegoatAfterFailure(draft: CampaignState, ctx: EngineCtx, m: Mission): EngineEvent[] {
-  if (m.source !== 'command' || !m.decidedBy) return [];
+/** The case a failed command mission leaves, and the mark spent on the mission itself (so it can never open a second one). */
+export function takeScapegoatCase(m: Mission): { missionId: string; unitId: string; witnessIds: string[] } | null {
+  if (m.source !== 'command' || !m.decidedBy) return null;
   const { unitId, witnessIds } = m.decidedBy;
   delete m.decidedBy;
-  return openScapegoat(draft, ctx, { missionId: m.id, unitId, witnessIds: witnessIds ?? [] });
+  return { missionId: m.id, unitId, witnessIds: witnessIds ?? [] };
+}
+
+/** After a failure the squad chose: a command mission with a `decidedBy` opens the case once, and the mark is spent. */
+export function scapegoatAfterFailure(draft: CampaignState, ctx: EngineCtx, m: Mission): EngineEvent[] {
+  const c = takeScapegoatCase(m);
+  return c ? openScapegoat(draft, ctx, c) : [];
 }
 
 /** A run that ended `failed` costs oversight standing on top of the mission's own effects (× the world's `command_failure_mult`). */

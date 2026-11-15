@@ -174,6 +174,34 @@ describe('when the scapegoat opens', () => {
   });
 });
 
+describe('review fixes', () => {
+  it('a failed run that ends in the evening (a day end inside the return) opens exactly one case and spends the mark', () => {
+    const { state } = decided();
+    const d = structuredClone(state);
+    d.slot = 'evening';
+    d.expedition!.slots = 2;
+    d.resources.supplies = 100;
+    endExpedition(d, ctxOf(d, reg), 'failed');
+    expect(open(d)).toMatchObject({ context: 'scapegoat', subjectId: ANN });
+    expect(d.missions.offered.find((m) => m.decidedBy !== undefined)).toBeUndefined(); // the live mission is spent, not a stale copy
+    // the board mission later expiring opens nothing new
+    d.dilemmas!.open = undefined;
+    delete d.dilemmas!.open;
+    d.missions.offered[0].deadlineDay = d.day;
+    const after = endDay(d, reg);
+    expect(open(after)).toBeUndefined();
+  });
+
+  it('responsibleFor never names a grunt when told who is named', () => {
+    const vote = {
+      id: 'v1', kind: 'mission', subject: 'm', day: 1, commanderWeight: 1, forWeight: 3, againstWeight: 0, passed: true, status: 'passed',
+      ballots: [{ unitId: 'grunt_1', vote: 'for', weight: 0.5, score: 3, term: 'values' }, { unitId: BEA, vote: 'for', weight: 1, score: 0.4, term: 'values' }],
+    } as Vote;
+    expect(responsibleFor(vote)).toBe('grunt_1');
+    expect(responsibleFor(vote, (id) => id !== 'grunt_1')).toBe(BEA);
+  });
+});
+
 describe('the two answers', () => {
   function presented(): CampaignState {
     const s = structuredClone(decided().state);

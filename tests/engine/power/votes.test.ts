@@ -7,7 +7,8 @@ import { removeFromService } from '../../../src/engine/leash/use';
 import type { CampaignState, Vote } from '../../../src/engine/state/types';
 import { campaign, endDay, errors, loadCore, ofType, run, setRelation } from '../../helpers/loyalty';
 import { payload, withMission } from '../../helpers/expedition';
-import { withOptions } from '../../helpers/power';
+import { withLeader, withOptions } from '../../helpers/power';
+import { tallyVote } from '../../../src/engine/power/ballot';
 
 let reg: Registries;
 beforeAll(async () => {
@@ -235,6 +236,40 @@ describe('dropping and overruling', () => {
     expect(errors(none.events)).toHaveLength(1);
     const wrong = run(opened, reg, { type: 'vote/overrule', payload: { voteId: 'v1', means: 'shout' } });
     expect(errors(wrong.events)).toHaveLength(1);
+  });
+});
+
+describe('review fixes', () => {
+  it('a gated action that would fail anyway returns its own error, not vote_needed, so no overrule is paid for nothing', () => {
+    const { state, missionId } = board();
+    const r = run(state, reg, { type: 'expedition/start', payload: { ...payload(state, missionId, { unitIds: [ANN, BEA, CAT] }), supplies: 99 } });
+    expect(errors(r.events)[0]).toMatchObject({ code: 'handler_failed' });
+    expect(r.state).toBe(state);
+    const poor = structuredClone(state);
+    poor.resources.credits = 0;
+    poor.resources.plyx = 0;
+    const up = run(poor, reg, { type: 'base/upgrade', payload: { facilityId: 'workshop' } });
+    expect(errors(up.events)[0]).toMatchObject({ code: 'handler_failed' });
+  });
+
+  it('grunts follow a leader only when the leader is on the active roster; no dissent of named units means nothing to overrule', () => {
+    const s = board().state;
+    for (const u of s.squad) u.values = { ...ZERO, pragmatism: 3 };
+    s.squad.push({ ...structuredClone(s.squad[3]), id: 'grunt_1', kind: 'grunt', displayName: 'G-1' });
+    withLeader(s, DEE);
+    s.roster.activeIds = [ANN, 'grunt_1']; // she leads from the reserve
+    s.squad.find((u) => u.id === DEE)!.values = { ...ZERO, pragmatism: -3 };
+    const t = tallyVote(s, reg, 'upgrade', 'workshop');
+    expect(t.ballots.find((b) => b.unitId === 'grunt_1')).toMatchObject({ vote: 'abstain', weight: 0 });
+    s.roster.activeIds = [ANN, DEE, 'grunt_1'];
+    expect(tallyVote(s, reg, 'upgrade', 'workshop').ballots.find((b) => b.unitId === 'grunt_1')).toMatchObject({ weight: 0.5 });
+    // even a failed vote with no named dissenter cannot be overruled for free
+    const failed = structuredClone(s);
+    failed.power!.votes.open = { id: 'v1', kind: 'upgrade', subject: 'workshop', day: s.day, ballots: [{ unitId: 'grunt_1', vote: 'against', weight: 0.5, score: -1, term: 'values' }], commanderWeight: 0.1, forWeight: 0.1, againstWeight: 0.5, passed: false, status: 'failed' };
+    failed.power!.votes.seq = 1;
+    const r = run(failed, reg, { type: 'vote/overrule', payload: { voteId: 'v1', means: 'order' } });
+    expect(errors(r.events)).toHaveLength(1);
+    expect(r.state).toBe(failed);
   });
 });
 

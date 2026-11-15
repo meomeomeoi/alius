@@ -90,7 +90,8 @@ export function commanderVoteWeight(state: CampaignState, reg: Registries): numb
 export function ballotFor(state: CampaignState, reg: Registries, unit: Unit, kind: VoteKind, subject: string): Ballot {
   if (unit.kind !== 'named') {
     const leader = leaderOf(state);
-    if (!leader) return { unitId: unit.id, vote: 'abstain', weight: 0, score: 0, term: 'values' };
+    // she follows a leader who votes (is on the active roster); with no leader, or one in the reserve, she abstains
+    if (!leader || !state.roster.activeIds.includes(leader.id)) return { unitId: unit.id, vote: 'abstain', weight: 0, score: 0, term: 'values' };
     const led = ballotFor(state, reg, leader, kind, subject);
     return { unitId: unit.id, vote: led.vote, weight: TUNING.power.vote.gruntWeight, score: led.score, term: led.term };
   }

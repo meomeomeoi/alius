@@ -9698,10 +9698,10 @@ function checkBeatFlags(draft, ctx2) {
 
 // src/engine/power/scapegoat.ts
 var TEMPLATE_ID = "scapegoat_mission";
-function responsibleFor(vote) {
+function responsibleFor(vote, isNamed = () => true) {
   let best = null;
   for (const b of vote.ballots) {
-    if (b.vote !== "for" || b.weight <= 0) continue;
+    if (b.vote !== "for" || b.weight <= 0 || !isNamed(b.unitId)) continue;
     const value = b.weight * b.score;
     if (best === null || value > best.value) best = { id: b.unitId, value };
   }
@@ -9717,7 +9717,7 @@ function markDecidedBy(draft, missionId, voteId) {
   delete m.decidedBy;
   const vote = draft.power?.votes.open;
   if (m.source !== "command" || !vote || vote.id !== voteId || vote.kind !== "mission" || vote.subject !== missionId || vote.status !== "passed") return;
-  const unitId = responsibleFor(vote);
+  const unitId = responsibleFor(vote, (id) => named(draft, id));
   if (unitId === null) return;
   m.decidedBy = {
     voteId: vote.id,
@@ -9761,11 +9761,15 @@ function openScapegoat(draft, ctx2, p) {
   };
   return [{ type: "dilemma_presented", id: d.open.id, templateId: TEMPLATE_ID, title: d.open.title, source: "fallback" }];
 }
-function scapegoatAfterFailure(draft, ctx2, m) {
-  if (m.source !== "command" || !m.decidedBy) return [];
+function takeScapegoatCase(m) {
+  if (m.source !== "command" || !m.decidedBy) return null;
   const { unitId, witnessIds } = m.decidedBy;
   delete m.decidedBy;
-  return openScapegoat(draft, ctx2, { missionId: m.id, unitId, witnessIds: witnessIds ?? [] });
+  return { missionId: m.id, unitId, witnessIds: witnessIds ?? [] };
+}
+function scapegoatAfterFailure(draft, ctx2, m) {
+  const c = takeScapegoatCase(m);
+  return c ? openScapegoat(draft, ctx2, c) : [];
 }
 function failedRunPenalty(draft, ctx2, m) {
   if (m.source !== "command" || !m.decidedBy) return [];
@@ -11598,7 +11602,7 @@ function commanderVoteWeight(state, reg) {
 function ballotFor(state, reg, unit, kind, subject) {
   if (unit.kind !== "named") {
     const leader = leaderOf(state);
-    if (!leader) return { unitId: unit.id, vote: "abstain", weight: 0, score: 0, term: "values" };
+    if (!leader || !state.roster.activeIds.includes(leader.id)) return { unitId: unit.id, vote: "abstain", weight: 0, score: 0, term: "values" };
     const led = ballotFor(state, reg, leader, kind, subject);
     return { unitId: unit.id, vote: led.vote, weight: TUNING.power.vote.gruntWeight, score: led.score, term: led.term };
   }
@@ -11726,6 +11730,7 @@ function overruleVote(draft, ctx2, voteId, means, punish) {
   if (open3.status !== "failed") throw new Error("Only a vote that failed can be overruled.");
   if (!MEANS.includes(means)) throw new Error("A vote is overruled by an order, a punishment or the Leash.");
   const dissent = open3.ballots.filter((b) => b.vote === "against" && isNamedLiving2(draft, b.unitId));
+  if (dissent.length === 0) throw new Error("No named soldier voted against this: there is no one to overrule.");
   if (means === "punish") {
     if (!punish || !dissent.some((b) => b.unitId === punish.unitId)) throw new Error("A punishment must name one of the soldiers who voted against.");
   }
@@ -11796,6 +11801,11 @@ function dispatch(state, action, registries) {
     if (decision) {
       const named2 = action.payload?.voteId;
       if (!voteFor(state, decision.kind, decision.subject, named2)) {
+        try {
+          handler2(structuredClone(state), action.payload, { registries, rng: new Rng(state.rng) });
+        } catch (e) {
+          return { state, events: [{ type: "error", code: "handler_failed", message: e instanceof Error ? e.message : String(e) }] };
+        }
         return { state, events: [{ type: "error", code: "vote_needed", kind: decision.kind, subject: decision.subject }] };
       }
       voteId = named2;
@@ -17623,8 +17633,9 @@ function endExpedition(draft, ctx2, outcome) {
   draft.world.lastExpeditionRegionId = exp.regionId;
   events.push(...exhaustion(draft, exp));
   delete draft.expedition;
+  const scapegoat = outcome === "failed" && mission ? takeScapegoatCase(mission) : null;
   events.push(...consumeSlots(draft, exp.slots, ctx2));
-  if (outcome === "failed" && mission) events.push(...scapegoatAfterFailure(draft, ctx2, mission));
+  if (scapegoat) events.push(...openScapegoat(draft, ctx2, scapegoat));
   draft.lastExpedition.day = draft.day;
   events.push(...openRequest(draft, "expedition"));
   events.push({ type: "expedition_ended", outcome, reportId: report.id });

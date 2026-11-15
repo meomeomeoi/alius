@@ -120,6 +120,7 @@ export function overruleVote(
   if (open.status !== 'failed') throw new Error('Only a vote that failed can be overruled.');
   if (!MEANS.includes(means)) throw new Error('A vote is overruled by an order, a punishment or the Leash.');
   const dissent = open.ballots.filter((b) => b.vote === 'against' && isNamedLiving(draft, b.unitId));
+  if (dissent.length === 0) throw new Error('No named soldier voted against this: there is no one to overrule.');
   if (means === 'punish') {
     if (!punish || !dissent.some((b) => b.unitId === punish.unitId)) throw new Error('A punishment must name one of the soldiers who voted against.');
   }
