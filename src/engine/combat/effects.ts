@@ -113,6 +113,14 @@ export function checkCondition(ctx: EffectCtx, cid: string, when: Condition | un
     const notOrdered = !cs.ordersThisRound.some((o) => o.targetCid === cid);
     if (notOrdered !== when.notOrderedThisRound) return false;
   }
+  if (when.orderedThisRound !== undefined) {
+    const ordered = cs.ordersThisRound.some((o) => o.targetCid === cid);
+    if (ordered !== when.orderedThisRound) return false;
+  }
+  if (when.commanderBuildIn !== undefined) {
+    const build = cs.commander?.build;
+    if (build === undefined || !when.commanderBuildIn.includes(build)) return false;
+  }
   if (when.upkeepWithinDays !== undefined && !(upkeepAge(ctx, c) <= when.upkeepWithinDays)) return false;
   if (when.upkeepOlderThanDays !== undefined && !(upkeepAge(ctx, c) > when.upkeepOlderThanDays)) return false;
   return true;

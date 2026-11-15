@@ -218,6 +218,25 @@ describe('conditions', () => {
     expect(holds([{}], { notOrderedThisRound: true }, { mutate: (cs) => { cs.ordersThisRound.push({ orderId: 'steady', targetCid: 's1' }); } })).toBe(false);
   });
 
+  it('orderedThisRound is true only for a unit given a CP order this round (P9d)', () => {
+    const order = (cs: CombatState) => { cs.ordersThisRound.push({ orderId: 'steady', targetCid: 's1' }); };
+    expect(holds([{}], { orderedThisRound: true })).toBe(false);
+    expect(holds([{}], { orderedThisRound: true }, { mutate: order })).toBe(true);
+    expect(holds([{}], { orderedThisRound: false })).toBe(true);
+    expect(holds([{}], { orderedThisRound: false }, { mutate: order })).toBe(false);
+    // an order given to someone else does not count for her
+    expect(holds([{}], { orderedThisRound: true }, { mutate: (cs) => { cs.ordersThisRound.push({ orderId: 'steady', targetCid: 's2' }); } })).toBe(false);
+  });
+
+  it('commanderBuildIn reads the archetype copied at combat build (P9d)', () => {
+    const build = (b: string | undefined) => (cs: CombatState) => { cs.commander = { hp: 60, maxHp: 60, def: 10, coverId: 's1', downed: false, ...(b ? { build: b as never } : {}) }; };
+    expect(holds([{}], { commanderBuildIn: ['frail', 'slight'] }, { mutate: build('frail') })).toBe(true);
+    expect(holds([{}], { commanderBuildIn: ['frail', 'slight'] }, { mutate: build('slight') })).toBe(true);
+    expect(holds([{}], { commanderBuildIn: ['frail', 'slight'] }, { mutate: build('hardened') })).toBe(false);
+    expect(holds([{}], { commanderBuildIn: ['frail'] }, { mutate: build(undefined) })).toBe(false); // a combat saved before P9d, or no commander in it
+    expect(holds([{}], { commanderBuildIn: ['frail'] })).toBe(false); // the commander is covered: no build to read
+  });
+
   it('upkeepWithinDays / upkeepOlderThanDays', () => {
     const run = (upkeepDay: number | undefined, day: number, when: Record<string, unknown>) => {
       const { ctx } = setup({ squad: [{ unitId: 'unit_ann' }] });

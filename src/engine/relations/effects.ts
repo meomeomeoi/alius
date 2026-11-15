@@ -2,13 +2,29 @@ import type { Registries } from '../../content/types';
 import type { EngineEvent } from '../dispatch';
 import { countDeed } from '../discipline/deeds';
 import { applyRelationDelta } from '../relationGain';
-import type { CampaignState } from '../state/types';
+import type { CampaignState, Relation, Unit } from '../state/types';
 import { computeDeltas } from './deltas';
 import { roundAway } from './gain';
 import { evaluateEvent, pushHistory } from './graph';
 import type { EventIntent } from './intents';
 
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
+
+/**
+ * The stress her defects add when this event lands on her (P9d `eventStress`); a negative value relieves. A defect that names an
+ * `embraceFlag`, with that flag set on her relation, counts only half of its positive values. Read by field, never by defect id.
+ */
+export function defectEventStress(reg: Registries, unit: Pick<Unit, 'defects'>, rel: Pick<Relation, 'flags'>, eventType: string): number {
+  let sum = 0;
+  for (const d of unit.defects) {
+    const def = reg.defects.get(d.id);
+    const value = (def?.eventStress as Record<string, number> | undefined)?.[eventType];
+    if (value === undefined) continue;
+    const flag = def?.embraceFlag as string | undefined;
+    sum += value > 0 && flag !== undefined && rel.flags.includes(flag) ? value / 2 : value;
+  }
+  return Math.round(sum);
+}
 
 /**
  * Applies one event to one unit: the delta chain, the gain handler (diminishing returns, clamps), stress, a history
@@ -35,7 +51,7 @@ export function applyEventToUnit(
     const applied = applyRelationDelta(draft, unitId, axis, d[axis], `intent:${event.type}`);
     if (applied !== 0) events.push({ type: 'relation_changed', unitId, axis, delta: applied, applied });
   }
-  const dStress = roundAway(d.stress);
+  const dStress = roundAway(d.stress) + defectEventStress(reg, unit, draft.relations[unitId], event.type);
   if (dStress !== 0) {
     const next = clamp(unit.stress + dStress, 0, 100);
     if (next !== unit.stress) events.push({ type: 'stress_changed', unitId, delta: next - unit.stress });

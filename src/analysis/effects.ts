@@ -123,6 +123,8 @@ const WHEN_TEXT: Record<string, (value: unknown) => string> = {
   rowChanged: (v) => (v === false ? ' unless she changed rows' : ' after changing rows'),
   commanderExposed: (v) => (v === false ? ' while the commander is covered' : ' while the commander is exposed'),
   notOrderedThisRound: (v) => (v === false ? ' if ordered this round' : ' if not ordered this round'),
+  orderedThisRound: (v) => (v === false ? ' if not ordered this round' : ' if ordered this round'),
+  commanderBuildIn: (v) => ` while the commander's build is ${(v as string[]).join(' or ')}`,
   upkeepWithinDays: (v) => ` within ${v} days of upkeep`,
   upkeepOlderThanDays: (v) => ` when upkeep is older than ${v} days`,
 };

@@ -162,7 +162,7 @@ export function buildCombat(state: CampaignState, reg: Registries, rng: Rng, p: 
   if (p.encounter.exposesCommander && p.coverId) {
     const cover = squad.find((c) => c.unitId === p.coverId)!;
     const maxHp = commanderMaxHp(state, reg);
-    cs.commander = { hp: maxHp, maxHp, def: TUNING.combat.commanderDef, coverId: cover.cid, downed: false };
+    cs.commander = { hp: maxHp, maxHp, def: TUNING.combat.commanderDef, coverId: cover.cid, downed: false, build: commanderProfile(state).archetype };
   }
 
   // always-on max-HP passives (stat hp / all) are folded into the starting values

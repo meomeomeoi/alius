@@ -204,6 +204,7 @@ export const ConditionSchema = z.object({
   roundMin: num.optional(), targetHasStatus: str.optional(), selfHasStatus: str.optional(),
   aloneInRow: z.boolean().optional(), sameRowAndSkill: z.boolean().optional(), rowChanged: z.boolean().optional(),
   commanderExposed: z.boolean().optional(), notOrderedThisRound: z.boolean().optional(),
+  orderedThisRound: z.boolean().optional(), commanderBuildIn: z.array(str).min(1).optional(),
   upkeepWithinDays: num.optional(), upkeepOlderThanDays: num.optional(),
 }).strict();
 
@@ -723,6 +724,9 @@ export const DefectSchema = BaseEntrySchema.extend({
   /** P9d: added to the lead score of her scenes (not while her arc is cure). */
   leadBonus: int.min(0).max(40).optional(),
   /** P9d: what her unmet want does at the top band: an off-combat breakdown of this kind for 1 to 3 days. */
+  eventStress: z.record(z.enum(ALL_EVENT_TYPES), z.number().int().min(-10).max(10)).optional(),
+  /** P9d: deciding the Embrace path writes this relation flag (a stand-in for a formal arrangement); while it is set the defect's positive `eventStress` values are halved. */
+  embraceFlag: str.optional(),
   wantBreakdown: z.object({ kind: z.enum(['withdrawal', 'binge', 'smother', 'seize']), days: int.min(1).max(3) }).strict().optional(),
   nightEvents: z.array(NightSpecSchema).optional(),
   /** P5: one more node revealed ahead on the expedition map (Echo Bleed). */

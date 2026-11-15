@@ -5561,6 +5561,8 @@ var ConditionSchema = external_exports.object({
   rowChanged: external_exports.boolean().optional(),
   commanderExposed: external_exports.boolean().optional(),
   notOrderedThisRound: external_exports.boolean().optional(),
+  orderedThisRound: external_exports.boolean().optional(),
+  commanderBuildIn: external_exports.array(str).min(1).optional(),
   upkeepWithinDays: num.optional(),
   upkeepOlderThanDays: num.optional()
 }).strict();
@@ -6153,6 +6155,9 @@ var DefectSchema = BaseEntrySchema.extend({
   /** P9d: added to the lead score of her scenes (not while her arc is cure). */
   leadBonus: int.min(0).max(40).optional(),
   /** P9d: what her unmet want does at the top band: an off-combat breakdown of this kind for 1 to 3 days. */
+  eventStress: external_exports.record(external_exports.enum(ALL_EVENT_TYPES), external_exports.number().int().min(-10).max(10)).optional(),
+  /** P9d: deciding the Embrace path writes this relation flag (a stand-in for a formal arrangement); while it is set the defect's positive `eventStress` values are halved. */
+  embraceFlag: str.optional(),
   wantBreakdown: external_exports.object({ kind: external_exports.enum(["withdrawal", "binge", "smother", "seize"]), days: int.min(1).max(3) }).strict().optional(),
   nightEvents: external_exports.array(NightSpecSchema).optional(),
   /** P5: one more node revealed ahead on the expedition map (Echo Bleed). */
@@ -7752,6 +7757,17 @@ function stateForProposal(state, reg, unitId, kind) {
 
 // src/engine/relations/effects.ts
 var clamp4 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+function defectEventStress(reg, unit, rel, eventType) {
+  let sum = 0;
+  for (const d of unit.defects) {
+    const def = reg.defects.get(d.id);
+    const value = def?.eventStress?.[eventType];
+    if (value === void 0) continue;
+    const flag = def?.embraceFlag;
+    sum += value > 0 && flag !== void 0 && rel.flags.includes(flag) ? value / 2 : value;
+  }
+  return Math.round(sum);
+}
 function applyEventToUnit(draft, reg, unitId, event, opts = {}) {
   const unit = draft.squad.find((u) => u.id === unitId);
   if (!unit || !draft.relations[unitId]) return [];
@@ -7770,7 +7786,7 @@ function applyEventToUnit(draft, reg, unitId, event, opts = {}) {
     const applied = applyRelationDelta(draft, unitId, axis, d[axis], `intent:${event.type}`);
     if (applied !== 0) events.push({ type: "relation_changed", unitId, axis, delta: applied, applied });
   }
-  const dStress = roundAway(d.stress);
+  const dStress = roundAway(d.stress) + defectEventStress(reg, unit, draft.relations[unitId], event.type);
   if (dStress !== 0) {
     const next = clamp4(unit.stress + dStress, 0, 100);
     if (next !== unit.stress) events.push({ type: "stress_changed", unitId, delta: next - unit.stress });
@@ -13015,6 +13031,14 @@ function checkCondition(ctx2, cid, when, targetCid, skillId) {
     const notOrdered = !cs.ordersThisRound.some((o) => o.targetCid === cid);
     if (notOrdered !== when.notOrderedThisRound) return false;
   }
+  if (when.orderedThisRound !== void 0) {
+    const ordered = cs.ordersThisRound.some((o) => o.targetCid === cid);
+    if (ordered !== when.orderedThisRound) return false;
+  }
+  if (when.commanderBuildIn !== void 0) {
+    const build = cs.commander?.build;
+    if (build === void 0 || !when.commanderBuildIn.includes(build)) return false;
+  }
   if (when.upkeepWithinDays !== void 0 && !(upkeepAge(ctx2, c) <= when.upkeepWithinDays)) return false;
   if (when.upkeepOlderThanDays !== void 0 && !(upkeepAge(ctx2, c) > when.upkeepOlderThanDays)) return false;
   return true;
@@ -13626,7 +13650,7 @@ function buildCombat(state, reg, rng, p) {
   if (p.encounter.exposesCommander && p.coverId) {
     const cover = squad.find((c) => c.unitId === p.coverId);
     const maxHp = commanderMaxHp(state, reg);
-    cs.commander = { hp: maxHp, maxHp, def: TUNING.combat.commanderDef, coverId: cover.cid, downed: false };
+    cs.commander = { hp: maxHp, maxHp, def: TUNING.combat.commanderDef, coverId: cover.cid, downed: false, build: commanderProfile(state).archetype };
   }
   const ctx2 = makeCtx(cs, state, reg, rng);
   for (const c of cs.combatants.filter((x) => x.side === "squad")) {
@@ -27021,6 +27045,8 @@ var WHEN_TEXT = {
   rowChanged: (v) => v === false ? " unless she changed rows" : " after changing rows",
   commanderExposed: (v) => v === false ? " while the commander is covered" : " while the commander is exposed",
   notOrderedThisRound: (v) => v === false ? " if ordered this round" : " if not ordered this round",
+  orderedThisRound: (v) => v === false ? " if not ordered this round" : " if ordered this round",
+  commanderBuildIn: (v) => ` while the commander's build is ${v.join(" or ")}`,
   upkeepWithinDays: (v) => ` within ${v} days of upkeep`,
   upkeepOlderThanDays: (v) => ` when upkeep is older than ${v} days`
 };

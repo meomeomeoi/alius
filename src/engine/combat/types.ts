@@ -1,5 +1,5 @@
 import type { RngState } from '../rng';
-import type { LootDrop, Severity } from '../state/types';
+import type { Archetype, LootDrop, Severity } from '../state/types';
 
 /**
  * Combat effect vocabulary (P4). Every combat behaviour of skills, signatures, defects, statuses, synergies,
@@ -45,6 +45,10 @@ export interface Condition {
   rowChanged?: boolean;
   commanderExposed?: boolean;
   notOrderedThisRound?: boolean;
+  /** P9d: the inverse of `notOrderedThisRound`: a CP order was given to her this round. */
+  orderedThisRound?: boolean;
+  /** P9d: the exposed commander's build (archetype) is one of these. False when the commander is covered. */
+  commanderBuildIn?: string[];
   upkeepWithinDays?: number;
   upkeepOlderThanDays?: number;
 }
@@ -264,7 +268,7 @@ export interface CombatState {
   timeline: string[];
   turn: number;
   combatants: Combatant[];
-  commander?: { hp: number; maxHp: number; def: number; coverId: string; downed: boolean };
+  commander?: { hp: number; maxHp: number; def: number; coverId: string; downed: boolean; /** P9d: the archetype at combat start (absent in a combat saved before P9d). */ build?: Archetype };
   encounter: Encounter;
   formation: { front: string[]; back: string[] };
   log: LogEntry[];

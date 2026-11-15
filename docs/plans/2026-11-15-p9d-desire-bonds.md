@@ -642,15 +642,15 @@ tests/**                                           mirrors src; tests/helpers/bo
 **Interfaces:**
 - Produces: the two conditions and `defectEventStress(reg, unit, rel, eventType): number`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `orderedThisRound is true only for a unit given a CP order this round`
   - `commanderBuildIn reads the archetype copied at combat build`
   - `eventStress adds stress when the event lands and relieves on negative values`
   - `co_command halves positive eventStress`
-- [ ] **Step 2: Run** and confirm FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** `npm test` and confirm PASS.
-- [ ] **Step 5: Commit** `feat(combat): orderedThisRound, commanderBuildIn and defect eventStress`.
+- [x] **Step 2: Run** and confirm FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** `npm test` and confirm PASS.
+- [x] **Step 5: Commit** `feat(combat): orderedThisRound, commanderBuildIn and defect eventStress`.
 
 ### Task 14: Dominance Drive and Caretaker Overdrive
 
