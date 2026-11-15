@@ -1,6 +1,6 @@
 # P9e — "Her call": decisions a soldier takes on her own
 
-**Status: spec (not started).** **Depends on:** P9b (scapegoat case, `Mission.decidedBy`, `markDecidedBy`, standing and merit), P9 (Impunity, stances), P9d (`bondOf(unit).leadStyle`), P5 (expedition event nodes, missions, oversight standing), P6 (dilemmas, `unit_event` effects). **Read:** overview; this file; P9b **Implemented as** (the scapegoat section, the rulings, the open items); P5 §events; P9.
+**Status: implemented** (plan: `docs/plans/2026-11-15-p9e-her-call.md`; see **Implemented as** at the end; where it differs from the draft, the code wins). **Depends on:** P9b (scapegoat case, `Mission.decidedBy`, `markDecidedBy`, standing and merit), P9 (Impunity, stances), P9d (`bondOf(unit).leadStyle`), P5 (expedition event nodes, missions, oversight standing), P6 (dilemmas, `unit_event` effects). **Read:** overview; this file; P9b **Implemented as** (the scapegoat section, the rulings, the open items); P5 §events; P9.
 
 **Analysis tool (P7a):** every new player-facing stat, chip, option and card in this package carries `data-analyze`, has a glossary entry or registry `description`, and live values get a provider reading through `Knowledge`. No pronoun for the commander in any text (lore §0).
 
@@ -71,7 +71,7 @@ herCall: {
 5. With voting off and no eligible unit gameplay is unchanged from P9b (the rng state after a run equals the run without this package).
 6. Old saves load; the notice, the chip and the directive carry `data-analyze` / have glossary entries; no commander pronoun anywhere.
 
-## Open questions for the author
+## Open questions for the author (answered: see **Implemented as**)
 
 - Frequency: should the commander be able to **pre-empt** it (a standing order that makes her ask first, at the price of Trust), or is the price purely afterwards?
 - Should a her-call also be possible **at the base** (a decision about the base while the commander is out), or only in the field?
@@ -89,3 +89,60 @@ herCall: {
 - **Standing and merit:** `recordMerit`-style entries (`power.merit`: `{ day, unitId, points }`), `standingOf`, `leaderOf`, `leadRank` via `bondOf`.
 - **Vote gate:** `registerVoteGate`; a her-call needs none (the commander does not decide it), the scapegoat answer is gated as before.
 - **Directives and voices:** prefix `power:`; sources declare their voice in `VOICE_OF`.
+
+## Implemented as
+
+Engine: `src/engine/power/herCall.ts` (`herCallSpecOf`, `askFirstHolds`, `herCallCandidates`, `actorWeight`, `herCallChance`, `herCallOdds`, `rollHerCall`, `markHerCall`, `applyHerCall`, `setAskFirst`); hooks in `src/engine/world/expedition.ts` (`eventPool`, `enterEvent`, `closeEventNode`, `acknowledgeHerCall`, the `chooseOption` guard, the report copy), `src/engine/dilemma/flow.ts` (the request guard), `src/engine/power/scapegoat.ts` (the source of a mark), `src/engine/power/{votes,state}.ts` (`againstHerValues` exported, `forgetPower`); actions `expedition/ack_her_call` and `power/ask_first`. Non-engine: `src/power/{controller,directives}.ts`, UI `src/ui/expedition/herCallCard.ts`, the run view, `src/ui/ops/missionBoard.ts`, `src/ui/power/{chips,hierarchy}.ts`, `VOICE_OF.her_call`, `css/74-power.css`; analysis `src/analysis/providers/power.ts`. Content: five templates in `content/core/dilemmaTemplates.json`, glossary `her_call` and `ask_first`, `scapegoat_mission.fixed.because`. Numbers: `TUNING.herCall`. Every number and text is a **draft**; the authored texts are marked `AUTHOR TO WRITE`.
+
+### State
+Every field is optional and the version stays 1: `ExpeditionState.herCalls` and `ExpeditionReport.herCalls` (`{ nodeId, unitId, outcome, templateId, odds }`; `odds` is stored so the reading explains the roll as it was), `PendingNode.herCall` (`{ unitId, outcome }`), `Mission.decidedBy` (a union: a vote's mark has no `source`, a her-call's is `{ source: 'her_call', unitId, nodeId, witnessIds }`; **absent reads as `'vote'`**), `PowerState.askFirst` (unit → the day it was ordered), `PowerState.scapegoatQueue[].source` (written only for `her_call`), `DilemmaState.scapegoatSource` (`'her_call'` only), `dilemmaTemplates[].herCall` and `fixed.because`.
+
+### Rulings (the plan's ruling section holds the full text; **(user)** = answered by the user on 2026-11-15)
+- **Standing order "ask me first" (user: in v1).** `power/ask_first { unitId, on }`, base only (the expedition guard refuses it during a run). Giving it stores the day and costs Trust once, as a `decision_violated` of `TUNING.herCall.askFirst.severity` (draft `minor`) against her own values, then `evaluateAutomatic`; lifting it is free; setting it twice or lifting a missing one throws and changes nothing. While it holds she is never a candidate, draws nothing and is not in the weights. A run that started before the order read it live at each node entry. `forgetPower` drops it.
+- **Field only (user).** A her-call happens only at expedition event nodes. Her-calls at the base are an open item.
+- **A good outcome is always hers (user).** No `outsideFeats` entry and no `noteFeat`: it is never credited to the commander.
+- **How hard a bad outcome bites (user).** About as much as the worst option of an ordinary minor event: lost carried supplies 2–3, party stress +10, party HP −10 %; the scapegoat case comes on top. The schema requires a cost effect in the bad outcome and none in the good one.
+- **Who may act: from the card.** `leadRank(bondOf(u).leadStyle) ≥ trigger.minLeadRank`, or her command stance is one of `trigger.stances` **and** Impunity ≥ `trigger.minImpunity` (either branch). Named, living, `status === 'active'` (the able party), not under ask-first. Stance ids appear only as data in `trigger.stances` (checked against `commandStances` at load); defects are read by `category`. `squad_assertiveness` scales only the chance.
+- **Which templates the pool offers.** `eventPool` keeps a her-call template only with a run open, its mission's template not `tutorial`, and a non-empty `herCallCandidates` over `ableParty`. A party with nobody eligible sees exactly P9b's pool and `rng.pick` draws identically: the run is byte-identical to the same run without the her-call templates (acceptance 5).
+- **Draws.** No eligible unit: 0. An eligible unit at a her-call node: 1 (does she act). She acts: 3, in the order chance, actor, outcome. The pool pick precedes them.
+- **Actor weight** `(1 + leadBonus[leadStyle]) × band[Impunity band] × (leader ? leaderMult : 1)`; the pick is `rng.float() × total` over the candidates in party order. **Odds** `clamp(base + perPoint × (s(good) − s(bad)) + Σ tilt, min, max)` with `s(o) = Σ effectiveValues[axis] × o.lean[axis]`; one tilt per `defectTilt` entry whose category she has. **Chance** `min(chanceCap, chance × privilegeMult)`.
+- **When effects apply.** On node entry, the moment she acts (`applyWorldEffects` with source `{ kind: 'event', id: templateId }`, the consequences, the log line `{Name} took the decision herself: {text}`, the `herCalls` entry); the node then waits as `pending.herCall` with phase `event`. `expedition/ack_her_call` only closes it (an objective node then counts as done). `expedition/choose` throws `She has already decided: acknowledge it.` A retreat at the notice is allowed and keeps the effects and the mark.
+- **A her-call node where she does not act** (the chance roll fails, or the template was pinned and nobody is eligible) plays the template's `fixed` block as an ordinary minor event.
+- **Consequences.** Good: merit (`meritGood`, draft 6), Impunity record `recordGood` (4), a fact (`{Name} took a decision in the field herself, and it went well: …`, known by the party, importance 2, tag `her_call`); never a mark. Bad: record `recordBad` (4), and the mark.
+- **The mark.** Only on a `command` mission whose template is not `tutorial`; **the first mark wins** (a vote's, or an earlier her-call's, is never overwritten; the event then says `marked: false`); witnesses are the other named living party members. Both sources open the case (`takeScapegoatCase`, `scapegoatAfterFailure`) and both get the failed-run penalty. A retreat opens nothing and leaves the mark on the board mission, as P9b's vote mark does.
+- **Wording.** `scapegoat_mission.setup` has a `{because}` placeholder filled from `fixed.because[source]` (`vote` / `her_call`; an absent line fills nothing). `fixed.because` is allowed only on `scapegoat` templates.
+- **Events.** `her_call { nodeId, templateId, unitId, outcome, missionId, marked }` replaces `expedition_event` for that node, so the app never asks the model for a generated dilemma. `her_call`, `her_call_acknowledged` and `ask_first_set` are reserved event types.
+- **Directives.** `power:herCall:<unitId>` (set on `expedition_ended` from `lastExpedition.herCalls`; one per unit, her last call wins; expires after the scene) and `power:ask_first:<unitId>` (derived while she is in the scene). Glossary ids `her_call`, `ask_first`.
+
+### Rulings made while implementing (the plan was silent or collided with the code)
+- `herCall` requires `contexts` to be exactly `['expedition_event']` (not merely to include it).
+- The her-call log line is written by `enterEvent`, not `applyHerCall`: `herCall.ts` must not import `world/expedition.ts`, where `addLog` lives.
+- `openDilemma` refuses a her-call template first with "has nothing to generate" (the schema forbids `generate` on one), so the plan's "That event is not waiting on the map." is reachable only for a hand-built template; the guard is kept and tested that way.
+- On a tutorial run (reachable only through a pinned event) she may act but is never marked.
+- The authored `AUTHOR TO WRITE` marker is on each her-call `fixed.setup` (and the glossary `long`), not on the outcome texts: those are shown in the run log.
+- The controller method is `ackHerCall()`: `acknowledge()` already closes the after-action report (`expedition/ack_report`).
+- The dossier toggle is drawn only when a handler is passed and is `aria-disabled` during a run.
+
+### Draft numbers (`TUNING.herCall`)
+`chance` 0.35 and `chanceCap` 0.8; `leadBonus` yielding 0 / balanced 0 / assertive 1 / dominant 2; `band` cowed 0.5 / low 0.75 / high 1 / brazen 1.5; `leaderMult` 2; `odds` base 0.5, 0.05 a point, 0.15…0.85; `meritGood` 6, `recordGood` 4, `recordBad` 4, `factImportance` 2; `askFirst.severity` `minor`. The five events' leans, effects and `defectTilt`s (`neural −0.1` on the route, `cybernetic +0.1` on the cache) are drafts too. Not measured: no balance pass was run on how often a her-call happens over a campaign.
+
+### Non-obvious things to know before touching P9e code
+- **`eventPool` is the only gate** that keeps acceptance 5 true: it must stay deterministic and draw nothing. A pinned her-call template with nobody eligible plays its fixed block and draws nothing at all.
+- **The effects apply at entry, not at ACKNOWLEDGE.** A reload or a retreat at the notice never applies them twice; the card is built from `pending.herCall` alone.
+- **Code reads by field:** triggers by lead rank and stance list, tilts by defect category, mark and case by `decidedBy.source` (absent = vote), never by a template, stance or defect id.
+- **The vote's mark and the her-call's share one field:** `markDecidedBy` (a vote) deletes any mark at `expedition/start`; `markHerCall` never overwrites one.
+- **Directive ids** start with `power:` and stay away from the prefixes P9/P9d/P11 reserve (`tests/power/herCallDirectives.test.ts` holds the list).
+- Tests that need a particular roll scan seeds for one whose draws give it (the pool pick comes first when the template is not pinned); a test that changes the draw order must say so.
+
+### Open items
+- No her-call at the base (only in the field).
+- A defiant soldier does not ignore ASK ME FIRST: in v1 it always holds.
+- A leader's countermand still never leads to an oversight failure.
+- Nothing announces a her-call outside the run screen (no toast, no cut-in): the card and the log are its whole notice.
+- Every number and text is a draft; no balance pass on frequency, and the manual check in SillyTavern (`docs/MANUAL_TEST_P9e.md`) is not done.
+
+## Interfaces already provided by P9e (implemented — use, do not rebuild)
+
+- `Mission.decidedBy.source` (`'vote'` or `'her_call'`, absent = vote), `takeScapegoatCase(m)` and `openScapegoat(…, { source? })`, `DilemmaState.scapegoatSource`: a second way to answer for a run. `markHerCall(draft, mission, { unitId, nodeId, witnessIds })` never overwrites a mark.
+- `askFirstHolds(state, unitId)` and `power/ask_first`: a standing order a later package may read.
+- `ExpeditionReport.herCalls`: the run's her-calls for a debrief or a recap.

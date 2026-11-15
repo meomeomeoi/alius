@@ -121,3 +121,8 @@ Intimacy settings apply as usual; romance with the warden is allowed and gets de
 - **Hierarchy:** `leaderOf(state)`, `standingOf(state, reg, unitId)` and `computeHierarchy(draft, reg)` compute among the named living units; the warden of LEASHSWAP is outside that set and is filtered out before the call (a standing tension when the warden is not the leader). `changeLeader` reports a change (`leader_changed`, public facts, endorsement and `co_command` cleared).
 - **Scapegoat:** `openScapegoat(draft, ctx, { missionId, unitId, witnessIds })` and the answers `take_blame` / `shift_blame` (read from the option `id` with `scapegoatOptionId`); P13 adds the commander's injury and confinement to TAKE THE BLAME as more effects of that option, and `shielded` is the engine event for covering her.
 - **Oversight copy:** `LeashLogEntry.cc` and `outsideActive(state)` (oversight addresses the leader as second-in-command when endorsed).
+
+## Interfaces already provided by P9e (implemented — use, do not rebuild)
+
+- **A second source of the scapegoat case:** `Mission.decidedBy.source` (`'vote'` or `'her_call'`; absent = vote) and `DilemmaState.scapegoatSource` (`'her_call'` only). `openScapegoat(draft, ctx, { missionId, unitId, witnessIds, source? })` takes the source; the template wording comes from `fixed.because`. TAKE THE BLAME's extra effects (injury, confinement) apply to both sources unchanged. `herCallCandidates` reads the party's named active units: if the warden can ever be one of them, filter her out where P13 needs it.
+- **ASK ME FIRST:** `PowerState.askFirst` and `askFirstHolds(state, unitId)`: a standing order a mirrored discipline could reuse. `ExpeditionReport.herCalls` lists the run's her-calls.

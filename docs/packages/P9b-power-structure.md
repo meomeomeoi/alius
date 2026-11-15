@@ -127,7 +127,7 @@ Measured with throwaway scripts over the real engine (not kept): 500 random four
 - **A scapegoat case blocks time** like any presented dilemma (`BLOCKED_BY_DILEMMA`); the day step opens a queued case only when nothing else waits and drops one whose subject is gone with no effects.
 
 ### Open items
-- No "her call" dilemma exists, and a leader's countermand never leads to an oversight failure: votes are the only source of a scapegoat case. The "her call" family is its own package, **P9e** (`P9e-her-call.md`).
+- A leader's countermand never leads to an oversight failure. The "her call" family is built in **P9e** (`P9e-her-call.md`, implemented): a soldier's own bad decision in the field is a second source of a scapegoat case (`Mission.decidedBy.source`, `DilemmaState.scapegoatSource`; a mark without `source` is a vote's).
 - Outside perception has no traders or parleys: the directive and the oversight `cc` are its whole effect.
 - LEASHSWAP (P13): the warden above the hierarchy is not built; `leaderOf`, `standingOf` and `computeHierarchy` compute among the others.
 - TAKE THE BLAME does not yet injure or confine the commander (P13).

@@ -14,7 +14,7 @@ P0–P6 are done. These packages bring the base to a proper starting level befor
 | 5 | **P11** Prologue & onboarding (**done**) | Assembles P7 (creation fields), P8 (world screen) and P10 (paper voice, hub, objective panel). |
 | 5b | **P9d** Desire & bonds (**done**) | Defines the bond profile and opt-in content categories that P9b/P9c read; needs P9 and P3. Implement before P9b/P9c. |
 | 5c | **P9b** Squad power structure (**done**) | Voting, hierarchy/leader, outside perception, scapegoat; needs P9, P8, P9d §1. |
-| 5c2 | **P9e** "Her call" | A soldier acts on her own in a run; a bad turn marks the mission so P9b's scapegoat opens; needs P9b, P9, P5, P6. Spec only. |
+| 5c2 | **P9e** "Her call" (**done**) | A soldier acts on her own in a run; a bad turn marks the mission so P9b's scapegoat opens; needs P9b, P9, P5, P6. |
 | 5d | **P9c** Personal pressure | Device access levels, bookings, inverted courtship, tokens, squad secrets, wagers; needs P9b, P9d, P10. |
 | 5e | **P10b** Intimate immersion UI | Telemetry, living DMs, night door, handwriting, device marks; needs P10, P9c data, P9d. |
 | 6 | **P12** Special traits: Secret Frequency, Bloom-induced Paranoia, Web of Debts | Stand on P7's trait framework, P9's leverage/punishments and P5's night events and threads. |

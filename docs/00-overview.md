@@ -160,7 +160,7 @@ Before each main-model generation the adapter injects one compact block:
 
 Character card text itself remains SillyTavern's job.
 
-### 5.4 Implemented engine interfaces (P0–P6, P7a, P7, P8, P9, P9d, P9b, P10, P11)
+### 5.4 Implemented engine interfaces (P0–P6, P7a, P7, P8, P9, P9d, P9b, P9e, P10, P11)
 
 Later packages build on these; change them only together with the owning spec.
 
@@ -247,6 +247,8 @@ Later packages build on these; change them only together with the owning spec.
 | `noteFeat`, `outsideActive`, `outsideSuppressedFor`, `negotiationHolds`, registry `outsideFeats` (3), `ExpeditionState.orders`, `LeashLogEntry.cc`, `dilemma_resolved.routeKind` | P9b | Outside perception and the three feats. |
 | `openScapegoat`, `responsibleFor`, `scapegoatOptionId`, `markDecidedBy`, `Mission.decidedBy`, context `scapegoat`, template `scapegoat_mission`, world effect `oversight_punish`, `unit_event` targets `subject` / `witnesses`, event `shielded` (engine type; a big gesture), `Restriction.source: 'oversight'` | P9b | The scapegoat after a failure the squad chose; `take_blame` / `shift_blame`. P13 adds the commander's injury and confinement to TAKE THE BLAME. |
 | `createPower` / `app.power` (`onEvents`, `requestVote`, `overrule`, `drop`, `ballotLines`, `endorse`, `challenge`, `answerCountermand`), `powerDirectives`, `refreshPowerDirectives`, `renderVotePanel`, `renderHierarchyBlock`, `drawCountermandChips`, `scapegoatView`, `registerPowerProviders`, setting `ballotWording`, flavor kind `ballot` | P9b | The non-engine layer: directives (`power:vote:`, `power:leader`, `power:outside`, `power:challenge`, `power:countermand`), the VOTE panel, the dossier block. `requestVote(action)` is how a UI path runs a gated action. |
+| `herCallSpecOf`, `askFirstHolds`, `herCallCandidates`, `actorWeight`, `herCallChance`, `herCallOdds`, `rollHerCall`, `applyHerCall`, `markHerCall`, `setAskFirst`, `acknowledgeHerCall`, `closeEventNode`, actions `expedition/ack_her_call` and `power/ask_first { unitId, on }`, `dilemmaTemplates[].herCall` (+ `defectTilt`), `fixed.because`, `Mission.decidedBy.source`, `PendingNode.herCall`, `ExpeditionState.herCalls` / `ExpeditionReport.herCalls`, `PowerState.askFirst`, `DilemmaState.scapegoatSource`, events `her_call` / `her_call_acknowledged` / `ask_first_set`, `TUNING.herCall` | P9e | A soldier acts on her own at an expedition event node: the engine picks who (lead rank or stance + Impunity, weighted; the leader ×2) and how it turns out; a bad call marks a command mission so P9b's scapegoat opens on her; the standing order "ask me first" stops it for one soldier at the price of Trust. `eventPool` offers a her-call template only to a party with an eligible unit, so with none the run is byte-identical to P9b. |
+| `renderHerCallCard`, `herCallChip`, `ExpeditionController.ackHerCall`, `app.power.askFirst(unitId, on)`, `VOICE_OF.her_call`, directives `power:herCall:<unitId>` and `power:ask_first:<unitId>`, providers `glossary:her_call` / `glossary:ask_first`, glossary `her_call` / `ask_first` | P9e | The non-engine layer: the notice card (no options, `[ACKNOWLEDGE]`), the `ON HER CALL` chip, the ASK ME FIRST toggle and `ASKS FIRST` chip in the dossier. |
 | `whereabouts(state, reg)` → `Whereabout[]` (`{ unitId, roomId \| null, reason }`), `fnv1a`, registry `hubRooms` (`rect`, `sceneLocationId`, `facilityId?`, `activityIds?`, `weights`, `likeTags?`, `hosts?`, `commanderCell?`) | P10 | Where each living unit is this slot, derived and stateless (no RNG): away, injured, confined, duty, night, else a weighted hash pick. P10b may replace the last step with a stored schedule. |
 | `ScreenId 'hub'`, `ShellApi.registerHub / isDeviceUp / setDevice`, `toast(kind, text, { voice, title })`, `ShellDeps.{ skin, sound, onDevice }`, `app.talkAt(unitId, locationId)`, `app.endSlot()` | P10 | The hub is the home screen and the PDA a device layer over it: `showScreen('pda')` raises it, `'hub'` lowers it. `talkAt` starts the talk activity and the scene at a room's location without the picker; `endSlot` passes the slot after a confirm (a quiet night is slept through). |
 | `currentObjective(state, reg)`, `tonightItems`, `markerTone`, `endSlotBlock`, `latestOversight` (`src/ui/hub/model.ts`) | P10 | Pure view models of the hub. `currentObjective` reads P11's `objectiveList` and falls back to the old mission pick (`source: 'mission'`). |
@@ -296,7 +298,7 @@ Campaign {
   workshopSession?: { day, opsLeft, companionId? }, enemyNames?: { [enemyId|affixes]: name }   // P4
   ledger?: [{ day, slot, action, key, delta }]   // P7a: changes of resources (res:<r>), unit stress (stress:<id>), relation axes (axis:<id>:<axis>) and, from P9, the stored Impunity term (record:<id>); last 7 days, ≤ 150, written by dispatch
   content?: { enabled[] /* contentCategories ids */ }, bonds?: { rules[], smother? }   // P9d; absent = nothing enabled, no rules
-  power?: { votes{ open?, log[], seq }, grudges?, hierarchy?{ standings, leaderId?, endorsed, computedDay, challengeCooldownUntil?, deposed?, standingBonus?, outsideSuppressedUntil? }, merit?[], countermand?, scapegoatQueue? }, base.rations?   // P9b; absent = no votes, no leader, equal rations (world options squad_assertiveness, voting live in world.options)
+  power?: { votes{ open?, log[], seq }, grudges?, hierarchy?{ standings, leaderId?, endorsed, computedDay, challengeCooldownUntil?, deposed?, standingBonus?, outsideSuppressedUntil? }, merit?[], countermand?, scapegoatQueue?[] /* P9e: + source? */, askFirst?{ [unitId]: day } /* P9e */ }, base.rations?   // P9b; absent = no votes, no leader, equal rations (world options squad_assertiveness, voting live in world.options)
   hierarchy?, votes?[]   // P9b (planned): leader/standing and open votes; world options squad_assertiveness, voting
   discipline?: { defiance[], threats[], applications[] /* newest 20, each with its Inverse */, restrictions[], sabotage?{ queued[], gear?, lastDay? }, demands[], demandLog[] }   // P9; absent in old saves
 }
@@ -403,7 +405,7 @@ Defaults in code: Desire/Bond defects **off**, show raw values **off**, sprite m
 | 13 | P11 | Prologue & onboarding | P7, P8, P10 | implemented |
 | 14 | P9d | Desire & bonds (bond profile, opt-in content categories, lead, Want, relationship rules) | P3, P9 | implemented |
 | 15 | P9b | Squad power structure (voting, hierarchy/leader, outside perception, scapegoat) | P8, P9, P9d | implemented |
-| 16 | P9e | "Her call" (a soldier acts on her own in the field; a bad turn marks the run for the P9b scapegoat) | P5, P6, P9, P9b, P9d | spec |
+| 16 | P9e | "Her call" (a soldier acts on her own in the field; a bad turn marks the run for the P9b scapegoat) | P5, P6, P9, P9b, P9d | implemented |
 | 17 | P9c | Personal pressure (device access levels, bookings, tokens, squad secrets, wagers) | P9b, P9d, P10 | spec |
 | 18 | P10b | Intimate immersion UI (telemetry, living DMs, night door, handwriting, device marks) | P10, P9c, P9d | spec |
 | 19 | P12 | Special traits: Secret Frequency, Bloom-induced Paranoia, Web of Debts | P5, P6, P7, P9 | spec |
