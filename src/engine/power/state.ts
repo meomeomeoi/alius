@@ -1,3 +1,4 @@
+import type { Registries } from '../../content/types';
 import { isLiving } from '../economy';
 import type { CampaignState, PowerState, RationMode, Unit, Vote, VoteLogEntry } from '../state/types';
 import { TUNING } from '../tuning';
@@ -17,6 +18,18 @@ export function leaderOf(state: Pick<CampaignState, 'power' | 'squad'>): Unit | 
   const id = state.power?.hierarchy?.leaderId;
   const unit = id === undefined ? undefined : state.squad.find((u) => u.id === id);
   return unit && unit.kind === 'named' && isLiving(unit) ? unit : null;
+}
+
+/** The relation flag of the formal second-in-command (P9d's stand-in; the hierarchy owns it now). */
+export const CO_COMMAND = 'co_command';
+
+/** A unit who no longer leads loses `co_command`, unless her own Embrace of the defect that names that flag keeps it. */
+export function dropCoCommand(draft: CampaignState, reg: Registries, unitId: string): void {
+  const rel = draft.relations[unitId];
+  const unit = draft.squad.find((u) => u.id === unitId);
+  if (!rel || !unit) return;
+  const embraced = unit.defects.some((d) => d.arc === 'embrace' && reg.defects.get(d.id)?.embraceFlag === CO_COMMAND);
+  if (!embraced) rel.flags = rel.flags.filter((f) => f !== CO_COMMAND);
 }
 
 /** How a shortage is shared out. */

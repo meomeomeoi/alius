@@ -6,3 +6,6 @@ export { powerDayStep } from './dayStep';
 export { rationsVotable, RATION_MODES, rationsOf, setRations } from './rations';
 export { computeHierarchy, leaderOf, meritOf, recordMerit, respectOf, standingOf } from './standing';
 export { countermandChance, countermandOpen, leaderVoteWeight, privilegeScale, rollCountermand } from './leader';
+export { challenge, challengeChance, challengeCooldown, CHALLENGE_STATS, endorse, leaderRank, type ChallengeStat } from './moves';
+export { changeLeader } from './standing';
+export { CO_COMMAND, dropCoCommand } from './state';

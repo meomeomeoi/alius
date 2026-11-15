@@ -8,7 +8,7 @@ import { addFact } from '../memory';
 import type { CampaignState, Hierarchy, Unit } from '../state/types';
 import { TUNING } from '../tuning';
 import { compatibility } from './ballot';
-import { leaderOf, powerOf } from './state';
+import { CO_COMMAND, dropCoCommand, leaderOf, powerOf } from './state';
 
 export { leaderOf };
 
@@ -87,8 +87,6 @@ export function standingOf(state: CampaignState, reg: Registries, unitId: string
   return Math.round(100 * raw * S.factor[bond.leadStyle]) + extra;
 }
 
-const nameOf = (state: CampaignState, id: string): string => state.squad.find((u) => u.id === id)?.displayName ?? id;
-
 /**
  * Works out every standing and the leader (weekly, from the day step): the top unit leads when she is ahead of the next by the
  * margin, her card says she pushes for power (`leadRank` ≥ 2) and she is not deposed; a lone named unit never leads. A change
@@ -111,18 +109,27 @@ export function computeHierarchy(draft: CampaignState, reg: Registries): EngineE
   let leader: string | undefined;
   if (top && next && top.standing >= next.standing + S.margin && leadRank(bondOf(top.unit)!.leadStyle) >= 2 && h.deposed?.unitId !== top.unit.id) leader = top.unit.id;
 
-  const events: EngineEvent[] = [];
   const from = old?.leaderId;
   if (leader === undefined) delete h.leaderId;
   else h.leaderId = leader;
-  if (from !== leader) {
-    h.endorsed = false;
-    events.push({ type: 'leader_changed', ...(from !== undefined ? { from } : {}), ...(leader !== undefined ? { to: leader } : {}) });
-    const fact = (id: string, text: string): void => {
-      addFact(draft, { about: [id], text, tags: ['hierarchy'], importance: 3, day: draft.day, knownBy: ['*'] });
-    };
-    if (from !== undefined) fact(from, `The squad no longer looks to ${nameOf(draft, from)}.`);
-    if (leader !== undefined) fact(leader, `${nameOf(draft, leader)} has become the one the squad looks to.`);
-  }
-  return events;
+  return changeLeader(draft, reg, from, leader);
+}
+
+const nameFor = (state: CampaignState, id: string): string => state.squad.find((u) => u.id === id)?.displayName ?? id;
+
+/**
+ * Reports a change of leader (the hierarchy already holds the new one): `leader_changed { from?, to? }`, a public fact for each
+ * side, the endorsement gone and `co_command` taken off her who no longer leads. No event when nothing changed.
+ */
+export function changeLeader(draft: CampaignState, reg: Registries, from: string | undefined, to: string | undefined): EngineEvent[] {
+  if (from === to) return [];
+  const h = powerOf(draft).hierarchy;
+  if (h) h.endorsed = false;
+  if (from !== undefined) dropCoCommand(draft, reg, from);
+  const fact = (id: string, text: string): void => {
+    addFact(draft, { about: [id], text, tags: ['hierarchy'], importance: 3, day: draft.day, knownBy: ['*'] });
+  };
+  if (from !== undefined) fact(from, `The squad no longer looks to ${nameFor(draft, from)}.`);
+  if (to !== undefined) fact(to, `${nameFor(draft, to)} has become the one the squad looks to.`);
+  return [{ type: 'leader_changed', ...(from !== undefined ? { from } : {}), ...(to !== undefined ? { to } : {}) }];
 }

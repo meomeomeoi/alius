@@ -1,3 +1,5 @@
+import { endorse } from './power/moves';
+import { CO_COMMAND, leaderOf } from './power/state';
 import type { Registries } from '../content/types';
 import type { ActivityHook } from './activities';
 import type { EngineCtx, EngineEvent } from './dispatch';
@@ -135,6 +137,8 @@ export function decideArc(
   // P9d: embracing a defect that names a flag (Dominance Drive: a formal co-command stand-in) writes it on her relation
   const embraceFlag = p.path === 'embrace' ? (reg.defects.get(p.defectId)?.embraceFlag as string | undefined) : undefined;
   if (embraceFlag !== undefined && !draft.relations[p.unitId].flags.includes(embraceFlag)) draft.relations[p.unitId].flags.push(embraceFlag);
+  // P9b: the formal co-command stand-in becomes the hierarchy's endorsement when she is the squad leader
+  if (embraceFlag === CO_COMMAND && leaderOf(draft)?.id === p.unitId && draft.power?.hierarchy?.endorsed !== true) events.push(...endorse(draft, ctx));
   const severity = forced && p.path === 'cure' ? 'extreme' : 'major';
   events.push(...applyEventToUnit(draft, reg, p.unitId, {
     type: info.wanted ? 'decision_aligned' : 'decision_violated', actor: 'commander', targets: [p.unitId], severity,

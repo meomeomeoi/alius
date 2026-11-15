@@ -2,6 +2,7 @@ import { runActivity } from '../activities';
 import { registerDayEndStep } from '../calendar';
 import { addRecord } from '../discipline/record';
 import { countermandOpen } from '../power/leader';
+import { challenge, endorse } from '../power/moves';
 import { TUNING } from '../tuning';
 import { applyEventToUnit } from '../relations/effects';
 import { evaluateAutomatic } from '../relations/graph';
@@ -109,5 +110,11 @@ registerAction('power/countermand', (draft, payload, ctx) => {
   events.push({ type: 'countermand_overruled', leaderId: open.leaderId, unitId: open.unitId });
   return events;
 });
+
+/** ENDORSE the squad leader (second-in-command). Draws no rng. */
+registerAction('power/endorse', (draft, _payload, ctx) => endorse(draft, ctx));
+
+/** CHALLENGE the squad leader on a social or body stat: one seeded roll. */
+registerAction('power/challenge', (draft, payload, ctx) => challenge(draft, ctx, isObj(payload) ? payload.stat : undefined));
 
 export const GATED_KINDS: readonly VoteKind[] = VOTE_KINDS;

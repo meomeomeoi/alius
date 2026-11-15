@@ -588,7 +588,7 @@ tests/**                                                        mirrors src; tes
   - actions `power/endorse`, `power/challenge { stat }`
 - Consumes: `socialRank`, `commanderProfile(state).body`, `standingOf`, `addRecord`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `endorse: Trust/Affinity up for her, +3 record for every other named unit, co_command flag set`
   - `endorse twice or without a leader is refused`
   - `privileges ×1.5 while endorsed`
@@ -599,10 +599,10 @@ tests/**                                                        mirrors src; tes
   - `a challenge draws exactly one rng value`
   - `Embrace of Dominance Drive on the leader endorses her`
   - `leaving leadership removes co_command unless Embrace set it`
-- [ ] **Step 2: Run** `npx vitest run tests/engine/power/challenge.test.ts` and confirm FAIL.
-- [ ] **Step 3: Implement** per the rulings.
-- [ ] **Step 4: Run** the tests, then `npm test`. Expect PASS.
-- [ ] **Step 5: Tick and commit:** `feat(power): endorse and challenge the leader`.
+- [x] **Step 2: Run** `npx vitest run tests/engine/power/challenge.test.ts` and confirm FAIL.
+- [x] **Step 3: Implement** per the rulings.
+- [x] **Step 4: Run** the tests, then `npm test`. Expect PASS.
+- [x] **Step 5: Tick and commit:** `feat(power): endorse and challenge the leader`.
 
 ### Task 10: Outside perception and feats
 
