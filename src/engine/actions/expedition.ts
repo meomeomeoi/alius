@@ -2,7 +2,7 @@ import { markDecidedBy } from '../power/scapegoat';
 import { readRoutePick } from '../commander/checks';
 import { registerAction } from '../dispatch';
 import {
-  checkExpedition, chooseOption, cleanRecap, moveTo, resolveCombat, retreatFromExpedition, returnFromExpedition, setFormation, startExpedition, treat, type StartExpedition, type TreatKind,
+  acknowledgeHerCall, checkExpedition, chooseOption, cleanRecap, moveTo, resolveCombat, retreatFromExpedition, returnFromExpedition, setFormation, startExpedition, treat, type StartExpedition, type TreatKind,
 } from '../world/expedition';
 
 // Importing this module registers the expedition actions.
@@ -58,6 +58,9 @@ registerAction('expedition/choose', (draft, payload, ctx) => {
   if (typeof option !== 'number') throw new Error('expedition/choose needs { option }.');
   return chooseOption(draft, ctx, option, readRoutePick(isObj(payload) ? payload.route : undefined));
 });
+
+/** P9e: the commander has read what a soldier decided on her own at an event node. */
+registerAction('expedition/ack_her_call', (draft) => acknowledgeHerCall(draft));
 
 registerAction('expedition/return', (draft, _payload, ctx) => returnFromExpedition(draft, ctx));
 

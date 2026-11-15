@@ -1,5 +1,7 @@
 import { noteFeat } from '../power/outside';
 import { failedRunPenalty, openScapegoat, takeScapegoatCase } from '../power/scapegoat';
+import { applyHerCall, herCallCandidates, herCallSpecOf, rollHerCall } from '../power/herCall';
+import { isTutorialRun } from '../onboarding/tutorial';
 import { smotherRefusal } from '../bonds/smother';
 import type { Entry, Registries } from '../../content/types';
 import { checkRunRoster } from '../bonds/rules';
@@ -484,6 +486,7 @@ export function endExpedition(draft: CampaignState, ctx: EngineCtx, outcome: Exp
     debriefed: false,
   };
   if (rewards) report.rewards = structuredClone(rewards);
+  if (exp.herCalls && exp.herCalls.length > 0) report.herCalls = structuredClone(exp.herCalls); // P9e
   draft.lastExpedition = report;
 
   let line = `Expedition to ${regionLabel}: ${OUTCOME_TEXT[outcome]}.`;
@@ -662,10 +665,15 @@ export function fixedMapEvents(reg: Registries): Set<string> {
 export function eventPool(state: CampaignState, reg: Registries, regionId: string): Entry[] {
   const pinned = new Set([...reg.missionTemplates.values()].map((t) => t.objectiveEventId).filter((x): x is string => typeof x === 'string'));
   for (const id of fixedMapEvents(reg)) pinned.add(id);
+  const exp = state.expedition;
+  const tutorial = exp !== undefined && isTutorialRun(state, reg);
   return [...reg.dilemmaTemplates.values()].filter((t) => {
     const regions = t.regions as string[] | undefined;
-    return t.scale === 'minor' && (t.contexts as string[]).includes('expedition_event') && !pinned.has(t.id)
-      && (regions === undefined || regions.includes(regionId)) && familyEnabled(state, reg, t); // P8: families
+    if (!(t.scale === 'minor' && (t.contexts as string[]).includes('expedition_event') && !pinned.has(t.id)
+      && (regions === undefined || regions.includes(regionId)) && familyEnabled(state, reg, t))) return false; // P8: families
+    // P9e: a her-call template is offered only while somebody in the able party could act on it (no draw, no rng)
+    const her = herCallSpecOf(t);
+    return her === null || (exp !== undefined && !tutorial && herCallCandidates(state, reg, her, ableParty(state)).length > 0);
   });
 }
 
@@ -687,6 +695,20 @@ function enterEvent(draft: CampaignState, ctx: EngineCtx, nodeId: string, isObje
     addLog(exp, 'move', 'Nothing here.', nodeId);
     if (isObjective) exp.objectiveDone = true;
     return [];
+  }
+  // P9e: at a her-call template a soldier may take the decision herself; the node then waits for ACKNOWLEDGE and asks nothing
+  const template = reg.dilemmaTemplates.get(templateId);
+  const her = herCallSpecOf(template);
+  const call = her === null ? null : rollHerCall(draft, reg, ctx.rng, her, ableParty(draft));
+  if (her !== null && call !== null) {
+    const title = String((template!.fixed as { title: string }).title);
+    const events = applyHerCall(draft, ctx, { templateId, nodeId, title, spec: her, call });
+    const said = her.outcomes.find((o) => o.id === call.outcome)!.text;
+    const name = draft.squad.find((u) => u.id === call.unitId)?.displayName ?? call.unitId;
+    addLog(exp, 'event', `${name} took the decision herself: ${said}`, nodeId, { templateId, herCall: { unitId: call.unitId, outcome: call.outcome } });
+    exp.pending = { kind: 'event', nodeId, templateId, herCall: { unitId: call.unitId, outcome: call.outcome } };
+    exp.phase = 'event';
+    return events;
   }
   exp.pending = { kind: 'event', nodeId, templateId };
   exp.phase = 'event';
@@ -728,11 +750,25 @@ export function eventOptions(state: CampaignState, reg: Registries): Array<{ ind
 
 /** Closes the pending event node: a log line, the run travels on, an objective node counts as done. Used by `chooseOption` and by P6 dilemmas. */
 export function finishEventNode(draft: CampaignState, nodeId: string, text: string, data?: Record<string, unknown>): void {
+  addLog(draft.expedition!, 'event', text, nodeId, data);
+  closeEventNode(draft, nodeId);
+}
+
+/** What closes an event node after its log line: the run travels on and an objective node counts as done. */
+export function closeEventNode(draft: CampaignState, nodeId: string): void {
   const exp = draft.expedition!;
-  addLog(exp, 'event', text, nodeId, data);
   delete exp.pending;
   exp.phase = 'travel';
   if (nodeId === exp.map.objectiveId) exp.objectiveDone = true;
+}
+
+/** P9e: the commander has read what she decided (the effects applied when the node was entered): the node closes. */
+export function acknowledgeHerCall(draft: CampaignState): EngineEvent[] {
+  const exp = draft.expedition;
+  if (!exp || exp.pending?.kind !== 'event' || !exp.pending.herCall) throw new Error('There is no decision to acknowledge.');
+  const nodeId = exp.pending.nodeId;
+  closeEventNode(draft, nodeId);
+  return [{ type: 'her_call_acknowledged', nodeId }];
 }
 
 /** Picks an option of the pending event: its effects apply, the node is resolved and the run travels on. */
@@ -741,6 +777,7 @@ export function chooseOption(draft: CampaignState, ctx: EngineCtx, index: number
   const found = optionsOf(draft, ctx.registries);
   if (!exp || exp.phase !== 'event' || exp.pending?.kind !== 'event') throw new Error('There is no event to answer.');
   if (draft.dilemmas?.open?.context === 'expedition_event') throw new Error('A decision is waiting: answer it first.');
+  if (exp.pending.herCall) throw new Error('She has already decided: acknowledge it.');
   if (!found) {
     // the event was removed from the pack under a save: the node resolves as nothing and the run goes on
     finishEventNode(draft, exp.pending.nodeId, 'Nothing here.');

@@ -2,14 +2,19 @@ import type { HerCallSpec } from '../../content/schemas';
 import type { Entry, Registries } from '../../content/types';
 import { bondOf, leadRank } from '../bonds/profile';
 import { impunityBand, impunityOf } from '../discipline/impunity';
+import { addRecord } from '../discipline/record';
 import { commandStance } from '../discipline/stance';
+import type { EngineCtx, EngineEvent } from '../dispatch';
 import { isLiving } from '../economy';
+import { addFact } from '../memory';
 import type { Rng } from '../rng';
 import { VALUE_AXES, type CampaignState, type Unit } from '../state/types';
 import { TUNING } from '../tuning';
 import { effectiveValues } from '../worldOptions/stances';
+import { applyWorldEffects } from '../world/effects';
+import type { Mission } from '../world/types';
 import { assertiveness } from './options';
-import { leaderOf } from './state';
+import { leaderOf, powerOf } from './state';
 
 /**
  * Her call (P9e): at an expedition event node of a her-call template a soldier with a will of her own may act on her own. Who may,
@@ -96,4 +101,53 @@ export function rollHerCall(
   const unitId = candidates[index === -1 ? candidates.length - 1 : index];
   const odds = herCallOdds(state, reg, unitId, spec);
   return { unitId, outcome: rng.float() < odds ? 'good' : 'bad', odds };
+}
+
+/**
+ * Marks a run so that P9b's scapegoat case can open on her if it later fails. Only a `command` mission is marked, and the first
+ * mark wins: a vote's mark or an earlier her-call is never overwritten. The witnesses are the other named living party members.
+ * Returns true when it wrote the mark.
+ */
+export function markHerCall(draft: CampaignState, mission: Mission, p: { unitId: string; nodeId: string; witnessIds: string[] }): boolean {
+  if (mission.source !== 'command' || mission.decidedBy !== undefined) return false;
+  mission.decidedBy = { source: 'her_call', unitId: p.unitId, nodeId: p.nodeId, witnessIds: [...p.witnessIds] };
+  return true;
+}
+
+/**
+ * She acted: the outcome's effects apply, then the consequences. Good: merit for her, Impunity record, a fact (never credited to
+ * the commander). Bad: Impunity record (she is bolder, not humbler) and, on a command mission that is not a tutorial, the mark.
+ * Records the run's `herCalls` entry and returns the `her_call` event. The log line is the caller's (the log lives in the expedition).
+ */
+export function applyHerCall(
+  draft: CampaignState, ctx: EngineCtx,
+  p: { templateId: string; nodeId: string; title: string; spec: HerCallSpec; call: { unitId: string; outcome: 'good' | 'bad'; odds: number } },
+): EngineEvent[] {
+  const exp = draft.expedition!;
+  const { call } = p;
+  const T = TUNING.herCall;
+  const outcome = p.spec.outcomes.find((o) => o.id === call.outcome)!;
+  const unit = unitOf(draft, call.unitId)!;
+  const events = applyWorldEffects(draft, ctx, outcome.effects, { kind: 'event', id: p.templateId, label: p.title });
+
+  let marked = false;
+  if (call.outcome === 'good') {
+    (powerOf(draft).merit ??= []).push({ day: draft.day, unitId: call.unitId, points: T.meritGood });
+    events.push(...addRecord(draft, call.unitId, T.recordGood, 'her_call'));
+    addFact(draft, {
+      about: [call.unitId], day: draft.day, knownBy: [...exp.party], tags: ['her_call'], importance: T.factImportance,
+      text: `${unit.displayName} took a decision in the field herself, and it went well: ${outcome.text}`,
+    });
+  } else {
+    events.push(...addRecord(draft, call.unitId, T.recordBad, 'her_call'));
+    const mission = draft.missions.active.find((m) => m.id === exp.missionId);
+    const tutorial = mission !== undefined && ctx.registries.missionTemplates.get(mission.templateId)?.tutorial === true;
+    if (mission && !tutorial) {
+      const witnessIds = exp.party.filter((id) => id !== call.unitId && draft.squad.some((u) => u.id === id && u.kind === 'named' && isLiving(u)));
+      marked = markHerCall(draft, mission, { unitId: call.unitId, nodeId: p.nodeId, witnessIds });
+    }
+  }
+  (exp.herCalls ??= []).push({ nodeId: p.nodeId, unitId: call.unitId, outcome: call.outcome, templateId: p.templateId, odds: call.odds });
+  events.push({ type: 'her_call', nodeId: p.nodeId, templateId: p.templateId, unitId: call.unitId, outcome: call.outcome, missionId: exp.missionId, marked });
+  return events;
 }

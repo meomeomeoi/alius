@@ -108,7 +108,7 @@ export function openDilemma(draft: CampaignState, ctx: EngineCtx, p: { templateI
   if (template.generate === undefined) throw new Error(`"${p.templateId}" has nothing to generate.`);
   const exp = draft.expedition;
   if (p.context === 'expedition_event') {
-    if (!exp || exp.pending?.kind !== 'event' || exp.pending.templateId !== p.templateId) throw new Error('That event is not waiting on the map.');
+    if (!exp || exp.pending?.kind !== 'event' || exp.pending.templateId !== p.templateId || exp.pending.herCall) throw new Error('That event is not waiting on the map.'); // P9e: a her-call node asks nothing
   } else if (exp) throw new Error('Decisions at the base wait until the expedition is over.');
   const beatId = currentBeat(draft, reg)?.id ?? 'open';
   const scale = template.scale as DilemmaScale;
