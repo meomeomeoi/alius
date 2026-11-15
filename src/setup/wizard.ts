@@ -6,6 +6,7 @@ import { prologueFor, stepsOf, type StepWithId } from '../engine/onboarding';
 import { TUNING } from '../engine/tuning';
 import { defectAllowedFor } from '../engine/bonds';
 import type { Bond, SignatureInstance, Unit } from '../engine/state/types';
+import { EXPLICIT_CATEGORY } from '../bonds/directives';
 import { ALL_SECTIONS, type ImportSection } from '../llm/calls/profileImport';
 import type { CharacterSummary } from '../st/adapter';
 import type { BodyStat } from '../engine/state/types';
@@ -72,6 +73,8 @@ export interface WizardState {
   commanderImport: CommanderImportState;
   /** P8: the world options (every option has a choice) and the preset they still equal, if any. */
   world: { options: Record<string, string>; preset: string | null };
+  /** P9d: the content categories switched on (all off unless the old explicit-scenes switch carried `explicit_scenes` over). */
+  content: { enabled: string[] };
   units: UnitDraft[];
   calibrationIndex: number;
   target: 'new_group' | 'current_group';
@@ -81,6 +84,8 @@ export interface WizardState {
 export interface WizardDeps {
   registries: Registries;
   desireBondDefects: boolean;
+  /** P9d: the old global "explicit scenes allowed" switch; when true `explicit_scenes` starts on in CONTENT. */
+  explicitContent?: boolean;
   /** `world` is the wizard's current world options (P8), so a stance is read against the world the player chose. */
   importer: (avatar: string, sections: ImportSection[], world: Record<string, string>) => Promise<ImportOutcome>;
   /** P7: persona → commander. Absent = the prefill is manual. */
@@ -142,6 +147,7 @@ export class Wizard {
       commander: defaultCommanderSetup(),
       commanderImport: { status: 'idle', reasons: {} },
       world: this.startingWorld(),
+      content: { enabled: this.deps.explicitContent === true && this.deps.registries.contentCategories.has(EXPLICIT_CATEGORY) ? [EXPLICIT_CATEGORY] : [] },
       units: [],
       calibrationIndex: 0,
       target: 'new_group',
@@ -155,6 +161,13 @@ export class Wizard {
     const standard = reg.worldPresets.get('standard');
     if (standard) return { options: { ...defaultWorldOptions(reg), ...(standard.choices as Record<string, string>) }, preset: 'standard' };
     return { options: defaultWorldOptions(reg), preset: null };
+  }
+
+  /** P9d: sets the content categories (unknown ids dropped, registry order). */
+  setContent(enabled: string[]): void {
+    const known = [...this.deps.registries.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => String(c.id));
+    this.s.content = { enabled: known.filter((id) => enabled.includes(id)) };
+    this.emit();
   }
 
   /** Whether Desire/Bond defects are allowed (needed by the manual lists in the UI). */
@@ -724,7 +737,7 @@ export class Wizard {
       if (!roleId || !signature) return { result: null, errors: [`${u.displayName}: calibration is incomplete.`] };
       units.push({ cardRef: u.avatar, displayName: u.displayName, roleId, signature, ...structuredClone(rest) });
     }
-    const result: SetupResult = { commanderName: this.s.commanderName, startId, crimeId, units, commander: structuredClone(this.s.commander), world: { options: { ...this.s.world.options } } };
+    const result: SetupResult = { commanderName: this.s.commanderName, startId, crimeId, units, commander: structuredClone(this.s.commander), world: { options: { ...this.s.world.options } }, content: { enabled: [...this.s.content.enabled] } };
     // P11: a start with a prologue always starts inside it; the veteran intake only marks the wizard steps as skipped
     const prologue = prologueFor(this.deps.registries, startId);
     if (prologue) result.onboarding = { prologueId: prologue.id, veteran: this.s.mode === 'veteran' };

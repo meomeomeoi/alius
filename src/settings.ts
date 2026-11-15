@@ -35,7 +35,7 @@ export interface AliusSettings {
   /** Typed-out dialogue speed in characters per second; 0 = instant. */
   typingSpeed: number;
   romance: boolean;
-  /** Context-only: tells the main model whether explicit scenes are allowed. */
+  /** Old switch (P3): read ONLY once, to carry `explicit_scenes` over into a campaign or a wizard that has no content choice yet (P9d). It is not in SYS any more. */
   explicitContent: boolean;
   romanticInitiative: 'low' | 'med' | 'high';
   /** Units may start DMs on their own. */

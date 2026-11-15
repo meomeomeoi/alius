@@ -1,6 +1,7 @@
 import type { Registries } from '../../content/types';
 import type { Wizard } from '../../setup/wizard';
 import { analyzeNative } from '../analyze/mark';
+import { renderContentSection } from '../bonds/content';
 import { h } from '../dom';
 
 /** More choices than this are drawn as a slider instead of cards. */
@@ -54,6 +55,8 @@ export function renderWorldParams(host: HTMLElement, ctx: WorldParamsCtx): void 
         }, h('strong', {}, c.label), h('p', {}, c.description)))));
   };
 
+  const contentHost = h('div', { class: 'alius-section alius-world-content' });
+  renderContentSection(contentHost, { enabled: wizard.state.content.enabled, registries: reg, onChange: (enabled) => wizard.setContent(enabled) });
   const summary = wizard.worldSummary();
   host.append(h('div', { class: 'alius-setup-body alius-world' },
     h('h3', {}, 'WORLD PARAMETERS'),
@@ -67,6 +70,7 @@ export function renderWorldParams(host: HTMLElement, ctx: WorldParamsCtx): void 
       h('h3', {}, g.toUpperCase()),
       ...options.filter((o) => String(o.group) === g).map(optionBlock),
     ]),
+    contentHost,
     h('section', { class: 'alius-section alius-world-summary' },
       h('h3', {}, 'WHAT THIS CHANGES'),
       summary.length === 0

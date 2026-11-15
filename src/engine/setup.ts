@@ -68,6 +68,8 @@ export interface SetupResult {
   commander?: CommanderSetup;
   /** P8: the world the player set up; absent = every default. */
   world?: { options: Record<string, string> };
+  /** P9d: the content categories switched on (every one is off by default); absent = none, and the carry-over of the old switch applies on load. */
+  content?: { enabled: string[] };
   /** P11: start the campaign inside this prologue (`veteran`: the wizard steps count as skipped). Absent = no prologue. */
   onboarding?: { prologueId: string; veteran: boolean };
 }
@@ -205,6 +207,10 @@ export function validateSetup(r: SetupResult, reg: Registries, opts: { desireBon
   if (!reg.crimes.has(r.crimeId)) out.push(`Unknown crime "${r.crimeId}"`);
   if (r.commander !== undefined) out.push(...validateCommanderSetup(r.commander, reg, opts));
   if (r.world !== undefined) out.push(...validateWorldOptions(r.world.options, reg));
+  if (r.content !== undefined) {
+    if (!Array.isArray(r.content.enabled) || r.content.enabled.some((x) => typeof x !== 'string')) out.push('The content choice must be a list of category ids');
+    else for (const id of r.content.enabled) if (!reg.contentCategories.has(id)) out.push(`Unknown content category "${id}"`);
+  }
   if (r.onboarding !== undefined) {
     const p = reg.prologues.get(r.onboarding.prologueId);
     if (!p) out.push(`Unknown prologue "${r.onboarding.prologueId}"`);
@@ -338,6 +344,10 @@ export function buildCampaign(
   // P8: every option is stored (missing keys take their default) before anything reads them; they are fixed from here on
   state.world.options = { ...defaultWorldOptions(reg), ...(r.world?.options ?? {}) };
   state.settings = { desireBondDefects: opts.desireBondDefects };
+  if (r.content !== undefined) {
+    const known = [...reg.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => String(c.id));
+    state.content = { enabled: known.filter((id) => r.content!.enabled.includes(id)) };
+  }
 
   const base = start.startingResources as Partial<Record<keyof CampaignState['resources'], number>> | undefined;
   for (const k of ['credits', 'supplies', 'plyx'] as const) state.resources[k] += base?.[k] ?? 0;

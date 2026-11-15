@@ -439,6 +439,21 @@ describe('coverage: world parameters and disposition controls (P8)', () => {
     expect(addresses).toEqual(expect.arrayContaining(['worldOptions:disposition', 'worldOptions:oversight', 'worldPresets:brutal']));
   });
 
+  it('every content category row carries data-analyze and resolves (P9d)', () => {
+    const st = new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' });
+    const w = wiz();
+    w.setStart('start_vesper');
+    w.setCrime('mutiny');
+    w.next();
+    const host = h('div');
+    document.body.append(host);
+    renderSetupScreen(host, { wizard: w, registries: reg, st, settings: () => DEFAULT_SETTINGS, onCancel: vi.fn(), onConfirm: vi.fn(async () => {}), modal: vi.fn(async () => null) as never });
+    const rows = [...host.querySelectorAll<HTMLElement>('button[data-category]')];
+    expect(rows).toHaveLength(9);
+    expect(rows.map((r) => r.getAttribute('data-analyze'))).toEqual([...reg.contentCategories.keys()].map((id) => `contentCategories:${id}`));
+    expect(unresolved(host, env(null))).toEqual([]);
+  });
+
   it('calibration under a hunted world: offset chips, stance chips', () => {
     const w = wiz();
     for (const [k, v] of Object.entries({ gender_norms: 'inverted', offspec_stigma: 'hunted', disposition: 'prickly' })) w.setWorldOption(k, v);
@@ -520,7 +535,8 @@ describe('coverage: SYS', () => {
     expect(unreachable(host)).toEqual([]);
     expect(markerCount(host)).toBeGreaterThanOrEqual(30);
     const settings = new Set(unitIdsIn(host).filter((a) => a.startsWith('setting:')).map((a) => a.slice('setting:'.length)));
-    const missing = [...Object.keys(DEFAULT_SETTINGS), 'difficulty'].filter((k) => !settings.has(k));
+    // `explicitContent` has no SYS row since P9d: the content categories replaced it (it is read once, for the carry-over)
+    const missing = [...Object.keys(DEFAULT_SETTINGS), 'difficulty'].filter((k) => k !== 'explicitContent' && !settings.has(k));
     expect(missing).toEqual([]);
     expect(host.querySelectorAll('label.alius-field.alius-option')).toHaveLength(host.querySelectorAll('label.alius-field').length);
   });

@@ -392,3 +392,17 @@ describe('P9d bond profile in setup', () => {
     expect(validateUnitProfile({ ...profile, bond: { ...bond, caretaker: true } }, 'Rhea', r, OPTS)).toEqual([]);
   });
 });
+
+describe('P9d content choice in setup', () => {
+  it('buildCampaign stores the chosen categories; without a choice nothing is stored', () => {
+    const withChoice = ok(result([unit()], { content: { enabled: ['restraint', 'explicit_scenes'] } }));
+    expect(withChoice.content).toEqual({ enabled: ['restraint', 'explicit_scenes'] });
+    expect('content' in ok(result())).toBe(false);
+  });
+
+  it('an unknown or malformed category choice is a setup error', () => {
+    expect(validateSetup(result([unit()], { content: { enabled: ['restraint', 'bogus'] } }), reg, OPTS).join('\n')).toMatch(/Unknown content category "bogus"/);
+    expect(validateSetup(result([unit()], { content: { enabled: 'restraint' as never } }), reg, OPTS).join('\n')).toMatch(/content/);
+    expect(validateSetup(result([unit()], { content: { enabled: ['restraint'] } }), reg, OPTS)).toEqual([]);
+  });
+});

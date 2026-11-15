@@ -455,17 +455,17 @@ tests/**                                           mirrors src; tests/helpers/bo
   - `registerBondsProviders()`, called from `registerCoreProviders`, with keys `contentCategories`, `glossary:content_categories`, `glossary:bond_profile`
   - `Wizard.setContent(enabled: string[])`
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `CONTENT lists all nine categories, each off, with its description`
   - `explicit_scenes starts on in the wizard when the old switch is on`
   - `carry-over happens once: an old save gets explicit_scenes, turning it off survives a reload` (Review Focus 1)
   - `SYS content toggles dispatch content/set_categories and the next applyContext changes the directive`
   - `SYS no longer shows Explicit scenes allowed`
   - `every category row carries data-analyze and resolves`
-- [ ] **Step 2: Run** the test files and confirm FAIL.
-- [ ] **Step 3: Implement.** The section heading copy is `CONTENT — nothing here appears unless you turn it on. Turning it on is your consent for the story to go there.`
-- [ ] **Step 4: Run** `npm test` and confirm PASS.
-- [ ] **Step 5: Commit** `feat(ui): CONTENT section at setup and in SYS, explicit-scenes carry-over`.
+- [x] **Step 2: Run** the test files and confirm FAIL.
+- [x] **Step 3: Implement.** The section heading copy is `CONTENT — nothing here appears unless you turn it on. Turning it on is your consent for the story to go there.`
+- [x] **Step 4: Run** `npm test` and confirm PASS.
+- [x] **Step 5: Commit** `feat(ui): CONTENT section at setup and in SYS, explicit-scenes carry-over`.
 
 ---
 

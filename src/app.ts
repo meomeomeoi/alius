@@ -59,7 +59,7 @@ import { renderInvTab } from './ui/inv/invTab';
 import { ContextBuilder } from './llm/context';
 import { runCompaction } from './scene/chronicle';
 import { createComms, type Comms } from './scene/comms';
-import { bondsDirectives, contentLine } from './bonds/directives';
+import { bondsDirectives, contentLine, EXPLICIT_CATEGORY } from './bonds/directives';
 import { clearSceneDirectives, registerSceneContext } from './scene/context';
 import { createSceneController, type SceneController, type SceneUiEvent, type StartOptions } from './scene/sceneController';
 import { callLlm, type LlmResult } from './llm/orchestrator';
@@ -1029,6 +1029,15 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     }
   }
 
+  /**
+   * P9d: a campaign without a content choice (a save from before P9d, an import) gets one now, once: `explicit_scenes` when the
+   * old global switch is on, else nothing. The choice is stored even when empty, so the switch is never read again.
+   */
+  function carryOverContent(): void {
+    if (load.kind !== 'ok' || !state || state.content !== undefined) return;
+    api.dispatch({ type: 'content/set_categories', payload: { enabled: getSettings(st).explicitContent ? [EXPLICIT_CATEGORY] : [] } }, { expectChatId: load.chatId });
+  }
+
   /** Everything that follows a (re)load of the campaign: context, badge, scene and the intimacy mirror. */
   function afterLoad(): void {
     // a save from before P5 has no world yet: seed it, then everything else sees a complete state
@@ -1043,6 +1052,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     if (load.kind === 'ok' && state && state.commander.body === undefined) {
       api.dispatch({ type: 'commander/seed', payload: {} }, { expectChatId: load.chatId });
     }
+    carryOverContent();
     applyContext();
     syncBadges();
     adoptScene();
@@ -1079,6 +1089,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     state = next;
     saver!.save(next);
     void saver!.flush();
+    carryOverContent();
     applyContext();
     syncBadges();
     shell.refresh();
@@ -1457,6 +1468,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       {
         registries,
         desireBondDefects: desireBond,
+        explicitContent: getSettings(st).explicitContent, // P9d: carried into CONTENT as `explicit_scenes`
         importer: (avatar, sections, world) =>
           importProfile(avatar, sections, { st, settings: { ...getSettings(st), desireBondDefects: desireBond }, registries, world }),
         commanderImporter: () => importCommander(st, { settings: { ...getSettings(st), desireBondDefects: desireBond }, registries }),

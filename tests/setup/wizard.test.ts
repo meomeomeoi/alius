@@ -1001,3 +1001,33 @@ describe('bond profile (P9d)', () => {
     expect(w.state.units[0].choice.defects).toEqual([]);
   });
 });
+
+describe('content categories (P9d)', () => {
+  const wiz = (explicitContent?: boolean) => new Wizard({ registries: reg, desireBondDefects: false, ...(explicitContent !== undefined ? { explicitContent } : {}), importer: vi.fn() as never, onChange: () => {} }, { personaName: 'Vale', canBindCurrent: false });
+
+  it('every category starts off; explicit_scenes starts on only when the old switch is on', () => {
+    expect(wiz().state.content).toEqual({ enabled: [] });
+    expect(wiz(false).state.content).toEqual({ enabled: [] });
+    expect(wiz(true).state.content).toEqual({ enabled: ['explicit_scenes'] });
+  });
+
+  it('setContent drops unknown ids and keeps registry order', () => {
+    const w = wiz();
+    w.setContent(['restraint', 'nope', 'humiliation', 'restraint']);
+    expect(w.state.content).toEqual({ enabled: ['humiliation', 'restraint'] });
+    w.setContent([]);
+    expect(w.state.content).toEqual({ enabled: [] });
+  });
+
+  it('the finished setup carries the choice and the built campaign stores it', async () => {
+    const m = make();
+    m.w.toggleUnit(card('ann'));
+    m.w.calibrate(0);
+    m.pending[0].resolve(OK);
+    await flush();
+    m.w.setStart('start_vesper');
+    m.w.setCrime('mutiny');
+    m.w.setContent(['pain_rough']);
+    expect(m.w.result()!.content).toEqual({ enabled: ['pain_rough'] });
+  });
+});

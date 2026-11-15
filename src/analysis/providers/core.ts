@@ -11,6 +11,7 @@ import type { CampaignState, Relation, Unit } from '../../engine/state/types';
 import { humanize, signed, summarizeCombatEffect } from '../effects';
 import { registerCommanderProviders } from './commander';
 import { registerDisciplineProviders } from './discipline';
+import { registerBondsProviders } from './bonds';
 import { registerWorldProviders } from './world';
 import type { Knowledge } from '../knowledge';
 import { ledgerFor, ledgerLabel } from '../ledger';
@@ -295,4 +296,5 @@ export function registerCoreProviders(): void {
   registerCommanderProviders(); // P7
   registerWorldProviders(); // P8
   registerDisciplineProviders(); // P9
+  registerBondsProviders(); // P9d
 }

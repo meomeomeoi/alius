@@ -555,8 +555,8 @@
   },
   {
     "id": "setting_explicit_content",
-    "term": "Explicit scenes allowed",
-    "short": "Tells the main model whether explicit scenes are allowed. What it writes still depends on your model and preset."
+    "term": "Explicit scenes (old switch)",
+    "short": "Old switch for explicit scenes. It is read once, to switch the 'Explicit scenes' category on in a campaign with no content choice yet. Categories decide now."
   },
   {
     "id": "setting_romantic_initiative",

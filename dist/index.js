@@ -9548,6 +9548,10 @@ function validateSetup(r, reg, opts) {
   if (!reg.crimes.has(r.crimeId)) out.push(`Unknown crime "${r.crimeId}"`);
   if (r.commander !== void 0) out.push(...validateCommanderSetup(r.commander, reg, opts));
   if (r.world !== void 0) out.push(...validateWorldOptions(r.world.options, reg));
+  if (r.content !== void 0) {
+    if (!Array.isArray(r.content.enabled) || r.content.enabled.some((x) => typeof x !== "string")) out.push("The content choice must be a list of category ids");
+    else for (const id of r.content.enabled) if (!reg.contentCategories.has(id)) out.push(`Unknown content category "${id}"`);
+  }
   if (r.onboarding !== void 0) {
     const p = reg.prologues.get(r.onboarding.prologueId);
     if (!p) out.push(`Unknown prologue "${r.onboarding.prologueId}"`);
@@ -9655,6 +9659,10 @@ function buildCampaign(r, reg, opts) {
   state.world.startId = start.id;
   state.world.options = { ...defaultWorldOptions(reg), ...r.world?.options ?? {} };
   state.settings = { desireBondDefects: opts.desireBondDefects };
+  if (r.content !== void 0) {
+    const known = [...reg.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => String(c.id));
+    state.content = { enabled: known.filter((id) => r.content.enabled.includes(id)) };
+  }
   const base = start.startingResources;
   for (const k of ["credits", "supplies", "plyx"]) state.resources[k] += base?.[k] ?? 0;
   const crimeEffects = crimeEffectsOf(crime);
@@ -18585,8 +18593,8 @@ function motionReduced(s, media = systemReduced) {
 }
 function visualFlags(s, media) {
   const motion = !motionReduced(s, media);
-  const plain2 = s.readableMode;
-  return { scanlines: !plain2 && s.scanlines, flicker: !plain2 && s.flicker, glitch: !plain2 && motion, dither: !plain2 && s.ditheredPortraits, motion };
+  const plain3 = s.readableMode;
+  return { scanlines: !plain3 && s.scanlines, flicker: !plain3 && s.flicker, glitch: !plain3 && motion, dither: !plain3 && s.ditheredPortraits, motion };
 }
 
 // src/ui/leash/requestForm.ts
@@ -21081,6 +21089,7 @@ var Wizard = class {
       commander: defaultCommanderSetup(),
       commanderImport: { status: "idle", reasons: {} },
       world: this.startingWorld(),
+      content: { enabled: this.deps.explicitContent === true && this.deps.registries.contentCategories.has(EXPLICIT_CATEGORY) ? [EXPLICIT_CATEGORY] : [] },
       units: [],
       calibrationIndex: 0,
       target: "new_group",
@@ -21100,6 +21109,12 @@ var Wizard = class {
     const standard = reg.worldPresets.get("standard");
     if (standard) return { options: { ...defaultWorldOptions(reg), ...standard.choices }, preset: "standard" };
     return { options: defaultWorldOptions(reg), preset: null };
+  }
+  /** P9d: sets the content categories (unknown ids dropped, registry order). */
+  setContent(enabled) {
+    const known = [...this.deps.registries.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => String(c.id));
+    this.s.content = { enabled: known.filter((id) => enabled.includes(id)) };
+    this.emit();
   }
   /** Whether Desire/Bond defects are allowed (needed by the manual lists in the UI). */
   get desireBondDefects() {
@@ -21620,7 +21635,7 @@ var Wizard = class {
       if (!roleId || !signature) return { result: null, errors: [`${u.displayName}: calibration is incomplete.`] };
       units.push({ cardRef: u.avatar, displayName: u.displayName, roleId, signature, ...structuredClone(rest) });
     }
-    const result = { commanderName: this.s.commanderName, startId, crimeId, units, commander: structuredClone(this.s.commander), world: { options: { ...this.s.world.options } } };
+    const result = { commanderName: this.s.commanderName, startId, crimeId, units, commander: structuredClone(this.s.commander), world: { options: { ...this.s.world.options } }, content: { enabled: [...this.s.content.enabled] } };
     const prologue = prologueFor(this.deps.registries, startId);
     if (prologue) result.onboarding = { prologueId: prologue.id, veteran: this.s.mode === "veteran" };
     const errors = validateSetup(result, this.deps.registries, { desireBondDefects: this.deps.desireBondDefects });
@@ -22359,6 +22374,30 @@ function renderFile(host, ctx2) {
   host.replaceChildren(paper(step?.title, "PERSONNEL RECORD", body, ctx2.filed ? "FILED" : void 0));
 }
 
+// src/ui/bonds/content.ts
+var CONTENT_TITLE = "CONTENT \u2014 nothing here appears unless you turn it on. Turning it on is your consent for the story to go there.";
+function renderContentSection(host, ctx2) {
+  const { registries: reg, enabled } = ctx2;
+  const categories = [...reg.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order));
+  host.replaceChildren(h(
+    "div",
+    { class: "alius-content-section" },
+    h("h3", {}, ctx2.title ?? CONTENT_TITLE),
+    categories.length === 0 ? h("p", { class: "alius-dim" }, "This content pack has no content categories.") : h("div", { class: "alius-cards alius-content-categories" }, ...categories.map((c) => {
+      const id = String(c.id);
+      const on = enabled.includes(id);
+      return h("button", {
+        type: "button",
+        class: "alius-card alius-option alius-content-category",
+        "data-category": id,
+        "aria-pressed": String(on),
+        ...analyzeNative(`contentCategories:${id}`),
+        onclick: () => ctx2.onChange(categories.map((x) => String(x.id)).filter((x) => x === id ? !on : enabled.includes(x)))
+      }, h("strong", {}, String(c.label)), " ", h("span", { class: "alius-lock" }, on ? "ON" : "OFF"), h("p", {}, String(c.description)));
+    }))
+  ));
+}
+
 // src/ui/setup/worldParams.ts
 var MAX_CARDS = 6;
 function renderWorldParams(host, ctx2) {
@@ -22411,6 +22450,8 @@ function renderWorldParams(host, ctx2) {
       }, h("strong", {}, c.label), h("p", {}, c.description))))
     );
   };
+  const contentHost = h("div", { class: "alius-section alius-world-content" });
+  renderContentSection(contentHost, { enabled: wizard.state.content.enabled, registries: reg, onChange: (enabled) => wizard.setContent(enabled) });
   const summary = wizard.worldSummary();
   host.append(h(
     "div",
@@ -22430,6 +22471,7 @@ function renderWorldParams(host, ctx2) {
       h("h3", {}, g.toUpperCase()),
       ...options2.filter((o) => String(o.group) === g).map(optionBlock)
     ]),
+    contentHost,
     h(
       "section",
       { class: "alius-section alius-world-summary" },
@@ -26645,9 +26687,9 @@ function archetypeProvider(_subject, env) {
   const [id, label2] = PRESENCE_LABEL[presenceKind(archetype)];
   const lines = [`Build: ${archetype}`, `Presence action: [[${id}|${label2}]]`];
   const group = [...env.registries.imageConsistency.values()].find((g) => g.archetypes.includes(archetype));
-  const link = (events) => events.map((e) => `[[eventDeltas:${e}|${e}]]`).join(", ");
-  if (group && group.offImage.length > 0) lines.push(`Out of character for this build: ${link(group.offImage)}. These land harder until they know the commander.`);
-  if (group && group.inImage.length > 0) lines.push(`In character: ${link(group.inImage)}.`);
+  const link2 = (events) => events.map((e) => `[[eventDeltas:${e}|${e}]]`).join(", ");
+  if (group && group.offImage.length > 0) lines.push(`Out of character for this build: ${link2(group.offImage)}. These land harder until they know the commander.`);
+  if (group && group.inImage.length > 0) lines.push(`In character: ${link2(group.inImage)}.`);
   return { lines };
 }
 function presenceProvider(subject, env, k) {
@@ -26763,6 +26805,40 @@ function registerDisciplineProviders() {
   registerAnalyzeProvider("commandStances", stanceProvider);
   registerAnalyzeProvider("punishments", punishmentProvider);
   registerAnalyzeProvider("reputations", reputationProvider);
+}
+
+// src/analysis/providers/bonds.ts
+var orderedCategories2 = (reg) => [...reg.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order));
+var link = (id, label2) => `[[contentCategories:${id}|${label2}]]`;
+var plain2 = (t) => t.replace(/\[\[|\]\]/g, "").replace(/\s+/g, " ").trim();
+function categoryProvider(subject, env) {
+  if (!env.state || !env.registries.contentCategories.has(subject.id)) return null;
+  return { lines: [enabledCategories(env.state).includes(subject.id) ? "In this campaign: switched on." : "In this campaign: off. It is excluded from every generation."] };
+}
+function categoriesGlossaryProvider(_subject, env) {
+  if (!env.state) return null;
+  const on = enabledCategories(env.state);
+  const list5 = orderedCategories2(env.registries).filter((c) => on.includes(String(c.id))).map((c) => link(String(c.id), String(c.label)));
+  return { lines: [list5.length === 0 ? "Switched on: nothing. Every category is off." : `Switched on: ${list5.join(", ")}.`] };
+}
+function bondProvider(subject, env) {
+  const unitId = typeof subject.data.unitId === "string" ? subject.data.unitId : null;
+  const unit = env.state && unitId !== null ? env.state.squad.find((u) => u.id === unitId) : void 0;
+  const bond = unit ? bondOf(unit) : null;
+  if (!bond) return null;
+  const lines = [`Leads: ${bond.leadStyle}. Attaches: ${bond.attachment}. Desire: ${bond.desire}.`];
+  if (bond.caretaker) lines.push("A caretaker: she looks after others at her own cost.");
+  lines.push(`She wants a relationship to be: ${bond.publicity}.`);
+  const cats = orderedCategories2(env.registries).filter((c) => bond.ownLimits.categories.includes(String(c.id))).map((c) => link(String(c.id), String(c.label)));
+  const note = plain2(bond.ownLimits.note ?? "");
+  if (cats.length > 0) lines.push(`She will not take part in: ${cats.join(", ")}.${note !== "" ? ` ${note}` : ""}`);
+  else if (note !== "") lines.push(`Her own limit: ${note}`);
+  return { lines };
+}
+function registerBondsProviders() {
+  registerAnalyzeProvider("contentCategories", categoryProvider);
+  registerAnalyzeProvider("glossary:content_categories", categoriesGlossaryProvider);
+  registerAnalyzeProvider("glossary:bond_profile", bondProvider);
 }
 
 // src/analysis/providers/world.ts
@@ -27048,6 +27124,7 @@ function registerCoreProviders() {
   registerCommanderProviders();
   registerWorldProviders();
   registerDisciplineProviders();
+  registerBondsProviders();
 }
 
 // src/analysis/describe.ts
@@ -27805,6 +27882,28 @@ function renderSysTab(host, ctx2) {
       );
     });
   };
+  const contentRows = () => {
+    const state = ctx2.getState();
+    const reg = ctx2.getRegistries?.();
+    if (!state || !reg || reg.contentCategories.size === 0 || !ctx2.dispatch) return [h("p", { class: "alius-dim" }, "Content categories are set when a campaign is started.")];
+    const holder = h("div", { class: "alius-content-host" });
+    renderContentSection(holder, {
+      enabled: state.content?.enabled ?? [],
+      registries: reg,
+      title: "Content",
+      onChange: (enabled) => {
+        const events = ctx2.dispatch?.({ type: "content/set_categories", payload: { enabled } }) ?? [];
+        const err = events.find((e) => e.type === "error");
+        if (err) {
+          ctx2.toast("warn", String(err.message ?? "The content choice could not be changed."));
+          const now = ctx2.getState();
+          renderContentSection(holder, { enabled: now?.content?.enabled ?? [], registries: reg, title: "Content", onChange: () => {
+          } });
+        }
+      }
+    });
+    return [holder];
+  };
   const profiles = st.listConnectionProfiles();
   const profileOptions = [
     ["", "(none \u2014 use main model if fallback is on)"],
@@ -27883,8 +27982,8 @@ function renderSysTab(host, ctx2) {
     field("Hover delay (ms, 100\u20131500)", numberInput("analyzeHoverDelay", settings.analyzeHoverDelay, (n) => apply({ analyzeHoverDelay: n }).analyzeHoverDelay, { min: "100", max: "1500", step: "50" }), "analyzeHoverDelay"),
     h("h3", {}, "Intimacy"),
     field("Romance", checkbox("romance", settings.romance), "romance"),
-    field("Explicit scenes allowed", checkbox("explicitContent", settings.explicitContent), "explicitContent"),
     field("Romantic initiative", select("romanticInitiative", [["low", "low"], ["med", "medium"], ["high", "high"]], settings.romanticInitiative), "romanticInitiative"),
+    ...contentRows(),
     h("h3", {}, "Developer"),
     field("Debug mode", checkbox("debug", settings.debug, true), "debug"),
     field("Mechanics edit lock", checkbox("editLock", settings.editLock, true), "editLock")
@@ -28467,7 +28566,7 @@ function createShell(deps) {
       return;
     }
     if (modals?.isOpen()) return;
-    const plain2 = !e.ctrlKey && !e.metaKey && !e.altKey;
+    const plain3 = !e.ctrlKey && !e.metaKey && !e.altKey;
     const typing = isEditable2(e.target);
     const where = router.current();
     if (e.key === "Escape") {
@@ -28478,14 +28577,14 @@ function createShell(deps) {
       return;
     }
     if (e.key === "Tab") {
-      if (!plain2 || e.shiftKey || isControl(e.target) || isInsideOverlay(e.target) || typing) return;
+      if (!plain3 || e.shiftKey || isControl(e.target) || isInsideOverlay(e.target) || typing) return;
       if (where === "hub" || where === "pda") {
         e.preventDefault();
         api.setDevice(where === "hub");
       }
       return;
     }
-    if (/^[1-8]$/.test(e.key) && plain2 && !typing) {
+    if (/^[1-8]$/.test(e.key) && plain3 && !typing) {
       const id = TAB_IDS[Number(e.key) - 1];
       if (where === "pda") selectTab(id);
       else if (where === "hub") api.showTab(id);
@@ -29252,6 +29351,10 @@ function createApp(st, deps) {
       }
     }
   }
+  function carryOverContent() {
+    if (load.kind !== "ok" || !state || state.content !== void 0) return;
+    api.dispatch({ type: "content/set_categories", payload: { enabled: getSettings(st).explicitContent ? [EXPLICIT_CATEGORY] : [] } }, { expectChatId: load.chatId });
+  }
   function afterLoad() {
     if (load.kind === "ok" && state && state.world.seeded !== true) {
       api.dispatch({ type: "world/seed", payload: {} }, { expectChatId: load.chatId });
@@ -29262,6 +29365,7 @@ function createApp(st, deps) {
     if (load.kind === "ok" && state && state.commander.body === void 0) {
       api.dispatch({ type: "commander/seed", payload: {} }, { expectChatId: load.chatId });
     }
+    carryOverContent();
     applyContext();
     syncBadges();
     adoptScene();
@@ -29295,6 +29399,7 @@ function createApp(st, deps) {
     state = next;
     saver.save(next);
     void saver.flush();
+    carryOverContent();
     applyContext();
     syncBadges();
     shell.refresh();
@@ -29652,6 +29757,8 @@ function createApp(st, deps) {
       {
         registries,
         desireBondDefects: desireBond,
+        explicitContent: getSettings(st).explicitContent,
+        // P9d: carried into CONTENT as `explicit_scenes`
         importer: (avatar, sections, world) => importProfile(avatar, sections, { st, settings: { ...getSettings(st), desireBondDefects: desireBond }, registries, world }),
         commanderImporter: () => importCommander(st, { settings: { ...getSettings(st), desireBondDefects: desireBond }, registries }),
         onChange: () => {

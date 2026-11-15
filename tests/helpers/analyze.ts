@@ -10,6 +10,7 @@ export const SAMPLE_ADDRESS: Record<string, string> = {
   commandStances: 'commandStances:disciplined', // P9
   punishments: 'punishments:verbal', // P9
   reputations: 'reputations:iron_rule', // P9
+  contentCategories: 'contentCategories:restraint', // P9d
 };
 
 /** The address a registered provider key is run with: the key itself when it is an address, else its sample. */

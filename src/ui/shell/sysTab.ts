@@ -8,6 +8,7 @@ import { getSettings, updateSettings, type AliusSettings } from '../../settings'
 import type { StAdapter } from '../../st/adapter';
 import { exportCampaign, importCampaign, type LoadResult } from '../../st/persistence';
 import { analyzeAttrs, analyzeNative } from '../analyze/mark';
+import { renderContentSection } from '../bonds/content';
 import { worldChoice } from '../../engine/worldOptions';
 import { pickSkin } from '../device/skins';
 import { h } from '../dom';
@@ -141,6 +142,27 @@ export function renderSysTab(host: HTMLElement, ctx: SysCtx): void {
     });
   };
 
+  /** P9d: every content category of the campaign; a toggle goes through the engine and applies from the next generation. */
+  const contentRows = (): HTMLElement[] => {
+    const state = ctx.getState();
+    const reg = ctx.getRegistries?.();
+    if (!state || !reg || reg.contentCategories.size === 0 || !ctx.dispatch) return [h('p', { class: 'alius-dim' }, 'Content categories are set when a campaign is started.')];
+    const holder = h('div', { class: 'alius-content-host' });
+    renderContentSection(holder, {
+      enabled: state.content?.enabled ?? [], registries: reg, title: 'Content',
+      onChange: (enabled) => {
+        const events = ctx.dispatch?.({ type: 'content/set_categories', payload: { enabled } }) ?? [];
+        const err = events.find((e) => e.type === 'error');
+        if (err) {
+          ctx.toast('warn', String(err.message ?? 'The content choice could not be changed.'));
+          const now = ctx.getState();
+          renderContentSection(holder, { enabled: now?.content?.enabled ?? [], registries: reg, title: 'Content', onChange: () => {} });
+        }
+      },
+    });
+    return [holder];
+  };
+
   // --- settings form
   const profiles = st.listConnectionProfiles();
   const profileOptions: Array<[string, string]> = [
@@ -222,8 +244,8 @@ export function renderSysTab(host: HTMLElement, ctx: SysCtx): void {
     field('Hover delay (ms, 100–1500)', numberInput('analyzeHoverDelay', settings.analyzeHoverDelay, (n) => apply({ analyzeHoverDelay: n }).analyzeHoverDelay, { min: '100', max: '1500', step: '50' }), 'analyzeHoverDelay'),
     h('h3', {}, 'Intimacy'),
     field('Romance', checkbox('romance', settings.romance), 'romance'),
-    field('Explicit scenes allowed', checkbox('explicitContent', settings.explicitContent), 'explicitContent'),
     field('Romantic initiative', select('romanticInitiative', [['low', 'low'], ['med', 'medium'], ['high', 'high']], settings.romanticInitiative), 'romanticInitiative'),
+    ...contentRows(),
     h('h3', {}, 'Developer'),
     field('Debug mode', checkbox('debug', settings.debug, true), 'debug'),
     field('Mechanics edit lock', checkbox('editLock', settings.editLock, true), 'editLock'),

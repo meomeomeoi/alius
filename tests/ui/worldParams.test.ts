@@ -150,3 +150,33 @@ describe('the WORLD PARAMETERS screen', () => {
     expect(qa(host, 'h3').filter((e) => e.textContent === 'PRESENTATION')).toHaveLength(1);
   });
 });
+
+describe('the CONTENT section (P9d)', () => {
+  const rows = (host: HTMLElement) => qa(host, 'button[data-category]');
+
+  it('is drawn after the world groups and before the summary, with nine categories, all off', () => {
+    const { host } = make();
+    expect(rows(host)).toHaveLength(9);
+    for (const r of rows(host)) expect(r.getAttribute('aria-pressed')).toBe('false');
+    const html = host.innerHTML;
+    expect(html.indexOf('data-category="restraint"')).toBeGreaterThan(html.lastIndexOf('alius-world-option'));
+    expect(html.indexOf('data-category="restraint"')).toBeLessThan(html.indexOf('WHAT THIS CHANGES'));
+    expect(host.textContent).toContain('CONTENT — nothing here appears unless you turn it on. Turning it on is your consent for the story to go there.');
+  });
+
+  it('a click goes through the wizard and the screen redraws', () => {
+    const { wizard, host } = make();
+    host.querySelector<HTMLButtonElement>('button[data-category="restraint"]')!.click();
+    expect(wizard.state.content.enabled).toEqual(['restraint']);
+    expect(host.querySelector('button[data-category="restraint"]')!.getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('explicit_scenes starts on when the old switch is on', () => {
+    const wizard = new Wizard({ registries: reg, desireBondDefects: false, explicitContent: true, importer: vi.fn() as never, onChange: () => {} }, { personaName: 'Vale', canBindCurrent: false });
+    const host = h('div');
+    document.body.append(host);
+    renderWorldParams(host, { wizard, registries: reg });
+    expect(host.querySelector('button[data-category="explicit_scenes"]')!.getAttribute('aria-pressed')).toBe('true');
+    expect(rows(host).filter((r) => r.getAttribute('aria-pressed') === 'true')).toHaveLength(1);
+  });
+});
