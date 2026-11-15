@@ -9,6 +9,7 @@ import { compatibility } from '../../../src/engine/power/ballot';
 import { powerDayStep } from '../../../src/engine/power/dayStep';
 import { computeHierarchy, leaderOf, meritOf, recordMerit, respectOf, standingOf } from '../../../src/engine/power/standing';
 import { Rng, seedRng } from '../../../src/engine/rng';
+import { TUNING } from '../../../src/engine/tuning';
 import type { Bond, CampaignState } from '../../../src/engine/state/types';
 import { ctxOf } from '../../helpers/world';
 import { campaign, endDay, loadCore, run, setRelation } from '../../helpers/loyalty';
@@ -81,7 +82,7 @@ describe('merit', () => {
     foe.hp = 0;
     finalizeCombat(draft, reg, new Rng(seedRng(3)), 'won');
     expect(draft.power!.merit).toEqual([
-      { day: draft.day, unitId: ANN, points: 6.5 + 5 }, // 65 damage / 10 and one finishing blow
+      { day: draft.day, unitId: ANN, points: 6.5 + TUNING.power.merit.finishingBlow }, // 65 damage / 10 and one finishing blow
       { day: draft.day, unitId: BEA, points: 3 }, // 30 healed / 10
     ]);
   });

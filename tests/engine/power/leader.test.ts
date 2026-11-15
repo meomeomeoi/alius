@@ -45,11 +45,11 @@ function seeded(s: CampaignState, action: ReturnType<typeof train>, hit: boolean
 }
 
 describe('privileges', () => {
-  it("the leader's vote weighs 1.5 at normal, 2.25 at high, 0.75 at low; endorsed × 1.5", () => {
+  it("the leader's vote weighs 1.5 at normal, 2.25 at high, 1.125 at low; endorsed × 1.5", () => {
     const s = withLeader(fresh(), ANN);
     expect(leaderVoteWeight(s, reg)).toBe(1.5);
     expect(leaderVoteWeight(withOptions(structuredClone(s), { squad_assertiveness: 'high' }), reg)).toBe(2.25);
-    expect(leaderVoteWeight(withOptions(structuredClone(s), { squad_assertiveness: 'low' }), reg)).toBe(0.75);
+    expect(leaderVoteWeight(withOptions(structuredClone(s), { squad_assertiveness: 'low' }), reg)).toBe(1.125);
     const e = withLeader(fresh(), ANN, { endorsed: true });
     expect(leaderVoteWeight(e, reg)).toBe(2.25);
     expect(privilegeScale(e, reg)).toBe(1.5);
@@ -86,7 +86,7 @@ describe('privileges', () => {
     expect(c(withLeader(structuredClone(s), ANN))).toBe(6); // 0.3 × (2 × 40 / weights 2 + 1 + 1)
     expect(c(withOptions(withLeader(structuredClone(s), ANN), { squad_assertiveness: 'high' }))).toBe(7); // weight 2.5: 0.3 × (2.5 × 40 / 4.5)
     expect(c(withLeader(structuredClone(s), ANN, { endorsed: true }))).toBe(7); // endorsed: weight 2.5 as well
-    expect(c(withOptions(withLeader(structuredClone(s), ANN), { squad_assertiveness: 'low' }))).toBe(5); // weight 1.5: 0.3 × (1.5 × 40 / 3.5)
+    expect(c(withOptions(withLeader(structuredClone(s), ANN), { squad_assertiveness: 'low' }))).toBe(6); // weight 1.75: 0.3 × (1.75 × 40 / 3.75)
     // the leader's own contagion reads the others only
     expect(impunityOf(withLeader(structuredClone(s), ANN), reg, ANN)!.terms.contagion).toBe(0);
   });
@@ -97,7 +97,7 @@ describe('countermand', () => {
 
   it('the chance scales with the option and the endorsement and is capped', () => {
     expect(countermandChance(lead(), reg)).toBeCloseTo(0.2, 10);
-    expect(countermandChance(withOptions(lead(), { squad_assertiveness: 'low' }), reg)).toBeCloseTo(0.1, 10);
+    expect(countermandChance(withOptions(lead(), { squad_assertiveness: 'low' }), reg)).toBeCloseTo(0.15, 10);
     expect(countermandChance(withOptions(lead(), { squad_assertiveness: 'high' }), reg)).toBeCloseTo(0.3, 10);
     expect(countermandChance(withOptions(withLeader(fresh(), ANN, { endorsed: true }), { squad_assertiveness: 'high' }), reg)).toBeCloseTo(0.45, 10);
     const big = withOptions(withLeader(fresh(), ANN, { endorsed: true }), { squad_assertiveness: 'high' });

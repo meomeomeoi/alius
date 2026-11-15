@@ -1312,7 +1312,7 @@
     "id": "squad_power",
     "term": "Squad assertiveness",
     "short": "How hard the squad pushes for itself: leader privileges, how often soldiers make demands, and how much the commander's vote weighs.",
-    "long": "A world option fixed at the start. Low halves a leader's privileges and trims demands; high raises both by half and a quarter, and the commander's own vote counts a quarter less when the squad [[voting|votes]]. It only scales what the soldiers' own character already does: a yielding soldier never turns dominant because of it.",
+    "long": "A world option fixed at the start. Low trims a leader's privileges by a quarter and trims demands; high raises both by half and a quarter, and the commander's own vote counts a quarter less when the squad [[voting|votes]]. It only scales what the soldiers' own character already does: a yielding soldier never turns dominant because of it.",
     "see": [
       "voting"
     ]

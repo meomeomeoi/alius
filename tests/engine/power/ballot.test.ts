@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
+import { TUNING } from '../../../src/engine/tuning';
 import { VoteKindSchema } from '../../../src/content/schemas';
 import type { Registries } from '../../../src/content/types';
 import { missingDescriptions } from '../../../src/analysis/describe';
@@ -147,7 +148,7 @@ describe('ballots follow values, trust, stance, demands and what the vote does t
     expect(own.vote).toBe('against');
     expect(own.term).toBe('affected');
     // corporate +1 and mercy −1 of the kind lean cancel at equal values, so only the affected terms remain
-    expect(score(s, flat, BEA, 'punish', ANN)).toMatchObject({ vote: 'against', score: -2, term: 'affected' });
+    expect(score(s, flat, BEA, 'punish', ANN)).toMatchObject({ vote: 'against', score: TUNING.power.ballot.compatibility, term: 'affected' });
     expect(score(s, flat, CAT, 'punish', ANN).score).toBeCloseTo(0, 10);
     expect(score(s, flat, CAT, 'punish', ANN).vote).toBe('for');
   });

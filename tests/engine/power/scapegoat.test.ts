@@ -188,12 +188,12 @@ describe('the two answers', () => {
     run(s, reg, { type: 'dilemma/choose', payload: { id: open(s)!.id, index: open(s)!.options!.findIndex((o) => scapegoatOptionId(o) === id) } });
   const last = (s: CampaignState, unit: string, type: string) => s.relations[unit].history.filter((h) => h.kind === 'event' && h.type === type).at(-1);
 
-  it('TAKE THE BLAME: own standing −5, Leash −1, shielded major on her and moderate on witnesses', () => {
+  it('TAKE THE BLAME: own standing −10, Leash −1, shielded major on her and moderate on witnesses', () => {
     const s = presented();
     const before = own(s);
     const r = choose(s, 'take_blame');
     expect(errors(r.events)).toEqual([]);
-    expect(own(r.state) - before).toBe(-5);
+    expect(own(r.state) - before).toBe(-10);
     expect(r.state.leash.authorizationsLeft).toBe(2);
     expect(last(r.state, ANN, 'shielded')).toMatchObject({ severity: 'major' });
     for (const id of [BEA, CAT]) expect(last(r.state, id, 'shielded')).toMatchObject({ severity: 'moderate' });

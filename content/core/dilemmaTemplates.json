@@ -1432,7 +1432,7 @@
             {
               "type": "faction",
               "factionId": "own",
-              "amount": -5
+              "amount": -10
             },
             {
               "type": "leash",

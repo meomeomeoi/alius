@@ -22,7 +22,7 @@ describe('reading the P9b world options', () => {
 
   it('low and high read their multipliers; high reads commanderVoteMult 0.75', () => {
     expect(assertiveness(withOptions(fresh(), { squad_assertiveness: 'high' }), reg)).toEqual({ privilegeMult: 1.5, demandMult: 1.25, commanderVoteMult: 0.75 });
-    expect(assertiveness(withOptions(fresh(), { squad_assertiveness: 'low' }), reg)).toEqual({ privilegeMult: 0.5, demandMult: 0.75, commanderVoteMult: 1 });
+    expect(assertiveness(withOptions(fresh(), { squad_assertiveness: 'low' }), reg)).toEqual({ privilegeMult: 0.75, demandMult: 0.75, commanderVoteMult: 1 });
   });
 
   it('voting on reads true', () => {

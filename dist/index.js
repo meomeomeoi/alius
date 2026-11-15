@@ -421,10 +421,10 @@ var TUNING = Object.freeze({
       trustCap: 2,
       openDemand: -1,
       subject: -4,
-      compatibility: -2
+      compatibility: -1
       /** `commandStances[].voteBias` is content; the ballot adds it as is. */
     }),
-    merit: Object.freeze({ damagePer: 10, finishingBlow: 5, healPer: 10, windowDays: 14 }),
+    merit: Object.freeze({ damagePer: 10, finishingBlow: 2, healPer: 10, windowDays: 14 }),
     standing: Object.freeze({
       merit: 0.4,
       respect: 0.3,
@@ -448,7 +448,7 @@ var TUNING = Object.freeze({
       lossRecord: 10
     }),
     outside: Object.freeze({ suppressDays: 14 }),
-    scapegoat: Object.freeze({ failedRunStanding: 4, takeBlameStanding: 5, shiftDays: 2, shiftStress: 10 })
+    scapegoat: Object.freeze({ failedRunStanding: 4, takeBlameStanding: 10, shiftDays: 2, shiftStress: 10 })
   })
 });
 

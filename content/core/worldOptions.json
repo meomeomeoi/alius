@@ -526,12 +526,12 @@
       {
         "id": "low",
         "label": "Meek",
-        "description": "The squad seldom pushes. Leaders have half the usual privileges, demands come less often and the commander's vote keeps its full weight.",
+        "description": "The squad seldom pushes. Leaders have three quarters of the usual privileges, demands come less often and the commander's vote keeps its full weight.",
         "lore": "A meek squad.",
         "effects": [
           {
             "type": "squad_power",
-            "privilegeMult": 0.5,
+            "privilegeMult": 0.75,
             "demandMult": 0.75,
             "commanderVoteMult": 1
           }

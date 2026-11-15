@@ -373,10 +373,10 @@ export const TUNING = Object.freeze({
     ballot: Object.freeze({
       /** `clamp((trust − 50) / trustPer, −trustCap, trustCap)`. */
       trustPer: 25, trustCap: 2,
-      openDemand: -1, subject: -4, compatibility: -2,
+      openDemand: -1, subject: -4, compatibility: -1,
       /** `commandStances[].voteBias` is content; the ballot adds it as is. */
     }),
-    merit: Object.freeze({ damagePer: 10, finishingBlow: 5, healPer: 10, windowDays: 14 }),
+    merit: Object.freeze({ damagePer: 10, finishingBlow: 2, healPer: 10, windowDays: 14 }),
     standing: Object.freeze({
       merit: 0.4, respect: 0.3, impunity: 0.3,
       factor: Object.freeze({ yielding: 0.7, balanced: 1, assertive: 1.15, dominant: 1.3 }),
@@ -389,6 +389,6 @@ export const TUNING = Object.freeze({
       cooldownDays: 14, deposedDays: 14, winRecord: -5, lossRecord: 10,
     }),
     outside: Object.freeze({ suppressDays: 14 }),
-    scapegoat: Object.freeze({ failedRunStanding: 4, takeBlameStanding: 5, shiftDays: 2, shiftStress: 10 }),
+    scapegoat: Object.freeze({ failedRunStanding: 4, takeBlameStanding: 10, shiftDays: 2, shiftStress: 10 }),
   }),
 });
