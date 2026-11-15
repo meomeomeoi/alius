@@ -9,3 +9,4 @@ export { countermandChance, countermandOpen, leaderVoteWeight, privilegeScale, r
 export { challenge, challengeChance, challengeCooldown, CHALLENGE_STATS, endorse, leaderRank, type ChallengeStat } from './moves';
 export { changeLeader } from './standing';
 export { CO_COMMAND, dropCoCommand } from './state';
+export { negotiationHolds, noteFeat, outsideActive, outsideSuppressedFor } from './outside';

@@ -1,3 +1,4 @@
+import { noteFeat } from '../power/outside';
 import { smotherRefusal } from '../bonds/smother';
 import type { Entry, Registries } from '../../content/types';
 import { checkRunRoster } from '../bonds/rules';
@@ -437,6 +438,8 @@ export function endExpedition(draft: CampaignState, ctx: EngineCtx, outcome: Exp
     if (mission) {
       events.push(...completeMission(draft, ctx, mission.id));
       rewards = draft.missions.completed.find((m) => m.id === mission.id)?.rewards;
+      // P9b: a command mission secured after the commander gave a combat order is a feat outsiders see
+      if (mission.source === 'command' && (exp.orders ?? 0) >= 1) events.push(...noteFeat(draft, reg, 'ordered_mission'));
     }
   } else if (mission) {
     releaseMission(draft, mission.id);

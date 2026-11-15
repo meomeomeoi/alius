@@ -93,6 +93,7 @@ registerAction('combat/order', (draft, payload, ctx) => {
   if (reason) throw new Error(reason);
   const start = cs.log.length;
   issueOrder(ectx, payload.orderId, payload.targetCid);
+  if (draft.expedition && cs.expedition) draft.expedition.orders = (draft.expedition.orders ?? 0) + 1; // P9b: an order given during a run counts for the `ordered_mission` feat
   return settle(draft, ctx, ectx, start);
 });
 

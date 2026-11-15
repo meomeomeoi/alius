@@ -5357,6 +5357,7 @@ var DEED_COUNTERS = [
   "threats_empty"
 ];
 var VOTE_KINDS = ["mission", "upgrade", "punish", "rations", "scapegoat"];
+var OUTSIDE_TRIGGERS = ["crisis_cover", "ordered_mission", "negotiation"];
 var BALLOT_TERMS = ["values", "trust", "stance", "demand", "affected"];
 
 // src/engine/dilemma/types.ts
@@ -5426,7 +5427,8 @@ var REGISTRY_NAMES = [
   "contentCategories",
   "relationshipRuleTemplates",
   // P9b
-  "voteKinds"
+  "voteKinds",
+  "outsideFeats"
 ];
 var PackManifestSchema = external_exports.object({
   id: external_exports.string().min(1),
@@ -7090,6 +7092,12 @@ var VoteKindSchema = BaseEntrySchema.extend({
   }
 });
 registrySchemas.voteKinds = VoteKindSchema;
+var OutsideFeatSchema = BaseEntrySchema.extend({
+  label: str.max(40),
+  description: str.max(DESCRIPTION_MAX),
+  trigger: external_exports.enum(OUTSIDE_TRIGGERS)
+}).strict();
+registrySchemas.outsideFeats = OutsideFeatSchema;
 var DESCRIBED_REGISTRIES = [
   "roles",
   "skills",
@@ -7130,7 +7138,8 @@ var DESCRIBED_REGISTRIES = [
   "contentCategories",
   "relationshipRuleTemplates",
   // P9b
-  "voteKinds"
+  "voteKinds",
+  "outsideFeats"
 ];
 function withDescription(schema) {
   return schema.superRefine((entry, ctx2) => {
@@ -10614,6 +10623,24 @@ function closeNight(draft, ctx2, open3) {
   return open3.at === "night" && draft.slot === "night" ? consumeSlots(draft, 1, ctx2) : [];
 }
 
+// src/engine/power/outside.ts
+function outsideActive(state) {
+  if (!leaderOf(state)) return false;
+  const h2 = state.power?.hierarchy;
+  return h2?.endorsed === true || state.day >= (h2?.outsideSuppressedUntil ?? 0);
+}
+function noteFeat(draft, reg, trigger) {
+  const feat = [...reg.outsideFeats.values()].find((f) => f.trigger === trigger);
+  if (!feat) return [];
+  const power = powerOf(draft);
+  power.hierarchy ??= { standings: {}, endorsed: false, computedDay: draft.day - TUNING.power.standing.recomputeDays };
+  power.hierarchy.outsideSuppressedUntil = draft.day + TUNING.power.outside.suppressDays;
+  return [{ type: "outside_feat", featId: String(feat.id) }];
+}
+function negotiationHolds(e) {
+  return e.routePassed === true && e.routeKind === "social" || e.checkPassed === true;
+}
+
 // src/engine/leash/use.ts
 var clamp12 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var unitOf = (state, id) => state.squad.find((u) => u.id === id);
@@ -10667,6 +10694,7 @@ function bookUse(draft, ctx2, unitId, kind, context, outcome) {
   const events = [];
   const no = nextNo(draft);
   const entry = { no, unitId, kind, day: draft.day, context, outcome };
+  if (outsideActive(draft)) entry.cc = leaderOf(draft).id;
   draft.leash.log.push(entry);
   if (draft.leash.log.length > TUNING.leash.logMax) draft.leash.log.splice(0, draft.leash.log.length - TUNING.leash.logMax);
   events.push({ type: "leash_used", kind, unitId, no, outcome });
@@ -14903,6 +14931,9 @@ function finalizeCombat(draft, reg, rng, outcome) {
   draft.lastCombat = result;
   delete draft.combat;
   if (!cs.expedition) events.push(...releaseBreakdowns(draft, void 0, reg));
+  if (outcome === "won" && cs.encounter.exposesCommander === true && cs.commander && !cs.commander.downed && (cs.encounter.mutineers?.length ?? 0) === 0) {
+    events.push({ type: "commander_held" }, ...noteFeat(draft, reg, "crisis_cover"));
+  }
   events.push({ type: "combat_ended", outcome, result: cs.id });
   return events;
 }
@@ -15269,6 +15300,7 @@ registerAction("combat/order", (draft, payload, ctx2) => {
   if (reason) throw new Error(reason);
   const start = cs.log.length;
   issueOrder(ectx, payload.orderId, payload.targetCid);
+  if (draft.expedition && cs.expedition) draft.expedition.orders = (draft.expedition.orders ?? 0) + 1;
   return settle(draft, ctx2, ectx, start);
 });
 registerAction("combat/compel", (draft, _payload, ctx2) => {
@@ -16853,6 +16885,7 @@ function endExpedition(draft, ctx2, outcome) {
     if (mission) {
       events.push(...completeMission(draft, ctx2, mission.id));
       rewards = draft.missions.completed.find((m) => m.id === mission.id)?.rewards;
+      if (mission.source === "command" && (exp.orders ?? 0) >= 1) events.push(...noteFeat(draft, reg, "ordered_mission"));
     }
   } else if (mission) {
     releaseMission(draft, mission.id);
@@ -18010,7 +18043,8 @@ function chooseDilemma(draft, ctx2, id, index, route) {
     events.push({ type: "expedition_choice", nodeId, templateId: open3.templateId, option: index, label: chosen.label });
   }
   delete d.open;
-  events.push({
+  const routeKind = chosen.routeCheck && route !== void 0 ? chosen.routeCheck.routes[route.route]?.kind : void 0;
+  const resolved = {
     type: "dilemma_resolved",
     id: open3.id,
     templateId: open3.templateId,
@@ -18019,8 +18053,11 @@ function chooseDilemma(draft, ctx2, id, index, route) {
     title,
     affected,
     ...checkPassed !== void 0 ? { checkPassed } : {},
-    ...routePassed !== void 0 ? { routePassed } : {}
-  });
+    ...routePassed !== void 0 ? { routePassed } : {},
+    ...routeKind !== void 0 ? { routeKind } : {}
+  };
+  events.push(resolved);
+  if (negotiationHolds(resolved)) events.push(...noteFeat(draft, ctx2.registries, "negotiation"));
   return events;
 }
 function pacingStep(draft, ctx2) {

@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { EFFECT_TARGETS, STATS, TRIGGERS, ALWAYS_ON_TYPES } from '../engine/combat/types';
 import { ALL_EVENT_TYPES, EVENT_TYPES, PROPOSAL_KINDS, SEVERITIES } from '../engine/relations/vocab';
 import { DEED_COUNTERS, RARITIES } from '../engine/state/types';
-import { BALLOT_TERMS, VALUE_AXES, VOTE_KINDS } from '../engine/state/types';
+import { BALLOT_TERMS, OUTSIDE_TRIGGERS, VALUE_AXES, VOTE_KINDS } from '../engine/state/types';
 import { TUNING } from '../engine/tuning';
 import { DILEMMA_CONTEXTS } from '../engine/dilemma/types';
 import type { WorldEffect } from '../engine/world/types';
@@ -1743,6 +1743,14 @@ export type VoteKindEntry = z.infer<typeof VoteKindSchema>;
 
 registrySchemas.voteKinds = VoteKindSchema;
 
+/** A visible feat that restores the commander's authority in the eyes of outsiders for 14 days (P9b §4). `trigger` is a closed vocabulary the engine reads. */
+export const OutsideFeatSchema = BaseEntrySchema.extend({
+  label: str.max(40),
+  description: str.max(DESCRIPTION_MAX),
+  trigger: z.enum(OUTSIDE_TRIGGERS),
+}).strict();
+registrySchemas.outsideFeats = OutsideFeatSchema;
+
 /** Player-visible registries whose entries carry an optional `description` (skills and statuses already require one). */
 export const DESCRIBED_REGISTRIES = [
   'roles', 'skills', 'signatures', 'statuses', 'defects', 'items', 'affixes', 'enemies',
@@ -1759,7 +1767,7 @@ export const DESCRIBED_REGISTRIES = [
   // P9d
   'contentCategories', 'relationshipRuleTemplates',
   // P9b
-  'voteKinds',
+  'voteKinds', 'outsideFeats',
 ] as const satisfies readonly RegistryName[];
 
 /** Adds the optional `description` rule to a registry schema without changing its shape. */

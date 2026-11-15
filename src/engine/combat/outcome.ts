@@ -1,3 +1,4 @@
+import { noteFeat } from '../power/outside';
 import { recordMerit } from '../power/standing';
 import type { Registries } from '../../content/types';
 import { countDeed } from '../discipline/deeds';
@@ -181,6 +182,10 @@ export function finalizeCombat(draft: CampaignState, reg: Registries, rng: Rng, 
   delete draft.combat;
 
   if (!cs.expedition) events.push(...releaseBreakdowns(draft, undefined, reg));
+  // P9b: a won fight that exposed the commander, with a cover chosen and the commander still standing, is a feat outsiders see
+  if (outcome === 'won' && cs.encounter.exposesCommander === true && cs.commander && !cs.commander.downed && (cs.encounter.mutineers?.length ?? 0) === 0) {
+    events.push({ type: 'commander_held' }, ...noteFeat(draft, reg, 'crisis_cover'));
+  }
   events.push({ type: 'combat_ended', outcome, result: cs.id });
   return events;
 }

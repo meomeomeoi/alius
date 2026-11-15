@@ -6,7 +6,8 @@ import { isLiving } from '../economy';
 import { countDeed } from '../discipline/deeds';
 import { enforce, forgetUnit } from '../discipline/record';
 import { loyaltyOf, loyaltyRecord } from '../loyalty/state';
-import { forgetPower } from '../power/state';
+import { outsideActive } from '../power/outside';
+import { forgetPower, leaderOf } from '../power/state';
 import { addChronicle, addFact } from '../memory';
 import { applyRelationDelta } from '../relationGain';
 import { applyEventToUnit } from '../relations/effects';
@@ -99,6 +100,7 @@ function bookUse(
   const events: EngineEvent[] = [];
   const no = nextNo(draft);
   const entry: LeashLogEntry = { no, unitId, kind, day: draft.day, context, outcome };
+  if (outsideActive(draft)) entry.cc = leaderOf(draft)!.id; // P9b: oversight copies the squad leader
   draft.leash.log.push(entry);
   if (draft.leash.log.length > TUNING.leash.logMax) draft.leash.log.splice(0, draft.leash.log.length - TUNING.leash.logMax);
   events.push({ type: 'leash_used', kind, unitId, no, outcome });

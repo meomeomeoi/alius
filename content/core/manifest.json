@@ -54,6 +54,7 @@
     "uiUnlocks": "uiUnlocks.json",
     "contentCategories": "contentCategories.json",
     "relationshipRuleTemplates": "relationshipRuleTemplates.json",
-    "voteKinds": "voteKinds.json"
+    "voteKinds": "voteKinds.json",
+    "outsideFeats": "outsideFeats.json"
   }
 }

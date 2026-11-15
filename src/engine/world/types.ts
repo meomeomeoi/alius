@@ -169,6 +169,8 @@ export interface QueuedIntent {
 
 export interface ExpeditionState {
   id: string;
+  /** P9b: combat orders the commander gave during this run (absent = none). */
+  orders?: number;
   missionId: string;
   regionId: string;
   day: number;

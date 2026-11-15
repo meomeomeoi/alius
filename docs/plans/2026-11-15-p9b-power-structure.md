@@ -618,7 +618,7 @@ tests/**                                                        mirrors src; tes
   - `outsideSuppressedFor(state): number` (days left)
 - Consumes: `leaderOf`, the three engine sites above.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `outside perception is active with a leader and no feat`
   - `each trigger suppresses it for 14 days`
   - `a feat noted with no leader still suppresses a leader appointed later`
@@ -627,10 +627,10 @@ tests/**                                                        mirrors src; tes
   - `negotiation needs a passed social route or a passed check; a passed body route is not a negotiation`
   - `ordered_mission needs a command mission and at least one order`
   - `outsideFeats loads three feats with descriptions; an unknown trigger is a load error`
-- [ ] **Step 2: Run** `npx vitest run tests/engine/power/outside.test.ts` and confirm FAIL.
-- [ ] **Step 3: Implement.** `noteFeat` is called at the three sites; it draws no rng.
-- [ ] **Step 4: Run** the tests, then `npm test`. Expect PASS.
-- [ ] **Step 5: Tick and commit:** `feat(power): outside perception and feats`.
+- [x] **Step 2: Run** `npx vitest run tests/engine/power/outside.test.ts` and confirm FAIL.
+- [x] **Step 3: Implement.** `noteFeat` is called at the three sites; it draws no rng.
+- [x] **Step 4: Run** the tests, then `npm test`. Expect PASS.
+- [x] **Step 5: Tick and commit:** `feat(power): outside perception and feats`.
 
 ### Task 11: Hierarchy UI, directives and providers
 

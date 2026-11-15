@@ -42,6 +42,8 @@ export interface LeashLogEntry {
   day: number;
   context: 'scene' | 'combat' | 'arc' | 'desertion' | 'mutiny' | 'pda';
   outcome: 'done' | 'failed' | 'denied';
+  /** P9b: the squad leader oversight copied on the request (outside perception was active); absent otherwise. */
+  cc?: string;
 }
 
 /** Per unit loyalty bookkeeping (P6). */
@@ -503,6 +505,9 @@ export interface Demand {
 /** P9b: the decisions the squad can vote on (the `voteKinds` registry has one entry each). */
 export const VOTE_KINDS = ['mission', 'upgrade', 'punish', 'rations', 'scapegoat'] as const;
 export type VoteKind = (typeof VOTE_KINDS)[number];
+/** P9b: what the commander can do to restore authority in the eyes of outsiders (the `outsideFeats` registry has one entry each). */
+export const OUTSIDE_TRIGGERS = ['crisis_cover', 'ordered_mission', 'negotiation'] as const;
+export type OutsideTrigger = (typeof OUTSIDE_TRIGGERS)[number];
 /** P9b: how a shortage is shared out. */
 export type RationMode = 'equal' | 'fighters_first' | 'commander_short';
 /** P9b: the term of a ballot that moved it most (it picks the reason line). */

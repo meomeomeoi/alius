@@ -1,3 +1,4 @@
+import { negotiationHolds, noteFeat } from '../power/outside';
 import { isCostEffect } from '../../content/schemas';
 import type { Entry, Registries } from '../../content/types';
 import type { EngineCtx, EngineEvent } from '../dispatch';
@@ -278,11 +279,15 @@ export function chooseDilemma(draft: CampaignState, ctx: EngineCtx, id: unknown,
     events.push({ type: 'expedition_choice', nodeId, templateId: open.templateId, option: index, label: chosen.label });
   }
   delete d.open;
-  events.push({
+  const routeKind = chosen.routeCheck && route !== undefined ? chosen.routeCheck.routes[route.route]?.kind : undefined;
+  const resolved: EngineEvent = {
     type: 'dilemma_resolved', id: open.id, templateId: open.templateId, option: index, label: chosen.label, title, affected,
     ...(checkPassed !== undefined ? { checkPassed } : {}),
     ...(routePassed !== undefined ? { routePassed } : {}),
-  });
+    ...(routeKind !== undefined ? { routeKind } : {}),
+  };
+  events.push(resolved);
+  if (negotiationHolds(resolved)) events.push(...noteFeat(draft, ctx.registries, 'negotiation')); // P9b: a feat outsiders see
   return events;
 }
 

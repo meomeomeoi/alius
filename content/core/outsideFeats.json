@@ -1,0 +1,20 @@
+[
+  {
+    "id": "crisis_cover",
+    "label": "Held under fire",
+    "description": "Come through a crisis in the field with a soldier covering the commander and win the fight. Outsiders see the commander at the front, not a figurehead.",
+    "trigger": "crisis_cover"
+  },
+  {
+    "id": "ordered_mission",
+    "label": "Won by order",
+    "description": "Secure a command mission after giving at least one combat order yourself. Outsiders see who gave the orders.",
+    "trigger": "ordered_mission"
+  },
+  {
+    "id": "negotiation",
+    "label": "Talked it through",
+    "description": "Settle a decision with a passed social check or social route. Outsiders see who does the talking.",
+    "trigger": "negotiation"
+  }
+]
