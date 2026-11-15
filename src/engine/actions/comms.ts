@@ -1,10 +1,13 @@
 import { registerActivityHook, type ActivityHook } from '../activities';
+import { WANT_VISIT_KIND } from '../bonds/scene';
+import { relieveWant } from '../bonds/want';
 import { consumeSlots, registerDayEndStep } from '../calendar';
 import { registerAction } from '../dispatch';
 import { countSent, dmMode, pushMessage, rollInitiative } from '../dms';
 import { isLiving } from '../economy';
 import { rollNight } from '../night';
 import { applyRelationDelta } from '../relationGain';
+import { TUNING } from '../tuning';
 import { applyEventToUnit } from '../relations/effects';
 import { CONFRONTATION_KINDS } from '../loyalty/state';
 import { evaluateAutomatic } from '../relations/graph';
@@ -91,7 +94,10 @@ const isConfrontation = (entry: NightEntry): boolean => (CONFRONTATION_KINDS as 
 registerAction('night/open', (draft) => {
   if (draft.slot !== 'night' || !draft.calendar.nightEvent) throw new Error('night/open: there is no night event to open.');
   if (isConfrontation(draft.calendar.nightEvent)) throw new Error('This is not a knock: answer it from its own panel.');
-  return [{ type: 'night_opened', entry: draft.calendar.nightEvent }];
+  const entry = draft.calendar.nightEvent;
+  // P9d: she took her Want visit
+  const relief = entry.kind === WANT_VISIT_KIND ? relieveWant(draft, entry.unitId, TUNING.bonds.want.relief.wantVisit, 'want_visit') : [];
+  return [{ type: 'night_opened', entry }, ...relief];
 });
 
 registerAction('night/ignore', (draft, _payload, ctx) => {

@@ -349,7 +349,13 @@ var TUNING = Object.freeze({
       bands: Object.freeze({ restless: 40, aching: 70, desperate: 90 }),
       initiativeMult: 1.5,
       stressPerDay: 2,
-      visit: Object.freeze({ chance: 0.25, priority: 55, ignore: Object.freeze({ event: "dismissed", severity: "moderate" }) }),
+      visit: Object.freeze({
+        chance: 0.25,
+        priority: 55,
+        ignore: Object.freeze({ event: "dismissed", severity: "moderate" }),
+        /** AUTHOR TO WRITE: the knock a Want visit shows; `{name}` is her name. */
+        framing: "{name} is at your door, restless and not hiding why."
+      }),
       /** What lowers Want (draft). */
       relief: Object.freeze({ intimateScene: 60, romanticScene: 25, companion: 5, train: 15, expeditionDay: 10, expeditionMinDanger: 3, wantVisit: 30 }),
       demandEveryDays: 3,
@@ -602,6 +608,7 @@ function recordLedger(before, after, action) {
     if (!was) continue;
     for (const axis of AXES) push(`axis:${id}:${axis}`, (rel[axis] ?? 0) - (was[axis] ?? 0));
     push(`record:${id}`, (rel.impunityRecord ?? 0) - (was.impunityRecord ?? 0));
+    push(`want:${id}`, (rel.want ?? 0) - (was.want ?? 0));
   }
   if (before.commander?.body !== void 0 && after.commander?.body !== void 0) for (const stat3 of BODY_STATS) push(`body:${stat3}`, (after.commander?.body?.[stat3] ?? 0) - (before.commander?.body?.[stat3] ?? 0));
   if (entries.length > 0) after.ledger = [...after.ledger ?? [], ...entries];
@@ -770,6 +777,7 @@ var ATTACHMENTS = ["slow", "steady", "intense", "avoidant"];
 var DESIRE_LEVELS = ["low", "medium", "high"];
 var PUBLICITY_LEVELS = ["secret", "known", "public"];
 var leadRank = (style) => LEAD_STYLES.indexOf(style);
+var desireRank = (level) => DESIRE_LEVELS.indexOf(level);
 var MODEST_BOND = Object.freeze({
   leadStyle: "balanced",
   attachment: "steady",
@@ -6190,7 +6198,9 @@ var ActivitySchema = BaseEntrySchema.extend({
   flavor: external_exports.enum(["none", "short"]),
   /** The activity opens a scene (P3); the slot is consumed when the scene ends, not here. */
   startsScene: external_exports.boolean().optional(),
-  blockedWhenCommanderInjured: external_exports.boolean().optional()
+  blockedWhenCommanderInjured: external_exports.boolean().optional(),
+  /** P9d: how much a companion's Want falls when she shares this activity (absent: the default of `TUNING.bonds.want.relief`). */
+  wantRelief: int.min(0).max(100).optional()
 }).superRefine((a, ctx2) => {
   const issue = (path, message) => ctx2.addIssue({ code: "custom", path, message });
   if (a.companion === "none" && a.companionEffects.length > 0) issue(["companionEffects"], 'companion "none" cannot have companionEffects');
@@ -6371,6 +6381,8 @@ var DefectSchema = BaseEntrySchema.extend({
   requiresBond: external_exports.object({ caretaker: external_exports.literal(true).optional() }).strict().optional(),
   /** P9d: added to the lead score of her scenes (not while her arc is cure). */
   leadBonus: int.min(0).max(40).optional(),
+  /** P9d: what her unmet want does at the top band: an off-combat breakdown of this kind for 1 to 3 days. */
+  wantBreakdown: external_exports.object({ kind: external_exports.enum(["withdrawal", "binge", "smother", "seize"]), days: int.min(1).max(3) }).strict().optional(),
   nightEvents: external_exports.array(NightSpecSchema).optional(),
   /** P5: one more node revealed ahead on the expedition map (Echo Bleed). */
   expedition: external_exports.object({ reveal: external_exports.literal(1) }).strict().optional(),
@@ -8708,109 +8720,6 @@ registerStepEntry("expedition", (draft, ctx2, step) => {
   return [{ type: "mission_offered", missionId: mission.id, source: mission.source, regionId: mission.regionId, title: mission.title }];
 });
 
-// src/engine/night.ts
-function enqueueNight(draft, e) {
-  const queue = draft.calendar.nightEventsQueue;
-  if (queue.some((q) => q.unitId === e.unitId && q.kind === e.kind)) return false;
-  queue.push(e);
-  const ranked = queue.map((q, i) => ({ q, i })).sort((a, b) => b.q.priority - a.q.priority || a.i - b.i);
-  queue.splice(0, queue.length, ...ranked.map((x) => x.q));
-  return true;
-}
-var EXPIRES_IN_DAYS = 2;
-function specsOf(state, reg, unitId, usable3) {
-  const unit = state.squad.find((u) => u.id === unitId);
-  const rel = state.relations[unitId];
-  if (!unit || !rel) return [];
-  const out = [];
-  const st = usable3.has(rel.stateId) ? reg.relationshipStates.get(rel.stateId) : void 0;
-  out.push(...st?.unlocks?.nightEvents ?? []);
-  for (const d of unit.defects) out.push(...reg.defects.get(d.id)?.nightEvents ?? []);
-  return out;
-}
-function rollNight(draft, reg, rng, trigger) {
-  const events = [];
-  const queue = draft.calendar.nightEventsQueue;
-  draft.calendar.nightEventsQueue = queue.filter((e) => e.expiresDay >= draft.day);
-  const usable3 = new Set(availableStates(draft, reg).map((s) => s.id));
-  const mult = TUNING.comms.initiativeMult[intimacyOf(draft).initiative];
-  for (const u of draft.squad) {
-    if (u.kind !== "named" || !isLiving(u)) continue;
-    for (const spec of specsOf(draft, reg, u.id, usable3)) {
-      if (spec.trigger !== trigger) continue;
-      if (!contentAllowed(draft, reg, spec, u.id)) continue;
-      if (!rng.chance(Math.min(1, spec.chance * mult))) continue;
-      const entry = {
-        id: nextId(draft, "n"),
-        unitId: u.id,
-        kind: spec.kind,
-        priority: spec.priority,
-        framing: spec.framing.replace("{name}", u.displayName),
-        ignore: { ...spec.ignore },
-        expiresDay: draft.day + EXPIRES_IN_DAYS,
-        ...spec.contentTags && spec.contentTags.length > 0 ? { contentTags: [...spec.contentTags] } : {}
-      };
-      if (enqueueNight(draft, entry)) events.push({ type: "night_queued", entry });
-    }
-  }
-  return events;
-}
-
-// src/engine/onboarding/evening.ts
-function guideUnit(state) {
-  let best = null;
-  for (const u of state.squad) {
-    if (u.kind !== "named" || !isLiving(u)) continue;
-    const r = state.relations[u.id];
-    if (!r) continue;
-    if (best === null || r.affinity > best.affinity || r.affinity === best.affinity && r.trust > best.trust) {
-      best = { id: u.id, affinity: r.affinity, trust: r.trust };
-    }
-  }
-  return best?.id ?? null;
-}
-registerStepEntry("guided_slot", (draft, _ctx, step) => {
-  if (step.completion !== "next_day" || !draft.onboarding) return [];
-  const id = guideUnit(draft);
-  if (id === null) return [];
-  draft.onboarding.guideUnitId = id;
-  if (!step.nightKnock) return [];
-  const unit = draft.squad.find((u) => u.id === id);
-  const entry = {
-    id: nextId(draft, "n"),
-    unitId: id,
-    kind: "visit",
-    priority: 5,
-    framing: step.nightKnock.framing.replace("{name}", unit.displayName),
-    ignore: { event: step.nightKnock.ignore.event, severity: step.nightKnock.ignore.severity },
-    expiresDay: draft.day + 1
-  };
-  return enqueueNight(draft, entry) ? [{ type: "night_queued", entry }] : [];
-});
-
-// src/engine/onboarding/unlocks.ts
-var conditionOf = (row) => row.condition ?? {};
-var tabOf = (row) => String(row.target.tab);
-function holds(state, c) {
-  if (c.minDay !== void 0 && state.day < c.minDay) return false;
-  if (c.afterStep !== void 0) {
-    const o = state.onboarding;
-    if (!o || !(o.completed.includes(c.afterStep) || o.skipped.includes(c.afterStep))) return false;
-  }
-  return true;
-}
-function lockedTabs(state, reg) {
-  const out = /* @__PURE__ */ new Set();
-  if (onboardingDone(state)) return out;
-  for (const row of reg.uiUnlocks.values()) if (!holds(state, conditionOf(row))) out.add(tabOf(row));
-  return out;
-}
-function unlockedBetween(before, after, reg) {
-  const was = lockedTabs(before, reg);
-  const now = lockedTabs(after, reg);
-  return [...reg.uiUnlocks.values()].filter((row) => was.has(tabOf(row)) && !now.has(tabOf(row)));
-}
-
 // src/engine/leash/weekly.ts
 var KINDS = ["compel", "suppress", "terminate"];
 var isObj2 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -8864,102 +8773,59 @@ function refreshLeash(draft, reg) {
   return [{ type: "leash_refreshed", left: draft.leash.authorizationsLeft }];
 }
 
-// src/engine/discipline/impunity.ts
-var clamp10 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
-var int2 = (n) => Math.round(n) + 0;
-var CRIME_FLAG = "knows_crime";
-var namedLiving = (state) => state.squad.filter((u) => u.kind === "named" && isLiving(u));
-function baseOf(state, reg, unit) {
-  const level = dispositionFor(state, reg, unit);
-  const own = typeof level.impunityBase === "number" ? level.impunityBase : TUNING.impunity.defaultBase;
-  let nick = 0;
-  for (const n of state.commander.reputation?.active ?? []) {
-    const fx2 = reg.reputations.get(n.id)?.effects;
-    if (typeof fx2?.impunityBase === "number") nick += fx2.impunityBase;
+// src/engine/discipline/restrictions.ts
+var NOT_LEAVE = ["talk", "medbay"];
+var nameOf = (state, id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
+function reasonOf(state, r, use, activityId) {
+  const name = nameOf(state, r.unitId);
+  switch (r.kind) {
+    case "confined":
+      return state.day <= (r.untilDay ?? -1) ? `${name} is in the brig until day ${r.untilDay}.` : null;
+    case "no_leave":
+      return use === "companion" && !(activityId !== void 0 && NOT_LEAVE.includes(activityId)) && state.day <= (r.untilDay ?? -1) ? `${name} has no leave until day ${r.untilDay}.` : null;
+    case "benched":
+      return use === "expedition" ? `${name} is benched for the next expedition.` : null;
+    case "duty":
+      return r.day === state.day && r.slot === state.slot ? `${name} is on extra duty this slot.` : null;
   }
-  return own + nick;
 }
-function leashTerm(state) {
-  const T = TUNING.impunity.leash;
-  const log = leashLog(state);
-  let l = 0;
-  if (state.leash.authorizationsLeft <= 0) l += T.noneLeft;
-  const firstUse = log.length > 0 ? Math.min(...log.map((e) => e.day)) : (state.leash.seq ?? 0) > 0 ? Number.NEGATIVE_INFINITY : void 0;
-  const grown = Math.min(T.bluffDays, Math.max(0, state.day - 1)) / T.bluffDays;
-  const faded = firstUse === void 0 ? 0 : Math.min(T.bluffDays, Math.max(0, state.day - firstUse)) / T.bluffDays;
-  l += Math.round(T.neverUsed * Math.max(0, grown - faded));
-  if (log.some((e) => e.outcome === "done" && state.day - e.day >= 0 && state.day - e.day < T.recentDays)) l += T.recentUse;
-  return l;
-}
-function dependencyTerm(state, reg, unit) {
-  const rel = state.relations[unit.id];
-  const stateDep = Number(reg.relationshipStates.get(rel?.stateId ?? "")?.dependency ?? 0);
-  const upkeep = rel?.flags.includes("need_controlled") === true || unit.defects.some((d) => d.arc === "manage");
-  return (Number.isFinite(stateDep) ? stateDep : 0) + (upkeep ? TUNING.impunity.defectUpkeep : 0);
-}
-function contagionTerm(state, unit) {
-  const others = namedLiving(state).filter((u) => u.id !== unit.id);
-  if (others.length === 0) return 0;
-  const mean = others.reduce((sum, u) => sum + recordOf(state, u.id), 0) / others.length;
-  return int2(TUNING.impunity.contagion * mean);
-}
-function concealedAffairs(state, reg) {
-  const out = [];
-  for (const u of state.squad) {
-    const affair = state.relations[u.id]?.affair;
-    if (!affair || !isLiving(u)) continue;
-    const hidden = affair.hiddenFrom.filter((id) => {
-      const h2 = state.squad.find((x) => x.id === id);
-      return h2 !== void 0 && isLiving(h2) && reg.relationshipStates.get(state.relations[id]?.stateId ?? "")?.romance === true;
-    });
-    if (hidden.length === 0) continue;
-    const known = state.memory.facts.some((f) => f.tags.includes("affair") && f.about.includes(u.id) && (f.knownBy.includes("*") || hidden.some((h2) => f.knownBy.includes(h2))));
-    if (!known) out.push({ unitId: u.id });
+function restrictionReason(state, unitId, use, activityId) {
+  for (const r of state.discipline?.restrictions ?? []) {
+    if (r.unitId !== unitId) continue;
+    const why = reasonOf(state, r, use, activityId);
+    if (why) return why;
   }
-  return out;
+  return null;
 }
-function leverageOf(state, reg, unitId) {
-  const rel = state.relations[unitId];
-  if (!rel) return [];
-  const named = namedLiving(state);
-  const out = [];
-  const crime = state.commander.crimeId === null ? void 0 : reg.crimes.get(state.commander.crimeId);
-  for (const flag of rel.flags) {
-    if (reg.flags.get(flag)?.leverage !== true) continue;
-    if (flag === CRIME_FLAG && crime?.damaging === false) continue;
-    const others = named.filter((u) => u.id !== unitId);
-    if (others.length > 0 && others.every((u) => state.relations[u.id]?.flags.includes(flag))) continue;
-    out.push(flag);
-  }
-  const affairs = concealedAffairs(state, reg);
-  const holdsAffair = affairs.some((a) => a.unitId === unitId) || affairs.some((a) => state.memory.facts.some((f) => f.tags.includes("affair") && f.about.includes(a.unitId) && f.knownBy.includes(unitId)));
-  if (holdsAffair) out.push("affair");
-  return out;
+function activeRestrictions(state, unitId) {
+  return (state.discipline?.restrictions ?? []).filter((r) => r.unitId === unitId && (r.kind === "benched" || (r.kind === "confined" || r.kind === "no_leave") && state.day <= (r.untilDay ?? -1) || r.kind === "duty" && r.day === state.day && r.slot === state.slot));
 }
-function impunityOf(state, reg, unitId) {
-  const unit = state.squad.find((u) => u.id === unitId);
-  if (!unit || unit.kind !== "named" || !isLiving(unit) || !state.relations[unitId]) return null;
-  const T = TUNING.impunity;
-  const terms = {
-    base: baseOf(state, reg, unit),
-    record: recordOf(state, unitId),
-    leash: leashTerm(state),
-    presence: int2(-presenceOf(state, reg) * firstImpressionWeight(state, unitId)),
-    dependency: int2(-dependencyTerm(state, reg, unit)),
-    contagion: contagionTerm(state, unit),
-    leverage: Math.min(T.secretCap, leverageOf(state, reg, unitId).length * T.secret)
-  };
-  const sum = terms.base + terms.record + terms.leash + terms.presence + terms.dependency + terms.contagion + terms.leverage;
-  return { value: clamp10(Math.round(sum), 0, 100), terms };
+function addRestriction(draft, r) {
+  disciplineOf(draft).restrictions.push(r);
+  return [{ type: "restriction_started", unitId: r.unitId, kind: r.kind, ...r.untilDay !== void 0 ? { untilDay: r.untilDay } : {} }];
 }
-function impunityBand(value) {
-  const B = TUNING.impunity.bands;
-  return value < B.low ? "cowed" : value < B.high ? "low" : value < B.brazen ? "high" : "brazen";
+function removeRestrictions(draft, pick2) {
+  const d = draft.discipline;
+  if (!d) return [];
+  const gone = d.restrictions.filter(pick2);
+  if (gone.length > 0) d.restrictions = d.restrictions.filter((r) => !pick2(r));
+  return gone;
+}
+function expireRestrictions(draft) {
+  const gone = removeRestrictions(draft, (r) => r.kind === "confined" || r.kind === "no_leave" ? (r.untilDay ?? 0) <= draft.day : r.kind === "duty" ? (r.day ?? 0) <= draft.day : false);
+  return gone.map((r) => ({ type: "restriction_ended", unitId: r.unitId, kind: r.kind }));
+}
+var NEXT = { morning: "afternoon", afternoon: "evening", evening: "morning", night: "morning" };
+function dutySlot(state) {
+  const held = state.scene !== void 0 || state.calendar.pendingScene !== void 0;
+  if (!held) return { day: state.day, slot: state.slot };
+  const slot2 = NEXT[state.slot];
+  return { day: slot2 === "morning" ? state.day + 1 : state.day, slot: slot2 };
 }
 
 // src/engine/discipline/punish.ts
 var effectsOf = (reg, measure) => punishmentFor(reg, measure)?.sideEffects ?? [];
-var nameOf = (state, id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
+var nameOf2 = (state, id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
 var restrictionKind = (e) => e.type === "confine" ? "confined" : e.type === "no_leave" ? "no_leave" : e.type === "bench" ? "benched" : e.type === "duty" ? "duty" : null;
 function checkPunish(state, reg, unitId, measure, days) {
   const unit = state.squad.find((u) => u.id === unitId);
@@ -9050,7 +8916,7 @@ function applyPunishment(draft, ctx2, p) {
   if (p.source === "menu") {
     app.inverse.factId = addFact(draft, {
       about: [p.unitId],
-      text: `The commander imposed ${String(pun.label)} on ${nameOf(draft, p.unitId)}.`,
+      text: `The commander imposed ${String(pun.label)} on ${nameOf2(draft, p.unitId)}.`,
       tags: ["discipline"],
       importance: 3,
       day: draft.day,
@@ -9318,54 +9184,356 @@ function applyDisciplineEvent(draft, ctx2, unitId, event, src) {
   return events;
 }
 
-// src/engine/discipline/restrictions.ts
-var NOT_LEAVE = ["talk", "medbay"];
-var nameOf2 = (state, id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
-function reasonOf(state, r, use, activityId) {
-  const name = nameOf2(state, r.unitId);
-  switch (r.kind) {
-    case "confined":
-      return state.day <= (r.untilDay ?? -1) ? `${name} is in the brig until day ${r.untilDay}.` : null;
-    case "no_leave":
-      return use === "companion" && !(activityId !== void 0 && NOT_LEAVE.includes(activityId)) && state.day <= (r.untilDay ?? -1) ? `${name} has no leave until day ${r.untilDay}.` : null;
-    case "benched":
-      return use === "expedition" ? `${name} is benched for the next expedition.` : null;
-    case "duty":
-      return r.day === state.day && r.slot === state.slot ? `${name} is on extra duty this slot.` : null;
+// src/engine/discipline/impunity.ts
+var clamp10 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var int2 = (n) => Math.round(n) + 0;
+var CRIME_FLAG = "knows_crime";
+var namedLiving = (state) => state.squad.filter((u) => u.kind === "named" && isLiving(u));
+function baseOf(state, reg, unit) {
+  const level = dispositionFor(state, reg, unit);
+  const own = typeof level.impunityBase === "number" ? level.impunityBase : TUNING.impunity.defaultBase;
+  let nick = 0;
+  for (const n of state.commander.reputation?.active ?? []) {
+    const fx2 = reg.reputations.get(n.id)?.effects;
+    if (typeof fx2?.impunityBase === "number") nick += fx2.impunityBase;
   }
+  return own + nick;
 }
-function restrictionReason(state, unitId, use, activityId) {
-  for (const r of state.discipline?.restrictions ?? []) {
-    if (r.unitId !== unitId) continue;
-    const why = reasonOf(state, r, use, activityId);
-    if (why) return why;
+function leashTerm(state) {
+  const T = TUNING.impunity.leash;
+  const log = leashLog(state);
+  let l = 0;
+  if (state.leash.authorizationsLeft <= 0) l += T.noneLeft;
+  const firstUse = log.length > 0 ? Math.min(...log.map((e) => e.day)) : (state.leash.seq ?? 0) > 0 ? Number.NEGATIVE_INFINITY : void 0;
+  const grown = Math.min(T.bluffDays, Math.max(0, state.day - 1)) / T.bluffDays;
+  const faded = firstUse === void 0 ? 0 : Math.min(T.bluffDays, Math.max(0, state.day - firstUse)) / T.bluffDays;
+  l += Math.round(T.neverUsed * Math.max(0, grown - faded));
+  if (log.some((e) => e.outcome === "done" && state.day - e.day >= 0 && state.day - e.day < T.recentDays)) l += T.recentUse;
+  return l;
+}
+function dependencyTerm(state, reg, unit) {
+  const rel = state.relations[unit.id];
+  const stateDep = Number(reg.relationshipStates.get(rel?.stateId ?? "")?.dependency ?? 0);
+  const upkeep = rel?.flags.includes("need_controlled") === true || unit.defects.some((d) => d.arc === "manage");
+  return (Number.isFinite(stateDep) ? stateDep : 0) + (upkeep ? TUNING.impunity.defectUpkeep : 0);
+}
+function contagionTerm(state, unit) {
+  const others = namedLiving(state).filter((u) => u.id !== unit.id);
+  if (others.length === 0) return 0;
+  const mean = others.reduce((sum, u) => sum + recordOf(state, u.id), 0) / others.length;
+  return int2(TUNING.impunity.contagion * mean);
+}
+function concealedAffairs(state, reg) {
+  const out = [];
+  for (const u of state.squad) {
+    const affair = state.relations[u.id]?.affair;
+    if (!affair || !isLiving(u)) continue;
+    const hidden = affair.hiddenFrom.filter((id) => {
+      const h2 = state.squad.find((x) => x.id === id);
+      return h2 !== void 0 && isLiving(h2) && reg.relationshipStates.get(state.relations[id]?.stateId ?? "")?.romance === true;
+    });
+    if (hidden.length === 0) continue;
+    const known = state.memory.facts.some((f) => f.tags.includes("affair") && f.about.includes(u.id) && (f.knownBy.includes("*") || hidden.some((h2) => f.knownBy.includes(h2))));
+    if (!known) out.push({ unitId: u.id });
   }
-  return null;
+  return out;
 }
-function activeRestrictions(state, unitId) {
-  return (state.discipline?.restrictions ?? []).filter((r) => r.unitId === unitId && (r.kind === "benched" || (r.kind === "confined" || r.kind === "no_leave") && state.day <= (r.untilDay ?? -1) || r.kind === "duty" && r.day === state.day && r.slot === state.slot));
+function leverageOf(state, reg, unitId) {
+  const rel = state.relations[unitId];
+  if (!rel) return [];
+  const named = namedLiving(state);
+  const out = [];
+  const crime = state.commander.crimeId === null ? void 0 : reg.crimes.get(state.commander.crimeId);
+  for (const flag of rel.flags) {
+    if (reg.flags.get(flag)?.leverage !== true) continue;
+    if (flag === CRIME_FLAG && crime?.damaging === false) continue;
+    const others = named.filter((u) => u.id !== unitId);
+    if (others.length > 0 && others.every((u) => state.relations[u.id]?.flags.includes(flag))) continue;
+    out.push(flag);
+  }
+  const affairs = concealedAffairs(state, reg);
+  const holdsAffair = affairs.some((a) => a.unitId === unitId) || affairs.some((a) => state.memory.facts.some((f) => f.tags.includes("affair") && f.about.includes(a.unitId) && f.knownBy.includes(unitId)));
+  if (holdsAffair) out.push("affair");
+  return out;
 }
-function addRestriction(draft, r) {
-  disciplineOf(draft).restrictions.push(r);
-  return [{ type: "restriction_started", unitId: r.unitId, kind: r.kind, ...r.untilDay !== void 0 ? { untilDay: r.untilDay } : {} }];
+function impunityOf(state, reg, unitId) {
+  const unit = state.squad.find((u) => u.id === unitId);
+  if (!unit || unit.kind !== "named" || !isLiving(unit) || !state.relations[unitId]) return null;
+  const T = TUNING.impunity;
+  const terms = {
+    base: baseOf(state, reg, unit),
+    record: recordOf(state, unitId),
+    leash: leashTerm(state),
+    presence: int2(-presenceOf(state, reg) * firstImpressionWeight(state, unitId)),
+    dependency: int2(-dependencyTerm(state, reg, unit)),
+    contagion: contagionTerm(state, unit),
+    leverage: Math.min(T.secretCap, leverageOf(state, reg, unitId).length * T.secret)
+  };
+  const sum = terms.base + terms.record + terms.leash + terms.presence + terms.dependency + terms.contagion + terms.leverage;
+  return { value: clamp10(Math.round(sum), 0, 100), terms };
 }
-function removeRestrictions(draft, pick2) {
-  const d = draft.discipline;
-  if (!d) return [];
-  const gone = d.restrictions.filter(pick2);
-  if (gone.length > 0) d.restrictions = d.restrictions.filter((r) => !pick2(r));
-  return gone;
+function impunityBand(value) {
+  const B2 = TUNING.impunity.bands;
+  return value < B2.low ? "cowed" : value < B2.high ? "low" : value < B2.brazen ? "high" : "brazen";
 }
-function expireRestrictions(draft) {
-  const gone = removeRestrictions(draft, (r) => r.kind === "confined" || r.kind === "no_leave" ? (r.untilDay ?? 0) <= draft.day : r.kind === "duty" ? (r.day ?? 0) <= draft.day : false);
-  return gone.map((r) => ({ type: "restriction_ended", unitId: r.unitId, kind: r.kind }));
+
+// src/engine/bonds/scene.ts
+var WANT_VISIT_KIND = "want_visit";
+var TONE_RANK = { romantic: 1, intimate: 2 };
+var YIELDS = ["commander_yielded", "followed_lead"];
+function leadScoreParts(state, reg, unitId) {
+  const unit = state.squad.find((u) => u.id === unitId);
+  const bond = unit ? bondOf(unit) : null;
+  if (!unit || !bond) return null;
+  const T = TUNING.bonds.lead;
+  const rel = state.relations[unitId];
+  const recent = (types) => (rel?.history ?? []).filter((h2) => h2.kind === "event" && types.includes(h2.type) && state.day - h2.day < T.windowDays).length;
+  const styleBase = T.styleBase[bond.leadStyle];
+  const impunity = T.impunityWeight * ((impunityOf(state, reg, unitId)?.value ?? T.impunityRef) - T.impunityRef);
+  const defect = unit.defects.filter((d) => d.arc !== "cure").reduce((n, d) => n + Number(reg.defects.get(d.id)?.leadBonus ?? 0), 0);
+  const yielded = Math.min(T.yieldCap, T.perYield * recent(YIELDS));
+  const enforced = -Math.min(T.enforcedCap, T.perEnforced * recent(["commander_enforced"]));
+  const stateBonus = leadRank(bond.leadStyle) >= leadRank("assertive") ? Number(reg.relationshipStates.get(rel?.stateId ?? "")?.leadBonus ?? 0) : 0;
+  return { styleBase, impunity, defect, yielded, enforced, state: stateBonus, total: styleBase + impunity + defect + yielded + enforced + stateBonus };
 }
-var NEXT = { morning: "afternoon", afternoon: "evening", evening: "morning", night: "morning" };
-function dutySlot(state) {
-  const held = state.scene !== void 0 || state.calendar.pendingScene !== void 0;
-  if (!held) return { day: state.day, slot: state.slot };
-  const slot2 = NEXT[state.slot];
-  return { day: slot2 === "morning" ? state.day + 1 : state.day, slot: slot2 };
+function decideLead(state, reg, unitId) {
+  const parts = leadScoreParts(state, reg, unitId);
+  if (!parts) return null;
+  const T = TUNING.bonds.lead;
+  const score = Math.round(Math.min(100, Math.max(0, parts.total)));
+  return { by: score >= T.unitAtLeast ? "unit" : score <= T.commanderAtMost ? "commander" : "shared", score };
+}
+function decideSceneLead(draft, reg) {
+  const scene = draft.scene;
+  const unitId = scene?.participants[0];
+  if (!scene || unitId === void 0) return [];
+  const lead = decideLead(draft, reg, unitId);
+  if (!lead) return [];
+  scene.lead = { by: lead.by, unitId, score: lead.score };
+  return [{ type: "lead_decided", unitId, by: lead.by }];
+}
+function raiseTone(draft, reg, tone) {
+  const scene = draft.scene;
+  if (!scene || tone !== "romantic" && tone !== "intimate") return [];
+  if (!intimacyOf(draft).romance) return [];
+  const named = scene.participants.filter((id) => draft.squad.find((u) => u.id === id)?.kind === "named").length;
+  if (named > 1) return [];
+  if (scene.tone !== void 0 && TONE_RANK[scene.tone] >= TONE_RANK[tone]) return [];
+  scene.tone = tone;
+  return [{ type: "scene_tone", tone }, ...decideSceneLead(draft, reg)];
+}
+function startTone(draft, reg) {
+  const scene = draft.scene;
+  if (!scene || scene.participants.length !== 1) return [];
+  const knock = draft.calendar.nightEvent;
+  const wantVisit = scene.origin === "night" && knock !== void 0 && knock.kind === WANT_VISIT_KIND && knock.unitId === scene.participants[0] && (scene.nightEntryId === void 0 || scene.nightEntryId === knock.id);
+  return bondTierOf(draft, reg, scene.participants[0]) === "romantic" || wantVisit ? raiseTone(draft, reg, "romantic") : [];
+}
+function leadPartner(draft) {
+  const lead = draft.scene?.lead;
+  if (!draft.scene || !lead) throw new Error("Nobody leads this scene.");
+  if (!intimacyOf(draft).romance) throw new Error("Romance is switched off.");
+  const unit = draft.squad.find((u) => u.id === lead.unitId);
+  if (!unit) throw new Error("Nobody leads this scene.");
+  return { unitId: unit.id, name: unit.displayName };
+}
+function followLead(draft, ctx2) {
+  const { unitId } = leadPartner(draft);
+  const scene = draft.scene;
+  if (scene.followed) throw new Error("You already followed her lead in this scene.");
+  const events = applyEventToUnit(draft, ctx2.registries, unitId, {
+    type: "followed_lead",
+    actor: "commander",
+    targets: [unitId],
+    severity: "minor",
+    evidence: "followed her lead",
+    confidence: 1
+  });
+  events.push(...evaluateAutomatic(draft, ctx2.registries, unitId));
+  scene.followed = true;
+  events.push({ type: "lead_followed", unitId });
+  return events;
+}
+function setSceneLimit(draft, text2) {
+  const { unitId, name } = leadPartner(draft);
+  const clean3 = typeof text2 === "string" ? text2.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, TUNING.bonds.limits.sceneLimitMax).trim() : "";
+  if (clean3 === "") throw new Error("A limit needs some text.");
+  const scene = draft.scene;
+  const limits = scene.limits ?? [];
+  if (limits.length >= TUNING.bonds.limits.sceneLimitsMax) throw new Error(`A scene takes at most ${TUNING.bonds.limits.sceneLimitsMax} limits.`);
+  scene.limits = [...limits, clean3];
+  addFact(draft, { about: [unitId, "commander"], text: `A boundary the commander set with ${name}: ${clean3}`, tags: ["limit"], importance: 3, day: draft.day, sceneId: scene.id, knownBy: [unitId] });
+  return [{ type: "scene_limit_set", unitId, text: clean3 }];
+}
+
+// src/engine/bonds/want.ts
+var B = TUNING.bonds.want;
+var wantBand = (n) => n >= B.bands.desperate ? "desperate" : n >= B.bands.aching ? "aching" : n >= B.bands.restless ? "restless" : "calm";
+var wantOf = (state, unitId) => state.relations[unitId]?.want ?? 0;
+function wantEligible(state, reg, unitId) {
+  const unit = state.squad.find((u) => u.id === unitId);
+  const rel = state.relations[unitId];
+  const bond = unit ? bondOf(unit) : null;
+  if (!unit || !rel || !bond || !isLiving(unit) || !intimacyOf(state).romance) return false;
+  if (desireRank(bond.desire) < desireRank("medium")) return false;
+  return bondTierOf(state, reg, unitId) === "romantic" || rel.attraction >= B.attractionMin && bond.attachment !== "avoidant";
+}
+var effectiveWant = (state, reg, unitId) => wantEligible(state, reg, unitId) ? wantOf(state, unitId) : 0;
+var wantBandOf = (state, reg, unitId) => wantBand(effectiveWant(state, reg, unitId));
+function wantRise(unit) {
+  const bond = bondOf(unit);
+  if (!bond || bond.desire === "low") return 0;
+  return Math.round(B.rise[bond.desire] * B.attachmentFactor[bond.attachment]);
+}
+function setWant(rel, value) {
+  const v = Math.min(B.max, Math.max(0, Math.round(value)));
+  if (v === 0) delete rel.want;
+  else rel.want = v;
+  if (v < B.bands.desperate) delete rel.wantBreakDay;
+}
+function relieveWant(draft, unitId, amount, cause) {
+  const rel = draft.relations[unitId];
+  if (!rel || (rel.want ?? 0) <= 0 || amount <= 0) return [];
+  const from = rel.want;
+  setWant(rel, from - amount);
+  return [{ type: "want_changed", unitId, from, to: rel.want ?? 0, cause }];
+}
+function relieveAtSceneEnd(draft, scene) {
+  const unitId = scene.participants[0];
+  if (!scene.tone || scene.participants.length !== 1 || unitId === void 0) return [];
+  return relieveWant(draft, unitId, scene.tone === "intimate" ? B.relief.intimateScene : B.relief.romanticScene, `scene_${scene.tone}`);
+}
+function wantStep(draft, reg) {
+  const events = [];
+  for (const unit of draft.squad) {
+    const rel = draft.relations[unit.id];
+    if (unit.kind !== "named" || !rel || !isLiving(unit)) continue;
+    const from = rel.want ?? 0;
+    if (wantEligible(draft, reg, unit.id)) setWant(rel, from + wantRise(unit));
+    else if (from > 0) setWant(rel, from - B.decayPerDay);
+    else continue;
+    if (wantEligible(draft, reg, unit.id) && wantBand(rel.want ?? 0) !== "calm" && wantBand(rel.want ?? 0) !== "restless") {
+      const next = Math.min(100, unit.stress + B.stressPerDay);
+      if (next !== unit.stress) events.push({ type: "stress_changed", unitId: unit.id, delta: next - unit.stress });
+      unit.stress = next;
+    }
+    if ((rel.want ?? 0) !== from) events.push({ type: "want_changed", unitId: unit.id, from, to: rel.want ?? 0, cause: "day" });
+  }
+  return events;
+}
+function seizing(unit, reg) {
+  const d = unit.breakdown ? reg.defects.get(unit.breakdown.defectId) : void 0;
+  return d?.wantBreakdown?.kind === "seize";
+}
+
+// src/engine/night.ts
+function enqueueNight(draft, e) {
+  const queue = draft.calendar.nightEventsQueue;
+  if (queue.some((q) => q.unitId === e.unitId && q.kind === e.kind)) return false;
+  queue.push(e);
+  const ranked = queue.map((q, i) => ({ q, i })).sort((a, b) => b.q.priority - a.q.priority || a.i - b.i);
+  queue.splice(0, queue.length, ...ranked.map((x) => x.q));
+  return true;
+}
+var EXPIRES_IN_DAYS = 2;
+function specsOf(state, reg, unitId, usable3) {
+  const unit = state.squad.find((u) => u.id === unitId);
+  const rel = state.relations[unitId];
+  if (!unit || !rel) return [];
+  const out = [];
+  const st = usable3.has(rel.stateId) ? reg.relationshipStates.get(rel.stateId) : void 0;
+  out.push(...st?.unlocks?.nightEvents ?? []);
+  for (const d of unit.defects) out.push(...reg.defects.get(d.id)?.nightEvents ?? []);
+  if (wantBandOf(state, reg, unitId) !== "calm") {
+    const v = TUNING.bonds.want.visit;
+    out.push({ id: WANT_VISIT_KIND, kind: WANT_VISIT_KIND, chance: v.chance, priority: v.priority, trigger: "daily", framing: v.framing, ignore: { ...v.ignore }, contentTags: [] });
+  }
+  return out;
+}
+function queueNightSpec(draft, unit, spec) {
+  const entry = {
+    id: nextId(draft, "n"),
+    unitId: unit.id,
+    kind: spec.kind,
+    priority: spec.priority,
+    framing: spec.framing.replace("{name}", unit.displayName),
+    ignore: { ...spec.ignore },
+    expiresDay: draft.day + EXPIRES_IN_DAYS,
+    ...spec.contentTags && spec.contentTags.length > 0 ? { contentTags: [...spec.contentTags] } : {}
+  };
+  return enqueueNight(draft, entry) ? [{ type: "night_queued", entry }] : [];
+}
+function rollNight(draft, reg, rng, trigger) {
+  const events = [];
+  const queue = draft.calendar.nightEventsQueue;
+  draft.calendar.nightEventsQueue = queue.filter((e) => e.expiresDay >= draft.day);
+  const usable3 = new Set(availableStates(draft, reg).map((s) => s.id));
+  const mult = TUNING.comms.initiativeMult[intimacyOf(draft).initiative];
+  for (const u of draft.squad) {
+    if (u.kind !== "named" || !isLiving(u)) continue;
+    for (const spec of specsOf(draft, reg, u.id, usable3)) {
+      if (spec.trigger !== trigger) continue;
+      if (!contentAllowed(draft, reg, spec, u.id)) continue;
+      if (!rng.chance(Math.min(1, spec.chance * mult))) continue;
+      events.push(...queueNightSpec(draft, u, spec));
+    }
+  }
+  return events;
+}
+
+// src/engine/onboarding/evening.ts
+function guideUnit(state) {
+  let best = null;
+  for (const u of state.squad) {
+    if (u.kind !== "named" || !isLiving(u)) continue;
+    const r = state.relations[u.id];
+    if (!r) continue;
+    if (best === null || r.affinity > best.affinity || r.affinity === best.affinity && r.trust > best.trust) {
+      best = { id: u.id, affinity: r.affinity, trust: r.trust };
+    }
+  }
+  return best?.id ?? null;
+}
+registerStepEntry("guided_slot", (draft, _ctx, step) => {
+  if (step.completion !== "next_day" || !draft.onboarding) return [];
+  const id = guideUnit(draft);
+  if (id === null) return [];
+  draft.onboarding.guideUnitId = id;
+  if (!step.nightKnock) return [];
+  const unit = draft.squad.find((u) => u.id === id);
+  const entry = {
+    id: nextId(draft, "n"),
+    unitId: id,
+    kind: "visit",
+    priority: 5,
+    framing: step.nightKnock.framing.replace("{name}", unit.displayName),
+    ignore: { event: step.nightKnock.ignore.event, severity: step.nightKnock.ignore.severity },
+    expiresDay: draft.day + 1
+  };
+  return enqueueNight(draft, entry) ? [{ type: "night_queued", entry }] : [];
+});
+
+// src/engine/onboarding/unlocks.ts
+var conditionOf = (row) => row.condition ?? {};
+var tabOf = (row) => String(row.target.tab);
+function holds(state, c) {
+  if (c.minDay !== void 0 && state.day < c.minDay) return false;
+  if (c.afterStep !== void 0) {
+    const o = state.onboarding;
+    if (!o || !(o.completed.includes(c.afterStep) || o.skipped.includes(c.afterStep))) return false;
+  }
+  return true;
+}
+function lockedTabs(state, reg) {
+  const out = /* @__PURE__ */ new Set();
+  if (onboardingDone(state)) return out;
+  for (const row of reg.uiUnlocks.values()) if (!holds(state, conditionOf(row))) out.add(tabOf(row));
+  return out;
+}
+function unlockedBetween(before, after, reg) {
+  const was = lockedTabs(before, reg);
+  const now = lockedTabs(after, reg);
+  return [...reg.uiUnlocks.values()].filter((row) => was.has(tabOf(row)) && !now.has(tabOf(row)));
 }
 
 // src/engine/hub.ts
@@ -10402,95 +10570,6 @@ registerAction("squad/set_flavor", (draft, payload) => {
   return [{ type: "unit_flavored", unitId: unit.id, name }];
 });
 
-// src/engine/bonds/scene.ts
-var WANT_VISIT_KIND = "want_visit";
-var TONE_RANK = { romantic: 1, intimate: 2 };
-var YIELDS = ["commander_yielded", "followed_lead"];
-function leadScoreParts(state, reg, unitId) {
-  const unit = state.squad.find((u) => u.id === unitId);
-  const bond = unit ? bondOf(unit) : null;
-  if (!unit || !bond) return null;
-  const T = TUNING.bonds.lead;
-  const rel = state.relations[unitId];
-  const recent = (types) => (rel?.history ?? []).filter((h2) => h2.kind === "event" && types.includes(h2.type) && state.day - h2.day < T.windowDays).length;
-  const styleBase = T.styleBase[bond.leadStyle];
-  const impunity = T.impunityWeight * ((impunityOf(state, reg, unitId)?.value ?? T.impunityRef) - T.impunityRef);
-  const defect = unit.defects.filter((d) => d.arc !== "cure").reduce((n, d) => n + Number(reg.defects.get(d.id)?.leadBonus ?? 0), 0);
-  const yielded = Math.min(T.yieldCap, T.perYield * recent(YIELDS));
-  const enforced = -Math.min(T.enforcedCap, T.perEnforced * recent(["commander_enforced"]));
-  const stateBonus = leadRank(bond.leadStyle) >= leadRank("assertive") ? Number(reg.relationshipStates.get(rel?.stateId ?? "")?.leadBonus ?? 0) : 0;
-  return { styleBase, impunity, defect, yielded, enforced, state: stateBonus, total: styleBase + impunity + defect + yielded + enforced + stateBonus };
-}
-function decideLead(state, reg, unitId) {
-  const parts = leadScoreParts(state, reg, unitId);
-  if (!parts) return null;
-  const T = TUNING.bonds.lead;
-  const score = Math.round(Math.min(100, Math.max(0, parts.total)));
-  return { by: score >= T.unitAtLeast ? "unit" : score <= T.commanderAtMost ? "commander" : "shared", score };
-}
-function decideSceneLead(draft, reg) {
-  const scene = draft.scene;
-  const unitId = scene?.participants[0];
-  if (!scene || unitId === void 0) return [];
-  const lead = decideLead(draft, reg, unitId);
-  if (!lead) return [];
-  scene.lead = { by: lead.by, unitId, score: lead.score };
-  return [{ type: "lead_decided", unitId, by: lead.by }];
-}
-function raiseTone(draft, reg, tone) {
-  const scene = draft.scene;
-  if (!scene || tone !== "romantic" && tone !== "intimate") return [];
-  if (!intimacyOf(draft).romance) return [];
-  const named = scene.participants.filter((id) => draft.squad.find((u) => u.id === id)?.kind === "named").length;
-  if (named > 1) return [];
-  if (scene.tone !== void 0 && TONE_RANK[scene.tone] >= TONE_RANK[tone]) return [];
-  scene.tone = tone;
-  return [{ type: "scene_tone", tone }, ...decideSceneLead(draft, reg)];
-}
-function startTone(draft, reg) {
-  const scene = draft.scene;
-  if (!scene || scene.participants.length !== 1) return [];
-  const knock = draft.calendar.nightEvent;
-  const wantVisit = scene.origin === "night" && knock !== void 0 && knock.kind === WANT_VISIT_KIND && knock.unitId === scene.participants[0] && (scene.nightEntryId === void 0 || scene.nightEntryId === knock.id);
-  return bondTierOf(draft, reg, scene.participants[0]) === "romantic" || wantVisit ? raiseTone(draft, reg, "romantic") : [];
-}
-function leadPartner(draft) {
-  const lead = draft.scene?.lead;
-  if (!draft.scene || !lead) throw new Error("Nobody leads this scene.");
-  if (!intimacyOf(draft).romance) throw new Error("Romance is switched off.");
-  const unit = draft.squad.find((u) => u.id === lead.unitId);
-  if (!unit) throw new Error("Nobody leads this scene.");
-  return { unitId: unit.id, name: unit.displayName };
-}
-function followLead(draft, ctx2) {
-  const { unitId } = leadPartner(draft);
-  const scene = draft.scene;
-  if (scene.followed) throw new Error("You already followed her lead in this scene.");
-  const events = applyEventToUnit(draft, ctx2.registries, unitId, {
-    type: "followed_lead",
-    actor: "commander",
-    targets: [unitId],
-    severity: "minor",
-    evidence: "followed her lead",
-    confidence: 1
-  });
-  events.push(...evaluateAutomatic(draft, ctx2.registries, unitId));
-  scene.followed = true;
-  events.push({ type: "lead_followed", unitId });
-  return events;
-}
-function setSceneLimit(draft, text2) {
-  const { unitId, name } = leadPartner(draft);
-  const clean3 = typeof text2 === "string" ? text2.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, TUNING.bonds.limits.sceneLimitMax).trim() : "";
-  if (clean3 === "") throw new Error("A limit needs some text.");
-  const scene = draft.scene;
-  const limits = scene.limits ?? [];
-  if (limits.length >= TUNING.bonds.limits.sceneLimitsMax) throw new Error(`A scene takes at most ${TUNING.bonds.limits.sceneLimitsMax} limits.`);
-  scene.limits = [...limits, clean3];
-  addFact(draft, { about: [unitId, "commander"], text: `A boundary the commander set with ${name}: ${clean3}`, tags: ["limit"], importance: 3, day: draft.day, sceneId: scene.id, knownBy: [unitId] });
-  return [{ type: "scene_limit_set", unitId, text: clean3 }];
-}
-
 // src/engine/bonds/violations.ts
 var isObj6 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var MARKS_MAX = 50;
@@ -10556,7 +10635,8 @@ function initiativeChance(state, reg, unitId) {
   const st = reg.relationshipStates.get(rel.stateId);
   const base = st && !(st.romance === true && !romance) ? st.dmChance * TUNING.comms.initiativeMult[initiative] : 0;
   const bonus = unit.defects.reduce((n, d) => n + (reg.defects.get(d.id)?.dmChanceBonus ?? 0), 0);
-  return Math.min(1, Math.max(0, base + bonus));
+  const chance = Math.min(1, Math.max(0, base + bonus));
+  return wantBandOf(state, reg, unitId) === "calm" ? chance : Math.min(1, chance * TUNING.bonds.want.initiativeMult);
 }
 var waiting = (state, unitId) => {
   const last = threadOf(state, unitId).at(-1);
@@ -11585,6 +11665,7 @@ registerAction("scene/end", (draft, payload, ctx2) => {
       if (f.tags.includes("crime") && f.about === "commander") events.push(...revealCrime(draft, reg, scene.participants));
     }
   }
+  events.push(...relieveAtSceneEnd(draft, scene));
   events.push(...rollDiscovery(draft, reg, ctx2.rng, scene.participants));
   events.push(...expireSceneProposals(draft, scene.participants));
   events.push(...settleDefiance(draft, ctx2, { sceneId: scene.id }));
@@ -11748,7 +11829,9 @@ var isConfrontation = (entry) => CONFRONTATION_KINDS.includes(entry.kind);
 registerAction("night/open", (draft) => {
   if (draft.slot !== "night" || !draft.calendar.nightEvent) throw new Error("night/open: there is no night event to open.");
   if (isConfrontation(draft.calendar.nightEvent)) throw new Error("This is not a knock: answer it from its own panel.");
-  return [{ type: "night_opened", entry: draft.calendar.nightEvent }];
+  const entry = draft.calendar.nightEvent;
+  const relief = entry.kind === WANT_VISIT_KIND ? relieveWant(draft, entry.unitId, TUNING.bonds.want.relief.wantVisit, "want_visit") : [];
+  return [{ type: "night_opened", entry }, ...relief];
 });
 registerAction("night/ignore", (draft, _payload, ctx2) => {
   const entry = draft.calendar.nightEvent;
@@ -13534,7 +13617,7 @@ function setLoadout(draft, reg, unitId, skillIds) {
 function releaseBreakdowns(draft, unitIds) {
   const events = [];
   for (const u of draft.squad) {
-    if (!u.breakdown || unitIds && !unitIds.includes(u.id)) continue;
+    if (!u.breakdown || u.breakdown.until !== void 0 || unitIds && !unitIds.includes(u.id)) continue;
     delete u.breakdown;
     events.push({ type: "breakdown_released", unitId: u.id });
   }
@@ -15711,6 +15794,9 @@ function endExpedition(draft, ctx2, outcome) {
   } else if (mission) {
     releaseMission(draft, mission.id);
   }
+  if (mission && mission.danger >= TUNING.bonds.want.relief.expeditionMinDanger) {
+    for (const id of exp.party) events.push(...relieveWant(draft, id, TUNING.bonds.want.relief.expeditionDay, "expedition"));
+  }
   const released = releaseBreakdowns(draft, exp.party);
   events.push(...released);
   for (const e of released) {
@@ -16098,6 +16184,10 @@ function orderInScene(draft, ctx2, unitId) {
   if (scene.refusals?.some((r) => r.unitId === unitId && r.exchange === scene.exchanges)) {
     throw new Error("She has already refused: wait for her answer.");
   }
+  if (seizing(unit, ctx2.registries)) {
+    scene.refusals = [...(scene.refusals ?? []).filter((r) => r.unitId !== unitId), { unitId, exchange: scene.exchanges }];
+    return [{ type: "scene_order", unitId, refused: true, chance: 1, seized: true }];
+  }
   const chance = refusalChance(draft, ctx2.registries, unitId);
   const refused = chance > 0 && ctx2.rng.chance(chance);
   scene.refusals = (scene.refusals ?? []).filter((r) => r.unitId !== unitId);
@@ -16181,7 +16271,70 @@ registerAction("reputation/introduce", (draft, payload, ctx2) => {
   return introduceNickname(draft, ctx2, payload.unitId);
 });
 
+// src/engine/bonds/breakdown.ts
+var wantBreakdownSpec = (reg, defectId) => reg.defects.get(defectId)?.wantBreakdown ?? null;
+function startWantBreakdown(draft, ctx2, unitId, defectId) {
+  const reg = ctx2.registries;
+  const unit = draft.squad.find((u) => u.id === unitId);
+  const spec = wantBreakdownSpec(reg, defectId);
+  if (!unit || !spec || unit.breakdown || !unit.defects.some((d) => d.id === defectId)) return [];
+  unit.breakdown = { defectId, day: draft.day, until: draft.day + spec.days };
+  const events = [{ type: "want_breakdown", unitId, defectId, kind: spec.kind }];
+  if (spec.kind === "withdrawal") {
+    const knock = (reg.defects.get(defectId)?.nightEvents ?? []).find((n) => n.kind === spec.kind);
+    if (knock) events.push(...queueNightSpec(draft, unit, knock));
+  } else if (spec.kind === "binge") {
+    const cost = Math.min(draft.resources.credits, TUNING.bonds.want.breakdownMoneyCost);
+    if (cost > 0) {
+      draft.resources.credits -= cost;
+      events.push({ type: "resource_changed", resource: "credits", amount: -cost });
+    }
+  }
+  return events;
+}
+function releaseWantBreakdowns(draft) {
+  const events = [];
+  for (const u of draft.squad) {
+    if (!u.breakdown || u.breakdown.until === void 0 || draft.day <= u.breakdown.until) continue;
+    delete u.breakdown;
+    events.push({ type: "breakdown_released", unitId: u.id });
+  }
+  return events;
+}
+function startCrossedBreakdowns(draft, ctx2) {
+  const events = [];
+  for (const unit of draft.squad) {
+    const rel = draft.relations[unit.id];
+    if (unit.kind !== "named" || !rel || !isLiving(unit) || rel.wantBreakDay !== void 0) continue;
+    if (!wantEligible(draft, ctx2.registries, unit.id) || effectiveWant(draft, ctx2.registries, unit.id) < TUNING.bonds.want.bands.desperate) continue;
+    for (const d of unit.defects) {
+      const started = startWantBreakdown(draft, ctx2, unit.id, d.id);
+      if (started.length > 0) {
+        rel.wantBreakDay = draft.day;
+        events.push(...started);
+        break;
+      }
+    }
+  }
+  return events;
+}
+
+// src/engine/bonds/dayStep.ts
+function bondsDayStep(draft, ctx2) {
+  return [
+    ...releaseWantBreakdowns(draft),
+    ...wantStep(draft, ctx2.registries),
+    ...startCrossedBreakdowns(draft, ctx2)
+  ];
+}
+
 // src/engine/actions/bonds.ts
+registerDayEndStep("dm_rumors", bondsDayStep);
+registerActivityHook((draft, ctx2, done) => {
+  if (!done.companionId) return [];
+  const amount = Number(ctx2.registries.activities.get(done.activityId)?.wantRelief ?? TUNING.bonds.want.relief.companion);
+  return relieveWant(draft, done.companionId, amount, "activity");
+});
 var isObj19 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 registerAction("bonds/follow", (draft, _payload, ctx2) => followLead(draft, ctx2));
 registerAction("bonds/limit", (draft, payload) => {
@@ -20011,9 +20164,12 @@ function contentLine(state, reg) {
   else if (reg.contentCategories.has(EXPLICIT_CATEGORY)) parts.push("Fade out intimate moments.");
   return parts.join(" ");
 }
+var wantSet = /* @__PURE__ */ new WeakMap();
 function bondsDirectives(builder, state, reg) {
   builder.clearMatching((d) => d.id.startsWith("limits:") || d.id.startsWith("boundary:"));
   builder.clearDirective("lead");
+  for (const id of wantSet.get(builder) ?? []) builder.clearDirective(id);
+  wantSet.set(builder, /* @__PURE__ */ new Set());
   const line2 = contentLine(state, reg);
   if (line2 === "" || state === null) builder.clearDirective("content");
   else builder.setDirective({ id: "content", expiresAfter: "manual", text: line2 });
@@ -20029,6 +20185,13 @@ function bondsDirectives(builder, state, reg) {
     if (ordered.length === 0 && note === "") continue;
     const text2 = ordered.length > 0 ? `${unit.displayName} will not take part in: ${ordered.map(labelOf).join(", ")}.${note !== "" ? ` ${note}` : ""}` : `${unit.displayName} has a personal limit: ${note}`;
     builder.setDirective({ id: `limits:${id}`, expiresAfter: "scene", text: text2 });
+  }
+  for (const id of state.scene.participants) {
+    const unit = state.squad.find((u) => u.id === id);
+    const band = wantBandOf(state, reg, id);
+    if (!unit || band !== "aching" && band !== "desperate") continue;
+    builder.setDirective({ id: `want:${id}`, expiresAfter: "manual", text: `${unit.displayName} is restless and irritable with unmet want; it colours how she speaks to the commander.` });
+    wantSet.get(builder).add(`want:${id}`);
   }
   const lead = state.scene.lead;
   const leader = lead ? state.squad.find((u) => u.id === lead.unitId) : void 0;

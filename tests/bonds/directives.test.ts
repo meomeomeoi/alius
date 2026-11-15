@@ -220,3 +220,43 @@ describe('the lead and boundary directives (Task 8)', () => {
     for (const by of ['unit', 'commander', 'shared'] as const) expect(read(sceneWithLead(by))).not.toMatch(/\b(he|him|his|himself)\b/i);
   });
 });
+
+describe('the want directive (Task 9)', () => {
+  const TEXT = 'Ann is restless and irritable with unmet want; it colours how she speaks to the commander.';
+  const eligible = (want: number, participants = [ANN]) => inScene(participants, (s) => {
+    s.relations[ANN].stateId = 'lover';
+    withBond(s, ANN, { desire: 'medium' });
+    s.relations[ANN].want = want;
+  });
+  const read = (s: CampaignState, b = new ContextBuilder()) => {
+    bondsDirectives(b, s, reg);
+    return dirs(b, s);
+  };
+
+  it('at 70 and more she is restless in the scene she is present in', () => {
+    expect(read(eligible(70))).toContain(TEXT);
+    expect(read(eligible(95))).toContain(TEXT);
+    expect(read(eligible(69))).not.toContain(TEXT);
+  });
+
+  it('only while she is present, and only while Want runs for her', () => {
+    expect(read(inScene([BEA], (s) => { s.relations[ANN].stateId = 'lover'; withBond(s, ANN, { desire: 'medium' }); s.relations[ANN].want = 90; }))).not.toContain('restless and irritable');
+    const off = eligible(90);
+    off.settings.intimacy = { romance: false, initiative: 'med' };
+    expect(read(off)).not.toContain(TEXT);
+  });
+
+  it('is a manual directive that goes away when the band falls, without touching a next_reply directive of the same id', () => {
+    const b = new ContextBuilder();
+    expect(read(eligible(80), b)).toContain(TEXT);
+    const calm = eligible(10);
+    expect(read(calm, b)).not.toContain(TEXT);
+    // the patience directive of a postponed demand (Task 10) shares the id and must survive a refresh
+    b.setDirective({ id: `want:${ANN}`, expiresAfter: 'next_reply', text: 'Ann was asked to wait; she is trying to be patient.' });
+    expect(read(calm, b)).toContain('trying to be patient');
+  });
+
+  it('has no commander pronoun', () => {
+    expect(read(eligible(90))).not.toMatch(/\b(he|him|his|himself)\b/i);
+  });
+});

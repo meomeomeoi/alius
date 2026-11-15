@@ -1,4 +1,5 @@
 import type { Entry, Registries } from '../../content/types';
+import { relieveWant } from '../bonds/want';
 import { consumeSlots, slotsLeftToday } from '../calendar';
 import { generateEncounter, squadPower } from '../combat';
 import { unitStats } from '../combat/stats';
@@ -436,6 +437,10 @@ export function endExpedition(draft: CampaignState, ctx: EngineCtx, outcome: Exp
     releaseMission(draft, mission.id);
   }
 
+  // P9d: a dangerous run takes her mind off wanting
+  if (mission && mission.danger >= TUNING.bonds.want.relief.expeditionMinDanger) {
+    for (const id of exp.party) events.push(...relieveWant(draft, id, TUNING.bonds.want.relief.expeditionDay, 'expedition'));
+  }
   const released = releaseBreakdowns(draft, exp.party);
   events.push(...released);
   for (const e of released) {

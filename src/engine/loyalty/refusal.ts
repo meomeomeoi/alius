@@ -1,4 +1,5 @@
 import type { Registries } from '../../content/types';
+import { seizing } from '../bonds/want';
 import { amplify } from '../combat/effects';
 import type { EffectSpec } from '../combat/types';
 import type { EngineCtx, EngineEvent } from '../dispatch';
@@ -61,6 +62,11 @@ export function orderInScene(draft: CampaignState, ctx: EngineCtx, unitId: strin
   if (!unit) throw new Error(`Unknown unit "${unitId}".`);
   if (scene.refusals?.some((r) => r.unitId === unitId && r.exchange === scene.exchanges)) {
     throw new Error('She has already refused: wait for her answer.');
+  }
+  // P9d: in a breakdown that seizes command she refuses every order (not a defiance: it is the breakdown)
+  if (seizing(unit, ctx.registries)) {
+    scene.refusals = [...(scene.refusals ?? []).filter((r) => r.unitId !== unitId), { unitId, exchange: scene.exchanges }];
+    return [{ type: 'scene_order', unitId, refused: true, chance: 1, seized: true }];
   }
   const chance = refusalChance(draft, ctx.registries, unitId);
   const refused = chance > 0 && ctx.rng.chance(chance);

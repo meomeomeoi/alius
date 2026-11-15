@@ -309,7 +309,11 @@ export const TUNING = Object.freeze({
       bands: Object.freeze({ restless: 40, aching: 70, desperate: 90 }),
       initiativeMult: 1.5,
       stressPerDay: 2,
-      visit: Object.freeze({ chance: 0.25, priority: 55, ignore: Object.freeze({ event: 'dismissed', severity: 'moderate' }) }),
+      visit: Object.freeze({
+        chance: 0.25, priority: 55, ignore: Object.freeze({ event: 'dismissed', severity: 'moderate' }),
+        /** AUTHOR TO WRITE: the knock a Want visit shows; `{name}` is her name. */
+        framing: '{name} is at your door, restless and not hiding why.',
+      }),
       /** What lowers Want (draft). */
       relief: Object.freeze({ intimateScene: 60, romanticScene: 25, companion: 5, train: 15, expeditionDay: 10, expeditionMinDanger: 3, wantVisit: 30 }),
       demandEveryDays: 3,

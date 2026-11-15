@@ -1,4 +1,5 @@
 import { raiseTone, startTone } from '../bonds/scene';
+import { relieveAtSceneEnd } from '../bonds/want';
 import { markDmViolation, markSceneViolation } from '../bonds/violations';
 import { consumeSlots, registerDayEndStep } from '../calendar';
 import { registerAction } from '../dispatch';
@@ -147,6 +148,7 @@ registerAction('scene/end', (draft, payload, ctx) => {
     }
   }
 
+  events.push(...relieveAtSceneEnd(draft, scene)); // P9d: a romantic or intimate scene with her lowers her Want
   events.push(...rollDiscovery(draft, reg, ctx.rng, scene.participants));
   events.push(...expireSceneProposals(draft, scene.participants));
   // P9: a defiance nobody answered in this scene settles now

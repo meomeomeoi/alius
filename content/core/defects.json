@@ -818,6 +818,10 @@
         "onEnter": [],
         "actionEffects": []
       }
+    },
+    "wantBreakdown": {
+      "kind": "withdrawal",
+      "days": 1
     }
   },
   {
@@ -903,6 +907,10 @@
         "onEnter": [],
         "actionEffects": []
       }
+    },
+    "wantBreakdown": {
+      "kind": "binge",
+      "days": 1
     }
   },
   {

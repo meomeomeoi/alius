@@ -513,6 +513,8 @@ export const ActivitySchema = BaseEntrySchema.extend({
   /** The activity opens a scene (P3); the slot is consumed when the scene ends, not here. */
   startsScene: z.boolean().optional(),
   blockedWhenCommanderInjured: z.boolean().optional(),
+  /** P9d: how much a companion's Want falls when she shares this activity (absent: the default of `TUNING.bonds.want.relief`). */
+  wantRelief: int.min(0).max(100).optional(),
 }).superRefine((a, ctx) => {
   const issue = (path: Array<string | number>, message: string) => ctx.addIssue({ code: 'custom', path, message });
   if (a.companion === 'none' && a.companionEffects.length > 0) issue(['companionEffects'], 'companion "none" cannot have companionEffects');
@@ -720,6 +722,8 @@ export const DefectSchema = BaseEntrySchema.extend({
   requiresBond: z.object({ caretaker: z.literal(true).optional() }).strict().optional(),
   /** P9d: added to the lead score of her scenes (not while her arc is cure). */
   leadBonus: int.min(0).max(40).optional(),
+  /** P9d: what her unmet want does at the top band: an off-combat breakdown of this kind for 1 to 3 days. */
+  wantBreakdown: z.object({ kind: z.enum(['withdrawal', 'binge', 'smother', 'seize']), days: int.min(1).max(3) }).strict().optional(),
   nightEvents: z.array(NightSpecSchema).optional(),
   /** P5: one more node revealed ahead on the expedition map (Echo Bleed). */
   expedition: z.object({ reveal: z.literal(1) }).strict().optional(),

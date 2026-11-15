@@ -154,11 +154,14 @@ export function skillWithUpgrades(reg: Registries, unit: Unit, skillId: string):
   return applyUpgrades(base, ownedUpgrades(reg, unit));
 }
 
-/** Ends the expedition-long breakdown of the given units (default: all) and reports it for P5's debrief. */
+/**
+ * Ends the expedition-long breakdown of the given units (default: all) and reports it for P5's debrief. A breakdown with a
+ * day limit (`until`, P9d: an off-combat Want breakdown) is not an expedition's: the bonds day step releases it.
+ */
 export function releaseBreakdowns(draft: CampaignState, unitIds?: string[]): EngineEvent[] {
   const events: EngineEvent[] = [];
   for (const u of draft.squad) {
-    if (!u.breakdown || (unitIds && !unitIds.includes(u.id))) continue;
+    if (!u.breakdown || u.breakdown.until !== undefined || (unitIds && !unitIds.includes(u.id))) continue;
     delete u.breakdown;
     events.push({ type: 'breakdown_released', unitId: u.id });
   }

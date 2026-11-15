@@ -1,5 +1,5 @@
 import type { Registries } from '../content/types';
-import { bondOf, enabledCategories } from '../engine/bonds';
+import { bondOf, enabledCategories, wantBandOf } from '../engine/bonds';
 import { intimacyOf } from '../engine/relations/gain';
 import type { CampaignState } from '../engine/state/types';
 import type { ContextBuilder } from '../llm/context';
@@ -30,6 +30,9 @@ export function contentLine(state: Pick<CampaignState, 'content'> | null, reg: R
   return parts.join(' ');
 }
 
+/** The `want:<unitId>` directives this builder holds because of her Want (so a refresh clears only those, never a patience one). */
+const wantSet = new WeakMap<ContextBuilder, Set<string>>();
+
 /**
  * Sets or clears the directives this layer owns from the state; the app calls it with every `applyContext()`, so a change
  * of categories reaches the next generation. With no campaign (`null`) it clears them all.
@@ -37,6 +40,8 @@ export function contentLine(state: Pick<CampaignState, 'content'> | null, reg: R
 export function bondsDirectives(builder: ContextBuilder, state: CampaignState | null, reg: Registries): void {
   builder.clearMatching((d) => d.id.startsWith('limits:') || d.id.startsWith('boundary:'));
   builder.clearDirective('lead');
+  for (const id of wantSet.get(builder) ?? []) builder.clearDirective(id);
+  wantSet.set(builder, new Set());
   const line = contentLine(state, reg);
   if (line === '' || state === null) builder.clearDirective('content');
   else builder.setDirective({ id: 'content', expiresAfter: 'manual', text: line });
@@ -56,6 +61,15 @@ export function bondsDirectives(builder: ContextBuilder, state: CampaignState | 
       ? `${unit.displayName} will not take part in: ${ordered.map(labelOf).join(', ')}.${note !== '' ? ` ${note}` : ''}`
       : `${unit.displayName} has a personal limit: ${note}`;
     builder.setDirective({ id: `limits:${id}`, expiresAfter: 'scene', text });
+  }
+
+  // unmet want colours how she speaks, from the `aching` band, while she is in the scene
+  for (const id of state.scene.participants) {
+    const unit = state.squad.find((u) => u.id === id);
+    const band = wantBandOf(state, reg, id);
+    if (!unit || (band !== 'aching' && band !== 'desperate')) continue;
+    builder.setDirective({ id: `want:${id}`, expiresAfter: 'manual', text: `${unit.displayName} is restless and irritable with unmet want; it colours how she speaks to the commander.` });
+    wantSet.get(builder)!.add(`want:${id}`);
   }
 
   // who leads a romantic scene (decided by the engine, never by the model) and the boundaries the commander set in it

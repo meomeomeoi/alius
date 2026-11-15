@@ -2,12 +2,14 @@ import type { Entry, Registries } from '../content/types';
 import type { NightSpec } from '../content/schemas';
 import type { EngineEvent } from './dispatch';
 import { contentAllowed } from './bonds/content';
+import { WANT_VISIT_KIND } from './bonds/scene';
+import { wantBandOf } from './bonds/want';
 import { isLiving } from './economy';
 import { nextId } from './memory';
 import type { Rng } from './rng';
 import { availableStates } from './relations/graph';
 import { intimacyOf } from './relations/gain';
-import type { CampaignState, NightEntry } from './state/types';
+import type { CampaignState, NightEntry, Unit } from './state/types';
 import { TUNING } from './tuning';
 
 /** Adds an entry to the night queue (highest priority first, stable). A second entry for the same unit and kind is refused. */
@@ -32,7 +34,23 @@ function specsOf(state: CampaignState, reg: Registries, unitId: string, usable: 
   const st: Entry | undefined = usable.has(rel.stateId) ? reg.relationshipStates.get(rel.stateId) : undefined;
   out.push(...(((st?.unlocks as { nightEvents?: NightSpec[] } | undefined)?.nightEvents) ?? []));
   for (const d of unit.defects) out.push(...((reg.defects.get(d.id)?.nightEvents as NightSpec[] | undefined) ?? []));
+  // P9d: from the `restless` band of Want she may come to the door (chance and priority are draft numbers of `TUNING.bonds.want`)
+  if (wantBandOf(state, reg, unitId) !== 'calm') {
+    const v = TUNING.bonds.want.visit;
+    out.push({ id: WANT_VISIT_KIND, kind: WANT_VISIT_KIND, chance: v.chance, priority: v.priority, trigger: 'daily', framing: v.framing, ignore: { ...v.ignore }, contentTags: [] } as NightSpec);
+  }
   return out;
+}
+
+/** Queues the knock of a night spec for a unit (no roll): the entry a day roll would have made. `[]` when the unit already has one of that kind. */
+export function queueNightSpec(draft: CampaignState, unit: Pick<Unit, 'id' | 'displayName'>, spec: NightSpec): EngineEvent[] {
+  const entry: NightEntry = {
+    id: nextId(draft, 'n'), unitId: unit.id, kind: spec.kind, priority: spec.priority,
+    framing: spec.framing.replace('{name}', unit.displayName), ignore: { ...spec.ignore } as NightEntry['ignore'],
+    expiresDay: draft.day + EXPIRES_IN_DAYS,
+    ...(spec.contentTags && spec.contentTags.length > 0 ? { contentTags: [...spec.contentTags] } : {}),
+  };
+  return enqueueNight(draft, entry) ? [{ type: 'night_queued', entry }] : [];
 }
 
 /**
@@ -51,13 +69,7 @@ export function rollNight(draft: CampaignState, reg: Registries, rng: Rng, trigg
       if (spec.trigger !== trigger) continue;
       if (!contentAllowed(draft, reg, spec, u.id)) continue; // P9d: a tagged knock needs its category on and not among her limits (no draw)
       if (!rng.chance(Math.min(1, spec.chance * mult))) continue;
-      const entry: NightEntry = {
-        id: nextId(draft, 'n'), unitId: u.id, kind: spec.kind, priority: spec.priority,
-        framing: spec.framing.replace('{name}', u.displayName), ignore: { ...spec.ignore } as NightEntry['ignore'],
-        expiresDay: draft.day + EXPIRES_IN_DAYS,
-        ...(spec.contentTags && spec.contentTags.length > 0 ? { contentTags: [...spec.contentTags] } : {}),
-      };
-      if (enqueueNight(draft, entry)) events.push({ type: 'night_queued', entry });
+      events.push(...queueNightSpec(draft, u, spec));
     }
   }
   return events;

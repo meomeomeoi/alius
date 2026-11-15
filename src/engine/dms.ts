@@ -1,4 +1,5 @@
 import type { Registries } from '../content/types';
+import { wantBandOf } from './bonds/want';
 import { isLiving } from './economy';
 import { nextId } from './memory';
 import type { Rng } from './rng';
@@ -66,7 +67,9 @@ export function initiativeChance(state: CampaignState, reg: Registries, unitId: 
   const st = reg.relationshipStates.get(rel.stateId);
   const base = st && !(st.romance === true && !romance) ? (st.dmChance as number) * TUNING.comms.initiativeMult[initiative] : 0;
   const bonus = unit.defects.reduce((n, d) => n + ((reg.defects.get(d.id)?.dmChanceBonus as number | undefined) ?? 0), 0);
-  return Math.min(1, Math.max(0, base + bonus));
+  const chance = Math.min(1, Math.max(0, base + bonus));
+  // P9d: unmet want makes her write first more often (from the `restless` band)
+  return wantBandOf(state, reg, unitId) === 'calm' ? chance : Math.min(1, chance * TUNING.bonds.want.initiativeMult);
 }
 
 const waiting = (state: CampaignState, unitId: string): boolean => {

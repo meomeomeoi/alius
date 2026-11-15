@@ -33,6 +33,8 @@ export function recordLedger(before: CampaignState, after: CampaignState, action
     for (const axis of AXES) push(`axis:${id}:${axis}`, (rel[axis] ?? 0) - (was[axis] ?? 0));
     // P9: the stored term of her Impunity
     push(`record:${id}`, (rel.impunityRecord ?? 0) - (was.impunityRecord ?? 0));
+    // P9d: her unmet want
+    push(`want:${id}`, (rel.want ?? 0) - (was.want ?? 0));
   }
 
   // P7: a raised (or scarred) body stat; the migration that first writes the body (`commander/seed`) is not training

@@ -540,7 +540,7 @@ tests/**                                           mirrors src; tests/helpers/bo
   - `releaseWantBreakdowns(draft)`
   - `bondsDayStep(draft, ctx): EngineEvent[]`, in the order: release breakdowns → Want → rules (Task 11) → smother expiry (Task 14)
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `medium desire in a romantic state rises +4 a day; high intense rises round(7×1.4)=10`
   - `the attraction path needs attraction ≥ 60 and not avoidant`
   - `low desire and the modest profile never get Want` (acceptance 1)
@@ -550,10 +550,10 @@ tests/**                                           mirrors src; tests/helpers/bo
   - `crossing 90 starts imprint_hunger withdrawal once; it is released after its days`
   - `romance off: Want does not rise and no band acts` (Review Focus 6)
   - `a dead unit's Want is skipped and forgotten` (Review Focus 5)
-- [ ] **Step 2: Run** `npx vitest run tests/engine/bonds/want.test.ts` and confirm FAIL.
-- [ ] **Step 3: Implement** the numbers of the rulings from `TUNING.bonds.want`.
-- [ ] **Step 4: Run** `npm test` and confirm PASS. Name any moved seeded tests (night queue, DM rolls) in the commit.
-- [ ] **Step 5: Commit** `feat(engine): Want, its bands and the off-combat breakdown`.
+- [x] **Step 2: Run** `npx vitest run tests/engine/bonds/want.test.ts` and confirm FAIL.
+- [x] **Step 3: Implement** the numbers of the rulings from `TUNING.bonds.want`.
+- [x] **Step 4: Run** `npm test` and confirm PASS. Name any moved seeded tests (night queue, DM rolls) in the commit.
+- [x] **Step 5: Commit** `feat(engine): Want, its bands and the off-combat breakdown`.
 
 ### Task 10: The Want demand (SATISFY / POSTPONE / TALK)
 

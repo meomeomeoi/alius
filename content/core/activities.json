@@ -93,7 +93,8 @@
         "amount": 2
       }
     ],
-    "flavor": "short"
+    "flavor": "short",
+    "wantRelief": 15
   },
   {
     "id": "workshop",
