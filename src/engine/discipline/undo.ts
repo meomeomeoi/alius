@@ -51,6 +51,7 @@ function revertInverse(draft: CampaignState, ctx: EngineCtx, unitId: string, app
       rel.stateId = inv.state.from;
       rel.stateSince = inv.state.sinceFrom;
       events.push(...syncPublicity(draft, ctx.registries, unitId)); // P9d: publicity follows the restored state
+      if (inv.publicity && draft.relations[unitId]?.publicity) rel.publicity = structuredClone(inv.publicity); // and is what it was, not a fresh default
     }
     if (inv.loyaltyBand && rel.loyaltyBand === inv.loyaltyBand.to) rel.loyaltyBand = inv.loyaltyBand.from;
     for (const line of [...(inv.history ?? [])].reverse()) {

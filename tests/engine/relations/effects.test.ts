@@ -87,3 +87,14 @@ describe('defect eventStress (P9d)', () => {
     expect(stressAfter(r, state(r), low)).toBe(20);
   });
 });
+
+describe('defect eventStress and a scaled event (review fix)', () => {
+  it('follows the event scale: a witness-scaled event of zero adds nothing', () => {
+    const r = reg({ threatened: 4 });
+    const d = structuredClone(state(r));
+    const before = d.squad.find((x) => x.id === ANN)!.stress;
+    applyEventToUnit(d, r, ANN, ev('threatened', { measure: 'unspecified' }), { scale: 0 });
+    expect(d.squad.find((x) => x.id === ANN)!.stress).toBe(before);
+  });
+});
+

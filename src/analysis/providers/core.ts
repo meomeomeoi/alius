@@ -127,7 +127,7 @@ const stressProvider: AnalyzeProvider = (subject, env, knowledge) => {
 function combatLines(state: CampaignState, env: AnalyzeEnv, unit: Unit, stat: StatName): string[] {
   const reg = env.registries;
   const touches = (e: { type?: string; stat?: string }): boolean =>
-    (e.type === 'stat' && (e.stat === stat || e.stat === 'all')) || (e.type === 'outgoing' && stat === 'atk') || (e.type === 'incoming' && stat === 'def');
+    (e.type === 'stat' && (e.stat === stat || e.stat === 'all')) || (e.type === 'outgoing' && stat === 'atk' && (e as { vs?: string }).vs !== 'heal') || (e.type === 'incoming' && stat === 'def');
   const out: string[] = [];
   const add = (list: unknown, source: string): void => {
     if (!Array.isArray(list)) return;

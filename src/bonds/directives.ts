@@ -1,5 +1,5 @@
 import type { Registries } from '../content/types';
-import { bondOf, enabledCategories, publicityMismatch, wantBandOf } from '../engine/bonds';
+import { bondOf, enabledCategories, publicityMismatch, smotherActive, wantBandOf } from '../engine/bonds';
 import { intimacyOf } from '../engine/relations/gain';
 import type { CampaignState } from '../engine/state/types';
 import type { ContextBuilder } from '../llm/context';
@@ -38,7 +38,7 @@ const wantSet = new WeakMap<ContextBuilder, Set<string>>();
  * of categories reaches the next generation. With no campaign (`null`) it clears them all.
  */
 export function bondsDirectives(builder: ContextBuilder, state: CampaignState | null, reg: Registries): void {
-  builder.clearMatching((d) => d.id.startsWith('limits:') || d.id.startsWith('boundary:') || d.id.startsWith('rule:') || d.id.startsWith('co_command:') || d.id.startsWith('publicity:'));
+  builder.clearMatching((d) => d.id.startsWith('limits:') || d.id.startsWith('boundary:') || d.id.startsWith('rule:') || d.id.startsWith('co_command:') || d.id.startsWith('publicity:') || d.id.startsWith('smother:'));
   builder.clearDirective('lead');
   for (const id of wantSet.get(builder) ?? []) builder.clearDirective(id);
   wantSet.set(builder, new Set());
@@ -80,12 +80,19 @@ export function bondsDirectives(builder: ContextBuilder, state: CampaignState | 
     builder.setDirective({ id: `co_command:${id}`, expiresAfter: 'manual', text: `${unit.displayName} shares command with the commander by open agreement.` });
   }
 
+  // she has locked the hangar (the Smother stand-in): it is why this scene happens
+  const hold = smotherActive(state);
+  const holder = hold ? state.squad.find((u) => u.id === hold.unitId) : undefined;
+  if (hold && holder && state.scene.participants.includes(holder.id)) {
+    builder.setDirective({ id: `smother:${holder.id}`, expiresAfter: 'scene', text: `${holder.displayName} has locked the hangar to keep the commander at base; she wants them close and safe.` });
+  }
+
   // she wants the relationship more or less open than it is: she is present, so it can come up
   for (const id of state.scene.participants) {
     const unit = state.squad.find((u) => u.id === id);
     const level = state.relations[id]?.publicity?.level;
     const pref = unit ? bondOf(unit)?.publicity : undefined;
-    if (!unit || level === undefined || pref === undefined || !publicityMismatch(state, id)) continue;
+    if (!unit || level === undefined || pref === undefined || !intimacyOf(state).romance || !publicityMismatch(state, id)) continue;
     builder.setDirective({ id: `publicity:${id}`, expiresAfter: 'scene', text: `${unit.displayName} wants the relationship ${pref}; it is ${level}.` });
   }
 

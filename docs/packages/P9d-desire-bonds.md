@@ -112,7 +112,7 @@ Checked by tables (`docs/BALANCE_REPORT.md` for combat, arithmetic over the day 
 
 ### Non-obvious things to know before touching P9d code
 - **Read by type or field, never by id:** tiers (`bondTier`), `leadBonus`, `wantBreakdown.kind`, `embraceFlag`, `requiresBond`, `eventStress`, effect types. The only ids the code names are the P3 concealed-romance state and the category `explicit_scenes` (the old switch).
-- **Directive ids owned:** `content` (manual), `limits:<unitId>`, `lead`, `boundary:<n>`, `want:<unitId>` (manual; the patience text POSTPONE sets is the same id, `next_reply`, and a refresh never clears it), `rule:<unitId>`, `publicity:<unitId>`, `co_command:<unitId>` and `ask:<unitId>` (`next_reply`). Keep new ones away from them.
+- **Directive ids owned:** `content` (manual), `limits:<unitId>`, `lead`, `boundary:<n>`, `want:<unitId>` (manual; the patience text POSTPONE sets is the same id, `next_reply`, and a refresh never clears it), `rule:<unitId>`, `publicity:<unitId>`, `smother:<unitId>`, `co_command:<unitId>` and `ask:<unitId>` (`next_reply`). Keep new ones away from them.
 - **Day steps run before the day rolls over**, so "today" in `bondsDayStep` is the ending day. Its order: publicity repair → stale rule delivery → release breakdowns → Want → breakdown crossings → desire demands → daily-contact check → rule roll → smother expiry. A rule proposed today is not judged today.
 - **No new seeded draw unless someone is eligible** (Want ≥ 40 for the desire pick, a leading unit for the rule roll, a secret relation with others present for the reveal): no seeded test moved. Keep it that way.
 - **A grunt has no bond.** `bondOf` is `null` for one; nothing in P9d runs for a grunt. Grunts cannot join scenes, so "group" means more than one participant.
@@ -127,5 +127,8 @@ Checked by tables (`docs/BALANCE_REPORT.md` for combat, arithmetic over the day 
 - Smother and co-command are stand-ins until P9c (bookings) and P9b (hierarchy).
 - A DM exchange never rolls a reveal (only her is present there); wire it when a thread can have others present.
 - The harness cannot see `dominance_drive`'s downside, `caretaker_overdrive`'s commander rows, or any cost outside combat; balance them by play.
+- Publicity: the commander's own choice (`commanderPref`) lives only while the relationship is romantic (a new relationship starts at the more private of her preference and `known`); a concealed romance (the P3 state) cannot be announced by the commander, only discovered; with romance off the level is kept but nothing about it reaches the commander or the model (lead and Want behave the same); UNDO of a punishment that moved her out of the tier puts her old publicity back (`Inverse.publicity`).
+- Smother has a one-scene directive (`smother:<unitId>`) but no hub or dossier chip yet; the app retries her scene each new slot unless a restriction keeps her from scenes.
+- Dominance Drive's "stress when ordered" and Compliance Craving's "stress when not ordered" both read `ordersThisRound` at her turn start, so only an order given before her turn in that round counts; the author may prefer an order-time hook.
 - Every number above and every text marked `AUTHOR TO WRITE` (categories, rule templates, desire and publicity demand templates, glossary long texts, the visit framing) is a draft.
 - Real `intent_extract` recall for `sceneTone` / `contentViolations` / the rule events, and real `flavor` wording of rules, are checked only by hand (`docs/MANUAL_TEST_P9d.md`).

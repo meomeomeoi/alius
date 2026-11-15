@@ -9,6 +9,7 @@ import { Rng } from '../../../src/engine/rng';
 import { decideArc } from '../../../src/engine/arcs';
 import { applyEventToUnit } from '../../../src/engine/relations/effects';
 import type { EventIntent } from '../../../src/engine/relations/intents';
+import { removeFromService } from '../../../src/engine/leash/use';
 import { releaseBreakdowns } from '../../../src/engine/progression';
 import type { CampaignState } from '../../../src/engine/state/types';
 import { bondsDirectives } from '../../../src/bonds/directives';
@@ -120,7 +121,7 @@ describe('dominance_drive out of combat', () => {
     expect(d.relations[ANN].flags).toContain('co_command');
     d.squad.find((u) => u.id === ANN)!.stress = 30;
     const after = stressAfter(d, ev('commander_enforced'));
-    expect(after).toBeLessThan(before + 1);
+    expect(after).toBe(before - 2); // +4 halved to +2
     // the directive, while she is in the scene
     d.scene = { id: 's1', day: 30, slot: 'morning', locationId: 'quarters_unit', participants: [ANN], mode: 'private', origin: 'event', consumesSlot: true, startIndex: 0, readIndex: 0, exchanges: 0 } as never;
     const b = new ContextBuilder();
@@ -208,6 +209,8 @@ describe('smother', () => {
     held.day += 2;
     held.bonds = { rules: [], smother: { unitId: ANN, untilDay: held.day - 1 } };
     expect(smotherActive(held)).toBeNull();
+    const reopened = run(held, reg, { type: 'expedition/start', payload: { missionId: mission.id, unitIds: held.roster.activeIds.slice(0, 4), formation: { front: held.roster.activeIds.slice(0, 2), back: held.roster.activeIds.slice(2, 4) }, supplies: 4 } });
+    expect(errors(reopened.events).map((e) => String(e.message ?? e.code)).join()).not.toMatch(/locked the hangar/);
     expect(() => depart(reg, state, mission.id)).not.toThrow();
   });
 
@@ -235,6 +238,9 @@ describe('smother', () => {
     startSmother(s, ANN);
     expect(clearSmother(structuredClone(s), BEA)).toEqual([]);
     expect(clearSmother(structuredClone(s), ANN)).toHaveLength(1);
+    const gone = structuredClone(s);
+    removeFromService(gone, ANN, 'terminated');
+    expect(gone.bonds?.smother).toBeUndefined();
   });
 
   it('one hold at a time', () => {

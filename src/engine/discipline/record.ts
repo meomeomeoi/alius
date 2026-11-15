@@ -115,6 +115,7 @@ export function captureInverse(draft: CampaignState, unitId: string, fn: () => E
   const before = rel && unit ? {
     trust: rel.trust, affinity: rel.affinity, attraction: rel.attraction, daily: { ...rel.dailyGain }, stateId: rel.stateId,
     stateSince: rel.stateSince, band: rel.loyaltyBand, history: rel.history.map((h) => JSON.stringify(h)), stress: unit.stress, record: recordOf(draft, unitId),
+    publicity: rel.publicity ? structuredClone(rel.publicity) : undefined,
   } : undefined;
   const deedsBefore = deedsOf(draft);
   const events = fn();
@@ -136,6 +137,7 @@ export function captureInverse(draft: CampaignState, unitId: string, fn: () => E
   for (const a of ['trust', 'affinity', 'attraction'] as const) if (after.dailyGain[a] !== before.daily[a]) daily[a] = after.dailyGain[a] - before.daily[a];
   if (Object.keys(daily).length > 0) inverse.dailyGain = daily;
   if (after.stateId !== before.stateId) inverse.state = { from: before.stateId, to: after.stateId, sinceFrom: before.stateSince };
+  if (before.publicity && JSON.stringify(after.publicity ?? null) !== JSON.stringify(before.publicity)) inverse.publicity = before.publicity;
   if (after.loyaltyBand !== before.band) inverse.loyaltyBand = { from: before.band, to: after.loyaltyBand };
   // lines are compared as a multiset: a full log drops old lines while the new ones arrive, so the length alone says nothing
   const kept = new Map<string, number>();

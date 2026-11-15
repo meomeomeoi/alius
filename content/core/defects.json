@@ -1047,7 +1047,7 @@
     "name": "Caretaker Overdrive",
     "category": "desire_bond",
     "lore": "Care protocols stuck at maximum: someone must always be kept safe.",
-    "upside": "Heals and relieves more when allies are hurt; tougher when the commander is frail or slight.",
+    "upside": "Heals more when allies are hurt; tougher when the commander is frail or slight.",
     "downside": "Stress when the commander is exposed to a fight; tries to keep the commander at base.",
     "breakdown": {
       "name": "Smother",

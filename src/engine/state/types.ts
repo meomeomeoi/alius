@@ -446,6 +446,8 @@ export interface Inverse {
   /** The state and loyalty band the application caused (put back only while she is still in them). */
   state?: { from: string; to: string; sinceFrom: number };
   loyaltyBand?: { from: LoyaltyBand; to: LoyaltyBand };
+  /** P9d: her publicity before the application removed or changed it (UNDO puts it back together with the state). */
+  publicity?: NonNullable<Relation['publicity']>;
   /** The history lines the application wrote (UNDO removes exactly these). */
   history?: HistoryEntry[];
   /** A full history drops its oldest lines when new ones arrive: the lines it dropped and where they were (UNDO puts them back). */

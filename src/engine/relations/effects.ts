@@ -51,7 +51,7 @@ export function applyEventToUnit(
     const applied = applyRelationDelta(draft, unitId, axis, d[axis], `intent:${event.type}`);
     if (applied !== 0) events.push({ type: 'relation_changed', unitId, axis, delta: applied, applied });
   }
-  const dStress = roundAway(d.stress) + defectEventStress(reg, unit, draft.relations[unitId], event.type);
+  const dStress = roundAway(d.stress) + Math.round(defectEventStress(reg, unit, draft.relations[unitId], event.type) * Math.max(0, scale));
   if (dStress !== 0) {
     const next = clamp(unit.stress + dStress, 0, 100);
     if (next !== unit.stress) events.push({ type: 'stress_changed', unitId, delta: next - unit.stress });

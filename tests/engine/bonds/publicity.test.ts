@@ -6,6 +6,7 @@ import { answerProposal, commanderProposal, offerProposal, rollDiscovery } from 
 import { Rng, seedRng } from '../../../src/engine/rng';
 import { openDemand } from '../../../src/engine/discipline';
 import type { CampaignState, Publicity } from '../../../src/engine/state/types';
+import { captureInverse } from '../../../src/engine/discipline/record';
 import { TUNING } from '../../../src/engine/tuning';
 import { bondsDirectives } from '../../../src/bonds/directives';
 import { ContextBuilder } from '../../../src/llm/context';
@@ -283,6 +284,62 @@ describe('going public while she leads', () => {
     ledByCommander.scene = { id: 's1', day: 12, slot: 'morning', locationId: 'quarters_unit', participants: [ANN], mode: 'private', origin: 'event', consumesSlot: true, startIndex: 0, readIndex: 0, exchanges: 0, tone: 'romantic', lead: { by: 'commander', unitId: ANN, score: 20 } } as CampaignState['scene'];
     setPublicity(ledByCommander, reg, ANN, 'public', { cause: 'commander' });
     expect(rec(ledByCommander, BEA)).toBe(0);
+  });
+});
+
+describe('review fixes', () => {
+  it('a unit who left the service gets no publicity back at day end and cannot be acted on', async () => {
+    const { removeFromService } = await import('../../../src/engine/leash/use');
+    const s = world();
+    syncPublicity(s, reg, ANN);
+    removeFromService(s, ANN, 'deserted');
+    const d = structuredClone(s);
+    bondsDayStep(d, { registries: reg, rng: new Rng(d.rng) });
+    expect(pub(d)).toBeUndefined();
+    s.relations[ANN].publicity = { level: 'known', since: 1 };
+    expect(() => setPublicity(s, reg, ANN, 'public', { cause: 'commander' })).toThrow(/romantic/);
+  });
+
+  it('the commander cannot announce a concealed romance', () => {
+    const s = world('public', 'secret_affair');
+    syncPublicity(s, reg, ANN);
+    expect(() => setPublicity(s, reg, ANN, 'public', { cause: 'commander' })).toThrow(/concealed/);
+    expect(pub(s)!.level).toBe('secret');
+  });
+
+  it('with romance off nothing about publicity reaches the commander or the model', () => {
+    const s = world('secret');
+    s.relations[ANN].publicity = { level: 'secret', since: 1 };
+    s.settings.intimacy = { romance: false, initiative: 'med' };
+    expect(() => setPublicity(s, reg, ANN, 'public', { cause: 'commander' })).toThrow(/switched off/);
+    const rng = new Rng(seedRng(7));
+    const before = JSON.stringify(rng.state);
+    expect(rollReveal(s, reg, rng, [ANN, BEA])).toEqual([]);
+    expect(JSON.stringify(rng.state)).toBe(before);
+    s.relations[ANN].publicity = { level: 'public', since: 1 };
+    s.scene = { id: 's1', day: 12, slot: 'morning', locationId: 'quarters_unit', participants: [ANN], mode: 'private', origin: 'event', consumesSlot: true, startIndex: 0, readIndex: 0, exchanges: 0 } as CampaignState['scene'];
+    const b = new ContextBuilder();
+    bondsDirectives(b, s, reg);
+    expect(b.build(s, 5000).directives).not.toContain('wants the relationship');
+  });
+
+  it('a smother hold is told to the model in the scene she is in', () => {
+    const s = world();
+    s.bonds = { rules: [], smother: { unitId: ANN, untilDay: s.day + 1 } };
+    s.scene = { id: 's1', day: 12, slot: 'morning', locationId: 'quarters_unit', participants: [ANN], mode: 'private', origin: 'event', consumesSlot: true, startIndex: 0, readIndex: 0, exchanges: 0 } as CampaignState['scene'];
+    const b = new ContextBuilder();
+    bondsDirectives(b, s, reg);
+    expect(b.build(s, 5000).directives).toContain('Ann has locked the hangar to keep the commander at base');
+  });
+
+  it('an application that moved her out of the tier remembers her publicity for UNDO', () => {
+    const s = world();
+    s.relations[ANN].publicity = { level: 'public', commanderPref: 'public', since: 3 };
+    const { inverse } = captureInverse(s, ANN, () => {
+      s.relations[ANN].stateId = 'resentful';
+      return syncPublicity(s, reg, ANN);
+    });
+    expect(inverse.publicity).toEqual({ level: 'public', commanderPref: 'public', since: 3 });
   });
 });
 

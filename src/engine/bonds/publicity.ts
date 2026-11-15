@@ -5,6 +5,8 @@ import { isLiving } from '../economy';
 import { addFact } from '../memory';
 import { applyRelationDelta } from '../relationGain';
 import { applyEventToUnit } from '../relations/effects';
+import { intimacyOf } from '../relations/gain';
+import { evaluateAutomatic } from '../relations/graph';
 import type { Rng } from '../rng';
 import type { CampaignState, Publicity } from '../state/types';
 import { TUNING } from '../tuning';
@@ -72,7 +74,9 @@ export function setPublicity(
 ): EngineEvent[] {
   const rel = draft.relations[unitId];
   const unit = draft.squad.find((u) => u.id === unitId);
-  if (!rel?.publicity || !unit) throw new Error('She is not in a romantic relationship with the commander.');
+  if (!rel?.publicity || !unit || !isLiving(unit)) throw new Error('She is not in a romantic relationship with the commander.');
+  if (opts.cause === 'commander' && rel.stateId === 'secret_affair') throw new Error('This romance is concealed: it comes out only by being discovered.'); // P3 owns it
+  if (opts.cause === 'commander' && !intimacyOf(draft).romance) throw new Error('Romance is switched off.');
   if (!PUBLICITY_LEVELS.includes(level)) throw new Error(`Unknown publicity level "${String(level)}".`);
   const from = rel.publicity.level;
   if (opts.cause === 'commander') rel.publicity.commanderPref = level;
@@ -80,7 +84,7 @@ export function setPublicity(
   rel.publicity.level = level;
   rel.publicity.since = draft.day;
   const events: EngineEvent[] = [{ type: 'publicity_changed', unitId, from, to: level, cause: opts.cause }];
-  if (opts.cause === 'commander') events.push(...preferenceEvent(draft, reg, unitId, from, level));
+  if (opts.cause === 'commander') events.push(...preferenceEvent(draft, reg, unitId, from, level), ...evaluateAutomatic(draft, reg, unitId));
   if (opts.cause === 'revealed') {
     events.push({ type: 'bond_revealed', unitId });
     addFact(draft, { about: [unitId, 'commander'], text: `It is out: ${unit.displayName} and the commander are together.`, tags: ['bond', 'revealed'], importance: 3, day: draft.day, knownBy: ['*'] });
@@ -100,7 +104,7 @@ export function setPublicity(
 export function rollReveal(draft: CampaignState, reg: Registries, rng: Rng, presentIds: string[]): EngineEvent[] {
   const events: EngineEvent[] = [];
   const T = TUNING.relations.affair;
-  if (presentIds.length < 2) return events;
+  if (presentIds.length < 2 || !intimacyOf(draft).romance) return events; // romance off: no relationship news
   for (const unit of draft.squad) {
     const rel = draft.relations[unit.id];
     if (!rel?.publicity || rel.publicity.level !== 'secret' || rel.stateId === 'secret_affair' || !isLiving(unit) || !presentIds.includes(unit.id)) continue;

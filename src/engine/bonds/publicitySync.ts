@@ -1,5 +1,6 @@
 import type { Registries } from '../../content/types';
 import type { EngineEvent } from '../dispatch';
+import { isLiving } from '../economy';
 import type { CampaignState, Publicity } from '../state/types';
 import { bondOf, bondTierOf, PUBLICITY_LEVELS } from './profile';
 
@@ -18,7 +19,7 @@ export function syncPublicity(draft: CampaignState, reg: Registries, unitId: str
   const rel = draft.relations[unitId];
   const unit = draft.squad.find((u) => u.id === unitId);
   if (!rel || !unit || unit.kind !== 'named') return [];
-  if (bondTierOf(draft, reg, unitId) !== 'romantic') {
+  if (!isLiving(unit) || bondTierOf(draft, reg, unitId) !== 'romantic') { // a unit who left the service has none, whatever state she was in
     if (!rel.publicity) return [];
     delete rel.publicity;
     return [{ type: 'publicity_cleared', unitId }];

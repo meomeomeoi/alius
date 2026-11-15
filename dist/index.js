@@ -7606,7 +7606,7 @@ function syncPublicity(draft, reg, unitId) {
   const rel = draft.relations[unitId];
   const unit = draft.squad.find((u) => u.id === unitId);
   if (!rel || !unit || unit.kind !== "named") return [];
-  if (bondTierOf(draft, reg, unitId) !== "romantic") {
+  if (!isLiving(unit) || bondTierOf(draft, reg, unitId) !== "romantic") {
     if (!rel.publicity) return [];
     delete rel.publicity;
     return [{ type: "publicity_cleared", unitId }];
@@ -7809,7 +7809,7 @@ function applyEventToUnit(draft, reg, unitId, event, opts = {}) {
     const applied = applyRelationDelta(draft, unitId, axis, d[axis], `intent:${event.type}`);
     if (applied !== 0) events.push({ type: "relation_changed", unitId, axis, delta: applied, applied });
   }
-  const dStress = roundAway(d.stress) + defectEventStress(reg, unit, draft.relations[unitId], event.type);
+  const dStress = roundAway(d.stress) + Math.round(defectEventStress(reg, unit, draft.relations[unitId], event.type) * Math.max(0, scale));
   if (dStress !== 0) {
     const next = clamp4(unit.stress + dStress, 0, 100);
     if (next !== unit.stress) events.push({ type: "stress_changed", unitId, delta: next - unit.stress });
@@ -8701,7 +8701,8 @@ function captureInverse(draft, unitId, fn) {
     band: rel.loyaltyBand,
     history: rel.history.map((h2) => JSON.stringify(h2)),
     stress: unit.stress,
-    record: recordOf(draft, unitId)
+    record: recordOf(draft, unitId),
+    publicity: rel.publicity ? structuredClone(rel.publicity) : void 0
   } : void 0;
   const deedsBefore = deedsOf(draft);
   const events = fn();
@@ -8723,6 +8724,7 @@ function captureInverse(draft, unitId, fn) {
   for (const a of ["trust", "affinity", "attraction"]) if (after.dailyGain[a] !== before.daily[a]) daily[a] = after.dailyGain[a] - before.daily[a];
   if (Object.keys(daily).length > 0) inverse.dailyGain = daily;
   if (after.stateId !== before.stateId) inverse.state = { from: before.stateId, to: after.stateId, sinceFrom: before.stateSince };
+  if (before.publicity && JSON.stringify(after.publicity ?? null) !== JSON.stringify(before.publicity)) inverse.publicity = before.publicity;
   if (after.loyaltyBand !== before.band) inverse.loyaltyBand = { from: before.band, to: after.loyaltyBand };
   const kept = /* @__PURE__ */ new Map();
   for (const k of before.history) kept.set(k, (kept.get(k) ?? 0) + 1);
@@ -10940,7 +10942,9 @@ function preferenceEvent(draft, reg, unitId, from, to) {
 function setPublicity(draft, reg, unitId, level, opts) {
   const rel = draft.relations[unitId];
   const unit = draft.squad.find((u) => u.id === unitId);
-  if (!rel?.publicity || !unit) throw new Error("She is not in a romantic relationship with the commander.");
+  if (!rel?.publicity || !unit || !isLiving(unit)) throw new Error("She is not in a romantic relationship with the commander.");
+  if (opts.cause === "commander" && rel.stateId === "secret_affair") throw new Error("This romance is concealed: it comes out only by being discovered.");
+  if (opts.cause === "commander" && !intimacyOf(draft).romance) throw new Error("Romance is switched off.");
   if (!PUBLICITY_LEVELS.includes(level)) throw new Error(`Unknown publicity level "${String(level)}".`);
   const from = rel.publicity.level;
   if (opts.cause === "commander") rel.publicity.commanderPref = level;
@@ -10948,7 +10952,7 @@ function setPublicity(draft, reg, unitId, level, opts) {
   rel.publicity.level = level;
   rel.publicity.since = draft.day;
   const events = [{ type: "publicity_changed", unitId, from, to: level, cause: opts.cause }];
-  if (opts.cause === "commander") events.push(...preferenceEvent(draft, reg, unitId, from, level));
+  if (opts.cause === "commander") events.push(...preferenceEvent(draft, reg, unitId, from, level), ...evaluateAutomatic(draft, reg, unitId));
   if (opts.cause === "revealed") {
     events.push({ type: "bond_revealed", unitId });
     addFact(draft, { about: [unitId, "commander"], text: `It is out: ${unit.displayName} and the commander are together.`, tags: ["bond", "revealed"], importance: 3, day: draft.day, knownBy: ["*"] });
@@ -10962,7 +10966,7 @@ function setPublicity(draft, reg, unitId, level, opts) {
 function rollReveal(draft, reg, rng, presentIds) {
   const events = [];
   const T = TUNING.relations.affair;
-  if (presentIds.length < 2) return events;
+  if (presentIds.length < 2 || !intimacyOf(draft).romance) return events;
   for (const unit of draft.squad) {
     const rel = draft.relations[unit.id];
     if (!rel?.publicity || rel.publicity.level !== "secret" || rel.stateId === "secret_affair" || !isLiving(unit) || !presentIds.includes(unit.id)) continue;
@@ -11468,6 +11472,7 @@ function revertInverse(draft, ctx2, unitId, applicationId, inv) {
       rel.stateId = inv.state.from;
       rel.stateSince = inv.state.sinceFrom;
       events.push(...syncPublicity(draft, ctx2.registries, unitId));
+      if (inv.publicity && draft.relations[unitId]?.publicity) rel.publicity = structuredClone(inv.publicity);
     }
     if (inv.loyaltyBand && rel.loyaltyBand === inv.loyaltyBand.to) rel.loyaltyBand = inv.loyaltyBand.from;
     for (const line2 of [...inv.history ?? []].reverse()) {
@@ -18417,6 +18422,7 @@ function createBonds(deps) {
       const hold = s ? smotherActive(s) : null;
       if (!s || !hold || opening || !deps.startScene) return false;
       if (s.slot === "night" || s.scene || s.combat || s.expedition || s.calendar.pendingScene || s.calendar.nightEvent) return false;
+      if (restrictionReason(s, hold.unitId, "scene") !== null) return false;
       opening = true;
       try {
         const ok = await deps.startScene({ locationId: "quarters_unit", participants: [hold.unitId], origin: "event" });
@@ -18467,7 +18473,7 @@ function contentLine(state, reg) {
 }
 var wantSet = /* @__PURE__ */ new WeakMap();
 function bondsDirectives(builder, state, reg) {
-  builder.clearMatching((d) => d.id.startsWith("limits:") || d.id.startsWith("boundary:") || d.id.startsWith("rule:") || d.id.startsWith("co_command:") || d.id.startsWith("publicity:"));
+  builder.clearMatching((d) => d.id.startsWith("limits:") || d.id.startsWith("boundary:") || d.id.startsWith("rule:") || d.id.startsWith("co_command:") || d.id.startsWith("publicity:") || d.id.startsWith("smother:"));
   builder.clearDirective("lead");
   for (const id of wantSet.get(builder) ?? []) builder.clearDirective(id);
   wantSet.set(builder, /* @__PURE__ */ new Set());
@@ -18503,11 +18509,16 @@ function bondsDirectives(builder, state, reg) {
     })) continue;
     builder.setDirective({ id: `co_command:${id}`, expiresAfter: "manual", text: `${unit.displayName} shares command with the commander by open agreement.` });
   }
+  const hold = smotherActive(state);
+  const holder = hold ? state.squad.find((u) => u.id === hold.unitId) : void 0;
+  if (hold && holder && state.scene.participants.includes(holder.id)) {
+    builder.setDirective({ id: `smother:${holder.id}`, expiresAfter: "scene", text: `${holder.displayName} has locked the hangar to keep the commander at base; she wants them close and safe.` });
+  }
   for (const id of state.scene.participants) {
     const unit = state.squad.find((u) => u.id === id);
     const level = state.relations[id]?.publicity?.level;
     const pref = unit ? bondOf(unit)?.publicity : void 0;
-    if (!unit || level === void 0 || pref === void 0 || !publicityMismatch(state, id)) continue;
+    if (!unit || level === void 0 || pref === void 0 || !intimacyOf(state).romance || !publicityMismatch(state, id)) continue;
     builder.setDirective({ id: `publicity:${id}`, expiresAfter: "scene", text: `${unit.displayName} wants the relationship ${pref}; it is ${level}.` });
   }
   for (const rule of state.bonds?.rules ?? []) {
@@ -24046,7 +24057,7 @@ function restrictionLine(unit, state) {
   if (list5.length === 0) return null;
   return h("p", { class: "alius-restrictions" }, ...joinWith(list5.map((r) => h("span", { class: "alius-chip", "data-restriction": r.kind, ...analyzeAttrs("glossary:restriction", { unitId: unit.id }) }, RESTRICTION_LABEL[r.kind])), " \xB7 "));
 }
-function publicityLine(unit, level, pref, ctx2) {
+function publicityLine(unit, level, pref, ctx2, concealed) {
   const live = { unitId: unit.id };
   return h(
     "p",
@@ -24054,7 +24065,7 @@ function publicityLine(unit, level, pref, ctx2) {
     h("span", { class: "alius-chip", "data-publicity": unit.id, ...analyzeAttrs("glossary:publicity", live) }, `PUBLICITY: ${level.toUpperCase()}`),
     " ",
     h("span", { class: "alius-chip", "data-publicity-pref": unit.id, ...analyzeAttrs("glossary:publicity", live) }, `SHE PREFERS: ${pref.toUpperCase()}`),
-    ...ctx2.onSetPublicity ? PUBLICITY_LEVELS.flatMap((l) => [" ", h("button", {
+    ...ctx2.onSetPublicity && !concealed ? PUBLICITY_LEVELS.flatMap((l) => [" ", h("button", {
       type: "button",
       class: "alius-btn alius-option",
       "data-publicity-set": l,
@@ -24071,7 +24082,7 @@ function bondBlock(unit, state, ctx2) {
   const live = { unitId: unit.id };
   const rules2 = (state.bonds?.rules ?? []).filter((r) => r.unitId === unit.id && (r.status === "active" || r.status === "negotiating" || r.status === "proposed" && r.delivered === true));
   const showWant = wantEligible(state, reg, unit.id) || wantOf(state, unit.id) > 0;
-  const open3 = state.relations[unit.id]?.publicity;
+  const open3 = intimacyOf(state).romance ? state.relations[unit.id]?.publicity : void 0;
   if (unit.bond === void 0 && !showWant && rules2.length === 0 && open3 === void 0) return null;
   const chip = (text2, address, extra = {}) => h("span", { class: "alius-chip", ...extra, ...analyzeAttrs(address, live) }, text2);
   const bond = unit.bond;
@@ -24079,7 +24090,7 @@ function bondBlock(unit, state, ctx2) {
     "div",
     { class: "alius-bond" },
     bond ? h("p", {}, chip(`LEADS: ${bond.leadStyle.toUpperCase()}`, "glossary:bond_profile", { "data-bond": "lead" }), " ", chip(`ATTACHES: ${bond.attachment.toUpperCase()}`, "glossary:bond_profile", { "data-bond": "attachment" }), " ", chip(`DESIRE: ${bond.desire.toUpperCase()}`, "glossary:bond_profile", { "data-bond": "desire" })) : null,
-    open3 ? publicityLine(unit, open3.level, bondOf(unit)?.publicity ?? "known", ctx2) : null,
+    open3 ? publicityLine(unit, open3.level, bondOf(unit)?.publicity ?? "known", ctx2, state.relations[unit.id]?.stateId === "secret_affair") : null,
     showWant ? h("p", {}, chip(`WANT: ${wantBand(wantOf(state, unit.id)).toUpperCase()}${raw ? ` (${wantOf(state, unit.id)})` : ""}`, "glossary:want", { "data-want": unit.id })) : null,
     rules2.length > 0 ? h("ul", { class: "alius-rules" }, ...rules2.map((r) => h("li", {}, h("span", {
       class: "alius-chip",
@@ -28123,7 +28134,7 @@ var stressProvider = (subject, env, knowledge) => {
 };
 function combatLines(state, env, unit, stat3) {
   const reg = env.registries;
-  const touches = (e) => e.type === "stat" && (e.stat === stat3 || e.stat === "all") || e.type === "outgoing" && stat3 === "atk" || e.type === "incoming" && stat3 === "def";
+  const touches = (e) => e.type === "stat" && (e.stat === stat3 || e.stat === "all") || e.type === "outgoing" && stat3 === "atk" && e.vs !== "heal" || e.type === "incoming" && stat3 === "def";
   const out = [];
   const add = (list5, source) => {
     if (!Array.isArray(list5)) return;

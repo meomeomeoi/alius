@@ -1,4 +1,5 @@
 import { smotherActive } from '../engine/bonds';
+import { restrictionReason } from '../engine/discipline';
 import type { EngineEvent } from '../engine/dispatch';
 import type { CampaignState } from '../engine/state/types';
 import { generateRuleFlavor } from '../llm/calls/flavor';
@@ -73,6 +74,7 @@ export function createBonds(deps: BondsDeps): BondsController {
       const hold = s ? smotherActive(s) : null;
       if (!s || !hold || opening || !deps.startScene) return false;
       if (s.slot === 'night' || s.scene || s.combat || s.expedition || s.calendar.pendingScene || s.calendar.nightEvent) return false;
+      if (restrictionReason(s, hold.unitId, 'scene') !== null) return false; // the brig or extra duty: no scene, so no retry storm
       opening = true;
       try {
         const ok = await deps.startScene({ locationId: 'quarters_unit', participants: [hold.unitId], origin: 'event' });
