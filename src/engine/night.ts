@@ -1,6 +1,7 @@
 import type { Entry, Registries } from '../content/types';
 import type { NightSpec } from '../content/schemas';
 import type { EngineEvent } from './dispatch';
+import { contentAllowed } from './bonds/content';
 import { isLiving } from './economy';
 import { nextId } from './memory';
 import type { Rng } from './rng';
@@ -48,11 +49,13 @@ export function rollNight(draft: CampaignState, reg: Registries, rng: Rng, trigg
     if (u.kind !== 'named' || !isLiving(u)) continue;
     for (const spec of specsOf(draft, reg, u.id, usable)) {
       if (spec.trigger !== trigger) continue;
+      if (!contentAllowed(draft, reg, spec, u.id)) continue; // P9d: a tagged knock needs its category on and not among her limits (no draw)
       if (!rng.chance(Math.min(1, spec.chance * mult))) continue;
       const entry: NightEntry = {
         id: nextId(draft, 'n'), unitId: u.id, kind: spec.kind, priority: spec.priority,
         framing: spec.framing.replace('{name}', u.displayName), ignore: { ...spec.ignore } as NightEntry['ignore'],
         expiresDay: draft.day + EXPIRES_IN_DAYS,
+        ...(spec.contentTags && spec.contentTags.length > 0 ? { contentTags: [...spec.contentTags] } : {}),
       };
       if (enqueueNight(draft, entry)) events.push({ type: 'night_queued', entry });
     }

@@ -308,7 +308,7 @@ tests/**                                           mirrors src; tests/helpers/bo
   - action `content/set_categories`
 - Consumes: `familyEnabled` (P8), `eligibleTemplates` (P9), `nightSpecs` in `night.ts`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `p9dSchemas`:
     - `contentCategories loads nine core categories with descriptions`
     - `contentTags with an unknown category is a load error`
@@ -325,14 +325,14 @@ tests/**                                           mirrors src; tests/helpers/bo
     - `an old save runs the bonds day step` (state without any P9d field).
   - The **all-registries test**: `every registry in CONTENT_GATED_REGISTRIES has a probe and no probe returns a tagged entry while disabled`. It uses a fixture pack in `tests/fixtures/packs/p9d_gate/` that adds one tagged entry per gated registry. `GATE_PROBES` in `tests/helpers/bonds.ts` maps each registry to the engine function that picks from it, run over 50 seeded picks.
   - `core.test`: `relationshipStates: the five romantic and five close tiers`.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/bonds tests/content` and confirm FAIL (missing modules).
-- [ ] **Step 3: Implement.**
+- [x] **Step 2: Run** `npx vitest run tests/engine/bonds tests/content` and confirm FAIL (missing modules).
+- [x] **Step 3: Implement.**
   - Schemas: `ContentCategorySchema { label ≤ 40, description ≤ 200, order }`, and `contentTags: z.array(str).optional()` on the gated schemas.
   - A `registerChecks` for every registry rejects stray or unknown tags.
   - `bondTier` on the 10 states of the ruling.
   - `familyEnabled` becomes `family check && contentAllowed(state, reg, entry)`; its `WorldHolder` parameter widens to accept `content?`.
-- [ ] **Step 4: Run** `npm test` and confirm PASS.
-- [ ] **Step 5: Commit** `feat(content): content categories, the content gate and P9d state`.
+- [x] **Step 4: Run** `npm test` and confirm PASS.
+- [x] **Step 5: Commit** `feat(content): content categories, the content gate and P9d state`.
 
 ### Task 2: Bond profile on units, setup and re-sync
 

@@ -41,6 +41,8 @@ registrySchemas.flags = FlagSchema;
 const str = z.string().min(1);
 const int = z.number().int();
 const valueAxis = z.enum(VALUE_AXES);
+/** P9d: content categories (registry `contentCategories`) this entry belongs to; checked against the registry and the gated registries at load. */
+const contentTags = z.array(z.string().min(1)).optional();
 
 export const ValuesSchema = z.object(
   Object.fromEntries(VALUE_AXES.map((a) => [a, int.min(-3).max(3)])) as Record<
@@ -610,6 +612,8 @@ export const NightSpecSchema = z.object({
   framing: str,
   /** What ignoring the knock does: an intent event from the commander's side. */
   ignore: z.object({ event: str, severity: severityEnum }).strict(),
+  /** P9d: the spec is never queued while one of these categories is off, or is among her own limits. */
+  contentTags,
 }).strict();
 export type NightSpec = z.infer<typeof NightSpecSchema>;
 
@@ -627,6 +631,8 @@ export const RelationshipStateSchema = BaseEntrySchema.extend({
   dependency: int.min(0).max(40).optional(),
   /** P7: only a commander with this trait can reach the state. */
   requiresTrait: str.optional(),
+  /** P9d: `romantic` states carry Want, publicity and a scene lead; `close` ones let her propose rules. Code reads the tier, never the id. */
+  bondTier: z.enum(['romantic', 'close']).optional(),
   entry: z.object({
     via: z.array(z.enum(['automatic', 'event', 'proposal'])).min(1),
     /** Empty or absent = from any state. */
@@ -891,6 +897,7 @@ export const ClockSchema = BaseEntrySchema.extend({
   repeat: z.boolean().optional(),
   /** P8: the entry exists only while some world choice enables this family. */
   family: str.optional(),
+  contentTags,
 }).superRefine((c, ctx) => {
   if (c.startFilled >= c.segments) ctx.addIssue({ code: 'custom', path: ['startFilled'], message: 'startFilled must be below segments' });
 });
@@ -921,6 +928,7 @@ export const MissionTemplateSchema = BaseEntrySchema.extend({
   briefs: z.array(str.max(300)).min(1),
   /** P8: see ClockSchema. */
   family: str.optional(),
+  contentTags,
   /** P11: the tutorial run of the prologue. Never offered by the director, the fallback or rumors; needs a `fixedMap`. */
   tutorial: z.literal(true).optional(),
   /** P11: an authored node map: 1 to 4 layers of 1 to 3 nodes, then the objective node. `eventId` pins an event node's template. */
@@ -1001,6 +1009,7 @@ export const DilemmaTemplateSchema = BaseEntrySchema.extend({
   constraints: z.object({ flagPerOption: z.boolean().optional() }).strict().optional(),
   /** P8: see ClockSchema. */
   family: str.optional(),
+  contentTags,
 }).superRefine((d, ctx) => {
   if (d.scale === 'minor' && d.contexts.includes('expedition_event') && d.fixed === undefined) {
     ctx.addIssue({ code: 'custom', path: ['fixed'], message: 'a minor expedition event needs a fixed block' });
@@ -1337,6 +1346,7 @@ export const PunishmentSchema = BaseEntrySchema.extend({
   perception: z.array(z.object({ tag: str, multiplier: z.number().min(0.5).max(3) }).strict()),
   /** `none` skips the disposition's loss multiplier (a cost the world cannot soften or sharpen). */
   dispositionScaling: z.enum(['loss', 'none']),
+  contentTags,
 }).strict().superRefine((p, ctx) => {
   if (p.sideEffects.filter((e) => EXCLUSIVE_EFFECTS.includes(e.type)).length > 1) {
     ctx.addIssue({ code: 'custom', path: ['sideEffects'], message: 'at most one of confine, no_leave, bench and duty per punishment' });
@@ -1383,6 +1393,7 @@ export const DemandTemplateSchema = BaseEntrySchema.extend({
     flagsNone: z.array(str).optional(),
   }).strict(),
   weight: z.number().min(0.1).max(20),
+  contentTags,
 }).strict();
 
 const deedCounter = z.enum(DEED_COUNTERS);
@@ -1632,6 +1643,18 @@ export const UiUnlockSchema = BaseEntrySchema.extend({
 }).strict();
 
 Object.assign(registrySchemas, { prologues: PrologueSchema, uiUnlocks: UiUnlockSchema });
+
+// ---------------------------------------------------------------------------------------------
+// P9d: content categories. Every category is off until the player turns it on (campaign `content.enabled`).
+
+export const ContentCategorySchema = BaseEntrySchema.extend({
+  label: str.max(40),
+  description: str.max(200),
+  /** Display order (setup and SYS list them by it). */
+  order: int,
+}).strict();
+
+registrySchemas.contentCategories = ContentCategorySchema;
 
 /** Player-visible registries whose entries carry an optional `description` (skills and statuses already require one). */
 export const DESCRIBED_REGISTRIES = [

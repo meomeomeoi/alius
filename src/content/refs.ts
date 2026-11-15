@@ -1,3 +1,4 @@
+import { CONTENT_GATED_REGISTRIES } from '../engine/bonds/content';
 import { INTERNAL_HISTORY_TYPES } from '../engine/relations/vocab';
 import { TUNING } from '../engine/tuning';
 import { COMMAND_STANCE_IDS, DESCRIBED_REGISTRIES, HUB_HOSTS, type Conditions } from './schemas';
@@ -724,4 +725,31 @@ for (const registry of ['glossary', ...DESCRIBED_REGISTRIES] as RegistryName[]) 
       const r = resolveLink(target);
       return 'unknown' in r ? [{ path, message: `unknown source "${r.unknown}" in link "${target}"` }] : [];
     }));
+}
+
+// ---------------------------------------------------------------------------------------------
+// P9d: `contentTags` belong to the gated registries (and to the night specs of defects and relationship states) and name
+// registered content categories
+
+registerChecks('defects', (entry, regs) => nightTagChecks('nightEvents', entry.nightEvents, regs));
+registerChecks('relationshipStates', (entry, regs) => nightTagChecks('unlocks.nightEvents', (entry.unlocks as { nightEvents?: unknown } | undefined)?.nightEvents, regs));
+
+function nightTagChecks(path: string, specs: unknown, regs: Record<RegistryName, Map<string, Entry>>): RegistryCheck[] {
+  if (!Array.isArray(specs)) return [];
+  return specs.flatMap((spec, i) => tagChecks(`${path}[${i}].contentTags`, (spec as { contentTags?: unknown })?.contentTags, regs));
+}
+
+function tagChecks(path: string, tags: unknown, regs: Record<RegistryName, Map<string, Entry>>): RegistryCheck[] {
+  if (!Array.isArray(tags)) return [];
+  return tags.filter((t) => !regs.contentCategories.has(String(t))).map((t) => ({ path, message: `unknown content category "${String(t)}"` }));
+}
+
+for (const registry of REGISTRY_NAMES) {
+  registerChecks(registry, (entry, regs) => {
+    if (entry.contentTags === undefined) return [];
+    if (!(CONTENT_GATED_REGISTRIES as readonly string[]).includes(registry)) {
+      return [{ path: 'contentTags', message: `contentTags is not allowed on ${registry} (only on ${CONTENT_GATED_REGISTRIES.join(', ')})` }];
+    }
+    return tagChecks('contentTags', entry.contentTags, regs);
+  });
 }

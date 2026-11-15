@@ -1,5 +1,6 @@
 import type { WorldChoice, WorldOptionEffect } from '../../content/schemas';
 import type { Entry, Registries } from '../../content/types';
+import { contentAllowed, type ContentHolder } from '../bonds/content';
 import type { CampaignState } from '../state/types';
 
 /**
@@ -9,7 +10,7 @@ import type { CampaignState } from '../state/types';
  */
 
 /** Anything with the chosen options: a campaign, or a wizard's choices (`{ world: { options } }`). */
-export type WorldHolder = { world: Pick<CampaignState['world'], 'options'> };
+export type WorldHolder = { world: Pick<CampaignState['world'], 'options'> } & Pick<ContentHolder, 'content'>;
 export type WorldOptionEntry = Entry & { choices: WorldChoice[]; default: string };
 
 /** Effect types that make a `squadStance` choice non-neutral: the stances of a unit only count under such a choice. */
@@ -70,8 +71,9 @@ export function activeFamilies(state: WorldHolder, reg: Registries): string[] {
 /**
  * Whether an entry (a clock, mission template or dilemma template) may be drawn: one without a `family` always may, one with
  * a family only while some current choice enables it. Entries already in a save keep running when their family goes off.
+ * P9d: an entry tagged with a content category that is off is never drawn either (`contentAllowed`).
  */
 export function familyEnabled(state: WorldHolder, reg: Registries, entry: object): boolean {
   const family = (entry as { family?: unknown }).family;
-  return typeof family !== 'string' || activeFamilies(state, reg).includes(family);
+  return (typeof family !== 'string' || activeFamilies(state, reg).includes(family)) && contentAllowed(state, reg, entry);
 }

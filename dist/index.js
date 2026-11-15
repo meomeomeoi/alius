@@ -317,6 +317,60 @@ var TUNING = Object.freeze({
       unit: Object.freeze({ minor: 2, moderate: 5, major: 10 })
     })
   }),
+  /**
+   * P9d: desire and bonds. Spec numbers verbatim (Want 0–100, rises +4 / +7, ×1.4 intense, ×0.6 avoidant, Attraction ≥ 60,
+   * bands 40 / 70 / 90); everything else is a DRAFT balance value, the author's to change.
+   */
+  bonds: Object.freeze({
+    /** Character limits shared by the profile, her note and what extraction reports. */
+    limits: Object.freeze({ noteMax: 160, evidenceMax: 120, maxViolations: 3, sceneLimitMax: 160 }),
+    lead: Object.freeze({
+      styleBase: Object.freeze({ yielding: 15, balanced: 40, assertive: 60, dominant: 75 }),
+      /** The score moves by this much per point of Impunity above or below `impunityRef`. */
+      impunityWeight: 0.2,
+      impunityRef: 50,
+      dominanceBonus: 15,
+      /** Per `commander_yielded` / `followed_lead` (+) or `commander_enforced` (−) on her in the last `windowDays`, capped. */
+      perYield: 10,
+      yieldCap: 20,
+      perEnforced: 10,
+      enforcedCap: 20,
+      windowDays: 3,
+      /** A state with `leadBonus` adds it while her style is at least assertive. */
+      stateBonus: 10,
+      unitAtLeast: 60,
+      commanderAtMost: 35
+    }),
+    want: Object.freeze({
+      max: 100,
+      rise: Object.freeze({ medium: 4, high: 7 }),
+      attachmentFactor: Object.freeze({ slow: 1, steady: 1, intense: 1.4, avoidant: 0.6 }),
+      attractionMin: 60,
+      /** An ineligible unit's Want fades this much a day. */
+      decayPerDay: 5,
+      bands: Object.freeze({ restless: 40, aching: 70, desperate: 90 }),
+      initiativeMult: 1.5,
+      stressPerDay: 2,
+      visit: Object.freeze({ chance: 0.25, priority: 55, ignore: Object.freeze({ event: "dismissed", severity: "moderate" }) }),
+      /** What lowers Want (draft). */
+      relief: Object.freeze({ intimateScene: 60, romanticScene: 25, companion: 5, train: 15, expeditionDay: 10, expeditionMinDanger: 3, wantVisit: 30 }),
+      demandEveryDays: 3,
+      /** A SATISFY answer queues tonight's visit at this priority. */
+      satisfyPriority: 90,
+      breakdownMoneyCost: 10
+    }),
+    rules: Object.freeze({
+      /** Daily chance a leading partner proposes a rule, × the lead-style multiplier. */
+      chance: 0.12,
+      leadMult: Object.freeze({ assertive: 1, dominant: 1.5 }),
+      maxActive: 3,
+      textMax: 160
+    }),
+    publicity: Object.freeze({
+      /** `publicReactions`: what the other units do once a relationship turns public while she leads. */
+      reactions: Object.freeze({ lostRespectRecord: 4, respectTrust: 2 })
+    })
+  }),
   /** P6: defect arcs. */
   arc: Object.freeze({
     minDay: 5,
@@ -636,7 +690,7 @@ var Rng = class {
 // src/engine/dispatch.ts
 var handlers = /* @__PURE__ */ new Map();
 var ONBOARDING_HINT = "onboarding/hint_seen";
-var EXPEDITION_OPEN_PREFIXES = ["expedition/", "combat/", "director/", "debug/", "dilemma/", "relations/commander_injured", ONBOARDING_HINT];
+var EXPEDITION_OPEN_PREFIXES = ["expedition/", "combat/", "director/", "debug/", "dilemma/", "relations/commander_injured", ONBOARDING_HINT, "content/"];
 var BLOCKED_BY_DILEMMA = ["activity/", "calendar/consume_slot", "scene/start", "expedition/start"];
 function registerAction(type, handler2) {
   if (handlers.has(type)) throw new Error(`Duplicate action type: ${type}`);
@@ -712,6 +766,62 @@ var initialLoyaltyBand = (trust, shift = NO_SHIFT) => {
   return trust < L.breakingEnter + shift.enter ? "breaking" : trust < L.waveringEnter + shift.enter ? "wavering" : "steady";
 };
 
+// src/engine/bonds/profile.ts
+var MODEST_BOND = Object.freeze({
+  leadStyle: "balanced",
+  attachment: "steady",
+  desire: "low",
+  caretaker: false,
+  ownLimits: Object.freeze({ categories: Object.freeze([]) }),
+  publicity: "known"
+});
+function bondOf(unit) {
+  if (unit.kind !== "named") return null;
+  return unit.bond ?? MODEST_BOND;
+}
+
+// src/engine/bonds/content.ts
+var CONTENT_GATED_REGISTRIES = ["demandTemplates", "punishments", "dilemmaTemplates", "missionTemplates", "clocks"];
+var enabledCategories = (state) => state.content?.enabled ?? [];
+var tagsOf = (entry) => {
+  const tags = entry.contentTags;
+  return Array.isArray(tags) ? tags.map(String) : [];
+};
+function contentAllowed(state, _reg, entry, unitId) {
+  const tags = tagsOf(entry);
+  if (tags.length === 0) return true;
+  const on = enabledCategories(state);
+  if (tags.some((t) => !on.includes(t))) return false;
+  if (unitId === void 0) return true;
+  const unit = state.squad?.find((u) => u.id === unitId);
+  const limits = unit ? bondOf(unit)?.ownLimits.categories ?? [] : [];
+  return !tags.some((t) => limits.includes(t));
+}
+function setCategories(draft, reg, enabled) {
+  const known = [...reg.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => String(c.id));
+  const next = known.filter((id) => enabled.includes(id));
+  const before = enabledCategories(draft);
+  const added = next.filter((id) => !before.includes(id));
+  const removed = before.filter((id) => !next.includes(id));
+  draft.content = { enabled: next };
+  if (added.length === 0 && removed.length === 0) return [];
+  if (removed.length > 0) withdrawTagged(draft, reg, removed);
+  return [{ type: "content_changed", added, removed }];
+}
+function withdrawTagged(draft, reg, removed) {
+  const hit = (tags) => tags.some((t) => removed.includes(t));
+  const demands = draft.discipline?.demands;
+  if (draft.discipline && demands) {
+    const gone = demands.filter((d) => hit(tagsOf(reg.demandTemplates.get(d.templateId) ?? {})));
+    if (gone.length > 0) {
+      draft.discipline.demands = demands.filter((d) => !gone.includes(d));
+      draft.discipline.demandLog = draft.discipline.demandLog.filter((e) => !gone.some((d) => d.unitId === e.unitId && d.day === e.day && d.templateId === e.templateId));
+    }
+  }
+  draft.calendar.nightEventsQueue = draft.calendar.nightEventsQueue.filter((e) => !hit(e.contentTags ?? []));
+  if (draft.calendar.nightEvent && hit(draft.calendar.nightEvent.contentTags ?? [])) delete draft.calendar.nightEvent;
+}
+
 // src/engine/worldOptions/options.ts
 var NON_NEUTRAL = ["expression_norm", "enable_family", "mission_reward_pct"];
 var optionEntries = (reg) => [...reg.worldOptions.values()];
@@ -749,7 +859,7 @@ function activeFamilies(state, reg) {
 }
 function familyEnabled(state, reg, entry) {
   const family = entry.family;
-  return typeof family !== "string" || activeFamilies(state, reg).includes(family);
+  return (typeof family !== "string" || activeFamilies(state, reg).includes(family)) && contentAllowed(state, reg, entry);
 }
 
 // src/engine/worldOptions/norm.ts
@@ -5362,7 +5472,9 @@ var REGISTRY_NAMES = [
   "uiSounds",
   // P11
   "prologues",
-  "uiUnlocks"
+  "uiUnlocks",
+  // P9d (`relationshipRuleTemplates` joins in chunk (b))
+  "contentCategories"
 ];
 var PackManifestSchema = external_exports.object({
   id: external_exports.string().min(1),
@@ -5435,6 +5547,7 @@ registrySchemas.flags = FlagSchema;
 var str = external_exports.string().min(1);
 var int = external_exports.number().int();
 var valueAxis = external_exports.enum(VALUE_AXES);
+var contentTags = external_exports.array(external_exports.string().min(1)).optional();
 var ValuesSchema = external_exports.object(
   Object.fromEntries(VALUE_AXES.map((a) => [a, int.min(-3).max(3)]))
 );
@@ -6069,7 +6182,9 @@ var NightSpecSchema = external_exports.object({
   /** Shown as the knock; `{name}` is replaced by the unit's name. */
   framing: str,
   /** What ignoring the knock does: an intent event from the commander's side. */
-  ignore: external_exports.object({ event: str, severity: severityEnum }).strict()
+  ignore: external_exports.object({ event: str, severity: severityEnum }).strict(),
+  /** P9d: the spec is never queued while one of these categories is off, or is among her own limits. */
+  contentTags
 }).strict();
 var RelationshipStateSchema = BaseEntrySchema.extend({
   name: str,
@@ -6085,6 +6200,8 @@ var RelationshipStateSchema = BaseEntrySchema.extend({
   dependency: int.min(0).max(40).optional(),
   /** P7: only a commander with this trait can reach the state. */
   requiresTrait: str.optional(),
+  /** P9d: `romantic` states carry Want, publicity and a scene lead; `close` ones let her propose rules. Code reads the tier, never the id. */
+  bondTier: external_exports.enum(["romantic", "close"]).optional(),
   entry: external_exports.object({
     via: external_exports.array(external_exports.enum(["automatic", "event", "proposal"])).min(1),
     /** Empty or absent = from any state. */
@@ -6326,7 +6443,8 @@ var ClockSchema = BaseEntrySchema.extend({
   onFill: external_exports.array(WorldEffectSchema),
   repeat: external_exports.boolean().optional(),
   /** P8: the entry exists only while some world choice enables this family. */
-  family: str.optional()
+  family: str.optional(),
+  contentTags
 }).superRefine((c, ctx2) => {
   if (c.startFilled >= c.segments) ctx2.addIssue({ code: "custom", path: ["startFilled"], message: "startFilled must be below segments" });
 });
@@ -6355,6 +6473,7 @@ var MissionTemplateSchema = BaseEntrySchema.extend({
   briefs: external_exports.array(str.max(300)).min(1),
   /** P8: see ClockSchema. */
   family: str.optional(),
+  contentTags,
   /** P11: the tutorial run of the prologue. Never offered by the director, the fallback or rumors; needs a `fixedMap`. */
   tutorial: external_exports.literal(true).optional(),
   /** P11: an authored node map: 1 to 4 layers of 1 to 3 nodes, then the objective node. `eventId` pins an event node's template. */
@@ -6423,7 +6542,8 @@ var DilemmaTemplateSchema = BaseEntrySchema.extend({
   allowedFlags: external_exports.array(str).optional(),
   constraints: external_exports.object({ flagPerOption: external_exports.boolean().optional() }).strict().optional(),
   /** P8: see ClockSchema. */
-  family: str.optional()
+  family: str.optional(),
+  contentTags
 }).superRefine((d, ctx2) => {
   if (d.scale === "minor" && d.contexts.includes("expedition_event") && d.fixed === void 0) {
     ctx2.addIssue({ code: "custom", path: ["fixed"], message: "a minor expedition event needs a fixed block" });
@@ -6702,7 +6822,8 @@ var PunishmentSchema = BaseEntrySchema.extend({
   /** A tag among her likes, dislikes or triggers multiplies the deltas and the deterrence (the highest match wins). */
   perception: external_exports.array(external_exports.object({ tag: str, multiplier: external_exports.number().min(0.5).max(3) }).strict()),
   /** `none` skips the disposition's loss multiplier (a cost the world cannot soften or sharpen). */
-  dispositionScaling: external_exports.enum(["loss", "none"])
+  dispositionScaling: external_exports.enum(["loss", "none"]),
+  contentTags
 }).strict().superRefine((p, ctx2) => {
   if (p.sideEffects.filter((e) => EXCLUSIVE_EFFECTS.includes(e.type)).length > 1) {
     ctx2.addIssue({ code: "custom", path: ["sideEffects"], message: "at most one of confine, no_leave, bench and duty per punishment" });
@@ -6743,7 +6864,8 @@ var DemandTemplateSchema = BaseEntrySchema.extend({
     statesAny: external_exports.array(str).optional(),
     flagsNone: external_exports.array(str).optional()
   }).strict(),
-  weight: external_exports.number().min(0.1).max(20)
+  weight: external_exports.number().min(0.1).max(20),
+  contentTags
 }).strict();
 var deedCounter = external_exports.enum(DEED_COUNTERS);
 var ReputationSchema = BaseEntrySchema.extend({
@@ -6936,6 +7058,13 @@ var UiUnlockSchema = BaseEntrySchema.extend({
   notice: str.max(160)
 }).strict();
 Object.assign(registrySchemas, { prologues: PrologueSchema, uiUnlocks: UiUnlockSchema });
+var ContentCategorySchema = BaseEntrySchema.extend({
+  label: str.max(40),
+  description: str.max(200),
+  /** Display order (setup and SYS list them by it). */
+  order: int
+}).strict();
+registrySchemas.contentCategories = ContentCategorySchema;
 var DESCRIBED_REGISTRIES = [
   "roles",
   "skills",
@@ -8518,6 +8647,7 @@ function rollNight(draft, reg, rng, trigger) {
     if (u.kind !== "named" || !isLiving(u)) continue;
     for (const spec of specsOf(draft, reg, u.id, usable3)) {
       if (spec.trigger !== trigger) continue;
+      if (!contentAllowed(draft, reg, spec, u.id)) continue;
       if (!rng.chance(Math.min(1, spec.chance * mult))) continue;
       const entry = {
         id: nextId(draft, "n"),
@@ -8526,7 +8656,8 @@ function rollNight(draft, reg, rng, trigger) {
         priority: spec.priority,
         framing: spec.framing.replace("{name}", u.displayName),
         ignore: { ...spec.ignore },
-        expiresDay: draft.day + EXPIRES_IN_DAYS
+        expiresDay: draft.day + EXPIRES_IN_DAYS,
+        ...spec.contentTags && spec.contentTags.length > 0 ? { contentTags: [...spec.contentTags] } : {}
       };
       if (enqueueNight(draft, entry)) events.push({ type: "night_queued", entry });
     }
@@ -10300,7 +10431,7 @@ function eligible(state, reg, unit, t) {
 function eligibleTemplates(state, reg, unitId) {
   const unit = state.squad.find((u) => u.id === unitId);
   if (!unit || unit.kind !== "named" || !isLiving(unit) || !state.relations[unitId]) return [];
-  return [...reg.demandTemplates.values()].filter((t) => eligible(state, reg, unit, t));
+  return [...reg.demandTemplates.values()].filter((t) => contentAllowed(state, reg, t, unitId) && eligible(state, reg, unit, t));
 }
 function openDemand(draft, ctx2, unitId, opts = {}) {
   const reg = ctx2.registries;
@@ -10738,7 +10869,11 @@ function undoThreat(draft, ctx2, id) {
 }
 
 // src/engine/discipline/index.ts
-var measureList = (reg) => [...reg.punishments.keys(), "leash", "unspecified"];
+var measureList = (reg, state) => [
+  ...[...reg.punishments.values()].filter((p) => state === void 0 || contentAllowed(state, reg, p)).map((p) => String(p.id)),
+  "leash",
+  "unspecified"
+];
 
 // src/engine/relations/intents.ts
 var emptyIntents = () => ({ events: [], facts: [], proposals: [], promises: [], stressHints: [] });
@@ -10757,7 +10892,7 @@ function evidenceOf(v) {
   if (typeof v !== "string") return "";
   return v.trim().split(/\s+/).filter(Boolean).slice(0, EVIDENCE_WORDS).join(" ").slice(0, EVIDENCE_CHARS);
 }
-function tagsOf(v) {
+function tagsOf2(v) {
   const out = [];
   for (const t of arr(v)) {
     const n = normalizeTag(t);
@@ -10799,7 +10934,7 @@ function validateIntents(raw, ctx2) {
       }
       if (axes.length > 0) intent.valueAxes = axes;
     }
-    const tags = tagsOf(e.tags);
+    const tags = tagsOf2(e.tags);
     if (tags.length > 0) intent.tags = tags;
     out.events.push(intent);
     if (out.events.length >= (ctx2.maxEvents ?? TUNING.relations.maxEventsPerExchange)) break;
@@ -10815,7 +10950,7 @@ function validateIntents(raw, ctx2) {
       if (about.length === 0) continue;
     }
     const imp = typeof f.importance === "number" && Number.isFinite(f.importance) ? Math.round(f.importance) : 3;
-    out.facts.push({ about, text: text2, importance: Math.min(5, Math.max(1, imp)), tags: tagsOf(f.tags) });
+    out.facts.push({ about, text: text2, importance: Math.min(5, Math.max(1, imp)), tags: tagsOf2(f.tags) });
   }
   for (const p of arr(raw.proposals)) {
     if (!isObj5(p)) continue;
@@ -11011,7 +11146,7 @@ var GATED_EVENTS = ["commander_enforced", "threatened"];
 var CONFIDENCE_EPS2 = 1e-9;
 function applyIntents(draft, ctx2, p) {
   const reg = ctx2.registries;
-  const intents = validateIntents(p.intents, { participants: p.participants, squad: draft.squad, maxEvents: TUNING.relations.maxEventsRead, measures: measureList(reg) });
+  const intents = validateIntents(p.intents, { participants: p.participants, squad: draft.squad, maxEvents: TUNING.relations.maxEventsRead, measures: measureList(reg, draft) });
   const events = [];
   const touched = /* @__PURE__ */ new Set();
   const landed = [];
@@ -15816,10 +15951,19 @@ registerAction("reputation/introduce", (draft, payload, ctx2) => {
   return introduceNickname(draft, ctx2, payload.unitId);
 });
 
+// src/engine/actions/bonds.ts
+var isObj17 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+registerAction("content/set_categories", (draft, payload, ctx2) => {
+  if (!isObj17(payload) || !Array.isArray(payload.enabled) || payload.enabled.some((x) => typeof x !== "string")) {
+    throw new Error("content/set_categories needs { enabled: string[] }");
+  }
+  return setCategories(draft, ctx2.registries, payload.enabled);
+});
+
 // src/engine/dilemma/effects.ts
 var EFFECT_KINDS = ["resource", "unit_event", "faction", "clock", "flag", "stress", "social_check"];
 var MAGNITUDES = ["small", "medium", "large"];
-var isObj17 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj18 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var slot = (m) => m === "small" ? 0 : m === "medium" ? 1 : 2;
 var shape = (reason) => ({ rule: "shape", reason });
 var flagRule = (reason) => ({ rule: 6, reason });
@@ -15828,7 +15972,7 @@ function plainText(v, max) {
   return t.slice(0, max).trim();
 }
 function toWorldEffect(raw, ctx2) {
-  if (!isObj17(raw)) return shape("An effect must be an object.");
+  if (!isObj18(raw)) return shape("An effect must be an object.");
   const { kind, target, direction, magnitude } = raw;
   if (!EFFECT_KINDS.includes(kind)) return shape(`Unknown effect kind "${String(kind)}".`);
   if (typeof target !== "string" || target === "") return shape("An effect needs a target.");
@@ -15886,12 +16030,12 @@ function toWorldEffect(raw, ctx2) {
 }
 
 // src/engine/dilemma/validate.ts
-var isObj18 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj19 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var clamp21 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var cutWords3 = (text2, max) => text2.split(" ").filter(Boolean).slice(0, max).join(" ");
 function parseOption(raw, index, ctx2, bad) {
   const at = (reason, rule = "shape") => void bad.push({ rule, option: index, reason });
-  if (!isObj18(raw)) return at("An option must be an object."), null;
+  if (!isObj19(raw)) return at("An option must be an object."), null;
   if (typeof raw.label !== "string" || plainText(raw.label, 400) === "") return at("An option needs a label."), null;
   if (!Array.isArray(raw.effects) || raw.effects.length === 0 || raw.effects.length > 6) return at("An option needs 1 to 6 effects."), null;
   const option = {
@@ -15923,8 +16067,8 @@ function parseOption(raw, index, ctx2, bad) {
   }
   if (raw.requires !== void 0) {
     const r = raw.requires;
-    const stat3 = isObj18(r) ? r.socialStat ?? r.stat : void 0;
-    if (!isObj18(r) || !SOCIAL_STATS.includes(stat3) || typeof r.rank !== "number" || !Number.isInteger(r.rank) || r.rank < 1 || r.rank > 5) {
+    const stat3 = isObj19(r) ? r.socialStat ?? r.stat : void 0;
+    if (!isObj19(r) || !SOCIAL_STATS.includes(stat3) || typeof r.rank !== "number" || !Number.isInteger(r.rank) || r.rank < 1 || r.rank > 5) {
       at("requires needs { socialStat, rank } with a rank from 1 to 5.");
       failed = true;
     } else option.requires = { stat: stat3, rank: r.rank };
@@ -15938,7 +16082,7 @@ function parseOption(raw, index, ctx2, bad) {
 function parseDilemmaOutput(raw, ctx2) {
   const bad = [];
   try {
-    if (!isObj18(raw)) return { rejected: [{ rule: "shape", reason: "The answer must be an object." }] };
+    if (!isObj19(raw)) return { rejected: [{ rule: "shape", reason: "The answer must be an object." }] };
     if (typeof raw.title !== "string" || plainText(raw.title, 200) === "") bad.push({ rule: "shape", reason: "A dilemma needs a title." });
     if (typeof raw.setup !== "string" || plainText(raw.setup, 2e3) === "") bad.push({ rule: "shape", reason: "A dilemma needs a setup." });
     const want = ctx2.template.optionCount ?? 3;
@@ -16312,31 +16456,31 @@ function pacingStep(draft, ctx2) {
 }
 
 // src/engine/actions/dilemma.ts
-var isObj19 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj20 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 registerDayEndStep("director_tick", pacingStep);
 registerAction("dilemma/request", (draft, payload, ctx2) => {
-  const p = isObj19(payload) ? payload : {};
+  const p = isObj20(payload) ? payload : {};
   if (typeof p.templateId !== "string" || typeof p.context !== "string") throw new Error("dilemma/request needs { templateId, context }");
   return openDilemma(draft, ctx2, { templateId: p.templateId, context: p.context });
 });
 registerAction("dilemma/present", (draft, payload, ctx2) => {
-  const p = isObj19(payload) ? payload : {};
+  const p = isObj20(payload) ? payload : {};
   return presentDilemma(draft, ctx2, p.requestId, p.output);
 });
 registerAction("dilemma/fallback", (draft, payload, ctx2) => {
-  const p = isObj19(payload) ? payload : {};
+  const p = isObj20(payload) ? payload : {};
   return fallbackDilemma(draft, ctx2, p.requestId);
 });
 registerAction("dilemma/choose", (draft, payload, ctx2) => {
-  const p = isObj19(payload) ? payload : {};
+  const p = isObj20(payload) ? payload : {};
   return chooseDilemma(draft, ctx2, p.id, p.index, readRoutePick(p.route));
 });
 
 // src/engine/actions/arc.ts
-var isObj20 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj21 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 registerActivityHook(arcActivityHook);
 registerAction("arc/decide", (draft, payload, ctx2) => {
-  const p = isObj20(payload) ? payload : {};
+  const p = isObj21(payload) ? payload : {};
   if (typeof p.unitId !== "string" || typeof p.defectId !== "string" || typeof p.path !== "string") {
     throw new Error("arc/decide needs { unitId, defectId, path, compel? }");
   }
@@ -16344,9 +16488,9 @@ registerAction("arc/decide", (draft, payload, ctx2) => {
 });
 
 // src/engine/actions/items.ts
-var isObj21 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj22 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 registerAction("item/equip", (draft, payload, ctx2) => {
-  if (!isObj21(payload) || typeof payload.unitId !== "string" || typeof payload.uid !== "string") {
+  if (!isObj22(payload) || typeof payload.unitId !== "string" || typeof payload.uid !== "string") {
     throw new Error("item/equip needs { unitId, uid }");
   }
   const unit = draft.squad.find((u) => u.id === payload.unitId);
@@ -16364,7 +16508,7 @@ registerAction("item/equip", (draft, payload, ctx2) => {
   return [{ type: "item_equipped", unitId: unit.id, slot: slot2, uid: inst.uid, from: previous?.id ?? null }];
 });
 registerAction("item/unequip", (draft, payload) => {
-  if (!isObj21(payload) || typeof payload.unitId !== "string" || !["weapon", "upper", "lower"].includes(String(payload.slot))) {
+  if (!isObj22(payload) || typeof payload.unitId !== "string" || !["weapon", "upper", "lower"].includes(String(payload.slot))) {
     throw new Error("item/unequip needs { unitId, slot }");
   }
   const unit = draft.squad.find((u) => u.id === payload.unitId);
@@ -16394,7 +16538,7 @@ var ownedItem = (draft, uid) => {
 };
 registerAction("item/craft", (draft, payload, ctx2) => {
   session(draft);
-  const id = isObj21(payload) ? payload.recipeId : void 0;
+  const id = isObj22(payload) ? payload.recipeId : void 0;
   const recipe = typeof id === "string" ? ctx2.registries.recipes.get(id) : void 0;
   if (!recipe) throw new Error(`Unknown recipe "${String(id)}".`);
   const rarity = recipe.rarity;
@@ -16408,7 +16552,7 @@ registerAction("item/craft", (draft, payload, ctx2) => {
 });
 registerAction("item/upgrade", (draft, payload, ctx2) => {
   session(draft);
-  const inst = ownedItem(draft, isObj21(payload) ? payload.uid : void 0);
+  const inst = ownedItem(draft, isObj22(payload) ? payload.uid : void 0);
   if (inst.upgrade >= TUNING.items.maxUpgrade) throw new Error("MAX UPGRADE");
   const cost = upgradeCost(draft, ctx2.registries, inst);
   const events = spend(draft, cost.credits, cost.plyx);
@@ -16418,7 +16562,7 @@ registerAction("item/upgrade", (draft, payload, ctx2) => {
 });
 registerAction("item/reroll", (draft, payload, ctx2) => {
   session(draft);
-  const p = isObj21(payload) ? payload : {};
+  const p = isObj22(payload) ? payload : {};
   const inst = ownedItem(draft, p.uid);
   const i = p.affixIndex;
   if (typeof i !== "number" || !Number.isInteger(i) || i < 0 || i >= inst.affixes.length) throw new Error("Pick one of the item's affixes.");
@@ -16434,7 +16578,7 @@ registerAction("item/reroll", (draft, payload, ctx2) => {
 });
 registerAction("item/dismantle", (draft, payload, ctx2) => {
   session(draft);
-  const inst = ownedItem(draft, isObj21(payload) ? payload.uid : void 0);
+  const inst = ownedItem(draft, isObj22(payload) ? payload.uid : void 0);
   if (equippedBy(draft, inst.uid)) throw new Error("Unequip the item first.");
   const plyx = dismantleValue(ctx2.registries, inst);
   draft.inventory = draft.inventory.filter((i) => i.uid !== inst.uid);
@@ -16482,7 +16626,7 @@ registerAction("campaign/set_first_impression_tau", (draft, payload) => {
 });
 
 // src/engine/actions/onboarding.ts
-var isObj22 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj23 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function open2(draft) {
   const o = draft.onboarding;
   if (!o || o.done) throw new Error("The prologue is over.");
@@ -16490,7 +16634,7 @@ function open2(draft) {
 }
 function currentFor(draft, ctx2, payload, action) {
   const o = open2(draft);
-  if (!isObj22(payload) || typeof payload.stepId !== "string") throw new Error(`${action} needs { stepId }`);
+  if (!isObj23(payload) || typeof payload.stepId !== "string") throw new Error(`${action} needs { stepId }`);
   if (payload.stepId !== o.stepId) throw new Error("Stale onboarding step.");
   const step = currentStep(draft, ctx2.registries);
   if (!step) throw new Error("Stale onboarding step.");
@@ -16514,7 +16658,7 @@ registerAction("onboarding/skip_step", (draft, payload, ctx2) => {
 });
 registerAction("onboarding/mark_spoken", (draft, payload) => {
   const o = open2(draft);
-  if (!isObj22(payload) || typeof payload.unitId !== "string") throw new Error("onboarding/mark_spoken needs { unitId }");
+  if (!isObj23(payload) || typeof payload.unitId !== "string") throw new Error("onboarding/mark_spoken needs { unitId }");
   const unitId = payload.unitId;
   if (!livingNamed(draft).some((u) => u.id === unitId)) throw new Error("Only a living named soldier can be spoken to.");
   if (o.spoken?.includes(unitId)) throw new Error("That soldier has already been spoken to.");
@@ -16523,7 +16667,7 @@ registerAction("onboarding/mark_spoken", (draft, payload) => {
 });
 registerAction("onboarding/hint_seen", (draft, payload, ctx2) => {
   const o = open2(draft);
-  if (!isObj22(payload) || typeof payload.hintId !== "string") throw new Error("onboarding/hint_seen needs { hintId }");
+  if (!isObj23(payload) || typeof payload.hintId !== "string") throw new Error("onboarding/hint_seen needs { hintId }");
   const hintId = payload.hintId;
   const entry = ctx2.registries.prologues.get(o.prologueId);
   const known = entry ? stepsOf(entry).some((s) => s.hints?.some((h2) => h2.id === hintId)) : false;
@@ -18252,16 +18396,16 @@ var fieldSchemas = {
   ambientHum: external_exports.boolean()
 };
 var budgetSchema = external_exports.number().int().min(1);
-var isObj23 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj24 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function merge(base, over) {
-  const src = isObj23(over) ? over : {};
+  const src = isObj24(over) ? over : {};
   const out = { ...base };
   for (const [key, schema] of Object.entries(fieldSchemas)) {
     const parsed = schema.safeParse(src[key]);
     if (parsed.success) out[key] = parsed.data;
   }
   const budgets = { ...base.budgets };
-  const srcBudgets = isObj23(src.budgets) ? src.budgets : {};
+  const srcBudgets = isObj24(src.budgets) ? src.budgets : {};
   for (const id of CALL_TYPE_IDS) {
     const parsed = budgetSchema.safeParse(srcBudgets[id]);
     if (parsed.success) budgets[id] = parsed.data;
@@ -19431,17 +19575,17 @@ registerCallType({
   prompt: prompt3,
   schema: IntentExtractRawSchema
 });
-var isObj24 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj25 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var LABELS = EXPRESSION_LABELS;
 function sanitizeIntentOutput(raw, ctx2) {
   const parsed = IntentExtractRawSchema.safeParse(raw);
   const src = parsed.success ? parsed.data : { events: [], facts: [], proposals: [], promises: [], emotions: [], stressHints: [] };
-  const events = src.events.filter((e) => isObj24(e) && typeof e.confidence === "number" && e.confidence >= ctx2.minConfidence);
-  const proposals2 = src.proposals.filter((p) => ctx2.romance || !(isObj24(p) && ROMANTIC_PROPOSALS.includes(p.kind)));
+  const events = src.events.filter((e) => isObj25(e) && typeof e.confidence === "number" && e.confidence >= ctx2.minConfidence);
+  const proposals2 = src.proposals.filter((p) => ctx2.romance || !(isObj25(p) && ROMANTIC_PROPOSALS.includes(p.kind)));
   const intents = validateIntents({ ...src, events, proposals: proposals2 }, { participants: ctx2.participants, squad: ctx2.squad, maxEvents: TUNING.relations.maxEventsRead, ...ctx2.measures ? { measures: ctx2.measures } : {} });
   const emotions = [];
   for (const e of src.emotions) {
-    if (isObj24(e) && typeof e.unitId === "string" && ctx2.participants.includes(e.unitId) && typeof e.label === "string" && LABELS.includes(e.label)) {
+    if (isObj25(e) && typeof e.unitId === "string" && ctx2.participants.includes(e.unitId) && typeof e.label === "string" && LABELS.includes(e.label)) {
       emotions.push({ unitId: e.unitId, label: e.label });
     }
   }
@@ -19498,7 +19642,7 @@ function createComms(deps) {
       units: [{ id: unitId, name: unit.displayName, values: { ...unit.values }, likes: unit.likes, dislikes: unit.dislikes, triggers: unit.triggers, stateId: rel.stateId, defectIds: unit.defects.map((d) => d.id) }],
       openPromises: openPromises(s, [unitId]).map((p) => ({ by: p.by === "commander" ? s.commander.name : unit.displayName, to: p.to === "commander" ? s.commander.name : unit.displayName, text: p.text })),
       romance: intimacyOf(s).romance,
-      measures: measureList(deps.registries())
+      measures: measureList(deps.registries(), s)
     }, { st, settings: deps.settings() }, { minConfidence: confidenceFloor(deps.registries(), deps.settings().intentMinConfidence) });
     if (!result || chatId() !== expect) return;
     const intents = { ...result.intents, proposals: result.intents.proposals.filter((p) => p.from !== "commander") };
@@ -19914,7 +20058,7 @@ function createSceneController(deps) {
       units,
       openPromises: openPromises(s0, scene.participants, scene.participants).map((p) => ({ by: nm(p.by), to: nm(p.to), text: p.text })),
       romance: intimacyOf(s0).romance,
-      measures: measureList(deps.registries())
+      measures: measureList(deps.registries(), s0)
     };
     swipedWhileExtracting.clear();
     extracting = true;
@@ -20353,7 +20497,7 @@ function renderCommanderFile(host, ctx2) {
 
 // src/setup/commander.ts
 var PERSONA_CHARS = 6e3;
-var isObj25 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj26 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var cap2 = (v, max) => typeof v === "string" ? v.replace(/<[^>]*>/g, "").trim().slice(0, max) : "";
 function valueOf(kind, v) {
   if (typeof v !== "string") return null;
@@ -20362,7 +20506,7 @@ function valueOf(kind, v) {
 }
 var LOWER_ORDER = ["reflexes", "endurance", "strength"];
 function sanitizeCommanderImport(raw, reg, opts = { desireBondDefects: false }) {
-  const src = isObj25(raw) ? raw : {};
+  const src = isObj26(raw) ? raw : {};
   const setup = defaultCommanderSetup();
   for (const k of BODY_STATS) {
     const v = valueOf(k, src[k]);
@@ -20378,7 +20522,7 @@ function sanitizeCommanderImport(raw, reg, opts = { desireBondDefects: false }) 
   const reasons = {};
   for (const item of Array.isArray(src.traits) ? src.traits : []) {
     if (setup.traits.regular.length >= TUNING.commander.maxRegular) break;
-    const id = isObj25(item) && typeof item.id === "string" ? item.id : null;
+    const id = isObj26(item) && typeof item.id === "string" ? item.id : null;
     const t = id === null ? void 0 : reg.commanderTraits.get(id);
     if (!id || !t || t.kind !== "regular" || setup.traits.regular.includes(id)) continue;
     if (traitBlockReason(reg, setup.traits, id, opts) !== null) continue;
@@ -20387,7 +20531,7 @@ function sanitizeCommanderImport(raw, reg, opts = { desireBondDefects: false }) 
   }
   return { setup, personaName: "", reasons, notes: cap2(src.notes, 300) };
 }
-var usable2 = (raw, result) => isObj25(raw) && ["strength", "endurance", "reflexes", "expression", "seasoning"].some((k) => valueOf(k, raw[k]) !== null) || result.setup.traits.regular.length > 0;
+var usable2 = (raw, result) => isObj26(raw) && ["strength", "endurance", "reflexes", "expression", "seasoning"].some((k) => valueOf(k, raw[k]) !== null) || result.setup.traits.regular.length > 0;
 async function importCommander(st, deps) {
   const { settings, registries } = deps;
   try {
@@ -20456,7 +20600,7 @@ function buildImportInput(card2, registries, settings, sections, world) {
     tastes: [...registries.tastes.values()].map((t) => ({ id: t.id, description: str3(t.description) }))
   };
 }
-var isObj26 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj27 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var cap3 = (v, max, fallback = "") => typeof v === "string" ? v.trim().slice(0, max) : fallback;
 var num2 = (v, lo, hi, fallback) => typeof v === "number" && Number.isFinite(v) ? Math.min(hi, Math.max(lo, Math.round(v))) : fallback;
 var STANCE_REASON_MAX2 = 160;
@@ -20474,7 +20618,7 @@ function tagList2(v, max) {
   return out;
 }
 function sanitizeProfile(raw, ctx2) {
-  const src = isObj26(raw) ? raw : {};
+  const src = isObj27(raw) ? raw : {};
   const want = (s) => ctx2.sections.includes(s);
   const dropped = [];
   const missing2 = [];
@@ -20483,7 +20627,7 @@ function sanitizeProfile(raw, ctx2) {
     const out = [];
     const seen = /* @__PURE__ */ new Set();
     for (const item of Array.isArray(list5) ? list5 : []) {
-      const id = isObj26(item) && typeof item[idKey] === "string" ? item[idKey] : null;
+      const id = isObj27(item) && typeof item[idKey] === "string" ? item[idKey] : null;
       if (id === null) {
         dropped.push(`${SECTION_LABEL[section]}:(invalid)`);
         continue;
@@ -20541,7 +20685,7 @@ function sanitizeProfile(raw, ctx2) {
     if (profile.defectCandidates.length === 0) missing2.push("defects");
   }
   if (want("values")) {
-    if (isObj26(src.values)) {
+    if (isObj27(src.values)) {
       const v = src.values;
       profile.values = Object.fromEntries(VALUE_KEYS.map((k) => [k, num2(v[k], -3, 3, 0)]));
     } else missing2.push("values");
@@ -20566,25 +20710,25 @@ function sanitizeProfile(raw, ctx2) {
     }
     profile.commanderTastes = out;
   }
-  if (want("disposition") && isObj26(src.dispositionOffset) && typeof src.dispositionOffset.offset === "number" && Number.isFinite(src.dispositionOffset.offset)) {
+  if (want("disposition") && isObj27(src.dispositionOffset) && typeof src.dispositionOffset.offset === "number" && Number.isFinite(src.dispositionOffset.offset)) {
     profile.dispositionOffset = { offset: num2(src.dispositionOffset.offset, -2, 2, 0), reason: cap3(src.dispositionOffset.reason, STANCE_REASON_MAX2) };
   }
   if (want("stances")) {
     const ids = stanceOptionIds(ctx2.registries, ctx2.world);
     if (ids.length > 0) {
-      const given = isObj26(src.worldStances) ? src.worldStances : {};
+      const given = isObj27(src.worldStances) ? src.worldStances : {};
       for (const key of Object.keys(given)) if (!ids.includes(key)) dropped.push(`stances:${key}`);
       const out = {};
       for (const id of ids) {
         const e = given[id];
-        const stance = isObj26(e) && typeof e.stance === "string" && STANCE_WORDS.includes(e.stance) ? e.stance : null;
+        const stance = isObj27(e) && typeof e.stance === "string" && STANCE_WORDS.includes(e.stance) ? e.stance : null;
         out[id] = stance === null ? { stance: "indifferent", strength: 1, reason: "" } : { stance, strength: e.strength === 2 ? 2 : 1, reason: cap3(e.reason, STANCE_REASON_MAX2) };
       }
       profile.worldStances = out;
     }
   }
   if (want("baseline")) {
-    if (isObj26(src.emotionalBaseline)) {
+    if (isObj27(src.emotionalBaseline)) {
       const b = src.emotionalBaseline;
       const lim = SETUP_LIMITS.baseline;
       profile.baseline = {
@@ -22295,7 +22439,7 @@ function unitPortrait(st, unit, o) {
 var confineOf = (entry) => (entry.sideEffects ?? []).find((e) => e.type === "confine");
 function renderDisciplineMenu(ctx2) {
   const { state, registries: reg, unitId } = ctx2;
-  const entries = [...reg.punishments.values()].map((e, i) => ({ e, i })).sort((a, b) => Number(a.e.severity) - Number(b.e.severity) || a.i - b.i).map((x) => x.e);
+  const entries = [...reg.punishments.values()].filter((e) => contentAllowed(state, reg, e)).map((e, i) => ({ e, i })).sort((a, b) => Number(a.e.severity) - Number(b.e.severity) || a.i - b.i).map((x) => x.e);
   const rows = entries.map((e) => {
     const id = String(e.id);
     const confine = confineOf(e);
@@ -30254,6 +30398,25 @@ for (const registry2 of ["glossary", ...DESCRIBED_REGISTRIES]) {
     return "unknown" in r ? [{ path, message: `unknown source "${r.unknown}" in link "${target}"` }] : [];
   }));
 }
+registerChecks("defects", (entry, regs) => nightTagChecks("nightEvents", entry.nightEvents, regs));
+registerChecks("relationshipStates", (entry, regs) => nightTagChecks("unlocks.nightEvents", entry.unlocks?.nightEvents, regs));
+function nightTagChecks(path, specs, regs) {
+  if (!Array.isArray(specs)) return [];
+  return specs.flatMap((spec, i) => tagChecks(`${path}[${i}].contentTags`, spec?.contentTags, regs));
+}
+function tagChecks(path, tags, regs) {
+  if (!Array.isArray(tags)) return [];
+  return tags.filter((t) => !regs.contentCategories.has(String(t))).map((t) => ({ path, message: `unknown content category "${String(t)}"` }));
+}
+for (const registry2 of REGISTRY_NAMES) {
+  registerChecks(registry2, (entry, regs) => {
+    if (entry.contentTags === void 0) return [];
+    if (!CONTENT_GATED_REGISTRIES.includes(registry2)) {
+      return [{ path: "contentTags", message: `contentTags is not allowed on ${registry2} (only on ${CONTENT_GATED_REGISTRIES.join(", ")})` }];
+    }
+    return tagChecks("contentTags", entry.contentTags, regs);
+  });
+}
 
 // src/content/loader.ts
 var UNSAFE_KEYS = /* @__PURE__ */ new Set(["__proto__", "constructor", "prototype"]);
@@ -30440,13 +30603,13 @@ import { editGroup, openGroupById } from "../../../../group-chats.js";
 import { newWorldInfoEntryTemplate } from "../../../../world-info.js";
 
 // src/st/chat.ts
-var isObj27 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj28 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function mapChatMessages(chat, from = 0) {
   if (!Array.isArray(chat)) return [];
   const out = [];
   for (let index = Math.max(0, from); index < chat.length; index++) {
     const m = chat[index];
-    if (!isObj27(m) || m.is_system === true) continue;
+    if (!isObj28(m) || m.is_system === true) continue;
     const avatar = typeof m.original_avatar === "string" && m.original_avatar !== "" ? m.original_avatar : void 0;
     out.push({
       index,
@@ -30463,7 +30626,7 @@ function lastCharacterAvatar(chat) {
   if (!Array.isArray(chat)) return void 0;
   for (let i = chat.length - 1; i >= 0; i--) {
     const m = chat[i];
-    if (isObj27(m) && m.is_user !== true && m.is_system !== true) {
+    if (isObj28(m) && m.is_user !== true && m.is_system !== true) {
       return typeof m.original_avatar === "string" && m.original_avatar !== "" ? m.original_avatar : void 0;
     }
   }
@@ -30499,17 +30662,17 @@ function toStLorebook(book, template) {
 }
 
 // src/st/sprites.ts
-var isObj28 = (v) => typeof v === "object" && v !== null;
+var isObj29 = (v) => typeof v === "object" && v !== null;
 function spriteFolder(avatar, name, overrides) {
   if (!Array.isArray(overrides)) return name;
   const key = avatar.replace(/\.[^.]+$/, "");
-  const hit = overrides.find((o) => isObj28(o) && o.name === key && typeof o.path === "string" && o.path !== "");
+  const hit = overrides.find((o) => isObj29(o) && o.name === key && typeof o.path === "string" && o.path !== "");
   return hit ? hit.path : name;
 }
 function pickSprite(list5, label2) {
   if (!Array.isArray(list5)) return null;
   for (const item of list5) {
-    if (isObj28(item) && item.label === label2 && typeof item.path === "string") return item.path;
+    if (isObj29(item) && item.label === label2 && typeof item.path === "string") return item.path;
   }
   return null;
 }

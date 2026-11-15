@@ -1,0 +1,56 @@
+[
+  {
+    "id": "humiliation",
+    "label": "Humiliation",
+    "description": "AUTHOR TO WRITE: Belittling the commander or a soldier in private.",
+    "order": 1
+  },
+  {
+    "id": "public_humiliation",
+    "label": "Public humiliation",
+    "description": "AUTHOR TO WRITE: Belittling someone in front of others.",
+    "order": 2
+  },
+  {
+    "id": "degrading_language",
+    "label": "Degrading language",
+    "description": "AUTHOR TO WRITE: Insults and demeaning names, used as power play.",
+    "order": 3
+  },
+  {
+    "id": "pain_rough",
+    "label": "Pain and rough play",
+    "description": "AUTHOR TO WRITE: Pain, rough handling and hurt that is wanted.",
+    "order": 4
+  },
+  {
+    "id": "restraint",
+    "label": "Restraint",
+    "description": "AUTHOR TO WRITE: Being tied, held down or kept from moving.",
+    "order": 5
+  },
+  {
+    "id": "physical_discipline_shown",
+    "label": "Physical discipline shown",
+    "description": "AUTHOR TO WRITE: Punishment that is shown on the page, not only reported.",
+    "order": 6
+  },
+  {
+    "id": "jealousy_games",
+    "label": "Jealousy games",
+    "description": "AUTHOR TO WRITE: Provoking jealousy between partners on purpose.",
+    "order": 7
+  },
+  {
+    "id": "body_modification",
+    "label": "Body modification",
+    "description": "AUTHOR TO WRITE: Changes to a body for another person: marks, implants, alterations.",
+    "order": 8
+  },
+  {
+    "id": "explicit_scenes",
+    "label": "Explicit scenes",
+    "description": "AUTHOR TO WRITE: Intimate scenes shown in full instead of fading out.",
+    "order": 9
+  }
+]

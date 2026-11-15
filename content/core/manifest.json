@@ -51,6 +51,7 @@
     "deviceSkins": "deviceSkins.json",
     "uiSounds": "uiSounds.json",
     "prologues": "prologues.json",
-    "uiUnlocks": "uiUnlocks.json"
+    "uiUnlocks": "uiUnlocks.json",
+    "contentCategories": "contentCategories.json"
   }
 }

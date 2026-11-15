@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-/** Registry names reserved by P0 (`marks` stays empty in v1; see overview §10). `locations` was added by P3, `orders`, `synergies`, `recipes` and `lootTables` by P4, `glossary` by P7a, `commanderTraits`, `tastes`, `presence` and `imageConsistency` by P7, `worldOptions`, `dispositionLevels`, `stanceEffects` and `worldPresets` by P8, `commandStances`, `punishments`, `demandTemplates` and `reputations` by P9, `hubRooms`, `deviceSkins` and `uiSounds` by P10, `prologues` and `uiUnlocks` by P11. */
+/** Registry names reserved by P0 (`marks` stays empty in v1; see overview §10). `locations` was added by P3, `orders`, `synergies`, `recipes` and `lootTables` by P4, `glossary` by P7a, `commanderTraits`, `tastes`, `presence` and `imageConsistency` by P7, `worldOptions`, `dispositionLevels`, `stanceEffects` and `worldPresets` by P8, `commandStances`, `punishments`, `demandTemplates` and `reputations` by P9, `hubRooms`, `deviceSkins` and `uiSounds` by P10, `prologues` and `uiUnlocks` by P11, `contentCategories` by P9d. */
 export const REGISTRY_NAMES = [
   'roles', 'skills', 'signatures', 'statuses', 'defects', 'items', 'affixes', 'enemies',
   'enemyCategories', 'regions', 'nodeTypes', 'activities', 'facilities', 'crimes',
@@ -24,6 +24,8 @@ export const REGISTRY_NAMES = [
   'hubRooms', 'deviceSkins', 'uiSounds',
   // P11
   'prologues', 'uiUnlocks',
+  // P9d (`relationshipRuleTemplates` joins in chunk (b))
+  'contentCategories',
 ] as const;
 
 export type RegistryName = (typeof REGISTRY_NAMES)[number];

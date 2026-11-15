@@ -21,7 +21,7 @@ const ONBOARDING_HINT = 'onboarding/hint_seen';
 
 /** Action families that may run while `state.expedition` is open. */
 /** `relations/commander_injured` is the night-visit roll after a Commander Crisis, which can only happen inside a run. */
-const EXPEDITION_OPEN_PREFIXES = ['expedition/', 'combat/', 'director/', 'debug/', 'dilemma/', 'relations/commander_injured', ONBOARDING_HINT];
+const EXPEDITION_OPEN_PREFIXES = ['expedition/', 'combat/', 'director/', 'debug/', 'dilemma/', 'relations/commander_injured', ONBOARDING_HINT, 'content/'];
 
 /** Actions that spend time or start something: refused while a presented dilemma waits for its answer (P6). */
 const BLOCKED_BY_DILEMMA = ['activity/', 'calendar/consume_slot', 'scene/start', 'expedition/start'];

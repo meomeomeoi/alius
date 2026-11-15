@@ -1,0 +1,1 @@
+[{ "id": "gate_dilemma", "extends": "dil_rations", "contentTags": ["restraint"] }, { "id": "gate_event", "extends": "evt_flavor_quiet", "contentTags": ["restraint"] }]

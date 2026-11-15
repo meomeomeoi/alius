@@ -34,7 +34,7 @@ const CONFIDENCE_EPS = 1e-9;
  */
 export function applyIntents(draft: CampaignState, ctx: EngineCtx, p: ApplyParams): EngineEvent[] {
   const reg = ctx.registries;
-  const intents = validateIntents(p.intents, { participants: p.participants, squad: draft.squad, maxEvents: TUNING.relations.maxEventsRead, measures: measureList(reg) });
+  const intents = validateIntents(p.intents, { participants: p.participants, squad: draft.squad, maxEvents: TUNING.relations.maxEventsRead, measures: measureList(reg, draft) });
   const events: EngineEvent[] = [];
   const touched = new Set<string>();
   /** Types of the events that landed on at least one unit (P8: an event dropped for every unit is not here). */

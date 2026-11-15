@@ -281,6 +281,56 @@ export const TUNING = Object.freeze({
       unit: Object.freeze({ minor: 2, moderate: 5, major: 10 }),
     }),
   }),
+  /**
+   * P9d: desire and bonds. Spec numbers verbatim (Want 0–100, rises +4 / +7, ×1.4 intense, ×0.6 avoidant, Attraction ≥ 60,
+   * bands 40 / 70 / 90); everything else is a DRAFT balance value, the author's to change.
+   */
+  bonds: Object.freeze({
+    /** Character limits shared by the profile, her note and what extraction reports. */
+    limits: Object.freeze({ noteMax: 160, evidenceMax: 120, maxViolations: 3, sceneLimitMax: 160 }),
+    lead: Object.freeze({
+      styleBase: Object.freeze({ yielding: 15, balanced: 40, assertive: 60, dominant: 75 }),
+      /** The score moves by this much per point of Impunity above or below `impunityRef`. */
+      impunityWeight: 0.2,
+      impunityRef: 50,
+      dominanceBonus: 15,
+      /** Per `commander_yielded` / `followed_lead` (+) or `commander_enforced` (−) on her in the last `windowDays`, capped. */
+      perYield: 10, yieldCap: 20, perEnforced: 10, enforcedCap: 20, windowDays: 3,
+      /** A state with `leadBonus` adds it while her style is at least assertive. */
+      stateBonus: 10,
+      unitAtLeast: 60,
+      commanderAtMost: 35,
+    }),
+    want: Object.freeze({
+      max: 100,
+      rise: Object.freeze({ medium: 4, high: 7 }),
+      attachmentFactor: Object.freeze({ slow: 1, steady: 1, intense: 1.4, avoidant: 0.6 }),
+      attractionMin: 60,
+      /** An ineligible unit's Want fades this much a day. */
+      decayPerDay: 5,
+      bands: Object.freeze({ restless: 40, aching: 70, desperate: 90 }),
+      initiativeMult: 1.5,
+      stressPerDay: 2,
+      visit: Object.freeze({ chance: 0.25, priority: 55, ignore: Object.freeze({ event: 'dismissed', severity: 'moderate' }) }),
+      /** What lowers Want (draft). */
+      relief: Object.freeze({ intimateScene: 60, romanticScene: 25, companion: 5, train: 15, expeditionDay: 10, expeditionMinDanger: 3, wantVisit: 30 }),
+      demandEveryDays: 3,
+      /** A SATISFY answer queues tonight's visit at this priority. */
+      satisfyPriority: 90,
+      breakdownMoneyCost: 10,
+    }),
+    rules: Object.freeze({
+      /** Daily chance a leading partner proposes a rule, × the lead-style multiplier. */
+      chance: 0.12,
+      leadMult: Object.freeze({ assertive: 1, dominant: 1.5 }),
+      maxActive: 3,
+      textMax: 160,
+    }),
+    publicity: Object.freeze({
+      /** `publicReactions`: what the other units do once a relationship turns public while she leads. */
+      reactions: Object.freeze({ lostRespectRecord: 4, respectTrust: 2 }),
+    }),
+  }),
   /** P6: defect arcs. */
   arc: Object.freeze({
     minDay: 5,

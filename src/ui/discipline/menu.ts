@@ -1,5 +1,6 @@
 import type { PunishmentEffect } from '../../content/schemas';
 import type { Entry, Registries } from '../../content/types';
+import { contentAllowed } from '../../engine/bonds';
 import { checkPunish } from '../../engine/discipline';
 import type { CampaignState } from '../../engine/state/types';
 import { analyzeNative } from '../analyze/mark';
@@ -24,6 +25,7 @@ const confineOf = (entry: Entry): Extract<PunishmentEffect, { type: 'confine' }>
 export function renderDisciplineMenu(ctx: DisciplineMenuCtx): HTMLElement {
   const { state, registries: reg, unitId } = ctx;
   const entries = [...reg.punishments.values()]
+    .filter((e) => contentAllowed(state, reg, e)) // P9d: a measure tagged with a category that is off is not offered
     .map((e, i) => ({ e, i }))
     .sort((a, b) => Number(a.e.severity) - Number(b.e.severity) || a.i - b.i)
     .map((x) => x.e);

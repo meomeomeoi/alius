@@ -209,7 +209,7 @@ export function createSceneController(deps: SceneDeps): SceneController {
       commanderName: s0.commander.name, channel: 'scene',
       exchange: messages.map((m) => ({ speaker: m.isUser ? s0.commander.name : m.name, text: m.text })),
       units, openPromises: openPromises(s0, scene.participants, scene.participants).map((p) => ({ by: nm(p.by), to: nm(p.to), text: p.text })),
-      romance: intimacyOf(s0).romance, measures: measureList(deps.registries()),
+      romance: intimacyOf(s0).romance, measures: measureList(deps.registries(), s0),
     };
     swipedWhileExtracting.clear();
     extracting = true;

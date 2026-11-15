@@ -959,4 +959,13 @@ describe('core content pack: P11 prologues and unlocks', () => {
     const objective = r.glossary.get('objective')!;
     expect(`${String(objective.short)} ${String(objective.long)}`).toMatch(/prologue/i);
   });
+
+  // P9d (Task 1)
+  it('relationshipStates: the five romantic and five close tiers', async () => {
+    const { registries: r } = await load();
+    const tier = (t: string) => [...r.relationshipStates.values()].filter((s) => s.bondTier === t).map((s) => s.id).sort();
+    expect(tier('romantic')).toEqual(['devoted', 'flirting', 'fwb', 'lover', 'secret_affair']);
+    expect(tier('close')).toEqual(['confidant', 'dependent', 'kindred', 'obsessed', 'sworn']);
+    expect([...r.relationshipStates.values()].filter((s) => s.bondTier === undefined)).toHaveLength(10);
+  });
 });

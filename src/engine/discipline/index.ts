@@ -1,4 +1,5 @@
 import type { Registries } from '../../content/types';
+import { contentAllowed, type ContentHolder } from '../bonds/content';
 
 export { impunityBand, impunityOf, leverageOf, type ImpunityTerms } from './impunity';
 export { disciplineDayStep } from './dayStep';
@@ -7,8 +8,14 @@ export {
   recordOf, registerThreat, settleDefiance,
 } from './record';
 
-/** The words an extracted `measure` may take: every punishment id, plus `leash` and `unspecified` (neither is a registry id). */
-export const measureList = (reg: Registries): string[] => [...reg.punishments.keys(), 'leash', 'unspecified'];
+/**
+ * The words an extracted `measure` may take: every punishment id, plus `leash` and `unspecified` (neither is a registry id).
+ * With a campaign (P9d), a punishment tagged with a category that is off is left out, so a dialogue measure naming it reads as
+ * the `verbal` fallback.
+ */
+export const measureList = (reg: Registries, state?: ContentHolder): string[] => [
+  ...[...reg.punishments.values()].filter((p) => state === undefined || contentAllowed(state, reg, p)).map((p) => String(p.id)), 'leash', 'unspecified',
+];
 export { activeRestrictions, addRestriction, dutySlot, expireRestrictions, removeRestrictions, restrictionReason, type RestrictionUse } from './restrictions';
 export { gearFault, GEAR_FAULT_LOG, isCovert, queueSabotage, sabotageDayStep } from './sabotage';
 export { acquaintanceDays, inAcquaintance } from './acquaintance';

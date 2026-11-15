@@ -1,0 +1,13 @@
+{
+  "id": "p9d_gate",
+  "name": "P9d gate fixture",
+  "version": "1",
+  "priority": 10,
+  "files": {
+    "demandTemplates": "demandTemplates.json",
+    "punishments": "punishments.json",
+    "dilemmaTemplates": "dilemmaTemplates.json",
+    "missionTemplates": "missionTemplates.json",
+    "clocks": "clocks.json"
+  }
+}

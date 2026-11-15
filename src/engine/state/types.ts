@@ -98,6 +98,41 @@ export interface WorldStance {
   reason: string;
 }
 
+/** P9d: how a unit leads and bonds, read from her card (absent = a modest profile, `bondOf`). */
+export type LeadStyle = 'dominant' | 'assertive' | 'balanced' | 'yielding';
+export type Attachment = 'slow' | 'steady' | 'intense' | 'avoidant';
+export type DesireLevel = 'low' | 'medium' | 'high';
+export type Publicity = 'secret' | 'known' | 'public';
+export interface Bond {
+  leadStyle: LeadStyle;
+  attachment: Attachment;
+  desire: DesireLevel;
+  caretaker: boolean;
+  /** What SHE would not do: `contentCategories` ids, and a note of at most 160 characters. */
+  ownLimits: { categories: string[]; note?: string };
+  /** HER preference for how open the relationship is. */
+  publicity: Publicity;
+}
+
+/** P9d: a relationship rule a leading partner proposed (the registry `relationshipRuleTemplates` comes with chunk (b)). */
+export interface Rule {
+  id: string;
+  unitId: string;
+  templateId: string;
+  text: string;
+  status: 'proposed' | 'negotiating' | 'active' | 'suspended';
+  day: number;
+  brokenCount: number;
+  lastBrokenDay?: number;
+}
+
+/** P9d: who leads a romantic scene. */
+export interface SceneLead {
+  by: 'unit' | 'commander' | 'shared';
+  unitId: string;
+  score: number;
+}
+
 export interface Unit {
   id: string;
   kind: UnitKind;
@@ -137,7 +172,7 @@ export interface Unit {
   /** Equipped active skills (P4); absent = the role's starter skills. */
   loadout?: string[];
   /** Set while the unit is broken down: until the expedition ends (P4). */
-  breakdown?: { defectId: string; day: number };
+  breakdown?: { defectId: string; day: number; /** P9d: an off-combat breakdown ends after this day (`wantBreakdown`). */ until?: number };
   /** P7: up to 3 taste ids (registry `tastes`) about how the unit reads the commander. */
   commanderTastes?: string[];
   /** P8: how far this named unit sits from the world's disposition level, −2…2 (absent = 0). Grunts use the world level. */
@@ -146,6 +181,8 @@ export interface Unit {
   dispositionReason?: string;
   /** P8: her own stance toward each `squadStance` world option (absent = indifferent). */
   worldStances?: Record<string, WorldStance>;
+  /** P9d: the bond profile from her card; absent = modest (`bondOf`). */
+  bond?: Bond;
 }
 
 export interface DailyGain {
@@ -182,6 +219,12 @@ export interface Relation {
   metDay?: number;
   /** P9: the stored term `R` of her Impunity, −40…40 (absent = 0); decays 1 a day toward 0. */
   impunityRecord?: number;
+  /** P9d: Want 0–100 (absent = 0). */
+  want?: number;
+  /** P9d: the day Want last crossed the breakdown band (so a breakdown starts once per crossing). */
+  wantBreakDay?: number;
+  /** P9d: how open the relationship is; set while she is in a `romantic` tier state. */
+  publicity?: { level: Publicity; commanderPref?: Publicity; since: number };
 }
 
 /** A remembered fact (P3). `knownBy` holds unit ids or `'*'` for public; the commander always knows. */
@@ -238,6 +281,12 @@ export interface SceneRecord {
   nightEntryId?: string;
   /** Orders a unit refused in this scene, with the exchange number (P6). */
   refusals?: Array<{ unitId: string; exchange: number }>;
+  /** P9d: `romantic` or `intimate` once the scene has gone there (never lowered). */
+  tone?: 'romantic' | 'intimate';
+  /** P9d: who leads, decided when the tone is first set or raised. */
+  lead?: SceneLead;
+  /** P9d: replies flagged for content that is switched off (`index` = the reply's chat index, so a rollback removes the mark). */
+  violations?: Array<{ index: number; categories: string[] }>;
 }
 
 export interface PendingProposal {
@@ -301,6 +350,8 @@ export interface NightEntry {
   framing: string;
   ignore: { event: string; severity: Severity };
   expiresDay: number;
+  /** P9d: categories of the spec this entry came from; turning one off withdraws the entry. */
+  contentTags?: string[];
 }
 
 export interface Commander {
@@ -543,6 +594,10 @@ export interface CampaignState {
   leash: { authorizationsLeft: number; refreshDay: number; log: unknown[]; seq?: number; seeded?: boolean };
   /** P9: pending defiance, threats, applications, restrictions, sabotage and demands. Created on first write; absent in older saves. */
   discipline?: DisciplineState;
+  /** P9d: the content categories the player switched on (absent = none). Read through `enabledCategories`. */
+  content?: { enabled: string[] };
+  /** P9d: relationship rules and the smother hold (absent = none). */
+  bonds?: { rules: Rule[]; smother?: { unitId: string; untilDay: number } };
   /** Loyalty, signs and open confrontations (P6). Absent in older saves. */
   disloyalty?: { units: Record<string, LoyaltyRecord>; open?: Confrontation };
   /** Dilemma bookkeeping and the open dilemma (P6). Absent in older saves. */

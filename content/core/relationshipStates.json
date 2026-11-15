@@ -207,6 +207,7 @@
     "romance": false,
     "glyph": "#",
     "priority": 30,
+    "bondTier": "close",
     "entry": {
       "via": [
         "proposal"
@@ -250,6 +251,7 @@
     "romance": false,
     "glyph": "&",
     "priority": 35,
+    "bondTier": "close",
     "entry": {
       "via": [
         "automatic"
@@ -306,6 +308,7 @@
     "romance": false,
     "glyph": "%",
     "priority": 40,
+    "bondTier": "close",
     "entry": {
       "via": [
         "automatic"
@@ -350,6 +353,7 @@
     "romance": true,
     "glyph": "~",
     "priority": 40,
+    "bondTier": "romantic",
     "entry": {
       "via": [
         "proposal",
@@ -411,6 +415,7 @@
     "romance": true,
     "glyph": "^",
     "priority": 42,
+    "bondTier": "romantic",
     "entry": {
       "via": [
         "proposal"
@@ -484,6 +489,7 @@
     "romance": true,
     "glyph": "<3",
     "priority": 50,
+    "bondTier": "romantic",
     "entry": {
       "via": [
         "proposal"
@@ -573,6 +579,7 @@
     "romance": true,
     "glyph": "<<",
     "priority": 55,
+    "bondTier": "romantic",
     "entry": {
       "via": [
         "proposal"
@@ -654,6 +661,7 @@
     "romance": true,
     "glyph": "x",
     "priority": 45,
+    "bondTier": "romantic",
     "entry": {
       "via": [
         "proposal"
@@ -713,6 +721,7 @@
     "romance": false,
     "glyph": "@",
     "priority": 70,
+    "bondTier": "close",
     "entry": {
       "via": [
         "automatic"
@@ -798,6 +807,7 @@
     "romance": false,
     "glyph": "!",
     "priority": 60,
+    "bondTier": "close",
     "entry": {
       "via": [
         "automatic"

@@ -2,6 +2,7 @@ import type { DemandCost } from '../../content/schemas';
 import type { Entry, Registries } from '../../content/types';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { isLiving } from '../economy';
+import { contentAllowed } from '../bonds/content';
 import { pushMessage } from '../dms';
 import { canEquip, equippedBy } from '../items';
 import { nextId, revealCrime } from '../memory';
@@ -77,7 +78,8 @@ function eligible(state: CampaignState, reg: Registries, unit: Unit, t: Entry): 
 export function eligibleTemplates(state: CampaignState, reg: Registries, unitId: string): Entry[] {
   const unit = state.squad.find((u) => u.id === unitId);
   if (!unit || unit.kind !== 'named' || !isLiving(unit) || !state.relations[unitId]) return [];
-  return [...reg.demandTemplates.values()].filter((t) => eligible(state, reg, unit, t));
+  // P9d: a template tagged with a category that is off, or one of her own limits, is never asked
+  return [...reg.demandTemplates.values()].filter((t) => contentAllowed(state, reg, t, unitId) && eligible(state, reg, unit, t));
 }
 
 /**
