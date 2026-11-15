@@ -28,7 +28,7 @@ describe('private scene', () => {
     h.dispatch({ type: 'activity/do', payload: { activityId: 'talk', companionId: ANN } });
     expect(await h.controller.start({ locationId: 'quarters_commander', participants: [ANN], origin: 'activity' })).toBe(true);
     expect(active(h)).toEqual(['ann.png']);
-    expect(directives(h)).toContain('Explicit content: not allowed');
+    expect(directives(h)).not.toContain('Explicit content'); // P9d: the content directive comes from the app's applyContext, not from the scene
     h.st.expressionsByName.set('ann.png', 'joy');
     h.st.groupReplies = [[reply('Ann', 'Thanks, commander.')], [reply('Ann', 'I mean it.')]];
     h.st.mainReplies = [
@@ -248,6 +248,7 @@ describe('chat switches and reloads', () => {
 
   it('resume after a reload restores members, directives and the transcript', async () => {
     const h = harness(reg);
+    h.dispatch({ type: 'campaign/set_intimacy', payload: { romance: false, initiative: 'med' } }); // a scene directive that stays (P9d retired `explicit`)
     await open(h);
     h.st.groupReplies = [[reply('Ann', 'one')], [reply('Ann', 'two')]];
     h.st.mainReplies = [intentJson(), intentJson()];
@@ -255,11 +256,11 @@ describe('chat switches and reloads', () => {
     await h.controller.send('b');
     // simulate a reload: ST forgot who was active and the directives
     h.st.members.forEach((m) => { m.active = true; });
-    h.context.clearDirective('explicit');
+    h.context.clearDirective('romance_off');
     expect(directives(h)).toBe('');
     h.controller.resume();
     expect(active(h)).toEqual(['ann.png']);
-    expect(directives(h)).toContain('Explicit content');
+    expect(directives(h)).toContain('Romance is disabled');
     expect(h.controller.transcript().map((m) => m.text)).toEqual(['a', 'one', 'b', 'two']);
     expect(h.ui.at(-1)).toEqual({ type: 'transcript' });
   });

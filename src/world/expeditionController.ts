@@ -115,7 +115,7 @@ export function createExpedition(deps: WorldDeps & {
           const u = s.squad.find((x) => x.id === id);
           return { name: u?.displayName ?? id, role: String(reg.roles.get(u?.roleId ?? '')?.name ?? u?.roleId ?? 'soldier') };
         }),
-      }, { st: deps.st, settings });
+      }, { st: deps.st, settings, contentLine: deps.contentLine });
       if (text === null || chatId() !== chat || state()?.lastExpedition?.id !== report.id) return;
       act('expedition/set_recap', { reportId: report.id, text }, chat);
     },

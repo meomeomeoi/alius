@@ -11,6 +11,14 @@ export type LlmResult<T> =
 const MAX_ATTEMPTS = 2;
 const RETRY_BUDGET_FACTOR = 1.5;
 
+/** What a call needs: the adapter, the settings and (P9d) the content line a prose call carries. */
+export interface LlmDeps {
+  st: StAdapter;
+  settings: AliusSettings;
+  /** The content exclusion line of the campaign (empty = none); appended to the system prompt of a call type marked `prose`. */
+  contentLine?: () => string;
+}
+
 /**
  * Runs one typed LLM call: prompt → model → lenient JSON → schema. A call whose output is invalid
  * is retried once with a 1.5× budget. Never throws and never touches campaign state.
@@ -18,7 +26,7 @@ const RETRY_BUDGET_FACTOR = 1.5;
 export async function callLlm<T>(
   id: CallTypeId,
   input: unknown,
-  deps: { st: StAdapter; settings: AliusSettings },
+  deps: LlmDeps,
 ): Promise<LlmResult<T>> {
   const { st, settings } = deps;
   const ct = getCallType(id);
@@ -31,7 +39,8 @@ export async function callLlm<T>(
     return { ok: false, reason: 'no_profile', detail: 'no mechanic connection profile selected', attempts: 0 };
   }
 
-  const system = ct.system(input);
+  const line = ct.prose === true ? (deps.contentLine?.() ?? '').trim() : '';
+  const system = line === '' ? ct.system(input) : `${ct.system(input)}\n\n${line}`;
   const prompt = ct.prompt(input);
   const profileLabel = useMain ? 'main' : settings.mechanicProfileId;
   let lastDetail = '';

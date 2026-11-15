@@ -1,10 +1,8 @@
 import { z } from 'zod';
 import type { DilemmaDigest } from '../../engine/dilemma/flow';
 import type { DilemmaScale } from '../../engine/dilemma/types';
-import type { AliusSettings } from '../../settings';
-import type { StAdapter } from '../../st/adapter';
 import { registerCallType } from '../callTypes';
-import { callLlm } from '../orchestrator';
+import { callLlm, type LlmDeps } from '../orchestrator';
 
 export interface DilemmaGenerateInput {
   template: { id: string; scale: DilemmaScale; brief: string; optionCount: number; flagPerOption: boolean };
@@ -28,6 +26,7 @@ const SCALE_TEXT: Record<DilemmaScale, string> = {
 
 registerCallType<DilemmaShape>({
   id: 'dilemma_generate',
+  prose: true,
   profile: 'mechanic',
   json: true,
   system: (raw) => {
@@ -69,7 +68,7 @@ registerCallType<DilemmaShape>({
 
 /** One mechanic call. Returns the loosely shaped answer for the engine to validate, or `null` on any failure. */
 export async function runDilemmaGenerate(
-  input: DilemmaGenerateInput, deps: { st: StAdapter; settings: AliusSettings },
+  input: DilemmaGenerateInput, deps: LlmDeps,
 ): Promise<unknown | null> {
   const r = await callLlm<DilemmaShape>('dilemma_generate', input, deps);
   return r.ok ? r.value : null;

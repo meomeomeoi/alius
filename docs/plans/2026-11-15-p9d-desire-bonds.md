@@ -402,7 +402,7 @@ tests/**                                           mirrors src; tests/helpers/bo
   - `bondsDirectives(builder, state, reg): void`, which sets or clears `content`, `limits:*`, `lead`, `want:*`, `rule:*`, `publicity:*`, `co_command:*` (later tasks fill the last five) and clears its own prefixes when there is no state
   - `LlmDeps.contentLine?: () => string`
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `the content directive lists every disabled category label`
   - `enabling a category removes it from the directive on the next applyContext`
   - `explicit_scenes enabled says explicit scenes are allowed`
@@ -410,10 +410,10 @@ tests/**                                           mirrors src; tests/helpers/bo
   - `no explicit directive id is set any more`
   - `a prose call appends the content line to its system prompt; intent_extract does not`
   - `directive texts have no commander pronoun`
-- [ ] **Step 2: Run** `npx vitest run tests/bonds tests/llm/orchestrator.test.ts` and confirm FAIL.
-- [ ] **Step 3: Implement** with the texts of the rulings.
-- [ ] **Step 4: Run** `npm test` and confirm PASS. The P3 scene-context tests that asserted `explicit` are updated in this commit and named in the message.
-- [ ] **Step 5: Commit** `feat(bonds): content exclusion and own-limits directives on every generation`.
+- [x] **Step 2: Run** `npx vitest run tests/bonds tests/llm/orchestrator.test.ts` and confirm FAIL.
+- [x] **Step 3: Implement** with the texts of the rulings.
+- [x] **Step 4: Run** `npm test` and confirm PASS. The P3 scene-context tests that asserted `explicit` are updated in this commit and named in the message.
+- [x] **Step 5: Commit** `feat(bonds): content exclusion and own-limits directives on every generation`.
 
 ### Task 5: Violations and limits in extraction
 

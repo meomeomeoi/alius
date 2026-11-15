@@ -154,15 +154,13 @@ describe('scene context', () => {
 });
 
 describe('scene directives', () => {
-  it('explicit directive follows the setting', () => {
+  it('the P3 explicit directive is retired: the scene sets none, whatever the old switch says (P9d)', () => {
     const b = builder();
     const s = inScene();
-    sceneDirectives(b, s, { ...settings, explicitContent: true });
-    expect(b.build(s, 1000).directives).toContain('Explicit content: allowed.');
-    sceneDirectives(b, s, { ...settings, explicitContent: false });
-    const d = b.build(s, 1000).directives;
-    expect(d).toContain('Explicit content: not allowed; fade out intimate moments.');
-    expect(d).not.toContain('Explicit content: allowed.');
+    for (const explicitContent of [true, false]) {
+      sceneDirectives(b, s, { ...settings, explicitContent });
+      expect(b.build(s, 1000).directives).not.toContain('Explicit content');
+    }
   });
   it('romance off adds its own directive; clear removes both', () => {
     const b = builder();

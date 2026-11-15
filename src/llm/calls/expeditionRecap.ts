@@ -1,8 +1,6 @@
 import { TUNING } from '../../engine/tuning';
-import type { AliusSettings } from '../../settings';
-import type { StAdapter } from '../../st/adapter';
 import { registerCallType } from '../callTypes';
-import { callLlm } from '../orchestrator';
+import { callLlm, type LlmDeps } from '../orchestrator';
 
 export interface RecapInput {
   commanderName: string;
@@ -31,6 +29,7 @@ export function sanitizeRecap(text: string): string | null {
 
 registerCallType<string>({
   id: 'expedition_recap',
+  prose: true,
   profile: 'main',
   json: false,
   system: () => [
@@ -57,7 +56,7 @@ registerCallType<string>({
 });
 
 /** One optional main-model call; any failure or an empty answer gives null. */
-export async function generateRecap(input: RecapInput, deps: { st: StAdapter; settings: AliusSettings }): Promise<string | null> {
+export async function generateRecap(input: RecapInput, deps: LlmDeps): Promise<string | null> {
   const r = await callLlm<string>('expedition_recap', input, deps);
   return r.ok ? sanitizeRecap(r.value) : null;
 }

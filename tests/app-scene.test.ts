@@ -285,7 +285,7 @@ describe('scenes in the app', () => {
   it('scene directives do not leak into another chat (review #9)', async () => {
     const t = await boot();
     await t.app.performActivity({ activityId: 'talk', companionId: RHEA });
-    expect(t.app.context.build(t.state(), 3000).directives).toContain('Explicit content');
+    expect(t.app.context.build(t.state(), 3000).directives).toContain('Content excluded from this story'); // P9d: the content directive replaced `explicit`
     t.app.context.setDirective({ id: 'night', text: 'It is night.', expiresAfter: 'scene' });
     t.app.context.setDirective({ id: `proposal:${RHEA}`, text: 'Rhea DECLINES', expiresAfter: 'next_reply' });
     t.app.replaceState(t.state());

@@ -1,10 +1,8 @@
 import { z } from 'zod';
 import { enemyNameKey, isEnemyName } from '../../engine/combat/spawn';
 import { GENERATED_NAME, GRUNT_BIO_MAX } from '../../engine/grunts';
-import type { AliusSettings } from '../../settings';
-import type { StAdapter } from '../../st/adapter';
 import { registerCallType } from '../callTypes';
-import { callLlm } from '../orchestrator';
+import { callLlm, type LlmDeps } from '../orchestrator';
 
 export interface FlavorKind {
   system(input: unknown): string;
@@ -23,6 +21,7 @@ const kindOf = (input: unknown): FlavorKind | undefined => kinds.get(String((inp
 
 registerCallType<Record<string, unknown>>({
   id: 'flavor',
+  prose: true,
   profile: 'mechanic',
   json: true,
   system: (input) => kindOf(input)?.system(input) ?? 'Reply with a single JSON object and nothing else.',
@@ -32,7 +31,7 @@ registerCallType<Record<string, unknown>>({
 
 /** Returns the model's JSON object, or null when the kind is unknown or the call failed. */
 export async function generateFlavor<T extends { kind: string }>(
-  input: T, deps: { st: StAdapter; settings: AliusSettings },
+  input: T, deps: LlmDeps,
 ): Promise<Record<string, unknown> | null> {
   if (!kinds.has(input.kind)) return null;
   const r = await callLlm<Record<string, unknown>>('flavor', input, deps);
@@ -72,7 +71,7 @@ export function sanitizeGruntFlavor(raw: unknown): { name: string; bio: string }
 }
 
 export async function generateGruntFlavor(
-  input: GruntFlavorInput, deps: { st: StAdapter; settings: AliusSettings },
+  input: GruntFlavorInput, deps: LlmDeps,
 ): Promise<{ name: string; bio: string } | null> {
   return sanitizeGruntFlavor(await generateFlavor(input, deps));
 }
@@ -109,7 +108,7 @@ export function sanitizeEnemyFlavor(raw: unknown): { name: string } | null {
 }
 
 export async function generateEnemyFlavor(
-  input: EnemyFlavorInput, deps: { st: StAdapter; settings: AliusSettings },
+  input: EnemyFlavorInput, deps: LlmDeps,
 ): Promise<{ name: string } | null> {
   return sanitizeEnemyFlavor(await generateFlavor(input, deps));
 }
@@ -158,7 +157,7 @@ export function sanitizeDemandFlavor(raw: unknown): { text: string } | null {
 }
 
 export async function generateDemandFlavor(
-  input: DemandFlavorInput, deps: { st: StAdapter; settings: AliusSettings },
+  input: DemandFlavorInput, deps: LlmDeps,
 ): Promise<string | null> {
   return sanitizeDemandFlavor(await generateFlavor(input, deps))?.text ?? null;
 }

@@ -59,6 +59,7 @@ import { renderInvTab } from './ui/inv/invTab';
 import { ContextBuilder } from './llm/context';
 import { runCompaction } from './scene/chronicle';
 import { createComms, type Comms } from './scene/comms';
+import { bondsDirectives, contentLine } from './bonds/directives';
 import { clearSceneDirectives, registerSceneContext } from './scene/context';
 import { createSceneController, type SceneController, type SceneUiEvent, type StartOptions } from './scene/sceneController';
 import { callLlm, type LlmResult } from './llm/orchestrator';
@@ -223,7 +224,9 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     if (state) {
       worldDirectives(context, state, registries);
       disciplineDirectives(context, state, registries); // P9: the stance of every unit in the open scene replaces her band text
+      bondsDirectives(context, state, registries); // P9d: the content exclusion and the present units' own limits
     } else {
+      bondsDirectives(context, null, registries);
       clearWorldDirectives(context);
       clearDisciplineDirectives(context);
     }
@@ -309,6 +312,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     restore: (before: CampaignState, expected: CampaignState) => api.restoreSnapshot(before, expected),
     registries: () => registries,
     settings: () => getSettings(st),
+    contentLine: () => contentLine(state, registries), // P9d: the same text as the `content` directive, for the prose calls
     toast: (kind: 'info' | 'warn' | 'error', text: string) => toast(kind, text),
     onUi: routeUi,
   };
@@ -319,6 +323,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     app: sceneApp,
     registries: () => registries,
     settings: () => getSettings(st),
+    contentLine: () => contentLine(state, registries),
     toast: (kind: 'info' | 'warn' | 'error', text: string) => toast(kind, text),
   };
   const director = createDirector(worldDeps);
@@ -921,7 +926,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
           categoryName: String(registries.enemyCategories.get(String(tpl?.categoryId))?.name ?? ''),
           affixNames: affixes.map((a) => String(registries.affixes.get(a)?.adjective ?? a)),
         },
-        { st, settings },
+        { st, settings, contentLine: () => contentLine(state, registries) },
       )
         .then((r) => {
           if (r) api.dispatch({ type: 'combat/set_enemy_name', payload: { key, name: r.name } }, { expectChatId: chatId });
@@ -1832,7 +1837,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
           likes: unit.likes,
           defectNames: unit.defects.map((d) => SHORT_NAME(registries, 'defects', d.id)),
         },
-        { st, settings },
+        { st, settings, contentLine: () => contentLine(state, registries) },
       );
       // the commander may have switched chats while the model was writing
       if (text && st.getActiveChat()?.chatId === chatId) toast('story', text);
@@ -1893,7 +1898,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
           roleName: SHORT_NAME(registries, 'roles', unit.roleId),
           defectName: SHORT_NAME(registries, 'defects', unit.defects[0]?.id ?? ''),
         },
-        { st, settings },
+        { st, settings, contentLine: () => contentLine(state, registries) },
       );
       if (flavor) {
         // cosmetic: if the chat changed or the engine refuses, the grunt simply keeps its designation

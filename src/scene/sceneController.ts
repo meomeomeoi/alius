@@ -35,6 +35,8 @@ export interface SceneDeps {
   restore(before: CampaignState, expectedCurrent: CampaignState): boolean;
   registries: () => Registries;
   settings: () => AliusSettings;
+  /** P9d: the content exclusion line a prose call appends to its system prompt. */
+  contentLine?: () => string;
   toast: Toast;
   onUi: (e: SceneUiEvent) => void;
 }

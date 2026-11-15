@@ -17099,7 +17099,10 @@ async function callLlm(id, input, deps) {
   if (mechanic && !hasProfile && !settings.mechanicFallbackToMain) {
     return { ok: false, reason: "no_profile", detail: "no mechanic connection profile selected", attempts: 0 };
   }
-  const system4 = ct.system(input);
+  const line2 = ct.prose === true ? (deps.contentLine?.() ?? "").trim() : "";
+  const system4 = line2 === "" ? ct.system(input) : `${ct.system(input)}
+
+${line2}`;
   const prompt4 = ct.prompt(input);
   const profileLabel = useMain ? "main" : settings.mechanicProfileId;
   let lastDetail = "";
@@ -17163,6 +17166,7 @@ function sanitizeVignette(text2) {
 }
 registerCallType({
   id: "activity_vignette",
+  prose: true,
   profile: "main",
   json: false,
   system: () => [
@@ -17196,6 +17200,7 @@ function registerFlavorKind(kind, impl) {
 var kindOf2 = (input) => kinds.get(String(input?.kind));
 registerCallType({
   id: "flavor",
+  prose: true,
   profile: "mechanic",
   json: true,
   system: (input) => kindOf2(input)?.system(input) ?? "Reply with a single JSON object and nothing else.",
@@ -17293,6 +17298,7 @@ var SCALE_TEXT = {
 };
 registerCallType({
   id: "dilemma_generate",
+  prose: true,
   profile: "mechanic",
   json: true,
   system: (raw) => {
@@ -17379,7 +17385,7 @@ function createDilemmas(deps) {
             flagPerOption: template.constraints?.flagPerOption === true
           },
           digest: buildDilemmaDigest(state, reg, open3)
-        }, { st: deps.st, settings });
+        }, { st: deps.st, settings, contentLine: deps.contentLine });
         if (chatId() !== chat) return;
         if (output === null) return fallback(open3.id);
         const events = answer({ type: "dilemma/present", payload: { requestId: open3.id, output } }, chat);
@@ -17623,7 +17629,7 @@ function createDiscipline(deps) {
           stateHint: String(reg.relationshipStates.get(s.relations[demand.unitId]?.stateId ?? "")?.promptHint ?? ""),
           stanceName: String((stance === null ? void 0 : stanceEntry(reg, stance)?.name) ?? ""),
           demand: demand.text
-        }, { st: deps.st, settings: deps.settings() }) ?? void 0;
+        }, { st: deps.st, settings: deps.settings(), contentLine: deps.contentLine }) ?? void 0;
       } catch {
         text2 = void 0;
       }
@@ -19526,6 +19532,7 @@ function sanitizeDm(text2) {
 }
 registerCallType({
   id: "dm_reply",
+  prose: true,
   profile: "main",
   json: false,
   system: (raw) => {
@@ -19755,7 +19762,7 @@ function createComms(deps) {
     const s = state();
     const unit = s?.squad.find((u) => u.id === unitId);
     if (!s || !unit || chatId() !== expect) return;
-    const text2 = await generateDm(replyInput(s, deps, unit, "initiate"), { st, settings: deps.settings() });
+    const text2 = await generateDm(replyInput(s, deps, unit, "initiate"), { st, settings: deps.settings(), contentLine: deps.contentLine });
     if (text2 === null || chatId() !== expect) return;
     const r = app.dispatch({ type: "dm/receive", payload: { unitId, text: text2, initiated: true } }, { expectChatId: expect });
     if (!failed(r)) deps.onUi({ type: "transcript" });
@@ -19771,7 +19778,7 @@ function createComms(deps) {
       const s = state();
       const unit = s?.squad.find((u) => u.id === unitId);
       if (!s || !unit) return;
-      const reply = await generateDm(replyInput(s, deps, unit, mode === "snap" ? "snap" : "reply"), { st, settings: deps.settings() });
+      const reply = await generateDm(replyInput(s, deps, unit, mode === "snap" ? "snap" : "reply"), { st, settings: deps.settings(), contentLine: deps.contentLine });
       if (reply === null || chatId() !== expect) return;
       const received = app.dispatch({ type: "dm/receive", payload: { unitId, text: reply } }, { expectChatId: expect });
       if (failed(received)) return;
@@ -19804,6 +19811,40 @@ function createComms(deps) {
       failed(app.dispatch({ type: "night/ignore", payload: {} }, { expectChatId: chatId() }));
     }
   };
+}
+
+// src/bonds/directives.ts
+var EXPLICIT_CATEGORY = "explicit_scenes";
+var orderedCategories = (reg) => [...reg.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order));
+var clean2 = (text2) => text2.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
+function contentLine(state, reg) {
+  if (state === null) return "";
+  const on = enabledCategories(state);
+  const off = orderedCategories(reg).filter((c) => !on.includes(String(c.id)));
+  const parts = [];
+  if (off.length > 0) parts.push(`Content excluded from this story \u2014 never depict, imply or describe: ${off.map((c) => String(c.label)).join(", ")}.`);
+  if (on.includes(EXPLICIT_CATEGORY)) parts.push("Explicit intimate scenes are allowed when the story leads there.");
+  else if (reg.contentCategories.has(EXPLICIT_CATEGORY)) parts.push("Fade out intimate moments.");
+  return parts.join(" ");
+}
+function bondsDirectives(builder, state, reg) {
+  builder.clearMatching((d) => d.id.startsWith("limits:"));
+  const line2 = contentLine(state, reg);
+  if (line2 === "" || state === null) builder.clearDirective("content");
+  else builder.setDirective({ id: "content", expiresAfter: "manual", text: line2 });
+  if (state === null || !state.scene) return;
+  const labelOf = (id) => String(reg.contentCategories.get(id)?.label ?? id);
+  for (const id of state.scene.participants) {
+    const unit = state.squad.find((u) => u.id === id);
+    const bond = unit ? bondOf(unit) : null;
+    if (!unit || !bond) continue;
+    const categories = [...new Set(bond.ownLimits.categories)].filter((c) => reg.contentCategories.has(c));
+    const ordered = orderedCategories(reg).map((c) => String(c.id)).filter((c) => categories.includes(c));
+    const note = clean2(bond.ownLimits.note ?? "");
+    if (ordered.length === 0 && note === "") continue;
+    const text2 = ordered.length > 0 ? `${unit.displayName} will not take part in: ${ordered.map(labelOf).join(", ")}.${note !== "" ? ` ${note}` : ""}` : `${unit.displayName} has a personal limit: ${note}`;
+    builder.setDirective({ id: `limits:${id}`, expiresAfter: "scene", text: text2 });
+  }
 }
 
 // src/scene/context.ts
@@ -19907,12 +19948,7 @@ function registerSceneContext(builder, deps) {
     }
   });
 }
-function sceneDirectives(builder, state, settings) {
-  builder.setDirective({
-    id: "explicit",
-    expiresAfter: "scene",
-    text: settings.explicitContent ? "Explicit content: allowed." : "Explicit content: not allowed; fade out intimate moments."
-  });
+function sceneDirectives(builder, state, _settings) {
   if (!intimacyOf(state).romance) {
     builder.setDirective({
       id: "romance_off",
@@ -19924,7 +19960,6 @@ function sceneDirectives(builder, state, settings) {
   }
 }
 function clearSceneDirectives(builder) {
-  builder.clearDirective("explicit");
   builder.clearDirective("romance_off");
 }
 
@@ -24560,6 +24595,7 @@ function sanitizeRecap(text2) {
 }
 registerCallType({
   id: "expedition_recap",
+  prose: true,
   profile: "main",
   json: false,
   system: () => [
@@ -24810,7 +24846,7 @@ function createExpedition(deps) {
           const u = s.squad.find((x) => x.id === id);
           return { name: u?.displayName ?? id, role: String(reg.roles.get(u?.roleId ?? "")?.name ?? u?.roleId ?? "soldier") };
         })
-      }, { st: deps.st, settings });
+      }, { st: deps.st, settings, contentLine: deps.contentLine });
       if (text2 === null || chatId() !== chat || state()?.lastExpedition?.id !== report.id) return;
       act("expedition/set_recap", { reportId: report.id, text: text2 }, chat);
     },
@@ -28309,7 +28345,9 @@ function createApp(st, deps) {
     if (state) {
       worldDirectives(context, state, registries);
       disciplineDirectives(context, state, registries);
+      bondsDirectives(context, state, registries);
     } else {
+      bondsDirectives(context, null, registries);
       clearWorldDirectives(context);
       clearDisciplineDirectives(context);
     }
@@ -28375,6 +28413,8 @@ function createApp(st, deps) {
     restore: (before, expected) => api.restoreSnapshot(before, expected),
     registries: () => registries,
     settings: () => getSettings(st),
+    contentLine: () => contentLine(state, registries),
+    // P9d: the same text as the `content` directive, for the prose calls
     toast: (kind, text2) => toast(kind, text2),
     onUi: routeUi
   };
@@ -28385,6 +28425,7 @@ function createApp(st, deps) {
     app: sceneApp,
     registries: () => registries,
     settings: () => getSettings(st),
+    contentLine: () => contentLine(state, registries),
     toast: (kind, text2) => toast(kind, text2)
   };
   const director = createDirector(worldDeps);
@@ -28948,7 +28989,7 @@ function createApp(st, deps) {
           categoryName: String(registries.enemyCategories.get(String(tpl?.categoryId))?.name ?? ""),
           affixNames: affixes.map((a) => String(registries.affixes.get(a)?.adjective ?? a))
         },
-        { st, settings }
+        { st, settings, contentLine: () => contentLine(state, registries) }
       ).then((r) => {
         if (r) api.dispatch({ type: "combat/set_enemy_name", payload: { key, name: r.name } }, { expectChatId: chatId });
       }).catch(() => {
@@ -29811,7 +29852,7 @@ function createApp(st, deps) {
           likes: unit.likes,
           defectNames: unit.defects.map((d) => SHORT_NAME(registries, "defects", d.id))
         },
-        { st, settings }
+        { st, settings, contentLine: () => contentLine(state, registries) }
       );
       if (text2 && st.getActiveChat()?.chatId === chatId) toast("story", text2);
       return events;
@@ -29867,7 +29908,7 @@ function createApp(st, deps) {
           roleName: SHORT_NAME(registries, "roles", unit.roleId),
           defectName: SHORT_NAME(registries, "defects", unit.defects[0]?.id ?? "")
         },
-        { st, settings }
+        { st, settings, contentLine: () => contentLine(state, registries) }
       );
       if (flavor) {
         const r = api.dispatch({ type: "squad/set_flavor", payload: { unitId: unit.id, ...flavor } }, { expectChatId: chatId });

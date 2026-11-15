@@ -19,6 +19,15 @@ beforeAll(async () => {
   registerCommanderProviders();
 });
 
+describe('no pronoun for the commander in the bonds layer (P9d)', () => {
+  it('src/bonds/directives.ts has no commander pronoun in any string', async () => {
+    const { readFile } = await import('node:fs/promises');
+    const text = await readFile('src/bonds/directives.ts', 'utf8');
+    expect(text).toContain('Content excluded');
+    expect(text.match(COMMANDER_PRONOUN)).toBeNull();
+  });
+});
+
 describe('no pronoun for the commander in content', () => {
   const fields = (registry: keyof Registries, keys: string[]): Array<[string, string]> =>
     [...reg[registry].values()].flatMap((e) => keys.map((k): [string, string] => [`${registry}:${e.id}.${k}`, String(e[k] ?? '')]));

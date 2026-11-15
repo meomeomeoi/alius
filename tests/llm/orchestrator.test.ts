@@ -139,3 +139,43 @@ describe('callLlm', () => {
     expect(st.calls[0].think).toBe('low');
   });
 });
+
+describe('the content line (P9d)', () => {
+  const LINE = 'Content excluded from this story — never depict, imply or describe: Restraint.';
+  const dmInput = { unitName: 'Ann', commanderName: 'Vale', slotText: 'Day 1', stateHint: 'wary', bands: { trust: 'mid', affinity: 'mid', attraction: 'low', stress: 'low' }, recentFacts: [], history: [], mode: 'reply' };
+
+  it('a prose call appends the content line to its system prompt; intent_extract does not', async () => {
+    await import('../../src/llm/calls/dmReply');
+    await import('../../src/llm/calls/intentExtract');
+    const { st, settings } = setup({ mechanicFallbackToMain: true });
+    st.mainReplies = ['I will be there.'];
+    const dm = await callLlm('dm_reply', dmInput, { st, settings, contentLine: () => LINE });
+    expect(dm.ok).toBe(true);
+    expect(st.calls[0].system).toContain(LINE);
+    expect(st.calls[0].system!.endsWith(LINE)).toBe(true);
+
+    st.profileReplies = ['{}'];
+    await callLlm('intent_extract', { commanderName: 'Vale', channel: 'scene', exchange: [], units: [], openPromises: [], romance: true, measures: [] }, { st, settings, contentLine: () => LINE });
+    const calls = st.calls.filter((c) => c.kind === 'profile');
+    expect(calls.length).toBeGreaterThan(0);
+    for (const c of calls) expect(c.system ?? '').not.toContain(LINE);
+  });
+
+  it('an empty line or no line changes nothing', async () => {
+    await import('../../src/llm/calls/dmReply');
+    const { st, settings } = setup({ mechanicFallbackToMain: true });
+    st.mainReplies = ['a', 'b', 'c'];
+    await callLlm('dm_reply', dmInput, { st, settings });
+    await callLlm('dm_reply', dmInput, { st, settings, contentLine: () => '' });
+    await callLlm('dm_reply', dmInput, { st, settings, contentLine: () => '   ' });
+    expect(st.calls[0].system).toBe(st.calls[1].system);
+    expect(st.calls[1].system).toBe(st.calls[2].system);
+  });
+
+  it('the five prose call types are marked and no other', async () => {
+    for (const f of ['dmReply', 'activityVignette', 'expeditionRecap', 'flavor', 'dilemmaGenerate', 'intentExtract', 'sceneSummary', 'directorTick', 'profileImport', 'chronicleCompact', 'emotionPick', 'commanderImport']) await import(`../../src/llm/calls/${f}`);
+    const { CALL_TYPE_IDS, getCallType } = await import('../../src/llm/callTypes');
+    const prose = CALL_TYPE_IDS.filter((id) => getCallType(id)?.prose === true).sort();
+    expect(prose).toEqual(['activity_vignette', 'dilemma_generate', 'dm_reply', 'expedition_recap', 'flavor']);
+  });
+});

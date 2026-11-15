@@ -62,7 +62,7 @@ export function createDilemmas(deps: WorldDeps): DilemmaController {
             flagPerOption: (template.constraints as { flagPerOption?: boolean } | undefined)?.flagPerOption === true,
           },
           digest: buildDilemmaDigest(state, reg, open),
-        }, { st: deps.st, settings });
+        }, { st: deps.st, settings, contentLine: deps.contentLine });
         // the chat changed while the model thought: the answer belongs to another campaign; the request stays open
         if (chatId() !== chat) return;
         if (output === null) return fallback(open.id);

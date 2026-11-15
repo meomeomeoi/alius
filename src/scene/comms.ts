@@ -87,7 +87,7 @@ export function createComms(deps: CommsDeps): Comms {
     const s = state();
     const unit = s?.squad.find((u) => u.id === unitId);
     if (!s || !unit || chatId() !== expect) return;
-    const text = await generateDm(replyInput(s, deps, unit, 'initiate'), { st, settings: deps.settings() });
+    const text = await generateDm(replyInput(s, deps, unit, 'initiate'), { st, settings: deps.settings(), contentLine: deps.contentLine });
     if (text === null || chatId() !== expect) return;
     const r = app.dispatch({ type: 'dm/receive', payload: { unitId, text, initiated: true } }, { expectChatId: expect });
     if (!failed(r)) deps.onUi({ type: 'transcript' });
@@ -104,7 +104,7 @@ export function createComms(deps: CommsDeps): Comms {
       const s = state();
       const unit = s?.squad.find((u) => u.id === unitId);
       if (!s || !unit) return;
-      const reply = await generateDm(replyInput(s, deps, unit, mode === 'snap' ? 'snap' : 'reply'), { st, settings: deps.settings() });
+      const reply = await generateDm(replyInput(s, deps, unit, mode === 'snap' ? 'snap' : 'reply'), { st, settings: deps.settings(), contentLine: deps.contentLine });
       if (reply === null || chatId() !== expect) return;
       const received = app.dispatch({ type: 'dm/receive', payload: { unitId, text: reply } }, { expectChatId: expect });
       if (failed(received)) return;

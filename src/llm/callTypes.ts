@@ -15,6 +15,8 @@ export interface CallType<T = unknown> {
   system(input: unknown): string;
   prompt(input: unknown): string;
   schema?: z.ZodType<T>;
+  /** P9d: the text of this call reaches the player as story, so the orchestrator appends the content line to its system prompt. */
+  prose?: true;
 }
 
 const registry = new Map<CallTypeId, CallType<any>>();

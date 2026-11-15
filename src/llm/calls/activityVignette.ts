@@ -1,7 +1,5 @@
 import { registerCallType } from '../callTypes';
-import { callLlm } from '../orchestrator';
-import type { AliusSettings } from '../../settings';
-import type { StAdapter } from '../../st/adapter';
+import { callLlm, type LlmDeps } from '../orchestrator';
 
 export interface VignetteInput {
   activityName: string;
@@ -37,6 +35,7 @@ export function sanitizeVignette(text: string): string | null {
 
 registerCallType<string>({
   id: 'activity_vignette',
+  prose: true,
   profile: 'main',
   json: false,
   system: () =>
@@ -60,7 +59,7 @@ registerCallType<string>({
 
 /** One optional main-model call; any failure gives null. It only returns text, never numbers. */
 export async function generateVignette(
-  input: VignetteInput, deps: { st: StAdapter; settings: AliusSettings },
+  input: VignetteInput, deps: LlmDeps,
 ): Promise<string | null> {
   const r = await callLlm<string>('activity_vignette', input, deps);
   return r.ok ? sanitizeVignette(r.value) : null;

@@ -123,12 +123,11 @@ export function registerSceneContext(builder: ContextBuilder, deps: Deps): void 
   });
 }
 
-/** Scene-scoped directives from the settings: the explicit-content rule and, with romance off, a ban on romance. */
-export function sceneDirectives(builder: ContextBuilder, state: CampaignState, settings: AliusSettings): void {
-  builder.setDirective({
-    id: 'explicit', expiresAfter: 'scene',
-    text: settings.explicitContent ? 'Explicit content: allowed.' : 'Explicit content: not allowed; fade out intimate moments.',
-  });
+/**
+ * Scene-scoped directives: with romance off, a ban on romance. (The P3 `explicit` directive is retired: content is the
+ * `content` directive of P9d, refreshed with every `applyContext()`, see `src/bonds/directives.ts`.)
+ */
+export function sceneDirectives(builder: ContextBuilder, state: CampaignState, _settings: AliusSettings): void {
   if (!intimacyOf(state).romance) {
     builder.setDirective({
       id: 'romance_off', expiresAfter: 'scene',
@@ -140,6 +139,5 @@ export function sceneDirectives(builder: ContextBuilder, state: CampaignState, s
 }
 
 export function clearSceneDirectives(builder: ContextBuilder): void {
-  builder.clearDirective('explicit');
   builder.clearDirective('romance_off');
 }

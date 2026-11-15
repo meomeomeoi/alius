@@ -1,8 +1,6 @@
-import type { AliusSettings } from '../../settings';
-import type { StAdapter } from '../../st/adapter';
 import type { AffinityBand, AttractionBand, StressBand, TrustBand } from '../../engine/relations/bands';
 import { registerCallType } from '../callTypes';
-import { callLlm } from '../orchestrator';
+import { callLlm, type LlmDeps } from '../orchestrator';
 
 export interface DmReplyInput {
   unitName: string;
@@ -42,6 +40,7 @@ export function sanitizeDm(text: string): string | null {
 
 registerCallType<string>({
   id: 'dm_reply',
+  prose: true,
   profile: 'main',
   json: false,
   system: (raw) => {
@@ -71,7 +70,7 @@ registerCallType<string>({
 });
 
 /** One main-model call; any failure or an empty answer gives null (she simply does not answer). */
-export async function generateDm(input: DmReplyInput, deps: { st: StAdapter; settings: AliusSettings }): Promise<string | null> {
+export async function generateDm(input: DmReplyInput, deps: LlmDeps): Promise<string | null> {
   const r = await callLlm<string>('dm_reply', input, deps);
   return r.ok ? sanitizeDm(r.value) : null;
 }

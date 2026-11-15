@@ -16,5 +16,7 @@ export interface WorldDeps {
   };
   registries: () => Registries;
   settings: () => AliusSettings;
+  /** P9d: the content exclusion line a prose call appends to its system prompt. */
+  contentLine?: () => string;
   toast: Toast;
 }

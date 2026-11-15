@@ -55,7 +55,7 @@ export function createDiscipline(deps: DisciplineDeps): DisciplineController {
         text = (await generateDemandFlavor({
           kind: 'demand', unitName: unit?.displayName ?? demand.unitId, stateHint: String(reg.relationshipStates.get(s.relations[demand.unitId]?.stateId ?? '')?.promptHint ?? ''),
           stanceName: String((stance === null ? undefined : stanceEntry(reg, stance)?.name) ?? ''), demand: demand.text,
-        }, { st: deps.st, settings: deps.settings() })) ?? undefined;
+        }, { st: deps.st, settings: deps.settings(), contentLine: deps.contentLine })) ?? undefined;
       } catch {
         text = undefined; // a failed call never blocks the demand: the template text is used
       }
