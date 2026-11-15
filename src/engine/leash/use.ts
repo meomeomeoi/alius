@@ -221,6 +221,21 @@ export function removeFromService(draft: CampaignState, unitId: string, status: 
   const waiting = draft.dilemmas?.open;
   if (waiting) waiting.units = waiting.units.filter((id) => id !== unitId);
   forgetUnit(draft, unitId); // P9: held defiance, threats, restrictions, demands and sabotage that pointed at her
+  forgetBonds(draft, unitId); // P9d: her rules, a smother she held and her Want
+}
+
+/** P9d: what a unit who leaves the service no longer carries (her rules, the smother hold, Want and publicity). */
+function forgetBonds(draft: CampaignState, unitId: string): void {
+  if (draft.bonds) {
+    draft.bonds.rules = draft.bonds.rules.filter((r) => r.unitId !== unitId);
+    if (draft.bonds.smother?.unitId === unitId) delete draft.bonds.smother;
+  }
+  const rel = draft.relations[unitId];
+  if (rel) {
+    delete rel.want;
+    delete rel.wantBreakDay;
+    delete rel.publicity;
+  }
 }
 
 /** The oversight's approval of a termination: the corporation's base, a little per point of its standing, and the commander's traits. */

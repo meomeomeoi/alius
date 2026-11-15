@@ -2,6 +2,7 @@ import type { Entry, Registries } from '../content/types';
 import { createCampaign } from './state/create';
 import { Rng } from './rng';
 import { enterStep, initialOnboarding, stepIndex } from './onboarding';
+import { defectAllowedFor, validateBond } from './bonds/profile';
 import { TUNING } from './tuning';
 import { ensureLeash } from './leash/weekly';
 import { seedWorld } from './world/state';
@@ -11,7 +12,7 @@ import { applyFirstImpression } from './commander/presence';
 import { applyFactionTraitEffects, applyStartTraitEffects, syncTraitSettings } from './commander/traits';
 import { applyCommanderSetup, defaultCommanderSetup, validateCommanderSetup, type CommanderSetup } from './commander/profile';
 import {
-  VALUE_AXES, type CampaignState, type Relation, type SignatureInstance, type Unit, type WorldStance,
+  VALUE_AXES, type Bond, type CampaignState, type Relation, type SignatureInstance, type Unit, type WorldStance,
 } from './state/types';
 
 export const SETUP_LIMITS = {
@@ -54,6 +55,8 @@ export interface UnitSetup {
   dispositionReason?: string;
   /** P8: her stance toward each `squadStance` world option. */
   worldStances?: Record<string, WorldStance>;
+  /** P9d: her bond profile (absent = modest). */
+  bond?: Bond;
 }
 
 export interface SetupResult {
@@ -132,6 +135,7 @@ function validateUnit(
     else if (def.category === 'desire_bond' && !opts.desireBondDefects) {
       out.push(`${label}: defect "${d.id}" is a Desire/Bond defect and that setting is off`);
     }
+    else if (!defectAllowedFor(reg, d.id, u.bond ?? null)) out.push(`${label}: defect "${d.id}" needs a caretaker bond and she is not one`);
     if (seen.has(d.id)) out.push(`${label}: defect "${d.id}" is chosen twice`);
     seen.add(d.id);
   }
@@ -156,6 +160,7 @@ function validateUnit(
   }
 
   validateDisposition(u, label, reg, out);
+  if (u.bond !== undefined) for (const issue of validateBond(u.bond, reg).issues) out.push(`${label}: bond: ${issue}`);
 
   const tagCaps = { likes: SETUP_LIMITS.likes, dislikes: SETUP_LIMITS.dislikes, triggers: SETUP_LIMITS.triggers } as const;
   for (const [field, cap] of Object.entries(tagCaps) as Array<[keyof typeof tagCaps, number]>) {
@@ -300,6 +305,7 @@ export function makeNamedUnit(u: UnitSetup, reg: Registries, usedIds: Set<string
     ...(u.dispositionOffset !== undefined && u.dispositionOffset !== 0 ? { dispositionOffset: u.dispositionOffset } : {}),
     ...(u.dispositionReason ? { dispositionReason: u.dispositionReason } : {}),
     ...(u.worldStances && Object.keys(u.worldStances).length > 0 ? { worldStances: structuredClone(u.worldStances) } : {}),
+    ...(u.bond ? { bond: structuredClone(u.bond) } : {}),
   };
 }
 

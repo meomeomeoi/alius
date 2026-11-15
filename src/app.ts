@@ -1237,6 +1237,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     tastes: 'How she reads the commander (tastes)',
     disposition: 'How hard or kind she is for this world (disposition offset)',
     stances: 'Her stance toward the world\'s norms',
+    bond: 'Bond profile: how she leads, bonds and what she will not do',
   };
 
   /** Re-imports chosen sections from the unit's card and applies the player's choices via squad/resync. */
@@ -1248,7 +1249,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
 
     // P8: the world the unit lives in; the stances section only makes sense while some norm is not neutral
     const world = state.world.options ?? defaultWorldOptions(registries);
-    const offered = RESYNC_SECTIONS.filter((s) => s !== 'stances' || stanceOptionIds(registries, world).length > 0);
+    const offered = RESYNC_SECTIONS.filter((s) => s !== 'bond' && (s !== 'stances' || stanceOptionIds(registries, world).length > 0)) as Array<Exclude<ResyncSection, 'bond'>>; // the bond section is offered once the import can read it
 
     // 1. which sections
     const boxes = offered.map((s) => h('input', { type: 'checkbox', 'data-section': s, checked: true }) as HTMLInputElement);

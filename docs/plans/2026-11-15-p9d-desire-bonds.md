@@ -347,17 +347,17 @@ tests/**                                           mirrors src; tests/helpers/bo
   - `defectAllowedFor(reg, defectId, bond: Bond | null): boolean`.
   - The `squad/resync` patch key `bond`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `bondOf returns MODEST_BOND for a named unit without bond and null for a grunt`
   - `leadRank orders yielding < balanced < assertive < dominant`
   - `validateBond drops unknown limit ids and cuts the note at 160`
   - `a unit without caretaker cannot take caretaker_overdrive (validateUnitProfile)`
   - `squad/resync with bond replaces the profile and keeps want and publicity`
   - `removeFromService forgets rules, smother and want`
-- [ ] **Step 2: Run** `npx vitest run tests/engine/bonds/profile.test.ts tests/engine/setup.test.ts` and confirm FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** `npm test` and confirm PASS.
-- [ ] **Step 5: Commit** `feat(engine): bond profile on units, validation and re-sync`.
+- [x] **Step 2: Run** `npx vitest run tests/engine/bonds/profile.test.ts tests/engine/setup.test.ts` and confirm FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** `npm test` and confirm PASS.
+- [x] **Step 5: Commit** `feat(engine): bond profile on units, validation and re-sync`.
 
 ### Task 3: `profile_import` bond section, wizard and calibration UI
 

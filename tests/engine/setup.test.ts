@@ -3,11 +3,11 @@ import { readFile } from 'node:fs/promises';
 import { loadPacks } from '../../src/content/loader';
 import type { Registries } from '../../src/content/types';
 import {
-  INITIAL_RELATION_STATE, SETUP_LIMITS, buildCampaign, normalizeTag, validateSetup,
+  INITIAL_RELATION_STATE, SETUP_LIMITS, buildCampaign, normalizeTag, validateSetup, validateUnitProfile,
   type SetupResult, type UnitSetup,
 } from '../../src/engine/setup';
 import { migrate } from '../../src/engine/state/migrations';
-import type { CampaignState } from '../../src/engine/state/types';
+import type { Bond, CampaignState } from '../../src/engine/state/types';
 
 let reg: Registries;
 beforeAll(async () => {
@@ -357,5 +357,38 @@ describe('world options in setup (P8)', () => {
     const s = ok(result([unit()], { world: { options: { offspec_stigma: 'hunted' } } }));
     expect(s.world.seeded).toBe(true);
     expect(s.world.options!.offspec_stigma).toBe('hunted');
+  });
+});
+
+describe('P9d bond profile in setup', () => {
+  const bond: Bond = { leadStyle: 'assertive', attachment: 'intense', desire: 'medium', caretaker: false, ownLimits: { categories: ['restraint'], note: 'No chains.' }, publicity: 'known' };
+  const caretakerDefect = (): Registries => {
+    const r = structuredClone(reg);
+    r.defects.set('needs_caretaker', { ...structuredClone(r.defects.get('echo_bleed')!), id: 'needs_caretaker', requiresBond: { caretaker: true } });
+    return r;
+  };
+
+  it('makeNamedUnit copies the bond into the unit and an absent bond stays absent', () => {
+    const s = ok(result([unit({ bond: structuredClone(bond) }), unit({ cardRef: 'kay.png', displayName: 'Kay' })]));
+    expect(s.squad[0].bond).toEqual(bond);
+    expect(s.squad[0].bond).not.toBe(bond);
+    expect('bond' in s.squad[1]).toBe(false);
+  });
+
+  it('an illegal bond is a setup error', () => {
+    const b = build(result([unit({ bond: { ...bond, leadStyle: 'tyrant' } as never })]));
+    expect(b.ok).toBe(false);
+    if (!b.ok) expect(b.errors.join('\n')).toMatch(/\(Rhea\): bond: leadStyle/);
+  });
+
+  it('a unit without caretaker cannot take caretaker_overdrive (validateUnitProfile)', () => {
+    const r = caretakerDefect();
+    const withDefect = (b?: typeof bond) => result([unit({ defects: [{ id: 'needs_caretaker', origin: 'x' }], ...(b ? { bond: b } : {}) })]);
+    expect(validateSetup(withDefect(), r, OPTS).join('\n')).toMatch(/needs_caretaker.*caretaker/);
+    expect(validateSetup(withDefect({ ...bond, caretaker: false }), r, OPTS).join('\n')).toMatch(/needs_caretaker.*caretaker/);
+    expect(validateSetup(withDefect({ ...bond, caretaker: true }), r, OPTS)).toEqual([]);
+    const { baseline: _b, ...profile } = unit({ defects: [{ id: 'needs_caretaker', origin: 'x' }] });
+    expect(validateUnitProfile(profile, 'Rhea', r, OPTS).join('\n')).toMatch(/caretaker/);
+    expect(validateUnitProfile({ ...profile, bond: { ...bond, caretaker: true } }, 'Rhea', r, OPTS)).toEqual([]);
   });
 });

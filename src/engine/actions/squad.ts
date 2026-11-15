@@ -8,13 +8,13 @@ import {
   crimeEffectsOf, crimeKnownByDefault, initialRelation, makeNamedUnit, startingTrustAdjust, validateIncomingUnit, validateUnitProfile, type UnitSetup,
 } from '../setup';
 import { TUNING } from '../tuning';
-import type { CampaignState, WorldStance } from '../state/types';
+import type { Bond, CampaignState, WorldStance } from '../state/types';
 import type { DefectInstance } from '../state/types';
 
 // Importing this module registers the squad actions.
 
 /** Sections a re-sync can replace. The baseline is excluded: relationship axes are engine truth once the campaign runs. */
-export const RESYNC_SECTIONS = ['role', 'values', 'tags', 'signature', 'defects', 'tastes', 'disposition', 'stances'] as const;
+export const RESYNC_SECTIONS = ['role', 'values', 'tags', 'signature', 'defects', 'tastes', 'disposition', 'stances', 'bond'] as const;
 export type ResyncSection = (typeof RESYNC_SECTIONS)[number];
 
 export type ResyncPatch = Partial<Pick<UnitSetup, 'roleId' | 'values' | 'likes' | 'dislikes' | 'triggers' | 'signature' | 'defects'>> & {
@@ -24,13 +24,15 @@ export type ResyncPatch = Partial<Pick<UnitSetup, 'roleId' | 'values' | 'likes' 
   dispositionOffset?: number;
   dispositionReason?: string;
   worldStances?: Record<string, WorldStance>;
+  /** P9d: replaces the bond profile (lead style, attachment, desire, caretaker, her own limits, her publicity preference). Never touches Want or publicity of the relation. */
+  bond?: Bond;
 };
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 
 const SECTION_OF: Record<keyof ResyncPatch, ResyncSection> = {
   roleId: 'role', values: 'values', likes: 'tags', dislikes: 'tags', triggers: 'tags', signature: 'signature', defects: 'defects',
-  commanderTastes: 'tastes', dispositionOffset: 'disposition', dispositionReason: 'disposition', worldStances: 'stances',
+  commanderTastes: 'tastes', dispositionOffset: 'disposition', dispositionReason: 'disposition', worldStances: 'stances', bond: 'bond',
 };
 
 registerAction('squad/resync', (draft, payload, ctx) => {
@@ -57,6 +59,7 @@ registerAction('squad/resync', (draft, payload, ctx) => {
     dispositionOffset: patch.dispositionOffset ?? unit.dispositionOffset,
     dispositionReason: patch.dispositionReason ?? unit.dispositionReason,
     worldStances: patch.worldStances ?? unit.worldStances,
+    bond: patch.bond ?? unit.bond,
   };
   const errors = validateUnitProfile(next, unit.displayName, ctx.registries, {
     desireBondDefects: draft.settings.desireBondDefects === true,
@@ -90,6 +93,7 @@ registerAction('squad/resync', (draft, payload, ctx) => {
     if (Object.keys(patch.worldStances).length > 0) unit.worldStances = structuredClone(patch.worldStances);
     else delete unit.worldStances;
   }
+  if (patch.bond !== undefined) unit.bond = structuredClone(patch.bond);
   if (patch.defects) {
     unit.defects = patch.defects.map((d): DefectInstance => {
       const kept = unit.defects.find((x) => x.id === d.id); // keeps arc progress of a defect that stays

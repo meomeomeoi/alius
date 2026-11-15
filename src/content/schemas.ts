@@ -714,6 +714,8 @@ export const DefectSchema = BaseEntrySchema.extend({
   desertionMod: z.number().min(-0.3).max(0.3).optional(),
   /** P6: a relation flag that must be set before the defect arc can start. */
   arcFlag: str.optional(),
+  /** P9d: the bond traits a unit needs to take this defect (import candidates, the manual list and validation read it). */
+  requiresBond: z.object({ caretaker: z.literal(true).optional() }).strict().optional(),
   nightEvents: z.array(NightSpecSchema).optional(),
   /** P5: one more node revealed ahead on the expedition map (Echo Bleed). */
   expedition: z.object({ reveal: z.literal(1) }).strict().optional(),
