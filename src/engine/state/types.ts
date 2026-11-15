@@ -308,6 +308,8 @@ export interface DmMessage {
   slot: Slot;
   read: boolean;
   initiated?: boolean;
+  /** P9d: a reply of hers that depicts content switched off (the category ids). */
+  violation?: string[];
 }
 
 /** P11: a lead the director set (`objectiveHint`). At most one is open; the newest finished ones are kept for the log. */

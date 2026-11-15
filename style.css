@@ -2483,6 +2483,22 @@
   gap: 12px;
 }
 
+/* Bonds (P9d): the content violation mark. Palette variables only; semantic colours are not used (readable mode safe). */
+#alius-shell .alius-violation {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin: 2px 0 2px 8px;
+  padding: 0 6px;
+  border: var(--alius-line);
+  color: var(--alius-accent);
+}
+
+#alius-shell .alius-violation .alius-btn {
+  padding: 0 4px;
+}
+
 /* P5: world map, mission board, expeditions */
 .alius-map { position: relative; max-width: 100%; }
 .alius-map-img { display: block; width: 100%; height: auto; }

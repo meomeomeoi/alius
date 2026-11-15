@@ -1241,6 +1241,17 @@
     "term": "Bond profile",
     "short": "How a soldier leads, attaches and what she will not do, read from her character card.",
     "long": "AUTHOR TO WRITE: The bond profile has her lead style (who takes the lead in close moments), her attachment (how fast and how hard she attaches), her desire, whether she is a caretaker, how open she wants a relationship to be and a list of things she will not take part in. A soldier with a modest profile never uses the romance mechanics beyond conversation. Her own limits hold even when a content category is switched on.",
-    "see": []
+    "see": [
+      "content_categories"
+    ]
+  },
+  {
+    "id": "content_categories",
+    "term": "Content categories",
+    "short": "What the story may show. Every category is off until you switch it on; switching one on is your consent for it to appear when the story leads there.",
+    "long": "AUTHOR TO WRITE: Categories are listed when you start a campaign and in the settings tab, and you can change them at any time. A category that is off is excluded from every generation and from every mechanic that could produce it; when a reply shows one anyway it is marked and you can regenerate it. A soldier's own limits from her card still hold when a category is on.",
+    "see": [
+      "bond_profile"
+    ]
   }
 ]

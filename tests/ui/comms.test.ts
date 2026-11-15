@@ -171,3 +171,32 @@ describe('discipline chips in a thread (P9)', () => {
   });
 });
 
+
+describe('COMMS content violation (P9d)', () => {
+  it('a flagged DM carries a CONTENT chip with the labels and no regenerate button', () => {
+    const s = campaign(reg, 4);
+    s.dms[ANN] = [msg('commander', 'hi', true), msg(ANN, 'she ties you down', true, { violation: ['restraint', 'humiliation'] }), msg(ANN, 'sorry', true)];
+    const { q, qa } = render({ state: s });
+    q(`button[data-unit="${ANN}"]`)!.click();
+    const chips = qa('[data-violation]');
+    expect(chips).toHaveLength(1);
+    expect(chips[0].textContent).toContain('CONTENT');
+    expect(chips[0].textContent).toContain('Restraint');
+    expect(chips[0].textContent).toContain('Humiliation');
+    expect(chips[0].getAttribute('data-analyze')).toBeTruthy();
+    expect(qa('[data-violation] button')).toHaveLength(0);
+  });
+
+  it('an unflagged thread has no chip; a hostile id stays text', () => {
+    const s = campaign(reg, 4);
+    s.dms[ANN] = [msg(ANN, 'hello', true), msg(ANN, 'x', true, { violation: ['<b>bold</b>'] })];
+    const { q, qa } = render({ state: s });
+    q(`button[data-unit="${ANN}"]`)!.click();
+    expect(qa('[data-violation]')).toHaveLength(1);
+    expect(qa('[data-violation] b')).toHaveLength(0);
+    s.dms[ANN] = [msg(ANN, 'hello', true)];
+    const again = render({ state: s });
+    again.q(`button[data-unit="${ANN}"]`)!.click();
+    expect(again.qa('[data-violation]')).toHaveLength(0);
+  });
+});

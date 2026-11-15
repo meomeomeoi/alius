@@ -1,5 +1,6 @@
 import type { Registries } from '../content/types';
 import type { EngineEvent } from '../engine/dispatch';
+import { disabledCategories, ownLimitLabels } from '../engine/bonds';
 import { measureList } from '../engine/discipline';
 import { openPromises } from '../engine/memory';
 import { intimacyOf } from '../engine/relations/gain';
@@ -169,6 +170,18 @@ export function createSceneController(deps: SceneDeps): SceneController {
     app.refreshContext();
   }
 
+  /** P9d: what the extraction is told about content: the categories that are off, and each unit's own limits (labels only). */
+  function contentInput(s: CampaignState, participants: string[]): Pick<IntentExtractInput, 'excluded' | 'limits'> {
+    const reg = deps.registries();
+    const excluded = disabledCategories(s, reg);
+    const limits: Record<string, string[]> = {};
+    for (const id of participants) {
+      const labels = unitById(s, id) ? ownLimitLabels(unitById(s, id)!, reg) : [];
+      if (labels.length > 0) limits[id] = labels;
+    }
+    return { ...(excluded.length > 0 ? { excluded } : {}), ...(Object.keys(limits).length > 0 ? { limits } : {}) };
+  }
+
   function unitInput(s: CampaignState, id: string): IntentExtractInput['units'][number] | null {
     const u = unitById(s, id);
     const rel = s.relations[id];
@@ -212,6 +225,7 @@ export function createSceneController(deps: SceneDeps): SceneController {
       exchange: messages.map((m) => ({ speaker: m.isUser ? s0.commander.name : m.name, text: m.text })),
       units, openPromises: openPromises(s0, scene.participants, scene.participants).map((p) => ({ by: nm(p.by), to: nm(p.to), text: p.text })),
       romance: intimacyOf(s0).romance, measures: measureList(deps.registries(), s0),
+      ...contentInput(s0, scene.participants),
     };
     swipedWhileExtracting.clear();
     extracting = true;
@@ -237,7 +251,17 @@ export function createSceneController(deps: SceneDeps): SceneController {
     const from = extracted;
     const before = state();
     if (!before || !before.scene) return false;
-    const events = dispatch({ type: 'intents/apply', payload: { channel: 'scene', intents: result.intents, readIndex: nextPointer, messageRef: `chat:${lastReply.index}` } }, expect);
+    // P9d: a flagged reply and a tone the reading found go in with the same step, so a rollback takes them too
+    const flaggedHere = result.contentViolations.map((v) => v.category);
+    if (flaggedHere.length > 0) debug(`Content flagged on reply ${lastReply.index}: ${flaggedHere.join(', ')}.`);
+    const events = dispatch({
+      type: 'intents/apply',
+      payload: {
+        channel: 'scene', intents: result.intents, readIndex: nextPointer, messageRef: `chat:${lastReply.index}`,
+        ...(flaggedHere.length > 0 ? { violations: { index: lastReply.index, categories: flaggedHere } } : {}),
+        ...(result.sceneTone !== null ? { tone: result.sceneTone } : {}),
+      },
+    }, expect);
     if (events.some((e) => e.type === 'error')) return false;
     const after = state();
     extracted = nextPointer;
@@ -446,11 +470,18 @@ export function createSceneController(deps: SceneDeps): SceneController {
         // whatever the batched modes (or an earlier failure) left unread
         if (st.getChatMessages(extracted).some((m) => !m.isUser)) await extract(expect);
         const names = (ids: string[]) => ids.map((id) => ({ id, name: unitById(s, id)?.displayName ?? id }));
+        const flaggedIndexes = new Set((scene.violations ?? []).map((v) => v.index));
+        const excluded = disabledCategories(s, deps.registries());
         const summary = await summarizeScene({
           location: String(deps.registries().locations.get(scene.locationId)?.name ?? scene.locationId),
           participants: names(scene.participants),
-          transcript: st.getChatMessages(Math.min(scene.startIndex, st.chatLength())).map((m) => ({ speaker: m.isUser ? s.commander.name : m.name, text: m.text })),
+          transcript: st.getChatMessages(Math.min(scene.startIndex, st.chatLength())).map((m) => ({
+            speaker: m.isUser ? s.commander.name : m.name, text: m.text, ...(flaggedIndexes.has(m.index) ? { flagged: true as const } : {}),
+          })),
+          ...(excluded.length > 0 ? { excluded } : {}),
         }, { st, settings: deps.settings() });
+        // P9d: the summary only reports; it never marks the UI
+        if (summary && summary.contentViolations.length > 0) debug(`Scene summary flagged excluded content: ${summary.contentViolations.map((v) => v.category).join(', ')}.`);
         if (disposed || chatId() !== expect) return;
         dispatch({ type: 'scene/end', payload: summary ? { summary } : {} }, expect);
       } finally {

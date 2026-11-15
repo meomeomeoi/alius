@@ -1,4 +1,5 @@
 import { clockText } from '../engine/calendar';
+import { disabledCategories, ownLimitLabels } from '../engine/bonds';
 import { threadOf } from '../engine/dms';
 import { measureList } from '../engine/discipline';
 import { openPromises, retrieveFacts } from '../engine/memory';
@@ -57,18 +58,25 @@ export function createComms(deps: CommsDeps): Comms {
     const unit = s?.squad.find((u) => u.id === unitId);
     const rel = s?.relations[unitId];
     if (!s || !unit || !rel || chatId() !== expect) return;
+    const excluded = disabledCategories(s, deps.registries());
+    const limitLabels = ownLimitLabels(unit, deps.registries());
     const result = await extractIntents({
       commanderName: s.commander.name, channel: 'dm',
       exchange: [{ speaker: s.commander.name, text: commanderText }, { speaker: unit.displayName, text: reply }],
       units: [{ id: unitId, name: unit.displayName, values: { ...unit.values }, likes: unit.likes, dislikes: unit.dislikes, triggers: unit.triggers, stateId: rel.stateId, defectIds: unit.defects.map((d) => d.id) }],
       openPromises: openPromises(s, [unitId]).map((p) => ({ by: p.by === 'commander' ? s.commander.name : unit.displayName, to: p.to === 'commander' ? s.commander.name : unit.displayName, text: p.text })),
       romance: intimacyOf(s).romance, measures: measureList(deps.registries(), s),
+      ...(excluded.length > 0 ? { excluded } : {}), ...(limitLabels.length > 0 ? { limits: { [unitId]: limitLabels } } : {}), // P9d
     }, { st, settings: deps.settings() }, { minConfidence: confidenceFloor(deps.registries(), deps.settings().intentMinConfidence) }); // P8: the engine judges per unit
     if (!result || chatId() !== expect) return;
     const intents = { ...result.intents, proposals: result.intents.proposals.filter((p) => p.from !== 'commander') };
     // P9: what the reading logs (a punishment, a threat) points back at her reply
     const lastId = threadOf(s, unitId).at(-1)?.id;
-    const events = app.dispatch({ type: 'intents/apply', payload: { channel: 'dm', unitId, intents, ...(lastId ? { messageRef: `dm:${lastId}` } : {}) } }, { expectChatId: expect });
+    const flagged = result.contentViolations.map((v) => v.category); // P9d: her reply depicts content that is off
+    const events = app.dispatch({
+      type: 'intents/apply',
+      payload: { channel: 'dm', unitId, intents, ...(lastId ? { messageRef: `dm:${lastId}` } : {}), ...(flagged.length > 0 ? { violations: { categories: flagged } } : {}) },
+    }, { expectChatId: expect });
     for (const e of events) {
       if (e.type === 'proposal_offered') {
         const p = state()?.proposals?.find((x) => x.id === e.proposalId);

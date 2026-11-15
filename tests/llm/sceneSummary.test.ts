@@ -25,6 +25,7 @@ describe('summarizeScene', () => {
     expect(r).toEqual({
       chronicle: 'Ann refused to sit with the commander.',
       facts: [{ about: ['unit_ann'], text: 'Ann will not eat with him.', importance: 3, tags: ['meals'] }],
+      contentViolations: [], // P9d
     });
     const call = st.calls[0] as { prompt: string };
     expect(call.prompt).toContain('unit_ann');
@@ -53,5 +54,60 @@ describe('summarizeScene', () => {
     expect(prompt).toContain('message 399');
     expect(prompt).not.toContain('message 000');
     expect(prompt.length).toBeLessThan(20000);
+  });
+});
+
+describe('flagged replies in the summary (P9d)', () => {
+  const FLAGGED = 'She pinned him to the table with the strap while the others watched, laughing at him.';
+  const flaggedInput = (): SceneSummaryInput => ({
+    ...input(),
+    excluded: [{ id: 'restraint', label: 'Restraint' }, { id: 'public_humiliation', label: 'Public humiliation' }],
+    transcript: [{ speaker: 'Vale', text: 'Easy.' }, { speaker: 'Ann', text: FLAGGED, flagged: true }, { speaker: 'Ann', text: 'Never mind. Sorry.' }],
+  });
+
+  it('marks the flagged lines for the model and names what is excluded', async () => {
+    const { st, settings } = setup();
+    st.mainReplies = [JSON.stringify({ chronicle: 'Ann and the commander talked.', facts: [] })];
+    await summarizeScene(flaggedInput(), { st, settings });
+    const text = (st.calls[0].system ?? '') + st.calls[0].prompt;
+    expect(text).toContain('[EXCLUDED CONTENT] Ann: She pinned him');
+    expect(text).toContain('restraint: Restraint');
+    expect(text).toContain('"contentViolations"');
+    expect(text).not.toContain('[EXCLUDED CONTENT] Vale');
+  });
+
+  it('drops facts whose text came from a flagged reply and keeps the others; never throws on junk', async () => {
+    const { st, settings } = setup();
+    st.mainReplies = [JSON.stringify({
+      chronicle: 'A rough evening.',
+      facts: [
+        { about: ['unit_ann'], text: 'Ann says: she pinned him to the table with the strap while the others watched.', importance: 3, tags: [] },
+        { about: ['unit_ann'], text: 'Ann apologized afterwards.', importance: 3, tags: [] },
+        { about: ['unit_ann'], text: 'Ann was shown tied down in front of the squad.', importance: 3, tags: [], excluded: true },
+      ],
+      contentViolations: [{ category: 'restraint', evidence: 'pinned him to the table' }, { category: 'bogus' }, 'x'],
+    })];
+    const r = await summarizeScene(flaggedInput(), { st, settings });
+    expect(r!.facts.map((f) => f.text)).toEqual(['Ann apologized afterwards.']);
+    expect(r!.contentViolations).toEqual([{ category: 'restraint', evidence: 'pinned him to the table' }]);
+  });
+
+  it('a fact that quotes the model\'s own evidence is dropped too', async () => {
+    const { st, settings } = setup();
+    st.mainReplies = [JSON.stringify({
+      chronicle: 'x', facts: [{ about: ['unit_ann'], text: 'Everyone saw the strap used on the commander.', importance: 2, tags: [] }],
+      contentViolations: [{ category: 'restraint', evidence: 'the strap used on the commander' }],
+    })];
+    expect((await summarizeScene(flaggedInput(), { st, settings }))!.facts).toEqual([]);
+  });
+
+  it('without flags nothing changes: the prompt is the old one and the violations list is empty', async () => {
+    const { st, settings } = setup();
+    st.mainReplies = [JSON.stringify({ chronicle: 'Quiet.', facts: [] }), JSON.stringify({ chronicle: 'Quiet.', facts: [] })];
+    const plain = await summarizeScene(input(), { st, settings });
+    await summarizeScene({ ...input(), excluded: [] }, { st, settings });
+    expect(plain!.contentViolations).toEqual([]);
+    expect(st.calls[0].prompt).toBe(st.calls[1].prompt);
+    expect(st.calls[0].prompt).not.toContain('EXCLUDED');
   });
 });

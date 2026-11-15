@@ -6,6 +6,7 @@ import type { SceneController, SceneUiEvent } from '../../scene/sceneController'
 import type { AliusSettings } from '../../settings';
 import type { ChatMessage, StAdapter } from '../../st/adapter';
 import { h } from '../dom';
+import { drawViolation, violationLabels } from '../bonds/chips';
 import { motionReduced } from '../motion';
 import { drawProposalChips, kindLabel } from '../proposalChips';
 import { drawDemandChips, drawDisciplineChips } from '../discipline/chips';
@@ -274,7 +275,11 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
           drawLog(s);
         },
       }, '✎');
-      return h('div', { class: `alius-line${m.isUser ? ' is-user' : ''}`, 'data-index': m.index }, speaker, ' ', text, ' ', edit);
+      const line = h('div', { class: `alius-line${m.isUser ? ' is-user' : ''}`, 'data-index': m.index }, speaker, ' ', text, ' ', edit);
+      // P9d: a reply the reading flagged as depicting content that is switched off
+      const flagged = s.scene?.violations?.find((v) => v.index === m.index);
+      if (flagged && !m.isUser) drawViolation(line, violationLabels(registries, flagged.categories), () => void st.regenerateLast().catch(() => {}), pending);
+      return line;
     }));
     // an empty scene waits for the commander: say so, or nobody knows what to do (the prologue's scenes are the first the player sees)
     if (messages.length === 0) {

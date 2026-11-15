@@ -1,6 +1,7 @@
 import type { Registries, RegistryName } from '../../content/types';
 import type { EngineEvent } from '../dispatch';
 import type { CampaignState, Unit } from '../state/types';
+import { TUNING } from '../tuning';
 import { bondOf } from './profile';
 
 /** Registries whose entries may carry `contentTags` (and the night specs of defects and relationship states do too). */
@@ -64,4 +65,35 @@ function withdrawTagged(draft: CampaignState, reg: Registries, removed: string[]
   }
   draft.calendar.nightEventsQueue = draft.calendar.nightEventsQueue.filter((e) => !hit(e.contentTags ?? []));
   if (draft.calendar.nightEvent && hit(draft.calendar.nightEvent.contentTags ?? [])) delete draft.calendar.nightEvent;
+}
+
+/** The categories that are switched off, in registry order, with their labels (what the extraction is told to watch for). */
+export function disabledCategories(state: Pick<ContentHolder, 'content'>, reg: Registries): Array<{ id: string; label: string }> {
+  const on = enabledCategories(state);
+  return [...reg.contentCategories.values()]
+    .sort((a, b) => Number(a.order) - Number(b.order))
+    .filter((c) => !on.includes(String(c.id)))
+    .map((c) => ({ id: String(c.id), label: String(c.label) }));
+}
+
+/** The labels of what a named unit will not take part in (her own limits), in registry order; empty for a grunt. */
+export function ownLimitLabels(unit: Pick<Unit, 'kind' | 'bond'>, reg: Registries): string[] {
+  const bond = bondOf(unit);
+  if (!bond) return [];
+  return [...reg.contentCategories.values()]
+    .sort((a, b) => Number(a.order) - Number(b.order))
+    .filter((c) => bond.ownLimits.categories.includes(String(c.id)))
+    .map((c) => String(c.label));
+}
+
+/**
+ * What a flag may keep: ids of categories that exist and are switched off now (a flag on one that is on, or unknown, is
+ * dropped), each once, at most `TUNING.bonds.limits.maxViolations`.
+ */
+export function flaggedCategories(state: Pick<ContentHolder, 'content'>, reg: Registries, raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const off = new Set(disabledCategories(state, reg).map((c) => c.id));
+  const out: string[] = [];
+  for (const c of raw) if (typeof c === 'string' && off.has(c) && !out.includes(c)) out.push(c);
+  return out.slice(0, TUNING.bonds.limits.maxViolations);
 }

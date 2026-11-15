@@ -3,6 +3,7 @@ import { unreadOf } from '../../engine/dms';
 import { isLiving } from '../../engine/economy';
 import type { ProposalAnswer } from '../../engine/relations/proposals';
 import type { CampaignState, Unit } from '../../engine/state/types';
+import { drawViolation, violationLabels } from '../bonds/chips';
 import { h } from '../dom';
 import { drawProposalChips } from '../proposalChips';
 import { drawDemandChips, drawDisciplineChips } from '../discipline/chips';
@@ -78,6 +79,8 @@ export function renderCommsTab(host: HTMLElement, ctx: CommsTabCtx): void {
       const bubble = renderBubble(m.text, mine, accent);
       bubble.classList.add('alius-msg', mine ? 'is-commander' : 'is-unit');
       bubble.prepend(h('span', { class: 'alius-msg-meta' }, `${stamp(m.day, m.slot)}${m.initiated ? ' · SHE WROTE FIRST' : ''}`));
+      // P9d: her reply depicts content that is switched off (a DM has no regenerate: the mark only says so)
+      if (!mine && m.violation && m.violation.length > 0) drawViolation(bubble, violationLabels(ctx.registries, m.violation));
       thread.append(bubble);
     }
     const chips = h('div', { class: 'alius-chips' });

@@ -1,3 +1,5 @@
+import { raiseTone } from '../bonds/scene';
+import { markDmViolation, markSceneViolation } from '../bonds/violations';
 import { consumeSlots, registerDayEndStep } from '../calendar';
 import { registerAction } from '../dispatch';
 import { isLiving } from '../economy';
@@ -100,6 +102,9 @@ registerAction('intents/apply', (draft, payload, ctx) => {
     });
     // the controller reports how far it has read, in the same step, so a rollback restores the pointer with the deltas
     if (typeof payload.readIndex === 'number' && Number.isInteger(payload.readIndex) && payload.readIndex >= 0) draft.scene.readIndex = payload.readIndex;
+    // P9d: what the same reading found, stored on the scene so a swipe or an edit that rolls the reading back takes it too
+    markSceneViolation(draft, ctx.registries, payload.violations);
+    events.push(...raiseTone(draft, ctx.registries, payload.tone));
     return events;
   }
   if (payload.channel === 'dm') {
@@ -110,6 +115,7 @@ registerAction('intents/apply', (draft, payload, ctx) => {
       ...(typeof payload.messageRef === 'string' ? { messageRef: payload.messageRef } : {}),
     });
     events.push(...rollDiscovery(draft, ctx.registries, ctx.rng, [unit.id]));
+    markDmViolation(draft, ctx.registries, unit.id, payload.messageRef, payload.violations); // P9d
     return events;
   }
   throw new Error('intents/apply: channel must be "scene" or "dm"');

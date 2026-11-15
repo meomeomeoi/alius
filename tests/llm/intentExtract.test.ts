@@ -216,3 +216,86 @@ describe('P9: discipline events in the extraction prompt', () => {
     expect(r.intents.events.map((e) => [e.type, e.measure])).toEqual([['commander_enforced', 'brig'], ['threatened', 'unspecified']]);
   });
 });
+
+describe('content violations and own limits (P9d)', () => {
+  const EXCLUDED = [
+    { id: 'restraint', label: 'Restraint' }, { id: 'humiliation', label: 'Humiliation' }, { id: 'pain_rough', label: 'Pain and rough play' }, { id: 'degrading_language', label: 'Degrading language' },
+  ];
+  const ids = EXCLUDED.map((e) => e.id);
+  const v = (category: unknown, evidence: unknown = 'quoted words') => ({ category, evidence });
+
+  it('a violation on a disabled category is kept; one on an enabled or unknown id is dropped; at most 3', () => {
+    const r = sanitize({ contentViolations: [v('restraint'), v('jealousy_games'), v('nope'), v('humiliation'), v('pain_rough'), v('degrading_language')] }, { excluded: ids });
+    expect(r.contentViolations.map((x) => x.category)).toEqual(['restraint', 'humiliation', 'pain_rough']); // jealousy_games is enabled here, nope unknown, the fourth cut
+  });
+
+  it('one entry per category, evidence cut to 120 characters, junk dropped', () => {
+    const r = sanitize({ contentViolations: [v('restraint', 'x'.repeat(500)), v('restraint', 'again'), v(7), v('humiliation', 42), 'text', null, { evidence: 'no category' }] }, { excluded: ids });
+    expect(r.contentViolations.map((x) => x.category)).toEqual(['restraint', 'humiliation']);
+    expect(r.contentViolations[0].evidence).toHaveLength(120);
+    expect(r.contentViolations[1].evidence).toBe('');
+  });
+
+  it('nothing is reported without a disabled list', () => {
+    expect(sanitize({ contentViolations: [v('restraint')] }).contentViolations).toEqual([]);
+    expect(sanitize({}, { excluded: ids }).contentViolations).toEqual([]);
+  });
+
+  it('sceneTone: only romantic or intimate pass; romance off drops it', () => {
+    expect(sanitize({ sceneTone: 'intimate' }).sceneTone).toBe('intimate');
+    expect(sanitize({ sceneTone: 'romantic' }).sceneTone).toBe('romantic');
+    for (const bad of [null, 'filthy', 3, undefined, ['romantic']]) expect(sanitize({ sceneTone: bad }).sceneTone, String(bad)).toBeNull();
+    expect(sanitize({ sceneTone: 'intimate' }, { romance: false }).sceneTone).toBeNull();
+  });
+
+  it('the prompt lists the excluded categories and asks for violations and the tone', () => {
+    const { st, settings } = setup();
+    st.mainReplies = ['{}'];
+    return extractIntents(input({ excluded: EXCLUDED }), { st, settings }).then(() => {
+      const text = (st.calls[0].system ?? '') + st.calls[0].prompt;
+      expect(text).toContain('"contentViolations"');
+      expect(text).toContain('"sceneTone"');
+      for (const e of EXCLUDED) expect(text).toContain(`${e.id}: ${e.label}`);
+    });
+  });
+
+  it('the violations are asked for only with excluded categories, the tone only in a scene with romance on', async () => {
+    const { st, settings } = setup();
+    st.mainReplies = ['{}', '{}'];
+    await extractIntents(input(), { st, settings });
+    await extractIntents(input({ excluded: EXCLUDED, romance: false }), { st, settings });
+    expect((st.calls[0].system ?? '') + st.calls[0].prompt).not.toContain('contentViolations'); // nothing excluded
+    expect((st.calls[0].system ?? '') + st.calls[0].prompt).toContain('sceneTone'); // a spoken scene with romance on asks for the tone
+    expect((st.calls[1].system ?? '') + st.calls[1].prompt).not.toContain('sceneTone'); // romance off
+    expect((st.calls[1].system ?? '') + st.calls[1].prompt).toContain('contentViolations');
+  });
+
+  it('the limits of each participant reach the prompt as labels, with the guidance line', async () => {
+    const { st, settings } = setup();
+    st.mainReplies = ['{}'];
+    await extractIntents(input({ limits: { [ANN]: ['Restraint', 'Humiliation'] } }), { st, settings });
+    const text = (st.calls[0].system ?? '') + st.calls[0].prompt;
+    expect(text).toContain(`- ${ANN} (Ann)`);
+    expect(text).toMatch(/will not take part in: Restraint, Humiliation/);
+    expect(text).toContain('If the commander pushes a unit past her limits, report `rejected_advance` (advances) or `decision_violated` (orders).');
+    expect(text.match(/will not take part in/g)).toHaveLength(1); // Bea has none
+  });
+
+  it('no limits, no guidance line; the prompt is unchanged for a campaign without them', async () => {
+    const { st, settings } = setup();
+    st.mainReplies = ['{}', '{}'];
+    await extractIntents(input(), { st, settings });
+    await extractIntents(input({ limits: {} }), { st, settings });
+    expect(st.calls[0].prompt).toBe(st.calls[1].prompt);
+    expect(st.calls[0].system).toBe(st.calls[1].system);
+    expect((st.calls[0].system ?? '') + st.calls[0].prompt).not.toContain('past her limits');
+  });
+
+  it('extractIntents hands the violations and the tone back', async () => {
+    const { st, settings } = setup();
+    st.mainReplies = [JSON.stringify({ events: [], contentViolations: [v('restraint', 'she was tied down')], sceneTone: 'intimate' })];
+    const r = await extractIntents(input({ excluded: EXCLUDED }), { st, settings });
+    expect(r!.contentViolations).toEqual([{ category: 'restraint', evidence: 'she was tied down' }]);
+    expect(r!.sceneTone).toBe('intimate');
+  });
+});

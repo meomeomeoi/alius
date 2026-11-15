@@ -592,3 +592,67 @@ describe('empty scene hint', () => {
   });
 });
 
+
+describe('content violation chip (P9d)', () => {
+  const flaggedState = (s: CampaignState) => { s.scene!.violations = [{ index: 1, categories: ['restraint', 'humiliation'] }]; };
+
+  it('a flagged reply carries a CONTENT chip with the category labels and a REGENERATE button', () => {
+    const t = setup({ messages: [msg(0, { isUser: true, name: 'Vale', text: 'Hello' }), msg(1, { text: 'she ties him down' }), msg(2, { text: 'fine' })] });
+    t.setState(run(t.state(), reg, { type: 'intents/apply', payload: { channel: 'scene', intents: {}, violations: { index: 1, categories: ['restraint', 'humiliation'] } } }).state);
+    t.screen.handle({ type: 'transcript' });
+    const chips = t.qa('[data-violation]');
+    expect(chips).toHaveLength(1);
+    expect(chips[0].closest('.alius-line')!.getAttribute('data-index')).toBe('1');
+    expect(chips[0].textContent).toContain('CONTENT');
+    expect(chips[0].textContent).toContain('Restraint');
+    expect(chips[0].textContent).toContain('Humiliation');
+    expect(chips[0].getAttribute('data-analyze')).toBeTruthy();
+    expect(t.q('[data-violation] button[data-action="regenerate-violation"]')).not.toBeNull();
+  });
+
+  it('REGENERATE uses the existing regenerate path', () => {
+    const t = setup({ messages: [msg(0, { isUser: true, name: 'Vale' }), msg(1)], tweak: undefined });
+    const s = structuredClone(t.state());
+    flaggedState(s);
+    t.setState(s);
+    t.screen.handle({ type: 'transcript' });
+    t.q<HTMLButtonElement>('button[data-action="regenerate-violation"]')!.click();
+    expect(t.regen).toHaveBeenCalledTimes(1);
+  });
+
+  it('an unflagged scene and a flag on a message that is gone draw no chip', () => {
+    const t = setup({ messages: [msg(0, { isUser: true, name: 'Vale' }), msg(1)] });
+    expect(t.qa('[data-violation]')).toHaveLength(0);
+    const s = structuredClone(t.state());
+    s.scene!.violations = [{ index: 9, categories: ['restraint'] }];
+    t.setState(s);
+    t.screen.handle({ type: 'transcript' });
+    expect(t.qa('[data-violation]')).toHaveLength(0);
+  });
+
+  it('the chip is text only: a hostile category id is shown as text and never as markup', () => {
+    const t = setup({ messages: [msg(0, { isUser: true, name: 'Vale' }), msg(1)] });
+    const s = structuredClone(t.state());
+    s.scene!.violations = [{ index: 1, categories: ['<img src=x onerror=alert(1)>'] }];
+    t.setState(s);
+    t.screen.handle({ type: 'transcript' });
+    expect(t.qa('[data-violation] img')).toHaveLength(0);
+  });
+
+  it('REGENERATE is locked while a send is pending, like the other reply buttons', async () => {
+    const t = setup({ messages: [msg(0, { isUser: true, name: 'Vale' }), msg(1)] });
+    const s = structuredClone(t.state());
+    flaggedState(s);
+    t.setState(s);
+    t.screen.handle({ type: 'transcript' });
+    const button = () => t.q<HTMLButtonElement>('button[data-action="regenerate-violation"]')!;
+    expect(button().disabled).toBe(false);
+    const input = t.q<HTMLInputElement>('input[name="cmd"]')!;
+    input.value = 'Hello';
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    expect(button().disabled).toBe(true);
+    t.finishSend();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(button().disabled).toBe(false);
+  });
+});

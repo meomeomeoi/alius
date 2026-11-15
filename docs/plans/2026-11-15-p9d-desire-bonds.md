@@ -429,7 +429,7 @@ tests/**                                           mirrors src; tests/helpers/bo
   - the payload of `intents/apply` gains `violations?: {index, categories}` and `tone?`
   - `drawViolation(host, labels, onRegenerate)`
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `a violation on a disabled category is kept; one on an enabled or unknown id is dropped; at most 3`
   - `the reply is marked and REGENERATE calls the regenerate path`
   - `swipe after a flagged reply removes the mark` (Review Focus 4)
@@ -437,10 +437,10 @@ tests/**                                           mirrors src; tests/helpers/bo
   - `limits of each participant reach the prompt; the prompt is byte-identical across dispositions and stances with the same categories`
   - `scene_summary drops facts from a flagged reply and never marks the UI`
   - `a DM violation marks the DM`
-- [ ] **Step 2: Run** the test files and confirm FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** `npm test` and confirm PASS.
-- [ ] **Step 5: Commit** `feat(scene): flag content violations and pass own limits to extraction`.
+- [x] **Step 2: Run** the test files and confirm FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** `npm test` and confirm PASS.
+- [x] **Step 5: Commit** `feat(scene): flag content violations and pass own limits to extraction`.
 
 ### Task 6: CONTENT at setup, in SYS, the carry-over, analysis
 
