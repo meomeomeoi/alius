@@ -424,7 +424,7 @@ var TUNING = Object.freeze({
       compatibility: -1
       /** `commandStances[].voteBias` is content; the ballot adds it as is. */
     }),
-    merit: Object.freeze({ damagePer: 10, finishingBlow: 2, healPer: 10, windowDays: 14 }),
+    merit: Object.freeze({ damagePer: 10, finishingBlow: 2, healPer: 10, absorbPer: 10, windowDays: 14 }),
     standing: Object.freeze({
       merit: 0.4,
       respect: 0.3,
@@ -448,7 +448,10 @@ var TUNING = Object.freeze({
       lossRecord: 10
     }),
     outside: Object.freeze({ suppressDays: 14 }),
-    scapegoat: Object.freeze({ failedRunStanding: 4, takeBlameStanding: 10, shiftDays: 2, shiftStress: 10 })
+    /** The two answers' own numbers live in the `scapegoat_mission` template; only the failed-run penalty is here. */
+    scapegoat: Object.freeze({ failedRunStanding: 4 }),
+    /** DRAFT: `fighters_first` costs each reserve share that goes without this much Trust; the commander going without (`commander_short`) earns every named unit this much Trust. */
+    rations: Object.freeze({ unfairTrust: 1, hungerTrust: 1 })
   })
 });
 
@@ -907,7 +910,8 @@ function summarizeWorldOptionEffect(effect, reg) {
       const parts = [
         more(x.privilegeMult, "A squad leader has greater privileges", "A squad leader has lesser privileges"),
         more(x.demandMult, "Soldiers make demands more often", "Soldiers make demands less often"),
-        more(x.commanderVoteMult, "The commander's vote weighs more in a squad vote", "The commander's vote weighs less in a squad vote")
+        more(x.commanderVoteMult, "The commander's vote weighs more in a squad vote", "The commander's vote weighs less in a squad vote"),
+        more(x.soldierVoteMult, "Each soldier's vote weighs more", "Each soldier's vote weighs less")
       ].filter((l) => l !== null);
       return parts.length > 0 ? parts.join("; ") : "The squad pushes only as far as its soldiers' own character does";
     }
@@ -1482,6 +1486,7 @@ function runUpkeep(draft, reg) {
     missing2 -= covered;
     draft.calendar.loseMorning = true;
     events.push({ type: "commander_went_hungry", day: draft.day, covered });
+    for (const u of livingUnits(draft)) if (u.kind === "named") applyRelationDelta(draft, u.id, "trust", TUNING.power.rations.hungerTrust, "commander_hungry");
   }
   if (missing2 === 0) {
     draft.calendar.shortageStreak = 0;
@@ -1505,6 +1510,9 @@ function runUpkeep(draft, reg) {
     });
     stress = points.map((p) => p * TUNING.shortage.stressPerPoint);
     affinity = points.map((p) => p * TUNING.shortage.affinityPerPoint);
+    slots.forEach((u, i) => {
+      if (!onRoster(u) && points[i] > 0 && u.kind === "named") applyRelationDelta(draft, u.id, "trust", -points[i] * TUNING.power.rations.unfairTrust, "shortage_unfair");
+    });
   }
   slots.forEach((u, i) => {
     u.stress = clamp2(u.stress + stress[i], 0, 100);
@@ -7264,7 +7272,9 @@ var WorldOptionEffectSchema = external_exports.discriminatedUnion("type", [
     type: external_exports.literal("squad_power"),
     privilegeMult: external_exports.number().min(0.25).max(3),
     demandMult: external_exports.number().min(0.25).max(3),
-    commanderVoteMult: external_exports.number().min(0.25).max(2)
+    commanderVoteMult: external_exports.number().min(0.25).max(2),
+    /** DRAFT: the weight of each named soldier's own ballot (absent = 1). */
+    soldierVoteMult: external_exports.number().min(0.5).max(2).optional()
   }).strict(),
   /** P9b: some of the commander's decisions go to a squad vote. */
   external_exports.object({ type: external_exports.literal("voting") }).strict(),
@@ -9697,7 +9707,6 @@ function checkBeatFlags(draft, ctx2) {
 }
 
 // src/engine/power/scapegoat.ts
-var TEMPLATE_ID = "scapegoat_mission";
 function responsibleFor(vote, isNamed = () => true) {
   let best = null;
   for (const b of vote.ballots) {
@@ -9728,7 +9737,7 @@ function markDecidedBy(draft, missionId, voteId) {
 var fill = (text2, vars) => Object.entries(vars).reduce((t, [k, v]) => t.replaceAll(`{${k}}`, v), text2);
 function openScapegoat(draft, ctx2, p) {
   const reg = ctx2.registries;
-  const template = reg.dilemmaTemplates.get(TEMPLATE_ID);
+  const template = [...reg.dilemmaTemplates.values()].find((t) => t.contexts.includes("scapegoat") && t.fixed !== void 0);
   const fixed = template?.fixed;
   if (!template || !fixed || !named(draft, p.unitId)) return [];
   if (draft.dilemmas?.open) {
@@ -9744,7 +9753,7 @@ function openScapegoat(draft, ctx2, p) {
   const vars = { name: subject.displayName, mission: mission?.title ?? "The mission" };
   d.open = {
     id: `dl${d.seq}`,
-    templateId: TEMPLATE_ID,
+    templateId: String(template.id),
     scale: template.scale,
     context: "scapegoat",
     day: draft.day,
@@ -9759,7 +9768,7 @@ function openScapegoat(draft, ctx2, p) {
     subjectId: p.unitId,
     witnessIds
   };
-  return [{ type: "dilemma_presented", id: d.open.id, templateId: TEMPLATE_ID, title: d.open.title, source: "fallback" }];
+  return [{ type: "dilemma_presented", id: d.open.id, templateId: String(template.id), title: d.open.title, source: "fallback" }];
 }
 function takeScapegoatCase(m) {
   if (m.source !== "command" || !m.decidedBy) return null;
@@ -11058,12 +11067,13 @@ function familyEnabled(state, reg, entry) {
 }
 
 // src/engine/power/options.ts
-var NEUTRAL = { privilegeMult: 1, demandMult: 1, commanderVoteMult: 1 };
+var NEUTRAL = { privilegeMult: 1, demandMult: 1, commanderVoteMult: 1, soldierVoteMult: 1 };
 function assertiveness(state, reg) {
   return worldEffects(state, reg, "squad_power").reduce((acc, e) => ({
     privilegeMult: acc.privilegeMult * e.privilegeMult,
     demandMult: acc.demandMult * e.demandMult,
-    commanderVoteMult: acc.commanderVoteMult * e.commanderVoteMult
+    commanderVoteMult: acc.commanderVoteMult * e.commanderVoteMult,
+    soldierVoteMult: acc.soldierVoteMult * (e.soldierVoteMult ?? 1)
   }), NEUTRAL);
 }
 function votingOn(state, reg) {
@@ -11628,7 +11638,7 @@ function ballotFor(state, reg, unit, kind, subject) {
   let term = "values";
   for (const t of BALLOT_TERMS) if (Math.abs(parts[t]) > Math.abs(parts[term])) term = t;
   const score = BALLOT_TERMS.reduce((sum, t) => sum + parts[t], 0);
-  return { unitId: unit.id, vote: score >= 0 ? "for" : "against", weight: leaderOf(state)?.id === unit.id ? leaderVoteWeight(state, reg) : 1, score, term };
+  return { unitId: unit.id, vote: score >= 0 ? "for" : "against", weight: leaderOf(state)?.id === unit.id ? leaderVoteWeight(state, reg) : assertiveness(state, reg).soldierVoteMult, score, term };
 }
 function tallyVote(state, reg, kind, subject) {
   const ballots = state.roster.activeIds.map((id) => state.squad.find((u) => u.id === id)).filter((u) => u !== void 0 && isLiving(u)).map((u) => ballotFor(state, reg, u, kind, subject));
@@ -13685,6 +13695,7 @@ function recordMerit(draft, cs) {
   };
   for (const e of cs.log) {
     if ((e.kind === "hit" || e.kind === "crit") && isEnemy(e.target)) credit(e.actor, (e.amount ?? 0) / M.damagePer);
+    else if ((e.kind === "hit" || e.kind === "crit") && isEnemy(e.actor) && byCid2.get(e.target ?? "")?.side === "squad") credit(e.target, (e.amount ?? 0) / M.absorbPer);
     else if (e.kind === "downed" && isEnemy(e.target)) credit(e.actor, M.finishingBlow);
     else if (e.kind === "heal") credit(e.actor, (e.amount ?? 0) / M.healPer);
   }
@@ -13736,7 +13747,8 @@ function computeHierarchy(draft, reg) {
   ranked.sort((a, b) => b.standing - a.standing);
   const [top, next] = ranked;
   let leader;
-  if (top && next && top.standing >= next.standing + S.margin && leadRank(bondOf(top.unit).leadStyle) >= 2 && h2.deposed?.unitId !== top.unit.id) leader = top.unit.id;
+  const earned = top !== void 0 && (top.unit.id === old?.leaderId || meritOf(draft, top.unit.id) > 0);
+  if (top && next && earned && top.standing >= next.standing + S.margin && leadRank(bondOf(top.unit).leadStyle) >= 2 && h2.deposed?.unitId !== top.unit.id) leader = top.unit.id;
   const from = old?.leaderId;
   if (leader === void 0) delete h2.leaderId;
   else h2.leaderId = leader;
@@ -20050,7 +20062,20 @@ function createPower(deps) {
   }
   const overrule = (voteId, means, punish) => send({ type: "vote/overrule", payload: { voteId, means, ...punish !== void 0 ? { punish } : {} } }, chatId());
   const drop = (voteId) => send({ type: "vote/drop", payload: { voteId } }, chatId());
+  let voting = false;
   async function requestVote(action) {
+    if (voting) {
+      deps.toast("info", "A squad vote is already open: finish it first.");
+      return "cancelled";
+    }
+    voting = true;
+    try {
+      return await runVote(action);
+    } finally {
+      voting = false;
+    }
+  }
+  async function runVote(action) {
     const chat = chatId();
     const first2 = deps.app.dispatch(action, { expectChatId: chat });
     const needed = first2.find((e) => e.type === "error" && e.code === "vote_needed");
@@ -20318,7 +20343,7 @@ function renderVotePanel(host, vote, lines, ctx2) {
     const showPicker = () => {
       picker.hidden = false;
       if (picker.childElementCount > 0) return;
-      const dissent = vote.ballots.filter((b) => b.vote === "against");
+      const dissent = vote.ballots.filter((b) => b.vote === "against" && state.squad.find((u) => u.id === b.unitId)?.kind === "named");
       const who = h("select", { class: "alius-select", "data-punish-unit": "", "aria-label": "Soldier to punish" }, ...dissent.map((b) => h("option", { value: b.unitId }, nameOf10(b.unitId))));
       const how = h("select", { class: "alius-select", "data-punish-measure": "", "aria-label": "Measure" }, ...measures(state, reg).map((e) => h("option", { value: String(e.id) }, String(e.label))));
       picker.append(who, how, act("punish-confirm", "[ CONFIRM ]", () => ctx2.onOverrule("punish", { unitId: who.value, measure: how.value })));
@@ -32992,11 +33017,19 @@ function createApp(st, deps) {
       return events;
     },
     upgradeFacility(facilityId) {
-      const events = act({ type: "base/upgrade", payload: { facilityId } });
-      const started2 = events.find((e) => e.type === "upgrade_started");
-      if (started2) {
-        toast("info", `${String(registries.facilities.get(facilityId)?.name ?? facilityId)}: upgrade started (${String(started2.days)} days).`);
+      const action = { type: "base/upgrade", payload: { facilityId } };
+      const told = (days) => toast("info", `${String(registries.facilities.get(facilityId)?.name ?? facilityId)}: upgrade started (${String(days)} days).`);
+      const events = api.dispatch(action, { expectChatId: st.getActiveChat()?.chatId });
+      if (events.some((e) => e.type === "error" && e.code === "vote_needed")) {
+        void power.requestVote(action).then((r) => {
+          if (r === "ran") told(state?.base.upgrades?.find((u) => u.facilityId === facilityId)?.daysLeft ?? "?");
+        });
+        return events;
       }
+      const failed = events.find((e) => e.type === "error");
+      if (failed) toast("error", String(failed.message ?? failed.code));
+      const started2 = events.find((e) => e.type === "upgrade_started");
+      if (started2) told(started2.days);
       return events;
     },
     requisition(supplies) {

@@ -98,6 +98,15 @@ describe('the VOTE panel', () => {
     expect(onOverrule).toHaveBeenCalledWith('punish', { unitId: BEA, measure: 'verbal' });
   });
 
+  it('the PUNISH picker lists named dissenters only', () => {
+    const { state, vote } = voted(true);
+    state.squad.push({ ...structuredClone(state.squad[3]), id: 'grunt_1', kind: 'grunt', displayName: 'G-1' });
+    const withGrunt = { ...vote, ballots: [...vote.ballots, { unitId: 'grunt_1', vote: 'against' as const, weight: 0.5, score: 0, term: 'values' as const }] };
+    const { host } = mountPanel(state, withGrunt);
+    (host.querySelector('[data-vote-act="overrule-punish"]') as HTMLElement).click();
+    expect([...(host.querySelector('select[data-punish-unit]') as HTMLSelectElement).options].map((o) => o.value)).toEqual([ANN, BEA, CAT, DEE]);
+  });
+
   it('shows one row per voter with her side, weight and reason, the commander and the tally', () => {
     const { state, vote } = voted(true);
     const { host } = mountPanel(state, vote);

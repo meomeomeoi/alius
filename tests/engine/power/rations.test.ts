@@ -82,6 +82,18 @@ describe('the ration modes', () => {
     expect(stressOf(spill, ANN) + stressOf(spill, BEA)).toBe(4);
   });
 
+  it('fighters_first costs the reserve units who go without Trust, one per point', () => {
+    const s = shortBy(2);
+    toReserve(s, CAT, DEE);
+    s.base.rations = 'fighters_first';
+    const { draft } = upkeep(s);
+    expect([CAT, DEE].map((id) => s.relations[id].trust - draft.relations[id].trust)).toEqual([1, 1]);
+    expect([ANN, BEA].map((id) => draft.relations[id].trust)).toEqual([s.relations[ANN].trust, s.relations[BEA].trust]); // the roster is spared and loses nothing
+    const equal = shortBy(2);
+    toReserve(equal, CAT, DEE);
+    expect(upkeep(equal).draft.relations[CAT].trust).toBe(equal.relations[CAT].trust); // under equal it costs no Trust
+  });
+
   it('fighters_first without reserve units equals equal', () => {
     const a = shortBy(3);
     const b = structuredClone(a);
@@ -90,6 +102,19 @@ describe('the ration modes', () => {
     const rb = upkeep(b);
     expect(rb.draft).toEqual({ ...ra.draft, base: { ...ra.draft.base, rations: 'fighters_first' } });
     expect(rb.events).toEqual(ra.events);
+  });
+
+  it('commander_short raises every named living unit\'s Trust by one on the day the commander goes without, and only then', () => {
+    const s = shortBy(3);
+    s.base.rations = 'commander_short';
+    const { draft } = upkeep(s);
+    for (const id of [ANN, BEA, CAT, DEE]) expect(draft.relations[id].trust - s.relations[id].trust, id).toBeGreaterThanOrEqual(0);
+    const plain = shortBy(3);
+    const base = upkeep(plain).draft;
+    for (const id of [ANN, BEA, CAT, DEE]) expect(draft.relations[id].trust - base.relations[id].trust, id).toBe(1);
+    const none = shortBy(0);
+    none.base.rations = 'commander_short';
+    for (const id of [ANN, BEA]) expect(upkeep(none).draft.relations[id].trust).toBe(none.relations[id].trust);
   });
 
   it("commander_short covers up to the commander's share and loses the next morning", () => {

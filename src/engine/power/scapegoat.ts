@@ -15,7 +15,6 @@ import { powerOf } from './state';
  * template `scapegoat_mission`: no model is asked.
  */
 
-const TEMPLATE_ID = 'scapegoat_mission';
 
 /** The unit who answers for a passed vote: the FOR voter with the largest `weight × score` (named, in the vote's order); null when nobody voted for it. */
 export function responsibleFor(vote: Vote, isNamed: (unitId: string) => boolean = () => true): string | null {
@@ -61,7 +60,8 @@ const fill = (text: string, vars: Record<string, string>): string => Object.entr
  */
 export function openScapegoat(draft: CampaignState, ctx: EngineCtx, p: { missionId: string; unitId: string; witnessIds: string[] }): EngineEvent[] {
   const reg = ctx.registries;
-  const template = reg.dilemmaTemplates.get(TEMPLATE_ID);
+  // the case is the authored template of the `scapegoat` context (read by context, never by id)
+  const template = [...reg.dilemmaTemplates.values()].find((t) => (t.contexts as string[]).includes('scapegoat') && t.fixed !== undefined);
   const fixed = template?.fixed as { title: string; setup: string; options: Array<Record<string, unknown>> } | undefined;
   if (!template || !fixed || !named(draft, p.unitId)) return [];
   if (draft.dilemmas?.open) {
@@ -76,13 +76,13 @@ export function openScapegoat(draft: CampaignState, ctx: EngineCtx, p: { mission
   d.seq += 1;
   const vars = { name: subject.displayName, mission: mission?.title ?? 'The mission' };
   d.open = {
-    id: `dl${d.seq}`, templateId: TEMPLATE_ID, scale: template.scale as 'major', context: 'scapegoat', day: draft.day, status: 'presented', attempts: 0,
+    id: `dl${d.seq}`, templateId: String(template.id), scale: template.scale as 'major', context: 'scapegoat', day: draft.day, status: 'presented', attempts: 0,
     units: [p.unitId, ...witnessIds], beatId: currentBeat(draft, reg)?.id ?? 'open', source: 'fallback',
     title: fill(fixed.title, vars), setup: fill(fixed.setup, vars),
     options: (fixed.options as unknown as DilemmaOption[]).map((o) => ({ ...structuredClone(o), label: fill(o.label, vars), magnitudes: [] })),
     subjectId: p.unitId, witnessIds,
   };
-  return [{ type: 'dilemma_presented', id: d.open.id, templateId: TEMPLATE_ID, title: d.open.title, source: 'fallback' }];
+  return [{ type: 'dilemma_presented', id: d.open.id, templateId: String(template.id), title: d.open.title, source: 'fallback' }];
 }
 
 /** The case a failed command mission leaves, and the mark spent on the mission itself (so it can never open a second one). */

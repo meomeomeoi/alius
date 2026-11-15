@@ -162,10 +162,12 @@ describe('challenge', () => {
     expect(r.state.relations[ANN].affinity).toBeLessThan(s.relations[ANN].affinity);
     // she is far ahead, but deposed: no leader until the day passes
     const ahead = structuredClone(r.state);
+    ahead.power!.merit = [{ day: ahead.day, unitId: ANN, points: 5 }]; // she has fought: leadership is earned
     standing(ahead, 200);
     computeHierarchy(ahead, reg);
     expect(ahead.power!.hierarchy!.leaderId).toBeUndefined();
     ahead.day += 14;
+    ahead.power!.merit = [{ day: ahead.day, unitId: ANN, points: 5 }]; // fresh merit: the old entry aged out
     computeHierarchy(ahead, reg);
     expect(ahead.power!.hierarchy!.leaderId).toBe(ANN);
   });

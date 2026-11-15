@@ -533,7 +533,8 @@
             "type": "squad_power",
             "privilegeMult": 0.75,
             "demandMult": 0.75,
-            "commanderVoteMult": 1
+            "commanderVoteMult": 1,
+            "soldierVoteMult": 1
           }
         ]
       },
@@ -546,21 +547,23 @@
             "type": "squad_power",
             "privilegeMult": 1,
             "demandMult": 1,
-            "commanderVoteMult": 1
+            "commanderVoteMult": 1,
+            "soldierVoteMult": 1
           }
         ]
       },
       {
         "id": "high",
         "label": "Assertive",
-        "description": "The squad pushes hard. Leaders have half again the usual privileges, demands come more often and the commander's vote weighs a quarter less.",
+        "description": "The squad pushes hard. Leaders have half again the usual privileges, demands come more often, each soldier's vote weighs a quarter more and the commander's a quarter less.",
         "lore": "A pushy squad.",
         "effects": [
           {
             "type": "squad_power",
             "privilegeMult": 1.5,
             "demandMult": 1.25,
-            "commanderVoteMult": 0.75
+            "commanderVoteMult": 0.75,
+            "soldierVoteMult": 1.25
           }
         ]
       }

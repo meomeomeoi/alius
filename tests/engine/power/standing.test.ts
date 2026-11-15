@@ -72,7 +72,7 @@ describe('merit', () => {
     const log: LogEntry[] = [
       { round: 1, kind: 'hit', actor: cid(ANN), target: foe.cid, amount: 25 },
       { round: 1, kind: 'crit', actor: cid(ANN), target: foe.cid, amount: 40 },
-      { round: 1, kind: 'hit', actor: foe.cid, target: cid(BEA), amount: 99 }, // the enemy's hit is nobody's merit
+      { round: 1, kind: 'hit', actor: foe.cid, target: cid(BEA), amount: 99 }, // the enemy's hit on her is merit for the one who took it
       { round: 2, kind: 'downed', actor: cid(ANN), target: foe.cid },
       { round: 2, kind: 'heal', actor: cid(BEA), target: cid(ANN), amount: 30 },
       { round: 2, kind: 'heal', target: cid(ANN), amount: 50 }, // no healer on the entry: nobody's
@@ -81,9 +81,9 @@ describe('merit', () => {
     foe.downed = true;
     foe.hp = 0;
     finalizeCombat(draft, reg, new Rng(seedRng(3)), 'won');
-    expect(draft.power!.merit).toEqual([
+    expect(draft.power!.merit!.map((m) => ({ ...m, points: Math.round(m.points * 100) / 100 }))).toEqual([
       { day: draft.day, unitId: ANN, points: 6.5 + TUNING.power.merit.finishingBlow }, // 65 damage / 10 and one finishing blow
-      { day: draft.day, unitId: BEA, points: 3 }, // 30 healed / 10
+      { day: draft.day, unitId: BEA, points: 3 + 99 / TUNING.power.merit.absorbPer }, // 30 healed / 10, and 99 damage taken from the enemy
     ]);
   });
 
@@ -156,6 +156,7 @@ describe('the leader', () => {
   /** ANN dominant, the rest balanced: the gap is her lead-style factor; `gap` tunes the margin through the runner-up's bonus. */
   function margin(gap: number): CampaignState {
     const s = squad({ [ANN]: 'dominant' });
+    merit(s, ANN, 1); // she has fought: leadership is earned
     const a = standingOf(s, reg, ANN)!;
     const b = standingOf(s, reg, BEA)!;
     bonus(s, BEA, a - b - gap);
@@ -183,6 +184,27 @@ describe('the leader', () => {
     modest.day = 20;
     merit(modest, ANN, 100);
     expect(compute(modest).draft.power!.hierarchy!.leaderId).toBeUndefined();
+  });
+
+  it('a dominant unit with no merit anywhere does not become leader; an incumbent keeps it without merit', () => {
+    const s = squad({ [ANN]: 'dominant' });
+    const a = standingOf(s, reg, ANN)!;
+    const b = standingOf(s, reg, BEA)!;
+    bonus(s, BEA, a - b - 10); // a lead of exactly 10 from her lead style alone
+    expect(compute(s).draft.power!.hierarchy!.leaderId).toBeUndefined();
+    merit(s, ANN, 1);
+    const earned = standingOf(s, reg, ANN)!;
+    bonus(s, BEA, earned - standingOf(s, reg, BEA)! + (s.power!.hierarchy!.standingBonus?.amount ?? 0) - 10);
+    const lead = compute(s).draft;
+    expect(lead.power!.hierarchy!.leaderId).toBe(ANN);
+    // two weeks later the merit has aged out, but she keeps the lead while her margin holds
+    const later = structuredClone(lead);
+    later.day += 15;
+    later.power!.hierarchy!.standingBonus!.untilDay = later.day + 30;
+    const gap = standingOf(later, reg, ANN)! - standingOf(later, reg, BEA)!;
+    later.power!.hierarchy!.standingBonus!.amount += gap - 10;
+    computeHierarchy(later, reg);
+    expect(later.power!.hierarchy!.leaderId).toBe(ANN);
   });
 
   it('a lone named unit is never leader', () => {
@@ -313,6 +335,7 @@ describe('the day step', () => {
 
 function margin7(): CampaignState {
   const s = squad({ [ANN]: 'dominant' });
+  merit(s, ANN, 1);
   const a = standingOf(s, reg, ANN)!;
   const b = standingOf(s, reg, BEA)!;
   bonus(s, BEA, a - b - 10);

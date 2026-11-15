@@ -1985,11 +1985,20 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     },
 
     upgradeFacility(facilityId) {
-      const events = act({ type: 'base/upgrade', payload: { facilityId } });
-      const started = events.find((e) => e.type === 'upgrade_started');
-      if (started) {
-        toast('info', `${String(registries.facilities.get(facilityId)?.name ?? facilityId)}: upgrade started (${String(started.days)} days).`);
+      const action: Action = { type: 'base/upgrade', payload: { facilityId } };
+      const told = (days: unknown): void => toast('info', `${String(registries.facilities.get(facilityId)?.name ?? facilityId)}: upgrade started (${String(days)} days).`);
+      const events = api.dispatch(action, { expectChatId: st.getActiveChat()?.chatId });
+      if (events.some((e) => e.type === 'error' && e.code === 'vote_needed')) {
+        // P9b: the squad votes first; the upgrade is told once the vote has run it
+        void power.requestVote(action).then((r) => {
+          if (r === 'ran') told(state?.base.upgrades?.find((u) => u.facilityId === facilityId)?.daysLeft ?? '?');
+        });
+        return events;
       }
+      const failed = events.find((e) => e.type === 'error');
+      if (failed) toast('error', String(failed.message ?? failed.code));
+      const started = events.find((e) => e.type === 'upgrade_started');
+      if (started) told(started.days);
       return events;
     },
 

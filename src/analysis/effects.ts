@@ -437,6 +437,7 @@ export function summarizeWorldOptionEffect(effect: unknown, reg: Registries): st
         more(x.privilegeMult, 'A squad leader has greater privileges', 'A squad leader has lesser privileges'),
         more(x.demandMult, 'Soldiers make demands more often', 'Soldiers make demands less often'),
         more(x.commanderVoteMult, "The commander's vote weighs more in a squad vote", "The commander's vote weighs less in a squad vote"),
+        more(x.soldierVoteMult, "Each soldier's vote weighs more", "Each soldier's vote weighs less"),
       ].filter((l): l is string => l !== null);
       return parts.length > 0 ? parts.join('; ') : "The squad pushes only as far as its soldiers' own character does";
     }

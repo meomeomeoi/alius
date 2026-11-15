@@ -114,7 +114,7 @@ export function ballotFor(state: CampaignState, reg: Registries, unit: Unit, kin
   let term: BallotTerm = 'values';
   for (const t of BALLOT_TERMS) if (Math.abs(parts[t]) > Math.abs(parts[term])) term = t;
   const score = BALLOT_TERMS.reduce((sum, t) => sum + parts[t], 0);
-  return { unitId: unit.id, vote: score >= 0 ? 'for' : 'against', weight: leaderOf(state)?.id === unit.id ? leaderVoteWeight(state, reg) : 1, score, term };
+  return { unitId: unit.id, vote: score >= 0 ? 'for' : 'against', weight: leaderOf(state)?.id === unit.id ? leaderVoteWeight(state, reg) : assertiveness(state, reg).soldierVoteMult, score, term };
 }
 
 /**

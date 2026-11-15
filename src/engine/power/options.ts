@@ -6,9 +6,9 @@ import { worldEffects, type WorldHolder } from '../worldOptions/options';
  * the options reads the neutral values: normal assertiveness, voting off.
  */
 
-export interface Assertiveness { privilegeMult: number; demandMult: number; commanderVoteMult: number }
+export interface Assertiveness { privilegeMult: number; demandMult: number; commanderVoteMult: number; soldierVoteMult: number }
 
-const NEUTRAL: Assertiveness = { privilegeMult: 1, demandMult: 1, commanderVoteMult: 1 };
+const NEUTRAL: Assertiveness = { privilegeMult: 1, demandMult: 1, commanderVoteMult: 1, soldierVoteMult: 1 };
 
 /** The product of the `squad_power` effects of the current choices (no such effect: all 1). */
 export function assertiveness(state: WorldHolder, reg: Registries): Assertiveness {
@@ -16,6 +16,7 @@ export function assertiveness(state: WorldHolder, reg: Registries): Assertivenes
     privilegeMult: acc.privilegeMult * e.privilegeMult,
     demandMult: acc.demandMult * e.demandMult,
     commanderVoteMult: acc.commanderVoteMult * e.commanderVoteMult,
+    soldierVoteMult: acc.soldierVoteMult * (e.soldierVoteMult ?? 1),
   }), NEUTRAL);
 }
 

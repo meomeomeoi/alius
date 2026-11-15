@@ -1257,6 +1257,8 @@ export const WorldOptionEffectSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('squad_power'),
     privilegeMult: z.number().min(0.25).max(3), demandMult: z.number().min(0.25).max(3), commanderVoteMult: z.number().min(0.25).max(2),
+    /** DRAFT: the weight of each named soldier's own ballot (absent = 1). */
+    soldierVoteMult: z.number().min(0.5).max(2).optional(),
   }).strict(),
   /** P9b: some of the commander's decisions go to a squad vote. */
   z.object({ type: z.literal('voting') }).strict(),

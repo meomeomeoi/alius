@@ -190,6 +190,15 @@ describe('weights and the tally', () => {
     expect([at(1), at(3), at(5)]).toEqual([0.75, 1.5, 2.25]);
   });
 
+  it('high assertiveness makes every named soldier\'s vote weigh 1.25; the leader keeps her own weight and grunts 0.5', () => {
+    const s = withOptions(fresh(), { squad_assertiveness: 'high' });
+    const t = tallyVote(s, flat, 'upgrade', 'barracks');
+    expect(t.ballots.map((b) => b.weight)).toEqual([1.25, 1.25, 1.25, 1.25]);
+    withLeader(s, ANN);
+    expect(tallyVote(s, flat, 'upgrade', 'barracks').ballots.map((b) => b.weight)).toEqual([2.25, 1.25, 1.25, 1.25]);
+    expect(tallyVote(withOptions(fresh(), { squad_assertiveness: 'low' }), flat, 'upgrade', 'barracks').ballots.map((b) => b.weight)).toEqual([1, 1, 1, 1]);
+  });
+
   it('a tie passes', () => {
     const s = fresh();
     s.commander.socialStats.authority = 3; // weight 2

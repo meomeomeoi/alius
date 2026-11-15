@@ -16,13 +16,13 @@ describe('reading the P9b world options', () => {
   it('no option stored reads normal and voting off', () => {
     const s = fresh();
     delete s.world.options;
-    expect(assertiveness(s, reg)).toEqual({ privilegeMult: 1, demandMult: 1, commanderVoteMult: 1 });
+    expect(assertiveness(s, reg)).toEqual({ privilegeMult: 1, demandMult: 1, commanderVoteMult: 1, soldierVoteMult: 1 });
     expect(votingOn(s, reg)).toBe(false);
   });
 
   it('low and high read their multipliers; high reads commanderVoteMult 0.75', () => {
-    expect(assertiveness(withOptions(fresh(), { squad_assertiveness: 'high' }), reg)).toEqual({ privilegeMult: 1.5, demandMult: 1.25, commanderVoteMult: 0.75 });
-    expect(assertiveness(withOptions(fresh(), { squad_assertiveness: 'low' }), reg)).toEqual({ privilegeMult: 0.75, demandMult: 0.75, commanderVoteMult: 1 });
+    expect(assertiveness(withOptions(fresh(), { squad_assertiveness: 'high' }), reg)).toEqual({ privilegeMult: 1.5, demandMult: 1.25, commanderVoteMult: 0.75, soldierVoteMult: 1.25 });
+    expect(assertiveness(withOptions(fresh(), { squad_assertiveness: 'low' }), reg)).toEqual({ privilegeMult: 0.75, demandMult: 0.75, commanderVoteMult: 1, soldierVoteMult: 1 });
   });
 
   it('voting on reads true', () => {
@@ -32,7 +32,7 @@ describe('reading the P9b world options', () => {
   it('a pack without the options reads the neutral values', () => {
     const bare: Registries = { ...reg, worldOptions: new Map([...reg.worldOptions].filter(([id]) => id !== 'squad_assertiveness' && id !== 'voting')) };
     const s = fresh();
-    expect(assertiveness(s, bare)).toEqual({ privilegeMult: 1, demandMult: 1, commanderVoteMult: 1 });
+    expect(assertiveness(s, bare)).toEqual({ privilegeMult: 1, demandMult: 1, commanderVoteMult: 1, soldierVoteMult: 1 });
     expect(votingOn(s, bare)).toBe(false);
   });
 

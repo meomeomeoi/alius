@@ -146,8 +146,8 @@ describe('effect lines', () => {
 
   it('summarizeWorldOptionEffect reads squad_power and voting in words (P9b)', () => {
     const line = (fx: unknown) => summarizeWorldOptionEffect(fx as never, reg);
-    expect(line({ type: 'squad_power', privilegeMult: 1.5, demandMult: 1.25, commanderVoteMult: 0.75 }))
-      .toBe("A squad leader has greater privileges; Soldiers make demands more often; The commander's vote weighs less in a squad vote");
+    expect(line({ type: 'squad_power', privilegeMult: 1.5, demandMult: 1.25, commanderVoteMult: 0.75, soldierVoteMult: 1.25 }))
+      .toBe("A squad leader has greater privileges; Soldiers make demands more often; The commander's vote weighs less in a squad vote; Each soldier's vote weighs more");
     expect(line({ type: 'squad_power', privilegeMult: 0.5, demandMult: 0.75, commanderVoteMult: 1 }))
       .toBe('A squad leader has lesser privileges; Soldiers make demands less often');
     expect(line({ type: 'squad_power', privilegeMult: 1, demandMult: 1, commanderVoteMult: 1 })).toBe("The squad pushes only as far as its soldiers' own character does");

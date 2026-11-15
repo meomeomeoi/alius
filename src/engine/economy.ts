@@ -77,6 +77,8 @@ export function runUpkeep(draft: CampaignState, reg: Registries): EngineEvent[] 
     missing -= covered;
     draft.calendar.loseMorning = true;
     events.push({ type: 'commander_went_hungry', day: draft.day, covered });
+    // the squad sees the commander go without: every named unit trusts the commander a little more
+    for (const u of livingUnits(draft)) if (u.kind === 'named') applyRelationDelta(draft, u.id, 'trust', TUNING.power.rations.hungerTrust, 'commander_hungry');
   }
 
   if (missing === 0) {
@@ -102,6 +104,10 @@ export function runUpkeep(draft: CampaignState, reg: Registries): EngineEvent[] 
     if (left > 0) spread(left, slots.length, draft.day).forEach((n, i) => { points[i] += n; }); // more than a point a share: spill evenly
     stress = points.map((p) => p * TUNING.shortage.stressPerPoint);
     affinity = points.map((p) => p * TUNING.shortage.affinityPerPoint);
+    // the reserve units who go without so that the roster does not feel it resent it
+    slots.forEach((u, i) => {
+      if (!onRoster(u) && points[i] > 0 && u.kind === 'named') applyRelationDelta(draft, u.id, 'trust', -points[i] * TUNING.power.rations.unfairTrust, 'shortage_unfair');
+    });
   }
   slots.forEach((u, i) => {
     u.stress = clamp(u.stress + stress[i], 0, 100);

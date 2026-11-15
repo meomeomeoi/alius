@@ -22,8 +22,8 @@ const namedLiving = (state: CampaignState): Unit[] => state.squad.filter((u) => 
 const round2 = (n: number): number => Math.round(n * 100) / 100;
 
 /**
- * A combat's worth of merit (named squad units only), from its log: damage dealt to enemies ÷ 10, +5 for each enemy she
- * downed with the last blow, healing she did ÷ 10. Entries older than 14 days are forgotten. Writes nothing when there
+ * A combat's worth of merit (named squad units only), from its log: damage dealt to enemies ÷ 10, damage she took from enemies ÷ 20 (the
+ * unit who holds the line earns it), +2 for each enemy she downed with the last blow, healing she did ÷ 10. Entries older than 14 days are forgotten. Writes nothing when there
  * is nothing to credit and no merit is kept.
  */
 export function recordMerit(draft: CampaignState, cs: Pick<CombatState, 'combatants' | 'log'>): void {
@@ -42,6 +42,8 @@ export function recordMerit(draft: CampaignState, cs: Pick<CombatState, 'combata
   };
   for (const e of cs.log) {
     if ((e.kind === 'hit' || e.kind === 'crit') && isEnemy(e.target)) credit(e.actor, (e.amount ?? 0) / M.damagePer);
+    // a hit an enemy lands on a squad unit is merit for the one who stood there (the defender who holds the line earns it)
+    else if ((e.kind === 'hit' || e.kind === 'crit') && isEnemy(e.actor) && byCid.get(e.target ?? '')?.side === 'squad') credit(e.target, (e.amount ?? 0) / M.absorbPer);
     else if (e.kind === 'downed' && isEnemy(e.target)) credit(e.actor, M.finishingBlow);
     else if (e.kind === 'heal') credit(e.actor, (e.amount ?? 0) / M.healPer);
   }
@@ -107,7 +109,9 @@ export function computeHierarchy(draft: CampaignState, reg: Registries): EngineE
   ranked.sort((a, b) => b.standing - a.standing);
   const [top, next] = ranked;
   let leader: string | undefined;
-  if (top && next && top.standing >= next.standing + S.margin && leadRank(bondOf(top.unit)!.leadStyle) >= 2 && h.deposed?.unitId !== top.unit.id) leader = top.unit.id;
+  // leadership is earned in a fight and kept by standing: a unit who is not the leader yet needs merit of her own to become one
+  const earned = top !== undefined && (top.unit.id === old?.leaderId || meritOf(draft, top.unit.id) > 0);
+  if (top && next && earned && top.standing >= next.standing + S.margin && leadRank(bondOf(top.unit)!.leadStyle) >= 2 && h.deposed?.unitId !== top.unit.id) leader = top.unit.id;
 
   const from = old?.leaderId;
   if (leader === undefined) delete h.leaderId;

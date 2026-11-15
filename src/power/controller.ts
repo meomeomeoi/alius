@@ -96,7 +96,21 @@ export function createPower(deps: PowerDeps): PowerController {
     send({ type: 'vote/overrule', payload: { voteId, means, ...(punish !== undefined ? { punish } : {}) } }, chatId());
   const drop: PowerController['drop'] = (voteId) => send({ type: 'vote/drop', payload: { voteId } }, chatId());
 
+  let voting = false;
   async function requestVote(action: Action): Promise<'ran' | 'dropped' | 'cancelled'> {
+    if (voting) {
+      deps.toast('info', 'A squad vote is already open: finish it first.');
+      return 'cancelled';
+    }
+    voting = true;
+    try {
+      return await runVote(action);
+    } finally {
+      voting = false;
+    }
+  }
+
+  async function runVote(action: Action): Promise<'ran' | 'dropped' | 'cancelled'> {
     const chat = chatId();
     const first = deps.app.dispatch(action, { expectChatId: chat });
     const needed = first.find((e) => e.type === 'error' && e.code === 'vote_needed');

@@ -79,6 +79,20 @@ describe('requestVote', () => {
     expect(r.refresh).toHaveBeenCalled();
   });
 
+  it('a second request while the panel is open is refused with a toast and opens nothing', async () => {
+    const r = rig(stateWith({ fail: true }));
+    let release: (c: VoteChoice) => void = () => {};
+    r.answer.next = () => new Promise<VoteChoice>((res) => { release = res; });
+    const first = r.power.requestVote(upgrade);
+    await new Promise((res) => setTimeout(res, 0));
+    expect(await r.power.requestVote(upgrade)).toBe('cancelled');
+    expect(r.h.toasts.at(-1)).toMatchObject({ kind: 'info' });
+    expect(r.shown).toHaveLength(1);
+    release({ choice: 'accept' });
+    expect(await first).toBe('dropped');
+    expect(await r.power.requestVote(rations('fighters_first'))).toBe('ran'); // free again
+  });
+
   it('a failed vote the commander accepts is dropped and nothing runs', async () => {
     const r = rig(stateWith({ fail: true }));
     r.answer.next = { choice: 'accept' };

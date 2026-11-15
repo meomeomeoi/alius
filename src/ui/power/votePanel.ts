@@ -72,7 +72,7 @@ export function renderVotePanel(host: HTMLElement, vote: Vote, lines: Record<str
     const showPicker = (): void => {
       picker.hidden = false;
       if (picker.childElementCount > 0) return;
-      const dissent = vote.ballots.filter((b) => b.vote === 'against');
+      const dissent = vote.ballots.filter((b) => b.vote === 'against' && state.squad.find((u) => u.id === b.unitId)?.kind === 'named'); // a punishment names a named soldier
       const who = h('select', { class: 'alius-select', 'data-punish-unit': '', 'aria-label': 'Soldier to punish' }, ...dissent.map((b) => h('option', { value: b.unitId }, nameOf(b.unitId)))) as HTMLSelectElement;
       const how = h('select', { class: 'alius-select', 'data-punish-measure': '', 'aria-label': 'Measure' }, ...measures(state, reg).map((e) => h('option', { value: String(e.id) }, String(e.label)))) as HTMLSelectElement;
       picker.append(who, how, act('punish-confirm', '[ CONFIRM ]', () => ctx.onOverrule('punish', { unitId: who.value, measure: how.value })));

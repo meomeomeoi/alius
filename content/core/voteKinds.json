@@ -70,7 +70,7 @@
   {
     "id": "punish",
     "label": "Punishment",
-    "description": "Whether the commander punishes a soldier with a measure up to the brig. The squad votes for or against that punishment, and the soldier it is aimed at always votes against it.",
+    "description": "Whether the commander punishes a soldier with a mild measure, up to the bench; the brig is the commander's call alone. The squad votes for or against that punishment, and the soldier it is aimed at always votes against it.",
     "lean": {
       "corporate": 1,
       "mercy": -1

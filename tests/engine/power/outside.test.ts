@@ -72,6 +72,7 @@ describe('outside perception', () => {
       withBond(s, u.id, { leadStyle: u.id === ANN ? 'dominant' : 'balanced' });
     }
     expect(noteFeat(s, reg, 'negotiation')).toHaveLength(1);
+    s.power!.merit = [{ day: s.day, unitId: ANN, points: 5 }]; // she has fought: leadership is earned
     const a = standingOf(s, reg, ANN)!;
     const b = standingOf(s, reg, BEA)!;
     s.power!.hierarchy!.standingBonus = { unitId: BEA, amount: a - b - 10, untilDay: 40 };
