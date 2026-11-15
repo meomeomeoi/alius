@@ -85,8 +85,8 @@ describe('who proposes (acceptance 1)', () => {
     const d = proposals(world('dominant'), 1500);
     expect(d / a).toBeGreaterThan(1.2);
     expect(d / a).toBeLessThan(1.9);
-    expect(a / 1500).toBeGreaterThan(0.08);
-    expect(a / 1500).toBeLessThan(0.17);
+    expect(a / 1500).toBeGreaterThan(0.03); // draft chance 5 % a day
+    expect(a / 1500).toBeLessThan(0.08);
   });
 
   it('at most one open proposal and three active rules per unit', () => {

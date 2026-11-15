@@ -576,6 +576,20 @@ Five registries and a few fields; the engine reads each by **type or field, neve
 
 **Other fields.** `dispositionLevels[].impunityBase` (0…100; default 35 when a pack omits it), `relationshipStates[].dependency` (0…40; core: `dependent` 15), `eventDeltas` rows for `defied`, `commander_enforced` (the fallback row for a measure the registry no longer has), `commander_yielded`, `threatened`, `granted_demand`, `refused_demand`, the world option `acquaintance` (effect `acquaintance_grace { days }`; no `lore` line, `WorldChoice.lore` is optional). A new player-facing entry gets a `description` and the four registries above are in `DESCRIBED_REGISTRIES`.
 
+## Desire and bond content (P9d)
+
+Two registries and a few fields; the engine reads each by **type or field, never by id**. Texts marked `AUTHOR TO WRITE` in core are drafts; a commander has no pronoun in any of them.
+
+**`contentCategories`** — `{ id, label, description, order }`: what the player can switch on (all off by default; turning one on is full consent for it to appear). `explicit_scenes` is the old single switch. Any entry of a gated registry (`relationshipRuleTemplates`, `demandTemplates`, `punishments`, `dilemmaTemplates`, `missionTemplates`, `clocks`) may carry `contentTags: [category ids]`; with a category off the engine never hands it out. A pack that adds a gated registry lists it in `CONTENT_GATED_REGISTRIES` and adds a probe to `GATE_PROBES`.
+
+**`relationshipRuleTemplates`** — `{ id, text ≤ 240, description, contentTags?, check: 'daily_contact'|'run_without_asking'|'intent', keepDeltas { trust, affinity }, breakDeltas { trust, affinity, stress }, conditions { minLead?: 'assertive'|'dominant', tiers?: ('romantic'|'close')[] }, weight }`. `text` is the fallback wording; the app words a proposal in her voice when the setting `ruleWording` is on.
+
+**`relationshipStates[]`** — `bondTier: 'romantic'|'close'` (the tier that carries Want, publicity and a scene lead, or lets her propose rules) and `leadBonus` (added to the lead score while her style is at least assertive). A new state sets them in JSON.
+
+**`defects[]` fields** — `requiresBond { caretaker }` (import candidates, the manual list and validation), `leadBonus`, `eventStress { <event type>: −10…10 }` (stress added when that event lands on her; negative relieves), `embraceFlag` (a relation flag written when she is on the Embrace path; halves her positive `eventStress` while set), `wantBreakdown { kind: withdrawal|binge|smother|seize, days 1…3 }`.
+
+**`demandTemplates`** — kind `desire` (never rolled by the weekly demand roll; opened by Want's own cadence), cost `{ type: 'night_visit' }`, field `wantRelief` (what granting lowers Want by), condition `publicityMismatch: true`. **`activities[].wantRelief`** — what a companion lowers Want by (core: `train` 15; other activities use `TUNING.bonds.want.relief.companion`). **`eventDeltas`** — rows for `followed_lead`, `rule_accepted`, `rule_refused`, `compromise_reached`; `rule_kept` / `rule_broken` carry empty rows (the template's deltas apply). **Combat** — conditions `orderedThisRound`, `commanderBuildIn: [archetypes]`; effect `outgoing` with `vs: 'heal'` scales the owner's heals; an `order_refusal` in a breakdown's `onEnter` makes the others refuse her allies' orders by chance.
+
 ## Lorebook
 
 A pack may ship one compact lorebook, named in the manifest's `lorebook` field. The extension installs it into SillyTavern when a campaign is created, unless a lorebook with that name already exists (a lorebook the player edited is never overwritten).

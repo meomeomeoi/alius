@@ -110,3 +110,8 @@ Intimacy settings apply as usual; romance with the warden is allowed and gets de
 - **Prologue scenes:** `app.onboarding` (`startLineup`, `talkFirstWords`, soft caps with `prologue:goal` / `prologue:wrap`), scene origin `prologue` (never takes a slot), `TUNING.scene.maxParticipants` = 4, `Comms.initiate(unitId)` for one initiated DM without the roll.
 - **Unlocks and objectives:** registry `uiUnlocks` (`target.tab`, `minDay`, `afterStep`), `lockedTabs`, `ShellApi.setTabLocked`; `objectiveList` / `currentObjective` (sources `prologue`, `spine`, `director`, `unit`) and the director's `objectiveHint`.
 
+## Interfaces already provided by P9d (implemented — use, do not rebuild)
+
+- **Lead:** `decideLead(state, reg, unitId)` / `scene.lead` decide who leads a romantic scene from lead style, Impunity, defects and recent yields; a mirrored mode flips the inputs, not the function.
+- **Bond profile and content categories:** `bondOf`, `contentAllowed`, `contentLine` (what every generation is told is excluded); `enabledCategories(state)` is the player's consent and never widens.
+- **Defect vocabulary:** `eventStress`, `embraceFlag`, `wantBreakdown`; conditions `orderedThisRound`, `commanderBuildIn`.

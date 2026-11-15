@@ -58,3 +58,10 @@ Each named unit gets a handwriting font at import (from a bundled OFL set of ~6 
 - **Hub:** rooms, markers (`renderMarker`, tone + state glyph + tone glyph), the room panel and `tonightItems` are the hooks for telemetry and notes on the hub; whereabouts are derived (stored schedules are open item P10b). The marker ring reads `--alius-danger/-warn/-trust/-affinity/-bond`.
 - **Motion, sound, readability:** `motionReduced` / `visualFlags`; night/door/typing animations must honour them (readable mode drops scanlines, flicker, dithering and the glitch). Sound ids are the fixed eight of `uiSounds`.
 - **Boot:** `playBoot(screen, { reduced, skinLabel })` is 600 ms, skippable, once per `open()`.
+
+## Interfaces already provided by P9d (implemented — use, do not rebuild)
+
+- **Want and visits:** `wantBandOf(state, reg, unitId)` gives the band word (calm / restless / aching / desperate); the night knock of kind `want_visit` (`WANT_VISIT_KIND`) is an ordinary night entry (priority 55; 90 once she was told to come), so the night door and handwriting hooks apply unchanged.
+- **Lead and tone:** `scene.tone` and `scene.lead` drive the lead chips (`drawLeadChips`) and the directive; a telemetry panel can read them without storing anything.
+- **Violation mark:** `drawViolation(host, labels, onRegenerate?)` (text only, analyzable) is the one place a flagged reply is marked.
+- **Publicity and rules in the dossier:** `bondBlock` in the squad tab (chips, `[SECRET] [KNOWN] [PUBLIC]`) and the rule chips; every chip carries `data-analyze`.

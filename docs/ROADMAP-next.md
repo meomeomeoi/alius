@@ -12,7 +12,7 @@ P0–P6 are done. These packages bring the base to a proper starting level befor
 | 3 | **P9** Impunity, discipline, demands, reputation | Needs P7 presence and P8 disposition. |
 | 4 | **P10** Visual upgrade | Independent of P7–P9 logic, but P11 is built from its voices (paper forms, dossier) and its hub. |
 | 5 | **P11** Prologue & onboarding (**done**) | Assembles P7 (creation fields), P8 (world screen) and P10 (paper voice, hub, objective panel). |
-| 5b | **P9d** Desire & bonds | Defines the bond profile and opt-in content categories that P9b/P9c read; needs P9 and P3. Implement before P9b/P9c. |
+| 5b | **P9d** Desire & bonds (**done**) | Defines the bond profile and opt-in content categories that P9b/P9c read; needs P9 and P3. Implement before P9b/P9c. |
 | 5c | **P9b** Squad power structure | Voting, hierarchy/leader, outside perception, scapegoat; needs P9, P8, P9d §1. |
 | 5d | **P9c** Personal pressure | Device access levels, bookings, inverted courtship, tokens, squad secrets, wagers; needs P9b, P9d, P10. |
 | 5e | **P10b** Intimate immersion UI | Telemetry, living DMs, night door, handwriting, device marks; needs P10, P9c data, P9d. |

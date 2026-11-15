@@ -341,7 +341,7 @@ var TUNING = Object.freeze({
     }),
     want: Object.freeze({
       max: 100,
-      rise: Object.freeze({ medium: 4, high: 7 }),
+      rise: Object.freeze({ medium: 4, high: 6 }),
       attachmentFactor: Object.freeze({ slow: 1, steady: 1, intense: 1.4, avoidant: 0.6 }),
       attractionMin: 60,
       /** An ineligible unit's Want fades this much a day. */
@@ -365,7 +365,7 @@ var TUNING = Object.freeze({
     }),
     rules: Object.freeze({
       /** Daily chance a leading partner proposes a rule, × the lead-style multiplier. */
-      chance: 0.12,
+      chance: 0.05,
       leadMult: Object.freeze({ assertive: 1, dominant: 1.5 }),
       maxActive: 3,
       textMax: 160

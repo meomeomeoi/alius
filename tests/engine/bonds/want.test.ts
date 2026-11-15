@@ -41,13 +41,13 @@ describe('wantBand', () => {
 });
 
 describe('who gets Want (acceptance 1)', () => {
-  it('medium desire in a romantic state rises +4 a day; high intense rises round(7×1.4)=10', () => {
+  it('medium desire in a romantic state rises +4 a day; high intense rises round(6×1.4)=8', () => {
     expect(want(step(world()).state)).toBe(4);
-    expect(want(step(world({ desire: 'high', attachment: 'intense' })).state)).toBe(10);
+    expect(want(step(world({ desire: 'high', attachment: 'intense' })).state)).toBe(8);
     expect(want(step(world({ desire: 'medium', attachment: 'intense' })).state)).toBe(6); // 5.6 rounds up
-    expect(want(step(world({ desire: 'high', attachment: 'avoidant' })).state)).toBe(4); // 4.2
+    expect(want(step(world({ desire: 'high', attachment: 'avoidant' })).state)).toBe(4); // 3.6
     expect(want(step(world({ desire: 'medium', attachment: 'avoidant' })).state)).toBe(2); // 2.4
-    expect(want(step(world({ desire: 'high', attachment: 'slow' })).state)).toBe(7);
+    expect(want(step(world({ desire: 'high', attachment: 'slow' })).state)).toBe(6);
   });
 
   it('adds up day after day and stops at 100', () => {

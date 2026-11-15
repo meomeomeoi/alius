@@ -73,3 +73,11 @@ Campaign: `world.options.squad_assertiveness`, `world.options.voting`; `hierarch
 - **Big gestures:** `TUNING.disposition.bigGesture.events` already holds `granted_demand`; "shielded from oversight" has **no producer** — add the event type to `EVENT_TYPES`/`eventDeltas` and to that list.
 - **Counters and nicknames:** `countDeed(draft, counter)` (add a counter to `DEED_COUNTERS`), registry `reputations` (a new pattern is JSON) and `Commander.reputation`.
 - **Directives:** ids `loyalty:`, `refusal:`, `threat:`, `discipline:`, `demand:`, `reputation:`, `nickname` are P9's; keep new ones away from them and from `world:`, `stance:`, `friction:`.
+
+## Interfaces already provided by P9d (implemented — use, do not rebuild)
+
+- **Bond profile:** `bondOf(unit)` (`leadStyle`, `attachment`, `desire`, `caretaker`, `ownLimits`, `publicity`; `null` for a grunt, a modest profile when the card gave none), `leadRank`, `LEAD_STYLES`: "pushes for power" reads `leadStyle`, never an id. `squad/resync` re-reads the `bond` section.
+- **Co-command stand-in:** a defect's `embraceFlag` (Dominance Drive: `co_command`) writes a relation flag and the directive `co_command:<unitId>` when the Embrace path is decided; the hierarchy replaces the flag.
+- **Lead and rules:** `scene.lead` (`unit` / `commander` / `shared`) and the proposals of leading partners (`relationshipRuleTemplates`, `rollRules`) are the entry points a hierarchy or a vote can read; `decideLead` is pure.
+- **Content gate:** `contentAllowed` over `contentTags`; a new gated registry needs a `GATE_PROBES` probe.
+- **Directives:** ids `content`, `limits:`, `lead`, `boundary:`, `want:`, `rule:`, `publicity:`, `co_command:`, `ask:` are P9d's.

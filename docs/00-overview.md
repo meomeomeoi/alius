@@ -160,7 +160,7 @@ Before each main-model generation the adapter injects one compact block:
 
 Character card text itself remains SillyTavern's job.
 
-### 5.4 Implemented engine interfaces (P0–P6, P7a, P7, P8, P9, P10, P11)
+### 5.4 Implemented engine interfaces (P0–P6, P7a, P7, P8, P9, P9d, P10, P11)
 
 Later packages build on these; change them only together with the owning spec.
 
@@ -231,6 +231,13 @@ Later packages build on these; change them only together with the owning spec.
 | `openDemand`, `rollDemands`, `eligibleTemplates`, `demandChance`, `grantProblem`, `deliverDemand`, `answerDemand`, registry `demandTemplates` (6), actions `demand/roll`, `demand/deliver`, `demand/answer` | P9 | Demands (`resource`, `privilege`, `exclusion`, `item`, `information`, `interpersonal`) and the *owed* demand of a delegate one Trust band short. |
 | `countDeed`, `deedsOf`, `DEED_COUNTERS`, `patternHolds`, `patternScore`, `reputationDayStep`, `introduceNickname`, registry `reputations` (7), action `reputation/introduce { unitId }`, `commanderLine` (nickname clause) | P9 | Deeds are counted where they happen; patterns queue one pending nickname; it is introduced in a private scene and enters the commander line and the CMDR card. |
 | `createDiscipline` / `app.discipline` (`onEvents`, `onSceneOpened`, `onSceneClosed`, `punish`, `undo`, `onSlotAdvanced`, `answerDemand`, `talkDemand`), `disciplineDirectives`, `reputationDirectives`, `clearDisciplineDirectives`, `renderDisciplineMenu`, `drawDisciplineChips`, `drawDemandChips`, `registerDisciplineProviders` | P9 | The non-engine layer: directives (`loyalty:`, `refusal:`, `threat:`, `discipline:`, `demand:`, `reputation:`, `nickname`), toasts, wording, chips and the DISCIPLINE menu. Events: `defiance_noted`, `defiance_settled`, `threat_registered`, `threat_kept`, `threat_lapsed`, `discipline_applied`, `discipline_undone`, `restriction_started`, `restriction_ended`, `covert_sabotage`, `demand_opened`, `demand_delivered`, `demand_resolved`, `nickname_pending`, `nickname_given`, `nickname_dropped`, `impunity_changed`. |
+| `contentAllowed`, `enabledCategories`, `disabledCategories`, `setCategories`, `tagsOf`, `flaggedCategories`, `ownLimitLabels`, `CONTENT_GATED_REGISTRIES`, registry `contentCategories` (9), action `content/set_categories { enabled }`, `Unit.bond`, `bondOf`, `bondTierOf`, `MODEST_BOND`, `validateBond`, `defectAllowedFor`, `relationshipStates[].bondTier` | P9d | One gate for everything a category can switch off (a registry that joins `CONTENT_GATED_REGISTRIES` needs a `GATE_PROBES` entry); the per-unit bond profile and the tier (`romantic`, `close`) that P9b/P9c read. Absent = nothing enabled / a modest profile. |
+| `decideLead`, `leadScoreParts`, `raiseTone`, `startTone`, `followLead`, `setSceneLimit`, `SceneRecord.{tone,lead,followed,limits}`, actions `bonds/follow`, `bonds/limit`, `defects[].leadBonus`, `relationshipStates[].leadBonus` | P9d | Who leads a romantic scene (`unit`, `commander`, `shared`), decided by the engine; never lowers. |
+| `wantOf`, `wantBand`, `wantBandOf`, `wantEligible`, `effectiveWant`, `relieveWant`, `wantStep`, `startWantBreakdown`, `bondsDayStep`, demand kind `desire`, cost `night_visit`, night kind `want_visit`, `defects[].wantBreakdown`, `activities[].wantRelief` | P9d | Want 0–100 for units with a real desire in a romantic state; bands calm / restless / aching / desperate; reaches the commander as a demand. Off-combat breakdowns through `Unit.breakdown.until`. |
+| `rulesOf`, `activeRules`, `rollRules`, `answerRule`, `applyRuleEvent`, `checkDailyContact`, `checkRunRoster`, registry `relationshipRuleTemplates` (5), actions `bonds/deliver_rule`, `bonds/answer_rule`, intent types `rule_kept`, `rule_broken`, `compromise_reached` | P9d | Relationship rules a leading partner proposes; three checks (`daily_contact`, `run_without_asking`, `intent`). |
+| `syncPublicity`, `setPublicity(draft, reg, unitId, level, { cause: 'commander'\|'claimed'\|'revealed' })`, `rollReveal`, `publicityMismatch`, action `bonds/set_publicity { unitId, level }` | P9d | How open a romantic relationship is; `claimed` (P9c) calls `setPublicity(…, 'public', { cause: 'claimed' })`. |
+| `smotherActive`, `startSmother`, `clearSmother`, `smotherRefusal`, `releaseBreakdowns(draft, ids?, reg?)`, condition `orderedThisRound`, condition `commanderBuildIn`, `outgoing.vs: 'heal'`, `Combatant.refusal`, defect fields `eventStress`, `embraceFlag`, `requiresBond`, `defectEventStress` | P9d | The stand-ins P9c/P9b replace (a smother hold, a co-command flag) and the combat/defect vocabulary of the two new defects. |
+| `createBonds` / `app.bonds` (`onEvents`, `answerRule`, `negotiateRule`, `onSlotAdvanced`, `setPublicity`), `bondsDirectives`, `contentLine`, `drawViolation`, `drawLeadChips`, `drawRuleChips`, `renderContentSection`, `registerBondsProviders` | P9d | The non-engine layer: directives (`content`, `limits:`, `lead`, `boundary:`, `want:`, `rule:`, `publicity:`, `co_command:`, `ask:`), the violation and lead chips, the CONTENT section at setup and in SYS. |
 | `whereabouts(state, reg)` → `Whereabout[]` (`{ unitId, roomId \| null, reason }`), `fnv1a`, registry `hubRooms` (`rect`, `sceneLocationId`, `facilityId?`, `activityIds?`, `weights`, `likeTags?`, `hosts?`, `commanderCell?`) | P10 | Where each living unit is this slot, derived and stateless (no RNG): away, injured, confined, duty, night, else a weighted hash pick. P10b may replace the last step with a stored schedule. |
 | `ScreenId 'hub'`, `ShellApi.registerHub / isDeviceUp / setDevice`, `toast(kind, text, { voice, title })`, `ShellDeps.{ skin, sound, onDevice }`, `app.talkAt(unitId, locationId)`, `app.endSlot()` | P10 | The hub is the home screen and the PDA a device layer over it: `showScreen('pda')` raises it, `'hub'` lowers it. `talkAt` starts the talk activity and the scene at a room's location without the picker; `endSlot` passes the slot after a confirm (a quiet night is slept through). |
 | `currentObjective(state, reg)`, `tonightItems`, `markerTone`, `endSlotBlock`, `latestOversight` (`src/ui/hub/model.ts`) | P10 | Pure view models of the hub. `currentObjective` reads P11's `objectiveList` and falls back to the old mission pick (`source: 'mission'`). |
@@ -266,7 +273,7 @@ Campaign {
   missions { offered[] /* the board */, active[], completed[] /* newest 30 */ }   // Mission: { id, source, templateId, title, brief, regionId, danger, objective, deadlineDay?, rewardsTier, failureEffects, threadId?, spineBeat?, poiId?, scouted?, status, rewards? }
   rumors[] /* newest 20 */, dms: { [unitId]: DmMessage[] }, dmMeta?: { [unitId]: { day, sent } }   // P3: the unit's daily "social battery"
   memory { facts[], chronicle[], promises?[], nextId? }   // P3
-  scene?: SceneRecord, proposals?: PendingProposal[]       // P3: the open scene (transcript stays in the ST chat) and open proposals
+  scene?: SceneRecord, proposals?: PendingProposal[]       // P3: the open scene (transcript stays in the ST chat) and open proposals; P9d adds the scene's tone ('romantic'|'intimate'), lead { by, unitId, score }, followed?, limits?[], violations?[]
   onboarding? { prologueId, stepId, stepDay, completed[], skipped[], done, spoken?[], hintsSeen?[], guideUnitId?, tutorialMissionId? }   // P11; absent = done (older campaigns are unaffected, nothing is locked)
   objectives?: [{ id, text, source: 'director', dueDay?, done }]   // P11: only the director's leads (≤ 1 open, 10 finished kept); prologue, spine and unit objectives are read live by objectiveList
   calendar { scheduled[], nightEventsQueue[], nightEvent? /* head entry while the Night slot runs; absent in a quiet night (P7) */, pendingScene? /* open talk holding its slot */, shortageStreak?, loseMorning? /* P7: the next day starts in the Afternoon */ }
@@ -309,6 +316,9 @@ Relation {
   affair?: { as, hiddenFrom[], since }   // P3: a concealed romance until discovered
   metDay?                // P7: first day the unit knew the commander (default: her join day; back-filled for old saves)
   impunityRecord?        // P9: stored term R of Impunity, −40…40, decays toward 0 by 1/day, absent = 0
+  want?, wantBreakDay?   // P9d: Want 0–100 (bands 40/70/90; absent = 0) and the day it last crossed the breakdown band
+  contactDay?            // P9d: the last day a scene or a DM with her judged a daily_contact rule
+  publicity?: { level: 'secret'|'known'|'public', commanderPref?, since }   // P9d: set while she is in a romantic-tier state, cleared when she leaves it
   marks: MarkInstance[]  // RESERVED in v1 (always empty), see §10 "Marks"; present so no migration is needed later
 }
 ```
@@ -381,7 +391,7 @@ Defaults in code: Desire/Bond defects **off**, show raw values **off**, sprite m
 | 11 | P9 | Impunity, discipline, demands, reputation | P0–P8 | implemented |
 | 12 | P10 | Visual upgrade (hub, device skins, voices) | P0–P6 | implemented |
 | 13 | P11 | Prologue & onboarding | P7, P8, P10 | implemented |
-| 14 | P9d | Desire & bonds (bond profile, opt-in content categories, lead, Want, relationship rules) | P3, P9 | spec |
+| 14 | P9d | Desire & bonds (bond profile, opt-in content categories, lead, Want, relationship rules) | P3, P9 | implemented |
 | 15 | P9b | Squad power structure (voting, hierarchy/leader, outside perception, scapegoat) | P8, P9, P9d | spec |
 | 16 | P9c | Personal pressure (device access levels, bookings, tokens, squad secrets, wagers) | P9b, P9d, P10 | spec |
 | 17 | P10b | Intimate immersion UI (telemetry, living DMs, night door, handwriting, device marks) | P10, P9c, P9d | spec |

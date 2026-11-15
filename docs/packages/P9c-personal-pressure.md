@@ -78,3 +78,11 @@ Outcomes apply as engine effects; "a day of obedience" for the commander = his n
 - **Voices:** `renderVoiceCard`, `renderBubble`, `unitAccent` (6 fixed accents by `fnv1a` of the unit id; P10b may make them data). A squad secret shown as a document is a `paper` card with `redact` ranges.
 - **Whereabouts:** `whereabouts(state, reg)` is derived and stateless; bookings that decide where a unit is would replace step 5 (the routine pick) with a stored schedule — keep the signature and the reasons (`injured`, `confined`, `duty`, `night`, `routine`, `expedition`, `nowhere`).
 - **Hub model:** `tonightItems` lists at most 6 lines in a fixed order and must never reveal a value the PDA does not show; add new kinds at the end of its order with an `analyze` address.
+
+## Interfaces already provided by P9d (implemented — use, do not rebuild)
+
+- **Content categories:** `contentAllowed(state, reg, entry, unitId?)` over `contentTags` (wager stakes join `CONTENT_GATED_REGISTRIES` and need a `GATE_PROBES` probe); characters' own limits (`bond.ownLimits`) hold even with a category on.
+- **Smother stand-in:** `bonds.smother = { unitId, untilDay }` (`smotherActive`, `startSmother`, `clearSmother`, `smotherRefusal`); `expedition/start` is refused while it holds and the UI controller opens her scene at the next `slot_advanced`. Bookings replace this: keep `releaseBreakdowns(draft, ids, reg)` starting the hold, or move that call.
+- **Publicity:** `setPublicity(draft, reg, unitId, 'public', { cause: 'claimed' })` is what a `claimed` booking calls (no preference event); `publicityMismatch` and the demand `publicity_talk` already exist.
+- **Want and rules:** `wantOf` / `wantBand`, `relieveWant(draft, unitId, amount, cause)` (a booking or a token may relieve Want), the demand kind `desire` with cost `night_visit`, `rulesOf` / `activeRules` and the check `intent` (a token rule such as `no_other_tokens` is intent-only until tokens exist: add a check vocabulary entry and its engine hook).
+- **Notes:** a pinned rule note reads `rulesOf(state)` (`status`, `text`, `brokenCount`).
