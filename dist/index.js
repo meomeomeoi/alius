@@ -10845,6 +10845,12 @@ function tallyVote(state, reg, kind, subject) {
   const againstWeight = side("against");
   return { ballots, commanderWeight, forWeight, againstWeight, passed: forWeight >= againstWeight };
 }
+function voteSubjectLabel(state, reg, kind, subject) {
+  if (kind === "mission") return missionById(state, subject)?.title ?? subject.replace(/_/g, " ");
+  if (kind === "upgrade") return String(reg.facilities.get(subject)?.name ?? subject.replace(/_/g, " "));
+  if (kind === "punish") return state.squad.find((u) => u.id === subject)?.displayName ?? subject.replace(/_/g, " ");
+  return subject.replace(/_/g, " ");
+}
 
 // src/engine/power/rations.ts
 function rationsVotable(state, reg) {
@@ -18952,17 +18958,10 @@ function createBonds(deps) {
 }
 
 // src/power/controller.ts
-var humanize = (id) => id.replace(/_/g, " ");
 function createPower(deps) {
   const chatId = () => deps.st.getActiveChat()?.chatId;
   const state = () => deps.app.current().state;
   const failure = (events) => events.find((e) => e.type === "error");
-  function subjectLabel(s, reg, vote) {
-    if (vote.kind === "mission") return missionById(s, vote.subject)?.title ?? humanize(vote.subject);
-    if (vote.kind === "upgrade") return String(reg.facilities.get(vote.subject)?.name ?? humanize(vote.subject));
-    if (vote.kind === "punish") return s.squad.find((u) => u.id === vote.subject)?.displayName ?? humanize(vote.subject);
-    return humanize(vote.subject);
-  }
   function templateLine(s, reg, vote, unitId) {
     const unit = s.squad.find((u) => u.id === unitId);
     const name = unit?.displayName ?? unitId;
@@ -18988,7 +18987,7 @@ function createPower(deps) {
       const worded = await generateBallotFlavor({
         kind: "ballot",
         voteKind: String(reg.voteKinds.get(vote.kind)?.label ?? vote.kind),
-        subjectLabel: subjectLabel(s, reg, vote),
+        subjectLabel: voteSubjectLabel(s, reg, vote.kind, vote.subject),
         ballots: voters.map((v) => ({ name: v.name, vote: v.vote, term: v.term }))
       }, { st: deps.st, settings: deps.settings(), contentLine: deps.contentLine });
       for (const v of voters) if (worded[v.name] !== void 0) lines[v.id] = worded[v.name];
@@ -19050,6 +19049,199 @@ function createPower(deps) {
     drop,
     ballotLines
   };
+}
+
+// src/ui/analyze/mark.ts
+function analyzeNative(address, ctx2) {
+  const { tabindex: _tabindex, ...rest } = analyzeAttrs(address, ctx2);
+  return rest;
+}
+function analyzeAttrs(address, ctx2) {
+  const attrs = { "data-analyze": address };
+  if (ctx2) attrs["data-analyze-ctx"] = JSON.stringify(ctx2);
+  attrs.tabindex = "0";
+  return attrs;
+}
+
+// src/ui/dom.ts
+function h(tag2, attrs = {}, ...children) {
+  const el = document.createElement(tag2);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (v === false || v === null || v === void 0) continue;
+    if (k === "class") el.className = String(v);
+    else if (k.startsWith("on") && typeof v === "function") el.addEventListener(k.slice(2).toLowerCase(), v);
+    else if (v === true) el.setAttribute(k, "");
+    else el.setAttribute(k, String(v));
+  }
+  for (const c of children) {
+    if (c === null || c === void 0) continue;
+    el.append(typeof c === "string" ? document.createTextNode(c) : c);
+  }
+  return el;
+}
+
+// src/ui/fx.ts
+var SVG_NS = "http://www.w3.org/2000/svg";
+var fxSeq = 0;
+function svg(tag2, attrs) {
+  const el = document.createElementNS(SVG_NS, tag2);
+  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+  return el;
+}
+function noise(cls, f) {
+  const id = `alius-fx-${++fxSeq}`;
+  const layer = svg("svg", { class: `alius-fx ${cls}`, "aria-hidden": "true", width: "100%", height: "100%", preserveAspectRatio: "none" });
+  const filter = svg("filter", { id, x: "0", y: "0", width: "100%", height: "100%" });
+  filter.append(svg("feTurbulence", {
+    type: "fractalNoise",
+    baseFrequency: f.frequency,
+    numOctaves: String(f.octaves),
+    seed: String(f.seed ?? 1),
+    stitchTiles: "stitch"
+  }));
+  layer.append(filter, svg("rect", { width: "100%", height: "100%", filter: `url(#${id})` }));
+  return layer;
+}
+function cssUrl(path) {
+  return `url("${path.replace(/["\\\n\r]/g, (c) => encodeURIComponent(c))}")`;
+}
+
+// src/ui/voice/voiceCard.ts
+var UNIT_ACCENTS = ["#ff9ec7", "#ffb86b", "#8fd6ff", "#b6e88a", "#d0a8ff", "#7ee7d0"];
+var unitAccent = (unitId) => UNIT_ACCENTS[fnv1a(unitId) % UNIT_ACCENTS.length];
+function redacted(text2, ranges) {
+  const parts = [];
+  let cursor = 0;
+  for (const [from, to] of [...ranges].sort((a, b) => a[0] - b[0])) {
+    const start = Math.max(0, from);
+    const end = Math.min(text2.length, to);
+    if (end <= start || start < cursor) continue;
+    if (start > cursor) parts.push(text2.slice(cursor, start));
+    parts.push(h("span", { class: "alius-redact", "aria-label": "redacted" }, "\u2588".repeat(end - start)));
+    cursor = end;
+  }
+  if (cursor < text2.length) parts.push(text2.slice(cursor));
+  return parts;
+}
+function renderVoiceCard(o) {
+  const head = o.title || o.meta || o.from ? h(
+    "header",
+    { class: "alius-voice-head" },
+    o.title ? h(o.level === 3 ? "h3" : "h2", { class: "alius-voice-title" }, o.title) : null,
+    o.from ? h("span", { class: "alius-voice-from" }, o.from) : null,
+    o.meta ? h("span", { class: "alius-voice-meta" }, o.meta) : null
+  ) : null;
+  const body = h("div", { class: "alius-voice-body" });
+  if (typeof o.body === "string") body.append(...(o.redact?.length ? redacted(o.body, o.redact) : [o.body]).filter((c) => c !== null && c !== void 0));
+  else body.append(o.body);
+  const card2 = h(
+    "article",
+    { class: `alius-voice alius-voice-${o.voice}`, "data-voice": o.voice },
+    o.voice === "paper" ? noise("alius-fibre", { frequency: "0.04 0.9", octaves: 2, seed: 3 }) : null,
+    head,
+    body,
+    o.stamp ? h("span", { class: "alius-stamp" }, o.stamp) : null
+  );
+  if (o.accent) card2.style.setProperty("--voice-accent", o.accent);
+  return card2;
+}
+function renderBubble(text2, mine, accent) {
+  const bubble = h(
+    "div",
+    { class: `alius-bubble alius-voice alius-voice-personal ${mine ? "is-mine" : "is-hers"}`, "data-voice": "personal" },
+    h("span", { class: "alius-msg-text" }, text2)
+  );
+  bubble.style.setProperty("--bubble-accent", accent);
+  return bubble;
+}
+
+// src/ui/voice/sources.ts
+var VOICE_OF = {
+  toast: "terminal",
+  dm: "personal",
+  unit_note: "personal",
+  chronicle: "paper",
+  dossier: "paper",
+  commander_file: "paper",
+  oversight: "corporate",
+  leash_verdict: "corporate",
+  corporate_mail: "corporate",
+  // P11
+  intake_form: "paper",
+  // P9b: the VOTE panel is the oversight office's tally sheet
+  squad_vote: "corporate"
+};
+
+// src/ui/power/votePanel.ts
+var SIDE_WORD = { for: "FOR", against: "AGAINST", abstain: "ABSTAIN" };
+var num2 = (n) => String(Math.round(n * 100) / 100);
+function measures(state, reg) {
+  return [...reg.punishments.values()].filter((e) => contentAllowed(state, reg, e)).map((e, i) => ({ e, i })).sort((a, b) => Number(a.e.severity) - Number(b.e.severity) || a.i - b.i).map((x) => x.e);
+}
+function renderVotePanel(host, vote, lines, ctx2) {
+  host.replaceChildren();
+  const { state, registries: reg } = ctx2;
+  const nameOf9 = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
+  const kindLabel2 = String(reg.voteKinds.get(vote.kind)?.label ?? vote.kind);
+  const rows = vote.ballots.map((b) => h(
+    "li",
+    { class: "alius-ballot", "data-ballot": b.unitId, "data-side": b.vote },
+    h("span", { class: "alius-chip", ...analyzeAttrs("glossary:vote", { unitId: b.unitId }) }, nameOf9(b.unitId)),
+    ` ${SIDE_WORD[b.vote]}${b.vote === "abstain" ? "" : ` \xD7${num2(b.weight)}`} `,
+    h("span", { class: "alius-dim" }, lines[b.unitId] ?? "")
+  ));
+  const commander = h(
+    "li",
+    { class: "alius-ballot alius-ballot-commander", "data-ballot-commander": "", "data-side": "for" },
+    h("span", { class: "alius-chip", ...analyzeAttrs("glossary:vote") }, "COMMANDER"),
+    ` FOR \xD7${num2(vote.commanderWeight)} `,
+    h("span", { class: "alius-dim" }, "The commander picked it and always votes for it.")
+  );
+  const tally = h(
+    "p",
+    { class: "alius-vote-tally alius-stat", "data-vote-tally": "", ...analyzeAttrs("glossary:vote") },
+    `FOR ${num2(vote.forWeight)} \xB7 AGAINST ${num2(vote.againstWeight)} \u2014 ${vote.passed ? "PASSED" : "FAILED"}`
+  );
+  const body = h(
+    "div",
+    { class: "alius-votepanel", "data-vote-panel": vote.id, "data-vote-status": vote.status },
+    h("p", {}, h("span", { class: "alius-chip", ...analyzeAttrs(`voteKinds:${vote.kind}`) }, kindLabel2.toUpperCase()), ` ${voteSubjectLabel(state, reg, vote.kind, vote.subject)}`),
+    h("ul", { class: "alius-ballots" }, commander, ...rows),
+    tally
+  );
+  const act = (id, label2, onclick, extra = {}) => h("button", { type: "button", class: "alius-btn alius-option", "data-vote-act": id, ...analyzeNative("glossary:vote"), onclick, ...extra }, label2);
+  const actions = [];
+  if (vote.status === "passed") {
+    actions.push(act("carry", "[ CARRY OUT ]", ctx2.onCarry));
+  } else if (vote.status === "failed") {
+    const leashed = state.leash.authorizationsLeft < 1;
+    const picker = h("div", { class: "alius-vote-punish", hidden: true });
+    const showPicker = () => {
+      picker.hidden = false;
+      if (picker.childElementCount > 0) return;
+      const dissent = vote.ballots.filter((b) => b.vote === "against");
+      const who = h("select", { class: "alius-select", "data-punish-unit": "", "aria-label": "Soldier to punish" }, ...dissent.map((b) => h("option", { value: b.unitId }, nameOf9(b.unitId))));
+      const how = h("select", { class: "alius-select", "data-punish-measure": "", "aria-label": "Measure" }, ...measures(state, reg).map((e) => h("option", { value: String(e.id) }, String(e.label))));
+      picker.append(who, how, act("punish-confirm", "[ CONFIRM ]", () => ctx2.onOverrule("punish", { unitId: who.value, measure: how.value })));
+    };
+    actions.push(
+      act("accept", "[ ACCEPT ]", ctx2.onDrop),
+      act("overrule-order", "[ OVERRULE: ORDER ]", () => ctx2.onOverrule("order", void 0)),
+      act("overrule-punish", "[ OVERRULE: PUNISH\u2026 ]", showPicker),
+      act(
+        "overrule-leash",
+        "[ OVERRULE: LEASH ]",
+        () => {
+          if (!leashed) ctx2.onOverrule("leash", void 0);
+        },
+        leashed ? { "aria-disabled": "true", title: "No Leash authorization is left this week." } : {}
+      ),
+      h("p", { class: "alius-dim" }, "Overruling costs Trust with every soldier who voted against, raises their Impunity and lets them push back openly until the day ends."),
+      picker
+    );
+  }
+  body.append(...actions);
+  host.append(renderVoiceCard({ voice: VOICE_OF.squad_vote, title: "SQUAD VOTE", meta: `Day ${String(vote.day).padStart(3, "0")}`, body, level: 3 }));
 }
 
 // src/power/directives.ts
@@ -19275,13 +19467,7 @@ function createDiscipline(deps) {
     deps.refreshContext();
   }
   const failure = (events) => events.find((e) => e.type === "error");
-  function punish(unitId, measure, days) {
-    const events = deps.app.dispatch({ type: "discipline/punish", payload: { unitId, measure, ...days !== void 0 ? { days } : {} } });
-    const bad = failure(events);
-    if (bad) {
-      deps.toast("error", String(bad.message ?? bad.code));
-      return false;
-    }
+  function announcePunish(unitId, measure) {
     const state2 = deps.app.current().state;
     const reg = deps.registries();
     const name = nameOf9(unitId);
@@ -19293,6 +19479,22 @@ function createDiscipline(deps) {
     } else {
       deps.toast("info", `The commander imposed ${label2} on ${name}.`);
     }
+  }
+  function punish(unitId, measure, days) {
+    const action = { type: "discipline/punish", payload: { unitId, measure, ...days !== void 0 ? { days } : {} } };
+    const events = deps.app.dispatch(action);
+    const bad = failure(events);
+    if (bad?.code === "vote_needed" && deps.requestVote) {
+      void deps.requestVote(action).then((r) => {
+        if (r === "ran") announcePunish(unitId, measure);
+      });
+      return false;
+    }
+    if (bad) {
+      deps.toast("error", String(bad.message ?? bad.code));
+      return false;
+    }
+    announcePunish(unitId, measure);
     return true;
   }
   function undo(id) {
@@ -19540,35 +19742,6 @@ function createOnboarding(deps) {
   };
 }
 
-// src/ui/analyze/mark.ts
-function analyzeNative(address, ctx2) {
-  const { tabindex: _tabindex, ...rest } = analyzeAttrs(address, ctx2);
-  return rest;
-}
-function analyzeAttrs(address, ctx2) {
-  const attrs = { "data-analyze": address };
-  if (ctx2) attrs["data-analyze-ctx"] = JSON.stringify(ctx2);
-  attrs.tabindex = "0";
-  return attrs;
-}
-
-// src/ui/dom.ts
-function h(tag2, attrs = {}, ...children) {
-  const el = document.createElement(tag2);
-  for (const [k, v] of Object.entries(attrs)) {
-    if (v === false || v === null || v === void 0) continue;
-    if (k === "class") el.className = String(v);
-    else if (k.startsWith("on") && typeof v === "function") el.addEventListener(k.slice(2).toLowerCase(), v);
-    else if (v === true) el.setAttribute(k, "");
-    else el.setAttribute(k, String(v));
-  }
-  for (const c of children) {
-    if (c === null || c === void 0) continue;
-    el.append(typeof c === "string" ? document.createTextNode(c) : c);
-  }
-  return el;
-}
-
 // src/ui/shell/router.ts
 function stubText(name) {
   const lines = [name, "NO DATA // MODULE OFFLINE"];
@@ -19680,96 +19853,6 @@ function createTabBar(opts) {
       }
     }
   };
-}
-
-// src/ui/voice/sources.ts
-var VOICE_OF = {
-  toast: "terminal",
-  dm: "personal",
-  unit_note: "personal",
-  chronicle: "paper",
-  dossier: "paper",
-  commander_file: "paper",
-  oversight: "corporate",
-  leash_verdict: "corporate",
-  corporate_mail: "corporate",
-  // P11
-  intake_form: "paper"
-};
-
-// src/ui/fx.ts
-var SVG_NS = "http://www.w3.org/2000/svg";
-var fxSeq = 0;
-function svg(tag2, attrs) {
-  const el = document.createElementNS(SVG_NS, tag2);
-  for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
-  return el;
-}
-function noise(cls, f) {
-  const id = `alius-fx-${++fxSeq}`;
-  const layer = svg("svg", { class: `alius-fx ${cls}`, "aria-hidden": "true", width: "100%", height: "100%", preserveAspectRatio: "none" });
-  const filter = svg("filter", { id, x: "0", y: "0", width: "100%", height: "100%" });
-  filter.append(svg("feTurbulence", {
-    type: "fractalNoise",
-    baseFrequency: f.frequency,
-    numOctaves: String(f.octaves),
-    seed: String(f.seed ?? 1),
-    stitchTiles: "stitch"
-  }));
-  layer.append(filter, svg("rect", { width: "100%", height: "100%", filter: `url(#${id})` }));
-  return layer;
-}
-function cssUrl(path) {
-  return `url("${path.replace(/["\\\n\r]/g, (c) => encodeURIComponent(c))}")`;
-}
-
-// src/ui/voice/voiceCard.ts
-var UNIT_ACCENTS = ["#ff9ec7", "#ffb86b", "#8fd6ff", "#b6e88a", "#d0a8ff", "#7ee7d0"];
-var unitAccent = (unitId) => UNIT_ACCENTS[fnv1a(unitId) % UNIT_ACCENTS.length];
-function redacted(text2, ranges) {
-  const parts = [];
-  let cursor = 0;
-  for (const [from, to] of [...ranges].sort((a, b) => a[0] - b[0])) {
-    const start = Math.max(0, from);
-    const end = Math.min(text2.length, to);
-    if (end <= start || start < cursor) continue;
-    if (start > cursor) parts.push(text2.slice(cursor, start));
-    parts.push(h("span", { class: "alius-redact", "aria-label": "redacted" }, "\u2588".repeat(end - start)));
-    cursor = end;
-  }
-  if (cursor < text2.length) parts.push(text2.slice(cursor));
-  return parts;
-}
-function renderVoiceCard(o) {
-  const head = o.title || o.meta || o.from ? h(
-    "header",
-    { class: "alius-voice-head" },
-    o.title ? h(o.level === 3 ? "h3" : "h2", { class: "alius-voice-title" }, o.title) : null,
-    o.from ? h("span", { class: "alius-voice-from" }, o.from) : null,
-    o.meta ? h("span", { class: "alius-voice-meta" }, o.meta) : null
-  ) : null;
-  const body = h("div", { class: "alius-voice-body" });
-  if (typeof o.body === "string") body.append(...(o.redact?.length ? redacted(o.body, o.redact) : [o.body]).filter((c) => c !== null && c !== void 0));
-  else body.append(o.body);
-  const card2 = h(
-    "article",
-    { class: `alius-voice alius-voice-${o.voice}`, "data-voice": o.voice },
-    o.voice === "paper" ? noise("alius-fibre", { frequency: "0.04 0.9", octaves: 2, seed: 3 }) : null,
-    head,
-    body,
-    o.stamp ? h("span", { class: "alius-stamp" }, o.stamp) : null
-  );
-  if (o.accent) card2.style.setProperty("--voice-accent", o.accent);
-  return card2;
-}
-function renderBubble(text2, mine, accent) {
-  const bubble = h(
-    "div",
-    { class: `alius-bubble alius-voice alius-voice-personal ${mine ? "is-mine" : "is-hers"}`, "data-voice": "personal" },
-    h("span", { class: "alius-msg-text" }, text2)
-  );
-  bubble.style.setProperty("--bubble-accent", accent);
-  return bubble;
 }
 
 // src/ui/onboarding/card.ts
@@ -21463,7 +21546,7 @@ function registerSceneContext(builder, deps) {
       const reg = deps.registries();
       const raw = deps.settings().showRawValues;
       const romance = intimacyOf(s).romance;
-      const num4 = (n) => raw ? ` (${n})` : "";
+      const num5 = (n) => raw ? ` (${n})` : "";
       const here = new Set(s.scene?.participants ?? []);
       return presentUnits2(s).map((u) => {
         const rel = s.relations[u.id];
@@ -21471,15 +21554,15 @@ function registerSceneContext(builder, deps) {
         const covered = rel.affair?.hiddenFrom.some((id) => here.has(id)) === true;
         const st = reg.relationshipStates.get(covered ? "comrade" : rel.stateId);
         const axes = [
-          `trust ${trustBand(rel.trust)}${num4(rel.trust)}`,
-          `affinity ${affinityBand(rel.affinity)}${num4(rel.affinity)}`,
-          ...romance && !covered ? [`attraction ${attractionBand(rel.attraction)}${num4(rel.attraction)}`] : []
+          `trust ${trustBand(rel.trust)}${num5(rel.trust)}`,
+          `affinity ${affinityBand(rel.affinity)}${num5(rel.affinity)}`,
+          ...romance && !covered ? [`attraction ${attractionBand(rel.attraction)}${num5(rel.attraction)}`] : []
         ].join(", ");
         const defects = u.defects.map((d) => {
           const def = reg.defects.get(d.id);
           return def ? `; defect ${String(def.name)}: ${String(def.social)}` : "";
         }).join("");
-        return `${u.displayName} \u2014 state ${String(st?.name ?? "Comrade")}${st ? ` (${String(st.promptHint)})` : ""}; ${axes}; stress ${stressBand(u.stress)}${num4(u.stress)}${defects}`;
+        return `${u.displayName} \u2014 state ${String(st?.name ?? "Comrade")}${st ? ` (${String(st.promptHint)})` : ""}; ${axes}; stress ${stressBand(u.stress)}${num5(u.stress)}${defects}`;
       }).join("\n");
     }
   });
@@ -22402,7 +22485,7 @@ function buildImportInput(card2, registries, settings, sections, world, bond) {
 }
 var isObj30 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var cap3 = (v, max, fallback = "") => typeof v === "string" ? v.trim().slice(0, max) : fallback;
-var num2 = (v, lo, hi, fallback) => typeof v === "number" && Number.isFinite(v) ? Math.min(hi, Math.max(lo, Math.round(v))) : fallback;
+var num3 = (v, lo, hi, fallback) => typeof v === "number" && Number.isFinite(v) ? Math.min(hi, Math.max(lo, Math.round(v))) : fallback;
 var STANCE_REASON_MAX2 = 160;
 var STANCE_WORDS = ["shares", "indifferent", "opposes"];
 var SECTION_LABEL = { role: "role", signature: "signature", defects: "defects" };
@@ -22498,7 +22581,7 @@ function sanitizeProfile(raw, ctx2) {
   if (want("values")) {
     if (isObj30(src.values)) {
       const v = src.values;
-      profile.values = Object.fromEntries(VALUE_KEYS.map((k) => [k, num2(v[k], -3, 3, 0)]));
+      profile.values = Object.fromEntries(VALUE_KEYS.map((k) => [k, num3(v[k], -3, 3, 0)]));
     } else missing2.push("values");
   }
   if (want("tags")) {
@@ -22522,7 +22605,7 @@ function sanitizeProfile(raw, ctx2) {
     profile.commanderTastes = out;
   }
   if (want("disposition") && isObj30(src.dispositionOffset) && typeof src.dispositionOffset.offset === "number" && Number.isFinite(src.dispositionOffset.offset)) {
-    profile.dispositionOffset = { offset: num2(src.dispositionOffset.offset, -2, 2, 0), reason: cap3(src.dispositionOffset.reason, STANCE_REASON_MAX2) };
+    profile.dispositionOffset = { offset: num3(src.dispositionOffset.offset, -2, 2, 0), reason: cap3(src.dispositionOffset.reason, STANCE_REASON_MAX2) };
   }
   if (want("stances")) {
     const ids = stanceOptionIds(ctx2.registries, ctx2.world);
@@ -22543,9 +22626,9 @@ function sanitizeProfile(raw, ctx2) {
       const b = src.emotionalBaseline;
       const lim = SETUP_LIMITS.baseline;
       profile.baseline = {
-        trust: num2(b.trust, lim.trust[0], lim.trust[1], 20),
-        affinity: num2(b.affinity, lim.affinity[0], lim.affinity[1], 0),
-        attraction: num2(b.attraction, lim.attraction[0], lim.attraction[1], 0)
+        trust: num3(b.trust, lim.trust[0], lim.trust[1], 20),
+        affinity: num3(b.affinity, lim.affinity[0], lim.affinity[1], 0),
+        attraction: num3(b.attraction, lim.attraction[0], lim.attraction[1], 0)
       };
     } else missing2.push("baseline");
   }
@@ -24506,16 +24589,16 @@ function relationLine(unit, state, ctx2) {
   const rel = state.relations[unit.id];
   if (!rel) return null;
   const raw = ctx2.settings().showRawValues;
-  const num4 = (n) => raw ? ` (${n})` : "";
+  const num5 = (n) => raw ? ` (${n})` : "";
   const live = { unitId: unit.id };
   const chip = (text2, address, data) => h("span", { class: "alius-chip", ...analyzeAttrs(address, data) }, text2);
   const parts = [
     chip(`${String(ctx2.registries.relationshipStates.get(rel.stateId)?.name ?? rel.stateId).toUpperCase()}`, `relationshipStates:${rel.stateId}`),
-    chip(`TRUST ${trustBand(rel.trust).toUpperCase()}${num4(rel.trust)}`, "glossary:trust", live)
+    chip(`TRUST ${trustBand(rel.trust).toUpperCase()}${num5(rel.trust)}`, "glossary:trust", live)
   ];
   if (unit.kind !== "grunt") {
-    parts.push(chip(`AFFINITY ${affinityBand(rel.affinity).toUpperCase()}${num4(rel.affinity)}`, "glossary:affinity", live));
-    if (intimacyOf(state).romance) parts.push(chip(`ATTRACTION ${attractionBand(rel.attraction).toUpperCase()}${num4(rel.attraction)}`, "glossary:attraction", live));
+    parts.push(chip(`AFFINITY ${affinityBand(rel.affinity).toUpperCase()}${num5(rel.affinity)}`, "glossary:affinity", live));
+    if (intimacyOf(state).romance) parts.push(chip(`ATTRACTION ${attractionBand(rel.attraction).toUpperCase()}${num5(rel.attraction)}`, "glossary:attraction", live));
   }
   return h("p", { class: "alius-relation" }, ...joinWith(parts, " \xB7 "));
 }
@@ -26510,7 +26593,8 @@ function createExpedition(deps) {
   function act(type, payload = {}, expect) {
     const events = deps.app.dispatch({ type, payload }, { expectChatId: expect });
     const failed = events.find((e) => e.type === "error");
-    if (failed && failed.code !== "chat_changed") deps.toast("error", String(failed.message ?? failed.code));
+    const voteNeeded = failed?.code === "vote_needed" && deps.requestVote !== void 0;
+    if (failed && failed.code !== "chat_changed" && !voteNeeded) deps.toast("error", String(failed.message ?? failed.code));
     return { ok: !failed, events };
   }
   return {
@@ -26526,7 +26610,15 @@ function createExpedition(deps) {
         deps.toast("error", "Choose a mission or a point of interest first.");
         return false;
       }
-      const { ok } = act("expedition/start", { ...target, unitIds: p.unitIds, formation: p.formation, supplies: p.supplies });
+      const payload = { ...target, unitIds: p.unitIds, formation: p.formation, supplies: p.supplies };
+      const { ok, events } = act("expedition/start", payload);
+      if (!ok && deps.requestVote && events.some((e) => e.type === "error" && e.code === "vote_needed")) {
+        const planned = target;
+        void deps.requestVote({ type: "expedition/start", payload }).then((r) => {
+          if (r === "ran" && target === planned) target = null;
+        });
+        return false;
+      }
       if (ok) target = null;
       return ok;
     },
@@ -26708,6 +26800,23 @@ function roster(state, ctx2) {
   );
   return section;
 }
+var RATION_LABEL = { equal: "EQUAL", fighters_first: "FIGHTERS FIRST", commander_short: "COMMANDER SHORT" };
+function rations(state, ctx2) {
+  const current = rationsOf(state);
+  const section = h("section", { class: "alius-section alius-rations", "data-rations": "" }, h("h2", {}, h("span", { class: "alius-stat", ...analyzeAttrs("glossary:rations") }, "RATIONS")));
+  section.append(h("div", { class: "alius-rations-modes" }, ...RATION_MODES.map((mode) => h("button", {
+    type: "button",
+    class: "alius-btn alius-option",
+    "data-rations-mode": mode,
+    "aria-pressed": String(mode === current),
+    ...analyzeNative("glossary:rations", { mode }),
+    onclick: () => ctx2.onSetRations?.(mode)
+  }, `[ ${RATION_LABEL[mode]} ]`))));
+  if (votingOn(state, ctx2.registries) && rationsVotable(state, ctx2.registries)) {
+    section.append(h("p", { class: "alius-dim", "data-rations-vote": "" }, "A shortage is on or coming: a change goes to a squad vote."));
+  }
+  return section;
+}
 function renderBaseTab(host, ctx2) {
   host.replaceChildren();
   const load = ctx2.getLoad();
@@ -26723,6 +26832,7 @@ function renderBaseTab(host, ctx2) {
   host.append(
     h("section", { class: "alius-section" }, h("h2", {}, "OUTPOST"), h("pre", { class: "alius-schematic" }, schematic(state, ctx2.registries))),
     h("section", { class: "alius-section" }, h("h2", {}, "FACILITIES"), ...[...ctx2.registries.facilities.values()].map((f) => facilityCard(state, f, ctx2))),
+    rations(state, ctx2),
     roster(state, ctx2)
   );
 }
@@ -27770,13 +27880,13 @@ function importCampaign(text2) {
 
 // src/analysis/effects.ts
 var MINUS = "\u2212";
-function humanize2(key) {
+function humanize(key) {
   return String(key).replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/[_-]+/g, " ").trim().toLowerCase();
 }
 var cap5 = (s) => s ? s[0].toUpperCase() + s.slice(1) : s;
-var num3 = (n) => String(Math.round(n * 100) / 100);
-var abs = (n) => num3(Math.abs(n));
-var signed = (n) => n > 0 ? `+${num3(n)}` : n < 0 ? `${MINUS}${abs(n)}` : "\xB10";
+var num4 = (n) => String(Math.round(n * 100) / 100);
+var abs = (n) => num4(Math.abs(n));
+var signed = (n) => n > 0 ? `+${num4(n)}` : n < 0 ? `${MINUS}${abs(n)}` : "\xB10";
 var pctSigned = (n) => `${signed(n)}%`;
 var plural = (n, word) => n === 1 ? word : `${word}s`;
 var isNum = (v) => typeof v === "number" && Number.isFinite(v);
@@ -27796,13 +27906,13 @@ var TRIGGER_SUFFIX = {
 function scaleUnit(scale) {
   switch (scale.by) {
     case "stress_above":
-      return `Stress above ${num3(Number(scale.base ?? 0))}`;
+      return `Stress above ${num4(Number(scale.base ?? 0))}`;
     case "own_hp_missing_pct":
       return "1% HP missing";
     case "allies_hp_missing_pct":
       return "1% allies' HP missing";
     default:
-      return humanize2(String(scale.by));
+      return humanize(String(scale.by));
   }
 }
 function scaledPct(pct4, name, scale) {
@@ -27813,17 +27923,17 @@ function scaledPct(pct4, name, scale) {
 function combatBase(e) {
   switch (e.type) {
     case "damage": {
-      let s = isNum(e.pctMaxHp) ? `Damage ${num3(e.pctMaxHp)}% max HP` : `Damage \xD7${num3(Number(e.mult ?? 1))}`;
-      if (e.scale && isNum(e.scale.per)) s += `, +\xD7${num3(e.scale.per)} per ${scaleUnit(e.scale)}`;
+      let s = isNum(e.pctMaxHp) ? `Damage ${num4(e.pctMaxHp)}% max HP` : `Damage \xD7${num4(Number(e.mult ?? 1))}`;
+      if (e.scale && isNum(e.scale.per)) s += `, +\xD7${num4(e.scale.per)} per ${scaleUnit(e.scale)}`;
       if (isNum(e.hits) && e.hits > 1) s += ` \xD7${e.hits} hits`;
       if (e.ignoreRows) s += " ignores rows";
-      if (isNum(e.critBonus)) s += ` +${num3(e.critBonus)}% crit`;
+      if (isNum(e.critBonus)) s += ` +${num4(e.critBonus)}% crit`;
       return s;
     }
     case "heal":
-      return `Heal ${num3(Number(e.pctMaxHp))}% max HP`;
+      return `Heal ${num4(Number(e.pctMaxHp))}% max HP`;
     case "revive":
-      return `Revive at ${num3(Number(e.pctMaxHp))}% HP`;
+      return `Revive at ${num4(Number(e.pctMaxHp))}% HP`;
     case "status": {
       let s = `Apply [[statuses:${e.statusId}]]`;
       if (isNum(e.turns)) s += ` (${e.turns} ${plural(e.turns, "turn")})`;
@@ -27849,13 +27959,13 @@ function combatBase(e) {
     case "extra_action":
       return "Extra action";
     case "redirect":
-      return `Takes ${num3(Number(e.pct))}% of hits aimed at ${e.from === "commander" ? "the commander" : "an ally"} (${e.turns} ${plural(Number(e.turns), "turn")})`;
+      return `Takes ${num4(Number(e.pct))}% of hits aimed at ${e.from === "commander" ? "the commander" : "an ally"} (${e.turns} ${plural(Number(e.turns), "turn")})`;
     case "intercept_lethal":
       return `Takes a lethal hit for ${e.protect === "commander" ? "the commander" : "an ally"}`;
     case "summon":
       return `Summons [[enemies:${e.enemyId}]] (max ${e.max})`;
     case "follow_up":
-      return `Follow-up \xD7${num3(Number(e.mult))}`;
+      return `Follow-up \xD7${num4(Number(e.mult))}`;
     case "misfire":
       return "May misfire";
     case "override_action":
@@ -27881,7 +27991,7 @@ function combatBase(e) {
     case "injury_days":
       return `${pctSigned(Number(e.pct))} injury time`;
     default:
-      return cap5(humanize2(String(e.type ?? "effect")));
+      return cap5(humanize(String(e.type ?? "effect")));
   }
 }
 var WHEN_TEXT = {
@@ -27907,16 +28017,16 @@ function whenSuffix(e) {
     if (key === "stressMin") {
       if (e.trigger !== "onStressThreshold") s += ` at Stress \u2265 ${value}`;
     } else if (WHEN_TEXT[key]) s += WHEN_TEXT[key](value);
-    else if (value === true) s += ` ${humanize2(key)}`;
-    else if (value === false) s += ` not ${humanize2(key)}`;
-    else s += ` ${humanize2(key)} ${value}`;
+    else if (value === true) s += ` ${humanize(key)}`;
+    else if (value === false) s += ` not ${humanize(key)}`;
+    else s += ` ${humanize(key)} ${value}`;
   }
   return s;
 }
 function summarizeCombatEffect(effect, _reg) {
   const e = effect ?? {};
   let s = combatBase(e);
-  if (e.target && e.target !== "self" && e.target !== "target") s += ` \u2014 ${humanize2(String(e.target))}`;
+  if (e.target && e.target !== "self" && e.target !== "target") s += ` \u2014 ${humanize(String(e.target))}`;
   if (e.trigger === "onStressThreshold") s += ` at Stress \u2265 ${e.threshold}`;
   else if (e.scope === "ally" && typeof e.trigger === "string" && ALLY_TRIGGER_SUFFIX[e.trigger]) s += ALLY_TRIGGER_SUFFIX[e.trigger];
   else if (typeof e.trigger === "string" && TRIGGER_SUFFIX[e.trigger]) s += TRIGGER_SUFFIX[e.trigger];
@@ -27934,7 +28044,7 @@ function summarizeActivityEffect(effect, _reg, focus) {
   let s;
   switch (e.type) {
     case "resource":
-      s = `${signed(Number(e.amount))} ${RESOURCE_LABEL[e.resource] ?? cap5(humanize2(String(e.resource)))}`;
+      s = `${signed(Number(e.amount))} ${RESOURCE_LABEL[e.resource] ?? cap5(humanize(String(e.resource)))}`;
       if (e.perStat) s += ` ${signed(Number(e.perStat.per))} per ${cap5(String(e.perStat.stat))} rank`;
       break;
     case "commander_stat":
@@ -27962,11 +28072,11 @@ function summarizeActivityEffect(effect, _reg, focus) {
       s = `Companion ${signed(Number(e.amount))} ${cap5(String(e.axis))}`;
       break;
     default:
-      return cap5(humanize2(String(e.type ?? "effect")));
+      return cap5(humanize(String(e.type ?? "effect")));
   }
   if (e.scale?.facility) s += ` (more with [[facilities:${e.scale.facility}]])`;
   if (e.when?.focus !== void 0) {
-    const label2 = focus?.find((f) => f.id === e.when.focus)?.label ?? humanize2(String(e.when.focus));
+    const label2 = focus?.find((f) => f.id === e.when.focus)?.label ?? humanize(String(e.when.focus));
     s += ` (focus: ${label2})`;
   }
   if (e.when?.companionLikes !== void 0) s += ` (if she likes ${e.when.companionLikes})`;
@@ -28015,7 +28125,7 @@ function effectsFor(registry2, entry, reg, data) {
         ...statLines(e.mods, (stat3, n) => `${pctSigned(n)} ${stat3} per stack`),
         isNum(e.incomingPct) ? `${pctSigned(e.incomingPct)} damage taken` : null,
         ...combat(e.tick, reg).map((l) => `Each turn: ${l}`),
-        ...Array.isArray(e.flags) ? e.flags.map((f) => cap5(humanize2(String(f)))) : [],
+        ...Array.isArray(e.flags) ? e.flags.map((f) => cap5(humanize(String(f)))) : [],
         turns
       ]);
     }
@@ -28050,7 +28160,7 @@ function effectsFor(registry2, entry, reg, data) {
     }
     case "facilities":
       return list4(e.levels).map((level, i) => {
-        const parts = Object.entries(level.effects && typeof level.effects === "object" ? level.effects : {}).map(([key, value]) => facilityLevel2(FACILITY_KEY_LABELS[key] ?? humanize2(key), value));
+        const parts = Object.entries(level.effects && typeof level.effects === "object" ? level.effects : {}).map(([key, value]) => facilityLevel2(FACILITY_KEY_LABELS[key] ?? humanize(key), value));
         return `Level ${i + 1}: ${parts.join(", ")}`;
       });
     case "crimes":
@@ -28090,8 +28200,8 @@ function effectsFor(registry2, entry, reg, data) {
       const o = e.offsets && typeof e.offsets === "object" ? e.offsets : {};
       return compact([
         ...["trust", "affinity", "attraction"].filter((a) => isNum(o[a]) && o[a] !== 0).map((a) => `${cap5(a)} ${signed(o[a])}`),
-        isNum(e.presenceMult) ? `Presence \xD7${num3(e.presenceMult)}` : null,
-        isNum(e.imageMult) ? `Image consistency \xD7${num3(e.imageMult)}` : null
+        isNum(e.presenceMult) ? `Presence \xD7${num4(e.presenceMult)}` : null,
+        isNum(e.imageMult) ? `Image consistency \xD7${num4(e.imageMult)}` : null
       ]);
     }
     case "relationshipStates": {
@@ -28099,7 +28209,7 @@ function effectsFor(registry2, entry, reg, data) {
       const mod = (kind, word) => {
         const row = e.modifiers && typeof e.modifiers === "object" ? e.modifiers[kind] : null;
         if (!row || typeof row !== "object") return [];
-        return Object.entries(row).filter(([, n]) => isNum(n)).map(([axis, n]) => `${cap5(axis)} ${word} \xD7${num3(n)}`);
+        return Object.entries(row).filter(([, n]) => isNum(n)).map(([axis, n]) => `${cap5(axis)} ${word} \xD7${num4(n)}`);
       };
       return compact([syn.length ? `Unlocks: ${syn.map((s) => `[[synergies:${s}]]`).join(", ")}` : null, ...mod("gain", "gains"), ...mod("loss", "losses")]);
     }
@@ -28126,9 +28236,9 @@ function summarizeTraitEffect(e, _reg) {
     case "taste_attraction":
       return `Starting Attraction ${signed(x.amount)} with units whose tastes fit the commander`;
     case "social_growth":
-      return `${stat3(x.stat)} grows \xD7${num3(x.mult)} ${x.mult >= 1 ? "faster" : "slower"}`;
+      return `${stat3(x.stat)} grows \xD7${num4(x.mult)} ${x.mult >= 1 ? "faster" : "slower"}`;
     case "body_growth":
-      return `Body training XP \xD7${num3(x.mult)}`;
+      return `Body training XP \xD7${num4(x.mult)}`;
     case "early_trust_gain":
       return `Trust gains ${pctSigned(x.pct)} for the first ${TUNING.commander.earlyDays} days`;
     case "crisis_hp":
@@ -28142,7 +28252,7 @@ function summarizeTraitEffect(e, _reg) {
     case "activity_relation":
       return `[[activities:${x.activityId}]] with a companion: ${cap5(x.axis)} ${signed(x.amount)}`;
     case "relation_event_mult":
-      return `[[eventDeltas:${x.event}]] lands \xD7${num3(x.mult)}${x.ifTrigger ? ` with units that have the trigger "${x.ifTrigger}"` : ""}`;
+      return `[[eventDeltas:${x.event}]] lands \xD7${num4(x.mult)}${x.ifTrigger ? ` with units that have the trigger "${x.ifTrigger}"` : ""}`;
     case "night_slot":
       return "The Night is always yours: a quiet night when nobody knocks";
     case "sleepless_rank":
@@ -28154,14 +28264,14 @@ function summarizeTraitEffect(e, _reg) {
     case "unlock_state":
       return `Unlocks [[relationshipStates:${x.stateId}]]`;
     default:
-      return humanize2(String(x.type));
+      return humanize(String(x.type));
   }
 }
 function summarizeWorldOptionEffect(effect, reg) {
   const x = effect ?? {};
   switch (x.type) {
     case "disposition":
-      return `Soldiers are ${String(reg.dispositionLevels.get(String(x.levelId))?.name ?? humanize2(String(x.levelId)))}`;
+      return `Soldiers are ${String(reg.dispositionLevels.get(String(x.levelId))?.name ?? humanize(String(x.levelId)))}`;
     case "leash_weekly":
       return x.amount > 0 ? "More Leash authorizations each week" : "Fewer Leash authorizations each week";
     case "terminate_approval":
@@ -28175,7 +28285,7 @@ function summarizeWorldOptionEffect(effect, reg) {
       return `Command is expected to look ${look}; a commander who presents differently starts with less standing at the commander's own corporation`;
     }
     case "enable_family":
-      return `Adds the ${cap5(humanize2(String(x.family)))} events to the world`;
+      return `Adds the ${cap5(humanize(String(x.family)))} events to the world`;
     case "director_hint":
       return `Story tone: ${String(x.text)}`;
     case "scene_directive":
@@ -28196,7 +28306,7 @@ function summarizeWorldOptionEffect(effect, reg) {
     case "voting":
       return "Some decisions go to a squad vote.";
     default:
-      return cap5(humanize2(String(x.type ?? "effect")));
+      return cap5(humanize(String(x.type ?? "effect")));
   }
 }
 function summarizePunishment(entry) {
@@ -28217,7 +28327,7 @@ function summarizePunishment(entry) {
     else if (fx2.type === "resource" && isNum(fx2.amount)) out.push(`The base ${fx2.amount > 0 ? "gains" : "pays"} ${{ credits: "credits", supplies: "a supply", plyx: "plyx" }[resource(fx2.resource)] ?? resource(fx2.resource)}`);
   }
   for (const p of Array.isArray(e.perception) ? e.perception : []) {
-    out.push(`${isNum(p.multiplier) && p.multiplier < 1 ? "Lands lighter" : "Lands harder"} on soldiers who care about ${humanize2(String(p.tag)).toLowerCase()}`);
+    out.push(`${isNum(p.multiplier) && p.multiplier < 1 ? "Lands lighter" : "Lands harder"} on soldiers who care about ${humanize(String(p.tag)).toLowerCase()}`);
   }
   return out;
 }
@@ -28594,6 +28704,59 @@ function registerBondsProviders() {
   registerAnalyzeProvider("relationshipRuleTemplates", ruleProvider);
 }
 
+// src/analysis/providers/power.ts
+var TERM_WORDS = {
+  values: "what she values",
+  trust: "how far she trusts the commander",
+  stance: "how she stands toward the commander's authority",
+  demand: "a demand of hers that is still open",
+  affected: "what the decision does to her"
+};
+function voteProvider(subject, env, k) {
+  const state = env.state;
+  const vote = state ? liveVote(state) : null;
+  if (!state || !vote) return null;
+  const unitId = typeof subject.data.unitId === "string" ? subject.data.unitId : null;
+  if (unitId !== null) {
+    const ballot = vote.ballots.find((b) => b.unitId === unitId);
+    if (!ballot) return null;
+    if (ballot.vote === "abstain") return { lines: ["She has no vote of her own: she follows no leader."] };
+    const lines2 = [`Her ballot: ${ballot.vote}.`, `What moved her most: ${TERM_WORDS[ballot.term]}.`];
+    const weight = k.raw(ballot.weight);
+    const score = k.raw(Math.round(ballot.score * 100) / 100);
+    if (weight !== null) lines2.push(`Weight: ${weight}.`);
+    if (score !== null) lines2.push(`Score: ${ballot.score < 0 ? "\u2212" : ""}${Math.abs(Math.round(ballot.score * 100) / 100)} (for at 0 or more).`);
+    return { lines: lines2 };
+  }
+  const label2 = String(env.registries.voteKinds.get(vote.kind)?.label ?? vote.kind);
+  const lines = [`Open vote: [[voteKinds:${vote.kind}|${label2}]].`, `Result: ${vote.passed ? "passed" : "failed"}${vote.status === "overruled" ? " and overruled" : ""}. A tie goes to the commander.`];
+  const forW = k.raw(Math.round(vote.forWeight * 100) / 100);
+  const againstW = k.raw(Math.round(vote.againstWeight * 100) / 100);
+  if (forW !== null && againstW !== null) lines.push(`Weights: for ${forW}, against ${againstW} (the commander's own: ${k.raw(Math.round(vote.commanderWeight * 100) / 100)}).`);
+  return { lines };
+}
+var RATION_TEXT = {
+  equal: "A shortage is shared out evenly.",
+  fighters_first: "Reserve soldiers go without first; the active roster feels a shortage only when the reserve cannot absorb it.",
+  commander_short: "The commander goes without first, up to the commander's own share, and sleeps through the next morning."
+};
+var MODE_LABEL = { equal: "equal", fighters_first: "fighters first", commander_short: "commander short" };
+function rationsProvider(subject, env) {
+  const state = env.state;
+  if (!state) return null;
+  const current = rationsOf(state);
+  const asked = typeof subject.data.mode === "string" && subject.data.mode in RATION_TEXT ? subject.data.mode : current;
+  const lines = [`Current mode: ${MODE_LABEL[current]}.`];
+  if (asked !== current) lines.push(`${MODE_LABEL[asked][0].toUpperCase()}${MODE_LABEL[asked].slice(1)}: ${RATION_TEXT[asked]}`);
+  else lines.push(RATION_TEXT[current]);
+  lines.push(votingOn(state, env.registries) && rationsVotable(state, env.registries) ? "A shortage is on or coming: a change goes to a squad vote." : "A change takes effect at once.");
+  return { lines };
+}
+function registerPowerProviders() {
+  registerAnalyzeProvider("glossary:vote", voteProvider);
+  registerAnalyzeProvider("glossary:rations", rationsProvider);
+}
+
 // src/analysis/providers/world.ts
 function rawLines(effects2, k) {
   if (!k.showRaw) return [];
@@ -28723,7 +28886,7 @@ var axisProvider = (axis) => (subject, env, knowledge) => {
   };
   const events = relation.history.filter((h2) => h2.kind === "event" && moves(h2.type)).slice(-3).reverse();
   for (const h2 of events) {
-    const cause = typeof env.registries.eventDeltas.get(h2.type)?.cause === "string" ? env.registries.eventDeltas.get(h2.type).cause : cap6(humanize2(h2.type));
+    const cause = typeof env.registries.eventDeltas.get(h2.type)?.cause === "string" ? env.registries.eventDeltas.get(h2.type).cause : cap6(humanize(h2.type));
     lines.push(`${cause}${h2.severity ? ` \u2014 ${h2.severity}` : ""}, day ${h2.day}`);
   }
   lines.push(`State: [[relationshipStates:${relation.stateId}]]`);
@@ -28878,6 +29041,7 @@ function registerCoreProviders() {
   registerWorldProviders();
   registerDisciplineProviders();
   registerBondsProviders();
+  registerPowerProviders();
 }
 
 // src/analysis/describe.ts
@@ -30461,15 +30625,43 @@ function createApp(st, deps) {
   const director = createDirector(worldDeps);
   const dilemmas = createDilemmas(worldDeps);
   const loyalty = createLoyalty({ ...worldDeps, context, refreshContext: applyContext });
-  const discipline = createDiscipline({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o) });
-  const bonds = createBonds({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o) });
   const power = createPower({
     ...worldDeps,
     context,
     refreshContext: applyContext,
-    // the VOTE panel is drawn in the UI task of P9b; until it is wired a vote is closed unanswered (and dropped)
-    showVote: async () => ({ choice: "cancel" })
+    // the VOTE panel (P9b): a modal in the corporate voice; closing it unanswered cancels the vote
+    showVote: (vote, lines) => new Promise((resolve) => {
+      const host = h("div");
+      let answered = false;
+      const answer = (c) => {
+        if (answered) return;
+        answered = true;
+        shell.closeModal?.();
+        resolve(c);
+      };
+      const s = state;
+      if (!s) {
+        resolve({ choice: "cancel" });
+        return;
+      }
+      renderVotePanel(host, vote, lines, {
+        state: s,
+        registries,
+        onCarry: () => answer({ choice: "carry" }),
+        onDrop: () => answer({ choice: "accept" }),
+        onOverrule: (means, punish) => answer({ choice: "overrule", means, ...punish !== void 0 ? { punish } : {} })
+      });
+      shell.open();
+      void shell.modal({ title: "SQUAD VOTE", body: host, actions: [] }).then(() => {
+        if (!answered) {
+          answered = true;
+          resolve({ choice: "cancel" });
+        }
+      });
+    })
   });
+  const discipline = createDiscipline({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o), requestVote: (a) => power.requestVote(a) });
+  const bonds = createBonds({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o) });
   const answerRule2 = (ruleId, how) => {
     if (how === "negotiate") void bonds.negotiateRule(ruleId).then((ok) => {
       if (ok) shell.open();
@@ -30502,7 +30694,7 @@ function createApp(st, deps) {
       shell.open();
     }
   });
-  const expedition = createExpedition({ ...worldDeps, startCombat: (p) => api.startCombat(p), startScene: (o) => beginScene(o) });
+  const expedition = createExpedition({ ...worldDeps, startCombat: (p) => api.startCombat(p), startScene: (o) => beginScene(o), requestVote: (a) => power.requestVote(a) });
   let expeditionScreen = null;
   let onExpeditionScreen = false;
   let recapPendingFor = null;
@@ -31679,6 +31871,10 @@ function createApp(st, deps) {
   function act(action) {
     const events = api.dispatch(action, { expectChatId: st.getActiveChat()?.chatId });
     const failed = events.find((e) => e.type === "error");
+    if (failed?.code === "vote_needed") {
+      void power.requestVote(action);
+      return events;
+    }
     if (failed) toast("error", String(failed.message ?? failed.code));
     return events;
   }
@@ -31816,7 +32012,8 @@ function createApp(st, deps) {
       registries,
       onUpgrade: (id) => api.upgradeFacility(id),
       onRecruit: () => void api.recruitGrunt(),
-      onSetRoster: (ids) => api.setRoster(ids)
+      onSetRoster: (ids) => api.setRoster(ids),
+      onSetRations: (mode) => void act({ type: "rations/set", payload: { mode } })
     })
   );
   shell.registerTab(

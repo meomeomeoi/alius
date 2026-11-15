@@ -148,13 +148,8 @@ export function createDiscipline(deps: DisciplineDeps): DisciplineController {
 
   const failure = (events: EngineEvent[]): EngineEvent | undefined => events.find((e) => e.type === 'error');
 
-  function punish(unitId: string, measure: string, days?: number): boolean {
-    const events = deps.app.dispatch({ type: 'discipline/punish', payload: { unitId, measure, ...(days !== undefined ? { days } : {}) } });
-    const bad = failure(events);
-    if (bad) {
-      deps.toast('error', String(bad.message ?? bad.code));
-      return false;
-    }
+  /** What follows a punishment from the menu: her next reply reacts (she is in the room) or a toast says it was done. */
+  function announcePunish(unitId: string, measure: string): void {
     const state = deps.app.current().state;
     const reg = deps.registries();
     const name = nameOf(unitId);
@@ -167,6 +162,22 @@ export function createDiscipline(deps: DisciplineDeps): DisciplineController {
     } else {
       deps.toast('info', `The commander imposed ${label} on ${name}.`);
     }
+  }
+
+  function punish(unitId: string, measure: string, days?: number): boolean {
+    const action = { type: 'discipline/punish', payload: { unitId, measure, ...(days !== undefined ? { days } : {}) } };
+    const events = deps.app.dispatch(action);
+    const bad = failure(events);
+    if (bad?.code === 'vote_needed' && deps.requestVote) {
+      // P9b: a mild punishment goes to a squad vote first; the announcement follows once the vote has run it
+      void deps.requestVote(action).then((r) => { if (r === 'ran') announcePunish(unitId, measure); });
+      return false;
+    }
+    if (bad) {
+      deps.toast('error', String(bad.message ?? bad.code));
+      return false;
+    }
+    announcePunish(unitId, measure);
     return true;
   }
 

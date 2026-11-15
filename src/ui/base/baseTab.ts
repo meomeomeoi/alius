@@ -1,5 +1,6 @@
 import type { Entry, Registries } from '../../content/types';
 import { checkRecruit, checkUpgrade, facilityLevel, facilityLevels, isLiving } from '../../engine/economy';
+import { rationsOf, rationsVotable, RATION_MODES, votingOn } from '../../engine/power';
 import type { CampaignState } from '../../engine/state/types';
 import { TUNING } from '../../engine/tuning';
 import type { LoadResult } from '../../st/persistence';
@@ -13,6 +14,8 @@ export interface BaseTabCtx {
   onUpgrade: (facilityId: string) => void;
   onRecruit: () => void;
   onSetRoster: (activeIds: string[]) => void;
+  /** P9b: the RATIONS row. Optional so a host that has no ration control still renders the tab. */
+  onSetRations?: (mode: (typeof RATION_MODES)[number]) => void;
 }
 
 const BOX_INNER = 16;
@@ -97,6 +100,23 @@ function roster(state: CampaignState, ctx: BaseTabCtx): HTMLElement {
   return section;
 }
 
+const RATION_LABEL: Record<(typeof RATION_MODES)[number], string> = { equal: 'EQUAL', fighters_first: 'FIGHTERS FIRST', commander_short: 'COMMANDER SHORT' };
+
+/** P9b: how a shortage is shared out, three modes; while squad votes are on and a shortage is on or coming, a change goes to a vote. */
+function rations(state: CampaignState, ctx: BaseTabCtx): HTMLElement {
+  const current = rationsOf(state);
+  const section = h('section', { class: 'alius-section alius-rations', 'data-rations': '' }, h('h2', {}, h('span', { class: 'alius-stat', ...analyzeAttrs('glossary:rations') }, 'RATIONS')));
+  section.append(h('div', { class: 'alius-rations-modes' }, ...RATION_MODES.map((mode) =>
+    h('button', {
+      type: 'button', class: 'alius-btn alius-option', 'data-rations-mode': mode, 'aria-pressed': String(mode === current),
+      ...analyzeNative('glossary:rations', { mode }), onclick: () => ctx.onSetRations?.(mode),
+    }, `[ ${RATION_LABEL[mode]} ]`))));
+  if (votingOn(state, ctx.registries) && rationsVotable(state, ctx.registries)) {
+    section.append(h('p', { class: 'alius-dim', 'data-rations-vote': '' }, 'A shortage is on or coming: a change goes to a squad vote.'));
+  }
+  return section;
+}
+
 /** The BASE tab: outpost schematic, facility upgrades, roster and grunt recruitment. */
 export function renderBaseTab(host: HTMLElement, ctx: BaseTabCtx): void {
   host.replaceChildren();
@@ -113,6 +133,7 @@ export function renderBaseTab(host: HTMLElement, ctx: BaseTabCtx): void {
   host.append(
     h('section', { class: 'alius-section' }, h('h2', {}, 'OUTPOST'), h('pre', { class: 'alius-schematic' }, schematic(state, ctx.registries))),
     h('section', { class: 'alius-section' }, h('h2', {}, 'FACILITIES'), ...[...ctx.registries.facilities.values()].map((f) => facilityCard(state, f, ctx))),
+    rations(state, ctx),
     roster(state, ctx),
   );
 }

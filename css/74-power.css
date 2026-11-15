@@ -1,0 +1,52 @@
+/* Squad power (P9b): the VOTE panel and the RATIONS row. Palette variables only; no semantic colours (readable mode safe). */
+#alius-shell .alius-ballots {
+  list-style: none;
+  margin: 4px 0;
+  padding: 0;
+}
+
+#alius-shell .alius-ballot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: baseline;
+  margin: 2px 0;
+}
+
+#alius-shell .alius-ballot[data-side='against'] {
+  text-decoration: none;
+  border-left: 3px solid var(--alius-accent);
+  padding-left: 6px;
+}
+
+#alius-shell .alius-ballot[data-side='abstain'] {
+  opacity: 0.7;
+}
+
+#alius-shell .alius-vote-tally {
+  margin: 6px 0;
+  font-weight: bold;
+}
+
+#alius-shell .alius-vote-punish {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin-top: 4px;
+}
+
+#alius-shell .alius-vote-punish[hidden] {
+  display: none;
+}
+
+#alius-shell .alius-rations-modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+#alius-shell .alius-rations-modes .alius-btn[aria-pressed='true'] {
+  border: var(--alius-line);
+  color: var(--alius-accent);
+}

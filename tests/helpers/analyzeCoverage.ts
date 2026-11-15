@@ -1,4 +1,5 @@
 import { buildPanelModel, type AnalyzeEnv } from '../../src/analysis/model';
+import { readingFor } from '../../src/analysis/providers';
 import { parseSubject } from '../../src/analysis/subject';
 import { ANALYZE_MARKERS } from '../../src/ui/analyze/mark';
 
@@ -33,4 +34,10 @@ export function unreachable(host: HTMLElement): string[] {
   return [...host.querySelectorAll('[data-analyze]')]
     .filter((el) => !el.matches(FOCUSABLE) && el.querySelector(FOCUSABLE) === null)
     .map((el) => el.outerHTML.slice(0, 140));
+}
+
+/** The reading lines a panel at `address` would show (`ctx` is its `data-analyze-ctx`); empty when nothing reads. */
+export function analyze(address: string, env: AnalyzeEnv, ctx?: Record<string, unknown>): string[] {
+  const subject = parseSubject(address, ctx ? JSON.stringify(ctx) : null);
+  return subject ? readingFor(subject, env)?.lines ?? [] : [];
 }

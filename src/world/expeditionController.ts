@@ -1,7 +1,7 @@
 import { canAutoResolve } from '../engine/combat';
 import type { StartPayload } from '../engine/combat/types';
 import type { RoutePick } from '../engine/commander/checks';
-import type { EngineEvent } from '../engine/dispatch';
+import type { Action, EngineEvent } from '../engine/dispatch';
 import type { CampaignState } from '../engine/state/types';
 import { reportLines, type Formation, type TreatKind } from '../engine/world/expedition';
 import { generateRecap } from '../llm/calls/expeditionRecap';
@@ -33,6 +33,8 @@ export interface ExpeditionController {
 export function createExpedition(deps: WorldDeps & {
   startCombat(p: StartPayload): boolean;
   startScene(o: StartOptions): Promise<boolean>;
+  /** P9b: runs a decision the squad votes on (the app's `power.requestVote`). Without it a gated launch is refused like any other. */
+  requestVote?: (action: Action) => Promise<'ran' | 'dropped' | 'cancelled'>;
 }): ExpeditionController {
   let target: PlanTarget | null = null;
 
@@ -43,7 +45,8 @@ export function createExpedition(deps: WorldDeps & {
   function act(type: string, payload: unknown = {}, expect?: string): { ok: boolean; events: EngineEvent[] } {
     const events = deps.app.dispatch({ type, payload }, { expectChatId: expect });
     const failed = events.find((e) => e.type === 'error');
-    if (failed && failed.code !== 'chat_changed') deps.toast('error', String(failed.message ?? failed.code));
+    const voteNeeded = failed?.code === 'vote_needed' && deps.requestVote !== undefined; // the vote panel answers it, not a toast
+    if (failed && failed.code !== 'chat_changed' && !voteNeeded) deps.toast('error', String(failed.message ?? failed.code));
     return { ok: !failed, events };
   }
 
@@ -57,7 +60,14 @@ export function createExpedition(deps: WorldDeps & {
         deps.toast('error', 'Choose a mission or a point of interest first.');
         return false;
       }
-      const { ok } = act('expedition/start', { ...target, unitIds: p.unitIds, formation: p.formation, supplies: p.supplies });
+      const payload = { ...target, unitIds: p.unitIds, formation: p.formation, supplies: p.supplies };
+      const { ok, events } = act('expedition/start', payload);
+      if (!ok && deps.requestVote && events.some((e) => e.type === 'error' && e.code === 'vote_needed')) {
+        // P9b: the squad votes on a mission from the board; the plan stays until the vote has run the launch
+        const planned = target;
+        void deps.requestVote({ type: 'expedition/start', payload }).then((r) => { if (r === 'ran' && target === planned) target = null; });
+        return false;
+      }
       if (ok) target = null;
       return ok;
     },

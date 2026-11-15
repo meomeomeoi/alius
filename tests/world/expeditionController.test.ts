@@ -5,6 +5,7 @@ import type { CampaignState } from '../../src/engine/state/types';
 import { createExpedition } from '../../src/world/expeditionController';
 import { depart, payload, withMission } from '../helpers/expedition';
 import { campaign, loadCore } from '../helpers/world';
+import { withOptions } from '../helpers/power';
 import { worldHarness, type WorldHarness } from '../helpers/worldApp';
 
 let reg: Registries;
@@ -309,5 +310,36 @@ describe('debrief', () => {
     const nobody = worldHarness(reg, done());
     expect(await make(nobody).debrief([])).toBe(false);
     expect(nobody.startScene).not.toHaveBeenCalled();
+  });
+});
+
+describe('launch under squad votes (P9b)', () => {
+  it('a gated launch is handed to requestVote without a refusal toast, and the plan is kept until the vote ran', async () => {
+    const { state, mission } = withMission(reg, base);
+    withOptions(state, { voting: 'on' });
+    const h = worldHarness(reg, state);
+    const asked: unknown[] = [];
+    let answer: 'ran' | 'cancelled' = 'cancelled';
+    const exp = createExpedition({ ...h.deps, startCombat: h.startCombat as never, startScene: h.startScene as never, requestVote: async (a) => { asked.push(a); return answer; } });
+    exp.plan({ missionId: mission.id });
+    expect(exp.launch(form(state))).toBe(false);
+    await Promise.resolve();
+    expect(h.toasts).toEqual([]);
+    expect(asked).toEqual([{ type: 'expedition/start', payload: { missionId: mission.id, ...form(state) } }]);
+    expect(exp.planning()).toEqual({ missionId: mission.id }); // the vote was cancelled: the plan stays
+    answer = 'ran';
+    expect(exp.launch(form(state))).toBe(false);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(exp.planning()).toBeNull(); // the vote ran the launch
+  });
+
+  it('without requestVote a gated launch is toasted like any refusal', () => {
+    const { state, mission } = withMission(reg, base);
+    withOptions(state, { voting: 'on' });
+    const h = worldHarness(reg, state);
+    const exp = make(h);
+    exp.plan({ missionId: mission.id });
+    expect(exp.launch(form(state))).toBe(false);
+    expect(h.toasts.at(-1)).toMatchObject({ kind: 'error' });
   });
 });

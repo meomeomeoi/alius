@@ -12,6 +12,7 @@ import { humanize, signed, summarizeCombatEffect } from '../effects';
 import { registerCommanderProviders } from './commander';
 import { registerDisciplineProviders } from './discipline';
 import { registerBondsProviders } from './bonds';
+import { registerPowerProviders } from './power';
 import { registerWorldProviders } from './world';
 import type { Knowledge } from '../knowledge';
 import { ledgerFor, ledgerLabel } from '../ledger';
@@ -280,7 +281,7 @@ export const CORE_GLOSSARY_IDS: readonly string[] = [
   // P9d (the calibration's bond profile addresses this; the content and Want entries come with their screens)
   'bond_profile', 'content_categories', 'lead', 'want', 'relationship_rules', 'publicity',
   // P9b (the WORLD PARAMETERS cards and the VOTE panel address these)
-  'squad_power', 'voting',
+  'squad_power', 'voting', 'vote', 'rations',
 ];
 
 let registered = false;
@@ -299,4 +300,5 @@ export function registerCoreProviders(): void {
   registerWorldProviders(); // P8
   registerDisciplineProviders(); // P9
   registerBondsProviders(); // P9d
+  registerPowerProviders(); // P9b
 }

@@ -1325,5 +1325,27 @@
     "see": [
       "squad_power"
     ]
+  },
+  {
+    "id": "vote",
+    "term": "Vote",
+    "short": "The squad's vote on a decision of the commander: each soldier votes for or against the commander's pick. A tie goes to the commander.",
+    "long": "AUTHOR TO WRITE: With squad votes on, a mission from the board, a base upgrade, a ration mode in a shortage, a mild punishment and who takes the blame open a vote. The commander picks, always votes for the pick, and weighs more with Authority. Each soldier's ballot follows her values, her trust, her stance toward the commander, an open demand and what the decision does to her. A failed vote can be accepted, or overruled by an order, a punishment or the Leash: that costs Trust and raises Impunity with everyone who voted against.",
+    "see": [
+      "voting",
+      "squad_power",
+      "rations"
+    ]
+  },
+  {
+    "id": "rations",
+    "term": "Rations",
+    "short": "How a shortage is shared out: evenly, reserve soldiers first, or the commander going without first.",
+    "long": "AUTHOR TO WRITE: While supplies cover the day's upkeep the mode changes nothing. In a shortage, Equal spreads the missing supplies over everyone. Fighters first lets the reserve soldiers go without before the active roster feels it. Commander short lets the commander go without, up to the commander's own share, at the cost of sleeping through the next morning. While the world has squad votes on, a change of mode in a shortage goes to a [[vote]].",
+    "see": [
+      "vote",
+      "upkeep",
+      "supplies"
+    ]
   }
 ]

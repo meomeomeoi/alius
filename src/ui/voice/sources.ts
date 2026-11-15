@@ -4,7 +4,7 @@ export type Voice = 'terminal' | 'corporate' | 'paper' | 'personal';
 /** Who is speaking is declared here, in one table, never at the call sites that show the text. */
 export type VoiceSource =
   | 'toast' | 'dm' | 'unit_note' | 'chronicle' | 'dossier' | 'commander_file'
-  | 'oversight' | 'leash_verdict' | 'corporate_mail' | 'intake_form';
+  | 'oversight' | 'leash_verdict' | 'corporate_mail' | 'intake_form' | 'squad_vote';
 
 export const VOICE_OF: Record<VoiceSource, Voice> = {
   toast: 'terminal',
@@ -18,4 +18,6 @@ export const VOICE_OF: Record<VoiceSource, Voice> = {
   corporate_mail: 'corporate',
   // P11
   intake_form: 'paper',
+  // P9b: the VOTE panel is the oversight office's tally sheet
+  squad_vote: 'corporate',
 };

@@ -123,3 +123,11 @@ export function tallyVote(
   const againstWeight = side('against');
   return { ballots, commanderWeight, forWeight, againstWeight, passed: forWeight >= againstWeight };
 }
+
+/** What a vote is about, in plain words: a mission's title, a facility's name, a soldier's name, else the subject spelt out. */
+export function voteSubjectLabel(state: CampaignState, reg: Registries, kind: VoteKind, subject: string): string {
+  if (kind === 'mission') return missionById(state, subject)?.title ?? subject.replace(/_/g, ' ');
+  if (kind === 'upgrade') return String(reg.facilities.get(subject)?.name ?? subject.replace(/_/g, ' '));
+  if (kind === 'punish') return state.squad.find((u) => u.id === subject)?.displayName ?? subject.replace(/_/g, ' ');
+  return subject.replace(/_/g, ' ');
+}

@@ -46,6 +46,8 @@ import { createLoyalty, type LoyaltyController } from './loyalty/loyaltyControll
 import { clearDisciplineDirectives, disciplineDirectives } from './discipline/context';
 import { createBonds, type BondsController } from './bonds/controller';
 import { createPower, type PowerController } from './power/controller';
+import type { VoteChoice } from './power/deps';
+import { renderVotePanel } from './ui/power/votePanel';
 import { clearPowerDirectives, refreshPowerDirectives } from './power/directives';
 import { createDiscipline, type DisciplineController } from './discipline/controller';
 import { createOnboarding, type OnboardingController } from './onboarding/controller';
@@ -339,13 +341,34 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
   const director = createDirector(worldDeps);
   const dilemmas = createDilemmas(worldDeps);
   const loyalty = createLoyalty({ ...worldDeps, context, refreshContext: applyContext });
-  const discipline = createDiscipline({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o) });
-  const bonds = createBonds({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o) });
   const power = createPower({
     ...worldDeps, context, refreshContext: applyContext,
-    // the VOTE panel is drawn in the UI task of P9b; until it is wired a vote is closed unanswered (and dropped)
-    showVote: async () => ({ choice: 'cancel' }),
+    // the VOTE panel (P9b): a modal in the corporate voice; closing it unanswered cancels the vote
+    showVote: (vote, lines) => new Promise<VoteChoice>((resolve) => {
+      const host = h('div');
+      let answered = false;
+      const answer = (c: VoteChoice): void => {
+        if (answered) return;
+        answered = true;
+        shell.closeModal?.();
+        resolve(c);
+      };
+      const s = state;
+      if (!s) { resolve({ choice: 'cancel' }); return; }
+      renderVotePanel(host, vote, lines, {
+        state: s, registries,
+        onCarry: () => answer({ choice: 'carry' }),
+        onDrop: () => answer({ choice: 'accept' }),
+        onOverrule: (means, punish) => answer({ choice: 'overrule', means, ...(punish !== undefined ? { punish } : {}) }),
+      });
+      shell.open();
+      void shell.modal({ title: 'SQUAD VOTE', body: host, actions: [] }).then(() => {
+        if (!answered) { answered = true; resolve({ choice: 'cancel' }); }
+      });
+    }),
   });
+  const discipline = createDiscipline({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o), requestVote: (a) => power.requestVote(a) });
+  const bonds = createBonds({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o) });
   /** P9d: the three answers to a rule proposal, from a scene or the COMMS thread. */
   const answerRule = (ruleId: string, how: 'accept' | 'negotiate' | 'refuse'): void => {
     if (how === 'negotiate') void bonds.negotiateRule(ruleId).then((ok) => { if (ok) shell.open(); });
@@ -373,7 +396,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       shell.open();
     },
   });
-  const expedition = createExpedition({ ...worldDeps, startCombat: (p) => api.startCombat(p), startScene: (o) => beginScene(o) });
+  const expedition = createExpedition({ ...worldDeps, startCombat: (p) => api.startCombat(p), startScene: (o) => beginScene(o), requestVote: (a) => power.requestVote(a) });
   let expeditionScreen: ExpeditionScreen | null = null;
   /** True while the expedition screen is what the shell shows. */
   let onExpeditionScreen = false;
@@ -1641,6 +1664,11 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
   function act(action: Action): EngineEvent[] {
     const events = api.dispatch(action, { expectChatId: st.getActiveChat()?.chatId });
     const failed = events.find((e) => e.type === 'error');
+    if (failed?.code === 'vote_needed') {
+      // P9b: the squad votes on this decision: the VOTE panel opens and carries the action out when it is allowed
+      void power.requestVote(action);
+      return events;
+    }
     if (failed) toast('error', String(failed.message ?? failed.code));
     return events;
   }
@@ -1780,6 +1808,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       onUpgrade: (id) => api.upgradeFacility(id),
       onRecruit: () => void api.recruitGrunt(),
       onSetRoster: (ids) => api.setRoster(ids),
+      onSetRations: (mode) => void act({ type: 'rations/set', payload: { mode } }),
     }),
   );
 

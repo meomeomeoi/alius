@@ -24,6 +24,7 @@ import { offerMission, postRumor } from '../../src/engine/world/missions';
 import { ctxOf } from '../helpers/world';
 import { run } from '../helpers/world';
 import { h } from '../../src/ui/dom';
+import '../helpers/power'; // registers the P9b actions
 import { renderBaseTab } from '../../src/ui/base/baseTab';
 import { renderInvTab } from '../../src/ui/inv/invTab';
 import { createShell } from '../../src/ui/shell/shell';
@@ -539,6 +540,28 @@ describe('coverage: SYS', () => {
     const missing = [...Object.keys(DEFAULT_SETTINGS), 'difficulty'].filter((k) => k !== 'explicitContent' && !settings.has(k));
     expect(missing).toEqual([]);
     expect(host.querySelectorAll('label.alius-field.alius-option')).toHaveLength(host.querySelectorAll('label.alius-field').length);
+  });
+});
+
+describe('coverage: squad vote and rations (P9b)', () => {
+  it('the VOTE panel and the RATIONS row mark every element, every address resolves and every one can be reached', async () => {
+    const { renderVotePanel } = await import('../../src/ui/power/votePanel');
+    const s = campaign(reg, 4);
+    s.leash.authorizationsLeft = 1;
+    s.world.options = { ...(s.world.options ?? {}), voting: 'on' };
+    for (const u of s.squad) u.values = { pragmatism: -3, autonomy: 0, ingroup: 0, mercy: 0, corporate: 0, sacrifice: 0 };
+    const opened = run(s, reg, { type: 'vote/open', payload: { kind: 'upgrade', subject: 'workshop' } }).state;
+    const panel = mount();
+    renderVotePanel(panel, opened.power!.votes.open!, { unit_ann: 'Ann objects.' }, { state: opened, registries: reg, onCarry: vi.fn(), onDrop: vi.fn(), onOverrule: vi.fn() });
+    const rations = mount();
+    renderBaseTab(rations, { getState: () => opened, getLoad: () => ({ kind: 'ok', state: opened, chatId: 'c' }), registries: reg, onUpgrade: vi.fn(), onRecruit: vi.fn(), onSetRoster: vi.fn(), onSetRations: vi.fn() });
+    for (const host of [panel, rations]) {
+      expect(markedWithout(host)).toEqual([]);
+      expect(unresolved(host, env(opened))).toEqual([]);
+      expect(unreachable(host)).toEqual([]);
+    }
+    const addresses = new Set(unitIdsIn(panel).concat(unitIdsIn(rations)));
+    for (const wanted of ['glossary:vote', 'glossary:rations', 'voteKinds:upgrade']) expect(addresses.has(wanted), wanted).toBe(true);
   });
 });
 

@@ -7,6 +7,7 @@ import { createDiscipline } from '../../src/discipline/controller';
 import type { DisciplineDeps } from '../../src/discipline/deps';
 import { campaign, loadCore } from '../helpers/loyalty';
 import { setRecord } from '../helpers/discipline';
+import { withOptions } from '../helpers/power';
 import { worldHarness, type WorldHarness } from '../helpers/worldApp';
 
 let reg: Registries;
@@ -173,3 +174,27 @@ describe('punish and undo (P9)', () => {
   });
 });
 
+
+describe('a menu punishment under squad votes (P9b)', () => {
+  it('a gated measure goes to requestVote, the toast of the vote is not an error, and the directive follows once it ran', async () => {
+    const asked: unknown[] = [];
+    const s = rig((st) => { withOptions(st, { voting: 'on' }); });
+    const deps: DisciplineDeps = {
+      ...s.h.deps, context: s.ctx, refreshContext: s.refresh,
+      requestVote: async (a) => { asked.push(a); s.h.app().dispatch({ type: 'vote/open', payload: { kind: 'punish', subject: ANN } }); s.h.app().dispatch({ type: 'vote/overrule', payload: { voteId: 'v1', means: 'order' } }); return s.h.app().dispatch({ ...a, payload: { ...(a.payload as object), voteId: 'v1' } }).some((e) => e.type === 'error') ? 'cancelled' : 'ran'; },
+    };
+    const discipline = createDiscipline(deps);
+    expect(discipline.punish(ANN, 'verbal')).toBe(false); // not yet: the vote decides
+    await new Promise((r) => setTimeout(r, 0));
+    expect(s.h.toasts.filter((t) => t.kind === 'error')).toEqual([]);
+    expect(asked).toEqual([{ type: 'discipline/punish', payload: { unitId: ANN, measure: 'verbal' } }]);
+    expect(s.h.state().discipline!.applications.map((a) => a.measure)).toEqual(['verbal']);
+    expect(dirs(s)).toContain('The commander has imposed');
+  });
+
+  it('without requestVote the refusal is toasted', () => {
+    const s = rig((st) => { withOptions(st, { voting: 'on' }); });
+    expect(s.discipline.punish(ANN, 'verbal')).toBe(false);
+    expect(s.h.toasts.at(-1)).toMatchObject({ kind: 'error' });
+  });
+});

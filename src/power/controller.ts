@@ -1,10 +1,9 @@
 import type { Registries } from '../content/types';
 import type { Action, EngineEvent } from '../engine/dispatch';
-import { leanFor } from '../engine/power/ballot';
+import { leanFor, voteSubjectLabel } from '../engine/power/ballot';
 import { liveVote } from '../engine/power/state';
 import type { OverruleMeans } from '../engine/power/votes';
 import { VALUE_AXES, type CampaignState, type Vote } from '../engine/state/types';
-import { missionById } from '../engine/world/missions';
 import { effectiveValues } from '../engine/worldOptions/stances';
 import { generateBallotFlavor } from '../llm/calls/flavor';
 import type { PowerDeps, VoteChoice } from './deps';
@@ -28,8 +27,6 @@ export interface PowerController {
   ballotLines(vote: Vote): Promise<Record<string, string>>;
 }
 
-const humanize = (id: string): string => id.replace(/_/g, ' ');
-
 /**
  * The power half of the app (P9b): the VOTE flow between the engine's `vote/*` actions and the panel, the wording of the
  * ballots and the scene directives of a grudge. The engine decides everything that is true; nothing here changes a number.
@@ -38,14 +35,6 @@ export function createPower(deps: PowerDeps): PowerController {
   const chatId = (): string | undefined => deps.st.getActiveChat()?.chatId;
   const state = (): CampaignState | null => deps.app.current().state;
   const failure = (events: EngineEvent[]): EngineEvent | undefined => events.find((e) => e.type === 'error');
-
-  /** What the vote is about, in plain words (for the wording call). */
-  function subjectLabel(s: CampaignState, reg: Registries, vote: Vote): string {
-    if (vote.kind === 'mission') return missionById(s, vote.subject)?.title ?? humanize(vote.subject);
-    if (vote.kind === 'upgrade') return String(reg.facilities.get(vote.subject)?.name ?? humanize(vote.subject));
-    if (vote.kind === 'punish') return s.squad.find((u) => u.id === vote.subject)?.displayName ?? humanize(vote.subject);
-    return humanize(vote.subject);
-  }
 
   /** The template line of one ballot: the reason of the term that moved her most, with her name and, for values, the axis that moved her. */
   function templateLine(s: CampaignState, reg: Registries, vote: Vote, unitId: string): string {
@@ -72,7 +61,7 @@ export function createPower(deps: PowerDeps): PowerController {
     if (voters.length === 0 || new Set(voters.map((v) => v.name)).size !== voters.length) return lines; // a name the model could not tell apart keeps its template
     try {
       const worded = await generateBallotFlavor({
-        kind: 'ballot', voteKind: String(reg.voteKinds.get(vote.kind)?.label ?? vote.kind), subjectLabel: subjectLabel(s, reg, vote),
+        kind: 'ballot', voteKind: String(reg.voteKinds.get(vote.kind)?.label ?? vote.kind), subjectLabel: voteSubjectLabel(s, reg, vote.kind, vote.subject),
         ballots: voters.map((v) => ({ name: v.name, vote: v.vote, term: v.term })),
       }, { st: deps.st, settings: deps.settings(), contentLine: deps.contentLine });
       for (const v of voters) if (worded[v.name] !== undefined) lines[v.id] = worded[v.name];

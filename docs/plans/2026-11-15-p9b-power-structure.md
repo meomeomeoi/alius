@@ -493,17 +493,17 @@ tests/**                                                        mirrors src; tes
     - `rations`.
 - Consumes: `app.power`, the `Knowledge` filter.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `a passed vote shows CARRY OUT and no overrule`
   - `a failed vote shows ACCEPT and three overrule buttons; LEASH is aria-disabled with no authorization left`
   - `every ballot row, button and the tally carry data-analyze that resolves`, reusing `analyzeCoverage` helpers
   - `the rations row shows the three modes and the current one`
   - `the analyze reading of a ballot hides raw scores unless raw values are on`
   - Extend `tests/ui/analyzeCoverage.test.ts` with the panel and the rations row.
-- [ ] **Step 2: Run** `npx vitest run tests/ui/votePanel.test.ts tests/ui/analyzeCoverage.test.ts tests/analysis` and confirm FAIL.
-- [ ] **Step 3: Implement** with `h()` and the `corporate` voice for the panel frame. The punish overrule picks a dissenter and a measure from the existing menu list.
-- [ ] **Step 4: Run** the tests. Expect PASS. Then `npm test`.
-- [ ] **Step 5: Tick and commit:** `feat(ui): VOTE panel, rations control and vote readings`.
+- [x] **Step 2: Run** `npx vitest run tests/ui/votePanel.test.ts tests/ui/analyzeCoverage.test.ts tests/analysis` and confirm FAIL.
+- [x] **Step 3: Implement** with `h()` and the `corporate` voice for the panel frame. The punish overrule picks a dissenter and a measure from the existing menu list.
+- [x] **Step 4: Run** the tests. Expect PASS. Then `npm test`.
+- [x] **Step 5: Tick and commit:** `feat(ui): VOTE panel, rations control and vote readings`.
 
 **Chunk (a) ends here.**
 
