@@ -633,6 +633,8 @@ export const RelationshipStateSchema = BaseEntrySchema.extend({
   requiresTrait: str.optional(),
   /** P9d: `romantic` states carry Want, publicity and a scene lead; `close` ones let her propose rules. Code reads the tier, never the id. */
   bondTier: z.enum(['romantic', 'close']).optional(),
+  /** P9d: added to the lead score of her scenes while her lead style is at least assertive. */
+  leadBonus: int.min(0).max(40).optional(),
   entry: z.object({
     via: z.array(z.enum(['automatic', 'event', 'proposal'])).min(1),
     /** Empty or absent = from any state. */
@@ -716,6 +718,8 @@ export const DefectSchema = BaseEntrySchema.extend({
   arcFlag: str.optional(),
   /** P9d: the bond traits a unit needs to take this defect (import candidates, the manual list and validation read it). */
   requiresBond: z.object({ caretaker: z.literal(true).optional() }).strict().optional(),
+  /** P9d: added to the lead score of her scenes (not while her arc is cure). */
+  leadBonus: int.min(0).max(40).optional(),
   nightEvents: z.array(NightSpecSchema).optional(),
   /** P5: one more node revealed ahead on the expedition map (Echo Bleed). */
   expedition: z.object({ reveal: z.literal(1) }).strict().optional(),

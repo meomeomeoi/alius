@@ -201,7 +201,7 @@ describe('activity cross references', () => {
       expect(Object.keys(e!.rows as object).sort(), t).toEqual(['extreme', 'major', 'minor', 'moderate']);
     }
     expect(r.eventDeltas.size).toBe(ALL_EVENT_TYPES.length);
-    expect(ALL_EVENT_TYPES).toHaveLength(32);
+    expect(ALL_EVENT_TYPES).toHaveLength(33);
   });
 
   it('table rows from the spec', async () => {

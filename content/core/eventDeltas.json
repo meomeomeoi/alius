@@ -715,5 +715,23 @@
       "major": {},
       "extreme": {}
     }
+  },
+  {
+    "id": "followed_lead",
+    "cause": "You followed her lead",
+    "rows": {
+      "minor": {
+        "affinity": 2
+      },
+      "moderate": {
+        "affinity": 3
+      },
+      "major": {
+        "affinity": 4
+      },
+      "extreme": {
+        "affinity": 5
+      }
+    }
   }
 ]

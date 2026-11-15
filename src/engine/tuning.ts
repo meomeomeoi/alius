@@ -293,11 +293,9 @@ export const TUNING = Object.freeze({
       /** The score moves by this much per point of Impunity above or below `impunityRef`. */
       impunityWeight: 0.2,
       impunityRef: 50,
-      dominanceBonus: 15,
-      /** Per `commander_yielded` / `followed_lead` (+) or `commander_enforced` (−) on her in the last `windowDays`, capped. */
+      /** Per `commander_yielded` / `followed_lead` (+) or `commander_enforced` (−) on her in the last `windowDays`, capped.
+       *  A defect's and a state's `leadBonus` are content (a state's counts only while her style is at least assertive). */
       perYield: 10, yieldCap: 20, perEnforced: 10, enforcedCap: 20, windowDays: 3,
-      /** A state with `leadBonus` adds it while her style is at least assertive. */
-      stateBonus: 10,
       unitAtLeast: 60,
       commanderAtMost: 35,
     }),

@@ -1,4 +1,4 @@
-import { raiseTone } from '../bonds/scene';
+import { raiseTone, startTone } from '../bonds/scene';
 import { markDmViolation, markSceneViolation } from '../bonds/violations';
 import { consumeSlots, registerDayEndStep } from '../calendar';
 import { registerAction } from '../dispatch';
@@ -83,7 +83,7 @@ registerAction('scene/start', (draft, payload, ctx) => {
     ...(typeof payload.nightEntryId === 'string' ? { nightEntryId: payload.nightEntryId } : {}),
   };
   draft.calendar.pendingScene ??= { unitId: participants[0], day: draft.day, slot: draft.slot };
-  return [{ type: 'scene_started', sceneId, participants, locationId: loc.id }];
+  return [{ type: 'scene_started', sceneId, participants, locationId: loc.id }, ...startTone(draft, reg)]; // P9d: a romantic partner or a Want visit opens a romantic scene and decides its lead
 });
 
 registerAction('scene/exchange', (draft) => {

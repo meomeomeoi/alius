@@ -161,9 +161,11 @@ describe('scene tone from the reading', () => {
     h.st.mainReplies = [intentJson([], { sceneTone: 'intimate' }), intentJson()];
     await h.controller.send('Hello');
     expect(h.state().scene!.tone).toBe('intimate');
+    expect(h.state().scene!.lead).toMatchObject({ unitId: ANN });
     await h.st.swipeLast('right');
     await h.controller.idle();
     expect(h.state().scene!.tone).toBeUndefined();
+    expect(h.state().scene!.lead).toBeUndefined(); // the lead decided with the tone goes with it
   });
 });
 

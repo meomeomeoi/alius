@@ -490,6 +490,7 @@
     "glyph": "<3",
     "priority": 50,
     "bondTier": "romantic",
+    "leadBonus": 10,
     "entry": {
       "via": [
         "proposal"
@@ -580,6 +581,7 @@
     "glyph": "<<",
     "priority": 55,
     "bondTier": "romantic",
+    "leadBonus": 10,
     "entry": {
       "via": [
         "proposal"

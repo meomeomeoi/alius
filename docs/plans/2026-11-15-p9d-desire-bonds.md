@@ -485,7 +485,7 @@ tests/**                                           mirrors src; tests/helpers/bo
   - `leadScoreParts(state, reg, unitId)`, used by the analysis provider
   - the event `lead_decided { unitId, by }`
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `a private scene with a lover starts romantic and decides a lead`
   - `a dominant unit at Impunity 50 leads; a yielding one follows the commander`
   - `a balanced unit shares`
@@ -494,10 +494,10 @@ tests/**                                           mirrors src; tests/helpers/bo
   - `romance off: no tone, no lead`
   - `a group scene with two named units gets no lead`
   - `rollback of the reading restores tone and lead`
-- [ ] **Step 2: Run** `npx vitest run tests/engine/bonds/lead.test.ts` and confirm FAIL.
-- [ ] **Step 3: Implement** the score of the rulings.
-- [ ] **Step 4: Run** `npm test` and confirm PASS.
-- [ ] **Step 5: Commit** `feat(engine): scene tone and who leads`.
+- [x] **Step 2: Run** `npx vitest run tests/engine/bonds/lead.test.ts` and confirm FAIL.
+- [x] **Step 3: Implement** the score of the rulings.
+- [x] **Step 4: Run** `npm test` and confirm PASS.
+- [x] **Step 5: Commit** `feat(engine): scene tone and who leads`.
 
 ### Task 8: Lead directive and the FOLLOW / ASK / SET A LIMIT chips
 

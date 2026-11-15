@@ -329,15 +329,13 @@ var TUNING = Object.freeze({
       /** The score moves by this much per point of Impunity above or below `impunityRef`. */
       impunityWeight: 0.2,
       impunityRef: 50,
-      dominanceBonus: 15,
-      /** Per `commander_yielded` / `followed_lead` (+) or `commander_enforced` (−) on her in the last `windowDays`, capped. */
+      /** Per `commander_yielded` / `followed_lead` (+) or `commander_enforced` (−) on her in the last `windowDays`, capped.
+       *  A defect's and a state's `leadBonus` are content (a state's counts only while her style is at least assertive). */
       perYield: 10,
       yieldCap: 20,
       perEnforced: 10,
       enforcedCap: 20,
       windowDays: 3,
-      /** A state with `leadBonus` adds it while her style is at least assertive. */
-      stateBonus: 10,
       unitAtLeast: 60,
       commanderAtMost: 35
     }),
@@ -771,6 +769,7 @@ var LEAD_STYLES = ["yielding", "balanced", "assertive", "dominant"];
 var ATTACHMENTS = ["slow", "steady", "intense", "avoidant"];
 var DESIRE_LEVELS = ["low", "medium", "high"];
 var PUBLICITY_LEVELS = ["secret", "known", "public"];
+var leadRank = (style) => LEAD_STYLES.indexOf(style);
 var MODEST_BOND = Object.freeze({
   leadStyle: "balanced",
   attachment: "steady",
@@ -782,6 +781,12 @@ var MODEST_BOND = Object.freeze({
 function bondOf(unit) {
   if (unit.kind !== "named") return null;
   return unit.bond ?? MODEST_BOND;
+}
+function bondTierOf(state, reg, unitId) {
+  const stateId = state.relations[unitId]?.stateId;
+  if (stateId === void 0) return null;
+  const tier = reg.relationshipStates.get(stateId)?.bondTier;
+  return tier === "romantic" || tier === "close" ? tier : null;
 }
 var isObj = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var NOTE_MAX = TUNING.bonds.limits.noteMax;
@@ -5470,7 +5475,7 @@ var EVENT_TYPES = [
   "commander_yielded",
   "threatened"
 ];
-var ENGINE_EVENT_TYPES = ["granted_demand", "refused_demand"];
+var ENGINE_EVENT_TYPES = ["granted_demand", "refused_demand", "followed_lead"];
 var ALL_EVENT_TYPES = [...EVENT_TYPES, ...ENGINE_EVENT_TYPES];
 var PROPOSAL_KINDS = [
   "friendship_deepen",
@@ -6280,6 +6285,8 @@ var RelationshipStateSchema = BaseEntrySchema.extend({
   requiresTrait: str.optional(),
   /** P9d: `romantic` states carry Want, publicity and a scene lead; `close` ones let her propose rules. Code reads the tier, never the id. */
   bondTier: external_exports.enum(["romantic", "close"]).optional(),
+  /** P9d: added to the lead score of her scenes while her lead style is at least assertive. */
+  leadBonus: int.min(0).max(40).optional(),
   entry: external_exports.object({
     via: external_exports.array(external_exports.enum(["automatic", "event", "proposal"])).min(1),
     /** Empty or absent = from any state. */
@@ -6362,6 +6369,8 @@ var DefectSchema = BaseEntrySchema.extend({
   arcFlag: str.optional(),
   /** P9d: the bond traits a unit needs to take this defect (import candidates, the manual list and validation read it). */
   requiresBond: external_exports.object({ caretaker: external_exports.literal(true).optional() }).strict().optional(),
+  /** P9d: added to the lead score of her scenes (not while her arc is cure). */
+  leadBonus: int.min(0).max(40).optional(),
   nightEvents: external_exports.array(NightSpecSchema).optional(),
   /** P5: one more node revealed ahead on the expedition map (Echo Bleed). */
   expedition: external_exports.object({ reveal: external_exports.literal(1) }).strict().optional(),
@@ -10394,8 +10403,41 @@ registerAction("squad/set_flavor", (draft, payload) => {
 });
 
 // src/engine/bonds/scene.ts
+var WANT_VISIT_KIND = "want_visit";
 var TONE_RANK = { romantic: 1, intimate: 2 };
-function raiseTone(draft, _reg, tone) {
+var YIELDS = ["commander_yielded", "followed_lead"];
+function leadScoreParts(state, reg, unitId) {
+  const unit = state.squad.find((u) => u.id === unitId);
+  const bond = unit ? bondOf(unit) : null;
+  if (!unit || !bond) return null;
+  const T = TUNING.bonds.lead;
+  const rel = state.relations[unitId];
+  const recent = (types) => (rel?.history ?? []).filter((h2) => h2.kind === "event" && types.includes(h2.type) && state.day - h2.day < T.windowDays).length;
+  const styleBase = T.styleBase[bond.leadStyle];
+  const impunity = T.impunityWeight * ((impunityOf(state, reg, unitId)?.value ?? T.impunityRef) - T.impunityRef);
+  const defect = unit.defects.filter((d) => d.arc !== "cure").reduce((n, d) => n + Number(reg.defects.get(d.id)?.leadBonus ?? 0), 0);
+  const yielded = Math.min(T.yieldCap, T.perYield * recent(YIELDS));
+  const enforced = -Math.min(T.enforcedCap, T.perEnforced * recent(["commander_enforced"]));
+  const stateBonus = leadRank(bond.leadStyle) >= leadRank("assertive") ? Number(reg.relationshipStates.get(rel?.stateId ?? "")?.leadBonus ?? 0) : 0;
+  return { styleBase, impunity, defect, yielded, enforced, state: stateBonus, total: styleBase + impunity + defect + yielded + enforced + stateBonus };
+}
+function decideLead(state, reg, unitId) {
+  const parts = leadScoreParts(state, reg, unitId);
+  if (!parts) return null;
+  const T = TUNING.bonds.lead;
+  const score = Math.round(Math.min(100, Math.max(0, parts.total)));
+  return { by: score >= T.unitAtLeast ? "unit" : score <= T.commanderAtMost ? "commander" : "shared", score };
+}
+function decideSceneLead(draft, reg) {
+  const scene = draft.scene;
+  const unitId = scene?.participants[0];
+  if (!scene || unitId === void 0) return [];
+  const lead = decideLead(draft, reg, unitId);
+  if (!lead) return [];
+  scene.lead = { by: lead.by, unitId, score: lead.score };
+  return [{ type: "lead_decided", unitId, by: lead.by }];
+}
+function raiseTone(draft, reg, tone) {
   const scene = draft.scene;
   if (!scene || tone !== "romantic" && tone !== "intimate") return [];
   if (!intimacyOf(draft).romance) return [];
@@ -10403,7 +10445,14 @@ function raiseTone(draft, _reg, tone) {
   if (named > 1) return [];
   if (scene.tone !== void 0 && TONE_RANK[scene.tone] >= TONE_RANK[tone]) return [];
   scene.tone = tone;
-  return [{ type: "scene_tone", tone }];
+  return [{ type: "scene_tone", tone }, ...decideSceneLead(draft, reg)];
+}
+function startTone(draft, reg) {
+  const scene = draft.scene;
+  if (!scene || scene.participants.length !== 1) return [];
+  const knock = draft.calendar.nightEvent;
+  const wantVisit = scene.origin === "night" && knock !== void 0 && knock.kind === WANT_VISIT_KIND && knock.unitId === scene.participants[0] && (scene.nightEntryId === void 0 || scene.nightEntryId === knock.id);
+  return bondTierOf(draft, reg, scene.participants[0]) === "romantic" || wantVisit ? raiseTone(draft, reg, "romantic") : [];
 }
 
 // src/engine/bonds/violations.ts
@@ -11431,7 +11480,7 @@ registerAction("scene/start", (draft, payload, ctx2) => {
     ...typeof payload.nightEntryId === "string" ? { nightEntryId: payload.nightEntryId } : {}
   };
   draft.calendar.pendingScene ??= { unitId: participants[0], day: draft.day, slot: draft.slot };
-  return [{ type: "scene_started", sceneId, participants, locationId: loc.id }];
+  return [{ type: "scene_started", sceneId, participants, locationId: loc.id }, ...startTone(draft, reg)];
 });
 registerAction("scene/exchange", (draft) => {
   if (!draft.scene) throw new Error("scene/exchange: no scene is open");

@@ -120,9 +120,9 @@ describe('scene tone', () => {
 
   it('raiseTone is pure on a draft and reports what it did', () => {
     const s = inScene();
-    expect(raiseTone(s, reg, 'romantic')).toEqual([{ type: 'scene_tone', tone: 'romantic' }]);
+    expect(raiseTone(s, reg, 'romantic')).toEqual([{ type: 'scene_tone', tone: 'romantic' }, { type: 'lead_decided', unitId: ANN, by: expect.any(String) }]); // P9d Task 7: a raised tone decides the lead
     expect(raiseTone(s, reg, 'romantic')).toEqual([]);
-    expect(raiseTone(s, reg, 'intimate')).toEqual([{ type: 'scene_tone', tone: 'intimate' }]);
+    expect(raiseTone(s, reg, 'intimate').map((e) => e.type)).toEqual(['scene_tone', 'lead_decided']);
     expect(s.scene!.tone).toBe('intimate');
   });
 

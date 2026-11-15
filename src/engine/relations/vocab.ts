@@ -10,8 +10,8 @@ export const EVENT_TYPES = [
   'defied', 'commander_enforced', 'commander_yielded', 'threatened',
 ] as const;
 
-/** P9: events only the engine makes (a demand granted or refused). Never offered to the model; `validateIntents` rejects them. */
-export const ENGINE_EVENT_TYPES = ['granted_demand', 'refused_demand'] as const;
+/** P9: events only the engine makes (a demand granted or refused; P9d: the commander followed her lead). Never offered to the model; `validateIntents` rejects them. */
+export const ENGINE_EVENT_TYPES = ['granted_demand', 'refused_demand', 'followed_lead'] as const;
 
 /** Every type that has an `eventDeltas` row: what the model may report and what only the engine writes. */
 export const ALL_EVENT_TYPES = [...EVENT_TYPES, ...ENGINE_EVENT_TYPES] as const;
