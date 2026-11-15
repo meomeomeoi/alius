@@ -2499,6 +2499,21 @@
   padding: 0 4px;
 }
 
+/* The lead chips of a romantic scene (P9d). */
+#alius-shell .alius-lead-chips,
+#alius-shell .alius-lead-limit {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin: 2px 0;
+}
+
+#alius-shell .alius-lead-chips [aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* P5: world map, mission board, expeditions */
 .alius-map { position: relative; max-width: 100%; }
 .alius-map-img { display: block; width: 100%; height: auto; }

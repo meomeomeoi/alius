@@ -287,7 +287,7 @@ export const TUNING = Object.freeze({
    */
   bonds: Object.freeze({
     /** Character limits shared by the profile, her note and what extraction reports. */
-    limits: Object.freeze({ noteMax: 160, evidenceMax: 120, maxViolations: 3, sceneLimitMax: 160 }),
+    limits: Object.freeze({ noteMax: 160, evidenceMax: 120, maxViolations: 3, sceneLimitMax: 160, sceneLimitsMax: 5 }),
     lead: Object.freeze({
       styleBase: Object.freeze({ yielding: 15, balanced: 40, assertive: 60, dominant: 75 }),
       /** The score moves by this much per point of Impunity above or below `impunityRef`. */

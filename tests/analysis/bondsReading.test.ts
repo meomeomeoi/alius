@@ -71,3 +71,31 @@ describe('the bond profile reading', () => {
     expect(lines.join('\n')).not.toContain('[[glossary:trust');
   });
 });
+
+describe('the lead reading (Task 8)', () => {
+  const romantic = () => {
+    const s = campaign(reg, 4);
+    s.relations.unit_ann.stateId = 'lover';
+    withBond(s, 'unit_ann', { leadStyle: 'dominant' });
+    s.scene = { id: 's1', day: 1, slot: 'morning', locationId: 'mess_hall', participants: ['unit_ann'], mode: 'private', origin: 'event', consumesSlot: true, startIndex: 0, exchanges: 0, tone: 'romantic', lead: { by: 'unit', unitId: 'unit_ann', score: 85 } };
+    return s;
+  };
+
+  it('says who leads in words, with no number while raw values are off', () => {
+    const lines = read('glossary:lead', romantic());
+    expect(lines[0]).toBe('This scene: Ann leads.');
+    expect(lines.join('\n')).not.toMatch(/\d/);
+    expect(lines.join('\n')).toMatch(/dominant/i);
+  });
+
+  it('shows the score and its parts with raw values on', () => {
+    const s = romantic();
+    const lines = readingFor(parseSubject('glossary:lead')!, { registries: reg, state: s, settings: { ...DEFAULT_SETTINGS, showRawValues: true } })?.lines ?? [];
+    expect(lines.join('\n')).toMatch(/Score: \d+/);
+    expect(lines.join('\n')).toMatch(/Style: \+75/);
+  });
+
+  it('reads nothing without a lead', () => {
+    expect(read('glossary:lead', campaign(reg, 4))).toEqual([]);
+  });
+});

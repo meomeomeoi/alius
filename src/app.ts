@@ -382,7 +382,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     sceneScreen = null;
     // directives belong to one campaign's scene: never carry them into another chat
     clearSceneDirectives(context);
-    context.clearMatching((d) => d.id === 'night' || d.id.startsWith('proposal:'));
+    context.clearMatching((d) => d.id === 'night' || d.id.startsWith('proposal:') || d.id.startsWith('ask:'));
     loyalty.onSceneClosed(); // refusal, band, trauma and aftermath directives belong to one scene of one campaign (P6)
     discipline.onSceneClosed(); // so do the stance and threat directives (P9)
     onboarding.onSceneClosed(); // and the prologue's goal and wrap directives (P11)

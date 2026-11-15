@@ -13,6 +13,7 @@ import { summarizeScene } from '../llm/calls/sceneSummary';
 import type { AliusSettings } from '../settings';
 import type { ChatMessage, StAdapter } from '../st/adapter';
 import type { AliusApp } from '../app';
+import { askDirective } from '../bonds/directives';
 import { clearSceneDirectives, sceneDirectives } from './context';
 import { answerDirective, nightDirective, proposalDirective } from './directives';
 
@@ -57,6 +58,10 @@ export interface SceneController {
   opening(): Promise<void>;
   /** The commander proposes something; the engine decides at once and the result becomes a directive for her next reply. */
   propose(kind: string, unitId?: string): void;
+  /** P9d: FOLLOW (the commander follows her lead, once per scene), ASK (what does she want) and SET A LIMIT (a boundary for this scene). */
+  follow(): void;
+  ask(): void;
+  limit(text: string): void;
   answer(proposalId: string, answer: ProposalAnswer): void;
   end(): Promise<void>;
   /** Rewrites a message of the scene in the chat. If it belongs to the last exchange, that exchange's extraction is undone and read again. */
@@ -446,6 +451,32 @@ export function createSceneController(deps: SceneDeps): SceneController {
       const events = dispatch({ type: 'proposal/commander', payload: { unitId: target, kind, channel: 'scene' } }, chatId());
       if (!events.some((e) => e.type === 'error')) reflect(events);
     },
+    follow() {
+      const s = state();
+      if (!s?.scene?.lead) return;
+      const events = dispatch({ type: 'bonds/follow', payload: {} }, chatId());
+      if (!events.some((e) => e.type === 'error')) {
+        reflect(events);
+        app.refreshContext();
+      }
+    },
+    ask() {
+      const s = state();
+      const lead = s?.scene?.lead;
+      const unit = lead ? unitById(s!, lead.unitId) : undefined;
+      if (!lead || !unit) return;
+      app.context.setDirective(askDirective(unit.id, unit.displayName));
+      app.refreshContext();
+    },
+    limit(text) {
+      const s = state();
+      if (!s?.scene?.lead || text.trim() === '') return;
+      const events = dispatch({ type: 'bonds/limit', payload: { text } }, chatId());
+      if (!events.some((e) => e.type === 'error')) {
+        deps.onUi({ type: 'transcript' });
+        app.refreshContext();
+      }
+    },
     answer(proposalId, answer) {
       const s = state();
       const p = s?.proposals?.find((x) => x.id === proposalId);
@@ -492,7 +523,7 @@ export function createSceneController(deps: SceneDeps): SceneController {
           clearSceneDirectives(app.context);
           app.context.clearDirective('night');
           const now = state();
-          app.context.clearMatching((d) => d.id.startsWith('proposal:'));
+          app.context.clearMatching((d) => d.id.startsWith('proposal:') || d.id.startsWith('ask:'));
           app.refreshContext();
           const living = (now?.squad ?? []).filter((u) => u.kind === 'named' && u.status !== 'dead' && u.status !== 'deserted' && u.status !== 'terminated');
           try {

@@ -1,5 +1,7 @@
-import { bondOf, enabledCategories } from '../../engine/bonds';
+import { bondOf, enabledCategories, leadScoreParts } from '../../engine/bonds';
 import type { Registries } from '../../content/types';
+import { TUNING } from '../../engine/tuning';
+import type { Knowledge } from '../knowledge';
 import { registerAnalyzeProvider } from '../providers';
 import type { Subject } from '../subject';
 import type { AnalyzeEnv } from '../model';
@@ -42,9 +44,30 @@ function bondProvider(subject: Subject, env: AnalyzeEnv): { lines: string[] } | 
   return { lines };
 }
 
+/** Who leads the open scene and why, in words; the score and its parts only with raw values on (through `Knowledge`). */
+function leadProvider(_subject: Subject, env: AnalyzeEnv, k: Knowledge): { lines: string[] } | null {
+  const scene = env.state?.scene;
+  const lead = scene?.lead;
+  const unit = lead ? env.state!.squad.find((u) => u.id === lead.unitId) : undefined;
+  if (!scene || !lead || !unit) return null;
+  const parts = leadScoreParts(env.state!, env.registries, unit.id);
+  const bond = bondOf(unit);
+  const who = lead.by === 'unit' ? `${unit.displayName} leads.` : lead.by === 'commander' ? `The commander leads; ${unit.displayName} follows.` : `${unit.displayName} and the commander share the lead.`;
+  const lines = [`This scene: ${who}`];
+  if (bond) lines.push(`Her style: ${bond.leadStyle}.`);
+  const score = k.raw(lead.score);
+  if (score !== null && parts) {
+    const signed = (n: number) => `${n < 0 ? '−' : '+'}${k.raw(Math.round(Math.abs(n)))}`;
+    lines.push(`Score: ${score} (leads at ${TUNING.bonds.lead.unitAtLeast} or more, follows at ${TUNING.bonds.lead.commanderAtMost} or less).`);
+    lines.push(`Style: ${signed(parts.styleBase)}, Impunity: ${signed(parts.impunity)}, defects: ${signed(parts.defect)}, recent yields: ${signed(parts.yielded)}, recent enforcement: ${signed(parts.enforced)}, relationship: ${signed(parts.state)}.`);
+  }
+  return { lines };
+}
+
 /** Registers the P9d readings (called from `registerCoreProviders`). */
 export function registerBondsProviders(): void {
   registerAnalyzeProvider('contentCategories', categoryProvider);
   registerAnalyzeProvider('glossary:content_categories', categoriesGlossaryProvider);
   registerAnalyzeProvider('glossary:bond_profile', bondProvider);
+  registerAnalyzeProvider('glossary:lead', leadProvider);
 }

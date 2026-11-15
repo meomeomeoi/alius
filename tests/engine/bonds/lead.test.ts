@@ -244,3 +244,62 @@ describe('followed_lead as an engine event', () => {
     expect(v.events).toEqual([]);
   });
 });
+
+describe('FOLLOW and SET A LIMIT (Task 8)', () => {
+  const romantic = (style: LeadStyle = 'dominant') => start(at50(style, inState('lover'))).state;
+
+  it('FOLLOW applies followed_lead once per scene', () => {
+    const s = romantic();
+    const aff = s.relations[ANN].affinity;
+    const r = run(s, reg, { type: 'bonds/follow', payload: {} });
+    expect(errors(r.events)).toEqual([]);
+    expect(r.state.relations[ANN].affinity).toBe(aff + 2);
+    expect(r.state.relations[ANN].history.at(-1)).toMatchObject({ type: 'followed_lead', severity: 'minor' });
+    expect(ofType(r.events, 'lead_followed')).toEqual([{ type: 'lead_followed', unitId: ANN }]);
+    expect(r.state.scene!.followed).toBe(true);
+    const again = run(r.state, reg, { type: 'bonds/follow', payload: {} });
+    expect(errors(again.events)).toHaveLength(1);
+    expect(again.state).toEqual(r.state);
+  });
+
+  it('FOLLOW does not touch Impunity, and counts as a yield for the next lead score', () => {
+    const s = romantic();
+    const before = impunityOf(s, reg, ANN)!.value;
+    const r = run(s, reg, { type: 'bonds/follow', payload: {} });
+    expect(impunityOf(r.state, reg, ANN)!.value).toBe(before);
+    expect(r.state.relations[ANN].impunityRecord).toBe(s.relations[ANN].impunityRecord);
+    expect(leadScoreParts(r.state, reg, ANN)!.yielded).toBe(10);
+  });
+
+  it('FOLLOW needs a lead: no scene, no tone, romance off', () => {
+    expect(errors(run(campaign(reg, 4), reg, { type: 'bonds/follow', payload: {} }).events)).toHaveLength(1);
+    expect(errors(run(start(at50('dominant')).state, reg, { type: 'bonds/follow', payload: {} }).events)).toHaveLength(1);
+    const off = romantic();
+    off.settings.intimacy = { romance: false, initiative: 'med' };
+    expect(errors(run(off, reg, { type: 'bonds/follow', payload: {} }).events)).toHaveLength(1);
+  });
+
+  it('SET A LIMIT writes a limit fact known by both and keeps the text on the scene', () => {
+    const s = romantic();
+    const r = run(s, reg, { type: 'bonds/limit', payload: { text: '  Nothing   past the door.\n ' } });
+    expect(errors(r.events)).toEqual([]);
+    expect(r.state.scene!.limits).toEqual(['Nothing past the door.']);
+    const fact = r.state.memory.facts.at(-1)!;
+    expect(fact).toMatchObject({ about: [ANN, 'commander'], tags: ['limit'], importance: 3, knownBy: [ANN] });
+    expect(fact.text).toContain('Nothing past the door.');
+    expect(fact.text).toContain('Ann');
+    expect(ofType(r.events, 'scene_limit_set')).toEqual([{ type: 'scene_limit_set', unitId: ANN, text: 'Nothing past the door.' }]);
+  });
+
+  it('the limit is at most 160 characters, never empty, at most five a scene, and needs a lead', () => {
+    const s = romantic();
+    const long = run(s, reg, { type: 'bonds/limit', payload: { text: 'x'.repeat(500) } });
+    expect(long.state.scene!.limits![0]).toHaveLength(160);
+    for (const bad of ['', '   ', 7, undefined]) expect(errors(run(s, reg, { type: 'bonds/limit', payload: { text: bad } }).events), String(bad)).toHaveLength(1);
+    let cur = s;
+    for (let i = 0; i < 5; i++) cur = run(cur, reg, { type: 'bonds/limit', payload: { text: `limit ${i}` } }).state;
+    expect(cur.scene!.limits).toHaveLength(5);
+    expect(errors(run(cur, reg, { type: 'bonds/limit', payload: { text: 'one more' } }).events)).toHaveLength(1);
+    expect(errors(run(start(at50('dominant')).state, reg, { type: 'bonds/limit', payload: { text: 'x' } }).events)).toHaveLength(1);
+  });
+});

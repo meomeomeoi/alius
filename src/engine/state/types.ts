@@ -285,6 +285,10 @@ export interface SceneRecord {
   tone?: 'romantic' | 'intimate';
   /** P9d: who leads, decided when the tone is first set or raised. */
   lead?: SceneLead;
+  /** P9d: the commander followed her lead in this scene (FOLLOW works once per scene). */
+  followed?: true;
+  /** P9d: in-fiction boundaries the commander set for this scene (SET A LIMIT), at most five. */
+  limits?: string[];
   /** P9d: replies flagged for content that is switched off (`index` = the reply's chat index, so a rollback removes the mark). */
   violations?: Array<{ index: number; categories: string[] }>;
 }

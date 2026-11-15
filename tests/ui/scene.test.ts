@@ -656,3 +656,69 @@ describe('content violation chip (P9d)', () => {
     expect(button().disabled).toBe(false);
   });
 });
+
+describe('lead chips (P9d Task 8)', () => {
+  const draw = (opts: { lead?: boolean; followed?: boolean; romance?: boolean } = {}) => {
+    const t = setup({ messages: [msg(0, { isUser: true, name: 'Vale' }), msg(1)] });
+    const s = structuredClone(t.state());
+    if (opts.lead !== false) s.scene!.lead = { by: 'unit', unitId: ANN, score: 70 };
+    if (opts.followed) s.scene!.followed = true;
+    if (opts.romance === false) s.settings.intimacy = { romance: false, initiative: 'med' };
+    t.setState(s);
+    t.screen.handle({ type: 'transcript' });
+    return t;
+  };
+  it('chips show only while a lead exists, carry data-analyze and are text', () => {
+    const none = draw({ lead: false });
+    expect(none.qa('[data-lead-chip]')).toHaveLength(0);
+    const t = draw();
+    expect(t.qa('button[data-lead-chip]').map((b) => b.dataset.leadChip)).toEqual(['follow', 'ask', 'limit']);
+    expect(t.qa('button[data-lead-chip]').map((b) => b.textContent)).toEqual(['[FOLLOW]', '[ASK]', '[SET A LIMIT]']);
+    for (const b of t.qa('button[data-lead-chip]')) expect(b.getAttribute('data-analyze'), b.textContent).toBe('glossary:lead');
+  });
+
+  it('no chips with romance off', () => {
+    expect(draw({ romance: false }).qa('[data-lead-chip]')).toHaveLength(0);
+  });
+
+  it('FOLLOW and ASK call the controller; FOLLOW is soft-disabled once used', () => {
+    const t = draw();
+    t.controller.follow = vi.fn();
+    t.controller.ask = vi.fn();
+    t.q<HTMLButtonElement>('button[data-lead-chip="follow"]')!.click();
+    t.q<HTMLButtonElement>('button[data-lead-chip="ask"]')!.click();
+    expect(t.controller.follow).toHaveBeenCalledTimes(1);
+    expect(t.controller.ask).toHaveBeenCalledTimes(1);
+    const used = draw({ followed: true });
+    used.controller.follow = vi.fn();
+    const b = used.q<HTMLButtonElement>('button[data-lead-chip="follow"]')!;
+    expect(b.getAttribute('aria-disabled')).toBe('true');
+    b.click();
+    expect(used.controller.follow).not.toHaveBeenCalled();
+  });
+
+  it('SET A LIMIT opens a text field of at most 160 characters; SET sends it, an empty one sends nothing', () => {
+    const t = draw();
+    t.controller.limit = vi.fn();
+    t.q<HTMLButtonElement>('button[data-lead-chip="limit"]')!.click();
+    const input = t.q<HTMLInputElement>('input[data-key="lead-limit"]')!;
+    expect(input.maxLength).toBe(160);
+    t.q<HTMLButtonElement>('button[data-lead-chip="limit-set"]')!.click();
+    expect(t.controller.limit).not.toHaveBeenCalled();
+    input.value = 'Nothing past the door.';
+    t.q<HTMLButtonElement>('button[data-lead-chip="limit-set"]')!.click();
+    expect(t.controller.limit).toHaveBeenCalledWith('Nothing past the door.');
+    expect(t.q('input[data-key="lead-limit"]')).toBeNull(); // the field closes after a send
+  });
+
+  it('chips are locked while a send is pending, like the other buttons', async () => {
+    const t = draw();
+    const input = t.q<HTMLInputElement>('input[name="cmd"]')!;
+    input.value = 'Hello';
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    expect(t.qa<HTMLButtonElement>('button[data-lead-chip]').every((b) => b.disabled)).toBe(true);
+    t.finishSend();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(t.qa<HTMLButtonElement>('button[data-lead-chip]').some((b) => b.disabled)).toBe(false);
+  });
+});

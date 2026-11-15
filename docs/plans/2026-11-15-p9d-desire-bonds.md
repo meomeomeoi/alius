@@ -512,16 +512,16 @@ tests/**                                           mirrors src; tests/helpers/bo
   - `setSceneLimit(draft, text): EngineEvent[]`, which writes the `limit` fact
   - `drawLeadChips(host, scene, handlers)`
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `the lead directive names who leads`
   - `FOLLOW applies followed_lead once per scene`
   - `ASK sets a one-reply directive`
   - `SET A LIMIT writes a limit fact known by both and a scene directive`
   - `chips show only while a lead exists and carry data-analyze`
-- [ ] **Step 2: Run** and confirm FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** `npm test` and confirm PASS.
-- [ ] **Step 5: Commit** `feat(scene): lead directive and lead chips`.
+- [x] **Step 2: Run** and confirm FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** `npm test` and confirm PASS.
+- [x] **Step 5: Commit** `feat(scene): lead directive and lead chips`.
 
 ### Task 9: Want: rise, relief, bands, off-combat breakdown
 

@@ -168,3 +168,55 @@ describe('pronouns', () => {
     expect(contentLine(s, reg)).not.toMatch(COMMANDER);
   });
 });
+
+describe('the lead and boundary directives (Task 8)', () => {
+  const sceneWithLead = (by: 'unit' | 'commander' | 'shared', extra: (s: CampaignState) => void = () => {}) => {
+    const s = inScene([ANN]);
+    s.scene!.lead = { by, unitId: ANN, score: 50 };
+    extra(s);
+    return s;
+  };
+  const read = (s: CampaignState) => {
+    const b = new ContextBuilder();
+    bondsDirectives(b, s, reg);
+    return dirs(b, s);
+  };
+
+  it('the lead directive names who leads', () => {
+    expect(read(sceneWithLead('unit'))).toContain('Ann leads this scene.');
+    expect(read(sceneWithLead('commander'))).toContain('The commander leads this scene; Ann follows.');
+    expect(read(sceneWithLead('shared'))).toContain('Ann and the commander share the lead.');
+  });
+
+  it('no lead, no directive; romance off removes it', () => {
+    expect(read(inScene([ANN]))).not.toContain('leads this scene');
+    expect(read(sceneWithLead('unit', (s) => { s.settings.intimacy = { romance: false, initiative: 'med' }; }))).not.toContain('leads this scene');
+  });
+
+  it('a stale lead directive is cleared when the scene ends', () => {
+    const open = sceneWithLead('unit');
+    const b = new ContextBuilder();
+    bondsDirectives(b, open, reg);
+    expect(dirs(b, open)).toContain('Ann leads this scene.');
+    const closed = structuredClone(open);
+    delete closed.scene;
+    bondsDirectives(b, closed, reg);
+    expect(dirs(b, closed)).not.toContain('leads this scene');
+  });
+
+  it('every boundary the commander set is a scene directive', () => {
+    const d = read(sceneWithLead('shared', (s) => { s.scene!.limits = ['Nothing past the door.', 'No names.']; }));
+    expect(d).toContain('In this scene, a boundary the commander set: Nothing past the door.');
+    expect(d).toContain('In this scene, a boundary the commander set: No names.');
+    expect(read(inScene([ANN]))).not.toContain('a boundary the commander set');
+  });
+
+  it('a boundary text is plain: control characters are gone', () => {
+    const d = read(sceneWithLead('shared', (s) => { s.scene!.limits = ['a\u0007b\nc']; }));
+    expect(d).toContain('a b c');
+  });
+
+  it('the lead texts have no commander pronoun', () => {
+    for (const by of ['unit', 'commander', 'shared'] as const) expect(read(sceneWithLead(by))).not.toMatch(/\b(he|him|his|himself)\b/i);
+  });
+});

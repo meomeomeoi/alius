@@ -323,7 +323,7 @@ var TUNING = Object.freeze({
    */
   bonds: Object.freeze({
     /** Character limits shared by the profile, her note and what extraction reports. */
-    limits: Object.freeze({ noteMax: 160, evidenceMax: 120, maxViolations: 3, sceneLimitMax: 160 }),
+    limits: Object.freeze({ noteMax: 160, evidenceMax: 120, maxViolations: 3, sceneLimitMax: 160, sceneLimitsMax: 5 }),
     lead: Object.freeze({
       styleBase: Object.freeze({ yielding: 15, balanced: 40, assertive: 60, dominant: 75 }),
       /** The score moves by this much per point of Impunity above or below `impunityRef`. */
@@ -10454,6 +10454,42 @@ function startTone(draft, reg) {
   const wantVisit = scene.origin === "night" && knock !== void 0 && knock.kind === WANT_VISIT_KIND && knock.unitId === scene.participants[0] && (scene.nightEntryId === void 0 || scene.nightEntryId === knock.id);
   return bondTierOf(draft, reg, scene.participants[0]) === "romantic" || wantVisit ? raiseTone(draft, reg, "romantic") : [];
 }
+function leadPartner(draft) {
+  const lead = draft.scene?.lead;
+  if (!draft.scene || !lead) throw new Error("Nobody leads this scene.");
+  if (!intimacyOf(draft).romance) throw new Error("Romance is switched off.");
+  const unit = draft.squad.find((u) => u.id === lead.unitId);
+  if (!unit) throw new Error("Nobody leads this scene.");
+  return { unitId: unit.id, name: unit.displayName };
+}
+function followLead(draft, ctx2) {
+  const { unitId } = leadPartner(draft);
+  const scene = draft.scene;
+  if (scene.followed) throw new Error("You already followed her lead in this scene.");
+  const events = applyEventToUnit(draft, ctx2.registries, unitId, {
+    type: "followed_lead",
+    actor: "commander",
+    targets: [unitId],
+    severity: "minor",
+    evidence: "followed her lead",
+    confidence: 1
+  });
+  events.push(...evaluateAutomatic(draft, ctx2.registries, unitId));
+  scene.followed = true;
+  events.push({ type: "lead_followed", unitId });
+  return events;
+}
+function setSceneLimit(draft, text2) {
+  const { unitId, name } = leadPartner(draft);
+  const clean3 = typeof text2 === "string" ? text2.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, TUNING.bonds.limits.sceneLimitMax).trim() : "";
+  if (clean3 === "") throw new Error("A limit needs some text.");
+  const scene = draft.scene;
+  const limits = scene.limits ?? [];
+  if (limits.length >= TUNING.bonds.limits.sceneLimitsMax) throw new Error(`A scene takes at most ${TUNING.bonds.limits.sceneLimitsMax} limits.`);
+  scene.limits = [...limits, clean3];
+  addFact(draft, { about: [unitId, "commander"], text: `A boundary the commander set with ${name}: ${clean3}`, tags: ["limit"], importance: 3, day: draft.day, sceneId: scene.id, knownBy: [unitId] });
+  return [{ type: "scene_limit_set", unitId, text: clean3 }];
+}
 
 // src/engine/bonds/violations.ts
 var isObj6 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -16147,6 +16183,11 @@ registerAction("reputation/introduce", (draft, payload, ctx2) => {
 
 // src/engine/actions/bonds.ts
 var isObj19 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+registerAction("bonds/follow", (draft, _payload, ctx2) => followLead(draft, ctx2));
+registerAction("bonds/limit", (draft, payload) => {
+  if (!isObj19(payload) || typeof payload.text !== "string") throw new Error("bonds/limit needs { text }");
+  return setSceneLimit(draft, payload.text);
+});
 registerAction("content/set_categories", (draft, payload, ctx2) => {
   if (!isObj19(payload) || !Array.isArray(payload.enabled) || payload.enabled.some((x) => typeof x !== "string")) {
     throw new Error("content/set_categories needs { enabled: string[] }");
@@ -19971,7 +20012,8 @@ function contentLine(state, reg) {
   return parts.join(" ");
 }
 function bondsDirectives(builder, state, reg) {
-  builder.clearMatching((d) => d.id.startsWith("limits:"));
+  builder.clearMatching((d) => d.id.startsWith("limits:") || d.id.startsWith("boundary:"));
+  builder.clearDirective("lead");
   const line2 = contentLine(state, reg);
   if (line2 === "" || state === null) builder.clearDirective("content");
   else builder.setDirective({ id: "content", expiresAfter: "manual", text: line2 });
@@ -19988,6 +20030,20 @@ function bondsDirectives(builder, state, reg) {
     const text2 = ordered.length > 0 ? `${unit.displayName} will not take part in: ${ordered.map(labelOf).join(", ")}.${note !== "" ? ` ${note}` : ""}` : `${unit.displayName} has a personal limit: ${note}`;
     builder.setDirective({ id: `limits:${id}`, expiresAfter: "scene", text: text2 });
   }
+  const lead = state.scene.lead;
+  const leader = lead ? state.squad.find((u) => u.id === lead.unitId) : void 0;
+  if (lead && leader && intimacyOf(state).romance) {
+    const name = leader.displayName;
+    const text2 = lead.by === "unit" ? `${name} leads this scene.` : lead.by === "commander" ? `The commander leads this scene; ${name} follows.` : `${name} and the commander share the lead.`;
+    builder.setDirective({ id: "lead", expiresAfter: "scene", text: text2 });
+  }
+  (state.scene.limits ?? []).forEach((text2, i) => {
+    const t = clean2(text2);
+    if (t !== "") builder.setDirective({ id: `boundary:${i}`, expiresAfter: "scene", text: `In this scene, a boundary the commander set: ${t}` });
+  });
+}
+function askDirective(unitId, name) {
+  return { id: `ask:${unitId}`, expiresAfter: "next_reply", text: `The commander asks ${name} what she wants; she answers plainly, in character.` };
 }
 
 // src/scene/context.ts
@@ -20570,6 +20626,32 @@ function createSceneController(deps) {
       const events = dispatch2({ type: "proposal/commander", payload: { unitId: target, kind, channel: "scene" } }, chatId());
       if (!events.some((e) => e.type === "error")) reflect(events);
     },
+    follow() {
+      const s = state();
+      if (!s?.scene?.lead) return;
+      const events = dispatch2({ type: "bonds/follow", payload: {} }, chatId());
+      if (!events.some((e) => e.type === "error")) {
+        reflect(events);
+        app.refreshContext();
+      }
+    },
+    ask() {
+      const s = state();
+      const lead = s?.scene?.lead;
+      const unit = lead ? unitById(s, lead.unitId) : void 0;
+      if (!lead || !unit) return;
+      app.context.setDirective(askDirective(unit.id, unit.displayName));
+      app.refreshContext();
+    },
+    limit(text2) {
+      const s = state();
+      if (!s?.scene?.lead || text2.trim() === "") return;
+      const events = dispatch2({ type: "bonds/limit", payload: { text: text2 } }, chatId());
+      if (!events.some((e) => e.type === "error")) {
+        deps.onUi({ type: "transcript" });
+        app.refreshContext();
+      }
+    },
     answer(proposalId, answer) {
       const s = state();
       const p = s?.proposals?.find((x) => x.id === proposalId);
@@ -20615,7 +20697,7 @@ function createSceneController(deps) {
           clearSceneDirectives(app.context);
           app.context.clearDirective("night");
           const now = state();
-          app.context.clearMatching((d) => d.id.startsWith("proposal:"));
+          app.context.clearMatching((d) => d.id.startsWith("proposal:") || d.id.startsWith("ask:"));
           app.refreshContext();
           const living2 = (now?.squad ?? []).filter((u) => u.kind === "named" && u.status !== "dead" && u.status !== "deserted" && u.status !== "terminated");
           try {
@@ -25236,6 +25318,61 @@ function drawViolation(host, labels, onRegenerate, disabled = false) {
   host.append(chip);
   return chip;
 }
+var limitField = /* @__PURE__ */ new WeakMap();
+function drawLeadChips(host, scene, handlers2, disabled = false) {
+  host.replaceChildren();
+  if (!scene?.lead) {
+    limitField.delete(host);
+    return;
+  }
+  const field2 = limitField.get(host) ?? { open: false, text: "" };
+  limitField.set(host, field2);
+  const redraw = () => drawLeadChips(host, scene, handlers2, disabled);
+  const chip = (kind, label2, onclick, soft = false) => h("button", {
+    type: "button",
+    class: "alius-btn alius-option",
+    "data-lead-chip": kind,
+    "data-action": `lead-${kind}`,
+    disabled,
+    "aria-disabled": soft ? "true" : null,
+    ...analyzeNative("glossary:lead"),
+    onclick: () => {
+      if (!soft) onclick();
+    }
+  }, label2);
+  const row = h(
+    "div",
+    { class: "alius-lead-chips" },
+    chip("follow", "[FOLLOW]", () => handlers2.follow(), scene.followed === true),
+    chip("ask", "[ASK]", () => handlers2.ask()),
+    chip("limit", "[SET A LIMIT]", () => {
+      field2.open = !field2.open;
+      redraw();
+    })
+  );
+  host.append(row);
+  if (!field2.open) return;
+  const input = h("input", { type: "text", class: "alius-input", "data-key": "lead-limit", maxlength: String(TUNING.bonds.limits.sceneLimitMax), "aria-label": "A boundary for this scene", disabled });
+  input.value = field2.text;
+  input.addEventListener("input", () => {
+    field2.text = input.value;
+  });
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      send();
+    }
+  });
+  const send = () => {
+    const text2 = input.value.trim();
+    if (text2 === "") return;
+    field2.open = false;
+    field2.text = "";
+    handlers2.limit(text2);
+    redraw();
+  };
+  host.append(h("div", { class: "alius-lead-limit" }, input, " ", chip("limit-set", "[SET]", send)));
+}
 
 // src/ui/proposalChips.ts
 var kindLabel = (s) => s.replace(/_/g, " ").toUpperCase();
@@ -25580,6 +25717,7 @@ function renderSceneScreen(host, ctx2) {
   let chips;
   let disciplineChips;
   let demandChips;
+  let leadChips;
   let disciplineMenus;
   let banner;
   let busyHost;
@@ -25661,6 +25799,11 @@ function renderSceneScreen(host, ctx2) {
   function drawChips(s) {
     const ids = new Set(s.scene?.participants ?? []);
     drawProposalChips(chips, s, (p) => p.channel === "scene" && ids.has(p.unitId), (id, answer) => controller.answer(id, answer));
+    drawLeadChips(leadChips, intimacyOf(s).romance ? s.scene : void 0, {
+      follow: () => controller.follow?.(),
+      ask: () => controller.ask?.(),
+      limit: (text2) => controller.limit?.(text2)
+    }, pending2);
   }
   function drawDiscipline(s) {
     const ids = new Set(s.scene?.participants ?? []);
@@ -25814,6 +25957,7 @@ function renderSceneScreen(host, ctx2) {
     hud = h("div", { class: "alius-hud" });
     log = h("div", { class: "alius-transcript", role: "log", "aria-live": "polite", tabindex: "0" });
     chips = h("div", { class: "alius-chips" });
+    leadChips = h("div", { class: "alius-chips alius-lead-host" });
     disciplineChips = h("div", { class: "alius-chips alius-discipline-chips" });
     demandChips = h("div", { class: "alius-chips alius-discipline-chips" });
     disciplineMenus = h("div", { class: "alius-discipline-units" });
@@ -25902,6 +26046,7 @@ function renderSceneScreen(host, ctx2) {
       hud,
       log,
       chips,
+      leadChips,
       disciplineChips,
       demandChips,
       disciplineMenus,
@@ -26884,10 +27029,29 @@ function bondProvider(subject, env) {
   else if (note !== "") lines.push(`Her own limit: ${note}`);
   return { lines };
 }
+function leadProvider(_subject, env, k) {
+  const scene = env.state?.scene;
+  const lead = scene?.lead;
+  const unit = lead ? env.state.squad.find((u) => u.id === lead.unitId) : void 0;
+  if (!scene || !lead || !unit) return null;
+  const parts = leadScoreParts(env.state, env.registries, unit.id);
+  const bond = bondOf(unit);
+  const who = lead.by === "unit" ? `${unit.displayName} leads.` : lead.by === "commander" ? `The commander leads; ${unit.displayName} follows.` : `${unit.displayName} and the commander share the lead.`;
+  const lines = [`This scene: ${who}`];
+  if (bond) lines.push(`Her style: ${bond.leadStyle}.`);
+  const score = k.raw(lead.score);
+  if (score !== null && parts) {
+    const signed2 = (n) => `${n < 0 ? "\u2212" : "+"}${k.raw(Math.round(Math.abs(n)))}`;
+    lines.push(`Score: ${score} (leads at ${TUNING.bonds.lead.unitAtLeast} or more, follows at ${TUNING.bonds.lead.commanderAtMost} or less).`);
+    lines.push(`Style: ${signed2(parts.styleBase)}, Impunity: ${signed2(parts.impunity)}, defects: ${signed2(parts.defect)}, recent yields: ${signed2(parts.yielded)}, recent enforcement: ${signed2(parts.enforced)}, relationship: ${signed2(parts.state)}.`);
+  }
+  return { lines };
+}
 function registerBondsProviders() {
   registerAnalyzeProvider("contentCategories", categoryProvider);
   registerAnalyzeProvider("glossary:content_categories", categoriesGlossaryProvider);
   registerAnalyzeProvider("glossary:bond_profile", bondProvider);
+  registerAnalyzeProvider("glossary:lead", leadProvider);
 }
 
 // src/analysis/providers/world.ts
@@ -28802,7 +28966,7 @@ function createApp(st, deps) {
     sceneScreen?.dispose();
     sceneScreen = null;
     clearSceneDirectives(context);
-    context.clearMatching((d) => d.id === "night" || d.id.startsWith("proposal:"));
+    context.clearMatching((d) => d.id === "night" || d.id.startsWith("proposal:") || d.id.startsWith("ask:"));
     loyalty.onSceneClosed();
     discipline.onSceneClosed();
     onboarding.onSceneClosed();

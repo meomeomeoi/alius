@@ -1253,5 +1253,16 @@
     "see": [
       "bond_profile"
     ]
+  },
+  {
+    "id": "lead",
+    "term": "Lead",
+    "short": "Who drives a romantic scene: the soldier, the commander or both. The game decides it from her style, her Impunity and what happened lately.",
+    "long": "AUTHOR TO WRITE: When a scene turns romantic the game decides who leads it and tells the story so. A soldier who leads sets the pace and may ask for things; one who follows waits for the commander. You can follow her lead (a small warm gesture), ask what she wants, or set a boundary for this scene. Boundaries are in the fiction; they are not the content categories.",
+    "see": [
+      "bond_profile",
+      "content_categories",
+      "impunity"
+    ]
   }
 ]

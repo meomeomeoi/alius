@@ -1,11 +1,13 @@
 import type { Registries } from '../content/types';
 import { bondOf, enabledCategories } from '../engine/bonds';
+import { intimacyOf } from '../engine/relations/gain';
 import type { CampaignState } from '../engine/state/types';
 import type { ContextBuilder } from '../llm/context';
 
 // The non-engine layer of P9d (like `src/discipline/`): it turns engine state into the lines the main model reads.
-// Directive ids owned here: `content` (manual), `limits:<unitId>` (scene). Later tasks add `lead`, `want:`, `rule:`,
-// `publicity:` and `co_command:`, each cleared by the function that sets it.
+// Directive ids owned here: `content` (manual), `limits:<unitId>`, `lead` and `boundary:<n>` (scene). `ask:<unitId>` is the
+// ASK chip's one-reply directive (set by the scene controller). Later tasks add `want:`, `rule:`, `publicity:` and
+// `co_command:`, each cleared by the function that sets it.
 
 /** The one category id the directive reads by name: the old single "explicit scenes" switch became this category. */
 export const EXPLICIT_CATEGORY = 'explicit_scenes';
@@ -33,7 +35,8 @@ export function contentLine(state: Pick<CampaignState, 'content'> | null, reg: R
  * of categories reaches the next generation. With no campaign (`null`) it clears them all.
  */
 export function bondsDirectives(builder: ContextBuilder, state: CampaignState | null, reg: Registries): void {
-  builder.clearMatching((d) => d.id.startsWith('limits:'));
+  builder.clearMatching((d) => d.id.startsWith('limits:') || d.id.startsWith('boundary:'));
+  builder.clearDirective('lead');
   const line = contentLine(state, reg);
   if (line === '' || state === null) builder.clearDirective('content');
   else builder.setDirective({ id: 'content', expiresAfter: 'manual', text: line });
@@ -54,4 +57,22 @@ export function bondsDirectives(builder: ContextBuilder, state: CampaignState | 
       : `${unit.displayName} has a personal limit: ${note}`;
     builder.setDirective({ id: `limits:${id}`, expiresAfter: 'scene', text });
   }
+
+  // who leads a romantic scene (decided by the engine, never by the model) and the boundaries the commander set in it
+  const lead = state.scene.lead;
+  const leader = lead ? state.squad.find((u) => u.id === lead.unitId) : undefined;
+  if (lead && leader && intimacyOf(state).romance) {
+    const name = leader.displayName;
+    const text = lead.by === 'unit' ? `${name} leads this scene.` : lead.by === 'commander' ? `The commander leads this scene; ${name} follows.` : `${name} and the commander share the lead.`;
+    builder.setDirective({ id: 'lead', expiresAfter: 'scene', text });
+  }
+  (state.scene.limits ?? []).forEach((text, i) => {
+    const t = clean(text);
+    if (t !== '') builder.setDirective({ id: `boundary:${i}`, expiresAfter: 'scene', text: `In this scene, a boundary the commander set: ${t}` });
+  });
+}
+
+/** The ASK chip: for her next reply only. */
+export function askDirective(unitId: string, name: string): { id: string; expiresAfter: 'next_reply'; text: string } {
+  return { id: `ask:${unitId}`, expiresAfter: 'next_reply', text: `The commander asks ${name} what she wants; she answers plainly, in character.` };
 }

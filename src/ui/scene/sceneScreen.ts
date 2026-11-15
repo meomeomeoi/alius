@@ -6,7 +6,7 @@ import type { SceneController, SceneUiEvent } from '../../scene/sceneController'
 import type { AliusSettings } from '../../settings';
 import type { ChatMessage, StAdapter } from '../../st/adapter';
 import { h } from '../dom';
-import { drawViolation, violationLabels } from '../bonds/chips';
+import { drawLeadChips, drawViolation, violationLabels } from '../bonds/chips';
 import { motionReduced } from '../motion';
 import { drawProposalChips, kindLabel } from '../proposalChips';
 import { drawDemandChips, drawDisciplineChips } from '../discipline/chips';
@@ -115,6 +115,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
   let chips: HTMLElement;
   let disciplineChips: HTMLElement;
   let demandChips: HTMLElement;
+  let leadChips: HTMLElement;
   let disciplineMenus: HTMLElement;
   let banner: HTMLElement;
   let busyHost: HTMLElement;
@@ -192,6 +193,10 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
   function drawChips(s: CampaignState): void {
     const ids = new Set(s.scene?.participants ?? []);
     drawProposalChips(chips, s, (p) => p.channel === 'scene' && ids.has(p.unitId), (id, answer) => controller.answer(id, answer));
+    // P9d: FOLLOW / ASK / SET A LIMIT while a romantic scene has a lead (never with romance off)
+    drawLeadChips(leadChips, intimacyOf(s).romance ? s.scene : undefined, {
+      follow: () => controller.follow?.(), ask: () => controller.ask?.(), limit: (text) => controller.limit?.(text),
+    }, pending);
   }
 
   /** P9: what the game understood of the commander's words (always shown) and the DISCIPLINE menu of everybody present. */
@@ -348,6 +353,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     hud = h('div', { class: 'alius-hud' });
     log = h('div', { class: 'alius-transcript', role: 'log', 'aria-live': 'polite', tabindex: '0' });
     chips = h('div', { class: 'alius-chips' });
+    leadChips = h('div', { class: 'alius-chips alius-lead-host' });
     disciplineChips = h('div', { class: 'alius-chips alius-discipline-chips' });
     demandChips = h('div', { class: 'alius-chips alius-discipline-chips' });
     disciplineMenus = h('div', { class: 'alius-discipline-units' });
@@ -428,6 +434,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
       hud,
       log,
       chips,
+      leadChips,
       disciplineChips,
       demandChips,
       disciplineMenus,
