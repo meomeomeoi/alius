@@ -101,3 +101,21 @@ describe('waitingDemands', () => {
     expect(waitingDemands(campaign(reg, 4))).toEqual([]);
   });
 });
+
+describe('an overdue director lead', () => {
+  it('is listed while it is at most two days overdue, then it lapses', () => {
+    const s = campaign(reg, 4);
+    s.objectives = [{ id: 'o', text: 'Scout east.', source: 'director', dueDay: 5, done: false }];
+    s.day = 7;
+    expect(objectiveList(s, reg)[0]).toMatchObject({ text: 'Scout east.', dueDays: -2 });
+    s.day = 8;
+    expect(objectiveList(s, reg)).toEqual([]);
+  });
+
+  it('a lead with no due day never lapses', () => {
+    const s = campaign(reg, 4);
+    s.objectives = [{ id: 'o', text: 'Rest up.', source: 'director', done: false }];
+    s.day = 90;
+    expect(objectiveList(s, reg)).toHaveLength(1);
+  });
+});

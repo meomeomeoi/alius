@@ -287,6 +287,8 @@ export interface OnboardingState {
   hintsSeen?: string[];
   /** The soldier who leads the guided first evening. */
   guideUnitId?: string;
+  /** The guide's first DM was sent (or asked for), so a reload does not send it twice or never. */
+  guideDmSent?: true;
   /** The tutorial run the `expedition` step offered. */
   tutorialMissionId?: string;
 }

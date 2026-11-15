@@ -51,6 +51,12 @@ describe('the coach strip', () => {
     expect(unreachable(host)).toEqual([]);
   });
 
+  it('the GOT IT button explains itself too (glossary:coach_hint)', () => {
+    const host = h('div');
+    renderCoach(host, coachHints(onPatrol(), reg, 'combat'), vi.fn());
+    expect(host.querySelector('button[data-action="got-it"]')!.getAttribute('data-analyze')).toBe('glossary:coach_hint');
+  });
+
   it('says how to ask for more', () => {
     const s = onPatrol();
     const host = h('div');

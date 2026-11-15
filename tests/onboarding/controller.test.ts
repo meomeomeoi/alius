@@ -240,13 +240,15 @@ describe('the squad speaks first', () => {
   it('startOpening is asked once the scene is open and the goal directive is set', async () => {
     const r = rig();
     const seen: Array<{ open: boolean; goal: boolean }> = [];
+    let ob!: ReturnType<typeof createOnboarding>;
     const deps = {
       ...r.h.deps, context: r.ctx, refreshContext: vi.fn(), modal: vi.fn(async () => null) as never, resumeScene: vi.fn(), openExpedition: vi.fn(),
       initiateDm: vi.fn(async () => {}), talkAt: vi.fn(async () => true), debrief: vi.fn(async () => true), endScene: async () => {},
-      startScene: async (o: never) => { r.h.app().dispatch({ type: 'scene/start', payload: { ...(o as object), startIndex: 0 } }); return true; },
+      // as the app does: beginScene tells the controller the scene opened
+      startScene: async (o: never) => { r.h.app().dispatch({ type: 'scene/start', payload: { ...(o as object), startIndex: 0 } }); ob.onSceneOpened(); return true; },
       startOpening: vi.fn(async () => { seen.push({ open: r.h.state().scene !== undefined, goal: r.ctx.build(r.h.state(), 5000).directives.includes(lineup(r)) }); }),
     };
-    const ob = createOnboarding(deps);
+    ob = createOnboarding(deps);
     expect(await ob.startLineup()).toBe(true);
     expect(deps.startOpening).toHaveBeenCalledTimes(1);
     expect(seen).toEqual([{ open: true, goal: true }]);
@@ -356,5 +358,34 @@ describe('resumeScene', () => {
     const r = rig();
     r.ob.resumeScene();
     expect(r.resume).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('review minors', () => {
+  it('first words completes when the last soldier not yet spoken to is lost', async () => {
+    const r = rig((s) => { s.onboarding!.stepId = 'first_words'; s.onboarding!.spoken = ['unit_ann', 'unit_bea', 'unit_cat']; });
+    r.h.setState((s) => { s.squad.find((u) => u.id === 'unit_dee')!.status = 'deserted'; });
+    r.ob.onEvents([{ type: 'unit_deserted', unitId: 'unit_dee' }]);
+    await flush();
+    expect(r.h.state().onboarding!.stepId).toBe('tutorial');
+  });
+
+  it('an all_spoken step does not complete while a scene is open or somebody is still to be met', async () => {
+    const r = rig((s) => { s.onboarding!.stepId = 'first_words'; s.onboarding!.spoken = ['unit_ann']; });
+    r.ob.onEvents([{ type: 'slot_advanced' }]);
+    await flush();
+    expect(r.h.state().onboarding!.stepId).toBe('first_words');
+  });
+
+  it('a prologue scene found open after a reload with no exchange yet starts the opening', async () => {
+    const r = rig();
+    const startOpening = vi.fn(async () => {});
+    const ob = createOnboarding({ ...r.h.deps, context: new ContextBuilder(), refreshContext: vi.fn(), modal: vi.fn(async () => null) as never, resumeScene: vi.fn(), openExpedition: vi.fn(), initiateDm: vi.fn(async () => {}), talkAt: vi.fn(async () => true), debrief: vi.fn(async () => true), startScene: async () => true, endScene: async () => {}, startOpening });
+    r.h.app().dispatch({ type: 'scene/start', payload: { locationId: 'garage', participants: ['unit_ann'], origin: 'prologue', startIndex: 0 } });
+    ob.onSceneOpened();
+    expect(startOpening).toHaveBeenCalledTimes(1);
+    r.h.app().dispatch({ type: 'scene/exchange' });
+    ob.onSceneOpened();
+    expect(startOpening).toHaveBeenCalledTimes(1); // a scene that has begun is not opened again
   });
 });

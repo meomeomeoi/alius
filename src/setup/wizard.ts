@@ -17,7 +17,7 @@ import type { ImportedProfile, ImportOutcome } from './profile';
  * steps of a prologue (P11). `file` is the dossier the commander signs to deploy.
  */
 export type WizardStep = 'dossier' | 'world' | 'commander' | 'units' | 'calibration' | 'review' | 'cold_open' | 'intake' | 'exam' | 'file';
-/** P11: `prologue` plays the in-world intake after calibration; `veteran` is the classic wizard (and skips the tutorial). */
+/** P11: `prologue` plays the in-world intake after calibration; `veteran` is the classic wizard (it only skips the wizard's in-world steps; the campaign still starts at the line-up). */
 export type WizardMode = 'prologue' | 'veteran';
 
 const STEPS_BY_MODE: Record<WizardMode, readonly WizardStep[]> = {

@@ -35,6 +35,8 @@ export interface OnboardingController {
   /** A scene opened (by this controller or after a reload): picks up the goal directive and the tracking. */
   onSceneOpened(): void;
   onSceneClosed(): void;
+  /** After a (re)load: whatever an event would have started but a reload lost (the guide's first DM). */
+  onLoaded(): void;
 }
 
 /**
@@ -102,11 +104,15 @@ export function createOnboarding(deps: OnboardingDeps): OnboardingController {
 
   /** The guide of the first evening writes first (once, and not into the middle of a scene). */
   function sendGuideDm(guideId: string): void {
-    if (state()?.scene) {
+    const s = state();
+    if (!s || s.onboarding?.guideDmSent) return;
+    if (s.scene) {
       guideDmDue = guideId;
       return;
     }
     guideDmDue = null;
+    // recorded first: a reload during the (slow) generation must not send it a second time
+    dispatch('onboarding/guide_dm_sent', {}, chatId());
     void deps.initiateDm(guideId);
   }
 
@@ -121,8 +127,6 @@ export function createOnboarding(deps: OnboardingDeps): OnboardingController {
     const ok = await deps.startScene({ locationId: sceneLocation(s, reg(), step), participants, origin: 'prologue', consumesSlot: false });
     if (!ok) return false;
     setGoal(step);
-    // the squad speaks first, from the goal: nobody has to know they are expected to begin
-    void deps.startOpening?.();
     return true;
   }
 
@@ -195,8 +199,9 @@ export function createOnboarding(deps: OnboardingDeps): OnboardingController {
       const id = s?.onboarding?.guideUnitId;
       if (!s || id === undefined || !livingNamed(s).some((u) => u.id === id)) return false;
       const room = whereabouts(s, reg()).find((w) => w.unitId === id)?.roomId;
-      const location = (room ? reg().hubRooms.get(room)?.sceneLocationId : undefined) ?? 'quarters_unit';
-      return deps.talkAt(id, String(location));
+      // her room's location when it is open this slot, else the first location that is (never a literal id)
+      const location = sceneLocation(s, reg(), { locationId: room ? String(reg().hubRooms.get(room)?.sceneLocationId ?? '') : undefined });
+      return deps.talkAt(id, location);
     },
 
     launchTutorial() {
@@ -223,6 +228,16 @@ export function createOnboarding(deps: OnboardingDeps): OnboardingController {
       tracked = { sceneId: scene.id, participants: [...scene.participants] };
       const step = currentStep(s, reg());
       if (step) setGoal(step);
+      // the squad speaks first: for a scene just opened, and again for one a reload found still empty (the opening is idempotent)
+      if (scene.exchanges === 0) void deps.startOpening?.();
+    },
+
+    onLoaded() {
+      const s = state();
+      const step = s ? currentStep(s, reg()) : null;
+      const guide = s?.onboarding?.guideUnitId;
+      if (!s || s.scene || step?.completion !== 'next_day' || guide === undefined || !livingNamed(s).some((u) => u.id === guide)) return;
+      sendGuideDm(guide);
     },
 
     onSceneClosed() {
@@ -287,6 +302,9 @@ export function createOnboarding(deps: OnboardingDeps): OnboardingController {
         clearDirectives();
         deps.refreshContext();
       }
+      // a soldier lost since the last first-words scene can leave nobody to meet: the step settles itself
+      const now = state();
+      if (now && !now.scene && currentStep(now, reg())?.completion === 'all_spoken') completeIfDone(chatId());
     },
   };
 }

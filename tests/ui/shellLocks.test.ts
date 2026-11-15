@@ -125,3 +125,22 @@ describe('the room panel while OPS is locked', () => {
     expect(mount({ prologue: false }).querySelector('.alius-activity')).not.toBeNull();
   });
 });
+
+describe('locking the tab that is showing', () => {
+  it('moves to the first open tab instead of leaving a module usable behind its OFFLINE label', () => {
+    const shell = setup();
+    shell.showTab('ops');
+    expect(selected()).toBe('alius-tab-ops');
+    shell.setTabLocked('ops', true);
+    expect(selected()).toBe('alius-tab-squad');
+    expect(document.querySelector('#alius-shell .alius-screen')!.textContent).not.toMatch(/ACTIVITIES|REQUISITION/);
+  });
+});
+
+describe('the OFFLINE label is analysable', () => {
+  it('carries glossary:module_offline', () => {
+    const shell = setup();
+    shell.setTabLocked('ops', true);
+    expect(document.querySelector('#alius-tab-ops .alius-offline')!.getAttribute('data-analyze')).toBe('glossary:module_offline');
+  });
+});

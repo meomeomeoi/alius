@@ -224,3 +224,54 @@ describe('unlock notices (in the app)', () => {
     expect([...locks.values()].some(Boolean)).toBe(false);
   });
 });
+
+describe('review minors: the guide DM survives a reload', () => {
+  const evening = (tweak: (s: CampaignState) => void = () => {}) =>
+    rig((s) => { s.onboarding!.stepId = 'first_evening'; s.onboarding!.guideUnitId = 'unit_cat'; tweak(s); });
+
+  it('marking it sent is an engine action, refused once the prologue is over', () => {
+    const s = campaign(reg, 4, { onboarding: 'prologue' });
+    const r = run(s, reg, { type: 'onboarding/guide_dm_sent', payload: {} });
+    expect(r.state.onboarding!.guideDmSent).toBe(true);
+    s.onboarding!.done = true;
+    expect(run(s, reg, { type: 'onboarding/guide_dm_sent', payload: {} }).events[0]).toMatchObject({ type: 'error' });
+  });
+
+  it('entering the evening sends the DM once and marks it', async () => {
+    const r = rig((s) => { s.lastExpedition = report({ debriefed: true }); });
+    r.act('onboarding/complete_step', { stepId: 'debrief' });
+    await flush();
+    expect(r.initiateDm).toHaveBeenCalledTimes(1);
+    expect(r.h.state().onboarding!.guideDmSent).toBe(true);
+  });
+
+  it('onLoaded sends it when it never went out (a reload), and only once', async () => {
+    const r = evening();
+    r.ob.onLoaded();
+    r.ob.onLoaded();
+    await flush();
+    expect(r.initiateDm).toHaveBeenCalledTimes(1);
+    expect(r.initiateDm).toHaveBeenCalledWith('unit_cat');
+  });
+
+  it('onLoaded sends nothing when it already went, a scene is open or it is another step', async () => {
+    const sent = evening((s) => { s.onboarding!.guideDmSent = true; });
+    sent.ob.onLoaded();
+    const inScene = evening();
+    inScene.act('scene/start', { locationId: 'garage', participants: ['unit_ann'], origin: 'event', startIndex: 0 });
+    inScene.ob.onLoaded();
+    const other = rig();
+    other.ob.onLoaded();
+    await flush();
+    expect(sent.initiateDm).not.toHaveBeenCalled();
+    expect(inScene.initiateDm).not.toHaveBeenCalled();
+    expect(other.initiateDm).not.toHaveBeenCalled();
+  });
+
+  it('talkGuide falls back to an open location when her room\'s is closed this slot', async () => {
+    const r = evening((s) => { s.slot = 'night'; });
+    await r.ob.talkGuide();
+    const loc = reg.locations.get(String(r.talkAt.mock.calls[0][1]))!;
+    expect((loc.slots as string[]).includes('night')).toBe(true);
+  });
+});

@@ -94,6 +94,8 @@ export function createSceneController(deps: SceneDeps): SceneController {
   let inflight: Promise<void> | null = null;
   /** The opening in flight (the group speaking first); a message typed meanwhile waits for it. */
   let openingRun: Promise<void> | null = null;
+  /** The scene the group was already asked to open (scene ids repeat across campaigns: `start` forgets it). */
+  let openedScene: string | null = null;
   let disposed = false;
   let background: Promise<void> = Promise.resolve();
 
@@ -337,6 +339,7 @@ export function createSceneController(deps: SceneDeps): SceneController {
       const s = state();
       if (!s) return false;
       extracted = st.chatLength();
+      openedScene = null;
       lastApply = null;
       awaitingReextract = false;
       const events = dispatch({
@@ -372,7 +375,11 @@ export function createSceneController(deps: SceneDeps): SceneController {
     },
 
     opening() {
-      if (pending || !state()?.scene) return Promise.resolve();
+      const scene = state()?.scene;
+      if (pending || !scene) return Promise.resolve();
+      // once per scene, and never into a scene that already has messages (a reload finds it either way)
+      if (openedScene === scene.id || st.getChatMessages(Math.min(scene.startIndex, st.chatLength())).length > 0) return Promise.resolve();
+      openedScene = scene.id;
       pending = true;
       const run = (async () => {
         const expect = chatId();

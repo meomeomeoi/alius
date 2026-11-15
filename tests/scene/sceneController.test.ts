@@ -590,3 +590,22 @@ describe('opening: the group speaks first', () => {
   });
 });
 
+describe('opening is idempotent', () => {
+  it('a second opening of the same scene, or one after somebody has spoken, does nothing', async () => {
+    const h = harness(reg);
+    h.dispatch({ type: 'activity/do', payload: { activityId: 'talk', companionId: ANN } });
+    await h.controller.start({ locationId: 'quarters_commander', participants: [ANN], origin: 'activity' });
+    h.st.groupReplies = [[reply('Ann', 'First.')], [reply('Ann', 'Second.')]];
+    await h.controller.opening();
+    await h.controller.opening();
+    expect(h.controller.transcript().map((m) => m.text)).toEqual(['First.']);
+    // a reloaded controller (no memory) still sees the scene already has messages
+    const fresh = harness(reg);
+    fresh.dispatch({ type: 'activity/do', payload: { activityId: 'talk', companionId: ANN } });
+    await fresh.controller.start({ locationId: 'quarters_commander', participants: [ANN], origin: 'activity' });
+    fresh.st.chatMessages.push({ isUser: false, name: 'Ann', avatar: 'ann.png', text: 'Already here.', index: fresh.st.chatMessages.length, swipeId: 0 } as never);
+    fresh.st.groupReplies = [[reply('Ann', 'Extra.')]];
+    await fresh.controller.opening();
+    expect(fresh.controller.transcript().map((m) => m.text)).toEqual(['Already here.']);
+  });
+});

@@ -392,6 +392,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       onSceneScreen = false;
       shell.showScreen('hub');
     }
+    onboarding.onLoaded(); // the guide's first DM, if a reload lost it (P11)
   }
 
   async function beginScene(opts: StartOptions): Promise<boolean> {

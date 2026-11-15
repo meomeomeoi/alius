@@ -79,9 +79,9 @@ export interface StAdapter {
   chatLength(): number;
   /** Adds the user message and resolves when the group's (or the character's) replies are done. Rejects on failure. */
   sendUserMessage(text: string): Promise<void>;
-  /** Regenerates the last reply as a new swipe. */
   /** Lets the group answer without a message from the user (a scene opening); resolves when the replies are done. */
   triggerReplies(): Promise<void>;
+  /** Regenerates the last reply as a new swipe. */
   regenerateLast(): Promise<void>;
   swipeLast(dir: 'left' | 'right'): Promise<void>;
   stopGeneration(): void;

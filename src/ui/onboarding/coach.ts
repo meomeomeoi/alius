@@ -1,5 +1,5 @@
 import type { CoachHint } from '../../engine/onboarding';
-import { analyzeAttrs } from '../analyze/mark';
+import { analyzeAttrs, analyzeNative } from '../analyze/mark';
 import { h } from '../dom';
 import { VOICE_OF } from '../voice/sources';
 import { renderVoiceCard } from '../voice/voiceCard';
@@ -19,7 +19,7 @@ export function renderCoach(host: HTMLElement, hints: readonly CoachHint[], onSe
     const body = h('div', { class: 'alius-coach-body' },
       h('p', { class: 'alius-coach-text' }, hint.text),
       h('p', { class: 'alius-dim' }, 'Focus anything and press ? for more.'),
-      h('button', { type: 'button', class: 'alius-btn', 'data-action': 'got-it', onclick: () => onSeen(hint.id) }, '[ GOT IT ]'));
+      h('button', { type: 'button', class: 'alius-btn', 'data-action': 'got-it', ...analyzeNative('glossary:coach_hint'), onclick: () => onSeen(hint.id) }, '[ GOT IT ]'));
     const card = renderVoiceCard({ voice: VOICE_OF.toast, title: 'TIP', level: 3, body });
     card.classList.add('alius-coach', 'alius-stat');
     card.setAttribute('data-hint', hint.id);

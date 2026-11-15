@@ -493,6 +493,15 @@ export function createShell(deps: ShellDeps): ShellApi {
       if (locked) lockedTabs.add(id);
       else lockedTabs.delete(id);
       tabBar?.setLocked(id, locked);
+      // the tab on show went offline: leave it for the first open one rather than keep a module usable behind its label
+      if (locked && tab === id) {
+        const next = TAB_IDS.find((t) => !lockedTabs.has(t));
+        if (next) {
+          tab = next;
+          tabBar?.setSelected(next);
+          if (isOpen() && isDeviceUp()) renderTab();
+        }
+      }
     },
     setTabBadge(id, count) {
       if (count > 0) badges.set(id, count);

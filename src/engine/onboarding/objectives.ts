@@ -4,6 +4,9 @@ import type { CampaignState } from '../state/types';
 import { currentBeat } from '../world/spine';
 import { currentStep, livingNamed } from './state';
 
+/** How many days past its due day a director lead still reads (as OVERDUE) before it lapses. */
+const LEAD_GRACE_DAYS = 2;
+
 export type ObjectiveSource = 'prologue' | 'spine' | 'director' | 'unit';
 
 /** One line of the objective list: what to do, where it came from and how many days are left (null = no deadline). */
@@ -23,7 +26,8 @@ export function objectiveList(state: CampaignState, reg: Registries): ObjectiveV
   const beat = currentBeat(state, reg);
   if (beat && state.world.spine?.proposed === beat.id) out.push({ id: `spine:${beat.id}`, text: String(beat.goal), source: 'spine', dueDays: null });
 
-  const lead = (state.objectives ?? []).find((o) => !o.done);
+  // a lead lapses two days after it was due, so a director that goes quiet does not leave an expired order on the hub
+  const lead = (state.objectives ?? []).find((o) => !o.done && (o.dueDay === undefined || state.day - o.dueDay <= LEAD_GRACE_DAYS));
   if (lead) out.push({ id: lead.id, text: lead.text, source: 'director', dueDays: lead.dueDay === undefined ? null : lead.dueDay - state.day });
 
   const nameOf = (id: string): string | undefined => state.squad.find((u) => u.id === id)?.displayName;

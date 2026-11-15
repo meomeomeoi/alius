@@ -109,6 +109,9 @@ Hub cross-section art (+ optional time-of-day variants), device renders per skin
 - The device is `inert` and `aria-hidden` while down; at ≤ 1200 px the hub is `inert` while the device is up (fully covered), wide it stays usable beside it. A skin is dressed once per device and skin (a refresh does not rebuild the casing) and a frame image that fails is remembered for the session, not requested again; the hub's `[data-open-pda]` button gets the focus back.
 - Whereabouts must stay derived and stateless: do not store a room on a unit; P10b may replace step 5 with a schedule.
 
+- **The shell view must never scroll:** `.alius-view` is `overflow: hidden` but scrollable by the browser, and a `focus()` on a control inside the device while it still sits below the view scrolled the view (577 px, settling at 40 px: the hub and the device jumped and ended shifted). Every focus the shell makes uses `focus({ preventScroll: true })` and a `scroll` listener puts the view back at 0. Use `preventScroll` for any new focus call in the shell, the tab bar or `renderKeepingFocus`.
+- **Native tooltips:** the analyzer moves the `title` of a hovered `[data-analyze]` element to `data-title` (the browser's own tooltip would sit on top of the panel); do not rely on `title` staying on an analysable element.
+
 ### Open items
 - **Stored schedules** for whereabouts (P10b); **hand fonts** for paper notes (P10b); the personal accent as data (P10b).
 - **Author art** (fallbacks ship): hub base `content/core/art/hub/base.png` and slot variants `base_<slot>.png`, `image` skin frames and the optional CC0 overlay, audio files under `content/core/audio/`. None is in the repository.

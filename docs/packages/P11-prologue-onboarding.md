@@ -105,6 +105,8 @@ Campaign `objectives: [{ id, text, source: 'prologue'|'spine'|'director'|'unit',
 - **Coach hints** come from the tutorial step's `hints`; `onboarding/hint_seen` is the only onboarding action `dispatch()` lets through while a combat or an expedition is open.
 - **Plan defect fixed:** `tutorial_patrol` objectives are `{ node: 'cache', condition: 'reach' }`; `obj` is a map id, not a node type.
 - **`currentObjective`** puts the mission fallback before unit entries (a waiting soldier never replaces a mission on the hub).
+- **The squad speaks first** in the line-up and first-words scenes: `StAdapter.triggerReplies()` (`/trigger await=true`, no user message) behind `SceneController.opening()`, started from `OnboardingController.onSceneOpened()` (so also for a prologue scene a reload found empty). The opening counts no exchange and calls no model of its own; the intents it carries are read with the next exchange.
+- **Review follow-ups:** a director lead lapses two days after its due day; locking the tab on show moves the shell to the first open tab; the guide's first DM is recorded (`onboarding.guideDmSent`, action `onboarding/guide_dm_sent`) before it is generated and `onLoaded()` re-sends it after a reload; `talkGuide` uses `sceneLocation` (no literal ids); an `all_spoken` step re-checks itself on every event when no scene is open (a soldier lost mid-step).
 - **Added beyond the plan:** `Wizard.jumpTo`, `expedition_debriefed` (so the debrief step completes however the debrief was held), `Comms.initiate`, `OnboardingController.{onSceneOpened, resumeScene, launchTutorial, debriefTutorial, talkGuide}`, `ShellApi.setTabLocked`.
 
 ### Non-obvious things to know before touching P11 code
@@ -113,12 +115,20 @@ Campaign `objectives: [{ id, text, source: 'prologue'|'spine'|'director'|'unit',
 - The controller completes a step only from an event of its own kind (`expedition_ended` only on an expedition step, `day_started` only on a `next_day` step, `scene_ended` only for the scene it was tracking), otherwise an ordinary scene or run during the prologue would complete the wrong step. `onSceneClosed` is the chat-switch clear (`adoptScene`); a normal close goes through `onEvents`.
 - A prologue scene's directives (`prologue:goal`, `prologue:wrap`) are `scene`-scoped; keep other directive ids away from `prologue:`.
 - Wizard tests that walk the classic order call `setMode('veteran')`; the default is the prologue.
+- **The opening is idempotent on purpose:** `SceneController.opening()` runs once per scene (`openedScene`, forgotten by `start`) and never into a scene that already has messages, because both the app's `beginScene` and a reload's `adoptScene` call `onSceneOpened()`. A message typed while it runs waits for it (`openingRun`) instead of being dropped; the screen's own `pending` flag cannot see the controller's.
+- **Scene ids repeat across campaigns** (`s1`...): anything keyed by scene id must be cleared when the controller is reset (`asked` is cleared in `onSceneClosed`, which `adoptScene` calls on every load and chat switch; `openedScene` in `start`).
+- **State written before a slow call:** the guide DM is marked sent *before* the model is asked; losing one DM to a reload mid-generation is accepted, sending two is not.
+- **`currentObjective`** takes `objectiveList` entries except `unit` ones, then the old mission pick, then a `unit` entry: a soldier waiting never replaces a mission on the hub.
+- **INV opens with OPS** (not day 2): the workshop is an OPS activity that opens an INV session which only lasts a day.
+- `dispatch()` lets only `onboarding/hint_seen` through while a combat or an expedition is open; adding another onboarding action that the tutorial screens need means extending `ONBOARDING_HINT` in `src/engine/dispatch.ts`.
+- The scripted-shell stubs of the app tests must implement `setTabLocked` (the app calls it on every refresh).
 - `style.css` and `dist/index.js` are rebuilt by `npm test`; commit them.
 
 ### Open items
 - **Author prose** for both starts (every string is a placeholder), and the shared skeleton's neutral text.
 - **`hubRoom` / `feature` unlock targets** (no consumer yet; only `tab`).
 - A **"replay prologue"** option for a finished campaign.
+- A **per-reply swipe** for the squad's opening (ST swipes only the last message, so only the last soldier's reply can be swapped with ‹ ↻ ›); a `[ ASK THEM TO SPEAK ]` retry when nobody answered the opening.
 - Typing sound for the cold open (`typing` is a `SoundId` but is not played there).
 - Not yet run by hand in SillyTavern: see `docs/MANUAL_TEST_P11.md`.
 

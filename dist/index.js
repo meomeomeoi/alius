@@ -9192,13 +9192,14 @@ function whereabouts(state, reg) {
 }
 
 // src/engine/onboarding/objectives.ts
+var LEAD_GRACE_DAYS = 2;
 function objectiveList(state, reg) {
   const out = [];
   const step = currentStep(state, reg);
   if (step?.objective) out.push({ id: `prologue:${step.id}`, text: step.objective, source: "prologue", dueDays: null });
   const beat = currentBeat(state, reg);
   if (beat && state.world.spine?.proposed === beat.id) out.push({ id: `spine:${beat.id}`, text: String(beat.goal), source: "spine", dueDays: null });
-  const lead = (state.objectives ?? []).find((o) => !o.done);
+  const lead = (state.objectives ?? []).find((o) => !o.done && (o.dueDay === void 0 || state.day - o.dueDay <= LEAD_GRACE_DAYS));
   if (lead) out.push({ id: lead.id, text: lead.text, source: "director", dueDays: lead.dueDay === void 0 ? null : lead.dueDay - state.day });
   const nameOf9 = (id) => state.squad.find((u) => u.id === id)?.displayName;
   const guide = step && step.kind === "guided_slot" ? state.onboarding?.guideUnitId : void 0;
@@ -16530,6 +16531,10 @@ registerAction("onboarding/hint_seen", (draft, payload, ctx2) => {
   if (!o.hintsSeen?.includes(hintId)) o.hintsSeen = [...o.hintsSeen ?? [], hintId];
   return [];
 });
+registerAction("onboarding/guide_dm_sent", (draft) => {
+  open2(draft).guideDmSent = true;
+  return [];
+});
 
 // src/llm/callTypes.ts
 var CALL_TYPE_IDS = [
@@ -17542,11 +17547,14 @@ function createOnboarding(deps) {
     if (s && currentStep(s, reg())?.completion === completion) completeIfDone(expect);
   }
   function sendGuideDm(guideId) {
-    if (state()?.scene) {
+    const s = state();
+    if (!s || s.onboarding?.guideDmSent) return;
+    if (s.scene) {
       guideDmDue = guideId;
       return;
     }
     guideDmDue = null;
+    dispatch2("onboarding/guide_dm_sent", {}, chatId());
     void deps.initiateDm(guideId);
   }
   function candidates4(s) {
@@ -17558,7 +17566,6 @@ function createOnboarding(deps) {
     const ok = await deps.startScene({ locationId: sceneLocation(s, reg(), step), participants, origin: "prologue", consumesSlot: false });
     if (!ok) return false;
     setGoal(step);
-    void deps.startOpening?.();
     return true;
   }
   return {
@@ -17624,8 +17631,8 @@ function createOnboarding(deps) {
       const id = s?.onboarding?.guideUnitId;
       if (!s || id === void 0 || !livingNamed(s).some((u) => u.id === id)) return false;
       const room = whereabouts(s, reg()).find((w) => w.unitId === id)?.roomId;
-      const location = (room ? reg().hubRooms.get(room)?.sceneLocationId : void 0) ?? "quarters_unit";
-      return deps.talkAt(id, String(location));
+      const location = sceneLocation(s, reg(), { locationId: room ? String(reg().hubRooms.get(room)?.sceneLocationId ?? "") : void 0 });
+      return deps.talkAt(id, location);
     },
     launchTutorial() {
       const s = state();
@@ -17650,6 +17657,14 @@ function createOnboarding(deps) {
       tracked = { sceneId: scene.id, participants: [...scene.participants] };
       const step = currentStep(s, reg());
       if (step) setGoal(step);
+      if (scene.exchanges === 0) void deps.startOpening?.();
+    },
+    onLoaded() {
+      const s = state();
+      const step = s ? currentStep(s, reg()) : null;
+      const guide = s?.onboarding?.guideUnitId;
+      if (!s || s.scene || step?.completion !== "next_day" || guide === void 0 || !livingNamed(s).some((u) => u.id === guide)) return;
+      sendGuideDm(guide);
     },
     onSceneClosed() {
       tracked = null;
@@ -17707,8 +17722,22 @@ function createOnboarding(deps) {
         clearDirectives();
         deps.refreshContext();
       }
+      const now = state();
+      if (now && !now.scene && currentStep(now, reg())?.completion === "all_spoken") completeIfDone(chatId());
     }
   };
+}
+
+// src/ui/analyze/mark.ts
+function analyzeNative(address, ctx2) {
+  const { tabindex: _tabindex, ...rest } = analyzeAttrs(address, ctx2);
+  return rest;
+}
+function analyzeAttrs(address, ctx2) {
+  const attrs = { "data-analyze": address };
+  if (ctx2) attrs["data-analyze-ctx"] = JSON.stringify(ctx2);
+  attrs.tabindex = "0";
+  return attrs;
 }
 
 // src/ui/dom.ts
@@ -17825,7 +17854,7 @@ function createTabBar(opts) {
       if (locked) {
         btn.setAttribute("aria-disabled", "true");
         btn.classList.add("is-offline");
-        btn.append(" ", h("span", { class: "alius-offline" }, "OFFLINE"));
+        btn.append(" ", h("span", { class: "alius-offline", ...analyzeNative("glossary:module_offline") }, "OFFLINE"));
       } else {
         btn.removeAttribute("aria-disabled");
         btn.classList.remove("is-offline");
@@ -17839,18 +17868,6 @@ function createTabBar(opts) {
       }
     }
   };
-}
-
-// src/ui/analyze/mark.ts
-function analyzeNative(address, ctx2) {
-  const { tabindex: _tabindex, ...rest } = analyzeAttrs(address, ctx2);
-  return rest;
-}
-function analyzeAttrs(address, ctx2) {
-  const attrs = { "data-analyze": address };
-  if (ctx2) attrs["data-analyze-ctx"] = JSON.stringify(ctx2);
-  attrs.tabindex = "0";
-  return attrs;
 }
 
 // src/ui/voice/sources.ts
@@ -18412,7 +18429,7 @@ function renderCoach(host, hints, onSeen) {
       { class: "alius-coach-body" },
       h("p", { class: "alius-coach-text" }, hint.text),
       h("p", { class: "alius-dim" }, "Focus anything and press ? for more."),
-      h("button", { type: "button", class: "alius-btn", "data-action": "got-it", onclick: () => onSeen(hint.id) }, "[ GOT IT ]")
+      h("button", { type: "button", class: "alius-btn", "data-action": "got-it", ...analyzeNative("glossary:coach_hint"), onclick: () => onSeen(hint.id) }, "[ GOT IT ]")
     );
     const card2 = renderVoiceCard({ voice: VOICE_OF.toast, title: "TIP", level: 3, body });
     card2.classList.add("alius-coach", "alius-stat");
@@ -19797,6 +19814,7 @@ function createSceneController(deps) {
   let pending2 = false;
   let inflight = null;
   let openingRun = null;
+  let openedScene = null;
   let disposed = false;
   let background = Promise.resolve();
   const state = () => app.current().state;
@@ -20010,6 +20028,7 @@ function createSceneController(deps) {
       const s = state();
       if (!s) return false;
       extracted = st.chatLength();
+      openedScene = null;
       lastApply = null;
       awaitingReextract = false;
       const events = dispatch2({
@@ -20042,7 +20061,10 @@ function createSceneController(deps) {
       return run;
     },
     opening() {
-      if (pending2 || !state()?.scene) return Promise.resolve();
+      const scene = state()?.scene;
+      if (pending2 || !scene) return Promise.resolve();
+      if (openedScene === scene.id || st.getChatMessages(Math.min(scene.startIndex, st.chatLength())).length > 0) return Promise.resolve();
+      openedScene = scene.id;
       pending2 = true;
       const run = (async () => {
         const expect = chatId();
@@ -27856,6 +27878,14 @@ function createShell(deps) {
       if (locked) lockedTabs2.add(id);
       else lockedTabs2.delete(id);
       tabBar?.setLocked(id, locked);
+      if (locked && tab === id) {
+        const next = TAB_IDS.find((t) => !lockedTabs2.has(t));
+        if (next) {
+          tab = next;
+          tabBar?.setSelected(next);
+          if (isOpen() && isDeviceUp()) renderTab();
+        }
+      }
     },
     setTabBadge(id, count) {
       if (count > 0) badges.set(id, count);
@@ -28106,6 +28136,7 @@ function createApp(st, deps) {
       onSceneScreen = false;
       shell.showScreen("hub");
     }
+    onboarding.onLoaded();
   }
   async function beginScene(opts) {
     const chatId = st.getActiveChat()?.chatId;

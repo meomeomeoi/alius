@@ -63,3 +63,9 @@ registerAction('onboarding/hint_seen', (draft, payload, ctx) => {
   if (!o.hintsSeen?.includes(hintId)) o.hintsSeen = [...(o.hintsSeen ?? []), hintId];
   return [];
 });
+
+/** The controller asked the guide to write first; recorded before the (slow) generation so a reload neither repeats nor forgets it. */
+registerAction('onboarding/guide_dm_sent', (draft) => {
+  open(draft).guideDmSent = true;
+  return [];
+});

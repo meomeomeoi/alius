@@ -1,3 +1,4 @@
+import { analyzeNative } from '../analyze/mark';
 import { h } from '../dom';
 import { stubText } from './router';
 
@@ -67,7 +68,7 @@ export function createTabBar(opts: { onSelect: (id: TabId) => void; panelId: str
       if (locked) {
         btn.setAttribute('aria-disabled', 'true');
         btn.classList.add('is-offline');
-        btn.append(' ', h('span', { class: 'alius-offline' }, 'OFFLINE'));
+        btn.append(' ', h('span', { class: 'alius-offline', ...analyzeNative('glossary:module_offline') }, 'OFFLINE'));
       } else {
         btn.removeAttribute('aria-disabled');
         btn.classList.remove('is-offline');
