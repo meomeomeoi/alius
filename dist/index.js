@@ -17653,6 +17653,7 @@ function createOnboarding(deps) {
     },
     onSceneClosed() {
       tracked = null;
+      asked.clear();
       clearDirectives();
       deps.refreshContext();
     },
@@ -17690,6 +17691,7 @@ function createOnboarding(deps) {
       if (ended && tracked) {
         const done = tracked;
         tracked = null;
+        asked.delete(done.sceneId);
         clearDirectives();
         deps.refreshContext();
         const expect = chatId();
@@ -19794,6 +19796,7 @@ function createSceneController(deps) {
   let awaitingReextract = false;
   let pending2 = false;
   let inflight = null;
+  let openingRun = null;
   let disposed = false;
   let background = Promise.resolve();
   const state = () => app.current().state;
@@ -20028,6 +20031,7 @@ function createSceneController(deps) {
       return true;
     },
     send(text2) {
+      if (text2.trim() !== "" && pending2 && openingRun) return openingRun.then(() => controller.send(text2));
       if (text2.trim() === "" || pending2 || !state()?.scene) return Promise.resolve();
       pending2 = true;
       const run = sendNow(text2.trim());
@@ -20064,8 +20068,10 @@ function createSceneController(deps) {
         }
       })();
       inflight = run;
+      openingRun = run;
       void run.finally(() => {
         if (inflight === run) inflight = null;
+        if (openingRun === run) openingRun = null;
       });
       return run;
     },
@@ -23202,11 +23208,14 @@ function markerTone(state, reg, unit) {
 }
 var dueIn = (m, day) => m.deadlineDay === void 0 ? null : m.deadlineDay - day;
 function currentObjective(state, reg) {
-  const first2 = objectiveList(state, reg)[0];
+  const list5 = objectiveList(state, reg);
+  const first2 = list5.find((o) => o.source !== "unit");
   if (first2) return { text: first2.text, dueDays: first2.dueDays, source: first2.source };
   const active = state.missions.active;
   const pick2 = active.find((m) => m.spineBeat !== void 0) ?? [...active].filter((m) => m.deadlineDay !== void 0).sort((a, b) => a.deadlineDay - b.deadlineDay)[0] ?? active[0] ?? state.missions.offered.find((m) => m.spineBeat !== void 0);
-  return pick2 ? { text: pick2.title, dueDays: dueIn(pick2, state.day), source: "mission", missionId: pick2.id } : null;
+  if (pick2) return { text: pick2.title, dueDays: dueIn(pick2, state.day), source: "mission", missionId: pick2.id };
+  const unit = list5[0];
+  return unit ? { text: unit.text, dueDays: unit.dueDays, source: unit.source } : null;
 }
 var TONIGHT_MAX = 6;
 var KNOCK_KIND = "we_need_to_talk";

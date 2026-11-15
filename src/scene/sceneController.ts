@@ -92,6 +92,8 @@ export function createSceneController(deps: SceneDeps): SceneController {
   let pending = false;
   /** The send in flight (reply, extraction, sprites); `end()` waits for it so an exchange is never applied twice. */
   let inflight: Promise<void> | null = null;
+  /** The opening in flight (the group speaking first); a message typed meanwhile waits for it. */
+  let openingRun: Promise<void> | null = null;
   let disposed = false;
   let background: Promise<void> = Promise.resolve();
 
@@ -357,6 +359,8 @@ export function createSceneController(deps: SceneDeps): SceneController {
     },
 
     send(text) {
+      // typed while the group is still speaking first: it goes out when they have finished, never thrown away
+      if (text.trim() !== '' && pending && openingRun) return openingRun.then(() => controller.send(text));
       if (text.trim() === '' || pending || !state()?.scene) return Promise.resolve();
       pending = true;
       const run = sendNow(text.trim());
@@ -394,7 +398,11 @@ export function createSceneController(deps: SceneDeps): SceneController {
         }
       })();
       inflight = run;
-      void run.finally(() => { if (inflight === run) inflight = null; });
+      openingRun = run;
+      void run.finally(() => {
+        if (inflight === run) inflight = null;
+        if (openingRun === run) openingRun = null;
+      });
       return run;
     },
 

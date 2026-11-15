@@ -202,6 +202,40 @@ describe('line-up', () => {
   });
 });
 
+describe('the cap question is asked once per scene, not once per scene id', () => {
+  it('a second campaign whose line-up has the same scene id is asked and wound down again', async () => {
+    const r = rig(undefined, 'keep');
+    await r.ob.startLineup();
+    const cap = step(r).exchangeCap!;
+    for (let i = 0; i < cap; i++) r.act('scene/exchange');
+    await flush();
+    expect(r.modal).toHaveBeenCalledTimes(1);
+    // the app loads another campaign: adoptScene clears the controller, the new line-up is scene s1 again
+    r.ob.onSceneClosed();
+    r.h.setState((s) => Object.assign(s, campaign(reg, 4, { onboarding: 'prologue' })));
+    await r.ob.startLineup();
+    expect(r.h.state().scene!.id).toBe('s1');
+    for (let i = 0; i < cap; i++) r.act('scene/exchange');
+    await flush();
+    expect(r.modal).toHaveBeenCalledTimes(2);
+    expect(dirs(r)).toContain('natural close');
+  });
+
+  it('after a chat switch and back, the next exchange past the cap sets the wrap directive again', async () => {
+    const r = rig(undefined, 'keep');
+    await r.ob.startLineup();
+    const cap = step(r).exchangeCap!;
+    for (let i = 0; i < cap; i++) r.act('scene/exchange');
+    await flush();
+    r.ob.onSceneClosed(); // chat switch clears the directives
+    r.ob.onSceneOpened(); // and back: the scene resumes
+    expect(dirs(r)).not.toContain('natural close');
+    r.act('scene/exchange');
+    await flush();
+    expect(dirs(r)).toContain('natural close');
+  });
+});
+
 describe('the squad speaks first', () => {
   it('startOpening is asked once the scene is open and the goal directive is set', async () => {
     const r = rig();

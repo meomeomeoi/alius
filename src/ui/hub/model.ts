@@ -47,7 +47,9 @@ const dueIn = (m: Mission, day: number): number | null => (m.deadlineDay === und
  * an offered story mission), else nothing. An older save has no list, so it reads exactly as it did.
  */
 export function currentObjective(state: CampaignState, reg: Registries): Objective | null {
-  const first = objectiveList(state, reg)[0];
+  const list = objectiveList(state, reg);
+  // a soldier waiting is secondary: it never pushes a mission off the hub (an older save reads as it did)
+  const first = list.find((o) => o.source !== 'unit');
   if (first) return { text: first.text, dueDays: first.dueDays, source: first.source };
   const active = state.missions.active;
   const pick =
@@ -55,7 +57,9 @@ export function currentObjective(state: CampaignState, reg: Registries): Objecti
     ?? [...active].filter((m) => m.deadlineDay !== undefined).sort((a, b) => (a.deadlineDay as number) - (b.deadlineDay as number))[0]
     ?? active[0]
     ?? state.missions.offered.find((m) => m.spineBeat !== undefined);
-  return pick ? { text: pick.title, dueDays: dueIn(pick, state.day), source: 'mission', missionId: pick.id } : null;
+  if (pick) return { text: pick.title, dueDays: dueIn(pick, state.day), source: 'mission', missionId: pick.id };
+  const unit = list[0];
+  return unit ? { text: unit.text, dueDays: unit.dueDays, source: unit.source } : null;
 }
 
 export interface TonightItem {

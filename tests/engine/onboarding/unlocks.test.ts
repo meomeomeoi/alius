@@ -22,21 +22,21 @@ describe('lockedTabs', () => {
     expect(locked.has('sys')).toBe(false);
   });
 
-  it('skipping or finishing the tutorial opens ops and map', () => {
+  it('skipping or finishing the tutorial opens ops, map and inv', () => {
     const skipped = prologue();
     skipped.onboarding!.skipped.push('tutorial');
-    expect(sorted(lockedTabs(skipped, reg))).toEqual(['base', 'inv']);
+    expect(sorted(lockedTabs(skipped, reg))).toEqual(['base']);
     const finished = prologue();
     finished.onboarding!.completed.push('tutorial');
-    expect(sorted(lockedTabs(finished, reg))).toEqual(['base', 'inv']);
+    expect(sorted(lockedTabs(finished, reg))).toEqual(['base']);
   });
 
-  it('day 2 opens base and inv by date alone', () => {
+  it('day 2 opens base by date alone', () => {
     const s = prologue();
     s.day = 2;
-    expect(sorted(lockedTabs(s, reg))).toEqual(['map', 'ops']);
+    expect(sorted(lockedTabs(s, reg))).toEqual(['inv', 'map', 'ops']);
     s.day = 3;
-    expect(sorted(lockedTabs(s, reg))).toEqual(['map', 'ops']);
+    expect(sorted(lockedTabs(s, reg))).toEqual(['inv', 'map', 'ops']);
   });
 
   it('done opens all', () => {
@@ -79,19 +79,19 @@ describe('lockedTabs', () => {
 describe('unlockedBetween', () => {
   const tabs = (before: CampaignState, after: CampaignState) => unlockedBetween(before, after, reg).map((e) => (e.target as { tab: string }).tab).sort();
 
-  it('lists ops and map after the tutorial', () => {
+  it('lists ops, map and inv after the tutorial', () => {
     const before = prologue();
     const after = structuredClone(before);
     after.onboarding!.completed.push('tutorial');
-    expect(tabs(before, after)).toEqual(['map', 'ops']);
+    expect(tabs(before, after)).toEqual(['inv', 'map', 'ops']);
     expect(unlockedBetween(before, after, reg)[0].notice).toMatch(/MODULE ONLINE/);
   });
 
-  it('lists base and inv when day 2 begins', () => {
+  it('lists base when day 2 begins', () => {
     const before = prologue();
     const after = structuredClone(before);
     after.day = 2;
-    expect(tabs(before, after)).toEqual(['base', 'inv']);
+    expect(tabs(before, after)).toEqual(['base']);
   });
 
   it('lists everything still locked when the prologue ends', () => {
@@ -113,6 +113,6 @@ describe('unlockedBetween', () => {
     before.day = 2;
     const after = structuredClone(before);
     after.onboarding!.completed.push('tutorial');
-    expect(tabs(before, after)).toEqual(['map', 'ops']);
+    expect(tabs(before, after)).toEqual(['inv', 'map', 'ops']);
   });
 });

@@ -199,10 +199,11 @@ describe('unlock notices (in the app)', () => {
     const events = t.app.dispatch({ type: 'onboarding/skip_step', payload: { stepId: 'tutorial' } });
     expect(events.some((e) => e.type === 'error')).toBe(false);
     const notices = t.toasts.filter((x) => /MODULE ONLINE/.test(x.text));
-    expect(notices.map((x) => x.text).sort()).toEqual(['MODULE ONLINE: MAP', 'MODULE ONLINE: OPS']);
+    expect(notices.map((x) => x.text).sort()).toEqual(['MODULE ONLINE: INV', 'MODULE ONLINE: MAP', 'MODULE ONLINE: OPS']);
     expect(notices.every((x) => x.voice === 'terminal' && x.kind === 'info')).toBe(true);
     expect(t.locks.get('ops')).toBe(false);
     expect(t.locks.get('map')).toBe(false);
+    expect(t.locks.get('inv')).toBe(false);
     expect(t.locks.get('base')).toBe(true);
   });
 

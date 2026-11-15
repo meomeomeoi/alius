@@ -55,7 +55,7 @@
       "tab": "inv"
     },
     "condition": {
-      "minDay": 2
+      "afterStep": "tutorial"
     },
     "notice": "MODULE ONLINE: INV"
   }

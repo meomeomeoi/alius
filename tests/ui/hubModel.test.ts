@@ -137,6 +137,16 @@ describe('currentObjective', () => {
     expect(currentObjective(s, reg)).toMatchObject({ source: 'mission', missionId: 'm' });
   });
 
+  it('a waiting demand does not push an active mission off the hub (old save)', () => {
+    const s = campaign(reg, 4);
+    s.day = 5;
+    s.missions.active = [mission({ id: 'm', title: 'Hold', deadlineDay: 7 })];
+    s.discipline = { defiance: [], threats: [], applications: [], restrictions: [], demands: [{ id: 'd1', unitId: 'unit_ann', status: 'open', text: 't', kind: 'x', day: 1 } as never], demandLog: [] };
+    expect(currentObjective(s, reg)).toEqual({ text: 'Hold', dueDays: 2, missionId: 'm', source: 'mission' });
+    s.missions.active = [];
+    expect(currentObjective(s, reg)).toMatchObject({ source: 'unit', text: 'Ann is waiting for an answer.' });
+  });
+
   it('no missions gives null', () => {
     const s = campaign(reg, 4);
     s.missions = { offered: [], active: [], completed: [] };

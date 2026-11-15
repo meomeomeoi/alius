@@ -920,13 +920,14 @@ describe('core content pack: P11 prologues and unlocks', () => {
     expect(steps.first_evening.nightKnock).toBeDefined();
   });
 
-  it('core uiUnlocks: squad,comms day 1; ops,map after tutorial; base,inv day 2; no entry for log or sys', async () => {
+  it('core uiUnlocks: squad,comms day 1; ops,map,inv after tutorial; base day 2; no entry for log or sys', async () => {
     const { registries: r } = await load();
     const rows = [...r.uiUnlocks.values()].map((u) => ({ tab: (u.target as { tab: string }).tab, ...(u.condition as Record<string, unknown>) }));
     const by = (tab: string) => rows.filter((x) => x.tab === tab);
     for (const tab of ['squad', 'comms']) expect(by(tab), tab).toEqual([{ tab, minDay: 1 }]);
-    for (const tab of ['ops', 'map']) expect(by(tab), tab).toEqual([{ tab, afterStep: 'tutorial' }]);
-    for (const tab of ['base', 'inv']) expect(by(tab), tab).toEqual([{ tab, minDay: 2 }]);
+    // INV opens with OPS: the workshop (an OPS activity) opens an INV session the same day
+    for (const tab of ['ops', 'map', 'inv']) expect(by(tab), tab).toEqual([{ tab, afterStep: 'tutorial' }]);
+    expect(by('base')).toEqual([{ tab: 'base', minDay: 2 }]);
     expect(by('log')).toEqual([]);
     expect(by('sys')).toEqual([]);
     for (const u of r.uiUnlocks.values()) expect(String(u.notice).length, String(u.id)).toBeGreaterThan(0);

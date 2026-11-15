@@ -559,15 +559,18 @@ describe('opening: the group speaks first', () => {
     expect(h.st.calls).toHaveLength(0); // no model call for the opening itself
   });
 
-  it('a send is refused while the opening runs, and an opening is refused while a send runs', async () => {
+  it('a message typed while the opening runs is sent after it, not thrown away', async () => {
     const h = harness(reg);
     h.dispatch({ type: 'activity/do', payload: { activityId: 'talk', companionId: ANN } });
     await h.controller.start({ locationId: 'quarters_commander', participants: [ANN], origin: 'activity' });
-    h.st.groupReplies = [[reply('Ann', 'Hm.')]];
+    h.st.groupReplies = [[reply('Ann', 'Hm.')], [reply('Ann', 'At ease, then.')]];
+    h.st.mainReplies = [intentJson([praised()])];
     const opening = h.controller.opening();
-    await h.controller.send('hello'); // pending: ignored
+    const sent = h.controller.send('At ease.');
     await opening;
-    expect(h.controller.transcript().some((m) => m.isUser)).toBe(false);
+    await sent;
+    expect(h.controller.transcript().map((m) => [m.isUser, m.text])).toEqual([[false, 'Hm.'], [true, 'At ease.'], [false, 'At ease, then.']]);
+    expect(h.state().scene!.exchanges).toBe(1);
   });
 
   it('nobody speaking warns and changes nothing', async () => {

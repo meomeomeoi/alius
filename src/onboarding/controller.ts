@@ -227,6 +227,7 @@ export function createOnboarding(deps: OnboardingDeps): OnboardingController {
 
     onSceneClosed() {
       tracked = null;
+      asked.clear(); // scene ids repeat from campaign to campaign; a resumed scene is asked afresh
       clearDirectives();
       deps.refreshContext();
     },
@@ -269,6 +270,7 @@ export function createOnboarding(deps: OnboardingDeps): OnboardingController {
       if (ended && tracked) {
         const done = tracked;
         tracked = null;
+        asked.delete(done.sceneId);
         clearDirectives();
         deps.refreshContext();
         const expect = chatId();
