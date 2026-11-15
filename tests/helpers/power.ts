@@ -19,3 +19,6 @@ export function withLeader(state: CampaignState, unitId: string, opts: { endorse
   power.hierarchy = h;
   return state;
 }
+
+// Importing this registers the P9b actions, gates and the day step under test (the other actions come with ./world).
+import '../../src/engine/actions/power';

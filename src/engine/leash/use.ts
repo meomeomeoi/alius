@@ -6,6 +6,7 @@ import { isLiving } from '../economy';
 import { countDeed } from '../discipline/deeds';
 import { enforce, forgetUnit } from '../discipline/record';
 import { loyaltyOf, loyaltyRecord } from '../loyalty/state';
+import { forgetPower } from '../power/state';
 import { addChronicle, addFact } from '../memory';
 import { applyRelationDelta } from '../relationGain';
 import { applyEventToUnit } from '../relations/effects';
@@ -224,6 +225,7 @@ export function removeFromService(draft: CampaignState, unitId: string, status: 
   if (waiting) waiting.units = waiting.units.filter((id) => id !== unitId);
   forgetUnit(draft, unitId); // P9: held defiance, threats, restrictions, demands and sabotage that pointed at her
   forgetBonds(draft, unitId); // P9d: her rules, a smother she held and her Want
+  forgetPower(draft, unitId); // P9b: her grudge and her ballot in an open vote
 }
 
 /** P9d: what a unit who leaves the service no longer carries (her rules, the smother hold, Want and publicity). */

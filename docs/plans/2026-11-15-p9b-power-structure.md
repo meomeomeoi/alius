@@ -393,7 +393,7 @@ tests/**                                                        mirrors src; tes
   - the error event `{ type: 'error', code: 'vote_needed', kind, subject }`
 - Consumes: `tallyVote` (Task 2), `applyEventToUnit`, `addRecord`, `applyPunishment`, the Leash log writer in `leash/use.ts`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `voting off: expedition/start runs without a vote`
   - `voting on: expedition/start from the board returns vote_needed and changes nothing`
   - `with a passed vote it runs and the vote is carried`
@@ -409,14 +409,14 @@ tests/**                                                        mirrors src; tes
   - `an open vote is dropped at day end`
   - `removeFromService clears her grudge and ballot`
   - `vote/overrule on a passed vote is refused`
-- [ ] **Step 2: Run** `npx vitest run tests/engine/power/votes.test.ts` and confirm FAIL.
-- [ ] **Step 3: Implement.**
+- [x] **Step 2: Run** `npx vitest run tests/engine/power/votes.test.ts` and confirm FAIL.
+- [x] **Step 3: Implement.**
   - The gate check sits in `dispatch` after the existing guards. Gates run only while `votingOn`.
   - On success of a gated action whose payload carries `voteId`, dispatch calls `carryVote` on the draft before returning, so the vote is spent in the same state.
   - Overrule costs use `applyEventToUnit` with event `decision_violated`, severity `moderate`, confidence 1 and `scale` as for a witnessed event. The record uses `addRecord(draft, id, TUNING.power.vote.overruleRecord /*5*/, 'vote_overruled')`.
   - Vote ids are `v<seq>`.
-- [ ] **Step 4: Run** the tests. Expect PASS. Run `npm test`; seeded tests must not move (no rng is drawn).
-- [ ] **Step 5: Tick and commit:** `feat(power): vote flow, gate and overruling`.
+- [x] **Step 4: Run** the tests. Expect PASS. Run `npm test`; seeded tests must not move (no rng is drawn).
+- [x] **Step 5: Tick and commit:** `feat(power): vote flow, gate and overruling`.
 
 ### Task 4: Rations
 

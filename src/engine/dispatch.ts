@@ -1,7 +1,9 @@
 import type { Registries } from '../content/types';
 import { recordLedger } from './ledger';
+import { votingOn } from './power/options';
+import { carryVote, voteFor } from './power/votes';
 import { Rng } from './rng';
-import type { CampaignState } from './state/types';
+import type { CampaignState, VoteKind } from './state/types';
 
 export type Action = { type: string; payload?: unknown };
 export type EngineEvent = { type: string; [k: string]: unknown };
@@ -31,6 +33,16 @@ export function registerAction(type: string, handler: Handler): void {
   handlers.set(type, handler);
 }
 
+/** P9b: what a gated action decides, for the squad vote it needs (`null`: this call is not a votable decision). */
+export type VoteGate = (state: CampaignState, payload: unknown, reg: Registries) => { kind: VoteKind; subject: string } | null;
+const gates = new Map<string, VoteGate>();
+
+/** P9b: while voting is on, an action with a gate that matches is refused (`vote_needed`) until its payload names a usable vote. */
+export function registerVoteGate(actionType: string, gate: VoteGate): void {
+  if (gates.has(actionType)) throw new Error(`Duplicate vote gate: ${actionType}`);
+  gates.set(actionType, gate);
+}
+
 /**
  * Pure reducer: never mutates `state`. On unknown action or handler failure the
  * original state is returned together with an `error` event.
@@ -58,10 +70,24 @@ export function dispatch(
   if (state.dilemmas?.open?.status === 'presented' && BLOCKED_BY_DILEMMA.some((p) => action.type.startsWith(p))) {
     return { state, events: [{ type: 'error', code: 'dilemma_open', message: 'A decision is waiting: answer it first.' }] };
   }
+  // P9b: a decision the squad votes on does not run without a passed or overruled vote for exactly this decision
+  let voteId: string | undefined;
+  const gate = gates.get(action.type);
+  if (gate && votingOn(state, registries)) {
+    const decision = gate(state, action.payload, registries);
+    if (decision) {
+      const named = (action.payload as { voteId?: unknown } | null | undefined)?.voteId;
+      if (!voteFor(state, decision.kind, decision.subject, named)) {
+        return { state, events: [{ type: 'error', code: 'vote_needed', kind: decision.kind, subject: decision.subject }] };
+      }
+      voteId = named as string;
+    }
+  }
   const draft = structuredClone(state);
   const rng = new Rng(draft.rng);
   try {
     const events = handler(draft, action.payload, { registries, rng });
+    if (voteId !== undefined) events.push(...carryVote(draft, voteId)); // the vote is spent once, in the same state
     draft.rng = rng.state;
     try {
       recordLedger(state, draft, action.type);
