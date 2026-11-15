@@ -1302,5 +1302,23 @@
       "lead",
       "want"
     ]
+  },
+  {
+    "id": "squad_power",
+    "term": "Squad assertiveness",
+    "short": "How hard the squad pushes for itself: leader privileges, how often soldiers make demands, and how much the commander's vote weighs.",
+    "long": "A world option fixed at the start. Low halves a leader's privileges and trims demands; high raises both by half and a quarter, and the commander's own vote counts a quarter less when the squad [[voting|votes]]. It only scales what the soldiers' own character already does: a yielding soldier never turns dominant because of it.",
+    "see": [
+      "voting"
+    ]
+  },
+  {
+    "id": "voting",
+    "term": "Squad vote",
+    "short": "With squad votes on, some of the commander's decisions go to the squad first: they vote for or against the commander's pick.",
+    "long": "A world option fixed at the start, off by default. When it is on, a mission from the board, a base upgrade, a mild punishment, a ration choice in a shortage and a scapegoat decision open a vote. The commander picks first and always votes for the pick; each soldier's ballot follows her values, her trust in the commander and what the decision does to her. A tie goes to the commander. A failed vote can be accepted, or overruled at a price.",
+    "see": [
+      "squad_power"
+    ]
   }
 ]

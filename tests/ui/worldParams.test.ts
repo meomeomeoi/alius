@@ -85,7 +85,7 @@ describe('the WORLD PARAMETERS screen', () => {
       const cards = qa(host, `.alius-world-choice[data-option="${option.id}"]`);
       expect(cards.map((c) => c.dataset.id), String(option.id)).toEqual((option.choices as Array<{ id: string }>).map((c) => c.id));
       const pressed = cards.filter((c) => c.getAttribute('aria-pressed') === 'true').map((c) => c.dataset.id);
-      expect(pressed, String(option.id)).toEqual(['guarded', 'indifferent', 'tolerated', 'standard', 'restrained', 'grim'].filter((id) => cards.some((c) => c.dataset.id === id)));
+      expect(pressed, String(option.id)).toEqual(['guarded', 'indifferent', 'tolerated', 'standard', 'restrained', 'grim', 'normal', 'off'].filter((id) => cards.some((c) => c.dataset.id === id)));
     }
     expect(host.textContent).toContain('WORLD PARAMETERS');
     // grouped by option group, in registry order, with the option's label and description

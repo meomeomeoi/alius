@@ -514,5 +514,83 @@
         ]
       }
     ]
+  },
+  {
+    "id": "squad_assertiveness",
+    "label": "Squad assertiveness",
+    "group": "Soldiers",
+    "live": false,
+    "default": "normal",
+    "description": "How hard the squad pushes for itself: how much a leader can do, how often soldiers make demands, and how much the commander's vote weighs against theirs when the squad votes. Locked once the campaign starts.",
+    "choices": [
+      {
+        "id": "low",
+        "label": "Meek",
+        "description": "The squad seldom pushes. Leaders have half the usual privileges, demands come less often and the commander's vote keeps its full weight.",
+        "lore": "A meek squad.",
+        "effects": [
+          {
+            "type": "squad_power",
+            "privilegeMult": 0.5,
+            "demandMult": 0.75,
+            "commanderVoteMult": 1
+          }
+        ]
+      },
+      {
+        "id": "normal",
+        "label": "Balanced",
+        "description": "The squad pushes as much as its soldiers' own character does, no more and no less.",
+        "effects": [
+          {
+            "type": "squad_power",
+            "privilegeMult": 1,
+            "demandMult": 1,
+            "commanderVoteMult": 1
+          }
+        ]
+      },
+      {
+        "id": "high",
+        "label": "Assertive",
+        "description": "The squad pushes hard. Leaders have half again the usual privileges, demands come more often and the commander's vote weighs a quarter less.",
+        "lore": "A pushy squad.",
+        "effects": [
+          {
+            "type": "squad_power",
+            "privilegeMult": 1.5,
+            "demandMult": 1.25,
+            "commanderVoteMult": 0.75
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "voting",
+    "label": "Squad votes",
+    "group": "Soldiers",
+    "live": false,
+    "default": "off",
+    "description": "Whether the squad votes on some of the commander's decisions: a mission from the board, a base upgrade, how rations are shared in a shortage, a mild punishment, and who takes the blame. The commander can overrule a vote, at a price. Locked once the campaign starts.",
+    "choices": [
+      {
+        "id": "off",
+        "label": "Off",
+        "description": "The commander decides alone, as in an ordinary penal unit.",
+        "effects": []
+      },
+      {
+        "id": "on",
+        "label": "On",
+        "description": "The squad votes on the decisions above. The commander picks first and the squad votes for or against that pick.",
+        "lore": "The squad votes.",
+        "effects": [
+          {
+            "type": "voting"
+          }
+        ]
+      }
+    ]
   }
 ]

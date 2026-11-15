@@ -354,4 +354,41 @@ export const TUNING = Object.freeze({
       embrace: Object.freeze([['autonomy', 1], ['corporate', -1]] as const),
     }),
   }),
+  /**
+   * P9b: the squad's power structure. Spec numbers verbatim: the commander's vote weight 1 + 0.5 × (Authority rank − 1) and × 0.75
+   * at `high` assertiveness (`squad_power`), a leader's vote × 1.5, grunts 0.5, overrule record +5, standing 0.4 / 0.3 / 0.3
+   * with the lead-style factors, the leader margin 10 and the weekly recompute, contagion weight 2, endorsement × 1.5, challenge
+   * 14 days and Impunity +10, feat suppression 14 days, take-the-blame Leash −1. Everything else is a DRAFT, the author's to change.
+   */
+  power: Object.freeze({
+    vote: Object.freeze({
+      commanderBase: 1, commanderPerRank: 0.5, leaderWeight: 1.5, gruntWeight: 0.5,
+      /** `decision_violated` severity on each unit that voted against an overruled vote. */
+      overruleSeverity: 'moderate' as const,
+      overruleRecord: 5,
+      /** × her refusal chance while a grudge holds (until the next day end). */
+      grudgeRefusalMult: 1.5,
+      logMax: 30,
+    }),
+    ballot: Object.freeze({
+      /** `clamp((trust − 50) / trustPer, −trustCap, trustCap)`. */
+      trustPer: 25, trustCap: 2,
+      openDemand: -1, subject: -4, compatibility: -2,
+      /** `commandStances[].voteBias` is content; the ballot adds it as is. */
+    }),
+    merit: Object.freeze({ damagePer: 10, finishingBlow: 5, healPer: 10, windowDays: 14 }),
+    standing: Object.freeze({
+      merit: 0.4, respect: 0.3, impunity: 0.3,
+      factor: Object.freeze({ yielding: 0.7, balanced: 1, assertive: 1.15, dominant: 1.3 }),
+      margin: 10, recomputeDays: 7, lostChallengeBonus: 10,
+    }),
+    countermand: Object.freeze({ chance: 0.2, cap: 0.6, overruleRecord: 3 }),
+    endorse: Object.freeze({ multiplier: 1.5, othersRecord: 3 }),
+    challenge: Object.freeze({
+      base: 0.5, perRank: 0.12, min: 0.15, max: 0.85, standingPerRank: 26,
+      cooldownDays: 14, deposedDays: 14, winRecord: -5, lossRecord: 10,
+    }),
+    outside: Object.freeze({ suppressDays: 14 }),
+    scapegoat: Object.freeze({ failedRunStanding: 4, takeBlameStanding: 5, shiftDays: 2, shiftStress: 10 }),
+  }),
 });

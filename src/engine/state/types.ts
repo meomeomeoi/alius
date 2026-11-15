@@ -500,6 +500,78 @@ export interface Demand {
   dmId?: string;
 }
 
+/** P9b: the decisions the squad can vote on (the `voteKinds` registry has one entry each). */
+export type VoteKind = 'mission' | 'upgrade' | 'punish' | 'rations' | 'scapegoat';
+/** P9b: how a shortage is shared out. */
+export type RationMode = 'equal' | 'fighters_first' | 'commander_short';
+/** P9b: the term of a ballot that moved it most (it picks the reason line). */
+export type BallotTerm = 'values' | 'trust' | 'stance' | 'demand' | 'affected';
+export type VoteStatus = 'open' | 'passed' | 'failed' | 'overruled' | 'carried' | 'dropped';
+
+export interface Ballot {
+  unitId: string;
+  vote: 'for' | 'against' | 'abstain';
+  weight: number;
+  score: number;
+  term: BallotTerm;
+}
+
+export interface Vote {
+  /** `v<seq>`. */
+  id: string;
+  kind: VoteKind;
+  subject: string;
+  day: number;
+  ballots: Ballot[];
+  commanderWeight: number;
+  forWeight: number;
+  againstWeight: number;
+  passed: boolean;
+  status: VoteStatus;
+}
+
+export interface VoteLogEntry {
+  id: string;
+  day: number;
+  kind: VoteKind;
+  subject: string;
+  result: 'carried' | 'dropped' | 'overruled';
+  forWeight: number;
+  againstWeight: number;
+}
+
+/** P9b: one combat's worth of a unit's merit points (the last 14 days count). */
+export interface MeritEntry { day: number; unitId: string; points: number }
+
+export interface Hierarchy {
+  /** Standing of every named living unit at `computedDay`. */
+  standings: Record<string, number>;
+  leaderId?: string;
+  /** The commander has formally made the leader second-in-command. */
+  endorsed: boolean;
+  challengeCooldownUntil?: number;
+  computedDay: number;
+  /** A challenge she lost: she cannot lead until `untilDay`. */
+  deposed?: { unitId: string; untilDay: number };
+  /** A challenge she won: +`amount` standing until `untilDay`. */
+  standingBonus?: { unitId: string; amount: number; untilDay: number };
+  /** A feat keeps outsiders from addressing the leader until this day. */
+  outsideSuppressedUntil?: number;
+}
+
+/** A leader's countermand of a companion activity, waiting for ACCEPT / OVERRULE. */
+export interface Countermand { leaderId: string; unitId: string; payload: unknown; day: number; slot: Slot }
+
+export interface PowerState {
+  votes: { open?: Vote; log: VoteLogEntry[]; seq: number };
+  /** Units overruled in a vote → the day it happened; the grudge ends at the next day end. */
+  grudges?: Record<string, number>;
+  hierarchy?: Hierarchy;
+  merit?: MeritEntry[];
+  countermand?: Countermand;
+  scapegoatQueue?: Array<{ missionId: string; unitId: string; witnessIds: string[] }>;
+}
+
 export interface DisciplineState {
   defiance: PendingDefiance[];
   threats: PendingThreat[];
@@ -544,6 +616,8 @@ export interface CampaignState {
     facilities: Record<string, number>;
     /** Pending facility upgrades (P2). */
     upgrades?: Array<{ facilityId: string; toLevel: number; daysLeft: number }>;
+    /** P9b: how a shortage is shared out (absent = `equal`). Read through `rationsOf`. */
+    rations?: RationMode;
   };
   inventory: ItemInstance[];
   /** Counter behind item uids `it_<n>` (P4). */
@@ -607,6 +681,8 @@ export interface CampaignState {
   leash: { authorizationsLeft: number; refreshDay: number; log: unknown[]; seq?: number; seeded?: boolean };
   /** P9: pending defiance, threats, applications, restrictions, sabotage and demands. Created on first write; absent in older saves. */
   discipline?: DisciplineState;
+  /** P9b: votes, the squad hierarchy, merit, a countermand and the scapegoat queue. Created on first write; absent in older saves. */
+  power?: PowerState;
   /** P9d: the content categories the player switched on (absent = none). Read through `enabledCategories`. */
   content?: { enabled: string[] };
   /** P9d: relationship rules and the smother hold (absent = none). */

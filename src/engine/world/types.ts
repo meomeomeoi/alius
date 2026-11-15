@@ -113,6 +113,8 @@ export interface Mission {
   status: 'offered' | 'active' | 'completed' | 'failed';
   outcomeDay?: number;
   rewards?: MissionRewards;
+  /** P9b: the squad vote that chose this run and the FOR voter who carried it (the one a scapegoat case is about). */
+  decidedBy?: { voteId: string; unitId: string };
 }
 
 export interface Rumor {

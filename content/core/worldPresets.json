@@ -10,7 +10,9 @@
       "bloom_horror": "restrained",
       "tone": "grim_hope",
       "disposition": "kind",
-      "acquaintance": "d10"
+      "acquaintance": "d10",
+      "squad_assertiveness": "normal",
+      "voting": "off"
     }
   },
   {
@@ -24,7 +26,9 @@
       "bloom_horror": "restrained",
       "tone": "grim",
       "disposition": "guarded",
-      "acquaintance": "d7"
+      "acquaintance": "d7",
+      "squad_assertiveness": "normal",
+      "voting": "off"
     }
   },
   {
@@ -38,7 +42,25 @@
       "bloom_horror": "graphic",
       "tone": "bleak",
       "disposition": "hazardous",
-      "acquaintance": "d3"
+      "acquaintance": "d3",
+      "squad_assertiveness": "normal",
+      "voting": "off"
+    }
+  },
+  {
+    "id": "assertive_squad",
+    "name": "Assertive squad",
+    "description": "The standard world with a squad that pushes for itself: soldiers vote on some decisions and a leader can rise among them.",
+    "choices": {
+      "gender_norms": "indifferent",
+      "offspec_stigma": "tolerated",
+      "oversight": "standard",
+      "bloom_horror": "restrained",
+      "tone": "grim",
+      "disposition": "guarded",
+      "acquaintance": "d7",
+      "squad_assertiveness": "high",
+      "voting": "on"
     }
   }
 ]

@@ -425,6 +425,17 @@ export function summarizeWorldOptionEffect(effect: unknown, reg: Registries): st
     case 'scene_directive': return 'The story model is told how this world feels';
     case 'grunt_stances': return 'Generated soldiers lean for or against the norm';
     case 'acquaintance_grace': return x.days === 0 ? 'Soldiers may start secret protest from the first day' : 'Soldiers hold back secret protest while they get to know a new commander';
+    case 'squad_power': {
+      // words only (the figures are the analysis provider's, behind raw values)
+      const more = (n: unknown, up: string, down: string): string | null => (typeof n !== 'number' || n === 1 ? null : n > 1 ? up : down);
+      const parts = [
+        more(x.privilegeMult, 'A squad leader has greater privileges', 'A squad leader has lesser privileges'),
+        more(x.demandMult, 'Soldiers make demands more often', 'Soldiers make demands less often'),
+        more(x.commanderVoteMult, "The commander's vote weighs more in a squad vote", "The commander's vote weighs less in a squad vote"),
+      ].filter((l): l is string => l !== null);
+      return parts.length > 0 ? parts.join('; ') : "The squad pushes only as far as its soldiers' own character does";
+    }
+    case 'voting': return 'Some decisions go to a squad vote.';
     default: return cap(humanize(String(x.type ?? 'effect')));
   }
 }

@@ -303,7 +303,7 @@ tests/**                                                        mirrors src; tes
   - `tests/helpers/power.ts`: `withOptions(state, { squad_assertiveness?, voting? })`, `withLeader(state, unitId, opts?)`
 - Consumes: `worldEffects` (P8), `demandChance` (P9).
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `p9bSchemas`:
     - `squad_assertiveness has low/normal/high with one squad_power effect each`
     - `voting defaults to off and its on choice carries a voting effect`
@@ -314,14 +314,14 @@ tests/**                                                        mirrors src; tes
     - `high reads commanderVoteMult 0.75`
     - `demandChance scales by demandMult` (same state, `high` vs `normal`, ratio 1.25)
     - `an old save without power runs a day end`
-- [ ] **Step 2: Run** `npx vitest run tests/engine/power tests/content/p9bSchemas.test.ts` and confirm FAIL (missing modules / entries).
-- [ ] **Step 3: Implement.** Schema entries:
+- [x] **Step 2: Run** `npx vitest run tests/engine/power tests/content/p9bSchemas.test.ts` and confirm FAIL (missing modules / entries).
+- [x] **Step 3: Implement.** Schema entries:
   - `{ type: 'squad_power', privilegeMult: 0.25..3, demandMult: 0.25..3, commanderVoteMult: 0.25..2 }`
   - `{ type: 'voting' }`
 
   Add the JSON entries and the lore lines of the rulings, plus `summarizeWorldOptionEffect` lines: `Leader privileges ×{p}; demands ×{d}; the commander's vote ×{c}.` / `Some decisions go to a squad vote.` Glossary: `squad_power`, `voting`.
-- [ ] **Step 4: Run** the same tests, then `npm test`. Expect PASS.
-- [ ] **Step 5: Tick the boxes and commit:** `feat(power): squad assertiveness and voting world options`.
+- [x] **Step 4: Run** the same tests, then `npm test`. Expect PASS.
+- [x] **Step 5: Tick the boxes and commit:** `feat(power): squad assertiveness and voting world options`.
 
 ### Task 2: voteKinds, ballots and the tally
 

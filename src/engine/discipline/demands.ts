@@ -10,6 +10,7 @@ import { queueNightSpec } from '../night';
 import { pushMessage } from '../dms';
 import { canEquip, equippedBy } from '../items';
 import { nextId, revealCrime } from '../memory';
+import { assertiveness } from '../power/options';
 import { applyEventToUnit } from '../relations/effects';
 import { evaluateAutomatic } from '../relations/graph';
 import { RARITIES, type CampaignState, type Demand, type Unit } from '../state/types';
@@ -28,7 +29,7 @@ const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n
 const costsOf = (t: Entry): DemandCost[] => (t.grantCost as DemandCost[] | undefined) ?? [];
 const namedLiving = (state: CampaignState): Unit[] => state.squad.filter((u) => u.kind === 'named' && isLiving(u));
 
-/** How often she opens a demand: `0.04 × Impunity / 50 × her disposition's refusalMult × her stance's demandWeight`, at most 0.5. */
+/** How often she opens a demand: `0.04 × Impunity / 50 × her disposition's refusalMult × her stance's demandWeight × the squad's demandMult`, at most 0.5. */
 export function demandChance(state: CampaignState, reg: Registries, unitId: string): number {
   const unit = state.squad.find((u) => u.id === unitId);
   const i = impunityOf(state, reg, unitId);
@@ -37,7 +38,8 @@ export function demandChance(state: CampaignState, reg: Registries, unitId: stri
   const T = TUNING.demands;
   const weight = Number(stanceEntry(reg, stance)?.demandWeight ?? 1);
   const mult = Number(dispositionFor(state, reg, unit).refusalMult);
-  return clamp(T.baseChance * (i.value / TUNING.impunity.stance.impunityHigh) * mult * weight, 0, T.maxChance);
+  const squad = assertiveness(state, reg).demandMult; // P9b: a pushy squad asks more often
+  return clamp(T.baseChance * (i.value / TUNING.impunity.stance.impunityHigh) * mult * weight * squad, 0, T.maxChance);
 }
 
 /** Demands she opened in the last `weekDays` days. */

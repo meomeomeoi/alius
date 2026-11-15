@@ -700,8 +700,8 @@ describe('Wizard: result carries the commander and unit tastes (P7)', () => {
 
 describe('the world step and presets (P8)', () => {
   const dossier = (w: Wizard) => { w.setStart('start_vesper'); w.setCrime('mutiny'); };
-  const STANDARD = { gender_norms: 'indifferent', offspec_stigma: 'tolerated', oversight: 'standard', bloom_horror: 'restrained', tone: 'grim', disposition: 'guarded', acquaintance: 'd7' };
-  const BRUTAL = { gender_norms: 'corporate_machismo', offspec_stigma: 'hunted', oversight: 'brutal', bloom_horror: 'graphic', tone: 'bleak', disposition: 'hazardous', acquaintance: 'd3' };
+  const STANDARD = { gender_norms: 'indifferent', offspec_stigma: 'tolerated', oversight: 'standard', bloom_horror: 'restrained', tone: 'grim', disposition: 'guarded', acquaintance: 'd7', squad_assertiveness: 'normal', voting: 'off' };
+  const BRUTAL = { gender_norms: 'corporate_machismo', offspec_stigma: 'hunted', oversight: 'brutal', bloom_horror: 'graphic', tone: 'bleak', disposition: 'hazardous', acquaintance: 'd3', squad_assertiveness: 'normal', voting: 'off' };
 
   it('the order is dossier, world, commander, units, calibration, review; the world starts as Standard', () => {
     const { w } = make();
@@ -721,7 +721,7 @@ describe('the world step and presets (P8)', () => {
     w.applyPreset('brutal');
     expect(w.state.world).toEqual({ options: BRUTAL, preset: 'brutal' });
     w.applyPreset('gentle');
-    expect(w.state.world.options).toEqual({ gender_norms: 'indifferent', offspec_stigma: 'tolerated', oversight: 'lenient', bloom_horror: 'restrained', tone: 'grim_hope', disposition: 'kind', acquaintance: 'd10' });
+    expect(w.state.world.options).toEqual({ gender_norms: 'indifferent', offspec_stigma: 'tolerated', oversight: 'lenient', bloom_horror: 'restrained', tone: 'grim_hope', disposition: 'kind', acquaintance: 'd10', squad_assertiveness: 'normal', voting: 'off' });
     w.applyPreset('ghost');
     expect(w.state.world.preset).toBe('gentle'); // an unknown preset changes nothing
   });

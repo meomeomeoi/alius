@@ -337,13 +337,13 @@ describe('world options in setup (P8)', () => {
   it('buildCampaign stores every option, missing keys as defaults', () => {
     const s = ok(result([unit()], { world: { options: { oversight: 'brutal', disposition: 'hazardous' } } }));
     expect(s.world.options).toEqual({
-      gender_norms: 'indifferent', offspec_stigma: 'tolerated', oversight: 'brutal', bloom_horror: 'restrained', tone: 'grim', disposition: 'hazardous', acquaintance: 'd7',
+      gender_norms: 'indifferent', offspec_stigma: 'tolerated', oversight: 'brutal', bloom_horror: 'restrained', tone: 'grim', disposition: 'hazardous', acquaintance: 'd7', squad_assertiveness: 'normal', voting: 'off',
     });
   });
 
   it('a setup without a world block stores the defaults', () => {
     expect(ok(result()).world.options).toEqual({
-      gender_norms: 'indifferent', offspec_stigma: 'tolerated', oversight: 'standard', bloom_horror: 'restrained', tone: 'grim', disposition: 'guarded', acquaintance: 'd7',
+      gender_norms: 'indifferent', offspec_stigma: 'tolerated', oversight: 'standard', bloom_horror: 'restrained', tone: 'grim', disposition: 'guarded', acquaintance: 'd7', squad_assertiveness: 'normal', voting: 'off',
     });
   });
 

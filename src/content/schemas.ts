@@ -1229,6 +1229,13 @@ export const WorldOptionEffectSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('scene_directive'), text: str.max(300) }).strict(),
   /** P9: days after she first met the commander during which a soldier does no covert sabotage (0 = none). */
   z.object({ type: z.literal('acquaintance_grace'), days: int.min(0).max(14) }).strict(),
+  /** P9b: how pushy the squad is: scales a leader's privileges, the demand chance and (the commander's side of) a vote. */
+  z.object({
+    type: z.literal('squad_power'),
+    privilegeMult: z.number().min(0.25).max(3), demandMult: z.number().min(0.25).max(3), commanderVoteMult: z.number().min(0.25).max(2),
+  }).strict(),
+  /** P9b: some of the commander's decisions go to a squad vote. */
+  z.object({ type: z.literal('voting') }).strict(),
   /** Weights for the stance a generated grunt rolls under this choice. */
   z.object({
     type: z.literal('grunt_stances'),

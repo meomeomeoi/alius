@@ -12,6 +12,7 @@ import './engine/actions/leash'; // registers leash/* actions and the weekly ref
 import './engine/actions/loyalty'; // registers scene/order, loyalty/* actions and the loyalty day step (P6)
 import './engine/actions/discipline'; // registers the P9 discipline day step (after the loyalty step)
 import './engine/actions/bonds'; // registers the P9d actions
+import './engine/actions/power'; // registers the P9b actions
 import './engine/actions/dilemma'; // registers dilemma/* actions and the pacing step, after the loyalty step (P6)
 import './engine/actions/arc'; // registers arc/decide and the medbay arc steps (P6)
 import './engine/actions/items'; // registers item/* actions and the workshop hook

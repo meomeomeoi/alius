@@ -16,9 +16,9 @@ beforeAll(async () => {
 describe('world option registries in core', () => {
   it('core loads the four registries without errors', () => {
     for (const n of ['worldOptions', 'dispositionLevels', 'stanceEffects', 'worldPresets']) expect(REGISTRY_NAMES).toContain(n);
-    expect([...reg.worldOptions.keys()]).toEqual(['gender_norms', 'offspec_stigma', 'oversight', 'bloom_horror', 'tone', 'disposition', 'acquaintance']);
+    expect([...reg.worldOptions.keys()]).toEqual(['gender_norms', 'offspec_stigma', 'oversight', 'bloom_horror', 'tone', 'disposition', 'acquaintance', 'squad_assertiveness', 'voting']);
     expect([...reg.dispositionLevels.keys()]).toEqual(['kind', 'guarded', 'prickly', 'volatile', 'hazardous']);
-    expect([...reg.worldPresets.keys()].sort()).toEqual(['brutal', 'gentle', 'standard']);
+    expect([...reg.worldPresets.keys()].sort()).toEqual(['assertive_squad', 'brutal', 'gentle', 'standard']);
     expect(reg.stanceEffects.size).toBeGreaterThanOrEqual(8);
   });
 
@@ -56,13 +56,13 @@ describe('world option registries in core', () => {
 
   it('the presets are the spec presets', () => {
     expect(reg.worldPresets.get('gentle')!.choices).toEqual({
-      gender_norms: 'indifferent', offspec_stigma: 'tolerated', oversight: 'lenient', bloom_horror: 'restrained', tone: 'grim_hope', disposition: 'kind', acquaintance: 'd10',
+      gender_norms: 'indifferent', offspec_stigma: 'tolerated', oversight: 'lenient', bloom_horror: 'restrained', tone: 'grim_hope', disposition: 'kind', acquaintance: 'd10', squad_assertiveness: 'normal', voting: 'off',
     });
     expect(reg.worldPresets.get('standard')!.choices).toEqual({
-      gender_norms: 'indifferent', offspec_stigma: 'tolerated', oversight: 'standard', bloom_horror: 'restrained', tone: 'grim', disposition: 'guarded', acquaintance: 'd7',
+      gender_norms: 'indifferent', offspec_stigma: 'tolerated', oversight: 'standard', bloom_horror: 'restrained', tone: 'grim', disposition: 'guarded', acquaintance: 'd7', squad_assertiveness: 'normal', voting: 'off',
     });
     expect(reg.worldPresets.get('brutal')!.choices).toEqual({
-      gender_norms: 'corporate_machismo', offspec_stigma: 'hunted', oversight: 'brutal', bloom_horror: 'graphic', tone: 'bleak', disposition: 'hazardous', acquaintance: 'd3',
+      gender_norms: 'corporate_machismo', offspec_stigma: 'hunted', oversight: 'brutal', bloom_horror: 'graphic', tone: 'bleak', disposition: 'hazardous', acquaintance: 'd3', squad_assertiveness: 'normal', voting: 'off',
     });
   });
 

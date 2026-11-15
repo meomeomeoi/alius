@@ -279,6 +279,8 @@ export const CORE_GLOSSARY_IDS: readonly string[] = [
   'module_offline', 'coach_hint', 'rows',
   // P9d (the calibration's bond profile addresses this; the content and Want entries come with their screens)
   'bond_profile', 'content_categories', 'lead', 'want', 'relationship_rules', 'publicity',
+  // P9b (the WORLD PARAMETERS cards and the VOTE panel address these)
+  'squad_power', 'voting',
 ];
 
 let registered = false;

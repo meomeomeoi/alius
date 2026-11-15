@@ -95,7 +95,7 @@ describe('the world in the harness (P8)', () => {
   it('fixtureSquad builds the squad in a preset world and refuses an unknown one', () => {
     const s = fixtureSquad(reg, { level: 3, world: 'brutal' });
     expect(s.world.options).toEqual({
-      gender_norms: 'corporate_machismo', offspec_stigma: 'hunted', oversight: 'brutal', bloom_horror: 'graphic', tone: 'bleak', disposition: 'hazardous', acquaintance: 'd3',
+      gender_norms: 'corporate_machismo', offspec_stigma: 'hunted', oversight: 'brutal', bloom_horror: 'graphic', tone: 'bleak', disposition: 'hazardous', acquaintance: 'd3', squad_assertiveness: 'normal', voting: 'off',
     });
     expect(fixtureSquad(reg, { level: 3 }).world.options!.disposition).toBe('guarded');
     expect(() => fixtureSquad(reg, { level: 3, world: 'ghost' })).toThrow(/unknown world preset "ghost"/i);

@@ -395,6 +395,60 @@ var TUNING = Object.freeze({
       manage: Object.freeze([["pragmatism", 1], ["ingroup", 1]]),
       embrace: Object.freeze([["autonomy", 1], ["corporate", -1]])
     })
+  }),
+  /**
+   * P9b: the squad's power structure. Spec numbers verbatim: the commander's vote weight 1 + 0.5 × (Authority rank − 1) and × 0.75
+   * at `high` assertiveness (`squad_power`), a leader's vote × 1.5, grunts 0.5, overrule record +5, standing 0.4 / 0.3 / 0.3
+   * with the lead-style factors, the leader margin 10 and the weekly recompute, contagion weight 2, endorsement × 1.5, challenge
+   * 14 days and Impunity +10, feat suppression 14 days, take-the-blame Leash −1. Everything else is a DRAFT, the author's to change.
+   */
+  power: Object.freeze({
+    vote: Object.freeze({
+      commanderBase: 1,
+      commanderPerRank: 0.5,
+      leaderWeight: 1.5,
+      gruntWeight: 0.5,
+      /** `decision_violated` severity on each unit that voted against an overruled vote. */
+      overruleSeverity: "moderate",
+      overruleRecord: 5,
+      /** × her refusal chance while a grudge holds (until the next day end). */
+      grudgeRefusalMult: 1.5,
+      logMax: 30
+    }),
+    ballot: Object.freeze({
+      /** `clamp((trust − 50) / trustPer, −trustCap, trustCap)`. */
+      trustPer: 25,
+      trustCap: 2,
+      openDemand: -1,
+      subject: -4,
+      compatibility: -2
+      /** `commandStances[].voteBias` is content; the ballot adds it as is. */
+    }),
+    merit: Object.freeze({ damagePer: 10, finishingBlow: 5, healPer: 10, windowDays: 14 }),
+    standing: Object.freeze({
+      merit: 0.4,
+      respect: 0.3,
+      impunity: 0.3,
+      factor: Object.freeze({ yielding: 0.7, balanced: 1, assertive: 1.15, dominant: 1.3 }),
+      margin: 10,
+      recomputeDays: 7,
+      lostChallengeBonus: 10
+    }),
+    countermand: Object.freeze({ chance: 0.2, cap: 0.6, overruleRecord: 3 }),
+    endorse: Object.freeze({ multiplier: 1.5, othersRecord: 3 }),
+    challenge: Object.freeze({
+      base: 0.5,
+      perRank: 0.12,
+      min: 0.15,
+      max: 0.85,
+      standingPerRank: 26,
+      cooldownDays: 14,
+      deposedDays: 14,
+      winRecord: -5,
+      lossRecord: 10
+    }),
+    outside: Object.freeze({ suppressDays: 14 }),
+    scapegoat: Object.freeze({ failedRunStanding: 4, takeBlameStanding: 5, shiftDays: 2, shiftStress: 10 })
   })
 });
 
@@ -6587,6 +6641,15 @@ var WorldOptionEffectSchema = external_exports.discriminatedUnion("type", [
   external_exports.object({ type: external_exports.literal("scene_directive"), text: str.max(300) }).strict(),
   /** P9: days after she first met the commander during which a soldier does no covert sabotage (0 = none). */
   external_exports.object({ type: external_exports.literal("acquaintance_grace"), days: int.min(0).max(14) }).strict(),
+  /** P9b: how pushy the squad is: scales a leader's privileges, the demand chance and (the commander's side of) a vote. */
+  external_exports.object({
+    type: external_exports.literal("squad_power"),
+    privilegeMult: external_exports.number().min(0.25).max(3),
+    demandMult: external_exports.number().min(0.25).max(3),
+    commanderVoteMult: external_exports.number().min(0.25).max(2)
+  }).strict(),
+  /** P9b: some of the commander's decisions go to a squad vote. */
+  external_exports.object({ type: external_exports.literal("voting") }).strict(),
   /** Weights for the stance a generated grunt rolls under this choice. */
   external_exports.object({
     type: external_exports.literal("grunt_stances"),
@@ -10996,6 +11059,16 @@ function markDmViolation(draft, reg, unitId, messageRef, raw) {
   if (message) message.violation = categories;
 }
 
+// src/engine/power/options.ts
+var NEUTRAL = { privilegeMult: 1, demandMult: 1, commanderVoteMult: 1 };
+function assertiveness(state, reg) {
+  return worldEffects(state, reg, "squad_power").reduce((acc, e) => ({
+    privilegeMult: acc.privilegeMult * e.privilegeMult,
+    demandMult: acc.demandMult * e.demandMult,
+    commanderVoteMult: acc.commanderVoteMult * e.commanderVoteMult
+  }), NEUTRAL);
+}
+
 // src/engine/discipline/acquaintance.ts
 function acquaintanceDays(state, reg) {
   const days = worldEffects(state, reg, "acquaintance_grace")[0]?.days;
@@ -11034,7 +11107,8 @@ function demandChance(state, reg, unitId) {
   const T = TUNING.demands;
   const weight = Number(stanceEntry(reg, stance)?.demandWeight ?? 1);
   const mult = Number(dispositionFor(state, reg, unit).refusalMult);
-  return clamp13(T.baseChance * (i.value / TUNING.impunity.stance.impunityHigh) * mult * weight, 0, T.maxChance);
+  const squad = assertiveness(state, reg).demandMult;
+  return clamp13(T.baseChance * (i.value / TUNING.impunity.stance.impunityHigh) * mult * weight * squad, 0, T.maxChance);
 }
 var openedThisWeek = (state, unitId) => (state.discipline?.demandLog ?? []).filter((e) => e.unitId === unitId && state.day - e.day < TUNING.demands.weekDays).length;
 var hasOpen = (state, unitId) => (state.discipline?.demands ?? []).some((d) => d.unitId === unitId);
@@ -27564,6 +27638,17 @@ function summarizeWorldOptionEffect(effect, reg) {
       return "Generated soldiers lean for or against the norm";
     case "acquaintance_grace":
       return x.days === 0 ? "Soldiers may start secret protest from the first day" : "Soldiers hold back secret protest while they get to know a new commander";
+    case "squad_power": {
+      const more = (n, up, down2) => typeof n !== "number" || n === 1 ? null : n > 1 ? up : down2;
+      const parts = [
+        more(x.privilegeMult, "A squad leader has greater privileges", "A squad leader has lesser privileges"),
+        more(x.demandMult, "Soldiers make demands more often", "Soldiers make demands less often"),
+        more(x.commanderVoteMult, "The commander's vote weighs more in a squad vote", "The commander's vote weighs less in a squad vote")
+      ].filter((l) => l !== null);
+      return parts.length > 0 ? parts.join("; ") : "The squad pushes only as far as its soldiers' own character does";
+    }
+    case "voting":
+      return "Some decisions go to a squad vote.";
     default:
       return cap5(humanize(String(x.type ?? "effect")));
   }
