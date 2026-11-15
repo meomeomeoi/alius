@@ -53,7 +53,7 @@ Rule of thumb from P0–P6: one chunk per session, start each session with the p
 7. Mark older package specs as "historical; code is the source of truth where they differ".
 8. §3 Principles or §11 rules: every player-facing stat/option/chip carries `data-analyze` (P7a coverage rule); new values add an analyze provider in the same package.
 
-## Pending overview changes (apply in the P9d planning session)
+## Overview changes (applied in the P9d planning session, 2026-11-15)
 
 1. §8 Settings: the single "explicit scenes allowed" switch is superseded by P9d content categories (all off by default; enabling = full consent; characters' own limits still apply).
 2. ~~§9 Packages table~~ — applied 2026-11-13 (P9b–P9d, P10b added, order column).

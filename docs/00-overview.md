@@ -279,6 +279,8 @@ Campaign {
   lastCombat?: CombatResult   // P4: for P5's recap and debrief
   workshopSession?: { day, opsLeft, companionId? }, enemyNames?: { [enemyId|affixes]: name }   // P4
   ledger?: [{ day, slot, action, key, delta }]   // P7a: changes of resources (res:<r>), unit stress (stress:<id>), relation axes (axis:<id>:<axis>) and, from P9, the stored Impunity term (record:<id>); last 7 days, ≤ 150, written by dispatch
+  content?: { enabled[] /* contentCategories ids */ }, bonds?: { rules[], smother? }   // P9d; absent = nothing enabled, no rules
+  hierarchy?, votes?[]   // P9b (planned): leader/standing and open votes; world options squad_assertiveness, voting
   discipline?: { defiance[], threats[], applications[] /* newest 20, each with its Inverse */, restrictions[], sabotage?{ queued[], gear?, lastDay? }, demands[], demandLog[] }   // P9; absent in old saves
 }
 
@@ -295,6 +297,7 @@ Unit {
   dispositionOffset?, dispositionReason?   // P8: −2…+2 on top of the world disposition level (absent = 0), proposed at import with a one-line reason
   worldStances?: { [optionId]: { stance: 'shares'|'indifferent'|'opposes', strength: 1|2, reason } }   // P8: her stance toward each squad-stance world option (absent = indifferent)
   commanderTastes?: string[]   // P7: up to 3 ids of registry `tastes`
+  bond?: { leadStyle: 'dominant'|'assertive'|'balanced'|'yielding', attachment: 'slow'|'steady'|'intense'|'avoidant', desire: 'low'|'medium'|'high', caretaker, ownLimits{ categories[], note? }, publicity /* her preference */ }   // P9d: from the card at import; absent = a modest profile
 }
 
 Relation {
@@ -341,7 +344,7 @@ Packs can override by id or `extends` an existing entry. In v1 packs are loaded 
 
 ## 8. Settings (global, per-campaign overrides where noted)
 
-Connection profiles (main, mechanic) · per-call token budgets · intent extraction mode (per exchange / every N / scene end) · sprite mode (native Expressions / mechanic `emotion_pick`) · difficulty (combat difficulty; **easy retry**: rewind lost combat, rewinds not recorded in memory) · show raw values (off: bands only) · mechanics edit lock (on by default: view-only, unlock to edit numbers in UI) · intimacy: romance on/off, explicit scenes allowed on/off (directive to main model; actual content depends on user's model/preset), Desire/Bond defect category on/off, romantic initiative intensity (low/med/high) · UI: phosphor palette (amber/green/white), scanlines, typing animation speed · companion vignettes on/off, generated grunt names on/off · debug mode (show intents, deltas, prompts).
+Connection profiles (main, mechanic) · per-call token budgets · intent extraction mode (per exchange / every N / scene end) · sprite mode (native Expressions / mechanic `emotion_pick`) · difficulty (combat difficulty; **easy retry**: rewind lost combat, rewinds not recorded in memory) · show raw values (off: bands only) · mechanics edit lock (on by default: view-only, unlock to edit numbers in UI) · intimacy: romance on/off, **content categories** (P9d: per campaign, all off by default, set at setup in WORLD PARAMETERS › CONTENT and in SYS; enabling one is the player's full consent for it to appear; disabled ones are excluded from every generation and from every mechanic; a character's own limits from her card still apply; they supersede the old single "explicit scenes allowed" switch, which is read once to carry `explicit_scenes` over), Desire/Bond defect category on/off, romantic initiative intensity (low/med/high) · UI: phosphor palette (amber/green/white), scanlines, typing animation speed · companion vignettes on/off, generated grunt names on/off · debug mode (show intents, deltas, prompts).
 
 P4: **easy retry** (default off) and generated enemy names (default off) are global settings; combat difficulty (story / normal / hard) is per campaign (`campaign/set_difficulty`, SYS).
 
