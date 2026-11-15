@@ -11,6 +11,8 @@ import { TUNING } from '../tuning';
 import { effectiveValues } from '../worldOptions/stances';
 import { tallyVote } from './ballot';
 import { votingOn } from './options';
+import { RATION_MODES } from './state';
+import { rationsVotable } from './rations';
 import { logVote, powerOf } from './state';
 
 /**
@@ -32,6 +34,10 @@ function subjectProblem(state: CampaignState, ctx: EngineCtx, kind: VoteKind, su
   if (kind === 'mission' && !missionById(state, subject)) return `There is no mission "${subject}" to vote on.`;
   if (kind === 'upgrade' && !reg.facilities.has(subject)) return `There is no facility "${subject}" to vote on.`;
   if (kind === 'punish' && !isNamedLiving(state, subject)) return `There is no soldier "${subject}" to vote on.`;
+  if (kind === 'rations') {
+    if (!RATION_MODES.includes(subject as never)) return `There is no ration mode "${subject}" to vote on.`;
+    if (!rationsVotable(state, ctx.registries)) return 'There is no shortage: the rations are set freely.';
+  }
   return null;
 }
 

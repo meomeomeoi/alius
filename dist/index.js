@@ -771,6 +771,41 @@ function defectAllowedFor(reg, defectId, bond) {
   return need.caretaker !== true || bond?.caretaker === true;
 }
 
+// src/engine/power/state.ts
+function powerOf(draft) {
+  return draft.power ??= { votes: { log: [], seq: 0 } };
+}
+var RATION_MODES = ["equal", "fighters_first", "commander_short"];
+var rationsOf = (state) => state.base.rations !== void 0 && RATION_MODES.includes(state.base.rations) ? state.base.rations : "equal";
+function grudgeHolds(state, unitId) {
+  return state.power?.grudges?.[unitId] !== void 0;
+}
+function logVote(draft, vote, result) {
+  const power = powerOf(draft);
+  power.votes.log.push({ id: vote.id, day: vote.day, kind: vote.kind, subject: vote.subject, result, forWeight: vote.forWeight, againstWeight: vote.againstWeight });
+  if (power.votes.log.length > TUNING.power.vote.logMax) power.votes.log.splice(0, power.votes.log.length - TUNING.power.vote.logMax);
+}
+function retally(vote) {
+  const side = (v) => vote.ballots.filter((b) => b.vote === v).reduce((sum, b) => sum + b.weight, 0);
+  vote.forWeight = vote.commanderWeight + side("for");
+  vote.againstWeight = side("against");
+  vote.passed = vote.forWeight >= vote.againstWeight;
+  if (vote.status === "passed" || vote.status === "failed") vote.status = vote.passed ? "passed" : "failed";
+}
+function forgetPower(draft, unitId) {
+  const power = draft.power;
+  if (!power) return;
+  if (power.grudges) {
+    delete power.grudges[unitId];
+    if (Object.keys(power.grudges).length === 0) delete power.grudges;
+  }
+  const open3 = power.votes.open;
+  if (open3 && open3.ballots.some((b) => b.unitId === unitId)) {
+    open3.ballots = open3.ballots.filter((b) => b.unitId !== unitId);
+    retally(open3);
+  }
+}
+
 // src/engine/relationGain.ts
 var RANGE = { trust: [0, 100], affinity: [-100, 100], attraction: [0, 100] };
 var defaultHandler = ({ relation }, axis, amount) => {
@@ -841,17 +876,39 @@ function runUpkeep(draft, reg) {
   const events = [];
   const { needed } = upkeepNeeded(draft, reg);
   const paid = Math.min(draft.resources.supplies, needed);
-  const missing2 = needed - paid;
+  let missing2 = needed - paid;
   draft.resources.supplies -= paid;
   events.push({ type: "upkeep", needed, paid, shortage: missing2 });
+  const mode = rationsOf(draft);
+  if (missing2 > 0 && mode === "commander_short") {
+    const covered = Math.min(missing2, TUNING.upkeep.commander);
+    missing2 -= covered;
+    draft.calendar.loseMorning = true;
+    events.push({ type: "commander_went_hungry", day: draft.day, covered });
+  }
   if (missing2 === 0) {
     draft.calendar.shortageStreak = 0;
     return events;
   }
   const units = livingUnits(draft);
   const slots = units.flatMap((u) => eatsDouble(u) ? [u, u] : [u]);
-  const stress = spread(missing2 * TUNING.shortage.stressPerPoint, slots.length, draft.day);
-  const affinity = spread(missing2 * TUNING.shortage.affinityPerPoint, slots.length, draft.day);
+  let stress = spread(missing2 * TUNING.shortage.stressPerPoint, slots.length, draft.day);
+  let affinity = spread(missing2 * TUNING.shortage.affinityPerPoint, slots.length, draft.day);
+  const onRoster = (u) => draft.roster.activeIds.includes(u.id);
+  if (mode === "fighters_first" && slots.some((u) => !onRoster(u))) {
+    const order = slots.map((_, i) => i).sort((a, b) => Number(onRoster(slots[a])) - Number(onRoster(slots[b])));
+    const points = new Array(slots.length).fill(0);
+    let left = missing2;
+    for (const i of order) {
+      points[i] = Math.min(left, 1);
+      left -= points[i];
+    }
+    if (left > 0) spread(left, slots.length, draft.day).forEach((n, i) => {
+      points[i] += n;
+    });
+    stress = points.map((p) => p * TUNING.shortage.stressPerPoint);
+    affinity = points.map((p) => p * TUNING.shortage.affinityPerPoint);
+  }
   slots.forEach((u, i) => {
     u.stress = clamp2(u.stress + stress[i], 0, 100);
     if (affinity[i] > 0) applyRelationDelta(draft, u.id, "affinity", -affinity[i], "shortage");
@@ -10467,39 +10524,6 @@ function closeNight(draft, ctx2, open3) {
   return open3.at === "night" && draft.slot === "night" ? consumeSlots(draft, 1, ctx2) : [];
 }
 
-// src/engine/power/state.ts
-function powerOf(draft) {
-  return draft.power ??= { votes: { log: [], seq: 0 } };
-}
-function grudgeHolds(state, unitId) {
-  return state.power?.grudges?.[unitId] !== void 0;
-}
-function logVote(draft, vote, result) {
-  const power = powerOf(draft);
-  power.votes.log.push({ id: vote.id, day: vote.day, kind: vote.kind, subject: vote.subject, result, forWeight: vote.forWeight, againstWeight: vote.againstWeight });
-  if (power.votes.log.length > TUNING.power.vote.logMax) power.votes.log.splice(0, power.votes.log.length - TUNING.power.vote.logMax);
-}
-function retally(vote) {
-  const side = (v) => vote.ballots.filter((b) => b.vote === v).reduce((sum, b) => sum + b.weight, 0);
-  vote.forWeight = vote.commanderWeight + side("for");
-  vote.againstWeight = side("against");
-  vote.passed = vote.forWeight >= vote.againstWeight;
-  if (vote.status === "passed" || vote.status === "failed") vote.status = vote.passed ? "passed" : "failed";
-}
-function forgetPower(draft, unitId) {
-  const power = draft.power;
-  if (!power) return;
-  if (power.grudges) {
-    delete power.grudges[unitId];
-    if (Object.keys(power.grudges).length === 0) delete power.grudges;
-  }
-  const open3 = power.votes.open;
-  if (open3 && open3.ballots.some((b) => b.unitId === unitId)) {
-    open3.ballots = open3.ballots.filter((b) => b.unitId !== unitId);
-    retally(open3);
-  }
-}
-
 // src/engine/leash/use.ts
 var clamp12 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var unitOf = (state, id) => state.squad.find((u) => u.id === id);
@@ -10811,6 +10835,17 @@ function tallyVote(state, reg, kind, subject) {
   return { ballots, commanderWeight, forWeight, againstWeight, passed: forWeight >= againstWeight };
 }
 
+// src/engine/power/rations.ts
+function rationsVotable(state, reg) {
+  return (state.calendar.shortageStreak ?? 0) > 0 || state.resources.supplies < upkeepNeeded(state, reg).needed;
+}
+function setRations(draft, mode) {
+  if (typeof mode !== "string" || !RATION_MODES.includes(mode)) throw new Error(`Unknown ration mode "${String(mode)}".`);
+  if (mode === "equal") delete draft.base.rations;
+  else draft.base.rations = mode;
+  return [{ type: "rations_set", mode }];
+}
+
 // src/engine/power/votes.ts
 var MEANS = ["order", "punish", "leash"];
 var isNamedLiving2 = (state, id) => {
@@ -10822,6 +10857,10 @@ function subjectProblem(state, ctx2, kind, subject) {
   if (kind === "mission" && !missionById(state, subject)) return `There is no mission "${subject}" to vote on.`;
   if (kind === "upgrade" && !reg.facilities.has(subject)) return `There is no facility "${subject}" to vote on.`;
   if (kind === "punish" && !isNamedLiving2(state, subject)) return `There is no soldier "${subject}" to vote on.`;
+  if (kind === "rations") {
+    if (!RATION_MODES.includes(subject)) return `There is no ration mode "${subject}" to vote on.`;
+    if (!rationsVotable(state, ctx2.registries)) return "There is no shortage: the rations are set freely.";
+  }
   return null;
 }
 var againstHerValues = (draft, reg, unit) => {
@@ -17189,6 +17228,14 @@ registerVoteGate("discipline/punish", (_state, payload, reg) => {
   const limit = benchSeverity(reg);
   if (!pun || limit === null || Number(pun.severity) > limit) return null;
   return { kind: "punish", subject: payload.unitId };
+});
+registerVoteGate("rations/set", (state, payload, reg) => {
+  if (!isObj20(payload) || typeof payload.mode !== "string" || !RATION_MODES.includes(payload.mode)) return null;
+  return rationsVotable(state, reg) ? { kind: "rations", subject: payload.mode } : null;
+});
+registerAction("rations/set", (draft, payload) => {
+  if (!isObj20(payload)) throw new Error("rations/set needs { mode }");
+  return setRations(draft, payload.mode);
 });
 
 // src/engine/dilemma/effects.ts

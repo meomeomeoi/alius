@@ -433,17 +433,17 @@ tests/**                                                        mirrors src; tes
   - event `commander_went_hungry`
 - Consumes: `upkeepNeeded`, `spread`, `calendar.loseMorning` (P7).
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `equal is byte-identical to the old upkeep` (same state and events with `base.rations` absent and `equal`)
   - `fighters_first puts the shortage on reserve units first`
   - `fighters_first without reserve units equals equal`
   - `commander_short covers up to the commander's share and loses the next morning`
   - `rations/set is gated only while a shortage is on or coming`
   - `an unknown mode is refused`
-- [ ] **Step 2: Run** `npx vitest run tests/engine/power/rations.test.ts` and confirm FAIL.
-- [ ] **Step 3: Implement** the three modes in `runUpkeep`, behind `rationsOf`. No rng.
-- [ ] **Step 4: Run** the tests, then `npm test`. Expect PASS.
-- [ ] **Step 5: Tick and commit:** `feat(power): ration modes and their vote`.
+- [x] **Step 2: Run** `npx vitest run tests/engine/power/rations.test.ts` and confirm FAIL.
+- [x] **Step 3: Implement** the three modes in `runUpkeep`, behind `rationsOf`. No rng.
+- [x] **Step 4: Run** the tests, then `npm test`. Expect PASS.
+- [x] **Step 5: Tick and commit:** `feat(power): ration modes and their vote`.
 
 ### Task 5: The non-engine layer: VOTE controller, ballot wording, grudge directives
 

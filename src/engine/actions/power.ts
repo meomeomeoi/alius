@@ -1,6 +1,7 @@
 import { registerDayEndStep } from '../calendar';
 import { punishmentFor } from '../discipline/perception';
 import { registerAction, registerVoteGate } from '../dispatch';
+import { rationsVotable, RATION_MODES, setRations } from '../power/rations';
 import { dropVote, openVote, overruleVote, type OverruleMeans } from '../power/votes';
 import { powerDayStep } from '../power/dayStep';
 import { VOTE_KINDS, type VoteKind } from '../state/types';
@@ -63,6 +64,21 @@ registerVoteGate('discipline/punish', (_state, payload, reg) => {
   const limit = benchSeverity(reg);
   if (!pun || limit === null || Number(pun.severity) > limit) return null;
   return { kind: 'punish', subject: payload.unitId };
+});
+
+/** Rations are voted on only while a shortage is on or coming; an unknown mode is left to the action to refuse. */
+registerVoteGate('rations/set', (state, payload, reg) => {
+  if (!isObj(payload) || typeof payload.mode !== 'string' || !RATION_MODES.includes(payload.mode as never)) return null;
+  return rationsVotable(state, reg) ? { kind: 'rations', subject: payload.mode } : null;
+});
+
+// ---------------------------------------------------------------------------------------------
+// Rations
+
+/** The BASE tab's RATIONS row. Draws no rng. */
+registerAction('rations/set', (draft, payload) => {
+  if (!isObj(payload)) throw new Error('rations/set needs { mode }');
+  return setRations(draft, payload.mode);
 });
 
 export const GATED_KINDS: readonly VoteKind[] = VOTE_KINDS;

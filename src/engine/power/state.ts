@@ -1,5 +1,5 @@
 import { isLiving } from '../economy';
-import type { CampaignState, PowerState, Vote, VoteLogEntry } from '../state/types';
+import type { CampaignState, PowerState, RationMode, Vote, VoteLogEntry } from '../state/types';
 import { TUNING } from '../tuning';
 
 /**
@@ -11,6 +11,13 @@ import { TUNING } from '../tuning';
 export function powerOf(draft: CampaignState): PowerState {
   return (draft.power ??= { votes: { log: [], seq: 0 } });
 }
+
+/** How a shortage is shared out. */
+export const RATION_MODES: readonly RationMode[] = ['equal', 'fighters_first', 'commander_short'];
+
+/** The current ration mode (a save that never chose one reads `equal`). */
+export const rationsOf = (state: Pick<CampaignState, 'base'>): RationMode =>
+  state.base.rations !== undefined && RATION_MODES.includes(state.base.rations) ? state.base.rations : 'equal';
 
 /** Does an overruled vote still hold a grudge against her: she voted against the commander and was overruled, today. */
 export function grudgeHolds(state: Pick<CampaignState, 'power'>, unitId: string): boolean {

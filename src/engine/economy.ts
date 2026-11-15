@@ -1,6 +1,7 @@
 import type { Registries } from '../content/types';
 import { traitEffects } from './commander/traits';
 import type { EngineEvent } from './dispatch';
+import { rationsOf } from './power/state';
 import { applyRelationDelta } from './relationGain';
 import type { CampaignState, Unit } from './state/types';
 import { TUNING } from './tuning';
@@ -65,9 +66,18 @@ export function runUpkeep(draft: CampaignState, reg: Registries): EngineEvent[] 
   const events: EngineEvent[] = [];
   const { needed } = upkeepNeeded(draft, reg);
   const paid = Math.min(draft.resources.supplies, needed);
-  const missing = needed - paid;
+  let missing = needed - paid;
   draft.resources.supplies -= paid;
   events.push({ type: 'upkeep', needed, paid, shortage: missing });
+
+  // P9b `commander_short`: the commander goes without first, up to the commander's own share, and sleeps through the next morning
+  const mode = rationsOf(draft);
+  if (missing > 0 && mode === 'commander_short') {
+    const covered = Math.min(missing, TUNING.upkeep.commander);
+    missing -= covered;
+    draft.calendar.loseMorning = true;
+    events.push({ type: 'commander_went_hungry', day: draft.day, covered });
+  }
 
   if (missing === 0) {
     draft.calendar.shortageStreak = 0;
@@ -77,8 +87,22 @@ export function runUpkeep(draft: CampaignState, reg: Registries): EngineEvent[] 
   const units = livingUnits(draft);
   // a double eater holds two shares, so the shortage "hits her hardest"
   const slots = units.flatMap((u) => (eatsDouble(u) ? [u, u] : [u]));
-  const stress = spread(missing * TUNING.shortage.stressPerPoint, slots.length, draft.day);
-  const affinity = spread(missing * TUNING.shortage.affinityPerPoint, slots.length, draft.day);
+  let stress = spread(missing * TUNING.shortage.stressPerPoint, slots.length, draft.day);
+  let affinity = spread(missing * TUNING.shortage.affinityPerPoint, slots.length, draft.day);
+  // P9b `fighters_first`: reserve units take a point each first, the roster only what is left over (no reserve unit: as `equal`)
+  const onRoster = (u: Unit): boolean => draft.roster.activeIds.includes(u.id);
+  if (mode === 'fighters_first' && slots.some((u) => !onRoster(u))) {
+    const order = slots.map((_, i) => i).sort((a, b) => Number(onRoster(slots[a])) - Number(onRoster(slots[b])));
+    const points = new Array<number>(slots.length).fill(0);
+    let left = missing;
+    for (const i of order) {
+      points[i] = Math.min(left, 1);
+      left -= points[i];
+    }
+    if (left > 0) spread(left, slots.length, draft.day).forEach((n, i) => { points[i] += n; }); // more than a point a share: spill evenly
+    stress = points.map((p) => p * TUNING.shortage.stressPerPoint);
+    affinity = points.map((p) => p * TUNING.shortage.affinityPerPoint);
+  }
   slots.forEach((u, i) => {
     u.stress = clamp(u.stress + stress[i], 0, 100);
     if (affinity[i] > 0) applyRelationDelta(draft, u.id, 'affinity', -affinity[i], 'shortage');
