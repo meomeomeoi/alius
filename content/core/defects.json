@@ -967,5 +967,149 @@
       "costMult": 0.5
     },
     "desertionMod": -0.1
+  },
+  {
+    "id": "dominance_drive",
+    "name": "Dominance Drive",
+    "category": "desire_bond",
+    "lore": "Command firmware that never stood down: she needs to be the one who decides.",
+    "upside": "+damage and +initiative when she acts on her own call; calmer when the commander yields decisions to her.",
+    "downside": "Stress when the commander asserts authority over her: orders, punishments, being overruled.",
+    "breakdown": {
+      "name": "Seize Command",
+      "text": "Ignores CP orders and issues her own to allies; they may follow."
+    },
+    "social": "AUTHOR TO WRITE: friction over who decides; feeds how she leads in intimate scenes.",
+    "arc": {
+      "cure": "Not yet written.",
+      "manage": "Agreed domains of authority.",
+      "embrace": "Formal co-command (stand-in: an open agreement flag until the hierarchy arrives)."
+    },
+    "combat": {
+      "upside": [
+        {
+          "type": "outgoing",
+          "pct": 8,
+          "when": {
+            "notOrderedThisRound": true
+          }
+        },
+        {
+          "type": "stat",
+          "stat": "spd",
+          "pct": 5,
+          "when": {
+            "notOrderedThisRound": true
+          }
+        }
+      ],
+      "downside": [
+        {
+          "type": "stress",
+          "amount": 2,
+          "trigger": "onTurnStart",
+          "target": "self",
+          "when": {
+            "orderedThisRound": true
+          },
+          "downside": true
+        }
+      ],
+      "breakdown": {
+        "policy": "normal",
+        "ignoresOrders": true,
+        "onEnter": [
+          {
+            "type": "order_refusal",
+            "chance": 0.5,
+            "target": "allies_other"
+          }
+        ],
+        "actionEffects": []
+      }
+    },
+    "eventStress": {
+      "commander_enforced": 4,
+      "threatened": 3,
+      "commander_yielded": -3,
+      "followed_lead": -3,
+      "rule_accepted": -3
+    },
+    "leadBonus": 15,
+    "embraceFlag": "co_command",
+    "wantBreakdown": {
+      "kind": "seize",
+      "days": 1
+    }
+  },
+  {
+    "id": "caretaker_overdrive",
+    "name": "Caretaker Overdrive",
+    "category": "desire_bond",
+    "lore": "Care protocols stuck at maximum: someone must always be kept safe.",
+    "upside": "Heals and relieves more when allies are hurt; tougher when the commander is frail or slight.",
+    "downside": "Stress when the commander is exposed to a fight; tries to keep the commander at base.",
+    "breakdown": {
+      "name": "Smother",
+      "text": "Waits for an order; afterwards locks the hangar and keeps the commander at base."
+    },
+    "social": "AUTHOR TO WRITE: tenderness that turns into control; fusses over every scratch.",
+    "arc": {
+      "cure": "Not yet written.",
+      "manage": "Agreed limits on how far the care goes.",
+      "embrace": "Not yet written."
+    },
+    "requiresBond": {
+      "caretaker": true
+    },
+    "combat": {
+      "upside": [
+        {
+          "type": "outgoing",
+          "pct": 0,
+          "vs": "heal",
+          "scale": {
+            "by": "allies_hp_missing_pct",
+            "per": 0.5
+          }
+        },
+        {
+          "type": "stat",
+          "stat": "def",
+          "pct": 10,
+          "when": {
+            "commanderBuildIn": [
+              "frail",
+              "slight"
+            ]
+          }
+        }
+      ],
+      "downside": [
+        {
+          "type": "stress",
+          "amount": 2,
+          "trigger": "onRoundStart",
+          "target": "self",
+          "when": {
+            "commanderExposed": true
+          },
+          "downside": true
+        }
+      ],
+      "breakdown": {
+        "policy": "await_order",
+        "ignoresOrders": false,
+        "onEnter": [],
+        "actionEffects": []
+      }
+    },
+    "eventStress": {
+      "endangered": 4
+    },
+    "wantBreakdown": {
+      "kind": "smother",
+      "days": 1
+    }
   }
 ]

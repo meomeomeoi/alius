@@ -28,10 +28,10 @@ registerAction('squad/set_loadout', (draft, payload, ctx) => {
   return [{ type: 'loadout_changed', unitId: p.unitId as string }];
 });
 
-registerAction('squad/release_breakdowns', (draft, payload) => {
+registerAction('squad/release_breakdowns', (draft, payload, ctx) => {
   const ids = isObj(payload) ? payload.unitIds : undefined;
   if (ids !== undefined && !(Array.isArray(ids) && ids.every((x) => typeof x === 'string'))) throw new Error('unitIds must be a list of unit ids');
-  return releaseBreakdowns(draft, ids as string[] | undefined);
+  return releaseBreakdowns(draft, ids as string[] | undefined, ctx.registries);
 });
 
 /** P2 activities only add XP; P4 turns it into levels. */

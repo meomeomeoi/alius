@@ -83,7 +83,7 @@ function combatBase(e: Loose): string {
     }
     case 'cleanse': return `Remove ${e.count} ${e.kind}${Number(e.count) === 1 ? '' : 's'}`;
     case 'stat': return `${scaledPct(Number(e.pct), e.stat === 'all' ? 'all stats' : String(e.stat).toUpperCase(), e.scale)}${isNum(e.turns) ? ` (${e.turns} ${plural(e.turns, 'turn')})` : ''}`;
-    case 'outgoing': return `${scaledPct(Number(e.pct), 'damage dealt', e.scale)}${e.vs && e.vs !== 'any' ? ` vs ${e.vs}` : ''}`;
+    case 'outgoing': return `${scaledPct(Number(e.pct), e.vs === 'heal' ? 'healing done' : 'damage dealt', e.scale)}${e.vs && e.vs !== 'any' && e.vs !== 'heal' ? ` vs ${e.vs}` : ''}`;
     case 'incoming': return `${pctSigned(Number(e.pct))} damage taken`;
     case 'stress': return `${signed(Number(e.amount))} Stress`;
     case 'stress_taken': return `${pctSigned(Number(e.pct))} stress ${e.direction === 'relief' ? 'relief' : 'gained'}`;

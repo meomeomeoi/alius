@@ -132,6 +132,9 @@ export function decideArc(
   const inst = unit.defects.find((d) => d.id === p.defectId)!;
   inst.arc = p.path;
   inst.arcSteps = { done: 0, needed: TUNING.arc.steps[p.path] };
+  // P9d: embracing a defect that names a flag (Dominance Drive: a formal co-command stand-in) writes it on her relation
+  const embraceFlag = p.path === 'embrace' ? (reg.defects.get(p.defectId)?.embraceFlag as string | undefined) : undefined;
+  if (embraceFlag !== undefined && !draft.relations[p.unitId].flags.includes(embraceFlag)) draft.relations[p.unitId].flags.push(embraceFlag);
   const severity = forced && p.path === 'cure' ? 'extreme' : 'major';
   events.push(...applyEventToUnit(draft, reg, p.unitId, {
     type: info.wanted ? 'decision_aligned' : 'decision_violated', actor: 'commander', targets: [p.unitId], severity,

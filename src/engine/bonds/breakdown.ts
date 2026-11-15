@@ -5,6 +5,7 @@ import { isLiving } from '../economy';
 import { queueNightSpec } from '../night';
 import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
+import { startSmother } from './smother';
 import { effectiveWant, wantEligible } from './want';
 
 /** The off-combat breakdown a Desire/Bond defect starts when Want reaches the top band. */
@@ -16,7 +17,8 @@ export const wantBreakdownSpec = (reg: Registries, defectId: string): WantBreakd
 /**
  * Starts her off-combat breakdown for a defect: she is in `unit.breakdown` until `day + days` (the existing guards keep her
  * off expeditions), and the kind adds its own consequence: `withdrawal` queues her defect's night knock of that kind for
- * certain, `binge` costs 10 credits (never below 0). `smother` and `seize` come with the defects that use them. Draws no rng.
+ * certain, `binge` costs 10 credits (never below 0), `smother` locks the hangar for a day (the Smother stand-in); `seize` only
+ * refuses her scene orders (read in `loyalty/refusal`). Draws no rng.
  */
 export function startWantBreakdown(draft: CampaignState, ctx: EngineCtx, unitId: string, defectId: string): EngineEvent[] {
   const reg = ctx.registries;
@@ -28,6 +30,8 @@ export function startWantBreakdown(draft: CampaignState, ctx: EngineCtx, unitId:
   if (spec.kind === 'withdrawal') {
     const knock = ((reg.defects.get(defectId)?.nightEvents as NightSpec[] | undefined) ?? []).find((n) => n.kind === spec.kind);
     if (knock) events.push(...queueNightSpec(draft, unit, knock));
+  } else if (spec.kind === 'smother') {
+    events.push(...startSmother(draft, unitId));
   } else if (spec.kind === 'binge') {
     const cost = Math.min(draft.resources.credits, TUNING.bonds.want.breakdownMoneyCost);
     if (cost > 0) {

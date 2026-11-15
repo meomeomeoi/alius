@@ -8,6 +8,7 @@ Reading the two runs:
 
 - **Danger 2** is the regular fight: the control wins 100 %, a combat lasts 4.2 rounds on average (target: at most 5) and every defect passes — the squad is too strong for the rule to bite here.
 - **Danger 4** is the stress test (win rate ≈ 84 %, 9.5 rounds — longer than the 5-round target, which only holds for regular fights). Six defects leave the band: `graft_rejection` (+13.6 pp: +20 % to every stat while maintained, its price is the upkeep), `target_lock` (+9.8), `imprint_hunger` (+9.5: +10 % to every stat against +1 stress per round), `hunger_loop` (+8.0: healing 5 % per turn, its price is supplies), `compulsive_protocol` (+5.8) and `pain_inversion` (+5.7). None is negative: every defect is at least as strong in a fight as no defect, so the draft numbers lean generous. Expect the author to trim the upsides above or to add in-combat downsides.
+- **P9d.** `dominance_drive` and `caretaker_overdrive` pass both runs (danger 4: +4.5 and +3.7). The harness gives no CP orders, so `notOrderedThisRound` always holds for `dominance_drive` and its downside never fires: the table is its best case, which is why its draft outgoing/initiative bonus is +8 % / +5 % (the first draft, +15 % / +10 %, scored +7.0 and failed). `caretaker_overdrive` has no commander in these fights, so its `commanderBuildIn` and `commanderExposed` rows are invisible here.
 
 ## Defect neutrality (2000 runs per row, level 5, danger 2)
 
@@ -34,8 +35,10 @@ Average combat length within 5 rounds: **PASS**.
 | possessive_protocol | 100.0 % | +0.0 | 4.19 | 2.5 | PASS |
 | reward_loop | 100.0 % | +0.0 | 4.19 | 2.1 | PASS |
 | compliance_craving | 100.0 % | +0.0 | 4.19 | 12.6 | PASS |
+| dominance_drive | 100.0 % | +0.0 | 3.89 | 2.1 | PASS |
+| caretaker_overdrive | 100.0 % | +0.0 | 4.19 | 2.5 | PASS |
 
-18 of 18 defects within ±5 pp.
+20 of 20 defects within ±5 pp.
 
 ## Defect neutrality (2000 runs per row, level 5, danger 4)
 
@@ -62,8 +65,10 @@ Average combat length within 5 rounds: **FAIL**.
 | possessive_protocol | 84.0 % | +0.0 | 9.47 | 9.4 | PASS |
 | reward_loop | 83.9 % | -0.2 | 9.48 | 8.3 | PASS |
 | compliance_craving | 83.1 % | -1.0 | 9.51 | 30.7 | PASS |
+| dominance_drive | 88.6 % | +4.5 | 8.54 | 8.4 | PASS |
+| caretaker_overdrive | 87.8 % | +3.7 | 9.38 | 9.0 | PASS |
 
-12 of 18 defects within ±5 pp.
+14 of 20 defects within ±5 pp.
 
 ## Commander Crisis HP (P7)
 

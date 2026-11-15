@@ -17,15 +17,15 @@ describe('core content pack', () => {
     for (const id of ['trust', 'stress', 'cp']) expect(r.glossary.has(id), id).toBe(true);
   });
 
-  it('counts: 4 corporations, 2 starts, 6 crimes, 6 roles, 12 signatures, 18 defects (4 desire_bond), 14 statuses', async () => {
+  it('counts: 4 corporations, 2 starts, 6 crimes, 6 roles, 12 signatures, 20 defects (6 desire_bond), 14 statuses', async () => {
     const { registries: r } = await load();
     expect(r.corporations.size).toBe(4);
     expect(r.starts.size).toBe(2);
     expect(r.crimes.size).toBe(6);
     expect(r.roles.size).toBe(6);
     expect(r.signatures.size).toBe(12);
-    expect(r.defects.size).toBe(18);
-    expect([...r.defects.values()].filter((d) => d.category === 'desire_bond')).toHaveLength(4);
+    expect(r.defects.size).toBe(20);
+    expect([...r.defects.values()].filter((d) => d.category === 'desire_bond')).toHaveLength(6);
     expect(r.statuses.size).toBe(14);
   });
 
@@ -380,7 +380,7 @@ describe('core content: P4 statuses, orders, synergies and defects', () => {
     expect([chance('order_friction_minor'), chance('order_friction'), chance('order_friction_major')]).toEqual([0.15, 0.25, 0.35]);
   });
 
-  it('all 18 defects have combat data and every downside effect is marked', async () => {
+  it('all 20 defects have combat data and every downside effect is marked', async () => {
     const { registries: r } = await load();
     for (const d of r.defects.values()) {
       const c = d.combat as { upside: unknown[]; downside: Array<{ downside?: boolean }>; breakdown: { policy: string } };

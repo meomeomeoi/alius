@@ -177,7 +177,7 @@ export function finalizeCombat(draft: CampaignState, reg: Registries, rng: Rng, 
   draft.lastCombat = result;
   delete draft.combat;
 
-  if (!cs.expedition) events.push(...releaseBreakdowns(draft));
+  if (!cs.expedition) events.push(...releaseBreakdowns(draft, undefined, reg));
   events.push({ type: 'combat_ended', outcome, result: cs.id });
   return events;
 }

@@ -65,9 +65,9 @@ describe('simulate and runBatch', () => {
 });
 
 describe('neutrality report', () => {
-  it('lists all 18 defects with win rates and pp differences', () => {
+  it('lists all 20 defects with win rates and pp differences', () => {
     const r = neutralityReport(reg, { runs: 20, seed: 3, level: 5, danger: 3 });
-    expect(r.rows).toHaveLength(18);
+    expect(r.rows).toHaveLength(20);
     expect(r.rows.map((x) => x.defectId).sort()).toEqual([...reg.defects.keys()].sort());
     for (const row of r.rows) {
       expect(row.winRate).toBeGreaterThanOrEqual(0);
@@ -81,13 +81,13 @@ describe('neutrality report', () => {
     const r = neutralityReport(reg, { runs: 10, seed: 3, level: 5, danger: 3 });
     const text = formatReport(r);
     const rows = text.split('\n').filter((l) => l.startsWith('| ') && !l.startsWith('| Defect'));
-    expect(rows).toHaveLength(18);
+    expect(rows).toHaveLength(20);
     for (const row of rows) expect(row).toMatch(/PASS \|$|FAIL \|$/);
     for (const id of reg.defects.keys()) expect(text).toContain(`| ${id} |`);
     expect(text).toMatch(/Average combat length within 5 rounds: \*\*(PASS|FAIL)\*\*/);
     const forced = formatReport({ ...r, rows: r.rows.map((x, i) => ({ ...x, diffPp: i === 0 ? 9 : 1, pass: i !== 0 })) });
     expect(forced.match(/FAIL \|/g)).toHaveLength(1);
-    expect(forced).toContain('17 of 18 defects within ±5 pp.');
+    expect(forced).toContain('19 of 20 defects within ±5 pp.');
   });
 });
 

@@ -1,3 +1,4 @@
+import { smotherRefusal } from '../bonds/smother';
 import type { Entry, Registries } from '../../content/types';
 import { checkRunRoster } from '../bonds/rules';
 import { relieveWant } from '../bonds/want';
@@ -78,6 +79,8 @@ export function checkDeparture(state: CampaignState, reg: Registries, p: { missi
   if (state.combat) return 'A combat is open: finish it first.';
   if (state.scene) return 'A scene is open: end it first.';
   if (state.calendar.pendingScene) return 'A talk still holds the slot: end it first.';
+  const locked = smotherRefusal(state); // P9d: the Smother stand-in
+  if (locked) return locked;
 
   if ((p.missionId === undefined) === (p.poi === undefined)) return 'Choose exactly one of a mission or a point of interest.';
   let regionId: string;
@@ -443,7 +446,7 @@ export function endExpedition(draft: CampaignState, ctx: EngineCtx, outcome: Exp
   if (mission && mission.danger >= TUNING.bonds.want.relief.expeditionMinDanger) {
     for (const id of exp.party) events.push(...relieveWant(draft, id, TUNING.bonds.want.relief.expeditionDay, 'expedition'));
   }
-  const released = releaseBreakdowns(draft, exp.party);
+  const released = releaseBreakdowns(draft, exp.party, reg);
   events.push(...released);
   for (const e of released) {
     const unit = draft.squad.find((u) => u.id === e.unitId);

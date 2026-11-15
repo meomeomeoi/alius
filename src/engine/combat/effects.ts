@@ -41,10 +41,13 @@ export function makeCtx(cs: CombatState, state: CampaignState, reg: Registries, 
 
 type OfType<T extends EffectType> = Extract<EffectSpec, { type: T }> & { source: string };
 
-/** Effect types that other modules only read (passives, flags); applying them does nothing. */
+/**
+ * Effect types that other modules only read (passives, flags); applying them does nothing. (`order_refusal` is read as a passive by
+ * `issueOrder`, and applied when an on-entry list gives it to others: P9d Seize Command.)
+ */
 const READ_ONLY: ReadonlySet<EffectType> = new Set<EffectType>([
   'outgoing', 'incoming', 'stress_taken', 'intercept_lethal', 'misfire', 'override_action', 'order_cost',
-  'order_refusal', 'loadout_slots', 'injury_days', 'immune',
+  'loadout_slots', 'injury_days', 'immune',
 ]);
 
 // ------------------------------------------------------------------------------------------------ amplification
@@ -185,8 +188,16 @@ export function outgoingPct(ctx: EffectCtx, cid: string, targetCid?: string): nu
   for (const e of activePassives(ctx, cid, 'outgoing', targetCid)) {
     if (e.vs === 'marked' && !target?.statuses.some((s) => s.id === 'mark')) continue;
     if (e.vs === 'locked' && !(targetCid !== undefined && c.lockedTargetId === targetCid)) continue;
+    if (e.vs === 'heal') continue;
     sum += e.pct + scaleValue(ctx, cid, e.scale);
   }
+  return sum;
+}
+
+/** Sum of the owner's always-on `outgoing` percentages with `vs: 'heal'` (P9d): how much more her heals restore. */
+export function healBonusPct(ctx: EffectCtx, cid: string): number {
+  let sum = 0;
+  for (const e of activePassives(ctx, cid, 'outgoing')) if (e.vs === 'heal') sum += e.pct + scaleValue(ctx, cid, e.scale);
   return sum;
 }
 
@@ -318,10 +329,11 @@ export function applyEffects(ctx: EffectCtx, ownerCid: string, effects: EffectSp
   effects.forEach((e, i) => runEffect(ctx, ownerCid, e, ev, `${source}:${i}`));
 }
 
-function heal(ctx: EffectCtx, targetCid: string, pct: number): void {
+function heal(ctx: EffectCtx, targetCid: string, pct: number, ownerCid?: string): void {
   const t = byCid(ctx.cs, targetCid);
   if (t.downed || t.hp <= 0) return;
-  const amount = Math.max(1, Math.round((t.maxHp * pct) / 100));
+  const bonus = ownerCid !== undefined ? Math.max(0, 1 + healBonusPct(ctx, ownerCid) / 100) : 1;
+  const amount = Math.max(1, Math.round((t.maxHp * pct * bonus) / 100));
   const gained = Math.min(amount, t.maxHp - t.hp);
   t.hp += gained;
   if (gained > 0) ctx.log({ kind: 'heal', target: targetCid, amount: gained });
@@ -352,7 +364,7 @@ function runEffect(ctx: EffectCtx, ownerCid: string, effect: EffectSpec, ev: Eff
   if (limitKey && owner.usedLimits.includes(limitKey)) return;
   if (!checkCondition(ctx, ownerCid, effect.when, ev.targetCid, ev.skillId)) return;
   const e = strain(owner, effect);
-  if (e.chance !== undefined && !ctx.rng.chance(e.chance)) return;
+  if (e.chance !== undefined && e.type !== 'order_refusal' && !ctx.rng.chance(e.chance)) return; // a refusal's chance is rolled per order
   if (limitKey) owner.usedLimits.push(limitKey);
   const attacker = ev.attackerCid ?? ownerCid;
 
@@ -379,7 +391,7 @@ function runEffect(ctx: EffectCtx, ownerCid: string, effect: EffectSpec, ev: Eff
       }
       break;
     }
-    case 'heal': for (const t of targets) heal(ctx, t, e.pctMaxHp); break;
+    case 'heal': for (const t of targets) heal(ctx, t, e.pctMaxHp, ownerCid); break;
     case 'revive':
       for (const t of targets) {
         const c = byCid(ctx.cs, t);
@@ -450,6 +462,9 @@ function runEffect(ctx: EffectCtx, ownerCid: string, effect: EffectSpec, ev: Eff
       break;
     case 'loot_roll': ctx.cs.pendingLootRolls += e.extra; break; // banked by outcome.ts
     case 'repeat_order': ctx.cs.repeatOrder = true; break; // read by orders.ts after the action resolves
+    case 'order_refusal': // an on-use or breakdown-entry refusal (P9d Seize Command); a passive one is read by `issueOrder` directly
+      for (const t of targets) if (t !== ownerCid && t !== 'commander') byCid(ctx.cs, t).refusal = { chance: e.chance ?? 0, sourceCid: ownerCid, ...(e.orders ? { orders: e.orders } : {}) };
+      break;
     case 'hp_set': for (const t of targets) byCid(ctx.cs, t).hp = Math.min(e.value, byCid(ctx.cs, t).maxHp); break;
     default: break;
   }

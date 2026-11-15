@@ -1,5 +1,6 @@
 import { raiseTone, startTone } from '../bonds/scene';
 import { returnNegotiations } from '../bonds/rules';
+import { clearSmother } from '../bonds/smother';
 import { relieveAtSceneEnd } from '../bonds/want';
 import { markDmViolation, markSceneViolation } from '../bonds/violations';
 import { consumeSlots, registerDayEndStep } from '../calendar';
@@ -156,6 +157,7 @@ registerAction('scene/end', (draft, payload, ctx) => {
   events.push(...expireSceneProposals(draft, scene.participants));
   // P9: a defiance nobody answered in this scene settles now
   events.push(...settleDefiance(draft, ctx, { sceneId: scene.id }));
+  for (const id of scene.participants) events.push(...clearSmother(draft, id)); // P9d: a scene with her ends her hold
   delete draft.scene;
   delete draft.calendar.pendingScene;
   events.push({ type: 'scene_ended', sceneId: scene.id, consumed: scene.consumesSlot });

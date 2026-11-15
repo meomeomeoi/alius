@@ -88,6 +88,20 @@ describe('importProfile', () => {
     expect(b.profile.defectCandidates.map((x) => x.defectId)).toEqual(['imprint_hunger', 'echo_bleed']);
   });
 
+  it('Dominance Drive and Caretaker Overdrive are dropped with the setting off; Caretaker also without the trait (P9d)', async () => {
+    const reply = fixture('desire_bond').replace('imprint_hunger', 'dominance_drive').replace('echo_bleed', 'caretaker_overdrive');
+    const off = setup({ desireBondDefects: false });
+    off.st.profileReplies = [reply, reply]; // nothing usable: it retries once
+    const a = await importProfile(off.avatar, ['defects'], off.deps);
+    expect(a).toEqual({ kind: 'manual', reason: "no usable defects in the model's answer" }); // both filtered out: nothing is left to import
+    const on = setup({ desireBondDefects: true });
+    on.st.profileReplies = [reply];
+    const b = await importProfile(on.avatar, ['defects'], on.deps);
+    if (b.kind !== 'ok') throw new Error('expected ok');
+    expect(b.profile.defectCandidates.map((x) => x.defectId)).toEqual(['dominance_drive']); // no caretaker trait in this import
+    expect(b.dropped).toContain('defects:caretaker_overdrive');
+  });
+
   it('prompt omits desire_bond defects when off', async () => {
     const { st, avatar, deps } = setup({ desireBondDefects: false });
     st.profileReplies = [fixture('valid')];
@@ -354,7 +368,7 @@ describe('buildImportInput', () => {
     const off = buildImportInput(card('short'), reg, { ...base, desireBondDefects: false }, ['defects']);
     const on = buildImportInput(card('short'), reg, { ...base, desireBondDefects: true }, ['defects']);
     expect(off.defects).toHaveLength(14);
-    expect(on.defects).toHaveLength(18);
+    expect(on.defects).toHaveLength(19); // Caretaker Overdrive needs the caretaker trait (the bond section says it)
     expect(off.roles).toHaveLength(6);
     expect(off.signatures).toHaveLength(12);
     expect(off.roles[0]).toEqual({ id: 'assault', summary: reg.roles.get('assault')!.summary });

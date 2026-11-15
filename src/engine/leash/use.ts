@@ -1,4 +1,5 @@
 import type { Registries } from '../../content/types';
+import { clearSmother } from '../bonds/smother';
 import { consumeSlots } from '../calendar';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { isLiving } from '../economy';
@@ -195,6 +196,7 @@ export function suppress(draft: CampaignState, ctx: EngineCtx, p: { unitId: stri
   events.push(...evaluateAutomatic(draft, reg, p.unitId));
   if (draft.disloyalty?.open?.unitId === p.unitId) delete draft.disloyalty.open;
   loyaltyRecord(draft, p.unitId).nextCheckDay = draft.day + TUNING.disloyalty.desertion.pauseDays;
+  events.push(...clearSmother(draft, p.unitId)); // P9d: a suppressed unit's hold on the hangar ends
   events.push(...bookUse(draft, ctx, p.unitId, 'suppress', p.context, 'done'));
   return events;
 }

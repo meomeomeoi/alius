@@ -1,3 +1,4 @@
+import { smotherActive } from '../engine/bonds';
 import type { EngineEvent } from '../engine/dispatch';
 import type { CampaignState } from '../engine/state/types';
 import { generateRuleFlavor } from '../llm/calls/flavor';
@@ -12,6 +13,11 @@ export interface BondsController {
   answerRule(ruleId: string, answer: 'accept' | 'refuse'): boolean;
   /** [NEGOTIATE]: the rule becomes `negotiating` and a private scene with her opens (her quarters). */
   negotiateRule(ruleId: string): Promise<boolean>;
+  /**
+   * A new slot began: while a smother holds, her scene takes the first free one (her quarters, origin `event`); the scene's end
+   * ends the hold. Nothing happens in the Night, with a scene, a fight, an expedition or a night knock already open.
+   */
+  onSlotAdvanced(): Promise<boolean>;
 }
 
 /**
@@ -57,7 +63,23 @@ export function createBonds(deps: BondsDeps): BondsController {
     return true;
   }
 
+  let opening = false;
+
   return {
+    async onSlotAdvanced() {
+      const s = state();
+      const hold = s ? smotherActive(s) : null;
+      if (!s || !hold || opening || !deps.startScene) return false;
+      if (s.slot === 'night' || s.scene || s.combat || s.expedition || s.calendar.pendingScene || s.calendar.nightEvent) return false;
+      opening = true;
+      try {
+        const ok = await deps.startScene({ locationId: 'quarters_unit', participants: [hold.unitId], origin: 'event' });
+        deps.refreshContext();
+        return ok;
+      } finally {
+        opening = false;
+      }
+    },
     onEvents(events) {
       for (const e of events) if (e.type === 'rule_proposed' && typeof e.ruleId === 'string') void wordAndDeliver(e.ruleId, chatId()).catch(() => {});
     },

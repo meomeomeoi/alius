@@ -510,6 +510,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       }
       if (has('slot_advanced')) void comms.onSlotAdvanced().catch(warn('unit DMs'));
       if (has('slot_advanced')) void discipline.onSlotAdvanced().catch(warn('demands'));
+      if (has('slot_advanced')) void bonds.onSlotAdvanced().then((ok) => { if (ok) shell.open(); }).catch(warn('smother'));
       if (has('director_requested') || (has('combat_ended') && state?.world.director?.pending)) void director.onRequested().catch(warn('director'));
       if (has('rumors_requested')) api.dispatch({ type: 'director/request', payload: { reason: 'scout' } }, { expectChatId: chatId });
       if (has('expedition_ended')) {

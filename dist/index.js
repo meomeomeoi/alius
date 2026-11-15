@@ -5590,7 +5590,7 @@ var EffectUnion = external_exports.discriminatedUnion("type", [
   fx("status", { statusId: str, turns: int.min(1).optional(), stacks: int.min(1).optional() }),
   fx("cleanse", { kind: external_exports.enum(["buff", "debuff"]), count: int.min(1) }),
   fx("stat", { stat: external_exports.union([statEnum, external_exports.literal("all")]), pct: num, turns: int.min(1).optional(), scale: ScaleSchema.optional() }),
-  fx("outgoing", { pct: num, vs: external_exports.enum(["any", "marked", "locked"]).optional(), scale: ScaleSchema.optional() }),
+  fx("outgoing", { pct: num, vs: external_exports.enum(["any", "marked", "locked", "heal"]).optional(), scale: ScaleSchema.optional() }),
   fx("incoming", { pct: num }),
   fx("stress", { amount: num }),
   fx("stress_taken", { pct: num, direction: external_exports.enum(["gain", "relief"]) }),
@@ -6154,10 +6154,11 @@ var DefectSchema = BaseEntrySchema.extend({
   requiresBond: external_exports.object({ caretaker: external_exports.literal(true).optional() }).strict().optional(),
   /** P9d: added to the lead score of her scenes (not while her arc is cure). */
   leadBonus: int.min(0).max(40).optional(),
-  /** P9d: what her unmet want does at the top band: an off-combat breakdown of this kind for 1 to 3 days. */
+  /** P9d: stress her defect adds when the event lands on her (a negative value relieves). */
   eventStress: external_exports.record(external_exports.enum(ALL_EVENT_TYPES), external_exports.number().int().min(-10).max(10)).optional(),
   /** P9d: deciding the Embrace path writes this relation flag (a stand-in for a formal arrangement); while it is set the defect's positive `eventStress` values are halved. */
   embraceFlag: str.optional(),
+  /** P9d: what her unmet want does at the top band: an off-combat breakdown of this kind for 1 to 3 days. */
   wantBreakdown: external_exports.object({ kind: external_exports.enum(["withdrawal", "binge", "smother", "seize"]), days: int.min(1).max(3) }).strict().optional(),
   nightEvents: external_exports.array(NightSpecSchema).optional(),
   /** P5: one more node revealed ahead on the expedition map (Echo Bleed). */
@@ -10842,6 +10843,38 @@ registerAction("squad/set_flavor", (draft, payload) => {
   return [{ type: "unit_flavored", unitId: unit.id, name }];
 });
 
+// src/engine/bonds/smother.ts
+function smotherActive(state) {
+  const s = state.bonds?.smother;
+  if (!s || s.untilDay < state.day) return null;
+  const unit = state.squad.find((u) => u.id === s.unitId);
+  return unit && isLiving(unit) ? s : null;
+}
+var isSmotherDefect = (reg, defectId) => reg.defects.get(defectId)?.wantBreakdown?.kind === "smother";
+function startSmother(draft, unitId) {
+  const unit = draft.squad.find((u) => u.id === unitId);
+  if (!unit || !isLiving(unit) || smotherActive(draft)) return [];
+  const bonds = draft.bonds ??= { rules: [] };
+  bonds.smother = { unitId, untilDay: draft.day + 1 };
+  return [{ type: "smother_started", unitId, untilDay: draft.day + 1 }];
+}
+function clearSmother(draft, unitId) {
+  const s = draft.bonds?.smother;
+  if (!s || unitId !== void 0 && s.unitId !== unitId) return [];
+  delete draft.bonds.smother;
+  return [{ type: "smother_ended", unitId: s.unitId }];
+}
+function expireSmother(draft) {
+  const s = draft.bonds?.smother;
+  return s && s.untilDay < draft.day ? clearSmother(draft) : [];
+}
+function smotherRefusal(state) {
+  const s = smotherActive(state);
+  if (!s) return null;
+  const name = state.squad.find((u) => u.id === s.unitId)?.displayName ?? "She";
+  return `${name} has locked the hangar: the commander stays at base today.`;
+}
+
 // src/engine/bonds/violations.ts
 var isObj6 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var MARKS_MAX = 50;
@@ -11912,6 +11945,7 @@ registerAction("scene/end", (draft, payload, ctx2) => {
   events.push(...rollDiscovery(draft, reg, ctx2.rng, scene.participants));
   events.push(...expireSceneProposals(draft, scene.participants));
   events.push(...settleDefiance(draft, ctx2, { sceneId: scene.id }));
+  for (const id of scene.participants) events.push(...clearSmother(draft, id));
   delete draft.scene;
   delete draft.calendar.pendingScene;
   events.push({ type: "scene_ended", sceneId: scene.id, consumed: scene.consumesSlot });
@@ -12244,6 +12278,7 @@ function suppress(draft, ctx2, p) {
   events.push(...evaluateAutomatic(draft, reg, p.unitId));
   if (draft.disloyalty?.open?.unitId === p.unitId) delete draft.disloyalty.open;
   loyaltyRecord(draft, p.unitId).nextCheckDay = draft.day + TUNING.disloyalty.desertion.pauseDays;
+  events.push(...clearSmother(draft, p.unitId));
   events.push(...bookUse(draft, ctx2, p.unitId, "suppress", p.context, "done"));
   return events;
 }
@@ -12416,6 +12451,8 @@ function decideArc(draft, ctx2, p) {
   const inst = unit.defects.find((d) => d.id === p.defectId);
   inst.arc = p.path;
   inst.arcSteps = { done: 0, needed: TUNING.arc.steps[p.path] };
+  const embraceFlag = p.path === "embrace" ? reg.defects.get(p.defectId)?.embraceFlag : void 0;
+  if (embraceFlag !== void 0 && !draft.relations[p.unitId].flags.includes(embraceFlag)) draft.relations[p.unitId].flags.push(embraceFlag);
   const severity = forced && p.path === "cure" ? "extreme" : "major";
   events.push(...applyEventToUnit(draft, reg, p.unitId, {
     type: info.wanted ? "decision_aligned" : "decision_violated",
@@ -12976,7 +13013,6 @@ var READ_ONLY = /* @__PURE__ */ new Set([
   "misfire",
   "override_action",
   "order_cost",
-  "order_refusal",
   "loadout_slots",
   "injury_days",
   "immune"
@@ -13083,8 +13119,14 @@ function outgoingPct(ctx2, cid, targetCid) {
   for (const e of activePassives(ctx2, cid, "outgoing", targetCid)) {
     if (e.vs === "marked" && !target?.statuses.some((s) => s.id === "mark")) continue;
     if (e.vs === "locked" && !(targetCid !== void 0 && c.lockedTargetId === targetCid)) continue;
+    if (e.vs === "heal") continue;
     sum += e.pct + scaleValue(ctx2, cid, e.scale);
   }
+  return sum;
+}
+function healBonusPct(ctx2, cid) {
+  let sum = 0;
+  for (const e of activePassives(ctx2, cid, "outgoing")) if (e.vs === "heal") sum += e.pct + scaleValue(ctx2, cid, e.scale);
   return sum;
 }
 function incomingPct(ctx2, cid) {
@@ -13193,10 +13235,11 @@ function resolveTargets(ctx2, owner, e, ev) {
 function applyEffects(ctx2, ownerCid, effects2, ev, source = "effect") {
   effects2.forEach((e, i) => runEffect(ctx2, ownerCid, e, ev, `${source}:${i}`));
 }
-function heal(ctx2, targetCid, pct4) {
+function heal(ctx2, targetCid, pct4, ownerCid) {
   const t = byCid(ctx2.cs, targetCid);
   if (t.downed || t.hp <= 0) return;
-  const amount = Math.max(1, Math.round(t.maxHp * pct4 / 100));
+  const bonus = ownerCid !== void 0 ? Math.max(0, 1 + healBonusPct(ctx2, ownerCid) / 100) : 1;
+  const amount = Math.max(1, Math.round(t.maxHp * pct4 * bonus / 100));
   const gained = Math.min(amount, t.maxHp - t.hp);
   t.hp += gained;
   if (gained > 0) ctx2.log({ kind: "heal", target: targetCid, amount: gained });
@@ -13224,7 +13267,7 @@ function runEffect(ctx2, ownerCid, effect, ev, keyBase) {
   if (limitKey && owner.usedLimits.includes(limitKey)) return;
   if (!checkCondition(ctx2, ownerCid, effect.when, ev.targetCid, ev.skillId)) return;
   const e = strain(owner, effect);
-  if (e.chance !== void 0 && !ctx2.rng.chance(e.chance)) return;
+  if (e.chance !== void 0 && e.type !== "order_refusal" && !ctx2.rng.chance(e.chance)) return;
   if (limitKey) owner.usedLimits.push(limitKey);
   const attacker = ev.attackerCid ?? ownerCid;
   const resolved = resolveTargets(ctx2, owner, e, ev);
@@ -13250,7 +13293,7 @@ function runEffect(ctx2, ownerCid, effect, ev, keyBase) {
       break;
     }
     case "heal":
-      for (const t of targets) heal(ctx2, t, e.pctMaxHp);
+      for (const t of targets) heal(ctx2, t, e.pctMaxHp, ownerCid);
       break;
     case "revive":
       for (const t of targets) {
@@ -13335,6 +13378,9 @@ function runEffect(ctx2, ownerCid, effect, ev, keyBase) {
       ctx2.cs.repeatOrder = true;
       break;
     // read by orders.ts after the action resolves
+    case "order_refusal":
+      for (const t of targets) if (t !== ownerCid && t !== "commander") byCid(ctx2.cs, t).refusal = { chance: e.chance ?? 0, sourceCid: ownerCid, ...e.orders ? { orders: e.orders } : {} };
+      break;
     case "hp_set":
       for (const t of targets) byCid(ctx2.cs, t).hp = Math.min(e.value, byCid(ctx2.cs, t).maxHp);
       break;
@@ -13735,7 +13781,9 @@ function issueOrder(ctx2, orderId, targetCid, opts = {}) {
   }
   delete cs.lastRefusal;
   if (order.target === "ally" && targetCid && opts.compel !== true) {
-    const source = Math.max(0, ...activePassives(ctx2, targetCid, "order_refusal").filter((e) => matches(e.orders, orderId)).map((e) => e.chance ?? 0));
+    const seized = byCid(cs, targetCid).refusal;
+    const seizing2 = seized !== void 0 && matches(seized.orders, orderId) && cs.combatants.some((x) => x.cid === seized.sourceCid && x.breakdown !== void 0 && !x.downed);
+    const source = Math.max(0, seizing2 ? seized.chance : 0, ...activePassives(ctx2, targetCid, "order_refusal").filter((e) => matches(e.orders, orderId)).map((e) => e.chance ?? 0));
     const unitId = byCid(cs, targetCid).unitId;
     const chance = unitId === void 0 ? source : scaleRefusal(ctx2.state, ctx2.reg, unitId, source);
     if (chance > 0 && ctx2.rng.chance(chance)) {
@@ -13866,12 +13914,14 @@ function setLoadout(draft, reg, unitId, skillIds) {
   if (skillIds.length === 0) delete unit.loadout;
   else unit.loadout = [...skillIds];
 }
-function releaseBreakdowns(draft, unitIds) {
+function releaseBreakdowns(draft, unitIds, reg) {
   const events = [];
   for (const u of draft.squad) {
     if (!u.breakdown || u.breakdown.until !== void 0 || unitIds && !unitIds.includes(u.id)) continue;
+    const defectId = u.breakdown.defectId;
     delete u.breakdown;
     events.push({ type: "breakdown_released", unitId: u.id });
+    if (reg && isSmotherDefect(reg, defectId)) events.push(...startSmother(draft, u.id));
   }
   return events;
 }
@@ -14094,7 +14144,7 @@ function finalizeCombat(draft, reg, rng, outcome) {
   };
   draft.lastCombat = result;
   delete draft.combat;
-  if (!cs.expedition) events.push(...releaseBreakdowns(draft));
+  if (!cs.expedition) events.push(...releaseBreakdowns(draft, void 0, reg));
   events.push({ type: "combat_ended", outcome, result: cs.id });
   return events;
 }
@@ -14559,10 +14609,10 @@ registerAction("squad/set_loadout", (draft, payload, ctx2) => {
   setLoadout(draft, ctx2.registries, str2(p.unitId, "unitId"), ids);
   return [{ type: "loadout_changed", unitId: p.unitId }];
 });
-registerAction("squad/release_breakdowns", (draft, payload) => {
+registerAction("squad/release_breakdowns", (draft, payload, ctx2) => {
   const ids = isObj12(payload) ? payload.unitIds : void 0;
   if (ids !== void 0 && !(Array.isArray(ids) && ids.every((x) => typeof x === "string"))) throw new Error("unitIds must be a list of unit ids");
-  return releaseBreakdowns(draft, ids);
+  return releaseBreakdowns(draft, ids, ctx2.registries);
 });
 registerActivityHook((draft, ctx2) => applyAllLevelUps(draft, ctx2.registries));
 
@@ -15739,6 +15789,8 @@ function checkDeparture(state, reg, p) {
   if (state.combat) return "A combat is open: finish it first.";
   if (state.scene) return "A scene is open: end it first.";
   if (state.calendar.pendingScene) return "A talk still holds the slot: end it first.";
+  const locked = smotherRefusal(state);
+  if (locked) return locked;
   if (p.missionId === void 0 === (p.poi === void 0)) return "Choose exactly one of a mission or a point of interest.";
   let regionId;
   let templateId;
@@ -16050,7 +16102,7 @@ function endExpedition(draft, ctx2, outcome) {
   if (mission && mission.danger >= TUNING.bonds.want.relief.expeditionMinDanger) {
     for (const id of exp.party) events.push(...relieveWant(draft, id, TUNING.bonds.want.relief.expeditionDay, "expedition"));
   }
-  const released = releaseBreakdowns(draft, exp.party);
+  const released = releaseBreakdowns(draft, exp.party, reg);
   events.push(...released);
   for (const e of released) {
     const unit = draft.squad.find((u) => u.id === e.unitId);
@@ -16536,6 +16588,8 @@ function startWantBreakdown(draft, ctx2, unitId, defectId) {
   if (spec.kind === "withdrawal") {
     const knock = (reg.defects.get(defectId)?.nightEvents ?? []).find((n) => n.kind === spec.kind);
     if (knock) events.push(...queueNightSpec(draft, unit, knock));
+  } else if (spec.kind === "smother") {
+    events.push(...startSmother(draft, unitId));
   } else if (spec.kind === "binge") {
     const cost = Math.min(draft.resources.credits, TUNING.bonds.want.breakdownMoneyCost);
     if (cost > 0) {
@@ -16595,7 +16649,8 @@ function bondsDayStep(draft, ctx2) {
     ...startCrossedBreakdowns(draft, ctx2),
     ...openDesireDemands(draft, ctx2),
     ...checkDailyContact(draft, ctx2),
-    ...rollRules(draft, ctx2)
+    ...rollRules(draft, ctx2),
+    ...expireSmother(draft)
   ];
 }
 
@@ -18253,7 +18308,22 @@ function createBonds(deps) {
     deps.refreshContext();
     return true;
   }
+  let opening = false;
   return {
+    async onSlotAdvanced() {
+      const s = state();
+      const hold = s ? smotherActive(s) : null;
+      if (!s || !hold || opening || !deps.startScene) return false;
+      if (s.slot === "night" || s.scene || s.combat || s.expedition || s.calendar.pendingScene || s.calendar.nightEvent) return false;
+      opening = true;
+      try {
+        const ok = await deps.startScene({ locationId: "quarters_unit", participants: [hold.unitId], origin: "event" });
+        deps.refreshContext();
+        return ok;
+      } finally {
+        opening = false;
+      }
+    },
     onEvents(events) {
       for (const e of events) if (e.type === "rule_proposed" && typeof e.ruleId === "string") void wordAndDeliver(e.ruleId, chatId()).catch(() => {
       });
@@ -18285,7 +18355,7 @@ function contentLine(state, reg) {
 }
 var wantSet = /* @__PURE__ */ new WeakMap();
 function bondsDirectives(builder, state, reg) {
-  builder.clearMatching((d) => d.id.startsWith("limits:") || d.id.startsWith("boundary:") || d.id.startsWith("rule:"));
+  builder.clearMatching((d) => d.id.startsWith("limits:") || d.id.startsWith("boundary:") || d.id.startsWith("rule:") || d.id.startsWith("co_command:"));
   builder.clearDirective("lead");
   for (const id of wantSet.get(builder) ?? []) builder.clearDirective(id);
   wantSet.set(builder, /* @__PURE__ */ new Set());
@@ -18311,6 +18381,15 @@ function bondsDirectives(builder, state, reg) {
     if (!unit || band !== "aching" && band !== "desperate") continue;
     builder.setDirective({ id: `want:${id}`, expiresAfter: "manual", text: `${unit.displayName} is restless and irritable with unmet want; it colours how she speaks to the commander.` });
     wantSet.get(builder).add(`want:${id}`);
+  }
+  for (const id of state.scene.participants) {
+    const unit = state.squad.find((u) => u.id === id);
+    const flags = state.relations[id]?.flags ?? [];
+    if (!unit || !unit.defects.some((d) => {
+      const f = reg.defects.get(d.id)?.embraceFlag;
+      return typeof f === "string" && flags.includes(f);
+    })) continue;
+    builder.setDirective({ id: `co_command:${id}`, expiresAfter: "manual", text: `${unit.displayName} shares command with the commander by open agreement.` });
   }
   for (const rule of state.bonds?.rules ?? []) {
     const unit = state.squad.find((u) => u.id === rule.unitId);
@@ -26986,7 +27065,7 @@ function combatBase(e) {
     case "stat":
       return `${scaledPct(Number(e.pct), e.stat === "all" ? "all stats" : String(e.stat).toUpperCase(), e.scale)}${isNum(e.turns) ? ` (${e.turns} ${plural(e.turns, "turn")})` : ""}`;
     case "outgoing":
-      return `${scaledPct(Number(e.pct), "damage dealt", e.scale)}${e.vs && e.vs !== "any" ? ` vs ${e.vs}` : ""}`;
+      return `${scaledPct(Number(e.pct), e.vs === "heal" ? "healing done" : "damage dealt", e.scale)}${e.vs && e.vs !== "any" && e.vs !== "heal" ? ` vs ${e.vs}` : ""}`;
     case "incoming":
       return `${pctSigned(Number(e.pct))} damage taken`;
     case "stress":
@@ -29743,6 +29822,9 @@ function createApp(st, deps) {
       }
       if (has2("slot_advanced")) void comms.onSlotAdvanced().catch(warn("unit DMs"));
       if (has2("slot_advanced")) void discipline.onSlotAdvanced().catch(warn("demands"));
+      if (has2("slot_advanced")) void bonds.onSlotAdvanced().then((ok) => {
+        if (ok) shell.open();
+      }).catch(warn("smother"));
       if (has2("director_requested") || has2("combat_ended") && state?.world.director?.pending) void director.onRequested().catch(warn("director"));
       if (has2("rumors_requested")) api.dispatch({ type: "director/request", payload: { reason: "scout" } }, { expectChatId: chatId });
       if (has2("expedition_ended")) {

@@ -150,3 +150,17 @@ Upside: orders (CP) on her cost −1. Downside: stress when left without orders 
 Breakdown: *Lost* — passes her turns until given an order.
 Social: the moral trap is explicit: easy to exploit, harder to help her want things for herself.
 Arc: Cure · Manage · Embrace.
+
+**Dominance Drive** `dominance_drive`
+Lore: command firmware that never stood down — she needs to be the one who decides.
+Upside: +8 % damage and +5 % initiative while no CP order was given to her this round; calmer (stress relief) when the commander yields decisions, follows her lead or accepts her rules. Downside: +2 stress at her turn start in a round she was ordered; stress when the commander enforces, threatens or overrules her.
+Breakdown: *Seize Command* — ignores CP orders and issues her own to allies; each CP order given to an ally refuses by chance (50 %) while she is broken.
+Social: friction over who decides; feeds how she leads in intimate scenes (+15 lead score). Off-combat, an unmet want ends in a one-day Seize: she refuses every order in a scene.
+Arc: Cure · Manage = agreed domains of authority · Embrace = formal co-command (stand-in: the relation flag `co_command` and its directive; her positive event stress is halved while it holds). Draft numbers: balance pass, P9d.
+
+**Caretaker Overdrive** `caretaker_overdrive` — needs the *caretaker* trait on her bond card
+Lore: care protocols stuck at maximum — someone must always be kept safe.
+Upside: her heals restore more while her allies are hurt (+0.5 % per 1 % of allies' missing HP); +10 % DEF while the commander is frail or slight. Downside: +2 stress each round the commander is exposed in the fight; stress when the commander puts her in danger.
+Breakdown: *Smother* — waits for an order; afterwards she locks the hangar: no expedition leaves that day or the next, and her next free slot is a scene with her (stand-in until P9c's bookings; a Leash Suppress or the end of that scene lifts it).
+Social: tenderness that turns into control.
+Arc: Cure · Manage = agreed limits on how far the care goes · Embrace. Draft numbers: balance pass, P9d.

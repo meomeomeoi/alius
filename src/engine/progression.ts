@@ -1,6 +1,7 @@
 import type { Registries } from '../content/types';
 import type { Skill } from '../content/schemas';
 import type { EngineEvent } from './dispatch';
+import { isSmotherDefect, startSmother } from './bonds/smother';
 import { isLiving } from './economy';
 import type { CombatState } from './combat/types';
 import { applyUpgrades, knownSkillIds, loadoutSize, ownedUpgrades } from './combat/skills';
@@ -158,12 +159,15 @@ export function skillWithUpgrades(reg: Registries, unit: Unit, skillId: string):
  * Ends the expedition-long breakdown of the given units (default: all) and reports it for P5's debrief. A breakdown with a
  * day limit (`until`, P9d: an off-combat Want breakdown) is not an expedition's: the bonds day step releases it.
  */
-export function releaseBreakdowns(draft: CampaignState, unitIds?: string[]): EngineEvent[] {
+export function releaseBreakdowns(draft: CampaignState, unitIds?: string[], reg?: Registries): EngineEvent[] {
   const events: EngineEvent[] = [];
   for (const u of draft.squad) {
     if (!u.breakdown || u.breakdown.until !== undefined || (unitIds && !unitIds.includes(u.id))) continue;
+    const defectId = u.breakdown.defectId;
     delete u.breakdown;
     events.push({ type: 'breakdown_released', unitId: u.id });
+    // P9d: a Smother breakdown ends in the hold: she locks the hangar once she is out of the fight
+    if (reg && isSmotherDefect(reg, defectId)) events.push(...startSmother(draft, u.id));
   }
   return events;
 }

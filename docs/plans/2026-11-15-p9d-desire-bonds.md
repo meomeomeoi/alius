@@ -662,7 +662,7 @@ tests/**                                           mirrors src; tests/helpers/bo
 - Consumes: Task 13 vocabulary, `wantBreakdown` (Task 9), `calendar.pendingScene`.
 - Produces: `smotherActive(state): {unitId, untilDay} | null`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `dominance_drive deals more damage on her own call and stresses when ordered`
   - `Seize Command makes allies refuse orders by chance (seeded)`
   - `commander_enforced stresses a dominance_drive unit; followed_lead relieves her`
@@ -673,10 +673,10 @@ tests/**                                           mirrors src; tests/helpers/bo
   - `both pass the neutrality check (|Δ| ≤ 5 pp)` (acceptance 7)
   - `20 defects listed`
   - `both are dropped from import when Desire/Bond defects are off`
-- [ ] **Step 2: Run** and confirm FAIL.
-- [ ] **Step 3: Implement.** Run `npm run sim -- --neutrality`. If either is outside ±5 pp, tune only its JSON numbers and record the final values in the commit message.
-- [ ] **Step 4: Run** `npm test` and confirm PASS.
-- [ ] **Step 5: Commit** `feat(content): Dominance Drive and Caretaker Overdrive with stand-ins for Smother and co-command`.
+- [x] **Step 2: Run** and confirm FAIL.
+- [x] **Step 3: Implement.** Run `npm run sim -- --neutrality`. If either is outside ±5 pp, tune only its JSON numbers and record the final values in the commit message.
+- [x] **Step 4: Run** `npm test` and confirm PASS.
+- [x] **Step 5: Commit** `feat(content): Dominance Drive and Caretaker Overdrive with stand-ins for Smother and co-command`.
 
 ### Task 15: Publicity in the engine
 

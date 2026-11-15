@@ -90,7 +90,7 @@ export type EffectSpec = EffectBase &
     | { type: 'cleanse'; kind: 'buff' | 'debuff'; count: number }
     /** `stat: 'all'` applies to hp, atk, def and spd. For `crit`, `pct` is added as percentage points. */
     | { type: 'stat'; stat: StatName | 'all'; pct: number; turns?: number; scale?: Scale }
-    | { type: 'outgoing'; pct: number; vs?: 'any' | 'marked' | 'locked'; scale?: Scale }
+    | { type: 'outgoing'; pct: number; /** `heal` (P9d): scales the healing the owner does, never her damage. */ vs?: 'any' | 'marked' | 'locked' | 'heal'; scale?: Scale }
     | { type: 'incoming'; pct: number }
     | { type: 'stress'; amount: number }
     | { type: 'stress_taken'; pct: number; direction: 'gain' | 'relief' }
@@ -172,6 +172,8 @@ export interface Combatant {
   passives: Array<EffectSpec & { source: string }>;
   downed: boolean;
   aiProfile: string;
+  /** P9d: an ally's breakdown made her refuse CP orders by chance (Seize Command); void once the source is no longer in breakdown. */
+  refusal?: { chance: number; sourceCid: string; orders?: string[] };
   breakdown?: {
     defectId: string;
     policy: BreakdownPolicy;

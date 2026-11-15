@@ -434,7 +434,9 @@ describe('manualOptions', () => {
     expect(off.signatures).toHaveLength(12);
     expect(off.defects).toHaveLength(14);
     expect(off.defects.some((d) => d.category === 'desire_bond')).toBe(false);
-    expect(on.defects).toHaveLength(18);
+    expect(on.defects).toHaveLength(19); // Caretaker Overdrive needs the caretaker trait: no bond, no entry
+    expect(on.defects.some((d) => d.id === 'caretaker_overdrive')).toBe(false);
+    expect(on.defects.some((d) => d.id === 'dominance_drive')).toBe(true);
   });
 });
 

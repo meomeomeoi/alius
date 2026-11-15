@@ -233,7 +233,7 @@ const EffectUnion = z.discriminatedUnion('type', [
   fx('status', { statusId: str, turns: int.min(1).optional(), stacks: int.min(1).optional() }),
   fx('cleanse', { kind: z.enum(['buff', 'debuff']), count: int.min(1) }),
   fx('stat', { stat: z.union([statEnum, z.literal('all')]), pct: num, turns: int.min(1).optional(), scale: ScaleSchema.optional() }),
-  fx('outgoing', { pct: num, vs: z.enum(['any', 'marked', 'locked']).optional(), scale: ScaleSchema.optional() }),
+  fx('outgoing', { pct: num, vs: z.enum(['any', 'marked', 'locked', 'heal']).optional(), scale: ScaleSchema.optional() }),
   fx('incoming', { pct: num }),
   fx('stress', { amount: num }),
   fx('stress_taken', { pct: num, direction: z.enum(['gain', 'relief']) }),
@@ -723,10 +723,11 @@ export const DefectSchema = BaseEntrySchema.extend({
   requiresBond: z.object({ caretaker: z.literal(true).optional() }).strict().optional(),
   /** P9d: added to the lead score of her scenes (not while her arc is cure). */
   leadBonus: int.min(0).max(40).optional(),
-  /** P9d: what her unmet want does at the top band: an off-combat breakdown of this kind for 1 to 3 days. */
+  /** P9d: stress her defect adds when the event lands on her (a negative value relieves). */
   eventStress: z.record(z.enum(ALL_EVENT_TYPES), z.number().int().min(-10).max(10)).optional(),
   /** P9d: deciding the Embrace path writes this relation flag (a stand-in for a formal arrangement); while it is set the defect's positive `eventStress` values are halved. */
   embraceFlag: str.optional(),
+  /** P9d: what her unmet want does at the top band: an off-combat breakdown of this kind for 1 to 3 days. */
   wantBreakdown: z.object({ kind: z.enum(['withdrawal', 'binge', 'smother', 'seize']), days: int.min(1).max(3) }).strict().optional(),
   nightEvents: z.array(NightSpecSchema).optional(),
   /** P5: one more node revealed ahead on the expedition map (Echo Bleed). */
