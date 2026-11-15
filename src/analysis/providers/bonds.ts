@@ -103,6 +103,24 @@ function ruleProvider(subject: Subject, env: AnalyzeEnv): { lines: string[] } | 
   return { lines: [`Her rule: ${status}. ${broken}`, ...(CHECK_TEXT[check] ? [CHECK_TEXT[check]] : [])] };
 }
 
+/** How open her relationship is, her preference and what happens when it changes; the reveal chance only with raw values on. */
+function publicityProvider(subject: Subject, env: AnalyzeEnv, k: Knowledge): { lines: string[] } | null {
+  const unitId = typeof subject.data.unitId === 'string' ? subject.data.unitId : null;
+  const state = env.state;
+  const unit = state && unitId !== null ? state.squad.find((u) => u.id === unitId) : undefined;
+  const open = unitId !== null ? state?.relations[unitId]?.publicity : undefined;
+  if (!state || !unit || !open) return null;
+  const pref = bondOf(unit)?.publicity;
+  const lines = [`The relationship is ${open.level}${pref !== undefined ? `; she prefers ${pref}` : ''}.`];
+  if (pref !== undefined && pref !== open.level) lines.push('She would like to talk about it.');
+  if (open.level === 'secret') {
+    const T = TUNING.relations.affair;
+    const chance = k.raw(Math.round((T.base + T.perOther) * 100));
+    lines.push(chance !== null ? `It can come out when others are with her: about ${chance} % with one other present.` : 'It can come out when others are with her.');
+  }
+  return { lines };
+}
+
 /** Registers the P9d readings (called from `registerCoreProviders`). */
 export function registerBondsProviders(): void {
   registerAnalyzeProvider('contentCategories', categoryProvider);
@@ -110,5 +128,6 @@ export function registerBondsProviders(): void {
   registerAnalyzeProvider('glossary:bond_profile', bondProvider);
   registerAnalyzeProvider('glossary:lead', leadProvider);
   registerAnalyzeProvider('glossary:want', wantProvider);
+  registerAnalyzeProvider('glossary:publicity', publicityProvider);
   registerAnalyzeProvider('relationshipRuleTemplates', ruleProvider);
 }

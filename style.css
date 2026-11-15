@@ -2514,6 +2514,22 @@
   cursor: not-allowed;
 }
 
+/* How open a romantic relationship is, in the dossier (P9d). The pressed level is underlined as well as bold, so it never relies on colour. */
+#alius-shell .alius-publicity {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin: 2px 0;
+}
+
+#alius-shell .alius-publicity [aria-pressed="true"] {
+  border: var(--alius-line);
+  color: var(--alius-accent);
+  font-weight: 700;
+  text-decoration: underline;
+}
+
 /* P5: world map, mission board, expeditions */
 .alius-map { position: relative; max-width: 100%; }
 .alius-map-img { display: block; width: 100%; height: auto; }

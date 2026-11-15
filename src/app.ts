@@ -1673,6 +1673,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       arcPaths: (unitId, defectId) => (state ? arcPaths(state, registries, unitId, defectId) : []),
       canTerminate: (unitId) => (state ? checkLeash(state, registries, 'terminate', unitId) : 'No campaign.'),
       onPunish: (unitId, measure, days) => void discipline.punish(unitId, measure, days),
+      onSetPublicity: (unitId, level) => void bonds.setPublicity(unitId, level),
     }),
   );
   shell.registerTab('inv', (host) =>

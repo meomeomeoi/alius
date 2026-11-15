@@ -1291,5 +1291,16 @@
     "id": "setting_rule_wording",
     "term": "Rule wording",
     "short": "The mechanic model puts a soldier's rule proposal into her own words. Off, the proposal uses the template text as it is."
+  },
+  {
+    "id": "publicity",
+    "term": "Publicity",
+    "short": "How open a romantic relationship is: secret, known to those close, or public. She has her own preference; you choose the level.",
+    "long": "AUTHOR TO WRITE: Publicity only exists while a soldier is in a romantic relationship with the commander. A relationship starts at the more private of her preference and known. You can change it any time: moving toward what she prefers is heard, moving away is dismissed. A secret can come out when others are around, and a mismatch makes her ask to talk. Going public while she leads makes the rest of the squad react by what they value.",
+    "see": [
+      "bond_profile",
+      "lead",
+      "want"
+    ]
   }
 ]

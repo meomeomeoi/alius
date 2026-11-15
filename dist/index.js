@@ -18426,6 +18426,16 @@ function createBonds(deps) {
         opening = false;
       }
     },
+    setPublicity(unitId, level) {
+      const events = deps.app.dispatch({ type: "bonds/set_publicity", payload: { unitId, level } }, { expectChatId: chatId() });
+      const bad = events.find((e) => e.type === "error");
+      if (bad) {
+        deps.toast("error", String(bad.message ?? bad.code));
+        return false;
+      }
+      deps.refreshContext();
+      return true;
+    },
     onEvents(events) {
       for (const e of events) if (e.type === "rule_proposed" && typeof e.ruleId === "string") void wordAndDeliver(e.ruleId, chatId()).catch(() => {
       });
@@ -24036,6 +24046,24 @@ function restrictionLine(unit, state) {
   if (list5.length === 0) return null;
   return h("p", { class: "alius-restrictions" }, ...joinWith(list5.map((r) => h("span", { class: "alius-chip", "data-restriction": r.kind, ...analyzeAttrs("glossary:restriction", { unitId: unit.id }) }, RESTRICTION_LABEL[r.kind])), " \xB7 "));
 }
+function publicityLine(unit, level, pref, ctx2) {
+  const live = { unitId: unit.id };
+  return h(
+    "p",
+    { class: "alius-publicity" },
+    h("span", { class: "alius-chip", "data-publicity": unit.id, ...analyzeAttrs("glossary:publicity", live) }, `PUBLICITY: ${level.toUpperCase()}`),
+    " ",
+    h("span", { class: "alius-chip", "data-publicity-pref": unit.id, ...analyzeAttrs("glossary:publicity", live) }, `SHE PREFERS: ${pref.toUpperCase()}`),
+    ...ctx2.onSetPublicity ? PUBLICITY_LEVELS.flatMap((l) => [" ", h("button", {
+      type: "button",
+      class: "alius-btn alius-option",
+      "data-publicity-set": l,
+      "aria-pressed": String(l === level),
+      ...analyzeNative("glossary:publicity", live),
+      onclick: () => ctx2.onSetPublicity(unit.id, l)
+    }, `[${l.toUpperCase()}]`)]) : []
+  );
+}
 function bondBlock(unit, state, ctx2) {
   if (unit.kind !== "named") return null;
   const reg = ctx2.registries;
@@ -24043,13 +24071,15 @@ function bondBlock(unit, state, ctx2) {
   const live = { unitId: unit.id };
   const rules2 = (state.bonds?.rules ?? []).filter((r) => r.unitId === unit.id && (r.status === "active" || r.status === "negotiating" || r.status === "proposed" && r.delivered === true));
   const showWant = wantEligible(state, reg, unit.id) || wantOf(state, unit.id) > 0;
-  if (unit.bond === void 0 && !showWant && rules2.length === 0) return null;
+  const open3 = state.relations[unit.id]?.publicity;
+  if (unit.bond === void 0 && !showWant && rules2.length === 0 && open3 === void 0) return null;
   const chip = (text2, address, extra = {}) => h("span", { class: "alius-chip", ...extra, ...analyzeAttrs(address, live) }, text2);
   const bond = unit.bond;
   return h(
     "div",
     { class: "alius-bond" },
     bond ? h("p", {}, chip(`LEADS: ${bond.leadStyle.toUpperCase()}`, "glossary:bond_profile", { "data-bond": "lead" }), " ", chip(`ATTACHES: ${bond.attachment.toUpperCase()}`, "glossary:bond_profile", { "data-bond": "attachment" }), " ", chip(`DESIRE: ${bond.desire.toUpperCase()}`, "glossary:bond_profile", { "data-bond": "desire" })) : null,
+    open3 ? publicityLine(unit, open3.level, bondOf(unit)?.publicity ?? "known", ctx2) : null,
     showWant ? h("p", {}, chip(`WANT: ${wantBand(wantOf(state, unit.id)).toUpperCase()}${raw ? ` (${wantOf(state, unit.id)})` : ""}`, "glossary:want", { "data-want": unit.id })) : null,
     rules2.length > 0 ? h("ul", { class: "alius-rules" }, ...rules2.map((r) => h("li", {}, h("span", {
       class: "alius-chip",
@@ -27896,12 +27926,29 @@ function ruleProvider(subject, env) {
   const check = String(env.registries.relationshipRuleTemplates.get(rule.templateId)?.check ?? "");
   return { lines: [`Her rule: ${status}. ${broken}`, ...CHECK_TEXT[check] ? [CHECK_TEXT[check]] : []] };
 }
+function publicityProvider(subject, env, k) {
+  const unitId = typeof subject.data.unitId === "string" ? subject.data.unitId : null;
+  const state = env.state;
+  const unit = state && unitId !== null ? state.squad.find((u) => u.id === unitId) : void 0;
+  const open3 = unitId !== null ? state?.relations[unitId]?.publicity : void 0;
+  if (!state || !unit || !open3) return null;
+  const pref = bondOf(unit)?.publicity;
+  const lines = [`The relationship is ${open3.level}${pref !== void 0 ? `; she prefers ${pref}` : ""}.`];
+  if (pref !== void 0 && pref !== open3.level) lines.push("She would like to talk about it.");
+  if (open3.level === "secret") {
+    const T = TUNING.relations.affair;
+    const chance = k.raw(Math.round((T.base + T.perOther) * 100));
+    lines.push(chance !== null ? `It can come out when others are with her: about ${chance} % with one other present.` : "It can come out when others are with her.");
+  }
+  return { lines };
+}
 function registerBondsProviders() {
   registerAnalyzeProvider("contentCategories", categoryProvider);
   registerAnalyzeProvider("glossary:content_categories", categoriesGlossaryProvider);
   registerAnalyzeProvider("glossary:bond_profile", bondProvider);
   registerAnalyzeProvider("glossary:lead", leadProvider);
   registerAnalyzeProvider("glossary:want", wantProvider);
+  registerAnalyzeProvider("glossary:publicity", publicityProvider);
   registerAnalyzeProvider("relationshipRuleTemplates", ruleProvider);
 }
 
@@ -31021,7 +31068,8 @@ function createApp(st, deps) {
       onArc: (unitId, defectId, path, compel2) => void decideArc2(unitId, defectId, path, compel2),
       arcPaths: (unitId, defectId) => state ? arcPaths(state, registries, unitId, defectId) : [],
       canTerminate: (unitId) => state ? checkLeash(state, registries, "terminate", unitId) : "No campaign.",
-      onPunish: (unitId, measure, days) => void discipline.punish(unitId, measure, days)
+      onPunish: (unitId, measure, days) => void discipline.punish(unitId, measure, days),
+      onSetPublicity: (unitId, level) => void bonds.setPublicity(unitId, level)
     })
   );
   shell.registerTab(

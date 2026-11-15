@@ -642,3 +642,57 @@ describe('the dossier bond block (P9d)', () => {
     expect(render({ state: bonded({ bond: false }) }).host.querySelector('.alius-bond')).toBeNull();
   });
 });
+
+describe('the dossier publicity block (P9d)', () => {
+  const romantic = (publicity?: 'secret' | 'known' | 'public', state = 'lover'): CampaignState => {
+    const s = campaign();
+    const id = s.squad[0].id;
+    s.relations[id].stateId = state;
+    s.squad[0].bond = { leadStyle: 'balanced', attachment: 'steady', desire: 'medium', caretaker: false, ownLimits: { categories: [] }, publicity: 'secret' };
+    if (publicity) s.relations[id].publicity = { level: publicity, since: 1 };
+    return s;
+  };
+  const renderBond = (s: CampaignState, onSetPublicity?: (unitId: string, level: string) => void) => {
+    const st = new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' });
+    const host = h('div');
+    document.body.append(host);
+    renderSquadTab(host, {
+      st, getState: () => s, getLoad: () => ({ kind: 'ok', state: s, chatId: 'c' }), registries: reg, settings: () => getSettings(st), onNewCampaign: () => {},
+      ...(onSetPublicity ? { onSetPublicity } : {}),
+    });
+    return host;
+  };
+
+  it('shows the level, her preference from the card and three buttons only for a romantic relation', () => {
+    const host = renderBond(romantic('known'), vi.fn());
+    expect(host.querySelector('.alius-bond [data-publicity]')!.textContent).toBe('PUBLICITY: KNOWN');
+    expect(host.querySelector('.alius-bond [data-publicity-pref]')!.textContent).toBe('SHE PREFERS: SECRET');
+    const buttons = [...host.querySelectorAll<HTMLButtonElement>('.alius-bond button[data-publicity-set]')];
+    expect(buttons.map((b) => [b.dataset.publicitySet, b.textContent, b.getAttribute('aria-pressed')])).toEqual([
+      ['secret', '[SECRET]', 'false'], ['known', '[KNOWN]', 'true'], ['public', '[PUBLIC]', 'false'],
+    ]);
+    document.body.innerHTML = '';
+    expect(renderBond(romantic(undefined, 'friend'), vi.fn()).querySelector('[data-publicity]')).toBeNull();
+  });
+
+  it('a button dispatches the commander choice through the app', () => {
+    const onSet = vi.fn();
+    const host = renderBond(romantic('known'), onSet);
+    host.querySelector<HTMLButtonElement>('button[data-publicity-set="public"]')!.click();
+    expect(onSet).toHaveBeenCalledWith('unit_rhea', 'public');
+  });
+
+  it('without the app callback the level is shown and no button', () => {
+    const host = renderBond(romantic('secret'));
+    expect(host.querySelector('[data-publicity]')).not.toBeNull();
+    expect(host.querySelector('button[data-publicity-set]')).toBeNull();
+  });
+
+  it('every new chip and button resolves in the analysis panel', () => {
+    const host = renderBond(romantic('known'), vi.fn());
+    const marked = [...host.querySelectorAll<HTMLElement>('.alius-publicity [data-publicity], .alius-publicity [data-publicity-pref], .alius-publicity button')];
+    expect(marked).toHaveLength(5);
+    for (const e of marked) expect(e.getAttribute('data-analyze')).toBe('glossary:publicity');
+    expect(markedWithout(host)).toEqual([]);
+  });
+});

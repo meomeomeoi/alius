@@ -1,5 +1,5 @@
 import type { Entry, Registries } from '../../content/types';
-import { wantBand, wantEligible, wantOf } from '../../engine/bonds';
+import { bondOf, PUBLICITY_LEVELS, wantBand, wantEligible, wantOf } from '../../engine/bonds';
 import { knownSkills, loadoutSize, respecCost, xpToNext } from '../../engine/progression';
 import { activeLoadout } from '../../engine/combat/skills';
 import { skillById } from '../../engine/combat/targeting';
@@ -7,7 +7,7 @@ import { canEquip } from '../../engine/items';
 import { unitStats } from '../../engine/combat/stats';
 import { affinityBand, attractionBand, trustBand } from '../../engine/relations/bands';
 import { intimacyOf } from '../../engine/relations/gain';
-import type { CampaignState, Unit } from '../../engine/state/types';
+import type { CampaignState, Publicity, Unit } from '../../engine/state/types';
 import { VALUE_AXES } from '../../engine/state/types';
 import type { AliusSettings } from '../../settings';
 import type { StAdapter } from '../../st/adapter';
@@ -48,6 +48,8 @@ export interface SquadTabCtx {
   canTerminate?: (unitId: string) => string | null;
   /** P9: the DISCIPLINE menu (a punishment from the menu: the commander's own click). */
   onPunish?: (unitId: string, measure: string, days?: number) => void;
+  /** P9d: the commander sets how open a romantic relationship is (the dossier's [SECRET] [KNOWN] [PUBLIC]). */
+  onSetPublicity?: (unitId: string, level: Publicity) => void;
 }
 
 const unknown = (id: string) => `UNKNOWN ${id}`;
@@ -256,6 +258,23 @@ function restrictionLine(unit: Unit, state: CampaignState): HTMLElement | null {
 }
 
 /**
+ * How open a romantic relationship is (P9d), only while she is in a `romantic` state: the level, her preference from the card and the
+ * commander's choice as three buttons (the current one is pressed). The change goes through the app (`onSetPublicity`).
+ */
+function publicityLine(unit: Unit, level: Publicity, pref: Publicity, ctx: SquadTabCtx): HTMLElement {
+  const live = { unitId: unit.id };
+  return h('p', { class: 'alius-publicity' },
+    h('span', { class: 'alius-chip', 'data-publicity': unit.id, ...analyzeAttrs('glossary:publicity', live) }, `PUBLICITY: ${level.toUpperCase()}`), ' ',
+    h('span', { class: 'alius-chip', 'data-publicity-pref': unit.id, ...analyzeAttrs('glossary:publicity', live) }, `SHE PREFERS: ${pref.toUpperCase()}`),
+    ...(ctx.onSetPublicity
+      ? PUBLICITY_LEVELS.flatMap((l) => [' ', h('button', {
+        type: 'button', class: 'alius-btn alius-option', 'data-publicity-set': l, 'aria-pressed': String(l === level), ...analyzeNative('glossary:publicity', live),
+        onclick: () => ctx.onSetPublicity!(unit.id, l),
+      }, `[${l.toUpperCase()}]`)])
+      : []));
+}
+
+/**
  * The bond part of a dossier (P9d): her lead style, attachment and desire as chips, her Want as a band word (the number only
  * with raw values) while Want runs for her or is stored, and her rules with status and how often each was broken (suspended
  * ones are hidden). Nothing for a unit with none of these.
@@ -267,11 +286,13 @@ function bondBlock(unit: Unit, state: CampaignState, ctx: SquadTabCtx): HTMLElem
   const live = { unitId: unit.id };
   const rules = (state.bonds?.rules ?? []).filter((r) => r.unitId === unit.id && (r.status === 'active' || r.status === 'negotiating' || (r.status === 'proposed' && r.delivered === true)));
   const showWant = wantEligible(state, reg, unit.id) || wantOf(state, unit.id) > 0;
-  if (unit.bond === undefined && !showWant && rules.length === 0) return null;
+  const open = state.relations[unit.id]?.publicity;
+  if (unit.bond === undefined && !showWant && rules.length === 0 && open === undefined) return null;
   const chip = (text: string, address: string, extra: Record<string, string> = {}) => h('span', { class: 'alius-chip', ...extra, ...analyzeAttrs(address, live) }, text);
   const bond = unit.bond;
   return h('div', { class: 'alius-bond' },
     bond ? h('p', {}, chip(`LEADS: ${bond.leadStyle.toUpperCase()}`, 'glossary:bond_profile', { 'data-bond': 'lead' }), ' ', chip(`ATTACHES: ${bond.attachment.toUpperCase()}`, 'glossary:bond_profile', { 'data-bond': 'attachment' }), ' ', chip(`DESIRE: ${bond.desire.toUpperCase()}`, 'glossary:bond_profile', { 'data-bond': 'desire' })) : null,
+    open ? publicityLine(unit, open.level, bondOf(unit)?.publicity ?? 'known', ctx) : null,
     showWant ? h('p', {}, chip(`WANT: ${wantBand(wantOf(state, unit.id)).toUpperCase()}${raw ? ` (${wantOf(state, unit.id)})` : ''}`, 'glossary:want', { 'data-want': unit.id })) : null,
     rules.length > 0
       ? h('ul', { class: 'alius-rules' }, ...rules.map((r) => h('li', {}, h('span', {

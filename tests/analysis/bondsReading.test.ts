@@ -153,3 +153,32 @@ describe('the rule reading (Task 12)', () => {
     expect(rd(withRule(), {})).toEqual([]);
   });
 });
+
+describe('the publicity reading (Task 16)', () => {
+  const romantic = (level: 'secret' | 'known' | 'public', pref: 'secret' | 'known' | 'public' = 'known') => {
+    const s = campaign(reg, 4);
+    s.relations.unit_ann.stateId = 'lover';
+    withBond(s, 'unit_ann', { publicity: pref });
+    s.relations.unit_ann.publicity = { level, since: 1 };
+    return s;
+  };
+  const rd = (s: CampaignState, on = false) => readingFor(parseSubject('glossary:publicity', JSON.stringify({ unitId: 'unit_ann' }))!, { registries: reg, state: s, settings: { ...DEFAULT_SETTINGS, showRawValues: on } })?.lines ?? [];
+
+  it('says how open it is and what she prefers; a mismatch says she wants to talk', () => {
+    expect(rd(romantic('known'))[0]).toBe('The relationship is known; she prefers known.');
+    expect(rd(romantic('known'))).toHaveLength(1);
+    expect(rd(romantic('public', 'secret'))).toEqual(['The relationship is public; she prefers secret.', 'She would like to talk about it.']);
+  });
+
+  it('a secret can come out; the percentage only with raw values on', () => {
+    const plain = rd(romantic('secret'), false).join('\n');
+    expect(plain).toMatch(/can come out/);
+    expect(plain).not.toMatch(/\d/);
+    expect(rd(romantic('secret'), true).join('\n')).toMatch(/about 8 %/);
+  });
+
+  it('reads nothing without a romantic relation or without a unit', () => {
+    expect(rd(campaign(reg, 4))).toEqual([]);
+    expect(read('glossary:publicity', romantic('known'))).toEqual([]);
+  });
+});

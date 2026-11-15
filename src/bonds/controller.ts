@@ -18,6 +18,8 @@ export interface BondsController {
    * ends the hold. Nothing happens in the Night, with a scene, a fight, an expedition or a night knock already open.
    */
   onSlotAdvanced(): Promise<boolean>;
+  /** The dossier's [SECRET] [KNOWN] [PUBLIC]: the commander sets how open the relationship is. Toasts the reason and returns false when the engine refuses. */
+  setPublicity(unitId: string, level: 'secret' | 'known' | 'public'): boolean;
 }
 
 /**
@@ -79,6 +81,16 @@ export function createBonds(deps: BondsDeps): BondsController {
       } finally {
         opening = false;
       }
+    },
+    setPublicity(unitId, level) {
+      const events = deps.app.dispatch({ type: 'bonds/set_publicity', payload: { unitId, level } }, { expectChatId: chatId() });
+      const bad = events.find((e) => e.type === 'error');
+      if (bad) {
+        deps.toast('error', String(bad.message ?? bad.code));
+        return false;
+      }
+      deps.refreshContext();
+      return true;
     },
     onEvents(events) {
       for (const e of events) if (e.type === 'rule_proposed' && typeof e.ruleId === 'string') void wordAndDeliver(e.ruleId, chatId()).catch(() => {});

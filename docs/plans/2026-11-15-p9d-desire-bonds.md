@@ -712,14 +712,14 @@ tests/**                                           mirrors src; tests/helpers/bo
 - Modify: `src/ui/squad/squadTab.ts` (`bondBlock`: `PUBLICITY: <level>` chip, her preference line, a `[SECRET] [KNOWN] [PUBLIC]` chip group for the commander's choice, shown only for tier-`romantic` relations), `src/analysis/providers/bonds.ts` (`publicity`), `content/core/glossary.json` (`publicity`), `css/72-bonds.css`
 - Test: `tests/ui/squad/squadTab.test.ts`, `tests/ui/analyzeCoverage.test.ts`
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `publicity chips show only for romantic relations and dispatch bonds/set_publicity`
   - `her preference is shown from the card`
   - `every new chip resolves in the analysis panel`
-- [ ] **Step 2: Run** and confirm FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** `npm test` and confirm PASS.
-- [ ] **Step 5: Commit** `feat(ui): publicity in the dossier`.
+- [x] **Step 2: Run** and confirm FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** `npm test` and confirm PASS.
+- [x] **Step 5: Commit** `feat(ui): publicity in the dossier`.
 
 ### Task 17: Documentation, manual checklist, final check
 
