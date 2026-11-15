@@ -344,6 +344,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
   const power = createPower({
     ...worldDeps, context, refreshContext: applyContext,
     // the VOTE panel (P9b): a modal in the corporate voice; closing it unanswered cancels the vote
+    startScene: (o) => beginScene(o),
     showVote: (vote, lines) => new Promise<VoteChoice>((resolve) => {
       const host = h('div');
       let answered = false;
@@ -1715,6 +1716,8 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       canTerminate: (unitId) => (state ? checkLeash(state, registries, 'terminate', unitId) : 'No campaign.'),
       onPunish: (unitId, measure, days) => void discipline.punish(unitId, measure, days),
       onSetPublicity: (unitId, level) => void bonds.setPublicity(unitId, level),
+      onEndorse: () => void power.endorse(),
+      onChallenge: (stat) => void power.challenge(stat).then((ok) => { if (ok) shell.open(); }),
     }),
   );
   shell.registerTab('inv', (host) =>
@@ -1752,6 +1755,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     onDismiss: (missionId) => void act({ type: 'mission/dismiss', payload: { missionId } }),
     onFollowRumor: (rumorId) => void act({ type: 'rumor/follow', payload: { rumorId } }),
     onSleep: () => void act({ type: 'calendar/sleep', payload: {} }),
+    onCountermand: (answer) => void power.answerCountermand(answer), // P9b: the squad leader's countermand
     onIntake: () => void api.intakeUnit(),
     onOpenReport: () => {
       showExpedition();

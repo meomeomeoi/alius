@@ -647,7 +647,7 @@ tests/**                                                        mirrors src; tes
   - `app.power.challenge(stat)`, which dispatches and then opens the scene with her (origin `event`, her quarters)
 - Consumes: Tasks 7–10, `beginScene`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `the dossier shows STANDING as a band and the LEADER badge on the leader only`
   - `ENDORSE and CHALLENGE show only on the leader; CHALLENGE is aria-disabled in cooldown with the days left`
   - `countermand chips call power/countermand`
@@ -656,10 +656,10 @@ tests/**                                                        mirrors src; tes
   - `the voice card shows CC: {Name}`
   - `no new text gives the commander a pronoun`
   - Coverage: extend `analyzeCoverage` with the dossier block and the chips.
-- [ ] **Step 2: Run** `npx vitest run tests/ui/hierarchy.test.ts tests/power tests/ui/analyzeCoverage.test.ts tests/analysis` and confirm FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** the tests, then `npm test`. Expect PASS.
-- [ ] **Step 5: Tick and commit:** `feat(ui): hierarchy in the dossier, countermand chips and leader directives`.
+- [x] **Step 2: Run** `npx vitest run tests/ui/hierarchy.test.ts tests/power tests/ui/analyzeCoverage.test.ts tests/analysis` and confirm FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** the tests, then `npm test`. Expect PASS.
+- [x] **Step 5: Tick and commit:** `feat(ui): hierarchy in the dossier, countermand chips and leader directives`.
 
 **Chunk (b) ends here.**
 

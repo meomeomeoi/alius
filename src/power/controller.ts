@@ -6,6 +6,7 @@ import type { OverruleMeans } from '../engine/power/votes';
 import { VALUE_AXES, type CampaignState, type Vote } from '../engine/state/types';
 import { effectiveValues } from '../engine/worldOptions/stances';
 import { generateBallotFlavor } from '../llm/calls/flavor';
+import type { ChallengeStat } from '../engine/power/moves';
 import type { PowerDeps, VoteChoice } from './deps';
 
 export type { PowerDeps, VoteChoice } from './deps';
@@ -25,6 +26,15 @@ export interface PowerController {
   drop(voteId: string): boolean;
   /** One reason line per voter: the template of the vote kind, or (setting `ballotWording`, the model answering) the worded line. */
   ballotLines(vote: Vote): Promise<Record<string, string>>;
+  /** ENDORSE the squad leader. Toasts and returns false when the engine refuses. */
+  endorse(): boolean;
+  /**
+   * CHALLENGE the squad leader on a stat: the engine rolls and decides, then a scene with her opens (her quarters, origin
+   * `event`) with the outcome as the hard directive `power:challenge`. Toasts and returns false when the engine refuses.
+   */
+  challenge(stat: ChallengeStat): Promise<boolean>;
+  /** ACCEPT or OVERRULE the leader's countermand. Toasts and returns false when the engine refuses. */
+  answerCountermand(answer: 'accept' | 'overrule'): boolean;
 }
 
 /**
@@ -120,10 +130,74 @@ export function createPower(deps: PowerDeps): PowerController {
     return answer.choice === 'accept' ? 'dropped' : 'cancelled';
   }
 
+  const nameOf = (id: unknown): string => state()?.squad.find((u) => u.id === id)?.displayName ?? String(id);
+
+  function endorse(): boolean {
+    const events = deps.app.dispatch({ type: 'power/endorse', payload: {} }, { expectChatId: chatId() });
+    const bad = failure(events);
+    if (bad) {
+      deps.toast('error', String(bad.message ?? bad.code));
+      return false;
+    }
+    const id = events.find((e) => e.type === 'leader_endorsed' && e.unitId !== undefined)?.unitId;
+    deps.toast('info', `${nameOf(id)} is now second-in-command.`);
+    deps.refreshContext();
+    return true;
+  }
+
+  /** What the engine decided, told to the main model as a hard fact of her scene. */
+  function challengeText(name: string, stat: string, won: boolean): string {
+    return won
+      ? `${name} has just lost a challenge to the commander (${stat}); she no longer leads the squad for two weeks. The outcome is decided: play the aftermath and do not change it.`
+      : `${name} has just beaten a challenge from the commander (${stat}); she keeps the lead of the squad and stands stronger for it. The outcome is decided: play the aftermath and do not change it.`;
+  }
+
+  async function challenge(stat: ChallengeStat): Promise<boolean> {
+    const chat = chatId();
+    const events = deps.app.dispatch({ type: 'power/challenge', payload: { stat } }, { expectChatId: chat });
+    const bad = failure(events);
+    if (bad) {
+      deps.toast('error', String(bad.message ?? bad.code));
+      return false;
+    }
+    const result = events.find((e) => e.type === 'challenge_resolved') as { unitId?: string; won?: boolean } | undefined;
+    deps.refreshContext();
+    if (!result?.unitId) return true;
+    const opened = deps.startScene ? await deps.startScene({ locationId: 'quarters_unit', participants: [result.unitId], origin: 'event' }) : false;
+    if (opened && chatId() === chat) {
+      deps.context.setDirective({ id: 'power:challenge', expiresAfter: 'scene', text: challengeText(nameOf(result.unitId), stat, result.won === true) });
+      deps.refreshContext();
+    }
+    return true;
+  }
+
+  function answerCountermand(answer: 'accept' | 'overrule'): boolean {
+    return send({ type: 'power/countermand', payload: { answer } }, chatId());
+  }
+
   return {
     onEvents(events) {
-      if (events.some((e) => e.type === 'vote_overruled' || e.type === 'grudges_ended')) deps.refreshContext();
+      const refresh = ['vote_overruled', 'grudges_ended', 'leader_changed', 'leader_endorsed', 'outside_feat', 'challenge_resolved'];
+      if (events.some((e) => refresh.includes(e.type))) deps.refreshContext();
+      for (const e of events) {
+        if (e.type === 'countermanded') {
+          const activity = String(deps.registries().activities.get(String(e.activityId))?.name ?? e.activityId);
+          deps.toast('warn', `${nameOf(e.leaderId)} countermands ${activity} with ${nameOf(e.unitId)}: ACCEPT or OVERRULE.`);
+        } else if (e.type === 'leader_changed') {
+          deps.toast('info', e.to !== undefined ? `${nameOf(e.to)} has become the one the squad looks to.` : `The squad no longer looks to ${nameOf(e.from)}.`);
+        } else if (e.type === 'countermand_overruled' && state()?.scene?.participants.includes(String(e.leaderId))) {
+          // the commander overruled her in her presence: her next reply shows it
+          deps.context.setDirective({
+            id: 'power:countermand', expiresAfter: 'next_reply',
+            text: `The commander has just overruled ${nameOf(e.leaderId)}'s call in front of her; she reacts in character.`,
+          });
+          deps.refreshContext();
+        }
+      }
     },
+    endorse,
+    challenge,
+    answerCountermand,
     requestVote,
     overrule,
     drop,

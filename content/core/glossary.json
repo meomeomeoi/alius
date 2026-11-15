@@ -1347,5 +1347,66 @@
       "upkeep",
       "supplies"
     ]
+  },
+  {
+    "id": "standing",
+    "term": "Standing",
+    "short": "How much weight a soldier carries in the squad: her recent fights, how well the others get on with her and how safe she feels defying the commander.",
+    "long": "AUTHOR TO WRITE: Standing is worked out for every named soldier and refreshed weekly. Merit counts damage dealt, finishing blows and healing from the last 14 days. Respect is how alike her values are to the others'. Impunity is how safe she feels defying the commander. Her lead style then multiplies it: a dominant soldier counts 30 % more, a yielding one 30 % less. The soldier far enough ahead of the next, and whose card says she pushes for power, becomes the [[squad_leader]].",
+    "see": [
+      "squad_leader",
+      "impunity"
+    ]
+  },
+  {
+    "id": "squad_leader",
+    "term": "Squad leader",
+    "short": "The soldier the squad looks to. She is far enough ahead in standing and her card says she pushes for power. Her vote weighs more and outsiders address her.",
+    "long": "AUTHOR TO WRITE: A leader appears only when one soldier leads the next by a clear margin and her card says she pushes for power; a balanced or yielding soldier never becomes one. She votes with more weight, the squad's grunts follow her vote, her record of defiance rubs off on the others more and she may [[countermand]] a minor order. You can [[endorse]] her or [[challenge]] her. Outsiders address her as the one who runs the unit ([[outside_perception]]).",
+    "see": [
+      "standing",
+      "endorse",
+      "challenge",
+      "countermand",
+      "outside_perception"
+    ]
+  },
+  {
+    "id": "countermand",
+    "term": "Countermand",
+    "short": "The squad leader overrides a minor order you gave to another soldier. You can accept it, or overrule her at a price.",
+    "long": "AUTHOR TO WRITE: Only a minor order that names another soldier can be countermanded: training, rest, work or study. When it happens nothing of the order is done and no slot is spent. Accepting drops it. Overruling runs the order anyway, costs the leader Trust and raises your Impunity with her. A countermand not answered lapses with the slot.",
+    "see": [
+      "squad_leader"
+    ]
+  },
+  {
+    "id": "endorse",
+    "term": "Endorse",
+    "short": "Make the squad leader your formal second-in-command: her privileges grow by half and outsiders treat her as such.",
+    "long": "AUTHOR TO WRITE: Endorsing raises her Trust and Affinity, raises every other soldier's Impunity a little, makes her privileges half as large again and makes it the official arrangement for outsiders, who then address both of you. It ends when she stops leading.",
+    "see": [
+      "squad_leader",
+      "outside_perception"
+    ]
+  },
+  {
+    "id": "challenge",
+    "term": "Challenge",
+    "short": "Contest the squad leader's place on one stat. One roll decides it; either way the next challenge waits two weeks.",
+    "long": "AUTHOR TO WRITE: Pick authority, empathy, strength, endurance or reflexes. The odds depend on your rank in that stat against hers. Winning removes her leadership for two weeks; losing raises her standing for two weeks and everyone's Impunity. You need no open scene, and the result opens a scene with her.",
+    "see": [
+      "squad_leader"
+    ]
+  },
+  {
+    "id": "outside_perception",
+    "term": "Outside perception",
+    "short": "Outsiders (oversight, traders, enemy commanders) address the squad leader as the one who really runs the unit, until you show otherwise.",
+    "long": "AUTHOR TO WRITE: While a leader exists, oversight copies her on messages and outsiders address her. A visible feat holds that back for two weeks: surviving a crisis with cover, securing a command mission after giving an order, or settling a decision by a passed social check. Endorsing her makes it the official arrangement and it is never held back. Only the directive and oversight's copy are built; trading and parleys have no system yet.",
+    "see": [
+      "squad_leader",
+      "endorse"
+    ]
   }
 ]

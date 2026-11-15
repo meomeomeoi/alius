@@ -53,7 +53,7 @@ function oversightLog(state: CampaignState): HTMLElement {
   const nameOf = (id: string): string => state.squad.find((u) => u.id === id)?.displayName ?? id;
   const body = entries.length > 0
     ? h('div', {}, ...entries.map((e) => h('p', { class: 'alius-oversight-entry', 'data-no': String(e.no) },
-      `#${String(e.no).padStart(4, '0')} DAY ${day3(e.day)} ${e.kind.toUpperCase()} ${nameOf(e.unitId)} — ${String(e.outcome).toUpperCase()}`)))
+      `#${String(e.no).padStart(4, '0')} DAY ${day3(e.day)} ${e.kind.toUpperCase()} ${nameOf(e.unitId)} — ${String(e.outcome).toUpperCase()}${e.cc !== undefined ? ` · CC: ${nameOf(e.cc)}` : ''}`)))
     : h('p', { class: 'alius-dim' }, 'NO REQUESTS FILED');
   const log = renderVoiceCard({ voice: 'corporate', title: 'OVERSIGHT LOG', body });
   log.classList.add('alius-section', 'alius-oversight-log');

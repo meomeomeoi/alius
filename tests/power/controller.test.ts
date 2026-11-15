@@ -6,7 +6,10 @@ import { createPower, type PowerDeps, type VoteChoice } from '../../src/power/co
 import { DEFAULT_SETTINGS } from '../../src/settings';
 import { campaign, loadCore, setRelation } from '../helpers/loyalty';
 import { upkeepNeeded } from '../../src/engine/economy';
-import { withOptions } from '../helpers/power';
+import { withLeader, withOptions } from '../helpers/power';
+import { ContextBuilder } from '../../src/llm/context';
+import { seedRng } from '../../src/engine/rng';
+import { withBond } from '../helpers/bonds';
 import { worldHarness, type WorldHarness } from '../helpers/worldApp';
 
 let reg: Registries;
@@ -199,5 +202,83 @@ describe('ballot lines', () => {
     expect(out.Ann).toHaveLength(120);
     expect(sanitizeBallotFlavor('nope', ['Ann'])).toEqual({});
     expect(sanitizeBallotFlavor(null, ['Ann'])).toEqual({});
+  });
+});
+
+describe('the leader moves (P9b)', () => {
+  function leaderRig(over: { scene?: boolean; seed?: number } = {}) {
+    const s = withLeader(stateWith({ voting: false }), ANN);
+    for (const u of s.squad) withBond(s, u.id, { leadStyle: u.id === ANN ? 'dominant' : 'balanced' });
+    if (over.seed !== undefined) s.rng = seedRng(over.seed);
+    const h = worldHarness(reg, s);
+    if (over.scene) h.app().dispatch({ type: 'scene/start', payload: { locationId: 'mess_hall', participants: [ANN], origin: 'event', startIndex: 0 } });
+    const ctx = new ContextBuilder();
+    const refresh = vi.fn();
+    const startScene = vi.fn(async (o: { locationId: string; participants: string[] }) => !h.app().dispatch({ type: 'scene/start', payload: { ...o, origin: 'event', startIndex: 0 } }).some((e) => e.type === 'error'));
+    const deps: PowerDeps = { ...h.deps, context: ctx, refreshContext: refresh, showVote: async () => ({ choice: 'cancel' }), startScene };
+    return { h, ctx, refresh, startScene, power: createPower(deps) };
+  }
+  const dirs = (r: ReturnType<typeof leaderRig>) => r.ctx.build(r.h.state(), 5000).directives;
+
+  it('endorse dispatches power/endorse and says so', () => {
+    const r = leaderRig();
+    expect(r.power.endorse()).toBe(true);
+    expect(r.h.state().power!.hierarchy!.endorsed).toBe(true);
+    expect(r.h.toasts.at(-1)).toMatchObject({ kind: 'info' });
+    expect(r.power.endorse()).toBe(false); // already
+    expect(r.h.toasts.at(-1)).toMatchObject({ kind: 'error' });
+  });
+
+  it('challenge dispatches, opens a scene with her and carries the decided outcome in power:challenge', async () => {
+    for (const won of [true, false]) {
+      let found: ReturnType<typeof leaderRig> | null = null;
+      for (let seed = 1; seed < 300 && !found; seed++) {
+        const probe = leaderRig({ seed });
+        const events = probe.h.app().dispatch({ type: 'power/challenge', payload: { stat: 'authority' } });
+        if ((events.find((e) => e.type === 'challenge_resolved') as { won?: boolean } | undefined)?.won === won) found = leaderRig({ seed });
+      }
+      const r = found!;
+      expect(await r.power.challenge('authority')).toBe(true);
+      expect(r.startScene).toHaveBeenCalledWith({ locationId: 'quarters_unit', participants: [ANN], origin: 'event' });
+      expect(r.h.state().scene!.participants).toEqual([ANN]);
+      expect(dirs(r)).toContain(won ? 'Ann has just lost a challenge to the commander' : 'Ann has just beaten a challenge from the commander');
+      expect(dirs(r)).toContain('The outcome is decided');
+      expect(r.refresh).toHaveBeenCalled();
+    }
+  });
+
+  it('a refused challenge is toasted and opens nothing', async () => {
+    const r = leaderRig({ scene: true });
+    expect(await r.power.challenge('authority')).toBe(false);
+    expect(r.h.toasts.at(-1)).toMatchObject({ kind: 'error' });
+    expect(r.startScene).not.toHaveBeenCalled();
+    const bad = leaderRig();
+    expect(await bad.power.challenge('charm' as never)).toBe(false);
+  });
+
+  it('answering a countermand dispatches power/countermand; overruling in her presence sets power:countermand', () => {
+    const r = leaderRig();
+    r.h.setState((s) => { s.power!.countermand = { leaderId: ANN, unitId: BEA, payload: { activityId: 'train', companionId: BEA }, day: s.day, slot: s.slot }; });
+    expect(r.power.answerCountermand('accept')).toBe(true);
+    expect(r.h.state().power!.countermand).toBeUndefined();
+    expect(r.power.answerCountermand('accept')).toBe(false); // nothing is open
+    expect(r.h.toasts.at(-1)).toMatchObject({ kind: 'error' });
+    // onEvents: an overrule while she is in the scene
+    const s = leaderRig({ scene: true });
+    s.power.onEvents([{ type: 'countermand_overruled', leaderId: ANN, unitId: BEA }]);
+    expect(dirs(s)).toContain("The commander has just overruled Ann's call in front of her");
+    const away = leaderRig();
+    away.power.onEvents([{ type: 'countermand_overruled', leaderId: ANN, unitId: BEA }]);
+    expect(dirs(away)).not.toContain('overruled');
+  });
+
+  it('events: a countermand and a new leader are told in a toast', () => {
+    const r = leaderRig();
+    r.power.onEvents([{ type: 'countermanded', leaderId: ANN, unitId: BEA, activityId: 'train' }]);
+    expect(r.h.toasts.at(-1)!.text).toMatch(/Ann countermands/);
+    r.power.onEvents([{ type: 'leader_changed', to: ANN }]);
+    expect(r.h.toasts.at(-1)!.text).toMatch(/Ann/);
+    r.power.onEvents([{ type: 'leader_changed', from: ANN }]);
+    expect(r.h.toasts.at(-1)!.text).toMatch(/no longer/i);
   });
 });

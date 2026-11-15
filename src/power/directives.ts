@@ -1,5 +1,6 @@
 import type { Registries } from '../content/types';
-import { grudgeHolds } from '../engine/power/state';
+import { outsideActive } from '../engine/power/outside';
+import { grudgeHolds, leaderOf } from '../engine/power/state';
 import type { CampaignState } from '../engine/state/types';
 import type { Directive, ContextBuilder } from '../llm/context';
 
@@ -9,8 +10,15 @@ import type { Directive, ContextBuilder } from '../llm/context';
  */
 
 const VOTE_PREFIX = 'power:vote:';
+/** Ids that are derived from the state on every refresh (the others, `power:challenge` and `power:countermand`, are set by the controller). */
+const DERIVED = ['power:vote:', 'power:leader', 'power:outside'] as const;
 
-/** A unit the commander overruled in a squad vote may push back openly until the next day end (from the state, so it survives a reload). */
+/**
+ * Derived from the state, so they survive a reload:
+ *  - `power:vote:<unitId>`: a unit the commander overruled in a squad vote may push back openly until the next day end;
+ *  - `power:leader`: the squad leader, while she is in the scene (and the endorsement, when there is one);
+ *  - `power:outside` (manual): outsiders address the leader as the one who really runs the unit, while outside perception is on.
+ */
 export function powerDirectives(state: CampaignState, _reg: Registries, present: string[]): Directive[] {
   const out: Directive[] = [];
   for (const id of present) {
@@ -21,6 +29,24 @@ export function powerDirectives(state: CampaignState, _reg: Registries, present:
       text: `${unit.displayName} voted against the commander's decision and was overruled; she may push back openly.`,
     });
   }
+  const leader = leaderOf(state);
+  if (leader) {
+    const endorsed = state.power?.hierarchy?.endorsed === true;
+    if (present.includes(leader.id)) {
+      out.push({
+        id: 'power:leader', expiresAfter: 'scene',
+        text: `${leader.displayName} is the one the squad looks to and speaks for the others.${endorsed ? ` The commander has formally made ${leader.displayName} second-in-command.` : ''}`,
+      });
+    }
+    if (outsideActive(state)) {
+      out.push({
+        id: 'power:outside', expiresAfter: 'manual',
+        text: endorsed
+          ? `Oversight treats ${leader.displayName} as the commander's second-in-command; outsiders address both.`
+          : `Outsiders (oversight officers, traders, enemy commanders) address ${leader.displayName} as the one who really runs the unit.`,
+      });
+    }
+  }
   return out;
 }
 
@@ -29,8 +55,8 @@ export function clearPowerDirectives(builder: ContextBuilder): void {
   builder.clearMatching((d) => d.id.startsWith('power:'));
 }
 
-/** Sets the vote directives of the units in the open scene and drops the ones that no longer hold. Called on every refresh. */
+/** Sets the derived directives and drops the ones that no longer hold; the challenge outcome ends with its scene. Called on every refresh. */
 export function refreshPowerDirectives(builder: ContextBuilder, state: CampaignState, reg: Registries): void {
-  builder.clearMatching((d) => d.id.startsWith(VOTE_PREFIX));
+  builder.clearMatching((d) => DERIVED.some((p) => d.id.startsWith(p)) || (d.id === 'power:challenge' && state.scene === undefined));
   for (const d of powerDirectives(state, reg, state.scene?.participants ?? [])) builder.setDirective(d);
 }

@@ -1,6 +1,7 @@
-import { rationsOf, rationsVotable, votingOn } from '../../engine/power';
-import { liveVote } from '../../engine/power/state';
+import { challengeChance, challengeCooldown, countermandOpen, meritOf, outsideActive, outsideSuppressedFor, rationsOf, rationsVotable, respectOf, standingOf, votingOn, CHALLENGE_STATS, type ChallengeStat } from '../../engine/power';
+import { leaderOf, liveVote } from '../../engine/power/state';
 import type { BallotTerm } from '../../engine/state/types';
+import { TUNING } from '../../engine/tuning';
 import type { Knowledge } from '../knowledge';
 import type { AnalyzeEnv } from '../model';
 import { registerAnalyzeProvider } from '../providers';
@@ -69,8 +70,97 @@ function rationsProvider(subject: Subject, env: AnalyzeEnv): { lines: string[] }
   return { lines };
 }
 
+const band = (n: number): string => (n < 40 ? 'low' : n < 70 ? 'notable' : 'dominant');
+const nameOf = (state: NonNullable<AnalyzeEnv['state']>, id: string): string => state.squad.find((u) => u.id === id)?.displayName ?? id;
+
+/** Her standing as a band word, where it comes from and whether she leads; the number and its parts only with raw values on. */
+function standingProvider(subject: Subject, env: AnalyzeEnv, k: Knowledge): { lines: string[] } | null {
+  const state = env.state;
+  const unitId = typeof subject.data.unitId === 'string' ? subject.data.unitId : null;
+  const n = state && unitId !== null ? standingOf(state, env.registries, unitId) : null;
+  if (!state || unitId === null || n === null) return null;
+  const leader = leaderOf(state);
+  const lines = [`Her standing: ${band(n)}.`];
+  if (leader?.id === unitId) lines.push('She is the squad leader.');
+  else if (leader) lines.push(`The squad leader is ${nameOf(state, leader.id)}.`);
+  lines.push('It rests on her fights of the last two weeks, how well the others get on with her and how safe she feels defying the commander, times how hard her card says she pushes for power.');
+  const raw = k.raw(n);
+  if (raw !== null) {
+    lines.push(`Standing: ${raw} (merit ${Math.round(meritOf(state, unitId) * 100)} %, respect ${Math.round(respectOf(state, unitId) * 100)} %; a leader needs a lead of ${TUNING.power.standing.margin}).`);
+  }
+  return { lines };
+}
+
+/** Who leads, what the leader may do and what keeps someone from leading. */
+function leaderProvider(_subject: Subject, env: AnalyzeEnv, k: Knowledge): { lines: string[] } | null {
+  const state = env.state;
+  if (!state) return null;
+  const leader = leaderOf(state);
+  const h = state.power?.hierarchy;
+  const lines: string[] = [];
+  if (leader) {
+    lines.push(`Squad leader: ${leader.displayName}${h?.endorsed ? ' (second-in-command)' : ''}.`);
+    lines.push('Her vote weighs more, the grunts follow it, her defiance rubs off on the others more and she may countermand a minor order.');
+  } else {
+    lines.push('No one leads the squad: nobody is far enough ahead, or the one who is does not push for power.');
+  }
+  if (h?.deposed && h.deposed.untilDay > state.day) {
+    const days = k.raw(h.deposed.untilDay - state.day);
+    lines.push(`${nameOf(state, h.deposed.unitId)} lost a challenge and cannot lead for a while${days !== null ? ` (${days} more days)` : ''}.`);
+  }
+  const left = challengeCooldown(state);
+  if (left > 0) {
+    const days = k.raw(left);
+    lines.push(`The next challenge has to wait${days !== null ? ` ${days} more days` : ' a while'}.`);
+  }
+  return { lines };
+}
+
+/** Whether outsiders address the leader, and what holds it back. */
+function outsideProvider(_subject: Subject, env: AnalyzeEnv, k: Knowledge): { lines: string[] } | null {
+  const state = env.state;
+  if (!state) return null;
+  const leader = leaderOf(state);
+  if (!leader) return { lines: ['There is no squad leader: outsiders address no one in the commander\'s place.'] };
+  if (state.power?.hierarchy?.endorsed) return { lines: [`Oversight treats ${leader.displayName} as the commander's second-in-command; outsiders address both. It is never held back.`] };
+  if (outsideActive(state)) return { lines: [`Outsiders address ${leader.displayName} as the one who really runs the unit.`, 'A visible feat holds that back for a while.'] };
+  const days = k.raw(outsideSuppressedFor(state));
+  return { lines: [`A feat of the commander holds it back: outsiders address the commander again${days !== null ? ` for ${days} days` : ' for a while'}.`] };
+}
+
+/** The odds of a challenge on one stat in words; the percentage only with raw values on. */
+function challengeProvider(subject: Subject, env: AnalyzeEnv, k: Knowledge): { lines: string[] } | null {
+  const state = env.state;
+  if (!state) return null;
+  if (!leaderOf(state)) return { lines: ['There is no squad leader to challenge.'] };
+  const stats = typeof subject.data.stat === 'string' && (CHALLENGE_STATS as readonly string[]).includes(subject.data.stat) ? [subject.data.stat as ChallengeStat] : [...CHALLENGE_STATS];
+  const word = (p: number): string => (p < 0.35 ? 'unlikely' : p < 0.65 ? 'even' : 'likely');
+  return {
+    lines: stats.map((stat) => {
+      const p = challengeChance(state, env.registries, stat);
+      const raw = k.raw(Math.round(p * 100));
+      return `With ${stat}: ${word(p)}${raw !== null ? ` (${raw} %)` : ''}.`;
+    }),
+  };
+}
+
+/** A countermand waiting for the commander's answer. */
+function countermandProvider(_subject: Subject, env: AnalyzeEnv): { lines: string[] } | null {
+  const state = env.state;
+  const c = state ? countermandOpen(state) : null;
+  if (!state || !c) return null;
+  const activityId = (c.payload as { activityId?: unknown } | null)?.activityId;
+  const activity = typeof activityId === 'string' ? String(env.registries.activities.get(activityId)?.name ?? activityId) : 'an order';
+  return { lines: [`${nameOf(state, c.leaderId)} countermanded ${activity} with ${nameOf(state, c.unitId)}; it waits for your answer.`] };
+}
+
 /** Registers the P9b readings (called from `registerCoreProviders`). */
 export function registerPowerProviders(): void {
   registerAnalyzeProvider('glossary:vote', voteProvider);
   registerAnalyzeProvider('glossary:rations', rationsProvider);
+  registerAnalyzeProvider('glossary:standing', standingProvider);
+  registerAnalyzeProvider('glossary:squad_leader', leaderProvider);
+  registerAnalyzeProvider('glossary:outside_perception', outsideProvider);
+  registerAnalyzeProvider('glossary:challenge', challengeProvider);
+  registerAnalyzeProvider('glossary:countermand', countermandProvider);
 }

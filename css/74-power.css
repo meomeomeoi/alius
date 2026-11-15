@@ -50,3 +50,30 @@
   border: var(--alius-line);
   color: var(--alius-accent);
 }
+
+/* The hierarchy block of a dossier and the leader's countermand chips (P9b). */
+#alius-shell .alius-hierarchy-line,
+#alius-shell .alius-hierarchy-actions,
+#alius-shell .alius-countermand {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin: 2px 0;
+}
+
+#alius-shell .alius-challenge-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 2px 0;
+}
+
+#alius-shell .alius-challenge-picker[hidden] {
+  display: none;
+}
+
+#alius-shell [data-leader-badge] {
+  border: var(--alius-line);
+  color: var(--alius-accent);
+}

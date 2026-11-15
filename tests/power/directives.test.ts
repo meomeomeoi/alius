@@ -4,8 +4,9 @@ import type { Registries } from '../../src/content/types';
 import type { CampaignState } from '../../src/engine/state/types';
 import { ContextBuilder } from '../../src/llm/context';
 import { clearPowerDirectives, powerDirectives, refreshPowerDirectives } from '../../src/power/directives';
+import { noteFeat } from '../../src/engine/power/outside';
 import { campaign, endDay, loadCore } from '../helpers/loyalty';
-import '../helpers/power';
+import { withLeader } from '../helpers/power';
 
 let reg: Registries;
 beforeAll(async () => {
@@ -59,5 +60,53 @@ describe('the grudge directive', () => {
     expect(text.match(/\b(he|him|his|himself|he's)\b/i)).toBeNull();
     const sample = powerDirectives(grudged(), reg, [ANN, BEA]).map((d) => d.text).join(' ');
     expect(sample.match(/\b(he|him|his|himself)\b/i)).toBeNull();
+  });
+});
+
+describe('the leader directives (P9b)', () => {
+  const led = (opts: { endorsed?: boolean; inScene?: boolean } = {}): CampaignState => {
+    const s = withLeader(campaign(reg, 4), ANN, { endorsed: opts.endorsed });
+    if (opts.inScene) s.scene = { id: 'sc', participants: [ANN, BEA], mode: 'group', locationId: 'mess_hall', exchanges: 0 } as never;
+    return s;
+  };
+
+  it('power:leader is set for a leader who is in the scene and tells the endorsement', () => {
+    const s = led({ inScene: true });
+    const d = powerDirectives(s, reg, [ANN, BEA]).find((x) => x.id === 'power:leader')!;
+    expect(d).toMatchObject({ expiresAfter: 'scene', text: 'Ann is the one the squad looks to and speaks for the others.' });
+    expect(powerDirectives(s, reg, [BEA]).some((x) => x.id === 'power:leader')).toBe(false);
+    const e = powerDirectives(led({ endorsed: true, inScene: true }), reg, [ANN]).find((x) => x.id === 'power:leader')!;
+    expect(e.text).toContain('The commander has formally made Ann second-in-command.');
+  });
+
+  it('power:outside is set while active (scene or not), tells the endorsement and is cleared on a feat', () => {
+    const s = led();
+    const out = powerDirectives(s, reg, []).find((x) => x.id === 'power:outside')!;
+    expect(out).toMatchObject({ expiresAfter: 'manual', text: 'Outsiders (oversight officers, traders, enemy commanders) address Ann as the one who really runs the unit.' });
+    expect(powerDirectives(led({ endorsed: true }), reg, []).find((x) => x.id === 'power:outside')!.text)
+      .toBe("Oversight treats Ann as the commander's second-in-command; outsiders address both.");
+    const b = new ContextBuilder();
+    refreshPowerDirectives(b, s, reg);
+    expect(b.build(s, 5000).directives).toContain('address Ann as the one who really runs the unit');
+    noteFeat(s, reg, 'negotiation');
+    refreshPowerDirectives(b, s, reg);
+    expect(b.build(s, 5000).directives).not.toContain('really runs the unit');
+    expect(powerDirectives(campaign(reg, 4), reg, []).some((x) => x.id === 'power:outside')).toBe(false);
+  });
+
+  it('refresh drops the challenge directive once no scene is open and keeps it while one is', () => {
+    const s = led({ inScene: true });
+    const b = new ContextBuilder();
+    b.setDirective({ id: 'power:challenge', expiresAfter: 'scene', text: 'Ann has just lost a challenge.' });
+    refreshPowerDirectives(b, s, reg);
+    expect(b.build(s, 5000).directives).toContain('Ann has just lost a challenge.');
+    delete s.scene;
+    refreshPowerDirectives(b, s, reg);
+    expect(b.build(s, 5000).directives).not.toContain('lost a challenge');
+  });
+
+  it('no text gives the commander a pronoun', () => {
+    const texts = [...powerDirectives(led({ endorsed: true, inScene: true }), reg, [ANN]), ...powerDirectives(grudged(), reg, [ANN])].map((d) => d.text).join(' ');
+    expect(texts.match(/\b(he|him|his|himself)\b/i)).toBeNull();
   });
 });

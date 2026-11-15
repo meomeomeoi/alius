@@ -565,6 +565,28 @@ describe('coverage: squad vote and rations (P9b)', () => {
   });
 });
 
+describe('coverage: the hierarchy block and the countermand chips (P9b)', () => {
+  it('every marker has data-analyze, every address resolves and every one can be reached', async () => {
+    const { renderHierarchyBlock } = await import('../../src/ui/power/hierarchy');
+    const { drawCountermandChips } = await import('../../src/ui/power/chips');
+    const { withLeader } = await import('../helpers/power');
+    const s = withLeader(campaign(reg, 4), 'unit_ann');
+    s.power!.countermand = { leaderId: 'unit_ann', unitId: 'unit_bea', payload: { activityId: 'train', companionId: 'unit_bea' }, day: s.day, slot: s.slot };
+    const block = mount();
+    renderHierarchyBlock(block, s, reg, 'unit_ann', { onEndorse: vi.fn(), onChallenge: vi.fn() });
+    (block.querySelector('[data-power-act="challenge"]') as HTMLElement).click();
+    const chips = mount();
+    drawCountermandChips(chips, s, reg, vi.fn());
+    for (const host of [block, chips]) {
+      expect(markedWithout(host)).toEqual([]);
+      expect(unresolved(host, env(s))).toEqual([]);
+      expect(unreachable(host)).toEqual([]);
+    }
+    const addresses = new Set(unitIdsIn(block).concat(unitIdsIn(chips)));
+    for (const wanted of ['glossary:standing', 'glossary:squad_leader', 'glossary:endorse', 'glossary:challenge', 'glossary:countermand']) expect(addresses.has(wanted), wanted).toBe(true);
+  });
+});
+
 describe('coverage: hub (P10)', () => {
   /** A hub with an injured and a confined unit, a unit away, a story mission, a message, a supply shortage and a Leash entry. */
   function hubWorld(): CampaignState {

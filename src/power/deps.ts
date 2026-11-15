@@ -17,6 +17,8 @@ export interface PowerDeps extends WorldDeps {
   refreshContext(): void;
   /** Shows the VOTE panel for an open vote with one reason line per voter; resolves with the commander's answer. */
   showVote(vote: Vote, lines: Record<string, string>): Promise<VoteChoice>;
+  /** Opens a scene (the app's own start: her quarters). Resolves whether it opened. Without it a challenge opens no scene. */
+  startScene?: (o: { locationId: string; participants: string[]; origin: 'event' }) => Promise<boolean>;
 }
 
 export type { WorldDeps };

@@ -282,6 +282,7 @@ export const CORE_GLOSSARY_IDS: readonly string[] = [
   'bond_profile', 'content_categories', 'lead', 'want', 'relationship_rules', 'publicity',
   // P9b (the WORLD PARAMETERS cards and the VOTE panel address these)
   'squad_power', 'voting', 'vote', 'rations',
+  'standing', 'squad_leader', 'countermand', 'endorse', 'challenge', 'outside_perception',
 ];
 
 let registered = false;

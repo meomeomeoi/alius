@@ -1,3 +1,5 @@
+import type { ChallengeStat } from '../../engine/power/moves';
+import { renderHierarchyBlock } from '../power/hierarchy';
 import type { Entry, Registries } from '../../content/types';
 import { bondOf, PUBLICITY_LEVELS, wantBand, wantEligible, wantOf } from '../../engine/bonds';
 import { knownSkills, loadoutSize, respecCost, xpToNext } from '../../engine/progression';
@@ -50,6 +52,9 @@ export interface SquadTabCtx {
   onPunish?: (unitId: string, measure: string, days?: number) => void;
   /** P9d: the commander sets how open a romantic relationship is (the dossier's [SECRET] [KNOWN] [PUBLIC]). */
   onSetPublicity?: (unitId: string, level: Publicity) => void;
+  /** P9b: the squad leader's dossier block: ENDORSE her, or CHALLENGE her on a stat. */
+  onEndorse?: () => void;
+  onChallenge?: (stat: ChallengeStat) => void;
 }
 
 const unknown = (id: string) => `UNKNOWN ${id}`;
@@ -247,6 +252,13 @@ function disciplineLine(unit: Unit, state: CampaignState, ctx: SquadTabCtx): HTM
   return h('p', { class: 'alius-stance-line' }, ...joinWith(parts, ' · '));
 }
 
+/** P9b: her standing, the leader badge and, on the leader, ENDORSE and CHALLENGE. */
+function hierarchyBlock(unit: Unit, state: CampaignState, ctx: SquadTabCtx): HTMLElement | null {
+  const host = h('div', { class: 'alius-hierarchy' });
+  renderHierarchyBlock(host, state, ctx.registries, unit.id, { onEndorse: () => ctx.onEndorse?.(), onChallenge: (stat) => ctx.onChallenge?.(stat) }, { raw: ctx.settings().showRawValues });
+  return host.childElementCount > 0 ? host : null;
+}
+
 const RESTRICTION_LABEL = { confined: 'IN THE BRIG', no_leave: 'NO LEAVE', benched: 'BENCHED', duty: 'EXTRA DUTY' } as const;
 
 /** P9: what the commander's discipline currently keeps her from, one chip each. */
@@ -343,6 +355,7 @@ function unitBlock(unit: Unit, ctx: SquadTabCtx, state: CampaignState): HTMLElem
       gone ? null : h('p', { class: 'alius-disposition' }, h('span', { class: 'alius-chip', 'data-disposition': unit.id, ...analyzeAttrs('glossary:disposition', live) }, `Disposition: ${String(dispositionFor(state, reg, unit).name)}`)),
       gone ? null : bondBlock(unit, state, ctx),
       gone ? null : disciplineLine(unit, state, ctx),
+      gone ? null : hierarchyBlock(unit, state, ctx),
       gone ? null : restrictionLine(unit, state),
       gone || !ctx.onPunish || unit.kind !== 'named' ? null : renderDisciplineMenu({ state, registries: reg, unitId: unit.id, onPunish: (measure, days) => ctx.onPunish!(unit.id, measure, days) }),
       gone ? null : h('p', { class: 'alius-stress' }, chip(`STRESS ${stressBand(unit.stress).toUpperCase()}${raw ? ` (${unit.stress})` : ''}`, 'glossary:stress', live)),

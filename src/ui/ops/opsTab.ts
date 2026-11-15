@@ -1,3 +1,4 @@
+import { drawCountermandChips } from '../power/chips';
 import type { Entry, Registries } from '../../content/types';
 import { activityCost, checkActivity, type ActivityRequest } from '../../engine/activities';
 import { clockText, isQuietNight } from '../../engine/calendar';
@@ -24,6 +25,8 @@ export interface OpsTabCtx {
   onOpenReport?: () => void;
   /** P7: ends a quiet night without doing anything. */
   onSleep?: () => void;
+  /** P9b: the squad leader's countermand waits for ACCEPT or OVERRULE (the chips show only while one is open). */
+  onCountermand?: (answer: 'accept' | 'overrule') => void;
 }
 
 type Focus = { id: string; label: string; units?: { min: number; max: number } };
@@ -172,6 +175,11 @@ export function renderOpsTab(host: HTMLElement, ctx: OpsTabCtx): void {
     return;
   }
   const all = [...ctx.registries.activities.values()];
+  if (ctx.onCountermand) {
+    const chips = h('div', { class: 'alius-chips alius-countermand-chips' });
+    drawCountermandChips(chips, state, ctx.registries, ctx.onCountermand);
+    if (chips.childElementCount > 0) host.append(chips);
+  }
   renderObjectives(host, state, ctx.registries);
   renderMissionBoard(host, state, ctx);
   host.append(

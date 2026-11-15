@@ -1,3 +1,4 @@
+import { drawCountermandChips } from '../power/chips';
 import type { Entry, Registries } from '../../content/types';
 import { whereabouts, type Whereabout } from '../../engine/hub';
 import type { CampaignState, Slot, Unit } from '../../engine/state/types';
@@ -161,9 +162,12 @@ function sideColumn(ctx: HubCtx, state: CampaignState, readOnly: boolean): HTMLE
   const who = oversight ? state.squad.find((u) => u.id === oversight.unitId)?.displayName ?? oversight.unitId : '';
   const prologue = h('div', { class: 'alius-onboarding-host' });
   ctx.onboardingCard?.(prologue);
+  const countermand = h('div', { class: 'alius-chips alius-countermand-chips' });
+  if (ctx.ops.onCountermand) drawCountermandChips(countermand, state, ctx.registries, ctx.ops.onCountermand);
   return h(
     'aside', { class: 'alius-hub-side' },
     prologue.childElementCount > 0 ? prologue : null,
+    countermand.childElementCount > 0 ? countermand : null,
     stat('alius-objective', 'glossary:objective',
       h('div', { class: 'alius-card-label' }, 'OBJECTIVE'),
       objective ? h('div', { class: 'alius-card-title' }, objective.text) : h('div', { class: 'alius-card-title' }, 'NO STANDING ORDERS'),

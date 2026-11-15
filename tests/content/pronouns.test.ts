@@ -72,6 +72,18 @@ describe('no pronoun for the commander in content', () => {
     expect(texts.filter(([, t]) => COMMANDER_PRONOUN.test(t) || /commander[^.]*\btheir\b/i.test(t)).map(([where]) => where)).toEqual([]);
   });
 
+  it('outside feats and the hierarchy glossary entries (P9b)', () => {
+    const texts: Array<[string, string]> = [
+      ...fields('outsideFeats', ['label', 'description']),
+      ...['standing', 'squad_leader', 'countermand', 'endorse', 'challenge', 'outside_perception', 'vote', 'rations'].flatMap((id): Array<[string, string]> => {
+        const g = reg.glossary.get(id)!;
+        return [[`glossary:${id}.short`, String(g.short ?? '')], [`glossary:${id}.long`, String(g.long ?? '')]];
+      }),
+    ];
+    expect(texts.length).toBe(3 * 2 + 8 * 2);
+    expect(texts.filter(([, t]) => COMMANDER_PRONOUN.test(t) || /commander[^.]*\btheir\b/i.test(t)).map(([where]) => where)).toEqual([]);
+  });
+
   it('squad power world options, the preset and the glossary entries (P9b)', () => {
     const texts: Array<[string, string]> = [
       ...['squad_assertiveness', 'voting'].flatMap((id) => {
