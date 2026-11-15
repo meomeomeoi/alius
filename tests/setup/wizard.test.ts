@@ -7,6 +7,7 @@ import type { ImportOutcome, ImportedProfile } from '../../src/setup/profile';
 import { Wizard, difficultyHint, manualOptions, type WizardState } from '../../src/setup/wizard';
 import type { CommanderImportOutcome } from '../../src/setup/commander';
 import { validateCommanderSetup } from '../../src/engine/commander/profile';
+import type { Bond } from '../../src/engine/state/types';
 
 let reg: Registries;
 beforeAll(async () => {
@@ -938,3 +939,65 @@ describe('Wizard: the stance a unit would start in (P9)', () => {
   });
 });
 
+
+describe('bond profile (P9d)', () => {
+  const BOND: Bond = { leadStyle: 'dominant', attachment: 'intense', desire: 'high', caretaker: false, ownLimits: { categories: ['restraint'], note: 'No chains.' }, publicity: 'secret' };
+  const withBond: ImportOutcome = { kind: 'ok', profile: { ...PROFILE, bond: structuredClone(BOND), bondReason: 'Rules her rooms.' }, dropped: [], missing: [] };
+
+  it('calibrate preselects the imported bond and wizard build copies it into UnitSetup', async () => {
+    const m = make();
+    m.w.toggleUnit(card('ann'));
+    m.w.calibrate(0);
+    m.pending[0].resolve(withBond);
+    await flush();
+    expect(m.w.state.units[0].choice.bond).toEqual(BOND);
+    m.w.setStart('start_vesper');
+    m.w.setCrime('mutiny');
+    expect(m.w.result()!.units[0].bond).toEqual(BOND);
+  });
+
+  it('a unit without an imported bond builds without one', async () => {
+    const { w } = await ready();
+    w.setStart('start_vesper');
+    w.setCrime('mutiny');
+    expect('bond' in w.result()!.units[0]).toBe(false);
+  });
+
+  it('regenerate of the bond section replaces the choice; a missing one keeps what the player has', async () => {
+    const m = make();
+    m.w.toggleUnit(card('ann'));
+    m.w.calibrate(0);
+    m.pending[0].resolve(OK);
+    await flush();
+    m.w.update(0, { bond: { ...BOND, ownLimits: { categories: [] } } });
+    m.w.regenerate(0, 'bond');
+    m.pending[1].resolve({ ...withBond, missing: ['bond'] });
+    await flush();
+    expect(m.w.state.units[0].choice.bond!.ownLimits.categories).toEqual([]);
+    m.w.regenerate(0, 'bond');
+    m.pending[2].resolve(withBond);
+    await flush();
+    expect(m.w.state.units[0].choice.bond).toEqual(BOND);
+    expect(m.w.state.units[0].candidates!.bondReason).toBe('Rules her rooms.');
+  });
+
+  it('manual options hide a bond-bound defect until the bond says caretaker', () => {
+    const r = structuredClone(reg);
+    r.defects.set('needs_caretaker', { ...structuredClone(r.defects.get('echo_bleed')!), id: 'needs_caretaker', requiresBond: { caretaker: true } });
+    expect(manualOptions(r, false).defects.map((d) => d.id)).not.toContain('needs_caretaker');
+    expect(manualOptions(r, false, { ...BOND, caretaker: true }).defects.map((d) => d.id)).toContain('needs_caretaker');
+    expect(manualOptions(r, false, { ...BOND, caretaker: false }).defects.map((d) => d.id)).not.toContain('needs_caretaker');
+  });
+
+  it('turning caretaker off drops a defect that needs it from the choice', () => {
+    const r = structuredClone(reg);
+    r.defects.set('needs_caretaker', { ...structuredClone(r.defects.get('echo_bleed')!), id: 'needs_caretaker', requiresBond: { caretaker: true } });
+    const w = new Wizard({ registries: r, desireBondDefects: false, importer: async () => OK, onChange: () => {} }, { personaName: 'V', canBindCurrent: false });
+    w.setMode('veteran');
+    w.toggleUnit(card('ann'));
+    w.update(0, { bond: { ...BOND, caretaker: true }, defects: [{ id: 'needs_caretaker', origin: 'o' }] });
+    expect(w.state.units[0].choice.defects).toHaveLength(1);
+    w.update(0, { bond: { ...BOND, caretaker: false } });
+    expect(w.state.units[0].choice.defects).toEqual([]);
+  });
+});

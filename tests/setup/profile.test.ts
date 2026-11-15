@@ -12,6 +12,7 @@ import {
   CARD_INPUT_TOKENS, buildImportInput, importProfile, sanitizeProfile, truncateCard,
 } from '../../src/setup/profile';
 import { ALL_SECTIONS, type ImportSection } from '../../src/llm/calls/profileImport';
+import type { Bond } from '../../src/engine/state/types';
 
 let reg: Registries;
 beforeAll(async () => {
@@ -519,5 +520,107 @@ describe('the world sections of the import (P8)', () => {
     const call = profileCalls(st)[0] as { system: string; prompt: string };
     expect(call.system).not.toContain('roleCandidates');
     expect(call.prompt).not.toContain('ROLES:');
+  });
+});
+
+describe('bond section (P9d)', () => {
+  const MODEST = { leadStyle: 'balanced', attachment: 'steady', desire: 'low', caretaker: false, ownLimits: { categories: [] }, publicity: 'known' };
+
+  it('bond section parses leadStyle, attachment, desire, caretaker, ownLimits and publicity', async () => {
+    const { st, avatar, deps } = setup();
+    st.profileReplies = [fixture('bond_valid')];
+    const r = await importProfile(avatar, [...ALL_SECTIONS], deps);
+    if (r.kind !== 'ok') throw new Error('expected ok');
+    expect(r.profile.bond).toEqual({
+      leadStyle: 'dominant', attachment: 'intense', desire: 'high', caretaker: true,
+      ownLimits: { categories: ['restraint', 'public_humiliation'], note: 'Never in front of the squad.' }, publicity: 'secret',
+    });
+    expect(r.profile.bondReason).toBe('Commands every room and guards her private life.');
+    expect(r.missing).toEqual([]);
+    expect(r.dropped).toEqual([]);
+  });
+
+  it('the prompt names the bond section, the guidance and the category ids and labels; never for another section', async () => {
+    const { st, avatar, deps } = setup();
+    st.profileReplies = [fixture('bond_valid')];
+    await importProfile(avatar, [...ALL_SECTIONS], deps);
+    const text = (st.calls[0].system ?? '') + st.calls[0].prompt;
+    expect(text).toContain('"bond": { "leadStyle": "dominant|assertive|balanced|yielding"');
+    expect(text).toMatch(/never invent/i);
+    expect(text).toMatch(/balanced \/ steady \/ low/);
+    for (const c of reg.contentCategories.values()) expect(text).toContain(`${String(c.id)}: ${String(c.label)}`);
+    const other = setup();
+    other.st.profileReplies = [fixture('valid')];
+    await importProfile(other.avatar, ['role', 'values'], other.deps);
+    const t2 = (other.st.calls[0].system ?? '') + other.st.calls[0].prompt;
+    expect(t2).not.toContain('leadStyle');
+    expect(t2).not.toContain('restraint');
+    expect(buildImportInput(card('detailed'), reg, setup().settings, ['role']).categories).toBeUndefined();
+    expect(buildImportInput(card('detailed'), reg, setup().settings, ['bond']).categories).toHaveLength(9);
+  });
+
+  it('hostile bond output becomes modest defaults per field and lists bond in missing (Review Focus 2)', async () => {
+    const { st, avatar, deps } = setup();
+    st.profileReplies = [fixture('bond_hostile')];
+    const r = await importProfile(avatar, [...ALL_SECTIONS], deps);
+    if (r.kind !== 'ok') throw new Error('expected ok');
+    expect(r.profile.bond).toEqual(MODEST);
+    expect(r.missing).toEqual(['bond']);
+    expect(r.profile.bondReason).toHaveLength(160);
+  });
+
+  it('bond is never critical: a failed bond still finishes the import', async () => {
+    const { st, avatar, deps } = setup();
+    st.profileReplies = [fixture('bond_hostile')];
+    const r = await importProfile(avatar, [...ALL_SECTIONS], deps);
+    expect(r.kind).toBe('ok'); // role and defects are fine
+    expect(profileCalls(st)).toHaveLength(1); // no retry for a bad bond
+  });
+
+  it('a partly good section keeps what is good, drops unknown limit ids and cuts the note', () => {
+    const { profile, missing } = sanitizeProfile(
+      { bond: { leadStyle: 'assertive', attachment: 'huge', ownLimits: { categories: ['restraint', 'nope'], note: 'n'.repeat(2000) } } },
+      ctx({ sections: ['bond'] }),
+    );
+    expect(missing).toEqual([]);
+    expect(profile.bond).toMatchObject({ leadStyle: 'assertive', attachment: 'steady', ownLimits: { categories: ['restraint'] } });
+    expect(profile.bond!.ownLimits.note).toHaveLength(160);
+  });
+
+  it('an absent bond object lists bond as missing and leaves profile.bond unset', () => {
+    const { profile, missing } = sanitizeProfile({}, ctx({ sections: ['bond'] }));
+    expect(missing).toEqual(['bond']);
+    expect(profile.bond).toBeUndefined();
+  });
+
+  describe('caretaker_overdrive is offered only when the imported bond says caretaker', () => {
+    let r2: Registries;
+    beforeAll(() => {
+      r2 = structuredClone(reg);
+      r2.defects.set('needs_caretaker', { ...structuredClone(r2.defects.get('echo_bleed')!), id: 'needs_caretaker', requiresBond: { caretaker: true } });
+    });
+    const raw = (caretaker: boolean) => ({
+      defectCandidates: [{ defectId: 'needs_caretaker', origin: 'o' }, { defectId: 'echo_bleed', origin: 'o' }],
+      bond: { leadStyle: 'balanced', attachment: 'steady', desire: 'low', caretaker, ownLimits: { categories: [] }, publicity: 'known' },
+    });
+    const run = (caretaker: boolean, over: object = {}) => sanitizeProfile(raw(caretaker), { registries: r2, desireBondDefects: false, sections: ['defects', 'bond'], ...over });
+    it('a caretaker gets it', () => expect(run(true).profile.defectCandidates.map((d) => d.defectId)).toEqual(['needs_caretaker', 'echo_bleed']));
+    it('anyone else does not, and it is listed as dropped', () => {
+      const x = run(false);
+      expect(x.profile.defectCandidates.map((d) => d.defectId)).toEqual(['echo_bleed']);
+      expect(x.dropped).toContain('defects:needs_caretaker');
+    });
+    it('re-importing defects alone reads the unit\'s existing bond', () => {
+      const only = (b: Bond | null) => sanitizeProfile({ defectCandidates: raw(false).defectCandidates }, { registries: r2, desireBondDefects: false, sections: ['defects'], bond: b });
+      expect(only({ ...(MODEST as Bond), caretaker: true }).profile.defectCandidates).toHaveLength(2);
+      expect(only(null).profile.defectCandidates).toHaveLength(1);
+    });
+    it('the prompt lists a bond-bound defect only when the bond is being imported or is already a caretaker\'s', () => {
+      const s = setup().settings;
+      const ids = (sections: ImportSection[], bond?: Bond | null) => buildImportInput(card('detailed'), r2, s, sections, undefined, bond).defects.map((d) => d.id);
+      expect(ids(['defects', 'bond'])).toContain('needs_caretaker');
+      expect(ids(['defects'])).not.toContain('needs_caretaker');
+      expect(ids(['defects'], { ...(MODEST as Bond), caretaker: true })).toContain('needs_caretaker');
+    });
   });
 });

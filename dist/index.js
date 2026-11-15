@@ -787,13 +787,17 @@ var isObj = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var NOTE_MAX = TUNING.bonds.limits.noteMax;
 function validateBond(raw, reg) {
   const issues = [];
+  const valid = [];
   const bond = { ...MODEST_BOND, ownLimits: { categories: [] } };
-  if (raw === void 0) return { bond, issues };
-  if (!isObj(raw)) return { bond, issues: ["the bond profile must be an object"] };
+  if (raw === void 0) return { bond, issues, valid };
+  if (!isObj(raw)) return { bond, issues: ["the bond profile must be an object"], valid };
   const pick2 = (field2, allowed, fallback) => {
     const v = raw[field2];
     if (v === void 0) return fallback;
-    if (typeof v === "string" && allowed.includes(v)) return v;
+    if (typeof v === "string" && allowed.includes(v)) {
+      valid.push(field2);
+      return v;
+    }
     issues.push(`${field2} must be one of ${allowed.join(", ")}`);
     return fallback;
   };
@@ -802,13 +806,16 @@ function validateBond(raw, reg) {
   bond.desire = pick2("desire", DESIRE_LEVELS, MODEST_BOND.desire);
   bond.publicity = pick2("publicity", PUBLICITY_LEVELS, MODEST_BOND.publicity);
   if (raw.caretaker !== void 0) {
-    if (typeof raw.caretaker === "boolean") bond.caretaker = raw.caretaker;
-    else issues.push("caretaker must be true or false");
+    if (typeof raw.caretaker === "boolean") {
+      bond.caretaker = raw.caretaker;
+      valid.push("caretaker");
+    } else issues.push("caretaker must be true or false");
   }
   if (raw.ownLimits !== void 0) {
     const limits = raw.ownLimits;
     if (!isObj(limits)) issues.push("ownLimits must be an object");
     else {
+      valid.push("ownLimits");
       const cats = limits.categories;
       if (cats !== void 0 && !Array.isArray(cats)) issues.push("ownLimits.categories must be a list");
       else {
@@ -827,7 +834,7 @@ function validateBond(raw, reg) {
       }
     }
   }
-  return { bond, issues };
+  return { bond, issues, valid };
 }
 function defectAllowedFor(reg, defectId, bond) {
   const need = reg.defects.get(defectId)?.requiresBond;
@@ -7157,7 +7164,9 @@ var DESCRIBED_REGISTRIES = [
   "reputations",
   // P10
   "hubRooms",
-  "deviceSkins"
+  "deviceSkins",
+  // P9d
+  "contentCategories"
 ];
 function withDescription(schema) {
   return schema.superRefine((entry, ctx2) => {
@@ -16790,7 +16799,7 @@ registerCallType({
 });
 
 // src/llm/calls/profileImport.ts
-var ALL_SECTIONS = ["role", "values", "tags", "signature", "defects", "baseline", "tastes", "disposition", "stances"];
+var ALL_SECTIONS = ["role", "values", "tags", "signature", "defects", "baseline", "tastes", "disposition", "stances", "bond"];
 var ProfileImportRawSchema = external_exports.object({
   roleCandidates: external_exports.unknown().optional(),
   values: external_exports.unknown().optional(),
@@ -16803,6 +16812,7 @@ var ProfileImportRawSchema = external_exports.object({
   commanderTastes: external_exports.unknown().optional(),
   dispositionOffset: external_exports.unknown().optional(),
   worldStances: external_exports.unknown().optional(),
+  bond: external_exports.unknown().optional(),
   notes: external_exports.unknown().optional()
 }).passthrough();
 var VALUE_AXES_TEXT = [
@@ -16822,6 +16832,7 @@ var SCHEMA_PART = {
   tastes: `  "commanderTastes": ["<id from TASTES>"],   // at most 3: how she reads the commander's looks and build, only if the card suggests it`,
   disposition: `  "dispositionOffset": { "offset": 0, "reason": "<one sentence>" },   // integer -2..2: how much kinder (negative) or harder (positive) she is than the world's default soldier; 0 when the card does not say`,
   stances: '  "worldStances": { "<id from WORLD OPTIONS>": { "stance": "shares"|"indifferent"|"opposes", "strength": 1|2, "reason": "<one sentence>" } },   // one entry per option listed',
+  bond: '  "bond": { "leadStyle": "dominant|assertive|balanced|yielding", "attachment": "slow|steady|intense|avoidant", "desire": "low|medium|high", "caretaker": bool, "ownLimits": { "categories": [<ids from CONTENT CATEGORIES>], "note": "<=160" }, "publicity": "secret|known|public", "reason": "<=160" }',
   baseline: '  "emotionalBaseline": { "trust": 0, "affinity": 0, "attraction": 0 },   // trust 0..60, affinity -20..30, attraction 0..20'
 };
 var has = (i, s) => i.sections.includes(s);
@@ -16848,6 +16859,10 @@ function system(raw) {
   if (has(input, "stances")) {
     lines.push("", "A stance says whether she shares, ignores or rejects one of the world's norms (listed under WORLD OPTIONS). Strength 2 is a strong, defining stance. A card that says nothing means indifferent, not the world's norm.");
   }
+  if (has(input, "bond")) {
+    lines.push("", "The bond profile is how she leads and bonds, read from the card; never invent. leadStyle is who takes the lead in close moments, attachment how fast and how hard she attaches, desire how strong her wants are, caretaker true only if the card shows she looks after others (and the commander) at her own expense, publicity how open she wants a relationship to be.");
+    lines.push("ownLimits lists only what the card says she would not do (ids from CONTENT CATEGORIES); empty when the card says nothing. A card that does not say is balanced / steady / low, no caretaker, known.");
+  }
   if (has(input, "values")) lines.push("", "Value axes:", VALUE_AXES_TEXT);
   lines.push("", "Output JSON shape:", "{", parts.join(",\n"), "}");
   return lines.join("\n");
@@ -16869,6 +16884,7 @@ function prompt(raw) {
   if (has(input, "signature")) out.push("", "SIGNATURES (template id: fits characters who are):", ...input.signatures.map((s) => `- ${s.id}: ${s.fits}`));
   if (has(input, "defects")) out.push("", "DEFECTS:", ...input.defects.map((d) => `- ${d.id}: ${d.lore}`));
   if (has(input, "tastes")) out.push("", "TASTES (id: what it means):", ...input.tastes.map((t) => `- ${t.id}: ${t.description}`));
+  if (has(input, "bond") && input.categories) out.push("", "CONTENT CATEGORIES (id: label):", ...input.categories.map((c2) => `- ${c2.id}: ${c2.label}`));
   if (has(input, "disposition") && input.world) out.push("", `WORLD: soldiers of this world are "${input.world.disposition.name}": ${input.world.disposition.description}`);
   if (has(input, "stances") && input.world) out.push("", "WORLD OPTIONS (id: current choice, what it means):", ...input.world.options.map((o) => `- ${o.id}: ${o.label} = ${o.choice}. ${o.description}`));
   out.push("", `Produce the requested sections: ${input.sections.join(", ")}.`);
@@ -20661,7 +20677,7 @@ function worldImportInfo(registries, world) {
     options: picked.filter(({ option, choice }) => option.squadStance === true && !isNeutralChoice(choice)).map(({ option, choice }) => ({ id: option.id, label: str3(option.label), choice: str3(choice.label), description: str3(choice.description) }))
   };
 }
-function buildImportInput(card2, registries, settings, sections, world) {
+function buildImportInput(card2, registries, settings, sections, world, bond) {
   const str3 = (v) => typeof v === "string" ? v : "";
   const info = world ? worldImportInfo(registries, world) : void 0;
   const asked = sections.filter((s) => s !== "disposition" && s !== "stances" || info !== void 0 && (s === "disposition" || info.options.length > 0));
@@ -20671,8 +20687,9 @@ function buildImportInput(card2, registries, settings, sections, world) {
     ...info ? { world: info } : {},
     roles: [...registries.roles.values()].map((r) => ({ id: r.id, summary: str3(r.summary) })),
     signatures: [...registries.signatures.values()].map((s) => ({ id: s.id, fits: str3(s.fits) })),
-    defects: [...registries.defects.values()].filter((d) => settings.desireBondDefects || d.category !== "desire_bond").map((d) => ({ id: d.id, lore: str3(d.lore) })),
-    tastes: [...registries.tastes.values()].map((t) => ({ id: t.id, description: str3(t.description) }))
+    defects: [...registries.defects.values()].filter((d) => settings.desireBondDefects || d.category !== "desire_bond").filter((d) => sections.includes("bond") || defectAllowedFor(registries, d.id, bond ?? null)).map((d) => ({ id: d.id, lore: str3(d.lore) })),
+    tastes: [...registries.tastes.values()].map((t) => ({ id: t.id, description: str3(t.description) })),
+    ...sections.includes("bond") ? { categories: [...registries.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => ({ id: String(c.id), label: str3(c.label) })) } : {}
   };
 }
 var isObj28 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -20745,6 +20762,17 @@ function sanitizeProfile(raw, ctx2) {
     );
     if (profile.signatureCandidates.length === 0) missing2.push("signature");
   }
+  let bond = ctx2.bond ?? null;
+  if (want("bond")) {
+    const read = validateBond(src.bond, ctx2.registries);
+    profile.bond = read.bond;
+    bond = read.bond;
+    const reason = cap3(isObj28(src.bond) ? src.bond.reason : void 0, TUNING.bonds.limits.noteMax);
+    if (reason !== "") profile.bondReason = reason;
+    for (const issue of read.issues) if (/unknown content category/.test(issue)) dropped.push(`bond:${issue.match(/"([^"]*)"/)?.[1] ?? "(invalid)"}`);
+    if (read.valid.length === 0) missing2.push("bond");
+    if (!isObj28(src.bond)) delete profile.bond;
+  }
   if (want("defects")) {
     profile.defectCandidates = pick2(
       src.defectCandidates,
@@ -20753,7 +20781,7 @@ function sanitizeProfile(raw, ctx2) {
       3,
       (id) => {
         const d = ctx2.registries.defects.get(id);
-        return !!d && (ctx2.desireBondDefects || d.category !== "desire_bond");
+        return !!d && (ctx2.desireBondDefects || d.category !== "desire_bond") && defectAllowedFor(ctx2.registries, id, bond);
       },
       (defectId, it) => ({ defectId, origin: cap3(it.origin, 300) })
     );
@@ -20820,8 +20848,8 @@ async function importProfile(avatar, sections, deps) {
   try {
     const loaded = await st.loadCharacterCard(avatar);
     if (!loaded) return { kind: "manual", reason: "card not found" };
-    const input = buildImportInput(truncateCard(loaded, CARD_INPUT_TOKENS), registries, settings, sections, deps.world);
-    const ctx2 = { registries, desireBondDefects: settings.desireBondDefects, sections: input.sections, world: deps.world };
+    const input = buildImportInput(truncateCard(loaded, CARD_INPUT_TOKENS), registries, settings, sections, deps.world, deps.bond);
+    const ctx2 = { registries, desireBondDefects: settings.desireBondDefects, sections: input.sections, world: deps.world, bond: deps.bond };
     const attempt = async () => {
       const r = await callLlm("profile_import", input, { st, settings });
       if (!r.ok) return { ok: false, reason: r.detail || r.reason };
@@ -20849,11 +20877,11 @@ var STEPS_BY_MODE = {
 function difficultyHint(n) {
   return n >= 4 ? "INTENDED" : n === 3 ? "HARD" : n === 2 ? "BRUTAL" : "HELLISH";
 }
-function manualOptions(registries, desireBondDefects) {
+function manualOptions(registries, desireBondDefects, bond) {
   return {
     roles: [...registries.roles.values()],
     signatures: [...registries.signatures.values()],
-    defects: [...registries.defects.values()].filter((d) => desireBondDefects || d.category !== "desire_bond")
+    defects: [...registries.defects.values()].filter((d) => (desireBondDefects || d.category !== "desire_bond") && defectAllowedFor(registries, d.id, bond ?? null))
   };
 }
 var emptyProfile = () => ({ roleCandidates: [], signatureCandidates: [], defectCandidates: [], notes: "" });
@@ -21286,6 +21314,7 @@ var Wizard = class {
     if (!u) return;
     const { secondDefect, ...choice } = patch;
     Object.assign(u.choice, choice);
+    if (choice.bond !== void 0) u.choice.defects = u.choice.defects.filter((d) => defectAllowedFor(this.deps.registries, d.id, u.choice.bond ?? null));
     if (secondDefect !== void 0) u.secondDefect = secondDefect;
     if (!u.secondDefect) u.choice.defects = u.choice.defects.slice(0, 1);
     u.choice.defects = u.choice.defects.slice(0, SETUP_LIMITS.maxDefects);
@@ -21340,7 +21369,10 @@ var Wizard = class {
     else if (section === "tastes") c.commanderTastes = p.commanderTastes;
     else if (section === "disposition") c.dispositionOffset = p.dispositionOffset;
     else if (section === "stances") c.worldStances = p.worldStances;
-    else {
+    else if (section === "bond") {
+      c.bond = p.bond;
+      c.bondReason = p.bondReason;
+    } else {
       c.likes = p.likes;
       c.dislikes = p.dislikes;
       c.triggers = p.triggers;
@@ -21390,6 +21422,9 @@ var Wizard = class {
         break;
       case "stances":
         if (p.worldStances) ch.worldStances = structuredClone(p.worldStances);
+        break;
+      case "bond":
+        if (p.bond) ch.bond = structuredClone(p.bond);
         break;
     }
   }
@@ -21525,7 +21560,7 @@ function renderCalibration(host, ctx2) {
     )
   );
   if (draft.status === "loading" || draft.status === "idle") return;
-  const options2 = manualOptions(reg, ctx2.desireBondDefects);
+  const options2 = manualOptions(reg, ctx2.desireBondDefects, ch.bond ?? null);
   const section = (id, title, ...body) => h(
     "section",
     { class: "alius-section alius-calib-section", "data-section": id },
@@ -21819,6 +21854,71 @@ function renderCalibration(host, ctx2) {
             imported ? h("p", { class: "alius-dim" }, `From the card: ${imported}`) : null
           );
         })
+      )
+    );
+  }
+  if (shown.has("bond")) {
+    const bond = ch.bond ?? { ...MODEST_BOND, ownLimits: { categories: [] } };
+    const write = (next) => onUpdate({ bond: { ...bond, ...next, ownLimits: next.ownLimits ?? bond.ownLimits } });
+    const group = (key, label2, ids) => h(
+      "div",
+      { class: "alius-bond-group" },
+      h("span", { class: "alius-field-label" }, label2),
+      h("div", { class: "alius-bond-chips" }, ...ids.map((id) => h("button", {
+        type: "button",
+        class: "alius-btn alius-option alius-bond-chip",
+        "data-bond": key,
+        "data-id": id,
+        "aria-pressed": String(bond[key] === id),
+        ...analyzeNative("glossary:bond_profile"),
+        onclick: () => write({ [key]: id })
+      }, id.toUpperCase())))
+    );
+    const care = h("input", { type: "checkbox", "data-bond": "caretaker", checked: bond.caretaker });
+    care.addEventListener("change", () => write({ caretaker: care.checked }));
+    const limited = bond.ownLimits.categories;
+    const toggleLimit = (id) => {
+      const set = new Set(limited);
+      if (set.has(id)) set.delete(id);
+      else set.add(id);
+      const categories = [...reg.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => String(c.id)).filter((x) => set.has(x));
+      write({ ownLimits: { categories, note: bond.ownLimits.note ?? "" } });
+    };
+    const fromCard = !manual && cand?.bondReason ? cand.bondReason : "";
+    host.append(
+      section(
+        "bond",
+        "BOND PROFILE",
+        h("p", { class: "alius-hint" }, "How she leads, how she attaches and what she will not do. A character with a modest profile never takes part in romance mechanics beyond conversation. Her limits hold even when you switch a category on."),
+        group("leadStyle", "Who leads", LEAD_STYLES),
+        group("attachment", "Attachment", ATTACHMENTS),
+        group("desire", "Desire", DESIRE_LEVELS),
+        group("publicity", "Her preference: how open", PUBLICITY_LEVELS),
+        h("label", { class: "alius-check" }, care, " Caretaker: she looks after others, the commander too, at her own cost"),
+        h(
+          "div",
+          { class: "alius-bond-limits" },
+          h("span", { class: "alius-field-label" }, "She will not take part in"),
+          h("div", { class: "alius-bond-chips" }, ...[...reg.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => {
+            const id = String(c.id);
+            return h("button", {
+              type: "button",
+              class: "alius-btn alius-option alius-limit-chip",
+              "data-limit": id,
+              "aria-pressed": String(limited.includes(id)),
+              title: String(c.description),
+              ...analyzeNative(`contentCategories:${id}`),
+              onclick: () => toggleLimit(id)
+            }, String(c.label));
+          }))
+        ),
+        h(
+          "label",
+          { class: "alius-field" },
+          h("span", { class: "alius-field-label" }, "Note on her limits"),
+          textInput("bond-note", bond.ownLimits.note ?? "", TUNING.bonds.limits.noteMax, (v) => write({ ownLimits: { categories: limited, note: v } }))
+        ),
+        fromCard ? h("p", { class: "alius-dim" }, `From the card: ${fromCard}`) : null
       )
     );
   }
@@ -29130,7 +29230,7 @@ function createApp(st, deps) {
     const startChatId = st.getActiveChat()?.chatId;
     const desireBond = state.settings.desireBondDefects === true;
     const world = state.world.options ?? defaultWorldOptions(registries);
-    const offered2 = RESYNC_SECTIONS.filter((s) => s !== "bond" && (s !== "stances" || stanceOptionIds(registries, world).length > 0));
+    const offered2 = RESYNC_SECTIONS.filter((s) => s !== "stances" || stanceOptionIds(registries, world).length > 0);
     const boxes = offered2.map((s) => h("input", { type: "checkbox", "data-section": s, checked: true }));
     const picker = await shell.modal({
       title: "Re-sync from card",
@@ -29154,7 +29254,8 @@ function createApp(st, deps) {
           st,
           settings: { ...getSettings(st), desireBondDefects: desireBond },
           registries,
-          world
+          world,
+          bond: unit.bond ?? null
         }),
         onChange: () => {
         }
@@ -29174,7 +29275,8 @@ function createApp(st, deps) {
       tastes: [...unit.commanderTastes ?? []],
       ...unit.dispositionOffset !== void 0 ? { dispositionOffset: unit.dispositionOffset } : {},
       ...unit.dispositionReason !== void 0 ? { dispositionReason: unit.dispositionReason } : {},
-      ...unit.worldStances !== void 0 ? { worldStances: structuredClone(unit.worldStances) } : {}
+      ...unit.worldStances !== void 0 ? { worldStances: structuredClone(unit.worldStances) } : {},
+      ...unit.bond !== void 0 ? { bond: structuredClone(unit.bond) } : {}
     });
     wizard.calibrate(0);
     const body = h("div", { class: "alius-calibration" });
@@ -29212,7 +29314,9 @@ function createApp(st, deps) {
       patch.dispositionReason = c.dispositionReason ?? "";
     }
     if (sections.includes("stances")) patch.worldStances = c.worldStances ?? {};
+    if (sections.includes("bond") && c.bond) patch.bond = c.bond;
     const current = {
+      ...unit.bond !== void 0 ? { bond: unit.bond } : {},
       dispositionOffset: unit.dispositionOffset ?? 0,
       dispositionReason: unit.dispositionReason ?? "",
       worldStances: unit.worldStances ?? {},

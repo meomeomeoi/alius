@@ -81,5 +81,16 @@
       "strength": 1,
       "reason": "She calls the stigma a lie the corporations tell."
     }
+  },
+  "bond": {
+    "leadStyle": "balanced",
+    "attachment": "steady",
+    "desire": "low",
+    "caretaker": false,
+    "ownLimits": {
+      "categories": []
+    },
+    "publicity": "known",
+    "reason": "The card says nothing."
   }
 }

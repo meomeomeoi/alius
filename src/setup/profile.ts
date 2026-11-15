@@ -1,7 +1,8 @@
 import type { Entry, Registries } from '../content/types';
 import { SETUP_LIMITS, normalizeTag } from '../engine/setup';
 import { TUNING } from '../engine/tuning';
-import type { Unit, WorldStance } from '../engine/state/types';
+import { defectAllowedFor, validateBond } from '../engine/bonds';
+import type { Bond, Unit, WorldStance } from '../engine/state/types';
 import { isNeutralChoice, worldChoices, worldDispositionLevel } from '../engine/worldOptions';
 import type { ImportSection, ProfileImportInput } from '../llm/calls/profileImport';
 import { callLlm } from '../llm/orchestrator';
@@ -61,6 +62,8 @@ export function worldImportInfo(registries: Registries, world: Record<string, st
 
 export function buildImportInput(
   card: CardInfo, registries: Registries, settings: AliusSettings, sections: ImportSection[], world?: Record<string, string>,
+  /** P9d: her bond when the `bond` section is not being imported (a re-sync of the defects alone). */
+  bond?: Bond | null,
 ): ProfileImportInput {
   const str = (v: unknown) => (typeof v === 'string' ? v : '');
   const info = world ? worldImportInfo(registries, world) : undefined;
@@ -74,8 +77,13 @@ export function buildImportInput(
     signatures: [...registries.signatures.values()].map((s) => ({ id: s.id, fits: str(s.fits) })),
     defects: [...registries.defects.values()]
       .filter((d) => settings.desireBondDefects || d.category !== 'desire_bond')
+      // a defect that needs a bond trait is offered while the bond is imported with it, or when she already has the trait
+      .filter((d) => sections.includes('bond') || defectAllowedFor(registries, d.id, bond ?? null))
       .map((d) => ({ id: d.id, lore: str(d.lore) })),
     tastes: [...registries.tastes.values()].map((t) => ({ id: t.id, description: str(t.description) })),
+    ...(sections.includes('bond')
+      ? { categories: [...registries.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => ({ id: String(c.id), label: str(c.label) })) }
+      : {}),
   };
 }
 
@@ -94,6 +102,9 @@ export interface ImportedProfile {
   dispositionOffset?: { offset: number; reason: string };
   /** P8: her stance toward each non-neutral squad-stance option. */
   worldStances?: Record<string, WorldStance>;
+  /** P9d: her bond profile (per-field modest defaults when the card or the model gave nothing usable) and why. */
+  bond?: Bond;
+  bondReason?: string;
   notes: string;
 }
 
@@ -122,7 +133,11 @@ function tagList(v: unknown, max: number): string[] | undefined {
 /** Turns whatever the model returned into registry-checked candidates. Never throws. */
 export function sanitizeProfile(
   raw: unknown,
-  ctx: { registries: Registries; desireBondDefects: boolean; sections: ImportSection[]; world?: Record<string, string> },
+  ctx: {
+    registries: Registries; desireBondDefects: boolean; sections: ImportSection[]; world?: Record<string, string>;
+    /** P9d: her current bond, read by a defects-only import (the imported bond wins when the bond section is asked for). */
+    bond?: Bond | null;
+  },
 ): { profile: ImportedProfile; dropped: string[]; missing: ImportSection[] } {
   const src = isObj(raw) ? raw : {};
   const want = (s: ImportSection) => ctx.sections.includes(s);
@@ -173,11 +188,25 @@ export function sanitizeProfile(
     if (profile.signatureCandidates.length === 0) missing.push('signature');
   }
 
+  // the bond is read before the defects: a defect that needs a bond trait is judged against it
+  let bond: Bond | null = ctx.bond ?? null;
+  if (want('bond')) {
+    const read = validateBond(src.bond, ctx.registries);
+    profile.bond = read.bond;
+    bond = read.bond;
+    const reason = cap(isObj(src.bond) ? src.bond.reason : undefined, TUNING.bonds.limits.noteMax);
+    if (reason !== '') profile.bondReason = reason;
+    for (const issue of read.issues) if (/unknown content category/.test(issue)) dropped.push(`bond:${issue.match(/"([^"]*)"/)?.[1] ?? '(invalid)'}`);
+    // nothing usable (not an object, or no field could be read): the modest defaults stand and the section counts as missing
+    if (read.valid.length === 0) missing.push('bond');
+    if (!isObj(src.bond)) delete profile.bond;
+  }
+
   if (want('defects')) {
     profile.defectCandidates = pick(src.defectCandidates, 'defects', 'defectId', 3,
       (id) => {
         const d = ctx.registries.defects.get(id);
-        return !!d && (ctx.desireBondDefects || d.category !== 'desire_bond');
+        return !!d && (ctx.desireBondDefects || d.category !== 'desire_bond') && defectAllowedFor(ctx.registries, id, bond);
       },
       (defectId, it) => ({ defectId, origin: cap(it.origin, 300) }));
     if (profile.defectCandidates.length === 0) missing.push('defects');
@@ -258,14 +287,18 @@ export type ImportOutcome =
 export async function importProfile(
   avatar: string,
   sections: ImportSection[],
-  deps: { st: StAdapter; settings: AliusSettings; registries: Registries; /** P8: the world's choices; absent = the world sections are not asked for. */ world?: Record<string, string> },
+  deps: {
+    st: StAdapter; settings: AliusSettings; registries: Registries; /** P8: the world's choices; absent = the world sections are not asked for. */ world?: Record<string, string>;
+    /** P9d: her current bond, for a defects-only re-sync. */
+    bond?: Bond | null;
+  },
 ): Promise<ImportOutcome> {
   const { st, settings, registries } = deps;
   try {
     const loaded = await st.loadCharacterCard(avatar);
     if (!loaded) return { kind: 'manual', reason: 'card not found' };
-    const input = buildImportInput(truncateCard(loaded, CARD_INPUT_TOKENS), registries, settings, sections, deps.world);
-    const ctx = { registries, desireBondDefects: settings.desireBondDefects, sections: input.sections, world: deps.world };
+    const input = buildImportInput(truncateCard(loaded, CARD_INPUT_TOKENS), registries, settings, sections, deps.world, deps.bond);
+    const ctx = { registries, desireBondDefects: settings.desireBondDefects, sections: input.sections, world: deps.world, bond: deps.bond };
 
     type Attempt = { ok: true; value: ReturnType<typeof sanitizeProfile> } | { ok: false; reason: string };
     const attempt = async (): Promise<Attempt> => {

@@ -46,15 +46,19 @@ const NOTE_MAX = TUNING.bonds.limits.noteMax;
  * modest default and is named in `issues`, unknown limit ids are dropped, the note is cut. Never throws. An absent profile
  * (`undefined`) is the modest one with no issue; the caller decides whether that counts as missing.
  */
-export function validateBond(raw: unknown, reg: Registries): { bond: Bond; issues: string[] } {
+export function validateBond(raw: unknown, reg: Registries): { bond: Bond; issues: string[]; /** The fields that were present and legal. */ valid: string[] } {
   const issues: string[] = [];
+  const valid: string[] = [];
   const bond: Bond = { ...MODEST_BOND, ownLimits: { categories: [] } };
-  if (raw === undefined) return { bond, issues };
-  if (!isObj(raw)) return { bond, issues: ['the bond profile must be an object'] };
+  if (raw === undefined) return { bond, issues, valid };
+  if (!isObj(raw)) return { bond, issues: ['the bond profile must be an object'], valid };
   const pick = <T extends string>(field: string, allowed: readonly T[], fallback: T): T => {
     const v = raw[field];
     if (v === undefined) return fallback;
-    if (typeof v === 'string' && (allowed as readonly string[]).includes(v)) return v as T;
+    if (typeof v === 'string' && (allowed as readonly string[]).includes(v)) {
+      valid.push(field);
+      return v as T;
+    }
     issues.push(`${field} must be one of ${allowed.join(', ')}`);
     return fallback;
   };
@@ -63,13 +67,16 @@ export function validateBond(raw: unknown, reg: Registries): { bond: Bond; issue
   bond.desire = pick('desire', DESIRE_LEVELS, MODEST_BOND.desire);
   bond.publicity = pick('publicity', PUBLICITY_LEVELS, MODEST_BOND.publicity);
   if (raw.caretaker !== undefined) {
-    if (typeof raw.caretaker === 'boolean') bond.caretaker = raw.caretaker;
-    else issues.push('caretaker must be true or false');
+    if (typeof raw.caretaker === 'boolean') {
+      bond.caretaker = raw.caretaker;
+      valid.push('caretaker');
+    } else issues.push('caretaker must be true or false');
   }
   if (raw.ownLimits !== undefined) {
     const limits = raw.ownLimits;
     if (!isObj(limits)) issues.push('ownLimits must be an object');
     else {
+      valid.push('ownLimits');
       const cats = limits.categories;
       if (cats !== undefined && !Array.isArray(cats)) issues.push('ownLimits.categories must be a list');
       else {
@@ -88,7 +95,7 @@ export function validateBond(raw: unknown, reg: Registries): { bond: Bond; issue
       }
     }
   }
-  return { bond, issues };
+  return { bond, issues, valid };
 }
 
 /** May a unit with this bond take this defect? A defect with `requiresBond` needs the traits it names (read by field, never by id). */

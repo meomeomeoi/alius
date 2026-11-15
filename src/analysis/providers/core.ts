@@ -276,6 +276,8 @@ export const CORE_GLOSSARY_IDS: readonly string[] = [
   // P11 (the prologue screens, the hub card and the coach strip address these)
   'prologue', 'intake_interview', 'medical_exam', 'personnel_dossier', 'veteran_intake', 'lineup', 'first_words', 'tutorial_expedition',
   'module_offline', 'coach_hint', 'rows',
+  // P9d (the calibration's bond profile addresses this; the content and Want entries come with their screens)
+  'bond_profile',
 ];
 
 let registered = false;

@@ -370,7 +370,7 @@ tests/**                                           mirrors src; tests/helpers/bo
 - Consumes: `validateBond` and `defectAllowedFor` (Task 2); the `contentCategories` ids and labels go into `ProfileImportInput.categories` (only when `bond` is asked for).
 - Produces: `ImportedProfile.bond?: Bond`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `bond section parses leadStyle, attachment, desire, caretaker, ownLimits and publicity`
   - `hostile bond output becomes modest defaults per field and lists bond in missing`
   - `bond is never critical: a failed bond still finishes the import`
@@ -378,16 +378,16 @@ tests/**                                           mirrors src; tests/helpers/bo
   - `wizard build copies bond into UnitSetup`
   - `calibration shows the bond section with data-analyze on every chip and edits it`
   - `re-sync with the bond section patches only bond`
-- [ ] **Step 2: Run** the four test files and confirm FAIL.
-- [ ] **Step 3: Implement.**
+- [x] **Step 2: Run** the four test files and confirm FAIL.
+- [x] **Step 3: Implement.**
   - The JSON shape line is: `"bond": { "leadStyle": "dominant|assertive|balanced|yielding", "attachment": "slow|steady|intense|avoidant", "desire": "low|medium|high", "caretaker": bool, "ownLimits": { "categories": [ids], "note": "≤160" }, "publicity": "secret|known|public", "reason": "≤160" }`.
   - The guidance says:
     - Read the card, never invent.
     - `ownLimits` lists only what the card says she would not do.
     - An unspecified card is balanced / steady / low.
   - Calibration rows are four chip groups plus a caretaker toggle, a limits checklist (labels from the registry) and a note field. They follow the P8 disposition block pattern.
-- [ ] **Step 4: Run** `npm test` and confirm PASS.
-- [ ] **Step 5: Commit** `feat(setup): bond profile import, calibration and re-sync`.
+- [x] **Step 4: Run** `npm test` and confirm PASS.
+- [x] **Step 5: Commit** `feat(setup): bond profile import, calibration and re-sync`.
 
 ### Task 4: Exclusion and limits directives; prose calls
 

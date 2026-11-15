@@ -1,7 +1,8 @@
 import type { Entry, Registries } from '../../content/types';
 import { SETUP_LIMITS, normalizeTag } from '../../engine/setup';
 import { TUNING } from '../../engine/tuning';
-import { VALUE_AXES, type WorldStance } from '../../engine/state/types';
+import { ATTACHMENTS, DESIRE_LEVELS, LEAD_STYLES, MODEST_BOND, PUBLICITY_LEVELS } from '../../engine/bonds';
+import { VALUE_AXES, type Bond, type WorldStance } from '../../engine/state/types';
 import { dispositionFor, worldDispositionLevel, worldChoice } from '../../engine/worldOptions';
 import { stanceOptionIds } from '../../setup/profile';
 import { ALL_SECTIONS, type ImportSection } from '../../llm/calls/profileImport';
@@ -79,7 +80,7 @@ export function renderCalibration(host: HTMLElement, ctx: CalibrationCtx): void 
   );
   if (draft.status === 'loading' || draft.status === 'idle') return;
 
-  const options = manualOptions(reg, ctx.desireBondDefects);
+  const options = manualOptions(reg, ctx.desireBondDefects, ch.bond ?? null);
   const section = (id: ImportSection, title: string, ...body: Array<HTMLElement | null>): HTMLElement =>
     h(
       'section',
@@ -302,6 +303,51 @@ export function renderCalibration(host: HTMLElement, ctx: CalibrationCtx): void 
               textInput(`stance-reason-${id}`, cur.reason, 160, (v) => write(id, { reason: v }))),
             imported ? h('p', { class: 'alius-dim' }, `From the card: ${imported}`) : null);
         })),
+    );
+  }
+
+  // --- bond profile (P9d): how she leads and bonds, and what she will not do
+  if (shown.has('bond')) {
+    const bond: Bond = ch.bond ?? { ...MODEST_BOND, ownLimits: { categories: [] } };
+    const write = (next: Partial<Bond>) => onUpdate({ bond: { ...bond, ...next, ownLimits: next.ownLimits ?? bond.ownLimits } });
+    const group = (key: 'leadStyle' | 'attachment' | 'desire' | 'publicity', label: string, ids: readonly string[]) =>
+      h('div', { class: 'alius-bond-group' },
+        h('span', { class: 'alius-field-label' }, label),
+        h('div', { class: 'alius-bond-chips' }, ...ids.map((id) => h('button', {
+          type: 'button', class: 'alius-btn alius-option alius-bond-chip', 'data-bond': key, 'data-id': id, 'aria-pressed': String(bond[key] === id),
+          ...analyzeNative('glossary:bond_profile'), onclick: () => write({ [key]: id } as Partial<Bond>),
+        }, id.toUpperCase()))));
+    const care = h('input', { type: 'checkbox', 'data-bond': 'caretaker', checked: bond.caretaker }) as HTMLInputElement;
+    care.addEventListener('change', () => write({ caretaker: care.checked }));
+    const limited = bond.ownLimits.categories;
+    const toggleLimit = (id: string) => {
+      const set = new Set(limited);
+      if (set.has(id)) set.delete(id);
+      else set.add(id);
+      const categories = [...reg.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => String(c.id)).filter((x) => set.has(x));
+      write({ ownLimits: { categories, note: bond.ownLimits.note ?? '' } });
+    };
+    const fromCard = !manual && cand?.bondReason ? cand.bondReason : '';
+    host.append(
+      section('bond', 'BOND PROFILE',
+        h('p', { class: 'alius-hint' }, 'How she leads, how she attaches and what she will not do. A character with a modest profile never takes part in romance mechanics beyond conversation. Her limits hold even when you switch a category on.'),
+        group('leadStyle', 'Who leads', LEAD_STYLES),
+        group('attachment', 'Attachment', ATTACHMENTS),
+        group('desire', 'Desire', DESIRE_LEVELS),
+        group('publicity', 'Her preference: how open', PUBLICITY_LEVELS),
+        h('label', { class: 'alius-check' }, care, ' Caretaker: she looks after others, the commander too, at her own cost'),
+        h('div', { class: 'alius-bond-limits' },
+          h('span', { class: 'alius-field-label' }, 'She will not take part in'),
+          h('div', { class: 'alius-bond-chips' }, ...[...reg.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => {
+            const id = String(c.id);
+            return h('button', {
+              type: 'button', class: 'alius-btn alius-option alius-limit-chip', 'data-limit': id, 'aria-pressed': String(limited.includes(id)),
+              title: String(c.description), ...analyzeNative(`contentCategories:${id}`), onclick: () => toggleLimit(id),
+            }, String(c.label));
+          }))),
+        h('label', { class: 'alius-field' }, h('span', { class: 'alius-field-label' }, 'Note on her limits'),
+          textInput('bond-note', bond.ownLimits.note ?? '', TUNING.bonds.limits.noteMax, (v) => write({ ownLimits: { categories: limited, note: v } }))),
+        fromCard ? h('p', { class: 'alius-dim' }, `From the card: ${fromCard}`) : null),
     );
   }
 

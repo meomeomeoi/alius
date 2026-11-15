@@ -103,7 +103,28 @@ const applyAfterImport = (before?: () => void) => async (): Promise<string | nul
   return 'apply';
 };
 
+const BOND_REPLY = JSON.stringify({
+  ...JSON.parse(IMPORT_REPLY),
+  bond: { leadStyle: 'dominant', attachment: 'intense', desire: 'high', caretaker: false, ownLimits: { categories: ['restraint'], note: 'No chains.' }, publicity: 'secret', reason: 'Rules her rooms.' },
+});
+
 describe('re-sync flow', () => {
+  it('offers the bond section and with only it ticked patches only the bond (P9d)', async () => {
+    const t = await boot();
+    const before = structuredClone(t.app.current().state!.squad[0]);
+    t.st.mainReplies = [BOND_REPLY];
+    t.script.push(keepOnly('bond'), applyAfterImport());
+    t.clickResync();
+    await t.settle(2);
+    expect((t.modals[0].body as HTMLElement).querySelector('input[data-section="bond"]')).not.toBeNull();
+    const prompt = t.st.calls[0].prompt + (t.st.calls[0].system ?? '');
+    expect(prompt).toContain('leadStyle');
+    expect(prompt).not.toContain('roleCandidates');
+    const u = t.app.current().state!.squad[0];
+    expect(u.bond).toEqual({ leadStyle: 'dominant', attachment: 'intense', desire: 'high', caretaker: false, ownLimits: { categories: ['restraint'], note: 'No chains.' }, publicity: 'secret' });
+    expect({ ...u, bond: undefined }).toEqual({ ...before, bond: undefined });
+  });
+
   it('imports the chosen sections and applies them through squad/resync', async () => {
     const t = await boot();
     const relationBefore = structuredClone(t.app.current().state!.relations.unit_rhea);

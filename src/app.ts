@@ -1249,7 +1249,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
 
     // P8: the world the unit lives in; the stances section only makes sense while some norm is not neutral
     const world = state.world.options ?? defaultWorldOptions(registries);
-    const offered = RESYNC_SECTIONS.filter((s) => s !== 'bond' && (s !== 'stances' || stanceOptionIds(registries, world).length > 0)) as Array<Exclude<ResyncSection, 'bond'>>; // the bond section is offered once the import can read it
+    const offered = RESYNC_SECTIONS.filter((s) => s !== 'stances' || stanceOptionIds(registries, world).length > 0);
 
     // 1. which sections
     const boxes = offered.map((s) => h('input', { type: 'checkbox', 'data-section': s, checked: true }) as HTMLInputElement);
@@ -1272,7 +1272,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         // the first call imports every re-sync section, a "regenerate" asks for one
         importer: (avatar, wanted) =>
           importProfile(avatar, wanted.length > 1 ? [...sections] : wanted, {
-            st, settings: { ...getSettings(st), desireBondDefects: desireBond }, registries, world,
+            st, settings: { ...getSettings(st), desireBondDefects: desireBond }, registries, world, bond: unit.bond ?? null,
           }),
         onChange: () => {},
       },
@@ -1292,6 +1292,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       ...(unit.dispositionOffset !== undefined ? { dispositionOffset: unit.dispositionOffset } : {}),
       ...(unit.dispositionReason !== undefined ? { dispositionReason: unit.dispositionReason } : {}),
       ...(unit.worldStances !== undefined ? { worldStances: structuredClone(unit.worldStances) } : {}),
+      ...(unit.bond !== undefined ? { bond: structuredClone(unit.bond) } : {}),
     });
     wizard.calibrate(0);
 
@@ -1334,7 +1335,9 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       patch.dispositionReason = c.dispositionReason ?? '';
     }
     if (sections.includes('stances')) patch.worldStances = c.worldStances ?? {};
+    if (sections.includes('bond') && c.bond) patch.bond = c.bond;
     const current: ResyncPatch = {
+      ...(unit.bond !== undefined ? { bond: unit.bond } : {}),
       dispositionOffset: unit.dispositionOffset ?? 0, dispositionReason: unit.dispositionReason ?? '', worldStances: unit.worldStances ?? {},
       roleId: unit.roleId, values: unit.values, likes: unit.likes, dislikes: unit.dislikes, triggers: unit.triggers,
       signature: unit.signatureSkill, defects: unit.defects.map((d) => ({ id: d.id, origin: d.origin ?? '' })),

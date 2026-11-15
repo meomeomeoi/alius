@@ -4,7 +4,8 @@ import { commandStance, impunityBand, impunityOf, stanceEntry, type CommandStanc
 import { SETUP_LIMITS, buildCampaign, validateSetup, type SetupResult, type UnitSetup } from '../engine/setup';
 import { prologueFor, stepsOf, type StepWithId } from '../engine/onboarding';
 import { TUNING } from '../engine/tuning';
-import type { SignatureInstance, Unit } from '../engine/state/types';
+import { defectAllowedFor } from '../engine/bonds';
+import type { Bond, SignatureInstance, Unit } from '../engine/state/types';
 import { ALL_SECTIONS, type ImportSection } from '../llm/calls/profileImport';
 import type { CharacterSummary } from '../st/adapter';
 import type { BodyStat } from '../engine/state/types';
@@ -96,11 +97,13 @@ export function difficultyHint(n: number): 'INTENDED' | 'HARD' | 'BRUTAL' | 'HEL
 /** Full registry lists for manual calibration (Desire/Bond defects only when enabled). */
 export function manualOptions(
   registries: Registries, desireBondDefects: boolean,
+  /** P9d: her bond, so a defect that needs a bond trait is listed only when she has it. */
+  bond?: Bond | null,
 ): { roles: Entry[]; signatures: Entry[]; defects: Entry[] } {
   return {
     roles: [...registries.roles.values()],
     signatures: [...registries.signatures.values()],
-    defects: [...registries.defects.values()].filter((d) => desireBondDefects || d.category !== 'desire_bond'),
+    defects: [...registries.defects.values()].filter((d) => (desireBondDefects || d.category !== 'desire_bond') && defectAllowedFor(registries, d.id, bond ?? null)),
   };
 }
 
@@ -588,6 +591,8 @@ export class Wizard {
     if (!u) return;
     const { secondDefect, ...choice } = patch;
     Object.assign(u.choice, choice);
+    // P9d: a defect that needs a bond trait goes when her bond no longer has it
+    if (choice.bond !== undefined) u.choice.defects = u.choice.defects.filter((d) => defectAllowedFor(this.deps.registries, d.id, u.choice.bond ?? null));
     if (secondDefect !== undefined) u.secondDefect = secondDefect;
     if (!u.secondDefect) u.choice.defects = u.choice.defects.slice(0, 1);
     u.choice.defects = u.choice.defects.slice(0, SETUP_LIMITS.maxDefects);
@@ -648,7 +653,10 @@ export class Wizard {
     else if (section === 'tastes') c.commanderTastes = p.commanderTastes;
     else if (section === 'disposition') c.dispositionOffset = p.dispositionOffset;
     else if (section === 'stances') c.worldStances = p.worldStances;
-    else {
+    else if (section === 'bond') {
+      c.bond = p.bond;
+      c.bondReason = p.bondReason;
+    } else {
       c.likes = p.likes;
       c.dislikes = p.dislikes;
       c.triggers = p.triggers;
@@ -699,6 +707,9 @@ export class Wizard {
         break;
       case 'stances':
         if (p.worldStances) ch.worldStances = structuredClone(p.worldStances);
+        break;
+      case 'bond':
+        if (p.bond) ch.bond = structuredClone(p.bond);
         break;
     }
   }

@@ -208,7 +208,7 @@ describe('setup screen', () => {
     expect(qa(m, '.alius-sig-card')).toHaveLength(12);
     expect(qa(m, '.alius-defect-card')).toHaveLength(14);
     expect(m.host.textContent).toContain('card not found');
-    expect(qa(m, 'button[data-regenerate]')).toHaveLength(8); // the AI can be retried after a fallback (six sections, the P7 tastes and the P8 disposition; no stances in the Standard world)
+    expect(qa(m, 'button[data-regenerate]')).toHaveLength(9); // the AI can be retried after a fallback (six sections, the P7 tastes, the P8 disposition and the P9d bond; no stances in the Standard world)
   });
 
   it('manual signature starts as the template name and mechanic', async () => {
@@ -914,5 +914,90 @@ describe('calibration: disposition and stances (P8)', () => {
     expect(marked.length).toBeGreaterThan(10);
     for (const el of marked) expect(el.hasAttribute('data-analyze')).toBe(true);
     expect(v.host.textContent).not.toMatch(/\b(he|him|his)\b/i);
+  });
+});
+
+describe('calibration: bond profile (P9d)', () => {
+  const BOND = { leadStyle: 'assertive', attachment: 'steady', desire: 'medium', caretaker: false, ownLimits: { categories: ['restraint'], note: '' }, publicity: 'known' } as const;
+  function bondView(over: { status?: 'ready' | 'manual'; bond?: typeof BOND | undefined; suggested?: boolean } = {}) {
+    const wizard = new Wizard(
+      { registries: reg, desireBondDefects: false, importer: async () => OK, onChange: () => {} },
+      { personaName: 'V', canBindCurrent: false },
+    );
+    wizard.toggleUnit({ avatar: 'a.png', name: 'Ann' });
+    if (over.status === 'manual') wizard.setManual(0);
+    const draft = wizard.state.units[0];
+    if (over.status !== 'manual') {
+      draft.status = 'ready';
+      draft.candidates = { ...structuredClone(PROFILE), ...(over.suggested ? { bond: structuredClone(BOND) as never, bondReason: 'She runs rooms.' } : {}) };
+    }
+    if (over.bond) draft.choice.bond = structuredClone(over.bond) as never;
+    const host = h('div');
+    document.body.append(host);
+    const onUpdate = vi.fn();
+    const onRegenerate = vi.fn();
+    renderCalibration(host, { draft, registries: reg, desireBondDefects: false, onUpdate, onRegenerate, onManual: vi.fn() });
+    return { host, onUpdate, onRegenerate, section: host.querySelector<HTMLElement>('[data-section="bond"]')! };
+  }
+  const chip = (v: { section: HTMLElement }, group: string, id: string) => v.section.querySelector<HTMLButtonElement>(`button[data-bond="${group}"][data-id="${id}"]`)!;
+
+  it('shows the bond section with four chip groups, a caretaker toggle, a limits checklist and a note, all analyzable', () => {
+    const v = bondView({ bond: BOND });
+    expect(v.section).not.toBeNull();
+    expect(v.section.querySelector('h3')!.textContent).toBe('BOND PROFILE');
+    for (const [group, ids] of Object.entries({ leadStyle: ['yielding', 'balanced', 'assertive', 'dominant'], attachment: ['slow', 'steady', 'intense', 'avoidant'], desire: ['low', 'medium', 'high'], publicity: ['secret', 'known', 'public'] })) {
+      expect([...v.section.querySelectorAll(`button[data-bond="${group}"]`)].map((b) => b.getAttribute('data-id'))).toEqual(ids);
+    }
+    expect(v.section.querySelector('input[data-bond="caretaker"]')).not.toBeNull();
+    expect([...v.section.querySelectorAll('button[data-limit]')].map((b) => b.getAttribute('data-limit'))).toEqual([...reg.contentCategories.keys()]);
+    expect(v.section.querySelector('input[data-key="bond-note"]')).not.toBeNull();
+    for (const el of v.section.querySelectorAll('.alius-option, .alius-chip, .alius-stat')) expect(el.getAttribute('data-analyze'), el.outerHTML).toBeTruthy();
+    expect(chip(v, 'leadStyle', 'assertive').getAttribute('aria-pressed')).toBe('true');
+    expect(chip(v, 'leadStyle', 'dominant').getAttribute('aria-pressed')).toBe('false');
+    expect(v.section.querySelector('button[data-limit="restraint"]')!.getAttribute('aria-pressed')).toBe('true');
+    expect(v.section.querySelector('button[data-limit="humiliation"]')!.getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('an absent bond shows the modest profile', () => {
+    const v = bondView();
+    expect(chip(v, 'leadStyle', 'balanced').getAttribute('aria-pressed')).toBe('true');
+    expect(chip(v, 'attachment', 'steady').getAttribute('aria-pressed')).toBe('true');
+    expect(chip(v, 'desire', 'low').getAttribute('aria-pressed')).toBe('true');
+    expect(chip(v, 'publicity', 'known').getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('edits go out as a whole bond: chips, caretaker, limits and the note', () => {
+    const v = bondView({ bond: BOND });
+    chip(v, 'leadStyle', 'dominant').click();
+    expect(v.onUpdate).toHaveBeenLastCalledWith({ bond: { ...BOND, leadStyle: 'dominant' } });
+    chip(v, 'desire', 'high').click();
+    expect(v.onUpdate).toHaveBeenLastCalledWith({ bond: { ...BOND, desire: 'high' } });
+    const care = v.section.querySelector<HTMLInputElement>('input[data-bond="caretaker"]')!;
+    care.checked = true;
+    care.dispatchEvent(new Event('change'));
+    expect(v.onUpdate).toHaveBeenLastCalledWith({ bond: { ...BOND, caretaker: true } });
+    v.section.querySelector<HTMLButtonElement>('button[data-limit="humiliation"]')!.click();
+    expect(v.onUpdate).toHaveBeenLastCalledWith({ bond: { ...BOND, ownLimits: { categories: ['humiliation', 'restraint'], note: '' } } });
+    v.section.querySelector<HTMLButtonElement>('button[data-limit="restraint"]')!.click();
+    expect(v.onUpdate).toHaveBeenLastCalledWith({ bond: { ...BOND, ownLimits: { categories: [], note: '' } } });
+    const note = v.section.querySelector<HTMLInputElement>('input[data-key="bond-note"]')!;
+    expect(note.maxLength).toBe(160);
+    note.value = 'Not in the mess.';
+    note.dispatchEvent(new Event('input'));
+    expect(v.onUpdate).toHaveBeenLastCalledWith({ bond: { ...BOND, ownLimits: { categories: ['restraint'], note: 'Not in the mess.' } } });
+  });
+
+  it('shows what the card said, has a regenerate button also in manual mode and is hidden when not asked for', () => {
+    const v = bondView({ bond: BOND, suggested: true });
+    expect(v.host.textContent).toContain('From the card: She runs rooms.');
+    v.host.querySelector<HTMLButtonElement>('button[data-regenerate="bond"]')!.click();
+    expect(v.onRegenerate).toHaveBeenCalledWith('bond');
+    expect(bondView({ status: 'manual' }).host.querySelector('button[data-regenerate="bond"]')).not.toBeNull();
+    const host = h('div');
+    const w = new Wizard({ registries: reg, desireBondDefects: false, importer: async () => OK, onChange: () => {} }, { personaName: 'V', canBindCurrent: false });
+    w.toggleUnit({ avatar: 'a.png', name: 'Ann' });
+    w.state.units[0].status = 'ready';
+    renderCalibration(host, { draft: w.state.units[0], registries: reg, desireBondDefects: false, sections: ['role'], onUpdate: vi.fn(), onRegenerate: vi.fn(), onManual: vi.fn() });
+    expect(host.querySelector('[data-section="bond"]')).toBeNull();
   });
 });

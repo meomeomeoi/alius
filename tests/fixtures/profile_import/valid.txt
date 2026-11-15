@@ -65,5 +65,16 @@
     "affinity": 0,
     "attraction": 0
   },
-  "notes": "Veteran. Slow to trust."
+  "notes": "Veteran. Slow to trust.",
+  "bond": {
+    "leadStyle": "balanced",
+    "attachment": "slow",
+    "desire": "low",
+    "caretaker": false,
+    "ownLimits": {
+      "categories": []
+    },
+    "publicity": "known",
+    "reason": "Guarded and dutiful."
+  }
 }

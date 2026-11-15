@@ -1671,6 +1671,8 @@ export const DESCRIBED_REGISTRIES = [
   'commandStances', 'punishments', 'demandTemplates', 'reputations',
   // P10
   'hubRooms', 'deviceSkins',
+  // P9d
+  'contentCategories',
 ] as const satisfies readonly RegistryName[];
 
 /** Adds the optional `description` rule to a registry schema without changing its shape. */
