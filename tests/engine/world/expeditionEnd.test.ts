@@ -194,6 +194,18 @@ describe('what comes back', () => {
     });
   });
 
+  it('a Smother breakdown ends in the hold and still queues one night entry (P9d)', () => {
+    const s = atObjective();
+    const a = s.expedition!.party[0];
+    const caretaker = s.squad.find((u) => u.id === a)!;
+    caretaker.defects = [{ id: 'caretaker_overdrive' }];
+    caretaker.breakdown = { defectId: 'caretaker_overdrive', day: s.day };
+    const r = ret(s);
+    expect(ofType(r.events, 'smother_started')).toMatchObject([{ unitId: a }]);
+    expect(r.state.bonds?.smother).toMatchObject({ unitId: a, untilDay: s.day + 1 });
+    expect(r.state.calendar.nightEventsQueue.filter((n) => n.kind === 'after_breakdown')).toHaveLength(1);
+  });
+
   const hint = (s: CampaignState, over: Partial<QueuedIntent>): QueuedIntent => ({
     type: 'protected', actor: s.expedition!.party[0], targets: ['commander'], severity: 'moderate', evidence: 'Took the hits.', ...over,
   });

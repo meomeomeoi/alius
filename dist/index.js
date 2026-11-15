@@ -16197,7 +16197,7 @@ function endExpedition(draft, ctx2, outcome) {
   }
   const released = releaseBreakdowns(draft, exp.party, reg);
   events.push(...released);
-  for (const e of released) {
+  for (const e of released.filter((x) => x.type === "breakdown_released")) {
     const unit = draft.squad.find((u) => u.id === e.unitId);
     if (!unit || unit.kind !== "named") continue;
     enqueueNight(draft, {

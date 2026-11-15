@@ -727,7 +727,7 @@ tests/**                                           mirrors src; tests/helpers/bo
 - Create: `docs/MANUAL_TEST_P9d.md`
 - Modify: `docs/packages/P9d-desire-bonds.md` (status line, **Implemented as**, **Non-obvious things**, open items), `docs/00-overview.md` (§6 `Unit.bond`, `Relation.want`/`publicity`, `CampaignState.content`/`bonds`, `SceneRecord.tone`/`lead`; §8 the content-category sentence; §9 status), `docs/CONTENT.md` (two registries, `contentTags`, `bondTier`, the defect fields, demand kind `desire`, cost `night_visit`), `docs/ROADMAP-next.md` (P9d done), `CLAUDE.md` only if a new rule is needed
 
-- [ ] **Step 1: Write `MANUAL_TEST_P9d.md`.**
+- [x] **Step 1: Write `MANUAL_TEST_P9d.md`.**
   - Import a card with an assertive, high-desire profile and one with a modest profile, then re-sync.
   - CONTENT at setup with all categories off; enable one mid-campaign and see the directive in the prompt inspector.
   - Provoke a violation and use REGENERATE.
@@ -737,13 +737,13 @@ tests/**                                           mirrors src; tests/helpers/bo
   - Check both defects in a fight.
   - Smother blocks a run.
   - Change publicity, then go public while she leads.
-- [ ] **Step 2: Write the docs.** Copy every ruling of this plan into **Implemented as**, with draft numbers marked. Open items:
+- [x] **Step 2: Write the docs.** Copy every ruling of this plan into **Implemented as**, with draft numbers marked. Open items:
   - The friends-close-ranks reaction.
   - Tokens for `no_other_tokens`.
   - Smother and co-command as stand-ins until P9c/P9b.
   - Real recall of `sceneTone` / `contentViolations` / rule events is checked only by hand.
-- [ ] **Step 3: Run** `npm test && npm run typecheck`. Both must exit 0.
-- [ ] **Step 4: Commit** `docs: P9d implemented-as, overview, content guide and manual checklist`.
+- [x] **Step 3: Run** `npm test && npm run typecheck`. Both must exit 0.
+- [x] **Step 4: Commit** `docs: P9d implemented-as, overview, content guide and manual checklist`.
 
 ## Self-review notes (for the plan author; executors may ignore)
 

@@ -448,7 +448,7 @@ export function endExpedition(draft: CampaignState, ctx: EngineCtx, outcome: Exp
   }
   const released = releaseBreakdowns(draft, exp.party, reg);
   events.push(...released);
-  for (const e of released) {
+  for (const e of released.filter((x) => x.type === 'breakdown_released')) { // (a smother hold the release started is not another breakdown)
     const unit = draft.squad.find((u) => u.id === e.unitId);
     if (!unit || unit.kind !== 'named') continue;
     enqueueNight(draft, {
