@@ -1408,5 +1408,15 @@
       "squad_leader",
       "endorse"
     ]
+  },
+  {
+    "id": "scapegoat",
+    "term": "Scapegoat",
+    "short": "When a decision the squad took ends in a failure oversight punishes, you answer for it or shift it onto the soldier who carried the vote.",
+    "long": "AUTHOR TO WRITE: After a command mission the squad voted for fails, oversight wants a name. Take the blame and oversight punishes the commander: standing with the corporation falls and a Leash authorization is lost, but the soldier who carried the vote and those who backed her trust the commander more. Shift it and oversight confines her for two days and strains her, and the squad turns against the commander, her most of all.",
+    "see": [
+      "vote",
+      "leash"
+    ]
   }
 ]

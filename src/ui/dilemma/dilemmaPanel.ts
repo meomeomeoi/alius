@@ -1,7 +1,8 @@
 import type { DilemmaScale } from '../../engine/dilemma/types';
 import type { SocialStat } from '../../engine/social';
 import type { RouteChoice, RoutePick } from '../../engine/commander/checks';
-import { analyzeNative } from '../analyze/mark';
+import { analyzeAttrs, analyzeNative } from '../analyze/mark';
+import type { ScapegoatView } from './scapegoat';
 import { h } from '../dom';
 import { renderRoutePicker } from './routePicker';
 
@@ -17,6 +18,8 @@ export interface DilemmaPanelCtx {
   onChoose(index: number, route?: RoutePick): void;
   /** Display name of a unit id for the delegate route. */
   unitName?: (id: string) => string;
+  /** P9b: a scapegoat case names who answers for the decision and shows what each answer does (authored effects, shown in words). */
+  scapegoat?: ScapegoatView | null;
 }
 
 const SCALE_LABEL: Record<DilemmaScale, string> = { minor: 'MINOR', major: 'MAJOR', defining: 'DEFINING' };
@@ -61,11 +64,20 @@ export function renderDilemma(host: HTMLElement, ctx: DilemmaPanelCtx): void {
     }, `[ ${o.label} ]${o.hasCheck ? ' — CHECK' : ''}${picker ? ' — CHOOSE HOW' : ''}${o.disabled !== null ? ` — ${o.disabled}` : ''}`) as HTMLButtonElement;
     buttons.push(button);
     list.append(button);
+    const effects = ctx.scapegoat?.options[o.index];
+    if (effects && effects.lines.length > 0) {
+      list.append(h('ul', { class: 'alius-scapegoat-effects', 'data-scapegoat-effects': String(o.index) },
+        ...effects.lines.map((line) => h('li', {}, h('span', { class: 'alius-stat', 'data-effect-line': '', ...analyzeAttrs('glossary:scapegoat', { answer: effects.answer }) }, line)))));
+    }
     if (picker) list.append(picker);
   }
   host.append(h('div', { class: 'alius-dilemma' },
     h('h3', {}, ctx.title),
     h('p', { class: 'alius-dim' }, `${SCALE_LABEL[ctx.scale]} DECISION`),
     h('p', { class: 'alius-dilemma-setup' }, ctx.setup),
+    ctx.scapegoat ? h('p', { class: 'alius-scapegoat-who' },
+      h('span', { class: 'alius-chip', 'data-scapegoat-subject': '', ...analyzeAttrs('glossary:scapegoat') }, `RESPONSIBLE: ${ctx.scapegoat.subject}`),
+      ctx.scapegoat.witnesses.length > 0 ? ' ' : null,
+      ctx.scapegoat.witnesses.length > 0 ? h('span', { class: 'alius-chip', 'data-scapegoat-witnesses': '', ...analyzeAttrs('glossary:scapegoat') }, `WITNESSES: ${ctx.scapegoat.witnesses.join(', ')}`) : null) : null,
     list));
 }

@@ -2610,6 +2610,20 @@
   color: var(--alius-accent);
 }
 
+/* The scapegoat case in the decision panel (P9b). */
+#alius-shell .alius-scapegoat-who {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 4px 0;
+}
+
+#alius-shell .alius-scapegoat-effects {
+  margin: 0 0 6px 16px;
+  padding: 0;
+  list-style: none;
+}
+
 /* P5: world map, mission board, expeditions */
 .alius-map { position: relative; max-width: 100%; }
 .alius-map-img { display: block; width: 100%; height: auto; }

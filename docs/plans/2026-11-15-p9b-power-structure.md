@@ -718,15 +718,15 @@ tests/**                                                        mirrors src; tes
 **Interfaces:**
 - Consumes: Task 12, `app.power.requestVote`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `the panel names the responsible unit and the witnesses`
   - `each option lists its effects through summarizeWorldEffect, with data-analyze`
   - `with voting on, choosing opens the VOTE panel first`
   - `no model call is made for a scapegoat`
-- [ ] **Step 2: Run** `npx vitest run tests/ui/scapegoatPanel.test.ts` and confirm FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** the tests, then `npm test`. Expect PASS.
-- [ ] **Step 5: Tick and commit:** `feat(ui): scapegoat choice in the dilemma panel`.
+- [x] **Step 2: Run** `npx vitest run tests/ui/scapegoatPanel.test.ts` and confirm FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** the tests, then `npm test`. Expect PASS.
+- [x] **Step 5: Tick and commit:** `feat(ui): scapegoat choice in the dilemma panel`.
 
 ### Task 14: Docs, manual checklist, hand-offs
 

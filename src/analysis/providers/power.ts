@@ -154,6 +154,21 @@ function countermandProvider(_subject: Subject, env: AnalyzeEnv): { lines: strin
   return { lines: [`${nameOf(state, c.leaderId)} countermanded ${activity} with ${nameOf(state, c.unitId)}; it waits for your answer.`] };
 }
 
+/** The open scapegoat case: who answers for the decision and who backed it. */
+function scapegoatProvider(_subject: Subject, env: AnalyzeEnv): { lines: string[] } | null {
+  const state = env.state;
+  const open = state?.dilemmas?.open;
+  if (!state || !open || open.context !== 'scapegoat' || open.subjectId === undefined) return null;
+  const witnesses = (open.witnessIds ?? []).map((id) => nameOf(state, id));
+  return {
+    lines: [
+      `${nameOf(state, open.subjectId)} carried the squad's vote for the decision that failed.`,
+      witnesses.length > 0 ? `Also for it: ${witnesses.join(', ')}.` : 'Nobody else voted for it.',
+      'Take the blame and oversight punishes the commander; shift it and oversight punishes her.',
+    ],
+  };
+}
+
 /** Registers the P9b readings (called from `registerCoreProviders`). */
 export function registerPowerProviders(): void {
   registerAnalyzeProvider('glossary:vote', voteProvider);
@@ -163,4 +178,5 @@ export function registerPowerProviders(): void {
   registerAnalyzeProvider('glossary:outside_perception', outsideProvider);
   registerAnalyzeProvider('glossary:challenge', challengeProvider);
   registerAnalyzeProvider('glossary:countermand', countermandProvider);
+  registerAnalyzeProvider('glossary:scapegoat', scapegoatProvider);
 }

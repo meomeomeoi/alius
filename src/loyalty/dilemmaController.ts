@@ -1,5 +1,5 @@
 import type { RoutePick } from '../engine/commander/checks';
-import type { EngineEvent } from '../engine/dispatch';
+import type { Action, EngineEvent } from '../engine/dispatch';
 import { buildDilemmaDigest } from '../engine/dilemma/flow';
 import { TUNING } from '../engine/tuning';
 import { runDilemmaGenerate } from '../llm/calls/dilemmaGenerate';
@@ -18,7 +18,10 @@ export interface DilemmaController {
  * (up to two answers) and presents what the engine accepts; the setting off, no profile or a failed call mean the
  * template's authored block.
  */
-export function createDilemmas(deps: WorldDeps): DilemmaController {
+export function createDilemmas(deps: WorldDeps & {
+  /** P9b: runs a decision the squad votes on (the app's `power.requestVote`). Without it a gated answer is refused like any other. */
+  requestVote?: (action: Action) => Promise<'ran' | 'dropped' | 'cancelled'>;
+}): DilemmaController {
   const running = new Set<string>();
   const chatId = (): string | undefined => deps.st.getActiveChat()?.chatId;
 
@@ -42,7 +45,8 @@ export function createDilemmas(deps: WorldDeps): DilemmaController {
     const chat = chatId();
     // request ids repeat from campaign to campaign: the chat is part of the key
     const key = `${chat ?? ''}:${first?.id ?? ''}`;
-    if (!first || first.status !== 'requested' || running.has(key)) return;
+    // a scapegoat case is authored and presented at once: the model is never asked
+    if (!first || first.status !== 'requested' || first.context === 'scapegoat' || running.has(key)) return;
     running.add(key);
     try {
       const settings = deps.settings();
@@ -77,8 +81,13 @@ export function createDilemmas(deps: WorldDeps): DilemmaController {
   function choose(index: number, route?: RoutePick): EngineEvent[] {
     const open = deps.app.current().state?.dilemmas?.open;
     if (!open || open.status !== 'presented') return [];
-    const events = deps.app.dispatch({ type: 'dilemma/choose', payload: { id: open.id, index, ...(route ? { route } : {}) } });
+    const action = { type: 'dilemma/choose', payload: { id: open.id, index, ...(route ? { route } : {}) } };
+    const events = deps.app.dispatch(action);
     const failed = events.find((e) => e.type === 'error');
+    if (failed?.code === 'vote_needed' && deps.requestVote) {
+      void deps.requestVote(action); // P9b: the squad votes on who answers for it first
+      return [];
+    }
     if (failed && failed.message !== 'Stale dilemma answer.') deps.toast('error', String(failed.message ?? failed.code));
     return events;
   }

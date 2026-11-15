@@ -75,12 +75,14 @@ describe('no pronoun for the commander in content', () => {
   it('outside feats and the hierarchy glossary entries (P9b)', () => {
     const texts: Array<[string, string]> = [
       ...fields('outsideFeats', ['label', 'description']),
-      ...['standing', 'squad_leader', 'countermand', 'endorse', 'challenge', 'outside_perception', 'vote', 'rations'].flatMap((id): Array<[string, string]> => {
+      ...['standing', 'squad_leader', 'countermand', 'endorse', 'challenge', 'outside_perception', 'vote', 'rations', 'scapegoat'].flatMap((id): Array<[string, string]> => {
         const g = reg.glossary.get(id)!;
         return [[`glossary:${id}.short`, String(g.short ?? '')], [`glossary:${id}.long`, String(g.long ?? '')]];
       }),
     ];
-    expect(texts.length).toBe(3 * 2 + 8 * 2);
+    const fixed = reg.dilemmaTemplates.get('scapegoat_mission')!.fixed as { title: string; setup: string; options: Array<{ label: string }> };
+    texts.push(['scapegoat_mission.title', fixed.title], ['scapegoat_mission.setup', fixed.setup], ...fixed.options.map((o, i): [string, string] => [`scapegoat_mission.option${i}`, o.label]));
+    expect(texts.length).toBe(3 * 2 + 9 * 2 + 4);
     expect(texts.filter(([, t]) => COMMANDER_PRONOUN.test(t) || /commander[^.]*\btheir\b/i.test(t)).map(([where]) => where)).toEqual([]);
   });
 

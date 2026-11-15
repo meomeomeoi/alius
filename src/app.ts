@@ -1,3 +1,4 @@
+import { scapegoatView } from './ui/dilemma/scapegoat';
 import './engine/actions/debug'; // registers debug/* actions
 import './engine/actions/squad'; // registers squad/* actions
 import './engine/actions/calendar'; // registers calendar/*, activity/* and commander/* actions
@@ -339,7 +340,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     toast: (kind: 'info' | 'warn' | 'error', text: string) => toast(kind, text),
   };
   const director = createDirector(worldDeps);
-  const dilemmas = createDilemmas(worldDeps);
+  const dilemmas = createDilemmas({ ...worldDeps, requestVote: (a) => power.requestVote(a) });
   const loyalty = createLoyalty({ ...worldDeps, context, refreshContext: applyContext });
   const power = createPower({
     ...worldDeps, context, refreshContext: applyContext,
@@ -618,6 +619,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       title: open.title ?? 'DECISION', setup: open.setup ?? '', scale: open.scale, waiting: open.status === 'requested',
       options: dilemmaOptions(s, registries), onChoose: (i, route) => void dilemmas.choose(i, route),
       unitName: (id) => s.squad.find((u) => u.id === id)?.displayName ?? id,
+      scapegoat: scapegoatView(s, registries),
     });
   }
 
