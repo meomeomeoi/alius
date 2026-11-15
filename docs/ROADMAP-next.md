@@ -14,6 +14,7 @@ P0–P6 are done. These packages bring the base to a proper starting level befor
 | 5 | **P11** Prologue & onboarding (**done**) | Assembles P7 (creation fields), P8 (world screen) and P10 (paper voice, hub, objective panel). |
 | 5b | **P9d** Desire & bonds (**done**) | Defines the bond profile and opt-in content categories that P9b/P9c read; needs P9 and P3. Implement before P9b/P9c. |
 | 5c | **P9b** Squad power structure (**done**) | Voting, hierarchy/leader, outside perception, scapegoat; needs P9, P8, P9d §1. |
+| 5c2 | **P9e** "Her call" | A soldier acts on her own in a run; a bad turn marks the mission so P9b's scapegoat opens; needs P9b, P9, P5, P6. Spec only. |
 | 5d | **P9c** Personal pressure | Device access levels, bookings, inverted courtship, tokens, squad secrets, wagers; needs P9b, P9d, P10. |
 | 5e | **P10b** Intimate immersion UI | Telemetry, living DMs, night door, handwriting, device marks; needs P10, P9c data, P9d. |
 | 6 | **P12** Special traits: Secret Frequency, Bloom-induced Paranoia, Web of Debts | Stand on P7's trait framework, P9's leverage/punishments and P5's night events and threads. |
@@ -35,6 +36,7 @@ Each package: **one planning session** (agent writes `docs/plans/<date>-pN-….m
 | P11 | (a) onboarding state, `prologues` registry, paper forms for intake/exam/dossier, veteran skip; (b) line-up and first-words scenes with caps, tutorial expedition, debrief, `uiUnlocks`, objective tracker + director `objectiveHint` |
 | P9d | (a) bond profile in import, `contentCategories` (opt-in CONTENT section, exclusion directive, violation flag, mechanic filtering), characters' own limits; (b) lead per scene + chips, Want, relationship rules; (c) two new defects + balance harness, publicity |
 | P9b | (a) `squad_assertiveness`, voting toggle + VOTE panel + ballots + overruling; (b) standing, leader, privileges, endorse/challenge, outside perception; (c) scapegoat dilemma family |
+| P9e | (a) engine: `herCall` template field, trigger/actor/outcome rolls, `decidedBy.source`; (b) 4–6 authored events, notice card, `ON HER CALL` chip, directive, docs |
 | P9c | (a) device access levels (incl. level-4 edits with KEEP/REVERT), bookings, inverted courtship + `claimed`; (b) tokens, wagers (5 games, stakes filtered by content categories); (c) squad secrets |
 | P10b | (a) VITALS telemetry, living DM behaviours; (b) night theme + door, handwriting fonts and notes, device marks |
 | P12 | (a) special-trait plumbing + Secret Frequency (intercepts, distortion, `knowledge_leak`, suspicion, discovery, burn); (b) Bloom-induced Paranoia (premonitions, false alarms, `accused`, nightmares, `contingency`); (c) Web of Debts (handler visits, intel exchange, consequences, two discovery paths, `defector_arc` stubs) |

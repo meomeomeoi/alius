@@ -403,10 +403,11 @@ Defaults in code: Desire/Bond defects **off**, show raw values **off**, sprite m
 | 13 | P11 | Prologue & onboarding | P7, P8, P10 | implemented |
 | 14 | P9d | Desire & bonds (bond profile, opt-in content categories, lead, Want, relationship rules) | P3, P9 | implemented |
 | 15 | P9b | Squad power structure (voting, hierarchy/leader, outside perception, scapegoat) | P8, P9, P9d | implemented |
-| 16 | P9c | Personal pressure (device access levels, bookings, tokens, squad secrets, wagers) | P9b, P9d, P10 | spec |
-| 17 | P10b | Intimate immersion UI (telemetry, living DMs, night door, handwriting, device marks) | P10, P9c, P9d | spec |
-| 18 | P12 | Special traits: Secret Frequency, Bloom-induced Paranoia, Web of Debts | P5, P6, P7, P9 | spec |
-| 19 | P13 | LEASHSWAP mode | P0, P5, P6, P7, P9, P9b, P9d, P11, P12 | spec |
+| 16 | P9e | "Her call" (a soldier acts on her own in the field; a bad turn marks the run for the P9b scapegoat) | P5, P6, P9, P9b, P9d | spec |
+| 17 | P9c | Personal pressure (device access levels, bookings, tokens, squad secrets, wagers) | P9b, P9d, P10 | spec |
+| 18 | P10b | Intimate immersion UI (telemetry, living DMs, night door, handwriting, device marks) | P10, P9c, P9d | spec |
+| 19 | P12 | Special traits: Secret Frequency, Bloom-induced Paranoia, Web of Debts | P5, P6, P7, P9 | spec |
+| 20 | P13 | LEASHSWAP mode | P0, P5, P6, P7, P9, P9b, P9d, P11, P12 | spec |
 
 The table is in implementation order: take the first row whose status is not `implemented`. Why this order, and the session chunks for P7a onward: `ROADMAP-next.md`.
 
