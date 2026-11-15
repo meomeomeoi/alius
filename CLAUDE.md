@@ -3,7 +3,9 @@
 SillyTavern extension (TypeScript). Design docs live in `docs/`.
 
 ## Before any work
-0. `git fetch` and check that the branch contains every implemented package (`docs/00-overview.md` §9 has the status table); a stale clone once lacked P1. Run `npm test` to know the baseline.
+0. Sync the working branch with GitHub first. Cloud sessions can start on a stale local `unstable` (an old commit left in the container, shown as "up to date"), so run:
+   `git fetch origin unstable && git checkout -B unstable origin/unstable`
+   (the clone is shallow, so a fetch may report a "forced update" that is not one; the remote history is intact). Then check that the branch contains every implemented package (`docs/00-overview.md` §9 has the status table); a stale clone once lacked P1. Run `npm test` to know the baseline.
 1. Read `docs/00-overview.md` (always; §5.4 lists the engine interfaces that already exist).
 2. Read the plan you are told to execute (in `docs/plans/`) and the spec it names. If the task names a package spec and no plan exists, write the plan first (same format as the existing ones). Specs of implemented packages end with **Implemented as**: where it differs from the draft, the code wins.
 3. Read `docs/content/lore.md` every session (world, tone, and §0: the squad is women, the player is of any gender, so no pronoun for the commander in any text a player or the main model reads). Read the other files in `docs/content/` only if the task says so.
