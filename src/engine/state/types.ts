@@ -578,7 +578,9 @@ export interface PowerState {
   hierarchy?: Hierarchy;
   merit?: MeritEntry[];
   countermand?: Countermand;
-  scapegoatQueue?: Array<{ missionId: string; unitId: string; witnessIds: string[] }>;
+  scapegoatQueue?: Array<{ missionId: string; unitId: string; witnessIds: string[]; /** P9e: absent = a vote. */ source?: 'vote' | 'her_call' }>;
+  /** P9e: the soldiers the commander ordered to ask first → the day it was ordered. While set she never acts on her own. */
+  askFirst?: Record<string, number>;
 }
 
 export interface DisciplineState {

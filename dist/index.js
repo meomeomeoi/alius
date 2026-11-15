@@ -452,6 +452,26 @@ var TUNING = Object.freeze({
     scapegoat: Object.freeze({ failedRunStanding: 4 }),
     /** DRAFT: `fighters_first` costs each reserve share that goes without this much Trust; the commander going without (`commander_short`) earns every named unit this much Trust. */
     rations: Object.freeze({ unfairTrust: 1, hungerTrust: 1 })
+  }),
+  /**
+   * P9e: a soldier acting on her own at an expedition event node. Spec numbers: chance 0.35 (× the squad's privilege multiplier),
+   * the squad leader's weight ×2, Impunity record +4 on a good outcome. The rest is a DRAFT, the author's to change.
+   */
+  herCall: Object.freeze({
+    chance: 0.35,
+    chanceCap: 0.8,
+    /** Actor weight = (1 + leadBonus[leadStyle]) × band[Impunity band] × (leader ? leaderMult : 1). */
+    leadBonus: Object.freeze({ yielding: 0, balanced: 0, assertive: 1, dominant: 2 }),
+    band: Object.freeze({ cowed: 0.5, low: 0.75, high: 1, brazen: 1.5 }),
+    leaderMult: 2,
+    /** odds of a good outcome = clamp(base + perPoint × (score(good) − score(bad)) + Σ defect tilts, min, max). */
+    odds: Object.freeze({ base: 0.5, perPoint: 0.05, min: 0.15, max: 0.85 }),
+    meritGood: 6,
+    recordGood: 4,
+    recordBad: 4,
+    factImportance: 2,
+    /** The standing order "ask me first": giving it costs Trust as a `decision_violated` of this severity. */
+    askFirst: Object.freeze({ severity: "minor" })
   })
 });
 
@@ -6584,7 +6604,11 @@ var RESERVED_EVENT_TYPES = [
   "demand_resolved",
   "nickname_pending",
   "nickname_given",
-  "nickname_dropped"
+  "nickname_dropped",
+  // P9e
+  "her_call",
+  "her_call_acknowledged",
+  "ask_first_set"
 ];
 var slotEnum = external_exports.enum(["morning", "afternoon", "evening", "night"]);
 var socialStat = external_exports.enum(["authority", "insight", "empathy", "cunning"]);
@@ -7068,6 +7092,25 @@ var EventOptionSchema = external_exports.object({
   routeCheck: RouteCheckSchema.optional(),
   effects: external_exports.array(WorldEffectSchema)
 }).passthrough();
+var HerCallSchema = external_exports.object({
+  /** Who may act: a lead rank (0 yielding … 3 dominant), or one of these command stances at the Impunity floor. Stance ids are checked at load. */
+  trigger: external_exports.object({
+    minLeadRank: int.min(0).max(3).optional(),
+    stances: external_exports.array(str).optional(),
+    minImpunity: int.min(0).max(100).optional()
+  }).strict().refine((t) => t.minLeadRank !== void 0 || (t.stances?.length ?? 0) > 0, "a trigger needs minLeadRank or stances"),
+  outcomes: external_exports.array(external_exports.object({
+    id: external_exports.enum(["good", "bad"]),
+    lean: VoteLeanSchema,
+    text: str.max(160),
+    effects: external_exports.array(WorldEffectSchema)
+  }).strict()).length(2),
+  /** A defect of this category shifts the odds of a good outcome (read by category, never by id). */
+  defectTilt: external_exports.array(external_exports.object({
+    category: external_exports.enum(["neural", "somatic", "cybernetic", "desire_bond"]),
+    shift: external_exports.number().min(-0.2).max(0.2)
+  }).strict()).optional()
+}).strict();
 var EXPEDITION_ONLY_EFFECTS = ["carried_supplies", "party_hp", "loot"];
 var DilemmaTemplateSchema = BaseEntrySchema.extend({
   scale: external_exports.enum(["minor", "major", "defining"]),
@@ -7093,8 +7136,27 @@ var DilemmaTemplateSchema = BaseEntrySchema.extend({
   constraints: external_exports.object({ flagPerOption: external_exports.boolean().optional() }).strict().optional(),
   /** P8: see ClockSchema. */
   family: str.optional(),
+  /** P9e: the node may resolve itself when a soldier acts on her own. */
+  herCall: HerCallSchema.optional(),
   contentTags
 }).superRefine((d, ctx2) => {
+  if (d.herCall !== void 0) {
+    const bad = (path, message) => ctx2.addIssue({ code: "custom", path: ["herCall", ...path], message });
+    if (d.scale !== "minor" || d.contexts.length !== 1 || d.contexts[0] !== "expedition_event" || d.generate !== void 0 || d.flavor === true) {
+      ctx2.addIssue({ code: "custom", path: ["herCall"], message: "a her-call is only for a minor expedition_event template without generate or flavor" });
+    }
+    const ids = d.herCall.outcomes.map((o) => o.id).sort().join(",");
+    if (ids !== "bad,good") bad(["outcomes"], "a her-call needs exactly one good and one bad outcome");
+    d.herCall.outcomes.forEach((o, i) => {
+      const costs = o.effects.some(isCostEffect);
+      if (o.id === "bad" && !costs) bad(["outcomes", i, "effects"], "the bad outcome needs at least one cost effect");
+      if (o.id === "good" && costs) bad(["outcomes", i, "effects"], "the good outcome carries no cost effect");
+      o.effects.forEach((e, j) => {
+        if (e.type === "oversight_punish") bad(["outcomes", i, "effects", j, "type"], '"oversight_punish" only exists in a scapegoat dilemma');
+        if (e.type === "unit_event" && (e.targets === "subject" || e.targets === "witnesses")) bad(["outcomes", i, "effects", j, "targets"], `"${e.targets}" targets only exist in a scapegoat dilemma`);
+      });
+    });
+  }
   if (d.scale === "minor" && d.contexts.includes("expedition_event") && d.fixed === void 0) {
     ctx2.addIssue({ code: "custom", path: ["fixed"], message: "a minor expedition event needs a fixed block" });
   }
@@ -33411,6 +33473,9 @@ registerRefs("dilemmaTemplates", (entry) => {
   entry.regions?.forEach((id, i) => out.push({ registry: "regions", id: String(id), path: `regions[${i}]` }));
   const options2 = entry.fixed?.options;
   options2?.forEach((o, i) => worldEffectRefs(o.effects, `fixed.options[${i}].effects`, out));
+  const her = entry.herCall;
+  her?.trigger?.stances?.forEach((id, i) => out.push({ registry: "commandStances", id: String(id), path: `herCall.trigger.stances[${i}]` }));
+  her?.outcomes?.forEach((o, i) => worldEffectRefs(o.effects, `herCall.outcomes[${i}].effects`, out));
   entry.fixed?.options?.forEach((o, i) => {
     o.routeCheck?.routes?.forEach((r, j) => {
       const at = `fixed.options[${i}].routeCheck.routes[${j}]`;

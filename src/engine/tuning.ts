@@ -394,4 +394,20 @@ export const TUNING = Object.freeze({
     /** DRAFT: `fighters_first` costs each reserve share that goes without this much Trust; the commander going without (`commander_short`) earns every named unit this much Trust. */
     rations: Object.freeze({ unfairTrust: 1, hungerTrust: 1 }),
   }),
+  /**
+   * P9e: a soldier acting on her own at an expedition event node. Spec numbers: chance 0.35 (× the squad's privilege multiplier),
+   * the squad leader's weight ×2, Impunity record +4 on a good outcome. The rest is a DRAFT, the author's to change.
+   */
+  herCall: Object.freeze({
+    chance: 0.35, chanceCap: 0.8,
+    /** Actor weight = (1 + leadBonus[leadStyle]) × band[Impunity band] × (leader ? leaderMult : 1). */
+    leadBonus: Object.freeze({ yielding: 0, balanced: 0, assertive: 1, dominant: 2 }),
+    band: Object.freeze({ cowed: 0.5, low: 0.75, high: 1, brazen: 1.5 }),
+    leaderMult: 2,
+    /** odds of a good outcome = clamp(base + perPoint × (score(good) − score(bad)) + Σ defect tilts, min, max). */
+    odds: Object.freeze({ base: 0.5, perPoint: 0.05, min: 0.15, max: 0.85 }),
+    meritGood: 6, recordGood: 4, recordBad: 4, factImportance: 2,
+    /** The standing order "ask me first": giving it costs Trust as a `decision_violated` of this severity. */
+    askFirst: Object.freeze({ severity: 'minor' as const }),
+  }),
 });

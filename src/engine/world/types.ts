@@ -95,6 +95,10 @@ export interface MissionRewards {
   faction?: { id: string; amount: number };
 }
 
+export type DecidedBy =
+  | { source?: 'vote'; voteId: string; unitId: string; /** The other soldiers who voted for it and are still in service. */ witnessIds?: string[] }
+  | { source: 'her_call'; unitId: string; nodeId: string; /** The other named living party members. */ witnessIds?: string[] };
+
 export interface Mission {
   id: string;
   source: MissionSource;
@@ -116,8 +120,11 @@ export interface Mission {
   status: 'offered' | 'active' | 'completed' | 'failed';
   outcomeDay?: number;
   rewards?: MissionRewards;
-  /** P9b: the squad vote that chose this run and the FOR voter who carried it (the one a scapegoat case is about). */
-  decidedBy?: { voteId: string; unitId: string; /** The other soldiers who voted for it and are still in service. */ witnessIds?: string[] };
+  /**
+   * Who decided this run and answers for it if it fails (P9b's scapegoat case). A squad vote (P9b): the FOR voter who carried it;
+   * `source` is absent for it (absent reads as `'vote'`). A her-call (P9e): the soldier who took a bad decision in the field.
+   */
+  decidedBy?: DecidedBy;
 }
 
 export interface Rumor {
@@ -158,7 +165,11 @@ export interface ExpeditionLogEntry {
 
 export type PendingNode =
   | { kind: 'combat'; nodeId: string; encounter: Encounter; prevCombatId?: string }
-  | { kind: 'event'; nodeId: string; templateId: string };
+  /** P9e: `herCall` is set when a soldier took the decision herself: the node waits for ACKNOWLEDGE and offers no choice. */
+  | { kind: 'event'; nodeId: string; templateId: string; herCall?: { unitId: string; outcome: 'good' | 'bad' } };
+
+/** P9e: one decision a soldier took on her own during a run (`odds` = the stored chance it would go well, for the analysis). */
+export interface HerCallEntry { nodeId: string; unitId: string; outcome: 'good' | 'bad'; templateId: string; odds: number }
 
 /** A relation event reported by an expedition, applied through `applyIntents` on return. */
 export interface QueuedIntent {
@@ -174,6 +185,8 @@ export interface ExpeditionState {
   id: string;
   /** P9b: combat orders the commander gave during this run (absent = none). */
   orders?: number;
+  /** P9e: the decisions soldiers took on their own in this run (absent = none). */
+  herCalls?: HerCallEntry[];
   missionId: string;
   regionId: string;
   day: number;
@@ -215,6 +228,8 @@ export interface ExpeditionReport {
   recap?: string;
   acknowledged: boolean;
   debriefed: boolean;
+  /** P9e: copied from the run (absent = none). */
+  herCalls?: HerCallEntry[];
 }
 
 export interface DirectorRequest {

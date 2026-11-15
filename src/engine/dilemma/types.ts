@@ -45,6 +45,8 @@ export interface DilemmaState {
   /** P9b: the unit a `scapegoat` dilemma is about (the one whose decision failed) and the other voters who backed it. */
   subjectId?: string;
   witnessIds?: string[];
+  /** P9e: `her_call` when the scapegoat case comes from a soldier's own decision (absent = a squad vote). */
+  scapegoatSource?: 'her_call';
 }
 
 /** Why a dilemma (or one of its options) was turned down. `rule` is the validator rule (1–6) or `shape` for a malformed answer. */

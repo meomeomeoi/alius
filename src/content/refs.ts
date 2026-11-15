@@ -337,6 +337,10 @@ registerRefs('dilemmaTemplates', (entry) => {
   (entry.regions as unknown[] | undefined)?.forEach((id, i) => out.push({ registry: 'regions', id: String(id), path: `regions[${i}]` }));
   const options = (entry.fixed as { options?: Array<{ effects?: unknown }> } | undefined)?.options;
   options?.forEach((o, i) => worldEffectRefs(o.effects, `fixed.options[${i}].effects`, out));
+  // P9e: a her-call's trigger stances and its outcomes' effects
+  const her = entry.herCall as { trigger?: { stances?: unknown[] }; outcomes?: Array<{ effects?: unknown }> } | undefined;
+  her?.trigger?.stances?.forEach((id, i) => out.push({ registry: 'commandStances', id: String(id), path: `herCall.trigger.stances[${i}]` }));
+  her?.outcomes?.forEach((o, i) => worldEffectRefs(o.effects, `herCall.outcomes[${i}].effects`, out));
   // P7: check routes name roles and items
   (entry.fixed as { options?: Array<{ routeCheck?: { routes?: Array<Record<string, any>> } }> } | undefined)?.options?.forEach((o, i) => {
     o.routeCheck?.routes?.forEach((r, j) => {

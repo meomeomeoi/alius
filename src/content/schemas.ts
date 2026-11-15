@@ -467,6 +467,8 @@ export const RESERVED_EVENT_TYPES: readonly string[] = [
   'impunity_changed', 'defiance_noted', 'defiance_settled', 'threat_registered', 'threat_kept', 'threat_lapsed',
   'discipline_applied', 'discipline_undone', 'restriction_started', 'restriction_ended', 'covert_sabotage',
   'demand_opened', 'demand_delivered', 'demand_resolved', 'nickname_pending', 'nickname_given', 'nickname_dropped',
+  // P9e
+  'her_call', 'her_call_acknowledged', 'ask_first_set',
 ];
 
 const slotEnum = z.enum(['morning', 'afternoon', 'evening', 'night']);
@@ -1013,6 +1015,31 @@ const EventOptionSchema = z.object({
   effects: z.array(WorldEffectSchema),
 }).passthrough();
 
+/**
+ * P9e: a her-call template. At an expedition event node a soldier with a will of her own may act on her own; the node then resolves
+ * itself to one of two outcomes (one good, one bad), read from her values against each `lean`. `fixed` stays the commander's version.
+ */
+export const HerCallSchema = z.object({
+  /** Who may act: a lead rank (0 yielding … 3 dominant), or one of these command stances at the Impunity floor. Stance ids are checked at load. */
+  trigger: z.object({
+    minLeadRank: int.min(0).max(3).optional(),
+    stances: z.array(str).optional(),
+    minImpunity: int.min(0).max(100).optional(),
+  }).strict().refine((t) => t.minLeadRank !== undefined || (t.stances?.length ?? 0) > 0, 'a trigger needs minLeadRank or stances'),
+  outcomes: z.array(z.object({
+    id: z.enum(['good', 'bad']),
+    lean: VoteLeanSchema,
+    text: str.max(160),
+    effects: z.array(WorldEffectSchema),
+  }).strict()).length(2),
+  /** A defect of this category shifts the odds of a good outcome (read by category, never by id). */
+  defectTilt: z.array(z.object({
+    category: z.enum(['neural', 'somatic', 'cybernetic', 'desire_bond']),
+    shift: z.number().min(-0.2).max(0.2),
+  }).strict()).optional(),
+}).strict();
+export type HerCallSpec = z.infer<typeof HerCallSchema>;
+
 /** Effect types that only make sense inside an expedition run. */
 const EXPEDITION_ONLY_EFFECTS: readonly string[] = ['carried_supplies', 'party_hp', 'loot'];
 
@@ -1040,8 +1067,27 @@ export const DilemmaTemplateSchema = BaseEntrySchema.extend({
   constraints: z.object({ flagPerOption: z.boolean().optional() }).strict().optional(),
   /** P8: see ClockSchema. */
   family: str.optional(),
+  /** P9e: the node may resolve itself when a soldier acts on her own. */
+  herCall: HerCallSchema.optional(),
   contentTags,
 }).superRefine((d, ctx) => {
+  if (d.herCall !== undefined) {
+    const bad = (path: Array<string | number>, message: string) => ctx.addIssue({ code: 'custom', path: ['herCall', ...path], message });
+    if (d.scale !== 'minor' || d.contexts.length !== 1 || d.contexts[0] !== 'expedition_event' || d.generate !== undefined || d.flavor === true) {
+      ctx.addIssue({ code: 'custom', path: ['herCall'], message: 'a her-call is only for a minor expedition_event template without generate or flavor' });
+    }
+    const ids = d.herCall.outcomes.map((o) => o.id).sort().join(',');
+    if (ids !== 'bad,good') bad(['outcomes'], 'a her-call needs exactly one good and one bad outcome');
+    d.herCall.outcomes.forEach((o, i) => {
+      const costs = o.effects.some(isCostEffect);
+      if (o.id === 'bad' && !costs) bad(['outcomes', i, 'effects'], 'the bad outcome needs at least one cost effect');
+      if (o.id === 'good' && costs) bad(['outcomes', i, 'effects'], 'the good outcome carries no cost effect');
+      o.effects.forEach((e, j) => {
+        if (e.type === 'oversight_punish') bad(['outcomes', i, 'effects', j, 'type'], '"oversight_punish" only exists in a scapegoat dilemma');
+        if (e.type === 'unit_event' && (e.targets === 'subject' || e.targets === 'witnesses')) bad(['outcomes', i, 'effects', j, 'targets'], `"${e.targets}" targets only exist in a scapegoat dilemma`);
+      });
+    });
+  }
   if (d.scale === 'minor' && d.contexts.includes('expedition_event') && d.fixed === undefined) {
     ctx.addIssue({ code: 'custom', path: ['fixed'], message: 'a minor expedition event needs a fixed block' });
   }
