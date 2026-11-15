@@ -60,6 +60,33 @@ describe('no pronoun for the commander in content', () => {
     expect(texts.filter(([, t]) => COMMANDER_PRONOUN.test(t)).map(([where]) => where)).toEqual([]);
   });
 
+  it('vote kinds (P9b): every reason line, the label and the description', () => {
+    const texts = [
+      ...fields('voteKinds', ['label', 'description']),
+      ...[...reg.voteKinds.values()].flatMap((k): Array<[string, string]> =>
+        Object.entries(k.reasons as Record<string, { for: string; against: string }>).flatMap(([term, r]): Array<[string, string]> => [
+          [`voteKinds:${k.id}.${term}.for`, r.for], [`voteKinds:${k.id}.${term}.against`, r.against],
+        ])),
+    ];
+    expect(texts).toHaveLength(5 * 2 + 5 * 5 * 2);
+    expect(texts.filter(([, t]) => COMMANDER_PRONOUN.test(t) || /commander[^.]*\btheir\b/i.test(t)).map(([where]) => where)).toEqual([]);
+  });
+
+  it('squad power world options, the preset and the glossary entries (P9b)', () => {
+    const texts: Array<[string, string]> = [
+      ...['squad_assertiveness', 'voting'].flatMap((id) => {
+        const o = reg.worldOptions.get(id)!;
+        return [[`worldOptions:${id}`, String(o.description)] as [string, string], ...(o.choices as Array<Record<string, unknown>>).flatMap((c) => (['label', 'description', 'lore'] as const).map((k): [string, string] => [`worldOptions:${id}/${String(c.id)}.${k}`, String(c[k] ?? '')]))];
+      }),
+      ...['assertive_squad'].map((id): [string, string] => [`worldPresets:${id}`, String(reg.worldPresets.get(id)!.description)]),
+      ...['squad_power', 'voting', 'setting_ballot_wording'].flatMap((id): Array<[string, string]> => {
+        const g = reg.glossary.get(id)!;
+        return [[`glossary:${id}.short`, String(g.short ?? '')], [`glossary:${id}.long`, String(g.long ?? '')]];
+      }),
+    ];
+    expect(texts.filter(([, t]) => COMMANDER_PRONOUN.test(t) || /commander[^.]*\btheir\b/i.test(t)).map(([where]) => where)).toEqual([]);
+  });
+
   it('hub rooms (P10)', () => {
     const texts = fields('hubRooms', ['label', 'description']);
     expect(texts).toHaveLength(16);

@@ -45,6 +45,8 @@ import { createDilemmas, type DilemmaController } from './loyalty/dilemmaControl
 import { createLoyalty, type LoyaltyController } from './loyalty/loyaltyController';
 import { clearDisciplineDirectives, disciplineDirectives } from './discipline/context';
 import { createBonds, type BondsController } from './bonds/controller';
+import { createPower, type PowerController } from './power/controller';
+import { clearPowerDirectives, refreshPowerDirectives } from './power/directives';
 import { createDiscipline, type DisciplineController } from './discipline/controller';
 import { createOnboarding, type OnboardingController } from './onboarding/controller';
 import { coachHints, isTutorialRun, lockedTabs, unlockedBetween } from './engine/onboarding';
@@ -179,6 +181,8 @@ export interface AliusApp {
   discipline: DisciplineController;
   /** P9d: rule proposals (wording, delivery, the three answers). */
   bonds: BondsController;
+  /** P9b: squad votes (the VOTE flow, ballot wording) and the grudge directives. */
+  power: PowerController;
   /** P11: the prologue's scenes, coach hints and guided evening. */
   onboarding: OnboardingController;
   /**
@@ -229,7 +233,9 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       worldDirectives(context, state, registries);
       disciplineDirectives(context, state, registries); // P9: the stance of every unit in the open scene replaces her band text
       bondsDirectives(context, state, registries); // P9d: the content exclusion and the present units' own limits
+      refreshPowerDirectives(context, state, registries); // P9b: a unit the commander overruled in a vote may push back
     } else {
+      clearPowerDirectives(context);
       bondsDirectives(context, null, registries);
       clearWorldDirectives(context);
       clearDisciplineDirectives(context);
@@ -335,6 +341,11 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
   const loyalty = createLoyalty({ ...worldDeps, context, refreshContext: applyContext });
   const discipline = createDiscipline({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o) });
   const bonds = createBonds({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o) });
+  const power = createPower({
+    ...worldDeps, context, refreshContext: applyContext,
+    // the VOTE panel is drawn in the UI task of P9b; until it is wired a vote is closed unanswered (and dropped)
+    showVote: async () => ({ choice: 'cancel' }),
+  });
   /** P9d: the three answers to a rule proposal, from a scene or the COMMS thread. */
   const answerRule = (ruleId: string, how: 'accept' | 'negotiate' | 'refuse'): void => {
     if (how === 'negotiate') void bonds.negotiateRule(ruleId).then((ok) => { if (ok) shell.open(); });
@@ -499,6 +510,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       }
       discipline.onEvents(events);
       bonds.onEvents(events); // P9d: a new rule proposal is worded and delivered
+      power.onEvents(events); // P9b: a grudge that starts or ends changes the scene directives
       onboarding.onEvents(events); // the line-up and first words: the cap question and the step completing when the scene closes (P11)
       if (has('scene_ended') || has('scene_aborted')) {
         loyalty.onSceneClosed();
@@ -1810,6 +1822,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     loyalty,
     discipline,
     bonds,
+    power,
     onboarding,
     fileLeash,
     intakeUnit,

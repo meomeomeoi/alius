@@ -462,17 +462,17 @@ tests/**                                                        mirrors src; tes
   - `clearPowerDirectives(ctx)`
 - Consumes: `vote/*` actions, `generateFlavor`, `ContextBuilder`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `requestVote runs an ungated action directly`
   - `on vote_needed it opens the vote, shows the panel and, on carry, re-dispatches with the voteId`
   - `cancel drops the vote`
   - `ballot lines fall back to templates when flavor fails or the setting is off`
   - `a grudge directive appears for a present overruled voter and is gone after the day end`
   - `no directive text gives the commander a pronoun` (pronouns test covers `voteKinds` and `src/power/directives.ts`)
-- [ ] **Step 2: Run** `npx vitest run tests/power` and confirm FAIL.
-- [ ] **Step 3: Implement** like `createDiscipline`. `applyContext` refreshes the power directives. The `flavor` kind `ballot` takes `{ kind, subjectLabel, ballots: [{ name, vote, term }] }` and returns one line per name (≤ 120 chars each), with the template as fallback.
-- [ ] **Step 4: Run** the tests. Expect PASS. Then `npm test`.
-- [ ] **Step 5: Tick and commit:** `feat(power): vote controller, ballot wording and grudge directives`.
+- [x] **Step 2: Run** `npx vitest run tests/power` and confirm FAIL.
+- [x] **Step 3: Implement** like `createDiscipline`. `applyContext` refreshes the power directives. The `flavor` kind `ballot` takes `{ kind, subjectLabel, ballots: [{ name, vote, term }] }` and returns one line per name (≤ 120 chars each), with the template as fallback.
+- [x] **Step 4: Run** the tests. Expect PASS. Then `npm test`.
+- [x] **Step 5: Tick and commit:** `feat(power): vote controller, ballot wording and grudge directives`.
 
 ### Task 6: VOTE panel, rations control, providers
 

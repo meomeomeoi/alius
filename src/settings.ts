@@ -46,6 +46,8 @@ export interface AliusSettings {
   demandWording: boolean;
   /** P9d: the mechanic model words a leading partner's rule proposal in her voice (off: the template text is used as it is). */
   ruleWording: boolean;
+  /** P9b: the mechanic model words the one-line reasons of a squad vote's ballots (off: the template lines of the vote kind). */
+  ballotWording: boolean;
   /** P4: a lost combat can be retried (rewinds exactly, never recorded in memory). */
   easyRetry: boolean;
   /** P4: affixed enemies get a generated name (optional `flavor` call, cached, never blocks combat). */
@@ -124,6 +126,7 @@ export const DEFAULT_SETTINGS: AliusSettings = {
   chronicleCompaction: true,
   demandWording: true,
   ruleWording: true,
+  ballotWording: false,
   easyRetry: false,
   enemyFlavor: false,
   directorEnabled: true,
@@ -171,6 +174,7 @@ const fieldSchemas = {
   chronicleCompaction: z.boolean(),
   demandWording: z.boolean(),
   ruleWording: z.boolean(),
+  ballotWording: z.boolean(),
   easyRetry: z.boolean(),
   enemyFlavor: z.boolean(),
   directorEnabled: z.boolean(),

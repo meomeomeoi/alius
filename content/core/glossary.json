@@ -1293,6 +1293,11 @@
     "short": "The mechanic model puts a soldier's rule proposal into her own words. Off, the proposal uses the template text as it is."
   },
   {
+    "id": "setting_ballot_wording",
+    "term": "Ballot wording",
+    "short": "The mechanic model puts the one-line reason behind each soldier's ballot in a squad vote into words. Off, the reason uses the template line of the vote."
+  },
+  {
     "id": "publicity",
     "term": "Publicity",
     "short": "How open a romantic relationship is: secret, known to those close, or public. She has her own preference; you choose the level.",
