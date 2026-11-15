@@ -1,4 +1,5 @@
 import type { Registries } from '../../content/types';
+import { syncPublicity } from '../bonds/publicitySync';
 import { injureCommander } from '../calendar';
 import type { StartPayload } from '../combat/types';
 import type { EngineCtx, EngineEvent } from '../dispatch';
@@ -204,7 +205,7 @@ export function yieldToMutiny(draft: CampaignState, ctx: EngineCtx): EngineEvent
 }
 
 /** The fight is won: everyone who rose lies at 1 HP for two days; she stays, resentful, and may now be terminated. */
-function subdue(draft: CampaignState, open: Confrontation, fought: string[]): EngineEvent[] {
+function subdue(draft: CampaignState, reg: Registries, open: Confrontation, fought: string[]): EngineEvent[] {
   for (const id of fought) {
     const u = draft.squad.find((x) => x.id === id);
     if (!u || !isLiving(u)) continue;
@@ -215,7 +216,7 @@ function subdue(draft: CampaignState, open: Confrontation, fought: string[]): En
   }
   const events: EngineEvent[] = [];
   const rel = draft.relations[open.unitId];
-  if (rel && rel.stateId !== 'resentful') events.push(enterState(draft, open.unitId, 'resentful', 'mutiny_subdued'));
+  if (rel && rel.stateId !== 'resentful') events.push(enterState(draft, open.unitId, 'resentful', 'mutiny_subdued'), ...syncPublicity(draft, reg, open.unitId));
   const rec = loyaltyRecord(draft, open.unitId);
   rec.cause = { kind: 'attack', day: draft.day };
   rec.signs = rec.signs.filter((s) => s.about !== 'mutiny');
@@ -233,7 +234,7 @@ export function resolveMutiny(draft: CampaignState, ctx: EngineCtx): EngineEvent
   const result = draft.lastCombat;
   if (!result || result.id !== open.combatId) throw new Error('The result of that fight is no longer available.');
   const events = result.outcome === 'won'
-    ? subdue(draft, open, (result.mutineers ?? []).map((m) => m.unitId))
+    ? subdue(draft, ctx.registries, open, (result.mutineers ?? []).map((m) => m.unitId))
     : escape(draft, ctx, open, result.outcome === 'retreated' ? 'retreat' : 'defeat', result.commanderInjured);
   if (result.outcome === 'won') events.push(...closeNight(draft, ctx, open));
   return events;

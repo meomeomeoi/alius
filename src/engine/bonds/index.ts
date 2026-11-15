@@ -9,7 +9,8 @@ export {
 export { bondsDayStep } from './dayStep';
 export { activeRules, answerRule, applyRuleEvent, checkDailyContact, checkRunRoster, deliverRule, deliverStaleRules, returnNegotiations, RULE_EVENT_TYPES, rollRules, rulesOf, syncRulesWithContent } from './rules';
 export { openDesireDemands } from './desire';
-export { publicityMismatch } from './publicity';
+export { publicityMismatch, rollReveal, setPublicity } from './publicity';
+export { syncAllPublicity, syncPublicity } from './publicitySync';
 export { clearSmother, expireSmother, isSmotherDefect, smotherActive, smotherRefusal, startSmother } from './smother';
 export { releaseWantBreakdowns, startCrossedBreakdowns, startWantBreakdown, wantBreakdownSpec, type WantBreakdownSpec } from './breakdown';
 export { effectiveWant, relieveAtSceneEnd, relieveWant, seizing, wantBand, wantBandOf, wantEligible, wantOf, wantRise, wantStep, type WantBand } from './want';

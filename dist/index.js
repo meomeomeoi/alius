@@ -7130,16 +7130,16 @@ var SOCIAL_THRESHOLDS = [0, 10, 25, 45, 70];
 var MAX_RANK = SOCIAL_THRESHOLDS.length;
 var MAX_POINTS = SOCIAL_THRESHOLDS[MAX_RANK - 1];
 function rankForPoints(points) {
-  let rank = 1;
+  let rank2 = 1;
   SOCIAL_THRESHOLDS.forEach((t, i) => {
-    if (points >= t) rank = i + 1;
+    if (points >= t) rank2 = i + 1;
   });
-  return rank;
+  return rank2;
 }
 function socialRank(state, stat3) {
-  const rank = state.commander.socialStats[stat3];
-  if (state.commander.sleeplessDay !== state.day) return rank;
-  return Math.max(1, rank + (state.commander.sleeplessRank?.[stat3] ?? 0));
+  const rank2 = state.commander.socialStats[stat3];
+  if (state.commander.sleeplessDay !== state.day) return rank2;
+  return Math.max(1, rank2 + (state.commander.sleeplessRank?.[stat3] ?? 0));
 }
 function socialGrowthMult(state, reg, stat3) {
   return traitEffects(state, reg, "social_growth").filter((fx2) => fx2.stat === stat3).reduce((m, fx2) => m * fx2.mult, 1);
@@ -7156,9 +7156,9 @@ function addSocialPoints(commander, stat3, amount) {
   const next = Math.min(MAX_POINTS, Math.max(points[stat3], floor) + amount);
   const gained = next - Math.max(points[stat3], floor);
   points[stat3] = next;
-  const rank = Math.max(before, rankForPoints(next));
-  commander.socialStats[stat3] = rank;
-  return { rank, gained, rankedUp: rank > before };
+  const rank2 = Math.max(before, rankForPoints(next));
+  commander.socialStats[stat3] = rank2;
+  return { rank: rank2, gained, rankedUp: rank2 > before };
 }
 function meetsSocialRequirements(state, requires) {
   return Object.entries(requires).every(([stat3, min]) => socialRank(state, stat3) >= min);
@@ -7599,6 +7599,28 @@ function computeDeltas(state, reg, unitId, event) {
   return { trust: z(judged(trust)), affinity: z(judged(affinity)), attraction: z(judged(attraction)), stress: z(judgedStress), severity };
 }
 
+// src/engine/bonds/publicitySync.ts
+var rank = (p) => PUBLICITY_LEVELS.indexOf(p);
+var morePrivate = (a, b) => rank(a) <= rank(b) ? a : b;
+function syncPublicity(draft, reg, unitId) {
+  const rel = draft.relations[unitId];
+  const unit = draft.squad.find((u) => u.id === unitId);
+  if (!rel || !unit || unit.kind !== "named") return [];
+  if (bondTierOf(draft, reg, unitId) !== "romantic") {
+    if (!rel.publicity) return [];
+    delete rel.publicity;
+    return [{ type: "publicity_cleared", unitId }];
+  }
+  const concealed = rel.stateId === "secret_affair";
+  if (rel.publicity && (!concealed || rel.publicity.level === "secret")) return [];
+  const level = concealed ? "secret" : morePrivate(bondOf(unit)?.publicity ?? "known", "known");
+  rel.publicity = { level, ...rel.publicity?.commanderPref ? { commanderPref: rel.publicity.commanderPref } : {}, since: draft.day };
+  return [{ type: "publicity_set", unitId, level }];
+}
+function syncAllPublicity(draft, reg) {
+  return draft.squad.flatMap((u) => syncPublicity(draft, reg, u.id));
+}
+
 // src/engine/relations/graph.ts
 var entryOf = (st) => st.entry;
 function pushHistory(draft, unitId, h2) {
@@ -7704,11 +7726,11 @@ function evaluateAutomatic(draft, reg, unitId) {
     }
   }
   if (target === null) {
-    const rank = cur?.priority ?? -1;
-    const pick2 = candidates(draft, reg, unitId, "automatic").find((st) => st.priority > rank);
+    const rank2 = cur?.priority ?? -1;
+    const pick2 = candidates(draft, reg, unitId, "automatic").find((st) => st.priority > rank2);
     if (pick2) target = pick2.id;
   }
-  if (target !== null) events.push(enterState(draft, unitId, target, why));
+  if (target !== null) events.push(enterState(draft, unitId, target, why), ...syncPublicity(draft, reg, unitId));
   const band = nextLoyaltyBand(rel.loyaltyBand, rel.trust, bandShift(dispositionById(draft, reg, unitId)));
   if (band !== rel.loyaltyBand) {
     events.push({ type: "loyalty_band_changed", unitId, from: rel.loyaltyBand, to: band });
@@ -7719,7 +7741,7 @@ function evaluateAutomatic(draft, reg, unitId) {
 function evaluateEvent(draft, reg, unitId, eventType) {
   if (!draft.relations[unitId] || !draft.squad.some((u) => u.id === unitId)) return [];
   const pick2 = candidates(draft, reg, unitId, "event", eventType)[0];
-  return pick2 ? [enterState(draft, unitId, pick2.id, `event:${eventType}`)] : [];
+  return pick2 ? [enterState(draft, unitId, pick2.id, `event:${eventType}`), ...syncPublicity(draft, reg, unitId)] : [];
 }
 var ORDER = ["too_soon", "no_trust", "not_interested", "committed"];
 function failedGroup(state, reg, unitId, cond) {
@@ -10035,9 +10057,9 @@ function rollGruntStances(state, reg, rng) {
 // src/engine/worldOptions/disposition.ts
 var DEFAULT_RANK = 2;
 var clamp10 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
-function levelByRank(reg, rank) {
+function levelByRank(reg, rank2) {
   const levels = [...reg.dispositionLevels.values()];
-  const found2 = levels.find((l) => l.rank === rank) ?? levels.find((l) => l.rank === DEFAULT_RANK) ?? levels[0];
+  const found2 = levels.find((l) => l.rank === rank2) ?? levels.find((l) => l.rank === DEFAULT_RANK) ?? levels[0];
   if (!found2) throw new Error("The content has no disposition levels.");
   return found2;
 }
@@ -10875,6 +10897,80 @@ function smotherRefusal(state) {
   return `${name} has locked the hangar: the commander stays at base today.`;
 }
 
+// src/engine/bonds/publicity.ts
+function publicityMismatch(state, unitId) {
+  const unit = state.squad.find((u) => u.id === unitId);
+  const bond = unit ? bondOf(unit) : null;
+  const level = state.relations[unitId]?.publicity?.level;
+  return bond !== null && level !== void 0 && level !== bond.publicity;
+}
+function sheLeads(state, unitId) {
+  const lead = state.scene?.lead;
+  if (lead && lead.unitId === unitId) return lead.by === "unit";
+  const unit = state.squad.find((u) => u.id === unitId);
+  return unit !== void 0 && leadRank(bondOf(unit)?.leadStyle ?? "balanced") >= leadRank("assertive");
+}
+function publicReactions(draft, herId) {
+  const T = TUNING.bonds.publicity.reactions;
+  const events = [];
+  for (const u of draft.squad) {
+    const rel = draft.relations[u.id];
+    const flag = `public_reacted:${herId}`;
+    if (u.id === herId || u.kind !== "named" || !isLiving(u) || !rel || rel.flags.includes(flag)) continue;
+    rel.flags.push(flag);
+    const v = u.values;
+    if (v.corporate >= 1 || v.ingroup <= -1) events.push(...addRecord(draft, u.id, T.lostRespectRecord, "relationship_public"));
+    else if (v.autonomy >= 1 || v.mercy >= 1) applyRelationDelta(draft, u.id, "trust", T.respectTrust, "relationship_public");
+  }
+  return events;
+}
+function preferenceEvent(draft, reg, unitId, from, to) {
+  const unit = draft.squad.find((u) => u.id === unitId);
+  const pref = (unit ? bondOf(unit)?.publicity : void 0) ?? "known";
+  const toward = to === pref || Math.abs(rank(to) - rank(pref)) < Math.abs(rank(from) - rank(pref));
+  return applyEventToUnit(draft, reg, unitId, {
+    type: toward ? "listened" : "dismissed",
+    actor: "commander",
+    targets: [unitId],
+    severity: "minor",
+    evidence: "how open the relationship is",
+    confidence: 1
+  });
+}
+function setPublicity(draft, reg, unitId, level, opts) {
+  const rel = draft.relations[unitId];
+  const unit = draft.squad.find((u) => u.id === unitId);
+  if (!rel?.publicity || !unit) throw new Error("She is not in a romantic relationship with the commander.");
+  if (!PUBLICITY_LEVELS.includes(level)) throw new Error(`Unknown publicity level "${String(level)}".`);
+  const from = rel.publicity.level;
+  if (opts.cause === "commander") rel.publicity.commanderPref = level;
+  if (from === level) return [];
+  rel.publicity.level = level;
+  rel.publicity.since = draft.day;
+  const events = [{ type: "publicity_changed", unitId, from, to: level, cause: opts.cause }];
+  if (opts.cause === "commander") events.push(...preferenceEvent(draft, reg, unitId, from, level));
+  if (opts.cause === "revealed") {
+    events.push({ type: "bond_revealed", unitId });
+    addFact(draft, { about: [unitId, "commander"], text: `It is out: ${unit.displayName} and the commander are together.`, tags: ["bond", "revealed"], importance: 3, day: draft.day, knownBy: ["*"] });
+  }
+  if (level === "public" && from !== "public") {
+    addFact(draft, { about: [unitId, "commander"], text: `The squad knows: ${unit.displayName} and the commander.`, tags: ["bond", "public"], importance: 3, day: draft.day, knownBy: ["*"] });
+    if (sheLeads(draft, unitId)) events.push(...publicReactions(draft, unitId));
+  }
+  return events;
+}
+function rollReveal(draft, reg, rng, presentIds) {
+  const events = [];
+  const T = TUNING.relations.affair;
+  if (presentIds.length < 2) return events;
+  for (const unit of draft.squad) {
+    const rel = draft.relations[unit.id];
+    if (!rel?.publicity || rel.publicity.level !== "secret" || rel.stateId === "secret_affair" || !isLiving(unit) || !presentIds.includes(unit.id)) continue;
+    if (rng.chance(T.base + T.perOther * (presentIds.length - 1))) events.push(...setPublicity(draft, reg, unit.id, "known", { cause: "revealed" }));
+  }
+  return events;
+}
+
 // src/engine/bonds/violations.ts
 var isObj6 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var MARKS_MAX = 50;
@@ -10894,14 +10990,6 @@ function markDmViolation(draft, reg, unitId, messageRef, raw) {
   if (categories.length === 0) return;
   const message = (draft.dms[unitId] ?? []).find((m) => m.id === messageRef.slice(3) && m.from === unitId);
   if (message) message.violation = categories;
-}
-
-// src/engine/bonds/publicity.ts
-function publicityMismatch(state, unitId) {
-  const unit = state.squad.find((u) => u.id === unitId);
-  const bond = unit ? bondOf(unit) : null;
-  const level = state.relations[unitId]?.publicity?.level;
-  return bond !== null && level !== void 0 && level !== bond.publicity;
 }
 
 // src/engine/discipline/acquaintance.ts
@@ -10958,8 +11046,8 @@ function eligible(state, reg, unit, t) {
   const i = impunityOf(state, reg, unit.id)?.value;
   if (c.stances && (stance === null || !c.stances.includes(stance))) return false;
   if (c.impunity && (i === void 0 || i < c.impunity[0] || i > c.impunity[1])) return false;
-  const rank = Number(dispositionFor(state, reg, unit).rank);
-  if (c.dispositionRanks && (rank < c.dispositionRanks[0] || rank > c.dispositionRanks[1])) return false;
+  const rank2 = Number(dispositionFor(state, reg, unit).rank);
+  if (c.dispositionRanks && (rank2 < c.dispositionRanks[0] || rank2 > c.dispositionRanks[1])) return false;
   if (c.tagsAny && !c.tagsAny.some((tag2) => [...unit.likes, ...unit.dislikes, ...unit.triggers].includes(tag2))) return false;
   if (c.statesAny && !c.statesAny.includes(rel?.stateId ?? "")) return false;
   if (c.flagsNone && c.flagsNone.some((f) => rel?.flags.includes(f))) return false;
@@ -11379,6 +11467,7 @@ function revertInverse(draft, ctx2, unitId, applicationId, inv) {
     if (inv.state && rel.stateId === inv.state.to) {
       rel.stateId = inv.state.from;
       rel.stateSince = inv.state.sinceFrom;
+      events.push(...syncPublicity(draft, ctx2.registries, unitId));
     }
     if (inv.loyaltyBand && rel.loyaltyBand === inv.loyaltyBand.to) rel.loyaltyBand = inv.loyaltyBand.from;
     for (const line2 of [...inv.history ?? []].reverse()) {
@@ -11605,10 +11694,10 @@ function conclude(draft, reg, unitId, kind, target, secret) {
   const partners = romantic ? romanticPartners(draft, reg, unitId) : [];
   if (secret) {
     const as = target === "secret_affair" ? "flirting" : target;
-    if (rel.stateId !== "secret_affair") events.push(enterState(draft, unitId, "secret_affair", `proposal:${kind}`));
+    if (rel.stateId !== "secret_affair") events.push(enterState(draft, unitId, "secret_affair", `proposal:${kind}`), ...syncPublicity(draft, reg, unitId));
     rel.affair = { as, hiddenFrom: partners, since: draft.day };
   } else {
-    if (rel.stateId !== target) events.push(enterState(draft, unitId, target, `proposal:${kind}`));
+    if (rel.stateId !== target) events.push(enterState(draft, unitId, target, `proposal:${kind}`), ...syncPublicity(draft, reg, unitId));
   }
   if (kind === "confide" && !rel.flags.includes("shared_secret")) rel.flags.push("shared_secret");
   pushHistory(draft, unitId, { day: draft.day, kind: "proposal", type: kind, detail: secret ? "secret" : "accepted" });
@@ -11684,7 +11773,7 @@ function rollDiscovery(draft, reg, rng, presentIds) {
     if (hidden.length === 0) {
       const rel2 = draft.relations[unit.id];
       delete rel2.affair;
-      if (rel2.stateId !== affair.as && romanceAllowed(reg, draft, affair.as)) events.push(enterState(draft, unit.id, affair.as, "affair_ended"));
+      if (rel2.stateId !== affair.as && romanceAllowed(reg, draft, affair.as)) events.push(enterState(draft, unit.id, affair.as, "affair_ended"), ...syncPublicity(draft, reg, unit.id));
       events.push({ type: "affair_ended", unitId: unit.id });
       continue;
     }
@@ -11697,7 +11786,10 @@ function rollDiscovery(draft, reg, rng, presentIds) {
     const rel = draft.relations[unit.id];
     const as = affair.as;
     delete rel.affair;
-    if (rel.stateId !== as && romanceAllowed(reg, draft, as)) events.push(enterState(draft, unit.id, as, "affair_discovered"));
+    if (rel.stateId !== as && romanceAllowed(reg, draft, as)) {
+      events.push(enterState(draft, unit.id, as, "affair_discovered"), ...syncPublicity(draft, reg, unit.id));
+      if (rel.publicity?.level === "secret") events.push(...setPublicity(draft, reg, unit.id, "known", { cause: "revealed" }));
+    }
     events.push({ type: "affair_discovered", unitId: unit.id, by: hidden });
     events.push(...partnersReact(draft, reg, hidden, "discovered a secret romance"));
     events.push(...evaluateAutomatic(draft, reg, unit.id));
@@ -11943,6 +12035,7 @@ registerAction("scene/end", (draft, payload, ctx2) => {
   events.push(...relieveAtSceneEnd(draft, scene));
   events.push(...returnNegotiations(draft, scene.participants));
   events.push(...rollDiscovery(draft, reg, ctx2.rng, scene.participants));
+  events.push(...rollReveal(draft, reg, ctx2.rng, scene.participants));
   events.push(...expireSceneProposals(draft, scene.participants));
   events.push(...settleDefiance(draft, ctx2, { sceneId: scene.id }));
   for (const id of scene.participants) events.push(...clearSmother(draft, id));
@@ -15377,7 +15470,7 @@ function yieldToMutiny(draft, ctx2) {
   if (loyalUnits(draft, open3.unitId).length > 0) throw new Error("You still have soldiers who can fight: stand with them or suppress it.");
   return escape(draft, ctx2, open3, "yield", false);
 }
-function subdue(draft, open3, fought) {
+function subdue(draft, reg, open3, fought) {
   for (const id of fought) {
     const u = draft.squad.find((x) => x.id === id);
     if (!u || !isLiving(u)) continue;
@@ -15388,7 +15481,7 @@ function subdue(draft, open3, fought) {
   }
   const events = [];
   const rel = draft.relations[open3.unitId];
-  if (rel && rel.stateId !== "resentful") events.push(enterState(draft, open3.unitId, "resentful", "mutiny_subdued"));
+  if (rel && rel.stateId !== "resentful") events.push(enterState(draft, open3.unitId, "resentful", "mutiny_subdued"), ...syncPublicity(draft, reg, open3.unitId));
   const rec = loyaltyRecord(draft, open3.unitId);
   rec.cause = { kind: "attack", day: draft.day };
   rec.signs = rec.signs.filter((s) => s.about !== "mutiny");
@@ -15403,7 +15496,7 @@ function resolveMutiny(draft, ctx2) {
   if (draft.combat) throw new Error("The fight is still going on.");
   const result = draft.lastCombat;
   if (!result || result.id !== open3.combatId) throw new Error("The result of that fight is no longer available.");
-  const events = result.outcome === "won" ? subdue(draft, open3, (result.mutineers ?? []).map((m) => m.unitId)) : escape(draft, ctx2, open3, result.outcome === "retreated" ? "retreat" : "defeat", result.commanderInjured);
+  const events = result.outcome === "won" ? subdue(draft, ctx2.registries, open3, (result.mutineers ?? []).map((m) => m.unitId)) : escape(draft, ctx2, open3, result.outcome === "retreated" ? "retreat" : "defeat", result.commanderInjured);
   if (result.outcome === "won") events.push(...closeNight(draft, ctx2, open3));
   return events;
 }
@@ -16643,6 +16736,7 @@ function openDesireDemands(draft, ctx2) {
 // src/engine/bonds/dayStep.ts
 function bondsDayStep(draft, ctx2) {
   return [
+    ...syncAllPublicity(draft, ctx2.registries),
     ...deliverStaleRules(draft),
     ...releaseWantBreakdowns(draft),
     ...wantStep(draft, ctx2.registries),
@@ -16676,6 +16770,14 @@ registerAction("bonds/answer_rule", (draft, payload, ctx2) => {
     throw new Error('bonds/answer_rule needs { ruleId, answer: "accept" | "negotiate" | "refuse" }');
   }
   return answerRule(draft, ctx2, payload.ruleId, payload.answer);
+});
+registerAction("bonds/set_publicity", (draft, payload, ctx2) => {
+  if (!isObj19(payload) || typeof payload.unitId !== "string" || !PUBLICITY_LEVELS.includes(payload.level)) {
+    throw new Error('bonds/set_publicity needs { unitId, level: "secret" | "known" | "public" }');
+  }
+  const unit = draft.squad.find((u) => u.id === payload.unitId);
+  if (!unit || unit.kind !== "named") throw new Error(`Unknown unit "${payload.unitId}".`);
+  return setPublicity(draft, ctx2.registries, unit.id, payload.level, { cause: "commander" });
 });
 registerAction("content/set_categories", (draft, payload, ctx2) => {
   if (!isObj19(payload) || !Array.isArray(payload.enabled) || payload.enabled.some((x) => typeof x !== "string")) {
@@ -18355,7 +18457,7 @@ function contentLine(state, reg) {
 }
 var wantSet = /* @__PURE__ */ new WeakMap();
 function bondsDirectives(builder, state, reg) {
-  builder.clearMatching((d) => d.id.startsWith("limits:") || d.id.startsWith("boundary:") || d.id.startsWith("rule:") || d.id.startsWith("co_command:"));
+  builder.clearMatching((d) => d.id.startsWith("limits:") || d.id.startsWith("boundary:") || d.id.startsWith("rule:") || d.id.startsWith("co_command:") || d.id.startsWith("publicity:"));
   builder.clearDirective("lead");
   for (const id of wantSet.get(builder) ?? []) builder.clearDirective(id);
   wantSet.set(builder, /* @__PURE__ */ new Set());
@@ -18390,6 +18492,13 @@ function bondsDirectives(builder, state, reg) {
       return typeof f === "string" && flags.includes(f);
     })) continue;
     builder.setDirective({ id: `co_command:${id}`, expiresAfter: "manual", text: `${unit.displayName} shares command with the commander by open agreement.` });
+  }
+  for (const id of state.scene.participants) {
+    const unit = state.squad.find((u) => u.id === id);
+    const level = state.relations[id]?.publicity?.level;
+    const pref = unit ? bondOf(unit)?.publicity : void 0;
+    if (!unit || level === void 0 || pref === void 0 || !publicityMismatch(state, id)) continue;
+    builder.setDirective({ id: `publicity:${id}`, expiresAfter: "scene", text: `${unit.displayName} wants the relationship ${pref}; it is ${level}.` });
   }
   for (const rule of state.bonds?.rules ?? []) {
     const unit = state.squad.find((u) => u.id === rule.unitId);
@@ -28052,8 +28161,8 @@ var SOCIAL_STATS3 = ["authority", "insight", "empathy", "cunning"];
 var SCALES = ["minor", "major", "defining"];
 function tag(value) {
   if (!value || typeof value !== "object") return null;
-  const { stat: stat3, rank } = value;
-  return typeof stat3 === "string" && SOCIAL_STATS3.includes(stat3) && typeof rank === "number" && Number.isFinite(rank) ? { stat: stat3, rank } : null;
+  const { stat: stat3, rank: rank2 } = value;
+  return typeof stat3 === "string" && SOCIAL_STATS3.includes(stat3) && typeof rank2 === "number" && Number.isFinite(rank2) ? { stat: stat3, rank: rank2 } : null;
 }
 var decisionProvider = (subject, env) => {
   const state = env.state;

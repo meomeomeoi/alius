@@ -1,11 +1,11 @@
 import type { Registries } from '../content/types';
-import { bondOf, enabledCategories, wantBandOf } from '../engine/bonds';
+import { bondOf, enabledCategories, publicityMismatch, wantBandOf } from '../engine/bonds';
 import { intimacyOf } from '../engine/relations/gain';
 import type { CampaignState } from '../engine/state/types';
 import type { ContextBuilder } from '../llm/context';
 
 // The non-engine layer of P9d (like `src/discipline/`): it turns engine state into the lines the main model reads.
-// Directive ids owned here: `content` (manual), `limits:<unitId>`, `lead`, `boundary:<n>`, `rule:<unitId>` (scene) and `co_command:<unitId>` (manual, while she is in the scene). `ask:<unitId>` is the
+// Directive ids owned here: `content` (manual), `limits:<unitId>`, `lead`, `boundary:<n>`, `rule:<unitId>` and `publicity:<unitId>` (scene) and `co_command:<unitId>` (manual, while she is in the scene). `ask:<unitId>` is the
 // ASK chip's one-reply directive (set by the scene controller). Later tasks add `want:`, `rule:`, `publicity:` and
 // `co_command:`, each cleared by the function that sets it.
 
@@ -38,7 +38,7 @@ const wantSet = new WeakMap<ContextBuilder, Set<string>>();
  * of categories reaches the next generation. With no campaign (`null`) it clears them all.
  */
 export function bondsDirectives(builder: ContextBuilder, state: CampaignState | null, reg: Registries): void {
-  builder.clearMatching((d) => d.id.startsWith('limits:') || d.id.startsWith('boundary:') || d.id.startsWith('rule:') || d.id.startsWith('co_command:'));
+  builder.clearMatching((d) => d.id.startsWith('limits:') || d.id.startsWith('boundary:') || d.id.startsWith('rule:') || d.id.startsWith('co_command:') || d.id.startsWith('publicity:'));
   builder.clearDirective('lead');
   for (const id of wantSet.get(builder) ?? []) builder.clearDirective(id);
   wantSet.set(builder, new Set());
@@ -78,6 +78,15 @@ export function bondsDirectives(builder: ContextBuilder, state: CampaignState | 
     const flags = state.relations[id]?.flags ?? [];
     if (!unit || !unit.defects.some((d) => { const f = reg.defects.get(d.id)?.embraceFlag; return typeof f === 'string' && flags.includes(f); })) continue;
     builder.setDirective({ id: `co_command:${id}`, expiresAfter: 'manual', text: `${unit.displayName} shares command with the commander by open agreement.` });
+  }
+
+  // she wants the relationship more or less open than it is: she is present, so it can come up
+  for (const id of state.scene.participants) {
+    const unit = state.squad.find((u) => u.id === id);
+    const level = state.relations[id]?.publicity?.level;
+    const pref = unit ? bondOf(unit)?.publicity : undefined;
+    if (!unit || level === undefined || pref === undefined || !publicityMismatch(state, id)) continue;
+    builder.setDirective({ id: `publicity:${id}`, expiresAfter: 'scene', text: `${unit.displayName} wants the relationship ${pref}; it is ${level}.` });
   }
 
   // a rule she proposed: pressed in the scene she is in, or negotiated there (from state, so it survives a reload)

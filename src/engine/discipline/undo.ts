@@ -1,5 +1,6 @@
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import type { CampaignState, Inverse } from '../state/types';
+import { syncPublicity } from '../bonds/publicitySync';
 import { countDeed } from './deeds';
 import { addRecord, disciplineOf } from './record';
 import { removeRestrictions } from './restrictions';
@@ -49,6 +50,7 @@ function revertInverse(draft: CampaignState, ctx: EngineCtx, unitId: string, app
     if (inv.state && rel.stateId === inv.state.to) {
       rel.stateId = inv.state.from;
       rel.stateSince = inv.state.sinceFrom;
+      events.push(...syncPublicity(draft, ctx.registries, unitId)); // P9d: publicity follows the restored state
     }
     if (inv.loyaltyBand && rel.loyaltyBand === inv.loyaltyBand.to) rel.loyaltyBand = inv.loyaltyBand.from;
     for (const line of [...(inv.history ?? [])].reverse()) {

@@ -2,6 +2,7 @@ import { raiseTone, startTone } from '../bonds/scene';
 import { returnNegotiations } from '../bonds/rules';
 import { clearSmother } from '../bonds/smother';
 import { relieveAtSceneEnd } from '../bonds/want';
+import { rollReveal } from '../bonds/publicity';
 import { markDmViolation, markSceneViolation } from '../bonds/violations';
 import { consumeSlots, registerDayEndStep } from '../calendar';
 import { registerAction } from '../dispatch';
@@ -154,6 +155,7 @@ registerAction('scene/end', (draft, payload, ctx) => {
   events.push(...relieveAtSceneEnd(draft, scene)); // P9d: a romantic or intimate scene with her lowers her Want
   events.push(...returnNegotiations(draft, scene.participants)); // P9d: a negotiation nobody finished is a proposal again
   events.push(...rollDiscovery(draft, reg, ctx.rng, scene.participants));
+  events.push(...rollReveal(draft, reg, ctx.rng, scene.participants)); // P9d: a secret relationship may come out with others present
   events.push(...expireSceneProposals(draft, scene.participants));
   // P9: a defiance nobody answered in this scene settles now
   events.push(...settleDefiance(draft, ctx, { sceneId: scene.id }));

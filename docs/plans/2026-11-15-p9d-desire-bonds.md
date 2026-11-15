@@ -692,7 +692,7 @@ tests/**                                           mirrors src; tests/helpers/bo
   - `rollReveal(draft, reg, rng, presentIds)`
   - `publicityMismatch(state, unitId): boolean`
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `entering lover takes the more private of her and the commander preference`
   - `secret_affair starts secret and is left to the P3 discovery`
   - `set_publicity against her preference applies dismissed; toward it applies listened`
@@ -701,10 +701,10 @@ tests/**                                           mirrors src; tests/helpers/bo
   - `going public while she leads moves the record of corporate units and the trust of autonomy units, once`
   - `setPublicity with cause claimed forces public` (acceptance 8)
   - `leaving the romantic tier clears publicity`
-- [ ] **Step 2: Run** and confirm FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** `npm test` and confirm PASS. Name the seeded discovery tests that moved.
-- [ ] **Step 5: Commit** `feat(engine): publicity of relationships, preferences and reactions`.
+- [x] **Step 2: Run** and confirm FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** `npm test` and confirm PASS. Name the seeded discovery tests that moved.
+- [x] **Step 5: Commit** `feat(engine): publicity of relationships, preferences and reactions`.
 
 ### Task 16: Publicity in the dossier and the analysis panel
 

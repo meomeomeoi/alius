@@ -1,5 +1,6 @@
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import type { CampaignState } from '../state/types';
+import { syncAllPublicity } from './publicitySync';
 import { releaseWantBreakdowns, startCrossedBreakdowns } from './breakdown';
 import { openDesireDemands } from './desire';
 import { checkDailyContact, deliverStaleRules, rollRules } from './rules';
@@ -14,6 +15,7 @@ import { wantStep } from './want';
  */
 export function bondsDayStep(draft: CampaignState, ctx: EngineCtx): EngineEvent[] {
   return [
+    ...syncAllPublicity(draft, ctx.registries),
     ...deliverStaleRules(draft),
     ...releaseWantBreakdowns(draft),
     ...wantStep(draft, ctx.registries),

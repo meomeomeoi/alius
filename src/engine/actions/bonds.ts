@@ -1,5 +1,7 @@
 import { setCategories } from '../bonds/content';
 import { bondsDayStep } from '../bonds/dayStep';
+import { setPublicity } from '../bonds/publicity';
+import { PUBLICITY_LEVELS } from '../bonds/profile';
 import { answerRule, deliverRule } from '../bonds/rules';
 import { followLead, setSceneLimit } from '../bonds/scene';
 import { relieveWant } from '../bonds/want';
@@ -43,6 +45,16 @@ registerAction('bonds/answer_rule', (draft, payload, ctx) => {
     throw new Error('bonds/answer_rule needs { ruleId, answer: "accept" | "negotiate" | "refuse" }');
   }
   return answerRule(draft, ctx, payload.ruleId, payload.answer);
+});
+
+/** The commander sets how open the relationship is (the dossier's [SECRET] [KNOWN] [PUBLIC]). Draws no rng. */
+registerAction('bonds/set_publicity', (draft, payload, ctx) => {
+  if (!isObj(payload) || typeof payload.unitId !== 'string' || !(PUBLICITY_LEVELS as readonly string[]).includes(payload.level as string)) {
+    throw new Error('bonds/set_publicity needs { unitId, level: "secret" | "known" | "public" }');
+  }
+  const unit = draft.squad.find((u) => u.id === payload.unitId);
+  if (!unit || unit.kind !== 'named') throw new Error(`Unknown unit "${payload.unitId}".`);
+  return setPublicity(draft, ctx.registries, unit.id, payload.level as (typeof PUBLICITY_LEVELS)[number], { cause: 'commander' });
 });
 
 /** The player switches content categories on or off (SYS, setup). Applies from the next generation; draws no rng. */

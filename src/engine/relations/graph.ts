@@ -1,6 +1,7 @@
 import type { Conditions } from '../../content/schemas';
 import type { Entry, Registries } from '../../content/types';
 import type { EngineEvent } from '../dispatch';
+import { syncPublicity } from '../bonds/publicitySync';
 import { traitEffects, traitIds } from '../commander/traits';
 import { isLiving } from '../economy';
 import type { CampaignState, HistoryEntry, Unit } from '../state/types';
@@ -155,7 +156,7 @@ export function evaluateAutomatic(draft: CampaignState, reg: Registries, unitId:
     const pick = candidates(draft, reg, unitId, 'automatic').find((st) => (st.priority as number) > rank);
     if (pick) target = pick.id;
   }
-  if (target !== null) events.push(enterState(draft, unitId, target, why));
+  if (target !== null) events.push(enterState(draft, unitId, target, why), ...syncPublicity(draft, reg, unitId)); // P9d: publicity follows the tier
 
   const band = nextLoyaltyBand(rel.loyaltyBand, rel.trust, bandShift(dispositionById(draft, reg, unitId))); // P8: the unit's own thresholds
   if (band !== rel.loyaltyBand) {
@@ -169,7 +170,7 @@ export function evaluateAutomatic(draft: CampaignState, reg: Registries, unitId:
 export function evaluateEvent(draft: CampaignState, reg: Registries, unitId: string, eventType: string): EngineEvent[] {
   if (!draft.relations[unitId] || !draft.squad.some((u) => u.id === unitId)) return [];
   const pick = candidates(draft, reg, unitId, 'event', eventType)[0];
-  return pick ? [enterState(draft, unitId, pick.id as string, `event:${eventType}`)] : [];
+  return pick ? [enterState(draft, unitId, pick.id as string, `event:${eventType}`), ...syncPublicity(draft, reg, unitId)] : [];
 }
 
 const ORDER: ProposalFailure[] = ['too_soon', 'no_trust', 'not_interested', 'committed'];

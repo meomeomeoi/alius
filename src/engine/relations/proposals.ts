@@ -1,6 +1,8 @@
 import type { Registries } from '../../content/types';
 import type { EngineEvent } from '../dispatch';
 import { isLiving } from '../economy';
+import { syncPublicity } from '../bonds/publicitySync';
+import { setPublicity } from '../bonds/publicity';
 import { nextId } from '../memory';
 import type { Rng } from '../rng';
 import type { CampaignState, PendingProposal } from '../state/types';
@@ -84,10 +86,10 @@ function conclude(
   const partners = romantic ? romanticPartners(draft, reg, unitId) : [];
   if (secret) {
     const as = target === 'secret_affair' ? 'flirting' : target;
-    if (rel.stateId !== 'secret_affair') events.push(enterState(draft, unitId, 'secret_affair', `proposal:${kind}`));
+    if (rel.stateId !== 'secret_affair') events.push(enterState(draft, unitId, 'secret_affair', `proposal:${kind}`), ...syncPublicity(draft, reg, unitId));
     rel.affair = { as, hiddenFrom: partners, since: draft.day };
   } else {
-    if (rel.stateId !== target) events.push(enterState(draft, unitId, target, `proposal:${kind}`));
+    if (rel.stateId !== target) events.push(enterState(draft, unitId, target, `proposal:${kind}`), ...syncPublicity(draft, reg, unitId));
   }
   if (kind === 'confide' && !rel.flags.includes('shared_secret')) rel.flags.push('shared_secret');
   pushHistory(draft, unitId, { day: draft.day, kind: 'proposal', type: kind, detail: secret ? 'secret' : 'accepted' });
@@ -190,7 +192,7 @@ export function rollDiscovery(draft: CampaignState, reg: Registries, rng: Rng, p
       // everyone it was hidden from has left romance: nothing to conceal any more
       const rel = draft.relations[unit.id];
       delete rel.affair;
-      if (rel.stateId !== affair.as && romanceAllowed(reg, draft, affair.as)) events.push(enterState(draft, unit.id, affair.as, 'affair_ended'));
+      if (rel.stateId !== affair.as && romanceAllowed(reg, draft, affair.as)) events.push(enterState(draft, unit.id, affair.as, 'affair_ended'), ...syncPublicity(draft, reg, unit.id));
       events.push({ type: 'affair_ended', unitId: unit.id });
       continue;
     }
@@ -204,7 +206,10 @@ export function rollDiscovery(draft: CampaignState, reg: Registries, rng: Rng, p
     const as = affair.as;
     delete rel.affair;
     // with romance off no romantic transition fires: she stays as she is, the secret is simply out
-    if (rel.stateId !== as && romanceAllowed(reg, draft, as)) events.push(enterState(draft, unit.id, as, 'affair_discovered'));
+    if (rel.stateId !== as && romanceAllowed(reg, draft, as)) {
+      events.push(enterState(draft, unit.id, as, 'affair_discovered'), ...syncPublicity(draft, reg, unit.id));
+      if (rel.publicity?.level === 'secret') events.push(...setPublicity(draft, reg, unit.id, 'known', { cause: 'revealed' })); // P9d: what was found out is known
+    }
     events.push({ type: 'affair_discovered', unitId: unit.id, by: hidden });
     events.push(...partnersReact(draft, reg, hidden, 'discovered a secret romance'));
     events.push(...evaluateAutomatic(draft, reg, unit.id));
