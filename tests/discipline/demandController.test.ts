@@ -183,3 +183,16 @@ describe('answering and TALK', () => {
     expect(demandDirective(ANN, 'Ann', 'Room.')).toEqual({ id: `demand:${ANN}`, expiresAfter: 'scene', text: 'Ann demands something of the commander and presses it this scene: "Room."' });
   });
 });
+
+describe('POSTPONE on her want (P9d)', () => {
+  it('sets the patience directive for the next reply; GRANT sets none', async () => {
+    const r = rig({ wording: false, inScene: true });
+    r.h.setState((s) => {
+      s.discipline = { defiance: [], threats: [], applications: [], restrictions: [], demands: [{ id: 'dx', unitId: ANN, templateId: 'want_tonight', text: 'x', day: s.day, expiresDay: s.day + 2, status: 'open', impunityDriven: false }], demandLog: [] };
+    });
+    expect(r.discipline.answerDemand('dx', 'refuse')).toBe(true);
+    expect(dirs(r)).toContain('Ann was asked to wait; she is trying to be patient.');
+    r.ctx.onReplyReceived();
+    expect(dirs(r)).not.toContain('trying to be patient');
+  });
+});

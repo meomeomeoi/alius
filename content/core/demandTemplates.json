@@ -156,5 +156,66 @@
     },
     "weight": 1,
     "costly": true
+  },
+  {
+    "id": "want_tonight",
+    "kind": "desire",
+    "text": "AUTHOR TO WRITE: I cannot stay away tonight. Let me come to you.",
+    "description": "AUTHOR TO WRITE: she asks to spend the night with the commander.",
+    "grantCost": [
+      {
+        "type": "night_visit"
+      }
+    ],
+    "grantDeltas": {
+      "trust": 1,
+      "affinity": 3
+    },
+    "refuseDeltas": {
+      "trust": 0,
+      "affinity": -2,
+      "stress": 2
+    },
+    "conditions": {},
+    "weight": 3
+  },
+  {
+    "id": "want_attention",
+    "kind": "desire",
+    "text": "AUTHOR TO WRITE: Spend some time with me. Not for the work.",
+    "description": "AUTHOR TO WRITE: she asks for the commander's attention, nothing more.",
+    "grantCost": [],
+    "grantDeltas": {
+      "trust": 1,
+      "affinity": 2
+    },
+    "refuseDeltas": {
+      "trust": 0,
+      "affinity": -2,
+      "stress": 2
+    },
+    "conditions": {},
+    "weight": 2,
+    "wantRelief": 15
+  },
+  {
+    "id": "publicity_talk",
+    "kind": "interpersonal",
+    "text": "AUTHOR TO WRITE: We have to talk about who knows about us.",
+    "description": "AUTHOR TO WRITE: she wants the relationship to be as open, or as private, as she prefers.",
+    "grantCost": [],
+    "grantDeltas": {
+      "trust": 2,
+      "affinity": 2
+    },
+    "refuseDeltas": {
+      "trust": -1,
+      "affinity": -2,
+      "stress": 2
+    },
+    "conditions": {
+      "publicityMismatch": true
+    },
+    "weight": 3
   }
 ]

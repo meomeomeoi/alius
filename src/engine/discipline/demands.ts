@@ -3,6 +3,10 @@ import type { Entry, Registries } from '../../content/types';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { isLiving } from '../economy';
 import { contentAllowed } from '../bonds/content';
+import { publicityMismatch } from '../bonds/publicity';
+import { WANT_VISIT_KIND } from '../bonds/scene';
+import { relieveWant } from '../bonds/want';
+import { queueNightSpec } from '../night';
 import { pushMessage } from '../dms';
 import { canEquip, equippedBy } from '../items';
 import { nextId, revealCrime } from '../memory';
@@ -57,7 +61,7 @@ const otherUnit = (state: CampaignState, unitId: string): Unit | undefined =>
 /** Can this template be asked of her now? Its conditions hold and what it would ask for exists. */
 function eligible(state: CampaignState, reg: Registries, unit: Unit, t: Entry): boolean {
   const rel = state.relations[unit.id];
-  const c = (t.conditions ?? {}) as { stances?: string[]; impunity?: [number, number]; dispositionRanks?: [number, number]; tagsAny?: string[]; statesAny?: string[]; flagsNone?: string[] };
+  const c = (t.conditions ?? {}) as { stances?: string[]; impunity?: [number, number]; dispositionRanks?: [number, number]; tagsAny?: string[]; statesAny?: string[]; flagsNone?: string[]; publicityMismatch?: boolean };
   const stance = commandStance(state, reg, unit.id);
   const i = impunityOf(state, reg, unit.id)?.value;
   if (c.stances && (stance === null || !c.stances.includes(stance))) return false;
@@ -67,6 +71,7 @@ function eligible(state: CampaignState, reg: Registries, unit: Unit, t: Entry): 
   if (c.tagsAny && !c.tagsAny.some((tag) => [...unit.likes, ...unit.dislikes, ...unit.triggers].includes(tag))) return false;
   if (c.statesAny && !c.statesAny.includes(rel?.stateId ?? '')) return false;
   if (c.flagsNone && c.flagsNone.some((f) => rel?.flags.includes(f))) return false;
+  if (c.publicityMismatch === true && !publicityMismatch(state, unit.id)) return false; // P9d
   for (const cost of costsOf(t)) {
     if (cost.type === 'equip_item' && !itemFor(state, reg, unit, cost)) return false;
     if (cost.type === 'other_unit_event' && !otherUnit(state, unit.id)) return false;
@@ -75,11 +80,15 @@ function eligible(state: CampaignState, reg: Registries, unit: Unit, t: Entry): 
   return true;
 }
 
-export function eligibleTemplates(state: CampaignState, reg: Registries, unitId: string): Entry[] {
+/**
+ * The templates she may ask now. A `desire` template only comes up when it is asked for (`kind: 'desire'`: Want opens it,
+ * never the daily roll); every other call leaves them out.
+ */
+export function eligibleTemplates(state: CampaignState, reg: Registries, unitId: string, kind?: 'desire'): Entry[] {
   const unit = state.squad.find((u) => u.id === unitId);
   if (!unit || unit.kind !== 'named' || !isLiving(unit) || !state.relations[unitId]) return [];
   // P9d: a template tagged with a category that is off, or one of her own limits, is never asked
-  return [...reg.demandTemplates.values()].filter((t) => contentAllowed(state, reg, t, unitId) && eligible(state, reg, unit, t));
+  return [...reg.demandTemplates.values()].filter((t) => (t.kind === 'desire') === (kind === 'desire') && contentAllowed(state, reg, t, unitId) && eligible(state, reg, unit, t));
 }
 
 /**
@@ -87,12 +96,12 @@ export function eligibleTemplates(state: CampaignState, reg: Registries, unitId:
  * It opens `undelivered`; the app words it and delivers it, or the day step delivers the template text. `null` when she is
  * not a named living unit, cannot take part in a scene (the brig, extra duty), already has an open demand, is over `perWeek` openings this week or nothing is eligible.
  */
-export function openDemand(draft: CampaignState, ctx: EngineCtx, unitId: string, opts: { owed?: boolean } = {}): { demand: Demand; events: EngineEvent[] } | null {
+export function openDemand(draft: CampaignState, ctx: EngineCtx, unitId: string, opts: { owed?: boolean; /** P9d: open a `desire` demand (Want's own cadence replaces the weekly cap). */ desire?: boolean } = {}): { demand: Demand; events: EngineEvent[] } | null {
   const reg = ctx.registries;
   const unit = draft.squad.find((u) => u.id === unitId);
-  if (!unit || unit.kind !== 'named' || !isLiving(unit) || hasOpen(draft, unitId) || openedThisWeek(draft, unitId) >= TUNING.demands.perWeek) return null;
+  if (!unit || unit.kind !== 'named' || !isLiving(unit) || hasOpen(draft, unitId) || (opts.desire !== true && openedThisWeek(draft, unitId) >= TUNING.demands.perWeek)) return null;
   if (restrictionReason(draft, unitId, 'scene') !== null) return null; // in the brig or on duty she cannot be talked to: its [TALK] would always fail
-  let pool = eligibleTemplates(draft, reg, unitId);
+  let pool = eligibleTemplates(draft, reg, unitId, opts.desire === true ? 'desire' : undefined);
   const last = [...(draft.discipline?.demandLog ?? [])].reverse().find((e) => e.unitId === unitId)?.templateId;
   if (pool.length > 1) pool = pool.filter((t) => t.id !== last);
   if (pool.length === 0) return null;
@@ -102,7 +111,7 @@ export function openDemand(draft: CampaignState, ctx: EngineCtx, unitId: string,
   const stance = commandStance(draft, reg, unitId);
   const demand: Demand = {
     id: nextId(draft, 'd'), unitId, templateId: String(tpl.id), text: String(tpl.text).replaceAll('{name}', unit.displayName), day: draft.day,
-    expiresDay: draft.day + TUNING.demands.expiresInDays, status: 'undelivered', impunityDriven: stance !== null && DRIVEN.includes(stance),
+    expiresDay: draft.day + TUNING.demands.expiresInDays, status: 'undelivered', impunityDriven: opts.desire !== true && stance !== null && DRIVEN.includes(stance),
     ...(opts.owed ? { owed: true } : {}),
   };
   const d = disciplineOf(draft);
@@ -153,6 +162,7 @@ export function grantProblem(state: CampaignState, reg: Registries, demandId: st
     if (cost.type === 'equip_item' && !itemFor(state, reg, unit, cost)) return `There is no suitable ${cost.slot} to give.`;
     if (cost.type === 'reveal_crime' && state.relations[unit.id]?.flags.includes('knows_crime')) return 'She already knows.';
     if (cost.type === 'other_unit_event' && !otherUnit(state, unit.id)) return 'There is nobody else to bring into it.';
+    if (cost.type === 'night_visit' && state.calendar.nightEventsQueue.some((e) => e.unitId === unit.id && e.kind === WANT_VISIT_KIND)) return 'She is already coming tonight.';
   }
   return null;
 }
@@ -186,6 +196,10 @@ function pay(draft: CampaignState, ctx: EngineCtx, unit: Unit, cost: DemandCost)
     }
     case 'reveal_crime':
       return revealCrime(draft, reg, [unit.id]);
+    case 'night_visit': {
+      const v = TUNING.bonds.want.visit;
+      return queueNightSpec(draft, unit, { id: WANT_VISIT_KIND, kind: WANT_VISIT_KIND, chance: 1, priority: TUNING.bonds.want.satisfyPriority, trigger: 'daily', framing: v.framing, ignore: { ...v.ignore }, contentTags: [] } as never);
+    }
     case 'other_unit_event': {
       const other = otherUnit(draft, unit.id)!;
       return [...applyEventToUnit(draft, reg, other.id, { type: cost.event, actor: 'commander', targets: [other.id], severity: cost.severity, evidence: 'a demand was granted', confidence: 1 }), ...evaluateAutomatic(draft, reg, other.id)];
@@ -219,8 +233,15 @@ export function answerDemand(draft: CampaignState, ctx: EngineCtx, demandId: str
     events.push(...applyEventToUnit(draft, reg, unit.id, {
       type: 'granted_demand', actor: 'commander', targets: [unit.id], severity: tpl.costly === true ? 'major' : 'minor', templateId: demand.templateId, evidence: 'a demand was granted', confidence: 1,
     }));
-    countDeed(draft, 'demands_granted');
+    // P9d: a soldier's own want is not a contest of authority: no deed, no record, and her Want falls at once by the template's `wantRelief`
+    if (tpl.kind !== 'desire') countDeed(draft, 'demands_granted');
     if (demand.impunityDriven) events.push(...addRecord(draft, unit.id, TUNING.demands.grantRecord, 'demand_granted'));
+    if (typeof tpl.wantRelief === 'number') events.push(...relieveWant(draft, unit.id, tpl.wantRelief, 'demand'));
+  } else if (tpl.kind === 'desire') {
+    // POSTPONE: the template's refuse deltas and nothing else (she is asked to wait, not defied)
+    events.push(...applyEventToUnit(draft, reg, unit.id, {
+      type: 'refused_demand', actor: 'commander', targets: [unit.id], severity: 'moderate', templateId: demand.templateId, evidence: 'a demand was postponed', confidence: 1,
+    }));
   } else {
     const high = (impunityOf(draft, reg, unit.id)?.value ?? 0) >= TUNING.impunity.stance.impunityHigh;
     events.push(...applyEventToUnit(draft, reg, unit.id, {

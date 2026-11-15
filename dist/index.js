@@ -6943,12 +6943,14 @@ var DemandCostSchema = external_exports.discriminatedUnion("type", [
   /** An unworn item of the commander's stash of at least this rarity goes to her. */
   external_exports.object({ type: external_exports.literal("equip_item"), slot: external_exports.enum(["weapon", "upper", "lower"]), minRarity: external_exports.enum(RARITIES) }).strict(),
   external_exports.object({ type: external_exports.literal("reveal_crime") }).strict(),
+  /** P9d: she comes to the commander tonight (a `want_visit` night knock at priority 90). */
+  external_exports.object({ type: external_exports.literal("night_visit") }).strict(),
   /** One other named living unit (the one with the lowest Affinity) takes an event from the commander. */
   external_exports.object({ type: external_exports.literal("other_unit_event"), event: external_exports.enum(EVENT_TYPES), severity: external_exports.enum(["minor", "moderate", "major", "extreme"]) }).strict()
 ]);
 var intRange = (lo, hi) => external_exports.tuple([int.min(lo).max(hi), int.min(lo).max(hi)]).refine(([a, b]) => a <= b, "the range must run from low to high");
 var DemandTemplateSchema = BaseEntrySchema.extend({
-  kind: external_exports.enum(["resource", "privilege", "exclusion", "item", "information", "interpersonal"]),
+  kind: external_exports.enum(["resource", "privilege", "exclusion", "item", "information", "interpersonal", "desire"]),
   /** Her words, a fallback when the wording call is off or fails. `{name}` is her name. */
   text: str.max(TUNING.demands.textMax),
   description: str.max(DESCRIPTION_MAX),
@@ -6963,9 +6965,13 @@ var DemandTemplateSchema = BaseEntrySchema.extend({
     dispositionRanks: intRange(1, 5).optional(),
     tagsAny: external_exports.array(str).optional(),
     statesAny: external_exports.array(str).optional(),
-    flagsNone: external_exports.array(str).optional()
+    flagsNone: external_exports.array(str).optional(),
+    /** P9d: only while her publicity preference differs from the relationship's level. */
+    publicityMismatch: external_exports.literal(true).optional()
   }).strict(),
   weight: external_exports.number().min(0.1).max(20),
+  /** P9d: granting it lowers her Want by this much at once. */
+  wantRelief: int.min(0).max(100).optional(),
   contentTags
 }).strict();
 var deedCounter = external_exports.enum(DEED_COUNTERS);
@@ -10591,6 +10597,14 @@ function markDmViolation(draft, reg, unitId, messageRef, raw) {
   if (message) message.violation = categories;
 }
 
+// src/engine/bonds/publicity.ts
+function publicityMismatch(state, unitId) {
+  const unit = state.squad.find((u) => u.id === unitId);
+  const bond = unit ? bondOf(unit) : null;
+  const level = state.relations[unitId]?.publicity?.level;
+  return bond !== null && level !== void 0 && level !== bond.publicity;
+}
+
 // src/engine/dms.ts
 var threadOf = (state, unitId) => state.dms[unitId] ?? [];
 function pushMessage(draft, unitId, m) {
@@ -10715,6 +10729,7 @@ function eligible(state, reg, unit, t) {
   if (c.tagsAny && !c.tagsAny.some((tag2) => [...unit.likes, ...unit.dislikes, ...unit.triggers].includes(tag2))) return false;
   if (c.statesAny && !c.statesAny.includes(rel?.stateId ?? "")) return false;
   if (c.flagsNone && c.flagsNone.some((f) => rel?.flags.includes(f))) return false;
+  if (c.publicityMismatch === true && !publicityMismatch(state, unit.id)) return false;
   for (const cost of costsOf(t)) {
     if (cost.type === "equip_item" && !itemFor(state, reg, unit, cost)) return false;
     if (cost.type === "other_unit_event" && !otherUnit(state, unit.id)) return false;
@@ -10722,17 +10737,17 @@ function eligible(state, reg, unit, t) {
   }
   return true;
 }
-function eligibleTemplates(state, reg, unitId) {
+function eligibleTemplates(state, reg, unitId, kind) {
   const unit = state.squad.find((u) => u.id === unitId);
   if (!unit || unit.kind !== "named" || !isLiving(unit) || !state.relations[unitId]) return [];
-  return [...reg.demandTemplates.values()].filter((t) => contentAllowed(state, reg, t, unitId) && eligible(state, reg, unit, t));
+  return [...reg.demandTemplates.values()].filter((t) => t.kind === "desire" === (kind === "desire") && contentAllowed(state, reg, t, unitId) && eligible(state, reg, unit, t));
 }
 function openDemand(draft, ctx2, unitId, opts = {}) {
   const reg = ctx2.registries;
   const unit = draft.squad.find((u) => u.id === unitId);
-  if (!unit || unit.kind !== "named" || !isLiving(unit) || hasOpen(draft, unitId) || openedThisWeek(draft, unitId) >= TUNING.demands.perWeek) return null;
+  if (!unit || unit.kind !== "named" || !isLiving(unit) || hasOpen(draft, unitId) || opts.desire !== true && openedThisWeek(draft, unitId) >= TUNING.demands.perWeek) return null;
   if (restrictionReason(draft, unitId, "scene") !== null) return null;
-  let pool = eligibleTemplates(draft, reg, unitId);
+  let pool = eligibleTemplates(draft, reg, unitId, opts.desire === true ? "desire" : void 0);
   const last = [...draft.discipline?.demandLog ?? []].reverse().find((e) => e.unitId === unitId)?.templateId;
   if (pool.length > 1) pool = pool.filter((t) => t.id !== last);
   if (pool.length === 0) return null;
@@ -10748,7 +10763,7 @@ function openDemand(draft, ctx2, unitId, opts = {}) {
     day: draft.day,
     expiresDay: draft.day + TUNING.demands.expiresInDays,
     status: "undelivered",
-    impunityDriven: stance !== null && DRIVEN.includes(stance),
+    impunityDriven: opts.desire !== true && stance !== null && DRIVEN.includes(stance),
     ...opts.owed ? { owed: true } : {}
   };
   const d = disciplineOf(draft);
@@ -10792,6 +10807,7 @@ function grantProblem(state, reg, demandId) {
     if (cost.type === "equip_item" && !itemFor(state, reg, unit, cost)) return `There is no suitable ${cost.slot} to give.`;
     if (cost.type === "reveal_crime" && state.relations[unit.id]?.flags.includes("knows_crime")) return "She already knows.";
     if (cost.type === "other_unit_event" && !otherUnit(state, unit.id)) return "There is nobody else to bring into it.";
+    if (cost.type === "night_visit" && state.calendar.nightEventsQueue.some((e) => e.unitId === unit.id && e.kind === WANT_VISIT_KIND)) return "She is already coming tonight.";
   }
   return null;
 }
@@ -10824,6 +10840,10 @@ function pay(draft, ctx2, unit, cost) {
     }
     case "reveal_crime":
       return revealCrime(draft, reg, [unit.id]);
+    case "night_visit": {
+      const v = TUNING.bonds.want.visit;
+      return queueNightSpec(draft, unit, { id: WANT_VISIT_KIND, kind: WANT_VISIT_KIND, chance: 1, priority: TUNING.bonds.want.satisfyPriority, trigger: "daily", framing: v.framing, ignore: { ...v.ignore }, contentTags: [] });
+    }
     case "other_unit_event": {
       const other = otherUnit(draft, unit.id);
       return [...applyEventToUnit(draft, reg, other.id, { type: cost.event, actor: "commander", targets: [other.id], severity: cost.severity, evidence: "a demand was granted", confidence: 1 }), ...evaluateAutomatic(draft, reg, other.id)];
@@ -10856,8 +10876,19 @@ function answerDemand(draft, ctx2, demandId, answer, opts = {}) {
       evidence: "a demand was granted",
       confidence: 1
     }));
-    countDeed(draft, "demands_granted");
+    if (tpl.kind !== "desire") countDeed(draft, "demands_granted");
     if (demand.impunityDriven) events.push(...addRecord(draft, unit.id, TUNING.demands.grantRecord, "demand_granted"));
+    if (typeof tpl.wantRelief === "number") events.push(...relieveWant(draft, unit.id, tpl.wantRelief, "demand"));
+  } else if (tpl.kind === "desire") {
+    events.push(...applyEventToUnit(draft, reg, unit.id, {
+      type: "refused_demand",
+      actor: "commander",
+      targets: [unit.id],
+      severity: "moderate",
+      templateId: demand.templateId,
+      evidence: "a demand was postponed",
+      confidence: 1
+    }));
   } else {
     const high = (impunityOf(draft, reg, unit.id)?.value ?? 0) >= TUNING.impunity.stance.impunityHigh;
     events.push(...applyEventToUnit(draft, reg, unit.id, {
@@ -16319,12 +16350,27 @@ function startCrossedBreakdowns(draft, ctx2) {
   return events;
 }
 
+// src/engine/bonds/desire.ts
+function openDesireDemands(draft, ctx2) {
+  const reg = ctx2.registries;
+  const events = [];
+  for (const unit of draft.squad) {
+    if (unit.kind !== "named" || !isLiving(unit) || wantBandOf(draft, reg, unit.id) === "calm") continue;
+    const last = (draft.discipline?.demandLog ?? []).filter((e) => e.unitId === unit.id && reg.demandTemplates.get(e.templateId ?? "")?.kind === "desire").reduce((n, e) => Math.max(n, e.day), -Infinity);
+    if (draft.day - last < TUNING.bonds.want.demandEveryDays) continue;
+    const opened = openDemand(draft, ctx2, unit.id, { desire: true });
+    if (opened) events.push(...opened.events);
+  }
+  return events;
+}
+
 // src/engine/bonds/dayStep.ts
 function bondsDayStep(draft, ctx2) {
   return [
     ...releaseWantBreakdowns(draft),
     ...wantStep(draft, ctx2.registries),
-    ...startCrossedBreakdowns(draft, ctx2)
+    ...startCrossedBreakdowns(draft, ctx2),
+    ...openDesireDemands(draft, ctx2)
   ];
 }
 
@@ -17907,6 +17953,68 @@ function reputationDirectives(builder, state, reg) {
   }
 }
 
+// src/bonds/directives.ts
+var EXPLICIT_CATEGORY = "explicit_scenes";
+var orderedCategories = (reg) => [...reg.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order));
+var clean2 = (text2) => text2.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
+function contentLine(state, reg) {
+  if (state === null) return "";
+  const on = enabledCategories(state);
+  const off = orderedCategories(reg).filter((c) => !on.includes(String(c.id)));
+  const parts = [];
+  if (off.length > 0) parts.push(`Content excluded from this story \u2014 never depict, imply or describe: ${off.map((c) => String(c.label)).join(", ")}.`);
+  if (on.includes(EXPLICIT_CATEGORY)) parts.push("Explicit intimate scenes are allowed when the story leads there.");
+  else if (reg.contentCategories.has(EXPLICIT_CATEGORY)) parts.push("Fade out intimate moments.");
+  return parts.join(" ");
+}
+var wantSet = /* @__PURE__ */ new WeakMap();
+function bondsDirectives(builder, state, reg) {
+  builder.clearMatching((d) => d.id.startsWith("limits:") || d.id.startsWith("boundary:"));
+  builder.clearDirective("lead");
+  for (const id of wantSet.get(builder) ?? []) builder.clearDirective(id);
+  wantSet.set(builder, /* @__PURE__ */ new Set());
+  const line2 = contentLine(state, reg);
+  if (line2 === "" || state === null) builder.clearDirective("content");
+  else builder.setDirective({ id: "content", expiresAfter: "manual", text: line2 });
+  if (state === null || !state.scene) return;
+  const labelOf = (id) => String(reg.contentCategories.get(id)?.label ?? id);
+  for (const id of state.scene.participants) {
+    const unit = state.squad.find((u) => u.id === id);
+    const bond = unit ? bondOf(unit) : null;
+    if (!unit || !bond) continue;
+    const categories = [...new Set(bond.ownLimits.categories)].filter((c) => reg.contentCategories.has(c));
+    const ordered = orderedCategories(reg).map((c) => String(c.id)).filter((c) => categories.includes(c));
+    const note = clean2(bond.ownLimits.note ?? "");
+    if (ordered.length === 0 && note === "") continue;
+    const text2 = ordered.length > 0 ? `${unit.displayName} will not take part in: ${ordered.map(labelOf).join(", ")}.${note !== "" ? ` ${note}` : ""}` : `${unit.displayName} has a personal limit: ${note}`;
+    builder.setDirective({ id: `limits:${id}`, expiresAfter: "scene", text: text2 });
+  }
+  for (const id of state.scene.participants) {
+    const unit = state.squad.find((u) => u.id === id);
+    const band = wantBandOf(state, reg, id);
+    if (!unit || band !== "aching" && band !== "desperate") continue;
+    builder.setDirective({ id: `want:${id}`, expiresAfter: "manual", text: `${unit.displayName} is restless and irritable with unmet want; it colours how she speaks to the commander.` });
+    wantSet.get(builder).add(`want:${id}`);
+  }
+  const lead = state.scene.lead;
+  const leader = lead ? state.squad.find((u) => u.id === lead.unitId) : void 0;
+  if (lead && leader && intimacyOf(state).romance) {
+    const name = leader.displayName;
+    const text2 = lead.by === "unit" ? `${name} leads this scene.` : lead.by === "commander" ? `The commander leads this scene; ${name} follows.` : `${name} and the commander share the lead.`;
+    builder.setDirective({ id: "lead", expiresAfter: "scene", text: text2 });
+  }
+  (state.scene.limits ?? []).forEach((text2, i) => {
+    const t = clean2(text2);
+    if (t !== "") builder.setDirective({ id: `boundary:${i}`, expiresAfter: "scene", text: `In this scene, a boundary the commander set: ${t}` });
+  });
+}
+function patienceDirective(unitId, name) {
+  return { id: `want:${unitId}`, expiresAfter: "next_reply", text: `${name} was asked to wait; she is trying to be patient.` };
+}
+function askDirective(unitId, name) {
+  return { id: `ask:${unitId}`, expiresAfter: "next_reply", text: `The commander asks ${name} what she wants; she answers plainly, in character.` };
+}
+
 // src/discipline/controller.ts
 function createDiscipline(deps) {
   const nameOf9 = (unitId) => deps.app.current().state?.squad.find((u) => u.id === unitId)?.displayName ?? unitId;
@@ -17952,12 +18060,15 @@ function createDiscipline(deps) {
     for (const e of events) if (e.type === "demand_opened") await wordAndDeliver(String(e.demandId), expect);
   }
   function answerDemand2(demandId, answer) {
+    const asked = state()?.discipline?.demands.find((d) => d.id === demandId);
+    const postponed = answer === "refuse" && asked !== void 0 && deps.registries().demandTemplates.get(asked.templateId)?.kind === "desire";
     const events = deps.app.dispatch({ type: "demand/answer", payload: { demandId, answer } }, { expectChatId: chatId() });
     const bad = events.find((e) => e.type === "error");
     if (bad) {
       deps.toast("error", String(bad.message ?? bad.code));
       return false;
     }
+    if (postponed && asked && state()?.scene?.participants.includes(asked.unitId)) deps.context.setDirective(patienceDirective(asked.unitId, nameOf9(asked.unitId)));
     syncDirectives();
     return true;
   }
@@ -20148,65 +20259,6 @@ function createComms(deps) {
       failed(app.dispatch({ type: "night/ignore", payload: {} }, { expectChatId: chatId() }));
     }
   };
-}
-
-// src/bonds/directives.ts
-var EXPLICIT_CATEGORY = "explicit_scenes";
-var orderedCategories = (reg) => [...reg.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order));
-var clean2 = (text2) => text2.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
-function contentLine(state, reg) {
-  if (state === null) return "";
-  const on = enabledCategories(state);
-  const off = orderedCategories(reg).filter((c) => !on.includes(String(c.id)));
-  const parts = [];
-  if (off.length > 0) parts.push(`Content excluded from this story \u2014 never depict, imply or describe: ${off.map((c) => String(c.label)).join(", ")}.`);
-  if (on.includes(EXPLICIT_CATEGORY)) parts.push("Explicit intimate scenes are allowed when the story leads there.");
-  else if (reg.contentCategories.has(EXPLICIT_CATEGORY)) parts.push("Fade out intimate moments.");
-  return parts.join(" ");
-}
-var wantSet = /* @__PURE__ */ new WeakMap();
-function bondsDirectives(builder, state, reg) {
-  builder.clearMatching((d) => d.id.startsWith("limits:") || d.id.startsWith("boundary:"));
-  builder.clearDirective("lead");
-  for (const id of wantSet.get(builder) ?? []) builder.clearDirective(id);
-  wantSet.set(builder, /* @__PURE__ */ new Set());
-  const line2 = contentLine(state, reg);
-  if (line2 === "" || state === null) builder.clearDirective("content");
-  else builder.setDirective({ id: "content", expiresAfter: "manual", text: line2 });
-  if (state === null || !state.scene) return;
-  const labelOf = (id) => String(reg.contentCategories.get(id)?.label ?? id);
-  for (const id of state.scene.participants) {
-    const unit = state.squad.find((u) => u.id === id);
-    const bond = unit ? bondOf(unit) : null;
-    if (!unit || !bond) continue;
-    const categories = [...new Set(bond.ownLimits.categories)].filter((c) => reg.contentCategories.has(c));
-    const ordered = orderedCategories(reg).map((c) => String(c.id)).filter((c) => categories.includes(c));
-    const note = clean2(bond.ownLimits.note ?? "");
-    if (ordered.length === 0 && note === "") continue;
-    const text2 = ordered.length > 0 ? `${unit.displayName} will not take part in: ${ordered.map(labelOf).join(", ")}.${note !== "" ? ` ${note}` : ""}` : `${unit.displayName} has a personal limit: ${note}`;
-    builder.setDirective({ id: `limits:${id}`, expiresAfter: "scene", text: text2 });
-  }
-  for (const id of state.scene.participants) {
-    const unit = state.squad.find((u) => u.id === id);
-    const band = wantBandOf(state, reg, id);
-    if (!unit || band !== "aching" && band !== "desperate") continue;
-    builder.setDirective({ id: `want:${id}`, expiresAfter: "manual", text: `${unit.displayName} is restless and irritable with unmet want; it colours how she speaks to the commander.` });
-    wantSet.get(builder).add(`want:${id}`);
-  }
-  const lead = state.scene.lead;
-  const leader = lead ? state.squad.find((u) => u.id === lead.unitId) : void 0;
-  if (lead && leader && intimacyOf(state).romance) {
-    const name = leader.displayName;
-    const text2 = lead.by === "unit" ? `${name} leads this scene.` : lead.by === "commander" ? `The commander leads this scene; ${name} follows.` : `${name} and the commander share the lead.`;
-    builder.setDirective({ id: "lead", expiresAfter: "scene", text: text2 });
-  }
-  (state.scene.limits ?? []).forEach((text2, i) => {
-    const t = clean2(text2);
-    if (t !== "") builder.setDirective({ id: `boundary:${i}`, expiresAfter: "scene", text: `In this scene, a boundary the commander set: ${t}` });
-  });
-}
-function askDirective(unitId, name) {
-  return { id: `ask:${unitId}`, expiresAfter: "next_reply", text: `The commander asks ${name} what she wants; she answers plainly, in character.` };
 }
 
 // src/scene/context.ts
@@ -25584,12 +25636,14 @@ function drawDemandChips(host, state, reg, pick2, on) {
     if (d.status !== "open" || !pick2({ unitId: d.unitId })) continue;
     const name = (state.squad.find((u) => u.id === d.unitId)?.displayName ?? d.unitId).toUpperCase();
     const why = grantProblem(state, reg, d.id);
+    const desire = reg.demandTemplates.get(d.templateId)?.kind === "desire";
     const button2 = (kind, text2, run, disabled = false, title) => {
       const b = h("button", {
         type: "button",
         class: "alius-btn alius-tagchip",
         "data-demand-answer": kind,
         "data-demand": d.id,
+        ...desire ? analyzeNative("glossary:want") : {},
         ...disabled ? { "aria-disabled": "true", ...title ? { title } : {} } : {},
         onclick: () => {
           if (b.getAttribute("aria-disabled") !== "true") run();
@@ -25602,8 +25656,8 @@ function drawDemandChips(host, state, reg, pick2, on) {
       { class: "alius-chip-group", "data-demand-group": d.id },
       h("span", { class: "alius-chip", "data-demand": d.id, ...analyzeAttrs(`demandTemplates:${d.templateId}`, { unitId: d.unitId }) }, `${name} DEMANDS: ${d.text}`),
       d.owed ? h("span", { class: "alius-chip", "data-owed": d.id, ...analyzeAttrs("glossary:owed_demand") }, "OWED") : null,
-      button2("grant", "[GRANT]", () => on.grant(d.id), why !== null, why ?? void 0),
-      button2("refuse", "[REFUSE]", () => on.refuse(d.id)),
+      button2("grant", desire ? "[SATISFY]" : "[GRANT]", () => on.grant(d.id), why !== null, why ?? void 0),
+      button2("refuse", desire ? "[POSTPONE]" : "[REFUSE]", () => on.refuse(d.id)),
       on.talk ? button2("talk", "[TALK]", () => on.talk(d.id)) : null
     ));
   }

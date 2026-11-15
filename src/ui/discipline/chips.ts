@@ -2,7 +2,7 @@ import type { Registries } from '../../content/types';
 import { canUndo, grantProblem } from '../../engine/discipline';
 import type { CampaignState } from '../../engine/state/types';
 import { measureLabel } from '../../discipline/directives';
-import { analyzeAttrs } from '../analyze/mark';
+import { analyzeAttrs, analyzeNative } from '../analyze/mark';
 import { h } from '../dom';
 
 export interface ChipSource {
@@ -60,9 +60,12 @@ export function drawDemandChips(
     if (d.status !== 'open' || !pick({ unitId: d.unitId })) continue;
     const name = (state.squad.find((u) => u.id === d.unitId)?.displayName ?? d.unitId).toUpperCase();
     const why = grantProblem(state, reg, d.id);
+    // P9d: her own want is answered, not granted or refused
+    const desire = reg.demandTemplates.get(d.templateId)?.kind === 'desire';
     const button = (kind: 'grant' | 'refuse' | 'talk', text: string, run: () => void, disabled = false, title?: string): HTMLElement => {
       const b = h('button', {
         type: 'button', class: 'alius-btn alius-tagchip', 'data-demand-answer': kind, 'data-demand': d.id,
+        ...(desire ? analyzeNative('glossary:want') : {}),
         ...(disabled ? { 'aria-disabled': 'true', ...(title ? { title } : {}) } : {}),
         onclick: () => { if (b.getAttribute('aria-disabled') !== 'true') run(); },
       }, text);
@@ -71,8 +74,8 @@ export function drawDemandChips(
     host.append(h('div', { class: 'alius-chip-group', 'data-demand-group': d.id },
       h('span', { class: 'alius-chip', 'data-demand': d.id, ...analyzeAttrs(`demandTemplates:${d.templateId}`, { unitId: d.unitId }) }, `${name} DEMANDS: ${d.text}`),
       d.owed ? h('span', { class: 'alius-chip', 'data-owed': d.id, ...analyzeAttrs('glossary:owed_demand') }, 'OWED') : null,
-      button('grant', '[GRANT]', () => on.grant(d.id), why !== null, why ?? undefined),
-      button('refuse', '[REFUSE]', () => on.refuse(d.id)),
+      button('grant', desire ? '[SATISFY]' : '[GRANT]', () => on.grant(d.id), why !== null, why ?? undefined),
+      button('refuse', desire ? '[POSTPONE]' : '[REFUSE]', () => on.refuse(d.id)),
       on.talk ? button('talk', '[TALK]', () => on.talk!(d.id)) : null));
   }
 }

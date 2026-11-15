@@ -1377,6 +1377,8 @@ export const DemandCostSchema = z.discriminatedUnion('type', [
   /** An unworn item of the commander's stash of at least this rarity goes to her. */
   z.object({ type: z.literal('equip_item'), slot: z.enum(['weapon', 'upper', 'lower']), minRarity: z.enum(RARITIES) }).strict(),
   z.object({ type: z.literal('reveal_crime') }).strict(),
+  /** P9d: she comes to the commander tonight (a `want_visit` night knock at priority 90). */
+  z.object({ type: z.literal('night_visit') }).strict(),
   /** One other named living unit (the one with the lowest Affinity) takes an event from the commander. */
   z.object({ type: z.literal('other_unit_event'), event: z.enum(EVENT_TYPES), severity: z.enum(['minor', 'moderate', 'major', 'extreme']) }).strict(),
 ]);
@@ -1385,7 +1387,7 @@ export type DemandCost = z.infer<typeof DemandCostSchema>;
 const intRange = (lo: number, hi: number) => z.tuple([int.min(lo).max(hi), int.min(lo).max(hi)]).refine(([a, b]) => a <= b, 'the range must run from low to high');
 
 export const DemandTemplateSchema = BaseEntrySchema.extend({
-  kind: z.enum(['resource', 'privilege', 'exclusion', 'item', 'information', 'interpersonal']),
+  kind: z.enum(['resource', 'privilege', 'exclusion', 'item', 'information', 'interpersonal', 'desire']),
   /** Her words, a fallback when the wording call is off or fails. `{name}` is her name. */
   text: str.max(TUNING.demands.textMax),
   description: str.max(DESCRIPTION_MAX),
@@ -1401,8 +1403,12 @@ export const DemandTemplateSchema = BaseEntrySchema.extend({
     tagsAny: z.array(str).optional(),
     statesAny: z.array(str).optional(),
     flagsNone: z.array(str).optional(),
+    /** P9d: only while her publicity preference differs from the relationship's level. */
+    publicityMismatch: z.literal(true).optional(),
   }).strict(),
   weight: z.number().min(0.1).max(20),
+  /** P9d: granting it lowers her Want by this much at once. */
+  wantRelief: int.min(0).max(100).optional(),
   contentTags,
 }).strict();
 

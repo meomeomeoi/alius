@@ -86,7 +86,7 @@ describe('no pronoun for the commander in content', () => {
 
   it('demand templates (P9)', () => {
     const texts = fields('demandTemplates', ['text', 'description']);
-    expect(texts).toHaveLength(12);
+    expect(texts).toHaveLength(18); // P9d: nine templates
     expect(texts.filter(([, t]) => COMMANDER_PRONOUN.test(t) || /commander[^.]*\btheir\b/i.test(t)).map(([where]) => where)).toEqual([]);
   });
 

@@ -52,9 +52,9 @@ const asOpen = (s0: CampaignState, id: string, tpl: string, opts: { owed?: boole
 };
 
 describe('the templates', () => {
-  it('six core templates, one per example of the spec', () => {
-    expect([...base.demandTemplates.keys()]).toEqual(['double_ration', 'own_room', 'skip_next_run', 'claim_weapon', 'back_off', 'tell_crime']);
-    expect([...base.demandTemplates.values()].map((t) => t.kind).sort()).toEqual(['exclusion', 'information', 'interpersonal', 'item', 'privilege', 'resource']);
+  it('six core templates, one per example of the spec, plus the three of P9d', () => {
+    expect([...base.demandTemplates.keys()]).toEqual(['double_ration', 'own_room', 'skip_next_run', 'claim_weapon', 'back_off', 'tell_crime', 'want_tonight', 'want_attention', 'publicity_talk']);
+    expect([...base.demandTemplates.values()].map((t) => t.kind).sort()).toEqual(['desire', 'desire', 'exclusion', 'information', 'interpersonal', 'interpersonal', 'item', 'privilege', 'resource']);
   });
 });
 

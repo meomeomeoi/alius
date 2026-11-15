@@ -1264,5 +1264,16 @@
       "content_categories",
       "impunity"
     ]
+  },
+  {
+    "id": "want",
+    "term": "Want",
+    "short": "How strongly a soldier wants the commander, built up day by day. It shows as a word; unmet, it makes her restless, then irritable, then it breaks her.",
+    "long": "AUTHOR TO WRITE: Want only runs for soldiers whose card gives them a real desire and who are close to the commander. It grows each day, and falls when the two spend time together, when she trains beside the commander, when a night together happens or when a dangerous run takes her mind off it. From a point she starts writing first and may come to the door; later she is on edge; at the top her defect may break her for a day. She asks for it herself: you can satisfy, postpone or talk.",
+    "see": [
+      "bond_profile",
+      "lead",
+      "demand"
+    ]
   }
 ]

@@ -565,17 +565,17 @@ tests/**                                           mirrors src; tests/helpers/bo
 - Consumes: `openDemand`, `answerDemand` (P9).
 - Produces: the chip labels `[SATISFY] [POSTPONE] [TALK]` for `kind: 'desire'`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `Want ≥ 40 opens a desire demand at most every 3 days`
   - `rollDemands never opens a desire template`
   - `SATISFY queues a want_visit for tonight at priority 90`
   - `POSTPONE applies refuseDeltas and the patience directive`
   - `a desire template tagged with a disabled category is never opened`
   - `desire chips read SATISFY / POSTPONE / TALK with data-analyze`
-- [ ] **Step 2: Run** and confirm FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** `npm test` and confirm PASS.
-- [ ] **Step 5: Commit** `feat(engine): Want arrives as a demand from her`.
+- [x] **Step 2: Run** and confirm FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** `npm test` and confirm PASS.
+- [x] **Step 5: Commit** `feat(engine): Want arrives as a demand from her`.
 
 ### Task 11: Relationship rules in the engine
 

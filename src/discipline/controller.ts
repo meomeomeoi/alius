@@ -5,6 +5,7 @@ import { generateDemandFlavor } from '../llm/calls/flavor';
 import { clearDisciplineDirectives, disciplineDirectives, reputationDirectives } from './context';
 import type { DisciplineDeps } from './deps';
 import { measureLabel, nicknameDirective, punishDirective, threatDirective } from './directives';
+import { patienceDirective } from '../bonds/directives';
 
 export type { DisciplineDeps } from './deps';
 
@@ -76,12 +77,16 @@ export function createDiscipline(deps: DisciplineDeps): DisciplineController {
   }
 
   function answerDemand(demandId: string, answer: 'grant' | 'refuse'): boolean {
+    const asked = state()?.discipline?.demands.find((d) => d.id === demandId);
+    const postponed = answer === 'refuse' && asked !== undefined && deps.registries().demandTemplates.get(asked.templateId)?.kind === 'desire';
     const events = deps.app.dispatch({ type: 'demand/answer', payload: { demandId, answer } }, { expectChatId: chatId() });
     const bad = events.find((e) => e.type === 'error');
     if (bad) {
       deps.toast('error', String(bad.message ?? bad.code));
       return false;
     }
+    // P9d: POSTPONE on her want: she knows she was asked to wait, for her next reply in the scene
+    if (postponed && asked && state()?.scene?.participants.includes(asked.unitId)) deps.context.setDirective(patienceDirective(asked.unitId, nameOf(asked.unitId)));
     syncDirectives();
     return true;
   }

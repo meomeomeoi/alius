@@ -153,3 +153,22 @@ describe('where the chips are drawn', () => {
     expect(host.querySelector('.alius-thread [data-demand]')).toBeNull();
   });
 });
+
+describe('desire demand chips (P9d)', () => {
+  it('read SATISFY / POSTPONE / TALK with data-analyze and call the same handlers', () => {
+    const s = withDemand('double_ration');
+    s.discipline!.demands[0].templateId = 'want_tonight';
+    const d = draw(s);
+    expect(['grant', 'refuse', 'talk'].map((k) => d.btn(k)!.textContent)).toEqual(['[SATISFY]', '[POSTPONE]', '[TALK]']);
+    for (const k of ['grant', 'refuse', 'talk']) expect(d.btn(k)!.getAttribute('data-analyze'), k).toBe('glossary:want');
+    d.btn('grant')!.click();
+    d.btn('refuse')!.click();
+    expect(d.handlers.grant).toHaveBeenCalledTimes(1);
+    expect(d.handlers.refuse).toHaveBeenCalledTimes(1);
+  });
+
+  it('an ordinary demand keeps GRANT / REFUSE', () => {
+    const d = draw(withDemand('double_ration'));
+    expect([d.btn('grant')!.textContent, d.btn('refuse')!.textContent]).toEqual(['[GRANT]', '[REFUSE]']);
+  });
+});

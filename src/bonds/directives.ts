@@ -86,6 +86,11 @@ export function bondsDirectives(builder: ContextBuilder, state: CampaignState | 
   });
 }
 
+/** POSTPONE on a desire demand: for her next reply only (same id as the restless directive, which a refresh never touches). */
+export function patienceDirective(unitId: string, name: string): { id: string; expiresAfter: 'next_reply'; text: string } {
+  return { id: `want:${unitId}`, expiresAfter: 'next_reply', text: `${name} was asked to wait; she is trying to be patient.` };
+}
+
 /** The ASK chip: for her next reply only. */
 export function askDirective(unitId: string, name: string): { id: string; expiresAfter: 'next_reply'; text: string } {
   return { id: `ask:${unitId}`, expiresAfter: 'next_reply', text: `The commander asks ${name} what she wants; she answers plainly, in character.` };

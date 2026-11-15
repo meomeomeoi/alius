@@ -777,7 +777,7 @@ describe('core content pack: P6 content', () => {
     expect(r.flags.get('knows_crime')!.leverage).toBe(true);
     expect(r.imageConsistency.get('slight_build')!.offImage).toContain('commander_enforced');
     expect(r.punishments.size).toBe(6);
-    expect(r.demandTemplates.size).toBe(6);
+    expect(r.demandTemplates.size).toBe(9); // P9d: + want_tonight, want_attention, publicity_talk
     expect(r.reputations.size).toBe(7);
   });
 });

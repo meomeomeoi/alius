@@ -7,5 +7,7 @@ export {
   ATTACHMENTS, bondOf, bondTierOf, defectAllowedFor, DESIRE_LEVELS, desireRank, LEAD_STYLES, leadRank, MODEST_BOND, PUBLICITY_LEVELS, validateBond,
 } from './profile';
 export { bondsDayStep } from './dayStep';
+export { openDesireDemands } from './desire';
+export { publicityMismatch } from './publicity';
 export { releaseWantBreakdowns, startCrossedBreakdowns, startWantBreakdown, wantBreakdownSpec, type WantBreakdownSpec } from './breakdown';
 export { effectiveWant, relieveAtSceneEnd, relieveWant, seizing, wantBand, wantBandOf, wantEligible, wantOf, wantRise, wantStep, type WantBand } from './want';

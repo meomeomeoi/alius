@@ -278,7 +278,7 @@ export const CORE_GLOSSARY_IDS: readonly string[] = [
   'prologue', 'intake_interview', 'medical_exam', 'personnel_dossier', 'veteran_intake', 'lineup', 'first_words', 'tutorial_expedition',
   'module_offline', 'coach_hint', 'rows',
   // P9d (the calibration's bond profile addresses this; the content and Want entries come with their screens)
-  'bond_profile', 'content_categories', 'lead',
+  'bond_profile', 'content_categories', 'lead', 'want',
 ];
 
 let registered = false;
