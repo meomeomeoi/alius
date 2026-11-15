@@ -160,11 +160,52 @@ function scapegoatProvider(_subject: Subject, env: AnalyzeEnv): { lines: string[
   const open = state?.dilemmas?.open;
   if (!state || !open || open.context !== 'scapegoat' || open.subjectId === undefined) return null;
   const witnesses = (open.witnessIds ?? []).map((id) => nameOf(state, id));
+  const herCall = open.scapegoatSource === 'her_call'; // P9e: a decision she took herself, not a squad vote
   return {
     lines: [
-      `${nameOf(state, open.subjectId)} carried the squad's vote for the decision that failed.`,
-      witnesses.length > 0 ? `Also for it: ${witnesses.join(', ')}.` : 'Nobody else voted for it.',
+      herCall ? `${nameOf(state, open.subjectId)} made the call herself in the field, and the run failed.` : `${nameOf(state, open.subjectId)} carried the squad's vote for the decision that failed.`,
+      witnesses.length > 0 ? `${herCall ? 'Also there' : 'Also for it'}: ${witnesses.join(', ')}.` : herCall ? 'Nobody else was named.' : 'Nobody else voted for it.',
       'Take the blame and oversight punishes the commander; shift it and oversight punishes her.',
+    ],
+  };
+}
+
+/** A decision a soldier took on her own at an event (P9e): the logged call (this run's, else the last report's), the mark and, with raw values on, the stored odds. */
+function herCallProvider(subject: Subject, env: AnalyzeEnv, k: Knowledge): { lines: string[] } | null {
+  const state = env.state;
+  if (!state) return null;
+  const unitId = typeof subject.data.unitId === 'string' ? subject.data.unitId : null;
+  const nodeId = typeof subject.data.nodeId === 'string' ? subject.data.nodeId : null;
+  const entries = [...(state.lastExpedition?.herCalls ?? []), ...(state.expedition?.herCalls ?? [])]
+    .filter((c) => (unitId === null || c.unitId === unitId) && (nodeId === null || c.nodeId === nodeId));
+  const call = entries.at(-1);
+  if (!call) return null;
+  const name = nameOf(state, call.unitId);
+  const lines = [`${name} took the decision herself in the field; it went ${call.outcome === 'good' ? 'well' : 'badly'}.`];
+  const missionId = typeof subject.data.missionId === 'string' ? subject.data.missionId : state.expedition?.missionId ?? state.lastExpedition?.missionId;
+  const mission = [...state.missions.active, ...state.missions.offered, ...state.missions.completed].find((m) => m.id === missionId);
+  if (call.outcome === 'good') lines.push('It is hers: merit and boldness for her. It blames nobody.');
+  else if (mission?.decidedBy?.source === 'her_call' && mission.decidedBy.unitId === call.unitId) {
+    lines.push('The run is marked on her call: if it fails, oversight will want a name, and the commander answers for it or shifts it onto her.');
+  } else lines.push('It cost the run but left no mark: nobody answers for it if the run fails.');
+  const odds = k.raw(Math.round(call.odds * 100));
+  if (odds !== null) lines.push(`Odds it would go well: ${odds}%.`);
+  return { lines };
+}
+
+/** The standing order "ask me first" for one soldier: whether it holds, since when, and what it costs. */
+function askFirstProvider(subject: Subject, env: AnalyzeEnv): { lines: string[] } | null {
+  const state = env.state;
+  const unitId = typeof subject.data.unitId === 'string' ? subject.data.unitId : null;
+  if (!state || unitId === null || !state.squad.some((u) => u.id === unitId)) return null;
+  const name = nameOf(state, unitId);
+  const since = state.power?.askFirst?.[unitId];
+  return {
+    lines: [
+      since !== undefined
+        ? `${name} is under the order to ask first, since day ${since}: she takes no decision of her own in the field.`
+        : `${name} is not under the order: she may take a decision of her own in the field.`,
+      `Giving the order costs her Trust, like a decision that went against her values (${TUNING.herCall.askFirst.severity}); lifting it is free.`,
     ],
   };
 }
@@ -179,4 +220,6 @@ export function registerPowerProviders(): void {
   registerAnalyzeProvider('glossary:challenge', challengeProvider);
   registerAnalyzeProvider('glossary:countermand', countermandProvider);
   registerAnalyzeProvider('glossary:scapegoat', scapegoatProvider);
+  registerAnalyzeProvider('glossary:her_call', herCallProvider);
+  registerAnalyzeProvider('glossary:ask_first', askFirstProvider);
 }

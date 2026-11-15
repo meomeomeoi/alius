@@ -35,6 +35,8 @@ export interface PowerController {
   challenge(stat: ChallengeStat): Promise<boolean>;
   /** ACCEPT or OVERRULE the leader's countermand. Toasts and returns false when the engine refuses. */
   answerCountermand(answer: 'accept' | 'overrule'): boolean;
+  /** P9e: gives or lifts the standing order "ask me first" for one soldier. Toasts and resolves false when the engine refuses. */
+  askFirst(unitId: string, on: boolean): Promise<boolean>;
 }
 
 /**
@@ -189,8 +191,32 @@ export function createPower(deps: PowerDeps): PowerController {
     return send({ type: 'power/countermand', payload: { answer } }, chatId());
   }
 
+  /** P9e: after a run, each soldier who took a decision on her own gets one line for her next scene (her last call wins). */
+  function herCallDirectives(reportId: unknown): void {
+    const report = state()?.lastExpedition;
+    if (!report || report.id !== reportId || !report.herCalls) return;
+    const last = new Map<string, 'good' | 'bad'>();
+    for (const c of report.herCalls) last.set(c.unitId, c.outcome);
+    let any = false;
+    for (const [unitId, outcome] of last) {
+      const unit = state()?.squad.find((u) => u.id === unitId);
+      if (!unit) continue;
+      deps.context.setDirective({
+        id: `power:herCall:${unitId}`, expiresAfter: 'scene',
+        text: `${unit.displayName} took the decision herself in the field; it went ${outcome === 'good' ? 'well' : 'badly'}.`,
+      });
+      any = true;
+    }
+    if (any) deps.refreshContext();
+  }
+
+  async function askFirst(unitId: string, on: boolean): Promise<boolean> {
+    return send({ type: 'power/ask_first', payload: { unitId, on } }, chatId());
+  }
+
   return {
     onEvents(events) {
+      for (const e of events) if (e.type === 'expedition_ended') herCallDirectives(e.reportId);
       const refresh = ['vote_overruled', 'grudges_ended', 'leader_changed', 'leader_endorsed', 'outside_feat', 'challenge_resolved'];
       if (events.some((e) => refresh.includes(e.type))) deps.refreshContext();
       for (const e of events) {
@@ -212,6 +238,7 @@ export function createPower(deps: PowerDeps): PowerController {
     endorse,
     challenge,
     answerCountermand,
+    askFirst,
     requestVote,
     overrule,
     drop,

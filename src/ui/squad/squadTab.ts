@@ -55,6 +55,8 @@ export interface SquadTabCtx {
   /** P9b: the squad leader's dossier block: ENDORSE her, or CHALLENGE her on a stat. */
   onEndorse?: () => void;
   onChallenge?: (stat: ChallengeStat) => void;
+  /** P9e: the standing order "ask me first" for one soldier. */
+  onAskFirst?: (unitId: string, on: boolean) => void;
 }
 
 const unknown = (id: string) => `UNKNOWN ${id}`;
@@ -255,7 +257,7 @@ function disciplineLine(unit: Unit, state: CampaignState, ctx: SquadTabCtx): HTM
 /** P9b: her standing, the leader badge and, on the leader, ENDORSE and CHALLENGE. */
 function hierarchyBlock(unit: Unit, state: CampaignState, ctx: SquadTabCtx): HTMLElement | null {
   const host = h('div', { class: 'alius-hierarchy' });
-  renderHierarchyBlock(host, state, ctx.registries, unit.id, { onEndorse: () => ctx.onEndorse?.(), onChallenge: (stat) => ctx.onChallenge?.(stat) }, { raw: ctx.settings().showRawValues });
+  renderHierarchyBlock(host, state, ctx.registries, unit.id, { onEndorse: () => ctx.onEndorse?.(), onChallenge: (stat) => ctx.onChallenge?.(stat), ...(ctx.onAskFirst ? { onAskFirst: ctx.onAskFirst } : {}) }, { raw: ctx.settings().showRawValues });
   return host.childElementCount > 0 ? host : null;
 }
 

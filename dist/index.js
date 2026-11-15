@@ -20376,8 +20376,30 @@ function createPower(deps) {
   function answerCountermand(answer) {
     return send({ type: "power/countermand", payload: { answer } }, chatId());
   }
+  function herCallDirectives(reportId) {
+    const report = state()?.lastExpedition;
+    if (!report || report.id !== reportId || !report.herCalls) return;
+    const last = /* @__PURE__ */ new Map();
+    for (const c of report.herCalls) last.set(c.unitId, c.outcome);
+    let any = false;
+    for (const [unitId, outcome] of last) {
+      const unit = state()?.squad.find((u) => u.id === unitId);
+      if (!unit) continue;
+      deps.context.setDirective({
+        id: `power:herCall:${unitId}`,
+        expiresAfter: "scene",
+        text: `${unit.displayName} took the decision herself in the field; it went ${outcome === "good" ? "well" : "badly"}.`
+      });
+      any = true;
+    }
+    if (any) deps.refreshContext();
+  }
+  async function askFirst(unitId, on) {
+    return send({ type: "power/ask_first", payload: { unitId, on } }, chatId());
+  }
   return {
     onEvents(events) {
+      for (const e of events) if (e.type === "expedition_ended") herCallDirectives(e.reportId);
       const refresh = ["vote_overruled", "grudges_ended", "leader_changed", "leader_endorsed", "outside_feat", "challenge_resolved"];
       if (events.some((e) => refresh.includes(e.type))) deps.refreshContext();
       for (const e of events) {
@@ -20399,6 +20421,7 @@ function createPower(deps) {
     endorse: endorse2,
     challenge: challenge2,
     answerCountermand,
+    askFirst,
     requestVote,
     overrule,
     drop,
@@ -20603,11 +20626,15 @@ function renderVotePanel(host, vote, lines, ctx2) {
 
 // src/power/directives.ts
 var VOTE_PREFIX = "power:vote:";
-var DERIVED = ["power:vote:", "power:leader", "power:outside"];
+var ASK_FIRST_PREFIX = "power:ask_first:";
+var DERIVED = ["power:vote:", "power:leader", "power:outside", "power:ask_first:"];
 function powerDirectives(state, _reg, present) {
   const out = [];
   for (const id of present) {
     const unit = state.squad.find((u) => u.id === id);
+    if (unit && askFirstHolds(state, id)) {
+      out.push({ id: `${ASK_FIRST_PREFIX}${id}`, expiresAfter: "scene", text: `The commander has ordered ${unit.displayName} to ask before she decides anything in the field.` });
+    }
     if (!unit || !grudgeHolds(state, id)) continue;
     out.push({
       id: `${VOTE_PREFIX}${id}`,
@@ -25733,7 +25760,24 @@ function renderHierarchyBlock(host, state, reg, unitId, handlers2, opts = {}) {
   if (isLeader) {
     line2.append(" \xB7 ", h("span", { class: "alius-chip", "data-leader-badge": unitId, ...analyzeAttrs("glossary:squad_leader", live) }, endorsed ? "SECOND-IN-COMMAND" : "SQUAD LEADER"));
   }
+  const asksFirst = askFirstHolds(state, unitId);
+  if (asksFirst) line2.append(" \xB7 ", h("span", { class: "alius-chip", "data-asks-first": unitId, ...analyzeAttrs("glossary:ask_first", live) }, "ASKS FIRST"));
   host.append(line2);
+  if (handlers2.onAskFirst) {
+    const atBase = state.expedition === void 0;
+    const onAskFirst = handlers2.onAskFirst;
+    host.append(h("p", { class: "alius-hierarchy-actions" }, h("button", {
+      type: "button",
+      class: "alius-btn alius-option",
+      "data-ask-first": unitId,
+      "aria-pressed": String(asksFirst),
+      ...analyzeNative("glossary:ask_first", live),
+      ...atBase ? {} : { "aria-disabled": "true", title: "Only at the base: a run is under way." },
+      onclick: () => {
+        if (atBase) onAskFirst(unitId, !asksFirst);
+      }
+    }, asksFirst ? "[ LET HER DECIDE ]" : "[ ASK ME FIRST ]")));
+  }
   if (!isLeader) return;
   const left = challengeCooldown(state);
   const picker = h("div", { class: "alius-challenge-picker", hidden: true });
@@ -26202,7 +26246,7 @@ function disciplineLine(unit, state, ctx2) {
 }
 function hierarchyBlock(unit, state, ctx2) {
   const host = h("div", { class: "alius-hierarchy" });
-  renderHierarchyBlock(host, state, ctx2.registries, unit.id, { onEndorse: () => ctx2.onEndorse?.(), onChallenge: (stat3) => ctx2.onChallenge?.(stat3) }, { raw: ctx2.settings().showRawValues });
+  renderHierarchyBlock(host, state, ctx2.registries, unit.id, { onEndorse: () => ctx2.onEndorse?.(), onChallenge: (stat3) => ctx2.onChallenge?.(stat3), ...ctx2.onAskFirst ? { onAskFirst: ctx2.onAskFirst } : {} }, { raw: ctx2.settings().showRawValues });
   return host.childElementCount > 0 ? host : null;
 }
 var RESTRICTION_LABEL = { confined: "IN THE BRIG", no_leave: "NO LEAVE", benched: "BENCHED", duty: "EXTRA DUTY" };
@@ -29848,11 +29892,45 @@ function scapegoatProvider(_subject, env) {
   const open3 = state?.dilemmas?.open;
   if (!state || !open3 || open3.context !== "scapegoat" || open3.subjectId === void 0) return null;
   const witnesses = (open3.witnessIds ?? []).map((id) => nameOf9(state, id));
+  const herCall = open3.scapegoatSource === "her_call";
   return {
     lines: [
-      `${nameOf9(state, open3.subjectId)} carried the squad's vote for the decision that failed.`,
-      witnesses.length > 0 ? `Also for it: ${witnesses.join(", ")}.` : "Nobody else voted for it.",
+      herCall ? `${nameOf9(state, open3.subjectId)} made the call herself in the field, and the run failed.` : `${nameOf9(state, open3.subjectId)} carried the squad's vote for the decision that failed.`,
+      witnesses.length > 0 ? `${herCall ? "Also there" : "Also for it"}: ${witnesses.join(", ")}.` : herCall ? "Nobody else was named." : "Nobody else voted for it.",
       "Take the blame and oversight punishes the commander; shift it and oversight punishes her."
+    ]
+  };
+}
+function herCallProvider(subject, env, k) {
+  const state = env.state;
+  if (!state) return null;
+  const unitId = typeof subject.data.unitId === "string" ? subject.data.unitId : null;
+  const nodeId = typeof subject.data.nodeId === "string" ? subject.data.nodeId : null;
+  const entries = [...state.lastExpedition?.herCalls ?? [], ...state.expedition?.herCalls ?? []].filter((c) => (unitId === null || c.unitId === unitId) && (nodeId === null || c.nodeId === nodeId));
+  const call = entries.at(-1);
+  if (!call) return null;
+  const name = nameOf9(state, call.unitId);
+  const lines = [`${name} took the decision herself in the field; it went ${call.outcome === "good" ? "well" : "badly"}.`];
+  const missionId = typeof subject.data.missionId === "string" ? subject.data.missionId : state.expedition?.missionId ?? state.lastExpedition?.missionId;
+  const mission = [...state.missions.active, ...state.missions.offered, ...state.missions.completed].find((m) => m.id === missionId);
+  if (call.outcome === "good") lines.push("It is hers: merit and boldness for her. It blames nobody.");
+  else if (mission?.decidedBy?.source === "her_call" && mission.decidedBy.unitId === call.unitId) {
+    lines.push("The run is marked on her call: if it fails, oversight will want a name, and the commander answers for it or shifts it onto her.");
+  } else lines.push("It cost the run but left no mark: nobody answers for it if the run fails.");
+  const odds = k.raw(Math.round(call.odds * 100));
+  if (odds !== null) lines.push(`Odds it would go well: ${odds}%.`);
+  return { lines };
+}
+function askFirstProvider(subject, env) {
+  const state = env.state;
+  const unitId = typeof subject.data.unitId === "string" ? subject.data.unitId : null;
+  if (!state || unitId === null || !state.squad.some((u) => u.id === unitId)) return null;
+  const name = nameOf9(state, unitId);
+  const since = state.power?.askFirst?.[unitId];
+  return {
+    lines: [
+      since !== void 0 ? `${name} is under the order to ask first, since day ${since}: she takes no decision of her own in the field.` : `${name} is not under the order: she may take a decision of her own in the field.`,
+      `Giving the order costs her Trust, like a decision that went against her values (${TUNING.herCall.askFirst.severity}); lifting it is free.`
     ]
   };
 }
@@ -29865,6 +29943,8 @@ function registerPowerProviders() {
   registerAnalyzeProvider("glossary:challenge", challengeProvider);
   registerAnalyzeProvider("glossary:countermand", countermandProvider);
   registerAnalyzeProvider("glossary:scapegoat", scapegoatProvider);
+  registerAnalyzeProvider("glossary:her_call", herCallProvider);
+  registerAnalyzeProvider("glossary:ask_first", askFirstProvider);
 }
 
 // src/analysis/providers/world.ts
@@ -33032,6 +33112,9 @@ function createApp(st, deps) {
       onPunish: (unitId, measure, days) => void discipline.punish(unitId, measure, days),
       onSetPublicity: (unitId, level) => void bonds.setPublicity(unitId, level),
       onEndorse: () => void power.endorse(),
+      onAskFirst: (unitId, on) => void power.askFirst(unitId, on).then((ok) => {
+        if (ok) shell.open();
+      }),
       onChallenge: (stat3) => void power.challenge(stat3).then((ok) => {
         if (ok) shell.open();
       })

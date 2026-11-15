@@ -1,5 +1,6 @@
 import type { Registries } from '../../content/types';
 import { challengeChance, challengeCooldown, CHALLENGE_STATS, type ChallengeStat } from '../../engine/power/moves';
+import { askFirstHolds } from '../../engine/power/herCall';
 import { standingOf } from '../../engine/power/standing';
 import { leaderOf } from '../../engine/power/state';
 import type { CampaignState } from '../../engine/state/types';
@@ -9,6 +10,8 @@ import { h } from '../dom';
 export interface HierarchyHandlers {
   onEndorse(): void;
   onChallenge(stat: ChallengeStat): void;
+  /** P9e: gives (`on`) or lifts the standing order "ask me first". Without it the toggle is not drawn. */
+  onAskFirst?(unitId: string, on: boolean): void;
 }
 
 /** The words for a standing (draft thresholds): `low` under 40, `notable` under 70, `dominant` from 70. */
@@ -39,7 +42,18 @@ export function renderHierarchyBlock(
   if (isLeader) {
     line.append(' · ', h('span', { class: 'alius-chip', 'data-leader-badge': unitId, ...analyzeAttrs('glossary:squad_leader', live) }, endorsed ? 'SECOND-IN-COMMAND' : 'SQUAD LEADER'));
   }
+  const asksFirst = askFirstHolds(state, unitId);
+  if (asksFirst) line.append(' · ', h('span', { class: 'alius-chip', 'data-asks-first': unitId, ...analyzeAttrs('glossary:ask_first', live) }, 'ASKS FIRST'));
   host.append(line);
+  if (handlers.onAskFirst) {
+    const atBase = state.expedition === undefined; // a base order: the engine refuses it during a run
+    const onAskFirst = handlers.onAskFirst;
+    host.append(h('p', { class: 'alius-hierarchy-actions' }, h('button', {
+      type: 'button', class: 'alius-btn alius-option', 'data-ask-first': unitId, 'aria-pressed': String(asksFirst), ...analyzeNative('glossary:ask_first', live),
+      ...(atBase ? {} : { 'aria-disabled': 'true', title: 'Only at the base: a run is under way.' }),
+      onclick: () => { if (atBase) onAskFirst(unitId, !asksFirst); },
+    }, asksFirst ? '[ LET HER DECIDE ]' : '[ ASK ME FIRST ]')));
+  }
   if (!isLeader) return;
 
   const left = challengeCooldown(state);

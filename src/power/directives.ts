@@ -1,4 +1,5 @@
 import type { Registries } from '../content/types';
+import { askFirstHolds } from '../engine/power/herCall';
 import { outsideActive } from '../engine/power/outside';
 import { grudgeHolds, leaderOf } from '../engine/power/state';
 import type { CampaignState } from '../engine/state/types';
@@ -10,19 +11,24 @@ import type { Directive, ContextBuilder } from '../llm/context';
  */
 
 const VOTE_PREFIX = 'power:vote:';
+const ASK_FIRST_PREFIX = 'power:ask_first:';
 /** Ids that are derived from the state on every refresh (the others, `power:challenge` and `power:countermand`, are set by the controller). */
-const DERIVED = ['power:vote:', 'power:leader', 'power:outside'] as const;
+const DERIVED = ['power:vote:', 'power:leader', 'power:outside', 'power:ask_first:'] as const;
 
 /**
  * Derived from the state, so they survive a reload:
  *  - `power:vote:<unitId>`: a unit the commander overruled in a squad vote may push back openly until the next day end;
  *  - `power:leader`: the squad leader, while she is in the scene (and the endorsement, when there is one);
+ *  - `power:ask_first:<unitId>` (P9e): the commander ordered her to ask before she decides anything in the field, while she is in the scene;
  *  - `power:outside` (manual): outsiders address the leader as the one who really runs the unit, while outside perception is on.
  */
 export function powerDirectives(state: CampaignState, _reg: Registries, present: string[]): Directive[] {
   const out: Directive[] = [];
   for (const id of present) {
     const unit = state.squad.find((u) => u.id === id);
+    if (unit && askFirstHolds(state, id)) {
+      out.push({ id: `${ASK_FIRST_PREFIX}${id}`, expiresAfter: 'scene', text: `The commander has ordered ${unit.displayName} to ask before she decides anything in the field.` });
+    }
     if (!unit || !grudgeHolds(state, id)) continue;
     out.push({
       id: `${VOTE_PREFIX}${id}`, expiresAfter: 'scene',

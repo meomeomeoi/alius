@@ -1719,6 +1719,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       onPunish: (unitId, measure, days) => void discipline.punish(unitId, measure, days),
       onSetPublicity: (unitId, level) => void bonds.setPublicity(unitId, level),
       onEndorse: () => void power.endorse(),
+      onAskFirst: (unitId, on) => void power.askFirst(unitId, on).then((ok) => { if (ok) shell.open(); }),
       onChallenge: (stat) => void power.challenge(stat).then((ok) => { if (ok) shell.open(); }),
     }),
   );
