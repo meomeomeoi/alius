@@ -1,0 +1,180 @@
+[
+  {
+    "id": "mission",
+    "label": "Mission",
+    "description": "Which mission from the board the squad rides out on. The commander picks the mission; the squad votes for or against that pick, weighing how dangerous it is and whether it is a command order.",
+    "lean": {},
+    "features": {
+      "danger": {
+        "sacrifice": 1,
+        "pragmatism": -1
+      },
+      "command": {
+        "corporate": 1,
+        "autonomy": -1
+      }
+    },
+    "reasons": {
+      "values": {
+        "for": "{name} backs the run: it fits what she values ({axis}).",
+        "against": "{name} objects to the run: it cuts against what she values ({axis})."
+      },
+      "trust": {
+        "for": "{name} trusts the commander's call.",
+        "against": "{name} does not trust the commander's call."
+      },
+      "stance": {
+        "for": "{name} goes along: crossing the commander costs too much.",
+        "against": "{name} sees no reason to go along with the commander."
+      },
+      "demand": {
+        "for": "{name} votes yes, though her own demand is still open.",
+        "against": "{name} is still waiting on her own demand and says no."
+      },
+      "affected": {
+        "for": "{name} sees no harm to herself in this run.",
+        "against": "{name} is the one this run lands on."
+      }
+    }
+  },
+  {
+    "id": "upgrade",
+    "label": "Base upgrade",
+    "description": "Which facility the base spends its credits and Plyx on next. The commander picks the upgrade; the squad votes for or against that pick.",
+    "lean": {
+      "pragmatism": 1
+    },
+    "reasons": {
+      "values": {
+        "for": "{name} wants the upgrade: it fits what she values ({axis}).",
+        "against": "{name} would spend the money elsewhere: it cuts against what she values ({axis})."
+      },
+      "trust": {
+        "for": "{name} trusts the commander's call.",
+        "against": "{name} does not trust the commander's call."
+      },
+      "stance": {
+        "for": "{name} goes along: crossing the commander costs too much.",
+        "against": "{name} sees no reason to go along with the commander."
+      },
+      "demand": {
+        "for": "{name} votes yes, though her own demand is still open.",
+        "against": "{name} is still waiting on her own demand and says no."
+      },
+      "affected": {
+        "for": "{name} expects to gain from the upgrade.",
+        "against": "{name} expects to lose out on the upgrade."
+      }
+    }
+  },
+  {
+    "id": "punish",
+    "label": "Punishment",
+    "description": "Whether the commander punishes a soldier with a measure up to the brig. The squad votes for or against that punishment, and the soldier it is aimed at always votes against it.",
+    "lean": {
+      "corporate": 1,
+      "mercy": -1
+    },
+    "reasons": {
+      "values": {
+        "for": "{name} thinks the punishment is fair ({axis}).",
+        "against": "{name} thinks the punishment is wrong ({axis})."
+      },
+      "trust": {
+        "for": "{name} trusts the commander's call.",
+        "against": "{name} does not trust the commander's call."
+      },
+      "stance": {
+        "for": "{name} goes along: crossing the commander costs too much.",
+        "against": "{name} sees no reason to go along with the commander."
+      },
+      "demand": {
+        "for": "{name} votes yes, though her own demand is still open.",
+        "against": "{name} is still waiting on her own demand and says no."
+      },
+      "affected": {
+        "for": "{name} does not see herself in the soldier's place.",
+        "against": "{name} sees herself in the soldier's place, or is that soldier."
+      }
+    }
+  },
+  {
+    "id": "rations",
+    "label": "Rations",
+    "description": "How a shortage is shared out. The commander picks a ration mode; the squad votes for or against that pick.",
+    "lean": {},
+    "subjects": {
+      "equal": {
+        "ingroup": 1
+      },
+      "fighters_first": {
+        "pragmatism": 1,
+        "ingroup": -1
+      },
+      "commander_short": {
+        "sacrifice": 1,
+        "mercy": 1
+      }
+    },
+    "reasons": {
+      "values": {
+        "for": "{name} accepts the ration split: it fits what she values ({axis}).",
+        "against": "{name} rejects the ration split: it cuts against what she values ({axis})."
+      },
+      "trust": {
+        "for": "{name} trusts the commander's call.",
+        "against": "{name} does not trust the commander's call."
+      },
+      "stance": {
+        "for": "{name} goes along: crossing the commander costs too much.",
+        "against": "{name} sees no reason to go along with the commander."
+      },
+      "demand": {
+        "for": "{name} votes yes, though her own demand is still open.",
+        "against": "{name} is still waiting on her own demand and says no."
+      },
+      "affected": {
+        "for": "{name} will not go hungry on this split.",
+        "against": "{name} will go hungrier on this split."
+      }
+    }
+  },
+  {
+    "id": "scapegoat",
+    "label": "Blame",
+    "description": "Who takes the blame when a decision the squad made fails and oversight punishes it. The commander picks to take the blame or to shift it; the squad votes for or against that pick.",
+    "lean": {},
+    "subjects": {
+      "take_blame": {
+        "mercy": 1,
+        "ingroup": 1
+      },
+      "shift_blame": {
+        "corporate": 1,
+        "ingroup": -1
+      }
+    },
+    "reasons": {
+      "values": {
+        "for": "{name} agrees on who answers for this ({axis}).",
+        "against": "{name} disagrees on who answers for this ({axis})."
+      },
+      "trust": {
+        "for": "{name} trusts the commander's call.",
+        "against": "{name} does not trust the commander's call."
+      },
+      "stance": {
+        "for": "{name} goes along: crossing the commander costs too much.",
+        "against": "{name} sees no reason to go along with the commander."
+      },
+      "demand": {
+        "for": "{name} votes yes, though her own demand is still open.",
+        "against": "{name} is still waiting on her own demand and says no."
+      },
+      "affected": {
+        "for": "{name} is not the one who answers for this.",
+        "against": "{name} is the one who would answer for this."
+      }
+    }
+  }
+]

@@ -55,7 +55,11 @@
           "days": 5
         }
       }
-    ]
+    ],
+    "voteLean": {
+      "ingroup": 1,
+      "mercy": 1
+    }
   },
   {
     "id": "workshop",
@@ -113,7 +117,10 @@
           "days": 5
         }
       }
-    ]
+    ],
+    "voteLean": {
+      "pragmatism": 1
+    }
   },
   {
     "id": "medbay",
@@ -176,7 +183,11 @@
           "days": 5
         }
       }
-    ]
+    ],
+    "voteLean": {
+      "mercy": 1,
+      "ingroup": 1
+    }
   },
   {
     "id": "mess_hall",
@@ -212,7 +223,11 @@
           "days": 3
         }
       }
-    ]
+    ],
+    "voteLean": {
+      "ingroup": 1,
+      "mercy": 1
+    }
   },
   {
     "id": "comms",
@@ -251,6 +266,10 @@
           "days": 4
         }
       }
-    ]
+    ],
+    "voteLean": {
+      "corporate": 1,
+      "autonomy": -1
+    }
   }
 ]

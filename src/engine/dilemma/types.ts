@@ -40,6 +40,9 @@ export interface DilemmaState {
   setup?: string;
   options?: DilemmaOption[];
   source?: 'model' | 'fallback';
+  /** P9b: the unit a `scapegoat` dilemma is about (the one whose decision failed) and the other voters who backed it. */
+  subjectId?: string;
+  witnessIds?: string[];
 }
 
 /** Why a dilemma (or one of its options) was turned down. `rule` is the validator rule (1–6) or `shape` for a malformed answer. */

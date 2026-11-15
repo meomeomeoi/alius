@@ -141,7 +141,10 @@
     "briefs": [
       "Something dangerous has dug in. Kill it before it spreads.",
       "Rumors point to a hard target worth the risk."
-    ]
+    ],
+    "voteLean": {
+      "pragmatism": 1
+    }
   },
   {
     "id": "tpl_scavenge",
@@ -169,7 +172,11 @@
     ],
     "briefs": [
       "A standing run through the ruins for supplies and scrap."
-    ]
+    ],
+    "voteLean": {
+      "pragmatism": 1,
+      "ingroup": -1
+    }
   },
   {
     "id": "tpl_outbreak",
@@ -206,7 +213,11 @@
     ],
     "regions": [
       "quarantine_d7"
-    ]
+    ],
+    "voteLean": {
+      "mercy": 1,
+      "sacrifice": 1
+    }
   },
   {
     "id": "tpl_vesper_beat_1",
@@ -563,7 +574,11 @@
     "briefs": [
       "Off-spec civilians are trapped in a district a sweep team will reach by morning. Reach them and bring them out.",
       "A safehouse is about to be raided. Get there first."
-    ]
+    ],
+    "voteLean": {
+      "corporate": 1,
+      "mercy": -1
+    }
   },
   {
     "id": "tutorial_patrol",

@@ -53,6 +53,7 @@
     "prologues": "prologues.json",
     "uiUnlocks": "uiUnlocks.json",
     "contentCategories": "contentCategories.json",
-    "relationshipRuleTemplates": "relationshipRuleTemplates.json"
+    "relationshipRuleTemplates": "relationshipRuleTemplates.json",
+    "voteKinds": "voteKinds.json"
   }
 }

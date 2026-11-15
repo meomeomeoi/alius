@@ -340,7 +340,7 @@ tests/**                                                        mirrors src; tes
   - `subjectOf(kind, subject)`: the unit id a `punish`/`scapegoat` vote is about, or null
 - Consumes: `effectiveValues` (P8), `commandStance` / `stanceEntry` (P9), `socialRank`, `bondOf`.
 
-- [ ] **Step 1: Write the failing tests** (table tests, acceptance 1):
+- [x] **Step 1: Write the failing tests** (table tests, acceptance 1):
   - `a corporate unit votes for a command mission, an autonomous one against` (values `corporate 3` vs `autonomy 3`, trust 50, stance indifferent)
   - `trust 100 adds +2, trust 0 adds −2`
   - `open_defiance tips a neutral unit against; fearful tips her for`
@@ -352,8 +352,8 @@ tests/**                                                        mirrors src; tes
   - `a squad of only grunts or only injured: the vote passes on the commander's weight alone`
   - `the reason term is the largest absolute contribution`
   - `voteKinds loads five kinds with descriptions; a reason template without {name} is a load error`
-- [ ] **Step 2: Run** `npx vitest run tests/engine/power/ballot.test.ts tests/content/p9bSchemas.test.ts` and confirm FAIL.
-- [ ] **Step 3: Implement.**
+- [x] **Step 2: Run** `npx vitest run tests/engine/power/ballot.test.ts tests/content/p9bSchemas.test.ts` and confirm FAIL.
+- [x] **Step 3: Implement.**
   - `VoteKindSchema { label ≤ 40, description, lean, features?: { danger?, command? } (each a lean), subjects?: Record<id, lean>, reasons: Record<BallotTerm, { for: str ≤ 120, against: str ≤ 120 }> }`. A lean is `Partial<Record<ValueAxis, -2..2>>`.
   - `voteBias: −3..3` on `CommandStanceSchema`, and `voteLean` on missions and facilities.
   - The ballot formula is exactly the rulings'. Leader weights come in Task 8: `tallyVote` reads `power.hierarchy?.leaderId` already, but no leader exists yet.
@@ -369,8 +369,8 @@ tests/**                                                        mirrors src; tes
       - `take_blame`: `{ mercy: 1, ingroup: 1 }`
       - `shift_blame`: `{ corporate: 1, ingroup: -1 }`
     - Reason texts are `AUTHOR TO WRITE` drafts.
-- [ ] **Step 4: Run** the tests. Expect PASS. Then `npm test`.
-- [ ] **Step 5: Tick and commit:** `feat(power): vote kinds, ballots and the tally`.
+- [x] **Step 4: Run** the tests. Expect PASS. Then `npm test`.
+- [x] **Step 5: Tick and commit:** `feat(power): vote kinds, ballots and the tally`.
 
 ### Task 3: The vote flow, the gate and overruling
 

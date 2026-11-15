@@ -5324,6 +5324,8 @@ var DEED_COUNTERS = [
   "threats_kept",
   "threats_empty"
 ];
+var VOTE_KINDS = ["mission", "upgrade", "punish", "rations", "scapegoat"];
+var BALLOT_TERMS = ["values", "trust", "stance", "demand", "affected"];
 
 // src/engine/dilemma/types.ts
 var DILEMMA_CONTEXTS = ["expedition_event", "base", "mission_outcome", "defect_arc", "director"];
@@ -5390,7 +5392,9 @@ var REGISTRY_NAMES = [
   "uiUnlocks",
   // P9d
   "contentCategories",
-  "relationshipRuleTemplates"
+  "relationshipRuleTemplates",
+  // P9b
+  "voteKinds"
 ];
 var PackManifestSchema = external_exports.object({
   id: external_exports.string().min(1),
@@ -5463,6 +5467,9 @@ registrySchemas.flags = FlagSchema;
 var str = external_exports.string().min(1);
 var int = external_exports.number().int();
 var valueAxis = external_exports.enum(VALUE_AXES);
+var VoteLeanSchema = external_exports.object(
+  Object.fromEntries(VALUE_AXES.map((a) => [a, external_exports.number().min(-2).max(2).optional()]))
+).strict();
 var contentTags = external_exports.array(external_exports.string().min(1)).optional();
 var ValuesSchema = external_exports.object(
   Object.fromEntries(VALUE_AXES.map((a) => [a, int.min(-3).max(3)]))
@@ -6059,6 +6066,8 @@ var FacilitySchema = BaseEntrySchema.extend({
   name: str,
   summary: str,
   maxLevel: int.min(1).max(5),
+  /** P9b: how the squad leans on voting for an upgrade of this facility. */
+  voteLean: VoteLeanSchema.optional(),
   /** `levels[0]` is level 1 (the starting level, no upgrade cost); later levels carry the cost to reach them. */
   levels: external_exports.array(external_exports.object({
     effects: external_exports.record(external_exports.number()),
@@ -6406,6 +6415,8 @@ var MissionTemplateSchema = BaseEntrySchema.extend({
   /** P8: see ClockSchema. */
   family: str.optional(),
   contentTags,
+  /** P9b: how the squad leans on voting for a run of this template. */
+  voteLean: VoteLeanSchema.optional(),
   /** P11: the tutorial run of the prologue. Never offered by the director, the fallback or rumors; needs a `fixedMap`. */
   tutorial: external_exports.literal(true).optional(),
   /** P11: an authored node map: 1 to 4 layers of 1 to 3 nodes, then the objective node. `eventId` pins an event node's template. */
@@ -6737,7 +6748,9 @@ var CommandStanceSchema = BaseEntrySchema.extend({
   refusal: str.max(300),
   /** The unit hides her refusals and sabotages quietly instead. */
   covert: external_exports.boolean().optional(),
-  demandWeight: external_exports.number().min(0).max(3)
+  demandWeight: external_exports.number().min(0).max(3),
+  /** P9b: added to her ballot in a squad vote (a disciplined or fearful unit goes along, an openly defiant one does not). */
+  voteBias: external_exports.number().min(-3).max(3).optional()
 }).strict();
 var PunishmentEffectSchema = external_exports.discriminatedUnion("type", [
   /** The unit is locked up: no scene, companion or expedition for a number of days the commander picks in this range. */
@@ -7026,6 +7039,23 @@ var RelationshipRuleTemplateSchema = BaseEntrySchema.extend({
   contentTags
 }).strict();
 registrySchemas.relationshipRuleTemplates = RelationshipRuleTemplateSchema;
+var ReasonLine = external_exports.object({ for: str.max(120), against: str.max(120) }).strict();
+var VoteKindSchema = BaseEntrySchema.extend({
+  id: external_exports.enum(VOTE_KINDS),
+  label: str.max(40),
+  description: str.max(DESCRIPTION_MAX),
+  lean: VoteLeanSchema,
+  features: external_exports.object({ danger: VoteLeanSchema.optional(), command: VoteLeanSchema.optional() }).strict().optional(),
+  subjects: external_exports.record(VoteLeanSchema).optional(),
+  reasons: external_exports.object(Object.fromEntries(BALLOT_TERMS.map((t) => [t, ReasonLine]))).strict()
+}).strict().superRefine((k, ctx2) => {
+  for (const term of BALLOT_TERMS) {
+    for (const side of ["for", "against"]) {
+      if (!k.reasons[term][side].includes("{name}")) ctx2.addIssue({ code: "custom", path: ["reasons", term, side], message: "a reason line must name the voter with {name}" });
+    }
+  }
+});
+registrySchemas.voteKinds = VoteKindSchema;
 var DESCRIBED_REGISTRIES = [
   "roles",
   "skills",
@@ -7064,7 +7094,9 @@ var DESCRIBED_REGISTRIES = [
   "deviceSkins",
   // P9d
   "contentCategories",
-  "relationshipRuleTemplates"
+  "relationshipRuleTemplates",
+  // P9b
+  "voteKinds"
 ];
 function withDescription(schema) {
   return schema.superRefine((entry, ctx2) => {

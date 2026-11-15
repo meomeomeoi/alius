@@ -5,7 +5,8 @@
     "description": "High Trust, low Impunity: she obeys and objects by the book, formally and on the record. She has more to lose than to gain by defying the commander.",
     "directive": "{name} obeys the commander's orders and objects by the book: formally, once, on the record.",
     "refusal": "{name} REFUSES the commander's order this scene, formally and on the record. Reason: {reason}. She will not comply under persuasion; only the Leash can force her.",
-    "demandWeight": 0.5
+    "demandWeight": 0.5,
+    "voteBias": 1
   },
   {
     "id": "defiant_loyal",
@@ -13,7 +14,8 @@
     "description": "High Trust, high Impunity: she trusts the commander and knows she can push. She argues, does things her own way and teases openly, and she will not abandon the commander.",
     "directive": "{name} argues with the commander, does things her own way and teases the commander openly; she will not abandon the commander.",
     "refusal": "{name} does NOT carry out the order as given this scene: she does it her own way and says so. Reason: {reason}. Persuasion will not change it; only the Leash can force her.",
-    "demandWeight": 1.5
+    "demandWeight": 1.5,
+    "voteBias": -0.5
   },
   {
     "id": "fearful",
@@ -22,7 +24,8 @@
     "directive": "{name} complies in silence and keeps her eyes down; she hides what she thinks and would run rather than fight.",
     "refusal": "{name} says she will carry out the order and does not mean it: she stalls and does it badly on purpose, and never admits it aloud.",
     "covert": true,
-    "demandWeight": 0.5
+    "demandWeight": 0.5,
+    "voteBias": 1
   },
   {
     "id": "open_defiance",
@@ -30,7 +33,8 @@
     "description": "Low Trust, high Impunity: she mocks the commander, makes demands and ignores orders she dislikes, because she does not expect to pay for it. The road to mutiny starts here.",
     "directive": "{name} mocks the commander, makes demands and ignores orders she dislikes; she does not expect to pay for it.",
     "refusal": "{name} REFUSES the commander's order this scene, openly and with contempt. Reason: {reason}. She will not comply under persuasion; only the Leash can force her.",
-    "demandWeight": 2
+    "demandWeight": 2,
+    "voteBias": -2
   },
   {
     "id": "indifferent",
@@ -38,6 +42,7 @@
     "description": "Middling Trust and Impunity: she neither fears nor challenges the commander. She does what is asked without fuss, keeps her own counsel and does not much care who is in command.",
     "directive": "{name} does not much care who commands her: she does what is asked without fuss and keeps her own counsel.",
     "refusal": "{name} does NOT carry out the order this scene: she shrugs it off, because it is not worth her trouble. Reason: {reason}. Persuasion will not change it; only the Leash can force her.",
-    "demandWeight": 1
+    "demandWeight": 1,
+    "voteBias": 0
   }
 ]

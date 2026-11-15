@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { EFFECT_TARGETS, STATS, TRIGGERS, ALWAYS_ON_TYPES } from '../engine/combat/types';
 import { ALL_EVENT_TYPES, EVENT_TYPES, PROPOSAL_KINDS, SEVERITIES } from '../engine/relations/vocab';
 import { DEED_COUNTERS, RARITIES } from '../engine/state/types';
-import { VALUE_AXES } from '../engine/state/types';
+import { BALLOT_TERMS, VALUE_AXES, VOTE_KINDS } from '../engine/state/types';
 import { TUNING } from '../engine/tuning';
 import { DILEMMA_CONTEXTS } from '../engine/dilemma/types';
 import type { WorldEffect } from '../engine/world/types';
@@ -41,6 +41,11 @@ registrySchemas.flags = FlagSchema;
 const str = z.string().min(1);
 const int = z.number().int();
 const valueAxis = z.enum(VALUE_AXES);
+/** P9b: how a decision leans on each value axis, −2…2 (absent axis = 0). A ballot adds `Σ value × lean`. */
+export const VoteLeanSchema = z.object(
+  Object.fromEntries(VALUE_AXES.map((a) => [a, z.number().min(-2).max(2).optional()])) as Record<(typeof VALUE_AXES)[number], z.ZodOptional<z.ZodNumber>>,
+).strict();
+export type VoteLean = z.infer<typeof VoteLeanSchema>;
 /** P9d: content categories (registry `contentCategories`) this entry belongs to; checked against the registry and the gated registries at load. */
 const contentTags = z.array(z.string().min(1)).optional();
 
@@ -548,6 +553,8 @@ export const FacilitySchema = BaseEntrySchema.extend({
   name: str,
   summary: str,
   maxLevel: int.min(1).max(5),
+  /** P9b: how the squad leans on voting for an upgrade of this facility. */
+  voteLean: VoteLeanSchema.optional(),
   /** `levels[0]` is level 1 (the starting level, no upgrade cost); later levels carry the cost to reach them. */
   levels: z.array(z.object({
     effects: z.record(z.number()),
@@ -944,6 +951,8 @@ export const MissionTemplateSchema = BaseEntrySchema.extend({
   /** P8: see ClockSchema. */
   family: str.optional(),
   contentTags,
+  /** P9b: how the squad leans on voting for a run of this template. */
+  voteLean: VoteLeanSchema.optional(),
   /** P11: the tutorial run of the prologue. Never offered by the director, the fallback or rumors; needs a `fixedMap`. */
   tutorial: z.literal(true).optional(),
   /** P11: an authored node map: 1 to 4 layers of 1 to 3 nodes, then the objective node. `eventId` pins an event node's template. */
@@ -1337,6 +1346,8 @@ export const CommandStanceSchema = BaseEntrySchema.extend({
   /** The unit hides her refusals and sabotages quietly instead. */
   covert: z.boolean().optional(),
   demandWeight: z.number().min(0).max(3),
+  /** P9b: added to her ballot in a squad vote (a disciplined or fearful unit goes along, an openly defiant one does not). */
+  voteBias: z.number().min(-3).max(3).optional(),
 }).strict();
 
 /** What a punishment does besides moving numbers. The vocabulary is closed; the engine reads effects by type, never by id. */
@@ -1705,6 +1716,31 @@ export const RelationshipRuleTemplateSchema = BaseEntrySchema.extend({
 
 registrySchemas.relationshipRuleTemplates = RelationshipRuleTemplateSchema;
 
+/**
+ * A decision the squad can vote on (P9b §2). `lean` is the kind's base lean; `features` and `subjects` add to it for a mission's
+ * danger and command source, and for a ration mode or a scapegoat option. `reasons` are the one-line templates of a ballot,
+ * by the term that moved it most; every line names the voter (`{name}`) and the values line may name the axis (`{axis}`).
+ */
+const ReasonLine = z.object({ for: str.max(120), against: str.max(120) }).strict();
+export const VoteKindSchema = BaseEntrySchema.extend({
+  id: z.enum(VOTE_KINDS),
+  label: str.max(40),
+  description: str.max(DESCRIPTION_MAX),
+  lean: VoteLeanSchema,
+  features: z.object({ danger: VoteLeanSchema.optional(), command: VoteLeanSchema.optional() }).strict().optional(),
+  subjects: z.record(VoteLeanSchema).optional(),
+  reasons: z.object(Object.fromEntries(BALLOT_TERMS.map((t) => [t, ReasonLine])) as Record<(typeof BALLOT_TERMS)[number], typeof ReasonLine>).strict(),
+}).strict().superRefine((k, ctx) => {
+  for (const term of BALLOT_TERMS) {
+    for (const side of ['for', 'against'] as const) {
+      if (!k.reasons[term][side].includes('{name}')) ctx.addIssue({ code: 'custom', path: ['reasons', term, side], message: 'a reason line must name the voter with {name}' });
+    }
+  }
+});
+export type VoteKindEntry = z.infer<typeof VoteKindSchema>;
+
+registrySchemas.voteKinds = VoteKindSchema;
+
 /** Player-visible registries whose entries carry an optional `description` (skills and statuses already require one). */
 export const DESCRIBED_REGISTRIES = [
   'roles', 'skills', 'signatures', 'statuses', 'defects', 'items', 'affixes', 'enemies',
@@ -1720,6 +1756,8 @@ export const DESCRIBED_REGISTRIES = [
   'hubRooms', 'deviceSkins',
   // P9d
   'contentCategories', 'relationshipRuleTemplates',
+  // P9b
+  'voteKinds',
 ] as const satisfies readonly RegistryName[];
 
 /** Adds the optional `description` rule to a registry schema without changing its shape. */

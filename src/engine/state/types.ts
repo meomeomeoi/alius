@@ -501,11 +501,13 @@ export interface Demand {
 }
 
 /** P9b: the decisions the squad can vote on (the `voteKinds` registry has one entry each). */
-export type VoteKind = 'mission' | 'upgrade' | 'punish' | 'rations' | 'scapegoat';
+export const VOTE_KINDS = ['mission', 'upgrade', 'punish', 'rations', 'scapegoat'] as const;
+export type VoteKind = (typeof VOTE_KINDS)[number];
 /** P9b: how a shortage is shared out. */
 export type RationMode = 'equal' | 'fighters_first' | 'commander_short';
 /** P9b: the term of a ballot that moved it most (it picks the reason line). */
-export type BallotTerm = 'values' | 'trust' | 'stance' | 'demand' | 'affected';
+export const BALLOT_TERMS = ['values', 'trust', 'stance', 'demand', 'affected'] as const;
+export type BallotTerm = (typeof BALLOT_TERMS)[number];
 export type VoteStatus = 'open' | 'passed' | 'failed' | 'overruled' | 'carried' | 'dropped';
 
 export interface Ballot {
