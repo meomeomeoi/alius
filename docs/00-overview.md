@@ -160,7 +160,7 @@ Before each main-model generation the adapter injects one compact block:
 
 Character card text itself remains SillyTavern's job.
 
-### 5.4 Implemented engine interfaces (P0–P6, P7a, P7, P8, P9, P9d, P10, P11)
+### 5.4 Implemented engine interfaces (P0–P6, P7a, P7, P8, P9, P9d, P9b, P10, P11)
 
 Later packages build on these; change them only together with the owning spec.
 
@@ -238,6 +238,15 @@ Later packages build on these; change them only together with the owning spec.
 | `syncPublicity`, `setPublicity(draft, reg, unitId, level, { cause: 'commander'\|'claimed'\|'revealed' })`, `rollReveal`, `publicityMismatch`, action `bonds/set_publicity { unitId, level }` | P9d | How open a romantic relationship is; `claimed` (P9c) calls `setPublicity(…, 'public', { cause: 'claimed' })`. |
 | `smotherActive`, `startSmother`, `clearSmother`, `smotherRefusal`, `releaseBreakdowns(draft, ids?, reg?)`, condition `orderedThisRound`, condition `commanderBuildIn`, `outgoing.vs: 'heal'`, `Combatant.refusal`, defect fields `eventStress`, `embraceFlag`, `requiresBond`, `defectEventStress` | P9d | The stand-ins P9c/P9b replace (a smother hold, a co-command flag) and the combat/defect vocabulary of the two new defects. |
 | `createBonds` / `app.bonds` (`onEvents`, `answerRule`, `negotiateRule`, `onSlotAdvanced`, `setPublicity`), `bondsDirectives`, `contentLine`, `drawViolation`, `drawLeadChips`, `drawRuleChips`, `renderContentSection`, `registerBondsProviders` | P9d | The non-engine layer: directives (`content`, `limits:`, `lead`, `boundary:`, `want:`, `rule:`, `publicity:`, `co_command:`, `ask:`), the violation and lead chips, the CONTENT section at setup and in SYS. |
+| `assertiveness(state, reg)` → `{ privilegeMult, demandMult, commanderVoteMult }`, `votingOn`, `powerOf(draft)`, world effects `squad_power` / `voting`, options `squad_assertiveness` / `voting`, preset `assertive_squad`, `TUNING.power` | P9b | The squad's assertiveness and the voting toggle, read by effect type. `demandChance` already multiplies by `demandMult` (P9c bookings read it too). Absent = normal, voting off. |
+| `ballotFor`, `tallyVote`, `leanFor`, `compatibility`, `commanderVoteWeight`, `subjectOf`, `voteSubjectLabel`, registry `voteKinds` (5), `commandStances[].voteBias`, `missionTemplates[].voteLean`, `facilities[].voteLean` | P9b | Pure ballots and the tally (a tie passes); no rng. |
+| `openVote`, `dropVote`, `overruleVote`, `carryVote`, `voteFor`, `liveVote`, `grudgeHolds`, `forgetPower`, `registerVoteGate(actionType, gate)` (in `dispatch.ts`), actions `vote/open`, `vote/drop`, `vote/overrule`, error `vote_needed` | P9b | The squad vote flow and the gate that refuses a decision until a usable vote exists (only while `voting` is on). `removeFromService` calls `forgetPower`. |
+| `rationsOf`, `rationsVotable`, `RATION_MODES`, `setRations`, `base.rations`, action `rations/set`, event `commander_went_hungry` | P9b | `equal` / `fighters_first` / `commander_short`, applied in `runUpkeep`. |
+| `meritOf`, `respectOf`, `standingOf`, `computeHierarchy`, `changeLeader`, `leaderOf`, `recordMerit`, `powerDayStep`, `PowerState.hierarchy`, ledger key `standing:<id>`, event `leader_changed` | P9b | Derived standing and the weekly leader (`leadRank ≥ 2`, margin 10). P13's warden is computed among the others. |
+| `privilegeScale`, `leaderVoteWeight`, `countermandChance`, `countermandOpen`, `rollCountermand`, `activities[].countermandable`, `endorse`, `challenge`, `challengeChance`, `dropCoCommand`, actions `power/countermand`, `power/endorse`, `power/challenge` | P9b | The leader's privileges and the commander's moves against her. |
+| `noteFeat`, `outsideActive`, `outsideSuppressedFor`, `negotiationHolds`, registry `outsideFeats` (3), `ExpeditionState.orders`, `LeashLogEntry.cc`, `dilemma_resolved.routeKind` | P9b | Outside perception and the three feats. |
+| `openScapegoat`, `responsibleFor`, `scapegoatOptionId`, `markDecidedBy`, `Mission.decidedBy`, context `scapegoat`, template `scapegoat_mission`, world effect `oversight_punish`, `unit_event` targets `subject` / `witnesses`, event `shielded` (engine type; a big gesture), `Restriction.source: 'oversight'` | P9b | The scapegoat after a failure the squad chose; `take_blame` / `shift_blame`. P13 adds the commander's injury and confinement to TAKE THE BLAME. |
+| `createPower` / `app.power` (`onEvents`, `requestVote`, `overrule`, `drop`, `ballotLines`, `endorse`, `challenge`, `answerCountermand`), `powerDirectives`, `refreshPowerDirectives`, `renderVotePanel`, `renderHierarchyBlock`, `drawCountermandChips`, `scapegoatView`, `registerPowerProviders`, setting `ballotWording`, flavor kind `ballot` | P9b | The non-engine layer: directives (`power:vote:`, `power:leader`, `power:outside`, `power:challenge`, `power:countermand`), the VOTE panel, the dossier block. `requestVote(action)` is how a UI path runs a gated action. |
 | `whereabouts(state, reg)` → `Whereabout[]` (`{ unitId, roomId \| null, reason }`), `fnv1a`, registry `hubRooms` (`rect`, `sceneLocationId`, `facilityId?`, `activityIds?`, `weights`, `likeTags?`, `hosts?`, `commanderCell?`) | P10 | Where each living unit is this slot, derived and stateless (no RNG): away, injured, confined, duty, night, else a weighted hash pick. P10b may replace the last step with a stored schedule. |
 | `ScreenId 'hub'`, `ShellApi.registerHub / isDeviceUp / setDevice`, `toast(kind, text, { voice, title })`, `ShellDeps.{ skin, sound, onDevice }`, `app.talkAt(unitId, locationId)`, `app.endSlot()` | P10 | The hub is the home screen and the PDA a device layer over it: `showScreen('pda')` raises it, `'hub'` lowers it. `talkAt` starts the talk activity and the scene at a room's location without the picker; `endSlot` passes the slot after a confirm (a quiet night is slept through). |
 | `currentObjective(state, reg)`, `tonightItems`, `markerTone`, `endSlotBlock`, `latestOversight` (`src/ui/hub/model.ts`) | P10 | Pure view models of the hub. `currentObjective` reads P11's `objectiveList` and falls back to the old mission pick (`source: 'mission'`). |
@@ -287,6 +296,7 @@ Campaign {
   workshopSession?: { day, opsLeft, companionId? }, enemyNames?: { [enemyId|affixes]: name }   // P4
   ledger?: [{ day, slot, action, key, delta }]   // P7a: changes of resources (res:<r>), unit stress (stress:<id>), relation axes (axis:<id>:<axis>) and, from P9, the stored Impunity term (record:<id>); last 7 days, ≤ 150, written by dispatch
   content?: { enabled[] /* contentCategories ids */ }, bonds?: { rules[], smother? }   // P9d; absent = nothing enabled, no rules
+  power?: { votes{ open?, log[], seq }, grudges?, hierarchy?{ standings, leaderId?, endorsed, computedDay, challengeCooldownUntil?, deposed?, standingBonus?, outsideSuppressedUntil? }, merit?[], countermand?, scapegoatQueue? }, base.rations?   // P9b; absent = no votes, no leader, equal rations (world options squad_assertiveness, voting live in world.options)
   hierarchy?, votes?[]   // P9b (planned): leader/standing and open votes; world options squad_assertiveness, voting
   discipline?: { defiance[], threats[], applications[] /* newest 20, each with its Inverse */, restrictions[], sabotage?{ queued[], gear?, lastDay? }, demands[], demandLog[] }   // P9; absent in old saves
 }
@@ -392,7 +402,7 @@ Defaults in code: Desire/Bond defects **off**, show raw values **off**, sprite m
 | 12 | P10 | Visual upgrade (hub, device skins, voices) | P0–P6 | implemented |
 | 13 | P11 | Prologue & onboarding | P7, P8, P10 | implemented |
 | 14 | P9d | Desire & bonds (bond profile, opt-in content categories, lead, Want, relationship rules) | P3, P9 | implemented |
-| 15 | P9b | Squad power structure (voting, hierarchy/leader, outside perception, scapegoat) | P8, P9, P9d | spec |
+| 15 | P9b | Squad power structure (voting, hierarchy/leader, outside perception, scapegoat) | P8, P9, P9d | implemented |
 | 16 | P9c | Personal pressure (device access levels, bookings, tokens, squad secrets, wagers) | P9b, P9d, P10 | spec |
 | 17 | P10b | Intimate immersion UI (telemetry, living DMs, night door, handwriting, device marks) | P10, P9c, P9d | spec |
 | 18 | P12 | Special traits: Secret Frequency, Bloom-induced Paranoia, Web of Debts | P5, P6, P7, P9 | spec |

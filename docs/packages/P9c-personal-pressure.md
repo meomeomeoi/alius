@@ -86,3 +86,9 @@ Outcomes apply as engine effects; "a day of obedience" for the commander = his n
 - **Publicity:** `setPublicity(draft, reg, unitId, 'public', { cause: 'claimed' })` is what a `claimed` booking calls (no preference event); `publicityMismatch` and the demand `publicity_talk` already exist.
 - **Want and rules:** `wantOf` / `wantBand`, `relieveWant(draft, unitId, amount, cause)` (a booking or a token may relieve Want), the demand kind `desire` with cost `night_visit`, `rulesOf` / `activeRules` and the check `intent` (a token rule such as `no_other_tokens` is intent-only until tokens exist: add a check vocabulary entry and its engine hook).
 - **Notes:** a pinned rule note reads `rulesOf(state)` (`status`, `text`, `brokenCount`).
+
+## Interfaces already provided by P9b (implemented — use, do not rebuild)
+
+- **Assertiveness:** `assertiveness(state, reg).demandMult` already scales P9's `demandChance`; bookings read it the same way (a world option read by effect type `squad_power`, never by choice id).
+- **Voting:** `registerVoteGate(actionType, gate)` makes a decision wait for a squad vote while the world's `voting` is on; a booking decision that should be votable registers a gate and a `voteKinds` entry (lean, reasons).
+- **Hierarchy:** `leaderOf(state)`, `standingOf(state, reg, unitId)`, `privilegeScale`, `outsideActive` and `noteFeat`; the co-command stand-in (`co_command`) is now the hierarchy's endorsement (`endorse`).

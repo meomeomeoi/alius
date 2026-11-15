@@ -115,3 +115,9 @@ Intimacy settings apply as usual; romance with the warden is allowed and gets de
 - **Lead:** `decideLead(state, reg, unitId)` / `scene.lead` decide who leads a romantic scene from lead style, Impunity, defects and recent yields; a mirrored mode flips the inputs, not the function.
 - **Bond profile and content categories:** `bondOf`, `contentAllowed`, `contentLine` (what every generation is told is excluded); `enabledCategories(state)` is the player's consent and never widens.
 - **Defect vocabulary:** `eventStress`, `embraceFlag`, `wantBreakdown`; conditions `orderedThisRound`, `commanderBuildIn`.
+
+## Interfaces already provided by P9b (implemented — use, do not rebuild)
+
+- **Hierarchy:** `leaderOf(state)`, `standingOf(state, reg, unitId)` and `computeHierarchy(draft, reg)` compute among the named living units; the warden of LEASHSWAP is outside that set and is filtered out before the call (a standing tension when the warden is not the leader). `changeLeader` reports a change (`leader_changed`, public facts, endorsement and `co_command` cleared).
+- **Scapegoat:** `openScapegoat(draft, ctx, { missionId, unitId, witnessIds })` and the answers `take_blame` / `shift_blame` (read from the option `id` with `scapegoatOptionId`); P13 adds the commander's injury and confinement to TAKE THE BLAME as more effects of that option, and `shielded` is the engine event for covering her.
+- **Oversight copy:** `LeashLogEntry.cc` and `outsideActive(state)` (oversight addresses the leader as second-in-command when endorsed).

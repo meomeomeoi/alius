@@ -1,6 +1,6 @@
 # P9b — Squad Power Structure
 
-**Depends on:** P9 (Impunity, demands, punishments), P8 (world options), P7 (commander profile), P6 (dilemmas, Leash), P5 (oversight, missions). **Read:** overview; this file; P9; P9d §1 (bond profile, shared with this package).
+**Status: implemented** (plan: `docs/plans/2026-11-15-p9b-power-structure.md`; see **Implemented as** at the end; where it differs from the draft, the code wins). **Depends on:** P9 (Impunity, demands, punishments), P8 (world options), P7 (commander profile), P6 (dilemmas, Leash), P5 (oversight, missions). **Read:** overview; this file; P9; P9d §1 (bond profile, shared with this package).
 
 **Analysis tool (P7a):** every new player-facing stat, chip, option and choice card in this package carries `data-analyze`, has a glossary entry or registry `description`, and live values get an analyze provider reading through `Knowledge`.
 
@@ -81,3 +81,41 @@ Campaign: `world.options.squad_assertiveness`, `world.options.voting`; `hierarch
 - **Lead and rules:** `scene.lead` (`unit` / `commander` / `shared`) and the proposals of leading partners (`relationshipRuleTemplates`, `rollRules`) are the entry points a hierarchy or a vote can read; `decideLead` is pure.
 - **Content gate:** `contentAllowed` over `contentTags`; a new gated registry needs a `GATE_PROBES` probe.
 - **Directives:** ids `content`, `limits:`, `lead`, `boundary:`, `want:`, `rule:`, `publicity:`, `co_command:`, `ask:` are P9d's.
+
+## Implemented as
+
+Engine: `src/engine/power/{options,ballot,votes,rations,state,standing,leader,moves,outside,scapegoat,dayStep,index}.ts`, `src/engine/actions/power.ts` (actions `vote/open`, `vote/drop`, `vote/overrule`, `rations/set`, `power/countermand`, `power/endorse`, `power/challenge`; the vote gates; the power day step on `director_tick`). Non-engine layer `src/power/{controller,directives,deps}.ts` (`createPower` / `app.power`). UI `src/ui/power/{votePanel,hierarchy,chips}.ts`, `src/ui/dilemma/scapegoat.ts`, the RATIONS row in `ui/base/baseTab.ts`, the dossier block in `ui/squad/squadTab.ts`, countermand chips in OPS and the hub, `CC:` in the oversight log, `css/74-power.css`. Analysis `src/analysis/providers/power.ts`. Content: registries `voteKinds` (5) and `outsideFeats` (3), world options `squad_assertiveness` and `voting` (+ preset `assertive_squad`), `commandStances[].voteBias`, `missionTemplates[].voteLean`, `facilities[].voteLean`, `activities[].countermandable`, dilemma template `scapegoat_mission`, `eventDeltas` rows for the four leader events and `shielded`. Numbers: `TUNING.power`. Every number, reason line and text is a **draft** the author may change; texts are marked `AUTHOR TO WRITE`.
+
+### State
+- `CampaignState.power?: { votes: { open?, log[], seq }, grudges?, hierarchy?, merit?, countermand?, scapegoatQueue? }` (created by `powerOf` on first write), `base.rations?`, `Mission.decidedBy?` (`{ voteId, unitId, witnessIds? }`), `ExpeditionState.orders?`, `LeashLogEntry.cc?`, `Restriction.source?: 'oversight'`, `DilemmaState.subjectId` / `witnessIds`. Version stays 1; every field is optional and a save without them plays as before.
+- The vote is stored while it is open (`passed` / `failed` / `overruled`); carrying it spends it into the 30-entry log. A vote is usable only for the action it was held for: same kind and subject, same day, `passed` or `overruled`.
+
+### What changed against the draft (rulings; the plan's ruling section holds the full text)
+- **Vote shape (user):** yes/no on the commander's pick. The commander always votes FOR; a tie passes. Weight `(1 + 0.5 × (Authority − 1)) × commanderVoteMult`; the leader `1.5 × privilegeMult (× 1.5 endorsed)`; a grunt 0.5 following the leader, else abstaining.
+- **Five gated decisions** (`registerVoteGate` in `dispatch.ts`, consulted before the handler, only while `voting` is on): a board mission (not a `poi` or tutorial run), a base upgrade, a punishment up to the `bench` ladder step (read from the side effect), a ration change while a shortage is on or coming, and the answer of a scapegoat case. The refusal is `{ type: 'error', code: 'vote_needed', kind, subject }`.
+- **Overrule** (only on a failed vote) always costs `decision_violated` moderate on every dissenter (the event is value-aligned, so the engine gives it the axes of her own values, pushed the other way), Impunity record +5, and a grudge until the next day end (refusal chance × 1.5, the directive `power:vote:<unitId>`); then by order, a punishment of one dissenter, or one Leash compel on the loudest.
+- **Rations (user):** `equal` / `fighters_first` (reserve first, one point a share) / `commander_short` (the commander covers up to the commander's share and loses the next morning).
+- **Standing** `0.4 merit + 0.3 respect + 0.3 Impunity` × lead style; merit from the combat log (the open `CombatState`, since the result's log is cut), respect = values compatibility; the leader leads the next by 10 and has `leadRank ≥ 2`; recomputed weekly; a lone named unit never leads.
+- **Endorse / challenge (user):** endorse = second-in-command (`co_command` flag, +3 record for the others, privileges ×1.5); challenge = one weighted roll (chance `clamp(0.5 + 0.12 × Δrank, 0.15, 0.85)`), a win deposes her 14 days, a loss gives her +10 standing for 14 days and everyone +10 record; 14-day cooldown either way; a scene with her opens with the decided outcome as `power:challenge`.
+- **Outside perception:** derived from state (`outsideActive`); three feats (`crisis_cover`, `ordered_mission`, `negotiation`) suppress it for 14 days, noted even with no leader; endorsing makes it official and never suppressed; oversight copies the leader on Leash requests (`cc`).
+- **Scapegoat (user: deadline + beaten-back runs):** a command mission started on a *passed* vote remembers who answers for it (the strongest FOR voter) and the other FOR voters; when its deadline expires or the run ends `failed`, the authored dilemma `scapegoat_mission` opens at once (queued at the next day end if a dilemma is open); no model call. TAKE THE BLAME: own standing −5, Leash −1, `shielded` major on her and moderate on witnesses. SHIFT IT: oversight confines her 2 days (no Impunity record, no `commander_enforced`), stress +10, `sided_against` extreme on her and moderate on witnesses. A failed run also costs own standing −4 × `command_failure_mult`.
+- **No new intent.** `shielded` is an engine event type (a big gesture), not something the model reports; `intent_extract` is unchanged (the plan's Task 12 asked for an `EVENT_TYPES` member and a vocabulary line, which contradicts its own constraint and the spec).
+- **Combat log:** `heal` entries now carry `actor` (the healer's cid), so healing counts as merit.
+
+### Non-obvious things to know before touching P9b code
+- **No registry id is tested in engine code:** kinds, feats and leans are read by field; world options by effect type (`squad_power`, `voting`); the ladder limit by the `bench` side effect.
+- **Leaves:** `power/state.ts` has no engine imports beyond types, so `leash/use`, `loyalty/refusal`, `economy` and `discipline/impunity` can use it without a cycle; `moves.ts` exists apart from `leader.ts` for the same reason.
+- **Acceptance 6:** with voting off and no leader no rng is drawn and nothing is gated; the day step's only writes are `power.hierarchy.standings` / `computedDay` and `power.merit`. A countermand or challenge rolls only while a leader exists or a challenge is made.
+- **A countermand lives for its slot** (`countermandOpen` compares day and slot) and the day step deletes it.
+- **`vote/overrule` is atomic:** a refused part (no Leash left, a measure she cannot be given) throws and changes nothing.
+- **Directive ids:** `power:vote:<unitId>`, `power:leader`, `power:outside` (derived on every refresh), `power:challenge`, `power:countermand` (set by the controller). None starts with a prefix P9, P9d or P11 reserved.
+- **A scapegoat case blocks time** like any presented dilemma (`BLOCKED_BY_DILEMMA`); the day step opens a queued case only when nothing else waits and drops one whose subject is gone with no effects.
+
+### Open items
+- No "her call" dilemma exists, and a leader's countermand never leads to an oversight failure: votes are the only source of a scapegoat case.
+- Outside perception has no traders or parleys: the directive and the oversight `cc` are its whole effect.
+- LEASHSWAP (P13): the warden above the hierarchy is not built; `leaderOf`, `standingOf` and `computeHierarchy` compute among the others.
+- TAKE THE BLAME does not yet injure or confine the commander (P13).
+- Respect is approximated by values compatibility until squad relations exist.
+- `assertiveness().demandMult` is read by P9's `demandChance`; P9c bookings should read it too.
+- Every number (ballot weights, standing thresholds and bands, challenge odds, countermand chance, feat days) and every text (reason lines, option texts, glossary long texts) is a draft. The real `flavor` wording of ballots is checked only by hand (`docs/MANUAL_TEST_P9b.md`).

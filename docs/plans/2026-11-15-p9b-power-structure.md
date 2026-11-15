@@ -740,7 +740,7 @@ tests/**                                                        mirrors src; tes
   - `docs/packages/P9c-personal-pressure.md` and `docs/packages/P13-leashswap-mode.md`: an **Interfaces already provided by P9b** note (`assertiveness().demandMult` for bookings; `leaderOf`, `standingOf` and `computeHierarchy` for the warden; `openScapegoat` / `take_blame` for commander confinement).
   - `CLAUDE.md`: a P9b line like the P9 one.
 
-- [ ] **Step 1: Write** the manual checklist, one item per acceptance criterion:
+- [x] **Step 1: Write** the manual checklist, one item per acceptance criterion:
   - preset turns voting on;
   - each kind opens the panel;
   - overrule costs;
@@ -750,11 +750,11 @@ tests/**                                                        mirrors src; tes
   - CC on oversight and a feat suppresses it;
   - both scapegoat branches;
   - an old save with voting off plays as before.
-- [ ] **Step 2: Update** the docs listed above. Open items:
+- [x] **Step 2: Update** the docs listed above. Open items:
   - no "her call" dilemma;
   - no traders or parleys;
   - LEASHSWAP warden;
   - commander confinement on TAKE THE BLAME (P13);
   - unit↔unit respect is approximated by values.
-- [ ] **Step 3: Run** `npm test` (the pronoun and docs-link tests included). Expect PASS.
-- [ ] **Step 4: Tick and commit:** `docs: P9b implemented-as, overview, content guide and manual checklist`.
+- [x] **Step 3: Run** `npm test` (the pronoun and docs-link tests included). Expect PASS.
+- [x] **Step 4: Tick and commit:** `docs: P9b implemented-as, overview, content guide and manual checklist`.

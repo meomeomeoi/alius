@@ -743,3 +743,24 @@ All paths are relative to the extension folder and are requested only from there
 
 Fonts are latin woff2 subsets from the `@fontsource` packages: IBM Plex Mono (400, 600), Saira Stencil One (400), Inter (300, 400, 600) — SIL OFL — and Special Elite (400) — Apache-2.0. Declare new ones in `css/01-fonts.css` with a relative `url("fonts/…")` and `font-display: swap`; `tests/assets.test.ts` fails on a missing file, a remote url, an `@import`, a font over 120 KB or a missing licence file.
 
+## Squad power (P9b)
+
+All of it is data: a vote kind, a feat, a lean and a countermandable activity are JSON entries. Every text below is a draft (`AUTHOR TO WRITE`).
+
+### `voteKinds`
+One entry per votable decision; the id must be one of `mission`, `upgrade`, `punish`, `rations`, `scapegoat` (the engine gates exactly these five). `lean` is the kind's base lean: how the decision pushes each value axis, `−2…2` (absent axis = 0). A ballot adds `Σ value × lean`. `features.danger` (× `(danger − 3) / 2`) and `features.command` (× 1 for a command mission) add to a mission's lean; `subjects[<id>]` adds the lean of a ration mode or a scapegoat answer. `reasons` is one line per ballot term (`values`, `trust`, `stance`, `demand`, `affected`) and side (`for`, `against`), at most 120 characters, each naming the voter with `{name}`; the values line may name the axis with `{axis}`. The loader rejects a reason without `{name}`. No pronoun for the commander (write "the commander").
+
+### Leans on other entries
+`missionTemplates[].voteLean` and `facilities[].voteLean` are the same `−2…2` map: how a squad leans on a run of that template or on upgrading that facility. `commandStances[].voteBias` (`−3…3`) is added to a ballot by the stance she is in.
+
+### `outsideFeats`
+`{ id, label (≤ 40), description, trigger }`. `trigger` is a closed vocabulary the engine reads: `crisis_cover` (a won fight that exposed the commander, covered, commander standing), `ordered_mission` (a command mission secured after at least one combat order in the run), `negotiation` (a passed social route or social check). The first entry with a trigger is the one noted; a feat holds outside perception back for 14 days. A new trigger needs a generic hook in code, never a one-off.
+
+### `activities[].countermandable`
+`true` lets the squad leader countermand that activity when it names another unit (a companion or a picked unit). Core: `train`, `rest`, `work`, `study`. Keep it to minor, non-combat orders.
+
+### The scapegoat template
+`dilemmaTemplates` entry with `contexts: ["scapegoat"]` and an authored `fixed` block (no `generate`: pacing never draws it, no model is asked). Options carry an `id` slug (`take_blame`, `shift_blame`) the engine tells apart. `setup` and labels may use `{name}` (the unit who answers for it) and `{mission}`. Effects may use `unit_event` with `targets: "subject"` or `"witnesses"` and the effect `oversight_punish { days 1–3, stress 0–20 }`; both load only on a template with the `scapegoat` context.
+
+### World options
+`squad_assertiveness` choices carry `{ type: 'squad_power', privilegeMult, demandMult, commanderVoteMult }`; `voting`'s `on` choice carries `{ type: 'voting' }`. Both are `live: false`. The lore lines are short (the WORLD SETTINGS block holds about 120 tokens for every option together).
