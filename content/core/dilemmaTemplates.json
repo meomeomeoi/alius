@@ -1423,7 +1423,11 @@
     ],
     "fixed": {
       "title": "Oversight wants a name",
-      "setup": "AUTHOR TO WRITE: {mission} went wrong and oversight is asking who answered for it. {name} carried the squad's vote for it. Either the commander answers for the decision, or oversight is given a name.",
+      "setup": "AUTHOR TO WRITE: {mission} went wrong and oversight is asking who answered for it. {because} Either the commander answers for the decision, or oversight is given a name.",
+      "because": {
+        "vote": "{name} carried the squad's vote for it.",
+        "her_call": "{name} made the call herself in the field."
+      },
       "options": [
         {
           "id": "take_blame",

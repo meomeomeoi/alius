@@ -7120,7 +7120,9 @@ var DilemmaTemplateSchema = BaseEntrySchema.extend({
   fixed: external_exports.object({
     title: str,
     setup: str.max(600),
-    options: external_exports.array(EventOptionSchema).min(1).max(4)
+    options: external_exports.array(EventOptionSchema).min(1).max(4),
+    /** P9e: a `scapegoat` template fills its `{because}` placeholder from here, by where the decision came from (squad vote or her call). */
+    because: external_exports.object({ vote: str.max(200).optional(), her_call: str.max(200).optional() }).strict().optional()
   }).passthrough().optional(),
   /** P6: the mechanic model writes the dilemma from this brief; `fixed` is the authored fallback. */
   generate: external_exports.object({ brief: str.max(300) }).strict().optional(),
@@ -7170,6 +7172,9 @@ var DilemmaTemplateSchema = BaseEntrySchema.extend({
     ctx2.addIssue({ code: "custom", path: ["allowedFlags"], message: "flagPerOption needs at least as many allowedFlags as options" });
   }
   if (d.fixed === void 0) return;
+  if (d.fixed.because !== void 0 && !d.contexts.includes("scapegoat")) {
+    ctx2.addIssue({ code: "custom", path: ["fixed", "because"], message: '"because" only exists in a scapegoat dilemma' });
+  }
   const options2 = d.fixed.options;
   if (!d.contexts.includes("expedition_event")) {
     options2.forEach((o, i) => o.effects.forEach((e, j) => {
@@ -9804,7 +9809,7 @@ function openScapegoat(draft, ctx2, p) {
   if (!template || !fixed || !named(draft, p.unitId)) return [];
   if (draft.dilemmas?.open) {
     const power = powerOf(draft);
-    (power.scapegoatQueue ??= []).push({ missionId: p.missionId, unitId: p.unitId, witnessIds: [...p.witnessIds] });
+    (power.scapegoatQueue ??= []).push({ missionId: p.missionId, unitId: p.unitId, witnessIds: [...p.witnessIds], ...p.source === "her_call" ? { source: "her_call" } : {} });
     return [];
   }
   const witnessIds = p.witnessIds.filter((id) => id !== p.unitId && named(draft, id));
@@ -9813,6 +9818,8 @@ function openScapegoat(draft, ctx2, p) {
   const d = draft.dilemmas ??= { seq: 0 };
   d.seq += 1;
   const vars = { name: subject.displayName, mission: mission?.title ?? "The mission" };
+  const because = fixed.because?.[p.source === "her_call" ? "her_call" : "vote"] ?? "";
+  const setup = fill(fill(fixed.setup, { because }), vars).replace(/ {2,}/g, " ");
   d.open = {
     id: `dl${d.seq}`,
     templateId: String(template.id),
@@ -9825,18 +9832,20 @@ function openScapegoat(draft, ctx2, p) {
     beatId: currentBeat(draft, reg)?.id ?? "open",
     source: "fallback",
     title: fill(fixed.title, vars),
-    setup: fill(fixed.setup, vars),
+    setup,
     options: fixed.options.map((o) => ({ ...structuredClone(o), label: fill(o.label, vars), magnitudes: [] })),
     subjectId: p.unitId,
-    witnessIds
+    witnessIds,
+    ...p.source === "her_call" ? { scapegoatSource: "her_call" } : {}
   };
   return [{ type: "dilemma_presented", id: d.open.id, templateId: String(template.id), title: d.open.title, source: "fallback" }];
 }
 function takeScapegoatCase(m) {
   if (m.source !== "command" || !m.decidedBy) return null;
   const { unitId, witnessIds } = m.decidedBy;
+  const source = m.decidedBy.source === "her_call" ? "her_call" : "vote";
   delete m.decidedBy;
-  return { missionId: m.id, unitId, witnessIds: witnessIds ?? [] };
+  return { missionId: m.id, unitId, witnessIds: witnessIds ?? [], source };
 }
 function scapegoatAfterFailure(draft, ctx2, m) {
   const c = takeScapegoatCase(m);

@@ -58,15 +58,17 @@ const fill = (text: string, vars: Record<string, string>): string => Object.entr
  * Opens the case as a presented dilemma (context `scapegoat`, about `unitId`, witnessed by the others who backed it). With a
  * dilemma already open it waits in `power.scapegoatQueue` and opens at a later day end; a subject who is gone opens nothing.
  */
-export function openScapegoat(draft: CampaignState, ctx: EngineCtx, p: { missionId: string; unitId: string; witnessIds: string[] }): EngineEvent[] {
+export function openScapegoat(
+  draft: CampaignState, ctx: EngineCtx, p: { missionId: string; unitId: string; witnessIds: string[]; /** P9e: where the decision came from (absent = a squad vote). */ source?: 'vote' | 'her_call' },
+): EngineEvent[] {
   const reg = ctx.registries;
   // the case is the authored template of the `scapegoat` context (read by context, never by id)
   const template = [...reg.dilemmaTemplates.values()].find((t) => (t.contexts as string[]).includes('scapegoat') && t.fixed !== undefined);
-  const fixed = template?.fixed as { title: string; setup: string; options: Array<Record<string, unknown>> } | undefined;
+  const fixed = template?.fixed as { title: string; setup: string; because?: { vote?: string; her_call?: string }; options: Array<Record<string, unknown>> } | undefined;
   if (!template || !fixed || !named(draft, p.unitId)) return [];
   if (draft.dilemmas?.open) {
     const power = powerOf(draft);
-    (power.scapegoatQueue ??= []).push({ missionId: p.missionId, unitId: p.unitId, witnessIds: [...p.witnessIds] });
+    (power.scapegoatQueue ??= []).push({ missionId: p.missionId, unitId: p.unitId, witnessIds: [...p.witnessIds], ...(p.source === 'her_call' ? { source: 'her_call' as const } : {}) });
     return [];
   }
   const witnessIds = p.witnessIds.filter((id) => id !== p.unitId && named(draft, id));
@@ -75,22 +77,27 @@ export function openScapegoat(draft: CampaignState, ctx: EngineCtx, p: { mission
   const d = (draft.dilemmas ??= { seq: 0 });
   d.seq += 1;
   const vars = { name: subject.displayName, mission: mission?.title ?? 'The mission' };
+  // P9e: the template's `{because}` says where the decision came from; its own `{name}` is filled with the rest (an absent line fills nothing)
+  const because = fixed.because?.[p.source === 'her_call' ? 'her_call' : 'vote'] ?? '';
+  const setup = fill(fill(fixed.setup, { because }), vars).replace(/ {2,}/g, ' ');
   d.open = {
     id: `dl${d.seq}`, templateId: String(template.id), scale: template.scale as 'major', context: 'scapegoat', day: draft.day, status: 'presented', attempts: 0,
     units: [p.unitId, ...witnessIds], beatId: currentBeat(draft, reg)?.id ?? 'open', source: 'fallback',
-    title: fill(fixed.title, vars), setup: fill(fixed.setup, vars),
+    title: fill(fixed.title, vars), setup,
     options: (fixed.options as unknown as DilemmaOption[]).map((o) => ({ ...structuredClone(o), label: fill(o.label, vars), magnitudes: [] })),
     subjectId: p.unitId, witnessIds,
+    ...(p.source === 'her_call' ? { scapegoatSource: 'her_call' as const } : {}),
   };
   return [{ type: 'dilemma_presented', id: d.open.id, templateId: String(template.id), title: d.open.title, source: 'fallback' }];
 }
 
 /** The case a failed command mission leaves, and the mark spent on the mission itself (so it can never open a second one). */
-export function takeScapegoatCase(m: Mission): { missionId: string; unitId: string; witnessIds: string[] } | null {
+export function takeScapegoatCase(m: Mission): { missionId: string; unitId: string; witnessIds: string[]; source: 'vote' | 'her_call' } | null {
   if (m.source !== 'command' || !m.decidedBy) return null;
   const { unitId, witnessIds } = m.decidedBy;
+  const source = m.decidedBy.source === 'her_call' ? 'her_call' : 'vote'; // P9e: a mark without a source is a vote's
   delete m.decidedBy;
-  return { missionId: m.id, unitId, witnessIds: witnessIds ?? [] };
+  return { missionId: m.id, unitId, witnessIds: witnessIds ?? [], source };
 }
 
 /** After a failure the squad chose: a command mission with a `decidedBy` opens the case once, and the mark is spent. */

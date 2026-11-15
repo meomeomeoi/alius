@@ -1052,6 +1052,8 @@ export const DilemmaTemplateSchema = BaseEntrySchema.extend({
     title: str,
     setup: str.max(600),
     options: z.array(EventOptionSchema).min(1).max(4),
+    /** P9e: a `scapegoat` template fills its `{because}` placeholder from here, by where the decision came from (squad vote or her call). */
+    because: z.object({ vote: str.max(200).optional(), her_call: str.max(200).optional() }).strict().optional(),
   }).passthrough().optional(),
   /** P6: the mechanic model writes the dilemma from this brief; `fixed` is the authored fallback. */
   generate: z.object({ brief: str.max(300) }).strict().optional(),
@@ -1101,6 +1103,9 @@ export const DilemmaTemplateSchema = BaseEntrySchema.extend({
     ctx.addIssue({ code: 'custom', path: ['allowedFlags'], message: 'flagPerOption needs at least as many allowedFlags as options' });
   }
   if (d.fixed === undefined) return;
+  if (d.fixed.because !== undefined && !d.contexts.includes('scapegoat')) {
+    ctx.addIssue({ code: 'custom', path: ['fixed', 'because'], message: '"because" only exists in a scapegoat dilemma' });
+  }
   const options = d.fixed.options as Array<{ effects: WorldEffect[] }>;
   if (!d.contexts.includes('expedition_event')) {
     options.forEach((o, i) => o.effects.forEach((e, j) => {
