@@ -528,7 +528,7 @@ tests/**                                                        mirrors src; tes
   - `powerDayStep(draft, ctx): EngineEvent[]` (recompute when due; drop the open vote; end grudges; open a queued scapegoat in Task 12)
 - Consumes: `impunityOf`, `bondOf`, `leadRank`, `compatibility` (Task 2), `addFact`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `merit counts damage, finishing blows and heals; older than 14 days drops out`
   - `standing matches the formula` (a table of three units with fixed merit/values/Impunity)
   - `a dominant unit 10 ahead becomes leader; 9 ahead does not`
@@ -538,10 +538,10 @@ tests/**                                                        mirrors src; tes
   - `leader_changed writes the public fact and clears endorsed`
   - `removeFromService of the leader clears her at once`
   - `acceptance 6: nothing changes with voting off and no leader` (modest squad, 7 day ends; the rng state equals the run with `powerDayStep` unregistered via `resetDayEndSteps` + re-registration of the others)
-- [ ] **Step 2: Run** `npx vitest run tests/engine/power/standing.test.ts` and confirm FAIL.
-- [ ] **Step 3: Implement** with the rulings' formulas; draft merit weights go in `TUNING.power.merit`.
-- [ ] **Step 4: Run** the tests, then `npm test`. Seeded combat tests may gain `power.merit`; update snapshots knowingly.
-- [ ] **Step 5: Tick and commit:** `feat(power): merit, standing and the squad leader`.
+- [x] **Step 2: Run** `npx vitest run tests/engine/power/standing.test.ts` and confirm FAIL.
+- [x] **Step 3: Implement** with the rulings' formulas; draft merit weights go in `TUNING.power.merit`.
+- [x] **Step 4: Run** the tests, then `npm test`. Seeded combat tests may gain `power.merit`; update snapshots knowingly.
+- [x] **Step 5: Tick and commit:** `feat(power): merit, standing and the squad leader`.
 
 ### Task 8: Leader privileges: vote weight, grunts, contagion, countermand
 

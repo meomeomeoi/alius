@@ -37,6 +37,12 @@ export function recordLedger(before: CampaignState, after: CampaignState, action
     push(`want:${id}`, (rel.want ?? 0) - (was.want ?? 0));
   }
 
+  // P9b: a standing that moved (the first computation is not a change)
+  for (const [id, now] of Object.entries(after.power?.hierarchy?.standings ?? {})) {
+    const was = before.power?.hierarchy?.standings?.[id];
+    if (was !== undefined) push(`standing:${id}`, now - was);
+  }
+
   // P7: a raised (or scarred) body stat; the migration that first writes the body (`commander/seed`) is not training
   if (before.commander?.body !== undefined && after.commander?.body !== undefined) for (const stat of BODY_STATS) push(`body:${stat}`, (after.commander?.body?.[stat] ?? 0) - (before.commander?.body?.[stat] ?? 0));
 

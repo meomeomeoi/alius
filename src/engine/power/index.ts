@@ -4,3 +4,4 @@ export { ballotFor, commanderVoteWeight, compatibility, leanFor, subjectOf, tall
 export { carryVote, dropVote, openVote, overruleVote, voteFor, type OverruleMeans } from './votes';
 export { powerDayStep } from './dayStep';
 export { rationsVotable, RATION_MODES, rationsOf, setRations } from './rations';
+export { computeHierarchy, leaderOf, meritOf, recordMerit, respectOf, standingOf } from './standing';

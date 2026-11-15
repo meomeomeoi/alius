@@ -1,3 +1,4 @@
+import { recordMerit } from '../power/standing';
 import type { Registries } from '../../content/types';
 import { countDeed } from '../discipline/deeds';
 import { injureCommander } from '../calendar';
@@ -139,6 +140,8 @@ export function finalizeCombat(draft: CampaignState, reg: Registries, rng: Rng, 
     commanderInjured = true;
     events.push(...scarCommander(draft, rng));
   }
+
+  recordMerit(draft, cs); // P9b: who did what in this fight counts for the squad's standing
 
   // P6: the Leash is paid once, here, so an easy retry that discards the attempt never charges (the compels died with it)
   const compels = cs.compels ?? [];

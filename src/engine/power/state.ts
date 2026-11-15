@@ -64,6 +64,20 @@ export function forgetPower(draft: CampaignState, unitId: string): void {
     delete power.grudges[unitId];
     if (Object.keys(power.grudges).length === 0) delete power.grudges;
   }
+  const h = power.hierarchy;
+  if (h) {
+    if (h.leaderId === unitId) {
+      delete h.leaderId;
+      h.endorsed = false;
+    }
+    delete h.standings[unitId];
+    if (h.deposed?.unitId === unitId) delete h.deposed;
+    if (h.standingBonus?.unitId === unitId) delete h.standingBonus;
+  }
+  if (power.merit) {
+    power.merit = power.merit.filter((m) => m.unitId !== unitId);
+    if (power.merit.length === 0) delete power.merit;
+  }
   const open = power.votes.open;
   if (open && open.ballots.some((b) => b.unitId === unitId)) {
     open.ballots = open.ballots.filter((b) => b.unitId !== unitId);

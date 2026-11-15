@@ -336,7 +336,7 @@ function heal(ctx: EffectCtx, targetCid: string, pct: number, ownerCid?: string)
   const amount = Math.max(1, Math.round((t.maxHp * pct * bonus) / 100));
   const gained = Math.min(amount, t.maxHp - t.hp);
   t.hp += gained;
-  if (gained > 0) ctx.log({ kind: 'heal', target: targetCid, amount: gained });
+  if (gained > 0) ctx.log({ kind: 'heal', target: targetCid, amount: gained, ...(ownerCid !== undefined ? { actor: ownerCid } : {}) });
 }
 
 function moveCombatant(ctx: EffectCtx, targetCid: string, to: 'front' | 'back' | 'swap'): void {

@@ -264,10 +264,12 @@ describe('grudges, day end and leaving the service', () => {
     expect(after.power!.votes.log.at(-1)).toMatchObject({ id: 'v1', result: 'dropped' });
   });
 
-  it('a save without power gets no power object from the day step', () => {
+  it('a save without power gets no vote, no grudge and no open vote from the day step', () => {
     const { state } = board({ voting: false });
     state.resources.supplies = 100;
-    expect(endDay(state, reg).power).toBeUndefined();
+    const after = endDay(state, reg);
+    expect(after.power!.votes).toEqual({ log: [], seq: 0 });
+    expect(after.power!.grudges).toBeUndefined();
   });
 
   it('removeFromService clears her grudge and ballot', () => {
