@@ -22091,7 +22091,10 @@ var REFRESH_ON = /* @__PURE__ */ new Set([
   "wager_question",
   "truth_told",
   "mark_set",
-  "mark_ended"
+  "mark_ended",
+  "secret_kept",
+  "secret_found",
+  "secret_answered"
 ]);
 function createPersonal(deps) {
   const chatId = () => deps.st.getActiveChat()?.chatId;
@@ -22221,6 +22224,11 @@ function createPersonal(deps) {
     playWager: (wagerId, pick2) => act("wager/play", { wagerId, ...pick2 !== void 0 ? { pick: pick2 } : {} }),
     answerQuestion: (wagerId, text2) => act("wager/answer_question", { wagerId, text: text2 }),
     challenge: (p) => act("wager/challenge", p),
+    answerSecret: (secretId, choice) => act("secret/respond", { secretId, choice }),
+    reopenSecrets() {
+      const found2 = state()?.personal?.secrets?.find((x) => x.status === "found");
+      if (found2 && deps.onSecretFound) deps.onSecretFound(found2.id);
+    },
     onEvents(events) {
       let refresh = false;
       for (const e of events) {
@@ -22232,6 +22240,10 @@ function createPersonal(deps) {
         } else if (e.type === "wager_refused") {
           const s = state();
           if (s) deps.toast("info", `${nameOf11(s, String(e.unitId))} refuses the bet.`);
+        }
+        if (e.type === "secret_found") {
+          if (deps.onSecretFound) deps.onSecretFound(String(e.secretId));
+          else deps.toast("info", "Something the squad kept from the commander has come out.");
         }
         if (e.type === "booking_conflict") {
           deps.toast("info", `Two bookings for the ${String(e.slot)} of day ${String(e.day)} clash: choose one, or let them settle it.`);
@@ -22258,7 +22270,8 @@ var DERIVED = [
   "personal:token_removed:",
   "personal:obedience:",
   "personal:truth:",
-  "personal:mark"
+  "personal:mark",
+  "personal:secret:"
 ];
 var recent = (state, day) => day >= state.day - 1 && day <= state.day;
 function personalDirectives(state, reg, present) {
@@ -22294,6 +22307,21 @@ function personalDirectives(state, reg, present) {
       out.push({ id: `personal:booking:${id}`, expiresAfter: "scene", text: `${name} booked this time and expects the commander's full attention.` });
     } else if (cancelled) {
       out.push({ id: `personal:booking:${id}`, expiresAfter: "scene", text: `The commander cancelled the time ${name} had booked; she remembers it.` });
+    }
+  }
+  for (const x of state.personal?.secrets ?? []) {
+    const names = x.knownBy.filter((id) => present.includes(id)).map((id) => state.squad.find((u) => u.id === id)).filter((u) => u !== void 0 && u.kind === "named").map((u) => u.displayName);
+    if (names.length === 0) continue;
+    const who = names.length === 1 ? names[0] : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+    const text2 = clean3(x.text);
+    if (x.status === "kept" || x.status === "pretend") {
+      out.push({
+        id: `personal:secret:${x.id}`,
+        expiresAfter: "scene",
+        text: names.length === 1 ? `${who} knows the following and keeps it from the commander: ${text2} She does NOT reveal it to the commander, whatever is asked.` : `${who} know the following and keep it from the commander: ${text2} They do NOT reveal it to the commander, whatever is asked.`
+      });
+    } else if (x.status === "used" && (x.usedUntil ?? 0) > state.day) {
+      out.push({ id: `personal:secret:${x.id}`, expiresAfter: "scene", text: `The commander knows the following and can hold it over ${who}: ${text2}` });
     }
   }
   const worn = tokenLine(state);
@@ -22453,7 +22481,9 @@ var VOICE_OF = {
   her_call: "personal",
   // P9c: a soldier's booking of the commander's time and her edit of an outgoing message read as her
   booking: "personal",
-  device_edit: "personal"
+  device_edit: "personal",
+  // P9c: what the squad kept from the commander, found out, is a file entry
+  squad_secret: "paper"
 };
 
 // src/ui/power/votePanel.ts
@@ -31004,6 +31034,44 @@ function renderClaimCard(state, reg, claim2, handlers2) {
   );
 }
 
+// src/ui/personal/secretCard.ts
+var ROUTE_WORDS = {
+  insight: "You read it in the room.",
+  slip: "Somebody let it slip.",
+  night: "It was told at the door.",
+  frequency: "It came over the wire."
+};
+function nameRanges(state, secret) {
+  const ranges = [];
+  for (const id of secret.knownBy) {
+    const name = state.squad.find((u) => u.id === id)?.displayName;
+    if (!name) continue;
+    for (let at = secret.text.indexOf(name); at >= 0; at = secret.text.indexOf(name, at + name.length)) ranges.push([at, at + name.length]);
+  }
+  return ranges;
+}
+function renderSecretCard(state, _reg, secret, onChoose) {
+  const choice = (label2, answer) => h("button", {
+    type: "button",
+    class: "alius-btn alius-tagchip",
+    "data-action": answer,
+    ...analyzeNative("glossary:squad_secret", { secretId: secret.id }),
+    onclick: () => onChoose(answer, secret.id)
+  }, label2);
+  return h(
+    "div",
+    { class: "alius-secret", "data-secret": secret.id },
+    renderVoiceCard({
+      voice: VOICE_OF.squad_secret,
+      title: "SQUAD SECRET",
+      meta: ROUTE_WORDS[secret.foundRoute ?? ""] ?? "It has come out.",
+      body: secret.text,
+      redact: nameRanges(state, secret)
+    }),
+    h("div", { class: "alius-secret-actions" }, choice("[CONFRONT EVERYONE]", "confront"), choice("[PRETEND NOT TO KNOW]", "pretend"), choice("[USE IT]", "use"))
+  );
+}
+
 // src/engine/personal/words.ts
 var STAKE_WORDS = {
   obedience: { she: "the commander follows her choices for the rest of the day", commander: "she follows the commander's non-combat orders for the rest of the day" },
@@ -32328,6 +32396,29 @@ function obedienceProvider(_subject, env) {
     lines: o.who === "commander" ? [`Today the commander follows ${name}'s choices outside combat: her pick is pre-selected, and choosing against it counts as overriding her (Trust and Affinity fall, her Impunity rises).`] : [`Today ${name} is under the commander's orders: she follows the commander's non-combat orders, refuses nothing and asks for nothing on her own.`]
   };
 }
+function squadSecretProvider(_subject, env) {
+  const state = env.state;
+  if (!state) return null;
+  const known = (state.personal?.secrets ?? []).filter((x) => x.status !== "kept");
+  if (known.length === 0) return { lines: ["The commander knows of nothing the squad keeps back."] };
+  return {
+    lines: known.map((x) => {
+      const who = x.knownBy.map((id) => nameOf9(state, id)).join(", ");
+      const how = x.status === "found" ? "waiting for an answer" : x.status === "confronted" ? "out in the open: the squad was confronted" : x.status === "pretend" ? "the commander pretends not to know" : (x.usedUntil ?? 0) > state.day ? `the commander can hold it over them until day ${x.usedUntil}` : "the commander used it, and the hold is over";
+      return `${x.text} Known by ${who}; ${how}.`;
+    })
+  };
+}
+var SECRET_SOURCE_WORDS = {
+  hidden_injury: "It comes from a soldier who hides a bad injury after a run, kept by the others who saw it.",
+  event: "It comes from a decision on the road that the squad answers by dealing behind the commander's back.",
+  successor: "It comes from the squad settling on its leader to take over if the commander falls, once the leader has held the squad for a week."
+};
+function secretKindProvider(subject, env) {
+  const kind = env.registries.secretKinds.get(subject.id);
+  if (!kind) return null;
+  return { lines: [SECRET_SOURCE_WORDS[String(kind.source)] ?? "The squad keeps something from the commander."] };
+}
 function registerPersonalProviders() {
   registerAnalyzeProvider("glossary:device_access", deviceAccessProvider);
   registerAnalyzeProvider("glossary:booking", bookingProvider);
@@ -32341,6 +32432,8 @@ function registerPersonalProviders() {
   registerAnalyzeProvider("tokenKinds", tokenKindProvider);
   registerAnalyzeProvider("wagerGames", gameProvider);
   registerAnalyzeProvider("wagerStakes", stakeProvider);
+  registerAnalyzeProvider("glossary:squad_secret", squadSecretProvider);
+  registerAnalyzeProvider("secretKinds", secretKindProvider);
 }
 
 // src/analysis/providers/power.ts
@@ -34491,6 +34584,19 @@ function createApp(st, deps) {
       shell.open();
       void shell.modal({ title: "CLAIMED", body: host, actions: [] });
     },
+    // a squad secret came out: its card is answered at once (or after a reload, until it is)
+    onSecretFound: (secretId) => {
+      const s = state;
+      const secret = s?.personal?.secrets?.find((x) => x.id === secretId);
+      if (!s || !secret || secret.status !== "found") return;
+      const host = h("div");
+      host.append(renderSecretCard(s, registries, secret, (choice, id) => {
+        personal.answerSecret(id, choice);
+        shell.closeModal?.();
+      }));
+      shell.open();
+      void shell.modal({ title: "SQUAD SECRET", body: host, actions: [] });
+    },
     // an edited request (P9c): the commander keeps the edit (nothing is filed) or reverts it
     confirmEdit: async (p) => {
       shell.open();
@@ -34573,6 +34679,7 @@ function createApp(st, deps) {
       shell.showScreen("hub");
     }
     onboarding.onLoaded();
+    personal.reopenSecrets();
     void personal.onLoaded().then((ok) => {
       if (ok) shell.open();
     }).catch((e) => console.warn("[Alius] booking failed", e));

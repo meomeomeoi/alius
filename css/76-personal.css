@@ -91,3 +91,15 @@
 #alius-shell .alius-chip-group[data-personal] .alius-chip {
   border-color: var(--unit-accent, var(--alius-accent));
 }
+
+/* A squad secret that came out (P9c §5): a paper card and its three answers. */
+#alius-shell .alius-secret {
+  margin: 6px 0;
+}
+
+#alius-shell .alius-secret-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0;
+}

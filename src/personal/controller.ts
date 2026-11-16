@@ -3,6 +3,7 @@ import type { EngineEvent } from '../engine/dispatch';
 import { fnv1a } from '../engine/hub';
 import { bookingPlayable, dueBooking } from '../engine/personal/bookings';
 import { interceptEditor } from '../engine/personal/intercept';
+import type { SecretAnswer } from '../engine/personal/secrets';
 import type { CampaignState, Intercept, Slot } from '../engine/state/types';
 import { generateDmEdit } from '../llm/calls/flavor';
 import type { PersonalDeps } from './deps';
@@ -49,6 +50,10 @@ export interface PersonalController {
   answerQuestion(wagerId: string, text: string): boolean;
   /** The commander challenges a soldier (the dossier's form); she accepts or refuses. */
   challenge(p: { unitId: string; gameId: string; stakeId: string; pick?: string }): boolean;
+  /** The commander's answer to a secret that came out (the card): confront everyone, pretend not to know or use it. */
+  answerSecret(secretId: string, choice: SecretAnswer): boolean;
+  /** The chat opened: the card of a secret that was found and never answered comes back (one at a time, the oldest first). */
+  reopenSecrets(): void;
   /** Reads the events of one dispatch: the ones that change a directive refresh the context; a clash of bookings and a claim are announced. */
   onEvents(events: EngineEvent[]): void;
 }
@@ -56,6 +61,7 @@ export interface PersonalController {
 const REFRESH_ON = new Set([
   'claimed', 'claim_refused', 'booking_cancelled', 'booking_played', 'booking_made', 'decor_removed_by_commander', 'decor_placed', 'proposal_conditioned',
   'token_worn', 'token_taken_off', 'token_accepted', 'wager_resolved', 'wager_question', 'truth_told', 'mark_set', 'mark_ended',
+  'secret_kept', 'secret_found', 'secret_answered',
 ]);
 
 /**
@@ -204,6 +210,11 @@ export function createPersonal(deps: PersonalDeps): PersonalController {
     playWager: (wagerId, pick) => act('wager/play', { wagerId, ...(pick !== undefined ? { pick } : {}) }),
     answerQuestion: (wagerId, text) => act('wager/answer_question', { wagerId, text }),
     challenge: (p) => act('wager/challenge', p),
+    answerSecret: (secretId, choice) => act('secret/respond', { secretId, choice }),
+    reopenSecrets() {
+      const found = state()?.personal?.secrets?.find((x) => x.status === 'found');
+      if (found && deps.onSecretFound) deps.onSecretFound(found.id);
+    },
 
     onEvents(events) {
       let refresh = false;
@@ -216,6 +227,11 @@ export function createPersonal(deps: PersonalDeps): PersonalController {
         } else if (e.type === 'wager_refused') {
           const s = state();
           if (s) deps.toast('info', `${nameOf(s, String(e.unitId))} refuses the bet.`);
+        }
+        if (e.type === 'secret_found') {
+          // the text is in the card only: a toast says that something came out, never what
+          if (deps.onSecretFound) deps.onSecretFound(String(e.secretId));
+          else deps.toast('info', 'Something the squad kept from the commander has come out.');
         }
         if (e.type === 'booking_conflict') {
           deps.toast('info', `Two bookings for the ${String(e.slot)} of day ${String(e.day)} clash: choose one, or let them settle it.`);

@@ -251,3 +251,23 @@ describe('the answer', () => {
     expect(left[0].knownBy).toEqual([BEA]);
   });
 });
+
+describe('the authored event', () => {
+  it("the trader-deal event's forbid option stores a secret known by the party; the other option does not", () => {
+    const t = reg.dilemmaTemplates.get('evt_trader_deal');
+    expect(t).toBeDefined();
+    expect(t!.scale).toBe('minor');
+    expect(t!.contexts).toEqual(['expedition_event']);
+    const options = (t!.fixed as { options: Array<{ effects: Array<{ type: string }> }> }).options;
+    const withSecret = options.filter((o) => o.effects.some((e) => e.type === 'squad_secret'));
+    expect(withSecret).toHaveLength(1);
+    const d = plain(reg);
+    d.roster.activeIds = [ANN, BEA];
+    const events = applyWorldEffects(d, ctxFrom(d, reg), withSecret[0].effects as never, { kind: 'event', id: 'evt_trader_deal' });
+    expect(ofType(events, 'secret_kept')).toHaveLength(1);
+    expect(personalOf(d).secrets![0]).toMatchObject({ kindId: 'trader_deal', knownBy: [ANN, BEA] });
+    const other = plain(reg);
+    applyWorldEffects(other, ctxFrom(other, reg), options.find((o) => !withSecret.includes(o))!.effects as never, { kind: 'event', id: 'evt_trader_deal' });
+    expect(other.personal?.secrets).toBeUndefined();
+  });
+});

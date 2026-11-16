@@ -344,6 +344,47 @@
     }
   },
   {
+    "id": "evt_trader_deal",
+    "scale": "minor",
+    "contexts": [
+      "expedition_event"
+    ],
+    "fixed": {
+      "title": "AUTHOR TO WRITE: A trader at the crossing",
+      "setup": "AUTHOR TO WRITE: A trader's cart waits at the crossing, and the squad is looking at it the way people look at food. Private trade is against the rules.",
+      "options": [
+        {
+          "label": "AUTHOR TO WRITE: Forbid the trade",
+          "effects": [
+            {
+              "type": "party_stress",
+              "amount": 5
+            },
+            {
+              "type": "squad_secret",
+              "kindId": "trader_deal",
+              "knownBy": "party"
+            }
+          ]
+        },
+        {
+          "label": "AUTHOR TO WRITE: Buy the stock openly",
+          "effects": [
+            {
+              "type": "resource",
+              "resource": "credits",
+              "amount": -30
+            },
+            {
+              "type": "carried_supplies",
+              "amount": 3
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
     "id": "evt_old_terminal",
     "scale": "minor",
     "contexts": [

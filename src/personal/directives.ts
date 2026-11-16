@@ -16,9 +16,9 @@ const clean = (text: string): string => text.replace(/[\u0000-\u001f\u007f]/g, '
  * layer only words it. No text gives the commander a pronoun (lore §0).
  */
 
-/** Ids that are derived from the state on every refresh. Later tasks add `personal:token…`, `personal:secret:`, `personal:truth:`, `personal:mark` and `personal:obedience:`. */
+/** Ids that are derived from the state on every refresh. */
 export const DERIVED = [
-  'personal:court:', 'personal:claimed:', 'personal:decor:', 'personal:booking:', 'personal:tokens', 'personal:token_removed:', 'personal:obedience:', 'personal:truth:', 'personal:mark',
+  'personal:court:', 'personal:claimed:', 'personal:decor:', 'personal:booking:', 'personal:tokens', 'personal:token_removed:', 'personal:obedience:', 'personal:truth:', 'personal:mark', 'personal:secret:',
 ] as const;
 
 const recent = (state: CampaignState, day: number): boolean => day >= state.day - 1 && day <= state.day;
@@ -28,7 +28,8 @@ const recent = (state: CampaignState, day: number): boolean => day >= state.day 
  *  - `personal:court:<id>`: she passes the courtship gate, so she may propose the next step herself;
  *  - `personal:claimed:<id>`: she claimed the commander in public today or yesterday, and she is with someone else;
  *  - `personal:decor:<id>`: the commander peeled something she put on the device today or yesterday;
- *  - `personal:booking:<id>`: she booked this slot and the commander came, or the commander cancelled her booking today or yesterday.
+ *  - `personal:booking:<id>`: she booked this slot and the commander came, or the commander cancelled her booking today or yesterday;
+ *  - `personal:secret:<secretId>`: a knower of a squad secret is present (kept or pretended: she does not reveal it; used: the commander can hold it over her).
  */
 export function personalDirectives(state: CampaignState, reg: Registries, present: string[]): Directive[] {
   const out: Directive[] = [];
@@ -63,6 +64,23 @@ export function personalDirectives(state: CampaignState, reg: Registries, presen
       out.push({ id: `personal:booking:${id}`, expiresAfter: 'scene', text: `${name} booked this time and expects the commander's full attention.` });
     } else if (cancelled) {
       out.push({ id: `personal:booking:${id}`, expiresAfter: 'scene', text: `The commander cancelled the time ${name} had booked; she remembers it.` });
+    }
+  }
+  // a squad secret the commander has not found (or pretends not to know) is kept by the knowers who are here; one the commander uses is held over them
+  for (const x of state.personal?.secrets ?? []) {
+    const names = x.knownBy.filter((id) => present.includes(id)).map((id) => state.squad.find((u) => u.id === id)).filter((u) => u !== undefined && u.kind === 'named').map((u) => u!.displayName);
+    if (names.length === 0) continue;
+    const who = names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+    const text = clean(x.text);
+    if (x.status === 'kept' || x.status === 'pretend') {
+      out.push({
+        id: `personal:secret:${x.id}`, expiresAfter: 'scene',
+        text: names.length === 1
+          ? `${who} knows the following and keeps it from the commander: ${text} She does NOT reveal it to the commander, whatever is asked.`
+          : `${who} know the following and keep it from the commander: ${text} They do NOT reveal it to the commander, whatever is asked.`,
+      });
+    } else if (x.status === 'used' && (x.usedUntil ?? 0) > state.day) {
+      out.push({ id: `personal:secret:${x.id}`, expiresAfter: 'scene', text: `The commander knows the following and can hold it over ${who}: ${text}` });
     }
   }
   // not tied to who is present: what the commander wears and the mark the commander bears are visible to anyone in the scene

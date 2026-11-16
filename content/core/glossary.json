@@ -1515,5 +1515,15 @@
       "wager",
       "impunity"
     ]
+  },
+  {
+    "id": "squad_secret",
+    "term": "Squad secret",
+    "short": "Something the squad keeps from the commander. It comes out by Insight, a slip or a confession; the commander confronts, pretends not to know, or uses it.",
+    "long": "AUTHOR TO WRITE: A soldier hides a bad injury after a run, the squad strikes a deal on the road, or settles on who would take over. Everyone who knows it is told not to reveal it. When it comes out the commander chooses: confront everyone (every soldier who knew it grows bolder and the whole squad grows cooler), pretend not to know (nothing changes, and the commander alone remembers it) or use it (for two weeks the soldiers who knew it are less sure of themselves). A secret that has not come out cannot be read here.",
+    "see": [
+      "impunity",
+      "demand"
+    ]
   }
 ]

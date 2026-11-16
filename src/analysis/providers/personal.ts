@@ -265,6 +265,38 @@ function obedienceProvider(_subject: Subject, env: AnalyzeEnv): { lines: string[
 }
 
 /** Registers the P9c readings (called from `registerCoreProviders`). */
+/**
+ * What the commander knows of the squad's secrets: only the ones that came out. A kept secret is never read, nor counted
+ * (how many are kept is as hidden as what they are).
+ */
+function squadSecretProvider(_subject: Subject, env: AnalyzeEnv): { lines: string[] } | null {
+  const state = env.state;
+  if (!state) return null;
+  const known = (state.personal?.secrets ?? []).filter((x) => x.status !== 'kept');
+  if (known.length === 0) return { lines: ['The commander knows of nothing the squad keeps back.'] };
+  return {
+    lines: known.map((x) => {
+      const who = x.knownBy.map((id) => nameOf(state, id)).join(', ');
+      const how = x.status === 'found' ? 'waiting for an answer'
+        : x.status === 'confronted' ? 'out in the open: the squad was confronted'
+          : x.status === 'pretend' ? 'the commander pretends not to know'
+            : (x.usedUntil ?? 0) > state.day ? `the commander can hold it over them until day ${x.usedUntil}` : 'the commander used it, and the hold is over';
+      return `${x.text} Known by ${who}; ${how}.`;
+    }),
+  };
+}
+
+const SECRET_SOURCE_WORDS: Record<string, string> = {
+  hidden_injury: 'It comes from a soldier who hides a bad injury after a run, kept by the others who saw it.',
+  event: 'It comes from a decision on the road that the squad answers by dealing behind the commander\'s back.',
+  successor: 'It comes from the squad settling on its leader to take over if the commander falls, once the leader has held the squad for a week.',
+};
+function secretKindProvider(subject: Subject, env: AnalyzeEnv): { lines: string[] } | null {
+  const kind = env.registries.secretKinds.get(subject.id);
+  if (!kind) return null;
+  return { lines: [SECRET_SOURCE_WORDS[String(kind.source)] ?? 'The squad keeps something from the commander.'] };
+}
+
 export function registerPersonalProviders(): void {
   registerAnalyzeProvider('glossary:device_access', deviceAccessProvider);
   registerAnalyzeProvider('glossary:booking', bookingProvider);
@@ -278,4 +310,6 @@ export function registerPersonalProviders(): void {
   registerAnalyzeProvider('tokenKinds', tokenKindProvider);
   registerAnalyzeProvider('wagerGames', gameProvider);
   registerAnalyzeProvider('wagerStakes', stakeProvider);
+  registerAnalyzeProvider('glossary:squad_secret', squadSecretProvider);
+  registerAnalyzeProvider('secretKinds', secretKindProvider);
 }

@@ -3,6 +3,7 @@ import type { AnalyzeEnv } from '../../src/analysis/model';
 import { registerCoreProviders } from '../../src/analysis/providers/core';
 import type { Registries } from '../../src/content/types';
 import { personalDayStep } from '../../src/engine/personal/dayStep';
+import { addSecret } from '../../src/engine/personal/secrets';
 import type { CampaignState } from '../../src/engine/state/types';
 import { DEFAULT_SETTINGS } from '../../src/settings';
 import { analyze } from '../helpers/analyzeCoverage';
@@ -202,3 +203,43 @@ describe('glossary:obedience', () => {
 void BEA;
 void personalDayStep;
 void ctxFrom;
+
+describe('glossary:squad_secret and secretKinds', () => {
+  const secrets = (): CampaignState => {
+    const s = plain(reg);
+    addSecret(s, reg, { kindId: 'hidden_injury', knownBy: [ANN, BEA], subjectId: ANN, vars: { name: 'Ann' } });
+    addSecret(s, reg, { kindId: 'trader_deal', knownBy: [ANN, BEA] });
+    return s;
+  };
+
+  it('lists only the secrets the commander found, never a kept one (not even how many there are)', () => {
+    const s = secrets();
+    const [kept] = s.personal!.secrets!;
+    const none = read('glossary:squad_secret', s, {});
+    expect(none).not.toContain(kept.text);
+    expect(none).not.toMatch(/\b[12]\b/);
+    expect(none).toContain('nothing the squad keeps back');
+    expect(read('glossary:squad_secret', plain(reg), {})).toBe(none);
+    s.personal!.secrets![0].status = 'found';
+    const one = read('glossary:squad_secret', s, {});
+    expect(one).toContain(kept.text);
+    expect(one).not.toContain(s.personal!.secrets![1].text);
+    expect(one).toMatch(/waiting for an answer/i);
+    s.personal!.secrets![0].status = 'used';
+    s.personal!.secrets![0].usedUntil = s.day + 14;
+    expect(read('glossary:squad_secret', s, {})).toMatch(/hold it over/i);
+    s.personal!.secrets![0].status = 'confronted';
+    expect(read('glossary:squad_secret', s, {})).toMatch(/out in the open/i);
+  });
+
+  it('the kind entries say where a secret of the kind comes from and never show its text', () => {
+    const s = secrets();
+    for (const id of ['hidden_injury', 'trader_deal', 'successor']) {
+      const text = read(`secretKinds:${id}`, s, {});
+      expect(text.length, id).toBeGreaterThan(20);
+      expect(text, id).not.toContain('AUTHOR TO WRITE');
+    }
+    expect(read('secretKinds:hidden_injury', s, {})).toMatch(/injur/i);
+    expect(read('secretKinds:successor', s, {})).toMatch(/leader/i);
+  });
+});

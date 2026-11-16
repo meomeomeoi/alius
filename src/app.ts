@@ -102,6 +102,7 @@ import { createExpedition, type ExpeditionController } from './world/expeditionC
 import { renderBaseTab } from './ui/base/baseTab';
 import { renderCommsTab } from './ui/comms/commsTab';
 import { renderClaimCard } from './ui/personal/claimCard';
+import { renderSecretCard } from './ui/personal/secretCard';
 import { herPickView } from './ui/personal/obey';
 import { renderWagerCard } from './ui/personal/wagerCard';
 import type { EditView } from './ui/personal/chips';
@@ -419,6 +420,16 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       shell.open();
       void shell.modal({ title: 'CLAIMED', body: host, actions: [] });
     },
+    // a squad secret came out: its card is answered at once (or after a reload, until it is)
+    onSecretFound: (secretId) => {
+      const s = state;
+      const secret = s?.personal?.secrets?.find((x) => x.id === secretId);
+      if (!s || !secret || secret.status !== 'found') return;
+      const host = h('div');
+      host.append(renderSecretCard(s, registries, secret, (choice, id) => { personal.answerSecret(id, choice); shell.closeModal?.(); }));
+      shell.open();
+      void shell.modal({ title: 'SQUAD SECRET', body: host, actions: [] });
+    },
     // an edited request (P9c): the commander keeps the edit (nothing is filed) or reverts it
     confirmEdit: async (p) => {
       shell.open();
@@ -503,6 +514,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       shell.showScreen('hub');
     }
     onboarding.onLoaded(); // the guide's first DM, if a reload lost it (P11)
+    personal.reopenSecrets(); // P9c: a secret that was found and never answered asks again
     void personal.onLoaded().then((ok) => { if (ok) shell.open(); }).catch((e) => console.warn('[Alius] booking failed', e)); // P9c: a booking that came due while the game was closed
     pendingEdit = null; // P9c: an edit of another chat is not this one's; a waiting one comes back from the state, freshly worded
     void personal.pendingEdit().then((edit) => { if (edit) { pendingEdit = edit; shell.refresh(); } }).catch((e) => console.warn('[Alius] edit failed', e));

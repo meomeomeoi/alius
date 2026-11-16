@@ -601,16 +601,16 @@ tests/engine/personal/*.test.ts, tests/engine/combat/sparring.test.ts, tests/con
 **Interfaces:**
 - Produces: `renderSecretCard(state, reg, secret, onChoose)` (a `paper` card; the text with `redact` ranges over the knowers' names until answered; `[CONFRONT EVERYONE] [PRETEND NOT TO KNOW] [USE IT]`, each `data-analyze`).
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `a scene with a knower gets the do-not-reveal directive; the context fixture never shows the text outside it` (acceptance 5: build the context with a knower present and absent)
   - `pretend keeps the directive; use switches it; confront drops it`
   - `the card offers the three answers and dispatches secret/respond` (acceptance 5)
   - `no provider shows a kept secret's text` (`tests/analysis/hidden.test.ts` with the sentinel)
   - `the trader-deal event's option stores a secret`
-- [ ] **Step 2: Run** `npx vitest run tests/ui/secretCard.test.ts tests/personal tests/analysis`. Expect FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** `npm test`. Expect PASS.
-- [ ] **Step 5: Tick and commit:** `feat(personal): secret directives, discovery card and providers`.
+- [x] **Step 2: Run** `npx vitest run tests/ui/secretCard.test.ts tests/personal tests/analysis`. Expect FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** `npm test`. Expect PASS.
+- [x] **Step 5: Tick and commit:** `feat(personal): secret directives, discovery card and providers`.
 
 ### Task 16: Docs, manual checklist, hand-offs
 

@@ -37,6 +37,12 @@ export function hiddenFixture(reg: Registries): { state: CampaignState; unitId: 
   });
   registerKnowledgeRule({ fact: (f) => !f.tags.includes('sentinel') });
 
+  // P9c: a squad secret the commander has not found: its text and its kind's wording never reach a reading
+  state.personal = {
+    seq: 1,
+    secrets: [{ id: 'sx_1', kindId: 'trader_deal', text: 'SENTINEL_SECRET', knownBy: [unit.id, state.squad[1].id], reason: 'self_interest', day: 8, status: 'kept' }],
+  };
+
   state.disloyalty = { units: { [unit.id]: { signs: [], attempts: 3, nextCheckDay: 97 } } };
 
   state.dilemmas = {
@@ -56,7 +62,7 @@ export function hiddenFixture(reg: Registries): { state: CampaignState; unitId: 
     unitId: unit.id,
     sentinels: {
       numbers: [37, 41, 23, 63, 17, 29, 97, 77, 31, 53, 59],
-      texts: ['SENTINEL_CLOCK', 'SENTINEL_FACT', 'SENTINEL_OPTION_EFFECT'],
+      texts: ['SENTINEL_CLOCK', 'SENTINEL_FACT', 'SENTINEL_OPTION_EFFECT', 'SENTINEL_SECRET'],
     },
   };
 }

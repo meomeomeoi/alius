@@ -290,6 +290,8 @@ export const CORE_GLOSSARY_IDS: readonly string[] = [
   'device_access', 'booking', 'courtship', 'claimed',
   // P9c chunk (b): tokens, wagers and the day of obedience
   'token', 'wager', 'obedience',
+  // P9c chunk (c): the squad's secrets
+  'squad_secret',
 ];
 
 let registered = false;
