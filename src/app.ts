@@ -120,6 +120,7 @@ import {
   createSaver, initCampaign as initCampaignInChat, loadCampaign, writeNewCampaign, METADATA_KEY, type LoadResult,
 } from './st/persistence';
 import { registerCoreProviders } from './analysis/providers/core';
+import { memoryConfig } from './engine/memory/config';
 import { createShell, type ShellApi } from './ui/shell/shell';
 import type { ToastKind, ToastOpts } from './ui/shell/toast';
 import { VOICE_OF } from './ui/voice/sources';
@@ -256,7 +257,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       clearWorldDirectives(context);
       clearDisciplineDirectives(context);
     }
-    context.apply(st, state, getSettings(st).contextTokenCap);
+    context.apply(st, state, getSettings(st).contextTokenCap, state ? memoryConfig(state).memoryTokens : 0); // P3b: the memory share of the block
   }
 
   registerSceneContext(context, { registries: () => registries, settings: () => getSettings(st) });

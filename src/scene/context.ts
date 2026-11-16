@@ -32,7 +32,7 @@ function presentUnits(s: CampaignState) {
  */
 export function registerSceneContext(builder: ContextBuilder, deps: Deps): void {
   builder.register({
-    id: 'scene_header', priority: 95,
+    id: 'scene_header', priority: 95, core: true,
     render: (s) => {
       if (!s.scene) return null;
       const loc = deps.registries().locations.get(s.scene.locationId);
@@ -43,7 +43,7 @@ export function registerSceneContext(builder: ContextBuilder, deps: Deps): void 
   });
 
   builder.register({
-    id: 'units', priority: 90,
+    id: 'units', priority: 90, core: true,
     render: (s) => {
       if (!s.scene) return null;
       const reg = deps.registries();

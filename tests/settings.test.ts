@@ -9,7 +9,7 @@ describe('settings', () => {
     const s = getSettings(st);
     expect(s).toMatchObject({
       mechanicProfileId: '', mechanicThink: 'min', mechanicFallbackToMain: true, requestFloor: 2000,
-      contextTokenCap: 1200, palette: 'amber', scanlines: true, flicker: false, debug: false, editLock: true,
+      contextTokenCap: 1600, palette: 'amber', scanlines: true, flicker: false, debug: false, editLock: true,
     });
     expect(s.budgets).toEqual({
       profile_import: 1500, intent_extract: 600, scene_summary: 800, dilemma_generate: 1000,

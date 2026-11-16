@@ -24041,7 +24041,7 @@ var DEFAULT_SETTINGS = {
     commander_import: 600,
     ping: 100
   },
-  contextTokenCap: 1200,
+  contextTokenCap: 1600,
   palette: "amber",
   scanlines: true,
   flicker: false,
@@ -25060,6 +25060,7 @@ var SLOT_LABEL = {
 var headerProvider = {
   id: "header",
   priority: 100,
+  core: true,
   render: (s) => `[ALIUS] Day ${s.day}, ${SLOT_LABEL[s.slot]}.`
 };
 var ContextBuilder = class {
@@ -25082,31 +25083,71 @@ var ContextBuilder = class {
   clearMatching(match) {
     for (const [id, d] of this.directives) if (match(d)) this.directives.delete(id);
   }
-  build(state, capTokens) {
-    const sorted = [...this.providers].sort((a, b) => b.priority - a.priority);
-    const lines = [];
-    for (const p of sorted) {
-      const text2 = p.render(state);
+  last = { memoryTokens: 0, otherTokens: 0, directiveTokens: 0 };
+  /** The token counts of the last `build` (a copy). */
+  lastBuild() {
+    return { ...this.last };
+  }
+  /**
+   * One block for the main model within `capTokens`. The memory providers get up to `memoryTokens` of it (never more than what is
+   * left after the core providers: header, scene header and units), each trimmed line by line, never dropped whole; the other
+   * providers keep the strict priority of the rest, and whatever the memory did not use goes back to them. The block lists the
+   * others first, then memory.
+   */
+  build(state, capTokens, memoryTokens = 0) {
+    const byPriority2 = (a, b) => b.priority - a.priority;
+    const others = this.providers.filter((p) => p.group !== "memory").sort(byPriority2);
+    const memory = this.providers.filter((p) => p.group === "memory").sort(byPriority2);
+    const rendered = new Map(others.map((p) => [p, p.render(state)]));
+    const core = others.filter((p) => p.core === true).map((p) => rendered.get(p)).filter((t) => !!t);
+    const reserve = estTokens([BLOCK_TITLE, ...core].join("\n"));
+    const share = memoryTokens > 0 && memory.length > 0 ? Math.min(memoryTokens, Math.max(0, capTokens - reserve)) : 0;
+    const memLines = [];
+    for (const p of memory) {
+      const left = share - estTokens(memLines.join("\n"));
+      if (left <= 0) break;
+      const text2 = p.render(state, left);
       if (!text2) continue;
-      if (estTokens([BLOCK_TITLE, ...lines, text2].join("\n")) > capTokens) break;
+      const fit2 = fitTo(text2, (t) => estTokens([...memLines, t].join("\n")) <= share, left);
+      if (fit2) memLines.push(fit2);
+    }
+    const lines = [];
+    for (const p of others) {
+      const text2 = rendered.get(p);
+      if (!text2) continue;
+      if (estTokens([BLOCK_TITLE, ...lines, text2, ...memLines].join("\n")) > capTokens) break;
       lines.push(text2);
     }
-    const block2 = lines.length ? [BLOCK_TITLE, ...lines].join("\n") : "";
+    const all = [...lines, ...memLines];
+    const block2 = all.length ? [BLOCK_TITLE, ...all].join("\n") : "";
     const dirs = [...this.directives.values()];
     const directives = dirs.length ? [DIRECTIVES_TITLE, ...dirs.map((d) => `- ${d.text}`)].join("\n") : "";
+    this.last = {
+      memoryTokens: memLines.length ? estTokens(memLines.join("\n")) : 0,
+      otherTokens: lines.length ? estTokens([BLOCK_TITLE, ...lines].join("\n")) : 0,
+      directiveTokens: directives ? estTokens(directives) : 0
+    };
     return { block: block2, directives };
   }
-  apply(st, state, capTokens) {
+  apply(st, state, capTokens, memoryTokens = 0) {
     if (state === null) {
       st.setInjection("ctx", "", "in_prompt", 0);
       st.setInjection("dir", "", "in_chat", 1);
       return;
     }
-    const { block: block2, directives } = this.build(state, capTokens);
+    const { block: block2, directives } = this.build(state, capTokens, memoryTokens);
     st.setInjection("ctx", block2, "in_prompt", 0);
     st.setInjection("dir", directives, "in_chat", 1);
   }
 };
+function fitTo(text2, fits, tokens) {
+  const lines = text2.split("\n");
+  while (lines.length > 1 && !fits(lines.join("\n"))) lines.pop();
+  const first2 = lines.join("\n");
+  if (fits(first2)) return first2;
+  const cut2 = first2.slice(0, Math.max(0, Math.floor(tokens * 3.6) - 1)).trimEnd();
+  return cut2 !== "" && fits(cut2) ? cut2 : null;
+}
 
 // src/llm/calls/chronicleCompact.ts
 var COMPACT_MAX2 = 400;
@@ -25527,6 +25568,7 @@ function registerSceneContext(builder, deps) {
   builder.register({
     id: "scene_header",
     priority: 95,
+    core: true,
     render: (s) => {
       if (!s.scene) return null;
       const loc = deps.registries().locations.get(s.scene.locationId);
@@ -25538,6 +25580,7 @@ function registerSceneContext(builder, deps) {
   builder.register({
     id: "units",
     priority: 90,
+    core: true,
     render: (s) => {
       if (!s.scene) return null;
       const reg = deps.registries();
@@ -35035,7 +35078,7 @@ function createApp(st, deps) {
       clearWorldDirectives(context);
       clearDisciplineDirectives(context);
     }
-    context.apply(st, state, getSettings(st).contextTokenCap);
+    context.apply(st, state, getSettings(st).contextTokenCap, state ? memoryConfig(state).memoryTokens : 0);
   }
   registerSceneContext(context, { registries: () => registries, settings: () => getSettings(st) });
   registerWorldContext(context, { registries: () => registries });

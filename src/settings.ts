@@ -105,7 +105,7 @@ export const DEFAULT_SETTINGS: AliusSettings = {
     commander_import: 600,
     ping: 100,
   },
-  contextTokenCap: 1200,
+  contextTokenCap: 1600,
   palette: 'amber',
   scanlines: true,
   flicker: false,
