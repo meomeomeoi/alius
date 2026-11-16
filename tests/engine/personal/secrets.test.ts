@@ -11,6 +11,8 @@ import { TUNING } from '../../../src/engine/tuning';
 import { applyWorldEffects } from '../../../src/engine/world/effects';
 import { endExpedition } from '../../../src/engine/world/expedition';
 import { depart, withMission } from '../../helpers/expedition';
+import { seedRng as seededRng } from '../../../src/engine/rng';
+import { SECRET_NIGHT_KIND } from '../../../src/engine/personal/secrets';
 import { ANN, BEA, CAT, ctxFrom, errors, loadCore, ofType, plain, run, withLeader, withStance } from '../../helpers/personal';
 
 let reg: Registries;
@@ -307,5 +309,90 @@ describe('a kept secret that is no longer true is retired (review)', () => {
     const none = plain(reg);
     personalDayStep(none, ctxFrom(none, reg));
     expect(none.personal).toBeUndefined();
+  });
+});
+
+describe('the deferred minors of the review', () => {
+  it('a unit carried back or dead at the end of a run hides nothing', () => {
+    for (const key of ['injuries', 'deaths']) {
+      const base = plain(reg);
+      withStance(base, reg, ANN, 'defiant_loyal');
+      const { state, mission } = withMission(reg, base);
+      const d = depart(reg, state, mission.id);
+      d.expedition!.log.push({ kind: 'combat', data: { [key]: [ANN] } } as never);
+      const ann = d.squad.find((u) => u.id === ANN)!;
+      ann.currentHp = Math.max(1, Math.floor(unitStats(d, reg, ann).hp * 0.2));
+      endExpedition(d, ctxFrom(d, reg), 'retreated');
+      expect(d.personal?.secrets, key).toBeUndefined();
+    }
+  });
+
+  it('a found or answered secret survives its last knower leaving; a kept one goes', () => {
+    const s = plain(reg);
+    const kept = keep(s, 'trader_deal', [ANN]);
+    const found = keep(s, 'trader_deal', [ANN]);
+    found.status = 'found';
+    const used = keep(s, 'trader_deal', [ANN]);
+    used.status = 'used';
+    forgetPersonal(s, ANN);
+    expect(personalOf(s).secrets!.map((x) => x.id)).toEqual([found.id, used.id]);
+    expect(personalOf(s).secrets!.every((x) => x.knownBy.length === 0)).toBe(true);
+    expect(personalOf(s).secrets!.some((x) => x.id === kept.id)).toBe(false);
+  });
+
+  it('answering a found secret nobody knows any more still works', () => {
+    const s = plain(reg);
+    const x = keep(s, 'trader_deal', [ANN]);
+    x.status = 'found';
+    forgetPersonal(s, ANN);
+    const r = run(s, reg, { type: 'secret/respond', payload: { secretId: x.id, choice: 'pretend' } });
+    expect(errors(r.events)).toEqual([]);
+  });
+
+  it('the placeholder marker never reaches the stored text', () => {
+    const s = plain(reg);
+    const x = keep(s, 'trader_deal', [ANN, BEA]);
+    expect(x.text).not.toMatch(/AUTHOR TO WRITE/);
+    expect(x.text.length).toBeGreaterThan(10);
+  });
+
+  it('a confession already queued or already at the door is not queued twice; the queue is told', () => {
+    const fond = () => {
+      const s = plain(reg);
+      s.relations[ANN].affinity = 60;
+      s.relations[ANN].trust = 50;
+      s.relations[BEA].affinity = 0;
+      keep(s, 'trader_deal', [ANN, BEA]);
+      return s;
+    };
+    let hit: ReturnType<typeof fond> | null = null;
+    let events: ReturnType<typeof personalDayStep> = [];
+    for (let seed = 1; seed < 200 && hit === null; seed++) {
+      const d = fond();
+      d.rng = seededRng(seed);
+      const e = personalDayStep(d, ctxFrom(d, reg));
+      if (d.calendar.nightEventsQueue.some((q) => q.kind === SECRET_NIGHT_KIND)) { hit = d; events = e; }
+    }
+    expect(hit).not.toBeNull();
+    expect(ofType(events, 'night_queued')).toEqual([expect.objectContaining({ entry: expect.objectContaining({ kind: SECRET_NIGHT_KIND, unitId: ANN }) })]);
+    // the same confession is at the door: no second one, and not even a draw
+    const door = fond();
+    door.slot = 'night';
+    door.calendar.nightEvent = { id: 'n9', unitId: ANN, kind: SECRET_NIGHT_KIND, priority: 50, framing: 'k', ignore: { event: 'dismissed', severity: 'minor' }, expiresDay: 99 };
+    const before = JSON.stringify(door.rng);
+    personalDayStep(door, ctxFrom(door, reg));
+    expect(door.calendar.nightEventsQueue.filter((q) => q.kind === SECRET_NIGHT_KIND)).toEqual([]);
+    expect(JSON.stringify(door.rng)).toBe(before);
+  });
+
+  it('a unit who is no longer living takes her queued confession with her', () => {
+    const s = plain(reg);
+    keep(s, 'trader_deal', [ANN, BEA]);
+    s.calendar.nightEventsQueue.push({ id: 'n1', unitId: ANN, kind: SECRET_NIGHT_KIND, priority: 50, framing: 'k', ignore: { event: 'dismissed', severity: 'minor' }, expiresDay: 99 });
+    s.calendar.nightEventsQueue.push({ id: 'n2', unitId: BEA, kind: SECRET_NIGHT_KIND, priority: 50, framing: 'k', ignore: { event: 'dismissed', severity: 'minor' }, expiresDay: 99 });
+    s.squad.find((u) => u.id === ANN)!.currentHp = 0;
+    s.squad.find((u) => u.id === ANN)!.status = 'dead' as never;
+    personalDayStep(s, ctxFrom(s, reg));
+    expect(s.calendar.nightEventsQueue.map((q) => q.unitId)).toEqual([BEA]);
   });
 });

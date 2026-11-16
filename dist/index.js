@@ -9050,7 +9050,7 @@ function forgetPersonal(draft, unitId) {
   const decor = p.decor?.[unitId];
   if (decor && decor.fadedUntil === void 0) decor.fadedUntil = draft.day + TUNING.personal.decor.fadeDays;
   if (p.secrets) {
-    p.secrets = p.secrets.filter((x) => !(x.knownBy.length === 1 && x.knownBy[0] === unitId));
+    p.secrets = p.secrets.filter((x) => !(x.knownBy.length === 1 && x.knownBy[0] === unitId && (x.status === "kept" || x.status === "pretend")));
     for (const x of p.secrets) x.knownBy = x.knownBy.filter((id) => id !== unitId);
   }
 }
@@ -10110,7 +10110,7 @@ function addSecret(draft, reg, p) {
   const open3 = (draft.personal?.secrets ?? []).some((x) => x.kindId === kind.id && p.subjectId !== void 0 && x.subjectId === p.subjectId && (x.status === "kept" || x.status === "found" || x.status === "pretend"));
   if (open3) return [];
   const subject = p.subjectId === void 0 ? "" : unitOf(draft, p.subjectId)?.displayName ?? "";
-  const text2 = String(kind.text).replaceAll("{name}", p.vars?.name ?? subject).replaceAll("{leader}", p.vars?.leader ?? subject);
+  const text2 = String(kind.text).replace(/^AUTHOR TO WRITE:\s*/, "").replaceAll("{name}", p.vars?.name ?? subject).replaceAll("{leader}", p.vars?.leader ?? subject);
   const personal = personalOf(draft);
   const secret = {
     id: nextPersonalId(draft, "sx"),
@@ -10157,6 +10157,10 @@ function retireStale(draft, reg) {
 }
 function secretDayStep(draft, reg) {
   retireStale(draft, reg);
+  const queue = draft.calendar.nightEventsQueue;
+  if (queue.some((e) => e.kind === SECRET_NIGHT_KIND && !namedLiving2(draft, e.unitId))) {
+    draft.calendar.nightEventsQueue = queue.filter((e) => e.kind !== SECRET_NIGHT_KIND || namedLiving2(draft, e.unitId));
+  }
   const leader = leaderOf(draft);
   const p = draft.personal;
   if (!leader) {
@@ -10233,14 +10237,16 @@ function rollSceneDiscovery(draft, ctx2, presentIds) {
 }
 function rollSecretNight(draft, ctx2) {
   const T = TUNING.personal.secret;
+  const events = [];
+  const waiting2 = (id) => draft.calendar.nightEventsQueue.some((e) => e.unitId === id && e.kind === SECRET_NIGHT_KIND) || draft.calendar.nightEvent?.unitId === id && draft.calendar.nightEvent.kind === SECRET_NIGHT_KIND;
   for (const x of draft.personal?.secrets ?? []) {
     if (x.status !== "kept") continue;
     const knower = x.knownBy.find((id) => {
       const rel = draft.relations[id];
-      return namedLiving2(draft, id) && rel !== void 0 && rel.affinity >= T.nightAffinity && rel.trust >= T.nightTrust && !draft.calendar.nightEventsQueue.some((e) => e.unitId === id && e.kind === SECRET_NIGHT_KIND);
+      return namedLiving2(draft, id) && rel !== void 0 && rel.affinity >= T.nightAffinity && rel.trust >= T.nightTrust && !waiting2(id);
     });
     if (knower === void 0 || !ctx2.rng.chance(T.nightChance)) continue;
-    enqueueNight(draft, {
+    const entry = {
       id: nextId(draft, "n"),
       unitId: knower,
       kind: SECRET_NIGHT_KIND,
@@ -10248,9 +10254,10 @@ function rollSecretNight(draft, ctx2) {
       framing: `${unitOf(draft, knower)?.displayName ?? "A soldier"} is at your door. She has been carrying something for the squad and wants to say it.`,
       ignore: { event: "dismissed", severity: "minor" },
       expiresDay: draft.day + T.nightExpiresDays
-    });
+    };
+    if (enqueueNight(draft, entry)) events.push({ type: "night_queued", entry });
   }
-  return [];
+  return events;
 }
 function confess(draft, ctx2, unitId) {
   const secret = draft.personal?.secrets?.find((x) => x.status === "kept" && x.knownBy.includes(unitId));
@@ -31068,7 +31075,8 @@ function nameRanges(state, secret) {
   for (const id of secret.knownBy) {
     const name = state.squad.find((u) => u.id === id)?.displayName;
     if (!name) continue;
-    for (let at = secret.text.indexOf(name); at >= 0; at = secret.text.indexOf(name, at + name.length)) ranges.push([at, at + name.length]);
+    const word = new RegExp(`(?<![\\p{L}\\p{N}_])${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\p{L}\\p{N}_])`, "gu");
+    for (const m of secret.text.matchAll(word)) ranges.push([m.index, m.index + m[0].length]);
   }
   return ranges;
 }

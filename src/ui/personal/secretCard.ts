@@ -20,7 +20,9 @@ function nameRanges(state: CampaignState, secret: SquadSecret): Array<[number, n
   for (const id of secret.knownBy) {
     const name = state.squad.find((u) => u.id === id)?.displayName;
     if (!name) continue;
-    for (let at = secret.text.indexOf(name); at >= 0; at = secret.text.indexOf(name, at + name.length)) ranges.push([at, at + name.length]);
+    // whole words only: "Ann" is not hidden inside "Annex"
+    const word = new RegExp(`(?<![\\p{L}\\p{N}_])${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\p{L}\\p{N}_])`, 'gu');
+    for (const m of secret.text.matchAll(word)) ranges.push([m.index!, m.index! + m[0].length]);
   }
   return ranges;
 }
