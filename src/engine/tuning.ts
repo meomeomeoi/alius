@@ -410,4 +410,37 @@ export const TUNING = Object.freeze({
     /** The standing order "ask me first": giving it costs Trust as a `decision_violated` of this severity. */
     askFirst: Object.freeze({ severity: 'minor' as const }),
   }),
+  /**
+   * P9c: personal pressure. Every number is a DRAFT (the plan's rulings), the author's to change. Frequencies below are
+   * multiplied by the squad's `demandMult` (P9b) and the unit's `pressureMult` (defects) where the rulings say so.
+   */
+  personal: Object.freeze({
+    /** Who may take part (the bond gate, `pressureGate`): lead ranks 0–3, Affinity and Impunity floors. */
+    gates: Object.freeze({
+      device: Object.freeze({ minLeadRank: 1 }),
+      courtship: Object.freeze({ minLeadRank: 2 }),
+      token: Object.freeze({ minAffinity: 50 }),
+      wager: Object.freeze({ minLeadRank: 1, minAffinity: 20, minImpunity: 50 }),
+    }),
+    decor: Object.freeze({ regrowDays: 7, fadeDays: 7 }),
+    /** A level-4 edit: chance per eligible event (before the multipliers), its cap, and the record a REVERT costs the commander. */
+    intercept: Object.freeze({ chance: 0.3, cap: 0.6, perDay: 1 }),
+    booking: Object.freeze({ base: 0.08, cap: 0.5, perWeek: 2, settleStress: 10 }),
+    courtship: Object.freeze({ initiativeMult: 2, conditionMax: 160 }),
+    claim: Object.freeze({ chance: 0.04, cooldownDays: 14, refuseStress: 8 }),
+    token: Object.freeze({ chance: 0.03, maxWorn: 2, offerDays: 3, lockDays: 7, giverAffinityPerDay: 1 }),
+    wager: Object.freeze({
+      chance: 0.03, acceptAffinity: 0, acceptImpunity: 40, noBookDays: 7, privilegeRecord: 6, markDays: 3, markLoseStress: 3,
+      answerMax: 200, logMax: 20,
+    }),
+    sparring: Object.freeze({ commanderSkill: 1, maxRounds: 20, bodyXp: 0.5 }),
+    bet: Object.freeze({ voidDays: 7, killsNeeded: 3 }),
+    obedience: Object.freeze({ days: 1 }),
+    secret: Object.freeze({
+      insightBase: 0.08, insightCap: 0.4, insightTrust: 40, slipChance: 0.25, nightChance: 0.1, nightAffinity: 60, nightTrust: 50,
+      usedDays: 14, heldPerSecret: 8, heldMax: 16, confrontRecord: 5, hiddenInjuryHp: 0.25, successorDays: 7,
+    }),
+    /** The record the commander takes on for overriding her (a REVERT, a cancelled booking under obedience, …). */
+    overrideRecord: 3,
+  }),
 });

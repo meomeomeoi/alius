@@ -213,7 +213,7 @@ tests/engine/personal/*.test.ts, tests/engine/combat/sparring.test.ts, tests/con
   - `TUNING.personal` with every draft number of the rulings (`gates`, `decor`, `intercept`, `booking`, `courtship`, `claim`, `token`, `wager`, `sparring`, `bet`, `obedience`, `secret`, `overrideRecord`), frozen like the other blocks.
   - `eventDeltas` rows (draft; checked against neighbours in Task 7): `overrode_her` (minor −1/−2/2 · moderate −2/−3/4 · major −3/−5/6 · extreme −5/−8/8, trust/affinity/stress), `decor_removed` (affinity −3, stress 2 at minor), `rival_favoured` (minor −1 aff/2 str · moderate −2/4 · major −4/6), `bond_shown` (minor affinity +1), `token_removed` (moderate affinity −4, stress 3), `secret_confronted` (minor trust −1, affinity −2).
 
-- [ ] **Step 1: Write the failing tests** in `gates.test.ts` (helpers `campaign`, `setRelation`, `withBond`, `withStance`):
+- [x] **Step 1: Write the failing tests** in `gates.test.ts` (helpers `campaign`, `setRelation`, `withBond`, `withStance`):
   - `a unit without an imported bond passes no gate` (MODEST card in a `lover` state, Affinity 90: every mechanic returns a reason)
   - `a grunt passes no gate`
   - `courtship needs leadRank 2 and romance on`; `claim also needs the romantic tier and no affair`
@@ -223,10 +223,10 @@ tests/engine/personal/*.test.ts, tests/engine/combat/sparring.test.ts, tests/con
   - `forgetPersonal clears everything she held` (Review Focus 3: booking, offer, open wager, obedience, decor gets `fadedUntil`, a secret she alone knew goes, a secret others know drops her from `knownBy`)
   - `a squad without imported bonds draws nothing and changes nothing over 10 days` (Review Focus 5): end ten days with `endDay` on a fixed seed; `personal` stays absent and the final `rng` equals a literal captured by running the same script on the baseline commit (`fca1105`) before any change
   - `the six new engine event types are not offered to the model and each has an eventDeltas row`
-- [ ] **Step 2: Run** `npx vitest run tests/engine/personal/gates.test.ts`. Expect FAIL.
-- [ ] **Step 3: Implement** the types, `state.ts`, `gates.ts`, the tuning block, the vocabulary, the rows and the defect field.
-- [ ] **Step 4: Run** the tests, then `npm test`. Expect PASS.
-- [ ] **Step 5: Tick and commit:** `feat(personal): state, bond gates, tuning and engine event types`.
+- [x] **Step 2: Run** `npx vitest run tests/engine/personal/gates.test.ts`. Expect FAIL.
+- [x] **Step 3: Implement** the types, `state.ts`, `gates.ts`, the tuning block, the vocabulary, the rows and the defect field.
+- [x] **Step 4: Run** the tests, then `npm test`. Expect PASS.
+- [x] **Step 5: Tick and commit:** `feat(personal): state, bond gates, tuning and engine event types`.
 
 ### Task 2: Device access levels, decor and notes
 

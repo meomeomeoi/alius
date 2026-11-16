@@ -741,6 +741,8 @@ export const DefectSchema = BaseEntrySchema.extend({
   eventStress: z.record(z.enum(ALL_EVENT_TYPES), z.number().int().min(-10).max(10)).optional(),
   /** P9d: deciding the Embrace path writes this relation flag (a stand-in for a formal arrangement); while it is set the defect's positive `eventStress` values are halved. */
   embraceFlag: str.optional(),
+  /** P9c: how hard her personal pressure lands (booking, token, claim and challenge chances, and the deltas toward her); the product over her defects. */
+  pressureMult: z.number().min(1).max(2).optional(),
   /** P9d: what her unmet want does at the top band: an off-combat breakdown of this kind for 1 to 3 days. */
   wantBreakdown: z.object({ kind: z.enum(['withdrawal', 'binge', 'smother', 'seize']), days: int.min(1).max(3) }).strict().optional(),
   nightEvents: z.array(NightSpecSchema).optional(),

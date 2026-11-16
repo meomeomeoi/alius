@@ -866,7 +866,8 @@
         "once": true
       }
     },
-    "desertionMod": -0.1
+    "desertionMod": -0.1,
+    "pressureMult": 1.5
   },
   {
     "id": "reward_loop",
@@ -1040,7 +1041,8 @@
     "wantBreakdown": {
       "kind": "seize",
       "days": 1
-    }
+    },
+    "pressureMult": 1.5
   },
   {
     "id": "caretaker_overdrive",

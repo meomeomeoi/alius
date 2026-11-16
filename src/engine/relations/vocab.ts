@@ -18,6 +18,8 @@ export const ENGINE_EVENT_TYPES = ['granted_demand', 'refused_demand', 'followed
   'leader_overruled', 'leader_endorsed', 'challenge_won', 'challenge_lost',
   // P9b: the commander took the blame for her (a scapegoat dilemma); never reported by the model
   'shielded',
+  // P9c: she was overridden; decor peeled; a rival favoured; a bond shown; a worn token taken off; the squad confronted about a secret
+  'overrode_her', 'decor_removed', 'rival_favoured', 'bond_shown', 'token_removed', 'secret_confronted',
 ] as const;
 
 /** The event types a world effect (`unit_event`) may apply: what the model reports, plus `shielded` (the engine's own, from a scapegoat dilemma). */

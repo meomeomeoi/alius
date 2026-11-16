@@ -321,6 +321,8 @@ export interface DmMessage {
   initiated?: boolean;
   /** P9d: a reply of hers that depicts content switched off (the category ids). */
   violation?: string[];
+  /** P9c: the unit at device level 4 who edited this message before it was sent (the commander kept the edit). */
+  editedBy?: string;
 }
 
 /** P11: a lead the director set (`objectiveHint`). At most one is open; the newest finished ones are kept for the log. */
@@ -595,6 +597,111 @@ export interface DisciplineState {
   demandLog: Array<{ unitId: string; day: number; /** Her last template is not picked again. */ templateId?: string }>;
 }
 
+// ---------------------------------------------------------------------------------------------
+// P9c: personal pressure. Every field is optional; absent `CampaignState.personal` = nothing booked, given, wagered or kept.
+
+export type DecorPart = 'sticker' | 'wallpaper' | 'contact';
+
+/** Level-1 decor on the commander's device (P9c §1): stored per unit, the level itself is derived. */
+export interface Decor {
+  since: number;
+  parts: DecorPart[];
+  contactName: string;
+  /** Her access fell to 0: the decor shows as a faded mark until this day, then it is deleted. */
+  fadedUntil?: number;
+  /** The day the commander peeled each part; it does not grow back for `TUNING.personal.decor.regrowDays`. */
+  removed?: Partial<Record<DecorPart, number>>;
+}
+
+export type InterceptChannel = 'dm' | 'leash' | 'recruit';
+
+/** A level-4 edit waiting for KEEP / REVERT. `status: 'kept'` = the commander kept it and the app has yet to send it. */
+export interface Intercept {
+  id: string;
+  unitId: string;
+  channel: InterceptChannel;
+  toUnitId?: string;
+  day: number;
+  status: 'open' | 'kept';
+}
+
+export type BookingSource = 'roll' | 'wager' | 'smother';
+
+/** A slot of the commander that a unit booked (P9c §2). */
+export interface Booking {
+  id: string;
+  unitId: string;
+  kindId: string;
+  day: number;
+  slot: Slot;
+  status: 'booked' | 'played' | 'cancelled' | 'lapsed';
+  source: BookingSource;
+  conflict?: true;
+}
+
+export interface Token {
+  id: string;
+  giverId: string;
+  kindId: string;
+  worn: boolean;
+  since: number;
+  /** A won wager: the token is worn and locked until this day (removing it early breaks a promise). */
+  lockedUntil?: number;
+}
+
+export interface TokenOffer { id: string; unitId: string; kindId: string; day: number }
+
+export type WagerStatus = 'offered' | 'accepted' | 'pending_run';
+
+export interface Wager {
+  id: string;
+  unitId: string;
+  by: 'unit' | 'commander';
+  gameId: string;
+  stakeId: string;
+  day: number;
+  status: WagerStatus;
+  /** A game's choice: the commander's hand, the expedition bet's pick, the sparring handicap id. */
+  pick?: string;
+}
+
+export interface WagerLogEntry { id: string; unitId: string; gameId: string; stakeId: string; day: number; winner: 'unit' | 'commander' | 'void' }
+
+export type SecretReason = 'protect_commander' | 'self_interest' | 'leader_order';
+export type SecretStatus = 'kept' | 'found' | 'confronted' | 'pretend' | 'used';
+
+/** A thing the squad keeps from the commander. Not a `Fact` while kept (P9c §5). */
+export interface SquadSecret {
+  id: string;
+  kindId: string;
+  text: string;
+  subjectId?: string;
+  knownBy: string[];
+  reason: SecretReason;
+  day: number;
+  status: SecretStatus;
+  foundRoute?: string;
+  foundDay?: number;
+  usedUntil?: number;
+}
+
+export interface PersonalState {
+  /** Counter behind the ids of intercepts, bookings, tokens, wagers and secrets. */
+  seq: number;
+  decor?: Record<string, Decor>;
+  intercepts?: { open?: Intercept; log: Array<{ unitId: string; day: number }> };
+  bookings?: Booking[];
+  /** A unit who lost a slot wager cannot book the commander until this day. */
+  noBookUntil?: Record<string, number>;
+  claims?: Array<{ unitId: string; day: number; refused?: true }>;
+  tokens?: { owned: Token[]; offer?: TokenOffer; given: string[] };
+  wagers?: { open: Wager[]; log: WagerLogEntry[] };
+  obedience?: { unitId: string; day: number; who: 'commander' | 'unit' };
+  truth?: { unitId: string; wagerId: string; question: string };
+  mark?: { unitId: string; untilDay: number };
+  secrets?: SquadSecret[];
+}
+
 export type BodyStat = 'strength' | 'endurance' | 'reflexes';
 export type Archetype = 'frail' | 'slight' | 'average' | 'fit' | 'hardened';
 
@@ -694,6 +801,8 @@ export interface CampaignState {
   discipline?: DisciplineState;
   /** P9b: votes, the squad hierarchy, merit, a countermand and the scapegoat queue. Created on first write; absent in older saves. */
   power?: PowerState;
+  /** P9c: decor, bookings, tokens, wagers, obedience and squad secrets. Created on first write; absent in older saves. */
+  personal?: PersonalState;
   /** P9d: the content categories the player switched on (absent = none). Read through `enabledCategories`. */
   content?: { enabled: string[] };
   /** P9d: relationship rules and the smother hold (absent = none). */

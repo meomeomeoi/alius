@@ -891,5 +891,137 @@
         "affinity": 4
       }
     }
+  },
+  {
+    "id": "overrode_her",
+    "cause": "You overrode her choice",
+    "rows": {
+      "minor": {
+        "trust": -1,
+        "affinity": -2,
+        "stress": 2
+      },
+      "moderate": {
+        "trust": -2,
+        "affinity": -3,
+        "stress": 4
+      },
+      "major": {
+        "trust": -3,
+        "affinity": -5,
+        "stress": 6
+      },
+      "extreme": {
+        "trust": -5,
+        "affinity": -8,
+        "stress": 8
+      }
+    }
+  },
+  {
+    "id": "decor_removed",
+    "cause": "You peeled something she put on your device",
+    "rows": {
+      "minor": {
+        "affinity": -3,
+        "stress": 2
+      },
+      "moderate": {
+        "affinity": -5,
+        "stress": 3
+      },
+      "major": {
+        "affinity": -8,
+        "stress": 5
+      },
+      "extreme": {
+        "affinity": -10,
+        "stress": 8
+      }
+    }
+  },
+  {
+    "id": "rival_favoured",
+    "cause": "The commander favoured someone else",
+    "rows": {
+      "minor": {
+        "affinity": -1,
+        "stress": 2
+      },
+      "moderate": {
+        "affinity": -2,
+        "stress": 4
+      },
+      "major": {
+        "affinity": -4,
+        "stress": 6
+      },
+      "extreme": {
+        "affinity": -6,
+        "stress": 9
+      }
+    }
+  },
+  {
+    "id": "bond_shown",
+    "cause": "A bond was shown in public",
+    "rows": {
+      "minor": {
+        "affinity": 1
+      },
+      "moderate": {
+        "affinity": 2
+      },
+      "major": {
+        "affinity": 3
+      },
+      "extreme": {
+        "affinity": 4
+      }
+    }
+  },
+  {
+    "id": "token_removed",
+    "cause": "You took off what she gave you",
+    "rows": {
+      "minor": {
+        "affinity": -2,
+        "stress": 2
+      },
+      "moderate": {
+        "affinity": -4,
+        "stress": 3
+      },
+      "major": {
+        "affinity": -6,
+        "stress": 5
+      },
+      "extreme": {
+        "affinity": -9,
+        "stress": 8
+      }
+    }
+  },
+  {
+    "id": "secret_confronted",
+    "cause": "You confronted the squad over a secret",
+    "rows": {
+      "minor": {
+        "trust": -1,
+        "affinity": -2
+      },
+      "moderate": {
+        "trust": -2,
+        "affinity": -3
+      },
+      "major": {
+        "trust": -3,
+        "affinity": -5
+      },
+      "extreme": {
+        "trust": -5,
+        "affinity": -8
+      }
+    }
   }
 ]

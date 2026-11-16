@@ -472,6 +472,57 @@ var TUNING = Object.freeze({
     factImportance: 2,
     /** The standing order "ask me first": giving it costs Trust as a `decision_violated` of this severity. */
     askFirst: Object.freeze({ severity: "minor" })
+  }),
+  /**
+   * P9c: personal pressure. Every number is a DRAFT (the plan's rulings), the author's to change. Frequencies below are
+   * multiplied by the squad's `demandMult` (P9b) and the unit's `pressureMult` (defects) where the rulings say so.
+   */
+  personal: Object.freeze({
+    /** Who may take part (the bond gate, `pressureGate`): lead ranks 0–3, Affinity and Impunity floors. */
+    gates: Object.freeze({
+      device: Object.freeze({ minLeadRank: 1 }),
+      courtship: Object.freeze({ minLeadRank: 2 }),
+      token: Object.freeze({ minAffinity: 50 }),
+      wager: Object.freeze({ minLeadRank: 1, minAffinity: 20, minImpunity: 50 })
+    }),
+    decor: Object.freeze({ regrowDays: 7, fadeDays: 7 }),
+    /** A level-4 edit: chance per eligible event (before the multipliers), its cap, and the record a REVERT costs the commander. */
+    intercept: Object.freeze({ chance: 0.3, cap: 0.6, perDay: 1 }),
+    booking: Object.freeze({ base: 0.08, cap: 0.5, perWeek: 2, settleStress: 10 }),
+    courtship: Object.freeze({ initiativeMult: 2, conditionMax: 160 }),
+    claim: Object.freeze({ chance: 0.04, cooldownDays: 14, refuseStress: 8 }),
+    token: Object.freeze({ chance: 0.03, maxWorn: 2, offerDays: 3, lockDays: 7, giverAffinityPerDay: 1 }),
+    wager: Object.freeze({
+      chance: 0.03,
+      acceptAffinity: 0,
+      acceptImpunity: 40,
+      noBookDays: 7,
+      privilegeRecord: 6,
+      markDays: 3,
+      markLoseStress: 3,
+      answerMax: 200,
+      logMax: 20
+    }),
+    sparring: Object.freeze({ commanderSkill: 1, maxRounds: 20, bodyXp: 0.5 }),
+    bet: Object.freeze({ voidDays: 7, killsNeeded: 3 }),
+    obedience: Object.freeze({ days: 1 }),
+    secret: Object.freeze({
+      insightBase: 0.08,
+      insightCap: 0.4,
+      insightTrust: 40,
+      slipChance: 0.25,
+      nightChance: 0.1,
+      nightAffinity: 60,
+      nightTrust: 50,
+      usedDays: 14,
+      heldPerSecret: 8,
+      heldMax: 16,
+      confrontRecord: 5,
+      hiddenInjuryHp: 0.25,
+      successorDays: 7
+    }),
+    /** The record the commander takes on for overriding her (a REVERT, a cancelled booking under obedience, …). */
+    overrideRecord: 3
   })
 });
 
@@ -5904,7 +5955,14 @@ var ENGINE_EVENT_TYPES = [
   "challenge_won",
   "challenge_lost",
   // P9b: the commander took the blame for her (a scapegoat dilemma); never reported by the model
-  "shielded"
+  "shielded",
+  // P9c: she was overridden; decor peeled; a rival favoured; a bond shown; a worn token taken off; the squad confronted about a secret
+  "overrode_her",
+  "decor_removed",
+  "rival_favoured",
+  "bond_shown",
+  "token_removed",
+  "secret_confronted"
 ];
 var WORLD_EFFECT_EVENT_TYPES = [...EVENT_TYPES, "shielded"];
 var ALL_EVENT_TYPES = [...EVENT_TYPES, ...ENGINE_EVENT_TYPES];
@@ -6854,6 +6912,8 @@ var DefectSchema = BaseEntrySchema.extend({
   eventStress: external_exports.record(external_exports.enum(ALL_EVENT_TYPES), external_exports.number().int().min(-10).max(10)).optional(),
   /** P9d: deciding the Embrace path writes this relation flag (a stand-in for a formal arrangement); while it is set the defect's positive `eventStress` values are halved. */
   embraceFlag: str.optional(),
+  /** P9c: how hard her personal pressure lands (booking, token, claim and challenge chances, and the deltas toward her); the product over her defects. */
+  pressureMult: external_exports.number().min(1).max(2).optional(),
   /** P9d: what her unmet want does at the top band: an off-combat breakdown of this kind for 1 to 3 days. */
   wantBreakdown: external_exports.object({ kind: external_exports.enum(["withdrawal", "binge", "smother", "seize"]), days: int.min(1).max(3) }).strict().optional(),
   nightEvents: external_exports.array(NightSpecSchema).optional(),
@@ -11407,6 +11467,34 @@ function negotiationHolds(e) {
   return e.routePassed === true && e.routeKind === "social" || e.checkPassed === true;
 }
 
+// src/engine/personal/state.ts
+function holdsPersonal(state, unitId) {
+  const p = state.personal;
+  if (!p) return false;
+  return p.decor?.[unitId] !== void 0 || p.bookings?.some((b) => b.unitId === unitId && b.status === "booked") === true || p.noBookUntil?.[unitId] !== void 0 || p.intercepts?.open?.unitId === unitId || p.tokens?.offer?.unitId === unitId || p.wagers?.open.some((w) => w.unitId === unitId) === true || p.obedience?.unitId === unitId || p.truth?.unitId === unitId || p.mark?.unitId === unitId || p.secrets?.some((x) => x.knownBy.includes(unitId)) === true;
+}
+function forgetPersonal(draft, unitId) {
+  const p = draft.personal;
+  if (!p) return;
+  if (p.bookings) p.bookings = p.bookings.filter((b) => !(b.unitId === unitId && b.status === "booked"));
+  if (p.noBookUntil) {
+    delete p.noBookUntil[unitId];
+    if (Object.keys(p.noBookUntil).length === 0) delete p.noBookUntil;
+  }
+  if (p.intercepts?.open?.unitId === unitId) delete p.intercepts.open;
+  if (p.tokens?.offer?.unitId === unitId) delete p.tokens.offer;
+  if (p.wagers) p.wagers.open = p.wagers.open.filter((w) => w.unitId !== unitId);
+  if (p.obedience?.unitId === unitId) delete p.obedience;
+  if (p.truth?.unitId === unitId) delete p.truth;
+  if (p.mark?.unitId === unitId) delete p.mark;
+  const decor = p.decor?.[unitId];
+  if (decor && decor.fadedUntil === void 0) decor.fadedUntil = draft.day + TUNING.personal.decor.fadeDays;
+  if (p.secrets) {
+    p.secrets = p.secrets.filter((x) => !(x.knownBy.length === 1 && x.knownBy[0] === unitId));
+    for (const x of p.secrets) x.knownBy = x.knownBy.filter((id) => id !== unitId);
+  }
+}
+
 // src/engine/leash/use.ts
 var clamp12 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var unitOf = (state, id) => state.squad.find((u) => u.id === id);
@@ -11563,6 +11651,7 @@ function removeFromService(draft, unitId, status) {
   forgetUnit(draft, unitId);
   forgetBonds(draft, unitId);
   forgetPower(draft, unitId);
+  forgetPersonal(draft, unitId);
 }
 function forgetBonds(draft, unitId) {
   if (draft.bonds) {
@@ -18420,6 +18509,18 @@ registerAction("content/set_categories", (draft, payload, ctx2) => {
   }
   return setCategories(draft, ctx2.registries, payload.enabled);
 });
+
+// src/engine/personal/dayStep.ts
+function personalDayStep(draft, _ctx) {
+  if (!draft.personal) return [];
+  for (const unit of draft.squad) {
+    if (!isLiving(unit) && holdsPersonal(draft, unit.id)) forgetPersonal(draft, unit.id);
+  }
+  return [];
+}
+
+// src/engine/actions/personal.ts
+registerDayEndStep("dm_rumors", personalDayStep);
 
 // src/engine/power/dayStep.ts
 function powerDayStep(draft, ctx2) {
