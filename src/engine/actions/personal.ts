@@ -2,6 +2,7 @@ import { registerAction } from '../dispatch';
 import { registerDayEndStep } from '../calendar';
 import { cancelBooking, playBooking, resolveConflict } from '../personal/bookings';
 import { refuseClaim } from '../personal/courtship';
+import { answerOffer, removeToken, wearToken } from '../personal/tokens';
 import { DECOR_PARTS, removeDecor } from '../personal/decor';
 import { personalDayStep } from '../personal/dayStep';
 import { INTERCEPT_CHANNELS, resolveIntercept, rollIntercept } from '../personal/intercept';
@@ -65,4 +66,22 @@ registerAction('booking/play', (draft, payload, ctx) => {
 registerAction('courtship/refuse_claim', (draft, payload, ctx) => {
   if (!isObj(payload) || typeof payload.unitId !== 'string') throw new Error('courtship/refuse_claim needs { unitId }');
   return refuseClaim(draft, ctx, payload.unitId);
+});
+
+/** ACCEPT or DECLINE the open token offer. Draws no rng. */
+registerAction('token/answer', (draft, payload, ctx) => {
+  if (!isObj(payload) || typeof payload.offerId !== 'string' || typeof payload.accept !== 'boolean') throw new Error('token/answer needs { offerId, accept }');
+  return answerOffer(draft, ctx, payload.offerId, payload.accept);
+});
+
+/** WEAR a token (at most two). Draws no rng. */
+registerAction('token/wear', (draft, payload, ctx) => {
+  if (!isObj(payload) || typeof payload.tokenId !== 'string') throw new Error('token/wear needs { tokenId }');
+  return wearToken(draft, ctx, payload.tokenId);
+});
+
+/** TAKE OFF a worn token. Draws no rng. */
+registerAction('token/remove', (draft, payload, ctx) => {
+  if (!isObj(payload) || typeof payload.tokenId !== 'string') throw new Error('token/remove needs { tokenId }');
+  return removeToken(draft, ctx, payload.tokenId);
 });

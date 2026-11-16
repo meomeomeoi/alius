@@ -28,7 +28,7 @@ export function holdsPersonal(state: Pick<CampaignState, 'personal'>, unitId: st
     || p.bookings?.some((b) => b.unitId === unitId && b.status === 'booked') === true
     || p.noBookUntil?.[unitId] !== undefined
     || p.intercepts?.open?.unitId === unitId
-    || p.tokens?.offer?.unitId === unitId
+    || p.tokens?.offer?.giverId === unitId
     || p.wagers?.open.some((w) => w.unitId === unitId) === true
     || p.obedience?.unitId === unitId
     || p.truth?.unitId === unitId
@@ -51,7 +51,7 @@ export function forgetPersonal(draft: CampaignState, unitId: string): void {
     if (Object.keys(p.noBookUntil).length === 0) delete p.noBookUntil;
   }
   if (p.intercepts?.open?.unitId === unitId) delete p.intercepts.open;
-  if (p.tokens?.offer?.unitId === unitId) delete p.tokens.offer;
+  if (p.tokens?.offer?.giverId === unitId) delete p.tokens.offer;
   if (p.wagers) p.wagers.open = p.wagers.open.filter((w) => w.unitId !== unitId);
   if (p.obedience?.unitId === unitId) delete p.obedience;
   if (p.truth?.unitId === unitId) delete p.truth;

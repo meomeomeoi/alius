@@ -472,6 +472,7 @@ export const RESERVED_EVENT_TYPES: readonly string[] = [
   // P9c
   'decor_placed', 'decor_faded', 'decor_removed_by_commander', 'device_intercept', 'intercept_resolved',
   'booking_made', 'booking_conflict', 'booking_resolved', 'booking_cancelled', 'booking_played', 'booking_lapsed',
+  'token_offered', 'token_accepted', 'token_declined', 'token_worn', 'token_taken_off',
 ];
 
 const slotEnum = z.enum(['morning', 'afternoon', 'evening', 'night']);
@@ -1770,13 +1771,13 @@ registrySchemas.contentCategories = ContentCategorySchema;
 
 /**
  * A rule a leading partner can propose to the commander (P9d §5). `check` says how compliance is judged: the engine itself
- * (`daily_contact`, `run_without_asking`) or only what the mechanic model reads in the talk (`intent`). `keepDeltas` and
+ * (`daily_contact`, `run_without_asking`, and P9c's `token_wear`: wearing another soldier's token) or only what the mechanic model reads in the talk (`intent`). `keepDeltas` and
  * `breakDeltas` are what a kept and a broken rule do to her.
  */
 export const RelationshipRuleTemplateSchema = BaseEntrySchema.extend({
   text: str.max(160),
   description: str.max(DESCRIPTION_MAX),
-  check: z.enum(['daily_contact', 'run_without_asking', 'intent']),
+  check: z.enum(['daily_contact', 'run_without_asking', 'intent', 'token_wear']),
   keepDeltas: z.object({ trust: z.number(), affinity: z.number() }).strict(),
   breakDeltas: z.object({ trust: z.number(), affinity: z.number(), stress: z.number() }).strict(),
   conditions: z.object({
@@ -1867,6 +1868,18 @@ export const BookingKindSchema = BaseEntrySchema.extend({
 export type BookingKindEntry = z.infer<typeof BookingKindSchema>;
 registrySchemas.bookingKinds = BookingKindSchema;
 
+/** P9c §4: a keepsake a soldier may give the commander (`label` and `text` carry `{name}`, `text` also `{label}`; `minTier` limits it to romantic relationships). */
+export const TokenKindSchema = BaseEntrySchema.extend({
+  label: str.max(60).refine((t) => t.includes('{name}'), 'the label must contain {name}'),
+  description: str.max(DESCRIPTION_MAX),
+  minTier: z.literal('romantic').optional(),
+  /** What she DMs when she offers it. */
+  text: str.max(200).refine((t) => t.includes('{label}'), 'the offer text must contain {label}'),
+  weight: int.min(1).max(100),
+}).strict();
+export type TokenKindEntry = z.infer<typeof TokenKindSchema>;
+registrySchemas.tokenKinds = TokenKindSchema;
+
 /** Player-visible registries whose entries carry an optional `description` (skills and statuses already require one). */
 export const DESCRIBED_REGISTRIES = [
   'roles', 'skills', 'signatures', 'statuses', 'defects', 'items', 'affixes', 'enemies',
@@ -1885,7 +1898,7 @@ export const DESCRIBED_REGISTRIES = [
   // P9b
   'voteKinds', 'outsideFeats',
   // P9c
-  'deviceAccessRules', 'bookingKinds',
+  'deviceAccessRules', 'bookingKinds', 'tokenKinds',
 ] as const satisfies readonly RegistryName[];
 
 /** Adds the optional `description` rule to a registry schema without changing its shape. */

@@ -647,13 +647,18 @@ export interface Token {
   id: string;
   giverId: string;
   kindId: string;
+  /** The kind's label with her name filled (what the scene line and the dossier say). */
+  label: string;
+  /** The day the commander accepted it. */
+  day: number;
   worn: boolean;
-  since: number;
   /** A won wager: the token is worn and locked until this day (removing it early breaks a promise). */
   lockedUntil?: number;
+  /** The day the commander took it off (the giver notices today and tomorrow). */
+  removedDay?: number;
 }
 
-export interface TokenOffer { id: string; unitId: string; kindId: string; day: number }
+export interface TokenOffer { id: string; giverId: string; kindId: string; label: string; day: number; dmId?: string }
 
 export type WagerStatus = 'offered' | 'accepted' | 'pending_run';
 
@@ -667,6 +672,8 @@ export interface Wager {
   status: WagerStatus;
   /** A game's choice: the commander's hand, the expedition bet's pick, the sparring handicap id. */
   pick?: string;
+  /** The DM that carries her challenge. */
+  dmId?: string;
 }
 
 export interface WagerLogEntry { id: string; unitId: string; gameId: string; stakeId: string; day: number; winner: 'unit' | 'commander' | 'void' }

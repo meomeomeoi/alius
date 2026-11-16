@@ -57,6 +57,7 @@
     "voteKinds": "voteKinds.json",
     "outsideFeats": "outsideFeats.json",
     "deviceAccessRules": "deviceAccessRules.json",
-    "bookingKinds": "bookingKinds.json"
+    "bookingKinds": "bookingKinds.json",
+    "tokenKinds": "tokenKinds.json"
   }
 }

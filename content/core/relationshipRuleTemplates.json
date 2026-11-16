@@ -71,7 +71,7 @@
     "id": "no_other_tokens",
     "text": "AUTHOR TO WRITE: You do not wear other girls' tokens.",
     "description": "AUTHOR TO WRITE: she does not want the commander carrying another soldier's keepsake.",
-    "check": "intent",
+    "check": "token_wear",
     "keepDeltas": {
       "trust": 1,
       "affinity": 2
@@ -87,7 +87,10 @@
         "romantic"
       ]
     },
-    "weight": 1
+    "weight": 1,
+    "contentTags": [
+      "jealousy_games"
+    ]
   },
   {
     "id": "name_me_first",

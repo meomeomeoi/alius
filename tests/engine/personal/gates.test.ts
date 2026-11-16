@@ -151,8 +151,8 @@ describe('a unit who leaves', () => {
     p.noBookUntil = { [ANN]: day + 5, [BEA]: day + 5 };
     p.intercepts = { open: { id: 'i1', unitId: ANN, channel: 'leash', day, status: 'open' }, log: [{ unitId: ANN, day }, { unitId: BEA, day }] };
     p.tokens = {
-      owned: [{ id: 't1', giverId: ANN, kindId: 'patch', worn: true, since: 1 }],
-      offer: { id: 'o1', unitId: ANN, kindId: 'patch', day },
+      owned: [{ id: 't1', giverId: ANN, kindId: 'patch', label: "Ann's patch", worn: true, day: 1 }],
+      offer: { id: 'o1', giverId: ANN, kindId: 'patch', label: "Ann's patch", day },
       given: [ANN, BEA],
     };
     p.wagers = {

@@ -1,6 +1,5 @@
 import type { Registries } from '../../content/types';
 import { contentAllowed } from '../bonds/content';
-import { bondTierOf } from '../bonds/profile';
 import { setPublicity } from '../bonds/publicity';
 import { syncPublicity } from '../bonds/publicitySync';
 import type { EngineCtx, EngineEvent } from '../dispatch';
@@ -9,6 +8,7 @@ import { assertiveness } from '../power/options';
 import type { CampaignState, PendingProposal } from '../state/types';
 import { TUNING } from '../tuning';
 import { hitHer } from './events';
+import { favourReactions } from './reactions';
 import { pressureGate, pressureMultOf } from './gates';
 import { personalOf } from './state';
 
@@ -50,18 +50,8 @@ export function claim(draft: CampaignState, ctx: EngineCtx | Pick<EngineCtx, 're
   const reg = ctx.registries;
   const events: EngineEvent[] = [...syncPublicity(draft, reg, unitId), ...setPublicity(draft, reg, unitId, 'public', { cause: 'claimed' })];
   (personalOf(draft).claims ??= []).push({ unitId, day: draft.day });
-  const reactions: Array<{ unitId: string; kind: 'rival' | 'respect' }> = [];
-  for (const other of draft.squad) {
-    if (other.id === unitId || other.kind !== 'named' || !isLiving(other) || other.bond === undefined || !draft.relations[other.id]) continue;
-    const tier = bondTierOf(draft, reg, other.id);
-    if (tier === 'romantic') {
-      reactions.push({ unitId: other.id, kind: 'rival' });
-      events.push(...hitHer(draft, reg, other.id, 'rival_favoured', 'major', 'the commander was claimed', { amplified: true }));
-    } else if (tier === 'close' || other.values.ingroup >= 1) {
-      reactions.push({ unitId: other.id, kind: 'respect' });
-      events.push(...hitHer(draft, reg, other.id, 'bond_shown', 'minor', 'a bond was shown'));
-    }
-  }
+  const { events: reacted, reactions } = favourReactions(draft, reg, unitId, 'major');
+  events.push(...reacted);
   events.push({ type: 'claimed', unitId, reactions });
   return events;
 }

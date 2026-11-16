@@ -9,3 +9,5 @@ export { hitHer } from './events';
 export { interceptDayStep, interceptEditor, INTERCEPT_CHANNELS, resolveIntercept, rollIntercept, takeKeptEdit } from './intercept';
 export { JEALOUSY_TAG, jealousyAllowed, pressureGate, pressureMultOf, type PressureMechanic } from './gates';
 export { forgetPersonal, holdsPersonal, lapseBookingsThrough, nextPersonalId, personalOf } from './state';
+export { answerOffer, giveToken, removeToken, rollTokenOffer, tokenDayStep, tokenLine, wearToken, wornTokens } from './tokens';
+export { favourReactions } from './reactions';

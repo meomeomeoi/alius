@@ -1,0 +1,46 @@
+[
+  {
+    "id": "dog_tag",
+    "label": "{name}'s dog tag",
+    "description": "AUTHOR TO WRITE: a worn dog tag that a soldier gives the commander.",
+    "text": "AUTHOR TO WRITE: {name}: I made you something. Wear {label} if you want.",
+    "weight": 10
+  },
+  {
+    "id": "patch",
+    "label": "{name}'s patch",
+    "description": "AUTHOR TO WRITE: a squad patch that a soldier gives the commander.",
+    "text": "AUTHOR TO WRITE: {name}: I made you something. Wear {label} if you want.",
+    "weight": 10
+  },
+  {
+    "id": "ribbon",
+    "label": "{name}'s ribbon",
+    "description": "AUTHOR TO WRITE: a ribbon that a soldier gives the commander.",
+    "text": "AUTHOR TO WRITE: {name}: I made you something. Wear {label} if you want.",
+    "weight": 8
+  },
+  {
+    "id": "plyx_ring",
+    "label": "{name}'s plyx ring",
+    "description": "AUTHOR TO WRITE: a ring cast from plyx that a soldier gives the commander.",
+    "minTier": "romantic",
+    "text": "AUTHOR TO WRITE: {name}: I made you something. Wear {label} if you want.",
+    "weight": 6
+  },
+  {
+    "id": "cartridge_pendant",
+    "label": "{name}'s cartridge pendant",
+    "description": "AUTHOR TO WRITE: a pendant made from a spent cartridge that a soldier gives the commander.",
+    "text": "AUTHOR TO WRITE: {name}: I made you something. Wear {label} if you want.",
+    "weight": 6
+  },
+  {
+    "id": "knotted_cord",
+    "label": "{name}'s knotted cord",
+    "description": "AUTHOR TO WRITE: a cord knotted by hand that a soldier gives the commander.",
+    "minTier": "romantic",
+    "text": "AUTHOR TO WRITE: {name}: I made you something. Wear {label} if you want.",
+    "weight": 6
+  }
+]

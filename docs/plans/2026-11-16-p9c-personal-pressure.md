@@ -423,7 +423,7 @@ tests/engine/personal/*.test.ts, tests/engine/combat/sparring.test.ts, tests/con
   - `rollTokenOffer(draft, ctx)`, `giveToken(draft, ctx, giverId, kindId?)` (the wager path), `answerOffer`, `wearToken`, `removeToken`, `wornTokens(state): Token[]`, `tokenLine(state): string | null`
   - Reserved: `token_offered`, `token_accepted`, `token_declined`, `token_worn`, `token_taken_off`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `an eligible unit offers once, ever; a second offer never comes` (scan seeds)
   - `accept stores it unworn; decline applies rejected_advance minor; an offer expires after 3 days as declined`
   - `at most two worn; a third wear throws` (acceptance 4)
@@ -433,10 +433,10 @@ tests/engine/personal/*.test.ts, tests/engine/combat/sparring.test.ts, tests/con
   - `a locked token removed early also breaks a promise`
   - `with a no_other_tokens rule active, wearing another's token breaks it by check; with jealousy_games off the rule is never proposed`
   - `a unit without the token gate never offers` (acceptance 7)
-- [ ] **Step 2: Run** `npx vitest run tests/engine/personal/tokens.test.ts tests/bonds`. Expect FAIL on the new tests.
-- [ ] **Step 3: Implement.** Six draft kinds (`AUTHOR TO WRITE`).
-- [ ] **Step 4: Run** the tests, then `npm test`. Expect PASS. The P9d rule tests that read `no_other_tokens.check === 'intent'` change knowingly; say so in the commit body.
-- [ ] **Step 5: Tick and commit:** `feat(personal): tokens the commander may wear`.
+- [x] **Step 2: Run** `npx vitest run tests/engine/personal/tokens.test.ts tests/bonds`. Expect FAIL on the new tests.
+- [x] **Step 3: Implement.** Six draft kinds (`AUTHOR TO WRITE`).
+- [x] **Step 4: Run** the tests, then `npm test`. Expect PASS. The P9d rule tests that read `no_other_tokens.check === 'intent'` change knowingly; say so in the commit body.
+- [x] **Step 5: Tick and commit:** `feat(personal): tokens the commander may wear`.
 
 ### Task 9: Wagers: challenges, three games, stakes
 

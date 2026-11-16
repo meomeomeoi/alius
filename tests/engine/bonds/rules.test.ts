@@ -49,7 +49,7 @@ describe('the core templates', () => {
   it('five templates with the checks of the spec, all drafts to write, none naming the commander', () => {
     const t = [...reg.relationshipRuleTemplates.values()];
     expect(t.map((x) => `${x.id}:${x.check}`)).toEqual([
-      'report_evening:daily_contact', 'hands_off_gear:intent', 'ask_before_runs:run_without_asking', 'no_other_tokens:intent', 'name_me_first:intent',
+      'report_evening:daily_contact', 'hands_off_gear:intent', 'ask_before_runs:run_without_asking', 'no_other_tokens:token_wear', 'name_me_first:intent',
     ]);
     for (const x of t) {
       expect(String(x.text), String(x.id)).toMatch(/^AUTHOR TO WRITE/);

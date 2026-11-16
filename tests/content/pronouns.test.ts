@@ -81,6 +81,14 @@ describe('no pronoun for the commander in content', () => {
     expect(texts.filter(([, t]) => COMMANDER_PRONOUN.test(t)).map(([where]) => where)).toEqual([]);
   });
 
+  it('token kinds (P9c): labels, descriptions and the offer text', () => {
+    const texts = [...reg.tokenKinds.values()].flatMap((e): Array<[string, string]> => [
+      [`tokenKinds:${e.id}.label`, String(e.label)], [`tokenKinds:${e.id}.description`, String(e.description)], [`tokenKinds:${e.id}.text`, String(e.text)],
+    ]);
+    expect(texts).toHaveLength(6 * 3);
+    expect(texts.filter(([, t]) => COMMANDER_PRONOUN.test(t)).map(([where]) => where)).toEqual([]);
+  });
+
   it('outside feats and the hierarchy glossary entries (P9b)', () => {
     const texts: Array<[string, string]> = [
       ...fields('outsideFeats', ['label', 'description']),

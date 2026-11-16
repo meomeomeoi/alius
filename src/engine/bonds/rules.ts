@@ -199,6 +199,18 @@ export function checkRunRoster(draft: CampaignState, ctx: EngineCtx, party: stri
   return events;
 }
 
+/** P9c: the commander wears a token of `giverId`: every active `token_wear` rule of another soldier is broken (the rule is suspended while jealousy games are off). */
+export function checkTokenWear(draft: CampaignState, ctx: EngineCtx, giverId: string): EngineEvent[] {
+  const events: EngineEvent[] = [];
+  for (const rule of rulesOf(draft)) {
+    if (rule.status !== 'active' || rule.unitId === giverId || templateOf(ctx.registries, rule)?.check !== 'token_wear') continue;
+    const unit = draft.squad.find((u) => u.id === rule.unitId);
+    if (!unit || !isLiving(unit)) continue;
+    events.push(...breakByCheck(draft, ctx, rule, []));
+  }
+  return events;
+}
+
 /** Category changes: what is tagged with a category that went off is withdrawn (a proposal) or suspended (an active rule); a suspended rule whose tags are all allowed again returns. */
 export function syncRulesWithContent(draft: CampaignState, reg: Registries): void {
   const bonds = draft.bonds;
