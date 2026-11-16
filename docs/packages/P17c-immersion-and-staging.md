@@ -38,9 +38,20 @@ Visible results of **statuses** set by the engine (not an inner meter; P15 rulin
 
 ## 5. Art slots (all optional; a missing file falls back to §4)
 
-- **Backdrops** (registry `backdrops`: `{ id, file, use: situation[], fallback: filter }`): `pov_under_desk`, `pov_floor`, `pov_cage`, `pov_corner`, `pov_dark`, `medbay_exam`, `comms_console`; later (0.3) `field_camp`, `settlement`, `ruins_interior`.
+- **Backdrops** (registry `backdrops`: `{ id, file, use: situation[], fallback: filter }`): `pov_under_desk`, `pov_floor`, `pov_cage`, `pov_corner`, `pov_dark`, `medbay_exam`, `comms_console`; **surfaces** for composing pose shots: `floor_top` (the floor seen from above, one for all rooms) and `ceiling_<room>` (a room's ceiling and upper walls seen from below; fallback: the room background scaled up, shifted to its top and heavily blurred); later (0.3) `field_camp`, `settlement`, `ruins_interior`.
 - **Her room from layers:** one base background + **props** with transparency (cage, mat by the bed, the commander's boots, a second mug, a collar on a hook) placed by data (`{ prop, x, y, scale, layer }`) per room variant chosen by the P15 frame; an optional per-unit room override.
-- **Pose shots per unit** (registry `poseShots`, optional, 6–8 per unit): `from_below`, `legs_seated`, `legs_standing`, `back`, `over_shoulder`, `hand_down`, `face_close`, each with an anchor and a frame mode: `legs_*` as a full-width **foreground layer** anchored to the bottom over a slightly blurred backdrop; `from_below`, `face_close`, `hand_down` as a **full frame** for the moment; `back`, `over_shoulder` as a sprite. Chosen by situation; absent → the CSS camera.
+- **Pose shots per unit** (registry `poseShots`, optional): `{ kind, file, variant?: 'barefoot' | 'legwear', expression?, anchor, underlay }`. Kinds and what they are:
+  - `from_below` — she stands over the viewer and looks down (kneeling, protocol, begging); underlay: the ceiling surface.
+  - `face_close` — her face close, leaning in (orders up close, dictation); underlay: the blurred room.
+  - `hand_down` — her hand reaching down to the viewer (chin, collar, "get up"); underlay: the ceiling surface.
+  - `legs_standing` — her legs and boots close, standing (kneeling before her, boot care); underlay: the blurred room, lowered.
+  - `legs_seated` — her legs close, seated (under the desk, footrest); underlay: the blurred room, lowered.
+  - `back` / `over_shoulder` — from behind (indifference, leaving; a staging with a visitor at the door); placed like a sprite.
+  - `feet_floor` — the viewer looks down at the floor: her bare (or stockinged) feet and shins right in front (kneeling, eyes down, object time, foot care); underlay: `floor_top`.
+  - `feet_overhead` — the viewer looks up: her raised foot hangs over the viewer, sole to the camera, with or without her face (the hardest moments, punishment, object time, `pet_play`); underlay: the ceiling surface.
+  - `feet_dangling` — the viewer at the height of her knees: she sits with crossed legs and the upper foot dangles in front (under the desk, service, waiting at her feet); underlay: the blurred room, lowered.
+  
+  **Composition rule:** every pose shot is generated on a plain background and cut out; the game always composes it as a layer over an underlay of **the current room** (a surface backdrop or the room background, blurred as depth of field and tinted by the scene light), never with a background baked into the image, so the room always matches. Chosen by situation; absent → the CSS camera.
 - Assets load only from local paths (`AppDeps.assetUrl`); nothing from the network (`tests/assets.test.ts`). A documented generation guide (resolution, tags, ControlNet tips, background removal) goes into `docs/content/`.
 
 ## 6. Map and runs
