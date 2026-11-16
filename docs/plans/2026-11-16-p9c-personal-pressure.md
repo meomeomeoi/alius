@@ -479,7 +479,7 @@ tests/engine/personal/*.test.ts, tests/engine/combat/sparring.test.ts, tests/con
   - `sparringBout(state, reg, rng, unitId, handicapId): { winner: 'commander'|'unit'; rounds: number }`; never touches `state.combat` or `lastCombat`
   - `resolveBets(draft, ctx, outcome): EngineEvent[]`
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `sparring uses the P4 engine: same seed same result, and only the rng advances` (acceptance 6; deep-equal of the state minus `rng`, `commander.bodyXp`, `slot`)
   - `with no handicap an average commander almost never wins; the best handicap wins sometimes` (200 seeds: ≤ 5 % and ≥ 15 %)
   - `a handicap her Affinity does not allow is refused`
@@ -488,11 +488,11 @@ tests/engine/personal/*.test.ts, tests/engine/combat/sparring.test.ts, tests/con
   - `an expedition bet waits for a run with her and resolves by kills, no damage or objective` (acceptance 6)
   - `a bet is void after 7 days or when she leaves`
   - `tally counts killing blows and hits per unit from the combat log`
-- [ ] **Step 2: Run** `npx vitest run tests/engine/combat/sparring.test.ts tests/engine/personal/expeditionBet.test.ts`. Expect FAIL.
-- [ ] **Step 3: Implement.** The commander's skill: the draft `TUNING.personal.sparring.commanderSkill` must be a single-target basic attack that `usableSkills` accepts for a combatant with no role; pick it from `skills.json` and pin it in a test.
-- [ ] **Step 4: Balance step (throwaway script, not kept).** 500 bouts per archetype (`frail` … `hardened`) × handicap against a level-1 and a level-5 soldier of each role. Tune only the sparrer formula and handicap drafts until: no handicap ≤ 5 % for `average`; best handicap 25–40 % for `average` at level 1. Write the table into the commit body.
-- [ ] **Step 5: Run** the tests, then `npm test`. Expect PASS. Existing expedition tests stay green: the tally only adds a field and bets resolve nothing when none is open.
-- [ ] **Step 6: Tick and commit:** `feat(personal): sparring on the combat engine and expedition bets`.
+- [x] **Step 2: Run** `npx vitest run tests/engine/combat/sparring.test.ts tests/engine/personal/expeditionBet.test.ts`. Expect FAIL.
+- [x] **Step 3: Implement.** The commander's skill: the draft `TUNING.personal.sparring.commanderSkill` must be a single-target basic attack that `usableSkills` accepts for a combatant with no role; pick it from `skills.json` and pin it in a test.
+- [x] **Step 4: Balance step (throwaway script, not kept).** 500 bouts per archetype (`frail` … `hardened`) × handicap against a level-1 and a level-5 soldier of each role. Tune only the sparrer formula and handicap drafts until: no handicap ≤ 5 % for `average`; best handicap 25–40 % for `average` at level 1. Write the table into the commit body.
+- [x] **Step 5: Run** the tests, then `npm test`. Expect PASS. Existing expedition tests stay green: the tally only adds a field and bets resolve nothing when none is open.
+- [x] **Step 6: Tick and commit:** `feat(personal): sparring on the combat engine and expedition bets`.
 
 ### Task 11: A day of obedience
 

@@ -35,7 +35,7 @@
       {
         "id": "one_arm",
         "label": "One arm behind her back",
-        "herAtk": 0.5,
+        "herAtk": 0.35,
         "herHp": 1,
         "herSpd": 1,
         "minAffinity": -100
@@ -44,16 +44,16 @@
         "id": "first_blood",
         "label": "First blood ends it",
         "herAtk": 1,
-        "herHp": 0.25,
+        "herHp": 0.33,
         "herSpd": 1,
         "minAffinity": 20
       },
       {
         "id": "blindfold",
         "label": "Blindfolded",
-        "herAtk": 0.7,
-        "herHp": 1,
-        "herSpd": 0.5,
+        "herAtk": 0.4,
+        "herHp": 0.9,
+        "herSpd": 0.4,
         "minAffinity": 40
       }
     ]

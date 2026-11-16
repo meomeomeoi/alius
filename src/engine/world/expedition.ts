@@ -1,4 +1,5 @@
 import { noteFeat } from '../power/outside';
+import { resolveBets } from '../personal/wagers';
 import { failedRunPenalty, openScapegoat, takeScapegoatCase } from '../power/scapegoat';
 import { applyHerCall, herCallCandidates, herCallSpecOf, rollHerCall } from '../power/herCall';
 import { isTutorialRun } from '../onboarding/tutorial';
@@ -488,6 +489,7 @@ export function endExpedition(draft: CampaignState, ctx: EngineCtx, outcome: Exp
   if (rewards) report.rewards = structuredClone(rewards);
   if (exp.herCalls && exp.herCalls.length > 0) report.herCalls = structuredClone(exp.herCalls); // P9e
   draft.lastExpedition = report;
+  events.push(...resolveBets(draft, ctx, outcome)); // P9c: a bet on this run is settled before the slots are spent
 
   let line = `Expedition to ${regionLabel}: ${OUTCOME_TEXT[outcome]}.`;
   if (injuries.length > 0) line += ` ${injuries.map(nameOf).join(' and ')} ${injuries.length > 1 ? 'were' : 'was'} carried back.`;

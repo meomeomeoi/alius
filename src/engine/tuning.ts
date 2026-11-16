@@ -433,7 +433,8 @@ export const TUNING = Object.freeze({
       chance: 0.03, acceptAffinity: 0, acceptImpunity: 40, offerDays: 3, noBookDays: 7, privilegeRecord: 6, markDays: 3, markLoseStress: 3,
       answerMax: 200, logMax: 20,
     }),
-    sparring: Object.freeze({ commanderSkill: 1, maxRounds: 20, bodyXp: 0.5 }),
+    /** The commander's one skill in a bout: a single-target basic attack of the skills registry (pinned by a test). */
+    sparring: Object.freeze({ commanderSkill: 'as_strike', maxRounds: 20, bodyXp: 0.5 }),
     bet: Object.freeze({ voidDays: 7, killsNeeded: 3 }),
     obedience: Object.freeze({ days: 1 }),
     secret: Object.freeze({

@@ -1,5 +1,8 @@
 import type { Entry, Registries } from '../../content/types';
 import { contentAllowed } from '../bonds/content';
+import { consumeSlots } from '../calendar';
+import { handicapOf, sparringBout } from '../combat/sparring';
+import { addBodyXp, bodyGrowthMult } from '../commander/profile';
 import { disciplineOf } from '../discipline';
 import { answerDemand, grantProblem } from '../discipline/demands';
 import { addRecord } from '../discipline/record';
@@ -12,7 +15,7 @@ import { assertiveness } from '../power/options';
 import type { CampaignState, Wager } from '../state/types';
 import { TUNING } from '../tuning';
 import { deviceGateReason } from './access';
-import { book, bookingKindsFor } from './bookings';
+import { book, bookingGuard, bookingKindsFor } from './bookings';
 import { hitHer } from './events';
 import { pressureGate, pressureMultOf } from './gates';
 import { nextPersonalId, personalOf } from './state';
@@ -22,8 +25,26 @@ const unitOf = (state: CampaignState, id: string) => state.squad.find((u) => u.i
 const openOf = (state: Pick<CampaignState, 'personal'>): Wager[] => state.personal?.wagers?.open ?? [];
 const HANDS = ['rock', 'paper', 'scissors'] as const;
 
-/** The game kinds the engine plays now (the others are added with their tasks). */
-export const PLAYABLE_KINDS: Set<string> = new Set(['coin', 'rps', 'high_card']);
+/** The game kinds the engine plays. */
+export const PLAYABLE_KINDS: Set<string> = new Set(['coin', 'rps', 'high_card', 'sparring', 'expedition_bet']);
+
+/** What she may bet happens on a run. */
+export const BET_PICKS = ['kills', 'no_damage', 'objective'] as const;
+
+/** The status a wager has once it is agreed: a bet waits for the run, every other game is played now. */
+const agreedStatus = (reg: Registries, gameId: string): Wager['status'] => (reg.wagerGames.get(gameId)?.kind === 'expedition_bet' ? 'pending_run' : 'accepted');
+
+/** Checks the pick a game needs (a handicap she allows, a bet on kills, no damage or the objective); throws when it is missing or illegal. */
+function checkPick(state: CampaignState, reg: Registries, gameId: string, unitId: string, pick: string | undefined): void {
+  const kind = reg.wagerGames.get(gameId)?.kind;
+  if (kind === 'sparring') {
+    const h = pick === undefined ? undefined : handicapOf(reg, pick);
+    if (!h) throw new Error('Choose a handicap.');
+    if ((state.relations[unitId]?.affinity ?? -100) < h.minAffinity) throw new Error('Her Affinity does not allow that handicap.');
+  } else if (kind === 'expedition_bet' && !(BET_PICKS as readonly string[]).includes(pick ?? '')) {
+    throw new Error('Choose what she bets on: kills, no damage or the objective.');
+  }
+}
 
 /** The games a challenge may name, in registry order. */
 export const gamesOffered = (reg: Registries): Entry[] => [...reg.wagerGames.values()].filter((g) => PLAYABLE_KINDS.has(String(g.kind)));
@@ -76,10 +97,17 @@ export function rollChallenges(draft: CampaignState, ctx: EngineCtx): EngineEven
     if (!ctx.rng.chance(TUNING.personal.wager.chance * assertiveness(draft, reg).demandMult * pressureMultOf(draft, reg, u.id))) continue;
     const game = games[ctx.rng.int(0, games.length - 1)];
     const stake = stakes[ctx.rng.int(0, stakes.length - 1)];
+    let pick: string | undefined;
+    if (game.kind === 'sparring') {
+      const allowed = (game.handicaps as Array<{ id: string; minAffinity: number }>).filter((h) => (draft.relations[u.id]?.affinity ?? -100) >= h.minAffinity);
+      pick = allowed[ctx.rng.int(0, allowed.length - 1)]?.id;
+    } else if (game.kind === 'expedition_bet') {
+      pick = BET_PICKS[ctx.rng.int(0, BET_PICKS.length - 1)];
+    }
     const dm = pushMessage(draft, u.id, {
       from: u.id, text: `${u.displayName} challenges the commander: ${String(game.label)}, for ${String(stake.text)}.`, day: draft.day, slot: draft.slot, read: false, initiated: true,
     });
-    const w: Wager = { id: nextPersonalId(draft, 'wg'), unitId: u.id, by: 'unit', gameId: String(game.id), stakeId: String(stake.id), day: draft.day, status: 'offered', dmId: dm.id };
+    const w: Wager = { id: nextPersonalId(draft, 'wg'), unitId: u.id, by: 'unit', gameId: String(game.id), stakeId: String(stake.id), day: draft.day, status: 'offered', ...(pick !== undefined ? { pick } : {}), dmId: dm.id };
     ((personalOf(draft).wagers ??= { open: [], log: [] }).open).push(w);
     events.push({ type: 'wager_offered', wagerId: w.id, unitId: u.id, gameId: w.gameId, stakeId: w.stakeId });
   }
@@ -100,11 +128,12 @@ export function challenge(draft: CampaignState, ctx: EngineCtx, p: { unitId: str
   if (!game) throw new Error('That game is not available.');
   if (!stake || !stakeOffered(draft, reg, p.unitId, stake)) throw new Error('She is not offered that stake.');
   if (openOf(draft).some((w) => w.unitId === p.unitId)) throw new Error('She already has a wager open.');
+  checkPick(draft, reg, String(game.id), p.unitId, p.pick);
   const T = TUNING.personal.wager;
   if ((draft.relations[p.unitId]?.affinity ?? -100) < T.acceptAffinity && (impunityOf(draft, reg, p.unitId)?.value ?? 0) < T.acceptImpunity) {
     return [{ type: 'wager_refused', unitId: p.unitId }];
   }
-  const w: Wager = { id: nextPersonalId(draft, 'wg'), unitId: p.unitId, by: 'commander', gameId: String(game.id), stakeId: String(stake.id), day: draft.day, status: 'accepted', ...(p.pick !== undefined ? { pick: p.pick } : {}) };
+  const w: Wager = { id: nextPersonalId(draft, 'wg'), unitId: p.unitId, by: 'commander', gameId: String(game.id), stakeId: String(stake.id), day: draft.day, status: agreedStatus(reg, String(game.id)), ...(p.pick !== undefined ? { pick: p.pick } : {}) };
   ((personalOf(draft).wagers ??= { open: [], log: [] }).open).push(w);
   return [{ type: 'wager_accepted', wagerId: w.id, unitId: p.unitId, by: 'commander', gameId: w.gameId, stakeId: w.stakeId }];
 }
@@ -115,7 +144,7 @@ export function answerChallenge(draft: CampaignState, ctx: EngineCtx, wagerId: s
   const w = list?.find((x) => x.id === wagerId);
   if (!list || !w || w.by !== 'unit' || w.status !== 'offered') throw new Error('That challenge is not open.');
   if (accept) {
-    w.status = 'accepted';
+    w.status = agreedStatus(ctx.registries, w.gameId);
     return [{ type: 'wager_accepted', wagerId, unitId: w.unitId, by: 'unit', gameId: w.gameId, stakeId: w.stakeId }];
   }
   draft.personal!.wagers!.open = list.filter((x) => x !== w);
@@ -159,8 +188,45 @@ export function playWager(draft: CampaignState, ctx: EngineCtx, wagerId: string,
   if (!game || !PLAYABLE_KINDS.has(String(game.kind))) throw new Error('That game is not available.');
   const u = unitOf(draft, w.unitId);
   if (!u || !isLiving(u)) throw new Error('She is not here to play.');
+  if (game.kind === 'sparring') return playSparring(draft, ctx, w, pick ?? w.pick);
   const { winner, details } = playChance(String(game.kind), ctx, pick ?? w.pick);
   return settle(draft, ctx, w, winner, details);
+}
+
+/**
+ * A sparring wager: one bout on the combat engine, a slot of the commander's time (never in the Night, never while a scene, a
+ * decision, a knock or a booking holds it) and strength XP of half a session. The result is applied as any other.
+ */
+function playSparring(draft: CampaignState, ctx: EngineCtx, w: Wager, pick: string | undefined): EngineEvent[] {
+  const reg = ctx.registries;
+  if (draft.slot === 'night') throw new Error('Nobody spars at night.');
+  if (draft.scene || draft.calendar.pendingScene || draft.calendar.nightEvent || draft.dilemmas?.open?.status === 'presented') throw new Error('Not now: something else holds this slot.');
+  const due = bookingGuard(draft, { type: 'calendar/consume_slot' });
+  if (due) throw new Error(due.message);
+  checkPick(draft, reg, w.gameId, w.unitId, pick);
+  const bout = sparringBout(draft, reg, ctx.rng, w.unitId, pick!);
+  const xp = addBodyXp(draft.commander, 'strength', Math.round(TUNING.commander.bodyXpPerSession * TUNING.personal.sparring.bodyXp * bodyGrowthMult(draft, reg)));
+  const events: EngineEvent[] = [{ type: 'body_trained', stat: 'strength', value: xp.value, raised: xp.gained }];
+  events.push(...settle(draft, ctx, w, bout.winner, { handicap: pick, rounds: bout.rounds, ...(bout.draw ? { draw: true } : {}) }));
+  events.push(...consumeSlots(draft, 1, ctx));
+  return events;
+}
+
+/**
+ * The end of a run (`endExpedition`, before the slots are spent): every bet of a unit who was in the party is settled. She bet it
+ * happens: kills = at least `bet.killsNeeded` killing blows, no_damage = no hit taken, objective = the run's objective is done.
+ */
+export function resolveBets(draft: CampaignState, ctx: EngineCtx, _outcome: string): EngineEvent[] {
+  const exp = draft.expedition;
+  if (!exp) return [];
+  const events: EngineEvent[] = [];
+  for (const w of [...openOf(draft)]) {
+    if (w.status !== 'pending_run' || !exp.party.includes(w.unitId)) continue;
+    const t = exp.tally?.[w.unitId] ?? { kills: 0, hits: 0 };
+    const happened = w.pick === 'kills' ? t.kills >= TUNING.personal.bet.killsNeeded : w.pick === 'no_damage' ? t.hits === 0 : exp.objectiveDone === true;
+    events.push(...settle(draft, ctx, w, happened ? 'unit' : 'commander', { pick: w.pick, kills: t.kills, hits: t.hits }));
+  }
+  return events;
 }
 
 /** Closes a wager with its winner: logs it and, unless void, applies the stake for that winner. */

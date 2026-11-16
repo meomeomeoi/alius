@@ -12,5 +12,6 @@ export { forgetPersonal, holdsPersonal, lapseBookingsThrough, nextPersonalId, pe
 export { answerOffer, giveToken, removeToken, rollTokenOffer, tokenDayStep, tokenLine, wearToken, wornTokens } from './tokens';
 export { favourReactions } from './reactions';
 export {
-  answerChallenge, answerQuestion, applyStake, challenge, gamesOffered, offeredStakes, playWager, PLAYABLE_KINDS, recordAnswer, rollChallenges, settle, stakeOffered, voidWager, wagerDayStep,
+  answerChallenge, answerQuestion, applyStake, BET_PICKS, challenge, gamesOffered, offeredStakes, playWager, PLAYABLE_KINDS, recordAnswer, resolveBets, rollChallenges, settle, stakeOffered, voidWager, wagerDayStep,
 } from './wagers';
+export { recordTally } from './tally';

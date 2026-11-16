@@ -191,6 +191,8 @@ export interface ExpeditionState {
   orders?: number;
   /** P9e: the decisions soldiers took on their own in this run (absent = none). */
   herCalls?: HerCallEntry[];
+  /** P9c: per unit, the killing blows she landed and the hits she took in this run's fights (absent = no fight yet); expedition bets read it. */
+  tally?: Record<string, { kills: number; hits: number }>;
   missionId: string;
   regionId: string;
   day: number;
