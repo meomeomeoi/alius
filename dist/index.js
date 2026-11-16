@@ -1497,10 +1497,10 @@ function runUpkeep(draft, reg) {
   events.push({ type: "upkeep", needed, paid, shortage: missing2 });
   const mode = rationsOf(draft);
   if (missing2 > 0 && mode === "commander_short") {
-    const covered = Math.min(missing2, TUNING.upkeep.commander);
-    missing2 -= covered;
+    const covered2 = Math.min(missing2, TUNING.upkeep.commander);
+    missing2 -= covered2;
     draft.calendar.loseMorning = true;
-    events.push({ type: "commander_went_hungry", day: draft.day, covered });
+    events.push({ type: "commander_went_hungry", day: draft.day, covered: covered2 });
     for (const u of livingUnits(draft)) if (u.kind === "named") applyRelationDelta(draft, u.id, "trust", TUNING.power.rations.hungerTrust, "commander_hungry");
   }
   if (missing2 === 0) {
@@ -11976,6 +11976,73 @@ function memoryConfig(state) {
   return { ...out, preset };
 }
 
+// src/engine/memory/fold.ts
+var WORLD = "*";
+var livingNamed2 = (state) => state.squad.filter((u) => u.kind === "named" && isLiving(u)).map((u) => u.id);
+function isFoldable(state, fact) {
+  return state.day - fact.day > memoryConfig(state).foldAfterDays && fact.pinned !== true && fact.hiddenFromCommander !== true;
+}
+function foldPart(state, fact) {
+  return fact.knownBy.includes("*") || livingNamed2(state).every((id) => fact.knownBy.includes(id)) ? "shared" : "own";
+}
+function foldTargets(state, fact) {
+  const living2 = livingNamed2(state);
+  const known = fact.knownBy.includes("*") ? living2 : living2.filter((id) => fact.knownBy.includes(id));
+  const aboutLiving = living2.filter((id) => fact.about.includes(id));
+  const hit = foldPart(state, fact) === "shared" ? aboutLiving : [aboutLiving.filter((id) => known.includes(id)), aboutLiving, known].find((l) => l.length > 0) ?? [];
+  return hit.length > 0 ? hit : [WORLD];
+}
+var folded = (fact, target) => fact.foldedInto?.includes(target) === true;
+var covered = (state, fact) => (fact.foldedInto?.length ?? 0) > 0 && foldTargets(state, fact).every((t) => folded(fact, t));
+function sweepCovered(draft) {
+  if (draft.memory.facts.some((f) => f.foldedInto !== void 0)) draft.memory.facts = draft.memory.facts.filter((f) => !covered(draft, f));
+}
+function foldDue(state) {
+  const groups = /* @__PURE__ */ new Map();
+  for (const f of state.memory.facts) {
+    if (!isFoldable(state, f)) continue;
+    for (const t of foldTargets(state, f)) if (!folded(f, t)) groups.set(t, [...groups.get(t) ?? [], f]);
+  }
+  if (groups.size === 0) return null;
+  const order = [...state.squad.map((u) => u.id), WORLD];
+  const rank2 = (t) => order.indexOf(t) === -1 ? order.length : order.indexOf(t);
+  const best = [...groups.entries()].sort((a, b) => b[1].length - a[1].length || rank2(a[0]) - rank2(b[0]))[0];
+  if (best[1].length < TUNING.memory.foldBatch && state.memory.facts.length <= memoryConfig(state).factsMax) return null;
+  const own = best[1].filter((f) => foldPart(state, f) === "own");
+  return { target: best[0], own, shared: best[1].filter((f) => !own.includes(f)) };
+}
+var cut = (text2, max) => text2.trim().slice(0, max).trim();
+function applyFold(draft, p) {
+  const due = foldDue(draft);
+  const dueIds = due ? [...due.own, ...due.shared].map((f) => f.id) : [];
+  if (!due || due.target !== p.target || p.factIds.length !== dueIds.length || new Set(p.factIds).size !== dueIds.length || !dueIds.every((id) => p.factIds.includes(id))) {
+    throw new Error("memory/fold: that fold is not due (the facts changed)");
+  }
+  const dossiers = draft.memory.dossiers ??= {};
+  const prev = dossiers[p.target];
+  const next = {
+    own: due.own.length > 0 ? cut(p.own, TUNING.memory.dossierOwnMax) : cut(p.own, TUNING.memory.dossierOwnMax) || prev?.own || "",
+    shared: due.shared.length > 0 ? cut(p.shared, TUNING.memory.dossierSharedMax) : cut(p.shared, TUNING.memory.dossierSharedMax) || prev?.shared || ""
+  };
+  if (due.own.length > 0 && next.own === "" || due.shared.length > 0 && next.shared === "") throw new Error("memory/fold: a part with facts needs its text");
+  dossiers[p.target] = { ...next, day: draft.day, folded: (prev?.folded ?? 0) + dueIds.length };
+  const had = new Set(dueIds);
+  for (const f of draft.memory.facts) if (had.has(f.id)) f.foldedInto = [...f.foldedInto ?? [], p.target];
+  sweepCovered(draft);
+}
+function fallbackFold(part, facts, max) {
+  const at = new Map(facts.map((f, i) => [f.id, i]));
+  const texts = [...facts].sort((a, b) => a.day - b.day || at.get(a.id) - at.get(b.id)).map((f) => f.text.trim());
+  const joined = [part.trim(), ...texts].filter(Boolean).join(" ");
+  if (joined.length <= max) return joined;
+  let out = joined.slice(joined.length - max);
+  if (!/\s/.test(joined[joined.length - max - 1] ?? " ") && !/^\s/.test(out)) {
+    const space = out.search(/\s/);
+    out = space === -1 ? out : out.slice(space);
+  }
+  return out.trim();
+}
+
 // src/engine/memory/facts.ts
 function nextId(draft, prefix) {
   const n = (draft.memory.nextId ?? 0) + 1;
@@ -12004,6 +12071,7 @@ function addFact(draft, f, opts = {}) {
   return fact;
 }
 function pruneFacts(draft) {
+  sweepCovered(draft);
   const ceiling = Math.floor(memoryConfig(draft).factsMax * TUNING.memory.hardCeiling);
   const extra = draft.memory.facts.length - ceiling;
   if (extra <= 0) return;
@@ -12224,8 +12292,8 @@ registerMemoryResolver("dilemma_resolved", (draft, event) => {
 registerMemoryResolver("demand_resolved", (draft, event) => {
   const subject = subjectOf2(draft, event.unitId);
   if (!subject) return null;
-  return { ids: { subject: [subject.id] }, vars: { name: subject.name, answer: str2(event.answer) ?? "", expired: yes(event.expired === true) } };
-}, { ids: ["subject"], vars: ["name", "answer", "expired"] });
+  return { ids: { subject: [subject.id] }, vars: { name: subject.name, answer: str2(event.answer) ?? "", expired: yes(event.expired === true), postponed: yes(event.postponed === true) } };
+}, { ids: ["subject"], vars: ["name", "answer", "expired", "postponed"] });
 registerMemoryResolver("leash_used", (draft, event) => {
   const subject = subjectOf2(draft, event.unitId);
   if (!subject || event.outcome !== "done") return null;
@@ -12270,10 +12338,12 @@ registerMemoryResolver("activity_done", (draft, event, reg) => {
     vars: {
       name: companion !== void 0 ? nameOf3(draft, companion) : "",
       activity: String(reg.activities.get(activityId)?.name ?? activityId),
-      slot: str2(event.slot) ?? draft.slot
+      slot: str2(event.slot) ?? draft.slot,
+      // an activity that opens a scene (a talk) is remembered by that scene's summary, not by this rule
+      scene: yes(reg.activities.get(activityId)?.startsScene === true)
     }
   };
-}, { ids: ["subject"], vars: ["name", "activity", "slot"] });
+}, { ids: ["subject"], vars: ["name", "activity", "slot", "scene"] });
 
 // src/engine/memory/remember.ts
 var index = /* @__PURE__ */ new WeakMap();
@@ -12299,12 +12369,12 @@ function holds2(when, res) {
   return true;
 }
 var fill2 = (text2, vars) => text2.replace(/\{([A-Za-z0-9_]+)\}/g, (m, k) => vars[k] ?? m);
-var livingNamed2 = (draft) => draft.squad.filter((u) => u.kind === "named" && isLiving(u)).map((u) => u.id);
+var livingNamed3 = (draft) => draft.squad.filter((u) => u.kind === "named" && isLiving(u)).map((u) => u.id);
 function audienceOf(draft, parts, res, aboutIds) {
   const known = /* @__PURE__ */ new Set();
   for (const part of parts) {
     if (part === "public") return ["*"];
-    if (part === "squad") livingNamed2(draft).forEach((id) => known.add(id));
+    if (part === "squad") livingNamed3(draft).forEach((id) => known.add(id));
     else if (part === "present") (draft.scene?.participants ?? aboutIds.filter((id) => id !== "world")).forEach((id) => known.add(id));
     else (res.ids[part] ?? []).forEach((id) => known.add(id));
   }
@@ -13839,8 +13909,8 @@ function applyOrder(ctx2, order, targetCid) {
   cs.lastOrder = { orderId: order.id, ...targetCid ? { targetCid } : {} };
   ctx2.log({ kind: "order", orderId: order.id, ...targetCid ? { target: targetCid } : {} });
   if (PROTECTIVE_ORDERS.includes(order.id)) {
-    const covered = order.target === "ally" && targetCid ? [targetCid] : living(cs, "squad").filter((c) => c.row === "front").map((c) => c.cid);
-    for (const cid of covered) {
+    const covered2 = order.target === "ally" && targetCid ? [targetCid] : living(cs, "squad").filter((c) => c.row === "front").map((c) => c.cid);
+    for (const cid of covered2) {
       const pct4 = woundedBefore.get(cid);
       if (pct4 !== void 0 && pct4 < 0.3) {
         const unitId = byCid(cs, cid).unitId;
@@ -18859,7 +18929,7 @@ function answerDemand(draft, ctx2, demandId, answer, opts = {}) {
   }
   if (answer !== "grant" && opts.expired !== true && commanderObeys(draft, unit.id)) events.push(...overrideHer(draft, ctx2, unit.id, "refused her demand on the day of obedience"));
   events.push(...evaluateAutomatic(draft, reg, unit.id));
-  events.push({ type: "demand_resolved", demandId, unitId: unit.id, answer, ...opts.expired ? { expired: true } : {} });
+  events.push({ type: "demand_resolved", demandId, unitId: unit.id, answer, ...opts.expired ? { expired: true } : {}, ...answer === "refuse" && tpl.kind === "desire" ? { postponed: true } : {} });
   return events;
 }
 function demandDayStep(draft, ctx2) {
@@ -19969,67 +20039,6 @@ registerAction("memory/compact", (draft, payload) => {
   return [{ type: "chronicle_compacted", kind, day, toDay: entry.toDay ?? null }];
 });
 
-// src/engine/memory/fold.ts
-var WORLD = "*";
-var livingNamed3 = (state) => state.squad.filter((u) => u.kind === "named" && isLiving(u)).map((u) => u.id);
-function isFoldable(state, fact) {
-  return state.day - fact.day > memoryConfig(state).foldAfterDays && fact.pinned !== true && fact.hiddenFromCommander !== true;
-}
-function foldTarget(state, fact) {
-  const living2 = livingNamed3(state);
-  const knows = (id) => fact.knownBy.includes("*") || fact.knownBy.includes(id);
-  const hit = living2.find((id) => fact.about.includes(id) && knows(id));
-  return hit ?? WORLD;
-}
-function foldPart(state, fact) {
-  return fact.knownBy.includes("*") || livingNamed3(state).every((id) => fact.knownBy.includes(id)) ? "shared" : "own";
-}
-function foldDue(state) {
-  const groups = /* @__PURE__ */ new Map();
-  for (const f of state.memory.facts) {
-    if (!isFoldable(state, f)) continue;
-    const t = foldTarget(state, f);
-    groups.set(t, [...groups.get(t) ?? [], f]);
-  }
-  if (groups.size === 0) return null;
-  const order = [...state.squad.map((u) => u.id), WORLD];
-  const rank2 = (t) => order.indexOf(t) === -1 ? order.length : order.indexOf(t);
-  const best = [...groups.entries()].sort((a, b) => b[1].length - a[1].length || rank2(a[0]) - rank2(b[0]))[0];
-  if (best[1].length < TUNING.memory.foldBatch && state.memory.facts.length <= memoryConfig(state).factsMax) return null;
-  const own = best[1].filter((f) => foldPart(state, f) === "own");
-  return { target: best[0], own, shared: best[1].filter((f) => !own.includes(f)) };
-}
-var cut = (text2, max) => text2.trim().slice(0, max).trim();
-function applyFold(draft, p) {
-  const due = foldDue(draft);
-  const dueIds = due ? [...due.own, ...due.shared].map((f) => f.id) : [];
-  if (!due || due.target !== p.target || p.factIds.length !== dueIds.length || new Set(p.factIds).size !== dueIds.length || !dueIds.every((id) => p.factIds.includes(id))) {
-    throw new Error("memory/fold: that fold is not due (the facts changed)");
-  }
-  const dossiers = draft.memory.dossiers ??= {};
-  const prev = dossiers[p.target];
-  const next = {
-    own: due.own.length > 0 ? cut(p.own, TUNING.memory.dossierOwnMax) : cut(p.own, TUNING.memory.dossierOwnMax) || prev?.own || "",
-    shared: due.shared.length > 0 ? cut(p.shared, TUNING.memory.dossierSharedMax) : cut(p.shared, TUNING.memory.dossierSharedMax) || prev?.shared || ""
-  };
-  if (due.own.length > 0 && next.own === "" || due.shared.length > 0 && next.shared === "") throw new Error("memory/fold: a part with facts needs its text");
-  dossiers[p.target] = { ...next, day: draft.day, folded: (prev?.folded ?? 0) + dueIds.length };
-  const gone = new Set(dueIds);
-  draft.memory.facts = draft.memory.facts.filter((f) => !gone.has(f.id));
-}
-function fallbackFold(part, facts, max) {
-  const at = new Map(facts.map((f, i) => [f.id, i]));
-  const texts = [...facts].sort((a, b) => a.day - b.day || at.get(a.id) - at.get(b.id)).map((f) => f.text.trim());
-  const joined = [part.trim(), ...texts].filter(Boolean).join(" ");
-  if (joined.length <= max) return joined;
-  let out = joined.slice(joined.length - max);
-  if (!/\s/.test(joined[joined.length - max - 1] ?? " ") && !/^\s/.test(out)) {
-    const space = out.search(/\s/);
-    out = space === -1 ? out : out.slice(space);
-  }
-  return out.trim();
-}
-
 // src/engine/memory/rumors.ts
 function hashDay(factId, unitId, span) {
   return fnv1a(`${factId}\0${unitId}`) % Math.max(1, span);
@@ -20361,8 +20370,8 @@ function relationHints(cs, unitIdOf4) {
   const cmd = cs.commander;
   if (cmd) {
     const cover = cs.combatants.find((c) => c.cid === cmd.coverId);
-    const covered = cs.log.some((l) => l.kind === "cover" && l.actor === cmd.coverId);
-    if (cover?.unitId && covered) {
+    const covered2 = cs.log.some((l) => l.kind === "cover" && l.actor === cmd.coverId);
+    if (cover?.unitId && covered2) {
       const taken = cs.log.filter((l) => (l.kind === "hit" || l.kind === "crit") && l.target === cover.cid && l.actor !== void 0).reduce((s, l) => s + (l.amount ?? 0), 0);
       mergeHints(out, [{ type: "protected", actor: cover.unitId, targets: [], severity: severityOfShare(taken / cover.maxHp) }]);
     }
@@ -25707,12 +25716,12 @@ function registerSceneContext(builder, deps) {
       return presentUnits2(s).map((u) => {
         const rel = s.relations[u.id];
         if (!rel) return `${u.displayName}`;
-        const covered = rel.affair?.hiddenFrom.some((id) => here.has(id)) === true;
-        const st = reg.relationshipStates.get(covered ? "comrade" : rel.stateId);
+        const covered2 = rel.affair?.hiddenFrom.some((id) => here.has(id)) === true;
+        const st = reg.relationshipStates.get(covered2 ? "comrade" : rel.stateId);
         const axes = [
           `trust ${trustBand(rel.trust)}${num5(rel.trust)}`,
           `affinity ${affinityBand(rel.affinity)}${num5(rel.affinity)}`,
-          ...romance && !covered ? [`attraction ${attractionBand(rel.attraction)}${num5(rel.attraction)}`] : []
+          ...romance && !covered2 ? [`attraction ${attractionBand(rel.attraction)}${num5(rel.attraction)}`] : []
         ].join(", ");
         const defects = u.defects.map((d) => {
           const def = reg.defects.get(d.id);
@@ -35530,8 +35539,8 @@ function createShell(deps) {
     if (titleEl) titleEl.textContent = router.current() === "hub" ? "\u2554\u2550[ ALIUS // OUTPOST ]" : "\u2554\u2550[ ALIUS // PDA ]";
   }
   function syncHubInert() {
-    const covered = device?.dataset.up === "true" && window.innerWidth <= NARROW_PX;
-    hubHost?.toggleAttribute("inert", covered);
+    const covered2 = device?.dataset.up === "true" && window.innerWidth <= NARROW_PX;
+    hubHost?.toggleAttribute("inert", covered2);
   }
   function updateNarrow() {
     device?.classList.toggle("alius-device-narrow", window.innerWidth <= NARROW_PX);

@@ -271,7 +271,8 @@ export function answerDemand(draft: CampaignState, ctx: EngineCtx, demandId: str
   // P9c: a day the commander obeys her: refusing or putting off her demand is choosing against her (an expired one is nobody's choice)
   if (answer !== 'grant' && opts.expired !== true && commanderObeys(draft, unit.id)) events.push(...overrideHer(draft, ctx, unit.id, 'refused her demand on the day of obedience'));
   events.push(...evaluateAutomatic(draft, reg, unit.id));
-  events.push({ type: 'demand_resolved', demandId, unitId: unit.id, answer, ...(opts.expired ? { expired: true } : {}) });
+  // P3b: putting a soldier's own want off is asking her to wait, not a refusal (memory does not remember it as one)
+  events.push({ type: 'demand_resolved', demandId, unitId: unit.id, answer, ...(opts.expired ? { expired: true } : {}), ...(answer === 'refuse' && tpl.kind === 'desire' ? { postponed: true } : {}) });
   return events;
 }
 

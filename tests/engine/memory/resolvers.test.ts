@@ -131,7 +131,8 @@ describe('resolvers', () => {
 
   it('demand_resolved: the answer and whether it expired', () => {
     const s = fresh();
-    expect(resolve(s, { type: 'demand_resolved', demandId: 'd1', unitId: ANN, answer: 'refuse' })).toEqual({ ids: { subject: [ANN] }, vars: { name: 'Ann', answer: 'refuse', expired: '' } });
+    expect(resolve(s, { type: 'demand_resolved', demandId: 'd1', unitId: ANN, answer: 'refuse' })).toEqual({ ids: { subject: [ANN] }, vars: { name: 'Ann', answer: 'refuse', expired: '', postponed: '' } });
+    expect(resolve(s, { type: 'demand_resolved', demandId: 'd1', unitId: ANN, answer: 'refuse', postponed: true })!.vars.postponed).toBe('yes');
     expect(resolve(s, { type: 'demand_resolved', demandId: 'd1', unitId: ANN, answer: 'refuse', expired: true })!.vars.expired).toBe('yes');
   });
 
@@ -177,7 +178,9 @@ describe('resolvers', () => {
     const s = fresh();
     const r = resolve(s, { type: 'activity_done', activityId: 'train', companionId: BEA, vignette: false, slot: 'afternoon' })!;
     expect(r.ids).toEqual({ subject: [BEA] });
-    expect(r.vars).toEqual({ name: 'Bea', activity: String(reg.activities.get('train')!.name), slot: 'afternoon' });
+    expect(r.vars).toEqual({ name: 'Bea', activity: String(reg.activities.get('train')!.name), slot: 'afternoon', scene: '' });
+    // an activity that opens a scene is remembered by the scene, not by this rule
+    expect(resolve(s, { type: 'activity_done', activityId: 'talk', companionId: BEA, vignette: false, slot: 'morning' })!.vars.scene).toBe('yes');
     expect(resolve(s, { type: 'activity_done', activityId: 'train', vignette: false, slot: 'morning' })!.ids).toEqual({ subject: [] });
   });
 

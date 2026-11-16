@@ -181,6 +181,14 @@ describe('answering: SATISFY, POSTPONE', () => {
     expect(r.state.relations[ANN].impunityRecord).toBe(40);
   });
 
+  it('POSTPONE says so on the event (P3b: a postponement is not remembered as a refusal); a satisfied one does not', () => {
+    const o = open('want_tonight');
+    const resolved = answer(o.state, o.id, 'refuse', o.reg).events.find((e) => e.type === 'demand_resolved')!;
+    expect(resolved).toMatchObject({ answer: 'refuse', postponed: true });
+    const granted = answer(o.state, o.id, 'grant', o.reg).events.find((e) => e.type === 'demand_resolved')!;
+    expect('postponed' in granted).toBe(false);
+  });
+
   it('SATISFY counts no deed and gives no impunity record either', () => {
     const o = open('want_tonight');
     const r = answer(o.state, o.id, 'grant', o.reg);

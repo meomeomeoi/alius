@@ -206,6 +206,8 @@ describe('what only some know', () => {
     expect(one({ type: 'wager_resolved', wagerId: 'w', unitId: ANN, gameId: 'coin', stakeId: 'slot', winner: 'void' })).toEqual([]);
     expect(one({ type: 'activity_done', activityId: 'train', companionId: BEA, vignette: false, slot: 'morning' })).toHaveLength(1);
     expect(one({ type: 'activity_done', activityId: 'train', vignette: false, slot: 'morning' })).toEqual([]); // alone: nobody to remember
+    expect(one({ type: 'activity_done', activityId: 'talk', companionId: BEA, vignette: false, slot: 'morning' })).toEqual([]); // a talk is remembered by its scene
+    expect(one({ type: 'demand_resolved', demandId: 'd', unitId: ANN, answer: 'refuse', postponed: true })).toEqual([]); // asked to wait is not refused
     expect(one({ type: 'rations_set', mode: 'fighters_first' })).toHaveLength(1);
     expect(one({ type: 'rations_set', mode: 'equal' })).toEqual([]);
     expect(one({ type: 'countermanded', leaderId: ANN, unitId: BEA, activityId: 'train' })[0].knownBy.sort()).toEqual([ANN, BEA]);

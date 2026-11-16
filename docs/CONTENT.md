@@ -822,13 +822,13 @@ One entry per votable decision; the id must be one of `mission`, `upgrade`, `pun
   | `dilemma_resolved` | `affected`, `units`, `subject` | `title`, `option`, `scapegoat` (`take`, `shift` or empty), `name` |
   | `countermanded` | `subject`, `leader` | `name`, `leader` |
   | `rations_set` | — | `mode` |
-  | `demand_resolved` | `subject` | `name`, `answer`, `expired` |
+  | `demand_resolved` | `subject` | `name`, `answer`, `expired`, `postponed` (a desire demand put off, not refused) |
   | `leash_used` | `subject` | `name`, `kind` |
   | `token_taken_off` | `giver` | `name` |
   | `booking_cancelled` | `subject` | `name`, `lost` |
   | `wager_resolved` | `subject` | `name`, `result` (`won` / `lost`), `game`, `stake` |
   | `intercept_resolved` | `subject` | `name`, `keep` |
-  | `activity_done` | `subject` | `name`, `activity`, `slot` |
+  | `activity_done` | `subject` | `name`, `activity`, `slot`, `scene` (the activity opens a scene, which remembers it itself) |
 
 - **`when`** keeps a rule to some events of its type: `{ outcome: 'failed' }` (a var equals a string), `{ dead: true }` / `{ scapegoat: false }` (a var or id group is non-empty / empty). Keys are vars or id groups of the event.
 - **`about`** is `world` or an id group: who the fact is about (a rule about an empty group writes nothing).

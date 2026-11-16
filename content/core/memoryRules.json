@@ -270,7 +270,8 @@
     "id": "demand_refused",
     "event": "demand_resolved",
     "when": {
-      "answer": "refuse"
+      "answer": "refuse",
+      "postponed": false
     },
     "text": "The commander refused {name}'s demand.",
     "importance": 3,
@@ -378,7 +379,8 @@
     "id": "companion_slot",
     "event": "activity_done",
     "when": {
-      "subject": true
+      "subject": true,
+      "scene": false
     },
     "text": "{name} and the commander spent the {slot} on {activity}.",
     "importance": 1,

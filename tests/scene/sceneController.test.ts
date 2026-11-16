@@ -51,8 +51,7 @@ describe('private scene', () => {
     expect(s.calendar.pendingScene).toBeUndefined();
     expect(s.slot).toBe('afternoon');
     expect(s.memory.chronicle).toMatchObject([{ kind: 'scene', text: 'Ann was praised and comforted.' }]);
-    // (P3b: the talk itself is remembered by a rule, fact `fr1`; the scene summary's facts are the others)
-    expect(s.memory.facts.filter((f) => !f.id.startsWith('fr'))).toMatchObject([{ text: 'Ann is holding it together.', knownBy: [ANN] }]);
+    expect(s.memory.facts).toMatchObject([{ text: 'Ann is holding it together.', knownBy: [ANN] }]);
     expect(active(h)).toEqual(['ann.png', 'bea.png', 'cat.png', 'dee.png']);
     expect(directives(h)).toBe('');
     expect(h.st.calls).toHaveLength(3);
@@ -175,7 +174,7 @@ describe('extraction modes', () => {
     expect(s.scene).toBeUndefined();
     expect(s.slot).toBe('afternoon');
     expect(s.memory.chronicle).toMatchObject([{ kind: 'scene', text: 'Quarters Commander'.replace('Quarters Commander', 'Commander quarters') + ': Ann talked.' }]);
-    expect(s.memory.facts.filter((f) => !f.id.startsWith('fr'))).toEqual([]); // (P3b: the talk is remembered by a rule, fact `fr1`)
+    expect(s.memory.facts).toEqual([]);
     expect(active(h)).toEqual(['ann.png', 'bea.png', 'cat.png', 'dee.png']);
   });
 });

@@ -2,6 +2,7 @@ import type { CampaignState, Fact } from '../state/types';
 import { normalizeTag } from '../setup';
 import { TUNING } from '../tuning';
 import { memoryConfig } from './config';
+import { sweepCovered } from './fold';
 
 /** `f12`, `p3`, `c40`, `s7`, …: one campaign-wide counter so ids never repeat inside a save. */
 export function nextId(draft: CampaignState, prefix: string): string {
@@ -44,6 +45,7 @@ export function addFact(draft: CampaignState, f: Omit<Fact, 'id'>, opts: { remem
  * unpinned facts deleted, so a save cannot grow without bound if the fold cannot run.
  */
 function pruneFacts(draft: CampaignState): void {
+  sweepCovered(draft); // a fact that was folded into all its dossiers goes before anything is deleted
   const ceiling = Math.floor(memoryConfig(draft).factsMax * TUNING.memory.hardCeiling);
   const extra = draft.memory.facts.length - ceiling;
   if (extra <= 0) return;

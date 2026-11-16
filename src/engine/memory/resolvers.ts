@@ -157,8 +157,8 @@ registerMemoryResolver('dilemma_resolved', (draft, event) => {
 registerMemoryResolver('demand_resolved', (draft, event) => {
   const subject = subjectOf(draft, event.unitId);
   if (!subject) return null;
-  return { ids: { subject: [subject.id] }, vars: { name: subject.name, answer: str(event.answer) ?? '', expired: yes(event.expired === true) } };
-}, { ids: ['subject'], vars: ['name', 'answer', 'expired'] });
+  return { ids: { subject: [subject.id] }, vars: { name: subject.name, answer: str(event.answer) ?? '', expired: yes(event.expired === true), postponed: yes(event.postponed === true) } };
+}, { ids: ['subject'], vars: ['name', 'answer', 'expired', 'postponed'] });
 
 registerMemoryResolver('leash_used', (draft, event) => {
   const subject = subjectOf(draft, event.unitId);
@@ -217,6 +217,8 @@ registerMemoryResolver('activity_done', (draft, event, reg) => {
     vars: {
       name: companion !== undefined ? nameOf(draft, companion) : '',
       activity: String(reg.activities.get(activityId)?.name ?? activityId), slot: str(event.slot) ?? draft.slot,
+      // an activity that opens a scene (a talk) is remembered by that scene's summary, not by this rule
+      scene: yes(reg.activities.get(activityId)?.startsScene === true),
     },
   };
-}, { ids: ['subject'], vars: ['name', 'activity', 'slot'] });
+}, { ids: ['subject'], vars: ['name', 'activity', 'slot', 'scene'] });

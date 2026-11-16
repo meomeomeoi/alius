@@ -256,6 +256,8 @@ export interface Fact {
   edited?: true;
   /** P3b: still spreading as a rumor (a rule's `spread`). */
   spread?: 'slow' | 'fast';
+  /** P3b: the dossiers (unit ids or `*`) this fact was already folded into; it is removed once every one of its targets has it. */
+  foldedInto?: string[];
 }
 
 /** P3b: how much memory a campaign keeps and shows. `custom` is a preset the player edited. */

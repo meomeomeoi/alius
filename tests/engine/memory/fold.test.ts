@@ -129,15 +129,57 @@ describe('foldDue', () => {
     expect(foldDue(s)!.target).toBe('*');
   });
 
-  it('a fact about several units is offered to the first one only (the simple rule), and is removed with that fold', () => {
+  it('a fact about several units is folded into each unit\'s dossier, then removed', () => {
     const s = fresh();
     const multi = many(s, 6, { about: [BEA, ANN], knownBy: [ANN, BEA] });
+    expect(foldDue(s)!.target).toBe(ANN); // a tie goes to squad order
+    const first = fold(s, payloadFor(s));
+    expect(errors(first.events)).toEqual([]);
+    expect(first.state.memory.dossiers![ANN].folded).toBe(6);
+    expect(first.state.memory.dossiers![BEA]).toBeUndefined();
+    // still there: Bea has not had them yet
+    for (const f of multi) expect(first.state.memory.facts.find((x) => x.id === f.id)!.foldedInto).toEqual([ANN]);
+    const due = foldDue(first.state)!;
+    expect(due.target).toBe(BEA);
+    expect(ids(due.own).sort()).toEqual(ids(multi).sort());
+    const second = fold(first.state, payloadFor(first.state));
+    expect(errors(second.events)).toEqual([]);
+    expect(second.state.memory.dossiers![BEA].folded).toBe(6);
+    for (const f of multi) expect(second.state.memory.facts.some((x) => x.id === f.id)).toBe(false);
+    expect(foldDue(second.state)).toBeNull();
+  });
+
+  it('a fact that some know about the world is folded into the private part of each who knows it', () => {
+    const s = fresh();
+    many(s, 6, { about: ['world'], knownBy: [ANN, BEA] });
     const due = foldDue(s)!;
     expect(due.target).toBe(ANN);
-    const r = fold(s, payloadFor(s));
-    expect(errors(r.events)).toEqual([]);
-    for (const f of multi) expect(r.state.memory.facts.some((x) => x.id === f.id)).toBe(false);
-    expect(r.state.memory.dossiers![BEA]).toBeUndefined(); // the open item of Implemented as
+    expect(due.shared).toEqual([]);
+    expect(due.own).toHaveLength(6);
+    const a = fold(s, payloadFor(s));
+    const b = fold(a.state, payloadFor(a.state));
+    expect(Object.keys(b.state.memory.dossiers!).sort()).toEqual([ANN, BEA]); // nothing in the world's, whose private part no prompt carries
+    expect(b.state.memory.facts).toEqual([]);
+  });
+
+  it('a fact only the commander knows is folded into the private part of the unit it is about', () => {
+    const s = fresh();
+    many(s, 6, { about: [BEA], knownBy: [] });
+    const due = foldDue(s)!;
+    expect(due.target).toBe(BEA);
+    expect(due.own).toHaveLength(6);
+  });
+
+  it('a fact whose other unit died is not stuck: the next fact written sweeps it', () => {
+    const s = fresh();
+    const multi = many(s, 6, { about: [ANN, BEA], knownBy: [ANN, BEA] });
+    const first = fold(s, payloadFor(s)).state;
+    first.squad.find((u) => u.id === BEA)!.status = 'dead'; // she will never be folded into
+    expect(foldDue(first)).toBeNull(); // everything living has had it
+    expect(first.memory.facts).toHaveLength(6);
+    addFact(first, { about: ['world'], text: 'a new fact', tags: [], importance: 3, day: first.day, knownBy: ['*'] });
+    for (const f of multi) expect(first.memory.facts.some((x) => x.id === f.id)).toBe(false);
+    expect(first.memory.facts.map((f) => f.text)).toEqual(['a new fact']);
   });
 });
 

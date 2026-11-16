@@ -13,21 +13,35 @@ export function isFoldable(state: CampaignState, fact: Fact): boolean {
   return state.day - fact.day > memoryConfig(state).foldAfterDays && fact.pinned !== true && fact.hiddenFromCommander !== true;
 }
 
-/**
- * Whose dossier a fact goes into. A fact about one unit goes to her; about several, to the first of them in squad order who knows it
- * (or, when it is public, the first of them): the simple rule, so a fact is folded once (the spec's "into each unit's dossier" is an
- * open item). A fact about nobody, or about units who are gone, goes to the world dossier, where the whole squad still reads it.
- */
-export function foldTarget(state: CampaignState, fact: Fact): string {
-  const living = livingNamed(state);
-  const knows = (id: string): boolean => fact.knownBy.includes('*') || fact.knownBy.includes(id);
-  const hit = living.find((id) => fact.about.includes(id) && knows(id));
-  return hit ?? WORLD;
-}
-
 /** `shared` when the whole squad knew it (or it was public), else `own`. */
 export function foldPart(state: CampaignState, fact: Fact): 'own' | 'shared' {
   return fact.knownBy.includes('*') || livingNamed(state).every((id) => fact.knownBy.includes(id)) ? 'shared' : 'own';
+}
+
+/**
+ * Whose dossiers a fact goes into (in squad order). What the whole squad knew goes to every unit it is about (the world dossier `*` when it
+ * is about nobody, or about units who are gone: the squad still reads that one). What only some knew goes to the private part of those it
+ * is about who know it; failing that, of those it is about; failing that, of those who know it, so a secret about the world lands in the
+ * dossier of each who holds it and the world's private part (which no prompt carries) is used only by a fact nobody living knows.
+ */
+export function foldTargets(state: CampaignState, fact: Fact): string[] {
+  const living = livingNamed(state);
+  const known = fact.knownBy.includes('*') ? living : living.filter((id) => fact.knownBy.includes(id));
+  const aboutLiving = living.filter((id) => fact.about.includes(id));
+  const hit = foldPart(state, fact) === 'shared'
+    ? aboutLiving
+    : [aboutLiving.filter((id) => known.includes(id)), aboutLiving, known].find((l) => l.length > 0) ?? [];
+  return hit.length > 0 ? hit : [WORLD];
+}
+
+const folded = (fact: Fact, target: string): boolean => fact.foldedInto?.includes(target) === true;
+
+/** A fact every one of whose targets has it already: nothing is left to fold, so it only waits to be swept. */
+const covered = (state: CampaignState, fact: Fact): boolean => (fact.foldedInto?.length ?? 0) > 0 && foldTargets(state, fact).every((t) => folded(fact, t));
+
+/** Removes the facts that were folded into every one of their targets (a target that has died since no longer counts). Called by the fold and by every new fact. */
+export function sweepCovered(draft: CampaignState): void {
+  if (draft.memory.facts.some((f) => f.foldedInto !== undefined)) draft.memory.facts = draft.memory.facts.filter((f) => !covered(draft, f));
 }
 
 export interface FoldDue {
@@ -37,15 +51,15 @@ export interface FoldDue {
 }
 
 /**
- * The next fold, or null. First, a target with at least `foldBatch` foldable facts (the one with the most; ties in squad order,
- * the world last). Otherwise, when the save holds more than `factsMax` facts, the target with the most foldable ones.
+ * The next fold, or null. First, a target with at least `foldBatch` foldable facts it has not had yet (the one with the most; ties in
+ * squad order, the world last). Otherwise, when the save holds more than `factsMax` facts, the target with the most. A fact about
+ * several units is offered to each of them in turn and stays until all have had it.
  */
 export function foldDue(state: CampaignState): FoldDue | null {
   const groups = new Map<string, Fact[]>();
   for (const f of state.memory.facts) {
     if (!isFoldable(state, f)) continue;
-    const t = foldTarget(state, f);
-    groups.set(t, [...(groups.get(t) ?? []), f]);
+    for (const t of foldTargets(state, f)) if (!folded(f, t)) groups.set(t, [...(groups.get(t) ?? []), f]);
   }
   if (groups.size === 0) return null;
   const order = [...state.squad.map((u) => u.id), WORLD];
@@ -77,8 +91,10 @@ export function applyFold(draft: CampaignState, p: { target: string; own: string
   };
   if ((due.own.length > 0 && next.own === '') || (due.shared.length > 0 && next.shared === '')) throw new Error('memory/fold: a part with facts needs its text');
   dossiers[p.target] = { ...next, day: draft.day, folded: (prev?.folded ?? 0) + dueIds.length };
-  const gone = new Set(dueIds);
-  draft.memory.facts = draft.memory.facts.filter((f) => !gone.has(f.id));
+  // the facts now have this dossier; those that have every one of theirs are removed (a fact about several units waits for the others)
+  const had = new Set(dueIds);
+  for (const f of draft.memory.facts) if (had.has(f.id)) f.foldedInto = [...(f.foldedInto ?? []), p.target];
+  sweepCovered(draft);
 }
 
 /**
