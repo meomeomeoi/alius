@@ -2,6 +2,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import type { Registries } from '../../src/content/types';
 import { ContextBuilder } from '../../src/llm/context';
 import { clearSceneDirectives, registerSceneContext, sceneDirectives } from '../../src/scene/context';
+import { registerMemoryContext } from '../../src/scene/memoryContext';
 import { DEFAULT_SETTINGS, type AliusSettings } from '../../src/settings';
 import type { CampaignState } from '../../src/engine/state/types';
 import { campaign, errors, loadCore, run } from '../helpers/world';
@@ -16,6 +17,7 @@ const builder = () => {
   settings = { ...DEFAULT_SETTINGS };
   const b = new ContextBuilder();
   registerSceneContext(b, { registries: () => reg, settings: () => settings });
+  registerMemoryContext(b, { registries: () => reg, settings: () => settings }); // P3b: facts and promises moved there
   return b;
 };
 const inScene = (participants = [ANN], tweak: (s: CampaignState) => void = () => {}): CampaignState => {

@@ -83,20 +83,23 @@ export class ContextBuilder {
 
   /**
    * One block for the main model within `capTokens`. The memory providers get up to `memoryTokens` of it (never more than what is
-   * left after the core providers: header, scene header and units), each trimmed line by line, never dropped whole; the other
+   * left after the core providers: header, scene header and units), each trimmed line by line, never dropped whole (with a share of 0
+   * they are ordinary providers); the other
    * providers keep the strict priority of the rest, and whatever the memory did not use goes back to them. The block lists the
    * others first, then memory.
    */
   build(state: CampaignState, capTokens: number, memoryTokens = 0): { block: string; directives: string } {
     const byPriority = (a: ContextProvider, b: ContextProvider): number => b.priority - a.priority; // stable: ties keep registration order
-    const others = this.providers.filter((p) => p.group !== 'memory').sort(byPriority);
-    const memory = this.providers.filter((p) => p.group === 'memory').sort(byPriority);
+    // without a share (memoryTokens 0) the memory providers are ordinary ones: the pre-P3b behaviour, byte for byte
+    const pooled = memoryTokens <= 0;
+    const others = this.providers.filter((p) => pooled || p.group !== 'memory').sort(byPriority);
+    const memory = pooled ? [] : this.providers.filter((p) => p.group === 'memory').sort(byPriority);
     const rendered = new Map<ContextProvider, string | null>(others.map((p) => [p, p.render(state)]));
 
     // the memory share: what is asked, but never the room the core providers need
     const core = others.filter((p) => p.core === true).map((p) => rendered.get(p)).filter((t): t is string => !!t);
     const reserve = estTokens([BLOCK_TITLE, ...core].join('\n'));
-    const share = memoryTokens > 0 && memory.length > 0 ? Math.min(memoryTokens, Math.max(0, capTokens - reserve)) : 0;
+    const share = memory.length > 0 ? Math.min(memoryTokens, Math.max(0, capTokens - reserve)) : 0;
 
     const memLines: string[] = [];
     for (const p of memory) {

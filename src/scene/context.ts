@@ -1,7 +1,6 @@
 import type { Registries } from '../content/types';
 import { firstImpressionWeight } from '../engine/commander/presence';
 import { commanderLine } from '../engine/commander/profile';
-import { retrieveFacts, openPromises } from '../engine/memory';
 import { affinityBand, attractionBand, stressBand, trustBand } from '../engine/relations/bands';
 import { intimacyOf } from '../engine/relations/gain';
 import type { CampaignState } from '../engine/state/types';
@@ -17,18 +16,14 @@ interface Deps {
   settings: () => AliusSettings;
 }
 
-const nameOf = (s: CampaignState, id: string): string => {
-  if (id === 'commander') return s.commander.name;
-  return s.squad.find((u) => u.id === id)?.displayName ?? id;
-};
-
 function presentUnits(s: CampaignState) {
   return (s.scene?.participants ?? []).map((id) => s.squad.find((u) => u.id === id)).filter((u): u is NonNullable<typeof u> => u !== undefined);
 }
 
 /**
- * Registers the scene context providers: header, units, commander, facts, promises. All render nothing without an open
- * scene. A fact reaches the prompt only if every present participant knows it.
+ * Registers the scene context providers: header, units, commander. All render nothing without an open scene. What the squad
+ * remembers (facts, promises, dossiers, the journal, recent chronicle lines, the DM recap) is the memory group of
+ * `registerMemoryContext` (P3b).
  */
 export function registerSceneContext(builder: ContextBuilder, deps: Deps): void {
   builder.register({
@@ -97,28 +92,6 @@ export function registerSceneContext(builder: ContextBuilder, deps: Deps): void 
       // looks matter most on a first meeting: while any present unit is still sizing him up, the model is told so
       if (presentUnits(s).some((u) => firstImpressionWeight(s, u.id) > 0.5)) lines.push('Units still judge the commander by appearance.');
       return lines.join('\n');
-    },
-  });
-
-  builder.register({
-    id: 'facts', priority: 70,
-    render: (s) => {
-      if (!s.scene) return null;
-      const units = presentUnits(s);
-      const tags = units.flatMap((u) => [...u.likes, ...u.dislikes]);
-      const facts = retrieveFacts(s, { participants: s.scene.participants, tags });
-      if (facts.length === 0) return null;
-      return ['Known facts:', ...facts.map((f) => `- ${f.text}`)].join('\n');
-    },
-  });
-
-  builder.register({
-    id: 'promises', priority: 60,
-    render: (s) => {
-      if (!s.scene) return null;
-      const open = openPromises(s, s.scene.participants, s.scene.participants);
-      if (open.length === 0) return null;
-      return ['Open promises:', ...open.map((p) => `- ${nameOf(s, p.by)} promised ${nameOf(s, p.to)}: ${p.text}`)].join('\n');
     },
   });
 }

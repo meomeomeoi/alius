@@ -2,6 +2,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import type { Registries } from '../../src/content/types';
 import { ContextBuilder } from '../../src/llm/context';
 import { registerSceneContext } from '../../src/scene/context';
+import { registerMemoryContext } from '../../src/scene/memoryContext';
 import { DEFAULT_SETTINGS } from '../../src/settings';
 import type { CampaignState } from '../../src/engine/state/types';
 import { ANN, BEA, harness, intentJson, praised, reply, summaryJson } from '../helpers/sceneHarness';
@@ -78,6 +79,7 @@ describe('review #6: no secrets in a shared prompt', () => {
   const ctxFor = (state: CampaignState, participants: string[]) => {
     const b = new ContextBuilder();
     registerSceneContext(b, { registries: () => reg, settings: () => DEFAULT_SETTINGS });
+    registerMemoryContext(b, { registries: () => reg, settings: () => DEFAULT_SETTINGS }); // P3b: facts and promises moved there
     const r = run(state, reg, { type: 'scene/start', payload: { locationId: 'mess_hall', participants, origin: 'event', startIndex: 0 } });
     expect(errors(r.events)).toEqual([]);
     return b.build(r.state, 5000).block;

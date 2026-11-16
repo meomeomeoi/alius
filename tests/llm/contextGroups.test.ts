@@ -149,3 +149,16 @@ describe('provider groups', () => {
     expect(estTokens(memPart(st.injections.get('ctx')!))).toBeLessThanOrEqual(150);
   });
 });
+
+describe('without a share', () => {
+  it('memory providers are ordinary ones: strict priority, no budget', () => {
+    const seen: Array<number | undefined> = [];
+    const b = new ContextBuilder();
+    b.register({ id: 'm', priority: 70, group: 'memory', render: (_s, budget) => { seen.push(budget); return lines('m', 3); } });
+    b.register(plain('o', 60, lines('o', 3)));
+    const { block } = b.build(state(), 1600);
+    expect(seen).toEqual([undefined]);
+    expect(block.indexOf('m00 ')).toBeLessThan(block.indexOf('o00 ')); // by priority, not "others first"
+    expect(b.lastBuild().memoryTokens).toBe(0);
+  });
+});

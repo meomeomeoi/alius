@@ -72,6 +72,7 @@ import { runCompaction } from './scene/chronicle';
 import { createComms, type Comms } from './scene/comms';
 import { bondsDirectives, contentLine, EXPLICIT_CATEGORY } from './bonds/directives';
 import { clearSceneDirectives, registerSceneContext } from './scene/context';
+import { registerMemoryContext } from './scene/memoryContext';
 import { createSceneController, type SceneController, type SceneUiEvent, type StartOptions } from './scene/sceneController';
 import { callLlm, type LlmResult } from './llm/orchestrator';
 import { getSettings } from './settings';
@@ -262,6 +263,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
 
   registerSceneContext(context, { registries: () => registries, settings: () => getSettings(st) });
   registerWorldContext(context, { registries: () => registries });
+  registerMemoryContext(context, { registries: () => registries, settings: () => getSettings(st) }); // P3b: dossier, journal, facts, promises, recent, DM recap
   registerWorldOptionsContext(context, { registries: () => registries });
 
   /** The COMMS tab shows how many messages from units are unread. */

@@ -5,6 +5,7 @@ import type { CampaignState } from '../../src/engine/state/types';
 import { clockById } from '../../src/engine/world/state';
 import { ContextBuilder } from '../../src/llm/context';
 import { registerSceneContext } from '../../src/scene/context';
+import { registerMemoryContext } from '../../src/scene/memoryContext';
 import { DEFAULT_SETTINGS } from '../../src/settings';
 import { registerWorldContext } from '../../src/world/context';
 import { campaign, errors, loadCore, run } from '../helpers/world';
@@ -17,6 +18,7 @@ const [ANN, BEA] = ['unit_ann', 'unit_bea'];
 const builder = () => {
   const b = new ContextBuilder();
   registerSceneContext(b, { registries: () => reg, settings: () => DEFAULT_SETTINGS });
+  registerMemoryContext(b, { registries: () => reg, settings: () => DEFAULT_SETTINGS }); // P3b: facts and promises moved there
   registerWorldContext(b, { registries: () => reg });
   return b;
 };
