@@ -103,6 +103,8 @@ export const DEFAULT_SETTINGS: AliusSettings = {
     activity_vignette: 150,
     chronicle_compact: 400,
     commander_import: 600,
+    memory_fold: 500,
+    rumor_retell: 200,
     ping: 100,
   },
   contextTokenCap: 1600,

@@ -128,6 +128,8 @@ export const TUNING = Object.freeze({
     foldBatch: 6, dossierOwnMax: 500, dossierSharedMax: 400,
     /** P3b: a scene digest is at most this many characters. */
     digestMax: 800,
+    /** P3b: a digest is due when the unsummarized transcript (before the last `digestKeep` messages) is longer than `digestThresholdTokens`. */
+    digestThresholdTokens: 2500, digestKeep: 4,
   }),
   /** P3: PDA DMs and night visits. */
   comms: Object.freeze({

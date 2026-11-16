@@ -72,6 +72,7 @@ import { runCompaction } from './scene/chronicle';
 import { createComms, type Comms } from './scene/comms';
 import { bondsDirectives, contentLine, EXPLICIT_CATEGORY } from './bonds/directives';
 import { clearSceneDirectives, registerSceneContext } from './scene/context';
+import { createMemoryController } from './scene/memoryController';
 import { registerMemoryContext } from './scene/memoryContext';
 import { createSceneController, type SceneController, type SceneUiEvent, type StartOptions } from './scene/sceneController';
 import { callLlm, type LlmResult } from './llm/orchestrator';
@@ -346,9 +347,12 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     }
     sceneScreen?.handle(e);
   };
+  /** P3b: folds old facts into dossiers, retells rumors, digests long scenes. */
+  const memory = createMemoryController({ st, app: sceneApp, settings: () => getSettings(st), registries: () => registries });
   const sceneDeps = {
     st,
     app: sceneApp,
+    memory,
     restore: (before: CampaignState, expected: CampaignState) => api.restoreSnapshot(before, expected),
     registries: () => registries,
     settings: () => getSettings(st),
@@ -635,6 +639,9 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         startRecap();
       }
       if (has('day_started')) void runCompaction({ st, app: sceneApp, settings: () => getSettings(st) }).catch(warn('chronicle compaction'));
+      // P3b: what the memory owes after any change (a fold is due, a rumor waits for its retelling); one fold per run, so a fold asks again
+      if (events.length > 0 && !has('error')) void memory.run().catch(warn('memory'));
+      if (has('memory_folded')) setTimeout(() => void memory.run().catch(warn('memory')), 0);
     });
   }
 

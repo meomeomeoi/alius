@@ -3,6 +3,7 @@ import type { CampaignState } from '../../src/engine/state/types';
 import type { Registries } from '../../src/content/types';
 import { ContextBuilder } from '../../src/llm/context';
 import { createComms, type Comms } from '../../src/scene/comms';
+import { createMemoryController, type MemoryController } from '../../src/scene/memoryController';
 import { createSceneController, type SceneController, type SceneUiEvent } from '../../src/scene/sceneController';
 import { DEFAULT_SETTINGS, type AliusSettings } from '../../src/settings';
 import { FakeStAdapter } from '../../src/st/fake';
@@ -15,6 +16,8 @@ export interface Harness {
   context: ContextBuilder;
   controller: SceneController;
   comms: Comms;
+  /** Only with `harness(reg, { memory: true })`. */
+  memory?: MemoryController;
   ui: SceneUiEvent[];
   toasts: Array<{ kind: string; text: string }>;
   settings: AliusSettings;
@@ -30,7 +33,7 @@ export const BEA = 'unit_bea';
 export const CAT = 'unit_cat';
 
 /** A scene-ready world: fake ST with the squad's cards, a real engine and the real controllers. */
-export function harness(reg: Registries, opts: { tweak?: (s: CampaignState) => void; settings?: Partial<AliusSettings> } = {}): Harness {
+export function harness(reg: Registries, opts: { tweak?: (s: CampaignState) => void; settings?: Partial<AliusSettings>; /** P3b: wire a real memory controller into the scene (digest while it runs). */ memory?: boolean } = {}): Harness {
   const st = new FakeStAdapter({ chatId: 'chat-1', isGroup: true, groupId: 'g1' });
   st.personaName = 'Vale';
   let state = campaign(reg, 4);
@@ -60,8 +63,9 @@ export function harness(reg: Registries, opts: { tweak?: (s: CampaignState) => v
     context,
     refreshContext: () => context.apply(st, state, settings.contextTokenCap),
   };
+  const memory = opts.memory ? createMemoryController({ st, app: app as never, settings: () => settings, registries: () => reg }) : undefined;
   const deps = {
-    st, app, registries: () => reg, settings: () => settings,
+    st, app, registries: () => reg, settings: () => settings, ...(memory ? { memory } : {}),
     restore: (before: CampaignState, expected: CampaignState) => {
       if (state !== expected) return false;
       state = before;
@@ -73,7 +77,7 @@ export function harness(reg: Registries, opts: { tweak?: (s: CampaignState) => v
   const controller = createSceneController(deps as never);
   const comms = createComms({ ...deps, scene: controller } as never);
   return {
-    st, reg, context, controller, comms, ui, toasts, settings, actions,
+    st, reg, context, controller, comms, ui, toasts, settings, actions, ...(memory ? { memory } : {}),
     state: () => state,
     set: (s) => { state = s; },
     dispatch: (a) => dispatch(a),

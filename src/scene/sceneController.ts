@@ -16,6 +16,7 @@ import type { AliusApp } from '../app';
 import { askDirective } from '../bonds/directives';
 import { clearSceneDirectives, sceneDirectives } from './context';
 import { answerDirective, nightDirective, proposalDirective } from './directives';
+import type { MemoryController } from './memoryController';
 
 /** What the scene screen needs to react to. */
 export type SceneUiEvent =
@@ -45,6 +46,8 @@ export interface SceneDeps {
   onUi: (e: SceneUiEvent) => void;
   /** P9c: a line a soldier of the scene said in the last exchange (her first reply after a lost question wager answers it). */
   onUnitReply?: (unitId: string, text: string) => void;
+  /** P3b: the memory controller; after each reply the scene asks it for a digest, and `end()` waits for one in flight. */
+  memory?: Pick<MemoryController, 'digestIfDue' | 'idle'>;
 }
 
 export interface StartOptions {
@@ -339,6 +342,8 @@ export function createSceneController(deps: SceneDeps): SceneController {
         settings.intentMode === 'exchange' || (settings.intentMode === 'every_n' && exchanges > 0 && exchanges % settings.intentEveryN === 0);
       const applied = due ? await extract(expect) : false;
       await showSprites(st.getChatMessages(before).filter((m) => !m.isUser), applied);
+      // P3b: a long scene is digested while it runs, in the background (the next message does not wait for it)
+      if (deps.memory) background = background.then(() => deps.memory!.digestIfDue()).catch(() => {});
       if (exchanges >= settings.scenePacing) deps.onUi({ type: 'pacing' });
       deps.onUi({ type: 'transcript' });
     } finally {
@@ -504,6 +509,7 @@ export function createSceneController(deps: SceneDeps): SceneController {
     async end() {
       // an exchange still being read must finish first, or it would be applied twice (here and by this flush)
       await inflight?.catch(() => {});
+      await deps.memory?.idle(); // P3b: a digest in flight lands before the summary reads the scene
       const expect = chatId();
       const s = state();
       const scene = s?.scene;
@@ -515,18 +521,21 @@ export function createSceneController(deps: SceneDeps): SceneController {
         const names = (ids: string[]) => ids.map((id) => ({ id, name: unitById(s, id)?.displayName ?? id }));
         const flaggedIndexes = new Set((scene.violations ?? []).map((v) => v.index));
         const excluded = disabledCategories(s, deps.registries());
+        // P3b: a scene that was digested is summarized from the digest and what came after it, not from the whole chat
+        const digest = scene.digest;
+        const tail = st.getChatMessages(Math.min(digest ? digest.upTo + 1 : scene.startIndex, st.chatLength())).map((m) => ({
+          speaker: m.isUser ? s.commander.name : m.name, text: m.text, ...(flaggedIndexes.has(m.index) ? { flagged: true as const } : {}),
+        }));
         const summary = await summarizeScene({
           location: String(deps.registries().locations.get(scene.locationId)?.name ?? scene.locationId),
           participants: names(scene.participants),
-          transcript: st.getChatMessages(Math.min(scene.startIndex, st.chatLength())).map((m) => ({
-            speaker: m.isUser ? s.commander.name : m.name, text: m.text, ...(flaggedIndexes.has(m.index) ? { flagged: true as const } : {}),
-          })),
+          transcript: digest ? [{ speaker: 'Digest of the scene so far', text: digest.text }, ...tail] : tail,
           ...(excluded.length > 0 ? { excluded } : {}),
         }, { st, settings: deps.settings() });
         // P9d: the summary only reports; it never marks the UI
         if (summary && summary.contentViolations.length > 0) debug(`Scene summary flagged excluded content: ${summary.contentViolations.map((v) => v.category).join(', ')}.`);
         if (disposed || chatId() !== expect) return;
-        dispatch({ type: 'scene/end', payload: summary ? { summary } : {} }, expect);
+        dispatch({ type: 'scene/end', payload: { ...(summary ? { summary } : {}), endIndex: st.chatLength() - 1 } }, expect); // P3b: the chat range of the scene
       } finally {
         pending = false;
         lastApply = null;
