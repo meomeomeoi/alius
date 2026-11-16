@@ -5,6 +5,9 @@ import type { OverruleMeans } from '../../engine/power/votes';
 import type { Ballot, CampaignState, Vote } from '../../engine/state/types';
 import { analyzeAttrs, analyzeNative } from '../analyze/mark';
 import { h } from '../dom';
+import { herVote } from '../../engine/personal/obedience';
+import { obedienceOf } from '../../engine/personal/state';
+import { defiesHint, markPick } from '../personal/obey';
 import { renderVoiceCard } from '../voice/voiceCard';
 import { VOICE_OF } from '../voice/sources';
 
@@ -64,8 +67,16 @@ export function renderVotePanel(host: HTMLElement, vote: Vote, lines: Record<str
   const act = (id: string, label: string, onclick: () => void, extra: Record<string, unknown> = {}): HTMLElement =>
     h('button', { type: 'button', class: 'alius-btn alius-option', 'data-vote-act': id, ...analyzeNative('glossary:vote'), onclick, ...extra }, label);
   const actions: HTMLElement[] = [];
+  // P9c: a day the commander obeys her: when she voted against, DROP is her pick and everything else defies her
+  const o = obedienceOf(state);
+  const against = o !== null && o.who === 'commander' && herVote(state, reg, vote) === 'against' ? nameOf(o.unitId) : null;
   if (vote.status === 'passed') {
     actions.push(act('carry', '[ CARRY OUT ]', ctx.onCarry));
+    if (against !== null) {
+      const drop = act('drop', '[ DROP ]', ctx.onDrop);
+      markPick(drop);
+      actions.push(drop, defiesHint(against));
+    }
   } else if (vote.status === 'failed') {
     const leashed = state.leash.authorizationsLeft < 1;
     const picker = h('div', { class: 'alius-vote-punish', hidden: true });
@@ -86,6 +97,10 @@ export function renderVotePanel(host: HTMLElement, vote: Vote, lines: Record<str
       h('p', { class: 'alius-dim' }, 'Overruling costs Trust with every soldier who voted against, raises their Impunity and lets them push back openly until the day ends.'),
       picker,
     );
+  }
+  if (against !== null && vote.status === 'failed') {
+    markPick(actions.find((a) => a.getAttribute('data-vote-act') === 'accept')!);
+    actions.splice(actions.findIndex((a) => a.getAttribute('data-vote-act') === 'overrule-leash') + 1, 0, defiesHint(against));
   }
   body.append(...actions);
   host.append(renderVoiceCard({ voice: VOICE_OF.squad_vote, title: 'SQUAD VOTE', meta: `Day ${String(vote.day).padStart(3, '0')}`, body, level: 3 }));

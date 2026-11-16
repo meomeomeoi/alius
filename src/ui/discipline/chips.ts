@@ -1,4 +1,5 @@
 import type { Registries } from '../../content/types';
+import { defiesHint, markPick, obeyedBy } from '../personal/obey';
 import { canUndo, grantProblem } from '../../engine/discipline';
 import type { CampaignState } from '../../engine/state/types';
 import { measureLabel } from '../../discipline/directives';
@@ -71,11 +72,16 @@ export function drawDemandChips(
       }, text);
       return b;
     };
+    // P9c: a day the commander obeys her: GRANT is her pick, refusing or putting off defies her
+    const obeyed = obeyedBy(state, d.unitId);
+    const grant = button('grant', desire ? '[SATISFY]' : '[GRANT]', () => on.grant(d.id), why !== null, why ?? undefined);
+    if (obeyed !== null) markPick(grant);
     host.append(h('div', { class: 'alius-chip-group', 'data-demand-group': d.id },
       h('span', { class: 'alius-chip', 'data-demand': d.id, ...analyzeAttrs(`demandTemplates:${d.templateId}`, { unitId: d.unitId }) }, `${name} DEMANDS: ${d.text}`),
       d.owed ? h('span', { class: 'alius-chip', 'data-owed': d.id, ...analyzeAttrs('glossary:owed_demand') }, 'OWED') : null,
-      button('grant', desire ? '[SATISFY]' : '[GRANT]', () => on.grant(d.id), why !== null, why ?? undefined),
+      grant,
       button('refuse', desire ? '[POSTPONE]' : '[REFUSE]', () => on.refuse(d.id)),
+      obeyed !== null ? defiesHint(obeyed) : null,
       on.talk ? button('talk', '[TALK]', () => on.talk!(d.id)) : null));
   }
 }

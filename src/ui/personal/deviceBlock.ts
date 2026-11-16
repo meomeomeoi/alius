@@ -4,6 +4,7 @@ import { decorOf, pinnedNotes, wallpaperUnit } from '../../engine/personal/decor
 import type { CampaignState, DecorPart } from '../../engine/state/types';
 import { analyzeAttrs, analyzeNative } from '../analyze/mark';
 import { h } from '../dom';
+import { defiesHint, obeyedBy } from './obey';
 
 export interface DeviceHandlers {
   /** PEEL: the commander removes one part of her decor. */
@@ -48,7 +49,8 @@ export function renderDeviceBlock(state: CampaignState, reg: Registries, unitId:
     const kind = reg.bookingKinds.get(b.kindId);
     block.append(h('div', { class: 'alius-device-booking', 'data-booking': b.id },
       h('span', { class: 'alius-chip', ...analyzeAttrs('glossary:booking', { bookingId: b.id, unitId }) }, `${String(kind?.label ?? b.kindId).toUpperCase()} — DAY ${b.day} ${SLOT_WORD[b.slot]}`),
-      h('button', { type: 'button', class: 'alius-btn alius-tagchip', 'data-action': 'cancel', ...analyzeNative('glossary:booking', { bookingId: b.id, unitId }), onclick: () => handlers.onCancel(b.id) }, '[CANCEL]')));
+      h('button', { type: 'button', class: 'alius-btn alius-tagchip', 'data-action': 'cancel', ...analyzeNative('glossary:booking', { bookingId: b.id, unitId }), onclick: () => handlers.onCancel(b.id) }, '[CANCEL]'),
+      obeyedBy(state, unitId) !== null ? defiesHint(obeyedBy(state, unitId)!) : null));
   }
   return block;
 }

@@ -90,6 +90,15 @@ export function answerOffer(draft: CampaignState, ctx: EngineCtx, offerId: strin
   return events;
 }
 
+/** Why this token cannot be put on now (the engine's own message, which the dossier shows), or `null`. */
+export function wearProblem(state: Pick<CampaignState, 'personal'>, tokenId: string): string | null {
+  const token = state.personal?.tokens?.owned.find((t) => t.id === tokenId);
+  if (!token) return 'There is no such token.';
+  if (token.worn) return 'It is already worn.';
+  if (wornTokens(state).length >= TUNING.personal.token.maxWorn) return `You already wear ${TUNING.personal.token.maxWorn === 2 ? 'two' : TUNING.personal.token.maxWorn} tokens: take one off first.`;
+  return null;
+}
+
 /**
  * The commander puts a token on (at most `maxWorn`). While the giver is with the squad the others react (a romantic rival
  * `rival_favoured` moderate, a close friend `bond_shown`) and every active `no_other_tokens` rule of someone else is broken by
@@ -97,10 +106,9 @@ export function answerOffer(draft: CampaignState, ctx: EngineCtx, offerId: strin
  */
 export function wearToken(draft: CampaignState, ctx: EngineCtx, tokenId: string): EngineEvent[] {
   const reg = ctx.registries;
-  const token = draft.personal?.tokens?.owned.find((t) => t.id === tokenId);
-  if (!token) throw new Error('There is no such token.');
-  if (token.worn) throw new Error('It is already worn.');
-  if (wornTokens(draft).length >= TUNING.personal.token.maxWorn) throw new Error(`You already wear ${TUNING.personal.token.maxWorn === 2 ? 'two' : TUNING.personal.token.maxWorn} tokens: take one off first.`);
+  const problem = wearProblem(draft, tokenId);
+  if (problem !== null) throw new Error(problem);
+  const token = draft.personal!.tokens!.owned.find((t) => t.id === tokenId)!;
   token.worn = true;
   delete token.removedDay;
   const giver = unitOf(draft, token.giverId);

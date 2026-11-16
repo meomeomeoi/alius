@@ -288,6 +288,8 @@ export const CORE_GLOSSARY_IDS: readonly string[] = [
   'her_call', 'ask_first',
   // P9c (the DEVICE block, the SCHEDULE, the EDITED BY chip, the courtship chips and the claim card address these)
   'device_access', 'booking', 'courtship', 'claimed',
+  // P9c chunk (b): tokens, wagers and the day of obedience
+  'token', 'wager', 'obedience',
 ];
 
 let registered = false;

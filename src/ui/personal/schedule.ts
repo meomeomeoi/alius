@@ -2,6 +2,7 @@ import type { Registries } from '../../content/types';
 import type { Booking, CampaignState, Slot } from '../../engine/state/types';
 import { analyzeAttrs, analyzeNative } from '../analyze/mark';
 import { h } from '../dom';
+import { defiesHint, obeyedBy } from './obey';
 import { unitAccent } from '../voice/voiceCard';
 import { SLOT_WORD } from './deviceBlock';
 
@@ -53,5 +54,6 @@ function row(state: CampaignState, reg: Registries, b: Booking, handlers: Schedu
     : null;
   return h('div', { class: 'alius-schedule-row', 'data-booking': b.id, ...(b.conflict ? { 'data-conflict': 'true' } : {}) },
     chip, h('span', { class: 'alius-dim' }, String(reg.bookingKinds.get(b.kindId)?.label ?? b.kindId)), keep,
-    h('button', { type: 'button', class: 'alius-btn alius-tagchip', 'data-action': 'cancel', ...analyzeNative('glossary:booking', { bookingId: b.id }), onclick: () => handlers.onCancel(b.id) }, '[CANCEL]'));
+    h('button', { type: 'button', class: 'alius-btn alius-tagchip', 'data-action': 'cancel', ...analyzeNative('glossary:booking', { bookingId: b.id }), onclick: () => handlers.onCancel(b.id) }, '[CANCEL]'),
+    obeyedBy(state, b.unitId) !== null ? defiesHint(obeyedBy(state, b.unitId)!) : null); // P9c: a day the commander obeys her: cancelling defies her
 }

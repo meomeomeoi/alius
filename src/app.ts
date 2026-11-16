@@ -102,6 +102,8 @@ import { createExpedition, type ExpeditionController } from './world/expeditionC
 import { renderBaseTab } from './ui/base/baseTab';
 import { renderCommsTab } from './ui/comms/commsTab';
 import { renderClaimCard } from './ui/personal/claimCard';
+import { herPickView } from './ui/personal/obey';
+import { renderWagerCard } from './ui/personal/wagerCard';
 import type { EditView } from './ui/personal/chips';
 import { renderLogTab } from './ui/log/logTab';
 import { renderKnock } from './ui/night/knock';
@@ -348,9 +350,10 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     contentLine: () => contentLine(state, registries), // P9d: the same text as the `content` directive, for the prose calls
     toast: (kind: 'info' | 'warn' | 'error', text: string) => toast(kind, text),
     onUi: routeUi,
+    onUnitReply: (unitId: string, text: string) => { personal.onReply(unitId, text); }, // P9c: her first reply answers a question she lost
   };
   const scene = createSceneController(sceneDeps);
-  const comms = createComms({ ...sceneDeps, scene, personal: { beforeSend: (u, t) => personal.beforeSend(u, t), answerEdit: (k) => personal.answerEdit(k) } });
+  const comms = createComms({ ...sceneDeps, scene, personal: { beforeSend: (u, t) => personal.beforeSend(u, t), answerEdit: (k) => personal.answerEdit(k), onReply: (u, t) => personal.onReply(u, t) } });
   const worldDeps = {
     st,
     app: sceneApp,
@@ -393,6 +396,15 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
   const bonds = createBonds({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o) });
   const personal = createPersonal({
     ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o),
+    // a wager was decided: its result card (who won, what the game showed, what the stake did)
+    onWagerResult: (result) => {
+      const s = state;
+      if (!s) return;
+      const host = h('div');
+      host.append(renderWagerCard(s, registries, result));
+      shell.open();
+      void shell.modal({ title: 'WAGER', body: host, actions: [{ label: '[ OK ]', value: 'ok' }] });
+    },
     // she claimed the commander in public: the card is answered at once (LET IT STAND or REFUSE PUBLICLY)
     onClaim: (unitId) => {
       const s = state;
@@ -670,6 +682,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       options: dilemmaOptions(s, registries), onChoose: (i, route) => void dilemmas.choose(i, route),
       unitName: (id) => s.squad.find((u) => u.id === id)?.displayName ?? id,
       scapegoat: scapegoatView(s, registries),
+      herPick: herPickView(s, registries), // P9c: a day the commander obeys her
     });
   }
 
@@ -1775,6 +1788,9 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       onChallenge: (stat) => void power.challenge(stat).then((ok) => { if (ok) shell.open(); }),
       onPeel: (unitId, part) => void act({ type: 'device/remove_decor', payload: { unitId, part } }), // P9c
       onCancelBooking: (id) => void personal.cancelBooking(id),
+      onWager: (unitId, choice) => void personal.challenge({ unitId, ...choice }),
+      onWear: (id) => void personal.wearToken(id),
+      onTakeOff: (id) => void personal.takeOffToken(id),
     }),
   );
   shell.registerTab('inv', (host) =>
@@ -1890,6 +1906,12 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         if (unit?.some((m) => m.from !== 'commander' && !m.read)) api.dispatch({ type: 'dm/read', payload: { unitId } }, { expectChatId: st.getActiveChat()?.chatId });
       },
       onAnswer: (proposalId, answer, condition) => void act({ type: 'proposal/answer', payload: { proposalId, answer, ...(condition !== undefined ? { condition } : {}) } }),
+      personal: {
+        onAnswerToken: (offerId, accept) => void personal.answerToken(offerId, accept),
+        onAnswerWager: (wagerId, accept) => void personal.answerWager(wagerId, accept),
+        onPlayWager: (wagerId, pick) => void personal.playWager(wagerId, pick),
+        onAnswerQuestion: (wagerId, text) => void personal.answerQuestion(wagerId, text),
+      },
       edit: () => pendingEdit,
       onAnswerEdit: (keep) => {
         pendingEdit = null;

@@ -3,6 +3,7 @@ import { commanderProfile, descriptor } from '../../engine/commander/profile';
 import type { CampaignState } from '../../engine/state/types';
 import { analyzeAttrs } from '../analyze/mark';
 import { h, type Child } from '../dom';
+import { renderTokens } from '../personal/tokens';
 import { renderVoiceCard } from '../voice/voiceCard';
 
 export interface CmdrCardCtx {
@@ -10,6 +11,9 @@ export interface CmdrCardCtx {
   registries: Registries;
   /** "Show raw values": the numbers join the descriptors. */
   raw: boolean;
+  /** P9c: WEAR / TAKE OFF on a token (the TOKENS block). */
+  onWear?: (tokenId: string) => void;
+  onTakeOff?: (tokenId: string) => void;
 }
 
 /**
@@ -51,6 +55,7 @@ export function renderCmdrCard(host: HTMLElement, ctx: CmdrCardCtx): void {
         : h('p', {}, 'REPUTATION — ', ...reputation.flatMap((a, i): Child[] => [
           i === 0 ? '' : ' · ',
           h('span', { class: 'alius-chip', ...analyzeAttrs(`reputations:${a.id}`) }, a.name),
-        ])));
+        ])),
+      renderTokens(state, reg, { onWear: (id) => ctx.onWear?.(id), onTakeOff: (id) => ctx.onTakeOff?.(id) }));
   host.append(h('section', { class: 'alius-section alius-cmdr' }, renderVoiceCard({ voice: 'paper', title: `CMDR — ${state.commander.name}`, body: file })));
 }

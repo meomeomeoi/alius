@@ -529,17 +529,17 @@ tests/engine/personal/*.test.ts, tests/engine/combat/sparring.test.ts, tests/con
 - Consumes: Tasks 8–11.
 - Produces: `renderTokens(state, reg, handlers)`, `renderWagerForm(state, reg, unitId, onSubmit)` (games and only `offeredStakes`; sparring lists allowed handicaps; RPS asks for a hand), `renderWagerCard(result)`; providers `glossary:token`, `glossary:wager` (with `k.raw`: the game's odds; sparring: the measured band of the handicap), `glossary:obedience`, `tokenKinds`, `wagerGames`, `wagerStakes`.
 
-- [ ] **Step 1: Write the failing tests (jsdom).**
+- [x] **Step 1: Write the failing tests (jsdom).**
   - `the dossier shows worn tokens and refuses a third wear with the engine's message` (acceptance 4)
   - `the scene context names worn tokens` (fixture on `ContextBuilder`, acceptance 4)
   - `the wager form never lists a stake whose category is off` (acceptance 6)
   - `under obedience her pick is pre-selected in the demand, proposal, dilemma and vote views` (acceptance 6)
   - `the truth directive lasts until her first reply and that reply becomes a fact`
   - `every new chip, card and option carries data-analyze`
-- [ ] **Step 2: Run** `npx vitest run tests/ui/personalB.test.ts tests/personal tests/ui/analyzeCoverage.test.ts`. Expect FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** `npm test`. Expect PASS.
-- [ ] **Step 5: Tick and commit:** `feat(ui): tokens, wagers and obedience`.
+- [x] **Step 2: Run** `npx vitest run tests/ui/personalB.test.ts tests/personal tests/ui/analyzeCoverage.test.ts`. Expect FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** `npm test`. Expect PASS.
+- [x] **Step 5: Tick and commit:** `feat(ui): tokens, wagers and obedience`.
 
 ---
 

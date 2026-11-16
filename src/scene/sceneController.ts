@@ -43,6 +43,8 @@ export interface SceneDeps {
   contentLine?: () => string;
   toast: Toast;
   onUi: (e: SceneUiEvent) => void;
+  /** P9c: a line a soldier of the scene said in the last exchange (her first reply after a lost question wager answers it). */
+  onUnitReply?: (unitId: string, text: string) => void;
 }
 
 export interface StartOptions {
@@ -237,6 +239,11 @@ export function createSceneController(deps: SceneDeps): SceneController {
       romance: intimacyOf(s0).romance, measures: measureList(deps.registries(), s0),
       ...contentInput(s0, scene.participants),
     };
+    for (const m of messages) {
+      if (m.isUser) continue;
+      const speaker = scene.participants.map((id) => unitById(s0, id)).find((u) => u !== undefined && u.displayName === m.name);
+      if (speaker) deps.onUnitReply?.(speaker.id, m.text);
+    }
     swipedWhileExtracting.clear();
     extracting = true;
     let result: Awaited<ReturnType<typeof extractIntents>>;

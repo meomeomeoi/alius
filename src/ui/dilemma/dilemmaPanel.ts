@@ -4,6 +4,7 @@ import type { RouteChoice, RoutePick } from '../../engine/commander/checks';
 import { analyzeAttrs, analyzeNative } from '../analyze/mark';
 import type { ScapegoatView } from './scapegoat';
 import { h } from '../dom';
+import { defiesHint, markPick } from '../personal/obey';
 import { renderRoutePicker } from './routePicker';
 
 export interface DilemmaPanelCtx {
@@ -20,6 +21,8 @@ export interface DilemmaPanelCtx {
   unitName?: (id: string) => string;
   /** P9b: a scapegoat case names who answers for the decision and shows what each answer does (authored effects, shown in words). */
   scapegoat?: ScapegoatView | null;
+  /** P9c: a day the commander obeys her: the option she would pick is pre-selected and the others defy her. */
+  herPick?: { index: number; name: string } | null;
 }
 
 const SCALE_LABEL: Record<DilemmaScale, string> = { minor: 'MINOR', major: 'MAJOR', defining: 'DEFINING' };
@@ -64,6 +67,10 @@ export function renderDilemma(host: HTMLElement, ctx: DilemmaPanelCtx): void {
     }, `[ ${o.label} ]${o.hasCheck ? ' — CHECK' : ''}${picker ? ' — CHOOSE HOW' : ''}${o.disabled !== null ? ` — ${o.disabled}` : ''}`) as HTMLButtonElement;
     buttons.push(button);
     list.append(button);
+    if (ctx.herPick) {
+      if (ctx.herPick.index === o.index) markPick(button);
+      else list.append(defiesHint(ctx.herPick.name));
+    }
     const effects = ctx.scapegoat?.options[o.index];
     if (effects && effects.lines.length > 0) {
       list.append(h('ul', { class: 'alius-scapegoat-effects', 'data-scapegoat-effects': String(o.index) },

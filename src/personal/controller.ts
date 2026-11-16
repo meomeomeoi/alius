@@ -38,11 +38,25 @@ export interface PersonalController {
   resolveConflict(p: { bookingId: string } | { day: number; slot: Slot; settle: true }): boolean;
   /** The claim card: REFUSE PUBLICLY goes through the engine; LET IT STAND only closes the card (nothing to record). */
   answerClaim(unitId: string, refuse: boolean): boolean;
+  /** Her reply (a DM or a line of a scene): the first one after the commander won a question wager is stored as a fact and ends the truth order. Says whether it was recorded. */
+  onReply(unitId: string, text: string): boolean;
+  wearToken(tokenId: string): boolean;
+  takeOffToken(tokenId: string): boolean;
+  answerToken(offerId: string, accept: boolean): boolean;
+  answerWager(wagerId: string, accept: boolean): boolean;
+  playWager(wagerId: string, pick?: string): boolean;
+  /** The text of a won question wager: the commander's answer, or the commander's question. */
+  answerQuestion(wagerId: string, text: string): boolean;
+  /** The commander challenges a soldier (the dossier's form); she accepts or refuses. */
+  challenge(p: { unitId: string; gameId: string; stakeId: string; pick?: string }): boolean;
   /** Reads the events of one dispatch: the ones that change a directive refresh the context; a clash of bookings and a claim are announced. */
   onEvents(events: EngineEvent[]): void;
 }
 
-const REFRESH_ON = new Set(['claimed', 'claim_refused', 'booking_cancelled', 'booking_played', 'booking_made', 'decor_removed_by_commander', 'decor_placed', 'proposal_conditioned']);
+const REFRESH_ON = new Set([
+  'claimed', 'claim_refused', 'booking_cancelled', 'booking_played', 'booking_made', 'decor_removed_by_commander', 'decor_placed', 'proposal_conditioned',
+  'token_worn', 'token_taken_off', 'token_accepted', 'wager_resolved', 'wager_question', 'truth_told', 'mark_set', 'mark_ended',
+]);
 
 /**
  * The non-engine half of P9c's personal pressure: the wording of a level-4 edit, the questions about an edited request, the
@@ -178,10 +192,31 @@ export function createPersonal(deps: PersonalDeps): PersonalController {
       return act('courtship/refuse_claim', { unitId });
     },
 
+    onReply(unitId, text) {
+      const truth = state()?.personal?.truth;
+      if (!truth || truth.unitId !== unitId || text.trim() === '') return false;
+      return act('wager/record_answer', { unitId, text });
+    },
+    wearToken: (tokenId) => act('token/wear', { tokenId }),
+    takeOffToken: (tokenId) => act('token/remove', { tokenId }),
+    answerToken: (offerId, accept) => act('token/answer', { offerId, accept }),
+    answerWager: (wagerId, accept) => act('wager/answer', { wagerId, accept }),
+    playWager: (wagerId, pick) => act('wager/play', { wagerId, ...(pick !== undefined ? { pick } : {}) }),
+    answerQuestion: (wagerId, text) => act('wager/answer_question', { wagerId, text }),
+    challenge: (p) => act('wager/challenge', p),
+
     onEvents(events) {
       let refresh = false;
       for (const e of events) {
         if (REFRESH_ON.has(e.type)) refresh = true;
+        if (e.type === 'wager_resolved') {
+          const s = state();
+          if (deps.onWagerResult) deps.onWagerResult(e);
+          else if (s) deps.toast('info', `${nameOf(s, String(e.unitId))}'s wager is decided: ${e.winner === 'unit' ? 'she wins' : e.winner === 'commander' ? 'the commander wins' : 'nobody wins'}.`);
+        } else if (e.type === 'wager_refused') {
+          const s = state();
+          if (s) deps.toast('info', `${nameOf(s, String(e.unitId))} refuses the bet.`);
+        }
         if (e.type === 'booking_conflict') {
           deps.toast('info', `Two bookings for the ${String(e.slot)} of day ${String(e.day)} clash: choose one, or let them settle it.`);
         } else if (e.type === 'claimed') {

@@ -10635,14 +10635,14 @@ function followLead(draft, ctx2) {
 }
 function setSceneLimit(draft, text2) {
   const { unitId, name } = leadPartner(draft);
-  const clean4 = typeof text2 === "string" ? text2.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, TUNING.bonds.limits.sceneLimitMax).trim() : "";
-  if (clean4 === "") throw new Error("A limit needs some text.");
+  const clean5 = typeof text2 === "string" ? text2.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, TUNING.bonds.limits.sceneLimitMax).trim() : "";
+  if (clean5 === "") throw new Error("A limit needs some text.");
   const scene = draft.scene;
   const limits = scene.limits ?? [];
   if (limits.length >= TUNING.bonds.limits.sceneLimitsMax) throw new Error(`A scene takes at most ${TUNING.bonds.limits.sceneLimitsMax} limits.`);
-  scene.limits = [...limits, clean4];
-  addFact(draft, { about: [unitId, "commander"], text: `A boundary the commander set with ${name}: ${clean4}`, tags: ["limit"], importance: 3, day: draft.day, sceneId: scene.id, knownBy: [unitId] });
-  return [{ type: "scene_limit_set", unitId, text: clean4 }];
+  scene.limits = [...limits, clean5];
+  addFact(draft, { about: [unitId, "commander"], text: `A boundary the commander set with ${name}: ${clean5}`, tags: ["limit"], importance: 3, day: draft.day, sceneId: scene.id, knownBy: [unitId] });
+  return [{ type: "scene_limit_set", unitId, text: clean5 }];
 }
 
 // src/engine/night.ts
@@ -13473,6 +13473,11 @@ function sparringBout(state, reg, rng, unitId, handicapId) {
   if (cs.outcome === "lost") return { winner: "unit", rounds };
   return { winner: "unit", rounds, draw: true };
 }
+function sparringOdds(state, reg, unitId, handicapId, n = 40) {
+  let wins = 0;
+  for (let i = 1; i <= n; i++) if (sparringBout(state, reg, new Rng(seedRng(i)), unitId, handicapId).winner === "commander") wins++;
+  return wins / n;
+}
 
 // src/engine/discipline/reputation.ts
 var patternOf = (e) => e.pattern;
@@ -13782,6 +13787,10 @@ var measureList = (reg, state) => [
 var unitOf2 = (state, id) => state.squad.find((u) => u.id === id);
 var labelOf = (reg, kindId, name) => String(reg.tokenKinds.get(kindId)?.label ?? "{name}'s token").replaceAll("{name}", name);
 var wornTokens = (state) => (state.personal?.tokens?.owned ?? []).filter((t) => t.worn);
+function tokenLine(state) {
+  const labels = wornTokens(state).map((t) => t.label);
+  return labels.length === 0 ? null : `The commander wears ${labels.join(" and ")}.`;
+}
 function kindsFor(state, reg, unitId) {
   const tier = bondTierOf(state, reg, unitId);
   return [...reg.tokenKinds.values()].filter((k) => k.minTier === void 0 || k.minTier === tier);
@@ -13834,12 +13843,18 @@ function answerOffer(draft, ctx2, offerId, accept, opts = {}) {
   if (unitOf2(draft, offer.giverId) && isLiving(unitOf2(draft, offer.giverId))) events.push(...hitHer(draft, ctx2.registries, offer.giverId, "rejected_advance", "minor", "declined her token"));
   return events;
 }
+function wearProblem(state, tokenId) {
+  const token = state.personal?.tokens?.owned.find((t) => t.id === tokenId);
+  if (!token) return "There is no such token.";
+  if (token.worn) return "It is already worn.";
+  if (wornTokens(state).length >= TUNING.personal.token.maxWorn) return `You already wear ${TUNING.personal.token.maxWorn === 2 ? "two" : TUNING.personal.token.maxWorn} tokens: take one off first.`;
+  return null;
+}
 function wearToken(draft, ctx2, tokenId) {
   const reg = ctx2.registries;
-  const token = draft.personal?.tokens?.owned.find((t) => t.id === tokenId);
-  if (!token) throw new Error("There is no such token.");
-  if (token.worn) throw new Error("It is already worn.");
-  if (wornTokens(draft).length >= TUNING.personal.token.maxWorn) throw new Error(`You already wear ${TUNING.personal.token.maxWorn === 2 ? "two" : TUNING.personal.token.maxWorn} tokens: take one off first.`);
+  const problem = wearProblem(draft, tokenId);
+  if (problem !== null) throw new Error(problem);
+  const token = draft.personal.tokens.owned.find((t) => t.id === tokenId);
   token.worn = true;
   delete token.removedDay;
   const giver = unitOf2(draft, token.giverId);
@@ -18035,6 +18050,11 @@ function herPick(state, reg, unitId) {
   });
   return best === null ? null : best.index;
 }
+function herVote(state, _reg, vote) {
+  const o = obedienceOf(state);
+  const ballot = o === null ? void 0 : vote.ballots.find((b) => b.unitId === o.unitId);
+  return ballot !== void 0 && ballot.vote !== "abstain" ? ballot.vote : null;
+}
 
 // src/engine/discipline/demands.ts
 var DRIVEN = ["open_defiance", "defiant_loyal"];
@@ -21247,11 +21267,11 @@ registerFlavorKind("ballot", {
   ].join("\n"),
   prompt: (raw) => {
     const i = raw;
-    const clean4 = (t) => String(t).replace(/[<>]/g, "");
+    const clean5 = (t) => String(t).replace(/[<>]/g, "");
     return [
       `<vote>`,
-      `Decision (${clean4(i.voteKind)}): ${clean4(i.subjectLabel)}`,
-      ...i.ballots.map((b) => `${clean4(b.name)}: voted ${b.vote}; what moved her most: ${clean4(b.term)}`),
+      `Decision (${clean5(i.voteKind)}): ${clean5(i.subjectLabel)}`,
+      ...i.ballots.map((b) => `${clean5(b.name)}: voted ${b.vote}; what moved her most: ${clean5(b.term)}`),
       `</vote>`,
       "Give each soldier her line."
     ].join("\n");
@@ -21283,12 +21303,12 @@ registerFlavorKind("dm_edit", {
   ].join("\n"),
   prompt: (raw) => {
     const i = raw;
-    const clean4 = (t) => String(t).replace(/<\/?dm>/gi, "");
+    const clean5 = (t) => String(t).replace(/<\/?dm>/gi, "");
     return [
-      `Soldier who edits: ${clean4(i.unitName)}`,
-      `How she feels about the commander: ${clean4(i.stateHint) || "unclear"}`,
-      `Recipient: ${clean4(i.recipientName) || "none"}`,
-      `<dm>${clean4(i.original)}</dm>`,
+      `Soldier who edits: ${clean5(i.unitName)}`,
+      `How she feels about the commander: ${clean5(i.stateHint) || "unclear"}`,
+      `Recipient: ${clean5(i.recipientName) || "none"}`,
+      `<dm>${clean5(i.original)}</dm>`,
       "Rewrite the message."
     ].join("\n");
   }
@@ -21859,7 +21879,24 @@ function createPower(deps) {
 }
 
 // src/personal/controller.ts
-var REFRESH_ON = /* @__PURE__ */ new Set(["claimed", "claim_refused", "booking_cancelled", "booking_played", "booking_made", "decor_removed_by_commander", "decor_placed", "proposal_conditioned"]);
+var REFRESH_ON = /* @__PURE__ */ new Set([
+  "claimed",
+  "claim_refused",
+  "booking_cancelled",
+  "booking_played",
+  "booking_made",
+  "decor_removed_by_commander",
+  "decor_placed",
+  "proposal_conditioned",
+  "token_worn",
+  "token_taken_off",
+  "token_accepted",
+  "wager_resolved",
+  "wager_question",
+  "truth_told",
+  "mark_set",
+  "mark_ended"
+]);
 function createPersonal(deps) {
   const chatId = () => deps.st.getActiveChat()?.chatId;
   const state = () => deps.app.current().state;
@@ -21976,10 +22013,30 @@ function createPersonal(deps) {
       if (!refuse) return true;
       return act("courtship/refuse_claim", { unitId });
     },
+    onReply(unitId, text2) {
+      const truth = state()?.personal?.truth;
+      if (!truth || truth.unitId !== unitId || text2.trim() === "") return false;
+      return act("wager/record_answer", { unitId, text: text2 });
+    },
+    wearToken: (tokenId) => act("token/wear", { tokenId }),
+    takeOffToken: (tokenId) => act("token/remove", { tokenId }),
+    answerToken: (offerId, accept) => act("token/answer", { offerId, accept }),
+    answerWager: (wagerId, accept) => act("wager/answer", { wagerId, accept }),
+    playWager: (wagerId, pick2) => act("wager/play", { wagerId, ...pick2 !== void 0 ? { pick: pick2 } : {} }),
+    answerQuestion: (wagerId, text2) => act("wager/answer_question", { wagerId, text: text2 }),
+    challenge: (p) => act("wager/challenge", p),
     onEvents(events) {
       let refresh = false;
       for (const e of events) {
         if (REFRESH_ON.has(e.type)) refresh = true;
+        if (e.type === "wager_resolved") {
+          const s = state();
+          if (deps.onWagerResult) deps.onWagerResult(e);
+          else if (s) deps.toast("info", `${nameOf11(s, String(e.unitId))}'s wager is decided: ${e.winner === "unit" ? "she wins" : e.winner === "commander" ? "the commander wins" : "nobody wins"}.`);
+        } else if (e.type === "wager_refused") {
+          const s = state();
+          if (s) deps.toast("info", `${nameOf11(s, String(e.unitId))} refuses the bet.`);
+        }
         if (e.type === "booking_conflict") {
           deps.toast("info", `Two bookings for the ${String(e.slot)} of day ${String(e.day)} clash: choose one, or let them settle it.`);
         } else if (e.type === "claimed") {
@@ -21995,7 +22052,18 @@ function createPersonal(deps) {
 }
 
 // src/personal/directives.ts
-var DERIVED = ["personal:court:", "personal:claimed:", "personal:decor:", "personal:booking:"];
+var clean3 = (text2) => text2.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
+var DERIVED = [
+  "personal:court:",
+  "personal:claimed:",
+  "personal:decor:",
+  "personal:booking:",
+  "personal:tokens",
+  "personal:token_removed:",
+  "personal:obedience:",
+  "personal:truth:",
+  "personal:mark"
+];
 var recent = (state, day) => day >= state.day - 1 && day <= state.day;
 function personalDirectives(state, reg, present) {
   const out = [];
@@ -22013,6 +22081,16 @@ function personalDirectives(state, reg, present) {
     if (peeled.length > 0) {
       out.push({ id: `personal:decor:${id}`, expiresAfter: "scene", text: `${name} noticed that the commander peeled something she had put on the device; it stings, and she lets it show.` });
     }
+    if ((state.personal?.tokens?.owned ?? []).some((t) => t.giverId === id && !t.worn && t.removedDay !== void 0 && recent(state, t.removedDay))) {
+      out.push({ id: `personal:token_removed:${id}`, expiresAfter: "scene", text: `${name} noticed that the commander took off the token she gave; it stings, and she lets it show.` });
+    }
+    if (unitObeys(state, id)) {
+      out.push({ id: `personal:obedience:${id}`, expiresAfter: "scene", text: `${name} follows the commander's non-combat orders today.` });
+    }
+    const truth = state.personal?.truth;
+    if (truth && truth.unitId === id) {
+      out.push({ id: `personal:truth:${id}`, expiresAfter: "manual", text: `${name} owes the commander a truthful answer to this question and gives it in her next reply: "${clean3(truth.question)}". She does not lie or dodge.` });
+    }
     const mine = (state.personal?.bookings ?? []).filter((b) => b.unitId === id);
     const played = mine.some((b) => b.status === "played" && b.day === state.day && b.slot === state.slot);
     const cancelled = mine.some((b) => b.status === "cancelled" && recent(state, b.day));
@@ -22022,6 +22100,11 @@ function personalDirectives(state, reg, present) {
       out.push({ id: `personal:booking:${id}`, expiresAfter: "scene", text: `The commander cancelled the time ${name} had booked; she remembers it.` });
     }
   }
+  const worn = tokenLine(state);
+  if (worn !== null && state.scene !== void 0) out.push({ id: "personal:tokens", expiresAfter: "scene", text: worn });
+  const mark = state.personal?.mark;
+  const marked = mark !== void 0 && state.day <= mark.untilDay ? state.squad.find((u) => u.id === mark.unitId) : void 0;
+  if (mark && marked && state.scene !== void 0) out.push({ id: "personal:mark", expiresAfter: "scene", text: `The commander bears ${marked.displayName}'s mark until day ${mark.untilDay}; it is plain to anyone who looks.` });
   return out;
 }
 function clearPersonalDirectives(builder) {
@@ -22059,6 +22142,25 @@ function h(tag2, attrs = {}, ...children) {
     el.append(typeof c === "string" ? document.createTextNode(c) : c);
   }
   return el;
+}
+
+// src/ui/personal/obey.ts
+function markPick(el) {
+  el.setAttribute("data-preselected", "true");
+  el.classList.add("is-preselected");
+}
+function defiesHint(name) {
+  return h("span", { class: "alius-dim alius-defies", "data-defies": name }, `DEFIES ${name.toUpperCase()}`);
+}
+function obeyedBy(state, unitId) {
+  const o = obedienceOf(state);
+  return o !== null && o.who === "commander" && o.unitId === unitId ? state.squad.find((u) => u.id === unitId)?.displayName ?? unitId : null;
+}
+function herPickView(state, reg) {
+  const o = obedienceOf(state);
+  if (o === null || o.who !== "commander") return null;
+  const index = herPick(state, reg, o.unitId);
+  return index === null ? null : { index, name: state.squad.find((u) => u.id === o.unitId)?.displayName ?? o.unitId };
 }
 
 // src/ui/fx.ts
@@ -22197,8 +22299,15 @@ function renderVotePanel(host, vote, lines, ctx2) {
   );
   const act = (id, label2, onclick, extra = {}) => h("button", { type: "button", class: "alius-btn alius-option", "data-vote-act": id, ...analyzeNative("glossary:vote"), onclick, ...extra }, label2);
   const actions = [];
+  const o = obedienceOf(state);
+  const against = o !== null && o.who === "commander" && herVote(state, reg, vote) === "against" ? nameOf11(o.unitId) : null;
   if (vote.status === "passed") {
     actions.push(act("carry", "[ CARRY OUT ]", ctx2.onCarry));
+    if (against !== null) {
+      const drop = act("drop", "[ DROP ]", ctx2.onDrop);
+      markPick(drop);
+      actions.push(drop, defiesHint(against));
+    }
   } else if (vote.status === "failed") {
     const leashed = state.leash.authorizationsLeft < 1;
     const picker = h("div", { class: "alius-vote-punish", hidden: true });
@@ -22225,6 +22334,10 @@ function renderVotePanel(host, vote, lines, ctx2) {
       h("p", { class: "alius-dim" }, "Overruling costs Trust with every soldier who voted against, raises their Impunity and lets them push back openly until the day ends."),
       picker
     );
+  }
+  if (against !== null && vote.status === "failed") {
+    markPick(actions.find((a) => a.getAttribute("data-vote-act") === "accept"));
+    actions.splice(actions.findIndex((a) => a.getAttribute("data-vote-act") === "overrule-leash") + 1, 0, defiesHint(against));
   }
   body.append(...actions);
   host.append(renderVoiceCard({ voice: VOICE_OF.squad_vote, title: "SQUAD VOTE", meta: `Day ${String(vote.day).padStart(3, "0")}`, body, level: 3 }));
@@ -22288,7 +22401,7 @@ function refreshPowerDirectives(builder, state, reg) {
 // src/bonds/directives.ts
 var EXPLICIT_CATEGORY = "explicit_scenes";
 var orderedCategories = (reg) => [...reg.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order));
-var clean3 = (text2) => text2.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
+var clean4 = (text2) => text2.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
 function contentLine(state, reg) {
   if (state === null) return "";
   const on = enabledCategories(state);
@@ -22316,7 +22429,7 @@ function bondsDirectives(builder, state, reg) {
     if (!unit || !bond) continue;
     const categories = [...new Set(bond.ownLimits.categories)].filter((c) => reg.contentCategories.has(c));
     const ordered = orderedCategories(reg).map((c) => String(c.id)).filter((c) => categories.includes(c));
-    const note = clean3(bond.ownLimits.note ?? "");
+    const note = clean4(bond.ownLimits.note ?? "");
     if (ordered.length === 0 && note === "") continue;
     const text2 = ordered.length > 0 ? `${unit.displayName} will not take part in: ${ordered.map(labelOf2).join(", ")}.${note !== "" ? ` ${note}` : ""}` : `${unit.displayName} has a personal limit: ${note}`;
     builder.setDirective({ id: `limits:${id}`, expiresAfter: "scene", text: text2 });
@@ -22352,7 +22465,7 @@ function bondsDirectives(builder, state, reg) {
   for (const rule of state.bonds?.rules ?? []) {
     const unit = state.squad.find((u) => u.id === rule.unitId);
     if (!unit || !state.scene.participants.includes(unit.id) || rule.status !== "negotiating" && !(rule.status === "proposed" && rule.delivered === true)) continue;
-    const text2 = clean3(rule.text);
+    const text2 = clean4(rule.text);
     builder.setDirective({
       id: `rule:${unit.id}`,
       expiresAfter: "scene",
@@ -22367,7 +22480,7 @@ function bondsDirectives(builder, state, reg) {
     builder.setDirective({ id: "lead", expiresAfter: "scene", text: text2 });
   }
   (state.scene.limits ?? []).forEach((text2, i) => {
-    const t = clean3(text2);
+    const t = clean4(text2);
     if (t !== "") builder.setDirective({ id: `boundary:${i}`, expiresAfter: "scene", text: `In this scene, a boundary the commander set: ${t}` });
   });
 }
@@ -23046,6 +23159,10 @@ function renderDilemma(host, ctx2) {
     }, `[ ${o.label} ]${o.hasCheck ? " \u2014 CHECK" : ""}${picker ? " \u2014 CHOOSE HOW" : ""}${o.disabled !== null ? ` \u2014 ${o.disabled}` : ""}`);
     buttons.push(button2);
     list5.append(button2);
+    if (ctx2.herPick) {
+      if (ctx2.herPick.index === o.index) markPick(button2);
+      else list5.append(defiesHint(ctx2.herPick.name));
+    }
     const effects2 = ctx2.scapegoat?.options[o.index];
     if (effects2 && effects2.lines.length > 0) {
       list5.append(h(
@@ -24527,6 +24644,7 @@ function createComms(deps) {
       if (reply === null || chatId() !== expect) return;
       const received = app.dispatch({ type: "dm/receive", payload: { unitId, text: reply } }, { expectChatId: expect });
       if (failed(received)) return;
+      deps.personal?.onReply?.(unitId, reply);
       deps.onUi({ type: "transcript" });
       await readExchange(expect, unitId, text2.trim(), reply);
     },
@@ -24945,6 +25063,11 @@ function createSceneController(deps) {
       measures: measureList(deps.registries(), s0),
       ...contentInput(s0, scene.participants)
     };
+    for (const m of messages) {
+      if (m.isUser) continue;
+      const speaker = scene.participants.map((id) => unitById(s0, id)).find((u) => u !== void 0 && u.displayName === m.name);
+      if (speaker) deps.onUnitReply?.(speaker.id, m.text);
+    }
     swipedWhileExtracting.clear();
     extracting = true;
     let result;
@@ -27488,10 +27611,73 @@ function renderDeviceBlock(state, reg, unitId, handlers2) {
       "div",
       { class: "alius-device-booking", "data-booking": b.id },
       h("span", { class: "alius-chip", ...analyzeAttrs("glossary:booking", { bookingId: b.id, unitId }) }, `${String(kind?.label ?? b.kindId).toUpperCase()} \u2014 DAY ${b.day} ${SLOT_WORD[b.slot]}`),
-      h("button", { type: "button", class: "alius-btn alius-tagchip", "data-action": "cancel", ...analyzeNative("glossary:booking", { bookingId: b.id, unitId }), onclick: () => handlers2.onCancel(b.id) }, "[CANCEL]")
+      h("button", { type: "button", class: "alius-btn alius-tagchip", "data-action": "cancel", ...analyzeNative("glossary:booking", { bookingId: b.id, unitId }), onclick: () => handlers2.onCancel(b.id) }, "[CANCEL]"),
+      obeyedBy(state, unitId) !== null ? defiesHint(obeyedBy(state, unitId)) : null
     ));
   }
   return block2;
+}
+
+// src/ui/personal/wagerForm.ts
+var BET_WORDS = { kills: "THREE KILLING BLOWS", no_damage: "NO DAMAGE TAKEN", objective: "THE OBJECTIVE DONE" };
+function renderWagerForm(state, reg, unitId, onSubmit) {
+  const root = h("div", { class: "alius-wager-form", "data-wager-form": unitId });
+  const stakes = offeredStakes(state, reg, unitId);
+  const games = gamesOffered(reg);
+  if (deviceGateReason(state, unitId) !== null || stakes.length === 0 || games.length === 0) {
+    root.append(h("p", { class: "alius-dim" }, "NOT OFFERED: nothing is on the table with her now."));
+    return root;
+  }
+  const live = { unitId };
+  const gameSel = h("select", { name: "game", class: "alius-select" }, ...games.map((g) => h("option", { value: String(g.id) }, String(g.label))));
+  const stakeSel = h("select", { name: "stake", class: "alius-select" }, ...stakes.map((x) => h("option", { value: String(x.id) }, String(x.label))));
+  const pickHost = h("span", { class: "alius-wager-pick" });
+  const affinity = state.relations[unitId]?.affinity ?? -100;
+  const drawPick = () => {
+    pickHost.replaceChildren();
+    const game = reg.wagerGames.get(gameSel.value);
+    let options2 = [];
+    if (game?.kind === "sparring") {
+      options2 = game.handicaps.filter((x) => affinity >= x.minAffinity).map((x) => [x.id, x.label]);
+    } else if (game?.kind === "expedition_bet") {
+      options2 = BET_PICKS.map((p) => [p, BET_WORDS[p]]);
+    }
+    if (options2.length === 0) return;
+    const sel = h("select", { name: "pick", class: "alius-select" }, ...options2.map(([v, label2]) => h("option", { value: v }, label2)));
+    pickHost.append(h("label", { class: "alius-option", ...analyzeNative("glossary:wager", live) }, game?.kind === "sparring" ? "HANDICAP " : "SHE BETS ON ", sel));
+  };
+  gameSel.addEventListener("change", drawPick);
+  drawPick();
+  root.append(
+    h("label", { class: "alius-option", ...analyzeNative("glossary:wager", live) }, "GAME ", gameSel),
+    " ",
+    h("label", { class: "alius-option", ...analyzeNative("glossary:wager", live) }, "STAKE ", stakeSel),
+    " ",
+    pickHost,
+    " ",
+    h("button", {
+      type: "button",
+      class: "alius-btn alius-option",
+      "data-action": "challenge",
+      ...analyzeNative("glossary:wager", live),
+      onclick: () => {
+        const pick2 = pickHost.querySelector("select")?.value;
+        onSubmit({ gameId: gameSel.value, stakeId: stakeSel.value, ...pick2 !== void 0 ? { pick: pick2 } : {} });
+      }
+    }, "[CHALLENGE]")
+  );
+  return root;
+}
+function renderChallenge(state, reg, unitId, onSubmit) {
+  if (deviceGateReason(state, unitId) !== null) return null;
+  const host = h("div", { class: "alius-challenge", "data-challenge": unitId });
+  const open3 = h("button", { type: "button", class: "alius-btn alius-option", "data-action": "open-challenge", ...analyzeNative("glossary:wager", { unitId }) }, "[CHALLENGE]");
+  open3.addEventListener("click", () => {
+    if (host.querySelector(".alius-wager-form")) host.querySelector(".alius-wager-form").remove();
+    else host.append(renderWagerForm(state, reg, unitId, onSubmit));
+  });
+  host.append(open3);
+  return host;
 }
 
 // src/ui/portrait/dither.ts
@@ -27640,6 +27826,45 @@ function renderDisciplineMenu(ctx2) {
   return h("details", { class: "alius-discipline", "data-discipline-menu": unitId }, h("summary", {}, "[ DISCIPLINE ]"), ...rows);
 }
 
+// src/ui/personal/tokens.ts
+function renderTokens(state, reg, handlers2) {
+  const owned = state.personal?.tokens?.owned ?? [];
+  const mark = state.personal?.mark;
+  const marked = mark !== void 0 && state.day <= mark.untilDay ? state.squad.find((u) => u.id === mark.unitId) : void 0;
+  if (owned.length === 0 && !marked) return null;
+  const block2 = h("div", { class: "alius-tokens" }, h("h3", {}, "TOKENS"));
+  for (const t of [...owned].sort((a, b) => Number(b.worn) - Number(a.worn))) {
+    const locked = t.lockedUntil !== void 0 && t.lockedUntil > state.day;
+    const problem = t.worn ? null : wearProblem(state, t.id);
+    const wear = h("button", {
+      type: "button",
+      class: "alius-btn alius-tagchip",
+      "data-action": t.worn ? "take-off" : "wear",
+      ...analyzeNative("glossary:token", { tokenId: t.id }),
+      ...problem !== null ? { "aria-disabled": "true", title: problem } : {},
+      onclick: () => {
+        if (t.worn) handlers2.onTakeOff(t.id);
+        else if (problem === null) handlers2.onWear(t.id);
+      }
+    }, t.worn ? "[TAKE OFF]" : "[WEAR]");
+    block2.append(h(
+      "div",
+      { class: "alius-token", "data-token": t.id, "data-worn": String(t.worn) },
+      h("span", { class: "alius-chip", ...analyzeAttrs("glossary:token", { tokenId: t.id }) }, `${t.label.toUpperCase()}${t.worn ? " \u2014 WORN" : ""}${locked ? ` \u2014 LOCKED UNTIL DAY ${t.lockedUntil}` : ""}`),
+      " ",
+      wear
+    ));
+  }
+  if (marked && mark) {
+    block2.append(h(
+      "p",
+      { class: "alius-token-mark" },
+      h("span", { class: "alius-chip", ...analyzeAttrs("glossary:wager", { unitId: marked.id }) }, `THE COMMANDER BEARS ${marked.displayName.toUpperCase()}'S MARK UNTIL DAY ${mark.untilDay}`)
+    ));
+  }
+  return block2;
+}
+
 // src/ui/commander/cmdrCard.ts
 function renderCmdrCard(host, ctx2) {
   const { state, registries: reg, raw } = ctx2;
@@ -27681,7 +27906,8 @@ function renderCmdrCard(host, ctx2) {
     reputation.length === 0 ? h("p", { class: "alius-dim" }, "REPUTATION \u2014 NONE ON FILE") : h("p", {}, "REPUTATION \u2014 ", ...reputation.flatMap((a, i) => [
       i === 0 ? "" : " \xB7 ",
       h("span", { class: "alius-chip", ...analyzeAttrs(`reputations:${a.id}`) }, a.name)
-    ]))
+    ])),
+    renderTokens(state, reg, { onWear: (id) => ctx2.onWear?.(id), onTakeOff: (id) => ctx2.onTakeOff?.(id) })
   );
   host.append(h("section", { class: "alius-section alius-cmdr" }, renderVoiceCard({ voice: "paper", title: `CMDR \u2014 ${state.commander.name}`, body: file })));
 }
@@ -28023,6 +28249,7 @@ function unitBlock(unit, ctx2, state) {
       gone ? null : disciplineLine(unit, state, ctx2),
       gone ? null : hierarchyBlock(unit, state, ctx2),
       gone ? null : renderDeviceBlock(state, ctx2.registries, unit.id, { onPeel: (id, part) => ctx2.onPeel?.(id, part), onCancel: (id) => ctx2.onCancelBooking?.(id) }),
+      gone || !ctx2.onWager ? null : renderChallenge(state, ctx2.registries, unit.id, (choice) => ctx2.onWager?.(unit.id, choice)),
       gone ? null : restrictionLine(unit, state),
       gone || !ctx2.onPunish || unit.kind !== "named" ? null : renderDisciplineMenu({ state, registries: reg, unitId: unit.id, onPunish: (measure, days) => ctx2.onPunish(unit.id, measure, days) }),
       gone ? null : h("p", { class: "alius-stress" }, chip(`STRESS ${stressBand2(unit.stress).toUpperCase()}${raw ? ` (${unit.stress})` : ""}`, "glossary:stress", live)),
@@ -28070,7 +28297,7 @@ function renderSquadTab(host, ctx2) {
     );
     return;
   }
-  renderCmdrCard(host, { state, registries: ctx2.registries, raw: ctx2.settings().showRawValues });
+  renderCmdrCard(host, { state, registries: ctx2.registries, raw: ctx2.settings().showRawValues, ...ctx2.onWear ? { onWear: ctx2.onWear } : {}, ...ctx2.onTakeOff ? { onTakeOff: ctx2.onTakeOff } : {} });
   if (state.squad.length === 0) {
     host.append(h("section", { class: "alius-section" }, h("p", {}, "NO UNITS ASSIGNED")));
     return;
@@ -28141,7 +28368,8 @@ function row(state, reg, b, handlers2) {
     chip,
     h("span", { class: "alius-dim" }, String(reg.bookingKinds.get(b.kindId)?.label ?? b.kindId)),
     keep,
-    h("button", { type: "button", class: "alius-btn alius-tagchip", "data-action": "cancel", ...analyzeNative("glossary:booking", { bookingId: b.id }), onclick: () => handlers2.onCancel(b.id) }, "[CANCEL]")
+    h("button", { type: "button", class: "alius-btn alius-tagchip", "data-action": "cancel", ...analyzeNative("glossary:booking", { bookingId: b.id }), onclick: () => handlers2.onCancel(b.id) }, "[CANCEL]"),
+    obeyedBy(state, b.unitId) !== null ? defiesHint(obeyedBy(state, b.unitId)) : null
   );
 }
 
@@ -29595,7 +29823,8 @@ function renderExpeditionScreen(host, ctx2) {
         waiting: generated.status === "requested",
         options: dilemmaOptions(state, reg),
         onChoose: ctx2.onDilemmaChoose,
-        unitName: unitName2
+        unitName: unitName2,
+        herPick: herPickView(state, reg)
       });
       root.append(panel);
       return;
@@ -30263,16 +30492,20 @@ function drawProposalChips(host, state, pick2, onAnswer, reg) {
     const name = (state.squad.find((u) => u.id === p.unitId)?.displayName ?? p.unitId).toUpperCase();
     const label2 = h("span", { class: "alius-chip-label" }, p.from === "unit" ? `${name} PROPOSES: ${kindLabel(p.kind)}` : `${name}: ${kindLabel(p.kind)} \u2014 OPENLY OR SECRETLY?`);
     if (reg && courtshipChips(state, reg, p)) {
-      host.append(courtingGroup(p, label2, onAnswer));
+      const group2 = courtingGroup(p, label2, onAnswer);
+      pickForObedience(state, p, group2);
+      host.append(group2);
       continue;
     }
     const buttons = p.needsDisclosure ? [["[OPENLY]", "accept"], ["[SECRETLY]", "accept_secret"], ["[NOT NOW]", "not_now"]] : p.from === "commander" ? [["[NOT NOW]", "not_now"]] : [["[ACCEPT]", "accept"], ["[DECLINE]", "decline"], ["[NOT NOW]", "not_now"]];
-    host.append(h(
+    const group = h(
       "div",
       { class: "alius-chip-group", "data-proposal": p.id },
       label2,
       ...buttons.map(([text2, answer]) => h("button", { type: "button", class: "alius-btn alius-tagchip", onclick: () => onAnswer(p.id, answer) }, text2))
-    ));
+    );
+    pickForObedience(state, p, group);
+    host.append(group);
   }
 }
 function courtingGroup(p, label2, onAnswer) {
@@ -30308,6 +30541,14 @@ function courtingGroup(p, label2, onAnswer) {
   draw2();
   return group;
 }
+function pickForObedience(state, p, group) {
+  const obeyed = p.from === "unit" ? obeyedBy(state, p.unitId) : null;
+  if (obeyed === null) return;
+  for (const b of group.querySelectorAll("button")) {
+    if (b.textContent === "[ACCEPT]") markPick(b);
+  }
+  group.append(defiesHint(obeyed));
+}
 
 // src/ui/personal/chips.ts
 function editChip(edit, name, onKeep, onRevert) {
@@ -30320,6 +30561,75 @@ function editChip(edit, name, onKeep, onRevert) {
   );
   group.style.setProperty("--unit-accent", unitAccent(edit.editorId));
   return group;
+}
+var HANDS2 = ["rock", "paper", "scissors"];
+function drawPersonalChips(host, state, reg, pick2, on) {
+  host.replaceChildren();
+  const nameOf11 = (id) => (state.squad.find((u) => u.id === id)?.displayName ?? id).toUpperCase();
+  const group = (unitId, address, ctx2, label2, ...kids) => {
+    const g = h(
+      "div",
+      { class: "alius-chip-group", "data-personal": unitId },
+      h("span", { class: "alius-chip", ...analyzeAttrs(address, ctx2) }, label2),
+      ...kids
+    );
+    g.style.setProperty("--unit-accent", unitAccent(unitId));
+    return g;
+  };
+  const button2 = (text2, action, onclick) => h("button", { type: "button", class: "alius-btn alius-tagchip", "data-action": action, onclick }, text2);
+  const offer = state.personal?.tokens?.offer;
+  if (offer && pick2(offer.giverId)) {
+    host.append(group(
+      offer.giverId,
+      "glossary:token",
+      { unitId: offer.giverId },
+      `${nameOf11(offer.giverId)} OFFERS: ${offer.label.toUpperCase()}`,
+      button2("[ACCEPT]", "accept", () => on.onAnswerToken(offer.id, true)),
+      button2("[DECLINE]", "decline", () => on.onAnswerToken(offer.id, false))
+    ));
+  }
+  for (const w of state.personal?.wagers?.open ?? []) {
+    if (!pick2(w.unitId)) continue;
+    const game = reg.wagerGames.get(w.gameId);
+    const stake = reg.wagerStakes.get(w.stakeId);
+    const what = `${String(game?.label ?? w.gameId).toUpperCase()} FOR ${String(stake?.text ?? w.stakeId).toUpperCase()}`;
+    const live = { wagerId: w.id, unitId: w.unitId };
+    if (w.status === "offered") {
+      host.append(group(
+        w.unitId,
+        "glossary:wager",
+        live,
+        `${nameOf11(w.unitId)} CHALLENGES: ${what}`,
+        button2("[ACCEPT]", "accept", () => on.onAnswerWager(w.id, true)),
+        button2("[DECLINE]", "decline", () => on.onAnswerWager(w.id, false))
+      ));
+    } else if (w.status === "pending_run") {
+      host.append(group(w.unitId, "glossary:wager", live, `WAGER WITH ${nameOf11(w.unitId)}: ${what} \u2014 WAITS FOR THE NEXT RUN`));
+    } else if (game?.kind === "rps") {
+      host.append(group(w.unitId, "glossary:wager", live, `WAGER WITH ${nameOf11(w.unitId)}: ${what}`, ...HANDS2.map((hand) => button2(`[${hand.toUpperCase()}]`, `play-${hand}`, () => on.onPlayWager(w.id, hand)))));
+    } else {
+      host.append(group(w.unitId, "glossary:wager", live, `WAGER WITH ${nameOf11(w.unitId)}: ${what}`, button2(game?.kind === "sparring" ? "[FIGHT]" : "[PLAY]", "play", () => on.onPlayWager(w.id, void 0))));
+    }
+  }
+  const q = state.personal?.pendingQuestion;
+  if (q && pick2(q.unitId)) {
+    const asks = q.winner === "commander";
+    const input = h("input", { type: "text", name: "question", class: "alius-input", maxlength: "200", autocomplete: "off", "aria-label": asks ? "Your question" : "Your answer" });
+    const send = () => {
+      const text2 = input.value.replace(/\s+/g, " ").trim();
+      if (text2 !== "") on.onAnswerQuestion(q.wagerId, text2);
+    };
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") send();
+    });
+    host.append(group(
+      q.unitId,
+      "glossary:wager",
+      { unitId: q.unitId },
+      asks ? `YOU WON A QUESTION: ASK ${nameOf11(q.unitId)}` : `${nameOf11(q.unitId)} WON A QUESTION: ANSWER TRUTHFULLY`,
+      h("span", { class: "alius-condition" }, input, button2(asks ? "[ASK]" : "[ANSWER]", "question-ok", send))
+    ));
+  }
 }
 
 // src/ui/discipline/chips.ts
@@ -30367,13 +30677,17 @@ function drawDemandChips(host, state, reg, pick2, on) {
       }, text2);
       return b;
     };
+    const obeyed = obeyedBy(state, d.unitId);
+    const grant = button2("grant", desire ? "[SATISFY]" : "[GRANT]", () => on.grant(d.id), why !== null, why ?? void 0);
+    if (obeyed !== null) markPick(grant);
     host.append(h(
       "div",
       { class: "alius-chip-group", "data-demand-group": d.id },
       h("span", { class: "alius-chip", "data-demand": d.id, ...analyzeAttrs(`demandTemplates:${d.templateId}`, { unitId: d.unitId }) }, `${name} DEMANDS: ${d.text}`),
       d.owed ? h("span", { class: "alius-chip", "data-owed": d.id, ...analyzeAttrs("glossary:owed_demand") }, "OWED") : null,
-      button2("grant", desire ? "[SATISFY]" : "[GRANT]", () => on.grant(d.id), why !== null, why ?? void 0),
+      grant,
       button2("refuse", desire ? "[POSTPONE]" : "[REFUSE]", () => on.refuse(d.id)),
+      obeyed !== null ? defiesHint(obeyed) : null,
       on.talk ? button2("talk", "[TALK]", () => on.talk(d.id)) : null
     ));
   }
@@ -30464,10 +30778,12 @@ function renderCommsTab(host, ctx2) {
       negotiate: (id) => ctx2.onAnswerRule?.(id, "negotiate"),
       refuse: (id) => ctx2.onAnswerRule?.(id, "refuse")
     });
+    const personalChips = h("div", { class: "alius-chips alius-discipline-chips" });
+    if (ctx2.personal) drawPersonalChips(personalChips, state, ctx2.registries, (id) => id === current, ctx2.personal);
     const editor = waiting2 ? contacts.find((u) => u.id === waiting2.editorId) : void 0;
     const editChips = waiting2 ? editChip(waiting2, editor?.displayName ?? waiting2.editorId, () => ctx2.onAnswerEdit?.(true), () => ctx2.onAnswerEdit?.(false)) : null;
     const sendButton = h("button", { type: "button", class: "alius-btn", "data-action": "send", ...waiting2 ? { "aria-disabled": "true" } : {}, onclick: send }, "[SEND]");
-    thread.append(chips, disciplineChips, demandChips, ruleChips, ...editChips ? [editChips] : [], h("div", { class: "alius-cmd" }, h("span", { class: "alius-prompt" }, "MSG>"), input, sendButton));
+    thread.append(chips, disciplineChips, demandChips, ruleChips, personalChips, ...editChips ? [editChips] : [], h("div", { class: "alius-cmd" }, h("span", { class: "alius-prompt" }, "MSG>"), input, sendButton));
     if (unreadMessages(state, current) > 0) queueMicrotask(() => ctx2.onRead(unit.id));
   }
   host.append(h("section", { class: "alius-section alius-comms" }, h("h2", {}, "[ PDA COMMS ]"), h("div", { class: "alius-comms-body" }, list5, thread)));
@@ -30489,6 +30805,42 @@ function renderClaimCard(state, reg, claim2, handlers2) {
       h("button", { type: "button", class: "alius-btn alius-tagchip", "data-action": "stand", onclick: () => handlers2.onLetStand(claim2.unitId) }, "[LET IT STAND]"),
       refusable ? h("button", { type: "button", class: "alius-btn alius-tagchip", "data-action": "refuse", onclick: () => handlers2.onRefuse(claim2.unitId) }, "[REFUSE PUBLICLY]") : null
     )
+  );
+}
+
+// src/engine/personal/words.ts
+var STAKE_WORDS = {
+  obedience: { she: "the commander follows her choices for the rest of the day", commander: "she follows the commander's non-combat orders for the rest of the day" },
+  slot: { she: "she books a slot of the commander's time for tomorrow", commander: "she cannot book the commander's time for a week" },
+  privilege: { she: "her standing over the commander grows", commander: "her standing over the commander shrinks" },
+  drop_demand: { she: "her open demand is granted", commander: "her open demand is dropped with no offence" },
+  token: { she: "she gives a token that the commander wears and cannot take off early for a week", commander: "she gives a token now" },
+  question: { she: "she asks one question and the commander answers truthfully", commander: "the commander asks one question and she answers truthfully" },
+  mark: { she: "the commander bears her mark for three days", commander: "nothing, but she is stung" }
+};
+
+// src/ui/personal/wagerCard.ts
+function renderWagerCard(state, reg, result) {
+  const unitId = String(result.unitId);
+  const name = state.squad.find((u) => u.id === unitId)?.displayName ?? unitId;
+  const game = reg.wagerGames.get(String(result.gameId));
+  const stake = reg.wagerStakes.get(String(result.stakeId));
+  const winner = result.winner === "unit" ? "unit" : result.winner === "commander" ? "commander" : "void";
+  const chip = h("span", { class: "alius-chip", ...analyzeAttrs("glossary:wager", { unitId }) }, "WAGER");
+  chip.style.setProperty("--unit-accent", unitAccent(unitId));
+  const detail = [];
+  if (result.commanderCard !== void 0) detail.push(`YOUR CARD ${String(result.commanderCard)} \xB7 HER CARD ${String(result.herCard)}`);
+  const throws = result.throws;
+  if (Array.isArray(throws)) detail.push(`YOU THREW ${String(result.hand).toUpperCase()} \xB7 SHE THREW ${throws.map((t) => t.hers.toUpperCase()).join(", THEN ")}`);
+  if (result.rounds !== void 0) detail.push(`A BOUT OF ${String(result.rounds)} ROUNDS${result.draw ? " (A DRAW GOES TO HER)" : ""}`);
+  const words3 = STAKE_WORDS[String(stake?.effect)];
+  return h(
+    "div",
+    { class: "alius-wager-card", "data-wager-result": winner },
+    h("p", {}, chip, ` ${winner === "unit" ? `${name.toUpperCase()} WINS` : winner === "commander" ? "THE COMMANDER WINS" : "NOBODY WINS \u2014 VOID"}`),
+    h("p", { class: "alius-dim" }, `${String(game?.label ?? result.gameId)} for ${String(stake?.text ?? result.stakeId)}.`),
+    ...detail.map((line2) => h("p", { class: "alius-dim" }, line2)),
+    words3 && winner !== "void" ? h("p", {}, winner === "unit" ? `Her stake: ${words3.she}.` : `The commander's stake: ${words3.commander}.`) : null
   );
 }
 
@@ -31679,6 +32031,106 @@ function kindProvider(subject, env, k) {
   if (relief !== null) lines.push(`It lowers her want by ${relief}.`);
   return { lines };
 }
+var GAME_ODDS = { coin: 50, rps: 44, high_card: 46 };
+var bandWord = (p) => p < 0.05 ? "hopeless" : p < 0.25 ? "a long shot" : p < 0.55 ? "an even fight" : "likely";
+var HANDS_NAMES = { kills: "she lands at least three killing blows", no_damage: "she takes no damage", objective: "the run's objective is done" };
+function stakeLines(reg, stakeId) {
+  const stake = reg.wagerStakes.get(stakeId);
+  const words3 = STAKE_WORDS[String(stake?.effect)];
+  return words3 ? [`If she wins: ${words3.she}.`, `If the commander wins: ${words3.commander}.`] : [];
+}
+function oddsLine(state, reg, k, gameId, unitId, pick2) {
+  const kind = String(reg.wagerGames.get(gameId)?.kind);
+  if (kind === "sparring") {
+    if (pick2 === void 0) return null;
+    const odds = sparringOdds(state, reg, unitId, pick2);
+    const pct5 = k.raw(Math.round(odds * 100));
+    return `The commander's chance in the bout: ${bandWord(odds)}${pct5 !== null ? ` (about ${pct5} %)` : ""}.`;
+  }
+  const pct4 = GAME_ODDS[kind] !== void 0 ? k.raw(GAME_ODDS[kind]) : null;
+  return pct4 !== null ? `The commander wins about ${pct4} % of the time.` : null;
+}
+function tokenProvider(subject, env, k) {
+  const state = env.state;
+  if (!state) return null;
+  const tokenId = typeof subject.data.tokenId === "string" ? subject.data.tokenId : null;
+  const owned = state.personal?.tokens?.owned ?? [];
+  const unitId = (tokenId !== null ? owned.find((t) => t.id === tokenId)?.giverId : void 0) ?? unitIdOf3(subject);
+  if (unitId === null || !state.squad.some((u) => u.id === unitId)) return null;
+  const token = tokenId !== null ? owned.find((t) => t.id === tokenId) : owned.find((t) => t.giverId === unitId);
+  const name = nameOf9(state, unitId);
+  if (!token) {
+    const given = (state.personal?.tokens?.given ?? []).includes(unitId);
+    return { lines: [given ? `${name} has given the commander a token.` : `${name} has not given a token: a close soldier gives one, once.`] };
+  }
+  const lines = [`${token.label}: ${token.worn ? "worn" : "kept, not worn"}.`];
+  const gain = k.raw(TUNING.personal.token.giverAffinityPerDay);
+  lines.push(token.worn ? `While worn it pleases ${name}${gain !== null ? ` (Affinity +${gain} a day)` : ""}; to take it off is to hurt her: it costs Affinity and stress.` : `Worn, it pleases ${name} a little every day; to take it off later costs her Affinity and stress.`);
+  if (token.lockedUntil !== void 0 && token.lockedUntil > state.day) lines.push(`It is locked until day ${token.lockedUntil}: to take it off early also breaks a promise.`);
+  return { lines };
+}
+function tokenKindProvider(subject, env) {
+  const kind = env.registries.tokenKinds.get(subject.id);
+  if (!kind) return null;
+  return { lines: [kind.minTier === "romantic" ? "Only a soldier in a romantic relationship with the commander gives this kind." : "A close or romantic soldier may give this kind."] };
+}
+function wagerProvider(subject, env, k) {
+  const state = env.state;
+  if (!state) return null;
+  const reg = env.registries;
+  const wagerId = typeof subject.data.wagerId === "string" ? subject.data.wagerId : null;
+  const open3 = state.personal?.wagers?.open ?? [];
+  const w = wagerId !== null ? open3.find((x) => x.id === wagerId) : open3.find((x) => unitIdOf3(subject) === null || x.unitId === unitIdOf3(subject));
+  const unitId = w?.unitId ?? unitIdOf3(subject);
+  if (unitId === null || !state.squad.some((u) => u.id === unitId)) return null;
+  const name = nameOf9(state, unitId);
+  if (!w) return { lines: [`${name} has no wager open: a soldier with a will of her own may challenge the commander, and the commander may challenge her.`] };
+  const game = reg.wagerGames.get(w.gameId);
+  const stake = reg.wagerStakes.get(w.stakeId);
+  const lines = [`${w.by === "unit" ? `${name} challenged the commander` : `The commander challenged ${name}`}: ${String(game?.label ?? w.gameId)}, for ${String(stake?.text ?? w.stakeId)}.`, ...stakeLines(reg, w.stakeId)];
+  if (game?.kind === "expedition_bet" && w.pick !== void 0) lines.push(`She bets it happens: ${HANDS_NAMES[w.pick] ?? w.pick}. It waits for the next run with her.`);
+  const odds = oddsLine(state, reg, k, w.gameId, unitId, w.pick);
+  if (odds !== null) lines.push(odds);
+  return { lines };
+}
+function gameProvider(subject, env, k) {
+  const game = env.registries.wagerGames.get(subject.id);
+  if (!game) return null;
+  const HOW = {
+    coin: "One toss; no skill is involved.",
+    rps: "The commander picks a hand and hers is thrown; a tie is thrown again once, and a second tie is void.",
+    high_card: "Each draws a card from one to thirteen; the higher wins and a tie is void.",
+    sparring: "A bout on the combat rules with a handicap she allows; it takes a slot and trains strength. A weak body really is weaker.",
+    expedition_bet: "She bets on the next run with her: killing blows, no damage taken or the objective. It is void after a week."
+  };
+  const lines = [HOW[String(game.kind)] ?? ""];
+  const pct4 = GAME_ODDS[String(game.kind)] !== void 0 ? k.raw(GAME_ODDS[String(game.kind)]) : null;
+  if (pct4 !== null) lines.push(`The commander wins about ${pct4} % of the time.`);
+  return { lines: lines.filter((l) => l !== "") };
+}
+function stakeProvider(subject, env) {
+  const stake = env.registries.wagerStakes.get(subject.id);
+  const state = env.state;
+  if (!stake || !state) return null;
+  const lines = stakeLines(env.registries, subject.id);
+  const unitId = unitIdOf3(subject);
+  if (unitId !== null && state.squad.some((u) => u.id === unitId)) {
+    const name = nameOf9(state, unitId);
+    if (stakeOffered(state, env.registries, unitId, stake)) lines.push(`It is offered to ${name} now.`);
+    else lines.push(contentAllowed(state, env.registries, stake, unitId) ? `It is not offered to ${name} now: what it asks for is not possible.` : `It is not offered to ${name}: its content category is switched off, or one of her own limits.`);
+  }
+  return { lines };
+}
+function obedienceProvider(_subject, env) {
+  const state = env.state;
+  if (!state) return null;
+  const o = obedienceOf(state);
+  if (o === null) return { lines: ["No day of obedience is under way."] };
+  const name = nameOf9(state, o.unitId);
+  return {
+    lines: o.who === "commander" ? [`Today the commander follows ${name}'s choices outside combat: her pick is pre-selected, and choosing against it counts as overriding her (Trust and Affinity fall, her Impunity rises).`] : [`Today ${name} is under the commander's orders: she follows the commander's non-combat orders, refuses nothing and asks for nothing on her own.`]
+  };
+}
 function registerPersonalProviders() {
   registerAnalyzeProvider("glossary:device_access", deviceAccessProvider);
   registerAnalyzeProvider("glossary:booking", bookingProvider);
@@ -31686,6 +32138,12 @@ function registerPersonalProviders() {
   registerAnalyzeProvider("glossary:claimed", claimedProvider);
   registerAnalyzeProvider("deviceAccessRules", ruleProvider2);
   registerAnalyzeProvider("bookingKinds", kindProvider);
+  registerAnalyzeProvider("glossary:token", tokenProvider);
+  registerAnalyzeProvider("glossary:wager", wagerProvider);
+  registerAnalyzeProvider("glossary:obedience", obedienceProvider);
+  registerAnalyzeProvider("tokenKinds", tokenKindProvider);
+  registerAnalyzeProvider("wagerGames", gameProvider);
+  registerAnalyzeProvider("wagerStakes", stakeProvider);
 }
 
 // src/analysis/providers/power.ts
@@ -33743,10 +34201,14 @@ function createApp(st, deps) {
     contentLine: () => contentLine(state, registries),
     // P9d: the same text as the `content` directive, for the prose calls
     toast: (kind, text2) => toast(kind, text2),
-    onUi: routeUi
+    onUi: routeUi,
+    onUnitReply: (unitId, text2) => {
+      personal.onReply(unitId, text2);
+    }
+    // P9c: her first reply answers a question she lost
   };
   const scene = createSceneController(sceneDeps);
-  const comms = createComms({ ...sceneDeps, scene, personal: { beforeSend: (u, t) => personal.beforeSend(u, t), answerEdit: (k) => personal.answerEdit(k) } });
+  const comms = createComms({ ...sceneDeps, scene, personal: { beforeSend: (u, t) => personal.beforeSend(u, t), answerEdit: (k) => personal.answerEdit(k), onReply: (u, t) => personal.onReply(u, t) } });
   const worldDeps = {
     st,
     app: sceneApp,
@@ -33801,6 +34263,15 @@ function createApp(st, deps) {
     context,
     refreshContext: applyContext,
     startScene: (o) => beginScene(o),
+    // a wager was decided: its result card (who won, what the game showed, what the stake did)
+    onWagerResult: (result) => {
+      const s = state;
+      if (!s) return;
+      const host = h("div");
+      host.append(renderWagerCard(s, registries, result));
+      shell.open();
+      void shell.modal({ title: "WAGER", body: host, actions: [{ label: "[ OK ]", value: "ok" }] });
+    },
     // she claimed the commander in public: the card is answered at once (LET IT STAND or REFUSE PUBLICLY)
     onClaim: (unitId) => {
       const s = state;
@@ -34087,7 +34558,9 @@ function createApp(st, deps) {
       options: dilemmaOptions(s, registries),
       onChoose: (i, route) => void dilemmas.choose(i, route),
       unitName: (id) => s.squad.find((u) => u.id === id)?.displayName ?? id,
-      scapegoat: scapegoatView(s, registries)
+      scapegoat: scapegoatView(s, registries),
+      herPick: herPickView(s, registries)
+      // P9c: a day the commander obeys her
     });
   }
   function openDilemmaModal() {
@@ -35113,7 +35586,10 @@ function createApp(st, deps) {
       }),
       onPeel: (unitId, part) => void act({ type: "device/remove_decor", payload: { unitId, part } }),
       // P9c
-      onCancelBooking: (id) => void personal.cancelBooking(id)
+      onCancelBooking: (id) => void personal.cancelBooking(id),
+      onWager: (unitId, choice) => void personal.challenge({ unitId, ...choice }),
+      onWear: (id) => void personal.wearToken(id),
+      onTakeOff: (id) => void personal.takeOffToken(id)
     })
   );
   shell.registerTab(
@@ -35234,6 +35710,12 @@ function createApp(st, deps) {
         if (unit?.some((m) => m.from !== "commander" && !m.read)) api.dispatch({ type: "dm/read", payload: { unitId } }, { expectChatId: st.getActiveChat()?.chatId });
       },
       onAnswer: (proposalId, answer, condition) => void act({ type: "proposal/answer", payload: { proposalId, answer, ...condition !== void 0 ? { condition } : {} } }),
+      personal: {
+        onAnswerToken: (offerId, accept) => void personal.answerToken(offerId, accept),
+        onAnswerWager: (wagerId, accept) => void personal.answerWager(wagerId, accept),
+        onPlayWager: (wagerId, pick2) => void personal.playWager(wagerId, pick2),
+        onAnswerQuestion: (wagerId, text2) => void personal.answerQuestion(wagerId, text2)
+      },
       edit: () => pendingEdit,
       onAnswerEdit: (keep) => {
         pendingEdit = null;

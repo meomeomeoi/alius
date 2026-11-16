@@ -3,6 +3,7 @@ import { courtshipChips } from '../engine/personal/courtship';
 import type { ProposalAnswer } from '../engine/relations/proposals';
 import type { CampaignState, PendingProposal } from '../engine/state/types';
 import { analyzeAttrs } from './analyze/mark';
+import { defiesHint, markPick, obeyedBy } from './personal/obey';
 import { h } from './dom';
 
 export const kindLabel = (s: string): string => s.replace(/_/g, ' ').toUpperCase();
@@ -26,14 +27,18 @@ export function drawProposalChips(
     const name = (state.squad.find((u) => u.id === p.unitId)?.displayName ?? p.unitId).toUpperCase();
     const label = h('span', { class: 'alius-chip-label' }, p.from === 'unit' ? `${name} PROPOSES: ${kindLabel(p.kind)}` : `${name}: ${kindLabel(p.kind)} — OPENLY OR SECRETLY?`);
     if (reg && courtshipChips(state, reg, p)) {
-      host.append(courtingGroup(p, label, onAnswer));
+      const group = courtingGroup(p, label, onAnswer);
+      pickForObedience(state, p, group);
+      host.append(group);
       continue;
     }
     const buttons: Array<[string, ProposalAnswer]> = p.needsDisclosure
       ? [['[OPENLY]', 'accept'], ['[SECRETLY]', 'accept_secret'], ['[NOT NOW]', 'not_now']]
       : p.from === 'commander' ? [['[NOT NOW]', 'not_now']] : [['[ACCEPT]', 'accept'], ['[DECLINE]', 'decline'], ['[NOT NOW]', 'not_now']];
-    host.append(h('div', { class: 'alius-chip-group', 'data-proposal': p.id }, label,
-      ...buttons.map(([text, answer]) => h('button', { type: 'button', class: 'alius-btn alius-tagchip', onclick: () => onAnswer(p.id, answer) }, text))));
+    const group = h('div', { class: 'alius-chip-group', 'data-proposal': p.id }, label,
+      ...buttons.map(([text, answer]) => h('button', { type: 'button', class: 'alius-btn alius-tagchip', onclick: () => onAnswer(p.id, answer) }, text)));
+    pickForObedience(state, p, group);
+    host.append(group);
   }
 }
 
@@ -61,4 +66,14 @@ function courtingGroup(p: PendingProposal, label: HTMLElement, onAnswer: (id: st
   }
   draw();
   return group;
+}
+
+/** P9c: a day the commander obeys her: her own proposal's ACCEPT is her pick; every other answer defies her. */
+function pickForObedience(state: CampaignState, p: PendingProposal, group: HTMLElement): void {
+  const obeyed = p.from === 'unit' ? obeyedBy(state, p.unitId) : null;
+  if (obeyed === null) return;
+  for (const b of group.querySelectorAll<HTMLElement>('button')) {
+    if (b.textContent === '[ACCEPT]') markPick(b);
+  }
+  group.append(defiesHint(obeyed));
 }

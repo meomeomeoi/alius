@@ -2696,6 +2696,41 @@
   flex: 1 1 14em;
 }
 
+/* Chunk (b): tokens, wagers and the day of obedience. */
+#alius-shell .alius-tokens,
+#alius-shell .alius-wager-form,
+#alius-shell .alius-challenge,
+#alius-shell .alius-wager-card {
+  margin: 6px 0;
+}
+
+#alius-shell .alius-token,
+#alius-shell .alius-wager-form,
+#alius-shell .alius-token-mark {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin: 3px 0;
+}
+
+#alius-shell .alius-token[data-worn='true'] .alius-chip {
+  border-color: var(--alius-accent);
+}
+
+#alius-shell [data-preselected='true'] {
+  border: var(--alius-line);
+  color: var(--alius-accent);
+}
+
+#alius-shell .alius-defies {
+  font-style: italic;
+}
+
+#alius-shell .alius-chip-group[data-personal] .alius-chip {
+  border-color: var(--unit-accent, var(--alius-accent));
+}
+
 /* P5: world map, mission board, expeditions */
 .alius-map { position: relative; max-width: 100%; }
 .alius-map-img { display: block; width: 100%; height: auto; }

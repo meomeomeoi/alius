@@ -31,7 +31,7 @@ export interface Comms {
   ignoreNight(): void;
 }
 
-export type CommsDeps = SceneDeps & { scene: Pick<SceneController, 'start'>; /** P9c: the level-4 edit of an outgoing DM. */ personal?: Pick<PersonalController, 'beforeSend' | 'answerEdit'> };
+export type CommsDeps = SceneDeps & { scene: Pick<SceneController, 'start'>; /** P9c: the level-4 edit of an outgoing DM. */ personal?: Pick<PersonalController, 'beforeSend' | 'answerEdit'> & Partial<Pick<PersonalController, 'onReply'>> };
 
 const HISTORY = 6;
 
@@ -133,6 +133,7 @@ export function createComms(deps: CommsDeps): Comms {
       if (reply === null || chatId() !== expect) return;
       const received = app.dispatch({ type: 'dm/receive', payload: { unitId, text: reply } }, { expectChatId: expect });
       if (failed(received)) return;
+      deps.personal?.onReply?.(unitId, reply); // P9c: her first reply after a lost question wager answers it
       deps.onUi({ type: 'transcript' });
       await readExchange(expect, unitId, text.trim(), reply);
     },

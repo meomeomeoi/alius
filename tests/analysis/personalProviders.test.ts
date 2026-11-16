@@ -109,6 +109,96 @@ describe('glossary:courtship and glossary:claimed', () => {
   });
 });
 
+describe('glossary:token', () => {
+  const held = (over: Record<string, unknown> = {}): CampaignState => {
+    const s = partner(plain(reg), ANN, { lead: 'balanced', stateId: 'confidant', affinity: 60 });
+    s.personal = { seq: 1, tokens: { owned: [{ id: 't1', giverId: ANN, kindId: 'patch', label: "Ann's patch", day: 1, worn: true, ...over }], given: [ANN] } };
+    return s;
+  };
+
+  it('says what is worn and what taking it off costs; a locked one also breaks a promise', () => {
+    const text = read('glossary:token', held(), { tokenId: 't1' });
+    expect(text).toContain("Ann's patch");
+    expect(text).toContain('worn');
+    expect(text).toContain('take it off');
+    expect(text).not.toContain('promise');
+    const locked = read('glossary:token', held({ lockedUntil: 9 }), { tokenId: 't1' });
+    expect(locked).toContain('promise');
+    expect(locked).toContain('day 9');
+  });
+
+  it('by soldier: whether she gave one; the daily gain only with raw values on', () => {
+    const s = held();
+    expect(read('glossary:token', s, { unitId: ANN })).toContain('Ann');
+    expect(read('glossary:token', s, { unitId: ANN })).not.toMatch(/\+1/);
+    expect(read('glossary:token', s, { unitId: ANN }, true)).toMatch(/\+1/);
+    expect(read('glossary:token', plain(reg), { unitId: ANN })).toContain('has not given');
+  });
+
+  it('the kind entries read: who may give it', () => {
+    expect(read('tokenKinds:plyx_ring', plain(reg), {})).toMatch(/romantic/i);
+    expect(read('tokenKinds:dog_tag', plain(reg), {})).toMatch(/close/i);
+  });
+});
+
+describe('glossary:wager', () => {
+  const open = (over: Record<string, unknown> = {}): CampaignState => {
+    const s = partner(plain(reg), ANN, { lead: 'balanced', stateId: 'friend', affinity: 60 });
+    s.personal = { seq: 1, wagers: { open: [{ id: 'wg_1', unitId: ANN, by: 'unit', gameId: 'coin', stakeId: 'privilege', day: 5, status: 'accepted', ...over }], log: [] } };
+    return s;
+  };
+
+  it('says the game and the stake for both winners; the odds only with raw values on', () => {
+    const text = read('glossary:wager', open(), { wagerId: 'wg_1' });
+    expect(text).toContain('Ann');
+    expect(text).toContain('Coin');
+    expect(text).toMatch(/if she wins/i);
+    expect(text).toMatch(/if the commander wins/i);
+    expect(text).not.toMatch(/\d+ %/);
+    expect(read('glossary:wager', open(), { wagerId: 'wg_1' }, true)).toMatch(/50 %/);
+  });
+
+  it('sparring: the measured band of the handicap in words, the percentage with raw values', () => {
+    const s = open({ gameId: 'sparring', pick: 'one_arm' });
+    const words = read('glossary:wager', s, { wagerId: 'wg_1' });
+    expect(words).toMatch(/hopeless|long shot|even|likely/);
+    expect(words).not.toMatch(/\d+ %/);
+    expect(read('glossary:wager', s, { wagerId: 'wg_1' }, true)).toMatch(/\d+ %/);
+    // the hardest handicap is never worse than none
+    const none = read('glossary:wager', open({ gameId: 'sparring', pick: 'none' }), { wagerId: 'wg_1' }, true);
+    expect(none).toMatch(/\d+ %/);
+  });
+
+  it('with no wager it explains the rule for a soldier; the game and stake entries read', () => {
+    expect(read('glossary:wager', partner(plain(reg), ANN, { lead: 'balanced', stateId: 'friend', affinity: 60 }), { unitId: ANN })).toContain('no wager');
+    expect(read('wagerGames:rps', plain(reg), {})).toMatch(/hand/i);
+    expect(read('wagerGames:coin', plain(reg), {}, true)).toMatch(/50 %/);
+    expect(read('wagerStakes:privilege', plain(reg), {})).toMatch(/standing|privilege/i);
+  });
+
+  it('a stake that is not offered to her says so, and why not in words', () => {
+    const s = partner(plain(reg), ANN, { lead: 'balanced', stateId: 'friend', affinity: 60 });
+    const text = read('wagerStakes:her_mark', s, { unitId: ANN });
+    expect(text).toMatch(/not offered/i);
+    expect(read('wagerStakes:privilege', s, { unitId: ANN })).toMatch(/offered/i);
+  });
+});
+
+describe('glossary:obedience', () => {
+  it('says who follows whom today, and what it costs to choose otherwise', () => {
+    const s = partner(plain(reg), ANN, { lead: 'balanced', stateId: 'friend', affinity: 60 });
+    s.personal = { seq: 0, obedience: { unitId: ANN, day: s.day, who: 'commander' } };
+    const a = read('glossary:obedience', s, {});
+    expect(a).toContain('Ann');
+    expect(a).toMatch(/the commander follows/i);
+    expect(a).toMatch(/overrode|defies|against/i);
+    s.personal.obedience!.who = 'unit';
+    expect(read('glossary:obedience', s, {})).toMatch(/she follows/i);
+    delete s.personal;
+    expect(read('glossary:obedience', s, {})).toContain('No day of obedience');
+  });
+});
+
 void BEA;
 void personalDayStep;
 void ctxFrom;

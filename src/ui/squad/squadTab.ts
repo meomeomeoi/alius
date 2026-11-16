@@ -1,6 +1,7 @@
 import type { ChallengeStat } from '../../engine/power/moves';
 import { renderHierarchyBlock } from '../power/hierarchy';
 import { renderDeviceBlock } from '../personal/deviceBlock';
+import { renderChallenge, type WagerChoice } from '../personal/wagerForm';
 import type { Entry, Registries } from '../../content/types';
 import { bondOf, PUBLICITY_LEVELS, wantBand, wantEligible, wantOf } from '../../engine/bonds';
 import { knownSkills, loadoutSize, respecCost, xpToNext } from '../../engine/progression';
@@ -61,6 +62,11 @@ export interface SquadTabCtx {
   /** P9c: PEEL on a part of her decor, and CANCEL on one of her bookings (the DEVICE block of the dossier). */
   onPeel?: (unitId: string, part: DecorPart) => void;
   onCancelBooking?: (bookingId: string) => void;
+  /** P9c chunk (b): the commander challenges her (the dossier's [CHALLENGE] form). */
+  onWager?: (unitId: string, choice: WagerChoice) => void;
+  /** P9c chunk (b): WEAR / TAKE OFF on a token (the CMDR dossier's TOKENS block). */
+  onWear?: (tokenId: string) => void;
+  onTakeOff?: (tokenId: string) => void;
 }
 
 const unknown = (id: string) => `UNKNOWN ${id}`;
@@ -363,6 +369,7 @@ function unitBlock(unit: Unit, ctx: SquadTabCtx, state: CampaignState): HTMLElem
       gone ? null : disciplineLine(unit, state, ctx),
       gone ? null : hierarchyBlock(unit, state, ctx),
       gone ? null : renderDeviceBlock(state, ctx.registries, unit.id, { onPeel: (id, part) => ctx.onPeel?.(id, part), onCancel: (id) => ctx.onCancelBooking?.(id) }),
+      gone || !ctx.onWager ? null : renderChallenge(state, ctx.registries, unit.id, (choice) => ctx.onWager?.(unit.id, choice)),
       gone ? null : restrictionLine(unit, state),
       gone || !ctx.onPunish || unit.kind !== 'named' ? null : renderDisciplineMenu({ state, registries: reg, unitId: unit.id, onPunish: (measure, days) => ctx.onPunish!(unit.id, measure, days) }),
       gone ? null : h('p', { class: 'alius-stress' }, chip(`STRESS ${stressBand(unit.stress).toUpperCase()}${raw ? ` (${unit.stress})` : ''}`, 'glossary:stress', live)),
@@ -413,7 +420,7 @@ export function renderSquadTab(host: HTMLElement, ctx: SquadTabCtx): void {
     );
     return;
   }
-  renderCmdrCard(host, { state, registries: ctx.registries, raw: ctx.settings().showRawValues });
+  renderCmdrCard(host, { state, registries: ctx.registries, raw: ctx.settings().showRawValues, ...(ctx.onWear ? { onWear: ctx.onWear } : {}), ...(ctx.onTakeOff ? { onTakeOff: ctx.onTakeOff } : {}) });
   if (state.squad.length === 0) {
     host.append(h('section', { class: 'alius-section' }, h('p', {}, 'NO UNITS ASSIGNED')));
     return;

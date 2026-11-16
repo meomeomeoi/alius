@@ -1485,5 +1485,35 @@
       "courtship",
       "publicity"
     ]
+  },
+  {
+    "id": "token",
+    "term": "Token",
+    "short": "A keepsake a close soldier gives the commander, once. The commander may wear two: they please the giver and others take note.",
+    "long": "AUTHOR TO WRITE: A soldier who is close to the commander offers one token, once. Accepted, it is kept; worn, it earns her a little Affinity every day and the others react: a rival is stung, a friend takes note. Taking it off is an offence to her, and a token won in a wager is locked for a week: taking it off early also breaks a promise.",
+    "see": [
+      "wager",
+      "courtship"
+    ]
+  },
+  {
+    "id": "wager",
+    "term": "Wager",
+    "short": "A bet between the commander and a soldier: a game and a stake. The result is the dice's, not a social check, and each side wins its own stake.",
+    "long": "AUTHOR TO WRITE: A soldier with a will of her own challenges the commander, or the commander challenges her. Five games: a coin, rock-paper-scissors, high card, a sparring bout on the combat rules with a handicap she allows, and a bet on the next run. The stakes are a day of obedience, a slot, a privilege, her demand, a token, a truthful answer and, if switched on, her mark. A stake whose category is off is never offered.",
+    "see": [
+      "obedience",
+      "token"
+    ]
+  },
+  {
+    "id": "obedience",
+    "term": "Day of obedience",
+    "short": "The loser of a wager follows the winner for the rest of the day, outside combat. Choosing against her pick counts as overriding her.",
+    "long": "AUTHOR TO WRITE: When the commander loses, the day goes her way: her pick is pre-selected in her demand, her proposal, a decision and a squad vote, and choosing otherwise costs Trust and Affinity and raises her Impunity. When she loses she follows the commander's non-combat orders: she refuses nothing, asks for nothing and takes nothing on her own initiative. Activities, upgrades and expeditions are never affected.",
+    "see": [
+      "wager",
+      "impunity"
+    ]
   }
 ]

@@ -1,4 +1,5 @@
 import type { Registries } from '../../content/types';
+import { herPickView } from '../personal/obey';
 import { canAutoResolve, defaultEnemyName } from '../../engine/combat';
 import { unitStats } from '../../engine/combat/stats';
 import type { CampaignState } from '../../engine/state/types';
@@ -176,7 +177,7 @@ export function renderExpeditionScreen(host: HTMLElement, ctx: ExpeditionScreenC
       panel.replaceChildren(slot);
       renderDilemma(slot, {
         title: generated.title ?? fixed?.title ?? 'EVENT', setup: generated.setup ?? fixed?.setup ?? '', scale: generated.scale,
-        waiting: generated.status === 'requested', options: dilemmaOptions(state, reg), onChoose: ctx.onDilemmaChoose, unitName,
+        waiting: generated.status === 'requested', options: dilemmaOptions(state, reg), onChoose: ctx.onDilemmaChoose, unitName, herPick: herPickView(state, reg),
       });
       root.append(panel);
       return;

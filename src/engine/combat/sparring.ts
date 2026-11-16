@@ -1,7 +1,7 @@
 import type { WagerHandicap } from '../../content/schemas';
 import type { Registries } from '../../content/types';
 import { commanderProfile } from '../commander/profile';
-import type { Rng } from '../rng';
+import { Rng, seedRng } from '../rng';
 import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
 import { commanderMaxHp } from './crisis';
@@ -81,4 +81,14 @@ export function sparringBout(state: CampaignState, reg: Registries, rng: Rng, un
   if (cs.outcome === 'won') return { winner: 'commander', rounds };
   if (cs.outcome === 'lost') return { winner: 'unit', rounds };
   return { winner: 'unit', rounds, draw: true };
+}
+
+/**
+ * How often the commander wins this bout, measured: `n` bouts on fixed seeds (so the answer never changes between two looks at the
+ * same state). What the analysis panel shows as a band, and as a percentage only with raw values on. Draws nothing from the campaign.
+ */
+export function sparringOdds(state: CampaignState, reg: Registries, unitId: string, handicapId: string, n = 40): number {
+  let wins = 0;
+  for (let i = 1; i <= n; i++) if (sparringBout(state, reg, new Rng(seedRng(i)), unitId, handicapId).winner === 'commander') wins++;
+  return wins / n;
 }

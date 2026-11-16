@@ -5,6 +5,7 @@ import { seedRng } from '../../src/engine/rng';
 import type { CampaignState } from '../../src/engine/state/types';
 import { ContextBuilder } from '../../src/llm/context';
 import { sanitizeDmEdit } from '../../src/llm/calls/flavor';
+import { refreshPersonalDirectives } from '../../src/personal/directives';
 import { createPersonal, type PersonalController, type PersonalDeps } from '../../src/personal/controller';
 import { createComms } from '../../src/scene/comms';
 import { createBonds } from '../../src/bonds/controller';
@@ -303,6 +304,67 @@ describe('the smother', () => {
     const r = rig(s);
     expect(await r.personal.onSlotAdvanced()).toBe(true);
     expect(r.startScene).toHaveBeenCalledWith(expect.objectContaining({ participants: [ANN] }));
+  });
+});
+
+describe('chunk (b): tokens, wagers, the truth order', () => {
+  it('the truth directive lasts until her first reply, and that reply becomes a fact', () => {
+    const s = stateWith(1);
+    s.personal = { seq: 1, truth: { unitId: ANN, wagerId: 'wg_1', question: 'Who did you serve before?' } };
+    s.scene = { id: 'sc', day: s.day, slot: s.slot, participants: [ANN], mode: 'private', locationId: 'mess_hall', exchanges: 0 } as never;
+    const r = rig(s);
+    refreshPersonalDirectives(r.ctx, r.h.state(), reg);
+    expect(r.ctx.build(r.h.state(), 5000).directives).toContain('Who did you serve before?');
+    expect(r.personal.onReply(BEA, 'Not her.')).toBe(false); // someone else's reply does not count
+    expect(r.h.state().personal!.truth).toBeDefined();
+    expect(r.personal.onReply(ANN, '  Aurum security, six years.  ')).toBe(true);
+    expect(r.h.state().personal!.truth).toBeUndefined();
+    const fact = r.h.state().memory.facts.at(-1)!;
+    expect(fact).toMatchObject({ about: [ANN], knownBy: [ANN] });
+    expect(fact.text).toContain('Aurum security, six years.');
+    refreshPersonalDirectives(r.ctx, r.h.state(), reg);
+    expect(r.ctx.build(r.h.state(), 5000).directives).not.toContain('Who did you serve before?');
+    expect(r.personal.onReply(ANN, 'again')).toBe(false); // the first reply only
+  });
+
+  it('a reply of her own initiative while nothing is owed records nothing', () => {
+    const r = rig(stateWith(1));
+    expect(r.personal.onReply(ANN, 'hello')).toBe(false);
+    expect(r.h.log).toEqual([]);
+  });
+
+  it('the actions go through the engine and toast a refusal', () => {
+    const s = stateWith(1);
+    s.personal = { seq: 3, tokens: { owned: [{ id: 't1', giverId: ANN, kindId: 'patch', label: "Ann's patch", day: 1, worn: false }], given: [ANN] }, wagers: { open: [{ id: 'wg_1', unitId: ANN, by: 'unit', gameId: 'coin', stakeId: 'privilege', day: s.day, status: 'offered' }], log: [] } };
+    const r = rig(s);
+    expect(r.personal.wearToken('t1')).toBe(true);
+    expect(r.h.state().personal!.tokens!.owned[0].worn).toBe(true);
+    expect(r.personal.takeOffToken('t1')).toBe(true);
+    expect(r.personal.takeOffToken('t1')).toBe(false);
+    expect(r.h.toasts.at(-1)).toMatchObject({ kind: 'error' });
+    expect(r.personal.answerWager('wg_1', true)).toBe(true);
+    expect(r.personal.playWager('wg_1')).toBe(true);
+    expect(r.h.state().personal!.wagers!.log).toHaveLength(1);
+    expect(r.personal.answerToken('nope', true)).toBe(false);
+    expect(r.personal.answerQuestion('nope', 'x')).toBe(false);
+  });
+
+  it('the commander challenges through the controller', () => {
+    const r = rig(stateWith(1, (s) => { s.relations[ANN].affinity = 60; }));
+    expect(r.personal.challenge({ unitId: ANN, gameId: 'coin', stakeId: 'privilege' })).toBe(true);
+    expect(r.h.state().personal!.wagers!.open[0]).toMatchObject({ by: 'commander', status: 'accepted' });
+    expect(r.personal.challenge({ unitId: ANN, gameId: 'coin', stakeId: 'privilege' })).toBe(false); // one at a time
+  });
+
+  it('a result is shown through onWagerResult, else announced', () => {
+    const shown: unknown[] = [];
+    const h = worldHarness(reg, stateWith(1));
+    const personal = createPersonal({ ...h.deps, context: new ContextBuilder(), refreshContext: () => {}, onWagerResult: (e: unknown) => shown.push(e) } as never);
+    personal.onEvents([{ type: 'wager_resolved', wagerId: 'wg_1', unitId: ANN, gameId: 'coin', stakeId: 'privilege', winner: 'unit' }]);
+    expect(shown).toHaveLength(1);
+    const r = rig(stateWith(1));
+    r.personal.onEvents([{ type: 'wager_resolved', wagerId: 'wg_1', unitId: ANN, gameId: 'coin', stakeId: 'privilege', winner: 'commander' }]);
+    expect(r.h.toasts.at(-1)).toMatchObject({ kind: 'info', text: expect.stringContaining('Ann') });
   });
 });
 

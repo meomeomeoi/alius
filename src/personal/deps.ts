@@ -20,6 +20,8 @@ export interface PersonalDeps extends WorldDeps {
   confirmEdit?: (p: EditPrompt) => Promise<'keep' | 'revert'>;
   /** A soldier claimed the commander in public: shows the claim card. Without it the claim is only announced in a toast. */
   onClaim?: (unitId: string) => void;
+  /** A wager was decided: shows its result card. Without it the result is only announced in a toast. */
+  onWagerResult?: (result: Record<string, unknown>) => void;
 }
 
 export type { WorldDeps };
