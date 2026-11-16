@@ -138,7 +138,9 @@ var TUNING = Object.freeze({
     closedPromisesMax: 30,
     /** P3b: the retrieval bonus of a pinned fact, and how far past `factsMax` the hard ceiling sits (the fold runs first). */
     pinnedBonus: 2,
-    hardCeiling: 1.25
+    hardCeiling: 1.25,
+    /** P3b: days a fast / slow rumor takes to reach the whole squad. */
+    rumor: Object.freeze({ fast: 2, slow: 4 })
   }),
   /** P3: PDA DMs and night visits. */
   comms: Object.freeze({
@@ -19866,6 +19868,38 @@ registerAction("memory/compact", (draft, payload) => {
   return [{ type: "chronicle_compacted", kind, day, toDay: entry.toDay ?? null }];
 });
 
+// src/engine/memory/rumors.ts
+function hashDay(factId, unitId, span) {
+  return fnv1a(`${factId}\0${unitId}`) % Math.max(1, span);
+}
+var spanOf = (spread2, importance) => {
+  const w = TUNING.memory.rumor[spread2];
+  return importance >= 4 ? Math.max(1, Math.floor(w / 2)) : w;
+};
+function spreadRumors(draft, _ctx) {
+  const events = [];
+  const squad = draft.squad.filter((u) => u.kind === "named" && isLiving(u)).map((u) => u.id);
+  for (const fact of draft.memory.facts) {
+    if (!fact.spread) continue;
+    if (fact.knownBy.includes("*")) {
+      delete fact.spread;
+      continue;
+    }
+    const span = spanOf(fact.spread, fact.importance);
+    const age = draft.day - fact.day;
+    const heard = [];
+    for (const id of squad) {
+      if (fact.knownBy.includes(id) || age < hashDay(fact.id, id, span) + 1) continue;
+      fact.knownBy.push(id);
+      (fact.heard ??= {})[id] = draft.day;
+      heard.push(id);
+    }
+    if (heard.length > 0) events.push({ type: "rumor_heard", factId: fact.id, unitIds: heard });
+    if (squad.every((id) => fact.knownBy.includes(id)) || age >= span) delete fact.spread;
+  }
+  return events;
+}
+
 // src/engine/actions/memory.ts
 var isObj13 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var PRESETS = ["short", "normal", "long", "custom"];
@@ -19922,6 +19956,7 @@ registerAction("memory/edit", (draft, payload) => {
   fact.edited = true;
   return [{ type: "fact_edited", factId: fact.id }];
 });
+registerDayEndStep("dm_rumors", spreadRumors);
 
 // src/engine/personal/intercept.ts
 var ORIGINAL_MAX = 1e3;
@@ -32319,6 +32354,9 @@ function importCampaign(text2) {
 
 // src/analysis/knowledge.ts
 var rules = [];
+function registerKnowledgeRule(rule) {
+  rules.push(rule);
+}
 function holds3(check) {
   try {
     return check() !== false;
@@ -32637,6 +32675,11 @@ function registerBondsProviders() {
   registerAnalyzeProvider("glossary:want", wantProvider);
   registerAnalyzeProvider("glossary:publicity", publicityProvider);
   registerAnalyzeProvider("relationshipRuleTemplates", ruleProvider);
+}
+
+// src/analysis/providers/memory.ts
+function registerMemoryProviders() {
+  registerKnowledgeRule({ fact: (f) => f.hiddenFromCommander !== true });
 }
 
 // src/analysis/providers/personal.ts
@@ -33351,6 +33394,7 @@ function registerCoreProviders() {
   registerBondsProviders();
   registerPowerProviders();
   registerPersonalProviders();
+  registerMemoryProviders();
 }
 
 // src/analysis/describe.ts

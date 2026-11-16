@@ -12,6 +12,7 @@ import { humanize, signed, summarizeCombatEffect } from '../effects';
 import { registerCommanderProviders } from './commander';
 import { registerDisciplineProviders } from './discipline';
 import { registerBondsProviders } from './bonds';
+import { registerMemoryProviders } from './memory';
 import { registerPersonalProviders } from './personal';
 import { registerPowerProviders } from './power';
 import { registerWorldProviders } from './world';
@@ -312,4 +313,5 @@ export function registerCoreProviders(): void {
   registerBondsProviders(); // P9d
   registerPowerProviders(); // P9b
   registerPersonalProviders(); // P9c
+  registerMemoryProviders(); // P3b
 }
