@@ -1525,5 +1525,89 @@
       "impunity",
       "demand"
     ]
+  },
+  {
+    "id": "memory",
+    "term": "Memory",
+    "short": "What the squad remembers of what happens to it: facts, a dossier per soldier, a short chronicle and her story with the commander, told to the story model.",
+    "long": "AUTHOR TO WRITE: Runs, votes, refusals, blame, deaths and what the soldiers do to each other become facts that only the people who were there know. The rest of the squad hears of them later as [[squad_rumor|rumors]]. Old facts are folded into a [[dossier]] instead of being deleted. How much is kept, and how many tokens of every prompt it may use, is set in the settings tab ([[memory_preset|preset]], [[memory_budget|budget]]). Private things never reach a scene with a third soldier present.",
+    "see": [
+      "dossier",
+      "squad_rumor",
+      "memory_preset",
+      "memory_fill"
+    ]
+  },
+  {
+    "id": "memory_preset",
+    "term": "Memory preset",
+    "short": "How much the squad remembers: short, normal or long. Custom lets you set every number once the edit lock is off.",
+    "long": "AUTHOR TO WRITE: A preset sets how many facts are kept before old ones are folded into a [[dossier]], how many are told to the story model, how many days of the chronicle and how many lines of a soldier's story with the commander reach a prompt, and how many tokens that may use ([[memory_budget|budget]]). Changing the preset never deletes anything by itself.",
+    "see": [
+      "memory",
+      "memory_budget",
+      "dossier"
+    ]
+  },
+  {
+    "id": "memory_budget",
+    "term": "Memory budget",
+    "short": "The share of the story prompt that is kept for memory. It never takes the room of the scene header or of the soldiers present.",
+    "long": "AUTHOR TO WRITE: The prompt has one token cap. Memory gets a guaranteed part of it; what memory does not use goes back to everything else. If the budget is more than half of the cap the settings tab warns you, because the rest of the prompt has to fit in what is left. A line that does not fit is cut, the least important first.",
+    "see": [
+      "memory",
+      "memory_fill"
+    ]
+  },
+  {
+    "id": "memory_fill",
+    "term": "Memory fill",
+    "short": "How full the squad's memory is: facts kept, dossiers, chronicle entries, the tokens the last prompt used and the size of the save.",
+    "long": "AUTHOR TO WRITE: When the facts pass the limit of the preset, the oldest are folded into dossiers one soldier at a time; only if that cannot run are the least important ones deleted, past a quarter more than the limit. Pinned facts are counted apart and are never folded or deleted. A hidden fact is not counted here.",
+    "see": [
+      "memory",
+      "dossier",
+      "pinned_fact"
+    ]
+  },
+  {
+    "id": "dossier",
+    "term": "Dossier",
+    "short": "Two short paragraphs about a soldier (or the squad as a whole) that replace her old facts: what only she and the commander know, and what everyone knows.",
+    "long": "AUTHOR TO WRITE: When a soldier has many old facts they are folded into her dossier by the mechanic model (or joined and cut if there is none). The squad's part is told in every scene she is in; her private part only in a private scene with her or in a message to her. You can read the dossier in her file and, with the edit lock off, edit it.",
+    "see": [
+      "memory",
+      "memory_fill"
+    ]
+  },
+  {
+    "id": "squad_rumor",
+    "term": "Squad rumor",
+    "short": "What happened to some of the squad is heard by the rest within a few days. A soldier who only heard of it knows it as hearsay.",
+    "long": "AUTHOR TO WRITE: A fact that the squad should hear of spreads at day end: fast (two days) or slow (four), faster when it matters a lot. The days are fixed by the save, not rolled. In a scene a soldier who only heard of it is told it is a rumor. With the rumor setting on the mechanic model may retell it in the voice of whoever tells it.",
+    "see": [
+      "memory",
+      "rumor"
+    ]
+  },
+  {
+    "id": "pinned_fact",
+    "term": "Pinned fact",
+    "short": "A fact you keep: it is never folded or deleted and it counts more when the story model picks what to remember.",
+    "long": "AUTHOR TO WRITE: Pin a fact in a soldier's memory view. A pinned fact stays in the list however old it gets and is more likely to be told in a scene. You can forget any fact; with the edit lock off you can also rewrite it.",
+    "see": [
+      "memory",
+      "memory_fill"
+    ]
+  },
+  {
+    "id": "hidden_scenes",
+    "term": "Hidden old scenes",
+    "short": "Optionally the chat messages of scenes that are long over are hidden from the story model, once they have been summarized. They stay in the chat for you.",
+    "long": "AUTHOR TO WRITE: Set a number N in the settings tab: the messages of every ended scene older than the last N scenes are hidden from the model (SillyTavern's hide). A scene whose summary failed is never hidden. Turn it back to 0 and exactly the messages Alius hid are shown again; lines SillyTavern or other tools hid are left as they are.",
+    "see": [
+      "memory",
+      "memory_budget"
+    ]
   }
 ]

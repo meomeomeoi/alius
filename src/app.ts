@@ -1776,6 +1776,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     replaceState,
     getContentErrors: () => contentErrors,
     analyze: { registries: () => registries },
+    lastBuild: () => context.lastBuild(), // P3b: the fill indicator of SYS › MEMORY
     skin: () => ({ skin: pickSkin(state, registries, getSettings(st).deviceSkin), assetUrl: deps.assetUrl }),
     debugTools,
     dispatch: (action) => api.dispatch(action, { expectChatId: st.getActiveChat()?.chatId }),

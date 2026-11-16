@@ -2743,6 +2743,37 @@
   margin: 6px 0;
 }
 
+/* Memory (P3b): SYS › MEMORY and the MEMORY view. Palette variables only; no semantic colours (readable mode safe). */
+#alius-shell .alius-memory-presets,
+#alius-shell .alius-memory-row,
+#alius-shell .alius-memory-fact-head,
+#alius-shell .alius-memory-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin: 3px 0;
+}
+
+#alius-shell .alius-memory [aria-pressed='true'] {
+  text-decoration: underline;
+}
+
+#alius-shell .alius-memory input[aria-disabled='true'] {
+  opacity: 0.6;
+}
+
+#alius-shell .alius-memory-block {
+  margin: 6px 0;
+}
+
+#alius-shell .alius-memory-dossier,
+#alius-shell .alius-memory-fact {
+  margin: 4px 0;
+  padding-left: 6px;
+  border-left: 1px solid currentColor;
+}
+
 /* P5: world map, mission board, expeditions */
 .alius-map { position: relative; max-width: 100%; }
 .alius-map-img { display: block; width: 100%; height: auto; }

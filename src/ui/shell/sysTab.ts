@@ -9,6 +9,8 @@ import type { StAdapter } from '../../st/adapter';
 import { exportCampaign, importCampaign, type LoadResult } from '../../st/persistence';
 import { analyzeAttrs, analyzeNative } from '../analyze/mark';
 import { renderContentSection } from '../bonds/content';
+import type { BuildStats } from '../../llm/context';
+import { renderMemorySection } from '../memory/memorySection';
 import { worldChoice } from '../../engine/worldOptions';
 import { pickSkin } from '../device/skins';
 import { h } from '../dom';
@@ -26,6 +28,8 @@ export interface SysCtx {
   /** Dispatches an engine action (used for the per-campaign difficulty). */
   dispatch?: (action: { type: string; payload?: unknown }) => Array<{ type: string; [k: string]: unknown }>;
   debugTools?: Array<{ label: string; run: () => void }>;
+  /** P3b: what the last context block spent, for the MEMORY fill indicator. */
+  lastBuild?: () => BuildStats;
   toast: (kind: ToastKind, text: string) => void;
   modal: (opts: ModalOpts) => Promise<string | null>;
   /** Called after a setting changed so the shell can restyle itself. */
@@ -254,6 +258,21 @@ export function renderSysTab(host: HTMLElement, ctx: SysCtx): void {
     field('Mechanics edit lock', checkbox('editLock', settings.editLock, true), 'editLock'),
   );
 
+  // --- P3b: memory (a campaign is needed: presets and fill are the campaign's)
+  const memoryHost = h('div', { class: 'alius-memory-host' });
+  const drawMemory = (): void => {
+    const state = ctx.getState();
+    if (!state || !ctx.dispatch) {
+      memoryHost.replaceChildren();
+      return;
+    }
+    renderMemorySection(memoryHost, {
+      state, settings: getSettings(st), dispatch: ctx.dispatch, lastBuild: ctx.lastBuild ?? (() => ({ memoryTokens: 0, otherTokens: 0, directiveTokens: 0 })),
+      onChanged: drawMemory, toast: ctx.toast,
+    });
+  };
+  drawMemory();
+
   // --- campaign export / import
   const fileInput = h('input', { type: 'file', accept: 'application/json,.json', class: 'alius-hidden', tabindex: '-1' }) as HTMLInputElement;
   fileInput.addEventListener('change', async () => {
@@ -404,5 +423,5 @@ export function renderSysTab(host: HTMLElement, ctx: SysCtx): void {
   }
 
   renderDebug();
-  host.append(form, backup, debugHost);
+  host.append(form, memoryHost, backup, debugHost);
 }

@@ -16,6 +16,7 @@ import { isControl, isEditable, isInsideOverlay } from './keys';
 import { createModalHost, type ModalOpts } from './modal';
 import { createRouter, type ScreenId } from './router';
 import { renderStatusHeader } from './status';
+import type { BuildStats } from '../../llm/context';
 import { renderSysTab } from './sysTab';
 import { TAB_IDS, createTabBar, tabStub, type TabId } from './tabs';
 import { createToasts, type ToastKind, type ToastOpts } from './toast';
@@ -73,6 +74,8 @@ export interface ShellDeps {
   debugTools?: Array<{ label: string; run: () => void }>;
   /** Called after the SYS tab changed a setting (the app mirrors intimacy settings into the campaign). */
   onSettingsChanged?: () => void;
+  /** P3b: what the last context block spent (the fill indicator of SYS › MEMORY); absent = zeros. */
+  lastBuild?: () => BuildStats;
   /** P7a: content for the analysis tool; without it the shell runs without hover explanations. */
   analyze?: { registries: () => Registries };
   /** P10: the casing of the PDA, asked again on every refresh and settings change (absent: the built-in `ccp_standard`). */
@@ -192,6 +195,7 @@ export function createShell(deps: ShellDeps): ShellApi {
         getContentErrors: deps.getContentErrors,
         getRegistries: deps.analyze?.registries,
         dispatch: deps.dispatch,
+        lastBuild: deps.lastBuild,
         debugTools: deps.debugTools,
         toast,
         modal: (o) => api.modal(o),
