@@ -1,0 +1,129 @@
+# P17 — Staged Scenes and Obscured Presence
+
+**Status: spec.** Release 0.2 (post-release). **Depends on:** P16 (practices, `practice_generate`, the hold and sensory mode), P15 (the dynamic, reactions, compromat), P14, P3 (scenes, participants, intents), P9c (bookings, squad secrets), P9d (lead, publicity), P10 (hub rooms, whereabouts, voices, portraits), P7 (non-body routes), P7a. **Read:** overview; P15; P16; this file; the **Implemented as** of P3, P9c, P9d and P10.
+
+**Analysis tool (P7a):** every new stat, chip and card carries `data-analyze`; Strain and suspicion get a provider through `Knowledge`. **P14:** every generation registers a site.
+
+## Goal
+
+A **staged scene** is a scene the holder sets up: who is where, who knows, what the commander must keep up, and who may come in. The template must cover very different situations with one mechanism. The model case (author's example): the commander serves her in secret under her desk while another soldier walks in to talk to her. Others: kneeling in the corner through her report to the leader, on an open comms line while she speaks to oversight, held alone in her quarters when someone knocks, kept under denial through her meeting.
+
+## 1. The staging template
+
+Registry `stagings` (seeds; the model may compose new ones through `practice_generate` with `kind: 'staging'`, validated against the same vocabulary):
+
+```
+Staging {
+  id, tags: ContentCategoryId[], track, tier,
+  roles: {
+    lead: { requires: { frame, style?, audience?, tracks? } }
+    subject: 'commander'
+    others: [{ role: 'visitor' | 'audience' | 'listener',
+               visibility: 'unaware' | 'aware' | 'remote' | 'arriving',
+               pick: 'reason' | 'friends' | 'leader' | 'anyone_present' }]
+  }
+  condition: 'silence' | 'stillness' | 'posture' | 'task' | 'denial' | 'time'
+  place: { affordances: Affordance[], sceneLocationId? }
+  outcomes: { held, slipped, exposed, stopped } → Effect[] per role
+  weight, description
+}
+```
+
+- **Lead** is the holder; **subject** is always the commander in 0.2; **others** are 0–N soldiers with their own visibility:
+  - `unaware`: present and not knowing (the desk case);
+  - `aware`: watching (it becomes a demonstration, P16 §5 gates apply);
+  - `remote`: on a line (comms, an open DM call);
+  - `arriving`: enters during the scene (§4).
+- **Condition** is what the commander must keep up; it decides what **Strain** (§3) means: risk of discovery (`silence`, `stillness`), composure (`posture`, `task`), endurance (`denial`), the clock (`time`).
+- **Outcomes** per role for each ending: `held` (the condition was kept), `slipped` (Strain crossed its threshold but nobody outside noticed), `exposed` (an unaware or arriving other found out), `stopped` (the stop word, §7).
+
+Draft seeds: `under_the_desk` (service, silence, visitor arriving unaware), `corner_at_report` (posture, the leader aware), `on_the_line` (silence, oversight or a soldier remote), `held_alone` (restraint, time, a visitor arriving by chance), `denial_meeting` (denial, others unaware). Texts `AUTHOR TO WRITE`.
+
+## 2. Places and affordances
+
+`hubRooms[]` / `locations[]` gain `affordances`: `desk`, `curtain`, `lock`, `line`, `bunk`, `cupboard`, `exposed` (the roof), `crowd` (the mess). A staging needs its affordances; code reads affordances, never room ids (P10 rule). Booking a staging is a P9c booking (kind `staging`, tags from the staging) in her place.
+
+## 3. Strain
+
+`scene.staging = { stagingId, strain: 0..100, suspicion: { [unitId]: 0..100 }, mode, tactic, phase }` on the open scene (cleared at scene end; reset on chat switch like everything keyed by scene id, P11 rule).
+
+Each exchange, the engine moves Strain by: the condition's base, the commander's **mode** (§5), her **tactic** (§6), the others present and their attention (a visitor's reason, §4), the track level (practice makes it easier), and a seeded draw. The check that resists it uses a **non-body route** (P10 principle; a social stat — Insight or Authority by condition — and the `restraint`/`service` track level), never a body stat alone.
+
+Thresholds (`TUNING.staging`): **slip** (the condition broke: a sound, a movement) and **exposure** (an unaware other's suspicion reached its limit). Suspicion of each unaware other rises with Strain spikes, her own Insight and her visit reason.
+
+**What the player sees (A2):** a Strain bar in the scene header (band, no number) and **suspicion lines**, short and indirect in the scene frame ("Vex's gaze rests on the desk a beat too long."). Exact values only through analyze, filtered by `Knowledge`.
+
+## 4. The visitor
+
+A visitor enters as a **real participant**: her card speaks, her sprite (obscured, §8) appears, and the scene becomes a group scene while she is in it (A1, author ruling).
+
+- **Who:** a named living unit at base, not on an expedition, not restricted (`restrictionReason`), whose whereabouts make sense for the slot, picked by the staging's `pick` rule and the reason.
+- **Why (registry `visitReasons`):** `{ id, expectedExchanges: [min, max], suspicionMult, staysIfSuspicious: boolean, requires?: { leader?, duty?, relation? }, description }` — e.g. a report, borrowing something, a chat, suspicion, looking for the commander. The engine picks one; the visitor's directive states it and **when she leaves** ("she came to return the manual; she leaves after two exchanges unless something seems off").
+- **Stay or go:** she leaves after her expected exchanges unless suspicion crossed her reason's threshold (then she lingers, asks, looks) or the reason is open-ended (`staysIfSuspicious`). The lead's tactic and the commander's mode change suspicion, so leaving early is possible.
+- **Technically:** new scene actions `scene/add_participant { unitId, visibility }` and `scene/remove_participant { unitId }` (P3 owns scenes: this package extends P3's interface and updates its spec), limited by `TUNING.scene.maxParticipants`. A participant added mid-scene gets her own directive block; when she leaves, her block goes and a line notes the exit.
+- **What she knows:** `unaware` visitors are told in a hard directive that they do not know and only notice what the suspicion lines say. The engine, not the model, decides discovery.
+
+## 5. The commander's modes
+
+Chips in the scene, one active at a time, default `continue quietly` (A4); free text always remains:
+- **Continue quietly** — keep doing what she asked, carefully; Strain rises slowly, her favour rises.
+- **Freeze** — stop everything; Strain from the condition falls, but a `task`/`service` condition counts as disobeyed and she may react.
+- **Signal her** — a small sign to her (a touch, a tap); her tactic answers it.
+- **Give yourself away** — deliberately (exposure; the commander chooses the scandal or ends the staging that way).
+
+The intent extractor reads free text against the mode (`staging_mode` intent with the inferred mode) so typing "I stay still" works like the chip.
+
+## 6. Her tactics
+
+Registry `stagingTactics`, picked from her style pair and frame, re-picked when Strain or suspicion jumps:
+- **Composed** (`cold`, `ritual`, `clinical`): she freezes too and behaves as if nothing were happening; suspicion falls, Strain holds.
+- **Taunting** (`playful`, `cruel`): a nudge with her foot to make the commander go on; Strain rises, her satisfaction and favour rise, the risk is hers too.
+- **Cautious** (`affectionate`, `possessive` at low frame): she locks the door if the place has `lock` (a visitor cannot arrive, or knocks and waits), or sends the visitor away early (expected exchanges −1).
+- **Reckless** (`show_off` audience, `cruel`): she courts discovery (suspicion rises); at `role`+ with `public_humiliation` she may let it happen.
+
+Her tactic is a directive to her for the next exchange; the player sees it in her behaviour, and an analyze line on the scene header says what her tactic is when the commander could know it.
+
+## 7. Endings and outcomes
+
+- **Held** (the condition kept to the end): a **complicity secret** shared by the commander and her (P9c squad-secret machinery inverted: known by the two of them, kept from the others; discovery routes as P9c), hold +, track xp (`exposure_risk`, the condition's track), her Want relief, Dominance Drive bonus (P9d), favour.
+- **Slipped**: her reaction by style (amused, displeased → her discipline P16 §4), track xp smaller.
+- **Exposed**: the visitor learns (`knows_dynamic`, a fact with witnesses), reacts by her own profile (P15 §8: `drawn`, `indifferent`, `dislikes`; she may hold it over the commander: a leverage secret raising her Impunity, P9), publicity of a romantic relation moves to `known`/`public` (P9d `setPublicity`), compromat for the holder; with `public_humiliation` it can travel outside (P9b, rumors).
+- **Stopped**: the **stop word** chip ends the staging at once. She respects it by her profile: respecting it is Trust +, favour unchanged; a `cruel` holder at `rule` may resent it (hold −, a cold shoulder) but the staging ends regardless. Never a deadlock for the player.
+
+## 8. Obscured presence (a general layer)
+
+A participant's **perception state** `clear | obscured` (A3, author ruling: general, reused later for missions — voices behind a wall):
+- **Visual:** the sprite becomes a silhouette (blurred, desaturated; P10 portrait pipeline), the name in the chat is blurred/scrambled (`V▒▒▒`) — a class applied to the ST message element through `src/st/` only.
+- **Prompt:** a POV directive: narrate only what the commander perceives (sounds, voices, touch; no faces, no gestures out of sight).
+- **API:** `setPerception(participantId, state)` and `perceptionOf` in the scene controller; P16's sensory mode sets everyone `obscured`; a staging sets `obscured` for others when the commander is hidden (`under_the_desk`, `held_alone` behind the door).
+- In 0.2 it is used by stagings and the sensory hold only; missions are a later package.
+
+## 9. UI
+
+Scene header: staging name (or her words for it), Strain bar, the condition, her tactic when known, the visitor's presence; suspicion lines in the scene frame; mode chips and the stop word; obscured participants in chat and portraits. Every element `data-analyze`.
+
+## 10. Directives, intents, events
+
+Directives `staging:`-prefixed: one for her (condition, tactic, what she expects), one per other by visibility (unaware: "does not know; notices only…", aware, remote), the POV directive. Intents: `staging_mode`. Events: `staging_booked`, `staging_started`, `visitor_entered`, `visitor_left`, `strain_slip`, `suspicion_rose`, `staging_held`, `staging_slipped`, `staging_exposed`, `staging_stopped`, `complicity_kept`, `complicity_found`. Actions: `staging/set_mode`, `staging/stop`, `scene/add_participant`, `scene/remove_participant`, `staging/answer_booking`.
+
+## Acceptance criteria
+
+1. Without `exposure_risk` (and the condition's own category) enabled, no staging is offered; disabled categories never reach the prompt.
+2. The template covers the five draft seeds with one mechanism; a generated staging validates against the same vocabulary.
+3. Strain and suspicion follow the rules with a non-body route; the player sees bands and indirect lines only.
+4. A visitor joins as a real participant with her directive, leaves on time or stays when suspicious, and is removed cleanly; participants never exceed the cap.
+5. Modes, tactics and the lock affect Strain and suspicion as specified; free text maps to a mode.
+6. All four endings apply their outcomes per role; the complicity secret works with P9c discovery; exposure reaches outside only with `public_humiliation`; the stop word always ends the staging.
+7. The obscured layer blurs sprite and name and adds the POV directive; it is general and has no staging-specific code inside it.
+8. Staging state is reset on chat switch.
+9. Every element carries `data-analyze`; every generation goes through P14.
+
+## Open decisions (author)
+
+- Seed stagings and their texts; visit reasons; tactic texts; suspicion line pool (or generated by `flavor`, kind `suspicion`).
+- Every number in `TUNING.staging`.
+
+## Interfaces to be provided by P15 and P16
+
+- P15: frame and style pair of the lead, reactions (§8 of P15), compromat writers, `knows_dynamic`.
+- P16: `practice_generate` (`kind: 'staging'`), the hold and its sensory mode, her discipline for a slipped condition, favour.

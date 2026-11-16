@@ -420,6 +420,7 @@ Defaults in code: Desire/Bond defects **off**, show raw values **off**, sprite m
 | 19 | P10b | Intimate immersion UI (telemetry, living DMs, night door, handwriting, device marks) | P10, P9c, P9d | spec |
 | 20 | P12 | Special traits: Secret Frequency, Bloom-induced Paranoia, Web of Debts | P5, P6, P7, P9 | spec |
 | 21 | P13 | LEASHSWAP mode | P0, P5, P6, P7, P9, P9b, P9d, P11, P12 | spec |
+| 22 | P14 | Generation envelope (retry of failed generations, refusal detection, reroll; every call site wrapped) — last package of 0.1.0 | P0, every package with a call site | spec |
 
 The table is in implementation order: take the first row whose status is not `implemented`. Why this order, and the session chunks for P7a onward: `ROADMAP-next.md`.
 
@@ -427,9 +428,21 @@ The table is in implementation order: take the first row whose status is not `im
 
 Each package must leave the extension in a runnable state and ship with tests for its engine parts. A package may add content to `content/core` but must not change another package's public engine interfaces without updating that package's spec.
 
+### Post-release (0.2)
+
+Packages after release 0.1.0 (the table above). Same rule: take the first row whose status is not `implemented`, and only once the table above is done. Direction in 0.2: a soldier holds authority over the commander; the mirrored direction is a later package.
+
+| # | Pkg | Name | Depends on | Status |
+|---|---|---|---|---|
+| 1 | P15 | The dynamic: practice profile, hold, frames, domains (incl. command), milestones and the vow, holder setup, squad perception, exit and aftermaths, Leash block, compromat | P3, P9, P9b, P9c, P9d, P13, P14 | spec |
+| 2 | P16 | Practices: generated tasks, her discipline of the commander, demonstrations, service, denial, holding (restraint incl. sensory), the commander's initiative | P15, P14, P9, P9c, P9d, P10 | spec |
+| 3 | P17 | Staged scenes (roles, visibility, condition, Strain, live visitors, her tactics, complicity) and the obscured presence layer | P16, P15, P14, P3, P9c, P10 | spec |
+
 ## 10. Roadmap beyond v1
 
 **Marks (special statuses)** — a relationship layer that lives *in parallel* with relationship states and arises only from extreme, usually irreversible choices or events. A unit can be `lover` and `limiter_torn` at the same time. Each mark: `{ id, origin (dilemma/defect arc/event ids), prerequisites, effects (combat, relationship modifiers, Leash rules, directives), reversible: bool, visibleToSquad: bool }`. Ideas to develop: **Neural Sync** (commander's and her neurons linked: shared stress, she acts on his intent without CP, his injuries hurt her); **Limiter Torn** (commander ripped out her limiter: huge power, the Leash no longer works on her, loyalty is now purely personal); **Blood Debt** (she owes him her life, or he owes her); **Shared Strain** (infected each other with the Bloom; mutation clocks linked); **Ghost Copy** (an echo of the commander lives in her implant); **Branded** (corporation marked her as defective-beyond-use: hunted). The `Relation.marks[]` field is reserved in v1 so this lands without a save migration.
+
+**Character interaction ideas beyond 0.2** (from the 0.2 design talk; not scheduled): a nickname she gives the commander (renamed in her DMs and on the PDA header), marks that last days and are seen by others (`pain_rough`), provocations (`jealousy_games`: flirting in front of the commander, lending the commander to another), marks of ownership (`body_modification`: a plyx ring, her unit number), categories `voyeurism`, `implant_play` (the Leash or the implant in intimacy), `sharing`, aftercare as a post-scene phase, the obscured presence layer in missions (voices behind a wall), and the mirrored direction of P15–P17 (the commander holds).
 
 **Special traits beyond P12** — `former_off_spec`, `bound_elsewhere`, `voice_synth` (on P7's trait framework). The **LEASHSWAP mode** (P13) replaces the earlier `collared` idea.
 
