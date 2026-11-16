@@ -453,6 +453,9 @@ Packages after release 0.1.0 (the table above). Same rule: take the first row wh
 | 1 | P15 | The dynamic: practice profile, hold, frames, domains (incl. command), milestones and the vow, holder setup, squad perception, exit and aftermaths, Leash block, compromat | P3, P9, P9b, P9c, P9d, P13, P14 | spec |
 | 2 | P16 | Practices: generated tasks, her discipline of the commander, demonstrations, service, denial, holding (restraint incl. sensory), the commander's initiative | P15, P14, P9, P9c, P9d, P10 | spec |
 | 3 | P17 | Staged scenes (roles, visibility, condition, Strain, live visitors, her tactics, complicity) and the obscured presence layer | P16, P15, P14, P3, P9c, P10 | spec |
+| 4 | P17a | Dynamic foundations: attitudes between the women involved, contracts (hard dominants and the obsessive style), privileges, inspections, nights | P15, P16, P17, P9c | spec |
+| 5 | P17b | Hard practices: categories `deprivation`, `pet_play`, `objectification`, `coercion`; speech control, shock collar, cage, gratitude and begging, service and humiliation built from real state and memory | P17a, P15–P17, P3b | spec |
+| 6 | P17c | Immersion: gag and gestures, dictation, passcodes, her voice in the UI, permissions, session rituals, status effects, scene staging with the existing art, optional backdrops / props / pose shots, map marks, quiet runs | P17b, P10, P10b, P9c | spec |
 
 ### Post-release (0.3) — the AI story sandbox
 

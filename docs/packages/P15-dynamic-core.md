@@ -36,11 +36,11 @@ bond.practice {
   style:    { primary: Style, secondary?: Style }
   audience: 'private_only' | 'select_few' | 'show_off' | 'indifferent'
 }
-Style = 'cold' | 'playful' | 'cruel' | 'ritual' | 'possessive' | 'affectionate' | 'clinical'
+Style = 'cold' | 'playful' | 'cruel' | 'ritual' | 'possessive' | 'affectionate' | 'clinical' | 'obsessive'
 ```
 
 - **`as` vs `witness` are independent**: she can crave a practice and still despise seeing another woman do it (jealousy of the practice, not only of the person; this works without NPC↔NPC axes because the reaction lands on the commander and on her own standing).
-- **`style`** (registry `practiceStyles`, `description` per style, `AUTHOR TO WRITE`): `cold` (distance, control), `playful` (teasing, games), `cruel` (enjoys the hurt), `ritual` (forms, protocol, ceremony), `possessive` (ownership, exclusivity), `affectionate` (a strange love: she humbles because she loves, and it is tenderness), `clinical` (studies, tests reactions, keeps notes; fits bio-constructs). The pair `primary + secondary` drives tone, form choice (P16), tactics (P17) and aftermath (§9).
+- **`style`** (registry `practiceStyles`, `description` per style, `AUTHOR TO WRITE`): `cold` (distance, control), `playful` (teasing, games), `cruel` (enjoys the hurt), `ritual` (forms, protocol, ceremony), `possessive` (ownership, exclusivity), `affectionate` (a strange love: she humbles because she loves, and it is tenderness), `clinical` (studies, tests reactions, keeps notes; fits bio-constructs), `obsessive` (the yandere: holds through obsession rather than rules, and will act against anyone in the way; the obvious holder for a contract, P17a). The pair `primary + secondary` drives tone, form choice (P16), tactics (P17) and aftermath (§9).
 - **`audience`**: `private_only` never stages anything before others; `select_few` before chosen friends or the leader; `show_off` before anyone; `indifferent` neither hides nor stages (others may see by chance).
 - **Limits still win**: a category in `bond.ownLimits.categories` reads as `as: 'none'` whatever the section says. A disabled category is absent everywhere (`contentAllowed`).
 - Absent section = every category `none` / `indifferent`, no style: she never becomes a holder. A grunt has none.
