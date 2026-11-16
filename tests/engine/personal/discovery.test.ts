@@ -20,9 +20,9 @@ function fake(answer: (p: number) => boolean) {
   return { ctx: { registries: reg, rng } as unknown as EngineCtx, asked };
 }
 
-/** A kept secret known by Ann and Bea. */
+/** A kept secret known by Ann and Bea (an event secret: a hidden injury of a healthy unit would be retired by the day step). */
 function kept(s: CampaignState, knownBy = [ANN, BEA]): SquadSecret {
-  addSecret(s, reg, { kindId: 'hidden_injury', knownBy, subjectId: ANN, vars: { name: 'Ann' } });
+  addSecret(s, reg, { kindId: 'trader_deal', knownBy });
   return personalOf(s).secrets!.at(-1)!;
 }
 

@@ -48,7 +48,8 @@ export function addSecret(
   const open = (draft.personal?.secrets ?? []).some((x) => x.kindId === kind.id && p.subjectId !== undefined && x.subjectId === p.subjectId && (x.status === 'kept' || x.status === 'found' || x.status === 'pretend'));
   if (open) return [];
   const subject = p.subjectId === undefined ? '' : unitOf(draft, p.subjectId)?.displayName ?? '';
-  const text = String(kind.text).replaceAll('{name}', p.vars?.name ?? subject).replaceAll('{leader}', p.vars?.leader ?? subject);
+  // the draft marker of authored content is for authors: it never reaches the main model or the card
+  const text = String(kind.text).replace(/^AUTHOR TO WRITE:\s*/, '').replaceAll('{name}', p.vars?.name ?? subject).replaceAll('{leader}', p.vars?.leader ?? subject);
   const personal = personalOf(draft);
   const secret: SquadSecret = {
     id: nextPersonalId(draft, 'sx'), kindId: kind.id, text, ...(p.subjectId !== undefined ? { subjectId: p.subjectId } : {}),
@@ -78,8 +79,34 @@ export function hideInjuries(draft: CampaignState, reg: Registries, party: strin
   return events;
 }
 
-/** The day step's secret part: the successor secret, once a leader has held the squad for a week. Writes nothing while nobody leads. */
+/**
+ * Kept (or pretended) secrets that are no longer true are retired with no deltas and no draw: a hidden injury once her HP is above
+ * the threshold again, a successor secret once its subject no longer leads. Found and answered ones are never touched.
+ */
+function retireStale(draft: CampaignState, reg: Registries): void {
+  const p = draft.personal;
+  if (!p?.secrets) return;
+  const leaderId = leaderOf(draft)?.id;
+  p.secrets = p.secrets.filter((x) => {
+    if (x.status !== 'kept' && x.status !== 'pretend') return true;
+    const source = reg.secretKinds.get(x.kindId)?.source;
+    if (source === 'successor') return x.subjectId === leaderId;
+    if (source === 'hidden_injury') {
+      const unit = x.subjectId === undefined ? undefined : unitOf(draft, x.subjectId);
+      return unit === undefined || unit.currentHp / unitStats(draft, reg, unit).hp <= TUNING.personal.secret.hiddenInjuryHp;
+    }
+    return true;
+  });
+}
+
+/** The day step's secret part: stale secrets retire, then the successor secret, once a leader has held the squad for a week. Writes nothing while nobody leads. */
 export function secretDayStep(draft: CampaignState, reg: Registries): EngineEvent[] {
+  retireStale(draft, reg);
+  // a confession queued by a soldier who is no longer living (she fell in combat) never comes to the door
+  const queue = draft.calendar.nightEventsQueue;
+  if (queue.some((e) => e.kind === SECRET_NIGHT_KIND && !namedLiving(draft, e.unitId))) {
+    draft.calendar.nightEventsQueue = queue.filter((e) => e.kind !== SECRET_NIGHT_KIND || namedLiving(draft, e.unitId));
+  }
   const leader = leaderOf(draft);
   const p = draft.personal;
   if (!leader) {
@@ -188,21 +215,24 @@ export function rollSceneDiscovery(draft: CampaignState, ctx: EngineCtx, present
  */
 export function rollSecretNight(draft: CampaignState, ctx: EngineCtx): EngineEvent[] {
   const T = TUNING.personal.secret;
+  const events: EngineEvent[] = [];
+  const waiting = (id: string): boolean => draft.calendar.nightEventsQueue.some((e) => e.unitId === id && e.kind === SECRET_NIGHT_KIND)
+    || (draft.calendar.nightEvent?.unitId === id && draft.calendar.nightEvent.kind === SECRET_NIGHT_KIND);
   for (const x of draft.personal?.secrets ?? []) {
     if (x.status !== 'kept') continue;
     const knower = x.knownBy.find((id) => {
       const rel = draft.relations[id];
-      return namedLiving(draft, id) && rel !== undefined && rel.affinity >= T.nightAffinity && rel.trust >= T.nightTrust
-        && !draft.calendar.nightEventsQueue.some((e) => e.unitId === id && e.kind === SECRET_NIGHT_KIND);
+      return namedLiving(draft, id) && rel !== undefined && rel.affinity >= T.nightAffinity && rel.trust >= T.nightTrust && !waiting(id);
     });
     if (knower === undefined || !ctx.rng.chance(T.nightChance)) continue;
-    enqueueNight(draft, {
+    const entry = {
       id: nextId(draft, 'n'), unitId: knower, kind: SECRET_NIGHT_KIND, priority: T.nightPriority,
       framing: `${unitOf(draft, knower)?.displayName ?? 'A soldier'} is at your door. She has been carrying something for the squad and wants to say it.`,
-      ignore: { event: 'dismissed', severity: 'minor' }, expiresDay: draft.day + T.nightExpiresDays,
-    });
+      ignore: { event: 'dismissed', severity: 'minor' as const }, expiresDay: draft.day + T.nightExpiresDays,
+    };
+    if (enqueueNight(draft, entry)) events.push({ type: 'night_queued', entry });
   }
-  return [];
+  return events;
 }
 
 /** The door is opened: the knower tells the oldest secret she keeps (nothing if none is left to tell). */

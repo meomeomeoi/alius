@@ -54,6 +54,12 @@ describe('P9c: what lets a secret out is data', () => {
     expect(WorldEffectSchema.safeParse({ type: 'squad_secret', kindId: 'trader_deal' }).success).toBe(false);
   });
 
+  it('the glossary says confronting puts the knowers back in line, not that they grow bolder (review)', () => {
+    const long = String(reg.glossary.get('squad_secret')!.long);
+    expect(long).not.toMatch(/bolder/i);
+    expect(long).toMatch(/back in line/);
+  });
+
   it('the three secret events are reserved for the engine', () => {
     for (const t of ['secret_kept', 'secret_found', 'secret_answered']) expect(RESERVED_EVENT_TYPES).toContain(t);
   });

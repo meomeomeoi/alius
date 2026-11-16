@@ -9,6 +9,7 @@ import { STAKE_WORDS } from '../../engine/personal/words';
 import { CAPABILITIES, deviceAccess, deviceAccessWhy } from '../../engine/personal/access';
 import { HUMILIATION_TAG } from '../../engine/personal/courtship';
 import { pressureGate } from '../../engine/personal/gates';
+import type { SquadSecret } from '../../engine/state/types';
 import { TUNING } from '../../engine/tuning';
 import type { Knowledge } from '../knowledge';
 import type { AnalyzeEnv } from '../model';
@@ -272,15 +273,20 @@ function obedienceProvider(_subject: Subject, env: AnalyzeEnv): { lines: string[
 function squadSecretProvider(_subject: Subject, env: AnalyzeEnv): { lines: string[] } | null {
   const state = env.state;
   if (!state) return null;
-  const known = (state.personal?.secrets ?? []).filter((x) => x.status !== 'kept');
+  const known: SquadSecret[] = (state.personal?.secrets ?? []).filter((x: SquadSecret): boolean => x.status !== 'kept');
   if (known.length === 0) return { lines: ['The commander knows of nothing the squad keeps back.'] };
   return {
     lines: known.map((x) => {
+      if (x.status === 'found') {
+        // like the card: the knowers' names stay behind bars until the commander answers
+        let masked = x.text;
+        for (const id of x.knownBy) masked = masked.replace(new RegExp(`\\b${nameOf(state, id).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'g'), '█████');
+        return `${masked} Waiting for an answer.`;
+      }
       const who = x.knownBy.map((id) => nameOf(state, id)).join(', ');
-      const how = x.status === 'found' ? 'waiting for an answer'
-        : x.status === 'confronted' ? 'out in the open: the squad was confronted'
-          : x.status === 'pretend' ? 'the commander pretends not to know'
-            : (x.usedUntil ?? 0) > state.day ? `the commander can hold it over them until day ${x.usedUntil}` : 'the commander used it, and the hold is over';
+      const how = x.status === 'confronted' ? 'out in the open: the squad was confronted'
+        : x.status === 'pretend' ? 'the commander pretends not to know'
+          : (x.usedUntil ?? 0) > state.day ? `the commander can hold it over them until day ${x.usedUntil}` : 'the commander used it, and the hold is over';
       return `${x.text} Known by ${who}; ${how}.`;
     }),
   };

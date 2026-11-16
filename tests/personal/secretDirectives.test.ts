@@ -123,6 +123,22 @@ describe('the controller and the secret', () => {
     expect(r.onSecretFound).not.toHaveBeenCalled();
   });
 
+  it('two secrets found at once open one card; answering shows the next (review)', () => {
+    const { s, x } = withSecret('found');
+    addSecret(s, reg, { kindId: 'trader_deal', knownBy: [ANN, BEA] });
+    const y = personalOf(s).secrets![1];
+    y.status = 'found';
+    const r = rig(s);
+    r.personal.onEvents([{ type: 'secret_found', secretId: x.id, route: 'slip' }, { type: 'secret_found', secretId: y.id, route: 'insight' }]);
+    expect(r.onSecretFound.mock.calls).toEqual([[x.id]]);
+    r.onSecretFound.mockClear();
+    expect(r.personal.answerSecret(x.id, 'pretend')).toBe(true);
+    expect(r.onSecretFound.mock.calls).toEqual([[y.id]]);
+    r.onSecretFound.mockClear();
+    expect(r.personal.answerSecret(y.id, 'pretend')).toBe(true);
+    expect(r.onSecretFound).not.toHaveBeenCalled();
+  });
+
   it('answerSecret dispatches secret/respond (acceptance 5) and a refusal toasts', () => {
     const { s, x } = withSecret('found');
     const r = rig(s);

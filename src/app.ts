@@ -426,7 +426,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       const secret = s?.personal?.secrets?.find((x) => x.id === secretId);
       if (!s || !secret || secret.status !== 'found') return;
       const host = h('div');
-      host.append(renderSecretCard(s, registries, secret, (choice, id) => { personal.answerSecret(id, choice); shell.closeModal?.(); }));
+      host.append(renderSecretCard(s, registries, secret, (choice, id) => { shell.closeModal?.(); personal.answerSecret(id, choice); }));
       shell.open();
       void shell.modal({ title: 'SQUAD SECRET', body: host, actions: [] });
     },

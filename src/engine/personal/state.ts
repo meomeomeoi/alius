@@ -40,8 +40,8 @@ export function holdsPersonal(state: Pick<CampaignState, 'personal'>, unitId: st
 
 /**
  * A unit leaves the service (or is found dead): her booking and offer vanish with no deltas, her open wager is void, her
- * obedience, truth and mark end, her decor fades for a week (a faded decor is kept as it is), a secret she alone knew is
- * dropped and she leaves the others' `knownBy`. Her worn token stays and does nothing. Creates nothing.
+ * obedience, truth and mark end, her decor fades for a week (a faded decor is kept as it is), a kept secret she alone knew is
+ * dropped (one the commander already found stays) and she leaves the others' `knownBy`. Her worn token stays and does nothing. Creates nothing.
  */
 export function forgetPersonal(draft: CampaignState, unitId: string): void {
   const p = draft.personal;
@@ -61,7 +61,8 @@ export function forgetPersonal(draft: CampaignState, unitId: string): void {
   const decor = p.decor?.[unitId];
   if (decor && decor.fadedUntil === undefined) decor.fadedUntil = draft.day + TUNING.personal.decor.fadeDays;
   if (p.secrets) {
-    p.secrets = p.secrets.filter((x) => !(x.knownBy.length === 1 && x.knownBy[0] === unitId));
+    // a secret nobody keeps any more goes, unless the commander already has it (found, confronted, used): that one stays with no knowers
+    p.secrets = p.secrets.filter((x) => !(x.knownBy.length === 1 && x.knownBy[0] === unitId && (x.status === 'kept' || x.status === 'pretend')));
     for (const x of p.secrets) x.knownBy = x.knownBy.filter((id) => id !== unitId);
   }
 }

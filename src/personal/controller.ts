@@ -210,7 +210,11 @@ export function createPersonal(deps: PersonalDeps): PersonalController {
     playWager: (wagerId, pick) => act('wager/play', { wagerId, ...(pick !== undefined ? { pick } : {}) }),
     answerQuestion: (wagerId, text) => act('wager/answer_question', { wagerId, text }),
     challenge: (p) => act('wager/challenge', p),
-    answerSecret: (secretId, choice) => act('secret/respond', { secretId, choice }),
+    answerSecret(secretId, choice) {
+      if (!act('secret/respond', { secretId, choice })) return false;
+      controller.reopenSecrets(); // the next secret that is still waiting (one card at a time)
+      return true;
+    },
     reopenSecrets() {
       const found = state()?.personal?.secrets?.find((x) => x.status === 'found');
       if (found && deps.onSecretFound) deps.onSecretFound(found.id);
@@ -218,6 +222,7 @@ export function createPersonal(deps: PersonalDeps): PersonalController {
 
     onEvents(events) {
       let refresh = false;
+      let foundSecret: string | undefined; // one card per dispatch: a second one would cancel the first; the rest come after each answer
       for (const e of events) {
         if (REFRESH_ON.has(e.type)) refresh = true;
         if (e.type === 'wager_resolved') {
@@ -228,11 +233,7 @@ export function createPersonal(deps: PersonalDeps): PersonalController {
           const s = state();
           if (s) deps.toast('info', `${nameOf(s, String(e.unitId))} refuses the bet.`);
         }
-        if (e.type === 'secret_found') {
-          // the text is in the card only: a toast says that something came out, never what
-          if (deps.onSecretFound) deps.onSecretFound(String(e.secretId));
-          else deps.toast('info', 'Something the squad kept from the commander has come out.');
-        }
+        if (e.type === 'secret_found') foundSecret = foundSecret ?? String(e.secretId);
         if (e.type === 'booking_conflict') {
           deps.toast('info', `Two bookings for the ${String(e.slot)} of day ${String(e.day)} clash: choose one, or let them settle it.`);
         } else if (e.type === 'claimed') {
@@ -240,6 +241,11 @@ export function createPersonal(deps: PersonalDeps): PersonalController {
           if (deps.onClaim) deps.onClaim(String(e.unitId));
           else if (s) deps.toast('info', `${nameOf(s, String(e.unitId))} has told everyone the commander is hers.`);
         }
+      }
+      if (foundSecret !== undefined) {
+        // the text is in the card only: a toast says that something came out, never what
+        if (deps.onSecretFound) deps.onSecretFound(foundSecret);
+        else deps.toast('info', 'Something the squad kept from the commander has come out.');
       }
       if (refresh) deps.refreshContext();
     },

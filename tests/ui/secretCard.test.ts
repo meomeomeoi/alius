@@ -68,6 +68,16 @@ describe('the secret card', () => {
     expect(unreachable(card)).toEqual([]);
   });
 
+  it('redacts a name only as a whole word', () => {
+    const { s, x } = found();
+    x.text = 'Annex 4 holds the cache that Ann hid, and Anna knows.';
+    const card = renderSecretCard(s, reg, x, () => {});
+    expect(card.textContent).toContain('Annex 4');
+    expect(card.textContent).toContain('Anna knows');
+    expect(card.textContent).not.toMatch(/\bAnn\b/);
+    expect(card.querySelectorAll('.alius-redact')).toHaveLength(1);
+  });
+
   it('puts text in as text, never as markup', () => {
     const { s, x } = found();
     x.text = '<img src=x onerror=alert(1)> Something hidden.';
