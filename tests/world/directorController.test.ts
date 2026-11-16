@@ -17,6 +17,25 @@ beforeAll(async () => {
 const valid = readFileSync('tests/fixtures/director_tick/valid.txt', 'utf8');
 const directorActions = (h: { log: Array<{ type: string }> }) => h.log.filter((a) => a.type.startsWith('director/'));
 
+describe('director controller memory (P3b)', () => {
+  it('the digest carries only public recent lines and the world dossier', async () => {
+    const s = structuredClone(requested);
+    s.memory.chronicle.push(
+      { id: 'c1', kind: 'scene', day: s.day, text: 'PRIVATE-LINE', audience: ['unit_ann'] },
+      { id: 'c2', kind: 'scene', day: s.day, text: 'OLD-NO-AUDIENCE' },
+      { id: 'c3', kind: 'scene', day: s.day, text: 'public line of the day', audience: '*' },
+    );
+    s.memory.dossiers = { '*': { own: 'WORLD-OWN', shared: 'The base was nearly lost.', day: 1, folded: 6 }, unit_ann: { own: 'ANN-OWN', shared: 'ANN-SHARED', day: 1, folded: 6 } };
+    const h = worldHarness(reg, s);
+    h.st.mainReplies = [valid];
+    await createDirector(h.deps).onRequested();
+    const prompt = (h.st.calls[0] as { prompt: string }).prompt;
+    expect(prompt).toContain('public line of the day');
+    expect(prompt).toContain('The base was nearly lost.');
+    for (const secret of ['PRIVATE-LINE', 'OLD-NO-AUDIENCE', 'WORLD-OWN', 'ANN-OWN', 'ANN-SHARED']) expect(prompt, secret).not.toContain(secret);
+  });
+});
+
 describe('director controller', () => {
   it('a request leads to one LLM call and one director/apply', async () => {
     const h = worldHarness(reg, requested);

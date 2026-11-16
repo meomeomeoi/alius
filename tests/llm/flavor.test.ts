@@ -155,6 +155,19 @@ describe('the demand flavor kind (P9)', () => {
     expect(call.system + call.prompt).not.toMatch(/\b(he|him|his)\b/i);
   });
 
+  it('the demand prompt carries her journal when there is one, and is unchanged without it (P3b)', async () => {
+    const { st, settings } = setup();
+    st.mainReplies = [JSON.stringify({ text: 'a' }), JSON.stringify({ text: 'b' }), JSON.stringify({ text: 'c' })];
+    await generateFlavor(demandInput, { st, settings });
+    await generateFlavor({ ...demandInput, journal: [] }, { st, settings });
+    await generateFlavor({ ...demandInput, journal: ["the commander refused her demand (day 4)"] }, { st, settings });
+    const [plain, empty, withJournal] = st.calls.map((c) => (c as { prompt: string }).prompt);
+    expect(empty).toBe(plain);
+    expect(plain).not.toMatch(/Lately/);
+    expect(withJournal).toContain('the commander refused her demand (day 4)');
+    expect(withJournal).not.toMatch(/\b(he|him|his)\b/i);
+  });
+
   it('text inside the demand cannot close the tag', async () => {
     const { st, settings } = setup();
     st.mainReplies = ['{"text":"ok"}'];

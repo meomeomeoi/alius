@@ -123,6 +123,8 @@ export interface DemandFlavorInput {
   stanceName: string;
   /** The template text: data, never instructions. */
   demand: string;
+  /** P3b: her relation journal (no evidence), so the wording knows what lately passed between her and the commander. */
+  journal?: string[];
 }
 
 const DEMAND_TEXT_MAX = 240;
@@ -141,6 +143,7 @@ registerFlavorKind('demand', {
       `Soldier: ${i.unitName}`,
       `How she feels about the commander: ${i.stateHint || 'unclear'}`,
       `How she carries herself: ${i.stanceName}`,
+      ...(i.journal && i.journal.length > 0 ? ['Lately with the commander:', ...i.journal.map((l) => `- ${l}`)] : []),
       `<demand>${String(i.demand).replace(/<\/?demand>/gi, '')}</demand>`,
       'Word her demand.',
     ].join('\n');

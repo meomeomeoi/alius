@@ -33,6 +33,22 @@ const validated = (raw: unknown) => {
   return validateDirectorOutput(s, reg, raw, { cooldownDays: 3 });
 };
 
+describe('director memory (P3b)', () => {
+  it('the digest carries public recent lines and the world dossier when given, and nothing new without them', async () => {
+    const base = { ...digestInput(), reason: 'day_end' as const };
+    const { st, settings } = setup();
+    st.mainReplies = ['{}', '{}', '{}'];
+    await runDirectorTick(base, { st, settings });
+    await runDirectorTick({ ...base, recent: [], worldDossier: '' }, { st, settings });
+    await runDirectorTick({ ...base, recent: ['Day 11: the squad moved out'], worldDossier: 'The base was nearly lost.' }, { st, settings });
+    const [plain, empty, full] = st.calls.map((c) => (c as { prompt: string }).prompt);
+    expect(empty).toBe(plain);
+    expect(plain).not.toMatch(/recent|world_memory/i);
+    expect(full).toContain('Day 11: the squad moved out');
+    expect(full).toContain('The base was nearly lost.');
+  });
+});
+
 describe('director_tick call', () => {
   it('valid fixture returns the five parts', async () => {
     const { out } = await run(fixture('valid'));

@@ -9,6 +9,9 @@ import { callLlm } from '../orchestrator';
 export interface DirectorTickInput {
   digest: Digest;
   reason: DirectorRequest['reason'];
+  /** P3b: the chronicle lines the whole squad knows (public only) and what the squad remembers of the world. */
+  recent?: string[];
+  worldDossier?: string;
 }
 
 const list = z.array(z.unknown()).optional().catch(undefined);
@@ -60,7 +63,12 @@ registerCallType<DirectorShape>({
   ].join('\n'),
   prompt: (raw) => {
     const i = raw as DirectorTickInput;
-    return [`Reason: ${REASON_TEXT[i.reason]}`, '<digest>', JSON.stringify(i.digest), '</digest>', 'Plan what happens next.'].join('\n');
+    return [
+      `Reason: ${REASON_TEXT[i.reason]}`, '<digest>', JSON.stringify(i.digest), '</digest>',
+      ...(i.worldDossier ? ['<world_memory>', i.worldDossier.replace(/<\/?world_memory>/gi, ''), '</world_memory>'] : []),
+      ...(i.recent && i.recent.length > 0 ? ['<recent>', ...i.recent.map((l) => l.replace(/<\/?recent>/gi, '')), '</recent>'] : []),
+      'Plan what happens next.',
+    ].join('\n');
   },
   schema: DirectorShapeSchema as unknown as z.ZodType<DirectorShape>,
 });

@@ -8,6 +8,8 @@ export interface VignetteInput {
   unitRole: string;
   likes: string[];
   defectNames: string[];
+  /** P3b: two facts about her and her journal, as plain lines. */
+  memory?: string[];
 }
 
 const MAX_LINES = 2;
@@ -52,6 +54,7 @@ registerCallType<string>({
       `Soldier: ${i.unitName} (${i.unitRole})`,
       i.likes.length > 0 ? `She likes: ${i.likes.join(', ')}` : '',
       i.defectNames.length > 0 ? `Her defects: ${i.defectNames.join(', ')}` : '',
+      ...(i.memory && i.memory.length > 0 ? ['She remembers:', ...i.memory.map((m) => `- ${m}`)] : []),
       'Write the moment.',
     ].filter(Boolean).join('\n');
   },

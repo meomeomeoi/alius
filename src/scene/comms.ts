@@ -2,7 +2,8 @@ import { clockText } from '../engine/calendar';
 import { disabledCategories, ownLimitLabels, rulesOf } from '../engine/bonds';
 import { threadOf } from '../engine/dms';
 import { measureList } from '../engine/discipline';
-import { openPromises, retrieveFacts } from '../engine/memory';
+import { openPromises } from '../engine/memory';
+import { herDossier, herFacts, herJournal } from '../engine/memory/inputs';
 import { affinityBand, attractionBand, stressBand, trustBand } from '../engine/relations/bands';
 import { intimacyOf } from '../engine/relations/gain';
 import type { CampaignState, Unit } from '../engine/state/types';
@@ -41,8 +42,10 @@ function replyInput(s: CampaignState, deps: CommsDeps, unit: Unit, mode: DmReply
   return {
     unitName: unit.displayName, commanderName: s.commander.name, stateHint: String(st?.promptHint ?? ''),
     bands: { trust: trustBand(rel.trust), affinity: affinityBand(rel.affinity), attraction: attractionBand(rel.attraction), stress: stressBand(unit.stress) },
-    // only what she knows: facts visible to her alone
-    recentFacts: retrieveFacts(s, { participants: [unit.id], tags: [...unit.likes, ...unit.dislikes] }, 3).map((f) => f.text),
+    // only what she knows: facts visible to her alone (half of a scene's retrieval), her dossier and her journal (P3b)
+    recentFacts: herFacts(s, unit.id, [...unit.likes, ...unit.dislikes]).map((f) => f.text),
+    ...(herDossier(s, unit.id) !== '' ? { dossier: herDossier(s, unit.id) } : {}),
+    ...(herJournal(s, deps.registries(), unit.id, true).length > 0 ? { journal: herJournal(s, deps.registries(), unit.id, true) } : {}),
     slotText: clockText(s.day, s.slot),
     history: threadOf(s, unit.id).slice(-HISTORY).map((m) => ({ from: m.from === 'commander' ? ('commander' as const) : ('unit' as const), text: m.text })),
     mode,

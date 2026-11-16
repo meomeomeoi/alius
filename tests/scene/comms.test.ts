@@ -15,6 +15,43 @@ const eager = (): Registries => {
   return r;
 };
 
+describe('DMs carry her memory (P3b)', () => {
+  const memoryWorld = (s: import('../../src/engine/state/types').CampaignState): void => {
+    s.day = 12;
+    s.memory.dossiers = { [ANN]: { own: 'OWN-PART she keeps a letter.', shared: 'SHARED-PART she is the sniper.', day: 11, folded: 6 } };
+    s.relations[ANN].history = [{ day: 11, kind: 'event', type: 'broke_promise', severity: 'major', detail: 'EVIDENCE-TEXT' }];
+    for (let i = 0; i < 10; i++) s.memory.facts.push({ id: `f${i + 1}`, about: [ANN], text: `DM fact ${i}`, tags: [], importance: 3, day: 12, knownBy: [ANN] });
+  };
+  const factsInPrompt = (h: Harness): number => ((h.st.calls[0] as { prompt: string }).prompt.match(/DM fact/g) ?? []).length;
+
+  it('dm_reply gets her own and shared dossier and her journal with evidence', async () => {
+    const h = harness(reg, { tweak: memoryWorld });
+    h.st.mainReplies = ['Here.', intentJson()];
+    await h.comms.send(ANN, 'Are you awake?');
+    const prompt = (h.st.calls[0] as { prompt: string }).prompt;
+    expect(prompt).toContain('OWN-PART she keeps a letter.');
+    expect(prompt).toContain('SHARED-PART she is the sniper.');
+    expect(prompt).toContain('the commander broke a promise to her (day 11)');
+    expect(prompt).toContain('EVIDENCE-TEXT'); // a DM is private: the evidence is hers to know
+  });
+
+  it('the DM asks for ceil(retrievalK / 2) facts', async () => {
+    for (const [preset, n] of [['short', 3], ['normal', 3], ['long', 4]] as const) {
+      const h = harness(reg, { tweak: (s) => { memoryWorld(s); s.memory.config = { preset }; } });
+      h.st.mainReplies = ['Here.', intentJson()];
+      await h.comms.send(ANN, 'Are you awake?');
+      expect(factsInPrompt(h), preset).toBe(n);
+    }
+  });
+
+  it('a unit without memory gets the DM prompt of before', async () => {
+    const h = harness(reg);
+    h.st.mainReplies = ['Here.', intentJson()];
+    await h.comms.send(ANN, 'Are you awake?');
+    expect((h.st.calls[0] as { prompt: string }).prompt).not.toMatch(/remember|Lately/i);
+  });
+});
+
 describe('DMs', () => {
   it('DM send → reply → intents (acceptance 8)', async () => {
     const h = harness(reg);

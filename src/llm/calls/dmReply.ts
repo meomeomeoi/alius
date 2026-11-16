@@ -8,8 +8,12 @@ export interface DmReplyInput {
   /** The relationship state's `promptHint`. */
   stateHint: string;
   bands: { trust: TrustBand; affinity: AffinityBand; attraction: AttractionBand; stress: StressBand };
-  /** Facts she knows, newest relevant first; at most 3 are used. */
+  /** Facts she knows, newest relevant first; at most 4 are used. */
   recentFacts: string[];
+  /** P3b: what the squad remembers of her (her own and shared dossier); absent = nothing folded yet. */
+  dossier?: string;
+  /** P3b: her relation journal, evidence included (a DM is private). */
+  journal?: string[];
   slotText: string;
   /** Last messages, oldest first; at most 6 are used. */
   history: Array<{ from: 'commander' | 'unit'; text: string }>;
@@ -17,7 +21,7 @@ export interface DmReplyInput {
 }
 
 const DM_MAX = 400;
-const FACTS_USED = 3;
+const FACTS_USED = 4;
 const HISTORY_USED = 6;
 
 /** Shared with the scene directives: what she does when the commander floods her inbox. */
@@ -62,6 +66,8 @@ registerCallType<string>({
     ];
     const facts = i.recentFacts.slice(0, FACTS_USED);
     if (facts.length > 0) out.push('She knows:', ...facts.map((f) => `- ${f}`));
+    if (i.dossier) out.push(`What the squad remembers of her: ${i.dossier}`);
+    if (i.journal && i.journal.length > 0) out.push('Lately with the commander:', ...i.journal.map((l) => `- ${l}`));
     const history = i.history.slice(-HISTORY_USED);
     if (history.length > 0) out.push('', 'Recent messages:', ...history.map((m) => `${m.from === 'commander' ? i.commanderName : i.unitName}: ${m.text}`));
     out.push('', i.mode === 'initiate' ? 'Write her first message.' : 'Write her message.');

@@ -1,4 +1,5 @@
 import type { EngineEvent } from '../engine/dispatch';
+import { publicRecent, worldDossier } from '../engine/memory/inputs';
 import { buildDigest } from '../engine/world/director';
 import { runDirectorTick } from '../llm/calls/directorTick';
 import type { WorldDeps } from './deps';
@@ -49,7 +50,7 @@ export function createDirector(deps: WorldDeps): DirectorController {
         return;
       }
       const output = await runDirectorTick(
-        { digest: buildDigest(state, deps.registries()), reason: pending.reason },
+        { digest: buildDigest(state, deps.registries()), reason: pending.reason, recent: publicRecent(state), worldDossier: worldDossier(state) }, // P3b: public memory only
         { st: deps.st, settings },
       );
       // the chat changed while the model thought: the answer belongs to another campaign; the request stays open

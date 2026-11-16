@@ -15,6 +15,27 @@ const setup = () => {
   return { st, settings: getSettings(st) };
 };
 
+describe('the vignette memory (P3b)', () => {
+  it('the vignette gets two facts about her', async () => {
+    const { st, settings } = setup();
+    st.mainReplies = ['She sits.\nNeither speaks.'];
+    await generateVignette({ ...input, memory: ['Rhea keeps a photo.', 'the commander kept a promise to her (day 3)'] }, { st, settings });
+    const prompt = (st.calls[0] as { prompt: string }).prompt;
+    expect(prompt).toContain('Rhea keeps a photo.');
+    expect(prompt).toContain('the commander kept a promise to her (day 3)');
+  });
+
+  it('inputs without the field render as before', async () => {
+    const { st, settings } = setup();
+    st.mainReplies = ['One.\nTwo.', 'One.\nTwo.'];
+    await generateVignette(input, { st, settings });
+    await generateVignette({ ...input, memory: [] }, { st, settings });
+    const [a, b] = st.calls.map((c) => (c as { prompt: string }).prompt);
+    expect(b).toBe(a);
+    expect(a).not.toMatch(/remember/i);
+  });
+});
+
 describe('sanitizeVignette', () => {
   it('keeps two lines', () => {
     expect(sanitizeVignette('She sits down beside him.\nNeither speaks.')).toBe('She sits down beside him.\nNeither speaks.');

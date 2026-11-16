@@ -123,6 +123,7 @@ import {
 } from './st/persistence';
 import { registerCoreProviders } from './analysis/providers/core';
 import { memoryConfig } from './engine/memory/config';
+import { vignetteMemory } from './engine/memory/inputs';
 import { createShell, type ShellApi } from './ui/shell/shell';
 import type { ToastKind, ToastOpts } from './ui/shell/toast';
 import { VOICE_OF } from './ui/voice/sources';
@@ -2021,6 +2022,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
           unitRole: SHORT_NAME(registries, 'roles', unit.roleId),
           likes: unit.likes,
           defectNames: unit.defects.map((d) => SHORT_NAME(registries, 'defects', d.id)),
+          memory: vignetteMemory(state, registries, unit.id, [...unit.likes, ...unit.dislikes]), // P3b: two facts about her and her journal
         },
         { st, settings, contentLine: () => contentLine(state, registries) },
       );

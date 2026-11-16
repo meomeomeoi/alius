@@ -68,6 +68,15 @@ describe('a slot change rolls, words and delivers', () => {
     expect(call.prompt).toContain('<demand>');
   });
 
+  it('the wording call carries her journal (P3b)', async () => {
+    const r = rig({ tweak: (s) => { s.relations[ANN].history = [{ day: s.day, kind: 'event', type: 'broke_promise', severity: 'major', detail: 'EVIDENCE-NEVER' }]; } });
+    r.h.st.mainReplies = Array.from({ length: 120 }, () => '{"text":"I want double rations."}');
+    await roll(r);
+    const call = r.h.st.calls.find((c) => (c.system ?? '').includes('demand'))!;
+    expect(call.prompt).toContain('the commander broke a promise to her');
+    expect(call.prompt).not.toContain('EVIDENCE-NEVER'); // a line the player reads: no evidence
+  });
+
   it('wording off, or a failed call, delivers the template text with no second call', async () => {
     const off = rig({ wording: false });
     await roll(off);

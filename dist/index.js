@@ -21964,6 +21964,7 @@ registerCallType({
       `Soldier: ${i.unitName} (${i.unitRole})`,
       i.likes.length > 0 ? `She likes: ${i.likes.join(", ")}` : "",
       i.defectNames.length > 0 ? `Her defects: ${i.defectNames.join(", ")}` : "",
+      ...i.memory && i.memory.length > 0 ? ["She remembers:", ...i.memory.map((m) => `- ${m}`)] : [],
       "Write the moment."
     ].filter(Boolean).join("\n");
   }
@@ -22055,6 +22056,7 @@ registerFlavorKind("demand", {
       `Soldier: ${i.unitName}`,
       `How she feels about the commander: ${i.stateHint || "unclear"}`,
       `How she carries herself: ${i.stanceName}`,
+      ...i.journal && i.journal.length > 0 ? ["Lately with the commander:", ...i.journal.map((l) => `- ${l}`)] : [],
       `<demand>${String(i.demand).replace(/<\/?demand>/gi, "")}</demand>`,
       "Word her demand."
     ].join("\n");
@@ -23275,6 +23277,46 @@ function refreshPowerDirectives(builder, state, reg) {
   for (const d of powerDirectives(state, reg, state.scene?.participants ?? [])) builder.setDirective(d);
 }
 
+// src/engine/memory/journal.ts
+var SEVERE = ["moderate", "major", "extreme"];
+var RECENT_DAYS = 2;
+var DETAIL_MAX = 100;
+var humanize2 = (type) => type.replace(/_/g, " ");
+function journalLines(state, reg, unitId, o) {
+  const history = state.relations[unitId]?.history ?? [];
+  const internal = INTERNAL_HISTORY_TYPES;
+  const kept = history.filter((h2) => h2.kind === "event" && !internal.includes(h2.type) && (h2.severity !== void 0 && SEVERE.includes(h2.severity) || h2.day >= state.day - RECENT_DAYS));
+  if (o.n <= 0) return [];
+  return kept.slice(-o.n).map((h2) => {
+    const phrase = reg.eventDeltas.get(h2.type)?.journal;
+    const base = `${typeof phrase === "string" && phrase !== "" ? phrase : humanize2(h2.type)} (day ${h2.day})`;
+    return o.evidence && h2.detail ? `${base}: '${h2.detail.slice(0, DETAIL_MAX)}'` : base;
+  });
+}
+
+// src/engine/memory/inputs.ts
+function herDossier(state, unitId) {
+  const d = state.memory.dossiers?.[unitId];
+  return d ? [d.own, d.shared].map((t) => t.trim()).filter(Boolean).join(" ") : "";
+}
+function herJournal(state, reg, unitId, evidence) {
+  return journalLines(state, reg, unitId, { n: memoryConfig(state).journalLines, evidence });
+}
+function herFacts(state, unitId, tags) {
+  return retrieveFacts(state, { participants: [unitId], tags }, Math.ceil(memoryConfig(state).retrievalK / 2));
+}
+var VIGNETTE_FACTS = 2;
+function vignetteMemory(state, reg, unitId, tags) {
+  const facts = retrieveFacts(state, { participants: [unitId], tags }, VIGNETTE_FACTS).map((f) => factLine(state, f, [unitId]).replace(/^- /, ""));
+  return [...facts, ...herJournal(state, reg, unitId, false)];
+}
+function publicRecent(state) {
+  return recentLines(state, "public", memoryConfig(state));
+}
+function worldDossier(state) {
+  return state.memory.dossiers?.["*"]?.shared.trim() ?? "";
+}
+
 // src/bonds/directives.ts
 var EXPLICIT_CATEGORY = "explicit_scenes";
 var orderedCategories = (reg) => [...reg.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order));
@@ -23393,7 +23435,9 @@ function createDiscipline(deps) {
           unitName: unit?.displayName ?? demand.unitId,
           stateHint: String(reg.relationshipStates.get(s.relations[demand.unitId]?.stateId ?? "")?.promptHint ?? ""),
           stanceName: String((stance === null ? void 0 : stanceEntry(reg, stance)?.name) ?? ""),
-          demand: demand.text
+          demand: demand.text,
+          journal: herJournal(s, reg, demand.unitId, false)
+          // P3b: what lately passed between her and the commander
         }, { st: deps.st, settings: deps.settings(), contentLine: deps.contentLine }) ?? void 0;
       } catch {
         text2 = void 0;
@@ -25246,7 +25290,7 @@ async function runCompaction(deps) {
 
 // src/llm/calls/dmReply.ts
 var DM_MAX = 400;
-var FACTS_USED = 3;
+var FACTS_USED = 4;
 var HISTORY_USED = 6;
 var SNAP_TEXT = "The commander has sent her too many messages today: she snaps at the commander, curt and irritated, and may refuse to talk right now.";
 var MODE_TEXT = {
@@ -25286,6 +25330,8 @@ registerCallType({
     ];
     const facts = i.recentFacts.slice(0, FACTS_USED);
     if (facts.length > 0) out.push("She knows:", ...facts.map((f) => `- ${f}`));
+    if (i.dossier) out.push(`What the squad remembers of her: ${i.dossier}`);
+    if (i.journal && i.journal.length > 0) out.push("Lately with the commander:", ...i.journal.map((l) => `- ${l}`));
     const history = i.history.slice(-HISTORY_USED);
     if (history.length > 0) out.push("", "Recent messages:", ...history.map((m) => `${m.from === "commander" ? i.commanderName : i.unitName}: ${m.text}`));
     out.push("", i.mode === "initiate" ? "Write her first message." : "Write her message.");
@@ -25477,8 +25523,10 @@ function replyInput(s, deps, unit, mode) {
     commanderName: s.commander.name,
     stateHint: String(st?.promptHint ?? ""),
     bands: { trust: trustBand(rel.trust), affinity: affinityBand(rel.affinity), attraction: attractionBand(rel.attraction), stress: stressBand(unit.stress) },
-    // only what she knows: facts visible to her alone
-    recentFacts: retrieveFacts(s, { participants: [unit.id], tags: [...unit.likes, ...unit.dislikes] }, 3).map((f) => f.text),
+    // only what she knows: facts visible to her alone (half of a scene's retrieval), her dossier and her journal (P3b)
+    recentFacts: herFacts(s, unit.id, [...unit.likes, ...unit.dislikes]).map((f) => f.text),
+    ...herDossier(s, unit.id) !== "" ? { dossier: herDossier(s, unit.id) } : {},
+    ...herJournal(s, deps.registries(), unit.id, true).length > 0 ? { journal: herJournal(s, deps.registries(), unit.id, true) } : {},
     slotText: clockText(s.day, s.slot),
     history: threadOf(s, unit.id).slice(-HISTORY).map((m) => ({ from: m.from === "commander" ? "commander" : "unit", text: m.text })),
     mode
@@ -25993,23 +26041,6 @@ function createMemoryController(deps) {
       while (inflight.size > 0) await Promise.allSettled([...inflight]);
     }
   };
-}
-
-// src/engine/memory/journal.ts
-var SEVERE = ["moderate", "major", "extreme"];
-var RECENT_DAYS = 2;
-var DETAIL_MAX = 100;
-var humanize2 = (type) => type.replace(/_/g, " ");
-function journalLines(state, reg, unitId, o) {
-  const history = state.relations[unitId]?.history ?? [];
-  const internal = INTERNAL_HISTORY_TYPES;
-  const kept = history.filter((h2) => h2.kind === "event" && !internal.includes(h2.type) && (h2.severity !== void 0 && SEVERE.includes(h2.severity) || h2.day >= state.day - RECENT_DAYS));
-  if (o.n <= 0) return [];
-  return kept.slice(-o.n).map((h2) => {
-    const phrase = reg.eventDeltas.get(h2.type)?.journal;
-    const base = `${typeof phrase === "string" && phrase !== "" ? phrase : humanize2(h2.type)} (day ${h2.day})`;
-    return o.evidence && h2.detail ? `${base}: '${h2.detail.slice(0, DETAIL_MAX)}'` : base;
-  });
 }
 
 // src/scene/memoryContext.ts
@@ -31190,7 +31221,15 @@ registerCallType({
   ].join("\n"),
   prompt: (raw) => {
     const i = raw;
-    return [`Reason: ${REASON_TEXT2[i.reason]}`, "<digest>", JSON.stringify(i.digest), "</digest>", "Plan what happens next."].join("\n");
+    return [
+      `Reason: ${REASON_TEXT2[i.reason]}`,
+      "<digest>",
+      JSON.stringify(i.digest),
+      "</digest>",
+      ...i.worldDossier ? ["<world_memory>", i.worldDossier.replace(/<\/?world_memory>/gi, ""), "</world_memory>"] : [],
+      ...i.recent && i.recent.length > 0 ? ["<recent>", ...i.recent.map((l) => l.replace(/<\/?recent>/gi, "")), "</recent>"] : [],
+      "Plan what happens next."
+    ].join("\n");
   },
   schema: DirectorShapeSchema
 });
@@ -31354,7 +31393,8 @@ function createDirector(deps) {
         return;
       }
       const output = await runDirectorTick(
-        { digest: buildDigest(state, deps.registries()), reason: pending2.reason },
+        { digest: buildDigest(state, deps.registries()), reason: pending2.reason, recent: publicRecent(state), worldDossier: worldDossier(state) },
+        // P3b: public memory only
         { st: deps.st, settings }
       );
       if (chatId() !== chat) return;
@@ -37143,7 +37183,9 @@ function createApp(st, deps) {
           unitName: unit.displayName,
           unitRole: SHORT_NAME(registries, "roles", unit.roleId),
           likes: unit.likes,
-          defectNames: unit.defects.map((d) => SHORT_NAME(registries, "defects", d.id))
+          defectNames: unit.defects.map((d) => SHORT_NAME(registries, "defects", d.id)),
+          memory: vignetteMemory(state, registries, unit.id, [...unit.likes, ...unit.dislikes])
+          // P3b: two facts about her and her journal
         },
         { st, settings, contentLine: () => contentLine(state, registries) }
       );

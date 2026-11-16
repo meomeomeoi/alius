@@ -1,6 +1,7 @@
 import type { EngineEvent } from '../engine/dispatch';
 import type { CampaignState } from '../engine/state/types';
 import { commandStance, stanceEntry } from '../engine/discipline';
+import { herJournal } from '../engine/memory/inputs';
 import { generateDemandFlavor } from '../llm/calls/flavor';
 import { clearDisciplineDirectives, disciplineDirectives, reputationDirectives } from './context';
 import type { DisciplineDeps } from './deps';
@@ -56,6 +57,7 @@ export function createDiscipline(deps: DisciplineDeps): DisciplineController {
         text = (await generateDemandFlavor({
           kind: 'demand', unitName: unit?.displayName ?? demand.unitId, stateHint: String(reg.relationshipStates.get(s.relations[demand.unitId]?.stateId ?? '')?.promptHint ?? ''),
           stanceName: String((stance === null ? undefined : stanceEntry(reg, stance)?.name) ?? ''), demand: demand.text,
+          journal: herJournal(s, reg, demand.unitId, false), // P3b: what lately passed between her and the commander
         }, { st: deps.st, settings: deps.settings(), contentLine: deps.contentLine })) ?? undefined;
       } catch {
         text = undefined; // a failed call never blocks the demand: the template text is used
