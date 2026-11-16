@@ -62,7 +62,8 @@ export interface SceneController {
   follow(): void;
   ask(): void;
   limit(text: string): void;
-  answer(proposalId: string, answer: ProposalAnswer): void;
+  /** `condition` is the text of an `accept_condition` answer (P9c). */
+  answer(proposalId: string, answer: ProposalAnswer, condition?: string): void;
   end(): Promise<void>;
   /** Rewrites a message of the scene in the chat. If it belongs to the last exchange, that exchange's extraction is undone and read again. */
   edit(index: number, text: string): Promise<void>;
@@ -479,14 +480,14 @@ export function createSceneController(deps: SceneDeps): SceneController {
         app.refreshContext();
       }
     },
-    answer(proposalId, answer) {
+    answer(proposalId, answer, condition) {
       const s = state();
       const p = s?.proposals?.find((x) => x.id === proposalId);
-      const events = dispatch({ type: 'proposal/answer', payload: { proposalId, answer } }, chatId());
+      const events = dispatch({ type: 'proposal/answer', payload: { proposalId, answer, ...(condition !== undefined ? { condition } : {}) } }, chatId());
       if (events.some((e) => e.type === 'error')) return;
       if (p && s) {
         const unit = unitById(s, p.unitId);
-        if (unit && p.from === 'unit') app.context.setDirective(answerDirective(unit.id, unit.displayName, p.kind, answer));
+        if (unit && p.from === 'unit') app.context.setDirective(answerDirective(unit.id, unit.displayName, p.kind, answer, condition));
       }
       reflect(events);
     },

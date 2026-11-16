@@ -5,6 +5,7 @@ import { contentAllowed } from './bonds/content';
 import { WANT_VISIT_KIND } from './bonds/scene';
 import { wantBandOf } from './bonds/want';
 import { isLiving } from './economy';
+import { courtshipMult } from './personal/courtship';
 import { nextId } from './memory';
 import type { Rng } from './rng';
 import { availableStates } from './relations/graph';
@@ -68,7 +69,7 @@ export function rollNight(draft: CampaignState, reg: Registries, rng: Rng, trigg
     for (const spec of specsOf(draft, reg, u.id, usable)) {
       if (spec.trigger !== trigger) continue;
       if (!contentAllowed(draft, reg, spec, u.id)) continue; // P9d: a tagged knock needs its category on and not among her limits (no draw)
-      if (!rng.chance(Math.min(1, spec.chance * mult))) continue;
+      if (!rng.chance(Math.min(1, spec.chance * mult * courtshipMult(draft, reg, u.id)))) continue; // P9c: a courting unit knocks twice as often
       events.push(...queueNightSpec(draft, u, spec));
     }
   }

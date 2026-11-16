@@ -338,7 +338,7 @@ tests/engine/personal/*.test.ts, tests/engine/combat/sparring.test.ts, tests/con
   - `rollClaims(draft, ctx): EngineEvent[]`; `claim(draft, ctx, unitId): EngineEvent[]` → `claimed { unitId, reactions: Array<{ unitId; kind: 'rival'|'respect' }> }`; `refuseClaim(draft, ctx, unitId)` → `claim_refused`
   - Reserved: `proposal_conditioned`, `claimed`, `claim_refused`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `a courting unit's DM initiative and night chances double; a balanced one's do not` (acceptance 3)
   - `deflect and accept_condition are refused for a non-courting unit's proposal`
   - `a condition becomes her open promise and the proposal is accepted` (acceptance 3)
@@ -347,10 +347,10 @@ tests/engine/personal/*.test.ts, tests/engine/combat/sparring.test.ts, tests/con
   - `rivals in a romantic tier get rival_favoured major; close or ingroup units bond_shown; others nothing` (acceptance 3)
   - `no claim within 14 days of the last, none for a unit in a concealed affair, none with romance off`
   - `refusing publicly needs public_humiliation; it applies rejected_advance major and stress 8`
-- [ ] **Step 2: Run** `npx vitest run tests/engine/personal/courtship.test.ts tests/scene tests/engine/relations`. Expect FAIL on the new tests only.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** the tests, then `npm test`. Expect PASS.
-- [ ] **Step 5: Tick and commit:** `feat(personal): inverted courtship and claimed`.
+- [x] **Step 2: Run** `npx vitest run tests/engine/personal/courtship.test.ts tests/scene tests/engine/relations`. Expect FAIL on the new tests only.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** the tests, then `npm test`. Expect PASS.
+- [x] **Step 5: Tick and commit:** `feat(personal): inverted courtship and claimed`.
 
 ### Task 6: Controller, directives and the `dm_edit` wording
 

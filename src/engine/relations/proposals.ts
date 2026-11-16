@@ -3,7 +3,8 @@ import type { EngineEvent } from '../dispatch';
 import { isLiving } from '../economy';
 import { syncPublicity } from '../bonds/publicitySync';
 import { setPublicity } from '../bonds/publicity';
-import { nextId } from '../memory';
+import { nextId, recordPromise } from '../memory';
+import { cleanCondition, courtshipChips } from '../personal/courtship';
 import type { Rng } from '../rng';
 import type { CampaignState, PendingProposal } from '../state/types';
 import { TUNING } from '../tuning';
@@ -13,8 +14,9 @@ import { enterState, evaluateAutomatic, pushHistory, stateForProposal, type Prop
 import type { EventIntent } from './intents';
 import { ROMANTIC_PROPOSALS } from './vocab';
 
-export type ProposalAnswer = 'accept' | 'accept_secret' | 'decline' | 'not_now';
-export const PROPOSAL_ANSWERS: readonly ProposalAnswer[] = ['accept', 'accept_secret', 'decline', 'not_now'];
+/** `deflect` and `accept_condition` (P9c) exist only for the proposal of a unit who courts the commander (`courtshipChips`). */
+export type ProposalAnswer = 'accept' | 'accept_secret' | 'decline' | 'not_now' | 'deflect' | 'accept_condition';
+export const PROPOSAL_ANSWERS: readonly ProposalAnswer[] = ['accept', 'accept_secret', 'decline', 'not_now', 'deflect', 'accept_condition'];
 
 type Channel = PendingProposal['channel'];
 const proposals = (draft: CampaignState): PendingProposal[] => (draft.proposals ??= []);
@@ -123,7 +125,7 @@ export function commanderProposal(draft: CampaignState, reg: Registries, p: { un
 
 /** The commander's answer to an open proposal (or, for a second romance, his choice of OPENLY / SECRETLY). */
 export function answerProposal(
-  draft: CampaignState, reg: Registries, a: { proposalId: string; answer: ProposalAnswer },
+  draft: CampaignState, reg: Registries, a: { proposalId: string; answer: ProposalAnswer; /** P9c: the text of `accept_condition`. */ condition?: unknown },
 ): EngineEvent[] {
   const list = proposals(draft);
   const idx = list.findIndex((x) => x.id === a.proposalId);
@@ -133,10 +135,14 @@ export function answerProposal(
   if (rec.needsDisclosure && a.answer === 'decline') throw new Error('proposal: a second romance is answered OPENLY, SECRETLY or NOT NOW');
   if (a.answer === 'decline' && rec.from === 'commander') throw new Error('proposal: only her proposals can be declined');
   if (a.answer === 'accept_secret' && !rec.needsDisclosure) throw new Error('proposal: only a second romance can be accepted secretly');
+  // P9c: the two answers of a unit who courts the commander
+  const conditioned = a.answer === 'accept_condition';
+  if ((a.answer === 'deflect' || conditioned) && !courtshipChips(draft, reg, rec)) throw new Error('proposal: that answer is only for the proposal of a unit who courts the commander');
+  const condition = conditioned ? cleanCondition(a.condition) : '';
   list.splice(idx, 1);
   const base = { proposalId: rec.id, unitId: rec.unitId, kind: rec.kind, answer: a.answer };
 
-  if (a.answer === 'not_now') return [{ type: 'proposal_answered', ...base }];
+  if (a.answer === 'not_now' || a.answer === 'deflect') return [{ type: 'proposal_answered', ...base }];
 
   if (a.answer === 'decline') {
     const romantic = (ROMANTIC_PROPOSALS as readonly string[]).includes(rec.kind);
@@ -150,14 +156,21 @@ export function answerProposal(
     return [{ type: 'proposal_answered', ...base }, { type: 'proposal_resolved', unitId: rec.unitId, kind: rec.kind, receptive: false, reason: check.fail as ProposalFailure }];
   }
   // someone may have become a partner since the offer: the commander must then choose OPENLY or SECRETLY first
-  if (a.answer === 'accept' && !rec.needsDisclosure && rec.kind !== 'secret_affair'
+  if ((a.answer === 'accept' || conditioned) && !rec.needsDisclosure && rec.kind !== 'secret_affair'
     && reg.relationshipStates.get(check.stateId)?.romance === true && romanticPartners(draft, reg, rec.unitId).length > 0) {
     rec.needsDisclosure = true;
     list.push(rec);
     return [offered(rec)];
   }
+  const promised: EngineEvent[] = [];
+  if (conditioned) {
+    // her condition is her promise: she holds the commander to it (known to her; the commander always knows)
+    const made = recordPromise(draft, { kind: 'made', by: rec.unitId, to: 'commander', text: condition }, draft.day, [rec.unitId]).record!;
+    promised.push({ type: 'proposal_conditioned', unitId: rec.unitId, promiseId: made.id });
+  }
   return [
     { type: 'proposal_answered', ...base },
+    ...promised,
     ...conclude(draft, reg, rec.unitId, rec.kind, check.stateId, a.answer === 'accept_secret' || rec.kind === 'secret_affair'),
   ];
 }

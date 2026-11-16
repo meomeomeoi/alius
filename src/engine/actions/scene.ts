@@ -190,7 +190,7 @@ registerAction('proposal/commander', (draft, payload, ctx) => {
 
 registerAction('proposal/answer', (draft, payload, ctx) => {
   if (!isObj(payload) || typeof payload.proposalId !== 'string') throw new Error('proposal/answer needs { proposalId, answer }');
-  return answerProposal(draft, ctx.registries, { proposalId: payload.proposalId, answer: payload.answer as ProposalAnswer });
+  return answerProposal(draft, ctx.registries, { proposalId: payload.proposalId, answer: payload.answer as ProposalAnswer, condition: payload.condition });
 });
 
 registerAction('campaign/set_intimacy', (draft, payload) => {

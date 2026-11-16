@@ -2,6 +2,7 @@ export { accessCan, CAPABILITIES, deviceAccess, deviceGateReason, type AccessLev
 export {
   book, bookingChance, bookingGuard, bookingPlayable, cancelBooking, dueBooking, lapseBookings, markPlayed, metAtScene, nextSlotAfter, playBooking, resolveConflict, rollBookings,
 } from './bookings';
+export { claim, claimChance, cleanCondition, courtshipChips, courtshipMult, HUMILIATION_TAG, refuseClaim, rollClaims } from './courtship';
 export { personalDayStep } from './dayStep';
 export { decorDayStep, decorOf, DECOR_PARTS, pinnedNotes, removeDecor, wallpaperUnit } from './decor';
 export { hitHer } from './events';

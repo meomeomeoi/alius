@@ -2,6 +2,7 @@ import type { EngineCtx, EngineEvent } from '../dispatch';
 import { isLiving } from '../economy';
 import type { CampaignState } from '../state/types';
 import { lapseBookings, rollBookings } from './bookings';
+import { rollClaims } from './courtship';
 import { decorDayStep } from './decor';
 import { interceptDayStep } from './intercept';
 import { forgetPersonal, holdsPersonal } from './state';
@@ -18,5 +19,5 @@ export function personalDayStep(draft: CampaignState, ctx: EngineCtx): EngineEve
       if (!isLiving(unit) && holdsPersonal(draft, unit.id)) forgetPersonal(draft, unit.id);
     }
   }
-  return [...decorDayStep(draft, ctx), ...interceptDayStep(draft), ...lapseBookings(draft), ...rollBookings(draft, ctx)];
+  return [...decorDayStep(draft, ctx), ...interceptDayStep(draft), ...lapseBookings(draft), ...rollBookings(draft, ctx), ...rollClaims(draft, ctx)];
 }

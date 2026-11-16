@@ -1,6 +1,7 @@
 import { registerAction } from '../dispatch';
 import { registerDayEndStep } from '../calendar';
 import { cancelBooking, playBooking, resolveConflict } from '../personal/bookings';
+import { refuseClaim } from '../personal/courtship';
 import { DECOR_PARTS, removeDecor } from '../personal/decor';
 import { personalDayStep } from '../personal/dayStep';
 import { INTERCEPT_CHANNELS, resolveIntercept, rollIntercept } from '../personal/intercept';
@@ -56,4 +57,10 @@ registerAction('booking/resolve', (draft, payload, ctx) => {
 registerAction('booking/play', (draft, payload, ctx) => {
   const id = isObj(payload) && typeof payload.bookingId === 'string' ? payload.bookingId : undefined;
   return playBooking(draft, ctx, id).events;
+});
+
+/** REFUSE PUBLICLY on a claim (only while `public_humiliation` is allowed for her). Draws no rng. */
+registerAction('courtship/refuse_claim', (draft, payload, ctx) => {
+  if (!isObj(payload) || typeof payload.unitId !== 'string') throw new Error('courtship/refuse_claim needs { unitId }');
+  return refuseClaim(draft, ctx, payload.unitId);
 });

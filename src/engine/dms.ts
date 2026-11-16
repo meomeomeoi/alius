@@ -6,6 +6,7 @@ import type { Rng } from './rng';
 import { availableStates } from './relations/graph';
 import { intimacyOf } from './relations/gain';
 import type { CampaignState, DmMessage } from './state/types';
+import { courtshipMult } from './personal/courtship';
 import { TUNING } from './tuning';
 
 export const threadOf = (state: CampaignState, unitId: string): DmMessage[] => state.dms[unitId] ?? [];
@@ -69,7 +70,9 @@ export function initiativeChance(state: CampaignState, reg: Registries, unitId: 
   const bonus = unit.defects.reduce((n, d) => n + ((reg.defects.get(d.id)?.dmChanceBonus as number | undefined) ?? 0), 0);
   const chance = Math.min(1, Math.max(0, base + bonus));
   // P9d: unmet want makes her write first more often (from the `restless` band)
-  return wantBandOf(state, reg, unitId) === 'calm' ? chance : Math.min(1, chance * TUNING.bonds.want.initiativeMult);
+  const wanting = wantBandOf(state, reg, unitId) === 'calm' ? chance : Math.min(1, chance * TUNING.bonds.want.initiativeMult);
+  // P9c: a unit who courts the commander takes the initiative twice as often
+  return Math.min(1, wanting * courtshipMult(state, reg, unitId));
 }
 
 const waiting = (state: CampaignState, unitId: string): boolean => {
