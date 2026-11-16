@@ -1,5 +1,5 @@
 import type { EngineEvent } from '../dispatch';
-import type { CampaignState, PersonalState, Slot } from '../state/types';
+import type { CampaignState, PersonalState, Slot, SquadSecret } from '../state/types';
 import { TUNING } from '../tuning';
 
 /**
@@ -102,3 +102,18 @@ export const unitObeys = (state: Pick<CampaignState, 'personal' | 'day'>, unitId
   const o = state.personal?.obedience;
   return o !== undefined && o.day === state.day && o.unitId === unitId && o.who === 'unit';
 };
+
+/** The secrets a unit knows (kept, pretended, found or used: not yet answered by confronting everyone). */
+export const secretsKnownBy = (state: Pick<CampaignState, 'personal'>, unitId: string): SquadSecret[] =>
+  (state.personal?.secrets ?? []).filter((x) => x.status !== 'confronted' && x.knownBy.includes(unitId));
+
+/**
+ * The `held` term of her Impunity (P9c §5): what the commander holds over her squad. −`heldPerSecret` for every used secret she
+ * knows while it lasts, never below −`heldMax`. 0 for a state with no secrets.
+ */
+export function heldTerm(state: Pick<CampaignState, 'personal' | 'day'>, unitId: string): number {
+  const used = (state.personal?.secrets ?? []).filter((x) => x.status === 'used' && (x.usedUntil ?? 0) > state.day && x.knownBy.includes(unitId)).length;
+  if (used === 0) return 0;
+  const T = TUNING.personal.secret;
+  return -Math.min(T.heldMax, used * T.heldPerSecret);
+}

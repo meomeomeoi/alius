@@ -6,6 +6,7 @@ import { answerChallenge, answerQuestion, challenge, playWager, recordAnswer } f
 import { answerOffer, removeToken, wearToken } from '../personal/tokens';
 import { DECOR_PARTS, removeDecor } from '../personal/decor';
 import { personalDayStep } from '../personal/dayStep';
+import { respondSecret, SECRET_ANSWERS, type SecretAnswer } from '../personal/secrets';
 import { INTERCEPT_CHANNELS, resolveIntercept, rollIntercept } from '../personal/intercept';
 import type { DecorPart, InterceptChannel, Slot } from '../state/types';
 
@@ -117,4 +118,12 @@ registerAction('wager/answer_question', (draft, payload, ctx) => {
 registerAction('wager/record_answer', (draft, payload, ctx) => {
   if (!isObj(payload) || typeof payload.unitId !== 'string') throw new Error('wager/record_answer needs { unitId, text }');
   return recordAnswer(draft, ctx, payload.unitId, payload.text);
+});
+
+/** The commander's answer to a secret that came out: `{ secretId, choice: 'confront' | 'pretend' | 'use' }`. Draws no rng. */
+registerAction('secret/respond', (draft, payload, ctx) => {
+  if (!isObj(payload) || typeof payload.secretId !== 'string' || !SECRET_ANSWERS.includes(payload.choice as SecretAnswer)) {
+    throw new Error('secret/respond needs { secretId, choice: "confront" | "pretend" | "use" }');
+  }
+  return respondSecret(draft, ctx, payload.secretId, payload.choice as SecretAnswer);
 });

@@ -256,6 +256,7 @@ function worldEffectRefs(list: unknown, path: string, out: Ref[]): void {
       });
     }
     if (fx.type === 'loot' && typeof fx.tableId === 'string') out.push({ registry: 'lootTables', id: fx.tableId, path: `${at}.tableId` });
+    if (fx.type === 'squad_secret' && typeof fx.kindId === 'string') out.push({ registry: 'secretKinds', id: fx.kindId, path: `${at}.kindId` });
     if (fx.type === 'offer_mission') {
       if (typeof fx.templateId === 'string') out.push({ registry: 'missionTemplates', id: fx.templateId, path: `${at}.templateId` });
       if (typeof fx.regionId === 'string') out.push({ registry: 'regions', id: fx.regionId, path: `${at}.regionId` });

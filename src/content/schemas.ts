@@ -119,6 +119,8 @@ const WorldEffectUnion = z.discriminatedUnion('type', [
   // P6: a dynamic flag in the namespace of the thread it belongs to (overview §6.1)
   z.object({ type: z.literal('stigma_news'), amount: worldInt.min(1).max(30) }).strict(),
   z.object({ type: z.literal('thread_flag'), threadId: str, flagId: z.string().regex(/^thread:[^:]+:[a-z0-9_]+$/, 'flagId must be thread:<threadId>:<slug>'), description: str.max(120) }).strict(),
+  // P9c: the squad keeps something from the commander (a `secretKinds` entry; `party` = who is on the run, `squad` = every named unit)
+  z.object({ type: z.literal('squad_secret'), kindId: str, knownBy: z.enum(['party', 'squad']) }).strict(),
 ]);
 
 export const WorldEffectSchema = WorldEffectUnion.superRefine((fx, ctx) => {
@@ -474,6 +476,7 @@ export const RESERVED_EVENT_TYPES: readonly string[] = [
   'booking_made', 'booking_conflict', 'booking_resolved', 'booking_cancelled', 'booking_played', 'booking_lapsed',
   'token_offered', 'token_accepted', 'token_declined', 'token_worn', 'token_taken_off',
   'wager_offered', 'wager_refused', 'wager_accepted', 'wager_declined', 'wager_resolved', 'mark_set', 'mark_ended', 'wager_question', 'truth_told', 'demand_dropped',
+  'secret_kept', 'secret_found', 'secret_answered',
 ];
 
 const slotEnum = z.enum(['morning', 'afternoon', 'evening', 'night']);
@@ -657,6 +660,8 @@ export const RelationshipStateSchema = BaseEntrySchema.extend({
   bondTier: z.enum(['romantic', 'close']).optional(),
   /** P9d: added to the lead score of her scenes while her lead style is at least assertive. */
   leadBonus: int.min(0).max(40).optional(),
+  /** P9c: a unit in this state lets a squad secret slip at the end of a scene. */
+  secretSlip: z.boolean().optional(),
   entry: z.object({
     via: z.array(z.enum(['automatic', 'event', 'proposal'])).min(1),
     /** Empty or absent = from any state. */
@@ -1423,6 +1428,10 @@ export const CommandStanceSchema = BaseEntrySchema.extend({
   demandWeight: z.number().min(0).max(3),
   /** P9b: added to her ballot in a squad vote (a disciplined or fearful unit goes along, an openly defiant one does not). */
   voteBias: z.number().min(-3).max(3).optional(),
+  /** P9c: a unit in this stance hides a bad injury from the commander (a squad secret when a run ends). */
+  hidesInjury: z.boolean().optional(),
+  /** P9c: a unit in this stance lets a squad secret slip at the end of a scene. */
+  secretSlip: z.boolean().optional(),
 }).strict();
 
 /** What a punishment does besides moving numbers. The vocabulary is closed; the engine reads effects by type, never by id. */
@@ -1916,6 +1925,20 @@ export const WagerStakeSchema = BaseEntrySchema.extend({
 export type WagerStakeEntry = z.infer<typeof WagerStakeSchema>;
 registrySchemas.wagerStakes = WagerStakeSchema;
 
+/** P9c §5: what the squad can keep from the commander. `source` is the closed vocabulary of the engine's hooks (`hidden_injury`: a run ends; `event`: a `squad_secret` world effect; `successor`: a leader's week). The text carries `{name}` (the unit it is about) or `{leader}`. */
+export const SecretKindSchema = BaseEntrySchema.extend({
+  description: str.max(DESCRIPTION_MAX),
+  source: z.enum(['hidden_injury', 'event', 'successor']),
+  reason: z.enum(['protect_commander', 'self_interest', 'leader_order']),
+  text: str.max(200),
+  importance: int.min(1).max(5),
+}).strict().superRefine((k, ctx) => {
+  if (k.source === 'hidden_injury' && !k.text.includes('{name}')) ctx.addIssue({ code: 'custom', path: ['text'], message: 'a hidden-injury secret must contain {name}' });
+  if (k.source === 'successor' && !k.text.includes('{leader}')) ctx.addIssue({ code: 'custom', path: ['text'], message: 'a successor secret must contain {leader}' });
+});
+export type SecretKindEntry = z.infer<typeof SecretKindSchema>;
+registrySchemas.secretKinds = SecretKindSchema;
+
 /** Player-visible registries whose entries carry an optional `description` (skills and statuses already require one). */
 export const DESCRIBED_REGISTRIES = [
   'roles', 'skills', 'signatures', 'statuses', 'defects', 'items', 'affixes', 'enemies',
@@ -1934,7 +1957,7 @@ export const DESCRIBED_REGISTRIES = [
   // P9b
   'voteKinds', 'outsideFeats',
   // P9c
-  'deviceAccessRules', 'bookingKinds', 'tokenKinds', 'wagerGames', 'wagerStakes',
+  'deviceAccessRules', 'bookingKinds', 'tokenKinds', 'wagerGames', 'wagerStakes', 'secretKinds',
 ] as const satisfies readonly RegistryName[];
 
 /** Adds the optional `description` rule to a registry schema without changing its shape. */

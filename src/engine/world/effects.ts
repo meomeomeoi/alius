@@ -4,6 +4,7 @@ import { unitStats } from '../combat/stats';
 import { bankLoot, rollLoot } from '../items';
 import { addRestriction } from '../discipline/restrictions';
 import { addFact } from '../memory';
+import { addSecret } from '../personal/secrets';
 import { applyEventToUnit } from '../relations/effects';
 import { evaluateAutomatic } from '../relations/graph';
 import type { CampaignState, LootDrop, Unit } from '../state/types';
@@ -231,6 +232,11 @@ export function applyWorldEffects(
       case 'offer_mission':
         events.push(...offerMissionEffect(draft, ctx, fx));
         break;
+      case 'squad_secret': {
+        const known = fx.knownBy === 'squad' ? draft.squad : partyUnits(draft);
+        events.push(...addSecret(draft, reg, { kindId: fx.kindId, knownBy: known.map((u) => u.id) }));
+        break;
+      }
     }
   }
   return events;

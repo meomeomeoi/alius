@@ -558,7 +558,7 @@ tests/engine/personal/*.test.ts, tests/engine/combat/sparring.test.ts, tests/con
   - `respondSecret(draft, ctx, secretId, choice: 'confront'|'pretend'|'use')`
   - Reserved: `secret_kept`, `secret_found`, `secret_answered`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `a defiant_loyal unit ending a run at 20 % HP makes a hidden-injury secret known by the party; at 30 % or as disciplined, none; no draw either way`
   - `the squad_secret world effect stores one known by the party or squad`
   - `a leader holding 7 days makes the successor secret once`
@@ -567,10 +567,10 @@ tests/engine/personal/*.test.ts, tests/engine/combat/sparring.test.ts, tests/con
   - `pretend: a fact only the commander knows; it never reaches retrieveFacts for a scene` (acceptance 5)
   - `use: held −8 per secret, at least −16, for 14 days; the P9 provider shows the term` (acceptance 5)
   - `a secret she alone knew is dropped when she leaves; others' lose her from knownBy` (Review Focus 3)
-- [ ] **Step 2: Run** `npx vitest run tests/engine/personal/secrets.test.ts tests/engine/discipline`. Expect FAIL on the new tests.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** the tests, then `npm test`. Expect PASS.
-- [ ] **Step 5: Tick and commit:** `feat(personal): squad secrets and what the commander does with them`.
+- [x] **Step 2: Run** `npx vitest run tests/engine/personal/secrets.test.ts tests/engine/discipline`. Expect FAIL on the new tests.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** the tests, then `npm test`. Expect PASS.
+- [x] **Step 5: Tick and commit:** `feat(personal): squad secrets and what the commander does with them`.
 
 ### Task 14: Discovery routes
 

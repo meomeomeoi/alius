@@ -33,13 +33,13 @@ describe('impunityOf', () => {
   it('on day 1 a fresh unit on a guarded world reads just its base, 35', () => {
     const s = campaign(reg, 4);
     expect(val(s).value).toBe(35);
-    expect(val(s).terms).toEqual({ base: 35, record: 0, leash: 0, presence: 0, dependency: 0, contagion: 0, leverage: 0 });
+    expect(val(s).terms).toEqual({ base: 35, record: 0, leash: 0, presence: 0, dependency: 0, contagion: 0, leverage: 0, held: 0 });
   });
 
   it('a fresh unit on a guarded world with a Leash never used for a week reads 35 + 0 + 8', () => {
     const s = fresh();
     expect(val(s).value).toBe(43);
-    expect(val(s).terms).toEqual({ base: 35, record: 0, leash: 8, presence: 0, dependency: 0, contagion: 0, leverage: 0 });
+    expect(val(s).terms).toEqual({ base: 35, record: 0, leash: 8, presence: 0, dependency: 0, contagion: 0, leverage: 0, held: 0 });
   });
 
   it('base follows her effective disposition: offset +2 on a guarded world is volatile', () => {

@@ -17,6 +17,7 @@ export const SAMPLE_ADDRESS: Record<string, string> = {
   tokenKinds: 'tokenKinds:dog_tag', // P9c
   wagerGames: 'wagerGames:coin', // P9c
   wagerStakes: 'wagerStakes:privilege', // P9c
+  secretKinds: 'secretKinds:hidden_injury', // P9c
 };
 
 /** The address a registered provider key is run with: the key itself when it is an address, else its sample. */

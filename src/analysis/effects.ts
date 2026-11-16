@@ -179,6 +179,7 @@ export function summarizeWorldEffect(effect: WorldEffect, reg: Registries): stri
     case 'party_stress': return `${signed(Number(e.amount))} Stress to the party`;
     case 'party_hp': return `${pctSigned(Number(e.pct))} HP to the party`;
     case 'leash': return `${signed(Number(e.amount))} Leash authorization`;
+    case 'squad_secret': return 'The squad keeps something from the commander';
     case 'oversight_punish': return 'Oversight confines her for a few days and strains her; it is not your punishment, so it adds nothing to her Impunity';
     case 'unit_event': {
       const who = e.targets === 'subject' ? 'the one who answers for it' : e.targets === 'witnesses' ? 'the others who backed it' : e.targets === 'named' ? 'named soldiers' : 'the party';

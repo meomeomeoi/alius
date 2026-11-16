@@ -10,6 +10,8 @@ export const WORLD_EFFECT_TYPES = [
   'thread_flag',
   // P8
   'stigma_news',
+  // P9c
+  'squad_secret',
 ] as const;
 export type WorldEffectType = (typeof WORLD_EFFECT_TYPES)[number];
 
@@ -52,7 +54,9 @@ export type WorldEffect =
   /** P6: a dynamic flag in a thread's namespace (`thread:<threadId>:<slug>`) with its one-line description. */
   | { type: 'thread_flag'; threadId: string; flagId: string; description: string }
   /** P8: the sweep reaches the squad: every living unit takes `amount` stress, times her `news_stress_mult` stance effects. */
-  | { type: 'stigma_news'; amount: number };
+  | { type: 'stigma_news'; amount: number }
+  /** P9c: the squad keeps something from the commander (`party` = the run's party or the active roster, `squad` = every named unit). */
+  | { type: 'squad_secret'; kindId: string; knownBy: 'party' | 'squad' };
 
 // ---------------------------------------------------------------------------------------------
 // State shapes (campaign state `version: 1`; every P5 field is optional or empty in older saves).

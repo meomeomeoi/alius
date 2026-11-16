@@ -3,6 +3,7 @@ import { firstImpressionWeight, presenceOf } from '../commander/presence';
 import { isLiving } from '../economy';
 import { leashLog } from '../leash/weekly';
 import { privilegeScale } from '../power/leader';
+import { heldTerm } from '../personal/state';
 import { leaderOf } from '../power/state';
 import type { CampaignState, Unit } from '../state/types';
 import { TUNING } from '../tuning';
@@ -18,6 +19,8 @@ export interface ImpunityTerms {
   dependency: number;
   contagion: number;
   leverage: number;
+  /** P9c: the commander used a secret of the squad's against her (−8 for each she knows, at least −16, for 14 days). */
+  held: number;
 }
 
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
@@ -132,8 +135,9 @@ export function impunityOf(state: CampaignState, reg: Registries, unitId: string
     dependency: int(-dependencyTerm(state, reg, unit)),
     contagion: contagionTerm(state, reg, unit),
     leverage: Math.min(T.secretCap, leverageOf(state, reg, unitId).length * T.secret),
+    held: heldTerm(state, unitId),
   };
-  const sum = terms.base + terms.record + terms.leash + terms.presence + terms.dependency + terms.contagion + terms.leverage;
+  const sum = terms.base + terms.record + terms.leash + terms.presence + terms.dependency + terms.contagion + terms.leverage + terms.held;
   return { value: clamp(Math.round(sum), 0, 100), terms };
 }
 

@@ -713,6 +713,8 @@ export interface PersonalState {
   truth?: { unitId: string; wagerId: string; question: string };
   mark?: { unitId: string; untilDay: number };
   secrets?: SquadSecret[];
+  /** Who has led the squad since which day: the successor secret needs a leader who held for a week. */
+  leaderSince?: { unitId: string; day: number };
 }
 
 export type BodyStat = 'strength' | 'endurance' | 'reflexes';

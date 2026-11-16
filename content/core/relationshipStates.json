@@ -1029,6 +1029,7 @@
     "romance": false,
     "glyph": "r!",
     "priority": 80,
+    "secretSlip": true,
     "entry": {
       "via": [
         "automatic"

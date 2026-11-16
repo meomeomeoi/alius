@@ -60,6 +60,7 @@
     "bookingKinds": "bookingKinds.json",
     "tokenKinds": "tokenKinds.json",
     "wagerGames": "wagerGames.json",
-    "wagerStakes": "wagerStakes.json"
+    "wagerStakes": "wagerStakes.json",
+    "secretKinds": "secretKinds.json"
   }
 }

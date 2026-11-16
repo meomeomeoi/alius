@@ -103,6 +103,12 @@ describe('no pronoun for the commander in content', () => {
     expect(texts.filter(([, t]) => COMMANDER_PRONOUN.test(t) || /\b(he|him|his|they|them|their)\b/i.test(t)).map(([where]) => where)).toEqual([]);
   });
 
+  it('secret kinds (P9c): descriptions and texts', () => {
+    const texts = [...reg.secretKinds.values()].flatMap((k): Array<[string, string]> => [[`secretKinds:${k.id}.description`, String(k.description)], [`secretKinds:${k.id}.text`, String(k.text)]]);
+    expect(texts.length).toBe(6);
+    expect(texts.filter(([, t]) => COMMANDER_PRONOUN.test(t) || /\b(he|him|his|they|them|their)\b/i.test(t)).map(([where]) => where)).toEqual([]);
+  });
+
   it('outside feats and the hierarchy glossary entries (P9b)', () => {
     const texts: Array<[string, string]> = [
       ...fields('outsideFeats', ['label', 'description']),
