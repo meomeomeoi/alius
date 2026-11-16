@@ -1,5 +1,6 @@
 import type { Registries } from '../../content/types';
 import { deviceAccess, deviceGateReason } from './access';
+import { contentAllowed } from '../bonds/content';
 import { bondOf, bondTierOf, leadRank } from '../bonds/profile';
 import { impunityOf } from '../discipline/impunity';
 import { isLiving } from '../economy';
@@ -8,6 +9,13 @@ import { intimacyOf } from '../relations/gain';
 import { ROMANTIC_PROPOSALS } from '../relations/vocab';
 import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
+
+/** The content category the level-4 intercepts and the rule `no_other_tokens` need (a switch the player owns). */
+export const JEALOUSY_TAG = 'jealousy_games';
+
+/** May a jealousy-flavoured mechanic involve her: the category is on and it is not one of her own limits. */
+export const jealousyAllowed = (state: CampaignState, reg: Registries, unitId: string): boolean =>
+  contentAllowed(state, reg, { contentTags: [JEALOUSY_TAG] }, unitId);
 
 export type PressureMechanic = 'device' | 'booking' | 'intercept' | 'courtship' | 'claim' | 'token' | 'wager';
 
@@ -32,7 +40,7 @@ export function pressureGate(state: CampaignState, reg: Registries, unitId: stri
       return deviceAccess(state, reg, unitId) >= 3 ? null : 'no device access';
     case 'intercept': {
       if (deviceAccess(state, reg, unitId) < 4) return 'no device access';
-      return null;
+      return jealousyAllowed(state, reg, unitId) ? null : 'jealousy games are off';
     }
     case 'courtship': {
       if (lead < G.courtship.minLeadRank) return 'her lead style is too yielding';

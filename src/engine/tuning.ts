@@ -423,8 +423,8 @@ export const TUNING = Object.freeze({
       wager: Object.freeze({ minLeadRank: 1, minAffinity: 20, minImpunity: 50 }),
     }),
     decor: Object.freeze({ regrowDays: 7, fadeDays: 7 }),
-    /** A level-4 edit: chance per eligible event (before the multipliers), its cap, and the record a REVERT costs the commander. */
-    intercept: Object.freeze({ chance: 0.3, cap: 0.6, perDay: 1 }),
+    /** A level-4 edit (one a day per unit): chance per eligible event (before the multipliers), its cap, and how many days of the log are kept. */
+    intercept: Object.freeze({ chance: 0.3, cap: 0.6, logDays: 7 }),
     booking: Object.freeze({ base: 0.08, cap: 0.5, perWeek: 2, settleStress: 10 }),
     courtship: Object.freeze({ initiativeMult: 2, conditionMax: 160 }),
     claim: Object.freeze({ chance: 0.04, cooldownDays: 14, refuseStress: 8 }),

@@ -272,7 +272,7 @@ tests/engine/personal/*.test.ts, tests/engine/combat/sparring.test.ts, tests/con
   - `dm/send { unitId, text, interceptId? }`: with an id it must be a kept intercept of today for that recipient (stored as `kept` until used once), else it throws `That edit is not waiting to be sent.`
   - Reserved: `device_intercept`, `intercept_resolved`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `no editor: no draw` (rng state unchanged)
   - `a dominant lover with jealousy_games on intercepts a DM to another soldier, never one to herself`
   - `with jealousy_games off, or as her own limit, she never intercepts`
@@ -282,10 +282,10 @@ tests/engine/personal/*.test.ts, tests/engine/combat/sparring.test.ts, tests/con
   - `a Leash or recruit intercept KEEP files nothing; REVERT lets it through`
   - `an open intercept survives a reload and closes once` (Review Focus 2: `JSON` round-trip, resolve twice → second throws)
   - `switching jealousy_games off drops an open intercept with no deltas`
-- [ ] **Step 2: Run** `npx vitest run tests/engine/personal/intercept.test.ts`. Expect FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** the tests, then `npm test`. Expect PASS.
-- [ ] **Step 5: Tick and commit:** `feat(personal): level-4 intercepts of DMs and requests`.
+- [x] **Step 2: Run** `npx vitest run tests/engine/personal/intercept.test.ts`. Expect FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** the tests, then `npm test`. Expect PASS.
+- [x] **Step 5: Tick and commit:** `feat(personal): level-4 intercepts of DMs and requests`.
 
 ### Task 4: Bookings (engine)
 

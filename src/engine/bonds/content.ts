@@ -65,6 +65,8 @@ function withdrawTagged(draft: CampaignState, reg: Registries, removed: string[]
       draft.discipline.demandLog = draft.discipline.demandLog.filter((e) => !gone.some((d) => d.unitId === e.unitId && d.day === e.day && d.templateId === e.templateId));
     }
   }
+  // P9c: a level-4 edit waiting for KEEP / REVERT goes quietly when jealousy games are switched off (she still edited today)
+  if (draft.personal?.intercepts?.open && hit(['jealousy_games'])) delete draft.personal.intercepts.open;
   draft.calendar.nightEventsQueue = draft.calendar.nightEventsQueue.filter((e) => !hit(e.contentTags ?? []));
   if (draft.calendar.nightEvent && hit(draft.calendar.nightEvent.contentTags ?? [])) delete draft.calendar.nightEvent;
 }

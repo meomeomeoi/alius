@@ -486,8 +486,8 @@ var TUNING = Object.freeze({
       wager: Object.freeze({ minLeadRank: 1, minAffinity: 20, minImpunity: 50 })
     }),
     decor: Object.freeze({ regrowDays: 7, fadeDays: 7 }),
-    /** A level-4 edit: chance per eligible event (before the multipliers), its cap, and the record a REVERT costs the commander. */
-    intercept: Object.freeze({ chance: 0.3, cap: 0.6, perDay: 1 }),
+    /** A level-4 edit (one a day per unit): chance per eligible event (before the multipliers), its cap, and how many days of the log are kept. */
+    intercept: Object.freeze({ chance: 0.3, cap: 0.6, logDays: 7 }),
     booking: Object.freeze({ base: 0.08, cap: 0.5, perWeek: 2, settleStress: 10 }),
     courtship: Object.freeze({ initiativeMult: 2, conditionMax: 160 }),
     claim: Object.freeze({ chance: 0.04, cooldownDays: 14, refuseStress: 8 }),
@@ -11169,6 +11169,7 @@ function withdrawTagged(draft, reg, removed) {
       draft.discipline.demandLog = draft.discipline.demandLog.filter((e) => !gone.some((d) => d.unitId === e.unitId && d.day === e.day && d.templateId === e.templateId));
     }
   }
+  if (draft.personal?.intercepts?.open && hit(["jealousy_games"])) delete draft.personal.intercepts.open;
   draft.calendar.nightEventsQueue = draft.calendar.nightEventsQueue.filter((e) => !hit(e.contentTags ?? []));
   if (draft.calendar.nightEvent && hit(draft.calendar.nightEvent.contentTags ?? [])) delete draft.calendar.nightEvent;
 }
@@ -11498,6 +11499,11 @@ function negotiationHolds(e) {
 // src/engine/personal/state.ts
 function personalOf(draft) {
   return draft.personal ??= { seq: 0 };
+}
+function nextPersonalId(draft, prefix) {
+  const p = personalOf(draft);
+  p.seq += 1;
+  return `${prefix}_${p.seq}`;
 }
 function holdsPersonal(state, unitId) {
   const p = state.personal;
@@ -13767,6 +13773,163 @@ registerAction("memory/compact", (draft, payload) => {
   return [{ type: "chronicle_compacted", kind, day, toDay: entry.toDay ?? null }];
 });
 
+// src/engine/personal/access.ts
+function deviceGateReason(state, unitId) {
+  const unit = state.squad.find((u) => u.id === unitId);
+  if (!unit || unit.kind !== "named" || !isLiving(unit) || !state.relations[unitId]) return "not a named unit in service";
+  if (unit.bond === void 0) return "no imported bond profile";
+  return leadRank(bondOf(unit).leadStyle) >= TUNING.personal.gates.device.minLeadRank ? null : "her lead style is too yielding";
+}
+function branchHolds(state, reg, unitId, b, impunity) {
+  const unit = state.squad.find((u) => u.id === unitId);
+  const rel = state.relations[unitId];
+  if (b.tiers !== void 0) {
+    const tier = bondTierOf(state, reg, unitId);
+    if (tier === null || !b.tiers.includes(tier)) return false;
+  }
+  if (b.states !== void 0 && !b.states.includes(rel.stateId)) return false;
+  if (b.minLeadRank !== void 0 && leadRank(bondOf(unit).leadStyle) < b.minLeadRank) return false;
+  if (b.minAffinity !== void 0 && rel.affinity < b.minAffinity) return false;
+  if (b.minImpunity !== void 0 && impunity() < b.minImpunity) return false;
+  return true;
+}
+function deviceAccess(state, reg, unitId) {
+  if (deviceGateReason(state, unitId) !== null) return 0;
+  let cached;
+  const impunity = () => cached ??= impunityOf(state, reg, unitId)?.value ?? 0;
+  const rules2 = [...reg.deviceAccessRules.values()].sort((a, b) => Number(b.level) - Number(a.level));
+  for (const rule of rules2) {
+    if (rule.anyOf.some((b) => branchHolds(state, reg, unitId, b, impunity))) return Number(rule.level);
+  }
+  return 0;
+}
+
+// src/engine/personal/gates.ts
+var JEALOUSY_TAG = "jealousy_games";
+var jealousyAllowed = (state, reg, unitId) => contentAllowed(state, reg, { contentTags: [JEALOUSY_TAG] }, unitId);
+function pressureGate(state, reg, unitId, mechanic) {
+  const unit = state.squad.find((u) => u.id === unitId);
+  const rel = state.relations[unitId];
+  if (!unit || unit.kind !== "named" || !isLiving(unit) || !rel) return "not a named unit in service";
+  if (unit.bond === void 0) return "no imported bond profile";
+  const bond = bondOf(unit);
+  const lead = leadRank(bond.leadStyle);
+  const G = TUNING.personal.gates;
+  const tier = bondTierOf(state, reg, unitId);
+  switch (mechanic) {
+    case "device":
+      return deviceGateReason(state, unitId);
+    case "booking":
+      return deviceAccess(state, reg, unitId) >= 3 ? null : "no device access";
+    case "intercept": {
+      if (deviceAccess(state, reg, unitId) < 4) return "no device access";
+      return jealousyAllowed(state, reg, unitId) ? null : "jealousy games are off";
+    }
+    case "courtship": {
+      if (lead < G.courtship.minLeadRank) return "her lead style is too yielding";
+      if (!intimacyOf(state).romance) return "romance is off";
+      if (tier === "romantic") return null;
+      const open3 = ROMANTIC_PROPOSALS.some((kind) => "stateId" in stateForProposal(state, reg, unitId, kind));
+      return open3 ? null : "no romantic step open to her";
+    }
+    case "claim": {
+      const court = pressureGate(state, reg, unitId, "courtship");
+      if (court !== null) return court;
+      if (tier !== "romantic") return "not in a romantic tier";
+      return rel.affair === void 0 ? null : "the relationship is concealed";
+    }
+    case "token":
+      if (tier === null) return "no close or romantic tier";
+      if (bond.attachment === "avoidant") return "avoidant attachment";
+      return rel.affinity >= G.token.minAffinity ? null : "Affinity too low";
+    case "wager": {
+      if (lead < G.wager.minLeadRank) return "her lead style is too yielding";
+      if (rel.affinity >= G.wager.minAffinity) return null;
+      return (impunityOf(state, reg, unitId)?.value ?? 0) >= G.wager.minImpunity ? null : "neither warm nor brazen enough";
+    }
+  }
+}
+function pressureMultOf(state, reg, unitId) {
+  const unit = state.squad.find((u) => u.id === unitId);
+  if (!unit) return 1;
+  let mult = 1;
+  for (const d of unit.defects) {
+    const m = reg.defects.get(d.id)?.pressureMult;
+    if (typeof m === "number") mult *= m;
+  }
+  return mult;
+}
+
+// src/engine/personal/events.ts
+function hitHer(draft, reg, unitId, type, severity, evidence, opts = {}) {
+  const scale = opts.amplified === true ? pressureMultOf(draft, reg, unitId) : 1;
+  const events = applyEventToUnit(draft, reg, unitId, { type, actor: "commander", targets: [unitId], severity, evidence, confidence: 1 }, scale === 1 ? {} : { scale });
+  events.push(...evaluateAutomatic(draft, reg, unitId));
+  return events;
+}
+
+// src/engine/personal/intercept.ts
+var INTERCEPT_CHANNELS = ["dm", "leash", "recruit"];
+function interceptEditor(state, reg, channel, toUnitId) {
+  const editedToday = new Set((state.personal?.intercepts?.log ?? []).filter((e) => e.day === state.day).map((e) => e.unitId));
+  let best = null;
+  for (const u of state.squad) {
+    if (u.kind !== "named" || editedToday.has(u.id) || channel === "dm" && u.id === toUnitId) continue;
+    if (pressureGate(state, reg, u.id, "intercept") !== null) continue;
+    const impunity = impunityOf(state, reg, u.id)?.value ?? 0;
+    if (best === null || impunity > best.impunity) best = { id: u.id, impunity };
+  }
+  return best?.id ?? null;
+}
+function rollIntercept(draft, ctx2, p) {
+  const reg = ctx2.registries;
+  if (draft.personal?.intercepts?.open !== void 0) return [{ type: "device_intercept", hit: false }];
+  const unitId = interceptEditor(draft, reg, p.channel, p.toUnitId);
+  if (unitId === null) return [{ type: "device_intercept", hit: false }];
+  const T = TUNING.personal.intercept;
+  const chance = Math.min(T.cap, T.chance * assertiveness(draft, reg).demandMult * pressureMultOf(draft, reg, unitId));
+  if (!ctx2.rng.chance(chance)) return [{ type: "device_intercept", hit: false }];
+  const personal = personalOf(draft);
+  const id = nextPersonalId(draft, "icp");
+  const intercepts = personal.intercepts ??= { log: [] };
+  intercepts.open = { id, unitId, channel: p.channel, ...p.toUnitId !== void 0 ? { toUnitId: p.toUnitId } : {}, day: draft.day, status: "open" };
+  intercepts.log.push({ unitId, day: draft.day });
+  return [{ type: "device_intercept", hit: true, interceptId: id, unitId, channel: p.channel }];
+}
+function resolveIntercept(draft, ctx2, id, keep) {
+  const intercepts = draft.personal?.intercepts;
+  const open3 = intercepts?.open;
+  if (!intercepts || !open3 || open3.id !== id || open3.status !== "open") throw new Error("That edit is not waiting for an answer.");
+  const done = { type: "intercept_resolved", id, unitId: open3.unitId, channel: open3.channel, keep };
+  if (keep) {
+    if (open3.channel === "dm") open3.status = "kept";
+    else delete intercepts.open;
+    return [done];
+  }
+  delete intercepts.open;
+  return [
+    done,
+    ...hitHer(draft, ctx2.registries, open3.unitId, "overrode_her", "moderate", "reverted her edit", { amplified: true }),
+    ...addRecord(draft, open3.unitId, TUNING.personal.overrideRecord, "override")
+  ];
+}
+function takeKeptEdit(draft, interceptId, recipientId) {
+  const intercepts = draft.personal?.intercepts;
+  const open3 = intercepts?.open;
+  if (!intercepts || !open3 || open3.id !== interceptId || open3.status !== "kept" || open3.channel !== "dm" || open3.toUnitId !== recipientId || open3.day !== draft.day) {
+    throw new Error("That edit is not waiting to be sent.");
+  }
+  delete intercepts.open;
+  return open3.unitId;
+}
+function interceptDayStep(draft) {
+  const intercepts = draft.personal?.intercepts;
+  if (!intercepts) return [];
+  delete intercepts.open;
+  intercepts.log = intercepts.log.filter((e) => e.day > draft.day - TUNING.personal.intercept.logDays);
+  return [];
+}
+
 // src/engine/actions/comms.ts
 var isObj9 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var TEXT_MAX = 1e3;
@@ -13805,7 +13968,8 @@ registerAction("dm/send", (draft, payload) => {
   if (!isObj9(payload)) throw new Error("dm/send needs { unitId, text }");
   const unit = namedUnit(draft, payload.unitId);
   const text2 = textOf(payload.text);
-  pushMessage(draft, unit.id, { from: "commander", text: text2, day: draft.day, slot: draft.slot, read: true });
+  const editedBy = payload.interceptId === void 0 ? void 0 : takeKeptEdit(draft, String(payload.interceptId), unit.id);
+  pushMessage(draft, unit.id, { from: "commander", text: text2, day: draft.day, slot: draft.slot, read: true, ...editedBy !== void 0 ? { editedBy } : {} });
   if (draft.relations[unit.id]) draft.relations[unit.id].contactDay = draft.day;
   countSent(draft, unit.id);
   return [{ type: "dm_sent", unitId: unit.id, mode: dmMode(draft, unit.id) }];
@@ -18541,57 +18705,6 @@ registerAction("content/set_categories", (draft, payload, ctx2) => {
   return setCategories(draft, ctx2.registries, payload.enabled);
 });
 
-// src/engine/personal/access.ts
-function deviceGateReason(state, unitId) {
-  const unit = state.squad.find((u) => u.id === unitId);
-  if (!unit || unit.kind !== "named" || !isLiving(unit) || !state.relations[unitId]) return "not a named unit in service";
-  if (unit.bond === void 0) return "no imported bond profile";
-  return leadRank(bondOf(unit).leadStyle) >= TUNING.personal.gates.device.minLeadRank ? null : "her lead style is too yielding";
-}
-function branchHolds(state, reg, unitId, b, impunity) {
-  const unit = state.squad.find((u) => u.id === unitId);
-  const rel = state.relations[unitId];
-  if (b.tiers !== void 0) {
-    const tier = bondTierOf(state, reg, unitId);
-    if (tier === null || !b.tiers.includes(tier)) return false;
-  }
-  if (b.states !== void 0 && !b.states.includes(rel.stateId)) return false;
-  if (b.minLeadRank !== void 0 && leadRank(bondOf(unit).leadStyle) < b.minLeadRank) return false;
-  if (b.minAffinity !== void 0 && rel.affinity < b.minAffinity) return false;
-  if (b.minImpunity !== void 0 && impunity() < b.minImpunity) return false;
-  return true;
-}
-function deviceAccess(state, reg, unitId) {
-  if (deviceGateReason(state, unitId) !== null) return 0;
-  let cached;
-  const impunity = () => cached ??= impunityOf(state, reg, unitId)?.value ?? 0;
-  const rules2 = [...reg.deviceAccessRules.values()].sort((a, b) => Number(b.level) - Number(a.level));
-  for (const rule of rules2) {
-    if (rule.anyOf.some((b) => branchHolds(state, reg, unitId, b, impunity))) return Number(rule.level);
-  }
-  return 0;
-}
-
-// src/engine/personal/gates.ts
-function pressureMultOf(state, reg, unitId) {
-  const unit = state.squad.find((u) => u.id === unitId);
-  if (!unit) return 1;
-  let mult = 1;
-  for (const d of unit.defects) {
-    const m = reg.defects.get(d.id)?.pressureMult;
-    if (typeof m === "number") mult *= m;
-  }
-  return mult;
-}
-
-// src/engine/personal/events.ts
-function hitHer(draft, reg, unitId, type, severity, evidence, opts = {}) {
-  const scale = opts.amplified === true ? pressureMultOf(draft, reg, unitId) : 1;
-  const events = applyEventToUnit(draft, reg, unitId, { type, actor: "commander", targets: [unitId], severity, evidence, confidence: 1 }, scale === 1 ? {} : { scale });
-  events.push(...evaluateAutomatic(draft, reg, unitId));
-  return events;
-}
-
 // src/engine/personal/decor.ts
 var DECOR_PARTS = ["sticker", "wallpaper", "contact"];
 function ruleOfLevel(reg, level) {
@@ -18647,7 +18760,7 @@ function personalDayStep(draft, ctx2) {
       if (!isLiving(unit) && holdsPersonal(draft, unit.id)) forgetPersonal(draft, unit.id);
     }
   }
-  return [...decorDayStep(draft, ctx2)];
+  return [...decorDayStep(draft, ctx2), ...interceptDayStep(draft)];
 }
 
 // src/engine/actions/personal.ts
@@ -18658,6 +18771,16 @@ registerAction("device/remove_decor", (draft, payload, ctx2) => {
     throw new Error('device/remove_decor needs { unitId, part: "sticker" | "wallpaper" | "contact" }');
   }
   return removeDecor(draft, ctx2, payload.unitId, payload.part);
+});
+registerAction("device/intercept", (draft, payload, ctx2) => {
+  if (!isObj20(payload) || !INTERCEPT_CHANNELS.includes(payload.channel) || payload.toUnitId !== void 0 && typeof payload.toUnitId !== "string") {
+    throw new Error('device/intercept needs { channel: "dm" | "leash" | "recruit", toUnitId? }');
+  }
+  return rollIntercept(draft, ctx2, { channel: payload.channel, ...payload.toUnitId !== void 0 ? { toUnitId: payload.toUnitId } : {} });
+});
+registerAction("device/resolve_intercept", (draft, payload, ctx2) => {
+  if (!isObj20(payload) || typeof payload.id !== "string" || typeof payload.keep !== "boolean") throw new Error("device/resolve_intercept needs { id, keep }");
+  return resolveIntercept(draft, ctx2, payload.id, payload.keep);
 });
 
 // src/engine/power/dayStep.ts

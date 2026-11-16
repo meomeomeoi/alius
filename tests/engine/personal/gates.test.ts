@@ -62,8 +62,13 @@ describe('who may take part', () => {
   });
 
   it('intercept needs device access 4', () => {
-    expect(gate(fresh({ lead: 'dominant', stateId: 'lover' }), 'intercept')).toBeNull();
-    expect(gate(fresh({ lead: 'assertive', stateId: 'lover' }), 'intercept')).toBe('no device access');
+    const dominant = fresh({ lead: 'dominant', stateId: 'lover' });
+    dominant.content = { enabled: ['jealousy_games'] };
+    expect(gate(dominant, 'intercept')).toBeNull();
+    expect(gate(fresh({ lead: 'dominant', stateId: 'lover' }), 'intercept')).toEqual(expect.any(String)); // jealousy_games is off
+    const assertive = fresh({ lead: 'assertive', stateId: 'lover' });
+    assertive.content = { enabled: ['jealousy_games'] };
+    expect(gate(assertive, 'intercept')).toBe('no device access');
   });
 
   it('courtship needs lead rank 2 and romance on', () => {
