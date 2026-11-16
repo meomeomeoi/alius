@@ -303,7 +303,7 @@ tests/engine/personal/*.test.ts, tests/engine/combat/sparring.test.ts, tests/con
   - `lapseBookings(draft): EngineEvent[]` (day step; and when a slot passes with no play)
   - Reserved: `booking_made`, `booking_conflict`, `booking_resolved`, `booking_cancelled`, `booking_played`, `booking_lapsed`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `a dominant lover with high Affinity and Want books tomorrow evening and DMs it` (acceptance 2; scan seeds for a hit)
   - `chance scales with Affinity, Want, Impunity, demandMult and pressureMult; capped at 0.5`
   - `the weekly cap holds at 2; a restricted unit never books`
@@ -318,10 +318,10 @@ tests/engine/personal/*.test.ts, tests/engine/combat/sparring.test.ts, tests/con
   - `whereabouts place her in the booked room with reason routine`
   - `a smother books her the next slot and still locks the hangar`
   - `answerDemand refuse behaviour is unchanged` (the existing demand tests stay green)
-- [ ] **Step 2: Run** `npx vitest run tests/engine/personal/bookings.test.ts tests/engine/discipline`. Expect FAIL on the new tests only.
-- [ ] **Step 3: Implement.** The guard in `dispatch` sits after the dilemma guard; it reads `dueBooking` and `bookingPlayable` only (pure, no draw); a `scene/start` whose participants include her passes.
-- [ ] **Step 4: Run** the tests, then `npm test`. Expect PASS. The P9d smother tests change where they asserted the bonds controller opened the scene: move those assertions to Task 6 and say so in the commit body.
-- [ ] **Step 5: Tick and commit:** `feat(personal): bookings take the commander's slots`.
+- [x] **Step 2: Run** `npx vitest run tests/engine/personal/bookings.test.ts tests/engine/discipline`. Expect FAIL on the new tests only.
+- [x] **Step 3: Implement.** The guard in `dispatch` sits after the dilemma guard; it reads `dueBooking` and `bookingPlayable` only (pure, no draw); a `scene/start` whose participants include her passes.
+- [x] **Step 4: Run** the tests, then `npm test`. Expect PASS. The P9d smother tests change where they asserted the bonds controller opened the scene: move those assertions to Task 6 and say so in the commit body.
+- [x] **Step 5: Tick and commit:** `feat(personal): bookings take the commander's slots`.
 
 ### Task 5: Inverted courtship and `claimed` (engine)
 

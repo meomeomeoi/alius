@@ -1,4 +1,5 @@
-import type { CampaignState, PersonalState } from '../state/types';
+import type { EngineEvent } from '../dispatch';
+import type { CampaignState, PersonalState, Slot } from '../state/types';
 import { TUNING } from '../tuning';
 
 /**
@@ -61,4 +62,23 @@ export function forgetPersonal(draft: CampaignState, unitId: string): void {
     p.secrets = p.secrets.filter((x) => !(x.knownBy.length === 1 && x.knownBy[0] === unitId));
     for (const x of p.secrets) x.knownBy = x.knownBy.filter((id) => id !== unitId);
   }
+}
+
+const SLOT_RANK: Record<Slot, number> = { morning: 0, afternoon: 1, evening: 2, night: 3 };
+
+/**
+ * Bookings whose slot is over (`through` included) and that were never played lapse, with no deltas and no draw: she could
+ * not be met, or the slot passed during a run. The calendar calls this as slots pass; the day step calls it for the whole day.
+ */
+export function lapseBookingsThrough(draft: CampaignState, through: { day: number; slot: Slot }): EngineEvent[] {
+  const events: EngineEvent[] = [];
+  for (const b of draft.personal?.bookings ?? []) {
+    if (b.status !== 'booked') continue;
+    if (b.day < through.day || (b.day === through.day && SLOT_RANK[b.slot] <= SLOT_RANK[through.slot])) {
+      b.status = 'lapsed';
+      delete b.conflict;
+      events.push({ type: 'booking_lapsed', bookingId: b.id, unitId: b.unitId });
+    }
+  }
+  return events;
 }

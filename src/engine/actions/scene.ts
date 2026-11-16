@@ -1,5 +1,6 @@
 import { raiseTone, startTone } from '../bonds/scene';
 import { returnNegotiations } from '../bonds/rules';
+import { metAtScene } from '../personal/bookings';
 import { clearSmother } from '../bonds/smother';
 import { relieveAtSceneEnd } from '../bonds/want';
 import { rollReveal } from '../bonds/publicity';
@@ -88,7 +89,7 @@ registerAction('scene/start', (draft, payload, ctx) => {
   };
   draft.calendar.pendingScene ??= { unitId: participants[0], day: draft.day, slot: draft.slot };
   for (const id of participants) if (draft.relations[id]) draft.relations[id].contactDay = draft.day; // P9d: judges a daily-contact rule
-  return [{ type: 'scene_started', sceneId, participants, locationId: loc.id }, ...startTone(draft, reg)]; // P9d: a romantic partner or a Want visit opens a romantic scene and decides its lead
+  return [{ type: 'scene_started', sceneId, participants, locationId: loc.id }, ...startTone(draft, reg), ...metAtScene(draft, reg, participants)]; // P9d: a romantic partner or a Want visit opens a romantic scene and decides its lead
 });
 
 registerAction('scene/exchange', (draft) => {

@@ -770,3 +770,7 @@ registerChecks('deviceAccessRules', (entry, regs) => {
   const twin = [...regs.deviceAccessRules.values()].find((o) => o.level === entry.level && String(o.id) < String(entry.id));
   return twin ? [{ path: 'level', message: `level ${String(entry.level)} already has the rule "${String(twin.id)}"` }] : [];
 });
+
+// P9c: a booking kind names the location of its scene.
+registerRefs('bookingKinds', (entry) =>
+  typeof entry.locationId === 'string' ? [{ registry: 'locations' as const, id: entry.locationId, path: 'locationId' }] : []);

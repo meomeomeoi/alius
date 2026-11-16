@@ -708,12 +708,28 @@
   },
   {
     "id": "refused_demand",
-    "cause": "The commander refused her demand",
+    "cause": "The commander refused her demand or cancelled what she booked",
     "rows": {
-      "minor": {},
-      "moderate": {},
-      "major": {},
-      "extreme": {}
+      "minor": {
+        "trust": -1,
+        "affinity": -1,
+        "stress": 1
+      },
+      "moderate": {
+        "trust": -2,
+        "affinity": -3,
+        "stress": 3
+      },
+      "major": {
+        "trust": -3,
+        "affinity": -5,
+        "stress": 5
+      },
+      "extreme": {
+        "trust": -5,
+        "affinity": -8,
+        "stress": 8
+      }
     }
   },
   {

@@ -3,6 +3,7 @@ import { hasTraitEffect } from './commander/traits';
 import type { EngineCtx, EngineEvent } from './dispatch';
 import { facilityEffect, facilityLevels, isLiving, recoverUnit, rosterCapacityFor, runUpkeep } from './economy';
 import type { CampaignState, Slot } from './state/types';
+import { lapseBookingsThrough } from './personal/state';
 import { TUNING } from './tuning';
 
 export const SLOT_ORDER: readonly Slot[] = ['morning', 'afternoon', 'evening', 'night'];
@@ -147,6 +148,7 @@ export function consumeSlots(draft: CampaignState, count: number, ctx: EngineCtx
   const events: EngineEvent[] = [];
   for (let i = 0; i < count; i++) {
     const from = draft.slot;
+    events.push(...lapseBookingsThrough(draft, { day: draft.day, slot: from })); // P9c: a booking whose slot passes unplayed lapses
     if (from === 'evening') {
       events.push(...endOfDay(draft, ctx));
     } else if (from === 'night') {

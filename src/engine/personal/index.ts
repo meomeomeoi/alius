@@ -1,7 +1,10 @@
 export { accessCan, CAPABILITIES, deviceAccess, deviceGateReason, type AccessLevel, type Capability } from './access';
+export {
+  book, bookingChance, bookingGuard, bookingPlayable, cancelBooking, dueBooking, lapseBookings, markPlayed, metAtScene, nextSlotAfter, playBooking, resolveConflict, rollBookings,
+} from './bookings';
 export { personalDayStep } from './dayStep';
 export { decorDayStep, decorOf, DECOR_PARTS, pinnedNotes, removeDecor, wallpaperUnit } from './decor';
 export { hitHer } from './events';
 export { interceptDayStep, interceptEditor, INTERCEPT_CHANNELS, resolveIntercept, rollIntercept, takeKeptEdit } from './intercept';
 export { JEALOUSY_TAG, jealousyAllowed, pressureGate, pressureMultOf, type PressureMechanic } from './gates';
-export { forgetPersonal, holdsPersonal, nextPersonalId, personalOf } from './state';
+export { forgetPersonal, holdsPersonal, lapseBookingsThrough, nextPersonalId, personalOf } from './state';

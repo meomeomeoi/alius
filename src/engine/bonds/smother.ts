@@ -1,6 +1,7 @@
 import type { Registries } from '../../content/types';
 import type { EngineEvent } from '../dispatch';
 import { isLiving } from '../economy';
+import { book, nextSlotAfter } from '../personal/bookings';
 import type { CampaignState } from '../state/types';
 
 /**
@@ -20,13 +21,24 @@ export function smotherActive(state: Pick<CampaignState, 'bonds' | 'squad' | 'da
 export const isSmotherDefect = (reg: Registries, defectId: string): boolean =>
   (reg.defects.get(defectId)?.wantBreakdown as { kind?: string } | undefined)?.kind === 'smother';
 
-/** Starts her smother for today and tomorrow (`untilDay = day + 1`); one hold at a time, the first stays. */
-export function startSmother(draft: CampaignState, unitId: string): EngineEvent[] {
+/**
+ * Starts her smother for today and tomorrow (`untilDay = day + 1`); one hold at a time, the first stays. With the registries
+ * (P9c) it also books her the next slot (`source: 'smother'`, the kind of that slot, else the first evening kind): the booking
+ * opens her scene, the hangar lock stays as it is.
+ */
+export function startSmother(draft: CampaignState, unitId: string, reg?: Registries): EngineEvent[] {
   const unit = draft.squad.find((u) => u.id === unitId);
   if (!unit || !isLiving(unit) || smotherActive(draft)) return [];
   const bonds = (draft.bonds ??= { rules: [] });
   bonds.smother = { unitId, untilDay: draft.day + 1 };
-  return [{ type: 'smother_started', unitId, untilDay: draft.day + 1 }];
+  const events: EngineEvent[] = [{ type: 'smother_started', unitId, untilDay: draft.day + 1 }];
+  if (reg) {
+    const next = nextSlotAfter(draft.day, draft.slot);
+    const kinds = [...reg.bookingKinds.values()];
+    const kind = kinds.find((k) => k.slot === next.slot) ?? kinds.find((k) => k.slot === 'evening') ?? kinds[0];
+    if (kind) events.push(...book(draft, { registries: reg }, { unitId, kindId: String(kind.id), day: next.day, slot: next.slot, source: 'smother' }));
+  }
+  return events;
 }
 
 /** Ends the hold (when given a unit: only hers). */

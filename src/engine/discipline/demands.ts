@@ -210,6 +210,22 @@ function pay(draft: CampaignState, ctx: EngineCtx, unit: Unit, cost: DemandCost)
 }
 
 /**
+ * The refuse path of a demand, for anything that is refused the same way (P9c: a cancelled booking): `refused_demand`
+ * (moderate) at her weight, ×`refuseHighMult` at Impunity 50 or more, where it also holds a moderate defiance; the deed
+ * `demands_refused` is counted. Her relationship state is not re-evaluated here (the caller does that once).
+ */
+export function refuseLikeDemand(draft: CampaignState, ctx: EngineCtx, unitId: string, opts: { templateId?: string; evidence: string }): EngineEvent[] {
+  const high = (impunityOf(draft, ctx.registries, unitId)?.value ?? 0) >= TUNING.impunity.stance.impunityHigh;
+  const events = applyEventToUnit(draft, ctx.registries, unitId, {
+    type: 'refused_demand', actor: 'commander', targets: [unitId], severity: 'moderate', ...(opts.templateId !== undefined ? { templateId: opts.templateId } : {}),
+    evidence: opts.evidence, confidence: 1,
+  } as never, { scale: high ? TUNING.demands.refuseHighMult : 1 });
+  countDeed(draft, 'demands_refused');
+  if (high) events.push(...holdDefiance(draft, unitId, 'moderate', 'demand'));
+  return events;
+}
+
+/**
  * The commander answers an open demand. Grant: pays every cost (refused, changing nothing, when one cannot be paid), her
  * Trust and Affinity move by `grantDeltas` (a costly grant is a big gesture) and an impunity-driven grant adds to her record
  * ("buying loyalty"). Refuse: `refuseDeltas`, times 1.5 at Impunity 50 or more, where it also holds a moderate defiance; an owed
@@ -245,12 +261,7 @@ export function answerDemand(draft: CampaignState, ctx: EngineCtx, demandId: str
       type: 'refused_demand', actor: 'commander', targets: [unit.id], severity: 'moderate', templateId: demand.templateId, evidence: 'a demand was postponed', confidence: 1,
     }));
   } else {
-    const high = (impunityOf(draft, reg, unit.id)?.value ?? 0) >= TUNING.impunity.stance.impunityHigh;
-    events.push(...applyEventToUnit(draft, reg, unit.id, {
-      type: 'refused_demand', actor: 'commander', targets: [unit.id], severity: 'moderate', templateId: demand.templateId, evidence: 'a demand was refused', confidence: 1,
-    }, { scale: high ? TUNING.demands.refuseHighMult : 1 }));
-    countDeed(draft, 'demands_refused');
-    if (high) events.push(...holdDefiance(draft, unit.id, 'moderate', 'demand'));
+    events.push(...refuseLikeDemand(draft, ctx, unit.id, { templateId: demand.templateId, evidence: 'a demand was refused' }));
     if (demand.owed) {
       events.push(...applyEventToUnit(draft, reg, unit.id, { type: 'broke_promise', actor: 'commander', targets: [unit.id], severity: 'moderate', evidence: 'an owed demand was refused', confidence: 1 }));
     }

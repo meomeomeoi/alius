@@ -31,7 +31,7 @@ export function startWantBreakdown(draft: CampaignState, ctx: EngineCtx, unitId:
     const knock = ((reg.defects.get(defectId)?.nightEvents as NightSpec[] | undefined) ?? []).find((n) => n.kind === spec.kind);
     if (knock) events.push(...queueNightSpec(draft, unit, knock));
   } else if (spec.kind === 'smother') {
-    events.push(...startSmother(draft, unitId));
+    events.push(...startSmother(draft, unitId, ctx.registries));
   } else if (spec.kind === 'binge') {
     const cost = Math.min(draft.resources.credits, TUNING.bonds.want.breakdownMoneyCost);
     if (cost > 0) {

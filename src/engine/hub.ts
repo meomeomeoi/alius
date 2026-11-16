@@ -58,6 +58,11 @@ function place(state: CampaignState, reg: Registries, rooms: Entry[], unit: Unit
     ?? (state.slot === 'night' ? here(hostOf(rooms, 'night'), 'night') : null);
   if (found) return found;
 
+  // P9c: in a slot she booked she is where the booking says (the room of its location)
+  const booked = state.personal?.bookings?.find((b) => b.unitId === unit.id && b.day === state.day && b.slot === state.slot && (b.status === 'booked' || b.status === 'played'));
+  const bookedRoom = booked ? rooms.find((r) => r.sceneLocationId === reg.bookingKinds.get(booked.kindId)?.locationId) : undefined;
+  if (bookedRoom) return { unitId: unit.id, roomId: bookedRoom.id, reason: 'routine' };
+
   const weights = rooms.map((room) => routineWeight(state, reg, room, unit));
   const total = weights.reduce((a, b) => a + b, 0);
   if (total <= 0) return { unitId: unit.id, roomId: null, reason: 'nowhere' };

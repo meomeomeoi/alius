@@ -470,7 +470,8 @@ export const RESERVED_EVENT_TYPES: readonly string[] = [
   // P9e
   'her_call', 'her_call_acknowledged', 'ask_first_set',
   // P9c
-  'decor_placed', 'decor_faded', 'decor_removed_by_commander',
+  'decor_placed', 'decor_faded', 'decor_removed_by_commander', 'device_intercept', 'intercept_resolved',
+  'booking_made', 'booking_conflict', 'booking_resolved', 'booking_cancelled', 'booking_played', 'booking_lapsed',
 ];
 
 const slotEnum = z.enum(['morning', 'afternoon', 'evening', 'night']);
@@ -1850,6 +1851,22 @@ export const DeviceAccessRuleSchema = BaseEntrySchema.extend({
 export type DeviceAccessRuleEntry = z.infer<typeof DeviceAccessRuleSchema>;
 registrySchemas.deviceAccessRules = DeviceAccessRuleSchema;
 
+/** P9c §2: what a unit books of the commander's time (`slot` is when, `locationId` where the scene is, `tier` limits it to romantic relationships). */
+export const BookingKindSchema = BaseEntrySchema.extend({
+  label: str.max(40),
+  description: str.max(DESCRIPTION_MAX),
+  slot: z.enum(['morning', 'afternoon', 'evening']),
+  locationId: str,
+  tier: z.literal('romantic').optional(),
+  /** What she DMs when she books it (`{name}` = hers). */
+  text: str.max(200).refine((t) => t.includes('{name}'), 'the booking text must contain {name}'),
+  /** How much her Want falls when the booking is played. */
+  wantRelief: int.min(0).max(100),
+  weight: int.min(1).max(100),
+}).strict();
+export type BookingKindEntry = z.infer<typeof BookingKindSchema>;
+registrySchemas.bookingKinds = BookingKindSchema;
+
 /** Player-visible registries whose entries carry an optional `description` (skills and statuses already require one). */
 export const DESCRIBED_REGISTRIES = [
   'roles', 'skills', 'signatures', 'statuses', 'defects', 'items', 'affixes', 'enemies',
@@ -1868,7 +1885,7 @@ export const DESCRIBED_REGISTRIES = [
   // P9b
   'voteKinds', 'outsideFeats',
   // P9c
-  'deviceAccessRules',
+  'deviceAccessRules', 'bookingKinds',
 ] as const satisfies readonly RegistryName[];
 
 /** Adds the optional `description` rule to a registry schema without changing its shape. */

@@ -1,0 +1,33 @@
+[
+  {
+    "id": "evening_with_me",
+    "label": "Evening together",
+    "description": "She books the evening in her quarters. AUTHOR TO WRITE: the long text.",
+    "slot": "evening",
+    "locationId": "quarters_unit",
+    "text": "AUTHOR TO WRITE: {name}: this evening is mine. My quarters. Do not be late.",
+    "wantRelief": 20,
+    "weight": 15
+  },
+  {
+    "id": "train_together",
+    "label": "Training together",
+    "description": "She books the afternoon in the training yard. AUTHOR TO WRITE: the long text.",
+    "slot": "afternoon",
+    "locationId": "training_yard",
+    "text": "AUTHOR TO WRITE: {name}: afternoon, the yard. Bring something to prove.",
+    "wantRelief": 10,
+    "weight": 5
+  },
+  {
+    "id": "roof_walk",
+    "label": "A walk on the roof",
+    "description": "She books the evening on the roof. AUTHOR TO WRITE: the long text.",
+    "slot": "evening",
+    "locationId": "roof",
+    "tier": "romantic",
+    "text": "AUTHOR TO WRITE: {name}: the roof, this evening. Just the two of us.",
+    "wantRelief": 20,
+    "weight": 15
+  }
+]

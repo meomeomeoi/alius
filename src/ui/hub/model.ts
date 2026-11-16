@@ -1,5 +1,6 @@
 import type { Registries } from '../../content/types';
 import { isLiving } from '../../engine/economy';
+import { bookingGuard } from '../../engine/personal/bookings';
 import { objectiveList, waitingDemands, type ObjectiveSource } from '../../engine/onboarding';
 import { leashLog } from '../../engine/leash/weekly';
 import { affinityBand } from '../../engine/relations/bands';
@@ -115,7 +116,7 @@ export function endSlotBlock(state: CampaignState): string | null {
   if (state.expedition) return 'The squad is out.';
   if (state.dilemmas?.open?.status === 'presented') return 'A decision is waiting.';
   if (state.calendar.nightEvent) return 'Someone is at the door.';
-  return null;
+  return bookingGuard(state, { type: 'calendar/consume_slot' })?.message ?? null; // P9c: a slot she booked and can keep
 }
 
 /** The newest Leash request of today or yesterday, for the hub's oversight card. */

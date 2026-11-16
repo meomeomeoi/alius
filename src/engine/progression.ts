@@ -167,7 +167,7 @@ export function releaseBreakdowns(draft: CampaignState, unitIds?: string[], reg?
     delete u.breakdown;
     events.push({ type: 'breakdown_released', unitId: u.id });
     // P9d: a Smother breakdown ends in the hold: she locks the hangar once she is out of the fight
-    if (reg && isSmotherDefect(reg, defectId)) events.push(...startSmother(draft, u.id));
+    if (reg && isSmotherDefect(reg, defectId)) events.push(...startSmother(draft, u.id, reg));
   }
   return events;
 }

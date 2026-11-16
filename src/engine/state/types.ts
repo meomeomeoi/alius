@@ -636,6 +636,8 @@ export interface Booking {
   slot: Slot;
   status: 'booked' | 'played' | 'cancelled' | 'lapsed';
   source: BookingSource;
+  /** The day she made it (the weekly cap counts these). */
+  made?: number;
   conflict?: true;
 }
 

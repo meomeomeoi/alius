@@ -1,5 +1,6 @@
 import type { Registries } from '../content/types';
 import { recordLedger } from './ledger';
+import { bookingGuard } from './personal/bookings';
 import { votingOn } from './power/options';
 import { carryVote, voteFor } from './power/votes';
 import { Rng } from './rng';
@@ -70,6 +71,9 @@ export function dispatch(
   if (state.dilemmas?.open?.status === 'presented' && BLOCKED_BY_DILEMMA.some((p) => action.type.startsWith(p))) {
     return { state, events: [{ type: 'error', code: 'dilemma_open', message: 'A decision is waiting: answer it first.' }] };
   }
+  // P9c: a slot she booked and can keep is hers: go to her or cancel the booking
+  const booked = bookingGuard(state, action);
+  if (booked) return { state, events: [{ type: 'error', ...booked }] };
   // P9b: a decision the squad votes on does not run without a passed or overruled vote for exactly this decision
   let voteId: string | undefined;
   const gate = gates.get(action.type);
