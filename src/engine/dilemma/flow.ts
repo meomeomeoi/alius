@@ -291,6 +291,10 @@ export function chooseDilemma(draft: CampaignState, ctx: EngineCtx, id: unknown,
   const routeKind = chosen.routeCheck && route !== undefined ? chosen.routeCheck.routes[route.route]?.kind : undefined;
   const resolved: EngineEvent = {
     type: 'dilemma_resolved', id: open.id, templateId: open.templateId, option: index, label: chosen.label, title, affected,
+    // P3b: what the open dilemma took with it (it is deleted above), so memory can tell a scapegoat answer from any other
+    context: open.context, units: [...open.units],
+    ...(chosen.id !== undefined ? { optionId: chosen.id } : {}),
+    ...(open.subjectId !== undefined ? { subjectId: open.subjectId } : {}),
     ...(checkPassed !== undefined ? { checkPassed } : {}),
     ...(routePassed !== undefined ? { routePassed } : {}),
     ...(routeKind !== undefined ? { routeKind } : {}),

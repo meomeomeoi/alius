@@ -1,0 +1,222 @@
+import type { Entry, Registries } from '../../content/types';
+import { contentAllowed } from '../bonds/content';
+import type { EngineEvent } from '../dispatch';
+import { voteSubjectLabel } from '../power/ballot';
+import { scapegoatOptionId } from '../power/scapegoat';
+import type { CampaignState, VoteKind } from '../state/types';
+
+/**
+ * What a remembered event is about, as the code reads it (P3b). A resolver is the closed vocabulary behind the `memoryRules`
+ * registry: one per event type, returning named id groups and string vars. A pack adds rules for these types only.
+ * Booleans become the vars `'yes'` / `''`.
+ */
+export interface MemoryResolution {
+  ids: Record<string, string[]>;
+  vars: Record<string, string>;
+}
+export type MemoryResolver = (draft: CampaignState, event: EngineEvent, reg: Registries) => MemoryResolution | null;
+/** The id groups and vars a resolver can return: what a rule's `about`, `audience`, `when` and `{text}` may name. */
+export interface ResolverShape {
+  ids: string[];
+  vars: string[];
+}
+
+const resolvers = new Map<string, MemoryResolver>();
+/** Read by the content check (`memoryRules`). */
+export const RESOLVER_SHAPES: Record<string, ResolverShape> = {};
+
+export function registerMemoryResolver(type: string, fn: MemoryResolver, shape: ResolverShape): void {
+  if (resolvers.has(type)) throw new Error(`Duplicate memory resolver: ${type}`);
+  resolvers.set(type, fn);
+  RESOLVER_SHAPES[type] = { ids: [...shape.ids], vars: [...shape.vars] };
+}
+
+export function memoryResolverFor(type: string): MemoryResolver | undefined {
+  return resolvers.get(type);
+}
+
+// ---------------------------------------------------------------------------------------------
+// helpers (a dead unit's name still resolves)
+
+const nameOf = (draft: CampaignState, id: string): string => draft.squad.find((u) => u.id === id)?.displayName ?? id;
+const yes = (b: boolean): string => (b ? 'yes' : '');
+const str = (v: unknown): string | undefined => (typeof v === 'string' && v !== '' ? v : undefined);
+const strs = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []);
+
+/** "Ann", "Ann and Bea", "Ann, Bea and Cat". */
+export function joinNames(names: string[]): string {
+  if (names.length <= 1) return names.join('');
+  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+}
+
+const regionNameOf = (reg: Registries, regionId: string | undefined): string | undefined => {
+  if (regionId === undefined) return undefined;
+  const r = reg.regions.get(regionId);
+  return r ? String(r.name) : regionId;
+};
+
+/** A unit the event names; null when the event names none (the resolver then returns null). */
+const subjectOf = (draft: CampaignState, id: unknown): { id: string; name: string } | null => {
+  const unitId = str(id);
+  return unitId === undefined ? null : { id: unitId, name: nameOf(draft, unitId) };
+};
+
+// ---------------------------------------------------------------------------------------------
+// runs and combat
+
+registerMemoryResolver('expedition_ended', (draft, event, reg) => {
+  const rep = draft.lastExpedition;
+  if (!rep || rep.id !== event.reportId) return null;
+  return {
+    ids: { party: [...rep.party], dead: [...rep.deaths], injured: [...rep.injuries] },
+    vars: {
+      region: regionNameOf(reg, rep.regionId) ?? rep.regionId, mission: rep.missionTitle, outcome: rep.outcome,
+      dead: yes(rep.deaths.length > 0), injured: yes(rep.injuries.length > 0),
+    },
+  };
+}, { ids: ['party', 'dead', 'injured'], vars: ['region', 'mission', 'outcome', 'dead', 'injured'] });
+
+/** Who was in the field when a combat event fired: the run's party, else the open fight's squad side, else the last result's. */
+function fieldParty(draft: CampaignState, unitId: string): string[] {
+  if (draft.expedition) return [...draft.expedition.party];
+  const side = draft.combat?.combatants.filter((c) => c.side === 'squad' && c.unitId !== undefined).map((c) => c.unitId!);
+  if (side && side.length > 0) return side;
+  if (draft.lastCombat && draft.lastCombat.participants.includes(unitId)) return [...draft.lastCombat.participants];
+  return [unitId];
+}
+
+const combatShape: ResolverShape = { ids: ['subject', 'party'], vars: ['name', 'region'] };
+const inTheField: MemoryResolver = (draft, event, reg) => {
+  const subject = subjectOf(draft, event.unitId);
+  if (!subject) return null; // an enemy or the commander: nobody in the squad to remember
+  return {
+    ids: { subject: [subject.id], party: fieldParty(draft, subject.id) },
+    vars: { name: subject.name, region: regionNameOf(reg, draft.expedition?.regionId) ?? 'the field' },
+  };
+};
+registerMemoryResolver('breakdown', inTheField, combatShape);
+registerMemoryResolver('order_refused', inTheField, combatShape);
+
+// ---------------------------------------------------------------------------------------------
+// disloyalty
+
+const aboutOneUnit: MemoryResolver = (draft, event) => {
+  const subject = subjectOf(draft, event.unitId);
+  return subject ? { ids: { subject: [subject.id] }, vars: { name: subject.name } } : null;
+};
+for (const type of ['mutiny_started', 'mutiny_subdued', 'unit_deserted', 'deserter_returned']) {
+  registerMemoryResolver(type, aboutOneUnit, { ids: ['subject'], vars: ['name'] });
+}
+
+// ---------------------------------------------------------------------------------------------
+// power
+
+registerMemoryResolver('vote_overruled', (draft, event) => {
+  const against = strs(event.against);
+  if (against.length === 0) return null;
+  return { ids: { against }, vars: { names: joinNames(against.map((id) => nameOf(draft, id))) } };
+}, { ids: ['against'], vars: ['names'] });
+
+registerMemoryResolver('vote_carried', (draft, event, reg) => {
+  // a vote the commander overruled is spent by the action it was overruled for: that is `vote_overruled`'s fact, not a carry
+  if (event.overruled === true) return null;
+  const kind = str(event.kind) as VoteKind | undefined;
+  const subject = str(event.subject);
+  if (kind === undefined || subject === undefined) return null;
+  return { ids: {}, vars: { subject: String(reg.voteKinds.get(kind)?.label ?? kind), what: voteSubjectLabel(draft, reg, kind, subject) } };
+}, { ids: [], vars: ['subject', 'what'] });
+
+registerMemoryResolver('countermanded', (draft, event) => {
+  const subject = subjectOf(draft, event.unitId);
+  const leader = subjectOf(draft, event.leaderId);
+  if (!subject || !leader) return null;
+  return { ids: { subject: [subject.id], leader: [leader.id] }, vars: { name: subject.name, leader: leader.name } };
+}, { ids: ['subject', 'leader'], vars: ['name', 'leader'] });
+
+registerMemoryResolver('rations_set', (_draft, event) => {
+  const mode = str(event.mode);
+  return mode === undefined ? null : { ids: {}, vars: { mode } };
+}, { ids: [], vars: ['mode'] });
+
+// ---------------------------------------------------------------------------------------------
+// dilemmas, discipline, the Leash
+
+registerMemoryResolver('dilemma_resolved', (draft, event) => {
+  if (event.nothing === true) return null;
+  const answer = scapegoatOptionId({ id: str(event.optionId) } as { id: string });
+  const subject = subjectOf(draft, event.subjectId);
+  return {
+    ids: { affected: strs(event.affected), units: strs(event.units), subject: subject ? [subject.id] : [] },
+    vars: {
+      title: str(event.title) ?? '', option: str(event.label) ?? '', scapegoat: answer === 'take_blame' ? 'take' : answer === 'shift_blame' ? 'shift' : '',
+      name: subject?.name ?? '',
+    },
+  };
+}, { ids: ['affected', 'units', 'subject'], vars: ['title', 'option', 'scapegoat', 'name'] });
+
+registerMemoryResolver('demand_resolved', (draft, event) => {
+  const subject = subjectOf(draft, event.unitId);
+  if (!subject) return null;
+  return { ids: { subject: [subject.id] }, vars: { name: subject.name, answer: str(event.answer) ?? '', expired: yes(event.expired === true) } };
+}, { ids: ['subject'], vars: ['name', 'answer', 'expired'] });
+
+registerMemoryResolver('leash_used', (draft, event) => {
+  const subject = subjectOf(draft, event.unitId);
+  if (!subject || event.outcome !== 'done') return null; // a denied or failed request forced nobody
+  return { ids: { subject: [subject.id] }, vars: { name: subject.name, kind: str(event.kind) ?? '' } };
+}, { ids: ['subject'], vars: ['name', 'kind'] });
+
+// ---------------------------------------------------------------------------------------------
+// P9c personal pressure
+
+registerMemoryResolver('decor_removed_by_commander', aboutOneUnit, { ids: ['subject'], vars: ['name'] });
+
+registerMemoryResolver('token_taken_off', (draft, event) => {
+  const giver = subjectOf(draft, event.giverId);
+  return giver ? { ids: { giver: [giver.id] }, vars: { name: giver.name } } : null;
+}, { ids: ['giver'], vars: ['name'] });
+
+registerMemoryResolver('booking_cancelled', (draft, event) => {
+  const subject = subjectOf(draft, event.unitId);
+  return subject ? { ids: { subject: [subject.id] }, vars: { name: subject.name, lost: yes(event.lost === true) } } : null;
+}, { ids: ['subject'], vars: ['name', 'lost'] });
+
+/** A game or stake a content category switched off (or her own limits) never names itself. */
+const wagerWord = (draft: CampaignState, reg: Registries, entry: Entry | undefined, unitId: string, field: 'label' | 'text'): string => {
+  if (!entry || !contentAllowed(draft, reg, entry, unitId)) return 'a wager';
+  return String(entry[field] ?? 'a wager');
+};
+
+registerMemoryResolver('wager_resolved', (draft, event, reg) => {
+  const subject = subjectOf(draft, event.unitId);
+  if (!subject || (event.winner !== 'unit' && event.winner !== 'commander')) return null; // a void wager changed nothing
+  return {
+    ids: { subject: [subject.id] },
+    vars: {
+      name: subject.name, result: event.winner === 'unit' ? 'won' : 'lost',
+      game: wagerWord(draft, reg, reg.wagerGames.get(String(event.gameId)), subject.id, 'label'),
+      stake: wagerWord(draft, reg, reg.wagerStakes.get(String(event.stakeId)), subject.id, 'text'),
+    },
+  };
+}, { ids: ['subject'], vars: ['name', 'result', 'game', 'stake'] });
+
+registerMemoryResolver('intercept_resolved', (draft, event) => {
+  const subject = subjectOf(draft, event.unitId);
+  return subject ? { ids: { subject: [subject.id] }, vars: { name: subject.name, keep: yes(event.keep === true) } } : null;
+}, { ids: ['subject'], vars: ['name', 'keep'] });
+
+// ---------------------------------------------------------------------------------------------
+// activities
+
+registerMemoryResolver('activity_done', (draft, event, reg) => {
+  const companion = str(event.companionId);
+  const activityId = str(event.activityId);
+  if (activityId === undefined) return null;
+  return {
+    ids: { subject: companion !== undefined ? [companion] : [] },
+    vars: {
+      name: companion !== undefined ? nameOf(draft, companion) : '',
+      activity: String(reg.activities.get(activityId)?.name ?? activityId), slot: str(event.slot) ?? draft.slot,
+    },
+  };
+}, { ids: ['subject'], vars: ['name', 'activity', 'slot'] });

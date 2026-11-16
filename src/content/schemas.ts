@@ -697,6 +697,8 @@ export const EventDeltaSchema = BaseEntrySchema.extend({
   id: z.enum(ALL_EVENT_TYPES),
   /** P7a: one-line cause shown in relationship history readings; absent = the humanized event id. */
   cause: str.max(80).optional(),
+  /** P3b: the event as the relation journal words it, in the third person ("the commander praised her"); absent = the humanized event id. */
+  journal: str.max(100).optional(),
   rows: z.object({ minor: eventRow, moderate: eventRow, major: eventRow, extreme: eventRow }).strict(),
   /** The row holds magnitudes; the sign comes from value alignment (decision events). */
   valueAligned: z.boolean().optional(),
@@ -1938,6 +1940,24 @@ export const SecretKindSchema = BaseEntrySchema.extend({
 });
 export type SecretKindEntry = z.infer<typeof SecretKindSchema>;
 registrySchemas.secretKinds = SecretKindSchema;
+
+/**
+ * P3b: an engine event worth remembering. The `event` has a resolver (`engine/memory/resolvers.ts`); `about`, `audience`, `when` and the
+ * `{vars}` of `text` are checked against that resolver's shape at load (`refs.ts`). `AUTHOR TO WRITE`: the texts are drafts.
+ */
+export const MemoryRuleSchema = BaseEntrySchema.extend({
+  event: str,
+  when: z.record(z.union([z.string(), z.boolean()])).optional(),
+  text: str.max(200),
+  importance: int.min(1).max(5),
+  about: str,
+  audience: z.union([str, z.array(str).min(1)]),
+  spread: z.enum(['none', 'slow', 'fast']),
+  hiddenFromCommander: z.literal(true).optional(),
+  tags: z.array(str),
+});
+export type MemoryRuleEntry = z.infer<typeof MemoryRuleSchema>;
+registrySchemas.memoryRules = MemoryRuleSchema;
 
 /** Player-visible registries whose entries carry an optional `description` (skills and statuses already require one). */
 export const DESCRIBED_REGISTRIES = [

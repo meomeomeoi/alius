@@ -104,7 +104,8 @@ export function carryVote(draft: CampaignState, voteId: string, ctx?: Pick<Engin
   if (!open || open.id !== voteId) throw new Error(`There is no open vote "${voteId}".`);
   logVote(draft, open, open.status === 'overruled' ? 'overruled' : 'carried');
   delete draft.power!.votes.open;
-  const events: EngineEvent[] = [{ type: 'vote_carried', voteId, kind: open.kind, subject: open.subject }];
+  // P3b: `overruled` tells memory this was an overruled vote's action, not a carry
+  const events: EngineEvent[] = [{ type: 'vote_carried', voteId, kind: open.kind, subject: open.subject, ...(open.status === 'overruled' ? { overruled: true } : {}) }];
   // P9c: a day the commander obeys her: carrying a decision she voted against is choosing against her (an overruled vote has its own cost)
   const ob = obedienceOf(draft);
   if (ctx && open.status !== 'overruled' && ob?.who === 'commander' && open.ballots.some((b) => b.unitId === ob.unitId && b.vote === 'against')) {

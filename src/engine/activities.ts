@@ -260,6 +260,7 @@ export function runActivity(draft: CampaignState, ctx: EngineCtx, request: unkno
   events.push({
     type: 'activity_done', activityId: a.id, ...(companion ? { companionId: companion.id } : {}),
     vignette: companion !== undefined && a.flavor === 'short',
+    slot: draft.slot, // P3b: the slot spent (a day end inside `consumeSlots` below moves it on)
   });
   const done: ActivityDone = {
     activityId: a.id, ...(companion ? { companionId: companion.id } : {}), rosterIds: activeRosterUnits(draft).map((u) => u.id),

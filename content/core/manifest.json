@@ -61,6 +61,7 @@
     "tokenKinds": "tokenKinds.json",
     "wagerGames": "wagerGames.json",
     "wagerStakes": "wagerStakes.json",
-    "secretKinds": "secretKinds.json"
+    "secretKinds": "secretKinds.json",
+    "memoryRules": "memoryRules.json"
   }
 }

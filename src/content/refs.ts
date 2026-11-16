@@ -1,4 +1,5 @@
 import { CONTENT_GATED_REGISTRIES } from '../engine/bonds/content';
+import { RESOLVER_SHAPES } from '../engine/memory/resolvers';
 import { INTERNAL_HISTORY_TYPES } from '../engine/relations/vocab';
 import { TUNING } from '../engine/tuning';
 import { COMMAND_STANCE_IDS, DESCRIBED_REGISTRIES, HUB_HOSTS, type Conditions } from './schemas';
@@ -427,6 +428,33 @@ export function registerChecks(registry: RegistryName, check: CheckExtractor): v
 export function getCheckExtractors(): ReadonlyMap<RegistryName, CheckExtractor[]> {
   return checkExtractors;
 }
+
+// P3b: a memory rule may only name what the resolver of its event returns (`engine/memory/resolvers.ts`). `{names}` is always
+// available: the names of the rule's `about` group, unless the resolver sets its own.
+const AUDIENCE_WORDS = ['present', 'squad', 'public'];
+registerChecks('memoryRules', (entry) => {
+  const out: RegistryCheck[] = [];
+  const event = String(entry.event);
+  const shape = RESOLVER_SHAPES[event];
+  if (!shape) return [{ path: 'event', message: `memory rule "${entry.id}": no resolver for event "${event}"` }];
+  const vars = [...shape.vars, 'names'];
+  for (const m of String(entry.text).matchAll(/\{([A-Za-z0-9_]+)\}/g)) {
+    if (!vars.includes(m[1])) out.push({ path: 'text', message: `memory rule "${entry.id}": text uses {${m[1]}}, which "${event}" does not provide (${vars.join(', ')})` });
+  }
+  for (const key of Object.keys((entry.when as Record<string, unknown> | undefined) ?? {})) {
+    if (!shape.vars.includes(key) && !shape.ids.includes(key)) out.push({ path: `when.${key}`, message: `memory rule "${entry.id}": when key "${key}" is not a var or id group of "${event}"` });
+  }
+  if (entry.about !== 'world' && !shape.ids.includes(String(entry.about))) {
+    out.push({ path: 'about', message: `memory rule "${entry.id}": about "${String(entry.about)}" is not "world" or an id group of "${event}" (${shape.ids.join(', ')})` });
+  }
+  const parts = Array.isArray(entry.audience) ? (entry.audience as unknown[]).map(String) : [String(entry.audience)];
+  for (const part of parts) {
+    if (!AUDIENCE_WORDS.includes(part) && !shape.ids.includes(part)) {
+      out.push({ path: 'audience', message: `memory rule "${entry.id}": audience "${part}" is not present, squad, public or an id group of "${event}" (${shape.ids.join(', ')})` });
+    }
+  }
+  return out;
+});
 
 const ALL_ARCHETYPES = ['frail', 'slight', 'average', 'fit', 'hardened'];
 // P7: an archetype belongs to exactly one image group; the first group reports the ones that belong to none
