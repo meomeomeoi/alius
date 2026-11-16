@@ -439,7 +439,7 @@ export const TUNING = Object.freeze({
     obedience: Object.freeze({ days: 1 }),
     secret: Object.freeze({
       insightBase: 0.08, insightCap: 0.4, insightTrust: 40, slipChance: 0.25, nightChance: 0.1, nightAffinity: 60, nightTrust: 50,
-      usedDays: 14, heldPerSecret: 8, heldMax: 16, confrontRecord: 5, hiddenInjuryHp: 0.25, successorDays: 7,
+      usedDays: 14, heldPerSecret: 8, heldMax: 16, confrontRecord: 5, hiddenInjuryHp: 0.25, successorDays: 7, nightPriority: 50, nightExpiresDays: 2,
     }),
     /** The record the commander takes on for overriding her (a REVERT, a cancelled booking under obedience, …). */
     overrideRecord: 3,

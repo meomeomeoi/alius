@@ -17,4 +17,6 @@ export {
 export { recordTally } from './tally';
 export { herPick, herVote, overrideHer } from './obedience';
 export { commanderObeys, obedienceOf, unitObeys } from './state';
-export { addSecret, heldTerm, hideInjuries, respondSecret, SECRET_ANSWERS, secretDayStep, secretsKnownBy, type SecretAnswer } from './secrets';
+export {
+  addSecret, confess, type DiscoveryRoute, discoverSecret, heldTerm, hideInjuries, respondSecret, rollSceneDiscovery, rollSecretNight, SECRET_ANSWERS, SECRET_NIGHT_KIND, secretDayStep, secretsKnownBy, type SecretAnswer,
+} from './secrets';

@@ -1,6 +1,7 @@
 import { raiseTone, startTone } from '../bonds/scene';
 import { returnNegotiations } from '../bonds/rules';
 import { metAtScene } from '../personal/bookings';
+import { rollSceneDiscovery } from '../personal/secrets';
 import { clearSmother } from '../bonds/smother';
 import { relieveAtSceneEnd } from '../bonds/want';
 import { rollReveal } from '../bonds/publicity';
@@ -157,6 +158,7 @@ registerAction('scene/end', (draft, payload, ctx) => {
   events.push(...returnNegotiations(draft, scene.participants)); // P9d: a negotiation nobody finished is a proposal again
   events.push(...rollDiscovery(draft, reg, ctx.rng, scene.participants));
   events.push(...rollReveal(draft, reg, ctx.rng, scene.participants)); // P9d: a secret relationship may come out with others present
+  events.push(...rollSceneDiscovery(draft, ctx, scene.participants)); // P9c: a squad secret may come out (insight, a slip)
   events.push(...expireSceneProposals(draft, scene.participants));
   // P9: a defiance nobody answered in this scene settles now
   events.push(...settleDefiance(draft, ctx, { sceneId: scene.id }));

@@ -581,16 +581,16 @@ tests/engine/personal/*.test.ts, tests/engine/combat/sparring.test.ts, tests/con
 **Interfaces:**
 - Produces: `discoverSecret(draft, ctx, secretId, route: 'insight'|'slip'|'night'|'frequency'): EngineEvent[]`, `SECRET_NIGHT_KIND`, `rollSceneDiscovery(draft, ctx, presentIds)`, `rollSecretNight(draft, ctx)`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `insight: a low-Trust knower at scene end gives a 0.08 × Insight chance; a high-Trust one draws nothing` (acceptance 5)
   - `slip: an open_defiance or resentful knower lets it slip at 0.25` (acceptance 5)
   - `night: a fond knower queues a confession; opening the door finds the secret` (acceptance 5)
   - `a scene with no knower draws nothing` (rng unchanged)
   - `a found secret is not found twice; frequency is exported and works when called`
-- [ ] **Step 2: Run** `npx vitest run tests/engine/personal/discovery.test.ts tests/scene`. Expect FAIL on the new tests.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** the tests, then `npm test`. Expect PASS.
-- [ ] **Step 5: Tick and commit:** `feat(personal): how a squad secret comes out`.
+- [x] **Step 2: Run** `npx vitest run tests/engine/personal/discovery.test.ts tests/scene`. Expect FAIL on the new tests.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** the tests, then `npm test`. Expect PASS.
+- [x] **Step 5: Tick and commit:** `feat(personal): how a squad secret comes out`.
 
 ### Task 15: Secrets: directive, discovery card, providers, an authored event
 

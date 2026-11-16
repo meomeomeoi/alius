@@ -4,8 +4,10 @@ import { commandStance } from '../discipline/stance';
 import { addRecord } from '../discipline/record';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { isLiving } from '../economy';
-import { addFact } from '../memory';
+import { addFact, nextId } from '../memory';
+import { enqueueNight } from '../night';
 import { leaderOf } from '../power/state';
+import { socialRank } from '../social';
 import type { CampaignState, SquadSecret } from '../state/types';
 import { TUNING } from '../tuning';
 import { hitHer } from './events';
@@ -126,4 +128,85 @@ export function respondSecret(draft: CampaignState, ctx: EngineCtx, secretId: st
   }
   events.push({ type: 'secret_answered', secretId, choice });
   return events;
+}
+
+// ---------------------------------------------------------------------------------------------
+// discovery routes
+
+/** The kind of the night entry of a knower who wants to confess (the one id this package names). */
+export const SECRET_NIGHT_KIND = 'squad_secret_confession';
+
+export type DiscoveryRoute = 'insight' | 'slip' | 'night' | 'frequency';
+
+/**
+ * A kept secret comes out by a route: it becomes `found` and waits for the commander's answer (`respondSecret`). Anything that is
+ * not kept (found already, answered, unknown) is left alone, so a secret is never found twice. The event names the route, never the text.
+ */
+export function discoverSecret(draft: CampaignState, _ctx: EngineCtx, secretId: string, route: DiscoveryRoute): EngineEvent[] {
+  const secret = draft.personal?.secrets?.find((x) => x.id === secretId);
+  if (!secret || secret.status !== 'kept') return [];
+  secret.status = 'found';
+  secret.foundRoute = route;
+  secret.foundDay = draft.day;
+  return [{ type: 'secret_found', secretId, route }];
+}
+
+/** Does her command stance or her relationship state let a secret slip (data: `secretSlip`)? */
+function slips(state: CampaignState, reg: Registries, unitId: string): boolean {
+  const stance = commandStance(state, reg, unitId);
+  if (stance !== null && reg.commandStances.get(stance)?.secretSlip === true) return true;
+  return reg.relationshipStates.get(state.relations[unitId]?.stateId ?? '')?.secretSlip === true;
+}
+
+/**
+ * A scene ends with these units present. For every kept secret with a knower in the room: a knower with Trust under 40 may be
+ * read by the commander (one draw at `0.08 × Insight`, at most 0.4); if that fails, a knower in a stance or state that lets
+ * things slip may let it out (one draw at 0.25). Nothing is drawn for a scene with no knower in it.
+ */
+export function rollSceneDiscovery(draft: CampaignState, ctx: EngineCtx, presentIds: string[]): EngineEvent[] {
+  const secrets = draft.personal?.secrets;
+  if (!secrets) return [];
+  const T = TUNING.personal.secret;
+  const events: EngineEvent[] = [];
+  for (const x of [...secrets]) {
+    if (x.status !== 'kept') continue;
+    const here = x.knownBy.filter((id) => presentIds.includes(id) && namedLiving(draft, id));
+    if (here.length === 0) continue;
+    if (here.some((id) => (draft.relations[id]?.trust ?? 100) < T.insightTrust)
+      && ctx.rng.chance(Math.min(T.insightCap, T.insightBase * socialRank(draft, 'insight')))) {
+      events.push(...discoverSecret(draft, ctx, x.id, 'insight'));
+      continue;
+    }
+    if (here.some((id) => slips(draft, ctx.registries, id)) && ctx.rng.chance(T.slipChance)) events.push(...discoverSecret(draft, ctx, x.id, 'slip'));
+  }
+  return events;
+}
+
+/**
+ * The day step's night route: a knower who is fond of the commander (Affinity 60, Trust 50) may come to the door to confess
+ * (one draw at 0.1 for each kept secret she knows; one entry for her in the queue at a time). Nothing is drawn while nobody qualifies.
+ */
+export function rollSecretNight(draft: CampaignState, ctx: EngineCtx): EngineEvent[] {
+  const T = TUNING.personal.secret;
+  for (const x of draft.personal?.secrets ?? []) {
+    if (x.status !== 'kept') continue;
+    const knower = x.knownBy.find((id) => {
+      const rel = draft.relations[id];
+      return namedLiving(draft, id) && rel !== undefined && rel.affinity >= T.nightAffinity && rel.trust >= T.nightTrust
+        && !draft.calendar.nightEventsQueue.some((e) => e.unitId === id && e.kind === SECRET_NIGHT_KIND);
+    });
+    if (knower === undefined || !ctx.rng.chance(T.nightChance)) continue;
+    enqueueNight(draft, {
+      id: nextId(draft, 'n'), unitId: knower, kind: SECRET_NIGHT_KIND, priority: T.nightPriority,
+      framing: `${unitOf(draft, knower)?.displayName ?? 'A soldier'} is at your door. She has been carrying something for the squad and wants to say it.`,
+      ignore: { event: 'dismissed', severity: 'minor' }, expiresDay: draft.day + T.nightExpiresDays,
+    });
+  }
+  return [];
+}
+
+/** The door is opened: the knower tells the oldest secret she keeps (nothing if none is left to tell). */
+export function confess(draft: CampaignState, ctx: EngineCtx, unitId: string): EngineEvent[] {
+  const secret = draft.personal?.secrets?.find((x) => x.status === 'kept' && x.knownBy.includes(unitId));
+  return secret ? discoverSecret(draft, ctx, secret.id, 'night') : [];
 }

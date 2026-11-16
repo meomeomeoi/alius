@@ -5,7 +5,7 @@ import { lapseBookings, rollBookings } from './bookings';
 import { rollClaims } from './courtship';
 import { decorDayStep } from './decor';
 import { interceptDayStep } from './intercept';
-import { secretDayStep } from './secrets';
+import { rollSecretNight, secretDayStep } from './secrets';
 import { tokenDayStep } from './tokens';
 import { wagerDayStep } from './wagers';
 import { forgetPersonal, holdsPersonal } from './state';
@@ -22,5 +22,5 @@ export function personalDayStep(draft: CampaignState, ctx: EngineCtx): EngineEve
       if (!isLiving(unit) && holdsPersonal(draft, unit.id)) forgetPersonal(draft, unit.id);
     }
   }
-  return [...decorDayStep(draft, ctx), ...interceptDayStep(draft), ...lapseBookings(draft), ...rollBookings(draft, ctx), ...rollClaims(draft, ctx), ...tokenDayStep(draft, ctx), ...wagerDayStep(draft, ctx), ...secretDayStep(draft, ctx.registries)];
+  return [...decorDayStep(draft, ctx), ...interceptDayStep(draft), ...lapseBookings(draft), ...rollBookings(draft, ctx), ...rollClaims(draft, ctx), ...tokenDayStep(draft, ctx), ...wagerDayStep(draft, ctx), ...secretDayStep(draft, ctx.registries), ...rollSecretNight(draft, ctx)];
 }

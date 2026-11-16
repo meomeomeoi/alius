@@ -1,5 +1,6 @@
 import { registerActivityHook, type ActivityHook } from '../activities';
 import { WANT_VISIT_KIND } from '../bonds/scene';
+import { confess, SECRET_NIGHT_KIND } from '../personal/secrets';
 import { relieveWant } from '../bonds/want';
 import { consumeSlots, registerDayEndStep } from '../calendar';
 import { registerAction } from '../dispatch';
@@ -95,13 +96,15 @@ registerAction('dm/roll_initiative', (draft, _payload, ctx) => {
 
 const isConfrontation = (entry: NightEntry): boolean => (CONFRONTATION_KINDS as readonly string[]).includes(entry.kind);
 
-registerAction('night/open', (draft) => {
+registerAction('night/open', (draft, _payload, ctx) => {
   if (draft.slot !== 'night' || !draft.calendar.nightEvent) throw new Error('night/open: there is no night event to open.');
   if (isConfrontation(draft.calendar.nightEvent)) throw new Error('This is not a knock: answer it from its own panel.');
   const entry = draft.calendar.nightEvent;
   // P9d: she took her Want visit
   const relief = entry.kind === WANT_VISIT_KIND ? relieveWant(draft, entry.unitId, TUNING.bonds.want.relief.wantVisit, 'want_visit') : [];
-  return [{ type: 'night_opened', entry }, ...relief];
+  // P9c: a knower at the door tells a squad secret
+  const confession = entry.kind === SECRET_NIGHT_KIND ? confess(draft, ctx, entry.unitId) : [];
+  return [{ type: 'night_opened', entry }, ...relief, ...confession];
 });
 
 registerAction('night/ignore', (draft, _payload, ctx) => {

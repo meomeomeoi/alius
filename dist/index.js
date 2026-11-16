@@ -521,7 +521,9 @@ var TUNING = Object.freeze({
       heldMax: 16,
       confrontRecord: 5,
       hiddenInjuryHp: 0.25,
-      successorDays: 7
+      successorDays: 7,
+      nightPriority: 50,
+      nightExpiresDays: 2
     }),
     /** The record the commander takes on for overriding her (a REVERT, a cancelled booking under obedience, …). */
     overrideRecord: 3
@@ -9948,6 +9950,150 @@ function commandStance(state, reg, unitId) {
 }
 var stanceEntry = (reg, stance) => reg.commandStances.get(stance);
 
+// src/engine/bonds/scene.ts
+var WANT_VISIT_KIND = "want_visit";
+var TONE_RANK = { romantic: 1, intimate: 2 };
+var YIELDS = ["commander_yielded", "followed_lead"];
+function leadScoreParts(state, reg, unitId) {
+  const unit = state.squad.find((u) => u.id === unitId);
+  const bond = unit ? bondOf(unit) : null;
+  if (!unit || !bond) return null;
+  const T = TUNING.bonds.lead;
+  const rel = state.relations[unitId];
+  const recent2 = (types) => (rel?.history ?? []).filter((h2) => h2.kind === "event" && types.includes(h2.type) && state.day - h2.day < T.windowDays).length;
+  const styleBase = T.styleBase[bond.leadStyle];
+  const impunity = T.impunityWeight * ((impunityOf(state, reg, unitId)?.value ?? T.impunityRef) - T.impunityRef);
+  const defect = unit.defects.filter((d) => d.arc !== "cure").reduce((n, d) => n + Number(reg.defects.get(d.id)?.leadBonus ?? 0), 0);
+  const yielded = Math.min(T.yieldCap, T.perYield * recent2(YIELDS));
+  const enforced = -Math.min(T.enforcedCap, T.perEnforced * recent2(["commander_enforced"]));
+  const stateBonus = leadRank(bond.leadStyle) >= leadRank("assertive") ? Number(reg.relationshipStates.get(rel?.stateId ?? "")?.leadBonus ?? 0) : 0;
+  return { styleBase, impunity, defect, yielded, enforced, state: stateBonus, total: styleBase + impunity + defect + yielded + enforced + stateBonus };
+}
+function decideLead(state, reg, unitId) {
+  const parts = leadScoreParts(state, reg, unitId);
+  if (!parts) return null;
+  const T = TUNING.bonds.lead;
+  const score = Math.round(Math.min(100, Math.max(0, parts.total)));
+  return { by: score >= T.unitAtLeast ? "unit" : score <= T.commanderAtMost ? "commander" : "shared", score };
+}
+function decideSceneLead(draft, reg) {
+  const scene = draft.scene;
+  const unitId = scene?.participants[0];
+  if (!scene || unitId === void 0) return [];
+  const lead = decideLead(draft, reg, unitId);
+  if (!lead) return [];
+  scene.lead = { by: lead.by, unitId, score: lead.score };
+  return [{ type: "lead_decided", unitId, by: lead.by }];
+}
+function raiseTone(draft, reg, tone) {
+  const scene = draft.scene;
+  if (!scene || tone !== "romantic" && tone !== "intimate") return [];
+  if (!intimacyOf(draft).romance) return [];
+  const named2 = scene.participants.filter((id) => draft.squad.find((u) => u.id === id)?.kind === "named").length;
+  if (named2 > 1) return [];
+  if (scene.tone !== void 0 && TONE_RANK[scene.tone] >= TONE_RANK[tone]) return [];
+  scene.tone = tone;
+  return [{ type: "scene_tone", tone }, ...decideSceneLead(draft, reg)];
+}
+function startTone(draft, reg) {
+  const scene = draft.scene;
+  if (!scene || scene.participants.length !== 1) return [];
+  const knock = draft.calendar.nightEvent;
+  const wantVisit = scene.origin === "night" && knock !== void 0 && knock.kind === WANT_VISIT_KIND && knock.unitId === scene.participants[0] && (scene.nightEntryId === void 0 || scene.nightEntryId === knock.id);
+  return bondTierOf(draft, reg, scene.participants[0]) === "romantic" || wantVisit ? raiseTone(draft, reg, "romantic") : [];
+}
+function leadPartner(draft) {
+  const lead = draft.scene?.lead;
+  if (!draft.scene || !lead) throw new Error("Nobody leads this scene.");
+  if (!intimacyOf(draft).romance) throw new Error("Romance is switched off.");
+  const unit = draft.squad.find((u) => u.id === lead.unitId);
+  if (!unit) throw new Error("Nobody leads this scene.");
+  return { unitId: unit.id, name: unit.displayName };
+}
+function followLead(draft, ctx2) {
+  const { unitId } = leadPartner(draft);
+  const scene = draft.scene;
+  if (scene.followed) throw new Error("You already followed her lead in this scene.");
+  const events = applyEventToUnit(draft, ctx2.registries, unitId, {
+    type: "followed_lead",
+    actor: "commander",
+    targets: [unitId],
+    severity: "minor",
+    evidence: "followed her lead",
+    confidence: 1
+  });
+  events.push(...evaluateAutomatic(draft, ctx2.registries, unitId));
+  scene.followed = true;
+  events.push({ type: "lead_followed", unitId });
+  return events;
+}
+function setSceneLimit(draft, text2) {
+  const { unitId, name } = leadPartner(draft);
+  const clean5 = typeof text2 === "string" ? text2.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, TUNING.bonds.limits.sceneLimitMax).trim() : "";
+  if (clean5 === "") throw new Error("A limit needs some text.");
+  const scene = draft.scene;
+  const limits = scene.limits ?? [];
+  if (limits.length >= TUNING.bonds.limits.sceneLimitsMax) throw new Error(`A scene takes at most ${TUNING.bonds.limits.sceneLimitsMax} limits.`);
+  scene.limits = [...limits, clean5];
+  addFact(draft, { about: [unitId, "commander"], text: `A boundary the commander set with ${name}: ${clean5}`, tags: ["limit"], importance: 3, day: draft.day, sceneId: scene.id, knownBy: [unitId] });
+  return [{ type: "scene_limit_set", unitId, text: clean5 }];
+}
+
+// src/engine/night.ts
+function enqueueNight(draft, e) {
+  const queue = draft.calendar.nightEventsQueue;
+  if (queue.some((q) => q.unitId === e.unitId && q.kind === e.kind)) return false;
+  queue.push(e);
+  const ranked = queue.map((q, i) => ({ q, i })).sort((a, b) => b.q.priority - a.q.priority || a.i - b.i);
+  queue.splice(0, queue.length, ...ranked.map((x) => x.q));
+  return true;
+}
+var EXPIRES_IN_DAYS = 2;
+function specsOf(state, reg, unitId, usable3) {
+  const unit = state.squad.find((u) => u.id === unitId);
+  const rel = state.relations[unitId];
+  if (!unit || !rel) return [];
+  const out = [];
+  const st = usable3.has(rel.stateId) ? reg.relationshipStates.get(rel.stateId) : void 0;
+  out.push(...st?.unlocks?.nightEvents ?? []);
+  for (const d of unit.defects) out.push(...reg.defects.get(d.id)?.nightEvents ?? []);
+  if (wantBandOf(state, reg, unitId) !== "calm") {
+    const v = TUNING.bonds.want.visit;
+    out.push({ id: WANT_VISIT_KIND, kind: WANT_VISIT_KIND, chance: v.chance, priority: v.priority, trigger: "daily", framing: v.framing, ignore: { ...v.ignore }, contentTags: [] });
+  }
+  return out;
+}
+function queueNightSpec(draft, unit, spec) {
+  const entry = {
+    id: nextId(draft, "n"),
+    unitId: unit.id,
+    kind: spec.kind,
+    priority: spec.priority,
+    framing: spec.framing.replace("{name}", unit.displayName),
+    ignore: { ...spec.ignore },
+    expiresDay: draft.day + EXPIRES_IN_DAYS,
+    ...spec.contentTags && spec.contentTags.length > 0 ? { contentTags: [...spec.contentTags] } : {}
+  };
+  return enqueueNight(draft, entry) ? [{ type: "night_queued", entry }] : [];
+}
+function rollNight(draft, reg, rng, trigger) {
+  const events = [];
+  const queue = draft.calendar.nightEventsQueue;
+  draft.calendar.nightEventsQueue = queue.filter((e) => e.expiresDay >= draft.day);
+  const usable3 = new Set(availableStates(draft, reg).map((s) => s.id));
+  const mult = TUNING.comms.initiativeMult[intimacyOf(draft).initiative];
+  for (const u of draft.squad) {
+    if (u.kind !== "named" || !isLiving(u)) continue;
+    for (const spec of specsOf(draft, reg, u.id, usable3)) {
+      if (spec.trigger !== trigger) continue;
+      if (!contentAllowed(draft, reg, spec, u.id)) continue;
+      if (!rng.chance(Math.min(1, spec.chance * mult * courtshipMult(draft, reg, u.id)))) continue;
+      events.push(...queueNightSpec(draft, u, spec));
+    }
+  }
+  return events;
+}
+
 // src/engine/personal/secrets.ts
 var SECRET_ANSWERS = ["confront", "pretend", "use"];
 var unitOf = (state, id) => state.squad.find((u) => u.id === id);
@@ -10037,6 +10183,62 @@ function respondSecret(draft, ctx2, secretId, choice) {
   }
   events.push({ type: "secret_answered", secretId, choice });
   return events;
+}
+var SECRET_NIGHT_KIND = "squad_secret_confession";
+function discoverSecret(draft, _ctx, secretId, route) {
+  const secret = draft.personal?.secrets?.find((x) => x.id === secretId);
+  if (!secret || secret.status !== "kept") return [];
+  secret.status = "found";
+  secret.foundRoute = route;
+  secret.foundDay = draft.day;
+  return [{ type: "secret_found", secretId, route }];
+}
+function slips(state, reg, unitId) {
+  const stance = commandStance(state, reg, unitId);
+  if (stance !== null && reg.commandStances.get(stance)?.secretSlip === true) return true;
+  return reg.relationshipStates.get(state.relations[unitId]?.stateId ?? "")?.secretSlip === true;
+}
+function rollSceneDiscovery(draft, ctx2, presentIds) {
+  const secrets = draft.personal?.secrets;
+  if (!secrets) return [];
+  const T = TUNING.personal.secret;
+  const events = [];
+  for (const x of [...secrets]) {
+    if (x.status !== "kept") continue;
+    const here = x.knownBy.filter((id) => presentIds.includes(id) && namedLiving2(draft, id));
+    if (here.length === 0) continue;
+    if (here.some((id) => (draft.relations[id]?.trust ?? 100) < T.insightTrust) && ctx2.rng.chance(Math.min(T.insightCap, T.insightBase * socialRank(draft, "insight")))) {
+      events.push(...discoverSecret(draft, ctx2, x.id, "insight"));
+      continue;
+    }
+    if (here.some((id) => slips(draft, ctx2.registries, id)) && ctx2.rng.chance(T.slipChance)) events.push(...discoverSecret(draft, ctx2, x.id, "slip"));
+  }
+  return events;
+}
+function rollSecretNight(draft, ctx2) {
+  const T = TUNING.personal.secret;
+  for (const x of draft.personal?.secrets ?? []) {
+    if (x.status !== "kept") continue;
+    const knower = x.knownBy.find((id) => {
+      const rel = draft.relations[id];
+      return namedLiving2(draft, id) && rel !== void 0 && rel.affinity >= T.nightAffinity && rel.trust >= T.nightTrust && !draft.calendar.nightEventsQueue.some((e) => e.unitId === id && e.kind === SECRET_NIGHT_KIND);
+    });
+    if (knower === void 0 || !ctx2.rng.chance(T.nightChance)) continue;
+    enqueueNight(draft, {
+      id: nextId(draft, "n"),
+      unitId: knower,
+      kind: SECRET_NIGHT_KIND,
+      priority: T.nightPriority,
+      framing: `${unitOf(draft, knower)?.displayName ?? "A soldier"} is at your door. She has been carrying something for the squad and wants to say it.`,
+      ignore: { event: "dismissed", severity: "minor" },
+      expiresDay: draft.day + T.nightExpiresDays
+    });
+  }
+  return [];
+}
+function confess(draft, ctx2, unitId) {
+  const secret = draft.personal?.secrets?.find((x) => x.status === "kept" && x.knownBy.includes(unitId));
+  return secret ? discoverSecret(draft, ctx2, secret.id, "night") : [];
 }
 
 // src/engine/world/clocks.ts
@@ -10698,150 +10900,6 @@ registerStepEntry("expedition", (draft, ctx2, step) => {
   if (draft.onboarding) draft.onboarding.tutorialMissionId = mission.id;
   return [{ type: "mission_offered", missionId: mission.id, source: mission.source, regionId: mission.regionId, title: mission.title }];
 });
-
-// src/engine/bonds/scene.ts
-var WANT_VISIT_KIND = "want_visit";
-var TONE_RANK = { romantic: 1, intimate: 2 };
-var YIELDS = ["commander_yielded", "followed_lead"];
-function leadScoreParts(state, reg, unitId) {
-  const unit = state.squad.find((u) => u.id === unitId);
-  const bond = unit ? bondOf(unit) : null;
-  if (!unit || !bond) return null;
-  const T = TUNING.bonds.lead;
-  const rel = state.relations[unitId];
-  const recent2 = (types) => (rel?.history ?? []).filter((h2) => h2.kind === "event" && types.includes(h2.type) && state.day - h2.day < T.windowDays).length;
-  const styleBase = T.styleBase[bond.leadStyle];
-  const impunity = T.impunityWeight * ((impunityOf(state, reg, unitId)?.value ?? T.impunityRef) - T.impunityRef);
-  const defect = unit.defects.filter((d) => d.arc !== "cure").reduce((n, d) => n + Number(reg.defects.get(d.id)?.leadBonus ?? 0), 0);
-  const yielded = Math.min(T.yieldCap, T.perYield * recent2(YIELDS));
-  const enforced = -Math.min(T.enforcedCap, T.perEnforced * recent2(["commander_enforced"]));
-  const stateBonus = leadRank(bond.leadStyle) >= leadRank("assertive") ? Number(reg.relationshipStates.get(rel?.stateId ?? "")?.leadBonus ?? 0) : 0;
-  return { styleBase, impunity, defect, yielded, enforced, state: stateBonus, total: styleBase + impunity + defect + yielded + enforced + stateBonus };
-}
-function decideLead(state, reg, unitId) {
-  const parts = leadScoreParts(state, reg, unitId);
-  if (!parts) return null;
-  const T = TUNING.bonds.lead;
-  const score = Math.round(Math.min(100, Math.max(0, parts.total)));
-  return { by: score >= T.unitAtLeast ? "unit" : score <= T.commanderAtMost ? "commander" : "shared", score };
-}
-function decideSceneLead(draft, reg) {
-  const scene = draft.scene;
-  const unitId = scene?.participants[0];
-  if (!scene || unitId === void 0) return [];
-  const lead = decideLead(draft, reg, unitId);
-  if (!lead) return [];
-  scene.lead = { by: lead.by, unitId, score: lead.score };
-  return [{ type: "lead_decided", unitId, by: lead.by }];
-}
-function raiseTone(draft, reg, tone) {
-  const scene = draft.scene;
-  if (!scene || tone !== "romantic" && tone !== "intimate") return [];
-  if (!intimacyOf(draft).romance) return [];
-  const named2 = scene.participants.filter((id) => draft.squad.find((u) => u.id === id)?.kind === "named").length;
-  if (named2 > 1) return [];
-  if (scene.tone !== void 0 && TONE_RANK[scene.tone] >= TONE_RANK[tone]) return [];
-  scene.tone = tone;
-  return [{ type: "scene_tone", tone }, ...decideSceneLead(draft, reg)];
-}
-function startTone(draft, reg) {
-  const scene = draft.scene;
-  if (!scene || scene.participants.length !== 1) return [];
-  const knock = draft.calendar.nightEvent;
-  const wantVisit = scene.origin === "night" && knock !== void 0 && knock.kind === WANT_VISIT_KIND && knock.unitId === scene.participants[0] && (scene.nightEntryId === void 0 || scene.nightEntryId === knock.id);
-  return bondTierOf(draft, reg, scene.participants[0]) === "romantic" || wantVisit ? raiseTone(draft, reg, "romantic") : [];
-}
-function leadPartner(draft) {
-  const lead = draft.scene?.lead;
-  if (!draft.scene || !lead) throw new Error("Nobody leads this scene.");
-  if (!intimacyOf(draft).romance) throw new Error("Romance is switched off.");
-  const unit = draft.squad.find((u) => u.id === lead.unitId);
-  if (!unit) throw new Error("Nobody leads this scene.");
-  return { unitId: unit.id, name: unit.displayName };
-}
-function followLead(draft, ctx2) {
-  const { unitId } = leadPartner(draft);
-  const scene = draft.scene;
-  if (scene.followed) throw new Error("You already followed her lead in this scene.");
-  const events = applyEventToUnit(draft, ctx2.registries, unitId, {
-    type: "followed_lead",
-    actor: "commander",
-    targets: [unitId],
-    severity: "minor",
-    evidence: "followed her lead",
-    confidence: 1
-  });
-  events.push(...evaluateAutomatic(draft, ctx2.registries, unitId));
-  scene.followed = true;
-  events.push({ type: "lead_followed", unitId });
-  return events;
-}
-function setSceneLimit(draft, text2) {
-  const { unitId, name } = leadPartner(draft);
-  const clean5 = typeof text2 === "string" ? text2.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, TUNING.bonds.limits.sceneLimitMax).trim() : "";
-  if (clean5 === "") throw new Error("A limit needs some text.");
-  const scene = draft.scene;
-  const limits = scene.limits ?? [];
-  if (limits.length >= TUNING.bonds.limits.sceneLimitsMax) throw new Error(`A scene takes at most ${TUNING.bonds.limits.sceneLimitsMax} limits.`);
-  scene.limits = [...limits, clean5];
-  addFact(draft, { about: [unitId, "commander"], text: `A boundary the commander set with ${name}: ${clean5}`, tags: ["limit"], importance: 3, day: draft.day, sceneId: scene.id, knownBy: [unitId] });
-  return [{ type: "scene_limit_set", unitId, text: clean5 }];
-}
-
-// src/engine/night.ts
-function enqueueNight(draft, e) {
-  const queue = draft.calendar.nightEventsQueue;
-  if (queue.some((q) => q.unitId === e.unitId && q.kind === e.kind)) return false;
-  queue.push(e);
-  const ranked = queue.map((q, i) => ({ q, i })).sort((a, b) => b.q.priority - a.q.priority || a.i - b.i);
-  queue.splice(0, queue.length, ...ranked.map((x) => x.q));
-  return true;
-}
-var EXPIRES_IN_DAYS = 2;
-function specsOf(state, reg, unitId, usable3) {
-  const unit = state.squad.find((u) => u.id === unitId);
-  const rel = state.relations[unitId];
-  if (!unit || !rel) return [];
-  const out = [];
-  const st = usable3.has(rel.stateId) ? reg.relationshipStates.get(rel.stateId) : void 0;
-  out.push(...st?.unlocks?.nightEvents ?? []);
-  for (const d of unit.defects) out.push(...reg.defects.get(d.id)?.nightEvents ?? []);
-  if (wantBandOf(state, reg, unitId) !== "calm") {
-    const v = TUNING.bonds.want.visit;
-    out.push({ id: WANT_VISIT_KIND, kind: WANT_VISIT_KIND, chance: v.chance, priority: v.priority, trigger: "daily", framing: v.framing, ignore: { ...v.ignore }, contentTags: [] });
-  }
-  return out;
-}
-function queueNightSpec(draft, unit, spec) {
-  const entry = {
-    id: nextId(draft, "n"),
-    unitId: unit.id,
-    kind: spec.kind,
-    priority: spec.priority,
-    framing: spec.framing.replace("{name}", unit.displayName),
-    ignore: { ...spec.ignore },
-    expiresDay: draft.day + EXPIRES_IN_DAYS,
-    ...spec.contentTags && spec.contentTags.length > 0 ? { contentTags: [...spec.contentTags] } : {}
-  };
-  return enqueueNight(draft, entry) ? [{ type: "night_queued", entry }] : [];
-}
-function rollNight(draft, reg, rng, trigger) {
-  const events = [];
-  const queue = draft.calendar.nightEventsQueue;
-  draft.calendar.nightEventsQueue = queue.filter((e) => e.expiresDay >= draft.day);
-  const usable3 = new Set(availableStates(draft, reg).map((s) => s.id));
-  const mult = TUNING.comms.initiativeMult[intimacyOf(draft).initiative];
-  for (const u of draft.squad) {
-    if (u.kind !== "named" || !isLiving(u)) continue;
-    for (const spec of specsOf(draft, reg, u.id, usable3)) {
-      if (spec.trigger !== trigger) continue;
-      if (!contentAllowed(draft, reg, spec, u.id)) continue;
-      if (!rng.chance(Math.min(1, spec.chance * mult * courtshipMult(draft, reg, u.id)))) continue;
-      events.push(...queueNightSpec(draft, u, spec));
-    }
-  }
-  return events;
-}
 
 // src/engine/onboarding/evening.ts
 function guideUnit(state) {
@@ -19386,6 +19444,7 @@ registerAction("scene/end", (draft, payload, ctx2) => {
   events.push(...returnNegotiations(draft, scene.participants));
   events.push(...rollDiscovery(draft, reg, ctx2.rng, scene.participants));
   events.push(...rollReveal(draft, reg, ctx2.rng, scene.participants));
+  events.push(...rollSceneDiscovery(draft, ctx2, scene.participants));
   events.push(...expireSceneProposals(draft, scene.participants));
   events.push(...settleDefiance(draft, ctx2, { sceneId: scene.id }));
   for (const id of scene.participants) events.push(...clearSmother(draft, id));
@@ -19568,12 +19627,13 @@ registerAction("dm/roll_initiative", (draft, _payload, ctx2) => {
   return [{ type: "dm_initiative", unitIds: rollInitiative(draft, ctx2.registries, ctx2.rng) }];
 });
 var isConfrontation = (entry) => CONFRONTATION_KINDS.includes(entry.kind);
-registerAction("night/open", (draft) => {
+registerAction("night/open", (draft, _payload, ctx2) => {
   if (draft.slot !== "night" || !draft.calendar.nightEvent) throw new Error("night/open: there is no night event to open.");
   if (isConfrontation(draft.calendar.nightEvent)) throw new Error("This is not a knock: answer it from its own panel.");
   const entry = draft.calendar.nightEvent;
   const relief = entry.kind === WANT_VISIT_KIND ? relieveWant(draft, entry.unitId, TUNING.bonds.want.relief.wantVisit, "want_visit") : [];
-  return [{ type: "night_opened", entry }, ...relief];
+  const confession = entry.kind === SECRET_NIGHT_KIND ? confess(draft, ctx2, entry.unitId) : [];
+  return [{ type: "night_opened", entry }, ...relief, ...confession];
 });
 registerAction("night/ignore", (draft, _payload, ctx2) => {
   const entry = draft.calendar.nightEvent;
@@ -20426,7 +20486,7 @@ function personalDayStep(draft, ctx2) {
       if (!isLiving(unit) && holdsPersonal(draft, unit.id)) forgetPersonal(draft, unit.id);
     }
   }
-  return [...decorDayStep(draft, ctx2), ...interceptDayStep(draft), ...lapseBookings(draft), ...rollBookings(draft, ctx2), ...rollClaims(draft, ctx2), ...tokenDayStep(draft, ctx2), ...wagerDayStep(draft, ctx2), ...secretDayStep(draft, ctx2.registries)];
+  return [...decorDayStep(draft, ctx2), ...interceptDayStep(draft), ...lapseBookings(draft), ...rollBookings(draft, ctx2), ...rollClaims(draft, ctx2), ...tokenDayStep(draft, ctx2), ...wagerDayStep(draft, ctx2), ...secretDayStep(draft, ctx2.registries), ...rollSecretNight(draft, ctx2)];
 }
 
 // src/engine/actions/personal.ts
