@@ -16,6 +16,7 @@ P0–P6 are done. These packages bring the base to a proper starting level befor
 | 5c | **P9b** Squad power structure (**done**) | Voting, hierarchy/leader, outside perception, scapegoat; needs P9, P8, P9d §1. |
 | 5c2 | **P9e** "Her call" (**done**) | A soldier acts on her own in a run; a bad turn marks the mission so P9b's scapegoat opens; needs P9b, P9, P5, P6. |
 | 5d | **P9c** Personal pressure (**done**) | Device access levels, bookings, inverted courtship, tokens, squad secrets, wagers; needs P9b, P9d, P10. |
+| 5d2 | **P3b** Memory | What the squad remembers: engine events → facts with audiences, rumors, dossier folding, journal/chronicle/DM recap in the prompt, memory budget, presets and MEMORY view; needs P3, P7a and the packages it remembers (P4–P9c). Before P10b so P10b/P12/P13 write into it. |
 | 5e | **P10b** Intimate immersion UI | Telemetry, living DMs, night door, handwriting, device marks; needs P10, P9c data, P9d. |
 | 6 | **P12** Special traits: Secret Frequency, Bloom-induced Paranoia, Web of Debts | Stand on P7's trait framework, P9's leverage/punishments and P5's night events and threads. |
 | 7 | **P13** LEASHSWAP mode | Mirrors P9's punishments onto the commander, reuses P12's suspicion clocks, sits above P9b's hierarchy, uses P9d's lead and content categories; needs P11's intake to reveal the warden. |
@@ -38,6 +39,7 @@ Each package: **one planning session** (agent writes `docs/plans/<date>-pN-….m
 | P9b | (a) `squad_assertiveness`, voting toggle + VOTE panel + ballots + overruling; (b) standing, leader, privileges, endorse/challenge, outside perception; (c) scapegoat dilemma family |
 | P9e | (a) engine: `herCall` template field, trigger/actor/outcome rolls, `decidedBy.source`; (b) 4–6 authored events, notice card, `ON HER CALL` chip, directive, docs |
 | P9c | (a) device access levels (incl. level-4 edits with KEEP/REVERT), bookings, inverted courtship + `claimed`; (b) tokens, wagers (5 games, stakes filtered by content categories); (c) squad secrets |
+| P3b | (a) engine: config/presets, `memoryRules` + resolvers, rumors, hidden facts, fold, chronicle audiences, journal, digest; (b) context groups + memory share, providers, fold/retell/digest calls, memory outside scenes; (c) ST scene hiding, SYS MEMORY + fill indicator, MEMORY view, docs |
 | P10b | (a) VITALS telemetry, living DM behaviours; (b) night theme + door, handwriting fonts and notes, device marks |
 | P12 | (a) special-trait plumbing + Secret Frequency (intercepts, distortion, `knowledge_leak`, suspicion, discovery, burn); (b) Bloom-induced Paranoia (premonitions, false alarms, `accused`, nightmares, `contingency`); (c) Web of Debts (handler visits, intel exchange, consequences, two discovery paths, `defector_arc` stubs) |
 | P13 | (a) mode setup, warden selection, `warden_agenda`, warden state, permadeath rules with rewind/end; (b) overrides (COMPLY/ARGUE/DEFY), commander punishments + Leash on commander, lethal escalation; (c) intrigue, three removal routes, investigation, remote control, verdicts, WARDEN panel |
