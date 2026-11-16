@@ -195,7 +195,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
 
   function drawChips(s: CampaignState): void {
     const ids = new Set(s.scene?.participants ?? []);
-    drawProposalChips(chips, s, (p) => p.channel === 'scene' && ids.has(p.unitId), (id, answer) => controller.answer(id, answer));
+    drawProposalChips(chips, s, (p) => p.channel === 'scene' && ids.has(p.unitId), (id, answer, condition) => (condition === undefined ? controller.answer(id, answer) : controller.answer(id, answer, condition)), registries);
     // P9d: FOLLOW / ASK / SET A LIMIT while a romantic scene has a lead (never with romance off)
     drawLeadChips(leadChips, intimacyOf(s).romance ? s.scene : undefined, {
       follow: () => controller.follow?.(), ask: () => controller.ask?.(), limit: (text) => controller.limit?.(text),

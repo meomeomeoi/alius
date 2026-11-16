@@ -1,4 +1,4 @@
-export { accessCan, CAPABILITIES, deviceAccess, deviceGateReason, type AccessLevel, type Capability } from './access';
+export { accessCan, CAPABILITIES, deviceAccess, deviceAccessWhy, deviceGateReason, type AccessLevel, type Capability } from './access';
 export {
   book, bookingChance, bookingGuard, bookingPlayable, cancelBooking, dueBooking, lapseBookings, markPlayed, metAtScene, nextSlotAfter, playBooking, resolveConflict, rollBookings,
 } from './bookings';

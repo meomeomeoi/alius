@@ -186,7 +186,8 @@ export function createPersonal(deps: PersonalDeps): PersonalController {
           deps.toast('info', `Two bookings for the ${String(e.slot)} of day ${String(e.day)} clash: choose one, or let them settle it.`);
         } else if (e.type === 'claimed') {
           const s = state();
-          if (s) deps.toast('info', `${nameOf(s, String(e.unitId))} has told everyone the commander is hers.`);
+          if (deps.onClaim) deps.onClaim(String(e.unitId));
+          else if (s) deps.toast('info', `${nameOf(s, String(e.unitId))} has told everyone the commander is hers.`);
         }
       }
       if (refresh) deps.refreshContext();

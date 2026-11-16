@@ -889,9 +889,9 @@ function effectsFor(registry2, entry, reg, data) {
     case "relationshipStates": {
       const syn = e.unlocks && typeof e.unlocks === "object" && Array.isArray(e.unlocks.synergies) ? e.unlocks.synergies : [];
       const mod = (kind, word) => {
-        const row = e.modifiers && typeof e.modifiers === "object" ? e.modifiers[kind] : null;
-        if (!row || typeof row !== "object") return [];
-        return Object.entries(row).filter(([, n]) => isNum(n)).map(([axis, n]) => `${cap(axis)} ${word} \xD7${num(n)}`);
+        const row2 = e.modifiers && typeof e.modifiers === "object" ? e.modifiers[kind] : null;
+        if (!row2 || typeof row2 !== "object") return [];
+        return Object.entries(row2).filter(([, n]) => isNum(n)).map(([axis, n]) => `${cap(axis)} ${word} \xD7${num(n)}`);
       };
       return compact([syn.length ? `Unlocks: ${syn.map((s) => `[[synergies:${s}]]`).join(", ")}` : null, ...mod("gain", "gains"), ...mod("loss", "losses")]);
     }
@@ -1070,10 +1070,10 @@ function entryEffects(registry2, entry, reg, data) {
 function scapegoatView(state, reg) {
   const open3 = state.dilemmas?.open;
   if (!open3 || open3.context !== "scapegoat" || open3.status !== "presented" || !open3.options) return null;
-  const nameOf10 = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
+  const nameOf11 = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
   return {
-    subject: open3.subjectId !== void 0 ? nameOf10(open3.subjectId) : "Unknown",
-    witnesses: (open3.witnessIds ?? []).map(nameOf10),
+    subject: open3.subjectId !== void 0 ? nameOf11(open3.subjectId) : "Unknown",
+    witnesses: (open3.witnessIds ?? []).map(nameOf11),
     options: open3.options.map((o) => ({
       answer: o.id ?? "",
       lines: o.effects.map((fx2) => summarizeWorldEffect(fx2, reg)).filter((l) => l !== null)
@@ -8291,9 +8291,9 @@ function defaultFormation(state, reg, unitIds) {
     return (u && reg.roles.get(u.roleId)?.row) ?? "either";
   };
   for (const id of unitIds) {
-    const row = rowOf(id);
-    if (row === "front") (front.length < max ? front : back).push(id);
-    else if (row === "back") (back.length < max ? back : front).push(id);
+    const row2 = rowOf(id);
+    if (row2 === "front") (front.length < max ? front : back).push(id);
+    else if (row2 === "back") (back.length < max ? back : front).push(id);
   }
   for (const id of unitIds) {
     if (rowOf(id) !== "either") continue;
@@ -8848,6 +8848,7 @@ function impunityBand(value) {
 }
 
 // src/engine/personal/access.ts
+var CAPABILITIES = ["decor", "notes", "calendar", "messages"];
 function deviceGateReason(state, unitId) {
   const unit = state.squad.find((u) => u.id === unitId);
   if (!unit || unit.kind !== "named" || !isLiving(unit) || !state.relations[unitId]) return "not a named unit in service";
@@ -8876,6 +8877,18 @@ function deviceAccess(state, reg, unitId) {
     if (rule.anyOf.some((b) => branchHolds(state, reg, unitId, b, impunity))) return Number(rule.level);
   }
   return 0;
+}
+var accessCan = (state, reg, unitId, capability) => deviceAccess(state, reg, unitId) >= CAPABILITIES.indexOf(capability) + 1;
+function deviceAccessWhy(state, reg, unitId) {
+  if (deviceGateReason(state, unitId) !== null) return null;
+  let cached;
+  const impunity = () => cached ??= impunityOf(state, reg, unitId)?.value ?? 0;
+  const rules2 = [...reg.deviceAccessRules.values()].sort((a, b) => Number(b.level) - Number(a.level));
+  for (const rule of rules2) {
+    const branch = rule.anyOf.find((b) => branchHolds(state, reg, unitId, b, impunity));
+    if (branch) return { level: Number(rule.level), branch };
+  }
+  return null;
 }
 
 // src/engine/personal/gates.ts
@@ -9548,11 +9561,11 @@ function meetsSocialRequirements(state, requires) {
 var clamp6 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 function presenceOf(state, reg) {
   const profile = commanderProfile(state);
-  const row = (factor, key) => {
+  const row2 = (factor, key) => {
     for (const e of reg.presence.values()) if (e.factor === factor && String(e.key) === key) return Number(e.presence);
     return 0;
   };
-  const sum = row("archetype", profile.archetype) + row("seasoning", String(profile.seasoning)) + row("authority", String(socialRank(state, "authority")));
+  const sum = row2("archetype", profile.archetype) + row2("seasoning", String(profile.seasoning)) + row2("authority", String(socialRank(state, "authority")));
   return clamp6(sum, -TUNING.commander.presenceMax, TUNING.commander.presenceMax);
 }
 function firstImpressionWeight(state, unitId) {
@@ -9664,12 +9677,12 @@ function computeDeltas(state, reg, unitId, event) {
   const pun = event.type === "commander_enforced" ? punishmentFor(reg, event.measure) : void 0;
   const severity = pun ? SEVERITIES[Number(pun.severity) - 1] ?? event.severity : triggered ? escalate(event.severity) : event.severity;
   const def = reg.eventDeltas.get(event.type);
-  const row = rowFor(state, reg, unitId, event, severity);
-  if (!row) return { ...zero, severity };
-  let trust = row.trust ?? 0;
-  let affinity = row.affinity ?? 0;
-  let attraction = row.attraction ?? 0;
-  let stress = (row.stress ?? 0) + (triggered ? TUNING.relations.triggerStress : 0);
+  const row2 = rowFor(state, reg, unitId, event, severity);
+  if (!row2) return { ...zero, severity };
+  let trust = row2.trust ?? 0;
+  let affinity = row2.affinity ?? 0;
+  let attraction = row2.attraction ?? 0;
+  let stress = (row2.stress ?? 0) + (triggered ? TUNING.relations.triggerStress : 0);
   for (const fx2 of stanceEffects(state, reg, unit, "event_stress")) if (fx2.events.includes(event.type)) stress += fx2.amount;
   if (def?.valueAligned === true) {
     const values = effectiveValues(state, reg, unit);
@@ -10622,8 +10635,8 @@ registerStepEntry("guided_slot", (draft, _ctx, step) => {
 });
 
 // src/engine/onboarding/unlocks.ts
-var conditionOf = (row) => row.condition ?? {};
-var tabOf = (row) => String(row.target.tab);
+var conditionOf = (row2) => row2.condition ?? {};
+var tabOf = (row2) => String(row2.target.tab);
 function holds(state, c) {
   if (c.minDay !== void 0 && state.day < c.minDay) return false;
   if (c.afterStep !== void 0) {
@@ -10635,13 +10648,13 @@ function holds(state, c) {
 function lockedTabs(state, reg) {
   const out = /* @__PURE__ */ new Set();
   if (onboardingDone(state)) return out;
-  for (const row of reg.uiUnlocks.values()) if (!holds(state, conditionOf(row))) out.add(tabOf(row));
+  for (const row2 of reg.uiUnlocks.values()) if (!holds(state, conditionOf(row2))) out.add(tabOf(row2));
   return out;
 }
 function unlockedBetween(before, after, reg) {
   const was = lockedTabs(before, reg);
   const now = lockedTabs(after, reg);
-  return [...reg.uiUnlocks.values()].filter((row) => was.has(tabOf(row)) && !now.has(tabOf(row)));
+  return [...reg.uiUnlocks.values()].filter((row2) => was.has(tabOf(row2)) && !now.has(tabOf(row2)));
 }
 
 // src/engine/hub.ts
@@ -10702,13 +10715,13 @@ function objectiveList(state, reg) {
   if (beat && state.world.spine?.proposed === beat.id) out.push({ id: `spine:${beat.id}`, text: String(beat.goal), source: "spine", dueDays: null });
   const lead = (state.objectives ?? []).find((o) => !o.done && (o.dueDay === void 0 || state.day - o.dueDay <= LEAD_GRACE_DAYS));
   if (lead) out.push({ id: lead.id, text: lead.text, source: "director", dueDays: lead.dueDay === void 0 ? null : lead.dueDay - state.day });
-  const nameOf10 = (id) => state.squad.find((u) => u.id === id)?.displayName;
+  const nameOf11 = (id) => state.squad.find((u) => u.id === id)?.displayName;
   const guide = step && step.kind === "guided_slot" ? state.onboarding?.guideUnitId : void 0;
   if (guide !== void 0 && livingNamed(state).some((u) => u.id === guide)) {
-    out.push({ id: `unit:guide:${guide}`, text: `${nameOf10(guide)} wants to talk.`, source: "unit", dueDays: null });
+    out.push({ id: `unit:guide:${guide}`, text: `${nameOf11(guide)} wants to talk.`, source: "unit", dueDays: null });
   }
   for (const d of waitingDemands(state)) {
-    out.push({ id: `unit:demand:${d.id}`, text: `${nameOf10(d.unitId)} is waiting for an answer.`, source: "unit", dueDays: null });
+    out.push({ id: `unit:demand:${d.id}`, text: `${nameOf11(d.unitId)} is waiting for an answer.`, source: "unit", dueDays: null });
   }
   return out;
 }
@@ -12776,8 +12789,8 @@ function generatePortrait(rng) {
   ];
   const mark = rng.pick(MARKS);
   if (mark) {
-    const [row, col, glyph] = mark;
-    rows[row] = rows[row].slice(0, col) + glyph + rows[row].slice(col + 1);
+    const [row2, col, glyph] = mark;
+    rows[row2] = rows[row2].slice(0, col) + glyph + rows[row2].slice(col + 1);
   }
   const frame = `+${"-".repeat(INNER)}+`;
   return [frame, ...rows.map((r) => `|${r}|`), frame].join("\n");
@@ -14894,8 +14907,8 @@ function spawnEnemy(cs, state, reg, spec, summonedBy) {
   const inRow = (r) => enemies.filter((c2) => c2.row === r).length;
   const preferred = spec.row ?? tpl.rowPreference;
   const other = preferred === "front" ? "back" : "front";
-  const row = inRow(preferred) < TUNING.combat.maxPerRow ? preferred : inRow(other) < TUNING.combat.maxPerRow ? other : null;
-  if (row === null) return null;
+  const row2 = inRow(preferred) < TUNING.combat.maxPerRow ? preferred : inRow(other) < TUNING.combat.maxPerRow ? other : null;
+  if (row2 === null) return null;
   const stats = enemyStats(reg, spec.enemyId, spec.level, spec.affixes, state.difficulty);
   const skills = [...tpl.skills];
   const passives = [];
@@ -14911,7 +14924,7 @@ function spawnEnemy(cs, state, reg, spec, summonedBy) {
     enemyId: spec.enemyId,
     nameKey: enemyNameKey(spec.enemyId, spec.affixes),
     level: spec.level,
-    row,
+    row: row2,
     index: enemies.reduce((m, x) => Math.max(m, x.index + 1), 0),
     hp: stats.hp,
     maxHp: stats.hp,
@@ -14938,8 +14951,8 @@ function spawnMutineer(cs, state, reg, spec) {
   const inRow = (r) => enemies.filter((c2) => c2.row === r).length;
   const preferred = spec.row ?? "front";
   const other = preferred === "front" ? "back" : "front";
-  const row = inRow(preferred) < TUNING.combat.maxPerRow ? preferred : inRow(other) < TUNING.combat.maxPerRow ? other : null;
-  if (row === null) return null;
+  const row2 = inRow(preferred) < TUNING.combat.maxPerRow ? preferred : inRow(other) < TUNING.combat.maxPerRow ? other : null;
+  if (row2 === null) return null;
   const stats = unitStats(state, reg, unit);
   const passives = [];
   for (const d of unit.defects) {
@@ -14953,7 +14966,7 @@ function spawnMutineer(cs, state, reg, spec) {
     unitId: unit.id,
     nameKey: unit.displayName,
     level: unit.level,
-    row,
+    row: row2,
     index: enemies.reduce((m, x) => Math.max(m, x.index + 1), 0),
     hp: Math.max(1, Math.min(unit.currentHp, stats.hp)),
     maxHp: stats.hp,
@@ -15774,7 +15787,7 @@ function startingCp(state, reg) {
   }
   return Math.min(TUNING.combat.cpMax, cp);
 }
-function squadCombatant(state, reg, unit, index, row, synergies) {
+function squadCombatant(state, reg, unit, index, row2, synergies) {
   const stats = unitStats(state, reg, unit);
   const role = reg.roles.get(unit.roleId);
   const skills = unitSkillIds(reg, unit);
@@ -15803,7 +15816,7 @@ function squadCombatant(state, reg, unit, index, row, synergies) {
     unitId: unit.id,
     nameKey: unit.displayName,
     level: unit.level,
-    row,
+    row: row2,
     index,
     hp: Math.max(1, Math.min(unit.currentHp, stats.hp)),
     maxHp: stats.hp,
@@ -16175,7 +16188,7 @@ function mergeHints(into, more) {
     else if (RANK.indexOf(h2.severity) > RANK.indexOf(have.severity)) have.severity = h2.severity;
   }
 }
-function relationHints(cs, unitIdOf3) {
+function relationHints(cs, unitIdOf4) {
   const out = [];
   mergeHints(out, cs.hints);
   const cmd = cs.commander;
@@ -16188,7 +16201,7 @@ function relationHints(cs, unitIdOf3) {
     }
   }
   for (const c of cs.combatants) {
-    const id = c.side === "squad" ? unitIdOf3(c.cid) : void 0;
+    const id = c.side === "squad" ? unitIdOf4(c.cid) : void 0;
     if (id && c.downed) mergeHints(out, [{ type: "endangered", actor: "commander", targets: [id], severity: "major" }]);
   }
   return out;
@@ -16209,7 +16222,7 @@ function finalizeCombat(draft, reg, rng, outcome) {
   const events = [];
   const squad = cs.combatants.filter((c) => c.side === "squad" && c.unitId);
   const unitOf5 = (c) => draft.squad.find((u) => u.id === c.unitId);
-  const unitIdOf3 = (cid) => cs.combatants.find((c) => c.cid === cid)?.unitId;
+  const unitIdOf4 = (cid) => cs.combatants.find((c) => c.cid === cid)?.unitId;
   const stressBefore = Object.fromEntries(squad.map((c) => [c.unitId, unitOf5(c).stress]));
   const injuries = [];
   const deaths = [];
@@ -16296,7 +16309,7 @@ function finalizeCombat(draft, reg, rng, outcome) {
     deaths,
     breakdowns,
     stressDelta: Object.fromEntries(squad.map((c) => [c.unitId, unitOf5(c).stress - stressBefore[c.unitId]])),
-    relationHints: relationHints(cs, unitIdOf3),
+    relationHints: relationHints(cs, unitIdOf4),
     commanderInjured,
     ...compels.length > 0 ? { compels: [...compels] } : {},
     ...mutineers.length > 0 ? { mutineers } : {}
@@ -18367,7 +18380,7 @@ function endExpedition(draft, ctx2, outcome) {
   const mission = draft.missions.active.find((m) => m.id === exp.missionId);
   const region = reg.regions.get(exp.regionId);
   const regionLabel = region ? regionName(region) : exp.regionId;
-  const nameOf10 = (id) => draft.squad.find((u) => u.id === id)?.displayName ?? id;
+  const nameOf11 = (id) => draft.squad.find((u) => u.id === id)?.displayName ?? id;
   draft.resources.supplies += exp.supplies;
   const abandoned = draft.dilemmas?.open;
   if (abandoned && abandoned.context === "expedition_event") {
@@ -18429,8 +18442,8 @@ function endExpedition(draft, ctx2, outcome) {
   if (exp.herCalls && exp.herCalls.length > 0) report.herCalls = structuredClone(exp.herCalls);
   draft.lastExpedition = report;
   let line2 = `Expedition to ${regionLabel}: ${OUTCOME_TEXT[outcome]}.`;
-  if (injuries.length > 0) line2 += ` ${injuries.map(nameOf10).join(" and ")} ${injuries.length > 1 ? "were" : "was"} carried back.`;
-  if (deaths.length > 0) line2 += ` ${deaths.map(nameOf10).join(" and ")} did not return.`;
+  if (injuries.length > 0) line2 += ` ${injuries.map(nameOf11).join(" and ")} ${injuries.length > 1 ? "were" : "was"} carried back.`;
+  if (deaths.length > 0) line2 += ` ${deaths.map(nameOf11).join(" and ")} did not return.`;
   addChronicle(draft, { kind: "scene", day: draft.day, text: line2 });
   const rs = draft.world.regions[exp.regionId] ?? { known: true };
   draft.world.regions[exp.regionId] = { ...rs, lastVisitedDay: draft.day };
@@ -18478,14 +18491,14 @@ function cleanRecap(text2) {
 }
 var OUTCOME_LABEL = { success: "OBJECTIVE SECURED", retreated: "RETREATED", failed: "FAILED: SQUAD BEATEN BACK" };
 function reportLines(report, state, reg) {
-  const nameOf10 = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
+  const nameOf11 = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
   const region = reg.regions.get(report.regionId);
   const lines = [
     "AFTER-ACTION REPORT",
     `Mission: ${report.missionTitle}`,
     `Region: ${region ? regionName(region) : report.regionId} // Day ${report.day}`,
     `Outcome: ${OUTCOME_LABEL[report.outcome]}`,
-    `Squad: ${report.party.map(nameOf10).join(", ")}`
+    `Squad: ${report.party.map(nameOf11).join(", ")}`
   ];
   const route = report.nodes.map((t) => String(reg.nodeTypes.get(t)?.name ?? t));
   if (route.length > 0) lines.push(`Route: ${route.join(" > ")}`);
@@ -18499,9 +18512,9 @@ function reportLines(report, state, reg) {
     if (r.clearance !== void 0) parts.push(`clearance tier ${r.clearance}`);
     lines.push(`Rewards: ${parts.join(", ")}.`);
   }
-  if (report.injuries.length > 0) lines.push(`Injured: ${report.injuries.map(nameOf10).join(", ")}.`);
-  if (report.deaths.length > 0) lines.push(`Fallen: ${report.deaths.map(nameOf10).join(", ")}.`);
-  if (report.breakdowns.length > 0) lines.push(`Breakdown: ${report.breakdowns.map(nameOf10).join(", ")}.`);
+  if (report.injuries.length > 0) lines.push(`Injured: ${report.injuries.map(nameOf11).join(", ")}.`);
+  if (report.deaths.length > 0) lines.push(`Fallen: ${report.deaths.map(nameOf11).join(", ")}.`);
+  if (report.breakdowns.length > 0) lines.push(`Breakdown: ${report.breakdowns.map(nameOf11).join(", ")}.`);
   if (report.recap) lines.push("", report.recap);
   return lines;
 }
@@ -19024,6 +19037,27 @@ function decorOf(state, unitId) {
   const d = state.personal?.decor?.[unitId];
   if (!d) return null;
   return d.fadedUntil !== void 0 && state.day > d.fadedUntil ? null : d;
+}
+function wallpaperUnit(state) {
+  let best = null;
+  for (const u of state.squad) {
+    const d = decorOf(state, u.id);
+    if (!d || d.fadedUntil !== void 0 || !d.parts.includes("wallpaper") || !isLiving(u)) continue;
+    const affinity = state.relations[u.id]?.affinity ?? -Infinity;
+    if (best === null || affinity > best.affinity) best = { id: u.id, affinity };
+  }
+  return best?.id ?? null;
+}
+function pinnedNotes(state, reg) {
+  const authored = ruleOfLevel(reg, 2)?.notes ?? [];
+  const out = [];
+  for (const u of state.squad) {
+    if (u.kind !== "named" || !accessCan(state, reg, u.id, "notes")) continue;
+    const lines = activeRules(state, u.id).map((r) => r.text);
+    if (authored.length > 0) lines.push(authored[fnv1a(`${state.day}|${u.id}`) % authored.length].replaceAll("{name}", u.displayName));
+    if (lines.length > 0) out.push({ unitId: u.id, lines });
+  }
+  return out;
 }
 function removeDecor(draft, ctx2, unitId, part) {
   const unit = draft.squad.find((u) => u.id === unitId);
@@ -20792,7 +20826,7 @@ function refusalReason(state, reg, unitId) {
 // src/loyalty/loyaltyController.ts
 var SCENE_PREFIXES = ["refusal:", "loyalty:", "leash_trauma:"];
 function createLoyalty(deps) {
-  const nameOf10 = (unitId) => deps.app.current().state?.squad.find((u) => u.id === unitId)?.displayName ?? unitId;
+  const nameOf11 = (unitId) => deps.app.current().state?.squad.find((u) => u.id === unitId)?.displayName ?? unitId;
   const failure = (events) => events.find((e) => e.type === "error");
   const toastFailure = (e) => void deps.toast("error", String(e.message ?? e.code));
   function order(unitId) {
@@ -20811,7 +20845,7 @@ function createLoyalty(deps) {
       const stance = commandStance(state, reg, unitId);
       const entry = stance === null ? void 0 : stanceEntry(reg, stance);
       const reason = refusalReason(state, reg, unitId);
-      deps.context.setDirective(entry ? stanceRefusalDirective(unitId, nameOf10(unitId), entry, reason) : refusalDirective(unitId, nameOf10(unitId), reason));
+      deps.context.setDirective(entry ? stanceRefusalDirective(unitId, nameOf11(unitId), entry, reason) : refusalDirective(unitId, nameOf11(unitId), reason));
     } else deps.context.clearDirective(`refusal:${unitId}`);
     deps.refreshContext();
     return refused;
@@ -20824,7 +20858,7 @@ function createLoyalty(deps) {
       return false;
     }
     const forced = events.find((e) => e.type === "scene_compelled")?.forced === true;
-    deps.context.setDirective(forced ? compelledDirective(unitId, nameOf10(unitId)) : compelFailedDirective(unitId, nameOf10(unitId)));
+    deps.context.setDirective(forced ? compelledDirective(unitId, nameOf11(unitId)) : compelFailedDirective(unitId, nameOf11(unitId)));
     deps.refreshContext();
     return forced;
   }
@@ -20836,14 +20870,14 @@ function createLoyalty(deps) {
     for (const id of state.scene.participants) {
       const rel = state.relations[id];
       if (!rel) continue;
-      const band2 = bandDirective(id, nameOf10(id), rel.loyaltyBand);
+      const band2 = bandDirective(id, nameOf11(id), rel.loyaltyBand);
       if (band2) {
         deps.context.setDirective(band2);
         set = true;
       }
       const recent2 = log.some((e) => e.unitId === id && state.day - e.day <= TUNING.leash.traumaDays);
       if (rel.flags.includes("leashed") && recent2) {
-        deps.context.setDirective(traumaDirective(id, nameOf10(id)));
+        deps.context.setDirective(traumaDirective(id, nameOf11(id)));
         set = true;
       }
     }
@@ -21054,7 +21088,7 @@ function createPower(deps) {
     drop(opened.id);
     return answer.choice === "accept" ? "dropped" : "cancelled";
   }
-  const nameOf10 = (id) => state()?.squad.find((u) => u.id === id)?.displayName ?? String(id);
+  const nameOf11 = (id) => state()?.squad.find((u) => u.id === id)?.displayName ?? String(id);
   function endorse2() {
     const events = deps.app.dispatch({ type: "power/endorse", payload: {} }, { expectChatId: chatId() });
     const bad = failure(events);
@@ -21063,7 +21097,7 @@ function createPower(deps) {
       return false;
     }
     const id = events.find((e) => e.type === "leader_endorsed" && e.unitId !== void 0)?.unitId;
-    deps.toast("info", `${nameOf10(id)} is now second-in-command.`);
+    deps.toast("info", `${nameOf11(id)} is now second-in-command.`);
     deps.refreshContext();
     return true;
   }
@@ -21083,7 +21117,7 @@ function createPower(deps) {
     if (!result?.unitId) return true;
     const opened = deps.startScene ? await deps.startScene({ locationId: "quarters_unit", participants: [result.unitId], origin: "event" }) : false;
     if (opened && chatId() === chat) {
-      deps.context.setDirective({ id: "power:challenge", expiresAfter: "scene", text: challengeText(nameOf10(result.unitId), stat3, result.won === true) });
+      deps.context.setDirective({ id: "power:challenge", expiresAfter: "scene", text: challengeText(nameOf11(result.unitId), stat3, result.won === true) });
       deps.refreshContext();
     }
     return true;
@@ -21106,14 +21140,14 @@ function createPower(deps) {
       for (const e of events) {
         if (e.type === "countermanded") {
           const activity = String(deps.registries().activities.get(String(e.activityId))?.name ?? e.activityId);
-          deps.toast("warn", `${nameOf10(e.leaderId)} countermands ${activity} with ${nameOf10(e.unitId)}: ACCEPT or OVERRULE.`);
+          deps.toast("warn", `${nameOf11(e.leaderId)} countermands ${activity} with ${nameOf11(e.unitId)}: ACCEPT or OVERRULE.`);
         } else if (e.type === "leader_changed") {
-          deps.toast("info", e.to !== void 0 ? `${nameOf10(e.to)} has become the one the squad looks to.` : `The squad no longer looks to ${nameOf10(e.from)}.`);
+          deps.toast("info", e.to !== void 0 ? `${nameOf11(e.to)} has become the one the squad looks to.` : `The squad no longer looks to ${nameOf11(e.from)}.`);
         } else if (e.type === "countermand_overruled" && state()?.scene?.participants.includes(String(e.leaderId))) {
           deps.context.setDirective({
             id: "power:countermand",
             expiresAfter: "next_reply",
-            text: `The commander has just overruled ${nameOf10(e.leaderId)}'s call in front of her; she reacts in character.`
+            text: `The commander has just overruled ${nameOf11(e.leaderId)}'s call in front of her; she reacts in character.`
           });
           deps.refreshContext();
         }
@@ -21138,7 +21172,7 @@ function createPersonal(deps) {
   const reg = () => deps.registries();
   const wording = /* @__PURE__ */ new Map();
   const keyOf = (id) => `${chatId() ?? ""}:${id}`;
-  const nameOf10 = (s, id) => s.squad.find((u) => u.id === id)?.displayName ?? "She";
+  const nameOf11 = (s, id) => s.squad.find((u) => u.id === id)?.displayName ?? "She";
   async function word(s, open3) {
     const unit = s.squad.find((u) => u.id === open3.unitId);
     const original = open3.original ?? "";
@@ -21148,7 +21182,7 @@ function createPersonal(deps) {
           kind: "dm_edit",
           unitName: unit.displayName,
           stateHint: String(reg().relationshipStates.get(s.relations[unit.id]?.stateId ?? "")?.promptHint ?? ""),
-          recipientName: nameOf10(s, open3.toUnitId) === "She" ? "" : nameOf10(s, open3.toUnitId),
+          recipientName: nameOf11(s, open3.toUnitId) === "She" ? "" : nameOf11(s, open3.toUnitId),
           original
         }, { st: deps.st, settings: deps.settings(), contentLine: deps.contentLine });
         if (text2 !== null) return text2;
@@ -21213,7 +21247,7 @@ function createPersonal(deps) {
       const s = state();
       const open3 = s?.personal?.intercepts?.open;
       if (!s || !open3 || !events.some((e) => e.type === "device_intercept" && e.hit === true)) return { cancelled: false };
-      const editorName = nameOf10(s, open3.unitId);
+      const editorName = nameOf11(s, open3.unitId);
       const answer = await deps.confirmEdit({
         editorName,
         channel: kind,
@@ -21256,7 +21290,8 @@ function createPersonal(deps) {
           deps.toast("info", `Two bookings for the ${String(e.slot)} of day ${String(e.day)} clash: choose one, or let them settle it.`);
         } else if (e.type === "claimed") {
           const s = state();
-          if (s) deps.toast("info", `${nameOf10(s, String(e.unitId))} has told everyone the commander is hers.`);
+          if (deps.onClaim) deps.onClaim(String(e.unitId));
+          else if (s) deps.toast("info", `${nameOf11(s, String(e.unitId))} has told everyone the commander is hers.`);
         }
       }
       if (refresh) deps.refreshContext();
@@ -21438,12 +21473,12 @@ function measures(state, reg) {
 function renderVotePanel(host, vote, lines, ctx2) {
   host.replaceChildren();
   const { state, registries: reg } = ctx2;
-  const nameOf10 = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
+  const nameOf11 = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
   const kindLabel2 = String(reg.voteKinds.get(vote.kind)?.label ?? vote.kind);
   const rows = vote.ballots.map((b) => h(
     "li",
     { class: "alius-ballot", "data-ballot": b.unitId, "data-side": b.vote },
-    h("span", { class: "alius-chip", ...analyzeAttrs("glossary:vote", { unitId: b.unitId }) }, nameOf10(b.unitId)),
+    h("span", { class: "alius-chip", ...analyzeAttrs("glossary:vote", { unitId: b.unitId }) }, nameOf11(b.unitId)),
     ` ${SIDE_WORD[b.vote]}${b.vote === "abstain" ? "" : ` \xD7${num3(b.weight)}`} `,
     h("span", { class: "alius-dim" }, lines[b.unitId] ?? "")
   ));
@@ -21477,7 +21512,7 @@ function renderVotePanel(host, vote, lines, ctx2) {
       picker.hidden = false;
       if (picker.childElementCount > 0) return;
       const dissent = vote.ballots.filter((b) => b.vote === "against" && state.squad.find((u) => u.id === b.unitId)?.kind === "named");
-      const who = h("select", { class: "alius-select", "data-punish-unit": "", "aria-label": "Soldier to punish" }, ...dissent.map((b) => h("option", { value: b.unitId }, nameOf10(b.unitId))));
+      const who = h("select", { class: "alius-select", "data-punish-unit": "", "aria-label": "Soldier to punish" }, ...dissent.map((b) => h("option", { value: b.unitId }, nameOf11(b.unitId))));
       const how = h("select", { class: "alius-select", "data-punish-measure": "", "aria-label": "Measure" }, ...measures(state, reg).map((e) => h("option", { value: String(e.id) }, String(e.label))));
       picker.append(who, how, act("punish-confirm", "[ CONFIRM ]", () => ctx2.onOverrule("punish", { unitId: who.value, measure: how.value })));
     };
@@ -21651,7 +21686,7 @@ function askDirective(unitId, name) {
 
 // src/discipline/controller.ts
 function createDiscipline(deps) {
-  const nameOf10 = (unitId) => deps.app.current().state?.squad.find((u) => u.id === unitId)?.displayName ?? unitId;
+  const nameOf11 = (unitId) => deps.app.current().state?.squad.find((u) => u.id === unitId)?.displayName ?? unitId;
   const chatId = () => deps.st.getActiveChat()?.chatId;
   const state = () => deps.app.current().state;
   const syncDirectives = () => {
@@ -21702,7 +21737,7 @@ function createDiscipline(deps) {
       deps.toast("error", String(bad.message ?? bad.code));
       return false;
     }
-    if (postponed && asked && state()?.scene?.participants.includes(asked.unitId)) deps.context.setDirective(patienceDirective(asked.unitId, nameOf10(asked.unitId)));
+    if (postponed && asked && state()?.scene?.participants.includes(asked.unitId)) deps.context.setDirective(patienceDirective(asked.unitId, nameOf11(asked.unitId)));
     syncDirectives();
     return true;
   }
@@ -21718,7 +21753,7 @@ function createDiscipline(deps) {
     for (const e of events) {
       if (e.type === "threat_registered" && (e.channel ?? "scene") === "scene") {
         const unitId = String(e.unitId);
-        deps.context.setDirective(threatDirective(unitId, nameOf10(unitId), measureLabel(deps.registries(), String(e.measure)), e.believed === true));
+        deps.context.setDirective(threatDirective(unitId, nameOf11(unitId), measureLabel(deps.registries(), String(e.measure)), e.believed === true));
         set = true;
       } else if (e.type === "delegate_demand" && typeof e.demandId === "string") {
         void wordAndDeliver(e.demandId, chatId()).catch(() => {
@@ -21727,7 +21762,7 @@ function createDiscipline(deps) {
         void wordAndDeliver(e.demandId, chatId()).catch(() => {
         });
       } else if (e.type === "threat_lapsed") {
-        deps.toast("info", `A threat lapsed: ${nameOf10(String(e.unitId))} saw the commander back down.`);
+        deps.toast("info", `A threat lapsed: ${nameOf11(String(e.unitId))} saw the commander back down.`);
       } else if (e.type === "covert_sabotage" && deps.settings().debug) {
         deps.toast("info", `Covert sabotage (${String(e.kind)}).`);
       }
@@ -21749,7 +21784,7 @@ function createDiscipline(deps) {
     const events = deps.app.dispatch({ type: "reputation/introduce", payload: { unitId: only } });
     const given = events.find((e) => e.type === "nickname_given");
     if (!given) return;
-    deps.context.setDirective(nicknameDirective(nameOf10(only), String(given.name)));
+    deps.context.setDirective(nicknameDirective(nameOf11(only), String(given.name)));
   }
   function onSceneClosed() {
     clearDisciplineDirectives(deps.context);
@@ -21759,7 +21794,7 @@ function createDiscipline(deps) {
   function announcePunish(unitId, measure) {
     const state2 = deps.app.current().state;
     const reg = deps.registries();
-    const name = nameOf10(unitId);
+    const name = nameOf11(unitId);
     const label2 = measureLabel(reg, measure);
     if (state2?.scene?.participants.includes(unitId)) {
       const stance = commandStance(state2, reg, unitId);
@@ -22736,7 +22771,7 @@ function renderCombatScreen(host, ctx2) {
     }, `${PRESENCE_LABEL2[p.kind]}${p.used ? " \u2014 USED" : ""}`);
   }
   const unitOf5 = (state, c) => state.squad.find((u) => u.id === c.unitId);
-  const nameOf10 = (state, c) => {
+  const nameOf11 = (state, c) => {
     if (c.side === "squad" || c.unitId !== void 0 && c.enemyId === void 0) return unitOf5(state, c)?.displayName ?? c.nameKey;
     const affixes = (c.nameKey.split("|")[1] ?? "").split(",").filter((a) => a !== "");
     return state.enemyNames?.[c.nameKey] ?? defaultEnemyName(reg, c.enemyId ?? "", affixes);
@@ -22786,11 +22821,11 @@ function renderCombatScreen(host, ctx2) {
   function pickSkill(state, index) {
     const cs = state.combat;
     if (!cs?.awaitingCid) return;
-    const row = skillRows(state, cs.awaitingCid)[index];
-    if (!row || row.reason) return;
+    const row2 = skillRows(state, cs.awaitingCid)[index];
+    if (!row2 || row2.reason) return;
     orderMode = null;
-    selSkill = row.skill.id;
-    selTarget = needsTarget(row.skill) ? row.targets[0] ?? null : null;
+    selSkill = row2.skill.id;
+    selTarget = needsTarget(row2.skill) ? row2.targets[0] ?? null : null;
     render();
   }
   function confirm(state) {
@@ -22901,7 +22936,7 @@ function renderCombatScreen(host, ctx2) {
       if (!cid) return "";
       if (cid === "commander") return "Commander";
       const c = cs?.combatants.find((x) => x.cid === cid);
-      return c ? nameOf10(state, c) : cid;
+      return c ? nameOf11(state, c) : cid;
     };
     const skill = l.skillId ? reg.skills.get(l.skillId)?.name ?? l.skillId : "";
     const order = l.orderId ? reg.orders.get(l.orderId)?.name ?? l.orderId : "";
@@ -22993,7 +23028,7 @@ function renderCombatScreen(host, ctx2) {
         if (s) clickCard(s, c.cid);
       }
     });
-    const lines = [h("div", { class: "alius-cc-name" }, `${nameOf10(state, c)}${c.level > 1 ? ` L${c.level}` : ""}`)];
+    const lines = [h("div", { class: "alius-cc-name" }, `${nameOf11(state, c)}${c.level > 1 ? ` L${c.level}` : ""}`)];
     const live = c.unitId ? { unitId: c.unitId } : void 0;
     lines.push(h("div", { class: "alius-cc-hp alius-stat", ...analyzeAttrs("glossary:stat_hp", live) }, `HP ${bar(c.hp, c.maxHp)} ${c.hp}/${c.maxHp}`));
     if (c.side === "squad") lines.push(h("div", { class: "alius-cc-st alius-stat", ...analyzeAttrs("glossary:stress", live) }, `ST ${bar(c.stress, 100)} ${c.stress}`));
@@ -23045,7 +23080,7 @@ function renderCombatScreen(host, ctx2) {
     const legal = new Set(targetsOfSelection(state));
     const fielded = cs.combatants.filter((c) => c.side === "squad" && c.unitId).map((c) => c.unitId);
     const synergyOf = (unitId) => unitId ? getSynergies(state, reg, fielded).filter((s) => s.unitId === unitId).map((s) => s.synergyId) : [];
-    const row = (side, r) => {
+    const row2 = (side, r) => {
       const cards = cs.combatants.filter((c) => c.side === side && c.row === r).map((c) => card2(state, c, side === "squad" ? synergyOf(c.unitId) : [], legal.has(c.cid), selTarget === c.cid));
       if (side === "squad" && r === "back" && cs.commander) {
         const cmd = cs.commander;
@@ -23062,7 +23097,7 @@ function renderCombatScreen(host, ctx2) {
       { class: "alius-combat-timeline", "aria-label": "Turn order" },
       ...cs.timeline.map((cid, i) => {
         const c = cs.combatants.find((x) => x.cid === cid);
-        return h("span", { class: `alius-tl${i === cs.turn ? " alius-tl-now" : ""}${c.downed ? " alius-tl-down" : ""}`, "data-cid": cid }, nameOf10(state, c).slice(0, 6));
+        return h("span", { class: `alius-tl${i === cs.turn ? " alius-tl-now" : ""}${c.downed ? " alius-tl-down" : ""}`, "data-cid": cid }, nameOf11(state, c).slice(0, 6));
       })
     );
     const waiting2 = cs.phase === "awaiting" && cs.awaitingCid;
@@ -23166,11 +23201,11 @@ function renderCombatScreen(host, ctx2) {
       h(
         "div",
         { class: "alius-combat-field" },
-        row("enemy", "back"),
-        row("enemy", "front"),
+        row2("enemy", "back"),
+        row2("enemy", "front"),
         h("div", { class: "alius-combat-mid" }, "\u2550".repeat(40)),
-        row("squad", "front"),
-        row("squad", "back")
+        row2("squad", "front"),
+        row2("squad", "back")
       ),
       h("div", { class: "alius-combat-skills" }, ...skillButtons),
       h("div", { class: "alius-combat-orders" }, ...orders),
@@ -23223,7 +23258,7 @@ function renderInvTab(host, ctx2) {
       return;
     }
     const slotOf = (i) => reg.items.get(i.itemId)?.slot;
-    const nameOf10 = (i) => reg.items.get(i.itemId)?.name ?? `UNKNOWN ${i.itemId}`;
+    const nameOf11 = (i) => reg.items.get(i.itemId)?.name ?? `UNKNOWN ${i.itemId}`;
     const items = state.inventory.filter((i) => filter === "all" || slotOf(i) === filter);
     const current = state.inventory.find((i) => i.uid === selected2) ?? null;
     if (!current) selected2 = null;
@@ -23263,7 +23298,7 @@ function renderInvTab(host, ctx2) {
               render();
             }
           },
-          h("span", { class: "alius-inv-name" }, nameOf10(i)),
+          h("span", { class: "alius-inv-name" }, nameOf11(i)),
           h("span", { class: `alius-rarity alius-rarity-${i.rarity} alius-chip`, ...analyzeAttrs("glossary:rarity") }, i.rarity),
           h("span", {}, i.upgrade > 0 ? `+${i.upgrade}` : ""),
           h("span", { class: "alius-dim" }, ...i.affixes.flatMap((a, k) => [...k > 0 ? [", "] : [], h("span", { class: "alius-chip", ...analyzeAttrs(`affixes:${a}`) }, String(reg.affixes.get(a)?.name ?? a))])),
@@ -24594,7 +24629,7 @@ function renderCommanderFile(host, ctx2) {
   }));
   const spent = poolSpent(c.body);
   const left = TUNING.commander.pool - spent;
-  const row = (stat3) => {
+  const row2 = (stat3) => {
     const v = c.body[stat3];
     const step = (sign, next, disabled) => h("button", {
       type: "button",
@@ -24620,7 +24655,7 @@ function renderCommanderFile(host, ctx2) {
       "section",
       { class: "alius-section alius-cmdr-body" },
       h("h3", {}, "BODY"),
-      ...BODY_STATS.map(row),
+      ...BODY_STATS.map(row2),
       h("p", { class: "alius-hint" }, `POINTS LEFT ${left}`),
       h("p", {}, "BUILD: ", h("span", { class: "alius-chip", ...analyzeAttrs("glossary:archetype") }, archetype))
     )
@@ -26685,11 +26720,11 @@ function renderHierarchyBlock(host, state, reg, unitId, handlers2, opts = {}) {
   if (!isLeader) return;
   const left = challengeCooldown(state);
   const picker = h("div", { class: "alius-challenge-picker", hidden: true });
-  const row = h("p", { class: "alius-hierarchy-actions" });
+  const row2 = h("p", { class: "alius-hierarchy-actions" });
   if (!endorsed) {
-    row.append(h("button", { type: "button", class: "alius-btn alius-option", "data-power-act": "endorse", ...analyzeNative("glossary:endorse"), onclick: handlers2.onEndorse }, "[ ENDORSE ]"), " ");
+    row2.append(h("button", { type: "button", class: "alius-btn alius-option", "data-power-act": "endorse", ...analyzeNative("glossary:endorse"), onclick: handlers2.onEndorse }, "[ ENDORSE ]"), " ");
   }
-  row.append(h("button", {
+  row2.append(h("button", {
     type: "button",
     class: "alius-btn alius-option",
     "data-power-act": "challenge",
@@ -26711,9 +26746,58 @@ function renderHierarchyBlock(host, state, reg, unitId, handlers2, opts = {}) {
       }
     }
   }, "[ CHALLENGE ]"));
-  host.append(row);
+  host.append(row2);
   if (left > 0) host.append(h("p", { class: "alius-dim alius-reason" }, `CHALLENGE AVAILABLE IN ${left} DAYS`));
   host.append(picker);
+}
+
+// src/ui/personal/deviceBlock.ts
+var PART_LABEL = { sticker: "STICKER", wallpaper: "WALLPAPER", contact: "CONTACT" };
+var SLOT_WORD = { morning: "MORNING", afternoon: "AFTERNOON", evening: "EVENING", night: "NIGHT" };
+function renderDeviceBlock(state, reg, unitId, handlers2) {
+  const unit = state.squad.find((u) => u.id === unitId);
+  if (!unit || unit.kind !== "named") return null;
+  const level = deviceAccess(state, reg, unitId);
+  const decor = decorOf(state, unitId);
+  const bookings = (state.personal?.bookings ?? []).filter((b) => b.unitId === unitId && b.status === "booked");
+  if (level === 0 && !decor && bookings.length === 0) return null;
+  const live = { unitId };
+  const block2 = h(
+    "div",
+    { class: "alius-device-block", "data-device": unitId },
+    h(
+      "p",
+      { class: "alius-device-line" },
+      h("span", { class: "alius-chip", "data-access": unitId, ...analyzeAttrs("glossary:device_access", live) }, `ACCESS L${level} ${unit.displayName.toUpperCase()}`)
+    )
+  );
+  if (decor) {
+    const faded = decor.fadedUntil !== void 0;
+    const owner = wallpaperUnit(state) === unitId;
+    const parts = decor.parts.filter((p) => p !== "wallpaper" || owner || faded);
+    block2.append(h("div", { class: "alius-device-decor" }, ...parts.map((part) => {
+      const label2 = part === "contact" ? `CONTACT: ${decor.contactName}` : PART_LABEL[part];
+      return h(
+        "span",
+        { class: "alius-device-part", "data-decor-part": part, ...faded ? { "data-faded": "true" } : {} },
+        h("span", { class: "alius-chip", ...analyzeAttrs("glossary:device_access", live) }, faded ? `${label2} (FADED)` : label2),
+        faded ? null : h("button", { type: "button", class: "alius-btn alius-tagchip", "data-action": "peel", "aria-label": `Peel ${PART_LABEL[part].toLowerCase()}`, onclick: () => handlers2.onPeel(unitId, part) }, "[PEEL]")
+      );
+    })));
+  }
+  for (const note of pinnedNotes(state, reg).find((n) => n.unitId === unitId)?.lines ?? []) {
+    block2.append(h("p", { class: "alius-device-note" }, note));
+  }
+  for (const b of bookings) {
+    const kind = reg.bookingKinds.get(b.kindId);
+    block2.append(h(
+      "div",
+      { class: "alius-device-booking", "data-booking": b.id },
+      h("span", { class: "alius-chip", ...analyzeAttrs("glossary:booking", { bookingId: b.id, unitId }) }, `${String(kind?.label ?? b.kindId).toUpperCase()} \u2014 DAY ${b.day} ${SLOT_WORD[b.slot]}`),
+      h("button", { type: "button", class: "alius-btn alius-tagchip", "data-action": "cancel", ...analyzeNative("glossary:booking", { bookingId: b.id, unitId }), onclick: () => handlers2.onCancel(b.id) }, "[CANCEL]")
+    ));
+  }
+  return block2;
 }
 
 // src/ui/portrait/dither.ts
@@ -27244,6 +27328,7 @@ function unitBlock(unit, ctx2, state) {
       gone ? null : bondBlock(unit, state, ctx2),
       gone ? null : disciplineLine(unit, state, ctx2),
       gone ? null : hierarchyBlock(unit, state, ctx2),
+      gone ? null : renderDeviceBlock(state, ctx2.registries, unit.id, { onPeel: (id, part) => ctx2.onPeel?.(id, part), onCancel: (id) => ctx2.onCancelBooking?.(id) }),
       gone ? null : restrictionLine(unit, state),
       gone || !ctx2.onPunish || unit.kind !== "named" ? null : renderDisciplineMenu({ state, registries: reg, unitId: unit.id, onPunish: (measure, days) => ctx2.onPunish(unit.id, measure, days) }),
       gone ? null : h("p", { class: "alius-stress" }, chip(`STRESS ${stressBand2(unit.stress).toUpperCase()}${raw ? ` (${unit.stress})` : ""}`, "glossary:stress", live)),
@@ -27304,14 +27389,14 @@ function drawCountermandChips(host, state, reg, onAnswer) {
   host.replaceChildren();
   const c = countermandOpen(state);
   if (!c) return;
-  const nameOf10 = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
+  const nameOf11 = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
   const activityId = c.payload?.activityId;
   const activity = typeof activityId === "string" ? String(reg.activities.get(activityId)?.name ?? activityId) : "the order";
   host.append(h(
     "p",
     { class: "alius-countermand", "data-countermand-line": "" },
-    h("span", { class: "alius-chip", ...analyzeAttrs("glossary:countermand") }, `${nameOf10(c.leaderId)} COUNTERMANDS`),
-    ` ${activity} with ${nameOf10(c.unitId)}. `,
+    h("span", { class: "alius-chip", ...analyzeAttrs("glossary:countermand") }, `${nameOf11(c.leaderId)} COUNTERMANDS`),
+    ` ${activity} with ${nameOf11(c.unitId)}. `,
     h("button", { type: "button", class: "alius-btn alius-option", "data-countermand": "accept", ...analyzeNative("glossary:countermand"), onclick: () => onAnswer("accept") }, "[ACCEPT]"),
     " ",
     h("button", { type: "button", class: "alius-btn alius-option", "data-countermand": "overrule", ...analyzeNative("glossary:countermand"), onclick: () => onAnswer("overrule") }, "[OVERRULE]")
@@ -27322,6 +27407,48 @@ function herCallChip(state, mission) {
   if (by?.source !== "her_call") return null;
   const name = state.squad.find((u) => u.id === by.unitId)?.displayName ?? by.unitId;
   return h("span", { class: "alius-chip", "data-her-call-chip": mission.id, ...analyzeAttrs("glossary:her_call", { unitId: by.unitId, missionId: mission.id }) }, `ON HER CALL: ${name}`);
+}
+
+// src/ui/personal/schedule.ts
+var SCHEDULE_DAYS = 3;
+var SLOT_ORDER2 = ["morning", "afternoon", "evening", "night"];
+function renderSchedule(state, reg, handlers2) {
+  const upcoming = (state.personal?.bookings ?? []).filter((b) => b.status === "booked" && b.day >= state.day && b.day < state.day + SCHEDULE_DAYS && state.squad.some((u) => u.id === b.unitId && u.kind === "named"));
+  if (upcoming.length === 0) return null;
+  const section = h("section", { class: "alius-section alius-schedule" }, h("h2", {}, "SCHEDULE"));
+  const days = [...new Set(upcoming.map((b) => b.day))].sort((a, b) => a - b);
+  for (const day of days) {
+    section.append(h("p", { class: "alius-schedule-day" }, `DAY ${day}${day === state.day ? " \u2014 TODAY" : day === state.day + 1 ? " \u2014 TOMORROW" : ""}`));
+    const rows = upcoming.filter((b) => b.day === day).sort((a, b) => SLOT_ORDER2.indexOf(a.slot) - SLOT_ORDER2.indexOf(b.slot));
+    const settled = /* @__PURE__ */ new Set();
+    for (const b of rows) {
+      section.append(row(state, reg, b, handlers2));
+      const key = `${b.day}|${b.slot}`;
+      if (b.conflict && !settled.has(key) && rows.filter((x) => x.slot === b.slot && x.conflict).at(-1) === b) {
+        settled.add(key);
+        section.append(h(
+          "p",
+          { class: "alius-schedule-row" },
+          h("button", { type: "button", class: "alius-btn alius-tagchip", "data-action": "settle", ...analyzeNative("glossary:booking", { bookingId: b.id }), onclick: () => handlers2.onSettle(b.day, b.slot) }, "[LET THEM SETTLE IT]")
+        ));
+      }
+    }
+  }
+  return section;
+}
+function row(state, reg, b, handlers2) {
+  const name = state.squad.find((u) => u.id === b.unitId)?.displayName ?? b.unitId;
+  const chip = h("span", { class: "alius-chip", ...analyzeAttrs("glossary:booking", { bookingId: b.id, unitId: b.unitId }) }, `${name.toUpperCase()} \xB7 ${SLOT_WORD[b.slot]}`);
+  chip.style.setProperty("--unit-accent", unitAccent(b.unitId));
+  const keep = b.conflict ? h("button", { type: "button", class: "alius-btn alius-tagchip", "data-action": "keep", ...analyzeNative("glossary:booking", { bookingId: b.id }), onclick: () => handlers2.onKeep(b.id) }, "[KEEP HERS]") : null;
+  return h(
+    "div",
+    { class: "alius-schedule-row", "data-booking": b.id, ...b.conflict ? { "data-conflict": "true" } : {} },
+    chip,
+    h("span", { class: "alius-dim" }, String(reg.bookingKinds.get(b.kindId)?.label ?? b.kindId)),
+    keep,
+    h("button", { type: "button", class: "alius-btn alius-tagchip", "data-action": "cancel", ...analyzeNative("glossary:booking", { bookingId: b.id }), onclick: () => handlers2.onCancel(b.id) }, "[CANCEL]")
+  );
 }
 
 // src/ui/ops/missionBoard.ts
@@ -27560,6 +27687,12 @@ function renderOpsTab(host, ctx2) {
     if (chips.childElementCount > 0) host.append(chips);
   }
   renderObjectives(host, state, ctx2.registries);
+  const schedule = renderSchedule(state, ctx2.registries, {
+    onCancel: (id) => ctx2.onCancelBooking?.(id),
+    onKeep: (id) => ctx2.onKeepBooking?.(id),
+    onSettle: (day, slot2) => ctx2.onSettleBooking?.(day, slot2)
+  });
+  if (schedule) host.append(schedule);
   renderMissionBoard(host, state, ctx2);
   host.append(
     h(
@@ -27858,22 +27991,23 @@ function currentObjective(state, reg) {
   return unit ? { text: unit.text, dueDays: unit.dueDays, source: unit.source } : null;
 }
 var TONIGHT_MAX = 6;
+var SLOT_RANK2 = { morning: 0, afternoon: 1, evening: 2, night: 3 };
 var KNOCK_KIND = "we_need_to_talk";
 var unreadFrom = (state, unitId) => (state.dms[unitId] ?? []).filter((m) => m.from !== "commander" && !m.read).length;
 function tonightItems(state, _reg) {
   const out = [];
   const living2 = state.squad.filter(isLiving);
-  const nameOf10 = (id) => living2.find((u) => u.id === id)?.displayName ?? "";
+  const nameOf11 = (id) => living2.find((u) => u.id === id)?.displayName ?? "";
   for (const e of state.calendar.nightEventsQueue) {
-    if (e.kind !== KNOCK_KIND || e.expiresDay < state.day || !nameOf10(e.unitId)) continue;
-    out.push({ kind: "knock", text: `${nameOf10(e.unitId)} will knock tonight.`, unitId: e.unitId, tone: "warn", analyze: "glossary:tonight" });
+    if (e.kind !== KNOCK_KIND || e.expiresDay < state.day || !nameOf11(e.unitId)) continue;
+    out.push({ kind: "knock", text: `${nameOf11(e.unitId)} will knock tonight.`, unitId: e.unitId, tone: "warn", analyze: "glossary:tonight" });
   }
   for (const u of living2) {
     const n = unreadFrom(state, u.id);
     if (n > 0) out.push({ kind: "dm", text: `${u.displayName}: ${n} unread message${n === 1 ? "" : "s"}.`, unitId: u.id, tone: "neutral", analyze: "glossary:tonight" });
   }
   for (const d of waitingDemands(state)) {
-    out.push({ kind: "demand", text: `${nameOf10(d.unitId)} is waiting for an answer.`, unitId: d.unitId, tone: "warn", analyze: "glossary:demand" });
+    out.push({ kind: "demand", text: `${nameOf11(d.unitId)} is waiting for an answer.`, unitId: d.unitId, tone: "warn", analyze: "glossary:demand" });
   }
   if ((state.world.incomingUnits ?? 0) > 0) out.push({ kind: "intake", text: "A new unit is waiting for intake.", tone: "neutral", analyze: "glossary:tonight" });
   for (const m of [...state.missions.active, ...state.missions.offered]) {
@@ -27885,6 +28019,16 @@ function tonightItems(state, _reg) {
   if (shortage > 0) out.push({ kind: "warning", text: `SHORTAGE ${shortage}d`, tone: "danger", analyze: "glossary:upkeep" });
   const injured = (state.commander.injuredUntilDay ?? 0) - state.day;
   if (injured > 0) out.push({ kind: "warning", text: `INJURED ${injured}d`, tone: "danger", analyze: "glossary:commander_injury" });
+  const booked = (state.personal?.bookings ?? []).filter((b) => b.status === "booked" && (b.day === state.day || b.day === state.day + 1) && nameOf11(b.unitId)).sort((a, b) => a.day - b.day || SLOT_RANK2[a.slot] - SLOT_RANK2[b.slot])[0];
+  if (booked) {
+    out.push({
+      kind: "booking",
+      text: `${nameOf11(booked.unitId)} has booked ${booked.day === state.day ? "today" : "tomorrow"}'s ${booked.slot}.`,
+      unitId: booked.unitId,
+      tone: booked.day === state.day ? "warn" : "neutral",
+      analyze: "glossary:booking"
+    });
+  }
   return out.slice(0, TONIGHT_MAX);
 }
 function endSlotBlock(state) {
@@ -28348,7 +28492,7 @@ function renderMapTab(host, ctx2) {
     const rule = (l, m, r) => h("div", { class: "alius-ascii-rule", "aria-hidden": "true" }, `${l}${"\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500"}${m}${"\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500"}${m}${"\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500"}${r}`);
     const wrap = h("div", { class: "alius-map alius-ascii-map" }, rule("\u250C", "\u252C", "\u2510"));
     for (let y = 0; y < 3; y++) {
-      const row = h("div", { class: "alius-ascii-row" });
+      const row2 = h("div", { class: "alius-ascii-row" });
       for (let x = 0; x < 3; x++) {
         const r = regions.find((q) => q.mapCell.x === x && q.mapCell.y === y);
         const cell = h("div", { class: "alius-ascii-cell", "data-cell": `${x},${y}` });
@@ -28362,9 +28506,9 @@ function renderMapTab(host, ctx2) {
         } else if (r) {
           cell.append(h("span", { class: "alius-nosignal" }, "[ NO SIGNAL ]"));
         }
-        row.append(cell);
+        row2.append(cell);
       }
-      wrap.append(row, y < 2 ? rule("\u251C", "\u253C", "\u2524") : rule("\u2514", "\u2534", "\u2518"));
+      wrap.append(row2, y < 2 ? rule("\u251C", "\u253C", "\u2524") : rule("\u2514", "\u2534", "\u2518"));
     }
     return wrap;
   }
@@ -28504,16 +28648,16 @@ function renderPlanner(host, ctx2) {
       draft.picked = box.checked ? [...draft.picked, u.id] : draft.picked.filter((id) => id !== u.id);
       ctx2.redraw();
     });
-    const row = h(
+    const row2 = h(
       "div",
       { class: "alius-planner-unit", "data-unit-row": u.id },
       h("label", { class: "alius-check" }, box, ` ${u.displayName}`)
     );
-    if (reason2) row.append(h("span", { class: "alius-dim alius-reason" }, ` ${reason2}`));
+    if (reason2) row2.append(h("span", { class: "alius-dim alius-reason" }, ` ${reason2}`));
     else {
-      row.append(h("span", { class: "alius-dim" }, ` SKILLS ${activeLoadout(reg, u).length}/${loadoutSize(reg, u)} \xB7 ${gearText(state, u)} `));
+      row2.append(h("span", { class: "alius-dim" }, ` SKILLS ${activeLoadout(reg, u).length}/${loadoutSize(reg, u)} \xB7 ${gearText(state, u)} `));
       if (picked) {
-        row.append(h("button", {
+        row2.append(h("button", {
           type: "button",
           class: "alius-btn",
           "data-row": u.id,
@@ -28524,7 +28668,7 @@ function renderPlanner(host, ctx2) {
         }, rowOf(u.id) === "front" ? "[ FRONT ]" : "[ BACK ]"));
       }
     }
-    root.append(row);
+    root.append(row2);
   }
   const maxSupplies = Math.min(state.resources.supplies, TUNING.expedition.suppliesMax);
   draft.supplies = Math.max(0, Math.min(maxSupplies, Math.trunc(draft.supplies) || 0));
@@ -29206,8 +29350,8 @@ function schematic(state, reg) {
   const width = PER_ROW * (BOX_INNER + 2) + (PER_ROW - 1);
   const lines = [];
   for (let i = 0; i < boxes.length; i += PER_ROW) {
-    const row = boxes.slice(i, i + PER_ROW);
-    for (let k = 0; k < 4; k++) lines.push(row.map((b) => b[k]).join(" ").padEnd(width));
+    const row2 = boxes.slice(i, i + PER_ROW);
+    for (let k = 0; k < 4; k++) lines.push(row2.map((b) => b[k]).join(" ").padEnd(width));
   }
   return lines.join("\n");
 }
@@ -29351,7 +29495,7 @@ function drawLeadChips(host, scene, handlers2, disabled = false) {
       if (!soft) onclick();
     }
   }, label2);
-  const row = h(
+  const row2 = h(
     "div",
     { class: "alius-lead-chips" },
     chip("follow", "[FOLLOW]", () => handlers2.follow(), scene.followed === true),
@@ -29361,7 +29505,7 @@ function drawLeadChips(host, scene, handlers2, disabled = false) {
       redraw();
     })
   );
-  host.append(row);
+  host.append(row2);
   if (!field2.open) return;
   const input = h("input", { type: "text", class: "alius-input", "data-key": "lead-limit", maxlength: String(TUNING.bonds.limits.sceneLimitMax), "aria-label": "A boundary for this scene", disabled });
   input.value = field2.text;
@@ -29417,19 +29561,71 @@ function drawRuleChips(host, state, reg, pick2, on) {
 
 // src/ui/proposalChips.ts
 var kindLabel = (s) => s.replace(/_/g, " ").toUpperCase();
-function drawProposalChips(host, state, pick2, onAnswer) {
+var CONDITION_MAX = 160;
+function drawProposalChips(host, state, pick2, onAnswer, reg) {
   host.replaceChildren();
   for (const p of state.proposals ?? []) {
     if (!pick2(p)) continue;
     const name = (state.squad.find((u) => u.id === p.unitId)?.displayName ?? p.unitId).toUpperCase();
+    const label2 = h("span", { class: "alius-chip-label" }, p.from === "unit" ? `${name} PROPOSES: ${kindLabel(p.kind)}` : `${name}: ${kindLabel(p.kind)} \u2014 OPENLY OR SECRETLY?`);
+    if (reg && courtshipChips(state, reg, p)) {
+      host.append(courtingGroup(p, label2, onAnswer));
+      continue;
+    }
     const buttons = p.needsDisclosure ? [["[OPENLY]", "accept"], ["[SECRETLY]", "accept_secret"], ["[NOT NOW]", "not_now"]] : p.from === "commander" ? [["[NOT NOW]", "not_now"]] : [["[ACCEPT]", "accept"], ["[DECLINE]", "decline"], ["[NOT NOW]", "not_now"]];
     host.append(h(
       "div",
       { class: "alius-chip-group", "data-proposal": p.id },
-      h("span", { class: "alius-chip-label" }, p.from === "unit" ? `${name} PROPOSES: ${kindLabel(p.kind)}` : `${name}: ${kindLabel(p.kind)} \u2014 OPENLY OR SECRETLY?`),
+      label2,
       ...buttons.map(([text2, answer]) => h("button", { type: "button", class: "alius-btn alius-tagchip", onclick: () => onAnswer(p.id, answer) }, text2))
     ));
   }
+}
+function courtingGroup(p, label2, onAnswer) {
+  const group = h("div", { class: "alius-chip-group", "data-proposal": p.id });
+  const badge = h("span", { class: "alius-chip", ...analyzeAttrs("glossary:courtship", { unitId: p.unitId }) }, "COURTING");
+  const draw2 = () => {
+    group.replaceChildren(
+      label2,
+      badge,
+      h("button", { type: "button", class: "alius-btn alius-tagchip", onclick: () => onAnswer(p.id, "accept") }, "[ACCEPT]"),
+      h("button", { type: "button", class: "alius-btn alius-tagchip", onclick: () => onAnswer(p.id, "deflect") }, "[DEFLECT]"),
+      h("button", { type: "button", class: "alius-btn alius-tagchip", onclick: drawCondition }, "[SET A CONDITION]")
+    );
+  };
+  function drawCondition() {
+    const input = h("input", { type: "text", name: "condition", class: "alius-input", maxlength: String(CONDITION_MAX), autocomplete: "off", "aria-label": "Your condition" });
+    const confirm = () => {
+      const text2 = input.value.replace(/\s+/g, " ").trim();
+      if (text2 !== "") onAnswer(p.id, "accept_condition", text2);
+    };
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") confirm();
+    });
+    group.replaceChildren(label2, badge, h(
+      "span",
+      { class: "alius-condition" },
+      input,
+      h("button", { type: "button", class: "alius-btn alius-tagchip", "data-action": "condition-ok", onclick: confirm }, "[ACCEPT ON THIS]"),
+      h("button", { type: "button", class: "alius-btn alius-tagchip", "data-action": "condition-back", onclick: draw2 }, "[BACK]")
+    ));
+    input.focus();
+  }
+  draw2();
+  return group;
+}
+
+// src/ui/personal/chips.ts
+function editChip(edit, name, onKeep, onRevert) {
+  const group = h(
+    "div",
+    { class: "alius-edit alius-chip-group", "data-edit": edit.id },
+    h("span", { class: "alius-chip", ...analyzeAttrs("glossary:device_access", { unitId: edit.editorId }) }, `EDITED BY ${name.toUpperCase()}`),
+    h("button", { type: "button", class: "alius-btn alius-tagchip", "data-action": "keep", onclick: onKeep }, "[KEEP]"),
+    h("button", { type: "button", class: "alius-btn alius-tagchip", "data-action": "revert", onclick: onRevert }, "[REVERT]")
+  );
+  group.style.setProperty("--unit-accent", unitAccent(edit.editorId));
+  return group;
 }
 
 // src/ui/discipline/chips.ts
@@ -29520,11 +29716,11 @@ function renderCommsTab(host, ctx2) {
   const list5 = h("div", { class: "alius-threads", role: "list" }, ...contacts.map((u) => {
     const n = unread(state, u.id);
     const dot = n > 0 ? h("span", { class: "alius-dot", "aria-label": `${n} unread` }, "\u25CF") : null;
-    const row = h("button", { type: "button", class: `alius-btn alius-contact${u.id === current ? " is-open" : ""}`, "data-unit": u.id, onclick: () => open3(u.id) }, u.displayName, " ", dot);
+    const row2 = h("button", { type: "button", class: `alius-btn alius-contact${u.id === current ? " is-open" : ""}`, "data-unit": u.id, onclick: () => open3(u.id) }, u.displayName, " ", dot);
     const face = ctx2.avatar?.(u);
-    if (face) row.prepend(h("span", { class: "alius-contact-avatar" }, face));
-    row.style.setProperty("--unit-accent", unitAccent(u.id));
-    return row;
+    if (face) row2.prepend(h("span", { class: "alius-contact-avatar" }, face));
+    row2.style.setProperty("--unit-accent", unitAccent(u.id));
+    return row2;
   }));
   const thread = h("div", { class: "alius-thread alius-voice alius-voice-personal", "data-voice": "personal", role: "log", "aria-live": "polite" });
   if (!current) {
@@ -29542,13 +29738,17 @@ function renderCommsTab(host, ctx2) {
       thread.append(bubble);
     }
     const chips = h("div", { class: "alius-chips" });
-    drawProposalChips(chips, state, (p) => p.channel === "dm" && p.unitId === current, ctx2.onAnswer);
+    drawProposalChips(chips, state, (p) => p.channel === "dm" && p.unitId === current, ctx2.onAnswer, ctx2.registries);
     const disciplineChips = h("div", { class: "alius-chips alius-discipline-chips" });
     drawDisciplineChips(disciplineChips, state, ctx2.registries, (c) => c.channel === "dm" && c.unitId === current, (id) => ctx2.onUndoDiscipline?.(id));
     const input = h("input", { type: "text", name: "dm", class: "alius-input", autocomplete: "off", "aria-label": `Message ${unit.displayName}` });
-    input.value = drafts.get(host) ?? "";
-    input.addEventListener("input", () => drafts.set(host, input.value));
+    const pending2 = ctx2.edit?.() ?? null;
+    const waiting2 = pending2 !== null && pending2.toUnitId === current ? pending2 : null;
+    input.value = waiting2 ? waiting2.edited : drafts.get(host) ?? "";
+    if (waiting2) input.readOnly = true;
+    else input.addEventListener("input", () => drafts.set(host, input.value));
     const send = () => {
+      if (waiting2) return;
       const text2 = input.value.trim();
       if (text2 === "") return;
       input.value = "";
@@ -29570,10 +29770,32 @@ function renderCommsTab(host, ctx2) {
       negotiate: (id) => ctx2.onAnswerRule?.(id, "negotiate"),
       refuse: (id) => ctx2.onAnswerRule?.(id, "refuse")
     });
-    thread.append(chips, disciplineChips, demandChips, ruleChips, h("div", { class: "alius-cmd" }, h("span", { class: "alius-prompt" }, "MSG>"), input, h("button", { type: "button", class: "alius-btn", "data-action": "send", onclick: send }, "[SEND]")));
+    const editor = waiting2 ? contacts.find((u) => u.id === waiting2.editorId) : void 0;
+    const editChips = waiting2 ? editChip(waiting2, editor?.displayName ?? waiting2.editorId, () => ctx2.onAnswerEdit?.(true), () => ctx2.onAnswerEdit?.(false)) : null;
+    const sendButton = h("button", { type: "button", class: "alius-btn", "data-action": "send", ...waiting2 ? { "aria-disabled": "true" } : {}, onclick: send }, "[SEND]");
+    thread.append(chips, disciplineChips, demandChips, ruleChips, ...editChips ? [editChips] : [], h("div", { class: "alius-cmd" }, h("span", { class: "alius-prompt" }, "MSG>"), input, sendButton));
     if (unreadMessages(state, current) > 0) queueMicrotask(() => ctx2.onRead(unit.id));
   }
   host.append(h("section", { class: "alius-section alius-comms" }, h("h2", {}, "[ PDA COMMS ]"), h("div", { class: "alius-comms-body" }, list5, thread)));
+}
+
+// src/ui/personal/claimCard.ts
+function renderClaimCard(state, reg, claim2, handlers2) {
+  const name = state.squad.find((u) => u.id === claim2.unitId)?.displayName ?? claim2.unitId;
+  const chip = h("span", { class: "alius-chip", ...analyzeAttrs("glossary:claimed", { unitId: claim2.unitId }) }, "CLAIMED");
+  chip.style.setProperty("--unit-accent", unitAccent(claim2.unitId));
+  const refusable = contentAllowed(state, reg, { contentTags: [HUMILIATION_TAG] }, claim2.unitId);
+  return h(
+    "div",
+    { class: "alius-claim", "data-claim": claim2.unitId },
+    h("p", {}, chip, ` ${name.toUpperCase()} HAS TOLD EVERYONE THE COMMANDER IS HERS.`),
+    h(
+      "div",
+      { class: "alius-claim-actions" },
+      h("button", { type: "button", class: "alius-btn alius-tagchip", "data-action": "stand", onclick: () => handlers2.onLetStand(claim2.unitId) }, "[LET IT STAND]"),
+      refusable ? h("button", { type: "button", class: "alius-btn alius-tagchip", "data-action": "refuse", onclick: () => handlers2.onRefuse(claim2.unitId) }, "[REFUSE PUBLICLY]") : null
+    )
+  );
 }
 
 // src/ui/log/logTab.ts
@@ -29615,11 +29837,11 @@ function renderLogTab(host, ctx2) {
 }
 function oversightLog(state) {
   const entries = leashLog(state).sort((a, b) => b.no - a.no);
-  const nameOf10 = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
+  const nameOf11 = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
   const body = entries.length > 0 ? h("div", {}, ...entries.map((e) => h(
     "p",
     { class: "alius-oversight-entry", "data-no": String(e.no) },
-    `#${String(e.no).padStart(4, "0")} DAY ${day3(e.day)} ${e.kind.toUpperCase()} ${nameOf10(e.unitId)} \u2014 ${String(e.outcome).toUpperCase()}${e.cc !== void 0 ? ` \xB7 CC: ${nameOf10(e.cc)}` : ""}`
+    `#${String(e.no).padStart(4, "0")} DAY ${day3(e.day)} ${e.kind.toUpperCase()} ${nameOf11(e.unitId)} \u2014 ${String(e.outcome).toUpperCase()}${e.cc !== void 0 ? ` \xB7 CC: ${nameOf11(e.cc)}` : ""}`
   ))) : h("p", { class: "alius-dim" }, "NO REQUESTS FILED");
   const log = renderVoiceCard({ voice: "corporate", title: "OVERSIGHT LOG", body });
   log.classList.add("alius-section", "alius-oversight-log");
@@ -29848,7 +30070,7 @@ function renderSceneScreen(host, ctx2) {
   }
   function drawChips(s) {
     const ids = new Set(s.scene?.participants ?? []);
-    drawProposalChips(chips, s, (p) => p.channel === "scene" && ids.has(p.unitId), (id, answer) => controller.answer(id, answer));
+    drawProposalChips(chips, s, (p) => p.channel === "scene" && ids.has(p.unitId), (id, answer, condition) => condition === void 0 ? controller.answer(id, answer) : controller.answer(id, answer, condition), registries);
     drawLeadChips(leadChips, intimacyOf(s).romance ? s.scene : void 0, {
       follow: () => controller.follow?.(),
       ask: () => controller.ask?.(),
@@ -30670,6 +30892,108 @@ function registerBondsProviders() {
   registerAnalyzeProvider("relationshipRuleTemplates", ruleProvider);
 }
 
+// src/analysis/providers/personal.ts
+var LEVEL_WORD = ["no access", "decor", "notes", "calendar", "messages"];
+var nameOf9 = (state, id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
+var unitIdOf3 = (subject) => typeof subject.data.unitId === "string" ? subject.data.unitId : null;
+var SLOT_WORD2 = { morning: "morning", afternoon: "afternoon", evening: "evening", night: "night" };
+function branchWords(b) {
+  const parts = [];
+  if (b.tiers !== void 0) parts.push("the closeness of her relationship with the commander");
+  if (b.states !== void 0) parts.push("the state of her relationship");
+  if (b.minAffinity !== void 0) parts.push("her warmth toward the commander");
+  if (b.minLeadRank !== void 0) parts.push("how much she takes the lead");
+  if (b.minImpunity !== void 0) parts.push("how little she fears the commander's reaction");
+  return parts.join(", ").replace(/, ([^,]*)$/, " and $1");
+}
+function deviceAccessProvider(subject, env, k) {
+  const state = env.state;
+  if (!state) return null;
+  const unitId = unitIdOf3(subject);
+  if (unitId === null) {
+    const holders = state.squad.filter((u) => u.kind === "named").map((u) => ({ u, level: deviceAccess(state, env.registries, u.id) })).filter((x) => x.level > 0);
+    return holders.length === 0 ? { lines: [] } : { lines: [`Soldiers with access: ${holders.map((x) => `${x.u.displayName} (${LEVEL_WORD[x.level]})`).join(", ")}.`] };
+  }
+  if (!state.squad.some((u) => u.id === unitId)) return null;
+  const name = nameOf9(state, unitId);
+  const why = deviceAccessWhy(state, env.registries, unitId);
+  if (!why) return { lines: [`${name} has no access to the commander's device.`] };
+  const lines = [`${name}: level ${why.level} (${LEVEL_WORD[why.level]}).`, `It comes from ${branchWords(why.branch)}.`];
+  lines.push(`She can: ${CAPABILITIES.slice(0, why.level).join(", ")}.`);
+  const impunity = k.raw(impunityOf(state, env.registries, unitId)?.value ?? 0);
+  if (impunity !== null && why.branch.minImpunity !== void 0) lines.push(`Impunity ${impunity}.`);
+  return { lines };
+}
+function bookingProvider(subject, env, k) {
+  const state = env.state;
+  if (!state) return null;
+  const bookings = state.personal?.bookings ?? [];
+  const bookingId = typeof subject.data.bookingId === "string" ? subject.data.bookingId : null;
+  const unitId = unitIdOf3(subject);
+  const booking = bookingId !== null ? bookings.find((b) => b.id === bookingId) : bookings.find((b) => b.status === "booked" && (unitId === null || b.unitId === unitId));
+  const who = booking?.unitId ?? unitId;
+  if (who === null || !state.squad.some((u) => u.id === who)) return null;
+  const name = nameOf9(state, who);
+  const lines = [];
+  if (booking) {
+    const kind = env.registries.bookingKinds.get(booking.kindId);
+    lines.push(`${name} has booked the ${SLOT_WORD2[booking.slot]} of day ${booking.day}: ${String(kind?.label ?? booking.kindId).toLowerCase()}.`);
+    const high = (impunityOf(state, env.registries, who)?.value ?? 0) >= TUNING.impunity.stance.impunityHigh;
+    lines.push(high ? "Cancelling counts as a refused demand, and because she does not fear the commander's reaction it lands harder and she holds it as a defiance." : "Cancelling counts as a refused demand.");
+    if (booking.source === "wager") lines.push("It was won in a wager: cancelling it also breaks a promise.");
+  } else {
+    lines.push(deviceAccess(state, env.registries, who) >= 3 ? `${name} has no booking now; she may book a slot of the commander's time.` : `${name} has no booking, and no access to the calendar to make one.`);
+  }
+  const chance = pressureGate(state, env.registries, who, "booking") === null ? k.raw(Math.round(bookingChance(state, env.registries, who) * 100)) : null;
+  if (chance !== null) lines.push(`She books about ${chance} % of days.`);
+  return { lines };
+}
+function courtshipProvider(subject, env) {
+  const state = env.state;
+  const unitId = unitIdOf3(subject);
+  if (!state || unitId === null || !state.squad.some((u) => u.id === unitId)) return null;
+  const name = nameOf9(state, unitId);
+  return {
+    lines: pressureGate(state, env.registries, unitId, "courtship") === null ? [`${name} courts the commander: she writes and knocks twice as often, may propose the next step herself and may claim the commander in public.`] : [`${name} does not court the commander.`]
+  };
+}
+function claimedProvider(subject, env) {
+  const state = env.state;
+  const unitId = unitIdOf3(subject);
+  if (!state || unitId === null || !state.squad.some((u) => u.id === unitId)) return null;
+  const name = nameOf9(state, unitId);
+  const claim2 = [...state.personal?.claims ?? []].reverse().find((c) => c.unitId === unitId);
+  if (!claim2) return { lines: [`${name} has not claimed the commander in public.`] };
+  const lines = [`${name} claimed the commander in public on day ${claim2.day}${claim2.refused ? " and was refused in front of the squad" : ""}.`];
+  lines.push(contentAllowed(state, env.registries, { contentTags: [HUMILIATION_TAG] }, unitId) ? "The commander can refuse her in public, which hurts her badly." : "The commander cannot refuse her in public: that is switched off, or one of her own limits.");
+  return { lines };
+}
+function ruleProvider2(subject, env) {
+  const rule = env.registries.deviceAccessRules.get(subject.id);
+  if (!rule || !env.state) return null;
+  const state = env.state;
+  const n = state.squad.filter((u) => u.kind === "named" && deviceAccess(state, env.registries, u.id) >= Number(rule.level)).length;
+  const who = n === 0 ? "No soldier has this level now." : `${n} soldier${n === 1 ? " has" : "s have"} this level or more now.`;
+  return { lines: [`${String(rule.name)} (level ${String(rule.level)}): ${who}`] };
+}
+function kindProvider(subject, env, k) {
+  const kind = env.registries.bookingKinds.get(subject.id);
+  if (!kind) return null;
+  const place2 = String(env.registries.locations.get(String(kind.locationId))?.name ?? kind.locationId);
+  const lines = [`Played in the ${SLOT_WORD2[String(kind.slot)]} at ${place2}.${kind.tier === "romantic" ? " Only for a romantic relationship." : ""}`];
+  const relief = k.raw(Number(kind.wantRelief));
+  if (relief !== null) lines.push(`It lowers her want by ${relief}.`);
+  return { lines };
+}
+function registerPersonalProviders() {
+  registerAnalyzeProvider("glossary:device_access", deviceAccessProvider);
+  registerAnalyzeProvider("glossary:booking", bookingProvider);
+  registerAnalyzeProvider("glossary:courtship", courtshipProvider);
+  registerAnalyzeProvider("glossary:claimed", claimedProvider);
+  registerAnalyzeProvider("deviceAccessRules", ruleProvider2);
+  registerAnalyzeProvider("bookingKinds", kindProvider);
+}
+
 // src/analysis/providers/power.ts
 var TERM_WORDS = {
   values: "what she values",
@@ -30719,7 +31043,7 @@ function rationsProvider(subject, env) {
   return { lines };
 }
 var band = (n) => n < 40 ? "low" : n < 70 ? "notable" : "dominant";
-var nameOf9 = (state, id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
+var nameOf10 = (state, id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
 function standingProvider(subject, env, k) {
   const state = env.state;
   const unitId = typeof subject.data.unitId === "string" ? subject.data.unitId : null;
@@ -30728,7 +31052,7 @@ function standingProvider(subject, env, k) {
   const leader = leaderOf(state);
   const lines = [`Her standing: ${band(n)}.`];
   if (leader?.id === unitId) lines.push("She is the squad leader.");
-  else if (leader) lines.push(`The squad leader is ${nameOf9(state, leader.id)}.`);
+  else if (leader) lines.push(`The squad leader is ${nameOf10(state, leader.id)}.`);
   lines.push("It rests on her fights of the last two weeks, how well the others get on with her and how safe she feels defying the commander, times how hard her card says she pushes for power.");
   const raw = k.raw(n);
   if (raw !== null) {
@@ -30750,7 +31074,7 @@ function leaderProvider(_subject, env, k) {
   }
   if (h2?.deposed && h2.deposed.untilDay > state.day) {
     const days = k.raw(h2.deposed.untilDay - state.day);
-    lines.push(`${nameOf9(state, h2.deposed.unitId)} lost a challenge and cannot lead for a while${days !== null ? ` (${days} more days)` : ""}.`);
+    lines.push(`${nameOf10(state, h2.deposed.unitId)} lost a challenge and cannot lead for a while${days !== null ? ` (${days} more days)` : ""}.`);
   }
   const left = challengeCooldown(state);
   if (left > 0) {
@@ -30789,17 +31113,17 @@ function countermandProvider(_subject, env) {
   if (!state || !c) return null;
   const activityId = c.payload?.activityId;
   const activity = typeof activityId === "string" ? String(env.registries.activities.get(activityId)?.name ?? activityId) : "an order";
-  return { lines: [`${nameOf9(state, c.leaderId)} countermanded ${activity} with ${nameOf9(state, c.unitId)}; it waits for your answer.`] };
+  return { lines: [`${nameOf10(state, c.leaderId)} countermanded ${activity} with ${nameOf10(state, c.unitId)}; it waits for your answer.`] };
 }
 function scapegoatProvider(_subject, env) {
   const state = env.state;
   const open3 = state?.dilemmas?.open;
   if (!state || !open3 || open3.context !== "scapegoat" || open3.subjectId === void 0) return null;
-  const witnesses = (open3.witnessIds ?? []).map((id) => nameOf9(state, id));
+  const witnesses = (open3.witnessIds ?? []).map((id) => nameOf10(state, id));
   const herCall = open3.scapegoatSource === "her_call";
   return {
     lines: [
-      herCall ? `${nameOf9(state, open3.subjectId)} made the call herself in the field, and the run failed.` : `${nameOf9(state, open3.subjectId)} carried the squad's vote for the decision that failed.`,
+      herCall ? `${nameOf10(state, open3.subjectId)} made the call herself in the field, and the run failed.` : `${nameOf10(state, open3.subjectId)} carried the squad's vote for the decision that failed.`,
       witnesses.length > 0 ? `${herCall ? "Also there" : "Also for it"}: ${witnesses.join(", ")}.` : herCall ? "Nobody else was named." : "Nobody else voted for it.",
       "Take the blame and oversight punishes the commander; shift it and oversight punishes her."
     ]
@@ -30813,7 +31137,7 @@ function herCallProvider(subject, env, k) {
   const entries = [...state.lastExpedition?.herCalls ?? [], ...state.expedition?.herCalls ?? []].filter((c) => (unitId === null || c.unitId === unitId) && (nodeId === null || c.nodeId === nodeId));
   const call = entries.at(-1);
   if (!call) return null;
-  const name = nameOf9(state, call.unitId);
+  const name = nameOf10(state, call.unitId);
   const lines = [`${name} took the decision herself in the field; it went ${call.outcome === "good" ? "well" : "badly"}.`];
   const missionId = typeof subject.data.missionId === "string" ? subject.data.missionId : state.expedition?.missionId ?? state.lastExpedition?.missionId;
   const mission = [...state.missions.active, ...state.missions.offered, ...state.missions.completed].find((m) => m.id === missionId);
@@ -30822,7 +31146,7 @@ function herCallProvider(subject, env, k) {
   else if (by?.source === "her_call" && by.unitId === call.unitId) {
     lines.push("The run is marked on her call: if it fails, oversight will want a name, and the commander answers for it or shifts it onto her.");
   } else if (by !== void 0) {
-    lines.push(`The run already carries another mark (${nameOf9(state, by.unitId)}'s decision), so this call added none.`);
+    lines.push(`The run already carries another mark (${nameOf10(state, by.unitId)}'s decision), so this call added none.`);
   } else if (call.marked === true) {
     lines.push("The run was marked on her call; that mark is spent now that the run has ended.");
   } else if (call.marked === false && mission !== void 0) {
@@ -30836,7 +31160,7 @@ function askFirstProvider(subject, env) {
   const state = env.state;
   const unitId = typeof subject.data.unitId === "string" ? subject.data.unitId : null;
   if (!state || unitId === null || !state.squad.some((u) => u.id === unitId)) return null;
-  const name = nameOf9(state, unitId);
+  const name = nameOf10(state, unitId);
   const since = state.power?.askFirst?.[unitId];
   return {
     lines: [
@@ -30983,7 +31307,7 @@ var axisProvider = (axis) => (subject, env, knowledge) => {
   lines.push(`Trend ${arrow(knowledge, net)}`);
   const moves = (type) => {
     const rows = env.registries.eventDeltas.get(type)?.rows;
-    return !!rows && Object.values(rows).some((row) => typeof row?.[axis] === "number" && row[axis] !== 0);
+    return !!rows && Object.values(rows).some((row2) => typeof row2?.[axis] === "number" && row2[axis] !== 0);
   };
   const events = relation.history.filter((h2) => h2.kind === "event" && moves(h2.type)).slice(-3).reverse();
   for (const h2 of events) {
@@ -31143,6 +31467,7 @@ function registerCoreProviders() {
   registerDisciplineProviders();
   registerBondsProviders();
   registerPowerProviders();
+  registerPersonalProviders();
 }
 
 // src/analysis/describe.ts
@@ -32659,7 +32984,7 @@ function createApp(st, deps) {
     for (const id of TAB_IDS) shell.setTabLocked(id, locked.has(id));
   }
   function announceUnlocks(before, after) {
-    for (const row of unlockedBetween(before, after, registries)) toast("info", String(row.notice), { voice: VOICE_OF.toast });
+    for (const row2 of unlockedBetween(before, after, registries)) toast("info", String(row2.notice), { voice: VOICE_OF.toast });
   }
   function syncBadges() {
     syncLocks();
@@ -32704,7 +33029,17 @@ function createApp(st, deps) {
     context,
     refreshContext: applyContext
   };
-  const routeUi = (e) => sceneScreen?.handle(e);
+  let pendingEdit = null;
+  const routeUi = (e) => {
+    if (e.type === "edit") {
+      pendingEdit = { id: e.interceptId, editorId: e.editorId, toUnitId: e.unitId, original: e.original, edited: e.edited };
+      shell.open();
+      shell.showTab("comms");
+      shell.refresh();
+      return;
+    }
+    sceneScreen?.handle(e);
+  };
   const sceneDeps = {
     st,
     app: sceneApp,
@@ -32772,6 +33107,28 @@ function createApp(st, deps) {
     context,
     refreshContext: applyContext,
     startScene: (o) => beginScene(o),
+    // she claimed the commander in public: the card is answered at once (LET IT STAND or REFUSE PUBLICLY)
+    onClaim: (unitId) => {
+      const s = state;
+      const claim2 = [...s?.personal?.claims ?? []].reverse().find((c) => c.unitId === unitId);
+      if (!s || !claim2) return;
+      const host = h("div");
+      const done = () => {
+        shell.closeModal?.();
+      };
+      host.append(renderClaimCard(s, registries, claim2, {
+        onLetStand: (id) => {
+          personal.answerClaim(id, false);
+          done();
+        },
+        onRefuse: (id) => {
+          personal.answerClaim(id, true);
+          done();
+        }
+      }));
+      shell.open();
+      void shell.modal({ title: "CLAIMED", body: host, actions: [] });
+    },
     // an edited request (P9c): the commander keeps the edit (nothing is filed) or reverts it
     confirmEdit: async (p) => {
       shell.open();
@@ -32857,6 +33214,13 @@ function createApp(st, deps) {
     void personal.onLoaded().then((ok) => {
       if (ok) shell.open();
     }).catch((e) => console.warn("[Alius] booking failed", e));
+    pendingEdit = null;
+    void personal.pendingEdit().then((edit) => {
+      if (edit) {
+        pendingEdit = edit;
+        shell.refresh();
+      }
+    }).catch((e) => console.warn("[Alius] edit failed", e));
   }
   async function beginScene(opts) {
     const chatId = st.getActiveChat()?.chatId;
@@ -34052,7 +34416,10 @@ function createApp(st, deps) {
       }),
       onChallenge: (stat3) => void power.challenge(stat3).then((ok) => {
         if (ok) shell.open();
-      })
+      }),
+      onPeel: (unitId, part) => void act({ type: "device/remove_decor", payload: { unitId, part } }),
+      // P9c
+      onCancelBooking: (id) => void personal.cancelBooking(id)
     })
   );
   shell.registerTab(
@@ -34092,6 +34459,10 @@ function createApp(st, deps) {
     onSleep: () => void act({ type: "calendar/sleep", payload: {} }),
     onCountermand: (answer) => void power.answerCountermand(answer),
     // P9b: the squad leader's countermand
+    onCancelBooking: (id) => void personal.cancelBooking(id),
+    // P9c: the schedule
+    onKeepBooking: (id) => void personal.resolveConflict({ bookingId: id }),
+    onSettleBooking: (day, slot2) => void personal.resolveConflict({ day, slot: slot2, settle: true }),
     onIntake: () => void api.intakeUnit(),
     onOpenReport: () => {
       showExpedition();
@@ -34168,7 +34539,12 @@ function createApp(st, deps) {
         const unit = state?.dms[unitId];
         if (unit?.some((m) => m.from !== "commander" && !m.read)) api.dispatch({ type: "dm/read", payload: { unitId } }, { expectChatId: st.getActiveChat()?.chatId });
       },
-      onAnswer: (proposalId, answer) => void act({ type: "proposal/answer", payload: { proposalId, answer } }),
+      onAnswer: (proposalId, answer, condition) => void act({ type: "proposal/answer", payload: { proposalId, answer, ...condition !== void 0 ? { condition } : {} } }),
+      edit: () => pendingEdit,
+      onAnswerEdit: (keep) => {
+        pendingEdit = null;
+        void comms.answerEdit(keep).then(() => shell.refresh());
+      },
       avatar: (unit) => unitPortrait(st, unit, portraitOptions(getSettings(st), 32))
     })
   );
@@ -35639,17 +36015,17 @@ function addDrawer(host, actions) {
   header.append(title, chevron);
   const content = document.createElement("div");
   content.className = "inline-drawer-content";
-  const row = document.createElement("div");
-  row.className = "flex-container flexFlowColumn";
+  const row2 = document.createElement("div");
+  row2.className = "flex-container flexFlowColumn";
   for (const it of ITEMS) {
     const btn = document.createElement("input");
     btn.type = "button";
     btn.className = "menu_button";
     btn.value = it.buttonLabel;
     btn.addEventListener("click", () => actions[it.action]());
-    row.append(btn);
+    row2.append(btn);
   }
-  content.append(row);
+  content.append(row2);
   drawer.append(header, content);
   wrap.append(drawer);
   host.append(wrap);

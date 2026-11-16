@@ -391,7 +391,7 @@ tests/engine/personal/*.test.ts, tests/engine/combat/sparring.test.ts, tests/con
 - Consumes: Tasks 2–6.
 - Produces: `renderDeviceBlock(state, reg, unitId, handlers)`, `renderSchedule(state, reg, handlers)`, `editChip(intercept, name, onKeep, onRevert)`, `renderClaimCard(state, reg, claim, handlers)`; providers `glossary:device_access` (her level, which branch holds, what it allows), `glossary:booking` (who, when, what cancelling costs at her Impunity), `glossary:courtship`, `glossary:claimed`, `deviceAccessRules`, `bookingKinds`.
 
-- [ ] **Step 1: Write the failing tests (jsdom).**
+- [x] **Step 1: Write the failing tests (jsdom).**
   - `the DM input shows the edited text with EDITED BY and both buttons call the controller` (acceptance 1)
   - `a courting unit's proposal shows ACCEPT / DEFLECT / SET A CONDITION; another's shows P3's chips` (acceptance 3)
   - `the schedule lists bookings with her name and accent; CANCEL dispatches booking/cancel` (acceptance 2)
@@ -400,11 +400,11 @@ tests/engine/personal/*.test.ts, tests/engine/combat/sparring.test.ts, tests/con
   - `the Tonight list ends with the booking line and never shows more than six`
   - `every new chip, stat and option carries data-analyze` (the coverage test also passes)
   - Providers: `device_access explains the holding branch without raw numbers; with raw values on it shows Impunity`; `booking cost line scales at Impunity ≥ 50`.
-- [ ] **Step 2: Run** `npx vitest run tests/ui/personalA.test.ts tests/analysis/personalProviders.test.ts tests/ui/analyzeCoverage.test.ts`. Expect FAIL.
-- [ ] **Step 3: Implement.** Glossary entries `device_access`, `booking`, `courtship`, `claimed`, `setting_dm_edit_wording` (`AUTHOR TO WRITE` long texts).
-- [ ] **Step 4: Balance check (arithmetic, no code kept).** With draft numbers, compute for a dominant lover (Affinity 80, Want 50, Impunity 55, normal assertiveness): bookings a week (target 1–2, the cap is 2) and intercepts a week at five DMs to others (target ≤ 2). Adjust only `TUNING.personal` drafts; write the figures into the commit body.
-- [ ] **Step 5: Run** `npm test`. Expect PASS.
-- [ ] **Step 6: Tick and commit:** `feat(ui): device block, schedule, edit chip, courtship chips and claim card`.
+- [x] **Step 2: Run** `npx vitest run tests/ui/personalA.test.ts tests/analysis/personalProviders.test.ts tests/ui/analyzeCoverage.test.ts`. Expect FAIL.
+- [x] **Step 3: Implement.** Glossary entries `device_access`, `booking`, `courtship`, `claimed`, `setting_dm_edit_wording` (`AUTHOR TO WRITE` long texts).
+- [x] **Step 4: Balance check (arithmetic, no code kept).** With draft numbers, compute for a dominant lover (Affinity 80, Want 50, Impunity 55, normal assertiveness): bookings a week (target 1–2, the cap is 2) and intercepts a week at five DMs to others (target ≤ 2). Adjust only `TUNING.personal` drafts; write the figures into the commit body.
+- [x] **Step 5: Run** `npm test`. Expect PASS.
+- [x] **Step 6: Tick and commit:** `feat(ui): device block, schedule, edit chip, courtship chips and claim card`.
 
 ---
 

@@ -6,6 +6,7 @@ import type { CampaignState, Unit } from '../../engine/state/types';
 import { drawRuleChips, drawViolation, violationLabels } from '../bonds/chips';
 import { h } from '../dom';
 import { drawProposalChips } from '../proposalChips';
+import { editChip, type EditView } from '../personal/chips';
 import { drawDemandChips, drawDisciplineChips } from '../discipline/chips';
 import { renderBubble, unitAccent } from '../voice/voiceCard';
 
@@ -14,7 +15,10 @@ export interface CommsTabCtx {
   registries: Registries;
   onSend: (unitId: string, text: string) => void;
   onRead: (unitId: string) => void;
-  onAnswer: (proposalId: string, answer: ProposalAnswer) => void;
+  onAnswer: (proposalId: string, answer: ProposalAnswer, condition?: string) => void;
+  /** P9c: the DM edit of a soldier with access to the commander's messages that waits for KEEP or REVERT (absent = none). */
+  edit?: () => EditView | null;
+  onAnswerEdit?: (keep: boolean) => void;
   /** P9: UNDO on a discipline chip. */
   onUndoDiscipline?: (id: string) => void;
   /** P9: [GRANT] / [REFUSE] / [TALK] on her demand. */
@@ -86,13 +90,18 @@ export function renderCommsTab(host: HTMLElement, ctx: CommsTabCtx): void {
       thread.append(bubble);
     }
     const chips = h('div', { class: 'alius-chips' });
-    drawProposalChips(chips, state, (p) => p.channel === 'dm' && p.unitId === current, ctx.onAnswer);
+    drawProposalChips(chips, state, (p) => p.channel === 'dm' && p.unitId === current, ctx.onAnswer, ctx.registries);
     const disciplineChips = h('div', { class: 'alius-chips alius-discipline-chips' });
     drawDisciplineChips(disciplineChips, state, ctx.registries, (c) => c.channel === 'dm' && c.unitId === current, (id) => ctx.onUndoDiscipline?.(id));
     const input = h('input', { type: 'text', name: 'dm', class: 'alius-input', autocomplete: 'off', 'aria-label': `Message ${unit.displayName}` }) as HTMLInputElement;
-    input.value = drafts.get(host) ?? '';
-    input.addEventListener('input', () => drafts.set(host, input.value));
+    // P9c: while a soldier's edit waits, the input shows the edited text and cannot be typed in or sent
+    const pending = ctx.edit?.() ?? null;
+    const waiting = pending !== null && pending.toUnitId === current ? pending : null;
+    input.value = waiting ? waiting.edited : drafts.get(host) ?? '';
+    if (waiting) input.readOnly = true;
+    else input.addEventListener('input', () => drafts.set(host, input.value));
     const send = (): void => {
+      if (waiting) return;
       const text = input.value.trim();
       if (text === '') return;
       input.value = '';
@@ -110,7 +119,12 @@ export function renderCommsTab(host: HTMLElement, ctx: CommsTabCtx): void {
     drawRuleChips(ruleChips, state, ctx.registries, (c) => c.unitId === current, {
       accept: (id) => ctx.onAnswerRule?.(id, 'accept'), negotiate: (id) => ctx.onAnswerRule?.(id, 'negotiate'), refuse: (id) => ctx.onAnswerRule?.(id, 'refuse'),
     });
-    thread.append(chips, disciplineChips, demandChips, ruleChips, h('div', { class: 'alius-cmd' }, h('span', { class: 'alius-prompt' }, 'MSG>'), input, h('button', { type: 'button', class: 'alius-btn', 'data-action': 'send', onclick: send }, '[SEND]')));
+    const editor = waiting ? contacts.find((u) => u.id === waiting.editorId) : undefined;
+    const editChips = waiting
+      ? editChip(waiting, editor?.displayName ?? waiting.editorId, () => ctx.onAnswerEdit?.(true), () => ctx.onAnswerEdit?.(false))
+      : null;
+    const sendButton = h('button', { type: 'button', class: 'alius-btn', 'data-action': 'send', ...(waiting ? { 'aria-disabled': 'true' } : {}), onclick: send }, '[SEND]');
+    thread.append(chips, disciplineChips, demandChips, ruleChips, ...(editChips ? [editChips] : []), h('div', { class: 'alius-cmd' }, h('span', { class: 'alius-prompt' }, 'MSG>'), input, sendButton));
     // messages that arrived while the thread was open: mark them read (after this render, so it cannot re-enter it)
     if (unreadMessages(state, current) > 0) queueMicrotask(() => ctx.onRead(unit.id));
   }

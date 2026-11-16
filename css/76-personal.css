@@ -1,0 +1,58 @@
+/* Personal pressure (P9c): the DEVICE block of a dossier, the SCHEDULE of bookings, the EDITED BY chip, the courtship chips and the claim card.
+   Palette variables only; no semantic colours (readable mode safe). */
+#alius-shell .alius-device-block,
+#alius-shell .alius-schedule,
+#alius-shell .alius-claim {
+  margin: 6px 0;
+}
+
+#alius-shell .alius-device-line,
+#alius-shell .alius-device-decor,
+#alius-shell .alius-device-booking,
+#alius-shell .alius-schedule-row,
+#alius-shell .alius-edit,
+#alius-shell .alius-claim-actions,
+#alius-shell .alius-condition {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin: 3px 0;
+}
+
+#alius-shell .alius-device-decor [data-faded='true'] {
+  opacity: 0.6;
+  text-decoration: line-through;
+}
+
+#alius-shell .alius-device-note {
+  margin: 2px 0;
+  padding-left: 6px;
+  border-left: 3px solid var(--alius-accent);
+}
+
+#alius-shell .alius-schedule-day {
+  margin: 6px 0 2px;
+  font-weight: bold;
+}
+
+#alius-shell .alius-schedule-row[data-conflict='true'] {
+  border-left: 3px solid var(--alius-accent);
+  padding-left: 6px;
+}
+
+#alius-shell .alius-schedule-row .alius-chip {
+  border-color: var(--unit-accent, var(--alius-accent));
+}
+
+#alius-shell .alius-edit .alius-chip {
+  border-color: var(--unit-accent, var(--alius-accent));
+}
+
+#alius-shell .alius-input[readonly] {
+  border-style: dashed;
+}
+
+#alius-shell .alius-condition .alius-input {
+  flex: 1 1 14em;
+}

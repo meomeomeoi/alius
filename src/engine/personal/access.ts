@@ -56,3 +56,19 @@ export function deviceAccess(state: CampaignState, reg: Registries, unitId: stri
 /** May she do this inside the device? A capability needs its own level or a higher one, never a lower one. */
 export const accessCan = (state: CampaignState, reg: Registries, unitId: string, capability: Capability): boolean =>
   deviceAccess(state, reg, unitId) >= CAPABILITIES.indexOf(capability) + 1;
+
+/**
+ * Why she has the access she has: the level and the branch of its rule that holds (the first one, in the rule's order), or
+ * `null` at level 0. The panel words the branch; nothing here is stored.
+ */
+export function deviceAccessWhy(state: CampaignState, reg: Registries, unitId: string): { level: AccessLevel; branch: DeviceAccessBranch } | null {
+  if (deviceGateReason(state, unitId) !== null) return null;
+  let cached: number | undefined;
+  const impunity = (): number => (cached ??= impunityOf(state, reg, unitId)?.value ?? 0);
+  const rules = [...reg.deviceAccessRules.values()].sort((a, b) => Number(b.level) - Number(a.level));
+  for (const rule of rules) {
+    const branch = (rule.anyOf as DeviceAccessBranch[]).find((b) => branchHolds(state, reg, unitId, b, impunity));
+    if (branch) return { level: Number(rule.level) as AccessLevel, branch };
+  }
+  return null;
+}

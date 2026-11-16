@@ -4,11 +4,12 @@ import { activityCost, checkActivity, type ActivityRequest } from '../../engine/
 import { clockText, isQuietNight } from '../../engine/calendar';
 import { isLiving, requisitionCost } from '../../engine/economy';
 import { objectiveList, type ObjectiveSource } from '../../engine/onboarding';
-import type { CampaignState, Unit } from '../../engine/state/types';
+import type { CampaignState, Slot, Unit } from '../../engine/state/types';
 import { TUNING } from '../../engine/tuning';
 import type { LoadResult } from '../../st/persistence';
 import { analyzeAttrs, analyzeNative } from '../analyze/mark';
 import { h } from '../dom';
+import { renderSchedule } from '../personal/schedule';
 import { renderMissionBoard } from './missionBoard';
 
 export interface OpsTabCtx {
@@ -27,6 +28,10 @@ export interface OpsTabCtx {
   onSleep?: () => void;
   /** P9b: the squad leader's countermand waits for ACCEPT or OVERRULE (the chips show only while one is open). */
   onCountermand?: (answer: 'accept' | 'overrule') => void;
+  /** P9c: the SCHEDULE of bookings: CANCEL one, KEEP HERS in a clash, LET THEM SETTLE IT. */
+  onCancelBooking?: (bookingId: string) => void;
+  onKeepBooking?: (bookingId: string) => void;
+  onSettleBooking?: (day: number, slot: Slot) => void;
 }
 
 type Focus = { id: string; label: string; units?: { min: number; max: number } };
@@ -181,6 +186,10 @@ export function renderOpsTab(host: HTMLElement, ctx: OpsTabCtx): void {
     if (chips.childElementCount > 0) host.append(chips);
   }
   renderObjectives(host, state, ctx.registries);
+  const schedule = renderSchedule(state, ctx.registries, {
+    onCancel: (id) => ctx.onCancelBooking?.(id), onKeep: (id) => ctx.onKeepBooking?.(id), onSettle: (day, slot) => ctx.onSettleBooking?.(day, slot),
+  });
+  if (schedule) host.append(schedule); // P9c
   renderMissionBoard(host, state, ctx);
   host.append(
     h(

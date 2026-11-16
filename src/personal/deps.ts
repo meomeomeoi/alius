@@ -18,6 +18,8 @@ export interface PersonalDeps extends WorldDeps {
   startScene?: (o: { locationId: string; participants: string[]; origin: 'event' }) => Promise<boolean>;
   /** Asks KEEP or REVERT about an edited request (a Leash request or a recruit order). Without it a request is never intercepted. */
   confirmEdit?: (p: EditPrompt) => Promise<'keep' | 'revert'>;
+  /** A soldier claimed the commander in public: shows the claim card. Without it the claim is only announced in a toast. */
+  onClaim?: (unitId: string) => void;
 }
 
 export type { WorldDeps };

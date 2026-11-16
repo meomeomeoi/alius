@@ -12,6 +12,7 @@ import { humanize, signed, summarizeCombatEffect } from '../effects';
 import { registerCommanderProviders } from './commander';
 import { registerDisciplineProviders } from './discipline';
 import { registerBondsProviders } from './bonds';
+import { registerPersonalProviders } from './personal';
 import { registerPowerProviders } from './power';
 import { registerWorldProviders } from './world';
 import type { Knowledge } from '../knowledge';
@@ -285,6 +286,8 @@ export const CORE_GLOSSARY_IDS: readonly string[] = [
   'standing', 'squad_leader', 'countermand', 'endorse', 'challenge', 'outside_perception', 'scapegoat',
   // P9e
   'her_call', 'ask_first',
+  // P9c (the DEVICE block, the SCHEDULE, the EDITED BY chip, the courtship chips and the claim card address these)
+  'device_access', 'booking', 'courtship', 'claimed',
 ];
 
 let registered = false;
@@ -304,4 +307,5 @@ export function registerCoreProviders(): void {
   registerDisciplineProviders(); // P9
   registerBondsProviders(); // P9d
   registerPowerProviders(); // P9b
+  registerPersonalProviders(); // P9c
 }

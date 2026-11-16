@@ -1443,5 +1443,47 @@
     "see": [
       "her_call"
     ]
+  },
+  {
+    "id": "device_access",
+    "term": "Device access",
+    "short": "How far a soldier reaches into the commander's PDA: decor (1), notes (2), calendar (3), messages (4). It grows with closeness and boldness.",
+    "long": "AUTHOR TO WRITE: A soldier with an imported profile who is close enough, or bold enough, leaves her mark on the device: stickers, her picture, a renamed contact. Higher up she pins notes and the rules she has set, books time on the calendar and, at the top, edits an outgoing message or stops a request before it goes out. Each level allows only its own thing. Peeling decor costs her Affinity; undoing an edit counts as defiance. When her access falls, her decor stays as a faded mark for a week.",
+    "see": [
+      "booking",
+      "courtship",
+      "impunity"
+    ]
+  },
+  {
+    "id": "booking",
+    "term": "Booking",
+    "short": "A soldier with calendar access books a slot of the commander's time. At that slot the commander goes to her, or cancels, which counts as refusing a demand.",
+    "long": "AUTHOR TO WRITE: She books tomorrow's evening or afternoon and tells the commander in a message. While the booked slot is under way and she can be met, nothing else can use it: go to her, or cancel. Cancelling costs Trust, Affinity and stress like a refused demand, and more when she does not fear the commander's reaction. Two bookings of one slot clash: choose one, or let the two settle it by how hard each holds on. A booking she cannot keep (the brig, an injury, a run) lapses at no cost.",
+    "see": [
+      "device_access",
+      "demand",
+      "impunity"
+    ]
+  },
+  {
+    "id": "courtship",
+    "term": "Courtship",
+    "short": "A soldier who leads takes the initiative: she writes and knocks twice as often and may propose the next step herself.",
+    "long": "AUTHOR TO WRITE: Only a soldier with an imported profile who takes the lead and is in, or close to, a romantic step courts. Deflecting closes her proposal at no cost. A condition is a short sentence that becomes her promise: she holds the commander to it. She may also claim the commander in public.",
+    "see": [
+      "claimed",
+      "device_access"
+    ]
+  },
+  {
+    "id": "claimed",
+    "term": "Claimed",
+    "short": "She has made it plain to everyone that the commander is hers. The relationship goes public; rivals and friends react.",
+    "long": "AUTHOR TO WRITE: A claim makes the relationship public. A soldier in a romantic relationship with the commander feels passed over; a close friend or a soldier who values the group respects the gesture; the rest do not care. Refusing her in front of the squad hurts her badly and is only possible when public humiliation is switched on and is not one of her own limits.",
+    "see": [
+      "courtship",
+      "publicity"
+    ]
   }
 ]

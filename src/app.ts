@@ -101,6 +101,8 @@ import { createDirector, type DirectorController } from './world/directorControl
 import { createExpedition, type ExpeditionController } from './world/expeditionController';
 import { renderBaseTab } from './ui/base/baseTab';
 import { renderCommsTab } from './ui/comms/commsTab';
+import { renderClaimCard } from './ui/personal/claimCard';
+import type { EditView } from './ui/personal/chips';
 import { renderLogTab } from './ui/log/logTab';
 import { renderKnock } from './ui/night/knock';
 import { pickLocation } from './ui/scene/locationPicker';
@@ -325,7 +327,18 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     context,
     refreshContext: applyContext,
   };
-  const routeUi = (e: SceneUiEvent): void => sceneScreen?.handle(e);
+  /** P9c: the DM edit that waits for KEEP or REVERT (the COMMS tab shows it); set by the `edit` UI event and by a reload that finds one. */
+  let pendingEdit: EditView | null = null;
+  const routeUi = (e: SceneUiEvent): void => {
+    if (e.type === 'edit') {
+      pendingEdit = { id: e.interceptId, editorId: e.editorId, toUnitId: e.unitId, original: e.original, edited: e.edited };
+      shell.open();
+      shell.showTab('comms');
+      shell.refresh();
+      return;
+    }
+    sceneScreen?.handle(e);
+  };
   const sceneDeps = {
     st,
     app: sceneApp,
@@ -380,6 +393,20 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
   const bonds = createBonds({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o) });
   const personal = createPersonal({
     ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o),
+    // she claimed the commander in public: the card is answered at once (LET IT STAND or REFUSE PUBLICLY)
+    onClaim: (unitId) => {
+      const s = state;
+      const claim = [...(s?.personal?.claims ?? [])].reverse().find((c) => c.unitId === unitId);
+      if (!s || !claim) return;
+      const host = h('div');
+      const done = (): void => { shell.closeModal?.(); };
+      host.append(renderClaimCard(s, registries, claim, {
+        onLetStand: (id) => { personal.answerClaim(id, false); done(); },
+        onRefuse: (id) => { personal.answerClaim(id, true); done(); },
+      }));
+      shell.open();
+      void shell.modal({ title: 'CLAIMED', body: host, actions: [] });
+    },
     // an edited request (P9c): the commander keeps the edit (nothing is filed) or reverts it
     confirmEdit: async (p) => {
       shell.open();
@@ -465,6 +492,8 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     }
     onboarding.onLoaded(); // the guide's first DM, if a reload lost it (P11)
     void personal.onLoaded().then((ok) => { if (ok) shell.open(); }).catch((e) => console.warn('[Alius] booking failed', e)); // P9c: a booking that came due while the game was closed
+    pendingEdit = null; // P9c: an edit of another chat is not this one's; a waiting one comes back from the state, freshly worded
+    void personal.pendingEdit().then((edit) => { if (edit) { pendingEdit = edit; shell.refresh(); } }).catch((e) => console.warn('[Alius] edit failed', e));
   }
 
   async function beginScene(opts: StartOptions): Promise<boolean> {
@@ -1744,6 +1773,8 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       onEndorse: () => void power.endorse(),
       onAskFirst: (unitId, on) => void power.askFirst(unitId, on).then((ok) => { if (ok) shell.open(); }),
       onChallenge: (stat) => void power.challenge(stat).then((ok) => { if (ok) shell.open(); }),
+      onPeel: (unitId, part) => void act({ type: 'device/remove_decor', payload: { unitId, part } }), // P9c
+      onCancelBooking: (id) => void personal.cancelBooking(id),
     }),
   );
   shell.registerTab('inv', (host) =>
@@ -1782,6 +1813,9 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     onFollowRumor: (rumorId) => void act({ type: 'rumor/follow', payload: { rumorId } }),
     onSleep: () => void act({ type: 'calendar/sleep', payload: {} }),
     onCountermand: (answer) => void power.answerCountermand(answer), // P9b: the squad leader's countermand
+    onCancelBooking: (id) => void personal.cancelBooking(id), // P9c: the schedule
+    onKeepBooking: (id) => void personal.resolveConflict({ bookingId: id }),
+    onSettleBooking: (day, slot) => void personal.resolveConflict({ day, slot, settle: true }),
     onIntake: () => void api.intakeUnit(),
     onOpenReport: () => {
       showExpedition();
@@ -1855,7 +1889,12 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         const unit = state?.dms[unitId];
         if (unit?.some((m) => m.from !== 'commander' && !m.read)) api.dispatch({ type: 'dm/read', payload: { unitId } }, { expectChatId: st.getActiveChat()?.chatId });
       },
-      onAnswer: (proposalId, answer) => void act({ type: 'proposal/answer', payload: { proposalId, answer } }),
+      onAnswer: (proposalId, answer, condition) => void act({ type: 'proposal/answer', payload: { proposalId, answer, ...(condition !== undefined ? { condition } : {}) } }),
+      edit: () => pendingEdit,
+      onAnswerEdit: (keep) => {
+        pendingEdit = null;
+        void comms.answerEdit(keep).then(() => shell.refresh());
+      },
       avatar: (unit) => unitPortrait(st, unit, portraitOptions(getSettings(st), 32)),
     }),
   );

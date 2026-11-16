@@ -12,6 +12,8 @@ export const SAMPLE_ADDRESS: Record<string, string> = {
   reputations: 'reputations:iron_rule', // P9
   contentCategories: 'contentCategories:restraint', // P9d
   relationshipRuleTemplates: 'relationshipRuleTemplates:report_evening', // P9d
+  deviceAccessRules: 'deviceAccessRules:decor', // P9c
+  bookingKinds: 'bookingKinds:evening_with_me', // P9c
 };
 
 /** The address a registered provider key is run with: the key itself when it is an address, else its sample. */

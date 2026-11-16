@@ -64,7 +64,7 @@ export function currentObjective(state: CampaignState, reg: Registries): Objecti
 }
 
 export interface TonightItem {
-  kind: 'knock' | 'dm' | 'demand' | 'intake' | 'deadline' | 'warning';
+  kind: 'knock' | 'dm' | 'demand' | 'intake' | 'deadline' | 'warning' | 'booking';
   text: string;
   unitId?: string;
   tone: MarkerTone;
@@ -73,6 +73,7 @@ export interface TonightItem {
 }
 
 const TONIGHT_MAX = 6;
+const SLOT_RANK: Record<string, number> = { morning: 0, afternoon: 1, evening: 2, night: 3 };
 
 /** The night entry a loyalty sign of kind `talk` queues: the one visit the existing toast already announces. */
 const KNOCK_KIND = 'we_need_to_talk';
@@ -106,6 +107,16 @@ export function tonightItems(state: CampaignState, _reg: Registries): TonightIte
   if (shortage > 0) out.push({ kind: 'warning', text: `SHORTAGE ${shortage}d`, tone: 'danger', analyze: 'glossary:upkeep' });
   const injured = (state.commander.injuredUntilDay ?? 0) - state.day;
   if (injured > 0) out.push({ kind: 'warning', text: `INJURED ${injured}d`, tone: 'danger', analyze: 'glossary:commander_injury' });
+  // P9c: the next slot a soldier booked (today's or tomorrow's), last in the order
+  const booked = (state.personal?.bookings ?? [])
+    .filter((b) => b.status === 'booked' && (b.day === state.day || b.day === state.day + 1) && nameOf(b.unitId))
+    .sort((a, b) => a.day - b.day || SLOT_RANK[a.slot] - SLOT_RANK[b.slot])[0];
+  if (booked) {
+    out.push({
+      kind: 'booking', text: `${nameOf(booked.unitId)} has booked ${booked.day === state.day ? 'today' : 'tomorrow'}'s ${booked.slot}.`, unitId: booked.unitId,
+      tone: booked.day === state.day ? 'warn' : 'neutral', analyze: 'glossary:booking',
+    });
+  }
   return out.slice(0, TONIGHT_MAX);
 }
 

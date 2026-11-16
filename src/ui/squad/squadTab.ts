@@ -1,5 +1,6 @@
 import type { ChallengeStat } from '../../engine/power/moves';
 import { renderHierarchyBlock } from '../power/hierarchy';
+import { renderDeviceBlock } from '../personal/deviceBlock';
 import type { Entry, Registries } from '../../content/types';
 import { bondOf, PUBLICITY_LEVELS, wantBand, wantEligible, wantOf } from '../../engine/bonds';
 import { knownSkills, loadoutSize, respecCost, xpToNext } from '../../engine/progression';
@@ -9,7 +10,7 @@ import { canEquip } from '../../engine/items';
 import { unitStats } from '../../engine/combat/stats';
 import { affinityBand, attractionBand, trustBand } from '../../engine/relations/bands';
 import { intimacyOf } from '../../engine/relations/gain';
-import type { CampaignState, Publicity, Unit } from '../../engine/state/types';
+import type { CampaignState, DecorPart, Publicity, Unit } from '../../engine/state/types';
 import { VALUE_AXES } from '../../engine/state/types';
 import type { AliusSettings } from '../../settings';
 import type { StAdapter } from '../../st/adapter';
@@ -57,6 +58,9 @@ export interface SquadTabCtx {
   onChallenge?: (stat: ChallengeStat) => void;
   /** P9e: the standing order "ask me first" for one soldier. */
   onAskFirst?: (unitId: string, on: boolean) => void;
+  /** P9c: PEEL on a part of her decor, and CANCEL on one of her bookings (the DEVICE block of the dossier). */
+  onPeel?: (unitId: string, part: DecorPart) => void;
+  onCancelBooking?: (bookingId: string) => void;
 }
 
 const unknown = (id: string) => `UNKNOWN ${id}`;
@@ -358,6 +362,7 @@ function unitBlock(unit: Unit, ctx: SquadTabCtx, state: CampaignState): HTMLElem
       gone ? null : bondBlock(unit, state, ctx),
       gone ? null : disciplineLine(unit, state, ctx),
       gone ? null : hierarchyBlock(unit, state, ctx),
+      gone ? null : renderDeviceBlock(state, ctx.registries, unit.id, { onPeel: (id, part) => ctx.onPeel?.(id, part), onCancel: (id) => ctx.onCancelBooking?.(id) }),
       gone ? null : restrictionLine(unit, state),
       gone || !ctx.onPunish || unit.kind !== 'named' ? null : renderDisciplineMenu({ state, registries: reg, unitId: unit.id, onPunish: (measure, days) => ctx.onPunish!(unit.id, measure, days) }),
       gone ? null : h('p', { class: 'alius-stress' }, chip(`STRESS ${stressBand(unit.stress).toUpperCase()}${raw ? ` (${unit.stress})` : ''}`, 'glossary:stress', live)),
