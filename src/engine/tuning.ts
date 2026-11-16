@@ -126,6 +126,8 @@ export const TUNING = Object.freeze({
     rumor: Object.freeze({ fast: 2, slow: 4 }),
     /** P3b: facts folded per dossier update (a unit with this many old facts is due), and the caps of the two dossier parts in characters. */
     foldBatch: 6, dossierOwnMax: 500, dossierSharedMax: 400,
+    /** P3b: a scene digest is at most this many characters. */
+    digestMax: 800,
   }),
   /** P3: PDA DMs and night visits. */
   comms: Object.freeze({

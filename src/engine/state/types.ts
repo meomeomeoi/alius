@@ -331,6 +331,8 @@ export interface SceneRecord {
   readIndex?: number;
   exchanges: number;
   nightEntryId?: string;
+  /** P3b: the digest of the scene so far (the model's account of the chat up to `upTo`, an index into the ST chat). Gone with the scene. */
+  digest?: { text: string; upTo: number };
   /** Orders a unit refused in this scene, with the exchange number (P6). */
   refusals?: Array<{ unitId: string; exchange: number }>;
   /** P9d: `romantic` or `intimate` once the scene has gone there (never lowered). */

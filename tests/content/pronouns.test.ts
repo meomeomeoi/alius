@@ -60,6 +60,12 @@ describe('no pronoun for the commander in content', () => {
     expect(texts.filter(([, t]) => COMMANDER_PRONOUN.test(t)).map(([where]) => where)).toEqual([]);
   });
 
+  it('journal phrases of the event deltas (P3b)', () => {
+    const texts = fields('eventDeltas', ['journal']);
+    expect(texts.length).toBe(49);
+    expect(texts.filter(([, t]) => COMMANDER_PRONOUN.test(t) || /commander[^.]*\btheir\b/i.test(t) || t === '').map(([where]) => where)).toEqual([]);
+  });
+
   it('memory rules (P3b): every remembered text', () => {
     const texts = fields('memoryRules', ['text']);
     expect(texts.length).toBeGreaterThanOrEqual(28);

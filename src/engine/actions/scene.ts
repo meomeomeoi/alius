@@ -7,7 +7,8 @@ import { relieveAtSceneEnd } from '../bonds/want';
 import { rollReveal } from '../bonds/publicity';
 import { markDmViolation, markSceneViolation } from '../bonds/violations';
 import { consumeSlots, registerDayEndStep } from '../calendar';
-import { registerAction } from '../dispatch';
+import type { Registries } from '../../content/types';
+import { registerAction, type EngineEvent } from '../dispatch';
 import { isLiving } from '../economy';
 import { addChronicle, addFact, applyCompaction, nextId, revealCrime } from '../memory';
 import { recordSceneRange } from '../memory/scenes';
@@ -18,7 +19,7 @@ import { evaluateAutomatic, pushHistory } from '../relations/graph';
 import { validateIntents } from '../relations/intents';
 import { answerProposal, commanderProposal, rollDiscovery, type ProposalAnswer } from '../relations/proposals';
 import { PROPOSAL_KINDS } from '../relations/vocab';
-import type { SceneOrigin } from '../state/types';
+import type { CampaignState, SceneOrigin, SceneRecord } from '../state/types';
 import { TUNING } from '../tuning';
 
 // Importing this module registers the scene, proposal and memory actions, installs P3's relation accounting
@@ -129,6 +130,24 @@ registerAction('intents/apply', (draft, payload, ctx) => {
   throw new Error('intents/apply: channel must be "scene" or "dm"');
 });
 
+/**
+ * Stores the facts a summary or a digest reports (validated like every model answer), known by the scene's participants and inside the
+ * scene's cap of `factsPerScene` (a digest and the final summary share it).
+ */
+function storeSceneFacts(draft: CampaignState, reg: Registries, scene: SceneRecord, raw: unknown[]): EngineEvent[] {
+  const events: EngineEvent[] = [];
+  const facts = validateIntents({ facts: raw }, { participants: scene.participants, squad: draft.squad }).facts;
+  const room = Math.max(0, TUNING.memory.factsPerScene - draft.memory.facts.filter((x) => x.sceneId === scene.id).length);
+  for (const f of facts.slice(0, room)) {
+    addFact(draft, {
+      about: Array.isArray(f.about) ? f.about : [f.about], text: f.text, tags: f.tags, importance: f.importance, day: scene.day,
+      sceneId: scene.id, knownBy: [...scene.participants],
+    });
+    if (f.tags.includes('crime') && f.about === 'commander') events.push(...revealCrime(draft, reg, scene.participants));
+  }
+  return events;
+}
+
 registerAction('scene/end', (draft, payload, ctx) => {
   const scene = draft.scene;
   if (!scene) throw new Error('scene/end: no scene is open');
@@ -150,17 +169,7 @@ registerAction('scene/end', (draft, payload, ctx) => {
     recordSceneRange(draft, { sceneId: scene.id, from: scene.startIndex, to: endIndex, summarized: summary !== undefined });
   }
 
-  if (summary && Array.isArray(summary.facts)) {
-    const facts = validateIntents({ facts: summary.facts }, { participants: scene.participants, squad: draft.squad }).facts;
-    const room = Math.max(0, TUNING.memory.factsPerScene - draft.memory.facts.filter((x) => x.sceneId === scene.id).length);
-    for (const f of facts.slice(0, room)) {
-      addFact(draft, {
-        about: Array.isArray(f.about) ? f.about : [f.about], text: f.text, tags: f.tags, importance: f.importance, day: scene.day,
-        sceneId: scene.id, knownBy: [...scene.participants],
-      });
-      if (f.tags.includes('crime') && f.about === 'commander') events.push(...revealCrime(draft, reg, scene.participants));
-    }
-  }
+  if (summary && Array.isArray(summary.facts)) events.push(...storeSceneFacts(draft, reg, scene, summary.facts));
 
   events.push(...relieveAtSceneEnd(draft, scene)); // P9d: a romantic or intimate scene with her lowers her Want
   events.push(...returnNegotiations(draft, scene.participants)); // P9d: a negotiation nobody finished is a proposal again
@@ -211,6 +220,23 @@ registerAction('campaign/set_intimacy', (draft, payload) => {
   }
   draft.settings.intimacy = { romance: payload.romance, initiative: payload.initiative };
   return [{ type: 'intimacy_changed', romance: payload.romance, initiative: payload.initiative }];
+});
+
+/**
+ * `scene/digest { text, upTo, facts }` (P3b): the model's account of a long scene so far. Needs an open scene and an `upTo` (an index
+ * into the ST chat) past the last digest's (or the scene's start). The text is cut to `digestMax`; the facts are stored as at scene end.
+ */
+registerAction('scene/digest', (draft, payload, ctx) => {
+  const scene = draft.scene;
+  if (!scene) throw new Error('scene/digest: no scene is open');
+  if (!isObj(payload) || typeof payload.text !== 'string' || typeof payload.upTo !== 'number' || !Number.isInteger(payload.upTo) || !Array.isArray(payload.facts)) {
+    throw new Error('scene/digest needs { text, upTo, facts }');
+  }
+  const text = payload.text.trim().slice(0, TUNING.memory.digestMax).trim();
+  if (text === '') throw new Error('scene/digest: empty text');
+  if (payload.upTo <= (scene.digest?.upTo ?? scene.startIndex)) throw new Error('scene/digest: that digest is not newer than the last one');
+  scene.digest = { text, upTo: payload.upTo };
+  return [{ type: 'scene_digested', sceneId: scene.id, upTo: payload.upTo }, ...storeSceneFacts(draft, ctx.registries, scene, payload.facts)];
 });
 
 registerAction('memory/compact', (draft, payload) => {

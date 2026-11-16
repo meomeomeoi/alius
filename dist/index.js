@@ -144,7 +144,9 @@ var TUNING = Object.freeze({
     /** P3b: facts folded per dossier update (a unit with this many old facts is due), and the caps of the two dossier parts in characters. */
     foldBatch: 6,
     dossierOwnMax: 500,
-    dossierSharedMax: 400
+    dossierSharedMax: 400,
+    /** P3b: a scene digest is at most this many characters. */
+    digestMax: 800
   }),
   /** P3: PDA DMs and night visits. */
   comms: Object.freeze({
@@ -19815,6 +19817,24 @@ registerAction("intents/apply", (draft, payload, ctx2) => {
   }
   throw new Error('intents/apply: channel must be "scene" or "dm"');
 });
+function storeSceneFacts(draft, reg, scene, raw) {
+  const events = [];
+  const facts = validateIntents({ facts: raw }, { participants: scene.participants, squad: draft.squad }).facts;
+  const room = Math.max(0, TUNING.memory.factsPerScene - draft.memory.facts.filter((x) => x.sceneId === scene.id).length);
+  for (const f of facts.slice(0, room)) {
+    addFact(draft, {
+      about: Array.isArray(f.about) ? f.about : [f.about],
+      text: f.text,
+      tags: f.tags,
+      importance: f.importance,
+      day: scene.day,
+      sceneId: scene.id,
+      knownBy: [...scene.participants]
+    });
+    if (f.tags.includes("crime") && f.about === "commander") events.push(...revealCrime(draft, reg, scene.participants));
+  }
+  return events;
+}
 registerAction("scene/end", (draft, payload, ctx2) => {
   const scene = draft.scene;
   if (!scene) throw new Error("scene/end: no scene is open");
@@ -19837,22 +19857,7 @@ registerAction("scene/end", (draft, payload, ctx2) => {
   if (typeof endIndex === "number" && Number.isInteger(endIndex) && endIndex >= scene.startIndex) {
     recordSceneRange(draft, { sceneId: scene.id, from: scene.startIndex, to: endIndex, summarized: summary !== void 0 });
   }
-  if (summary && Array.isArray(summary.facts)) {
-    const facts = validateIntents({ facts: summary.facts }, { participants: scene.participants, squad: draft.squad }).facts;
-    const room = Math.max(0, TUNING.memory.factsPerScene - draft.memory.facts.filter((x) => x.sceneId === scene.id).length);
-    for (const f of facts.slice(0, room)) {
-      addFact(draft, {
-        about: Array.isArray(f.about) ? f.about : [f.about],
-        text: f.text,
-        tags: f.tags,
-        importance: f.importance,
-        day: scene.day,
-        sceneId: scene.id,
-        knownBy: [...scene.participants]
-      });
-      if (f.tags.includes("crime") && f.about === "commander") events.push(...revealCrime(draft, reg, scene.participants));
-    }
-  }
+  if (summary && Array.isArray(summary.facts)) events.push(...storeSceneFacts(draft, reg, scene, summary.facts));
   events.push(...relieveAtSceneEnd(draft, scene));
   events.push(...returnNegotiations(draft, scene.participants));
   events.push(...rollDiscovery(draft, reg, ctx2.rng, scene.participants));
@@ -19896,6 +19901,18 @@ registerAction("campaign/set_intimacy", (draft, payload) => {
   }
   draft.settings.intimacy = { romance: payload.romance, initiative: payload.initiative };
   return [{ type: "intimacy_changed", romance: payload.romance, initiative: payload.initiative }];
+});
+registerAction("scene/digest", (draft, payload, ctx2) => {
+  const scene = draft.scene;
+  if (!scene) throw new Error("scene/digest: no scene is open");
+  if (!isObj12(payload) || typeof payload.text !== "string" || typeof payload.upTo !== "number" || !Number.isInteger(payload.upTo) || !Array.isArray(payload.facts)) {
+    throw new Error("scene/digest needs { text, upTo, facts }");
+  }
+  const text2 = payload.text.trim().slice(0, TUNING.memory.digestMax).trim();
+  if (text2 === "") throw new Error("scene/digest: empty text");
+  if (payload.upTo <= (scene.digest?.upTo ?? scene.startIndex)) throw new Error("scene/digest: that digest is not newer than the last one");
+  scene.digest = { text: text2, upTo: payload.upTo };
+  return [{ type: "scene_digested", sceneId: scene.id, upTo: payload.upTo }, ...storeSceneFacts(draft, ctx2.registries, scene, payload.facts)];
 });
 registerAction("memory/compact", (draft, payload) => {
   if (!isObj12(payload)) throw new Error("memory/compact needs a payload");

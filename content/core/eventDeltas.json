@@ -2,6 +2,7 @@
   {
     "id": "praised",
     "cause": "You praised her",
+    "journal": "the commander praised her",
     "rows": {
       "minor": {
         "affinity": 1
@@ -23,6 +24,7 @@
   {
     "id": "insulted",
     "cause": "You insulted her",
+    "journal": "the commander insulted her",
     "rows": {
       "minor": {
         "affinity": -3,
@@ -48,6 +50,7 @@
   {
     "id": "comforted",
     "cause": "You comforted her",
+    "journal": "the commander comforted her",
     "rows": {
       "minor": {
         "trust": 1,
@@ -74,6 +77,7 @@
   {
     "id": "dismissed",
     "cause": "You dismissed her",
+    "journal": "the commander dismissed her",
     "rows": {
       "minor": {
         "trust": -1,
@@ -99,6 +103,7 @@
   {
     "id": "listened",
     "cause": "You listened to her",
+    "journal": "the commander listened to her",
     "rows": {
       "minor": {
         "trust": 1,
@@ -125,6 +130,7 @@
   {
     "id": "shared_secret",
     "cause": "She shared a secret with you",
+    "journal": "she shared a secret with the commander",
     "rows": {
       "minor": {
         "trust": 1,
@@ -147,6 +153,7 @@
   {
     "id": "learned_about",
     "cause": "You showed interest in her",
+    "journal": "the commander showed interest in her",
     "rows": {
       "minor": {
         "affinity": 1
@@ -168,6 +175,7 @@
   {
     "id": "gift",
     "cause": "You gave her a gift",
+    "journal": "the commander gave her a gift",
     "rows": {
       "minor": {
         "affinity": 2
@@ -189,6 +197,7 @@
   {
     "id": "flirted",
     "cause": "You flirted",
+    "journal": "the commander flirted with her",
     "rows": {
       "minor": {
         "attraction": 2
@@ -211,6 +220,7 @@
   {
     "id": "rejected_advance",
     "cause": "You turned down her advance",
+    "journal": "the commander turned down her advance",
     "rows": {
       "minor": {
         "affinity": -2,
@@ -239,6 +249,7 @@
   {
     "id": "accepted_advance",
     "cause": "You accepted her advance",
+    "journal": "the commander accepted her advance",
     "rows": {
       "minor": {
         "affinity": 1,
@@ -264,6 +275,7 @@
   {
     "id": "physical_affection",
     "cause": "You shared physical affection",
+    "journal": "the commander and she shared physical affection",
     "rows": {
       "minor": {
         "affinity": 1,
@@ -291,6 +303,7 @@
   {
     "id": "sided_with",
     "cause": "You took her side",
+    "journal": "the commander took her side",
     "rows": {
       "minor": {
         "trust": 1,
@@ -313,6 +326,7 @@
   {
     "id": "sided_against",
     "cause": "You took the side against her",
+    "journal": "the commander took the side against her",
     "rows": {
       "minor": {
         "trust": -1,
@@ -337,6 +351,7 @@
   {
     "id": "decision_aligned",
     "cause": "A decision matched her values",
+    "journal": "a decision of the commander matched her values",
     "rows": {
       "minor": {
         "trust": 1,
@@ -360,6 +375,7 @@
   {
     "id": "decision_violated",
     "cause": "A decision went against her values",
+    "journal": "a decision of the commander went against her values",
     "rows": {
       "minor": {
         "trust": 1,
@@ -383,6 +399,7 @@
   {
     "id": "protected",
     "cause": "You protected her",
+    "journal": "the commander protected her",
     "rows": {
       "minor": {
         "trust": 2,
@@ -406,6 +423,7 @@
   {
     "id": "endangered",
     "cause": "You put her in danger",
+    "journal": "the commander put her in danger",
     "rows": {
       "minor": {
         "trust": -1,
@@ -431,6 +449,7 @@
   {
     "id": "coerced",
     "cause": "You forced her hand",
+    "journal": "the commander forced her hand",
     "rows": {
       "minor": {
         "trust": -2,
@@ -457,6 +476,7 @@
   {
     "id": "apologized",
     "cause": "You apologized",
+    "journal": "the commander apologized to her",
     "rows": {
       "minor": {
         "trust": 1,
@@ -479,6 +499,7 @@
   {
     "id": "lied_detected",
     "cause": "She caught you lying",
+    "journal": "she caught the commander lying",
     "rows": {
       "minor": {
         "trust": -3,
@@ -504,6 +525,7 @@
   {
     "id": "kept_promise",
     "cause": "You kept a promise",
+    "journal": "the commander kept a promise to her",
     "rows": {
       "minor": {
         "trust": 1
@@ -525,6 +547,7 @@
   {
     "id": "broke_promise",
     "cause": "You broke a promise",
+    "journal": "the commander broke a promise to her",
     "rows": {
       "minor": {
         "trust": -2,
@@ -550,6 +573,7 @@
   {
     "id": "mocked_defect",
     "cause": "Her defect was mocked",
+    "journal": "her defect was mocked",
     "rows": {
       "minor": {
         "trust": -1,
@@ -576,6 +600,7 @@
   {
     "id": "accepted_defect",
     "cause": "You accepted her defect",
+    "journal": "the commander accepted her defect",
     "rows": {
       "minor": {
         "trust": 1,
@@ -602,6 +627,7 @@
   {
     "id": "crime_revealed",
     "cause": "Your crime came out",
+    "journal": "the commander's crime came out",
     "rows": {
       "minor": {},
       "moderate": {},
@@ -612,6 +638,7 @@
   {
     "id": "defied",
     "cause": "She defied the commander",
+    "journal": "she defied the commander",
     "rows": {
       "minor": {},
       "moderate": {},
@@ -626,6 +653,7 @@
   {
     "id": "commander_enforced",
     "cause": "The commander imposed a consequence",
+    "journal": "the commander imposed a consequence on her",
     "rows": {
       "minor": {
         "affinity": -2,
@@ -651,6 +679,7 @@
   {
     "id": "commander_yielded",
     "cause": "The commander backed down",
+    "journal": "the commander backed down before her",
     "rows": {
       "minor": {
         "trust": -1,
@@ -673,6 +702,7 @@
   {
     "id": "threatened",
     "cause": "The commander made a threat",
+    "journal": "the commander threatened her",
     "rows": {
       "minor": {
         "trust": -1,
@@ -699,6 +729,7 @@
   {
     "id": "granted_demand",
     "cause": "The commander granted her demand",
+    "journal": "the commander granted her demand",
     "rows": {
       "minor": {},
       "moderate": {},
@@ -709,6 +740,7 @@
   {
     "id": "refused_demand",
     "cause": "The commander refused her demand or cancelled what she booked",
+    "journal": "the commander refused her demand",
     "rows": {
       "minor": {
         "trust": -1,
@@ -735,6 +767,7 @@
   {
     "id": "followed_lead",
     "cause": "You followed her lead",
+    "journal": "the commander followed her lead",
     "rows": {
       "minor": {
         "affinity": 2
@@ -753,6 +786,7 @@
   {
     "id": "rule_kept",
     "cause": "You kept her rule",
+    "journal": "the commander kept her rule",
     "rows": {
       "minor": {},
       "moderate": {},
@@ -763,6 +797,7 @@
   {
     "id": "rule_broken",
     "cause": "You broke her rule",
+    "journal": "the commander broke her rule",
     "rows": {
       "minor": {},
       "moderate": {},
@@ -773,6 +808,7 @@
   {
     "id": "compromise_reached",
     "cause": "You reached a compromise with her",
+    "journal": "the commander and she reached a compromise",
     "rows": {
       "minor": {
         "trust": 2,
@@ -795,6 +831,7 @@
   {
     "id": "rule_accepted",
     "cause": "You accepted her rule",
+    "journal": "the commander accepted her rule",
     "rows": {
       "minor": {
         "affinity": 3
@@ -813,6 +850,7 @@
   {
     "id": "rule_refused",
     "cause": "You refused her rule",
+    "journal": "the commander refused her rule",
     "rows": {
       "minor": {
         "trust": -1,
@@ -839,6 +877,7 @@
   {
     "id": "leader_overruled",
     "cause": "The commander overruled her call",
+    "journal": "the commander overruled her call",
     "rows": {
       "minor": {},
       "moderate": {
@@ -851,6 +890,7 @@
   {
     "id": "leader_endorsed",
     "cause": "The commander made her second-in-command",
+    "journal": "the commander made her second-in-command",
     "rows": {
       "minor": {},
       "moderate": {},
@@ -864,6 +904,7 @@
   {
     "id": "challenge_won",
     "cause": "She lost the challenge to the commander",
+    "journal": "she lost a challenge to the commander",
     "rows": {
       "minor": {},
       "moderate": {
@@ -877,6 +918,7 @@
   {
     "id": "challenge_lost",
     "cause": "She won the challenge against the commander",
+    "journal": "she won a challenge against the commander",
     "rows": {
       "minor": {
         "trust": -2
@@ -889,6 +931,7 @@
   {
     "id": "shielded",
     "cause": "The commander took the blame for her",
+    "journal": "the commander took the blame for her",
     "rows": {
       "minor": {
         "trust": 1,
@@ -911,6 +954,7 @@
   {
     "id": "overrode_her",
     "cause": "You overrode her choice",
+    "journal": "the commander overrode her choice",
     "rows": {
       "minor": {
         "trust": -1,
@@ -937,6 +981,7 @@
   {
     "id": "decor_removed",
     "cause": "You peeled something she put on your device",
+    "journal": "the commander peeled something she had put on the device",
     "rows": {
       "minor": {
         "affinity": -3,
@@ -959,6 +1004,7 @@
   {
     "id": "rival_favoured",
     "cause": "The commander favoured someone else",
+    "journal": "the commander favoured someone else over her",
     "rows": {
       "minor": {
         "affinity": -1,
@@ -981,6 +1027,7 @@
   {
     "id": "bond_shown",
     "cause": "A bond was shown in public",
+    "journal": "a bond between her and the commander was shown in public",
     "rows": {
       "minor": {
         "affinity": 1
@@ -999,6 +1046,7 @@
   {
     "id": "token_removed",
     "cause": "You took off what she gave you",
+    "journal": "the commander took off what she had given",
     "rows": {
       "minor": {
         "affinity": -2,
@@ -1021,6 +1069,7 @@
   {
     "id": "secret_confronted",
     "cause": "You confronted the squad over a secret",
+    "journal": "the commander confronted the squad over a secret",
     "rows": {
       "minor": {
         "trust": -1,
