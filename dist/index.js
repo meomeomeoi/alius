@@ -10140,7 +10140,23 @@ function hideInjuries(draft, reg, party, visible = []) {
   }
   return events;
 }
+function retireStale(draft, reg) {
+  const p = draft.personal;
+  if (!p?.secrets) return;
+  const leaderId = leaderOf(draft)?.id;
+  p.secrets = p.secrets.filter((x) => {
+    if (x.status !== "kept" && x.status !== "pretend") return true;
+    const source = reg.secretKinds.get(x.kindId)?.source;
+    if (source === "successor") return x.subjectId === leaderId;
+    if (source === "hidden_injury") {
+      const unit = x.subjectId === void 0 ? void 0 : unitOf(draft, x.subjectId);
+      return unit === void 0 || unit.currentHp / unitStats(draft, reg, unit).hp <= TUNING.personal.secret.hiddenInjuryHp;
+    }
+    return true;
+  });
+}
 function secretDayStep(draft, reg) {
+  retireStale(draft, reg);
   const leader = leaderOf(draft);
   const p = draft.personal;
   if (!leader) {
@@ -22224,13 +22240,18 @@ function createPersonal(deps) {
     playWager: (wagerId, pick2) => act("wager/play", { wagerId, ...pick2 !== void 0 ? { pick: pick2 } : {} }),
     answerQuestion: (wagerId, text2) => act("wager/answer_question", { wagerId, text: text2 }),
     challenge: (p) => act("wager/challenge", p),
-    answerSecret: (secretId, choice) => act("secret/respond", { secretId, choice }),
+    answerSecret(secretId, choice) {
+      if (!act("secret/respond", { secretId, choice })) return false;
+      controller.reopenSecrets();
+      return true;
+    },
     reopenSecrets() {
       const found2 = state()?.personal?.secrets?.find((x) => x.status === "found");
       if (found2 && deps.onSecretFound) deps.onSecretFound(found2.id);
     },
     onEvents(events) {
       let refresh = false;
+      let foundSecret;
       for (const e of events) {
         if (REFRESH_ON.has(e.type)) refresh = true;
         if (e.type === "wager_resolved") {
@@ -22241,10 +22262,7 @@ function createPersonal(deps) {
           const s = state();
           if (s) deps.toast("info", `${nameOf11(s, String(e.unitId))} refuses the bet.`);
         }
-        if (e.type === "secret_found") {
-          if (deps.onSecretFound) deps.onSecretFound(String(e.secretId));
-          else deps.toast("info", "Something the squad kept from the commander has come out.");
-        }
+        if (e.type === "secret_found") foundSecret = foundSecret ?? String(e.secretId);
         if (e.type === "booking_conflict") {
           deps.toast("info", `Two bookings for the ${String(e.slot)} of day ${String(e.day)} clash: choose one, or let them settle it.`);
         } else if (e.type === "claimed") {
@@ -22252,6 +22270,10 @@ function createPersonal(deps) {
           if (deps.onClaim) deps.onClaim(String(e.unitId));
           else if (s) deps.toast("info", `${nameOf11(s, String(e.unitId))} has told everyone the commander is hers.`);
         }
+      }
+      if (foundSecret !== void 0) {
+        if (deps.onSecretFound) deps.onSecretFound(foundSecret);
+        else deps.toast("info", "Something the squad kept from the commander has come out.");
       }
       if (refresh) deps.refreshContext();
     }
@@ -32403,8 +32425,13 @@ function squadSecretProvider(_subject, env) {
   if (known.length === 0) return { lines: ["The commander knows of nothing the squad keeps back."] };
   return {
     lines: known.map((x) => {
+      if (x.status === "found") {
+        let masked = x.text;
+        for (const id of x.knownBy) masked = masked.replace(new RegExp(`\\b${nameOf9(state, id).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "g"), "\u2588\u2588\u2588\u2588\u2588");
+        return `${masked} Waiting for an answer.`;
+      }
       const who = x.knownBy.map((id) => nameOf9(state, id)).join(", ");
-      const how = x.status === "found" ? "waiting for an answer" : x.status === "confronted" ? "out in the open: the squad was confronted" : x.status === "pretend" ? "the commander pretends not to know" : (x.usedUntil ?? 0) > state.day ? `the commander can hold it over them until day ${x.usedUntil}` : "the commander used it, and the hold is over";
+      const how = x.status === "confronted" ? "out in the open: the squad was confronted" : x.status === "pretend" ? "the commander pretends not to know" : (x.usedUntil ?? 0) > state.day ? `the commander can hold it over them until day ${x.usedUntil}` : "the commander used it, and the hold is over";
       return `${x.text} Known by ${who}; ${how}.`;
     })
   };
@@ -34591,8 +34618,8 @@ function createApp(st, deps) {
       if (!s || !secret || secret.status !== "found") return;
       const host = h("div");
       host.append(renderSecretCard(s, registries, secret, (choice, id) => {
-        personal.answerSecret(id, choice);
         shell.closeModal?.();
+        personal.answerSecret(id, choice);
       }));
       shell.open();
       void shell.modal({ title: "SQUAD SECRET", body: host, actions: [] });

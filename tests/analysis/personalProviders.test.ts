@@ -222,7 +222,7 @@ describe('glossary:squad_secret and secretKinds', () => {
     expect(read('glossary:squad_secret', plain(reg), {})).toBe(none);
     s.personal!.secrets![0].status = 'found';
     const one = read('glossary:squad_secret', s, {});
-    expect(one).toContain(kept.text);
+    expect(one).toContain('came back from the run badly hurt'); // the names are masked while it waits (next test)
     expect(one).not.toContain(s.personal!.secrets![1].text);
     expect(one).toMatch(/waiting for an answer/i);
     s.personal!.secrets![0].status = 'used';
@@ -230,6 +230,18 @@ describe('glossary:squad_secret and secretKinds', () => {
     expect(read('glossary:squad_secret', s, {})).toMatch(/hold it over/i);
     s.personal!.secrets![0].status = 'confronted';
     expect(read('glossary:squad_secret', s, {})).toMatch(/out in the open/i);
+  });
+
+  it('a secret waiting for an answer is read with the knowers\' names masked, like its card (review)', () => {
+    const s = secrets();
+    s.personal!.secrets![0].status = 'found';
+    const text = read('glossary:squad_secret', s, { secretId: s.personal!.secrets![0].id });
+    expect(text).toContain('came back from the run badly hurt');
+    expect(text).not.toContain('Ann');
+    expect(text).not.toContain('Bea');
+    expect(text).not.toMatch(/Known by/);
+    s.personal!.secrets![0].status = 'confronted';
+    expect(read('glossary:squad_secret', s, {})).toContain('Known by Ann, Bea');
   });
 
   it('the kind entries say where a secret of the kind comes from and never show its text', () => {

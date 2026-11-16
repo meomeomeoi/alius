@@ -78,8 +78,29 @@ export function hideInjuries(draft: CampaignState, reg: Registries, party: strin
   return events;
 }
 
-/** The day step's secret part: the successor secret, once a leader has held the squad for a week. Writes nothing while nobody leads. */
+/**
+ * Kept (or pretended) secrets that are no longer true are retired with no deltas and no draw: a hidden injury once her HP is above
+ * the threshold again, a successor secret once its subject no longer leads. Found and answered ones are never touched.
+ */
+function retireStale(draft: CampaignState, reg: Registries): void {
+  const p = draft.personal;
+  if (!p?.secrets) return;
+  const leaderId = leaderOf(draft)?.id;
+  p.secrets = p.secrets.filter((x) => {
+    if (x.status !== 'kept' && x.status !== 'pretend') return true;
+    const source = reg.secretKinds.get(x.kindId)?.source;
+    if (source === 'successor') return x.subjectId === leaderId;
+    if (source === 'hidden_injury') {
+      const unit = x.subjectId === undefined ? undefined : unitOf(draft, x.subjectId);
+      return unit === undefined || unit.currentHp / unitStats(draft, reg, unit).hp <= TUNING.personal.secret.hiddenInjuryHp;
+    }
+    return true;
+  });
+}
+
+/** The day step's secret part: stale secrets retire, then the successor secret, once a leader has held the squad for a week. Writes nothing while nobody leads. */
 export function secretDayStep(draft: CampaignState, reg: Registries): EngineEvent[] {
+  retireStale(draft, reg);
   const leader = leaderOf(draft);
   const p = draft.personal;
   if (!leader) {

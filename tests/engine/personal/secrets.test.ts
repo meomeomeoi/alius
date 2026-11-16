@@ -271,3 +271,41 @@ describe('the authored event', () => {
     expect(other.personal?.secrets).toBeUndefined();
   });
 });
+
+describe('a kept secret that is no longer true is retired (review)', () => {
+  it('a hidden injury goes once she has healed; one she still carries stays', () => {
+    const s = plain(reg);
+    keep(s, 'hidden_injury', [ANN, BEA], ANN);
+    const ann = s.squad.find((u) => u.id === ANN)!;
+    ann.currentHp = Math.floor(unitStats(s, reg, ann).hp * 0.2);
+    personalDayStep(s, ctxFrom(s, reg));
+    expect(personalOf(s).secrets).toHaveLength(1);
+    ann.currentHp = unitStats(s, reg, ann).hp;
+    const events = personalDayStep(s, ctxFrom(s, reg));
+    expect(personalOf(s).secrets).toEqual([]);
+    expect(JSON.stringify(events)).not.toContain('came back');
+  });
+
+  it('a successor secret about someone who no longer leads is retired; one about the leader stays', () => {
+    const s = plain(reg);
+    s.day = 3;
+    withLeader(s, ANN);
+    keep(s, 'successor', [ANN, BEA, CAT], ANN);
+    personalDayStep(s, ctxFrom(s, reg));
+    expect(personalOf(s).secrets).toHaveLength(1);
+    withLeader(s, BEA);
+    personalDayStep(s, ctxFrom(s, reg));
+    expect(personalOf(s).secrets).toEqual([]);
+  });
+
+  it('a secret the commander found or answered is never retired, and nothing is created for a save with none', () => {
+    const s = plain(reg);
+    const x = keep(s, 'hidden_injury', [ANN, BEA], ANN);
+    x.status = 'found';
+    personalDayStep(s, ctxFrom(s, reg));
+    expect(personalOf(s).secrets).toHaveLength(1);
+    const none = plain(reg);
+    personalDayStep(none, ctxFrom(none, reg));
+    expect(none.personal).toBeUndefined();
+  });
+});
