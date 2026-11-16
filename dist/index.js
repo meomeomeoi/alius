@@ -132,7 +132,14 @@ var TUNING = Object.freeze({
     affair: Object.freeze({ base: 0.04, perOther: 0.04, partnerPresent: 0.15 })
   }),
   /** P3: facts, promises and the chronicle. */
-  memory: Object.freeze({ factTextMax: 200, factsPerScene: 8, recencyBase: 0.8, retrievalK: 6, factsMax: 120, closedPromisesMax: 30 }),
+  memory: Object.freeze({
+    factTextMax: 200,
+    factsPerScene: 8,
+    closedPromisesMax: 30,
+    /** P3b: the retrieval bonus of a pinned fact, and how far past `factsMax` the hard ceiling sits (the fold runs first). */
+    pinnedBonus: 2,
+    hardCeiling: 1.25
+  }),
   /** P3: PDA DMs and night visits. */
   comms: Object.freeze({
     threadMax: 40,
@@ -11328,7 +11335,80 @@ function buildCampaign(r, reg, opts) {
   return { ok: true, state };
 }
 
-// src/engine/memory.ts
+// src/engine/memory/config.ts
+var MEMORY_PRESETS = Object.freeze({
+  short: Object.freeze({
+    factsMax: 80,
+    foldAfterDays: 4,
+    recencyBase: 0.7,
+    retrievalK: 5,
+    memoryTokens: 350,
+    journalLines: 2,
+    dmLines: 2,
+    chronicleDays: 1,
+    rumorMode: "plain",
+    hideScenesAfter: 0
+  }),
+  normal: Object.freeze({
+    factsMax: 160,
+    foldAfterDays: 7,
+    recencyBase: 0.8,
+    retrievalK: 6,
+    memoryTokens: 550,
+    journalLines: 3,
+    dmLines: 3,
+    chronicleDays: 2,
+    rumorMode: "plain",
+    hideScenesAfter: 0
+  }),
+  long: Object.freeze({
+    factsMax: 320,
+    foldAfterDays: 14,
+    recencyBase: 0.9,
+    retrievalK: 8,
+    memoryTokens: 900,
+    journalLines: 5,
+    dmLines: 5,
+    chronicleDays: 3,
+    rumorMode: "plain",
+    hideScenesAfter: 0
+  })
+});
+var MEMORY_RANGES = Object.freeze({
+  factsMax: [40, 600],
+  foldAfterDays: [1, 60],
+  recencyBase: [0.5, 0.95],
+  retrievalK: [2, 16],
+  memoryTokens: [150, 2e3],
+  journalLines: [0, 8],
+  dmLines: [0, 8],
+  chronicleDays: [0, 7],
+  hideScenesAfter: [0, 20]
+});
+var MEMORY_NUMERIC_FIELDS = Object.keys(MEMORY_RANGES);
+function clampMemoryField(field2, value) {
+  const [min, max] = MEMORY_RANGES[field2];
+  const v = Math.min(max, Math.max(min, value));
+  return field2 === "recencyBase" ? Math.round(v * 100) / 100 : Math.round(v);
+}
+function memoryConfig(state) {
+  const stored = state.memory.config;
+  const preset = stored?.preset ?? "normal";
+  const out = { ...MEMORY_PRESETS[preset === "custom" ? "normal" : preset] };
+  if (stored) {
+    if (stored.rumorMode === "plain" || stored.rumorMode === "model") out.rumorMode = stored.rumorMode;
+    if (typeof stored.hideScenesAfter === "number") out.hideScenesAfter = clampMemoryField("hideScenesAfter", stored.hideScenesAfter);
+    if (preset === "custom") {
+      for (const f of MEMORY_NUMERIC_FIELDS) {
+        const v = stored[f];
+        if (typeof v === "number" && Number.isFinite(v)) out[f] = clampMemoryField(f, v);
+      }
+    }
+  }
+  return { ...out, preset };
+}
+
+// src/engine/memory/facts.ts
 function nextId(draft, prefix) {
   const n = (draft.memory.nextId ?? 0) + 1;
   draft.memory.nextId = n;
@@ -11337,7 +11417,12 @@ function nextId(draft, prefix) {
 var normText = (s) => s.toLowerCase().replace(/\s+/g, " ").trim();
 var sameAbout = (a, b) => a.length === b.length && [...a].sort().join("\0") === [...b].sort().join("\0");
 var tagList = (tags) => [...new Set(tags.map((t) => normalizeTag(t)).filter((t) => t !== null))];
-function addFact(draft, f) {
+function nextRememberId(draft) {
+  const n = (draft.memory.nextRememberId ?? 0) + 1;
+  draft.memory.nextRememberId = n;
+  return `fr${n}`;
+}
+function addFact(draft, f, opts = {}) {
   const text2 = f.text.trim().slice(0, TUNING.memory.factTextMax).trim();
   const about = [...f.about];
   const dup = draft.memory.facts.find((x) => normText(x.text) === normText(text2) && sameAbout(x.about, about));
@@ -11345,30 +11430,35 @@ function addFact(draft, f) {
     for (const k of f.knownBy) if (!dup.knownBy.includes(k)) dup.knownBy.push(k);
     return dup;
   }
-  const fact = { ...f, id: nextId(draft, "f"), text: text2, about, tags: tagList(f.tags), knownBy: [...new Set(f.knownBy)] };
+  const fact = { ...f, id: opts.remembered ? nextRememberId(draft) : nextId(draft, "f"), text: text2, about, tags: tagList(f.tags), knownBy: [...new Set(f.knownBy)] };
   draft.memory.facts.push(fact);
   pruneFacts(draft);
   return fact;
 }
 function pruneFacts(draft) {
-  const extra = draft.memory.facts.length - TUNING.memory.factsMax;
+  const ceiling = Math.floor(memoryConfig(draft).factsMax * TUNING.memory.hardCeiling);
+  const extra = draft.memory.facts.length - ceiling;
   if (extra <= 0) return;
-  const order = (f) => Number(f.id.replace(/\D/g, "")) || 0;
+  const at = new Map(draft.memory.facts.map((f, i) => [f.id, i]));
   const doomed = new Set(
-    [...draft.memory.facts].sort((a, b) => a.importance - b.importance || a.day - b.day || order(a) - order(b)).slice(0, extra).map((f) => f.id)
+    draft.memory.facts.filter((f) => !f.pinned).sort((a, b) => a.importance - b.importance || a.day - b.day || at.get(a.id) - at.get(b.id)).slice(0, extra).map((f) => f.id)
   );
   draft.memory.facts = draft.memory.facts.filter((f) => !doomed.has(f.id));
 }
 function factsVisibleTo(state, viewers) {
   return state.memory.facts.filter((f) => f.knownBy.includes("*") || viewers.every((v) => f.knownBy.includes(v)));
 }
-function retrieveFacts(state, q, k = TUNING.memory.retrievalK) {
+function retrieveFacts(state, q, k = memoryConfig(state).retrievalK) {
+  const { recencyBase } = memoryConfig(state);
   const tags = new Set(tagList(q.tags));
   const people = new Set(q.participants);
-  const score = (f) => 3 * f.about.filter((a) => people.has(a)).length + 2 * f.tags.filter((t) => tags.has(t)).length + f.importance + 3 * TUNING.memory.recencyBase ** Math.max(0, state.day - f.day);
-  const order = (f) => Number(f.id.replace(/\D/g, "")) || 0;
+  const score = (f) => 3 * f.about.filter((a) => people.has(a)).length + 2 * f.tags.filter((t) => tags.has(t)).length + f.importance + 3 * recencyBase ** Math.max(0, state.day - f.day) + (f.pinned ? TUNING.memory.pinnedBonus : 0);
+  const at = new Map(state.memory.facts.map((f, i) => [f.id, i]));
+  const order = (f) => at.get(f.id) ?? 0;
   return factsVisibleTo(state, q.participants).map((f) => ({ f, s: score(f) })).sort((a, b) => b.s - a.s || b.f.day - a.f.day || order(b.f) - order(a.f)).slice(0, k).map((x) => x.f);
 }
+
+// src/engine/memory/promises.ts
 var words = (s) => new Set(s.toLowerCase().match(/[a-z0-9]+/g) ?? []);
 function jaccard(a, b) {
   const x = words(a);
@@ -11414,6 +11504,8 @@ function openPromises(state, unitIds, viewers = []) {
     (p) => p.status === "open" && (unitIds.includes(p.by) || unitIds.includes(p.to)) && (!p.knownBy || p.knownBy.includes("*") || viewers.every((v) => p.knownBy.includes(v)))
   );
 }
+
+// src/engine/memory/chronicle.ts
 function addChronicle(draft, e) {
   const entry = { ...e, id: nextId(draft, "c") };
   draft.memory.chronicle.push(entry);
@@ -11449,6 +11541,8 @@ function applyCompaction(draft, c) {
 function fallbackCompaction(entries) {
   return entries.map((e) => e.text.trim()).filter(Boolean).join(" ").slice(0, COMPACT_MAX);
 }
+
+// src/engine/memory/crime.ts
 function revealCrime(draft, reg, unitIds) {
   const events = [];
   const crime = draft.commander.crimeId ? reg.crimes.get(draft.commander.crimeId) : void 0;
@@ -19517,6 +19611,63 @@ registerAction("memory/compact", (draft, payload) => {
   return [{ type: "chronicle_compacted", kind, day, toDay: entry.toDay ?? null }];
 });
 
+// src/engine/actions/memory.ts
+var isObj13 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var PRESETS = ["short", "normal", "long", "custom"];
+registerAction("memory/configure", (draft, payload) => {
+  if (!isObj13(payload) || !PRESETS.includes(payload.preset)) throw new Error("memory/configure needs { preset: short | normal | long | custom }");
+  const preset = payload.preset;
+  const now = memoryConfig(draft);
+  const given = MEMORY_NUMERIC_FIELDS.filter((f) => f in payload && f !== "hideScenesAfter");
+  if (preset !== "custom" && given.length > 0) throw new Error('memory/configure: numbers need preset "custom"');
+  const next = { preset };
+  if ("rumorMode" in payload) {
+    if (payload.rumorMode !== "plain" && payload.rumorMode !== "model") throw new Error("memory/configure: rumorMode is plain or model");
+    next.rumorMode = payload.rumorMode;
+  } else {
+    next.rumorMode = now.rumorMode;
+  }
+  const hide = "hideScenesAfter" in payload ? payload.hideScenesAfter : now.hideScenesAfter;
+  if (typeof hide !== "number" || !Number.isFinite(hide)) throw new Error("memory/configure: hideScenesAfter must be a number");
+  next.hideScenesAfter = clampMemoryField("hideScenesAfter", hide);
+  if (preset === "custom") {
+    for (const f of MEMORY_NUMERIC_FIELDS) {
+      if (f === "hideScenesAfter") continue;
+      const v = f in payload ? payload[f] : now[f];
+      if (typeof v !== "number" || !Number.isFinite(v)) throw new Error(`memory/configure: ${f} must be a number`);
+      next[f] = clampMemoryField(f, v);
+    }
+  }
+  draft.memory.config = next;
+  return [{ type: "memory_configured", preset }];
+});
+var factOf = (draft, payload, who) => {
+  if (!isObj13(payload) || typeof payload.factId !== "string") throw new Error(`${who} needs { factId }`);
+  const fact = draft.memory.facts.find((f) => f.id === payload.factId);
+  if (!fact) throw new Error(`${who}: unknown fact ${payload.factId}`);
+  return { fact, payload };
+};
+registerAction("memory/pin", (draft, payload) => {
+  const { fact, payload: p } = factOf(draft, payload, "memory/pin");
+  if (typeof p.pinned !== "boolean") throw new Error("memory/pin needs { factId, pinned }");
+  if (p.pinned) fact.pinned = true;
+  else delete fact.pinned;
+  return [{ type: "fact_pinned", factId: fact.id, pinned: p.pinned }];
+});
+registerAction("memory/forget", (draft, payload) => {
+  const { fact } = factOf(draft, payload, "memory/forget");
+  draft.memory.facts = draft.memory.facts.filter((f) => f.id !== fact.id);
+  return [{ type: "fact_forgotten", factId: fact.id }];
+});
+registerAction("memory/edit", (draft, payload) => {
+  const { fact, payload: p } = factOf(draft, payload, "memory/edit");
+  const text2 = typeof p.text === "string" ? p.text.trim().slice(0, TUNING.memory.factTextMax).trim() : "";
+  if (text2 === "") throw new Error("memory/edit: empty text");
+  fact.text = text2;
+  fact.edited = true;
+  return [{ type: "fact_edited", factId: fact.id }];
+});
+
 // src/engine/personal/intercept.ts
 var ORIGINAL_MAX = 1e3;
 var INTERCEPT_CHANNELS = ["dm", "leash", "recruit"];
@@ -19589,7 +19740,7 @@ function interceptDayStep(draft) {
 }
 
 // src/engine/actions/comms.ts
-var isObj13 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj14 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var TEXT_MAX = 1e3;
 var defectSocialHook = (draft, ctx2, done) => {
   const events = [];
@@ -19623,7 +19774,7 @@ function textOf(v) {
   return t;
 }
 registerAction("dm/send", (draft, payload) => {
-  if (!isObj13(payload)) throw new Error("dm/send needs { unitId, text }");
+  if (!isObj14(payload)) throw new Error("dm/send needs { unitId, text }");
   const unit = namedUnit(draft, payload.unitId);
   const text2 = textOf(payload.text);
   const editedBy = payload.interceptId === void 0 ? void 0 : takeKeptEdit(draft, String(payload.interceptId), unit.id);
@@ -19633,7 +19784,7 @@ registerAction("dm/send", (draft, payload) => {
   return [{ type: "dm_sent", unitId: unit.id, mode: dmMode(draft, unit.id) }];
 });
 registerAction("dm/receive", (draft, payload, ctx2) => {
-  if (!isObj13(payload)) throw new Error("dm/receive needs { unitId, text }");
+  if (!isObj14(payload)) throw new Error("dm/receive needs { unitId, text }");
   const unit = namedUnit(draft, payload.unitId);
   const text2 = textOf(payload.text);
   const initiated = payload.initiated === true;
@@ -19641,7 +19792,7 @@ registerAction("dm/receive", (draft, payload, ctx2) => {
   return [{ type: "dm_received", unitId: unit.id, initiated }, ...evaluateAutomatic(draft, ctx2.registries, unit.id)];
 });
 registerAction("dm/read", (draft, payload) => {
-  if (!isObj13(payload)) throw new Error("dm/read needs { unitId }");
+  if (!isObj14(payload)) throw new Error("dm/read needs { unitId }");
   const unit = namedUnit(draft, payload.unitId);
   for (const m of draft.dms[unit.id] ?? []) m.read = true;
   return [{ type: "dm_read", unitId: unit.id }];
@@ -19852,7 +20003,7 @@ function finalizeCombat(draft, reg, rng, outcome) {
 }
 
 // src/engine/actions/combat.ts
-var isObj14 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj15 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function settle2(draft, ctx2, ectx, logStart) {
   const { cs } = ectx;
   const events = [{ type: "combat_log", entries: cs.log.slice(Math.max(0, logStart)) }, ...ectx.events];
@@ -19881,14 +20032,14 @@ var open = (draft, what) => {
   return draft.combat;
 };
 registerAction("combat/start", (draft, payload, ctx2) => {
-  if (!isObj14(payload)) throw new Error("combat/start needs a payload");
+  if (!isObj15(payload)) throw new Error("combat/start needs a payload");
   return startCombat(draft, ctx2, payload);
 });
 registerAction("combat/act", (draft, payload, ctx2) => {
   const cs = open(draft, "combat/act");
   if (cs.phase !== "awaiting" || !cs.awaitingCid) throw new Error("combat/act: the combat is not waiting for an action");
-  const action = isObj14(payload) ? payload.action : void 0;
-  if (!isObj14(action) || !["skill", "guard", "swap", "pass"].includes(String(action.kind))) throw new Error("combat/act needs { action }");
+  const action = isObj15(payload) ? payload.action : void 0;
+  if (!isObj15(action) || !["skill", "guard", "swap", "pass"].includes(String(action.kind))) throw new Error("combat/act needs { action }");
   const ectx = makeCtx(cs, draft, ctx2.registries, ctx2.rng);
   const start = cs.log.length;
   const cid = cs.awaitingCid;
@@ -19899,7 +20050,7 @@ registerAction("combat/act", (draft, payload, ctx2) => {
 });
 registerAction("combat/auto", (draft, payload, ctx2) => {
   const cs = open(draft, "combat/auto");
-  if (!isObj14(payload) || typeof payload.on !== "boolean") throw new Error("combat/auto needs { on: boolean }");
+  if (!isObj15(payload) || typeof payload.on !== "boolean") throw new Error("combat/auto needs { on: boolean }");
   if (cs.phase !== "awaiting") throw new Error("combat/auto: the combat is already decided");
   const ectx = makeCtx(cs, draft, ctx2.registries, ctx2.rng);
   const start = cs.log.length;
@@ -19909,7 +20060,7 @@ registerAction("combat/auto", (draft, payload, ctx2) => {
 });
 registerAction("combat/order", (draft, payload, ctx2) => {
   const cs = open(draft, "combat/order");
-  if (!isObj14(payload) || typeof payload.orderId !== "string" || payload.targetCid !== void 0 && typeof payload.targetCid !== "string") {
+  if (!isObj15(payload) || typeof payload.orderId !== "string" || payload.targetCid !== void 0 && typeof payload.targetCid !== "string") {
     throw new Error("combat/order needs { orderId, targetCid? }");
   }
   const ectx = makeCtx(cs, draft, ctx2.registries, ctx2.rng);
@@ -19976,7 +20127,7 @@ registerAction("combat/accept", (draft, _payload, ctx2) => {
   return finalizeCombat(draft, ctx2.registries, ctx2.rng, "lost");
 });
 registerAction("combat/set_enemy_name", (draft, payload) => {
-  const p = isObj14(payload) ? payload : {};
+  const p = isObj15(payload) ? payload : {};
   if (typeof p.key !== "string" || !/^[a-z0-9_:.-]+(\|[a-z0-9_:.,-]*)?$/.test(p.key)) throw new Error("combat/set_enemy_name needs a valid key");
   if (!isEnemyName(p.name)) throw new Error("combat/set_enemy_name: the name must be 1 to 3 words of letters, at most 32 characters");
   const names = draft.enemyNames ?? {};
@@ -19988,7 +20139,7 @@ registerAction("combat/set_enemy_name", (draft, payload) => {
   return [{ type: "enemy_named", key: p.key, name: p.name }];
 });
 registerAction("campaign/set_difficulty", (draft, payload) => {
-  const d = isObj14(payload) ? payload.difficulty : void 0;
+  const d = isObj15(payload) ? payload.difficulty : void 0;
   if (d !== "story" && d !== "normal" && d !== "hard") throw new Error("campaign/set_difficulty needs { difficulty: story | normal | hard }");
   if (draft.combat) throw new Error("The difficulty cannot change during a combat.");
   draft.difficulty = d;
@@ -19996,38 +20147,38 @@ registerAction("campaign/set_difficulty", (draft, payload) => {
 });
 
 // src/engine/actions/progression.ts
-var isObj15 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj16 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var str2 = (v, what) => {
   if (typeof v !== "string") throw new Error(`${what} must be a string`);
   return v;
 };
 registerAction("squad/unlock_node", (draft, payload, ctx2) => {
-  const p = isObj15(payload) ? payload : {};
+  const p = isObj16(payload) ? payload : {};
   return unlockNode(draft, ctx2.registries, str2(p.unitId, "unitId"), str2(p.nodeId, "nodeId"));
 });
 registerAction("squad/respec", (draft, payload, ctx2) => {
-  const p = isObj15(payload) ? payload : {};
+  const p = isObj16(payload) ? payload : {};
   return respec(draft, ctx2.registries, str2(p.unitId, "unitId"));
 });
 registerAction("squad/set_loadout", (draft, payload, ctx2) => {
-  const p = isObj15(payload) ? payload : {};
+  const p = isObj16(payload) ? payload : {};
   const ids = p.skillIds;
   if (!Array.isArray(ids) || !ids.every((x) => typeof x === "string")) throw new Error("squad/set_loadout needs { unitId, skillIds: string[] }");
   setLoadout(draft, ctx2.registries, str2(p.unitId, "unitId"), ids);
   return [{ type: "loadout_changed", unitId: p.unitId }];
 });
 registerAction("squad/release_breakdowns", (draft, payload, ctx2) => {
-  const ids = isObj15(payload) ? payload.unitIds : void 0;
+  const ids = isObj16(payload) ? payload.unitIds : void 0;
   if (ids !== void 0 && !(Array.isArray(ids) && ids.every((x) => typeof x === "string"))) throw new Error("unitIds must be a list of unit ids");
   return releaseBreakdowns(draft, ids, ctx2.registries);
 });
 registerActivityHook((draft, ctx2) => applyAllLevelUps(draft, ctx2.registries));
 
 // src/engine/actions/world.ts
-var isObj16 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj17 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 registerAction("world/seed", (draft, _payload, ctx2) => seedWorld(draft, ctx2.registries));
 registerAction("mission/dismiss", (draft, payload) => {
-  const id = isObj16(payload) ? payload.missionId : void 0;
+  const id = isObj17(payload) ? payload.missionId : void 0;
   if (typeof id !== "string") throw new Error("mission/dismiss needs { missionId }");
   const i = draft.missions.offered.findIndex((m2) => m2.id === id);
   if (i < 0) throw new Error(`Mission "${id}" is not on the board.`);
@@ -20037,29 +20188,29 @@ registerAction("mission/dismiss", (draft, payload) => {
   return [{ type: "mission_expired", missionId: id, reason: "dismissed" }];
 });
 registerAction("rumor/follow", (draft, payload, ctx2) => {
-  const id = isObj16(payload) ? payload.rumorId : void 0;
+  const id = isObj17(payload) ? payload.rumorId : void 0;
   if (typeof id !== "string") throw new Error("rumor/follow needs { rumorId }");
   return followRumor(draft, ctx2, id);
 });
 registerDayEndStep("mission_deadlines", runDeadlines);
 registerMissionCompletedHook(onMissionCompleted);
 registerAction("director/apply", (draft, payload, ctx2) => {
-  const p = isObj16(payload) ? payload : {};
+  const p = isObj17(payload) ? payload : {};
   const days = typeof p.beatCooldownDays === "number" ? p.beatCooldownDays : void 0;
   return answerRequest(draft, ctx2, typeof p.requestId === "string" ? p.requestId : void 0, () => p.output, { cooldownDays: days });
 });
 registerAction("director/fallback", (draft, payload, ctx2) => {
-  const id = isObj16(payload) && typeof payload.requestId === "string" ? payload.requestId : void 0;
+  const id = isObj17(payload) && typeof payload.requestId === "string" ? payload.requestId : void 0;
   return answerRequest(draft, ctx2, id, () => fallbackOutput(draft, ctx2.registries, ctx2.rng), { fallback: true });
 });
 registerAction("campaign/set_beat_cooldown", (draft, payload) => {
-  const days = isObj16(payload) ? payload.days : void 0;
+  const days = isObj17(payload) ? payload.days : void 0;
   if (typeof days !== "number" || !Number.isInteger(days) || days < 1 || days > 14) throw new Error("campaign/set_beat_cooldown needs { days } from 1 to 14");
   draft.settings.beatCooldownDays = days;
   return [];
 });
 registerAction("director/request", (draft, payload) => {
-  if (!isObj16(payload) || payload.reason !== "scout") throw new Error("Only a scout request can be opened by hand.");
+  if (!isObj17(payload) || payload.reason !== "scout") throw new Error("Only a scout request can be opened by hand.");
   return openRequest(draft, "scout");
 });
 registerDayEndStep("director_tick", (draft, ctx2) => {
@@ -20075,7 +20226,7 @@ registerDayEndStep("director_tick", (draft, ctx2) => {
   return events;
 });
 registerAction("world/set_option", (draft, payload, ctx2) => {
-  const p = isObj16(payload) ? payload : {};
+  const p = isObj17(payload) ? payload : {};
   const optionId = typeof p.optionId === "string" ? p.optionId : "";
   const choiceId = typeof p.choiceId === "string" ? p.choiceId : "";
   const option = ctx2.registries.worldOptions.get(optionId);
@@ -20088,28 +20239,28 @@ registerAction("world/set_option", (draft, payload, ctx2) => {
   return [{ type: "world_option_changed", optionId, from, to: choiceId }];
 });
 registerAction("campaign/set_min_confidence", (draft, payload) => {
-  const value = isObj16(payload) ? payload.value : void 0;
+  const value = isObj17(payload) ? payload.value : void 0;
   if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > 1) throw new Error("campaign/set_min_confidence needs { value } from 0 to 1");
   draft.settings.intentMinConfidence = value;
   return [];
 });
 
 // src/engine/actions/expedition.ts
-var isObj17 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj18 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var strList = (v) => Array.isArray(v) && v.every((x) => typeof x === "string") ? v : null;
 function readFormation(v) {
-  const front = isObj17(v) ? strList(v.front) : null;
-  const back = isObj17(v) ? strList(v.back) : null;
+  const front = isObj18(v) ? strList(v.front) : null;
+  const back = isObj18(v) ? strList(v.back) : null;
   if (!front || !back) throw new Error("A formation needs { front: string[], back: string[] }.");
   return { front, back };
 }
 registerAction("expedition/start", (draft, payload, ctx2) => {
-  if (!isObj17(payload)) throw new Error("expedition/start needs a payload.");
+  if (!isObj18(payload)) throw new Error("expedition/start needs a payload.");
   const unitIds = strList(payload.unitIds);
   if (!unitIds) throw new Error("expedition/start needs { unitIds: string[] }.");
   const p = { unitIds, formation: readFormation(payload.formation), supplies: payload.supplies };
   if (typeof payload.missionId === "string") p.missionId = payload.missionId;
-  if (isObj17(payload.poi) && typeof payload.poi.regionId === "string" && typeof payload.poi.poiId === "string") {
+  if (isObj18(payload.poi) && typeof payload.poi.regionId === "string" && typeof payload.poi.poiId === "string") {
     p.poi = { regionId: payload.poi.regionId, poiId: payload.poi.poiId };
   }
   const problem = checkExpedition(draft, ctx2.registries, p);
@@ -20119,25 +20270,25 @@ registerAction("expedition/start", (draft, payload, ctx2) => {
   return events;
 });
 registerAction("expedition/move", (draft, payload, ctx2) => {
-  const nodeId = isObj17(payload) ? payload.nodeId : void 0;
+  const nodeId = isObj18(payload) ? payload.nodeId : void 0;
   if (typeof nodeId !== "string") throw new Error("expedition/move needs { nodeId }.");
   return moveTo(draft, ctx2, nodeId);
 });
 registerAction("expedition/set_formation", (draft, payload) => {
-  setFormation(draft, readFormation(isObj17(payload) ? payload.formation : void 0));
+  setFormation(draft, readFormation(isObj18(payload) ? payload.formation : void 0));
   return [];
 });
 registerAction("expedition/treat", (draft, payload, ctx2) => {
-  const unitId = isObj17(payload) ? payload.unitId : void 0;
-  const kind = isObj17(payload) ? payload.kind : void 0;
+  const unitId = isObj18(payload) ? payload.unitId : void 0;
+  const kind = isObj18(payload) ? payload.kind : void 0;
   if (typeof unitId !== "string" || typeof kind !== "string") throw new Error("expedition/treat needs { unitId, kind }.");
   return treat(draft, ctx2, unitId, kind);
 });
 registerAction("expedition/resolve_combat", (draft, _payload, ctx2) => resolveCombat(draft, ctx2));
 registerAction("expedition/choose", (draft, payload, ctx2) => {
-  const option = isObj17(payload) ? payload.option : void 0;
+  const option = isObj18(payload) ? payload.option : void 0;
   if (typeof option !== "number") throw new Error("expedition/choose needs { option }.");
-  return chooseOption(draft, ctx2, option, readRoutePick(isObj17(payload) ? payload.route : void 0));
+  return chooseOption(draft, ctx2, option, readRoutePick(isObj18(payload) ? payload.route : void 0));
 });
 registerAction("expedition/ack_her_call", (draft) => acknowledgeHerCall(draft));
 registerAction("expedition/return", (draft, _payload, ctx2) => returnFromExpedition(draft, ctx2));
@@ -20153,9 +20304,9 @@ registerAction("expedition/mark_debriefed", (draft) => {
   return [{ type: "expedition_debriefed", reportId: draft.lastExpedition.id }];
 });
 registerAction("expedition/set_recap", (draft, payload) => {
-  const reportId = isObj17(payload) ? payload.reportId : void 0;
+  const reportId = isObj18(payload) ? payload.reportId : void 0;
   if (!draft.lastExpedition || reportId !== draft.lastExpedition.id) throw new Error("That report is no longer the last one.");
-  const text2 = cleanRecap(isObj17(payload) ? payload.text : void 0);
+  const text2 = cleanRecap(isObj18(payload) ? payload.text : void 0);
   if (text2 === "") throw new Error("The recap is empty.");
   draft.lastExpedition.recap = text2;
   return [{ type: "expedition_recap_set", reportId }];
@@ -20164,9 +20315,9 @@ registerAction("expedition/set_recap", (draft, payload) => {
 // src/engine/actions/leash.ts
 registerAction("leash/seed", (draft, _payload, ctx2) => ensureLeash(draft, ctx2.registries));
 registerDayEndStep("mission_deadlines", (draft, ctx2) => [...ensureLeash(draft, ctx2.registries), ...refreshLeash(draft, ctx2.registries)]);
-var isObj18 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj19 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var unitIdOf = (payload, action) => {
-  const id = isObj18(payload) ? payload.unitId : void 0;
+  const id = isObj19(payload) ? payload.unitId : void 0;
   if (typeof id !== "string") throw new Error(`${action} needs { unitId }`);
   return id;
 };
@@ -20241,15 +20392,15 @@ function orderInScene(draft, ctx2, unitId) {
 }
 
 // src/engine/actions/loyalty.ts
-var isObj19 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj20 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 registerAction("scene/order", (draft, payload, ctx2) => {
-  const unitId = isObj19(payload) ? payload.unitId : void 0;
+  const unitId = isObj20(payload) ? payload.unitId : void 0;
   if (typeof unitId !== "string") throw new Error("scene/order needs { unitId }");
   return orderInScene(draft, ctx2, unitId);
 });
 registerDayEndStep("director_tick", loyaltyDayStep);
 registerAction("loyalty/talk_down", (draft, payload, ctx2) => {
-  const stat3 = isObj19(payload) ? payload.stat : void 0;
+  const stat3 = isObj20(payload) ? payload.stat : void 0;
   if (stat3 !== "authority" && stat3 !== "empathy") throw new Error('loyalty/talk_down needs { stat: "authority" | "empathy" }');
   return talkDown(draft, ctx2, stat3);
 });
@@ -20258,8 +20409,8 @@ registerAction("loyalty/take_back", (draft, _payload, ctx2) => takeBack(draft, c
 registerAction("loyalty/turn_away", (draft, _payload, ctx2) => turnAway(draft, ctx2));
 var strList2 = (v) => Array.isArray(v) && v.every((x) => typeof x === "string") ? v : null;
 registerAction("loyalty/fight", (draft, payload, ctx2) => {
-  const p = isObj19(payload) ? payload : {};
-  const f = isObj19(p.formation) ? p.formation : {};
+  const p = isObj20(payload) ? payload : {};
+  const f = isObj20(p.formation) ? p.formation : {};
   const front = strList2(f.front);
   const back = strList2(f.back);
   if (!front || !back) throw new Error("loyalty/fight needs { formation: { front, back }, coverId, allowRetry? }");
@@ -20279,9 +20430,9 @@ registerAction("loyalty/resolve_mutiny", (draft, _payload, ctx2) => resolveMutin
 
 // src/engine/actions/discipline.ts
 registerDayEndStep("director_tick", disciplineDayStep);
-var isObj20 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj21 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 registerAction("discipline/punish", (draft, payload, ctx2) => {
-  if (!isObj20(payload) || typeof payload.unitId !== "string" || typeof payload.measure !== "string") throw new Error("discipline/punish needs { unitId, measure }");
+  if (!isObj21(payload) || typeof payload.unitId !== "string" || typeof payload.measure !== "string") throw new Error("discipline/punish needs { unitId, measure }");
   if (payload.days !== void 0 && typeof payload.days !== "number") throw new Error("discipline/punish: days must be a number");
   const inScene = draft.scene?.participants.includes(payload.unitId) === true;
   return applyPunishment(draft, ctx2, {
@@ -20294,20 +20445,20 @@ registerAction("discipline/punish", (draft, payload, ctx2) => {
   });
 });
 registerAction("discipline/undo", (draft, payload, ctx2) => {
-  if (!isObj20(payload) || typeof payload.id !== "string") throw new Error("discipline/undo needs { id }");
+  if (!isObj21(payload) || typeof payload.id !== "string") throw new Error("discipline/undo needs { id }");
   return payload.id.startsWith("th") ? undoThreat(draft, ctx2, payload.id) : undoApplication(draft, ctx2, payload.id);
 });
 registerAction("demand/roll", (draft, _payload, ctx2) => rollDemands(draft, ctx2));
 registerAction("demand/deliver", (draft, payload) => {
-  if (!isObj20(payload) || typeof payload.demandId !== "string") throw new Error("demand/deliver needs { demandId }");
+  if (!isObj21(payload) || typeof payload.demandId !== "string") throw new Error("demand/deliver needs { demandId }");
   return deliverDemand(draft, payload.demandId, typeof payload.text === "string" ? payload.text : void 0);
 });
 registerAction("demand/answer", (draft, payload, ctx2) => {
-  if (!isObj20(payload) || typeof payload.demandId !== "string" || payload.answer !== "grant" && payload.answer !== "refuse") throw new Error('demand/answer needs { demandId, answer: "grant" | "refuse" }');
+  if (!isObj21(payload) || typeof payload.demandId !== "string" || payload.answer !== "grant" && payload.answer !== "refuse") throw new Error('demand/answer needs { demandId, answer: "grant" | "refuse" }');
   return answerDemand(draft, ctx2, payload.demandId, payload.answer);
 });
 registerAction("reputation/introduce", (draft, payload, ctx2) => {
-  if (!isObj20(payload) || typeof payload.unitId !== "string") throw new Error("reputation/introduce needs { unitId }");
+  if (!isObj21(payload) || typeof payload.unitId !== "string") throw new Error("reputation/introduce needs { unitId }");
   return introduceNickname(draft, ctx2, payload.unitId);
 });
 
@@ -20397,24 +20548,24 @@ registerActivityHook((draft, ctx2, done) => {
   const amount = Number(ctx2.registries.activities.get(done.activityId)?.wantRelief ?? TUNING.bonds.want.relief.companion);
   return relieveWant(draft, done.companionId, amount, "activity");
 });
-var isObj21 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj22 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 registerAction("bonds/follow", (draft, _payload, ctx2) => followLead(draft, ctx2));
 registerAction("bonds/limit", (draft, payload) => {
-  if (!isObj21(payload) || typeof payload.text !== "string") throw new Error("bonds/limit needs { text }");
+  if (!isObj22(payload) || typeof payload.text !== "string") throw new Error("bonds/limit needs { text }");
   return setSceneLimit(draft, payload.text);
 });
 registerAction("bonds/deliver_rule", (draft, payload) => {
-  if (!isObj21(payload) || typeof payload.ruleId !== "string") throw new Error("bonds/deliver_rule needs { ruleId }");
+  if (!isObj22(payload) || typeof payload.ruleId !== "string") throw new Error("bonds/deliver_rule needs { ruleId }");
   return deliverRule(draft, payload.ruleId, typeof payload.text === "string" ? payload.text : void 0);
 });
 registerAction("bonds/answer_rule", (draft, payload, ctx2) => {
-  if (!isObj21(payload) || typeof payload.ruleId !== "string" || payload.answer !== "accept" && payload.answer !== "negotiate" && payload.answer !== "refuse") {
+  if (!isObj22(payload) || typeof payload.ruleId !== "string" || payload.answer !== "accept" && payload.answer !== "negotiate" && payload.answer !== "refuse") {
     throw new Error('bonds/answer_rule needs { ruleId, answer: "accept" | "negotiate" | "refuse" }');
   }
   return answerRule(draft, ctx2, payload.ruleId, payload.answer);
 });
 registerAction("bonds/set_publicity", (draft, payload, ctx2) => {
-  if (!isObj21(payload) || typeof payload.unitId !== "string" || !PUBLICITY_LEVELS.includes(payload.level)) {
+  if (!isObj22(payload) || typeof payload.unitId !== "string" || !PUBLICITY_LEVELS.includes(payload.level)) {
     throw new Error('bonds/set_publicity needs { unitId, level: "secret" | "known" | "public" }');
   }
   const unit = draft.squad.find((u) => u.id === payload.unitId);
@@ -20422,7 +20573,7 @@ registerAction("bonds/set_publicity", (draft, payload, ctx2) => {
   return setPublicity(draft, ctx2.registries, unit.id, payload.level, { cause: "commander" });
 });
 registerAction("content/set_categories", (draft, payload, ctx2) => {
-  if (!isObj21(payload) || !Array.isArray(payload.enabled) || payload.enabled.some((x) => typeof x !== "string")) {
+  if (!isObj22(payload) || !Array.isArray(payload.enabled) || payload.enabled.some((x) => typeof x !== "string")) {
     throw new Error("content/set_categories needs { enabled: string[] }");
   }
   return setCategories(draft, ctx2.registries, payload.enabled);
@@ -20514,15 +20665,15 @@ function personalDayStep(draft, ctx2) {
 
 // src/engine/actions/personal.ts
 registerDayEndStep("dm_rumors", personalDayStep);
-var isObj22 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj23 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 registerAction("device/remove_decor", (draft, payload, ctx2) => {
-  if (!isObj22(payload) || typeof payload.unitId !== "string" || !DECOR_PARTS.includes(payload.part)) {
+  if (!isObj23(payload) || typeof payload.unitId !== "string" || !DECOR_PARTS.includes(payload.part)) {
     throw new Error('device/remove_decor needs { unitId, part: "sticker" | "wallpaper" | "contact" }');
   }
   return removeDecor(draft, ctx2, payload.unitId, payload.part);
 });
 registerAction("device/intercept", (draft, payload, ctx2) => {
-  if (!isObj22(payload) || !INTERCEPT_CHANNELS.includes(payload.channel) || payload.toUnitId !== void 0 && typeof payload.toUnitId !== "string" || payload.text !== void 0 && typeof payload.text !== "string") {
+  if (!isObj23(payload) || !INTERCEPT_CHANNELS.includes(payload.channel) || payload.toUnitId !== void 0 && typeof payload.toUnitId !== "string" || payload.text !== void 0 && typeof payload.text !== "string") {
     throw new Error('device/intercept needs { channel: "dm" | "leash" | "recruit", toUnitId?, text? }');
   }
   return rollIntercept(draft, ctx2, {
@@ -20532,65 +20683,65 @@ registerAction("device/intercept", (draft, payload, ctx2) => {
   });
 });
 registerAction("device/resolve_intercept", (draft, payload, ctx2) => {
-  if (!isObj22(payload) || typeof payload.id !== "string" || typeof payload.keep !== "boolean") throw new Error("device/resolve_intercept needs { id, keep }");
+  if (!isObj23(payload) || typeof payload.id !== "string" || typeof payload.keep !== "boolean") throw new Error("device/resolve_intercept needs { id, keep }");
   return resolveIntercept(draft, ctx2, payload.id, payload.keep);
 });
 var SLOTS = ["morning", "afternoon", "evening"];
 registerAction("booking/cancel", (draft, payload, ctx2) => {
-  if (!isObj22(payload) || typeof payload.bookingId !== "string") throw new Error("booking/cancel needs { bookingId }");
+  if (!isObj23(payload) || typeof payload.bookingId !== "string") throw new Error("booking/cancel needs { bookingId }");
   return cancelBooking(draft, ctx2, payload.bookingId);
 });
 registerAction("booking/resolve", (draft, payload, ctx2) => {
-  if (isObj22(payload) && typeof payload.bookingId === "string") return resolveConflict(draft, ctx2, { bookingId: payload.bookingId });
-  if (isObj22(payload) && payload.settle === true && typeof payload.day === "number" && SLOTS.includes(payload.slot)) {
+  if (isObj23(payload) && typeof payload.bookingId === "string") return resolveConflict(draft, ctx2, { bookingId: payload.bookingId });
+  if (isObj23(payload) && payload.settle === true && typeof payload.day === "number" && SLOTS.includes(payload.slot)) {
     return resolveConflict(draft, ctx2, { day: payload.day, slot: payload.slot, settle: true });
   }
   throw new Error("booking/resolve needs { bookingId } or { day, slot, settle: true }");
 });
 registerAction("booking/play", (draft, payload, ctx2) => {
-  const id = isObj22(payload) && typeof payload.bookingId === "string" ? payload.bookingId : void 0;
+  const id = isObj23(payload) && typeof payload.bookingId === "string" ? payload.bookingId : void 0;
   return playBooking(draft, ctx2, id).events;
 });
 registerAction("courtship/refuse_claim", (draft, payload, ctx2) => {
-  if (!isObj22(payload) || typeof payload.unitId !== "string") throw new Error("courtship/refuse_claim needs { unitId }");
+  if (!isObj23(payload) || typeof payload.unitId !== "string") throw new Error("courtship/refuse_claim needs { unitId }");
   return refuseClaim(draft, ctx2, payload.unitId);
 });
 registerAction("token/answer", (draft, payload, ctx2) => {
-  if (!isObj22(payload) || typeof payload.offerId !== "string" || typeof payload.accept !== "boolean") throw new Error("token/answer needs { offerId, accept }");
+  if (!isObj23(payload) || typeof payload.offerId !== "string" || typeof payload.accept !== "boolean") throw new Error("token/answer needs { offerId, accept }");
   return answerOffer(draft, ctx2, payload.offerId, payload.accept);
 });
 registerAction("token/wear", (draft, payload, ctx2) => {
-  if (!isObj22(payload) || typeof payload.tokenId !== "string") throw new Error("token/wear needs { tokenId }");
+  if (!isObj23(payload) || typeof payload.tokenId !== "string") throw new Error("token/wear needs { tokenId }");
   return wearToken(draft, ctx2, payload.tokenId);
 });
 registerAction("token/remove", (draft, payload, ctx2) => {
-  if (!isObj22(payload) || typeof payload.tokenId !== "string") throw new Error("token/remove needs { tokenId }");
+  if (!isObj23(payload) || typeof payload.tokenId !== "string") throw new Error("token/remove needs { tokenId }");
   return removeToken(draft, ctx2, payload.tokenId);
 });
 registerAction("wager/challenge", (draft, payload, ctx2) => {
-  if (!isObj22(payload) || typeof payload.unitId !== "string" || typeof payload.gameId !== "string" || typeof payload.stakeId !== "string" || payload.pick !== void 0 && typeof payload.pick !== "string") {
+  if (!isObj23(payload) || typeof payload.unitId !== "string" || typeof payload.gameId !== "string" || typeof payload.stakeId !== "string" || payload.pick !== void 0 && typeof payload.pick !== "string") {
     throw new Error("wager/challenge needs { unitId, gameId, stakeId, pick? }");
   }
   return challenge(draft, ctx2, { unitId: payload.unitId, gameId: payload.gameId, stakeId: payload.stakeId, ...payload.pick !== void 0 ? { pick: payload.pick } : {} });
 });
 registerAction("wager/answer", (draft, payload, ctx2) => {
-  if (!isObj22(payload) || typeof payload.wagerId !== "string" || typeof payload.accept !== "boolean") throw new Error("wager/answer needs { wagerId, accept }");
+  if (!isObj23(payload) || typeof payload.wagerId !== "string" || typeof payload.accept !== "boolean") throw new Error("wager/answer needs { wagerId, accept }");
   return answerChallenge(draft, ctx2, payload.wagerId, payload.accept);
 });
 registerAction("wager/play", (draft, payload, ctx2) => {
-  if (!isObj22(payload) || typeof payload.wagerId !== "string" || payload.pick !== void 0 && typeof payload.pick !== "string") throw new Error("wager/play needs { wagerId, pick? }");
+  if (!isObj23(payload) || typeof payload.wagerId !== "string" || payload.pick !== void 0 && typeof payload.pick !== "string") throw new Error("wager/play needs { wagerId, pick? }");
   return playWager(draft, ctx2, payload.wagerId, payload.pick);
 });
 registerAction("wager/answer_question", (draft, payload, ctx2) => {
-  if (!isObj22(payload) || typeof payload.wagerId !== "string") throw new Error("wager/answer_question needs { wagerId, text }");
+  if (!isObj23(payload) || typeof payload.wagerId !== "string") throw new Error("wager/answer_question needs { wagerId, text }");
   return answerQuestion(draft, ctx2, payload.wagerId, payload.text);
 });
 registerAction("wager/record_answer", (draft, payload, ctx2) => {
-  if (!isObj22(payload) || typeof payload.unitId !== "string") throw new Error("wager/record_answer needs { unitId, text }");
+  if (!isObj23(payload) || typeof payload.unitId !== "string") throw new Error("wager/record_answer needs { unitId, text }");
   return recordAnswer(draft, ctx2, payload.unitId, payload.text);
 });
 registerAction("secret/respond", (draft, payload, ctx2) => {
-  if (!isObj22(payload) || typeof payload.secretId !== "string" || !SECRET_ANSWERS.includes(payload.choice)) {
+  if (!isObj23(payload) || typeof payload.secretId !== "string" || !SECRET_ANSWERS.includes(payload.choice)) {
     throw new Error('secret/respond needs { secretId, choice: "confront" | "pretend" | "use" }');
   }
   return respondSecret(draft, ctx2, payload.secretId, payload.choice);
@@ -20619,52 +20770,52 @@ function powerDayStep(draft, ctx2) {
 
 // src/engine/actions/power.ts
 registerDayEndStep("director_tick", powerDayStep);
-var isObj23 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj24 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 registerAction("vote/open", (draft, payload, ctx2) => {
-  if (!isObj23(payload) || typeof payload.kind !== "string" || typeof payload.subject !== "string") throw new Error("vote/open needs { kind, subject }");
+  if (!isObj24(payload) || typeof payload.kind !== "string" || typeof payload.subject !== "string") throw new Error("vote/open needs { kind, subject }");
   return openVote(draft, ctx2, payload.kind, payload.subject);
 });
 registerAction("vote/drop", (draft, payload) => {
-  if (!isObj23(payload) || typeof payload.voteId !== "string") throw new Error("vote/drop needs { voteId }");
+  if (!isObj24(payload) || typeof payload.voteId !== "string") throw new Error("vote/drop needs { voteId }");
   return dropVote(draft, payload.voteId);
 });
 registerAction("vote/overrule", (draft, payload, ctx2) => {
-  if (!isObj23(payload) || typeof payload.voteId !== "string" || typeof payload.means !== "string") throw new Error("vote/overrule needs { voteId, means }");
+  if (!isObj24(payload) || typeof payload.voteId !== "string" || typeof payload.means !== "string") throw new Error("vote/overrule needs { voteId, means }");
   let punish;
   if (payload.punish !== void 0) {
-    if (!isObj23(payload.punish) || typeof payload.punish.unitId !== "string" || typeof payload.punish.measure !== "string") throw new Error("vote/overrule: punish needs { unitId, measure }");
+    if (!isObj24(payload.punish) || typeof payload.punish.unitId !== "string" || typeof payload.punish.measure !== "string") throw new Error("vote/overrule: punish needs { unitId, measure }");
     punish = { unitId: payload.punish.unitId, measure: payload.punish.measure };
   }
   return overruleVote(draft, ctx2, payload.voteId, payload.means, punish);
 });
 registerVoteGate("expedition/start", (state, payload, reg) => {
-  if (!isObj23(payload) || typeof payload.missionId !== "string" || isObj23(payload.poi)) return null;
+  if (!isObj24(payload) || typeof payload.missionId !== "string" || isObj24(payload.poi)) return null;
   const mission = state.missions.offered.find((m) => m.id === payload.missionId);
   if (!mission || reg.missionTemplates.get(mission.templateId)?.tutorial === true) return null;
   return { kind: "mission", subject: mission.id };
 });
-registerVoteGate("base/upgrade", (_state, payload) => isObj23(payload) && typeof payload.facilityId === "string" ? { kind: "upgrade", subject: payload.facilityId } : null);
+registerVoteGate("base/upgrade", (_state, payload) => isObj24(payload) && typeof payload.facilityId === "string" ? { kind: "upgrade", subject: payload.facilityId } : null);
 function benchSeverity(reg) {
   const heavy = [...reg.punishments.values()].filter((p) => p.sideEffects?.some((e) => e.type === "bench"));
   return heavy.length === 0 ? null : Math.min(...heavy.map((p) => Number(p.severity)));
 }
 registerVoteGate("discipline/punish", (_state, payload, reg) => {
-  if (!isObj23(payload) || typeof payload.unitId !== "string" || typeof payload.measure !== "string") return null;
+  if (!isObj24(payload) || typeof payload.unitId !== "string" || typeof payload.measure !== "string") return null;
   const pun = punishmentFor(reg, payload.measure);
   const limit = benchSeverity(reg);
   if (!pun || limit === null || Number(pun.severity) > limit) return null;
   return { kind: "punish", subject: payload.unitId };
 });
 registerVoteGate("rations/set", (state, payload, reg) => {
-  if (!isObj23(payload) || typeof payload.mode !== "string" || !RATION_MODES.includes(payload.mode)) return null;
+  if (!isObj24(payload) || typeof payload.mode !== "string" || !RATION_MODES.includes(payload.mode)) return null;
   return rationsVotable(state, reg) ? { kind: "rations", subject: payload.mode } : null;
 });
 registerAction("rations/set", (draft, payload) => {
-  if (!isObj23(payload)) throw new Error("rations/set needs { mode }");
+  if (!isObj24(payload)) throw new Error("rations/set needs { mode }");
   return setRations(draft, payload.mode);
 });
 registerAction("power/countermand", (draft, payload, ctx2) => {
-  if (!isObj23(payload) || payload.answer !== "accept" && payload.answer !== "overrule") throw new Error('power/countermand needs { answer: "accept" | "overrule" }');
+  if (!isObj24(payload) || payload.answer !== "accept" && payload.answer !== "overrule") throw new Error('power/countermand needs { answer: "accept" | "overrule" }');
   const open3 = countermandOpen(draft);
   if (!open3) {
     if (draft.power) delete draft.power.countermand;
@@ -20687,44 +20838,44 @@ registerAction("power/countermand", (draft, payload, ctx2) => {
   return events;
 });
 registerAction("power/endorse", (draft, _payload, ctx2) => endorse(draft, ctx2));
-registerAction("power/challenge", (draft, payload, ctx2) => challenge2(draft, ctx2, isObj23(payload) ? payload.stat : void 0));
+registerAction("power/challenge", (draft, payload, ctx2) => challenge2(draft, ctx2, isObj24(payload) ? payload.stat : void 0));
 registerAction("power/ask_first", (draft, payload, ctx2) => {
-  if (!isObj23(payload) || typeof payload.unitId !== "string" || typeof payload.on !== "boolean") throw new Error("power/ask_first needs { unitId, on }.");
+  if (!isObj24(payload) || typeof payload.unitId !== "string" || typeof payload.on !== "boolean") throw new Error("power/ask_first needs { unitId, on }.");
   return setAskFirst(draft, ctx2, payload.unitId, payload.on);
 });
 registerVoteGate("dilemma/choose", (state, payload) => {
   const open3 = state.dilemmas?.open;
-  if (!open3 || open3.context !== "scapegoat" || open3.status !== "presented" || !isObj23(payload) || typeof payload.index !== "number") return null;
+  if (!open3 || open3.context !== "scapegoat" || open3.status !== "presented" || !isObj24(payload) || typeof payload.index !== "number") return null;
   const answer = scapegoatOptionId(open3.options?.[payload.index]);
   return answer === null ? null : { kind: "scapegoat", subject: answer };
 });
 
 // src/engine/actions/dilemma.ts
-var isObj24 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj25 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 registerDayEndStep("director_tick", pacingStep);
 registerAction("dilemma/request", (draft, payload, ctx2) => {
-  const p = isObj24(payload) ? payload : {};
+  const p = isObj25(payload) ? payload : {};
   if (typeof p.templateId !== "string" || typeof p.context !== "string") throw new Error("dilemma/request needs { templateId, context }");
   return openDilemma(draft, ctx2, { templateId: p.templateId, context: p.context });
 });
 registerAction("dilemma/present", (draft, payload, ctx2) => {
-  const p = isObj24(payload) ? payload : {};
+  const p = isObj25(payload) ? payload : {};
   return presentDilemma(draft, ctx2, p.requestId, p.output);
 });
 registerAction("dilemma/fallback", (draft, payload, ctx2) => {
-  const p = isObj24(payload) ? payload : {};
+  const p = isObj25(payload) ? payload : {};
   return fallbackDilemma(draft, ctx2, p.requestId);
 });
 registerAction("dilemma/choose", (draft, payload, ctx2) => {
-  const p = isObj24(payload) ? payload : {};
+  const p = isObj25(payload) ? payload : {};
   return chooseDilemma(draft, ctx2, p.id, p.index, readRoutePick(p.route));
 });
 
 // src/engine/actions/arc.ts
-var isObj25 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj26 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 registerActivityHook(arcActivityHook);
 registerAction("arc/decide", (draft, payload, ctx2) => {
-  const p = isObj25(payload) ? payload : {};
+  const p = isObj26(payload) ? payload : {};
   if (typeof p.unitId !== "string" || typeof p.defectId !== "string" || typeof p.path !== "string") {
     throw new Error("arc/decide needs { unitId, defectId, path, compel? }");
   }
@@ -20732,9 +20883,9 @@ registerAction("arc/decide", (draft, payload, ctx2) => {
 });
 
 // src/engine/actions/items.ts
-var isObj26 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj27 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 registerAction("item/equip", (draft, payload, ctx2) => {
-  if (!isObj26(payload) || typeof payload.unitId !== "string" || typeof payload.uid !== "string") {
+  if (!isObj27(payload) || typeof payload.unitId !== "string" || typeof payload.uid !== "string") {
     throw new Error("item/equip needs { unitId, uid }");
   }
   const unit = draft.squad.find((u) => u.id === payload.unitId);
@@ -20752,7 +20903,7 @@ registerAction("item/equip", (draft, payload, ctx2) => {
   return [{ type: "item_equipped", unitId: unit.id, slot: slot2, uid: inst.uid, from: previous?.id ?? null }];
 });
 registerAction("item/unequip", (draft, payload) => {
-  if (!isObj26(payload) || typeof payload.unitId !== "string" || !["weapon", "upper", "lower"].includes(String(payload.slot))) {
+  if (!isObj27(payload) || typeof payload.unitId !== "string" || !["weapon", "upper", "lower"].includes(String(payload.slot))) {
     throw new Error("item/unequip needs { unitId, slot }");
   }
   const unit = draft.squad.find((u) => u.id === payload.unitId);
@@ -20782,7 +20933,7 @@ var ownedItem = (draft, uid) => {
 };
 registerAction("item/craft", (draft, payload, ctx2) => {
   session(draft);
-  const id = isObj26(payload) ? payload.recipeId : void 0;
+  const id = isObj27(payload) ? payload.recipeId : void 0;
   const recipe = typeof id === "string" ? ctx2.registries.recipes.get(id) : void 0;
   if (!recipe) throw new Error(`Unknown recipe "${String(id)}".`);
   const rarity = recipe.rarity;
@@ -20796,7 +20947,7 @@ registerAction("item/craft", (draft, payload, ctx2) => {
 });
 registerAction("item/upgrade", (draft, payload, ctx2) => {
   session(draft);
-  const inst = ownedItem(draft, isObj26(payload) ? payload.uid : void 0);
+  const inst = ownedItem(draft, isObj27(payload) ? payload.uid : void 0);
   if (inst.upgrade >= TUNING.items.maxUpgrade) throw new Error("MAX UPGRADE");
   const cost = upgradeCost(draft, ctx2.registries, inst);
   const events = spend(draft, cost.credits, cost.plyx);
@@ -20806,7 +20957,7 @@ registerAction("item/upgrade", (draft, payload, ctx2) => {
 });
 registerAction("item/reroll", (draft, payload, ctx2) => {
   session(draft);
-  const p = isObj26(payload) ? payload : {};
+  const p = isObj27(payload) ? payload : {};
   const inst = ownedItem(draft, p.uid);
   const i = p.affixIndex;
   if (typeof i !== "number" || !Number.isInteger(i) || i < 0 || i >= inst.affixes.length) throw new Error("Pick one of the item's affixes.");
@@ -20822,7 +20973,7 @@ registerAction("item/reroll", (draft, payload, ctx2) => {
 });
 registerAction("item/dismantle", (draft, payload, ctx2) => {
   session(draft);
-  const inst = ownedItem(draft, isObj26(payload) ? payload.uid : void 0);
+  const inst = ownedItem(draft, isObj27(payload) ? payload.uid : void 0);
   if (equippedBy(draft, inst.uid)) throw new Error("Unequip the item first.");
   const plyx = dismantleValue(ctx2.registries, inst);
   draft.inventory = draft.inventory.filter((i) => i.uid !== inst.uid);
@@ -20870,7 +21021,7 @@ registerAction("campaign/set_first_impression_tau", (draft, payload) => {
 });
 
 // src/engine/actions/onboarding.ts
-var isObj27 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj28 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function open2(draft) {
   const o = draft.onboarding;
   if (!o || o.done) throw new Error("The prologue is over.");
@@ -20878,7 +21029,7 @@ function open2(draft) {
 }
 function currentFor(draft, ctx2, payload, action) {
   const o = open2(draft);
-  if (!isObj27(payload) || typeof payload.stepId !== "string") throw new Error(`${action} needs { stepId }`);
+  if (!isObj28(payload) || typeof payload.stepId !== "string") throw new Error(`${action} needs { stepId }`);
   if (payload.stepId !== o.stepId) throw new Error("Stale onboarding step.");
   const step = currentStep(draft, ctx2.registries);
   if (!step) throw new Error("Stale onboarding step.");
@@ -20902,7 +21053,7 @@ registerAction("onboarding/skip_step", (draft, payload, ctx2) => {
 });
 registerAction("onboarding/mark_spoken", (draft, payload) => {
   const o = open2(draft);
-  if (!isObj27(payload) || typeof payload.unitId !== "string") throw new Error("onboarding/mark_spoken needs { unitId }");
+  if (!isObj28(payload) || typeof payload.unitId !== "string") throw new Error("onboarding/mark_spoken needs { unitId }");
   const unitId = payload.unitId;
   if (!livingNamed(draft).some((u) => u.id === unitId)) throw new Error("Only a living named soldier can be spoken to.");
   if (o.spoken?.includes(unitId)) throw new Error("That soldier has already been spoken to.");
@@ -20911,7 +21062,7 @@ registerAction("onboarding/mark_spoken", (draft, payload) => {
 });
 registerAction("onboarding/hint_seen", (draft, payload, ctx2) => {
   const o = open2(draft);
-  if (!isObj27(payload) || typeof payload.hintId !== "string") throw new Error("onboarding/hint_seen needs { hintId }");
+  if (!isObj28(payload) || typeof payload.hintId !== "string") throw new Error("onboarding/hint_seen needs { hintId }");
   const hintId = payload.hintId;
   const entry = ctx2.registries.prologues.get(o.prologueId);
   const known = entry ? stepsOf(entry).some((s) => s.hints?.some((h2) => h2.id === hintId)) : false;
@@ -23558,16 +23709,16 @@ var fieldSchemas = {
   ambientHum: external_exports.boolean()
 };
 var budgetSchema = external_exports.number().int().min(1);
-var isObj28 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj29 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function merge(base, over) {
-  const src = isObj28(over) ? over : {};
+  const src = isObj29(over) ? over : {};
   const out = { ...base };
   for (const [key, schema] of Object.entries(fieldSchemas)) {
     const parsed = schema.safeParse(src[key]);
     if (parsed.success) out[key] = parsed.data;
   }
   const budgets = { ...base.budgets };
-  const srcBudgets = isObj28(src.budgets) ? src.budgets : {};
+  const srcBudgets = isObj29(src.budgets) ? src.budgets : {};
   for (const id of CALL_TYPE_IDS) {
     const parsed = budgetSchema.safeParse(srcBudgets[id]);
     if (parsed.success) budgets[id] = parsed.data;
@@ -24761,24 +24912,24 @@ registerCallType({
   prompt: prompt3,
   schema: IntentExtractRawSchema
 });
-var isObj29 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj30 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var LABELS = EXPRESSION_LABELS;
 function sanitizeIntentOutput(raw, ctx2) {
   const parsed = IntentExtractRawSchema.safeParse(raw);
   const src = parsed.success ? parsed.data : { events: [], facts: [], proposals: [], promises: [], emotions: [], stressHints: [], contentViolations: [], sceneTone: void 0 };
-  const events = src.events.filter((e) => isObj29(e) && typeof e.confidence === "number" && e.confidence >= ctx2.minConfidence);
-  const proposals2 = src.proposals.filter((p) => ctx2.romance || !(isObj29(p) && ROMANTIC_PROPOSALS.includes(p.kind)));
+  const events = src.events.filter((e) => isObj30(e) && typeof e.confidence === "number" && e.confidence >= ctx2.minConfidence);
+  const proposals2 = src.proposals.filter((p) => ctx2.romance || !(isObj30(p) && ROMANTIC_PROPOSALS.includes(p.kind)));
   const intents = validateIntents({ ...src, events, proposals: proposals2 }, { participants: ctx2.participants, squad: ctx2.squad, maxEvents: TUNING.relations.maxEventsRead, ...ctx2.measures ? { measures: ctx2.measures } : {}, ...ctx2.rules ? { rules: ctx2.rules } : {} });
   const emotions = [];
   for (const e of src.emotions) {
-    if (isObj29(e) && typeof e.unitId === "string" && ctx2.participants.includes(e.unitId) && typeof e.label === "string" && LABELS.includes(e.label)) {
+    if (isObj30(e) && typeof e.unitId === "string" && ctx2.participants.includes(e.unitId) && typeof e.label === "string" && LABELS.includes(e.label)) {
       emotions.push({ unitId: e.unitId, label: e.label });
     }
   }
   const contentViolations = [];
   const evidenceMax = TUNING.bonds.limits.evidenceMax;
   for (const v of src.contentViolations) {
-    if (!isObj29(v) || typeof v.category !== "string" || !(ctx2.excluded ?? []).includes(v.category) || contentViolations.some((x) => x.category === v.category)) continue;
+    if (!isObj30(v) || typeof v.category !== "string" || !(ctx2.excluded ?? []).includes(v.category) || contentViolations.some((x) => x.category === v.category)) continue;
     contentViolations.push({ category: v.category, evidence: typeof v.evidence === "string" ? v.evidence.replace(/\s+/g, " ").trim().slice(0, evidenceMax) : "" });
     if (contentViolations.length === TUNING.bonds.limits.maxViolations) break;
   }
@@ -25806,7 +25957,7 @@ function renderCommanderFile(host, ctx2) {
 
 // src/setup/commander.ts
 var PERSONA_CHARS = 6e3;
-var isObj30 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj31 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var cap3 = (v, max) => typeof v === "string" ? v.replace(/<[^>]*>/g, "").trim().slice(0, max) : "";
 function valueOf(kind, v) {
   if (typeof v !== "string") return null;
@@ -25815,7 +25966,7 @@ function valueOf(kind, v) {
 }
 var LOWER_ORDER = ["reflexes", "endurance", "strength"];
 function sanitizeCommanderImport(raw, reg, opts = { desireBondDefects: false }) {
-  const src = isObj30(raw) ? raw : {};
+  const src = isObj31(raw) ? raw : {};
   const setup = defaultCommanderSetup();
   for (const k of BODY_STATS) {
     const v = valueOf(k, src[k]);
@@ -25831,7 +25982,7 @@ function sanitizeCommanderImport(raw, reg, opts = { desireBondDefects: false }) 
   const reasons = {};
   for (const item of Array.isArray(src.traits) ? src.traits : []) {
     if (setup.traits.regular.length >= TUNING.commander.maxRegular) break;
-    const id = isObj30(item) && typeof item.id === "string" ? item.id : null;
+    const id = isObj31(item) && typeof item.id === "string" ? item.id : null;
     const t = id === null ? void 0 : reg.commanderTraits.get(id);
     if (!id || !t || t.kind !== "regular" || setup.traits.regular.includes(id)) continue;
     if (traitBlockReason(reg, setup.traits, id, opts) !== null) continue;
@@ -25840,7 +25991,7 @@ function sanitizeCommanderImport(raw, reg, opts = { desireBondDefects: false }) 
   }
   return { setup, personaName: "", reasons, notes: cap3(src.notes, 300) };
 }
-var usable2 = (raw, result) => isObj30(raw) && ["strength", "endurance", "reflexes", "expression", "seasoning"].some((k) => valueOf(k, raw[k]) !== null) || result.setup.traits.regular.length > 0;
+var usable2 = (raw, result) => isObj31(raw) && ["strength", "endurance", "reflexes", "expression", "seasoning"].some((k) => valueOf(k, raw[k]) !== null) || result.setup.traits.regular.length > 0;
 async function importCommander(st, deps) {
   const { settings, registries } = deps;
   try {
@@ -25910,7 +26061,7 @@ function buildImportInput(card2, registries, settings, sections, world, bond) {
     ...sections.includes("bond") ? { categories: [...registries.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => ({ id: String(c.id), label: str3(c.label) })) } : {}
   };
 }
-var isObj31 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj32 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var cap4 = (v, max, fallback = "") => typeof v === "string" ? v.trim().slice(0, max) : fallback;
 var num4 = (v, lo, hi, fallback) => typeof v === "number" && Number.isFinite(v) ? Math.min(hi, Math.max(lo, Math.round(v))) : fallback;
 var STANCE_REASON_MAX2 = 160;
@@ -25928,7 +26079,7 @@ function tagList2(v, max) {
   return out;
 }
 function sanitizeProfile(raw, ctx2) {
-  const src = isObj31(raw) ? raw : {};
+  const src = isObj32(raw) ? raw : {};
   const want = (s) => ctx2.sections.includes(s);
   const dropped = [];
   const missing2 = [];
@@ -25937,7 +26088,7 @@ function sanitizeProfile(raw, ctx2) {
     const out = [];
     const seen = /* @__PURE__ */ new Set();
     for (const item of Array.isArray(list5) ? list5 : []) {
-      const id = isObj31(item) && typeof item[idKey] === "string" ? item[idKey] : null;
+      const id = isObj32(item) && typeof item[idKey] === "string" ? item[idKey] : null;
       if (id === null) {
         dropped.push(`${SECTION_LABEL[section]}:(invalid)`);
         continue;
@@ -25985,11 +26136,11 @@ function sanitizeProfile(raw, ctx2) {
     const read = validateBond(src.bond, ctx2.registries);
     profile.bond = read.bond;
     bond = read.bond;
-    const reason = cap4(isObj31(src.bond) ? src.bond.reason : void 0, TUNING.bonds.limits.noteMax);
+    const reason = cap4(isObj32(src.bond) ? src.bond.reason : void 0, TUNING.bonds.limits.noteMax);
     if (reason !== "") profile.bondReason = reason;
     for (const issue of read.issues) if (/unknown content category/.test(issue)) dropped.push(`bond:${issue.match(/"([^"]*)"/)?.[1] ?? "(invalid)"}`);
     if (read.valid.length === 0) missing2.push("bond");
-    if (!isObj31(src.bond)) delete profile.bond;
+    if (!isObj32(src.bond)) delete profile.bond;
   }
   if (want("defects")) {
     profile.defectCandidates = pick2(
@@ -26006,7 +26157,7 @@ function sanitizeProfile(raw, ctx2) {
     if (profile.defectCandidates.length === 0) missing2.push("defects");
   }
   if (want("values")) {
-    if (isObj31(src.values)) {
+    if (isObj32(src.values)) {
       const v = src.values;
       profile.values = Object.fromEntries(VALUE_KEYS.map((k) => [k, num4(v[k], -3, 3, 0)]));
     } else missing2.push("values");
@@ -26031,25 +26182,25 @@ function sanitizeProfile(raw, ctx2) {
     }
     profile.commanderTastes = out;
   }
-  if (want("disposition") && isObj31(src.dispositionOffset) && typeof src.dispositionOffset.offset === "number" && Number.isFinite(src.dispositionOffset.offset)) {
+  if (want("disposition") && isObj32(src.dispositionOffset) && typeof src.dispositionOffset.offset === "number" && Number.isFinite(src.dispositionOffset.offset)) {
     profile.dispositionOffset = { offset: num4(src.dispositionOffset.offset, -2, 2, 0), reason: cap4(src.dispositionOffset.reason, STANCE_REASON_MAX2) };
   }
   if (want("stances")) {
     const ids = stanceOptionIds(ctx2.registries, ctx2.world);
     if (ids.length > 0) {
-      const given = isObj31(src.worldStances) ? src.worldStances : {};
+      const given = isObj32(src.worldStances) ? src.worldStances : {};
       for (const key of Object.keys(given)) if (!ids.includes(key)) dropped.push(`stances:${key}`);
       const out = {};
       for (const id of ids) {
         const e = given[id];
-        const stance = isObj31(e) && typeof e.stance === "string" && STANCE_WORDS.includes(e.stance) ? e.stance : null;
+        const stance = isObj32(e) && typeof e.stance === "string" && STANCE_WORDS.includes(e.stance) ? e.stance : null;
         out[id] = stance === null ? { stance: "indifferent", strength: 1, reason: "" } : { stance, strength: e.strength === 2 ? 2 : 1, reason: cap4(e.reason, STANCE_REASON_MAX2) };
       }
       profile.worldStances = out;
     }
   }
   if (want("baseline")) {
-    if (isObj31(src.emotionalBaseline)) {
+    if (isObj32(src.emotionalBaseline)) {
       const b = src.emotionalBaseline;
       const lim = SETUP_LIMITS.baseline;
       profile.baseline = {
@@ -33463,7 +33614,7 @@ function playBoot(screen, opts) {
 // src/ui/device/chrome.ts
 var bit = (cls, text2) => h("span", { class: cls }, text2);
 var many = (n, cls) => Array.from({ length: n }, () => bit(cls));
-var PRESETS = {
+var PRESETS2 = {
   // olive-grey surplus: rubber bumpers, side grips, two slotted screws, a worn sticker and a barcode
   ccp_standard: () => [
     noise("alius-grain", { frequency: "0.85", octaves: 3 }),
@@ -33537,7 +33688,7 @@ function renderChrome(chrome, screen, device, skin, assetUrl) {
     return;
   }
   clearImageLayout(device, screen);
-  const decor = PRESETS[String(skin.cssPreset)] ?? PRESETS.ccp_standard;
+  const decor = PRESETS2[String(skin.cssPreset)] ?? PRESETS2.ccp_standard;
   chrome.append(...decor().filter((n) => n !== null), bit("alius-led"), bit("alius-device-label", String(skin.label ?? skin.name)));
   chrome.lastElementChild?.setAttribute("aria-hidden", "true");
 }
@@ -37135,13 +37286,13 @@ import { editGroup, openGroupById } from "../../../../group-chats.js";
 import { newWorldInfoEntryTemplate } from "../../../../world-info.js";
 
 // src/st/chat.ts
-var isObj32 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj33 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function mapChatMessages(chat, from = 0) {
   if (!Array.isArray(chat)) return [];
   const out = [];
   for (let index = Math.max(0, from); index < chat.length; index++) {
     const m = chat[index];
-    if (!isObj32(m) || m.is_system === true) continue;
+    if (!isObj33(m) || m.is_system === true) continue;
     const avatar = typeof m.original_avatar === "string" && m.original_avatar !== "" ? m.original_avatar : void 0;
     out.push({
       index,
@@ -37158,7 +37309,7 @@ function lastCharacterAvatar(chat) {
   if (!Array.isArray(chat)) return void 0;
   for (let i = chat.length - 1; i >= 0; i--) {
     const m = chat[i];
-    if (isObj32(m) && m.is_user !== true && m.is_system !== true) {
+    if (isObj33(m) && m.is_user !== true && m.is_system !== true) {
       return typeof m.original_avatar === "string" && m.original_avatar !== "" ? m.original_avatar : void 0;
     }
   }
@@ -37194,17 +37345,17 @@ function toStLorebook(book2, template) {
 }
 
 // src/st/sprites.ts
-var isObj33 = (v) => typeof v === "object" && v !== null;
+var isObj34 = (v) => typeof v === "object" && v !== null;
 function spriteFolder(avatar, name, overrides) {
   if (!Array.isArray(overrides)) return name;
   const key = avatar.replace(/\.[^.]+$/, "");
-  const hit = overrides.find((o) => isObj33(o) && o.name === key && typeof o.path === "string" && o.path !== "");
+  const hit = overrides.find((o) => isObj34(o) && o.name === key && typeof o.path === "string" && o.path !== "");
   return hit ? hit.path : name;
 }
 function pickSprite(list5, label2) {
   if (!Array.isArray(list5)) return null;
   for (const item of list5) {
-    if (isObj33(item) && item.label === label2 && typeof item.path === "string") return item.path;
+    if (isObj34(item) && item.label === label2 && typeof item.path === "string") return item.path;
   }
   return null;
 }

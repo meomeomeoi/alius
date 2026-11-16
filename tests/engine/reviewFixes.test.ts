@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { Registries } from '../../src/content/types';
 import { addFact, openPromises, recordPromise } from '../../src/engine/memory';
+import { memoryConfig } from '../../src/engine/memory/config';
 import { validateIntents } from '../../src/engine/relations/intents';
 import type { CampaignState } from '../../src/engine/state/types';
 import { TUNING } from '../../src/engine/tuning';
@@ -127,10 +128,11 @@ describe('review #7: a receptive reconcile stays reconciled', () => {
 
 describe('review #8: memory stays small', () => {
   const fact = (i: number, over: Record<string, unknown> = {}) => ({ about: ['world'], text: `fact number ${i}`, tags: [], importance: 3 as const, day: 1, knownBy: ['*'], ...over });
-  it('addFact keeps at most factsMax facts, evicting the least important and oldest', () => {
+  it('addFact keeps at most the hard ceiling (factsMax × 1.25) of facts, evicting the least important and oldest', () => {
     const s = campaign(reg, 4);
-    for (let i = 0; i < TUNING.memory.factsMax + 30; i++) addFact(s, fact(i, { importance: i === 5 ? 5 : 1, day: i }));
-    expect(s.memory.facts).toHaveLength(TUNING.memory.factsMax);
+    const ceiling = Math.floor(memoryConfig(s).factsMax * TUNING.memory.hardCeiling);
+    for (let i = 0; i < ceiling + 30; i++) addFact(s, fact(i, { importance: i === 5 ? 5 : 1, day: i }));
+    expect(s.memory.facts).toHaveLength(ceiling);
     expect(s.memory.facts.some((f) => f.text === 'fact number 5')).toBe(true);
     expect(s.memory.facts.some((f) => f.text === 'fact number 0')).toBe(false);
   });

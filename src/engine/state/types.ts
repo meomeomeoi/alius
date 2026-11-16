@@ -244,6 +244,49 @@ export interface Fact {
   day: number;
   sceneId?: string;
   knownBy: string[];
+  /** P3b: never folded, never pruned, +2 in retrieval. */
+  pinned?: true;
+  /** P3b: units that know the fact only as a rumor, and the day each heard it. */
+  heard?: Record<string, number>;
+  /** P3b: the retold version (rumor mode `model`), shown to every hearer. */
+  rumor?: { text: string };
+  /** P3b: the commander does not know it (P12 writes these). Never shown by `Knowledge`. */
+  hiddenFromCommander?: true;
+  /** P3b: the player edited the text. */
+  edited?: true;
+  /** P3b: still spreading as a rumor (a rule's `spread`). */
+  spread?: 'slow' | 'fast';
+}
+
+/** P3b: how much memory a campaign keeps and shows. `custom` is a preset the player edited. */
+export type MemoryPreset = 'short' | 'normal' | 'long' | 'custom';
+export interface MemoryConfig {
+  factsMax: number;
+  foldAfterDays: number;
+  recencyBase: number;
+  retrievalK: number;
+  memoryTokens: number;
+  journalLines: number;
+  dmLines: number;
+  chronicleDays: number;
+  rumorMode: 'plain' | 'model';
+  hideScenesAfter: number;
+}
+
+/** P3b: old facts of one unit (or the world, `'*'`) folded into two paragraphs. */
+export interface Dossier {
+  own: string;
+  shared: string;
+  day: number;
+  folded: number;
+}
+
+/** P3b: where an ended scene sits in the ST chat, and whether its summary was stored. */
+export interface SceneMark {
+  sceneId: string;
+  from: number;
+  to: number;
+  summarized: boolean;
 }
 
 export interface PromiseRecord {
@@ -791,7 +834,22 @@ export interface CampaignState {
   dms: Record<string, DmMessage[]>;
   /** Per unit: the day and how many commander DMs were sent that day (the unit's "social battery", P3). */
   dmMeta?: Record<string, { day: number; sent: number }>;
-  memory: { facts: Fact[]; chronicle: ChronicleEntry[]; promises?: PromiseRecord[]; nextId?: number };
+  memory: {
+    facts: Fact[];
+    chronicle: ChronicleEntry[];
+    promises?: PromiseRecord[];
+    nextId?: number;
+    /** P3b: absent = the `normal` preset. Named presets store only `preset` (plus the two mode fields); `custom` stores overrides. */
+    config?: { preset: MemoryPreset } & Partial<MemoryConfig>;
+    /** P3b: per unit id (or `'*'` for the world) the folded old facts. */
+    dossiers?: Record<string, Dossier>;
+    /** P3b: ST message ranges Alius hid (`/hide`), so that turning hiding off unhides exactly these. */
+    hidden?: Array<[number, number]>;
+    /** P3b: the last 50 ended scenes with their chat range. */
+    scenes?: SceneMark[];
+    /** P3b: counter of the facts a memory rule writes (`fr1`, `fr2`, …); `nextId` is never advanced by P3b. */
+    nextRememberId?: number;
+  };
   /** Recent changes of resources, stress and relation axes (P7a): the newest 150 entries of the last 7 days. Absent in older saves. */
   ledger?: LedgerEntry[];
   /** The open scene, if any (P3). */

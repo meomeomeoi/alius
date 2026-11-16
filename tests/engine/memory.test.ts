@@ -4,6 +4,7 @@ import {
   addChronicle, addFact, applyCompaction, compactionDue, factsVisibleTo, fallbackCompaction, nextId, openPromises,
   recordPromise, retrieveFacts, revealCrime,
 } from '../../src/engine/memory';
+import { memoryConfig } from '../../src/engine/memory/config';
 import type { CampaignState, Fact } from '../../src/engine/state/types';
 import { TUNING } from '../../src/engine/tuning';
 import { campaign, loadCore, ofType } from '../helpers/world';
@@ -80,7 +81,7 @@ describe('facts', () => {
     const s = fresh();
     for (let i = 0; i < 10; i++) addFact(s, fact({ text: `fact ${i}`, knownBy: ['*'], about: [ANN], day: 10 }));
     const out = retrieveFacts(s, { participants: [ANN], tags: [] });
-    expect(out).toHaveLength(TUNING.memory.retrievalK);
+    expect(out).toHaveLength(memoryConfig(s).retrievalK);
     expect(out[0].text).toBe('fact 9');
     expect(retrieveFacts(s, { participants: [ANN], tags: [] }, 2)).toHaveLength(2);
   });

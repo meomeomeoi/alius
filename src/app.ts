@@ -4,6 +4,7 @@ import './engine/actions/squad'; // registers squad/* actions
 import './engine/actions/calendar'; // registers calendar/*, activity/* and commander/* actions
 import './engine/actions/base'; // registers base/*, roster/* and squad/set_flavor actions
 import './engine/actions/scene'; // registers scene/*, intents/*, proposal/*, memory/* actions and the P3 relation accounting
+import './engine/actions/memory'; // registers memory/configure, pin, forget, edit (P3b)
 import './engine/actions/comms'; // registers dm/*, night/* actions and the defect social hooks
 import './engine/actions/combat'; // registers combat/* and campaign/set_difficulty actions
 import './engine/actions/progression'; // registers squad/unlock_node, respec, set_loadout, release_breakdowns and the level-up hook
