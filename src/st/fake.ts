@@ -1,6 +1,7 @@
 import type {
   CardInfo, CharacterSummary, ChatInfo, ChatMessage, InjectionPosition, Lorebook, MemberInfo, ProfileInfo, StAdapter, StEvent,
 } from './adapter';
+import { hideRuns } from './chat';
 
 export interface ScriptedReply { avatar: string; name: string; text: string }
 
@@ -39,7 +40,7 @@ export class FakeStAdapter implements StAdapter {
   metadataSaves = 0;
   settingsSaves = 0;
   /** The chat the scene screen reads; filled by `sendUserMessage`. */
-  chatMessages: ChatMessage[] = [];
+  chatMessages: Array<ChatMessage & { isSystem?: boolean }> = [];
   /** One entry per `sendUserMessage`: the replies the group gives, in order. */
   groupReplies: ScriptedReply[][] = [];
   /** Consumed by `swipeLast('right')` and `regenerateLast`. */
@@ -214,7 +215,20 @@ export class FakeStAdapter implements StAdapter {
   }
 
   getChatMessages(from = 0): ChatMessage[] {
-    return this.chatMessages.filter((m) => m.index >= from).map((m) => ({ ...m }));
+    // like the real chat: system (hidden) messages are skipped, indices stay the true ones
+    return this.chatMessages.filter((m) => m.index >= from && m.isSystem !== true).map(({ isSystem: _s, ...m }) => m);
+  }
+
+  async hideMessages(from: number, to: number): Promise<Array<[number, number]>> {
+    const runs = hideRuns(this.chatMessages.length, from, to, (i) => this.chatMessages[i]?.isSystem === true);
+    for (const [a, b] of runs) for (let i = a; i <= b; i++) this.chatMessages[i].isSystem = true;
+    return runs;
+  }
+
+  async unhideMessages(ranges: Array<[number, number]>): Promise<void> {
+    const length = this.chatMessages.length;
+    // like `/unhide a-b`: every message of the (cut) range shows again, which is why callers pass only the runs they hid
+    for (const [a, b] of ranges) for (let i = a; i <= Math.min(b, length - 1); i++) delete this.chatMessages[i].isSystem;
   }
 
   chatLength(): number {

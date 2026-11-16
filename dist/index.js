@@ -19729,6 +19729,15 @@ function recordSceneRange(draft, mark) {
   marks.push({ ...mark });
   draft.memory.scenes = marks.slice(-SCENE_MARKS_MAX);
 }
+var overlaps = (a, b) => a[0] <= b[1] && b[0] <= a[1];
+function hideCandidates(state, n) {
+  if (n <= 0) return [];
+  const marks = state.memory.scenes ?? [];
+  const hidden = state.memory.hidden ?? [];
+  return marks.slice(0, Math.max(0, marks.length - n)).filter(
+    (m) => m.summarized && m.sceneId !== state.scene?.id && !hidden.some((h2) => overlaps([m.from, m.to], h2))
+  );
+}
 var weekEntries = (cfg) => cfg.chronicleDays >= 3 ? 2 : 1;
 function recentLines(state, viewers, cfg) {
   const shown = (e) => viewers === "public" ? e.audience === "*" : visibleToAll(e.audience, viewers);
@@ -20134,6 +20143,18 @@ registerAction("memory/rumor_text", (draft, payload) => {
   if (!fact.spread || fact.rumor) throw new Error("memory/rumor_text: that fact is not waiting for a retelling");
   fact.rumor = { text: text2 };
   return [{ type: "rumor_told", factId: fact.id }];
+});
+registerAction("memory/hidden", (draft, payload) => {
+  if (!isObj13(payload) || payload.add === void 0 && payload.clear === void 0) throw new Error("memory/hidden needs { add?, clear? }");
+  if (payload.clear !== void 0 && payload.clear !== true) throw new Error("memory/hidden: clear is true");
+  const add = payload.add;
+  if (add !== void 0) {
+    const ok = Array.isArray(add) && add.every((r) => Array.isArray(r) && r.length === 2 && r.every((n) => typeof n === "number" && Number.isInteger(n) && n >= 0) && r[0] <= r[1]);
+    if (!ok) throw new Error("memory/hidden: add is a list of [from, to] index pairs");
+  }
+  if (payload.clear === true) delete draft.memory.hidden;
+  if (Array.isArray(add) && add.length > 0) draft.memory.hidden = [...draft.memory.hidden ?? [], ...add.map((r) => [r[0], r[1]])];
+  return [{ type: "scenes_hidden", hidden: draft.memory.hidden?.length ?? 0 }];
 });
 registerDayEndStep("dm_rumors", spreadRumors);
 
@@ -25987,6 +26008,23 @@ function createMemoryController(deps) {
       if (text2 !== null) app.dispatch({ type: "memory/rumor_text", payload: { factId: fact.id, text: text2 } }, { expectChatId: expect });
     }
   }
+  async function hideStep(expect) {
+    const s = state();
+    if (!s || chatId() !== expect) return;
+    const n = memoryConfig(s).hideScenesAfter;
+    if (n === 0) {
+      const ranges = s.memory.hidden;
+      if (!ranges || ranges.length === 0) return;
+      await st.unhideMessages(ranges);
+      app.dispatch({ type: "memory/hidden", payload: { clear: true } }, { expectChatId: expect });
+      return;
+    }
+    for (const scene of hideCandidates(s, n)) {
+      if (chatId() !== expect) return;
+      const runs = await st.hideMessages(scene.from, scene.to);
+      if (runs.length > 0) app.dispatch({ type: "memory/hidden", payload: { add: runs } }, { expectChatId: expect });
+    }
+  }
   return {
     run() {
       if (folding) return Promise.resolve();
@@ -25997,6 +26035,7 @@ function createMemoryController(deps) {
           if (state()?.combat || state()?.expedition) return;
           await foldOnce(expect);
           await retell(expect);
+          await hideStep(expect);
         } catch (e) {
           console.warn("[Alius] memory run failed", e);
         } finally {
@@ -38236,6 +38275,24 @@ function lastCharacterAvatar(chat) {
   }
   return void 0;
 }
+function hideRuns(length, from, to, isSystem) {
+  const runs = [];
+  let start = null;
+  const end = Math.min(to, length - 1);
+  for (let i = Math.max(0, from); i <= end; i++) {
+    if (isSystem(i)) {
+      if (start !== null) runs.push([start, i - 1]);
+      start = null;
+    } else if (start === null) start = i;
+  }
+  if (start !== null) runs.push([start, end]);
+  return runs;
+}
+var hideCommand = (unhide, [a, b]) => `/${unhide ? "unhide" : "hide"} ${a === b ? a : `${a}-${b}`}`;
+var isSystemMessage = (chat, index2) => {
+  const m = Array.isArray(chat) ? chat[index2] : void 0;
+  return !isObj33(m) || m.is_system === true;
+};
 
 // src/st/slash.ts
 var ZWSP = "\u200B";
@@ -38502,6 +38559,19 @@ var RealStAdapter = class {
   }
   chatLength() {
     return ctx().chat.length;
+  }
+  async hideMessages(from, to) {
+    const c = ctx();
+    const runs = hideRuns(c.chat.length, from, to, (i) => isSystemMessage(c.chat, i));
+    for (const run of runs) await this.slash(hideCommand(false, run));
+    return runs;
+  }
+  async unhideMessages(ranges) {
+    const length = ctx().chat.length;
+    for (const [a, b] of ranges) {
+      if (a >= length) continue;
+      await this.slash(hideCommand(true, [a, Math.min(b, length - 1)]));
+    }
   }
   async sendUserMessage(text2) {
     await this.slash(sendCommand(text2));

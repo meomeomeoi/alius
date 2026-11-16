@@ -1,6 +1,7 @@
 import type { Registries } from '../content/types';
 import { disabledCategories } from '../engine/bonds';
 import { fallbackFold, foldDue, WORLD } from '../engine/memory/fold';
+import { hideCandidates } from '../engine/memory/scenes';
 import { memoryConfig } from '../engine/memory/config';
 import { affinityBand, stressBand, trustBand } from '../engine/relations/bands';
 import type { CampaignState, Fact } from '../engine/state/types';
@@ -88,6 +89,25 @@ export function createMemoryController(deps: MemoryDeps): MemoryController {
     }
   }
 
+  /** Hides the messages of old summarized scenes (`hideScenesAfter` = N > 0), or, with N back at 0, unhides exactly what was hidden. */
+  async function hideStep(expect: string | undefined): Promise<void> {
+    const s = state();
+    if (!s || chatId() !== expect) return;
+    const n = memoryConfig(s).hideScenesAfter;
+    if (n === 0) {
+      const ranges = s.memory.hidden;
+      if (!ranges || ranges.length === 0) return;
+      await st.unhideMessages(ranges);
+      app.dispatch({ type: 'memory/hidden', payload: { clear: true } }, { expectChatId: expect });
+      return;
+    }
+    for (const scene of hideCandidates(s, n)) {
+      if (chatId() !== expect) return;
+      const runs = await st.hideMessages(scene.from, scene.to);
+      if (runs.length > 0) app.dispatch({ type: 'memory/hidden', payload: { add: runs } }, { expectChatId: expect });
+    }
+  }
+
   return {
     run() {
       if (folding) return Promise.resolve();
@@ -99,6 +119,7 @@ export function createMemoryController(deps: MemoryDeps): MemoryController {
           if (state()?.combat || state()?.expedition) return;
           await foldOnce(expect);
           await retell(expect);
+          await hideStep(expect);
         } catch (e) {
           console.warn('[Alius] memory run failed', e);
         } finally {

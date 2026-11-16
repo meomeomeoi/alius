@@ -11,6 +11,22 @@ export function recordSceneRange(draft: CampaignState, mark: SceneMark): void {
   draft.memory.scenes = marks.slice(-SCENE_MARKS_MAX);
 }
 
+const overlaps = (a: [number, number], b: [number, number]): boolean => a[0] <= b[1] && b[0] <= a[1];
+
+/**
+ * The ended scenes whose messages may be hidden from the model now, oldest first: summarized ones (a scene whose summary failed is never
+ * hidden: nothing else remembers it), older than the last `n` ended scenes, not the open scene, and not overlapping what Alius hid
+ * already. `n = 0` is off.
+ */
+export function hideCandidates(state: CampaignState, n: number): SceneMark[] {
+  if (n <= 0) return [];
+  const marks = state.memory.scenes ?? [];
+  const hidden = state.memory.hidden ?? [];
+  return marks.slice(0, Math.max(0, marks.length - n)).filter(
+    (m) => m.summarized && m.sceneId !== state.scene?.id && !hidden.some((h) => overlaps([m.from, m.to], h)),
+  );
+}
+
 /** Week entries shown beside the recent days: 1, and 2 for a long memory (the spec has no field for it: it follows `chronicleDays`). */
 const weekEntries = (cfg: Pick<MemoryConfig, 'chronicleDays'>): number => (cfg.chronicleDays >= 3 ? 2 : 1);
 

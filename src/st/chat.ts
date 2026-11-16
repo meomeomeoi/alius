@@ -29,3 +29,31 @@ export function lastCharacterAvatar(chat: unknown): string | undefined {
   }
   return undefined;
 }
+
+/**
+ * The runs (inclusive index pairs) of messages in `from…to` that ST's `/hide` may hide: inside the chat and not system messages
+ * already. Alius records exactly these, because `/unhide` clears `is_system` on a whole range and would show a narrator line or a
+ * deserter notice that was never Alius' to hide.
+ */
+export function hideRuns(length: number, from: number, to: number, isSystem: (index: number) => boolean): Array<[number, number]> {
+  const runs: Array<[number, number]> = [];
+  let start: number | null = null;
+  const end = Math.min(to, length - 1);
+  for (let i = Math.max(0, from); i <= end; i++) {
+    if (isSystem(i)) {
+      if (start !== null) runs.push([start, i - 1]);
+      start = null;
+    } else if (start === null) start = i;
+  }
+  if (start !== null) runs.push([start, end]);
+  return runs;
+}
+
+/** ST's slash command for a run: `/hide 2-7` or `/unhide 5`. */
+export const hideCommand = (unhide: boolean, [a, b]: [number, number]): string => `/${unhide ? 'unhide' : 'hide'} ${a === b ? a : `${a}-${b}`}`;
+
+/** Whether ST marked the message as a system message (`is_system`): hidden from the model, and from every Alius read of the chat. */
+export const isSystemMessage = (chat: unknown, index: number): boolean => {
+  const m = Array.isArray(chat) ? (chat[index] as unknown) : undefined;
+  return !isObj(m) || m.is_system === true;
+};

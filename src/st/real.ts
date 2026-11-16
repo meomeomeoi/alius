@@ -5,7 +5,7 @@ import { answerText } from '../llm/text';
 import type {
   CardInfo, CharacterSummary, ChatInfo, ChatMessage, InjectionPosition, Lorebook, MemberInfo, ProfileInfo, StAdapter, StEvent,
 } from './adapter';
-import { lastCharacterAvatar, mapChatMessages } from './chat';
+import { hideCommand, hideRuns, isSystemMessage, lastCharacterAvatar, mapChatMessages } from './chat';
 import { sendCommand, slashArg } from './slash';
 import { toStLorebook } from './lorebook';
 import { pickSprite, spriteFolder } from './sprites';
@@ -291,6 +291,21 @@ export class RealStAdapter implements StAdapter {
 
   chatLength(): number {
     return ctx().chat.length;
+  }
+
+  async hideMessages(from: number, to: number): Promise<Array<[number, number]>> {
+    const c = ctx();
+    const runs = hideRuns(c.chat.length, from, to, (i) => isSystemMessage(c.chat, i));
+    for (const run of runs) await this.slash(hideCommand(false, run));
+    return runs;
+  }
+
+  async unhideMessages(ranges: Array<[number, number]>): Promise<void> {
+    const length = ctx().chat.length;
+    for (const [a, b] of ranges) {
+      if (a >= length) continue;
+      await this.slash(hideCommand(true, [a, Math.min(b, length - 1)]));
+    }
   }
 
   async sendUserMessage(text: string): Promise<void> {

@@ -77,6 +77,13 @@ export interface StAdapter {
   getChatMessages(from?: number): ChatMessage[];
   /** Length of the ST chat array (the next message gets this index). */
   chatLength(): number;
+  /**
+   * Hides the messages from `from` to `to` from the model (ST's `/hide`) and returns the runs it really hid: only messages that were
+   * not system messages already, inside the chat. Nothing to hide gives `[]` and runs no command.
+   */
+  hideMessages(from: number, to: number): Promise<Array<[number, number]>>;
+  /** Shows runs `hideMessages` returned again (`/unhide`). A run past the end of the chat (it got shorter) is dropped, one that ends past it is cut. */
+  unhideMessages(ranges: Array<[number, number]>): Promise<void>;
   /** Adds the user message and resolves when the group's (or the character's) replies are done. Rejects on failure. */
   sendUserMessage(text: string): Promise<void>;
   /** Lets the group answer without a message from the user (a scene opening); resolves when the replies are done. */

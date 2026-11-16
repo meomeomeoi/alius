@@ -109,5 +109,22 @@ registerAction('memory/rumor_text', (draft, payload) => {
   return [{ type: 'rumor_told', factId: fact.id }];
 });
 
+/**
+ * `memory/hidden { add?: [from, to][], clear?: true }`: the chat ranges Alius hid from the model (the runs `hideMessages` returned), so
+ * that turning hiding off unhides exactly those. `clear` forgets them all (after they were unhidden), then `add` records new ones.
+ */
+registerAction('memory/hidden', (draft, payload) => {
+  if (!isObj(payload) || (payload.add === undefined && payload.clear === undefined)) throw new Error('memory/hidden needs { add?, clear? }');
+  if (payload.clear !== undefined && payload.clear !== true) throw new Error('memory/hidden: clear is true');
+  const add = payload.add;
+  if (add !== undefined) {
+    const ok = Array.isArray(add) && add.every((r) => Array.isArray(r) && r.length === 2 && r.every((n) => typeof n === 'number' && Number.isInteger(n) && n >= 0) && r[0] <= r[1]);
+    if (!ok) throw new Error('memory/hidden: add is a list of [from, to] index pairs');
+  }
+  if (payload.clear === true) delete draft.memory.hidden;
+  if (Array.isArray(add) && add.length > 0) draft.memory.hidden = [...(draft.memory.hidden ?? []), ...(add as Array<[number, number]>).map((r): [number, number] => [r[0], r[1]])];
+  return [{ type: 'scenes_hidden', hidden: draft.memory.hidden?.length ?? 0 }];
+});
+
 // P3b: rumors spread inside the existing `dm_rumors` day-end step (the hook runs on a copy and draws nothing)
 registerDayEndStep('dm_rumors', spreadRumors);

@@ -224,3 +224,63 @@ describe('the digest of a long scene', () => {
     expect(h.state().scene!.digest?.text).toBe('DIGEST-BY-REPLY');
   });
 });
+
+describe('hiding old scenes (P3b)', () => {
+  /** Five ended scenes of ten messages each (the third has a narrator line inside), all summarized; `hide` is hideScenesAfter. */
+  const withScenes = (hide: number, over: (s: CampaignState) => void = () => {}) => {
+    const h = harness(reg, {
+      tweak: (s) => {
+        s.memory.config = { preset: 'normal', hideScenesAfter: hide };
+        s.memory.scenes = [0, 1, 2, 3, 4].map((i) => ({ sceneId: `s${i + 1}`, from: i * 10, to: i * 10 + 9, summarized: true }));
+        over(s);
+      },
+    });
+    for (let i = 0; i < 50; i++) h.st.chatMessages.push({ index: i, isUser: i % 2 === 0, name: i % 2 === 0 ? 'Vale' : 'Ann', text: `m${i}`, swipeId: 0, ...(i === 25 ? { isSystem: true } : {}) });
+    return h;
+  };
+  const shown = (h: ReturnType<typeof harness>): number[] => h.st.getChatMessages().map((m) => m.index);
+
+  it('N = 2 hides the older summarized scenes, and records the runs it hid', async () => {
+    const h = withScenes(2);
+    await controllerOf(h).run();
+    // scenes 1–3 (messages 0–29) are hidden; the narrator line 25 was system already and is not recorded
+    expect(shown(h)).toEqual(Array.from({ length: 20 }, (_, i) => i + 30));
+    expect(h.state().memory.hidden).toEqual([[0, 9], [10, 19], [20, 24], [26, 29]]);
+    // a second run hides nothing new and runs no command
+    await controllerOf(h).run();
+    expect(h.state().memory.hidden).toHaveLength(4);
+  });
+
+  it('a scene without a summary and the open scene are never hidden', async () => {
+    const h = withScenes(1, (s) => { s.memory.scenes![1].summarized = false; });
+    await controllerOf(h).run();
+    expect(shown(h).filter((i) => i >= 10 && i < 20)).toHaveLength(10); // s2 kept
+    expect(shown(h).filter((i) => i < 10)).toEqual([]);
+  });
+
+  it('back to 0 unhides exactly the recorded ranges', async () => {
+    const h = withScenes(2);
+    const memory = controllerOf(h);
+    await memory.run();
+    h.dispatch({ type: 'memory/configure', payload: { preset: 'normal', hideScenesAfter: 0 } });
+    await memory.run();
+    expect(h.state().memory.hidden).toBeUndefined();
+    // everything shows again except the narrator line, which was never Alius' to hide
+    expect(shown(h)).toEqual(Array.from({ length: 50 }, (_, i) => i).filter((i) => i !== 25));
+    expect(h.st.chatMessages[25].isSystem).toBe(true);
+  });
+
+  it('a range past the chat end is dropped, not sent', async () => {
+    const h = withScenes(0, (s) => { s.memory.hidden = [[0, 4], [80, 90]]; });
+    for (let i = 0; i < 5; i++) h.st.chatMessages[i].isSystem = true;
+    await controllerOf(h).run();
+    expect(shown(h).slice(0, 5)).toEqual([0, 1, 2, 3, 4]);
+    expect(h.state().memory.hidden).toBeUndefined();
+  });
+
+  it('with hiding off and nothing hidden nothing happens', async () => {
+    const h = withScenes(0);
+    await controllerOf(h).run();
+    expect(h.actions).toEqual([]);
+  });
+});
