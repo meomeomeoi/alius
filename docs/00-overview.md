@@ -438,11 +438,34 @@ Packages after release 0.1.0 (the table above). Same rule: take the first row wh
 | 2 | P16 | Practices: generated tasks, her discipline of the commander, demonstrations, service, denial, holding (restraint incl. sensory), the commander's initiative | P15, P14, P9, P9c, P9d, P10 | spec |
 | 3 | P17 | Staged scenes (roles, visibility, condition, Strain, live visitors, her tactics, complicity) and the obscured presence layer | P16, P15, P14, P3, P9c, P10 | spec |
 
+### Post-release (0.3) — the AI story sandbox
+
+After the authored prologue (spine beats 1–5) the model builds story arcs from seeds and campaign history; the engine validates them and owns every number. Built on a fully implemented 0.1 (P3b memory, P14 envelope) and 0.2.
+
+| # | Pkg | Name | Depends on | Status |
+|---|---|---|---|---|
+| 1 | P18 | Story arcs: ~50 seeds, twists, tags, sizes, hooks, outcomes and failure, cast, clearance tiers 4–5, stall and fallback nets, arc preview and author's notes | 0.1, P15 | spec |
+| 2 | P19 | Arc missions: verbs, modifiers with conditions, storyboards, clues and local flags | P18, P5, P6 | spec |
+| 3 | P20 | Story nodes: six resolution engines, ~20 node kinds as data, conversations inside runs (cast under own names), the field camp | P19, P3, P4, P5 | spec |
+
+### Post-release (0.4) — progression and combat
+
+| # | Pkg | Name | Depends on | Status |
+|---|---|---|---|---|
+| 1 | P21 | Combat vocabulary: damage/armour types, break, telegraphs, positions, tempo, heat, Bloom load, Edge, resonance | P4, 0.1–0.3 | spec |
+| 2 | P22 | Enemies (~40), bosses (arc climaxes, hunts, clock threats), nemeses | P21, P18–P20, P5 | spec |
+| 3 | P23 | Skill trees with choices, passive web, specialisations with her preference, respec, levels to 60, overdrive levels | P21, P4, P18, P15 | spec |
+| 4 | P24 | Skill modifiers, augments (with consent), uniques, sets, weapon mastery | P21, P23, P4 | spec |
+| 5 | P25 | Signature growth, cross-training, the holder and builds, the commander's command tree | P23, P24, P21, P15 | spec |
+| 6 | P26 | Depth runs: the endless Garden | P22, P23, P24, P20 | spec |
+
 ## 10. Roadmap beyond v1
 
 **Marks (special statuses)** — a relationship layer that lives *in parallel* with relationship states and arises only from extreme, usually irreversible choices or events. A unit can be `lover` and `limiter_torn` at the same time. Each mark: `{ id, origin (dilemma/defect arc/event ids), prerequisites, effects (combat, relationship modifiers, Leash rules, directives), reversible: bool, visibleToSquad: bool }`. Ideas to develop: **Neural Sync** (commander's and her neurons linked: shared stress, she acts on his intent without CP, his injuries hurt her); **Limiter Torn** (commander ripped out her limiter: huge power, the Leash no longer works on her, loyalty is now purely personal); **Blood Debt** (she owes him her life, or he owes her); **Shared Strain** (infected each other with the Bloom; mutation clocks linked); **Ghost Copy** (an echo of the commander lives in her implant); **Branded** (corporation marked her as defective-beyond-use: hunted). The `Relation.marks[]` field is reserved in v1 so this lands without a save migration.
 
 **Character interaction ideas beyond 0.2** (from the 0.2 design talk; not scheduled): a nickname she gives the commander (renamed in her DMs and on the PDA header), marks that last days and are seen by others (`pain_rough`), provocations (`jealousy_games`: flirting in front of the commander, lending the commander to another), marks of ownership (`body_modification`: a plyx ring, her unit number), categories `voyeurism`, `implant_play` (the Leash or the implant in intimacy), `sharing`, aftercare as a post-scene phase, the obscured presence layer in missions (voices behind a wall), and the mirrored direction of P15–P17 (the commander holds).
+
+**Mission mechanics beyond 0.3** (textual in 0.3): `escort` (a protected NPC in combat), `hold` (waves), `survive` (a round goal), `capture_alive` (non-lethal takedowns).
 
 **Special traits beyond P12** — `former_off_spec`, `bound_elsewhere`, `voice_synth` (on P7's trait framework). The **LEASHSWAP mode** (P13) replaces the earlier `collared` idea.
 
