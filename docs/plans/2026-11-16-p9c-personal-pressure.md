@@ -624,7 +624,7 @@ tests/engine/personal/*.test.ts, tests/engine/combat/sparring.test.ts, tests/con
   - `docs/packages/P9d-desire-bonds.md` (open items: smother is now a booking; `no_other_tokens` is checked), `P9b-power-structure.md` (bookings read `demandMult`), `P10-visual-upgrade.md` (whereabouts read bookings).
   - **Interfaces already provided by P9c** notes in `P10b` (decor, notes, contact name, wallpaper owner, `device/remove_decor`, bookings for the door), `P12` (`addSecret`, `discoverSecret(…, 'frequency')`, `held`), `P13` (obedience, wagers).
   - `CLAUDE.md`: a P9c line like the P9b one.
-- [ ] **Step 1: Write** the manual checklist, one item per acceptance criterion and per user ruling (DM edit wording and fallback, obedience scope, `use` Impunity, the content gates), plus: an old save plays as before; no commander pronoun anywhere.
-- [ ] **Step 2: Update** the docs. Open items at least: P12 sources and the `frequency` route; leader orders beyond the successor; night bookings; P10b's visuals; every number and text is a draft.
-- [ ] **Step 3: Run** `npm test` (pronoun and docs-link tests included). Expect PASS.
-- [ ] **Step 4: Tick and commit:** `docs: P9c implemented-as, overview, content guide and manual checklist`.
+- [x] **Step 1: Write** the manual checklist, one item per acceptance criterion and per user ruling (DM edit wording and fallback, obedience scope, `use` Impunity, the content gates), plus: an old save plays as before; no commander pronoun anywhere.
+- [x] **Step 2: Update** the docs. Open items at least: P12 sources and the `frequency` route; leader orders beyond the successor; night bookings; P10b's visuals; every number and text is a draft.
+- [x] **Step 3: Run** `npm test` (pronoun and docs-link tests included). Expect PASS.
+- [x] **Step 4: Tick and commit:** `docs: P9c implemented-as, overview, content guide and manual checklist`.

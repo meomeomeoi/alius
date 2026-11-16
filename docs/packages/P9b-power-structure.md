@@ -132,5 +132,5 @@ Measured with throwaway scripts over the real engine (not kept): 500 random four
 - LEASHSWAP (P13): the warden above the hierarchy is not built; `leaderOf`, `standingOf` and `computeHierarchy` compute among the others.
 - TAKE THE BLAME does not yet injure or confine the commander (P13).
 - Respect is approximated by values compatibility until squad relations exist.
-- `assertiveness().demandMult` is read by P9's `demandChance`; P9c bookings should read it too.
+- `assertiveness().demandMult` is read by P9's `demandChance`, and since P9c by every frequency of the personal pressure too (bookings, token offers, her challenges, claims, intercepts).
 - Every number (ballot weights, standing thresholds and bands, challenge odds, countermand chance, feat days) and every text (reason lines, option texts, glossary long texts) is a draft. The real `flavor` wording of ballots is checked only by hand (`docs/MANUAL_TEST_P9b.md`).

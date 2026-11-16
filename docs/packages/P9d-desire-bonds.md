@@ -123,8 +123,8 @@ Checked by tables (`docs/BALANCE_REPORT.md` for combat, arithmetic over the day 
 
 ### Open items
 - "Her friends close ranks" has no unit-to-unit axes in v1: going public writes a public fact and the reactions above, nothing more.
-- Tokens for `no_other_tokens` arrive with P9c (the check is intent-only until then).
-- Smother and co-command are stand-ins until P9c (bookings) and P9b (hierarchy).
+- ~~Tokens for `no_other_tokens` arrive with P9c~~ done in P9c: the rule is checked by `token_wear` and carries `jealousy_games` (`checkTokenWear` in `bonds/rules.ts`).
+- ~~Smother and co-command are stand-ins~~ done: P9c made the smother hold a booking (`startSmother` books her the next slot and the booking opens the scene; the hangar lock stays) and P9b replaced co-command.
 - A DM exchange never rolls a reveal (only her is present there); wire it when a thread can have others present.
 - The harness cannot see `dominance_drive`'s downside, `caretaker_overdrive`'s commander rows, or any cost outside combat; balance them by play.
 - Publicity: the commander's own choice (`commanderPref`) lives only while the relationship is romantic (a new relationship starts at the more private of her preference and `known`); a concealed romance (the P3 state) cannot be announced by the commander, only discovered; with romance off the level is kept but nothing about it reaches the commander or the model (lead and Want behave the same); UNDO of a punishment that moved her out of the tier puts her old publicity back (`Inverse.publicity`).

@@ -126,3 +126,8 @@ Intimacy settings apply as usual; romance with the warden is allowed and gets de
 
 - **A second source of the scapegoat case:** `Mission.decidedBy.source` (`'vote'` or `'her_call'`; absent = vote) and `DilemmaState.scapegoatSource` (`'her_call'` only). `openScapegoat(draft, ctx, { missionId, unitId, witnessIds, source? })` takes the source; the template wording comes from `fixed.because`. TAKE THE BLAME's extra effects (injury, confinement) apply to both sources unchanged. `herCallCandidates` reads the party's named active units: if the warden can ever be one of them, filter her out where P13 needs it.
 - **ASK ME FIRST:** `PowerState.askFirst` and `askFirstHolds(state, unitId)`: a standing order a mirrored discipline could reuse. `ExpeditionReport.herCalls` lists the run's her-calls.
+
+## Interfaces already provided by P9c (implemented — use, do not rebuild)
+
+- **Obedience:** `obedienceOf(state)`, `commanderObeys(state, unitId)`, `unitObeys(state, unitId)`, `herPick`, `herVote`, `overrideHer`: a day on which the loser of a wager follows the winner's non-combat orders (`personal.obedience`, valid on its own day). LEASHSWAP can read it to know whose choices are pre-selected.
+- **Wagers:** `challenge`, `playWager`, `applyStake` and the registries `wagerGames` / `wagerStakes` (content-gated); stakes are read by `effect`, games by `kind`, so a warden's stake is data plus one effect case in `applyStake`.

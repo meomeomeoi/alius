@@ -65,3 +65,9 @@ Each named unit gets a handwriting font at import (from a bundled OFL set of ~6 
 - **Lead and tone:** `scene.tone` and `scene.lead` drive the lead chips (`drawLeadChips`) and the directive; a telemetry panel can read them without storing anything.
 - **Violation mark:** `drawViolation(host, labels, onRegenerate?)` (text only, analyzable) is the one place a flagged reply is marked.
 - **Publicity and rules in the dossier:** `bondBlock` in the squad tab (chips, `[SECRET] [KNOWN] [PUBLIC]`) and the rule chips; every chip carries `data-analyze`.
+
+## Interfaces already provided by P9c (implemented — use, do not rebuild)
+
+- **Device marks are data:** `deviceAccess(state, reg, unitId)` (0–4, derived), `decorOf(state, unitId)` (`parts`: `sticker`, `wallpaper`, `contact`; `contactName`; `fadedUntil` while it fades), `wallpaperUnit(state)` (the one decorated unit whose Affinity is highest), `pinnedNotes(state, reg)` (her active rules and one authored line a day) and the action `device/remove_decor { unitId, part }` (PEEL). P9c draws only a plain list in the dossier; P10b draws them on the device. A faded decor is still visible as faded.
+- **Bookings for the door:** a booked slot places her in the booked room (`whereabouts`, reason `routine`) and a due booking opens her scene (`app.personal`); `booking_made`, `booking_played` and `booking_lapsed` events and `state.personal.bookings` are what a night door or a calendar mark can read.
+- **Voices:** `VOICE_OF.booking` and `device_edit` are `personal`, `squad_secret` is `paper`; an edited DM carries `DmMessage.editedBy` (draw it as her handwriting if wanted). The accent stays `unitAccent`.

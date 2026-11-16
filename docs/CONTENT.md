@@ -462,6 +462,7 @@ Every consequence outside combat is a list of **world effects**: `{ "type": "<id
 | `incoming_unit` | — | A new named unit waits for intake (OPS). |
 | `fact` | `text` ≤ 200, `tags[]`, `importance` 1…5 | A public fact. |
 | `offer_mission` | `templateId`, `regionId?`, `source` | Puts a mission on the board. |
+| `squad_secret` | `kindId` (a `secretKinds` id), `knownBy`: `party`\|`squad` | P9c: the squad keeps something from the commander (known by the expedition party or the active roster, or every named unit). Not a cost effect: an option that carries it still needs its own cost. |
 
 An effect whose target no longer exists is skipped. Effects of a clock that fills another clock nest at most 3 deep. A **cost effect** (a negative resource/faction/HP/Leash amount, positive stress or clock, or a `unit_event` of `sided_against`, `decision_violated`, `endangered`, `coerced`, `dismissed`) is what every non-flavor event option must contain.
 
@@ -542,6 +543,19 @@ An expedition event can be taken out of the commander's hands: a soldier with a 
 - A scapegoat template's `fixed.because: { vote?, her_call? }` fills its `{because}` placeholder by where the decision came from (≤ 200 characters each; only on a `scapegoat` template).
 - Glossary entries `her_call` and `ask_first` explain the system in the analysis panel.
 
+## Personal pressure (P9c)
+
+Six registries make up the content of P9c. Every one is `description`-bearing and joins `DESCRIBED_REGISTRIES`; every number is in `TUNING.personal` (drafts) and every text in core is marked `AUTHOR TO WRITE`. Code reads each entry by field, never by id. Nothing here may give the commander a pronoun (lore §0; `tests/content/pronouns.test.ts` covers all of it).
+
+- **`deviceAccessRules`** — exactly one entry per `level` 1–4: `{ id, level, name, description, anyOf: [{ tiers?, states?, minLeadRank?, minImpunity?, minAffinity? }] (≥ 1 branch; all fields of a branch must hold), contactNames? (L1, `{name}`), notes? (L2, `{name}`), editLines? (L4, each must contain `{text}`) }`. `tiers` are `romantic` / `close`; `states` must name `relationshipStates`. A unit's level is the highest whose `anyOf` has a branch that holds (and the `device` gate passes).
+- **`bookingKinds`** — `{ id, label, description, slot: morning|afternoon|evening, locationId (a `locations` id), tier?: 'romantic', text (contains `{name}`), wantRelief 0–100, weight 1–100 }`.
+- **`tokenKinds`** — `{ id, label (contains `{name}`), description, minTier?: 'romantic', text (contains `{label}`), weight }`.
+- **`wagerGames`** — `{ id, label, description, kind: coin|rps|high_card|sparring|expedition_bet, spendsSlot?, handicaps?: [{ id, label, herAtk, herHp, herSpd (0.1–2), minAffinity }] }`; `handicaps` belong to sparring only and are measured, not guessed (`sparringOdds`).
+- **`wagerStakes`** — `{ id, label, description, effect: obedience|slot|privilege|drop_demand|token|question|mark, text, contentTags? }`. The registry is content-gated: a stake whose category is off (or one of her own limits) is never offered; core tags `her_mark` with `body_modification`. A new gated registry needs a `GATE_PROBES` entry (`tests/helpers/bonds.ts`).
+- **`secretKinds`** — `{ id, description, source: hidden_injury|event|successor, reason: protect_commander|self_interest|leader_order, text (≤ 200; `{name}` for `hidden_injury`, `{leader}` for `successor`), importance 1–5 }`. Write `text` as a full sentence: it reaches the main model inside a "do not reveal" directive and becomes a fact when the commander answers. An authored `event` secret is stored by the world effect `squad_secret` (core: `evt_trader_deal`, whose `Forbid the trade` option carries it next to a stress cost).
+- **Defects:** the optional `pressureMult` (1–2) multiplies how hard a soldier presses (bookings, tokens, claims, challenges, the deltas she takes); core: `possessive_protocol` and `dominance_drive` 1.5.
+- **Relationship states:** the optional `secretSlip: true` (core: `resentful`), like the stance flag above.
+
 ## Spine beats (P5)
 
 `starts[].spine[]` gains optional fields: `conditions { minDay?, flagsAll?[], flagsNone?[], clearanceMin?, threads?[{ id, status }] }` (when the director may propose the beat), `completion` (`{ "kind": "auto" }` default \| `{ "kind": "mission", "templateId", "regionId" }` — a template with source `story` \| `{ "kind": "flag", "anyOf": [flag ids] }`) and `onComplete: WorldEffect[]`. Beats are reached in order, never skipped; after the last one the director runs open-ended.
@@ -588,7 +602,7 @@ The analysis panel (hover, `?` or long-press on anything in the shell) explains 
 
 Five registries and a few fields; the engine reads each by **type or field, never by id**, so everything below is JSON. Texts marked `AUTHOR TO WRITE` in core are drafts. A commander has no pronoun in any text (overview §3; `tests/content/pronouns.test.ts` checks every field below).
 
-**`commandStances`** — exactly the five ids `disciplined`, `defiant_loyal`, `fearful`, `open_defiance`, `indifferent` (the quadrants of Trust ≥ 45 × Impunity ≥ 50, plus the `indifferent` zone: Trust 30–44, Impunity 35–59; the numbers are `TUNING.impunity.stance`). Fields: `{ id, name, description ≤ 600, directive ≤ 300, refusal ≤ 300, covert?, demandWeight 0…3 }`. `directive` is the stance text the main model reads (`{name}`); `refusal` is the text of a refused order (`{name}`, `{reason}`); `covert: true` makes the refusal hidden and gives the unit random sabotage.
+**`commandStances`** — exactly the five ids `disciplined`, `defiant_loyal`, `fearful`, `open_defiance`, `indifferent` (the quadrants of Trust ≥ 45 × Impunity ≥ 50, plus the `indifferent` zone: Trust 30–44, Impunity 35–59; the numbers are `TUNING.impunity.stance`). Fields: `{ id, name, description ≤ 600, directive ≤ 300, refusal ≤ 300, covert?, demandWeight 0…3 }`. `directive` is the stance text the main model reads (`{name}`); `refusal` is the text of a refused order (`{name}`, `{reason}`); `covert: true` makes the refusal hidden and gives the unit random sabotage. P9c adds two optional data flags: `hidesInjury: true` (a unit in this stance hides a bad injury after a run: a squad secret) and `secretSlip: true` (she lets a squad secret slip at a scene end). Code reads the flags, never the stance ids; core: `hidesInjury` on `defiant_loyal` and `fearful`, `secretSlip` on `open_defiance`.
 
 **`punishments`** — the ladder under the Leash: `{ id, label, description, severity 1…4, impunityDelta −40…0, deltas { trust, affinity, stress }, sideEffects[], perception[], dispositionScaling: 'loss' | 'none' }`. The row is the unit's reaction before multipliers: image consistency, her state and defects and the disposition `lossMult` apply on top (`'none'` skips only the disposition). `perception: [{ tag, multiplier 0.5…3 }]` multiplies the deltas **and** `impunityDelta` when the tag is among her likes, dislikes or triggers (the highest match wins). Side-effect vocabulary (closed; at most one of the first four per punishment): `confine { minDays, maxDays }` (1…7), `no_leave { days }`, `bench {}`, `duty {}`, `resource { resource: credits|supplies|plyx, amount }`. To add a punishment: one entry; the menu, the extraction list (`measureList`), the chips and the reading pick it up.
 
@@ -606,7 +620,7 @@ Two registries and a few fields; the engine reads each by **type or field, never
 
 **`contentCategories`** — `{ id, label, description, order }`: what the player can switch on (all off by default; turning one on is full consent for it to appear). `explicit_scenes` is the old single switch. Any entry of a gated registry (`relationshipRuleTemplates`, `demandTemplates`, `punishments`, `dilemmaTemplates`, `missionTemplates`, `clocks`) may carry `contentTags: [category ids]`; with a category off the engine never hands it out. A pack that adds a gated registry lists it in `CONTENT_GATED_REGISTRIES` and adds a probe to `GATE_PROBES`.
 
-**`relationshipRuleTemplates`** — `{ id, text ≤ 240, description, contentTags?, check: 'daily_contact'|'run_without_asking'|'intent', keepDeltas { trust, affinity }, breakDeltas { trust, affinity, stress }, conditions { minLead?: 'assertive'|'dominant', tiers?: ('romantic'|'close')[] }, weight }`. `text` is the fallback wording; the app words a proposal in her voice when the setting `ruleWording` is on.
+**`relationshipRuleTemplates`** — `{ id, text ≤ 240, description, contentTags?, check: 'daily_contact'|'run_without_asking'|'intent'|'token_wear' (P9c: wearing a token from anyone else breaks it; `no_other_tokens` uses it and carries `jealousy_games`), keepDeltas { trust, affinity }, breakDeltas { trust, affinity, stress }, conditions { minLead?: 'assertive'|'dominant', tiers?: ('romantic'|'close')[] }, weight }`. `text` is the fallback wording; the app words a proposal in her voice when the setting `ruleWording` is on.
 
 **`relationshipStates[]`** — `bondTier: 'romantic'|'close'` (the tier that carries Want, publicity and a scene lead, or lets her propose rules) and `leadBonus` (added to the lead score while her style is at least assertive). A new state sets them in JSON.
 

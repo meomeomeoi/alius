@@ -88,3 +88,9 @@ Discovered by **oversight** → `defining` dilemma (become a double agent / conf
 - **Impunity, stance and deeds:** `impunityOf`, `commandStance`, `countDeed` (a new counter is `DEED_COUNTERS` plus the call site) and the `reputations` registry (a trait-driven nickname is JSON). `impunityBase` of an active nickname feeds the base.
 - **Demands:** `openDemand` and `demandTemplates` (conditions can name flags with `flagsNone`); a debt can be a demand.
 - **Hidden state:** `registerKnowledgeRule` and the hidden-state fixture; the stored R and the counters are never shown.
+
+## Interfaces already provided by P9c (implemented — use, do not rebuild)
+
+- **Squad secrets:** `addSecret(draft, reg, { kindId, knownBy, subjectId?, vars? })` stores a secret the squad keeps from the commander (a `secretKinds` entry; a Debts source adds its own kind with `source: 'event'` or a new source value in the schema). `discoverSecret(draft, ctx, secretId, 'frequency')` is the Secret Frequency route: it is exported and works, but nothing calls it. A found secret waits for `secret/respond` (confront / pretend / use); the commander's answer writes the fact.
+- **`held`:** using a secret lowers the Impunity of the soldiers who knew it (`ImpunityTerms.held`, −8 each, at least −16, 14 days).
+- **Intercepts:** level-4 edits already exist for a DM to another soldier, a Leash request and a recruit order (`interceptEditor`, `rollIntercept`); Secret Frequency's own interception is a separate mechanic that should not reuse the `Intercept` record.
