@@ -287,7 +287,7 @@ export function terminate(draft: CampaignState, ctx: EngineCtx, unitId: string):
     about: [unitId], text: `${unit.displayName} was terminated by corporate order on the commander's request.`,
     tags: ['leash', 'terminated'], importance: 5, day: draft.day, knownBy: ['*'],
   });
-  addChronicle(draft, { kind: 'scene', day: draft.day, text: `Day ${draft.day}: ${unit.displayName} was terminated through the Leash.` });
+  addChronicle(draft, { kind: 'scene', day: draft.day, text: `Day ${draft.day}: ${unit.displayName} was terminated through the Leash.`, audience: '*' });
   events.push({ type: 'unit_terminated', unitId });
   return { approved: true, events };
 }

@@ -88,7 +88,7 @@ export function proposeBeat(draft: CampaignState, ctx: EngineCtx, beatId: string
     });
   }
   addFact(draft, { about: [], text, tags: ['spine'], importance: 4, day: draft.day, knownBy: ['*'] });
-  addChronicle(draft, { kind: 'scene', day: draft.day, text });
+  addChronicle(draft, { kind: 'scene', day: draft.day, text, audience: '*' });
   events.push({ type: 'beat_proposed', beatId, framing: text });
 
   const completion = beat.completion ?? { kind: 'auto' as const };

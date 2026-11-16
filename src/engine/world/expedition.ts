@@ -496,7 +496,7 @@ export function endExpedition(draft: CampaignState, ctx: EngineCtx, outcome: Exp
   let line = `Expedition to ${regionLabel}: ${OUTCOME_TEXT[outcome]}.`;
   if (injuries.length > 0) line += ` ${injuries.map(nameOf).join(' and ')} ${injuries.length > 1 ? 'were' : 'was'} carried back.`;
   if (deaths.length > 0) line += ` ${deaths.map(nameOf).join(' and ')} did not return.`;
-  addChronicle(draft, { kind: 'scene', day: draft.day, text: line });
+  addChronicle(draft, { kind: 'scene', day: draft.day, text: line, audience: [...exp.party] }); // P3b: the party knows it
   const rs = draft.world.regions[exp.regionId] ?? { known: true };
   draft.world.regions[exp.regionId] = { ...rs, lastVisitedDay: draft.day };
   draft.world.lastExpeditionRegionId = exp.regionId;

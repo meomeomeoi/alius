@@ -310,6 +310,8 @@ export interface ChronicleEntry {
   sceneId?: string;
   /** The slot a scene line belongs to (scene entries only; compacted entries have none). */
   slot?: Slot;
+  /** P3b: who knows it: the unit ids that were there, or `'*'`. Absent = written before P3b: LOG only, never a prompt. A compacted entry inherits it. */
+  audience?: string[] | '*';
 }
 
 export type SceneOrigin = 'activity' | 'night' | 'mess' | 'event' | 'debrief' | 'prologue';

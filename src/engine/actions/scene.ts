@@ -10,6 +10,7 @@ import { consumeSlots, registerDayEndStep } from '../calendar';
 import { registerAction } from '../dispatch';
 import { isLiving } from '../economy';
 import { addChronicle, addFact, applyCompaction, nextId, revealCrime } from '../memory';
+import { recordSceneRange } from '../memory/scenes';
 import { applyIntents } from '../relations/apply';
 import { restrictionReason, settleDefiance } from '../discipline';
 import { installRelationAccounting } from '../relations/gain';
@@ -137,10 +138,17 @@ registerAction('scene/end', (draft, payload, ctx) => {
 
   const names = scene.participants.map((id) => draft.squad.find((u) => u.id === id)?.displayName ?? id).join(', ');
   const line = typeof summary?.chronicle === 'string' ? summary.chronicle.trim().slice(0, CHRONICLE_LINE_MAX).trim() : '';
+  // P3b: the line is known to who was there ('*' when that is the whole living squad); the chat range is kept for the digest and for hiding
+  const living = draft.squad.filter((u) => u.kind === 'named' && isLiving(u)).map((u) => u.id);
+  const everyone = living.length > 0 && living.every((id) => scene.participants.includes(id));
   addChronicle(draft, {
-    kind: 'scene', day: scene.day, sceneId: scene.id, slot: scene.slot,
+    kind: 'scene', day: scene.day, sceneId: scene.id, slot: scene.slot, audience: everyone ? '*' : [...scene.participants],
     text: line !== '' ? line : `${String(reg.locations.get(scene.locationId)?.name ?? scene.locationId)}: ${names} talked.`,
   });
+  const endIndex = isObj(payload) ? payload.endIndex : undefined;
+  if (typeof endIndex === 'number' && Number.isInteger(endIndex) && endIndex >= scene.startIndex) {
+    recordSceneRange(draft, { sceneId: scene.id, from: scene.startIndex, to: endIndex, summarized: summary !== undefined });
+  }
 
   if (summary && Array.isArray(summary.facts)) {
     const facts = validateIntents({ facts: summary.facts }, { participants: scene.participants, squad: draft.squad }).facts;
@@ -207,11 +215,14 @@ registerAction('campaign/set_intimacy', (draft, payload) => {
 
 registerAction('memory/compact', (draft, payload) => {
   if (!isObj(payload)) throw new Error('memory/compact needs a payload');
-  const { kind, day, toDay, text } = payload;
+  const { kind, day, toDay, text, audience } = payload;
   if ((kind !== 'day' && kind !== 'week') || typeof day !== 'number' || typeof text !== 'string' || (toDay !== undefined && typeof toDay !== 'number')) {
-    throw new Error('memory/compact needs { kind, day, toDay?, text }');
+    throw new Error('memory/compact needs { kind, day, toDay?, audience?, text }');
   }
-  const entry = applyCompaction(draft, { kind, day, toDay, text });
+  if (audience !== undefined && audience !== '*' && !(Array.isArray(audience) && audience.every((x) => typeof x === 'string'))) {
+    throw new Error('memory/compact: audience is "*" or a list of unit ids');
+  }
+  const entry = applyCompaction(draft, { kind, day, toDay, text, ...(audience !== undefined ? { audience: audience as string[] | '*' } : {}) });
   return [{ type: 'chronicle_compacted', kind, day, toDay: entry.toDay ?? null }];
 });
 

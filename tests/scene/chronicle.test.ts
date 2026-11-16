@@ -42,6 +42,22 @@ describe('chronicle compaction', () => {
     expect(h.state().memory.chronicle[0].text).toBe('Ann argued with Bea. Vale fixed the generator.');
   });
 
+  it('compacts each audience on its own and the result keeps it (P3b)', async () => {
+    const h = harness(reg, {
+      tweak: (s) => {
+        s.day = 3;
+        s.memory.chronicle.push(
+          { id: 'c1', kind: 'scene', day: 2, text: 'Ann and Bea argued.', audience: ['unit_ann', 'unit_bea'] },
+          { id: 'c2', kind: 'scene', day: 2, text: 'The whole squad ate.', audience: '*' },
+        );
+      },
+    });
+    await runReal(h);
+    expect(h.state().memory.chronicle.map((e) => [e.kind, e.day, e.text, e.audience])).toEqual([
+      ['day', 2, 'Ann and Bea argued.', ['unit_ann', 'unit_bea']], ['day', 2, 'The whole squad ate.', '*'],
+    ]);
+  });
+
   it('drops the result after a chat switch', async () => {
     const h = harness(reg, { tweak: withLines });
     h.st.mainReplies = ['A summary.'];

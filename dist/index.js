@@ -8025,27 +8025,47 @@ function addChronicle(draft, e) {
 }
 var COMPACT_MAX = 400;
 var weekOf = (day) => Math.floor((day - 1) / 7);
+var audienceKey = (a) => a === void 0 ? "none" : a === "*" ? "*" : [...new Set(a)].sort().join(",");
+function firstGroup(entries) {
+  const key = audienceKey(entries[0].audience);
+  const group = entries.filter((e) => audienceKey(e.audience) === key);
+  const a = group[0].audience;
+  return { audience: a === void 0 || a === "*" ? a : [...a], entries: group };
+}
 function compactionDue(state) {
   const scenes = state.memory.chronicle.filter((e) => e.kind === "scene" && e.day < state.day);
   if (scenes.length > 0) {
     const day = Math.min(...scenes.map((e) => e.day));
-    return { kind: "day", day, entries: scenes.filter((e) => e.day === day) };
+    const g = firstGroup(scenes.filter((e) => e.day === day));
+    return { kind: "day", day, ...g.audience !== void 0 ? { audience: g.audience } : {}, entries: g.entries };
   }
   const days = state.memory.chronicle.filter((e) => e.kind === "day");
   for (const week of [...new Set(days.map((e) => weekOf(e.day)))].sort((a, b) => a - b)) {
     const first2 = week * 7 + 1;
-    if (first2 + 6 < state.day) return { kind: "week", day: first2, toDay: first2 + 6, entries: days.filter((e) => weekOf(e.day) === week) };
+    if (first2 + 6 < state.day) {
+      const g = firstGroup(days.filter((e) => weekOf(e.day) === week));
+      return { kind: "week", day: first2, toDay: first2 + 6, ...g.audience !== void 0 ? { audience: g.audience } : {}, entries: g.entries };
+    }
   }
   return null;
 }
 function applyCompaction(draft, c) {
   const due = compactionDue(draft);
-  if (!due || due.kind !== c.kind || due.day !== c.day || due.toDay !== c.toDay) throw new Error("memory/compact: that compaction is not due");
+  if (!due || due.kind !== c.kind || due.day !== c.day || due.toDay !== c.toDay || audienceKey(due.audience) !== audienceKey(c.audience)) {
+    throw new Error("memory/compact: that compaction is not due");
+  }
   const text2 = c.text.trim().slice(0, COMPACT_MAX).trim();
   if (text2 === "") throw new Error("memory/compact: empty text");
   const ids = new Set(due.entries.map((e) => e.id));
   const at = draft.memory.chronicle.findIndex((e) => ids.has(e.id));
-  const entry = { id: nextId(draft, "c"), kind: c.kind, day: c.day, ...c.toDay !== void 0 ? { toDay: c.toDay } : {}, text: text2 };
+  const entry = {
+    id: nextId(draft, "c"),
+    kind: c.kind,
+    day: c.day,
+    ...c.toDay !== void 0 ? { toDay: c.toDay } : {},
+    ...due.audience !== void 0 ? { audience: due.audience } : {},
+    text: text2
+  };
   draft.memory.chronicle = draft.memory.chronicle.filter((e) => !ids.has(e.id));
   draft.memory.chronicle.splice(at, 0, entry);
   return entry;
@@ -11080,7 +11100,7 @@ function proposeBeat(draft, ctx2, beatId, framing) {
     });
   }
   addFact(draft, { about: [], text: text2, tags: ["spine"], importance: 4, day: draft.day, knownBy: ["*"] });
-  addChronicle(draft, { kind: "scene", day: draft.day, text: text2 });
+  addChronicle(draft, { kind: "scene", day: draft.day, text: text2, audience: "*" });
   events.push({ type: "beat_proposed", beatId, framing: text2 });
   const completion = beat.completion ?? { kind: "auto" };
   if (completion.kind === "mission") {
@@ -15143,7 +15163,7 @@ function terminate(draft, ctx2, unitId) {
     day: draft.day,
     knownBy: ["*"]
   });
-  addChronicle(draft, { kind: "scene", day: draft.day, text: `Day ${draft.day}: ${unit.displayName} was terminated through the Leash.` });
+  addChronicle(draft, { kind: "scene", day: draft.day, text: `Day ${draft.day}: ${unit.displayName} was terminated through the Leash.`, audience: "*" });
   events.push({ type: "unit_terminated", unitId });
   return { approved: true, events };
 }
@@ -17807,7 +17827,7 @@ function endExpedition(draft, ctx2, outcome) {
   let line2 = `Expedition to ${regionLabel}: ${OUTCOME_TEXT[outcome]}.`;
   if (injuries.length > 0) line2 += ` ${injuries.map(nameOf12).join(" and ")} ${injuries.length > 1 ? "were" : "was"} carried back.`;
   if (deaths.length > 0) line2 += ` ${deaths.map(nameOf12).join(" and ")} did not return.`;
-  addChronicle(draft, { kind: "scene", day: draft.day, text: line2 });
+  addChronicle(draft, { kind: "scene", day: draft.day, text: line2, audience: [...exp.party] });
   const rs = draft.world.regions[exp.regionId] ?? { known: true };
   draft.world.regions[exp.regionId] = { ...rs, lastVisitedDay: draft.day };
   draft.world.lastExpeditionRegionId = exp.regionId;
@@ -19680,6 +19700,14 @@ function markDmViolation(draft, reg, unitId, messageRef, raw) {
   if (message) message.violation = categories;
 }
 
+// src/engine/memory/scenes.ts
+var SCENE_MARKS_MAX = 50;
+function recordSceneRange(draft, mark) {
+  const marks = (draft.memory.scenes ??= []).filter((m) => m.sceneId !== mark.sceneId);
+  marks.push({ ...mark });
+  draft.memory.scenes = marks.slice(-SCENE_MARKS_MAX);
+}
+
 // src/engine/actions/scene.ts
 installRelationAccounting();
 var isObj12 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -19795,13 +19823,20 @@ registerAction("scene/end", (draft, payload, ctx2) => {
   const summary = isObj12(payload) && isObj12(payload.summary) ? payload.summary : void 0;
   const names = scene.participants.map((id) => draft.squad.find((u) => u.id === id)?.displayName ?? id).join(", ");
   const line2 = typeof summary?.chronicle === "string" ? summary.chronicle.trim().slice(0, CHRONICLE_LINE_MAX).trim() : "";
+  const living2 = draft.squad.filter((u) => u.kind === "named" && isLiving(u)).map((u) => u.id);
+  const everyone = living2.length > 0 && living2.every((id) => scene.participants.includes(id));
   addChronicle(draft, {
     kind: "scene",
     day: scene.day,
     sceneId: scene.id,
     slot: scene.slot,
+    audience: everyone ? "*" : [...scene.participants],
     text: line2 !== "" ? line2 : `${String(reg.locations.get(scene.locationId)?.name ?? scene.locationId)}: ${names} talked.`
   });
+  const endIndex = isObj12(payload) ? payload.endIndex : void 0;
+  if (typeof endIndex === "number" && Number.isInteger(endIndex) && endIndex >= scene.startIndex) {
+    recordSceneRange(draft, { sceneId: scene.id, from: scene.startIndex, to: endIndex, summarized: summary !== void 0 });
+  }
   if (summary && Array.isArray(summary.facts)) {
     const facts = validateIntents({ facts: summary.facts }, { participants: scene.participants, squad: draft.squad }).facts;
     const room = Math.max(0, TUNING.memory.factsPerScene - draft.memory.facts.filter((x) => x.sceneId === scene.id).length);
@@ -19864,11 +19899,14 @@ registerAction("campaign/set_intimacy", (draft, payload) => {
 });
 registerAction("memory/compact", (draft, payload) => {
   if (!isObj12(payload)) throw new Error("memory/compact needs a payload");
-  const { kind, day, toDay, text: text2 } = payload;
+  const { kind, day, toDay, text: text2, audience } = payload;
   if (kind !== "day" && kind !== "week" || typeof day !== "number" || typeof text2 !== "string" || toDay !== void 0 && typeof toDay !== "number") {
-    throw new Error("memory/compact needs { kind, day, toDay?, text }");
+    throw new Error("memory/compact needs { kind, day, toDay?, audience?, text }");
   }
-  const entry = applyCompaction(draft, { kind, day, toDay, text: text2 });
+  if (audience !== void 0 && audience !== "*" && !(Array.isArray(audience) && audience.every((x) => typeof x === "string"))) {
+    throw new Error('memory/compact: audience is "*" or a list of unit ids');
+  }
+  const entry = applyCompaction(draft, { kind, day, toDay, text: text2, ...audience !== void 0 ? { audience } : {} });
   return [{ type: "chronicle_compacted", kind, day, toDay: entry.toDay ?? null }];
 });
 
@@ -25090,7 +25128,7 @@ async function runCompaction(deps) {
     const text2 = modelText ?? fallbackCompaction(due.entries);
     if (text2 === "") return;
     const events = deps.app.dispatch(
-      { type: "memory/compact", payload: { kind: due.kind, day: due.day, ...due.toDay !== void 0 ? { toDay: due.toDay } : {}, text: text2 } },
+      { type: "memory/compact", payload: { kind: due.kind, day: due.day, ...due.toDay !== void 0 ? { toDay: due.toDay } : {}, ...due.audience !== void 0 ? { audience: due.audience } : {}, text: text2 } },
       { expectChatId: expect }
     );
     if (events.some((e) => e.type === "error")) return;

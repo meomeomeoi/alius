@@ -20,7 +20,7 @@ export async function runCompaction(deps: Pick<SceneDeps, 'st' | 'app' | 'settin
     const text = modelText ?? fallbackCompaction(due.entries);
     if (text === '') return;
     const events = deps.app.dispatch(
-      { type: 'memory/compact', payload: { kind: due.kind, day: due.day, ...(due.toDay !== undefined ? { toDay: due.toDay } : {}), text } },
+      { type: 'memory/compact', payload: { kind: due.kind, day: due.day, ...(due.toDay !== undefined ? { toDay: due.toDay } : {}), ...(due.audience !== undefined ? { audience: due.audience } : {}), text } },
       { expectChatId: expect },
     );
     if (events.some((e) => e.type === 'error')) return;
