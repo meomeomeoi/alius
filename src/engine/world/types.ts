@@ -169,7 +169,11 @@ export type PendingNode =
   | { kind: 'event'; nodeId: string; templateId: string; herCall?: { unitId: string; outcome: 'good' | 'bad' } };
 
 /** P9e: one decision a soldier took on her own during a run (`odds` = the stored chance it would go well, for the analysis). */
-export interface HerCallEntry { nodeId: string; unitId: string; outcome: 'good' | 'bad'; templateId: string; odds: number }
+export interface HerCallEntry {
+  nodeId: string; unitId: string; outcome: 'good' | 'bad'; templateId: string; odds: number;
+  /** Whether this call put her mark on the run (absent in an entry that did not record it). */
+  marked?: boolean;
+}
 
 /** A relation event reported by an expedition, applied through `applyIntents` on return. */
 export interface QueuedIntent {

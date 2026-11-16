@@ -55,6 +55,17 @@ describe('P9e content: the her-call events', () => {
     }
   });
 
+  it('an outcome text is a past-tense clause of her own ("she …"), so it reads after both frames', () => {
+    for (const t of herCalls()) {
+      for (const o of specOf(t).outcomes) {
+        expect(o.text, `${String(t.id)} ${o.id}`).toMatch(/^she [a-z]+ed?\b|^she (let|took|led|gave|broke|called|made|went|ran|held)\b/);
+        expect(o.text.length, `${String(t.id)} ${o.id}`).toBeLessThanOrEqual(160);
+        // "Ann took the decision herself: she …" (log, card) and "… it went well: she …" (fact)
+        expect(`Ann took the decision herself: ${o.text}`).toMatch(/herself: she /);
+      }
+    }
+  });
+
   it('a bad outcome bites about as hard as the worst option of an ordinary minor event (supplies 2–3, stress +10, HP −10 %)', () => {
     for (const t of herCalls()) {
       const bad = specOf(t).outcomes.find((o) => o.id === 'bad')!.effects as WorldEffect[];

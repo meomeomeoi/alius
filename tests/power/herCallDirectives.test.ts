@@ -36,33 +36,68 @@ function rig(state: CampaignState) {
 const ended = [{ type: 'expedition_ended', outcome: 'failed', reportId: 'rep_x' }];
 
 describe('power:herCall:<unitId> after a run', () => {
-  it('expedition_ended sets it with went well / went badly, expiring after the scene', () => {
-    const r = rig(afterRun([{ unitId: ANN, outcome: 'bad' }, { unitId: BEA, outcome: 'good' }]));
-    r.power.onEvents(ended);
-    expect(r.set.mock.calls.map((c) => c[0])).toEqual([
-      { id: `power:herCall:${ANN}`, expiresAfter: 'scene', text: 'Ann took the decision herself in the field; it went badly.' },
-      { id: `power:herCall:${BEA}`, expiresAfter: 'scene', text: 'Bea took the decision herself in the field; it went well.' },
-    ]);
-    expect(r.refresh).toHaveBeenCalled();
-    expect(r.ctx.build(r.h.state(), 5000).directives).toContain('Ann took the decision herself in the field; it went badly.');
+  it('is derived for a present soldier who decided: went well / went badly, expiring after the scene', () => {
+    const s = afterRun([{ unitId: ANN, outcome: 'bad' }, { unitId: BEA, outcome: 'good' }]);
+    expect(powerDirectives(s, reg, [ANN])).toEqual([{ id: `power:herCall:${ANN}`, expiresAfter: 'scene', text: 'Ann took the decision herself in the field; it went badly.' }]);
+    expect(powerDirectives(s, reg, [BEA])).toEqual([{ id: `power:herCall:${BEA}`, expiresAfter: 'scene', text: 'Bea took the decision herself in the field; it went well.' }]);
+    expect(powerDirectives(s, reg, [ANN, BEA]).map((d) => d.id)).toEqual([`power:herCall:${ANN}`, `power:herCall:${BEA}`]);
+  });
+
+  it('only in a scene she is in: not in another soldier\'s scene, not with no scene', () => {
+    const s = afterRun([{ unitId: ANN, outcome: 'bad' }]);
+    expect(powerDirectives(s, reg, ['unit_cat'])).toEqual([]);
+    expect(powerDirectives(s, reg, [])).toEqual([]);
   });
 
   it('one directive per unit: her last call wins', () => {
-    const r = rig(afterRun([{ unitId: ANN, outcome: 'bad' }, { unitId: ANN, outcome: 'good' }]));
-    r.power.onEvents(ended);
-    expect(r.set.mock.calls.map((c) => c[0])).toEqual([{ id: `power:herCall:${ANN}`, expiresAfter: 'scene', text: 'Ann took the decision herself in the field; it went well.' }]);
+    const s = afterRun([{ unitId: ANN, outcome: 'bad' }, { unitId: ANN, outcome: 'good' }]);
+    expect(powerDirectives(s, reg, [ANN])).toEqual([{ id: `power:herCall:${ANN}`, expiresAfter: 'scene', text: 'Ann took the decision herself in the field; it went well.' }]);
   });
 
-  it('a run with no her-call, another report and a unit who is gone set nothing', () => {
+  it('a run with no her-call, a unit who is gone and a report from days ago give nothing', () => {
+    expect(powerDirectives(afterRun([]), reg, [ANN])).toEqual([]);
+    expect(powerDirectives(afterRun([{ unitId: 'ghost', outcome: 'bad' }]), reg, ['ghost'])).toEqual([]);
+    const old = afterRun([{ unitId: ANN, outcome: 'bad' }]);
+    old.day = old.lastExpedition!.day + 2;
+    expect(powerDirectives(old, reg, [ANN])).toEqual([]);
+    const next = afterRun([{ unitId: ANN, outcome: 'bad' }]);
+    next.day = next.lastExpedition!.day + 1;
+    expect(powerDirectives(next, reg, [ANN])).toHaveLength(1); // the next morning is still "the scene after the run"
+    const dead = afterRun([{ unitId: ANN, outcome: 'bad' }]);
+    dead.squad.find((u) => u.id === ANN)!.status = 'dead';
+    expect(powerDirectives(dead, reg, [ANN])).toEqual([]);
+  });
+
+  it('never leaks: a refresh drops it once she is not in the scene, and a chat without that report has none', () => {
+    const s = afterRun([{ unitId: ANN, outcome: 'bad' }]);
+    s.scene = { id: 'sc', participants: [ANN], mode: 'private', locationId: 'mess_hall', exchanges: 0 } as never;
+    const b = new ContextBuilder();
+    refreshPowerDirectives(b, s, reg);
+    expect(b.build(s, 5000).directives).toContain('it went badly');
+    s.scene = { id: 'sc2', participants: [BEA], mode: 'private', locationId: 'mess_hall', exchanges: 0 } as never;
+    refreshPowerDirectives(b, s, reg);
+    expect(b.build(s, 5000).directives).not.toContain('it went badly'); // another scene
+    s.scene = { id: 'sc', participants: [ANN], mode: 'private', locationId: 'mess_hall', exchanges: 0 } as never;
+    refreshPowerDirectives(b, s, reg);
+    expect(b.build(s, 5000).directives).toContain('it went badly');
+    // another campaign's chat: its state has no such report
+    const other = campaign(reg, 4);
+    other.scene = s.scene;
+    refreshPowerDirectives(b, other, reg);
+    expect(b.build(other, 5000).directives).not.toContain('it went badly');
+  });
+
+  it('expedition_ended no longer sets it from the controller; it only refreshes the context', () => {
+    const r = rig(afterRun([{ unitId: ANN, outcome: 'bad' }]));
+    r.power.onEvents(ended);
+    expect(r.set).not.toHaveBeenCalled();
+    expect(r.refresh).toHaveBeenCalled();
     const none = rig(afterRun([]));
     none.power.onEvents(ended);
-    expect(none.set).not.toHaveBeenCalled();
+    expect(none.refresh).not.toHaveBeenCalled();
     const other = rig(afterRun([{ unitId: ANN, outcome: 'bad' }]));
     other.power.onEvents([{ type: 'expedition_ended', outcome: 'failed', reportId: 'rep_old' }]);
-    expect(other.set).not.toHaveBeenCalled();
-    const gone = rig(afterRun([{ unitId: 'ghost', outcome: 'bad' }]));
-    gone.power.onEvents(ended);
-    expect(gone.set).not.toHaveBeenCalled();
+    expect(other.refresh).not.toHaveBeenCalled();
   });
 });
 
@@ -85,18 +120,15 @@ describe('power:ask_first:<unitId>', () => {
     expect(powerDirectives(s, reg, [ANN])).toEqual([]);
   });
 
-  it('refreshPowerDirectives sets it for the open scene and drops it once lifted; power:herCall survives a refresh', () => {
+  it('refreshPowerDirectives sets it for the open scene and drops it once lifted', () => {
     const s = ordered();
     s.scene = { id: 'sc', participants: [ANN], mode: 'private', locationId: 'mess_hall', exchanges: 0 } as never;
     const b = new ContextBuilder();
-    b.setDirective({ id: `power:herCall:${ANN}`, expiresAfter: 'scene', text: 'Ann took the decision herself in the field; it went badly.' });
     refreshPowerDirectives(b, s, reg);
     expect(b.build(s, 5000).directives).toContain('has ordered Ann to ask');
-    expect(b.build(s, 5000).directives).toContain('it went badly');
     delete s.power!.askFirst;
     refreshPowerDirectives(b, s, reg);
     expect(b.build(s, 5000).directives).not.toContain('to ask');
-    expect(b.build(s, 5000).directives).toContain('it went badly');
   });
 });
 
@@ -110,9 +142,8 @@ describe('ids and words', () => {
   it('no directive id starts with a prefix P9, P9d or P11 reserve, and every one starts with power:', () => {
     const s = campaign(reg, 4);
     s.power = { votes: { log: [], seq: 0 }, askFirst: { [ANN]: s.day } };
-    const r = rig(afterRun([{ unitId: ANN, outcome: 'bad' }]));
-    r.power.onEvents(ended);
-    const ids = [...powerDirectives(s, reg, [ANN]).map((d) => d.id), ...r.set.mock.calls.map((c) => c[0].id)];
+    const ran = afterRun([{ unitId: ANN, outcome: 'bad' }]);
+    const ids = [...powerDirectives(s, reg, [ANN]).map((d) => d.id), ...powerDirectives(ran, reg, [ANN]).map((d) => d.id)];
     expect(ids.length).toBeGreaterThanOrEqual(2);
     for (const id of ids) {
       expect(id.startsWith('power:'), id).toBe(true);
@@ -123,9 +154,8 @@ describe('ids and words', () => {
   it('no commander pronoun in any directive line', () => {
     const s = campaign(reg, 4);
     s.power = { votes: { log: [], seq: 0 }, askFirst: { [ANN]: s.day } };
-    const r = rig(afterRun([{ unitId: ANN, outcome: 'bad' }, { unitId: BEA, outcome: 'good' }]));
-    r.power.onEvents(ended);
-    const texts = [...powerDirectives(s, reg, [ANN]).map((d) => d.text), ...r.set.mock.calls.map((c) => c[0].text)].join(' ');
+    const ran = afterRun([{ unitId: ANN, outcome: 'bad' }, { unitId: BEA, outcome: 'good' }]);
+    const texts = [...powerDirectives(s, reg, [ANN]).map((d) => d.text), ...powerDirectives(ran, reg, [ANN, BEA]).map((d) => d.text)].join(' ');
     expect(texts).not.toMatch(PRONOUN);
   });
 });

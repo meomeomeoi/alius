@@ -528,17 +528,17 @@ An expedition event can be taken out of the commander's hands: a soldier with a 
   "herCall": {
     "trigger": { "minLeadRank": 2 },
     "outcomes": [
-      { "id": "good", "lean": { "pragmatism": 1, "autonomy": 1 }, "text": "leads the squad over a route of her own; …", "effects": [{ "type": "party_stress", "amount": -5 }] },
+      { "id": "good", "lean": { "pragmatism": 1, "autonomy": 1 }, "text": "she led the squad over a route of her own; …", "effects": [{ "type": "party_stress", "amount": -5 }] },
       { "id": "bad", "lean": { "autonomy": 2 }, "text": "takes the squad down a route of her own; …", "effects": [{ "type": "carried_supplies", "amount": -2 }, { "type": "party_stress", "amount": 10 }] } ],
     "defectTilt": [{ "category": "neural", "shift": -0.1 }] } }
 ```
 
 - **Only minor `expedition_event` templates** (contexts exactly `["expedition_event"]`, no `generate`, no `flavor`), with a `fixed` block of 2 options that each carry a cost effect, as for any event.
 - **`trigger` says who may act, from the card, never by id:** `minLeadRank` (0 yielding … 3 dominant) and/or `stances` (ids of `commandStances`, checked at load) with `minImpunity` (0–100). A soldier qualifies by either branch. A trigger needs `minLeadRank` or `stances`. `squad_assertiveness` only scales how often.
-- **Exactly one `good` and one `bad` outcome.** `lean` is a value-axis map (−2…2, as for a ballot): her values against each lean decide how likely the outcome is good (`base 0.5 + 0.05 × (score(good) − score(bad))`, clamped to 0.15…0.85). `text` is at most 160 characters and is shown after `{Name} took the decision herself:`; write it as a continuation, no pronoun for the commander.
+- **Exactly one `good` and one `bad` outcome.** `lean` is a value-axis map (−2…2, as for a ballot): her values against each lean decide how likely the outcome is good (`base 0.5 + 0.05 × (score(good) − score(bad))`, clamped to 0.15…0.85). `text` is at most 160 characters. Write it as a **past-tense clause starting with "she"** ("she let the scavenger go; …"): it is shown after `{Name} took the decision herself:` (log, card) and after `…, and it went well:` (the fact the model reads). No pronoun for the commander.
 - **The bad outcome must cost** (at least one cost effect: supplies, stress, HP …) and **the good one must not**. About as hard as the worst option of an ordinary minor event: supplies 2–3, stress +10, HP −10 %. `subject` / `witnesses` targets and `oversight_punish` are not allowed (they belong to the scapegoat); `carried_supplies`, `party_hp`, `loot` are.
 - **`defectTilt`** shifts the odds of a good outcome (−0.2…0.2) for a soldier with a defect of that `category` (`neural`, `somatic`, `cybernetic`, `desire_bond`); one shift per entry.
-- A template is offered only to a party in which somebody could act on it, and never on a tutorial run; pinning it (a fixed map's `eventId`, a mission's `objectiveEventId`) with nobody eligible plays the `fixed` block.
+- A template is offered only to a party in which somebody could act on it, and never on a tutorial run (pinned or not); pinning it (a fixed map's `eventId`, a mission's `objectiveEventId`) with nobody eligible plays the `fixed` block.
 - A scapegoat template's `fixed.because: { vote?, her_call? }` fills its `{because}` placeholder by where the decision came from (≤ 200 characters each; only on a `scapegoat` template).
 - Glossary entries `her_call` and `ask_first` explain the system in the analysis panel.
 

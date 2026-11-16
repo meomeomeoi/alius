@@ -16897,7 +16897,7 @@ function applyHerCall(draft, ctx2, p) {
       marked = markHerCall(draft, mission, { unitId: call.unitId, nodeId: p.nodeId, witnessIds });
     }
   }
-  (exp.herCalls ??= []).push({ nodeId: p.nodeId, unitId: call.unitId, outcome: call.outcome, templateId: p.templateId, odds: call.odds });
+  (exp.herCalls ??= []).push({ nodeId: p.nodeId, unitId: call.unitId, outcome: call.outcome, templateId: p.templateId, odds: call.odds, marked });
   events.push({ type: "her_call", nodeId: p.nodeId, templateId: p.templateId, unitId: call.unitId, outcome: call.outcome, missionId: exp.missionId, marked });
   return events;
 }
@@ -17999,7 +17999,7 @@ function enterEvent(draft, ctx2, nodeId, isObjective, mission) {
   }
   const template = reg.dilemmaTemplates.get(templateId);
   const her = herCallSpecOf(template);
-  const call = her === null ? null : rollHerCall(draft, reg, ctx2.rng, her, ableParty(draft));
+  const call = her === null || isTutorialRun(draft, reg) ? null : rollHerCall(draft, reg, ctx2.rng, her, ableParty(draft));
   if (her !== null && call !== null) {
     const title = String(template.fixed.title);
     const events = applyHerCall(draft, ctx2, { templateId, nodeId, title, spec: her, call });
@@ -20376,30 +20376,16 @@ function createPower(deps) {
   function answerCountermand(answer) {
     return send({ type: "power/countermand", payload: { answer } }, chatId());
   }
-  function herCallDirectives(reportId) {
+  function herCallsEnded(reportId) {
     const report = state()?.lastExpedition;
-    if (!report || report.id !== reportId || !report.herCalls) return;
-    const last = /* @__PURE__ */ new Map();
-    for (const c of report.herCalls) last.set(c.unitId, c.outcome);
-    let any = false;
-    for (const [unitId, outcome] of last) {
-      const unit = state()?.squad.find((u) => u.id === unitId);
-      if (!unit) continue;
-      deps.context.setDirective({
-        id: `power:herCall:${unitId}`,
-        expiresAfter: "scene",
-        text: `${unit.displayName} took the decision herself in the field; it went ${outcome === "good" ? "well" : "badly"}.`
-      });
-      any = true;
-    }
-    if (any) deps.refreshContext();
+    if (report && report.id === reportId && (report.herCalls?.length ?? 0) > 0) deps.refreshContext();
   }
   async function askFirst(unitId, on) {
     return send({ type: "power/ask_first", payload: { unitId, on } }, chatId());
   }
   return {
     onEvents(events) {
-      for (const e of events) if (e.type === "expedition_ended") herCallDirectives(e.reportId);
+      for (const e of events) if (e.type === "expedition_ended") herCallsEnded(e.reportId);
       const refresh = ["vote_overruled", "grudges_ended", "leader_changed", "leader_endorsed", "outside_feat", "challenge_resolved"];
       if (events.some((e) => refresh.includes(e.type))) deps.refreshContext();
       for (const e of events) {
@@ -20627,7 +20613,14 @@ function renderVotePanel(host, vote, lines, ctx2) {
 // src/power/directives.ts
 var VOTE_PREFIX = "power:vote:";
 var ASK_FIRST_PREFIX = "power:ask_first:";
-var DERIVED = ["power:vote:", "power:leader", "power:outside", "power:ask_first:"];
+var HER_CALL_PREFIX = "power:herCall:";
+var HER_CALL_DAYS = 1;
+var DERIVED = ["power:vote:", "power:leader", "power:outside", "power:ask_first:", "power:herCall:"];
+function herCallOf(state, unitId) {
+  const report = state.lastExpedition;
+  if (!report || state.day - report.day > HER_CALL_DAYS) return void 0;
+  return report.herCalls?.filter((c) => c.unitId === unitId).at(-1)?.outcome;
+}
 function powerDirectives(state, _reg, present) {
   const out = [];
   for (const id of present) {
@@ -20635,6 +20628,8 @@ function powerDirectives(state, _reg, present) {
     if (unit && askFirstHolds(state, id)) {
       out.push({ id: `${ASK_FIRST_PREFIX}${id}`, expiresAfter: "scene", text: `The commander has ordered ${unit.displayName} to ask before she decides anything in the field.` });
     }
+    const call = unit && isLiving(unit) ? herCallOf(state, id) : void 0;
+    if (unit && call) out.push({ id: `${HER_CALL_PREFIX}${id}`, expiresAfter: "scene", text: `${unit.displayName} took the decision herself in the field; it went ${call === "good" ? "well" : "badly"}.` });
     if (!unit || !grudgeHolds(state, id)) continue;
     out.push({
       id: `${VOTE_PREFIX}${id}`,
@@ -29915,10 +29910,17 @@ function herCallProvider(subject, env, k) {
   const lines = [`${name} took the decision herself in the field; it went ${call.outcome === "good" ? "well" : "badly"}.`];
   const missionId = typeof subject.data.missionId === "string" ? subject.data.missionId : state.expedition?.missionId ?? state.lastExpedition?.missionId;
   const mission = [...state.missions.active, ...state.missions.offered, ...state.missions.completed].find((m) => m.id === missionId);
+  const by = mission?.decidedBy;
   if (call.outcome === "good") lines.push("It is hers: merit and boldness for her. It blames nobody.");
-  else if (mission?.decidedBy?.source === "her_call" && mission.decidedBy.unitId === call.unitId) {
+  else if (by?.source === "her_call" && by.unitId === call.unitId) {
     lines.push("The run is marked on her call: if it fails, oversight will want a name, and the commander answers for it or shifts it onto her.");
-  } else lines.push("It cost the run but left no mark: nobody answers for it if the run fails.");
+  } else if (by !== void 0) {
+    lines.push(`The run already carries another mark (${nameOf9(state, by.unitId)}'s decision), so this call added none.`);
+  } else if (call.marked === true) {
+    lines.push("The run was marked on her call; that mark is spent now that the run has ended.");
+  } else if (call.marked === false && mission !== void 0) {
+    lines.push("A side run or a point of interest cannot be marked: nobody is asked for a name if it fails.");
+  }
   const odds = k.raw(Math.round(call.odds * 100));
   if (odds !== null) lines.push(`Odds it would go well: ${odds}%.`);
   return { lines };

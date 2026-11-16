@@ -18,17 +18,17 @@ const env = (state: CampaignState | null, raw = false): AnalyzeEnv => ({ registr
 const PRONOUN = /\b(he|him|his|himself)\b/i;
 
 /** A run under way with one her-call logged; `marked` writes the mark on its mission. */
-function underway(o: { outcome: 'good' | 'bad'; marked?: boolean; odds?: number }): CampaignState {
+function underway(o: { outcome: 'good' | 'bad'; marked?: boolean; odds?: number; mark?: NonNullable<CampaignState['missions']['active'][number]['decidedBy']>; entryMarked?: boolean | null }): CampaignState {
   const s = campaign(reg, 4);
   s.missions.active = [{
     id: 'm1', source: 'command', templateId: 'tpl_sweep', title: 'Sweep', brief: '', regionId: 'quarantine_d7', danger: 1, objective: { node: 'objective', condition: 'reach' },
     offeredDay: 1, rewardsTier: 'tier_1', failureEffects: [], status: 'active',
-    ...(o.marked ? { decidedBy: { source: 'her_call' as const, unitId: ANN, nodeId: 'n0_0', witnessIds: [BEA] } } : {}),
+    ...(o.marked ? { decidedBy: { source: 'her_call' as const, unitId: ANN, nodeId: 'n0_0', witnessIds: [BEA] } } : o.mark ? { decidedBy: o.mark } : {}),
   }];
   s.expedition = {
     id: 'exp1', missionId: 'm1', regionId: 'quarantine_d7', day: s.day, slots: 2, party: [ANN, BEA], formation: { front: [ANN], back: [BEA] }, supplies: 4,
     map: { layers: [], objectiveId: 'obj', nodes: {} }, at: 'n0_0', path: ['n0_0'], phase: 'travel', loot: [], log: [], hints: [], objectiveDone: false, reveal: 1,
-    herCalls: [{ nodeId: 'n0_0', unitId: ANN, outcome: o.outcome, templateId: 'evt_hc_route', odds: o.odds ?? 0.65 }],
+    herCalls: [{ nodeId: 'n0_0', unitId: ANN, outcome: o.outcome, templateId: 'evt_hc_route', odds: o.odds ?? 0.65, ...(o.entryMarked === null ? {} : { marked: o.entryMarked ?? o.marked === true }) }],
   };
   return s;
 }
@@ -68,6 +68,41 @@ describe('glossary:her_call', () => {
     expect(analyze('glossary:her_call', env(s), { unitId: ANN, nodeId: 'n0_0' }).join('\n')).toMatch(/badly/);
     expect(analyze('glossary:her_call', env(campaign(reg, 4)), { unitId: ANN })).toEqual([]);
     expect(analyze('glossary:her_call', env(null), { unitId: ANN })).toEqual(['No campaign loaded.']);
+  });
+});
+
+describe('glossary:her_call: what the mark says is true', () => {
+  const read = (s: CampaignState) => analyze('glossary:her_call', env(s), { unitId: ANN, nodeId: 'n0_0', missionId: 'm1' }).join('\n');
+
+  it('a vote mark already on the run was kept: the one who carried the vote still answers', () => {
+    const lines = read(underway({ outcome: 'bad', mark: { voteId: 'v1', unitId: BEA, witnessIds: [] } }));
+    expect(lines).toMatch(/already carries another mark/i);
+    expect(lines).toMatch(/Bea/);
+    expect(lines).not.toMatch(/nobody answers/i);
+    expect(lines).not.toMatch(/is marked on her call/i);
+  });
+
+  it('a side run or point of interest cannot be marked', () => {
+    const s = underway({ outcome: 'bad' });
+    s.missions.active[0].source = 'side';
+    const lines = read(s);
+    expect(lines).toMatch(/cannot be marked/i);
+    expect(lines).not.toMatch(/nobody answers/i);
+  });
+
+  it('after a failed run the mark is spent: it says so instead of "nobody answers"', () => {
+    const s = underway({ outcome: 'bad', entryMarked: true }); // marked at the time, no mark on the mission any more
+    const lines = read(s);
+    expect(lines).toMatch(/marked on her call/i);
+    expect(lines).toMatch(/spent|already been put|ended/i);
+    expect(lines).not.toMatch(/nobody answers/i);
+    expect(lines).not.toMatch(/if it fails, oversight will want/i);
+  });
+
+  it('an entry that does not record the mark says nothing false about it', () => {
+    const lines = read(underway({ outcome: 'bad', entryMarked: null }));
+    expect(lines).not.toMatch(/nobody answers/i);
+    expect(lines).not.toMatch(/cannot be marked/i);
   });
 });
 

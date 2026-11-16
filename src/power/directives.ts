@@ -1,4 +1,5 @@
 import type { Registries } from '../content/types';
+import { isLiving } from '../engine/economy';
 import { askFirstHolds } from '../engine/power/herCall';
 import { outsideActive } from '../engine/power/outside';
 import { grudgeHolds, leaderOf } from '../engine/power/state';
@@ -12,13 +13,24 @@ import type { Directive, ContextBuilder } from '../llm/context';
 
 const VOTE_PREFIX = 'power:vote:';
 const ASK_FIRST_PREFIX = 'power:ask_first:';
+const HER_CALL_PREFIX = 'power:herCall:';
+/** "The scene after the run": the day the squad is back and the next one. */
+const HER_CALL_DAYS = 1;
 /** Ids that are derived from the state on every refresh (the others, `power:challenge` and `power:countermand`, are set by the controller). */
-const DERIVED = ['power:vote:', 'power:leader', 'power:outside', 'power:ask_first:'] as const;
+const DERIVED = ['power:vote:', 'power:leader', 'power:outside', 'power:ask_first:', 'power:herCall:'] as const;
+
+/** How her last call of the latest run went, while that run is recent; read from the report, so it follows the chat and never outlives it. */
+function herCallOf(state: CampaignState, unitId: string): 'good' | 'bad' | undefined {
+  const report = state.lastExpedition;
+  if (!report || state.day - report.day > HER_CALL_DAYS) return undefined;
+  return report.herCalls?.filter((c) => c.unitId === unitId).at(-1)?.outcome;
+}
 
 /**
  * Derived from the state, so they survive a reload:
  *  - `power:vote:<unitId>`: a unit the commander overruled in a squad vote may push back openly until the next day end;
  *  - `power:leader`: the squad leader, while she is in the scene (and the endorsement, when there is one);
+ *  - `power:herCall:<unitId>` (P9e): she took a decision herself in the run that just ended (its report's `herCalls`, her last call), while she is in the scene and the report is from today or yesterday;
  *  - `power:ask_first:<unitId>` (P9e): the commander ordered her to ask before she decides anything in the field, while she is in the scene;
  *  - `power:outside` (manual): outsiders address the leader as the one who really runs the unit, while outside perception is on.
  */
@@ -29,6 +41,8 @@ export function powerDirectives(state: CampaignState, _reg: Registries, present:
     if (unit && askFirstHolds(state, id)) {
       out.push({ id: `${ASK_FIRST_PREFIX}${id}`, expiresAfter: 'scene', text: `The commander has ordered ${unit.displayName} to ask before she decides anything in the field.` });
     }
+    const call = unit && isLiving(unit) ? herCallOf(state, id) : undefined;
+    if (unit && call) out.push({ id: `${HER_CALL_PREFIX}${id}`, expiresAfter: 'scene', text: `${unit.displayName} took the decision herself in the field; it went ${call === 'good' ? 'well' : 'badly'}.` });
     if (!unit || !grudgeHolds(state, id)) continue;
     out.push({
       id: `${VOTE_PREFIX}${id}`, expiresAfter: 'scene',

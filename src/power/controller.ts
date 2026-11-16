@@ -191,23 +191,10 @@ export function createPower(deps: PowerDeps): PowerController {
     return send({ type: 'power/countermand', payload: { answer } }, chatId());
   }
 
-  /** P9e: after a run, each soldier who took a decision on her own gets one line for her next scene (her last call wins). */
-  function herCallDirectives(reportId: unknown): void {
+  /** P9e: a run that ended with her-calls changes what a scene with her is told (`power:herCall:` is derived from the report). */
+  function herCallsEnded(reportId: unknown): void {
     const report = state()?.lastExpedition;
-    if (!report || report.id !== reportId || !report.herCalls) return;
-    const last = new Map<string, 'good' | 'bad'>();
-    for (const c of report.herCalls) last.set(c.unitId, c.outcome);
-    let any = false;
-    for (const [unitId, outcome] of last) {
-      const unit = state()?.squad.find((u) => u.id === unitId);
-      if (!unit) continue;
-      deps.context.setDirective({
-        id: `power:herCall:${unitId}`, expiresAfter: 'scene',
-        text: `${unit.displayName} took the decision herself in the field; it went ${outcome === 'good' ? 'well' : 'badly'}.`,
-      });
-      any = true;
-    }
-    if (any) deps.refreshContext();
+    if (report && report.id === reportId && (report.herCalls?.length ?? 0) > 0) deps.refreshContext();
   }
 
   async function askFirst(unitId: string, on: boolean): Promise<boolean> {
@@ -216,7 +203,7 @@ export function createPower(deps: PowerDeps): PowerController {
 
   return {
     onEvents(events) {
-      for (const e of events) if (e.type === 'expedition_ended') herCallDirectives(e.reportId);
+      for (const e of events) if (e.type === 'expedition_ended') herCallsEnded(e.reportId);
       const refresh = ['vote_overruled', 'grudges_ended', 'leader_changed', 'leader_endorsed', 'outside_feat', 'challenge_resolved'];
       if (events.some((e) => refresh.includes(e.type))) deps.refreshContext();
       for (const e of events) {

@@ -184,10 +184,18 @@ function herCallProvider(subject: Subject, env: AnalyzeEnv, k: Knowledge): { lin
   const lines = [`${name} took the decision herself in the field; it went ${call.outcome === 'good' ? 'well' : 'badly'}.`];
   const missionId = typeof subject.data.missionId === 'string' ? subject.data.missionId : state.expedition?.missionId ?? state.lastExpedition?.missionId;
   const mission = [...state.missions.active, ...state.missions.offered, ...state.missions.completed].find((m) => m.id === missionId);
+  const by = mission?.decidedBy;
   if (call.outcome === 'good') lines.push('It is hers: merit and boldness for her. It blames nobody.');
-  else if (mission?.decidedBy?.source === 'her_call' && mission.decidedBy.unitId === call.unitId) {
+  else if (by?.source === 'her_call' && by.unitId === call.unitId) {
     lines.push('The run is marked on her call: if it fails, oversight will want a name, and the commander answers for it or shifts it onto her.');
-  } else lines.push('It cost the run but left no mark: nobody answers for it if the run fails.');
+  } else if (by !== undefined) {
+    // the first mark wins: a vote's (or an earlier decision's) was kept, so someone else still answers for the run
+    lines.push(`The run already carries another mark (${nameOf(state, by.unitId)}'s decision), so this call added none.`);
+  } else if (call.marked === true) {
+    lines.push('The run was marked on her call; that mark is spent now that the run has ended.');
+  } else if (call.marked === false && mission !== undefined) {
+    lines.push('A side run or a point of interest cannot be marked: nobody is asked for a name if it fails.');
+  }
   const odds = k.raw(Math.round(call.odds * 100));
   if (odds !== null) lines.push(`Odds it would go well: ${odds}%.`);
   return { lines };

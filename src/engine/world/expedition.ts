@@ -699,7 +699,8 @@ function enterEvent(draft: CampaignState, ctx: EngineCtx, nodeId: string, isObje
   // P9e: at a her-call template a soldier may take the decision herself; the node then waits for ACKNOWLEDGE and asks nothing
   const template = reg.dilemmaTemplates.get(templateId);
   const her = herCallSpecOf(template);
-  const call = her === null ? null : rollHerCall(draft, reg, ctx.rng, her, ableParty(draft));
+  // a tutorial run never meets one, pinned or not (`eventPool` already keeps them out of its draws)
+  const call = her === null || isTutorialRun(draft, reg) ? null : rollHerCall(draft, reg, ctx.rng, her, ableParty(draft));
   if (her !== null && call !== null) {
     const title = String((template!.fixed as { title: string }).title);
     const events = applyHerCall(draft, ctx, { templateId, nodeId, title, spec: her, call });

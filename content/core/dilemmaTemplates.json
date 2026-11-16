@@ -1456,7 +1456,7 @@
             "pragmatism": 1,
             "autonomy": 1
           },
-          "text": "leads the squad over a route of her own; it saves the day's march.",
+          "text": "she led the squad over a route of her own; it saved the day's march.",
           "effects": [
             {
               "type": "party_stress",
@@ -1469,7 +1469,7 @@
           "lean": {
             "autonomy": 2
           },
-          "text": "takes the squad down a route of her own; it is a dead end and the supplies go on the way back.",
+          "text": "she took the squad down a route of her own; it was a dead end and the supplies went on the way back.",
           "effects": [
             {
               "type": "carried_supplies",
@@ -1534,7 +1534,7 @@
           "lean": {
             "mercy": 2
           },
-          "text": "lets the scavenger go; the scavenger leaves a cache of salvage as thanks.",
+          "text": "she let the scavenger go; the scavenger left a cache of salvage as thanks.",
           "effects": [
             {
               "type": "loot",
@@ -1548,7 +1548,7 @@
             "mercy": 1,
             "ingroup": -1
           },
-          "text": "lets the scavenger go; the scavenger comes back with friends and the squad is ambushed.",
+          "text": "she let the scavenger go; the scavenger came back with friends and the squad was ambushed.",
           "effects": [
             {
               "type": "party_hp",
@@ -1599,7 +1599,7 @@
           "lean": {
             "pragmatism": 1
           },
-          "text": "breaks the cache open without waiting; it is full.",
+          "text": "she broke the cache open without waiting; it was full.",
           "effects": [
             {
               "type": "loot",
@@ -1613,7 +1613,7 @@
             "autonomy": 1,
             "pragmatism": -1
           },
-          "text": "breaks the cache open without waiting; it is rigged.",
+          "text": "she broke the cache open without waiting; it was rigged.",
           "effects": [
             {
               "type": "party_hp",
@@ -1678,7 +1678,7 @@
           "lean": {
             "ingroup": 2
           },
-          "text": "calls the fallback and the others follow; nobody is left behind.",
+          "text": "she called the fallback and the others followed; nobody was left behind.",
           "effects": [
             {
               "type": "party_stress",
@@ -1692,7 +1692,7 @@
             "sacrifice": -1,
             "ingroup": 1
           },
-          "text": "calls the fallback and the others follow; the packs are dropped on the way.",
+          "text": "she called the fallback and the others followed; the packs were dropped on the way.",
           "effects": [
             {
               "type": "carried_supplies",
@@ -1747,7 +1747,7 @@
             "autonomy": 1,
             "ingroup": 1
           },
-          "text": "gives the others orders of her own; the stretch goes quietly.",
+          "text": "she gave the others orders of her own; the stretch went quietly.",
           "effects": [
             {
               "type": "party_stress",
@@ -1761,7 +1761,7 @@
             "autonomy": 2,
             "corporate": -1
           },
-          "text": "gives the others orders of her own; half of them do not take it well.",
+          "text": "she gave the others orders of her own; half of them did not take it well.",
           "effects": [
             {
               "type": "party_stress",

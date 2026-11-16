@@ -83,6 +83,19 @@ function seeded(s: CampaignState, regs: Registries, want: { acts: false } | { ac
   throw new Error('test setup: no seed');
 }
 
+/** For a pinned node (no pool pick): a seed on which she acts and it goes badly. */
+function seeded2(s: CampaignState, regs: Registries): CampaignState {
+  for (let seed = 1; seed < 5000; seed++) {
+    const call = rollHerCall(s, regs, new Rng(seedRng(seed)), regs.dilemmaTemplates.get('evt_hc_test')!.herCall as HerCallSpec, ableParty(s));
+    if (call?.outcome === 'bad') {
+      const t = structuredClone(s);
+      t.rng = seedRng(seed);
+      return t;
+    }
+  }
+  throw new Error('test setup: no seed');
+}
+
 describe('the pool', () => {
   it('acceptance 5: with no eligible unit the pool equals the pool without her-call templates', () => {
     const s = runOf(withHc);
@@ -200,7 +213,7 @@ describe('consequences', () => {
       text: 'Ann took a decision in the field herself, and it went well: The route holds.', about: [ANN], importance: 2, knownBy: after.expedition!.party,
     });
     expect(missionOf(after).decidedBy).toBeUndefined();
-    expect(after.expedition!.herCalls).toEqual([{ nodeId: NODE, unitId: ANN, outcome: 'good', templateId: 'evt_hc_test', odds: 0.5 }]);
+    expect(after.expedition!.herCalls).toEqual([{ nodeId: NODE, unitId: ANN, outcome: 'good', templateId: 'evt_hc_test', odds: 0.5, marked: false }]);
     expect(after.expedition!.log.at(-1)).toMatchObject({ kind: 'event', nodeId: NODE, text: 'Ann took the decision herself: The route holds.' });
     expect(after.expedition!.supplies).toBe(4);
   });
@@ -245,19 +258,20 @@ describe('consequences', () => {
     expect(missionOf(r.state).decidedBy).toBeUndefined();
   });
 
-  it('bad on a tutorial run (pinned event): she acts, no mark', () => {
+  it('a pinned her-call event on a tutorial run plays its fixed block, draws nothing and marks nothing', () => {
     const tutorial: Registries = { ...withHc, missionTemplates: new Map([...withHc.missionTemplates].map(([id, t]) => [id, { ...t, tutorial: true }])) };
     const s = runOf(withHc, { assertive: [ANN] });
     s.expedition!.map.nodes[NODE].eventId = 'evt_hc_test';
-    const t = structuredClone(s);
-    for (let seed = 1; seed < 5000; seed++) {
-      t.rng = seedRng(seed);
-      const probe = new Rng(t.rng);
-      const call = rollHerCall(t, tutorial, probe, spec, ableParty(t));
-      if (call?.outcome === 'bad') break;
-    }
+    // a seed on which she would act (and badly) on an ordinary run, so only the tutorial rule stops it
+    const t = seeded2(s, withHc);
+    const ordinary = move(t, withHc);
+    expect(ofType(ordinary.events, 'her_call')[0]).toMatchObject({ outcome: 'bad', marked: true });
     const r = move(t, tutorial);
-    expect(ofType(r.events, 'her_call')[0]).toMatchObject({ outcome: 'bad', marked: false });
+    expect(ofType(r.events, 'her_call')).toEqual([]);
+    expect(ofType(r.events, 'expedition_event')).toEqual([{ type: 'expedition_event', nodeId: NODE, templateId: 'evt_hc_test' }]);
+    expect(r.state.expedition!.pending).toEqual({ kind: 'event', nodeId: NODE, templateId: 'evt_hc_test' });
+    expect(r.state.expedition!.herCalls).toBeUndefined();
+    expect(r.state.rng).toEqual(t.rng);
     expect(missionOf(r.state).decidedBy).toBeUndefined();
   });
 
@@ -274,7 +288,7 @@ describe('consequences', () => {
     const r = move(second, withHc, next);
     expect(ofType(r.events, 'her_call')[0]).toMatchObject({ outcome: 'bad', unitId: BEA, marked: false });
     expect(missionOf(r.state).decidedBy).toMatchObject({ source: 'her_call', unitId: ANN, nodeId: NODE });
-    expect(r.state.expedition!.herCalls!.map((c) => [c.unitId, c.outcome])).toEqual([[ANN, 'bad'], [BEA, 'bad']]);
+    expect(r.state.expedition!.herCalls!.map((c) => [c.unitId, c.outcome, c.marked])).toEqual([[ANN, 'bad', true], [BEA, 'bad', false]]);
     // a squad vote's mark is kept
     const voted = runOf(withHc, { assertive: [ANN] });
     missionOf(voted).decidedBy = { voteId: 'v1', unitId: DEE, witnessIds: [CAT] };
@@ -346,7 +360,7 @@ describe('acknowledging', () => {
     const s = seeded(runOf(withHc, { assertive: [ANN] }), withHc, { acts: true, outcome: 'good' });
     const waiting = move(s, withHc).state;
     const r = run(waiting, withHc, { type: 'expedition/retreat', payload: {} });
-    expect(r.state.lastExpedition!.herCalls).toEqual([{ nodeId: NODE, unitId: ANN, outcome: 'good', templateId: 'evt_hc_test', odds: 0.5 }]);
+    expect(r.state.lastExpedition!.herCalls).toEqual([{ nodeId: NODE, unitId: ANN, outcome: 'good', templateId: 'evt_hc_test', odds: 0.5, marked: false }]);
     // a run with no her-call has no field
     const plain = run(structuredClone(runOf(withHc)), withHc, { type: 'expedition/retreat', payload: {} });
     expect(plain.state.lastExpedition!.herCalls).toBeUndefined();

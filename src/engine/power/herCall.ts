@@ -150,7 +150,7 @@ export function applyHerCall(
       marked = markHerCall(draft, mission, { unitId: call.unitId, nodeId: p.nodeId, witnessIds });
     }
   }
-  (exp.herCalls ??= []).push({ nodeId: p.nodeId, unitId: call.unitId, outcome: call.outcome, templateId: p.templateId, odds: call.odds });
+  (exp.herCalls ??= []).push({ nodeId: p.nodeId, unitId: call.unitId, outcome: call.outcome, templateId: p.templateId, odds: call.odds, marked });
   events.push({ type: 'her_call', nodeId: p.nodeId, templateId: p.templateId, unitId: call.unitId, outcome: call.outcome, missionId: exp.missionId, marked });
   return events;
 }
