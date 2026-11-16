@@ -4,7 +4,7 @@ export type Voice = 'terminal' | 'corporate' | 'paper' | 'personal';
 /** Who is speaking is declared here, in one table, never at the call sites that show the text. */
 export type VoiceSource =
   | 'toast' | 'dm' | 'unit_note' | 'chronicle' | 'dossier' | 'commander_file'
-  | 'oversight' | 'leash_verdict' | 'corporate_mail' | 'intake_form' | 'squad_vote' | 'her_call';
+  | 'oversight' | 'leash_verdict' | 'corporate_mail' | 'intake_form' | 'squad_vote' | 'her_call' | 'booking' | 'device_edit';
 
 export const VOICE_OF: Record<VoiceSource, Voice> = {
   toast: 'terminal',
@@ -22,4 +22,7 @@ export const VOICE_OF: Record<VoiceSource, Voice> = {
   squad_vote: 'corporate',
   // P9e: a soldier's own decision in the field reads as her, not as the system
   her_call: 'personal',
+  // P9c: a soldier's booking of the commander's time and her edit of an outgoing message read as her
+  booking: 'personal',
+  device_edit: 'personal',
 };

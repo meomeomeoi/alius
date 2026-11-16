@@ -22,12 +22,14 @@ registerAction('device/remove_decor', (draft, payload, ctx) => {
   return removeDecor(draft, ctx, payload.unitId, payload.part as DecorPart);
 });
 
-/** The roll for one thing the commander is about to send: `{ channel: 'dm' | 'leash' | 'recruit', toUnitId? }` (the recipient of a DM). */
+/** The roll for one thing the commander is about to send: `{ channel: 'dm' | 'leash' | 'recruit', toUnitId?, text? }` (the recipient and the text of a DM). */
 registerAction('device/intercept', (draft, payload, ctx) => {
-  if (!isObj(payload) || !INTERCEPT_CHANNELS.includes(payload.channel as InterceptChannel) || (payload.toUnitId !== undefined && typeof payload.toUnitId !== 'string')) {
-    throw new Error('device/intercept needs { channel: "dm" | "leash" | "recruit", toUnitId? }');
+  if (!isObj(payload) || !INTERCEPT_CHANNELS.includes(payload.channel as InterceptChannel) || (payload.toUnitId !== undefined && typeof payload.toUnitId !== 'string') || (payload.text !== undefined && typeof payload.text !== 'string')) {
+    throw new Error('device/intercept needs { channel: "dm" | "leash" | "recruit", toUnitId?, text? }');
   }
-  return rollIntercept(draft, ctx, { channel: payload.channel as InterceptChannel, ...(payload.toUnitId !== undefined ? { toUnitId: payload.toUnitId } : {}) });
+  return rollIntercept(draft, ctx, {
+    channel: payload.channel as InterceptChannel, ...(payload.toUnitId !== undefined ? { toUnitId: payload.toUnitId } : {}), ...(payload.text !== undefined ? { text: payload.text } : {}),
+  });
 });
 
 /** KEEP / REVERT on the waiting edit. Draws no rng. */

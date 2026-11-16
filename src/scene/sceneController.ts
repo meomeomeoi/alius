@@ -26,7 +26,9 @@ export type SceneUiEvent =
   | { type: 'pacing' }
   | { type: 'transcript' }
   /** P9: a punishment or a threat was logged, or one was undone: the chips are drawn from the state again. */
-  | { type: 'discipline' };
+  | { type: 'discipline' }
+  /** P9c: a soldier with access to the commander's messages edited this one before it went out; KEEP or REVERT (`comms.answerEdit`) decides. */
+  | { type: 'edit'; unitId: string; original: string; edited: string; interceptId: string; editorId: string };
 
 export type Toast = (kind: 'info' | 'warn' | 'error', text: string) => void;
 

@@ -621,6 +621,8 @@ export interface Intercept {
   unitId: string;
   channel: InterceptChannel;
   toUnitId?: string;
+  /** What the commander wrote (a DM, at most 1000 characters): the edit is worded again from it after a reload. Never the edited text. */
+  original?: string;
   day: number;
   status: 'open' | 'kept';
 }

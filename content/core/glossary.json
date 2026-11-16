@@ -1298,6 +1298,11 @@
     "short": "The mechanic model puts the one-line reason behind each soldier's ballot in a squad vote into words. Off, the reason uses the template line of the vote."
   },
   {
+    "id": "setting_dm_edit_wording",
+    "term": "DM edit wording",
+    "short": "The mechanic model words the edit a soldier with access to your messages makes before one goes out. Off, an authored line is used."
+  },
+  {
     "id": "publicity",
     "term": "Publicity",
     "short": "How open a romantic relationship is: secret, known to those close, or public. She has her own preference; you choose the level.",

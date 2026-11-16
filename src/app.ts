@@ -48,6 +48,8 @@ import { createLoyalty, type LoyaltyController } from './loyalty/loyaltyControll
 import { clearDisciplineDirectives, disciplineDirectives } from './discipline/context';
 import { createBonds, type BondsController } from './bonds/controller';
 import { createPower, type PowerController } from './power/controller';
+import { createPersonal, type PersonalController } from './personal/controller';
+import { clearPersonalDirectives, refreshPersonalDirectives } from './personal/directives';
 import type { VoteChoice } from './power/deps';
 import { renderVotePanel } from './ui/power/votePanel';
 import { clearPowerDirectives, refreshPowerDirectives } from './power/directives';
@@ -185,6 +187,8 @@ export interface AliusApp {
   discipline: DisciplineController;
   /** P9d: rule proposals (wording, delivery, the three answers). */
   bonds: BondsController;
+  /** P9c: personal pressure: edits of the commander's messages, bookings, claims. */
+  personal: PersonalController;
   /** P9b: squad votes (the VOTE flow, ballot wording) and the grudge directives. */
   power: PowerController;
   /** P11: the prologue's scenes, coach hints and guided evening. */
@@ -238,7 +242,9 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       disciplineDirectives(context, state, registries); // P9: the stance of every unit in the open scene replaces her band text
       bondsDirectives(context, state, registries); // P9d: the content exclusion and the present units' own limits
       refreshPowerDirectives(context, state, registries); // P9b: a unit the commander overruled in a vote may push back
+      refreshPersonalDirectives(context, state, registries); // P9c: courting, a claim, peeled decor and a booking
     } else {
+      clearPersonalDirectives(context);
       clearPowerDirectives(context);
       bondsDirectives(context, null, registries);
       clearWorldDirectives(context);
@@ -331,7 +337,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     onUi: routeUi,
   };
   const scene = createSceneController(sceneDeps);
-  const comms = createComms({ ...sceneDeps, scene });
+  const comms = createComms({ ...sceneDeps, scene, personal: { beforeSend: (u, t) => personal.beforeSend(u, t), answerEdit: (k) => personal.answerEdit(k) } });
   const worldDeps = {
     st,
     app: sceneApp,
@@ -372,6 +378,18 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
   });
   const discipline = createDiscipline({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o), requestVote: (a) => power.requestVote(a) });
   const bonds = createBonds({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o) });
+  const personal = createPersonal({
+    ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o),
+    // an edited request (P9c): the commander keeps the edit (nothing is filed) or reverts it
+    confirmEdit: async (p) => {
+      shell.open();
+      const answer = await shell.modal({
+        title: `EDITED BY ${p.editorName.toUpperCase()}`, body: p.text,
+        actions: [{ label: '[ KEEP ]', value: 'keep' }, { label: '[ REVERT ]', value: 'revert' }],
+      });
+      return answer === 'keep' ? 'keep' : 'revert';
+    },
+  });
   /** P9d: the three answers to a rule proposal, from a scene or the COMMS thread. */
   const answerRule = (ruleId: string, how: 'accept' | 'negotiate' | 'refuse'): void => {
     if (how === 'negotiate') void bonds.negotiateRule(ruleId).then((ok) => { if (ok) shell.open(); });
@@ -446,6 +464,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       shell.showScreen('hub');
     }
     onboarding.onLoaded(); // the guide's first DM, if a reload lost it (P11)
+    void personal.onLoaded().then((ok) => { if (ok) shell.open(); }).catch((e) => console.warn('[Alius] booking failed', e)); // P9c: a booking that came due while the game was closed
   }
 
   async function beginScene(opts: StartOptions): Promise<boolean> {
@@ -536,6 +555,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       }
       discipline.onEvents(events);
       bonds.onEvents(events); // P9d: a new rule proposal is worded and delivered
+      personal.onEvents(events); // P9c: a clash of bookings, a claim, a peeled decor
       power.onEvents(events); // P9b: a grudge that starts or ends changes the scene directives
       onboarding.onEvents(events); // the line-up and first words: the cap question and the step completing when the scene closes (P11)
       if (has('scene_ended') || has('scene_aborted')) {
@@ -549,7 +569,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       }
       if (has('slot_advanced')) void comms.onSlotAdvanced().catch(warn('unit DMs'));
       if (has('slot_advanced')) void discipline.onSlotAdvanced().catch(warn('demands'));
-      if (has('slot_advanced')) void bonds.onSlotAdvanced().then((ok) => { if (ok) shell.open(); }).catch(warn('smother'));
+      if (has('slot_advanced')) void personal.onSlotAdvanced().then((ok) => { if (ok) shell.open(); }).catch(warn('booking')); // P9c: a booking she made opens its scene (the smother hold's too)
       if (has('director_requested') || (has('combat_ended') && state?.world.director?.pending)) void director.onRequested().catch(warn('director'));
       if (has('rumors_requested')) api.dispatch({ type: 'director/request', payload: { reason: 'scout' } }, { expectChatId: chatId });
       if (has('expedition_ended')) {
@@ -790,6 +810,8 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       return false;
     }
     const chatId = st.getActiveChat()?.chatId;
+    // P9c: a soldier with access to the commander's messages may stop the request before it is filed (KEEP: nothing is filed)
+    if ((await personal.beforeRequest('leash')).cancelled || st.getActiveChat()?.chatId !== chatId) return false;
     const cause = kind === 'terminate' ? s.disloyalty?.units[unitId]?.cause : undefined;
     const filed = await fileLeashRequest(shell, {
       kind, unitName: unit.displayName, no: nextLeashNo(s), left: s.leash.authorizationsLeft,
@@ -1860,6 +1882,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     discipline,
     bonds,
     power,
+    personal,
     onboarding,
     fileLeash,
     intakeUnit,
@@ -1963,6 +1986,8 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
 
     async recruitGrunt() {
       const chatId = st.getActiveChat()?.chatId;
+      // P9c: the same for a recruit order
+      if ((await personal.beforeRequest('recruit')).cancelled || st.getActiveChat()?.chatId !== chatId) return [];
       const events = act({ type: 'base/recruit_grunt', payload: {} });
       const recruited = events.find((e) => e.type === 'grunt_recruited');
       const settings = getSettings(st);

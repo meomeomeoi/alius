@@ -9,6 +9,9 @@ import { hitHer } from './events';
 import { pressureGate, pressureMultOf } from './gates';
 import { nextPersonalId, personalOf } from './state';
 
+/** How much of the commander's own text the waiting edit keeps. */
+const ORIGINAL_MAX = 1000;
+
 export const INTERCEPT_CHANNELS: readonly InterceptChannel[] = ['dm', 'leash', 'recruit'];
 
 /**
@@ -32,7 +35,7 @@ export function interceptEditor(state: CampaignState, reg: Registries, channel: 
  * or an intercept already waiting: no draw. Else one draw at `chance × demandMult × pressureMult` (capped); a hit stores the
  * waiting edit and logs the day, so she edits at most once a day. The engine never stores the edited text.
  */
-export function rollIntercept(draft: CampaignState, ctx: EngineCtx, p: { channel: InterceptChannel; toUnitId?: string }): EngineEvent[] {
+export function rollIntercept(draft: CampaignState, ctx: EngineCtx, p: { channel: InterceptChannel; toUnitId?: string; text?: string }): EngineEvent[] {
   const reg = ctx.registries;
   if (draft.personal?.intercepts?.open !== undefined) return [{ type: 'device_intercept', hit: false }];
   const unitId = interceptEditor(draft, reg, p.channel, p.toUnitId);
@@ -43,7 +46,10 @@ export function rollIntercept(draft: CampaignState, ctx: EngineCtx, p: { channel
   const personal = personalOf(draft);
   const id = nextPersonalId(draft, 'icp');
   const intercepts = (personal.intercepts ??= { log: [] });
-  intercepts.open = { id, unitId, channel: p.channel, ...(p.toUnitId !== undefined ? { toUnitId: p.toUnitId } : {}), day: draft.day, status: 'open' };
+  intercepts.open = {
+    id, unitId, channel: p.channel, ...(p.toUnitId !== undefined ? { toUnitId: p.toUnitId } : {}),
+    ...(p.channel === 'dm' && p.text !== undefined ? { original: p.text.slice(0, ORIGINAL_MAX) } : {}), day: draft.day, status: 'open',
+  };
   intercepts.log.push({ unitId, day: draft.day });
   return [{ type: 'device_intercept', hit: true, interceptId: id, unitId, channel: p.channel }];
 }

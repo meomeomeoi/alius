@@ -9,11 +9,18 @@ import type { CampaignState, Unit } from '../engine/state/types';
 import { generateDm, type DmReplyInput } from '../llm/calls/dmReply';
 import { extractIntents } from '../llm/calls/intentExtract';
 import { confidenceFloor } from '../engine/worldOptions';
+import type { PersonalController } from '../personal/controller';
 import type { SceneController, SceneDeps } from './sceneController';
 
 export interface Comms {
-  /** Sends a DM; she answers (or snaps, or leaves it on read), and her answer is read for intents. */
-  send(unitId: string, text: string): Promise<void>;
+  /**
+   * Sends a DM; she answers (or snaps, or leaves it on read), and her answer is read for intents. P9c: a soldier with access to the
+   * commander's messages may edit it first: nothing is sent, the `edit` UI event carries the edited text, and `answerEdit` sends
+   * the commander's choice. `interceptId` sends a kept edit; `skipIntercept` sends as it is (after a REVERT).
+   */
+  send(unitId: string, text: string, opts?: { interceptId?: string; skipIntercept?: boolean }): Promise<void>;
+  /** KEEP or REVERT on the DM edit that waits; sends the kept or the original text. */
+  answerEdit(keep: boolean): Promise<void>;
   /** After a slot transition: some units start a DM on their own. */
   onSlotAdvanced(): Promise<void>;
   /** P11: one unit writes first, without the roll (the guided evening). A no-op with unit DMs off or when nothing is generated. */
@@ -24,7 +31,7 @@ export interface Comms {
   ignoreNight(): void;
 }
 
-export type CommsDeps = SceneDeps & { scene: Pick<SceneController, 'start'> };
+export type CommsDeps = SceneDeps & { scene: Pick<SceneController, 'start'>; /** P9c: the level-4 edit of an outgoing DM. */ personal?: Pick<PersonalController, 'beforeSend' | 'answerEdit'> };
 
 const HISTORY = 6;
 
@@ -103,10 +110,18 @@ export function createComms(deps: CommsDeps): Comms {
     if (!failed(r)) deps.onUi({ type: 'transcript' });
   }
 
-  return {
-    async send(unitId, text) {
+  const controller: Comms = {
+    async send(unitId, text, opts) {
       const expect = chatId();
-      const events = app.dispatch({ type: 'dm/send', payload: { unitId, text } }, { expectChatId: expect });
+      if (deps.personal && opts?.interceptId === undefined && opts?.skipIntercept !== true) {
+        const edit = await deps.personal.beforeSend(unitId, text);
+        if (chatId() !== expect) return;
+        if (edit.intercept) {
+          deps.onUi({ type: 'edit', unitId, original: text, edited: edit.text, interceptId: edit.intercept.id, editorId: edit.intercept.editorId });
+          return;
+        }
+      }
+      const events = app.dispatch({ type: 'dm/send', payload: { unitId, text, ...(opts?.interceptId !== undefined ? { interceptId: opts.interceptId } : {}) } }, { expectChatId: expect });
       if (failed(events)) return;
       const mode = events.find((e) => e.type === 'dm_sent')?.mode;
       deps.onUi({ type: 'transcript' });
@@ -120,6 +135,12 @@ export function createComms(deps: CommsDeps): Comms {
       if (failed(received)) return;
       deps.onUi({ type: 'transcript' });
       await readExchange(expect, unitId, text.trim(), reply);
+    },
+
+    async answerEdit(keep) {
+      const r = await deps.personal?.answerEdit(keep);
+      if (!r) return;
+      await controller.send(r.unitId, r.text, r.interceptId !== undefined ? { interceptId: r.interceptId } : { skipIntercept: true });
     },
 
     async onSlotAdvanced() {
@@ -151,4 +172,5 @@ export function createComms(deps: CommsDeps): Comms {
       failed(app.dispatch({ type: 'night/ignore', payload: {} }, { expectChatId: chatId() }));
     },
   };
+  return controller;
 }

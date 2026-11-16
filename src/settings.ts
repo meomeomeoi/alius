@@ -48,6 +48,8 @@ export interface AliusSettings {
   ruleWording: boolean;
   /** P9b: the mechanic model words the one-line reasons of a squad vote's ballots (off: the template lines of the vote kind). */
   ballotWording: boolean;
+  /** P9c: the mechanic model words a level-4 edit of the commander's DM (off: the authored fallback lines). */
+  dmEditWording: boolean;
   /** P4: a lost combat can be retried (rewinds exactly, never recorded in memory). */
   easyRetry: boolean;
   /** P4: affixed enemies get a generated name (optional `flavor` call, cached, never blocks combat). */
@@ -127,6 +129,7 @@ export const DEFAULT_SETTINGS: AliusSettings = {
   demandWording: true,
   ruleWording: true,
   ballotWording: false,
+  dmEditWording: true,
   easyRetry: false,
   enemyFlavor: false,
   directorEnabled: true,
@@ -175,6 +178,7 @@ const fieldSchemas = {
   demandWording: z.boolean(),
   ruleWording: z.boolean(),
   ballotWording: z.boolean(),
+  dmEditWording: z.boolean(),
   easyRetry: z.boolean(),
   enemyFlavor: z.boolean(),
   directorEnabled: z.boolean(),

@@ -365,7 +365,7 @@ tests/engine/personal/*.test.ts, tests/engine/combat/sparring.test.ts, tests/con
   - `personalDirectives(state, reg, present): Directive[]` (all derived; this task: `personal:court:`, `personal:claimed:`, `personal:decor:`, `personal:booking:`), `refreshPersonalDirectives(builder, state, reg)`, `DERIVED` list.
   - `VOICE_OF.booking = 'personal'`, `VOICE_OF.device_edit = 'personal'`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `beforeSend returns the original when nobody intercepts and calls no model`
   - `an intercept words the text with dm_edit; a failed call uses an editLines fallback with {text} filled`
   - `with dmEditWording off no model is called`
@@ -376,10 +376,10 @@ tests/engine/personal/*.test.ts, tests/engine/combat/sparring.test.ts, tests/con
   - `directives are derived from state, follow a reload and are cleared on chat switch`
   - `no directive id starts with a reserved prefix; all start with personal:`
   - `no commander pronoun in any directive or flavor prompt` (the P9b regex)
-- [ ] **Step 2: Run** `npx vitest run tests/personal tests/power/herCallDirectives.test.ts tests/bonds`. Expect FAIL on the new tests.
-- [ ] **Step 3: Implement.** `dm_edit` prompt: her name, the relationship's prompt hint, the recipient's name, `<dm>` with the original as data; she rewrites it "to make plain the commander belongs to her", addressed as the commander would send it; no new facts, no numbers.
-- [ ] **Step 4: Run** the tests, then `npm test`. Expect PASS.
-- [ ] **Step 5: Tick and commit:** `feat(personal): controller, directives and DM edit wording`.
+- [x] **Step 2: Run** `npx vitest run tests/personal tests/power/herCallDirectives.test.ts tests/bonds`. Expect FAIL on the new tests.
+- [x] **Step 3: Implement.** `dm_edit` prompt: her name, the relationship's prompt hint, the recipient's name, `<dm>` with the original as data; she rewrites it "to make plain the commander belongs to her", addressed as the commander would send it; no new facts, no numbers.
+- [x] **Step 4: Run** the tests, then `npm test`. Expect PASS.
+- [x] **Step 5: Tick and commit:** `feat(personal): controller, directives and DM edit wording`.
 
 ### Task 7: Chunk (a) UI, providers, glossary, balance check
 
