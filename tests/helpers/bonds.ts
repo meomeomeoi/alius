@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { loadPacks } from '../../src/content/loader';
 import type { Registries } from '../../src/content/types';
 import { CONTENT_GATED_REGISTRIES, rollRules } from '../../src/engine/bonds';
+import { offeredStakes } from '../../src/engine/personal/wagers';
 import { eligibleTemplates as dilemmaTemplates } from '../../src/engine/dilemma/flow';
 import { DILEMMA_CONTEXTS } from '../../src/engine/dilemma/types';
 import { measureList, openDemand } from '../../src/engine/discipline';
@@ -32,6 +33,7 @@ export const GATE_FIXTURE: Record<string, { ids: string[]; category: string }> =
   dilemmaTemplates: { ids: ['gate_dilemma', 'gate_event'], category: 'restraint' },
   missionTemplates: { ids: ['gate_mission'], category: 'pain_rough' },
   clocks: { ids: ['gate_clock'], category: 'jealousy_games' },
+  wagerStakes: { ids: ['gate_stake'], category: 'restraint' },
 };
 
 /** Turns categories on in place (and returns the state). */
@@ -86,6 +88,15 @@ export const GATE_PROBES: Record<(typeof CONTENT_GATED_REGISTRIES)[number], (sta
     ...buildDigest(state, reg).templates.map((t) => t.id),
     ...[...reg.missionTemplates.keys()].filter((id) => checkOffer(state, reg, { templateId: id, regionId: 'quarantine_d7', source: 'command' } as never) === null),
   ],
+  // a stake is offered to a unit who passes the wager gate (a balanced lead and some Affinity)
+  wagerStakes: (state, reg) => {
+    const s = structuredClone(state);
+    for (const u of s.squad.filter((x) => x.kind === 'named')) {
+      withBond(s, u.id, { leadStyle: 'balanced' });
+      s.relations[u.id].affinity = 40;
+    }
+    return s.squad.filter((u) => u.kind === 'named').flatMap((u) => offeredStakes(s, reg, u.id).map((x) => String(x.id)));
+  },
   clocks: (state, reg) => {
     const s = structuredClone(state);
     s.world.seeded = false;

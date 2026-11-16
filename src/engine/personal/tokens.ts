@@ -147,3 +147,9 @@ export function tokenDayStep(draft: CampaignState, ctx: EngineCtx): EngineEvent[
   events.push(...rollTokenOffer(draft, ctx));
   return events;
 }
+
+/** Takes a token off with no deltas (a won wager made room for another): not the commander's choice, so nobody takes offence. */
+export function removeTokenQuietly(token: Token): void {
+  token.worn = false;
+  delete token.lockedUntil;
+}

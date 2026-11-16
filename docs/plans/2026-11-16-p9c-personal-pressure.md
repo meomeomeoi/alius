@@ -452,7 +452,7 @@ tests/engine/personal/*.test.ts, tests/engine/combat/sparring.test.ts, tests/con
   - `rollChallenges(draft, ctx)`, `challenge(draft, ctx, p)`, `answerChallenge(draft, ctx, wagerId, accept)`, `playWager(draft, ctx, wagerId, pick?)` (coin/rps/high_card here; Task 10 adds the other two), `applyStake(draft, ctx, wager, winner)`
   - Reserved: `wager_offered`, `wager_refused`, `wager_accepted`, `wager_declined`, `wager_resolved`, `mark_set`, `mark_ended`.
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `her challenge comes only through the wager gate and picks only offered stakes` (acceptance 6, 7)
   - `stakes never include a disabled category: her_mark appears only with body_modification on and not among her limits` (acceptance 6; over 50 seeds)
   - `switching body_modification off withdraws the mark stake and ends a mark` (Review Focus 4)
@@ -461,10 +461,10 @@ tests/engine/personal/*.test.ts, tests/engine/combat/sparring.test.ts, tests/con
   - `coin draws once; rps draws her hand once and once more on a tie; a second tie voids; high_card voids on a tie` (acceptance 6)
   - one test per stake and winner (`obedience` sets the day and who; `slot` books or blocks 7 days; `privilege` ±6 record; `drop_demand` grants or closes with no refusal deltas; `token` worn and locked, or given; `question` → fact known by her / truth directive state; `mark` 3 days)
   - `drop_demand is not offered when the grant cannot be paid`
-- [ ] **Step 2: Run** `npx vitest run tests/engine/personal/wagers.test.ts tests/bonds/gate*.test.ts`. Expect FAIL on the new tests.
-- [ ] **Step 3: Implement.** Content: five games, seven stakes (`AUTHOR TO WRITE` texts).
-- [ ] **Step 4: Run** the tests, then `npm test`. Expect PASS.
-- [ ] **Step 5: Tick and commit:** `feat(personal): wagers, three games and their stakes`.
+- [x] **Step 2: Run** `npx vitest run tests/engine/personal/wagers.test.ts tests/bonds/gate*.test.ts`. Expect FAIL on the new tests.
+- [x] **Step 3: Implement.** Content: five games, seven stakes (`AUTHOR TO WRITE` texts).
+- [x] **Step 4: Run** the tests, then `npm test`. Expect PASS.
+- [x] **Step 5: Tick and commit:** `feat(personal): wagers, three games and their stakes`.
 
 ### Task 10: Sparring on the P4 engine and expedition bets
 

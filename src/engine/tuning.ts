@@ -430,7 +430,7 @@ export const TUNING = Object.freeze({
     claim: Object.freeze({ chance: 0.04, cooldownDays: 14, refuseStress: 8 }),
     token: Object.freeze({ chance: 0.03, maxWorn: 2, offerDays: 3, lockDays: 7, giverAffinityPerDay: 1 }),
     wager: Object.freeze({
-      chance: 0.03, acceptAffinity: 0, acceptImpunity: 40, noBookDays: 7, privilegeRecord: 6, markDays: 3, markLoseStress: 3,
+      chance: 0.03, acceptAffinity: 0, acceptImpunity: 40, offerDays: 3, noBookDays: 7, privilegeRecord: 6, markDays: 3, markLoseStress: 3,
       answerMax: 200, logMax: 20,
     }),
     sparring: Object.freeze({ commanderSkill: 1, maxRounds: 20, bodyXp: 0.5 }),

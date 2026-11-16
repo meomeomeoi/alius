@@ -1,0 +1,67 @@
+[
+  {
+    "id": "coin",
+    "label": "Coin toss",
+    "description": "AUTHOR TO WRITE: one toss, even odds.",
+    "kind": "coin"
+  },
+  {
+    "id": "rps",
+    "label": "Rock, paper, scissors",
+    "description": "AUTHOR TO WRITE: you pick a hand; a tie is thrown again once, a second tie is void.",
+    "kind": "rps"
+  },
+  {
+    "id": "high_card",
+    "label": "High card",
+    "description": "AUTHOR TO WRITE: each draws a card from one to thirteen; the higher wins and a tie is void.",
+    "kind": "high_card"
+  },
+  {
+    "id": "sparring",
+    "label": "Sparring",
+    "description": "AUTHOR TO WRITE: a bout in the training yard on the combat rules, with a handicap she allows. It takes a slot and trains strength.",
+    "kind": "sparring",
+    "spendsSlot": true,
+    "handicaps": [
+      {
+        "id": "none",
+        "label": "No handicap",
+        "herAtk": 1,
+        "herHp": 1,
+        "herSpd": 1,
+        "minAffinity": -100
+      },
+      {
+        "id": "one_arm",
+        "label": "One arm behind her back",
+        "herAtk": 0.5,
+        "herHp": 1,
+        "herSpd": 1,
+        "minAffinity": -100
+      },
+      {
+        "id": "first_blood",
+        "label": "First blood ends it",
+        "herAtk": 1,
+        "herHp": 0.25,
+        "herSpd": 1,
+        "minAffinity": 20
+      },
+      {
+        "id": "blindfold",
+        "label": "Blindfolded",
+        "herAtk": 0.7,
+        "herHp": 1,
+        "herSpd": 0.5,
+        "minAffinity": 40
+      }
+    ]
+  },
+  {
+    "id": "expedition_bet",
+    "label": "Bet on the next run",
+    "description": "AUTHOR TO WRITE: she bets on how the next run with her goes: killing blows, no damage taken, or the objective. It waits for the run and is void after a week.",
+    "kind": "expedition_bet"
+  }
+]

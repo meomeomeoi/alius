@@ -6,7 +6,7 @@ import { bondOf } from './profile';
 import { syncRulesWithContent } from './rules';
 
 /** Registries whose entries may carry `contentTags` (and the night specs of defects and relationship states do too). */
-export const CONTENT_GATED_REGISTRIES = ['relationshipRuleTemplates', 'demandTemplates', 'punishments', 'dilemmaTemplates', 'missionTemplates', 'clocks'] as const satisfies readonly RegistryName[];
+export const CONTENT_GATED_REGISTRIES = ['relationshipRuleTemplates', 'demandTemplates', 'punishments', 'dilemmaTemplates', 'missionTemplates', 'clocks', 'wagerStakes'] as const satisfies readonly RegistryName[];
 
 /** Anything the gate can read: a campaign, or a holder with only some of it (a wizard's world choices carry neither). */
 export type ContentHolder = { content?: { enabled: string[] }; squad?: ReadonlyArray<Pick<Unit, 'id' | 'kind' | 'bond'>> };
@@ -65,6 +65,12 @@ function withdrawTagged(draft: CampaignState, reg: Registries, removed: string[]
       draft.discipline.demandLog = draft.discipline.demandLog.filter((e) => !gone.some((d) => d.unitId === e.unitId && d.day === e.day && d.templateId === e.templateId));
     }
   }
+  // P9c: a wager whose stake is tagged with a removed category is void (no deltas) and a running mark ends
+  const personal = draft.personal;
+  if (personal?.wagers) {
+    personal.wagers.open = personal.wagers.open.filter((w) => !hit(tagsOf(reg.wagerStakes.get(w.stakeId) ?? {})));
+  }
+  if (personal?.mark && [...reg.wagerStakes.values()].some((x) => x.effect === 'mark' && hit(tagsOf(x)))) delete personal.mark;
   // P9c: a level-4 edit waiting for KEEP / REVERT goes quietly when jealousy games are switched off (she still edited today)
   if (draft.personal?.intercepts?.open && hit(['jealousy_games'])) delete draft.personal.intercepts.open;
   draft.calendar.nightEventsQueue = draft.calendar.nightEventsQueue.filter((e) => !hit(e.contentTags ?? []));

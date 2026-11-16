@@ -496,6 +496,7 @@ var TUNING = Object.freeze({
       chance: 0.03,
       acceptAffinity: 0,
       acceptImpunity: 40,
+      offerDays: 3,
       noBookDays: 7,
       privilegeRecord: 6,
       markDays: 3,
@@ -6079,7 +6080,9 @@ var REGISTRY_NAMES = [
   // P9c
   "deviceAccessRules",
   "bookingKinds",
-  "tokenKinds"
+  "tokenKinds",
+  "wagerGames",
+  "wagerStakes"
 ];
 var PackManifestSchema = external_exports.object({
   id: external_exports.string().min(1),
@@ -6691,7 +6694,17 @@ var RESERVED_EVENT_TYPES = [
   "token_accepted",
   "token_declined",
   "token_worn",
-  "token_taken_off"
+  "token_taken_off",
+  "wager_offered",
+  "wager_refused",
+  "wager_accepted",
+  "wager_declined",
+  "wager_resolved",
+  "mark_set",
+  "mark_ended",
+  "wager_question",
+  "truth_told",
+  "demand_dropped"
 ];
 var slotEnum = external_exports.enum(["morning", "afternoon", "evening", "night"]);
 var socialStat = external_exports.enum(["authority", "insight", "empathy", "cunning"]);
@@ -7873,6 +7886,35 @@ var TokenKindSchema = BaseEntrySchema.extend({
   weight: int.min(1).max(100)
 }).strict();
 registrySchemas.tokenKinds = TokenKindSchema;
+var WagerHandicapSchema = external_exports.object({
+  id: str,
+  label: str.max(40),
+  herAtk: external_exports.number().min(0.1).max(2),
+  herHp: external_exports.number().min(0.1).max(2),
+  herSpd: external_exports.number().min(0.1).max(2),
+  minAffinity: int.min(-100).max(100)
+}).strict();
+var WagerGameSchema = BaseEntrySchema.extend({
+  label: str.max(40),
+  description: str.max(DESCRIPTION_MAX),
+  kind: external_exports.enum(["coin", "rps", "high_card", "sparring", "expedition_bet"]),
+  /** The game takes a slot of the commander's time. */
+  spendsSlot: external_exports.boolean().optional(),
+  handicaps: external_exports.array(WagerHandicapSchema).min(1).optional()
+}).strict().superRefine((g, ctx2) => {
+  if (g.kind === "sparring" && g.handicaps === void 0) ctx2.addIssue({ code: "custom", path: ["handicaps"], message: "a sparring game needs handicaps" });
+  if (g.kind !== "sparring" && g.handicaps !== void 0) ctx2.addIssue({ code: "custom", path: ["handicaps"], message: "only sparring has handicaps" });
+});
+registrySchemas.wagerGames = WagerGameSchema;
+var WagerStakeSchema = BaseEntrySchema.extend({
+  label: str.max(40),
+  description: str.max(DESCRIPTION_MAX),
+  effect: external_exports.enum(["obedience", "slot", "privilege", "drop_demand", "token", "question", "mark"]),
+  /** What she says the wager is for. */
+  text: str.max(120),
+  contentTags
+}).strict();
+registrySchemas.wagerStakes = WagerStakeSchema;
 var DESCRIBED_REGISTRIES = [
   "roles",
   "skills",
@@ -7918,7 +7960,9 @@ var DESCRIBED_REGISTRIES = [
   // P9c
   "deviceAccessRules",
   "bookingKinds",
-  "tokenKinds"
+  "tokenKinds",
+  "wagerGames",
+  "wagerStakes"
 ];
 function withDescription(schema) {
   return schema.superRefine((entry, ctx2) => {
@@ -9001,7 +9045,7 @@ function nextPersonalId(draft, prefix) {
 function holdsPersonal(state, unitId) {
   const p = state.personal;
   if (!p) return false;
-  return p.decor?.[unitId] !== void 0 || p.bookings?.some((b) => b.unitId === unitId && b.status === "booked") === true || p.noBookUntil?.[unitId] !== void 0 || p.intercepts?.open?.unitId === unitId || p.tokens?.offer?.giverId === unitId || p.wagers?.open.some((w) => w.unitId === unitId) === true || p.obedience?.unitId === unitId || p.truth?.unitId === unitId || p.mark?.unitId === unitId || p.secrets?.some((x) => x.knownBy.includes(unitId)) === true;
+  return p.decor?.[unitId] !== void 0 || p.bookings?.some((b) => b.unitId === unitId && b.status === "booked") === true || p.noBookUntil?.[unitId] !== void 0 || p.intercepts?.open?.unitId === unitId || p.tokens?.offer?.giverId === unitId || p.wagers?.open.some((w) => w.unitId === unitId) === true || p.obedience?.unitId === unitId || p.truth?.unitId === unitId || p.pendingQuestion?.unitId === unitId || p.mark?.unitId === unitId || p.secrets?.some((x) => x.knownBy.includes(unitId)) === true;
 }
 function forgetPersonal(draft, unitId) {
   const p = draft.personal;
@@ -9016,6 +9060,7 @@ function forgetPersonal(draft, unitId) {
   if (p.wagers) p.wagers.open = p.wagers.open.filter((w) => w.unitId !== unitId);
   if (p.obedience?.unitId === unitId) delete p.obedience;
   if (p.truth?.unitId === unitId) delete p.truth;
+  if (p.pendingQuestion?.unitId === unitId) delete p.pendingQuestion;
   if (p.mark?.unitId === unitId) delete p.mark;
   const decor = p.decor?.[unitId];
   if (decor && decor.fadedUntil === void 0) decor.fadedUntil = draft.day + TUNING.personal.decor.fadeDays;
@@ -9328,7 +9373,7 @@ function syncRulesWithContent(draft, reg) {
 }
 
 // src/engine/bonds/content.ts
-var CONTENT_GATED_REGISTRIES = ["relationshipRuleTemplates", "demandTemplates", "punishments", "dilemmaTemplates", "missionTemplates", "clocks"];
+var CONTENT_GATED_REGISTRIES = ["relationshipRuleTemplates", "demandTemplates", "punishments", "dilemmaTemplates", "missionTemplates", "clocks", "wagerStakes"];
 var enabledCategories = (state) => state.content?.enabled ?? [];
 var tagsOf = (entry) => {
   const tags = entry.contentTags;
@@ -9366,6 +9411,11 @@ function withdrawTagged(draft, reg, removed) {
       draft.discipline.demandLog = draft.discipline.demandLog.filter((e) => !gone.some((d) => d.unitId === e.unitId && d.day === e.day && d.templateId === e.templateId));
     }
   }
+  const personal = draft.personal;
+  if (personal?.wagers) {
+    personal.wagers.open = personal.wagers.open.filter((w) => !hit(tagsOf(reg.wagerStakes.get(w.stakeId) ?? {})));
+  }
+  if (personal?.mark && [...reg.wagerStakes.values()].some((x) => x.effect === "mark" && hit(tagsOf(x)))) delete personal.mark;
   if (draft.personal?.intercepts?.open && hit(["jealousy_games"])) delete draft.personal.intercepts.open;
   draft.calendar.nightEventsQueue = draft.calendar.nightEventsQueue.filter((e) => !hit(e.contentTags ?? []));
   if (draft.calendar.nightEvent && hit(draft.calendar.nightEvent.contentTags ?? [])) delete draft.calendar.nightEvent;
@@ -11918,7 +11968,7 @@ function book(draft, _ctx, p) {
   if (syncConflicts(draft, p.day, p.slot).length > 1) events.push({ type: "booking_conflict", day: p.day, slot: p.slot, bookingIds: bookingsOf(draft).filter((b) => b.conflict && b.day === p.day && b.slot === p.slot).map((b) => b.id) });
   return events;
 }
-function kindsFor(state, reg, unitId) {
+function bookingKindsFor(state, reg, unitId) {
   const tier = bondTierOf(state, reg, unitId);
   return [...reg.bookingKinds.values()].filter((k) => k.tier === void 0 || k.tier === tier);
 }
@@ -11934,7 +11984,7 @@ function rollBookings(draft, ctx2) {
     if (mine.some((b) => b.status === "booked")) continue;
     if (mine.filter((b) => b.source === "roll" && (b.made ?? -Infinity) > draft.day - 7).length >= TUNING.personal.booking.perWeek) continue;
     if (!ctx2.rng.chance(bookingChance(draft, reg, u.id))) continue;
-    const kinds2 = kindsFor(draft, reg, u.id);
+    const kinds2 = bookingKindsFor(draft, reg, u.id);
     if (kinds2.length === 0) continue;
     let pick2 = ctx2.rng.int(0, kinds2.reduce((n, k) => n + Number(k.weight), 0) - 1);
     const kind = kinds2.find((k) => (pick2 -= Number(k.weight)) < 0) ?? kinds2[0];
@@ -16255,16 +16305,16 @@ function finalizeCombat(draft, reg, rng, outcome) {
   fireTrigger(ctx2, "onCombatEnd", {});
   const events = [];
   const squad = cs.combatants.filter((c) => c.side === "squad" && c.unitId);
-  const unitOf6 = (c) => draft.squad.find((u) => u.id === c.unitId);
+  const unitOf7 = (c) => draft.squad.find((u) => u.id === c.unitId);
   const unitIdOf4 = (cid) => cs.combatants.find((c) => c.cid === cid)?.unitId;
-  const stressBefore = Object.fromEntries(squad.map((c) => [c.unitId, unitOf6(c).stress]));
+  const stressBefore = Object.fromEntries(squad.map((c) => [c.unitId, unitOf7(c).stress]));
   const injuries = [];
   const deaths = [];
   const breakdowns = [];
   const levelUps = [];
   const lost = outcome !== "won";
   for (const c of squad) {
-    const unit = unitOf6(c);
+    const unit = unitOf7(c);
     unit.stress = Math.min(100, Math.max(0, c.stress + (lost ? TUNING.combat.stress.loss : 0)));
     if (c.breakdown) {
       unit.breakdown = { defectId: c.breakdown.defectId, day: draft.day };
@@ -16294,7 +16344,7 @@ function finalizeCombat(draft, reg, rng, outcome) {
   if (outcome === "won") {
     xp = combatXp(draft, reg, cs);
     for (const c of squad) {
-      const unit = unitOf6(c);
+      const unit = unitOf7(c);
       if (unit.status === "dead") continue;
       unit.xp += xp[unit.id] ?? 0;
       events.push({ type: "xp_gained", unitId: unit.id, amount: xp[unit.id] ?? 0 });
@@ -16342,7 +16392,7 @@ function finalizeCombat(draft, reg, rng, outcome) {
     injuries,
     deaths,
     breakdowns,
-    stressDelta: Object.fromEntries(squad.map((c) => [c.unitId, unitOf6(c).stress - stressBefore[c.unitId]])),
+    stressDelta: Object.fromEntries(squad.map((c) => [c.unitId, unitOf7(c).stress - stressBefore[c.unitId]])),
     relationHints: relationHints(cs, unitIdOf4),
     commanderInjured,
     ...compels.length > 0 ? { compels: [...compels] } : {},
@@ -19066,7 +19116,7 @@ registerAction("content/set_categories", (draft, payload, ctx2) => {
 var unitOf4 = (state, id) => state.squad.find((u) => u.id === id);
 var labelOf = (reg, kindId, name) => String(reg.tokenKinds.get(kindId)?.label ?? "{name}'s token").replaceAll("{name}", name);
 var wornTokens = (state) => (state.personal?.tokens?.owned ?? []).filter((t) => t.worn);
-function kindsFor2(state, reg, unitId) {
+function kindsFor(state, reg, unitId) {
   const tier = bondTierOf(state, reg, unitId);
   return [...reg.tokenKinds.values()].filter((k) => k.minTier === void 0 || k.minTier === tier);
 }
@@ -19078,7 +19128,7 @@ function rollTokenOffer(draft, ctx2) {
     if (u.kind !== "named" || given.includes(u.id) || pressureGate(draft, reg, u.id, "token") !== null) continue;
     const chance = TUNING.personal.token.chance * assertiveness(draft, reg).demandMult * pressureMultOf(draft, reg, u.id);
     if (!ctx2.rng.chance(chance)) continue;
-    const kinds2 = kindsFor2(draft, reg, u.id);
+    const kinds2 = kindsFor(draft, reg, u.id);
     if (kinds2.length === 0) continue;
     let pick2 = ctx2.rng.int(0, kinds2.reduce((n, k) => n + Number(k.weight), 0) - 1);
     const kind = kinds2.find((k) => (pick2 -= Number(k.weight)) < 0) ?? kinds2[0];
@@ -19090,6 +19140,19 @@ function rollTokenOffer(draft, ctx2) {
     return [{ type: "token_offered", offerId: tokens.offer.id, giverId: u.id, kindId: String(kind.id), label: label2 }];
   }
   return [];
+}
+function giveToken(draft, ctx2, giverId, kindId) {
+  const reg = ctx2.registries;
+  const unit = unitOf4(draft, giverId);
+  if (!unit) throw new Error("There is no such soldier.");
+  const kinds2 = kindsFor(draft, reg, giverId);
+  const kind = (kindId !== void 0 ? reg.tokenKinds.get(kindId) : void 0) ?? kinds2[ctx2.rng.int(0, Math.max(0, kinds2.length - 1))] ?? [...reg.tokenKinds.values()][0];
+  if (!kind) throw new Error("There is no token to give.");
+  const tokens = personalOf(draft).tokens ??= { owned: [], given: [] };
+  const token = { id: nextPersonalId(draft, "tk"), giverId, kindId: String(kind.id), label: labelOf(reg, String(kind.id), unit.displayName), day: draft.day, worn: false };
+  tokens.owned.push(token);
+  if (!tokens.given.includes(giverId)) tokens.given.push(giverId);
+  return { token, events: [{ type: "token_accepted", tokenId: token.id, giverId, label: token.label }] };
 }
 function answerOffer(draft, ctx2, offerId, accept, opts = {}) {
   const tokens = draft.personal?.tokens;
@@ -19151,6 +19214,254 @@ function tokenDayStep(draft, ctx2) {
     if (applied !== 0) events.push({ type: "relation_changed", unitId: giverId, axis: "affinity", delta: applied, applied });
   }
   events.push(...rollTokenOffer(draft, ctx2));
+  return events;
+}
+function removeTokenQuietly(token) {
+  token.worn = false;
+  delete token.lockedUntil;
+}
+
+// src/engine/personal/wagers.ts
+var unitOf5 = (state, id) => state.squad.find((u) => u.id === id);
+var openOf = (state) => state.personal?.wagers?.open ?? [];
+var HANDS = ["rock", "paper", "scissors"];
+var PLAYABLE_KINDS = /* @__PURE__ */ new Set(["coin", "rps", "high_card"]);
+var gamesOffered = (reg) => [...reg.wagerGames.values()].filter((g) => PLAYABLE_KINDS.has(String(g.kind)));
+function stakeOffered(state, reg, unitId, stake) {
+  if (!contentAllowed(state, reg, stake, unitId)) return false;
+  const p = state.personal;
+  switch (stake.effect) {
+    case "drop_demand": {
+      const demand = state.discipline?.demands.find((d) => d.unitId === unitId && d.status === "open");
+      return demand !== void 0 && grantProblem(state, reg, demand.id) === null;
+    }
+    case "token":
+      return (p?.tokens?.owned ?? []).some((t) => t.giverId === unitId) || !(p?.tokens?.given ?? []).includes(unitId) && pressureGate(state, reg, unitId, "token") === null;
+    case "slot":
+      return pressureGate(state, reg, unitId, "booking") === null;
+    case "obedience":
+      return p?.obedience === void 0 || p.obedience.day !== state.day;
+    case "question":
+      return p?.pendingQuestion === void 0 && p?.truth === void 0;
+    default:
+      return true;
+  }
+}
+var offeredStakes = (state, reg, unitId) => [...reg.wagerStakes.values()].filter((s) => stakeOffered(state, reg, unitId, s));
+function rollChallenges(draft, ctx2) {
+  const reg = ctx2.registries;
+  const games = gamesOffered(reg);
+  const events = [];
+  if (games.length === 0) return events;
+  for (const u of draft.squad) {
+    if (u.kind !== "named" || openOf(draft).some((w2) => w2.unitId === u.id) || pressureGate(draft, reg, u.id, "wager") !== null) continue;
+    const stakes = offeredStakes(draft, reg, u.id);
+    if (stakes.length === 0) continue;
+    if (!ctx2.rng.chance(TUNING.personal.wager.chance * assertiveness(draft, reg).demandMult * pressureMultOf(draft, reg, u.id))) continue;
+    const game = games[ctx2.rng.int(0, games.length - 1)];
+    const stake = stakes[ctx2.rng.int(0, stakes.length - 1)];
+    const dm = pushMessage(draft, u.id, {
+      from: u.id,
+      text: `${u.displayName} challenges the commander: ${String(game.label)}, for ${String(stake.text)}.`,
+      day: draft.day,
+      slot: draft.slot,
+      read: false,
+      initiated: true
+    });
+    const w = { id: nextPersonalId(draft, "wg"), unitId: u.id, by: "unit", gameId: String(game.id), stakeId: String(stake.id), day: draft.day, status: "offered", dmId: dm.id };
+    (personalOf(draft).wagers ??= { open: [], log: [] }).open.push(w);
+    events.push({ type: "wager_offered", wagerId: w.id, unitId: u.id, gameId: w.gameId, stakeId: w.stakeId });
+  }
+  return events;
+}
+function challenge2(draft, ctx2, p) {
+  const reg = ctx2.registries;
+  const why = deviceGateReason(draft, p.unitId);
+  if (why !== null) throw new Error("She will not take a bet from the commander.");
+  const game = gamesOffered(reg).find((g) => g.id === p.gameId);
+  const stake = reg.wagerStakes.get(p.stakeId);
+  if (!game) throw new Error("That game is not available.");
+  if (!stake || !stakeOffered(draft, reg, p.unitId, stake)) throw new Error("She is not offered that stake.");
+  if (openOf(draft).some((w2) => w2.unitId === p.unitId)) throw new Error("She already has a wager open.");
+  const T = TUNING.personal.wager;
+  if ((draft.relations[p.unitId]?.affinity ?? -100) < T.acceptAffinity && (impunityOf(draft, reg, p.unitId)?.value ?? 0) < T.acceptImpunity) {
+    return [{ type: "wager_refused", unitId: p.unitId }];
+  }
+  const w = { id: nextPersonalId(draft, "wg"), unitId: p.unitId, by: "commander", gameId: String(game.id), stakeId: String(stake.id), day: draft.day, status: "accepted", ...p.pick !== void 0 ? { pick: p.pick } : {} };
+  (personalOf(draft).wagers ??= { open: [], log: [] }).open.push(w);
+  return [{ type: "wager_accepted", wagerId: w.id, unitId: p.unitId, by: "commander", gameId: w.gameId, stakeId: w.stakeId }];
+}
+function answerChallenge(draft, ctx2, wagerId, accept, opts = {}) {
+  const list5 = draft.personal?.wagers?.open;
+  const w = list5?.find((x) => x.id === wagerId);
+  if (!list5 || !w || w.by !== "unit" || w.status !== "offered") throw new Error("That challenge is not open.");
+  if (accept) {
+    w.status = "accepted";
+    return [{ type: "wager_accepted", wagerId, unitId: w.unitId, by: "unit", gameId: w.gameId, stakeId: w.stakeId }];
+  }
+  draft.personal.wagers.open = list5.filter((x) => x !== w);
+  const events = [{ type: "wager_declined", wagerId, unitId: w.unitId, ...opts.expired ? { expired: true } : {} }];
+  const u = unitOf5(draft, w.unitId);
+  if (u && isLiving(u)) events.push(...hitHer(draft, ctx2.registries, w.unitId, "dismissed", "minor", "declined her challenge"));
+  return events;
+}
+function playChance(kind, ctx2, pick2) {
+  if (kind === "coin") return { winner: ctx2.rng.chance(0.5) ? "commander" : "unit", details: {} };
+  if (kind === "high_card") {
+    const commanderCard = ctx2.rng.int(1, 13);
+    const herCard = ctx2.rng.int(1, 13);
+    return { winner: commanderCard === herCard ? "void" : commanderCard > herCard ? "commander" : "unit", details: { commanderCard, herCard } };
+  }
+  const mine = HANDS.indexOf(pick2);
+  if (mine < 0) throw new Error("Pick rock, paper or scissors.");
+  const throws = [];
+  for (let i = 0; i < 2; i++) {
+    const hers = ctx2.rng.int(0, 2);
+    throws.push({ hers: HANDS[hers] });
+    if (hers !== mine) return { winner: (mine - hers + 3) % 3 === 1 ? "commander" : "unit", details: { hand: HANDS[mine], throws } };
+  }
+  return { winner: "void", details: { hand: HANDS[mine], throws } };
+}
+function playWager(draft, ctx2, wagerId, pick2) {
+  const reg = ctx2.registries;
+  const wagers = draft.personal?.wagers;
+  const w = wagers?.open.find((x) => x.id === wagerId);
+  if (!wagers || !w || w.status !== "accepted") throw new Error("That wager cannot be played now.");
+  const game = reg.wagerGames.get(w.gameId);
+  if (!game || !PLAYABLE_KINDS.has(String(game.kind))) throw new Error("That game is not available.");
+  const u = unitOf5(draft, w.unitId);
+  if (!u || !isLiving(u)) throw new Error("She is not here to play.");
+  const { winner, details } = playChance(String(game.kind), ctx2, pick2 ?? w.pick);
+  return settle2(draft, ctx2, w, winner, details);
+}
+function settle2(draft, ctx2, w, winner, details = {}) {
+  const wagers = draft.personal.wagers;
+  wagers.open = wagers.open.filter((x) => x !== w);
+  wagers.log.push({ id: w.id, unitId: w.unitId, gameId: w.gameId, stakeId: w.stakeId, day: w.day, winner });
+  if (wagers.log.length > TUNING.personal.wager.logMax) wagers.log.splice(0, wagers.log.length - TUNING.personal.wager.logMax);
+  const events = [{ type: "wager_resolved", wagerId: w.id, unitId: w.unitId, gameId: w.gameId, stakeId: w.stakeId, winner, ...details }];
+  if (winner !== "void") events.push(...applyStake(draft, ctx2, w, winner, events[0]));
+  return events;
+}
+function voidWager(draft, w) {
+  const wagers = draft.personal.wagers;
+  wagers.open = wagers.open.filter((x) => x !== w);
+  wagers.log.push({ id: w.id, unitId: w.unitId, gameId: w.gameId, stakeId: w.stakeId, day: w.day, winner: "void" });
+  if (wagers.log.length > TUNING.personal.wager.logMax) wagers.log.splice(0, wagers.log.length - TUNING.personal.wager.logMax);
+  return [{ type: "wager_resolved", wagerId: w.id, unitId: w.unitId, gameId: w.gameId, stakeId: w.stakeId, winner: "void", expired: true }];
+}
+function applyStake(draft, ctx2, w, winner, resolved) {
+  const reg = ctx2.registries;
+  const stake = reg.wagerStakes.get(w.stakeId);
+  const u = unitOf5(draft, w.unitId);
+  if (!stake || !u) return [];
+  const p = personalOf(draft);
+  const events = [];
+  const T = TUNING.personal.wager;
+  switch (stake.effect) {
+    case "obedience":
+      p.obedience = { unitId: u.id, day: draft.day, who: winner === "unit" ? "commander" : "unit" };
+      break;
+    case "slot": {
+      if (winner === "unit") {
+        const kinds2 = bookingKindsFor(draft, reg, u.id);
+        const kind = kinds2.find((k) => k.slot === "evening") ?? kinds2[0];
+        if (kind) events.push(...book(draft, ctx2, { unitId: u.id, kindId: String(kind.id), day: draft.day + 1, slot: kind.slot, source: "wager" }));
+      } else {
+        (p.noBookUntil ??= {})[u.id] = draft.day + T.noBookDays;
+      }
+      break;
+    }
+    case "privilege":
+      events.push(...addRecord(draft, u.id, winner === "unit" ? T.privilegeRecord : -T.privilegeRecord, "wager"));
+      break;
+    case "drop_demand": {
+      const d = disciplineOf(draft);
+      const demand = d.demands.find((x) => x.unitId === u.id && x.status === "open");
+      if (!demand) break;
+      if (winner === "unit" && grantProblem(draft, reg, demand.id) === null) {
+        events.push(...answerDemand(draft, ctx2, demand.id, "grant"));
+      } else {
+        d.demands = d.demands.filter((x) => x !== demand);
+        events.push({ type: "demand_dropped", demandId: demand.id, unitId: u.id });
+      }
+      break;
+    }
+    case "token": {
+      const tokens = p.tokens ??= { owned: [], given: [] };
+      let token = tokens.owned.find((t) => t.giverId === u.id);
+      if (!token && !tokens.given.includes(u.id)) {
+        const g = giveToken(draft, ctx2, u.id);
+        token = g.token;
+        events.push(...g.events);
+      }
+      if (winner === "unit" && token) {
+        if (!token.worn) {
+          const worn = tokens.owned.filter((t) => t.worn && !(t.lockedUntil !== void 0 && t.lockedUntil > draft.day));
+          if (tokens.owned.filter((t) => t.worn).length >= TUNING.personal.token.maxWorn && worn[0]) removeTokenQuietly(worn[0]);
+          if (tokens.owned.filter((t) => t.worn).length < TUNING.personal.token.maxWorn) events.push(...wearToken(draft, ctx2, token.id));
+        }
+        if (token.worn) token.lockedUntil = draft.day + TUNING.personal.token.lockDays;
+      }
+      break;
+    }
+    case "question":
+      p.pendingQuestion = { wagerId: w.id, unitId: u.id, winner };
+      if (resolved) resolved.question = winner === "unit" ? "commander_answers" : "commander_asks";
+      break;
+    case "mark":
+      if (!contentAllowed(draft, reg, stake, u.id)) break;
+      if (winner === "unit") {
+        p.mark = { unitId: u.id, untilDay: draft.day + T.markDays };
+        events.push({ type: "mark_set", unitId: u.id, untilDay: p.mark.untilDay });
+      } else {
+        const next = Math.min(100, u.stress + T.markLoseStress);
+        if (next !== u.stress) events.push({ type: "stress_changed", unitId: u.id, delta: next - u.stress });
+        u.stress = next;
+      }
+      break;
+  }
+  return events;
+}
+var cleanText = (raw, max) => {
+  const text2 = typeof raw === "string" ? raw.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim() : "";
+  if (text2.length < 1 || text2.length > max) throw new Error(`Write 1 to ${max} characters.`);
+  return text2;
+};
+function answerQuestion(draft, _ctx, wagerId, raw) {
+  const pending2 = draft.personal?.pendingQuestion;
+  if (!pending2 || pending2.wagerId !== wagerId) throw new Error("There is no question waiting.");
+  const text2 = cleanText(raw, TUNING.personal.wager.answerMax);
+  const u = unitOf5(draft, pending2.unitId);
+  if (!u || !isLiving(u)) throw new Error("She is not here to answer.");
+  delete draft.personal.pendingQuestion;
+  if (pending2.winner === "unit") {
+    addFact(draft, { about: [u.id, "commander"], text: `The commander answered ${u.displayName}'s question: ${text2}`, tags: ["wager", "answer"], importance: 3, day: draft.day, knownBy: [u.id] });
+    return [{ type: "wager_question", wagerId, unitId: u.id, kind: "answered" }];
+  }
+  draft.personal.truth = { unitId: u.id, wagerId, question: text2 };
+  return [{ type: "wager_question", wagerId, unitId: u.id, kind: "asked" }];
+}
+function recordAnswer(draft, _ctx, unitId, raw) {
+  const truth = draft.personal?.truth;
+  if (!truth || truth.unitId !== unitId) throw new Error("She owes no answer.");
+  const text2 = cleanText(typeof raw === "string" ? raw.slice(0, TUNING.personal.wager.answerMax) : raw, TUNING.personal.wager.answerMax);
+  const u = unitOf5(draft, unitId);
+  delete draft.personal.truth;
+  if (u) addFact(draft, { about: [unitId], text: `${u.displayName} told the commander, asked "${truth.question}": ${text2}`, tags: ["wager", "answer"], importance: 3, day: draft.day, knownBy: [unitId] });
+  return [{ type: "truth_told", unitId, wagerId: truth.wagerId }];
+}
+function wagerDayStep(draft, ctx2) {
+  const events = [...rollChallenges(draft, ctx2)];
+  for (const w of [...openOf(draft)]) {
+    if (w.status === "offered" && draft.day >= w.day + TUNING.personal.wager.offerDays) events.push(...answerChallenge(draft, ctx2, w.id, false, { expired: true }));
+    else if (w.status !== "offered" && draft.day >= w.day + TUNING.personal.bet.voidDays) events.push(...voidWager(draft, w));
+  }
+  const mark = draft.personal?.mark;
+  if (mark && draft.day > mark.untilDay) {
+    delete draft.personal.mark;
+    events.push({ type: "mark_ended", unitId: mark.unitId });
+  }
   return events;
 }
 
@@ -19235,7 +19546,7 @@ function personalDayStep(draft, ctx2) {
       if (!isLiving(unit) && holdsPersonal(draft, unit.id)) forgetPersonal(draft, unit.id);
     }
   }
-  return [...decorDayStep(draft, ctx2), ...interceptDayStep(draft), ...lapseBookings(draft), ...rollBookings(draft, ctx2), ...rollClaims(draft, ctx2), ...tokenDayStep(draft, ctx2)];
+  return [...decorDayStep(draft, ctx2), ...interceptDayStep(draft), ...lapseBookings(draft), ...rollBookings(draft, ctx2), ...rollClaims(draft, ctx2), ...tokenDayStep(draft, ctx2), ...wagerDayStep(draft, ctx2)];
 }
 
 // src/engine/actions/personal.ts
@@ -19292,6 +19603,28 @@ registerAction("token/wear", (draft, payload, ctx2) => {
 registerAction("token/remove", (draft, payload, ctx2) => {
   if (!isObj20(payload) || typeof payload.tokenId !== "string") throw new Error("token/remove needs { tokenId }");
   return removeToken(draft, ctx2, payload.tokenId);
+});
+registerAction("wager/challenge", (draft, payload, ctx2) => {
+  if (!isObj20(payload) || typeof payload.unitId !== "string" || typeof payload.gameId !== "string" || typeof payload.stakeId !== "string" || payload.pick !== void 0 && typeof payload.pick !== "string") {
+    throw new Error("wager/challenge needs { unitId, gameId, stakeId, pick? }");
+  }
+  return challenge2(draft, ctx2, { unitId: payload.unitId, gameId: payload.gameId, stakeId: payload.stakeId, ...payload.pick !== void 0 ? { pick: payload.pick } : {} });
+});
+registerAction("wager/answer", (draft, payload, ctx2) => {
+  if (!isObj20(payload) || typeof payload.wagerId !== "string" || typeof payload.accept !== "boolean") throw new Error("wager/answer needs { wagerId, accept }");
+  return answerChallenge(draft, ctx2, payload.wagerId, payload.accept);
+});
+registerAction("wager/play", (draft, payload, ctx2) => {
+  if (!isObj20(payload) || typeof payload.wagerId !== "string" || payload.pick !== void 0 && typeof payload.pick !== "string") throw new Error("wager/play needs { wagerId, pick? }");
+  return playWager(draft, ctx2, payload.wagerId, payload.pick);
+});
+registerAction("wager/answer_question", (draft, payload, ctx2) => {
+  if (!isObj20(payload) || typeof payload.wagerId !== "string") throw new Error("wager/answer_question needs { wagerId, text }");
+  return answerQuestion(draft, ctx2, payload.wagerId, payload.text);
+});
+registerAction("wager/record_answer", (draft, payload, ctx2) => {
+  if (!isObj20(payload) || typeof payload.unitId !== "string") throw new Error("wager/record_answer needs { unitId, text }");
+  return recordAnswer(draft, ctx2, payload.unitId, payload.text);
 });
 
 // src/engine/power/dayStep.ts
@@ -21242,7 +21575,7 @@ function createPower(deps) {
   function challengeText(name, stat3, won) {
     return won ? `${name} has just lost a challenge to the commander (${stat3}); she no longer leads the squad for two weeks. The outcome is decided: play the aftermath and do not change it.` : `${name} has just beaten a challenge from the commander (${stat3}); she keeps the lead of the squad and stands stronger for it. The outcome is decided: play the aftermath and do not change it.`;
   }
-  async function challenge2(stat3) {
+  async function challenge3(stat3) {
     const chat = chatId();
     const events = deps.app.dispatch({ type: "power/challenge", payload: { stat: stat3 } }, { expectChatId: chat });
     const bad = failure(events);
@@ -21292,7 +21625,7 @@ function createPower(deps) {
       }
     },
     endorse: endorse2,
-    challenge: challenge2,
+    challenge: challenge3,
     answerCountermand,
     askFirst,
     requestVote,
@@ -22908,9 +23241,9 @@ function renderCombatScreen(host, ctx2) {
       }
     }, `${PRESENCE_LABEL2[p.kind]}${p.used ? " \u2014 USED" : ""}`);
   }
-  const unitOf6 = (state, c) => state.squad.find((u) => u.id === c.unitId);
+  const unitOf7 = (state, c) => state.squad.find((u) => u.id === c.unitId);
   const nameOf11 = (state, c) => {
-    if (c.side === "squad" || c.unitId !== void 0 && c.enemyId === void 0) return unitOf6(state, c)?.displayName ?? c.nameKey;
+    if (c.side === "squad" || c.unitId !== void 0 && c.enemyId === void 0) return unitOf7(state, c)?.displayName ?? c.nameKey;
     const affixes = (c.nameKey.split("|")[1] ?? "").split(",").filter((a) => a !== "");
     return state.enemyNames?.[c.nameKey] ?? defaultEnemyName(reg, c.enemyId ?? "", affixes);
   };
@@ -23128,7 +23461,7 @@ function renderCombatScreen(host, ctx2) {
       box.append(pre);
       return box;
     }
-    const unit = unitOf6(state, c);
+    const unit = unitOf7(state, c);
     if (!unit) return box;
     if (unit.kind === "grunt" || !unit.cardRef) {
       const pre = h("pre", { class: "alius-cc-ascii" });
@@ -27025,7 +27358,7 @@ function unitPortrait(st, unit, o) {
     return img;
   }
   let usingAvatar = !known?.url;
-  const settle3 = () => {
+  const settle4 = () => {
     if (o.dither) ditherWhenLoaded(img, key, o.palette, size);
   };
   img.addEventListener("error", () => {
@@ -27034,7 +27367,7 @@ function unitPortrait(st, unit, o) {
     img.setAttribute("src", avatar);
   });
   if (known && (known.url || Date.now() - known.at < RETRY_MS)) {
-    settle3();
+    settle4();
     return img;
   }
   st.getSpriteUrl(card2, "neutral").then(
@@ -27044,9 +27377,9 @@ function unitPortrait(st, unit, o) {
         usingAvatar = false;
         img.setAttribute("src", url);
       }
-      settle3();
+      settle4();
     },
-    () => settle3()
+    () => settle4()
   );
   return img;
 }
@@ -28312,10 +28645,10 @@ function crossSection(ctx2, state, here, onRoom) {
       if (url && bg.isConnected) showArt(url);
     });
   }
-  const unitOf6 = (id) => state.squad.find((u) => u.id === id);
+  const unitOf7 = (id) => state.squad.find((u) => u.id === id);
   const rooms = [...reg.hubRooms.values()].map((room) => {
     const r = room.rect;
-    const inside = here.filter((w) => w.roomId === room.id).map((w) => unitOf6(w.unitId)).filter((u) => u !== void 0);
+    const inside = here.filter((w) => w.roomId === room.id).map((w) => unitOf7(w.unitId)).filter((u) => u !== void 0);
     const el = h(
       "div",
       {
@@ -28342,8 +28675,8 @@ function crossSection(ctx2, state, here, onRoom) {
     );
     return el;
   });
-  const away = here.filter((w) => w.reason === "expedition").map((w) => unitOf6(w.unitId)).filter((u) => u !== void 0);
-  const elsewhere = here.filter((w) => w.reason === "nowhere").map((w) => unitOf6(w.unitId)).filter((u) => u !== void 0);
+  const away = here.filter((w) => w.reason === "expedition").map((w) => unitOf7(w.unitId)).filter((u) => u !== void 0);
+  const elsewhere = here.filter((w) => w.reason === "nowhere").map((w) => unitOf7(w.unitId)).filter((u) => u !== void 0);
   const panelHost = h("div", { class: "alius-room-panel-host" });
   const stage = h("div", { class: "alius-hub-stage", "data-slot": slot2 }, bg, ...rooms, caption, panelHost);
   const section = h(
@@ -31424,7 +31757,7 @@ function arrow(k, net) {
   const r = k.raw(Math.abs(net));
   return `${net > 0 ? "\u25B2" : "\u25BC"}${r === null ? "" : ` (${net > 0 ? "+" : MINUS2}${r})`}`;
 }
-function unitOf5(state, data) {
+function unitOf6(state, data) {
   const id = data.unitId;
   if (typeof id !== "string") return null;
   const unit = state.squad.find((u) => u.id === id);
@@ -31434,7 +31767,7 @@ function unitOf5(state, data) {
 var BAND = { trust: trustBand, affinity: affinityBand, attraction: attractionBand };
 var axisProvider = (axis) => (subject, env, knowledge) => {
   const state = env.state;
-  const found2 = unitOf5(state, subject.data);
+  const found2 = unitOf6(state, subject.data);
   if (!found2) return null;
   const { unit, relation } = found2;
   if (axis !== "trust" && unit.kind === "grunt") return { lines: ["Grunts track Trust only."] };
@@ -31466,7 +31799,7 @@ function liveStress(state, unit) {
 }
 var stressProvider = (subject, env, knowledge) => {
   const state = env.state;
-  const found2 = unitOf5(state, subject.data);
+  const found2 = unitOf6(state, subject.data);
   if (!found2) return null;
   const { unit } = found2;
   const stress = liveStress(state, unit);
@@ -35589,7 +35922,7 @@ function fmtPath(path, index) {
   for (const p of path) s += typeof p === "number" ? `[${p}]` : s === "" ? p : `.${p}`;
   return s;
 }
-var settle2 = (fetchJson2, path) => fetchJson2(path).then(
+var settle3 = (fetchJson2, path) => fetchJson2(path).then(
   (value) => ({ ok: true, value }),
   (e) => ({ ok: false, message: e instanceof Error ? e.message : String(e) })
 );
@@ -35602,7 +35935,7 @@ function collectArt(packs) {
 }
 async function loadPacks(packRoots, fetchJson2) {
   const errors = [];
-  const manifestResults = await Promise.all(packRoots.map((root) => settle2(fetchJson2, `${root}/manifest.json`)));
+  const manifestResults = await Promise.all(packRoots.map((root) => settle3(fetchJson2, `${root}/manifest.json`)));
   const packs = [];
   manifestResults.forEach((res, i) => {
     const root = packRoots[i];
@@ -35623,7 +35956,7 @@ async function loadPacks(packRoots, fetchJson2) {
   let lorebook = null;
   const lorePack = [...packs].reverse().find((p) => p.manifest.lorebook !== void 0);
   const loreFile = lorePack?.manifest.lorebook;
-  const loreJob = lorePack && loreFile ? settle2(fetchJson2, `${lorePack.root}/${loreFile}`) : null;
+  const loreJob = lorePack && loreFile ? settle3(fetchJson2, `${lorePack.root}/${loreFile}`) : null;
   const jobs = packs.flatMap(
     ({ root, manifest }) => Object.entries(manifest.files).map(([registry2, file]) => ({
       pack: manifest.id,
@@ -35632,7 +35965,7 @@ async function loadPacks(packRoots, fetchJson2) {
       file
     }))
   );
-  const fileResults = await Promise.all(jobs.map((j) => settle2(fetchJson2, `${j.root}/${j.file}`)));
+  const fileResults = await Promise.all(jobs.map((j) => settle3(fetchJson2, `${j.root}/${j.file}`)));
   if (loreJob && lorePack && loreFile) {
     const res = await loreJob;
     const err = (path, message) => errors.push({ pack: lorePack.manifest.id, file: loreFile, path, message });

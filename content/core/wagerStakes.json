@@ -1,0 +1,54 @@
+[
+  {
+    "id": "obedience",
+    "label": "A day of obedience",
+    "description": "AUTHOR TO WRITE: the loser follows the winner for the rest of the day, outside combat.",
+    "effect": "obedience",
+    "text": "a day of obedience"
+  },
+  {
+    "id": "slot",
+    "label": "A slot",
+    "description": "AUTHOR TO WRITE: if she wins she books a slot of the commander; if the commander wins she cannot book for a week.",
+    "effect": "slot",
+    "text": "a slot of your time"
+  },
+  {
+    "id": "privilege",
+    "label": "A privilege",
+    "description": "AUTHOR TO WRITE: the winner gains standing over the other.",
+    "effect": "privilege",
+    "text": "a privilege"
+  },
+  {
+    "id": "drop_demand",
+    "label": "Her demand",
+    "description": "AUTHOR TO WRITE: if she wins her open demand is granted; if the commander wins it is dropped with no offence.",
+    "effect": "drop_demand",
+    "text": "what she asked of you"
+  },
+  {
+    "id": "token",
+    "label": "A token",
+    "description": "AUTHOR TO WRITE: if she wins she gives a token that you wear for a week; if the commander wins she gives one now.",
+    "effect": "token",
+    "text": "a token to wear"
+  },
+  {
+    "id": "question",
+    "label": "A truthful answer",
+    "description": "AUTHOR TO WRITE: the winner asks one question and gets the truth.",
+    "effect": "question",
+    "text": "one truthful answer"
+  },
+  {
+    "id": "her_mark",
+    "label": "Her mark",
+    "description": "AUTHOR TO WRITE: if she wins the commander bears her mark for three days.",
+    "effect": "mark",
+    "text": "the right to put her mark on you",
+    "contentTags": [
+      "body_modification"
+    ]
+  }
+]

@@ -708,6 +708,8 @@ export interface PersonalState {
   tokens?: { owned: Token[]; offer?: TokenOffer; given: string[] };
   wagers?: { open: Wager[]; log: WagerLogEntry[] };
   obedience?: { unitId: string; day: number; who: 'commander' | 'unit' };
+  /** A question wager was won and waits for its text: the commander's answer (she asked) or the commander's question (the commander asked). */
+  pendingQuestion?: { wagerId: string; unitId: string; winner: 'commander' | 'unit' };
   truth?: { unitId: string; wagerId: string; question: string };
   mark?: { unitId: string; untilDay: number };
   secrets?: SquadSecret[];

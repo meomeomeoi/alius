@@ -2,6 +2,7 @@ import { registerAction } from '../dispatch';
 import { registerDayEndStep } from '../calendar';
 import { cancelBooking, playBooking, resolveConflict } from '../personal/bookings';
 import { refuseClaim } from '../personal/courtship';
+import { answerChallenge, answerQuestion, challenge, playWager, recordAnswer } from '../personal/wagers';
 import { answerOffer, removeToken, wearToken } from '../personal/tokens';
 import { DECOR_PARTS, removeDecor } from '../personal/decor';
 import { personalDayStep } from '../personal/dayStep';
@@ -84,4 +85,36 @@ registerAction('token/wear', (draft, payload, ctx) => {
 registerAction('token/remove', (draft, payload, ctx) => {
   if (!isObj(payload) || typeof payload.tokenId !== 'string') throw new Error('token/remove needs { tokenId }');
   return removeToken(draft, ctx, payload.tokenId);
+});
+
+/** The commander challenges a soldier: `{ unitId, gameId, stakeId, pick? }`. She accepts or refuses. Draws no rng. */
+registerAction('wager/challenge', (draft, payload, ctx) => {
+  if (!isObj(payload) || typeof payload.unitId !== 'string' || typeof payload.gameId !== 'string' || typeof payload.stakeId !== 'string' || (payload.pick !== undefined && typeof payload.pick !== 'string')) {
+    throw new Error('wager/challenge needs { unitId, gameId, stakeId, pick? }');
+  }
+  return challenge(draft, ctx, { unitId: payload.unitId, gameId: payload.gameId, stakeId: payload.stakeId, ...(payload.pick !== undefined ? { pick: payload.pick } : {}) });
+});
+
+/** ACCEPT or DECLINE her challenge. Draws no rng. */
+registerAction('wager/answer', (draft, payload, ctx) => {
+  if (!isObj(payload) || typeof payload.wagerId !== 'string' || typeof payload.accept !== 'boolean') throw new Error('wager/answer needs { wagerId, accept }');
+  return answerChallenge(draft, ctx, payload.wagerId, payload.accept);
+});
+
+/** Plays an accepted wager (`pick` is the hand in rock-paper-scissors). The campaign rng decides. */
+registerAction('wager/play', (draft, payload, ctx) => {
+  if (!isObj(payload) || typeof payload.wagerId !== 'string' || (payload.pick !== undefined && typeof payload.pick !== 'string')) throw new Error('wager/play needs { wagerId, pick? }');
+  return playWager(draft, ctx, payload.wagerId, payload.pick as string | undefined);
+});
+
+/** The text of a won question wager: the commander's answer, or the commander's question. Draws no rng. */
+registerAction('wager/answer_question', (draft, payload, ctx) => {
+  if (!isObj(payload) || typeof payload.wagerId !== 'string') throw new Error('wager/answer_question needs { wagerId, text }');
+  return answerQuestion(draft, ctx, payload.wagerId, payload.text);
+});
+
+/** Her first reply to the truth order, stored as a fact. Draws no rng. */
+registerAction('wager/record_answer', (draft, payload, ctx) => {
+  if (!isObj(payload) || typeof payload.unitId !== 'string') throw new Error('wager/record_answer needs { unitId, text }');
+  return recordAnswer(draft, ctx, payload.unitId, payload.text);
 });

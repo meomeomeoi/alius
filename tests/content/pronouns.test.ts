@@ -89,6 +89,20 @@ describe('no pronoun for the commander in content', () => {
     expect(texts.filter(([, t]) => COMMANDER_PRONOUN.test(t)).map(([where]) => where)).toEqual([]);
   });
 
+  it('wager games and stakes (P9c): labels, descriptions, handicaps and stake texts', () => {
+    const texts = [
+      ...[...reg.wagerGames.values()].flatMap((g): Array<[string, string]> => [
+        [`wagerGames:${g.id}.label`, String(g.label)], [`wagerGames:${g.id}.description`, String(g.description)],
+        ...((g.handicaps as Array<{ id: string; label: string }> | undefined) ?? []).map((x): [string, string] => [`wagerGames:${g.id}.${x.id}`, x.label]),
+      ]),
+      ...[...reg.wagerStakes.values()].flatMap((x): Array<[string, string]> => [
+        [`wagerStakes:${x.id}.label`, String(x.label)], [`wagerStakes:${x.id}.description`, String(x.description)], [`wagerStakes:${x.id}.text`, String(x.text)],
+      ]),
+    ];
+    expect(texts.length).toBeGreaterThan(25);
+    expect(texts.filter(([, t]) => COMMANDER_PRONOUN.test(t) || /\b(he|him|his|they|them|their)\b/i.test(t)).map(([where]) => where)).toEqual([]);
+  });
+
   it('outside feats and the hierarchy glossary entries (P9b)', () => {
     const texts: Array<[string, string]> = [
       ...fields('outsideFeats', ['label', 'description']),

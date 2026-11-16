@@ -9,6 +9,7 @@
     "dilemmaTemplates": "dilemmaTemplates.json",
     "missionTemplates": "missionTemplates.json",
     "clocks": "clocks.json",
-    "relationshipRuleTemplates": "relationshipRuleTemplates.json"
+    "relationshipRuleTemplates": "relationshipRuleTemplates.json",
+    "wagerStakes": "wagerStakes.json"
   }
 }

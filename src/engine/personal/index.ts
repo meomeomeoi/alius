@@ -11,3 +11,6 @@ export { JEALOUSY_TAG, jealousyAllowed, pressureGate, pressureMultOf, type Press
 export { forgetPersonal, holdsPersonal, lapseBookingsThrough, nextPersonalId, personalOf } from './state';
 export { answerOffer, giveToken, removeToken, rollTokenOffer, tokenDayStep, tokenLine, wearToken, wornTokens } from './tokens';
 export { favourReactions } from './reactions';
+export {
+  answerChallenge, answerQuestion, applyStake, challenge, gamesOffered, offeredStakes, playWager, PLAYABLE_KINDS, recordAnswer, rollChallenges, settle, stakeOffered, voidWager, wagerDayStep,
+} from './wagers';

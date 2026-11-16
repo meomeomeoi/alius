@@ -473,6 +473,7 @@ export const RESERVED_EVENT_TYPES: readonly string[] = [
   'decor_placed', 'decor_faded', 'decor_removed_by_commander', 'device_intercept', 'intercept_resolved',
   'booking_made', 'booking_conflict', 'booking_resolved', 'booking_cancelled', 'booking_played', 'booking_lapsed',
   'token_offered', 'token_accepted', 'token_declined', 'token_worn', 'token_taken_off',
+  'wager_offered', 'wager_refused', 'wager_accepted', 'wager_declined', 'wager_resolved', 'mark_set', 'mark_ended', 'wager_question', 'truth_told', 'demand_dropped',
 ];
 
 const slotEnum = z.enum(['morning', 'afternoon', 'evening', 'night']);
@@ -1880,6 +1881,41 @@ export const TokenKindSchema = BaseEntrySchema.extend({
 export type TokenKindEntry = z.infer<typeof TokenKindSchema>;
 registrySchemas.tokenKinds = TokenKindSchema;
 
+/** P9c §6: one handicap of a sparring game: what her attack, HP and speed are multiplied by, and the Affinity she needs to allow it. */
+export const WagerHandicapSchema = z.object({
+  id: str, label: str.max(40),
+  herAtk: z.number().min(0.1).max(2), herHp: z.number().min(0.1).max(2), herSpd: z.number().min(0.1).max(2),
+  minAffinity: int.min(-100).max(100),
+}).strict();
+export type WagerHandicap = z.infer<typeof WagerHandicapSchema>;
+
+/** P9c §6: a game the commander and a soldier can bet on. `kind` is the closed vocabulary the engine plays; `handicaps` belong to sparring only. */
+export const WagerGameSchema = BaseEntrySchema.extend({
+  label: str.max(40),
+  description: str.max(DESCRIPTION_MAX),
+  kind: z.enum(['coin', 'rps', 'high_card', 'sparring', 'expedition_bet']),
+  /** The game takes a slot of the commander's time. */
+  spendsSlot: z.boolean().optional(),
+  handicaps: z.array(WagerHandicapSchema).min(1).optional(),
+}).strict().superRefine((g, ctx) => {
+  if (g.kind === 'sparring' && g.handicaps === undefined) ctx.addIssue({ code: 'custom', path: ['handicaps'], message: 'a sparring game needs handicaps' });
+  if (g.kind !== 'sparring' && g.handicaps !== undefined) ctx.addIssue({ code: 'custom', path: ['handicaps'], message: 'only sparring has handicaps' });
+});
+export type WagerGameEntry = z.infer<typeof WagerGameSchema>;
+registrySchemas.wagerGames = WagerGameSchema;
+
+/** P9c §6: what a wager is for. `effect` is the closed vocabulary the engine applies, for either winner; `contentTags` gate the stake (it joins `CONTENT_GATED_REGISTRIES`). */
+export const WagerStakeSchema = BaseEntrySchema.extend({
+  label: str.max(40),
+  description: str.max(DESCRIPTION_MAX),
+  effect: z.enum(['obedience', 'slot', 'privilege', 'drop_demand', 'token', 'question', 'mark']),
+  /** What she says the wager is for. */
+  text: str.max(120),
+  contentTags,
+}).strict();
+export type WagerStakeEntry = z.infer<typeof WagerStakeSchema>;
+registrySchemas.wagerStakes = WagerStakeSchema;
+
 /** Player-visible registries whose entries carry an optional `description` (skills and statuses already require one). */
 export const DESCRIBED_REGISTRIES = [
   'roles', 'skills', 'signatures', 'statuses', 'defects', 'items', 'affixes', 'enemies',
@@ -1898,7 +1934,7 @@ export const DESCRIBED_REGISTRIES = [
   // P9b
   'voteKinds', 'outsideFeats',
   // P9c
-  'deviceAccessRules', 'bookingKinds', 'tokenKinds',
+  'deviceAccessRules', 'bookingKinds', 'tokenKinds', 'wagerGames', 'wagerStakes',
 ] as const satisfies readonly RegistryName[];
 
 /** Adds the optional `description` rule to a registry schema without changing its shape. */

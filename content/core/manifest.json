@@ -58,6 +58,8 @@
     "outsideFeats": "outsideFeats.json",
     "deviceAccessRules": "deviceAccessRules.json",
     "bookingKinds": "bookingKinds.json",
-    "tokenKinds": "tokenKinds.json"
+    "tokenKinds": "tokenKinds.json",
+    "wagerGames": "wagerGames.json",
+    "wagerStakes": "wagerStakes.json"
   }
 }

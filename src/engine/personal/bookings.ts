@@ -89,7 +89,7 @@ export function book(draft: CampaignState, _ctx: Pick<EngineCtx, 'registries'>, 
 }
 
 /** The kinds her tier allows (a `romantic` kind needs the romantic tier), in registry order. */
-function kindsFor(state: CampaignState, reg: Registries, unitId: string): Array<Record<string, unknown>> {
+export function bookingKindsFor(state: CampaignState, reg: Registries, unitId: string): Array<Record<string, unknown>> {
   const tier = bondTierOf(state, reg, unitId);
   return [...reg.bookingKinds.values()].filter((k) => k.tier === undefined || k.tier === tier);
 }
@@ -111,7 +111,7 @@ export function rollBookings(draft: CampaignState, ctx: EngineCtx): EngineEvent[
     if (mine.some((b) => b.status === 'booked')) continue;
     if (mine.filter((b) => b.source === 'roll' && (b.made ?? -Infinity) > draft.day - 7).length >= TUNING.personal.booking.perWeek) continue;
     if (!ctx.rng.chance(bookingChance(draft, reg, u.id))) continue;
-    const kinds = kindsFor(draft, reg, u.id);
+    const kinds = bookingKindsFor(draft, reg, u.id);
     if (kinds.length === 0) continue;
     let pick = ctx.rng.int(0, kinds.reduce((n, k) => n + Number(k.weight), 0) - 1);
     const kind = kinds.find((k) => (pick -= Number(k.weight)) < 0) ?? kinds[0];

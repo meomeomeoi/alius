@@ -32,6 +32,7 @@ export function holdsPersonal(state: Pick<CampaignState, 'personal'>, unitId: st
     || p.wagers?.open.some((w) => w.unitId === unitId) === true
     || p.obedience?.unitId === unitId
     || p.truth?.unitId === unitId
+    || p.pendingQuestion?.unitId === unitId
     || p.mark?.unitId === unitId
     || p.secrets?.some((x) => x.knownBy.includes(unitId)) === true
   );
@@ -55,6 +56,7 @@ export function forgetPersonal(draft: CampaignState, unitId: string): void {
   if (p.wagers) p.wagers.open = p.wagers.open.filter((w) => w.unitId !== unitId);
   if (p.obedience?.unitId === unitId) delete p.obedience;
   if (p.truth?.unitId === unitId) delete p.truth;
+  if (p.pendingQuestion?.unitId === unitId) delete p.pendingQuestion;
   if (p.mark?.unitId === unitId) delete p.mark;
   const decor = p.decor?.[unitId];
   if (decor && decor.fadedUntil === undefined) decor.fadedUntil = draft.day + TUNING.personal.decor.fadeDays;
