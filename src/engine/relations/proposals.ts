@@ -5,6 +5,8 @@ import { syncPublicity } from '../bonds/publicitySync';
 import { setPublicity } from '../bonds/publicity';
 import { nextId, recordPromise } from '../memory';
 import { cleanCondition, courtshipChips } from '../personal/courtship';
+import { overrideHer } from '../personal/obedience';
+import { commanderObeys } from '../personal/state';
 import type { Rng } from '../rng';
 import type { CampaignState, PendingProposal } from '../state/types';
 import { TUNING } from '../tuning';
@@ -142,12 +144,16 @@ export function answerProposal(
   list.splice(idx, 1);
   const base = { proposalId: rec.id, unitId: rec.unitId, kind: rec.kind, answer: a.answer };
 
-  if (a.answer === 'not_now' || a.answer === 'deflect') return [{ type: 'proposal_answered', ...base }];
+  // P9c: a day the commander obeys her: putting off or declining her proposal is choosing against her
+  const defied = rec.from === 'unit' && commanderObeys(draft, rec.unitId);
+  const overridden = (): EngineEvent[] => (defied ? overrideHer(draft, { registries: reg }, rec.unitId, 'turned down her proposal on the day of obedience') : []);
+
+  if (a.answer === 'not_now' || a.answer === 'deflect') return [{ type: 'proposal_answered', ...base }, ...overridden()];
 
   if (a.answer === 'decline') {
     const romantic = (ROMANTIC_PROPOSALS as readonly string[]).includes(rec.kind);
     const hurt = commanderEvent(romantic ? 'rejected_advance' : 'dismissed', rec.unitId, 'moderate', 'declined her proposal');
-    return [{ type: 'proposal_answered', ...base }, ...applyEventToUnit(draft, reg, rec.unitId, hurt), ...evaluateAutomatic(draft, reg, rec.unitId)];
+    return [{ type: 'proposal_answered', ...base }, ...applyEventToUnit(draft, reg, rec.unitId, hurt), ...evaluateAutomatic(draft, reg, rec.unitId), ...overridden()];
   }
 
   // accept / accept_secret: conditions may have changed since the offer

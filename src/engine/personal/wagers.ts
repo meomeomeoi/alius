@@ -18,7 +18,7 @@ import { deviceGateReason } from './access';
 import { book, bookingGuard, bookingKindsFor } from './bookings';
 import { hitHer } from './events';
 import { pressureGate, pressureMultOf } from './gates';
-import { nextPersonalId, personalOf } from './state';
+import { nextPersonalId, personalOf, unitObeys } from './state';
 import { giveToken, removeTokenQuietly, wearToken } from './tokens';
 
 const unitOf = (state: CampaignState, id: string) => state.squad.find((u) => u.id === id);
@@ -91,7 +91,7 @@ export function rollChallenges(draft: CampaignState, ctx: EngineCtx): EngineEven
   const events: EngineEvent[] = [];
   if (games.length === 0) return events;
   for (const u of draft.squad) {
-    if (u.kind !== 'named' || openOf(draft).some((w) => w.unitId === u.id) || pressureGate(draft, reg, u.id, 'wager') !== null) continue;
+    if (u.kind !== 'named' || openOf(draft).some((w) => w.unitId === u.id) || unitObeys(draft, u.id) || pressureGate(draft, reg, u.id, 'wager') !== null) continue;
     const stakes = offeredStakes(draft, reg, u.id);
     if (stakes.length === 0) continue;
     if (!ctx.rng.chance(TUNING.personal.wager.chance * assertiveness(draft, reg).demandMult * pressureMultOf(draft, reg, u.id))) continue;
@@ -369,6 +369,7 @@ export function wagerDayStep(draft: CampaignState, ctx: EngineCtx): EngineEvent[
     else if (w.status !== 'offered' && draft.day >= w.day + TUNING.personal.bet.voidDays) events.push(...voidWager(draft, w));
   }
   const mark = draft.personal?.mark;
+  if (draft.personal?.obedience && draft.personal.obedience.day <= draft.day) delete draft.personal.obedience; // a day of obedience ends with its day
   if (mark && draft.day > mark.untilDay) {
     delete draft.personal!.mark;
     events.push({ type: 'mark_ended', unitId: mark.unitId });

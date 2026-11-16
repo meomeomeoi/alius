@@ -11,7 +11,7 @@ import { TUNING } from '../tuning';
 import { hitHer } from './events';
 import { pressureGate, pressureMultOf } from './gates';
 import { favourReactions } from './reactions';
-import { nextPersonalId, personalOf } from './state';
+import { nextPersonalId, personalOf, unitObeys } from './state';
 
 const unitOf = (state: CampaignState, id: string) => state.squad.find((u) => u.id === id);
 const labelOf = (reg: Registries, kindId: string, name: string): string => String(reg.tokenKinds.get(kindId)?.label ?? '{name}\'s token').replaceAll('{name}', name);
@@ -42,7 +42,7 @@ export function rollTokenOffer(draft: CampaignState, ctx: EngineCtx): EngineEven
   if (draft.personal?.tokens?.offer !== undefined) return [];
   const given = draft.personal?.tokens?.given ?? [];
   for (const u of draft.squad) {
-    if (u.kind !== 'named' || given.includes(u.id) || pressureGate(draft, reg, u.id, 'token') !== null) continue;
+    if (u.kind !== 'named' || given.includes(u.id) || unitObeys(draft, u.id) || pressureGate(draft, reg, u.id, 'token') !== null) continue;
     const chance = TUNING.personal.token.chance * assertiveness(draft, reg).demandMult * pressureMultOf(draft, reg, u.id);
     if (!ctx.rng.chance(chance)) continue;
     const kinds = kindsFor(draft, reg, u.id);

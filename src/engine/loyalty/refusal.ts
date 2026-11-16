@@ -1,4 +1,5 @@
 import type { Registries } from '../../content/types';
+import { unitObeys } from '../personal/state';
 import { seizing } from '../bonds/want';
 import { amplify } from '../combat/effects';
 import type { EffectSpec } from '../combat/types';
@@ -45,6 +46,7 @@ export function rawRefusalChance(state: CampaignState, reg: Registries, unitId: 
 
 /** The chance that she refuses an order, as she will roll it: the source chance scaled by her disposition (and by a grudge, P9b). */
 export function refusalChance(state: CampaignState, reg: Registries, unitId: string, orderId?: string): number {
+  if (unitObeys(state, unitId)) return 0; // P9c: a day of obedience: she follows the commander's non-combat orders
   const chance = scaleRefusal(state, reg, unitId, rawRefusalChance(state, reg, unitId, orderId));
   // P9b: a unit the commander overruled in a squad vote pushes back more openly until the next day end
   return grudgeHolds(state, unitId) ? Math.min(TUNING.disposition.refusalCap, chance * TUNING.power.vote.grudgeRefusalMult) : chance;

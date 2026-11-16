@@ -1,4 +1,6 @@
 import type { EngineCtx, EngineEvent } from '../dispatch';
+import { overrideHer } from '../personal/obedience';
+import { obedienceOf } from '../personal/state';
 import { isLiving } from '../economy';
 import { addRecord } from '../discipline/record';
 import { applyPunishment } from '../discipline/punish';
@@ -97,12 +99,18 @@ export function dropVote(draft: CampaignState, voteId: string): EngineEvent[] {
 }
 
 /** The vote's action ran: the vote is spent (logged as carried, or as overruled if it was). */
-export function carryVote(draft: CampaignState, voteId: string): EngineEvent[] {
+export function carryVote(draft: CampaignState, voteId: string, ctx?: Pick<EngineCtx, 'registries'>): EngineEvent[] {
   const open = draft.power?.votes.open;
   if (!open || open.id !== voteId) throw new Error(`There is no open vote "${voteId}".`);
   logVote(draft, open, open.status === 'overruled' ? 'overruled' : 'carried');
   delete draft.power!.votes.open;
-  return [{ type: 'vote_carried', voteId, kind: open.kind, subject: open.subject }];
+  const events: EngineEvent[] = [{ type: 'vote_carried', voteId, kind: open.kind, subject: open.subject }];
+  // P9c: a day the commander obeys her: carrying a decision she voted against is choosing against her (an overruled vote has its own cost)
+  const ob = obedienceOf(draft);
+  if (ctx && open.status !== 'overruled' && ob?.who === 'commander' && open.ballots.some((b) => b.unitId === ob.unitId && b.vote === 'against')) {
+    events.push(...overrideHer(draft, ctx, ob.unitId, 'carried a decision she voted against on the day of obedience'));
+  }
+  return events;
 }
 
 /**

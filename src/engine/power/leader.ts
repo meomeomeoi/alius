@@ -1,4 +1,5 @@
 import type { Registries } from '../../content/types';
+import { unitObeys } from '../personal/state';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import type { CampaignState, Countermand } from '../state/types';
 import { TUNING } from '../tuning';
@@ -24,7 +25,8 @@ export function leaderVoteWeight(state: CampaignState, reg: Registries): number 
 
 /** Her chance to countermand one activity: `0.2 × privilegeScale`, at most 0.6; 0 with no leader. */
 export function countermandChance(state: CampaignState, reg: Registries): number {
-  if (!leaderOf(state)) return 0;
+  const leader = leaderOf(state);
+  if (!leader || unitObeys(state, leader.id)) return 0; // P9c: a leader who obeys the commander today countermands nothing
   const C = TUNING.power.countermand;
   return Math.min(C.cap, C.chance * privilegeScale(state, reg));
 }
@@ -45,7 +47,7 @@ export interface CountermandRequest { activityId: string; companionId?: string; 
  */
 export function rollCountermand(draft: CampaignState, ctx: EngineCtx, req: CountermandRequest): EngineEvent[] | null {
   const leader = leaderOf(draft);
-  if (!leader) return null;
+  if (!leader || unitObeys(draft, leader.id)) return null;
   if ((ctx.registries.activities.get(req.activityId) as { countermandable?: boolean } | undefined)?.countermandable !== true) return null;
   const named = (id: string): boolean => draft.squad.some((u) => u.id === id && u.kind === 'named') && id !== leader.id;
   const unitId = (req.companionId !== undefined ? [req.companionId] : req.unitIds ?? []).find(named);

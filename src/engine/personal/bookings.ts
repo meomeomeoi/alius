@@ -12,8 +12,9 @@ import { evaluateAutomatic } from '../relations/graph';
 import type { Booking, BookingSource, CampaignState, Slot } from '../state/types';
 import { TUNING } from '../tuning';
 import { hitHer } from './events';
+import { overrideHer } from './obedience';
 import { pressureGate, pressureMultOf } from './gates';
-import { lapseBookingsThrough, nextPersonalId, personalOf } from './state';
+import { commanderObeys, lapseBookingsThrough, nextPersonalId, personalOf, unitObeys } from './state';
 
 const bookingsOf = (state: Pick<CampaignState, 'personal'>): Booking[] => state.personal?.bookings ?? [];
 const unitName = (state: CampaignState, id: string): string => state.squad.find((u) => u.id === id)?.displayName ?? id;
@@ -105,7 +106,7 @@ export function rollBookings(draft: CampaignState, ctx: EngineCtx): EngineEvent[
   for (const u of draft.squad) {
     if (u.kind !== 'named') continue;
     if (pressureGate(draft, reg, u.id, 'booking') !== null) continue;
-    if (restrictionReason(draft, u.id, 'scene') !== null) continue;
+    if (restrictionReason(draft, u.id, 'scene') !== null || unitObeys(draft, u.id)) continue;
     if ((draft.personal?.noBookUntil?.[u.id] ?? 0) > draft.day) continue;
     const mine = bookingsOf(draft).filter((b) => b.unitId === u.id);
     if (mine.some((b) => b.status === 'booked')) continue;
@@ -194,6 +195,7 @@ export function cancelBooking(draft: CampaignState, ctx: EngineCtx, bookingId: s
   events.push(...refuseLikeDemand(draft, ctx, b.unitId, { evidence: 'a booking was cancelled' }));
   if (b.source === 'wager') events.push(...hitHer(draft, reg, b.unitId, 'broke_promise', 'moderate', 'a wagered booking was cancelled'));
   else events.push(...evaluateAutomatic(draft, reg, b.unitId));
+  if (commanderObeys(draft, b.unitId)) events.push(...overrideHer(draft, ctx, b.unitId, 'cancelled her booking on the day of obedience'));
   return events;
 }
 

@@ -7,7 +7,7 @@ import { campaign, setRecord, setRelation } from './discipline';
 
 export * from './discipline';
 export { enable, withBond } from './bonds';
-export { withOptions } from './power';
+export { withLeader, withOptions } from './power';
 
 // Importing this registers the P9c actions and the personal day step under test (the other actions come with ./discipline).
 import '../../src/engine/actions/personal';

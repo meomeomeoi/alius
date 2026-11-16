@@ -97,7 +97,7 @@ export function dispatch(
   const rng = new Rng(draft.rng);
   try {
     const events = handler(draft, action.payload, { registries, rng });
-    if (voteId !== undefined) events.push(...carryVote(draft, voteId)); // the vote is spent once, in the same state
+    if (voteId !== undefined) events.push(...carryVote(draft, voteId, { registries })); // the vote is spent once, in the same state
     draft.rng = rng.state;
     try {
       recordLedger(state, draft, action.type);

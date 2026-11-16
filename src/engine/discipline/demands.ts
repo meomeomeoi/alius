@@ -10,6 +10,8 @@ import { queueNightSpec } from '../night';
 import { pushMessage } from '../dms';
 import { canEquip, equippedBy } from '../items';
 import { nextId, revealCrime } from '../memory';
+import { overrideHer } from '../personal/obedience';
+import { commanderObeys, unitObeys } from '../personal/state';
 import { assertiveness } from '../power/options';
 import { applyEventToUnit } from '../relations/effects';
 import { evaluateAutomatic } from '../relations/graph';
@@ -101,7 +103,7 @@ export function eligibleTemplates(state: CampaignState, reg: Registries, unitId:
 export function openDemand(draft: CampaignState, ctx: EngineCtx, unitId: string, opts: { owed?: boolean; /** P9d: open a `desire` demand (Want's own cadence replaces the weekly cap). */ desire?: boolean } = {}): { demand: Demand; events: EngineEvent[] } | null {
   const reg = ctx.registries;
   const unit = draft.squad.find((u) => u.id === unitId);
-  if (!unit || unit.kind !== 'named' || !isLiving(unit) || hasOpen(draft, unitId) || (opts.desire !== true && openedThisWeek(draft, unitId) >= TUNING.demands.perWeek)) return null;
+  if (!unit || unit.kind !== 'named' || !isLiving(unit) || unitObeys(draft, unitId) || hasOpen(draft, unitId) || (opts.desire !== true && openedThisWeek(draft, unitId) >= TUNING.demands.perWeek)) return null;
   if (restrictionReason(draft, unitId, 'scene') !== null) return null; // in the brig or on duty she cannot be talked to: its [TALK] would always fail
   let pool = eligibleTemplates(draft, reg, unitId, opts.desire === true ? 'desire' : undefined);
   const last = [...(draft.discipline?.demandLog ?? [])].reverse().find((e) => e.unitId === unitId)?.templateId;
@@ -266,6 +268,8 @@ export function answerDemand(draft: CampaignState, ctx: EngineCtx, demandId: str
       events.push(...applyEventToUnit(draft, reg, unit.id, { type: 'broke_promise', actor: 'commander', targets: [unit.id], severity: 'moderate', evidence: 'an owed demand was refused', confidence: 1 }));
     }
   }
+  // P9c: a day the commander obeys her: refusing or putting off her demand is choosing against her (an expired one is nobody's choice)
+  if (answer !== 'grant' && opts.expired !== true && commanderObeys(draft, unit.id)) events.push(...overrideHer(draft, ctx, unit.id, 'refused her demand on the day of obedience'));
   events.push(...evaluateAutomatic(draft, reg, unit.id));
   events.push({ type: 'demand_resolved', demandId, unitId: unit.id, answer, ...(opts.expired ? { expired: true } : {}) });
   return events;

@@ -1,4 +1,6 @@
 import { negotiationHolds, noteFeat } from '../power/outside';
+import { herPick, overrideHer } from '../personal/obedience';
+import { obedienceOf } from '../personal/state';
 import { isCostEffect } from '../../content/schemas';
 import type { Entry, Registries } from '../../content/types';
 import type { EngineCtx, EngineEvent } from '../dispatch';
@@ -243,6 +245,10 @@ export function chooseDilemma(draft: CampaignState, ctx: EngineCtx, id: unknown,
   if (typeof index !== 'number' || !Number.isInteger(index) || !option) throw new Error(`There is no option ${String(index)}.`);
   if (option.disabled !== null) throw new Error(`${option.label}: ${option.disabled}.`);
   const chosen = open.options[index];
+  // P9c: a day the commander obeys her: choosing another option than the one she would pick is choosing against her
+  const ob = obedienceOf(draft);
+  const pick = ob?.who === 'commander' ? herPick(draft, ctx.registries, ob.unitId) : null;
+  const defied = ob !== null && pick !== null && pick !== index;
   let effects = chosen.effects;
   let checkPassed: boolean | undefined;
   let routePassed: boolean | undefined;
@@ -290,6 +296,7 @@ export function chooseDilemma(draft: CampaignState, ctx: EngineCtx, id: unknown,
     ...(routeKind !== undefined ? { routeKind } : {}),
   };
   events.push(resolved);
+  if (defied) events.push(...overrideHer(draft, ctx, ob!.unitId, 'chose against her on the day of obedience'));
   if (negotiationHolds(resolved)) events.push(...noteFeat(draft, ctx.registries, 'negotiation')); // P9b: a feat outsiders see
   return events;
 }

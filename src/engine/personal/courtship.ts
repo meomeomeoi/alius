@@ -10,7 +10,7 @@ import { TUNING } from '../tuning';
 import { hitHer } from './events';
 import { favourReactions } from './reactions';
 import { pressureGate, pressureMultOf } from './gates';
-import { personalOf } from './state';
+import { personalOf, unitObeys } from './state';
 
 /** The category that lets the commander refuse a claim in front of the squad. */
 export const HUMILIATION_TAG = 'public_humiliation';
@@ -60,7 +60,7 @@ export function claim(draft: CampaignState, ctx: EngineCtx | Pick<EngineCtx, 're
 export function rollClaims(draft: CampaignState, ctx: EngineCtx): EngineEvent[] {
   const events: EngineEvent[] = [];
   for (const u of draft.squad) {
-    if (u.kind !== 'named' || pressureGate(draft, ctx.registries, u.id, 'claim') !== null || recentClaim(draft, u.id)) continue;
+    if (u.kind !== 'named' || pressureGate(draft, ctx.registries, u.id, 'claim') !== null || recentClaim(draft, u.id) || unitObeys(draft, u.id)) continue;
     if (ctx.rng.chance(claimChance(draft, ctx.registries, u.id))) events.push(...claim(draft, ctx, u.id));
   }
   return events;

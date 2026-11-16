@@ -84,3 +84,21 @@ export function lapseBookingsThrough(draft: CampaignState, through: { day: numbe
   }
   return events;
 }
+
+/** The day of obedience that is under way (`who` obeys), or `null`: it is valid on its own day only. */
+export const obedienceOf = (state: Pick<CampaignState, 'personal' | 'day'>): { unitId: string; who: 'commander' | 'unit' } | null => {
+  const o = state.personal?.obedience;
+  return o !== undefined && o.day === state.day ? { unitId: o.unitId, who: o.who } : null;
+};
+
+/** The commander follows her choices today (her pick is pre-selected; choosing otherwise overrides her). */
+export const commanderObeys = (state: Pick<CampaignState, 'personal' | 'day'>, unitId: string): boolean => {
+  const o = obedienceOf(state);
+  return o !== null && o.unitId === unitId && o.who === 'commander';
+};
+
+/** She follows the commander's non-combat orders today (no refusal, no demand, nothing of her own initiative). */
+export const unitObeys = (state: Pick<CampaignState, 'personal' | 'day'>, unitId: string): boolean => {
+  const o = state.personal?.obedience;
+  return o !== undefined && o.day === state.day && o.unitId === unitId && o.who === 'unit';
+};

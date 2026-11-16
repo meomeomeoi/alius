@@ -507,17 +507,17 @@ tests/engine/personal/*.test.ts, tests/engine/combat/sparring.test.ts, tests/con
   - `herPick(state, reg, unitId): number | null` (dilemma option index), `herVote(state, reg, vote): 'for'|'against'|null`
   - `overrideHer(draft, ctx, unitId, evidence): EngineEvent[]` (`overrode_her` moderate × pressureMult + record +3)
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `while the commander obeys her: refusing her demand, cancelling her booking, declining her proposal, choosing another dilemma option or carrying a vote she voted against each apply overrode_her once` (acceptance 6)
   - `following her pick applies nothing extra`
   - `herPick is the option that pleases her most and null when no option touches her`
   - `while she obeys: refusal chance 0, no demand, booking, claim, offer, challenge or countermand for her that day`
   - `obedience ends at day end`
   - `activities, upgrades and expeditions are never affected`
-- [ ] **Step 2: Run** `npx vitest run tests/engine/personal/obedience.test.ts`. Expect FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** the tests, then `npm test`. Expect PASS.
-- [ ] **Step 5: Tick and commit:** `feat(personal): a day of obedience`.
+- [x] **Step 2: Run** `npx vitest run tests/engine/personal/obedience.test.ts`. Expect FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** the tests, then `npm test`. Expect PASS.
+- [x] **Step 5: Tick and commit:** `feat(personal): a day of obedience`.
 
 ### Task 12: Chunk (b) UI, directives, providers
 
