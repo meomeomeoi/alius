@@ -155,6 +155,9 @@ describe('a sparring wager', () => {
     const strip = (st: CampaignState) => {
       const c = structuredClone(st) as unknown as Record<string, unknown>;
       for (const k of ['rng', 'slot', 'personal', 'ledger']) delete c[k];
+      // P3b: the result of the wager is remembered by a rule (a `fr` fact with its own counter)
+      (c.memory as { facts: Array<{ id: string }>; nextRememberId?: number }).facts = (c.memory as { facts: Array<{ id: string }> }).facts.filter((f) => !f.id.startsWith('fr'));
+      delete (c.memory as { nextRememberId?: number }).nextRememberId;
       (c.commander as { bodyXp?: unknown; body?: unknown }).bodyXp = undefined;
       (c.commander as { body?: unknown }).body = undefined;
       (c.commander as { archetype?: unknown }).archetype = undefined;

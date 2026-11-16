@@ -802,3 +802,37 @@ One entry per votable decision; the id must be one of `mission`, `upgrade`, `pun
 
 ### World options
 `squad_assertiveness` choices carry `{ type: 'squad_power', privilegeMult, demandMult, commanderVoteMult, soldierVoteMult? }` (the last is each named soldier's own vote weight, default 1); `voting`'s `on` choice carries `{ type: 'voting' }`. Both are `live: false`. The lore lines are short (the WORLD SETTINGS block holds about 120 tokens for every option together).
+
+## Memory rules (P3b)
+`memoryRules` (core: `content/core/memoryRules.json`) makes an engine event a fact. Every text is a draft (`AUTHOR TO WRITE`); keep them short (≤ 200 characters) and give the commander no pronoun (write "the commander").
+
+```
+{ id, event, when?, text, importance 1–5, about, audience, spread, hiddenFromCommander?, tags }
+```
+- **`event`** is an engine event type that has a resolver (`registerMemoryResolver` in `src/engine/memory/resolvers.ts`); a pack adds rules for those types only. An event without a resolver is a load error.
+- **Resolver shapes.** A resolver returns named **id groups** and string **vars**; the loader checks every rule against them (`RESOLVER_SHAPES`). Booleans are the vars `yes` / empty.
+
+  | Event | id groups | vars |
+  |---|---|---|
+  | `expedition_ended` | `party`, `dead`, `injured` | `region`, `mission`, `outcome`, `dead`, `injured` |
+  | `breakdown`, `order_refused` | `subject`, `party` | `name`, `region` |
+  | `mutiny_started`, `mutiny_subdued`, `unit_deserted`, `deserter_returned`, `decor_removed_by_commander` | `subject` | `name` |
+  | `vote_overruled` | `against` | `names` |
+  | `vote_carried` | — | `subject` (the vote kind's label), `what` (what it was about) |
+  | `dilemma_resolved` | `affected`, `units`, `subject` | `title`, `option`, `scapegoat` (`take`, `shift` or empty), `name` |
+  | `countermanded` | `subject`, `leader` | `name`, `leader` |
+  | `rations_set` | — | `mode` |
+  | `demand_resolved` | `subject` | `name`, `answer`, `expired` |
+  | `leash_used` | `subject` | `name`, `kind` |
+  | `token_taken_off` | `giver` | `name` |
+  | `booking_cancelled` | `subject` | `name`, `lost` |
+  | `wager_resolved` | `subject` | `name`, `result` (`won` / `lost`), `game`, `stake` |
+  | `intercept_resolved` | `subject` | `name`, `keep` |
+  | `activity_done` | `subject` | `name`, `activity`, `slot` |
+
+- **`when`** keeps a rule to some events of its type: `{ outcome: 'failed' }` (a var equals a string), `{ dead: true }` / `{ scapegoat: false }` (a var or id group is non-empty / empty). Keys are vars or id groups of the event.
+- **`about`** is `world` or an id group: who the fact is about (a rule about an empty group writes nothing).
+- **`audience`** is who knows it at once: an id group, `present` (the open scene's participants, else the `about` ids), `squad` (every living named unit), `public` (everyone), or a list of these (their union). The commander always knows, unless `hiddenFromCommander`.
+- **`spread`**: `none`, or `slow` (4 days) / `fast` (2 days): the rest of the squad hears it as a rumor over that window (a public fact never spreads).
+- **`text`** may use the resolver's vars and `{names}` (the names of the `about` group, unless the resolver sets its own). A game or stake that a content category switched off reads "a wager".
+- A site that already writes a fact (a punishment, a good her call, a leader change, a Leash termination, loyalty signs, publicity, rules, wager answers) gets no rule.

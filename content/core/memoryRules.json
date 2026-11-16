@@ -1,1 +1,392 @@
-[]
+[
+  {
+    "id": "run_success",
+    "event": "expedition_ended",
+    "when": {
+      "outcome": "success"
+    },
+    "text": "The run to {region} ({mission}) succeeded.",
+    "importance": 3,
+    "about": "party",
+    "audience": "party",
+    "spread": "fast",
+    "tags": [
+      "expedition"
+    ]
+  },
+  {
+    "id": "run_retreated",
+    "event": "expedition_ended",
+    "when": {
+      "outcome": "retreated"
+    },
+    "text": "The run to {region} ({mission}) ended in a retreat.",
+    "importance": 3,
+    "about": "party",
+    "audience": "party",
+    "spread": "fast",
+    "tags": [
+      "expedition"
+    ]
+  },
+  {
+    "id": "run_failed",
+    "event": "expedition_ended",
+    "when": {
+      "outcome": "failed"
+    },
+    "text": "The run to {region} ({mission}) failed.",
+    "importance": 4,
+    "about": "party",
+    "audience": "party",
+    "spread": "fast",
+    "tags": [
+      "expedition"
+    ]
+  },
+  {
+    "id": "run_death",
+    "event": "expedition_ended",
+    "when": {
+      "dead": true
+    },
+    "text": "{names} did not come back from {region}.",
+    "importance": 5,
+    "about": "dead",
+    "audience": "squad",
+    "spread": "none",
+    "tags": [
+      "expedition",
+      "death"
+    ]
+  },
+  {
+    "id": "run_injury",
+    "event": "expedition_ended",
+    "when": {
+      "injured": true
+    },
+    "text": "{names} came back from {region} wounded.",
+    "importance": 3,
+    "about": "injured",
+    "audience": "party",
+    "spread": "fast",
+    "tags": [
+      "expedition",
+      "injury"
+    ]
+  },
+  {
+    "id": "combat_breakdown",
+    "event": "breakdown",
+    "text": "{name} broke down under fire at {region}.",
+    "importance": 3,
+    "about": "subject",
+    "audience": "party",
+    "spread": "slow",
+    "tags": [
+      "combat",
+      "breakdown"
+    ]
+  },
+  {
+    "id": "combat_order_refused",
+    "event": "order_refused",
+    "text": "{name} refused an order in the field.",
+    "importance": 3,
+    "about": "subject",
+    "audience": "party",
+    "spread": "slow",
+    "tags": [
+      "combat",
+      "refusal"
+    ]
+  },
+  {
+    "id": "mutiny_start",
+    "event": "mutiny_started",
+    "text": "{name} turned her weapon on the unit.",
+    "importance": 5,
+    "about": "subject",
+    "audience": "squad",
+    "spread": "none",
+    "tags": [
+      "mutiny"
+    ]
+  },
+  {
+    "id": "mutiny_end",
+    "event": "mutiny_subdued",
+    "text": "The mutiny of {name} was put down.",
+    "importance": 5,
+    "about": "subject",
+    "audience": "squad",
+    "spread": "none",
+    "tags": [
+      "mutiny"
+    ]
+  },
+  {
+    "id": "desertion",
+    "event": "unit_deserted",
+    "text": "{name} deserted.",
+    "importance": 4,
+    "about": "subject",
+    "audience": "squad",
+    "spread": "none",
+    "tags": [
+      "desertion"
+    ]
+  },
+  {
+    "id": "desertion_return",
+    "event": "deserter_returned",
+    "text": "{name} came back.",
+    "importance": 4,
+    "about": "subject",
+    "audience": "squad",
+    "spread": "none",
+    "tags": [
+      "desertion"
+    ]
+  },
+  {
+    "id": "vote_overruled",
+    "event": "vote_overruled",
+    "text": "The commander overruled the squad's vote; {names} voted against.",
+    "importance": 3,
+    "about": "against",
+    "audience": "squad",
+    "spread": "none",
+    "tags": [
+      "vote"
+    ]
+  },
+  {
+    "id": "vote_carried",
+    "event": "vote_carried",
+    "text": "The squad voted on {what} and carried it.",
+    "importance": 2,
+    "about": "world",
+    "audience": "squad",
+    "spread": "none",
+    "tags": [
+      "vote"
+    ]
+  },
+  {
+    "id": "dilemma_choice",
+    "event": "dilemma_resolved",
+    "when": {
+      "scapegoat": ""
+    },
+    "text": "{title}: the commander chose to {option}.",
+    "importance": 3,
+    "about": "units",
+    "audience": "present",
+    "spread": "slow",
+    "tags": [
+      "decision"
+    ]
+  },
+  {
+    "id": "scapegoat_take",
+    "event": "dilemma_resolved",
+    "when": {
+      "scapegoat": "take"
+    },
+    "text": "The commander took the blame for the failed run.",
+    "importance": 4,
+    "about": "subject",
+    "audience": "squad",
+    "spread": "none",
+    "tags": [
+      "decision",
+      "blame"
+    ]
+  },
+  {
+    "id": "scapegoat_shift",
+    "event": "dilemma_resolved",
+    "when": {
+      "scapegoat": "shift"
+    },
+    "text": "The commander put the blame for the failed run on {name}.",
+    "importance": 4,
+    "about": "subject",
+    "audience": "squad",
+    "spread": "none",
+    "tags": [
+      "decision",
+      "blame"
+    ]
+  },
+  {
+    "id": "countermand",
+    "event": "countermanded",
+    "text": "{leader} countermanded the commander's order to {name}.",
+    "importance": 2,
+    "about": "subject",
+    "audience": [
+      "subject",
+      "leader"
+    ],
+    "spread": "slow",
+    "tags": [
+      "leader"
+    ]
+  },
+  {
+    "id": "rations_fighters_first",
+    "event": "rations_set",
+    "when": {
+      "mode": "fighters_first"
+    },
+    "text": "Rations now go to the fighters first.",
+    "importance": 2,
+    "about": "world",
+    "audience": "squad",
+    "spread": "none",
+    "tags": [
+      "rations"
+    ]
+  },
+  {
+    "id": "rations_commander_short",
+    "event": "rations_set",
+    "when": {
+      "mode": "commander_short"
+    },
+    "text": "The commander goes short so the squad can eat.",
+    "importance": 2,
+    "about": "world",
+    "audience": "squad",
+    "spread": "none",
+    "tags": [
+      "rations"
+    ]
+  },
+  {
+    "id": "demand_refused",
+    "event": "demand_resolved",
+    "when": {
+      "answer": "refuse"
+    },
+    "text": "The commander refused {name}'s demand.",
+    "importance": 3,
+    "about": "subject",
+    "audience": "subject",
+    "spread": "slow",
+    "tags": [
+      "demand"
+    ]
+  },
+  {
+    "id": "leash_compel",
+    "event": "leash_used",
+    "when": {
+      "kind": "compel"
+    },
+    "text": "{name} was forced through the Leash.",
+    "importance": 4,
+    "about": "subject",
+    "audience": "subject",
+    "spread": "fast",
+    "tags": [
+      "leash"
+    ]
+  },
+  {
+    "id": "leash_suppress",
+    "event": "leash_used",
+    "when": {
+      "kind": "suppress"
+    },
+    "text": "{name} was locked down through the Leash.",
+    "importance": 4,
+    "about": "subject",
+    "audience": "subject",
+    "spread": "fast",
+    "tags": [
+      "leash"
+    ]
+  },
+  {
+    "id": "decor_peeled",
+    "event": "decor_removed_by_commander",
+    "text": "The commander peeled what {name} had put on the device.",
+    "importance": 2,
+    "about": "subject",
+    "audience": "subject",
+    "spread": "none",
+    "tags": [
+      "decor"
+    ]
+  },
+  {
+    "id": "token_removed",
+    "event": "token_taken_off",
+    "text": "The commander took off the token {name} gave.",
+    "importance": 2,
+    "about": "giver",
+    "audience": "giver",
+    "spread": "slow",
+    "tags": [
+      "token"
+    ]
+  },
+  {
+    "id": "booking_cancelled",
+    "event": "booking_cancelled",
+    "text": "The commander cancelled the time {name} had booked.",
+    "importance": 2,
+    "about": "subject",
+    "audience": "subject",
+    "spread": "none",
+    "tags": [
+      "booking"
+    ]
+  },
+  {
+    "id": "wager_played",
+    "event": "wager_resolved",
+    "text": "{name} {result} a wager with the commander ({game}, for {stake}).",
+    "importance": 2,
+    "about": "subject",
+    "audience": "subject",
+    "spread": "slow",
+    "tags": [
+      "wager"
+    ]
+  },
+  {
+    "id": "edit_kept",
+    "event": "intercept_resolved",
+    "when": {
+      "keep": true
+    },
+    "text": "{name} rewrote a message the commander sent, and it went out as she wrote it.",
+    "importance": 3,
+    "about": "subject",
+    "audience": "subject",
+    "spread": "none",
+    "tags": [
+      "intercept"
+    ]
+  },
+  {
+    "id": "companion_slot",
+    "event": "activity_done",
+    "when": {
+      "subject": true
+    },
+    "text": "{name} and the commander spent the {slot} on {activity}.",
+    "importance": 1,
+    "about": "subject",
+    "audience": "subject",
+    "spread": "none",
+    "tags": [
+      "activity"
+    ]
+  }
+]

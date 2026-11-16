@@ -60,6 +60,12 @@ describe('no pronoun for the commander in content', () => {
     expect(texts.filter(([, t]) => COMMANDER_PRONOUN.test(t)).map(([where]) => where)).toEqual([]);
   });
 
+  it('memory rules (P3b): every remembered text', () => {
+    const texts = fields('memoryRules', ['text']);
+    expect(texts.length).toBeGreaterThanOrEqual(28);
+    expect(texts.filter(([, t]) => COMMANDER_PRONOUN.test(t) || /commander[^.]*\btheir\b/i.test(t)).map(([where]) => where)).toEqual([]);
+  });
+
   it('vote kinds (P9b): every reason line, the label and the description', () => {
     const texts = [
       ...fields('voteKinds', ['label', 'description']),

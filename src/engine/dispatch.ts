@@ -1,5 +1,6 @@
 import type { Registries } from '../content/types';
 import { recordLedger } from './ledger';
+import { rememberEvents } from './memory/remember';
 import { bookingGuard } from './personal/bookings';
 import { votingOn } from './power/options';
 import { carryVote, voteFor } from './power/votes';
@@ -99,6 +100,11 @@ export function dispatch(
     const events = handler(draft, action.payload, { registries, rng });
     if (voteId !== undefined) events.push(...carryVote(draft, voteId, { registries })); // the vote is spent once, in the same state
     draft.rng = rng.state;
+    try {
+      rememberEvents(draft, events, registries); // P3b: engine events become facts; memory never fails a valid action
+    } catch {
+      // a rule that cannot be applied costs only its own fact
+    }
     try {
       recordLedger(state, draft, action.type);
     } catch {
