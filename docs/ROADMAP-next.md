@@ -16,7 +16,7 @@ P0–P6 are done. These packages bring the base to a proper starting level befor
 | 5c | **P9b** Squad power structure (**done**) | Voting, hierarchy/leader, outside perception, scapegoat; needs P9, P8, P9d §1. |
 | 5c2 | **P9e** "Her call" (**done**) | A soldier acts on her own in a run; a bad turn marks the mission so P9b's scapegoat opens; needs P9b, P9, P5, P6. |
 | 5d | **P9c** Personal pressure (**done**) | Device access levels, bookings, inverted courtship, tokens, squad secrets, wagers; needs P9b, P9d, P10. |
-| 5d2 | **P3b** Memory | What the squad remembers: engine events → facts with audiences, rumors, dossier folding, journal/chronicle/DM recap in the prompt, memory budget, presets and MEMORY view; needs P3, P7a and the packages it remembers (P4–P9c). Before P10b so P10b/P12/P13 write into it. |
+| 5d2 | **P3b** Memory (**done**) | What the squad remembers: engine events → facts with audiences, rumors, dossier folding, journal/chronicle/DM recap in the prompt, memory budget, presets and MEMORY view; needs P3, P7a and the packages it remembers (P4–P9c). Before P10b so P10b/P12/P13 write into it. |
 | 5e | **P10b** Intimate immersion UI | Telemetry, living DMs, night door, handwriting, device marks; needs P10, P9c data, P9d. |
 | 6 | **P12** Special traits: Secret Frequency, Bloom-induced Paranoia, Web of Debts | Stand on P7's trait framework, P9's leverage/punishments and P5's night events and threads. |
 | 7 | **P13** LEASHSWAP mode | Mirrors P9's punishments onto the commander, reuses P12's suspicion clocks, sits above P9b's hierarchy, uses P9d's lead and content categories; needs P11's intake to reveal the warden. |

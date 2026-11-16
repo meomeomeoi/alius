@@ -132,7 +132,7 @@ Source layout (TypeScript, same toolchain style as Mundi-Expanded):
 |---|---|---|---|
 | `profile_import` | mechanic | Card → role/values/defect candidates/signature skill picks | 1500 |
 | `intent_extract` | mechanic | Exchange/scene → list of intents (P9: four more types, `defied`, `commander_enforced`, `commander_yielded`, `threatened`, with a `measure` field; 30 reportable types) | 600 |
-| `scene_summary` | mechanic | Scene → facts + chronicle entry | 800 |
+| `scene_summary` | mechanic | Scene → facts + chronicle entry; in `digest` mode (P3b) a long scene so far → a digest of at most 800 characters + facts | 800 |
 | `dilemma_generate` | mechanic | Context + template → dilemma structure | 1000 |
 | `director_tick` | mechanic | World digest → mission offers, rumors, thread updates, clock advances, story-beat proposal (P5; the engine validates every id and never reads amounts) | 1200 |
 | `flavor` | mechanic | Names/descriptions for generated things (grunts, affixed enemies, items, a soldier's demand in her voice: kind `demand`, P9, setting `demandWording`); one `kind` per use | 400 |
@@ -142,6 +142,8 @@ Source layout (TypeScript, same toolchain style as Mundi-Expanded):
 | `chronicle_compact` | mechanic | Day/week chronicle lines → one compact entry (P3; without a profile the lines are joined) | 400 |
 | `activity_vignette` | main | ≤2-line vignette after a companion activity (P2; can be turned off) | 150 |
 | `commander_import` | mechanic | Persona text → commander descriptors, expression, seasoning, 0–2 traits with reasons (P7) | 600 |
+| `memory_fold` | mechanic | Old facts of one soldier (or the world) → her two dossier paragraphs, `own` ≤ 500 and `shared` ≤ 400 characters (P3b; without a model the texts are joined and cut) | 500 |
+| `rumor_retell` | mechanic | A spreading fact → one line in the voice of whoever tells it (P3b, rumor mode `model` only; a digit makes it fall back to the plain text) | 200 |
 | *(scene dialogue)* | main | Normal ST generation with injected context | — (ST settings) |
 
 Every budget is a user setting. Every mechanic call: request JSON → validate → on truncation/invalid JSON, one repair attempt (lenient parser) → one retry with budget ×1.5 → fail soft (no state change, toast in debug mode). Where the provider allows it, reasoning/thinking is disabled or capped for mechanic calls.
@@ -153,14 +155,14 @@ Before each main-model generation the adapter injects one compact block:
 - Scene header: location, slot, day, participants, mode.
 - For each present named unit: relationship state, axis **bands** (not raw numbers), stress band, active defect summary, current directives.
 - Commander summary: crime (as known to this unit), corporation, notable social stat ranks.
-- Retrieved facts: top-k by relevance (participants, tags, recency, importance).
+- **Memory (P3b)** — one guaranteed share of the block (`memoryTokens`, trimmed line by line, never dropped whole; the header, scene header and units always keep their room): per present unit the **dossier** (`shared`; `own` only in a private scene), the **journal** of her story with the commander (evidence in a private scene only), retrieved **facts** (top-k by relevance, worded as a rumor or as unknown to the commander where that is true), open **promises**, **recently in the unit** (chronicle lines filtered by audience) and, in a private scene, the **DM recap**. Nothing only one present unit knows reaches a group scene. Out of a scene: the world dossier and the public recent lines.
 - World line: 1–3 sentences from active threads/clocks relevant to the scene.
 - World settings: one `World settings:` line of at most 120 tokens (the lore line of each chosen world option), present in and out of a scene (P8).
 - Directives block, phrased as hard constraints: e.g. `Rhea REFUSES the current order this scene. Reason: you left Unit K-117 behind. She will not comply under persuasion; only the Leash can force her.`
 
 Character card text itself remains SillyTavern's job.
 
-### 5.4 Implemented engine interfaces (P0–P6, P7a, P7, P8, P9, P9d, P9b, P9e, P10, P11, P9c)
+### 5.4 Implemented engine interfaces (P0–P6, P7a, P7, P8, P9, P9d, P9b, P9e, P10, P11, P9c, P3b)
 
 Later packages build on these; change them only together with the owning spec.
 
@@ -257,6 +259,18 @@ Later packages build on these; change them only together with the owning spec.
 | `unitPortrait`, `portraitOptions`, `ditherBayer4`, `PALETTE_RGB`, setting `ditheredPortraits` | P10 | PDA portraits dithered into the phosphor palette, cached per card, palette and size. |
 | `createSound`, `SoundId`, registry `uiSounds` (hidden), settings `soundVolume`, `soundMuted`, `ambientHum` | P10 | UI sounds synthesized with WebAudio; an entry's `file` is played when present. |
 | `motionReduced(settings)`, `visualFlags(settings)`, settings `readableMode`, `reducedMotion` | P10 | The one reader of reduced motion (setting OR system) and readable mode; everything that animates asks here. |
+| `memoryConfig(state)`, `MEMORY_PRESETS`, `MEMORY_RANGES`, `memory.config`, actions `memory/configure { preset } \| { preset: 'custom', …fields }`, `memory/pin`, `memory/forget`, `memory/edit` | P3b | Per-campaign memory settings (absent = `normal`). `retrieveFacts` reads `retrievalK` and `recencyBase` from it; a pinned fact scores +2 and is never pruned; pruning starts past `factsMax × 1.25`. |
+| `addFact(draft, fact, { remembered: true })`, `Fact.{pinned, heard, rumor, hiddenFromCommander, edited, spread}`, `memory.nextRememberId` | P3b | A fact written by a rule takes an `fr<n>` id and leaves `memory.nextId` alone. `hiddenFromCommander` is the interface P12 writes through (`Knowledge` never shows such a fact). |
+| `rememberEvents(draft, events, reg)`, `registerMemoryResolver(type, fn, shape)`, `memoryResolverFor`, `RESOLVER_SHAPES`, registry `memoryRules` (28), optional event fields `dilemma_resolved.{context, units, optionId, subjectId}`, `activity_done.slot`, `vote_carried.overruled` | P3b | An engine event becomes a fact with an audience; `dispatch` calls it after a successful handler. A new remembered event needs a resolver (the closed vocabulary) and a rule; the loader checks the rule's `{vars}`, `when`, `about` and `audience` against the resolver's shape. No RNG, no `nextId`. |
+| `hashDay`, `spreadRumors` (the `dm_rumors` hook), `visibleToAll`, `factLine`, events `rumor_heard` | P3b | Deterministic rumor spread (fast 2 days, slow 4, halved at importance ≥ 4); the prompt wording of a rumor and of a fact hidden from the commander. |
+| `foldDue`, `applyFold`, `fallbackFold`, `memory.dossiers`, actions `memory/fold`, `memory/edit_dossier`, `memory/rumor_text` | P3b | Old facts folded into a per-unit (or world `*`) dossier when memory fills; a stale fold is refused. |
+| `ChronicleEntry.audience`, `audienceKey`, `compactionDue` / `applyCompaction` / `memory/compact { audience? }`, `recentLines(state, viewers \| 'public', cfg)`, `recordSceneRange`, `memory.scenes`, `hideCandidates`, `memory.hidden`, action `memory/hidden` | P3b | Chronicle lines know who was there and compact per audience; "recently in the unit"; where each ended scene sits in the ST chat. |
+| `journalLines(state, reg, unitId, { n, evidence })`, `eventDeltas[].journal`, `SceneRecord.digest`, action `scene/digest { text, upTo, facts }`, `scene/end { summary?, endIndex? }` | P3b | The relation journal for the prompt and the digest of a long scene. |
+| `herDossier`, `herJournal`, `herFacts`, `vignetteMemory`, `publicRecent`, `worldDossier` (`engine/memory/inputs.ts`) | P3b | What the calls outside a scene (DM, vignette, demand wording, director) are told about memory. |
+| `ContextProvider.{group: 'memory', core}`, `ContextBuilder.build(state, cap, memoryTokens)`, `lastBuild()`, `registerMemoryContext` (`dossier`, `journal`, `facts`, `promises`, `recent`, `dm_recap`) | P3b | The guaranteed memory share of the context block. With a share of 0 the group is ordinary. |
+| `createMemoryController` / `app` wiring (`run`, `digestIfDue`, `idle`), call types `memory_fold` and `rumor_retell`, `scene_summary` `digest` mode, `foldMemory`, `retellRumor`, `digestScene` | P3b | The model-facing side of memory; every answer is dispatched with the chat id it was asked under. |
+| `StAdapter.hideMessages(from, to)` / `unhideMessages(ranges)` | P3b | ST's `/hide` and `/unhide`; only runs of non-system messages are hidden and returned. |
+| `renderMemorySection`, `renderFill`, `renderMemoryBlock`, `registerMemoryProviders` (the Knowledge rule and 7 readings), glossary `memory`, `memory_preset`, `memory_budget`, `memory_fill`, `dossier`, `squad_rumor`, `pinned_fact`, `hidden_scenes` | P3b | SYS › MEMORY with the fill indicator and the MEMORY view in each unit's block. |
 
 | `onboardingDone`, `currentStep`, `completionReason`, `initialOnboarding`, `enterStep`, `registerStepEntry(kind, fn)`, `prologueFor`, `stepsOf`, `isWizardStep`, actions `onboarding/complete_step { stepId }`, `skip_step { stepId }`, `mark_spoken { unitId }`, `hint_seen { hintId }`, registries `prologues` (`order` + `steps`, per start by `extends`) and `uiUnlocks` | P11 | The prologue: wizard steps (`paper_form`, `dossier`) run before deployment, campaign steps (`scene`, `expedition`, `guided_slot`, `free`) after it. The engine checks each step's completion (closed enum) and `enterStep` is the only mover. **Absent `onboarding` = done.** Events: `onboarding_step_started / _completed / _skipped`, `onboarding_done`, `onboarding_spoken`. |
 | `lockedTabs(state, reg)`, `unlockedBetween(before, after, reg)`, `ShellApi.setTabLocked(id, locked)`, `isTutorialRun`, `coachHints(state, reg, screen)`, `guideUnit`, `buildFixedMap`, `missionTemplates[].{tutorial, fixedMap}`, `MapNode.eventId` | P11 | Progressive unlocks by `target.tab` (`minDay`, `afterStep`), the fixed tutorial run and its coach tips, the guide of the first evening, authored node maps. |
@@ -393,6 +407,8 @@ P10: **dithered portraits** (`ditheredPortraits`, default on; SYS › Display) �
 
 P5: **story director** on/off (`directorEnabled`, default on; off = the engine's fallback plans the world), **story beat cooldown** (`beatCooldownDays`, 1–14, default 3) and **expedition recap** (`expeditionRecap`, default on) — SYS › World.
 
+P3b: **memory** is per campaign (`memory.config`, absent = the `normal` preset): presets `short` / `normal` / `long` or `custom` (numbers editable with the edit lock off), **rumor mode** (`plain` / `model`) and **hide old scenes** (0 = off) — SYS › MEMORY, with the fill indicator; **context cap** (`contextTokenCap`) defaults to 1600 on new installs (a stored value stays); budgets `memory_fold` 500 and `rumor_retell` 200.
+
 Defaults in code: Desire/Bond defects **off**, show raw values **off**, sprite mode **native**, edit lock **on**; P3: intent extraction **per exchange** (min confidence 0.5), scene pacing 30 exchanges, typing 60 chars/s, romance **on**, explicit scenes **off**, romantic initiative **medium**, unit DMs **on**, chronicle compaction **on**. The campaign stores a snapshot of the Desire/Bond setting it was started with (`settings.desireBondDefects`); the engine uses that snapshot, not the global value, when it validates later changes. The edit lock does **not** apply inside the new-campaign wizard (setup is always editable); it does apply to "Re-sync from card" on a running campaign.
 
 ## 9. Packages
@@ -416,7 +432,7 @@ Defaults in code: Desire/Bond defects **off**, show raw values **off**, sprite m
 | 15 | P9b | Squad power structure (voting, hierarchy/leader, outside perception, scapegoat) | P8, P9, P9d | implemented |
 | 16 | P9e | "Her call" (a soldier acts on her own in the field; a bad turn marks the run for the P9b scapegoat) | P5, P6, P9, P9b, P9d | implemented |
 | 17 | P9c | Personal pressure (device access levels, bookings, tokens, squad secrets, wagers) | P9b, P9d, P10 | implemented |
-| 18 | P3b | Memory (remembered events, rumors, dossier folding, journal/chronicle/DM recap in the prompt, memory budget and presets, MEMORY view) | P3, P7a, P4–P9c | spec |
+| 18 | P3b | Memory (remembered events, rumors, dossier folding, journal/chronicle/DM recap in the prompt, memory budget and presets, MEMORY view) | P3, P7a, P4–P9c | implemented |
 | 19 | P10b | Intimate immersion UI (telemetry, living DMs, night door, handwriting, device marks) | P10, P9c, P9d | spec |
 | 20 | P12 | Special traits: Secret Frequency, Bloom-induced Paranoia, Web of Debts | P5, P6, P7, P9 | spec |
 | 21 | P13 | LEASHSWAP mode | P0, P5, P6, P7, P9, P9b, P9d, P11, P12 | spec |

@@ -8,6 +8,8 @@
 
 This is the heart of Alius (~70% of play). Quality bar is highest here.
 
+> **P3b (memory)** extends everything this spec says about facts, the chronicle and the context block: engine events become facts with audiences and rumors, old facts fold into dossiers, the journal and the chronicle reach the prompt inside a memory share, and the player gets presets and a MEMORY view. See `P3b-memory.md` (**Implemented as**). The facts, retrieval and chronicle rules below are the base it builds on (the 120-fact cap, for example, is now the `normal` preset's 160 with a 1.25× hard ceiling).
+
 ## Goal
 
 Conversations happen in an immersive scene UI; every exchange is read by the mechanic model and turned into validated intents; the engine moves three relationship axes with diminishing returns and value alignment; relationships move through a branching state graph via events and consent; facts and chronicle make choices remembered; PDA DMs and night events make characters take initiative.

@@ -1,6 +1,6 @@
 # P3b — Memory: what the squad remembers, for how long, and what it costs
 
-**Status: spec** (plan: `docs/plans/2026-11-16-p3b-memory.md`). **Depends on:** P3 (facts, chronicle, promises, `scene_summary`, `chronicle_compact`, DMs), P0 (`ContextBuilder`, `callLlm`, settings), P7a (`Knowledge`, glossary, `data-analyze`), and the packages whose events it remembers: P4, P5, P6, P9, P9b, P9e, P9c, P9d. **Read:** overview (§5.2, §5.3, §5.4); this file; P3 **Implemented as**; P7a **Implemented as** (`Knowledge`, `registerKnowledgeRule`); P9c **Implemented as** (squad secrets are *not* facts); P9b and P9e **Implemented as** (votes, scapegoat, her call).
+**Status: implemented** (plan: `docs/plans/2026-11-16-p3b-memory.md`; automated tests pass, the in-SillyTavern checklist `MANUAL_TEST_P3b.md` still has to be run by hand). Where this draft and the code differ, the code wins: see **Implemented as** at the end. **Depends on:** P3 (facts, chronicle, promises, `scene_summary`, `chronicle_compact`, DMs), P0 (`ContextBuilder`, `callLlm`, settings), P7a (`Knowledge`, glossary, `data-analyze`), and the packages whose events it remembers: P4, P5, P6, P9, P9b, P9e, P9c, P9d. **Read:** overview (§5.2, §5.3, §5.4); this file; P3 **Implemented as**; P7a **Implemented as** (`Knowledge`, `registerKnowledgeRule`); P9c **Implemented as** (squad secrets are *not* facts); P9b and P9e **Implemented as** (votes, scapegoat, her call).
 
 **Analysis tool (P7a):** every new player-facing stat, chip, option and card in this package carries `data-analyze`, has a glossary entry or registry `description`, and live values get a provider reading through `Knowledge`. No pronoun for the commander in any text (lore §0).
 
@@ -203,3 +203,60 @@ Directives stay outside the cap (hard constraints) but are counted in the fill i
 
 - The texts of §2.1 (author).
 - Whether a world-option effect may scale rumor speed (v1: no).
+
+## Implemented as
+
+### Rulings from the owner (2026-11-16)
+- **What is remembered:** all four groups (runs and combat; power decisions; discipline and dilemmas; P9c personal pressure). §2.1 is the exhaustive v1 list: 28 rules in `content/core/memoryRules.json`. A site that already writes a fact gets no rule.
+- **Who learns:** witnesses at once; the rest hear it as a rumor over 1–2 days (fast 2, slow 4, halved at importance ≥ 4, minimum 1). The spread is deterministic.
+- **Rumor mode:** `plain` (default, no call) or `model` (the mechanic retells it once per fact); the setting is in SYS › MEMORY.
+- **Forgetting:** the mechanic **folds** old facts into a per-unit dossier **when memory fills** (`foldDue`), not on a schedule. The number kept is a setting and the fill is shown.
+- **Settings:** presets plus fields; the numbers can be edited only with the edit lock off (no new "advanced" switch).
+- **MEMORY view:** normal mode: view, pin and forget; edit lock off: also edit a fact, the dossier and the numbers.
+- **Journal in the prompt:** per present unit the last `journalLines` events of kind `event` with severity ≥ `moderate`, plus any severity of the last 2 days; evidence in a private scene only.
+- **Chronicle in the prompt:** "Recently in the unit", filtered by audience; it reaches scenes, the block outside a scene (public lines only) and `director_tick`.
+- **DMs:** a private scene gets a recap of recent DMs; `dm_reply` also gets her dossier and journal.
+- **Hidden from the commander:** laid down now (`Fact.hiddenFromCommander`, the Knowledge rule, the prompt wording); v1 core rules create none.
+- **Extras:** whole-scene digest, hiding old scenes (off by default), memory's own budget and memory in calls outside a scene are all in v1.
+
+### Findings from the code (decided before the build; refine §§2–8)
+1. **Rumors use the existing hook:** `spreadRumors` is registered with `registerDayEndStep('dm_rumors', …)` in `actions/memory.ts`; `DAY_END_STEPS` is unchanged, so the `day_end_step` events are the same. The spec's "new `day_end` step" is not built.
+2. **Events of a day end are seen:** day-end steps run inside the handler, so `unit_deserted` etc. reach `rememberEvents` in the same dispatch; combat events (`breakdown`, `order_refused`) come back from the `combat/*` handlers.
+3. **Resolvers return named id groups,** not the spec's single `subjectIds`: `{ ids: Record<string, string[]>, vars: Record<string, string> }`, declared in `RESOLVER_SHAPES`. A rule's `about` is an id group or `world`; `audience` is an id group, `present`, `squad`, `public` or a list (the union); `when` matches a var (`true` = non-empty, `false` = empty, a string = equal) or an id group. The loader checks all of it (`registerChecks('memoryRules')` in `content/refs.ts`).
+4. **`dilemma_resolved` lacks its context** once `flow.ts` deletes the open dilemma: it now carries `context`, `units`, `optionId` and `subjectId` (all optional). `activity_done` carries the `slot`; `vote_carried` carries `overruled: true` for an overruled vote (which `vote_overruled` already remembers).
+5. **The expedition report keeps a hidden injury out of `injuries`,** so "came back wounded" never names one (pinned by a test).
+6. **Scene ranges live in `memory.scenes`** (`{ sceneId, from, to, summarized }`, the last 50), not on the chronicle line (day compaction would lose them). `scene/end` takes `endIndex` (the controller sends `chatLength − 1`). This replaces the spec's `memory.summarized`.
+7. **Hidden messages are system messages:** `hideMessages(from, to)` hides only the runs of messages that were not system messages and returns them; only those runs are recorded (`memory.hidden`) and later unhidden, so a narrator line stays hidden. A range past the chat end is dropped (one that ends past it is cut).
+8. **DMs ask for `ceil(retrievalK / 2)` facts;** `FACTS_USED` of `dm_reply` is 4.
+9. **Journal wording:** every `eventDeltas` row has a `journal` phrase in the third person ("the commander praised her", "she defied the commander"); a type without one is humanized; internal types (`stress_high`) never show.
+10. **Out of a scene** the block holds the header, the world settings, the world dossier's `shared` part and the public `recent` lines.
+11. **The digest needs the content exclusion:** it takes the same `excluded` / `flagged` input as the final summary and filters facts the same way.
+12. **A void wager is not remembered;** a stake or game of a disabled content category reads "a wager".
+13. **`contextTokenCap`:** only new installs get 1600; a stored 1200 stays. SYS warns when `memoryTokens > contextTokenCap / 2`.
+
+### Decisions where the spec was silent
+- **Ids and counters:** facts written by a rule take `fr<n>` from `memory.nextRememberId`; `memory.nextId` is never advanced by P3b, so no existing id shifts. Rumor timing is `fnv1a(factId + '\0' + unitId) % span` (the P10 hub's hash); no new RNG draw anywhere (tests compare the RNG state of a combat round, an expedition end and a day end with and without rules).
+- **Config:** `MEMORY_PRESETS` is the spec's table; `MEMORY_RANGES` are draft numbers (factsMax 40–600, foldAfterDays 1–60, recencyBase 0.5–0.95, retrievalK 2–16, memoryTokens 150–2000, journalLines/dmLines 0–8, chronicleDays 0–7, hideScenesAfter 0–20). `rumorMode` and `hideScenesAfter` are the player's own choices: they survive a preset change and are never locked; the other numbers need `preset: 'custom'`. `TUNING.memory.{factsMax,recencyBase,retrievalK}` are gone (the preset table owns them); pruning deletes only past `floor(factsMax × 1.25)`, unpinned, least important then oldest.
+- **Rules:** the 28 texts are §2.1's drafts; `vote_carried` says `{what}` (the vote's subject), `rations_set` has two rules (`when` cannot say "not equal"), `leash_used` is remembered only when `outcome` is `done`, and a plain dilemma is about `units` with audience `present` (the open scene, else those who were there).
+- **Fold:** a fact is foldable when older than `foldAfterDays` (strictly), unpinned and not hidden; a fact about several units goes to the first one who knows it (squad order); a fact about nobody, or about units who are gone, goes to the world dossier `*`. `memory/fold` accepts an empty text for a part that has no new facts (it keeps what it was).
+- **Chronicle:** "the last `chronicleDays` days" = that many days back plus today; the newest 1 week entry (2 when `chronicleDays` ≥ 3). Lines with different audiences are compacted one group at a time (the group of the first line first); `memory/compact` takes an optional `audience` that must equal the due group's.
+- **Context builder:** a provider may declare `group: 'memory'` and `core: true` (the header, scene header and units are core and keep their room whatever the share). The share is up to `memoryTokens`, never the room the core providers need; what memory does not use goes back to the other providers. With a share of 0 the group is ordinary (every pre-P3b caller is byte-identical). The builder itself cuts a memory provider that ignores its budget (whole lines from the end, then characters). The six providers are `dossier` 70, `journal` 65, `facts` 60, `promises` 55, `recent` 50, `dm_recap` 45.
+- **Calls:** `scene_summary` stays one call type (a chronicle line or a digest text; the digest transcript gets 4500 tokens). `upTo` is the index of the last digested message (inclusive). The end summary reads `digest + messages after upTo`. A retelling is asked once per fact per chat, at most 3 per run. The memory controller does nothing while a combat or an expedition is open (those accept only their own actions); the app runs it after any dispatch with events and again after `memory_folded`.
+- **Inputs for other calls** are one pure module, `engine/memory/inputs.ts` (`herDossier`, `herJournal`, `herFacts`, `vignetteMemory`, `publicRecent`, `worldDossier`). The director's `recent` / `worldDossier` are separate optional fields of `DirectorTickInput`, not of the engine `Digest`.
+- **UI:** glossary ids are `memory`, `memory_preset`, `memory_budget`, `memory_fill`, `dossier`, `squad_rumor`, `pinned_fact`, `hidden_scenes`: the spec's `rumor` is **already P5's mission-board gossip**, so the spreading kind is `squad_rumor`. The fill indicator counts facts through `Knowledge`; the MEMORY view is mounted in every named unit's block (the app passes `memory` hooks to `renderSquadTab`) and, for the world, under SYS › MEMORY.
+
+### Open items
+- **A fact about several units is folded once** (into the first one who knows it), not into each dossier as §5 says.
+- **An edit of a digested message does not redo the digest** (as the spec says); a swipe of the last reply never reaches a digested message.
+- **The 28 rule texts and the 49 `journal` phrases are author drafts** (`AUTHOR TO WRITE`); so are the glossary long texts.
+- **A postponed desire demand** is remembered as a refusal (`demand_resolved` carries no template id).
+- **The world dossier's `own` part** (a fact about nobody that only some know) is never carried by a prompt and not shown in the MEMORY view.
+- **A talk with a companion** leaves one importance-1 fact per slot (§2.1 `activity_done`); if that is too chatty, drop the rule or raise its threshold.
+- **`MEMORY_RANGES` and the digest threshold (2500 tokens, keep 4)** are balance placeholders.
+
+### Non-obvious things to know
+- **Every remembered event goes through `rememberEvents`,** called by `dispatch` after the handler and `carryVote`, inside its own `try`: a failing rule never fails an action. A new event that should be remembered needs a resolver (`registerMemoryResolver`) and a rule; a site that already writes a fact must not get a rule.
+- **Privacy per audience** is enforced in the providers and `recentLines`, not in the data: a chronicle entry without `audience` is LOG-only; a fact shows only if every present unit knows it (`factsVisibleTo`); `own` dossier, journal evidence and the DM recap render only in a scene with exactly one unit.
+- **The memory controller dispatches with `expectChatId`:** a fold or digest answer that arrives after a chat switch is dropped; a stale fold (a fact pinned or added in between) is refused by `applyFold` itself.
+- **Anything keyed by a scene id** (the retelling's `tried` set) is reset when another chat opens.
+- **`registerMemoryProviders()`** registers both the Knowledge rule that hides `hiddenFromCommander` facts and the readings; it runs from `registerCoreProviders`.

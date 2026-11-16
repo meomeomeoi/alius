@@ -131,3 +131,8 @@ Intimacy settings apply as usual; romance with the warden is allowed and gets de
 
 - **Obedience:** `obedienceOf(state)`, `commanderObeys(state, unitId)`, `unitObeys(state, unitId)`, `herPick`, `herVote`, `overrideHer`: a day on which the loser of a wager follows the winner's non-combat orders (`personal.obedience`, valid on its own day). LEASHSWAP can read it to know whose choices are pre-selected.
 - **Wagers:** `challenge`, `playWager`, `applyStake` and the registries `wagerGames` / `wagerStakes` (content-gated); stakes are read by `effect`, games by `kind`, so a warden's stake is data plus one effect case in `applyStake`.
+
+## Interfaces already provided by P3b (implemented — use, do not rebuild)
+- **Tagged facts:** `addFact(draft, { …, tags: ['kompromat'] }, …)` works as for any fact (tags are retrieval keys, normalized). A fact about the warden's moves that only some know uses `knownBy` and, if the squad should hear of it, `spread`; `pinned: true` keeps it out of folds and pruning.
+- **Remembered events:** a new warden event that should leave a fact is a `memoryRules` entry for its event type plus a resolver (`registerMemoryResolver`); the audience words are `present`, `squad`, `public` or an id group the resolver names.
+- **Memory in prompts:** the context block already carries the dossier, journal, facts, promises, recent chronicle lines and DM recap inside a guaranteed share (`group: 'memory'` providers); a new provider that is memory declares the group and trims itself to the budget it is given. `director_tick` already receives the public recent lines and the world dossier.
