@@ -1,6 +1,7 @@
 import type { ChallengeStat } from '../../engine/power/moves';
 import { renderHierarchyBlock } from '../power/hierarchy';
 import { renderDeviceBlock } from '../personal/deviceBlock';
+import { renderMemoryBlock } from '../memory/memoryBlock';
 import { renderChallenge, type WagerChoice } from '../personal/wagerForm';
 import type { Entry, Registries } from '../../content/types';
 import { bondOf, PUBLICITY_LEVELS, wantBand, wantEligible, wantOf } from '../../engine/bonds';
@@ -67,6 +68,8 @@ export interface SquadTabCtx {
   /** P9c chunk (b): WEAR / TAKE OFF on a token (the CMDR dossier's TOKENS block). */
   onWear?: (tokenId: string) => void;
   onTakeOff?: (tokenId: string) => void;
+  /** P3b: the MEMORY block of each named unit's dossier; absent = no block. */
+  memory?: { dispatch: (action: { type: string; payload?: unknown }) => Array<{ type: string; [k: string]: unknown }>; confirm: (text: string) => Promise<boolean>; onChanged?: () => void };
 }
 
 const unknown = (id: string) => `UNKNOWN ${id}`;
@@ -325,6 +328,14 @@ function bondBlock(unit: Unit, state: CampaignState, ctx: SquadTabCtx): HTMLElem
       : null);
 }
 
+/** P3b: the unit's MEMORY block (dossier and facts, with PIN / FORGET and, with the edit lock off, EDIT). */
+function memoryBlock(unit: Unit, ctx: SquadTabCtx, state: CampaignState): HTMLElement | null {
+  if (!ctx.memory) return null;
+  const host = h('div', { class: 'alius-memory-host' });
+  renderMemoryBlock(host, { state, settings: ctx.settings(), target: unit.id, dispatch: ctx.memory.dispatch, confirm: ctx.memory.confirm, ...(ctx.memory.onChanged ? { onChanged: ctx.memory.onChanged } : {}) });
+  return host;
+}
+
 function unitBlock(unit: Unit, ctx: SquadTabCtx, state: CampaignState): HTMLElement {
   const gone = unit.status === 'dead' || unit.status === 'deserted' || unit.status === 'terminated';
   const reg = ctx.registries;
@@ -369,6 +380,7 @@ function unitBlock(unit: Unit, ctx: SquadTabCtx, state: CampaignState): HTMLElem
       gone ? null : disciplineLine(unit, state, ctx),
       gone ? null : hierarchyBlock(unit, state, ctx),
       gone ? null : renderDeviceBlock(state, ctx.registries, unit.id, { onPeel: (id, part) => ctx.onPeel?.(id, part), onCancel: (id) => ctx.onCancelBooking?.(id) }),
+      unit.kind === 'named' ? memoryBlock(unit, ctx, state) : null,
       gone || !ctx.onWager ? null : renderChallenge(state, ctx.registries, unit.id, (choice) => ctx.onWager?.(unit.id, choice)),
       gone ? null : restrictionLine(unit, state),
       gone || !ctx.onPunish || unit.kind !== 'named' ? null : renderDisciplineMenu({ state, registries: reg, unitId: unit.id, onPunish: (measure, days) => ctx.onPunish!(unit.id, measure, days) }),

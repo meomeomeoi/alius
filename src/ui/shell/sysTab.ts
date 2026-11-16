@@ -10,6 +10,7 @@ import { exportCampaign, importCampaign, type LoadResult } from '../../st/persis
 import { analyzeAttrs, analyzeNative } from '../analyze/mark';
 import { renderContentSection } from '../bonds/content';
 import type { BuildStats } from '../../llm/context';
+import { renderMemoryBlock } from '../memory/memoryBlock';
 import { renderMemorySection } from '../memory/memorySection';
 import { worldChoice } from '../../engine/worldOptions';
 import { pickSkin } from '../device/skins';
@@ -270,6 +271,13 @@ export function renderSysTab(host: HTMLElement, ctx: SysCtx): void {
       state, settings: getSettings(st), dispatch: ctx.dispatch, lastBuild: ctx.lastBuild ?? (() => ({ memoryTokens: 0, otherTokens: 0, directiveTokens: 0 })),
       onChanged: drawMemory, toast: ctx.toast,
     });
+    // the world's memory: its shared dossier and the facts about the world (the units' are in their dossiers in the SQUAD tab)
+    const world = h('div', { class: 'alius-memory-host' });
+    renderMemoryBlock(world, {
+      state, settings: getSettings(st), target: '*', dispatch: ctx.dispatch, onChanged: drawMemory,
+      confirm: async (text) => (await ctx.modal({ title: 'FORGET', body: text, actions: [{ label: '[ FORGET ]', value: 'yes' }, { label: '[ CANCEL ]', value: 'no' }] })) === 'yes',
+    });
+    memoryHost.append(world);
   };
   drawMemory();
 

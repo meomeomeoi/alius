@@ -10760,9 +10760,9 @@ function respondSecret(draft, ctx2, secretId, choice) {
   const reg = ctx2.registries;
   const kind = reg.secretKinds.get(secret.kindId);
   const importance = Number(kind?.importance ?? 3);
-  const about = secret.subjectId !== void 0 ? [secret.subjectId] : [];
+  const about2 = secret.subjectId !== void 0 ? [secret.subjectId] : [];
   const events = [];
-  const fact = (knownBy) => addFact(draft, { about, text: secret.text, tags: ["secret"], importance, day: draft.day, knownBy });
+  const fact = (knownBy) => addFact(draft, { about: about2, text: secret.text, tags: ["secret"], importance, day: draft.day, knownBy });
   if (choice === "confront") {
     for (const id of secret.knownBy) if (namedLiving2(draft, id)) events.push(...addRecord(draft, id, -TUNING.personal.secret.confrontRecord, "secret"));
     for (const u of draft.squad) if (namedLiving2(draft, u.id)) events.push(...hitHer(draft, reg, u.id, "secret_confronted", "minor", "the squad was confronted about what it kept back"));
@@ -11992,13 +11992,13 @@ function nextRememberId(draft) {
 }
 function addFact(draft, f, opts = {}) {
   const text2 = f.text.trim().slice(0, TUNING.memory.factTextMax).trim();
-  const about = [...f.about];
-  const dup = draft.memory.facts.find((x) => normText(x.text) === normText(text2) && sameAbout(x.about, about));
+  const about2 = [...f.about];
+  const dup = draft.memory.facts.find((x) => normText(x.text) === normText(text2) && sameAbout(x.about, about2));
   if (dup) {
     for (const k of f.knownBy) if (!dup.knownBy.includes(k)) dup.knownBy.push(k);
     return dup;
   }
-  const fact = { ...f, id: opts.remembered ? nextRememberId(draft) : nextId(draft, "f"), text: text2, about, tags: tagList(f.tags), knownBy: [...new Set(f.knownBy)] };
+  const fact = { ...f, id: opts.remembered ? nextRememberId(draft) : nextId(draft, "f"), text: text2, about: about2, tags: tagList(f.tags), knownBy: [...new Set(f.knownBy)] };
   draft.memory.facts.push(fact);
   pruneFacts(draft);
   return fact;
@@ -12092,10 +12092,10 @@ function ballotFor(state, reg, unit, kind, subject) {
     demand: (state.discipline?.demands ?? []).some((d) => d.unitId === unit.id && d.status === "open") ? B2.openDemand : 0,
     affected: 0
   };
-  const about = subjectOf(kind, subject, state);
-  if (about === unit.id) parts.affected = B2.subject;
-  else if (kind === "punish" && about !== null) {
-    const target = state.squad.find((u) => u.id === about);
+  const about2 = subjectOf(kind, subject, state);
+  if (about2 === unit.id) parts.affected = B2.subject;
+  else if (kind === "punish" && about2 !== null) {
+    const target = state.squad.find((u) => u.id === about2);
     if (target) parts.affected = B2.compatibility * compatibility(unit, target);
   }
   let term = "values";
@@ -14914,11 +14914,11 @@ function loyaltyOf(state, unitId) {
   return state.disloyalty?.units[unitId];
 }
 var CONFRONTATION_KINDS = ["desertion", "mutiny", "deserter_return"];
-function emitSign(draft, ctx2, unitId, about, level) {
+function emitSign(draft, ctx2, unitId, about2, level) {
   const unit = draft.squad.find((u) => u.id === unitId);
   if (!unit) return [];
   const rec = loyaltyRecord(draft, unitId);
-  const lines = [...ctx2.registries.loyaltySigns.values()].filter((s) => s.about === about && (about !== "mutiny" || s.level === level) && (unit.kind === "named" || s.kind === "fact"));
+  const lines = [...ctx2.registries.loyaltySigns.values()].filter((s) => s.about === about2 && (about2 !== "mutiny" || s.level === level) && (unit.kind === "named" || s.kind === "fact"));
   const fresh = lines.filter((s) => !rec.signs.some((r) => r.signId === s.id));
   const pool = fresh.length > 0 ? fresh : lines;
   if (pool.length === 0) return [];
@@ -14928,7 +14928,7 @@ function emitSign(draft, ctx2, unitId, about, level) {
   if (kind === "dm") {
     pushMessage(draft, unitId, { from: unitId, text: text2, day: draft.day, slot: draft.slot, read: false });
   } else if (kind === "fact") {
-    addFact(draft, { about: [unitId], text: text2, tags: ["loyalty", about], importance: 3, day: draft.day, knownBy: ["*"] });
+    addFact(draft, { about: [unitId], text: text2, tags: ["loyalty", about2], importance: 3, day: draft.day, knownBy: ["*"] });
   } else {
     enqueueNight(draft, {
       id: nextId(draft, "n"),
@@ -14940,9 +14940,9 @@ function emitSign(draft, ctx2, unitId, about, level) {
       expiresDay: draft.day + TUNING.disloyalty.night.expiresInDays
     });
   }
-  rec.signs.push({ day: draft.day, about, kind, signId: String(line2.id) });
+  rec.signs.push({ day: draft.day, about: about2, kind, signId: String(line2.id) });
   if (rec.signs.length > TUNING.disloyalty.signsMax) rec.signs.splice(0, rec.signs.length - TUNING.disloyalty.signsMax);
-  return [{ type: "loyalty_sign", unitId, about, kind }];
+  return [{ type: "loyalty_sign", unitId, about: about2, kind }];
 }
 function requireOpen(draft, kind) {
   const open3 = draft.disloyalty?.open;
@@ -15493,14 +15493,14 @@ function validateIntents(raw, ctx2) {
     if (!isObj3(f) || typeof f.text !== "string") continue;
     const text2 = f.text.trim().slice(0, TUNING.memory.factTextMax).trim();
     if (text2 === "") continue;
-    let about;
-    if (f.about === "world" || f.about === "commander") about = f.about;
+    let about2;
+    if (f.about === "world" || f.about === "commander") about2 = f.about;
     else {
-      about = [...new Set(arr(f.about).filter(isUnit))];
-      if (about.length === 0) continue;
+      about2 = [...new Set(arr(f.about).filter(isUnit))];
+      if (about2.length === 0) continue;
     }
     const imp = typeof f.importance === "number" && Number.isFinite(f.importance) ? Math.round(f.importance) : 3;
-    out.facts.push({ about, text: text2, importance: Math.min(5, Math.max(1, imp)), tags: tagsOf2(f.tags) });
+    out.facts.push({ about: about2, text: text2, importance: Math.min(5, Math.max(1, imp)), tags: tagsOf2(f.tags) });
   }
   for (const p of arr(raw.proposals)) {
     if (!isObj3(p)) continue;
@@ -28935,6 +28935,136 @@ function renderDeviceBlock(state, reg, unitId, handlers2) {
   return block2;
 }
 
+// src/analysis/knowledge.ts
+var rules = [];
+function registerKnowledgeRule(rule) {
+  rules.push(rule);
+}
+function holds3(check) {
+  try {
+    return check() !== false;
+  } catch {
+    return true;
+  }
+}
+function buildKnowledge(state, settings) {
+  const showRaw = settings.showRawValues === true;
+  const visibleClocks = new Set((state?.world?.clocks ?? []).filter((c) => c.visibleToPlayer).map((c) => c.id));
+  const factVisible = (f) => state !== null && rules.every((r) => !r.fact || holds3(() => r.fact(f, state)));
+  return {
+    showRaw,
+    raw: (n) => showRaw ? String(n) : null,
+    clockVisible: (id) => visibleClocks.has(id),
+    factVisible,
+    flagVisible: (id) => state === null || rules.every((r) => !r.flag || holds3(() => r.flag(id, state))),
+    facts: () => (state?.memory?.facts ?? []).filter(factVisible)
+  };
+}
+
+// src/ui/memory/memoryBlock.ts
+var about = (f, target) => target === WORLD ? f.about.length === 0 || f.about.includes("world") : f.about.includes(target);
+var audienceChip = (f) => f.knownBy.includes("*") ? { id: "public", label: "PUBLIC", address: "glossary:memory" } : f.heard !== void 0 && Object.keys(f.heard).length > 0 ? { id: "heard", label: "HEARD", address: "glossary:squad_rumor" } : { id: "seen", label: "SEEN", address: "glossary:memory" };
+function renderMemoryBlock(host, ctx2) {
+  const { state, target } = ctx2;
+  const unlocked = !ctx2.settings.editLock;
+  const send = (action) => {
+    ctx2.dispatch(action);
+    ctx2.onChanged?.();
+  };
+  const all = buildKnowledge(state, ctx2.settings).facts().filter((f) => about(f, target));
+  const order = new Map(state.memory.facts.map((f, i) => [f.id, i]));
+  const list5 = [...all].sort((a, b) => b.day - a.day || order.get(b.id) - order.get(a.id));
+  const dossier = state.memory.dossiers?.[target];
+  const dossierBlock = h("div", { class: "alius-memory-dossier" });
+  const drawDossier = (editing) => {
+    if (editing) {
+      const own = h("textarea", { class: "alius-input", rows: "3", "aria-label": "Private part of the dossier" });
+      const shared = h("textarea", { class: "alius-input", rows: "3", "aria-label": "Shared part of the dossier" });
+      own.value = dossier?.own ?? "";
+      shared.value = dossier?.shared ?? "";
+      dossierBlock.replaceChildren(
+        ...target === WORLD ? [] : [h("label", {}, "PRIVATE", own)],
+        h("label", {}, "SHARED", shared),
+        h(
+          "div",
+          { class: "alius-memory-actions" },
+          h("button", { type: "button", class: "alius-btn alius-option", "data-action": "save-dossier", ...analyzeNative("glossary:dossier"), onclick: () => send({ type: "memory/edit_dossier", payload: { target, ...target === WORLD ? {} : { own: own.value }, shared: shared.value } }) }, "[ SAVE ]"),
+          h("button", { type: "button", class: "alius-btn", onclick: () => drawDossier(false) }, "[ CANCEL ]")
+        )
+      );
+      return;
+    }
+    const hasText = dossier !== void 0 && (dossier.own !== "" || dossier.shared !== "");
+    dossierBlock.replaceChildren(
+      h("p", { class: "alius-stat", ...analyzeAttrs("glossary:dossier", target === WORLD ? {} : { unitId: target }) }, "DOSSIER"),
+      ...target !== WORLD && dossier?.own ? [h("p", { "data-part": "own" }, `PRIVATE: ${dossier.own}`)] : [],
+      ...dossier?.shared ? [h("p", { "data-part": "shared" }, `SHARED: ${dossier.shared}`)] : [],
+      ...hasText ? [] : [h("p", { class: "alius-dim" }, "Nothing folded yet.")],
+      ...unlocked ? [h("button", { type: "button", class: "alius-btn alius-option", "data-action": "edit-dossier", ...analyzeNative("glossary:dossier"), onclick: () => drawDossier(true) }, "[ EDIT DOSSIER ]")] : []
+    );
+  };
+  drawDossier(false);
+  const factRow = (f) => {
+    const chip = audienceChip(f);
+    const text2 = h("span", { "data-role": "text" }, f.text);
+    const row2 = h("div", { class: "alius-memory-fact", "data-fact": f.id });
+    const draw2 = (editing) => {
+      if (editing) {
+        const ta = h("textarea", { class: "alius-input", rows: "2", "aria-label": "Fact text" });
+        ta.value = f.text;
+        row2.replaceChildren(ta, h(
+          "div",
+          { class: "alius-memory-actions" },
+          h("button", { type: "button", class: "alius-btn alius-option", "data-action": "save", ...analyzeNative("glossary:memory"), onclick: () => send({ type: "memory/edit", payload: { factId: f.id, text: ta.value } }) }, "[ SAVE ]"),
+          h("button", { type: "button", class: "alius-btn", onclick: () => draw2(false) }, "[ CANCEL ]")
+        ));
+        return;
+      }
+      row2.replaceChildren(
+        h(
+          "div",
+          { class: "alius-memory-fact-head" },
+          h("span", { class: "alius-stat", ...analyzeAttrs("glossary:memory") }, `DAY ${f.day}`),
+          " ",
+          h("span", { class: "alius-stat", ...analyzeAttrs("glossary:memory") }, `IMPORTANCE ${f.importance}`),
+          " ",
+          h("span", { class: "alius-chip", "data-chip": chip.id, ...analyzeAttrs(chip.address) }, chip.label),
+          " ",
+          ...f.pinned ? [h("span", { class: "alius-chip", "data-chip": "pinned", ...analyzeAttrs("glossary:pinned_fact") }, "PINNED")] : [],
+          ...f.edited ? [h("span", { class: "alius-dim" }, "edited")] : []
+        ),
+        text2,
+        h(
+          "div",
+          { class: "alius-memory-actions" },
+          h("button", { type: "button", class: "alius-btn alius-option", "data-action": "pin", ...analyzeNative("glossary:pinned_fact"), onclick: () => send({ type: "memory/pin", payload: { factId: f.id, pinned: f.pinned !== true } }) }, f.pinned ? "[ UNPIN ]" : "[ PIN ]"),
+          h("button", {
+            type: "button",
+            class: "alius-btn alius-option",
+            "data-action": "forget",
+            ...analyzeNative("glossary:memory"),
+            onclick: () => {
+              void ctx2.confirm("Forget this fact? It is removed from the squad's memory for good.").then((yes2) => {
+                if (yes2) send({ type: "memory/forget", payload: { factId: f.id } });
+              });
+            }
+          }, "[ FORGET ]"),
+          ...unlocked ? [h("button", { type: "button", class: "alius-btn alius-option", "data-action": "edit", ...analyzeNative("glossary:memory"), onclick: () => draw2(true) }, "[ EDIT ]")] : []
+        )
+      );
+    };
+    draw2(false);
+    return row2;
+  };
+  host.replaceChildren(h(
+    "section",
+    { class: "alius-memory-block", "data-memory-target": target },
+    h("h4", {}, "MEMORY"),
+    dossierBlock,
+    ...list5.length === 0 ? [h("p", { class: "alius-dim" }, "Nothing remembered yet.")] : list5.map(factRow)
+  ));
+}
+
 // src/ui/personal/wagerForm.ts
 var BET_WORDS = { kills: "THREE KILLING BLOWS", no_damage: "NO DAMAGE TAKEN", objective: "THE OBJECTIVE DONE" };
 function renderWagerForm(state, reg, unitId, onSubmit) {
@@ -29522,6 +29652,12 @@ function bondBlock(unit, state, ctx2) {
     }, `${r.status === "negotiating" ? "NEGOTIATING" : r.status === "proposed" ? "PROPOSED" : "ACTIVE"} \u2014 ${r.text}${r.brokenCount > 0 ? ` (broken ${r.brokenCount}\xD7)` : ""}`)))) : null
   );
 }
+function memoryBlock(unit, ctx2, state) {
+  if (!ctx2.memory) return null;
+  const host = h("div", { class: "alius-memory-host" });
+  renderMemoryBlock(host, { state, settings: ctx2.settings(), target: unit.id, dispatch: ctx2.memory.dispatch, confirm: ctx2.memory.confirm, ...ctx2.memory.onChanged ? { onChanged: ctx2.memory.onChanged } : {} });
+  return host;
+}
 function unitBlock(unit, ctx2, state) {
   const gone = unit.status === "dead" || unit.status === "deserted" || unit.status === "terminated";
   const reg = ctx2.registries;
@@ -29566,6 +29702,7 @@ function unitBlock(unit, ctx2, state) {
       gone ? null : disciplineLine(unit, state, ctx2),
       gone ? null : hierarchyBlock(unit, state, ctx2),
       gone ? null : renderDeviceBlock(state, ctx2.registries, unit.id, { onPeel: (id, part) => ctx2.onPeel?.(id, part), onCancel: (id) => ctx2.onCancelBooking?.(id) }),
+      unit.kind === "named" ? memoryBlock(unit, ctx2, state) : null,
       gone || !ctx2.onWager ? null : renderChallenge(state, ctx2.registries, unit.id, (choice) => ctx2.onWager?.(unit.id, choice)),
       gone ? null : restrictionLine(unit, state),
       gone || !ctx2.onPunish || unit.kind !== "named" ? null : renderDisciplineMenu({ state, registries: reg, unitId: unit.id, onPunish: (measure, days) => ctx2.onPunish(unit.id, measure, days) }),
@@ -32982,32 +33119,6 @@ function importCampaign(text2) {
   return migrate(raw);
 }
 
-// src/analysis/knowledge.ts
-var rules = [];
-function registerKnowledgeRule(rule) {
-  rules.push(rule);
-}
-function holds3(check) {
-  try {
-    return check() !== false;
-  } catch {
-    return true;
-  }
-}
-function buildKnowledge(state, settings) {
-  const showRaw = settings.showRawValues === true;
-  const visibleClocks = new Set((state?.world?.clocks ?? []).filter((c) => c.visibleToPlayer).map((c) => c.id));
-  const factVisible = (f) => state !== null && rules.every((r) => !r.fact || holds3(() => r.fact(f, state)));
-  return {
-    showRaw,
-    raw: (n) => showRaw ? String(n) : null,
-    clockVisible: (id) => visibleClocks.has(id),
-    factVisible,
-    flagVisible: (id) => state === null || rules.every((r) => !r.flag || holds3(() => r.flag(id, state))),
-    facts: () => (state?.memory?.facts ?? []).filter(factVisible)
-  };
-}
-
 // src/analysis/providers.ts
 var providers = /* @__PURE__ */ new Map();
 var stateless = /* @__PURE__ */ new WeakSet();
@@ -35101,6 +35212,16 @@ function renderSysTab(host, ctx2) {
       onChanged: drawMemory,
       toast: ctx2.toast
     });
+    const world = h("div", { class: "alius-memory-host" });
+    renderMemoryBlock(world, {
+      state,
+      settings: getSettings(st),
+      target: "*",
+      dispatch: ctx2.dispatch,
+      onChanged: drawMemory,
+      confirm: async (text2) => await ctx2.modal({ title: "FORGET", body: text2, actions: [{ label: "[ FORGET ]", value: "yes" }, { label: "[ CANCEL ]", value: "no" }] }) === "yes"
+    });
+    memoryHost.append(world);
   };
   drawMemory();
   const fileInput = h("input", { type: "file", accept: "application/json,.json", class: "alius-hidden", tabindex: "-1" });
@@ -37228,7 +37349,13 @@ function createApp(st, deps) {
       onCancelBooking: (id) => void personal.cancelBooking(id),
       onWager: (unitId, choice) => void personal.challenge({ unitId, ...choice }),
       onWear: (id) => void personal.wearToken(id),
-      onTakeOff: (id) => void personal.takeOffToken(id)
+      onTakeOff: (id) => void personal.takeOffToken(id),
+      // P3b: the MEMORY block of each unit (pin, forget, and with the edit lock off edit)
+      memory: {
+        dispatch: (a) => act(a),
+        confirm: async (text2) => await shell.modal({ title: "FORGET", body: text2, actions: [{ label: "[ FORGET ]", value: "yes" }, { label: "[ CANCEL ]", value: "no" }] }) === "yes",
+        onChanged: () => shell.refresh()
+      }
     })
   );
   shell.registerTab(
