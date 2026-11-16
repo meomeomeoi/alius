@@ -140,7 +140,11 @@ var TUNING = Object.freeze({
     pinnedBonus: 2,
     hardCeiling: 1.25,
     /** P3b: days a fast / slow rumor takes to reach the whole squad. */
-    rumor: Object.freeze({ fast: 2, slow: 4 })
+    rumor: Object.freeze({ fast: 2, slow: 4 }),
+    /** P3b: facts folded per dossier update (a unit with this many old facts is due), and the caps of the two dossier parts in characters. */
+    foldBatch: 6,
+    dossierOwnMax: 500,
+    dossierSharedMax: 400
   }),
   /** P3: PDA DMs and night visits. */
   comms: Object.freeze({
@@ -19868,6 +19872,55 @@ registerAction("memory/compact", (draft, payload) => {
   return [{ type: "chronicle_compacted", kind, day, toDay: entry.toDay ?? null }];
 });
 
+// src/engine/memory/fold.ts
+var WORLD = "*";
+var livingNamed3 = (state) => state.squad.filter((u) => u.kind === "named" && isLiving(u)).map((u) => u.id);
+function isFoldable(state, fact) {
+  return state.day - fact.day > memoryConfig(state).foldAfterDays && fact.pinned !== true && fact.hiddenFromCommander !== true;
+}
+function foldTarget(state, fact) {
+  const living2 = livingNamed3(state);
+  const knows = (id) => fact.knownBy.includes("*") || fact.knownBy.includes(id);
+  const hit = living2.find((id) => fact.about.includes(id) && knows(id));
+  return hit ?? WORLD;
+}
+function foldPart(state, fact) {
+  return fact.knownBy.includes("*") || livingNamed3(state).every((id) => fact.knownBy.includes(id)) ? "shared" : "own";
+}
+function foldDue(state) {
+  const groups = /* @__PURE__ */ new Map();
+  for (const f of state.memory.facts) {
+    if (!isFoldable(state, f)) continue;
+    const t = foldTarget(state, f);
+    groups.set(t, [...groups.get(t) ?? [], f]);
+  }
+  if (groups.size === 0) return null;
+  const order = [...state.squad.map((u) => u.id), WORLD];
+  const rank2 = (t) => order.indexOf(t) === -1 ? order.length : order.indexOf(t);
+  const best = [...groups.entries()].sort((a, b) => b[1].length - a[1].length || rank2(a[0]) - rank2(b[0]))[0];
+  if (best[1].length < TUNING.memory.foldBatch && state.memory.facts.length <= memoryConfig(state).factsMax) return null;
+  const own = best[1].filter((f) => foldPart(state, f) === "own");
+  return { target: best[0], own, shared: best[1].filter((f) => !own.includes(f)) };
+}
+var cut = (text2, max) => text2.trim().slice(0, max).trim();
+function applyFold(draft, p) {
+  const due = foldDue(draft);
+  const dueIds = due ? [...due.own, ...due.shared].map((f) => f.id) : [];
+  if (!due || due.target !== p.target || p.factIds.length !== dueIds.length || new Set(p.factIds).size !== dueIds.length || !dueIds.every((id) => p.factIds.includes(id))) {
+    throw new Error("memory/fold: that fold is not due (the facts changed)");
+  }
+  const dossiers = draft.memory.dossiers ??= {};
+  const prev = dossiers[p.target];
+  const next = {
+    own: due.own.length > 0 ? cut(p.own, TUNING.memory.dossierOwnMax) : cut(p.own, TUNING.memory.dossierOwnMax) || prev?.own || "",
+    shared: due.shared.length > 0 ? cut(p.shared, TUNING.memory.dossierSharedMax) : cut(p.shared, TUNING.memory.dossierSharedMax) || prev?.shared || ""
+  };
+  if (due.own.length > 0 && next.own === "" || due.shared.length > 0 && next.shared === "") throw new Error("memory/fold: a part with facts needs its text");
+  dossiers[p.target] = { ...next, day: draft.day, folded: (prev?.folded ?? 0) + dueIds.length };
+  const gone = new Set(dueIds);
+  draft.memory.facts = draft.memory.facts.filter((f) => !gone.has(f.id));
+}
+
 // src/engine/memory/rumors.ts
 function hashDay(factId, unitId, span) {
   return fnv1a(`${factId}\0${unitId}`) % Math.max(1, span);
@@ -19955,6 +20008,32 @@ registerAction("memory/edit", (draft, payload) => {
   fact.text = text2;
   fact.edited = true;
   return [{ type: "fact_edited", factId: fact.id }];
+});
+registerAction("memory/fold", (draft, payload) => {
+  if (!isObj13(payload) || typeof payload.target !== "string" || typeof payload.own !== "string" || typeof payload.shared !== "string" || !Array.isArray(payload.factIds) || !payload.factIds.every((x) => typeof x === "string")) {
+    throw new Error("memory/fold needs { target, own, shared, factIds }");
+  }
+  applyFold(draft, { target: payload.target, own: payload.own, shared: payload.shared, factIds: payload.factIds });
+  return [{ type: "memory_folded", target: payload.target, folded: draft.memory.dossiers[payload.target].folded }];
+});
+registerAction("memory/edit_dossier", (draft, payload) => {
+  if (!isObj13(payload) || typeof payload.target !== "string") throw new Error("memory/edit_dossier needs { target, own?, shared? }");
+  const target = payload.target;
+  if (target !== WORLD && !draft.squad.some((u) => u.id === target && u.kind === "named")) throw new Error(`memory/edit_dossier: unknown unit ${target}`);
+  const parts = ["own", "shared"].filter((k) => k in payload);
+  if (parts.length === 0 || parts.some((k) => typeof payload[k] !== "string")) throw new Error("memory/edit_dossier needs own and/or shared as text");
+  const d = (draft.memory.dossiers ??= {})[target] ??= { own: "", shared: "", day: draft.day, folded: 0 };
+  if (parts.includes("own")) d.own = String(payload.own).trim().slice(0, TUNING.memory.dossierOwnMax).trim();
+  if (parts.includes("shared")) d.shared = String(payload.shared).trim().slice(0, TUNING.memory.dossierSharedMax).trim();
+  return [{ type: "dossier_edited", target }];
+});
+registerAction("memory/rumor_text", (draft, payload) => {
+  const { fact, payload: p } = factOf(draft, payload, "memory/rumor_text");
+  const text2 = typeof p.text === "string" ? p.text.trim().slice(0, TUNING.memory.factTextMax).trim() : "";
+  if (text2 === "") throw new Error("memory/rumor_text: empty text");
+  if (!fact.spread || fact.rumor) throw new Error("memory/rumor_text: that fact is not waiting for a retelling");
+  fact.rumor = { text: text2 };
+  return [{ type: "rumor_told", factId: fact.id }];
 });
 registerDayEndStep("dm_rumors", spreadRumors);
 

@@ -1,5 +1,6 @@
 import { registerDayEndStep } from '../calendar';
 import { registerAction } from '../dispatch';
+import { applyFold, WORLD } from '../memory/fold';
 import { spreadRumors } from '../memory/rumors';
 import { clampMemoryField, MEMORY_NUMERIC_FIELDS, memoryConfig } from '../memory/config';
 import type { MemoryConfig, MemoryPreset } from '../state/types';
@@ -70,6 +71,42 @@ registerAction('memory/edit', (draft, payload) => {
   fact.text = text;
   fact.edited = true;
   return [{ type: 'fact_edited', factId: fact.id }];
+});
+
+/**
+ * `memory/fold { target, own, shared, factIds }`: the dossier of `target` (a unit id or `*`) and the facts it replaces. Refused unless
+ * `factIds` is exactly the fold that is due now (`foldDue`), so an answer that arrives late folds nothing.
+ */
+registerAction('memory/fold', (draft, payload) => {
+  if (!isObj(payload) || typeof payload.target !== 'string' || typeof payload.own !== 'string' || typeof payload.shared !== 'string'
+    || !Array.isArray(payload.factIds) || !payload.factIds.every((x) => typeof x === 'string')) {
+    throw new Error('memory/fold needs { target, own, shared, factIds }');
+  }
+  applyFold(draft, { target: payload.target, own: payload.own, shared: payload.shared, factIds: payload.factIds as string[] });
+  return [{ type: 'memory_folded', target: payload.target, folded: draft.memory.dossiers![payload.target].folded }];
+});
+
+/** `memory/edit_dossier { target, own?, shared? }`: the player's edit of a dossier (the UI checks the edit lock). */
+registerAction('memory/edit_dossier', (draft, payload) => {
+  if (!isObj(payload) || typeof payload.target !== 'string') throw new Error('memory/edit_dossier needs { target, own?, shared? }');
+  const target = payload.target;
+  if (target !== WORLD && !draft.squad.some((u) => u.id === target && u.kind === 'named')) throw new Error(`memory/edit_dossier: unknown unit ${target}`);
+  const parts = (['own', 'shared'] as const).filter((k) => k in payload);
+  if (parts.length === 0 || parts.some((k) => typeof payload[k] !== 'string')) throw new Error('memory/edit_dossier needs own and/or shared as text');
+  const d = ((draft.memory.dossiers ??= {})[target] ??= { own: '', shared: '', day: draft.day, folded: 0 });
+  if (parts.includes('own')) d.own = String(payload.own).trim().slice(0, TUNING.memory.dossierOwnMax).trim();
+  if (parts.includes('shared')) d.shared = String(payload.shared).trim().slice(0, TUNING.memory.dossierSharedMax).trim();
+  return [{ type: 'dossier_edited', target }];
+});
+
+/** `memory/rumor_text { factId, text }`: the model's retelling of a rumor, stored once while the fact is still spreading. */
+registerAction('memory/rumor_text', (draft, payload) => {
+  const { fact, payload: p } = factOf(draft, payload, 'memory/rumor_text');
+  const text = typeof p.text === 'string' ? p.text.trim().slice(0, TUNING.memory.factTextMax).trim() : '';
+  if (text === '') throw new Error('memory/rumor_text: empty text');
+  if (!fact.spread || fact.rumor) throw new Error('memory/rumor_text: that fact is not waiting for a retelling');
+  fact.rumor = { text };
+  return [{ type: 'rumor_told', factId: fact.id }];
 });
 
 // P3b: rumors spread inside the existing `dm_rumors` day-end step (the hook runs on a copy and draws nothing)

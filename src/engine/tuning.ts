@@ -124,6 +124,8 @@ export const TUNING = Object.freeze({
     pinnedBonus: 2, hardCeiling: 1.25,
     /** P3b: days a fast / slow rumor takes to reach the whole squad. */
     rumor: Object.freeze({ fast: 2, slow: 4 }),
+    /** P3b: facts folded per dossier update (a unit with this many old facts is due), and the caps of the two dossier parts in characters. */
+    foldBatch: 6, dossierOwnMax: 500, dossierSharedMax: 400,
   }),
   /** P3: PDA DMs and night visits. */
   comms: Object.freeze({
