@@ -122,6 +122,8 @@ export const TUNING = Object.freeze({
     factTextMax: 200, factsPerScene: 8, closedPromisesMax: 30,
     /** P3b: the retrieval bonus of a pinned fact, and how far past `factsMax` the hard ceiling sits (the fold runs first). */
     pinnedBonus: 2, hardCeiling: 1.25,
+    /** P3b: days a fast / slow rumor takes to reach the whole squad. */
+    rumor: Object.freeze({ fast: 2, slow: 4 }),
   }),
   /** P3: PDA DMs and night visits. */
   comms: Object.freeze({

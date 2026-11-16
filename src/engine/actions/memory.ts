@@ -1,4 +1,6 @@
+import { registerDayEndStep } from '../calendar';
 import { registerAction } from '../dispatch';
+import { spreadRumors } from '../memory/rumors';
 import { clampMemoryField, MEMORY_NUMERIC_FIELDS, memoryConfig } from '../memory/config';
 import type { MemoryConfig, MemoryPreset } from '../state/types';
 import { TUNING } from '../tuning';
@@ -69,3 +71,6 @@ registerAction('memory/edit', (draft, payload) => {
   fact.edited = true;
   return [{ type: 'fact_edited', factId: fact.id }];
 });
+
+// P3b: rumors spread inside the existing `dm_rumors` day-end step (the hook runs on a copy and draws nothing)
+registerDayEndStep('dm_rumors', spreadRumors);
