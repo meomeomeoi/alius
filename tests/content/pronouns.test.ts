@@ -72,6 +72,15 @@ describe('no pronoun for the commander in content', () => {
     expect(texts.filter(([, t]) => COMMANDER_PRONOUN.test(t) || /commander[^.]*\btheir\b/i.test(t)).map(([where]) => where)).toEqual([]);
   });
 
+  it('device access rules (P9c): names, descriptions, contact names, notes and edit lines', () => {
+    const texts = [...reg.deviceAccessRules.values()].flatMap((e): Array<[string, string]> => [
+      [`deviceAccessRules:${e.id}.name`, String(e.name)], [`deviceAccessRules:${e.id}.description`, String(e.description)],
+      ...(['contactNames', 'notes', 'editLines'] as const).flatMap((k) => ((e[k] as string[] | undefined) ?? []).map((t, i): [string, string] => [`deviceAccessRules:${e.id}.${k}[${i}]`, t])),
+    ]);
+    expect(texts.length).toBeGreaterThan(14);
+    expect(texts.filter(([, t]) => COMMANDER_PRONOUN.test(t)).map(([where]) => where)).toEqual([]);
+  });
+
   it('outside feats and the hierarchy glossary entries (P9b)', () => {
     const texts: Array<[string, string]> = [
       ...fields('outsideFeats', ['label', 'description']),

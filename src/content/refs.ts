@@ -757,3 +757,16 @@ for (const registry of REGISTRY_NAMES) {
     return tagChecks('contentTags', entry.contentTags, regs);
   });
 }
+
+// P9c: a device-access rule's `states` name relationship states, and there is exactly one rule per level 1 to 4.
+registerRefs('deviceAccessRules', (entry) => {
+  const out: Ref[] = [];
+  const anyOf = entry.anyOf as Array<{ states?: string[] }> | undefined;
+  anyOf?.forEach((b, i) => b.states?.forEach((id, j) => out.push({ registry: 'relationshipStates', id, path: `anyOf[${i}].states[${j}]` })));
+  return out;
+});
+
+registerChecks('deviceAccessRules', (entry, regs) => {
+  const twin = [...regs.deviceAccessRules.values()].find((o) => o.level === entry.level && String(o.id) < String(entry.id));
+  return twin ? [{ path: 'level', message: `level ${String(entry.level)} already has the rule "${String(twin.id)}"` }] : [];
+});

@@ -55,6 +55,7 @@
     "contentCategories": "contentCategories.json",
     "relationshipRuleTemplates": "relationshipRuleTemplates.json",
     "voteKinds": "voteKinds.json",
-    "outsideFeats": "outsideFeats.json"
+    "outsideFeats": "outsideFeats.json",
+    "deviceAccessRules": "deviceAccessRules.json"
   }
 }

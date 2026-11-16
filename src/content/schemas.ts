@@ -469,6 +469,8 @@ export const RESERVED_EVENT_TYPES: readonly string[] = [
   'demand_opened', 'demand_delivered', 'demand_resolved', 'nickname_pending', 'nickname_given', 'nickname_dropped',
   // P9e
   'her_call', 'her_call_acknowledged', 'ask_first_set',
+  // P9c
+  'decor_placed', 'decor_faded', 'decor_removed_by_commander',
 ];
 
 const slotEnum = z.enum(['morning', 'afternoon', 'evening', 'night']);
@@ -1819,6 +1821,35 @@ export const OutsideFeatSchema = BaseEntrySchema.extend({
 }).strict();
 registrySchemas.outsideFeats = OutsideFeatSchema;
 
+/**
+ * P9c: one branch of a device-access level. Every field that is present must hold; a level is reached when any branch holds.
+ * `tiers` are bond tiers (never state ids), `states` are relationship states as data, leads and Impunity are numbers.
+ */
+export const DeviceAccessBranchSchema = z.object({
+  tiers: z.array(z.enum(['romantic', 'close'])).min(1).optional(),
+  states: z.array(str).min(1).optional(),
+  minLeadRank: int.min(0).max(3).optional(),
+  minImpunity: int.min(0).max(100).optional(),
+  minAffinity: int.min(-100).max(100).optional(),
+}).strict().refine((b) => Object.keys(b).length > 0, 'a branch needs at least one condition');
+export type DeviceAccessBranch = z.infer<typeof DeviceAccessBranchSchema>;
+
+/** P9c §1: what a unit can do inside the commander's device at each level 1 to 4 (exactly one entry per level; checked at load). */
+export const DeviceAccessRuleSchema = BaseEntrySchema.extend({
+  level: int.min(1).max(4),
+  name: str.max(40),
+  description: str.max(DESCRIPTION_MAX),
+  anyOf: z.array(DeviceAccessBranchSchema).min(1),
+  /** Level 1: names her contact gets in COMMS (`{name}` = hers). */
+  contactNames: z.array(str.max(40)).min(1).optional(),
+  /** Level 2: one-line notes she pins (`{name}` = hers). */
+  notes: z.array(str.max(120)).min(1).optional(),
+  /** Level 4: the fallback wording of an edited DM (`{text}` = the original, `{name}` = hers). */
+  editLines: z.array(str.max(300).refine((l) => l.includes('{text}'), 'an edit line must contain {text}')).min(1).optional(),
+}).strict();
+export type DeviceAccessRuleEntry = z.infer<typeof DeviceAccessRuleSchema>;
+registrySchemas.deviceAccessRules = DeviceAccessRuleSchema;
+
 /** Player-visible registries whose entries carry an optional `description` (skills and statuses already require one). */
 export const DESCRIBED_REGISTRIES = [
   'roles', 'skills', 'signatures', 'statuses', 'defects', 'items', 'affixes', 'enemies',
@@ -1836,6 +1867,8 @@ export const DESCRIBED_REGISTRIES = [
   'contentCategories', 'relationshipRuleTemplates',
   // P9b
   'voteKinds', 'outsideFeats',
+  // P9c
+  'deviceAccessRules',
 ] as const satisfies readonly RegistryName[];
 
 /** Adds the optional `description` rule to a registry schema without changing its shape. */

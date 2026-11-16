@@ -243,7 +243,7 @@ tests/engine/personal/*.test.ts, tests/engine/combat/sparring.test.ts, tests/con
   - `removeDecor(draft, ctx, unitId, part): EngineEvent[]`; action `device/remove_decor { unitId, part }`; events `decor_placed`, `decor_faded`, `decor_removed_by_commander` (reserved).
   - `personalDayStep` gains its decor part (placement, wallpaper owner, fading).
 
-- [ ] **Step 1: Write the failing tests.**
+- [x] **Step 1: Write the failing tests.**
   - `access derives from the table: a balanced friend is 1, a balanced confidant 2, an assertive lover 3, a dominant lover 4` (acceptance 1)
   - `Impunity 60 gives a balanced unit level 3; 75 needs a dominant one for level 4`
   - `a level never grants a higher level's capability` (`accessCan` matrix over levels 0–4)
@@ -252,10 +252,10 @@ tests/engine/personal/*.test.ts, tests/engine/combat/sparring.test.ts, tests/con
   - `access falling to 0 fades decor for 7 days, then it is gone; access coming back clears the fade`
   - `notes list her active rules and one authored line, the same all day`
   - Schema tests in `p9cSchemas.test.ts`: `one rule per level`, `editLines need {text}`, `states must name relationshipStates`.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/personal/access.test.ts tests/content/p9cSchemas.test.ts`. Expect FAIL.
-- [ ] **Step 3: Implement.** Draft content: the four entries of the rulings, three `contactNames` (`★ {name}'s`, `{name} ♥`, `MINE — {name}`), three `notes`, three `editLines` (`{text} — {name} added this.` style), all `AUTHOR TO WRITE`.
-- [ ] **Step 4: Run** the tests, then `npm test`. Expect PASS.
-- [ ] **Step 5: Tick and commit:** `feat(personal): device access levels, decor and pinned notes`.
+- [x] **Step 2: Run** `npx vitest run tests/engine/personal/access.test.ts tests/content/p9cSchemas.test.ts`. Expect FAIL.
+- [x] **Step 3: Implement.** Draft content: the four entries of the rulings, three `contactNames` (`★ {name}'s`, `{name} ♥`, `MINE — {name}`), three `notes`, three `editLines` (`{text} — {name} added this.` style), all `AUTHOR TO WRITE`.
+- [x] **Step 4: Run** the tests, then `npm test`. Expect PASS.
+- [x] **Step 5: Tick and commit:** `feat(personal): device access levels, decor and pinned notes`.
 
 ### Task 3: Level-4 intercepts (engine)
 

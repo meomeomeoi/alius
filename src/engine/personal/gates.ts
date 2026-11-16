@@ -1,4 +1,5 @@
 import type { Registries } from '../../content/types';
+import { deviceAccess, deviceGateReason } from './access';
 import { bondOf, bondTierOf, leadRank } from '../bonds/profile';
 import { impunityOf } from '../discipline/impunity';
 import { isLiving } from '../economy';
@@ -9,11 +10,6 @@ import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
 
 export type PressureMechanic = 'device' | 'booking' | 'intercept' | 'courtship' | 'claim' | 'token' | 'wager';
-
-/** Device access 0–4 of a unit: Task 2 replaces this stand-in with the table in `deviceAccessRules`. */
-function accessLevel(_state: CampaignState, _reg: Registries, _unitId: string): number {
-  return 0;
-}
 
 /**
  * Why a unit may NOT take part in a personal mechanic, or `null` when she may (P9c bond gate). Every mechanic needs a named,
@@ -31,11 +27,11 @@ export function pressureGate(state: CampaignState, reg: Registries, unitId: stri
   const tier = bondTierOf(state, reg, unitId);
   switch (mechanic) {
     case 'device':
-      return lead >= G.device.minLeadRank ? null : 'her lead style is too yielding';
+      return deviceGateReason(state, unitId);
     case 'booking':
-      return accessLevel(state, reg, unitId) >= 3 ? null : 'no device access';
+      return deviceAccess(state, reg, unitId) >= 3 ? null : 'no device access';
     case 'intercept': {
-      if (accessLevel(state, reg, unitId) < 4) return 'no device access';
+      if (deviceAccess(state, reg, unitId) < 4) return 'no device access';
       return null;
     }
     case 'courtship': {

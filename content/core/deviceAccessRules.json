@@ -1,0 +1,89 @@
+[
+  {
+    "id": "decor",
+    "level": 1,
+    "name": "Decor",
+    "description": "She can leave her mark on the commander's device: stickers on the frame, her picture as the wallpaper, a renamed contact in COMMS. AUTHOR TO WRITE: the long text.",
+    "anyOf": [
+      {
+        "tiers": [
+          "close",
+          "romantic"
+        ],
+        "minLeadRank": 1
+      },
+      {
+        "states": [
+          "friend"
+        ],
+        "minLeadRank": 1
+      }
+    ],
+    "contactNames": [
+      "★ {name}'s",
+      "{name} ♥",
+      "MINE — {name}"
+    ]
+  },
+  {
+    "id": "notes",
+    "level": 2,
+    "name": "Notes",
+    "description": "She can pin notes on the commander's home screen, including the rules she has set. AUTHOR TO WRITE: the long text.",
+    "anyOf": [
+      {
+        "tiers": [
+          "close",
+          "romantic"
+        ],
+        "minLeadRank": 1
+      }
+    ],
+    "notes": [
+      "{name}: eat something. Do not make me ask twice.",
+      "{name}: the evening is spoken for.",
+      "{name}: you were late again."
+    ]
+  },
+  {
+    "id": "calendar",
+    "level": 3,
+    "name": "Calendar",
+    "description": "She can book the commander's time slots. AUTHOR TO WRITE: the long text.",
+    "anyOf": [
+      {
+        "tiers": [
+          "romantic"
+        ],
+        "minLeadRank": 2
+      },
+      {
+        "minImpunity": 60,
+        "minLeadRank": 1
+      }
+    ]
+  },
+  {
+    "id": "messages",
+    "level": 4,
+    "name": "Messages",
+    "description": "She can edit the commander's outgoing messages and cancel requests before they go out. AUTHOR TO WRITE: the long text.",
+    "anyOf": [
+      {
+        "tiers": [
+          "romantic"
+        ],
+        "minLeadRank": 3
+      },
+      {
+        "minImpunity": 75,
+        "minLeadRank": 3
+      }
+    ],
+    "editLines": [
+      "{text} — {name} added this.",
+      "{text} P.S. {name} read this first.",
+      "{text} ({name} approved the wording.)"
+    ]
+  }
+]

@@ -56,10 +56,14 @@ describe('who may take part', () => {
     expect(gate(fresh({ lead: 'yielding' }), 'device')).toEqual(expect.any(String));
   });
 
-  it('booking and intercept ask for device access, which nobody has yet', () => {
-    const s = fresh({ lead: 'dominant', affinity: 90 });
-    expect(gate(s, 'booking')).toBe('no device access');
-    expect(gate(s, 'intercept')).toBe('no device access');
+  it('booking needs device access 3', () => {
+    expect(gate(fresh({ lead: 'assertive', stateId: 'lover' }), 'booking')).toBeNull();
+    expect(gate(fresh({ lead: 'balanced', stateId: 'lover' }), 'booking')).toBe('no device access');
+  });
+
+  it('intercept needs device access 4', () => {
+    expect(gate(fresh({ lead: 'dominant', stateId: 'lover' }), 'intercept')).toBeNull();
+    expect(gate(fresh({ lead: 'assertive', stateId: 'lover' }), 'intercept')).toBe('no device access');
   });
 
   it('courtship needs lead rank 2 and romance on', () => {

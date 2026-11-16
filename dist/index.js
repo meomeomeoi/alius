@@ -6075,7 +6075,9 @@ var REGISTRY_NAMES = [
   "relationshipRuleTemplates",
   // P9b
   "voteKinds",
-  "outsideFeats"
+  "outsideFeats",
+  // P9c
+  "deviceAccessRules"
 ];
 var PackManifestSchema = external_exports.object({
   id: external_exports.string().min(1),
@@ -6670,7 +6672,11 @@ var RESERVED_EVENT_TYPES = [
   // P9e
   "her_call",
   "her_call_acknowledged",
-  "ask_first_set"
+  "ask_first_set",
+  // P9c
+  "decor_placed",
+  "decor_faded",
+  "decor_removed_by_commander"
 ];
 var slotEnum = external_exports.enum(["morning", "afternoon", "evening", "night"]);
 var socialStat = external_exports.enum(["authority", "insight", "empathy", "cunning"]);
@@ -7810,6 +7816,26 @@ var OutsideFeatSchema = BaseEntrySchema.extend({
   trigger: external_exports.enum(OUTSIDE_TRIGGERS)
 }).strict();
 registrySchemas.outsideFeats = OutsideFeatSchema;
+var DeviceAccessBranchSchema = external_exports.object({
+  tiers: external_exports.array(external_exports.enum(["romantic", "close"])).min(1).optional(),
+  states: external_exports.array(str).min(1).optional(),
+  minLeadRank: int.min(0).max(3).optional(),
+  minImpunity: int.min(0).max(100).optional(),
+  minAffinity: int.min(-100).max(100).optional()
+}).strict().refine((b) => Object.keys(b).length > 0, "a branch needs at least one condition");
+var DeviceAccessRuleSchema = BaseEntrySchema.extend({
+  level: int.min(1).max(4),
+  name: str.max(40),
+  description: str.max(DESCRIPTION_MAX),
+  anyOf: external_exports.array(DeviceAccessBranchSchema).min(1),
+  /** Level 1: names her contact gets in COMMS (`{name}` = hers). */
+  contactNames: external_exports.array(str.max(40)).min(1).optional(),
+  /** Level 2: one-line notes she pins (`{name}` = hers). */
+  notes: external_exports.array(str.max(120)).min(1).optional(),
+  /** Level 4: the fallback wording of an edited DM (`{text}` = the original, `{name}` = hers). */
+  editLines: external_exports.array(str.max(300).refine((l) => l.includes("{text}"), "an edit line must contain {text}")).min(1).optional()
+}).strict();
+registrySchemas.deviceAccessRules = DeviceAccessRuleSchema;
 var DESCRIBED_REGISTRIES = [
   "roles",
   "skills",
@@ -7851,7 +7877,9 @@ var DESCRIBED_REGISTRIES = [
   "relationshipRuleTemplates",
   // P9b
   "voteKinds",
-  "outsideFeats"
+  "outsideFeats",
+  // P9c
+  "deviceAccessRules"
 ];
 function withDescription(schema) {
   return schema.superRefine((entry, ctx2) => {
@@ -11468,6 +11496,9 @@ function negotiationHolds(e) {
 }
 
 // src/engine/personal/state.ts
+function personalOf(draft) {
+  return draft.personal ??= { seq: 0 };
+}
 function holdsPersonal(state, unitId) {
   const p = state.personal;
   if (!p) return false;
@@ -18510,17 +18541,124 @@ registerAction("content/set_categories", (draft, payload, ctx2) => {
   return setCategories(draft, ctx2.registries, payload.enabled);
 });
 
-// src/engine/personal/dayStep.ts
-function personalDayStep(draft, _ctx) {
-  if (!draft.personal) return [];
-  for (const unit of draft.squad) {
-    if (!isLiving(unit) && holdsPersonal(draft, unit.id)) forgetPersonal(draft, unit.id);
+// src/engine/personal/access.ts
+function deviceGateReason(state, unitId) {
+  const unit = state.squad.find((u) => u.id === unitId);
+  if (!unit || unit.kind !== "named" || !isLiving(unit) || !state.relations[unitId]) return "not a named unit in service";
+  if (unit.bond === void 0) return "no imported bond profile";
+  return leadRank(bondOf(unit).leadStyle) >= TUNING.personal.gates.device.minLeadRank ? null : "her lead style is too yielding";
+}
+function branchHolds(state, reg, unitId, b, impunity) {
+  const unit = state.squad.find((u) => u.id === unitId);
+  const rel = state.relations[unitId];
+  if (b.tiers !== void 0) {
+    const tier = bondTierOf(state, reg, unitId);
+    if (tier === null || !b.tiers.includes(tier)) return false;
   }
-  return [];
+  if (b.states !== void 0 && !b.states.includes(rel.stateId)) return false;
+  if (b.minLeadRank !== void 0 && leadRank(bondOf(unit).leadStyle) < b.minLeadRank) return false;
+  if (b.minAffinity !== void 0 && rel.affinity < b.minAffinity) return false;
+  if (b.minImpunity !== void 0 && impunity() < b.minImpunity) return false;
+  return true;
+}
+function deviceAccess(state, reg, unitId) {
+  if (deviceGateReason(state, unitId) !== null) return 0;
+  let cached;
+  const impunity = () => cached ??= impunityOf(state, reg, unitId)?.value ?? 0;
+  const rules2 = [...reg.deviceAccessRules.values()].sort((a, b) => Number(b.level) - Number(a.level));
+  for (const rule of rules2) {
+    if (rule.anyOf.some((b) => branchHolds(state, reg, unitId, b, impunity))) return Number(rule.level);
+  }
+  return 0;
+}
+
+// src/engine/personal/gates.ts
+function pressureMultOf(state, reg, unitId) {
+  const unit = state.squad.find((u) => u.id === unitId);
+  if (!unit) return 1;
+  let mult = 1;
+  for (const d of unit.defects) {
+    const m = reg.defects.get(d.id)?.pressureMult;
+    if (typeof m === "number") mult *= m;
+  }
+  return mult;
+}
+
+// src/engine/personal/events.ts
+function hitHer(draft, reg, unitId, type, severity, evidence, opts = {}) {
+  const scale = opts.amplified === true ? pressureMultOf(draft, reg, unitId) : 1;
+  const events = applyEventToUnit(draft, reg, unitId, { type, actor: "commander", targets: [unitId], severity, evidence, confidence: 1 }, scale === 1 ? {} : { scale });
+  events.push(...evaluateAutomatic(draft, reg, unitId));
+  return events;
+}
+
+// src/engine/personal/decor.ts
+var DECOR_PARTS = ["sticker", "wallpaper", "contact"];
+function ruleOfLevel(reg, level) {
+  return [...reg.deviceAccessRules.values()].find((r) => Number(r.level) === level);
+}
+function removeDecor(draft, ctx2, unitId, part) {
+  const unit = draft.squad.find((u) => u.id === unitId);
+  const decor = draft.personal?.decor?.[unitId];
+  if (!unit || unit.kind !== "named" || !isLiving(unit) || !decor) throw new Error("There is nothing of hers to peel.");
+  if (!DECOR_PARTS.includes(part) || !decor.parts.includes(part)) throw new Error("There is nothing of hers to peel there.");
+  decor.parts = decor.parts.filter((p) => p !== part);
+  (decor.removed ??= {})[part] = draft.day;
+  return [...hitHer(draft, ctx2.registries, unitId, "decor_removed", "minor", "peeled her decor"), { type: "decor_removed_by_commander", unitId, part }];
+}
+function decorDayStep(draft, ctx2) {
+  const reg = ctx2.registries;
+  const events = [];
+  for (const u of draft.squad) {
+    if (u.kind !== "named") continue;
+    const has2 = draft.personal?.decor?.[u.id];
+    const access = deviceAccess(draft, reg, u.id);
+    if (!has2) {
+      if (access < 1) continue;
+      const names = ruleOfLevel(reg, 1)?.contactNames ?? ["{name}"];
+      (personalOf(draft).decor ??= {})[u.id] = {
+        since: draft.day,
+        parts: [...DECOR_PARTS],
+        contactName: names[fnv1a(u.id) % names.length].replaceAll("{name}", u.displayName)
+      };
+      events.push({ type: "decor_placed", unitId: u.id });
+    } else if (access >= 1) {
+      delete has2.fadedUntil;
+      for (const [part, day] of Object.entries(has2.removed ?? {})) {
+        if (day + TUNING.personal.decor.regrowDays > draft.day) continue;
+        delete has2.removed[part];
+        has2.parts = DECOR_PARTS.filter((p) => has2.parts.includes(p) || p === part);
+      }
+      if (has2.removed && Object.keys(has2.removed).length === 0) delete has2.removed;
+    } else if (has2.fadedUntil === void 0) {
+      has2.fadedUntil = draft.day + TUNING.personal.decor.fadeDays;
+      events.push({ type: "decor_faded", unitId: u.id, until: has2.fadedUntil });
+    } else if (draft.day > has2.fadedUntil) {
+      delete draft.personal.decor[u.id];
+    }
+  }
+  return events;
+}
+
+// src/engine/personal/dayStep.ts
+function personalDayStep(draft, ctx2) {
+  if (draft.personal) {
+    for (const unit of draft.squad) {
+      if (!isLiving(unit) && holdsPersonal(draft, unit.id)) forgetPersonal(draft, unit.id);
+    }
+  }
+  return [...decorDayStep(draft, ctx2)];
 }
 
 // src/engine/actions/personal.ts
 registerDayEndStep("dm_rumors", personalDayStep);
+var isObj20 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+registerAction("device/remove_decor", (draft, payload, ctx2) => {
+  if (!isObj20(payload) || typeof payload.unitId !== "string" || !DECOR_PARTS.includes(payload.part)) {
+    throw new Error('device/remove_decor needs { unitId, part: "sticker" | "wallpaper" | "contact" }');
+  }
+  return removeDecor(draft, ctx2, payload.unitId, payload.part);
+});
 
 // src/engine/power/dayStep.ts
 function powerDayStep(draft, ctx2) {
@@ -18545,52 +18683,52 @@ function powerDayStep(draft, ctx2) {
 
 // src/engine/actions/power.ts
 registerDayEndStep("director_tick", powerDayStep);
-var isObj20 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj21 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 registerAction("vote/open", (draft, payload, ctx2) => {
-  if (!isObj20(payload) || typeof payload.kind !== "string" || typeof payload.subject !== "string") throw new Error("vote/open needs { kind, subject }");
+  if (!isObj21(payload) || typeof payload.kind !== "string" || typeof payload.subject !== "string") throw new Error("vote/open needs { kind, subject }");
   return openVote(draft, ctx2, payload.kind, payload.subject);
 });
 registerAction("vote/drop", (draft, payload) => {
-  if (!isObj20(payload) || typeof payload.voteId !== "string") throw new Error("vote/drop needs { voteId }");
+  if (!isObj21(payload) || typeof payload.voteId !== "string") throw new Error("vote/drop needs { voteId }");
   return dropVote(draft, payload.voteId);
 });
 registerAction("vote/overrule", (draft, payload, ctx2) => {
-  if (!isObj20(payload) || typeof payload.voteId !== "string" || typeof payload.means !== "string") throw new Error("vote/overrule needs { voteId, means }");
+  if (!isObj21(payload) || typeof payload.voteId !== "string" || typeof payload.means !== "string") throw new Error("vote/overrule needs { voteId, means }");
   let punish;
   if (payload.punish !== void 0) {
-    if (!isObj20(payload.punish) || typeof payload.punish.unitId !== "string" || typeof payload.punish.measure !== "string") throw new Error("vote/overrule: punish needs { unitId, measure }");
+    if (!isObj21(payload.punish) || typeof payload.punish.unitId !== "string" || typeof payload.punish.measure !== "string") throw new Error("vote/overrule: punish needs { unitId, measure }");
     punish = { unitId: payload.punish.unitId, measure: payload.punish.measure };
   }
   return overruleVote(draft, ctx2, payload.voteId, payload.means, punish);
 });
 registerVoteGate("expedition/start", (state, payload, reg) => {
-  if (!isObj20(payload) || typeof payload.missionId !== "string" || isObj20(payload.poi)) return null;
+  if (!isObj21(payload) || typeof payload.missionId !== "string" || isObj21(payload.poi)) return null;
   const mission = state.missions.offered.find((m) => m.id === payload.missionId);
   if (!mission || reg.missionTemplates.get(mission.templateId)?.tutorial === true) return null;
   return { kind: "mission", subject: mission.id };
 });
-registerVoteGate("base/upgrade", (_state, payload) => isObj20(payload) && typeof payload.facilityId === "string" ? { kind: "upgrade", subject: payload.facilityId } : null);
+registerVoteGate("base/upgrade", (_state, payload) => isObj21(payload) && typeof payload.facilityId === "string" ? { kind: "upgrade", subject: payload.facilityId } : null);
 function benchSeverity(reg) {
   const heavy = [...reg.punishments.values()].filter((p) => p.sideEffects?.some((e) => e.type === "bench"));
   return heavy.length === 0 ? null : Math.min(...heavy.map((p) => Number(p.severity)));
 }
 registerVoteGate("discipline/punish", (_state, payload, reg) => {
-  if (!isObj20(payload) || typeof payload.unitId !== "string" || typeof payload.measure !== "string") return null;
+  if (!isObj21(payload) || typeof payload.unitId !== "string" || typeof payload.measure !== "string") return null;
   const pun = punishmentFor(reg, payload.measure);
   const limit = benchSeverity(reg);
   if (!pun || limit === null || Number(pun.severity) > limit) return null;
   return { kind: "punish", subject: payload.unitId };
 });
 registerVoteGate("rations/set", (state, payload, reg) => {
-  if (!isObj20(payload) || typeof payload.mode !== "string" || !RATION_MODES.includes(payload.mode)) return null;
+  if (!isObj21(payload) || typeof payload.mode !== "string" || !RATION_MODES.includes(payload.mode)) return null;
   return rationsVotable(state, reg) ? { kind: "rations", subject: payload.mode } : null;
 });
 registerAction("rations/set", (draft, payload) => {
-  if (!isObj20(payload)) throw new Error("rations/set needs { mode }");
+  if (!isObj21(payload)) throw new Error("rations/set needs { mode }");
   return setRations(draft, payload.mode);
 });
 registerAction("power/countermand", (draft, payload, ctx2) => {
-  if (!isObj20(payload) || payload.answer !== "accept" && payload.answer !== "overrule") throw new Error('power/countermand needs { answer: "accept" | "overrule" }');
+  if (!isObj21(payload) || payload.answer !== "accept" && payload.answer !== "overrule") throw new Error('power/countermand needs { answer: "accept" | "overrule" }');
   const open3 = countermandOpen(draft);
   if (!open3) {
     if (draft.power) delete draft.power.countermand;
@@ -18613,14 +18751,14 @@ registerAction("power/countermand", (draft, payload, ctx2) => {
   return events;
 });
 registerAction("power/endorse", (draft, _payload, ctx2) => endorse(draft, ctx2));
-registerAction("power/challenge", (draft, payload, ctx2) => challenge(draft, ctx2, isObj20(payload) ? payload.stat : void 0));
+registerAction("power/challenge", (draft, payload, ctx2) => challenge(draft, ctx2, isObj21(payload) ? payload.stat : void 0));
 registerAction("power/ask_first", (draft, payload, ctx2) => {
-  if (!isObj20(payload) || typeof payload.unitId !== "string" || typeof payload.on !== "boolean") throw new Error("power/ask_first needs { unitId, on }.");
+  if (!isObj21(payload) || typeof payload.unitId !== "string" || typeof payload.on !== "boolean") throw new Error("power/ask_first needs { unitId, on }.");
   return setAskFirst(draft, ctx2, payload.unitId, payload.on);
 });
 registerVoteGate("dilemma/choose", (state, payload) => {
   const open3 = state.dilemmas?.open;
-  if (!open3 || open3.context !== "scapegoat" || open3.status !== "presented" || !isObj20(payload) || typeof payload.index !== "number") return null;
+  if (!open3 || open3.context !== "scapegoat" || open3.status !== "presented" || !isObj21(payload) || typeof payload.index !== "number") return null;
   const answer = scapegoatOptionId(open3.options?.[payload.index]);
   return answer === null ? null : { kind: "scapegoat", subject: answer };
 });
@@ -18628,7 +18766,7 @@ registerVoteGate("dilemma/choose", (state, payload) => {
 // src/engine/dilemma/effects.ts
 var EFFECT_KINDS = ["resource", "unit_event", "faction", "clock", "flag", "stress", "social_check"];
 var MAGNITUDES = ["small", "medium", "large"];
-var isObj21 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj22 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var slot = (m) => m === "small" ? 0 : m === "medium" ? 1 : 2;
 var shape = (reason) => ({ rule: "shape", reason });
 var flagRule = (reason) => ({ rule: 6, reason });
@@ -18637,7 +18775,7 @@ function plainText(v, max) {
   return t.slice(0, max).trim();
 }
 function toWorldEffect(raw, ctx2) {
-  if (!isObj21(raw)) return shape("An effect must be an object.");
+  if (!isObj22(raw)) return shape("An effect must be an object.");
   const { kind, target, direction, magnitude } = raw;
   if (!EFFECT_KINDS.includes(kind)) return shape(`Unknown effect kind "${String(kind)}".`);
   if (typeof target !== "string" || target === "") return shape("An effect needs a target.");
@@ -18695,12 +18833,12 @@ function toWorldEffect(raw, ctx2) {
 }
 
 // src/engine/dilemma/validate.ts
-var isObj22 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj23 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var clamp23 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var cutWords3 = (text2, max) => text2.split(" ").filter(Boolean).slice(0, max).join(" ");
 function parseOption(raw, index, ctx2, bad) {
   const at = (reason, rule = "shape") => void bad.push({ rule, option: index, reason });
-  if (!isObj22(raw)) return at("An option must be an object."), null;
+  if (!isObj23(raw)) return at("An option must be an object."), null;
   if (typeof raw.label !== "string" || plainText(raw.label, 400) === "") return at("An option needs a label."), null;
   if (!Array.isArray(raw.effects) || raw.effects.length === 0 || raw.effects.length > 6) return at("An option needs 1 to 6 effects."), null;
   const option = {
@@ -18732,8 +18870,8 @@ function parseOption(raw, index, ctx2, bad) {
   }
   if (raw.requires !== void 0) {
     const r = raw.requires;
-    const stat3 = isObj22(r) ? r.socialStat ?? r.stat : void 0;
-    if (!isObj22(r) || !SOCIAL_STATS.includes(stat3) || typeof r.rank !== "number" || !Number.isInteger(r.rank) || r.rank < 1 || r.rank > 5) {
+    const stat3 = isObj23(r) ? r.socialStat ?? r.stat : void 0;
+    if (!isObj23(r) || !SOCIAL_STATS.includes(stat3) || typeof r.rank !== "number" || !Number.isInteger(r.rank) || r.rank < 1 || r.rank > 5) {
       at("requires needs { socialStat, rank } with a rank from 1 to 5.");
       failed = true;
     } else option.requires = { stat: stat3, rank: r.rank };
@@ -18747,7 +18885,7 @@ function parseOption(raw, index, ctx2, bad) {
 function parseDilemmaOutput(raw, ctx2) {
   const bad = [];
   try {
-    if (!isObj22(raw)) return { rejected: [{ rule: "shape", reason: "The answer must be an object." }] };
+    if (!isObj23(raw)) return { rejected: [{ rule: "shape", reason: "The answer must be an object." }] };
     if (typeof raw.title !== "string" || plainText(raw.title, 200) === "") bad.push({ rule: "shape", reason: "A dilemma needs a title." });
     if (typeof raw.setup !== "string" || plainText(raw.setup, 2e3) === "") bad.push({ rule: "shape", reason: "A dilemma needs a setup." });
     const want = ctx2.template.optionCount ?? 3;
@@ -19133,31 +19271,31 @@ function pacingStep(draft, ctx2) {
 }
 
 // src/engine/actions/dilemma.ts
-var isObj23 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj24 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 registerDayEndStep("director_tick", pacingStep);
 registerAction("dilemma/request", (draft, payload, ctx2) => {
-  const p = isObj23(payload) ? payload : {};
+  const p = isObj24(payload) ? payload : {};
   if (typeof p.templateId !== "string" || typeof p.context !== "string") throw new Error("dilemma/request needs { templateId, context }");
   return openDilemma(draft, ctx2, { templateId: p.templateId, context: p.context });
 });
 registerAction("dilemma/present", (draft, payload, ctx2) => {
-  const p = isObj23(payload) ? payload : {};
+  const p = isObj24(payload) ? payload : {};
   return presentDilemma(draft, ctx2, p.requestId, p.output);
 });
 registerAction("dilemma/fallback", (draft, payload, ctx2) => {
-  const p = isObj23(payload) ? payload : {};
+  const p = isObj24(payload) ? payload : {};
   return fallbackDilemma(draft, ctx2, p.requestId);
 });
 registerAction("dilemma/choose", (draft, payload, ctx2) => {
-  const p = isObj23(payload) ? payload : {};
+  const p = isObj24(payload) ? payload : {};
   return chooseDilemma(draft, ctx2, p.id, p.index, readRoutePick(p.route));
 });
 
 // src/engine/actions/arc.ts
-var isObj24 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj25 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 registerActivityHook(arcActivityHook);
 registerAction("arc/decide", (draft, payload, ctx2) => {
-  const p = isObj24(payload) ? payload : {};
+  const p = isObj25(payload) ? payload : {};
   if (typeof p.unitId !== "string" || typeof p.defectId !== "string" || typeof p.path !== "string") {
     throw new Error("arc/decide needs { unitId, defectId, path, compel? }");
   }
@@ -19165,9 +19303,9 @@ registerAction("arc/decide", (draft, payload, ctx2) => {
 });
 
 // src/engine/actions/items.ts
-var isObj25 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj26 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 registerAction("item/equip", (draft, payload, ctx2) => {
-  if (!isObj25(payload) || typeof payload.unitId !== "string" || typeof payload.uid !== "string") {
+  if (!isObj26(payload) || typeof payload.unitId !== "string" || typeof payload.uid !== "string") {
     throw new Error("item/equip needs { unitId, uid }");
   }
   const unit = draft.squad.find((u) => u.id === payload.unitId);
@@ -19185,7 +19323,7 @@ registerAction("item/equip", (draft, payload, ctx2) => {
   return [{ type: "item_equipped", unitId: unit.id, slot: slot2, uid: inst.uid, from: previous?.id ?? null }];
 });
 registerAction("item/unequip", (draft, payload) => {
-  if (!isObj25(payload) || typeof payload.unitId !== "string" || !["weapon", "upper", "lower"].includes(String(payload.slot))) {
+  if (!isObj26(payload) || typeof payload.unitId !== "string" || !["weapon", "upper", "lower"].includes(String(payload.slot))) {
     throw new Error("item/unequip needs { unitId, slot }");
   }
   const unit = draft.squad.find((u) => u.id === payload.unitId);
@@ -19215,7 +19353,7 @@ var ownedItem = (draft, uid) => {
 };
 registerAction("item/craft", (draft, payload, ctx2) => {
   session(draft);
-  const id = isObj25(payload) ? payload.recipeId : void 0;
+  const id = isObj26(payload) ? payload.recipeId : void 0;
   const recipe = typeof id === "string" ? ctx2.registries.recipes.get(id) : void 0;
   if (!recipe) throw new Error(`Unknown recipe "${String(id)}".`);
   const rarity = recipe.rarity;
@@ -19229,7 +19367,7 @@ registerAction("item/craft", (draft, payload, ctx2) => {
 });
 registerAction("item/upgrade", (draft, payload, ctx2) => {
   session(draft);
-  const inst = ownedItem(draft, isObj25(payload) ? payload.uid : void 0);
+  const inst = ownedItem(draft, isObj26(payload) ? payload.uid : void 0);
   if (inst.upgrade >= TUNING.items.maxUpgrade) throw new Error("MAX UPGRADE");
   const cost = upgradeCost(draft, ctx2.registries, inst);
   const events = spend(draft, cost.credits, cost.plyx);
@@ -19239,7 +19377,7 @@ registerAction("item/upgrade", (draft, payload, ctx2) => {
 });
 registerAction("item/reroll", (draft, payload, ctx2) => {
   session(draft);
-  const p = isObj25(payload) ? payload : {};
+  const p = isObj26(payload) ? payload : {};
   const inst = ownedItem(draft, p.uid);
   const i = p.affixIndex;
   if (typeof i !== "number" || !Number.isInteger(i) || i < 0 || i >= inst.affixes.length) throw new Error("Pick one of the item's affixes.");
@@ -19255,7 +19393,7 @@ registerAction("item/reroll", (draft, payload, ctx2) => {
 });
 registerAction("item/dismantle", (draft, payload, ctx2) => {
   session(draft);
-  const inst = ownedItem(draft, isObj25(payload) ? payload.uid : void 0);
+  const inst = ownedItem(draft, isObj26(payload) ? payload.uid : void 0);
   if (equippedBy(draft, inst.uid)) throw new Error("Unequip the item first.");
   const plyx = dismantleValue(ctx2.registries, inst);
   draft.inventory = draft.inventory.filter((i) => i.uid !== inst.uid);
@@ -19303,7 +19441,7 @@ registerAction("campaign/set_first_impression_tau", (draft, payload) => {
 });
 
 // src/engine/actions/onboarding.ts
-var isObj26 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj27 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function open2(draft) {
   const o = draft.onboarding;
   if (!o || o.done) throw new Error("The prologue is over.");
@@ -19311,7 +19449,7 @@ function open2(draft) {
 }
 function currentFor(draft, ctx2, payload, action) {
   const o = open2(draft);
-  if (!isObj26(payload) || typeof payload.stepId !== "string") throw new Error(`${action} needs { stepId }`);
+  if (!isObj27(payload) || typeof payload.stepId !== "string") throw new Error(`${action} needs { stepId }`);
   if (payload.stepId !== o.stepId) throw new Error("Stale onboarding step.");
   const step = currentStep(draft, ctx2.registries);
   if (!step) throw new Error("Stale onboarding step.");
@@ -19335,7 +19473,7 @@ registerAction("onboarding/skip_step", (draft, payload, ctx2) => {
 });
 registerAction("onboarding/mark_spoken", (draft, payload) => {
   const o = open2(draft);
-  if (!isObj26(payload) || typeof payload.unitId !== "string") throw new Error("onboarding/mark_spoken needs { unitId }");
+  if (!isObj27(payload) || typeof payload.unitId !== "string") throw new Error("onboarding/mark_spoken needs { unitId }");
   const unitId = payload.unitId;
   if (!livingNamed(draft).some((u) => u.id === unitId)) throw new Error("Only a living named soldier can be spoken to.");
   if (o.spoken?.includes(unitId)) throw new Error("That soldier has already been spoken to.");
@@ -19344,7 +19482,7 @@ registerAction("onboarding/mark_spoken", (draft, payload) => {
 });
 registerAction("onboarding/hint_seen", (draft, payload, ctx2) => {
   const o = open2(draft);
-  if (!isObj26(payload) || typeof payload.hintId !== "string") throw new Error("onboarding/hint_seen needs { hintId }");
+  if (!isObj27(payload) || typeof payload.hintId !== "string") throw new Error("onboarding/hint_seen needs { hintId }");
   const hintId = payload.hintId;
   const entry = ctx2.registries.prologues.get(o.prologueId);
   const known = entry ? stepsOf(entry).some((s) => s.hints?.some((h2) => h2.id === hintId)) : false;
@@ -21665,16 +21803,16 @@ var fieldSchemas = {
   ambientHum: external_exports.boolean()
 };
 var budgetSchema = external_exports.number().int().min(1);
-var isObj27 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj28 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function merge(base, over) {
-  const src = isObj27(over) ? over : {};
+  const src = isObj28(over) ? over : {};
   const out = { ...base };
   for (const [key, schema] of Object.entries(fieldSchemas)) {
     const parsed = schema.safeParse(src[key]);
     if (parsed.success) out[key] = parsed.data;
   }
   const budgets = { ...base.budgets };
-  const srcBudgets = isObj27(src.budgets) ? src.budgets : {};
+  const srcBudgets = isObj28(src.budgets) ? src.budgets : {};
   for (const id of CALL_TYPE_IDS) {
     const parsed = budgetSchema.safeParse(srcBudgets[id]);
     if (parsed.success) budgets[id] = parsed.data;
@@ -22868,24 +23006,24 @@ registerCallType({
   prompt: prompt3,
   schema: IntentExtractRawSchema
 });
-var isObj28 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj29 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var LABELS = EXPRESSION_LABELS;
 function sanitizeIntentOutput(raw, ctx2) {
   const parsed = IntentExtractRawSchema.safeParse(raw);
   const src = parsed.success ? parsed.data : { events: [], facts: [], proposals: [], promises: [], emotions: [], stressHints: [], contentViolations: [], sceneTone: void 0 };
-  const events = src.events.filter((e) => isObj28(e) && typeof e.confidence === "number" && e.confidence >= ctx2.minConfidence);
-  const proposals2 = src.proposals.filter((p) => ctx2.romance || !(isObj28(p) && ROMANTIC_PROPOSALS.includes(p.kind)));
+  const events = src.events.filter((e) => isObj29(e) && typeof e.confidence === "number" && e.confidence >= ctx2.minConfidence);
+  const proposals2 = src.proposals.filter((p) => ctx2.romance || !(isObj29(p) && ROMANTIC_PROPOSALS.includes(p.kind)));
   const intents = validateIntents({ ...src, events, proposals: proposals2 }, { participants: ctx2.participants, squad: ctx2.squad, maxEvents: TUNING.relations.maxEventsRead, ...ctx2.measures ? { measures: ctx2.measures } : {}, ...ctx2.rules ? { rules: ctx2.rules } : {} });
   const emotions = [];
   for (const e of src.emotions) {
-    if (isObj28(e) && typeof e.unitId === "string" && ctx2.participants.includes(e.unitId) && typeof e.label === "string" && LABELS.includes(e.label)) {
+    if (isObj29(e) && typeof e.unitId === "string" && ctx2.participants.includes(e.unitId) && typeof e.label === "string" && LABELS.includes(e.label)) {
       emotions.push({ unitId: e.unitId, label: e.label });
     }
   }
   const contentViolations = [];
   const evidenceMax = TUNING.bonds.limits.evidenceMax;
   for (const v of src.contentViolations) {
-    if (!isObj28(v) || typeof v.category !== "string" || !(ctx2.excluded ?? []).includes(v.category) || contentViolations.some((x) => x.category === v.category)) continue;
+    if (!isObj29(v) || typeof v.category !== "string" || !(ctx2.excluded ?? []).includes(v.category) || contentViolations.some((x) => x.category === v.category)) continue;
     contentViolations.push({ category: v.category, evidence: typeof v.evidence === "string" ? v.evidence.replace(/\s+/g, " ").trim().slice(0, evidenceMax) : "" });
     if (contentViolations.length === TUNING.bonds.limits.maxViolations) break;
   }
@@ -23893,7 +24031,7 @@ function renderCommanderFile(host, ctx2) {
 
 // src/setup/commander.ts
 var PERSONA_CHARS = 6e3;
-var isObj29 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj30 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var cap3 = (v, max) => typeof v === "string" ? v.replace(/<[^>]*>/g, "").trim().slice(0, max) : "";
 function valueOf(kind, v) {
   if (typeof v !== "string") return null;
@@ -23902,7 +24040,7 @@ function valueOf(kind, v) {
 }
 var LOWER_ORDER = ["reflexes", "endurance", "strength"];
 function sanitizeCommanderImport(raw, reg, opts = { desireBondDefects: false }) {
-  const src = isObj29(raw) ? raw : {};
+  const src = isObj30(raw) ? raw : {};
   const setup = defaultCommanderSetup();
   for (const k of BODY_STATS) {
     const v = valueOf(k, src[k]);
@@ -23918,7 +24056,7 @@ function sanitizeCommanderImport(raw, reg, opts = { desireBondDefects: false }) 
   const reasons = {};
   for (const item of Array.isArray(src.traits) ? src.traits : []) {
     if (setup.traits.regular.length >= TUNING.commander.maxRegular) break;
-    const id = isObj29(item) && typeof item.id === "string" ? item.id : null;
+    const id = isObj30(item) && typeof item.id === "string" ? item.id : null;
     const t = id === null ? void 0 : reg.commanderTraits.get(id);
     if (!id || !t || t.kind !== "regular" || setup.traits.regular.includes(id)) continue;
     if (traitBlockReason(reg, setup.traits, id, opts) !== null) continue;
@@ -23927,7 +24065,7 @@ function sanitizeCommanderImport(raw, reg, opts = { desireBondDefects: false }) 
   }
   return { setup, personaName: "", reasons, notes: cap3(src.notes, 300) };
 }
-var usable2 = (raw, result) => isObj29(raw) && ["strength", "endurance", "reflexes", "expression", "seasoning"].some((k) => valueOf(k, raw[k]) !== null) || result.setup.traits.regular.length > 0;
+var usable2 = (raw, result) => isObj30(raw) && ["strength", "endurance", "reflexes", "expression", "seasoning"].some((k) => valueOf(k, raw[k]) !== null) || result.setup.traits.regular.length > 0;
 async function importCommander(st, deps) {
   const { settings, registries } = deps;
   try {
@@ -23997,7 +24135,7 @@ function buildImportInput(card2, registries, settings, sections, world, bond) {
     ...sections.includes("bond") ? { categories: [...registries.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => ({ id: String(c.id), label: str3(c.label) })) } : {}
   };
 }
-var isObj30 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj31 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var cap4 = (v, max, fallback = "") => typeof v === "string" ? v.trim().slice(0, max) : fallback;
 var num4 = (v, lo, hi, fallback) => typeof v === "number" && Number.isFinite(v) ? Math.min(hi, Math.max(lo, Math.round(v))) : fallback;
 var STANCE_REASON_MAX2 = 160;
@@ -24015,7 +24153,7 @@ function tagList2(v, max) {
   return out;
 }
 function sanitizeProfile(raw, ctx2) {
-  const src = isObj30(raw) ? raw : {};
+  const src = isObj31(raw) ? raw : {};
   const want = (s) => ctx2.sections.includes(s);
   const dropped = [];
   const missing2 = [];
@@ -24024,7 +24162,7 @@ function sanitizeProfile(raw, ctx2) {
     const out = [];
     const seen = /* @__PURE__ */ new Set();
     for (const item of Array.isArray(list5) ? list5 : []) {
-      const id = isObj30(item) && typeof item[idKey] === "string" ? item[idKey] : null;
+      const id = isObj31(item) && typeof item[idKey] === "string" ? item[idKey] : null;
       if (id === null) {
         dropped.push(`${SECTION_LABEL[section]}:(invalid)`);
         continue;
@@ -24072,11 +24210,11 @@ function sanitizeProfile(raw, ctx2) {
     const read = validateBond(src.bond, ctx2.registries);
     profile.bond = read.bond;
     bond = read.bond;
-    const reason = cap4(isObj30(src.bond) ? src.bond.reason : void 0, TUNING.bonds.limits.noteMax);
+    const reason = cap4(isObj31(src.bond) ? src.bond.reason : void 0, TUNING.bonds.limits.noteMax);
     if (reason !== "") profile.bondReason = reason;
     for (const issue of read.issues) if (/unknown content category/.test(issue)) dropped.push(`bond:${issue.match(/"([^"]*)"/)?.[1] ?? "(invalid)"}`);
     if (read.valid.length === 0) missing2.push("bond");
-    if (!isObj30(src.bond)) delete profile.bond;
+    if (!isObj31(src.bond)) delete profile.bond;
   }
   if (want("defects")) {
     profile.defectCandidates = pick2(
@@ -24093,7 +24231,7 @@ function sanitizeProfile(raw, ctx2) {
     if (profile.defectCandidates.length === 0) missing2.push("defects");
   }
   if (want("values")) {
-    if (isObj30(src.values)) {
+    if (isObj31(src.values)) {
       const v = src.values;
       profile.values = Object.fromEntries(VALUE_KEYS.map((k) => [k, num4(v[k], -3, 3, 0)]));
     } else missing2.push("values");
@@ -24118,25 +24256,25 @@ function sanitizeProfile(raw, ctx2) {
     }
     profile.commanderTastes = out;
   }
-  if (want("disposition") && isObj30(src.dispositionOffset) && typeof src.dispositionOffset.offset === "number" && Number.isFinite(src.dispositionOffset.offset)) {
+  if (want("disposition") && isObj31(src.dispositionOffset) && typeof src.dispositionOffset.offset === "number" && Number.isFinite(src.dispositionOffset.offset)) {
     profile.dispositionOffset = { offset: num4(src.dispositionOffset.offset, -2, 2, 0), reason: cap4(src.dispositionOffset.reason, STANCE_REASON_MAX2) };
   }
   if (want("stances")) {
     const ids = stanceOptionIds(ctx2.registries, ctx2.world);
     if (ids.length > 0) {
-      const given = isObj30(src.worldStances) ? src.worldStances : {};
+      const given = isObj31(src.worldStances) ? src.worldStances : {};
       for (const key of Object.keys(given)) if (!ids.includes(key)) dropped.push(`stances:${key}`);
       const out = {};
       for (const id of ids) {
         const e = given[id];
-        const stance = isObj30(e) && typeof e.stance === "string" && STANCE_WORDS.includes(e.stance) ? e.stance : null;
+        const stance = isObj31(e) && typeof e.stance === "string" && STANCE_WORDS.includes(e.stance) ? e.stance : null;
         out[id] = stance === null ? { stance: "indifferent", strength: 1, reason: "" } : { stance, strength: e.strength === 2 ? 2 : 1, reason: cap4(e.reason, STANCE_REASON_MAX2) };
       }
       profile.worldStances = out;
     }
   }
   if (want("baseline")) {
-    if (isObj30(src.emotionalBaseline)) {
+    if (isObj31(src.emotionalBaseline)) {
       const b = src.emotionalBaseline;
       const lim = SETUP_LIMITS.baseline;
       profile.baseline = {
@@ -34214,6 +34352,16 @@ for (const registry2 of REGISTRY_NAMES) {
     return tagChecks("contentTags", entry.contentTags, regs);
   });
 }
+registerRefs("deviceAccessRules", (entry) => {
+  const out = [];
+  const anyOf = entry.anyOf;
+  anyOf?.forEach((b, i) => b.states?.forEach((id, j) => out.push({ registry: "relationshipStates", id, path: `anyOf[${i}].states[${j}]` })));
+  return out;
+});
+registerChecks("deviceAccessRules", (entry, regs) => {
+  const twin = [...regs.deviceAccessRules.values()].find((o) => o.level === entry.level && String(o.id) < String(entry.id));
+  return twin ? [{ path: "level", message: `level ${String(entry.level)} already has the rule "${String(twin.id)}"` }] : [];
+});
 
 // src/content/loader.ts
 var UNSAFE_KEYS = /* @__PURE__ */ new Set(["__proto__", "constructor", "prototype"]);
@@ -34400,13 +34548,13 @@ import { editGroup, openGroupById } from "../../../../group-chats.js";
 import { newWorldInfoEntryTemplate } from "../../../../world-info.js";
 
 // src/st/chat.ts
-var isObj31 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj32 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function mapChatMessages(chat, from = 0) {
   if (!Array.isArray(chat)) return [];
   const out = [];
   for (let index = Math.max(0, from); index < chat.length; index++) {
     const m = chat[index];
-    if (!isObj31(m) || m.is_system === true) continue;
+    if (!isObj32(m) || m.is_system === true) continue;
     const avatar = typeof m.original_avatar === "string" && m.original_avatar !== "" ? m.original_avatar : void 0;
     out.push({
       index,
@@ -34423,7 +34571,7 @@ function lastCharacterAvatar(chat) {
   if (!Array.isArray(chat)) return void 0;
   for (let i = chat.length - 1; i >= 0; i--) {
     const m = chat[i];
-    if (isObj31(m) && m.is_user !== true && m.is_system !== true) {
+    if (isObj32(m) && m.is_user !== true && m.is_system !== true) {
       return typeof m.original_avatar === "string" && m.original_avatar !== "" ? m.original_avatar : void 0;
     }
   }
@@ -34459,17 +34607,17 @@ function toStLorebook(book, template) {
 }
 
 // src/st/sprites.ts
-var isObj32 = (v) => typeof v === "object" && v !== null;
+var isObj33 = (v) => typeof v === "object" && v !== null;
 function spriteFolder(avatar, name, overrides) {
   if (!Array.isArray(overrides)) return name;
   const key = avatar.replace(/\.[^.]+$/, "");
-  const hit = overrides.find((o) => isObj32(o) && o.name === key && typeof o.path === "string" && o.path !== "");
+  const hit = overrides.find((o) => isObj33(o) && o.name === key && typeof o.path === "string" && o.path !== "");
   return hit ? hit.path : name;
 }
 function pickSprite(list5, label2) {
   if (!Array.isArray(list5)) return null;
   for (const item of list5) {
-    if (isObj32(item) && item.label === label2 && typeof item.path === "string") return item.path;
+    if (isObj33(item) && item.label === label2 && typeof item.path === "string") return item.path;
   }
   return null;
 }
