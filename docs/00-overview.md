@@ -437,6 +437,7 @@ Defaults in code: Desire/Bond defects **off**, show raw values **off**, sprite m
 | 20 | P12 | Special traits: Secret Frequency, Bloom-induced Paranoia, Web of Debts | P5, P6, P7, P9 | spec |
 | 21 | P13 | LEASHSWAP mode | P0, P5, P6, P7, P9, P9b, P9d, P11, P12 | spec |
 | 22 | P14 | Generation envelope (retry of failed generations, refusal detection, reroll; every call site wrapped) — last package of 0.1.0 | P0, every package with a call site | spec |
+| 23 | P14b | Character development: development layer over card and profile, appraisal of events from her viewpoint (with misreading), rule accumulators + model review bounded by card anchors, quiet development moments, habits and skills, the "since joining" prompt block | P1, P3, P3b, P7, P8, P9d, P14 | spec |
 
 The table is in implementation order: take the first row whose status is not `implemented`. Why this order, and the session chunks for P7a onward: `ROADMAP-next.md`.
 
@@ -456,6 +457,8 @@ Packages after release 0.1.0 (the table above). Same rule: take the first row wh
 | 4 | P17a | Dynamic foundations: attitudes between the women involved, contracts (hard dominants and the obsessive style), privileges, inspections, nights | P15, P16, P17, P9c | spec |
 | 5 | P17b | Hard practices: categories `deprivation`, `pet_play`, `objectification`, `coercion`; speech control, shock collar, cage, gratitude and begging, service and humiliation built from real state and memory | P17a, P15–P17, P3b | spec |
 | 6 | P17c | Immersion: gag and gestures, dictation, passcodes, her voice in the UI, permissions, session rituals, status effects, scene staging with the existing art, optional backdrops / props / pose shots, map marks, quiet runs | P17b, P10, P10b, P9c | spec |
+| 7 | P17d | Senses and voice: the sensory layer (room, events, scene call, her replies), her scent (arrives before her, clings, can be noticed, washing), whispers only the player sees, interruptions (display only), her rhythm and distance, "she thinks" | P17c, P17, P9d, P3 | spec |
+| 8 | P17e | The living dynamic: secret tests, emergent rituals, her weakness, the drawn signature, the chosen address, "what do you feel?" | P14b, P15–P17d | spec |
 
 ### Post-release (0.3) — the AI story sandbox
 
@@ -481,6 +484,8 @@ After the authored prologue (spine beats 1–5) the model builds story arcs from
 ## 10. Roadmap beyond v1
 
 **Marks (special statuses)** — a relationship layer that lives *in parallel* with relationship states and arises only from extreme, usually irreversible choices or events. A unit can be `lover` and `limiter_torn` at the same time. Each mark: `{ id, origin (dilemma/defect arc/event ids), prerequisites, effects (combat, relationship modifiers, Leash rules, directives), reversible: bool, visibleToSquad: bool }`. Ideas to develop: **Neural Sync** (commander's and her neurons linked: shared stress, she acts on his intent without CP, his injuries hurt her); **Limiter Torn** (commander ripped out her limiter: huge power, the Leash no longer works on her, loyalty is now purely personal); **Blood Debt** (she owes him her life, or he owes her); **Shared Strain** (infected each other with the Bloom; mutation clocks linked); **Ghost Copy** (an echo of the commander lives in her implant); **Branded** (corporation marked her as defective-beyond-use: hunted). The `Relation.marks[]` field is reserved in v1 so this lands without a save migration.
+
+**Immersion ideas for later** (from the 0.2 design talk): her photos in DMs (pose shots and backdrops reused as pictures with captions; compromat as a gallery), a squad group chat generated from memory (the holder can mute the commander), a wake-up card after each night (where the commander woke and her first line), a living hub (a line about what happens in a room on hover; light under her door at night).
 
 **Character interaction ideas beyond 0.2** (from the 0.2 design talk; not scheduled): a nickname she gives the commander (renamed in her DMs and on the PDA header), marks that last days and are seen by others (`pain_rough`), provocations (`jealousy_games`: flirting in front of the commander, lending the commander to another), marks of ownership (`body_modification`: a plyx ring, her unit number), categories `voyeurism`, `implant_play` (the Leash or the implant in intimacy), `sharing`, aftercare as a post-scene phase, the obscured presence layer in missions (voices behind a wall), and the mirrored direction of P15–P17 (the commander holds).
 
