@@ -38,7 +38,13 @@ Visible results of **statuses** set by the engine (not an inner meter; P15 rulin
 
 ## 5. Art slots (all optional; a missing file falls back to §4)
 
-- **Backdrops** (registry `backdrops`: `{ id, file, use: situation[], fallback: filter }`): `pov_under_desk`, `pov_floor`, `pov_cage`, `pov_corner`, `pov_dark`, `medbay_exam`, `comms_console`; **surfaces** for composing pose shots: `floor_top` (the floor seen from above, one for all rooms) and `ceiling_<room>` (a room's ceiling and upper walls seen from below; fallback: the room background scaled up, shifted to its top and heavily blurred); later (0.3) `field_camp`, `settlement`, `ruins_interior`.
+- **Backdrops and frames** (registry `backdrops`: `{ id, kind: 'room' | 'frame' | 'surface' | 'derived', file?, use: situation[], fallback }`). Room-bound views are built on **the current room**, never baked into a picture, so one asset serves every room:
+  - **frames** — a cut-out picture laid over the current room background, which is lowered, blurred as depth of field and darkened at the top: `frame_under_desk` (the underside and side panels of a desk; the author has one), `frame_cage_bars` (cage bars). Fallback: a drawn SVG frame (only if no file).
+  - **derived** — no picture at all: `pov_floor` (the room background lowered, heavily blurred, a floor gradient at the bottom), `pov_corner` (one generic wall with a baseboard, tinted to the room's wall colour), `pov_dark` (CSS).
+  - **surfaces** — `floor_<type>` (wood, linoleum, concrete, tatami; the floor seen from above for `feet_floor`) and `ceiling_<type>` (angled, for views from the knees; optional `ceiling_<type>_straight` for lying on the back), matched to rooms by data; fallback: the top of the room background, scaled and blurred.
+  - **places** — pictures of their own: `medbay_exam`, `medbay_exam_lying`, `comms_console`; later (0.3) `field_camp`, `settlement`, `ruins_interior`.
+  - **Rooms** carry data for this: floor type, ceiling type, door side (`left` / `right` / `center` / `offscreen_left` / `offscreen_right`), wall tint.
+  - **Visitors in low views:** sprites are knee-length, so in views from below (under the desk, the floor, the cage) a visitor is **off-frame** (voice and narration only) or a **blurred general silhouette**, never a full sprite.
 - **Her room from layers:** one base background + **props** with transparency (cage, mat by the bed, the commander's boots, a second mug, a collar on a hook) placed by data (`{ prop, x, y, scale, layer }`) per room variant chosen by the P15 frame; an optional per-unit room override.
 - **Pose shots per unit** (registry `poseShots`, optional): `{ kind, file, variant?: 'barefoot' | 'legwear', expression?, anchor, underlay }`. Kinds and what they are:
   - `from_below` — she stands over the viewer and looks down (kneeling, protocol, begging); underlay: the ceiling surface.
