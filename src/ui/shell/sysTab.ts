@@ -209,6 +209,7 @@ export function renderSysTab(host: HTMLElement, ctx: SysCtx): void {
     field('Readable mode (no scanlines, flicker, dithering or glitch; larger text)', checkbox('readableMode', settings.readableMode), 'readableMode'),
     field('Reduce motion (also follows the system setting)', checkbox('reducedMotion', settings.reducedMotion), 'reducedMotion'),
     field('Dithered portraits (PDA)', checkbox('ditheredPortraits', settings.ditheredPortraits), 'ditheredPortraits'),
+    field('Door timer (seconds a night knock waits, 0 = no timer)', numberInput('doorTimer', settings.doorTimer, (n) => apply({ doorTimer: n }).doorTimer, { min: '0', max: '60', step: '1' }), 'doorTimer'),
     field('Device skin', select('deviceSkin', skinOptions, skinOptions.some(([v]) => v === settings.deviceSkin) ? settings.deviceSkin : ''), 'deviceSkin'),
     h('h3', {}, 'Sound'),
     field('Volume (0–100)', numberInput('soundVolume', settings.soundVolume, (n) => apply({ soundVolume: n }).soundVolume, { min: '0', max: '100', step: '5' }), 'soundVolume'),

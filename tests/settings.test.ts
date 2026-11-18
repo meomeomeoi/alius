@@ -218,6 +218,21 @@ describe('settings', () => {
   });
 });
 
+describe('doorTimer (P10b)', () => {
+  it('defaults to 15 and keeps whole seconds from 0 to 60 only', () => {
+    const st = new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' });
+    expect(getSettings(st).doorTimer).toBe(15);
+    for (const ok of [0, 1, 30, 60]) {
+      st.settings = { doorTimer: ok };
+      expect(getSettings(st).doorTimer, String(ok)).toBe(ok);
+    }
+    for (const bad of [-1, 61, 7.5, '20', null]) {
+      st.settings = { doorTimer: bad };
+      expect(getSettings(st).doorTimer, String(bad)).toBe(15);
+    }
+  });
+});
+
 describe('P9d ruleWording', () => {
   it('defaults to on, a bad value falls back, an update is kept', () => {
     const st = new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' });

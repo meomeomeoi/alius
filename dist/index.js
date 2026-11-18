@@ -7571,7 +7571,7 @@ var DeviceSkinSchema = BaseEntrySchema.extend({
   }
 });
 Object.assign(registrySchemas, { deviceSkins: DeviceSkinSchema });
-var SOUND_IDS = ["open", "close", "tab", "notify", "alert", "stamp", "typing", "hum"];
+var SOUND_IDS = ["open", "close", "tab", "notify", "alert", "stamp", "typing", "hum", "knock"];
 var UiSoundSchema = BaseEntrySchema.extend({
   id: external_exports.enum(SOUND_IDS),
   file: str.optional(),
@@ -10270,11 +10270,11 @@ function decayRecords(draft) {
 function holdDefiance(draft, unitId, severity, source, sceneId) {
   if (draft.squad.find((u) => u.id === unitId)?.kind !== "named") return [];
   const list5 = disciplineOf(draft).defiance;
-  const held = list5.find((d) => d.unitId === unitId);
+  const held2 = list5.find((d) => d.unitId === unitId);
   const next = { unitId, severity, day: draft.day, source, ...sceneId !== void 0 ? { sceneId } : {} };
-  if (held) {
-    if (SEVERITIES.indexOf(severity) <= SEVERITIES.indexOf(held.severity)) return [];
-    list5[list5.indexOf(held)] = next;
+  if (held2) {
+    if (SEVERITIES.indexOf(severity) <= SEVERITIES.indexOf(held2.severity)) return [];
+    list5[list5.indexOf(held2)] = next;
   } else list5.push(next);
   return [{ type: "defiance_noted", unitId, severity, source }];
 }
@@ -10468,8 +10468,8 @@ function applyDisciplineEvent(draft, ctx2, unitId, event, src) {
       break;
     case "commander_yielded": {
       events.push(...addRecord(draft, unitId, TUNING.impunity.yielded[event.severity], "commander_yielded"));
-      const held = dropDefiance(draft, unitId);
-      if (held) events.push(...settleOne(draft, held));
+      const held2 = dropDefiance(draft, unitId);
+      if (held2) events.push(...settleOne(draft, held2));
       const threat = unitThreat(draft, unitId);
       if (threat) {
         removeThreat(draft, threat.id);
@@ -10538,8 +10538,8 @@ function expireRestrictions(draft) {
 }
 var NEXT = { morning: "afternoon", afternoon: "evening", evening: "morning", night: "morning" };
 function dutySlot(state) {
-  const held = state.scene !== void 0 || state.calendar.pendingScene !== void 0;
-  if (!held) return { day: state.day, slot: state.slot };
+  const held2 = state.scene !== void 0 || state.calendar.pendingScene !== void 0;
+  if (!held2) return { day: state.day, slot: state.slot };
   const slot2 = NEXT[state.slot];
   return { day: slot2 === "morning" ? state.day + 1 : state.day, slot: slot2 };
 }
@@ -11614,8 +11614,8 @@ function routineWeight(state, reg, room, unit2) {
 function place(state, reg, rooms, unit2) {
   const here = (room, reason) => room ? { unitId: unit2.id, roomId: room.id, reason } : null;
   if (state.expedition?.party.includes(unit2.id)) return { unitId: unit2.id, roomId: null, reason: "expedition" };
-  const held = activeRestrictions(state, unit2.id);
-  const found2 = (isInjured(unit2) ? here(hostOf(rooms, "injured"), "injured") : null) ?? (held.some((r) => r.kind === "confined") ? here(hostOf(rooms, "confined"), "confined") : null) ?? (held.some((r) => r.kind === "duty") ? here(hostOf(rooms, "duty"), "duty") : null) ?? (state.slot === "night" ? here(hostOf(rooms, "night"), "night") : null);
+  const held2 = activeRestrictions(state, unit2.id);
+  const found2 = (isInjured(unit2) ? here(hostOf(rooms, "injured"), "injured") : null) ?? (held2.some((r) => r.kind === "confined") ? here(hostOf(rooms, "confined"), "confined") : null) ?? (held2.some((r) => r.kind === "duty") ? here(hostOf(rooms, "duty"), "duty") : null) ?? (state.slot === "night" ? here(hostOf(rooms, "night"), "night") : null);
   if (found2) return found2;
   const booked = state.personal?.bookings?.find((b) => b.unitId === unit2.id && b.day === state.day && b.slot === state.slot && (b.status === "booked" || b.status === "played"));
   const bookedRoom = booked ? rooms.find((r) => r.sceneLocationId === reg.bookingKinds.get(booked.kindId)?.locationId) : void 0;
@@ -12661,11 +12661,11 @@ function ticks(draft, ctx2) {
 function facilityTimers(draft, ctx2) {
   const events = [];
   if (!draft.base.upgrades) return events;
-  const pending2 = [];
+  const pending3 = [];
   for (const up of draft.base.upgrades) {
     up.daysLeft -= 1;
     if (up.daysLeft > 0) {
-      pending2.push(up);
+      pending3.push(up);
       continue;
     }
     const max = facilityLevels(ctx2.registries, up.facilityId).length || up.toLevel;
@@ -12673,7 +12673,7 @@ function facilityTimers(draft, ctx2) {
     if (up.facilityId === "barracks") draft.roster.capacity = rosterCapacityFor(ctx2.registries, draft.base.facilities.barracks);
     events.push({ type: "facility_upgraded", facilityId: up.facilityId, level: draft.base.facilities[up.facilityId] });
   }
-  draft.base.upgrades = pending2;
+  draft.base.upgrades = pending3;
   return events;
 }
 var isQuietNight = (state) => state.slot === "night" && state.calendar.nightEvent === void 0;
@@ -14338,23 +14338,23 @@ function reputationDayStep(draft, ctx2) {
 function introduceNickname(draft, ctx2, unitId) {
   const reg = ctx2.registries;
   const rep = draft.commander.reputation;
-  const pending2 = rep?.pending;
-  if (!rep || !pending2) throw new Error("No nickname is waiting.");
+  const pending3 = rep?.pending;
+  if (!rep || !pending3) throw new Error("No nickname is waiting.");
   const scene = draft.scene;
   if (!scene || scene.participants.length !== 1 || scene.participants[0] !== unitId) throw new Error("A nickname is introduced in a private scene with the unit who says it.");
-  const entry = reg.reputations.get(pending2.id);
+  const entry = reg.reputations.get(pending3.id);
   if (!entry || !patternHolds(draft, entry)) {
     delete rep.pending;
     return [];
   }
   const name = String(entry.name);
-  rep.active = rep.active.filter((a) => a.id !== pending2.replaces);
-  rep.active.push({ id: pending2.id, name, sinceDay: draft.day, by: unitId });
+  rep.active = rep.active.filter((a) => a.id !== pending3.replaces);
+  rep.active.push({ id: pending3.id, name, sinceDay: draft.day, by: unitId });
   delete rep.pending;
   addFact(draft, { about: ["commander"], text: `The squad has started calling the commander "${name}".`, tags: ["reputation"], importance: 3, day: draft.day, knownBy: ["*"] });
   const events = [];
   const reactions = entry.effects?.valueReactions ?? [];
-  const flag = `nickname_reacted:${pending2.id}`;
+  const flag = `nickname_reacted:${pending3.id}`;
   for (const u of draft.squad.filter((x) => x.kind === "named" && isLiving(x))) {
     const rel = draft.relations[u.id];
     if (!rel || rel.flags.includes(flag)) continue;
@@ -14362,12 +14362,12 @@ function introduceNickname(draft, ctx2, unitId) {
     for (const r of reactions) {
       const v = u.values[r.axis];
       if (r.sign === "+" ? !(v > 0) : !(v < 0)) continue;
-      applyRelationDelta(draft, u.id, "trust", r.weight * TUNING.reputation.trustPerWeight, `nickname:${pending2.id}`);
-      applyRelationDelta(draft, u.id, "affinity", r.weight * TUNING.reputation.affinityPerWeight, `nickname:${pending2.id}`);
+      applyRelationDelta(draft, u.id, "trust", r.weight * TUNING.reputation.trustPerWeight, `nickname:${pending3.id}`);
+      applyRelationDelta(draft, u.id, "affinity", r.weight * TUNING.reputation.affinityPerWeight, `nickname:${pending3.id}`);
     }
     events.push(...evaluateAutomatic(draft, reg, u.id));
   }
-  events.push({ type: "nickname_given", id: pending2.id, name, unitId, ...pending2.replaces !== void 0 ? { replaced: pending2.replaces } : {} });
+  events.push({ type: "nickname_given", id: pending3.id, name, unitId, ...pending3.replaces !== void 0 ? { replaced: pending3.replaces } : {} });
   return events;
 }
 
@@ -14932,13 +14932,13 @@ var cleanText = (raw, max) => {
   return text2;
 };
 function answerQuestion(draft, _ctx, wagerId, raw) {
-  const pending2 = draft.personal?.pendingQuestion;
-  if (!pending2 || pending2.wagerId !== wagerId) throw new Error("There is no question waiting.");
+  const pending3 = draft.personal?.pendingQuestion;
+  if (!pending3 || pending3.wagerId !== wagerId) throw new Error("There is no question waiting.");
   const text2 = cleanText(raw, TUNING.personal.wager.answerMax);
-  const u = unitOf4(draft, pending2.unitId);
+  const u = unitOf4(draft, pending3.unitId);
   if (!u || !isLiving(u)) throw new Error("She is not here to answer.");
   delete draft.personal.pendingQuestion;
-  if (pending2.winner === "unit") {
+  if (pending3.winner === "unit") {
     addFact(draft, { about: [u.id, "commander"], text: `The commander answered ${u.displayName}'s question: ${text2}`, tags: ["wager", "answer"], importance: 3, day: draft.day, knownBy: [u.id] });
     return [{ type: "wager_question", wagerId, unitId: u.id, kind: "answered" }];
   }
@@ -16932,23 +16932,23 @@ function applyDirectorOutput(draft, ctx2, out, opts = {}) {
     events.push(rumorPostedEvent(posted));
     rumors++;
   }
-  let clocks = 0;
+  let clocks2 = 0;
   for (const c of out.clockAdvances) {
     const moved = advanceClock(draft, ctx2, c.clockId, c.by, c.reason || "director");
     events.push(...moved);
-    if (moved.some((e) => e.type === "clock_advanced")) clocks++;
+    if (moved.some((e) => e.type === "clock_advanced")) clocks2++;
     if (opts.fallback) (draft.world.director ??= {}).lastClockDay = draft.day;
   }
-  events.push({ type: "director_applied", offers, rumors, threads, clocks, beat, ...opts.fallback ? { fallback: true } : {} });
+  events.push({ type: "director_applied", offers, rumors, threads, clocks: clocks2, beat, ...opts.fallback ? { fallback: true } : {} });
   return events;
 }
 function answerRequest(draft, ctx2, requestId, raw, opts = {}) {
-  const pending2 = draft.world.director?.pending;
-  if (!pending2 || pending2.id !== requestId) throw new Error("Stale director answer.");
+  const pending3 = draft.world.director?.pending;
+  if (!pending3 || pending3.id !== requestId) throw new Error("Stale director answer.");
   const cooldownDays = Number.isFinite(opts.cooldownDays) ? clamp18(Math.round(opts.cooldownDays), 1, 14) : beatCooldownDays(draft);
-  const { output, rejected } = validateDirectorOutput(draft, ctx2.registries, raw(pending2), {
+  const { output, rejected } = validateDirectorOutput(draft, ctx2.registries, raw(pending3), {
     cooldownDays,
-    only: pending2.reason === "scout" ? "rumors" : void 0
+    only: pending3.reason === "scout" ? "rumors" : void 0
   });
   const events = applyDirectorOutput(draft, ctx2, output, { fallback: opts.fallback });
   delete draft.world.director.pending;
@@ -17627,8 +17627,8 @@ function checkExpedition(state, reg, p) {
     if (!isLiving(u) || u.status !== "active") return `${u.displayName} is not available (${u.status}).`;
     if (u.breakdown) return `${u.displayName} is in a breakdown.`;
     if (!state.roster.activeIds.includes(id)) return `${u.displayName} is not on the active roster.`;
-    const held = restrictionReason(state, id, "expedition");
-    if (held) return held;
+    const held2 = restrictionReason(state, id, "expedition");
+    if (held2) return held2;
   }
   const formation = formationProblem(ids, p.formation);
   if (formation) return formation;
@@ -18115,10 +18115,10 @@ function enterEvent(draft, ctx2, nodeId, isObjective, mission) {
 }
 var capital = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 function optionsOf(state, reg) {
-  const pending2 = state.expedition?.pending;
-  if (pending2?.kind !== "event") return null;
-  const fixed = reg.dilemmaTemplates.get(pending2.templateId)?.fixed;
-  return fixed ? { templateId: pending2.templateId, title: fixed.title, options: fixed.options } : null;
+  const pending3 = state.expedition?.pending;
+  if (pending3?.kind !== "event") return null;
+  const fixed = reg.dilemmaTemplates.get(pending3.templateId)?.fixed;
+  return fixed ? { templateId: pending3.templateId, title: fixed.title, options: fixed.options } : null;
 }
 function eventOptions(state, reg) {
   const found2 = optionsOf(state, reg);
@@ -19896,14 +19896,14 @@ registerAction("scene/start", (draft, payload, ctx2) => {
     const u = draft.squad.find((x) => x.id === id);
     if (!u || !isLiving(u)) throw new Error(`Participant "${id}" is not available.`);
     if (u.kind === "grunt") throw new Error(`${u.displayName} is a grunt without a character card; grunts cannot take part in scenes.`);
-    const held = origin === "night" ? null : restrictionReason(draft, id, "scene");
-    if (held) throw new Error(held);
+    const held2 = origin === "night" ? null : restrictionReason(draft, id, "scene");
+    if (held2) throw new Error(held2);
   }
   const participants = ids;
-  const pending2 = draft.calendar.pendingScene;
+  const pending3 = draft.calendar.pendingScene;
   if (origin === "activity") {
-    if (!pending2 || pending2.unitId !== participants[0]) throw new Error("The conversation (talk) for this scene is not open.");
-  } else if (pending2) {
+    if (!pending3 || pending3.unitId !== participants[0]) throw new Error("The conversation (talk) for this scene is not open.");
+  } else if (pending3) {
     throw new Error("A conversation is still open; end it first.");
   }
   if (origin === "night" && draft.slot !== "night") throw new Error("Night scenes only start in the Night slot.");
@@ -20895,9 +20895,9 @@ registerAction("director/request", (draft, payload) => {
 });
 registerDayEndStep("director_tick", (draft, ctx2) => {
   const events = [];
-  const pending2 = draft.world.director?.pending;
-  if (pending2) {
-    events.push(...answerRequest(draft, ctx2, pending2.id, () => fallbackOutput(draft, ctx2.registries, ctx2.rng), {
+  const pending3 = draft.world.director?.pending;
+  if (pending3) {
+    events.push(...answerRequest(draft, ctx2, pending3.id, () => fallbackOutput(draft, ctx2.registries, ctx2.rng), {
       cooldownDays: beatCooldownDays(draft),
       fallback: true
     }));
@@ -22433,7 +22433,7 @@ async function runDilemmaGenerate(input, deps) {
 
 // src/loyalty/dilemmaController.ts
 function createDilemmas(deps) {
-  const running = /* @__PURE__ */ new Set();
+  const running2 = /* @__PURE__ */ new Set();
   const chatId = () => deps.st.getActiveChat()?.chatId;
   function answer(action, chat) {
     const events = deps.app.dispatch(action, { expectChatId: chat });
@@ -22452,8 +22452,8 @@ function createDilemmas(deps) {
     const first2 = deps.app.current().state?.dilemmas?.open;
     const chat = chatId();
     const key = `${chat ?? ""}:${first2?.id ?? ""}`;
-    if (!first2 || first2.status !== "requested" || first2.context === "scapegoat" || running.has(key)) return;
-    running.add(key);
+    if (!first2 || first2.status !== "requested" || first2.context === "scapegoat" || running2.has(key)) return;
+    running2.add(key);
     try {
       const settings = deps.settings();
       const fallback = (id) => void answer({ type: "dilemma/fallback", payload: { requestId: id } }, chat);
@@ -22481,7 +22481,7 @@ function createDilemmas(deps) {
         if (events.find((e) => e.type === "dilemma_rejected")?.retry !== true) return;
       }
     } finally {
-      running.delete(key);
+      running2.delete(key);
     }
   }
   function choose(index2, route) {
@@ -22497,7 +22497,7 @@ function createDilemmas(deps) {
     if (failed && failed.message !== "Stale dilemma answer.") deps.toast("error", String(failed.message ?? failed.code));
     return events;
   }
-  return { onRequested, choose, busy: () => running.size > 0 };
+  return { onRequested, choose, busy: () => running2.size > 0 };
 }
 
 // src/discipline/directives.ts
@@ -23057,10 +23057,10 @@ function createPersonal(deps) {
       return act("device/resolve_intercept", { id, keep });
     },
     async answerEdit(keep) {
-      const pending2 = await controller.pendingEdit();
-      if (!pending2 || !controller.resolveIntercept(pending2.id, keep)) return null;
-      wording.delete(keyOf(pending2.id));
-      return keep ? { unitId: pending2.toUnitId, text: pending2.edited, interceptId: pending2.id } : { unitId: pending2.toUnitId, text: pending2.original };
+      const pending3 = await controller.pendingEdit();
+      if (!pending3 || !controller.resolveIntercept(pending3.id, keep)) return null;
+      wording.delete(keyOf(pending3.id));
+      return keep ? { unitId: pending3.toUnitId, text: pending3.edited, interceptId: pending3.id } : { unitId: pending3.toUnitId, text: pending3.original };
     },
     onSlotAdvanced: playDue,
     onLoaded: playDue,
@@ -23862,9 +23862,9 @@ function createOnboarding(deps) {
       const step = s ? currentStep(s, reg()) : null;
       if (!s || !step || step.kind !== "scene" || step.perUnit !== true || s.scene) return false;
       if (!livingNamed(s).some((u) => u.id === unitId) || s.onboarding?.spoken?.includes(unitId)) return false;
-      const held = restrictionReason(s, unitId, "scene");
-      if (held) {
-        deps.toast("warn", held);
+      const held2 = restrictionReason(s, unitId, "scene");
+      if (held2) {
+        deps.toast("warn", held2);
         return false;
       }
       return open3(step, [unitId]);
@@ -24150,14 +24150,14 @@ function renderOnboardingCard(host, ctx2) {
     const spoken = new Set(state.onboarding?.spoken ?? []);
     body.append(h("ul", { class: "alius-onboarding-units" }, ...livingNamed(state).map((u) => {
       const done = spoken.has(u.id);
-      const held = restrictionReason(state, u.id, "scene");
+      const held2 = restrictionReason(state, u.id, "scene");
       return h(
         "li",
         { class: "alius-onboarding-unit", "data-unit": u.id },
         h("span", { class: "alius-onboarding-name" }, `${done ? "\u2713 " : ""}${u.displayName}`),
-        done ? null : button("[ TALK ]", "talk", address, () => void controller.talkFirstWords(u.id), held ?? scene !== void 0),
+        done ? null : button("[ TALK ]", "talk", address, () => void controller.talkFirstWords(u.id), held2 ?? scene !== void 0),
         done ? null : button("[ SKIP ]", "skip-unit", address, () => controller.skipFirstWords(u.id)),
-        held && !done ? h("span", { class: "alius-dim alius-reason" }, held) : null
+        held2 && !done ? h("span", { class: "alius-dim alius-reason" }, held2) : null
       );
     })));
     body.append(h("div", { class: "alius-row" }, skip()));
@@ -24386,7 +24386,8 @@ var DEFAULT_SETTINGS = {
   ditheredPortraits: true,
   soundVolume: 20,
   soundMuted: false,
-  ambientHum: false
+  ambientHum: false,
+  doorTimer: 15
 };
 var fieldSchemas = {
   mechanicProfileId: external_exports.string(),
@@ -24434,7 +24435,8 @@ var fieldSchemas = {
   ditheredPortraits: external_exports.boolean(),
   soundVolume: external_exports.number().int().min(0).max(100),
   soundMuted: external_exports.boolean(),
-  ambientHum: external_exports.boolean()
+  ambientHum: external_exports.boolean(),
+  doorTimer: external_exports.number().int().min(0).max(60)
 };
 var budgetSchema = external_exports.number().int().min(1);
 var isObj29 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -25755,7 +25757,7 @@ function createComms(deps) {
     if (e && e.code !== "chat_changed") deps.toast("error", String(e.message ?? e.code));
     return e !== void 0;
   };
-  async function readExchange(expect, unitId, commanderText, reply) {
+  async function readExchange(expect, unitId, commanderText, reply, opts = {}) {
     const s = state();
     const unit2 = s?.squad.find((u) => u.id === unitId);
     const rel = s?.relations[unitId];
@@ -25778,7 +25780,7 @@ function createComms(deps) {
     }, { st, settings: deps.settings() }, { minConfidence: confidenceFloor(deps.registries(), deps.settings().intentMinConfidence) });
     if (!result || chatId() !== expect) return;
     const intents = { ...result.intents, proposals: result.intents.proposals.filter((p) => p.from !== "commander") };
-    const lastId = threadOf(s, unitId).at(-1)?.id;
+    const lastId = opts.door === true ? void 0 : threadOf(s, unitId).at(-1)?.id;
     const flagged = result.contentViolations.map((v) => v.category);
     const events = app.dispatch({
       type: "intents/apply",
@@ -25852,6 +25854,23 @@ function createComms(deps) {
     async initiate(unitId) {
       if (!deps.settings().unitDms) return;
       await initiateOne(unitId, chatId());
+    },
+    async throughDoor(text2) {
+      const expect = chatId();
+      const said = app.dispatch({ type: "night/door_say", payload: { text: text2 } }, { expectChatId: expect });
+      if (failed(said)) return;
+      const s = state();
+      const entry = s?.calendar.nightEvent;
+      const unit2 = s?.squad.find((u) => u.id === entry?.unitId);
+      const line2 = entry?.door?.said;
+      if (!s || !entry || !unit2 || line2 === void 0) return;
+      const input = replyInput(s, deps, unit2, "door");
+      input.history = [...input.history, { from: "commander", text: line2 }];
+      const reply = await generateDm(input, { st, settings: deps.settings(), contentLine: deps.contentLine });
+      if (reply === null || chatId() !== expect) return;
+      const stored = app.dispatch({ type: "night/door_reply", payload: { text: reply } }, { expectChatId: expect });
+      if (failed(stored)) return;
+      await readExchange(expect, unit2.id, line2, reply, { door: true });
     },
     async openNight() {
       const events = app.dispatch({ type: "night/open", payload: {} }, { expectChatId: chatId() });
@@ -26452,7 +26471,7 @@ function createSceneController(deps) {
   let extracting = false;
   const swipedWhileExtracting = /* @__PURE__ */ new Set();
   let awaitingReextract = false;
-  let pending2 = false;
+  let pending3 = false;
   let inflight = null;
   let openingRun = null;
   let openedScene = null;
@@ -26668,7 +26687,7 @@ function createSceneController(deps) {
       if (exchanges >= settings.scenePacing) deps.onUi({ type: "pacing" });
       deps.onUi({ type: "transcript" });
     } finally {
-      pending2 = false;
+      pending3 = false;
     }
   }
   let selfEdit = null;
@@ -26722,9 +26741,9 @@ function createSceneController(deps) {
       return true;
     },
     send(text2) {
-      if (text2.trim() !== "" && pending2 && openingRun) return openingRun.then(() => controller.send(text2));
-      if (text2.trim() === "" || pending2 || !state()?.scene) return Promise.resolve();
-      pending2 = true;
+      if (text2.trim() !== "" && pending3 && openingRun) return openingRun.then(() => controller.send(text2));
+      if (text2.trim() === "" || pending3 || !state()?.scene) return Promise.resolve();
+      pending3 = true;
       const run = sendNow(text2.trim());
       inflight = run;
       void run.finally(() => {
@@ -26734,10 +26753,10 @@ function createSceneController(deps) {
     },
     opening() {
       const scene = state()?.scene;
-      if (pending2 || !scene) return Promise.resolve();
+      if (pending3 || !scene) return Promise.resolve();
       if (openedScene === scene.id || st.getChatMessages(Math.min(scene.startIndex, st.chatLength())).length > 0) return Promise.resolve();
       openedScene = scene.id;
-      pending2 = true;
+      pending3 = true;
       const run = (async () => {
         const expect = chatId();
         try {
@@ -26758,7 +26777,7 @@ function createSceneController(deps) {
           await showSprites(replies, false);
           deps.onUi({ type: "transcript" });
         } finally {
-          pending2 = false;
+          pending3 = false;
         }
       })();
       inflight = run;
@@ -26821,7 +26840,7 @@ function createSceneController(deps) {
       const s = state();
       const scene = s?.scene;
       if (!s || !scene) return;
-      pending2 = true;
+      pending3 = true;
       try {
         if (st.getChatMessages(extracted).some((m) => !m.isUser)) await extract2(expect);
         const names = (ids) => ids.map((id) => ({ id, name: unitById(s, id)?.displayName ?? id }));
@@ -26843,7 +26862,7 @@ function createSceneController(deps) {
         if (disposed || chatId() !== expect) return;
         dispatch2({ type: "scene/end", payload: { ...summary ? { summary } : {}, endIndex: st.chatLength() - 1 } }, expect);
       } finally {
-        pending2 = false;
+        pending3 = false;
         lastApply = null;
         awaitingReextract = false;
         if (chatId() === expect) {
@@ -31063,10 +31082,10 @@ function regionPanel(state, region, ctx2) {
   );
   const categories = Object.keys(region.enemyTable.categories).map((id) => String(reg.enemyCategories.get(id)?.name ?? id));
   panel.append(h("h3", {}, "KNOWN HOSTILES"), h("p", {}, categories.length > 0 ? categories.join(", ") : "NONE REPORTED"));
-  const clocks = state.world.clocks.filter((c) => c.visibleToPlayer && (c.regionId === void 0 || c.regionId === region.id));
+  const clocks2 = state.world.clocks.filter((c) => c.visibleToPlayer && (c.regionId === void 0 || c.regionId === region.id));
   panel.append(h("h3", {}, "CLOCKS"));
-  if (clocks.length === 0) panel.append(h("p", { class: "alius-dim" }, "NOTHING TO REPORT"));
-  for (const c of clocks) panel.append(h("p", { class: "alius-clock" }, `${c.label} ${bar(c.filled, c.segments, c.segments)} ${c.filled}/${c.segments}`));
+  if (clocks2.length === 0) panel.append(h("p", { class: "alius-dim" }, "NOTHING TO REPORT"));
+  for (const c of clocks2) panel.append(h("p", { class: "alius-clock" }, `${c.label} ${bar(c.filled, c.segments, c.segments)} ${c.filled}/${c.segments}`));
   panel.append(h("h3", {}, "MISSIONS"));
   const missions = state.missions.offered.filter((m) => m.regionId === region.id);
   if (missions.length === 0) panel.append(h("p", { class: "alius-dim" }, "NO MISSIONS POSTED HERE"));
@@ -31199,16 +31218,16 @@ function renderMapTab(host, ctx2) {
 // src/ui/expedition/herCallCard.ts
 function renderHerCallCard(state, reg, onAck) {
   const exp = state.expedition;
-  const pending2 = exp?.pending;
-  if (!exp || pending2?.kind !== "event" || !pending2.herCall) return null;
-  const { unitId, outcome } = pending2.herCall;
-  const template = reg.dilemmaTemplates.get(pending2.templateId);
+  const pending3 = exp?.pending;
+  if (!exp || pending3?.kind !== "event" || !pending3.herCall) return null;
+  const { unitId, outcome } = pending3.herCall;
+  const template = reg.dilemmaTemplates.get(pending3.templateId);
   const title = template?.fixed?.title ?? "A decision in the field";
   const said = herCallSpecOf(template)?.outcomes.find((o) => o.id === outcome)?.text;
   const name = state.squad.find((u) => u.id === unitId)?.displayName ?? unitId;
   const mission = state.missions.active.find((m) => m.id === exp.missionId);
-  const marked = outcome === "bad" && mission?.decidedBy?.source === "her_call" && mission.decidedBy.nodeId === pending2.nodeId;
-  const ctx2 = { unitId, nodeId: pending2.nodeId, missionId: exp.missionId };
+  const marked = outcome === "bad" && mission?.decidedBy?.source === "her_call" && mission.decidedBy.nodeId === pending3.nodeId;
+  const ctx2 = { unitId, nodeId: pending3.nodeId, missionId: exp.missionId };
   const body = h(
     "div",
     {},
@@ -31217,7 +31236,7 @@ function renderHerCallCard(state, reg, onAck) {
     h("button", { type: "button", class: "alius-btn alius-option", "data-ack-her-call": "", ...analyzeNative("glossary:her_call", ctx2), onclick: onAck }, "[ ACKNOWLEDGE ]")
   );
   const card2 = renderVoiceCard({ voice: VOICE_OF.her_call, title, body, accent: unitAccent(unitId), level: 3 });
-  card2.setAttribute("data-her-call", pending2.nodeId);
+  card2.setAttribute("data-her-call", pending3.nodeId);
   for (const [k, v] of Object.entries(analyzeAttrs("glossary:her_call", ctx2))) card2.setAttribute(k, v);
   return card2;
 }
@@ -31557,17 +31576,17 @@ function renderExpeditionScreen(host, ctx2) {
     }
   }
   function eventPanel(root, state) {
-    const pending2 = state.expedition.pending;
-    if (pending2?.kind !== "event") return;
+    const pending3 = state.expedition.pending;
+    if (pending3?.kind !== "event") return;
     const notice = renderHerCallCard(state, reg, () => controller.ackHerCall());
     if (notice) {
       root.append(h("section", { class: "alius-section alius-event" }, notice));
       return;
     }
-    const fixed = reg.dilemmaTemplates.get(pending2.templateId)?.fixed;
+    const fixed = reg.dilemmaTemplates.get(pending3.templateId)?.fixed;
     const panel = h("section", { class: "alius-section alius-event" }, h("h3", {}, fixed?.title ?? "EVENT"), h("p", {}, fixed?.setup ?? ""));
     const generated = state.dilemmas?.open;
-    if (ctx2.onDilemmaChoose && generated && generated.context === "expedition_event" && generated.templateId === pending2.templateId) {
+    if (ctx2.onDilemmaChoose && generated && generated.context === "expedition_event" && generated.templateId === pending3.templateId) {
       const slot2 = h("div", { class: "alius-dilemma-host" });
       panel.replaceChildren(slot2);
       renderDilemma(slot2, {
@@ -31780,8 +31799,8 @@ function registerWorldContext(builder, deps) {
       const spine = proposed === void 0 ? void 0 : open3.find((t) => t.id === `spine:${proposed}`);
       const thread = own ?? spine;
       if (thread) sentences.push(`Ongoing: ${thread.title}.`);
-      const clocks = s.world.clocks.filter((c) => c.visibleToPlayer && c.filled * 2 > c.segments).sort((a, b) => b.filled / b.segments - a.filled / a.segments).slice(0, Math.min(MAX_CLOCKS, MAX_SENTENCES - sentences.length));
-      for (const c of clocks) sentences.push(`Pressure: ${c.label} is at ${c.filled}/${c.segments}.`);
+      const clocks2 = s.world.clocks.filter((c) => c.visibleToPlayer && c.filled * 2 > c.segments).sort((a, b) => b.filled / b.segments - a.filled / a.segments).slice(0, Math.min(MAX_CLOCKS, MAX_SENTENCES - sentences.length));
+      for (const c of clocks2) sentences.push(`Pressure: ${c.label} is at ${c.filled}/${c.segments}.`);
       return sentences.length === 0 ? null : sentences.join(" ");
     }
   });
@@ -31841,7 +31860,7 @@ function worldDirectives(builder, state, reg) {
 
 // src/world/directorController.ts
 function createDirector(deps) {
-  const running = /* @__PURE__ */ new Set();
+  const running2 = /* @__PURE__ */ new Set();
   const chatId = () => deps.st.getActiveChat()?.chatId;
   function answer(action, chat) {
     const events = deps.app.dispatch(action, { expectChatId: chat });
@@ -31857,30 +31876,30 @@ function createDirector(deps) {
   }
   async function onRequested() {
     const state = deps.app.current().state;
-    const pending2 = state?.world.director?.pending;
+    const pending3 = state?.world.director?.pending;
     const chat = chatId();
-    const key = `${chat ?? ""}:${pending2?.id ?? ""}`;
-    if (!state || !pending2 || running.has(key)) return;
-    running.add(key);
+    const key = `${chat ?? ""}:${pending3?.id ?? ""}`;
+    if (!state || !pending3 || running2.has(key)) return;
+    running2.add(key);
     try {
       const settings = deps.settings();
       if (!settings.directorEnabled) {
-        answer({ type: "director/fallback", payload: { requestId: pending2.id } }, chat);
+        answer({ type: "director/fallback", payload: { requestId: pending3.id } }, chat);
         return;
       }
       const output = await runDirectorTick(
-        { digest: buildDigest(state, deps.registries()), reason: pending2.reason, recent: publicRecent(state), worldDossier: worldDossier(state) },
+        { digest: buildDigest(state, deps.registries()), reason: pending3.reason, recent: publicRecent(state), worldDossier: worldDossier(state) },
         // P3b: public memory only
         { st: deps.st, settings }
       );
       if (chatId() !== chat) return;
-      if (output === null) answer({ type: "director/fallback", payload: { requestId: pending2.id } }, chat);
-      else answer({ type: "director/apply", payload: { requestId: pending2.id, output, beatCooldownDays: settings.beatCooldownDays } }, chat);
+      if (output === null) answer({ type: "director/fallback", payload: { requestId: pending3.id } }, chat);
+      else answer({ type: "director/apply", payload: { requestId: pending3.id, output, beatCooldownDays: settings.beatCooldownDays } }, chat);
     } finally {
-      running.delete(key);
+      running2.delete(key);
     }
   }
-  return { onRequested, busy: () => running.size > 0 };
+  return { onRequested, busy: () => running2.size > 0 };
 }
 
 // src/world/expeditionController.ts
@@ -32027,9 +32046,9 @@ var pendingOf = (state, id) => (state.base.upgrades ?? []).find((u) => u.facilit
 function schematic(state, reg) {
   const boxes = [...reg.facilities.values()].map((f) => {
     const levels = facilityLevels(reg, f.id);
-    const pending2 = pendingOf(state, f.id);
+    const pending3 = pendingOf(state, f.id);
     const head = ` ${String(f.name).toUpperCase()}`.padEnd(BOX_INNER).slice(0, BOX_INNER);
-    const level = ` L${facilityLevel2(state, f.id)}/${levels.length}${pending2 ? `  ^ ${pending2.daysLeft}d` : ""}`.padEnd(BOX_INNER).slice(0, BOX_INNER);
+    const level = ` L${facilityLevel2(state, f.id)}/${levels.length}${pending3 ? `  ^ ${pending3.daysLeft}d` : ""}`.padEnd(BOX_INNER).slice(0, BOX_INNER);
     const rule = `+${"-".repeat(BOX_INNER)}+`;
     return [rule, `|${head}|`, `|${level}|`, rule];
   });
@@ -32044,9 +32063,9 @@ function schematic(state, reg) {
 function facilityCard(state, f, ctx2) {
   const levels = facilityLevels(ctx2.registries, f.id);
   const level = facilityLevel2(state, f.id);
-  const pending2 = pendingOf(state, f.id);
+  const pending3 = pendingOf(state, f.id);
   const card2 = h("article", { class: "alius-facility", "data-facility": f.id }, h("h3", {}, `${String(f.name)} \u2014 `, h("span", { class: "alius-stat", ...analyzeAttrs(`facilities:${f.id}`) }, `LEVEL ${level}/${levels.length}`)), h("p", { class: "alius-dim" }, String(f.summary)));
-  if (pending2) card2.append(h("p", {}, `UPGRADING TO L${pending2.toLevel} ^ ${pending2.daysLeft}d`));
+  if (pending3) card2.append(h("p", {}, `UPGRADING TO L${pending3.toLevel} ^ ${pending3.daysLeft}d`));
   if (level >= levels.length) {
     card2.append(h("p", { class: "alius-dim" }, "MAX LEVEL"));
     return card2;
@@ -32663,8 +32682,8 @@ function renderCommsTab(host, ctx2) {
     const disciplineChips = h("div", { class: "alius-chips alius-discipline-chips" });
     drawDisciplineChips(disciplineChips, state, ctx2.registries, (c) => c.channel === "dm" && c.unitId === current, (id) => ctx2.onUndoDiscipline?.(id));
     const input = h("input", { type: "text", name: "dm", class: "alius-input", autocomplete: "off", "aria-label": `Message ${unit2.displayName}` });
-    const pending2 = ctx2.edit?.() ?? null;
-    const waiting2 = pending2 !== null && pending2.toUnitId === current ? pending2 : null;
+    const pending3 = ctx2.edit?.() ?? null;
+    const waiting2 = pending3 !== null && pending3.toUnitId === current ? pending3 : null;
     input.value = waiting2 ? waiting2.edited : drafts.get(host) ?? "";
     if (waiting2) input.readOnly = true;
     else input.addEventListener("input", () => drafts.set(host, input.value));
@@ -32847,7 +32866,7 @@ function oversightLog(state) {
 }
 
 // src/ui/night/knock.ts
-var DOOR = [
+var DOOR_ART = [
   "  \u250C\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510",
   "  \u2502 \u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591 \u2502",
   "  \u2502 \u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591 \u2502",
@@ -32856,31 +32875,153 @@ var DOOR = [
   "  \u2502          \u25CF \u2502",
   "  \u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518"
 ].join("\n");
-function renderKnock(host, ctx2) {
+
+// src/ui/night/door.ts
+var DOOR_SAY_MAX2 = 300;
+var TICK_MS = 250;
+var clocks = /* @__PURE__ */ new Map();
+var pending2 = /* @__PURE__ */ new Set();
+var knocked = /* @__PURE__ */ new WeakMap();
+var running = /* @__PURE__ */ new WeakMap();
+function held(entry, input) {
+  if (pending2.has(entry.id) || document.hidden) return true;
+  if (document.querySelector(".alius-modal-backdrop") || document.querySelector(".alius-analyze")) return true;
+  return input !== null && (input.value !== "" || document.activeElement === input);
+}
+function renderDoor(host, ctx2) {
+  running.get(host)?.();
+  running.delete(host);
   host.replaceChildren();
-  const framing = h("p", { class: "alius-knock-text" });
-  framing.textContent = ctx2.entry.framing;
-  const art = h("pre", { class: "alius-ascii", "aria-hidden": "true" });
-  art.textContent = DOOR;
+  const { entry } = ctx2;
+  const heard = knocked.get(host) ?? /* @__PURE__ */ new Set();
+  knocked.set(host, heard);
+  const firstKnock = !heard.has(entry.id);
+  heard.add(entry.id);
+  const art = h("div", { class: "alius-door-art", "aria-hidden": "true" });
+  const sprite = ctx2.readable ? null : ctx2.silhouette?.() ?? null;
+  if (ctx2.readable) {
+    art.classList.add("is-solid");
+    art.append(h("div", { class: "alius-door-shape" }));
+  } else if (sprite) {
+    art.append(h("div", { class: "alius-door-silhouette" }, sprite));
+  } else {
+    art.append(h("pre", { class: "alius-ascii" }, DOOR_ART));
+  }
+  if (firstKnock && ctx2.motion) art.classList.add("is-knocking");
+  if (firstKnock) ctx2.sound?.play("knock");
+  const framing = h("p", { class: "alius-knock-text" }, entry.framing);
+  const lines = h("div", { class: "alius-door-lines" });
+  if (entry.door) {
+    lines.append(h("p", { class: "alius-door-said" }, `YOU: ${entry.door.said}`));
+    lines.append(h("p", entry.door.reply !== void 0 ? { class: "alius-door-reply" } : { class: "alius-door-silence alius-dim" }, entry.door.reply !== void 0 ? `${ctx2.unitName.toUpperCase()}: ${entry.door.reply}` : "No answer through the door."));
+  }
+  const status = h("p", { class: "alius-door-status alius-dim", role: "status" });
+  const phase = entry.door ? "exchanged" : "fresh";
+  let clock = clocks.get(entry.id);
+  if (!clock || clock.phase !== phase) clocks.set(entry.id, clock = { remaining: ctx2.seconds, phase });
+  const fill4 = h("span", { class: "alius-door-fill" });
+  const live = h("span", { class: "alius-door-count", "aria-live": "polite" });
+  const timer = ctx2.seconds > 0 ? h("div", { class: `alius-door-timer${ctx2.motion ? " is-animated" : ""}` }, h("div", { class: "alius-door-bar", "aria-hidden": "true" }, fill4), live) : null;
+  const paint = () => {
+    fill4.style.width = `${Math.max(0, Math.min(100, clock.remaining / ctx2.seconds * 100))}%`;
+  };
+  if (timer) paint();
   let used = false;
   const buttons = [];
-  const press = (fn) => () => {
-    if (used) return;
+  const lock = () => {
     used = true;
     for (const b of buttons) b.disabled = true;
+  };
+  const press = (fn) => () => {
+    if (used) return;
+    lock();
+    stop();
+    clocks.delete(entry.id);
     fn();
   };
-  const open3 = h("button", { type: "button", class: "alius-btn", "data-action": "open", onclick: press(ctx2.onOpen) }, "[OPEN]");
-  const ignore = h("button", { type: "button", class: "alius-btn", "data-action": "ignore", onclick: press(ctx2.onIgnore) }, "[IGNORE]");
-  buttons.push(open3, ignore);
+  const option = (action, text2, onclick) => {
+    const b = h("button", { type: "button", class: "alius-btn alius-option", "data-action": action, ...analyzeNative("glossary:night_door"), onclick });
+    b.textContent = text2;
+    buttons.push(b);
+    return b;
+  };
+  let input = null;
+  const form = h("div", { class: "alius-door-form" });
+  const openForm = () => {
+    if (input || used || pending2.has(entry.id)) return;
+    input = h("input", { type: "text", class: "alius-input alius-door-input", name: "door", maxlength: String(DOOR_SAY_MAX2), autocomplete: "off", "aria-label": `Say something through the door to ${ctx2.unitName}` });
+    const sendButton = h("button", { type: "button", class: "alius-btn", "data-action": "send-door", onclick: send }, "[SAY]");
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") send();
+    });
+    form.append(input, sendButton);
+    input.focus({ preventScroll: true });
+  };
+  function send() {
+    const text2 = input?.value.trim() ?? "";
+    if (!input || text2 === "" || used || pending2.has(entry.id)) return;
+    pending2.add(entry.id);
+    input.disabled = true;
+    form.querySelector("button")?.setAttribute("disabled", "");
+    for (const b of buttons) b.disabled = true;
+    status.textContent = `${ctx2.unitName} is answering\u2026`;
+    void Promise.resolve(ctx2.onSay(text2)).catch(() => void 0).finally(() => {
+      pending2.delete(entry.id);
+      if (!host.isConnected) return;
+      if (ctx2.onChanged) ctx2.onChanged();
+      else renderDoor(host, ctx2);
+    });
+  }
+  const row2 = h("div", { class: "alius-row" }, option("open", "[OPEN]", press(ctx2.onOpen)));
+  if (!entry.door) row2.append(option("say", "[SAY SOMETHING THROUGH THE DOOR]", openForm));
+  row2.append(option("ignore", "[STAY SILENT]", press(ctx2.onSilent)));
   host.append(h(
     "section",
-    { class: "alius-section alius-knock", "aria-label": `${ctx2.unitName} at the door` },
-    h("h2", {}, "[ NIGHT // KNOCK ]"),
+    { class: "alius-section alius-door alius-knock", "aria-label": `${ctx2.unitName} at the door` },
+    h("h2", {}, "[ NIGHT // DOOR ]"),
     art,
     framing,
-    h("div", { class: "alius-row" }, open3, ignore)
+    lines,
+    status,
+    ...timer ? [timer] : [],
+    form,
+    row2
   ));
+  if (pending2.has(entry.id)) {
+    status.textContent = `${ctx2.unitName} is answering\u2026`;
+    for (const b of buttons) b.disabled = true;
+  }
+  if (ctx2.seconds <= 0) return;
+  let said10 = clock.remaining <= 10;
+  let said5 = clock.remaining <= 5;
+  let handle = null;
+  function stop() {
+    if (handle !== null) clearInterval(handle);
+    handle = null;
+    running.delete(host);
+  }
+  running.set(host, stop);
+  handle = setInterval(() => {
+    if (!host.isConnected || used) return stop();
+    if (held(entry, input)) return;
+    clock.remaining = Math.max(0, clock.remaining - TICK_MS / 1e3);
+    paint();
+    if (!said10 && clock.remaining <= 10) {
+      said10 = true;
+      live.textContent = "10 seconds left";
+    }
+    if (!said5 && clock.remaining <= 5) {
+      said5 = true;
+      live.textContent = "5 seconds left";
+    }
+    if (clock.remaining <= 0) {
+      live.textContent = "0 seconds left: the door stays shut and she leaves";
+      lock();
+      stop();
+      clocks.delete(entry.id);
+      ctx2.onSilent();
+    }
+  }, TICK_MS);
 }
 
 // src/ui/scene/locationPicker.ts
@@ -32917,7 +33058,7 @@ async function pickLocation(modal, ctx2) {
 
 // src/ui/scene/sceneScreen.ts
 var PULSE_MS = 1500;
-var TICK_MS = 50;
+var TICK_MS2 = 50;
 var NON_ROMANTIC_KINDS = ["friendship_deepen", "confide", "rivalry", "reconcile", "break_up"];
 var ALL_KINDS = [...NON_ROMANTIC_KINDS, ...ROMANTIC_PROPOSALS];
 var label = kindLabel;
@@ -32967,7 +33108,7 @@ function renderSceneScreen(host, ctx2) {
   const root = h("div", { class: "alius-scene" });
   host.append(root);
   let pacing = false;
-  let pending2 = false;
+  let pending3 = false;
   let disposed = false;
   let seen = -1;
   let animating = null;
@@ -33073,7 +33214,7 @@ function renderSceneScreen(host, ctx2) {
       follow: () => controller.follow?.(),
       ask: () => controller.ask?.(),
       limit: (text2) => controller.limit?.(text2)
-    }, pending2);
+    }, pending3);
     drawRuleChips(ruleChips, s, registries, (c) => ids.has(c.unitId), {
       accept: (id) => ctx2.onAnswerRule?.(id, "accept"),
       negotiate: (id) => ctx2.onAnswerRule?.(id, "negotiate"),
@@ -33114,7 +33255,7 @@ function renderSceneScreen(host, ctx2) {
     const messages = controller.transcript();
     const lastIndex = messages.length > 0 ? messages[messages.length - 1].index : -1;
     const speed = typingSpeed();
-    if (pending2) {
+    if (pending3) {
       stopTyping();
       if (lastIndex > seen) seen = lastIndex;
     } else {
@@ -33159,7 +33300,7 @@ function renderSceneScreen(host, ctx2) {
         "data-edit": m.index,
         "aria-label": "Edit message",
         title: "Edit this message",
-        disabled: pending2,
+        disabled: pending3,
         onclick: () => {
           editing = { index: m.index, value: m.text, focus: true };
           drawLog(s);
@@ -33168,7 +33309,7 @@ function renderSceneScreen(host, ctx2) {
       const line2 = h("div", { class: `alius-line${m.isUser ? " is-user" : ""}`, "data-index": m.index }, speaker, " ", text2, " ", edit);
       const flagged = s.scene?.violations?.find((v) => v.index === m.index);
       if (flagged && !m.isUser) drawViolation(line2, violationLabels(registries, flagged.categories), () => void st.regenerateLast().catch(() => {
-      }), pending2);
+      }), pending3);
       return line2;
     }));
     if (messages.length === 0) {
@@ -33195,7 +33336,7 @@ function renderSceneScreen(host, ctx2) {
           progress.delete(idx);
           stopTyping();
         }
-      }, TICK_MS);
+      }, TICK_MS2);
     }
   }
   function drawBanner() {
@@ -33242,17 +33383,17 @@ function renderSceneScreen(host, ctx2) {
     caption = h("div", { class: "alius-stage-caption" });
     input = h("input", { type: "text", name: "cmd", class: "alius-input", autocomplete: "off", "aria-label": "Command line" });
     input.addEventListener("keydown", (ev) => {
-      if (ev.key !== "Enter" || pending2) return;
+      if (ev.key !== "Enter" || pending3) return;
       const text2 = input.value.trim();
       if (text2 === "") return;
       const order = orderOn && ctx2.onOrder !== void 0 ? ctx2.onOrder(orderWho?.value || present(state())[0]?.id || "") : false;
-      pending2 = true;
+      pending3 = true;
       input.disabled = true;
       editing = null;
       lock(true);
       setBusy(true);
       void controller.send(text2).finally(() => {
-        pending2 = false;
+        pending3 = false;
         if (disposed) return;
         orderOn = false;
         syncOrder();
@@ -33517,7 +33658,7 @@ async function writeNewCampaign(st, state, expectChatId) {
   return { ok: true };
 }
 function createSaver(st, chatId, debounceMs = 500) {
-  let pending2 = null;
+  let pending3 = null;
   let timer = null;
   const clearTimer = () => {
     if (timer !== null) {
@@ -33527,8 +33668,8 @@ function createSaver(st, chatId, debounceMs = 500) {
   };
   const flush = async () => {
     clearTimer();
-    const state = pending2;
-    pending2 = null;
+    const state = pending3;
+    pending3 = null;
     if (!state) return;
     if (st.getActiveChat()?.chatId !== chatId) {
       console.warn(`[Alius] dropped pending save: chat ${chatId} is no longer open`);
@@ -33543,7 +33684,7 @@ function createSaver(st, chatId, debounceMs = 500) {
   };
   return {
     save(state) {
-      pending2 = structuredClone(state);
+      pending3 = structuredClone(state);
       clearTimer();
       timer = setTimeout(() => {
         flush().catch((e) => console.warn("[Alius] save failed", e));
@@ -33552,7 +33693,7 @@ function createSaver(st, chatId, debounceMs = 500) {
     flush,
     dispose() {
       clearTimer();
-      pending2 = null;
+      pending3 = null;
     }
   };
 }
@@ -33743,10 +33884,10 @@ function punishmentProvider(subject, env, k) {
 }
 function reputationProvider(subject, env, k) {
   const state = env.state;
-  const held = state?.commander.reputation?.active.find((a) => a.id === subject.id);
+  const held2 = state?.commander.reputation?.active.find((a) => a.id === subject.id);
   const entry = env.registries.reputations.get(subject.id);
-  if (!state || !held || !entry) return null;
-  const lines = [`Held since day ${held.sinceDay}`];
+  if (!state || !held2 || !entry) return null;
+  const lines = [`Held since day ${held2.sinceDay}`];
   const p = entry.pattern;
   if (p && k.showRaw) {
     const deeds = deedsOf(state);
@@ -35632,6 +35773,7 @@ function renderSysTab(host, ctx2) {
     field("Readable mode (no scanlines, flicker, dithering or glitch; larger text)", checkbox("readableMode", settings.readableMode), "readableMode"),
     field("Reduce motion (also follows the system setting)", checkbox("reducedMotion", settings.reducedMotion), "reducedMotion"),
     field("Dithered portraits (PDA)", checkbox("ditheredPortraits", settings.ditheredPortraits), "ditheredPortraits"),
+    field("Door timer (seconds a night knock waits, 0 = no timer)", numberInput("doorTimer", settings.doorTimer, (n) => apply({ doorTimer: n }).doorTimer, { min: "0", max: "60", step: "1" }), "doorTimer"),
     field("Device skin", select("deviceSkin", skinOptions, skinOptions.some(([v]) => v === settings.deviceSkin) ? settings.deviceSkin : ""), "deviceSkin"),
     h("h3", {}, "Sound"),
     field("Volume (0\u2013100)", numberInput("soundVolume", settings.soundVolume, (n) => apply({ soundVolume: n }).soundVolume, { min: "0", max: "100", step: "5" }), "soundVolume"),
@@ -36764,17 +36906,32 @@ function createApp(st, deps) {
       return;
     }
     if (s && entry) {
-      renderKnock(host, {
-        entry,
-        unitName: s.squad.find((u) => u.id === entry.unitId)?.displayName ?? "Someone",
-        onOpen: () => void comms.openNight().then(() => {
-          if (state?.scene) showScene();
-        }),
-        onIgnore: () => {
-          comms.ignoreNight();
-          leaveScene();
-        }
-      });
+      const drawDoor = () => {
+        const now = state;
+        const current = now && now.slot === "night" ? now.calendar.nightEvent : void 0;
+        if (!now || !current || now.scene || confrontationNight(now)) return;
+        const unit2 = now.squad.find((u) => u.id === current.unitId);
+        const settings = getSettings(st);
+        renderDoor(host, {
+          entry: current,
+          unitName: unit2?.displayName ?? "Someone",
+          ...unit2 ? { silhouette: () => unitPortrait(st, unit2, { palette: settings.palette, dither: false, size: 220 }) } : {},
+          seconds: settings.doorTimer,
+          motion: !motionReduced(settings),
+          readable: settings.readableMode,
+          sound,
+          onOpen: () => void comms.openNight().then(() => {
+            if (state?.scene) showScene();
+          }),
+          onSay: (text2) => comms.throughDoor(text2),
+          onSilent: () => {
+            comms.ignoreNight();
+            leaveScene();
+          },
+          onChanged: drawDoor
+        });
+      };
+      drawDoor();
       return;
     }
     host.append(h(

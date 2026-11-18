@@ -8,7 +8,7 @@ export interface KnockCtx {
   onIgnore: () => void;
 }
 
-const DOOR = [
+export const DOOR_ART = [
   '  ┌────────────┐',
   '  │ ░░░░░░░░░░ │',
   '  │ ░░░░░░░░░░ │',
@@ -24,7 +24,7 @@ export function renderKnock(host: HTMLElement, ctx: KnockCtx): void {
   const framing = h('p', { class: 'alius-knock-text' });
   framing.textContent = ctx.entry.framing;
   const art = h('pre', { class: 'alius-ascii', 'aria-hidden': 'true' });
-  art.textContent = DOOR;
+  art.textContent = DOOR_ART;
   let used = false;
   const buttons: HTMLButtonElement[] = [];
   const press = (fn: () => void) => () => {

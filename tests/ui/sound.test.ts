@@ -386,9 +386,9 @@ describe('the shell plays its sounds', () => {
 });
 
 describe('uiSounds content', () => {
-  it('the core pack has the eight sounds, all synthesized (no audio files shipped)', () => {
+  it('the core pack has the nine sounds, all synthesized (no audio files shipped)', () => {
     expect([...reg.uiSounds.keys()].sort()).toEqual([...SOUND_IDS].sort());
-    expect(SOUND_IDS).toHaveLength(8);
+    expect(SOUND_IDS).toHaveLength(9); // P10b: + knock
     for (const e of reg.uiSounds.values()) {
       expect(e.file, String(e.id)).toBeUndefined();
       expect(UiSoundSchema.safeParse(e).success, String(e.id)).toBe(true);

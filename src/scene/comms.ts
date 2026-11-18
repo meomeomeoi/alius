@@ -27,6 +27,12 @@ export interface Comms {
   onSlotAdvanced(): Promise<void>;
   /** P11: one unit writes first, without the roll (the guided evening). A no-op with unit DMs off or when nothing is generated. */
   initiate(unitId: string): Promise<void>;
+  /**
+   * P10b: one line through the closed door of an open knock. She answers once (a single model call in `door` mode), the exchange
+   * is stored on the knock and read for intents like a DM; nothing goes into the DM thread. A failed call leaves the line said
+   * with no answer. Resolves when it is over; every step is dispatched with the chat it started in.
+   */
+  throughDoor(text: string): Promise<void>;
   /** Opens the knock: starts the night scene with the unit at the door. */
   openNight(): Promise<void>;
   /** Ignores the knock: the entry's consequence applies and the day rolls over. */
@@ -64,7 +70,7 @@ export function createComms(deps: CommsDeps): Comms {
   };
 
   /** Her answer is read for intents; proposals by the commander are not honoured here (her text was written before any verdict). */
-  async function readExchange(expect: string | undefined, unitId: string, commanderText: string, reply: string): Promise<void> {
+  async function readExchange(expect: string | undefined, unitId: string, commanderText: string, reply: string, opts: { door?: boolean } = {}): Promise<void> {
     const s = state();
     const unit = s?.squad.find((u) => u.id === unitId);
     const rel = s?.relations[unitId];
@@ -84,7 +90,7 @@ export function createComms(deps: CommsDeps): Comms {
     if (!result || chatId() !== expect) return;
     const intents = { ...result.intents, proposals: result.intents.proposals.filter((p) => p.from !== 'commander') };
     // P9: what the reading logs (a punishment, a threat) points back at her reply
-    const lastId = threadOf(s, unitId).at(-1)?.id;
+    const lastId = opts.door === true ? undefined : threadOf(s, unitId).at(-1)?.id; // a door exchange is not a DM message
     const flagged = result.contentViolations.map((v) => v.category); // P9d: her reply depicts content that is off
     const events = app.dispatch({
       type: 'intents/apply',
@@ -165,6 +171,25 @@ export function createComms(deps: CommsDeps): Comms {
     async initiate(unitId) {
       if (!deps.settings().unitDms) return;
       await initiateOne(unitId, chatId());
+    },
+
+    async throughDoor(text) {
+      const expect = chatId();
+      const said = app.dispatch({ type: 'night/door_say', payload: { text } }, { expectChatId: expect });
+      if (failed(said)) return;
+      const s = state();
+      const entry = s?.calendar.nightEvent;
+      const unit = s?.squad.find((u) => u.id === entry?.unitId);
+      const line = entry?.door?.said;
+      if (!s || !entry || !unit || line === undefined) return;
+      // the line is not in the DM thread, so it joins her history here
+      const input = replyInput(s, deps, unit, 'door');
+      input.history = [...input.history, { from: 'commander', text: line }];
+      const reply = await generateDm(input, { st, settings: deps.settings(), contentLine: deps.contentLine });
+      if (reply === null || chatId() !== expect) return;
+      const stored = app.dispatch({ type: 'night/door_reply', payload: { text: reply } }, { expectChatId: expect });
+      if (failed(stored)) return;
+      await readExchange(expect, unit.id, line, reply, { door: true });
     },
 
     async openNight() {

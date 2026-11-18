@@ -1676,9 +1676,29 @@
     "id": "night_theme",
     "term": "Night",
     "short": "At night the interface turns dimmer and warmer, moves slower and makes less noise. Visitors come to the door.",
-    "long": "AUTHOR TO WRITE: While the slot is Night the whole shell shifts to a dim, warm variant of its palette, transitions run slower and sounds play at half their volume. Readable mode keeps the label and the quieter sound but not the dimming. Visits that are not a confrontation arrive as a knock at the door.",
+    "long": "AUTHOR TO WRITE: While the slot is Night the whole shell shifts to a dim, warm variant of its palette, transitions run slower and sounds play at half their volume. Readable mode keeps the label and the quieter sound but not the dimming. Visits that are not a confrontation arrive as a [[night_door|knock at the door]].",
     "see": [
-      "slots"
+      "slots",
+      "night_door"
+    ]
+  },
+  {
+    "id": "night_door",
+    "term": "The door",
+    "short": "A night visit that is not a confrontation. Open, say one thing through the door, or stay silent; the timer counts as silence.",
+    "long": "AUTHOR TO WRITE: Someone is at the door. [OPEN] starts a scene. You may say one line through the door and she answers once, still deciding whether to stay; then only open or silence remain. Staying silent, or letting the timer run out, is a choice with the consequences of an ignored knock, and she may leave a note under the door.",
+    "see": [
+      "night_theme",
+      "setting_door_timer"
+    ]
+  },
+  {
+    "id": "setting_door_timer",
+    "term": "Door timer",
+    "short": "Seconds a night knock waits for an answer, 0 to 60. At 0 the door never times out. The default is 15.",
+    "long": "The countdown is real time. It stops while you type through the door, while she answers, while the analysis panel or a dialog is open and while the page is hidden. When it reaches 0 it counts as staying silent.",
+    "see": [
+      "night_door"
     ]
   }
 ]

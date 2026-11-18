@@ -111,7 +111,7 @@ import { herPickView } from './ui/personal/obey';
 import { renderWagerCard } from './ui/personal/wagerCard';
 import type { EditView } from './ui/personal/chips';
 import { renderLogTab } from './ui/log/logTab';
-import { renderKnock } from './ui/night/knock';
+import { renderDoor } from './ui/night/door';
 import { pickLocation } from './ui/scene/locationPicker';
 import { renderSceneScreen, type SceneScreen } from './ui/scene/sceneScreen';
 import type { ActivityRequest } from './engine/activities';
@@ -670,14 +670,27 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       return;
     }
     if (s && entry) {
-      renderKnock(host, {
-        entry, unitName: s.squad.find((u) => u.id === entry.unitId)?.displayName ?? 'Someone',
-        onOpen: () => void comms.openNight().then(() => { if (state?.scene) showScene(); }),
-        onIgnore: () => {
-          comms.ignoreNight();
-          leaveScene();
-        },
-      });
+      // P10b: a knock that is not a confrontation is the night door (one exchange through it, a timer, a silhouette)
+      const drawDoor = (): void => {
+        const now = state;
+        const current = now && now.slot === 'night' ? now.calendar.nightEvent : undefined;
+        if (!now || !current || now.scene || confrontationNight(now)) return;
+        const unit = now.squad.find((u) => u.id === current.unitId);
+        const settings = getSettings(st);
+        renderDoor(host, {
+          entry: current, unitName: unit?.displayName ?? 'Someone',
+          ...(unit ? { silhouette: () => unitPortrait(st, unit, { palette: settings.palette, dither: false, size: 220 }) } : {}),
+          seconds: settings.doorTimer, motion: !motionReduced(settings), readable: settings.readableMode, sound,
+          onOpen: () => void comms.openNight().then(() => { if (state?.scene) showScene(); }),
+          onSay: (text) => comms.throughDoor(text),
+          onSilent: () => {
+            comms.ignoreNight();
+            leaveScene();
+          },
+          onChanged: drawDoor,
+        });
+      };
+      drawDoor();
       return;
     }
     host.append(h('section', { class: 'alius-section' }, h('p', {}, 'NO SCENE OPEN'),

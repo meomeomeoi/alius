@@ -83,6 +83,8 @@ export interface AliusSettings {
   soundMuted: boolean;
   /** P10: a low engine hum while the shell is open. */
   ambientHum: boolean;
+  /** P10b: seconds a knock at the night door waits before it counts as staying silent (0 = no timer, 0–60). */
+  doorTimer: number;
 }
 
 export const DEFAULT_SETTINGS: AliusSettings = {
@@ -149,6 +151,7 @@ export const DEFAULT_SETTINGS: AliusSettings = {
   soundVolume: 20,
   soundMuted: false,
   ambientHum: false,
+  doorTimer: 15,
 };
 
 const fieldSchemas = {
@@ -198,6 +201,7 @@ const fieldSchemas = {
   soundVolume: z.number().int().min(0).max(100),
   soundMuted: z.boolean(),
   ambientHum: z.boolean(),
+  doorTimer: z.number().int().min(0).max(60),
 };
 const budgetSchema = z.number().int().min(1);
 

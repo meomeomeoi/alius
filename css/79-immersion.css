@@ -162,3 +162,83 @@
 #alius-shell[data-night="true"] .alius-device {
   transition: transform calc(260ms * var(--alius-motion-scale)) ease-out;
 }
+
+/* The night door (P10b §3): frosted glass, a short knock, a timer bar. The shake and the bar only animate when the code sets .is-knocking / .is-animated (never under reduced motion); readable mode gets a solid shape instead of a blurred sprite. */
+#alius-shell .alius-door-art {
+  position: relative;
+  width: min(220px, 60%);
+  margin: 6px auto;
+  border: var(--alius-line);
+  background: rgba(255, 255, 255, 0.04);
+  overflow: hidden;
+}
+
+#alius-shell .alius-door-silhouette {
+  display: block;
+  line-height: 0;
+}
+
+#alius-shell .alius-door-silhouette img {
+  display: block;
+  width: 100%;
+  height: auto;
+  filter: blur(14px) brightness(0.6);
+}
+
+#alius-shell .alius-door-art.is-solid .alius-door-shape {
+  height: 120px;
+  margin: 12px 30%;
+  background: var(--alius-dim);
+  border-radius: 40% 40% 8% 8%;
+}
+
+#alius-shell .alius-door-art.is-knocking {
+  animation: alius-door-knock 0.6s ease-in-out 1;
+}
+
+@keyframes alius-door-knock {
+  0%, 100% { transform: translateX(0); }
+  15% { transform: translateX(-4px); }
+  30% { transform: translateX(4px); }
+  45% { transform: translateX(-3px); }
+  60% { transform: translateX(3px); }
+  75% { transform: translateX(-1px); }
+}
+
+#alius-shell .alius-door-timer {
+  margin: 6px 0;
+}
+
+#alius-shell .alius-door-bar {
+  height: 6px;
+  border: var(--alius-line);
+}
+
+#alius-shell .alius-door-fill {
+  display: block;
+  height: 100%;
+  background: var(--alius-fg);
+}
+
+#alius-shell .alius-door-timer.is-animated .alius-door-fill {
+  transition: width 250ms linear;
+}
+
+#alius-shell .alius-door-count {
+  font-size: 0.85em;
+}
+
+#alius-shell .alius-door-form {
+  display: flex;
+  gap: 6px;
+  margin: 6px 0;
+}
+
+#alius-shell .alius-door-form .alius-door-input {
+  flex: 1;
+}
+
+#alius-shell .alius-door-said,
+#alius-shell .alius-door-reply {
+  margin: 2px 0;
+}

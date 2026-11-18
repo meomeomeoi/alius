@@ -637,7 +637,7 @@ git commit -am "feat(P10b): one exchange through the door (engine)"
   - `renderDoor(host, ctx: DoorCtx)`, where `DoorCtx = { entry: NightEntry; unitName: string; silhouette?: () => HTMLElement | null; seconds: number; motion: boolean; readable: boolean; sound?: { play(id: SoundId): void }; onOpen(): void; onSay(text: string): Promise<void>; onSilent(): void }`
   - `Comms.throughDoor(text)`
 
-- [ ] **Step 1: Write the failing tests** (fake timers)
+- [x] **Step 1: Write the failing tests** (fake timers)
   - `three options with data-analyze`.
   - `timer reaches 0 and calls onSilent once`.
   - `doorTimer 0 shows no timer and never calls onSilent`.
@@ -651,15 +651,15 @@ git commit -am "feat(P10b): one exchange through the door (engine)"
   - Comms: `door reply is dropped after a chat change`; `a failed generation leaves said without reply and shows No answer through the door.`
   - App: `a want_visit knock renders the door; a mutiny confrontation still renders its panel`.
 
-- [ ] **Step 2: Run to verify they fail**
+- [x] **Step 2: Run to verify they fail**
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 The countdown uses `setInterval(250)` against a deadline `Map<entryId, { remaining: number }>`, so paused time is not counted. Any input focus uses `preventScroll`. `knock.ts` keeps its ASCII art export for the fallback, and `renderKnock` stays exported (its tests stay).
 
-- [ ] **Step 4: Run, `npm test`**
+- [x] **Step 4: Run, `npm test`**
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git commit -am "feat(P10b): the night door with timer, silhouette, knock and one exchange"

@@ -82,6 +82,85 @@ describe('curt replies (P10b)', () => {
   });
 });
 
+describe('through the door (P10b)', () => {
+  const knock = (s: import('../../src/engine/state/types').CampaignState): void => {
+    s.slot = 'night';
+    s.calendar.nightEvent = { id: 'n1', unitId: ANN, kind: 'visit', priority: 50, framing: 'A knock.', ignore: { event: 'dismissed', severity: 'minor' }, expiresDay: 99 };
+  };
+  const entry = (h: Harness) => h.state().calendar.nightEvent!;
+
+  it('says a line, asks for one reply in door mode, stores both and reads the exchange for intents', async () => {
+    const h = harness(reg, { tweak: knock });
+    h.st.mainReplies = ['Not tonight. Maybe.', intentJson()];
+    await h.comms.throughDoor('  Ann? It is me.  ');
+    expect(entry(h).door).toEqual({ said: 'Ann? It is me.', reply: 'Not tonight. Maybe.' });
+    const first = h.st.calls[0] as { system: string; prompt: string };
+    expect(first.system).toMatch(/through the closed door/i);
+    expect(first.prompt).toContain('Ann? It is me.'); // the line is in her prompt although it is not a DM
+    expect(h.actions).toEqual(expect.arrayContaining(['night/door_say', 'night/door_reply', 'intents/apply']));
+    expect(h.st.calls).toHaveLength(2); // the reply and the intent reading, nothing more
+    expect(h.state().dms[ANN] ?? []).toEqual([]);
+    expect(h.state().slot).toBe('night');
+  });
+
+  it('her answer moves relations only through intents, like a DM', async () => {
+    const h = harness(reg, { tweak: knock });
+    const before = h.state().relations[ANN].affinity;
+    h.st.mainReplies = ['You came. Good.', intentJson([praised(ANN, { type: 'comforted' })])];
+    await h.comms.throughDoor('I am here.');
+    expect(h.state().relations[ANN].affinity).toBeGreaterThan(before);
+  });
+
+  it('a failed generation leaves the said line with no reply, and no intent call', async () => {
+    const h = harness(reg, { tweak: knock });
+    await h.comms.throughDoor('Hello?'); // no reply queued: the model call fails soft
+    expect(entry(h).door).toEqual({ said: 'Hello?' });
+    expect(h.st.calls).toHaveLength(1);
+    expect(h.actions).not.toContain('night/door_reply');
+  });
+
+  it('the reply is dropped after a chat change', async () => {
+    const h = harness(reg, { tweak: knock });
+    h.st.mainReplies = ['Too late.', intentJson()];
+    const real = h.st.generateMain.bind(h.st);
+    h.st.generateMain = async (req) => {
+      h.st.switchChat({ chatId: 'chat-2', isGroup: true, groupId: 'g2' });
+      return real(req);
+    };
+    await h.comms.throughDoor('Hello?');
+    expect(entry(h).door).toEqual({ said: 'Hello?' });
+    expect(h.actions).not.toContain('night/door_reply');
+    expect(h.actions).not.toContain('intents/apply');
+  });
+
+  it('a second line through the same door is refused with a toast and costs no model call', async () => {
+    const h = harness(reg, { tweak: knock });
+    h.st.mainReplies = ['One.', intentJson()];
+    await h.comms.throughDoor('First.');
+    const calls = h.st.calls.length;
+    await h.comms.throughDoor('Second.');
+    expect(h.st.calls).toHaveLength(calls);
+    expect(entry(h).door!.said).toBe('First.');
+    expect(h.toasts.some((t) => t.kind === 'error')).toBe(true);
+  });
+
+  it('a knock that is not there is refused with a toast', async () => {
+    const h = harness(reg);
+    await h.comms.throughDoor('Hello?');
+    expect(h.toasts.some((t) => t.kind === 'error')).toBe(true);
+    expect(mainCalls(h)).toBe(0);
+  });
+
+  it('what she says through the door is not logged against a DM message (no messageRef)', async () => {
+    const h = harness(reg, { tweak: (s) => { knock(s); s.dms[ANN] = [{ id: 'm1', from: 'commander', text: 'earlier', day: 1, slot: 'morning', read: true }]; } });
+    h.st.mainReplies = ['Go on.', intentJson()];
+    await h.comms.throughDoor('Hello?');
+    const apply = h.actions.indexOf('intents/apply');
+    expect(apply).toBeGreaterThan(-1);
+    expect(JSON.stringify(h.state().relations[ANN].history)).not.toContain('dm:m1');
+  });
+});
+
 describe('DMs', () => {
   it('DM send → reply → intents (acceptance 8)', async () => {
     const h = harness(reg);
