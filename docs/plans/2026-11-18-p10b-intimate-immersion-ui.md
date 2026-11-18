@@ -431,21 +431,21 @@ git commit -am "feat(P10b): VITALS block, hub strip and analysis provider"
   - `curt_resentful` (states as a data list incl. `resentful`, 1);
   - `curt_affinity_drop` (affinityDrop 5, 0.7).
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - `core pack loads dmBehaviours with every kind present`;
   - `schema rejects an unknown kind and a chance above 1`;
   - `every state id in when.states exists` (refs check);
   - pronoun test covers the file.
 
-- [ ] **Step 2: Run to verify they fail**
+- [x] **Step 2: Run to verify they fail**
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Schema, refs (states must exist), JSON, glossary.
 
-- [ ] **Step 4: Run, `npm test`**
+- [x] **Step 4: Run, `npm test`**
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git commit -am "feat(P10b): dmBehaviours registry"

@@ -1640,5 +1640,33 @@
       "vitals_flat",
       "vitals"
     ]
+  },
+  {
+    "id": "dm_behaviour",
+    "term": "Messenger habits",
+    "short": "How a soldier's messages arrive: hesitation, a deleted line, a double text, a late hour, a voice message, a curt answer.",
+    "long": "AUTHOR TO WRITE: The game decides these from her state, around the text the model writes: a soldier who is close or wants company may send several short messages; one who is cold answers in a word or two. They are fixed when a message arrives, so an old message never changes. A habit is a sign, not a statement of what she feels.",
+    "see": [
+      "read_receipt",
+      "voice_message"
+    ]
+  },
+  {
+    "id": "read_receipt",
+    "term": "Read receipt",
+    "short": "Whether she has read your message, and how many slots ago. Seen with no reply is a choice she made.",
+    "long": "AUTHOR TO WRITE: The game keeps no clock, so receipts count slots, not hours: READ, READ with the slots since, or SEEN with no reply when she read it and answered nothing. Silence can mean she is busy, hurt or undecided.",
+    "see": [
+      "dm_behaviour"
+    ]
+  },
+  {
+    "id": "voice_message",
+    "term": "Voice message",
+    "short": "A message she recorded instead of typing. Play it to read what she said.",
+    "long": "AUTHOR TO WRITE: Someone close sometimes sends a voice message. The words stay hidden behind the waveform until the commander plays it, and they stay shown until the COMMS view is drawn again.",
+    "see": [
+      "dm_behaviour"
+    ]
   }
 ]

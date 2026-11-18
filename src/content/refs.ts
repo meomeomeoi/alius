@@ -800,6 +800,10 @@ registerChecks('deviceAccessRules', (entry, regs) => {
   return twin ? [{ path: 'level', message: `level ${String(entry.level)} already has the rule "${String(twin.id)}"` }] : [];
 });
 
+// P10b: a DM behaviour's `states` are relationship states.
+registerRefs('dmBehaviours', (entry) =>
+  ((entry.when as { states?: string[] } | undefined)?.states ?? []).map((id, i) => ({ registry: 'relationshipStates' as const, id, path: `when.states[${i}]` })));
+
 // P9c: a booking kind names the location of its scene.
 registerRefs('bookingKinds', (entry) =>
   typeof entry.locationId === 'string' ? [{ registry: 'locations' as const, id: entry.locationId, path: 'locationId' }] : []);

@@ -312,7 +312,7 @@ describe('no pronoun for the commander in the her-call content (P9e)', () => {
 
 describe('no pronoun for the commander in the P10b content', () => {
   /** The P10b glossary entries (each task adds its ids), the readings and the registries named in the plan's Global Constraints. */
-  const GLOSSARY = ['vitals', 'vitals_flat', 'vitals_flicker'];
+  const GLOSSARY = ['vitals', 'vitals_flat', 'vitals_flicker', 'dm_behaviour', 'read_receipt', 'voice_message'];
 
   it('every P10b glossary entry', () => {
     const texts = GLOSSARY.flatMap((id): Array<[string, string]> => {
@@ -320,6 +320,12 @@ describe('no pronoun for the commander in the P10b content', () => {
       expect(g, id).toBeDefined();
       return [[`glossary:${id}.short`, String(g!.short ?? '')], [`glossary:${id}.long`, String(g!.long ?? '')]];
     });
+    expect(texts.filter(([, t]) => COMMANDER_PRONOUN.test(t) || /commander[^.]*\btheir\b/i.test(t)).map(([where]) => where)).toEqual([]);
+  });
+
+  it('every dmBehaviours name and description', () => {
+    expect(reg.dmBehaviours.size).toBe(8);
+    const texts = [...reg.dmBehaviours.values()].flatMap((e): Array<[string, string]> => [[`dmBehaviours:${e.id}.name`, String(e.name)], [`dmBehaviours:${e.id}.description`, String(e.description)]]);
     expect(texts.filter(([, t]) => COMMANDER_PRONOUN.test(t) || /commander[^.]*\btheir\b/i.test(t)).map(([where]) => where)).toEqual([]);
   });
 

@@ -5937,7 +5937,9 @@ var REGISTRY_NAMES = [
   "wagerStakes",
   "secretKinds",
   // P3b
-  "memoryRules"
+  "memoryRules",
+  // P10b
+  "dmBehaviours"
 ];
 var PackManifestSchema = external_exports.object({
   id: external_exports.string().min(1),
@@ -7808,6 +7810,28 @@ var MemoryRuleSchema = BaseEntrySchema.extend({
   tags: external_exports.array(str)
 });
 registrySchemas.memoryRules = MemoryRuleSchema;
+var DM_BEHAVIOUR_KINDS = ["hesitate", "deleted", "burst", "late", "voice", "curt"];
+var DmBehaviourWhenSchema = external_exports.object({
+  minWant: int.min(0).max(100).optional(),
+  wantBands: external_exports.array(external_exports.enum(["calm", "restless", "aching", "desperate"])).min(1).optional(),
+  attachment: external_exports.array(external_exports.enum(["slow", "steady", "intense", "avoidant"])).min(1).optional(),
+  stateGroups: external_exports.array(external_exports.enum(["base", "platonic", "romantic", "complex", "negative"])).min(1).optional(),
+  states: external_exports.array(str).min(1).optional(),
+  /** A conflict (a drop of trust or affinity) in the ledger within this many slots. */
+  afterConflictSlots: int.min(1).max(12).optional(),
+  /** The sum of her affinity losses today is at least this much. */
+  affinityDrop: int.min(1).max(100).optional(),
+  slots: external_exports.array(external_exports.enum(["morning", "afternoon", "evening", "night"])).min(1).optional(),
+  initiated: external_exports.boolean().optional()
+}).strict();
+var DmBehaviourSchema = BaseEntrySchema.extend({
+  name: str.max(60),
+  description: str.max(DESCRIPTION_MAX),
+  kind: external_exports.enum(DM_BEHAVIOUR_KINDS),
+  chance: external_exports.number().min(0).max(1),
+  when: DmBehaviourWhenSchema.optional()
+}).strict();
+registrySchemas.dmBehaviours = DmBehaviourSchema;
 var DESCRIBED_REGISTRIES = [
   "roles",
   "skills",
@@ -7856,7 +7880,9 @@ var DESCRIBED_REGISTRIES = [
   "tokenKinds",
   "wagerGames",
   "wagerStakes",
-  "secretKinds"
+  "secretKinds",
+  // P10b
+  "dmBehaviours"
 ];
 function withDescription(schema) {
   return schema.superRefine((entry, ctx2) => {
@@ -38587,6 +38613,7 @@ registerChecks("deviceAccessRules", (entry, regs) => {
   const twin = [...regs.deviceAccessRules.values()].find((o) => o.level === entry.level && String(o.id) < String(entry.id));
   return twin ? [{ path: "level", message: `level ${String(entry.level)} already has the rule "${String(twin.id)}"` }] : [];
 });
+registerRefs("dmBehaviours", (entry) => (entry.when?.states ?? []).map((id, i) => ({ registry: "relationshipStates", id, path: `when.states[${i}]` })));
 registerRefs("bookingKinds", (entry) => typeof entry.locationId === "string" ? [{ registry: "locations", id: entry.locationId, path: "locationId" }] : []);
 
 // src/content/loader.ts

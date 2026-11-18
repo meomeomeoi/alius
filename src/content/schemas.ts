@@ -1961,6 +1961,37 @@ export const MemoryRuleSchema = BaseEntrySchema.extend({
 export type MemoryRuleEntry = z.infer<typeof MemoryRuleSchema>;
 registrySchemas.memoryRules = MemoryRuleSchema;
 
+/** P10b §2: the behaviours of a living DM, a closed vocabulary the UI and the engine read by `kind`, never by id. */
+export const DM_BEHAVIOUR_KINDS = ['hesitate', 'deleted', 'burst', 'late', 'voice', 'curt'] as const;
+export type DmBehaviourKind = (typeof DM_BEHAVIOUR_KINDS)[number];
+
+/** All optional, all must hold (P10b §2). `states` are relationship-state ids (checked by the loader), `stateGroups` their `group`. */
+export const DmBehaviourWhenSchema = z.object({
+  minWant: int.min(0).max(100).optional(),
+  wantBands: z.array(z.enum(['calm', 'restless', 'aching', 'desperate'])).min(1).optional(),
+  attachment: z.array(z.enum(['slow', 'steady', 'intense', 'avoidant'])).min(1).optional(),
+  stateGroups: z.array(z.enum(['base', 'platonic', 'romantic', 'complex', 'negative'])).min(1).optional(),
+  states: z.array(str).min(1).optional(),
+  /** A conflict (a drop of trust or affinity) in the ledger within this many slots. */
+  afterConflictSlots: int.min(1).max(12).optional(),
+  /** The sum of her affinity losses today is at least this much. */
+  affinityDrop: int.min(1).max(100).optional(),
+  slots: z.array(z.enum(['morning', 'afternoon', 'evening', 'night'])).min(1).optional(),
+  initiated: z.boolean().optional(),
+}).strict();
+export type DmBehaviourWhen = z.infer<typeof DmBehaviourWhenSchema>;
+
+/** P10b §2: one rule of a living DM: what it does (`kind`), how likely (`chance`, hashed, never rolled) and when it may. */
+export const DmBehaviourSchema = BaseEntrySchema.extend({
+  name: str.max(60),
+  description: str.max(DESCRIPTION_MAX),
+  kind: z.enum(DM_BEHAVIOUR_KINDS),
+  chance: z.number().min(0).max(1),
+  when: DmBehaviourWhenSchema.optional(),
+}).strict();
+export type DmBehaviourEntry = z.infer<typeof DmBehaviourSchema>;
+registrySchemas.dmBehaviours = DmBehaviourSchema;
+
 /** Player-visible registries whose entries carry an optional `description` (skills and statuses already require one). */
 export const DESCRIBED_REGISTRIES = [
   'roles', 'skills', 'signatures', 'statuses', 'defects', 'items', 'affixes', 'enemies',
@@ -1980,6 +2011,8 @@ export const DESCRIBED_REGISTRIES = [
   'voteKinds', 'outsideFeats',
   // P9c
   'deviceAccessRules', 'bookingKinds', 'tokenKinds', 'wagerGames', 'wagerStakes', 'secretKinds',
+  // P10b
+  'dmBehaviours',
 ] as const satisfies readonly RegistryName[];
 
 /** Adds the optional `description` rule to a registry schema without changing its shape. */

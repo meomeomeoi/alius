@@ -1,0 +1,96 @@
+[
+  {
+    "id": "hesitate_avoidant",
+    "name": "Hesitates",
+    "description": "AUTHOR TO WRITE: an avoidant soldier starts to answer the commander and stops.",
+    "kind": "hesitate",
+    "chance": 0.5,
+    "when": {
+      "attachment": [
+        "avoidant"
+      ]
+    }
+  },
+  {
+    "id": "hesitate_after_conflict",
+    "name": "Hesitates after a quarrel",
+    "description": "AUTHOR TO WRITE: after a quarrel she starts to answer and stops, whatever her attachment.",
+    "kind": "hesitate",
+    "chance": 0.6,
+    "when": {
+      "afterConflictSlots": 2
+    }
+  },
+  {
+    "id": "deleted_after_conflict",
+    "name": "Deletes a message",
+    "description": "AUTHOR TO WRITE: after a quarrel she sends something and takes it back before the commander can read it.",
+    "kind": "deleted",
+    "chance": 0.3,
+    "when": {
+      "afterConflictSlots": 3
+    }
+  },
+  {
+    "id": "burst_wanting",
+    "name": "Double text",
+    "description": "AUTHOR TO WRITE: when she wants the commander's company her message comes as several short ones.",
+    "kind": "burst",
+    "chance": 0.5,
+    "when": {
+      "minWant": 40
+    }
+  },
+  {
+    "id": "late_wanting",
+    "name": "Late at night",
+    "description": "AUTHOR TO WRITE: a message she starts herself late in the day, when she wants the commander's company, is stamped LATE.",
+    "kind": "late",
+    "chance": 1,
+    "when": {
+      "minWant": 40,
+      "initiated": true,
+      "slots": [
+        "evening",
+        "night"
+      ]
+    }
+  },
+  {
+    "id": "voice_close",
+    "name": "Voice message",
+    "description": "AUTHOR TO WRITE: someone close sometimes sends a voice message instead of text; the words show when the commander plays it.",
+    "kind": "voice",
+    "chance": 0.15,
+    "when": {
+      "stateGroups": [
+        "romantic",
+        "platonic"
+      ]
+    }
+  },
+  {
+    "id": "curt_resentful",
+    "name": "Curt, resentful",
+    "description": "AUTHOR TO WRITE: a resentful soldier answers in a word or two.",
+    "kind": "curt",
+    "chance": 1,
+    "when": {
+      "states": [
+        "resentful",
+        "estranged",
+        "despises"
+      ]
+    }
+  },
+  {
+    "id": "curt_affinity_drop",
+    "name": "Curt after a cold day",
+    "description": "AUTHOR TO WRITE: when her warmth for the commander has dropped today she answers in a word or two.",
+    "kind": "curt",
+    "chance": 0.7,
+    "when": {
+      "affinityDrop": 5
+    }
+  }
+]
