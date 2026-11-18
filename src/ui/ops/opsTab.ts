@@ -1,4 +1,5 @@
 import { drawCountermandChips } from '../power/chips';
+import { hasTraitEffect } from '../../engine/commander/traits';
 import type { Entry, Registries } from '../../content/types';
 import { activityCost, checkActivity, type ActivityRequest } from '../../engine/activities';
 import { clockText, isQuietNight } from '../../engine/calendar';
@@ -46,7 +47,8 @@ const unitLabel = (u: Unit) => (u.kind === 'grunt' ? `${u.displayName} (grunt)` 
 /** One activity as the OPS tab shows it; the hub's room panel reuses it for the activities of a room. */
 export function activityCard(a: Entry, state: CampaignState, ctx: OpsTabCtx): HTMLElement {
   const mode = a.companion as 'none' | 'optional' | 'required';
-  const focusList = (a.focus as Focus[] | undefined) ?? [];
+  // P12: a focus that asks for a trait effect (burning the frequency implant) is only listed to a commander who has it
+  const focusList = ((a.focus as Array<Focus & { requires?: { traitEffect: string } }> | undefined) ?? []).filter((f) => !f.requires || hasTraitEffect(state, ctx.registries, f.requires.traitEffect as never));
   const living = state.squad.filter(isLiving);
   // a conversation needs a character card: grunts cannot be talked to
   const companions = a.startsScene === true ? living.filter((u) => u.kind === 'named') : living;

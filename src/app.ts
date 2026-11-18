@@ -121,7 +121,7 @@ import { renderLogTab } from './ui/log/logTab';
 import { renderDoor, resetDoor } from './ui/night/door';
 import { pickLocation } from './ui/scene/locationPicker';
 import { renderSceneScreen, type SceneScreen } from './ui/scene/sceneScreen';
-import type { ActivityRequest } from './engine/activities';
+import { checkActivity, focusConfirm, type ActivityRequest } from './engine/activities';
 import { RESYNC_SECTIONS, type ResyncPatch, type ResyncSection } from './engine/actions/squad';
 import { renderCalibration } from './ui/setup/calibration';
 import { h } from './ui/dom';
@@ -2069,6 +2069,12 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
 
     async performActivity(req) {
       const chatId = st.getActiveChat()?.chatId;
+      // P12: a one-way focus (burning the frequency implant) asks first; nothing is spent on a no
+      const question = focusConfirm(registries, req);
+      if (question !== null && state && checkActivity(state, registries, req) === null) {
+        const answer = await shell.modal({ title: 'ONE WAY', body: question, actions: [{ label: '[ BURN IT ]', value: 'yes' }, { label: '[ KEEP IT ]', value: 'no' }] });
+        if (answer !== 'yes' || st.getActiveChat()?.chatId !== chatId) return [];
+      }
       const events = act({ type: 'activity/do', payload: req });
       if (events.some((e) => e.type === 'workshop_opened')) {
         shell.showTab('inv');

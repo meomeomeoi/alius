@@ -1,6 +1,6 @@
 import { registerDayEndStep } from '../calendar';
 import { registerAction } from '../dispatch';
-import { specialDayStep } from '../special/dayStep';
+import { specialDayStep, specialRumorStep } from '../special/dayStep';
 import { frequencyText } from '../special/frequency/fragments';
 
 // Importing this module registers the P12 special-trait actions and day step. It must come after `actions/loyalty` (the paranoia
@@ -24,3 +24,5 @@ registerAction('frequency/word', (draft, payload) => {
 });
 
 registerDayEndStep('director_tick', specialDayStep);
+// after P3b's rumor spread (memory is imported before this module), so a unit who just heard it is synced the same night
+registerDayEndStep('dm_rumors', specialRumorStep);

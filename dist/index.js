@@ -801,6 +801,9 @@ function summarizeActivityEffect(effect, _reg, focus) {
     case "relation":
       s = `Companion ${signed(Number(e.amount))} ${cap(String(e.axis))}`;
       break;
+    case "burn_frequency_implant":
+      s = "Burns out the frequency implant for good: no more fragments";
+      break;
     default:
       return cap(humanize(String(e.type ?? "effect")));
   }
@@ -5857,7 +5860,9 @@ var ENGINE_EVENT_TYPES = [
   "rival_favoured",
   "bond_shown",
   "token_removed",
-  "secret_confronted"
+  "secret_confronted",
+  // P12: she found out the commander hears thoughts (the engine's own: the discovery or a rumor of it)
+  "frequency_exposed"
 ];
 var WORLD_EFFECT_EVENT_TYPES = [...EVENT_TYPES, "shielded"];
 var ALL_EVENT_TYPES = [...EVENT_TYPES, ...ENGINE_EVENT_TYPES];
@@ -6618,6 +6623,8 @@ var RESERVED_EVENT_TYPES = [
   "frequency_intercept",
   "frequency_worded",
   "frequency_static",
+  "frequency_discovered",
+  "implant_burned",
   // P10b
   "door_said",
   "door_replied",
@@ -6651,6 +6658,8 @@ var ActivityEffectSchema = external_exports.discriminatedUnion("type", [
   external_exports.object({ type: external_exports.literal("commander_body_xp"), stat: external_exports.enum(["strength", "endurance", "reflexes"]), ...amountFields }).strict(),
   external_exports.object({ type: external_exports.literal("defect_upkeep"), target: external_exports.enum(["selected", "companion"]), ...amountFields }).strict(),
   external_exports.object({ type: external_exports.literal("relation"), axis: external_exports.enum(["trust", "affinity", "attraction"]), amount: int, ...amountFields }).strict(),
+  /** P12: burns out the secret frequency implant for good (the focus that carries it asks first). */
+  external_exports.object({ type: external_exports.literal("burn_frequency_implant"), ...amountFields }).strict(),
   external_exports.object({
     type: external_exports.literal("emit_event"),
     event: str.refine((e) => !RESERVED_EVENT_TYPES.includes(e), "this event name belongs to the engine"),
@@ -6668,7 +6677,11 @@ var ActivitySchema = BaseEntrySchema.extend({
   focus: external_exports.array(external_exports.object({
     id: str,
     label: str,
-    units: external_exports.object({ min: int.min(1), max: int.min(1) }).strict().optional()
+    units: external_exports.object({ min: int.min(1), max: int.min(1) }).strict().optional(),
+    /** P12: the focus is offered, and allowed, only to a commander whose traits have this effect type. */
+    requires: external_exports.object({ traitEffect: str }).strict().optional(),
+    /** P12: a one-way choice: the app asks this question first (the activity runs only on a yes). */
+    confirm: str.max(200).optional()
   }).strict()).optional(),
   effects: external_exports.array(ActivityEffectSchema),
   companionEffects: external_exports.array(ActivityEffectSchema),
@@ -11776,6 +11789,20 @@ var newFrequency = () => ({ intercepts: [], seq: 0, suspicion: {}, dmDay: {} });
 function specialOf(draft) {
   return draft.special ??= {};
 }
+function forgetSpecial(draft, unitId) {
+  const f = draft.special?.frequency;
+  if (f) {
+    f.intercepts = f.intercepts.filter((x) => x.unitId !== unitId);
+    delete f.suspicion[unitId];
+    delete f.dmDay[unitId];
+    if (f.staticFired) f.staticFired = f.staticFired.filter((id) => id !== unitId);
+    if (f.discovered) f.discovered = f.discovered.filter((id) => id !== unitId);
+  }
+}
+function holdsSpecial(state, unitId) {
+  const f = state.special?.frequency;
+  return f !== void 0 && (f.intercepts.some((x) => x.unitId === unitId) || f.suspicion[unitId] !== void 0 || f.dmDay[unitId] !== void 0 || f.staticFired?.includes(unitId) === true || f.discovered?.includes(unitId) === true);
+}
 
 // src/engine/special/traits.ts
 function seedSpecialTraits(draft, ctx2) {
@@ -15367,6 +15394,7 @@ function removeFromService(draft, unitId, status) {
   forgetPower(draft, unitId);
   forgetPersonal(draft, unitId);
   forgetNotes(draft, unitId);
+  forgetSpecial(draft, unitId);
 }
 function forgetBonds(draft, unitId) {
   if (draft.bonds) {
@@ -19898,6 +19926,83 @@ registerAction("squad/decline_incoming", (draft, _payload, ctx2) => {
   return [{ type: "unit_joined", unitId: grunt.id, kind: "grunt" }];
 });
 
+// src/engine/special/frequency/discovery.ts
+var KNOWS_FREQUENCY = "knows_frequency";
+var namedLiving6 = (state, id) => {
+  const u = state.squad.find((x) => x.id === id);
+  return u !== void 0 && u.kind === "named" && isLiving(u);
+};
+function expose(draft, ctx2, unitId) {
+  const reg = ctx2.registries;
+  const burned = frequencyOf(draft).burnedDay !== void 0;
+  const events = applyEventToUnit(draft, reg, unitId, {
+    type: "frequency_exposed",
+    actor: "commander",
+    targets: [unitId],
+    severity: burned ? "major" : "extreme",
+    evidence: "the frequency",
+    confidence: 1
+  });
+  const unit2 = draft.squad.find((u) => u.id === unitId);
+  if (burned && unit2?.triggers.includes("lies")) {
+    events.push(...applyEventToUnit(draft, reg, unitId, {
+      type: "decision_aligned",
+      actor: "commander",
+      targets: [unitId],
+      severity: "minor",
+      evidence: "the implant was burned out",
+      confidence: 1
+    }));
+  }
+  events.push(...evaluateAutomatic(draft, reg, unitId));
+  return events;
+}
+function frequencyDiscovered(draft, ctx2, unitId) {
+  const rel = draft.relations[unitId];
+  if (!rel || !namedLiving6(draft, unitId) || rel.flags.includes(KNOWS_FREQUENCY)) return [];
+  const f = frequencyOf(draft);
+  rel.flags.push(KNOWS_FREQUENCY);
+  delete f.suspicion[unitId];
+  (f.discovered ??= []).push(unitId);
+  const events = [{ type: "frequency_discovered", unitId }, ...expose(draft, ctx2, unitId)];
+  const existing = f.factId === void 0 ? void 0 : draft.memory.facts.find((x) => x.id === f.factId);
+  if (existing) {
+    if (!existing.knownBy.includes(unitId)) existing.knownBy.push(unitId);
+  } else {
+    const name = draft.squad.find((u) => u.id === unitId)?.displayName ?? unitId;
+    f.factId = addFact(draft, {
+      about: [unitId],
+      text: `${name} knows the commander hears thoughts.`,
+      tags: ["frequency"],
+      importance: 5,
+      day: draft.day,
+      knownBy: [unitId],
+      hiddenFromCommander: true,
+      spread: "fast",
+      pinned: true
+    }).id;
+  }
+  return events;
+}
+function syncFrequencyKnowers(draft, ctx2) {
+  const f = draft.special?.frequency;
+  if (!f || f.factId === void 0) return [];
+  const fact = draft.memory.facts.find((x) => x.id === f.factId);
+  if (!fact) return [];
+  const events = [];
+  for (const id of fact.knownBy) {
+    if (id === "*" || !namedLiving6(draft, id) || draft.relations[id]?.flags.includes(KNOWS_FREQUENCY)) continue;
+    events.push(...frequencyDiscovered(draft, ctx2, id));
+  }
+  return events;
+}
+function burnImplant(draft) {
+  const f = frequencyOf(draft);
+  if (f.burnedDay !== void 0) return [];
+  f.burnedDay = draft.day;
+  return [{ type: "implant_burned" }];
+}
+
 // src/engine/activities.ts
 var activityHooks = [];
 var registerActivityHook = (fn) => {
@@ -19925,6 +20030,13 @@ var focusOf = (a, req) => {
   const list5 = a.focus ?? [];
   return req.focus === void 0 ? list5[0] : list5.find((f) => f.id === req.focus);
 };
+function focusConfirm(reg, request) {
+  const req = asReq(request);
+  const a = req ? reg.activities.get(req.activityId) : void 0;
+  if (!req || !a || req.companionId !== void 0) return null;
+  const confirm = focusOf(a, req)?.confirm;
+  return typeof confirm === "string" ? confirm : null;
+}
 function checkActivity(state, reg, request) {
   const req = asReq(request);
   if (!req) return "Invalid activity request.";
@@ -19955,6 +20067,8 @@ function checkActivity(state, reg, request) {
   if (mode === "required") return `${name} needs a companion.`;
   const focus = focusOf(a, req);
   if (req.focus !== void 0 && !focus) return `Unknown focus "${req.focus}" for ${name}.`;
+  if (focus?.requires && !hasTraitEffect(state, reg, focus.requires.traitEffect)) return `${focus.label} is not available to this commander.`;
+  if (focus && state.special?.frequency?.burnedDay !== void 0 && a.effects.some((fx2) => fx2.type === "burn_frequency_implant" && fx2.when?.focus === focus.id)) return "The implant is already burned.";
   if (focus?.units) {
     const ids = req.unitIds ?? [];
     if (ids.length < focus.units.min || ids.length > focus.units.max) {
@@ -20062,6 +20176,9 @@ function runActivity(draft, ctx2, request) {
           const applied = applyRelationDelta(draft, companion.id, fx2.axis, scaled(fx2.amount, draft, reg, fx2.scale), `activity:${a.id}`);
           events.push({ type: "relation_changed", unitId: companion.id, axis: fx2.axis, applied });
         }
+        break;
+      case "burn_frequency_implant":
+        events.push(...burnImplant(draft));
         break;
       case "emit_event":
         events.push({
@@ -20684,7 +20801,7 @@ var behaviours = (reg) => [...reg.dmBehaviours.values()].map((e) => ({
   ...e.when !== void 0 ? { when: e.when } : {}
 }));
 var passes = (key, chance) => fnv1a(key) % 1e3 < Math.round(chance * 1e3);
-var namedLiving6 = (state, unitId) => {
+var namedLiving7 = (state, unitId) => {
   const u = state.squad.find((x) => x.id === unitId);
   return u !== void 0 && u.kind === "named" && isLiving(u) ? u : null;
 };
@@ -20692,7 +20809,7 @@ function affinityLostToday(state, unitId) {
   return (state.ledger ?? []).filter((e) => e.key === `axis:${unitId}:affinity` && e.day === state.day && e.delta < 0).reduce((n, e) => n - e.delta, 0);
 }
 function whenHolds(state, reg, unitId, when, ctx2) {
-  const unit2 = namedLiving6(state, unitId);
+  const unit2 = namedLiving7(state, unitId);
   const rel = state.relations[unitId];
   if (!unit2 || !rel) return false;
   if (when.minWant !== void 0 && effectiveWant(state, reg, unitId) < when.minWant) return false;
@@ -20711,7 +20828,7 @@ function curtFor(state, reg, unitId, messageId) {
   return behaviours(reg).find((b) => b.kind === "curt" && (b.when === void 0 || whenHolds(state, reg, unitId, b.when, { initiated: false })) && passes(`${messageId}|${b.id}`, b.chance));
 }
 function stampBehaviours(state, reg, unitId, msg, opts = {}) {
-  if (!namedLiving6(state, unitId)) return [];
+  if (!namedLiving7(state, unitId)) return [];
   const initiated = msg.initiated === true;
   const out = [];
   const taken = /* @__PURE__ */ new Set();
@@ -20729,11 +20846,11 @@ function stampBehaviours(state, reg, unitId, msg, opts = {}) {
   return out;
 }
 function replyModeFor(state, reg, unitId, base) {
-  if (base !== "reply" || !namedLiving6(state, unitId)) return base;
+  if (base !== "reply" || !namedLiving7(state, unitId)) return base;
   return curtFor(state, reg, unitId, nextMessageId(state)) ? "curt" : "reply";
 }
 function hesitates(state, reg, unitId) {
-  if (!namedLiving6(state, unitId)) return false;
+  if (!namedLiving7(state, unitId)) return false;
   const last = (state.dms[unitId] ?? []).at(-1);
   if (!last || last.from !== "commander") return false;
   return behaviours(reg).some((b) => b.kind === "hesitate" && (b.when === void 0 || whenHolds(state, reg, unitId, b.when, { initiated: false })) && passes(`${last.id}|${b.id}`, b.chance));
@@ -20765,7 +20882,7 @@ function noteWhenHolds(state, reg, unitId, when) {
   if (when.states !== void 0 && !when.states.includes(rel.stateId)) return false;
   return true;
 }
-var namedLiving7 = (state, unitId) => {
+var namedLiving8 = (state, unitId) => {
   const u = state.squad.find((x) => x.id === unitId);
   return u !== void 0 && u.kind === "named" && isLiving(u) ? u : null;
 };
@@ -20780,7 +20897,7 @@ function leaveNote(draft, unit2, entry) {
   return [{ type: "note_left", unitId: unit2.id, noteId: note.noteId, where: note.where }];
 }
 function writeDoorNote(draft, reg, unitId) {
-  const unit2 = namedLiving7(draft, unitId);
+  const unit2 = namedLiving8(draft, unitId);
   if (!unit2) return [];
   const entry = entriesFor(reg, "knock_unanswered").find((e) => noteWhenHolds(draft, reg, unitId, e.when));
   return entry ? leaveNote(draft, unit2, entry) : [];
@@ -20791,14 +20908,14 @@ var alive = (state, n) => state.day - n.day <= TUNING.notes.keepDays;
 function notesDayStep(draft, ctx2) {
   const events = [];
   if (draft.notes) {
-    draft.notes.list = draft.notes.list.filter((n) => namedLiving7(draft, n.unitId) !== null);
+    draft.notes.list = draft.notes.list.filter((n) => namedLiving8(draft, n.unitId) !== null);
     const gone = draft.notes.list.length;
     draft.notes.list = draft.notes.list.filter((n) => alive(draft, n));
     if (draft.notes.list.length < gone) events.push({ type: "notes_expired", count: gone - draft.notes.list.length });
   }
   const daily = entriesFor(ctx2.registries, "daily");
   for (const unit2 of draft.squad) {
-    if (unit2.bond === void 0 || !namedLiving7(draft, unit2.id)) continue;
+    if (unit2.bond === void 0 || !namedLiving8(draft, unit2.id)) continue;
     const mine = (draft.notes?.list ?? []).filter((n) => n.unitId === unit2.id);
     if (mine.some((n) => n.day === draft.day)) continue;
     const entry = daily.find((e) => {
@@ -22233,11 +22350,16 @@ registerAction("onboarding/guide_dm_sent", (draft) => {
 });
 
 // src/engine/special/dayStep.ts
-function specialDayStep(draft, _ctx) {
+function specialDayStep(draft, ctx2) {
   const events = [];
+  for (const u of draft.squad) if (!isLiving(u) && holdsSpecial(draft, u.id)) forgetSpecial(draft, u.id);
+  for (const u of draft.squad) {
+    if (u.kind === "named" && isLiving(u) && suspicionOf(draft, u.id) >= 100) events.push(...frequencyDiscovered(draft, ctx2, u.id));
+  }
   decayFrequency(draft);
   return events;
 }
+var specialRumorStep = (draft, ctx2) => syncFrequencyKnowers(draft, ctx2);
 
 // src/engine/actions/special.ts
 var FRAGMENT_MAX2 = 160;
@@ -22252,6 +22374,7 @@ registerAction("frequency/word", (draft, payload) => {
   return [{ type: "frequency_worded", interceptId: x.id }];
 });
 registerDayEndStep("director_tick", specialDayStep);
+registerDayEndStep("dm_rumors", specialRumorStep);
 
 // src/llm/callTypes.ts
 var CALL_TYPE_IDS = [
@@ -30945,7 +31068,7 @@ var costText2 = (cost) => {
 var unitLabel = (u) => u.kind === "grunt" ? `${u.displayName} (grunt)` : u.displayName;
 function activityCard(a, state, ctx2) {
   const mode = a.companion;
-  const focusList = a.focus ?? [];
+  const focusList = (a.focus ?? []).filter((f) => !f.requires || hasTraitEffect(state, ctx2.registries, f.requires.traitEffect));
   const living2 = state.squad.filter(isLiving);
   const companions = a.startsScene === true ? living2.filter((u) => u.kind === "named") : living2;
   const companionSel = mode === "none" ? null : h(
@@ -39187,6 +39310,11 @@ function createApp(st, deps) {
     setupState: () => setup?.wizard.state ?? null,
     async performActivity(req) {
       const chatId = st.getActiveChat()?.chatId;
+      const question = focusConfirm(registries, req);
+      if (question !== null && state && checkActivity(state, registries, req) === null) {
+        const answer = await shell.modal({ title: "ONE WAY", body: question, actions: [{ label: "[ BURN IT ]", value: "yes" }, { label: "[ KEEP IT ]", value: "no" }] });
+        if (answer !== "yes" || st.getActiveChat()?.chatId !== chatId) return [];
+      }
       const events = act({ type: "activity/do", payload: req });
       if (events.some((e) => e.type === "workshop_opened")) {
         shell.showTab("inv");

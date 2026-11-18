@@ -161,6 +161,14 @@
       {
         "id": "commander",
         "label": "Treat the commander"
+      },
+      {
+        "id": "burn_implant",
+        "label": "Burn out the frequency implant",
+        "requires": {
+          "traitEffect": "frequency"
+        },
+        "confirm": "Burn out the frequency implant? The fragments stop for good, and nothing brings them back."
       }
     ],
     "effects": [
@@ -196,6 +204,12 @@
         "amount": -1,
         "when": {
           "focus": "commander"
+        }
+      },
+      {
+        "type": "burn_frequency_implant",
+        "when": {
+          "focus": "burn_implant"
         }
       }
     ],

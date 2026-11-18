@@ -551,7 +551,7 @@ Rulings marked **(user)** were answered by the user on 2026-11-18. Task 18 copie
   - `forgetSpecial(draft, unitId): void`: Tasks 9, 11, 14 and 16 extend it.
   - Events `frequency_discovered { unitId }`, `implant_burned {}`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 - `suspicion 100 → flag, extreme hit, hidden spreading fact`: the relation has `knows_frequency`; Trust dropped; a fact with `hiddenFromCommander`, `spread: 'fast'`, `knownBy [her]`; `leverageOf` includes `knows_frequency`.
 - `knowers sync after a rumor spread`: put a second unit in the fact's `knownBy` → after the day step she has the flag and the hit; a third day step changes nothing.
 - `burning stops intercepts and leak offers`: `activity/do medbay burn_implant` → `burnedDay` set; `rollIntercepts` draws nothing; `leakCandidates` is empty.
@@ -559,9 +559,9 @@ Rulings marked **(user)** were answered by the user on 2026-11-18. Task 18 copie
 - `discovery after burning is softened`: `frequency_exposed` at major; a unit with trigger `lies` also gets `decision_aligned`.
 - `a terminated unit leaves no frequency, paranoia or debts record` (Review Focus 3, extended in Tasks 9/11/14/16): `removeFromService` → no intercept, suspicion or dmDay entry for her.
 
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → PASS; `npm test` → PASS.
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → PASS; `npm test` → PASS.
 
-- [ ] **Step 5: Commit** `feat(P12): frequency discovery, spread among the squad, burning the implant`
+- [x] **Step 5: Commit** `feat(P12): frequency discovery, spread among the squad, burning the implant`
 
 ---
 

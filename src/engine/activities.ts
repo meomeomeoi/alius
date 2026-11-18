@@ -8,9 +8,10 @@ import { applyRelationDelta } from './relationGain';
 import { addSocialPoints, socialGrowthMult, socialRank } from './social';
 import type { CampaignState, Unit } from './state/types';
 import { addBodyXp, bodyGrowthMult } from './commander/profile';
-import { traitEffects } from './commander/traits';
+import { hasTraitEffect, traitEffects } from './commander/traits';
 import { TUNING } from './tuning';
 import { restrictionReason } from './discipline/restrictions';
+import { burnImplant } from './special/frequency/discovery';
 
 export interface ActivityRequest {
   activityId: string;
@@ -24,7 +25,7 @@ export interface ActivityRequest {
 }
 
 type Cost = { credits?: number; supplies?: number; plyx?: number };
-type Focus = { id: string; label: string; units?: { min: number; max: number } };
+type Focus = { id: string; label: string; units?: { min: number; max: number }; requires?: { traitEffect: string }; confirm?: string };
 type Fx = ActivityEffect & { when?: { focus?: string; companionLikes?: string }; scale?: { facility: string; key: string } };
 
 /** What an activity just did; hooks (P3 defect social effects) react to it. */
@@ -72,6 +73,15 @@ const focusOf = (a: Entry, req: ActivityRequest): Focus | undefined => {
   return req.focus === undefined ? list[0] : list.find((f) => f.id === req.focus);
 };
 
+/** P12: the question a one-way focus asks before it runs (its `confirm` text), or null for an ordinary request. The app asks it first. */
+export function focusConfirm(reg: Registries, request: unknown): string | null {
+  const req = asReq(request);
+  const a = req ? reg.activities.get(req.activityId) : undefined;
+  if (!req || !a || req.companionId !== undefined) return null;
+  const confirm = focusOf(a, req)?.confirm;
+  return typeof confirm === 'string' ? confirm : null;
+}
+
 /** Why the activity cannot be done right now, or null. Pure; the UI uses it to grey out buttons. */
 export function checkActivity(state: CampaignState, reg: Registries, request: unknown): string | null {
   const req = asReq(request);
@@ -107,6 +117,10 @@ export function checkActivity(state: CampaignState, reg: Registries, request: un
 
   const focus = focusOf(a, req);
   if (req.focus !== undefined && !focus) return `Unknown focus "${req.focus}" for ${name}.`;
+  // P12: a focus only a commander with a given trait effect may take, and a one-way burn that cannot be done twice
+  if (focus?.requires && !hasTraitEffect(state, reg, focus.requires.traitEffect as never)) return `${focus.label} is not available to this commander.`;
+  if (focus && state.special?.frequency?.burnedDay !== undefined
+    && (a.effects as Fx[]).some((fx) => fx.type === 'burn_frequency_implant' && fx.when?.focus === focus.id)) return 'The implant is already burned.';
   if (focus?.units) {
     const ids = req.unitIds ?? [];
     if (ids.length < focus.units.min || ids.length > focus.units.max) {
@@ -227,6 +241,9 @@ export function runActivity(draft: CampaignState, ctx: EngineCtx, request: unkno
           const applied = applyRelationDelta(draft, companion.id, fx.axis, scaled(fx.amount, draft, reg, fx.scale), `activity:${a.id}`);
           events.push({ type: 'relation_changed', unitId: companion.id, axis: fx.axis, applied });
         }
+        break;
+      case 'burn_frequency_implant':
+        events.push(...burnImplant(draft));
         break;
       case 'emit_event':
         events.push({

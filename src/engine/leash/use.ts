@@ -1,4 +1,5 @@
 import type { Registries } from '../../content/types';
+import { forgetSpecial } from '../special/state';
 import { clearSmother } from '../bonds/smother';
 import { consumeSlots } from '../calendar';
 import type { EngineCtx, EngineEvent } from '../dispatch';
@@ -232,6 +233,7 @@ export function removeFromService(draft: CampaignState, unitId: string, status: 
   forgetPower(draft, unitId); // P9b: her grudge and her ballot in an open vote
   forgetPersonal(draft, unitId); // P9c: her booking, offer, wager, obedience, decor and the secrets she knew
   forgetNotes(draft, unitId); // P10b: the notes she left
+  forgetSpecial(draft, unitId); // P12: what the frequency caught about her and the suspicion she held
 }
 
 /** P9d: what a unit who leaves the service no longer carries (her rules, the smother hold, Want and publicity). */

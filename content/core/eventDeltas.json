@@ -1112,5 +1112,32 @@
         "stress": 5
       }
     }
+  },
+  {
+    "id": "frequency_exposed",
+    "cause": "She learned the commander hears thoughts",
+    "journal": "she learned the commander hears her thoughts",
+    "rows": {
+      "minor": {
+        "trust": -4,
+        "affinity": -3,
+        "stress": 2
+      },
+      "moderate": {
+        "trust": -10,
+        "affinity": -8,
+        "stress": 6
+      },
+      "major": {
+        "trust": -20,
+        "affinity": -15,
+        "stress": 12
+      },
+      "extreme": {
+        "trust": -30,
+        "affinity": -25,
+        "stress": 20
+      }
+    }
   }
 ]

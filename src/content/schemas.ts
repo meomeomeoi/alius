@@ -478,7 +478,7 @@ export const RESERVED_EVENT_TYPES: readonly string[] = [
   'wager_offered', 'wager_refused', 'wager_accepted', 'wager_declined', 'wager_resolved', 'mark_set', 'mark_ended', 'wager_question', 'truth_told', 'demand_dropped',
   'secret_kept', 'secret_found', 'secret_answered',
   // P12
-  'frequency_intercept', 'frequency_worded', 'frequency_static',
+  'frequency_intercept', 'frequency_worded', 'frequency_static', 'frequency_discovered', 'implant_burned',
   // P10b
   'door_said', 'door_replied', 'hand_set', 'note_left', 'note_read', 'notes_expired',
 ];
@@ -509,6 +509,8 @@ export const ActivityEffectSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('commander_body_xp'), stat: z.enum(['strength', 'endurance', 'reflexes']), ...amountFields }).strict(),
   z.object({ type: z.literal('defect_upkeep'), target: z.enum(['selected', 'companion']), ...amountFields }).strict(),
   z.object({ type: z.literal('relation'), axis: z.enum(['trust', 'affinity', 'attraction']), amount: int, ...amountFields }).strict(),
+  /** P12: burns out the secret frequency implant for good (the focus that carries it asks first). */
+  z.object({ type: z.literal('burn_frequency_implant'), ...amountFields }).strict(),
   z.object({
     type: z.literal('emit_event'),
     event: str.refine((e) => !RESERVED_EVENT_TYPES.includes(e), 'this event name belongs to the engine'),
@@ -529,6 +531,10 @@ export const ActivitySchema = BaseEntrySchema.extend({
     id: str,
     label: str,
     units: z.object({ min: int.min(1), max: int.min(1) }).strict().optional(),
+    /** P12: the focus is offered, and allowed, only to a commander whose traits have this effect type. */
+    requires: z.object({ traitEffect: str }).strict().optional(),
+    /** P12: a one-way choice: the app asks this question first (the activity runs only on a yes). */
+    confirm: str.max(200).optional(),
   }).strict()).optional(),
   effects: z.array(ActivityEffectSchema),
   companionEffects: z.array(ActivityEffectSchema),
