@@ -1763,5 +1763,33 @@
     "term": "Fragment wording",
     "short": "The mechanic model words each frequency fragment as a broken thought; off, a template is used.",
     "long": "When on, each fragment is worded by the mechanic model in one call. When off, or when the model fails, a template line is used instead. The fragment's truth never depends on the wording."
+  },
+  {
+    "id": "frequency_suspicion",
+    "term": "Frequency suspicion",
+    "short": "How far a soldier suspects the commander of hearing thoughts. It stays unseen until one of them reacts.",
+    "long": "AUTHOR TO WRITE: Each time the commander acts on something only the frequency could have told, the soldier it was about grows more suspicious; it fades with time. Some defects make a soldier notice sooner. At the top she is sure, and she tells others.",
+    "see": [
+      "knowledge_leak",
+      "frequency_intercept"
+    ]
+  },
+  {
+    "id": "knowledge_leak",
+    "term": "Knowledge leak",
+    "short": "The commander said or did something only a frequency fragment could have told. The soldier it was about notices.",
+    "long": "AUTHOR TO WRITE: A leak is read from the conversation, not rolled: if the commander acts on an intercepted fragment in front of the soldier it was about, her suspicion rises. A false fragment still raises it, a little less, so suspicion never betrays truth.",
+    "see": [
+      "frequency_suspicion"
+    ]
+  },
+  {
+    "id": "burn_implant",
+    "term": "Burn the implant",
+    "short": "A one-way medbay procedure: the frequency stops for good, and a later discovery lands softer.",
+    "long": "AUTHOR TO WRITE: Burning the implant ends every fragment, now and later. Suspicion still fades, and a soldier who finds out afterwards reacts less badly, most of all one who hates lies. It cannot be undone.",
+    "see": [
+      "frequency_intercept"
+    ]
   }
 ]

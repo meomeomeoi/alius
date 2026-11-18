@@ -415,7 +415,11 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       });
     }),
   });
-  const special = createSpecial({ ...worldDeps, context, refreshContext: applyContext });
+  const special = createSpecial({
+    ...worldDeps, context, refreshContext: applyContext,
+    notice: (kind, text, title) => toast(kind, text, { voice: VOICE_OF.frequency, title }), // P12: the device's own readout
+    cutIn: (text) => { const root = document.getElementById('alius-shell'); if (root) cutIn(root, 'frequency', text); },
+  });
   const discipline = createDiscipline({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o), requestVote: (a) => power.requestVote(a) });
   const bonds = createBonds({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o) });
   const personal = createPersonal({

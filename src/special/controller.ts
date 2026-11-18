@@ -6,7 +6,7 @@ import type { SpecialDeps } from './deps';
 export type { SpecialDeps } from './deps';
 
 export interface SpecialController {
-  /** Reads the events of one dispatch: a new frequency intercept is worded (the model, or the template) and stored. */
+  /** Reads the events of one dispatch: a new frequency intercept is worded (the model, or the template) and stored; a discovery and a burn are toasted. */
   onEvents(events: EngineEvent[]): void;
 }
 
@@ -42,11 +42,18 @@ export function createSpecial(deps: SpecialDeps): SpecialController {
     deps.app.dispatch({ type: 'frequency/word', payload: { id: interceptId, text } }, { expectChatId: expect });
   }
 
+  const nameOf = (id: unknown): string => state()?.squad.find((u) => u.id === id)?.displayName ?? 'A soldier';
+
   return {
     onEvents(events) {
       const expect = chatId();
       for (const e of events) {
         if (e.type === 'frequency_intercept') void word(String(e.interceptId), expect).catch(() => {});
+        // the commander is told: she knows and she confronts (AUTHOR TO WRITE: the wording). Names her only, never what any fragment was.
+        else if (e.type === 'frequency_discovered') {
+          deps.notice?.('warn', `${nameOf(e.unitId)} found out about the frequency. Expect her to confront you.`, 'FREQUENCY');
+          deps.cutIn?.('FOUND OUT');
+        } else if (e.type === 'implant_burned') deps.notice?.('info', 'The implant is burned out. The fragments stop for good.', 'FREQUENCY');
       }
     },
   };

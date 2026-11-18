@@ -15,6 +15,7 @@ import { registerImmersionProviders } from './immersion';
 import { registerBondsProviders } from './bonds';
 import { registerMemoryProviders } from './memory';
 import { registerPersonalProviders } from './personal';
+import { registerSpecialProviders } from './special';
 import { registerPowerProviders } from './power';
 import { registerWorldProviders } from './world';
 import type { Knowledge } from '../knowledge';
@@ -299,7 +300,7 @@ export const CORE_GLOSSARY_IDS: readonly string[] = [
   // P3b: memory (SYS › MEMORY and the MEMORY view address these; `rumor` is P5's mission-board gossip, so the spreading kind is `squad_rumor`)
   'memory', 'memory_preset', 'memory_budget', 'memory_fill', 'dossier', 'squad_rumor', 'pinned_fact', 'hidden_scenes',
   // P12: the SPECIAL label of a trait card addresses this; later tasks add their own
-  'special_trait', 'frequency_intercept',
+  'special_trait', 'frequency_intercept', 'frequency_suspicion', 'knowledge_leak', 'burn_implant',
 ];
 
 let registered = false;
@@ -322,4 +323,5 @@ export function registerCoreProviders(): void {
   registerPersonalProviders(); // P9c
   registerImmersionProviders(); // P10b
   registerMemoryProviders(); // P3b
+  registerSpecialProviders(); // P12
 }

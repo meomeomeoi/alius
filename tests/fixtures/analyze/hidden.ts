@@ -1,4 +1,5 @@
 import { registerKnowledgeRule } from '../../../src/analysis/knowledge';
+import { specialKnowledgeRule } from '../../../src/analysis/providers/special';
 import type { Registries } from '../../../src/content/types';
 import type { CampaignState } from '../../../src/engine/state/types';
 import { campaign } from '../../helpers/world';
@@ -43,6 +44,19 @@ export function hiddenFixture(reg: Registries): { state: CampaignState; unitId: 
     secrets: [{ id: 'sx_1', kindId: 'trader_deal', text: 'SENTINEL_SECRET', knownBy: [unit.id, state.squad[1].id], reason: 'self_interest', day: 8, status: 'kept' }],
   };
 
+  // P12: what the frequency caught (a true fragment, its worded text), how suspicious she is and the hidden fact of her discovery
+  state.special = {
+    frequency: {
+      intercepts: [{ id: 'fq1', unitId: unit.id, day: 8, kind: 'stance', value: 'fearful', true: true, partial: false, text: 'SENTINEL_FREQ_TRUE' }],
+      seq: 1, suspicion: { [unit.id]: 71 }, dmDay: {}, factId: 'fact_freq',
+    },
+  };
+  state.memory.facts.push({
+    id: 'fact_freq', about: [unit.id], text: 'SENTINEL_FREQ_FACT', tags: ['frequency'], importance: 5, day: 8, knownBy: [unit.id], hiddenFromCommander: true,
+  });
+  state.relations[unit.id].flags.push('knows_frequency');
+  registerKnowledgeRule(specialKnowledgeRule); // P12's own rule hides the fact and the flag (not announced)
+
   state.disloyalty = { units: { [unit.id]: { signs: [], attempts: 3, nextCheckDay: 97 } } };
 
   state.dilemmas = {
@@ -61,8 +75,8 @@ export function hiddenFixture(reg: Registries): { state: CampaignState; unitId: 
     state,
     unitId: unit.id,
     sentinels: {
-      numbers: [37, 41, 23, 63, 17, 29, 97, 77, 31, 53, 59],
-      texts: ['SENTINEL_CLOCK', 'SENTINEL_FACT', 'SENTINEL_OPTION_EFFECT', 'SENTINEL_SECRET'],
+      numbers: [37, 41, 23, 63, 17, 29, 97, 77, 31, 53, 59, 71],
+      texts: ['SENTINEL_CLOCK', 'SENTINEL_FACT', 'SENTINEL_OPTION_EFFECT', 'SENTINEL_SECRET', 'SENTINEL_FREQ_TRUE', 'SENTINEL_FREQ_FACT'],
     },
   };
 }

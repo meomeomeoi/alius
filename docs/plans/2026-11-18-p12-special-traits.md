@@ -583,9 +583,9 @@ Rulings marked **(user)** were answered by the user on 2026-11-18. Task 18 copie
   - Knowledge rule: hides the `knows_frequency` flag on a unit until `frequency_discovered` has named her (`special.frequency.discovered?: string[]`), and hides the frequency fact.
   - `glossary:frequency_intercept`: a reading of how many fragments today and this week (counts only).
 
-- [ ] **Step 1: Write the failing test** `no provider shows a frequency sentinel` (the generic hidden test covers it once the fixture has the sentinels), and `the intercept reading shows counts, never truth or suspicion`.
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P12): frequency readings, knowledge rule and toasts`
+- [x] **Step 1: Write the failing test** `no provider shows a frequency sentinel` (the generic hidden test covers it once the fixture has the sentinels), and `the intercept reading shows counts, never truth or suspicion`.
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P12): frequency readings, knowledge rule and toasts`
 
 **Chunk (a) ends here.**
 

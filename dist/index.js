@@ -23797,12 +23797,17 @@ function createSpecial(deps) {
     if (chatId() !== expect) return;
     deps.app.dispatch({ type: "frequency/word", payload: { id: interceptId, text: text2 } }, { expectChatId: expect });
   }
+  const nameOf14 = (id) => state()?.squad.find((u) => u.id === id)?.displayName ?? "A soldier";
   return {
     onEvents(events) {
       const expect = chatId();
       for (const e of events) {
         if (e.type === "frequency_intercept") void word(String(e.interceptId), expect).catch(() => {
         });
+        else if (e.type === "frequency_discovered") {
+          deps.notice?.("warn", `${nameOf14(e.unitId)} found out about the frequency. Expect her to confront you.`, "FREQUENCY");
+          deps.cutIn?.("FOUND OUT");
+        } else if (e.type === "implant_burned") deps.notice?.("info", "The implant is burned out. The fragments stop for good.", "FREQUENCY");
       }
     }
   };
@@ -24053,7 +24058,9 @@ var VOICE_OF = {
   booking: "personal",
   device_edit: "personal",
   // P9c: what the squad kept from the commander, found out, is a file entry
-  squad_secret: "paper"
+  squad_secret: "paper",
+  // P12: what the frequency caught and its toasts are the device's own readout
+  frequency: "terminal"
 };
 
 // src/ui/power/votePanel.ts
@@ -35432,6 +35439,43 @@ function registerPersonalProviders() {
   registerAnalyzeProvider("secretKinds", secretKindProvider);
 }
 
+// src/analysis/providers/special.ts
+var plural3 = (n, one, many2 = `${one}s`) => `${n} ${n === 1 ? one : many2}`;
+function holdersAnnounced(state) {
+  const announced = state.special?.frequency?.discovered ?? [];
+  return state.squad.every((u) => !state.relations[u.id]?.flags.includes("knows_frequency") || announced.includes(u.id));
+}
+function interceptProvider(_subject, env) {
+  const f = env.state?.special?.frequency;
+  if (!env.state || !f) return null;
+  const today = f.intercepts.filter((x) => x.day === env.state.day).length;
+  const week = f.intercepts.filter((x) => env.state.day - x.day < 7).length;
+  const lines = [
+    f.burnedDay !== void 0 ? "The implant is burned out: no more fragments." : `${plural3(today, "fragment")} today, ${week} this week.`,
+    "A fragment is never marked. Some are distorted and some name only a subject; nothing here says which."
+  ];
+  return { lines };
+}
+function suspicionProvider(_subject, env) {
+  if (!env.state?.special?.frequency) return null;
+  return { lines: ["An unseen threat: how far each soldier suspects the commander of hearing thoughts stays hidden until one of them reacts."] };
+}
+function burnProvider(_subject, env) {
+  const f = env.state?.special?.frequency;
+  if (!f) return null;
+  return { lines: [f.burnedDay !== void 0 ? "The implant is already burned out. Nothing brings it back." : "Burning the implant is done in the medbay and cannot be undone: the fragments stop for good, and a later discovery lands softer."] };
+}
+var specialKnowledgeRule = {
+  fact: (f, state) => f.id !== state.special?.frequency?.factId,
+  flag: (id, state) => id !== "knows_frequency" || holdersAnnounced(state)
+};
+function registerSpecialProviders() {
+  registerKnowledgeRule(specialKnowledgeRule);
+  registerAnalyzeProvider("glossary:frequency_intercept", interceptProvider);
+  registerAnalyzeProvider("glossary:frequency_suspicion", suspicionProvider);
+  registerAnalyzeProvider("glossary:burn_implant", burnProvider);
+}
+
 // src/analysis/providers/power.ts
 var TERM_WORDS = {
   values: "what she values",
@@ -35908,6 +35952,7 @@ function registerCoreProviders() {
   registerPersonalProviders();
   registerImmersionProviders();
   registerMemoryProviders();
+  registerSpecialProviders();
 }
 
 // src/analysis/describe.ts
@@ -37711,7 +37756,17 @@ function createApp(st, deps) {
       });
     })
   });
-  const special = createSpecial({ ...worldDeps, context, refreshContext: applyContext });
+  const special = createSpecial({
+    ...worldDeps,
+    context,
+    refreshContext: applyContext,
+    notice: (kind, text2, title) => toast(kind, text2, { voice: VOICE_OF.frequency, title }),
+    // P12: the device's own readout
+    cutIn: (text2) => {
+      const root = document.getElementById("alius-shell");
+      if (root) cutIn(root, "frequency", text2);
+    }
+  });
   const discipline = createDiscipline({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o), requestVote: (a) => power.requestVote(a) });
   const bonds = createBonds({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o) });
   const personal = createPersonal({

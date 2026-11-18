@@ -4,7 +4,7 @@ export type Voice = 'terminal' | 'corporate' | 'paper' | 'personal';
 /** Who is speaking is declared here, in one table, never at the call sites that show the text. */
 export type VoiceSource =
   | 'toast' | 'dm' | 'unit_note' | 'chronicle' | 'dossier' | 'commander_file'
-  | 'oversight' | 'leash_verdict' | 'corporate_mail' | 'intake_form' | 'squad_vote' | 'her_call' | 'booking' | 'device_edit' | 'squad_secret';
+  | 'oversight' | 'leash_verdict' | 'corporate_mail' | 'intake_form' | 'squad_vote' | 'her_call' | 'booking' | 'device_edit' | 'squad_secret' | 'frequency';
 
 export const VOICE_OF: Record<VoiceSource, Voice> = {
   toast: 'terminal',
@@ -27,4 +27,6 @@ export const VOICE_OF: Record<VoiceSource, Voice> = {
   device_edit: 'personal',
   // P9c: what the squad kept from the commander, found out, is a file entry
   squad_secret: 'paper',
+  // P12: what the frequency caught and its toasts are the device's own readout
+  frequency: 'terminal',
 };
