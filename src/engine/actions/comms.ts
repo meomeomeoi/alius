@@ -16,7 +16,7 @@ import { CONFRONTATION_KINDS } from '../loyalty/state';
 import { evaluateAutomatic } from '../relations/graph';
 import type { EventIntent } from '../relations/intents';
 import type { EngineEvent } from '../dispatch';
-import type { NightEntry } from '../state/types';
+import type { CampaignState, NightEntry } from '../state/types';
 import './scene'; // registered first: its daily relationship pass must run before the night rolls
 
 // Importing this module registers the DM, night and defect-social actions and hooks.
@@ -111,6 +111,42 @@ registerAction('night/open', (draft, _payload, ctx) => {
   // P9c: a knower at the door tells a squad secret
   const confession = entry.kind === SECRET_NIGHT_KIND ? confess(draft, ctx, entry.unitId) : [];
   return [{ type: 'night_opened', entry }, ...relief, ...confession];
+});
+
+const DOOR_SAY_MAX = 300;
+const DOOR_REPLY_MAX = 400;
+
+/** The knock at the door that can still be spoken through: night, an open entry, no scene, not a confrontation. */
+function doorKnock(draft: CampaignState, what: string): NightEntry {
+  const entry = draft.calendar.nightEvent as NightEntry | undefined;
+  if (draft.slot !== 'night' || !entry) throw new Error(`${what}: there is no knock at the door.`);
+  if (draft.scene || draft.calendar.pendingScene) throw new Error(`${what}: a scene is open.`);
+  if (isConfrontation(entry)) throw new Error('This is not a knock: answer it from its own panel.');
+  return entry;
+}
+const doorText = (v: unknown, max: number): string => {
+  const t = typeof v === 'string' ? v.trim() : '';
+  if (t === '' || t.length > max) throw new Error(`Through the door: 1 to ${max} characters.`);
+  return t;
+};
+
+// P10b §3: one exchange through the door per knock. Nothing is spent or changed on a relation here: what she answers is read
+// for intents separately (`intents/apply`, like a DM), and nothing goes into the DM thread.
+registerAction('night/door_say', (draft, payload) => {
+  const entry = doorKnock(draft, 'night/door_say');
+  if (!isObj(payload)) throw new Error('night/door_say needs { text }');
+  if (entry.door !== undefined) throw new Error('night/door_say: something was said through this door already.');
+  entry.door = { said: doorText(payload.text, DOOR_SAY_MAX) };
+  return [{ type: 'door_said', unitId: entry.unitId }];
+});
+
+registerAction('night/door_reply', (draft, payload) => {
+  const entry = doorKnock(draft, 'night/door_reply');
+  if (!isObj(payload)) throw new Error('night/door_reply needs { text }');
+  if (entry.door === undefined) throw new Error('night/door_reply: nothing was said through this door.');
+  if (entry.door.reply !== undefined) throw new Error('night/door_reply: she answered already.');
+  entry.door.reply = doorText(payload.text, DOOR_REPLY_MAX);
+  return [{ type: 'door_replied', unitId: entry.unitId }];
 });
 
 registerAction('night/ignore', (draft, _payload, ctx) => {

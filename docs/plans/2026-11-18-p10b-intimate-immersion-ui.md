@@ -597,20 +597,20 @@ git commit -am "feat(P10b): night theme and quieter night sound"
 
   Neither spends a slot or changes a relation (intents come separately through `intents/apply`).
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - `say once, second say rejected and state unchanged`;
   - `reply needs a said line`;
   - `confrontation entries refuse door_say`;
   - `night/open after a door exchange still opens the scene`;
   - `night/ignore after a door exchange applies the ignore consequence`.
 
-- [ ] **Step 2: Run to verify they fail**
+- [x] **Step 2: Run to verify they fail**
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
-- [ ] **Step 4: Run, `npm test`**
+- [x] **Step 4: Run, `npm test`**
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git commit -am "feat(P10b): one exchange through the door (engine)"

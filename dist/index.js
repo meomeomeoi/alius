@@ -6566,7 +6566,10 @@ var RESERVED_EVENT_TYPES = [
   "demand_dropped",
   "secret_kept",
   "secret_found",
-  "secret_answered"
+  "secret_answered",
+  // P10b
+  "door_said",
+  "door_replied"
 ];
 var slotEnum = external_exports.enum(["morning", "afternoon", "evening", "night"]);
 var socialStat = external_exports.enum(["authority", "insight", "empathy", "cunning"]);
@@ -20456,6 +20459,35 @@ registerAction("night/open", (draft, _payload, ctx2) => {
   const relief = entry.kind === WANT_VISIT_KIND ? relieveWant(draft, entry.unitId, TUNING.bonds.want.relief.wantVisit, "want_visit") : [];
   const confession = entry.kind === SECRET_NIGHT_KIND ? confess(draft, ctx2, entry.unitId) : [];
   return [{ type: "night_opened", entry }, ...relief, ...confession];
+});
+var DOOR_SAY_MAX = 300;
+var DOOR_REPLY_MAX = 400;
+function doorKnock(draft, what) {
+  const entry = draft.calendar.nightEvent;
+  if (draft.slot !== "night" || !entry) throw new Error(`${what}: there is no knock at the door.`);
+  if (draft.scene || draft.calendar.pendingScene) throw new Error(`${what}: a scene is open.`);
+  if (isConfrontation(entry)) throw new Error("This is not a knock: answer it from its own panel.");
+  return entry;
+}
+var doorText = (v, max) => {
+  const t = typeof v === "string" ? v.trim() : "";
+  if (t === "" || t.length > max) throw new Error(`Through the door: 1 to ${max} characters.`);
+  return t;
+};
+registerAction("night/door_say", (draft, payload) => {
+  const entry = doorKnock(draft, "night/door_say");
+  if (!isObj14(payload)) throw new Error("night/door_say needs { text }");
+  if (entry.door !== void 0) throw new Error("night/door_say: something was said through this door already.");
+  entry.door = { said: doorText(payload.text, DOOR_SAY_MAX) };
+  return [{ type: "door_said", unitId: entry.unitId }];
+});
+registerAction("night/door_reply", (draft, payload) => {
+  const entry = doorKnock(draft, "night/door_reply");
+  if (!isObj14(payload)) throw new Error("night/door_reply needs { text }");
+  if (entry.door === void 0) throw new Error("night/door_reply: nothing was said through this door.");
+  if (entry.door.reply !== void 0) throw new Error("night/door_reply: she answered already.");
+  entry.door.reply = doorText(payload.text, DOOR_REPLY_MAX);
+  return [{ type: "door_replied", unitId: entry.unitId }];
 });
 registerAction("night/ignore", (draft, _payload, ctx2) => {
   const entry = draft.calendar.nightEvent;

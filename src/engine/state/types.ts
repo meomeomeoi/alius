@@ -418,6 +418,8 @@ export interface NightEntry {
   expiresDay: number;
   /** P9d: categories of the spec this entry came from; turning one off withdraws the entry. */
   contentTags?: string[];
+  /** P10b: the one exchange through the closed door (what the commander said, what she answered). Absent = none yet. */
+  door?: { said: string; reply?: string };
 }
 
 export interface Commander {
