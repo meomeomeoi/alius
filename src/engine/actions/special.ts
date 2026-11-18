@@ -1,5 +1,6 @@
 import { registerDayEndStep } from '../calendar';
 import { registerAction } from '../dispatch';
+import { answerVisit } from '../special/debts/intel';
 import { specialDayStep, specialRumorStep } from '../special/dayStep';
 import { frequencyText } from '../special/frequency/fragments';
 
@@ -21,6 +22,12 @@ registerAction('frequency/word', (draft, payload) => {
   if (text === null) throw new Error(`frequency/word: a fragment is 1 to ${FRAGMENT_MAX} characters.`);
   x.text = text;
   return [{ type: 'frequency_worded', interceptId: x.id }];
+});
+
+/** The commander answers the handler's visit, one answer for every item (truth, partial, false or withhold). Draws no rng. */
+registerAction('debts/answer_visit', (draft, payload, ctx) => {
+  const p = (typeof payload === 'object' && payload !== null ? payload : {}) as { visitId?: unknown; answers?: unknown };
+  return answerVisit(draft, ctx, p.visitId, p.answers);
 });
 
 registerDayEndStep('director_tick', specialDayStep);

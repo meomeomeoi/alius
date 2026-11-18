@@ -830,7 +830,7 @@ The day step's decay runs in every campaign: it is registered unconditionally an
   - `paymentFor(answers, pressure): { credits; supplies; plyx }`
   - Events `intel_answered { visitId, counts: { truth, partial, false, withhold } }`, `handler_threat {}`, `handler_leak {}`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 - `four choices per item` (acceptance 4): any other value is refused (`Answer each item with truth, partial, false or withhold.`) and nothing changes.
 - `payment table` and `halved at pressure 60`.
 - `withhold raises pressure, truth lowers it`.
@@ -839,10 +839,10 @@ The day step's decay runs in every campaign: it is registered unconditionally an
 - `stale visit id refused`.
 - `an answered item is not offered again`.
 
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.** The rollover already drops `nightEvent`; the special day step calls `lapseVisit` when `debts.visit` is still open on a later day (no calendar change).
-- [ ] **Step 4: Run** → PASS; `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P12): the intel exchange, payment and the handler's pressure`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.** The rollover already drops `nightEvent`; the special day step calls `lapseVisit` when `debts.visit` is still open on a later day (no calendar change).
+- [x] **Step 4: Run** → PASS; `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P12): the intel exchange, payment and the handler's pressure`
 
 ---
 

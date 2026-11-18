@@ -6,6 +6,7 @@ import { nextId } from '../../memory/facts';
 import { enqueueNight } from '../../night';
 import type { CampaignState } from '../../state/types';
 import { TUNING } from '../../tuning';
+import { intelOf } from './intel';
 import { HANDLER_UNIT, HANDLER_VISIT_KIND, specialOf, type DebtsState } from '../state';
 
 /** An empty debts block for a campaign served by this handler. */
@@ -43,6 +44,8 @@ export function rollVisit(draft: CampaignState, ctx: EngineCtx): EngineEvent[] {
   const T = TUNING.special.debts;
   const since = draft.day - (d.lastVisitDay ?? 0);
   if (since < T.minDays) return [];
+  const items = intelOf(draft, ctx.registries);
+  if (items.length === 0) return []; // nothing to sell: no visit, no draw
   if (!ctx.rng.chance(Math.min(1, (since - T.minDays + 1) / T.rampDays))) return [];
   const entry = {
     id: nextId(draft, 'n'), unitId: HANDLER_UNIT, kind: HANDLER_VISIT_KIND, priority: T.priority, framing: T.framing,
@@ -51,6 +54,6 @@ export function rollVisit(draft: CampaignState, ctx: EngineCtx): EngineEvent[] {
   if (!enqueueNight(draft, entry)) return [];
   d.visitSeq += 1;
   d.lastVisitDay = draft.day;
-  d.visit = { id: `hv${d.visitSeq}`, day: draft.day, items: [] };
+  d.visit = { id: `hv${d.visitSeq}`, day: draft.day, items };
   return [{ type: 'handler_visit', visitId: d.visit.id }];
 }

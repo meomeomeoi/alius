@@ -93,7 +93,7 @@ export const INTEL_ANSWERS = ['truth', 'partial', 'false', 'withhold'] as const;
 export type IntelAnswer = (typeof INTEL_ANSWERS)[number];
 
 /** A consequence of sold intel that has not landed yet. `strength` is 1 for a truth and 0.5 for a partial one. */
-export interface Scheduled { id: string; itemId: string; kind: IntelKind; dueDay: number; strength: 1 | 0.5; refId: string }
+export interface Scheduled { id: string; itemId: string; kind: IntelKind; dueDay: number; strength: 1 | 0.5; refId: string; /** The item was a lie: it lands no consequence, only a draw whether the handler found out. */ falsified?: true }
 
 /** A region the rival knows the squad will go to: a run there is ambushed until `untilDay`. */
 export interface Exposure { regionId: string; untilDay: number; strength: 1 | 0.5 }
@@ -145,6 +145,12 @@ export function specialOf(draft: CampaignState): SpecialState {
  * suspected, foreseen, owed or scheduled for her later. Each system adds its own part as it is built.
  */
 export function forgetSpecial(draft: CampaignState, unitId: string): void {
+  const debts = draft.special?.debts;
+  if (debts) {
+    debts.scheduled = debts.scheduled.filter((x) => !(x.kind === 'squad' && x.refId === unitId));
+    if (debts.discoveredBy === unitId) delete debts.discoveredBy;
+    if (debts.caseQueue) debts.caseQueue = debts.caseQueue.filter((c) => !(c.kind === 'unit' && c.unitId === unitId));
+  }
   const par = draft.special?.paranoia;
   if (par) {
     par.premonitions = par.premonitions.filter((x) => x.unitId !== unitId);
