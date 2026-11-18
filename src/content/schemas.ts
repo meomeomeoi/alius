@@ -478,7 +478,7 @@ export const RESERVED_EVENT_TYPES: readonly string[] = [
   'wager_offered', 'wager_refused', 'wager_accepted', 'wager_declined', 'wager_resolved', 'mark_set', 'mark_ended', 'wager_question', 'truth_told', 'demand_dropped',
   'secret_kept', 'secret_found', 'secret_answered',
   // P12
-  'frequency_intercept', 'frequency_worded', 'frequency_static', 'frequency_discovered', 'implant_burned',
+  'frequency_intercept', 'frequency_worded', 'frequency_static', 'frequency_discovered', 'implant_burned', 'commander_stress_changed',
   // P10b
   'door_said', 'door_replied', 'hand_set', 'note_left', 'note_read', 'notes_expired',
 ];
@@ -509,6 +509,8 @@ export const ActivityEffectSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('commander_body_xp'), stat: z.enum(['strength', 'endurance', 'reflexes']), ...amountFields }).strict(),
   z.object({ type: z.literal('defect_upkeep'), target: z.enum(['selected', 'companion']), ...amountFields }).strict(),
   z.object({ type: z.literal('relation'), axis: z.enum(['trust', 'affinity', 'attraction']), amount: int, ...amountFields }).strict(),
+  /** P12: moves the commander's own stress (a negative amount relieves it). */
+  z.object({ type: z.literal('commander_stress'), amount: int, ...amountFields }).strict(),
   /** P12: burns out the secret frequency implant for good (the focus that carries it asks first). */
   z.object({ type: z.literal('burn_frequency_implant'), ...amountFields }).strict(),
   z.object({

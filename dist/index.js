@@ -568,7 +568,9 @@ var TUNING = Object.freeze({
       falseLeakMult: 0.5,
       suspicionDecay: 2,
       staticAbove: 50
-    })
+    }),
+    /** The commander's own stress (every campaign; it never draws). */
+    commanderStress: Object.freeze({ empathyAt: 70, dayRelief: 5, sleepRelief: 15, downed: 10, nightmare: 15, falseAlarm: 5 })
   })
 });
 
@@ -800,6 +802,9 @@ function summarizeActivityEffect(effect, _reg, focus) {
       break;
     case "relation":
       s = `Companion ${signed(Number(e.amount))} ${cap(String(e.axis))}`;
+      break;
+    case "commander_stress":
+      s = `Commander ${signed(Number(e.amount))} stress`;
       break;
     case "burn_frequency_implant":
       s = "Burns out the frequency implant for good: no more fragments";
@@ -1350,6 +1355,7 @@ function recordLedger(before, after, action) {
     if (Number.isFinite(delta) && delta !== 0) entries.push({ day: before.day, slot: before.slot, action, key, delta });
   };
   for (const r of RESOURCES) push(`res:${r}`, (after.resources?.[r] ?? 0) - (before.resources?.[r] ?? 0));
+  push("res:cmdr_stress", (after.commander?.stress ?? 0) - (before.commander?.stress ?? 0));
   const stressBefore = new Map(before.squad.map((u) => [u.id, u.stress]));
   for (const u of after.squad) {
     const was = stressBefore.get(u.id);
@@ -6625,6 +6631,7 @@ var RESERVED_EVENT_TYPES = [
   "frequency_static",
   "frequency_discovered",
   "implant_burned",
+  "commander_stress_changed",
   // P10b
   "door_said",
   "door_replied",
@@ -6658,6 +6665,8 @@ var ActivityEffectSchema = external_exports.discriminatedUnion("type", [
   external_exports.object({ type: external_exports.literal("commander_body_xp"), stat: external_exports.enum(["strength", "endurance", "reflexes"]), ...amountFields }).strict(),
   external_exports.object({ type: external_exports.literal("defect_upkeep"), target: external_exports.enum(["selected", "companion"]), ...amountFields }).strict(),
   external_exports.object({ type: external_exports.literal("relation"), axis: external_exports.enum(["trust", "affinity", "attraction"]), amount: int, ...amountFields }).strict(),
+  /** P12: moves the commander's own stress (a negative amount relieves it). */
+  external_exports.object({ type: external_exports.literal("commander_stress"), amount: int, ...amountFields }).strict(),
   /** P12: burns out the secret frequency implant for good (the focus that carries it asks first). */
   external_exports.object({ type: external_exports.literal("burn_frequency_implant"), ...amountFields }).strict(),
   external_exports.object({
@@ -9986,9 +9995,10 @@ function rankForPoints(points) {
   return rank2;
 }
 function socialRank(state, stat3) {
-  const rank2 = state.commander.socialStats[stat3];
-  if (state.commander.sleeplessDay !== state.day) return rank2;
-  return Math.max(1, rank2 + (state.commander.sleeplessRank?.[stat3] ?? 0));
+  let rank2 = state.commander.socialStats[stat3];
+  if (state.commander.sleeplessDay === state.day) rank2 = Math.max(1, rank2 + (state.commander.sleeplessRank?.[stat3] ?? 0));
+  if (stat3 === "empathy" && (state.commander.stress ?? 0) >= TUNING.special.commanderStress.empathyAt) rank2 = Math.max(1, rank2 - 1);
+  return rank2;
 }
 function socialGrowthMult(state, reg, stat3) {
   return traitEffects(state, reg, "social_growth").filter((fx2) => fx2.stat === stat3).reduce((m, fx2) => m * fx2.mult, 1);
@@ -19926,6 +19936,17 @@ registerAction("squad/decline_incoming", (draft, _payload, ctx2) => {
   return [{ type: "unit_joined", unitId: grunt.id, kind: "grunt" }];
 });
 
+// src/engine/special/commanderStress.ts
+var commanderStress = (state) => state.commander.stress ?? 0;
+var commanderStressBand = (state) => stressBand(commanderStress(state));
+function addCommanderStress(draft, amount, source) {
+  const before = commanderStress(draft);
+  const next = Math.min(100, Math.max(0, before + amount));
+  if (next === before) return [];
+  draft.commander.stress = next;
+  return [{ type: "commander_stress_changed", delta: next - before, source }];
+}
+
 // src/engine/special/frequency/discovery.ts
 var KNOWS_FREQUENCY = "knows_frequency";
 var namedLiving6 = (state, id) => {
@@ -20177,6 +20198,9 @@ function runActivity(draft, ctx2, request) {
           events.push({ type: "relation_changed", unitId: companion.id, axis: fx2.axis, applied });
         }
         break;
+      case "commander_stress":
+        events.push(...addCommanderStress(draft, fx2.amount, "medbay"));
+        break;
       case "burn_frequency_implant":
         events.push(...burnImplant(draft));
         break;
@@ -20247,7 +20271,8 @@ registerAction("calendar/consume_slot", (draft, payload, ctx2) => {
 });
 registerAction("calendar/sleep", (draft, _payload, ctx2) => {
   if (!isQuietNight(draft)) throw new Error("There is nothing to sleep through.");
-  return consumeSlots(draft, 1, ctx2);
+  const rested = addCommanderStress(draft, -TUNING.special.commanderStress.sleepRelief, "sleep");
+  return [...rested, ...consumeSlots(draft, 1, ctx2)];
 });
 registerAction("activity/do", (draft, payload, ctx2) => runActivity(draft, ctx2, payload));
 registerAction("commander/injure", (draft, payload) => {
@@ -21259,6 +21284,7 @@ function finalizeCombat(draft, reg, rng, outcome) {
     events.push(...injureCommander(draft, TUNING.combat.commanderInjuryDays));
     commanderInjured = true;
     events.push(...scarCommander(draft, rng));
+    events.push(...addCommanderStress(draft, TUNING.special.commanderStress.downed, "downed"));
   }
   recordMerit(draft, cs);
   recordTally(draft, cs);
@@ -22351,7 +22377,7 @@ registerAction("onboarding/guide_dm_sent", (draft) => {
 
 // src/engine/special/dayStep.ts
 function specialDayStep(draft, ctx2) {
-  const events = [];
+  const events = addCommanderStress(draft, -TUNING.special.commanderStress.dayRelief, "day");
   for (const u of draft.squad) if (!isLiving(u) && holdsSpecial(draft, u.id)) forgetSpecial(draft, u.id);
   for (const u of draft.squad) {
     if (u.kind === "named" && isLiving(u) && suspicionOf(draft, u.id) >= 100) events.push(...frequencyDiscovered(draft, ctx2, u.id));
@@ -30472,7 +30498,10 @@ function renderCmdrCard(host, ctx2) {
       " \xB7 ",
       ...stat3("SEASONING", "glossary:seasoning", word("seasoning", p.seasoning)),
       " \xB7 BUILD ",
-      h("span", { class: "alius-chip", ...analyzeAttrs("glossary:archetype") }, p.archetype)
+      h("span", { class: "alius-chip", ...analyzeAttrs("glossary:archetype") }, p.archetype),
+      " \xB7 ",
+      // P12: the commander's own stress, as a band (the number is in the analysis panel with raw values on)
+      h("span", { class: "alius-chip", ...analyzeAttrs("glossary:commander_stress") }, `STRESS: ${commanderStressBand(state)}`)
     ),
     h("p", {}, "TRAITS: ", ...traitIds2.length === 0 ? ["NONE"] : traitIds2.flatMap((id, i) => [
       i === 0 ? "" : " \xB7 ",
@@ -34883,12 +34912,23 @@ function presenceProvider(subject, env, k) {
   return { lines };
 }
 var registered = false;
+function commanderStressProvider(_subject, env, k) {
+  const state = env.state;
+  if (!state) return null;
+  const T = TUNING.special.commanderStress;
+  const value = commanderStress(state);
+  const lines = [`Now: ${commanderStressBand(state)}${k.raw(value) !== null ? ` (${k.raw(value)})` : ""}`];
+  if (value >= T.empathyAt) lines.push("The commander reads people worse: Empathy is one rank lower.");
+  lines.push("It eases a little each day, more after a night slept through and with the medbay; nightmares, a false alarm acted on and a fall in combat raise it.");
+  return { lines };
+}
 function registerCommanderProviders() {
   if (registered) return;
   registered = true;
   for (const stat3 of ["strength", "endurance", "reflexes"]) registerAnalyzeProvider(`glossary:body_${stat3}`, bodyProvider(stat3));
   registerAnalyzeProvider("glossary:archetype", archetypeProvider);
   registerAnalyzeProvider("glossary:presence", presenceProvider);
+  registerAnalyzeProvider("glossary:commander_stress", commanderStressProvider);
 }
 
 // src/analysis/providers/discipline.ts

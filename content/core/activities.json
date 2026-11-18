@@ -211,6 +211,13 @@
         "when": {
           "focus": "burn_implant"
         }
+      },
+      {
+        "type": "commander_stress",
+        "amount": -20,
+        "when": {
+          "focus": "commander"
+        }
       }
     ],
     "companionEffects": [

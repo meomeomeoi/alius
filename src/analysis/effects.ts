@@ -220,6 +220,7 @@ export function summarizeActivityEffect(
     case 'commander_injury_days': s = `Commander ${signed(Number(e.amount))} injury days`; break;
     case 'defect_upkeep': s = `${who}: defect upkeep`; break;
     case 'relation': s = `Companion ${signed(Number(e.amount))} ${cap(String(e.axis))}`; break;
+    case 'commander_stress': s = `Commander ${signed(Number(e.amount))} stress`; break;
     case 'burn_frequency_implant': s = 'Burns out the frequency implant for good: no more fragments'; break;
     default: return cap(humanize(String(e.type ?? 'effect')));
   }

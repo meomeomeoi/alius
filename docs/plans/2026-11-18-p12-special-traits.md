@@ -619,7 +619,7 @@ Rulings marked **(user)** were answered by the user on 2026-11-18. Task 18 copie
 
 The day step's decay runs in every campaign: it is registered unconditionally and changes nothing while stress is 0.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 - `clamps 0..100 and emits the delta`.
 - `Empathy is one rank lower at 70, floor 1, stacked with sleepless`.
 - `medbay commander focus −20; quiet-night sleep −15; day end −5`.
@@ -628,8 +628,8 @@ The day step's decay runs in every campaign: it is registered unconditionally an
 - `no rng draw`: rng state unchanged across a day end at stress 40.
 - `CMDR chip carries data-analyze="glossary:commander_stress"`.
 
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → PASS; `npm test` → PASS. A ledger snapshot test that now sees `res:cmdr_stress` after a downed commander is the only expected expectation change. Name it in the commit body.
-- [ ] **Step 5: Commit** `feat(P12): commander stress (sources, relief, Empathy at strained)`
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → PASS; `npm test` → PASS. A ledger snapshot test that now sees `res:cmdr_stress` after a downed commander is the only expected expectation change. Name it in the commit body.
+- [x] **Step 5: Commit** `feat(P12): commander stress (sources, relief, Empathy at strained)`
 
 ---
 

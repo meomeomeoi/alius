@@ -1791,5 +1791,14 @@
     "see": [
       "frequency_intercept"
     ]
+  },
+  {
+    "id": "commander_stress",
+    "term": "Commander stress",
+    "short": "The commander's own strain. Nightmares, a false alarm acted on and a fall in combat raise it; sleep, time and the medbay ease it.",
+    "long": "AUTHOR TO WRITE: Stress runs from calm to breaking. From strained on, the commander reads people worse: Empathy counts one rank lower. It eases a little every day, more after a night slept through and with a medbay session.",
+    "see": [
+      "stress"
+    ]
   }
 ]

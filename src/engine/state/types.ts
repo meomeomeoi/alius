@@ -465,6 +465,8 @@ export interface Commander {
   sleeplessDay?: number;
   /** P7: the rank changes that apply on `sleeplessDay` (copied from the `sleepless_rank` trait effects when the night was spent awake). */
   sleeplessRank?: Partial<Record<'authority' | 'insight' | 'empathy' | 'cunning', number>>;
+  /** P12: the commander's own stress 0–100 (absent = 0). Read through `commanderStress`; `socialRank` reads it directly (it has no registry). */
+  stress?: number;
   /** P9: counters of the commander's deeds (absent = all 0). Reputations are read from them. */
   deeds?: Partial<Record<DeedCounter, number>>;
   /** P9: the nicknames the squad gives the commander (at most 2 active) and the one waiting for its scene. */

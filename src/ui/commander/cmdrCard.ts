@@ -3,6 +3,7 @@ import { commanderProfile, descriptor } from '../../engine/commander/profile';
 import type { CampaignState } from '../../engine/state/types';
 import { analyzeAttrs } from '../analyze/mark';
 import { h, type Child } from '../dom';
+import { commanderStressBand } from '../../engine/special/commanderStress';
 import { renderTokens } from '../personal/tokens';
 import { renderInterceptLog } from '../special/interceptLog';
 import { renderVoiceCard } from '../voice/voiceCard';
@@ -44,7 +45,9 @@ export function renderCmdrCard(host: HTMLElement, ctx: CmdrCardCtx): void {
       h('p', {},
         ...stat('EXPRESSION', 'glossary:expression', word('expression', p.expression)), ' · ',
         ...stat('SEASONING', 'glossary:seasoning', word('seasoning', p.seasoning)), ' · BUILD ',
-        h('span', { class: 'alius-chip', ...analyzeAttrs('glossary:archetype') }, p.archetype)),
+        h('span', { class: 'alius-chip', ...analyzeAttrs('glossary:archetype') }, p.archetype), ' · ',
+        // P12: the commander's own stress, as a band (the number is in the analysis panel with raw values on)
+        h('span', { class: 'alius-chip', ...analyzeAttrs('glossary:commander_stress') }, `STRESS: ${commanderStressBand(state)}`)),
       h('p', {}, 'TRAITS: ', ...(traitIds.length === 0
         ? ['NONE']
         : traitIds.flatMap((id, i): Child[] => [

@@ -1,6 +1,7 @@
 import type { Registries } from '../content/types';
 import { traitEffects } from './commander/traits';
 import type { CampaignState, Commander } from './state/types';
+import { TUNING } from './tuning';
 
 export const SOCIAL_STATS = ['authority', 'insight', 'empathy', 'cunning'] as const;
 export type SocialStat = (typeof SOCIAL_STATS)[number];
@@ -18,11 +19,15 @@ export function rankForPoints(points: number): number {
   return rank;
 }
 
-/** The effective rank: the stored one, lowered on a sleepless day by the trait's `sleepless_rank` (never below 1). */
+/**
+ * The effective rank: the stored one, lowered on a sleepless day by the trait's `sleepless_rank` and, for Empathy, by one while the
+ * commander's own stress is `TUNING.special.commanderStress.empathyAt` or more (P12; it stacks, never below 1).
+ */
 export function socialRank(state: CampaignState, stat: SocialStat): number {
-  const rank = state.commander.socialStats[stat];
-  if (state.commander.sleeplessDay !== state.day) return rank;
-  return Math.max(1, rank + (state.commander.sleeplessRank?.[stat] ?? 0));
+  let rank = state.commander.socialStats[stat];
+  if (state.commander.sleeplessDay === state.day) rank = Math.max(1, rank + (state.commander.sleeplessRank?.[stat] ?? 0));
+  if (stat === 'empathy' && (state.commander.stress ?? 0) >= TUNING.special.commanderStress.empathyAt) rank = Math.max(1, rank - 1);
+  return rank;
 }
 
 /** Multiplier on this stat's activity points from the commander's `social_growth` traits. */

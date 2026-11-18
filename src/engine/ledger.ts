@@ -21,6 +21,9 @@ export function recordLedger(before: CampaignState, after: CampaignState, action
 
   for (const r of RESOURCES) push(`res:${r}`, (after.resources?.[r] ?? 0) - (before.resources?.[r] ?? 0));
 
+  // P12: the commander's own stress
+  push('res:cmdr_stress', (after.commander?.stress ?? 0) - (before.commander?.stress ?? 0));
+
   const stressBefore = new Map(before.squad.map((u) => [u.id, u.stress]));
   for (const u of after.squad) {
     const was = stressBefore.get(u.id);

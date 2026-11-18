@@ -11,6 +11,7 @@ import { addBodyXp, bodyGrowthMult } from './commander/profile';
 import { hasTraitEffect, traitEffects } from './commander/traits';
 import { TUNING } from './tuning';
 import { restrictionReason } from './discipline/restrictions';
+import { addCommanderStress } from './special/commanderStress';
 import { burnImplant } from './special/frequency/discovery';
 
 export interface ActivityRequest {
@@ -241,6 +242,9 @@ export function runActivity(draft: CampaignState, ctx: EngineCtx, request: unkno
           const applied = applyRelationDelta(draft, companion.id, fx.axis, scaled(fx.amount, draft, reg, fx.scale), `activity:${a.id}`);
           events.push({ type: 'relation_changed', unitId: companion.id, axis: fx.axis, applied });
         }
+        break;
+      case 'commander_stress':
+        events.push(...addCommanderStress(draft, fx.amount, 'medbay'));
         break;
       case 'burn_frequency_implant':
         events.push(...burnImplant(draft));

@@ -467,5 +467,7 @@ export const TUNING = Object.freeze({
       distortBase: 0.25, distortStressAt: 50, distortStress: 0.15, partial: 0.3, logMax: 40, refusalMin: 0.25,
       leakDays: 14, falseLeakMult: 0.5, suspicionDecay: 2, staticAbove: 50,
     }),
+    /** The commander's own stress (every campaign; it never draws). */
+    commanderStress: Object.freeze({ empathyAt: 70, dayRelief: 5, sleepRelief: 15, downed: 10, nightmare: 15, falseAlarm: 5 }),
   }),
 });

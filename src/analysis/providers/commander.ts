@@ -2,6 +2,7 @@ import { commanderMaxHp, dodgeChance, presenceKind } from '../../engine/combat/c
 import { firstImpressionWeight, matchedTastes, presenceOf } from '../../engine/commander/presence';
 import { commanderProfile, descriptor } from '../../engine/commander/profile';
 import type { BodyStat } from '../../engine/state/types';
+import { commanderStress, commanderStressBand } from '../../engine/special/commanderStress';
 import { TUNING } from '../../engine/tuning';
 import type { Knowledge } from '../knowledge';
 import type { AnalyzeEnv } from '../model';
@@ -79,10 +80,23 @@ function presenceProvider(subject: Subject, env: AnalyzeEnv, k: Knowledge): { li
 let registered = false;
 
 /** Registers the commander readings; safe to call more than once (the core registration calls it). */
+/** P12: the commander's own stress: its band, what it does and what eases it; the number only with raw values on. */
+function commanderStressProvider(_subject: Subject, env: AnalyzeEnv, k: Knowledge): { lines: string[] } | null {
+  const state = env.state;
+  if (!state) return null;
+  const T = TUNING.special.commanderStress;
+  const value = commanderStress(state);
+  const lines = [`Now: ${commanderStressBand(state)}${k.raw(value) !== null ? ` (${k.raw(value)})` : ''}`];
+  if (value >= T.empathyAt) lines.push('The commander reads people worse: Empathy is one rank lower.');
+  lines.push('It eases a little each day, more after a night slept through and with the medbay; nightmares, a false alarm acted on and a fall in combat raise it.');
+  return { lines };
+}
+
 export function registerCommanderProviders(): void {
   if (registered) return;
   registered = true;
   for (const stat of ['strength', 'endurance', 'reflexes'] as const) registerAnalyzeProvider(`glossary:body_${stat}`, bodyProvider(stat));
   registerAnalyzeProvider('glossary:archetype', archetypeProvider);
   registerAnalyzeProvider('glossary:presence', presenceProvider);
+  registerAnalyzeProvider('glossary:commander_stress', commanderStressProvider); // P12
 }

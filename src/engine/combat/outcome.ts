@@ -1,4 +1,5 @@
 import { noteFeat } from '../power/outside';
+import { addCommanderStress } from '../special/commanderStress';
 import { recordTally } from '../personal/tally';
 import { recordMerit } from '../power/standing';
 import type { Registries } from '../../content/types';
@@ -141,6 +142,7 @@ export function finalizeCombat(draft: CampaignState, reg: Registries, rng: Rng, 
     events.push(...injureCommander(draft, TUNING.combat.commanderInjuryDays));
     commanderInjured = true;
     events.push(...scarCommander(draft, rng));
+    events.push(...addCommanderStress(draft, TUNING.special.commanderStress.downed, 'downed')); // P12: no draw
   }
 
   recordMerit(draft, cs); // P9b: who did what in this fight counts for the squad's standing

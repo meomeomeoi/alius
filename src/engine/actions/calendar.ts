@@ -1,4 +1,6 @@
 import { runActivity } from '../activities';
+import { addCommanderStress } from '../special/commanderStress';
+import { TUNING } from '../tuning';
 import { consumeSlots, injureCommander, isQuietNight, slotsLeftToday } from '../calendar';
 import { registerAction } from '../dispatch';
 
@@ -26,7 +28,9 @@ registerAction('calendar/consume_slot', (draft, payload, ctx) => {
 /** P7: ends a quiet night without doing anything (no sleepless day). */
 registerAction('calendar/sleep', (draft, _payload, ctx) => {
   if (!isQuietNight(draft)) throw new Error('There is nothing to sleep through.');
-  return consumeSlots(draft, 1, ctx);
+  // P12: a night slept through rests the commander (the day step takes its own 5 off when the day turns)
+  const rested = addCommanderStress(draft, -TUNING.special.commanderStress.sleepRelief, 'sleep');
+  return [...rested, ...consumeSlots(draft, 1, ctx)];
 });
 
 registerAction('activity/do', (draft, payload, ctx) => runActivity(draft, ctx, payload));
