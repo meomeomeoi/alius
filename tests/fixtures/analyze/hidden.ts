@@ -51,6 +51,14 @@ export function hiddenFixture(reg: Registries): { state: CampaignState; unitId: 
       seq: 1, suspicion: { [unit.id]: 71 }, dmDay: {}, factId: 'fact_freq',
     },
   };
+  // P12: a real and a false premonition: their ids and the fact that one is real never reach a reading
+  state.special.paranoia = {
+    seq: 2,
+    premonitions: [
+      { id: 'SENTINEL_PREMONITION_REAL', unitId: unit.id, about: 'mutiny', day: 8, expiresDay: 11, real: true },
+      { id: 'SENTINEL_PREMONITION_FALSE', unitId: state.squad[1].id, about: 'doubt', day: 8, expiresDay: 11, real: false },
+    ],
+  };
   state.memory.facts.push({
     id: 'fact_freq', about: [unit.id], text: 'SENTINEL_FREQ_FACT', tags: ['frequency'], importance: 5, day: 8, knownBy: [unit.id], hiddenFromCommander: true,
   });
@@ -76,7 +84,7 @@ export function hiddenFixture(reg: Registries): { state: CampaignState; unitId: 
     unitId: unit.id,
     sentinels: {
       numbers: [37, 41, 23, 63, 17, 29, 97, 77, 31, 53, 59, 71],
-      texts: ['SENTINEL_CLOCK', 'SENTINEL_FACT', 'SENTINEL_OPTION_EFFECT', 'SENTINEL_SECRET', 'SENTINEL_FREQ_TRUE', 'SENTINEL_FREQ_FACT'],
+      texts: ['SENTINEL_CLOCK', 'SENTINEL_FACT', 'SENTINEL_OPTION_EFFECT', 'SENTINEL_SECRET', 'SENTINEL_FREQ_TRUE', 'SENTINEL_FREQ_FACT', 'SENTINEL_PREMONITION_REAL', 'SENTINEL_PREMONITION_FALSE'],
     },
   };
 }

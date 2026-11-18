@@ -1,4 +1,5 @@
 import type { EngineEvent } from '../engine/dispatch';
+import { premonitionLine } from '../engine/special/paranoia/premonitions';
 import { nightmareLine } from '../engine/special/paranoia/nightmares';
 import { fallbackFragment, interceptGist } from '../engine/special/frequency/fragments';
 import { generateFragment } from '../llm/calls/flavor';
@@ -55,12 +56,16 @@ export function createSpecial(deps: SpecialDeps): SpecialController {
         if (e.type === 'frequency_intercept') void word(String(e.interceptId), expect).catch(() => {});
         // the commander is told: she knows and she confronts (AUTHOR TO WRITE: the wording). Names her only, never what any fragment was.
         else if (e.type === 'frequency_discovered') {
-          deps.notice?.('warn', `${nameOf(e.unitId)} found out about the frequency. Expect her to confront you.`, 'FREQUENCY');
+          deps.notice?.('warn', `${nameOf(e.unitId)} found out about the frequency. Expect her to confront you.`, 'FREQUENCY', 'frequency');
           deps.cutIn?.('FOUND OUT');
-        } else if (e.type === 'implant_burned') deps.notice?.('info', 'The implant is burned out. The fragments stop for good.', 'FREQUENCY');
-        else if (e.type === 'bloom_nightmare') dreamt = nightmareLine(Number(e.day));
+        } else if (e.type === 'implant_burned') deps.notice?.('info', 'The implant is burned out. The fragments stop for good.', 'FREQUENCY', 'frequency');
+        else if (e.type === 'premonition') {
+          // the same toast for a real and a false warning: the wording is picked by the id, nothing here reads the truth
+          const p = state()?.special?.paranoia?.premonitions.find((x) => x.id === e.premonitionId);
+          if (p) deps.notice?.('warn', premonitionLine(deps.registries(), p, nameOf(p.unitId)), 'PREMONITION', 'premonition');
+        } else if (e.type === 'bloom_nightmare') dreamt = nightmareLine(Number(e.day));
         else if (e.type === 'day_started' && dreamt !== null) {
-          deps.notice?.('info', dreamt, 'BLOOM');
+          deps.notice?.('info', dreamt, 'BLOOM', 'premonition');
           dreamt = null;
         }
       }

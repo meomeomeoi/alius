@@ -11,3 +11,12 @@
 #alius-shell .alius-intercepts li {
   overflow-wrap: anywhere;
 }
+
+#alius-shell .alius-premonitions ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+
+#alius-shell .alius-premonitions li {
+  overflow-wrap: anywhere;
+}

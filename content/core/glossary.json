@@ -1809,5 +1809,35 @@
     "see": [
       "commander_stress"
     ]
+  },
+  {
+    "id": "premonition",
+    "term": "Premonition",
+    "short": "An early warning that a soldier may doubt, desert, mutiny or defy. It reaches the commander a day or two before it shows.",
+    "long": "AUTHOR TO WRITE: A premonition is a notice, not a fact. Some are real and arrive before the soldier's own sign; some are false alarms that look exactly the same. Acting on a real one can head it off. Acting on a false one is an insult or a coercion with full consequences.",
+    "see": [
+      "false_alarm",
+      "bloom_nightmare"
+    ]
+  },
+  {
+    "id": "false_alarm",
+    "term": "False alarm",
+    "short": "A premonition about a soldier who is planning nothing. It looks exactly like a real one.",
+    "long": "AUTHOR TO WRITE: Each day a premonition may come with nothing behind it; a sharper Insight makes it rarer, and a bad night makes it likelier. Accusing, punishing, leashing or benching a soldier on a false alarm costs trust, adds commander stress and is remembered.",
+    "see": [
+      "premonition",
+      "commander_stress"
+    ]
+  },
+  {
+    "id": "bloom_nightmare",
+    "term": "Bloom nightmare",
+    "short": "A night of Bloom dreams: commander stress goes up, the next morning may be lost, and a fond soldier may come to the door.",
+    "long": "AUTHOR TO WRITE: Nightmares come more often when the commander is already strained. After one, false alarms are likelier for a day.",
+    "see": [
+      "commander_stress",
+      "premonition"
+    ]
   }
 ]

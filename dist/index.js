@@ -17187,6 +17187,10 @@ function warnedInput(state, unitIds) {
   const warned = warnedUnits(state, unitIds);
   return warned.length > 0 ? { warned } : {};
 }
+function premonitionLine(reg, p, name) {
+  const lines = [...reg.premonitionLines.values()].find((e) => e.about === p.about)?.lines ?? ["{name} is a worry."];
+  return lines[fnv1a(p.id) % lines.length].replaceAll("{name}", name);
+}
 
 // src/engine/special/paranoia/accusations.ts
 function actOnWarning(draft, ctx2, unitId, act) {
@@ -24101,12 +24105,15 @@ function createSpecial(deps) {
         if (e.type === "frequency_intercept") void word(String(e.interceptId), expect).catch(() => {
         });
         else if (e.type === "frequency_discovered") {
-          deps.notice?.("warn", `${nameOf14(e.unitId)} found out about the frequency. Expect her to confront you.`, "FREQUENCY");
+          deps.notice?.("warn", `${nameOf14(e.unitId)} found out about the frequency. Expect her to confront you.`, "FREQUENCY", "frequency");
           deps.cutIn?.("FOUND OUT");
-        } else if (e.type === "implant_burned") deps.notice?.("info", "The implant is burned out. The fragments stop for good.", "FREQUENCY");
-        else if (e.type === "bloom_nightmare") dreamt = nightmareLine(Number(e.day));
+        } else if (e.type === "implant_burned") deps.notice?.("info", "The implant is burned out. The fragments stop for good.", "FREQUENCY", "frequency");
+        else if (e.type === "premonition") {
+          const p = state()?.special?.paranoia?.premonitions.find((x) => x.id === e.premonitionId);
+          if (p) deps.notice?.("warn", premonitionLine(deps.registries(), p, nameOf14(p.unitId)), "PREMONITION", "premonition");
+        } else if (e.type === "bloom_nightmare") dreamt = nightmareLine(Number(e.day));
         else if (e.type === "day_started" && dreamt !== null) {
-          deps.notice?.("info", dreamt, "BLOOM");
+          deps.notice?.("info", dreamt, "BLOOM", "premonition");
           dreamt = null;
         }
       }
@@ -24366,7 +24373,9 @@ var VOICE_OF = {
   // P9c: what the squad kept from the commander, found out, is a file entry
   squad_secret: "paper",
   // P12: what the frequency caught and its toasts are the device's own readout
-  frequency: "terminal"
+  frequency: "terminal",
+  // P12: the early warning is the device's readout too
+  premonition: "terminal"
 };
 
 // src/ui/power/votePanel.ts
@@ -30760,6 +30769,28 @@ function renderInterceptLog(host, state, reg) {
   ));
 }
 
+// src/ui/special/premonitions.ts
+function renderPremonitions(host, state, reg) {
+  const p = state.special?.paranoia;
+  if (!p) return;
+  const open3 = [...p.premonitions].filter((x) => x.acted === void 0 && x.expiresDay >= state.day && x.day >= state.day - TUNING.special.paranoia.keepDays).reverse();
+  const rows = open3.map((x) => {
+    const name = state.squad.find((u) => u.id === x.unitId)?.displayName ?? x.unitId;
+    return h(
+      "li",
+      { "data-premonition": x.id },
+      `Day ${x.day} \u2014 ${name}: ${premonitionLine(reg, x, name)} `,
+      h("span", { class: "alius-chip", ...analyzeAttrs("glossary:premonition") }, "PREMONITION")
+    );
+  });
+  host.append(h(
+    "section",
+    { class: "alius-premonitions" },
+    h("h4", {}, "PREMONITIONS"),
+    rows.length === 0 ? h("p", { class: "alius-dim" }, "NOTHING OPEN") : h("ul", {}, ...rows)
+  ));
+}
+
 // src/ui/commander/cmdrCard.ts
 function renderCmdrCard(host, ctx2) {
   const { state, registries: reg, raw } = ctx2;
@@ -30808,6 +30839,7 @@ function renderCmdrCard(host, ctx2) {
     renderTokens(state, reg, { onWear: (id) => ctx2.onWear?.(id), onTakeOff: (id) => ctx2.onTakeOff?.(id) })
   );
   renderInterceptLog(file, state, reg);
+  renderPremonitions(file, state, reg);
   host.append(h("section", { class: "alius-section alius-cmdr" }, renderVoiceCard({ voice: "paper", title: `CMDR \u2014 ${state.commander.name}`, body: file })));
 }
 
@@ -35799,6 +35831,23 @@ function burnProvider(_subject, env) {
   if (!f) return null;
   return { lines: [f.burnedDay !== void 0 ? "The implant is already burned out. Nothing brings it back." : "Burning the implant is done in the medbay and cannot be undone: the fragments stop for good, and a later discovery lands softer."] };
 }
+function premonitionProvider(_subject, env) {
+  const p = env.state?.special?.paranoia;
+  if (!env.state || !p) return null;
+  const open3 = p.premonitions.filter((x) => x.acted === void 0 && x.expiresDay >= env.state.day).length;
+  return { lines: [`${plural3(open3, "warning")} open.`, "A warning reaches the commander a day or two early. Nothing marks it; only what follows shows what it was."] };
+}
+function falseAlarmProvider(_subject, env) {
+  if (!env.state?.special?.paranoia) return null;
+  return { lines: ["Any day a soldier may raise a false alarm, and nothing marks which warnings are false. Acting on one costs trust and stress; acting on a real one can head it off."] };
+}
+function nightmareProvider(_subject, env) {
+  const p = env.state?.special?.paranoia;
+  if (!env.state || !p) return null;
+  const lines = ["Bloom nightmares come at night, more often when the commander is strained. They raise stress and may cost a morning."];
+  if (p.lastNightmareDay === env.state.day - 1) lines.push("The commander slept badly last night.");
+  return { lines };
+}
 var specialKnowledgeRule = {
   fact: (f, state) => f.id !== state.special?.frequency?.factId,
   flag: (id, state) => id !== "knows_frequency" || holdersAnnounced(state)
@@ -35808,6 +35857,9 @@ function registerSpecialProviders() {
   registerAnalyzeProvider("glossary:frequency_intercept", interceptProvider);
   registerAnalyzeProvider("glossary:frequency_suspicion", suspicionProvider);
   registerAnalyzeProvider("glossary:burn_implant", burnProvider);
+  registerAnalyzeProvider("glossary:premonition", premonitionProvider);
+  registerAnalyzeProvider("glossary:false_alarm", falseAlarmProvider);
+  registerAnalyzeProvider("glossary:bloom_nightmare", nightmareProvider);
 }
 
 // src/analysis/providers/power.ts
@@ -38094,7 +38146,7 @@ function createApp(st, deps) {
     ...worldDeps,
     context,
     refreshContext: applyContext,
-    notice: (kind, text2, title) => toast(kind, text2, { voice: VOICE_OF.frequency, title }),
+    notice: (kind, text2, title, source) => toast(kind, text2, { voice: VOICE_OF[source], title }),
     // P12: the device's own readout
     cutIn: (text2) => {
       const root = document.getElementById("alius-shell");

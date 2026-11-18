@@ -113,3 +113,12 @@ export function warnedInput(state: CampaignState, unitIds: string[]): { warned?:
   const warned = warnedUnits(state, unitIds);
   return warned.length > 0 ? { warned } : {};
 }
+
+/**
+ * The notice of a premonition: a line of the `premonitionLines` entry of its kind, picked by `fnv1a(id)` (no draw), with her name.
+ * A real and a false premonition read the same: nothing in the line, the id or the kind says which is which.
+ */
+export function premonitionLine(reg: Registries, p: Pick<Premonition, 'id' | 'about'>, name: string): string {
+  const lines = ([...reg.premonitionLines.values()].find((e) => e.about === p.about)?.lines as string[] | undefined) ?? ['{name} is a worry.'];
+  return lines[fnv1a(p.id) % lines.length].replaceAll('{name}', name);
+}

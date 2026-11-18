@@ -41,6 +41,26 @@ function burnProvider(_subject: unknown, env: AnalyzeEnv): Reading {
   return { lines: [f.burnedDay !== undefined ? 'The implant is already burned out. Nothing brings it back.' : 'Burning the implant is done in the medbay and cannot be undone: the fragments stop for good, and a later discovery lands softer.'] };
 }
 
+function premonitionProvider(_subject: unknown, env: AnalyzeEnv): Reading {
+  const p = env.state?.special?.paranoia;
+  if (!env.state || !p) return null;
+  const open = p.premonitions.filter((x) => x.acted === undefined && x.expiresDay >= env.state!.day).length;
+  return { lines: [`${plural(open, 'warning')} open.`, 'A warning reaches the commander a day or two early. Nothing marks it; only what follows shows what it was.'] };
+}
+
+function falseAlarmProvider(_subject: unknown, env: AnalyzeEnv): Reading {
+  if (!env.state?.special?.paranoia) return null;
+  return { lines: ['Any day a soldier may raise a false alarm, and nothing marks which warnings are false. Acting on one costs trust and stress; acting on a real one can head it off.'] };
+}
+
+function nightmareProvider(_subject: unknown, env: AnalyzeEnv): Reading {
+  const p = env.state?.special?.paranoia;
+  if (!env.state || !p) return null;
+  const lines = ['Bloom nightmares come at night, more often when the commander is strained. They raise stress and may cost a morning.'];
+  if (p.lastNightmareDay === env.state.day - 1) lines.push('The commander slept badly last night.');
+  return { lines };
+}
+
 /** What the player may not read: the hidden fact of the discovery, and the flag of a soldier who has not been announced. */
 export const specialKnowledgeRule: KnowledgeRule = {
   fact: (f, state) => f.id !== state.special?.frequency?.factId,
@@ -53,4 +73,7 @@ export function registerSpecialProviders(): void {
   registerAnalyzeProvider('glossary:frequency_intercept', interceptProvider);
   registerAnalyzeProvider('glossary:frequency_suspicion', suspicionProvider);
   registerAnalyzeProvider('glossary:burn_implant', burnProvider);
+  registerAnalyzeProvider('glossary:premonition', premonitionProvider);
+  registerAnalyzeProvider('glossary:false_alarm', falseAlarmProvider);
+  registerAnalyzeProvider('glossary:bloom_nightmare', nightmareProvider);
 }

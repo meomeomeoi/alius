@@ -768,9 +768,9 @@ The day step's decay runs in every campaign: it is registered unconditionally an
 **Interfaces:**
 - Produces: `renderPremonitions(host, state, reg)`. Each row: day, name, line, chip `PREMONITION` with `data-analyze="glossary:premonition"`.
 
-- [ ] **Step 1: Write the failing tests** `a real and a false premonition give identical events, toasts and DOM` (Review Focus 2), `the list hides expired rows` and `no provider shows a premonition sentinel`.
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → PASS; `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P12): premonition notices, the CMDR list and readings`
+- [x] **Step 1: Write the failing tests** `a real and a false premonition give identical events, toasts and DOM` (Review Focus 2), `the list hides expired rows` and `no provider shows a premonition sentinel`.
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → PASS; `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P12): premonition notices, the CMDR list and readings`
 
 **Chunk (b) ends here.**
 
