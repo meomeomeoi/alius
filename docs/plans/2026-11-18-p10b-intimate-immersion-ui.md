@@ -519,7 +519,7 @@ git commit -am "feat(P10b): DM behaviours stamped at receipt, curt replies, read
   - `renderTyping(motion: boolean): HTMLElement`
   - `splitBurst(text): string[]` (2–3 parts at `. ! ?` boundaries; one part when there is no boundary)
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - `deleted placeholder before her bubble, not counted by unreadOf` (placeholder is not unread).
   - `burst splits into 2–3 bubbles`.
   - `voice shows a waveform and [PLAY]; click reveals the text; a re-render of the same host keeps it revealed`.
@@ -531,15 +531,15 @@ git commit -am "feat(P10b): DM behaviours stamped at receipt, curt replies, read
   - Every chip / receipt / voice button carries `data-analyze` (`glossary:dm_behaviour`, `glossary:read_receipt`, `glossary:voice_message`).
   - Coverage test green.
 
-- [ ] **Step 2: Run to verify they fail**
+- [x] **Step 2: Run to verify they fail**
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 The revealed `Set` is kept in a `WeakMap<HTMLElement, Set<string>>` like `drafts`. The typing indicator's timer is cleared when the host re-renders (store the handle per host).
 
-- [ ] **Step 4: Run, `npm test`**
+- [x] **Step 4: Run, `npm test`**
 
-- [ ] **Step 5: Commit, stop (end of chunk (a))**
+- [x] **Step 5: Commit, stop (end of chunk (a))**
 
 ```bash
 git commit -am "feat(P10b): living DMs in COMMS (placeholders, bursts, voice, receipts, typing, contact name)"

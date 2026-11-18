@@ -1,6 +1,8 @@
 import type { Registries } from '../../content/types';
+import { hesitates } from '../../engine/dmBehaviours';
 import { unreadOf } from '../../engine/dms';
 import { isLiving } from '../../engine/economy';
+import { decorOf } from '../../engine/personal/decor';
 import type { ProposalAnswer } from '../../engine/relations/proposals';
 import type { CampaignState, Unit } from '../../engine/state/types';
 import { drawRuleChips, drawViolation, violationLabels } from '../bonds/chips';
@@ -9,6 +11,7 @@ import { drawProposalChips } from '../proposalChips';
 import { drawPersonalChips, editChip, type EditView, type PersonalChipHandlers } from '../personal/chips';
 import { drawDemandChips, drawDisciplineChips } from '../discipline/chips';
 import { renderBubble, unitAccent } from '../voice/voiceCard';
+import { armTyping, clearTyping, renderHerMessage, renderReceipt, renderTyping, stampText, typingPlayed } from './living';
 
 export interface CommsTabCtx {
   getState: () => CampaignState | null;
@@ -30,19 +33,23 @@ export interface CommsTabCtx {
   onAnswerRule?: (ruleId: string, answer: 'accept' | 'negotiate' | 'refuse') => void;
   /** P10: a small portrait for each contact row (absent = none). */
   avatar?: (unit: Unit) => HTMLElement | null;
+  /** P10b: may the typing indicator move? Absent = yes; the app passes `!motionReduced(settings)`. */
+  motion?: () => boolean;
 }
 
 /** The open thread and the half-typed text survive a re-render (the tab redraws after every action). */
 const selected = new WeakMap<HTMLElement, string>();
 const drafts = new WeakMap<HTMLElement, string>();
+/** P10b: the voice messages played in a host; kept until the host is built anew (the tab itself is rebuilt on a chat switch). */
+const revealed = new WeakMap<HTMLElement, Set<string>>();
 
 /** The dot on a contact counts a waiting demand too; marking a thread read must look at the messages only (a demand stays until answered). */
 const unread = unreadOf;
 const unreadMessages = (state: CampaignState, id: string): number => (state.dms[id] ?? []).filter((m) => m.from !== 'commander' && !m.read).length;
-const stamp = (day: number, slot: string): string => `DAY ${String(day).padStart(3, '0')} // ${slot.toUpperCase()}`;
 
 /** The COMMS tab: a retro messenger with one thread per named, living unit. */
 export function renderCommsTab(host: HTMLElement, ctx: CommsTabCtx): void {
+  clearTyping(host);
   host.replaceChildren();
   const state = ctx.getState();
   if (!state) {
@@ -68,7 +75,12 @@ export function renderCommsTab(host: HTMLElement, ctx: CommsTabCtx): void {
   const list = h('div', { class: 'alius-threads', role: 'list' }, ...contacts.map((u) => {
     const n = unread(state, u.id);
     const dot = n > 0 ? h('span', { class: 'alius-dot', 'aria-label': `${n} unread` }, '●') : null;
-    const row = h('button', { type: 'button', class: `alius-btn alius-contact${u.id === current ? ' is-open' : ''}`, 'data-unit': u.id, onclick: () => open(u.id) }, u.displayName, ' ', dot);
+    // P10b: her decor can rename her contact (dimmed while it fades); the thread keeps her real name
+    const decor = decorOf(state, u.id);
+    const renamed = decor !== null && decor.parts.includes('contact') ? decor : null;
+    const row = h('button', {
+      type: 'button', class: `alius-btn alius-contact${u.id === current ? ' is-open' : ''}${renamed?.fadedUntil !== undefined ? ' is-faded' : ''}`, 'data-unit': u.id, onclick: () => open(u.id),
+    }, renamed ? renamed.contactName : u.displayName, ' ', dot);
     const face = ctx.avatar?.(u);
     if (face) row.prepend(h('span', { class: 'alius-contact-avatar' }, face));
     row.style.setProperty('--unit-accent', unitAccent(u.id));
@@ -80,16 +92,41 @@ export function renderCommsTab(host: HTMLElement, ctx: CommsTabCtx): void {
     thread.append(h('p', { class: 'alius-dim' }, 'SELECT A CONTACT'));
   } else {
     const unit = contacts.find((u) => u.id === current)!;
-    thread.append(h('h3', {}, `// ${unit.displayName.toUpperCase()}`));
+    const decor = decorOf(state, unit.id);
+    const alias = decor !== null && decor.parts.includes('contact') ? decor.contactName : null;
+    thread.append(h('h3', {}, alias !== null ? `// ${alias.toUpperCase()} [${unit.displayName.toUpperCase()}]` : `// ${unit.displayName.toUpperCase()}`));
     const accent = unitAccent(unit.id);
-    for (const m of state.dms[current] ?? []) {
+    const played = revealed.get(host) ?? new Set<string>();
+    revealed.set(host, played);
+    const messages = state.dms[current] ?? [];
+    let lastMine = -1;
+    messages.forEach((x, i) => { if (x.from === 'commander') lastMine = i; });
+    messages.forEach((m, i) => {
       const mine = m.from === 'commander';
-      const bubble = renderBubble(m.text, mine, accent);
-      bubble.classList.add('alius-msg', mine ? 'is-commander' : 'is-unit');
-      bubble.prepend(h('span', { class: 'alius-msg-meta' }, `${stamp(m.day, m.slot)}${m.initiated ? ' · SHE WROTE FIRST' : ''}`));
+      if (mine) {
+        const bubble = renderBubble(m.text, mine, accent);
+        bubble.classList.add('alius-msg', 'is-commander');
+        bubble.prepend(h('span', { class: 'alius-msg-meta' }, stampText(m.day, m.slot)));
+        thread.append(bubble);
+        // P10b: the receipt of the commander's last message (derived in slots: the game has no clock)
+        const receipt = i === lastMine ? renderReceipt(state, current!, m) : null;
+        if (receipt) thread.append(receipt);
+        return;
+      }
+      const shown = renderHerMessage(state, ctx.registries, current!, m, { revealed: played, accent, onReveal: (id) => { played.add(id); renderCommsTab(host, ctx); } });
       // P9d: her reply depicts content that is switched off (a DM has no regenerate: the mark only says so)
-      if (!mine && m.violation && m.violation.length > 0) drawViolation(bubble, violationLabels(ctx.registries, m.violation));
-      thread.append(bubble);
+      if (m.violation && m.violation.length > 0) drawViolation(shown[shown.length - 1], violationLabels(ctx.registries, m.violation));
+      thread.append(...shown);
+    });
+    // P10b: she started to answer and stopped (only while the thread ends with the commander's message)
+    if (hesitates(state, ctx.registries, current)) {
+      const key = messages.at(-1)!.id;
+      const motion = ctx.motion?.() ?? true;
+      const done = typingPlayed(host, key);
+      const typing = renderTyping(motion && !done);
+      if (motion && done) typing.textContent = 'stopped typing';
+      else if (motion) armTyping(host, typing, key);
+      thread.append(typing);
     }
     const chips = h('div', { class: 'alius-chips' });
     drawProposalChips(chips, state, (p) => p.channel === 'dm' && p.unitId === current, ctx.onAnswer, ctx.registries);

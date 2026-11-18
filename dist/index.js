@@ -9383,12 +9383,12 @@ function pushMessage(draft, unitId, m) {
   return msg;
 }
 var sentToday = (state, unitId) => {
-  const meta = state.dmMeta?.[unitId];
-  return meta && meta.day === state.day ? meta.sent : 0;
+  const meta2 = state.dmMeta?.[unitId];
+  return meta2 && meta2.day === state.day ? meta2.sent : 0;
 };
 function countSent(draft, unitId) {
-  const meta = draft.dmMeta ??= {};
-  meta[unitId] = { day: draft.day, sent: sentToday(draft, unitId) + 1 };
+  const meta2 = draft.dmMeta ??= {};
+  meta2[unitId] = { day: draft.day, sent: sentToday(draft, unitId) + 1 };
 }
 function dmMode(state, unitId) {
   const n = sentToday(state, unitId);
@@ -20297,6 +20297,21 @@ function replyModeFor(state, reg, unitId, base) {
   if (base !== "reply" || !namedLiving6(state, unitId)) return base;
   return curtFor(state, reg, unitId, nextMessageId(state)) ? "curt" : "reply";
 }
+function hesitates(state, reg, unitId) {
+  if (!namedLiving6(state, unitId)) return false;
+  const last = (state.dms[unitId] ?? []).at(-1);
+  if (!last || last.from !== "commander") return false;
+  return behaviours(reg).some((b) => b.kind === "hesitate" && (b.when === void 0 || whenHolds(state, reg, unitId, b.when, { initiated: false })) && passes(`${last.id}|${b.id}`, b.chance));
+}
+function receiptOf(state, unitId, msg) {
+  const now = slotIndex(state.day, state.slot);
+  const thread = state.dms[unitId] ?? [];
+  const at = thread.findIndex((m) => m.id === msg.id);
+  const answer = thread.slice(at + 1).find((m) => m.from !== "commander");
+  if (answer) return { status: "read", slotsAgo: Math.max(0, now - slotIndex(answer.day, answer.slot)) };
+  const age = now - slotIndex(msg.day, msg.slot);
+  return age >= 1 ? { status: "left_on_read", slotsAgo: age } : { status: "delivered" };
+}
 
 // src/engine/personal/intercept.ts
 var ORIGINAL_MAX = 1e3;
@@ -22959,9 +22974,9 @@ function createPersonal(deps) {
     opening = true;
     try {
       const events = deps.app.dispatch({ type: "booking/play", payload: {} }, { expectChatId: chatId() });
-      const played = events.find((e) => e.type === "booking_played");
-      if (!played?.scene) return false;
-      const ok = await deps.startScene(played.scene);
+      const played2 = events.find((e) => e.type === "booking_played");
+      if (!played2?.scene) return false;
+      const ok = await deps.startScene(played2.scene);
       deps.refreshContext();
       return ok;
     } finally {
@@ -23118,9 +23133,9 @@ function personalDirectives(state, reg, present) {
       out.push({ id: `personal:truth:${id}`, expiresAfter: "manual", text: `${name} owes the commander a truthful answer to this question and gives it in her next reply: "${clean3(truth.question)}". She does not lie or dodge.` });
     }
     const mine = (state.personal?.bookings ?? []).filter((b) => b.unitId === id);
-    const played = mine.some((b) => b.status === "played" && b.day === state.day && b.slot === state.slot);
+    const played2 = mine.some((b) => b.status === "played" && b.day === state.day && b.slot === state.slot);
     const cancelled = mine.some((b) => b.status === "cancelled" && recent(state, b.day));
-    if (played) {
+    if (played2) {
       out.push({ id: `personal:booking:${id}`, expiresAfter: "scene", text: `${name} booked this time and expects the commander's full attention.` });
     } else if (cancelled) {
       out.push({ id: `personal:booking:${id}`, expiresAfter: "scene", text: `The commander cancelled the time ${name} had booked; she remembers it.` });
@@ -24935,11 +24950,11 @@ function renderCombatScreen(host, ctx2) {
     if (band2 === "strained") tags.push({ text: "STRAINED", address: "glossary:stress_strained" });
     if (band2 === "breaking") tags.push({ text: "BREAKING", address: "glossary:stress_breaking" });
     if (c.breakdown) tags.push({ text: "BREAKDOWN", address: "glossary:stress_breakdown" });
-    const chip = (text2, address) => h("span", { class: "alius-chip", ...analyzeAttrs(address) }, text2);
+    const chip2 = (text2, address) => h("span", { class: "alius-chip", ...analyzeAttrs(address) }, text2);
     const joined = (items, sep) => items.flatMap((el2, i) => i === 0 ? [el2] : [sep, el2]);
-    if (tags.length > 0) lines.push(h("div", { class: "alius-cc-tags" }, ...joined(tags.map((t) => chip(`[${t.text}]`, t.address)), " ")));
+    if (tags.length > 0) lines.push(h("div", { class: "alius-cc-tags" }, ...joined(tags.map((t) => chip2(`[${t.text}]`, t.address)), " ")));
     if (synergyIds.length > 0) {
-      lines.push(h("div", { class: "alius-cc-syn" }, ...joined(synergyIds.map((id) => chip(reg.synergies.get(id)?.name ?? id, `synergies:${id}`)), " \xB7 ")));
+      lines.push(h("div", { class: "alius-cc-syn" }, ...joined(synergyIds.map((id) => chip2(reg.synergies.get(id)?.name ?? id, `synergies:${id}`)), " \xB7 ")));
     }
     el.append(headCrop(state, c), h("div", { class: "alius-cc-body" }, ...lines));
     return el;
@@ -28257,7 +28272,7 @@ function renderCalibration(host, ctx2) {
           const choice = worldChoice(holder, reg, id).choice;
           const cur = current(id);
           const imported = !manual && cand?.worldStances?.[id]?.reason ? cand.worldStances[id].reason : "";
-          const chip = (attrs, label2, on, disabled, apply) => h("button", {
+          const chip2 = (attrs, label2, on, disabled, apply) => h("button", {
             type: "button",
             class: "alius-btn alius-option alius-stance-chip",
             "data-option": id,
@@ -28276,8 +28291,8 @@ function renderCalibration(host, ctx2) {
             h(
               "div",
               { class: "alius-stance-chips" },
-              ...["shares", "indifferent", "opposes"].map((st) => chip({ "data-stance": st }, st === "shares" ? "Shares it" : st === "opposes" ? "Rejects it" : "Indifferent", cur.stance === st, false, () => write(id, { stance: st }))),
-              ...[1, 2].map((n) => chip({ "data-strength": String(n) }, n === 1 ? "Mild" : "Strong", cur.strength === n, cur.stance === "indifferent", () => write(id, { strength: n })))
+              ...["shares", "indifferent", "opposes"].map((st) => chip2({ "data-stance": st }, st === "shares" ? "Shares it" : st === "opposes" ? "Rejects it" : "Indifferent", cur.stance === st, false, () => write(id, { stance: st }))),
+              ...[1, 2].map((n) => chip2({ "data-strength": String(n) }, n === 1 ? "Mild" : "Strong", cur.strength === n, cur.stance === "indifferent", () => write(id, { strength: n })))
             ),
             h(
               "label",
@@ -28504,7 +28519,7 @@ var LINE_GAP_MS = 300;
 function fillLine(template, vars) {
   return template.replace(/\{([A-Z_]+)\}/g, (whole, key) => Object.prototype.hasOwnProperty.call(vars, key) ? vars[key] : whole);
 }
-var paper = (title, meta, body, stamp2) => renderVoiceCard({ voice: VOICE_OF.intake_form, title, meta, body, level: 2, ...stamp2 !== void 0 ? { stamp: stamp2 } : {} });
+var paper = (title, meta2, body, stamp) => renderVoiceCard({ voice: VOICE_OF.intake_form, title, meta: meta2, body, level: 2, ...stamp !== void 0 ? { stamp } : {} });
 var linesOf = (ctx2) => ctx2.wizard.prologueStep()?.lines ?? {};
 var clerk = (text2, cls = "alius-clerk") => text2 ? h("p", { class: cls }, text2) : null;
 function renderColdOpen(host, ctx2) {
@@ -29152,7 +29167,7 @@ function renderMemoryBlock(host, ctx2) {
   };
   drawDossier(false);
   const factRow = (f) => {
-    const chip = audienceChip(f);
+    const chip2 = audienceChip(f);
     const text2 = h("span", { "data-role": "text" }, f.text);
     const row2 = h("div", { class: "alius-memory-fact", "data-fact": f.id });
     const draw2 = (editing) => {
@@ -29175,7 +29190,7 @@ function renderMemoryBlock(host, ctx2) {
           " ",
           h("span", { class: "alius-stat", ...analyzeAttrs("glossary:memory") }, `IMPORTANCE ${f.importance}`),
           " ",
-          h("span", { class: "alius-chip", "data-chip": chip.id, ...analyzeAttrs(chip.address) }, chip.label),
+          h("span", { class: "alius-chip", "data-chip": chip2.id, ...analyzeAttrs(chip2.address) }, chip2.label),
           " ",
           ...f.pinned ? [h("span", { class: "alius-chip", "data-chip": "pinned", ...analyzeAttrs("glossary:pinned_fact") }, "PINNED")] : [],
           ...f.edited ? [h("span", { class: "alius-dim" }, "edited")] : []
@@ -29272,7 +29287,7 @@ function renderVitalsBlock(state, reg, unitId, opts) {
   const v = vitalsOf(state, reg, unitId);
   if (!v) return null;
   const live = { unitId };
-  const chip = (text2, address = "glossary:vitals") => h("span", { class: "alius-chip", ...analyzeAttrs(address, live) }, text2);
+  const chip2 = (text2, address = "glossary:vitals") => h("span", { class: "alius-chip", ...analyzeAttrs(address, live) }, text2);
   const flat2 = v.pattern === "flat";
   const log = flat2 ? flickersOf(state, unitId) : [];
   return h(
@@ -29283,11 +29298,11 @@ function renderVitalsBlock(state, reg, unitId, opts) {
     h(
       "p",
       { class: "alius-vitals-chips" },
-      chip(`VITALS: ${PATTERN_LABEL[v.pattern]}`, flat2 ? "glossary:vitals_flat" : "glossary:vitals"),
+      chip2(`VITALS: ${PATTERN_LABEL[v.pattern]}`, flat2 ? "glossary:vitals_flat" : "glossary:vitals"),
       " ",
-      chip(HEART_TEXT[v.heart]),
+      chip2(HEART_TEXT[v.heart]),
       " ",
-      chip(TEMP_TEXT[v.temp]),
+      chip2(TEMP_TEXT[v.temp]),
       v.flicker ? h("span", { class: "alius-chip", ...analyzeAttrs("glossary:vitals_flicker", live) }, " FLICKER LOGGED") : null
     ),
     log.length > 0 ? h("ul", { class: "alius-vitals-log", "aria-label": "Logged flickers" }, ...log.map((e) => h("li", { class: "alius-stat", ...analyzeAttrs("glossary:vitals_flicker", live) }, logLine(e.day, e.slot)))) : null
@@ -29680,14 +29695,14 @@ function relationLine(unit2, state, ctx2) {
   const raw = ctx2.settings().showRawValues;
   const num5 = (n) => raw ? ` (${n})` : "";
   const live = { unitId: unit2.id };
-  const chip = (text2, address, data) => h("span", { class: "alius-chip", ...analyzeAttrs(address, data) }, text2);
+  const chip2 = (text2, address, data) => h("span", { class: "alius-chip", ...analyzeAttrs(address, data) }, text2);
   const parts = [
-    chip(`${String(ctx2.registries.relationshipStates.get(rel.stateId)?.name ?? rel.stateId).toUpperCase()}`, `relationshipStates:${rel.stateId}`),
-    chip(`TRUST ${trustBand(rel.trust).toUpperCase()}${num5(rel.trust)}`, "glossary:trust", live)
+    chip2(`${String(ctx2.registries.relationshipStates.get(rel.stateId)?.name ?? rel.stateId).toUpperCase()}`, `relationshipStates:${rel.stateId}`),
+    chip2(`TRUST ${trustBand(rel.trust).toUpperCase()}${num5(rel.trust)}`, "glossary:trust", live)
   ];
   if (unit2.kind !== "grunt") {
-    parts.push(chip(`AFFINITY ${affinityBand(rel.affinity).toUpperCase()}${num5(rel.affinity)}`, "glossary:affinity", live));
-    if (intimacyOf(state).romance) parts.push(chip(`ATTRACTION ${attractionBand(rel.attraction).toUpperCase()}${num5(rel.attraction)}`, "glossary:attraction", live));
+    parts.push(chip2(`AFFINITY ${affinityBand(rel.affinity).toUpperCase()}${num5(rel.affinity)}`, "glossary:affinity", live));
+    if (intimacyOf(state).romance) parts.push(chip2(`ATTRACTION ${attractionBand(rel.attraction).toUpperCase()}${num5(rel.attraction)}`, "glossary:attraction", live));
   }
   return h("p", { class: "alius-relation" }, ...joinWith(parts, " \xB7 "));
 }
@@ -29881,14 +29896,14 @@ function bondBlock(unit2, state, ctx2) {
   const showWant = wantEligible(state, reg, unit2.id) || wantOf(state, unit2.id) > 0;
   const open3 = intimacyOf(state).romance ? state.relations[unit2.id]?.publicity : void 0;
   if (unit2.bond === void 0 && !showWant && rules2.length === 0 && open3 === void 0) return null;
-  const chip = (text2, address, extra = {}) => h("span", { class: "alius-chip", ...extra, ...analyzeAttrs(address, live) }, text2);
+  const chip2 = (text2, address, extra = {}) => h("span", { class: "alius-chip", ...extra, ...analyzeAttrs(address, live) }, text2);
   const bond = unit2.bond;
   return h(
     "div",
     { class: "alius-bond" },
-    bond ? h("p", {}, chip(`LEADS: ${bond.leadStyle.toUpperCase()}`, "glossary:bond_profile", { "data-bond": "lead" }), " ", chip(`ATTACHES: ${bond.attachment.toUpperCase()}`, "glossary:bond_profile", { "data-bond": "attachment" }), " ", chip(`DESIRE: ${bond.desire.toUpperCase()}`, "glossary:bond_profile", { "data-bond": "desire" })) : null,
+    bond ? h("p", {}, chip2(`LEADS: ${bond.leadStyle.toUpperCase()}`, "glossary:bond_profile", { "data-bond": "lead" }), " ", chip2(`ATTACHES: ${bond.attachment.toUpperCase()}`, "glossary:bond_profile", { "data-bond": "attachment" }), " ", chip2(`DESIRE: ${bond.desire.toUpperCase()}`, "glossary:bond_profile", { "data-bond": "desire" })) : null,
     open3 ? publicityLine(unit2, open3.level, bondOf(unit2)?.publicity ?? "known", ctx2, state.relations[unit2.id]?.stateId === "secret_affair") : null,
-    showWant ? h("p", {}, chip(`WANT: ${wantBand(wantOf(state, unit2.id)).toUpperCase()}${raw ? ` (${wantOf(state, unit2.id)})` : ""}`, "glossary:want", { "data-want": unit2.id })) : null,
+    showWant ? h("p", {}, chip2(`WANT: ${wantBand(wantOf(state, unit2.id)).toUpperCase()}${raw ? ` (${wantOf(state, unit2.id)})` : ""}`, "glossary:want", { "data-want": unit2.id })) : null,
     rules2.length > 0 ? h("ul", { class: "alius-rules" }, ...rules2.map((r) => h("li", {}, h("span", {
       class: "alius-chip",
       "data-rule": r.id,
@@ -29913,7 +29928,7 @@ function unitBlock(unit2, ctx2, state) {
     return h("span", { class: "alius-stat", ...analyzeAttrs(`glossary:value_${axis}`) }, `${axis.toUpperCase()}: ${raw ? v > 0 ? `+${v}` : String(v) : valueBand(v)}`);
   });
   const live = { unitId: unit2.id };
-  const chip = (text2, address, data) => h("span", { class: "alius-chip", ...analyzeAttrs(address, data) }, text2);
+  const chip2 = (text2, address, data) => h("span", { class: "alius-chip", ...analyzeAttrs(address, data) }, text2);
   const stat3 = (text2, address, data) => h("span", { class: "alius-stat", ...analyzeAttrs(address, data) }, text2);
   const roleEntry = reg.roles.get(unit2.roleId);
   const dossier = renderVoiceCard({
@@ -29924,8 +29939,8 @@ function unitBlock(unit2, ctx2, state) {
       "div",
       {},
       unit2.kind === "grunt" ? h("p", { class: "alius-dim" }, `GRUNT ${unit2.designation ?? ""}`.trimEnd()) : null,
-      h("p", {}, roleEntry ? chip(nameOf10(roleEntry, unit2.roleId), `roles:${unit2.roleId}`) : nameOf10(roleEntry, unit2.roleId), ` \xB7 LVL ${unit2.level}`),
-      h("p", { class: "alius-xp" }, chip(`XP ${unit2.xp}/${xpToNext(unit2.level)}`, "glossary:level_xp"), " \xB7 ", chip(`SKILL POINTS ${unit2.skillPoints}`, "glossary:skill_points")),
+      h("p", {}, roleEntry ? chip2(nameOf10(roleEntry, unit2.roleId), `roles:${unit2.roleId}`) : nameOf10(roleEntry, unit2.roleId), ` \xB7 LVL ${unit2.level}`),
+      h("p", { class: "alius-xp" }, chip2(`XP ${unit2.xp}/${xpToNext(unit2.level)}`, "glossary:level_xp"), " \xB7 ", chip2(`SKILL POINTS ${unit2.skillPoints}`, "glossary:skill_points")),
       unit2.breakdown ? h("p", { class: "alius-equip-flag" }, `BREAKDOWN: ${String(reg.defects.get(unit2.breakdown.defectId)?.breakdown?.name ?? unit2.breakdown.defectId)}`) : null,
       gone ? h("p", { class: "alius-equip-flag" }, `STATUS: ${unit2.status.toUpperCase()}`) : null
     )
@@ -29940,7 +29955,7 @@ function unitBlock(unit2, ctx2, state) {
       { class: "alius-unit-body" },
       dossier,
       relationLine(unit2, state, ctx2),
-      !gone && state.relations[unit2.id] ? h("p", { class: "alius-loyalty" }, chip(`LOYALTY: ${state.relations[unit2.id].loyaltyBand.toUpperCase()}`, "glossary:loyalty_band")) : null,
+      !gone && state.relations[unit2.id] ? h("p", { class: "alius-loyalty" }, chip2(`LOYALTY: ${state.relations[unit2.id].loyaltyBand.toUpperCase()}`, "glossary:loyalty_band")) : null,
       gone ? null : h("p", { class: "alius-disposition" }, h("span", { class: "alius-chip", "data-disposition": unit2.id, ...analyzeAttrs("glossary:disposition", live) }, `Disposition: ${String(dispositionFor(state, reg, unit2).name)}`)),
       gone ? null : bondBlock(unit2, state, ctx2),
       gone ? null : disciplineLine(unit2, state, ctx2),
@@ -29950,7 +29965,7 @@ function unitBlock(unit2, ctx2, state) {
       gone || !ctx2.onWager ? null : renderChallenge(state, ctx2.registries, unit2.id, (choice) => ctx2.onWager?.(unit2.id, choice)),
       gone ? null : restrictionLine(unit2, state),
       gone || !ctx2.onPunish || unit2.kind !== "named" ? null : renderDisciplineMenu({ state, registries: reg, unitId: unit2.id, onPunish: (measure, days) => ctx2.onPunish(unit2.id, measure, days) }),
-      gone ? null : h("p", { class: "alius-stress" }, chip(`STRESS ${stressBand2(unit2.stress).toUpperCase()}${raw ? ` (${unit2.stress})` : ""}`, "glossary:stress", live)),
+      gone ? null : h("p", { class: "alius-stress" }, chip2(`STRESS ${stressBand2(unit2.stress).toUpperCase()}${raw ? ` (${unit2.stress})` : ""}`, "glossary:stress", live)),
       gone ? null : renderVitalsBlock(state, reg, unit2.id, { motion: !motionReduced(ctx2.settings()) }),
       gone ? null : leashMenu(unit2, ctx2),
       unit2.bio ? h("p", { class: "alius-dim" }, unit2.bio) : null,
@@ -30058,13 +30073,13 @@ function renderSchedule(state, reg, handlers2) {
 }
 function row(state, reg, b, handlers2) {
   const name = state.squad.find((u) => u.id === b.unitId)?.displayName ?? b.unitId;
-  const chip = h("span", { class: "alius-chip", ...analyzeAttrs("glossary:booking", { bookingId: b.id, unitId: b.unitId }) }, `${name.toUpperCase()} \xB7 ${SLOT_WORD[b.slot]}`);
-  chip.style.setProperty("--unit-accent", unitAccent(b.unitId));
+  const chip2 = h("span", { class: "alius-chip", ...analyzeAttrs("glossary:booking", { bookingId: b.id, unitId: b.unitId }) }, `${name.toUpperCase()} \xB7 ${SLOT_WORD[b.slot]}`);
+  chip2.style.setProperty("--unit-accent", unitAccent(b.unitId));
   const keep = b.conflict ? h("button", { type: "button", class: "alius-btn alius-tagchip", "data-action": "keep", ...analyzeNative("glossary:booking", { bookingId: b.id }), onclick: () => handlers2.onKeep(b.id) }, "[KEEP HERS]") : null;
   return h(
     "div",
     { class: "alius-schedule-row", "data-booking": b.id, ...b.conflict ? { "data-conflict": "true" } : {} },
-    chip,
+    chip2,
     h("span", { class: "alius-dim" }, String(reg.bookingKinds.get(b.kindId)?.label ?? b.kindId)),
     keep,
     h("button", { type: "button", class: "alius-btn alius-tagchip", "data-action": "cancel", ...analyzeNative("glossary:booking", { bookingId: b.id }), onclick: () => handlers2.onCancel(b.id) }, "[CANCEL]"),
@@ -30085,7 +30100,7 @@ function missionCard(m, state, ctx2) {
   const tierRank = reg.rewardTiers.get(m.rewardsTier)?.rank;
   const deadline = m.deadlineDay === void 0 ? "NO DEADLINE" : `D-${Math.max(0, m.deadlineDay - state.day)}`;
   const reason = checkDeparture(state, reg, { missionId: m.id });
-  const chip = (text2, address) => h("span", { class: "alius-chip", ...analyzeAttrs(address) }, text2);
+  const chip2 = (text2, address) => h("span", { class: "alius-chip", ...analyzeAttrs(address) }, text2);
   const stat3 = (text2, address) => h("span", { class: "alius-stat", ...analyzeAttrs(address) }, text2);
   const card2 = h(
     "article",
@@ -30094,11 +30109,11 @@ function missionCard(m, state, ctx2) {
     h(
       "p",
       { class: "alius-dim" },
-      region ? chip(String(region.name), `regions:${m.regionId}`) : m.regionId,
+      region ? chip2(String(region.name), `regions:${m.regionId}`) : m.regionId,
       " \xB7 ",
       stat3(`DANGER ${m.danger}`, "glossary:danger"),
       " \xB7 OBJECTIVE: ",
-      node ? chip(String(node.name), `nodeTypes:${m.objective.node}`) : m.objective.node,
+      node ? chip2(String(node.name), `nodeTypes:${m.objective.node}`) : m.objective.node,
       ` (${m.objective.condition}) \xB7 `,
       stat3(deadline, "glossary:mission_deadline")
     ),
@@ -31402,8 +31417,8 @@ function renderExpeditionScreen(host, ctx2) {
     root.append(h("h2", {}, `[ EXPEDITION ] ${String(reg.regions.get(exp.regionId)?.name ?? exp.regionId)}`));
     renderNodeMap(root, { rows: shown, edges: {}, onMove: (id) => controller.move(id), labels, types });
     const marked = state.missions.active.find((m) => m.id === exp.missionId);
-    const chip = marked ? herCallChip(state, marked) : null;
-    if (chip) root.append(h("p", {}, chip));
+    const chip2 = marked ? herCallChip(state, marked) : null;
+    if (chip2) root.append(h("p", {}, chip2));
     root.append(h("p", {}, `SUPPLIES ${exp.supplies} \xB7 LOOT ${exp.loot.length}`));
     const strip2 = h("div", { class: "alius-party" });
     const able = new Set(ableParty(state));
@@ -32089,10 +32104,10 @@ function violationLabels(reg, ids) {
   return ids.map((id) => String(reg.contentCategories.get(id)?.label ?? id));
 }
 function drawViolation(host, labels, onRegenerate, disabled = false) {
-  const chip = h("span", { class: "alius-chip alius-violation", "data-violation": labels.join(","), role: "note", ...analyzeAttrs("glossary:content_categories") });
-  chip.append(h("span", { class: "alius-violation-text" }, `\u26A0 CONTENT: ${labels.join(", ")}`));
+  const chip2 = h("span", { class: "alius-chip alius-violation", "data-violation": labels.join(","), role: "note", ...analyzeAttrs("glossary:content_categories") });
+  chip2.append(h("span", { class: "alius-violation-text" }, `\u26A0 CONTENT: ${labels.join(", ")}`));
   if (onRegenerate) {
-    chip.append(" ", h("button", {
+    chip2.append(" ", h("button", {
       type: "button",
       class: "alius-btn alius-option",
       "data-action": "regenerate-violation",
@@ -32102,8 +32117,8 @@ function drawViolation(host, labels, onRegenerate, disabled = false) {
       onclick: onRegenerate
     }, "[REGENERATE]"));
   }
-  host.append(chip);
-  return chip;
+  host.append(chip2);
+  return chip2;
 }
 var limitField = /* @__PURE__ */ new WeakMap();
 function drawLeadChips(host, scene, handlers2, disabled = false) {
@@ -32115,7 +32130,7 @@ function drawLeadChips(host, scene, handlers2, disabled = false) {
   const field2 = limitField.get(host) ?? { open: false, text: "" };
   limitField.set(host, field2);
   const redraw = () => drawLeadChips(host, scene, handlers2, disabled);
-  const chip = (kind, label2, onclick, soft = false) => h("button", {
+  const chip2 = (kind, label2, onclick, soft = false) => h("button", {
     type: "button",
     class: "alius-btn alius-option",
     "data-lead-chip": kind,
@@ -32130,9 +32145,9 @@ function drawLeadChips(host, scene, handlers2, disabled = false) {
   const row2 = h(
     "div",
     { class: "alius-lead-chips" },
-    chip("follow", "[FOLLOW]", () => handlers2.follow(), scene.followed === true),
-    chip("ask", "[ASK]", () => handlers2.ask()),
-    chip("limit", "[SET A LIMIT]", () => {
+    chip2("follow", "[FOLLOW]", () => handlers2.follow(), scene.followed === true),
+    chip2("ask", "[ASK]", () => handlers2.ask()),
+    chip2("limit", "[SET A LIMIT]", () => {
       field2.open = !field2.open;
       redraw();
     })
@@ -32158,7 +32173,7 @@ function drawLeadChips(host, scene, handlers2, disabled = false) {
     handlers2.limit(text2);
     redraw();
   };
-  host.append(h("div", { class: "alius-lead-limit" }, input, " ", chip("limit-set", "[SET]", send)));
+  host.append(h("div", { class: "alius-lead-limit" }, input, " ", chip2("limit-set", "[SET]", send)));
 }
 function drawRuleChips(host, state, reg, pick2, on) {
   host.replaceChildren();
@@ -32402,13 +32417,128 @@ function drawDemandChips(host, state, reg, pick2, on) {
   }
 }
 
+// src/ui/comms/living.ts
+var TYPING_MS = 2500;
+var SVG_NS4 = "http://www.w3.org/2000/svg";
+var stampText = (day, slot2) => `DAY ${String(day).padStart(3, "0")} // ${slot2.toUpperCase()}`;
+function kindsOf(reg, msg) {
+  return new Set((msg.behaviours ?? []).flatMap((id) => {
+    const kind = reg.dmBehaviours.get(id)?.kind;
+    return kind === void 0 ? [] : [kind];
+  }));
+}
+function splitBurst(text2) {
+  const sentences = text2.match(/[^.!?]+[.!?]+["')\]]*|[^.!?]+$/g)?.map((x) => x.trim()).filter((x) => x !== "") ?? [];
+  if (sentences.length <= 1) return [text2];
+  if (sentences.length <= 3) return sentences;
+  return [sentences[0], sentences[1], sentences.slice(2).join(" ")];
+}
+var chip = (text2, address, extra = {}) => h("span", { class: "alius-chip", ...analyzeAttrs(address), ...extra }, text2);
+function meta(msg, kinds2) {
+  return h(
+    "span",
+    { class: "alius-msg-meta" },
+    `${stampText(msg.day, msg.slot)}${msg.initiated ? " \xB7 SHE WROTE FIRST" : ""}`,
+    kinds2.has("late") ? chip(" \xB7 LATE", "glossary:dm_behaviour", { "data-behaviour": "late" }) : null
+  );
+}
+function waveform(id) {
+  const svg3 = document.createElementNS(SVG_NS4, "svg");
+  svg3.setAttribute("viewBox", "0 0 64 16");
+  svg3.setAttribute("class", "alius-wave");
+  svg3.setAttribute("aria-hidden", "true");
+  for (let i = 0; i < 16; i++) {
+    const height = 3 + fnv1a(`${id}|${i}`) % 11;
+    const bar2 = document.createElementNS(SVG_NS4, "rect");
+    bar2.setAttribute("x", String(i * 4));
+    bar2.setAttribute("y", String((16 - height) / 2));
+    bar2.setAttribute("width", "2");
+    bar2.setAttribute("height", String(height));
+    bar2.setAttribute("fill", "currentColor");
+    svg3.append(bar2);
+  }
+  return svg3;
+}
+function renderHerMessage(_state, reg, _unitId, msg, opts) {
+  const kinds2 = kindsOf(reg, msg);
+  const out = [];
+  const bubble = (text2, withMeta) => {
+    const b = renderBubble(text2, false, opts.accent);
+    b.classList.add("alius-msg", "is-unit");
+    if (withMeta) b.prepend(meta(msg, kinds2));
+    return b;
+  };
+  if (kinds2.has("deleted")) {
+    const ghost = h("div", { class: "alius-msg alius-msg-deleted is-unit" }, chip("MESSAGE DELETED", "glossary:dm_behaviour", { "data-behaviour": "deleted" }));
+    ghost.style.setProperty("--bubble-accent", opts.accent);
+    out.push(ghost);
+  }
+  if (kinds2.has("voice") && !opts.revealed.has(msg.id)) {
+    const voice = h(
+      "div",
+      { class: "alius-msg alius-voicemsg is-unit", "data-voice-message": msg.id },
+      meta(msg, kinds2),
+      "VOICE MESSAGE ",
+      waveform(msg.id),
+      " ",
+      h("button", { type: "button", class: "alius-btn alius-option", "data-play": msg.id, ...analyzeNative("glossary:voice_message"), onclick: () => opts.onReveal(msg.id) }, "[PLAY]")
+    );
+    voice.style.setProperty("--bubble-accent", opts.accent);
+    out.push(voice);
+  } else if (kinds2.has("burst")) {
+    const parts = splitBurst(msg.text);
+    parts.forEach((part, i) => {
+      const b = bubble(part, i === 0);
+      if (parts.length > 1) b.setAttribute("data-behaviour", "burst");
+      out.push(b);
+    });
+  } else {
+    out.push(bubble(msg.text, true));
+  }
+  return out;
+}
+function renderReceipt(state, unitId, msg) {
+  if (msg.from !== "commander") return null;
+  const r = receiptOf(state, unitId, msg);
+  const ago = (n) => `${n} SLOT${n === 1 ? "" : "S"} AGO`;
+  const text2 = r.status === "delivered" ? "DELIVERED" : r.status === "left_on_read" ? "SEEN \xB7 NO REPLY" : r.slotsAgo ? `READ \xB7 ${ago(r.slotsAgo)}` : "READ";
+  return h("span", { class: "alius-chip alius-receipt", "data-receipt": r.status, ...analyzeAttrs("glossary:read_receipt", { unitId }) }, text2);
+}
+function renderTyping(motion) {
+  if (!motion) return h("p", { class: "alius-typing alius-chip", "data-state": "stopped", ...analyzeAttrs("glossary:dm_behaviour") }, "She started typing and stopped.");
+  return h(
+    "p",
+    { class: "alius-typing alius-chip", "data-state": "typing", ...analyzeAttrs("glossary:dm_behaviour") },
+    "typing",
+    h("span", { class: "alius-dots", "aria-hidden": "true" }, h("span", {}, "."), h("span", {}, "."), h("span", {}, "."))
+  );
+}
+var timers = /* @__PURE__ */ new WeakMap();
+var played = /* @__PURE__ */ new WeakMap();
+function clearTyping(host) {
+  const t = timers.get(host);
+  if (t !== void 0) clearTimeout(t);
+  timers.delete(host);
+}
+var typingPlayed = (host, key) => played.get(host) === key;
+function armTyping(host, el, key) {
+  clearTyping(host);
+  timers.set(host, setTimeout(() => {
+    timers.delete(host);
+    played.set(host, key);
+    el.setAttribute("data-state", "stopped");
+    el.textContent = "stopped typing";
+  }, TYPING_MS));
+}
+
 // src/ui/comms/commsTab.ts
 var selected = /* @__PURE__ */ new WeakMap();
 var drafts = /* @__PURE__ */ new WeakMap();
+var revealed = /* @__PURE__ */ new WeakMap();
 var unread = unreadOf;
 var unreadMessages = (state, id) => (state.dms[id] ?? []).filter((m) => m.from !== "commander" && !m.read).length;
-var stamp = (day, slot2) => `DAY ${String(day).padStart(3, "0")} // ${slot2.toUpperCase()}`;
 function renderCommsTab(host, ctx2) {
+  clearTyping(host);
   host.replaceChildren();
   const state = ctx2.getState();
   if (!state) {
@@ -32433,7 +32563,14 @@ function renderCommsTab(host, ctx2) {
   const list5 = h("div", { class: "alius-threads", role: "list" }, ...contacts.map((u) => {
     const n = unread(state, u.id);
     const dot = n > 0 ? h("span", { class: "alius-dot", "aria-label": `${n} unread` }, "\u25CF") : null;
-    const row2 = h("button", { type: "button", class: `alius-btn alius-contact${u.id === current ? " is-open" : ""}`, "data-unit": u.id, onclick: () => open3(u.id) }, u.displayName, " ", dot);
+    const decor = decorOf(state, u.id);
+    const renamed = decor !== null && decor.parts.includes("contact") ? decor : null;
+    const row2 = h("button", {
+      type: "button",
+      class: `alius-btn alius-contact${u.id === current ? " is-open" : ""}${renamed?.fadedUntil !== void 0 ? " is-faded" : ""}`,
+      "data-unit": u.id,
+      onclick: () => open3(u.id)
+    }, renamed ? renamed.contactName : u.displayName, " ", dot);
     const face = ctx2.avatar?.(u);
     if (face) row2.prepend(h("span", { class: "alius-contact-avatar" }, face));
     row2.style.setProperty("--unit-accent", unitAccent(u.id));
@@ -32444,15 +32581,43 @@ function renderCommsTab(host, ctx2) {
     thread.append(h("p", { class: "alius-dim" }, "SELECT A CONTACT"));
   } else {
     const unit2 = contacts.find((u) => u.id === current);
-    thread.append(h("h3", {}, `// ${unit2.displayName.toUpperCase()}`));
+    const decor = decorOf(state, unit2.id);
+    const alias = decor !== null && decor.parts.includes("contact") ? decor.contactName : null;
+    thread.append(h("h3", {}, alias !== null ? `// ${alias.toUpperCase()} [${unit2.displayName.toUpperCase()}]` : `// ${unit2.displayName.toUpperCase()}`));
     const accent = unitAccent(unit2.id);
-    for (const m of state.dms[current] ?? []) {
+    const played2 = revealed.get(host) ?? /* @__PURE__ */ new Set();
+    revealed.set(host, played2);
+    const messages = state.dms[current] ?? [];
+    let lastMine = -1;
+    messages.forEach((x, i) => {
+      if (x.from === "commander") lastMine = i;
+    });
+    messages.forEach((m, i) => {
       const mine = m.from === "commander";
-      const bubble = renderBubble(m.text, mine, accent);
-      bubble.classList.add("alius-msg", mine ? "is-commander" : "is-unit");
-      bubble.prepend(h("span", { class: "alius-msg-meta" }, `${stamp(m.day, m.slot)}${m.initiated ? " \xB7 SHE WROTE FIRST" : ""}`));
-      if (!mine && m.violation && m.violation.length > 0) drawViolation(bubble, violationLabels(ctx2.registries, m.violation));
-      thread.append(bubble);
+      if (mine) {
+        const bubble = renderBubble(m.text, mine, accent);
+        bubble.classList.add("alius-msg", "is-commander");
+        bubble.prepend(h("span", { class: "alius-msg-meta" }, stampText(m.day, m.slot)));
+        thread.append(bubble);
+        const receipt = i === lastMine ? renderReceipt(state, current, m) : null;
+        if (receipt) thread.append(receipt);
+        return;
+      }
+      const shown = renderHerMessage(state, ctx2.registries, current, m, { revealed: played2, accent, onReveal: (id) => {
+        played2.add(id);
+        renderCommsTab(host, ctx2);
+      } });
+      if (m.violation && m.violation.length > 0) drawViolation(shown[shown.length - 1], violationLabels(ctx2.registries, m.violation));
+      thread.append(...shown);
+    });
+    if (hesitates(state, ctx2.registries, current)) {
+      const key = messages.at(-1).id;
+      const motion = ctx2.motion?.() ?? true;
+      const done = typingPlayed(host, key);
+      const typing = renderTyping(motion && !done);
+      if (motion && done) typing.textContent = "stopped typing";
+      else if (motion) armTyping(host, typing, key);
+      thread.append(typing);
     }
     const chips = h("div", { class: "alius-chips" });
     drawProposalChips(chips, state, (p) => p.channel === "dm" && p.unitId === current, ctx2.onAnswer, ctx2.registries);
@@ -32501,13 +32666,13 @@ function renderCommsTab(host, ctx2) {
 // src/ui/personal/claimCard.ts
 function renderClaimCard(state, reg, claim2, handlers2) {
   const name = state.squad.find((u) => u.id === claim2.unitId)?.displayName ?? claim2.unitId;
-  const chip = h("span", { class: "alius-chip", ...analyzeAttrs("glossary:claimed", { unitId: claim2.unitId }) }, "CLAIMED");
-  chip.style.setProperty("--unit-accent", unitAccent(claim2.unitId));
+  const chip2 = h("span", { class: "alius-chip", ...analyzeAttrs("glossary:claimed", { unitId: claim2.unitId }) }, "CLAIMED");
+  chip2.style.setProperty("--unit-accent", unitAccent(claim2.unitId));
   const refusable = contentAllowed(state, reg, { contentTags: [HUMILIATION_TAG] }, claim2.unitId);
   return h(
     "div",
     { class: "alius-claim", "data-claim": claim2.unitId },
-    h("p", {}, chip, ` ${name.toUpperCase()} HAS TOLD EVERYONE THE COMMANDER IS HERS.`),
+    h("p", {}, chip2, ` ${name.toUpperCase()} HAS TOLD EVERYONE THE COMMANDER IS HERS.`),
     h(
       "div",
       { class: "alius-claim-actions" },
@@ -32574,8 +32739,8 @@ function renderWagerCard(state, reg, result) {
   const game = reg.wagerGames.get(String(result.gameId));
   const stake = reg.wagerStakes.get(String(result.stakeId));
   const winner = result.winner === "unit" ? "unit" : result.winner === "commander" ? "commander" : "void";
-  const chip = h("span", { class: "alius-chip", ...analyzeAttrs("glossary:wager", { unitId }) }, "WAGER");
-  chip.style.setProperty("--unit-accent", unitAccent(unitId));
+  const chip2 = h("span", { class: "alius-chip", ...analyzeAttrs("glossary:wager", { unitId }) }, "WAGER");
+  chip2.style.setProperty("--unit-accent", unitAccent(unitId));
   const detail = [];
   if (result.commanderCard !== void 0) detail.push(`YOUR CARD ${String(result.commanderCard)} \xB7 HER CARD ${String(result.herCard)}`);
   const throws = result.throws;
@@ -32585,7 +32750,7 @@ function renderWagerCard(state, reg, result) {
   return h(
     "div",
     { class: "alius-wager-card", "data-wager-result": winner },
-    h("p", {}, chip, ` ${winner === "unit" ? `${name.toUpperCase()} WINS` : winner === "commander" ? "THE COMMANDER WINS" : "NOBODY WINS \u2014 VOID"}`),
+    h("p", {}, chip2, ` ${winner === "unit" ? `${name.toUpperCase()} WINS` : winner === "commander" ? "THE COMMANDER WINS" : "NOBODY WINS \u2014 VOID"}`),
     h("p", { class: "alius-dim" }, `${String(game?.label ?? result.gameId)} for ${String(stake?.text ?? result.stakeId)}.`),
     ...detail.map((line2) => h("p", { class: "alius-dim" }, line2)),
     words3 && winner !== "void" ? h("p", {}, winner === "unit" ? `Her stake: ${words3.she}.` : `The commander's stake: ${words3.commander}.`) : null
@@ -34985,12 +35150,12 @@ function playBoot(screen, opts) {
     screen.append(overlay);
     const lines = [`${opts.skinLabel} // BOOT`, "LINK ........ OK", "CCP OVERSIGHT HANDSHAKE ........ OK"];
     const show = (i) => void overlay.append(h("div", { class: "alius-boot-line" }, lines[i]));
-    const timers = [];
+    const timers2 = [];
     let over = false;
     const finish = () => {
       if (over) return;
       over = true;
-      timers.forEach(clearTimeout);
+      timers2.forEach(clearTimeout);
       document.removeEventListener("keydown", finish);
       document.removeEventListener("pointerdown", finish);
       opts.signal?.removeEventListener("abort", finish);
@@ -34998,10 +35163,10 @@ function playBoot(screen, opts) {
       resolve();
     };
     show(0);
-    timers.push(setTimeout(() => show(1), STEP_MS));
-    timers.push(setTimeout(() => show(2), STEP_MS * 2));
-    timers.push(setTimeout(() => overlay.classList.add("alius-boot-fade"), STEP_MS * 3));
-    timers.push(setTimeout(finish, STEP_MS * 4));
+    timers2.push(setTimeout(() => show(1), STEP_MS));
+    timers2.push(setTimeout(() => show(2), STEP_MS * 2));
+    timers2.push(setTimeout(() => overlay.classList.add("alius-boot-fade"), STEP_MS * 3));
+    timers2.push(setTimeout(finish, STEP_MS * 4));
     document.addEventListener("keydown", finish);
     document.addEventListener("pointerdown", finish);
     opts.signal?.addEventListener("abort", finish);
@@ -35647,7 +35812,7 @@ ${e.parsed === void 0 ? "(none)" : JSON.stringify(e.parsed, null, 2)}`)
 // src/ui/shell/toast.ts
 var LIFETIME_MS = { info: 4e3, warn: 6e3, error: 9e3, story: 14e3 };
 function createToasts(host) {
-  const timers = /* @__PURE__ */ new Set();
+  const timers2 = /* @__PURE__ */ new Set();
   return {
     show(kind, text2, opts = {}) {
       const el = h("div", { class: `alius-toast alius-toast-${kind}`, role: kind === "error" ? "alert" : "status", "data-voice": opts.voice ?? "terminal" });
@@ -35656,11 +35821,11 @@ function createToasts(host) {
       const remove = () => el.remove();
       el.addEventListener("click", remove);
       host.append(el);
-      timers.add(setTimeout(remove, LIFETIME_MS[kind]));
+      timers2.add(setTimeout(remove, LIFETIME_MS[kind]));
     },
     dispose() {
-      for (const t of timers) clearTimeout(t);
-      timers.clear();
+      for (const t of timers2) clearTimeout(t);
+      timers2.clear();
     }
   };
 }
@@ -37767,7 +37932,9 @@ function createApp(st, deps) {
         pendingEdit = null;
         void comms.answerEdit(keep).then(() => shell.refresh());
       },
-      avatar: (unit2) => unitPortrait(st, unit2, portraitOptions(getSettings(st), 32))
+      avatar: (unit2) => unitPortrait(st, unit2, portraitOptions(getSettings(st), 32)),
+      motion: () => !motionReduced(getSettings(st))
+      // P10b: the typing indicator
     })
   );
   shell.registerTab("log", (host) => renderLogTab(host, { getState: () => state }));
@@ -39033,8 +39200,8 @@ var RealStAdapter = class {
     return ctx().chatMetadata?.[key];
   }
   writeMetadata(key, value) {
-    const meta = ctx().chatMetadata;
-    if (meta) meta[key] = value;
+    const meta2 = ctx().chatMetadata;
+    if (meta2) meta2[key] = value;
   }
   async saveMetadata() {
     await ctx().saveMetadata();

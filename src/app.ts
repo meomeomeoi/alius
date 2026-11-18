@@ -104,6 +104,7 @@ import { createDirector, type DirectorController } from './world/directorControl
 import { createExpedition, type ExpeditionController } from './world/expeditionController';
 import { renderBaseTab } from './ui/base/baseTab';
 import { renderCommsTab } from './ui/comms/commsTab';
+import { motionReduced } from './ui/motion';
 import { renderClaimCard } from './ui/personal/claimCard';
 import { renderSecretCard } from './ui/personal/secretCard';
 import { herPickView } from './ui/personal/obey';
@@ -1949,6 +1950,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         void comms.answerEdit(keep).then(() => shell.refresh());
       },
       avatar: (unit) => unitPortrait(st, unit, portraitOptions(getSettings(st), 32)),
+      motion: () => !motionReduced(getSettings(st)), // P10b: the typing indicator
     }),
   );
   shell.registerTab('log', (host) => renderLogTab(host, { getState: () => state }));
