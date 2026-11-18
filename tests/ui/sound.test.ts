@@ -5,7 +5,7 @@ import { SOUND_IDS, UiSoundSchema } from '../../src/content/schemas';
 import { createCampaign } from '../../src/engine/state/create';
 import { DEFAULT_SETTINGS, type AliusSettings } from '../../src/settings';
 import { FakeStAdapter } from '../../src/st/fake';
-import { createSound, type AudioContextLike, type SoundId } from '../../src/ui/sound/sound';
+import { createSound, NIGHT_GAIN, type AudioContextLike, type SoundId } from '../../src/ui/sound/sound';
 import { createShell, type ShellApi } from '../../src/ui/shell/shell';
 import { loadCore } from '../helpers/world';
 
@@ -410,5 +410,43 @@ describe('uiSounds content', () => {
   it('uiSounds is not a player-visible registry', async () => {
     const { PLAYER_VISIBLE } = await import('../../src/analysis/describe');
     expect(PLAYER_VISIBLE).not.toContain('uiSounds');
+  });
+});
+
+describe('night sound (P10b)', () => {
+  const hum = entry('hum', { synth: { wave: 'sine', freq: 50, ms: 1000, gain: 0.08 } });
+  it('NIGHT_GAIN is one half', () => {
+    expect(NIGHT_GAIN).toBe(0.5);
+  });
+
+  it('night halves the effective gain of a sound, morning restores it', () => {
+    const { audio, sound } = setup({ soundVolume: 40 });
+    sound.play('open');
+    const day = peak(audio.rec.gains[0]);
+    sound.setNight(true);
+    sound.play('open');
+    expect(peak(audio.rec.gains[1])).toBeCloseTo(day * NIGHT_GAIN, 6);
+    sound.setNight(false);
+    sound.play('open');
+    expect(peak(audio.rec.gains[2])).toBeCloseTo(day, 6);
+  });
+
+  it('a hum that is running follows at once, in both directions', () => {
+    const { audio, sound } = setup({ ambientHum: true, soundVolume: 100 }, [hum]);
+    sound.startHum();
+    const g = audio.rec.gains[0].gain;
+    expect(g.value).toBeCloseTo(0.08, 5);
+    sound.setNight(true);
+    expect(g.value).toBeCloseTo(0.08 * NIGHT_GAIN, 5);
+    sound.setNight(false);
+    expect(g.value).toBeCloseTo(0.08, 5);
+  });
+
+  it('setNight with the same value changes nothing, and night does not unmute', () => {
+    const { audio, sound } = setup({ soundMuted: true });
+    sound.setNight(true);
+    sound.setNight(true);
+    sound.play('open');
+    expect(audio.rec.gains).toHaveLength(0);
   });
 });

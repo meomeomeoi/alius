@@ -817,3 +817,53 @@ describe('SYS world options (P8)', () => {
     expect(row('disposition')!.textContent).toContain('LOCKED AT START');
   });
 });
+
+describe('night theme (P10b)', () => {
+  const night = (): string | undefined => root()!.dataset.night;
+
+  it('data-night only in the night slot, and gone after the slot rolls', () => {
+    const state = createCampaign({ seed: 1, commanderName: 'Vale' });
+    const { shell } = setup({ state });
+    shell.open();
+    expect(night()).toBeUndefined();
+    state.slot = 'night';
+    shell.refresh();
+    expect(night()).toBe('true');
+    state.slot = 'morning';
+    shell.refresh();
+    expect(night()).toBeUndefined();
+  });
+
+  it('no campaign, no night', () => {
+    const { shell } = setup({ state: null });
+    shell.open();
+    expect(night()).toBeUndefined();
+  });
+
+  it('readable mode keeps data-night (the label) and sets alius-readable (the CSS drops the dimming)', () => {
+    const state = createCampaign({ seed: 1, commanderName: 'Vale' });
+    state.slot = 'night';
+    const { shell } = setup({ state, settings: { readableMode: true } });
+    shell.open();
+    expect(night()).toBe('true');
+    expect(root()!.classList.contains('alius-readable')).toBe(true);
+  });
+
+  it('tells the sound whether it is night, on open and on every refresh', () => {
+    const state = createCampaign({ seed: 1, commanderName: 'Vale' });
+    const sound = { play: vi.fn(), startHum: vi.fn(), stopHum: vi.fn(), setNight: vi.fn() };
+    const { shell } = setup({ state, extra: { sound } });
+    shell.open();
+    expect(sound.setNight).toHaveBeenLastCalledWith(false);
+    state.slot = 'night';
+    shell.refresh();
+    expect(sound.setNight).toHaveBeenLastCalledWith(true);
+  });
+
+  it('a sound without setNight (older tests, other hosts) is fine', () => {
+    const state = createCampaign({ seed: 1, commanderName: 'Vale' });
+    state.slot = 'night';
+    const { shell } = setup({ state, extra: { sound: { play: vi.fn(), startHum: vi.fn(), stopHum: vi.fn() } } });
+    expect(() => shell.open()).not.toThrow();
+  });
+});

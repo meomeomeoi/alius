@@ -312,7 +312,7 @@ describe('no pronoun for the commander in the her-call content (P9e)', () => {
 
 describe('no pronoun for the commander in the P10b content', () => {
   /** The P10b glossary entries (each task adds its ids), the readings and the registries named in the plan's Global Constraints. */
-  const GLOSSARY = ['vitals', 'vitals_flat', 'vitals_flicker', 'dm_behaviour', 'read_receipt', 'voice_message'];
+  const GLOSSARY = ['vitals', 'vitals_flat', 'vitals_flicker', 'dm_behaviour', 'read_receipt', 'voice_message', 'night_theme'];
 
   it('every P10b glossary entry', () => {
     const texts = GLOSSARY.flatMap((id): Array<[string, string]> => {

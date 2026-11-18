@@ -191,7 +191,10 @@
   {
     "id": "slots",
     "term": "Slots",
-    "short": "Time comes in slots: morning, afternoon, evening and, only when something happens, night. Activities, talks and expeditions spend them."
+    "short": "Time comes in slots: morning, afternoon, evening and, only when something happens, night. Activities, talks and expeditions spend them.",
+    "see": [
+      "night_theme"
+    ]
   },
   {
     "id": "commander_injury",
@@ -1667,6 +1670,15 @@
     "long": "AUTHOR TO WRITE: Someone close sometimes sends a voice message. The words stay hidden behind the waveform until the commander plays it, and they stay shown until the COMMS view is drawn again.",
     "see": [
       "dm_behaviour"
+    ]
+  },
+  {
+    "id": "night_theme",
+    "term": "Night",
+    "short": "At night the interface turns dimmer and warmer, moves slower and makes less noise. Visitors come to the door.",
+    "long": "AUTHOR TO WRITE: While the slot is Night the whole shell shifts to a dim, warm variant of its palette, transitions run slower and sounds play at half their volume. Readable mode keeps the label and the quieter sound but not the dimming. Visits that are not a confrontation arrive as a knock at the door.",
+    "see": [
+      "slots"
     ]
   }
 ]

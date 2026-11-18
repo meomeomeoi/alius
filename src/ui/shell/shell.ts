@@ -81,7 +81,7 @@ export interface ShellDeps {
   /** P10: the casing of the PDA, asked again on every refresh and settings change (absent: the built-in `ccp_standard`). */
   skin?: () => { skin: Entry; assetUrl?: (path: string) => string };
   /** P10: the UI sounds the shell asks for (device, tabs, toasts, hum); absent = silent. */
-  sound?: { play(id: SoundId): void; startHum(): void; stopHum(): void };
+  sound?: { play(id: SoundId): void; startHum(): void; stopHum(): void; /** P10b: night halves the gain. */ setNight?(on: boolean): void };
   /** Called when the device goes up or down. */
   onDevice?(up: boolean): void;
 }
@@ -157,6 +157,11 @@ export function createShell(deps: ShellDeps): ShellApi {
     root.classList.toggle('alius-flicker', flags.flicker);
     root.classList.toggle('alius-readable', s.readableMode);
     root.classList.toggle('alius-reduced-motion', motionReduced(s));
+    // P10b: the night slot dresses the shell (kept in readable mode: the label and the sound; the CSS drops the dimming there)
+    const night = deps.getState()?.slot === 'night';
+    if (night) root.dataset.night = 'true';
+    else delete root.dataset.night;
+    deps.sound?.setNight?.(night);
     deps.sound?.startHum(); // the hum follows ambientHum, mute and volume (and starts with the shell)
   }
 

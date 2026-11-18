@@ -37,8 +37,13 @@ export interface Sound {
   /** Starts (or retunes) the ambient hum when `ambientHum` is on and the sound is not muted; otherwise stops it. */
   startHum(): void;
   stopHum(): void;
+  /** P10b: while it is night every sound and the hum play at `NIGHT_GAIN` of their gain. */
+  setNight(on: boolean): void;
   dispose(): void;
 }
+
+/** P10b: the share of its gain a sound keeps at night (a UI constant, not a setting). */
+export const NIGHT_GAIN = 0.5;
 
 /** Typing ticks come at most this often. */
 const TYPING_GAP_MS = 60;
@@ -68,9 +73,10 @@ export function createSound(deps: SoundDeps): Sound {
   let humWanted = false;
   const files = new Map<string, Promise<unknown>>();
 
+  let night = false;
   const level = (): number => {
     const s = deps.settings();
-    return s.soundMuted ? 0 : s.soundVolume / 100;
+    return s.soundMuted ? 0 : (s.soundVolume / 100) * (night ? NIGHT_GAIN : 1);
   };
 
   const GESTURES = ['pointerdown', 'keydown', 'touchstart'] as const;
@@ -196,6 +202,11 @@ export function createSound(deps: SoundDeps): Sound {
 
     stopHum,
 
+    setNight(on) {
+      if (night === on) return;
+      night = on;
+      if (hum) api.startHum(); // a running hum follows at once
+    },
     dispose() {
       stopHum();
       stopWatching();

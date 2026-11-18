@@ -10,6 +10,8 @@
   --alius-accent: #ffd060;
   --alius-err: #ff8a5c;
   --alius-line: 1px solid var(--alius-fg);
+  /* P10b: 1 by day; the night slows transitions (79-immersion.css) */
+  --alius-motion-scale: 1;
   /* semantic colours (spec P10 §5): different in lightness, not hue alone; always paired with a glyph or a label */
   --alius-danger: #fc2200;
   --alius-warn: #ec9616;
@@ -2895,6 +2897,48 @@
 
 #alius-shell .alius-contact.is-faded {
   opacity: 0.55;
+}
+
+/*
+ * Night (P10b §3): while the slot is night the shell root has data-night="true". Each palette gets a warmer, dimmer variant
+ * (text >= 4.5:1 on the night background, tests/ui/palette.test.ts) and transitions run at 1.6x their length. Readable mode keeps
+ * the attribute (the label, the sound) but is excluded here, so it never dims. Reduced motion puts the scale back to 1 and
+ * 12-motion.css removes every transition.
+ */
+#alius-shell[data-night="true"]:not(.alius-readable) {
+  --alius-fg: #e69a14;
+  --alius-dim: #c08010;
+  --alius-bg: #0d0701;
+  --alius-accent: #f0c060;
+  --alius-err: #f08560;
+}
+
+#alius-shell[data-palette="green"][data-night="true"]:not(.alius-readable) {
+  --alius-fg: #3ad45f;
+  --alius-dim: #2ea84c;
+  --alius-bg: #010d05;
+  --alius-accent: #82e498;
+  --alius-err: #f08080;
+}
+
+#alius-shell[data-palette="white"][data-night="true"]:not(.alius-readable) {
+  --alius-fg: #e0d8c8;
+  --alius-dim: #aea696;
+  --alius-bg: #0a0806;
+  --alius-accent: #f4ecd8;
+  --alius-err: #f09a8a;
+}
+
+#alius-shell[data-night="true"] {
+  --alius-motion-scale: 1.6;
+}
+
+#alius-shell.alius-reduced-motion {
+  --alius-motion-scale: 1;
+}
+
+#alius-shell[data-night="true"] .alius-device {
+  transition: transform calc(260ms * var(--alius-motion-scale)) ease-out;
 }
 
 /* P5: world map, mission board, expeditions */

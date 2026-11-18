@@ -30383,6 +30383,7 @@ function screenBox(skin) {
 }
 
 // src/ui/sound/sound.ts
+var NIGHT_GAIN = 0.5;
 var TYPING_GAP_MS = 60;
 var ATTACK_S = 5e-3;
 var SILENCE = 1e-4;
@@ -30400,9 +30401,10 @@ function createSound(deps) {
   let gestured = false;
   let humWanted = false;
   const files = /* @__PURE__ */ new Map();
+  let night = false;
   const level = () => {
     const s = deps.settings();
-    return s.soundMuted ? 0 : s.soundVolume / 100;
+    return s.soundMuted ? 0 : s.soundVolume / 100 * (night ? NIGHT_GAIN : 1);
   };
   const GESTURES = ["pointerdown", "keydown", "touchstart"];
   const userActive = () => gestured || typeof navigator !== "undefined" && navigator.userActivation?.hasBeenActive === true;
@@ -30518,6 +30520,11 @@ function createSound(deps) {
       hum = { stop: () => osc.stop(), gain: g.gain };
     },
     stopHum,
+    setNight(on) {
+      if (night === on) return;
+      night = on;
+      if (hum) api.startHum();
+    },
     dispose() {
       stopHum();
       stopWatching();
@@ -35888,6 +35895,10 @@ function createShell(deps) {
     root.classList.toggle("alius-flicker", flags.flicker);
     root.classList.toggle("alius-readable", s.readableMode);
     root.classList.toggle("alius-reduced-motion", motionReduced(s));
+    const night = deps.getState()?.slot === "night";
+    if (night) root.dataset.night = "true";
+    else delete root.dataset.night;
+    deps.sound?.setNight?.(night);
     deps.sound?.startHum();
   }
   function renderBanner() {

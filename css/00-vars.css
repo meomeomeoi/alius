@@ -10,6 +10,8 @@
   --alius-accent: #ffd060;
   --alius-err: #ff8a5c;
   --alius-line: 1px solid var(--alius-fg);
+  /* P10b: 1 by day; the night slows transitions (79-immersion.css) */
+  --alius-motion-scale: 1;
   /* semantic colours (spec P10 §5): different in lightness, not hue alone; always paired with a glyph or a label */
   --alius-danger: #fc2200;
   --alius-warn: #ec9616;

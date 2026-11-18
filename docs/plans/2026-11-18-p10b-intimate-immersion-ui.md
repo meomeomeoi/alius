@@ -563,19 +563,19 @@ git commit -am "feat(P10b): living DMs in COMMS (placeholders, bursts, voice, re
 **Interfaces:**
 - Produces: `NIGHT_GAIN = 0.5`, `Sound.setNight(on)`, root attribute `data-night`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - `data-night only in the night slot`, and gone after the slot rolls.
   - `night halves the effective gain`.
   - `readable mode keeps data-night but sets alius-readable` (the CSS drops dimming under `.alius-readable`; palette test parses the night variables and asserts ≥ 4.5:1 for each fg/bg pair in all three palettes).
   - `no motion-scale transition under reduced motion`.
 
-- [ ] **Step 2: Run to verify they fail**
+- [x] **Step 2: Run to verify they fail**
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
-- [ ] **Step 4: Run, `npm test`**
+- [x] **Step 4: Run, `npm test`**
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git commit -am "feat(P10b): night theme and quieter night sound"
