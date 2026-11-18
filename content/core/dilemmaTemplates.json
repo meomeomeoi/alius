@@ -1879,5 +1879,127 @@
         }
       ]
     }
+  },
+  {
+    "id": "debts_oversight_case",
+    "scale": "defining",
+    "contexts": [
+      "debts_oversight"
+    ],
+    "fixed": {
+      "title": "Oversight has traced the leak",
+      "setup": "AUTHOR TO WRITE: Everything sold to the rival corporation has been traced back to the commander, and oversight has not acted yet. The commander can keep selling under oversight's nose, confess, or run.",
+      "options": [
+        {
+          "id": "double_agent",
+          "label": "KEEP SELLING AS A DOUBLE AGENT",
+          "effects": [
+            {
+              "type": "faction",
+              "factionId": "own",
+              "amount": -5
+            },
+            {
+              "type": "flag",
+              "flagId": "defector_arc"
+            },
+            {
+              "type": "flag",
+              "flagId": "defector_double_agent"
+            }
+          ]
+        },
+        {
+          "id": "confess",
+          "label": "CONFESS TO THE SQUAD AND OVERSIGHT",
+          "effects": [
+            {
+              "type": "faction",
+              "factionId": "own",
+              "amount": -20
+            },
+            {
+              "type": "leash",
+              "amount": -1
+            },
+            {
+              "type": "flag",
+              "flagId": "defector_arc"
+            },
+            {
+              "type": "flag",
+              "flagId": "defector_confessed"
+            }
+          ]
+        },
+        {
+          "id": "flee",
+          "label": "FLEE TO THE RIVAL CORPORATION",
+          "effects": [
+            {
+              "type": "faction",
+              "factionId": "own",
+              "amount": -30
+            },
+            {
+              "type": "faction",
+              "factionId": "own",
+              "amount": -10
+            },
+            {
+              "type": "flag",
+              "flagId": "defector_arc"
+            },
+            {
+              "type": "flag",
+              "flagId": "defector_fled"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "debts_unit_case",
+    "scale": "major",
+    "contexts": [
+      "debts_unit"
+    ],
+    "fixed": {
+      "title": "{name} knows",
+      "setup": "AUTHOR TO WRITE: {name} saw the handler at the gate and understood. She has not told anyone yet. What the commander does now decides whether she does.",
+      "options": [
+        {
+          "id": "report",
+          "label": "LET HER REPORT IT TO OVERSIGHT",
+          "effects": [
+            {
+              "type": "party_stress",
+              "amount": 3
+            }
+          ]
+        },
+        {
+          "id": "protect_commander",
+          "label": "ASK HER TO KEEP IT QUIET",
+          "effects": [
+            {
+              "type": "party_stress",
+              "amount": 3
+            }
+          ]
+        },
+        {
+          "id": "demand",
+          "label": "HEAR WHAT SHE WANTS FOR HER SILENCE",
+          "effects": [
+            {
+              "type": "party_stress",
+              "amount": 3
+            }
+          ]
+        }
+      ]
+    }
   }
 ]

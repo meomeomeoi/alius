@@ -17,7 +17,7 @@ describe('P9c registries: secretKinds', () => {
   it('is a registry, described, with a kind for each source', () => {
     expect(REGISTRY_NAMES).toContain('secretKinds');
     expect(DESCRIBED_REGISTRIES).toContain('secretKinds');
-    expect([...reg.secretKinds.values()].map((k) => k.source).sort()).toEqual(['event', 'hidden_injury', 'successor']);
+    expect([...reg.secretKinds.values()].map((k) => k.source).sort()).toEqual(['debts', 'event', 'hidden_injury', 'successor']);
   });
 
   it('a hidden-injury secret must name {name} and a successor secret {leader}', () => {

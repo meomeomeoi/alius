@@ -152,7 +152,8 @@
         "target": "nearest_any",
         "once": true
       }
-    }
+    },
+    "nightAware": true
   },
   {
     "id": "compulsive_protocol",

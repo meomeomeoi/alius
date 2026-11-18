@@ -479,7 +479,7 @@ export const RESERVED_EVENT_TYPES: readonly string[] = [
   'wager_offered', 'wager_refused', 'wager_accepted', 'wager_declined', 'wager_resolved', 'mark_set', 'mark_ended', 'wager_question', 'truth_told', 'demand_dropped',
   'secret_kept', 'secret_found', 'secret_answered',
   // P12
-  'frequency_intercept', 'frequency_worded', 'frequency_static', 'frequency_discovered', 'implant_burned', 'commander_stress_changed', 'premonition', 'premonition_acted', 'bloom_nightmare', 'handler_visit', 'intel_answered', 'handler_threat', 'handler_leak', 'debts_consequence',
+  'frequency_intercept', 'frequency_worded', 'frequency_static', 'frequency_discovered', 'implant_burned', 'commander_stress_changed', 'premonition', 'premonition_acted', 'bloom_nightmare', 'handler_visit', 'intel_answered', 'handler_threat', 'handler_leak', 'debts_consequence', 'debts_discovered', 'defector_arc',
   // P10b
   'door_said', 'door_replied', 'hand_set', 'note_left', 'note_read', 'notes_expired',
 ];
@@ -770,6 +770,8 @@ export const DefectSchema = BaseEntrySchema.extend({
   pressureMult: z.number().min(1).max(2).optional(),
   /** P9d: what her unmet want does at the top band: an off-combat breakdown of this kind for 1 to 3 days. */
   wantBreakdown: z.object({ kind: z.enum(['withdrawal', 'binge', 'smother', 'seize']), days: int.min(1).max(3) }).strict().optional(),
+  /** P12: she is awake at night, so she may notice the handler's visit (read by this field, never by defect id). */
+  nightAware: z.boolean().optional(),
   /** P12: how readily she notices a leak of the commander's secret frequency (the suspicion gain is multiplied by it, and above 50 she senses static). Read by this field, never by defect id. */
   frequencySense: z.number().min(1).max(2).optional(),
   /** P10b: `flat` draws her VITALS as a flat line (rare flickers break it). Read by this field, never by defect id. */
@@ -1963,7 +1965,7 @@ registrySchemas.wagerStakes = WagerStakeSchema;
 /** P9c §5: what the squad can keep from the commander. `source` is the closed vocabulary of the engine's hooks (`hidden_injury`: a run ends; `event`: a `squad_secret` world effect; `successor`: a leader's week). The text carries `{name}` (the unit it is about) or `{leader}`. */
 export const SecretKindSchema = BaseEntrySchema.extend({
   description: str.max(DESCRIPTION_MAX),
-  source: z.enum(['hidden_injury', 'event', 'successor']),
+  source: z.enum(['hidden_injury', 'event', 'successor', 'debts']),
   reason: z.enum(['protect_commander', 'self_interest', 'leader_order']),
   text: str.max(200),
   importance: int.min(1).max(5),

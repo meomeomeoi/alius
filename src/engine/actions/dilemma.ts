@@ -1,4 +1,5 @@
 import { registerDayEndStep } from '../calendar';
+import { debtsChoice } from '../special/debts/discovery';
 import { registerAction } from '../dispatch';
 import { readRoutePick } from '../commander/checks';
 import { chooseDilemma, fallbackDilemma, openDilemma, pacingStep, presentDilemma } from '../dilemma/flow';
@@ -29,5 +30,9 @@ registerAction('dilemma/fallback', (draft, payload, ctx) => {
 
 registerAction('dilemma/choose', (draft, payload, ctx) => {
   const p = isObj(payload) ? payload : {};
-  return chooseDilemma(draft, ctx, p.id, p.index, readRoutePick(p.route));
+  // P12: a debts dilemma's answer has effects beyond its authored ones, read by the dilemma's context and the option's id
+  const open = draft.dilemmas?.open;
+  const optionId = typeof p.index === 'number' ? open?.options?.[p.index]?.id : undefined;
+  const events = chooseDilemma(draft, ctx, p.id, p.index, readRoutePick(p.route));
+  return open ? [...events, ...debtsChoice(draft, ctx, open.context, optionId, open.subjectId)] : events;
 });

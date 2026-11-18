@@ -5,6 +5,7 @@ import { frequencyDiscovered, syncFrequencyKnowers } from './frequency/discovery
 import { decayFrequency, suspicionOf } from './frequency/leaks';
 import { TUNING } from '../tuning';
 import { addCommanderStress } from './commanderStress';
+import { checkOversight, openQueuedCases } from './debts/discovery';
 import { runConsequences } from './debts/consequences';
 import { lapseVisit } from './debts/intel';
 import { rollVisit } from './debts/handler';
@@ -26,6 +27,7 @@ export function specialDayStep(draft: CampaignState, ctx: EngineCtx): EngineEven
   decayFrequency(draft);
   events.push(...lapseVisit(draft, ctx)); // a visit nobody answered lapses as all-withhold
   events.push(...runConsequences(draft, ctx)); // what sold intel brought back, now due
+  events.push(...checkOversight(draft, ctx), ...openQueuedCases(draft, ctx)); // oversight at 100, and a case that waited for another dilemma
   events.push(...paranoiaDayStep(draft, ctx)); // after P6's loyalty step (this module is imported after `actions/loyalty`)
   return events;
 }

@@ -897,7 +897,7 @@ The day step's decay runs in every campaign: it is registered unconditionally an
   - `debtsChoice(draft, ctx, dilemma, optionId): EngineEvent[]`
   - Events `debts_discovered { unitId }`, `defector_arc { outcome }`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 - `oversight at 100 opens the defining dilemma and every option sets defector_arc` (acceptance 4): each option → world flag `defector_arc` plus its outcome flag, the thread `defector_arc` open; `flee` sets `ended`, `double_agent` resets suspicions to 30.
 - `a watcher discovers on a visit night` (acceptance 4): `threat_saturation` unit, a found seed → `knows_debts`, `debts_exposed`, the `debts_unit` dilemma presented with her as subject.
 - `report / protect_commander / demand`: oversight +40 / a kept squad secret of source `debts` known by her / an open owed demand.
@@ -905,8 +905,8 @@ The day step's decay runs in every campaign: it is registered unconditionally an
 - `at most one unit discovery per visit`.
 - `a terminated subject's case never opens`.
 
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → PASS; `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P12): debts discovery by oversight and by a unit; defector_arc placeholders`
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → PASS; `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P12): debts discovery by oversight and by a unit; defector_arc placeholders`
 
 ---
 

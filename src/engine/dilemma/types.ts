@@ -3,7 +3,7 @@ import type { SocialStat } from '../social';
 import type { WorldEffect } from '../world/types';
 
 /** Where a dilemma can come from (P6). The content schema checks `dilemmaTemplates[].contexts` against this list. */
-export const DILEMMA_CONTEXTS = ['expedition_event', 'base', 'mission_outcome', 'defect_arc', 'director', 'scapegoat'] as const;
+export const DILEMMA_CONTEXTS = ['expedition_event', 'base', 'mission_outcome', 'defect_arc', 'director', 'scapegoat', 'debts_oversight', 'debts_unit'] as const;
 export type DilemmaContext = (typeof DILEMMA_CONTEXTS)[number];
 
 export type DilemmaScale = 'minor' | 'major' | 'defining';

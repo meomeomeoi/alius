@@ -62,7 +62,7 @@ describe('no pronoun for the commander in content', () => {
 
   it('journal phrases of the event deltas (P3b)', () => {
     const texts = fields('eventDeltas', ['journal']);
-    expect(texts.length).toBe(53); // P12: + knowledge_leak, frequency_exposed, accused, false_accusation
+    expect(texts.length).toBe(54); // P12: + knowledge_leak, frequency_exposed, accused, false_accusation, debts_exposed
     expect(texts.filter(([, t]) => COMMANDER_PRONOUN.test(t) || /commander[^.]*\btheir\b/i.test(t) || t === '').map(([where]) => where)).toEqual([]);
   });
 
@@ -117,7 +117,7 @@ describe('no pronoun for the commander in content', () => {
 
   it('secret kinds (P9c): descriptions and texts', () => {
     const texts = [...reg.secretKinds.values()].flatMap((k): Array<[string, string]> => [[`secretKinds:${k.id}.description`, String(k.description)], [`secretKinds:${k.id}.text`, String(k.text)]]);
-    expect(texts.length).toBe(6);
+    expect(texts.length).toBe(8); // P12: + debts_cover
     expect(texts.filter(([, t]) => COMMANDER_PRONOUN.test(t) || /\b(he|him|his|they|them|their)\b/i.test(t)).map(([where]) => where)).toEqual([]);
   });
 

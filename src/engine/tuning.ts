@@ -497,6 +497,8 @@ export const TUNING = Object.freeze({
       dueMin: 2, dueMax: 5, exposureDays: 10,
       /** A false item is found out with chance `foundOut` (+`foundOutGain` suspicion); the rival gains `rivalGain`, the own corporation loses `ownLoss`; oversight gains `oversightBase`. */
       foundOut: 0.5, foundOutGain: 15, rivalGain: 10, ownLoss: 5, oversightBase: 10,
+      /** A soldier may find out on a visit night: chance per watcher (×1.5 with a night-aware defect); stress that makes a soldier a watcher; the own standing a fled commander is left at most. */
+      watcherChance: 0.15, watcherStress: 60, hostileAt: -50,
       framing: 'A visitor at the gate.',
     }),
     commanderStress: Object.freeze({ empathyAt: 70, dayRelief: 5, sleepRelief: 15, downed: 10, nightmare: 15, falseAlarm: 5 }),

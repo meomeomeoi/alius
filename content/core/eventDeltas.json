@@ -1191,5 +1191,32 @@
         "stress": 14
       }
     }
+  },
+  {
+    "id": "debts_exposed",
+    "cause": "She learned the commander sells intel to a rival",
+    "journal": "she learned the commander sells intel to a rival corporation",
+    "rows": {
+      "minor": {
+        "trust": -3,
+        "affinity": -2,
+        "stress": 2
+      },
+      "moderate": {
+        "trust": -8,
+        "affinity": -5,
+        "stress": 5
+      },
+      "major": {
+        "trust": -14,
+        "affinity": -10,
+        "stress": 9
+      },
+      "extreme": {
+        "trust": -22,
+        "affinity": -16,
+        "stress": 14
+      }
+    }
   }
 ]

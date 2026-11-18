@@ -8,6 +8,7 @@ import { postRumor, rumorPostedEvent } from '../../world/missions';
 import { spineOf } from '../../world/spine';
 import type { CampaignState } from '../../state/types';
 import { TUNING } from '../../tuning';
+import { rollUnitDiscovery } from './discovery';
 import { scheduleConsequences } from './consequences';
 import {
   HANDLER_UNIT, HANDLER_VISIT_KIND, INTEL_ANSWERS, type DebtsState, type IntelAnswer, type IntelItem,
@@ -125,6 +126,7 @@ function settle(draft: CampaignState, ctx: EngineCtx, d: DebtsState, answers: Re
   const heat = Math.max(d.handlerPressure, d.handlerSuspicion);
   if (heat >= 85) events.push(...leak(draft, ctx, d));
   else if (heat >= 40) events.push({ type: 'handler_threat' });
+  events.push(...rollUnitDiscovery(draft, ctx)); // the watchers were awake on a visit night
   events.push(...closeVisit(draft, ctx, spendNight));
   return events;
 }

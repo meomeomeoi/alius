@@ -28,6 +28,8 @@ export const ENGINE_EVENT_TYPES = ['granted_demand', 'refused_demand', 'followed
   'frequency_exposed',
   // P12: she was accused (or punished, or leashed) on a false alarm
   'false_accusation',
+  // P12: she found out the commander sells intel to a rival corporation
+  'debts_exposed',
 ] as const;
 
 /** The event types a world effect (`unit_event`) may apply: what the model reports, plus `shielded` (the engine's own, from a scapegoat dilemma). */
