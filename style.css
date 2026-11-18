@@ -2774,6 +2774,72 @@
   border-left: 1px solid currentColor;
 }
 
+/* P10b: the interface of intimacy (VITALS, living DMs, ...). Palette variables and currentColor only, so every voice and readable mode keep their contrast. Motion stops under .alius-reduced-motion (12-motion.css); this file also keeps its animations behind a class the code only sets while motion is on. */
+
+/* VITALS (SQUAD dossier block and the hub strip) */
+#alius-shell .alius-vitals {
+  margin: 6px 0;
+}
+
+#alius-shell .alius-vitals h4 {
+  margin: 0 0 2px;
+}
+
+#alius-shell .alius-trace {
+  display: block;
+  width: 100%;
+  max-width: 260px;
+  height: 28px;
+  color: var(--alius-fg);
+  overflow: hidden;
+}
+
+#alius-shell .alius-trace.is-sweeping polyline {
+  stroke-dasharray: 96;
+  stroke-dashoffset: 96;
+  animation: alius-trace-sweep 2.4s linear infinite;
+}
+
+@keyframes alius-trace-sweep {
+  from { stroke-dashoffset: 96; }
+  to { stroke-dashoffset: -96; }
+}
+
+#alius-shell .alius-vitals-log {
+  margin: 2px 0;
+  padding-left: 16px;
+}
+
+#alius-shell .alius-vitals-strip {
+  margin: 6px 0;
+}
+
+#alius-shell .alius-vitals-strip h2 {
+  margin: 0 0 2px;
+}
+
+#alius-shell .alius-vitals-strip ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+#alius-shell .alius-vitals-row {
+  display: grid;
+  grid-template-columns: minmax(48px, 0.8fr) 1.2fr auto;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 0;
+}
+
+#alius-shell .alius-vitals-row .alius-trace {
+  height: 18px;
+}
+
+#alius-shell .alius-vitals-word {
+  font-size: 0.8em;
+}
+
 /* P5: world map, mission board, expeditions */
 .alius-map { position: relative; max-width: 100%; }
 .alius-map-img { display: block; width: 100%; height: auto; }

@@ -11,6 +11,7 @@ import type { CampaignState, Relation, Unit } from '../../engine/state/types';
 import { humanize, signed, summarizeCombatEffect } from '../effects';
 import { registerCommanderProviders } from './commander';
 import { registerDisciplineProviders } from './discipline';
+import { registerImmersionProviders } from './immersion';
 import { registerBondsProviders } from './bonds';
 import { registerMemoryProviders } from './memory';
 import { registerPersonalProviders } from './personal';
@@ -287,6 +288,7 @@ export const CORE_GLOSSARY_IDS: readonly string[] = [
   'standing', 'squad_leader', 'countermand', 'endorse', 'challenge', 'outside_perception', 'scapegoat',
   // P9e
   'her_call', 'ask_first',
+  'vitals', 'vitals_flat', 'vitals_flicker', // P10b
   // P9c (the DEVICE block, the SCHEDULE, the EDITED BY chip, the courtship chips and the claim card address these)
   'device_access', 'booking', 'courtship', 'claimed',
   // P9c chunk (b): tokens, wagers and the day of obedience
@@ -315,5 +317,6 @@ export function registerCoreProviders(): void {
   registerBondsProviders(); // P9d
   registerPowerProviders(); // P9b
   registerPersonalProviders(); // P9c
+  registerImmersionProviders(); // P10b
   registerMemoryProviders(); // P3b
 }

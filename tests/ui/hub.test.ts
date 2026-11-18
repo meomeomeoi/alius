@@ -528,3 +528,28 @@ describe('time of day', () => {
     expect(m.host.querySelector<HTMLElement>('.alius-hub')!.dataset.slot).toBe(slot);
   });
 });
+
+describe('hub screen: VITALS strip (P10b)', () => {
+  it('sits in the side column right under TONIGHT, one row per named living soldier', () => {
+    const s = campaign(reg, 4);
+    s.squad[3].status = 'dead';
+    const m = mount({ state: s });
+    const side = m.host.querySelector('.alius-hub-side')!;
+    const strip = side.querySelector('.alius-vitals-strip')!;
+    expect(strip.previousElementSibling!.classList.contains('alius-tonight')).toBe(true);
+    expect(strip.querySelectorAll('li')).toHaveLength(3);
+  });
+
+  it('has no sweep under reduced motion', () => {
+    const m = mount();
+    expect(m.host.querySelector('.alius-vitals-strip .is-sweeping')).not.toBeNull();
+    m.ctx.settings = () => ({ ...DEFAULT_SETTINGS, reducedMotion: true });
+    m.rerender();
+    expect(m.host.querySelector('.alius-vitals-strip .is-sweeping')).toBeNull();
+    expect(m.host.querySelector('.alius-vitals-strip polyline')).not.toBeNull();
+  });
+
+  it('no strip without a campaign', () => {
+    expect(mount({ state: null }).host.querySelector('.alius-vitals-strip')).toBeNull();
+  });
+});

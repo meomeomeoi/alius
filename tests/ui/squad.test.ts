@@ -61,6 +61,16 @@ describe('valueBand', () => {
   });
 });
 
+describe('SQUAD tab: VITALS (P10b)', () => {
+  it('a named unit gets a VITALS block after the stress line; a read-only or empty campaign draws none', () => {
+    const { host } = render();
+    const stress = host.querySelector('.alius-stress')!;
+    expect(stress.nextElementSibling!.className).toContain('alius-vitals');
+    expect(host.querySelector('.alius-vitals')!.textContent).toContain('VITALS: ');
+    expect(render({ state: null }).host.querySelector('.alius-vitals')).toBeNull();
+  });
+});
+
 describe('SQUAD tab', () => {
   it('no campaign shows NEW CAMPAIGN which calls onNewCampaign', () => {
     const { host, onNewCampaign } = render({ state: null });

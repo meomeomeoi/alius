@@ -309,3 +309,24 @@ describe('no pronoun for the commander in the her-call content (P9e)', () => {
     expect(texts.filter(([, t]) => COMMANDER_PRONOUN.test(t) || /commander[^.]*\btheir\b/i.test(t)).map(([where]) => where)).toEqual([]);
   });
 });
+
+describe('no pronoun for the commander in the P10b content', () => {
+  /** The P10b glossary entries (each task adds its ids), the readings and the registries named in the plan's Global Constraints. */
+  const GLOSSARY = ['vitals', 'vitals_flat', 'vitals_flicker'];
+
+  it('every P10b glossary entry', () => {
+    const texts = GLOSSARY.flatMap((id): Array<[string, string]> => {
+      const g = reg.glossary.get(id);
+      expect(g, id).toBeDefined();
+      return [[`glossary:${id}.short`, String(g!.short ?? '')], [`glossary:${id}.long`, String(g!.long ?? '')]];
+    });
+    expect(texts.filter(([, t]) => COMMANDER_PRONOUN.test(t) || /commander[^.]*\btheir\b/i.test(t)).map(([where]) => where)).toEqual([]);
+  });
+
+  it('the VITALS reading texts', async () => {
+    const { readFile } = await import('node:fs/promises');
+    const src = await readFile('src/analysis/providers/immersion.ts', 'utf8');
+    const lines = src.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l));
+    expect(lines.filter((l) => /\b(he|him|his|himself)\b/i.test(l) || /commander[^.'`]*\btheir\b/i.test(l)).map((l) => l.trim().slice(0, 100))).toEqual([]);
+  });
+});

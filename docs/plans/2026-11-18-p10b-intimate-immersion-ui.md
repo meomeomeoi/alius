@@ -382,7 +382,7 @@ git add -A && git commit -m "feat(P10b): derived vitals (patterns, spikes, flick
   - `HEART_TEXT`, `TEMP_TEXT` (the band texts of the ruling)
   - provider `glossary:vitals`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - `block shows pattern chip, HR and TEMP with data-analyze="glossary:vitals"`.
   - `block text contains no digit outside the HR/TEMP band texts`: strip the band texts, then assert there is no `/\d/`.
   - `flat unit lists flickers as DAY ### SLOT`.
@@ -394,15 +394,15 @@ git add -A && git commit -m "feat(P10b): derived vitals (patterns, spikes, flick
     - `hidden fixture leaks nothing` (add `registerImmersionProviders` to the hidden test's registration and assert `leaks(...)` is `[]` for raw on and off).
   - `tests/ui/analyzeCoverage.test.ts` stays green.
 
-- [ ] **Step 2: Run to verify they fail**
+- [x] **Step 2: Run to verify they fail**
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 SVG through `document.createElementNS` + `setAttribute`. The sweep is a CSS animation class only when `opts.motion`. Glossary long texts are `AUTHOR TO WRITE` and say what each pattern *can* mean (no mind-reading).
 
-- [ ] **Step 4: Run tests, then `npm test`**
+- [x] **Step 4: Run tests, then `npm test`**
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git commit -am "feat(P10b): VITALS block, hub strip and analysis provider"

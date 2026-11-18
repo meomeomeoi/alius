@@ -12,6 +12,8 @@ import type { TabId } from '../shell/tabs';
 import { peekHubArt, probeHubArt } from './art';
 import { cssUrl } from '../fx';
 import { renderVoiceCard } from '../voice/voiceCard';
+import { motionReduced } from '../motion';
+import { renderVitalsStrip } from '../vitals/block';
 import { renderMarker } from './marker';
 import {
   currentObjective, endSlotBlock, latestOversight, TONE_GLYPH, TONE_LABEL, tonightItems, type MarkerTone,
@@ -179,6 +181,7 @@ function sideColumn(ctx: HubCtx, state: CampaignState, readOnly: boolean): HTMLE
         ? h('p', { class: 'alius-dim' }, 'Nothing is waiting.')
         : h('ul', {}, ...items.map((i) => h('li', { class: 'alius-tonight-item alius-stat', 'data-tone': i.tone, ...analyzeAttrs(i.analyze) }, `${TONE_GLYPH[i.tone]} ${i.text}`))),
     ),
+    renderVitalsStrip(state, ctx.registries, { motion: !motionReduced(ctx.settings()) }),
     oversight ? oversightCard(ctx, state, oversight.no, `${oversight.kind.toUpperCase()} ${who} — ${oversight.outcome}`) : null,
     h(
       'div', { class: 'alius-legend' },

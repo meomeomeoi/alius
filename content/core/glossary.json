@@ -1609,5 +1609,36 @@
       "memory",
       "memory_budget"
     ]
+  },
+  {
+    "id": "vitals",
+    "term": "Vitals",
+    "short": "The squad's biotelemetry: a live line for each named soldier's pulse and temperature, reported by her implant.",
+    "long": "AUTHOR TO WRITE: Vitals show a pattern (steady, elevated, spiking, flat or erratic) and two readings in bands, never exact figures. The pattern follows her stress and what has just happened: a fight, a quarrel, the commander near, an unmet desire. It says that something moves her, not what she feels.",
+    "see": [
+      "vitals_flat",
+      "vitals_flicker",
+      "stress"
+    ]
+  },
+  {
+    "id": "vitals_flat",
+    "term": "Flat line",
+    "short": "A line that barely moves whatever happens. It is how a dampened soldier reads; it is not calm.",
+    "long": "AUTHOR TO WRITE: A soldier whose emotions are dampened by a fault keeps a flat line even in a fight or a quarrel. Only a rare flicker breaks it, and a flicker is a logged moment: something reached her.",
+    "see": [
+      "vitals",
+      "vitals_flicker"
+    ]
+  },
+  {
+    "id": "vitals_flicker",
+    "term": "Flicker",
+    "short": "A moment when a flat line broke. It is logged with its day and slot.",
+    "long": "AUTHOR TO WRITE: A flicker is written down when warmth or interest toward the commander rises sharply in a soldier whose line is otherwise flat. The log lists the day and slot only; what happened is in the log of the day and in her dossier.",
+    "see": [
+      "vitals_flat",
+      "vitals"
+    ]
   }
 ]

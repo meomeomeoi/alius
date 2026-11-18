@@ -2,6 +2,8 @@ import type { ChallengeStat } from '../../engine/power/moves';
 import { renderHierarchyBlock } from '../power/hierarchy';
 import { renderDeviceBlock } from '../personal/deviceBlock';
 import { renderMemoryBlock } from '../memory/memoryBlock';
+import { renderVitalsBlock } from '../vitals/block';
+import { motionReduced } from '../motion';
 import { renderChallenge, type WagerChoice } from '../personal/wagerForm';
 import type { Entry, Registries } from '../../content/types';
 import { bondOf, PUBLICITY_LEVELS, wantBand, wantEligible, wantOf } from '../../engine/bonds';
@@ -385,6 +387,7 @@ function unitBlock(unit: Unit, ctx: SquadTabCtx, state: CampaignState): HTMLElem
       gone ? null : restrictionLine(unit, state),
       gone || !ctx.onPunish || unit.kind !== 'named' ? null : renderDisciplineMenu({ state, registries: reg, unitId: unit.id, onPunish: (measure, days) => ctx.onPunish!(unit.id, measure, days) }),
       gone ? null : h('p', { class: 'alius-stress' }, chip(`STRESS ${stressBand(unit.stress).toUpperCase()}${raw ? ` (${unit.stress})` : ''}`, 'glossary:stress', live)),
+      gone ? null : renderVitalsBlock(state, reg, unit.id, { motion: !motionReduced(ctx.settings()) }),
       gone ? null : leashMenu(unit, ctx),
       unit.bio ? h('p', { class: 'alius-dim' }, unit.bio) : null,
       h('p', {}, ...joinWith([
