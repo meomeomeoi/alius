@@ -946,9 +946,9 @@ The day step's decay runs in every campaign: it is registered unconditionally an
   - `CLAUDE.md` (a P12 rule line in the style of the others)
   - `docs/CONTENT.md` (the three registries, the trait effect types)
 
-- [ ] **Step 1: Write the failing test** `no special trait: a seeded week of day ends, scenes, DMs and a combat is identical` (Review Focus 1, acceptance 5). Run the same scripted week on today's fixture campaign twice: once as is, once with `special: {}` present and the P12 modules imported. Compare the final state minus `ledger` and `commander.stress` (both stay at their old values when no combat downs the commander) and the rng state.
-- [ ] **Step 2: Run** → PASS is acceptable here (it guards the earlier tasks). If it fails, stop and report which task drew.
-- [ ] **Step 3: Write** the docs. The manual test covers, in SillyTavern:
+- [x] **Step 1: Write the failing test** `no special trait: a seeded week of day ends, scenes, DMs and a combat is identical` (Review Focus 1, acceptance 5). Run the same scripted week on today's fixture campaign twice: once as is, once with `special: {}` present and the P12 modules imported. Compare the final state minus `ledger` and `commander.stress` (both stay at their old values when no combat downs the commander) and the rng state.
+- [x] **Step 2: Run** → PASS is acceptable here (it guards the earlier tasks). If it fails, stop and report which task drew.
+- [x] **Step 3: Write** the docs. The manual test covers, in SillyTavern:
   - the WHAT THIS CHANGES card;
   - FREQ chips and a fragment that reads as a fragment;
   - a leak noticed by the model;
@@ -960,7 +960,7 @@ The day step's decay runs in every campaign: it is registered unconditionally an
   - a handler night with all four answers;
   - an ambush run;
   - both dilemmas.
-- [ ] **Step 4: Run** `npm test` → PASS; record the final file and test counts in the spec.
-- [ ] **Step 5: Commit** `docs(P12): implemented as, overview, hand-offs, manual test`
+- [x] **Step 4: Run** `npm test` → PASS; record the final file and test counts in the spec.
+- [x] **Step 5: Commit** `docs(P12): implemented as, overview, hand-offs, manual test`
 
 **Chunk (c) ends here.**

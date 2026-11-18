@@ -556,6 +556,24 @@ Six registries make up the content of P9c. Every one is `description`-bearing an
 - **Defects:** the optional `pressureMult` (1–2) multiplies how hard a soldier presses (bookings, tokens, claims, challenges, the deltas she takes); core: `possessive_protocol` and `dominance_drive` 1.5.
 - **Relationship states:** the optional `secretSlip: true` (core: `resentful`), like the stance flag above.
 
+## Special traits (P12)
+
+Three registries and a handful of fields make up the content of P12. Every number is a draft in `TUNING.special`; every authored text in core is marked `AUTHOR TO WRITE`; no text a player or the main model reads may give the commander a pronoun (lore §0).
+
+- **`commanderTraits`** (kind `special`): the three traits `secret_frequency`, `bloom_paranoia`, `web_of_debts`. New optional fields: `changes` (1–8 lines of at most 200 characters: the WHAT THIS CHANGES card) and `requires: { otherCorporation: true }` (the world needs a corporation besides the commander's own). `exclusiveWith` is written on both sides (`bloom_paranoia` / `insomniac`).
+- **Trait effect types** (read by `hasTraitEffect`, never by id): `{ type: 'frequency' }`, `{ type: 'paranoia' }`, `{ type: 'debts' }` switch a system on; `{ type: 'commander_flag', flag }` sets a commander flag at seed; `{ type: 'unlock_order', orderId }` offers an order marked `requiresUnlock` (the loader checks the order exists).
+- **`frequencyFragments`** (hidden wording) — one entry per candidate kind (`stance`, `impunity`, `demand`, `loyalty`, `fact`, `attraction`, `refusal`, `secret`): `{ id, kind, lines[] (≥ 1), subjectOnly[] (≥ 1), description? }`, lines of at most 160 characters with `{name}` and `{value}` (a band or stance word, for `stance`, `impunity` and `attraction`). Picked by `fnv1a(interceptId)`.
+- **`premonitionLines`** (hidden wording) — one entry per `about` (`doubt`, `desertion`, `mutiny`, `defiance`): `{ id, about, lines[], description? }` with `{name}`. A real and a false premonition read the same.
+- **`debtHandlers`** (player-visible, described) — `{ id, name, description, corporations?: string[] (empty = serves any), lines: { greet, threat, cut, leak } }`. The seed picks the first corporation (registry order) that is not the commander's, then a handler that serves it. The lorebook entry `debts_handler` describes the role.
+- **`orders`**: the optional `requiresUnlock: true`; combat effect `{ type: 'contingency' }` (the targeted ally covers the commander against the first hit from a mutineer or a soldier in breakdown, once per combat).
+- **`activities`**: a `focus[]` entry may carry `requires: { traitEffect }` (listed and allowed only for a commander whose traits have that effect type) and `confirm` (a question the app asks before a one-way focus); activity effects `{ type: 'commander_stress', amount }` and `{ type: 'burn_frequency_implant' }`.
+- **`defects`**: the optional `frequencySense` (1–2; core `echo_bleed`, `sensor_ghosting` 1.5) multiplies a leak's suspicion and lets a soldier above 50 sense static; the optional `nightAware: true` (core `threat_saturation`) makes a soldier a watcher on a handler's visit night.
+- **`worldOptions`**: the effect `{ type: 'oversight_scrutiny', mult }` (core `oversight`: `lenient` 0.75, `brutal` 1.5).
+- **`dilemmaTemplates`**: the contexts `debts_oversight` and `debts_unit` are for fixed templates only (core `debts_oversight_case`, `debts_unit_case`); option ids `double_agent` / `confess` / `flee` and `report` / `protect_commander` / `demand` are read by code, so keep them. The loader still requires a cost effect on every option.
+- **`secretKinds`**: the source `debts` (core `debts_cover`, text with `{name}`).
+- **`flags`**: `commander_bloom_exposed` (commander), `knows_frequency` and `knows_debts` (relation, `leverage: true`), `defector_arc`, `defector_double_agent`, `defector_confessed`, `defector_fled` (world).
+- **`eventDeltas`**: rows (with `journal` phrases) for `knowledge_leak`, `accused`, `frequency_exposed`, `false_accusation` and `debts_exposed`; the last three are engine-only events.
+
 ## Spine beats (P5)
 
 `starts[].spine[]` gains optional fields: `conditions { minDay?, flagsAll?[], flagsNone?[], clearanceMin?, threads?[{ id, status }] }` (when the director may propose the beat), `completion` (`{ "kind": "auto" }` default \| `{ "kind": "mission", "templateId", "regionId" }` — a template with source `story` \| `{ "kind": "flag", "anyOf": [flag ids] }`) and `onComplete: WorldEffect[]`. Beats are reached in order, never skipped; after the last one the director runs open-ended.
