@@ -1,0 +1,114 @@
+[
+  {
+    "id": "stance",
+    "description": "AUTHOR TO WRITE: fallback wording of an intercepted fragment about stance (fragment style, may trail off; {name} and {value} are filled).",
+    "kind": "stance",
+    "lines": [
+      "…{name}… and when the commander gives an order I feel… {value}…",
+      "…{name}, still thinking about how she carries herself, {value}…",
+      "…{value}… that's all she is now, around the commander…"
+    ],
+    "subjectOnly": [
+      "…{name}… the way she answers orders…",
+      "…{name}… there is a way she stands when she is told…"
+    ]
+  },
+  {
+    "id": "impunity",
+    "description": "AUTHOR TO WRITE: fallback wording of an intercepted fragment about impunity (fragment style, may trail off; {name} and {value} are filled).",
+    "kind": "impunity",
+    "lines": [
+      "…{name}: what could they even do to me… {value}…",
+      "…{name} measuring the room, what it would cost her… {value}…",
+      "…{value}… that is how far she believes she can go…"
+    ],
+    "subjectOnly": [
+      "…{name}… counting what she could get away with…",
+      "…{name}… weighing the cost of saying no…"
+    ]
+  },
+  {
+    "id": "demand",
+    "description": "AUTHOR TO WRITE: fallback wording of an intercepted fragment about demand (fragment style, may trail off; {name} and {value} are filled).",
+    "kind": "demand",
+    "lines": [
+      "…{name}… I need to ask for something, and I keep not asking…",
+      "…{name}… she has a request and does not trust the timing…",
+      "…if only the commander would offer first… {name}…"
+    ],
+    "subjectOnly": [
+      "…{name}… something she wants…",
+      "…{name}… a favor she keeps rehearsing…"
+    ]
+  },
+  {
+    "id": "loyalty",
+    "description": "AUTHOR TO WRITE: fallback wording of an intercepted fragment about loyalty (fragment style, may trail off; {name} and {value} are filled).",
+    "kind": "loyalty",
+    "lines": [
+      "…{name}… can't keep doing this… not for much longer…",
+      "…{name}… every night the same thought: leave, or make them listen…",
+      "…{name}… it is almost decided, and nobody knows…"
+    ],
+    "subjectOnly": [
+      "…{name}… she is thinking about the future…",
+      "…{name}… and where she would go if she went…"
+    ]
+  },
+  {
+    "id": "fact",
+    "description": "AUTHOR TO WRITE: fallback wording of an intercepted fragment about fact (fragment style, may trail off; {name} and {value} are filled).",
+    "kind": "fact",
+    "lines": [
+      "…{name}… if they knew what she knows, nothing would be the same…",
+      "…{name}… something about her that is not for the commander…",
+      "…{name}… the thing she hides is still there, still hers…"
+    ],
+    "subjectOnly": [
+      "…{name}… something she keeps close…",
+      "…{name}… not for anyone to hear…"
+    ]
+  },
+  {
+    "id": "attraction",
+    "description": "AUTHOR TO WRITE: fallback wording of an intercepted fragment about attraction (fragment style, may trail off; {name} and {value} are filled).",
+    "kind": "attraction",
+    "lines": [
+      "…{name}… I look at the commander and feel… {value}…",
+      "…{name}… the commander again, and a feeling that is… {value}…",
+      "…{value}… that is how her eyes follow the commander…"
+    ],
+    "subjectOnly": [
+      "…{name}… how she looks at the commander…",
+      "…{name}… something she does not say out loud…"
+    ]
+  },
+  {
+    "id": "refusal",
+    "description": "AUTHOR TO WRITE: fallback wording of an intercepted fragment about refusal (fragment style, may trail off; {name} and {value} are filled).",
+    "kind": "refusal",
+    "lines": [
+      "…{name}… next time the commander orders it, I won't…",
+      "…{name}… she has already decided what she will not do…",
+      "…{name}… no. just no. when the order comes…"
+    ],
+    "subjectOnly": [
+      "…{name}… an order she does not like…",
+      "…{name}… and what she will do when it comes…"
+    ]
+  },
+  {
+    "id": "secret",
+    "description": "AUTHOR TO WRITE: fallback wording of an intercepted fragment about secret (fragment style, may trail off; {name} and {value} are filled).",
+    "kind": "secret",
+    "lines": [
+      "…{name}… we all agreed not to tell the commander…",
+      "…{name}… keep it quiet, keep it between us…",
+      "…{name}… and the commander must never find out…"
+    ],
+    "subjectOnly": [
+      "…{name}… something the squad keeps…",
+      "…{name}… a thing they agreed on…"
+    ]
+  }
+]

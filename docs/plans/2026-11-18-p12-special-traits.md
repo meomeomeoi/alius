@@ -464,20 +464,20 @@ Rulings marked **(user)** were answered by the user on 2026-11-18. Task 18 copie
   - `SpecialController.onEvents(events)`: words new intercepts and dispatches with `expectChatId`
   - `renderFreqChip(host, state, unitId)`, `renderInterceptLog(host, state)`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 - `fallback is stable and fills {name}`: the same id gives the same line; no `{` left.
 - `sanitizer refuses digits and long text`.
 - `a late fragment for another chat is dropped` (Review Focus 4): the controller with a fake flavor that resolves after a chat switch → no dispatch to the new chat.
 - `setting off: no model call, template used`.
 - `the FREQ chip and the INTERCEPTS log render the same for a true and a false intercept` (Review Focus 2): two intercepts identical but for `true` → identical `outerHTML` after the text is normalised; every chip carries `data-analyze="glossary:frequency_intercept"` and the word `unverified`.
 
-- [ ] **Step 2: Run** the three files → FAIL.
+- [x] **Step 2: Run** the three files → FAIL.
 
-- [ ] **Step 3: Implement.** Core registry: one entry per `CandidateKind`, 3 lines and 2 `subjectOnly` lines each, all AUTHOR TO WRITE, fragment style with `…`. The `flavor` prompt asks for one broken inner-voice fragment in her voice, no names of the commander, ≤ 12 words.
+- [x] **Step 3: Implement.** Core registry: one entry per `CandidateKind`, 3 lines and 2 `subjectOnly` lines each, all AUTHOR TO WRITE, fragment style with `…`. The `flavor` prompt asks for one broken inner-voice fragment in her voice, no names of the commander, ≤ 12 words.
 
-- [ ] **Step 4: Run** → PASS; `npm test` → PASS (analyze coverage included).
+- [x] **Step 4: Run** → PASS; `npm test` → PASS (analyze coverage included).
 
-- [ ] **Step 5: Commit** `feat(P12): fragment wording, FREQ chip and INTERCEPTS log`
+- [x] **Step 5: Commit** `feat(P12): fragment wording, FREQ chip and INTERCEPTS log`
 
 ---
 

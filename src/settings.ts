@@ -50,6 +50,8 @@ export interface AliusSettings {
   ballotWording: boolean;
   /** P9c: the mechanic model words a level-4 edit of the commander's DM (off: the authored fallback lines). */
   dmEditWording: boolean;
+  /** P12: the mechanic model words each Secret Frequency fragment as a broken thought (off: the template fragment). */
+  fragmentWording: boolean;
   /** P4: a lost combat can be retried (rewinds exactly, never recorded in memory). */
   easyRetry: boolean;
   /** P4: affixed enemies get a generated name (optional `flavor` call, cached, never blocks combat). */
@@ -134,6 +136,7 @@ export const DEFAULT_SETTINGS: AliusSettings = {
   ruleWording: true,
   ballotWording: false,
   dmEditWording: true,
+  fragmentWording: true,
   easyRetry: false,
   enemyFlavor: false,
   directorEnabled: true,
@@ -184,6 +187,7 @@ const fieldSchemas = {
   ruleWording: z.boolean(),
   ballotWording: z.boolean(),
   dmEditWording: z.boolean(),
+  fragmentWording: z.boolean(),
   easyRetry: z.boolean(),
   enemyFlavor: z.boolean(),
   directorEnabled: z.boolean(),

@@ -1748,5 +1748,20 @@
     "see": [
       "commander_traits"
     ]
+  },
+  {
+    "id": "frequency_intercept",
+    "term": "Frequency fragment",
+    "short": "A fragment of a soldier's thoughts the frequency picked up. It may be true, distorted or only half there; it is never marked.",
+    "long": "AUTHOR TO WRITE: The analyzer in the commander's head catches fragments in scenes and messages. A fragment can be about a stance, a demand, a warning, a secret or a feeling. Some are distorted, some name only the subject. Nothing tells which; acting on one can give the commander away.",
+    "see": [
+      "special_trait"
+    ]
+  },
+  {
+    "id": "setting_fragment_wording",
+    "term": "Fragment wording",
+    "short": "The mechanic model words each frequency fragment as a broken thought; off, a template is used.",
+    "long": "When on, each fragment is worded by the mechanic model in one call. When off, or when the model fails, a template line is used instead. The fragment's truth never depends on the wording."
   }
 ]

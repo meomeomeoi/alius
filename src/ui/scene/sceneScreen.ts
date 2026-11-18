@@ -11,6 +11,7 @@ import { motionReduced } from '../motion';
 import { drawProposalChips, kindLabel } from '../proposalChips';
 import { drawDemandChips, drawDisciplineChips } from '../discipline/chips';
 import { renderDisciplineMenu } from '../discipline/menu';
+import { renderFreqChip } from '../special/freqChip';
 import { cutIn } from './cutIn';
 
 export interface SceneScreenCtx {
@@ -117,6 +118,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
   let chips: HTMLElement;
   let disciplineChips: HTMLElement;
   let demandChips: HTMLElement;
+  let freqChips: HTMLElement;
   let leadChips: HTMLElement;
   let ruleChips: HTMLElement;
   let disciplineMenus: HTMLElement;
@@ -203,6 +205,12 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     drawRuleChips(ruleChips, s, registries, (c) => ids.has(c.unitId), {
       accept: (id) => ctx.onAnswerRule?.(id, 'accept'), negotiate: (id) => ctx.onAnswerRule?.(id, 'negotiate'), refuse: (id) => ctx.onAnswerRule?.(id, 'refuse'),
     });
+  }
+
+  /** P12: the newest frequency fragment of each unit present (nothing without the trait). */
+  function drawFreq(s: CampaignState): void {
+    freqChips.replaceChildren();
+    for (const u of present(s)) renderFreqChip(freqChips, s, registries, u.id);
   }
 
   /** P9: what the game understood of the commander's words (always shown) and the DISCIPLINE menu of everybody present. */
@@ -363,6 +371,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     ruleChips = h('div', { class: 'alius-chips alius-discipline-chips' });
     disciplineChips = h('div', { class: 'alius-chips alius-discipline-chips' });
     demandChips = h('div', { class: 'alius-chips alius-discipline-chips' });
+    freqChips = h('div', { class: 'alius-chips alius-freq-chips' });
     disciplineMenus = h('div', { class: 'alius-discipline-units' });
     banner = h('div', { class: 'alius-pacing-host' });
     busyHost = h('div', { class: 'alius-busy-host' });
@@ -445,6 +454,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
       ruleChips,
       disciplineChips,
       demandChips,
+      freqChips,
       disciplineMenus,
       h('div', { class: 'alius-cmd' }, h('span', { class: 'alius-prompt' }, 'CMD>'), input, orderToggle, orderWho, propose, who),
     );
@@ -479,6 +489,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     drawLog(s);
     drawChips(s);
     drawDiscipline(s);
+    drawFreq(s);
     drawBanner();
   }
 

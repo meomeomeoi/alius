@@ -4,6 +4,7 @@ import type { CampaignState } from '../../engine/state/types';
 import { analyzeAttrs } from '../analyze/mark';
 import { h, type Child } from '../dom';
 import { renderTokens } from '../personal/tokens';
+import { renderInterceptLog } from '../special/interceptLog';
 import { renderVoiceCard } from '../voice/voiceCard';
 
 export interface CmdrCardCtx {
@@ -57,5 +58,6 @@ export function renderCmdrCard(host: HTMLElement, ctx: CmdrCardCtx): void {
           h('span', { class: 'alius-chip', ...analyzeAttrs(`reputations:${a.id}`) }, a.name),
         ])),
       renderTokens(state, reg, { onWear: (id) => ctx.onWear?.(id), onTakeOff: (id) => ctx.onTakeOff?.(id) }));
+  renderInterceptLog(file, state, reg); // P12: nothing without the frequency
   host.append(h('section', { class: 'alius-section alius-cmdr' }, renderVoiceCard({ voice: 'paper', title: `CMDR — ${state.commander.name}`, body: file })));
 }

@@ -1,0 +1,13 @@
+/* P12: special traits (the frequency chip and the INTERCEPTS log) */
+#alius-shell .alius-freq-chip {
+  font-style: italic;
+}
+
+#alius-shell .alius-intercepts ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+
+#alius-shell .alius-intercepts li {
+  overflow-wrap: anywhere;
+}

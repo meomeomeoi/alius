@@ -3180,6 +3180,20 @@
   filter: grayscale(1);
 }
 
+/* P12: special traits (the frequency chip and the INTERCEPTS log) */
+#alius-shell .alius-freq-chip {
+  font-style: italic;
+}
+
+#alius-shell .alius-intercepts ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+
+#alius-shell .alius-intercepts li {
+  overflow-wrap: anywhere;
+}
+
 /* P5: world map, mission board, expeditions */
 .alius-map { position: relative; max-width: 100%; }
 .alius-map-img { display: block; width: 100%; height: auto; }

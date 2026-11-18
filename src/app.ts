@@ -52,6 +52,7 @@ import { clearDisciplineDirectives, disciplineDirectives } from './discipline/co
 import { createBonds, type BondsController } from './bonds/controller';
 import { createPower, type PowerController } from './power/controller';
 import { createPersonal, type PersonalController } from './personal/controller';
+import { createSpecial, type SpecialController } from './special/controller';
 import { clearPersonalDirectives, refreshPersonalDirectives } from './personal/directives';
 import type { VoteChoice } from './power/deps';
 import { renderVotePanel } from './ui/power/votePanel';
@@ -205,6 +206,8 @@ export interface AliusApp {
   bonds: BondsController;
   /** P9c: personal pressure: edits of the commander's messages, bookings, claims. */
   personal: PersonalController;
+  /** P12: the wording of what the special traits decided (Secret Frequency fragments). */
+  special: SpecialController;
   /** P9b: squad votes (the VOTE flow, ballot wording) and the grudge directives. */
   power: PowerController;
   /** P11: the prologue's scenes, coach hints and guided evening. */
@@ -409,6 +412,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       });
     }),
   });
+  const special = createSpecial({ ...worldDeps, context, refreshContext: applyContext });
   const discipline = createDiscipline({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o), requestVote: (a) => power.requestVote(a) });
   const bonds = createBonds({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o) });
   const personal = createPersonal({
@@ -626,6 +630,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       bonds.onEvents(events); // P9d: a new rule proposal is worded and delivered
       personal.onEvents(events); // P9c: a clash of bookings, a claim, a peeled decor
       power.onEvents(events); // P9b: a grudge that starts or ends changes the scene directives
+      special.onEvents(events); // P12: a new frequency fragment is worded
       onboarding.onEvents(events); // the line-up and first words: the cap question and the step completing when the scene closes (P11)
       if (has('scene_ended') || has('scene_aborted')) {
         loyalty.onSceneClosed();
@@ -2028,6 +2033,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     bonds,
     power,
     personal,
+    special,
     onboarding,
     fileLeash,
     intakeUnit,

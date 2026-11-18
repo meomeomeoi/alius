@@ -478,7 +478,7 @@ export const RESERVED_EVENT_TYPES: readonly string[] = [
   'wager_offered', 'wager_refused', 'wager_accepted', 'wager_declined', 'wager_resolved', 'mark_set', 'mark_ended', 'wager_question', 'truth_told', 'demand_dropped',
   'secret_kept', 'secret_found', 'secret_answered',
   // P12
-  'frequency_intercept',
+  'frequency_intercept', 'frequency_worded',
   // P10b
   'door_said', 'door_replied', 'hand_set', 'note_left', 'note_read', 'notes_expired',
 ];
@@ -1958,6 +1958,19 @@ export const SecretKindSchema = BaseEntrySchema.extend({
 });
 export type SecretKindEntry = z.infer<typeof SecretKindSchema>;
 registrySchemas.secretKinds = SecretKindSchema;
+
+/**
+ * P12 §1: the fallback wording of an intercepted fragment, one entry per candidate kind (hidden wording: the player never browses it).
+ * `lines` carry `{name}` and `{value}`; `subjectOnly` is used for a partial fragment (only the subject, not the conclusion).
+ */
+export const FrequencyFragmentSchema = BaseEntrySchema.extend({
+  description: str.max(DESCRIPTION_MAX).optional(),
+  kind: z.enum(['stance', 'impunity', 'demand', 'loyalty', 'fact', 'attraction', 'refusal', 'secret']),
+  lines: z.array(str.max(160)).min(1),
+  subjectOnly: z.array(str.max(160)).min(1),
+}).strict();
+export type FrequencyFragmentEntry = z.infer<typeof FrequencyFragmentSchema>;
+registrySchemas.frequencyFragments = FrequencyFragmentSchema;
 
 /**
  * P3b: an engine event worth remembering. The `event` has a resolver (`engine/memory/resolvers.ts`); `about`, `audience`, `when` and the
