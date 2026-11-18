@@ -152,6 +152,10 @@
             "mult": 0.5
           },
           {
+            "type": "oversight_scrutiny",
+            "mult": 0.75
+          },
+          {
             "type": "scene_directive",
             "text": "Corporate messages are polite, slow to blame and quick to approve."
           }
@@ -180,6 +184,10 @@
           },
           {
             "type": "command_failure_mult",
+            "mult": 1.5
+          },
+          {
+            "type": "oversight_scrutiny",
             "mult": 1.5
           },
           {

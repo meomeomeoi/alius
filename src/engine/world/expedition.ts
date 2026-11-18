@@ -1,4 +1,5 @@
 import { noteFeat } from '../power/outside';
+import { ambushFor } from '../special/debts/consequences';
 import { hideInjuries } from '../personal/secrets';
 import { resolveBets } from '../personal/wagers';
 import { failedRunPenalty, openScapegoat, takeScapegoatCase } from '../power/scapegoat';
@@ -215,6 +216,8 @@ export function startExpedition(draft: CampaignState, ctx: EngineCtx, p: StartEx
     reveal: 1 + (revealDefect ? 1 : 0) + (mission.scouted === true ? 1 : 0),
   };
   addLog(exp, 'start', `Departed for ${regionName(region)}: ${mission.title}.`);
+  const waiting = ambushFor(draft, mission.regionId); // P12: sold intel can send the squad into an ambush (absent without an exposure)
+  if (waiting > 0) exp.ambushed = waiting;
   draft.expedition = exp;
   // P9: a bench lasts until a run leaves without the unit
   removeRestrictions(draft, (r) => r.kind === 'benched' && !p.unitIds.includes(r.unitId));
@@ -360,11 +363,12 @@ function enterCombat(draft: CampaignState, ctx: EngineCtx, nodeId: string, def: 
   const reg = ctx.registries;
   const combat = def.combat as { dangerDelta: number; lootTableId: string; exposesCommander?: boolean };
   const region = reg.regions.get(exp.regionId)!;
+  const ambush = (exp.ambushed ?? 0) > 0 ? 1 : 0; // P12: they were waiting for the squad
   let encounter;
   try {
     encounter = generateEncounter(draft, reg, ctx.rng, {
       table: region.enemyTable as { categories: Record<string, number>; archetypes?: string[] },
-      danger: clamp(mission.danger + combat.dangerDelta, 1, 5) as 1 | 2 | 3 | 4 | 5,
+      danger: clamp(mission.danger + combat.dangerDelta + ambush, 1, 5) as 1 | 2 | 3 | 4 | 5,
       squadPower: squadPower(draft, reg, ableParty(draft)),
       exposesCommander: combat.exposesCommander,
       lootTableId: combat.lootTableId,
@@ -373,6 +377,11 @@ function enterCombat(draft: CampaignState, ctx: EngineCtx, nodeId: string, def: 
     addLog(exp, 'move', 'Nothing here.', nodeId);
     if (nodeId === exp.map.objectiveId) exp.objectiveDone = true; // never strand the run at an objective that cannot be played
     return [];
+  }
+  if (ambush > 0) {
+    exp.ambushed = (exp.ambushed ?? 1) - 1;
+    if (exp.ambushed <= 0) delete exp.ambushed;
+    addLog(exp, 'event', 'They were waiting for you.', nodeId);
   }
   exp.pending = { kind: 'combat', nodeId, encounter, ...(draft.lastCombat ? { prevCombatId: draft.lastCombat.id } : {}) };
   exp.phase = 'combat';

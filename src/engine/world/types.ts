@@ -191,6 +191,8 @@ export interface QueuedIntent {
 
 export interface ExpeditionState {
   id: string;
+  /** P12: combats still to be ambushed (danger +1 each): a rival was sold this run's region. Absent = none. */
+  ambushed?: number;
   /** P9b: combat orders the commander gave during this run (absent = none). */
   orders?: number;
   /** P9e: the decisions soldiers took on their own in this run (absent = none). */

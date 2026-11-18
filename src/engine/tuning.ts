@@ -493,6 +493,10 @@ export const TUNING = Object.freeze({
     debts: Object.freeze({
       /** A visit is rolled once the last one is `minDays` days behind: p = min(1, (daysSince − minDays + 1) / rampDays). */
       minDays: 5, rampDays: 4, priority: 6, expiresDays: 2,
+      /** Consequences fall due `dueMin`–`dueMax` days after a visit; an exposure lasts `exposureDays`. */
+      dueMin: 2, dueMax: 5, exposureDays: 10,
+      /** A false item is found out with chance `foundOut` (+`foundOutGain` suspicion); the rival gains `rivalGain`, the own corporation loses `ownLoss`; oversight gains `oversightBase`. */
+      foundOut: 0.5, foundOutGain: 15, rivalGain: 10, ownLoss: 5, oversightBase: 10,
       framing: 'A visitor at the gate.',
     }),
     commanderStress: Object.freeze({ empathyAt: 70, dayRelief: 5, sleepRelief: 15, downed: 10, nightmare: 15, falseAlarm: 5 }),

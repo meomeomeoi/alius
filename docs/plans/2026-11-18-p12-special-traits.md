@@ -861,7 +861,7 @@ The day step's decay runs in every campaign: it is registered unconditionally an
   - `ambushFor(state, regionId): 0 | 1 | 2`
   - Event `debts_consequence { kind }`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 - `truthful items schedule world effects` (acceptance 4): `plan` truth → an exposure; a run to that region gets danger +1 on its first 2 combats (encounter danger compared) and the log line; partial → 1 combat; false → no exposure.
 - `base truth delays an upgrade by 2 days`.
 - `mission_done truth moves rival +10, own −5`.
@@ -869,8 +869,8 @@ The day step's decay runs in every campaign: it is registered unconditionally an
 - `a false item found out raises handler suspicion`.
 - `no exposure: expedition byte-identical`.
 
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → PASS; `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P12): intel consequences, ambushes, sabotage and oversight suspicion`
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → PASS; `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P12): intel consequences, ambushes, sabotage and oversight suspicion`
 
 ---
 

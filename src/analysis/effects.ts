@@ -427,6 +427,7 @@ export function summarizeWorldOptionEffect(effect: unknown, reg: Registries): st
     case 'disposition': return `Soldiers are ${String(reg.dispositionLevels.get(String(x.levelId))?.name ?? humanize(String(x.levelId)))}`;
     case 'leash_weekly': return x.amount > 0 ? 'More Leash authorizations each week' : 'Fewer Leash authorizations each week';
     case 'terminate_approval': return x.amount > 0 ? 'Termination requests are approved more often' : 'Termination requests are approved less often';
+    case 'oversight_scrutiny': return x.mult > 1 ? 'Oversight traces a leak of sold intel faster' : 'Oversight traces a leak of sold intel more slowly';
     case 'command_failure_mult': return x.mult > 1 ? 'Failed command missions cost more standing' : 'Failed command missions cost less standing';
     case 'mission_reward_pct': return x.pct < 0 ? 'Missions pay less' : 'Missions pay more';
     case 'expression_norm': {

@@ -479,7 +479,7 @@ export const RESERVED_EVENT_TYPES: readonly string[] = [
   'wager_offered', 'wager_refused', 'wager_accepted', 'wager_declined', 'wager_resolved', 'mark_set', 'mark_ended', 'wager_question', 'truth_told', 'demand_dropped',
   'secret_kept', 'secret_found', 'secret_answered',
   // P12
-  'frequency_intercept', 'frequency_worded', 'frequency_static', 'frequency_discovered', 'implant_burned', 'commander_stress_changed', 'premonition', 'premonition_acted', 'bloom_nightmare', 'handler_visit', 'intel_answered', 'handler_threat', 'handler_leak',
+  'frequency_intercept', 'frequency_worded', 'frequency_static', 'frequency_discovered', 'implant_burned', 'commander_stress_changed', 'premonition', 'premonition_acted', 'bloom_nightmare', 'handler_visit', 'intel_answered', 'handler_threat', 'handler_leak', 'debts_consequence',
   // P10b
   'door_said', 'door_replied', 'hand_set', 'note_left', 'note_read', 'notes_expired',
 ];
@@ -1339,6 +1339,8 @@ export const WorldOptionEffectSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('terminate_approval'), amount: z.number().min(-1).max(1) }).strict(),
   /** Multiplies the negative faction amounts of a failed command mission. */
   z.object({ type: z.literal('command_failure_mult'), mult: z.number().min(0.1).max(3) }).strict(),
+  /** P12: multiplies how fast oversight traces a leak of sold intel back to the commander (the Web of Debts' `oversightSuspicion` gain). */
+  z.object({ type: z.literal('oversight_scrutiny'), mult: z.number().min(0.1).max(3) }).strict(),
   z.object({ type: z.literal('mission_reward_pct'), pct: int.min(-90).max(100) }).strict(),
   /** The expression the world expects (1 very feminine … 5 very masculine); the commander's distance costs own-corporation standing. */
   z.object({ type: z.literal('expression_norm'), norm: rank5, standingPerStep: int.min(-10).max(10) }).strict(),

@@ -8,6 +8,7 @@ import { postRumor, rumorPostedEvent } from '../../world/missions';
 import { spineOf } from '../../world/spine';
 import type { CampaignState } from '../../state/types';
 import { TUNING } from '../../tuning';
+import { scheduleConsequences } from './consequences';
 import {
   HANDLER_UNIT, HANDLER_VISIT_KIND, INTEL_ANSWERS, type DebtsState, type IntelAnswer, type IntelItem,
 } from '../state';
@@ -113,6 +114,7 @@ function settle(draft: CampaignState, ctx: EngineCtx, d: DebtsState, answers: Re
     }
   }
   d.handlerPressure = clamp(d.handlerPressure + counts.withhold * 10 - counts.truth * 5, 0, 100);
+  scheduleConsequences(draft, ctx, visit, answers);
   d.answered.push(...visit.items.map((i) => i.id));
   delete d.visit;
   events.push({ type: 'intel_answered', visitId: visit.id, counts });
