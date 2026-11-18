@@ -246,6 +246,39 @@ describe('tonightItems', () => {
   });
 });
 
+describe('tonightItems: a note under the door (P10b)', () => {
+  const doorNote = (s: CampaignState, over: Record<string, unknown> = {}) => {
+    s.notes = { seq: 1, list: [{ id: 'hn1', unitId: s.squad[0].id, noteId: 'door_plain', where: 'door', text: 'I came by.', day: s.day, ...over }] as never };
+    return s;
+  };
+
+  it('lists an unread door note from today or yesterday', () => {
+    const s = campaign(reg, 4);
+    s.day = 5;
+    const items = tonightItems(doorNote(s), reg);
+    expect(items).toEqual([expect.objectContaining({ kind: 'note', unitId: s.squad[0].id, analyze: 'glossary:hand_note' })]);
+    expect(items[0].text).toContain(s.squad[0].displayName);
+    const y = campaign(reg, 4);
+    y.day = 5;
+    expect(tonightItems(doorNote(y, { day: 4 }), reg)).toHaveLength(1);
+  });
+
+  it('not a read one, not an older one, not a quarters or gear note, not a unit who is gone', () => {
+    const base = () => { const s = campaign(reg, 4); s.day = 5; return s; };
+    expect(tonightItems(doorNote(base(), { read: true }), reg)).toEqual([]);
+    expect(tonightItems(doorNote(base(), { day: 3 }), reg)).toEqual([]);
+    expect(tonightItems(doorNote(base(), { where: 'quarters' }), reg)).toEqual([]);
+    expect(tonightItems(doorNote(base(), { where: 'gear' }), reg)).toEqual([]);
+    const gone = base();
+    gone.squad[0].status = 'dead';
+    expect(tonightItems(doorNote(gone), reg)).toEqual([]);
+  });
+
+  it('a save with no notes lists no note', () => {
+    expect(tonightItems(campaign(reg, 4), reg).some((i) => i.kind === 'note')).toBe(false);
+  });
+});
+
 describe('endSlotBlock', () => {
   it('is null on a quiet board', () => {
     expect(endSlotBlock(campaign(reg, 4))).toBeNull();

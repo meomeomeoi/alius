@@ -38,6 +38,8 @@ export interface HubCtx {
   onOpenPda(tab?: TabId): void;
   /** Her portrait for the room panel (`null` = none). */
   avatar(unit: Unit): HTMLElement | null;
+  /** P10b: the commander read a note (the app dispatches `notes/read`). */
+  onReadNote?(id: string): void;
 }
 
 /** Which room's panel is open, per hub host: a refresh redraws the hub and keeps the panel. */

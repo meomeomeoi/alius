@@ -3040,6 +3040,56 @@
   margin: 2px 0;
 }
 
+/* Notes in her hand (P10b §4). The paper voice supplies the colours (18-voices.css, where the body font is set); the tear only animates while the code sets .is-tearing (never under reduced motion), and readable mode keeps the note but straightens it. */
+#alius-shell .alius-note {
+  position: relative;
+  margin: 8px 0;
+  padding: 8px 12px;
+  transform: rotate(-0.5deg);
+}
+
+#alius-shell .alius-note.is-read {
+  opacity: 0.75;
+}
+
+#alius-shell .alius-note-body {
+  margin: 2px 0;
+}
+
+#alius-shell .alius-note-sign {
+  margin: 2px 0;
+  text-align: right;
+  font-family: var(--alius-font-hand, var(--alius-font-type));
+}
+
+#alius-shell .alius-note-sign-commander {
+  font-family: var(--alius-font-type);
+}
+
+#alius-shell .alius-note.is-torn {
+  clip-path: polygon(0 0, 100% 0, 100% 86%, 93% 92%, 85% 85%, 71% 94%, 58% 86%, 44% 95%, 30% 87%, 16% 94%, 0 89%);
+  padding-bottom: 18px;
+}
+
+#alius-shell .alius-note.is-tearing {
+  transform-origin: 20% 90%;
+  animation: alius-note-tear 0.9s ease-in 1;
+}
+
+@keyframes alius-note-tear {
+  0% { transform: rotate(-0.5deg); }
+  40% { transform: rotate(-3deg) translateY(3px); }
+  100% { transform: rotate(-0.5deg); }
+}
+
+#alius-shell.alius-readable .alius-note {
+  transform: none;
+}
+
+#alius-shell.alius-readable .alius-note-sign {
+  font-family: var(--alius-font-type);
+}
+
 /* P5: world map, mission board, expeditions */
 .alius-map { position: relative; max-width: 100%; }
 .alius-map-img { display: block; width: 100%; height: auto; }

@@ -1719,5 +1719,15 @@
       "handwriting",
       "night_door"
     ]
+  },
+  {
+    "id": "rule_note",
+    "term": "Rule note",
+    "short": "A rule a soldier set, written as a note she signed. Sign it, negotiate it or refuse to sign. A broken rule tears the note.",
+    "long": "AUTHOR TO WRITE: A close soldier may propose a rule for the relationship. It arrives as her signed note: [SIGN] accepts it, [NEGOTIATE] asks for terms and [DON'T SIGN] refuses. An active rule carries both signatures. When it is broken the note shows torn for a day.",
+    "see": [
+      "relationship_rules",
+      "hand_note"
+    ]
   }
 ]

@@ -8,6 +8,9 @@ import { unitStats } from '../../engine/combat/stats';
 import type { CampaignState, ItemInstance } from '../../engine/state/types';
 import { analyzeAttrs, analyzeNative } from '../analyze/mark';
 import { h, type Child } from '../dom';
+import { handOf } from '../../engine/hand';
+import { notesFor } from '../../engine/notes';
+import { renderNote } from '../notes/note';
 
 export interface InvTabCtx {
   getState: () => CampaignState | null;
@@ -17,6 +20,8 @@ export interface InvTabCtx {
   onUpgrade(uid: string): void;
   onReroll(uid: string, affixIndex: number): void;
   onDismantle(uid: string): void;
+  /** P10b: the commander read a note from the gear. */
+  onReadNote?(id: string): void;
 }
 
 type SlotFilter = 'all' | 'weapon' | 'upper' | 'lower';
@@ -72,6 +77,14 @@ export function renderInvTab(host: HTMLElement, ctx: InvTabCtx): void {
         h('span', { class: 'alius-dim' }, wearer ? `WORN BY ${wearer.displayName}` : ''));
       })));
 
+    // P10b: notes tucked into the gear come first
+    const gearNotes = notesFor(state, 'gear');
+    if (gearNotes.length > 0) {
+      host.append(h('section', { class: 'alius-section alius-gear-notes' }, h('h2', {}, '[ NOTES IN YOUR GEAR ]'), ...gearNotes.map((n) => renderNote({
+        text: n.text, unitName: state.squad.find((u) => u.id === n.unitId)?.displayName ?? n.unitId, hand: handOf(state, reg, n.unitId), read: n.read === true,
+        ...(ctx.onReadNote ? { onRead: () => ctx.onReadNote!(n.id) } : {}), analyze: 'glossary:hand_note',
+      }))));
+    }
     host.append(h('section', { class: 'alius-section alius-inv' }, h('h2', {}, '[ INVENTORY ]'), res, filters, list));
     if (current) host.append(comparePanel(state, current));
     if (checkWorkshop(state) === null) host.append(workshopPanel(state, current));

@@ -1849,6 +1849,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       onUpgrade: (uid) => void act({ type: 'item/upgrade', payload: { uid } }),
       onReroll: (uid, affixIndex) => void act({ type: 'item/reroll', payload: { uid, affixIndex } }),
       onDismantle: (uid) => void act({ type: 'item/dismantle', payload: { uid } }),
+      onReadNote: (id) => void act({ type: 'notes/read', payload: { id } }), // P10b
     }),
   );
   shell.registerScreen('combat', renderCombatView, {
@@ -1906,6 +1907,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       onEndSlot: () => void api.endSlot(),
       onOpenPda: (tab) => (tab ? shell.showTab(tab) : shell.setDevice(true)),
       avatar: (unit) => unitPortrait(st, unit, portraitOptions(getSettings(st), 40)),
+      onReadNote: (id) => void act({ type: 'notes/read', payload: { id } }), // P10b
     }));
   shell.registerTab('map', (host) =>
     renderMapTab(host, {

@@ -781,7 +781,7 @@ git commit -am "feat(P10b): hand notes (quarters, gear, under the door)"
   - `renderNote(o: { text: string; unitName: string; hand: Entry | null; read?: boolean; onRead?(): void; analyze: string }): HTMLElement` (paper voice, class `alius-note`, sets `--alius-font-hand`)
   - `renderRuleNote(state, reg, rule, on: RuleChipHandlers, opts: { motion: boolean }): HTMLElement`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - `note sets the hand family`;
   - `readable mode note uses the type font` (class check);
   - `quarters panel shows her notes in her hand`;
@@ -792,13 +792,13 @@ git commit -am "feat(P10b): hand notes (quarters, gear, under the door)"
   - `gear notes on INV`;
   - coverage test green.
 
-- [ ] **Step 2: Run to verify they fail**
+- [x] **Step 2: Run to verify they fail**
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
-- [ ] **Step 4: Run, `npm test`**
+- [x] **Step 4: Run, `npm test`**
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git commit -am "feat(P10b): handwritten notes and signed/torn rule notes"

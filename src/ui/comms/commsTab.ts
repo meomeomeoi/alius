@@ -5,7 +5,8 @@ import { isLiving } from '../../engine/economy';
 import { decorOf } from '../../engine/personal/decor';
 import type { ProposalAnswer } from '../../engine/relations/proposals';
 import type { CampaignState, Unit } from '../../engine/state/types';
-import { drawRuleChips, drawViolation, violationLabels } from '../bonds/chips';
+import { drawViolation, violationLabels } from '../bonds/chips';
+import { renderRuleNote, ruleNotesFor } from '../notes/ruleNote';
 import { h } from '../dom';
 import { drawProposalChips } from '../proposalChips';
 import { drawPersonalChips, editChip, type EditView, type PersonalChipHandlers } from '../personal/chips';
@@ -155,9 +156,9 @@ export function renderCommsTab(host: HTMLElement, ctx: CommsTabCtx): void {
       grant: (id) => ctx.onAnswerDemand?.(id, 'grant'), refuse: (id) => ctx.onAnswerDemand?.(id, 'refuse'), talk: (id) => ctx.onTalkDemand?.(id),
     });
     const ruleChips = h('div', { class: 'alius-chips alius-discipline-chips' });
-    drawRuleChips(ruleChips, state, ctx.registries, (c) => c.unitId === current, {
-      accept: (id) => ctx.onAnswerRule?.(id, 'accept'), negotiate: (id) => ctx.onAnswerRule?.(id, 'negotiate'), refuse: (id) => ctx.onAnswerRule?.(id, 'refuse'),
-    });
+    // P10b: a rule she proposed is her signed note under the thread (SIGN / NEGOTIATE / DON'T SIGN answer it as the chips did)
+    const answers = { accept: (id: string) => ctx.onAnswerRule?.(id, 'accept'), negotiate: (id: string) => ctx.onAnswerRule?.(id, 'negotiate'), refuse: (id: string) => ctx.onAnswerRule?.(id, 'refuse') };
+    for (const rule of ruleNotesFor(state, (id) => id === current).filter((r) => r.status === 'proposed')) ruleChips.append(renderRuleNote(state, ctx.registries, rule, answers, { motion: ctx.motion?.() ?? true }));
     const personalChips = h('div', { class: 'alius-chips alius-discipline-chips' });
     if (ctx.personal) drawPersonalChips(personalChips, state, ctx.registries, (id) => id === current, ctx.personal);
     const editor = waiting ? contacts.find((u) => u.id === waiting.editorId) : undefined;

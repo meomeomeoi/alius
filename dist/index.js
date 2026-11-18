@@ -20432,6 +20432,11 @@ function notesDayStep(draft, ctx2) {
   return events;
 }
 
+// src/engine/notes/index.ts
+function notesFor(state, where) {
+  return [...state.notes?.list ?? []].filter((n) => alive(state, n) && (where === void 0 || n.where === where)).reverse();
+}
+
 // src/engine/personal/intercept.ts
 var ORIGINAL_MAX = 1e3;
 var INTERCEPT_CHANNELS = ["dm", "leash", "recruit"];
@@ -22659,8 +22664,8 @@ function punishDirective(unitId, name, label2, stanceName) {
 function demandDirective(unitId, name, text2) {
   return { id: `demand:${unitId}`, expiresAfter: "scene", text: `${name} demands something of the commander and presses it this scene: "${text2}"` };
 }
-function nicknameDirective(unitName2, nickname) {
-  return { id: "nickname", expiresAfter: "next_reply", text: `${unitName2} calls the commander "${nickname}" for the first time.` };
+function nicknameDirective(unitName3, nickname) {
+  return { id: "nickname", expiresAfter: "next_reply", text: `${unitName3} calls the commander "${nickname}" for the first time.` };
 }
 function reputationDirective(id, text2) {
   return { id: `reputation:${id}`, expiresAfter: "scene", text: text2 };
@@ -25131,17 +25136,17 @@ function renderCombatScreen(host, ctx2) {
   }
   function resultPanel(state) {
     const r = state.lastCombat;
-    const unitName2 = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
+    const unitName3 = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
     const rows = [`OUTCOME: ${r.outcome.toUpperCase()} \xB7 ${r.rounds} ROUNDS`];
     const xp = Object.entries(r.xp);
-    if (xp.length > 0) rows.push(`XP: ${xp.map(([id, n]) => `${unitName2(id)} +${n}`).join(", ")}`);
-    if (r.levelUps.length > 0) rows.push(`LEVEL UP: ${r.levelUps.map((l) => `${unitName2(l.unitId)} \u2192 ${l.level}`).join(", ")}`);
+    if (xp.length > 0) rows.push(`XP: ${xp.map(([id, n]) => `${unitName3(id)} +${n}`).join(", ")}`);
+    if (r.levelUps.length > 0) rows.push(`LEVEL UP: ${r.levelUps.map((l) => `${unitName3(l.unitId)} \u2192 ${l.level}`).join(", ")}`);
     if (r.loot.length > 0) {
       rows.push(`LOOT${r.banked ? "" : " (NOT BANKED YET)"}: ${r.loot.map((d) => d.kind === "item" ? `${reg.items.get(d.item.itemId)?.name ?? d.item.itemId} [${d.item.rarity}]` : `${d.amount} ${d.kind}`).join(", ")}`);
     }
-    if (r.injuries.length > 0) rows.push(`INJURED: ${r.injuries.map(unitName2).join(", ")}`);
-    if (r.deaths.length > 0) rows.push(`LOST: ${r.deaths.map(unitName2).join(", ")}`);
-    if (r.breakdowns.length > 0) rows.push(`BREAKDOWN: ${r.breakdowns.map(unitName2).join(", ")}`);
+    if (r.injuries.length > 0) rows.push(`INJURED: ${r.injuries.map(unitName3).join(", ")}`);
+    if (r.deaths.length > 0) rows.push(`LOST: ${r.deaths.map(unitName3).join(", ")}`);
+    if (r.breakdowns.length > 0) rows.push(`BREAKDOWN: ${r.breakdowns.map(unitName3).join(", ")}`);
     if (r.commanderInjured) rows.push("THE COMMANDER WAS INJURED");
     return h(
       "section",
@@ -25320,6 +25325,45 @@ function renderCombatScreen(host, ctx2) {
   };
 }
 
+// src/engine/hand.ts
+function handOf(state, reg, unitId) {
+  const unit2 = state.squad.find((u) => u.id === unitId);
+  if (!unit2 || unit2.kind !== "named") return null;
+  const chosen = unit2.hand === void 0 ? void 0 : reg.handFonts.get(unit2.hand);
+  if (chosen) return chosen;
+  const all = [...reg.handFonts.values()];
+  return all.length === 0 ? null : all[fnv1a(unitId) % all.length];
+}
+var handFamily = (hand) => String(hand.family);
+
+// src/ui/notes/note.ts
+function setHand(el, hand) {
+  if (hand) el.style.setProperty("--alius-font-hand", `"${handFamily(hand)}", var(--alius-font-type)`);
+}
+function renderNote(o) {
+  const note = h(
+    "article",
+    { class: `alius-note alius-voice alius-voice-paper alius-stat${o.read === true ? " is-read" : ""}`, "data-voice": "paper", "data-note-by": o.unitName, ...analyzeAttrs(o.analyze) },
+    noise("alius-fibre", { frequency: "0.04 0.9", octaves: 2, seed: 3 }),
+    h("p", { class: "alius-note-body" }, o.text)
+  );
+  setHand(note, o.hand);
+  if (o.read !== true && o.onRead) {
+    let used = false;
+    note.append(h("button", {
+      type: "button",
+      class: "alius-btn",
+      "data-action": "read-note",
+      onclick: () => {
+        if (used) return;
+        used = true;
+        o.onRead();
+      }
+    }, "[GOT IT]"));
+  }
+  return note;
+}
+
 // src/ui/inv/invTab.ts
 var STATS2 = ["hp", "atk", "def", "spd", "crit"];
 function refusal(state, reg, type, payload) {
@@ -25389,6 +25433,17 @@ function renderInvTab(host, ctx2) {
         );
       })
     );
+    const gearNotes = notesFor(state, "gear");
+    if (gearNotes.length > 0) {
+      host.append(h("section", { class: "alius-section alius-gear-notes" }, h("h2", {}, "[ NOTES IN YOUR GEAR ]"), ...gearNotes.map((n) => renderNote({
+        text: n.text,
+        unitName: state.squad.find((u) => u.id === n.unitId)?.displayName ?? n.unitId,
+        hand: handOf(state, reg, n.unitId),
+        read: n.read === true,
+        ...ctx2.onReadNote ? { onRead: () => ctx2.onReadNote(n.id) } : {},
+        analyze: "glossary:hand_note"
+      }))));
+    }
     host.append(h("section", { class: "alius-section alius-inv" }, h("h2", {}, "[ INVENTORY ]"), res, filters, list5));
     if (current) host.append(comparePanel(state, current));
     if (checkWorkshop(state) === null) host.append(workshopPanel(state, current));
@@ -26575,24 +26630,24 @@ var REASON_TEXT = {
   committed: "the commander is already committed to someone else",
   unavailable: "it is not something she would consider"
 };
-function proposalDirectiveText(unitName2, kind, result) {
+function proposalDirectiveText(unitName3, kind, result) {
   const label2 = kind.replace(/_/g, " ");
-  if (result.receptive) return `${unitName2} is receptive to the commander's proposal (${label2}). Play her accepting it in her own way.`;
-  return `${unitName2} DECLINES the commander's proposal (${label2}). Reason: ${REASON_TEXT[result.reason]}. She will not be talked into it this scene.`;
+  if (result.receptive) return `${unitName3} is receptive to the commander's proposal (${label2}). Play her accepting it in her own way.`;
+  return `${unitName3} DECLINES the commander's proposal (${label2}). Reason: ${REASON_TEXT[result.reason]}. She will not be talked into it this scene.`;
 }
-var proposalDirective = (unitId, unitName2, kind, result) => ({
+var proposalDirective = (unitId, unitName3, kind, result) => ({
   id: `proposal:${unitId}`,
   expiresAfter: "next_reply",
-  text: proposalDirectiveText(unitName2, kind, result)
+  text: proposalDirectiveText(unitName3, kind, result)
 });
-var nightDirective = (unitName2, framing) => ({
+var nightDirective = (unitName3, framing) => ({
   id: "night",
   expiresAfter: "scene",
-  text: `It is night. ${framing} Open the scene with this moment: ${unitName2} came for a reason of her own.`
+  text: `It is night. ${framing} Open the scene with this moment: ${unitName3} came for a reason of her own.`
 });
-function answerDirective(unitId, unitName2, kind, answer, condition) {
+function answerDirective(unitId, unitName3, kind, answer, condition) {
   const label2 = kind.replace(/_/g, " ");
-  const text2 = answer === "accept_condition" ? `The commander ACCEPTS ${unitName2}'s proposal (${label2}) on her condition: "${condition ?? ""}". Play her reaction to that, and she holds the commander to it.` : answer === "deflect" ? `The commander deflects ${unitName2}'s proposal (${label2}) with a light touch, neither yes nor no. Play her reaction.` : answer === "accept" ? `The commander ACCEPTS ${unitName2}'s proposal (${label2}). Play her reaction to that.` : answer === "accept_secret" ? `The commander ACCEPTS ${unitName2}'s proposal (${label2}) but wants it kept secret from the others. Play her reaction to that.` : answer === "decline" ? `The commander DECLINES ${unitName2}'s proposal (${label2}). Play her reaction to being turned down.` : `The commander puts ${unitName2}'s proposal (${label2}) off: not now. Play her reaction.`;
+  const text2 = answer === "accept_condition" ? `The commander ACCEPTS ${unitName3}'s proposal (${label2}) on her condition: "${condition ?? ""}". Play her reaction to that, and she holds the commander to it.` : answer === "deflect" ? `The commander deflects ${unitName3}'s proposal (${label2}) with a light touch, neither yes nor no. Play her reaction.` : answer === "accept" ? `The commander ACCEPTS ${unitName3}'s proposal (${label2}). Play her reaction to that.` : answer === "accept_secret" ? `The commander ACCEPTS ${unitName3}'s proposal (${label2}) but wants it kept secret from the others. Play her reaction to that.` : answer === "decline" ? `The commander DECLINES ${unitName3}'s proposal (${label2}). Play her reaction to being turned down.` : `The commander puts ${unitName3}'s proposal (${label2}) off: not now. Play her reaction.`;
   return { id: `proposal:${unitId}`, expiresAfter: "next_reply", text: text2 };
 }
 
@@ -29686,16 +29741,6 @@ function unitPortrait(st, unit2, o) {
   return img;
 }
 
-// src/engine/hand.ts
-function handOf(state, reg, unitId) {
-  const unit2 = state.squad.find((u) => u.id === unitId);
-  if (!unit2 || unit2.kind !== "named") return null;
-  const chosen = unit2.hand === void 0 ? void 0 : reg.handFonts.get(unit2.hand);
-  if (chosen) return chosen;
-  const all = [...reg.handFonts.values()];
-  return all.length === 0 ? null : all[fnv1a(unitId) % all.length];
-}
-
 // src/ui/discipline/menu.ts
 var confineOf = (entry) => (entry.sideEffects ?? []).find((e) => e.type === "confine");
 function renderDisciplineMenu(ctx2) {
@@ -30859,6 +30904,10 @@ function tonightItems(state, _reg) {
     const n = unreadFrom(state, u.id);
     if (n > 0) out.push({ kind: "dm", text: `${u.displayName}: ${n} unread message${n === 1 ? "" : "s"}.`, unitId: u.id, tone: "neutral", analyze: "glossary:tonight" });
   }
+  for (const n of state.notes?.list ?? []) {
+    if (n.where !== "door" || n.read === true || state.day - n.day > 1 || !nameOf13(n.unitId)) continue;
+    out.push({ kind: "note", text: `${nameOf13(n.unitId)} left a note under your door.`, unitId: n.unitId, tone: "neutral", analyze: "glossary:hand_note" });
+  }
   for (const d of waitingDemands(state)) {
     out.push({ kind: "demand", text: `${nameOf13(d.unitId)} is waiting for an answer.`, unitId: d.unitId, tone: "warn", analyze: "glossary:demand" });
   }
@@ -30967,6 +31016,7 @@ function renderRoomPanel(room, state, ctx2, here, opts) {
     );
   });
   const cards = opts.readOnly || lockedTabs(state, reg).has("ops") ? [] : (room.activityIds ?? []).map((id) => reg.activities.get(id)).filter((a) => a !== void 0).map((a) => activityCard(a, state, ctx2.ops));
+  const noteCards = room.commanderCell === true ? quartersNotes(state, reg, ctx2) : [];
   return h(
     "section",
     { class: "alius-room-panel", "data-room": String(room.id), role: "region", "aria-label": `${String(room.label)} room` },
@@ -30979,8 +31029,24 @@ function renderRoomPanel(room, state, ctx2, here, opts) {
     h("p", { class: "alius-dim" }, String(room.description)),
     h("h3", {}, "HERE"),
     people.length > 0 ? h("ul", { class: "alius-room-people" }, ...rows) : h("p", { class: "alius-dim" }, "Nobody is here."),
+    ...noteCards.length > 0 ? [h("h3", {}, "NOTES"), ...noteCards] : [],
     ...cards.length > 0 ? [h("h3", {}, "ACTIVITIES"), ...cards] : []
   );
+}
+var unitName2 = (state, id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
+function quartersNotes(state, reg, ctx2) {
+  const cards = notesFor(state, "quarters").map((n) => renderNote({
+    text: n.text,
+    unitName: unitName2(state, n.unitId),
+    hand: handOf(state, reg, n.unitId),
+    read: n.read === true,
+    ...ctx2.onReadNote ? { onRead: () => ctx2.onReadNote(n.id) } : {},
+    analyze: "glossary:hand_note"
+  }));
+  for (const p of pinnedNotes(state, reg)) {
+    for (const line2 of p.lines) cards.push(renderNote({ text: line2, unitName: unitName2(state, p.unitId), hand: handOf(state, reg, p.unitId), read: true, analyze: "glossary:hand_note" }));
+  }
+  return cards;
 }
 
 // src/ui/hub/hubScreen.ts
@@ -31617,7 +31683,7 @@ function renderExpeditionScreen(host, ctx2) {
   const debriefPick = [];
   let confirming = false;
   let cover = "";
-  const unitName2 = (id) => ctx2.getState()?.squad.find((u) => u.id === id)?.displayName ?? id;
+  const unitName3 = (id) => ctx2.getState()?.squad.find((u) => u.id === id)?.displayName ?? id;
   function runView(root, state) {
     const exp = state.expedition;
     const travel = exp.phase === "travel";
@@ -31755,7 +31821,7 @@ function renderExpeditionScreen(host, ctx2) {
         waiting: generated.status === "requested",
         options: dilemmaOptions(state, reg),
         onChoose: ctx2.onDilemmaChoose,
-        unitName: unitName2,
+        unitName: unitName3,
         herPick: herPickView(state, reg)
       });
       root.append(panel);
@@ -31767,7 +31833,7 @@ function renderExpeditionScreen(host, ctx2) {
     }
     let picked = false;
     for (const o of options2) {
-      const picker = o.routes && o.disabled === null ? renderRoutePicker({ routes: o.routes, unitName: unitName2, locked: () => picked, onPick: (pick2) => {
+      const picker = o.routes && o.disabled === null ? renderRoutePicker({ routes: o.routes, unitName: unitName3, locked: () => picked, onPick: (pick2) => {
         picked = true;
         controller.choose(o.index, pick2);
       }, unlock: () => {
@@ -32423,6 +32489,58 @@ function drawRuleChips(host, state, reg, pick2, on) {
   }
 }
 
+// src/ui/notes/ruleNote.ts
+var torn = /* @__PURE__ */ new Set();
+function renderRuleNote(state, reg, rule, on, opts) {
+  const unit2 = state.squad.find((u) => u.id === rule.unitId);
+  const name = unit2?.displayName ?? rule.unitId;
+  const proposed = rule.status === "proposed" && rule.delivered === true;
+  const broken = rule.lastBrokenDay !== void 0 && rule.lastBrokenDay >= state.day - 1;
+  const note = h(
+    "article",
+    { class: "alius-note alius-rule-note alius-voice alius-voice-paper alius-stat", "data-voice": "paper", "data-rule": rule.id, "data-rule-status": rule.status, ...analyzeAttrs("glossary:rule_note", { unitId: rule.unitId, ruleId: rule.id }) },
+    noise("alius-fibre", { frequency: "0.04 0.9", octaves: 2, seed: 3 }),
+    h("p", { class: "alius-note-body" }, rule.text),
+    h("p", { class: "alius-note-sign" }, `\u2014 ${name}`)
+  );
+  setHand(note, unit2 ? handOf(state, reg, unit2.id) : null);
+  if (rule.status === "active") note.append(h("p", { class: "alius-note-sign alius-note-sign-commander" }, `\u2014 ${state.commander.name}`));
+  if (broken) {
+    note.classList.add("is-torn");
+    const key = `${rule.id}|${rule.lastBrokenDay}`;
+    if (opts.motion && !torn.has(key)) note.classList.add("is-tearing");
+    torn.add(key);
+  }
+  if (proposed) {
+    const full = (state.bonds?.rules ?? []).filter((r) => r.unitId === rule.unitId && r.status === "active").length >= TUNING.bonds.rules.maxActive;
+    const button2 = (kind, text2, run, soft = false) => {
+      const b = h("button", {
+        type: "button",
+        class: "alius-btn alius-tagchip",
+        "data-rule-answer": kind,
+        "data-rule": rule.id,
+        ...soft ? { "aria-disabled": "true", title: `She holds ${TUNING.bonds.rules.maxActive} rules already.` } : {},
+        ...analyzeNative("glossary:rule_note"),
+        onclick: () => {
+          if (b.getAttribute("aria-disabled") !== "true") run();
+        }
+      }, text2);
+      return b;
+    };
+    note.append(h(
+      "div",
+      { class: "alius-chip-group", "data-rule-group": rule.id },
+      button2("accept", "[SIGN]", () => on.accept(rule.id), full),
+      button2("negotiate", "[NEGOTIATE]", () => on.negotiate(rule.id)),
+      button2("refuse", "[DON'T SIGN]", () => on.refuse(rule.id))
+    ));
+  }
+  return note;
+}
+function ruleNotesFor(state, pick2 = () => true) {
+  return (state.bonds?.rules ?? []).filter((r) => pick2(r.unitId) && (r.status === "proposed" && r.delivered === true || r.status === "active" || r.lastBrokenDay !== void 0 && r.lastBrokenDay >= state.day - 1));
+}
+
 // src/ui/proposalChips.ts
 var kindLabel = (s) => s.replace(/_/g, " ").toUpperCase();
 var CONDITION_MAX = 160;
@@ -32864,11 +32982,8 @@ function renderCommsTab(host, ctx2) {
       talk: (id) => ctx2.onTalkDemand?.(id)
     });
     const ruleChips = h("div", { class: "alius-chips alius-discipline-chips" });
-    drawRuleChips(ruleChips, state, ctx2.registries, (c) => c.unitId === current, {
-      accept: (id) => ctx2.onAnswerRule?.(id, "accept"),
-      negotiate: (id) => ctx2.onAnswerRule?.(id, "negotiate"),
-      refuse: (id) => ctx2.onAnswerRule?.(id, "refuse")
-    });
+    const answers = { accept: (id) => ctx2.onAnswerRule?.(id, "accept"), negotiate: (id) => ctx2.onAnswerRule?.(id, "negotiate"), refuse: (id) => ctx2.onAnswerRule?.(id, "refuse") };
+    for (const rule of ruleNotesFor(state, (id) => id === current).filter((r) => r.status === "proposed")) ruleChips.append(renderRuleNote(state, ctx2.registries, rule, answers, { motion: ctx2.motion?.() ?? true }));
     const personalChips = h("div", { class: "alius-chips alius-discipline-chips" });
     if (ctx2.personal) drawPersonalChips(personalChips, state, ctx2.registries, (id) => id === current, ctx2.personal);
     const editor = waiting2 ? contacts.find((u) => u.id === waiting2.editorId) : void 0;
@@ -38172,7 +38287,9 @@ function createApp(st, deps) {
       onCraft: (recipeId) => void act({ type: "item/craft", payload: { recipeId } }),
       onUpgrade: (uid) => void act({ type: "item/upgrade", payload: { uid } }),
       onReroll: (uid, affixIndex) => void act({ type: "item/reroll", payload: { uid, affixIndex } }),
-      onDismantle: (uid) => void act({ type: "item/dismantle", payload: { uid } })
+      onDismantle: (uid) => void act({ type: "item/dismantle", payload: { uid } }),
+      onReadNote: (id) => void act({ type: "notes/read", payload: { id } })
+      // P10b
     })
   );
   shell.registerScreen("combat", renderCombatView, {
@@ -38229,7 +38346,9 @@ function createApp(st, deps) {
     onTalk: (unitId, locationId) => void api.talkAt(unitId, locationId),
     onEndSlot: () => void api.endSlot(),
     onOpenPda: (tab) => tab ? shell.showTab(tab) : shell.setDevice(true),
-    avatar: (unit2) => unitPortrait(st, unit2, portraitOptions(getSettings(st), 40))
+    avatar: (unit2) => unitPortrait(st, unit2, portraitOptions(getSettings(st), 40)),
+    onReadNote: (id) => void act({ type: "notes/read", payload: { id } })
+    // P10b
   }));
   shell.registerTab(
     "map",

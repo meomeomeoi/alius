@@ -64,7 +64,7 @@ export function currentObjective(state: CampaignState, reg: Registries): Objecti
 }
 
 export interface TonightItem {
-  kind: 'knock' | 'dm' | 'demand' | 'intake' | 'deadline' | 'warning' | 'booking';
+  kind: 'knock' | 'dm' | 'note' | 'demand' | 'intake' | 'deadline' | 'warning' | 'booking';
   text: string;
   unitId?: string;
   tone: MarkerTone;
@@ -93,6 +93,11 @@ export function tonightItems(state: CampaignState, _reg: Registries): TonightIte
   for (const u of living) {
     const n = unreadFrom(state, u.id);
     if (n > 0) out.push({ kind: 'dm', text: `${u.displayName}: ${n} unread message${n === 1 ? '' : 's'}.`, unitId: u.id, tone: 'neutral', analyze: 'glossary:tonight' });
+  }
+  // P10b: a note pushed under the door (unread, from today or yesterday)
+  for (const n of state.notes?.list ?? []) {
+    if (n.where !== 'door' || n.read === true || state.day - n.day > 1 || !nameOf(n.unitId)) continue;
+    out.push({ kind: 'note', text: `${nameOf(n.unitId)} left a note under your door.`, unitId: n.unitId, tone: 'neutral', analyze: 'glossary:hand_note' });
   }
   for (const d of waitingDemands(state)) {
     out.push({ kind: 'demand', text: `${nameOf(d.unitId)} is waiting for an answer.`, unitId: d.unitId, tone: 'warn', analyze: 'glossary:demand' });
