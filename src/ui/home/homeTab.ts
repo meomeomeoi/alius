@@ -11,7 +11,7 @@ import type { StAdapter } from '../../st/adapter';
 import { analyzeAttrs, analyzeNative } from '../analyze/mark';
 import type { RuleChipHandlers } from '../bonds/chips';
 import { h } from '../dom';
-import { motionReduced, visualFlags } from '../motion';
+import { motionReduced } from '../motion';
 import { renderNote } from '../notes/note';
 import { renderRuleNote, ruleNotesFor } from '../notes/ruleNote';
 import { portraitOptions, unitPortrait } from '../portrait/portrait';
@@ -58,7 +58,6 @@ export function renderHomeTab(host: HTMLElement, ctx: HomeCtx): void {
   const reg = ctx.registries;
   const settings = ctx.settings();
   const readable = settings.readableMode;
-  const motion = visualFlags(settings).motion;
 
   // ---- the wallpaper: the owner's dithered portrait behind the view (never an image in readable mode: a caption says whose it is)
   const owner = wallpaperUnit(state);

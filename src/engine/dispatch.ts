@@ -25,7 +25,8 @@ const ONBOARDING_HINT = 'onboarding/hint_seen';
 
 /** Action families that may run while `state.expedition` is open. */
 /** `relations/commander_injured` is the night-visit roll after a Commander Crisis, which can only happen inside a run. */
-const EXPEDITION_OPEN_PREFIXES = ['expedition/', 'combat/', 'director/', 'debug/', 'dilemma/', 'relations/commander_injured', ONBOARDING_HINT, 'content/'];
+/** P10b: reading a note and choosing a hand (`notes/read`, `squad/set_hand`) change nothing but the note and the hand, and HOME is the default tab while the squad is out. */
+const EXPEDITION_OPEN_PREFIXES = ['expedition/', 'combat/', 'director/', 'debug/', 'dilemma/', 'relations/commander_injured', ONBOARDING_HINT, 'content/', 'notes/read', 'squad/set_hand'];
 
 /** Actions that spend time or start something: refused while a presented dilemma waits for its answer (P6). */
 const BLOCKED_BY_DILEMMA = ['activity/', 'calendar/consume_slot', 'scene/start', 'expedition/start'];

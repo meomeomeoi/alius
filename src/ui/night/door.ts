@@ -34,12 +34,20 @@ const TICK_MS = 250;
 
 /** Seconds left per entry id: a redraw keeps the deadline, a reload starts again. `phase` restarts the timer after the exchange. */
 const clocks = new Map<string, { remaining: number; phase: 'fresh' | 'exchanged' }>();
+/** What was typed through the door per entry (a redraw of the screen must not lose it). */
+const drafts = new Map<string, string>();
 /** Entries whose reply is being generated. */
 const pending = new Set<string>();
 /** The knocks already heard in a render host. */
 const knocked = new WeakMap<HTMLElement, Set<string>>();
 /** The interval of a host's door. */
 const running = new WeakMap<HTMLElement, () => void>();
+
+/** The deadlines and drafts are keyed by entry id and ids repeat across campaigns: forget them when another campaign is loaded. */
+export function resetDoor(): void {
+  clocks.clear();
+  drafts.clear();
+}
 
 /** Is the countdown held: she is answering, the page is hidden, a modal or the analysis panel is open, or the commander is typing. */
 function held(entry: NightEntry, input: HTMLInputElement | null): boolean {
@@ -124,6 +132,7 @@ export function renderDoor(host: HTMLElement, ctx: DoorCtx): void {
     input.addEventListener('keydown', (e) => {
       if ((e as KeyboardEvent).key === 'Enter') send();
     });
+    input.addEventListener('input', () => drafts.set(entry.id, input!.value));
     form.append(input, sendButton);
     input.focus({ preventScroll: true });
   };
@@ -131,6 +140,7 @@ export function renderDoor(host: HTMLElement, ctx: DoorCtx): void {
     const text = input?.value.trim() ?? '';
     if (!input || text === '' || used || pending.has(entry.id)) return;
     pending.add(entry.id);
+    drafts.delete(entry.id);
     input.disabled = true;
     form.querySelector('button')?.setAttribute('disabled', '');
     for (const b of buttons) b.disabled = true;
@@ -151,6 +161,13 @@ export function renderDoor(host: HTMLElement, ctx: DoorCtx): void {
     'section', { class: 'alius-section alius-door alius-knock', 'aria-label': `${ctx.unitName} at the door` },
     h('h2', {}, '[ NIGHT // DOOR ]'), art, framing, lines, status, ...(timer ? [timer] : []), form, row,
   ));
+  // a redraw while the commander was typing: the field comes back with its text (and keeps the countdown held)
+  const draft = drafts.get(entry.id);
+  if (draft && !entry.door && !pending.has(entry.id)) {
+    openForm();
+    const field = form.querySelector<HTMLInputElement>('input');
+    if (field) field.value = draft;
+  }
   if (pending.has(entry.id)) {
     status.textContent = `${ctx.unitName} is answering…`;
     for (const b of buttons) b.disabled = true;

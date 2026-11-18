@@ -19226,7 +19226,7 @@ function metAtScene(draft, reg, participants) {
 // src/engine/dispatch.ts
 var handlers = /* @__PURE__ */ new Map();
 var ONBOARDING_HINT = "onboarding/hint_seen";
-var EXPEDITION_OPEN_PREFIXES = ["expedition/", "combat/", "director/", "debug/", "dilemma/", "relations/commander_injured", ONBOARDING_HINT, "content/"];
+var EXPEDITION_OPEN_PREFIXES = ["expedition/", "combat/", "director/", "debug/", "dilemma/", "relations/commander_injured", ONBOARDING_HINT, "content/", "notes/read", "squad/set_hand"];
 var BLOCKED_BY_DILEMMA = ["activity/", "calendar/consume_slot", "scene/start", "expedition/start"];
 function registerAction(type, handler2) {
   if (handlers.has(type)) throw new Error(`Duplicate action type: ${type}`);
@@ -33081,7 +33081,6 @@ function renderHomeTab(host, ctx2) {
   const reg = ctx2.registries;
   const settings = ctx2.settings();
   const readable = settings.readableMode;
-  const motion = visualFlags(settings).motion;
   const owner = wallpaperUnit(state);
   const memory = owner === null ? fadedWallpaperUnit(state) : null;
   const wallpaperId = owner ?? memory;
@@ -33313,9 +33312,14 @@ var DOOR_ART = [
 var DOOR_SAY_MAX2 = 300;
 var TICK_MS = 250;
 var clocks = /* @__PURE__ */ new Map();
+var drafts2 = /* @__PURE__ */ new Map();
 var pending2 = /* @__PURE__ */ new Set();
 var knocked = /* @__PURE__ */ new WeakMap();
 var running = /* @__PURE__ */ new WeakMap();
+function resetDoor() {
+  clocks.clear();
+  drafts2.clear();
+}
 function held(entry, input) {
   if (pending2.has(entry.id) || document.hidden) return true;
   if (document.querySelector(".alius-modal-backdrop") || document.querySelector(".alius-analyze")) return true;
@@ -33387,6 +33391,7 @@ function renderDoor(host, ctx2) {
     input.addEventListener("keydown", (e) => {
       if (e.key === "Enter") send();
     });
+    input.addEventListener("input", () => drafts2.set(entry.id, input.value));
     form.append(input, sendButton);
     input.focus({ preventScroll: true });
   };
@@ -33394,6 +33399,7 @@ function renderDoor(host, ctx2) {
     const text2 = input?.value.trim() ?? "";
     if (!input || text2 === "" || used || pending2.has(entry.id)) return;
     pending2.add(entry.id);
+    drafts2.delete(entry.id);
     input.disabled = true;
     form.querySelector("button")?.setAttribute("disabled", "");
     for (const b of buttons) b.disabled = true;
@@ -33420,6 +33426,12 @@ function renderDoor(host, ctx2) {
     form,
     row2
   ));
+  const draft = drafts2.get(entry.id);
+  if (draft && !entry.door && !pending2.has(entry.id)) {
+    openForm();
+    const field2 = form.querySelector("input");
+    if (field2) field2.value = draft;
+  }
   if (pending2.has(entry.id)) {
     status.textContent = `${ctx2.unitName} is answering\u2026`;
     for (const b of buttons) b.disabled = true;
@@ -37829,6 +37841,7 @@ function createApp(st, deps) {
     api.dispatch({ type: "content/set_categories", payload: { enabled: getSettings(st).explicitContent ? [EXPLICIT_CATEGORY] : [] } }, { expectChatId: load.chatId });
   }
   function afterLoad() {
+    resetDoor();
     if (load.kind === "ok" && state && state.world.seeded !== true) {
       api.dispatch({ type: "world/seed", payload: {} }, { expectChatId: load.chatId });
     }

@@ -11,7 +11,7 @@ import type { CampaignState, HandNote } from '../../src/engine/state/types';
 import { TUNING } from '../../src/engine/tuning';
 import '../../src/engine/actions/immersion';
 import '../../src/engine/actions/personal';
-import { errors, loadCore, ofType, run } from '../helpers/world';
+import { errors, loadCore, ofType, run, stubExpedition } from '../helpers/world';
 import { ANN, BEA, partner, plain } from '../helpers/personal';
 
 let core: Registries;
@@ -219,5 +219,19 @@ describe('the day end runs the notes step after the personal step', () => {
     const reg = withChance(1);
     const after = endDay(s, reg);
     expect(after.notes?.list.some((n) => n.unitId === ANN)).toBe(true);
+  });
+});
+
+describe('while an expedition is open (HOME is the default tab, the device may be up)', () => {
+  it('reading a note and choosing a hand still work; the guard keeps refusing everything else', () => {
+    const s = withNotes(lover(), note({ id: 'hn1' }));
+    s.expedition = stubExpedition(s);
+    const read = run(s, core, { type: 'notes/read', payload: { id: 'hn1' } });
+    expect(errors(read.events)).toEqual([]);
+    expect(read.state.notes!.list[0].read).toBe(true);
+    const hand = run(s, core, { type: 'squad/set_hand', payload: { unitId: ANN, handId: 'kalam' } });
+    expect(errors(hand.events)).toEqual([]);
+    expect(hand.state.squad[0].hand).toBe('kalam');
+    expect(errors(run(s, core, { type: 'night/door_say', payload: { text: 'x' } }).events).length).toBeGreaterThan(0);
   });
 });

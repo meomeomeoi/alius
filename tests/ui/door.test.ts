@@ -2,13 +2,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { NightEntry } from '../../src/engine/state/types';
 import { h } from '../../src/ui/dom';
-import { renderDoor, type DoorCtx } from '../../src/ui/night/door';
+import { renderDoor, resetDoor, type DoorCtx } from '../../src/ui/night/door';
 import { markedWithout, unreachable } from '../helpers/analyzeCoverage';
 
 beforeEach(() => {
   vi.useFakeTimers();
 });
 afterEach(() => {
+  resetDoor();
   vi.useRealTimers();
   document.body.innerHTML = '';
 });
@@ -185,6 +186,51 @@ describe('the door: the timer', () => {
     expect(live.textContent).toContain('5');
     tick(5);
     expect(live.textContent).toContain('0');
+  });
+});
+
+describe('the door: a redraw while the commander is typing', () => {
+  it('keeps what was typed, reopens the field with it and keeps the countdown held', () => {
+    const { ctx, btn, q, again } = mount();
+    btn('say')!.click();
+    const input = q('input.alius-door-input') as HTMLInputElement;
+    input.value = 'Ann? Are you';
+    input.dispatchEvent(new Event('input'));
+    again(); // any refresh of the screen draws the door from scratch
+    const back = q('input.alius-door-input') as HTMLInputElement;
+    expect(back).not.toBeNull();
+    expect(back.value).toBe('Ann? Are you');
+    tick(60);
+    expect(ctx.onSilent).not.toHaveBeenCalled();
+    back.value = '';
+    back.dispatchEvent(new Event('input'));
+    again();
+    expect(q('input.alius-door-input')).toBeNull(); // nothing typed: no field
+  });
+
+  it('forgets the draft once the line is sent', async () => {
+    const { btn, q, again } = mount();
+    btn('say')!.click();
+    const input = q('input.alius-door-input') as HTMLInputElement;
+    input.value = 'Open up.';
+    q('button[data-action="send-door"]')!.click();
+    await vi.advanceTimersByTimeAsync(0);
+    again();
+    expect((q('input.alius-door-input') as HTMLInputElement | null)?.value ?? '').toBe('');
+  });
+});
+
+describe('the door: a new campaign never inherits a deadline', () => {
+  it('resetDoor forgets the deadlines (ids repeat across campaigns)', () => {
+    const entry = newEntry();
+    const a = mount({}, entry);
+    tick(12);
+    resetDoor();
+    a.again();
+    tick(14);
+    expect(a.ctx.onSilent).not.toHaveBeenCalled(); // 15 s again, not 3
+    tick(2);
+    expect(a.ctx.onSilent).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -115,7 +115,7 @@ import { herPickView } from './ui/personal/obey';
 import { renderWagerCard } from './ui/personal/wagerCard';
 import type { EditView } from './ui/personal/chips';
 import { renderLogTab } from './ui/log/logTab';
-import { renderDoor } from './ui/night/door';
+import { renderDoor, resetDoor } from './ui/night/door';
 import { pickLocation } from './ui/scene/locationPicker';
 import { renderSceneScreen, type SceneScreen } from './ui/scene/sceneScreen';
 import type { ActivityRequest } from './engine/activities';
@@ -1199,6 +1199,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
 
   /** Everything that follows a (re)load of the campaign: context, badge, scene and the intimacy mirror. */
   function afterLoad(): void {
+    resetDoor(); // P10b: night entry ids repeat across campaigns, so a deadline or a draft never carries over
     // a save from before P5 has no world yet: seed it, then everything else sees a complete state
     if (load.kind === 'ok' && state && state.world.seeded !== true) {
       api.dispatch({ type: 'world/seed', payload: {} }, { expectChatId: load.chatId });
