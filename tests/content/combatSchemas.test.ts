@@ -38,6 +38,7 @@ const MIN: Record<string, Record<string, unknown>> = {
   order_refusal: { type: 'order_refusal', chance: 0.1 },
   loadout_slots: { type: 'loadout_slots', amount: 1 },
   injury_days: { type: 'injury_days', pct: 50 },
+  contingency: { type: 'contingency' },
 };
 
 const enemy = {

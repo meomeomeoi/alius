@@ -259,6 +259,7 @@ const EffectUnion = z.discriminatedUnion('type', [
   fx('lock_target', { turns: int.min(1) }),
   fx('loot_roll', { extra: int.min(1) }),
   fx('repeat_order', {}),
+  fx('contingency', {}),
   fx('hp_set', { value: int.min(1) }),
   fx('immune', { statusId: str }),
   fx('order_cost', { delta: int, orders: z.array(str).optional() }),
@@ -810,6 +811,8 @@ export const OrderSchema = BaseEntrySchema.extend({
   summary: str,
   cost: int.min(1).max(5),
   target: z.enum(['none', 'ally', 'enemy']),
+  /** P12: offered only to a commander whose traits have an `unlock_order` effect naming it. */
+  requiresUnlock: z.boolean().optional(),
   effects: effects.min(1),
 });
 

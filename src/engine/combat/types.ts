@@ -17,7 +17,7 @@ export const EFFECT_TYPES = [
   'damage', 'heal', 'revive', 'status', 'cleanse', 'stat', 'outgoing', 'incoming', 'stress', 'stress_taken', 'cp',
   'move', 'extra_action', 'redirect', 'intercept_lethal', 'summon', 'follow_up', 'misfire', 'override_action',
   'lock_target', 'loot_roll', 'repeat_order', 'hp_set', 'immune', 'order_cost', 'order_refusal', 'loadout_slots',
-  'injury_days',
+  'injury_days', 'contingency',
 ] as const;
 export type EffectType = (typeof EFFECT_TYPES)[number];
 
@@ -107,6 +107,8 @@ export type EffectSpec = EffectBase &
     | { type: 'lock_target'; turns: number }
     | { type: 'loot_roll'; extra: number }
     | { type: 'repeat_order' }
+    /** P12: the owner (the targeted ally) covers the commander against the first hit from a unit that turned. */
+    | { type: 'contingency' }
     | { type: 'hp_set'; value: number }
     | { type: 'immune'; statusId: string }
     | { type: 'order_cost'; delta: number; orders?: string[] }
@@ -214,7 +216,7 @@ export interface LogEntry {
   round: number;
   kind:
     | 'skill' | 'hit' | 'crit' | 'miss' | 'heal' | 'status' | 'downed' | 'revived' | 'order' | 'order_refused'
-    | 'cover' | 'intercept' | 'breakdown' | 'stress' | 'summon' | 'pass' | 'dodge' | 'self_harm';
+    | 'cover' | 'intercept' | 'breakdown' | 'stress' | 'summon' | 'pass' | 'dodge' | 'self_harm' | 'contingency_cover';
   actor?: string;
   target?: string;
   amount?: number;
@@ -289,6 +291,8 @@ export interface CombatState {
   nextCid: number;
   /** Set when the commander went down. */
   commanderDown?: boolean;
+  /** P12: the cover set by the `contingency` order (`used` once it took a hit). */
+  contingency?: { cid: string; used: boolean };
   /** `repeat_order` fired: the order engine repeats `lastOrder` for free (read by orders.ts). */
   repeatOrder?: boolean;
   /** The current actor's turn-start effects already ran (the combat is waiting for her input or resuming). */

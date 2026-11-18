@@ -2,6 +2,7 @@ import type { Registries } from '../../content/types';
 import type { Skill } from '../../content/schemas';
 import { defaultEnemyName } from '../../engine/combat/encounter';
 import { makeCtx, type EffectCtx } from '../../engine/combat/effects';
+import { orderUnlocked } from '../../engine/combat/contingency';
 import { checkOrder, orderCost } from '../../engine/combat/orders';
 import { resolveSkill, usableSkills } from '../../engine/combat/skills';
 import { legalTargets } from '../../engine/combat/targeting';
@@ -178,9 +179,12 @@ export function renderCombatScreen(host: HTMLElement, ctx: CombatScreenCtx): Com
     render();
   }
 
+  /** The orders this commander has, in registry order (an order that needs an unlock is absent without it; the keys count the visible ones). */
+  const visibleOrderIds = (state: CampaignState): string[] => [...reg.orders.keys()].filter((id) => orderUnlocked(state, reg, id));
+
   function issueOrder(state: CampaignState, index: number): void {
     const cs = state.combat;
-    const id = [...reg.orders.keys()][index];
+    const id = visibleOrderIds(state)[index];
     if (!cs || !id) return;
     const e = effCtx(state);
     const order = reg.orders.get(id) as unknown as { target: 'none' | 'ally' | 'enemy' };
@@ -243,6 +247,7 @@ export function renderCombatScreen(host: HTMLElement, ctx: CombatScreenCtx): Com
       case 'status': return `R${l.round} ${name(l.target)} ${l.statusId ?? ''}`;
       case 'stress': return `R${l.round} ${name(l.target)} stress ${(l.amount ?? 0) > 0 ? '+' : ''}${l.amount ?? 0}`;
       case 'cover': return `R${l.round} ${name(l.actor)} covers the commander`;
+      case 'contingency_cover': return `R${l.round} CONTINGENCY: ${name(l.actor)} takes the hit meant for the commander`;
       case 'intercept': return `R${l.round} ${name(l.actor)} takes the hit for ${name(l.target)}`;
       case 'miss': return `R${l.round} ${name(l.actor)} misfires`;
       case 'dodge': return `R${l.round} ${name(l.target)} dodges ${name(l.actor)}'s attack`;
@@ -382,23 +387,26 @@ export function renderCombatScreen(host: HTMLElement, ctx: CombatScreenCtx): Com
     }
 
     const e = effCtx(state);
-    const orders = [...reg.orders.values()].map((o, i) => {
+    const orders = visibleOrderIds(state).map((oid) => reg.orders.get(oid)!).map((o, i) => {
       const id = o.id;
       const kind = (o as unknown as { target: 'none' | 'ally' | 'enemy' }).target;
       const pool = kind === 'none' ? [undefined] : cs.combatants.filter((c) => c.side === (kind === 'enemy' ? 'enemy' : 'squad') && !c.downed).map((c) => c.cid);
       const blocked = !waiting || !pool.some((t) => checkOrder(e, id, t) === null);
       const cost = waiting ? orderCost(e, id, kind === 'ally' ? cs.awaitingCid : undefined) : (o.cost as number);
+      // P12: an order that needs an unlock is soft-disabled (aria-disabled, the reason in the title) so it stays focusable for the analysis panel
+      const soft = (o as unknown as { requiresUnlock?: boolean }).requiresUnlock === true;
+      const why = soft && waiting ? [...pool].map((t) => checkOrder(e, id, t)).find((r) => r !== null) ?? null : null;
       return h('button', {
         type: 'button', class: `alius-btn alius-order alius-option${orderMode === id ? ' alius-skill-selected' : ''}`,
-        'data-order': id, ...analyzeNative(`orders:${id}`), 'data-key': 'QWERT'[i], disabled: blocked,
-        title: String(o.summary),
+        'data-order': id, ...analyzeNative(`orders:${id}`), 'data-key': 'QWERTY'[i], ...(soft ? { 'aria-disabled': blocked ? 'true' : null } : { disabled: blocked }),
+        title: soft && blocked && why ? why : String(o.summary),
         onclick: () => {
           const s = ctx.getState();
-          if (!s?.combat) return;
+          if (!s?.combat || (soft && blocked)) return;
           if (kind === 'none') issueOrder(s, i);
           else { orderMode = orderMode === id ? null : id; selSkill = null; selTarget = null; render(); }
         },
-      }, `[${'QWERT'[i]}] ${o.name} ${cost}CP`);
+      }, `[${'QWERTY'[i]}] ${o.name} ${cost}CP`);
     });
 
     const controls = cs.phase === 'lost_pending'

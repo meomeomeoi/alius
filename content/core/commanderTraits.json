@@ -251,6 +251,10 @@
       {
         "type": "commander_flag",
         "flag": "commander_bloom_exposed"
+      },
+      {
+        "type": "unlock_order",
+        "orderId": "contingency"
       }
     ],
     "exclusiveWith": [

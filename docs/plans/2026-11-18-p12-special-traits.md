@@ -745,7 +745,7 @@ The day step's decay runs in every campaign: it is registered unconditionally an
   - `takeContingency(ctx, attackerCid): string | null`: the cid that takes the hit, marking it used.
   - Events `contingency_set { cid }`, `contingency_cover { cid }`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 - `locked without the unlock effect` (`checkOrder` → `Unknown order`-style refusal `Not available to this commander.`), `available with bloom_paranoia`.
 - `once per combat`.
 - `contingency intercepts the first hit from a turning unit` (acceptance 3): a mutiny encounter with `exposesCommander`, the cover down, contingency on unit B → the first mutineer hit on `commander` lands on B (log `contingency_cover`), the second follows today's rules.
@@ -753,8 +753,8 @@ The day step's decay runs in every campaign: it is registered unconditionally an
 - `a squad unit in breakdown counts as turning`.
 - `no contingency: hitCommander is unchanged` (seeded combat byte-equal).
 
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → PASS; `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P12): the contingency order`
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → PASS; `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P12): the contingency order`
 
 ---
 

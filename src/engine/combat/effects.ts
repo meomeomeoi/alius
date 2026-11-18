@@ -1,4 +1,5 @@
 import type { Registries } from '../../content/types';
+import { takeContingency } from './contingency';
 import type { EngineEvent } from '../dispatch';
 import type { Rng } from '../rng';
 import type { CampaignState } from '../state/types';
@@ -462,6 +463,12 @@ function runEffect(ctx: EffectCtx, ownerCid: string, effect: EffectSpec, ev: Eff
       break;
     case 'loot_roll': ctx.cs.pendingLootRolls += e.extra; break; // banked by outcome.ts
     case 'repeat_order': ctx.cs.repeatOrder = true; break; // read by orders.ts after the action resolves
+    case 'contingency': // P12: the targeted ally (the owner of an `ally` order) is the cover; one per combat
+      if (!ctx.cs.contingency) {
+        ctx.cs.contingency = { cid: ownerCid, used: false };
+        ctx.emit({ type: 'contingency_set', cid: ownerCid });
+      }
+      break;
     case 'order_refusal': // an on-use or breakdown-entry refusal (P9d Seize Command); a passive one is read by `issueOrder` directly
       for (const t of targets) if (t !== ownerCid && t !== 'commander') byCid(ctx.cs, t).refusal = { chance: e.chance ?? 0, sourceCid: ownerCid, ...(e.orders ? { orders: e.orders } : {}) };
       break;
@@ -664,6 +671,9 @@ function hitCommander(ctx: EffectCtx, attackerCid: string, mult: number, opts: D
   const { cs } = ctx;
   const cmd = cs.commander;
   if (!cmd || cmd.downed) return { dealt: 0, crit: false, killed: false };
+  // P12: a hit from a unit that turned goes to the contingency cover first (before the ordinary cover and the dodge)
+  const contingent = takeContingency(ctx, attackerCid);
+  if (contingent !== null) return dealDamage(ctx, attackerCid, contingent, mult, opts);
   const cover = byCid(cs, cmd.coverId);
   if (isStanding(cover)) {
     ctx.log({ kind: 'cover', actor: cover.cid, target: 'commander' });

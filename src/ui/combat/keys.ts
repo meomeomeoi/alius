@@ -13,7 +13,7 @@ export interface CombatKeyHandlers {
 }
 
 /** Order hotkeys in registry order. */
-export const ORDER_KEYS = ['q', 'w', 'e', 'r', 't'] as const;
+export const ORDER_KEYS = ['q', 'w', 'e', 'r', 't', 'y'] as const;
 
 const isEditable = (t: EventTarget | null): boolean => {
   const el = t as HTMLElement | null;

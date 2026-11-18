@@ -6317,6 +6317,7 @@ var EffectUnion = external_exports.discriminatedUnion("type", [
   fx("lock_target", { turns: int.min(1) }),
   fx("loot_roll", { extra: int.min(1) }),
   fx("repeat_order", {}),
+  fx("contingency", {}),
   fx("hp_set", { value: int.min(1) }),
   fx("immune", { statusId: str }),
   fx("order_cost", { delta: int, orders: external_exports.array(str).optional() }),
@@ -6976,6 +6977,8 @@ var OrderSchema = BaseEntrySchema.extend({
   summary: str,
   cost: int.min(1).max(5),
   target: external_exports.enum(["none", "ally", "enemy"]),
+  /** P12: offered only to a commander whose traits have an `unlock_order` effect naming it. */
+  requiresUnlock: external_exports.boolean().optional(),
   effects: effects.min(1)
 });
 var SynergySchema = BaseEntrySchema.extend({ name: str, summary: str, effects: effects.min(1) });
@@ -13008,22 +13011,6 @@ function scarCommander(draft, rng) {
   return [{ type: "commander_scarred", stat: stat3, seasoning: c.seasoning }];
 }
 
-// src/engine/combat/formulas.ts
-function rollDamage(rng, o) {
-  const [lo, hi] = TUNING.combat.variance;
-  const variance = lo + (hi - lo) * rng.float();
-  const raw = o.atk * o.mult * (100 / (100 + Math.max(0, o.def))) * (o.crit ? TUNING.combat.critMult : 1) * variance;
-  return Math.max(1, Math.round(raw));
-}
-function rollCrit(rng, critPct) {
-  return rng.float() * 100 < critPct;
-}
-function initiativeOrder(cs, rng, spdOf = (c) => c.base.spd) {
-  const keyed = cs.combatants.filter((c) => !c.downed && c.hp > 0).map((c) => ({ c, key: spdOf(c) + rng.int(0, TUNING.combat.initiativeRand) }));
-  keyed.sort((a, b) => b.key - a.key || (a.c.side === b.c.side ? 0 : a.c.side === "squad" ? -1 : 1) || b.c.base.spd - a.c.base.spd || a.c.index - b.c.index);
-  return keyed.map((k) => k.c.cid);
-}
-
 // src/engine/combat/targeting.ts
 var skillById = (reg, id) => reg.skills.get(id);
 var byCid = (cs, cid) => {
@@ -13099,6 +13086,43 @@ function nearest(cs, cid, side, reg) {
   const pool = cs.combatants.filter((c) => c.cid !== cid && isStanding(c) && !hasFlag2(c, reg, "untargetable") && (side === "any" || c.side === side));
   pool.sort((a, b) => rowRank(a) - rowRank(b) || (a.side === self.side ? 1 : 0) - (b.side === self.side ? 1 : 0) || a.index - b.index);
   return pool[0]?.cid;
+}
+
+// src/engine/combat/contingency.ts
+function orderUnlocked(state, reg, orderId) {
+  if (reg.orders.get(orderId)?.requiresUnlock !== true) return true;
+  return traitEffects(state, reg, "unlock_order").some((fx2) => fx2.orderId === orderId);
+}
+function isTurningAttacker(cs, attackerCid) {
+  const a = cs.combatants.find((c) => c.cid === attackerCid);
+  if (!a) return false;
+  return a.side === "enemy" ? a.unitId !== void 0 : a.breakdown !== void 0;
+}
+function takeContingency(ctx2, attackerCid) {
+  const c = ctx2.cs.contingency;
+  if (!c || c.used || !isTurningAttacker(ctx2.cs, attackerCid)) return null;
+  const cover = ctx2.cs.combatants.find((x) => x.cid === c.cid);
+  if (!cover || !isStanding(byCid(ctx2.cs, c.cid))) return null;
+  c.used = true;
+  ctx2.log({ kind: "contingency_cover", actor: c.cid, target: "commander" });
+  ctx2.emit({ type: "contingency_cover", cid: c.cid });
+  return c.cid;
+}
+
+// src/engine/combat/formulas.ts
+function rollDamage(rng, o) {
+  const [lo, hi] = TUNING.combat.variance;
+  const variance = lo + (hi - lo) * rng.float();
+  const raw = o.atk * o.mult * (100 / (100 + Math.max(0, o.def))) * (o.crit ? TUNING.combat.critMult : 1) * variance;
+  return Math.max(1, Math.round(raw));
+}
+function rollCrit(rng, critPct) {
+  return rng.float() * 100 < critPct;
+}
+function initiativeOrder(cs, rng, spdOf = (c) => c.base.spd) {
+  const keyed = cs.combatants.filter((c) => !c.downed && c.hp > 0).map((c) => ({ c, key: spdOf(c) + rng.int(0, TUNING.combat.initiativeRand) }));
+  keyed.sort((a, b) => b.key - a.key || (a.c.side === b.c.side ? 0 : a.c.side === "squad" ? -1 : 1) || b.c.base.spd - a.c.base.spd || a.c.index - b.c.index);
+  return keyed.map((k) => k.c.cid);
 }
 
 // src/engine/combat/skills.ts
@@ -13839,6 +13863,12 @@ function runEffect(ctx2, ownerCid, effect, ev, keyBase) {
       ctx2.cs.repeatOrder = true;
       break;
     // read by orders.ts after the action resolves
+    case "contingency":
+      if (!ctx2.cs.contingency) {
+        ctx2.cs.contingency = { cid: ownerCid, used: false };
+        ctx2.emit({ type: "contingency_set", cid: ownerCid });
+      }
+      break;
     case "order_refusal":
       for (const t of targets) if (t !== ownerCid && t !== "commander") byCid(ctx2.cs, t).refusal = { chance: e.chance ?? 0, sourceCid: ownerCid, ...e.orders ? { orders: e.orders } : {} };
       break;
@@ -13988,6 +14018,8 @@ function hitCommander(ctx2, attackerCid, mult, opts) {
   const { cs } = ctx2;
   const cmd = cs.commander;
   if (!cmd || cmd.downed) return { dealt: 0, crit: false, killed: false };
+  const contingent = takeContingency(ctx2, attackerCid);
+  if (contingent !== null) return dealDamage(ctx2, attackerCid, contingent, mult, opts);
   const cover = byCid(cs, cmd.coverId);
   if (isStanding(cover)) {
     ctx2.log({ kind: "cover", actor: cover.cid, target: "commander" });
@@ -14149,6 +14181,8 @@ function checkOrder(ctx2, orderId, targetCid) {
   const { cs } = ctx2;
   const order = orderOf(ctx2, orderId);
   if (!order) return `Unknown order "${orderId}".`;
+  if (!orderUnlocked(ctx2.state, ctx2.reg, orderId)) return "Not available to this commander.";
+  if (cs.contingency && order.effects.some((e) => e.type === "contingency")) return "A contingency is already set for this combat.";
   if (cs.phase !== "awaiting" || !cs.awaitingCid) return "Orders are only given while a unit awaits input.";
   let target;
   if (order.target === "none") {
@@ -25649,7 +25683,7 @@ function statusGlyph(id, stacks = 1) {
 }
 
 // src/ui/combat/keys.ts
-var ORDER_KEYS = ["q", "w", "e", "r", "t"];
+var ORDER_KEYS = ["q", "w", "e", "r", "t", "y"];
 var isEditable = (t) => {
   const el = t;
   return !!el && typeof el.tagName === "string" && (["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName) || el.isContentEditable === true);
@@ -25797,9 +25831,10 @@ function renderCombatScreen(host, ctx2) {
     selTarget = legal[(i + dir + legal.length) % legal.length];
     render();
   }
+  const visibleOrderIds = (state) => [...reg.orders.keys()].filter((id) => orderUnlocked(state, reg, id));
   function issueOrder2(state, index2) {
     const cs = state.combat;
-    const id = [...reg.orders.keys()][index2];
+    const id = visibleOrderIds(state)[index2];
     if (!cs || !id) return;
     const e = effCtx(state);
     const order = reg.orders.get(id);
@@ -25901,6 +25936,8 @@ function renderCombatScreen(host, ctx2) {
         return `R${l.round} ${name(l.target)} stress ${(l.amount ?? 0) > 0 ? "+" : ""}${l.amount ?? 0}`;
       case "cover":
         return `R${l.round} ${name(l.actor)} covers the commander`;
+      case "contingency_cover":
+        return `R${l.round} CONTINGENCY: ${name(l.actor)} takes the hit meant for the commander`;
       case "intercept":
         return `R${l.round} ${name(l.actor)} takes the hit for ${name(l.target)}`;
       case "miss":
@@ -26058,23 +26095,25 @@ function renderCombatScreen(host, ctx2) {
       });
     }
     const e = effCtx(state);
-    const orders = [...reg.orders.values()].map((o, i) => {
+    const orders = visibleOrderIds(state).map((oid) => reg.orders.get(oid)).map((o, i) => {
       const id = o.id;
       const kind = o.target;
       const pool = kind === "none" ? [void 0] : cs.combatants.filter((c) => c.side === (kind === "enemy" ? "enemy" : "squad") && !c.downed).map((c) => c.cid);
       const blocked = !waiting2 || !pool.some((t) => checkOrder(e, id, t) === null);
       const cost = waiting2 ? orderCost(e, id, kind === "ally" ? cs.awaitingCid : void 0) : o.cost;
+      const soft = o.requiresUnlock === true;
+      const why = soft && waiting2 ? [...pool].map((t) => checkOrder(e, id, t)).find((r) => r !== null) ?? null : null;
       return h("button", {
         type: "button",
         class: `alius-btn alius-order alius-option${orderMode === id ? " alius-skill-selected" : ""}`,
         "data-order": id,
         ...analyzeNative(`orders:${id}`),
-        "data-key": "QWERT"[i],
-        disabled: blocked,
-        title: String(o.summary),
+        "data-key": "QWERTY"[i],
+        ...soft ? { "aria-disabled": blocked ? "true" : null } : { disabled: blocked },
+        title: soft && blocked && why ? why : String(o.summary),
         onclick: () => {
           const s = ctx2.getState();
-          if (!s?.combat) return;
+          if (!s?.combat || soft && blocked) return;
           if (kind === "none") issueOrder2(s, i);
           else {
             orderMode = orderMode === id ? null : id;
@@ -26083,7 +26122,7 @@ function renderCombatScreen(host, ctx2) {
             render();
           }
         }
-      }, `[${"QWERT"[i]}] ${o.name} ${cost}CP`);
+      }, `[${"QWERTY"[i]}] ${o.name} ${cost}CP`);
     });
     const controls = cs.phase === "lost_pending" ? [
       h("button", { type: "button", class: "alius-btn", "data-act": "retry", onclick: () => ctx2.onRetry() }, "[RETRY]"),

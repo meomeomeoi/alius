@@ -1,4 +1,5 @@
 import type { Severity } from '../state/types';
+import { orderUnlocked } from './contingency';
 import { TUNING } from '../tuning';
 import { scaleRefusal } from '../worldOptions';
 import { activePassives, applyEffects, type EffectCtx } from './effects';
@@ -32,6 +33,8 @@ export function checkOrder(ctx: EffectCtx, orderId: string, targetCid?: string):
   const { cs } = ctx;
   const order = orderOf(ctx, orderId);
   if (!order) return `Unknown order "${orderId}".`;
+  if (!orderUnlocked(ctx.state, ctx.reg, orderId)) return 'Not available to this commander.'; // P12
+  if (cs.contingency && order.effects.some((e) => e.type === 'contingency')) return 'A contingency is already set for this combat.';
   if (cs.phase !== 'awaiting' || !cs.awaitingCid) return 'Orders are only given while a unit awaits input.';
   let target;
   if (order.target === 'none') {

@@ -1800,5 +1800,14 @@
     "see": [
       "stress"
     ]
+  },
+  {
+    "id": "contingency",
+    "term": "Contingency",
+    "short": "A combat order only a paranoid commander has: name a cover who takes the first hit from a unit that turns on the commander.",
+    "long": "AUTHOR TO WRITE: Contingency costs 2 CP and can be set once per combat. If a mutineer, or a soldier in breakdown, hits the commander, the cover takes that first hit instead. It does nothing against ordinary enemies.",
+    "see": [
+      "commander_stress"
+    ]
   }
 ]

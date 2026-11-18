@@ -357,9 +357,9 @@ describe('core content: P4 statuses, orders, synergies and defects', () => {
     expect(r.statuses.get('overheat')!.mods).toEqual({ atk: -10, spd: -10 });
   });
 
-  it('5 orders with the roles.md costs', async () => {
+  it('5 orders with the roles.md costs, plus P12\'s contingency (unlocked by a trait)', async () => {
     const { registries: r } = await load();
-    expect([...r.orders.keys()]).toEqual(['focus_fire', 'hold_the_line', 'fall_back', 'steady', 'authorize_ultimate']);
+    expect([...r.orders.keys()]).toEqual(['focus_fire', 'hold_the_line', 'fall_back', 'steady', 'authorize_ultimate', 'contingency']);
     const cost = (id: string) => r.orders.get(id)!.cost;
     expect([cost('focus_fire'), cost('hold_the_line'), cost('fall_back'), cost('steady'), cost('authorize_ultimate')]).toEqual([2, 2, 1, 1, 3]);
     expect(r.orders.get('focus_fire')!.target).toBe('enemy');

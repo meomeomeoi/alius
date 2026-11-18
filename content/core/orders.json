@@ -72,5 +72,18 @@
         "turns": 1
       }
     ]
+  },
+  {
+    "id": "contingency",
+    "name": "Contingency",
+    "summary": "AUTHOR TO WRITE: Name a cover. If a unit turns on the commander, the cover takes the first hit instead.",
+    "cost": 2,
+    "target": "ally",
+    "requiresUnlock": true,
+    "effects": [
+      {
+        "type": "contingency"
+      }
+    ]
   }
 ]
