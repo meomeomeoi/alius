@@ -903,9 +903,9 @@ git commit -am "feat(P10b): stickers on the device frame, peel with confirm"
   - `docs/ROADMAP-next.md` (P10b **done**);
   - `CLAUDE.md` (one P10b rule line in the style of the others).
 
-- [ ] **Step 1:** Run `npm test` and `npm run typecheck`. Expected: all green.
-- [ ] **Step 2:** Write the docs. The manual test covers acceptance 1–6 in SillyTavern: the real `door` / `curt` wording, fonts rendering, night colours, sticker placement on each skin.
-- [ ] **Step 3: Commit**
+- [x] **Step 1:** Run `npm test` and `npm run typecheck`. Expected: all green.
+- [x] **Step 2:** Write the docs. The manual test covers acceptance 1–6 in SillyTavern: the real `door` / `curt` wording, fonts rendering, night colours, sticker placement on each skin.
+- [x] **Step 3: Commit**
 
 ```bash
 git commit -am "docs(P10b): implemented as, overview, hand-offs, manual test"

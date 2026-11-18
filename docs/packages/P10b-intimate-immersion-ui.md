@@ -1,5 +1,7 @@
 # P10b — Intimate Immersion UI: Telemetry, Living DMs, Night Door, Handwriting, Device Marks
 
+**Status: implemented** (plan: `docs/plans/2026-11-18-p10b-intimate-immersion-ui.md`; see **Implemented as** at the end; where it differs from the draft, the code wins). The draft text below calls the commander "he / his" (§4): nothing the package writes does (lore §0).
+
 **Depends on:** P10 (voices, hub, device), P9c (device access levels — data), P9d (Want, rules). **Read:** overview; this file; P10.
 
 **Analysis tool (P7a):** every new player-facing stat, chip, option and choice card in this package carries `data-analyze`, has a glossary entry or registry `description`, and live values get an analyze provider reading through `Knowledge`.
@@ -77,3 +79,50 @@ Each named unit gets a handwriting font at import (from a bundled OFL set of ~6 
 - **A DM reply already carries her memory:** `dm_reply` gets her dossier, her journal (evidence on, a DM is private) and `ceil(retrievalK / 2)` facts (`herDossier`, `herJournal`, `herFacts` in `engine/memory/inputs.ts`).
 - **Write through the engine:** a new remembered thing is a `memoryRules` entry for an event type with a resolver (`registerMemoryResolver`); never `addFact` from UI code. `addFact(draft, fact, { remembered: true })` is for engine code that already knows its audience.
 - **UI:** the MEMORY view (`renderMemoryBlock`) and SYS › MEMORY (`renderMemorySection`, `renderFill`) exist; a new reader of facts goes through `Knowledge` (a fact hidden from the commander is never shown) and every chip carries `data-analyze`.
+
+## Implemented as
+
+**Engine** (pure, **no new RNG draw anywhere**: a chance is `fnv1a(<stable key>) % 1000 < chance × 1000`):
+- `src/engine/vitals.ts` — `vitalsOf`, `flickersOf`, `hidesInjury`, `conflictWithin`; patterns `steady / elevated / spiking / flat / erratic`, bands `heart` and `temp`, spike causes `combat / conflict / commander_near / want`. Derived, nothing stored.
+- `src/engine/dmBehaviours.ts` — `whenHolds`, `stampBehaviours`, `replyModeFor`, `hesitates`, `receiptOf`, `passes`, `slotIndex` (defined in `engine/calendar.ts`, re-exported).
+- `src/engine/hand.ts` — `handOf`, `handFamily`; action `squad/set_hand { unitId, handId }` (`actions/immersion.ts`).
+- `src/engine/notes/{state,write,dayStep,index}.ts` — `notesFor`, `unreadNotes`, `writeDoorNote`, `notesDayStep` (registered on `dm_rumors` after the personal step), `forgetNotes` (called by `removeFromService`); action `notes/read { id }`.
+- `actions/comms.ts`: `night/door_say { text }`, `night/door_reply { text }`; `dm/receive` stamps behaviours (payload `mode?: 'curt'`); `night/ignore` calls `writeDoorNote`.
+- New optional fields (version stays 1): `DmMessage.behaviours`, `NightEntry.door { said, reply? }`, `Unit.hand`, `CampaignState.notes { seq, list }`, `defects[].vitals: 'flat'`, `deviceSkins[].stickerSpots`. `TUNING.vitals { conflictDelta 3, flickerDelta 3, flickerLog 5 }`, `TUNING.notes { keepDays 3, max 12 }`. Reserved events: `door_said`, `door_replied`, `hand_set`, `note_left`, `note_read`, `notes_expired`.
+
+**Content:** registries `dmBehaviours` (8), `handFonts` (6), `handNotes` (5), `stickerArt` (8); all four are described (`DESCRIBED_REGISTRIES`, 46 player-visible registries counting the glossary). Glossary: `vitals`, `vitals_flat`, `vitals_flicker`, `dm_behaviour`, `read_receipt`, `voice_message`, `night_theme`, `night_door`, `handwriting`, `hand_note`, `rule_note`, `device_marks`, `setting_door_timer`. `SoundId` `knock` (synth, no file). Setting `doorTimer` (0–60, default 15; SYS › Display). `fonts/hand-*-400.woff2` + `fonts/LICENSES/hand-*.txt` (OFL 1.1, `@fontsource/*` 5.3.0, copied once, no dependency).
+
+**UI:** `src/ui/vitals/{trace,block}.ts`, `src/ui/comms/living.ts`, `src/ui/night/door.ts` (`knock.ts` stays: its ASCII art is the door's fallback and `renderKnock` is still exported), `src/ui/notes/{note,ruleNote}.ts`, `src/ui/home/homeTab.ts`, `src/ui/device/marks.ts`, `src/analysis/providers/immersion.ts`, `css/79-immersion.css` (+ `01-fonts.css`, `18-voices.css`). Shell: `TabId 'home'` (first, default), `KEY_TABS`, `ShellDeps.marks`, `data-night`, `Sound.setNight`.
+
+### Rulings of the plan (user, 2026-11-18)
+- The door timer is **real time**, a setting (`doorTimer`, default 15 s, 0 = none), and pauses while the commander types, while she answers, while the analysis panel or a dialog is open and while the page is hidden.
+- Through the door is **one exchange, one model reply** (`generateDm` in mode `door`), stored on the knock, read for intents like a DM, never pushed to the DM thread.
+- **HOME is a new PDA tab**, first and the default (`0` opens it, `1`–`8` keep their tabs, never locked).
+- Notes come from **four sources**: pinned notes (P9c), rule notes (P9d), stored hand notes (registry) and notes under the door.
+
+### What the implementation decided (rulings; the plan's ledger has each)
+- **Telemetry is bands and patterns only.** The `HR` / `TEMP` texts are fixed per band (`HR 60–70`, `TEMP 36.6°`), never a function of stress, Want or a ledger amount; reading texts carry no digit. Ledger deltas are only triggers. A kept `hidden_injury` secret about her removes the fever (read by the kind's `source`).
+- **Stamped once.** `stampBehaviours` runs at `dm/receive` (one entry per kind, registry order); `hesitate` is never stamped (a live indicator keyed by the last commander message) and `curt` only when the reply was *asked for* in that mode (`replyModeFor`, keyed by the next message id `m<memory.nextId+1>`, then `dm/receive { mode: 'curt' }`; any other mode is rejected). The `attachment` condition reads `bondOf`, so a unit with no imported profile counts as steady.
+- **Receipts** are derived in slots: `delivered` (same slot), `read` (a later message of hers; `slotsAgo` since it), `left_on_read` (`slotsAgo` since it was sent). Wording: `DELIVERED`, `READ`, `READ · N SLOTS AGO`, `SEEN · NO REPLY`; drawn under the **last** commander message only.
+- **The door** replaces `renderKnock` for every night entry that is not in `CONFRONTATION_KINDS` (it keeps the hooks `.alius-knock`, `data-action` `open` / `say` / `send-door` / `ignore`). Any open `.alius-analyze` (hovered or pinned) or `.alius-modal-backdrop` pauses the countdown. The deadline lives in a module `Map` per entry id (a redraw keeps it, a reload starts again; after the exchange it restarts at full length). `onChanged` redraws from the current state after the reply.
+- **Night** is `data-night="true"` on the shell root while `slot === 'night'`; the dimmed variables live in `79-immersion.css` on `:not(.alius-readable)` selectors (readable mode keeps the attribute, drops the dimming). The shell tells the sound (`setNight`, gain × `NIGHT_GAIN = 0.5`) in `applySettings`.
+- **Notes.** Daily notes need `unit.bond` (P9c's gate) and the first entry whose `when` holds and whose `fnv1a(day|unitId|noteId)` passes; at most one per unit per day, none of a place where she has an unread note. **Door notes have no bond gate and no hash gate** (an unanswered knock of any named unit leaves one when an entry fits). Text is copied at write time (`{name}` filled, `AUTHOR TO WRITE:` stripped). Notes expire 3 days after their day, the list caps at 12, a unit who leaves service loses hers.
+- **Rule notes** keep the P9d button hooks (`data-rule-answer`, `data-rule`) and replace the chip under a COMMS thread only for proposals; the chip stays in the scene screen. The tear plays once per rule and `lastBrokenDay` (UI-local set, `resetTorn` for tests).
+- **Handwriting.** Default hand = `fnv1a(unitId) % n` in registry order (nothing stored); `unit.hand` wins when it names an entry; re-sync keeps it. A note element sets `--alius-font-hand: "<family>", var(--alius-font-type)`; readable mode uses the type font.
+- **Marks.** A `.alius-device-marks` layer sits between the casing and the screen, `aria-hidden`, `pointer-events: none` (inline and in CSS). The shell draws it in `buildLayer` and on every `applySettings`; the casing is still dressed once. A sticker is `likeTags` first (case-insensitive), else the hash; units with a `sticker` part take the skin's spots in squad order; extra stickers, a skin without `stickerSpots` and a decor whose fade is over show none (`BUILT_IN_SKIN` carries the CCP spots). PEEL (dossier, HOME `[PEEL STICKER]`, `[CHANGE WALLPAPER]`) goes through `app.confirmPeel` → `PEEL HER {PART}?` `[PEEL] [KEEP]` → `device/remove_decor`.
+- **Tests that moved** (expected values, not behaviour): the default tab SQUAD → HOME and 8 → 9 tabs in `shell`, `shellDevice`, `shellLocks`, `motion`, `analyzer`, `analyzeCoverage`, `app`, `prologueSchemas` (`UI_TAB_IDS` is `TAB_IDS` without `home`); `PLAYER_VISIBLE` 42 → 46; `SOUND_IDS` 8 → 9; assets thresholds 7 → 13 fonts. No seeded engine test changed.
+
+### Open items
+- **Not yet run by hand in SillyTavern:** see `docs/MANUAL_TEST_P10b.md` (the real `door` / `curt` wording, the hand fonts and night colours on screen, the sticker spots on each skin — the coordinates in `deviceSkins.json` are drafts).
+- **Authored text** is `AUTHOR TO WRITE`: the glossary long texts, descriptions of the four registries, the `handNotes` texts, the door framing.
+- **Still open from P10:** stored whereabouts schedules and the accent as data (`unitAccent` stays a fixed list). Also open: the roster's HP line of a unit hiding an injury (P9c), night bookings (P9c), a DM-arrival toast.
+- **Sticker art** is inline SVG paths and glyphs; author art would need an image field.
+
+### Non-obvious things to know before touching P10b code
+- **No new RNG draw.** A new "chance" is a hash of a stable key, never `ctx.rng`; a test that deep-equals state after `dm/receive`, `night/ignore` or the day end and sees a new field **stops and reports** (an unanswered knock now writes `notes`).
+- **`dm/receive` is the only place behaviours are decided**; the UI reads a message's own stamp by `kind` and never re-decides from state (an old bubble never changes). The deleted placeholder is not a stored message: not unread, not in the history.
+- **The door's state is two things:** the engine's `nightEvent.door` (survives a reload) and the UI's module `Map`/`Set` (timer, pending reply). Every model step of `throughDoor` is dispatched with `expectChatId`; a failed generation leaves `said` with no `reply` and the door says `No answer through the door.`
+- **`renderDoor` must keep the old hooks** (`tests/app-scene.test.ts` clicks `data-action="ignore"`).
+- **HOME first changes the default.** Tests and code that open the device and expect SQUAD must call `showTab('squad')`; `showTab` before `open()` still lands where it was asked.
+- **`ShellDeps.marks` is called on every refresh** (it must be cheap and idempotent: it replaces the layer's children); never draw a sticker from a hub renderer or make one clickable.
+- **Readers by field, never by id:** behaviours by `kind`, notes by `where`, stickers by `likeTags`, hands by registry order, defects by `vitals`, skins by `stickerSpots`, secret kinds by `source`; the only ids code names are the `SoundId` `knock`, the tab id `home`, `WANT_VISIT_KIND` and `SECRET_NIGHT_KIND`.

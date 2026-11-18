@@ -113,7 +113,7 @@ Hub cross-section art (+ optional time-of-day variants), device renders per skin
 - **Native tooltips:** the analyzer moves the `title` of a hovered `[data-analyze]` element to `data-title` (the browser's own tooltip would sit on top of the panel); do not rely on `title` staying on an analysable element.
 
 ### Open items
-- **Stored schedules** for whereabouts (P10b); a booking of the current slot already places her in the booked room (P9c, derived from `personal.bookings`, reason `routine`, no stored room); **hand fonts** for paper notes (P10b); the personal accent as data (P10b).
+- **Stored schedules** for whereabouts (still open: P10b did not take them, they stay derived); a booking of the current slot already places her in the booked room (P9c, derived from `personal.bookings`, reason `routine`, no stored room); **hand fonts** for paper notes (**done in P10b**: `handFonts`, `--alius-font-hand`); the personal accent as data (still open: `unitAccent` stays a fixed list).
 - **Author art** (fallbacks ship): hub base `content/core/art/hub/base.png` and slot variants `base_<slot>.png`, `image` skin frames and the optional CC0 overlay, audio files under `content/core/audio/`. None is in the repository.
 - **Objective** is a stub (`currentObjective`): P11 replaces the body and keeps the signature.
 - **Crowded rooms:** a room scrolls when it holds more markers than fit, and its head shows the count (`aria-label` `{ROOM}, {n} here`).
