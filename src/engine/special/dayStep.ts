@@ -5,6 +5,7 @@ import { frequencyDiscovered, syncFrequencyKnowers } from './frequency/discovery
 import { decayFrequency, suspicionOf } from './frequency/leaks';
 import { TUNING } from '../tuning';
 import { addCommanderStress } from './commanderStress';
+import { paranoiaDayStep } from './paranoia/premonitions';
 import { forgetSpecial, holdsSpecial } from './state';
 
 /**
@@ -19,6 +20,7 @@ export function specialDayStep(draft: CampaignState, ctx: EngineCtx): EngineEven
     if (u.kind === 'named' && isLiving(u) && suspicionOf(draft, u.id) >= 100) events.push(...frequencyDiscovered(draft, ctx, u.id));
   }
   decayFrequency(draft);
+  events.push(...paranoiaDayStep(draft, ctx)); // after P6's loyalty step (this module is imported after `actions/loyalty`)
   return events;
 }
 

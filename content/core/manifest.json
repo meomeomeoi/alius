@@ -67,6 +67,7 @@
     "handFonts": "handFonts.json",
     "handNotes": "handNotes.json",
     "stickerArt": "stickerArt.json",
-    "frequencyFragments": "frequencyFragments.json"
+    "frequencyFragments": "frequencyFragments.json",
+    "premonitionLines": "premonitionLines.json"
   }
 }

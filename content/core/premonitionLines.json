@@ -1,0 +1,42 @@
+[
+  {
+    "id": "doubt",
+    "description": "AUTHOR TO WRITE: the notice of an early warning about doubt. A real and a false warning read the same.",
+    "about": "doubt",
+    "lines": [
+      "{name} may be having doubts.",
+      "Something about {name} is off: doubt, maybe.",
+      "{name} is wavering. It may show soon."
+    ]
+  },
+  {
+    "id": "desertion",
+    "description": "AUTHOR TO WRITE: the notice of an early warning about desertion. A real and a false warning read the same.",
+    "about": "desertion",
+    "lines": [
+      "{name} may be thinking of leaving.",
+      "{name} is close to walking away.",
+      "Watch {name}: she may run."
+    ]
+  },
+  {
+    "id": "mutiny",
+    "description": "AUTHOR TO WRITE: the notice of an early warning about mutiny. A real and a false warning read the same.",
+    "about": "mutiny",
+    "lines": [
+      "{name} may turn on the commander.",
+      "A quiet anger in {name}: mutiny, maybe.",
+      "{name} is nearly past the point of no return."
+    ]
+  },
+  {
+    "id": "defiance",
+    "description": "AUTHOR TO WRITE: the notice of an early warning about defiance. A real and a false warning read the same.",
+    "about": "defiance",
+    "lines": [
+      "{name} may stop taking orders.",
+      "{name} is testing how far she can go.",
+      "Expect defiance from {name}."
+    ]
+  }
+]

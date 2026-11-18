@@ -4,7 +4,8 @@ import type { CampaignState } from '../../src/engine/state/types';
 import { seedRng } from '../../src/engine/rng';
 import { unitSetup } from './world';
 
-// Importing this registers the actions the special tests run through.
+// Importing this registers the actions the special tests run through. The loyalty step comes first: the paranoia step reads what it decided.
+import '../../src/engine/actions/loyalty';
 import '../../src/engine/actions/special';
 
 export const [ANN, BEA, CAT, DEE] = ['unit_ann', 'unit_bea', 'unit_cat', 'unit_dee'];

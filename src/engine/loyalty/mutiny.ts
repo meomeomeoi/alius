@@ -37,7 +37,7 @@ export function mutinyTrigger(state: CampaignState, unitId: string, minSeverity:
   return found.sort((a, b) => b.day - a.day)[0] ?? null;
 }
 
-const mutinySigns = (state: CampaignState, unitId: string) => (loyaltyOf(state, unitId)?.signs ?? []).filter((s) => s.about === 'mutiny');
+export const mutinySigns = (state: CampaignState, unitId: string) => (loyaltyOf(state, unitId)?.signs ?? []).filter((s) => s.about === 'mutiny');
 
 /**
  * P8: when a mutiny can come from her. Her disposition level decides if it can at all, from which relationship states, after
@@ -48,7 +48,7 @@ export function mutinyRules(state: CampaignState, reg: Registries, unitId: strin
 }
 
 /** Whether she is in a state a mutiny can come from right now (before signs are counted). */
-function mayMutiny(state: CampaignState, reg: Registries, unitId: string): boolean {
+export function mayMutiny(state: CampaignState, reg: Registries, unitId: string): boolean {
   const unit = state.squad.find((u) => u.id === unitId);
   const rel = state.relations[unitId];
   if (!unit || !rel || unit.kind !== 'named' || !isLiving(unit)) return false;

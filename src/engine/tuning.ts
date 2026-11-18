@@ -468,6 +468,15 @@ export const TUNING = Object.freeze({
       leakDays: 14, falseLeakMult: 0.5, suspicionDecay: 2, staticAbove: 50,
     }),
     /** The commander's own stress (every campaign; it never draws). */
+    paranoia: Object.freeze({
+      /** A real precursor shows 1 to `leadDays` days ahead (by a hash, no draw); a premonition stays open `openDays` days and is kept `keepDays`. */
+      leadDays: 2, openDays: 3, keepDays: 14,
+      /** Desertion: Trust within this of the breaking line; the ledger is read over `lookbackDays` days (today included). */
+      desertionMargin: 5, lookbackDays: 2,
+      /** Defiance: the Impunity the engine adds to ask "would she defy?". */
+      defianceBump: 10,
+      falseBase: 0.08, falsePerInsight: 0.02, falseAfterNightmare: 0.05,
+    }),
     commanderStress: Object.freeze({ empathyAt: 70, dayRelief: 5, sleepRelief: 15, downed: 10, nightmare: 15, falseAlarm: 5 }),
   }),
 });

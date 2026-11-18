@@ -651,7 +651,7 @@ The day step's decay runs in every campaign: it is registered unconditionally an
   - Event `premonition { unitId, premonitionId, about }`.
 - Consumes: `loyaltyOf`, `mutinyRules`, `mutinyTrigger`, `commandStance`, `impunityOf`, `ledgerFor`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 - `a doubt sign 2 days out gives a premonition 2 days before the sign` (acceptance 3, "earlier"): wavering unit, `nextDoubtDay = day + 2` → premonition today with `about: 'doubt'`; run two day ends → the real `loyalty_sign` appears on the later day.
 - `desertion precursor needs falling Trust near breaking`.
 - `mutiny precursor one sign short`.
@@ -661,8 +661,8 @@ The day step's decay runs in every campaign: it is registered unconditionally an
 - `the event is identical in shape for real and false`: same keys, no `real`.
 - `no paranoia effect: no draw`.
 
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → PASS; `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P12): premonitions from real precursors and false alarms`
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → PASS; `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P12): premonitions from real precursors and false alarms`
 
 ---
 

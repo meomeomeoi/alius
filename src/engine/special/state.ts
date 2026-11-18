@@ -48,8 +48,37 @@ export interface FrequencyState {
 
 export const newFrequency = (): FrequencyState => ({ intercepts: [], seq: 0, suspicion: {}, dmDay: {} });
 
+/** What a premonition can be about: the four warnings the commander gets early. */
+export const PREMONITION_ABOUT = ['doubt', 'desertion', 'mutiny', 'defiance'] as const;
+export type PremonitionAbout = (typeof PREMONITION_ABOUT)[number];
+
+/**
+ * A warning that reached the commander early. `real` says whether the engine could really see it coming; it never leaves the engine
+ * (no event, toast, panel or reading carries it) and a false one looks exactly like a real one. `acted` closes it.
+ */
+export interface Premonition {
+  id: string;
+  unitId: string;
+  about: PremonitionAbout;
+  day: number;
+  expiresDay: number;
+  real: boolean;
+  acted?: 'preempted' | 'false';
+}
+
+/** The days after acting on a real warning, during which the talk-down is easier. */
+export interface Preempt { unitId: string; untilDay: number; about: PremonitionAbout }
+
 /** Bloom-induced Paranoia: premonitions, preempt windows and the last nightmare. */
-export interface ParanoiaState {}
+export interface ParanoiaState {
+  premonitions: Premonition[];
+  /** Counter behind the premonition ids. */
+  seq: number;
+  preempt?: Preempt[];
+  lastNightmareDay?: number;
+}
+
+export const newParanoia = (): ParanoiaState => ({ premonitions: [], seq: 0 });
 
 /** Web of Debts: the handler, the intel exchange and both suspicion clocks. */
 export interface DebtsState {}

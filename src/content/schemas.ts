@@ -478,7 +478,7 @@ export const RESERVED_EVENT_TYPES: readonly string[] = [
   'wager_offered', 'wager_refused', 'wager_accepted', 'wager_declined', 'wager_resolved', 'mark_set', 'mark_ended', 'wager_question', 'truth_told', 'demand_dropped',
   'secret_kept', 'secret_found', 'secret_answered',
   // P12
-  'frequency_intercept', 'frequency_worded', 'frequency_static', 'frequency_discovered', 'implant_burned', 'commander_stress_changed',
+  'frequency_intercept', 'frequency_worded', 'frequency_static', 'frequency_discovered', 'implant_burned', 'commander_stress_changed', 'premonition',
   // P10b
   'door_said', 'door_replied', 'hand_set', 'note_left', 'note_read', 'notes_expired',
 ];
@@ -1981,6 +1981,15 @@ export const FrequencyFragmentSchema = BaseEntrySchema.extend({
 }).strict();
 export type FrequencyFragmentEntry = z.infer<typeof FrequencyFragmentSchema>;
 registrySchemas.frequencyFragments = FrequencyFragmentSchema;
+
+/** P12 §2: the wording of a PREMONITION notice, one entry per warning kind (hidden wording; `{name}` is filled). A real and a false one read the same. */
+export const PremonitionLineSchema = BaseEntrySchema.extend({
+  description: str.max(DESCRIPTION_MAX).optional(),
+  about: z.enum(['doubt', 'desertion', 'mutiny', 'defiance']),
+  lines: z.array(str.max(160)).min(1),
+}).strict();
+export type PremonitionLineEntry = z.infer<typeof PremonitionLineSchema>;
+registrySchemas.premonitionLines = PremonitionLineSchema;
 
 /**
  * P3b: an engine event worth remembering. The `event` has a resolver (`engine/memory/resolvers.ts`); `about`, `audience`, `when` and the

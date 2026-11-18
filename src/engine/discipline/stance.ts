@@ -16,11 +16,16 @@ export function commandStance(state: CampaignState, reg: Registries, unitId: str
   const i = impunityOf(state, reg, unitId);
   const rel = state.relations[unitId];
   if (!i || !rel) return null;
+  return stanceAt(rel.trust, i.value);
+}
+
+/** The stance a given Trust and Impunity land in (pure: `commandStance` reads them from the state, P12's premonitions ask "what if"). */
+export function stanceAt(trust: number, impunity: number): CommandStance {
   const T = TUNING.impunity.stance;
   const Z = T.indifferent;
-  if (rel.trust >= Z.trustMin && rel.trust < T.trustHigh && i.value >= Z.impunityMin && i.value <= Z.impunityMax) return 'indifferent';
-  const trustHigh = rel.trust >= T.trustHigh;
-  const impunityHigh = i.value >= T.impunityHigh;
+  if (trust >= Z.trustMin && trust < T.trustHigh && impunity >= Z.impunityMin && impunity <= Z.impunityMax) return 'indifferent';
+  const trustHigh = trust >= T.trustHigh;
+  const impunityHigh = impunity >= T.impunityHigh;
   return trustHigh ? (impunityHigh ? 'defiant_loyal' : 'disciplined') : (impunityHigh ? 'open_defiance' : 'fearful');
 }
 
