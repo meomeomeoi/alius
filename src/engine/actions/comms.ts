@@ -5,6 +5,7 @@ import { relieveWant } from '../bonds/want';
 import { consumeSlots, registerDayEndStep } from '../calendar';
 import { registerAction } from '../dispatch';
 import { stampBehaviours } from '../dmBehaviours';
+import { writeDoorNote } from '../notes';
 import { countSent, dmMode, pushMessage, rollInitiative } from '../dms';
 import { isLiving } from '../economy';
 import { takeKeptEdit } from '../personal/intercept';
@@ -161,6 +162,7 @@ registerAction('night/ignore', (draft, _payload, ctx) => {
   };
   events.push(...applyEventToUnit(draft, ctx.registries, entry.unitId, consequence));
   events.push(...evaluateAutomatic(draft, ctx.registries, entry.unitId));
+  events.push(...writeDoorNote(draft, ctx.registries, entry.unitId)); // P10b: an unanswered knock leaves a note under the door
   events.push(...consumeSlots(draft, 1, ctx));
   return events;
 });

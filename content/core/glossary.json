@@ -1709,5 +1709,15 @@
     "see": [
       "night_door"
     ]
+  },
+  {
+    "id": "hand_note",
+    "term": "Handwritten note",
+    "short": "A note a soldier leaves for the commander: in the quarters, in the gear or under the door, in her own hand.",
+    "long": "AUTHOR TO WRITE: Soldiers who are close leave notes. Quarters notes wait on the desk when the commander comes in, gear notes are tucked into the inventory and door notes are pushed under the door after an unanswered knock. A note lasts a few days, and unread ones raise a badge on HOME.",
+    "see": [
+      "handwriting",
+      "night_door"
+    ]
   }
 ]

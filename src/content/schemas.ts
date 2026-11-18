@@ -478,7 +478,7 @@ export const RESERVED_EVENT_TYPES: readonly string[] = [
   'wager_offered', 'wager_refused', 'wager_accepted', 'wager_declined', 'wager_resolved', 'mark_set', 'mark_ended', 'wager_question', 'truth_told', 'demand_dropped',
   'secret_kept', 'secret_found', 'secret_answered',
   // P10b
-  'door_said', 'door_replied', 'hand_set',
+  'door_said', 'door_replied', 'hand_set', 'note_left', 'note_read', 'notes_expired',
 ];
 
 const slotEnum = z.enum(['morning', 'afternoon', 'evening', 'night']);
@@ -2003,6 +2003,34 @@ export const HandFontSchema = BaseEntrySchema.extend({
 export type HandFontEntry = z.infer<typeof HandFontSchema>;
 registrySchemas.handFonts = HandFontSchema;
 
+/** P10b §4: when a stored hand note may be written. All optional, all must hold; `trigger` is when it is considered (default `daily`). */
+export const HandNoteWhenSchema = z.object({
+  /** The device access level she has (P9c, 0–4) at least. */
+  minAccess: int.min(1).max(4).optional(),
+  tiers: z.array(z.enum(['close', 'romantic'])).min(1).optional(),
+  wantBands: z.array(z.enum(['calm', 'restless', 'aching', 'desperate'])).min(1).optional(),
+  states: z.array(str).min(1).optional(),
+  trigger: z.enum(['daily', 'knock_unanswered']).optional(),
+}).strict();
+export type HandNoteWhen = z.infer<typeof HandNoteWhenSchema>;
+
+/** P10b §4: a note she may leave, in her hand: in the quarters, in the gear or under the door. `text` may carry `{name}`. */
+export const HandNoteSchema = BaseEntrySchema.extend({
+  name: str.max(60),
+  description: str.max(DESCRIPTION_MAX),
+  where: z.enum(['quarters', 'gear', 'door']),
+  text: str.max(200),
+  chance: z.number().min(0).max(1),
+  when: HandNoteWhenSchema.optional(),
+}).strict().superRefine((n, ctx) => {
+  const door = n.where === 'door';
+  const trigger = n.when?.trigger ?? 'daily';
+  if (door && trigger !== 'knock_unanswered') ctx.addIssue({ code: 'custom', path: ['when', 'trigger'], message: 'a door note is written by an unanswered knock' });
+  if (!door && trigger === 'knock_unanswered') ctx.addIssue({ code: 'custom', path: ['when', 'trigger'], message: 'only a door note is written by an unanswered knock' });
+});
+export type HandNoteEntry = z.infer<typeof HandNoteSchema>;
+registrySchemas.handNotes = HandNoteSchema;
+
 /** Player-visible registries whose entries carry an optional `description` (skills and statuses already require one). */
 export const DESCRIBED_REGISTRIES = [
   'roles', 'skills', 'signatures', 'statuses', 'defects', 'items', 'affixes', 'enemies',
@@ -2023,7 +2051,7 @@ export const DESCRIBED_REGISTRIES = [
   // P9c
   'deviceAccessRules', 'bookingKinds', 'tokenKinds', 'wagerGames', 'wagerStakes', 'secretKinds',
   // P10b
-  'dmBehaviours', 'handFonts',
+  'dmBehaviours', 'handFonts', 'handNotes',
 ] as const satisfies readonly RegistryName[];
 
 /** Adds the optional `description` rule to a registry schema without changing its shape. */

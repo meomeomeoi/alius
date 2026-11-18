@@ -92,6 +92,8 @@ export const TUNING = Object.freeze({
   ledger: Object.freeze({ days: 7, max: 150 }),
   /** P10b: the squad's biotelemetry (derived from state, no draws). A trust or affinity drop of `conflictDelta` in the current slot is a conflict spike; a gain of `flickerDelta` is a flicker of a flat unit; `flickerLog` entries are listed. */
   vitals: Object.freeze({ conflictDelta: 3, flickerDelta: 3, flickerLog: 5 }),
+  /** P10b: a hand note lasts `keepDays` days after the day it was written; the list keeps at most `max` (oldest out first). */
+  notes: Object.freeze({ keepDays: 3, max: 12 }),
   /** P11: how many soldiers one scene can hold (the line-up takes the whole squad of four). */
   scene: Object.freeze({ maxParticipants: 4 }),
   upkeep: Object.freeze({ perUnit: 1, commander: 1, doubledByDefect: 'hunger_loop' }),

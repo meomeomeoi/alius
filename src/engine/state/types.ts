@@ -410,6 +410,17 @@ export interface OnboardingState {
   tutorialMissionId?: string;
 }
 
+/** P10b: a note a soldier left in her hand (the text is copied when it is written, `{name}` filled). */
+export interface HandNote {
+  id: string;
+  unitId: string;
+  noteId: string;
+  where: 'quarters' | 'gear' | 'door';
+  text: string;
+  day: number;
+  read?: true;
+}
+
 export interface NightEntry {
   id: string;
   unitId: string;
@@ -864,6 +875,8 @@ export interface CampaignState {
   };
   /** Recent changes of resources, stress and relation axes (P7a): the newest 150 entries of the last 7 days. Absent in older saves. */
   ledger?: LedgerEntry[];
+  /** P10b: the notes soldiers left (a counter and the list, oldest first); absent in older saves = none. */
+  notes?: { seq: number; list: HandNote[] };
   /** The open scene, if any (P3). */
   scene?: SceneRecord;
   /** Open proposals waiting for the commander's answer (P3). */

@@ -106,6 +106,8 @@ var TUNING = Object.freeze({
   ledger: Object.freeze({ days: 7, max: 150 }),
   /** P10b: the squad's biotelemetry (derived from state, no draws). A trust or affinity drop of `conflictDelta` in the current slot is a conflict spike; a gain of `flickerDelta` is a flicker of a flat unit; `flickerLog` entries are listed. */
   vitals: Object.freeze({ conflictDelta: 3, flickerDelta: 3, flickerLog: 5 }),
+  /** P10b: a hand note lasts `keepDays` days after the day it was written; the list keeps at most `max` (oldest out first). */
+  notes: Object.freeze({ keepDays: 3, max: 12 }),
   /** P11: how many soldiers one scene can hold (the line-up takes the whole squad of four). */
   scene: Object.freeze({ maxParticipants: 4 }),
   upkeep: Object.freeze({ perUnit: 1, commander: 1, doubledByDefect: "hunger_loop" }),
@@ -5940,7 +5942,8 @@ var REGISTRY_NAMES = [
   "memoryRules",
   // P10b
   "dmBehaviours",
-  "handFonts"
+  "handFonts",
+  "handNotes"
 ];
 var PackManifestSchema = external_exports.object({
   id: external_exports.string().min(1),
@@ -6571,7 +6574,10 @@ var RESERVED_EVENT_TYPES = [
   // P10b
   "door_said",
   "door_replied",
-  "hand_set"
+  "hand_set",
+  "note_left",
+  "note_read",
+  "notes_expired"
 ];
 var slotEnum = external_exports.enum(["morning", "afternoon", "evening", "night"]);
 var socialStat = external_exports.enum(["authority", "insight", "empathy", "cunning"]);
@@ -7843,6 +7849,28 @@ var HandFontSchema = BaseEntrySchema.extend({
   description: str.max(DESCRIPTION_MAX)
 }).strict();
 registrySchemas.handFonts = HandFontSchema;
+var HandNoteWhenSchema = external_exports.object({
+  /** The device access level she has (P9c, 0–4) at least. */
+  minAccess: int.min(1).max(4).optional(),
+  tiers: external_exports.array(external_exports.enum(["close", "romantic"])).min(1).optional(),
+  wantBands: external_exports.array(external_exports.enum(["calm", "restless", "aching", "desperate"])).min(1).optional(),
+  states: external_exports.array(str).min(1).optional(),
+  trigger: external_exports.enum(["daily", "knock_unanswered"]).optional()
+}).strict();
+var HandNoteSchema = BaseEntrySchema.extend({
+  name: str.max(60),
+  description: str.max(DESCRIPTION_MAX),
+  where: external_exports.enum(["quarters", "gear", "door"]),
+  text: str.max(200),
+  chance: external_exports.number().min(0).max(1),
+  when: HandNoteWhenSchema.optional()
+}).strict().superRefine((n, ctx2) => {
+  const door = n.where === "door";
+  const trigger = n.when?.trigger ?? "daily";
+  if (door && trigger !== "knock_unanswered") ctx2.addIssue({ code: "custom", path: ["when", "trigger"], message: "a door note is written by an unanswered knock" });
+  if (!door && trigger === "knock_unanswered") ctx2.addIssue({ code: "custom", path: ["when", "trigger"], message: "only a door note is written by an unanswered knock" });
+});
+registrySchemas.handNotes = HandNoteSchema;
 var DESCRIBED_REGISTRIES = [
   "roles",
   "skills",
@@ -7894,7 +7922,8 @@ var DESCRIBED_REGISTRIES = [
   "secretKinds",
   // P10b
   "dmBehaviours",
-  "handFonts"
+  "handFonts",
+  "handNotes"
 ];
 function withDescription(schema) {
   return schema.superRefine((entry, ctx2) => {
@@ -13582,8 +13611,8 @@ function runEffect(ctx2, ownerCid, effect, ev, keyBase) {
       break;
     }
     case "summon": {
-      const alive = ctx2.cs.combatants.filter((c) => c.summonedBy === ownerCid && c.enemyId === e.enemyId && isStanding(c));
-      if (alive.length >= e.max) break;
+      const alive2 = ctx2.cs.combatants.filter((c) => c.summonedBy === ownerCid && c.enemyId === e.enemyId && isStanding(c));
+      if (alive2.length >= e.max) break;
       const sp = spawnEnemy(ctx2.cs, ctx2.state, ctx2.reg, { enemyId: e.enemyId, level: owner.level, affixes: [], row: owner.row }, ownerCid);
       if (sp) ctx2.log({ kind: "summon", actor: ownerCid, target: sp.cid });
       break;
@@ -15068,6 +15097,19 @@ function closeNight(draft, ctx2, open3) {
   return open3.at === "night" && draft.slot === "night" ? consumeSlots(draft, 1, ctx2) : [];
 }
 
+// src/engine/notes/state.ts
+function notesOf(draft) {
+  return draft.notes ??= { seq: 0, list: [] };
+}
+function nextNoteId(draft) {
+  const notes = notesOf(draft);
+  notes.seq += 1;
+  return `hn${notes.seq}`;
+}
+function forgetNotes(draft, unitId) {
+  if (draft.notes) draft.notes.list = draft.notes.list.filter((n) => n.unitId !== unitId);
+}
+
 // src/engine/leash/use.ts
 var clamp14 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var unitOf5 = (state, id) => state.squad.find((u) => u.id === id);
@@ -15225,6 +15267,7 @@ function removeFromService(draft, unitId, status) {
   forgetBonds(draft, unitId);
   forgetPower(draft, unitId);
   forgetPersonal(draft, unitId);
+  forgetNotes(draft, unitId);
 }
 function forgetBonds(draft, unitId) {
   if (draft.bonds) {
@@ -20325,6 +20368,70 @@ function receiptOf(state, unitId, msg) {
   return age >= 1 ? { status: "left_on_read", slotsAgo: age } : { status: "delivered" };
 }
 
+// src/engine/notes/write.ts
+function entriesFor(reg, trigger) {
+  return [...reg.handNotes.values()].filter((e) => (e.when?.trigger ?? "daily") === trigger);
+}
+function noteWhenHolds(state, reg, unitId, when) {
+  if (when === void 0) return true;
+  const rel = state.relations[unitId];
+  if (!rel) return false;
+  if (when.minAccess !== void 0 && deviceAccess(state, reg, unitId) < when.minAccess) return false;
+  if (when.tiers !== void 0) {
+    const tier = bondTierOf(state, reg, unitId);
+    if (tier === null || !when.tiers.includes(tier)) return false;
+  }
+  if (when.wantBands !== void 0 && !when.wantBands.includes(wantBandOf(state, reg, unitId))) return false;
+  if (when.states !== void 0 && !when.states.includes(rel.stateId)) return false;
+  return true;
+}
+var namedLiving7 = (state, unitId) => {
+  const u = state.squad.find((x) => x.id === unitId);
+  return u !== void 0 && u.kind === "named" && isLiving(u) ? u : null;
+};
+function capNotes(draft) {
+  if (draft.notes && draft.notes.list.length > TUNING.notes.max) draft.notes.list = draft.notes.list.slice(draft.notes.list.length - TUNING.notes.max);
+}
+function leaveNote(draft, unit2, entry) {
+  const text2 = String(entry.text).replace(/^AUTHOR TO WRITE:\s*/, "").replaceAll("{name}", unit2.displayName);
+  const note = { id: nextNoteId(draft), unitId: unit2.id, noteId: String(entry.id), where: entry.where, text: text2, day: draft.day };
+  notesOf(draft).list.push(note);
+  capNotes(draft);
+  return [{ type: "note_left", unitId: unit2.id, noteId: note.noteId, where: note.where }];
+}
+function writeDoorNote(draft, reg, unitId) {
+  const unit2 = namedLiving7(draft, unitId);
+  if (!unit2) return [];
+  const entry = entriesFor(reg, "knock_unanswered").find((e) => noteWhenHolds(draft, reg, unitId, e.when));
+  return entry ? leaveNote(draft, unit2, entry) : [];
+}
+
+// src/engine/notes/dayStep.ts
+var alive = (state, n) => state.day - n.day <= TUNING.notes.keepDays;
+function notesDayStep(draft, ctx2) {
+  const events = [];
+  if (draft.notes) {
+    draft.notes.list = draft.notes.list.filter((n) => namedLiving7(draft, n.unitId) !== null);
+    const gone = draft.notes.list.length;
+    draft.notes.list = draft.notes.list.filter((n) => alive(draft, n));
+    if (draft.notes.list.length < gone) events.push({ type: "notes_expired", count: gone - draft.notes.list.length });
+  }
+  const daily = entriesFor(ctx2.registries, "daily");
+  for (const unit2 of draft.squad) {
+    if (unit2.bond === void 0 || !namedLiving7(draft, unit2.id)) continue;
+    const mine = (draft.notes?.list ?? []).filter((n) => n.unitId === unit2.id);
+    if (mine.some((n) => n.day === draft.day)) continue;
+    const entry = daily.find((e) => {
+      if (mine.some((n) => n.where === e.where && n.read !== true)) return false;
+      if (!noteWhenHolds(draft, ctx2.registries, unit2.id, e.when)) return false;
+      return passes(`${draft.day}|${unit2.id}|${String(e.id)}`, Number(e.chance));
+    });
+    if (entry) events.push(...leaveNote(draft, unit2, entry));
+  }
+  capNotes(draft);
+  return events;
+}
+
 // src/engine/personal/intercept.ts
 var ORIGINAL_MAX = 1e3;
 var INTERCEPT_CHANNELS = ["dm", "leash", "recruit"];
@@ -20514,6 +20621,7 @@ registerAction("night/ignore", (draft, _payload, ctx2) => {
   };
   events.push(...applyEventToUnit(draft, ctx2.registries, entry.unitId, consequence2));
   events.push(...evaluateAutomatic(draft, ctx2.registries, entry.unitId));
+  events.push(...writeDoorNote(draft, ctx2.registries, entry.unitId));
   events.push(...consumeSlots(draft, 1, ctx2));
   return events;
 });
@@ -21445,6 +21553,14 @@ registerAction("squad/set_hand", (draft, payload, ctx2) => {
   if (!ctx2.registries.handFonts.has(payload.handId)) throw new Error(`squad/set_hand: unknown hand "${payload.handId}"`);
   unit2.hand = payload.handId;
   return [{ type: "hand_set", unitId: unit2.id, handId: payload.handId }];
+});
+registerDayEndStep("dm_rumors", notesDayStep);
+registerAction("notes/read", (draft, payload) => {
+  if (!isObj24(payload) || typeof payload.id !== "string") throw new Error("notes/read needs { id }");
+  const note = draft.notes?.list.find((n) => n.id === payload.id);
+  if (!note) throw new Error(`notes/read: no note "${payload.id}"`);
+  note.read = true;
+  return [{ type: "note_read", id: note.id, unitId: note.unitId }];
 });
 
 // src/engine/power/dayStep.ts
@@ -39093,6 +39209,7 @@ registerChecks("deviceAccessRules", (entry, regs) => {
   return twin ? [{ path: "level", message: `level ${String(entry.level)} already has the rule "${String(twin.id)}"` }] : [];
 });
 registerRefs("dmBehaviours", (entry) => (entry.when?.states ?? []).map((id, i) => ({ registry: "relationshipStates", id, path: `when.states[${i}]` })));
+registerRefs("handNotes", (entry) => (entry.when?.states ?? []).map((id, i) => ({ registry: "relationshipStates", id, path: `when.states[${i}]` })));
 registerRefs("bookingKinds", (entry) => typeof entry.locationId === "string" ? [{ registry: "locations", id: entry.locationId, path: "locationId" }] : []);
 
 // src/content/loader.ts

@@ -86,9 +86,10 @@ describe('panel model', () => {
     expect(settingGlossaryId('palette')).toBe('setting_palette');
   });
 
-  it('PLAYER_VISIBLE is the 43 described registries (20, the P7 traits and tastes, the P8 world options, levels and presets, the P9 command stances, punishments, demand templates and reputations, the P10 hub rooms and device skins, the P9d content categories and rule templates, the P9b vote kinds and outside feats, the P9c device access rules, booking kinds, token kinds, wager games, wager stakes and secret kinds, the P10b DM behaviours and hand fonts) plus glossary', () => {
+  it('PLAYER_VISIBLE is the 44 described registries (20, the P7 traits and tastes, the P8 world options, levels and presets, the P9 command stances, punishments, demand templates and reputations, the P10 hub rooms and device skins, the P9d content categories and rule templates, the P9b vote kinds and outside feats, the P9c device access rules, booking kinds, token kinds, wager games, wager stakes and secret kinds, the P10b DM behaviours, hand fonts and hand notes) plus glossary', () => {
     expect([...PLAYER_VISIBLE]).toEqual([...DESCRIBED_REGISTRIES, 'glossary']);
-    expect(PLAYER_VISIBLE).toHaveLength(44);
+    expect(PLAYER_VISIBLE).toHaveLength(45);
+    expect(PLAYER_VISIBLE).toContain('handNotes');
     expect(PLAYER_VISIBLE).toContain('handFonts');
     expect(PLAYER_VISIBLE).toContain('dmBehaviours');
     expect(PLAYER_VISIBLE).toContain('secretKinds');

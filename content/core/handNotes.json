@@ -1,0 +1,64 @@
+[
+  {
+    "id": "desk_report",
+    "name": "Report on the desk",
+    "description": "AUTHOR TO WRITE: a short practical note left on the commander's desk.",
+    "where": "quarters",
+    "text": "AUTHOR TO WRITE: The report is done. It is on your desk. Read it before you sign. — {name}",
+    "chance": 0.35,
+    "when": {
+      "minAccess": 2
+    }
+  },
+  {
+    "id": "desk_eat",
+    "name": "Eat something",
+    "description": "AUTHOR TO WRITE: a note that nags the commander to look after themselves.",
+    "where": "quarters",
+    "text": "AUTHOR TO WRITE: You skipped the mess again. Eat something. I will check. — {name}",
+    "chance": 0.3,
+    "when": {
+      "minAccess": 2
+    }
+  },
+  {
+    "id": "gear_tucked",
+    "name": "Tucked in the gear",
+    "description": "AUTHOR TO WRITE: a note tucked into the commander's gear, for later.",
+    "where": "gear",
+    "text": "AUTHOR TO WRITE: You will find this in the field. Come back in one piece. — {name}",
+    "chance": 0.25,
+    "when": {
+      "tiers": [
+        "close",
+        "romantic"
+      ]
+    }
+  },
+  {
+    "id": "door_aching",
+    "name": "Under the door, wanting",
+    "description": "AUTHOR TO WRITE: a note pushed under the door after an unanswered knock, by someone who wanted company.",
+    "where": "door",
+    "text": "AUTHOR TO WRITE: I knocked. I know you were awake. I will not ask twice. Tonight. — {name}",
+    "chance": 1,
+    "when": {
+      "wantBands": [
+        "aching",
+        "desperate"
+      ],
+      "trigger": "knock_unanswered"
+    }
+  },
+  {
+    "id": "door_plain",
+    "name": "Under the door",
+    "description": "AUTHOR TO WRITE: a note pushed under the door after an unanswered knock.",
+    "where": "door",
+    "text": "AUTHOR TO WRITE: I came by. You did not open. It can wait until morning. — {name}",
+    "chance": 1,
+    "when": {
+      "trigger": "knock_unanswered"
+    }
+  }
+]

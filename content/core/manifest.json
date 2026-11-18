@@ -64,6 +64,7 @@
     "secretKinds": "secretKinds.json",
     "memoryRules": "memoryRules.json",
     "dmBehaviours": "dmBehaviours.json",
-    "handFonts": "handFonts.json"
+    "handFonts": "handFonts.json",
+    "handNotes": "handNotes.json"
   }
 }

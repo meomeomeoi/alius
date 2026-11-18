@@ -7,6 +7,7 @@ import { countDeed } from '../discipline/deeds';
 import { enforce, forgetUnit } from '../discipline/record';
 import { loyaltyOf, loyaltyRecord } from '../loyalty/state';
 import { outsideActive } from '../power/outside';
+import { forgetNotes } from '../notes/state';
 import { forgetPersonal } from '../personal/state';
 import { forgetPower, leaderOf } from '../power/state';
 import { addChronicle, addFact } from '../memory';
@@ -230,6 +231,7 @@ export function removeFromService(draft: CampaignState, unitId: string, status: 
   forgetBonds(draft, unitId); // P9d: her rules, a smother she held and her Want
   forgetPower(draft, unitId); // P9b: her grudge and her ballot in an open vote
   forgetPersonal(draft, unitId); // P9c: her booking, offer, wager, obedience, decor and the secrets she knew
+  forgetNotes(draft, unitId); // P10b: the notes she left
 }
 
 /** P9d: what a unit who leaves the service no longer carries (her rules, the smother hold, Want and publicity). */

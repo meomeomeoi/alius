@@ -738,7 +738,7 @@ git commit -am "feat(P10b): bundled hand fonts and per-unit handwriting"
   - `notesDayStep(draft, ctx): EngineEvent[]`
   - action `notes/read { id }`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - `no note for a squad without an imported bond` (ten day ends, `notes` stays absent, rng deep-equal);
   - `a daily quarters note for access ≥ 2, at most one per unit per day, none while one is unread`;
   - `an unanswered knock leaves a door note; opening it does not`;
@@ -747,15 +747,15 @@ git commit -am "feat(P10b): bundled hand fonts and per-unit handwriting"
   - `removeFromService forgets her notes`;
   - `text has {name} filled`.
 
-- [ ] **Step 2: Run to verify they fail**
+- [x] **Step 2: Run to verify they fail**
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 The day step goes after the personal day step (import order in `actions/immersion.ts`, imported by `app.ts` after `actions/personal`).
 
-- [ ] **Step 4: Run, `npm test`**
+- [x] **Step 4: Run, `npm test`**
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git commit -am "feat(P10b): hand notes (quarters, gear, under the door)"
