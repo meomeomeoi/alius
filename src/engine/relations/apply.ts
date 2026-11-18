@@ -10,6 +10,7 @@ import { evaluateAutomatic } from './graph';
 import { validateIntents } from './intents';
 import { commanderProposal, offerProposal } from './proposals';
 import { applyRuleEvent, RULE_EVENT_TYPES, rulesOf } from '../bonds/rules';
+import { frequencyLeak, leakCandidates } from '../special/frequency/leaks';
 import { TUNING } from '../tuning';
 
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
@@ -36,7 +37,8 @@ const CONFIDENCE_EPS = 1e-9;
 export function applyIntents(draft: CampaignState, ctx: EngineCtx, p: ApplyParams): EngineEvent[] {
   const reg = ctx.registries;
   const rules = rulesOf(draft).filter((r) => r.status === 'active' || r.status === 'negotiating').map((r) => ({ id: r.id, unitId: r.unitId }));
-  const intents = validateIntents(p.intents, { participants: p.participants, squad: draft.squad, maxEvents: TUNING.relations.maxEventsRead, measures: measureList(reg, draft), rules });
+  const intents = validateIntents(p.intents, { participants: p.participants, squad: draft.squad, maxEvents: TUNING.relations.maxEventsRead, measures: measureList(reg, draft), rules,
+    intercepted: leakCandidates(draft, reg, p.participants).map((c) => c.id) }); // P12: only items the frequency really caught
   const events: EngineEvent[] = [];
   const touched = new Set<string>();
   /** Types of the events that landed on at least one unit (P8: an event dropped for every unit is not here). */
@@ -59,6 +61,8 @@ export function applyIntents(draft: CampaignState, ctx: EngineCtx, p: ApplyParam
         : applyEventToUnit(draft, reg, id, e)));
       // P9d: what a kept or broken rule does on top of the event's own row, and a compromise's text
       if (RULE_EVENT_TYPES.includes(e.type)) events.push(...applyRuleEvent(draft, ctx, id, e, p.participants));
+      // P12: she noticed the commander using what the frequency told (suspicion; the event's own row already moved Trust)
+      if (e.type === 'knowledge_leak' && e.itemId !== undefined) events.push(...frequencyLeak(draft, ctx, id, e.itemId, e.severity));
       touched.add(id);
     }
     if (believed.length > 0) landed.push(e.type);

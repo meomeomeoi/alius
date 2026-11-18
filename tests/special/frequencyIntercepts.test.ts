@@ -33,7 +33,7 @@ describe('candidateTruths', () => {
     const s = specialCampaign(reg, 'secret_frequency');
     const kinds = candidateTruths(s, reg, ANN).map((c) => c.kind);
     expect(kinds.slice(0, 3)).toEqual(['stance', 'impunity', 'attraction']);
-    s.discipline = { defiance: [], threats: [], applications: [], restrictions: [], demands: [{ id: 'dm1', unitId: ANN, templateId: 't', text: 'x', day: 1, expiresDay: 9, status: 'open', impunityDriven: false }] } as never;
+    s.discipline = { defiance: [], threats: [], applications: [], restrictions: [], demands: [{ id: 'dm1', unitId: ANN, templateId: 't', text: 'x', day: 1, expiresDay: 9, status: 'undelivered', impunityDriven: false }] } as never;
     expect(candidateTruths(s, reg, ANN).map((c) => c.kind)).toContain('demand');
     expect(candidateTruths(s, reg, BEA).map((c) => c.kind)).not.toContain('demand');
   });

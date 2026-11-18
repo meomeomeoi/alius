@@ -1,6 +1,6 @@
 import type { Severity } from '../state/types';
 
-/** The 33 event types the mechanic model may report (26 of P3 spec §3, the four of P9, the three of P9d). Content (`eventDeltas`) must have a row for each. */
+/** The 34 event types the mechanic model may report (26 of P3 spec §3, the four of P9, the three of P9d, P12's knowledge_leak). Content (`eventDeltas`) must have a row for each. */
 export const EVENT_TYPES = [
   'praised', 'insulted', 'comforted', 'dismissed', 'listened', 'shared_secret', 'learned_about', 'gift', 'flirted',
   'rejected_advance', 'accepted_advance', 'physical_affection', 'sided_with', 'sided_against', 'decision_aligned',
@@ -10,6 +10,8 @@ export const EVENT_TYPES = [
   'defied', 'commander_enforced', 'commander_yielded', 'threatened',
   // P9d: relationship rules (the model reports whether a rule was kept or broken, or a compromise reached)
   'rule_kept', 'rule_broken', 'compromise_reached',
+  // P12: the commander used something only the frequency could have told (offered to the model only while an intercepted item is listed)
+  'knowledge_leak',
 ] as const;
 
 /** P9: events only the engine makes (a demand granted or refused; P9d: the commander followed her lead; P9b: the leader's moves). Never offered to the model; `validateIntents` rejects them. */

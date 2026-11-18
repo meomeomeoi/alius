@@ -7,6 +7,7 @@ import { intimacyOf } from '../engine/relations/gain';
 import type { ProposalAnswer } from '../engine/relations/proposals';
 import type { CampaignState, PendingProposal, SceneOrigin, Unit } from '../engine/state/types';
 import { pickEmotion } from '../llm/calls/emotionPick';
+import { leakInput } from '../engine/special/frequency/leaks';
 import { extractIntents, type IntentExtractInput } from '../llm/calls/intentExtract';
 import { confidenceFloor } from '../engine/worldOptions';
 import { summarizeScene } from '../llm/calls/sceneSummary';
@@ -241,6 +242,7 @@ export function createSceneController(deps: SceneDeps): SceneController {
       units, openPromises: openPromises(s0, scene.participants, scene.participants).map((p) => ({ by: nm(p.by), to: nm(p.to), text: p.text })),
       romance: intimacyOf(s0).romance, measures: measureList(deps.registries(), s0),
       ...contentInput(s0, scene.participants),
+      ...leakInput(s0, deps.registries(), scene.participants), // P12: what the frequency caught about those present (nothing without the trait)
     };
     for (const m of messages) {
       if (m.isUser) continue;

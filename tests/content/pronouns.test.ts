@@ -62,7 +62,7 @@ describe('no pronoun for the commander in content', () => {
 
   it('journal phrases of the event deltas (P3b)', () => {
     const texts = fields('eventDeltas', ['journal']);
-    expect(texts.length).toBe(49);
+    expect(texts.length).toBe(50); // P12: + knowledge_leak
     expect(texts.filter(([, t]) => COMMANDER_PRONOUN.test(t) || /commander[^.]*\btheir\b/i.test(t) || t === '').map(([where]) => where)).toEqual([]);
   });
 

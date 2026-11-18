@@ -20,6 +20,8 @@ export interface EventIntent {
   /** P9d: the rule a `rule_kept` / `rule_broken` / `compromise_reached` is about, and the agreed text of a compromise. */
   ruleId?: string;
   text?: string;
+  /** P12: the intercepted item a `knowledge_leak` is about (an id from the list the model was given). */
+  itemId?: string;
   evidence: string;
   /** 0–1; the LLM sanitizer drops low-confidence events, the engine keeps the number for the debug log. */
   confidence: number;
@@ -113,6 +115,8 @@ export function validateIntents(
     measures?: string[];
     /** P9d: the rules the model may report on (active and negotiating ones). Without it a rule event is dropped. */
     rules?: Array<{ id: string; unitId: string }>;
+    /** P12: the ids of the intercepted items the model was shown. Without them a `knowledge_leak` is dropped. */
+    intercepted?: string[];
   },
 ): Intents {
   const out = emptyIntents();
@@ -139,6 +143,11 @@ export function validateIntents(
       if (actor !== 'commander' || !rule) continue;
       intent.ruleId = rule.id;
       if (type === 'compromise_reached') intent.text = typeof e.text === 'string' ? e.text.replace(/\s+/g, ' ').trim().slice(0, TUNING.bonds.rules.textMax).trim() : '';
+    }
+    if (type === 'knowledge_leak') {
+      // a leak names an item it was given; the commander is always the actor
+      if (actor !== 'commander' || typeof e.itemId !== 'string' || !(ctx.intercepted ?? []).includes(e.itemId)) continue;
+      intent.itemId = e.itemId;
     }
     if (type === 'commander_enforced' || type === 'threatened') {
       const word = typeof e.measure === 'string' ? e.measure : '';

@@ -9,6 +9,7 @@ import { intimacyOf } from '../engine/relations/gain';
 import type { CampaignState, Unit } from '../engine/state/types';
 import { replyModeFor } from '../engine/dmBehaviours';
 import { generateDm, type DmReplyInput } from '../llm/calls/dmReply';
+import { leakInput } from '../engine/special/frequency/leaks';
 import { extractIntents } from '../llm/calls/intentExtract';
 import { confidenceFloor } from '../engine/worldOptions';
 import type { PersonalController } from '../personal/controller';
@@ -86,6 +87,7 @@ export function createComms(deps: CommsDeps): Comms {
       romance: intimacyOf(s).romance, measures: measureList(deps.registries(), s),
       ...(excluded.length > 0 ? { excluded } : {}), ...(limitLabels.length > 0 ? { limits: { [unitId]: limitLabels } } : {}), // P9d
       ...(ruleList.length > 0 ? { rules: ruleList } : {}),
+      ...leakInput(s, deps.registries(), [unitId]), // P12: what the frequency caught about her (nothing without the trait)
     }, { st, settings: deps.settings() }, { minConfidence: confidenceFloor(deps.registries(), deps.settings().intentMinConfidence) }); // P8: the engine judges per unit
     if (!result || chatId() !== expect) return;
     const intents = { ...result.intents, proposals: result.intents.proposals.filter((p) => p.from !== 'commander') };

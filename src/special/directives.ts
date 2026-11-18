@@ -1,0 +1,42 @@
+import type { Registries } from '../content/types';
+import { frequencySenseOf, suspicionOf } from '../engine/special/frequency/leaks';
+import type { CampaignState } from '../engine/state/types';
+import { TUNING } from '../engine/tuning';
+import type { ContextBuilder, Directive } from '../llm/context';
+
+/**
+ * What the main model is told about the special traits (P12). Every id starts with `special:`; none starts with a prefix P9, P9d,
+ * P9b, P9e, P9c or P11 reserve. All of them are derived from the state on every refresh, so they follow a reload and a chat switch
+ * needs only `clearSpecialDirectives`. The engine decides what is true; this layer only words it. No text gives the commander a pronoun.
+ */
+
+/** Ids that are derived from the state on every refresh. */
+export const DERIVED = ['special:static:'] as const;
+
+/**
+ * Derived directives for the units in the scene (`present`):
+ *  - `special:static:<id>`: her suspicion is above 50 and her defects let her notice it; she senses static around the commander.
+ *    The text never says how suspicious she is.
+ */
+export function specialDirectives(state: CampaignState, reg: Registries, present: string[]): Directive[] {
+  const out: Directive[] = [];
+  for (const id of present) {
+    const unit = state.squad.find((u) => u.id === id);
+    if (!unit || unit.kind !== 'named') continue;
+    if (suspicionOf(state, id) > TUNING.special.frequency.staticAbove && frequencySenseOf(state, reg, id) > 1) {
+      out.push({ id: `special:static:${id}`, expiresAfter: 'scene', text: `${unit.displayName} senses static around the commander.` });
+    }
+  }
+  return out;
+}
+
+/** Drops every directive this layer owns (a chat switch, no campaign). */
+export function clearSpecialDirectives(builder: ContextBuilder): void {
+  builder.clearMatching((d) => d.id.startsWith('special:'));
+}
+
+/** Sets the derived directives and drops the ones that no longer hold. Called on every refresh. */
+export function refreshSpecialDirectives(builder: ContextBuilder, state: CampaignState, reg: Registries): void {
+  builder.clearMatching((d) => DERIVED.some((p) => d.id.startsWith(p)));
+  for (const d of specialDirectives(state, reg, state.scene?.participants ?? [])) builder.setDirective(d);
+}

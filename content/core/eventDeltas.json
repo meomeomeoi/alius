@@ -1088,5 +1088,29 @@
         "affinity": -8
       }
     }
+  },
+  {
+    "id": "knowledge_leak",
+    "cause": "You knew something you could not have known",
+    "journal": "the commander knew something the commander could not have known",
+    "rows": {
+      "minor": {
+        "trust": -1
+      },
+      "moderate": {
+        "trust": -2,
+        "stress": 2
+      },
+      "major": {
+        "trust": -3,
+        "affinity": -1,
+        "stress": 4
+      },
+      "extreme": {
+        "trust": -4,
+        "affinity": -2,
+        "stress": 5
+      }
+    }
   }
 ]

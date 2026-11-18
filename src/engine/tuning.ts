@@ -465,6 +465,7 @@ export const TUNING = Object.freeze({
     frequency: Object.freeze({
       catchBase: 0.25, privateBonus: 0.1, catchStressAt: 80, catchStressPenalty: 0.1, dmMult: 0.5,
       distortBase: 0.25, distortStressAt: 50, distortStress: 0.15, partial: 0.3, logMax: 40, refusalMin: 0.25,
+      leakDays: 14, falseLeakMult: 0.5, suspicionDecay: 2, staticAbove: 50,
     }),
   }),
 });

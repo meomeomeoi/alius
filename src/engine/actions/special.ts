@@ -1,4 +1,6 @@
+import { registerDayEndStep } from '../calendar';
 import { registerAction } from '../dispatch';
+import { specialDayStep } from '../special/dayStep';
 import { frequencyText } from '../special/frequency/fragments';
 
 // Importing this module registers the P12 special-trait actions and day step. It must come after `actions/loyalty` (the paranoia
@@ -20,3 +22,5 @@ registerAction('frequency/word', (draft, payload) => {
   x.text = text;
   return [{ type: 'frequency_worded', interceptId: x.id }];
 });
+
+registerDayEndStep('director_tick', specialDayStep);

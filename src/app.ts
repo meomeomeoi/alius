@@ -54,6 +54,7 @@ import { createPower, type PowerController } from './power/controller';
 import { createPersonal, type PersonalController } from './personal/controller';
 import { createSpecial, type SpecialController } from './special/controller';
 import { clearPersonalDirectives, refreshPersonalDirectives } from './personal/directives';
+import { clearSpecialDirectives, refreshSpecialDirectives } from './special/directives';
 import type { VoteChoice } from './power/deps';
 import { renderVotePanel } from './ui/power/votePanel';
 import { clearPowerDirectives, refreshPowerDirectives } from './power/directives';
@@ -262,8 +263,10 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       bondsDirectives(context, state, registries); // P9d: the content exclusion and the present units' own limits
       refreshPowerDirectives(context, state, registries); // P9b: a unit the commander overruled in a vote may push back
       refreshPersonalDirectives(context, state, registries); // P9c: courting, a claim, peeled decor and a booking
+      refreshSpecialDirectives(context, state, registries); // P12: a soldier who senses static around the commander
     } else {
       clearPersonalDirectives(context);
+      clearSpecialDirectives(context);
       clearPowerDirectives(context);
       bondsDirectives(context, null, registries);
       clearWorldDirectives(context);

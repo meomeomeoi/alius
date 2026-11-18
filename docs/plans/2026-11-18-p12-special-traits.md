@@ -508,7 +508,7 @@ Rulings marked **(user)** were answered by the user on 2026-11-18. Task 18 copie
   - `specialDirectives(state, reg, presentIds): Directive[]`: frequency part.
 - Consumes: Task 2's `FrequencyState`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 - `leak raises suspicion by severity`: minor 15, moderate 25, major 35, extreme 35; a false item halves it; `echo_bleed` ×1.5 (moderate true → 38, rounded).
 - `decay −2 a day, floor 0`.
 - `static directive above 50 only with a sense defect`, worded `senses static around the commander`, and `frequency_static` fires once per crossing.
@@ -516,13 +516,13 @@ Rulings marked **(user)** were answered by the user on 2026-11-18. Task 18 copie
 - `intent_extract offers knowledge_leak only with intercepted items`: the `system()` text lacks `knowledge_leak` when the list is empty and lists the INTERCEPTED block when not; the block never contains `true`/`false`.
 - `no frequency effect: input has no intercepted key` (the scene input stays byte-equal to today's).
 
-- [ ] **Step 2: Run** → FAIL.
+- [x] **Step 2: Run** → FAIL.
 
-- [ ] **Step 3: Implement.** Leak suspicion goes on the event's targets that are present. Decay runs in the special day step (create `src/engine/special/dayStep.ts`, registered on `director_tick` in `actions/special.ts`).
+- [x] **Step 3: Implement.** Leak suspicion goes on the event's targets that are present. Decay runs in the special day step (create `src/engine/special/dayStep.ts`, registered on `director_tick` in `actions/special.ts`).
 
-- [ ] **Step 4: Run** → PASS; `npm test` → PASS.
+- [x] **Step 4: Run** → PASS; `npm test` → PASS.
 
-- [ ] **Step 5: Commit** `feat(P12): knowledge_leak, frequency suspicion and the static directive`
+- [x] **Step 5: Commit** `feat(P12): knowledge_leak, frequency suspicion and the static directive`
 
 ---
 

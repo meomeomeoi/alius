@@ -47,7 +47,8 @@
     },
     "expedition": {
       "reveal": 1
-    }
+    },
+    "frequencySense": 1.5
   },
   {
     "id": "imprint_fracture",
@@ -668,7 +669,8 @@
           }
         ]
       }
-    }
+    },
+    "frequencySense": 1.5
   },
   {
     "id": "firmware_rollback",

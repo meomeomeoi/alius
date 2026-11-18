@@ -44,6 +44,8 @@ export interface IntentExtractInput {
   limits?: Record<string, string[]>;
   /** P9d: the relationship rules in force or being negotiated for the units present; asking for none leaves the rule events out. */
   rules?: Array<{ id: string; unitId: string; text: string; status: 'active' | 'negotiating' }>;
+  /** P12: what the secret frequency caught about the units present (not public): ids and gists, never whether an item is true. Absent or empty = `knowledge_leak` is not offered. */
+  intercepted?: Array<{ id: string; unitId: string; gist: string }>;
 }
 
 /** What one reading found besides events (P9d). */
@@ -66,6 +68,8 @@ export const IntentExtractRawSchema = z.object({
 const DM_EXCHANGE_MESSAGES = 2;
 /** P9d: the event types about a rule; they are offered only while some rule is listed. */
 const RULE_TYPES: readonly string[] = ['rule_kept', 'rule_broken', 'compromise_reached'];
+/** P12: the event type offered only while intercepted items are listed. */
+const LEAK_TYPE = 'knowledge_leak';
 
 function system(raw: unknown): string {
   const input = raw as IntentExtractInput;
@@ -73,7 +77,8 @@ function system(raw: unknown): string {
   const asksTone = input.channel === 'scene' && input.romance;
   const hasLimits = Object.values(input.limits ?? {}).some((l) => l.length > 0);
   const hasRules = (input.rules ?? []).length > 0;
-  const eventTypes = EVENT_TYPES.filter((t) => hasRules || !RULE_TYPES.includes(t));
+  const hasLeaks = (input.intercepted ?? []).length > 0;
+  const eventTypes = EVENT_TYPES.filter((t) => (hasRules || !RULE_TYPES.includes(t)) && (hasLeaks || t !== LEAK_TYPE));
   const extras = [
     ...(excluded.length > 0 ? ['  "contentViolations": [{ "category": "<id from EXCLUDED>", "evidence": "<at most 15 words quoted from the exchange>" }]'] : []),
     ...(asksTone ? ['  "sceneTone": "romantic" | "intimate" | null'] : []),
@@ -90,8 +95,9 @@ function system(raw: unknown): string {
     '               "valueAxes": [{ "axis": VALUE_AXIS, "direction": -1 | 1 }],   // only for decision_aligned / decision_violated',
     '               "tags": ["<tag from the unit\'s likes/dislikes/triggers>"], "evidence": "<at most 20 words, quoted from the exchange>", "confidence": 0.0-1.0,',
     ...(hasRules
-      ? ['               "measure": MEASURE,   // only for commander_enforced / threatened', '               "ruleId": "<id from RULES>", "text": "<the agreed wording>" }],   // only for rule_kept / rule_broken / compromise_reached (text: compromise_reached only)']
-      : ['               "measure": MEASURE }],   // only for commander_enforced / threatened']),
+      ? ['               "measure": MEASURE,   // only for commander_enforced / threatened', `               "ruleId": "<id from RULES>", "text": "<the agreed wording>"${hasLeaks ? ',' : ' }],'}   // only for rule_kept / rule_broken / compromise_reached (text: compromise_reached only)`]
+      : [`               "measure": MEASURE${hasLeaks ? ',' : ' }],'}   // only for commander_enforced / threatened`]),
+    ...(hasLeaks ? ['               "itemId": "<id from INTERCEPTED>" }],   // only for knowledge_leak'] : []),
     '  "facts": [{ "about": ["<unit id>"] | "world" | "commander", "text": "<one sentence>", "importance": 1-5, "tags": ["<tag>"] }],',
     '  "proposals": [{ "from": "commander" | "<unit id>", "to": "commander" | "<unit id>", "kind": PROPOSAL_KIND, "evidence": "<short quote>" }],',
     '  "promises": [{ "by": "commander" | "<unit id>", "to": "commander" | "<unit id>", "text": "<the promise>", "kind": "made" | "kept" | "broken" }],',
@@ -121,6 +127,9 @@ function system(raw: unknown): string {
       '"rule_kept": the commander does what a rule of hers asks, in this exchange; "rule_broken": the commander does what it forbids, or plainly drops it.',
       '"compromise_reached": only for a rule listed as negotiating: the two agree a version; put it in "text" (at most 160 characters). Report a rule only by its id from RULES.',
     ] : []),
+    ...(hasLeaks ? [
+      '"knowledge_leak": the commander says or does something that only an INTERCEPTED item could have told; the unit it is about is the target and "itemId" is its id. Report it only when the exchange shows the commander acting on that item; an item no one acted on is not a leak.',
+    ] : []),
     ...(hasLimits ? ['If the commander pushes a unit past her limits, report `rejected_advance` (advances) or `decision_violated` (orders).'] : []),
   ].join('\n');
 }
@@ -143,6 +152,7 @@ function prompt(raw: unknown): string {
     ...units,
   ];
   if ((input.rules ?? []).length > 0) out.push('', 'RULES (id (status) — unit: what it says):', ...input.rules!.map((r) => `- ${r.id} (${r.status}) — ${r.unitId}: ${r.text}`));
+  if ((input.intercepted ?? []).length > 0) out.push('', 'INTERCEPTED (id — unit: what it says):', ...input.intercepted!.map((i) => `- ${i.id} — ${i.unitId}: ${i.gist.replace(/[\r\n]+/g, ' ')}`));
   if (input.openPromises.length > 0) {
     out.push('', 'Open promises:', ...input.openPromises.map((p) => `- ${p.by} → ${p.to}: ${p.text}`));
   }
@@ -165,14 +175,14 @@ const LABELS: readonly string[] = EXPRESSION_LABELS;
  */
 export function sanitizeIntentOutput(
   raw: unknown,
-  ctx: { participants: string[]; squad: Array<{ id: string }>; minConfidence: number; romance: boolean; measures?: string[]; /** P9d: the ids of the categories that are switched off. */ excluded?: string[]; /** P9d: the rules a rule event may name. */ rules?: Array<{ id: string; unitId: string }> },
+  ctx: { participants: string[]; squad: Array<{ id: string }>; minConfidence: number; romance: boolean; measures?: string[]; /** P12: the ids of the intercepted items the model was shown. */ intercepted?: string[]; /** P9d: the ids of the categories that are switched off. */ excluded?: string[]; /** P9d: the rules a rule event may name. */ rules?: Array<{ id: string; unitId: string }> },
 ): IntentOutput {
   const parsed = IntentExtractRawSchema.safeParse(raw);
   const src = parsed.success ? parsed.data : { events: [], facts: [], proposals: [], promises: [], emotions: [], stressHints: [], contentViolations: [], sceneTone: undefined };
   const events = src.events.filter((e) => isObj(e) && typeof e.confidence === 'number' && e.confidence >= ctx.minConfidence);
   const proposals = src.proposals.filter((p) => ctx.romance || !(isObj(p) && (ROMANTIC_PROPOSALS as readonly string[]).includes(p.kind as string)));
   // the engine judges each event per unit before it cuts the list to six (a dropped event must not take a slot)
-  const intents = validateIntents({ ...src, events, proposals }, { participants: ctx.participants, squad: ctx.squad, maxEvents: TUNING.relations.maxEventsRead, ...(ctx.measures ? { measures: ctx.measures } : {}), ...(ctx.rules ? { rules: ctx.rules } : {}) });
+  const intents = validateIntents({ ...src, events, proposals }, { participants: ctx.participants, squad: ctx.squad, maxEvents: TUNING.relations.maxEventsRead, ...(ctx.measures ? { measures: ctx.measures } : {}), ...(ctx.rules ? { rules: ctx.rules } : {}), ...(ctx.intercepted ? { intercepted: ctx.intercepted } : {}) });
   const emotions: Array<{ unitId: string; label: ExpressionLabel }> = [];
   for (const e of src.emotions) {
     if (isObj(e) && typeof e.unitId === 'string' && ctx.participants.includes(e.unitId) && typeof e.label === 'string' && LABELS.includes(e.label)) {
@@ -201,5 +211,6 @@ export async function extractIntents(
     participants: ids, squad: ids.map((id) => ({ id })),
     minConfidence: opts.minConfidence ?? deps.settings.intentMinConfidence, romance: input.romance, measures: input.measures,
     excluded: (input.excluded ?? []).map((e) => e.id), rules: (input.rules ?? []).map((r) => ({ id: r.id, unitId: r.unitId })),
+    intercepted: (input.intercepted ?? []).map((i) => i.id),
   });
 }

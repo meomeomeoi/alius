@@ -24,7 +24,7 @@ export const REFUSES = 'refuses';
 
 /**
  * What the commander could overhear about her hidden state, in a closed order, read from live state: her stance, her
- * Impunity band, an open demand, a pending desertion or mutiny warning, a fact about her that the commander does not know
+ * Impunity band, a demand she has not delivered yet, a pending desertion or mutiny warning, a fact about her that the commander does not know
  * (never the frequency's own fact), her Attraction band, a planned refusal and a kept squad secret she knows. No rng.
  */
 export function candidateTruths(state: CampaignState, reg: Registries, unitId: string): Candidate[] {
@@ -35,7 +35,7 @@ export function candidateTruths(state: CampaignState, reg: Registries, unitId: s
   const impunity = impunityOf(state, reg, unitId);
   if (impunity !== null) out.push({ kind: 'impunity', value: impunityBand(impunity.value) });
   for (const d of state.discipline?.demands ?? []) {
-    if (d.unitId === unitId && d.status === 'open') out.push({ kind: 'demand', value: d.templateId, refId: d.id });
+    if (d.unitId === unitId && d.status === 'undelivered') out.push({ kind: 'demand', value: d.templateId, refId: d.id });
   }
   const sign = [...(state.disloyalty?.units[unitId]?.signs ?? [])].reverse().find((x) => x.about === 'desertion' || x.about === 'mutiny');
   if (sign) out.push({ kind: 'loyalty', value: sign.about });
