@@ -1,4 +1,4 @@
-import type { Registries } from '../../content/types';
+import type { Entry, Registries } from '../../content/types';
 import { TUNING } from '../tuning';
 import { traitEffects } from './traits';
 import type { Archetype, BodyStat, CampaignState, Commander } from '../state/types';
@@ -85,7 +85,7 @@ const isInt = (n: unknown, lo: number, hi: number): n is number => typeof n === 
  * allowed. Traits: known ids of the right kind, at most 2 regular (unique) and one special, no exclusive pair, and the
  * campaign settings a trait asks for.
  */
-export function validateCommanderSetup(c: CommanderSetup, reg: Registries, opts: { desireBondDefects: boolean }): string[] {
+export function validateCommanderSetup(c: CommanderSetup, reg: Registries, opts: { desireBondDefects: boolean; corporationId?: string | null }): string[] {
   const out: string[] = [];
   if (typeof c !== 'object' || c === null) return ['The commander file is missing'];
   for (const k of BODY_STATS) {
@@ -131,6 +131,7 @@ export function validateCommanderSetup(c: CommanderSetup, reg: Registries, opts:
       }
       const needs = t.requiresSettings as { desireBondDefects?: boolean } | undefined;
       if (needs?.desireBondDefects && !opts.desireBondDefects) out.push(`Trait "${id}" needs the Desire/Bond setting`);
+      if (lacksRival(reg, t, opts.corporationId)) out.push(`Trait "${id}": ${RIVAL_REASON}`);
     }
   }
   return out;
@@ -184,18 +185,28 @@ export function intimidationBonus(state: CampaignState): number {
   return TUNING.commander.intimidatePerPoint * (p.body.strength - 3 + (p.seasoning - 3));
 }
 
+const RIVAL_REASON = 'Needs a rival corporation in the world.';
+
+/** P12 `requires.otherCorporation`: no corporation besides the commander's own. Without a corporation chosen yet the trait is allowed. */
+function lacksRival(reg: Registries, t: Entry, corporationId: string | null | undefined): boolean {
+  const needs = t.requires as { otherCorporation?: boolean } | undefined;
+  if (!needs?.otherCorporation || corporationId === undefined || corporationId === null) return false;
+  return ![...reg.corporations.keys()].some((id) => id !== corporationId);
+}
+
 /**
  * Why `id` cannot be picked next to the traits already chosen, or null when it can (or is already chosen: it may always
  * be dropped). Used by the wizard and the form, so both agree with `validateCommanderSetup`.
  */
 export function traitBlockReason(
-  reg: Registries, traits: { regular: string[]; special?: string }, id: string, opts: { desireBondDefects: boolean },
+  reg: Registries, traits: { regular: string[]; special?: string }, id: string, opts: { desireBondDefects: boolean; corporationId?: string | null },
 ): string | null {
   const t = reg.commanderTraits.get(id);
   if (!t) return 'Unknown trait.';
   if (traits.regular.includes(id) || traits.special === id) return null;
   const needs = t.requiresSettings as { desireBondDefects?: boolean } | undefined;
   if (needs?.desireBondDefects && !opts.desireBondDefects) return 'Needs the Desire/Bond setting.';
+  if (lacksRival(reg, t, opts.corporationId)) return RIVAL_REASON;
   if (t.kind === 'regular' && traits.regular.length >= TUNING.commander.maxRegular) return `Two regular traits are already chosen.`;
   const chosen = [...traits.regular, ...(traits.special !== undefined ? [traits.special] : [])];
   const excludes = (t.exclusiveWith as string[] | undefined) ?? [];

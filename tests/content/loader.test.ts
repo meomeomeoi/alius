@@ -25,7 +25,7 @@ describe('content loader', () => {
   it('the shipped core pack loads without errors', async () => {
     const { registries, errors } = await loadPacks(['content/core'], fsFetch);
     expect(errors).toEqual([]);
-    expect(registries.flags.size).toBe(13);
+    expect(registries.flags.size).toBe(20); // P12 added seven
   });
 
   it('invalid entry reported with file and path, valid siblings kept', async () => {

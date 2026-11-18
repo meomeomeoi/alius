@@ -1,5 +1,6 @@
 import { registerAction } from '../dispatch';
 import { applyFactionTraitEffects, applyStartTraitEffects, syncTraitSettings } from '../commander/traits';
+import { seedSpecialTraits } from '../special/traits';
 import { applyCommanderSetup, defaultCommanderSetup, validateCommanderSetup, type CommanderSetup } from '../commander/profile';
 
 // Importing this module registers the P7 commander actions.
@@ -29,12 +30,15 @@ registerAction('commander/set_profile', (draft, payload, ctx) => {
   if (draft.commander.fileReviewed !== false) throw new Error('The commander file was already reviewed.');
   const c = (payload as { commander?: CommanderSetup } | undefined)?.commander;
   if (c === undefined) throw new Error('commander/set_profile needs { commander }');
-  const problems = validateCommanderSetup(c, ctx.registries, { desireBondDefects: draft.settings.desireBondDefects === true });
+  const problems = validateCommanderSetup(c, ctx.registries, {
+    desireBondDefects: draft.settings.desireBondDefects === true, corporationId: draft.commander.corporationId,
+  });
   if (problems.length > 0) throw new Error(problems.join('; '));
   applyCommanderSetup(draft.commander, c);
   applyStartTraitEffects(draft, ctx.registries);
   syncTraitSettings(draft, ctx.registries);
   applyFactionTraitEffects(draft, ctx.registries);
+  seedSpecialTraits(draft, ctx); // an old save may pick a special trait at review
   draft.commander.fileReviewed = true;
   return [{ type: 'commander_profile_set' }];
 });

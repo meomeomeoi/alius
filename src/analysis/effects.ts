@@ -406,6 +406,11 @@ export function summarizeTraitEffect(e: TraitEffect, _reg: Registries): string {
     case 'no_romance': return 'No romance in this campaign';
     case 'platonic_threshold': return `${(x.states as string[]).map((s) => `[[relationshipStates:${s}]]`).join(', ')} need ${x.pct}% less to reach`;
     case 'unlock_state': return `Unlocks [[relationshipStates:${x.stateId}]]`;
+    case 'frequency': return "Secret frequency in the commander's head";
+    case 'paranoia': return 'Bloom-induced paranoia';
+    case 'debts': return 'Debts to a rival corporation';
+    case 'commander_flag': return `Sets ${String(x.flag)}`;
+    case 'unlock_order': return `Unlocks the order [[orders:${x.orderId}]]`;
     default: return humanize(String(x.type));
   }
 }

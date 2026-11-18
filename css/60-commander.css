@@ -44,6 +44,27 @@
   border-style: double;
 }
 
+/* P12: a special trait's card and the WHAT THIS CHANGES list beside it */
+#alius-shell .alius-trait-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+#alius-shell .alius-trait-changes {
+  padding: 4px 8px;
+  border: 1px dashed var(--alius-dim, currentColor);
+}
+
+#alius-shell .alius-trait-changes summary {
+  cursor: pointer;
+}
+
+#alius-shell .alius-trait-changes ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+
 #alius-shell .alius-cmdr-actions {
   gap: 8px;
   margin-top: 8px;

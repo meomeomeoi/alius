@@ -175,6 +175,12 @@ export class Wizard {
     return this.deps.desireBondDefects;
   }
 
+  /** P12: the corporation of the chosen start (null before one is chosen); a special trait may need a rival to it. */
+  get corporationId(): string | null {
+    const start = this.s.startId ? this.deps.registries.starts.get(this.s.startId) : undefined;
+    return start ? String(start.corporationId) : null;
+  }
+
   get state(): WizardState {
     return this.s;
   }
@@ -388,7 +394,7 @@ export class Wizard {
   }
 
   private traitAllowed(id: string, traits = this.s.commander.traits): boolean {
-    return traitBlockReason(this.deps.registries, traits, id, { desireBondDefects: this.deps.desireBondDefects }) === null;
+    return traitBlockReason(this.deps.registries, traits, id, { desireBondDefects: this.deps.desireBondDefects, corporationId: this.corporationId }) === null;
   }
 
   /** Asks the mechanic model for a commander from the persona text; a late answer after the player moved on is dropped. */
@@ -494,7 +500,7 @@ export class Wizard {
         return { ok: true };
       case 'exam':
       case 'commander': {
-        const errors = validateCommanderSetup(this.s.commander, this.deps.registries, { desireBondDefects: this.deps.desireBondDefects });
+        const errors = validateCommanderSetup(this.s.commander, this.deps.registries, { desireBondDefects: this.deps.desireBondDefects, corporationId: this.corporationId });
         return errors.length === 0 ? { ok: true } : fail(errors[0]);
       }
       case 'units':

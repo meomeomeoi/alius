@@ -20,6 +20,8 @@ export interface CommanderFileCtx {
   value: CommanderSetup;
   registries: Registries;
   desireBondDefects: boolean;
+  /** P12: the commander's corporation, when a start is chosen (a trait may need a rival to it). */
+  corporationId?: string | null;
   onChange: (patch: CommanderPatch) => void;
   /** Absent = no PREFILL FROM PERSONA button. */
   onPrefill?: () => void;
@@ -86,7 +88,7 @@ export function renderCommanderFile(host: HTMLElement, ctx: CommanderFileCtx): v
   const reasons = ctx.importStatus?.reasons ?? {};
   const card = (id: string): HTMLElement => {
     const t = reg.commanderTraits.get(id)!;
-    const blocked = traitBlockReason(reg, c.traits, id, { desireBondDefects: ctx.desireBondDefects });
+    const blocked = traitBlockReason(reg, c.traits, id, { desireBondDefects: ctx.desireBondDefects, corporationId: ctx.corporationId });
     const on = chosen.has(id);
     return h('button', {
       type: 'button', class: `alius-card alius-option alius-trait-card${t.kind === 'special' ? ' alius-trait-special' : ''}`,
@@ -95,10 +97,21 @@ export function renderCommanderFile(host: HTMLElement, ctx: CommanderFileCtx): v
       ...analyzeNative(`commanderTraits:${id}`), onclick: () => { if (blocked === null) onChange({ kind: 'trait', id }); },
     },
       h('strong', {}, String(t.name)),
-      t.kind === 'special' ? h('span', { class: 'alius-dim' }, ' SPECIAL') : null,
+      t.kind === 'special' ? h('span', { class: 'alius-dim', ...analyzeAttrs('glossary:special_trait') }, ' SPECIAL') : null,
       h('p', {}, `UP: ${String(t.upside)}`),
       h('p', {}, `DOWN: ${String(t.downside)}`),
       on && reasons[id] ? h('p', { class: 'alius-dim' }, `Why: ${reasons[id]}`) : null);
+  };
+  // P12: a special card with `changes` carries its WHAT THIS CHANGES list beside it (not inside the button), open while pressed
+  const entry = (id: string): HTMLElement => {
+    const t = reg.commanderTraits.get(id)!;
+    const lines = Array.isArray(t.changes) ? (t.changes as string[]) : [];
+    if (t.kind !== 'special' || lines.length === 0) return card(id);
+    return h('div', { class: 'alius-trait-entry', 'data-trait-entry': id },
+      card(id),
+      h('details', { class: 'alius-trait-changes', 'data-trait-changes': id, open: chosen.has(id), ...analyzeAttrs(`commanderTraits:${id}`) },
+        h('summary', {}, 'WHAT THIS CHANGES'),
+        h('ul', {}, ...lines.map((line) => h('li', {}, line)))));
   };
   const all = [...reg.commanderTraits.values()];
   host.append(
@@ -107,7 +120,7 @@ export function renderCommanderFile(host: HTMLElement, ctx: CommanderFileCtx): v
       h('p', { class: 'alius-hint' }, `Up to ${TUNING.commander.maxRegular} regular traits and one special. A trait changes how the commander plays, not how strong the commander is.`),
       h('div', { class: 'alius-cards' }, ...all.filter((t) => t.kind === 'regular').map((t) => card(t.id))),
       all.some((t) => t.kind === 'special') ? h('h4', {}, 'SPECIAL') : null,
-      h('div', { class: 'alius-cards' }, ...all.filter((t) => t.kind === 'special').map((t) => card(t.id)))),
+      h('div', { class: 'alius-cards' }, ...all.filter((t) => t.kind === 'special').map((t) => entry(t.id)))),
   );
 
   // --- prefill and random

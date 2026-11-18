@@ -1150,7 +1150,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     const body = h('div', { class: 'alius-cmdr' });
     const draw = () =>
       renderCommanderFile(body, {
-        value: wizard.state.commander, registries, desireBondDefects: desireBond,
+        value: wizard.state.commander, registries, desireBondDefects: desireBond, corporationId: state?.commander.corporationId ?? null,
         onChange: (c) => {
           if (c.kind === 'body') wizard.setBody(c.stat, c.value);
           else if (c.kind === 'expression') wizard.setExpression(c.value);

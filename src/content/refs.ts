@@ -407,6 +407,8 @@ registerRefs('commanderTraits', (entry) => {
       out.push({ registry: 'eventDeltas', id: fx.event, path: `${at}.event` });
     } else if (fx.type === 'unlock_state' && typeof fx.stateId === 'string') {
       out.push({ registry: 'relationshipStates', id: fx.stateId, path: `${at}.stateId` });
+    } else if (fx.type === 'unlock_order' && typeof fx.orderId === 'string') {
+      out.push({ registry: 'orders', id: fx.orderId, path: `${at}.orderId` });
     } else if (fx.type === 'platonic_threshold' && Array.isArray(fx.states)) {
       fx.states.forEach((id, j) => out.push({ registry: 'relationshipStates', id: String(id), path: `${at}.states[${j}]` }));
     }

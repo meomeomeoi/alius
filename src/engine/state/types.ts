@@ -1,6 +1,7 @@
 import type { CombatResult, CombatState } from '../combat/types';
 import type { DilemmaState } from '../dilemma/types';
 import type { RngState } from '../rng';
+import type { SpecialState } from '../special/state';
 import type { Clock, DirectorRequest, ExpeditionReport, ExpeditionState, Mission, RegionState, Rumor, Thread } from '../world/types';
 
 export type Slot = 'morning' | 'afternoon' | 'evening' | 'night';
@@ -901,6 +902,8 @@ export interface CampaignState {
   power?: PowerState;
   /** P9c: decor, bookings, tokens, wagers, obedience and squad secrets. Created on first write; absent in older saves. */
   personal?: PersonalState;
+  /** P12: the special-trait systems (Secret Frequency, Bloom-induced Paranoia, Web of Debts). Created by the seed; absent without a special trait. */
+  special?: SpecialState;
   /** P9d: the content categories the player switched on (absent = none). Read through `enabledCategories`. */
   content?: { enabled: string[] };
   /** P9d: relationship rules and the smother hold (absent = none). */

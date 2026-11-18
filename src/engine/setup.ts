@@ -10,6 +10,7 @@ import { initialLoyaltyBand } from './relations/bands';
 import { applyDispositionStart, applyWorldStartEffects, defaultWorldOptions, validateWorldOptions } from './worldOptions';
 import { applyFirstImpression } from './commander/presence';
 import { applyFactionTraitEffects, applyStartTraitEffects, syncTraitSettings } from './commander/traits';
+import { seedSpecialTraits } from './special/traits';
 import { applyCommanderSetup, defaultCommanderSetup, validateCommanderSetup, type CommanderSetup } from './commander/profile';
 import {
   VALUE_AXES, type Bond, type CampaignState, type Relation, type SignatureInstance, type Unit, type WorldStance,
@@ -205,7 +206,10 @@ export function validateSetup(r: SetupResult, reg: Registries, opts: { desireBon
     else if (corp.playable !== true) out.push(`Start "${r.startId}" uses non-playable corporation "${corp.id}"`);
   }
   if (!reg.crimes.has(r.crimeId)) out.push(`Unknown crime "${r.crimeId}"`);
-  if (r.commander !== undefined) out.push(...validateCommanderSetup(r.commander, reg, opts));
+  if (r.commander !== undefined) {
+    const startCorp = start ? String(start.corporationId) : null; // P12: a trait may need a rival corporation
+    out.push(...validateCommanderSetup(r.commander, reg, { ...opts, corporationId: startCorp }));
+  }
   if (r.world !== undefined) out.push(...validateWorldOptions(r.world.options, reg));
   if (r.content !== undefined) {
     if (!Array.isArray(r.content.enabled) || r.content.enabled.some((x) => typeof x !== 'string')) out.push('The content choice must be a list of category ids');
@@ -383,6 +387,7 @@ export function buildCampaign(
   state.roster.activeIds = state.squad.map((u) => u.id);
   seedWorld(state, reg);
   applyFactionTraitEffects(state, reg); // after the seed: it keeps a standing that is already set
+  seedSpecialTraits(state, { registries: reg, rng: new Rng(state.rng) }); // P12: no draw, the rng stays as it is
   applyWorldStartEffects(state, reg); // P8: the world's norm costs the own corporation's standing
   ensureLeash(state, reg);
   if (r.onboarding !== undefined) {

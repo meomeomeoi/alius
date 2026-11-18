@@ -18,6 +18,9 @@
     ],
     "hooks": [
       "quiet_night"
+    ],
+    "exclusiveWith": [
+      "bloom_paranoia"
     ]
   },
   {
@@ -209,6 +212,85 @@
         "type": "unlock_state",
         "stateId": "sworn"
       }
+    ]
+  },
+  {
+    "id": "secret_frequency",
+    "name": "Secret Frequency",
+    "kind": "special",
+    "description": "AUTHOR TO WRITE: an experimental frequency analyzer in the commander's head picks up fragments of the squad's thoughts. If the squad finds out, it ends badly.",
+    "upside": "Fragments of what a soldier hides reach the commander in scenes and messages.",
+    "downside": "Some fragments are false, and acting on one gives the commander away. Discovery crashes Trust.",
+    "effects": [
+      {
+        "type": "frequency"
+      }
+    ],
+    "changes": [
+      "Scenes and messages sometimes bring a fragment of what a soldier hides: her stance, a demand, a warning, a secret.",
+      "A fragment is never marked true or false. Some are distorted, some name only the subject.",
+      "Acting on what the commander could not know makes a soldier suspicious. Some soldiers sense it sooner.",
+      "A soldier who is sure has leverage over the commander, and the squad finds out. Trust and Affinity crash.",
+      "The implant can be burned out in the medbay. That is permanent, and it softens a later discovery."
+    ],
+    "hooks": [
+      "frequency"
+    ]
+  },
+  {
+    "id": "bloom_paranoia",
+    "name": "Bloom-induced Paranoia",
+    "kind": "special",
+    "description": "AUTHOR TO WRITE: long exposure to the Bloom left the commander's mind not quite right. Something is always about to go wrong.",
+    "upside": "Loyalty warnings arrive one or two days early as PREMONITIONs. A new order, Contingency, covers the commander against a soldier who turns.",
+    "downside": "Some premonitions are false and look exactly like real ones. Nightmares raise stress and can cost a morning.",
+    "effects": [
+      {
+        "type": "paranoia"
+      },
+      {
+        "type": "commander_flag",
+        "flag": "commander_bloom_exposed"
+      }
+    ],
+    "exclusiveWith": [
+      "insomniac"
+    ],
+    "changes": [
+      "Warning signs of doubt, desertion, mutiny and defiance reach the commander early as PREMONITIONs.",
+      "Each day a soldier may also trigger a false alarm, and nothing in the notice tells it apart.",
+      "Acting on a real warning can head it off. Acting on a false one is an insult or a coercion with full consequences.",
+      "Bloom nightmares add commander stress, can cost the next morning, and sometimes bring a soldier to the door.",
+      "At high stress the commander reads people worse. Sleep and the medbay bring it down."
+    ],
+    "hooks": [
+      "paranoia"
+    ]
+  },
+  {
+    "id": "web_of_debts",
+    "name": "Web of Debts",
+    "kind": "special",
+    "description": "AUTHOR TO WRITE: old mistakes and shady ties. The commander must feed information to a rival corporation.",
+    "upside": "A handler from a rival corporation pays supplies, credits and plyx for intel.",
+    "downside": "What is sold comes back as ambushes, sabotage and shifts in standing. Oversight and the squad can find out.",
+    "effects": [
+      {
+        "type": "debts"
+      }
+    ],
+    "requires": {
+      "otherCorporation": true
+    },
+    "changes": [
+      "About once a week a handler visits at night and buys intel on missions, the base and the squad.",
+      "For each item the commander answers: truth, partial, false or withhold.",
+      "Truthful intel comes back as ambushes on expeditions, sabotage at the base and changes in standing.",
+      "Withholding raises the handler's pressure, and a handler pushed far enough leaks the commander's crime to the squad.",
+      "Oversight and watchful soldiers can find out. Each ending is a choice with a cost."
+    ],
+    "hooks": [
+      "debts"
     ]
   }
 ]

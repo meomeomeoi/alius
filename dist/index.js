@@ -973,6 +973,16 @@ function summarizeTraitEffect(e, _reg) {
       return `${x.states.map((s) => `[[relationshipStates:${s}]]`).join(", ")} need ${x.pct}% less to reach`;
     case "unlock_state":
       return `Unlocks [[relationshipStates:${x.stateId}]]`;
+    case "frequency":
+      return "Secret frequency in the commander's head";
+    case "paranoia":
+      return "Bloom-induced paranoia";
+    case "debts":
+      return "Debts to a rival corporation";
+    case "commander_flag":
+      return `Sets ${String(x.flag)}`;
+    case "unlock_order":
+      return `Unlocks the order [[orders:${x.orderId}]]`;
     default:
       return humanize(String(x.type));
   }
@@ -1244,6 +1254,7 @@ function validateCommanderSetup(c, reg, opts) {
       }
       const needs = t.requiresSettings;
       if (needs?.desireBondDefects && !opts.desireBondDefects) out.push(`Trait "${id}" needs the Desire/Bond setting`);
+      if (lacksRival(reg, t, opts.corporationId)) out.push(`Trait "${id}": ${RIVAL_REASON}`);
     }
   }
   return out;
@@ -1280,12 +1291,19 @@ function intimidationBonus(state) {
   const p = commanderProfile(state);
   return TUNING.commander.intimidatePerPoint * (p.body.strength - 3 + (p.seasoning - 3));
 }
+var RIVAL_REASON = "Needs a rival corporation in the world.";
+function lacksRival(reg, t, corporationId) {
+  const needs = t.requires;
+  if (!needs?.otherCorporation || corporationId === void 0 || corporationId === null) return false;
+  return ![...reg.corporations.keys()].some((id) => id !== corporationId);
+}
 function traitBlockReason(reg, traits, id, opts) {
   const t = reg.commanderTraits.get(id);
   if (!t) return "Unknown trait.";
   if (traits.regular.includes(id) || traits.special === id) return null;
   const needs = t.requiresSettings;
   if (needs?.desireBondDefects && !opts.desireBondDefects) return "Needs the Desire/Bond setting.";
+  if (lacksRival(reg, t, opts.corporationId)) return RIVAL_REASON;
   if (t.kind === "regular" && traits.regular.length >= TUNING.commander.maxRegular) return `Two regular traits are already chosen.`;
   const chosen = [...traits.regular, ...traits.special !== void 0 ? [traits.special] : []];
   const excludes = t.exclusiveWith ?? [];
@@ -7275,7 +7293,13 @@ var TraitEffectSchema = external_exports.discriminatedUnion("type", [
   external_exports.object({ type: external_exports.literal("sleepless_rank"), stat: traitSocialStat, amount: int.min(-2).max(0) }).strict(),
   external_exports.object({ type: external_exports.literal("no_romance") }).strict(),
   external_exports.object({ type: external_exports.literal("platonic_threshold"), states: external_exports.array(str).min(1), pct: int.min(0).max(50) }).strict(),
-  external_exports.object({ type: external_exports.literal("unlock_state"), stateId: str }).strict()
+  external_exports.object({ type: external_exports.literal("unlock_state"), stateId: str }).strict(),
+  // P12: special traits. The first three switch a whole system on; the engine asks `hasTraitEffect`, never the trait id.
+  external_exports.object({ type: external_exports.literal("frequency") }).strict(),
+  external_exports.object({ type: external_exports.literal("paranoia") }).strict(),
+  external_exports.object({ type: external_exports.literal("debts") }).strict(),
+  external_exports.object({ type: external_exports.literal("commander_flag"), flag: str }).strict(),
+  external_exports.object({ type: external_exports.literal("unlock_order"), orderId: str }).strict()
 ]);
 var CommanderTraitSchema = BaseEntrySchema.extend({
   name: str,
@@ -7287,7 +7311,11 @@ var CommanderTraitSchema = BaseEntrySchema.extend({
   /** Free-form notes on where the engine looks at the trait (for authors). */
   hooks: external_exports.array(str).optional(),
   exclusiveWith: external_exports.array(str).optional(),
-  requiresSettings: external_exports.object({ desireBondDefects: external_exports.literal(true).optional() }).strict().optional()
+  requiresSettings: external_exports.object({ desireBondDefects: external_exports.literal(true).optional() }).strict().optional(),
+  /** P12: the world must hold at least one corporation other than the commander's own. */
+  requires: external_exports.object({ otherCorporation: external_exports.literal(true).optional() }).strict().optional(),
+  /** P12: the "WHAT THIS CHANGES" lines of a special trait's card (no pronoun for the commander, lore §0). */
+  changes: external_exports.array(str.max(200)).min(1).max(8).optional()
 }).strict();
 Object.assign(registrySchemas, {
   presence: PresenceSchema,
@@ -11706,6 +11734,23 @@ function objectiveList(state, reg) {
   return out;
 }
 
+// src/engine/special/state.ts
+function specialOf(draft) {
+  return draft.special ??= {};
+}
+
+// src/engine/special/traits.ts
+function seedSpecialTraits(draft, ctx2) {
+  const reg = ctx2.registries;
+  for (const fx2 of traitEffects(draft, reg, "commander_flag")) {
+    if (!draft.commander.flags.includes(fx2.flag)) draft.commander.flags.push(fx2.flag);
+  }
+  if (traitEffects(draft, reg, "frequency").length > 0) specialOf(draft).frequency ??= {};
+  if (traitEffects(draft, reg, "paranoia").length > 0) specialOf(draft).paranoia ??= {};
+  if (traitEffects(draft, reg, "debts").length > 0) specialOf(draft).debts ??= {};
+  return [];
+}
+
 // src/engine/setup.ts
 var SETUP_LIMITS = {
   maxUnits: 4,
@@ -11827,7 +11872,10 @@ function validateSetup(r, reg, opts) {
     else if (corp.playable !== true) out.push(`Start "${r.startId}" uses non-playable corporation "${corp.id}"`);
   }
   if (!reg.crimes.has(r.crimeId)) out.push(`Unknown crime "${r.crimeId}"`);
-  if (r.commander !== void 0) out.push(...validateCommanderSetup(r.commander, reg, opts));
+  if (r.commander !== void 0) {
+    const startCorp = start ? String(start.corporationId) : null;
+    out.push(...validateCommanderSetup(r.commander, reg, { ...opts, corporationId: startCorp }));
+  }
   if (r.world !== void 0) out.push(...validateWorldOptions(r.world.options, reg));
   if (r.content !== void 0) {
     if (!Array.isArray(r.content.enabled) || r.content.enabled.some((x) => typeof x !== "string")) out.push("The content choice must be a list of category ids");
@@ -11975,6 +12023,7 @@ function buildCampaign(r, reg, opts) {
   state.roster.activeIds = state.squad.map((u) => u.id);
   seedWorld(state, reg);
   applyFactionTraitEffects(state, reg);
+  seedSpecialTraits(state, { registries: reg, rng: new Rng(state.rng) });
   applyWorldStartEffects(state, reg);
   ensureLeash(state, reg);
   if (r.onboarding !== void 0) {
@@ -21836,12 +21885,16 @@ registerAction("commander/set_profile", (draft, payload, ctx2) => {
   if (draft.commander.fileReviewed !== false) throw new Error("The commander file was already reviewed.");
   const c = payload?.commander;
   if (c === void 0) throw new Error("commander/set_profile needs { commander }");
-  const problems = validateCommanderSetup(c, ctx2.registries, { desireBondDefects: draft.settings.desireBondDefects === true });
+  const problems = validateCommanderSetup(c, ctx2.registries, {
+    desireBondDefects: draft.settings.desireBondDefects === true,
+    corporationId: draft.commander.corporationId
+  });
   if (problems.length > 0) throw new Error(problems.join("; "));
   applyCommanderSetup(draft.commander, c);
   applyStartTraitEffects(draft, ctx2.registries);
   syncTraitSettings(draft, ctx2.registries);
   applyFactionTraitEffects(draft, ctx2.registries);
+  seedSpecialTraits(draft, ctx2);
   draft.commander.fileReviewed = true;
   return [{ type: "commander_profile_set" }];
 });
@@ -27229,7 +27282,7 @@ function renderCommanderFile(host, ctx2) {
   const reasons = ctx2.importStatus?.reasons ?? {};
   const card2 = (id) => {
     const t = reg.commanderTraits.get(id);
-    const blocked = traitBlockReason(reg, c.traits, id, { desireBondDefects: ctx2.desireBondDefects });
+    const blocked = traitBlockReason(reg, c.traits, id, { desireBondDefects: ctx2.desireBondDefects, corporationId: ctx2.corporationId });
     const on = chosen.has(id);
     return h(
       "button",
@@ -27247,10 +27300,26 @@ function renderCommanderFile(host, ctx2) {
         }
       },
       h("strong", {}, String(t.name)),
-      t.kind === "special" ? h("span", { class: "alius-dim" }, " SPECIAL") : null,
+      t.kind === "special" ? h("span", { class: "alius-dim", ...analyzeAttrs("glossary:special_trait") }, " SPECIAL") : null,
       h("p", {}, `UP: ${String(t.upside)}`),
       h("p", {}, `DOWN: ${String(t.downside)}`),
       on && reasons[id] ? h("p", { class: "alius-dim" }, `Why: ${reasons[id]}`) : null
+    );
+  };
+  const entry = (id) => {
+    const t = reg.commanderTraits.get(id);
+    const lines = Array.isArray(t.changes) ? t.changes : [];
+    if (t.kind !== "special" || lines.length === 0) return card2(id);
+    return h(
+      "div",
+      { class: "alius-trait-entry", "data-trait-entry": id },
+      card2(id),
+      h(
+        "details",
+        { class: "alius-trait-changes", "data-trait-changes": id, open: chosen.has(id), ...analyzeAttrs(`commanderTraits:${id}`) },
+        h("summary", {}, "WHAT THIS CHANGES"),
+        h("ul", {}, ...lines.map((line2) => h("li", {}, line2)))
+      )
     );
   };
   const all = [...reg.commanderTraits.values()];
@@ -27262,7 +27331,7 @@ function renderCommanderFile(host, ctx2) {
       h("p", { class: "alius-hint" }, `Up to ${TUNING.commander.maxRegular} regular traits and one special. A trait changes how the commander plays, not how strong the commander is.`),
       h("div", { class: "alius-cards" }, ...all.filter((t) => t.kind === "regular").map((t) => card2(t.id))),
       all.some((t) => t.kind === "special") ? h("h4", {}, "SPECIAL") : null,
-      h("div", { class: "alius-cards" }, ...all.filter((t) => t.kind === "special").map((t) => card2(t.id)))
+      h("div", { class: "alius-cards" }, ...all.filter((t) => t.kind === "special").map((t) => entry(t.id)))
     )
   );
   const st = ctx2.importStatus;
@@ -27629,6 +27698,11 @@ var Wizard = class {
   get desireBondDefects() {
     return this.deps.desireBondDefects;
   }
+  /** P12: the corporation of the chosen start (null before one is chosen); a special trait may need a rival to it. */
+  get corporationId() {
+    const start = this.s.startId ? this.deps.registries.starts.get(this.s.startId) : void 0;
+    return start ? String(start.corporationId) : null;
+  }
   get state() {
     return this.s;
   }
@@ -27819,7 +27893,7 @@ var Wizard = class {
     this.emit();
   }
   traitAllowed(id, traits = this.s.commander.traits) {
-    return traitBlockReason(this.deps.registries, traits, id, { desireBondDefects: this.deps.desireBondDefects }) === null;
+    return traitBlockReason(this.deps.registries, traits, id, { desireBondDefects: this.deps.desireBondDefects, corporationId: this.corporationId }) === null;
   }
   /** Asks the mechanic model for a commander from the persona text; a late answer after the player moved on is dropped. */
   prefillFromPersona() {
@@ -27920,7 +27994,7 @@ var Wizard = class {
         return { ok: true };
       case "exam":
       case "commander": {
-        const errors = validateCommanderSetup(this.s.commander, this.deps.registries, { desireBondDefects: this.deps.desireBondDefects });
+        const errors = validateCommanderSetup(this.s.commander, this.deps.registries, { desireBondDefects: this.deps.desireBondDefects, corporationId: this.corporationId });
         return errors.length === 0 ? { ok: true } : fail(errors[0]);
       }
       case "units":
@@ -28842,6 +28916,7 @@ function renderExam(host, ctx2) {
     value: c,
     registries: reg,
     desireBondDefects: wizard.desireBondDefects,
+    corporationId: wizard.corporationId,
     onChange: apply,
     onPrefill: () => wizard.prefillFromPersona(),
     onRandom: () => wizard.randomCommander(),
@@ -29115,6 +29190,7 @@ function renderSetupScreen(host, ctx2) {
       value: wizard.state.commander,
       registries: reg,
       desireBondDefects: wizardDesireBond(),
+      corporationId: wizard.corporationId,
       onChange: apply,
       onPrefill: () => wizard.prefillFromPersona(),
       onRandom: () => wizard.randomCommander(),
@@ -37801,6 +37877,7 @@ function createApp(st, deps) {
       value: wizard.state.commander,
       registries,
       desireBondDefects: desireBond,
+      corporationId: state?.commander.corporationId ?? null,
       onChange: (c) => {
         if (c.kind === "body") wizard.setBody(c.stat, c.value);
         else if (c.kind === "expression") wizard.setExpression(c.value);
@@ -39220,6 +39297,8 @@ registerRefs("commanderTraits", (entry) => {
       out.push({ registry: "eventDeltas", id: fx2.event, path: `${at}.event` });
     } else if (fx2.type === "unlock_state" && typeof fx2.stateId === "string") {
       out.push({ registry: "relationshipStates", id: fx2.stateId, path: `${at}.stateId` });
+    } else if (fx2.type === "unlock_order" && typeof fx2.orderId === "string") {
+      out.push({ registry: "orders", id: fx2.orderId, path: `${at}.orderId` });
     } else if (fx2.type === "platonic_threshold" && Array.isArray(fx2.states)) {
       fx2.states.forEach((id, j) => out.push({ registry: "relationshipStates", id: String(id), path: `${at}.states[${j}]` }));
     }

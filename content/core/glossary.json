@@ -1739,5 +1739,14 @@
       "device_access",
       "handwriting"
     ]
+  },
+  {
+    "id": "special_trait",
+    "term": "Special trait",
+    "short": "A campaign premise, chosen at setup: one per campaign. It changes how the whole run is played, not how strong the commander is.",
+    "long": "AUTHOR TO WRITE: A special trait is not a modifier. It adds a system of its own: a frequency in the commander's head, a mind marked by the Bloom, or a debt to a rival corporation. Each shows a WHAT THIS CHANGES list on its card. Only one can be taken, and the choice cannot be changed after the commander file is reviewed.",
+    "see": [
+      "commander_traits"
+    ]
   }
 ]

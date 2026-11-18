@@ -298,6 +298,8 @@ export const CORE_GLOSSARY_IDS: readonly string[] = [
   'squad_secret',
   // P3b: memory (SYS › MEMORY and the MEMORY view address these; `rumor` is P5's mission-board gossip, so the spreading kind is `squad_rumor`)
   'memory', 'memory_preset', 'memory_budget', 'memory_fill', 'dossier', 'squad_rumor', 'pinned_fact', 'hidden_scenes',
+  // P12: the SPECIAL label of a trait card addresses this; later tasks add their own
+  'special_trait',
 ];
 
 let registered = false;

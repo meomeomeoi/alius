@@ -372,7 +372,7 @@ Rulings marked **(user)** were answered by the user on 2026-11-18. Task 18 copie
   - `web_of_debts`: `[{type:'debts'}]`, `requires: { otherCorporation: true }`
   - All three get `description`, `upside`, `downside` and `changes[]` (AUTHOR TO WRITE, no commander pronoun).
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `tests/special/traits.test.ts`:
 - `two special traits are rejected`: `validateCommanderSetup` with special `secret_frequency` plus a second special in `regular` → contains `is not a regular trait`.
@@ -384,9 +384,9 @@ Rulings marked **(user)** were answered by the user on 2026-11-18. Task 18 copie
 
 `tests/ui/commanderFileSpecial.test.ts`: `a special card shows WHAT THIS CHANGES with every line and data-analyze`.
 
-- [ ] **Step 2: Run** `npx vitest run tests/special/traits.test.ts tests/ui/commanderFileSpecial.test.ts` → FAIL (module not found).
+- [x] **Step 2: Run** `npx vitest run tests/special/traits.test.ts tests/ui/commanderFileSpecial.test.ts` → FAIL (module not found).
 
-- [ ] **Step 3: Implement**:
+- [x] **Step 3: Implement**:
   - the schema types, with a `refs.ts` check for `unlock_order.orderId`;
   - the `requires` check (any `corporations` entry whose id ≠ `corporationId`);
   - the opts threaded through the wizard, `setup/commander.ts` and `commander/set_profile` (pass `draft.commander.corporationId`);
@@ -394,9 +394,9 @@ Rulings marked **(user)** were answered by the user on 2026-11-18. Task 18 copie
   - the card UI (`<details class="alius-trait-changes">`);
   - summary lines: `Secret frequency in the commander's head`, `Bloom-induced paranoia`, `Debts to a rival corporation`, `Sets {flag}`, `Unlocks the order {name}`.
 
-- [ ] **Step 4: Run** the two files, then `npm test` → PASS, baseline count + new tests, no seeded test moved.
+- [x] **Step 4: Run** the two files, then `npm test` → PASS, baseline count + new tests, no seeded test moved.
 
-- [ ] **Step 5: Commit** `feat(P12): special-trait plumbing, three trait entries, WHAT THIS CHANGES`
+- [x] **Step 5: Commit** `feat(P12): special-trait plumbing, three trait entries, WHAT THIS CHANGES`
 
 ---
 

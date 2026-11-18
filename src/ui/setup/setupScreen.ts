@@ -137,7 +137,7 @@ export function renderSetupScreen(host: HTMLElement, ctx: SetupScreenCtx): void 
       else wizard.toggleTrait(p.id);
     };
     renderCommanderFile(body, {
-      value: wizard.state.commander, registries: reg, desireBondDefects: wizardDesireBond(), onChange: apply,
+      value: wizard.state.commander, registries: reg, desireBondDefects: wizardDesireBond(), corporationId: wizard.corporationId, onChange: apply,
       onPrefill: () => wizard.prefillFromPersona(), onRandom: () => wizard.randomCommander(),
       importStatus: wizard.state.commanderImport,
     });

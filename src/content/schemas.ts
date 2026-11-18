@@ -1277,6 +1277,12 @@ export const TraitEffectSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('no_romance') }).strict(),
   z.object({ type: z.literal('platonic_threshold'), states: z.array(str).min(1), pct: int.min(0).max(50) }).strict(),
   z.object({ type: z.literal('unlock_state'), stateId: str }).strict(),
+  // P12: special traits. The first three switch a whole system on; the engine asks `hasTraitEffect`, never the trait id.
+  z.object({ type: z.literal('frequency') }).strict(),
+  z.object({ type: z.literal('paranoia') }).strict(),
+  z.object({ type: z.literal('debts') }).strict(),
+  z.object({ type: z.literal('commander_flag'), flag: str }).strict(),
+  z.object({ type: z.literal('unlock_order'), orderId: str }).strict(),
 ]);
 export type TraitEffect = z.infer<typeof TraitEffectSchema>;
 
@@ -1291,6 +1297,10 @@ export const CommanderTraitSchema = BaseEntrySchema.extend({
   hooks: z.array(str).optional(),
   exclusiveWith: z.array(str).optional(),
   requiresSettings: z.object({ desireBondDefects: z.literal(true).optional() }).strict().optional(),
+  /** P12: the world must hold at least one corporation other than the commander's own. */
+  requires: z.object({ otherCorporation: z.literal(true).optional() }).strict().optional(),
+  /** P12: the "WHAT THIS CHANGES" lines of a special trait's card (no pronoun for the commander, lore §0). */
+  changes: z.array(str.max(200)).min(1).max(8).optional(),
 }).strict();
 
 Object.assign(registrySchemas, {

@@ -54,12 +54,12 @@ describe('CommanderTraitSchema', () => {
 });
 
 describe('core traits', () => {
-  it('core traits load with no errors: eight regular and one special', () => {
+  it('core traits load with no errors: eight regular and four special', () => {
     const all = [...reg.commanderTraits.values()];
     expect(all.filter((t) => t.kind === 'regular').map((t) => t.id).sort()).toEqual([
       'bookish', 'corporate_polish', 'field_medic', 'insomniac', 'old_wound', 'pretty_face', 'silver_tongue', 'street_raised',
     ]);
-    expect(all.filter((t) => t.kind === 'special').map((t) => t.id)).toEqual(['vow_of_distance']);
+    expect(all.filter((t) => t.kind === 'special').map((t) => t.id)).toEqual(['vow_of_distance', 'secret_frequency', 'bloom_paranoia', 'web_of_debts']);
     for (const t of all) {
       expect(String(t.upside).length, t.id).toBeGreaterThan(0);
       expect(String(t.downside).length, t.id).toBeGreaterThan(0);

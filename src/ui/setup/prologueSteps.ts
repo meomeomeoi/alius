@@ -98,7 +98,7 @@ export function renderExam(host: HTMLElement, ctx: PrologueStepCtx): void {
     else wizard.toggleTrait(p.id);
   };
   renderCommanderFile(file, {
-    value: c, registries: reg, desireBondDefects: wizard.desireBondDefects, onChange: apply,
+    value: c, registries: reg, desireBondDefects: wizard.desireBondDefects, corporationId: wizard.corporationId, onChange: apply,
     onPrefill: () => wizard.prefillFromPersona(), onRandom: () => wizard.randomCommander(),
     importStatus: wizard.state.commanderImport,
   });

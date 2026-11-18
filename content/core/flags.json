@@ -128,5 +128,63 @@
     "setBy": [
       "event"
     ]
+  },
+  {
+    "id": "commander_bloom_exposed",
+    "scope": "commander",
+    "description": "The commander was exposed to the Bloom for long. A hook for the future Bloom update.",
+    "setBy": [
+      "start"
+    ]
+  },
+  {
+    "id": "knows_frequency",
+    "scope": "relation",
+    "description": "The unit knows the commander hears thoughts.",
+    "setBy": [
+      "event"
+    ],
+    "leverage": true
+  },
+  {
+    "id": "knows_debts",
+    "scope": "relation",
+    "description": "The unit knows the commander sells intel to a rival corporation.",
+    "setBy": [
+      "event"
+    ],
+    "leverage": true
+  },
+  {
+    "id": "defector_arc",
+    "scope": "world",
+    "description": "The commander's dealings with a rival corporation came out and the defector storyline is open.",
+    "setBy": [
+      "event"
+    ]
+  },
+  {
+    "id": "defector_double_agent",
+    "scope": "world",
+    "description": "The commander kept selling intel as a double agent.",
+    "setBy": [
+      "event"
+    ]
+  },
+  {
+    "id": "defector_confessed",
+    "scope": "world",
+    "description": "The commander confessed the dealings with the rival corporation.",
+    "setBy": [
+      "event"
+    ]
+  },
+  {
+    "id": "defector_fled",
+    "scope": "world",
+    "description": "The commander fled to the rival corporation.",
+    "setBy": [
+      "event"
+    ]
   }
 ]
