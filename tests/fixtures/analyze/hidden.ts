@@ -51,6 +51,11 @@ export function hiddenFixture(reg: Registries): { state: CampaignState; unitId: 
       seq: 1, suspicion: { [unit.id]: 71 }, dmDay: {}, factId: 'fact_freq',
     },
   };
+  // P12: the handler's clocks and an unanswered visit with a false item whose label is a sentinel
+  state.special.debts = {
+    corporationId: 'kestrel', handlerId: 'the_clerk', visitSeq: 1, answered: [], handlerSuspicion: 57, handlerPressure: 12, oversightSuspicion: 63, scheduled: [], exposures: [],
+    visit: { id: 'hv1', day: 8, items: [{ id: 'plan:sentinel', kind: 'plan', refId: 'sentinel', label: 'SENTINEL_INTEL_FALSE' }] },
+  };
   // P12: a real and a false premonition: their ids and the fact that one is real never reach a reading
   state.special.paranoia = {
     seq: 2,
@@ -83,8 +88,8 @@ export function hiddenFixture(reg: Registries): { state: CampaignState; unitId: 
     state,
     unitId: unit.id,
     sentinels: {
-      numbers: [37, 41, 23, 63, 17, 29, 97, 77, 31, 53, 59, 71],
-      texts: ['SENTINEL_CLOCK', 'SENTINEL_FACT', 'SENTINEL_OPTION_EFFECT', 'SENTINEL_SECRET', 'SENTINEL_FREQ_TRUE', 'SENTINEL_FREQ_FACT', 'SENTINEL_PREMONITION_REAL', 'SENTINEL_PREMONITION_FALSE'],
+      numbers: [37, 41, 23, 63, 17, 29, 97, 77, 31, 53, 59, 71, 57],
+      texts: ['SENTINEL_CLOCK', 'SENTINEL_FACT', 'SENTINEL_OPTION_EFFECT', 'SENTINEL_SECRET', 'SENTINEL_FREQ_TRUE', 'SENTINEL_FREQ_FACT', 'SENTINEL_PREMONITION_REAL', 'SENTINEL_PREMONITION_FALSE', 'SENTINEL_INTEL_FALSE'],
     },
   };
 }

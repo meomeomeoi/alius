@@ -4,7 +4,7 @@ export type Voice = 'terminal' | 'corporate' | 'paper' | 'personal';
 /** Who is speaking is declared here, in one table, never at the call sites that show the text. */
 export type VoiceSource =
   | 'toast' | 'dm' | 'unit_note' | 'chronicle' | 'dossier' | 'commander_file'
-  | 'oversight' | 'leash_verdict' | 'corporate_mail' | 'intake_form' | 'squad_vote' | 'her_call' | 'booking' | 'device_edit' | 'squad_secret' | 'frequency' | 'premonition';
+  | 'oversight' | 'leash_verdict' | 'corporate_mail' | 'intake_form' | 'squad_vote' | 'her_call' | 'booking' | 'device_edit' | 'squad_secret' | 'frequency' | 'premonition' | 'handler';
 
 export const VOICE_OF: Record<VoiceSource, Voice> = {
   toast: 'terminal',
@@ -31,4 +31,6 @@ export const VOICE_OF: Record<VoiceSource, Voice> = {
   frequency: 'terminal',
   // P12: the early warning is the device's readout too
   premonition: 'terminal',
+  // P12: the rival corporation's handler writes like a corporation
+  handler: 'corporate',
 };

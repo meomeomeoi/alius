@@ -57,3 +57,14 @@ export function rollVisit(draft: CampaignState, ctx: EngineCtx): EngineEvent[] {
   d.visit = { id: `hv${d.visitSeq}`, day: draft.day, items };
   return [{ type: 'handler_visit', visitId: d.visit.id }];
 }
+
+/** A line the handler says (`greet`, `threat`, `cut`, `leak`), with the author's draft marker removed. Empty for an unknown handler. */
+export function handlerLine(reg: Registries, handlerId: string, key: 'greet' | 'threat' | 'cut' | 'leak'): string {
+  const lines = reg.debtHandlers.get(handlerId)?.lines as Record<string, string> | undefined;
+  return (lines?.[key] ?? '').replace(/^AUTHOR TO WRITE:\s*/, '');
+}
+
+/** The handler's pressure in words, the only form in which the player sees it: calm below 20, pressing below 40, threatening from 40. */
+export function pressureBand(pressure: number): 'calm' | 'pressing' | 'threatening' {
+  return pressure < 20 ? 'calm' : pressure < 40 ? 'pressing' : 'threatening';
+}

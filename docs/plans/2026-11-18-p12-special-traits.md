@@ -929,9 +929,9 @@ The day step's decay runs in every campaign: it is registered unconditionally an
   - `renderHandlerPanel(host, ctx: { state; reg; onAnswer(answers): void })`: one row per item with four `alius-option` buttons (`data-analyze="glossary:intel_exchange"`), a SUBMIT that stays `aria-disabled` until every row is set, and the payment preview from `paymentFor`.
   - `renderDebtsBlock(host, state, reg)`
 
-- [ ] **Step 1: Write the failing tests** `four choices per row and SUBMIT waits for all`, `submit dispatches one debts/answer_visit with expectChatId`, `a refused answer unlocks the panel` (P7's microtask rule), `no provider shows a debts sentinel`.
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → PASS; `npm test` → PASS (coverage test included).
-- [ ] **Step 5: Commit** `feat(P12): the HANDLER panel, the DEBTS block and readings`
+- [x] **Step 1: Write the failing tests** `four choices per row and SUBMIT waits for all`, `submit dispatches one debts/answer_visit with expectChatId`, `a refused answer unlocks the panel` (P7's microtask rule), `no provider shows a debts sentinel`.
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → PASS; `npm test` → PASS (coverage test included).
+- [x] **Step 5: Commit** `feat(P12): the HANDLER panel, the DEBTS block and readings`
 
 ---
 

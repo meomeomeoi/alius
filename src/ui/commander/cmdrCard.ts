@@ -6,6 +6,7 @@ import { h, type Child } from '../dom';
 import { commanderStressBand } from '../../engine/special/commanderStress';
 import { renderTokens } from '../personal/tokens';
 import { renderInterceptLog } from '../special/interceptLog';
+import { renderDebtsBlock } from '../special/debtsBlock';
 import { renderPremonitions } from '../special/premonitions';
 import { renderVoiceCard } from '../voice/voiceCard';
 
@@ -64,5 +65,6 @@ export function renderCmdrCard(host: HTMLElement, ctx: CmdrCardCtx): void {
       renderTokens(state, reg, { onWear: (id) => ctx.onWear?.(id), onTakeOff: (id) => ctx.onTakeOff?.(id) }));
   renderInterceptLog(file, state, reg); // P12: nothing without the frequency
   renderPremonitions(file, state, reg); // P12: nothing without the paranoia
+  renderDebtsBlock(file, state, reg); // P12: nothing without the debts
   host.append(h('section', { class: 'alius-section alius-cmdr' }, renderVoiceCard({ voice: 'paper', title: `CMDR — ${state.commander.name}`, body: file })));
 }

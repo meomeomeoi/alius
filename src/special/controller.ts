@@ -1,4 +1,5 @@
 import type { EngineEvent } from '../engine/dispatch';
+import { handlerLine } from '../engine/special/debts/handler';
 import { premonitionLine } from '../engine/special/paranoia/premonitions';
 import { nightmareLine } from '../engine/special/paranoia/nightmares';
 import { fallbackFragment, interceptGist } from '../engine/special/frequency/fragments';
@@ -10,6 +11,8 @@ export type { SpecialDeps } from './deps';
 export interface SpecialController {
   /** Reads the events of one dispatch: a new frequency intercept is worded (the model, or the template) and stored; a discovery and a burn are toasted. */
   onEvents(events: EngineEvent[]): void;
+  /** The commander's answer to the handler's visit (one answer for every item). Dispatched with the chat it was asked in; toasts and resolves false when the engine refuses or the chat changed. */
+  answerVisit(visitId: string, answers: Record<string, string>): Promise<boolean>;
 }
 
 /**
@@ -49,7 +52,26 @@ export function createSpecial(deps: SpecialDeps): SpecialController {
   /** The nightmare of last night, shown when the morning comes. */
   let dreamt: string | null = null;
 
+  const handlerId = (): string => state()?.special?.debts?.handlerId ?? '';
+  const CONSEQUENCE_WORDS: Record<string, string> = {
+    plan: 'The rival knew where the squad was going.', base: 'Something at the base was tampered with.',
+    mission_done: 'The rival is using what it learned about the squad\'s work.', spine: 'The rival is using what it learned about the squad\'s work.',
+    squad: 'The rival is using what it learned about a soldier.',
+  };
+
   return {
+    async answerVisit(visitId, answers) {
+      const expect = chatId();
+      if (state() === null || chatId() !== expect) return false;
+      const events = deps.app.dispatch({ type: 'debts/answer_visit', payload: { visitId, answers } }, { expectChatId: expect });
+      const bad = events.find((e) => e.type === 'error');
+      if (bad) {
+        if (bad.code !== 'chat_changed') deps.toast('error', String(bad.message ?? bad.code));
+        return false;
+      }
+      deps.refreshContext();
+      return true;
+    },
     onEvents(events) {
       const expect = chatId();
       for (const e of events) {
@@ -63,7 +85,14 @@ export function createSpecial(deps: SpecialDeps): SpecialController {
           // the same toast for a real and a false warning: the wording is picked by the id, nothing here reads the truth
           const p = state()?.special?.paranoia?.premonitions.find((x) => x.id === e.premonitionId);
           if (p) deps.notice?.('warn', premonitionLine(deps.registries(), p, nameOf(p.unitId)), 'PREMONITION', 'premonition');
-        } else if (e.type === 'bloom_nightmare') dreamt = nightmareLine(Number(e.day));
+        } else if (e.type === 'handler_threat') deps.notice?.('warn', handlerLine(deps.registries(), handlerId(), 'threat'), 'HANDLER', 'handler');
+        else if (e.type === 'handler_leak') {
+          deps.notice?.('warn', handlerLine(deps.registries(), handlerId(), 'leak'), 'HANDLER', 'handler');
+          deps.cutIn?.('EXPOSED');
+        } else if (e.type === 'debts_consequence') deps.notice?.('warn', CONSEQUENCE_WORDS[String(e.kind)] ?? 'Something you sold came back.', 'HANDLER', 'handler');
+        else if (e.type === 'debts_discovered') deps.notice?.('warn', `${nameOf(e.unitId)} found out about the handler.`, 'HANDLER', 'handler');
+        else if (e.type === 'defector_arc') deps.notice?.('warn', 'The dealings with the rival corporation are out. This is the defector arc now.', 'HANDLER', 'handler');
+        else if (e.type === 'bloom_nightmare') dreamt = nightmareLine(Number(e.day));
         else if (e.type === 'day_started' && dreamt !== null) {
           deps.notice?.('info', dreamt, 'BLOOM', 'premonition');
           dreamt = null;

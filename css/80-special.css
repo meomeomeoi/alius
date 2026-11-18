@@ -20,3 +20,22 @@
 #alius-shell .alius-premonitions li {
   overflow-wrap: anywhere;
 }
+
+#alius-shell .alius-handler-row {
+  margin: 8px 0;
+}
+
+#alius-shell .alius-handler-answers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+#alius-shell .alius-handler-answers .alius-option[aria-pressed='true'] {
+  color: var(--alius-bg);
+  background: var(--alius-fg);
+}
+
+#alius-shell .alius-handler button[aria-disabled='true'] {
+  opacity: 0.45;
+}

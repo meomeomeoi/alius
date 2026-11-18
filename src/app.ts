@@ -84,6 +84,8 @@ import { getSettings } from './settings';
 import type { Lorebook, StAdapter } from './st/adapter';
 import { buildCampaign, type SetupResult } from './engine/setup';
 import { commanderProfile } from './engine/commander/profile';
+import { renderHandlerPanel } from './ui/special/handlerPanel';
+import { HANDLER_VISIT_KIND } from './engine/special/state';
 import { renderCommanderFile } from './ui/commander/commanderFile';
 import { importCommander } from './setup/commander';
 import { importProfile, stanceOptionIds } from './setup/profile';
@@ -787,6 +789,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
   /** The night entry is a desertion, mutiny or return waiting for its panel. */
   function confrontationNight(s: CampaignState): boolean {
     const entry = s.calendar.nightEvent;
+    if (entry?.kind === HANDLER_VISIT_KIND) return true; // P12: the handler's visit has its own panel too
     const open = s.disloyalty?.open;
     return entry !== undefined && open !== undefined && open.unitId === entry.unitId && (CONFRONTATION_KINDS as readonly string[]).includes(entry.kind);
   }
@@ -808,6 +811,20 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
   /** Fills `host` with the panel of the open confrontation. */
   function renderConfrontationPanel(host: HTMLElement, close?: () => void): void {
     const s = state;
+    if (s?.calendar.nightEvent?.kind === HANDLER_VISIT_KIND) {
+      // P12: the rival corporation's handler at the gate: one answer for every item, then the night is spent
+      const visitId = s.special?.debts?.visit?.id ?? '';
+      renderHandlerPanel(host, {
+        state: s, reg: registries,
+        onAnswer: (answers) => void special.answerVisit(visitId, answers).then((ok) => {
+          if (!ok) return;
+          close?.();
+          if (onSceneScreen) leaveScene();
+          else shell.refresh();
+        }),
+      });
+      return;
+    }
     const open = s?.disloyalty?.open;
     if (!s || !open) return;
     const unit = s.squad.find((u) => u.id === open.unitId);

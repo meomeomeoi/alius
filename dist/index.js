@@ -19569,6 +19569,13 @@ function rollVisit(draft, ctx2) {
   d.visit = { id: `hv${d.visitSeq}`, day: draft.day, items };
   return [{ type: "handler_visit", visitId: d.visit.id }];
 }
+function handlerLine(reg, handlerId, key) {
+  const lines = reg.debtHandlers.get(handlerId)?.lines;
+  return (lines?.[key] ?? "").replace(/^AUTHOR TO WRITE:\s*/, "");
+}
+function pressureBand(pressure) {
+  return pressure < 20 ? "calm" : pressure < 40 ? "pressing" : "threatening";
+}
 
 // src/engine/special/traits.ts
 function seedSpecialTraits(draft, ctx2) {
@@ -24543,7 +24550,27 @@ function createSpecial(deps) {
   }
   const nameOf14 = (id) => state()?.squad.find((u) => u.id === id)?.displayName ?? "A soldier";
   let dreamt = null;
+  const handlerId = () => state()?.special?.debts?.handlerId ?? "";
+  const CONSEQUENCE_WORDS = {
+    plan: "The rival knew where the squad was going.",
+    base: "Something at the base was tampered with.",
+    mission_done: "The rival is using what it learned about the squad's work.",
+    spine: "The rival is using what it learned about the squad's work.",
+    squad: "The rival is using what it learned about a soldier."
+  };
   return {
+    async answerVisit(visitId, answers) {
+      const expect = chatId();
+      if (state() === null || chatId() !== expect) return false;
+      const events = deps.app.dispatch({ type: "debts/answer_visit", payload: { visitId, answers } }, { expectChatId: expect });
+      const bad = events.find((e) => e.type === "error");
+      if (bad) {
+        if (bad.code !== "chat_changed") deps.toast("error", String(bad.message ?? bad.code));
+        return false;
+      }
+      deps.refreshContext();
+      return true;
+    },
     onEvents(events) {
       const expect = chatId();
       for (const e of events) {
@@ -24556,7 +24583,14 @@ function createSpecial(deps) {
         else if (e.type === "premonition") {
           const p = state()?.special?.paranoia?.premonitions.find((x) => x.id === e.premonitionId);
           if (p) deps.notice?.("warn", premonitionLine(deps.registries(), p, nameOf14(p.unitId)), "PREMONITION", "premonition");
-        } else if (e.type === "bloom_nightmare") dreamt = nightmareLine(Number(e.day));
+        } else if (e.type === "handler_threat") deps.notice?.("warn", handlerLine(deps.registries(), handlerId(), "threat"), "HANDLER", "handler");
+        else if (e.type === "handler_leak") {
+          deps.notice?.("warn", handlerLine(deps.registries(), handlerId(), "leak"), "HANDLER", "handler");
+          deps.cutIn?.("EXPOSED");
+        } else if (e.type === "debts_consequence") deps.notice?.("warn", CONSEQUENCE_WORDS[String(e.kind)] ?? "Something you sold came back.", "HANDLER", "handler");
+        else if (e.type === "debts_discovered") deps.notice?.("warn", `${nameOf14(e.unitId)} found out about the handler.`, "HANDLER", "handler");
+        else if (e.type === "defector_arc") deps.notice?.("warn", "The dealings with the rival corporation are out. This is the defector arc now.", "HANDLER", "handler");
+        else if (e.type === "bloom_nightmare") dreamt = nightmareLine(Number(e.day));
         else if (e.type === "day_started" && dreamt !== null) {
           deps.notice?.("info", dreamt, "BLOOM", "premonition");
           dreamt = null;
@@ -24647,7 +24681,7 @@ function refreshPersonalDirectives(builder, state, reg) {
 }
 
 // src/special/directives.ts
-var DERIVED2 = ["special:static:", "special:nightmare"];
+var DERIVED2 = ["special:static:", "special:nightmare", "special:handler"];
 function specialDirectives(state, reg, present2) {
   const out = [];
   for (const id of present2) {
@@ -24655,6 +24689,15 @@ function specialDirectives(state, reg, present2) {
     if (!unit2 || unit2.kind !== "named") continue;
     if (suspicionOf(state, id) > TUNING.special.frequency.staticAbove && frequencySenseOf(state, reg, id) > 1) {
       out.push({ id: `special:static:${id}`, expiresAfter: "scene", text: `${unit2.displayName} senses static around the commander.` });
+    }
+  }
+  const debts = state.special?.debts;
+  if (state.scene !== void 0 && debts) {
+    const knowers = present2.map((id) => state.squad.find((u) => u.id === id)).filter((u) => u !== void 0 && state.relations[u.id]?.flags.includes("knows_debts"));
+    if (knowers.length > 0) {
+      const handler2 = String(reg.debtHandlers.get(debts.handlerId)?.name ?? "a handler");
+      const names = knowers.map((u) => u.displayName).join(" and ");
+      out.push({ id: "special:handler", expiresAfter: "scene", text: `${names} ${knowers.length === 1 ? "knows" : "know"} the commander sells intel to a rival corporation through ${handler2}.` });
     }
   }
   const paranoia = state.special?.paranoia;
@@ -24820,7 +24863,9 @@ var VOICE_OF = {
   // P12: what the frequency caught and its toasts are the device's own readout
   frequency: "terminal",
   // P12: the early warning is the device's readout too
-  premonition: "terminal"
+  premonition: "terminal",
+  // P12: the rival corporation's handler writes like a corporation
+  handler: "corporate"
 };
 
 // src/ui/power/votePanel.ts
@@ -28515,6 +28560,73 @@ function createSceneController(deps) {
   return controller;
 }
 
+// src/ui/special/handlerPanel.ts
+var LABEL = { truth: "TRUTH", partial: "PARTIAL", false: "FALSE", withhold: "WITHHOLD" };
+function renderHandlerPanel(host, ctx2) {
+  host.replaceChildren();
+  const d = ctx2.state.special?.debts;
+  const visit = d?.visit;
+  if (!d || !visit) return;
+  const handler2 = ctx2.reg.debtHandlers.get(d.handlerId);
+  const corp = String(ctx2.reg.corporations.get(d.corporationId)?.name ?? d.corporationId);
+  const picked = {};
+  let locked = false;
+  const root = h("div", { class: "alius-handler" });
+  const preview = h("p", { class: "alius-dim", "data-preview": "" });
+  const submit = h("button", { type: "button", class: "alius-btn", "data-act": "submit", "aria-disabled": "true" }, "[ SUBMIT ]");
+  const buttons = [];
+  const complete = () => visit.items.every((i) => picked[i.id] !== void 0);
+  const refresh = () => {
+    const pay2 = paymentFor(picked, 0);
+    preview.textContent = `PAYS UP TO ${pay2.credits} CR \xB7 ${pay2.supplies} SUPPLIES \xB7 ${pay2.plyx} PLYX`;
+    if (complete() && !locked) submit.removeAttribute("aria-disabled");
+    else submit.setAttribute("aria-disabled", "true");
+  };
+  const rows = visit.items.map((item) => {
+    const row2 = h("div", { class: "alius-handler-row", "data-intel": item.id }, h("p", {}, item.label));
+    const group = h("div", { class: "alius-handler-answers" });
+    for (const a of INTEL_ANSWERS) {
+      const b = h("button", {
+        type: "button",
+        class: "alius-btn alius-option",
+        "data-answer": a,
+        "aria-pressed": "false",
+        ...analyzeNative("glossary:intel_exchange"),
+        onclick: () => {
+          if (locked) return;
+          picked[item.id] = a;
+          for (const x of buttons.filter((y) => row2.contains(y))) x.setAttribute("aria-pressed", String(x.dataset.answer === a));
+          refresh();
+        }
+      }, LABEL[a]);
+      buttons.push(b);
+      group.append(b);
+    }
+    row2.append(group);
+    return row2;
+  });
+  submit.addEventListener("click", () => {
+    if (locked || !complete()) return;
+    locked = true;
+    submit.setAttribute("aria-disabled", "true");
+    ctx2.onAnswer({ ...picked });
+    queueMicrotask(() => {
+      if (!root.isConnected) return;
+      locked = false;
+      refresh();
+    });
+  });
+  root.append(
+    h("h3", {}, `HANDLER // ${String(handler2?.name ?? "Unknown")} \u2014 ${corp}`),
+    h("p", { class: "alius-dilemma-setup" }, handlerLine(ctx2.reg, d.handlerId, "greet")),
+    ...rows,
+    preview,
+    submit
+  );
+  host.append(root);
+  refresh();
+}
+
 // src/ui/commander/commanderFile.ts
 var cap2 = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 function renderCommanderFile(host, ctx2) {
@@ -31214,6 +31326,24 @@ function renderInterceptLog(host, state, reg) {
   ));
 }
 
+// src/ui/special/debtsBlock.ts
+var ENDED = { leaked: "The handler leaked it to the squad.", confessed: "The commander confessed.", fled: "The commander fled to the rival corporation." };
+function renderDebtsBlock(host, state, reg) {
+  const d = state.special?.debts;
+  if (!d) return;
+  const handler2 = String(reg.debtHandlers.get(d.handlerId)?.name ?? "Unknown");
+  const corp = String(reg.corporations.get(d.corporationId)?.name ?? d.corporationId);
+  const sold = d.answered.length;
+  host.append(h(
+    "section",
+    { class: "alius-debts" },
+    h("h4", {}, "DEBTS"),
+    h("p", {}, `HANDLER: ${handler2} \u2014 ${corp}`),
+    h("p", {}, `LAST VISIT: ${d.lastVisitDay === void 0 ? "NONE YET" : `Day ${d.lastVisitDay}`} \xB7 INTEL: ${sold} ${sold === 1 ? "item" : "items"}`),
+    d.ended === void 0 ? h("p", {}, h("span", { class: "alius-chip", ...analyzeAttrs("glossary:handler_pressure") }, `PRESSURE: ${pressureBand(d.handlerPressure)}`)) : h("p", { class: "alius-dim" }, `ENDED \u2014 ${ENDED[d.ended] ?? ""}`)
+  ));
+}
+
 // src/ui/special/premonitions.ts
 function renderPremonitions(host, state, reg) {
   const p = state.special?.paranoia;
@@ -31285,6 +31415,7 @@ function renderCmdrCard(host, ctx2) {
   );
   renderInterceptLog(file, state, reg);
   renderPremonitions(file, state, reg);
+  renderDebtsBlock(file, state, reg);
   host.append(h("section", { class: "alius-section alius-cmdr" }, renderVoiceCard({ voice: "paper", title: `CMDR \u2014 ${state.commander.name}`, body: file })));
 }
 
@@ -33439,11 +33570,11 @@ async function runDirectorTick(input, deps) {
 }
 
 // src/llm/calls/expeditionRecap.ts
-var LABEL = /^\s*(?:\*\*|__)?\s*(?:narrator|recap|report|after-action report|summary|assistant|ai|chronicle|story)\s*(?:\*\*|__)?\s*:\s*(?:\*\*|__)?\s*/i;
+var LABEL2 = /^\s*(?:\*\*|__)?\s*(?:narrator|recap|report|after-action report|summary|assistant|ai|chronicle|story)\s*(?:\*\*|__)?\s*:\s*(?:\*\*|__)?\s*/i;
 function sanitizeRecap(text2) {
   const lines = text2.replace(/```[a-z]*/gi, "\n").split(/\r?\n/).map((l) => l.replace(/^\s{0,3}#{1,6}\s+/, "").replace(/^\s*[-*+]\s+/, "").replace(/^\s*>\s?/, "").replace(/[*_`~]+/g, "").trim());
   let out = lines.join("\n").replace(/\n{3,}/g, "\n\n").trim();
-  out = out.replace(LABEL, "").replace(/^["“”]+|["“”]+$/g, "").trim();
+  out = out.replace(LABEL2, "").replace(/^["“”]+|["“”]+$/g, "").trim();
   out = out.slice(0, TUNING.expedition.recapMax).trim();
   return out === "" ? null : out;
 }
@@ -36296,9 +36427,48 @@ function nightmareProvider(_subject, env) {
   if (p.lastNightmareDay === env.state.day - 1) lines.push("The commander slept badly last night.");
   return { lines };
 }
+function handlerProvider(_subject, env) {
+  const d = env.state?.special?.debts;
+  if (!env.state || !d) return null;
+  const name = String(env.registries.debtHandlers.get(d.handlerId)?.name ?? "The handler");
+  const corp = String(env.registries.corporations.get(d.corporationId)?.name ?? d.corporationId);
+  const lines = [`${name} of ${corp} buys the commander's intel at night, about once a week.`];
+  if (d.ended !== void 0) lines.push("The arrangement is over: the handler no longer comes.");
+  return { lines };
+}
+function intelProvider(_subject, env) {
+  const d = env.state?.special?.debts;
+  if (!env.state || !d) return null;
+  return { lines: [`${plural3(d.answered.length, "item")} sold or withheld so far.`, "Truth pays and comes back as an ambush, sabotage or a shift in standing; partial pays half and hurts less; a lie may be found out; withholding makes the handler press."] };
+}
+function pressureProvider(_subject, env) {
+  const d = env.state?.special?.debts;
+  if (!env.state || !d) return null;
+  return { lines: [`The handler is ${pressureBand(d.handlerPressure)}.`, "Withholding raises the pressure and truth lowers it. A pressed handler threatens, then cuts the pay, and in the end leaks the commander's crime."] };
+}
+function oversightProvider(_subject, env) {
+  if (!env.state?.special?.debts) return null;
+  return { lines: ["An unseen threat: how close oversight is to tracing a leak back to the commander stays hidden until it acts."] };
+}
+var ARC_WORDS = {
+  defector_double_agent: "The commander kept selling as a double agent.",
+  defector_confessed: "The commander confessed.",
+  defector_fled: "The commander fled to the rival corporation."
+};
+function arcProvider(_subject, env) {
+  if (!env.state?.special?.debts) return null;
+  const flags = env.state.world.flags;
+  if (!flags.includes("defector_arc")) return { lines: ["It opens if the dealings with the rival corporation come out and the commander must choose: double agent, confess or flee."] };
+  return { lines: [Object.entries(ARC_WORDS).find(([f]) => flags.includes(f))?.[1] ?? "The defector arc is open."] };
+}
+function debtsFlagVisible(state) {
+  const d = state.special?.debts;
+  if (d?.ended === "leaked") return true;
+  return state.squad.every((u) => !state.relations[u.id]?.flags.includes("knows_debts") || d?.discoveredBy === u.id);
+}
 var specialKnowledgeRule = {
   fact: (f, state) => f.id !== state.special?.frequency?.factId,
-  flag: (id, state) => id !== "knows_frequency" || holdersAnnounced(state)
+  flag: (id, state) => (id !== "knows_frequency" || holdersAnnounced(state)) && (id !== "knows_debts" || debtsFlagVisible(state))
 };
 function registerSpecialProviders() {
   registerKnowledgeRule(specialKnowledgeRule);
@@ -36308,6 +36478,11 @@ function registerSpecialProviders() {
   registerAnalyzeProvider("glossary:premonition", premonitionProvider);
   registerAnalyzeProvider("glossary:false_alarm", falseAlarmProvider);
   registerAnalyzeProvider("glossary:bloom_nightmare", nightmareProvider);
+  registerAnalyzeProvider("glossary:handler", handlerProvider);
+  registerAnalyzeProvider("glossary:intel_exchange", intelProvider);
+  registerAnalyzeProvider("glossary:handler_pressure", pressureProvider);
+  registerAnalyzeProvider("glossary:oversight_suspicion", oversightProvider);
+  registerAnalyzeProvider("glossary:defector_arc", arcProvider);
 }
 
 // src/analysis/providers/power.ts
@@ -37480,7 +37655,7 @@ function renderFill(host, state, build, settings) {
 
 // src/ui/memory/memorySection.ts
 var PRESETS3 = ["short", "normal", "long", "custom"];
-var LABEL2 = {
+var LABEL3 = {
   factsMax: "Facts kept before the fold",
   foldAfterDays: "A fact may be folded after (days)",
   recencyBase: "How fast old facts fade (0.5\u20130.95)",
@@ -37530,7 +37705,7 @@ function renderMemorySection(host, ctx2) {
       }
       send(own ? { preset: cfg.preset, [field2]: n } : { preset: "custom", [field2]: n });
     });
-    return h("label", { class: "alius-field alius-option", ...analyzeNative(`glossary:${GLOSSARY[field2] ?? "memory"}`) }, h("span", { class: "alius-field-label" }, LABEL2[field2]), el);
+    return h("label", { class: "alius-field alius-option", ...analyzeNative(`glossary:${GLOSSARY[field2] ?? "memory"}`) }, h("span", { class: "alius-field-label" }, LABEL3[field2]), el);
   };
   const mode = h(
     "select",
@@ -38981,6 +39156,7 @@ function createApp(st, deps) {
   }
   function confrontationNight(s) {
     const entry = s.calendar.nightEvent;
+    if (entry?.kind === HANDLER_VISIT_KIND) return true;
     const open3 = s.disloyalty?.open;
     return entry !== void 0 && open3 !== void 0 && open3.unitId === entry.unitId && CONFRONTATION_KINDS.includes(entry.kind);
   }
@@ -38997,6 +39173,20 @@ function createApp(st, deps) {
   }
   function renderConfrontationPanel(host, close) {
     const s = state;
+    if (s?.calendar.nightEvent?.kind === HANDLER_VISIT_KIND) {
+      const visitId = s.special?.debts?.visit?.id ?? "";
+      renderHandlerPanel(host, {
+        state: s,
+        reg: registries,
+        onAnswer: (answers) => void special.answerVisit(visitId, answers).then((ok) => {
+          if (!ok) return;
+          close?.();
+          if (onSceneScreen) leaveScene();
+          else shell.refresh();
+        })
+      });
+      return;
+    }
     const open3 = s?.disloyalty?.open;
     if (!s || !open3) return;
     const unit2 = s.squad.find((u) => u.id === open3.unitId);
