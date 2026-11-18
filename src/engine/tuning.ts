@@ -478,6 +478,16 @@ export const TUNING = Object.freeze({
       falseBase: 0.08, falsePerInsight: 0.02, falseAfterNightmare: 0.05,
       /** Acting on a real warning: the talk-down bonus and its days, the pause of her next check, the chance a mutiny is averted, the record of defiance. */
       preemptBonus: 0.15, preemptDays: 5, preemptPause: 3, mutinyAvert: 0.5, defianceRecord: -6,
+      nightmare: Object.freeze({
+        chance: 0.12, stressMult: 1.5, stressAt: 50, loseMorning: 0.5, visitor: 0.35, affinityMin: 30, priority: 4,
+        framing: '{name} heard the commander through the wall.',
+        /** AUTHOR TO WRITE: Bloom imagery for the morning after (no pronoun for the commander). */
+        lines: Object.freeze([
+          'AUTHOR TO WRITE: Bloom dreams. Green light behind the eyes, and a sound like breathing under the floor.',
+          'AUTHOR TO WRITE: The ceiling was soft. Something grew along it, slowly, and knew the commander\'s name.',
+          'AUTHOR TO WRITE: A field of white blossoms, every one turning to watch the commander sleep.',
+        ]),
+      }),
     }),
     commanderStress: Object.freeze({ empathyAt: 70, dayRelief: 5, sleepRelief: 15, downed: 10, nightmare: 15, falseAlarm: 5 }),
   }),

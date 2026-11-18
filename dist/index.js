@@ -588,7 +588,23 @@ var TUNING = Object.freeze({
       preemptDays: 5,
       preemptPause: 3,
       mutinyAvert: 0.5,
-      defianceRecord: -6
+      defianceRecord: -6,
+      nightmare: Object.freeze({
+        chance: 0.12,
+        stressMult: 1.5,
+        stressAt: 50,
+        loseMorning: 0.5,
+        visitor: 0.35,
+        affinityMin: 30,
+        priority: 4,
+        framing: "{name} heard the commander through the wall.",
+        /** AUTHOR TO WRITE: Bloom imagery for the morning after (no pronoun for the commander). */
+        lines: Object.freeze([
+          "AUTHOR TO WRITE: Bloom dreams. Green light behind the eyes, and a sound like breathing under the floor.",
+          "AUTHOR TO WRITE: The ceiling was soft. Something grew along it, slowly, and knew the commander's name.",
+          "AUTHOR TO WRITE: A field of white blossoms, every one turning to watch the commander sleep."
+        ])
+      })
     }),
     commanderStress: Object.freeze({ empathyAt: 70, dayRelief: 5, sleepRelief: 15, downed: 10, nightmare: 15, falseAlarm: 5 })
   })
@@ -6659,6 +6675,7 @@ var RESERVED_EVENT_TYPES = [
   "commander_stress_changed",
   "premonition",
   "premonition_acted",
+  "bloom_nightmare",
   // P10b
   "door_said",
   "door_replied",
@@ -22542,6 +22559,52 @@ registerAction("onboarding/guide_dm_sent", (draft) => {
   return [];
 });
 
+// src/engine/special/paranoia/nightmares.ts
+var NIGHTMARE_KNOCK_KIND = "nightmare_heard";
+function nightmareLine(day) {
+  const lines = TUNING.special.paranoia.nightmare.lines;
+  return lines[fnv1a(`nightmare|${day}`) % lines.length].replace(/^AUTHOR TO WRITE:\s*/, "");
+}
+function fondestUnit(draft) {
+  const min = TUNING.special.paranoia.nightmare.affinityMin;
+  let best = null;
+  for (const u of draft.squad) {
+    const a = draft.relations[u.id]?.affinity;
+    if (u.kind !== "named" || !isLiving(u) || a === void 0 || a < min) continue;
+    if (best === null || a > best.affinity) best = { id: u.id, affinity: a };
+  }
+  return best?.id ?? null;
+}
+function rollNightmare(draft, ctx2) {
+  if (!hasTraitEffect(draft, ctx2.registries, "paranoia")) return [];
+  const T2 = TUNING.special.paranoia.nightmare;
+  const chance = T2.chance * (commanderStress(draft) >= T2.stressAt ? T2.stressMult : 1);
+  if (!ctx2.rng.chance(chance)) return [];
+  const events = addCommanderStress(draft, TUNING.special.commanderStress.nightmare, "nightmare");
+  paranoiaOf(draft).lastNightmareDay = draft.day;
+  const lostMorning = ctx2.rng.chance(T2.loseMorning);
+  if (lostMorning) draft.calendar.loseMorning = true;
+  const visitorId = fondestUnit(draft);
+  let visitor;
+  if (visitorId !== null && ctx2.rng.chance(T2.visitor)) {
+    const unit2 = draft.squad.find((u) => u.id === visitorId);
+    const queued = queueNightSpec(draft, unit2, {
+      id: NIGHTMARE_KNOCK_KIND,
+      kind: NIGHTMARE_KNOCK_KIND,
+      chance: 1,
+      priority: T2.priority,
+      trigger: "daily",
+      framing: T2.framing,
+      ignore: { event: "dismissed", severity: "minor" },
+      contentTags: []
+    });
+    if (queued.length > 0) visitor = visitorId;
+    events.push(...queued);
+  }
+  events.push({ type: "bloom_nightmare", day: draft.day, lostMorning, ...visitor !== void 0 ? { visitorId: visitor } : {} });
+  return events;
+}
+
 // src/engine/special/dayStep.ts
 function specialDayStep(draft, ctx2) {
   const events = addCommanderStress(draft, -TUNING.special.commanderStress.dayRelief, "day");
@@ -22553,7 +22616,11 @@ function specialDayStep(draft, ctx2) {
   events.push(...paranoiaDayStep(draft, ctx2));
   return events;
 }
-var specialRumorStep = (draft, ctx2) => syncFrequencyKnowers(draft, ctx2);
+var specialRumorStep = (draft, ctx2) => [
+  ...syncFrequencyKnowers(draft, ctx2),
+  ...rollNightmare(draft, ctx2)
+  // before `night_check`, so a unit who heard it can come to the door tonight
+];
 
 // src/engine/actions/special.ts
 var FRAGMENT_MAX2 = 160;
@@ -23992,6 +24059,7 @@ function createSpecial(deps) {
     deps.app.dispatch({ type: "frequency/word", payload: { id: interceptId, text: text2 } }, { expectChatId: expect });
   }
   const nameOf14 = (id) => state()?.squad.find((u) => u.id === id)?.displayName ?? "A soldier";
+  let dreamt = null;
   return {
     onEvents(events) {
       const expect = chatId();
@@ -24002,6 +24070,11 @@ function createSpecial(deps) {
           deps.notice?.("warn", `${nameOf14(e.unitId)} found out about the frequency. Expect her to confront you.`, "FREQUENCY");
           deps.cutIn?.("FOUND OUT");
         } else if (e.type === "implant_burned") deps.notice?.("info", "The implant is burned out. The fragments stop for good.", "FREQUENCY");
+        else if (e.type === "bloom_nightmare") dreamt = nightmareLine(Number(e.day));
+        else if (e.type === "day_started" && dreamt !== null) {
+          deps.notice?.("info", dreamt, "BLOOM");
+          dreamt = null;
+        }
       }
     }
   };
@@ -24088,7 +24161,7 @@ function refreshPersonalDirectives(builder, state, reg) {
 }
 
 // src/special/directives.ts
-var DERIVED2 = ["special:static:"];
+var DERIVED2 = ["special:static:", "special:nightmare"];
 function specialDirectives(state, reg, present) {
   const out = [];
   for (const id of present) {
@@ -24097,6 +24170,11 @@ function specialDirectives(state, reg, present) {
     if (suspicionOf(state, id) > TUNING.special.frequency.staticAbove && frequencySenseOf(state, reg, id) > 1) {
       out.push({ id: `special:static:${id}`, expiresAfter: "scene", text: `${unit2.displayName} senses static around the commander.` });
     }
+  }
+  const paranoia = state.special?.paranoia;
+  const dreamt = paranoia?.lastNightmareDay;
+  if (state.scene !== void 0 && dreamt !== void 0 && (dreamt === state.day - 1 || dreamt === state.day && state.slot === "night")) {
+    out.push({ id: "special:nightmare", expiresAfter: "scene", text: "The commander slept badly: Bloom dreams." });
   }
   return out;
 }

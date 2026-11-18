@@ -718,7 +718,7 @@ The day step's decay runs in every campaign: it is registered unconditionally an
   - `rollNightmare(draft, ctx): EngineEvent[]`
   - Event `bloom_nightmare { day, lostMorning: boolean, visitorId?: string }`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 - `nightmares fire` (acceptance 3): rate over 2000 seeded days in [0.10, 0.14] at stress 0, [0.16, 0.20] at stress 60.
 - `a nightmare adds 15 stress and sets lastNightmareDay`.
 - `lost morning`: with a seed found by search, the next rollover emits `morning_lost`.
@@ -726,8 +726,8 @@ The day step's decay runs in every campaign: it is registered unconditionally an
 - `nobody fond: no knock`.
 - `no paranoia: no draw`.
 
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → PASS; `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P12): Bloom nightmares`
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → PASS; `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P12): Bloom nightmares`
 
 ---
 

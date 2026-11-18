@@ -11,12 +11,13 @@ import type { ContextBuilder, Directive } from '../llm/context';
  */
 
 /** Ids that are derived from the state on every refresh. */
-export const DERIVED = ['special:static:'] as const;
+export const DERIVED = ['special:static:', 'special:nightmare'] as const;
 
 /**
  * Derived directives for the units in the scene (`present`):
  *  - `special:static:<id>`: her suspicion is above 50 and her defects let her notice it; she senses static around the commander.
- *    The text never says how suspicious she is.
+ *    The text never says how suspicious she is;
+ *  - `special:nightmare`: the commander slept badly last night (Bloom dreams); only while a scene is open.
  */
 export function specialDirectives(state: CampaignState, reg: Registries, present: string[]): Directive[] {
   const out: Directive[] = [];
@@ -26,6 +27,11 @@ export function specialDirectives(state: CampaignState, reg: Registries, present
     if (suspicionOf(state, id) > TUNING.special.frequency.staticAbove && frequencySenseOf(state, reg, id) > 1) {
       out.push({ id: `special:static:${id}`, expiresAfter: 'scene', text: `${unit.displayName} senses static around the commander.` });
     }
+  }
+  const paranoia = state.special?.paranoia;
+  const dreamt = paranoia?.lastNightmareDay;
+  if (state.scene !== undefined && dreamt !== undefined && (dreamt === state.day - 1 || (dreamt === state.day && state.slot === 'night'))) {
+    out.push({ id: 'special:nightmare', expiresAfter: 'scene', text: 'The commander slept badly: Bloom dreams.' });
   }
   return out;
 }

@@ -1,4 +1,5 @@
 import type { EngineEvent } from '../engine/dispatch';
+import { nightmareLine } from '../engine/special/paranoia/nightmares';
 import { fallbackFragment, interceptGist } from '../engine/special/frequency/fragments';
 import { generateFragment } from '../llm/calls/flavor';
 import type { SpecialDeps } from './deps';
@@ -44,6 +45,9 @@ export function createSpecial(deps: SpecialDeps): SpecialController {
 
   const nameOf = (id: unknown): string => state()?.squad.find((u) => u.id === id)?.displayName ?? 'A soldier';
 
+  /** The nightmare of last night, shown when the morning comes. */
+  let dreamt: string | null = null;
+
   return {
     onEvents(events) {
       const expect = chatId();
@@ -54,6 +58,11 @@ export function createSpecial(deps: SpecialDeps): SpecialController {
           deps.notice?.('warn', `${nameOf(e.unitId)} found out about the frequency. Expect her to confront you.`, 'FREQUENCY');
           deps.cutIn?.('FOUND OUT');
         } else if (e.type === 'implant_burned') deps.notice?.('info', 'The implant is burned out. The fragments stop for good.', 'FREQUENCY');
+        else if (e.type === 'bloom_nightmare') dreamt = nightmareLine(Number(e.day));
+        else if (e.type === 'day_started' && dreamt !== null) {
+          deps.notice?.('info', dreamt, 'BLOOM');
+          dreamt = null;
+        }
       }
     },
   };
