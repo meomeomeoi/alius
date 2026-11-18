@@ -51,14 +51,14 @@ describe('shell', () => {
     expect(shell.isOpen()).toBe(false);
   });
 
-  it('eight tabs in the specified order and labels', () => {
+  it('nine tabs in the specified order and labels (P10b: HOME first, the default)', () => {
     const { shell } = setup();
     shell.open();
-    expect(tabs().map((t) => t.textContent)).toEqual(['SQUAD', 'OPS', 'MAP', 'COMMS', 'BASE', 'INV', 'LOG', 'SYS']);
+    expect(tabs().map((t) => t.textContent)).toEqual(['HOME', 'SQUAD', 'OPS', 'MAP', 'COMMS', 'BASE', 'INV', 'LOG', 'SYS']);
     expect(document.querySelector('#alius-shell [role="tablist"]')!.textContent).toBe(
-      'SQUAD · OPS · MAP · COMMS · BASE · INV · LOG · SYS',
+      'HOME · SQUAD · OPS · MAP · COMMS · BASE · INV · LOG · SYS',
     );
-    expect(selected()).toBe('SQUAD');
+    expect(selected()).toBe('HOME');
   });
 
   it('digit 3 selects MAP', () => {
@@ -77,12 +77,12 @@ describe('shell', () => {
     expect(selected()).toBe('SYS');
   });
 
-  it('ArrowRight on SYS wraps to SQUAD, ArrowLeft on SQUAD wraps to SYS', () => {
+  it('ArrowRight on SYS wraps to HOME, ArrowLeft on HOME wraps to SYS', () => {
     const { shell } = setup();
     shell.open();
     shell.showTab('sys');
-    key(tabs()[7], 'ArrowRight');
-    expect(selected()).toBe('SQUAD');
+    key(tabs()[8], 'ArrowRight');
+    expect(selected()).toBe('HOME');
     expect(document.activeElement).toBe(tabs()[0]);
     key(tabs()[0], 'ArrowLeft');
     expect(selected()).toBe('SYS');
@@ -98,7 +98,7 @@ describe('shell', () => {
   it('a registered tab renders its content, also if registered while shown', () => {
     const { shell } = setup();
     shell.open();
-    shell.showScreen('pda'); // the hub opens first; the tab is drawn once the PDA is raised
+    shell.showTab('squad'); // the hub opens first; the tab is drawn once the PDA is raised (P10b: it opens on HOME, so ask for SQUAD)
     shell.registerTab('squad', (host) => { host.textContent = 'ROSTER HERE'; });
     expect(document.querySelector('#alius-shell .alius-screen')!.textContent).toBe('ROSTER HERE');
   });
@@ -110,7 +110,7 @@ describe('shell', () => {
     expect(document.querySelector('#alius-shell .alius-view')!.textContent).toContain('MODULE OFFLINE');
     expect(tabs()).toHaveLength(0);
     shell.showScreen('pda');
-    expect(tabs()).toHaveLength(8);
+    expect(tabs()).toHaveLength(9);
   });
 
   it('palette sets data-palette and persists in settings', () => {
@@ -621,7 +621,7 @@ describe('analysis tool in the shell (P7a)', () => {
       host.append(chip);
     });
     ctx.shell.open();
-    ctx.shell.showScreen('pda'); // the hub opens first; the tab is drawn once the PDA is raised
+    ctx.shell.showTab('squad'); // the hub opens first; the tab is drawn once the PDA is raised (P10b: it opens on HOME, so ask for SQUAD)
     const chip = document.querySelector<HTMLElement>('#alius-shell [data-analyze="glossary:trust"]')!;
     return { ...ctx, chip };
   }
@@ -741,7 +741,7 @@ describe('analysis panel and tab switches (final review)', () => {
         host.append(chip);
       });
       shell.open();
-      shell.showScreen('pda'); // the hub opens first; the tab is drawn once the PDA is raised
+      shell.showTab('squad'); // the hub opens first; the tab is drawn once the PDA is raised (P10b: ask for SQUAD, HOME is the default)
       const chip = document.querySelector<HTMLElement>('#alius-shell [data-analyze="glossary:trust"]')!;
       chip.dispatchEvent(Object.assign(new Event('pointerover', { bubbles: true }), { pointerType: 'mouse', clientX: 5, clientY: 5 }));
       vi.advanceTimersByTime(250);

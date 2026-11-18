@@ -292,3 +292,46 @@
 #alius-shell.alius-readable .alius-note-sign {
   font-family: var(--alius-font-type);
 }
+
+/* HOME (P10b §5): her wallpaper sits behind the view at low opacity, faded and grey while her decor fades. Readable mode draws no image (the code shows a caption instead). */
+#alius-shell .alius-home {
+  position: relative;
+  isolation: isolate;
+}
+
+#alius-shell .alius-wallpaper {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+#alius-shell .alius-wallpaper img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+#alius-shell .alius-wallpaper[data-faded="true"] {
+  opacity: 0.15;
+  filter: grayscale(1);
+}
+
+#alius-shell .alius-home-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+#alius-shell .alius-home-access {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin: 3px 0;
+}

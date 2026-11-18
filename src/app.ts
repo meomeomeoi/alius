@@ -105,6 +105,8 @@ import { createDirector, type DirectorController } from './world/directorControl
 import { createExpedition, type ExpeditionController } from './world/expeditionController';
 import { renderBaseTab } from './ui/base/baseTab';
 import { renderCommsTab } from './ui/comms/commsTab';
+import { renderHomeTab } from './ui/home/homeTab';
+import { unreadNotes } from './engine/notes';
 import { motionReduced } from './ui/motion';
 import { renderClaimCard } from './ui/personal/claimCard';
 import { renderSecretCard } from './ui/personal/secretCard';
@@ -285,6 +287,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
   function syncBadges(): void {
     syncLocks();
     shell.setTabBadge('comms', state ? unreadCount(state) : 0);
+    shell.setTabBadge('home', state ? unreadNotes(state) : 0); // P10b: notes nobody has read
     // new story and command offers since the OPS tab was last shown
     const fresh = state ? state.missions.offered.filter((m) => (m.source === 'command' || m.source === 'story') && !seenOffers.has(m.id)).length : 0;
     shell.setTabBadge('ops', fresh);
@@ -1803,6 +1806,16 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     },
   });
 
+  shell.registerTab('home', (host) =>
+    renderHomeTab(host, {
+      getState: () => state,
+      registries,
+      st,
+      settings: () => getSettings(st),
+      onReadNote: (id) => void act({ type: 'notes/read', payload: { id } }),
+      rule: { accept: (id) => answerRule(id, 'accept'), negotiate: (id) => answerRule(id, 'negotiate'), refuse: (id) => answerRule(id, 'refuse') },
+    }),
+  );
   shell.registerTab('squad', (host) =>
     renderSquadTab(host, {
       st,

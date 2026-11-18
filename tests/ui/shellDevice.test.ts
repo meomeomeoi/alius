@@ -56,9 +56,9 @@ describe('hub and device', () => {
     expect(device().dataset.up).toBe('true');
     expect(device().hasAttribute('inert')).toBe(false);
     expect(device().hasAttribute('aria-hidden')).toBe(false);
-    expect(selected()).toBe('SQUAD');
+    expect(selected()).toBe('HOME'); // P10b: HOME is first and the default
     expect(q('.alius-frame-corner')!.textContent).toBe('╔═[ ALIUS // PDA ]');
-    expect([...document.querySelectorAll('#alius-shell .alius-tab')].map((t) => t.textContent)).toHaveLength(8);
+    expect([...document.querySelectorAll('#alius-shell .alius-tab')].map((t) => t.textContent)).toHaveLength(9);
   });
 
   it("showTab('comms') from the hub raises the device on COMMS", () => {
@@ -143,8 +143,8 @@ describe('hub and device', () => {
     shell.registerTab('squad', (host) => {
       host.append(...['a', 'b', 'c'].map((k) => Object.assign(document.createElement('button'), { textContent: k, className: 'alius-btn' })).map((b) => { b.dataset.key = b.textContent!; return b; }));
     });
+    shell.showTab('squad'); // P10b: the device opens on HOME, so ask for the tab under test
     shell.open();
-    shell.showScreen('pda');
     const second = q<HTMLButtonElement>('#alius-panel button[data-key="b"]')!;
     second.focus();
     expect(document.activeElement).toBe(second);
@@ -188,7 +188,7 @@ describe('hub and device', () => {
       for (const k of ['Tab', '3', 'Escape']) {
         press(el, k);
         expect(shell.isDeviceUp(), `${el.tagName} ${k}`).toBe(true);
-        expect(selected(), `${el.tagName} ${k}`).toBe('SQUAD');
+        expect(selected(), `${el.tagName} ${k}`).toBe('HOME'); // P10b: the default tab
       }
     }
   });
@@ -239,7 +239,7 @@ describe('hub and device', () => {
     shell.refresh();
     shell.refresh();
     expect(draws).toBe(0);
-    shell.showScreen('pda');
+    shell.showTab('squad'); // P10b: the device opens on HOME, so ask for the tab under test
     expect(draws).toBe(1);
     expect(q('#alius-panel')!.textContent).toBe('SQUAD 1');
     shell.refresh();
@@ -264,7 +264,7 @@ describe('hub and device', () => {
   it('registerTab still re-renders the current tab while up', () => {
     const { shell } = setup();
     shell.open();
-    shell.showScreen('pda');
+    shell.showTab('squad'); // P10b: the device opens on HOME, so ask for the tab under test
     shell.registerTab('squad', (host) => { host.textContent = 'ROSTER HERE'; });
     expect(q('#alius-panel')!.textContent).toBe('ROSTER HERE');
     shell.registerTab('squad', (host) => { host.textContent = 'ROSTER TWO'; });
@@ -484,3 +484,61 @@ describe('the slide never scrolls the view', () => {
   });
 });
 
+
+describe('HOME is the first tab (P10b)', () => {
+  const tabIds = () => [...document.querySelectorAll('#alius-shell .alius-tab')].map((t) => t.id);
+
+  it('nine tabs, HOME first, and the device opens on HOME', () => {
+    const { shell } = setup();
+    shell.open();
+    shell.showScreen('pda');
+    expect(tabIds()).toEqual(['home', 'squad', 'ops', 'map', 'comms', 'base', 'inv', 'log', 'sys'].map((id) => `alius-tab-${id}`));
+    expect(selected()).toBe('HOME');
+  });
+
+  it('0 opens HOME and 1 to 8 keep their old tabs (SQUAD … SYS)', () => {
+    const { shell } = setup();
+    shell.open();
+    shell.showScreen('pda');
+    const names = ['SQUAD', 'OPS', 'MAP', 'COMMS', 'BASE', 'INV', 'LOG', 'SYS'];
+    names.forEach((n, i) => {
+      press(document, String(i + 1));
+      expect(selected(), `key ${i + 1}`).toBe(n);
+    });
+    press(document, '0');
+    expect(selected()).toBe('HOME');
+    press(document, '1');
+    expect(selected()).toBe('SQUAD');
+  });
+
+  it('from the hub, 0 raises the device on HOME and 1 on SQUAD', () => {
+    const { shell } = setup();
+    shell.open();
+    press(document, '0');
+    expect(shell.isDeviceUp()).toBe(true);
+    expect(selected()).toBe('HOME');
+    shell.setDevice(false);
+    press(document, '1');
+    expect(selected()).toBe('SQUAD');
+  });
+
+  it('showTab before open() still lands on the tab that was asked for', () => {
+    const { shell } = setup();
+    shell.showTab('comms');
+    shell.open();
+    expect(shell.isDeviceUp()).toBe(true);
+    expect(selected()).toBe('COMMS');
+  });
+
+  it('the arrow keys wrap through HOME', () => {
+    const { shell } = setup();
+    shell.open();
+    shell.showScreen('pda');
+    const home = document.getElementById('alius-tab-home')!;
+    home.focus();
+    press(home, 'ArrowLeft');
+    expect(selected()).toBe('SYS');
+    press(document.getElementById('alius-tab-sys')!, 'ArrowRight');
+    expect(selected()).toBe('HOME');
+  });
+});

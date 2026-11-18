@@ -199,7 +199,8 @@ describe('uiUnlocks schema', () => {
   it('target.tab must be a TabId', () => {
     expect(UiUnlockSchema.safeParse({ ...row, target: { tab: 'settings' } }).success).toBe(false);
     expect(UiUnlockSchema.safeParse({ ...row, target: {} }).success).toBe(false);
-    for (const tab of TAB_IDS) expect(UiUnlockSchema.safeParse({ ...row, target: { tab } }).success, tab).toBe(true);
+    for (const tab of TAB_IDS.filter((id) => id !== 'home')) expect(UiUnlockSchema.safeParse({ ...row, target: { tab } }).success, tab).toBe(true);
+    expect(UiUnlockSchema.safeParse({ ...row, target: { tab: 'home' } }).success).toBe(false); // P10b: HOME is never locked
   });
 });
 
@@ -297,6 +298,7 @@ describe('prologues cross references', () => {
 describe('ui tab ids', () => {
   it('the content schema lists exactly the PDA tabs', async () => {
     const { UI_TAB_IDS } = await import('../../src/content/schemas');
-    expect([...UI_TAB_IDS]).toEqual([...TAB_IDS]);
+    // P10b: HOME is a tab that is never locked, so the unlock rules do not list it
+    expect([...UI_TAB_IDS]).toEqual(TAB_IDS.filter((id) => id !== 'home'));
   });
 });

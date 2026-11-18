@@ -132,7 +132,7 @@ describe('locking the tab that is showing', () => {
     shell.showTab('ops');
     expect(selected()).toBe('alius-tab-ops');
     shell.setTabLocked('ops', true);
-    expect(selected()).toBe('alius-tab-squad');
+    expect(selected()).toBe('alius-tab-home'); // P10b: HOME is first, and never locked
     expect(document.querySelector('#alius-shell .alius-screen')!.textContent).not.toMatch(/ACTIVITIES|REQUISITION/);
   });
 });
@@ -142,5 +142,29 @@ describe('the OFFLINE label is analysable', () => {
     const shell = setup();
     shell.setTabLocked('ops', true);
     expect(document.querySelector('#alius-tab-ops .alius-offline')!.getAttribute('data-analyze')).toBe('glossary:module_offline');
+  });
+});
+
+describe('locked tabs with HOME first (P10b)', () => {
+  it('a locked tab stays locked, and the tabs around it still work', () => {
+    const shell = setup();
+    shell.showTab('home');
+    shell.setTabLocked('squad', true);
+    shell.setTabLocked('ops', true);
+    key('1');
+    expect(selected()).toBe('alius-tab-home');
+    key('0');
+    expect(selected()).toBe('alius-tab-home');
+    key('3');
+    expect(selected()).toBe('alius-tab-map');
+  });
+
+  it('HOME is never locked: not by the shell, not by the unlock rules', async () => {
+    const shell = setup();
+    shell.setTabLocked('home', true);
+    expect(tab('home').getAttribute('aria-disabled')).toBeNull();
+    expect(tab('home').textContent).not.toContain('OFFLINE');
+    const { UI_TAB_IDS } = await import('../../src/content/schemas');
+    expect(UI_TAB_IDS as readonly string[]).not.toContain('home');
   });
 });

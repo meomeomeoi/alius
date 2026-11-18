@@ -269,7 +269,7 @@ describe('the shell and motion', () => {
       await vi.advanceTimersByTimeAsync(700);
       const panel = () => document.getElementById('alius-panel')!;
       if (Object.keys(settings).length === 0) {
-        document.getElementById('alius-tab-squad')!.click(); // already selected
+        document.getElementById('alius-tab-home')!.click(); // already selected (P10b: HOME is the default tab)
       } else {
         document.getElementById('alius-tab-ops')!.click();
       }

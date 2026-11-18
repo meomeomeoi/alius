@@ -1729,5 +1729,15 @@
       "relationship_rules",
       "hand_note"
     ]
+  },
+  {
+    "id": "device_marks",
+    "term": "Marks on the device",
+    "short": "What a soldier leaves on the commander's PDA: a sticker on the casing, her picture as the wallpaper, a renamed contact.",
+    "long": "AUTHOR TO WRITE: A soldier with enough access marks the device as hers. Her sticker sits on the frame, her portrait is the wallpaper on HOME and she may rename her contact in COMMS. Peeling a mark off is an act the soldier notices, so it asks first. After a break-up her marks fade for a week.",
+    "see": [
+      "device_access",
+      "handwriting"
+    ]
   }
 ]

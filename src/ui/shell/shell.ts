@@ -18,7 +18,7 @@ import { createRouter, type ScreenId } from './router';
 import { renderStatusHeader } from './status';
 import type { BuildStats } from '../../llm/context';
 import { renderSysTab } from './sysTab';
-import { TAB_IDS, createTabBar, tabStub, type TabId } from './tabs';
+import { KEY_TABS, TAB_IDS, createTabBar, tabStub, type TabId } from './tabs';
 import { createToasts, type ToastKind, type ToastOpts } from './toast';
 
 export type { ScreenId } from './router';
@@ -95,7 +95,7 @@ export function createShell(deps: ShellDeps): ShellApi {
   const { st } = deps;
   const router = createRouter();
   const tabRenderers = new Map<TabId, (host: HTMLElement) => void>();
-  let tab: TabId = 'squad';
+  let tab: TabId = 'home';
   const badges = new Map<TabId, number>();
   const screenRefresh = new Map<ScreenId, (host: HTMLElement) => boolean>();
   /** The screen the view currently shows, rendered by `renderView` (so `refresh` may update it in place). */
@@ -498,6 +498,7 @@ export function createShell(deps: ShellDeps): ShellApi {
       if (isOpen() && router.current() === id) renderView();
     },
     setTabLocked(id, locked) {
+      if (id === 'home') return; // P10b: HOME is never offline
       if (locked === lockedTabs.has(id)) return;
       if (locked) lockedTabs.add(id);
       else lockedTabs.delete(id);
@@ -583,8 +584,8 @@ export function createShell(deps: ShellDeps): ShellApi {
       }
       return;
     }
-    if (/^[1-8]$/.test(e.key) && plain && !typing) {
-      const id = TAB_IDS[Number(e.key) - 1];
+    if (/^[0-8]$/.test(e.key) && plain && !typing) {
+      const id = e.key === '0' ? 'home' : KEY_TABS[Number(e.key) - 1];
       if (where === 'pda') selectTab(id);
       else if (where === 'hub') api.showTab(id);
     }

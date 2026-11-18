@@ -819,7 +819,7 @@ git commit -am "feat(P10b): handwritten notes and signed/torn rule notes"
 **Interfaces:**
 - Produces: `renderHomeTab(host, ctx: { getState; registries; st; settings; onReadNote(id); onPeel(unitId, part): void /* confirmed by the app */; rule: RuleChipHandlers })`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - `device opens on HOME`;
   - `0 opens HOME, 1 still opens SQUAD`;
   - `a locked tab stays locked with HOME first`;
@@ -829,15 +829,15 @@ git commit -am "feat(P10b): handwritten notes and signed/torn rule notes"
   - `access lines with data-analyze`;
   - `HOME badge counts unread notes`.
 
-- [ ] **Step 2: Run to verify they fail**
+- [x] **Step 2: Run to verify they fail**
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
-- [ ] **Step 4: Run, `npm test`**
+- [x] **Step 4: Run, `npm test`**
 
 Moved default-tab expectations are listed in the commit body.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git commit -am "feat(P10b): PDA HOME view with wallpaper and notes"

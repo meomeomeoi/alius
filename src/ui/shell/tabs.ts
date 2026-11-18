@@ -2,12 +2,16 @@ import { analyzeNative } from '../analyze/mark';
 import { h } from '../dom';
 import { stubText } from './router';
 
-export type TabId = 'squad' | 'ops' | 'map' | 'comms' | 'base' | 'inv' | 'log' | 'sys';
+export type TabId = 'home' | 'squad' | 'ops' | 'map' | 'comms' | 'base' | 'inv' | 'log' | 'sys';
 
-export const TAB_IDS: readonly TabId[] = ['squad', 'ops', 'map', 'comms', 'base', 'inv', 'log', 'sys'];
+/** P10b: HOME is first and the device's default tab; it is never locked (`UI_TAB_IDS` of P11 does not list it). */
+export const TAB_IDS: readonly TabId[] = ['home', 'squad', 'ops', 'map', 'comms', 'base', 'inv', 'log', 'sys'];
+
+/** The tabs the number keys 1–8 open (`0` opens HOME); they keep the order they had before HOME. */
+export const KEY_TABS: readonly TabId[] = ['squad', 'ops', 'map', 'comms', 'base', 'inv', 'log', 'sys'];
 
 export const TAB_LABELS: Record<TabId, string> = {
-  squad: 'SQUAD', ops: 'OPS', map: 'MAP', comms: 'COMMS', base: 'BASE', inv: 'INV', log: 'LOG', sys: 'SYS',
+  home: 'HOME', squad: 'SQUAD', ops: 'OPS', map: 'MAP', comms: 'COMMS', base: 'BASE', inv: 'INV', log: 'LOG', sys: 'SYS',
 };
 
 export const tabStub = (id: TabId) => h('pre', { class: 'alius-stub' }, stubText(TAB_LABELS[id]));

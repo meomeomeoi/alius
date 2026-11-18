@@ -159,3 +159,25 @@ describe('the night door in the app (P10b)', () => {
     expect(host.querySelector('button[data-action="say"]')).toBeNull();
   });
 });
+
+describe('the HOME badge (P10b)', () => {
+  it('counts the unread notes on show, and clears when they are read', async () => {
+    const t = await boot();
+    t.setState((s) => {
+      s.notes = { seq: 2, list: [
+        { id: 'hn1', unitId: RHEA, noteId: 'door_plain', where: 'door', text: 'A', day: s.day },
+        { id: 'hn2', unitId: RHEA, noteId: 'desk_eat', where: 'quarters', text: 'B', day: s.day, read: true },
+      ] };
+    });
+    expect(t.badges.get('home')).toBe(1);
+    t.app.dispatch({ type: 'notes/read', payload: { id: 'hn1' } });
+    t.setState(() => undefined);
+    expect(t.badges.get('home') ?? 0).toBe(0);
+  });
+
+  it('is zero without notes', async () => {
+    const t = await boot();
+    t.setState(() => undefined);
+    expect(t.badges.get('home') ?? 0).toBe(0);
+  });
+});
