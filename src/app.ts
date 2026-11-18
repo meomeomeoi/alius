@@ -44,7 +44,7 @@ import { checkLeash, leashCost } from './engine/leash/use';
 import { leashLog } from './engine/leash/weekly';
 import { loyalUnits } from './engine/loyalty/mutiny';
 import { CONFRONTATION_KINDS } from './engine/loyalty/state';
-import type { LeashKind } from './engine/state/types';
+import type { DecorPart, LeashKind } from './engine/state/types';
 import { createDilemmas, type DilemmaController } from './loyalty/dilemmaController';
 import { createLoyalty, type LoyaltyController } from './loyalty/loyaltyController';
 import { clearDisciplineDirectives, disciplineDirectives } from './discipline/context';
@@ -91,6 +91,7 @@ import { renderSetupScreen } from './ui/setup/setupScreen';
 import { renderSquadTab } from './ui/squad/squadTab';
 import { portraitOptions, unitPortrait } from './ui/portrait/portrait';
 import { renderOpsTab, type OpsTabCtx } from './ui/ops/opsTab';
+import { renderMarks } from './ui/device/marks';
 import { pickSkin } from './ui/device/skins';
 import { createSound } from './ui/sound/sound';
 import { renderHub } from './ui/hub/hubScreen';
@@ -1771,6 +1772,19 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
   }
 
   /** Dispatches in the chat that is open now and shows the first error, if any. */
+  /** P10b: peeling a part of her decor (a sticker, the wallpaper, the contact name) asks first; only PEEL dispatches `device/remove_decor`. */
+  async function confirmPeel(unitId: string, part: DecorPart): Promise<void> {
+    const name = state?.squad.find((u) => u.id === unitId)?.displayName ?? 'her';
+    const chatId = st.getActiveChat()?.chatId;
+    const answer = await shell.modal({
+      title: `PEEL HER ${part.toUpperCase()}?`,
+      body: `${name} put it there. She will notice it is gone.`,
+      actions: [{ label: '[PEEL]', value: 'peel' }, { label: '[KEEP]', value: 'keep' }],
+    });
+    if (answer !== 'peel' || st.getActiveChat()?.chatId !== chatId) return;
+    act({ type: 'device/remove_decor', payload: { unitId, part } });
+  }
+
   function act(action: Action): EngineEvent[] {
     const events = api.dispatch(action, { expectChatId: st.getActiveChat()?.chatId });
     const failed = events.find((e) => e.type === 'error');
@@ -1796,6 +1810,10 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     analyze: { registries: () => registries },
     lastBuild: () => context.lastBuild(), // P3b: the fill indicator of SYS › MEMORY
     skin: () => ({ skin: pickSkin(state, registries, getSettings(st).deviceSkin), assetUrl: deps.assetUrl }),
+    marks: (layer) => {
+      if (state) renderMarks(layer, state, registries, pickSkin(state, registries, getSettings(st).deviceSkin));
+      else layer.replaceChildren();
+    },
     debugTools,
     dispatch: (action) => api.dispatch(action, { expectChatId: st.getActiveChat()?.chatId }),
     onSettingsChanged: () => {
@@ -1813,6 +1831,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       st,
       settings: () => getSettings(st),
       onReadNote: (id) => void act({ type: 'notes/read', payload: { id } }),
+      onPeel: (unitId, part) => void confirmPeel(unitId, part),
       rule: { accept: (id) => answerRule(id, 'accept'), negotiate: (id) => answerRule(id, 'negotiate'), refuse: (id) => answerRule(id, 'refuse') },
     }),
   );
@@ -1840,7 +1859,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       onEndorse: () => void power.endorse(),
       onAskFirst: (unitId, on) => void power.askFirst(unitId, on).then((ok) => { if (ok) shell.open(); }),
       onChallenge: (stat) => void power.challenge(stat).then((ok) => { if (ok) shell.open(); }),
-      onPeel: (unitId, part) => void act({ type: 'device/remove_decor', payload: { unitId, part } }), // P9c
+      onPeel: (unitId, part) => void confirmPeel(unitId, part), // P9c, P10b: asks first
       onCancelBooking: (id) => void personal.cancelBooking(id),
       onWager: (unitId, choice) => void personal.challenge({ unitId, ...choice }),
       onWear: (id) => void personal.wearToken(id),

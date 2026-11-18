@@ -33,7 +33,7 @@ export const REGISTRY_NAMES = [
   // P3b
   'memoryRules',
   // P10b
-  'dmBehaviours', 'handFonts', 'handNotes',
+  'dmBehaviours', 'handFonts', 'handNotes', 'stickerArt',
 ] as const;
 
 export type RegistryName = (typeof REGISTRY_NAMES)[number];

@@ -5943,7 +5943,8 @@ var REGISTRY_NAMES = [
   // P10b
   "dmBehaviours",
   "handFonts",
-  "handNotes"
+  "handNotes",
+  "stickerArt"
 ];
 var PackManifestSchema = external_exports.object({
   id: external_exports.string().min(1),
@@ -7563,6 +7564,8 @@ var DeviceSkinSchema = BaseEntrySchema.extend({
   accent: hex,
   /** The model name engraved on the casing. */
   label: str.optional(),
+  /** P10b: where stickers sit on the casing, in percent of the device (`rot` in degrees); absent = none (an image skin must declare its own). */
+  stickerSpots: external_exports.array(external_exports.object({ x: external_exports.number().min(0).max(100), y: external_exports.number().min(0).max(100), rot: external_exports.number().min(-45).max(45) }).strict()).max(6).optional(),
   /** At most one key: the corporation, commander trait or unlock flag that brings the skin. */
   bindTo: external_exports.object({ corporationId: str.optional(), traitId: str.optional(), unlockFlag: str.optional() }).strict().refine((b) => Object.values(b).filter((v) => v !== void 0).length <= 1, "bindTo takes at most one of corporationId, traitId and unlockFlag").optional()
 }).strict().superRefine((skin, ctx2) => {
@@ -7871,6 +7874,14 @@ var HandNoteSchema = BaseEntrySchema.extend({
   if (!door && trigger === "knock_unanswered") ctx2.addIssue({ code: "custom", path: ["when", "trigger"], message: "only a door note is written by an unanswered knock" });
 });
 registrySchemas.handNotes = HandNoteSchema;
+var StickerArtSchema = BaseEntrySchema.extend({
+  name: str.max(60),
+  description: str.max(DESCRIPTION_MAX),
+  likeTags: external_exports.array(str).optional(),
+  svg: external_exports.string().min(1).max(600).regex(/^[MmLlHhVvCcSsQqTtAaZz0-9eE.,\s+-]+$/, "an svg path d string").optional(),
+  glyph: external_exports.string().min(1).max(2).optional()
+}).strict().refine((e) => e.svg === void 0 !== (e.glyph === void 0), "a sticker has an svg path or a glyph, not both and not neither");
+registrySchemas.stickerArt = StickerArtSchema;
 var DESCRIBED_REGISTRIES = [
   "roles",
   "skills",
@@ -7923,7 +7934,8 @@ var DESCRIBED_REGISTRIES = [
   // P10b
   "dmBehaviours",
   "handFonts",
-  "handNotes"
+  "handNotes",
+  "stickerArt"
 ];
 function withDescription(schema) {
   return schema.superRefine((entry, ctx2) => {
@@ -30606,6 +30618,54 @@ function renderOpsTab(host, ctx2) {
   );
 }
 
+// src/ui/device/marks.ts
+var SVG_NS3 = "http://www.w3.org/2000/svg";
+function stickerFor(state, reg, unitId) {
+  const unit2 = state.squad.find((u) => u.id === unitId);
+  const all = [...reg.stickerArt.values()];
+  if (!unit2 || unit2.kind !== "named" || all.length === 0) return null;
+  const likes = new Set(unit2.likes.map((l) => l.toLowerCase()));
+  const tagged = all.find((e) => (e.likeTags ?? []).some((t) => likes.has(t.toLowerCase())));
+  return tagged ?? all[fnv1a(unitId) % all.length];
+}
+function art(entry) {
+  if (typeof entry.svg === "string") {
+    const svg3 = document.createElementNS(SVG_NS3, "svg");
+    svg3.setAttribute("viewBox", "0 0 24 24");
+    svg3.setAttribute("width", "100%");
+    svg3.setAttribute("height", "100%");
+    const path = document.createElementNS(SVG_NS3, "path");
+    path.setAttribute("d", entry.svg);
+    path.setAttribute("fill", "currentColor");
+    svg3.append(path);
+    return svg3;
+  }
+  return document.createTextNode(String(entry.glyph ?? ""));
+}
+function renderMarks(layer, state, reg, skin) {
+  layer.replaceChildren();
+  const spots = skin.stickerSpots ?? [];
+  let next = 0;
+  for (const unit2 of state.squad) {
+    if (next >= spots.length) break;
+    const decor = decorOf(state, unit2.id);
+    if (!decor || !decor.parts.includes("sticker")) continue;
+    const sticker = stickerFor(state, reg, unit2.id);
+    if (!sticker) continue;
+    const spot = spots[next++];
+    const mark = document.createElement("span");
+    mark.className = "alius-sticker-mark";
+    mark.dataset.unit = unit2.id;
+    mark.dataset.sticker = String(sticker.id);
+    if (decor.fadedUntil !== void 0) mark.dataset.faded = "true";
+    mark.style.left = `${spot.x}%`;
+    mark.style.top = `${spot.y}%`;
+    mark.style.transform = `rotate(${spot.rot}deg)`;
+    mark.append(art(sticker));
+    layer.append(mark);
+  }
+}
+
 // src/ui/device/skins.ts
 var FALLBACK_SKIN = "ccp_standard";
 var BUILT_IN_SKIN = {
@@ -30616,7 +30676,8 @@ var BUILT_IN_SKIN = {
   cssPreset: "ccp_standard",
   ledColor: "#ffb000",
   accent: "#d8cb98",
-  label: "CCP-PDA MK.III"
+  label: "CCP-PDA MK.III",
+  stickerSpots: [{ x: 5, y: 4, rot: -12 }, { x: 88, y: 4, rot: 9 }, { x: 6, y: 90, rot: 6 }]
 };
 function pickSkin(state, reg, override) {
   const skins = [...reg.deviceSkins.values()];
@@ -31282,10 +31343,10 @@ function renderHub(host, device, ctx2) {
 }
 
 // src/ui/map/mapTab.ts
-var SVG_NS3 = "http://www.w3.org/2000/svg";
+var SVG_NS4 = "http://www.w3.org/2000/svg";
 var SOURCE_TAG2 = { command: "COMMAND", story: "STORY", rumor: "RUMOR", side: "SIDE" };
 function svg2(tag2, attrs) {
-  const el = document.createElementNS(SVG_NS3, tag2);
+  const el = document.createElementNS(SVG_NS4, tag2);
   for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
   return el;
 }
@@ -32757,7 +32818,7 @@ function drawDemandChips(host, state, reg, pick2, on) {
 
 // src/ui/comms/living.ts
 var TYPING_MS = 2500;
-var SVG_NS4 = "http://www.w3.org/2000/svg";
+var SVG_NS5 = "http://www.w3.org/2000/svg";
 var stampText = (day, slot2) => `DAY ${String(day).padStart(3, "0")} // ${slot2.toUpperCase()}`;
 function kindsOf(reg, msg) {
   return new Set((msg.behaviours ?? []).flatMap((id) => {
@@ -32781,13 +32842,13 @@ function meta(msg, kinds2) {
   );
 }
 function waveform(id) {
-  const svg3 = document.createElementNS(SVG_NS4, "svg");
+  const svg3 = document.createElementNS(SVG_NS5, "svg");
   svg3.setAttribute("viewBox", "0 0 64 16");
   svg3.setAttribute("class", "alius-wave");
   svg3.setAttribute("aria-hidden", "true");
   for (let i = 0; i < 16; i++) {
     const height = 3 + fnv1a(`${id}|${i}`) % 11;
-    const bar2 = document.createElementNS(SVG_NS4, "rect");
+    const bar2 = document.createElementNS(SVG_NS5, "rect");
     bar2.setAttribute("x", String(i * 4));
     bar2.setAttribute("y", String((16 - height) / 2));
     bar2.setAttribute("width", "2");
@@ -33269,17 +33330,17 @@ function renderDoor(host, ctx2) {
   knocked.set(host, heard);
   const firstKnock = !heard.has(entry.id);
   heard.add(entry.id);
-  const art = h("div", { class: "alius-door-art", "aria-hidden": "true" });
+  const art2 = h("div", { class: "alius-door-art", "aria-hidden": "true" });
   const sprite = ctx2.readable ? null : ctx2.silhouette?.() ?? null;
   if (ctx2.readable) {
-    art.classList.add("is-solid");
-    art.append(h("div", { class: "alius-door-shape" }));
+    art2.classList.add("is-solid");
+    art2.append(h("div", { class: "alius-door-shape" }));
   } else if (sprite) {
-    art.append(h("div", { class: "alius-door-silhouette" }, sprite));
+    art2.append(h("div", { class: "alius-door-silhouette" }, sprite));
   } else {
-    art.append(h("pre", { class: "alius-ascii" }, DOOR_ART));
+    art2.append(h("pre", { class: "alius-ascii" }, DOOR_ART));
   }
-  if (firstKnock && ctx2.motion) art.classList.add("is-knocking");
+  if (firstKnock && ctx2.motion) art2.classList.add("is-knocking");
   if (firstKnock) ctx2.sound?.play("knock");
   const framing = h("p", { class: "alius-knock-text" }, entry.framing);
   const lines = h("div", { class: "alius-door-lines" });
@@ -33351,7 +33412,7 @@ function renderDoor(host, ctx2) {
     "section",
     { class: "alius-section alius-door alius-knock", "aria-label": `${ctx2.unitName} at the door` },
     h("h2", {}, "[ NIGHT // DOOR ]"),
-    art,
+    art2,
     framing,
     lines,
     status,
@@ -33525,9 +33586,9 @@ function renderSceneScreen(host, ctx2) {
     const image = night ?? loc?.background;
     if (image) bg.style.backgroundImage = `url("${(ctx2.assetUrl ?? ((p) => p))(image)}")`;
     else {
-      const art = h("pre", { class: "alius-ascii", "aria-hidden": "true" });
-      art.textContent = (loc?.ascii ?? []).join("\n");
-      bg.append(art);
+      const art2 = h("pre", { class: "alius-ascii", "aria-hidden": "true" });
+      art2.textContent = (loc?.ascii ?? []).join("\n");
+      bg.append(art2);
     }
   }
   function setSprite(unit2, labelText) {
@@ -36431,6 +36492,10 @@ function createShell(deps) {
     renderChrome(chrome, screen, device, skin, wanted?.assetUrl);
     dressed = { device, skin, assetUrl: wanted?.assetUrl };
   }
+  function drawMarks() {
+    const layer = device?.querySelector(".alius-device-marks");
+    if (layer) deps.marks?.(layer);
+  }
   function applySettings() {
     if (!root) return;
     applySkin();
@@ -36441,6 +36506,7 @@ function createShell(deps) {
     root.classList.toggle("alius-flicker", flags.flicker);
     root.classList.toggle("alius-readable", s.readableMode);
     root.classList.toggle("alius-reduced-motion", motionReduced(s));
+    drawMarks();
     const night = deps.getState()?.slot === "night";
     if (night) root.dataset.night = "true";
     else delete root.dataset.night;
@@ -36571,11 +36637,14 @@ function createShell(deps) {
     panel = h("div", { class: "alius-screen", id: PANEL_ID, role: "tabpanel", tabindex: "0" });
     statusHost = h("div", { class: "alius-status" });
     const chrome = h("div", { class: "alius-device-chrome", "aria-hidden": "true" });
+    const marks = h("div", { class: "alius-device-marks", "aria-hidden": "true" });
+    marks.style.pointerEvents = "none";
     const screen = h("div", { class: "alius-device-screen" }, statusHost, tabBar.element, panel);
-    device = h("div", { class: "alius-device", "data-skin": "ccp_standard", "data-up": String(up) }, chrome, screen);
+    device = h("div", { class: "alius-device", "data-skin": "ccp_standard", "data-up": String(up) }, chrome, marks, screen);
     hubHost = h("div", { class: "alius-hub-host" });
     host.append(hubHost, device);
     applySkin();
+    drawMarks();
     applyDevice(up);
     updateNarrow();
     renderHub2();
@@ -38303,6 +38372,17 @@ function createApp(st, deps) {
       }
     }
   }
+  async function confirmPeel(unitId, part) {
+    const name = state?.squad.find((u) => u.id === unitId)?.displayName ?? "her";
+    const chatId = st.getActiveChat()?.chatId;
+    const answer = await shell.modal({
+      title: `PEEL HER ${part.toUpperCase()}?`,
+      body: `${name} put it there. She will notice it is gone.`,
+      actions: [{ label: "[PEEL]", value: "peel" }, { label: "[KEEP]", value: "keep" }]
+    });
+    if (answer !== "peel" || st.getActiveChat()?.chatId !== chatId) return;
+    act({ type: "device/remove_decor", payload: { unitId, part } });
+  }
   function act(action) {
     const events = api.dispatch(action, { expectChatId: st.getActiveChat()?.chatId });
     const failed = events.find((e) => e.type === "error");
@@ -38326,6 +38406,10 @@ function createApp(st, deps) {
     lastBuild: () => context.lastBuild(),
     // P3b: the fill indicator of SYS › MEMORY
     skin: () => ({ skin: pickSkin(state, registries, getSettings(st).deviceSkin), assetUrl: deps.assetUrl }),
+    marks: (layer) => {
+      if (state) renderMarks(layer, state, registries, pickSkin(state, registries, getSettings(st).deviceSkin));
+      else layer.replaceChildren();
+    },
     debugTools,
     dispatch: (action) => api.dispatch(action, { expectChatId: st.getActiveChat()?.chatId }),
     onSettingsChanged: () => {
@@ -38343,6 +38427,7 @@ function createApp(st, deps) {
       st,
       settings: () => getSettings(st),
       onReadNote: (id) => void act({ type: "notes/read", payload: { id } }),
+      onPeel: (unitId, part) => void confirmPeel(unitId, part),
       rule: { accept: (id) => answerRule2(id, "accept"), negotiate: (id) => answerRule2(id, "negotiate"), refuse: (id) => answerRule2(id, "refuse") }
     })
   );
@@ -38375,8 +38460,8 @@ function createApp(st, deps) {
       onChallenge: (stat3) => void power.challenge(stat3).then((ok) => {
         if (ok) shell.open();
       }),
-      onPeel: (unitId, part) => void act({ type: "device/remove_decor", payload: { unitId, part } }),
-      // P9c
+      onPeel: (unitId, part) => void confirmPeel(unitId, part),
+      // P9c, P10b: asks first
       onCancelBooking: (id) => void personal.cancelBooking(id),
       onWager: (unitId, choice) => void personal.challenge({ unitId, ...choice }),
       onWear: (id) => void personal.wearToken(id),

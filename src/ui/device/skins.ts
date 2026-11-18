@@ -9,6 +9,7 @@ export const FALLBACK_SKIN = 'ccp_standard';
 export const BUILT_IN_SKIN: Entry = {
   id: FALLBACK_SKIN, name: 'CCP standard issue', description: 'Corporate-surplus handheld.', kind: 'css', cssPreset: 'ccp_standard',
   ledColor: '#ffb000', accent: '#d8cb98', label: 'CCP-PDA MK.III',
+  stickerSpots: [{ x: 5, y: 4, rot: -12 }, { x: 88, y: 4, rot: 9 }, { x: 6, y: 90, rot: 6 }],
 };
 
 /**

@@ -7,7 +7,24 @@
     "cssPreset": "ccp_standard",
     "ledColor": "#ffb000",
     "accent": "#d8cb98",
-    "label": "CCP-PDA MK.III"
+    "label": "CCP-PDA MK.III",
+    "stickerSpots": [
+      {
+        "x": 5,
+        "y": 4,
+        "rot": -12
+      },
+      {
+        "x": 88,
+        "y": 4,
+        "rot": 9
+      },
+      {
+        "x": 6,
+        "y": 90,
+        "rot": 6
+      }
+    ]
   },
   {
     "id": "kestrel",
@@ -18,7 +35,26 @@
     "ledColor": "#ff3b1f",
     "accent": "#e8ad0c",
     "label": "KESTREL-WARD · KW-7",
-    "bindTo": { "corporationId": "kestrel" }
+    "bindTo": {
+      "corporationId": "kestrel"
+    },
+    "stickerSpots": [
+      {
+        "x": 5,
+        "y": 5,
+        "rot": 8
+      },
+      {
+        "x": 88,
+        "y": 5,
+        "rot": -10
+      },
+      {
+        "x": 88,
+        "y": 90,
+        "rot": -5
+      }
+    ]
   },
   {
     "id": "vesper",
@@ -29,6 +65,25 @@
     "ledColor": "#3fd6c4",
     "accent": "#8fb9b2",
     "label": "VESPER",
-    "bindTo": { "corporationId": "vesper" }
+    "bindTo": {
+      "corporationId": "vesper"
+    },
+    "stickerSpots": [
+      {
+        "x": 6,
+        "y": 5,
+        "rot": -8
+      },
+      {
+        "x": 87,
+        "y": 5,
+        "rot": 12
+      },
+      {
+        "x": 47,
+        "y": 93,
+        "rot": 3
+      }
+    ]
   }
 ]

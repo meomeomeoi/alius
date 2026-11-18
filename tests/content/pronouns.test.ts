@@ -341,6 +341,12 @@ describe('no pronoun for the commander in the P10b content', () => {
     expect(texts.filter(([, t]) => COMMANDER_PRONOUN.test(t) || /commander[^.]*\btheir\b/i.test(t)).map(([where]) => where)).toEqual([]);
   });
 
+  it('every stickerArt name and description', () => {
+    expect(reg.stickerArt.size).toBeGreaterThanOrEqual(6);
+    const texts = [...reg.stickerArt.values()].flatMap((e): Array<[string, string]> => [[`stickerArt:${e.id}.name`, String(e.name)], [`stickerArt:${e.id}.description`, String(e.description)]]);
+    expect(texts.filter(([, t]) => COMMANDER_PRONOUN.test(t) || /commander[^.]*\btheir\b/i.test(t)).map(([where]) => where)).toEqual([]);
+  });
+
   it('the VITALS reading texts', async () => {
     const { readFile } = await import('node:fs/promises');
     const src = await readFile('src/analysis/providers/immersion.ts', 'utf8');

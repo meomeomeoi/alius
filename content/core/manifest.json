@@ -65,6 +65,7 @@
     "memoryRules": "memoryRules.json",
     "dmBehaviours": "dmBehaviours.json",
     "handFonts": "handFonts.json",
-    "handNotes": "handNotes.json"
+    "handNotes": "handNotes.json",
+    "stickerArt": "stickerArt.json"
   }
 }

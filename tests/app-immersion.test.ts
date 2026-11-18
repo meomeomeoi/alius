@@ -11,6 +11,7 @@ import { h } from '../src/ui/dom';
 import type { ShellDeps } from '../src/ui/shell/shell';
 import { loyaltyRecord } from '../src/engine/loyalty/state';
 import { WANT_VISIT_KIND } from '../src/engine/bonds/scene';
+import { withBond } from './helpers/bonds';
 
 const SOLO = { chatId: 'solo', isGroup: false };
 const ZERO = { pragmatism: 0, autonomy: 0, ingroup: 0, mercy: 0, corporate: 0, sacrifice: 0 };
@@ -179,5 +180,70 @@ describe('the HOME badge (P10b)', () => {
     const t = await boot();
     t.setState(() => undefined);
     expect(t.badges.get('home') ?? 0).toBe(0);
+  });
+});
+
+describe('peeling asks first (P10b)', () => {
+  /** Rhea has device access (a lover with a bond profile) and all three decor parts. */
+  async function decorated() {
+    const t = await boot();
+    t.setState((s) => {
+      withBond(s, RHEA, { leadStyle: 'assertive', attachment: 'steady', desire: 'high' });
+      s.relations[RHEA].stateId = 'lover';
+      s.relations[RHEA].affinity = 80;
+      s.personal = { seq: 1, decor: { [RHEA]: { since: 1, parts: ['sticker', 'wallpaper', 'contact'], contactName: 'Sweetheart' } } };
+    });
+    return t;
+  }
+  const home = (t: Awaited<ReturnType<typeof boot>>) => {
+    const host = h('div');
+    document.body.append(host);
+    t.tabRenderers.get('home')!(host);
+    return host;
+  };
+  const parts = (t: Awaited<ReturnType<typeof boot>>) => t.state().personal?.decor?.[RHEA]?.parts;
+
+  it('PEEL STICKER on HOME asks first; KEEP changes nothing', async () => {
+    const t = await decorated();
+    t.answers.set('PEEL HER STICKER?', 'keep');
+    home(t).querySelector<HTMLButtonElement>('button[data-action="peel-sticker"]')!.click();
+    await flush();
+    expect(t.modalTitles).toContain('PEEL HER STICKER?');
+    expect(parts(t)).toEqual(['sticker', 'wallpaper', 'contact']);
+  });
+
+  it('PEEL dispatches device/remove_decor, so the sticker is gone and she is hurt (decor_removed)', async () => {
+    const t = await decorated();
+    t.answers.set('PEEL HER STICKER?', 'peel');
+    home(t).querySelector<HTMLButtonElement>('button[data-action="peel-sticker"]')!.click();
+    await vi.waitFor(() => expect(parts(t)).toEqual(['wallpaper', 'contact']));
+    expect(t.state().relations[RHEA].history.some((e) => e.type === 'decor_removed')).toBe(true);
+  });
+
+  it("CHANGE WALLPAPER peels the owner's wallpaper part after asking", async () => {
+    const t = await decorated();
+    t.answers.set('PEEL HER WALLPAPER?', 'peel');
+    home(t).querySelector<HTMLButtonElement>('button[data-action="change-wallpaper"]')!.click();
+    await vi.waitFor(() => expect(parts(t)).toEqual(['sticker', 'contact']));
+    expect(t.modalTitles).toContain('PEEL HER WALLPAPER?');
+  });
+
+  it('closing the dialog without an answer also changes nothing', async () => {
+    const t = await decorated();
+    t.answers.set('PEEL HER STICKER?', null);
+    home(t).querySelector<HTMLButtonElement>('button[data-action="peel-sticker"]')!.click();
+    await flush();
+    expect(parts(t)).toEqual(['sticker', 'wallpaper', 'contact']);
+  });
+
+  it('the dossier PEEL asks first too', async () => {
+    const t = await decorated();
+    t.answers.set('PEEL HER CONTACT?', 'peel');
+    const host = h('div');
+    document.body.append(host);
+    t.tabRenderers.get('squad')!(host);
+    host.querySelector<HTMLButtonElement>('[data-decor-part="contact"] button[data-action="peel"]')!.click();
+    await vi.waitFor(() => expect(parts(t)).toEqual(['sticker', 'wallpaper']));
+    expect(t.modalTitles).toContain('PEEL HER CONTACT?');
   });
 });

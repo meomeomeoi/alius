@@ -863,7 +863,7 @@ git commit -am "feat(P10b): PDA HOME view with wallpaper and notes"
   - `renderMarks(layer, state, reg, skin: Entry): void`
   - `ShellDeps.marks`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - `a decorated unit's sticker sits on the first spot, rotated`;
   - `likeTags pick before the hash`;
   - `faded sticker is marked faded`;
@@ -873,15 +873,15 @@ git commit -am "feat(P10b): PDA HOME view with wallpaper and notes"
   - app: `PEEL asks first; KEEP changes nothing; PEEL dispatches device/remove_decor and the sticker is gone`;
   - `CHANGE WALLPAPER peels the owner's wallpaper part`.
 
-- [ ] **Step 2: Run to verify they fail**
+- [x] **Step 2: Run to verify they fail**
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 The SVG `path` `d` is set with `setAttribute`; a `glyph` sticker uses `textContent`.
 
-- [ ] **Step 4: Run, `npm test`**
+- [x] **Step 4: Run, `npm test`**
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git commit -am "feat(P10b): stickers on the device frame, peel with confirm"

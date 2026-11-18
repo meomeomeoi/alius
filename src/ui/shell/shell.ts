@@ -80,6 +80,8 @@ export interface ShellDeps {
   analyze?: { registries: () => Registries };
   /** P10: the casing of the PDA, asked again on every refresh and settings change (absent: the built-in `ccp_standard`). */
   skin?: () => { skin: Entry; assetUrl?: (path: string) => string };
+  /** P10b: draws the stickers into the marks layer of the casing; called on every refresh (the casing itself is dressed once). */
+  marks?: (layer: HTMLElement) => void;
   /** P10: the UI sounds the shell asks for (device, tabs, toasts, hum); absent = silent. */
   sound?: { play(id: SoundId): void; startHum(): void; stopHum(): void; /** P10b: night halves the gain. */ setNight?(on: boolean): void };
   /** Called when the device goes up or down. */
@@ -147,6 +149,12 @@ export function createShell(deps: ShellDeps): ShellApi {
     dressed = { device, skin, assetUrl: wanted?.assetUrl };
   }
 
+  /** The stickers of the casing: redrawn on every refresh, while the casing itself is dressed once (`applySkin`). */
+  function drawMarks(): void {
+    const layer = device?.querySelector<HTMLElement>('.alius-device-marks');
+    if (layer) deps.marks?.(layer);
+  }
+
   function applySettings(): void {
     if (!root) return;
     applySkin();
@@ -157,6 +165,7 @@ export function createShell(deps: ShellDeps): ShellApi {
     root.classList.toggle('alius-flicker', flags.flicker);
     root.classList.toggle('alius-readable', s.readableMode);
     root.classList.toggle('alius-reduced-motion', motionReduced(s));
+    drawMarks(); // P10b: stickers follow the state on every refresh
     // P10b: the night slot dresses the shell (kept in readable mode: the label and the sound; the CSS drops the dimming there)
     const night = deps.getState()?.slot === 'night';
     if (night) root.dataset.night = 'true';
@@ -318,11 +327,14 @@ export function createShell(deps: ShellDeps): ShellApi {
     panel = h('div', { class: 'alius-screen', id: PANEL_ID, role: 'tabpanel', tabindex: '0' });
     statusHost = h('div', { class: 'alius-status' });
     const chrome = h('div', { class: 'alius-device-chrome', 'aria-hidden': 'true' });
+    const marks = h('div', { class: 'alius-device-marks', 'aria-hidden': 'true' });
+    marks.style.pointerEvents = 'none'; // a sticker is never clickable (peeling goes through a confirm)
     const screen = h('div', { class: 'alius-device-screen' }, statusHost, tabBar.element, panel);
-    device = h('div', { class: 'alius-device', 'data-skin': 'ccp_standard', 'data-up': String(up) }, chrome, screen);
+    device = h('div', { class: 'alius-device', 'data-skin': 'ccp_standard', 'data-up': String(up) }, chrome, marks, screen);
     hubHost = h('div', { class: 'alius-hub-host' });
     host.append(hubHost, device);
     applySkin();
+    drawMarks();
     applyDevice(up);
     updateNarrow();
     renderHub();

@@ -1615,6 +1615,8 @@ export const DeviceSkinSchema = BaseEntrySchema.extend({
   accent: hex,
   /** The model name engraved on the casing. */
   label: str.optional(),
+  /** P10b: where stickers sit on the casing, in percent of the device (`rot` in degrees); absent = none (an image skin must declare its own). */
+  stickerSpots: z.array(z.object({ x: z.number().min(0).max(100), y: z.number().min(0).max(100), rot: z.number().min(-45).max(45) }).strict()).max(6).optional(),
   /** At most one key: the corporation, commander trait or unlock flag that brings the skin. */
   bindTo: z.object({ corporationId: str.optional(), traitId: str.optional(), unlockFlag: str.optional() }).strict()
     .refine((b) => Object.values(b).filter((v) => v !== undefined).length <= 1, 'bindTo takes at most one of corporationId, traitId and unlockFlag').optional(),
@@ -2031,6 +2033,17 @@ export const HandNoteSchema = BaseEntrySchema.extend({
 export type HandNoteEntry = z.infer<typeof HandNoteSchema>;
 registrySchemas.handNotes = HandNoteSchema;
 
+/** P10b §5: a sticker a soldier puts on the PDA casing: one `path` `d` string (viewBox 0 0 24 24) or a glyph of at most two characters. `likeTags` are matched against `unit.likes`. */
+export const StickerArtSchema = BaseEntrySchema.extend({
+  name: str.max(60),
+  description: str.max(DESCRIPTION_MAX),
+  likeTags: z.array(str).optional(),
+  svg: z.string().min(1).max(600).regex(/^[MmLlHhVvCcSsQqTtAaZz0-9eE.,\s+-]+$/, 'an svg path d string').optional(),
+  glyph: z.string().min(1).max(2).optional(),
+}).strict().refine((e) => (e.svg === undefined) !== (e.glyph === undefined), 'a sticker has an svg path or a glyph, not both and not neither');
+export type StickerArtEntry = z.infer<typeof StickerArtSchema>;
+registrySchemas.stickerArt = StickerArtSchema;
+
 /** Player-visible registries whose entries carry an optional `description` (skills and statuses already require one). */
 export const DESCRIBED_REGISTRIES = [
   'roles', 'skills', 'signatures', 'statuses', 'defects', 'items', 'affixes', 'enemies',
@@ -2051,7 +2064,7 @@ export const DESCRIBED_REGISTRIES = [
   // P9c
   'deviceAccessRules', 'bookingKinds', 'tokenKinds', 'wagerGames', 'wagerStakes', 'secretKinds',
   // P10b
-  'dmBehaviours', 'handFonts', 'handNotes',
+  'dmBehaviours', 'handFonts', 'handNotes', 'stickerArt',
 ] as const satisfies readonly RegistryName[];
 
 /** Adds the optional `description` rule to a registry schema without changing its shape. */
