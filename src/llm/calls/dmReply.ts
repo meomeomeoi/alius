@@ -17,7 +17,8 @@ export interface DmReplyInput {
   slotText: string;
   /** Last messages, oldest first; at most 6 are used. */
   history: Array<{ from: 'commander' | 'unit'; text: string }>;
-  mode: 'reply' | 'snap' | 'initiate';
+  /** P10b: `curt` (one or two words, cold) and `door` (she answers through the closed door of the commander's quarters at night). */
+  mode: 'reply' | 'snap' | 'initiate' | 'curt' | 'door';
 }
 
 const DM_MAX = 400;
@@ -30,6 +31,8 @@ const MODE_TEXT: Record<DmReplyInput['mode'], string> = {
   reply: 'She answers the commander\'s last message.',
   snap: SNAP_TEXT,
   initiate: 'She writes first: she starts the conversation herself, for her own reasons, without waiting to be asked.',
+  curt: 'She answers the commander\'s last message in one or two words, cold: she gives the commander nothing more.',
+  door: 'She answers through the closed door, one or two sentences; she is still deciding whether to stay.',
 };
 
 /** Cleans a model answer into one short plain-text message; nothing usable → null. */
@@ -49,9 +52,14 @@ registerCallType<string>({
   json: false,
   system: (raw) => {
     const i = raw as DmReplyInput;
+    const door = i.mode === 'door';
     return [
-      `You are ${i.unitName}, a soldier in a penal squad, replying on the PDA messenger to your commander ${i.commanderName}.`,
-      'Write ONE short PDA text message: 1-3 sentences, plain text, in English, in her voice.',
+      door
+        ? `You are ${i.unitName}, a soldier in a penal squad. It is night and you stand outside the closed door of your commander ${i.commanderName}'s quarters; ${i.commanderName} has just spoken to you through it.`
+        : `You are ${i.unitName}, a soldier in a penal squad, replying on the PDA messenger to your commander ${i.commanderName}.`,
+      door ? 'Write ONE spoken reply: one or two sentences, plain text, in English, in her voice.'
+        : i.mode === 'curt' ? 'Write ONE very short PDA text message: one or two words, no more, plain text, in English, in her voice.'
+        : 'Write ONE short PDA text message: 1-3 sentences, plain text, in English, in her voice.',
       'No actions, no narration, no asterisks, no speaker label, no quotation marks.',
       MODE_TEXT[i.mode],
       'Play her exactly as the relationship description says; do not become warmer or more cooperative than it allows.',

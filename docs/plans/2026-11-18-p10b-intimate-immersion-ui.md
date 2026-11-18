@@ -472,7 +472,7 @@ git commit -am "feat(P10b): dmBehaviours registry"
   - `slotIndex(day, slot): number`
   - `DmReplyInput.mode` adds `'curt' | 'door'`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - `stamp is a pure function of message id and state` (same input → same ids; a different id can differ).
   - `at most one entry per kind`.
   - `late needs initiated and evening/night`.
@@ -487,15 +487,15 @@ git commit -am "feat(P10b): dmBehaviours registry"
     - neither text has a commander pronoun.
   - comms: `a resentful unit is asked in curt mode and the reply is stamped curt`.
 
-- [ ] **Step 2: Run to verify they fail**
+- [x] **Step 2: Run to verify they fail**
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 The hash test is `fnv1a(key) % 1000 < Math.round(chance * 1000)`. A seeded test that deep-equals a thread and now gets `behaviours` stops and reports.
 
-- [ ] **Step 4: Run, `npm test`**
+- [x] **Step 4: Run, `npm test`**
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git commit -am "feat(P10b): DM behaviours stamped at receipt, curt replies, read receipts"

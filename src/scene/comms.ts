@@ -7,6 +7,7 @@ import { herDossier, herFacts, herJournal } from '../engine/memory/inputs';
 import { affinityBand, attractionBand, stressBand, trustBand } from '../engine/relations/bands';
 import { intimacyOf } from '../engine/relations/gain';
 import type { CampaignState, Unit } from '../engine/state/types';
+import { replyModeFor } from '../engine/dmBehaviours';
 import { generateDm, type DmReplyInput } from '../llm/calls/dmReply';
 import { extractIntents } from '../llm/calls/intentExtract';
 import { confidenceFloor } from '../engine/worldOptions';
@@ -132,9 +133,11 @@ export function createComms(deps: CommsDeps): Comms {
       const s = state();
       const unit = s?.squad.find((u) => u.id === unitId);
       if (!s || !unit) return;
-      const reply = await generateDm(replyInput(s, deps, unit, mode === 'snap' ? 'snap' : 'reply'), { st, settings: deps.settings(), contentLine: deps.contentLine });
+      // P10b: a curt answer is decided before the call (a hash of the message she is about to send)
+      const asked = replyModeFor(s, deps.registries(), unitId, mode === 'snap' ? 'snap' : 'reply');
+      const reply = await generateDm(replyInput(s, deps, unit, asked), { st, settings: deps.settings(), contentLine: deps.contentLine });
       if (reply === null || chatId() !== expect) return;
-      const received = app.dispatch({ type: 'dm/receive', payload: { unitId, text: reply } }, { expectChatId: expect });
+      const received = app.dispatch({ type: 'dm/receive', payload: { unitId, text: reply, ...(asked === 'curt' ? { mode: 'curt' } : {}) } }, { expectChatId: expect });
       if (failed(received)) return;
       deps.personal?.onReply?.(unitId, reply); // P9c: her first reply after a lost question wager answers it
       deps.onUi({ type: 'transcript' });

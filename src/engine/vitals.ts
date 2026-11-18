@@ -40,13 +40,19 @@ export function hidesInjury(state: CampaignState, reg: Registries, unitId: strin
 
 const isFlat = (reg: Registries, u: Unit): boolean => u.defects.some((d) => reg.defects.get(d.id)?.vitals === 'flat');
 
+/** A trust or affinity drop of `TUNING.vitals.conflictDelta` or more, within `slots` slots of now (0 = this slot). */
+export function conflictWithin(state: CampaignState, unitId: string, slots: number): boolean {
+  const keys = new Set([`axis:${unitId}:trust`, `axis:${unitId}:affinity`]);
+  const now = slotIndex(state.day, state.slot);
+  return (state.ledger ?? []).some((e) => keys.has(e.key) && e.delta <= -TUNING.vitals.conflictDelta && now - slotIndex(e.day, e.slot) <= slots);
+}
+
 function spikesOf(state: CampaignState, reg: Registries, unitId: string): SpikeCause[] {
   const out: SpikeCause[] = [];
   const stressKey = `stress:${unitId}`;
-  const axisKeys = new Set([`axis:${unitId}:trust`, `axis:${unitId}:affinity`]);
   const ledger = state.ledger ?? [];
   if (ledger.some((e) => e.key === stressKey && e.day === state.day && e.delta > 0 && (e.action.startsWith('combat/') || e.action.startsWith('expedition/')))) out.push('combat');
-  if (ledger.some((e) => axisKeys.has(e.key) && e.day === state.day && e.slot === state.slot && e.delta <= -TUNING.vitals.conflictDelta)) out.push('conflict');
+  if (conflictWithin(state, unitId, 0)) out.push('conflict');
   if (state.scene?.participants.includes(unitId)) out.push('commander_near');
   const want = wantBandOf(state, reg, unitId);
   if (want === 'aching' || want === 'desperate') out.push('want');

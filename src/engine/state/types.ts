@@ -372,6 +372,8 @@ export interface DmMessage {
   violation?: string[];
   /** P9c: the unit at device level 4 who edited this message before it was sent (the commander kept the edit). */
   editedBy?: string;
+  /** P10b: the `dmBehaviours` entries stamped when the message arrived (never rewritten); absent = a plain message. */
+  behaviours?: string[];
 }
 
 /** P11: a lead the director set (`objectiveHint`). At most one is open; the newest finished ones are kept for the log. */

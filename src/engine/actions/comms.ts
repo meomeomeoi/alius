@@ -4,6 +4,7 @@ import { confess, SECRET_NIGHT_KIND } from '../personal/secrets';
 import { relieveWant } from '../bonds/want';
 import { consumeSlots, registerDayEndStep } from '../calendar';
 import { registerAction } from '../dispatch';
+import { stampBehaviours } from '../dmBehaviours';
 import { countSent, dmMode, pushMessage, rollInitiative } from '../dms';
 import { isLiving } from '../economy';
 import { takeKeptEdit } from '../personal/intercept';
@@ -79,7 +80,12 @@ registerAction('dm/receive', (draft, payload, ctx) => {
   const unit = namedUnit(draft, payload.unitId);
   const text = textOf(payload.text);
   const initiated = payload.initiated === true;
-  pushMessage(draft, unit.id, { from: unit.id, text, day: draft.day, slot: draft.slot, read: false, ...(initiated ? { initiated: true } : {}) });
+  // P10b: `curt` says the reply was asked for in that mode; it is the only mode a received message can carry
+  if (payload.mode !== undefined && payload.mode !== 'curt') throw new Error("dm/receive: mode can only be 'curt'.");
+  const msg = pushMessage(draft, unit.id, { from: unit.id, text, day: draft.day, slot: draft.slot, read: false, ...(initiated ? { initiated: true } : {}) });
+  // P10b: the behaviours are decided once, here (no rng: a hash of the message id), and stay on the message
+  const stamped = stampBehaviours(draft, ctx.registries, unit.id, msg, { curt: payload.mode === 'curt' });
+  if (stamped.length > 0) msg.behaviours = stamped;
   return [{ type: 'dm_received', unitId: unit.id, initiated }, ...evaluateAutomatic(draft, ctx.registries, unit.id)];
 });
 

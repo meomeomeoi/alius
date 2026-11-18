@@ -20198,6 +20198,106 @@ registerAction("memory/hidden", (draft, payload) => {
 });
 registerDayEndStep("dm_rumors", spreadRumors);
 
+// src/engine/vitals.ts
+var unitOf7 = (state, id) => state.squad.find((u) => u.id === id);
+var isInjured2 = (u) => u.status === "injured" || (u.injuryDays ?? 0) > 0;
+function hidesInjury(state, reg, unitId) {
+  return (state.personal?.secrets ?? []).some((x) => x.status === "kept" && x.subjectId === unitId && reg.secretKinds.get(x.kindId)?.source === "hidden_injury");
+}
+var isFlat = (reg, u) => u.defects.some((d) => reg.defects.get(d.id)?.vitals === "flat");
+function conflictWithin(state, unitId, slots) {
+  const keys = /* @__PURE__ */ new Set([`axis:${unitId}:trust`, `axis:${unitId}:affinity`]);
+  const now = slotIndex(state.day, state.slot);
+  return (state.ledger ?? []).some((e) => keys.has(e.key) && e.delta <= -TUNING.vitals.conflictDelta && now - slotIndex(e.day, e.slot) <= slots);
+}
+function spikesOf(state, reg, unitId) {
+  const out = [];
+  const stressKey = `stress:${unitId}`;
+  const ledger = state.ledger ?? [];
+  if (ledger.some((e) => e.key === stressKey && e.day === state.day && e.delta > 0 && (e.action.startsWith("combat/") || e.action.startsWith("expedition/")))) out.push("combat");
+  if (conflictWithin(state, unitId, 0)) out.push("conflict");
+  if (state.scene?.participants.includes(unitId)) out.push("commander_near");
+  const want = wantBandOf(state, reg, unitId);
+  if (want === "aching" || want === "desperate") out.push("want");
+  return out;
+}
+var isFlicker = (e, unitId) => (e.key === `axis:${unitId}:affinity` || e.key === `axis:${unitId}:attraction`) && e.delta >= TUNING.vitals.flickerDelta;
+function flickersOf(state, unitId) {
+  const seen = /* @__PURE__ */ new Map();
+  for (const e of state.ledger ?? []) if (isFlicker(e, unitId)) seen.set(slotIndex(e.day, e.slot), { day: e.day, slot: e.slot });
+  return [...seen.entries()].sort((a, b) => b[0] - a[0]).slice(0, TUNING.vitals.flickerLog).map(([, at]) => at);
+}
+function vitalsOf(state, reg, unitId) {
+  const unit2 = unitOf7(state, unitId);
+  if (!unit2 || unit2.kind !== "named" || !isLiving(unit2)) return null;
+  const spikes = spikesOf(state, reg, unitId);
+  const band2 = stressBand2(unit2.stress);
+  const flat2 = isFlat(reg, unit2);
+  const pattern = unit2.breakdown !== void 0 || band2 === "breaking" || band2 === "breakdown" ? "erratic" : flat2 ? "flat" : spikes.length > 0 ? "spiking" : band2 === "strained" ? "elevated" : "steady";
+  const heart = { steady: "resting", elevated: "raised", spiking: "racing", erratic: "racing", flat: "low" }[pattern];
+  const temp = isInjured2(unit2) && !hidesInjury(state, reg, unitId) ? "fever" : pattern === "spiking" && (spikes.includes("want") || spikes.includes("commander_near")) ? "warm" : pattern === "flat" ? "cool" : "normal";
+  const now = slotIndex(state.day, state.slot);
+  const flicker = pattern === "flat" && (state.ledger ?? []).some((e) => isFlicker(e, unitId) && now - slotIndex(e.day, e.slot) <= 1);
+  return { unitId, pattern, heart, temp, spikes, flicker };
+}
+
+// src/engine/dmBehaviours.ts
+var behaviours = (reg) => [...reg.dmBehaviours.values()].map((e) => ({
+  id: String(e.id),
+  kind: e.kind,
+  chance: Number(e.chance),
+  ...e.when !== void 0 ? { when: e.when } : {}
+}));
+var passes = (key, chance) => fnv1a(key) % 1e3 < Math.round(chance * 1e3);
+var namedLiving6 = (state, unitId) => {
+  const u = state.squad.find((x) => x.id === unitId);
+  return u !== void 0 && u.kind === "named" && isLiving(u) ? u : null;
+};
+function affinityLostToday(state, unitId) {
+  return (state.ledger ?? []).filter((e) => e.key === `axis:${unitId}:affinity` && e.day === state.day && e.delta < 0).reduce((n, e) => n - e.delta, 0);
+}
+function whenHolds(state, reg, unitId, when, ctx2) {
+  const unit2 = namedLiving6(state, unitId);
+  const rel = state.relations[unitId];
+  if (!unit2 || !rel) return false;
+  if (when.minWant !== void 0 && effectiveWant(state, reg, unitId) < when.minWant) return false;
+  if (when.wantBands !== void 0 && !when.wantBands.includes(wantBand(effectiveWant(state, reg, unitId)))) return false;
+  if (when.attachment !== void 0 && !when.attachment.includes(bondOf(unit2).attachment)) return false;
+  if (when.stateGroups !== void 0 && !when.stateGroups.includes(reg.relationshipStates.get(rel.stateId)?.group)) return false;
+  if (when.states !== void 0 && !when.states.includes(rel.stateId)) return false;
+  if (when.afterConflictSlots !== void 0 && !conflictWithin(state, unitId, when.afterConflictSlots)) return false;
+  if (when.affinityDrop !== void 0 && affinityLostToday(state, unitId) < when.affinityDrop) return false;
+  if (when.slots !== void 0 && !when.slots.includes(ctx2.slot ?? state.slot)) return false;
+  if (when.initiated !== void 0 && when.initiated !== ctx2.initiated) return false;
+  return true;
+}
+var nextMessageId = (state) => `m${(state.memory.nextId ?? 0) + 1}`;
+function curtFor(state, reg, unitId, messageId) {
+  return behaviours(reg).find((b) => b.kind === "curt" && (b.when === void 0 || whenHolds(state, reg, unitId, b.when, { initiated: false })) && passes(`${messageId}|${b.id}`, b.chance));
+}
+function stampBehaviours(state, reg, unitId, msg, opts = {}) {
+  if (!namedLiving6(state, unitId)) return [];
+  const initiated = msg.initiated === true;
+  const out = [];
+  const taken = /* @__PURE__ */ new Set();
+  for (const b of behaviours(reg)) {
+    if (b.kind === "hesitate" || b.kind === "curt" || taken.has(b.kind)) continue;
+    if (b.when !== void 0 && !whenHolds(state, reg, unitId, b.when, { initiated, slot: msg.slot })) continue;
+    if (!passes(`${msg.id}|${b.id}`, b.chance)) continue;
+    taken.add(b.kind);
+    out.push(b.id);
+  }
+  if (opts.curt === true) {
+    const curt = curtFor(state, reg, unitId, msg.id) ?? behaviours(reg).find((b) => b.kind === "curt");
+    if (curt) out.push(curt.id);
+  }
+  return out;
+}
+function replyModeFor(state, reg, unitId, base) {
+  if (base !== "reply" || !namedLiving6(state, unitId)) return base;
+  return curtFor(state, reg, unitId, nextMessageId(state)) ? "curt" : "reply";
+}
+
 // src/engine/personal/intercept.ts
 var ORIGINAL_MAX = 1e3;
 var INTERCEPT_CHANNELS = ["dm", "leash", "recruit"];
@@ -20318,7 +20418,10 @@ registerAction("dm/receive", (draft, payload, ctx2) => {
   const unit2 = namedUnit(draft, payload.unitId);
   const text2 = textOf(payload.text);
   const initiated = payload.initiated === true;
-  pushMessage(draft, unit2.id, { from: unit2.id, text: text2, day: draft.day, slot: draft.slot, read: false, ...initiated ? { initiated: true } : {} });
+  if (payload.mode !== void 0 && payload.mode !== "curt") throw new Error("dm/receive: mode can only be 'curt'.");
+  const msg = pushMessage(draft, unit2.id, { from: unit2.id, text: text2, day: draft.day, slot: draft.slot, read: false, ...initiated ? { initiated: true } : {} });
+  const stamped = stampBehaviours(draft, ctx2.registries, unit2.id, msg, { curt: payload.mode === "curt" });
+  if (stamped.length > 0) msg.behaviours = stamped;
   return [{ type: "dm_received", unitId: unit2.id, initiated }, ...evaluateAutomatic(draft, ctx2.registries, unit2.id)];
 });
 registerAction("dm/read", (draft, payload) => {
@@ -25357,7 +25460,9 @@ var SNAP_TEXT = "The commander has sent her too many messages today: she snaps a
 var MODE_TEXT = {
   reply: "She answers the commander's last message.",
   snap: SNAP_TEXT,
-  initiate: "She writes first: she starts the conversation herself, for her own reasons, without waiting to be asked."
+  initiate: "She writes first: she starts the conversation herself, for her own reasons, without waiting to be asked.",
+  curt: "She answers the commander's last message in one or two words, cold: she gives the commander nothing more.",
+  door: "She answers through the closed door, one or two sentences; she is still deciding whether to stay."
 };
 function sanitizeDm(text2) {
   let t = text2.replace(/```[a-z]*/gi, " ").replace(/\*[^*\n]*\*/g, " ").replace(/[_`#>]+/g, " ").replace(/\*+/g, " ");
@@ -25374,9 +25479,10 @@ registerCallType({
   json: false,
   system: (raw) => {
     const i = raw;
+    const door = i.mode === "door";
     return [
-      `You are ${i.unitName}, a soldier in a penal squad, replying on the PDA messenger to your commander ${i.commanderName}.`,
-      "Write ONE short PDA text message: 1-3 sentences, plain text, in English, in her voice.",
+      door ? `You are ${i.unitName}, a soldier in a penal squad. It is night and you stand outside the closed door of your commander ${i.commanderName}'s quarters; ${i.commanderName} has just spoken to you through it.` : `You are ${i.unitName}, a soldier in a penal squad, replying on the PDA messenger to your commander ${i.commanderName}.`,
+      door ? "Write ONE spoken reply: one or two sentences, plain text, in English, in her voice." : i.mode === "curt" ? "Write ONE very short PDA text message: one or two words, no more, plain text, in English, in her voice." : "Write ONE short PDA text message: 1-3 sentences, plain text, in English, in her voice.",
       "No actions, no narration, no asterisks, no speaker label, no quotation marks.",
       MODE_TEXT[i.mode],
       "Play her exactly as the relationship description says; do not become warmer or more cooperative than it allows."
@@ -25671,9 +25777,10 @@ function createComms(deps) {
       const s = state();
       const unit2 = s?.squad.find((u) => u.id === unitId);
       if (!s || !unit2) return;
-      const reply = await generateDm(replyInput(s, deps, unit2, mode === "snap" ? "snap" : "reply"), { st, settings: deps.settings(), contentLine: deps.contentLine });
+      const asked = replyModeFor(s, deps.registries(), unitId, mode === "snap" ? "snap" : "reply");
+      const reply = await generateDm(replyInput(s, deps, unit2, asked), { st, settings: deps.settings(), contentLine: deps.contentLine });
       if (reply === null || chatId() !== expect) return;
-      const received = app.dispatch({ type: "dm/receive", payload: { unitId, text: reply } }, { expectChatId: expect });
+      const received = app.dispatch({ type: "dm/receive", payload: { unitId, text: reply, ...asked === "curt" ? { mode: "curt" } : {} } }, { expectChatId: expect });
       if (failed(received)) return;
       deps.personal?.onReply?.(unitId, reply);
       deps.onUi({ type: "transcript" });
@@ -29103,45 +29210,6 @@ function renderMemoryBlock(host, ctx2) {
     dossierBlock,
     ...list5.length === 0 ? [h("p", { class: "alius-dim" }, "Nothing remembered yet.")] : list5.map(factRow)
   ));
-}
-
-// src/engine/vitals.ts
-var unitOf7 = (state, id) => state.squad.find((u) => u.id === id);
-var isInjured2 = (u) => u.status === "injured" || (u.injuryDays ?? 0) > 0;
-function hidesInjury(state, reg, unitId) {
-  return (state.personal?.secrets ?? []).some((x) => x.status === "kept" && x.subjectId === unitId && reg.secretKinds.get(x.kindId)?.source === "hidden_injury");
-}
-var isFlat = (reg, u) => u.defects.some((d) => reg.defects.get(d.id)?.vitals === "flat");
-function spikesOf(state, reg, unitId) {
-  const out = [];
-  const stressKey = `stress:${unitId}`;
-  const axisKeys = /* @__PURE__ */ new Set([`axis:${unitId}:trust`, `axis:${unitId}:affinity`]);
-  const ledger = state.ledger ?? [];
-  if (ledger.some((e) => e.key === stressKey && e.day === state.day && e.delta > 0 && (e.action.startsWith("combat/") || e.action.startsWith("expedition/")))) out.push("combat");
-  if (ledger.some((e) => axisKeys.has(e.key) && e.day === state.day && e.slot === state.slot && e.delta <= -TUNING.vitals.conflictDelta)) out.push("conflict");
-  if (state.scene?.participants.includes(unitId)) out.push("commander_near");
-  const want = wantBandOf(state, reg, unitId);
-  if (want === "aching" || want === "desperate") out.push("want");
-  return out;
-}
-var isFlicker = (e, unitId) => (e.key === `axis:${unitId}:affinity` || e.key === `axis:${unitId}:attraction`) && e.delta >= TUNING.vitals.flickerDelta;
-function flickersOf(state, unitId) {
-  const seen = /* @__PURE__ */ new Map();
-  for (const e of state.ledger ?? []) if (isFlicker(e, unitId)) seen.set(slotIndex(e.day, e.slot), { day: e.day, slot: e.slot });
-  return [...seen.entries()].sort((a, b) => b[0] - a[0]).slice(0, TUNING.vitals.flickerLog).map(([, at]) => at);
-}
-function vitalsOf(state, reg, unitId) {
-  const unit2 = unitOf7(state, unitId);
-  if (!unit2 || unit2.kind !== "named" || !isLiving(unit2)) return null;
-  const spikes = spikesOf(state, reg, unitId);
-  const band2 = stressBand2(unit2.stress);
-  const flat2 = isFlat(reg, unit2);
-  const pattern = unit2.breakdown !== void 0 || band2 === "breaking" || band2 === "breakdown" ? "erratic" : flat2 ? "flat" : spikes.length > 0 ? "spiking" : band2 === "strained" ? "elevated" : "steady";
-  const heart = { steady: "resting", elevated: "raised", spiking: "racing", erratic: "racing", flat: "low" }[pattern];
-  const temp = isInjured2(unit2) && !hidesInjury(state, reg, unitId) ? "fever" : pattern === "spiking" && (spikes.includes("want") || spikes.includes("commander_near")) ? "warm" : pattern === "flat" ? "cool" : "normal";
-  const now = slotIndex(state.day, state.slot);
-  const flicker = pattern === "flat" && (state.ledger ?? []).some((e) => isFlicker(e, unitId) && now - slotIndex(e.day, e.slot) <= 1);
-  return { unitId, pattern, heart, temp, spikes, flicker };
 }
 
 // src/ui/vitals/trace.ts

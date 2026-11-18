@@ -52,6 +52,36 @@ describe('DMs carry her memory (P3b)', () => {
   });
 });
 
+describe('curt replies (P10b)', () => {
+  const resentful = (s: import('../../src/engine/state/types').CampaignState): void => {
+    s.relations[ANN].stateId = 'resentful';
+  };
+
+  it('a resentful unit is asked in curt mode, and the reply is stamped curt', async () => {
+    const h = harness(reg, { tweak: resentful });
+    h.st.mainReplies = ['No.', intentJson()];
+    await h.comms.send(ANN, 'Are you awake?');
+    expect((h.st.calls[0] as { system: string }).system).toMatch(/one or two words/i);
+    expect(h.state().dms[ANN].at(-1)!.behaviours).toContain('curt_resentful');
+  });
+
+  it('a unit who is not resentful is asked as before and nothing is stamped curt', async () => {
+    const h = harness(reg);
+    h.st.mainReplies = ['I am here.', intentJson()];
+    await h.comms.send(ANN, 'Are you awake?');
+    expect((h.st.calls[0] as { system: string }).system).toMatch(/1.3 sentences/);
+    expect(h.state().dms[ANN].at(-1)!.behaviours ?? []).not.toContain('curt_resentful');
+  });
+
+  it('a snap is never curt, even from a resentful unit', async () => {
+    const h = harness(reg, { tweak: (s) => { resentful(s); s.dmMeta = { [ANN]: { day: s.day, sent: 4 } }; } });
+    h.st.mainReplies = ['Stop.', intentJson()];
+    await h.comms.send(ANN, 'Hello?');
+    expect((h.st.calls[0] as { system: string }).system).toMatch(/snaps at the commander/);
+    expect(h.state().dms[ANN].at(-1)!.behaviours ?? []).not.toContain('curt_resentful');
+  });
+});
+
 describe('DMs', () => {
   it('DM send → reply → intents (acceptance 8)', async () => {
     const h = harness(reg);

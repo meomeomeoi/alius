@@ -91,3 +91,42 @@ describe('dm reply', () => {
     expect(await generateDm(input(), { st, settings })).toBeNull();
   });
 });
+
+describe('dm reply modes of P10b', () => {
+  const prompted = async (mode: DmReplyInput['mode']) => {
+    const { st, settings } = setup();
+    st.mainReplies = ['Fine.'];
+    await generateDm(input({ mode }), { st, settings });
+    return st.calls[0] as { prompt: string; system: string };
+  };
+
+  it('curt mode asks for one or two words, cold', async () => {
+    const call = await prompted('curt');
+    expect(call.system).toMatch(/one or two words/i);
+    expect(call.system).toMatch(/cold/i);
+    expect(call.system).not.toMatch(/1.3 sentences/);
+  });
+
+  it('door mode says she answers through the closed door and is still deciding', async () => {
+    const call = await prompted('door');
+    expect(call.system).toMatch(/through the closed door/i);
+    expect(call.system).toMatch(/still deciding whether to stay/i);
+    expect(call.system).toMatch(/one or two sentences/i);
+    expect(call.system).not.toMatch(/PDA/);
+  });
+
+  it('neither mode text gives the commander a pronoun', async () => {
+    for (const mode of ['curt', 'door'] as const) {
+      const call = await prompted(mode);
+      expect(`${call.system}\n${call.prompt}`, mode).not.toMatch(/\b(he|him|his|himself)\b/i);
+    }
+  });
+
+  it('the older modes are unchanged', async () => {
+    for (const mode of ['reply', 'snap', 'initiate'] as const) {
+      const call = await prompted(mode);
+      expect(call.system, mode).toMatch(/1.3 sentences/);
+      expect(call.system, mode).toMatch(/PDA/);
+    }
+  });
+});
