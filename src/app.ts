@@ -15,6 +15,7 @@ import './engine/actions/loyalty'; // registers scene/order, loyalty/* actions a
 import './engine/actions/discipline'; // registers the P9 discipline day step (after the loyalty step)
 import './engine/actions/bonds'; // registers the P9d actions
 import './engine/actions/personal'; // registers the P9c personal day step (after the bonds step)
+import './engine/actions/immersion'; // P10b: her hand (and, after the personal step, her notes)
 import './engine/actions/power'; // registers the P9b actions
 import './engine/actions/dilemma'; // registers dilemma/* actions and the pacing step, after the loyalty step (P6)
 import './engine/actions/arc'; // registers arc/decide and the medbay arc steps (P6)
@@ -1822,6 +1823,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       canTerminate: (unitId) => (state ? checkLeash(state, registries, 'terminate', unitId) : 'No campaign.'),
       onPunish: (unitId, measure, days) => void discipline.punish(unitId, measure, days),
       onSetPublicity: (unitId, level) => void bonds.setPublicity(unitId, level),
+      onSetHand: (unitId, handId) => void act({ type: 'squad/set_hand', payload: { unitId, handId } }),
       onEndorse: () => void power.endorse(),
       onAskFirst: (unitId, on) => void power.askFirst(unitId, on).then((ok) => { if (ok) shell.open(); }),
       onChallenge: (stat) => void power.challenge(stat).then((ok) => { if (ok) shell.open(); }),

@@ -21,17 +21,19 @@ beforeAll(async () => {
   bundle = await stable('dist/index.js');
 });
 const FAMILIES = ['ibm-plex-mono', 'saira-stencil-one', 'inter', 'special-elite'];
+/** P10b: the six hand fonts of the notes (SIL OFL 1.1). */
+const HANDS = ['caveat', 'indie-flower', 'patrick-hand', 'shadows-into-light', 'kalam', 'nanum-pen-script'];
 
 describe('bundled assets (spec P10 §6, acceptance 7)', () => {
   it('every font url in style.css exists on disk', () => {
     const urls = [...css.matchAll(/url\(\s*["']?(fonts\/[^"')]+)["']?\s*\)/g)].map((m) => m[1]);
-    expect(urls.length).toBeGreaterThanOrEqual(7);
+    expect(urls.length).toBeGreaterThanOrEqual(13);
     for (const u of urls) expect(existsSync(u), u).toBe(true);
   });
 
   it('every @font-face uses font-display: swap and a relative url', () => {
     const faces = [...css.matchAll(/@font-face\s*\{[^}]*\}/g)].map((m) => m[0]);
-    expect(faces.length).toBeGreaterThanOrEqual(7);
+    expect(faces.length).toBeGreaterThanOrEqual(13);
     for (const f of faces) {
       expect(f).toMatch(/font-display:\s*swap/);
       expect(f).toMatch(/url\(\s*["']?fonts\//);
@@ -58,8 +60,30 @@ describe('bundled assets (spec P10 §6, acceptance 7)', () => {
 
   it('woff2 files are under 120 KB each', () => {
     const files = readdirSync('fonts').filter((f) => f.endsWith('.woff2'));
-    expect(files.length).toBeGreaterThanOrEqual(7);
+    expect(files.length).toBeGreaterThanOrEqual(13);
     for (const f of files) expect(statSync(`fonts/${f}`).size, f).toBeLessThan(120 * 1024);
+  });
+
+  it('every hand font is a woff2 on disk, referenced by a relative url in style.css, with its OFL licence (P10b)', () => {
+    for (const hand of HANDS) {
+      const file = `fonts/hand-${hand}-400.woff2`;
+      expect(existsSync(file), file).toBe(true);
+      expect(css, file).toContain(`url("${file}")`);
+      const licence = `fonts/LICENSES/hand-${hand}.txt`;
+      expect(existsSync(licence), licence).toBe(true);
+      expect(readFileSync(licence, 'utf8')).toMatch(/SIL OPEN FONT LICENSE/i);
+    }
+    expect(readdirSync('fonts').filter((f) => f.startsWith('hand-'))).toHaveLength(HANDS.length);
+  });
+
+  it('the hand font faces match the handFonts registry (family names)', () => {
+    const registry = JSON.parse(readFileSync('content/core/handFonts.json', 'utf8')) as Array<{ family: string }>;
+    for (const { family } of registry) expect(css, family).toContain(`font-family: "${family}"`);
+  });
+
+  it('the paper voice reads --alius-font-hand first for note bodies, and readable mode falls back to the type font', () => {
+    expect(css).toMatch(/\.alius-note[^{]*\{[^}]*font-family:\s*var\(--alius-font-hand,\s*var\(--alius-font-type\)\)/);
+    expect(css).toMatch(/alius-readable[^{]*\.alius-note[^{]*\{[^}]*font-family:\s*var\(--alius-font-type\)/);
   });
 
   it('the font variables exist on the shell root', () => {

@@ -1,0 +1,38 @@
+[
+  {
+    "id": "caveat",
+    "name": "Caveat",
+    "family": "Caveat",
+    "description": "AUTHOR TO WRITE: a quick, slanted, impatient hand."
+  },
+  {
+    "id": "indie_flower",
+    "name": "Indie Flower",
+    "family": "Indie Flower",
+    "description": "AUTHOR TO WRITE: round, open, a little childish."
+  },
+  {
+    "id": "patrick_hand",
+    "name": "Patrick Hand",
+    "family": "Patrick Hand",
+    "description": "AUTHOR TO WRITE: neat block letters, a careful hand."
+  },
+  {
+    "id": "shadows_into_light",
+    "name": "Shadows Into Light",
+    "family": "Shadows Into Light",
+    "description": "AUTHOR TO WRITE: thin and tall, written fast and light."
+  },
+  {
+    "id": "kalam",
+    "name": "Kalam",
+    "family": "Kalam",
+    "description": "AUTHOR TO WRITE: a confident marker hand, sure of itself."
+  },
+  {
+    "id": "nanum_pen_script",
+    "name": "Nanum Pen Script",
+    "family": "Nanum Pen Script",
+    "description": "AUTHOR TO WRITE: small, cramped and fine, written with a pen close to the paper."
+  }
+]

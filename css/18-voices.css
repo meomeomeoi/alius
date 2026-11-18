@@ -242,3 +242,15 @@
 /* ---- readable mode: plain paper, upright stamps, the same colours ---- */
 #alius-shell.alius-readable .alius-fibre { display: none; }
 #alius-shell.alius-readable .alius-stamp { transform: none; }
+
+/* ---- P10b: a note in her hand. The paper voice reads --alius-font-hand (set on the note by the code) first; readable mode swaps it for the type font and keeps the note. ---- */
+#alius-shell .alius-voice-paper .alius-note .alius-note-body,
+#alius-shell .alius-note .alius-note-body {
+  font-family: var(--alius-font-hand, var(--alius-font-type));
+  font-size: 1.15em;
+}
+
+#alius-shell.alius-readable .alius-note .alius-note-body {
+  font-family: var(--alius-font-type);
+  font-size: 1em;
+}

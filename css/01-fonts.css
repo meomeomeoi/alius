@@ -2,6 +2,7 @@
  * Fonts bundled with the extension (woff2, latin subsets, from the @fontsource packages). Paths are relative to
  * style.css, which SillyTavern loads from the extension folder, so nothing is requested from anywhere else.
  * Licences: fonts/LICENSES/ (IBM Plex Mono, Saira Stencil One and Inter are SIL OFL 1.1; Special Elite is Apache-2.0).
+ * P10b: six hand fonts for notes (Caveat, Indie Flower, Patrick Hand, Shadows Into Light, Kalam, Nanum Pen Script), SIL OFL 1.1, fonts/LICENSES/hand-*.txt.
  */
 @font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/ibm-plex-mono-400.woff2") format("woff2"); }
 @font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 600; font-display: swap; src: url("fonts/ibm-plex-mono-600.woff2") format("woff2"); }
@@ -10,3 +11,9 @@
 @font-face { font-family: "Inter"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/inter-400.woff2") format("woff2"); }
 @font-face { font-family: "Inter"; font-style: normal; font-weight: 600; font-display: swap; src: url("fonts/inter-600.woff2") format("woff2"); }
 @font-face { font-family: "Special Elite"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/special-elite-400.woff2") format("woff2"); }
+@font-face { font-family: "Caveat"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/hand-caveat-400.woff2") format("woff2"); }
+@font-face { font-family: "Indie Flower"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/hand-indie-flower-400.woff2") format("woff2"); }
+@font-face { font-family: "Patrick Hand"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/hand-patrick-hand-400.woff2") format("woff2"); }
+@font-face { font-family: "Shadows Into Light"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/hand-shadows-into-light-400.woff2") format("woff2"); }
+@font-face { font-family: "Kalam"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/hand-kalam-400.woff2") format("woff2"); }
+@font-face { font-family: "Nanum Pen Script"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/hand-nanum-pen-script-400.woff2") format("woff2"); }

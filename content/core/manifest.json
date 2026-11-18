@@ -63,6 +63,7 @@
     "wagerStakes": "wagerStakes.json",
     "secretKinds": "secretKinds.json",
     "memoryRules": "memoryRules.json",
-    "dmBehaviours": "dmBehaviours.json"
+    "dmBehaviours": "dmBehaviours.json",
+    "handFonts": "handFonts.json"
   }
 }

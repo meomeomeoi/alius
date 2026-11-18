@@ -478,7 +478,7 @@ export const RESERVED_EVENT_TYPES: readonly string[] = [
   'wager_offered', 'wager_refused', 'wager_accepted', 'wager_declined', 'wager_resolved', 'mark_set', 'mark_ended', 'wager_question', 'truth_told', 'demand_dropped',
   'secret_kept', 'secret_found', 'secret_answered',
   // P10b
-  'door_said', 'door_replied',
+  'door_said', 'door_replied', 'hand_set',
 ];
 
 const slotEnum = z.enum(['morning', 'afternoon', 'evening', 'night']);
@@ -1994,6 +1994,15 @@ export const DmBehaviourSchema = BaseEntrySchema.extend({
 export type DmBehaviourEntry = z.infer<typeof DmBehaviourSchema>;
 registrySchemas.dmBehaviours = DmBehaviourSchema;
 
+/** P10b §4: a bundled hand font (`family` is the CSS family name of its `@font-face` in `css/01-fonts.css`). Registry order decides the default hand. */
+export const HandFontSchema = BaseEntrySchema.extend({
+  name: str.max(60),
+  family: str.max(60).regex(/^[A-Za-z0-9 ]+$/, 'a plain CSS family name'),
+  description: str.max(DESCRIPTION_MAX),
+}).strict();
+export type HandFontEntry = z.infer<typeof HandFontSchema>;
+registrySchemas.handFonts = HandFontSchema;
+
 /** Player-visible registries whose entries carry an optional `description` (skills and statuses already require one). */
 export const DESCRIBED_REGISTRIES = [
   'roles', 'skills', 'signatures', 'statuses', 'defects', 'items', 'affixes', 'enemies',
@@ -2014,7 +2023,7 @@ export const DESCRIBED_REGISTRIES = [
   // P9c
   'deviceAccessRules', 'bookingKinds', 'tokenKinds', 'wagerGames', 'wagerStakes', 'secretKinds',
   // P10b
-  'dmBehaviours',
+  'dmBehaviours', 'handFonts',
 ] as const satisfies readonly RegistryName[];
 
 /** Adds the optional `description` rule to a registry schema without changing its shape. */

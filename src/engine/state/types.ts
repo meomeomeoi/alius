@@ -188,6 +188,8 @@ export interface Unit {
   worldStances?: Record<string, WorldStance>;
   /** P9d: the bond profile from her card; absent = modest (`bondOf`). */
   bond?: Bond;
+  /** P10b: the `handFonts` entry her notes are written in (absent = the hashed default of her id; set by `squad/set_hand`). */
+  hand?: string;
 }
 
 export interface DailyGain {

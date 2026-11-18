@@ -5939,7 +5939,8 @@ var REGISTRY_NAMES = [
   // P3b
   "memoryRules",
   // P10b
-  "dmBehaviours"
+  "dmBehaviours",
+  "handFonts"
 ];
 var PackManifestSchema = external_exports.object({
   id: external_exports.string().min(1),
@@ -6569,7 +6570,8 @@ var RESERVED_EVENT_TYPES = [
   "secret_answered",
   // P10b
   "door_said",
-  "door_replied"
+  "door_replied",
+  "hand_set"
 ];
 var slotEnum = external_exports.enum(["morning", "afternoon", "evening", "night"]);
 var socialStat = external_exports.enum(["authority", "insight", "empathy", "cunning"]);
@@ -7835,6 +7837,12 @@ var DmBehaviourSchema = BaseEntrySchema.extend({
   when: DmBehaviourWhenSchema.optional()
 }).strict();
 registrySchemas.dmBehaviours = DmBehaviourSchema;
+var HandFontSchema = BaseEntrySchema.extend({
+  name: str.max(60),
+  family: str.max(60).regex(/^[A-Za-z0-9 ]+$/, "a plain CSS family name"),
+  description: str.max(DESCRIPTION_MAX)
+}).strict();
+registrySchemas.handFonts = HandFontSchema;
 var DESCRIBED_REGISTRIES = [
   "roles",
   "skills",
@@ -7885,7 +7893,8 @@ var DESCRIBED_REGISTRIES = [
   "wagerStakes",
   "secretKinds",
   // P10b
-  "dmBehaviours"
+  "dmBehaviours",
+  "handFonts"
 ];
 function withDescription(schema) {
   return schema.superRefine((entry, ctx2) => {
@@ -21427,6 +21436,17 @@ registerAction("secret/respond", (draft, payload, ctx2) => {
   return respondSecret(draft, ctx2, payload.secretId, payload.choice);
 });
 
+// src/engine/actions/immersion.ts
+var isObj24 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+registerAction("squad/set_hand", (draft, payload, ctx2) => {
+  if (!isObj24(payload) || typeof payload.unitId !== "string" || typeof payload.handId !== "string") throw new Error("squad/set_hand needs { unitId, handId }");
+  const unit2 = draft.squad.find((u) => u.id === payload.unitId);
+  if (!unit2 || unit2.kind !== "named") throw new Error("Only a named soldier has a hand.");
+  if (!ctx2.registries.handFonts.has(payload.handId)) throw new Error(`squad/set_hand: unknown hand "${payload.handId}"`);
+  unit2.hand = payload.handId;
+  return [{ type: "hand_set", unitId: unit2.id, handId: payload.handId }];
+});
+
 // src/engine/power/dayStep.ts
 function powerDayStep(draft, ctx2) {
   const power = powerOf(draft);
@@ -21450,52 +21470,52 @@ function powerDayStep(draft, ctx2) {
 
 // src/engine/actions/power.ts
 registerDayEndStep("director_tick", powerDayStep);
-var isObj24 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj25 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 registerAction("vote/open", (draft, payload, ctx2) => {
-  if (!isObj24(payload) || typeof payload.kind !== "string" || typeof payload.subject !== "string") throw new Error("vote/open needs { kind, subject }");
+  if (!isObj25(payload) || typeof payload.kind !== "string" || typeof payload.subject !== "string") throw new Error("vote/open needs { kind, subject }");
   return openVote(draft, ctx2, payload.kind, payload.subject);
 });
 registerAction("vote/drop", (draft, payload) => {
-  if (!isObj24(payload) || typeof payload.voteId !== "string") throw new Error("vote/drop needs { voteId }");
+  if (!isObj25(payload) || typeof payload.voteId !== "string") throw new Error("vote/drop needs { voteId }");
   return dropVote(draft, payload.voteId);
 });
 registerAction("vote/overrule", (draft, payload, ctx2) => {
-  if (!isObj24(payload) || typeof payload.voteId !== "string" || typeof payload.means !== "string") throw new Error("vote/overrule needs { voteId, means }");
+  if (!isObj25(payload) || typeof payload.voteId !== "string" || typeof payload.means !== "string") throw new Error("vote/overrule needs { voteId, means }");
   let punish;
   if (payload.punish !== void 0) {
-    if (!isObj24(payload.punish) || typeof payload.punish.unitId !== "string" || typeof payload.punish.measure !== "string") throw new Error("vote/overrule: punish needs { unitId, measure }");
+    if (!isObj25(payload.punish) || typeof payload.punish.unitId !== "string" || typeof payload.punish.measure !== "string") throw new Error("vote/overrule: punish needs { unitId, measure }");
     punish = { unitId: payload.punish.unitId, measure: payload.punish.measure };
   }
   return overruleVote(draft, ctx2, payload.voteId, payload.means, punish);
 });
 registerVoteGate("expedition/start", (state, payload, reg) => {
-  if (!isObj24(payload) || typeof payload.missionId !== "string" || isObj24(payload.poi)) return null;
+  if (!isObj25(payload) || typeof payload.missionId !== "string" || isObj25(payload.poi)) return null;
   const mission = state.missions.offered.find((m) => m.id === payload.missionId);
   if (!mission || reg.missionTemplates.get(mission.templateId)?.tutorial === true) return null;
   return { kind: "mission", subject: mission.id };
 });
-registerVoteGate("base/upgrade", (_state, payload) => isObj24(payload) && typeof payload.facilityId === "string" ? { kind: "upgrade", subject: payload.facilityId } : null);
+registerVoteGate("base/upgrade", (_state, payload) => isObj25(payload) && typeof payload.facilityId === "string" ? { kind: "upgrade", subject: payload.facilityId } : null);
 function benchSeverity(reg) {
   const heavy = [...reg.punishments.values()].filter((p) => p.sideEffects?.some((e) => e.type === "bench"));
   return heavy.length === 0 ? null : Math.min(...heavy.map((p) => Number(p.severity)));
 }
 registerVoteGate("discipline/punish", (_state, payload, reg) => {
-  if (!isObj24(payload) || typeof payload.unitId !== "string" || typeof payload.measure !== "string") return null;
+  if (!isObj25(payload) || typeof payload.unitId !== "string" || typeof payload.measure !== "string") return null;
   const pun = punishmentFor(reg, payload.measure);
   const limit = benchSeverity(reg);
   if (!pun || limit === null || Number(pun.severity) > limit) return null;
   return { kind: "punish", subject: payload.unitId };
 });
 registerVoteGate("rations/set", (state, payload, reg) => {
-  if (!isObj24(payload) || typeof payload.mode !== "string" || !RATION_MODES.includes(payload.mode)) return null;
+  if (!isObj25(payload) || typeof payload.mode !== "string" || !RATION_MODES.includes(payload.mode)) return null;
   return rationsVotable(state, reg) ? { kind: "rations", subject: payload.mode } : null;
 });
 registerAction("rations/set", (draft, payload) => {
-  if (!isObj24(payload)) throw new Error("rations/set needs { mode }");
+  if (!isObj25(payload)) throw new Error("rations/set needs { mode }");
   return setRations(draft, payload.mode);
 });
 registerAction("power/countermand", (draft, payload, ctx2) => {
-  if (!isObj24(payload) || payload.answer !== "accept" && payload.answer !== "overrule") throw new Error('power/countermand needs { answer: "accept" | "overrule" }');
+  if (!isObj25(payload) || payload.answer !== "accept" && payload.answer !== "overrule") throw new Error('power/countermand needs { answer: "accept" | "overrule" }');
   const open3 = countermandOpen(draft);
   if (!open3) {
     if (draft.power) delete draft.power.countermand;
@@ -21518,44 +21538,44 @@ registerAction("power/countermand", (draft, payload, ctx2) => {
   return events;
 });
 registerAction("power/endorse", (draft, _payload, ctx2) => endorse(draft, ctx2));
-registerAction("power/challenge", (draft, payload, ctx2) => challenge2(draft, ctx2, isObj24(payload) ? payload.stat : void 0));
+registerAction("power/challenge", (draft, payload, ctx2) => challenge2(draft, ctx2, isObj25(payload) ? payload.stat : void 0));
 registerAction("power/ask_first", (draft, payload, ctx2) => {
-  if (!isObj24(payload) || typeof payload.unitId !== "string" || typeof payload.on !== "boolean") throw new Error("power/ask_first needs { unitId, on }.");
+  if (!isObj25(payload) || typeof payload.unitId !== "string" || typeof payload.on !== "boolean") throw new Error("power/ask_first needs { unitId, on }.");
   return setAskFirst(draft, ctx2, payload.unitId, payload.on);
 });
 registerVoteGate("dilemma/choose", (state, payload) => {
   const open3 = state.dilemmas?.open;
-  if (!open3 || open3.context !== "scapegoat" || open3.status !== "presented" || !isObj24(payload) || typeof payload.index !== "number") return null;
+  if (!open3 || open3.context !== "scapegoat" || open3.status !== "presented" || !isObj25(payload) || typeof payload.index !== "number") return null;
   const answer = scapegoatOptionId(open3.options?.[payload.index]);
   return answer === null ? null : { kind: "scapegoat", subject: answer };
 });
 
 // src/engine/actions/dilemma.ts
-var isObj25 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj26 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 registerDayEndStep("director_tick", pacingStep);
 registerAction("dilemma/request", (draft, payload, ctx2) => {
-  const p = isObj25(payload) ? payload : {};
+  const p = isObj26(payload) ? payload : {};
   if (typeof p.templateId !== "string" || typeof p.context !== "string") throw new Error("dilemma/request needs { templateId, context }");
   return openDilemma(draft, ctx2, { templateId: p.templateId, context: p.context });
 });
 registerAction("dilemma/present", (draft, payload, ctx2) => {
-  const p = isObj25(payload) ? payload : {};
+  const p = isObj26(payload) ? payload : {};
   return presentDilemma(draft, ctx2, p.requestId, p.output);
 });
 registerAction("dilemma/fallback", (draft, payload, ctx2) => {
-  const p = isObj25(payload) ? payload : {};
+  const p = isObj26(payload) ? payload : {};
   return fallbackDilemma(draft, ctx2, p.requestId);
 });
 registerAction("dilemma/choose", (draft, payload, ctx2) => {
-  const p = isObj25(payload) ? payload : {};
+  const p = isObj26(payload) ? payload : {};
   return chooseDilemma(draft, ctx2, p.id, p.index, readRoutePick(p.route));
 });
 
 // src/engine/actions/arc.ts
-var isObj26 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj27 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 registerActivityHook(arcActivityHook);
 registerAction("arc/decide", (draft, payload, ctx2) => {
-  const p = isObj26(payload) ? payload : {};
+  const p = isObj27(payload) ? payload : {};
   if (typeof p.unitId !== "string" || typeof p.defectId !== "string" || typeof p.path !== "string") {
     throw new Error("arc/decide needs { unitId, defectId, path, compel? }");
   }
@@ -21563,9 +21583,9 @@ registerAction("arc/decide", (draft, payload, ctx2) => {
 });
 
 // src/engine/actions/items.ts
-var isObj27 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj28 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 registerAction("item/equip", (draft, payload, ctx2) => {
-  if (!isObj27(payload) || typeof payload.unitId !== "string" || typeof payload.uid !== "string") {
+  if (!isObj28(payload) || typeof payload.unitId !== "string" || typeof payload.uid !== "string") {
     throw new Error("item/equip needs { unitId, uid }");
   }
   const unit2 = draft.squad.find((u) => u.id === payload.unitId);
@@ -21583,7 +21603,7 @@ registerAction("item/equip", (draft, payload, ctx2) => {
   return [{ type: "item_equipped", unitId: unit2.id, slot: slot2, uid: inst.uid, from: previous?.id ?? null }];
 });
 registerAction("item/unequip", (draft, payload) => {
-  if (!isObj27(payload) || typeof payload.unitId !== "string" || !["weapon", "upper", "lower"].includes(String(payload.slot))) {
+  if (!isObj28(payload) || typeof payload.unitId !== "string" || !["weapon", "upper", "lower"].includes(String(payload.slot))) {
     throw new Error("item/unequip needs { unitId, slot }");
   }
   const unit2 = draft.squad.find((u) => u.id === payload.unitId);
@@ -21613,7 +21633,7 @@ var ownedItem = (draft, uid) => {
 };
 registerAction("item/craft", (draft, payload, ctx2) => {
   session(draft);
-  const id = isObj27(payload) ? payload.recipeId : void 0;
+  const id = isObj28(payload) ? payload.recipeId : void 0;
   const recipe = typeof id === "string" ? ctx2.registries.recipes.get(id) : void 0;
   if (!recipe) throw new Error(`Unknown recipe "${String(id)}".`);
   const rarity = recipe.rarity;
@@ -21627,7 +21647,7 @@ registerAction("item/craft", (draft, payload, ctx2) => {
 });
 registerAction("item/upgrade", (draft, payload, ctx2) => {
   session(draft);
-  const inst = ownedItem(draft, isObj27(payload) ? payload.uid : void 0);
+  const inst = ownedItem(draft, isObj28(payload) ? payload.uid : void 0);
   if (inst.upgrade >= TUNING.items.maxUpgrade) throw new Error("MAX UPGRADE");
   const cost = upgradeCost(draft, ctx2.registries, inst);
   const events = spend(draft, cost.credits, cost.plyx);
@@ -21637,7 +21657,7 @@ registerAction("item/upgrade", (draft, payload, ctx2) => {
 });
 registerAction("item/reroll", (draft, payload, ctx2) => {
   session(draft);
-  const p = isObj27(payload) ? payload : {};
+  const p = isObj28(payload) ? payload : {};
   const inst = ownedItem(draft, p.uid);
   const i = p.affixIndex;
   if (typeof i !== "number" || !Number.isInteger(i) || i < 0 || i >= inst.affixes.length) throw new Error("Pick one of the item's affixes.");
@@ -21653,7 +21673,7 @@ registerAction("item/reroll", (draft, payload, ctx2) => {
 });
 registerAction("item/dismantle", (draft, payload, ctx2) => {
   session(draft);
-  const inst = ownedItem(draft, isObj27(payload) ? payload.uid : void 0);
+  const inst = ownedItem(draft, isObj28(payload) ? payload.uid : void 0);
   if (equippedBy(draft, inst.uid)) throw new Error("Unequip the item first.");
   const plyx = dismantleValue(ctx2.registries, inst);
   draft.inventory = draft.inventory.filter((i) => i.uid !== inst.uid);
@@ -21701,7 +21721,7 @@ registerAction("campaign/set_first_impression_tau", (draft, payload) => {
 });
 
 // src/engine/actions/onboarding.ts
-var isObj28 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj29 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function open2(draft) {
   const o = draft.onboarding;
   if (!o || o.done) throw new Error("The prologue is over.");
@@ -21709,7 +21729,7 @@ function open2(draft) {
 }
 function currentFor(draft, ctx2, payload, action) {
   const o = open2(draft);
-  if (!isObj28(payload) || typeof payload.stepId !== "string") throw new Error(`${action} needs { stepId }`);
+  if (!isObj29(payload) || typeof payload.stepId !== "string") throw new Error(`${action} needs { stepId }`);
   if (payload.stepId !== o.stepId) throw new Error("Stale onboarding step.");
   const step = currentStep(draft, ctx2.registries);
   if (!step) throw new Error("Stale onboarding step.");
@@ -21733,7 +21753,7 @@ registerAction("onboarding/skip_step", (draft, payload, ctx2) => {
 });
 registerAction("onboarding/mark_spoken", (draft, payload) => {
   const o = open2(draft);
-  if (!isObj28(payload) || typeof payload.unitId !== "string") throw new Error("onboarding/mark_spoken needs { unitId }");
+  if (!isObj29(payload) || typeof payload.unitId !== "string") throw new Error("onboarding/mark_spoken needs { unitId }");
   const unitId = payload.unitId;
   if (!livingNamed(draft).some((u) => u.id === unitId)) throw new Error("Only a living named soldier can be spoken to.");
   if (o.spoken?.includes(unitId)) throw new Error("That soldier has already been spoken to.");
@@ -21742,7 +21762,7 @@ registerAction("onboarding/mark_spoken", (draft, payload) => {
 });
 registerAction("onboarding/hint_seen", (draft, payload, ctx2) => {
   const o = open2(draft);
-  if (!isObj28(payload) || typeof payload.hintId !== "string") throw new Error("onboarding/hint_seen needs { hintId }");
+  if (!isObj29(payload) || typeof payload.hintId !== "string") throw new Error("onboarding/hint_seen needs { hintId }");
   const hintId = payload.hintId;
   const entry = ctx2.registries.prologues.get(o.prologueId);
   const known = entry ? stepsOf(entry).some((s) => s.hints?.some((h2) => h2.id === hintId)) : false;
@@ -24439,16 +24459,16 @@ var fieldSchemas = {
   doorTimer: external_exports.number().int().min(0).max(60)
 };
 var budgetSchema = external_exports.number().int().min(1);
-var isObj29 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj30 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function merge(base, over) {
-  const src = isObj29(over) ? over : {};
+  const src = isObj30(over) ? over : {};
   const out = { ...base };
   for (const [key, schema] of Object.entries(fieldSchemas)) {
     const parsed = schema.safeParse(src[key]);
     if (parsed.success) out[key] = parsed.data;
   }
   const budgets = { ...base.budgets };
-  const srcBudgets = isObj29(src.budgets) ? src.budgets : {};
+  const srcBudgets = isObj30(src.budgets) ? src.budgets : {};
   for (const id of CALL_TYPE_IDS) {
     const parsed = budgetSchema.safeParse(srcBudgets[id]);
     if (parsed.success) budgets[id] = parsed.data;
@@ -25690,24 +25710,24 @@ registerCallType({
   prompt: prompt3,
   schema: IntentExtractRawSchema
 });
-var isObj30 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj31 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var LABELS = EXPRESSION_LABELS;
 function sanitizeIntentOutput(raw, ctx2) {
   const parsed = IntentExtractRawSchema.safeParse(raw);
   const src = parsed.success ? parsed.data : { events: [], facts: [], proposals: [], promises: [], emotions: [], stressHints: [], contentViolations: [], sceneTone: void 0 };
-  const events = src.events.filter((e) => isObj30(e) && typeof e.confidence === "number" && e.confidence >= ctx2.minConfidence);
-  const proposals2 = src.proposals.filter((p) => ctx2.romance || !(isObj30(p) && ROMANTIC_PROPOSALS.includes(p.kind)));
+  const events = src.events.filter((e) => isObj31(e) && typeof e.confidence === "number" && e.confidence >= ctx2.minConfidence);
+  const proposals2 = src.proposals.filter((p) => ctx2.romance || !(isObj31(p) && ROMANTIC_PROPOSALS.includes(p.kind)));
   const intents = validateIntents({ ...src, events, proposals: proposals2 }, { participants: ctx2.participants, squad: ctx2.squad, maxEvents: TUNING.relations.maxEventsRead, ...ctx2.measures ? { measures: ctx2.measures } : {}, ...ctx2.rules ? { rules: ctx2.rules } : {} });
   const emotions = [];
   for (const e of src.emotions) {
-    if (isObj30(e) && typeof e.unitId === "string" && ctx2.participants.includes(e.unitId) && typeof e.label === "string" && LABELS.includes(e.label)) {
+    if (isObj31(e) && typeof e.unitId === "string" && ctx2.participants.includes(e.unitId) && typeof e.label === "string" && LABELS.includes(e.label)) {
       emotions.push({ unitId: e.unitId, label: e.label });
     }
   }
   const contentViolations = [];
   const evidenceMax = TUNING.bonds.limits.evidenceMax;
   for (const v of src.contentViolations) {
-    if (!isObj30(v) || typeof v.category !== "string" || !(ctx2.excluded ?? []).includes(v.category) || contentViolations.some((x) => x.category === v.category)) continue;
+    if (!isObj31(v) || typeof v.category !== "string" || !(ctx2.excluded ?? []).includes(v.category) || contentViolations.some((x) => x.category === v.category)) continue;
     contentViolations.push({ category: v.category, evidence: typeof v.evidence === "string" ? v.evidence.replace(/\s+/g, " ").trim().slice(0, evidenceMax) : "" });
     if (contentViolations.length === TUNING.bonds.limits.maxViolations) break;
   }
@@ -27081,7 +27101,7 @@ function renderCommanderFile(host, ctx2) {
 
 // src/setup/commander.ts
 var PERSONA_CHARS = 6e3;
-var isObj31 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj32 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var cap3 = (v, max) => typeof v === "string" ? v.replace(/<[^>]*>/g, "").trim().slice(0, max) : "";
 function valueOf(kind, v) {
   if (typeof v !== "string") return null;
@@ -27090,7 +27110,7 @@ function valueOf(kind, v) {
 }
 var LOWER_ORDER = ["reflexes", "endurance", "strength"];
 function sanitizeCommanderImport(raw, reg, opts = { desireBondDefects: false }) {
-  const src = isObj31(raw) ? raw : {};
+  const src = isObj32(raw) ? raw : {};
   const setup = defaultCommanderSetup();
   for (const k of BODY_STATS) {
     const v = valueOf(k, src[k]);
@@ -27106,7 +27126,7 @@ function sanitizeCommanderImport(raw, reg, opts = { desireBondDefects: false }) 
   const reasons = {};
   for (const item of Array.isArray(src.traits) ? src.traits : []) {
     if (setup.traits.regular.length >= TUNING.commander.maxRegular) break;
-    const id = isObj31(item) && typeof item.id === "string" ? item.id : null;
+    const id = isObj32(item) && typeof item.id === "string" ? item.id : null;
     const t = id === null ? void 0 : reg.commanderTraits.get(id);
     if (!id || !t || t.kind !== "regular" || setup.traits.regular.includes(id)) continue;
     if (traitBlockReason(reg, setup.traits, id, opts) !== null) continue;
@@ -27115,7 +27135,7 @@ function sanitizeCommanderImport(raw, reg, opts = { desireBondDefects: false }) 
   }
   return { setup, personaName: "", reasons, notes: cap3(src.notes, 300) };
 }
-var usable2 = (raw, result) => isObj31(raw) && ["strength", "endurance", "reflexes", "expression", "seasoning"].some((k) => valueOf(k, raw[k]) !== null) || result.setup.traits.regular.length > 0;
+var usable2 = (raw, result) => isObj32(raw) && ["strength", "endurance", "reflexes", "expression", "seasoning"].some((k) => valueOf(k, raw[k]) !== null) || result.setup.traits.regular.length > 0;
 async function importCommander(st, deps) {
   const { settings, registries } = deps;
   try {
@@ -27185,7 +27205,7 @@ function buildImportInput(card2, registries, settings, sections, world, bond) {
     ...sections.includes("bond") ? { categories: [...registries.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => ({ id: String(c.id), label: str4(c.label) })) } : {}
   };
 }
-var isObj32 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj33 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var cap4 = (v, max, fallback = "") => typeof v === "string" ? v.trim().slice(0, max) : fallback;
 var num4 = (v, lo, hi, fallback) => typeof v === "number" && Number.isFinite(v) ? Math.min(hi, Math.max(lo, Math.round(v))) : fallback;
 var STANCE_REASON_MAX2 = 160;
@@ -27203,7 +27223,7 @@ function tagList2(v, max) {
   return out;
 }
 function sanitizeProfile(raw, ctx2) {
-  const src = isObj32(raw) ? raw : {};
+  const src = isObj33(raw) ? raw : {};
   const want = (s) => ctx2.sections.includes(s);
   const dropped = [];
   const missing2 = [];
@@ -27212,7 +27232,7 @@ function sanitizeProfile(raw, ctx2) {
     const out = [];
     const seen = /* @__PURE__ */ new Set();
     for (const item of Array.isArray(list5) ? list5 : []) {
-      const id = isObj32(item) && typeof item[idKey] === "string" ? item[idKey] : null;
+      const id = isObj33(item) && typeof item[idKey] === "string" ? item[idKey] : null;
       if (id === null) {
         dropped.push(`${SECTION_LABEL[section]}:(invalid)`);
         continue;
@@ -27260,11 +27280,11 @@ function sanitizeProfile(raw, ctx2) {
     const read = validateBond(src.bond, ctx2.registries);
     profile.bond = read.bond;
     bond = read.bond;
-    const reason = cap4(isObj32(src.bond) ? src.bond.reason : void 0, TUNING.bonds.limits.noteMax);
+    const reason = cap4(isObj33(src.bond) ? src.bond.reason : void 0, TUNING.bonds.limits.noteMax);
     if (reason !== "") profile.bondReason = reason;
     for (const issue of read.issues) if (/unknown content category/.test(issue)) dropped.push(`bond:${issue.match(/"([^"]*)"/)?.[1] ?? "(invalid)"}`);
     if (read.valid.length === 0) missing2.push("bond");
-    if (!isObj32(src.bond)) delete profile.bond;
+    if (!isObj33(src.bond)) delete profile.bond;
   }
   if (want("defects")) {
     profile.defectCandidates = pick2(
@@ -27281,7 +27301,7 @@ function sanitizeProfile(raw, ctx2) {
     if (profile.defectCandidates.length === 0) missing2.push("defects");
   }
   if (want("values")) {
-    if (isObj32(src.values)) {
+    if (isObj33(src.values)) {
       const v = src.values;
       profile.values = Object.fromEntries(VALUE_KEYS.map((k) => [k, num4(v[k], -3, 3, 0)]));
     } else missing2.push("values");
@@ -27306,25 +27326,25 @@ function sanitizeProfile(raw, ctx2) {
     }
     profile.commanderTastes = out;
   }
-  if (want("disposition") && isObj32(src.dispositionOffset) && typeof src.dispositionOffset.offset === "number" && Number.isFinite(src.dispositionOffset.offset)) {
+  if (want("disposition") && isObj33(src.dispositionOffset) && typeof src.dispositionOffset.offset === "number" && Number.isFinite(src.dispositionOffset.offset)) {
     profile.dispositionOffset = { offset: num4(src.dispositionOffset.offset, -2, 2, 0), reason: cap4(src.dispositionOffset.reason, STANCE_REASON_MAX2) };
   }
   if (want("stances")) {
     const ids = stanceOptionIds(ctx2.registries, ctx2.world);
     if (ids.length > 0) {
-      const given = isObj32(src.worldStances) ? src.worldStances : {};
+      const given = isObj33(src.worldStances) ? src.worldStances : {};
       for (const key of Object.keys(given)) if (!ids.includes(key)) dropped.push(`stances:${key}`);
       const out = {};
       for (const id of ids) {
         const e = given[id];
-        const stance = isObj32(e) && typeof e.stance === "string" && STANCE_WORDS.includes(e.stance) ? e.stance : null;
+        const stance = isObj33(e) && typeof e.stance === "string" && STANCE_WORDS.includes(e.stance) ? e.stance : null;
         out[id] = stance === null ? { stance: "indifferent", strength: 1, reason: "" } : { stance, strength: e.strength === 2 ? 2 : 1, reason: cap4(e.reason, STANCE_REASON_MAX2) };
       }
       profile.worldStances = out;
     }
   }
   if (want("baseline")) {
-    if (isObj32(src.emotionalBaseline)) {
+    if (isObj33(src.emotionalBaseline)) {
       const b = src.emotionalBaseline;
       const lim = SETUP_LIMITS.baseline;
       profile.baseline = {
@@ -29550,6 +29570,16 @@ function unitPortrait(st, unit2, o) {
   return img;
 }
 
+// src/engine/hand.ts
+function handOf(state, reg, unitId) {
+  const unit2 = state.squad.find((u) => u.id === unitId);
+  if (!unit2 || unit2.kind !== "named") return null;
+  const chosen = unit2.hand === void 0 ? void 0 : reg.handFonts.get(unit2.hand);
+  if (chosen) return chosen;
+  const all = [...reg.handFonts.values()];
+  return all.length === 0 ? null : all[fnv1a(unitId) % all.length];
+}
+
 // src/ui/discipline/menu.ts
 var confineOf = (entry) => (entry.sideEffects ?? []).find((e) => e.type === "confine");
 function renderDisciplineMenu(ctx2) {
@@ -30018,6 +30048,7 @@ function unitBlock(unit2, ctx2, state) {
       gone || !ctx2.onPunish || unit2.kind !== "named" ? null : renderDisciplineMenu({ state, registries: reg, unitId: unit2.id, onPunish: (measure, days) => ctx2.onPunish(unit2.id, measure, days) }),
       gone ? null : h("p", { class: "alius-stress" }, chip2(`STRESS ${stressBand2(unit2.stress).toUpperCase()}${raw ? ` (${unit2.stress})` : ""}`, "glossary:stress", live)),
       gone ? null : renderVitalsBlock(state, reg, unit2.id, { motion: !motionReduced(ctx2.settings()) }),
+      gone ? null : handSelect(unit2, state, ctx2),
       gone ? null : leashMenu(unit2, ctx2),
       unit2.bio ? h("p", { class: "alius-dim" }, unit2.bio) : null,
       h("p", {}, ...joinWith([
@@ -30042,6 +30073,18 @@ function unitBlock(unit2, ctx2, state) {
       ctx2.onResync && unit2.cardRef && !ctx2.settings().editLock ? h("button", { type: "button", class: "alius-btn", "data-resync": unit2.id, onclick: () => ctx2.onResync(unit2.id) }, "[ RE-SYNC FROM CARD ]") : null
     )
   );
+}
+function handSelect(unit2, state, ctx2) {
+  const current = handOf(state, ctx2.registries, unit2.id);
+  if (!ctx2.onSetHand || !current) return null;
+  const select = h("select", { class: "alius-input", "data-hand": unit2.id, "aria-label": `Handwriting of ${unit2.displayName}` }, ...[...ctx2.registries.handFonts.values()].map((e) => {
+    const option = h("option", { value: String(e.id) }, String(e.name));
+    if (e.id === current.id) option.setAttribute("selected", "");
+    return option;
+  }));
+  select.value = String(current.id);
+  select.addEventListener("change", () => ctx2.onSetHand(unit2.id, select.value));
+  return h("label", { class: "alius-stat alius-hand", ...analyzeNative("glossary:handwriting", { unitId: unit2.id }) }, "HAND ", select);
 }
 function renderSquadTab(host, ctx2) {
   host.replaceChildren();
@@ -37982,6 +38025,7 @@ function createApp(st, deps) {
       canTerminate: (unitId) => state ? checkLeash(state, registries, "terminate", unitId) : "No campaign.",
       onPunish: (unitId, measure, days) => void discipline.punish(unitId, measure, days),
       onSetPublicity: (unitId, level) => void bonds.setPublicity(unitId, level),
+      onSetHand: (unitId, handId) => void act({ type: "squad/set_hand", payload: { unitId, handId } }),
       onEndorse: () => void power.endorse(),
       onAskFirst: (unitId, on) => void power.askFirst(unitId, on).then((ok) => {
         if (ok) shell.open();
@@ -39236,13 +39280,13 @@ import { editGroup, openGroupById } from "../../../../group-chats.js";
 import { newWorldInfoEntryTemplate } from "../../../../world-info.js";
 
 // src/st/chat.ts
-var isObj33 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+var isObj34 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function mapChatMessages(chat, from = 0) {
   if (!Array.isArray(chat)) return [];
   const out = [];
   for (let index2 = Math.max(0, from); index2 < chat.length; index2++) {
     const m = chat[index2];
-    if (!isObj33(m) || m.is_system === true) continue;
+    if (!isObj34(m) || m.is_system === true) continue;
     const avatar = typeof m.original_avatar === "string" && m.original_avatar !== "" ? m.original_avatar : void 0;
     out.push({
       index: index2,
@@ -39259,7 +39303,7 @@ function lastCharacterAvatar(chat) {
   if (!Array.isArray(chat)) return void 0;
   for (let i = chat.length - 1; i >= 0; i--) {
     const m = chat[i];
-    if (isObj33(m) && m.is_user !== true && m.is_system !== true) {
+    if (isObj34(m) && m.is_user !== true && m.is_system !== true) {
       return typeof m.original_avatar === "string" && m.original_avatar !== "" ? m.original_avatar : void 0;
     }
   }
@@ -39281,7 +39325,7 @@ function hideRuns(length, from, to, isSystem) {
 var hideCommand = (unhide, [a, b]) => `/${unhide ? "unhide" : "hide"} ${a === b ? a : `${a}-${b}`}`;
 var isSystemMessage = (chat, index2) => {
   const m = Array.isArray(chat) ? chat[index2] : void 0;
-  return !isObj33(m) || m.is_system === true;
+  return !isObj34(m) || m.is_system === true;
 };
 
 // src/st/slash.ts
@@ -39313,17 +39357,17 @@ function toStLorebook(book2, template) {
 }
 
 // src/st/sprites.ts
-var isObj34 = (v) => typeof v === "object" && v !== null;
+var isObj35 = (v) => typeof v === "object" && v !== null;
 function spriteFolder(avatar, name, overrides) {
   if (!Array.isArray(overrides)) return name;
   const key = avatar.replace(/\.[^.]+$/, "");
-  const hit = overrides.find((o) => isObj34(o) && o.name === key && typeof o.path === "string" && o.path !== "");
+  const hit = overrides.find((o) => isObj35(o) && o.name === key && typeof o.path === "string" && o.path !== "");
   return hit ? hit.path : name;
 }
 function pickSprite(list5, label2) {
   if (!Array.isArray(list5)) return null;
   for (const item of list5) {
-    if (isObj34(item) && item.label === label2 && typeof item.path === "string") return item.path;
+    if (isObj35(item) && item.label === label2 && typeof item.path === "string") return item.path;
   }
   return null;
 }

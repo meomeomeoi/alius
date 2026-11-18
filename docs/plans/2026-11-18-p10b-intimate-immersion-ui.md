@@ -691,20 +691,20 @@ git commit -am "feat(P10b): the night door with timer, silhouette, knock and one
   - `handFamily(entry): string`
   - action `squad/set_hand { unitId, handId }` → `hand_set`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - `default hand is stable by unit id and needs no stored field`;
   - `set_hand stores and is read back; unknown id rejected; grunt rejected`;
   - `re-sync keeps the hand`;
   - `every font file is referenced by a relative url and has a licence`;
   - `dossier select changes the hand`.
 
-- [ ] **Step 2: Run to verify they fail**
+- [x] **Step 2: Run to verify they fail**
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
-- [ ] **Step 4: Run, `npm test`**
+- [x] **Step 4: Run, `npm test`**
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git commit -am "feat(P10b): bundled hand fonts and per-unit handwriting"

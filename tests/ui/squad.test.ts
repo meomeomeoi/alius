@@ -9,6 +9,7 @@ import { getSettings } from '../../src/settings';
 import { FakeStAdapter } from '../../src/st/fake';
 import type { LoadResult } from '../../src/st/persistence';
 import { h } from '../../src/ui/dom';
+import { fnv1a } from '../../src/engine/hub';
 import { valueBand } from '../../src/ui/squad/bands';
 import { renderSquadTab } from '../../src/ui/squad/squadTab';
 import { markedWithout, unresolved } from '../helpers/analyzeCoverage';
@@ -704,5 +705,52 @@ describe('the dossier publicity block (P9d)', () => {
     expect(marked).toHaveLength(5);
     for (const e of marked) expect(e.getAttribute('data-analyze')).toBe('glossary:publicity');
     expect(markedWithout(host)).toEqual([]);
+  });
+});
+
+describe('HAND select (P10b)', () => {
+  function withHand(over: Partial<Parameters<typeof renderSquadTab>[1]> = {}, units = [unit(), unit({ cardRef: 'kay.png', displayName: 'Kay' })]) {
+    const st = new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' });
+    const state = campaign(units);
+    const host = h('div');
+    document.body.append(host);
+    const onSetHand = vi.fn();
+    renderSquadTab(host, {
+      st, getState: () => state, getLoad: () => ({ kind: 'ok', state, chatId: 'c' }), registries: reg,
+      settings: () => getSettings(st), onNewCampaign: () => {}, onSetHand, ...over,
+    });
+    return { host, onSetHand, state };
+  }
+  const select = (host: HTMLElement, i: number) => host.querySelectorAll<HTMLSelectElement>('select[data-hand]')[i];
+
+  it('a named unit has a HAND select with the six hands, her current one selected, analyzable', () => {
+    const { host, state } = withHand();
+    expect(host.querySelectorAll('select[data-hand]')).toHaveLength(2);
+    const sel = select(host, 0);
+    expect([...sel.options].map((o) => o.textContent)).toEqual(['Caveat', 'Indie Flower', 'Patrick Hand', 'Shadows Into Light', 'Kalam', 'Nanum Pen Script']);
+    expect(sel.value).toBe([...reg.handFonts.keys()][fnv1a(state.squad[0].id) % reg.handFonts.size]);
+    expect(sel.closest('[data-analyze]')!.getAttribute('data-analyze')).toBe('glossary:handwriting');
+    expect(markedWithout(host)).toEqual([]);
+  });
+
+  it('changing the select calls onSetHand with the unit and the hand', () => {
+    const { host, onSetHand, state } = withHand();
+    const sel = select(host, 1);
+    sel.value = 'kalam';
+    sel.dispatchEvent(new Event('change'));
+    expect(onSetHand).toHaveBeenCalledWith(state.squad[1].id, 'kalam');
+  });
+
+  it('no select without a handler, for a grunt, or for a unit who is gone', () => {
+    expect(render().host.querySelector('select[data-hand]')).toBeNull();
+    const { host } = withHand({}, [unit()]);
+    expect(host.querySelectorAll('select[data-hand]')).toHaveLength(1);
+    const st = new FakeStAdapter({ chatId: 'c', isGroup: true, groupId: 'g' });
+    const state = campaign([unit(), unit({ cardRef: 'kay.png', displayName: 'Kay' })]);
+    state.squad[1].status = 'dead';
+    const h2 = h('div');
+    document.body.append(h2);
+    renderSquadTab(h2, { st, getState: () => state, getLoad: () => ({ kind: 'ok', state, chatId: 'c' }), registries: reg, settings: () => getSettings(st), onNewCampaign: () => {}, onSetHand: vi.fn() });
+    expect(h2.querySelectorAll('select[data-hand]')).toHaveLength(1);
   });
 });
