@@ -11,6 +11,7 @@ SillyTavern extension (TypeScript). Design docs live in `docs/`.
 3. Read `docs/content/lore.md` every session (world, tone, and §0: the squad is women, the player is of any gender, so no pronoun for the commander in any text a player or the main model reads). Read the other files in `docs/content/` only if the task says so.
 
 ## Rules
+- **Memory check (every package that adds a mechanic).** When you write a plan or a package that introduces an engine event, a decision, a consequence or a piece of state the squad could remember, decide it explicitly and write the verdict in the plan (a task or a Global Constraints line): either a `memoryRules` entry plus a resolver for each event worth remembering (who knows it: `audience`; who hears of it later: `spread`; how much it matters: `importance`; `hiddenFromCommander` if the commander must not know), or one line saying why nothing is remembered (the site already writes a fact, it is a squad secret, it is pure bookkeeping). Also say whether the new text reaches the journal (`eventDeltas[].journal` for a new relation event), the chronicle (an `audience` on every new chronicle line) or a prompt (a `group: 'memory'` provider). A package that skips this is not finished; the reviewer checks it. Details and the rules for each: `docs/packages/P3b-memory.md` (**Implemented as**).
 - Follow the plan task by task; do not skip the failing-test step.
 - After each finished task: tick its checkboxes in the plan file, commit.
 - Never put `dist/` or `style.css` into .gitignore — they are committed on purpose.

@@ -512,5 +512,6 @@ Action/real-time combat (shelved) · permadeath mode · module system for third-
 - Engine code is pure and covered by vitest; LLM code is tested with recorded fixtures (valid, truncated, invalid, hostile outputs).
 - Never let a failed LLM call corrupt state. Never apply an unvalidated intent.
 - Content text from `content/*.md` drafts goes into JSON as data; do not inline it in code.
+- **Memory check.** Every package that adds an engine event, a decision, a consequence or state the squad could remember decides it in its plan: a `memoryRules` entry with a resolver (audience, spread, importance), or one line saying why not (a site that already writes a fact, a squad secret, bookkeeping); a new relation event gets an `eventDeltas[].journal` phrase, a new chronicle line an `audience`. See `packages/P3b-memory.md`.
 - **No pronoun for the commander** in any text the player or the main model reads (UI, glossary, descriptions, prompts, lorebook, directives); the soldiers are women ("she"). Rules and reasons: `content/lore.md` §0. `tests/content/pronouns.test.ts` guards the content.
 - License: MIT for code; content drafts (lore, art) are the author's and may be released under CC BY 4.0.
