@@ -1,4 +1,5 @@
 import { registerActivityHook, type ActivityHook } from '../activities';
+import { rollIntercepts } from '../special/frequency/intercepts';
 import { WANT_VISIT_KIND } from '../bonds/scene';
 import { confess, SECRET_NIGHT_KIND } from '../personal/secrets';
 import { relieveWant } from '../bonds/want';
@@ -87,7 +88,8 @@ registerAction('dm/receive', (draft, payload, ctx) => {
   // P10b: the behaviours are decided once, here (no rng: a hash of the message id), and stay on the message
   const stamped = stampBehaviours(draft, ctx.registries, unit.id, msg, { curt: payload.mode === 'curt' });
   if (stamped.length > 0) msg.behaviours = stamped;
-  return [{ type: 'dm_received', unitId: unit.id, initiated }, ...evaluateAutomatic(draft, ctx.registries, unit.id)];
+  const heard = rollIntercepts(draft, ctx, [unit.id], { private: false, dm: true }); // P12: at most once a day, at half rate
+  return [{ type: 'dm_received', unitId: unit.id, initiated }, ...evaluateAutomatic(draft, ctx.registries, unit.id), ...heard];
 });
 
 registerAction('dm/read', (draft, payload) => {

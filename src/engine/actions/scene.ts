@@ -1,4 +1,5 @@
 import { raiseTone, startTone } from '../bonds/scene';
+import { rollIntercepts } from '../special/frequency/intercepts';
 import { returnNegotiations } from '../bonds/rules';
 import { metAtScene } from '../personal/bookings';
 import { rollSceneDiscovery } from '../personal/secrets';
@@ -92,7 +93,9 @@ registerAction('scene/start', (draft, payload, ctx) => {
   };
   draft.calendar.pendingScene ??= { unitId: participants[0], day: draft.day, slot: draft.slot };
   for (const id of participants) if (draft.relations[id]) draft.relations[id].contactDay = draft.day; // P9d: judges a daily-contact rule
-  return [{ type: 'scene_started', sceneId, participants, locationId: loc.id }, ...startTone(draft, reg), ...metAtScene(draft, reg, participants)]; // P9d: a romantic partner or a Want visit opens a romantic scene and decides its lead
+  // P12: Secret Frequency listens once per present unit (nothing is drawn without the trait)
+  const heard = rollIntercepts(draft, ctx, participants, { private: participants.length === 1, dm: false, sceneId });
+  return [{ type: 'scene_started', sceneId, participants, locationId: loc.id }, ...startTone(draft, reg), ...metAtScene(draft, reg, participants), ...heard]; // P9d: a romantic partner or a Want visit opens a romantic scene and decides its lead
 });
 
 registerAction('scene/exchange', (draft) => {

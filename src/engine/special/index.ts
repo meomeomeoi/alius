@@ -1,2 +1,4 @@
-export { specialOf, type DebtsState, type FrequencyState, type ParanoiaState, type SpecialState } from './state';
+export {
+  CANDIDATE_KINDS, newFrequency, specialOf, type CandidateKind, type DebtsState, type FrequencyState, type Intercepted, type ParanoiaState, type SpecialState,
+} from './state';
 export { seedSpecialTraits } from './traits';

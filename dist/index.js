@@ -549,6 +549,22 @@ var TUNING = Object.freeze({
     }),
     /** The record the commander takes on for overriding her (a REVERT, a cancelled booking under obedience, …). */
     overrideRecord: 3
+  }),
+  /** P12: special traits. Every number is a DRAFT (the plan's rulings), the author's to change. */
+  special: Object.freeze({
+    frequency: Object.freeze({
+      catchBase: 0.25,
+      privateBonus: 0.1,
+      catchStressAt: 80,
+      catchStressPenalty: 0.1,
+      dmMult: 0.5,
+      distortBase: 0.25,
+      distortStressAt: 50,
+      distortStress: 0.15,
+      partial: 0.3,
+      logMax: 40,
+      refusalMin: 0.25
+    })
   })
 });
 
@@ -6590,6 +6606,8 @@ var RESERVED_EVENT_TYPES = [
   "secret_kept",
   "secret_found",
   "secret_answered",
+  // P12
+  "frequency_intercept",
   // P10b
   "door_said",
   "door_replied",
@@ -11735,6 +11753,7 @@ function objectiveList(state, reg) {
 }
 
 // src/engine/special/state.ts
+var newFrequency = () => ({ intercepts: [], seq: 0, suspicion: {}, dmDay: {} });
 function specialOf(draft) {
   return draft.special ??= {};
 }
@@ -11745,7 +11764,7 @@ function seedSpecialTraits(draft, ctx2) {
   for (const fx2 of traitEffects(draft, reg, "commander_flag")) {
     if (!draft.commander.flags.includes(fx2.flag)) draft.commander.flags.push(fx2.flag);
   }
-  if (traitEffects(draft, reg, "frequency").length > 0) specialOf(draft).frequency ??= {};
+  if (traitEffects(draft, reg, "frequency").length > 0) specialOf(draft).frequency ??= newFrequency();
   if (traitEffects(draft, reg, "paranoia").length > 0) specialOf(draft).paranoia ??= {};
   if (traitEffects(draft, reg, "debts").length > 0) specialOf(draft).debts ??= {};
   return [];
@@ -19901,6 +19920,148 @@ registerAction("squad/set_flavor", (draft, payload) => {
   return [{ type: "unit_flavored", unitId: unit2.id, name }];
 });
 
+// src/engine/loyalty/refusal.ts
+var refusalsOf = (effects2) => Array.isArray(effects2) ? effects2.filter((e) => e?.type === "order_refusal") : [];
+function rawRefusalChance(state, reg, unitId, orderId) {
+  const unit2 = state.squad.find((u) => u.id === unitId);
+  if (!unit2) return 0;
+  const found2 = [0];
+  const take = (e) => {
+    const limited = e.orders !== void 0 && e.orders.length > 0;
+    if (limited && (orderId === void 0 || !e.orders.includes(orderId))) return;
+    found2.push(e.chance ?? 0);
+  };
+  for (const { synergyId } of getSynergies(state, reg, [unitId])) {
+    for (const e of refusalsOf(reg.synergies.get(synergyId)?.effects)) take(e);
+  }
+  const strained = unit2.stress >= 50;
+  for (const d of unit2.defects) {
+    const downside = reg.defects.get(d.id)?.combat?.downside;
+    for (const e of refusalsOf(downside)) take(strained ? amplify(e, TUNING.combat.strainedMult) : e);
+  }
+  return Math.max(...found2);
+}
+function refusalChance(state, reg, unitId, orderId) {
+  if (unitObeys(state, unitId)) return 0;
+  const chance = scaleRefusal(state, reg, unitId, rawRefusalChance(state, reg, unitId, orderId));
+  return grudgeHolds(state, unitId) ? Math.min(TUNING.disposition.refusalCap, chance * TUNING.power.vote.grudgeRefusalMult) : chance;
+}
+function orderInScene(draft, ctx2, unitId) {
+  const scene = draft.scene;
+  if (!scene || !scene.participants.includes(unitId)) throw new Error("She is not in the open scene.");
+  const unit2 = draft.squad.find((u) => u.id === unitId);
+  if (!unit2) throw new Error(`Unknown unit "${unitId}".`);
+  if (scene.refusals?.some((r) => r.unitId === unitId && r.exchange === scene.exchanges)) {
+    throw new Error("She has already refused: wait for her answer.");
+  }
+  if (seizing(unit2, ctx2.registries)) {
+    scene.refusals = [...(scene.refusals ?? []).filter((r) => r.unitId !== unitId), { unitId, exchange: scene.exchanges }];
+    return [{ type: "scene_order", unitId, refused: true, chance: 1, seized: true }];
+  }
+  const chance = refusalChance(draft, ctx2.registries, unitId);
+  const refused = chance > 0 && ctx2.rng.chance(chance);
+  scene.refusals = (scene.refusals ?? []).filter((r) => r.unitId !== unitId);
+  if (!refused) return [{ type: "scene_order", unitId, refused, chance }];
+  if (unit2.kind === "named" && isCovert(draft, ctx2.registries, unitId)) {
+    if (!inAcquaintance(draft, ctx2.registries, unitId)) queueSabotage(draft, unitId);
+    return [{ type: "scene_order", unitId, refused: false, chance, covert: true }];
+  }
+  scene.refusals.push({ unitId, exchange: scene.exchanges });
+  return [{ type: "scene_order", unitId, refused, chance }, ...unit2.kind === "named" ? holdDefiance(draft, unitId, "moderate", "order", scene.id) : []];
+}
+
+// src/engine/special/frequency/candidates.ts
+var STANCES2 = ["disciplined", "defiant_loyal", "fearful", "open_defiance", "indifferent"];
+var IMPUNITY_BANDS = ["cowed", "low", "high", "brazen"];
+var ATTRACTION_BANDS = ["none", "faint", "interested", "strong"];
+var NONE = "none";
+var REFUSES = "refuses";
+function candidateTruths(state, reg, unitId) {
+  const out = [];
+  const rel = state.relations[unitId];
+  const stance = commandStance(state, reg, unitId);
+  if (stance !== null) out.push({ kind: "stance", value: stance });
+  const impunity = impunityOf(state, reg, unitId);
+  if (impunity !== null) out.push({ kind: "impunity", value: impunityBand(impunity.value) });
+  for (const d of state.discipline?.demands ?? []) {
+    if (d.unitId === unitId && d.status === "open") out.push({ kind: "demand", value: d.templateId, refId: d.id });
+  }
+  const sign = [...state.disloyalty?.units[unitId]?.signs ?? []].reverse().find((x) => x.about === "desertion" || x.about === "mutiny");
+  if (sign) out.push({ kind: "loyalty", value: sign.about });
+  const facts = state.memory.facts.filter((f) => f.about.includes(unitId) && f.hiddenFromCommander === true && !f.knownBy.includes("*") && !f.tags.includes("frequency")).sort((a, b) => b.day - a.day);
+  for (const f of facts) out.push({ kind: "fact", value: f.id, refId: f.id });
+  if (rel) out.push({ kind: "attraction", value: attractionBand(rel.attraction) });
+  const defied = (state.discipline?.defiance ?? []).some((x) => x.unitId === unitId);
+  if (defied || rawRefusalChance(state, reg, unitId) >= TUNING.special.frequency.refusalMin) out.push({ kind: "refusal", value: REFUSES });
+  for (const x of state.personal?.secrets ?? []) {
+    if (x.status === "kept" && x.knownBy.includes(unitId)) out.push({ kind: "secret", value: x.id, refId: x.id });
+  }
+  return out;
+}
+function falseValue(kind, value, rng) {
+  const list5 = kind === "stance" ? STANCES2 : kind === "impunity" ? IMPUNITY_BANDS : kind === "attraction" ? ATTRACTION_BANDS : null;
+  if (list5 === null) return NONE;
+  const others = list5.filter((x) => x !== value);
+  return others.length === 0 ? value : rng.pick(others);
+}
+
+// src/engine/special/frequency/intercepts.ts
+var clamp25 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var stressOf = (state, unitId) => state.squad.find((u) => u.id === unitId)?.stress ?? 0;
+function catchChance(state, unitId, o) {
+  const T = TUNING.special.frequency;
+  const p = T.catchBase + (o.private ? T.privateBonus : 0) - (stressOf(state, unitId) >= T.catchStressAt ? T.catchStressPenalty : 0);
+  return clamp25(p, 0, 1) * (o.dm ? T.dmMult : 1);
+}
+function distortChance(state, unitId) {
+  const T = TUNING.special.frequency;
+  return T.distortBase + (stressOf(state, unitId) >= T.distortStressAt ? T.distortStress : 0);
+}
+function frequencyOf(draft) {
+  return specialOf(draft).frequency ??= newFrequency();
+}
+function rollIntercepts(draft, ctx2, unitIds, opts) {
+  const reg = ctx2.registries;
+  if (!hasTraitEffect(draft, reg, "frequency")) return [];
+  const f = frequencyOf(draft);
+  if (f.burnedDay !== void 0) return [];
+  const events = [];
+  for (const unitId of unitIds) {
+    const unit2 = draft.squad.find((u) => u.id === unitId);
+    const rel = draft.relations[unitId];
+    if (!unit2 || unit2.kind !== "named" || !isLiving(unit2) || !rel || rel.flags.includes("knows_frequency")) continue;
+    if (opts.dm) {
+      if (f.dmDay[unitId] === draft.day) continue;
+      f.dmDay[unitId] = draft.day;
+    }
+    if (!ctx2.rng.chance(catchChance(draft, unitId, opts))) continue;
+    const all = candidateTruths(draft, reg, unitId);
+    if (all.length === 0) continue;
+    const kind = ctx2.rng.pick([...new Set(all.map((c) => c.kind))]);
+    const item = ctx2.rng.pick(all.filter((c) => c.kind === kind));
+    const distorted = ctx2.rng.chance(distortChance(draft, unitId));
+    const value = distorted ? falseValue(kind, item.value, ctx2.rng) : item.value;
+    const partial = ctx2.rng.chance(TUNING.special.frequency.partial);
+    f.seq += 1;
+    const x = {
+      id: `fq${f.seq}`,
+      unitId,
+      day: draft.day,
+      kind,
+      value,
+      true: !distorted,
+      partial,
+      ...item.refId !== void 0 ? { refId: item.refId } : {},
+      ...opts.sceneId !== void 0 ? { sceneId: opts.sceneId } : {}
+    };
+    f.intercepts.push(x);
+    if (f.intercepts.length > TUNING.special.frequency.logMax) f.intercepts.splice(0, f.intercepts.length - TUNING.special.frequency.logMax);
+    events.push({ type: "frequency_intercept", unitId, interceptId: x.id });
+    if (!distorted && kind === "secret" && item.refId !== void 0) events.push(...discoverSecret(draft, ctx2, item.refId, "frequency"));
+  }
+  return events;
+}
+
 // src/engine/bonds/violations.ts
 var isObj11 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var MARKS_MAX = 50;
@@ -20038,7 +20199,8 @@ registerAction("scene/start", (draft, payload, ctx2) => {
   };
   draft.calendar.pendingScene ??= { unitId: participants[0], day: draft.day, slot: draft.slot };
   for (const id of participants) if (draft.relations[id]) draft.relations[id].contactDay = draft.day;
-  return [{ type: "scene_started", sceneId, participants, locationId: loc.id }, ...startTone(draft, reg), ...metAtScene(draft, reg, participants)];
+  const heard = rollIntercepts(draft, ctx2, participants, { private: participants.length === 1, dm: false, sceneId });
+  return [{ type: "scene_started", sceneId, participants, locationId: loc.id }, ...startTone(draft, reg), ...metAtScene(draft, reg, participants), ...heard];
 });
 registerAction("scene/exchange", (draft) => {
   if (!draft.scene) throw new Error("scene/exchange: no scene is open");
@@ -20623,7 +20785,8 @@ registerAction("dm/receive", (draft, payload, ctx2) => {
   const msg = pushMessage(draft, unit2.id, { from: unit2.id, text: text2, day: draft.day, slot: draft.slot, read: false, ...initiated ? { initiated: true } : {} });
   const stamped = stampBehaviours(draft, ctx2.registries, unit2.id, msg, { curt: payload.mode === "curt" });
   if (stamped.length > 0) msg.behaviours = stamped;
-  return [{ type: "dm_received", unitId: unit2.id, initiated }, ...evaluateAutomatic(draft, ctx2.registries, unit2.id)];
+  const heard = rollIntercepts(draft, ctx2, [unit2.id], { private: false, dm: true });
+  return [{ type: "dm_received", unitId: unit2.id, initiated }, ...evaluateAutomatic(draft, ctx2.registries, unit2.id), ...heard];
 });
 registerAction("dm/read", (draft, payload) => {
   if (!isObj14(payload)) throw new Error("dm/read needs { unitId }");
@@ -21204,56 +21367,6 @@ registerAction("leash/suppress", (draft, payload, ctx2) => {
   return events;
 });
 registerAction("leash/terminate", (draft, payload, ctx2) => terminate(draft, ctx2, unitIdOf(payload, "leash/terminate")).events);
-
-// src/engine/loyalty/refusal.ts
-var refusalsOf = (effects2) => Array.isArray(effects2) ? effects2.filter((e) => e?.type === "order_refusal") : [];
-function rawRefusalChance(state, reg, unitId, orderId) {
-  const unit2 = state.squad.find((u) => u.id === unitId);
-  if (!unit2) return 0;
-  const found2 = [0];
-  const take = (e) => {
-    const limited = e.orders !== void 0 && e.orders.length > 0;
-    if (limited && (orderId === void 0 || !e.orders.includes(orderId))) return;
-    found2.push(e.chance ?? 0);
-  };
-  for (const { synergyId } of getSynergies(state, reg, [unitId])) {
-    for (const e of refusalsOf(reg.synergies.get(synergyId)?.effects)) take(e);
-  }
-  const strained = unit2.stress >= 50;
-  for (const d of unit2.defects) {
-    const downside = reg.defects.get(d.id)?.combat?.downside;
-    for (const e of refusalsOf(downside)) take(strained ? amplify(e, TUNING.combat.strainedMult) : e);
-  }
-  return Math.max(...found2);
-}
-function refusalChance(state, reg, unitId, orderId) {
-  if (unitObeys(state, unitId)) return 0;
-  const chance = scaleRefusal(state, reg, unitId, rawRefusalChance(state, reg, unitId, orderId));
-  return grudgeHolds(state, unitId) ? Math.min(TUNING.disposition.refusalCap, chance * TUNING.power.vote.grudgeRefusalMult) : chance;
-}
-function orderInScene(draft, ctx2, unitId) {
-  const scene = draft.scene;
-  if (!scene || !scene.participants.includes(unitId)) throw new Error("She is not in the open scene.");
-  const unit2 = draft.squad.find((u) => u.id === unitId);
-  if (!unit2) throw new Error(`Unknown unit "${unitId}".`);
-  if (scene.refusals?.some((r) => r.unitId === unitId && r.exchange === scene.exchanges)) {
-    throw new Error("She has already refused: wait for her answer.");
-  }
-  if (seizing(unit2, ctx2.registries)) {
-    scene.refusals = [...(scene.refusals ?? []).filter((r) => r.unitId !== unitId), { unitId, exchange: scene.exchanges }];
-    return [{ type: "scene_order", unitId, refused: true, chance: 1, seized: true }];
-  }
-  const chance = refusalChance(draft, ctx2.registries, unitId);
-  const refused = chance > 0 && ctx2.rng.chance(chance);
-  scene.refusals = (scene.refusals ?? []).filter((r) => r.unitId !== unitId);
-  if (!refused) return [{ type: "scene_order", unitId, refused, chance }];
-  if (unit2.kind === "named" && isCovert(draft, ctx2.registries, unitId)) {
-    if (!inAcquaintance(draft, ctx2.registries, unitId)) queueSabotage(draft, unitId);
-    return [{ type: "scene_order", unitId, refused: false, chance, covert: true }];
-  }
-  scene.refusals.push({ unitId, exchange: scene.exchanges });
-  return [{ type: "scene_order", unitId, refused, chance }, ...unit2.kind === "named" ? holdDefiance(draft, unitId, "moderate", "order", scene.id) : []];
-}
 
 // src/engine/actions/loyalty.ts
 var isObj20 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -29564,7 +29677,7 @@ function renderMemoryBlock(host, ctx2) {
 var SVG_NS2 = "http://www.w3.org/2000/svg";
 var POINTS = 48;
 var unit = (seed, i) => fnv1a(`${seed}${i}`) % 1e3 / 1e3;
-var clamp25 = (v) => Math.round(Math.min(1, Math.max(0, v)) * 1e3) / 1e3;
+var clamp26 = (v) => Math.round(Math.min(1, Math.max(0, v)) * 1e3) / 1e3;
 function tracePoints(pattern, seed, n = POINTS, flicker = false) {
   const out = [];
   const blip = fnv1a(seed) % n;
@@ -29588,7 +29701,7 @@ function tracePoints(pattern, seed, n = POINTS, flicker = false) {
         v = flicker && i === blip ? 0.9 : 0.5;
         break;
     }
-    out.push(clamp25(v));
+    out.push(clamp26(v));
   }
   return out;
 }

@@ -460,4 +460,11 @@ export const TUNING = Object.freeze({
     /** The record the commander takes on for overriding her (a REVERT, a cancelled booking under obedience, …). */
     overrideRecord: 3,
   }),
+  /** P12: special traits. Every number is a DRAFT (the plan's rulings), the author's to change. */
+  special: Object.freeze({
+    frequency: Object.freeze({
+      catchBase: 0.25, privateBonus: 0.1, catchStressAt: 80, catchStressPenalty: 0.1, dmMult: 0.5,
+      distortBase: 0.25, distortStressAt: 50, distortStress: 0.15, partial: 0.3, logMax: 40, refusalMin: 0.25,
+    }),
+  }),
 });

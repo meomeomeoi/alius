@@ -419,7 +419,7 @@ Rulings marked **(user)** were answered by the user on 2026-11-18. Task 18 copie
   - Event `frequency_intercept { unitId, interceptId }`.
 - Consumes: `commandStance`, `impunityOf` / `impunityBand`, `attractionBand`, `rawRefusalChance`, `discoverSecret` (P9c).
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 - `catchChance matches the formula`: base 0.25; private 0.35; stress 85 private 0.25; DM halves (0.125).
 - `distortion rate`: 2000 seeded rolls on a unit with stress 10 → the share with `true === false` is in [0.22, 0.28]; at stress 60, in [0.37, 0.43].
 - `intercept rate over seeds`: 2000 seeded `rollIntercepts` on a private scene → the hit share is in [0.32, 0.38].
@@ -430,9 +430,9 @@ Rulings marked **(user)** were answered by the user on 2026-11-18. Task 18 copie
 - `the event carries no truth`: the `frequency_intercept` keys are exactly `type, unitId, interceptId`.
 - `the log keeps 40`.
 
-- [ ] **Step 2: Run** `npx vitest run tests/special/frequencyIntercepts.test.ts` → FAIL.
+- [x] **Step 2: Run** `npx vitest run tests/special/frequencyIntercepts.test.ts` → FAIL.
 
-- [ ] **Step 3: Implement** per the Rulings. Draw order per unit:
+- [x] **Step 3: Implement** per the Rulings. Draw order per unit:
   1. catch;
   2. kind (uniform);
   3. item (uniform within the kind);
@@ -442,9 +442,9 @@ Rulings marked **(user)** were answered by the user on 2026-11-18. Task 18 copie
 
   Then hook `scene/start` (after the scene record exists; `private = participants.length === 1`) and `dm/receive` (her message only).
 
-- [ ] **Step 4: Run** the file, then `npm test` → PASS; seeded tests unmoved.
+- [x] **Step 4: Run** the file, then `npm test` → PASS; seeded tests unmoved.
 
-- [ ] **Step 5: Commit** `feat(P12): Secret Frequency intercepts, distortion and the frequency route for squad secrets`
+- [x] **Step 5: Commit** `feat(P12): Secret Frequency intercepts, distortion and the frequency route for squad secrets`
 
 ---
 

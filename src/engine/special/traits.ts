@@ -1,7 +1,7 @@
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { traitEffects } from '../commander/traits';
 import type { CampaignState } from '../state/types';
-import { specialOf } from './state';
+import { newFrequency, specialOf } from './state';
 
 /**
  * P12: switches on what the commander's special trait asks for. Idempotent and additive: it sets the commander flags of
@@ -14,7 +14,7 @@ export function seedSpecialTraits(draft: CampaignState, ctx: EngineCtx): EngineE
   for (const fx of traitEffects(draft, reg, 'commander_flag')) {
     if (!draft.commander.flags.includes(fx.flag)) draft.commander.flags.push(fx.flag);
   }
-  if (traitEffects(draft, reg, 'frequency').length > 0) specialOf(draft).frequency ??= {};
+  if (traitEffects(draft, reg, 'frequency').length > 0) specialOf(draft).frequency ??= newFrequency();
   if (traitEffects(draft, reg, 'paranoia').length > 0) specialOf(draft).paranoia ??= {};
   if (traitEffects(draft, reg, 'debts').length > 0) specialOf(draft).debts ??= {};
   return [];
