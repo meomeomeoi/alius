@@ -327,7 +327,7 @@ tests/ui/deviceMarks.test.ts, tests/analysis/immersionProviders.test.ts, tests/a
   - `flickersOf(state, unitId): Array<{ day: number; slot: Slot }>`
   - `hidesInjury(state, reg, unitId): boolean`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 All use `campaign(reg, 4)` from `tests/helpers/world`:
 - `steady at low stress`;
@@ -343,19 +343,19 @@ All use `campaign(reg, 4)` from `tests/helpers/world`:
 - `grunt and dead unit give null`;
 - `no rng is drawn`: the state's `rng` is deep-equal before and after.
 
-- [ ] **Step 2: Run to verify they fail**
+- [x] **Step 2: Run to verify they fail**
 
 Run: `npx vitest run tests/engine/vitals.test.ts`. Expected: FAIL (module not found).
 
-- [ ] **Step 3: Implement `vitals.ts`**
+- [x] **Step 3: Implement `vitals.ts`**
 
 Implement it as ruled in "Telemetry". Read the defect field with `reg.defects.get(d.id)?.vitals === 'flat'`, stress bands with `stressBand`, Want with `wantBandOf`, and secret kinds by `source`.
 
-- [ ] **Step 4: Run tests, then `npm test`**
+- [x] **Step 4: Run tests, then `npm test`**
 
 Expected: PASS; full suite green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A && git commit -m "feat(P10b): derived vitals (patterns, spikes, flickers, hidden injury)"

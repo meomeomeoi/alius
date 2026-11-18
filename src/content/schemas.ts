@@ -757,6 +757,8 @@ export const DefectSchema = BaseEntrySchema.extend({
   pressureMult: z.number().min(1).max(2).optional(),
   /** P9d: what her unmet want does at the top band: an off-combat breakdown of this kind for 1 to 3 days. */
   wantBreakdown: z.object({ kind: z.enum(['withdrawal', 'binge', 'smother', 'seize']), days: int.min(1).max(3) }).strict().optional(),
+  /** P10b: `flat` draws her VITALS as a flat line (rare flickers break it). Read by this field, never by defect id. */
+  vitals: z.enum(['flat']).optional(),
   nightEvents: z.array(NightSpecSchema).optional(),
   /** P5: one more node revealed ahead on the expedition map (Echo Bleed). */
   expedition: z.object({ reveal: z.literal(1) }).strict().optional(),

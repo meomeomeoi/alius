@@ -8,6 +8,9 @@ import { TUNING } from './tuning';
 
 export const SLOT_ORDER: readonly Slot[] = ['morning', 'afternoon', 'evening', 'night'];
 
+/** A running index of a slot (four per day, the Night included), so two moments can be compared in slots (P10b). */
+export const slotIndex = (day: number, slot: Slot): number => day * SLOT_ORDER.length + SLOT_ORDER.indexOf(slot);
+
 /** How many slots can still be consumed before the day ends. */
 export const slotsLeftToday = (slot: Slot): number => ({ morning: 3, afternoon: 2, evening: 1, night: 1 })[slot];
 

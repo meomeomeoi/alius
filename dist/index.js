@@ -104,6 +104,8 @@ var TUNING = Object.freeze({
   }),
   /** P7a: the change ledger behind trends, stress sources and "last changes" readings. */
   ledger: Object.freeze({ days: 7, max: 150 }),
+  /** P10b: the squad's biotelemetry (derived from state, no draws). A trust or affinity drop of `conflictDelta` in the current slot is a conflict spike; a gain of `flickerDelta` is a flicker of a flat unit; `flickerLog` entries are listed. */
+  vitals: Object.freeze({ conflictDelta: 3, flickerDelta: 3, flickerLog: 5 }),
   /** P11: how many soldiers one scene can hold (the line-up takes the whole squad of four). */
   scene: Object.freeze({ maxParticipants: 4 }),
   upkeep: Object.freeze({ perUnit: 1, commander: 1, doubledByDefect: "hunger_loop" }),
@@ -6812,6 +6814,8 @@ var DefectSchema = BaseEntrySchema.extend({
   pressureMult: external_exports.number().min(1).max(2).optional(),
   /** P9d: what her unmet want does at the top band: an off-combat breakdown of this kind for 1 to 3 days. */
   wantBreakdown: external_exports.object({ kind: external_exports.enum(["withdrawal", "binge", "smother", "seize"]), days: int.min(1).max(3) }).strict().optional(),
+  /** P10b: `flat` draws her VITALS as a flat line (rare flickers break it). Read by this field, never by defect id. */
+  vitals: external_exports.enum(["flat"]).optional(),
   nightEvents: external_exports.array(NightSpecSchema).optional(),
   /** P5: one more node revealed ahead on the expedition map (Echo Bleed). */
   expedition: external_exports.object({ reveal: external_exports.literal(1) }).strict().optional(),

@@ -230,6 +230,7 @@
     "id": "affect_dampener",
     "name": "Affect Dampener Fault",
     "category": "neural",
+    "vitals": "flat",
     "lore": "Emotional regulation is stuck \"low\".",
     "upside": "Stress gains halved.",
     "downside": "Affinity and Attraction gains halved; struggles to read others.",
