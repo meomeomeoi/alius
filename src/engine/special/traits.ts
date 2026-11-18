@@ -1,6 +1,7 @@
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { traitEffects } from '../commander/traits';
 import type { CampaignState } from '../state/types';
+import { newDebts, pickHandler } from './debts/handler';
 import { newFrequency, newParanoia, specialOf } from './state';
 
 /**
@@ -16,6 +17,9 @@ export function seedSpecialTraits(draft: CampaignState, ctx: EngineCtx): EngineE
   }
   if (traitEffects(draft, reg, 'frequency').length > 0) specialOf(draft).frequency ??= newFrequency();
   if (traitEffects(draft, reg, 'paranoia').length > 0) specialOf(draft).paranoia ??= newParanoia();
-  if (traitEffects(draft, reg, 'debts').length > 0) specialOf(draft).debts ??= {};
+  if (traitEffects(draft, reg, 'debts').length > 0 && !draft.special?.debts) {
+    const picked = pickHandler(draft, reg); // no rival or no handler: the arrangement never starts
+    if (picked) specialOf(draft).debts = newDebts(picked.corporationId, picked.handlerId);
+  }
   return [];
 }

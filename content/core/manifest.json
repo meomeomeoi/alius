@@ -68,6 +68,7 @@
     "handNotes": "handNotes.json",
     "stickerArt": "stickerArt.json",
     "frequencyFragments": "frequencyFragments.json",
-    "premonitionLines": "premonitionLines.json"
+    "premonitionLines": "premonitionLines.json",
+    "debtHandlers": "debtHandlers.json"
   }
 }

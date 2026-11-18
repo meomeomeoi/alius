@@ -479,7 +479,7 @@ export const RESERVED_EVENT_TYPES: readonly string[] = [
   'wager_offered', 'wager_refused', 'wager_accepted', 'wager_declined', 'wager_resolved', 'mark_set', 'mark_ended', 'wager_question', 'truth_told', 'demand_dropped',
   'secret_kept', 'secret_found', 'secret_answered',
   // P12
-  'frequency_intercept', 'frequency_worded', 'frequency_static', 'frequency_discovered', 'implant_burned', 'commander_stress_changed', 'premonition', 'premonition_acted', 'bloom_nightmare',
+  'frequency_intercept', 'frequency_worded', 'frequency_static', 'frequency_discovered', 'implant_burned', 'commander_stress_changed', 'premonition', 'premonition_acted', 'bloom_nightmare', 'handler_visit',
   // P10b
   'door_said', 'door_replied', 'hand_set', 'note_left', 'note_read', 'notes_expired',
 ];
@@ -1995,6 +1995,19 @@ export type PremonitionLineEntry = z.infer<typeof PremonitionLineSchema>;
 registrySchemas.premonitionLines = PremonitionLineSchema;
 
 /**
+ * P12 §3: the handler of a rival corporation (an NPC without a card). `corporations` empty = serves any; `lines` are what she says at the
+ * four moments (the visit, a threat, a cut payment, the leak). Visible to the player, so it carries a description.
+ */
+export const DebtHandlerSchema = BaseEntrySchema.extend({
+  name: str,
+  description: str.max(DESCRIPTION_MAX),
+  corporations: z.array(str).optional(),
+  lines: z.object({ greet: str.max(200), threat: str.max(200), cut: str.max(200), leak: str.max(200) }).strict(),
+}).strict();
+export type DebtHandlerEntry = z.infer<typeof DebtHandlerSchema>;
+registrySchemas.debtHandlers = DebtHandlerSchema;
+
+/**
  * P3b: an engine event worth remembering. The `event` has a resolver (`engine/memory/resolvers.ts`); `about`, `audience`, `when` and the
  * `{vars}` of `text` are checked against that resolver's shape at load (`refs.ts`). `AUTHOR TO WRITE`: the texts are drafts.
  */
@@ -2112,6 +2125,8 @@ export const DESCRIBED_REGISTRIES = [
   'deviceAccessRules', 'bookingKinds', 'tokenKinds', 'wagerGames', 'wagerStakes', 'secretKinds',
   // P10b
   'dmBehaviours', 'handFonts', 'handNotes', 'stickerArt',
+  // P12 (the handler is shown to the player; the fragment and premonition wording is hidden)
+  'debtHandlers',
 ] as const satisfies readonly RegistryName[];
 
 /** Adds the optional `description` rule to a registry schema without changing its shape. */

@@ -339,7 +339,7 @@ describe('campaign setup deployment (P1)', () => {
     expect(shell.tabs.at(-1)).toBe('squad');
     expect(shell.toasts.at(-1)).toEqual({ kind: 'info', text: 'Deployment confirmed. Day 1, Morning.' });
     expect(st.readMetadata('world_info')).toBe('Alius Core Lore');
-    expect(st.lorebooks.get('Alius Core Lore')!.entries.length).toBe(21);
+    expect(st.lorebooks.get('Alius Core Lore')!.entries.length).toBe(22); // P12: + debts_handler
     expect(st.metadataSaves).toBeGreaterThan(0);
   });
 

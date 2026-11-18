@@ -800,7 +800,7 @@ The day step's decay runs in every campaign: it is registered unconditionally an
   - `rollVisit(draft, ctx): EngineEvent[]`
   - Event `handler_visit { visitId }`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 - `the handler serves a corporation that is not the commander's`.
 - `weekly visits` (acceptance 4): 120 seeded days → mean interval in [5, 9], never two nights in a row, never before day 5.
 - `night/open, door_say and ignore refuse a visit`.
@@ -809,8 +809,8 @@ The day step's decay runs in every campaign: it is registered unconditionally an
 - `ended: no visits`.
 - `no debts effect: no draw`.
 
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → PASS; `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P12): the handler and the visit schedule`
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → PASS; `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P12): the handler and the visit schedule`
 
 ---
 

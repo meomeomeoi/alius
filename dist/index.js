@@ -606,6 +606,15 @@ var TUNING = Object.freeze({
         ])
       })
     }),
+    /** Web of Debts. Every number is a DRAFT. */
+    debts: Object.freeze({
+      /** A visit is rolled once the last one is `minDays` days behind: p = min(1, (daysSince − minDays + 1) / rampDays). */
+      minDays: 5,
+      rampDays: 4,
+      priority: 6,
+      expiresDays: 2,
+      framing: "A visitor at the gate."
+    }),
     commanderStress: Object.freeze({ empathyAt: 70, dayRelief: 5, sleepRelief: 15, downed: 10, nightmare: 15, falseAlarm: 5 })
   })
 });
@@ -6038,7 +6047,8 @@ var REGISTRY_NAMES = [
   "stickerArt",
   // P12
   "frequencyFragments",
-  "premonitionLines"
+  "premonitionLines",
+  "debtHandlers"
 ];
 var PackManifestSchema = external_exports.object({
   id: external_exports.string().min(1),
@@ -6677,6 +6687,7 @@ var RESERVED_EVENT_TYPES = [
   "premonition",
   "premonition_acted",
   "bloom_nightmare",
+  "handler_visit",
   // P10b
   "door_said",
   "door_replied",
@@ -7952,6 +7963,13 @@ var PremonitionLineSchema = BaseEntrySchema.extend({
   lines: external_exports.array(str.max(160)).min(1)
 }).strict();
 registrySchemas.premonitionLines = PremonitionLineSchema;
+var DebtHandlerSchema = BaseEntrySchema.extend({
+  name: str,
+  description: str.max(DESCRIPTION_MAX),
+  corporations: external_exports.array(str).optional(),
+  lines: external_exports.object({ greet: str.max(200), threat: str.max(200), cut: str.max(200), leak: str.max(200) }).strict()
+}).strict();
+registrySchemas.debtHandlers = DebtHandlerSchema;
 var MemoryRuleSchema = BaseEntrySchema.extend({
   event: str,
   when: external_exports.record(external_exports.union([external_exports.string(), external_exports.boolean()])).optional(),
@@ -8075,7 +8093,9 @@ var DESCRIBED_REGISTRIES = [
   "dmBehaviours",
   "handFonts",
   "handNotes",
-  "stickerArt"
+  "stickerArt",
+  // P12 (the handler is shown to the player; the fragment and premonition wording is hidden)
+  "debtHandlers"
 ];
 function withDescription(schema) {
   return schema.superRefine((entry, ctx2) => {
@@ -11854,6 +11874,10 @@ function objectiveList(state, reg) {
 var newFrequency = () => ({ intercepts: [], seq: 0, suspicion: {}, dmDay: {} });
 var PREMONITION_ABOUT = ["doubt", "desertion", "mutiny", "defiance"];
 var newParanoia = () => ({ premonitions: [], seq: 0 });
+var HANDLER_VISIT_KIND = "handler_visit";
+var HANDLER_UNIT = "@handler";
+var OWN_PANEL_KINDS = ["desertion", "mutiny", "deserter_return", HANDLER_VISIT_KIND];
+var isOwnPanelNight = (entry) => OWN_PANEL_KINDS.includes(entry.kind);
 function specialOf(draft) {
   return draft.special ??= {};
 }
@@ -11883,6 +11907,52 @@ function preemptBonus(state, unitId) {
   return hit ? TUNING.special.paranoia.preemptBonus : 0;
 }
 
+// src/engine/special/debts/handler.ts
+var newDebts = (corporationId, handlerId) => ({
+  corporationId,
+  handlerId,
+  visitSeq: 0,
+  answered: [],
+  handlerSuspicion: 0,
+  handlerPressure: 0,
+  oversightSuspicion: 0,
+  scheduled: [],
+  exposures: []
+});
+function pickHandler(state, reg) {
+  const corporationId = [...reg.corporations.keys()].find((id) => id !== state.commander.corporationId);
+  if (corporationId === void 0) return null;
+  const pool = [...reg.debtHandlers.values()].filter((h2) => {
+    const serves = h2.corporations ?? [];
+    return serves.length === 0 || serves.includes(corporationId);
+  });
+  if (pool.length === 0) return null;
+  return { corporationId, handlerId: pool[fnv1a(JSON.stringify(state.rng)) % pool.length].id };
+}
+function rollVisit(draft, ctx2) {
+  if (!hasTraitEffect(draft, ctx2.registries, "debts")) return [];
+  const d = draft.special?.debts;
+  if (!d || d.ended !== void 0 || d.visit !== void 0) return [];
+  const T2 = TUNING.special.debts;
+  const since = draft.day - (d.lastVisitDay ?? 0);
+  if (since < T2.minDays) return [];
+  if (!ctx2.rng.chance(Math.min(1, (since - T2.minDays + 1) / T2.rampDays))) return [];
+  const entry = {
+    id: nextId(draft, "n"),
+    unitId: HANDLER_UNIT,
+    kind: HANDLER_VISIT_KIND,
+    priority: T2.priority,
+    framing: T2.framing,
+    ignore: { event: "dismissed", severity: "minor" },
+    expiresDay: draft.day + T2.expiresDays
+  };
+  if (!enqueueNight(draft, entry)) return [];
+  d.visitSeq += 1;
+  d.lastVisitDay = draft.day;
+  d.visit = { id: `hv${d.visitSeq}`, day: draft.day, items: [] };
+  return [{ type: "handler_visit", visitId: d.visit.id }];
+}
+
 // src/engine/special/traits.ts
 function seedSpecialTraits(draft, ctx2) {
   const reg = ctx2.registries;
@@ -11891,7 +11961,10 @@ function seedSpecialTraits(draft, ctx2) {
   }
   if (traitEffects(draft, reg, "frequency").length > 0) specialOf(draft).frequency ??= newFrequency();
   if (traitEffects(draft, reg, "paranoia").length > 0) specialOf(draft).paranoia ??= newParanoia();
-  if (traitEffects(draft, reg, "debts").length > 0) specialOf(draft).debts ??= {};
+  if (traitEffects(draft, reg, "debts").length > 0 && !draft.special?.debts) {
+    const picked = pickHandler(draft, reg);
+    if (picked) specialOf(draft).debts = newDebts(picked.corporationId, picked.handlerId);
+  }
   return [];
 }
 
@@ -21315,7 +21388,7 @@ registerAction("dm/read", (draft, payload) => {
 registerAction("dm/roll_initiative", (draft, _payload, ctx2) => {
   return [{ type: "dm_initiative", unitIds: rollInitiative(draft, ctx2.registries, ctx2.rng) }];
 });
-var isConfrontation = (entry) => CONFRONTATION_KINDS.includes(entry.kind);
+var isConfrontation = (entry) => isOwnPanelNight(entry);
 registerAction("night/open", (draft, _payload, ctx2) => {
   if (draft.slot !== "night" || !draft.calendar.nightEvent) throw new Error("night/open: there is no night event to open.");
   if (isConfrontation(draft.calendar.nightEvent)) throw new Error("This is not a knock: answer it from its own panel.");
@@ -22656,6 +22729,8 @@ function specialDayStep(draft, ctx2) {
 }
 var specialRumorStep = (draft, ctx2) => [
   ...syncFrequencyKnowers(draft, ctx2),
+  ...rollVisit(draft, ctx2),
+  // the handler's visit is queued before `night_check` too
   ...rollNightmare(draft, ctx2)
   // before `night_check`, so a unit who heard it can come to the door tonight
 ];
@@ -31931,6 +32006,9 @@ function tonightItems(state, _reg) {
   for (const e of state.calendar.nightEventsQueue) {
     if (e.kind !== KNOCK_KIND || e.expiresDay < state.day || !nameOf14(e.unitId)) continue;
     out.push({ kind: "knock", text: `${nameOf14(e.unitId)} will knock tonight.`, unitId: e.unitId, tone: "warn", analyze: "glossary:tonight" });
+  }
+  if (state.calendar.nightEventsQueue.some((e) => e.kind === HANDLER_VISIT_KIND && e.expiresDay >= state.day)) {
+    out.push({ kind: "knock", text: "A visitor at the gate.", tone: "warn", analyze: "glossary:handler" });
   }
   for (const u of living2) {
     const n = unreadFrom(state, u.id);

@@ -1,4 +1,5 @@
 import type { Registries } from '../../content/types';
+import { HANDLER_VISIT_KIND } from '../../engine/special/state';
 import { isLiving } from '../../engine/economy';
 import { bookingGuard } from '../../engine/personal/bookings';
 import { objectiveList, waitingDemands, type ObjectiveSource } from '../../engine/onboarding';
@@ -89,6 +90,10 @@ export function tonightItems(state: CampaignState, _reg: Registries): TonightIte
   for (const e of state.calendar.nightEventsQueue) {
     if (e.kind !== KNOCK_KIND || e.expiresDay < state.day || !nameOf(e.unitId)) continue;
     out.push({ kind: 'knock', text: `${nameOf(e.unitId)} will knock tonight.`, unitId: e.unitId, tone: 'warn', analyze: 'glossary:tonight' });
+  }
+  // P12: the rival corporation's handler at the gate (an own-panel entry that belongs to no soldier)
+  if (state.calendar.nightEventsQueue.some((e) => e.kind === HANDLER_VISIT_KIND && e.expiresDay >= state.day)) {
+    out.push({ kind: 'knock', text: 'A visitor at the gate.', tone: 'warn', analyze: 'glossary:handler' });
   }
   for (const u of living) {
     const n = unreadFrom(state, u.id);

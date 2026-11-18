@@ -196,6 +196,16 @@
       "comment": "enemy_anomaly",
       "content": "Anomalies: very rare. They deal stress directly and break rules (row-ignoring, delayed effects).",
       "constant": false
+    },
+    {
+      "key": [
+        "handler",
+        "the broker",
+        "the clerk"
+      ],
+      "comment": "debts_handler",
+      "content": "AUTHOR TO WRITE: A handler from a rival corporation buys intel from the commander at night, by arrangement and never by name. A handler is not a soldier and has no card; the squad never meets one.",
+      "constant": false
     }
   ]
 }

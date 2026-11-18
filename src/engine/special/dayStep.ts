@@ -5,6 +5,7 @@ import { frequencyDiscovered, syncFrequencyKnowers } from './frequency/discovery
 import { decayFrequency, suspicionOf } from './frequency/leaks';
 import { TUNING } from '../tuning';
 import { addCommanderStress } from './commanderStress';
+import { rollVisit } from './debts/handler';
 import { rollNightmare } from './paranoia/nightmares';
 import { paranoiaDayStep } from './paranoia/premonitions';
 import { forgetSpecial, holdsSpecial } from './state';
@@ -28,5 +29,6 @@ export function specialDayStep(draft: CampaignState, ctx: EngineCtx): EngineEven
 /** On `dm_rumors`, after P3b's spread: whoever now knows the hidden fact learns it for good. */
 export const specialRumorStep = (draft: CampaignState, ctx: EngineCtx): EngineEvent[] => [
   ...syncFrequencyKnowers(draft, ctx),
+  ...rollVisit(draft, ctx), // the handler's visit is queued before `night_check` too
   ...rollNightmare(draft, ctx), // before `night_check`, so a unit who heard it can come to the door tonight
 ];

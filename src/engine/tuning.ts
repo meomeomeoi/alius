@@ -489,6 +489,12 @@ export const TUNING = Object.freeze({
         ]),
       }),
     }),
+    /** Web of Debts. Every number is a DRAFT. */
+    debts: Object.freeze({
+      /** A visit is rolled once the last one is `minDays` days behind: p = min(1, (daysSince − minDays + 1) / rampDays). */
+      minDays: 5, rampDays: 4, priority: 6, expiresDays: 2,
+      framing: 'A visitor at the gate.',
+    }),
     commanderStress: Object.freeze({ empathyAt: 70, dayRelief: 5, sleepRelief: 15, downed: 10, nightmare: 15, falseAlarm: 5 }),
   }),
 });

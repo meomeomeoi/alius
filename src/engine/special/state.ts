@@ -81,8 +81,52 @@ export interface ParanoiaState {
 
 export const newParanoia = (): ParanoiaState => ({ premonitions: [], seq: 0 });
 
-/** Web of Debts: the handler, the intel exchange and both suspicion clocks. */
-export interface DebtsState {}
+/** The kinds of intel the handler buys (one item per fact the engine can give). */
+export const INTEL_KINDS = ['mission_done', 'base', 'spine', 'squad', 'plan'] as const;
+export type IntelKind = (typeof INTEL_KINDS)[number];
+
+/** One thing the commander may sell: a stable id `kind:refId` and its label. */
+export interface IntelItem { id: string; kind: IntelKind; refId: string; label: string }
+
+/** How the commander answers one item. */
+export const INTEL_ANSWERS = ['truth', 'partial', 'false', 'withhold'] as const;
+export type IntelAnswer = (typeof INTEL_ANSWERS)[number];
+
+/** A consequence of sold intel that has not landed yet. `strength` is 1 for a truth and 0.5 for a partial one. */
+export interface Scheduled { id: string; itemId: string; kind: IntelKind; dueDay: number; strength: 1 | 0.5; refId: string }
+
+/** A region the rival knows the squad will go to: a run there is ambushed until `untilDay`. */
+export interface Exposure { regionId: string; untilDay: number; strength: 1 | 0.5 }
+
+/** Web of Debts: the handler, the intel exchange and the two suspicion clocks (all hidden from the player). */
+export interface DebtsState {
+  corporationId: string;
+  handlerId: string;
+  lastVisitDay?: number;
+  /** Counter behind the visit ids `hv<n>`. */
+  visitSeq: number;
+  /** The visit that waits for an answer (its items are fixed when it is rolled). */
+  visit?: { id: string; day: number; items: IntelItem[] };
+  /** Ids of the items already answered (not offered again). */
+  answered: string[];
+  handlerSuspicion: number;
+  handlerPressure: number;
+  oversightSuspicion: number;
+  scheduled: Scheduled[];
+  exposures: Exposure[];
+  ended?: 'leaked' | 'confessed' | 'fled';
+  /** The unit who found out first (a `debts_unit` case). */
+  discoveredBy?: string;
+  /** Cases waiting for another dilemma to close (oversight, or a unit). */
+  caseQueue?: Array<{ kind: 'oversight' } | { kind: 'unit'; unitId: string }>;
+}
+
+/** The night entry of the handler's visit: it has its own panel, like a confrontation, and belongs to no unit. */
+export const HANDLER_VISIT_KIND = 'handler_visit';
+export const HANDLER_UNIT = '@handler';
+/** Night kinds answered from their own panel (`night/open`, `night/ignore` and the door refuse them). The loyalty kinds are `CONFRONTATION_KINDS` (a test pins that they are all here). */
+export const OWN_PANEL_KINDS: readonly string[] = ['desertion', 'mutiny', 'deserter_return', HANDLER_VISIT_KIND];
+export const isOwnPanelNight = (entry: { kind: string }): boolean => OWN_PANEL_KINDS.includes(entry.kind);
 
 /** The special state, created by `seedSpecialTraits` (a save without it reads as nothing intercepted, foreseen or owed). */
 export interface SpecialState {

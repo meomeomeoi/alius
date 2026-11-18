@@ -1839,5 +1839,53 @@
       "commander_stress",
       "premonition"
     ]
+  },
+  {
+    "id": "handler",
+    "term": "Handler",
+    "short": "A contact from a rival corporation who buys the commander's intel at night, about once a week. The squad never meets one.",
+    "long": "AUTHOR TO WRITE: The handler comes to the gate, not to a soldier's door. For each piece of intel the commander answers truth, partial, false or withhold. Truth pays and comes back as trouble; withholding makes the handler press harder.",
+    "see": [
+      "intel_exchange"
+    ]
+  },
+  {
+    "id": "intel_exchange",
+    "term": "Intel exchange",
+    "short": "What the commander sells the handler: for each item, truth, partial, false or withhold. Truth pays and comes back as trouble.",
+    "long": "AUTHOR TO WRITE: Each visit offers up to five pieces of recent intel. Truth pays in full and later returns as an ambush, sabotage or a shift in standing; partial pays half and hurts less; false pays and costs nothing at first but may be found out; withholding pays nothing and makes the handler press.",
+    "see": [
+      "handler",
+      "handler_pressure"
+    ]
+  },
+  {
+    "id": "handler_pressure",
+    "term": "Handler pressure",
+    "short": "How hard the handler is pressing: calm, pressing or threatening. Withholding raises it, truth lowers it.",
+    "long": "AUTHOR TO WRITE: Pressure and the handler's suspicion of false intel decide what the handler does: first a threat, then a cut payment, and finally a leak of the commander's crime to the whole squad.",
+    "see": [
+      "intel_exchange",
+      "oversight_suspicion"
+    ]
+  },
+  {
+    "id": "oversight_suspicion",
+    "term": "Oversight suspicion",
+    "short": "An unseen threat: how close the corporation's own oversight is to tracing a leak back to the commander.",
+    "long": "AUTHOR TO WRITE: Each consequence of sold intel that lands adds to it. Cunning slows it and a brutal oversight speeds it. At the top oversight finds out and the commander must decide what to do.",
+    "see": [
+      "handler_pressure",
+      "defector_arc"
+    ]
+  },
+  {
+    "id": "defector_arc",
+    "term": "Defector arc",
+    "short": "The storyline that opens when the dealings with the rival corporation come out: become a double agent, confess, or flee.",
+    "long": "AUTHOR TO WRITE: Each of the three ends has its own cost. The arc stays open afterwards; its beats are the author's.",
+    "see": [
+      "oversight_suspicion"
+    ]
   }
 ]

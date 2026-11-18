@@ -1,0 +1,29 @@
+[
+  {
+    "id": "the_broker",
+    "name": "The Broker",
+    "description": "AUTHOR TO WRITE: a courteous voice from a rival corporation's data office. Pays well, remembers everything and never raises its voice.",
+    "corporations": [
+      "vesper",
+      "kestrel"
+    ],
+    "lines": {
+      "greet": "AUTHOR TO WRITE: Evening. I hope the week was quiet. Let us talk about what you have seen.",
+      "threat": "AUTHOR TO WRITE: Silence has a price too. I would hate to see it paid by someone else.",
+      "cut": "AUTHOR TO WRITE: The rate has changed. Your last few evenings were thin.",
+      "leak": "AUTHOR TO WRITE: You were warned. Your squad will hear about the crime from me."
+    }
+  },
+  {
+    "id": "the_clerk",
+    "name": "The Clerk",
+    "description": "AUTHOR TO WRITE: a tired accountant of a rival corporation who files the commander's secrets under routine expenses.",
+    "corporations": [],
+    "lines": {
+      "greet": "AUTHOR TO WRITE: Same time as last week. Sit down, this will not take long.",
+      "threat": "AUTHOR TO WRITE: I am only a clerk. But clerks keep records, and records get read.",
+      "cut": "AUTHOR TO WRITE: Accounting says this batch is worth less. Take it or leave it.",
+      "leak": "AUTHOR TO WRITE: The ledger is closing. Your squad will receive a copy."
+    }
+  }
+]

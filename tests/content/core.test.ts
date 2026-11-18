@@ -50,7 +50,7 @@ describe('core content pack', () => {
     for (const e of lorebook!.entries) {
       expect(e.content.split(/\s+/).length, e.comment).toBeLessThanOrEqual(120);
     }
-    expect(lorebook!.entries).toHaveLength(21);
+    expect(lorebook!.entries).toHaveLength(22); // P12: + debts_handler
   });
 
   it('assault base stats are 110/24/12/14/10', async () => {

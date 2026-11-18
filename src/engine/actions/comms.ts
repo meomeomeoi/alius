@@ -1,4 +1,5 @@
 import { registerActivityHook, type ActivityHook } from '../activities';
+import { isOwnPanelNight } from '../special/state';
 import { rollIntercepts } from '../special/frequency/intercepts';
 import { WANT_VISIT_KIND } from '../bonds/scene';
 import { confess, SECRET_NIGHT_KIND } from '../personal/secrets';
@@ -14,7 +15,6 @@ import { rollNight } from '../night';
 import { applyRelationDelta } from '../relationGain';
 import { TUNING } from '../tuning';
 import { applyEventToUnit } from '../relations/effects';
-import { CONFRONTATION_KINDS } from '../loyalty/state';
 import { evaluateAutomatic } from '../relations/graph';
 import type { EventIntent } from '../relations/intents';
 import type { EngineEvent } from '../dispatch';
@@ -103,7 +103,8 @@ registerAction('dm/roll_initiative', (draft, _payload, ctx) => {
   return [{ type: 'dm_initiative', unitIds: rollInitiative(draft, ctx.registries, ctx.rng) }];
 });
 
-const isConfrontation = (entry: NightEntry): boolean => (CONFRONTATION_KINDS as readonly string[]).includes(entry.kind);
+/** A night entry answered from its own panel (a confrontation, P12's handler visit): `night/open`, the door and `night/ignore` refuse it. */
+const isConfrontation = (entry: NightEntry): boolean => isOwnPanelNight(entry);
 
 registerAction('night/open', (draft, _payload, ctx) => {
   if (draft.slot !== 'night' || !draft.calendar.nightEvent) throw new Error('night/open: there is no night event to open.');
