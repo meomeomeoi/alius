@@ -1,4 +1,5 @@
 import { registerDayEndStep } from '../calendar';
+import { actOnWarning } from '../special/paranoia/accusations';
 import { registerAction } from '../dispatch';
 import { disciplineDayStep } from '../discipline/dayStep';
 import { answerDemand, deliverDemand, rollDemands } from '../discipline/demands';
@@ -18,10 +19,13 @@ registerAction('discipline/punish', (draft, payload, ctx) => {
   if (!isObj(payload) || typeof payload.unitId !== 'string' || typeof payload.measure !== 'string') throw new Error('discipline/punish needs { unitId, measure }');
   if (payload.days !== undefined && typeof payload.days !== 'number') throw new Error('discipline/punish: days must be a number');
   const inScene = draft.scene?.participants.includes(payload.unitId) === true;
-  return applyPunishment(draft, ctx, {
+  const events = applyPunishment(draft, ctx, {
     unitId: payload.unitId, measure: payload.measure, ...(payload.days !== undefined ? { days: payload.days } : {}), source: 'menu',
     channel: inScene ? 'scene' : 'pda', ...(inScene && draft.scene ? { sceneId: draft.scene.id } : {}),
   });
+  // P12: a measure that takes her off a mission is "removing her"; any other is a punishment (read by effect type, never by id)
+  const benches = ((ctx.registries.punishments.get(payload.measure)?.sideEffects as Array<{ type?: string }> | undefined) ?? []).some((e) => e.type === 'bench');
+  return [...events, ...actOnWarning(draft, ctx, payload.unitId, benches ? 'removed' : 'punished')];
 });
 
 /** UNDO — not what I meant: an application read from dialogue (`ap…`) or a threat (`th…`), on its own day and while its scene is open. */

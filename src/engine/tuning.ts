@@ -476,6 +476,8 @@ export const TUNING = Object.freeze({
       /** Defiance: the Impunity the engine adds to ask "would she defy?". */
       defianceBump: 10,
       falseBase: 0.08, falsePerInsight: 0.02, falseAfterNightmare: 0.05,
+      /** Acting on a real warning: the talk-down bonus and its days, the pause of her next check, the chance a mutiny is averted, the record of defiance. */
+      preemptBonus: 0.15, preemptDays: 5, preemptPause: 3, mutinyAvert: 0.5, defianceRecord: -6,
     }),
     commanderStress: Object.freeze({ empathyAt: 70, dayRelief: 5, sleepRelief: 15, downed: 10, nightmare: 15, falseAlarm: 5 }),
   }),

@@ -1,4 +1,5 @@
 import type { Registries } from '../../content/types';
+import { preemptBonus } from '../special/state';
 import { consumeSlots } from '../calendar';
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import { isLiving } from '../economy';
@@ -89,7 +90,7 @@ export function talkDown(draft: CampaignState, ctx: EngineCtx, stat: 'authority'
   const difficulty = t.baseRank + (rel.trust < t.lowTrust ? 1 : 0) + (unit.stress >= t.highStress ? 1 : 0);
   // P7: a strong, seasoned commander intimidates better (Authority only), a weak, green one worse
   const bonus = stat === 'authority' ? intimidationBonus(draft) : 0;
-  const chance = clamp(t.base + t.perRank * (socialRank(draft, stat) - difficulty) + bonus, t.min, t.max);
+  const chance = clamp(t.base + t.perRank * (socialRank(draft, stat) - difficulty) + bonus + preemptBonus(draft, open.unitId), t.min, t.max); // P12: a real warning acted on
   const success = ctx.rng.chance(chance);
   const events: EngineEvent[] = [];
   if (success) {

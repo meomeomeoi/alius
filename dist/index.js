@@ -582,7 +582,13 @@ var TUNING = Object.freeze({
       defianceBump: 10,
       falseBase: 0.08,
       falsePerInsight: 0.02,
-      falseAfterNightmare: 0.05
+      falseAfterNightmare: 0.05,
+      /** Acting on a real warning: the talk-down bonus and its days, the pause of her next check, the chance a mutiny is averted, the record of defiance. */
+      preemptBonus: 0.15,
+      preemptDays: 5,
+      preemptPause: 3,
+      mutinyAvert: 0.5,
+      defianceRecord: -6
     }),
     commanderStress: Object.freeze({ empathyAt: 70, dayRelief: 5, sleepRelief: 15, downed: 10, nightmare: 15, falseAlarm: 5 })
   })
@@ -5859,7 +5865,9 @@ var EVENT_TYPES = [
   "rule_broken",
   "compromise_reached",
   // P12: the commander used something only the frequency could have told (offered to the model only while an intercepted item is listed)
-  "knowledge_leak"
+  "knowledge_leak",
+  // P12: the commander openly accuses a unit of planning disloyalty (offered only while a present unit has an open premonition)
+  "accused"
 ];
 var ENGINE_EVENT_TYPES = [
   "granted_demand",
@@ -5882,7 +5890,9 @@ var ENGINE_EVENT_TYPES = [
   "token_removed",
   "secret_confronted",
   // P12: she found out the commander hears thoughts (the engine's own: the discovery or a rumor of it)
-  "frequency_exposed"
+  "frequency_exposed",
+  // P12: she was accused (or punished, or leashed) on a false alarm
+  "false_accusation"
 ];
 var WORLD_EFFECT_EVENT_TYPES = [...EVENT_TYPES, "shielded"];
 var ALL_EVENT_TYPES = [...EVENT_TYPES, ...ENGINE_EVENT_TYPES];
@@ -6648,6 +6658,7 @@ var RESERVED_EVENT_TYPES = [
   "implant_burned",
   "commander_stress_changed",
   "premonition",
+  "premonition_acted",
   // P10b
   "door_said",
   "door_replied",
@@ -11827,6 +11838,11 @@ function specialOf(draft) {
   return draft.special ??= {};
 }
 function forgetSpecial(draft, unitId) {
+  const par = draft.special?.paranoia;
+  if (par) {
+    par.premonitions = par.premonitions.filter((x) => x.unitId !== unitId);
+    if (par.preempt) par.preempt = par.preempt.filter((x) => x.unitId !== unitId);
+  }
   const f = draft.special?.frequency;
   if (f) {
     f.intercepts = f.intercepts.filter((x) => x.unitId !== unitId);
@@ -11837,8 +11853,14 @@ function forgetSpecial(draft, unitId) {
   }
 }
 function holdsSpecial(state, unitId) {
+  const par = state.special?.paranoia;
+  if (par && (par.premonitions.some((x) => x.unitId === unitId) || par.preempt?.some((x) => x.unitId === unitId) === true)) return true;
   const f = state.special?.frequency;
   return f !== void 0 && (f.intercepts.some((x) => x.unitId === unitId) || f.suspicion[unitId] !== void 0 || f.dmDay[unitId] !== void 0 || f.staticFired?.includes(unitId) === true || f.discovered?.includes(unitId) === true);
+}
+function preemptBonus(state, unitId) {
+  const hit = state.special?.paranoia?.preempt?.some((x) => x.unitId === unitId && x.untilDay >= state.day && (x.about === "doubt" || x.about === "desertion"));
+  return hit ? TUNING.special.paranoia.preemptBonus : 0;
 }
 
 // src/engine/special/traits.ts
@@ -15790,6 +15812,11 @@ function validateIntents(raw, ctx2) {
       intent.ruleId = rule.id;
       if (type === "compromise_reached") intent.text = typeof e.text === "string" ? e.text.replace(/\s+/g, " ").trim().slice(0, TUNING.bonds.rules.textMax).trim() : "";
     }
+    if (type === "accused") {
+      const aimed = intent.targets.filter((t) => (ctx2.warned ?? []).includes(t));
+      if (actor !== "commander" || aimed.length === 0) continue;
+      intent.targets = aimed;
+    }
     if (type === "knowledge_leak") {
       if (actor !== "commander" || typeof e.itemId !== "string" || !(ctx2.intercepted ?? []).includes(e.itemId)) continue;
       intent.itemId = e.itemId;
@@ -16295,124 +16322,15 @@ function decayFrequency(draft) {
   for (const id of f.staticFired ?? []) if (suspicionOf(draft, id) <= TUNING.special.frequency.staticAbove) syncStatic(draft, null, id);
 }
 
-// src/engine/relations/apply.ts
-var clamp17 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
-var DISCIPLINE_EVENTS = ["defied", "commander_enforced", "commander_yielded", "threatened"];
-var GATED_EVENTS = ["commander_enforced", "threatened"];
-var CONFIDENCE_EPS2 = 1e-9;
-function applyIntents(draft, ctx2, p) {
-  const reg = ctx2.registries;
-  const rules2 = rulesOf(draft).filter((r) => r.status === "active" || r.status === "negotiating").map((r) => ({ id: r.id, unitId: r.unitId }));
-  const intents = validateIntents(p.intents, {
-    participants: p.participants,
-    squad: draft.squad,
-    maxEvents: TUNING.relations.maxEventsRead,
-    measures: measureList(reg, draft),
-    rules: rules2,
-    intercepted: leakCandidates(draft, reg, p.participants).map((c) => c.id)
-  });
-  const events = [];
-  const touched = /* @__PURE__ */ new Set();
-  const landed = [];
-  const judged = intents.events.map((e) => {
-    const units = affectedUnits(e, p.participants);
-    const gated = GATED_EVENTS.includes(e.type) && e.confidence + CONFIDENCE_EPS2 < TUNING.impunity.minConfidence;
-    return { e, units, believed: gated ? [] : units.filter((id) => computeDeltas(draft, reg, id, e).dropped !== true) };
-  }).filter((j) => j.units.length === 0 || j.believed.length > 0).slice(0, TUNING.relations.maxEventsPerExchange);
-  intents.events = judged.map((j) => j.e);
-  for (const { e, believed } of judged) {
-    for (const id of believed) {
-      events.push(...DISCIPLINE_EVENTS.includes(e.type) ? applyDisciplineEvent(draft, ctx2, id, e, { channel: p.channel, ...p.sceneId ? { sceneId: p.sceneId } : {}, ...p.messageRef ? { messageRef: p.messageRef } : {} }) : applyEventToUnit(draft, reg, id, e));
-      if (RULE_EVENT_TYPES.includes(e.type)) events.push(...applyRuleEvent(draft, ctx2, id, e, p.participants));
-      if (e.type === "knowledge_leak" && e.itemId !== void 0) events.push(...frequencyLeak(draft, ctx2, id, e.itemId, e.severity));
-      touched.add(id);
-    }
-    if (believed.length > 0) landed.push(e.type);
-    if (e.type === "crime_revealed") events.push(...revealCrime(draft, reg, believed));
-    if (e.type === "shared_secret" && e.actor !== "commander") {
-      for (const id of believed) {
-        const flags = draft.relations[id].flags;
-        if (!flags.includes("shared_secret")) flags.push("shared_secret");
-      }
-    }
-  }
-  for (const h2 of intents.stressHints) {
-    const unit2 = draft.squad.find((u) => u.id === h2.unitId);
-    if (!unit2) continue;
-    const next = clamp17(unit2.stress + roundAway(stressFromHint(h2.severity, h2.direction)), 0, 100);
-    if (next !== unit2.stress) events.push({ type: "stress_changed", unitId: unit2.id, delta: next - unit2.stress });
-    unit2.stress = next;
-    touched.add(unit2.id);
-  }
-  let eventBudget = TUNING.relations.maxEventsPerExchange - intents.events.length;
-  for (const pr of intents.promises) {
-    const { event } = recordPromise(draft, pr, draft.day, p.participants);
-    if (!event) continue;
-    const unit2 = event.targets[0];
-    const duplicate = intents.events.some((e) => e.type === event.type && e.targets.includes(unit2));
-    if (duplicate || !p.participants.includes(unit2) || eventBudget <= 0) continue;
-    eventBudget--;
-    events.push(...applyEventToUnit(draft, reg, unit2, event));
-    touched.add(unit2);
-  }
-  const already = p.sceneId ? draft.memory.facts.filter((f) => f.sceneId === p.sceneId).length : 0;
-  const factRoom = Math.max(0, TUNING.memory.factsPerScene - already);
-  let storedFacts = 0;
-  for (const f of intents.facts) {
-    if (storedFacts >= factRoom) break;
-    storedFacts++;
-    addFact(draft, {
-      about: Array.isArray(f.about) ? f.about : [f.about],
-      text: f.text,
-      tags: f.tags,
-      importance: f.importance,
-      day: draft.day,
-      knownBy: [...p.participants],
-      ...p.sceneId ? { sceneId: p.sceneId } : {}
-    });
-    if (f.tags.includes("crime") && f.about === "commander") events.push(...revealCrime(draft, reg, p.participants));
-  }
-  for (const pr of intents.proposals) {
-    const unitId = pr.from === "commander" ? pr.to : pr.from;
-    touched.add(unitId);
-    if (pr.from === "commander") {
-      try {
-        events.push(...commanderProposal(draft, reg, { unitId, kind: pr.kind, channel: p.channel }));
-      } catch {
-      }
-    } else {
-      events.push(...offerProposal(draft, reg, { unitId, kind: pr.kind, channel: p.channel }));
-    }
-  }
-  for (const id of touched) events.push(...evaluateAutomatic(draft, reg, id));
-  events.push({
-    type: "intents_applied",
-    channel: p.channel,
-    counts: {
-      events: intents.events.length,
-      facts: storedFacts,
-      proposals: intents.proposals.length,
-      promises: intents.promises.length,
-      stressHints: intents.stressHints.length
-    },
-    landed
-  });
-  return events;
-}
-
-// src/engine/relations/index.ts
-function getSynergies(state, reg, unitIds) {
-  const out = [];
-  for (const id of unitIds) {
-    const st = reg.relationshipStates.get(state.relations[id]?.stateId ?? "");
-    for (const synergyId of st?.unlocks?.synergies ?? []) out.push({ unitId: id, synergyId });
-    const band2 = state.relations[id]?.loyaltyBand;
-    if (band2 === "wavering" || band2 === "breaking") {
-      const synergyId = TUNING.disloyalty.bandSynergy[band2];
-      if (reg.synergies.has(synergyId)) out.push({ unitId: id, synergyId });
-    }
-  }
-  return out;
+// src/engine/special/commanderStress.ts
+var commanderStress = (state) => state.commander.stress ?? 0;
+var commanderStressBand = (state) => stressBand(commanderStress(state));
+function addCommanderStress(draft, amount, source) {
+  const before = commanderStress(draft);
+  const next = Math.min(100, Math.max(0, before + amount));
+  if (next === before) return [];
+  draft.commander.stress = next;
+  return [{ type: "commander_stress_changed", delta: next - before, source }];
 }
 
 // src/engine/power/standing.ts
@@ -16591,11 +16509,11 @@ function challenge2(draft, ctx2, stat3) {
 
 // src/engine/arcs.ts
 var ARC_PATHS = ["manage", "embrace", "cure"];
-var clamp18 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp17 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 var isObj4 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function arcAlignment(unit2, path) {
   const sum = TUNING.arc.axes[path].reduce((n, [axis, direction]) => n + unit2.values[axis] * direction, 0);
-  return clamp18(sum / 3, -1, 1);
+  return clamp17(sum / 3, -1, 1);
 }
 function wantedPath(unit2, paths) {
   const order = [...paths].sort((a, b) => ARC_PATHS.indexOf(a) - ARC_PATHS.indexOf(b));
@@ -16749,6 +16667,632 @@ function arcDayStep(draft, ctx2) {
     events.push({ type: "arc_unlocked", unitId: u.id, defectId: found2.id });
   }
   return events;
+}
+
+// src/engine/loyalty/desertion.ts
+var clamp18 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+function desertionChance(state, reg, unitId) {
+  const unit2 = state.squad.find((u) => u.id === unitId);
+  const rel = state.relations[unitId];
+  if (!unit2 || !rel) return 0;
+  const t = TUNING.disloyalty.desertion;
+  let p = t.base + t.perTrustBelow * Math.max(0, t.trustRef - rel.trust);
+  p += rel.affinity < 0 ? t.affinityNegative * -rel.affinity : -t.affinityPositive * rel.affinity;
+  p += t.perStressAbove * Math.max(0, unit2.stress - t.stressRef);
+  for (const d of unit2.defects) p += reg.defects.get(d.id)?.desertionMod ?? 0;
+  return clamp18(p * dispositionById(state, reg, unitId).desertionMult, t.min, t.max);
+}
+function mayDesert(state, unitId) {
+  if (state.disloyalty?.open) return false;
+  const rec = loyaltyOf(state, unitId);
+  if (!rec) return false;
+  if (rec.nextCheckDay !== void 0 && state.day < rec.nextCheckDay) return false;
+  const newest = Math.max(-Infinity, ...rec.signs.filter((s) => s.about === "desertion").map((s) => s.day));
+  return state.day - newest >= TUNING.disloyalty.desertion.minSignAgeDays;
+}
+var nameOf4 = (state, id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
+function startDesertion(draft, unitId, at) {
+  const rec = loyaltyRecord(draft, unitId);
+  rec.attempts += 1;
+  if (rec.attempts >= TUNING.leash.terminate.attemptsForCause) rec.cause = { kind: "desertion", day: draft.day };
+  const open3 = { kind: "desertion", unitId, day: draft.day, at };
+  if (at === "night") {
+    const entry = {
+      id: nextId(draft, "n"),
+      unitId,
+      kind: "desertion",
+      priority: TUNING.disloyalty.night.desertion,
+      framing: `${nameOf4(draft, unitId)} is about to walk out. This is the moment to say something, or to stop her.`,
+      ignore: { event: "dismissed", severity: "moderate" },
+      expiresDay: draft.day + TUNING.disloyalty.night.expiresInDays
+    };
+    draft.calendar.nightEventsQueue = draft.calendar.nightEventsQueue.filter((n) => !(n.unitId === unitId && n.kind === "desertion"));
+    enqueueNight(draft, entry);
+    open3.nightEntryId = entry.id;
+  }
+  (draft.disloyalty ??= { units: {} }).open = open3;
+  return [{ type: "desertion_attempt", unitId, at }];
+}
+function missionStartCheck(draft, ctx2, unitIds) {
+  for (const id of unitIds) {
+    if (draft.relations[id]?.loyaltyBand !== "breaking" || !mayDesert(draft, id)) continue;
+    if (ctx2.rng.chance(desertionChance(draft, ctx2.registries, id))) return startDesertion(draft, id, "mission_start");
+  }
+  return null;
+}
+function talkDown(draft, ctx2, stat3) {
+  const open3 = requireOpen(draft, "desertion");
+  if (stat3 !== "authority" && stat3 !== "empathy") throw new Error("Talk her down with Authority or Empathy.");
+  if (open3.talkTried) throw new Error("She has already heard you out: choose another answer.");
+  const unit2 = draft.squad.find((u) => u.id === open3.unitId);
+  const rel = draft.relations[open3.unitId];
+  const t = TUNING.disloyalty.talkDown;
+  const difficulty = t.baseRank + (rel.trust < t.lowTrust ? 1 : 0) + (unit2.stress >= t.highStress ? 1 : 0);
+  const bonus = stat3 === "authority" ? intimidationBonus(draft) : 0;
+  const chance = clamp18(t.base + t.perRank * (socialRank(draft, stat3) - difficulty) + bonus + preemptBonus(draft, open3.unitId), t.min, t.max);
+  const success = ctx2.rng.chance(chance);
+  const events = [];
+  if (success) {
+    const applied = applyRelationDelta(draft, open3.unitId, "trust", t.trustGain, "talk_down");
+    if (applied !== 0) events.push({ type: "relation_changed", unitId: open3.unitId, axis: "trust", delta: applied, applied });
+    events.push(...evaluateAutomatic(draft, ctx2.registries, open3.unitId));
+    loyaltyRecord(draft, open3.unitId).nextCheckDay = draft.day + t.pauseDays;
+    delete draft.disloyalty.open;
+    events.push({ type: "loyalty_talk_down", unitId: open3.unitId, stat: stat3, success, chance });
+    events.push(...closeNight(draft, ctx2, open3));
+  } else {
+    open3.talkTried = true;
+    events.push({ type: "loyalty_talk_down", unitId: open3.unitId, stat: stat3, success, chance });
+  }
+  return events;
+}
+function letGo(draft, ctx2) {
+  const open3 = requireOpen(draft, "desertion");
+  const reg = ctx2.registries;
+  const unitId = open3.unitId;
+  const stance = (draft.relations[unitId]?.affinity ?? 0) >= TUNING.disloyalty.comeback.allyAffinity ? "ally" : "hostile";
+  removeFromService(draft, unitId, "deserted");
+  const rec = loyaltyRecord(draft, unitId);
+  rec.desertedDay = draft.day;
+  rec.stance = stance;
+  delete rec.returned;
+  const events = [];
+  const witnesses = draft.squad.filter((u) => u.id !== unitId && u.kind === "named" && isLiving(u));
+  for (const w of witnesses) {
+    events.push(...applyEventToUnit(draft, reg, w.id, {
+      type: "decision_aligned",
+      actor: "commander",
+      targets: [w.id],
+      severity: "moderate",
+      evidence: `let ${nameOf4(draft, unitId)} go`,
+      valueAxes: [{ axis: "autonomy", direction: 1 }, { axis: "mercy", direction: 1 }],
+      confidence: 1
+    }));
+  }
+  for (const w of witnesses) events.push(...evaluateAutomatic(draft, reg, w.id));
+  events.push({ type: "unit_deserted", unitId, stance });
+  events.push(...closeNight(draft, ctx2, open3));
+  return events;
+}
+function takeBack(draft, ctx2) {
+  const open3 = requireOpen(draft, "return");
+  const unit2 = draft.squad.find((u) => u.id === open3.unitId);
+  if (draft.squad.filter(isLiving).length >= draft.roster.capacity) {
+    throw new Error(`The barracks are full (${draft.roster.capacity} beds). Upgrade them to take ${unit2.displayName} back.`);
+  }
+  const stance = loyaltyOf(draft, open3.unitId)?.stance ?? "ally";
+  unit2.status = "reserve";
+  draft.relations[open3.unitId].trust = TUNING.disloyalty.comeback.backTrust;
+  const events = evaluateAutomatic(draft, ctx2.registries, open3.unitId);
+  delete draft.disloyalty.units[open3.unitId];
+  delete draft.disloyalty.open;
+  events.push({ type: "deserter_answered", unitId: open3.unitId, stance, taken: true });
+  events.push(...closeNight(draft, ctx2, open3));
+  return events;
+}
+function turnAway(draft, ctx2) {
+  const open3 = requireOpen(draft, "return");
+  const rec = loyaltyRecord(draft, open3.unitId);
+  rec.returned = true;
+  delete draft.disloyalty.open;
+  const events = [{ type: "deserter_answered", unitId: open3.unitId, stance: rec.stance ?? "ally", taken: false }];
+  events.push(...closeNight(draft, ctx2, open3));
+  return events;
+}
+function expiredConfrontation(draft, open3) {
+  if (open3.at === "mission_start") return draft.day > open3.day;
+  const id = open3.nightEntryId;
+  if (id === void 0) return true;
+  return draft.calendar.nightEvent?.id !== id && !draft.calendar.nightEventsQueue.some((n) => n.id === id);
+}
+function comeBack(draft, ctx2, unitId) {
+  const rec = loyaltyRecord(draft, unitId);
+  const name = nameOf4(draft, unitId);
+  const stance = rec.stance ?? "hostile";
+  rec.returned = true;
+  const events = [{ type: "deserter_returned", unitId, stance }];
+  if (stance === "ally") {
+    const entry = {
+      id: nextId(draft, "n"),
+      unitId,
+      kind: "deserter_return",
+      priority: TUNING.disloyalty.night.return,
+      framing: `${name} is at the gate, asking to be let back in.`,
+      ignore: { event: "dismissed", severity: "minor" },
+      expiresDay: draft.day + TUNING.disloyalty.night.expiresInDays
+    };
+    enqueueNight(draft, entry);
+    (draft.disloyalty ??= { units: {} }).open = { kind: "return", unitId, day: draft.day, at: "night", nightEntryId: entry.id };
+  } else {
+    const rumor = postRumor(draft, ctx2, {
+      text: `${name} was seen with armed deserters near the old checkpoints, asking questions about the commander.`,
+      tags: ["loyalty", "deserter"],
+      leadsTo: "none"
+    });
+    if (rumor) events.push(rumorPostedEvent(rumor));
+    events.push(...applyWorldEffects(draft, ctx2, [
+      { type: "clock", clockId: "oversight", by: 1 },
+      { type: "fact", text: `${name} deserted and now runs with armed deserters hostile to the commander.`, tags: ["loyalty", "deserter"], importance: 4 }
+    ], { kind: "event", id: "deserter_return", label: `${name} turned hostile` }));
+  }
+  return events;
+}
+function returns(draft, ctx2) {
+  const events = [];
+  const t = TUNING.disloyalty.comeback;
+  for (const [unitId, rec] of Object.entries(draft.disloyalty?.units ?? {})) {
+    const unit2 = draft.squad.find((u) => u.id === unitId);
+    if (!unit2 || unit2.status !== "deserted" || rec.desertedDay === void 0 || rec.returned === true) continue;
+    if (draft.day - rec.desertedDay < t.afterDays) continue;
+    const stance = rec.stance ?? "hostile";
+    if (stance === "ally" && draft.disloyalty?.open) continue;
+    if (!ctx2.rng.chance(t.chancePerDay)) continue;
+    events.push(...comeBack(draft, ctx2, unitId));
+  }
+  return events;
+}
+function loyaltyDayStep(draft, ctx2) {
+  const reg = ctx2.registries;
+  const events = [];
+  for (const u of draft.squad.filter(isLiving)) events.push(...evaluateAutomatic(draft, reg, u.id));
+  const open3 = draft.disloyalty?.open;
+  if (open3 && expiredConfrontation(draft, open3)) {
+    if (open3.kind === "desertion") events.push(...letGo(draft, ctx2));
+    else if (open3.kind === "return") events.push(...turnAway(draft, ctx2));
+    else events.push(...resolveExpiredMutiny(draft, ctx2, open3));
+  }
+  for (const u of draft.squad.filter(isLiving)) {
+    const band2 = draft.relations[u.id]?.loyaltyBand;
+    const rec = loyaltyOf(draft, u.id);
+    if (band2 !== "breaking" && rec?.signs.some((s) => s.about === "desertion")) {
+      rec.signs = rec.signs.filter((s) => s.about !== "desertion");
+    }
+    if (band2 !== "wavering" && rec?.nextDoubtDay !== void 0) delete rec.nextDoubtDay;
+    if (band2 === "wavering" && u.kind === "named") {
+      const wait = loyaltyRecord(draft, u.id);
+      if (wait.nextDoubtDay === void 0) wait.nextDoubtDay = draft.day + TUNING.disloyalty.doubtEveryDays;
+      else if (draft.day >= wait.nextDoubtDay) {
+        events.push(...emitSign(draft, ctx2, u.id, "doubt"));
+        wait.nextDoubtDay = draft.day + TUNING.disloyalty.doubtEveryDays;
+      }
+    }
+    if (band2 !== "breaking") continue;
+    if (!rec?.signs.some((s) => s.about === "desertion")) {
+      events.push(...emitSign(draft, ctx2, u.id, "desertion"));
+      continue;
+    }
+    if (mayDesert(draft, u.id) && ctx2.rng.chance(desertionChance(draft, reg, u.id))) {
+      events.push(...startDesertion(draft, u.id, "night"));
+    }
+  }
+  events.push(...arcDayStep(draft, ctx2));
+  events.push(...mutinyDayStep(draft, ctx2));
+  events.push(...returns(draft, ctx2));
+  return events;
+}
+
+// src/engine/loyalty/mutiny.ts
+var SEVERITY_RANK2 = { minor: 0, moderate: 1, major: 2, extreme: 3 };
+var BETRAYALS = ["lied_detected", "broke_promise", "coerced", "decision_violated", "crime_revealed"];
+function mutinyTrigger(state, unitId, minSeverity = "major") {
+  const within = (day) => state.day - day <= TUNING.mutiny.triggerWindowDays;
+  const found2 = [];
+  const rec = loyaltyOf(state, unitId);
+  if (rec?.trigger && within(rec.trigger.day)) found2.push({ kind: rec.trigger.kind, day: rec.trigger.day });
+  for (const h2 of state.relations[unitId]?.history ?? []) {
+    if (h2.kind !== "event" || !BETRAYALS.includes(h2.type) || h2.severity === void 0) continue;
+    if (SEVERITY_RANK2[h2.severity] >= SEVERITY_RANK2[minSeverity] && within(h2.day)) found2.push({ kind: "betrayal", day: h2.day });
+  }
+  return found2.sort((a, b) => b.day - a.day)[0] ?? null;
+}
+var mutinySigns = (state, unitId) => (loyaltyOf(state, unitId)?.signs ?? []).filter((s) => s.about === "mutiny");
+function mutinyRules(state, reg, unitId) {
+  return dispositionById(state, reg, unitId).mutiny;
+}
+function mayMutiny(state, reg, unitId) {
+  const unit2 = state.squad.find((u) => u.id === unitId);
+  const rel = state.relations[unitId];
+  if (!unit2 || !rel || unit2.kind !== "named" || !isLiving(unit2)) return false;
+  const rules2 = mutinyRules(state, reg, unitId);
+  if (!rules2.enabled) return false;
+  if (rules2.states.includes(rel.stateId)) return state.day - rel.stateSince >= rules2.minDaysInState;
+  return rel.stateId === "obsessed" && mutinyTrigger(state, unitId, "extreme") !== null;
+}
+function mutinyReady(state, reg, unitId) {
+  if (!mayMutiny(state, reg, unitId)) return false;
+  const rules2 = mutinyRules(state, reg, unitId);
+  if (rules2.states.includes(state.relations[unitId].stateId) && mutinyTrigger(state, unitId) === null) return false;
+  const signs = mutinySigns(state, unitId);
+  return signs.length >= rules2.minSigns && new Set(signs.map((s) => s.day)).size >= rules2.minSigns;
+}
+function mutinyAllowed(state, reg, unitId) {
+  if (!mutinyReady(state, reg, unitId)) return "none";
+  const value = impunityOf(state, reg, unitId)?.value;
+  if (value === void 0) return "none";
+  if (value >= TUNING.impunity.mutinyMin) return "mutiny";
+  if (state.relations[unitId]?.loyaltyBand === "breaking" && value < TUNING.impunity.desertInsteadBelow) return "desert";
+  return "none";
+}
+function sympathizers(state, unitId) {
+  return state.roster.activeIds.filter((id) => {
+    const u = state.squad.find((x) => x.id === id);
+    const rel = state.relations[id];
+    return id !== unitId && u !== void 0 && rel !== void 0 && u.kind === "named" && isLiving(u) && u.status === "active" && rel.loyaltyBand !== "steady" && rel.trust < TUNING.mutiny.sympathizerTrustBelow;
+  }).sort((a, b) => state.relations[a].trust - state.relations[b].trust).slice(0, TUNING.mutiny.maxSympathizers);
+}
+var groupOf = (open3) => [open3.unitId, ...open3.sympathizers ?? []];
+function loyalUnits(state, unitId) {
+  const open3 = state.disloyalty?.open;
+  const mutineers = /* @__PURE__ */ new Set([unitId, ...open3?.unitId === unitId && open3.sympathizers ? open3.sympathizers : sympathizers(state, unitId)]);
+  return state.roster.activeIds.filter((id) => {
+    const u = state.squad.find((x) => x.id === id);
+    return !mutineers.has(id) && u !== void 0 && isLiving(u) && u.status === "active";
+  });
+}
+var nameOf5 = (state, id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
+function startMutiny(draft, unitId) {
+  const group = sympathizers(draft, unitId);
+  const entry = {
+    id: nextId(draft, "n"),
+    unitId,
+    kind: "mutiny",
+    priority: TUNING.mutiny.nightPriority,
+    framing: `${nameOf5(draft, unitId)} is not alone: voices in the corridor, weapons out of the racks. This is about to turn violent.`,
+    ignore: { event: "dismissed", severity: "major" },
+    expiresDay: draft.day + TUNING.disloyalty.night.expiresInDays
+  };
+  draft.calendar.nightEventsQueue = draft.calendar.nightEventsQueue.filter((n) => !(n.unitId === unitId && n.kind === "mutiny"));
+  enqueueNight(draft, entry);
+  (draft.disloyalty ??= { units: {} }).open = { kind: "mutiny", unitId, day: draft.day, at: "night", nightEntryId: entry.id, sympathizers: group };
+  return [{ type: "mutiny_started", unitId, sympathizers: group }];
+}
+function mutinyDayStep(draft, ctx2) {
+  const events = [];
+  for (const u of draft.squad.filter((x) => x.kind === "named" && isLiving(x))) {
+    const rec = loyaltyOf(draft, u.id);
+    const rules2 = mutinyRules(draft, ctx2.registries, u.id);
+    const stateId = draft.relations[u.id]?.stateId;
+    const candidate = rules2.enabled && (rules2.states.includes(stateId ?? "") || stateId === "obsessed" && mutinyTrigger(draft, u.id, "extreme") !== null);
+    if (!candidate) {
+      if (rec?.signs.some((s) => s.about === "mutiny")) rec.signs = rec.signs.filter((s) => s.about !== "mutiny");
+      continue;
+    }
+    const signs = mutinySigns(draft, u.id);
+    const newest = Math.max(-Infinity, ...signs.map((s) => s.day));
+    if (signs.length === 0) events.push(...emitSign(draft, ctx2, u.id, "mutiny", 1));
+    else if (signs.length === 1 && rules2.minSigns >= 2 && newest < draft.day) events.push(...emitSign(draft, ctx2, u.id, "mutiny", 2));
+    const aged = mutinySigns(draft, u.id);
+    const lastSign = Math.max(-Infinity, ...aged.map((s) => s.day));
+    if (draft.disloyalty?.open || draft.day - lastSign < 1) continue;
+    const verdict = mutinyAllowed(draft, ctx2.registries, u.id);
+    if (verdict === "none" || verdict === "desert" && !mayDesert(draft, u.id)) continue;
+    if (!ctx2.rng.chance(TUNING.mutiny.chancePerDay)) continue;
+    events.push(...verdict === "mutiny" ? startMutiny(draft, u.id) : startDesertion(draft, u.id, "night"));
+  }
+  return events;
+}
+function fightPayload(state, p) {
+  const open3 = requireOpen(state, "mutiny");
+  if (open3.combatId !== void 0) throw new Error("The fight has already been fought: resolve it.");
+  const loyal = new Set(loyalUnits(state, open3.unitId));
+  const ids = [...p.formation.front, ...p.formation.back];
+  if (ids.length === 0) throw new Error("Choose who stands with you.");
+  for (const id of ids) {
+    if (!loyal.has(id)) throw new Error(`${nameOf5(state, id)} cannot stand with you: only your able, loyal units can.`);
+  }
+  return {
+    encounter: { enemies: [], mutineers: groupOf(open3).map((unitId) => ({ unitId })), exposesCommander: true, danger: 0 },
+    formation: { front: [...p.formation.front], back: [...p.formation.back] },
+    ...p.coverId !== void 0 ? { coverId: p.coverId } : {},
+    allowRetry: p.allowRetry === true
+  };
+}
+function escape(draft, ctx2, open3, how, commanderHurt) {
+  const events = [];
+  for (const id of groupOf(open3)) {
+    const u = draft.squad.find((x) => x.id === id);
+    if (!u || !isLiving(u)) continue;
+    removeFromService(draft, id, "deserted");
+    const rec = loyaltyRecord(draft, id);
+    rec.desertedDay = draft.day;
+    rec.stance = "hostile";
+    delete rec.returned;
+    rec.signs = rec.signs.filter((s) => s.about !== "mutiny");
+    delete rec.trigger;
+  }
+  if (!commanderHurt && (draft.commander.injuredUntilDay ?? 0) <= draft.day) events.push(...injureCommander(draft, TUNING.combat.commanderInjuryDays));
+  delete draft.disloyalty.open;
+  events.push({ type: "mutiny_escaped", unitId: open3.unitId, sympathizers: open3.sympathizers ?? [], how });
+  events.push(...closeNight(draft, ctx2, open3));
+  return events;
+}
+function yieldToMutiny(draft, ctx2) {
+  const open3 = requireOpen(draft, "mutiny");
+  if (loyalUnits(draft, open3.unitId).length > 0) throw new Error("You still have soldiers who can fight: stand with them or suppress it.");
+  return escape(draft, ctx2, open3, "yield", false);
+}
+function subdue(draft, reg, open3, fought) {
+  for (const id of fought) {
+    const u = draft.squad.find((x) => x.id === id);
+    if (!u || !isLiving(u)) continue;
+    u.status = "injured";
+    u.currentHp = 1;
+    u.injuryDays = Math.max(u.injuryDays ?? 0, TUNING.mutiny.subduedInjuryDays);
+    if (u.injuries.length === 0) u.injuries.push("wounded");
+  }
+  const events = [];
+  const rel = draft.relations[open3.unitId];
+  if (rel && rel.stateId !== "resentful") events.push(enterState(draft, open3.unitId, "resentful", "mutiny_subdued"), ...syncPublicity(draft, reg, open3.unitId));
+  const rec = loyaltyRecord(draft, open3.unitId);
+  rec.cause = { kind: "attack", day: draft.day };
+  rec.signs = rec.signs.filter((s) => s.about !== "mutiny");
+  delete rec.trigger;
+  delete draft.disloyalty.open;
+  events.push({ type: "mutiny_subdued", unitId: open3.unitId, sympathizers: open3.sympathizers ?? [] });
+  return events;
+}
+function resolveMutiny(draft, ctx2) {
+  const open3 = requireOpen(draft, "mutiny");
+  if (open3.combatId === void 0) throw new Error("The fight has not been fought yet.");
+  if (draft.combat) throw new Error("The fight is still going on.");
+  const result = draft.lastCombat;
+  if (!result || result.id !== open3.combatId) throw new Error("The result of that fight is no longer available.");
+  const events = result.outcome === "won" ? subdue(draft, ctx2.registries, open3, (result.mutineers ?? []).map((m) => m.unitId)) : escape(draft, ctx2, open3, result.outcome === "retreated" ? "retreat" : "defeat", result.commanderInjured);
+  if (result.outcome === "won") events.push(...closeNight(draft, ctx2, open3));
+  return events;
+}
+function resolveExpiredMutiny(draft, ctx2, open3) {
+  if (open3.combatId !== void 0 && !draft.combat && draft.lastCombat?.id === open3.combatId) return resolveMutiny(draft, ctx2);
+  return escape(draft, ctx2, open3, "yield", false);
+}
+
+// src/engine/special/paranoia/premonitions.ts
+var T = () => TUNING.special.paranoia;
+var paranoiaOf = (draft) => specialOf(draft).paranoia ??= newParanoia();
+function openPremonition(state, unitId) {
+  return (state.special?.paranoia?.premonitions ?? []).find((p) => p.unitId === unitId && p.acted === void 0 && p.expiresDay >= state.day);
+}
+var leadDays = (unitId, day) => fnv1a(`${unitId}|${day}`) % T().leadDays + 1;
+function ledgerSum(state, key) {
+  const since = state.day - (T().lookbackDays - 1);
+  return (state.ledger ?? []).filter((e) => e.key === key && e.day >= since).reduce((n, e) => n + e.delta, 0);
+}
+function realPrecursors(state, reg) {
+  const out = [];
+  for (const u of state.squad) {
+    if (u.kind !== "named" || !isLiving(u)) continue;
+    const rel = state.relations[u.id];
+    if (!rel) continue;
+    const rec = loyaltyOf(state, u.id);
+    const lead = leadDays(u.id, state.day);
+    if (rec?.nextDoubtDay !== void 0 && rec.nextDoubtDay - state.day >= 1 && rec.nextDoubtDay - state.day <= lead) out.push({ unitId: u.id, about: "doubt" });
+    const breakingLine = TUNING.relations.loyalty.breakingEnter + bandShift(dispositionById(state, reg, u.id)).enter;
+    if (rel.loyaltyBand === "wavering" && rel.trust - breakingLine <= T().desertionMargin && ledgerSum(state, `axis:${u.id}:trust`) < 0) out.push({ unitId: u.id, about: "desertion" });
+    if (mayMutiny(state, reg, u.id) && (mutinySigns(state, u.id).length === mutinyRules(state, reg, u.id).minSigns - 1 || mutinyTrigger(state, u.id) !== null)) {
+      out.push({ unitId: u.id, about: "mutiny" });
+    }
+    const impunity = impunityOf(state, reg, u.id)?.value;
+    if (impunity !== void 0 && commandStance(state, reg, u.id) !== "open_defiance" && stanceAt(rel.trust, impunity + T().defianceBump) === "open_defiance" && ledgerSum(state, `record:${u.id}`) > 0) {
+      out.push({ unitId: u.id, about: "defiance" });
+    }
+  }
+  return out;
+}
+function falseAlarmChance(state) {
+  const nightmare = state.special?.paranoia?.lastNightmareDay === state.day - 1;
+  return Math.max(0, T().falseBase - T().falsePerInsight * (socialRank(state, "insight") - 1)) + (nightmare ? T().falseAfterNightmare : 0);
+}
+function write(draft, unitId, about2, real) {
+  const p = paranoiaOf(draft);
+  p.seq += 1;
+  const x = { id: `pm${p.seq}`, unitId, about: about2, day: draft.day, expiresDay: draft.day + T().openDays, real };
+  p.premonitions.push(x);
+  return { type: "premonition", unitId, premonitionId: x.id, about: about2 };
+}
+function paranoiaDayStep(draft, ctx2) {
+  const reg = ctx2.registries;
+  if (!hasTraitEffect(draft, reg, "paranoia")) return [];
+  const p = paranoiaOf(draft);
+  p.premonitions = p.premonitions.filter((x) => x.day >= draft.day - T().keepDays);
+  if (p.preempt) p.preempt = p.preempt.filter((x) => x.untilDay >= draft.day);
+  const events = [];
+  for (const { unitId, about: about2 } of realPrecursors(draft, reg)) {
+    const open3 = openPremonition(draft, unitId);
+    if (open3?.real) continue;
+    if (open3) p.premonitions = p.premonitions.filter((x) => x !== open3);
+    events.push(write(draft, unitId, about2, true));
+  }
+  const chance = falseAlarmChance(draft);
+  for (const u of draft.squad) {
+    if (u.kind !== "named" || !isLiving(u) || openPremonition(draft, u.id)) continue;
+    if (ctx2.rng.chance(chance)) events.push(write(draft, u.id, ctx2.rng.pick(PREMONITION_ABOUT), false));
+  }
+  return events;
+}
+function warnedUnits(state, unitIds) {
+  return unitIds.filter((id) => openPremonition(state, id) !== void 0);
+}
+function warnedInput(state, unitIds) {
+  const warned = warnedUnits(state, unitIds);
+  return warned.length > 0 ? { warned } : {};
+}
+
+// src/engine/special/paranoia/accusations.ts
+function actOnWarning(draft, ctx2, unitId, act) {
+  const open3 = openPremonition(draft, unitId);
+  if (!open3) return [];
+  const T2 = TUNING.special.paranoia;
+  const events = [{ type: "premonition_acted", unitId, act }];
+  if (open3.real) {
+    open3.acted = "preempted";
+    (paranoiaOf(draft).preempt ??= []).push({ unitId, untilDay: draft.day + T2.preemptDays, about: open3.about });
+    if (open3.about === "doubt" || open3.about === "desertion") {
+      const rec = loyaltyRecord(draft, unitId);
+      rec.nextCheckDay = Math.max(rec.nextCheckDay ?? 0, draft.day + T2.preemptPause);
+    } else if (open3.about === "mutiny") {
+      if (ctx2.rng.chance(T2.mutinyAvert)) {
+        const rec = draft.disloyalty?.units[unitId];
+        if (rec) rec.signs = rec.signs.filter((s) => s.about !== "mutiny");
+      }
+    } else {
+      events.push(...addRecord(draft, unitId, T2.defianceRecord, "preempt"));
+    }
+    return events;
+  }
+  open3.acted = "false";
+  events.push(...applyEventToUnit(draft, ctx2.registries, unitId, {
+    type: act === "accused" ? "false_accusation" : "coerced",
+    actor: "commander",
+    targets: [unitId],
+    severity: "extreme",
+    evidence: "a warning that was not real",
+    confidence: 1
+  }));
+  events.push(...addCommanderStress(draft, TUNING.special.commanderStress.falseAlarm, "false_alarm"));
+  return events;
+}
+
+// src/engine/relations/apply.ts
+var clamp19 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var DISCIPLINE_EVENTS = ["defied", "commander_enforced", "commander_yielded", "threatened"];
+var GATED_EVENTS = ["commander_enforced", "threatened"];
+var CONFIDENCE_EPS2 = 1e-9;
+function applyIntents(draft, ctx2, p) {
+  const reg = ctx2.registries;
+  const rules2 = rulesOf(draft).filter((r) => r.status === "active" || r.status === "negotiating").map((r) => ({ id: r.id, unitId: r.unitId }));
+  const intents = validateIntents(p.intents, {
+    participants: p.participants,
+    squad: draft.squad,
+    maxEvents: TUNING.relations.maxEventsRead,
+    measures: measureList(reg, draft),
+    rules: rules2,
+    intercepted: leakCandidates(draft, reg, p.participants).map((c) => c.id),
+    // P12: only items the frequency really caught
+    warned: warnedUnits(draft, p.participants)
+  });
+  const events = [];
+  const touched = /* @__PURE__ */ new Set();
+  const landed = [];
+  const judged = intents.events.map((e) => {
+    const units = affectedUnits(e, p.participants);
+    const gated = GATED_EVENTS.includes(e.type) && e.confidence + CONFIDENCE_EPS2 < TUNING.impunity.minConfidence;
+    return { e, units, believed: gated ? [] : units.filter((id) => computeDeltas(draft, reg, id, e).dropped !== true) };
+  }).filter((j) => j.units.length === 0 || j.believed.length > 0).slice(0, TUNING.relations.maxEventsPerExchange);
+  intents.events = judged.map((j) => j.e);
+  for (const { e, believed } of judged) {
+    for (const id of believed) {
+      events.push(...DISCIPLINE_EVENTS.includes(e.type) ? applyDisciplineEvent(draft, ctx2, id, e, { channel: p.channel, ...p.sceneId ? { sceneId: p.sceneId } : {}, ...p.messageRef ? { messageRef: p.messageRef } : {} }) : applyEventToUnit(draft, reg, id, e));
+      if (RULE_EVENT_TYPES.includes(e.type)) events.push(...applyRuleEvent(draft, ctx2, id, e, p.participants));
+      if (e.type === "accused") events.push(...actOnWarning(draft, ctx2, id, "accused"));
+      if (e.type === "knowledge_leak" && e.itemId !== void 0) events.push(...frequencyLeak(draft, ctx2, id, e.itemId, e.severity));
+      touched.add(id);
+    }
+    if (believed.length > 0) landed.push(e.type);
+    if (e.type === "crime_revealed") events.push(...revealCrime(draft, reg, believed));
+    if (e.type === "shared_secret" && e.actor !== "commander") {
+      for (const id of believed) {
+        const flags = draft.relations[id].flags;
+        if (!flags.includes("shared_secret")) flags.push("shared_secret");
+      }
+    }
+  }
+  for (const h2 of intents.stressHints) {
+    const unit2 = draft.squad.find((u) => u.id === h2.unitId);
+    if (!unit2) continue;
+    const next = clamp19(unit2.stress + roundAway(stressFromHint(h2.severity, h2.direction)), 0, 100);
+    if (next !== unit2.stress) events.push({ type: "stress_changed", unitId: unit2.id, delta: next - unit2.stress });
+    unit2.stress = next;
+    touched.add(unit2.id);
+  }
+  let eventBudget = TUNING.relations.maxEventsPerExchange - intents.events.length;
+  for (const pr of intents.promises) {
+    const { event } = recordPromise(draft, pr, draft.day, p.participants);
+    if (!event) continue;
+    const unit2 = event.targets[0];
+    const duplicate = intents.events.some((e) => e.type === event.type && e.targets.includes(unit2));
+    if (duplicate || !p.participants.includes(unit2) || eventBudget <= 0) continue;
+    eventBudget--;
+    events.push(...applyEventToUnit(draft, reg, unit2, event));
+    touched.add(unit2);
+  }
+  const already = p.sceneId ? draft.memory.facts.filter((f) => f.sceneId === p.sceneId).length : 0;
+  const factRoom = Math.max(0, TUNING.memory.factsPerScene - already);
+  let storedFacts = 0;
+  for (const f of intents.facts) {
+    if (storedFacts >= factRoom) break;
+    storedFacts++;
+    addFact(draft, {
+      about: Array.isArray(f.about) ? f.about : [f.about],
+      text: f.text,
+      tags: f.tags,
+      importance: f.importance,
+      day: draft.day,
+      knownBy: [...p.participants],
+      ...p.sceneId ? { sceneId: p.sceneId } : {}
+    });
+    if (f.tags.includes("crime") && f.about === "commander") events.push(...revealCrime(draft, reg, p.participants));
+  }
+  for (const pr of intents.proposals) {
+    const unitId = pr.from === "commander" ? pr.to : pr.from;
+    touched.add(unitId);
+    if (pr.from === "commander") {
+      try {
+        events.push(...commanderProposal(draft, reg, { unitId, kind: pr.kind, channel: p.channel }));
+      } catch {
+      }
+    } else {
+      events.push(...offerProposal(draft, reg, { unitId, kind: pr.kind, channel: p.channel }));
+    }
+  }
+  for (const id of touched) events.push(...evaluateAutomatic(draft, reg, id));
+  events.push({
+    type: "intents_applied",
+    channel: p.channel,
+    counts: {
+      events: intents.events.length,
+      facts: storedFacts,
+      proposals: intents.proposals.length,
+      promises: intents.promises.length,
+      stressHints: intents.stressHints.length
+    },
+    landed
+  });
+  return events;
+}
+
+// src/engine/relations/index.ts
+function getSynergies(state, reg, unitIds) {
+  const out = [];
+  for (const id of unitIds) {
+    const st = reg.relationshipStates.get(state.relations[id]?.stateId ?? "");
+    for (const synergyId of st?.unlocks?.synergies ?? []) out.push({ unitId: id, synergyId });
+    const band2 = state.relations[id]?.loyaltyBand;
+    if (band2 === "wavering" || band2 === "breaking") {
+      const synergyId = TUNING.disloyalty.bandSynergy[band2];
+      if (reg.synergies.has(synergyId)) out.push({ unitId: id, synergyId });
+    }
+  }
+  return out;
 }
 
 // src/engine/combat/build.ts
@@ -17155,7 +17699,7 @@ function buildDigest(state, reg) {
 }
 var emptyOutput = () => ({ missionOffers: [], rumors: [], threadUpdates: [], clockAdvances: [] });
 var isObj5 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
-var clamp19 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var clamp20 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 function plain(v, max) {
   if (typeof v !== "string") return "";
   return v.replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim().slice(0, max).trim();
@@ -17236,7 +17780,7 @@ function validateDirectorOutput(state, reg, raw, opts) {
         offer.danger = o.danger;
       }
       if (typeof o.deadlineDays === "number" && Number.isFinite(o.deadlineDays)) {
-        offer.deadlineDays = clamp19(Math.round(o.deadlineDays), TUNING.world.deadlineMinDays, TUNING.world.deadlineMaxDays);
+        offer.deadlineDays = clamp20(Math.round(o.deadlineDays), TUNING.world.deadlineMinDays, TUNING.world.deadlineMaxDays);
       }
       const title = plain(o.title, TUNING.director.titleMax);
       if (title !== "") offer.title = title;
@@ -17441,7 +17985,7 @@ function applyDirectorOutput(draft, ctx2, out, opts = {}) {
 function answerRequest(draft, ctx2, requestId, raw, opts = {}) {
   const pending3 = draft.world.director?.pending;
   if (!pending3 || pending3.id !== requestId) throw new Error("Stale director answer.");
-  const cooldownDays = Number.isFinite(opts.cooldownDays) ? clamp19(Math.round(opts.cooldownDays), 1, 14) : beatCooldownDays(draft);
+  const cooldownDays = Number.isFinite(opts.cooldownDays) ? clamp20(Math.round(opts.cooldownDays), 1, 14) : beatCooldownDays(draft);
   const { output, rejected } = validateDirectorOutput(draft, ctx2.registries, raw(pending3), {
     cooldownDays,
     only: pending3.reason === "scout" ? "rumors" : void 0
@@ -17519,403 +18063,6 @@ function fallbackOutput(state, reg, rng) {
     if (options2.length > 0) out.clockAdvances.push({ clockId: rng.pick(options2).id, by: 1, reason: "Pressure builds in the region." });
   }
   return out;
-}
-
-// src/engine/loyalty/mutiny.ts
-var SEVERITY_RANK2 = { minor: 0, moderate: 1, major: 2, extreme: 3 };
-var BETRAYALS = ["lied_detected", "broke_promise", "coerced", "decision_violated", "crime_revealed"];
-function mutinyTrigger(state, unitId, minSeverity = "major") {
-  const within = (day) => state.day - day <= TUNING.mutiny.triggerWindowDays;
-  const found2 = [];
-  const rec = loyaltyOf(state, unitId);
-  if (rec?.trigger && within(rec.trigger.day)) found2.push({ kind: rec.trigger.kind, day: rec.trigger.day });
-  for (const h2 of state.relations[unitId]?.history ?? []) {
-    if (h2.kind !== "event" || !BETRAYALS.includes(h2.type) || h2.severity === void 0) continue;
-    if (SEVERITY_RANK2[h2.severity] >= SEVERITY_RANK2[minSeverity] && within(h2.day)) found2.push({ kind: "betrayal", day: h2.day });
-  }
-  return found2.sort((a, b) => b.day - a.day)[0] ?? null;
-}
-var mutinySigns = (state, unitId) => (loyaltyOf(state, unitId)?.signs ?? []).filter((s) => s.about === "mutiny");
-function mutinyRules(state, reg, unitId) {
-  return dispositionById(state, reg, unitId).mutiny;
-}
-function mayMutiny(state, reg, unitId) {
-  const unit2 = state.squad.find((u) => u.id === unitId);
-  const rel = state.relations[unitId];
-  if (!unit2 || !rel || unit2.kind !== "named" || !isLiving(unit2)) return false;
-  const rules2 = mutinyRules(state, reg, unitId);
-  if (!rules2.enabled) return false;
-  if (rules2.states.includes(rel.stateId)) return state.day - rel.stateSince >= rules2.minDaysInState;
-  return rel.stateId === "obsessed" && mutinyTrigger(state, unitId, "extreme") !== null;
-}
-function mutinyReady(state, reg, unitId) {
-  if (!mayMutiny(state, reg, unitId)) return false;
-  const rules2 = mutinyRules(state, reg, unitId);
-  if (rules2.states.includes(state.relations[unitId].stateId) && mutinyTrigger(state, unitId) === null) return false;
-  const signs = mutinySigns(state, unitId);
-  return signs.length >= rules2.minSigns && new Set(signs.map((s) => s.day)).size >= rules2.minSigns;
-}
-function mutinyAllowed(state, reg, unitId) {
-  if (!mutinyReady(state, reg, unitId)) return "none";
-  const value = impunityOf(state, reg, unitId)?.value;
-  if (value === void 0) return "none";
-  if (value >= TUNING.impunity.mutinyMin) return "mutiny";
-  if (state.relations[unitId]?.loyaltyBand === "breaking" && value < TUNING.impunity.desertInsteadBelow) return "desert";
-  return "none";
-}
-function sympathizers(state, unitId) {
-  return state.roster.activeIds.filter((id) => {
-    const u = state.squad.find((x) => x.id === id);
-    const rel = state.relations[id];
-    return id !== unitId && u !== void 0 && rel !== void 0 && u.kind === "named" && isLiving(u) && u.status === "active" && rel.loyaltyBand !== "steady" && rel.trust < TUNING.mutiny.sympathizerTrustBelow;
-  }).sort((a, b) => state.relations[a].trust - state.relations[b].trust).slice(0, TUNING.mutiny.maxSympathizers);
-}
-var groupOf = (open3) => [open3.unitId, ...open3.sympathizers ?? []];
-function loyalUnits(state, unitId) {
-  const open3 = state.disloyalty?.open;
-  const mutineers = /* @__PURE__ */ new Set([unitId, ...open3?.unitId === unitId && open3.sympathizers ? open3.sympathizers : sympathizers(state, unitId)]);
-  return state.roster.activeIds.filter((id) => {
-    const u = state.squad.find((x) => x.id === id);
-    return !mutineers.has(id) && u !== void 0 && isLiving(u) && u.status === "active";
-  });
-}
-var nameOf4 = (state, id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
-function startMutiny(draft, unitId) {
-  const group = sympathizers(draft, unitId);
-  const entry = {
-    id: nextId(draft, "n"),
-    unitId,
-    kind: "mutiny",
-    priority: TUNING.mutiny.nightPriority,
-    framing: `${nameOf4(draft, unitId)} is not alone: voices in the corridor, weapons out of the racks. This is about to turn violent.`,
-    ignore: { event: "dismissed", severity: "major" },
-    expiresDay: draft.day + TUNING.disloyalty.night.expiresInDays
-  };
-  draft.calendar.nightEventsQueue = draft.calendar.nightEventsQueue.filter((n) => !(n.unitId === unitId && n.kind === "mutiny"));
-  enqueueNight(draft, entry);
-  (draft.disloyalty ??= { units: {} }).open = { kind: "mutiny", unitId, day: draft.day, at: "night", nightEntryId: entry.id, sympathizers: group };
-  return [{ type: "mutiny_started", unitId, sympathizers: group }];
-}
-function mutinyDayStep(draft, ctx2) {
-  const events = [];
-  for (const u of draft.squad.filter((x) => x.kind === "named" && isLiving(x))) {
-    const rec = loyaltyOf(draft, u.id);
-    const rules2 = mutinyRules(draft, ctx2.registries, u.id);
-    const stateId = draft.relations[u.id]?.stateId;
-    const candidate = rules2.enabled && (rules2.states.includes(stateId ?? "") || stateId === "obsessed" && mutinyTrigger(draft, u.id, "extreme") !== null);
-    if (!candidate) {
-      if (rec?.signs.some((s) => s.about === "mutiny")) rec.signs = rec.signs.filter((s) => s.about !== "mutiny");
-      continue;
-    }
-    const signs = mutinySigns(draft, u.id);
-    const newest = Math.max(-Infinity, ...signs.map((s) => s.day));
-    if (signs.length === 0) events.push(...emitSign(draft, ctx2, u.id, "mutiny", 1));
-    else if (signs.length === 1 && rules2.minSigns >= 2 && newest < draft.day) events.push(...emitSign(draft, ctx2, u.id, "mutiny", 2));
-    const aged = mutinySigns(draft, u.id);
-    const lastSign = Math.max(-Infinity, ...aged.map((s) => s.day));
-    if (draft.disloyalty?.open || draft.day - lastSign < 1) continue;
-    const verdict = mutinyAllowed(draft, ctx2.registries, u.id);
-    if (verdict === "none" || verdict === "desert" && !mayDesert(draft, u.id)) continue;
-    if (!ctx2.rng.chance(TUNING.mutiny.chancePerDay)) continue;
-    events.push(...verdict === "mutiny" ? startMutiny(draft, u.id) : startDesertion(draft, u.id, "night"));
-  }
-  return events;
-}
-function fightPayload(state, p) {
-  const open3 = requireOpen(state, "mutiny");
-  if (open3.combatId !== void 0) throw new Error("The fight has already been fought: resolve it.");
-  const loyal = new Set(loyalUnits(state, open3.unitId));
-  const ids = [...p.formation.front, ...p.formation.back];
-  if (ids.length === 0) throw new Error("Choose who stands with you.");
-  for (const id of ids) {
-    if (!loyal.has(id)) throw new Error(`${nameOf4(state, id)} cannot stand with you: only your able, loyal units can.`);
-  }
-  return {
-    encounter: { enemies: [], mutineers: groupOf(open3).map((unitId) => ({ unitId })), exposesCommander: true, danger: 0 },
-    formation: { front: [...p.formation.front], back: [...p.formation.back] },
-    ...p.coverId !== void 0 ? { coverId: p.coverId } : {},
-    allowRetry: p.allowRetry === true
-  };
-}
-function escape(draft, ctx2, open3, how, commanderHurt) {
-  const events = [];
-  for (const id of groupOf(open3)) {
-    const u = draft.squad.find((x) => x.id === id);
-    if (!u || !isLiving(u)) continue;
-    removeFromService(draft, id, "deserted");
-    const rec = loyaltyRecord(draft, id);
-    rec.desertedDay = draft.day;
-    rec.stance = "hostile";
-    delete rec.returned;
-    rec.signs = rec.signs.filter((s) => s.about !== "mutiny");
-    delete rec.trigger;
-  }
-  if (!commanderHurt && (draft.commander.injuredUntilDay ?? 0) <= draft.day) events.push(...injureCommander(draft, TUNING.combat.commanderInjuryDays));
-  delete draft.disloyalty.open;
-  events.push({ type: "mutiny_escaped", unitId: open3.unitId, sympathizers: open3.sympathizers ?? [], how });
-  events.push(...closeNight(draft, ctx2, open3));
-  return events;
-}
-function yieldToMutiny(draft, ctx2) {
-  const open3 = requireOpen(draft, "mutiny");
-  if (loyalUnits(draft, open3.unitId).length > 0) throw new Error("You still have soldiers who can fight: stand with them or suppress it.");
-  return escape(draft, ctx2, open3, "yield", false);
-}
-function subdue(draft, reg, open3, fought) {
-  for (const id of fought) {
-    const u = draft.squad.find((x) => x.id === id);
-    if (!u || !isLiving(u)) continue;
-    u.status = "injured";
-    u.currentHp = 1;
-    u.injuryDays = Math.max(u.injuryDays ?? 0, TUNING.mutiny.subduedInjuryDays);
-    if (u.injuries.length === 0) u.injuries.push("wounded");
-  }
-  const events = [];
-  const rel = draft.relations[open3.unitId];
-  if (rel && rel.stateId !== "resentful") events.push(enterState(draft, open3.unitId, "resentful", "mutiny_subdued"), ...syncPublicity(draft, reg, open3.unitId));
-  const rec = loyaltyRecord(draft, open3.unitId);
-  rec.cause = { kind: "attack", day: draft.day };
-  rec.signs = rec.signs.filter((s) => s.about !== "mutiny");
-  delete rec.trigger;
-  delete draft.disloyalty.open;
-  events.push({ type: "mutiny_subdued", unitId: open3.unitId, sympathizers: open3.sympathizers ?? [] });
-  return events;
-}
-function resolveMutiny(draft, ctx2) {
-  const open3 = requireOpen(draft, "mutiny");
-  if (open3.combatId === void 0) throw new Error("The fight has not been fought yet.");
-  if (draft.combat) throw new Error("The fight is still going on.");
-  const result = draft.lastCombat;
-  if (!result || result.id !== open3.combatId) throw new Error("The result of that fight is no longer available.");
-  const events = result.outcome === "won" ? subdue(draft, ctx2.registries, open3, (result.mutineers ?? []).map((m) => m.unitId)) : escape(draft, ctx2, open3, result.outcome === "retreated" ? "retreat" : "defeat", result.commanderInjured);
-  if (result.outcome === "won") events.push(...closeNight(draft, ctx2, open3));
-  return events;
-}
-function resolveExpiredMutiny(draft, ctx2, open3) {
-  if (open3.combatId !== void 0 && !draft.combat && draft.lastCombat?.id === open3.combatId) return resolveMutiny(draft, ctx2);
-  return escape(draft, ctx2, open3, "yield", false);
-}
-
-// src/engine/loyalty/desertion.ts
-var clamp20 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
-function desertionChance(state, reg, unitId) {
-  const unit2 = state.squad.find((u) => u.id === unitId);
-  const rel = state.relations[unitId];
-  if (!unit2 || !rel) return 0;
-  const t = TUNING.disloyalty.desertion;
-  let p = t.base + t.perTrustBelow * Math.max(0, t.trustRef - rel.trust);
-  p += rel.affinity < 0 ? t.affinityNegative * -rel.affinity : -t.affinityPositive * rel.affinity;
-  p += t.perStressAbove * Math.max(0, unit2.stress - t.stressRef);
-  for (const d of unit2.defects) p += reg.defects.get(d.id)?.desertionMod ?? 0;
-  return clamp20(p * dispositionById(state, reg, unitId).desertionMult, t.min, t.max);
-}
-function mayDesert(state, unitId) {
-  if (state.disloyalty?.open) return false;
-  const rec = loyaltyOf(state, unitId);
-  if (!rec) return false;
-  if (rec.nextCheckDay !== void 0 && state.day < rec.nextCheckDay) return false;
-  const newest = Math.max(-Infinity, ...rec.signs.filter((s) => s.about === "desertion").map((s) => s.day));
-  return state.day - newest >= TUNING.disloyalty.desertion.minSignAgeDays;
-}
-var nameOf5 = (state, id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
-function startDesertion(draft, unitId, at) {
-  const rec = loyaltyRecord(draft, unitId);
-  rec.attempts += 1;
-  if (rec.attempts >= TUNING.leash.terminate.attemptsForCause) rec.cause = { kind: "desertion", day: draft.day };
-  const open3 = { kind: "desertion", unitId, day: draft.day, at };
-  if (at === "night") {
-    const entry = {
-      id: nextId(draft, "n"),
-      unitId,
-      kind: "desertion",
-      priority: TUNING.disloyalty.night.desertion,
-      framing: `${nameOf5(draft, unitId)} is about to walk out. This is the moment to say something, or to stop her.`,
-      ignore: { event: "dismissed", severity: "moderate" },
-      expiresDay: draft.day + TUNING.disloyalty.night.expiresInDays
-    };
-    draft.calendar.nightEventsQueue = draft.calendar.nightEventsQueue.filter((n) => !(n.unitId === unitId && n.kind === "desertion"));
-    enqueueNight(draft, entry);
-    open3.nightEntryId = entry.id;
-  }
-  (draft.disloyalty ??= { units: {} }).open = open3;
-  return [{ type: "desertion_attempt", unitId, at }];
-}
-function missionStartCheck(draft, ctx2, unitIds) {
-  for (const id of unitIds) {
-    if (draft.relations[id]?.loyaltyBand !== "breaking" || !mayDesert(draft, id)) continue;
-    if (ctx2.rng.chance(desertionChance(draft, ctx2.registries, id))) return startDesertion(draft, id, "mission_start");
-  }
-  return null;
-}
-function talkDown(draft, ctx2, stat3) {
-  const open3 = requireOpen(draft, "desertion");
-  if (stat3 !== "authority" && stat3 !== "empathy") throw new Error("Talk her down with Authority or Empathy.");
-  if (open3.talkTried) throw new Error("She has already heard you out: choose another answer.");
-  const unit2 = draft.squad.find((u) => u.id === open3.unitId);
-  const rel = draft.relations[open3.unitId];
-  const t = TUNING.disloyalty.talkDown;
-  const difficulty = t.baseRank + (rel.trust < t.lowTrust ? 1 : 0) + (unit2.stress >= t.highStress ? 1 : 0);
-  const bonus = stat3 === "authority" ? intimidationBonus(draft) : 0;
-  const chance = clamp20(t.base + t.perRank * (socialRank(draft, stat3) - difficulty) + bonus, t.min, t.max);
-  const success = ctx2.rng.chance(chance);
-  const events = [];
-  if (success) {
-    const applied = applyRelationDelta(draft, open3.unitId, "trust", t.trustGain, "talk_down");
-    if (applied !== 0) events.push({ type: "relation_changed", unitId: open3.unitId, axis: "trust", delta: applied, applied });
-    events.push(...evaluateAutomatic(draft, ctx2.registries, open3.unitId));
-    loyaltyRecord(draft, open3.unitId).nextCheckDay = draft.day + t.pauseDays;
-    delete draft.disloyalty.open;
-    events.push({ type: "loyalty_talk_down", unitId: open3.unitId, stat: stat3, success, chance });
-    events.push(...closeNight(draft, ctx2, open3));
-  } else {
-    open3.talkTried = true;
-    events.push({ type: "loyalty_talk_down", unitId: open3.unitId, stat: stat3, success, chance });
-  }
-  return events;
-}
-function letGo(draft, ctx2) {
-  const open3 = requireOpen(draft, "desertion");
-  const reg = ctx2.registries;
-  const unitId = open3.unitId;
-  const stance = (draft.relations[unitId]?.affinity ?? 0) >= TUNING.disloyalty.comeback.allyAffinity ? "ally" : "hostile";
-  removeFromService(draft, unitId, "deserted");
-  const rec = loyaltyRecord(draft, unitId);
-  rec.desertedDay = draft.day;
-  rec.stance = stance;
-  delete rec.returned;
-  const events = [];
-  const witnesses = draft.squad.filter((u) => u.id !== unitId && u.kind === "named" && isLiving(u));
-  for (const w of witnesses) {
-    events.push(...applyEventToUnit(draft, reg, w.id, {
-      type: "decision_aligned",
-      actor: "commander",
-      targets: [w.id],
-      severity: "moderate",
-      evidence: `let ${nameOf5(draft, unitId)} go`,
-      valueAxes: [{ axis: "autonomy", direction: 1 }, { axis: "mercy", direction: 1 }],
-      confidence: 1
-    }));
-  }
-  for (const w of witnesses) events.push(...evaluateAutomatic(draft, reg, w.id));
-  events.push({ type: "unit_deserted", unitId, stance });
-  events.push(...closeNight(draft, ctx2, open3));
-  return events;
-}
-function takeBack(draft, ctx2) {
-  const open3 = requireOpen(draft, "return");
-  const unit2 = draft.squad.find((u) => u.id === open3.unitId);
-  if (draft.squad.filter(isLiving).length >= draft.roster.capacity) {
-    throw new Error(`The barracks are full (${draft.roster.capacity} beds). Upgrade them to take ${unit2.displayName} back.`);
-  }
-  const stance = loyaltyOf(draft, open3.unitId)?.stance ?? "ally";
-  unit2.status = "reserve";
-  draft.relations[open3.unitId].trust = TUNING.disloyalty.comeback.backTrust;
-  const events = evaluateAutomatic(draft, ctx2.registries, open3.unitId);
-  delete draft.disloyalty.units[open3.unitId];
-  delete draft.disloyalty.open;
-  events.push({ type: "deserter_answered", unitId: open3.unitId, stance, taken: true });
-  events.push(...closeNight(draft, ctx2, open3));
-  return events;
-}
-function turnAway(draft, ctx2) {
-  const open3 = requireOpen(draft, "return");
-  const rec = loyaltyRecord(draft, open3.unitId);
-  rec.returned = true;
-  delete draft.disloyalty.open;
-  const events = [{ type: "deserter_answered", unitId: open3.unitId, stance: rec.stance ?? "ally", taken: false }];
-  events.push(...closeNight(draft, ctx2, open3));
-  return events;
-}
-function expiredConfrontation(draft, open3) {
-  if (open3.at === "mission_start") return draft.day > open3.day;
-  const id = open3.nightEntryId;
-  if (id === void 0) return true;
-  return draft.calendar.nightEvent?.id !== id && !draft.calendar.nightEventsQueue.some((n) => n.id === id);
-}
-function comeBack(draft, ctx2, unitId) {
-  const rec = loyaltyRecord(draft, unitId);
-  const name = nameOf5(draft, unitId);
-  const stance = rec.stance ?? "hostile";
-  rec.returned = true;
-  const events = [{ type: "deserter_returned", unitId, stance }];
-  if (stance === "ally") {
-    const entry = {
-      id: nextId(draft, "n"),
-      unitId,
-      kind: "deserter_return",
-      priority: TUNING.disloyalty.night.return,
-      framing: `${name} is at the gate, asking to be let back in.`,
-      ignore: { event: "dismissed", severity: "minor" },
-      expiresDay: draft.day + TUNING.disloyalty.night.expiresInDays
-    };
-    enqueueNight(draft, entry);
-    (draft.disloyalty ??= { units: {} }).open = { kind: "return", unitId, day: draft.day, at: "night", nightEntryId: entry.id };
-  } else {
-    const rumor = postRumor(draft, ctx2, {
-      text: `${name} was seen with armed deserters near the old checkpoints, asking questions about the commander.`,
-      tags: ["loyalty", "deserter"],
-      leadsTo: "none"
-    });
-    if (rumor) events.push(rumorPostedEvent(rumor));
-    events.push(...applyWorldEffects(draft, ctx2, [
-      { type: "clock", clockId: "oversight", by: 1 },
-      { type: "fact", text: `${name} deserted and now runs with armed deserters hostile to the commander.`, tags: ["loyalty", "deserter"], importance: 4 }
-    ], { kind: "event", id: "deserter_return", label: `${name} turned hostile` }));
-  }
-  return events;
-}
-function returns(draft, ctx2) {
-  const events = [];
-  const t = TUNING.disloyalty.comeback;
-  for (const [unitId, rec] of Object.entries(draft.disloyalty?.units ?? {})) {
-    const unit2 = draft.squad.find((u) => u.id === unitId);
-    if (!unit2 || unit2.status !== "deserted" || rec.desertedDay === void 0 || rec.returned === true) continue;
-    if (draft.day - rec.desertedDay < t.afterDays) continue;
-    const stance = rec.stance ?? "hostile";
-    if (stance === "ally" && draft.disloyalty?.open) continue;
-    if (!ctx2.rng.chance(t.chancePerDay)) continue;
-    events.push(...comeBack(draft, ctx2, unitId));
-  }
-  return events;
-}
-function loyaltyDayStep(draft, ctx2) {
-  const reg = ctx2.registries;
-  const events = [];
-  for (const u of draft.squad.filter(isLiving)) events.push(...evaluateAutomatic(draft, reg, u.id));
-  const open3 = draft.disloyalty?.open;
-  if (open3 && expiredConfrontation(draft, open3)) {
-    if (open3.kind === "desertion") events.push(...letGo(draft, ctx2));
-    else if (open3.kind === "return") events.push(...turnAway(draft, ctx2));
-    else events.push(...resolveExpiredMutiny(draft, ctx2, open3));
-  }
-  for (const u of draft.squad.filter(isLiving)) {
-    const band2 = draft.relations[u.id]?.loyaltyBand;
-    const rec = loyaltyOf(draft, u.id);
-    if (band2 !== "breaking" && rec?.signs.some((s) => s.about === "desertion")) {
-      rec.signs = rec.signs.filter((s) => s.about !== "desertion");
-    }
-    if (band2 !== "wavering" && rec?.nextDoubtDay !== void 0) delete rec.nextDoubtDay;
-    if (band2 === "wavering" && u.kind === "named") {
-      const wait = loyaltyRecord(draft, u.id);
-      if (wait.nextDoubtDay === void 0) wait.nextDoubtDay = draft.day + TUNING.disloyalty.doubtEveryDays;
-      else if (draft.day >= wait.nextDoubtDay) {
-        events.push(...emitSign(draft, ctx2, u.id, "doubt"));
-        wait.nextDoubtDay = draft.day + TUNING.disloyalty.doubtEveryDays;
-      }
-    }
-    if (band2 !== "breaking") continue;
-    if (!rec?.signs.some((s) => s.about === "desertion")) {
-      events.push(...emitSign(draft, ctx2, u.id, "desertion"));
-      continue;
-    }
-    if (mayDesert(draft, u.id) && ctx2.rng.chance(desertionChance(draft, reg, u.id))) {
-      events.push(...startDesertion(draft, u.id, "night"));
-    }
-  }
-  events.push(...arcDayStep(draft, ctx2));
-  events.push(...mutinyDayStep(draft, ctx2));
-  events.push(...returns(draft, ctx2));
-  return events;
 }
 
 // src/engine/world/nodeMap.ts
@@ -19963,17 +20110,6 @@ registerAction("squad/decline_incoming", (draft, _payload, ctx2) => {
   return [{ type: "unit_joined", unitId: grunt.id, kind: "grunt" }];
 });
 
-// src/engine/special/commanderStress.ts
-var commanderStress = (state) => state.commander.stress ?? 0;
-var commanderStressBand = (state) => stressBand(commanderStress(state));
-function addCommanderStress(draft, amount, source) {
-  const before = commanderStress(draft);
-  const next = Math.min(100, Math.max(0, before + amount));
-  if (next === before) return [];
-  draft.commander.stress = next;
-  return [{ type: "commander_stress_changed", delta: next - before, source }];
-}
-
 // src/engine/special/frequency/discovery.ts
 var KNOWS_FREQUENCY = "knows_frequency";
 var namedLiving6 = (state, id) => {
@@ -20341,7 +20477,7 @@ registerAction("base/requisition", (draft, payload, ctx2) => {
   draft.resources.supplies += n;
   return [{ type: "requisitioned", supplies: n, credits }];
 });
-registerAction("roster/set_active", (draft, payload) => {
+registerAction("roster/set_active", (draft, payload, ctx2) => {
   const ids = isObj10(payload) ? payload.activeIds : void 0;
   if (!Array.isArray(ids) || !ids.every((x) => typeof x === "string")) throw new Error("roster/set_active needs { activeIds: string[] }");
   if (ids.length === 0 && draft.squad.some(isLiving)) throw new Error("The active roster needs at least one unit.");
@@ -20359,8 +20495,9 @@ registerAction("roster/set_active", (draft, payload) => {
       u.status = "reserve";
     }
   }
+  const dropped = draft.roster.activeIds.filter((id) => !chosen.has(id));
   draft.roster.activeIds = [...ids];
-  return [{ type: "roster_changed", activeIds: [...ids] }];
+  return [{ type: "roster_changed", activeIds: [...ids] }, ...dropped.flatMap((id) => actOnWarning(draft, ctx2, id, "removed"))];
 });
 registerAction("base/recruit_grunt", (draft, _payload, ctx2) => {
   const reason = checkRecruit(draft);
@@ -21681,7 +21818,7 @@ registerAction("leash/compel", (draft, payload, ctx2) => {
   if (!draft.scene?.participants.includes(unitId) || !refusal2) throw new Error("She has not refused an order in this scene: there is nothing to compel.");
   const { forced, events } = compel(draft, ctx2, { unitId, context: "scene" });
   if (forced && draft.scene.refusals) draft.scene.refusals = draft.scene.refusals.filter((r) => r.unitId !== unitId);
-  return [...events, { type: "scene_compelled", unitId, forced }];
+  return [...events, { type: "scene_compelled", unitId, forced }, ...forced ? actOnWarning(draft, ctx2, unitId, "leash") : []];
 });
 registerAction("leash/suppress", (draft, payload, ctx2) => {
   const unitId = unitIdOf(payload, "leash/suppress");
@@ -21690,6 +21827,7 @@ registerAction("leash/suppress", (draft, payload, ctx2) => {
     throw new Error("There is nothing to suppress: no desertion or attack is about to happen.");
   }
   const events = suppress(draft, ctx2, { unitId, context: open3.kind });
+  events.push(...actOnWarning(draft, ctx2, unitId, "leash"));
   if (open3.at === "night") events.push(...consumeSlots(draft, 1, ctx2));
   return events;
 });
@@ -21739,7 +21877,7 @@ registerAction("discipline/punish", (draft, payload, ctx2) => {
   if (!isObj21(payload) || typeof payload.unitId !== "string" || typeof payload.measure !== "string") throw new Error("discipline/punish needs { unitId, measure }");
   if (payload.days !== void 0 && typeof payload.days !== "number") throw new Error("discipline/punish: days must be a number");
   const inScene = draft.scene?.participants.includes(payload.unitId) === true;
-  return applyPunishment(draft, ctx2, {
+  const events = applyPunishment(draft, ctx2, {
     unitId: payload.unitId,
     measure: payload.measure,
     ...payload.days !== void 0 ? { days: payload.days } : {},
@@ -21747,6 +21885,8 @@ registerAction("discipline/punish", (draft, payload, ctx2) => {
     channel: inScene ? "scene" : "pda",
     ...inScene && draft.scene ? { sceneId: draft.scene.id } : {}
   });
+  const benches = (ctx2.registries.punishments.get(payload.measure)?.sideEffects ?? []).some((e) => e.type === "bench");
+  return [...events, ...actOnWarning(draft, ctx2, payload.unitId, benches ? "removed" : "punished")];
 });
 registerAction("discipline/undo", (draft, payload, ctx2) => {
   if (!isObj21(payload) || typeof payload.id !== "string") throw new Error("discipline/undo needs { id }");
@@ -22401,70 +22541,6 @@ registerAction("onboarding/guide_dm_sent", (draft) => {
   open2(draft).guideDmSent = true;
   return [];
 });
-
-// src/engine/special/paranoia/premonitions.ts
-var T = () => TUNING.special.paranoia;
-var paranoiaOf = (draft) => specialOf(draft).paranoia ??= newParanoia();
-function openPremonition(state, unitId) {
-  return (state.special?.paranoia?.premonitions ?? []).find((p) => p.unitId === unitId && p.acted === void 0 && p.expiresDay >= state.day);
-}
-var leadDays = (unitId, day) => fnv1a(`${unitId}|${day}`) % T().leadDays + 1;
-function ledgerSum(state, key) {
-  const since = state.day - (T().lookbackDays - 1);
-  return (state.ledger ?? []).filter((e) => e.key === key && e.day >= since).reduce((n, e) => n + e.delta, 0);
-}
-function realPrecursors(state, reg) {
-  const out = [];
-  for (const u of state.squad) {
-    if (u.kind !== "named" || !isLiving(u)) continue;
-    const rel = state.relations[u.id];
-    if (!rel) continue;
-    const rec = loyaltyOf(state, u.id);
-    const lead = leadDays(u.id, state.day);
-    if (rec?.nextDoubtDay !== void 0 && rec.nextDoubtDay - state.day >= 1 && rec.nextDoubtDay - state.day <= lead) out.push({ unitId: u.id, about: "doubt" });
-    const breakingLine = TUNING.relations.loyalty.breakingEnter + bandShift(dispositionById(state, reg, u.id)).enter;
-    if (rel.loyaltyBand === "wavering" && rel.trust - breakingLine <= T().desertionMargin && ledgerSum(state, `axis:${u.id}:trust`) < 0) out.push({ unitId: u.id, about: "desertion" });
-    if (mayMutiny(state, reg, u.id) && (mutinySigns(state, u.id).length === mutinyRules(state, reg, u.id).minSigns - 1 || mutinyTrigger(state, u.id) !== null)) {
-      out.push({ unitId: u.id, about: "mutiny" });
-    }
-    const impunity = impunityOf(state, reg, u.id)?.value;
-    if (impunity !== void 0 && commandStance(state, reg, u.id) !== "open_defiance" && stanceAt(rel.trust, impunity + T().defianceBump) === "open_defiance" && ledgerSum(state, `record:${u.id}`) > 0) {
-      out.push({ unitId: u.id, about: "defiance" });
-    }
-  }
-  return out;
-}
-function falseAlarmChance(state) {
-  const nightmare = state.special?.paranoia?.lastNightmareDay === state.day - 1;
-  return Math.max(0, T().falseBase - T().falsePerInsight * (socialRank(state, "insight") - 1)) + (nightmare ? T().falseAfterNightmare : 0);
-}
-function write(draft, unitId, about2, real) {
-  const p = paranoiaOf(draft);
-  p.seq += 1;
-  const x = { id: `pm${p.seq}`, unitId, about: about2, day: draft.day, expiresDay: draft.day + T().openDays, real };
-  p.premonitions.push(x);
-  return { type: "premonition", unitId, premonitionId: x.id, about: about2 };
-}
-function paranoiaDayStep(draft, ctx2) {
-  const reg = ctx2.registries;
-  if (!hasTraitEffect(draft, reg, "paranoia")) return [];
-  const p = paranoiaOf(draft);
-  p.premonitions = p.premonitions.filter((x) => x.day >= draft.day - T().keepDays);
-  if (p.preempt) p.preempt = p.preempt.filter((x) => x.untilDay >= draft.day);
-  const events = [];
-  for (const { unitId, about: about2 } of realPrecursors(draft, reg)) {
-    const open3 = openPremonition(draft, unitId);
-    if (open3?.real) continue;
-    if (open3) p.premonitions = p.premonitions.filter((x) => x !== open3);
-    events.push(write(draft, unitId, about2, true));
-  }
-  const chance = falseAlarmChance(draft);
-  for (const u of draft.squad) {
-    if (u.kind !== "named" || !isLiving(u) || openPremonition(draft, u.id)) continue;
-    if (ctx2.rng.chance(chance)) events.push(write(draft, u.id, ctx2.rng.pick(PREMONITION_ABOUT), false));
-  }
-  return events;
-}
 
 // src/engine/special/dayStep.ts
 function specialDayStep(draft, ctx2) {
@@ -26489,6 +26565,7 @@ var IntentExtractRawSchema = external_exports.object({
 var DM_EXCHANGE_MESSAGES = 2;
 var RULE_TYPES = ["rule_kept", "rule_broken", "compromise_reached"];
 var LEAK_TYPE = "knowledge_leak";
+var ACCUSED_TYPE = "accused";
 function system3(raw) {
   const input = raw;
   const excluded = input.excluded ?? [];
@@ -26496,7 +26573,8 @@ function system3(raw) {
   const hasLimits = Object.values(input.limits ?? {}).some((l) => l.length > 0);
   const hasRules = (input.rules ?? []).length > 0;
   const hasLeaks = (input.intercepted ?? []).length > 0;
-  const eventTypes = EVENT_TYPES.filter((t) => (hasRules || !RULE_TYPES.includes(t)) && (hasLeaks || t !== LEAK_TYPE));
+  const hasWarned = (input.warned ?? []).length > 0;
+  const eventTypes = EVENT_TYPES.filter((t) => (hasRules || !RULE_TYPES.includes(t)) && (hasLeaks || t !== LEAK_TYPE) && (hasWarned || t !== ACCUSED_TYPE));
   const extras = [
     ...excluded.length > 0 ? ['  "contentViolations": [{ "category": "<id from EXCLUDED>", "evidence": "<at most 15 words quoted from the exchange>" }]'] : [],
     ...asksTone ? ['  "sceneTone": "romantic" | "intimate" | null'] : []
@@ -26546,6 +26624,7 @@ function system3(raw) {
     ...hasLeaks ? [
       '"knowledge_leak": the commander says or does something that only an INTERCEPTED item could have told; the unit it is about is the target and "itemId" is its id. Report it only when the exchange shows the commander acting on that item; an item no one acted on is not a leak.'
     ] : [],
+    ...hasWarned ? ['"accused": the commander openly accuses a unit listed in WARNED of planning disloyalty, desertion, mutiny or defiance; the unit is the target. Report it only when the exchange shows the accusation.'] : [],
     ...hasLimits ? ["If the commander pushes a unit past her limits, report `rejected_advance` (advances) or `decision_violated` (orders)."] : []
   ].join("\n");
 }
@@ -26568,6 +26647,7 @@ function prompt3(raw) {
   ];
   if ((input.rules ?? []).length > 0) out.push("", "RULES (id (status) \u2014 unit: what it says):", ...input.rules.map((r) => `- ${r.id} (${r.status}) \u2014 ${r.unitId}: ${r.text}`));
   if ((input.intercepted ?? []).length > 0) out.push("", "INTERCEPTED (id \u2014 unit: what it says):", ...input.intercepted.map((i) => `- ${i.id} \u2014 ${i.unitId}: ${i.gist.replace(/[\r\n]+/g, " ")}`));
+  if ((input.warned ?? []).length > 0) out.push("", `WARNED (units the commander has been warned about): ${input.warned.join(", ")}`);
   if (input.openPromises.length > 0) {
     out.push("", "Open promises:", ...input.openPromises.map((p) => `- ${p.by} \u2192 ${p.to}: ${p.text}`));
   }
@@ -26589,7 +26669,7 @@ function sanitizeIntentOutput(raw, ctx2) {
   const src = parsed.success ? parsed.data : { events: [], facts: [], proposals: [], promises: [], emotions: [], stressHints: [], contentViolations: [], sceneTone: void 0 };
   const events = src.events.filter((e) => isObj31(e) && typeof e.confidence === "number" && e.confidence >= ctx2.minConfidence);
   const proposals2 = src.proposals.filter((p) => ctx2.romance || !(isObj31(p) && ROMANTIC_PROPOSALS.includes(p.kind)));
-  const intents = validateIntents({ ...src, events, proposals: proposals2 }, { participants: ctx2.participants, squad: ctx2.squad, maxEvents: TUNING.relations.maxEventsRead, ...ctx2.measures ? { measures: ctx2.measures } : {}, ...ctx2.rules ? { rules: ctx2.rules } : {}, ...ctx2.intercepted ? { intercepted: ctx2.intercepted } : {} });
+  const intents = validateIntents({ ...src, events, proposals: proposals2 }, { participants: ctx2.participants, squad: ctx2.squad, maxEvents: TUNING.relations.maxEventsRead, ...ctx2.measures ? { measures: ctx2.measures } : {}, ...ctx2.rules ? { rules: ctx2.rules } : {}, ...ctx2.intercepted ? { intercepted: ctx2.intercepted } : {}, ...ctx2.warned ? { warned: ctx2.warned } : {} });
   const emotions = [];
   for (const e of src.emotions) {
     if (isObj31(e) && typeof e.unitId === "string" && ctx2.participants.includes(e.unitId) && typeof e.label === "string" && LABELS.includes(e.label)) {
@@ -26618,7 +26698,8 @@ async function extractIntents(input, deps, opts = {}) {
     measures: input.measures,
     excluded: (input.excluded ?? []).map((e) => e.id),
     rules: (input.rules ?? []).map((r2) => ({ id: r2.id, unitId: r2.unitId })),
-    intercepted: (input.intercepted ?? []).map((i) => i.id)
+    intercepted: (input.intercepted ?? []).map((i) => i.id),
+    warned: input.warned ?? []
   });
 }
 
@@ -26670,8 +26751,10 @@ function createComms(deps) {
       ...limitLabels.length > 0 ? { limits: { [unitId]: limitLabels } } : {},
       // P9d
       ...ruleList.length > 0 ? { rules: ruleList } : {},
-      ...leakInput(s, deps.registries(), [unitId])
+      ...leakInput(s, deps.registries(), [unitId]),
       // P12: what the frequency caught about her (nothing without the trait)
+      ...warnedInput(s, [unitId])
+      // P12: the units the commander has an open warning about
     }, { st, settings: deps.settings() }, { minConfidence: confidenceFloor(deps.registries(), deps.settings().intentMinConfidence) });
     if (!result || chatId() !== expect) return;
     const intents = { ...result.intents, proposals: result.intents.proposals.filter((p) => p.from !== "commander") };
@@ -27482,8 +27565,10 @@ function createSceneController(deps) {
       romance: intimacyOf(s0).romance,
       measures: measureList(deps.registries(), s0),
       ...contentInput(s0, scene.participants),
-      ...leakInput(s0, deps.registries(), scene.participants)
+      ...leakInput(s0, deps.registries(), scene.participants),
       // P12: what the frequency caught about those present (nothing without the trait)
+      ...warnedInput(s0, scene.participants)
+      // P12: the units the commander has an open warning about
     };
     for (const m of messages) {
       if (m.isUser) continue;

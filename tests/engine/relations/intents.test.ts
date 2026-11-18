@@ -18,8 +18,8 @@ const run = (raw: unknown): Intents => validateIntents(raw, ctx());
 const events = (e: unknown[]) => run({ events: e }).events;
 
 describe('vocabulary', () => {
-  it('has 34 event types and 10 proposal kinds', () => {
-    expect(EVENT_TYPES).toHaveLength(34); // P9d: + rule_kept, rule_broken, compromise_reached; P12: + knowledge_leak
+  it('has 35 event types and 10 proposal kinds', () => {
+    expect(EVENT_TYPES).toHaveLength(35); // P9d: + rule_kept, rule_broken, compromise_reached; P12: + knowledge_leak, accused
     expect(PROPOSAL_KINDS).toHaveLength(10);
   });
 });

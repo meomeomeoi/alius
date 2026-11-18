@@ -689,7 +689,7 @@ The day step's decay runs in every campaign: it is registered unconditionally an
   - `preemptBonus(state, unitId): number`: 0 or 0.15, read by `talkDown`; state-only, no registry.
   - Event `premonition_acted { unitId, act }`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 - `acting on a false alarm applies the extreme event` (acceptance 3): a false open premonition; `accused` → `false_accusation` landed (Trust and Affinity drop as `insulted` extreme), commander stress +5; `punished` → `coerced` extreme on top of the punishment.
 - `acting on a real one preempts`:
   - `doubt` → `talkDown` chance +0.15 (compare `loyalty_talk_down.chance`) and `nextCheckDay ≥ day + 3`;
@@ -700,8 +700,8 @@ The day step's decay runs in every campaign: it is registered unconditionally an
 - `premonition_acted carries no truth`.
 - `a terminated unit leaves no paranoia record` (extends the Review Focus 3 test).
 
-- [ ] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → PASS; `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P12): acting on a warning is scored by its truth`
+- [x] **Step 2: Run** → FAIL. **Step 3: Implement.** **Step 4: Run** → PASS; `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P12): acting on a warning is scored by its truth`
 
 ---
 

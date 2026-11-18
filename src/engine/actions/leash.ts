@@ -1,4 +1,5 @@
 import { consumeSlots, registerDayEndStep } from '../calendar';
+import { actOnWarning } from '../special/paranoia/accusations';
 import { registerAction } from '../dispatch';
 import { compel, suppress, terminate } from '../leash/use';
 import { ensureLeash, refreshLeash } from '../leash/weekly';
@@ -26,7 +27,7 @@ registerAction('leash/compel', (draft, payload, ctx) => {
   if (!draft.scene?.participants.includes(unitId) || !refusal) throw new Error('She has not refused an order in this scene: there is nothing to compel.');
   const { forced, events } = compel(draft, ctx, { unitId, context: 'scene' });
   if (forced && draft.scene.refusals) draft.scene.refusals = draft.scene.refusals.filter((r) => r.unitId !== unitId);
-  return [...events, { type: 'scene_compelled', unitId, forced }];
+  return [...events, { type: 'scene_compelled', unitId, forced }, ...(forced ? actOnWarning(draft, ctx, unitId, 'leash') : [])]; // P12
 });
 
 registerAction('leash/suppress', (draft, payload, ctx) => {
@@ -36,6 +37,7 @@ registerAction('leash/suppress', (draft, payload, ctx) => {
     throw new Error('There is nothing to suppress: no desertion or attack is about to happen.');
   }
   const events = suppress(draft, ctx, { unitId, context: open.kind });
+  events.push(...actOnWarning(draft, ctx, unitId, 'leash')); // P12
   if (open.at === 'night') events.push(...consumeSlots(draft, 1, ctx));
   return events;
 });

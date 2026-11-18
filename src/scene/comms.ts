@@ -1,4 +1,5 @@
 import { clockText } from '../engine/calendar';
+import { warnedInput } from '../engine/special/paranoia/premonitions';
 import { disabledCategories, ownLimitLabels, rulesOf } from '../engine/bonds';
 import { threadOf } from '../engine/dms';
 import { measureList } from '../engine/discipline';
@@ -88,6 +89,7 @@ export function createComms(deps: CommsDeps): Comms {
       ...(excluded.length > 0 ? { excluded } : {}), ...(limitLabels.length > 0 ? { limits: { [unitId]: limitLabels } } : {}), // P9d
       ...(ruleList.length > 0 ? { rules: ruleList } : {}),
       ...leakInput(s, deps.registries(), [unitId]), // P12: what the frequency caught about her (nothing without the trait)
+      ...warnedInput(s, [unitId]), // P12: the units the commander has an open warning about
     }, { st, settings: deps.settings() }, { minConfidence: confidenceFloor(deps.registries(), deps.settings().intentMinConfidence) }); // P8: the engine judges per unit
     if (!result || chatId() !== expect) return;
     const intents = { ...result.intents, proposals: result.intents.proposals.filter((p) => p.from !== 'commander') };

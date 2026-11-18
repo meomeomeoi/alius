@@ -1,4 +1,5 @@
 import type { Registries } from '../content/types';
+import { warnedInput } from '../engine/special/paranoia/premonitions';
 import type { EngineEvent } from '../engine/dispatch';
 import { disabledCategories, ownLimitLabels, rulesOf } from '../engine/bonds';
 import { measureList } from '../engine/discipline';
@@ -243,6 +244,7 @@ export function createSceneController(deps: SceneDeps): SceneController {
       romance: intimacyOf(s0).romance, measures: measureList(deps.registries(), s0),
       ...contentInput(s0, scene.participants),
       ...leakInput(s0, deps.registries(), scene.participants), // P12: what the frequency caught about those present (nothing without the trait)
+      ...warnedInput(s0, scene.participants), // P12: the units the commander has an open warning about
     };
     for (const m of messages) {
       if (m.isUser) continue;

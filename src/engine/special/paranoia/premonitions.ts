@@ -102,3 +102,14 @@ export function paranoiaDayStep(draft: CampaignState, ctx: EngineCtx): EngineEve
   }
   return events;
 }
+
+/** The present units the commander has an open warning about (true or false alike: the model is never told which). */
+export function warnedUnits(state: CampaignState, unitIds: string[]): string[] {
+  return unitIds.filter((id) => openPremonition(state, id) !== undefined);
+}
+
+/** What a reading adds to its input: `{ warned }` when a present unit has an open warning, nothing at all otherwise (the input stays as it was). */
+export function warnedInput(state: CampaignState, unitIds: string[]): { warned?: string[] } {
+  const warned = warnedUnits(state, unitIds);
+  return warned.length > 0 ? { warned } : {};
+}

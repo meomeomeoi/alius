@@ -1,4 +1,5 @@
 import type { CampaignState } from '../state/types';
+import { TUNING } from '../tuning';
 
 /**
  * The leaf of the special-trait module (P12): reading and writing `CampaignState.special` with nothing but types imported,
@@ -100,6 +101,11 @@ export function specialOf(draft: CampaignState): SpecialState {
  * suspected, foreseen, owed or scheduled for her later. Each system adds its own part as it is built.
  */
 export function forgetSpecial(draft: CampaignState, unitId: string): void {
+  const par = draft.special?.paranoia;
+  if (par) {
+    par.premonitions = par.premonitions.filter((x) => x.unitId !== unitId);
+    if (par.preempt) par.preempt = par.preempt.filter((x) => x.unitId !== unitId);
+  }
   const f = draft.special?.frequency;
   if (f) {
     f.intercepts = f.intercepts.filter((x) => x.unitId !== unitId);
@@ -112,7 +118,18 @@ export function forgetSpecial(draft: CampaignState, unitId: string): void {
 
 /** Does the unit hold anything in the special state (so the day step knows a dead unit still has something to drop)? */
 export function holdsSpecial(state: Pick<CampaignState, 'special'>, unitId: string): boolean {
+  const par = state.special?.paranoia;
+  if (par && (par.premonitions.some((x) => x.unitId === unitId) || par.preempt?.some((x) => x.unitId === unitId) === true)) return true;
   const f = state.special?.frequency;
   return f !== undefined && (f.intercepts.some((x) => x.unitId === unitId) || f.suspicion[unitId] !== undefined || f.dmDay[unitId] !== undefined
     || f.staticFired?.includes(unitId) === true || f.discovered?.includes(unitId) === true);
+}
+
+/**
+ * The talk-down chance added while a real doubt or desertion warning was acted on (0 or 0.15). Reads the state alone: the loyalty
+ * code has no registry to hand.
+ */
+export function preemptBonus(state: Pick<CampaignState, 'special' | 'day'>, unitId: string): number {
+  const hit = state.special?.paranoia?.preempt?.some((x) => x.unitId === unitId && x.untilDay >= state.day && (x.about === 'doubt' || x.about === 'desertion'));
+  return hit ? TUNING.special.paranoia.preemptBonus : 0;
 }

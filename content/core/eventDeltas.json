@@ -1139,5 +1139,57 @@
         "stress": 20
       }
     }
+  },
+  {
+    "id": "accused",
+    "cause": "You accused her of planning disloyalty",
+    "journal": "the commander accused her of planning disloyalty",
+    "rows": {
+      "minor": {
+        "trust": -2,
+        "affinity": -2
+      },
+      "moderate": {
+        "trust": -3,
+        "affinity": -4,
+        "stress": 2
+      },
+      "major": {
+        "trust": -5,
+        "affinity": -6,
+        "stress": 4
+      },
+      "extreme": {
+        "trust": -7,
+        "affinity": -8,
+        "stress": 6
+      }
+    }
+  },
+  {
+    "id": "false_accusation",
+    "cause": "You accused her of something she was not planning",
+    "journal": "the commander accused her of something she was not planning",
+    "rows": {
+      "minor": {
+        "affinity": -3,
+        "stress": 2
+      },
+      "moderate": {
+        "trust": -2,
+        "affinity": -6,
+        "stress": 4
+      },
+      "major": {
+        "trust": -4,
+        "affinity": -10,
+        "stress": 8
+      },
+      "extreme": {
+        "trust": -8,
+        "affinity": -18,
+        "stress": 14
+      }
+    }
   }
 ]

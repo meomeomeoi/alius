@@ -117,6 +117,8 @@ export function validateIntents(
     rules?: Array<{ id: string; unitId: string }>;
     /** P12: the ids of the intercepted items the model was shown. Without them a `knowledge_leak` is dropped. */
     intercepted?: string[];
+    /** P12: the present units the commander has an open warning about. Without any an `accused` is dropped. */
+    warned?: string[];
   },
 ): Intents {
   const out = emptyIntents();
@@ -143,6 +145,12 @@ export function validateIntents(
       if (actor !== 'commander' || !rule) continue;
       intent.ruleId = rule.id;
       if (type === 'compromise_reached') intent.text = typeof e.text === 'string' ? e.text.replace(/\s+/g, ' ').trim().slice(0, TUNING.bonds.rules.textMax).trim() : '';
+    }
+    if (type === 'accused') {
+      // the commander accuses a unit she was warned about; an accusation of anyone else is not offered and is dropped
+      const aimed = intent.targets.filter((t) => (ctx.warned ?? []).includes(t));
+      if (actor !== 'commander' || aimed.length === 0) continue;
+      intent.targets = aimed;
     }
     if (type === 'knowledge_leak') {
       // a leak names an item it was given; the commander is always the actor

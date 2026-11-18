@@ -1,4 +1,5 @@
 import { GENERATED_NAME, GRUNT_BIO_MAX, generateGrunt, gruntRelation } from '../grunts';
+import { actOnWarning } from '../special/paranoia/accusations';
 import { activeRosterUnits, checkRecruit, checkUpgrade, facilityLevel, facilityLevels, isLiving, requisitionCost } from '../economy';
 import { registerAction } from '../dispatch';
 import { TUNING } from '../tuning';
@@ -36,7 +37,7 @@ registerAction('base/requisition', (draft, payload, ctx) => {
   return [{ type: 'requisitioned', supplies: n, credits }];
 });
 
-registerAction('roster/set_active', (draft, payload) => {
+registerAction('roster/set_active', (draft, payload, ctx) => {
   const ids = isObj(payload) ? payload.activeIds : undefined;
   if (!Array.isArray(ids) || !ids.every((x) => typeof x === 'string')) throw new Error('roster/set_active needs { activeIds: string[] }');
   if (ids.length === 0 && draft.squad.some(isLiving)) throw new Error('The active roster needs at least one unit.');
@@ -54,8 +55,10 @@ registerAction('roster/set_active', (draft, payload) => {
       u.status = 'reserve';
     }
   }
+  const dropped = draft.roster.activeIds.filter((id) => !chosen.has(id));
   draft.roster.activeIds = [...ids];
-  return [{ type: 'roster_changed', activeIds: [...ids] }];
+  // P12: taking a soldier off the roster is acting on a warning about her (nothing happens without an open one)
+  return [{ type: 'roster_changed', activeIds: [...ids] }, ...dropped.flatMap((id) => actOnWarning(draft, ctx, id, 'removed'))];
 });
 
 registerAction('base/recruit_grunt', (draft, _payload, ctx) => {

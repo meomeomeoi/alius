@@ -1,6 +1,6 @@
 import type { Severity } from '../state/types';
 
-/** The 34 event types the mechanic model may report (26 of P3 spec §3, the four of P9, the three of P9d, P12's knowledge_leak). Content (`eventDeltas`) must have a row for each. */
+/** The 35 event types the mechanic model may report (26 of P3 spec §3, the four of P9, the three of P9d, P12's knowledge_leak and accused). Content (`eventDeltas`) must have a row for each. */
 export const EVENT_TYPES = [
   'praised', 'insulted', 'comforted', 'dismissed', 'listened', 'shared_secret', 'learned_about', 'gift', 'flirted',
   'rejected_advance', 'accepted_advance', 'physical_affection', 'sided_with', 'sided_against', 'decision_aligned',
@@ -12,6 +12,8 @@ export const EVENT_TYPES = [
   'rule_kept', 'rule_broken', 'compromise_reached',
   // P12: the commander used something only the frequency could have told (offered to the model only while an intercepted item is listed)
   'knowledge_leak',
+  // P12: the commander openly accuses a unit of planning disloyalty (offered only while a present unit has an open premonition)
+  'accused',
 ] as const;
 
 /** P9: events only the engine makes (a demand granted or refused; P9d: the commander followed her lead; P9b: the leader's moves). Never offered to the model; `validateIntents` rejects them. */
@@ -24,6 +26,8 @@ export const ENGINE_EVENT_TYPES = ['granted_demand', 'refused_demand', 'followed
   'overrode_her', 'decor_removed', 'rival_favoured', 'bond_shown', 'token_removed', 'secret_confronted',
   // P12: she found out the commander hears thoughts (the engine's own: the discovery or a rumor of it)
   'frequency_exposed',
+  // P12: she was accused (or punished, or leashed) on a false alarm
+  'false_accusation',
 ] as const;
 
 /** The event types a world effect (`unit_event`) may apply: what the model reports, plus `shielded` (the engine's own, from a scapegoat dilemma). */
