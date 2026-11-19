@@ -60,7 +60,7 @@ describe('P6 schemas', () => {
   });
 
   it('an unknown context is rejected', () => {
-    expect(DILEMMA_CONTEXTS).toEqual(['expedition_event', 'base', 'mission_outcome', 'defect_arc', 'director', 'scapegoat', 'debts_oversight', 'debts_unit']);
+    expect(DILEMMA_CONTEXTS).toEqual(['expedition_event', 'base', 'mission_outcome', 'defect_arc', 'director', 'scapegoat', 'debts_oversight', 'debts_unit', 'warden_report']);
     expect(DilemmaTemplateSchema.safeParse({ ...tpl, contexts: ['base', 'tavern'] }).success).toBe(false);
     for (const c of DILEMMA_CONTEXTS) expect(DilemmaTemplateSchema.safeParse({ ...tpl, contexts: [c] }).success, c).toBe(true);
   });

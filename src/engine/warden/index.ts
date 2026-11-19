@@ -1,7 +1,7 @@
 export {
   DEATH_RULES, EXPECTATION_KINDS, REMOVAL_ROUTES, defaultDeathRule, forgetWarden, isLeashswap, leashswapOf, newIntrigue, newLeashswap, wardenOf, wardenUnitId,
   type CommanderRestriction, type DeathRule, type EndedState, type Expectation, type ExpectationKind, type IntrigueState, type LeashswapState, type OpenOverride,
-  type PunishRecord, type RemovalState, type WardenOrder, type WardenState,
+  type PunishRecord, type RemovalState, type WardenGoneHow, type WardenOrder, type WardenState,
 } from './state';
 export { corporateWardenPick, seedWarden } from './select';
 export { revealPending } from './reveal';
@@ -11,6 +11,7 @@ export { describeOrder, expectationInput, orderOfAction, overrideInput } from '.
 export { applyCommanderPunishment, commanderRestriction, pickPunishment, punishRoll } from './punish';
 export { wardenDayStep } from './dayStep';
 export { addDefiance, checkEscalation } from './escalation';
+export { INVESTIGATION_CLOCK, openQueuedReport, openReportCase, reportChance, reportProblem, startRemoval, wardenGone, wardenReportChoice } from './removal';
 export { addSuspicion, allies, allyChance, conspireInput, dig, digProblem, hackProblem, hackStep, intrigueBusy, intrigueDiscovered, kompromatOf, setRemovalStarter, tryAlly } from './intrigue';
 export { cosignChance, leashCommander, logCosignDenied, refreshWardenLeash, rollCosign } from './leash';
 export { conflictOf, herAlternative, type Alternative, type Conflict, type Judged } from './conflict';

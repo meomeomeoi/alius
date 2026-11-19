@@ -1347,5 +1347,32 @@
         "stress": 8
       }
     }
+  },
+  {
+    "id": "warden_removed_by",
+    "cause": "The warden was removed",
+    "journal": "the warden was taken away",
+    "rows": {
+      "minor": {
+        "trust": 2,
+        "affinity": 1
+      },
+      "moderate": {
+        "trust": 4,
+        "affinity": 3,
+        "stress": 2
+      },
+      "major": {
+        "trust": 6,
+        "affinity": 4,
+        "stress": 3
+      },
+      "extreme": {
+        "trust": 8,
+        "affinity": 6,
+        "stress": 4
+      }
+    },
+    "valueAligned": true
   }
 ]

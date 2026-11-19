@@ -1,6 +1,6 @@
 import type { Registries } from '../../content/types';
 import { forgetSpecial } from '../special/state';
-import { forgetWarden } from '../warden/state';
+import { forgetWarden, notifyWardenGone, wardenUnitId } from '../warden/state';
 import { clearSmother } from '../bonds/smother';
 import { consumeSlots } from '../calendar';
 import type { EngineCtx, EngineEvent } from '../dispatch';
@@ -213,13 +213,15 @@ export function suppress(draft: CampaignState, ctx: EngineCtx, p: { unitId: stri
 /**
  * Takes a unit out of the campaign for good (deserted or terminated) and cleans everything that pointed at her.
  * Refused while a scene, a fight or an expedition with her is open. Her items stay in the stash.
+ * P13: when she is the warden her removal starts and its events are returned (pass `ctx`); every other unit returns nothing.
  */
-export function removeFromService(draft: CampaignState, unitId: string, status: 'deserted' | 'terminated' | 'reassigned'): void {
+export function removeFromService(draft: CampaignState, unitId: string, status: 'deserted' | 'terminated' | 'reassigned', ctx?: EngineCtx): EngineEvent[] {
   const unit = unitOf(draft, unitId);
   if (!unit) throw new Error(`Unknown unit "${unitId}".`);
   if (draft.scene?.participants.includes(unitId)) throw new Error(`${unit.displayName} is in the open scene: end it first.`);
   if (draft.combat?.combatants.some((c) => c.unitId === unitId)) throw new Error(`${unit.displayName} is in the open combat: finish it first.`);
   if (draft.expedition?.party.includes(unitId)) throw new Error(`${unit.displayName} is on the expedition: finish it first.`);
+  const wasWarden = wardenUnitId(draft) === unitId; // P13
   unit.status = status;
   unit.equipment = {};
   delete unit.breakdown;
@@ -238,6 +240,9 @@ export function removeFromService(draft: CampaignState, unitId: string, status: 
   forgetNotes(draft, unitId); // P10b: the notes she left
   forgetSpecial(draft, unitId); // P12: what the frequency caught about her and the suspicion she held
   forgetWarden(draft, unitId); // P13: an open override that names her and her ally mark
+  if (!wasWarden) return [];
+  if (!ctx) throw new Error('The warden leaves the service: removeFromService needs the engine context to open the investigation.');
+  return notifyWardenGone(draft, ctx, status); // P13: her removal (the investigation) starts, once
 }
 
 /** P9d: what a unit who leaves the service no longer carries (her rules, the smother hold, Want and publicity). */
@@ -280,7 +285,7 @@ export function terminate(draft: CampaignState, ctx: EngineCtx, unitId: string):
   }
   const events: EngineEvent[] = [];
   const herNight = draft.slot === 'night' && draft.calendar.nightEvent?.unitId === unitId;
-  removeFromService(draft, unitId, 'terminated');
+  events.push(...removeFromService(draft, unitId, 'terminated', ctx)); // P13: her removal, if she was the warden
   events.push(...bookUse(draft, ctx, unitId, 'terminate', 'desertion', 'done'));
   if (herNight) events.push(...consumeSlots(draft, 1, ctx)); // her night is over: the day rolls on instead of waiting for her
   const reactors = draft.squad.filter((u) => u.id !== unitId && u.kind === 'named' && isLiving(u));

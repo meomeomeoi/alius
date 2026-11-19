@@ -81,6 +81,7 @@ export function rollOverride(
   if (order.kind === 'dilemma') {
     const scale = draft.dilemmas?.open?.scale;
     if (scale !== 'major' && scale !== 'defining') return null;
+    if (draft.dilemmas?.open?.context === 'warden_report') return null; // the report on her is the commander's own move: she does not countermand it
   }
   if (order.kind === 'combat_order' && !draft.combat?.combatants.some((c) => c.unitId === source.unitId && !c.downed && c.hp > 0)) return null;
   // the Leash on the commander: at a major decision the choice is hers, whatever she expects; the compulsion is spent either way

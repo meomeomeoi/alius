@@ -2,7 +2,7 @@ import type { EngineCtx, EngineEvent } from '../dispatch';
 import type { CampaignState } from '../state/types';
 import { applyWorldEffects } from './effects';
 import { clockById } from './state';
-import type { WorldEffect } from './types';
+import type { Clock, WorldEffect } from './types';
 
 /**
  * Moves a clock by `by` (clamped to 0…segments). Reaching `segments` fills it once: `clock_filled`, the content
@@ -31,4 +31,9 @@ export function advanceClock(
   const onFill = (def?.onFill as WorldEffect[] | undefined) ?? [];
   events.push(...applyWorldEffects(draft, ctx, onFill, { kind: 'clock', id: clockId, depth: depth + 1, label: clock.label }));
   return events;
+}
+
+/** Puts a clock the engine makes up (one with no `clocks` entry) into the world, replacing one of the same id. */
+export function addClock(draft: CampaignState, clock: Clock): void {
+  draft.world.clocks = [...draft.world.clocks.filter((c) => c.id !== clock.id), { ...clock }];
 }

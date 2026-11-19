@@ -1,3 +1,4 @@
+import type { EngineCtx, EngineEvent } from '../dispatch';
 import type { CampaignState } from '../state/types';
 
 /**
@@ -100,6 +101,8 @@ export interface IntrigueState {
   lastAllyDay: Record<string, number>;
   hack: { step: number };
   discovered: number;
+  /** The report to oversight waits for another decision to close; it opens at a later day end. */
+  reportQueued?: true;
 }
 
 export const REMOVAL_ROUTES = ['hack', 'report', 'death'] as const;
@@ -140,6 +143,17 @@ export const wardenUnitId = (state: Pick<CampaignState, 'leashswap'>): string | 
 
 /** The default death rule for a combat difficulty: `story` and `normal` rewind the day, `hard` ends the campaign. */
 export const defaultDeathRule = (difficulty: string): DeathRule => (difficulty === 'hard' ? 'campaign_end' : 'rewind_day');
+
+/** How the warden left the service. A report to oversight (`reassigned`) is handled by the report itself. */
+export type WardenGoneHow = 'dead' | 'deserted' | 'terminated' | 'reassigned';
+type GoneHook = (draft: CampaignState, ctx: EngineCtx, how: WardenGoneHow) => EngineEvent[];
+let goneHook: GoneHook = () => [];
+/** `removal.ts` registers `wardenGone` here (through `actions/warden`), so the leaf stays free of engine imports. */
+export function setWardenGoneHook(fn: GoneHook): void {
+  goneHook = fn;
+}
+/** The warden is out of service: starts the removal (once). */
+export const notifyWardenGone = (draft: CampaignState, ctx: EngineCtx, how: WardenGoneHow): EngineEvent[] => goneHook(draft, ctx, how);
 
 /**
  * A unit leaves the service: an open override that names her goes, and so does her ally mark. The removal itself (the

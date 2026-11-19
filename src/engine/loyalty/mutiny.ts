@@ -182,7 +182,7 @@ function escape(draft: CampaignState, ctx: EngineCtx, open: Confrontation, how: 
   for (const id of groupOf(open)) {
     const u = draft.squad.find((x) => x.id === id);
     if (!u || !isLiving(u)) continue;
-    removeFromService(draft, id, 'deserted');
+    events.push(...removeFromService(draft, id, 'deserted', ctx)); // P13: her removal, if she was the warden
     const rec = loyaltyRecord(draft, id);
     rec.desertedDay = draft.day;
     rec.stance = 'hostile';

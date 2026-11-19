@@ -1,5 +1,6 @@
 import { registerDayEndStep } from '../calendar';
 import { debtsChoice } from '../special/debts/discovery';
+import { wardenReportChoice } from '../warden/removal';
 import { registerAction } from '../dispatch';
 import { readRoutePick } from '../commander/checks';
 import { chooseDilemma, fallbackDilemma, openDilemma, pacingStep, presentDilemma } from '../dilemma/flow';
@@ -34,5 +35,5 @@ registerAction('dilemma/choose', (draft, payload, ctx) => {
   const open = draft.dilemmas?.open;
   const optionId = typeof p.index === 'number' ? open?.options?.[p.index]?.id : undefined;
   const events = chooseDilemma(draft, ctx, p.id, p.index, readRoutePick(p.route), p.wardenChecked === true, p);
-  return open ? [...events, ...debtsChoice(draft, ctx, open.context, optionId, open.subjectId)] : events;
+  return open ? [...events, ...debtsChoice(draft, ctx, open.context, optionId, open.subjectId), ...wardenReportChoice(draft, ctx, open.context, optionId)] : events; // P13: the report's answer
 });

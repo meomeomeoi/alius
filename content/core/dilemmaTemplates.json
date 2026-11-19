@@ -2001,5 +2001,38 @@
         }
       ]
     }
+  },
+  {
+    "id": "warden_report_case",
+    "scale": "defining",
+    "contexts": [
+      "warden_report"
+    ],
+    "fixed": {
+      "title": "A report on {name}",
+      "setup": "AUTHOR TO WRITE: The commander holds enough against {name} to put it in front of oversight. If oversight believes it, she is reassigned and the controller is in other hands. If it does not, she will know who tried.",
+      "options": [
+        {
+          "id": "submit",
+          "label": "SUBMIT THE REPORT TO OVERSIGHT",
+          "effects": [
+            {
+              "type": "party_stress",
+              "amount": 3
+            }
+          ]
+        },
+        {
+          "id": "withdraw",
+          "label": "KEEP IT AND WAIT",
+          "effects": [
+            {
+              "type": "party_stress",
+              "amount": 1
+            }
+          ]
+        }
+      ]
+    }
   }
 ]

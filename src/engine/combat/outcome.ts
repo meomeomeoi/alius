@@ -1,4 +1,6 @@
 import { noteFeat } from '../power/outside';
+import { wardenGone } from '../warden/removal';
+import { wardenUnitId } from '../warden/state';
 import { addCommanderStress } from '../special/commanderStress';
 import { recordTally } from '../personal/tally';
 import { recordMerit } from '../power/standing';
@@ -184,6 +186,10 @@ export function finalizeCombat(draft: CampaignState, reg: Registries, rng: Rng, 
   };
   draft.lastCombat = result;
   delete draft.combat;
+
+  // P13: the warden is dead (a named unit is never downed for good today, so this stands for a content change): the death route opens, once
+  const wid = wardenUnitId(draft);
+  if (wid !== null && draft.squad.find((u) => u.id === wid)?.status === 'dead') events.push(...wardenGone(draft, { registries: reg, rng }, 'dead'));
 
   if (!cs.expedition) events.push(...releaseBreakdowns(draft, undefined, reg));
   // P9b: a won fight that exposed the commander, with a cover chosen and the commander still standing, is a feat outsiders see

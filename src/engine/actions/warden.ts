@@ -2,7 +2,9 @@ import { registerDayEndStep } from '../calendar';
 import { registerAction } from '../dispatch';
 import { wardenDayStep } from '../warden/dayStep';
 import { setAgenda } from '../warden/agenda';
-import { dig, hackStep } from '../warden/intrigue';
+import { dig, hackStep, setRemovalStarter } from '../warden/intrigue';
+import { openReportCase, startRemoval, wardenGone } from '../warden/removal';
+import { setWardenGoneHook } from '../warden/state';
 import { leashCommander } from '../warden/leash';
 import { answerOverride, argueStarted } from '../warden/override';
 import { setLeashEffect } from '../warden/punish';
@@ -84,6 +86,13 @@ registerAction('intrigue/act', (draft, payload, ctx) => {
   }
   throw new Error('intrigue/act: the action is dig or hack_step.');
 });
+
+/** The commander files the report on her to oversight (no slot): the fixed `warden_report` dilemma, queued while another decision waits. */
+registerAction('intrigue/report', (draft, _payload, ctx) => openReportCase(draft, ctx));
+
+// the third clean hack step and the warden leaving the service both start a removal (`intrigue.ts` and the leaf cannot import it)
+setRemovalStarter(startRemoval);
+setWardenGoneHook(wardenGone);
 
 // the warden's day step runs inside `director_tick`, after the hooks registered before it
 registerDayEndStep('director_tick', wardenDayStep);

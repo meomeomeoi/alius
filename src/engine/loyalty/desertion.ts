@@ -114,12 +114,11 @@ export function letGo(draft: CampaignState, ctx: EngineCtx): EngineEvent[] {
   const reg = ctx.registries;
   const unitId = open.unitId;
   const stance = (draft.relations[unitId]?.affinity ?? 0) >= TUNING.disloyalty.comeback.allyAffinity ? 'ally' : 'hostile';
-  removeFromService(draft, unitId, 'deserted');
+  const events: EngineEvent[] = removeFromService(draft, unitId, 'deserted', ctx); // P13: her removal, if she was the warden
   const rec = loyaltyRecord(draft, unitId);
   rec.desertedDay = draft.day;
   rec.stance = stance;
   delete rec.returned;
-  const events: EngineEvent[] = [];
   const witnesses = draft.squad.filter((u) => u.id !== unitId && u.kind === 'named' && isLiving(u));
   for (const w of witnesses) {
     events.push(...applyEventToUnit(draft, reg, w.id, {

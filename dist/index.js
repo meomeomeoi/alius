@@ -5985,6 +5985,7 @@ var ENGINE_EVENT_TYPES = [
   "warden_complied",
   "warden_defied",
   "warden_betrayed",
+  "warden_removed_by",
   "granted_demand",
   "refused_demand",
   "followed_lead",
@@ -6067,6 +6068,11 @@ function wardenOf(state) {
 }
 var wardenUnitId = (state) => wardenOf(state)?.unitId ?? null;
 var defaultDeathRule = (difficulty) => difficulty === "hard" ? "campaign_end" : "rewind_day";
+var goneHook = () => [];
+function setWardenGoneHook(fn) {
+  goneHook = fn;
+}
+var notifyWardenGone = (draft, ctx2, how) => goneHook(draft, ctx2, how);
 function forgetWarden(draft, unitId) {
   const ls = draft.leashswap;
   if (!ls) return;
@@ -6094,7 +6100,7 @@ function wardenArgueStart(state, action) {
 }
 
 // src/engine/dilemma/types.ts
-var DILEMMA_CONTEXTS = ["expedition_event", "base", "mission_outcome", "defect_arc", "director", "scapegoat", "debts_oversight", "debts_unit"];
+var DILEMMA_CONTEXTS = ["expedition_event", "base", "mission_outcome", "defect_arc", "director", "scapegoat", "debts_oversight", "debts_unit", "warden_report"];
 
 // src/content/types.ts
 var REGISTRY_NAMES = [
@@ -11332,6 +11338,9 @@ function advanceClock(draft, ctx2, clockId, by, reason, depth = 0) {
   events.push(...applyWorldEffects(draft, ctx2, onFill, { kind: "clock", id: clockId, depth: depth + 1, label: clock.label }));
   return events;
 }
+function addClock(draft, clock) {
+  draft.world.clocks = [...draft.world.clocks.filter((c) => c.id !== clock.id), { ...clock }];
+}
 
 // src/engine/world/effects.ts
 var MAX_EFFECT_DEPTH = 3;
@@ -14329,6 +14338,11 @@ function digProblem(state, _reg, allyId) {
   if (allyId === void 0 && socialRank(state, "cunning") < TUNING.warden.kompromat.digCunning) return `Digging needs an ally or Cunning ${TUNING.warden.kompromat.digCunning}.`;
   return null;
 }
+function kompromatOf(state) {
+  const id = wardenOf(state)?.unitId;
+  if (id === void 0) return [];
+  return state.memory.facts.filter((f) => f.about.includes(id) && f.tags.includes("kompromat") && (f.hiddenFromCommander !== true || f.knownBy.includes("*")));
+}
 function dig(draft, ctx2, allyId) {
   const problem = digProblem(draft, ctx2.registries, allyId);
   if (problem) throw new Error(problem);
@@ -14383,6 +14397,9 @@ function painBurstId(reg) {
   return [...reg.commanderPunishments.values()].find((e) => (e.effects ?? []).some((x) => x.type === "injury"))?.id;
 }
 var removalStarter = () => [];
+function setRemovalStarter(fn) {
+  removalStarter = fn;
+}
 function hackStep(draft, ctx2, allyId) {
   const problem = hackProblem(draft, ctx2.registries, allyId);
   if (problem) throw new Error(problem);
@@ -14948,12 +14965,13 @@ function suppress(draft, ctx2, p) {
   events.push(...bookUse(draft, ctx2, p.unitId, "suppress", p.context, "done"));
   return events;
 }
-function removeFromService(draft, unitId, status) {
+function removeFromService(draft, unitId, status, ctx2) {
   const unit2 = unitOf4(draft, unitId);
   if (!unit2) throw new Error(`Unknown unit "${unitId}".`);
   if (draft.scene?.participants.includes(unitId)) throw new Error(`${unit2.displayName} is in the open scene: end it first.`);
   if (draft.combat?.combatants.some((c) => c.unitId === unitId)) throw new Error(`${unit2.displayName} is in the open combat: finish it first.`);
   if (draft.expedition?.party.includes(unitId)) throw new Error(`${unit2.displayName} is on the expedition: finish it first.`);
+  const wasWarden = wardenUnitId(draft) === unitId;
   unit2.status = status;
   unit2.equipment = {};
   delete unit2.breakdown;
@@ -14972,6 +14990,9 @@ function removeFromService(draft, unitId, status) {
   forgetNotes(draft, unitId);
   forgetSpecial(draft, unitId);
   forgetWarden(draft, unitId);
+  if (!wasWarden) return [];
+  if (!ctx2) throw new Error("The warden leaves the service: removeFromService needs the engine context to open the investigation.");
+  return notifyWardenGone(draft, ctx2, status);
 }
 function forgetBonds(draft, unitId) {
   if (draft.bonds) {
@@ -15004,7 +15025,7 @@ function terminate(draft, ctx2, unitId) {
   }
   const events = [];
   const herNight = draft.slot === "night" && draft.calendar.nightEvent?.unitId === unitId;
-  removeFromService(draft, unitId, "terminated");
+  events.push(...removeFromService(draft, unitId, "terminated", ctx2));
   events.push(...bookUse(draft, ctx2, unitId, "terminate", "desertion", "done"));
   if (herNight) events.push(...consumeSlots(draft, 1, ctx2));
   const reactors = draft.squad.filter((u) => u.id !== unitId && u.kind === "named" && isLiving(u));
@@ -15546,12 +15567,11 @@ function letGo(draft, ctx2) {
   const reg = ctx2.registries;
   const unitId = open3.unitId;
   const stance = (draft.relations[unitId]?.affinity ?? 0) >= TUNING.disloyalty.comeback.allyAffinity ? "ally" : "hostile";
-  removeFromService(draft, unitId, "deserted");
+  const events = removeFromService(draft, unitId, "deserted", ctx2);
   const rec = loyaltyRecord(draft, unitId);
   rec.desertedDay = draft.day;
   rec.stance = stance;
   delete rec.returned;
-  const events = [];
   const witnesses = draft.squad.filter((u) => u.id !== unitId && u.kind === "named" && isLiving(u));
   for (const w of witnesses) {
     events.push(...applyEventToUnit(draft, reg, w.id, {
@@ -15807,7 +15827,7 @@ function escape(draft, ctx2, open3, how, commanderHurt) {
   for (const id of groupOf(open3)) {
     const u = draft.squad.find((x) => x.id === id);
     if (!u || !isLiving(u)) continue;
-    removeFromService(draft, id, "deserted");
+    events.push(...removeFromService(draft, id, "deserted", ctx2));
     const rec = loyaltyRecord(draft, id);
     rec.desertedDay = draft.day;
     rec.stance = "hostile";
@@ -16733,6 +16753,7 @@ function rollOverride(draft, ctx2, order, opts = {}) {
   if (order.kind === "dilemma") {
     const scale = draft.dilemmas?.open?.scale;
     if (scale !== "major" && scale !== "defining") return null;
+    if (draft.dilemmas?.open?.context === "warden_report") return null;
   }
   if (order.kind === "combat_order" && !draft.combat?.combatants.some((c) => c.unitId === source.unitId && !c.downed && c.hp > 0)) return null;
   if (w.compelled && order.kind === "dilemma") {
@@ -22965,6 +22986,118 @@ function refreshWardenLeash(draft, _reg) {
   return [{ type: "warden_leash_refreshed", left: w.leashLeft }];
 }
 
+// src/engine/warden/removal.ts
+var INVESTIGATION_CLOCK = "investigation";
+var clamp34 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var fill4 = (text2, vars) => Object.entries(vars).reduce((t, [k, v]) => t.replaceAll(`{${k}}`, v), text2);
+function reactionAxes(draft, wardenId, route) {
+  const her = draft.squad.find((u) => u.id === wardenId);
+  const axes = [{ axis: "autonomy", direction: 1 }, { axis: "corporate", direction: route === "report" ? 1 : -1 }];
+  if ((her?.values.ingroup ?? 0) >= 1) axes.push({ axis: "mercy", direction: -1 }, { axis: "ingroup", direction: -1 });
+  return axes;
+}
+function startRemoval(draft, ctx2, route) {
+  const ls = leashswapOf(draft);
+  const w = ls?.warden;
+  if (!ls || !w || ls.status !== "held" || ls.removal) return [];
+  const reg = ctx2.registries;
+  const former = w.unitId;
+  delete ls.warden;
+  ls.status = "investigation";
+  ls.removal = { route, day: draft.day, clockId: INVESTIGATION_CLOCK };
+  ls.remote = { sinceDay: draft.day };
+  ls.intrigue.hack.step = 0;
+  delete ls.intrigue.reportQueued;
+  if (draft.dilemmas?.open?.context === "warden_report") delete draft.dilemmas.open;
+  const segments2 = TUNING.warden.removal.clock[route];
+  addClock(draft, { id: INVESTIGATION_CLOCK, label: "INVESTIGATION", segments: segments2, filled: 0, visibleToPlayer: true });
+  if (route === "report" && !draft.world.flags.includes("warden_reassigned")) draft.world.flags.push("warden_reassigned");
+  const events = [
+    { type: "warden_removed", unitId: former, route },
+    { type: "investigation_opened", route, segments: segments2 },
+    { type: "remote_control_started" }
+  ];
+  const axes = reactionAxes(draft, former, route);
+  const reactors = draft.squad.filter((u) => u.id !== former && u.kind === "named" && isLiving(u));
+  for (const u of reactors) {
+    events.push(...applyEventToUnit(draft, reg, u.id, { type: "warden_removed_by", actor: "commander", targets: [u.id], severity: "moderate", evidence: "the warden was removed", valueAxes: axes, confidence: 1 }));
+  }
+  for (const u of reactors) events.push(...evaluateAutomatic(draft, reg, u.id));
+  return events;
+}
+function wardenGone(draft, ctx2, how) {
+  if (how === "reassigned") return [];
+  return startRemoval(draft, ctx2, "death");
+}
+function reportChance(state, _reg) {
+  const R2 = TUNING.warden.verdict.report;
+  return clamp34(R2.base + R2.perKompromat * (kompromatOf(state).length - TUNING.warden.kompromat.needed) + R2.perCunning * (socialRank(state, "cunning") - 1), R2.min, R2.max);
+}
+var REPORT_CONTEXT = "warden_report";
+function presentReport(draft, ctx2) {
+  const template = [...ctx2.registries.dilemmaTemplates.values()].find((t) => t.contexts.includes(REPORT_CONTEXT) && t.fixed !== void 0);
+  const fixed = template?.fixed;
+  const w = wardenOf(draft);
+  if (!template || !fixed || !w) return [];
+  const vars = { name: draft.squad.find((u) => u.id === w.unitId)?.displayName ?? "She" };
+  const d = draft.dilemmas ??= { seq: 0 };
+  d.seq += 1;
+  d.open = {
+    id: `dl${d.seq}`,
+    templateId: String(template.id),
+    scale: template.scale,
+    context: REPORT_CONTEXT,
+    day: draft.day,
+    status: "presented",
+    attempts: 0,
+    units: [w.unitId],
+    beatId: currentBeat(draft, ctx2.registries)?.id ?? "open",
+    source: "fallback",
+    title: fill4(fixed.title, vars),
+    setup: fill4(fixed.setup, vars),
+    options: fixed.options.map((o) => ({ ...structuredClone(o), label: fill4(o.label, vars), magnitudes: [] })),
+    subjectId: w.unitId
+  };
+  return [{ type: "dilemma_presented", id: d.open.id, templateId: String(template.id), title: d.open.title, source: "fallback" }];
+}
+function reportProblem(state, _reg) {
+  const busy = intrigueBusy(state);
+  if (busy) return busy;
+  const need = TUNING.warden.kompromat.needed;
+  const have = kompromatOf(state).length;
+  if (have < need) return `Oversight needs ${need} pieces of kompromat (the commander has ${have}).`;
+  if (state.leashswap?.intrigue.reportQueued === true || state.dilemmas?.open?.context === REPORT_CONTEXT) return "The report is already filed.";
+  return null;
+}
+function openReportCase(draft, ctx2) {
+  const problem = reportProblem(draft, ctx2.registries);
+  if (problem) throw new Error(problem);
+  if (draft.dilemmas?.open) {
+    draft.leashswap.intrigue.reportQueued = true;
+    return [{ type: "report_queued" }];
+  }
+  return presentReport(draft, ctx2);
+}
+function openQueuedReport(draft, ctx2) {
+  const ls = leashswapOf(draft);
+  if (!ls || ls.intrigue.reportQueued !== true) return [];
+  if (!wardenOf(draft)) {
+    delete ls.intrigue.reportQueued;
+    return [];
+  }
+  if (draft.dilemmas?.open) return [];
+  delete ls.intrigue.reportQueued;
+  return presentReport(draft, ctx2);
+}
+function wardenReportChoice(draft, ctx2, context, optionId) {
+  if (context !== REPORT_CONTEXT || optionId !== "submit") return [];
+  const w = wardenOf(draft);
+  if (!w) return [];
+  if (!ctx2.rng.chance(reportChance(draft, ctx2.registries))) return intrigueDiscovered(draft, ctx2, "report_refused");
+  const events = removeFromService(draft, w.unitId, "reassigned", ctx2);
+  return [...events, ...startRemoval(draft, ctx2, "report")];
+}
+
 // src/engine/personal/tally.ts
 function recordTally(draft, cs) {
   const exp = draft.expedition;
@@ -23130,6 +23263,8 @@ function finalizeCombat(draft, reg, rng, outcome) {
   };
   draft.lastCombat = result;
   delete draft.combat;
+  const wid = wardenUnitId(draft);
+  if (wid !== null && draft.squad.find((u) => u.id === wid)?.status === "dead") events.push(...wardenGone(draft, { registries: reg, rng }, "dead"));
   if (!cs.expedition) events.push(...releaseBreakdowns(draft, void 0, reg));
   if (outcome === "won" && cs.encounter.exposesCommander === true && cs.commander && !cs.commander.downed && (cs.encounter.mutineers?.length ?? 0) === 0) {
     events.push({ type: "commander_held" }, ...noteFeat(draft, reg, "crisis_cover"));
@@ -24012,7 +24147,7 @@ registerAction("dilemma/choose", (draft, payload, ctx2) => {
   const open3 = draft.dilemmas?.open;
   const optionId = typeof p.index === "number" ? open3?.options?.[p.index]?.id : void 0;
   const events = chooseDilemma(draft, ctx2, p.id, p.index, readRoutePick(p.route), p.wardenChecked === true, p);
-  return open3 ? [...events, ...debtsChoice(draft, ctx2, open3.context, optionId, open3.subjectId)] : events;
+  return open3 ? [...events, ...debtsChoice(draft, ctx2, open3.context, optionId, open3.subjectId), ...wardenReportChoice(draft, ctx2, open3.context, optionId)] : events;
 });
 
 // src/engine/actions/arc.ts
@@ -24316,10 +24451,11 @@ function wardenDayStep(draft, _ctx) {
   if (ls) ls.intrigue.suspicion = Math.max(0, ls.intrigue.suspicion - TUNING.warden.intrigue.decayPerDay);
   const w = wardenOf(draft);
   if (!w) return [];
+  const events = openQueuedReport(draft, _ctx);
   w.defiance = Math.max(0, w.defiance - TUNING.warden.defiance.decayPerDay);
   const gone = w.restrictions.filter((r) => r.untilDay <= draft.day);
   if (gone.length > 0) w.restrictions = w.restrictions.filter((r) => r.untilDay > draft.day);
-  return gone.map((r) => ({ type: "commander_restriction_ended", what: r.what }));
+  return [...events, ...gone.map((r) => ({ type: "commander_restriction_ended", what: r.what }))];
 }
 
 // src/engine/actions/warden.ts
@@ -24369,6 +24505,9 @@ registerAction("intrigue/act", (draft, payload, ctx2) => {
   }
   throw new Error("intrigue/act: the action is dig or hack_step.");
 });
+registerAction("intrigue/report", (draft, _payload, ctx2) => openReportCase(draft, ctx2));
+setRemovalStarter(startRemoval);
+setWardenGoneHook(wardenGone);
 registerDayEndStep("director_tick", wardenDayStep);
 setLeashEffect((draft, ctx2, kind) => leashCommander(draft, ctx2, kind));
 
@@ -25155,13 +25294,13 @@ function createDilemmas(deps) {
 
 // src/discipline/directives.ts
 var LEAVING = "She is close to leaving the unit: if pressed she says she is thinking of going.";
-var fill4 = (text2, vars) => Object.entries(vars).reduce((t, [k, v]) => t.replaceAll(`{${k}}`, v), String(text2 ?? ""));
+var fill5 = (text2, vars) => Object.entries(vars).reduce((t, [k, v]) => t.replaceAll(`{${k}}`, v), String(text2 ?? ""));
 function stanceDirective(unitId, name, entry, band2) {
-  const text2 = fill4(entry.directive, { name });
+  const text2 = fill5(entry.directive, { name });
   return { id: `loyalty:${unitId}`, expiresAfter: "scene", text: band2 === "breaking" ? `${text2} ${LEAVING}` : text2 };
 }
 function stanceRefusalDirective(unitId, name, entry, reason) {
-  return { id: `refusal:${unitId}`, expiresAfter: "scene", text: fill4(entry.refusal, { name, reason }) };
+  return { id: `refusal:${unitId}`, expiresAfter: "scene", text: fill5(entry.refusal, { name, reason }) };
 }
 function threatDirective(unitId, name, label2, believed) {
   return {
@@ -33025,7 +33164,7 @@ function renderMemoryBlock(host, ctx2) {
 var SVG_NS2 = "http://www.w3.org/2000/svg";
 var POINTS = 48;
 var unit = (seed, i) => fnv1a(`${seed}${i}`) % 1e3 / 1e3;
-var clamp34 = (v) => Math.round(Math.min(1, Math.max(0, v)) * 1e3) / 1e3;
+var clamp35 = (v) => Math.round(Math.min(1, Math.max(0, v)) * 1e3) / 1e3;
 function tracePoints(pattern, seed, n = POINTS, flicker = false) {
   const out = [];
   const blip = fnv1a(seed) % n;
@@ -33049,7 +33188,7 @@ function tracePoints(pattern, seed, n = POINTS, flicker = false) {
         v = flicker && i === blip ? 0.9 : 0.5;
         break;
     }
-    out.push(clamp34(v));
+    out.push(clamp35(v));
   }
   return out;
 }
@@ -37037,11 +37176,11 @@ function renderDoor(host, ctx2) {
   const phase = entry.door ? "exchanged" : "fresh";
   let clock = clocks.get(entry.id);
   if (!clock || clock.phase !== phase) clocks.set(entry.id, clock = { remaining: ctx2.seconds, phase });
-  const fill5 = h("span", { class: "alius-door-fill" });
+  const fill6 = h("span", { class: "alius-door-fill" });
   const live = h("span", { class: "alius-door-count", "aria-live": "polite" });
-  const timer = ctx2.seconds > 0 ? h("div", { class: `alius-door-timer${ctx2.motion ? " is-animated" : ""}` }, h("div", { class: "alius-door-bar", "aria-hidden": "true" }, fill5), live) : null;
+  const timer = ctx2.seconds > 0 ? h("div", { class: `alius-door-timer${ctx2.motion ? " is-animated" : ""}` }, h("div", { class: "alius-door-bar", "aria-hidden": "true" }, fill6), live) : null;
   const paint = () => {
-    fill5.style.width = `${Math.max(0, Math.min(100, clock.remaining / ctx2.seconds * 100))}%`;
+    fill6.style.width = `${Math.max(0, Math.min(100, clock.remaining / ctx2.seconds * 100))}%`;
   };
   if (timer) paint();
   let used = false;

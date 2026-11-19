@@ -918,7 +918,7 @@ Rulings marked **(user)** were answered by the user on 2026-11-18. Task 18 copie
   - `reportChance(state, reg): number`
 - Consumes: `advanceClock` / a new `addClock` from `engine/world` (P5), `applyEventToUnit` (P3), `intrigueDiscovered` (Task 13)
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - `hack → removal with a 10-segment clock and remote control`;
   - `report needs 3 kompromat; submit success reassigns her; a miss is a discovery`;
   - `the report case is queued while another dilemma is open`;
@@ -926,10 +926,10 @@ Rulings marked **(user)** were answered by the user on 2026-11-18. Task 18 copie
   - `the warden dies with an open override and a report pending` (Review Focus 4: the override and the case are dropped, the removal starts once);
   - `squad reactions follow values` (an autonomy+ unit gains, a corporate+ unit loses);
   - `no mode: removeFromService is unchanged`.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement** per the Rulings.
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P13): three removal routes and squad reactions`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement** per the Rulings.
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P13): three removal routes and squad reactions`
 
 ---
 
