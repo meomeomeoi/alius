@@ -28,7 +28,7 @@ function rig(withMode = true, chat = 6) {
   const toast = vi.fn();
   const ctl = createWarden({
     ...h.deps, toast: (k, t) => { toast(k, t); h.deps.toast(k, t); }, context: { setDirective: vi.fn(), clearMatching: vi.fn() } as never,
-    refreshContext: vi.fn(), restore: (a, b) => h.restore(a, b),
+    refreshContext: vi.fn(), startScene: async () => false, restore: (a, b) => h.restore(a, b),
   });
   return { h, ctl, toast };
 }
@@ -141,7 +141,7 @@ describe('the epilogue', () => {
 
   it('campaign_ended asks the model for the epilogue and stores it once', async () => {
     const h = worldHarness(reg, closed());
-    const ctl = createWarden({ ...h.deps, context: { setDirective: vi.fn(), clearMatching: vi.fn() } as never, refreshContext: vi.fn(), restore: (a, b) => h.restore(a, b) });
+    const ctl = createWarden({ ...h.deps, context: { setDirective: vi.fn(), clearMatching: vi.fn() } as never, refreshContext: vi.fn(), startScene: async () => false, restore: (a, b) => h.restore(a, b) });
     h.st.mainReplies = ['The commander was gone by morning. The squad held the gate.'];
     ctl.onEvents([{ type: 'campaign_ended', cause: 'terminated' }]);
     await flush();
@@ -153,7 +153,7 @@ describe('the epilogue', () => {
 
   it('falls back to the public lines under a fixed heading when the call fails', async () => {
     const h = worldHarness(reg, closed());
-    const ctl = createWarden({ ...h.deps, context: { setDirective: vi.fn(), clearMatching: vi.fn() } as never, refreshContext: vi.fn(), restore: (a, b) => h.restore(a, b) });
+    const ctl = createWarden({ ...h.deps, context: { setDirective: vi.fn(), clearMatching: vi.fn() } as never, refreshContext: vi.fn(), startScene: async () => false, restore: (a, b) => h.restore(a, b) });
     h.st.mainReplies = [];
     ctl.onLoaded();
     await flush();
@@ -164,14 +164,14 @@ describe('the epilogue', () => {
 
   it('is not asked twice, and not for another chat', async () => {
     const h = worldHarness(reg, closed());
-    const ctl = createWarden({ ...h.deps, context: { setDirective: vi.fn(), clearMatching: vi.fn() } as never, refreshContext: vi.fn(), restore: (a, b) => h.restore(a, b) });
+    const ctl = createWarden({ ...h.deps, context: { setDirective: vi.fn(), clearMatching: vi.fn() } as never, refreshContext: vi.fn(), startScene: async () => false, restore: (a, b) => h.restore(a, b) });
     h.st.mainReplies = ['One.', 'Two.'];
     ctl.onLoaded();
     ctl.onLoaded();
     await flush();
     expect(h.st.calls).toHaveLength(1);
     const h2 = worldHarness(reg, closed());
-    const ctl2 = createWarden({ ...h2.deps, context: { setDirective: vi.fn(), clearMatching: vi.fn() } as never, refreshContext: vi.fn(), restore: (a, b) => h2.restore(a, b) });
+    const ctl2 = createWarden({ ...h2.deps, context: { setDirective: vi.fn(), clearMatching: vi.fn() } as never, refreshContext: vi.fn(), startScene: async () => false, restore: (a, b) => h2.restore(a, b) });
     h2.st.mainReplies = ['Late.'];
     ctl2.onLoaded();
     h2.switchChat('other');

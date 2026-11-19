@@ -429,6 +429,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
   const warden = createWarden({
     ...worldDeps, context, refreshContext: applyContext,
     // P13: a rewind puts the day-start state back, then everything that hangs on the state (the scene, the combat, the modals) is picked up afresh
+    startScene: (o) => beginScene(o), // P13: the ARGUE scene with the warden
     restore: (snap, expected) => {
       if (!api.restoreSnapshot(snap, expected)) return false;
       afterLoad();

@@ -53,6 +53,8 @@ export interface OpenOverride {
   ref?: string;
   /** The scene id of an ARGUE in progress. */
   arguing?: string;
+  /** The wording of a compromise reached in the ARGUE scene; the commander's order runs when the scene ends. */
+  compromise?: string;
   /** An ARGUE scene ended without a compromise: only COMPLY and DEFY remain. */
   argued?: true;
 }
@@ -149,4 +151,32 @@ export function forgetWarden(draft: CampaignState, unitId: string): void {
   delete ls.intrigue.lastAllyDay[unitId];
   const w = ls.warden;
   if (w && w.unitId === unitId) delete w.override;
+}
+
+/**
+ * The override that waits for an answer, or null (none, or a stale one: another day or slot, a closed combat, an answered dilemma).
+ * Lives in the leaf so `dispatch` can read it.
+ */
+export function overrideOpen(state: Pick<CampaignState, 'leashswap' | 'day' | 'slot' | 'combat' | 'dilemmas'>): OpenOverride | null {
+  const o = state.leashswap?.warden?.override;
+  if (!o) return null;
+  if (o.context === 'combat') return state.combat !== undefined && state.combat.id === o.ref ? o : null;
+  if (o.context === 'dilemma') {
+    const d = state.dilemmas?.open;
+    return d !== undefined && d.status === 'presented' && d.id === o.ref ? o : null;
+  }
+  return o.day === state.day && o.slot === state.slot ? o : null;
+}
+
+/**
+ * Is this action the start of the ARGUE scene with her alone, over a decision that waits (a dilemma override)? `dispatch` lets exactly
+ * that scene through the "a decision is waiting" guard; no other scene, and no activity, is let through.
+ */
+export function wardenArgueStart(state: Pick<CampaignState, 'leashswap' | 'day' | 'slot' | 'combat' | 'dilemmas'>, action: { type: string; payload?: unknown }): boolean {
+  if (action.type !== 'scene/start') return false;
+  const o = overrideOpen(state);
+  const warden = state.leashswap?.warden?.unitId;
+  if (!o || o.context !== 'dilemma' || warden === undefined) return false;
+  const ids = (action.payload as { participants?: unknown } | null | undefined)?.participants;
+  return Array.isArray(ids) && ids.length === 1 && ids[0] === warden;
 }

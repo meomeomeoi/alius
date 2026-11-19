@@ -5,6 +5,7 @@ import { bookingGuard } from './personal/bookings';
 import { votingOn } from './power/options';
 import { carryVote, voteFor } from './power/votes';
 import { Rng } from './rng';
+import { wardenArgueStart } from './warden/state';
 import type { CampaignState, VoteKind } from './state/types';
 
 export type Action = { type: string; payload?: unknown };
@@ -85,7 +86,7 @@ export function dispatch(
       events: [{ type: 'error', code: 'expedition_open', message: 'An expedition is under way: finish or abandon it first.' }],
     };
   }
-  if (state.dilemmas?.open?.status === 'presented' && BLOCKED_BY_DILEMMA.some((p) => action.type.startsWith(p))) {
+  if (state.dilemmas?.open?.status === 'presented' && BLOCKED_BY_DILEMMA.some((p) => action.type.startsWith(p)) && !wardenArgueStart(state, action)) {
     return { state, events: [{ type: 'error', code: 'dilemma_open', message: 'A decision is waiting: answer it first.' }] };
   }
   // P9c: a slot she booked and can keep is hers: go to her or cancel the booking

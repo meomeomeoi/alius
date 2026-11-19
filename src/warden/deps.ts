@@ -9,6 +9,8 @@ export interface WardenDeps extends WorldDeps {
   refreshContext(): void;
   /** Replaces the state with a day-start snapshot when `expected` is still the current one (the app's `restoreSnapshot`, then a reload of what hangs on the state). */
   restore(snap: CampaignState, expected: CampaignState): boolean;
+  /** Opens a scene and its screen (the app's `beginScene`); resolves whether it opened. */
+  startScene(o: { locationId: string; participants: string[]; origin: 'event'; consumesSlot: false }): Promise<boolean>;
 }
 
 export type { WorldDeps };

@@ -683,17 +683,17 @@ Rulings marked **(user)** were answered by the user on 2026-11-18. Task 18 copie
   - `WardenController.argue(): Promise<void>`
 - Consumes: `answerOverride` (Task 6), `scene/start` (P3)
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - `compromise runs the order without defiance`: defiance and satisfaction unchanged, the slot spent once, a fact with audience present.
   - `a scene ended without compromise leaves COMPLY and DEFY only`: `answerOverride(…, 'argue')` refused after `argued`.
   - `a compromise_reached with an unknown overrideId is dropped`.
   - `OVERRIDE is listed only while one is open and the warden is present`.
   - `a rule compromise still works` (P9d unchanged).
   - `while compelled, ARGUE and DEFY are refused`.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement** per the Rulings.
-- [ ] **Step 4: Run** the files, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P13): ARGUE scenes and compromise_reached for overrides`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement** per the Rulings.
+- [x] **Step 4: Run** the files, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P13): ARGUE scenes and compromise_reached for overrides`
 
 ---
 

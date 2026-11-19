@@ -1,12 +1,14 @@
 import type { EngineEvent } from '../engine/dispatch';
 import type { CampaignState } from '../engine/state/types';
-import { EXPECTATION_KINDS, normalizeAgenda, wardenOf } from '../engine/warden';
+import { EXPECTATION_KINDS, argueAvailable, normalizeAgenda, wardenOf } from '../engine/warden';
 import { worldDossier } from '../engine/memory/inputs';
 import { generateEpilogue, fallbackEpilogue } from '../llm/calls/epilogue';
 import { generateAgenda, type WardenAgendaInput } from '../llm/calls/wardenAgenda';
 import { isLeashswap } from '../engine/warden';
 import { readDayStart, writeDayStart } from '../st/persistence';
-import { REVEAL_DIRECTIVE, wardenDirectives } from './directives';
+import { whereabouts } from '../engine/hub';
+import { sceneLocation } from '../onboarding/controller';
+import { WARDEN_DERIVED, wardenDirectives } from './directives';
 import type { WardenDeps } from './deps';
 
 export type { WardenDeps } from './deps';
@@ -19,6 +21,8 @@ export interface WardenController {
    * chat, asks for the agenda once if she still has the fallback and writes a closed campaign's epilogue if it has none.
    */
   onLoaded(): void;
+  /** [ARGUE] outside combat: opens the private scene with her alone; resolves whether it opened. The override then waits for a compromise or the scene's end. */
+  argue(): Promise<boolean>;
 }
 
 const CARD_MAX = 600;
@@ -38,7 +42,7 @@ export function createWarden(deps: WardenDeps): WardenController {
 
   function refreshDirectives(): void {
     const s = state();
-    deps.context.clearMatching((d) => d.id === REVEAL_DIRECTIVE);
+    deps.context.clearMatching((d) => WARDEN_DERIVED.includes(d.id));
     if (s) for (const d of wardenDirectives(s, deps.registries())) deps.context.setDirective(d);
     deps.refreshContext();
   }
@@ -123,14 +127,34 @@ export function createWarden(deps: WardenDeps): WardenController {
     deps.app.dispatch({ type: 'campaign/epilogue', payload: { text: text ?? fallbackEpilogue(input) } }, { expectChatId: expect });
   }
 
+  /** The scene of the argument: her room's location when it is open this slot, else the first location that is. */
+  async function argue(): Promise<boolean> {
+    const s = state();
+    const expect = chatId();
+    const w = s ? wardenOf(s) : null;
+    if (!s || !w || !argueAvailable(s)) return false;
+    const reg = deps.registries();
+    const room = whereabouts(s, reg).find((x) => x.unitId === w.unitId)?.roomId;
+    const locationId = sceneLocation(s, reg, { locationId: room ? String(reg.hubRooms.get(room)?.sceneLocationId ?? '') : undefined });
+    if (!(await deps.startScene({ locationId, participants: [w.unitId], origin: 'event', consumesSlot: false })) || chatId() !== expect) return false;
+    const sceneId = state()?.scene?.id;
+    if (sceneId === undefined) return false;
+    const events = deps.app.dispatch({ type: 'warden/argue_started', payload: { sceneId } }, { expectChatId: expect });
+    const failed = events.find((e) => e.type === 'error');
+    if (failed && failed.code !== 'chat_changed') deps.toast('error', String(failed.message ?? failed.code));
+    refreshDirectives();
+    return failed === undefined;
+  }
+
   return {
+    argue,
     onEvents(events) {
       if (events.some((e) => e.type === 'warden_assigned')) void ask().catch(() => {});
       if (events.some((e) => e.type === 'day_started')) snapshot();
       const dead = events.find((e) => e.type === 'commander_died' && e.rule === 'rewind_day');
       if (dead) void rewind(String(dead.cause)).catch(() => {});
       if (events.some((e) => e.type === 'campaign_ended')) void epilogue().catch(() => {});
-      if (events.some((e) => e.type === 'warden_revealed' || e.type === 'warden_assigned' || e.type === 'onboarding_step_completed' || e.type === 'onboarding_step_skipped' || e.type === 'onboarding_done')) refreshDirectives();
+      if (events.some((e) => e.type.startsWith('warden_') || e.type.startsWith('override_') || e.type.startsWith('scene_') || e.type.startsWith('onboarding_step_') || e.type === 'onboarding_done')) refreshDirectives();
     },
     onLoaded() {
       const s = state();

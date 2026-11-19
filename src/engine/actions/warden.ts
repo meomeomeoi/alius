@@ -1,6 +1,6 @@
 import { registerAction } from '../dispatch';
 import { setAgenda } from '../warden/agenda';
-import { answerOverride } from '../warden/override';
+import { answerOverride, argueStarted } from '../warden/override';
 import { commanderDies, DEATH_CAUSES, type DeathCause } from '../warden/death';
 
 // Importing this module registers the P13 LEASHSWAP actions. `app.ts` imports it after `actions/special`.
@@ -61,3 +61,6 @@ registerAction('warden/answer', (draft, payload, ctx) => {
   const p = (typeof payload === 'object' && payload !== null ? payload : {}) as { overrideId?: unknown; answer?: unknown };
   return answerOverride(draft, ctx, p.overrideId, p.answer);
 });
+
+/** The ARGUE scene with her alone has opened: the override remembers it (`{ sceneId }`). Refused while compelled or after she has heard the commander out. */
+registerAction('warden/argue_started', (draft, payload) => argueStarted(draft, (payload as { sceneId?: unknown } | null | undefined)?.sceneId));

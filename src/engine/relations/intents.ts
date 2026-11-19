@@ -20,6 +20,8 @@ export interface EventIntent {
   /** P9d: the rule a `rule_kept` / `rule_broken` / `compromise_reached` is about, and the agreed text of a compromise. */
   ruleId?: string;
   text?: string;
+  /** P13: the warden's override a `compromise_reached` settles (an id from the list the model was shown). */
+  overrideId?: string;
   /** P12: the intercepted item a `knowledge_leak` is about (an id from the list the model was given). */
   itemId?: string;
   evidence: string;
@@ -119,6 +121,8 @@ export function validateIntents(
     intercepted?: string[];
     /** P12: the present units the commander has an open warning about. Without any an `accused` is dropped. */
     warned?: string[];
+    /** P13: the ids of the warden's open overrides the model was shown. Without them a `compromise_reached` that names one is dropped. */
+    overrides?: string[];
   },
 ): Intents {
   const out = emptyIntents();
@@ -139,7 +143,14 @@ export function validateIntents(
     if (actor === 'commander' ? targets.length === 0 : arr(e.targets).some((t) => isUnit(t) && t !== actor)) continue;
     if (type === 'defied' ? actor === 'commander' : COMMANDER_DISCIPLINE.includes(type) && actor !== 'commander') continue;
     const intent: EventIntent = { type, actor, targets, severity, evidence, confidence: clamp01(e.confidence) };
-    if (RULE_EVENTS.includes(type)) {
+    if (type === 'compromise_reached' && typeof e.overrideId === 'string') {
+      // a compromise with the warden settles one of her open overrides, never a rule; an unknown id drops it
+      if (actor !== 'commander' || !(ctx.overrides ?? []).includes(e.overrideId)) continue;
+      const text = typeof e.text === 'string' ? e.text.replace(/\s+/g, ' ').trim().slice(0, TUNING.bonds.rules.textMax).trim() : '';
+      if (text === '') continue;
+      intent.overrideId = e.overrideId;
+      intent.text = text;
+    } else if (RULE_EVENTS.includes(type)) {
       // a rule event names a rule of one of the units it lands on; an unknown or missing id drops it
       const rule = typeof e.ruleId === 'string' ? (ctx.rules ?? []).find((r) => r.id === e.ruleId && targets.includes(r.unitId)) : undefined;
       if (actor !== 'commander' || !rule) continue;

@@ -22,6 +22,7 @@ import { answerProposal, commanderProposal, rollDiscovery, type ProposalAnswer }
 import { PROPOSAL_KINDS } from '../relations/vocab';
 import type { CampaignState, SceneOrigin, SceneRecord } from '../state/types';
 import { TUNING } from '../tuning';
+import { argueEnded } from '../warden/override';
 
 // Importing this module registers the scene, proposal and memory actions, installs P3's relation accounting
 // (diminishing returns) in place of P2's default, and hooks the daily relationship pass into the day end.
@@ -186,6 +187,7 @@ registerAction('scene/end', (draft, payload, ctx) => {
   delete draft.scene;
   delete draft.calendar.pendingScene;
   events.push({ type: 'scene_ended', sceneId: scene.id, consumed: scene.consumesSlot });
+  events.push(...argueEnded(draft, ctx, scene.id)); // P13: the argument with the warden ends: a compromise runs the order, none leaves COMPLY and DEFY
   if (scene.consumesSlot) events.push(...consumeSlots(draft, 1, ctx));
   return events;
 });
@@ -197,7 +199,7 @@ registerAction('scene/abort', (draft, _payload, ctx) => {
   delete draft.scene;
   // an activity talk keeps its hold so the app can cancel it with `calendar/cancel_scene`
   if (scene.origin !== 'activity') delete draft.calendar.pendingScene;
-  return [{ type: 'scene_aborted', sceneId: scene.id }, ...settled, ...expireSceneProposals(draft, scene.participants)];
+  return [{ type: 'scene_aborted', sceneId: scene.id }, ...settled, ...expireSceneProposals(draft, scene.participants), ...argueEnded(draft, ctx, scene.id)];
 });
 
 registerAction('proposal/commander', (draft, payload, ctx) => {

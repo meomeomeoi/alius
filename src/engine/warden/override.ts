@@ -8,9 +8,12 @@ import { evaluateAutomatic } from '../relations/graph';
 import { socialRank } from '../social';
 import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
+import { addFact } from '../memory';
 import { learnExpectation } from './agenda';
 import { conflictOf, herAlternative, type Judged } from './conflict';
-import { wardenOf, type Expectation, type OpenOverride, type WardenOrder, type WardenState } from './state';
+import { overrideOpen, wardenOf, type Expectation, type OpenOverride, type WardenOrder, type WardenState } from './state';
+
+export { overrideOpen };
 
 /**
  * The warden's override (P13 §3): when the commander gives an order that cuts across what she expects, she may countermand it. The
@@ -46,18 +49,6 @@ export function wardenSource(state: CampaignState): OverrideSource | null {
 export function overrideChance(weight: number, source: OverrideSource): number {
   const T = TUNING.warden.override;
   return clamp(weight * source.authority * source.leniency * T.scale, 0, T.cap);
-}
-
-/** The override that waits for an answer, or null (none, or a stale one: another day or slot, a closed combat, an answered dilemma). */
-export function overrideOpen(state: CampaignState): OpenOverride | null {
-  const o = state.leashswap?.warden?.override;
-  if (!o) return null;
-  if (o.context === 'combat') return state.combat !== undefined && state.combat.id === o.ref ? o : null;
-  if (o.context === 'dilemma') {
-    const d = state.dilemmas?.open;
-    return d !== undefined && d.status === 'presented' && d.id === o.ref ? o : null;
-  }
-  return o.day === state.day && o.slot === state.slot ? o : null;
 }
 
 const contextOf = (order: WardenOrder): OpenOverride['context'] => (order.kind === 'combat_order' ? 'combat' : order.kind === 'dilemma' ? 'dilemma' : 'base');
@@ -225,4 +216,90 @@ export function answerOverride(draft: CampaignState, ctx: EngineCtx, overrideId:
   events.push(...relationEvent(draft, ctx, 'warden_defied', ov.weight >= T.override.majorAt ? 'major' : 'moderate', 'defied the warden\'s call'));
   events.push(done('defy'), ...afterDefy(draft, ctx, ov.weight));
   return events;
+}
+
+// ---------------------------------------------------------------------------------------------
+// ARGUE in a scene (P13 §3)
+
+/** Can the commander talk to her about it now? Not in a fight or a run (no scene can open there), nor once she has heard them out, nor while compelled. */
+export function argueAvailable(state: CampaignState): boolean {
+  const o = overrideOpen(state);
+  const w = wardenOf(state);
+  if (!o || !w || w.compelled || o.argued || state.combat || state.expedition || o.context === 'combat') return false;
+  return state.scene === undefined;
+}
+
+/** The scene with her alone is open: the override remembers which scene is the argument. */
+export function argueStarted(draft: CampaignState, sceneId: unknown): EngineEvent[] {
+  const o = overrideOpen(draft);
+  const w = wardenOf(draft);
+  const scene = draft.scene;
+  if (!o || !w) throw new Error(STALE);
+  if (w.compelled) throw new Error('The commander is compelled: only COMPLY is open.');
+  if (o.argued || o.context === 'combat') throw new Error('There is nothing to argue about.');
+  if (!scene || scene.id !== sceneId || scene.participants.length !== 1 || scene.participants[0] !== w.unitId) throw new Error('The argument is a scene with the warden alone.');
+  o.arguing = scene.id;
+  return [{ type: 'override_argue_started', overrideId: o.id, sceneId: scene.id }];
+}
+
+const sentence = (text: string): string => (/[.!?]$/.test(text) ? text : `${text}.`);
+
+/**
+ * The scene reached a real compromise (the model reported `compromise_reached` with this override's id): the commander's order will run
+ * when the scene ends, with no defiance and no change of satisfaction. Writes the fact `{Name} and the commander agreed: {text}` for the
+ * units present. A stale id, a compromise already reached, a combat override, an empty text: dropped (nothing changes).
+ */
+export function resolveCompromise(draft: CampaignState, _ctx: EngineCtx, overrideId: unknown, text: unknown): EngineEvent[] {
+  const o = overrideOpen(draft);
+  const w = wardenOf(draft);
+  if (!o || !w || o.id !== overrideId || o.context === 'combat' || o.compromise !== undefined || o.argued || w.compelled) return [];
+  const agreed = typeof text === 'string' ? text.replace(/\s+/g, ' ').trim().slice(0, TUNING.bonds.rules.textMax).trim() : '';
+  if (agreed === '') return [];
+  o.compromise = agreed;
+  const name = draft.squad.find((u) => u.id === w.unitId)?.displayName ?? w.unitId;
+  addFact(draft, {
+    about: [w.unitId], text: `${name} and the commander agreed: ${sentence(agreed)}`, tags: ['warden', 'compromise'], importance: 3, day: draft.day,
+    ...(draft.scene ? { sceneId: draft.scene.id } : {}), knownBy: draft.scene ? [...draft.scene.participants] : [w.unitId],
+  });
+  return [{ type: 'override_compromise', overrideId: o.id }];
+}
+
+/** Runs `fn` and, if it throws, puts the draft back exactly as it was (the scene must end whatever the order does). */
+function attempt(draft: CampaignState, fn: () => EngineEvent[]): EngineEvent[] | null {
+  const backup = structuredClone(draft);
+  try {
+    return fn();
+  } catch {
+    for (const k of Object.keys(draft)) delete (draft as unknown as Record<string, unknown>)[k];
+    Object.assign(draft, backup);
+    return null;
+  }
+}
+
+/**
+ * The argument scene closed. With a compromise the commander's order runs now (once, not asked again); without one the override stays
+ * open with only COMPLY and DEFY (`argued`). Nothing happens for any other scene. Never throws: a compromise whose order can no longer
+ * run is dropped (`override_compromise_failed`).
+ */
+export function argueEnded(draft: CampaignState, ctx: EngineCtx, sceneId: string): EngineEvent[] {
+  const w = wardenOf(draft);
+  const o = w?.override;
+  if (!w || !o || o.arguing !== sceneId) return [];
+  if (!overrideOpen(draft)) {
+    delete w.override;
+    return [];
+  }
+  if (o.compromise === undefined) {
+    delete o.arguing;
+    o.argued = true;
+    return [];
+  }
+  delete w.override;
+  const events = attempt(draft, () => runOrder(draft, ctx, o.order, o.payload ?? {}));
+  if (events === null) {
+    const back = wardenOf(draft);
+    if (back) delete back.override;
+    return [{ type: 'override_compromise_failed', overrideId: o.id }];
+  }
+  return [...events, { type: 'override_answered', overrideId: o.id, answer: 'compromise' }];
 }

@@ -6043,6 +6043,24 @@ function forgetWarden(draft, unitId) {
   const w = ls.warden;
   if (w && w.unitId === unitId) delete w.override;
 }
+function overrideOpen(state) {
+  const o = state.leashswap?.warden?.override;
+  if (!o) return null;
+  if (o.context === "combat") return state.combat !== void 0 && state.combat.id === o.ref ? o : null;
+  if (o.context === "dilemma") {
+    const d = state.dilemmas?.open;
+    return d !== void 0 && d.status === "presented" && d.id === o.ref ? o : null;
+  }
+  return o.day === state.day && o.slot === state.slot ? o : null;
+}
+function wardenArgueStart(state, action) {
+  if (action.type !== "scene/start") return false;
+  const o = overrideOpen(state);
+  const warden = state.leashswap?.warden?.unitId;
+  if (!o || o.context !== "dilemma" || warden === void 0) return false;
+  const ids = action.payload?.participants;
+  return Array.isArray(ids) && ids.length === 1 && ids[0] === warden;
+}
 
 // src/engine/dilemma/types.ts
 var DILEMMA_CONTEXTS = ["expedition_event", "base", "mission_outcome", "defect_arc", "director", "scapegoat", "debts_oversight", "debts_unit"];
@@ -13650,7 +13668,13 @@ function validateIntents(raw, ctx2) {
     if (actor === "commander" ? targets.length === 0 : arr(e.targets).some((t) => isUnit(t) && t !== actor)) continue;
     if (type === "defied" ? actor === "commander" : COMMANDER_DISCIPLINE.includes(type) && actor !== "commander") continue;
     const intent = { type, actor, targets, severity, evidence, confidence: clamp01(e.confidence) };
-    if (RULE_EVENTS.includes(type)) {
+    if (type === "compromise_reached" && typeof e.overrideId === "string") {
+      if (actor !== "commander" || !(ctx2.overrides ?? []).includes(e.overrideId)) continue;
+      const text2 = typeof e.text === "string" ? e.text.replace(/\s+/g, " ").trim().slice(0, TUNING.bonds.rules.textMax).trim() : "";
+      if (text2 === "") continue;
+      intent.overrideId = e.overrideId;
+      intent.text = text2;
+    } else if (RULE_EVENTS.includes(type)) {
       const rule = typeof e.ruleId === "string" ? (ctx2.rules ?? []).find((r) => r.id === e.ruleId && targets.includes(r.unitId)) : void 0;
       if (actor !== "commander" || !rule) continue;
       intent.ruleId = rule.id;
@@ -15468,6 +15492,11 @@ function actOnWarning(draft, ctx2, unitId, act) {
 
 // src/engine/relations/apply.ts
 var clamp16 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+function openOverrideIds(state, participants) {
+  const o = overrideOpen(state);
+  const w = wardenOf(state);
+  return o !== null && w !== null && participants.includes(w.unitId) && o.context !== "combat" ? [o.id] : [];
+}
 var DISCIPLINE_EVENTS = ["defied", "commander_enforced", "commander_yielded", "threatened"];
 var GATED_EVENTS = ["commander_enforced", "threatened"];
 var CONFIDENCE_EPS2 = 1e-9;
@@ -15482,7 +15511,9 @@ function applyIntents(draft, ctx2, p) {
     rules: rules2,
     intercepted: leakCandidates(draft, reg, p.participants).map((c) => c.id),
     // P12: only items the frequency really caught
-    warned: warnedUnits(draft, p.participants)
+    warned: warnedUnits(draft, p.participants),
+    // P12: only units there is an open warning about
+    overrides: openOverrideIds(draft, p.participants)
   });
   const events = [];
   const touched = /* @__PURE__ */ new Set();
@@ -15496,7 +15527,8 @@ function applyIntents(draft, ctx2, p) {
   for (const { e, believed } of judged) {
     for (const id of believed) {
       events.push(...DISCIPLINE_EVENTS.includes(e.type) ? applyDisciplineEvent(draft, ctx2, id, e, { channel: p.channel, ...p.sceneId ? { sceneId: p.sceneId } : {}, ...p.messageRef ? { messageRef: p.messageRef } : {} }) : applyEventToUnit(draft, reg, id, e));
-      if (RULE_EVENT_TYPES.includes(e.type)) events.push(...applyRuleEvent(draft, ctx2, id, e, p.participants));
+      if (e.type === "compromise_reached" && e.overrideId !== void 0) events.push(...resolveCompromise(draft, ctx2, e.overrideId, e.text));
+      else if (RULE_EVENT_TYPES.includes(e.type)) events.push(...applyRuleEvent(draft, ctx2, id, e, p.participants));
       if (e.type === "accused") events.push(...actOnWarning(draft, ctx2, id, "accused"));
       if (e.type === "knowledge_leak" && e.itemId !== void 0) events.push(...frequencyLeak(draft, ctx2, id, e.itemId, e.severity));
       touched.add(id);
@@ -16301,16 +16333,6 @@ function overrideChance(weight, source) {
   const T4 = TUNING.warden.override;
   return clamp19(weight * source.authority * source.leniency * T4.scale, 0, T4.cap);
 }
-function overrideOpen(state) {
-  const o = state.leashswap?.warden?.override;
-  if (!o) return null;
-  if (o.context === "combat") return state.combat !== void 0 && state.combat.id === o.ref ? o : null;
-  if (o.context === "dilemma") {
-    const d = state.dilemmas?.open;
-    return d !== void 0 && d.status === "presented" && d.id === o.ref ? o : null;
-  }
-  return o.day === state.day && o.slot === state.slot ? o : null;
-}
 var contextOf = (order) => order.kind === "combat_order" ? "combat" : order.kind === "dilemma" ? "dilemma" : "base";
 function hersToGive(order, unitId) {
   return order.kind === "activity" && order.companionId === unitId && (order.unitIds ?? []).every((id) => id === unitId);
@@ -16449,6 +16471,75 @@ function answerOverride(draft, ctx2, overrideId, answer) {
   events.push(...relationEvent(draft, ctx2, "warden_defied", ov.weight >= T4.override.majorAt ? "major" : "moderate", "defied the warden's call"));
   events.push(done("defy"), ...afterDefy(draft, ctx2, ov.weight));
   return events;
+}
+function argueAvailable(state) {
+  const o = overrideOpen(state);
+  const w = wardenOf(state);
+  if (!o || !w || w.compelled || o.argued || state.combat || state.expedition || o.context === "combat") return false;
+  return state.scene === void 0;
+}
+function argueStarted(draft, sceneId) {
+  const o = overrideOpen(draft);
+  const w = wardenOf(draft);
+  const scene = draft.scene;
+  if (!o || !w) throw new Error(STALE);
+  if (w.compelled) throw new Error("The commander is compelled: only COMPLY is open.");
+  if (o.argued || o.context === "combat") throw new Error("There is nothing to argue about.");
+  if (!scene || scene.id !== sceneId || scene.participants.length !== 1 || scene.participants[0] !== w.unitId) throw new Error("The argument is a scene with the warden alone.");
+  o.arguing = scene.id;
+  return [{ type: "override_argue_started", overrideId: o.id, sceneId: scene.id }];
+}
+var sentence = (text2) => /[.!?]$/.test(text2) ? text2 : `${text2}.`;
+function resolveCompromise(draft, _ctx, overrideId, text2) {
+  const o = overrideOpen(draft);
+  const w = wardenOf(draft);
+  if (!o || !w || o.id !== overrideId || o.context === "combat" || o.compromise !== void 0 || o.argued || w.compelled) return [];
+  const agreed = typeof text2 === "string" ? text2.replace(/\s+/g, " ").trim().slice(0, TUNING.bonds.rules.textMax).trim() : "";
+  if (agreed === "") return [];
+  o.compromise = agreed;
+  const name = draft.squad.find((u) => u.id === w.unitId)?.displayName ?? w.unitId;
+  addFact(draft, {
+    about: [w.unitId],
+    text: `${name} and the commander agreed: ${sentence(agreed)}`,
+    tags: ["warden", "compromise"],
+    importance: 3,
+    day: draft.day,
+    ...draft.scene ? { sceneId: draft.scene.id } : {},
+    knownBy: draft.scene ? [...draft.scene.participants] : [w.unitId]
+  });
+  return [{ type: "override_compromise", overrideId: o.id }];
+}
+function attempt(draft, fn) {
+  const backup = structuredClone(draft);
+  try {
+    return fn();
+  } catch {
+    for (const k of Object.keys(draft)) delete draft[k];
+    Object.assign(draft, backup);
+    return null;
+  }
+}
+function argueEnded(draft, ctx2, sceneId) {
+  const w = wardenOf(draft);
+  const o = w?.override;
+  if (!w || !o || o.arguing !== sceneId) return [];
+  if (!overrideOpen(draft)) {
+    delete w.override;
+    return [];
+  }
+  if (o.compromise === void 0) {
+    delete o.arguing;
+    o.argued = true;
+    return [];
+  }
+  delete w.override;
+  const events = attempt(draft, () => runOrder(draft, ctx2, o.order, o.payload ?? {}));
+  if (events === null) {
+    const back = wardenOf(draft);
+    if (back) delete back.override;
+    return [{ type: "override_compromise_failed", overrideId: o.id }];
+  }
+  return [...events, { type: "override_answered", overrideId: o.id, answer: "compromise" }];
 }
 
 // src/engine/commander/checks.ts
@@ -21245,7 +21336,7 @@ function dispatch(state, action, registries) {
       events: [{ type: "error", code: "expedition_open", message: "An expedition is under way: finish or abandon it first." }]
     };
   }
-  if (state.dilemmas?.open?.status === "presented" && BLOCKED_BY_DILEMMA.some((p) => action.type.startsWith(p))) {
+  if (state.dilemmas?.open?.status === "presented" && BLOCKED_BY_DILEMMA.some((p) => action.type.startsWith(p)) && !wardenArgueStart(state, action)) {
     return { state, events: [{ type: "error", code: "dilemma_open", message: "A decision is waiting: answer it first." }] };
   }
   const booked = bookingGuard(state, action);
@@ -21867,6 +21958,7 @@ registerAction("scene/end", (draft, payload, ctx2) => {
   delete draft.scene;
   delete draft.calendar.pendingScene;
   events.push({ type: "scene_ended", sceneId: scene.id, consumed: scene.consumesSlot });
+  events.push(...argueEnded(draft, ctx2, scene.id));
   if (scene.consumesSlot) events.push(...consumeSlots(draft, 1, ctx2));
   return events;
 });
@@ -21876,7 +21968,7 @@ registerAction("scene/abort", (draft, _payload, ctx2) => {
   const settled = settleDefiance(draft, ctx2, { sceneId: scene.id });
   delete draft.scene;
   if (scene.origin !== "activity") delete draft.calendar.pendingScene;
-  return [{ type: "scene_aborted", sceneId: scene.id }, ...settled, ...expireSceneProposals(draft, scene.participants)];
+  return [{ type: "scene_aborted", sceneId: scene.id }, ...settled, ...expireSceneProposals(draft, scene.participants), ...argueEnded(draft, ctx2, scene.id)];
 });
 registerAction("proposal/commander", (draft, payload, ctx2) => {
   if (!isObj12(payload) || typeof payload.unitId !== "string") throw new Error("proposal/commander needs { unitId, kind, channel }");
@@ -23811,6 +23903,7 @@ registerAction("warden/answer", (draft, payload, ctx2) => {
   const p = typeof payload === "object" && payload !== null ? payload : {};
   return answerOverride(draft, ctx2, p.overrideId, p.answer);
 });
+registerAction("warden/argue_started", (draft, payload) => argueStarted(draft, payload?.sceneId));
 
 // src/llm/callTypes.ts
 var CALL_TYPE_IDS = [
@@ -24158,8 +24251,8 @@ ${line2}`;
   const prompt4 = ct.prompt(input);
   const profileLabel = useMain ? "main" : settings.mechanicProfileId;
   let lastDetail = "";
-  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-    const budget = attempt === 1 ? settings.budgets[id] : Math.ceil(settings.budgets[id] * RETRY_BUDGET_FACTOR);
+  for (let attempt2 = 1; attempt2 <= MAX_ATTEMPTS; attempt2++) {
+    const budget = attempt2 === 1 ? settings.budgets[id] : Math.ceil(settings.budgets[id] * RETRY_BUDGET_FACTOR);
     const maxTokens = mechanic ? Math.max(budget, settings.requestFloor) : budget;
     const started = Date.now();
     const entry = { at: started, callType: id, profile: profileLabel, maxTokens, prompt: prompt4 };
@@ -24175,7 +24268,7 @@ ${line2}`;
     } catch (e) {
       const detail = e instanceof Error ? e.message : String(e);
       llmLog.push({ ...entry, raw: detail, ok: false, ms: Date.now() - started });
-      return { ok: false, reason: "call_failed", detail, attempts: attempt };
+      return { ok: false, reason: "call_failed", detail, attempts: attempt2 };
     }
     const text2 = stripThinking(raw);
     let value;
@@ -24200,7 +24293,7 @@ ${line2}`;
       lastDetail = "empty answer";
     }
     llmLog.push({ ...entry, raw, parsed: valid ? value : void 0, ok: valid, ms: Date.now() - started });
-    if (valid) return { ok: true, value, attempts: attempt };
+    if (valid) return { ok: true, value, attempts: attempt2 };
   }
   return { ok: false, reason: "invalid_output", detail: lastDetail, attempts: MAX_ATTEMPTS };
 }
@@ -24546,7 +24639,7 @@ function createDilemmas(deps) {
       const settings = deps.settings();
       const fallback = (id) => void answer({ type: "dilemma/fallback", payload: { requestId: id } }, chat);
       if (!settings.dilemmasEnabled) return fallback(first2.id);
-      for (let attempt = 0; attempt < TUNING.dilemma.maxAttempts; attempt++) {
+      for (let attempt2 = 0; attempt2 < TUNING.dilemma.maxAttempts; attempt2++) {
         const state = deps.app.current().state;
         const open3 = state?.dilemmas?.open;
         if (!state || !open3 || open3.id !== first2.id || open3.status !== "requested") return;
@@ -25300,6 +25393,31 @@ function revealPending(state, reg) {
   return o.done;
 }
 
+// src/engine/warden/describe.ts
+function describeOrder(state, reg, order) {
+  const name = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
+  switch (order.kind) {
+    case "activity": {
+      const label2 = String(reg.activities.get(order.activityId)?.name ?? order.activityId);
+      return order.companionId !== void 0 ? `${label2} with ${name(order.companionId)}` : label2;
+    }
+    case "roster":
+      return `the active roster: ${order.activeIds.map(name).join(", ") || "nobody"}`;
+    case "expedition":
+      return `an expedition with ${order.unitIds.map(name).join(", ")}`;
+    case "dilemma":
+      return state.dilemmas?.open?.options?.[order.index]?.label ?? "the decision";
+    case "combat_order":
+      return String(reg.orders.get(order.orderId)?.name ?? order.orderId);
+  }
+}
+function overrideInput(state, reg, participants) {
+  const o = overrideOpen(state);
+  const w = wardenOf(state);
+  if (!o || !w || !participants.includes(w.unitId) || o.context === "combat") return {};
+  return { overrides: [{ id: o.id, order: describeOrder(state, reg, o.order), alternative: o.altLabel }] };
+}
+
 // src/engine/memory/journal.ts
 var SEVERE = ["moderate", "major", "extreme"];
 var RECENT_DAYS = 2;
@@ -25600,12 +25718,249 @@ function importCampaign(text2) {
   return migrate(raw);
 }
 
+// src/onboarding/controller.ts
+var GOAL_DIRECTIVE = "prologue:goal";
+var WRAP_DIRECTIVE = "prologue:wrap";
+var WRAP_TEXT = "Bring this scene to a natural close within the next reply or two; do not open new topics.";
+function sceneLocation(state, reg, step) {
+  const open3 = (l) => {
+    const slots = l.slots;
+    return slots === void 0 || slots.includes(state.slot);
+  };
+  const own = step.locationId === void 0 ? void 0 : reg.locations.get(step.locationId);
+  if (own && open3(own)) return String(own.id);
+  const first2 = [...reg.locations.values()].find(open3);
+  return String((first2 ?? own)?.id ?? step.locationId ?? "");
+}
+function createOnboarding(deps) {
+  const state = () => deps.app.current().state;
+  const chatId = () => deps.st.getActiveChat()?.chatId;
+  const reg = () => deps.registries();
+  let tracked = null;
+  const asked = /* @__PURE__ */ new Set();
+  let guideDmDue = null;
+  const clearDirectives = () => deps.context.clearMatching((d) => d.id.startsWith("prologue:"));
+  function setGoal(step) {
+    if (step.directive) deps.context.setDirective({ id: GOAL_DIRECTIVE, text: step.directive, expiresAfter: "scene" });
+    deps.refreshContext();
+  }
+  const dispatch2 = (type, payload, expect) => {
+    const events = deps.app.dispatch({ type, payload }, { expectChatId: expect });
+    const failed2 = events.find((e) => e.type === "error");
+    if (failed2 && failed2.code !== "chat_changed") deps.toast("error", String(failed2.message ?? failed2.code));
+    return events;
+  };
+  const failed = (events) => events.some((e) => e.type === "error");
+  function completeIfDone(expect) {
+    const s = state();
+    if (!s) return;
+    const step = currentStep(s, reg());
+    if (!step || completionReason(s, reg(), step) !== null) return;
+    dispatch2("onboarding/complete_step", { stepId: step.id }, expect);
+  }
+  function completeOn(completion, expect) {
+    const s = state();
+    if (s && currentStep(s, reg())?.completion === completion) completeIfDone(expect);
+  }
+  function sendGuideDm(guideId) {
+    const s = state();
+    if (!s || s.onboarding?.guideDmSent) return;
+    if (s.scene) {
+      guideDmDue = guideId;
+      return;
+    }
+    guideDmDue = null;
+    dispatch2("onboarding/guide_dm_sent", {}, chatId());
+    void deps.initiateDm(guideId);
+  }
+  function candidates4(s) {
+    return livingNamed(s).filter((u) => restrictionReason(s, u.id, "scene") === null).map((u) => u.id).slice(0, TUNING.scene.maxParticipants);
+  }
+  async function open3(step, participants) {
+    const s = state();
+    if (!s) return false;
+    const ok = await deps.startScene({ locationId: sceneLocation(s, reg(), step), participants, origin: "prologue", consumesSlot: false });
+    if (!ok) return false;
+    setGoal(step);
+    return true;
+  }
+  return {
+    async startLineup() {
+      const s = state();
+      const step = s ? currentStep(s, reg()) : null;
+      if (!s || !step || step.kind !== "scene" || step.perUnit === true || s.scene) return false;
+      const warden = step.participants === "warden" ? wardenUnitId(s) : null;
+      const who = step.participants === "warden" ? candidates4(s).filter((id) => id === warden) : candidates4(s);
+      if (who.length === 0) {
+        deps.toast("warn", step.participants === "warden" ? "The warden is not free right now." : "Nobody is free for the line-up right now.");
+        return false;
+      }
+      return open3(step, who);
+    },
+    async talkFirstWords(unitId) {
+      const s = state();
+      const step = s ? currentStep(s, reg()) : null;
+      if (!s || !step || step.kind !== "scene" || step.perUnit !== true || s.scene) return false;
+      if (!livingNamed(s).some((u) => u.id === unitId) || s.onboarding?.spoken?.includes(unitId)) return false;
+      const held2 = restrictionReason(s, unitId, "scene");
+      if (held2) {
+        deps.toast("warn", held2);
+        return false;
+      }
+      return open3(step, [unitId]);
+    },
+    skipFirstWords(unitId) {
+      const expect = chatId();
+      const events = dispatch2("onboarding/mark_spoken", { unitId }, expect);
+      if (failed(events)) return;
+      completeIfDone(expect);
+    },
+    async skipStep() {
+      const s = state();
+      const step = s ? currentStep(s, reg()) : null;
+      if (!s || !step) return;
+      const expect = chatId();
+      const answer = await deps.modal({
+        title: "Skip this step?",
+        body: `${step.title ?? "This step"} will be left out of the prologue.`,
+        actions: [{ label: "SKIP", value: "skip" }, { label: "Keep it", value: "keep" }]
+      });
+      if (answer !== "skip" || chatId() !== expect) return;
+      dispatch2("onboarding/skip_step", { stepId: step.id }, expect);
+    },
+    resumeScene() {
+      deps.resumeScene();
+    },
+    async debriefTutorial() {
+      const s = state();
+      const step = s ? currentStep(s, reg()) : null;
+      const report = s?.lastExpedition;
+      if (!s || !step || step.completion !== "debriefed" || !report || report.missionId !== s.onboarding?.tutorialMissionId) return false;
+      const who = report.party.filter((id) => livingNamed(s).some((u) => u.id === id) && restrictionReason(s, id, "scene") === null).slice(0, TUNING.scene.maxParticipants);
+      if (who.length === 0) {
+        deps.toast("warn", "Nobody from the patrol is free to debrief.");
+        return false;
+      }
+      return deps.debrief(who);
+    },
+    async talkGuide() {
+      const s = state();
+      const id = s?.onboarding?.guideUnitId;
+      if (!s || id === void 0 || !livingNamed(s).some((u) => u.id === id)) return false;
+      const room = whereabouts(s, reg()).find((w) => w.unitId === id)?.roomId;
+      const location = sceneLocation(s, reg(), { locationId: room ? String(reg().hubRooms.get(room)?.sceneLocationId ?? "") : void 0 });
+      return deps.talkAt(id, location);
+    },
+    launchTutorial() {
+      const s = state();
+      const step = s ? currentStep(s, reg()) : null;
+      if (!s || !step || step.kind !== "expedition") return false;
+      if (s.expedition) {
+        deps.openExpedition();
+        return true;
+      }
+      const id = s.onboarding?.tutorialMissionId;
+      if (id === void 0 || !s.missions.offered.some((m) => m.id === id)) {
+        deps.toast("warn", "The patrol is no longer on the board. Skip this step to go on.");
+        return false;
+      }
+      deps.openExpedition(id);
+      return true;
+    },
+    onSceneOpened() {
+      const s = state();
+      const scene = s?.scene;
+      if (!s || !scene || scene.origin !== "prologue") return;
+      tracked = { sceneId: scene.id, participants: [...scene.participants] };
+      const step = currentStep(s, reg());
+      if (step) setGoal(step);
+      if (scene.exchanges === 0) void deps.startOpening?.();
+    },
+    onLoaded() {
+      const s = state();
+      const step = s ? currentStep(s, reg()) : null;
+      const guide = s?.onboarding?.guideUnitId;
+      if (!s || s.scene || step?.completion !== "next_day" || guide === void 0 || !livingNamed(s).some((u) => u.id === guide)) return;
+      sendGuideDm(guide);
+    },
+    onSceneClosed() {
+      tracked = null;
+      asked.clear();
+      clearDirectives();
+      deps.refreshContext();
+    },
+    onEvents(events) {
+      const s = state();
+      if (!s) return;
+      if (events.some((e) => e.type === "expedition_debriefed")) completeOn("debriefed", chatId());
+      if (events.some((e) => e.type === "day_started")) completeOn("next_day", chatId());
+      if (events.some((e) => e.type === "onboarding_step_started")) {
+        const step = currentStep(s, reg());
+        const guide = s.onboarding?.guideUnitId;
+        if (step?.completion === "next_day" && guide !== void 0 && events.some((e) => e.type === "onboarding_step_started" && e.stepId === step.id)) sendGuideDm(guide);
+      }
+      if (guideDmDue !== null && events.some((e) => e.type === "scene_ended" || e.type === "scene_aborted") && !s.scene) sendGuideDm(guideDmDue);
+      if (events.some((e) => e.type === "expedition_ended") && currentStep(s, reg())?.kind === "expedition") completeIfDone(chatId());
+      if (events.some((e) => e.type === "scene_exchange") && s.scene?.origin === "prologue") {
+        const step = currentStep(s, reg());
+        const scene = s.scene;
+        if (step?.exchangeCap !== void 0 && scene.exchanges >= step.exchangeCap && !asked.has(scene.id)) {
+          asked.add(scene.id);
+          deps.context.setDirective({ id: WRAP_DIRECTIVE, text: WRAP_TEXT, expiresAfter: "scene" });
+          deps.refreshContext();
+          const expect = chatId();
+          void deps.modal({
+            title: "Move on?",
+            body: "This is a good place to leave it. Keep talking, or move on.",
+            actions: [{ label: "MOVE ON", value: "move" }, { label: "Keep talking", value: "keep" }]
+          }).then(async (answer) => {
+            if (answer === "move" && chatId() === expect && state()?.scene?.id === scene.id) await deps.endScene();
+          });
+        }
+      }
+      const ended = events.find((e) => e.type === "scene_ended" && tracked !== null && e.sceneId === tracked.sceneId);
+      const aborted = events.some((e) => e.type === "scene_aborted");
+      if (ended && tracked) {
+        const done = tracked;
+        tracked = null;
+        asked.delete(done.sceneId);
+        clearDirectives();
+        deps.refreshContext();
+        const expect = chatId();
+        const step = currentStep(s, reg());
+        if (step?.perUnit === true) {
+          for (const unitId of done.participants) {
+            if (!s.onboarding?.spoken?.includes(unitId)) dispatch2("onboarding/mark_spoken", { unitId }, expect);
+          }
+        }
+        completeIfDone(expect);
+      } else if (aborted && tracked) {
+        tracked = null;
+        clearDirectives();
+        deps.refreshContext();
+      }
+      const now = state();
+      if (now && !now.scene && currentStep(now, reg())?.completion === "all_spoken") completeIfDone(chatId());
+    }
+  };
+}
+
 // src/warden/directives.ts
 var REVEAL_DIRECTIVE = "warden:reveal";
+var ARGUE_DIRECTIVE = "warden:argue";
+var WARDEN_DERIVED = [REVEAL_DIRECTIVE, ARGUE_DIRECTIVE];
 function wardenDirectives(state, reg) {
   const out = [];
   const warden = wardenOf(state);
   const unit2 = warden ? state.squad.find((u) => u.id === warden.unitId) : void 0;
+  const ov = overrideOpen(state);
+  if (unit2 && warden && ov && ov.arguing !== void 0 && state.scene?.id === ov.arguing) {
+    out.push({
+      id: ARGUE_DIRECTIVE,
+      expiresAfter: "scene",
+      text: `AUTHOR TO WRITE: ${unit2.displayName} has overridden the commander's order: ${describeOrder(state, reg, ov.order)}. She wants: ${ov.altLabel}. She can be talked round only by a real compromise.`
+    });
+  }
   if (unit2 && revealPending(state, reg)) {
     out.push({
       id: REVEAL_DIRECTIVE,
@@ -25625,7 +25980,7 @@ function createWarden(deps) {
   const asked = /* @__PURE__ */ new Set();
   function refreshDirectives() {
     const s = state();
-    deps.context.clearMatching((d) => d.id === REVEAL_DIRECTIVE);
+    deps.context.clearMatching((d) => WARDEN_DERIVED.includes(d.id));
     if (s) for (const d of wardenDirectives(s, deps.registries())) deps.context.setDirective(d);
     deps.refreshContext();
   }
@@ -25700,7 +26055,25 @@ function createWarden(deps) {
     if (chatId() !== expect) return;
     deps.app.dispatch({ type: "campaign/epilogue", payload: { text: text2 ?? fallbackEpilogue(input) } }, { expectChatId: expect });
   }
+  async function argue() {
+    const s = state();
+    const expect = chatId();
+    const w = s ? wardenOf(s) : null;
+    if (!s || !w || !argueAvailable(s)) return false;
+    const reg = deps.registries();
+    const room = whereabouts(s, reg).find((x) => x.unitId === w.unitId)?.roomId;
+    const locationId = sceneLocation(s, reg, { locationId: room ? String(reg.hubRooms.get(room)?.sceneLocationId ?? "") : void 0 });
+    if (!await deps.startScene({ locationId, participants: [w.unitId], origin: "event", consumesSlot: false }) || chatId() !== expect) return false;
+    const sceneId = state()?.scene?.id;
+    if (sceneId === void 0) return false;
+    const events = deps.app.dispatch({ type: "warden/argue_started", payload: { sceneId } }, { expectChatId: expect });
+    const failed = events.find((e) => e.type === "error");
+    if (failed && failed.code !== "chat_changed") deps.toast("error", String(failed.message ?? failed.code));
+    refreshDirectives();
+    return failed === void 0;
+  }
   return {
+    argue,
     onEvents(events) {
       if (events.some((e) => e.type === "warden_assigned")) void ask().catch(() => {
       });
@@ -25710,7 +26083,7 @@ function createWarden(deps) {
       });
       if (events.some((e) => e.type === "campaign_ended")) void epilogue().catch(() => {
       });
-      if (events.some((e) => e.type === "warden_revealed" || e.type === "warden_assigned" || e.type === "onboarding_step_completed" || e.type === "onboarding_step_skipped" || e.type === "onboarding_done")) refreshDirectives();
+      if (events.some((e) => e.type.startsWith("warden_") || e.type.startsWith("override_") || e.type.startsWith("scene_") || e.type.startsWith("onboarding_step_") || e.type === "onboarding_done")) refreshDirectives();
     },
     onLoaded() {
       const s = state();
@@ -26384,233 +26757,6 @@ function createDiscipline(deps) {
     return true;
   }
   return { onEvents, onSceneOpened, onSceneClosed, punish, undo, onSlotAdvanced, answerDemand: answerDemand2, talkDemand };
-}
-
-// src/onboarding/controller.ts
-var GOAL_DIRECTIVE = "prologue:goal";
-var WRAP_DIRECTIVE = "prologue:wrap";
-var WRAP_TEXT = "Bring this scene to a natural close within the next reply or two; do not open new topics.";
-function sceneLocation(state, reg, step) {
-  const open3 = (l) => {
-    const slots = l.slots;
-    return slots === void 0 || slots.includes(state.slot);
-  };
-  const own = step.locationId === void 0 ? void 0 : reg.locations.get(step.locationId);
-  if (own && open3(own)) return String(own.id);
-  const first2 = [...reg.locations.values()].find(open3);
-  return String((first2 ?? own)?.id ?? step.locationId ?? "");
-}
-function createOnboarding(deps) {
-  const state = () => deps.app.current().state;
-  const chatId = () => deps.st.getActiveChat()?.chatId;
-  const reg = () => deps.registries();
-  let tracked = null;
-  const asked = /* @__PURE__ */ new Set();
-  let guideDmDue = null;
-  const clearDirectives = () => deps.context.clearMatching((d) => d.id.startsWith("prologue:"));
-  function setGoal(step) {
-    if (step.directive) deps.context.setDirective({ id: GOAL_DIRECTIVE, text: step.directive, expiresAfter: "scene" });
-    deps.refreshContext();
-  }
-  const dispatch2 = (type, payload, expect) => {
-    const events = deps.app.dispatch({ type, payload }, { expectChatId: expect });
-    const failed2 = events.find((e) => e.type === "error");
-    if (failed2 && failed2.code !== "chat_changed") deps.toast("error", String(failed2.message ?? failed2.code));
-    return events;
-  };
-  const failed = (events) => events.some((e) => e.type === "error");
-  function completeIfDone(expect) {
-    const s = state();
-    if (!s) return;
-    const step = currentStep(s, reg());
-    if (!step || completionReason(s, reg(), step) !== null) return;
-    dispatch2("onboarding/complete_step", { stepId: step.id }, expect);
-  }
-  function completeOn(completion, expect) {
-    const s = state();
-    if (s && currentStep(s, reg())?.completion === completion) completeIfDone(expect);
-  }
-  function sendGuideDm(guideId) {
-    const s = state();
-    if (!s || s.onboarding?.guideDmSent) return;
-    if (s.scene) {
-      guideDmDue = guideId;
-      return;
-    }
-    guideDmDue = null;
-    dispatch2("onboarding/guide_dm_sent", {}, chatId());
-    void deps.initiateDm(guideId);
-  }
-  function candidates4(s) {
-    return livingNamed(s).filter((u) => restrictionReason(s, u.id, "scene") === null).map((u) => u.id).slice(0, TUNING.scene.maxParticipants);
-  }
-  async function open3(step, participants) {
-    const s = state();
-    if (!s) return false;
-    const ok = await deps.startScene({ locationId: sceneLocation(s, reg(), step), participants, origin: "prologue", consumesSlot: false });
-    if (!ok) return false;
-    setGoal(step);
-    return true;
-  }
-  return {
-    async startLineup() {
-      const s = state();
-      const step = s ? currentStep(s, reg()) : null;
-      if (!s || !step || step.kind !== "scene" || step.perUnit === true || s.scene) return false;
-      const warden = step.participants === "warden" ? wardenUnitId(s) : null;
-      const who = step.participants === "warden" ? candidates4(s).filter((id) => id === warden) : candidates4(s);
-      if (who.length === 0) {
-        deps.toast("warn", step.participants === "warden" ? "The warden is not free right now." : "Nobody is free for the line-up right now.");
-        return false;
-      }
-      return open3(step, who);
-    },
-    async talkFirstWords(unitId) {
-      const s = state();
-      const step = s ? currentStep(s, reg()) : null;
-      if (!s || !step || step.kind !== "scene" || step.perUnit !== true || s.scene) return false;
-      if (!livingNamed(s).some((u) => u.id === unitId) || s.onboarding?.spoken?.includes(unitId)) return false;
-      const held2 = restrictionReason(s, unitId, "scene");
-      if (held2) {
-        deps.toast("warn", held2);
-        return false;
-      }
-      return open3(step, [unitId]);
-    },
-    skipFirstWords(unitId) {
-      const expect = chatId();
-      const events = dispatch2("onboarding/mark_spoken", { unitId }, expect);
-      if (failed(events)) return;
-      completeIfDone(expect);
-    },
-    async skipStep() {
-      const s = state();
-      const step = s ? currentStep(s, reg()) : null;
-      if (!s || !step) return;
-      const expect = chatId();
-      const answer = await deps.modal({
-        title: "Skip this step?",
-        body: `${step.title ?? "This step"} will be left out of the prologue.`,
-        actions: [{ label: "SKIP", value: "skip" }, { label: "Keep it", value: "keep" }]
-      });
-      if (answer !== "skip" || chatId() !== expect) return;
-      dispatch2("onboarding/skip_step", { stepId: step.id }, expect);
-    },
-    resumeScene() {
-      deps.resumeScene();
-    },
-    async debriefTutorial() {
-      const s = state();
-      const step = s ? currentStep(s, reg()) : null;
-      const report = s?.lastExpedition;
-      if (!s || !step || step.completion !== "debriefed" || !report || report.missionId !== s.onboarding?.tutorialMissionId) return false;
-      const who = report.party.filter((id) => livingNamed(s).some((u) => u.id === id) && restrictionReason(s, id, "scene") === null).slice(0, TUNING.scene.maxParticipants);
-      if (who.length === 0) {
-        deps.toast("warn", "Nobody from the patrol is free to debrief.");
-        return false;
-      }
-      return deps.debrief(who);
-    },
-    async talkGuide() {
-      const s = state();
-      const id = s?.onboarding?.guideUnitId;
-      if (!s || id === void 0 || !livingNamed(s).some((u) => u.id === id)) return false;
-      const room = whereabouts(s, reg()).find((w) => w.unitId === id)?.roomId;
-      const location = sceneLocation(s, reg(), { locationId: room ? String(reg().hubRooms.get(room)?.sceneLocationId ?? "") : void 0 });
-      return deps.talkAt(id, location);
-    },
-    launchTutorial() {
-      const s = state();
-      const step = s ? currentStep(s, reg()) : null;
-      if (!s || !step || step.kind !== "expedition") return false;
-      if (s.expedition) {
-        deps.openExpedition();
-        return true;
-      }
-      const id = s.onboarding?.tutorialMissionId;
-      if (id === void 0 || !s.missions.offered.some((m) => m.id === id)) {
-        deps.toast("warn", "The patrol is no longer on the board. Skip this step to go on.");
-        return false;
-      }
-      deps.openExpedition(id);
-      return true;
-    },
-    onSceneOpened() {
-      const s = state();
-      const scene = s?.scene;
-      if (!s || !scene || scene.origin !== "prologue") return;
-      tracked = { sceneId: scene.id, participants: [...scene.participants] };
-      const step = currentStep(s, reg());
-      if (step) setGoal(step);
-      if (scene.exchanges === 0) void deps.startOpening?.();
-    },
-    onLoaded() {
-      const s = state();
-      const step = s ? currentStep(s, reg()) : null;
-      const guide = s?.onboarding?.guideUnitId;
-      if (!s || s.scene || step?.completion !== "next_day" || guide === void 0 || !livingNamed(s).some((u) => u.id === guide)) return;
-      sendGuideDm(guide);
-    },
-    onSceneClosed() {
-      tracked = null;
-      asked.clear();
-      clearDirectives();
-      deps.refreshContext();
-    },
-    onEvents(events) {
-      const s = state();
-      if (!s) return;
-      if (events.some((e) => e.type === "expedition_debriefed")) completeOn("debriefed", chatId());
-      if (events.some((e) => e.type === "day_started")) completeOn("next_day", chatId());
-      if (events.some((e) => e.type === "onboarding_step_started")) {
-        const step = currentStep(s, reg());
-        const guide = s.onboarding?.guideUnitId;
-        if (step?.completion === "next_day" && guide !== void 0 && events.some((e) => e.type === "onboarding_step_started" && e.stepId === step.id)) sendGuideDm(guide);
-      }
-      if (guideDmDue !== null && events.some((e) => e.type === "scene_ended" || e.type === "scene_aborted") && !s.scene) sendGuideDm(guideDmDue);
-      if (events.some((e) => e.type === "expedition_ended") && currentStep(s, reg())?.kind === "expedition") completeIfDone(chatId());
-      if (events.some((e) => e.type === "scene_exchange") && s.scene?.origin === "prologue") {
-        const step = currentStep(s, reg());
-        const scene = s.scene;
-        if (step?.exchangeCap !== void 0 && scene.exchanges >= step.exchangeCap && !asked.has(scene.id)) {
-          asked.add(scene.id);
-          deps.context.setDirective({ id: WRAP_DIRECTIVE, text: WRAP_TEXT, expiresAfter: "scene" });
-          deps.refreshContext();
-          const expect = chatId();
-          void deps.modal({
-            title: "Move on?",
-            body: "This is a good place to leave it. Keep talking, or move on.",
-            actions: [{ label: "MOVE ON", value: "move" }, { label: "Keep talking", value: "keep" }]
-          }).then(async (answer) => {
-            if (answer === "move" && chatId() === expect && state()?.scene?.id === scene.id) await deps.endScene();
-          });
-        }
-      }
-      const ended = events.find((e) => e.type === "scene_ended" && tracked !== null && e.sceneId === tracked.sceneId);
-      const aborted = events.some((e) => e.type === "scene_aborted");
-      if (ended && tracked) {
-        const done = tracked;
-        tracked = null;
-        asked.delete(done.sceneId);
-        clearDirectives();
-        deps.refreshContext();
-        const expect = chatId();
-        const step = currentStep(s, reg());
-        if (step?.perUnit === true) {
-          for (const unitId of done.participants) {
-            if (!s.onboarding?.spoken?.includes(unitId)) dispatch2("onboarding/mark_spoken", { unitId }, expect);
-          }
-        }
-        completeIfDone(expect);
-      } else if (aborted && tracked) {
-        tracked = null;
-        clearDirectives();
-        deps.refreshContext();
-      }
-      const now = state();
-      if (now && !now.scene && currentStep(now, reg())?.completion === "all_spoken") completeIfDone(chatId());
-    }
-  };
 }
 
 // src/ui/shell/router.ts
@@ -28336,7 +28482,8 @@ function system3(raw) {
   const hasRules = (input.rules ?? []).length > 0;
   const hasLeaks = (input.intercepted ?? []).length > 0;
   const hasWarned = (input.warned ?? []).length > 0;
-  const eventTypes = EVENT_TYPES.filter((t) => (hasRules || !RULE_TYPES.includes(t)) && (hasLeaks || t !== LEAK_TYPE) && (hasWarned || t !== ACCUSED_TYPE));
+  const hasOverride = (input.overrides ?? []).length > 0;
+  const eventTypes = EVENT_TYPES.filter((t) => (hasRules || hasOverride && t === "compromise_reached" || !RULE_TYPES.includes(t)) && (hasLeaks || t !== LEAK_TYPE) && (hasWarned || t !== ACCUSED_TYPE));
   const extras = [
     ...excluded.length > 0 ? ['  "contentViolations": [{ "category": "<id from EXCLUDED>", "evidence": "<at most 15 words quoted from the exchange>" }]'] : [],
     ...asksTone ? ['  "sceneTone": "romantic" | "intimate" | null'] : []
@@ -28354,6 +28501,7 @@ function system3(raw) {
     `               "tags": ["<tag from the unit's likes/dislikes/triggers>"], "evidence": "<at most 20 words, quoted from the exchange>", "confidence": 0.0-1.0,`,
     ...hasRules ? ['               "measure": MEASURE,   // only for commander_enforced / threatened', `               "ruleId": "<id from RULES>", "text": "<the agreed wording>"${hasLeaks ? "," : " }],"}   // only for rule_kept / rule_broken / compromise_reached (text: compromise_reached only)`] : [`               "measure": MEASURE${hasLeaks ? "," : " }],"}   // only for commander_enforced / threatened`],
     ...hasLeaks ? ['               "itemId": "<id from INTERCEPTED>" }],   // only for knowledge_leak'] : [],
+    ...hasOverride ? ['               "overrideId": "<id from OVERRIDE>", "text": "<the agreed wording>"   // only for compromise_reached with the warden'] : [],
     '  "facts": [{ "about": ["<unit id>"] | "world" | "commander", "text": "<one sentence>", "importance": 1-5, "tags": ["<tag>"] }],',
     '  "proposals": [{ "from": "commander" | "<unit id>", "to": "commander" | "<unit id>", "kind": PROPOSAL_KIND, "evidence": "<short quote>" }],',
     '  "promises": [{ "by": "commander" | "<unit id>", "to": "commander" | "<unit id>", "text": "<the promise>", "kind": "made" | "kept" | "broken" }],',
@@ -28386,6 +28534,7 @@ function system3(raw) {
     ...hasLeaks ? [
       '"knowledge_leak": the commander says or does something that only an INTERCEPTED item could have told; the unit it is about is the target and "itemId" is its id. Report it only when the exchange shows the commander acting on that item; an item no one acted on is not a leak.'
     ] : [],
+    ...hasOverride ? ['"compromise_reached" with the warden: the commander and the warden agree a real alternative to the overridden order; report it only when the exchange shows both accepting it; set "overrideId" to its id from OVERRIDE and put the agreed wording in "text" (at most 160 characters). Her giving in or the commander giving way is not a compromise.'] : [],
     ...hasWarned ? ['"accused": the commander openly accuses a unit listed in WARNED of planning disloyalty, desertion, mutiny or defiance; the unit is the target. Report it only when the exchange shows the accusation.'] : [],
     ...hasLimits ? ["If the commander pushes a unit past her limits, report `rejected_advance` (advances) or `decision_violated` (orders)."] : []
   ].join("\n");
@@ -28409,6 +28558,7 @@ function prompt3(raw) {
   ];
   if ((input.rules ?? []).length > 0) out.push("", "RULES (id (status) \u2014 unit: what it says):", ...input.rules.map((r) => `- ${r.id} (${r.status}) \u2014 ${r.unitId}: ${r.text}`));
   if ((input.intercepted ?? []).length > 0) out.push("", "INTERCEPTED (id \u2014 unit: what it says):", ...input.intercepted.map((i) => `- ${i.id} \u2014 ${i.unitId}: ${i.gist.replace(/[\r\n]+/g, " ")}`));
+  if ((input.overrides ?? []).length > 0) out.push("", "OVERRIDE (id \u2014 the commander's order; what she wants instead):", ...input.overrides.map((o) => `- ${o.id} \u2014 ${o.order}; ${o.alternative}`));
   if ((input.warned ?? []).length > 0) out.push("", `WARNED (units the commander has been warned about): ${input.warned.join(", ")}`);
   if (input.openPromises.length > 0) {
     out.push("", "Open promises:", ...input.openPromises.map((p) => `- ${p.by} \u2192 ${p.to}: ${p.text}`));
@@ -28431,7 +28581,7 @@ function sanitizeIntentOutput(raw, ctx2) {
   const src = parsed.success ? parsed.data : { events: [], facts: [], proposals: [], promises: [], emotions: [], stressHints: [], contentViolations: [], sceneTone: void 0 };
   const events = src.events.filter((e) => isObj31(e) && typeof e.confidence === "number" && e.confidence >= ctx2.minConfidence);
   const proposals2 = src.proposals.filter((p) => ctx2.romance || !(isObj31(p) && ROMANTIC_PROPOSALS.includes(p.kind)));
-  const intents = validateIntents({ ...src, events, proposals: proposals2 }, { participants: ctx2.participants, squad: ctx2.squad, maxEvents: TUNING.relations.maxEventsRead, ...ctx2.measures ? { measures: ctx2.measures } : {}, ...ctx2.rules ? { rules: ctx2.rules } : {}, ...ctx2.intercepted ? { intercepted: ctx2.intercepted } : {}, ...ctx2.warned ? { warned: ctx2.warned } : {} });
+  const intents = validateIntents({ ...src, events, proposals: proposals2 }, { participants: ctx2.participants, squad: ctx2.squad, maxEvents: TUNING.relations.maxEventsRead, ...ctx2.measures ? { measures: ctx2.measures } : {}, ...ctx2.rules ? { rules: ctx2.rules } : {}, ...ctx2.intercepted ? { intercepted: ctx2.intercepted } : {}, ...ctx2.warned ? { warned: ctx2.warned } : {}, ...ctx2.overrides ? { overrides: ctx2.overrides } : {} });
   const emotions = [];
   for (const e of src.emotions) {
     if (isObj31(e) && typeof e.unitId === "string" && ctx2.participants.includes(e.unitId) && typeof e.label === "string" && LABELS.includes(e.label)) {
@@ -28461,7 +28611,8 @@ async function extractIntents(input, deps, opts = {}) {
     excluded: (input.excluded ?? []).map((e) => e.id),
     rules: (input.rules ?? []).map((r2) => ({ id: r2.id, unitId: r2.unitId })),
     intercepted: (input.intercepted ?? []).map((i) => i.id),
-    warned: input.warned ?? []
+    warned: input.warned ?? [],
+    overrides: (input.overrides ?? []).map((o) => o.id)
   });
 }
 
@@ -29329,8 +29480,10 @@ function createSceneController(deps) {
       ...contentInput(s0, scene.participants),
       ...leakInput(s0, deps.registries(), scene.participants),
       // P12: what the frequency caught about those present (nothing without the trait)
-      ...warnedInput(s0, scene.participants)
+      ...warnedInput(s0, scene.participants),
       // P12: the units the commander has an open warning about
+      ...overrideInput(s0, deps.registries(), scene.participants)
+      // P13: the warden's open override, while she is present
     };
     for (const m of messages) {
       if (m.isUser) continue;
@@ -30170,14 +30323,14 @@ async function importProfile(avatar, sections, deps) {
     if (!loaded) return { kind: "manual", reason: "card not found" };
     const input = buildImportInput(truncateCard(loaded, CARD_INPUT_TOKENS), registries, settings, sections, deps.world, deps.bond);
     const ctx2 = { registries, desireBondDefects: settings.desireBondDefects, sections: input.sections, world: deps.world, bond: deps.bond };
-    const attempt = async () => {
+    const attempt2 = async () => {
       const r = await callLlm("profile_import", input, { st, settings });
       if (!r.ok) return { ok: false, reason: r.detail || r.reason };
       return { ok: true, value: sanitizeProfile(r.value, ctx2) };
     };
     const critical = (m) => m.filter((s) => s === "role" || s === "defects");
-    let res = await attempt();
-    if (res.ok && critical(res.value.missing).length > 0) res = await attempt();
+    let res = await attempt2();
+    if (res.ok && critical(res.value.missing).length > 0) res = await attempt2();
     if (!res.ok) return { kind: "manual", reason: res.reason };
     const stillMissing = critical(res.value.missing);
     if (stillMissing.length > 0) {
@@ -39870,6 +40023,8 @@ function createApp(st, deps) {
     context,
     refreshContext: applyContext,
     // P13: a rewind puts the day-start state back, then everything that hangs on the state (the scene, the combat, the modals) is picked up afresh
+    startScene: (o) => beginScene(o),
+    // P13: the ARGUE scene with the warden
     restore: (snap, expected) => {
       if (!api.restoreSnapshot(snap, expected)) return false;
       afterLoad();
