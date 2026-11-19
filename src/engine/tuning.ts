@@ -551,4 +551,26 @@ export const TUNING = Object.freeze({
     textMax: 240,
     chronicleMax: 600,
   }),
+  /**
+   * P14b: character development (draft balance values, AUTHOR TO TUNE). `acc` is an accumulator, `drift` a value's fractional change;
+   * a value moves one whole step once `|drift| >= 1`. `anchorMult` makes a step on an anchored axis need more support.
+   */
+  development: Object.freeze({
+    accCap: 6, nudgeMin: 1, nudge: 0.34, nudgeCost: 1, stepThreshold: 3, anchorMult: 1.5, anchorInertia: 0.5,
+    valueCap: 2, anchoredValueCap: 1, discreteCap: 2, anchoredDiscreteCap: 1,
+    severityMult: Object.freeze({ minor: 0.5, moderate: 1, major: 1.5, extreme: 2 }),
+    modeMult: Object.freeze({ slow: 0.5, normal: 1 }),
+    cadence: Object.freeze({ slow: 14, normal: 7 }),
+    minMaterial: 3, dueAcc: 4.5,
+    pendingMax: 24, misreadMax: 8, misreadDays: 30, factsMax: 12, maxShifts: 3, maxFacts: 3,
+    reasonMax: 120, factTextMax: 140, summaryMax: 160, cardMax: 600, anchorsMax: 4,
+    misread: Object.freeze({ low: 0.35, mid: 0.15, high: 0.05 }),
+    secretMult: 1.5, misreadCap: 0.6, revertShare: 0.5,
+    scales: Object.freeze({
+      desire: Object.freeze(['low', 'medium', 'high'] as const),
+      attachment: Object.freeze(['avoidant', 'slow', 'steady', 'intense'] as const),
+      leadStyle: Object.freeze(['yielding', 'balanced', 'assertive', 'dominant'] as const),
+      caretaker: Object.freeze([false, true] as const),
+    }),
+  }),
 });

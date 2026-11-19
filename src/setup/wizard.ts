@@ -813,6 +813,7 @@ export class Wizard {
       // a pick that no longer points at a chosen unit falls back to the corporation (toggleUnit keeps it in step, this is the net)
       result.mode = { kind: 'leashswap', deathRule: this.s.campaign.deathRule, warden: w.by === 'player' && w.index < units.length ? { by: 'player', index: w.index } : { by: 'corporation' } };
     }
+    result.characterDevelopment = 'normal'; // P14b: spec §8 default; the player can change it in SYS
     if (this.s.headStart.days > 0) result.headStart = { days: this.s.headStart.days, newArrivals: this.s.headStart.newArrivals.filter((a) => units.some((u) => u.cardRef === a)) };
     if (prologue) result.onboarding = { prologueId: prologue.id, veteran: this.s.mode === 'veteran' };
     const errors = validateSetup(result, this.deps.registries, { desireBondDefects: this.deps.desireBondDefects });

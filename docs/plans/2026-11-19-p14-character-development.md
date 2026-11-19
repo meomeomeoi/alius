@@ -381,17 +381,17 @@ interface DevMoment {
     } // AUTHOR TO TUNE
     ```
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - `absent setting is off`: `developmentMode({ settings: {} })` is `'off'`; `{ characterDevelopment: 'fast' }` is `'off'`; `'slow'` and `'normal'` read back.
   - `developmentOf does not write`: a unit without `development` stays without it; the result has `drift {}`, `acc {}`, `pending []`, `nextId 0`.
   - `nextDevId counts per unit`: `ap0`, `df1`, `dm2`.
   - `setup writes the mode only when present`: `buildCampaign` with `characterDevelopment: 'normal'` stores it; without the field `settings` has no key (deep-equal to a build before this task, so `tests/engine/setup.test.ts` stays green).
   - `invalid mode is a setup error`: `'fast'` → one readable line.
   - `set_mode`: `development/set_mode { mode: 'slow' }` stores it; `'off'` stores `'off'` and keeps every `development` block; an unknown mode throws.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/development/state.test.ts` → FAIL.
-- [ ] **Step 3: Implement** as in Interfaces. `state.ts` imports types and `TUNING` only.
-- [ ] **Step 4: Run** the file, then `npm test` → PASS (the goldens unchanged).
-- [ ] **Step 5: Commit** `feat(P14b): development state, the setting and tuning`
+- [x] **Step 2: Run** `npx vitest run tests/engine/development/state.test.ts` → FAIL.
+- [x] **Step 3: Implement** as in Interfaces. `state.ts` imports types and `TUNING` only.
+- [x] **Step 4: Run** the file, then `npm test` → PASS (the goldens unchanged).
+- [x] **Step 5: Commit** `feat(P14b): development state, the setting and tuning`
 
 ---
 

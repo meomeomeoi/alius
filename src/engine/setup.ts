@@ -4,6 +4,7 @@ import { Rng } from './rng';
 import { enterStep, initialOnboarding, stepIndex } from './onboarding';
 import { defectAllowedFor, validateBond } from './bonds/profile';
 import { TUNING } from './tuning';
+import { DEVELOPMENT_MODES } from './development/state';
 import { ensureLeash } from './leash/weekly';
 import { seedWorld } from './world/state';
 import { initialLoyaltyBand } from './relations/bands';
@@ -17,7 +18,7 @@ import { corporateWardenPick, seedWarden } from './warden/select';
 import { DEATH_RULES, newLeashswap, type DeathRule } from './warden/state';
 import { applyCommanderSetup, defaultCommanderSetup, validateCommanderSetup, type CommanderSetup } from './commander/profile';
 import {
-  VALUE_AXES, type Bond, type CampaignState, type Relation, type SignatureInstance, type Unit, type WorldStance,
+  VALUE_AXES, type Bond, type CampaignState, type DevelopmentMode, type Relation, type SignatureInstance, type Unit, type WorldStance,
 } from './state/types';
 
 export const SETUP_LIMITS = {
@@ -87,6 +88,8 @@ export interface SetupResult {
    * arrive today. `dynamicUnderway` is P15's: type-checked here, otherwise unused. Absent or `days: 0` = today's behaviour.
    */
   headStart?: { days: HeadStartDays; newArrivals: string[]; dynamicUnderway?: boolean | string[] };
+  /** P14b: the setting `characterDevelopment`; absent = off (the key is not written into `settings`). The wizard sends `'normal'`. */
+  characterDevelopment?: DevelopmentMode;
 }
 
 export type HeadStartDays = 0 | 7 | 14 | 30;
@@ -283,6 +286,7 @@ export function validateSetup(r: SetupResult, reg: Registries, opts: { desireBon
     }
   }
   if (r.headStart !== undefined) out.push(...validateHeadStart(r.headStart, units));
+  if (r.characterDevelopment !== undefined && !DEVELOPMENT_MODES.includes(r.characterDevelopment)) out.push('Character development must be off, slow or normal');
   if (units.length > SETUP_LIMITS.maxUnits) out.push(`At most ${SETUP_LIMITS.maxUnits} units (has ${units.length})`);
   const cards = new Set<string>();
   units.forEach((u, i) => {
@@ -408,7 +412,7 @@ export function buildCampaign(
   state.world.startId = start.id;
   // P8: every option is stored (missing keys take their default) before anything reads them; they are fixed from here on
   state.world.options = { ...defaultWorldOptions(reg), ...(r.world?.options ?? {}) };
-  state.settings = { desireBondDefects: opts.desireBondDefects };
+  state.settings = { desireBondDefects: opts.desireBondDefects, ...(r.characterDevelopment !== undefined ? { characterDevelopment: r.characterDevelopment } : {}) };
   if (r.content !== undefined) {
     const known = [...reg.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => String(c.id));
     state.content = { enabled: known.filter((id) => r.content!.enabled.includes(id)) };

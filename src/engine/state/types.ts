@@ -192,6 +192,110 @@ export interface Unit {
   bond?: Bond;
   /** P10b: the `handFonts` entry her notes are written in (absent = the hashed default of her id; set by `squad/set_hand`). */
   hand?: string;
+  /** P14b: what she has become since joining, on top of the imported profile (absent = nothing yet). Read through `development/profile`. */
+  development?: Development;
+  /** P14b: how well she reads what happens around her (from the import; absent = `mid`). A profile field. */
+  insight?: Insight;
+}
+
+/** P14b: the setting `characterDevelopment`. */
+export type DevelopmentMode = 'off' | 'slow' | 'normal';
+export type Insight = 'low' | 'mid' | 'high';
+
+/** P14b: how she read an event (the model's reading of an intent, or a registry row for an engine event). */
+export type Wanted = 'yes' | 'no' | 'unclear';
+export type Initiator = 'target' | 'actor' | 'mutual';
+export type Harm = 'none' | 'minor' | 'serious';
+export type Outcome = 'good' | 'mixed' | 'bad';
+export interface Reading { wanted: Wanted; initiator: Initiator; harm: Harm; outcome: Outcome }
+export type AppraisalRole = 'subject' | 'actor' | 'witness';
+
+/** P14b: one event as one soldier read it. Hidden from every panel (see `tests/fixtures/analyze/hidden.ts`). */
+export interface Appraisal extends Reading {
+  id: string;
+  day: number;
+  /** The event type, `activity:<id>` or `dilemma:<context>`. */
+  kind: string;
+  /** `her` | `commander` | `unit:<id>` | `squad`. */
+  target: string;
+  role: AppraisalRole;
+  severity: Severity;
+  sceneId?: string;
+  /** `commander` or the unit it happened to. */
+  subject: string;
+  /** A witness read it wrong (`wanted` and `initiator` are the flipped ones; `truth` is the real reading). */
+  misread?: true;
+  truth?: Reading;
+  /** What this appraisal added to the accumulators (kept for revision and UNDO). */
+  pushes: Array<{ axis: string; amount: number }>;
+  summary: string;
+}
+
+export interface DevFact {
+  id: string;
+  text: string;
+  kind: 'attitude' | 'value' | 'habit' | 'skill' | 'memory';
+  day: number;
+  source: 'review' | 'habit';
+  sceneId?: string;
+  shownDay?: number;
+  edited?: true;
+}
+
+export interface DevMoment {
+  id: string;
+  axis: string;
+  from: string;
+  to: string;
+  reason: string;
+  day: number;
+  sceneId?: string;
+  shownDay?: number;
+}
+
+/** P14b: what the last applied review changed, so a REROLL before it was shown can restore it exactly. */
+export interface ReviewInverse {
+  drift: Partial<Record<ValueAxis, number>>;
+  bond: Development['bond'];
+  gained: Development['gained'];
+  lost: Development['lost'];
+  acc: Record<string, number>;
+  factIds: string[];
+  momentIds: string[];
+  /** Facts the review pushed out of the list (the oldest unedited ones). */
+  droppedFacts?: DevFact[];
+  lastReview?: number;
+  pending: Appraisal[];
+  habits?: string[];
+}
+
+export interface Development {
+  /** Value axes only; fractional, inside the caps. */
+  drift: Partial<Record<ValueAxis, number>>;
+  /** Axis key → support, clamped to ±`TUNING.development.accCap`. */
+  acc: Record<string, number>;
+  /** Discrete changes, applied on top of the import. */
+  bond?: Partial<Pick<Bond, 'attachment' | 'desire' | 'caretaker' | 'leadStyle'>>;
+  gained?: { likes?: string[]; dislikes?: string[]; tastes?: string[] };
+  lost?: { likes?: string[]; dislikes?: string[]; tastes?: string[] };
+  /** Axis keys the card states strongly (from the import, at most 4). */
+  anchors: string[];
+  /** Axis keys the player froze (edit lock off only). */
+  held?: string[];
+  /** `activity:<id>` | `companion:<unitId>` | `region:<id>` → count. */
+  counters: Record<string, number>;
+  /** Appraisals since the last review, the oldest dropped past `pendingMax`. */
+  pending: Appraisal[];
+  /** Misread appraisals kept for revision (at most `misreadMax`, dropped after `misreadDays`). */
+  misread?: Appraisal[];
+  facts: DevFact[];
+  moments: DevMoment[];
+  habits: string[];
+  /** The day of the last review (absent = 0). */
+  lastReview?: number;
+  lastApplied?: ReviewInverse;
+  /** Per-unit id counter for `ap<n>`, `df<n>`, `dm<n>`. */
+  nextId: number;
 }
 
 export interface DailyGain {

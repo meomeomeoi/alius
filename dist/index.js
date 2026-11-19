@@ -687,6 +687,49 @@ var TUNING = Object.freeze({
     moments: Object.freeze({ 7: Object.freeze([1, 1]), 14: Object.freeze([1, 2]), 30: Object.freeze([2, 2]) }),
     textMax: 240,
     chronicleMax: 600
+  }),
+  /**
+   * P14b: character development (draft balance values, AUTHOR TO TUNE). `acc` is an accumulator, `drift` a value's fractional change;
+   * a value moves one whole step once `|drift| >= 1`. `anchorMult` makes a step on an anchored axis need more support.
+   */
+  development: Object.freeze({
+    accCap: 6,
+    nudgeMin: 1,
+    nudge: 0.34,
+    nudgeCost: 1,
+    stepThreshold: 3,
+    anchorMult: 1.5,
+    anchorInertia: 0.5,
+    valueCap: 2,
+    anchoredValueCap: 1,
+    discreteCap: 2,
+    anchoredDiscreteCap: 1,
+    severityMult: Object.freeze({ minor: 0.5, moderate: 1, major: 1.5, extreme: 2 }),
+    modeMult: Object.freeze({ slow: 0.5, normal: 1 }),
+    cadence: Object.freeze({ slow: 14, normal: 7 }),
+    minMaterial: 3,
+    dueAcc: 4.5,
+    pendingMax: 24,
+    misreadMax: 8,
+    misreadDays: 30,
+    factsMax: 12,
+    maxShifts: 3,
+    maxFacts: 3,
+    reasonMax: 120,
+    factTextMax: 140,
+    summaryMax: 160,
+    cardMax: 600,
+    anchorsMax: 4,
+    misread: Object.freeze({ low: 0.35, mid: 0.15, high: 0.05 }),
+    secretMult: 1.5,
+    misreadCap: 0.6,
+    revertShare: 0.5,
+    scales: Object.freeze({
+      desire: Object.freeze(["low", "medium", "high"]),
+      attachment: Object.freeze(["avoidant", "slow", "steady", "intense"]),
+      leadStyle: Object.freeze(["yielding", "balanced", "assertive", "dominant"]),
+      caretaker: Object.freeze([false, true])
+    })
   })
 });
 
@@ -12186,6 +12229,20 @@ function objectiveList(state, reg) {
   return out;
 }
 
+// src/engine/development/state.ts
+var DEVELOPMENT_MODES = ["off", "slow", "normal"];
+var EMPTY = Object.freeze({
+  drift: Object.freeze({}),
+  acc: Object.freeze({}),
+  anchors: Object.freeze([]),
+  counters: Object.freeze({}),
+  pending: Object.freeze([]),
+  facts: Object.freeze([]),
+  moments: Object.freeze([]),
+  habits: Object.freeze([]),
+  nextId: 0
+});
+
 // src/engine/headStart/hash.ts
 var headStartRaw = (seed, unitId, key) => fnv1a(`${seed}|${unitId}|head_start|${key}`);
 var headStartHash = (seed, unitId, key) => headStartRaw(seed, unitId, key) / 2 ** 32;
@@ -21471,6 +21528,7 @@ function validateSetup(r, reg, opts) {
     }
   }
   if (r.headStart !== void 0) out.push(...validateHeadStart(r.headStart, units));
+  if (r.characterDevelopment !== void 0 && !DEVELOPMENT_MODES.includes(r.characterDevelopment)) out.push("Character development must be off, slow or normal");
   if (units.length > SETUP_LIMITS.maxUnits) out.push(`At most ${SETUP_LIMITS.maxUnits} units (has ${units.length})`);
   const cards = /* @__PURE__ */ new Set();
   units.forEach((u, i) => {
@@ -21571,7 +21629,7 @@ function buildCampaign(r, reg, opts) {
   state.commander.fileReviewed = true;
   state.world.startId = start.id;
   state.world.options = { ...defaultWorldOptions(reg), ...r.world?.options ?? {} };
-  state.settings = { desireBondDefects: opts.desireBondDefects };
+  state.settings = { desireBondDefects: opts.desireBondDefects, ...r.characterDevelopment !== void 0 ? { characterDevelopment: r.characterDevelopment } : {} };
   if (r.content !== void 0) {
     const known = [...reg.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => String(c.id));
     state.content = { enabled: known.filter((id) => r.content.enabled.includes(id)) };
@@ -25111,6 +25169,14 @@ function applyRecap(draft, reg, payload) {
 
 // src/engine/actions/headStart.ts
 registerAction("head_start/recap", (draft, payload, ctx2) => applyRecap(draft, ctx2.registries, payload));
+
+// src/engine/actions/development.ts
+registerAction("development/set_mode", (draft, payload) => {
+  const mode = payload?.mode;
+  if (typeof mode !== "string" || !DEVELOPMENT_MODES.includes(mode)) throw new Error("Character development must be off, slow or normal.");
+  draft.settings.characterDevelopment = mode;
+  return [];
+});
 
 // src/llm/callTypes.ts
 var CALL_TYPE_IDS = [
@@ -33726,6 +33792,7 @@ var Wizard = class {
       const w = this.s.campaign.warden;
       result.mode = { kind: "leashswap", deathRule: this.s.campaign.deathRule, warden: w.by === "player" && w.index < units.length ? { by: "player", index: w.index } : { by: "corporation" } };
     }
+    result.characterDevelopment = "normal";
     if (this.s.headStart.days > 0) result.headStart = { days: this.s.headStart.days, newArrivals: this.s.headStart.newArrivals.filter((a) => units.some((u) => u.cardRef === a)) };
     if (prologue) result.onboarding = { prologueId: prologue.id, veteran: this.s.mode === "veteran" };
     const errors = validateSetup(result, this.deps.registries, { desireBondDefects: this.deps.desireBondDefects });
