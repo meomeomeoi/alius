@@ -6,7 +6,7 @@ import type { EngineEvent } from '../dispatch';
 
 export const FIRST_SCENE_STARTED = 'The first scene has started.';
 
-/** Why the recap's texts can no longer be replaced: a scene is open or has ended, or the day moved on. `null` while the window is open. */
+/** Why the recap's texts can no longer be replaced: a scene is open or has ended, or the day moved on. `null` while the texts may still be replaced. */
 export function recapCommitted(state: CampaignState): string | null {
   return state.scene !== undefined || (state.memory.scenes ?? []).length > 0 || state.day !== 1 ? FIRST_SCENE_STARTED : null;
 }
