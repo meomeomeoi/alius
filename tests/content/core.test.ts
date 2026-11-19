@@ -893,6 +893,10 @@ describe('core content pack: P11 prologues and unlocks', () => {
     for (const p of [by('start_vesper'), by('start_kestrel')]) {
       const s = steps(p);
       expect(s.cold_open.authoredText!.length, String(p.id)).toBeGreaterThan(0);
+      // P11b: a head start has its own recollection instead of the transport
+      const own = s.cold_open as { headStartText?: string[]; headStartTitle?: string };
+      expect(own.headStartText?.length, String(p.id)).toBeGreaterThanOrEqual(2);
+      expect(own.headStartTitle, String(p.id)).toBeTruthy();
       expect(Object.keys(s.intake.lines!).sort()).toEqual(['ask_crime', 'ask_name', 'confirm_owner']);
       expect(s.lineup.directive, String(p.id)).toBeTruthy();
       expect(s.lineup.objective, String(p.id)).toBeTruthy();

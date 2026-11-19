@@ -198,5 +198,10 @@ _DRAFT — author will rewrite._ Texts of a campaign that begins as if the comma
   - `learned_the_crime` (needs the crime known): the day she learned what the commander was convicted of.
   - `small_favour` (+): a ration or a spare part that cost the commander something to give.
   - `rule_reminder` (any): a rule set in the first days and kept when it was inconvenient.
-- **Open:** the cold open and the intake of the prologue still tell an arrival; with a head start in prologue mode they clash with it.
+- **Cold open with a head start** (`cold_open.headStartTitle` / `headStartText`, in the skeleton; shown instead of `TRANSFER ORDER` and the transport when the HEAD START option is on, `PERSONAL FILE` as the form's meta):
+  - title: `RECOLLECTION`.
+  - You sit down at the table and let the past come back: the charge, the article, the day the transport brought you here.
+  - One night you lie awake and work out what your place is in this outpost: a convicted officer over soldiers who were built to be written off.
+  - The weeks since have gone by with the squad. You put them in order, one by one, before the first operation begins.
+- **Open:** the intake and the exam forms keep their arrival wording ("Name for the record", "Stand on the mark"); only the cold open has a head start version.
 

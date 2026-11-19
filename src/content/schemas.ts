@@ -1734,6 +1734,9 @@ export const PrologueStepSchema = z.object({
   voice: z.enum(['terminal', 'corporate', 'paper', 'personal']),
   title: str.max(60).optional(),
   authoredText: z.array(str.max(400)).max(8).optional(),
+  /** P11b: the text a cold open shows instead of `title` and `authoredText` when the campaign starts with a head start (the squad already knows the commander). */
+  headStartTitle: str.max(60).optional(),
+  headStartText: z.array(str.max(400)).max(8).optional(),
   /** Named lines the screens look up by key (`ask_crime`, `dictate`...); `{KEY}` placeholders are filled by code. */
   lines: z.record(z.string().regex(ID_PATTERN), str.max(200)).optional(),
   /** The scene goal, injected as a hard directive while the step's scene runs. */

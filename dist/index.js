@@ -7964,6 +7964,9 @@ var PrologueStepSchema = external_exports.object({
   voice: external_exports.enum(["terminal", "corporate", "paper", "personal"]),
   title: str.max(60).optional(),
   authoredText: external_exports.array(str.max(400)).max(8).optional(),
+  /** P11b: the text a cold open shows instead of `title` and `authoredText` when the campaign starts with a head start (the squad already knows the commander). */
+  headStartTitle: str.max(60).optional(),
+  headStartText: external_exports.array(str.max(400)).max(8).optional(),
   /** Named lines the screens look up by key (`ask_crime`, `dictate`...); `{KEY}` placeholders are filled by code. */
   lines: external_exports.record(external_exports.string().regex(ID_PATTERN), str.max(200)).optional(),
   /** The scene goal, injected as a hard directive while the step's scene runs. */
@@ -34406,7 +34409,8 @@ function renderColdOpen(host, ctx2) {
   const step = ctx2.wizard.prologueStep();
   const reduced = motionReduced(ctx2.settings);
   let delay = 0;
-  const lines = (step?.authoredText ?? []).map((text2) => {
+  const recollection = ctx2.wizard.state.headStart.days > 0 && (step?.headStartText?.length ?? 0) > 0;
+  const lines = (recollection ? step.headStartText : step?.authoredText ?? []).map((text2) => {
     const p = h("p", { class: reduced ? "alius-cold-line" : "alius-cold-line is-typing" }, text2);
     if (!reduced) {
       const ms = Math.round(text2.length / TYPING_CPS * 1e3);
@@ -34416,7 +34420,7 @@ function renderColdOpen(host, ctx2) {
     }
     return p;
   });
-  host.replaceChildren(paper(step?.title, "TRANSFER FILE", h("div", { class: "alius-cold-open" }, ...lines)));
+  host.replaceChildren(recollection ? paper(step?.headStartTitle ?? step?.title, "PERSONAL FILE", h("div", { class: "alius-cold-open" }, ...lines)) : paper(step?.title, "TRANSFER FILE", h("div", { class: "alius-cold-open" }, ...lines)));
 }
 function renderIntake(host, ctx2) {
   const { wizard, registries: reg } = ctx2;

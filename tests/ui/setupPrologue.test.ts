@@ -69,6 +69,22 @@ describe('cold open', () => {
     expect(card.querySelector('.alius-voice-title')!.textContent).toBe('TRANSFER ORDER');
   });
 
+  it('a head start shows its own recollection instead of the transport, and none at arrival (P11b)', () => {
+    const steps = reg.prologues.get('prologue_vesper')!.steps as Record<string, { headStartText?: string[]; headStartTitle?: string }>;
+    const own = steps.cold_open.headStartText!;
+    expect(own.length).toBeGreaterThanOrEqual(2);
+    const m = make();
+    m.wizard.setStart('start_vesper');
+    m.wizard.setHeadStart(14);
+    goTo(m, 'cold_open', false);
+    const card = q(m, 'article.alius-voice-paper')!;
+    expect([...card.querySelectorAll('.alius-cold-line')].map((p) => p.textContent)).toEqual(own);
+    expect(card.querySelector('.alius-voice-title')!.textContent).toBe(steps.cold_open.headStartTitle);
+    expect(text(m)).not.toContain('The transport');
+    const plain = goTo(make(), 'cold_open', false);
+    expect([...q(plain, 'article.alius-voice-paper')!.querySelectorAll('.alius-cold-line')].map((p) => p.textContent)).toEqual(lines());
+  });
+
   it('types the lines out at 60 characters a second', () => {
     const m = goTo(make(), 'cold_open', false);
     const first = q(m, '.alius-cold-line')!;

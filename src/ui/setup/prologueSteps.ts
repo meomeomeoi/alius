@@ -44,7 +44,9 @@ export function renderColdOpen(host: HTMLElement, ctx: PrologueStepCtx): void {
   const step = ctx.wizard.prologueStep();
   const reduced = motionReduced(ctx.settings);
   let delay = 0;
-  const lines = (step?.authoredText ?? []).map((text) => {
+  // P11b: a campaign with a head start opens on a recollection instead of the transport (the squad already knows the commander)
+  const recollection = ctx.wizard.state.headStart.days > 0 && (step?.headStartText?.length ?? 0) > 0;
+  const lines = (recollection ? step!.headStartText! : step?.authoredText ?? []).map((text) => {
     const p = h('p', { class: reduced ? 'alius-cold-line' : 'alius-cold-line is-typing' }, text);
     if (!reduced) {
       const ms = Math.round((text.length / TYPING_CPS) * 1000);
@@ -54,7 +56,9 @@ export function renderColdOpen(host: HTMLElement, ctx: PrologueStepCtx): void {
     }
     return p;
   });
-  host.replaceChildren(paper(step?.title, 'TRANSFER FILE', h('div', { class: 'alius-cold-open' }, ...lines)));
+  host.replaceChildren(recollection
+    ? paper(step?.headStartTitle ?? step?.title, 'PERSONAL FILE', h('div', { class: 'alius-cold-open' }, ...lines))
+    : paper(step?.title, 'TRANSFER FILE', h('div', { class: 'alius-cold-open' }, ...lines)));
 }
 
 /** "Article?" and "Name for the record?": the same fields the classic dossier fills, asked by a clerk. */
