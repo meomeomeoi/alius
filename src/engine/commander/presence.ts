@@ -7,6 +7,7 @@ import { TUNING } from '../tuning';
 import type { EventIntent } from '../relations/intents';
 import { commanderProfile, daysKnown } from './profile';
 import { traitEffects, traitStartingTrust } from './traits';
+import { tastesOf, valuesOf } from '../development/profile';
 
 /**
  * P7: presence and the first impression. Looks matter on first meeting and fade with the days a unit has known the
@@ -36,10 +37,10 @@ export function firstImpressionWeight(state: CampaignState, unitId: string): num
 const inRange = (v: number, r: unknown): boolean => Array.isArray(r) && v >= Number(r[0]) && v <= Number(r[1]);
 
 /** The unit's tastes that fit the commander as he is now. A taste without `match` always fits; unknown ids are skipped. */
-export function matchedTastes(state: CampaignState, reg: Registries, unit: Pick<Unit, 'commanderTastes'>): Entry[] {
+export function matchedTastes(state: CampaignState, reg: Registries, unit: Pick<Unit, 'commanderTastes' | 'development'>): Entry[] {
   const profile = commanderProfile(state);
   const out: Entry[] = [];
-  for (const id of unit.commanderTastes ?? []) {
+  for (const id of tastesOf(unit)) {
     const t = reg.tastes.get(id);
     if (!t) continue;
     const m = t.match as { archetypes?: string[]; expression?: unknown; seasoning?: unknown } | undefined;
@@ -56,7 +57,7 @@ export function matchedTastes(state: CampaignState, reg: Registries, unit: Pick<
  * their offsets, the commander's traits add theirs (`starting_trust`, `taste_attraction`), every axis is clamped and the loyalty band is re-based from Trust. Grunts have no tastes, so only
  * their Trust moves.
  */
-export function applyFirstImpression(state: CampaignState, reg: Registries, unit: Pick<Unit, 'commanderTastes'> & Partial<Pick<Unit, 'values' | 'kind' | 'dispositionOffset'>>, rel: Relation): void {
+export function applyFirstImpression(state: CampaignState, reg: Registries, unit: Pick<Unit, 'commanderTastes'> & Partial<Pick<Unit, 'values' | 'kind' | 'dispositionOffset' | 'development'>>, rel: Relation): void {
   const matched = matchedTastes(state, reg, unit);
   const mult = matched.reduce((m, t) => m * (typeof t.presenceMult === 'number' ? t.presenceMult : 1), 1);
   let trust = rel.trust + Math.round(presenceOf(state, reg) * mult);
@@ -69,7 +70,8 @@ export function applyFirstImpression(state: CampaignState, reg: Registries, unit
     attraction += o?.attraction ?? 0;
   }
   // traits: `starting_trust` (a unit's values decide), `taste_attraction` (only with a matched drawn_to_* taste)
-  trust += traitStartingTrust(state, reg, unit.values);
+  const { values, development } = unit;
+  trust += traitStartingTrust(state, reg, values === undefined ? undefined : valuesOf({ values, development }));
   // data, not a naming convention: any matched taste that gives Attraction counts
   if (matched.some((t) => ((t.offsets as { attraction?: number } | undefined)?.attraction ?? 0) > 0)) {
     for (const fx of traitEffects(state, reg, 'taste_attraction')) attraction += fx.amount;

@@ -5,6 +5,7 @@ import type { EffectSpec, Stats } from './combat/types';
 import type { Rng } from './rng';
 import { RARITIES, type CampaignState, type ItemInstance, type LootDrop, type Rarity, type Unit } from './state/types';
 import { TUNING } from './tuning';
+import { likesOf } from './development/profile';
 
 export const rarityIndex = (r: Rarity): 1 | 2 | 3 | 4 | 5 => (RARITIES.indexOf(r) + 1) as 1 | 2 | 3 | 4 | 5;
 
@@ -187,7 +188,7 @@ export function openWorkshop(draft: CampaignState, reg: Registries, rng: Rng, co
   const events: EngineEvent[] = [{ type: 'workshop_opened', day: draft.day, opsLeft: TUNING.items.opsPerSession, ...(companionId ? { companionId } : {}) }];
   const companion = companionId ? draft.squad.find((u) => u.id === companionId) : undefined;
   const weapon = companion?.equipment.weapon ? draft.inventory.find((i) => i.uid === companion.equipment.weapon) : undefined;
-  if (companion && weapon && companion.likes.includes('tech') && weapon.upgrade < TUNING.items.maxUpgrade
+  if (companion && weapon && likesOf(companion).includes('tech') && weapon.upgrade < TUNING.items.maxUpgrade
     && rng.chance(TUNING.items.companionQualityChance)) {
     weapon.upgrade += 1;
     events.push({ type: 'item_upgraded', uid: weapon.uid, upgrade: weapon.upgrade, free: true, unitId: companion.id });

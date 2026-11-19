@@ -4,6 +4,7 @@ import { TUNING } from '../tuning';
 import type { WorldEffect } from '../world/types';
 import { plainText, toWorldEffect, type MapCtx } from './effects';
 import type { DilemmaOption, DilemmaScale, Magnitude, Rejection } from './types';
+import { valuesOf } from '../development/profile';
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
@@ -124,7 +125,7 @@ type Hearer = Pick<Unit, 'values' | 'kind'>;
 /** How one unit takes a value-aligned event: −1…1 from her values and the axes, as P3 reads them. */
 function alignment(fx: Extract<WorldEffect, { type: 'unit_event' }>, unit: Hearer): number {
   if (fx.valueAxes && fx.valueAxes.length > 0) {
-    const sum = fx.valueAxes.reduce((n, a) => n + (unit.values[a.axis as keyof Unit['values']] ?? 0) * a.direction, 0);
+    const sum = fx.valueAxes.reduce((n, a) => n + (valuesOf(unit)[a.axis as keyof Unit['values']] ?? 0) * a.direction, 0);
     return clamp(sum / 3, -1, 1);
   }
   return ['sided_against', 'decision_violated', 'endangered', 'coerced', 'dismissed', 'insulted', 'lied_detected', 'broke_promise', 'mocked_defect', 'crime_revealed', 'rejected_advance'].includes(fx.event) ? -1 : 1;

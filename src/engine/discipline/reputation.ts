@@ -7,6 +7,8 @@ import { evaluateAutomatic } from '../relations/graph';
 import type { CampaignState, DeedCounter } from '../state/types';
 import { TUNING } from '../tuning';
 import { deedsOf } from './deeds';
+import { valuesOf } from '../development/profile';
+import type { ValueAxis } from '../state/types';
 
 type Pattern = { sum: DeedCounter[]; min: number; against?: DeedCounter[]; minShare?: number };
 const patternOf = (e: Entry): Pattern => e.pattern as Pattern;
@@ -119,7 +121,7 @@ export function introduceNickname(draft: CampaignState, ctx: EngineCtx, unitId: 
     if (!rel || rel.flags.includes(flag)) continue;
     rel.flags.push(flag);
     for (const r of reactions) {
-      const v = u.values[r.axis as keyof typeof u.values];
+      const v = valuesOf(u)[r.axis as ValueAxis];
       if (r.sign === '+' ? !(v > 0) : !(v < 0)) continue;
       applyRelationDelta(draft, u.id, 'trust', r.weight * TUNING.reputation.trustPerWeight, `nickname:${pending.id}`);
       applyRelationDelta(draft, u.id, 'affinity', r.weight * TUNING.reputation.affinityPerWeight, `nickname:${pending.id}`);

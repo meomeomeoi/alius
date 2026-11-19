@@ -18,6 +18,7 @@ import { clockById, knownRegions } from '../world/state';
 import type { WorldEffect } from '../world/types';
 import { DILEMMA_CONTEXTS, type DilemmaContext, type DilemmaOption, type DilemmaScale, type DilemmaState, type Rejection } from './types';
 import { checkDefining, parseDilemmaOutput, validateOptions } from './validate';
+import { valuesOf } from '../development/profile';
 
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
 const STALE = 'Stale dilemma answer.';
@@ -65,7 +66,7 @@ export function buildDilemmaDigest(state: CampaignState, reg: Registries, d: Dil
   const digest: DilemmaDigest = {
     day: state.day,
     context: d.context,
-    units: unitsOf(state, d.units).map((u) => ({ name: u.displayName, values: { ...u.values }, triggers: [...u.triggers] })),
+    units: unitsOf(state, d.units).map((u) => ({ name: u.displayName, values: { ...valuesOf(u) }, triggers: [...u.triggers] })),
     resources: { credits: level('credits'), supplies: level('supplies'), plyx: level('plyx') },
     factions: [...reg.corporations.values()].map((c) => ({ id: String(c.id), name: String(c.name), standing: standingBand(state.world.factions[String(c.id)] ?? 0) })),
     clocks: state.world.clocks.filter((c) => c.filled < c.segments).map((c) => ({ id: c.id, label: c.label })),

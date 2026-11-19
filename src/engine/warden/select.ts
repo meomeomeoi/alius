@@ -6,6 +6,7 @@ import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
 import { fallbackAgenda } from './agenda';
 import { leashswapOf, type WardenState } from './state';
+import { valuesOf } from '../development/profile';
 
 /**
  * Corporate assignment (P13 §1): among the named units whose status is `active`, the one with the highest `values.corporate`, then
@@ -19,8 +20,8 @@ export function corporateWardenPick(state: CampaignState, reg: Registries, exclu
   if (pool.length === 0) return null;
   const impunity = (id: string): number => impunityOf(state, reg, id)?.value ?? 0;
   pool.sort((a, b) =>
-    b.unit.values.corporate - a.unit.values.corporate
-    || a.unit.values.autonomy - b.unit.values.autonomy
+    valuesOf(b.unit).corporate - valuesOf(a.unit).corporate
+    || valuesOf(a.unit).autonomy - valuesOf(b.unit).autonomy
     || impunity(a.unit.id) - impunity(b.unit.id)
     || a.order - b.order);
   return pool[0].unit.id;

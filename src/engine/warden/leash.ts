@@ -6,6 +6,7 @@ import { addCommanderStress } from '../special/commanderStress';
 import type { CampaignState, LeashKind, LeashLogEntry, Slot } from '../state/types';
 import { TUNING } from '../tuning';
 import { wardenOf } from './state';
+import { valuesOf } from '../development/profile';
 
 /**
  * The Leash in LEASHSWAP (P13 §3): the Leash on the commander (the warden's authorizations, `compel` and `suppress`) and her co-sign on
@@ -22,7 +23,7 @@ export function cosignChance(state: CampaignState, _reg: Registries, _targetId: 
   const C = TUNING.warden.cosign;
   const unit = state.squad.find((u) => u.id === w.unitId);
   const affinity = state.relations[w.unitId]?.affinity ?? 0;
-  return clamp(C.base + C.perSatisfaction * (w.satisfaction - 50) + C.corporate * (unit?.values.corporate ?? 0) - C.mercy * (unit?.values.mercy ?? 0) + C.perAffinity * affinity, C.min, C.max);
+  return clamp(C.base + C.perSatisfaction * (w.satisfaction - 50) + C.corporate * (unit ? valuesOf(unit).corporate : 0) - C.mercy * (unit ? valuesOf(unit).mercy : 0) + C.perAffinity * affinity, C.min, C.max);
 }
 
 /**

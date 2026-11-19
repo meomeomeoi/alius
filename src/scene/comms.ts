@@ -15,6 +15,7 @@ import { readIntentOutput, type IntentExtractInput, type IntentOutput } from '..
 import { confidenceFloor } from '../engine/worldOptions';
 import type { PersonalController } from '../personal/controller';
 import type { SceneController, SceneDeps } from './sceneController';
+import { dislikesOf, likesOf, valuesOf } from '../engine/development/profile';
 
 export interface Comms {
   /**
@@ -56,7 +57,7 @@ function replyInput(s: CampaignState, deps: CommsDeps, unit: Unit, mode: DmReply
     unitName: unit.displayName, commanderName: s.commander.name, stateHint: String(st?.promptHint ?? ''),
     bands: { trust: trustBand(rel.trust), affinity: affinityBand(rel.affinity), attraction: attractionBand(rel.attraction), stress: stressBand(unit.stress) },
     // only what she knows: facts visible to her alone (half of a scene's retrieval), her dossier and her journal (P3b)
-    recentFacts: herFacts(s, unit.id, [...unit.likes, ...unit.dislikes]).map((f) => f.text),
+    recentFacts: herFacts(s, unit.id, [...likesOf(unit), ...dislikesOf(unit)]).map((f) => f.text),
     ...(herDossier(s, unit.id) !== '' ? { dossier: herDossier(s, unit.id) } : {}),
     ...(herJournal(s, deps.registries(), unit.id, true).length > 0 ? { journal: herJournal(s, deps.registries(), unit.id, true) } : {}),
     slotText: clockText(s.day, s.slot),
@@ -94,7 +95,7 @@ export function createComms(deps: CommsDeps): Comms {
     return {
       commanderName: s.commander.name, channel: 'dm',
       exchange: [{ speaker: s.commander.name, text: commanderText }, { speaker: unit.displayName, text: reply }],
-      units: [{ id: unitId, name: unit.displayName, values: { ...unit.values }, likes: unit.likes, dislikes: unit.dislikes, triggers: unit.triggers, stateId: rel.stateId, defectIds: unit.defects.map((d) => d.id) }],
+      units: [{ id: unitId, name: unit.displayName, values: { ...valuesOf(unit) }, likes: likesOf(unit), dislikes: dislikesOf(unit), triggers: unit.triggers, stateId: rel.stateId, defectIds: unit.defects.map((d) => d.id) }],
       openPromises: openPromises(s, [unitId]).map((p) => ({ by: p.by === 'commander' ? s.commander.name : unit.displayName, to: p.to === 'commander' ? s.commander.name : unit.displayName, text: p.text })),
       romance: intimacyOf(s).romance, measures: measureList(deps.registries(), s),
       ...(excluded.length > 0 ? { excluded } : {}), ...(limitLabels.length > 0 ? { limits: { [unitId]: limitLabels } } : {}), // P9d

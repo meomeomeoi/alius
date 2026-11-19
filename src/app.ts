@@ -153,6 +153,7 @@ import { vignetteMemory } from './engine/memory/inputs';
 import { createShell, type ShellApi } from './ui/shell/shell';
 import type { ToastKind, ToastOpts } from './ui/shell/toast';
 import { VOICE_OF } from './ui/voice/sources';
+import { dislikesOf, likesOf } from './engine/development/profile';
 
 export interface AliusApp {
   start(): Promise<void>;
@@ -429,9 +430,9 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         commanderName: s.commander.name,
         unitName: unit.displayName,
         unitRole: SHORT_NAME(registries, 'roles', unit.roleId),
-        likes: unit.likes,
+        likes: likesOf(unit),
         defectNames: unit.defects.map((d) => SHORT_NAME(registries, 'defects', d.id)),
-        memory: vignetteMemory(s, registries, unit.id, [...unit.likes, ...unit.dislikes]), // P3b: two facts about her and her journal
+        memory: vignetteMemory(s, registries, unit.id, [...likesOf(unit), ...dislikesOf(unit)]), // P3b: two facts about her and her journal
       };
     },
     parse: (raw) => sanitizeVignette(String(raw)),
@@ -1630,11 +1631,11 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       signature: { ...unit.signatureSkill },
       defects: unit.defects.map((d) => ({ id: d.id, origin: d.origin ?? '' })),
       secondDefect: unit.defects.length > 1,
-      values: { ...unit.values },
-      likes: [...unit.likes],
-      dislikes: [...unit.dislikes],
+      values: { ...unit.values }, // P14b: raw profile (the re-sync review compares against the import)
+      likes: [...unit.likes], // P14b: raw profile
+      dislikes: [...unit.dislikes], // P14b: raw profile
       triggers: [...unit.triggers],
-      tastes: [...(unit.commanderTastes ?? [])],
+      tastes: [...(unit.commanderTastes ?? [])], // P14b: raw profile
       ...(unit.dispositionOffset !== undefined ? { dispositionOffset: unit.dispositionOffset } : {}),
       ...(unit.dispositionReason !== undefined ? { dispositionReason: unit.dispositionReason } : {}),
       ...(unit.worldStances !== undefined ? { worldStances: structuredClone(unit.worldStances) } : {}),
@@ -1685,9 +1686,9 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     const current: ResyncPatch = {
       ...(unit.bond !== undefined ? { bond: unit.bond } : {}),
       dispositionOffset: unit.dispositionOffset ?? 0, dispositionReason: unit.dispositionReason ?? '', worldStances: unit.worldStances ?? {},
-      roleId: unit.roleId, values: unit.values, likes: unit.likes, dislikes: unit.dislikes, triggers: unit.triggers,
+      roleId: unit.roleId, values: unit.values, likes: unit.likes, dislikes: unit.dislikes, triggers: unit.triggers, // P14b: raw profile
       signature: unit.signatureSkill, defects: unit.defects.map((d) => ({ id: d.id, origin: d.origin ?? '' })),
-      commanderTastes: unit.commanderTastes ?? [],
+      commanderTastes: unit.commanderTastes ?? [], // P14b: raw profile
     };
     const unchanged = (Object.keys(patch) as Array<keyof ResyncPatch>).every(
       (k) => JSON.stringify(patch[k]) === JSON.stringify(current[k]),

@@ -17,6 +17,7 @@ import { applyRemotePunishment, painBurstId, pickPunishment } from './punish';
 import { corporateWardenPick, seedWarden } from './select';
 import { leashswapOf, wardenOf, type Expectation, type WardenGoneHow } from './state';
 import type { EventIntent } from '../relations/intents';
+import { valuesOf } from '../development/profile';
 
 /**
  * Getting rid of her (P13 §5): the three routes (hack, report, her death), what any removal sets off (an investigation clock, remote
@@ -34,7 +35,7 @@ function reactionAxes(draft: CampaignState, wardenId: string, route: 'hack' | 'r
   // liberation: autonomy and anti-corporate units gain; by the book (a report) the corporate reading flips
   const axes: Axes = [{ axis: 'autonomy', direction: 1 }, { axis: 'corporate', direction: route === 'report' ? 1 : -1 }];
   // she was close to the squad: the units who hold to mercy and the group read it as murder or betrayal
-  if ((her?.values.ingroup ?? 0) >= 1) axes.push({ axis: 'mercy', direction: -1 }, { axis: 'ingroup', direction: -1 });
+  if ((her ? valuesOf(her).ingroup : 0) >= 1) axes.push({ axis: 'mercy', direction: -1 }, { axis: 'ingroup', direction: -1 });
   return axes;
 }
 

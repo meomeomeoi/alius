@@ -23,6 +23,7 @@ import { askDirective } from '../bonds/directives';
 import { clearSceneDirectives, sceneDirectives } from './context';
 import { answerDirective, nightDirective, proposalDirective } from './directives';
 import type { MemoryController } from './memoryController';
+import { dislikesOf, likesOf, valuesOf } from '../engine/development/profile';
 
 /** What the scene screen needs to react to. */
 export type SceneUiEvent =
@@ -218,7 +219,7 @@ export function createSceneController(deps: SceneDeps): SceneController {
     const u = unitById(s, id);
     const rel = s.relations[id];
     if (!u || !rel) return null;
-    return { id, name: u.displayName, values: { ...u.values }, likes: u.likes, dislikes: u.dislikes, triggers: u.triggers, stateId: rel.stateId, defectIds: u.defects.map((d) => d.id) };
+    return { id, name: u.displayName, values: { ...valuesOf(u) }, likes: likesOf(u), dislikes: dislikesOf(u), triggers: u.triggers, stateId: rel.stateId, defectIds: u.defects.map((d) => d.id) };
   }
 
   /**

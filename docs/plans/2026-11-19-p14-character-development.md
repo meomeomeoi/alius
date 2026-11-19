@@ -477,17 +477,17 @@ interface DevMoment {
 - Consumes: Task 3's readers.
 - Produces: no new API; behaviour only.
 
-- [ ] **Step 1: Write the failing tests** (`tests/engine/development/readers.test.ts`), each on a campaign where one unit has `development.drift.corporate = 1.5` (base 0, so effective 1) or `gained.likes ['tech']`:
+- [x] **Step 1: Write the failing tests** (`tests/engine/development/readers.test.ts`), each on a campaign where one unit has `development.drift.corporate = 1.5` (base 0, so effective 1) or `gained.likes ['tech']`:
   - `a stepped value reaches the ballot`: `compatibility` (`power/ballot.ts`) of her and a `corporate 1` unit equals that of two `corporate 1` imports;
   - `… the warden pick`: `corporateWardenPick` picks her over an equal-base unit;
   - `… the crime reaction`: `reactsToCrime` (memory/crime) for a crime with `corporate +`;
   - `… the delta chain`: an event tagged `tech` counts as liked in `computeDeltas`;
   - `… the intent input`: the `IntentUnitInput` built by the scene controller carries `corporate 1` and likes with `tech`;
   - `the squad tab shows the effective band` (jsdom).
-- [ ] **Step 2: Run** → FAIL (the reads are raw).
-- [ ] **Step 3: Implement** the replacements. A `Pick<Unit, …>` parameter that now needs `development` adds it. Keep every behaviour identical when `development` is absent.
-- [ ] **Step 4: Run** the file and the guard, then `npm test` → PASS. The goldens must not move (development is absent in them).
-- [ ] **Step 5: Commit** `refactor(P14b): profile readers go through the effective profile`
+- [x] **Step 2: Run** → FAIL (the reads are raw).
+- [x] **Step 3: Implement** the replacements. A `Pick<Unit, …>` parameter that now needs `development` adds it. Keep every behaviour identical when `development` is absent.
+- [x] **Step 4: Run** the file and the guard, then `npm test` → PASS. The goldens must not move (development is absent in them).
+- [x] **Step 5: Commit** `refactor(P14b): profile readers go through the effective profile`
 
 ---
 

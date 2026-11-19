@@ -22,7 +22,7 @@ function eligible(reg: Registries, unit: Unit, ctx: { days: Days; impression: Im
     if (req.minDays !== undefined && req.minDays > ctx.days) return false;
     if (req.knowsCrime !== undefined && req.knowsCrime !== ctx.knowsCrime) return false;
     for (const [axis, sign] of Object.entries(req.values ?? {})) {
-      const v = unit.values[axis as ValueAxis];
+      const v = unit.values[axis as ValueAxis]; // P14b: raw profile (build time, development is empty)
       if (sign === '+' ? !(v > 0) : !(v < 0)) return false;
     }
     return m.sign === 'any' || ctx.impression === 'neutral' || m.sign === ctx.impression;

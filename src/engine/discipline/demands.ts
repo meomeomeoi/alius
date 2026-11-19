@@ -24,6 +24,7 @@ import { impunityOf } from './impunity';
 import { addRecord, disciplineOf, holdDefiance } from './record';
 import { addRestriction, restrictionReason } from './restrictions';
 import { commandStance, stanceEntry } from './stance';
+import { dislikesOf, likesOf } from '../development/profile';
 
 /** Stances whose demands are "buying loyalty" when granted. */
 const DRIVEN: readonly string[] = ['open_defiance', 'defiant_loyal'];
@@ -72,7 +73,7 @@ function eligible(state: CampaignState, reg: Registries, unit: Unit, t: Entry): 
   if (c.impunity && (i === undefined || i < c.impunity[0] || i > c.impunity[1])) return false;
   const rank = Number(dispositionFor(state, reg, unit).rank);
   if (c.dispositionRanks && (rank < c.dispositionRanks[0] || rank > c.dispositionRanks[1])) return false;
-  if (c.tagsAny && !c.tagsAny.some((tag) => [...unit.likes, ...unit.dislikes, ...unit.triggers].includes(tag))) return false;
+  if (c.tagsAny && !c.tagsAny.some((tag) => [...likesOf(unit), ...dislikesOf(unit), ...unit.triggers].includes(tag))) return false;
   if (c.statesAny && !c.statesAny.includes(rel?.stateId ?? '')) return false;
   if (c.flagsNone && c.flagsNone.some((f) => rel?.flags.includes(f))) return false;
   if (c.publicityMismatch === true && !publicityMismatch(state, unit.id)) return false; // P9d

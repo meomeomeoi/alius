@@ -4,6 +4,7 @@ import { addDefiance } from './escalation';
 import type { CampaignState } from '../state/types';
 import { VALUE_AXES } from '../state/types';
 import { EXPECTATION_KINDS, leashswapOf, wardenOf, type Expectation, type ExpectationKind, type WardenState } from './state';
+import { valuesOf } from '../development/profile';
 
 /**
  * The warden's agenda (P13 §2): 3–5 expectations whose weights sum to 1. The engine writes a fallback agenda at seeding from her
@@ -46,18 +47,19 @@ function finish(drafts: Draft[]): Expectation[] {
 export function fallbackAgenda(state: CampaignState, reg: Registries, unitId: string): Expectation[] {
   const unit = state.squad.find((u) => u.id === unitId);
   if (!unit) return [];
+  const values = valuesOf(unit);
   const scored = [...reg.wardenExpectations.values()].map((e, order) => {
     const pull = (e.values ?? {}) as Partial<Record<(typeof VALUE_AXES)[number], number>>;
-    const score = VALUE_AXES.reduce((n, a) => n + (pull[a] ?? 0) * unit.values[a], 0) + (e.corporate === true ? unit.values.corporate : 0);
+    const score = VALUE_AXES.reduce((n, a) => n + (pull[a] ?? 0) * values[a], 0) + (e.corporate === true ? values.corporate : 0);
     return { entry: e, order, score };
   });
   scored.sort((a, b) => b.score - a.score || a.order - b.order);
   const picked = scored.slice(0, AGENDA_MIN);
   const obey = scored.find((x) => x.entry.kind === 'obey_oversight');
-  if (obey && unit.values.corporate >= 1 && !picked.includes(obey)) picked.push(obey);
+  if (obey && values.corporate >= 1 && !picked.includes(obey)) picked.push(obey);
   return finish(picked.map((x): Draft => ({
     kind: x.entry.kind as ExpectationKind, points: WEIGHT_POINTS[x.entry.weight as WeightWord],
-    source: x.entry.corporate === true && unit.values.corporate >= 1 ? 'corporate' : 'values',
+    source: x.entry.corporate === true && values.corporate >= 1 ? 'corporate' : 'values',
   })));
 }
 

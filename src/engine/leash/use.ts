@@ -24,6 +24,7 @@ import { TUNING } from '../tuning';
 import { factionStanding } from '../world/state';
 import { worldEffects } from '../worldOptions';
 import { crimeEffectAmount, leashLog } from './weekly';
+import { valuesOf } from '../development/profile';
 
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
 const unitOf = (state: CampaignState, id: string): Unit | undefined => state.squad.find((u) => u.id === id);
@@ -147,7 +148,7 @@ function payCost(draft: CampaignState, reg: Registries, unitId: string, cost: Le
 
 const witnessScale = (u: Unit): number => {
   const w = TUNING.leash.witness;
-  return clamp(w.base + w.autonomy * u.values.autonomy - w.corporate * u.values.corporate, w.min, w.max);
+  return clamp(w.base + w.autonomy * valuesOf(u).autonomy - w.corporate * valuesOf(u).corporate, w.min, w.max);
 };
 
 const COERCED: Omit<EventIntent, 'targets' | 'severity'> = { type: 'coerced', actor: 'commander', evidence: 'witnessed the Leash', confidence: 1 };

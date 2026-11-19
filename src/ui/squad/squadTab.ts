@@ -33,6 +33,7 @@ import { renderCmdrCard } from '../commander/cmdrCard';
 import { h, type Child } from '../dom';
 import { valueBand } from './bands';
 import { renderSkillTree } from './skillTree';
+import { valuesOf } from '../../engine/development/profile';
 
 export interface SquadTabCtx {
   st: StAdapter;
@@ -348,7 +349,7 @@ function unitBlock(unit: Unit, ctx: SquadTabCtx, state: CampaignState): HTMLElem
   const s = effectiveStats(unit, ctx, state);
   const sigTpl = reg.signatures.get(unit.signatureSkill.templateId);
   const values = VALUE_AXES.map((axis) => {
-    const v = unit.values[axis];
+    const v = valuesOf(unit)[axis]; // P14b: the effective band; the import shows only in the re-sync review
     return h('span', { class: 'alius-stat', ...analyzeAttrs(`glossary:value_${axis}`) }, `${axis.toUpperCase()}: ${raw ? (v > 0 ? `+${v}` : String(v)) : valueBand(v)}`);
   });
   const live = { unitId: unit.id };

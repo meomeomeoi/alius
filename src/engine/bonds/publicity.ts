@@ -12,6 +12,7 @@ import type { CampaignState, Publicity } from '../state/types';
 import { TUNING } from '../tuning';
 import { bondOf, leadRank, PUBLICITY_LEVELS } from './profile';
 import { rank } from './publicitySync';
+import { valuesOf } from '../development/profile';
 
 /**
  * Does her preference differ from how open the relationship is now? Only a relation that has a publicity level can be
@@ -46,7 +47,7 @@ function publicReactions(draft: CampaignState, herId: string): EngineEvent[] {
     const flag = `public_reacted:${herId}`;
     if (u.id === herId || u.kind !== 'named' || !isLiving(u) || !rel || rel.flags.includes(flag)) continue;
     rel.flags.push(flag);
-    const v = u.values;
+    const v = valuesOf(u);
     if (v.corporate >= 1 || v.ingroup <= -1) events.push(...addRecord(draft, u.id, T.lostRespectRecord, 'relationship_public'));
     else if (v.autonomy >= 1 || v.mercy >= 1) applyRelationDelta(draft, u.id, 'trust', T.respectTrust, 'relationship_public');
   }

@@ -3,12 +3,13 @@ import type { EngineEvent } from '../dispatch';
 import { applyRelationDelta } from '../relationGain';
 import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
+import { valuesOf } from '../development/profile';
 
 type Reaction = { axis: keyof CampaignState['squad'][number]['values']; sign: '+' | '-'; weight: number };
 
 /** Whether one of the crime's value reactions matches the unit's values (sign `+` needs a value above 0, `−` below 0). */
-export function reactsToCrime(unit: Pick<CampaignState['squad'][number], 'values'>, crime: Entry | undefined): boolean {
-  return ((crime?.valueReactions as Reaction[] | undefined) ?? []).some((r) => (r.sign === '+' ? unit.values[r.axis] > 0 : unit.values[r.axis] < 0));
+export function reactsToCrime(unit: Pick<CampaignState['squad'][number], 'values' | 'development'>, crime: Entry | undefined): boolean {
+  return ((crime?.valueReactions as Reaction[] | undefined) ?? []).some((r) => (r.sign === '+' ? valuesOf(unit)[r.axis] > 0 : valuesOf(unit)[r.axis] < 0));
 }
 
 /**
@@ -28,7 +29,7 @@ export function revealCrime(draft: CampaignState, reg: Registries, unitIds: stri
     if (!rel.flags.includes('crime_reaction_done')) {
       rel.flags.push('crime_reaction_done');
       for (const r of reactions) {
-        const v = unit.values[r.axis];
+        const v = valuesOf(unit)[r.axis];
         if (r.sign === '+' ? !(v > 0) : !(v < 0)) continue;
         applyRelationDelta(draft, id, 'trust', r.weight * TUNING.relations.crime.trustPerWeight, 'crime_revealed');
         if (unit.kind !== 'grunt') applyRelationDelta(draft, id, 'affinity', r.weight * TUNING.relations.crime.affinityPerWeight, 'crime_revealed');

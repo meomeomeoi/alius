@@ -11,6 +11,7 @@ import { enqueueNight } from './night';
 import { applyEventToUnit } from './relations/effects';
 import type { CampaignState, DefectInstance, Unit } from './state/types';
 import { TUNING } from './tuning';
+import { valuesOf } from './development/profile';
 
 export const ARC_PATHS = ['manage', 'embrace', 'cure'] as const;
 export type ArcPath = (typeof ARC_PATHS)[number];
@@ -21,7 +22,7 @@ const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object
 
 /** How far her values agree with a path: the clamped sum of values × direction over the path's axes, divided by 3. */
 export function arcAlignment(unit: Pick<Unit, 'values'>, path: ArcPath): number {
-  const sum = TUNING.arc.axes[path].reduce((n, [axis, direction]) => n + unit.values[axis] * direction, 0);
+  const sum = TUNING.arc.axes[path].reduce((n, [axis, direction]) => n + valuesOf(unit)[axis] * direction, 0);
   return clamp(sum / 3, -1, 1);
 }
 

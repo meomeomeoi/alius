@@ -13,6 +13,7 @@ import { learnExpectation } from './agenda';
 import { addDefiance } from './escalation';
 import { applyCommanderPunishment, painBurstId, pickPunishment } from './punish';
 import { leashswapOf, wardenOf } from './state';
+import { valuesOf } from '../development/profile';
 
 /**
  * Intrigue against the warden (P13 §4): the hidden suspicion clock, allies won in a scene and discovery. The suspicion value is the
@@ -50,7 +51,7 @@ export function allyChance(state: CampaignState, _reg: Registries, unitId: strin
   const A = TUNING.warden.intrigue.ally;
   const unit = unitOf(state, unitId);
   const trust = state.relations[unitId]?.trust ?? 0;
-  return clamp(A.base + A.perTrust * (trust - 50) + A.autonomy * (unit?.values.autonomy ?? 0) - A.corporate * (unit?.values.corporate ?? 0), A.min, A.max);
+  return clamp(A.base + A.perTrust * (trust - 50) + A.autonomy * (unit ? valuesOf(unit).autonomy : 0) - A.corporate * (unit ? valuesOf(unit).corporate : 0), A.min, A.max);
 }
 
 /**
@@ -71,7 +72,7 @@ export function tryAlly(draft: CampaignState, ctx: EngineCtx, unitId: string): E
     return [{ type: 'ally_won', unitId }, ...addSuspicion(draft, ctx, TUNING.warden.intrigue.allyHit, 'ally')];
   }
   const events: EngineEvent[] = [{ type: 'ally_refused', unitId }];
-  if (unit.values.corporate >= 2) return [...events, ...intrigueDiscovered(draft, ctx, 'reported')];
+  if (valuesOf(unit).corporate >= 2) return [...events, ...intrigueDiscovered(draft, ctx, 'reported')];
   return [...events, ...addSuspicion(draft, ctx, TUNING.warden.intrigue.allyMiss, 'ally')];
 }
 

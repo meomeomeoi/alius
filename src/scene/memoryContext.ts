@@ -9,6 +9,7 @@ import type { CampaignState } from '../engine/state/types';
 import type { ContextBuilder } from '../llm/context';
 import { estTokens } from '../llm/text';
 import type { AliusSettings } from '../settings';
+import { dislikesOf, likesOf } from '../engine/development/profile';
 
 interface Deps {
   registries: () => Registries;
@@ -93,7 +94,7 @@ export function registerMemoryContext(builder: ContextBuilder, deps: Deps): void
     id: 'facts', priority: 60, group: 'memory',
     render: (s, budget) => {
       if (!s.scene) return null;
-      const tags = presentUnits(s).flatMap((u) => [...u.likes, ...u.dislikes]);
+      const tags = presentUnits(s).flatMap((u) => [...likesOf(u), ...dislikesOf(u)]);
       const facts = retrieveFacts(s, { participants: s.scene.participants, tags }, memoryConfig(s).retrievalK);
       return fitItems('Known facts:', facts.map((f) => factLine(s, f, s.scene!.participants)), budget);
     },

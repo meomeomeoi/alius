@@ -15,6 +15,7 @@ import { TUNING } from './tuning';
 import { restrictionReason } from './discipline/restrictions';
 import { addCommanderStress } from './special/commanderStress';
 import { burnImplant } from './special/frequency/discovery';
+import { likesOf } from './development/profile';
 
 export interface ActivityRequest {
   activityId: string;
@@ -189,7 +190,7 @@ export function runActivity(draft: CampaignState, ctx: EngineCtx, request: unkno
   const list = (companion ? a.companionEffects : a.effects) as Fx[];
   for (const fx of list) {
     if (fx.when?.focus !== undefined && fx.when.focus !== focus?.id) continue;
-    if (fx.when?.companionLikes !== undefined && !companion?.likes.includes(fx.when.companionLikes)) continue;
+    if (fx.when?.companionLikes !== undefined && !(companion && likesOf(companion).includes(fx.when.companionLikes))) continue;
 
     switch (fx.type) {
       case 'resource': {

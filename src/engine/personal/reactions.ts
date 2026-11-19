@@ -4,6 +4,7 @@ import type { EngineEvent } from '../dispatch';
 import { isLiving } from '../economy';
 import type { CampaignState, Severity } from '../state/types';
 import { hitHer } from './events';
+import { valuesOf } from '../development/profile';
 
 export interface FavourReaction { unitId: string; kind: 'rival' | 'respect' }
 
@@ -21,7 +22,7 @@ export function favourReactions(draft: CampaignState, reg: Registries, favouredI
     if (tier === 'romantic') {
       reactions.push({ unitId: other.id, kind: 'rival' });
       events.push(...hitHer(draft, reg, other.id, 'rival_favoured', rival, 'the commander favoured someone else', { amplified: true }));
-    } else if (tier === 'close' || other.values.ingroup >= 1) {
+    } else if (tier === 'close' || valuesOf(other).ingroup >= 1) {
       reactions.push({ unitId: other.id, kind: 'respect' });
       events.push(...hitHer(draft, reg, other.id, 'bond_shown', 'minor', 'a bond was shown'));
     }

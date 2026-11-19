@@ -10,6 +10,7 @@ import { missionById } from '../world/missions';
 import { leaderVoteWeight } from './leader';
 import { assertiveness } from './options';
 import { leaderOf } from './state';
+import { valuesOf } from '../development/profile';
 
 /**
  * Ballots and the tally of a squad vote (P9b §2). Everything here is pure and draws no rng: a ballot is a score from the
@@ -26,7 +27,7 @@ const clamp = (n: number, lo: number, hi: number): number => Math.min(hi, Math.m
 
 /** How alike two units are in values, 0 (opposite extremes on every axis) to 1 (equal): `1 − Σ|a − b| / (6 × 6)`. */
 export function compatibility(a: Pick<Unit, 'values'>, b: Pick<Unit, 'values'>): number {
-  const total = VALUE_AXES.reduce((sum, axis) => sum + Math.abs(a.values[axis] - b.values[axis]), 0);
+  const total = VALUE_AXES.reduce((sum, axis) => sum + Math.abs(valuesOf(a)[axis] - valuesOf(b)[axis]), 0);
   return 1 - total / (VALUE_AXES.length * 6);
 }
 

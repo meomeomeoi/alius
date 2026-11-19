@@ -11,6 +11,7 @@ import { whereabouts } from '../engine/hub';
 import { sceneLocation } from '../onboarding/controller';
 import { WARDEN_DERIVED, wardenDirectives } from './directives';
 import type { WardenDeps } from './deps';
+import { valuesOf } from '../engine/development/profile';
 
 export type { WardenDeps } from './deps';
 
@@ -74,7 +75,7 @@ export function createWarden(deps: WardenDeps): WardenController {
     return {
       name: unit.displayName,
       card: [card?.description, card?.personality].filter((x): x is string => typeof x === 'string' && x.trim() !== '').join(' ').slice(0, CARD_MAX),
-      values: { ...unit.values },
+      values: { ...valuesOf(unit) },
       corporation: corp ? `${String(corp.name)}: ${String(corp.summary)}` : 'The corporation.',
       kinds: [...EXPECTATION_KINDS],
     };

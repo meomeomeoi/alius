@@ -2,6 +2,7 @@ import type { Entry, Registries } from '../content/types';
 import { activeRestrictions } from './discipline/restrictions';
 import { facilityLevel, isLiving, livingUnits } from './economy';
 import type { CampaignState, Slot, Unit } from './state/types';
+import { likesOf } from './development/profile';
 
 /** FNV-1a, 32 bit. The hub's only source of "randomness": a stable function of its input, never a draw from the campaign RNG. */
 export function fnv1a(s: string): number {
@@ -40,7 +41,7 @@ function routineWeight(state: CampaignState, reg: Registries, room: Entry, unit:
   const open = ((reg.locations.get(room.sceneLocationId as string)?.slots ?? []) as string[]).includes(state.slot);
   if (!open) return 0;
   if (typeof room.facilityId === 'string' && facilityLevel(state, room.facilityId) < 1) return 0;
-  const liked = ((room.likeTags ?? []) as string[]).some((t) => unit.likes.some((l) => l.toLowerCase() === t.toLowerCase()));
+  const liked = ((room.likeTags ?? []) as string[]).some((t) => likesOf(unit).some((l) => l.toLowerCase() === t.toLowerCase()));
   return base + (liked ? 2 : 0);
 }
 

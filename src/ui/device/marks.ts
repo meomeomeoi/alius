@@ -2,6 +2,7 @@ import type { Entry, Registries } from '../../content/types';
 import { fnv1a } from '../../engine/hub';
 import { decorOf } from '../../engine/personal/decor';
 import type { CampaignState } from '../../engine/state/types';
+import { likesOf } from '../../engine/development/profile';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -10,7 +11,7 @@ export function stickerFor(state: CampaignState, reg: Registries, unitId: string
   const unit = state.squad.find((u) => u.id === unitId);
   const all = [...reg.stickerArt.values()];
   if (!unit || unit.kind !== 'named' || all.length === 0) return null;
-  const likes = new Set(unit.likes.map((l) => l.toLowerCase()));
+  const likes = new Set(likesOf(unit).map((l) => l.toLowerCase()));
   const tagged = all.find((e) => ((e.likeTags as string[] | undefined) ?? []).some((t) => likes.has(t.toLowerCase())));
   return tagged ?? all[fnv1a(unitId) % all.length];
 }

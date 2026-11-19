@@ -9,6 +9,7 @@ import { perceptionOf, punishmentFor } from '../discipline/perception';
 import { intimacyOf } from './gain';
 import type { EventIntent } from './intents';
 import { SEVERITIES } from './vocab';
+import { dislikesOf, likesOf } from '../development/profile';
 
 export interface Deltas {
   trust: number;
@@ -94,8 +95,8 @@ export function computeDeltas(state: CampaignState, reg: Registries, unitId: str
   // tags: only tags the unit really owns count, whatever the model claims
   const tags = event.tags ?? [];
   const triggered = tags.some((t) => unit.triggers.includes(t));
-  const liked = tags.some((t) => unit.likes.includes(t));
-  const disliked = tags.some((t) => unit.dislikes.includes(t));
+  const liked = tags.some((t) => likesOf(unit).includes(t));
+  const disliked = tags.some((t) => dislikesOf(unit).includes(t));
   const pun = event.type === 'commander_enforced' ? punishmentFor(reg, event.measure) : undefined;
   // a punishment has a severity of its own (the ladder's), whatever severity an extraction guessed
   const severity: Severity = pun ? SEVERITIES[Number(pun.severity) - 1] ?? event.severity : triggered ? escalate(event.severity) : event.severity;
