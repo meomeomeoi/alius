@@ -115,7 +115,8 @@ describe('through the door (P10b)', () => {
     const h = harness(reg, { tweak: knock });
     await h.comms.throughDoor('Hello?'); // no reply queued: the model call fails soft
     expect(entry(h).door).toEqual({ said: 'Hello?' });
-    expect(h.st.calls).toHaveLength(1);
+    expect(h.st.calls).toHaveLength(2); // the reply, tried again once after the lost connection (P14); no intent call follows
+    expect(h.st.calls.every((c) => c.kind === 'main')).toBe(true);
     expect(h.actions).not.toContain('night/door_reply');
   });
 

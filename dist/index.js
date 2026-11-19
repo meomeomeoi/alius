@@ -6188,7 +6188,9 @@ var REGISTRY_NAMES = [
   "debtHandlers",
   // P13
   "wardenExpectations",
-  "commanderPunishments"
+  "commanderPunishments",
+  // P14
+  "llmRefusals"
 ];
 var PackManifestSchema = external_exports.object({
   id: external_exports.string().min(1),
@@ -8340,6 +8342,19 @@ for (const name of DESCRIBED_REGISTRIES) {
   if (name === "skills" || name === "statuses") continue;
   registrySchemas[name] = withDescription(registrySchemas[name]);
 }
+var LlmRefusalSchema = BaseEntrySchema.extend({
+  pattern: str.refine((p) => {
+    try {
+      new RegExp(p, "i");
+      return true;
+    } catch {
+      return false;
+    }
+  }, "the pattern is not a valid regular expression"),
+  lang: str,
+  scope: external_exports.enum(["json", "any"]).default("json")
+}).strict();
+Object.assign(registrySchemas, { llmRefusals: LlmRefusalSchema });
 
 // src/engine/onboarding/prologue.ts
 function prologueFor(reg, startId, mode) {
@@ -24945,22 +24960,68 @@ function looseJson(text2) {
     }
   }
 }
+function hasCutJson(text2) {
+  const fenced = text2.match(/```(?:json)?\s*([\s\S]*?)(?:```|$)/i);
+  const src = fenced ? fenced[1] : text2;
+  let pos = 0;
+  for (; ; ) {
+    const rel = src.slice(pos).search(/[{[]/);
+    if (rel < 0) return false;
+    const start = pos + rel;
+    const r = scan(src, start);
+    if (r.kind === "cut") return true;
+    pos = r.end + 1;
+  }
+}
 function estTokens(s) {
   return Math.ceil(s.length / 3.6);
 }
 
 // src/llm/orchestrator.ts
-var MAX_ATTEMPTS = 2;
 var RETRY_BUDGET_FACTOR = 1.5;
-async function callLlm(id, input, deps) {
+var DETAIL_MAX = 160;
+var cut2 = (s) => s.length > DETAIL_MAX ? s.slice(0, DETAIL_MAX) : s;
+var isAbort = (e) => typeof e === "object" && e !== null && (e.name === "AbortError" || e.name === "TimeoutError");
+function refuses(patterns, text2, scopes) {
+  return patterns.some((p) => scopes.includes(p.scope) && p.re.test(text2));
+}
+var OPEN_THINK = /<(?:think|thinking|reasoning)\b[^>]*>/i;
+function classify(ct, answer, patterns) {
+  const length = answer.finishReason === "length";
+  const text2 = stripThinking(answer.text);
+  if (text2 === "") {
+    if (OPEN_THINK.test(answer.text) || length) return { ok: false, reason: "truncated", detail: "the answer ran out of tokens before it began" };
+    return { ok: false, reason: "empty", detail: "empty answer" };
+  }
+  if (!ct.json) {
+    if (refuses(patterns, text2, ["any"])) return { ok: false, reason: "refused", detail: cut2(text2) };
+    return { ok: true, value: text2 };
+  }
+  const json = looseJson(text2);
+  if (json === null) {
+    if (refuses(patterns, text2, ["json", "any"])) return { ok: false, reason: "refused", detail: cut2(text2) };
+    if (length || hasCutJson(text2)) return { ok: false, reason: "truncated", detail: "the JSON was cut off" };
+    return { ok: false, reason: "invalid_output", detail: "no JSON found in the answer" };
+  }
+  if (!ct.schema) return { ok: true, value: json };
+  const checked = ct.schema.safeParse(json);
+  if (checked.success) return { ok: true, value: checked.data };
+  const empty = Array.isArray(json) ? json.length === 0 : typeof json === "object" && Object.keys(json).length === 0;
+  if (empty) return { ok: false, reason: "refused", detail: "an empty answer where the form needs content" };
+  const detail = cut2(checked.error.issues.map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`).join("; "));
+  if (length || hasCutJson(text2)) return { ok: false, reason: "truncated", detail };
+  return { ok: false, reason: "invalid_output", detail };
+}
+async function attemptLlm(id, input, deps, opts) {
   const { st, settings } = deps;
   const ct = getCallType(id);
-  if (!ct) return { ok: false, reason: "call_failed", detail: `unknown call type: ${id}`, attempts: 0 };
-  const mechanic = ct.profile === "mechanic";
+  const now = Date.now();
+  if (!ct) return { ok: false, reason: "invalid_output", detail: `unknown call type: ${id}`, attempts: 0, at: now, budget: 0 };
+  const wantsMechanic = opts.profile === void 0 ? ct.profile === "mechanic" : opts.profile === "mechanic";
   const hasProfile = st.listConnectionProfiles().some((p) => p.id === settings.mechanicProfileId);
-  const useMain = !mechanic || !hasProfile;
-  if (mechanic && !hasProfile && !settings.mechanicFallbackToMain) {
-    return { ok: false, reason: "no_profile", detail: "no mechanic connection profile selected", attempts: 0 };
+  const useMain = !wantsMechanic || !hasProfile;
+  if (wantsMechanic && !hasProfile && !settings.mechanicFallbackToMain) {
+    return { ok: false, reason: "no_profile", detail: "no mechanic connection profile selected", attempts: 0, at: now, budget: 0 };
   }
   const line2 = ct.prose === true ? (deps.contentLine?.() ?? "").trim() : "";
   const system4 = line2 === "" ? ct.system(input) : `${ct.system(input)}
@@ -24968,53 +25029,65 @@ async function callLlm(id, input, deps) {
 ${line2}`;
   const prompt4 = ct.prompt(input);
   const profileLabel = useMain ? "main" : settings.mechanicProfileId;
-  let lastDetail = "";
-  for (let attempt2 = 1; attempt2 <= MAX_ATTEMPTS; attempt2++) {
-    const budget = attempt2 === 1 ? settings.budgets[id] : Math.ceil(settings.budgets[id] * RETRY_BUDGET_FACTOR);
-    const maxTokens = mechanic ? Math.max(budget, settings.requestFloor) : budget;
-    const started = Date.now();
-    const entry = { at: started, callType: id, profile: profileLabel, maxTokens, prompt: prompt4 };
-    let raw;
-    try {
-      const answer = useMain ? await st.generateMain({ prompt: prompt4, systemPrompt: system4, maxTokens }) : await st.generateWithProfile({
-        profileId: settings.mechanicProfileId,
-        system: system4,
-        prompt: prompt4,
-        maxTokens,
-        think: settings.mechanicThink
-      });
-      raw = answer.text;
-    } catch (e) {
-      const detail = e instanceof Error ? e.message : String(e);
-      llmLog.push({ ...entry, raw: detail, ok: false, ms: Date.now() - started });
-      return { ok: false, reason: "call_failed", detail, attempts: attempt2 };
+  const maxTokens = wantsMechanic ? Math.max(opts.budget, settings.requestFloor) : opts.budget;
+  const started = Date.now();
+  const entry = { at: started, callType: id, profile: profileLabel, maxTokens, prompt: prompt4 };
+  const fail = (reason, detail, raw) => {
+    llmLog.push({ ...entry, raw, ok: false, ms: Date.now() - started, reason });
+    return { ok: false, reason, detail: cut2(detail), attempts: 1, at: started, budget: maxTokens };
+  };
+  const ctrl = new AbortController();
+  let timer;
+  const timedOut = new Promise((resolve) => {
+    timer = setTimeout(() => {
+      ctrl.abort();
+      resolve("timeout");
+    }, settings.llmTimeoutMs);
+  });
+  let answer;
+  const call = useMain ? st.generateMain({ prompt: prompt4, systemPrompt: system4, maxTokens, signal: ctrl.signal }) : st.generateWithProfile({
+    profileId: settings.mechanicProfileId,
+    system: system4,
+    prompt: prompt4,
+    maxTokens,
+    think: settings.mechanicThink,
+    signal: ctrl.signal
+  });
+  try {
+    const won = await Promise.race([call, timedOut]);
+    if (won === "timeout") {
+      call.then(
+        (late2) => llmLog.push({ ...entry, raw: late2.text, ok: false, ms: Date.now() - started, reason: "timeout", late: true }),
+        () => {
+        }
+      );
+      return fail("timeout", `no answer within ${Math.round(settings.llmTimeoutMs / 1e3)} s`, "");
     }
-    const text2 = stripThinking(raw);
-    let value;
-    let valid = false;
-    if (ct.json) {
-      const json = looseJson(text2);
-      if (json === null) {
-        lastDetail = "no JSON found in the answer";
-      } else if (ct.schema) {
-        const checked = ct.schema.safeParse(json);
-        valid = checked.success;
-        value = checked.success ? checked.data : void 0;
-        if (!checked.success) lastDetail = checked.error.issues.map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`).join("; ");
-      } else {
-        valid = true;
-        value = json;
-      }
-    } else if (text2 !== "") {
-      valid = true;
-      value = text2;
-    } else {
-      lastDetail = "empty answer";
-    }
-    llmLog.push({ ...entry, raw, parsed: valid ? value : void 0, ok: valid, ms: Date.now() - started });
-    if (valid) return { ok: true, value, attempts: attempt2 };
+    answer = won;
+  } catch (e) {
+    const detail = e instanceof Error ? e.message : String(e);
+    return isAbort(e) ? fail("timeout", detail, detail) : fail("network", detail, detail);
+  } finally {
+    clearTimeout(timer);
   }
-  return { ok: false, reason: "invalid_output", detail: lastDetail, attempts: MAX_ATTEMPTS };
+  const parsed = classify(ct, answer, opts.refusals ?? deps.refusals ?? []);
+  if (!parsed.ok) return fail(parsed.reason, parsed.detail, answer.text);
+  llmLog.push({ ...entry, raw: answer.text, parsed: parsed.value, ok: true, ms: Date.now() - started });
+  return { ok: true, value: parsed.value, attempts: 1, at: started };
+}
+async function callLlm(id, input, deps, opts = {}) {
+  const base = deps.settings.budgets[id];
+  const maxAttempts = 1 + deps.settings.autoRetry;
+  let factor = opts.budgetMult ?? 1;
+  let last;
+  for (let attempt2 = 1; attempt2 <= maxAttempts; attempt2++) {
+    const r = await attemptLlm(id, input, deps, { ...opts, budget: Math.ceil(base * factor) });
+    last = { ...r, attempts: r.attempts === 0 ? 0 : attempt2 };
+    if (r.ok) return last;
+    if (r.reason === "refused" || r.reason === "no_profile") break;
+    if (r.reason === "truncated" || r.reason === "invalid_output") factor *= RETRY_BUDGET_FACTOR;
+  }
+  return last;
 }
 
 // src/llm/calls/activityVignette.ts
@@ -26192,7 +26265,7 @@ async function judgeOrder(input, deps) {
 // src/engine/memory/journal.ts
 var SEVERE = ["moderate", "major", "extreme"];
 var RECENT_DAYS = 2;
-var DETAIL_MAX = 100;
+var DETAIL_MAX2 = 100;
 var humanize2 = (type) => type.replace(/_/g, " ");
 function journalLines(state, reg, unitId, o) {
   const history = state.relations[unitId]?.history ?? [];
@@ -26202,7 +26275,7 @@ function journalLines(state, reg, unitId, o) {
   return kept.slice(-o.n).map((h2) => {
     const phrase = reg.eventDeltas.get(h2.type)?.journal;
     const base = `${typeof phrase === "string" && phrase !== "" ? phrase : humanize2(h2.type)} (day ${h2.day})`;
-    return o.evidence && h2.detail ? `${base}: '${h2.detail.slice(0, DETAIL_MAX)}'` : base;
+    return o.evidence && h2.detail ? `${base}: '${h2.detail.slice(0, DETAIL_MAX2)}'` : base;
   });
 }
 
@@ -28104,7 +28177,9 @@ var DEFAULT_SETTINGS = {
   soundVolume: 20,
   soundMuted: false,
   ambientHum: false,
-  doorTimer: 15
+  doorTimer: 15,
+  llmTimeoutMs: 12e4,
+  autoRetry: 1
 };
 var fieldSchemas = {
   mechanicProfileId: external_exports.string(),
@@ -28155,7 +28230,9 @@ var fieldSchemas = {
   soundVolume: external_exports.number().int().min(0).max(100),
   soundMuted: external_exports.boolean(),
   ambientHum: external_exports.boolean(),
-  doorTimer: external_exports.number().int().min(0).max(60)
+  doorTimer: external_exports.number().int().min(0).max(60),
+  llmTimeoutMs: external_exports.number().int().min(1e4).max(6e5),
+  autoRetry: external_exports.union([external_exports.literal(0), external_exports.literal(1), external_exports.literal(2)])
 };
 var budgetSchema = external_exports.number().int().min(1);
 var isObj31 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -29227,8 +29304,8 @@ function fitTo(text2, fits, tokens) {
   while (lines.length > 1 && !fits(lines.join("\n"))) lines.pop();
   const first2 = lines.join("\n");
   if (fits(first2)) return first2;
-  const cut2 = first2.slice(0, Math.max(0, Math.floor(tokens * 3.6) - 1)).trimEnd();
-  return cut2 !== "" && fits(cut2) ? cut2 : null;
+  const cut3 = first2.slice(0, Math.max(0, Math.floor(tokens * 3.6) - 1)).trimEnd();
+  return cut3 !== "" && fits(cut3) ? cut3 : null;
 }
 
 // src/llm/calls/chronicleCompact.ts
@@ -40279,6 +40356,9 @@ function renderSysTab(host, ctx2) {
     field("Context cap (tokens)", numberInput("contextTokenCap", settings.contextTokenCap, (n) => apply({ contextTokenCap: n }).contextTokenCap), "contextTokenCap"),
     h("h3", {}, "Output budgets (tokens)"),
     h("div", { class: "alius-grid" }, ...budgetInputs),
+    h("h3", {}, "Generation"),
+    field("Model timeout (seconds, 10\u2013600)", numberInput("llmTimeoutMs", settings.llmTimeoutMs / 1e3, (n) => apply({ llmTimeoutMs: n * 1e3 }).llmTimeoutMs / 1e3, { min: "10", max: "600", step: "1" }), "llmTimeoutMs"),
+    field("Automatic retries (0\u20132)", numberInput("autoRetry", settings.autoRetry, (n) => apply({ autoRetry: n }).autoRetry, { min: "0", max: "2", step: "1" }), "autoRetry"),
     h("h3", {}, "Display"),
     field("Palette", select("palette", [["amber", "amber"], ["green", "green"], ["white", "white"]], settings.palette), "palette"),
     field("Scanlines", checkbox("scanlines", settings.scanlines), "scanlines"),

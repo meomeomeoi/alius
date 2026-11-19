@@ -71,6 +71,7 @@
     "premonitionLines": "premonitionLines.json",
     "debtHandlers": "debtHandlers.json",
     "wardenExpectations": "wardenExpectations.json",
-    "commanderPunishments": "commanderPunishments.json"
+    "commanderPunishments": "commanderPunishments.json",
+    "llmRefusals": "llmRefusals.json"
   }
 }

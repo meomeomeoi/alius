@@ -2222,3 +2222,26 @@ for (const name of DESCRIBED_REGISTRIES) {
   if (name === 'skills' || name === 'statuses') continue; // already require a `description`
   registrySchemas[name] = withDescription(registrySchemas[name]);
 }
+
+// ---------------------------------------------------------------------------------------------
+// P14: model refusal patterns
+
+/**
+ * A phrase a model uses to refuse. `pattern` is a case-insensitive regular expression that must compile. `scope` `json` (the default)
+ * is tried only on a JSON call whose answer holds no parsable JSON; `any` is also tried on prose, so it must be an AI-voice phrase
+ * ("as an AI"), never something a character could say in the story.
+ */
+export const LlmRefusalSchema = BaseEntrySchema.extend({
+  pattern: str.refine((p) => {
+    try {
+      new RegExp(p, 'i');
+      return true;
+    } catch {
+      return false;
+    }
+  }, 'the pattern is not a valid regular expression'),
+  lang: str,
+  scope: z.enum(['json', 'any']).default('json'),
+}).strict();
+
+Object.assign(registrySchemas, { llmRefusals: LlmRefusalSchema });

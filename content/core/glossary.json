@@ -1702,6 +1702,24 @@
     ]
   },
   {
+    "id": "setting_llm_timeout_ms",
+    "term": "Model timeout",
+    "short": "Seconds a model call may run before it counts as failed, 10 to 600. The default is 120.",
+    "long": "AUTHOR TO WRITE: A call that has not answered by then is abandoned and shown as a failure with a RETRY. A main-model call cannot be cancelled in SillyTavern, so an answer that arrives late is ignored and only logged in debug mode. A slow model needs a longer timeout, not a bigger budget.",
+    "see": [
+      "setting_auto_retry"
+    ]
+  },
+  {
+    "id": "setting_auto_retry",
+    "term": "Automatic retries",
+    "short": "How many times a failed model call is tried again on its own before the failure is shown, 0 to 2. The default is 1.",
+    "long": "AUTHOR TO WRITE: A cut-off or malformed answer is retried with a larger budget (x1.5 each time); a lost connection, a timeout or an empty answer with the same budget. A refusal is never retried: the model would refuse again, so it is shown at once and you pick what to change.",
+    "see": [
+      "setting_llm_timeout_ms"
+    ]
+  },
+  {
     "id": "handwriting",
     "term": "Handwriting",
     "short": "Each named soldier writes her notes in her own hand. You can change which of the six hands she uses.",

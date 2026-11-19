@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-/** Registry names reserved by P0 (`marks` stays empty in v1; see overview §10). `locations` was added by P3, `orders`, `synergies`, `recipes` and `lootTables` by P4, `glossary` by P7a, `commanderTraits`, `tastes`, `presence` and `imageConsistency` by P7, `worldOptions`, `dispositionLevels`, `stanceEffects` and `worldPresets` by P8, `commandStances`, `punishments`, `demandTemplates` and `reputations` by P9, `hubRooms`, `deviceSkins` and `uiSounds` by P10, `prologues` and `uiUnlocks` by P11, `contentCategories` by P9d, `voteKinds` and `outsideFeats` by P9b, `deviceAccessRules`, `bookingKinds`, `tokenKinds`, `wagerGames`, `wagerStakes` and `secretKinds` by P9c, `memoryRules` by P3b, `dmBehaviours`, `handFonts`, `handNotes` and `stickerArt` by P10b, `frequencyFragments`, `premonitionLines` and `debtHandlers` by P12, `wardenExpectations` and `commanderPunishments` by P13. */
+/** Registry names reserved by P0 (`marks` stays empty in v1; see overview §10). `locations` was added by P3, `orders`, `synergies`, `recipes` and `lootTables` by P4, `glossary` by P7a, `commanderTraits`, `tastes`, `presence` and `imageConsistency` by P7, `worldOptions`, `dispositionLevels`, `stanceEffects` and `worldPresets` by P8, `commandStances`, `punishments`, `demandTemplates` and `reputations` by P9, `hubRooms`, `deviceSkins` and `uiSounds` by P10, `prologues` and `uiUnlocks` by P11, `contentCategories` by P9d, `voteKinds` and `outsideFeats` by P9b, `deviceAccessRules`, `bookingKinds`, `tokenKinds`, `wagerGames`, `wagerStakes` and `secretKinds` by P9c, `memoryRules` by P3b, `dmBehaviours`, `handFonts`, `handNotes` and `stickerArt` by P10b, `frequencyFragments`, `premonitionLines` and `debtHandlers` by P12, `wardenExpectations` and `commanderPunishments` by P13, `llmRefusals` by P14. */
 export const REGISTRY_NAMES = [
   'roles', 'skills', 'signatures', 'statuses', 'defects', 'items', 'affixes', 'enemies',
   'enemyCategories', 'regions', 'nodeTypes', 'activities', 'facilities', 'crimes',
@@ -38,6 +38,8 @@ export const REGISTRY_NAMES = [
   'frequencyFragments', 'premonitionLines', 'debtHandlers',
   // P13
   'wardenExpectations', 'commanderPunishments',
+  // P14
+  'llmRefusals',
 ] as const;
 
 export type RegistryName = (typeof REGISTRY_NAMES)[number];

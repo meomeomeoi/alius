@@ -1,4 +1,5 @@
 import type { CallTypeId } from './callTypes';
+import type { FailReason } from './orchestrator';
 
 export interface LlmLogEntry {
   at: number;
@@ -11,6 +12,10 @@ export interface LlmLogEntry {
   parsed?: unknown;
   ok: boolean;
   ms: number;
+  /** P14: why the attempt failed (absent on a success). */
+  reason?: FailReason;
+  /** P14: the answer arrived after the call had already timed out and was ignored. */
+  late?: true;
 }
 
 const CAPACITY = 50;

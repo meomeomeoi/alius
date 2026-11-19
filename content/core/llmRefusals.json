@@ -1,0 +1,10 @@
+[
+  { "id": "as_an_ai", "pattern": "as an ai", "lang": "en", "scope": "any" },
+  { "id": "cannot_assist", "pattern": "i can(?:'|no)t (?:assist|help) with (?:that|this) request", "lang": "en", "scope": "any" },
+  { "id": "unable_to_continue", "pattern": "i(?:'m| am) (?:not able|unable) to (?:continue|create|write|generate)", "lang": "en", "scope": "any" },
+  { "id": "against_guidelines", "pattern": "against (?:my|the) (?:content )?(?:guidelines|policy|policies)", "lang": "en", "scope": "any" },
+  { "id": "must_decline", "pattern": "i (?:must|have to) decline", "lang": "en" },
+  { "id": "wont_produce", "pattern": "i won't (?:be able to )?(?:produce|generate)", "lang": "en" },
+  { "id": "request_violates", "pattern": "this (?:request|content) (?:violates|goes against)", "lang": "en" },
+  { "id": "opening_apology", "pattern": "^\\s*(?:sorry|i apologi[sz]e)[,.!]", "lang": "en" }
+]

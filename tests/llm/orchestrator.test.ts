@@ -20,7 +20,7 @@ describe('callLlm', () => {
     const { st, settings } = setup();
     st.profileReplies = [GOOD];
     const r = await callLlm('ping', 'x', { st, settings });
-    expect(r).toEqual({ ok: true, value: { pong: true, echo: 'x' }, attempts: 1 });
+    expect(r).toMatchObject({ ok: true, value: { pong: true, echo: 'x' }, attempts: 1 });
     expect(st.calls[0]).toMatchObject({ kind: 'profile', profileId: 'mech', think: 'min' });
   });
 
@@ -80,10 +80,10 @@ describe('callLlm', () => {
   });
 
   it('adapter error fails soft', async () => {
-    const { st, settings } = setup();
+    const { st, settings } = setup({ autoRetry: 0 });
     st.profileReplies = [new Error('network down')];
     const r = await callLlm('ping', 'x', { st, settings });
-    expect(r).toMatchObject({ ok: false, reason: 'call_failed', attempts: 1 });
+    expect(r).toMatchObject({ ok: false, reason: 'network', attempts: 1 });
     if (!r.ok) expect(r.detail).toContain('network down');
   });
 

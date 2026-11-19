@@ -128,6 +128,21 @@ export function looseJson(text: string): unknown | null {
   }
 }
 
+/** True when the text holds a JSON object or array that was opened and never closed (the answer was cut off). */
+export function hasCutJson(text: string): boolean {
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)(?:```|$)/i);
+  const src = fenced ? fenced[1] : text;
+  let pos = 0;
+  for (;;) {
+    const rel = src.slice(pos).search(/[{[]/);
+    if (rel < 0) return false;
+    const start = pos + rel;
+    const r = scan(src, start);
+    if (r.kind === 'cut') return true;
+    pos = r.end + 1;
+  }
+}
+
 export function estTokens(s: string): number {
   return Math.ceil(s.length / 3.6);
 }

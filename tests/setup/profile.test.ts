@@ -148,7 +148,7 @@ describe('importProfile', () => {
 
   it('call failure gives manual without throwing', async () => {
     const { st, avatar, deps } = setup();
-    st.profileReplies = [new Error('network down')];
+    st.profileReplies = [new Error('network down'), new Error('network down')]; // a lost connection is retried once (P14)
     const r = await importProfile(avatar, [...ALL_SECTIONS], deps);
     expect(r).toEqual({ kind: 'manual', reason: 'network down' });
   });

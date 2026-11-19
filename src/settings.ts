@@ -89,6 +89,10 @@ export interface AliusSettings {
   ambientHum: boolean;
   /** P10b: seconds a knock at the night door waits before it counts as staying silent (0 = no timer, 0–60). */
   doorTimer: number;
+  /** P14: milliseconds a model call may run before it counts as a timeout (10 000–600 000). */
+  llmTimeoutMs: number;
+  /** P14: automatic retries of a failed call before the failure is shown (0–2; a refusal is never retried). */
+  autoRetry: 0 | 1 | 2;
 }
 
 export const DEFAULT_SETTINGS: AliusSettings = {
@@ -161,6 +165,8 @@ export const DEFAULT_SETTINGS: AliusSettings = {
   soundMuted: false,
   ambientHum: false,
   doorTimer: 15,
+  llmTimeoutMs: 120000,
+  autoRetry: 1,
 };
 
 const fieldSchemas = {
@@ -213,6 +219,8 @@ const fieldSchemas = {
   soundMuted: z.boolean(),
   ambientHum: z.boolean(),
   doorTimer: z.number().int().min(0).max(60),
+  llmTimeoutMs: z.number().int().min(10000).max(600000),
+  autoRetry: z.union([z.literal(0), z.literal(1), z.literal(2)]),
 };
 const budgetSchema = z.number().int().min(1);
 
