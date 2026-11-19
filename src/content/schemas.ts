@@ -557,6 +557,10 @@ export const ActivitySchema = BaseEntrySchema.extend({
   wantRelief: int.min(0).max(100).optional(),
   /** P9b: the squad leader may countermand this minor, non-combat order when it names another unit. */
   countermandable: z.boolean().optional(),
+  /** P13: an idle activity (the warden's `meet_quota` expectation frowns on it while a mission is due). Read by this field, never by id. */
+  idle: z.boolean().optional(),
+  /** P13: an activity that serves the quota (the warden's alternative to an idle one). */
+  quota: z.boolean().optional(),
 }).superRefine((a, ctx) => {
   const issue = (path: Array<string | number>, message: string) => ctx.addIssue({ code: 'custom', path, message });
   if (a.companion === 'none' && a.companionEffects.length > 0) issue(['companionEffects'], 'companion "none" cannot have companionEffects');
@@ -823,6 +827,8 @@ export const OrderSchema = BaseEntrySchema.extend({
   target: z.enum(['none', 'ally', 'enemy']),
   /** P12: offered only to a commander whose traits have an `unlock_order` effect naming it. */
   requiresUnlock: z.boolean().optional(),
+  /** P13: how the warden reads this order: `retreat` (obey_oversight frowns on it) or `risk` (protect_squad frowns on it while an ally is nearly down). */
+  wardenRule: z.enum(['retreat', 'risk']).optional(),
   effects: effects.min(1),
 });
 

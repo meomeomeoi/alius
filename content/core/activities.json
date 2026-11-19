@@ -272,7 +272,8 @@
     ],
     "companionEffects": [],
     "flavor": "none",
-    "countermandable": true
+    "countermandable": true,
+    "quota": true
   },
   {
     "id": "scout_net",
@@ -343,7 +344,8 @@
       }
     ],
     "flavor": "short",
-    "countermandable": true
+    "countermandable": true,
+    "idle": true
   },
   {
     "id": "mess",
@@ -377,7 +379,8 @@
       }
     ],
     "companionEffects": [],
-    "flavor": "none"
+    "flavor": "none",
+    "idle": true
   },
   {
     "id": "study",

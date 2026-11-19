@@ -621,15 +621,15 @@ Rulings marked **(user)** were answered by the user on 2026-11-18. Task 18 copie
   - `herAlternative(state, reg, order, expectationId): { order: WardenOrder | null; label: string }` (`null` = hold)
 - Consumes: `wardenOf` (Task 1), `herPick` (P9c), `computeDeltas` (P3), `bondTierOf` (P9d)
 
-- [ ] **Step 1: Write the failing tests:** one table-driven test per kind (`keep_me_close: a roster without her`, `protect_squad: a stressed unit in the party`, `protect_squad: authorize_ultimate with an ally at 20 %`, `no_civilian_harm: mercy −1 option`, `meet_quota: rest near a deadline`, `obey_oversight: fall_back`, `no_romance_with_others: a romantic companion`). Plus:
+- [x] **Step 1: Write the failing tests:** one table-driven test per kind (`keep_me_close: a roster without her`, `protect_squad: a stressed unit in the party`, `protect_squad: authorize_ultimate with an ally at 20 %`, `no_civilian_harm: mercy −1 option`, `meet_quota: rest near a deadline`, `obey_oversight: fall_back`, `no_romance_with_others: a romantic companion`). Plus:
   - `personal never matches by rule`; `a judged personal matches at half or full weight`; `a judged non-personal id is ignored`;
   - `the highest weight wins`;
   - `alternatives: her as companion, work, hold, her pick in a dilemma`;
   - `no warden: null`.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement** per the Rulings (no draw anywhere in this file).
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P13): conflict rules and the warden's alternative`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement** per the Rulings (no draw anywhere in this file).
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P13): conflict rules and the warden's alternative`
 
 ---
 

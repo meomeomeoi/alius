@@ -6875,7 +6875,11 @@ var ActivitySchema = BaseEntrySchema.extend({
   /** P9d: how much a companion's Want falls when she shares this activity (absent: the default of `TUNING.bonds.want.relief`). */
   wantRelief: int.min(0).max(100).optional(),
   /** P9b: the squad leader may countermand this minor, non-combat order when it names another unit. */
-  countermandable: external_exports.boolean().optional()
+  countermandable: external_exports.boolean().optional(),
+  /** P13: an idle activity (the warden's `meet_quota` expectation frowns on it while a mission is due). Read by this field, never by id. */
+  idle: external_exports.boolean().optional(),
+  /** P13: an activity that serves the quota (the warden's alternative to an idle one). */
+  quota: external_exports.boolean().optional()
 }).superRefine((a, ctx2) => {
   const issue = (path, message) => ctx2.addIssue({ code: "custom", path, message });
   if (a.companion === "none" && a.companionEffects.length > 0) issue(["companionEffects"], 'companion "none" cannot have companionEffects');
@@ -7110,6 +7114,8 @@ var OrderSchema = BaseEntrySchema.extend({
   target: external_exports.enum(["none", "ally", "enemy"]),
   /** P12: offered only to a commander whose traits have an `unlock_order` effect naming it. */
   requiresUnlock: external_exports.boolean().optional(),
+  /** P13: how the warden reads this order: `retreat` (obey_oversight frowns on it) or `risk` (protect_squad frowns on it while an ally is nearly down). */
+  wardenRule: external_exports.enum(["retreat", "risk"]).optional(),
   effects: effects.min(1)
 });
 var SynergySchema = BaseEntrySchema.extend({ name: str, summary: str, effects: effects.min(1) });

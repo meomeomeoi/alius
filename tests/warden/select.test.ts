@@ -163,7 +163,7 @@ describe('leaving the service', () => {
     const ls = leashswapOf(s)!;
     const id = s.squad[1].id;
     ls.intrigue.lastAllyDay[id] = 3;
-    ls.warden!.override = { id: 'ov1', order: { kind: 'roster', activeIds: [] }, expectationId: 'x', alternative: { kind: 'hold' }, day: 1, slot: 'morning', context: 'base' } as never;
+    ls.warden!.override = { id: 'ov1', order: { kind: 'roster', activeIds: [] }, expectationId: 'x', alternative: null, altLabel: 'Hold', day: 1, slot: 'morning', context: 'base' } as never;
     forgetWarden(s, id);
     expect(ls.intrigue.lastAllyDay[id]).toBeUndefined();
     forgetWarden(s, ls.warden!.unitId);

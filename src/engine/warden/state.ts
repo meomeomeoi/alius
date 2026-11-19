@@ -34,15 +34,16 @@ export type WardenOrder =
   | { kind: 'dilemma'; index: number }
   | { kind: 'combat_order'; orderId: string; targetCid?: string };
 
-/** What she wants instead: the order is `hold` (nothing happens, no slot is spent) when she has no better one. */
-export type WardenAlternative = { kind: 'hold'; label?: string } | { kind: 'order'; order: WardenOrder; label: string };
-
 /** An override that waits for COMPLY / ARGUE / DEFY. A stale one (another day or slot) is dropped. */
 export interface OpenOverride {
   id: string;
   order: WardenOrder;
   expectationId: string;
-  alternative: WardenAlternative;
+  /** What she wants instead; `null` = hold (nothing happens, no slot is spent). */
+  alternative: WardenOrder | null;
+  altLabel: string;
+  /** The payload of the action that was overridden (without its `wardenChecked` flag), so COMPLY and DEFY can run it. */
+  payload?: Record<string, unknown>;
   day: number;
   slot: string;
   context: 'base' | 'combat' | 'dilemma';
