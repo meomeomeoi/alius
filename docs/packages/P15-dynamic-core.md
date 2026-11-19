@@ -473,3 +473,11 @@ State: P11b's `SetupResult.headStart.dynamicUnderway` (`true` = all eligible, or
 - `headStartHash(seed, unitId, key)` / `headStartRaw` (`src/engine/headStart/hash.ts`) is the hash to reuse: `fnv1a(<seed>|<unitId>|head_start|<key>)`, no rng draw.
 - `head_start_moment` is the memory rule to reuse (`head_start_moment_1…5` by importance, audience = the unit). A probe-like moment is written by the same `head_start_recap` call and `head_start/recap` action.
 - `applyHeadStart` runs after `applyFirstImpression` and before the world, the warden and the prologue read the relations: a dynamic-underway step belongs after it.
+
+## Interfaces already provided by P14b (implemented — use, do not rebuild)
+
+- **Effective profile:** `valuesOf`, `likesOf`, `dislikesOf`, `tastesOf`, `bondOf`, `effectiveProfile`; a practice attitude or a style that must drift is read through the same kind of reader (add it to `engine/development/profile.ts` and to the readers guard).
+- **Axes as data:** `developmentAxes` entries by `kind` (`value`, `bond`, `taste`, `like`, `dislike`); P15's practice attitudes (`as`, `witness`) and styles are **new axis kinds plus registry rows** (`axisKind`, `axisEntry`, `axisForbidden`, `room` in `review.ts` and `applyShift` are the places a kind is taught), never ids in code. `bond.ownLimits` and disabled categories stay forbidden.
+- **Appraisals:** `recordAppraisal(draft, reg, unitId, event, role)` / `recordWitnesses` / `recordActivity` store how a soldier read an event; a practice event adds an `eventDeltas[].appraisal` row (or the model's `reading`) and `developmentRules` rows. Misreading and revision are automatic (no rng draw).
+- **Counters and habits:** `countActivity`, `countCompanions`, `countRun`, `checkHabits`, `habitEffect`; `habits` rows are read by `counter.kind`. P17e's emergent rituals can use the same `Development.counters` keys (`activity:<id>`, `companion:<id>`, `region:<id>`; add a key kind and a registry `counter.kind`).
+- **Quiet moments:** a discrete change is a `DevMoment` stamped at `scene/start` and shown at `scene/end`; the scene carries the directive `development:<unitId>`; keep new directive ids away from it.

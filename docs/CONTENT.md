@@ -897,3 +897,24 @@ The warden's content. Every text is a draft (`AUTHOR TO WRITE`) and gives the co
 - **`fallback`** is the template line when no model writes one (`{name}` is her name); **`description`** is what the model is told the moment is.
 - Memory: `head_start_moment_1…5` in `memoryRules` (one per importance) turn the moment's text into a fact (`audience: unit`). The glossary has `head_start`, `new_arrival`, `head_start_recap` and `fact_length`.
 
+## Character development (P14b)
+
+Three registries (core: `content/core/developmentAxes.json`, `developmentRules.json`, `habits.json`); all three are player-visible, so every entry needs a `description`. Draft texts start `AUTHOR TO WRITE:`; the marker is stripped where a text reaches the main model. No text may give the commander a pronoun (`tests/content/pronouns.test.ts`).
+
+**An axis** (`developmentAxes`): `{ id, kind: 'value' | 'bond' | 'taste' | 'like' | 'dislike', up, down, description }`. The id is the axis key: `value:<axis>`, `bond:attachment | desire | caretaker | lead_style` (ids are snake case, so `leadStyle` is `lead_style`), or the kind's wildcard `taste:.any`, `like:.any`, `dislike:.any` (the entry that words every taste, like or dislike; `{tag}` in `up` / `down` is her tag). `up` and `down` are the words of the since-joining block and the DEVELOPMENT view ("more merciful than her file says"). Nothing may name her own limits or her publicity preference: they never drift (`bond:own_limits` and `bond:publicity` are load errors).
+
+**A rule** (`developmentRules`): what an appraised event adds to which accumulators.
+```
+{ id, match: { kind?: string[], role?: ('subject'|'actor'|'witness')[], target?: ('her'|'commander'|'unit'|'squad')[],
+               wanted?, initiator?, harm?, outcome?: string[] },
+  by?: { values?: { <axis>: '+' | '-' }, caretaker?: boolean, leadStyle?: string[], attachment?: string[], insight?: string[] },
+  push: [{ axis, amount }], contentTags?: string[], description }
+```
+- `match.kind` entries are event types, `activity:<id>`, `activity:*` or `dilemma:<context>`; `by` reads her **effective** profile; `push.axis` must be an axis an entry words (`taste:<id>` needs a `tastes` id), or `like:{tag}` / `dislike:{tag}`, which takes each tag of the event (an event without tags skips the push).
+- Every matching rule adds `amount ×` severity (0.5 / 1 / 1.5 / 2) `×` mode (slow 0.5), clamped to ±6 per axis. A rule never changes a profile field; it makes an axis eligible for a review. The engine reads `match` and `by`, never the id.
+- `contentTags` gate the rule like any gated entry (a category that is off, or among her own limits, ignores it).
+
+**A habit** (`habits`): `{ id, counter: { kind: 'activity' | 'companion' | 'region', id? }, threshold, fallback, effect?: { type: 'unit_xp' | 'unit_stress', amount, activityId }, contentTags?, description }`. A counter that reaches `threshold` forms the habit: a development line with `fallback` (`{name}`; `{other}` for a companion habit). `companion` counts every companion and names none; `region` without an id counts any region. `effect` applies to her when she is the companion of that activity.
+
+**Fields on other registries:** `eventDeltas[].appraisal` and `activities[].appraisal` / `dilemmaTemplates[].appraisal` are `{ wanted: 'yes'|'no'|'unclear', initiator: 'target'|'actor'|'mutual', harm: 'none'|'minor'|'serious', outcome: 'good'|'mixed'|'bad' }` (an event with neither the model's reading nor this row records nothing); `activities[].appraisalTags` (≤ 3 tags) are what a `like:{tag}` push takes from an activity. Glossary: `character_development`, `development_moment`, `development_fact`, `habit`, `development_hold`, `appraisal`, `setting_habit_wording`.
+

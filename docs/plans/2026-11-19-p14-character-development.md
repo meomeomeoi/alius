@@ -928,7 +928,7 @@ interface DevMoment {
     - rules by `match`/`by`, axes by `kind`, never by id;
     - quiet: no toast, record `quiet`;
     - keep directive ids `development:`-prefixed.
-- [ ] **Step 1: Run** `npm test` → PASS (pronoun and content tests cover the docs-adjacent content).
-- [ ] **Step 2: Commit** `docs(P14b): implemented as, overview, hand-offs, manual test`
+- [x] **Step 1: Run** `npm test` → PASS (pronoun and content tests cover the docs-adjacent content).
+- [x] **Step 2: Commit** `docs(P14b): implemented as, overview, hand-offs, manual test`
 
 **Chunk (c) ends here.** Stop and report.
