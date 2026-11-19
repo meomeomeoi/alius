@@ -85,6 +85,8 @@ export function hiddenFixture(reg: Registries): { state: CampaignState; unitId: 
     },
   };
 
+  // P13: a kompromat fact the commander has not found: its text never reaches a reading, and neither does the intrigue suspicion (67 above)
+  state.memory.facts.push({ id: 'fact_komp', about: [state.squad[1].id], text: 'SENTINEL_KOMPROMAT', tags: ['kompromat'], importance: 3, day: 8, knownBy: [unit.id], hiddenFromCommander: true });
   registerKnowledgeRule(wardenKnowledgeRule); // P13: what the warden knows about an ally
 
   state.disloyalty = { units: { [unit.id]: { signs: [], attempts: 3, nextCheckDay: 97 } } };
@@ -106,7 +108,7 @@ export function hiddenFixture(reg: Registries): { state: CampaignState; unitId: 
     unitId: unit.id,
     sentinels: {
       numbers: [37, 41, 23, 63, 17, 29, 97, 77, 31, 53, 59, 71, 57, 43, 47, 67],
-      texts: ['SENTINEL_CLOCK', 'SENTINEL_FACT', 'SENTINEL_OPTION_EFFECT', 'SENTINEL_SECRET', 'SENTINEL_FREQ_TRUE', 'SENTINEL_FREQ_FACT', 'SENTINEL_PREMONITION_REAL', 'SENTINEL_PREMONITION_FALSE', 'SENTINEL_INTEL_FALSE', 'SENTINEL_EXPECTATION'],
+      texts: ['SENTINEL_CLOCK', 'SENTINEL_FACT', 'SENTINEL_OPTION_EFFECT', 'SENTINEL_SECRET', 'SENTINEL_FREQ_TRUE', 'SENTINEL_FREQ_FACT', 'SENTINEL_PREMONITION_REAL', 'SENTINEL_PREMONITION_FALSE', 'SENTINEL_INTEL_FALSE', 'SENTINEL_EXPECTATION', 'SENTINEL_KOMPROMAT'],
     },
   };
 }

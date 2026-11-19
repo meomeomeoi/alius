@@ -7,7 +7,7 @@ export { corporateWardenPick, seedWarden } from './select';
 export { revealPending } from './reveal';
 export { AGENDA_MAX, AGENDA_MIN, PERSONAL_MAX, PERSONAL_TEXT_MAX, agendaProblem, fallbackAgenda, learnExpectation, normalizeAgenda, setAgenda, expectationEvent } from './agenda';
 export { commanderDies, DEATH_CAUSES, type DeathCause } from './death';
-export { describeOrder, expectationInput, orderOfAction, overrideInput } from './describe';
+export { describeOrder, expectationInput, investigationBand, orderOfAction, overrideInput } from './describe';
 export { applyCommanderPunishment, applyRemotePunishment, commanderRestriction, painBurstId, pickPunishment, punishRoll } from './punish';
 export { wardenDayStep } from './dayStep';
 export { addDefiance, checkEscalation } from './escalation';

@@ -1,4 +1,4 @@
-import { wardenOf } from '../../engine/warden';
+import { allies, hackProblem, investigationBand, kompromatOf, wardenOf } from '../../engine/warden';
 import { TUNING } from '../../engine/tuning';
 import type { Knowledge, KnowledgeRule } from '../knowledge';
 import { registerKnowledgeRule } from '../knowledge';
@@ -47,9 +47,48 @@ function expectationProvider(subject: Subject, env: AnalyzeEnv, k: Knowledge): R
   return { lines: [`She weighs this ${WEIGHT_WORDS(x.weight)}${raw !== null ? ` (${raw})` : ''}.`] };
 }
 
-/** What the commander may not read: the warden's knowledge of an ally (`warden_knows_ally`). */
+/** `glossary:intrigue`: what the commander has done, and only that there is `An unseen threat` (the suspicion is the engine's alone and is always worded the same). */
+function intrigueProvider(_s: Subject, env: AnalyzeEnv): Reading {
+  const s = env.state;
+  if (!s || !wardenOf(s)) return null;
+  const n = allies(s).length;
+  return { lines: ['An unseen threat.', n === 0 ? 'Nobody stands with the commander yet.' : `${n === 1 ? 'One unit stands' : `${n} units stand`} with the commander.`] };
+}
+
+function kompromatProvider(_s: Subject, env: AnalyzeEnv): Reading {
+  const s = env.state;
+  if (!s || !wardenOf(s)) return null;
+  const need = TUNING.warden.kompromat.needed;
+  const have = kompromatOf(s).length;
+  return { lines: [`${have} of ${need} pieces gathered.`, have >= need ? 'Enough for a report to oversight.' : 'Not enough for a report yet.'] };
+}
+
+function hackProvider(_s: Subject, env: AnalyzeEnv): Reading {
+  const s = env.state;
+  const ls = s?.leashswap;
+  if (!s || !ls || !wardenOf(s)) return null;
+  const ally = allies(s).find((id) => hackProblem(s, env.registries, id) === null) ?? allies(s)[0];
+  const why = hackProblem(s, env.registries, ally);
+  return { lines: [`Step ${ls.intrigue.hack.step} of ${TUNING.warden.hack.steps}.`, ...(why ? [why] : ['Ready for the next step.'])] };
+}
+
+/** `glossary:investigation`: only that there is `An unseen threat`, and how far it has come as a band (the length of the clock is not shown). */
+function investigationProvider(_s: Subject, env: AnalyzeEnv, k: Knowledge): Reading {
+  const s = env.state;
+  const ls = s?.leashswap;
+  if (!s || !ls || ls.status !== 'investigation') return null;
+  const clock = s.world.clocks.find((c) => c.id === (ls.removal?.clockId ?? 'investigation'));
+  const raw = clock ? k.raw(clock.filled) : null;
+  return { lines: ['An unseen threat.', `The investigation is ${clock ? investigationBand(clock.filled, clock.segments).toLowerCase() : 'under way'}.`, ...(raw !== null ? [`Segments filled: ${raw}.`] : [])] };
+}
+
+/**
+ * What the commander may not read: the warden's knowledge of an ally (`warden_knows_ally`), and a kompromat fact the commander has not
+ * found yet (it is hidden from the commander until a dig reveals it and drops the mark).
+ */
 export const wardenKnowledgeRule: KnowledgeRule = {
   flag: (id) => id !== 'warden_knows_ally',
+  fact: (f) => !(f.hiddenFromCommander === true && f.tags.includes('kompromat')),
 };
 
 let registered = false;
@@ -62,4 +101,8 @@ export function registerWardenProviders(): void {
   registerAnalyzeProvider('glossary:warden_satisfaction', satisfactionProvider);
   registerAnalyzeProvider('glossary:warden_defiance', defianceProvider);
   registerAnalyzeProvider('wardenExpectations', expectationProvider);
+  registerAnalyzeProvider('glossary:intrigue', intrigueProvider);
+  registerAnalyzeProvider('glossary:kompromat', kompromatProvider);
+  registerAnalyzeProvider('glossary:implant_hack', hackProvider);
+  registerAnalyzeProvider('glossary:investigation', investigationProvider);
 }

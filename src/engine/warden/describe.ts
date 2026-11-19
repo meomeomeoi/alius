@@ -58,3 +58,6 @@ export function expectationInput(state: CampaignState, reg: Registries, particip
     x.kind === 'personal' ? x.text ?? '' : String([...reg.wardenExpectations.values()].find((e) => e.kind === x.kind)?.description ?? x.kind);
   return { expectations: w.expectations.map((x) => ({ id: x.id, text: textOf(x) })) };
 }
+
+/** How far the investigation has come, in words: the player reads the band, never the length of the clock (that would give the route away). */
+export const investigationBand = (filled: number, segments: number): string => (filled * 3 < segments ? 'JUST OPENED' : filled * 3 < segments * 2 ? 'UNDER WAY' : 'NEARLY CLOSED');

@@ -3,6 +3,8 @@ import { contentAllowed } from '../bonds/content';
 import type { EngineEvent } from '../dispatch';
 import { voteSubjectLabel } from '../power/ballot';
 import { scapegoatOptionId } from '../power/scapegoat';
+import { wardenOf } from '../warden/state';
+import { isLiving } from '../economy';
 import type { CampaignState, VoteKind } from '../state/types';
 
 /**
@@ -222,3 +224,50 @@ registerMemoryResolver('activity_done', (draft, event, reg) => {
     },
   };
 }, { ids: ['subject'], vars: ['name', 'activity', 'slot', 'scene'] });
+
+// ---------------------------------------------------------------------------------------------
+// P13 LEASHSWAP
+
+/** The warden at the time of the event (her unit stays in the squad when she is removed, and her state is read while she still holds the leash). */
+const holderOf = (draft: CampaignState): { id: string; name: string } | null => {
+  const w = wardenOf(draft);
+  return w ? { id: w.unitId, name: nameOf(draft, w.unitId) } : null;
+};
+
+registerMemoryResolver('override_answered', (draft, event) => {
+  const her = holderOf(draft);
+  if (!her) return null;
+  return { ids: { subject: [her.id] }, vars: { name: her.name, answer: str(event.answer) ?? '', witnessed: yes(event.context === 'combat') } };
+}, { ids: ['subject'], vars: ['name', 'answer', 'witnessed'] });
+
+registerMemoryResolver('commander_punished', (draft, event, reg) => {
+  const her = holderOf(draft);
+  if (!her || event.remote === true) return null; // remote control has nobody to remember
+  const severity = Number(event.severity);
+  return { ids: { subject: [her.id] }, vars: { name: her.name, label: String(reg.commanderPunishments.get(String(event.punishmentId))?.label ?? 'a punishment'), heavy: yes(severity >= 3) } };
+}, { ids: ['subject'], vars: ['name', 'label', 'heavy'] });
+
+registerMemoryResolver('commander_leashed', (draft, event) => {
+  const her = holderOf(draft);
+  return her ? { ids: { subject: [her.id] }, vars: { name: her.name, kind: str(event.kind) ?? '' } } : null;
+}, { ids: ['subject'], vars: ['name', 'kind'] });
+
+registerMemoryResolver('warden_warning', (draft, event) => {
+  const her = holderOf(draft);
+  return her ? { ids: { subject: [her.id] }, vars: { name: her.name, level: String(event.level ?? '') } } : null;
+}, { ids: ['subject'], vars: ['name', 'level'] });
+
+registerMemoryResolver('warden_removed', (draft, event) => {
+  const her = subjectOf(draft, event.unitId);
+  const route = str(event.route);
+  if (!her || route === undefined) return null;
+  const allies = draft.squad.filter((u) => u.kind === 'named' && isLiving(u) && draft.relations[u.id]?.flags.includes('warden_ally')).map((u) => u.id);
+  return { ids: { subject: [her.id], commander: ['commander'], allies }, vars: { name: her.name, route } };
+}, { ids: ['subject', 'commander', 'allies'], vars: ['name', 'route'] });
+
+registerMemoryResolver('verdict', (_draft, event) => {
+  const outcome = str(event.outcome);
+  return outcome === undefined ? null : { ids: {}, vars: { outcome } };
+}, { ids: [], vars: ['outcome'] });
+
+registerMemoryResolver('ally_won', aboutOneUnit, { ids: ['subject'], vars: ['name'] });

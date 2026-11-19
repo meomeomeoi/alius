@@ -16869,7 +16869,7 @@ function answerOverride(draft, ctx2, overrideId, answer) {
   if (w.compelled && answer !== "comply") throw new Error("The commander is compelled: only COMPLY is open.");
   const T4 = TUNING.warden;
   const base = ov.payload ?? {};
-  const done = (a) => ({ type: "override_answered", overrideId: ov.id, answer: a });
+  const done = (a) => ({ type: "override_answered", overrideId: ov.id, answer: a, context: ov.context });
   if (answer === "argue") {
     if (ov.context !== "combat") {
       if (ov.argued) throw new Error("She has heard the commander out: only COMPLY and DEFY are left.");
@@ -21650,6 +21650,41 @@ registerMemoryResolver("activity_done", (draft, event, reg) => {
     }
   };
 }, { ids: ["subject"], vars: ["name", "activity", "slot", "scene"] });
+var holderOf = (draft) => {
+  const w = wardenOf(draft);
+  return w ? { id: w.unitId, name: nameOf6(draft, w.unitId) } : null;
+};
+registerMemoryResolver("override_answered", (draft, event) => {
+  const her = holderOf(draft);
+  if (!her) return null;
+  return { ids: { subject: [her.id] }, vars: { name: her.name, answer: str2(event.answer) ?? "", witnessed: yes(event.context === "combat") } };
+}, { ids: ["subject"], vars: ["name", "answer", "witnessed"] });
+registerMemoryResolver("commander_punished", (draft, event, reg) => {
+  const her = holderOf(draft);
+  if (!her || event.remote === true) return null;
+  const severity = Number(event.severity);
+  return { ids: { subject: [her.id] }, vars: { name: her.name, label: String(reg.commanderPunishments.get(String(event.punishmentId))?.label ?? "a punishment"), heavy: yes(severity >= 3) } };
+}, { ids: ["subject"], vars: ["name", "label", "heavy"] });
+registerMemoryResolver("commander_leashed", (draft, event) => {
+  const her = holderOf(draft);
+  return her ? { ids: { subject: [her.id] }, vars: { name: her.name, kind: str2(event.kind) ?? "" } } : null;
+}, { ids: ["subject"], vars: ["name", "kind"] });
+registerMemoryResolver("warden_warning", (draft, event) => {
+  const her = holderOf(draft);
+  return her ? { ids: { subject: [her.id] }, vars: { name: her.name, level: String(event.level ?? "") } } : null;
+}, { ids: ["subject"], vars: ["name", "level"] });
+registerMemoryResolver("warden_removed", (draft, event) => {
+  const her = subjectOf2(draft, event.unitId);
+  const route = str2(event.route);
+  if (!her || route === void 0) return null;
+  const allies2 = draft.squad.filter((u) => u.kind === "named" && isLiving(u) && draft.relations[u.id]?.flags.includes("warden_ally")).map((u) => u.id);
+  return { ids: { subject: [her.id], commander: ["commander"], allies: allies2 }, vars: { name: her.name, route } };
+}, { ids: ["subject", "commander", "allies"], vars: ["name", "route"] });
+registerMemoryResolver("verdict", (_draft, event) => {
+  const outcome = str2(event.outcome);
+  return outcome === void 0 ? null : { ids: {}, vars: { outcome } };
+}, { ids: [], vars: ["outcome"] });
+registerMemoryResolver("ally_won", aboutOneUnit, { ids: ["subject"], vars: ["name"] });
 
 // src/engine/memory/remember.ts
 var index = /* @__PURE__ */ new WeakMap();
@@ -23105,6 +23140,14 @@ function wardenReportChoice(draft, ctx2, context, optionId) {
   if (!ctx2.rng.chance(reportChance(draft, ctx2.registries))) return intrigueDiscovered(draft, ctx2, "report_refused");
   const events = removeFromService(draft, w.unitId, "reassigned", ctx2);
   return [...events, ...startRemoval(draft, ctx2, "report")];
+}
+function remoteExpectations(state) {
+  if (!state.leashswap?.remote) return [];
+  const R2 = TUNING.warden.remote;
+  return [
+    { id: "remote_quota", kind: "meet_quota", weight: R2.quota, source: "corporate", known: true },
+    { id: "remote_obey", kind: "obey_oversight", weight: R2.obey, source: "corporate", known: true }
+  ];
 }
 function remoteDayStep(draft, ctx2) {
   const ls = leashswapOf(draft);
@@ -26119,6 +26162,7 @@ function expectationInput(state, reg, participants) {
   const textOf2 = (x) => x.kind === "personal" ? x.text ?? "" : String([...reg.wardenExpectations.values()].find((e) => e.kind === x.kind)?.description ?? x.kind);
   return { expectations: w.expectations.map((x) => ({ id: x.id, text: textOf2(x) })) };
 }
+var investigationBand = (filled, segments2) => filled * 3 < segments2 ? "JUST OPENED" : filled * 3 < segments2 * 2 ? "UNDER WAY" : "NEARLY CLOSED";
 
 // src/llm/calls/wardenJudge.ts
 var WardenJudgeSchema = external_exports.object({ expectationId: external_exports.string(), conflict: external_exports.enum(["none", "minor", "major"]) }).strip();
@@ -36891,6 +36935,53 @@ function renderCommsTab(host, ctx2) {
   host.append(h("section", { class: "alius-section alius-comms" }, h("h2", {}, "[ PDA COMMS ]"), h("div", { class: "alius-comms-body" }, list5, thread)));
 }
 
+// src/ui/warden/intrigueSection.ts
+function renderIntrigueSection(host, state, reg, deps = {}) {
+  const ls = state.leashswap;
+  if (!ls || !wardenOf(state)) return;
+  const allyIds = allies(state);
+  const nameOf15 = (id) => state.squad.find((u) => u.id === id)?.displayName ?? id;
+  const kompromat = kompromatOf(state).length;
+  const need = TUNING.warden.kompromat.needed;
+  const steps = TUNING.warden.hack.steps;
+  const digAlly = allyIds[0];
+  const hackAlly = allyIds.find((id) => hackProblem(state, reg, id) === null) ?? allyIds[0];
+  const digWhy = digProblem(state, reg, digAlly);
+  const hackWhy = hackProblem(state, reg, hackAlly);
+  const reportWhy = reportProblem(state, reg);
+  const action = (label2, glossary, why, run) => h(
+    "span",
+    { class: "alius-intrigue-action" },
+    h("button", {
+      type: "button",
+      class: "alius-btn alius-option",
+      "data-action": `intrigue-${label2.toLowerCase().replace(/\s+/g, "-")}`,
+      "aria-disabled": why === null ? null : "true",
+      title: why,
+      ...analyzeNative(`glossary:${glossary}`),
+      onclick: () => {
+        if (why === null) run();
+      }
+    }, `[${label2}]`),
+    why === null ? null : h("span", { class: "alius-dim alius-intrigue-why" }, why)
+  );
+  host.append(h(
+    "div",
+    { class: "alius-warden-intrigue" },
+    h("h4", {}, "INTRIGUE"),
+    h("p", {}, h("span", { class: "alius-chip alius-stat", ...analyzeAttrs("glossary:intrigue") }, `ALLIES: ${allyIds.length === 0 ? "NONE" : allyIds.map(nameOf15).join(", ").toUpperCase()}`)),
+    h("p", {}, h("span", { class: "alius-chip alius-stat", "data-stat": "kompromat", ...analyzeAttrs("glossary:kompromat") }, `KOMPROMAT: ${kompromat} / ${need}`)),
+    h("p", {}, h("span", { class: "alius-chip alius-stat", "data-stat": "hack", ...analyzeAttrs("glossary:implant_hack") }, `IMPLANT HACK: STEP ${ls.intrigue.hack.step} / ${steps}`)),
+    h(
+      "div",
+      { class: "alius-row" },
+      action("DIG", "kompromat", digWhy, () => deps.onAct?.("dig", digAlly)),
+      action("HACK STEP", "implant_hack", hackWhy, () => deps.onAct?.("hack_step", hackAlly)),
+      action("REPORT TO OVERSIGHT", "intrigue", reportWhy, () => deps.onReport?.())
+    )
+  ));
+}
+
 // src/ui/warden/wardenPanel.ts
 var satisfactionBand = (n) => n < 20 ? "HOSTILE" : n < 40 ? "COLD" : n < 60 ? "WARY" : n < 80 ? "SATISFIED" : "PLEASED";
 var weightBand = (w) => w < 0.2 ? "LOW" : w < 0.35 ? "MEDIUM" : "HIGH";
@@ -36898,7 +36989,10 @@ var entryIdFor = (reg, x) => x.kind === "personal" ? null : String([...reg.warde
 function renderWardenPanel(host, state, reg, deps = {}) {
   const w = wardenOf(state);
   const unit2 = w ? state.squad.find((u) => u.id === w.unitId) : void 0;
-  if (!w || !unit2) return;
+  if (!w || !unit2) {
+    renderInvestigation(host, state);
+    return;
+  }
   const E = TUNING.warden.escalation;
   const known = w.expectations.filter((x) => x.known);
   const unknown2 = w.expectations.length - known.length;
@@ -36948,9 +37042,31 @@ function renderWardenPanel(host, state, reg, deps = {}) {
     ),
     ...rows
   );
+  renderIntrigueSection(body, state, reg, { ...deps.onIntrigue ? { onAct: deps.onIntrigue } : {}, ...deps.onReport ? { onReport: deps.onReport } : {} });
   if (overrideOpen(state) && deps.onAnswer) renderOverrideChip(body, state, reg, deps.onAnswer);
   const card2 = renderVoiceCard({ voice: VOICE_OF.warden_notice, title: "WARDEN", meta: "OVERSIGHT", level: 3, body });
   card2.classList.add("alius-warden-panel");
+  host.append(card2);
+}
+function renderInvestigation(host, state) {
+  const ls = state.leashswap;
+  if (!ls || ls.status !== "investigation") return;
+  const clock = state.world.clocks.find((c) => c.id === (ls.removal?.clockId ?? "investigation"));
+  const label2 = (kind) => kind === "meet_quota" ? "QUOTA" : "OBEDIENCE";
+  const body = h(
+    "div",
+    { class: "alius-warden-body" },
+    h("p", {}, "NOBODY HOLDS THE CONTROLLER. OVERSIGHT RUNS IT."),
+    h("p", {}, h(
+      "span",
+      { class: "alius-chip alius-stat", "data-stat": "investigation", ...analyzeAttrs("glossary:investigation") },
+      `INVESTIGATION: ${clock ? investigationBand(clock.filled, clock.segments) : "UNDER WAY"}`
+    )),
+    h("h4", {}, "REMOTE CONTROL"),
+    ...remoteExpectations(state).map((x) => h("p", { class: "alius-chip alius-stat alius-expectation", ...analyzeAttrs("glossary:remote_control") }, `${label2(x.kind)} \u2014 ${weightBand(x.weight)}`))
+  );
+  const card2 = renderVoiceCard({ voice: VOICE_OF.warden_notice, title: "OVERSIGHT", meta: "INVESTIGATION", level: 3, body });
+  card2.classList.add("alius-warden-panel", "alius-warden-investigation");
   host.append(card2);
 }
 
@@ -38709,8 +38825,38 @@ function expectationProvider(subject, env, k) {
   const raw = k.raw(x.weight);
   return { lines: [`She weighs this ${WEIGHT_WORDS(x.weight)}${raw !== null ? ` (${raw})` : ""}.`] };
 }
+function intrigueProvider(_s, env) {
+  const s = env.state;
+  if (!s || !wardenOf(s)) return null;
+  const n = allies(s).length;
+  return { lines: ["An unseen threat.", n === 0 ? "Nobody stands with the commander yet." : `${n === 1 ? "One unit stands" : `${n} units stand`} with the commander.`] };
+}
+function kompromatProvider(_s, env) {
+  const s = env.state;
+  if (!s || !wardenOf(s)) return null;
+  const need = TUNING.warden.kompromat.needed;
+  const have = kompromatOf(s).length;
+  return { lines: [`${have} of ${need} pieces gathered.`, have >= need ? "Enough for a report to oversight." : "Not enough for a report yet."] };
+}
+function hackProvider(_s, env) {
+  const s = env.state;
+  const ls = s?.leashswap;
+  if (!s || !ls || !wardenOf(s)) return null;
+  const ally = allies(s).find((id) => hackProblem(s, env.registries, id) === null) ?? allies(s)[0];
+  const why = hackProblem(s, env.registries, ally);
+  return { lines: [`Step ${ls.intrigue.hack.step} of ${TUNING.warden.hack.steps}.`, ...why ? [why] : ["Ready for the next step."]] };
+}
+function investigationProvider(_s, env, k) {
+  const s = env.state;
+  const ls = s?.leashswap;
+  if (!s || !ls || ls.status !== "investigation") return null;
+  const clock = s.world.clocks.find((c) => c.id === (ls.removal?.clockId ?? "investigation"));
+  const raw = clock ? k.raw(clock.filled) : null;
+  return { lines: ["An unseen threat.", `The investigation is ${clock ? investigationBand(clock.filled, clock.segments).toLowerCase() : "under way"}.`, ...raw !== null ? [`Segments filled: ${raw}.`] : []] };
+}
 var wardenKnowledgeRule = {
-  flag: (id) => id !== "warden_knows_ally"
+  flag: (id) => id !== "warden_knows_ally",
+  fact: (f) => !(f.hiddenFromCommander === true && f.tags.includes("kompromat"))
 };
 var registered3 = false;
 function registerWardenProviders() {
@@ -38720,6 +38866,10 @@ function registerWardenProviders() {
   registerAnalyzeProvider("glossary:warden_satisfaction", satisfactionProvider);
   registerAnalyzeProvider("glossary:warden_defiance", defianceProvider);
   registerAnalyzeProvider("wardenExpectations", expectationProvider);
+  registerAnalyzeProvider("glossary:intrigue", intrigueProvider);
+  registerAnalyzeProvider("glossary:kompromat", kompromatProvider);
+  registerAnalyzeProvider("glossary:implant_hack", hackProvider);
+  registerAnalyzeProvider("glossary:investigation", investigationProvider);
 }
 
 // src/analysis/providers/power.ts
@@ -42436,8 +42586,14 @@ function createApp(st, deps) {
       onReadNote: (id) => void act({ type: "notes/read", payload: { id } }),
       onPeel: (unitId, part) => void confirmPeel(unitId, part),
       rule: { accept: (id) => answerRule2(id, "accept"), negotiate: (id) => answerRule2(id, "negotiate"), refuse: (id) => answerRule2(id, "refuse") },
-      warden: { avatar: (u) => unitPortrait(st, u, portraitOptions(getSettings(st), 40)), showRaw: getSettings(st).showRawValues, onAnswer: (a) => void warden.answer(a) }
-      // P13: the WARDEN panel
+      warden: {
+        avatar: (u) => unitPortrait(st, u, portraitOptions(getSettings(st), 40)),
+        showRaw: getSettings(st).showRawValues,
+        onAnswer: (a) => void warden.answer(a),
+        onIntrigue: (action, unitId) => void act({ type: "intrigue/act", payload: { action, ...unitId !== void 0 ? { unitId } : {} } }),
+        onReport: () => void act({ type: "intrigue/report", payload: {} })
+      }
+      // P13: the WARDEN panel and its INTRIGUE section
     })
   );
   shell.registerTab(

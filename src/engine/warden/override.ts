@@ -203,7 +203,7 @@ export function answerOverride(draft: CampaignState, ctx: EngineCtx, overrideId:
   if (w.compelled && answer !== 'comply') throw new Error('The commander is compelled: only COMPLY is open.');
   const T = TUNING.warden;
   const base = ov.payload ?? {};
-  const done = (a: string): EngineEvent => ({ type: 'override_answered', overrideId: ov.id, answer: a });
+  const done = (a: string): EngineEvent => ({ type: 'override_answered', overrideId: ov.id, answer: a, context: ov.context });
 
   if (answer === 'argue') {
     if (ov.context !== 'combat') {

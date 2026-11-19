@@ -1,11 +1,12 @@
 import type { Registries } from '../../content/types';
-import { overrideOpen, wardenOf, type Expectation } from '../../engine/warden';
+import { investigationBand, overrideOpen, remoteExpectations, wardenOf, type Expectation } from '../../engine/warden';
 import type { CampaignState, Unit } from '../../engine/state/types';
 import { TUNING } from '../../engine/tuning';
 import { analyzeAttrs } from '../analyze/mark';
 import { h } from '../dom';
 import { VOICE_OF } from '../voice/sources';
 import { renderVoiceCard } from '../voice/voiceCard';
+import { renderIntrigueSection } from './intrigueSection';
 import { expectationLabel, renderOverrideChip, type OverrideAnswer } from './overrideChip';
 
 export interface WardenPanelDeps {
@@ -14,6 +15,10 @@ export interface WardenPanelDeps {
   /** Show the numbers behind the bands (setting `showRawValues`). */
   showRaw?: boolean;
   onAnswer?: (answer: OverrideAnswer) => void;
+  /** INTRIGUE: DIG and HACK STEP (a slot action with the ally who helps). */
+  onIntrigue?: (action: 'dig' | 'hack_step', unitId?: string) => void;
+  /** INTRIGUE: REPORT TO OVERSIGHT. */
+  onReport?: () => void;
 }
 
 /** Words for the satisfaction and weight bands: the player reads these, never the engine's numbers (unless raw values are on). */
@@ -33,7 +38,10 @@ const entryIdFor = (reg: Registries, x: Expectation): string | null =>
 export function renderWardenPanel(host: HTMLElement, state: CampaignState, reg: Registries, deps: WardenPanelDeps = {}): void {
   const w = wardenOf(state);
   const unit = w ? state.squad.find((u) => u.id === w.unitId) : undefined;
-  if (!w || !unit) return;
+  if (!w || !unit) {
+    renderInvestigation(host, state);
+    return;
+  }
   const E = TUNING.warden.escalation;
   const known = w.expectations.filter((x) => x.known);
   const unknown = w.expectations.length - known.length;
@@ -68,8 +76,29 @@ export function renderWardenPanel(host: HTMLElement, state: CampaignState, reg: 
     h('div', { class: 'alius-warden-head' }, portrait ? h('span', { class: 'alius-warden-portrait', 'aria-hidden': 'true' }, portrait) : null,
       h('span', {}, `${unit.displayName.toUpperCase()} holds the controller.`)),
     ...rows);
+  renderIntrigueSection(body, state, reg, { ...(deps.onIntrigue ? { onAct: deps.onIntrigue } : {}), ...(deps.onReport ? { onReport: deps.onReport } : {}) });
   if (overrideOpen(state) && deps.onAnswer) renderOverrideChip(body, state, reg, deps.onAnswer);
   const card = renderVoiceCard({ voice: VOICE_OF.warden_notice, title: 'WARDEN', meta: 'OVERSIGHT', level: 3, body });
   card.classList.add('alius-warden-panel');
+  host.append(card);
+}
+
+/**
+ * While nobody holds the leash and oversight investigates: the investigation as a band, and the fixed expectations of remote control
+ * (quota and obedience, both known). Nothing in any other state (a cleared commander has no panel).
+ */
+function renderInvestigation(host: HTMLElement, state: CampaignState): void {
+  const ls = state.leashswap;
+  if (!ls || ls.status !== 'investigation') return;
+  const clock = state.world.clocks.find((c) => c.id === (ls.removal?.clockId ?? 'investigation'));
+  const label = (kind: string): string => (kind === 'meet_quota' ? 'QUOTA' : 'OBEDIENCE');
+  const body = h('div', { class: 'alius-warden-body' },
+    h('p', {}, 'NOBODY HOLDS THE CONTROLLER. OVERSIGHT RUNS IT.'),
+    h('p', {}, h('span', { class: 'alius-chip alius-stat', 'data-stat': 'investigation', ...analyzeAttrs('glossary:investigation') },
+      `INVESTIGATION: ${clock ? investigationBand(clock.filled, clock.segments) : 'UNDER WAY'}`)),
+    h('h4', {}, 'REMOTE CONTROL'),
+    ...remoteExpectations(state).map((x) => h('p', { class: 'alius-chip alius-stat alius-expectation', ...analyzeAttrs('glossary:remote_control') }, `${label(x.kind)} — ${weightBand(x.weight)}`)));
+  const card = renderVoiceCard({ voice: VOICE_OF.warden_notice, title: 'OVERSIGHT', meta: 'INVESTIGATION', level: 3, body });
+  card.classList.add('alius-warden-panel', 'alius-warden-investigation');
   host.append(card);
 }

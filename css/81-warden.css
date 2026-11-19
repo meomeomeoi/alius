@@ -19,3 +19,10 @@
 .alius-warden-head { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.4rem; }
 .alius-expectation.alius-unknown { opacity: 0.7; }
 .alius-warden-body h4 { margin: 0.6rem 0 0.2rem; }
+
+/* P13: the INTRIGUE section and the investigation card of the WARDEN panel */
+.alius-warden-intrigue h4 { margin: 0.6rem 0 0.2rem; }
+.alius-warden-intrigue p { margin: 0.2rem 0; }
+.alius-intrigue-action { display: inline-flex; flex-direction: column; gap: 0.15rem; margin-right: 0.5rem; }
+.alius-intrigue-why { max-width: 22ch; font-size: 0.85em; }
+.alius-warden-investigation .alius-warden-body p { margin: 0.2rem 0; }

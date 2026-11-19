@@ -1913,7 +1913,8 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       onReadNote: (id) => void act({ type: 'notes/read', payload: { id } }),
       onPeel: (unitId, part) => void confirmPeel(unitId, part),
       rule: { accept: (id) => answerRule(id, 'accept'), negotiate: (id) => answerRule(id, 'negotiate'), refuse: (id) => answerRule(id, 'refuse') },
-      warden: { avatar: (u) => unitPortrait(st, u, portraitOptions(getSettings(st), 40)), showRaw: getSettings(st).showRawValues, onAnswer: (a) => void warden.answer(a) }, // P13: the WARDEN panel
+      warden: { avatar: (u) => unitPortrait(st, u, portraitOptions(getSettings(st), 40)), showRaw: getSettings(st).showRawValues, onAnswer: (a) => void warden.answer(a),
+        onIntrigue: (action, unitId) => void act({ type: 'intrigue/act', payload: { action, ...(unitId !== undefined ? { unitId } : {}) } }), onReport: () => void act({ type: 'intrigue/report', payload: {} }) }, // P13: the WARDEN panel and its INTRIGUE section
     }),
   );
   shell.registerTab('squad', (host) =>

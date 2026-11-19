@@ -973,14 +973,14 @@ Rulings marked **(user)** were answered by the user on 2026-11-18. Task 18 copie
   - memory resolvers for the seven events
 - Consumes: Tasks 13–16
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - `the INTRIGUE section never shows suspicion`; `buttons show the engine's reason`.
   - `memory rules write the facts with the audience of the check` (one per event); `ally_won is known only to the ally`; `no rule for the events the check excludes`.
   - `the hidden test passes over the warden providers`.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.** The loader checks every rule against its resolver's shape (P3b).
-- [ ] **Step 4: Run** the files, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P13): INTRIGUE section, readings and memory rules`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.** The loader checks every rule against its resolver's shape (P3b).
+- [x] **Step 4: Run** the files, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P13): INTRIGUE section, readings and memory rules`
 
 ---
 

@@ -390,5 +390,174 @@
     "tags": [
       "activity"
     ]
+  },
+  {
+    "id": "warden_defied",
+    "event": "override_answered",
+    "when": {
+      "answer": "defy",
+      "witnessed": false
+    },
+    "text": "AUTHOR TO WRITE: The commander defied {name}'s call.",
+    "importance": 3,
+    "about": "subject",
+    "audience": "present",
+    "spread": "slow",
+    "tags": [
+      "warden",
+      "defiance"
+    ]
+  },
+  {
+    "id": "warden_defied_witnessed",
+    "event": "override_answered",
+    "when": {
+      "answer": "defy",
+      "witnessed": true
+    },
+    "text": "AUTHOR TO WRITE: The commander defied {name}'s call in front of the squad.",
+    "importance": 3,
+    "about": "subject",
+    "audience": "squad",
+    "spread": "none",
+    "tags": [
+      "warden",
+      "defiance"
+    ]
+  },
+  {
+    "id": "warden_punished_commander",
+    "event": "commander_punished",
+    "when": {
+      "heavy": true
+    },
+    "text": "AUTHOR TO WRITE: {name} punished the commander: {label}.",
+    "importance": 4,
+    "about": "subject",
+    "audience": "public",
+    "spread": "none",
+    "tags": [
+      "warden",
+      "punishment"
+    ]
+  },
+  {
+    "id": "warden_leashed_commander",
+    "event": "commander_leashed",
+    "text": "AUTHOR TO WRITE: {name} used the controller on the commander ({kind}).",
+    "importance": 4,
+    "about": "subject",
+    "audience": "squad",
+    "spread": "fast",
+    "tags": [
+      "warden",
+      "leash"
+    ]
+  },
+  {
+    "id": "warden_warned",
+    "event": "warden_warning",
+    "text": "AUTHOR TO WRITE: {name} warned the commander about open defiance.",
+    "importance": 3,
+    "about": "subject",
+    "audience": "subject",
+    "spread": "none",
+    "tags": [
+      "warden",
+      "warning"
+    ]
+  },
+  {
+    "id": "warden_removed_hack",
+    "event": "warden_removed",
+    "when": {
+      "route": "hack"
+    },
+    "text": "AUTHOR TO WRITE: The commander's controller went dark, and the commander had help.",
+    "importance": 5,
+    "about": "commander",
+    "audience": "allies",
+    "spread": "none",
+    "tags": [
+      "warden",
+      "hack"
+    ]
+  },
+  {
+    "id": "warden_removed_report",
+    "event": "warden_removed",
+    "when": {
+      "route": "report"
+    },
+    "text": "AUTHOR TO WRITE: {name} was reported to oversight and reassigned.",
+    "importance": 5,
+    "about": "subject",
+    "audience": "public",
+    "spread": "none",
+    "tags": [
+      "warden",
+      "report"
+    ]
+  },
+  {
+    "id": "warden_removed_death",
+    "event": "warden_removed",
+    "when": {
+      "route": "death"
+    },
+    "text": "AUTHOR TO WRITE: {name} is gone from the squad, and oversight is investigating.",
+    "importance": 5,
+    "about": "subject",
+    "audience": "public",
+    "spread": "none",
+    "tags": [
+      "warden",
+      "death"
+    ]
+  },
+  {
+    "id": "verdict_cleared",
+    "event": "verdict",
+    "when": {
+      "outcome": "cleared"
+    },
+    "text": "AUTHOR TO WRITE: Oversight cleared the commander and keeps a watch.",
+    "importance": 5,
+    "about": "world",
+    "audience": "public",
+    "spread": "none",
+    "tags": [
+      "warden",
+      "verdict"
+    ]
+  },
+  {
+    "id": "verdict_convicted",
+    "event": "verdict",
+    "when": {
+      "outcome": "convicted"
+    },
+    "text": "AUTHOR TO WRITE: Oversight convicted the commander.",
+    "importance": 5,
+    "about": "world",
+    "audience": "public",
+    "spread": "none",
+    "tags": [
+      "warden",
+      "verdict"
+    ]
+  },
+  {
+    "id": "ally_won",
+    "event": "ally_won",
+    "text": "AUTHOR TO WRITE: {name} agreed to stand with the commander against the warden.",
+    "importance": 3,
+    "about": "subject",
+    "audience": "subject",
+    "spread": "none",
+    "tags": [
+      "warden",
+      "ally"
+    ]
   }
 ]

@@ -93,6 +93,11 @@ describe('the WARDEN panel', () => {
     const s = swap();
     expect(draw(s).textContent).not.toMatch(/\b(he|him|his)\b/i);
     s.leashswap!.status = 'investigation';
+    delete s.leashswap!.warden;
+    const host = draw(s);
+    expect(host.textContent).not.toContain('holds the controller'); // nobody does: the investigation card draws instead (Task 17)
+    expect(host.querySelector('.alius-warden-investigation')).not.toBeNull();
+    s.leashswap!.status = 'free';
     expect(draw(s).querySelector('.alius-warden-panel')).toBeNull();
   });
 
