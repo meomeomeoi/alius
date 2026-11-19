@@ -29,6 +29,10 @@ const ONBOARDING_HINT = 'onboarding/hint_seen';
 const EXPEDITION_OPEN_PREFIXES = ['expedition/', 'combat/', 'director/', 'debug/', 'dilemma/', 'relations/commander_injured', ONBOARDING_HINT, 'content/', 'notes/read', 'squad/set_hand'];
 
 /** Actions that spend time or start something: refused while a presented dilemma waits for its answer (P6). */
+/** P13: a closed campaign (`ended`) runs only these: `debug/*` and the epilogue. */
+const ENDED_OK_PREFIXES = ['debug/', 'campaign/epilogue'];
+/** P13: allowed while a combat or an expedition is open (the death that closes the campaign, and its epilogue, must always be able to run). */
+const ALWAYS_OPEN = ['warden/no_snapshot', 'campaign/epilogue'];
 const BLOCKED_BY_DILEMMA = ['activity/', 'calendar/consume_slot', 'scene/start', 'expedition/start'];
 
 export function registerAction(type: string, handler: Handler): void {
@@ -59,12 +63,16 @@ export function dispatch(
   if (!handler) {
     return { state, events: [{ type: 'error', code: 'unknown_action', action: action.type }] };
   }
+  // P13: a closed campaign is read-only
+  if (state.ended && !ENDED_OK_PREFIXES.some((p) => action.type.startsWith(p))) {
+    return { state, events: [{ type: 'error', code: 'campaign_ended', message: 'The campaign is closed.' }] };
+  }
   // while a combat is open only combat/* (and debug/*) may run: anything else would change what a retry rebuilds
-  if (state.combat && !action.type.startsWith('combat/') && !action.type.startsWith('debug/') && action.type !== ONBOARDING_HINT) {
+  if (state.combat && !action.type.startsWith('combat/') && !action.type.startsWith('debug/') && action.type !== ONBOARDING_HINT && !ALWAYS_OPEN.includes(action.type)) {
     return { state, events: [{ type: 'error', code: 'combat_open', message: 'A combat is open: finish it first.' }] };
   }
   // an open expedition confines the campaign: its slots are spent once, on return (P5)
-  if (state.expedition && !EXPEDITION_OPEN_PREFIXES.some((p) => action.type.startsWith(p))) {
+  if (state.expedition && !EXPEDITION_OPEN_PREFIXES.some((p) => action.type.startsWith(p)) && !ALWAYS_OPEN.includes(action.type)) {
     return {
       state,
       events: [{ type: 'error', code: 'expedition_open', message: 'An expedition is under way: finish or abandon it first.' }],

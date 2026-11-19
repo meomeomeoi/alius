@@ -20,6 +20,8 @@ export interface WorldHarness {
   startCombat: ReturnType<typeof vi.fn>;
   startScene: ReturnType<typeof vi.fn>;
   switchChat(id: string): void;
+  /** Like the app's `restoreSnapshot`: replaces the state when `expected` is still the current one. */
+  restore(snap: CampaignState, expected: CampaignState): boolean;
   app(): WorldDeps['app'];
 }
 
@@ -56,6 +58,11 @@ export function worldHarness(reg: Registries, initial: CampaignState, over: Part
     state: () => state,
     setState: (f) => { const s = structuredClone(state); f(s); state = s; },
     app: () => app,
+    restore: (snap, expected) => {
+      if (state !== expected) return false;
+      state = structuredClone(snap);
+      return true;
+    },
     switchChat: (id) => { st.chat = { chatId: id, isGroup: true, groupId: 'g' }; },
   };
 }

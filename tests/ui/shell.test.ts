@@ -261,7 +261,7 @@ describe('SYS tab', () => {
     const { shell } = setup();
     shell.open();
     shell.showTab('sys');
-    expect(document.querySelectorAll('#alius-shell input[name^="budget:"]')).toHaveLength(16);
+    expect(document.querySelectorAll('#alius-shell input[name^="budget:"]')).toHaveLength(17);
   });
 
   it('debug panel is hidden unless debug is on', () => {

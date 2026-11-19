@@ -280,7 +280,7 @@ describe('no pronoun for the commander in the text modules the main model and th
     'src/analysis/effects.ts', 'src/discipline/directives.ts', 'src/world/optionsContext.ts', 'src/ui/setup/worldParams.ts', 'src/ui/setup/calibration.ts',
     'src/ui/hub/model.ts', 'src/ui/setup/prologueSteps.ts', 'src/ui/setup/shared.ts',
     // P13
-    'src/warden/directives.ts', 'src/warden/controller.ts', 'src/ui/warden/modeSection.ts', 'src/ui/warden/revealCard.ts', 'src/llm/calls/wardenAgenda.ts',
+    'src/warden/directives.ts', 'src/warden/controller.ts', 'src/ui/warden/modeSection.ts', 'src/ui/warden/revealCard.ts', 'src/ui/warden/endScreen.ts', 'src/llm/calls/wardenAgenda.ts', 'src/llm/calls/epilogue.ts',
   ];
   it.each(FILES)('%s', async (file) => {
     const { readFile } = await import('node:fs/promises');

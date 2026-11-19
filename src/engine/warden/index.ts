@@ -6,3 +6,4 @@ export {
 export { corporateWardenPick, seedWarden } from './select';
 export { revealPending } from './reveal';
 export { AGENDA_MAX, AGENDA_MIN, PERSONAL_MAX, PERSONAL_TEXT_MAX, agendaProblem, fallbackAgenda, learnExpectation, normalizeAgenda, setAgenda } from './agenda';
+export { commanderDies, DEATH_CAUSES, type DeathCause } from './death';

@@ -583,7 +583,7 @@ Rulings marked **(user)** were answered by the user on 2026-11-18. Task 18 copie
   - `WardenController.onDied(event)`, `renderEndScreen(host, state, deps)`
 - Consumes: `restoreSnapshot` (P3), `hideMessages` and `memory/hidden` (P3b), `exportCampaign` (P0)
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - `tests/warden/death.test.ts`:
     - `campaign_end closes the campaign`: `commanderDies` with `campaign_end` → `ended` set, a chronicle line with `audience '*'`; afterwards `activity/do` returns `campaign_ended` and the state is unchanged; `campaign/epilogue` once is accepted, a second time refused.
     - `rewind_day changes nothing in the engine`: the state after `commanderDies` equals the state before, except the events.
@@ -596,10 +596,10 @@ Rulings marked **(user)** were answered by the user on 2026-11-18. Task 18 copie
     - `a chat shorter than the stored length hides nothing and still restores`;
     - `no snapshot is written outside the mode`.
   - `tests/ui/endScreen.test.ts`: `the END screen shows the epilogue and only EXPORT`; `the fallback epilogue joins the public lines`.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement** per the Rulings. The epilogue call is fail-soft: the fallback text is dispatched if the call fails.
-- [ ] **Step 4: Run** the files, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P13): commander death, day-start snapshot, rewind and campaign end`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement** per the Rulings. The epilogue call is fail-soft: the fallback text is dispatched if the call fails.
+- [x] **Step 4: Run** the files, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P13): commander death, day-start snapshot, rewind and campaign end`
 
 **Chunk (a) ends here.**
 

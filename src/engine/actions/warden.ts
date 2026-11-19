@@ -1,5 +1,6 @@
 import { registerAction } from '../dispatch';
 import { setAgenda } from '../warden/agenda';
+import { commanderDies, DEATH_CAUSES, type DeathCause } from '../warden/death';
 
 // Importing this module registers the P13 LEASHSWAP actions. `app.ts` imports it after `actions/special`.
 
@@ -19,4 +20,34 @@ registerAction('warden/revealed', (draft) => {
 registerAction('warden/agenda', (draft, payload, ctx) => {
   const p = (typeof payload === 'object' && payload !== null ? payload : {}) as { expectations?: unknown };
   return setAgenda(draft, ctx.registries, p.expectations);
+});
+
+/**
+ * The app found no usable day-start snapshot to rewind to (none, or another chat's): the death ends the campaign instead, for the
+ * cause of the `commander_died` event it was told about. Allowed while a combat or an expedition is open (`dispatch`).
+ */
+registerAction('warden/no_snapshot', (draft, payload, ctx) => {
+  const cause = (payload as { cause?: unknown } | null | undefined)?.cause;
+  if (!DEATH_CAUSES.includes(cause as DeathCause)) throw new Error('warden/no_snapshot: the cause is `terminated` or `executed`.');
+  return commanderDies(draft, ctx, cause as DeathCause, { forceEnd: true });
+});
+
+const EPILOGUE_MAX = 2400;
+
+/** The epilogue of a closed campaign, stored once (written by the model, or the chronicle lines under a fixed heading). */
+registerAction('campaign/epilogue', (draft, payload) => {
+  if (!draft.ended) throw new Error('campaign/epilogue: the campaign is not closed.');
+  if (draft.ended.epilogue !== undefined) throw new Error('campaign/epilogue: the epilogue is already written.');
+  const text = (payload as { text?: unknown } | null | undefined)?.text;
+  if (typeof text !== 'string' || text.trim() === '') throw new Error('campaign/epilogue: the text is empty.');
+  if (text.length > EPILOGUE_MAX) throw new Error(`campaign/epilogue: at most ${EPILOGUE_MAX} characters.`);
+  draft.ended.epilogue = text.trim();
+  return [{ type: 'epilogue_written' }];
+});
+
+/** Manual-test hook: the commander dies now (`cause`: `terminated`, the default, or `executed`). Works only in the mode. */
+registerAction('debug/kill_commander', (draft, payload, ctx) => {
+  const cause = (payload as { cause?: unknown } | null | undefined)?.cause ?? 'terminated';
+  if (!DEATH_CAUSES.includes(cause as DeathCause)) throw new Error('debug/kill_commander: the cause is `terminated` or `executed`.');
+  return commanderDies(draft, ctx, cause as DeathCause);
 });

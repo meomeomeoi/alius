@@ -20,6 +20,8 @@ describe('warden_agenda', () => {
   it('is a call type with a budget of 800', () => {
     expect(CALL_TYPE_IDS).toContain('warden_agenda');
     expect(DEFAULT_SETTINGS.budgets.warden_agenda).toBe(800);
+    expect(CALL_TYPE_IDS).toContain('epilogue');
+    expect(DEFAULT_SETTINGS.budgets.epilogue).toBe(700);
   });
 
   it('valid: the shape comes back for the engine to validate; the prompt carries the card, the values and the closed kinds', async () => {

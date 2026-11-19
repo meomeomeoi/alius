@@ -66,6 +66,7 @@ import { coachHints, isTutorialRun, lockedTabs, unlockedBetween } from './engine
 import { TAB_IDS } from './ui/shell/tabs';
 import { renderOnboardingCard } from './ui/onboarding/card';
 import { renderRevealCard } from './ui/warden/revealCard';
+import { renderEndScreen } from './ui/warden/endScreen';
 import { isQuietNight } from './engine/calendar';
 import { restrictionReason } from './engine/discipline';
 import { renderDilemma } from './ui/dilemma/dilemmaPanel';
@@ -132,7 +133,7 @@ import { renderCalibration } from './ui/setup/calibration';
 import { h } from './ui/dom';
 import { renderKeepingFocus } from './ui/focus';
 import {
-  createSaver, initCampaign as initCampaignInChat, loadCampaign, writeNewCampaign, METADATA_KEY, type LoadResult,
+  createSaver, exportCampaign, initCampaign as initCampaignInChat, loadCampaign, writeNewCampaign, METADATA_KEY, type LoadResult,
 } from './st/persistence';
 import { registerCoreProviders } from './analysis/providers/core';
 import { memoryConfig } from './engine/memory/config';
@@ -425,7 +426,15 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     notice: (kind, text, title, source) => toast(kind, text, { voice: VOICE_OF[source], title }), // P12: the device's own readout
     cutIn: (text) => { const root = document.getElementById('alius-shell'); if (root) cutIn(root, 'frequency', text); },
   });
-  const warden = createWarden({ ...worldDeps, context, refreshContext: applyContext }); // P13: the warden's agenda and directives
+  const warden = createWarden({
+    ...worldDeps, context, refreshContext: applyContext,
+    // P13: a rewind puts the day-start state back, then everything that hangs on the state (the scene, the combat, the modals) is picked up afresh
+    restore: (snap, expected) => {
+      if (!api.restoreSnapshot(snap, expected)) return false;
+      afterLoad();
+      return true;
+    },
+  }); // P13: the warden's agenda, the day-start snapshot, the rewind and the epilogue
   const discipline = createDiscipline({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o), requestVote: (a) => power.requestVote(a) });
   const bonds = createBonds({ ...worldDeps, context, refreshContext: applyContext, startScene: (o) => beginScene(o) });
   const personal = createPersonal({
@@ -647,6 +656,10 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       special.onEvents(events); // P12: a new frequency fragment is worded
       warden.onEvents(events); // P13: a new warden is asked for her agenda
       onboarding.onEvents(events); // the line-up and first words: the cap question and the step completing when the scene closes (P11)
+      if (has('campaign_ended')) {
+        shell.showScreen('hub'); // P13: the END screen takes the hub's place; nothing else of the campaign can change now
+        shell.open();
+      }
       if (has('scene_ended') || has('scene_aborted')) {
         loyalty.onSceneClosed();
         discipline.onSceneClosed();
@@ -1960,8 +1973,20 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     shell.setTabBadge('ops', 0);
     renderOpsTab(host, opsCtx());
   });
-  shell.registerHub((host, device) =>
-    renderHub(host, device, {
+  /** P13: downloads the campaign file (the END screen's only button; the same file as SYS › Export campaign). */
+  function exportCurrent(): void {
+    if (!state) return;
+    const url = URL.createObjectURL(new Blob([exportCampaign(state)], { type: 'application/json' }));
+    const a = h('a', { href: url, download: `alius-campaign-day${state.day}.json` });
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+  shell.registerHub((host, device) => {
+    // P13: a closed campaign shows the END screen in place of the hub
+    if (state?.ended) return renderEndScreen(host, state, { onExport: exportCurrent });
+    return renderHub(host, device, {
       getState: () => state,
       getLoad: () => load,
       registries,
@@ -1980,7 +2005,8 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       onOpenPda: (tab) => (tab ? shell.showTab(tab) : shell.setDevice(true)),
       avatar: (unit) => unitPortrait(st, unit, portraitOptions(getSettings(st), 40)),
       onReadNote: (id) => void act({ type: 'notes/read', payload: { id } }), // P10b
-    }));
+    });
+  });
   shell.registerTab('map', (host) =>
     renderMapTab(host, {
       getState: () => state,

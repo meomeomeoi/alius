@@ -4,6 +4,25 @@ import type { CampaignState } from '../engine/state/types';
 import type { StAdapter } from './adapter';
 
 export const METADATA_KEY = 'alius';
+/** P13: the second metadata key, the state at the start of the current day (written only in LEASHSWAP, which roughly doubles the metadata of such a chat). */
+export const DAY_START_KEY = 'alius_day_start';
+
+export interface DayStart { chatId: string; day: number; chatLength: number; state: CampaignState }
+
+/** Stores the day-start snapshot in the open chat's metadata and saves it. A failed save is only logged: the rewind then falls back to the campaign's end. */
+export function writeDayStart(st: StAdapter, snap: DayStart): void {
+  st.writeMetadata(DAY_START_KEY, snap);
+  st.saveMetadata().catch((e) => console.warn('[Alius] saving the day-start snapshot failed', e));
+}
+
+/** The stored snapshot, or null when there is none or it is malformed (a foreign chat's is the caller's to check by `chatId`). */
+export function readDayStart(st: StAdapter): DayStart | null {
+  const raw = st.readMetadata(DAY_START_KEY) as Partial<DayStart> | undefined;
+  if (typeof raw !== 'object' || raw === null) return null;
+  if (typeof raw.chatId !== 'string' || typeof raw.day !== 'number' || typeof raw.chatLength !== 'number') return null;
+  if (typeof raw.state !== 'object' || raw.state === null) return null;
+  return raw as DayStart;
+}
 
 export type LoadResult =
   | { kind: 'none' }

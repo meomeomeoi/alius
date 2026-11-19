@@ -1,7 +1,11 @@
 import type { EngineEvent } from '../engine/dispatch';
 import type { CampaignState } from '../engine/state/types';
 import { EXPECTATION_KINDS, normalizeAgenda, wardenOf } from '../engine/warden';
+import { worldDossier } from '../engine/memory/inputs';
+import { generateEpilogue, fallbackEpilogue } from '../llm/calls/epilogue';
 import { generateAgenda, type WardenAgendaInput } from '../llm/calls/wardenAgenda';
+import { isLeashswap } from '../engine/warden';
+import { readDayStart, writeDayStart } from '../st/persistence';
 import { REVEAL_DIRECTIVE, wardenDirectives } from './directives';
 import type { WardenDeps } from './deps';
 
@@ -10,11 +14,16 @@ export type { WardenDeps } from './deps';
 export interface WardenController {
   /** Reads the events of one dispatch: a new warden is asked for her agenda; the reveal directive follows the state. */
   onEvents(events: EngineEvent[]): void;
-  /** After a (re)load or a deployment (a built campaign has no event stream): asks for the agenda once if she still has the fallback. */
+  /**
+   * After a (re)load or a deployment (a built campaign has no event stream): writes the day-start snapshot if there is none for this
+   * chat, asks for the agenda once if she still has the fallback and writes a closed campaign's epilogue if it has none.
+   */
   onLoaded(): void;
 }
 
 const CARD_MAX = 600;
+/** The chronicle lines the epilogue is written from: the newest this many with `audience: '*'`. */
+const EPILOGUE_LINES = 60;
 
 /**
  * The model-facing half of the warden (P13): it proposes her agenda once and nothing else in chunk (a). The engine validates every
@@ -38,7 +47,7 @@ export function createWarden(deps: WardenDeps): WardenController {
     const s = state();
     const w = s ? wardenOf(s) : null;
     const expect = chatId();
-    if (!s || !w || w.agenda !== 'fallback' || w.overrideFired === true) return;
+    if (!s || s.ended || !w || w.agenda !== 'fallback' || w.overrideFired === true) return; // a closed campaign asks for nothing
     const key = `${expect ?? ''}:${w.unitId}:${w.sinceDay}`;
     if (asked.has(key)) return;
     asked.add(key);
@@ -67,12 +76,69 @@ export function createWarden(deps: WardenDeps): WardenController {
     deps.app.dispatch({ type: 'warden/agenda', payload: { expectations: list } }, { expectChatId: expect });
   }
 
+  /** The state at the start of this day, with where the ST chat stood (written only in the mode). */
+  function snapshot(): void {
+    const s = state();
+    const expect = chatId();
+    if (!s || expect === undefined || !isLeashswap(s) || s.ended) return;
+    writeDayStart(deps.st, { chatId: expect, day: s.day, chatLength: deps.st.chatLength(), state: structuredClone(s) });
+  }
+
+  /** The commander died under `rewind_day`: back to the start of the day, the scenes since hidden from the chat. No snapshot of this chat → the campaign ends. */
+  async function rewind(cause: string): Promise<void> {
+    const expect = chatId();
+    const s = state();
+    if (!s || expect === undefined) return;
+    const snap = readDayStart(deps.st);
+    const fallBack = (): void => {
+      deps.app.dispatch({ type: 'warden/no_snapshot', payload: { cause } }, { expectChatId: expect });
+    };
+    // a missing or foreign snapshot (another chat's), or a state with no mode: nothing to rewind to
+    if (!snap || snap.chatId !== expect || !isLeashswap(snap.state) || !deps.restore(structuredClone(snap.state), s)) return fallBack();
+    const length = deps.st.chatLength();
+    deps.toast('info', `REWIND — day ${snap.day} begins again.`);
+    if (length - 1 < snap.chatLength) return; // the chat is no longer than it was: nothing to hide
+    const runs = await deps.st.hideMessages(snap.chatLength, length - 1); // the chat is still this one: nothing awaited since the restore
+    if (chatId() !== expect || runs.length === 0) return; // never write into another chat
+    deps.app.dispatch({ type: 'memory/hidden', payload: { add: runs } }, { expectChatId: expect });
+  }
+
+  /** The epilogue of a closed campaign: the model's, or the public lines under a heading. Once per chat. */
+  async function epilogue(): Promise<void> {
+    const s = state();
+    const expect = chatId();
+    if (!s?.ended || s.ended.epilogue !== undefined) return;
+    const key = `${expect ?? ''}:epilogue`;
+    if (asked.has(key)) return;
+    asked.add(key);
+    const lines = s.memory.chronicle.filter((c) => c.audience === '*').slice(-EPILOGUE_LINES).map((c) => c.text);
+    const input = { cause: s.ended.cause, day: s.ended.day, lines, dossier: worldDossier(s) };
+    let text: string | null = null;
+    try {
+      text = await generateEpilogue(input, { st: deps.st, settings: deps.settings(), ...(deps.contentLine ? { contentLine: deps.contentLine } : {}) });
+    } catch {
+      // fail soft: the fallback text is dispatched
+    }
+    if (chatId() !== expect) return;
+    deps.app.dispatch({ type: 'campaign/epilogue', payload: { text: text ?? fallbackEpilogue(input) } }, { expectChatId: expect });
+  }
+
   return {
     onEvents(events) {
       if (events.some((e) => e.type === 'warden_assigned')) void ask().catch(() => {});
+      if (events.some((e) => e.type === 'day_started')) snapshot();
+      const dead = events.find((e) => e.type === 'commander_died' && e.rule === 'rewind_day');
+      if (dead) void rewind(String(dead.cause)).catch(() => {});
+      if (events.some((e) => e.type === 'campaign_ended')) void epilogue().catch(() => {});
       if (events.some((e) => e.type === 'warden_revealed' || e.type === 'warden_assigned' || e.type === 'onboarding_step_completed' || e.type === 'onboarding_step_skipped' || e.type === 'onboarding_done')) refreshDirectives();
     },
     onLoaded() {
+      const s = state();
+      if (s?.ended) void epilogue().catch(() => {});
+      else if (s && isLeashswap(s)) {
+        const snap = readDayStart(deps.st);
+        if (!snap || snap.chatId !== chatId()) snapshot(); // right after buildCampaign: the first day's start
+      }
       void ask().catch(() => {});
       refreshDirectives();
     },

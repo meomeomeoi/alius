@@ -25,7 +25,7 @@ const flush = () => new Promise((r) => setTimeout(r, 0));
 function rig() {
   const h = worldHarness(reg, swap());
   h.st.cards.set('bea.png', { avatar: 'bea.png', name: 'Bea', description: 'A sergeant.', personality: 'Dry.', scenario: '', creatorNotes: '' });
-  const ctl = createWarden({ ...h.deps, context: { setDirective: vi.fn(), clearMatching: vi.fn() } as never, refreshContext: vi.fn() });
+  const ctl = createWarden({ ...h.deps, context: { setDirective: vi.fn(), clearMatching: vi.fn() } as never, refreshContext: vi.fn(), restore: () => false });
   return { h, ctl };
 }
 
@@ -75,7 +75,7 @@ describe('the warden controller: the agenda', () => {
     await flush();
     expect(h.st.calls).toHaveLength(0);
     const plain = worldHarness(reg, (() => { const s = swap(); delete s.leashswap; return s; })());
-    createWarden({ ...plain.deps, context: { setDirective: vi.fn(), clearMatching: vi.fn() } as never, refreshContext: vi.fn() }).onLoaded();
+    createWarden({ ...plain.deps, context: { setDirective: vi.fn(), clearMatching: vi.fn() } as never, refreshContext: vi.fn(), restore: () => false }).onLoaded();
     await flush();
     expect(plain.st.calls).toHaveLength(0);
   });

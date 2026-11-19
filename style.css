@@ -3262,6 +3262,10 @@ button.alius-node.alius-reachable { opacity: 1; cursor: pointer; border: 1px das
 .alius-warden-reveal { margin-bottom: 0.5rem; }
 .alius-warden-reveal-body p { margin: 0 0 0.4rem; }
 
+/* The END screen: it replaces the hub once the campaign is closed. */
+.alius-end-screen { display: grid; place-items: center; min-height: 100%; padding: 1rem; }
+.alius-end-epilogue p { margin: 0 0 0.6rem; white-space: pre-wrap; }
+
 /* P6: oversight request form, loyalty and arc controls, dilemma and confrontation panels. Palette variables only. */
 #alius-shell .alius-form {
   font-family: monospace;
