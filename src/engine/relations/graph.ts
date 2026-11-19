@@ -117,13 +117,14 @@ const byPriority = (a: Entry, b: Entry): number => (b.priority as number) - (a.p
 
 /** Candidates entered through `via`, from the unit's current state, whose condition holds. */
 function candidates(
-  draft: CampaignState, reg: Registries, unitId: string, via: 'automatic' | 'event', eventType?: string,
+  draft: CampaignState, reg: Registries, unitId: string, via: 'automatic' | 'event', eventType?: string, allow?: (st: Entry) => boolean,
 ): Entry[] {
   const cur = draft.relations[unitId].stateId;
   return availableStates(draft, reg, unitId)
     .filter((st) => {
       const e = entryOf(st);
       if (st.id === cur || !e.via.includes(via)) return false;
+      if (allow && !allow(st)) return false;
       if (via === 'event' && !e.events?.includes(eventType as string)) return false;
       if (e.fromStates && e.fromStates.length > 0 && !e.fromStates.includes(cur)) return false;
       return meets(draft, reg, unitId, platonicThresholds(draft, reg, st.id as string, e.when ?? {}));
@@ -134,9 +135,9 @@ function candidates(
 /**
  * Re-evaluates the unit: the first exit rule of its state that holds wins; otherwise the highest-priority automatic
  * state that outranks the current one (so a unit settles instead of flapping). At most one transition per call; then
- * the loyalty band is recomputed.
+ * the loyalty band is recomputed. `allow` (P11b) filters the exit targets and the automatic candidates; absent = every usable state.
  */
-export function evaluateAutomatic(draft: CampaignState, reg: Registries, unitId: string): EngineEvent[] {
+export function evaluateAutomatic(draft: CampaignState, reg: Registries, unitId: string, opts?: { allow?: (state: Entry) => boolean }): EngineEvent[] {
   const rel = draft.relations[unitId];
   if (!rel || !draft.squad.some((u) => u.id === unitId)) return [];
   const events: EngineEvent[] = [];
@@ -144,7 +145,7 @@ export function evaluateAutomatic(draft: CampaignState, reg: Registries, unitId:
   let target: string | null = null;
   let why = 'automatic';
   if (cur) {
-    const ok = new Set(availableStates(draft, reg, unitId).map((s) => s.id));
+    const ok = new Set(availableStates(draft, reg, unitId).filter((s) => !opts?.allow || opts.allow(s)).map((s) => s.id));
     const rule = (cur.exit as Array<{ when: Conditions; to: string }>).find((x) => ok.has(x.to) && meets(draft, reg, unitId, x.when));
     if (rule) {
       target = rule.to;
@@ -153,7 +154,7 @@ export function evaluateAutomatic(draft: CampaignState, reg: Registries, unitId:
   }
   if (target === null) {
     const rank = (cur?.priority as number | undefined) ?? -1;
-    const pick = candidates(draft, reg, unitId, 'automatic').find((st) => (st.priority as number) > rank);
+    const pick = candidates(draft, reg, unitId, 'automatic', undefined, opts?.allow).find((st) => (st.priority as number) > rank);
     if (pick) target = pick.id;
   }
   if (target !== null) events.push(enterState(draft, unitId, target, why), ...syncPublicity(draft, reg, unitId)); // P9d: publicity follows the tier

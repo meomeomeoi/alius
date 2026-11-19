@@ -415,7 +415,7 @@ After every unit:
   - `headStartTransition(draft: CampaignState, reg: Registries, unitId: string): EngineEvent[]`;
   - `evaluateAutomatic(draft, reg, unitId, opts?: { allow?: (state: Entry) => boolean }): EngineEvent[]`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - Picking:
     - `N 7 picks one, N 30 picks two, N 14 picks one or two by hash`;
     - `a positive impression never picks a negative moment` (every seed 1…50);
@@ -439,12 +439,12 @@ After every unit:
     - `at most one transition` (a unit meeting `comrade` and then `trusted` stays `comrade`);
     - `a romantic automatic target is refused`: a registry copy where `trusted` gets `bondTier: 'romantic'`, a unit in `comrade` meeting it → no change;
     - `without allow, evaluateAutomatic behaves as before` (graphAllow test: the same romantic copy → entered).
-- [ ] **Step 2: Run** `npx vitest run tests/engine/headStart/moments.test.ts tests/engine/relations/graphAllow.test.ts` → FAIL.
-- [ ] **Step 3: Implement** per "What the build does" steps 3–5.
+- [x] **Step 2: Run** `npx vitest run tests/engine/headStart/moments.test.ts tests/engine/relations/graphAllow.test.ts` → FAIL.
+- [x] **Step 3: Implement** per "What the build does" steps 3–5.
   - In `evaluateAutomatic`, `allow` filters the `ok` set of exit targets and the `candidates` list. Its default keeps the current code path unchanged, so no seeded test moves.
   - `headStartTransition` sets the initial band (step 5), then calls `evaluateAutomatic` with `allow: (st) => st.bondTier !== 'romantic'`.
-- [ ] **Step 4: Run** the files, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P11b): remembered moments, the trust cap and one non-romantic transition`
+- [x] **Step 4: Run** the files, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P11b): remembered moments, the trust cap and one non-romantic transition`
 
 ---
 

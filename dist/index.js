@@ -9235,17 +9235,18 @@ function platonicThresholds(state, reg, stateId, cond) {
   return scale(cond);
 }
 var byPriority = (a, b) => b.priority - a.priority || String(a.id).localeCompare(String(b.id));
-function candidates(draft, reg, unitId, via, eventType) {
+function candidates(draft, reg, unitId, via, eventType, allow) {
   const cur = draft.relations[unitId].stateId;
   return availableStates(draft, reg, unitId).filter((st) => {
     const e = entryOf(st);
     if (st.id === cur || !e.via.includes(via)) return false;
+    if (allow && !allow(st)) return false;
     if (via === "event" && !e.events?.includes(eventType)) return false;
     if (e.fromStates && e.fromStates.length > 0 && !e.fromStates.includes(cur)) return false;
     return meets(draft, reg, unitId, platonicThresholds(draft, reg, st.id, e.when ?? {}));
   }).sort(byPriority);
 }
-function evaluateAutomatic(draft, reg, unitId) {
+function evaluateAutomatic(draft, reg, unitId, opts) {
   const rel = draft.relations[unitId];
   if (!rel || !draft.squad.some((u) => u.id === unitId)) return [];
   const events = [];
@@ -9253,7 +9254,7 @@ function evaluateAutomatic(draft, reg, unitId) {
   let target = null;
   let why = "automatic";
   if (cur) {
-    const ok = new Set(availableStates(draft, reg, unitId).map((s) => s.id));
+    const ok = new Set(availableStates(draft, reg, unitId).filter((s) => !opts?.allow || opts.allow(s)).map((s) => s.id));
     const rule = cur.exit.find((x) => ok.has(x.to) && meets(draft, reg, unitId, x.when));
     if (rule) {
       target = rule.to;
@@ -9262,7 +9263,7 @@ function evaluateAutomatic(draft, reg, unitId) {
   }
   if (target === null) {
     const rank2 = cur?.priority ?? -1;
-    const pick2 = candidates(draft, reg, unitId, "automatic").find((st) => st.priority > rank2);
+    const pick2 = candidates(draft, reg, unitId, "automatic", void 0, opts?.allow).find((st) => st.priority > rank2);
     if (pick2) target = pick2.id;
   }
   if (target !== null) events.push(enterState(draft, unitId, target, why), ...syncPublicity(draft, reg, unitId));
