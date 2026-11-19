@@ -122,6 +122,19 @@ describe('failure reasons', () => {
     expect(await callLlm('ping', 'x', { ...deps, refusals })).toMatchObject({ ok: false, reason: 'refused' });
   });
 
+  it("a refused answer's detail never carries the model's words (it ends up in the save)", async () => {
+    const refusals = await refusalPatterns();
+    const { deps, st } = setup();
+    st.profileReplies = [REFUSAL];
+    const r = await callLlm('ping', 'x', { ...deps, refusals });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.detail).not.toContain('assist');
+    st.mainReplies = [REFUSAL];
+    const prose = await callLlm('dm_reply', DM_INPUT, { ...deps, refusals });
+    expect(prose.ok).toBe(false);
+    if (!prose.ok) expect(prose.detail).not.toContain('assist');
+  });
+
   it('{} where the schema needs fields is refused', async () => {
     const { deps, st } = setup({ autoRetry: 0 });
     st.profileReplies = ['{}'];

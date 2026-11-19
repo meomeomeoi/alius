@@ -700,7 +700,7 @@ Each task moves the caller code into the site's handlers, deletes the async wrap
 **Files:**
 - Create: `tests/llm/envelopeFixtures.test.ts`
 
-- [ ] **Step 1: Write the tests** (acceptance 1, 3, 4, 5).
+- [x] **Step 1: Write the tests** (acceptance 1, 3, 4, 5).
   - A matrix of the six reasons (`refused`, `truncated`, `timeout`, `invalid_output`, `empty`, `network`) from `tests/fixtures/llm/failures.ts`, run through the real sites below. Each must give the right record, the right chip text and a working RETRY:
     - `expedition.recap` (free);
     - `dilemma.generate` (before_commit);
@@ -710,8 +710,8 @@ Each task moves the caller code into the site's handlers, deletes the async wrap
     - `expired` for each;
     - `revert refused when state moved` for `scene.summary` and `dm.reply`;
     - `state stays small`: after 25 failures of every full site, `JSON.stringify(state.generations).length < 8000`, and no prompt, transcript or fixture text appears in it.
-- [ ] **Step 2: Run** → PASS is expected (it guards Tasks 4–13). A failure is fixed in the task that owns it; note it in the commit.
-- [ ] **Step 3: Commit** `test(P14): failure fixtures per reason and reroll mode`
+- [x] **Step 2: Run** → PASS is expected (it guards Tasks 4–13). A failure is fixed in the task that owns it; note it in the commit.
+- [x] **Step 3: Commit** `test(P14): failure fixtures per reason and reroll mode`
 
 ---
 

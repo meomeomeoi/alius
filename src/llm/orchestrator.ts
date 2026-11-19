@@ -76,13 +76,13 @@ function classify<T>(ct: CallType<any>, answer: GenAnswer, patterns: RefusalPatt
   }
 
   if (!ct.json) {
-    if (refuses(patterns, text, ['any'])) return { ok: false, reason: 'refused', detail: cut(text) };
+    if (refuses(patterns, text, ['any'])) return { ok: false, reason: 'refused', detail: 'the answer matched a refusal pattern' };
     return { ok: true, value: text as T };
   }
 
   const json = looseJson(text);
   if (json === null) {
-    if (refuses(patterns, text, ['json', 'any'])) return { ok: false, reason: 'refused', detail: cut(text) };
+    if (refuses(patterns, text, ['json', 'any'])) return { ok: false, reason: 'refused', detail: 'the answer matched a refusal pattern' };
     if (length || hasCutJson(text)) return { ok: false, reason: 'truncated', detail: 'the JSON was cut off' };
     return { ok: false, reason: 'invalid_output', detail: 'no JSON found in the answer' };
   }

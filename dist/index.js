@@ -31068,12 +31068,12 @@ function classify(ct, answer, patterns) {
     return { ok: false, reason: "empty", detail: "empty answer" };
   }
   if (!ct.json) {
-    if (refuses(patterns, text2, ["any"])) return { ok: false, reason: "refused", detail: cut3(text2) };
+    if (refuses(patterns, text2, ["any"])) return { ok: false, reason: "refused", detail: "the answer matched a refusal pattern" };
     return { ok: true, value: text2 };
   }
   const json = looseJson(text2);
   if (json === null) {
-    if (refuses(patterns, text2, ["json", "any"])) return { ok: false, reason: "refused", detail: cut3(text2) };
+    if (refuses(patterns, text2, ["json", "any"])) return { ok: false, reason: "refused", detail: "the answer matched a refusal pattern" };
     if (length || hasCutJson(text2)) return { ok: false, reason: "truncated", detail: "the JSON was cut off" };
     return { ok: false, reason: "invalid_output", detail: "no JSON found in the answer" };
   }
