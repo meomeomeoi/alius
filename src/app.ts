@@ -68,6 +68,7 @@ import { TAB_IDS } from './ui/shell/tabs';
 import { renderOnboardingCard } from './ui/onboarding/card';
 import { renderRevealCard } from './ui/warden/revealCard';
 import { renderEndScreen } from './ui/warden/endScreen';
+import type { GenerationUi } from './ui/generation/surface';
 import { renderOverrideChip } from './ui/warden/overrideChip';
 import { wardenNotice } from './ui/warden/notices';
 import { overrideOpen } from './engine/warden';
@@ -391,6 +392,14 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     contentLine: () => contentLine(state, registries),
     toast: (kind, text) => toast(kind, text),
   });
+  // P14: what every surface needs to draw its failure chips and REROLL buttons (its buttons call the envelope)
+  const genUi: GenerationUi = {
+    generations,
+    modal: (o) => shell.modal(o),
+    settings: () => getSettings(st),
+    toast: (kind, text) => toast(kind, text),
+    redraw: () => { drawDilemma(); shell.refresh(); },
+  };
   // the sites the app itself owns (no controller): the vignette after a companion activity, a grunt's name, an enemy's name
   generations.bind<VignetteInput, string>('activity.vignette', {
     build(key) {
@@ -794,6 +803,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     if (s?.scene) {
       sceneScreen = renderSceneScreen(host, {
         controller: scene, getState: () => state, registries, st, settings: () => getSettings(st), onEnded: leaveScene, sound,
+        generation: genUi,
         onOrder: (unitId) => loyalty.order(unitId),
         onCompel: (unitId) => void api.fileLeash('compel', unitId),
         onPunish: (unitId, measure, days) => void discipline.punish(unitId, measure, days),
@@ -860,6 +870,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       unitName: (id) => s.squad.find((u) => u.id === id)?.displayName ?? id,
       scapegoat: scapegoatView(s, registries),
       herPick: herPickView(s, registries), // P9c: a day the commander obeys her
+      generation: { ui: genUi, state: s, id: open.id },
     });
   }
 
@@ -1184,6 +1195,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       recapPending: () => recapPendingFor !== null && recapPendingFor === state?.lastExpedition?.id,
       onDilemmaChoose: (index, route) => void dilemmas.choose(index, route),
       coach: coachCtx,
+      generation: genUi,
     });
   }
 
@@ -1996,7 +2008,8 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       onPeel: (unitId, part) => void confirmPeel(unitId, part),
       rule: { accept: (id) => answerRule(id, 'accept'), negotiate: (id) => answerRule(id, 'negotiate'), refuse: (id) => answerRule(id, 'refuse') },
       warden: { avatar: (u) => unitPortrait(st, u, portraitOptions(getSettings(st), 40)), showRaw: getSettings(st).showRawValues, onAnswer: (a) => void warden.answer(a),
-        onIntrigue: (action, unitId) => void act({ type: 'intrigue/act', payload: { action, ...(unitId !== undefined ? { unitId } : {}) } }), onReport: () => void act({ type: 'intrigue/report', payload: {} }) }, // P13: the WARDEN panel and its INTRIGUE section
+        onIntrigue: (action, unitId) => void act({ type: 'intrigue/act', payload: { action, ...(unitId !== undefined ? { unitId } : {}) } }), onReport: () => void act({ type: 'intrigue/report', payload: {} }),
+        generation: genUi, onRerollAgenda: () => warden.rerollAgenda() }, // P13: the WARDEN panel and its INTRIGUE section (P14: REROLL of her agenda)
     }),
   );
   shell.registerTab('squad', (host) =>
@@ -2099,7 +2112,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
   }
   shell.registerHub((host, device) => {
     // P13: a closed campaign shows the END screen in place of the hub
-    if (state?.ended) return renderEndScreen(host, state, { onExport: exportCurrent });
+    if (state?.ended) return renderEndScreen(host, state, { onExport: exportCurrent, generation: genUi });
     return renderHub(host, device, {
       getState: () => state,
       getLoad: () => load,
@@ -2107,6 +2120,8 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       settings: () => getSettings(st),
       assetUrl: deps.assetUrl,
       art: { hub: hubArt },
+      generation: genUi,
+      lastScene: { state: () => scene.summaryRerollState(), run: () => scene.rerollSummary() },
       ops: opsCtx(),
       overrideChip: (host) => { if (state && load.kind !== 'readonly') renderOverrideChip(host, state, registries, (a) => void warden.answer(a)); }, // P13: the warden's open override
       onboardingCard: (host) => {
@@ -2151,6 +2166,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       onRecruit: () => void api.recruitGrunt(),
       onSetRoster: (ids) => api.setRoster(ids),
       onSetRations: (mode) => void act({ type: 'rations/set', payload: { mode } }),
+      generation: genUi,
     }),
   );
 
@@ -2181,6 +2197,8 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       },
       avatar: (unit) => unitPortrait(st, unit, portraitOptions(getSettings(st), 32)),
       motion: () => !motionReduced(getSettings(st)), // P10b: the typing indicator
+      generation: genUi,
+      reply: { state: (unitId) => comms.replyState(unitId), run: (unitId) => comms.rerollLast(unitId) },
     }),
   );
   shell.registerTab('log', (host) => renderLogTab(host, { getState: () => state }));

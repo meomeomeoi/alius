@@ -12,6 +12,7 @@ import { drawProposalChips, kindLabel } from '../proposalChips';
 import { drawDemandChips, drawDisciplineChips } from '../discipline/chips';
 import { renderDisciplineMenu } from '../discipline/menu';
 import { renderFreqChip } from '../special/freqChip';
+import { drawGenerationChips, drawSiteReroll, type GenerationUi } from '../generation/surface';
 import { cutIn } from './cutIn';
 
 export interface SceneScreenCtx {
@@ -37,6 +38,8 @@ export interface SceneScreenCtx {
   onAnswerDemand?: (demandId: string, answer: 'grant' | 'refuse') => void;
   /** P9d: [ACCEPT] / [NEGOTIATE] / [REFUSE] on a rule proposed by a unit in the scene. */
   onAnswerRule?: (ruleId: string, answer: 'accept' | 'negotiate' | 'refuse') => void;
+  /** P14: the failure chips of the scene's readings and REROLL of the last exchange. Absent = none drawn. */
+  generation?: GenerationUi;
 }
 
 export interface SceneScreen {
@@ -119,6 +122,8 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
   let disciplineChips: HTMLElement;
   let demandChips: HTMLElement;
   let freqChips: HTMLElement;
+  let genChips: HTMLElement;
+  let genTools: HTMLElement;
   let leadChips: HTMLElement;
   let ruleChips: HTMLElement;
   let disciplineMenus: HTMLElement;
@@ -204,6 +209,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     }, pending);
     drawRuleChips(ruleChips, s, registries, (c) => ids.has(c.unitId), {
       accept: (id) => ctx.onAnswerRule?.(id, 'accept'), negotiate: (id) => ctx.onAnswerRule?.(id, 'negotiate'), refuse: (id) => ctx.onAnswerRule?.(id, 'refuse'),
+      generation: ctx.generation,
     });
   }
 
@@ -216,7 +222,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
   /** P9: what the game understood of the commander's words (always shown) and the DISCIPLINE menu of everybody present. */
   function drawDiscipline(s: CampaignState): void {
     const ids = new Set(s.scene?.participants ?? []);
-    drawDemandChips(demandChips, s, registries, (c) => ids.has(c.unitId), { grant: (id) => ctx.onAnswerDemand?.(id, 'grant'), refuse: (id) => ctx.onAnswerDemand?.(id, 'refuse') });
+    drawDemandChips(demandChips, s, registries, (c) => ids.has(c.unitId), { grant: (id) => ctx.onAnswerDemand?.(id, 'grant'), refuse: (id) => ctx.onAnswerDemand?.(id, 'refuse'), generation: ctx.generation });
     drawDisciplineChips(disciplineChips, s, registries, (c) => ids.has(c.unitId) && (c.channel !== 'scene' || c.sceneId === s.scene?.id), (id) => ctx.onUndoDiscipline?.(id));
     if (!ctx.onPunish) return;
     // an open menu stays open across a redraw
@@ -332,6 +338,19 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     }
   }
 
+  /** P14: a failed reading of this scene's exchanges, and REROLL of the last exchange's reading. */
+  function drawGeneration(s: CampaignState): void {
+    const ui = ctx.generation;
+    genChips.replaceChildren();
+    genTools.replaceChildren();
+    if (!ui || !s.scene) return;
+    const prefix = `${s.scene.id}:`;
+    drawGenerationChips(genChips, ui, s, 'scene', (r) => r.key.startsWith(prefix));
+    const state = controller.rerollState();
+    // REROLL shows once there is a reading to replace (the controller says "Nothing was read yet." before that)
+    if (state.enabled || state.reason !== 'Nothing was read yet.') drawSiteReroll(genTools, ui, 'scene.intents', 'last', () => controller.rerollLast(), state);
+  }
+
   function drawBanner(): void {
     banner.replaceChildren();
     if (pacing) banner.append(h('div', { class: 'alius-pacing', role: 'status' }, 'TIME IS PASSING'));
@@ -372,6 +391,8 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     disciplineChips = h('div', { class: 'alius-chips alius-discipline-chips' });
     demandChips = h('div', { class: 'alius-chips alius-discipline-chips' });
     freqChips = h('div', { class: 'alius-chips alius-freq-chips' });
+    genChips = h('div', { class: 'alius-generation-chips' });
+    genTools = h('span', { class: 'alius-scene-reroll' });
     disciplineMenus = h('div', { class: 'alius-discipline-units' });
     banner = h('div', { class: 'alius-pacing-host' });
     busyHost = h('div', { class: 'alius-busy-host' });
@@ -441,6 +462,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
         h('span', { class: 'alius-scene-tools' },
           act('swipe-left', '‹', () => ignore(st.swipeLast('left')), 'Previous reply'),
           act('regenerate', '↻', () => ignore(st.regenerateLast()), 'Regenerate the last reply'),
+          genTools,
           act('swipe-right', '›', () => ignore(st.swipeLast('right')), 'Next reply'),
           act('end', '[END TRANSMISSION]', () => void controller.end().then(() => { if (!disposed) ctx.onEnded(); }), 'End the conversation')),
       ),
@@ -449,6 +471,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
       h('div', { class: 'alius-stage' }, bg, spriteHost, caption),
       hud,
       log,
+      genChips,
       chips,
       leadChips,
       ruleChips,
@@ -490,6 +513,7 @@ export function renderSceneScreen(host: HTMLElement, ctx: SceneScreenCtx): Scene
     drawChips(s);
     drawDiscipline(s);
     drawFreq(s);
+    drawGeneration(s);
     drawBanner();
   }
 

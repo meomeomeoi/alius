@@ -11,6 +11,7 @@ import { h } from '../dom';
 import { drawProposalChips } from '../proposalChips';
 import { drawPersonalChips, editChip, type EditView, type PersonalChipHandlers } from '../personal/chips';
 import { drawDemandChips, drawDisciplineChips } from '../discipline/chips';
+import { drawGenerationChips, drawSiteReroll, type GenerationUi } from '../generation/surface';
 import { renderBubble, unitAccent } from '../voice/voiceCard';
 import { armTyping, clearTyping, renderHerMessage, renderReceipt, renderTyping, stampText, typingPlayed } from './living';
 
@@ -36,6 +37,13 @@ export interface CommsTabCtx {
   avatar?: (unit: Unit) => HTMLElement | null;
   /** P10b: may the typing indicator move? Absent = yes; the app passes `!motionReduced(settings)`. */
   motion?: () => boolean;
+  /** P14: failure chips under her thread and REROLL on her last reply. Absent = none drawn. */
+  generation?: GenerationUi;
+  /** P14: the DM reply's reroll as the comms controller reports and runs it (`replyState`, `rerollLast`). */
+  reply?: {
+    state(unitId: string): { siteKey: string; reroll: { enabled: boolean; reason?: string } } | null;
+    run(unitId: string): Promise<void>;
+  };
 }
 
 /** The open thread and the half-typed text survive a re-render (the tab redraws after every action). */
@@ -119,6 +127,13 @@ export function renderCommsTab(host: HTMLElement, ctx: CommsTabCtx): void {
       if (m.violation && m.violation.length > 0) drawViolation(shown[shown.length - 1], violationLabels(ctx.registries, m.violation));
       thread.append(...shown);
     });
+    // P14: a reply that failed (the key starts with her id) or a knock answer that failed (the key is the open knock's id), and REROLL of her last reply
+    const doorId = state.calendar.nightEvent?.unitId === current ? state.calendar.nightEvent.id : null;
+    const genHost = h('div', { class: 'alius-generation-chips' });
+    drawGenerationChips(genHost, ctx.generation, state, 'comms', (r) => r.key.startsWith(`${current}:`) || r.key === doorId);
+    const her = ctx.reply?.state(current);
+    if (her) drawSiteReroll(genHost, ctx.generation, 'dm.reply', her.siteKey, () => ctx.reply!.run(current!), her.reroll);
+    if (genHost.childElementCount > 0) thread.append(genHost);
     // P10b: she started to answer and stopped (only while the thread ends with the commander's message)
     if (hesitates(state, ctx.registries, current)) {
       const key = messages.at(-1)!.id;
@@ -153,11 +168,11 @@ export function renderCommsTab(host: HTMLElement, ctx: CommsTabCtx): void {
     });
     const demandChips = h('div', { class: 'alius-chips alius-discipline-chips' });
     drawDemandChips(demandChips, state, ctx.registries, (c) => c.unitId === current, {
-      grant: (id) => ctx.onAnswerDemand?.(id, 'grant'), refuse: (id) => ctx.onAnswerDemand?.(id, 'refuse'), talk: (id) => ctx.onTalkDemand?.(id),
+      grant: (id) => ctx.onAnswerDemand?.(id, 'grant'), refuse: (id) => ctx.onAnswerDemand?.(id, 'refuse'), talk: (id) => ctx.onTalkDemand?.(id), generation: ctx.generation,
     });
     const ruleChips = h('div', { class: 'alius-chips alius-discipline-chips' });
     // P10b: a rule she proposed is her signed note under the thread (SIGN / NEGOTIATE / DON'T SIGN answer it as the chips did)
-    const answers = { accept: (id: string) => ctx.onAnswerRule?.(id, 'accept'), negotiate: (id: string) => ctx.onAnswerRule?.(id, 'negotiate'), refuse: (id: string) => ctx.onAnswerRule?.(id, 'refuse') };
+    const answers = { accept: (id: string) => ctx.onAnswerRule?.(id, 'accept'), negotiate: (id: string) => ctx.onAnswerRule?.(id, 'negotiate'), refuse: (id: string) => ctx.onAnswerRule?.(id, 'refuse'), generation: ctx.generation };
     for (const rule of ruleNotesFor(state, (id) => id === current).filter((r) => r.status === 'proposed')) ruleChips.append(renderRuleNote(state, ctx.registries, rule, answers, { motion: ctx.motion?.() ?? true }));
     const personalChips = h('div', { class: 'alius-chips alius-discipline-chips' });
     if (ctx.personal) drawPersonalChips(personalChips, state, ctx.registries, (id) => id === current, ctx.personal);

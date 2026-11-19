@@ -24,6 +24,8 @@ export interface SiteDecl {
   record: 'full' | 'quiet' | 'none';
   /** The glossary entry the chip is explained by. */
   glossary: string;
+  /** The site holds its fail-soft result back while a record is open (the director's plan): the chip offers USE FALLBACK. */
+  held?: true;
   /** What the player reads before the reason ("Scene summary"). Generic: it never carries a value the commander may not know. */
   label(state: CampaignState | null, key: string): string;
 }
@@ -41,9 +43,9 @@ export const generationSites = (): SiteDecl[] => [...sites.values()];
 const GLOSSARY = 'generation_failed';
 
 function declare(
-  id: string, callType: CallTypeId, surface: GenerationSurface, reroll: RerollMode, record: SiteDecl['record'], label: string,
+  id: string, callType: CallTypeId, surface: GenerationSurface, reroll: RerollMode, record: SiteDecl['record'], label: string, held?: true,
 ): void {
-  registerGenerationSite({ id, callType, surface, reroll, record, glossary: GLOSSARY, label: () => label });
+  registerGenerationSite({ id, callType, surface, reroll, record, glossary: GLOSSARY, label: () => label, ...(held ? { held } : {}) });
 }
 
 // the table of the P14 plan ("The sites"), one line each
@@ -55,7 +57,7 @@ declare('dm.reply', 'dm_reply', 'comms', 'revert', 'full', 'Her reply');
 declare('dm.initiate', 'dm_reply', 'comms', 'none', 'quiet', 'Her message');
 declare('dm.door', 'dm_reply', 'comms', 'none', 'full', 'Her answer at the door');
 declare('dm.intents', 'intent_extract', 'comms', 'none', 'quiet', 'Message reading');
-declare('director.tick', 'director_tick', 'world', 'none', 'full', "The director's plan");
+declare('director.tick', 'director_tick', 'world', 'none', 'full', "The director's plan", true);
 declare('dilemma.generate', 'dilemma_generate', 'dilemma', 'before_commit', 'full', 'Decision text');
 declare('expedition.recap', 'expedition_recap', 'expedition', 'free', 'full', 'After-action recap');
 declare('activity.vignette', 'activity_vignette', 'day', 'none', 'quiet', 'Vignette');

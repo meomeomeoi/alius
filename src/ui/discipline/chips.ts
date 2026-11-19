@@ -1,3 +1,4 @@
+import { drawSiteReroll, type GenerationUi } from '../generation/surface';
 import type { Registries } from '../../content/types';
 import { defiesHint, markPick, obeyedBy } from '../personal/obey';
 import { canUndo, grantProblem } from '../../engine/discipline';
@@ -46,6 +47,8 @@ export interface DemandHandlers {
   refuse: (demandId: string) => void;
   /** Absent inside a scene: she is already there. */
   talk?: (demandId: string) => void;
+  /** P14: REROLL of the demand's wording before an answer. Absent = none drawn. */
+  generation?: GenerationUi;
 }
 
 /**
@@ -82,6 +85,7 @@ export function drawDemandChips(
       grant,
       button('refuse', desire ? '[POSTPONE]' : '[REFUSE]', () => on.refuse(d.id)),
       obeyed !== null ? defiesHint(obeyed) : null,
-      on.talk ? button('talk', '[TALK]', () => on.talk!(d.id)) : null));
+      on.talk ? button('talk', '[TALK]', () => on.talk!(d.id)) : null,
+      on.generation ? drawSiteReroll(h('span'), on.generation, 'flavor.demand', d.id) : null));
   }
 }

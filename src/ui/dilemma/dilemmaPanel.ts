@@ -6,6 +6,8 @@ import type { ScapegoatView } from './scapegoat';
 import { h } from '../dom';
 import { defiesHint, markPick } from '../personal/obey';
 import { renderRoutePicker } from './routePicker';
+import type { CampaignState } from '../../engine/state/types';
+import { drawGenerationChips, drawSiteReroll, type GenerationUi } from '../generation/surface';
 
 export interface DilemmaPanelCtx {
   title: string;
@@ -23,6 +25,8 @@ export interface DilemmaPanelCtx {
   scapegoat?: ScapegoatView | null;
   /** P9c: a day the commander obeys her: the option she would pick is pre-selected and the others defy her. */
   herPick?: { index: number; name: string } | null;
+  /** P14: the failure chip of the decision's text (the authored block stands meanwhile) and REROLL before an answer. */
+  generation?: { ui: GenerationUi; state: CampaignState; id: string };
 }
 
 const SCALE_LABEL: Record<DilemmaScale, string> = { minor: 'MINOR', major: 'MAJOR', defining: 'DEFINING' };
@@ -78,10 +82,18 @@ export function renderDilemma(host: HTMLElement, ctx: DilemmaPanelCtx): void {
     }
     if (picker) list.append(picker);
   }
+  // P14: a scapegoat case is never worded by the model, so it has nothing to retry or reroll
+  const gen = h('div', { class: 'alius-generation-chips' });
+  if (ctx.generation && !ctx.scapegoat) {
+    const { ui, state, id } = ctx.generation;
+    const failed = drawGenerationChips(gen, ui, state, 'dilemma', (r) => r.key === id);
+    if (failed === 0) drawSiteReroll(gen, ui, 'dilemma.generate', id);
+  }
   host.append(h('div', { class: 'alius-dilemma' },
     h('h3', {}, ctx.title),
     h('p', { class: 'alius-dim' }, `${SCALE_LABEL[ctx.scale]} DECISION`),
     h('p', { class: 'alius-dilemma-setup' }, ctx.setup),
+    gen.childElementCount > 0 ? gen : null,
     ctx.scapegoat ? h('p', { class: 'alius-scapegoat-who' },
       h('span', { class: 'alius-chip', 'data-scapegoat-subject': '', ...analyzeAttrs('glossary:scapegoat') }, `RESPONSIBLE: ${ctx.scapegoat.subject}`),
       ctx.scapegoat.witnesses.length > 0 ? ' ' : null,

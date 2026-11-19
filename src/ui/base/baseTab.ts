@@ -1,3 +1,4 @@
+import { drawSiteReroll, type GenerationUi } from '../generation/surface';
 import type { Entry, Registries } from '../../content/types';
 import { checkRecruit, checkUpgrade, facilityLevel, facilityLevels, isLiving } from '../../engine/economy';
 import { rationsOf, rationsVotable, RATION_MODES, votingOn } from '../../engine/power';
@@ -8,6 +9,8 @@ import { analyzeAttrs, analyzeNative } from '../analyze/mark';
 import { h } from '../dom';
 
 export interface BaseTabCtx {
+  /** P14: REROLL of a grunt's name on the roster. Absent = none drawn. */
+  generation?: GenerationUi;
   getState: () => CampaignState | null;
   getLoad: () => LoadResult;
   registries: Registries;
@@ -80,6 +83,8 @@ function roster(state: CampaignState, ctx: BaseTabCtx): HTMLElement {
         'div',
         { class: 'alius-roster-row' },
         h('span', {}, `${u.displayName} · ${role} · LVL ${u.level}${u.status === 'injured' ? ' · INJURED' : ''} `),
+        // P14: a grunt's generated name can be asked for again
+        u.kind === 'grunt' && ctx.generation ? drawSiteReroll(h('span'), ctx.generation, 'flavor.grunt', u.id) : null,
         h(
           'button',
           {

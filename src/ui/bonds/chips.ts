@@ -3,6 +3,7 @@ import type { CampaignState, SceneRecord } from '../../engine/state/types';
 import { TUNING } from '../../engine/tuning';
 import { analyzeAttrs, analyzeNative } from '../analyze/mark';
 import { h } from '../dom';
+import { drawSiteReroll, type GenerationUi } from '../generation/surface';
 
 /** The labels of flagged category ids (an id the registry no longer has shows as itself, as text). */
 export function violationLabels(reg: Registries, ids: readonly string[]): string[] {
@@ -78,6 +79,8 @@ export interface RuleChipHandlers {
   accept(ruleId: string): void;
   negotiate(ruleId: string): void;
   refuse(ruleId: string): void;
+  /** P14: REROLL of the rule's wording before an answer. Absent = none drawn. */
+  generation?: GenerationUi;
 }
 
 /**
@@ -103,6 +106,7 @@ export function drawRuleChips(host: HTMLElement, state: CampaignState, reg: Regi
       h('span', { class: 'alius-chip', 'data-rule': rule.id, ...analyzeAttrs(`relationshipRuleTemplates:${rule.templateId}`, { unitId: rule.unitId, ruleId: rule.id }) }, `${name} PROPOSES A RULE: ${rule.text}`),
       button('accept', '[ACCEPT]', () => on.accept(rule.id), full),
       button('negotiate', '[NEGOTIATE]', () => on.negotiate(rule.id)),
-      button('refuse', '[REFUSE]', () => on.refuse(rule.id))));
+      button('refuse', '[REFUSE]', () => on.refuse(rule.id)),
+      on.generation ? drawSiteReroll(h('span'), on.generation, 'flavor.rule', rule.id) : null));
   }
 }

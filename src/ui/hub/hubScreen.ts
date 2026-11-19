@@ -19,6 +19,7 @@ import {
   currentObjective, endSlotBlock, latestOversight, TONE_GLYPH, TONE_LABEL, tonightItems, type MarkerTone,
 } from './model';
 import { renderRoomPanel } from './roomPanel';
+import { drawGenerationChips, drawSiteReroll, type GenerationUi } from '../generation/surface';
 
 export interface HubCtx {
   getState: () => CampaignState | null;
@@ -42,6 +43,10 @@ export interface HubCtx {
   avatar(unit: Unit): HTMLElement | null;
   /** P10b: the commander read a note (the app dispatches `notes/read`). */
   onReadNote?(id: string): void;
+  /** P14: the FAILED block (day and world generations) with RETRY, and REROLL of the last scene's summary. Absent = none drawn. */
+  generation?: GenerationUi;
+  /** P14: the last scene summary's reroll as the scene controller reports and runs it. */
+  lastScene?: { state(): { enabled: boolean; reason?: string }; run(): Promise<void> };
 }
 
 /** Which room's panel is open, per hub host: a refresh redraws the hub and keeps the panel. */
@@ -148,6 +153,22 @@ function oversightCard(ctx: HubCtx, state: CampaignState, no: number, what: stri
   return card;
 }
 
+/** P14: generations that failed in the background of the day or the world, and the last scene's summary when it can be asked for again. */
+function failedBlock(ctx: HubCtx, state: CampaignState): HTMLElement | null {
+  const ui = ctx.generation;
+  if (!ui) return null;
+  const body = h('div', { class: 'alius-generation-chips' });
+  drawGenerationChips(body, ui, state, 'day');
+  drawGenerationChips(body, ui, state, 'world');
+  const last = ctx.lastScene;
+  if (last && last.state().enabled) {
+    const line = h('p', { class: 'alius-dim alius-last-scene' }, 'LAST SCENE ');
+    drawSiteReroll(line, ui, 'scene.summary', 'last', () => last.run(), last.state());
+    body.append(line);
+  }
+  return body.childElementCount > 0 ? h('section', { class: 'alius-generation-failed' }, h('h2', {}, 'FAILED'), body) : null;
+}
+
 function sideColumn(ctx: HubCtx, state: CampaignState, readOnly: boolean): HTMLElement {
   const objective = currentObjective(state, ctx.registries);
   const items = tonightItems(state, ctx.registries);
@@ -188,6 +209,7 @@ function sideColumn(ctx: HubCtx, state: CampaignState, readOnly: boolean): HTMLE
         ? h('p', { class: 'alius-dim' }, 'Nothing is waiting.')
         : h('ul', {}, ...items.map((i) => h('li', { class: 'alius-tonight-item alius-stat', 'data-tone': i.tone, ...analyzeAttrs(i.analyze) }, `${TONE_GLYPH[i.tone]} ${i.text}`))),
     ),
+    failedBlock(ctx, state),
     renderVitalsStrip(state, ctx.registries, { motion: !motionReduced(ctx.settings()) }),
     oversight ? oversightCard(ctx, state, oversight.no, `${oversight.kind.toUpperCase()} ${who} — ${oversight.outcome}`) : null,
     h(

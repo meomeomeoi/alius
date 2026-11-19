@@ -12205,11 +12205,11 @@ function ticks(draft, ctx2) {
 function facilityTimers(draft, ctx2) {
   const events = [];
   if (!draft.base.upgrades) return events;
-  const pending3 = [];
+  const pending4 = [];
   for (const up of draft.base.upgrades) {
     up.daysLeft -= 1;
     if (up.daysLeft > 0) {
-      pending3.push(up);
+      pending4.push(up);
       continue;
     }
     const max = facilityLevels(ctx2.registries, up.facilityId).length || up.toLevel;
@@ -12217,7 +12217,7 @@ function facilityTimers(draft, ctx2) {
     if (up.facilityId === "barracks") draft.roster.capacity = rosterCapacityFor(ctx2.registries, draft.base.facilities.barracks);
     events.push({ type: "facility_upgraded", facilityId: up.facilityId, level: draft.base.facilities[up.facilityId] });
   }
-  draft.base.upgrades = pending3;
+  draft.base.upgrades = pending4;
   return events;
 }
 var isQuietNight = (state) => state.slot === "night" && state.calendar.nightEvent === void 0;
@@ -13674,23 +13674,23 @@ function reputationDayStep(draft, ctx2) {
 function introduceNickname(draft, ctx2, unitId) {
   const reg = ctx2.registries;
   const rep = draft.commander.reputation;
-  const pending3 = rep?.pending;
-  if (!rep || !pending3) throw new Error("No nickname is waiting.");
+  const pending4 = rep?.pending;
+  if (!rep || !pending4) throw new Error("No nickname is waiting.");
   const scene = draft.scene;
   if (!scene || scene.participants.length !== 1 || scene.participants[0] !== unitId) throw new Error("A nickname is introduced in a private scene with the unit who says it.");
-  const entry = reg.reputations.get(pending3.id);
+  const entry = reg.reputations.get(pending4.id);
   if (!entry || !patternHolds(draft, entry)) {
     delete rep.pending;
     return [];
   }
   const name = String(entry.name);
-  rep.active = rep.active.filter((a) => a.id !== pending3.replaces);
-  rep.active.push({ id: pending3.id, name, sinceDay: draft.day, by: unitId });
+  rep.active = rep.active.filter((a) => a.id !== pending4.replaces);
+  rep.active.push({ id: pending4.id, name, sinceDay: draft.day, by: unitId });
   delete rep.pending;
   addFact(draft, { about: ["commander"], text: `The squad has started calling the commander "${name}".`, tags: ["reputation"], importance: 3, day: draft.day, knownBy: ["*"] });
   const events = [];
   const reactions = entry.effects?.valueReactions ?? [];
-  const flag = `nickname_reacted:${pending3.id}`;
+  const flag = `nickname_reacted:${pending4.id}`;
   for (const u of draft.squad.filter((x) => x.kind === "named" && isLiving(x))) {
     const rel = draft.relations[u.id];
     if (!rel || rel.flags.includes(flag)) continue;
@@ -13698,12 +13698,12 @@ function introduceNickname(draft, ctx2, unitId) {
     for (const r of reactions) {
       const v = u.values[r.axis];
       if (r.sign === "+" ? !(v > 0) : !(v < 0)) continue;
-      applyRelationDelta(draft, u.id, "trust", r.weight * TUNING.reputation.trustPerWeight, `nickname:${pending3.id}`);
-      applyRelationDelta(draft, u.id, "affinity", r.weight * TUNING.reputation.affinityPerWeight, `nickname:${pending3.id}`);
+      applyRelationDelta(draft, u.id, "trust", r.weight * TUNING.reputation.trustPerWeight, `nickname:${pending4.id}`);
+      applyRelationDelta(draft, u.id, "affinity", r.weight * TUNING.reputation.affinityPerWeight, `nickname:${pending4.id}`);
     }
     events.push(...evaluateAutomatic(draft, reg, u.id));
   }
-  events.push({ type: "nickname_given", id: pending3.id, name, unitId, ...pending3.replaces !== void 0 ? { replaced: pending3.replaces } : {} });
+  events.push({ type: "nickname_given", id: pending4.id, name, unitId, ...pending4.replaces !== void 0 ? { replaced: pending4.replaces } : {} });
   return events;
 }
 
@@ -18056,13 +18056,13 @@ var cleanText = (raw, max) => {
   return text2;
 };
 function answerQuestion(draft, _ctx, wagerId, raw) {
-  const pending3 = draft.personal?.pendingQuestion;
-  if (!pending3 || pending3.wagerId !== wagerId) throw new Error("There is no question waiting.");
+  const pending4 = draft.personal?.pendingQuestion;
+  if (!pending4 || pending4.wagerId !== wagerId) throw new Error("There is no question waiting.");
   const text2 = cleanText(raw, TUNING.personal.wager.answerMax);
-  const u = unitOf7(draft, pending3.unitId);
+  const u = unitOf7(draft, pending4.unitId);
   if (!u || !isLiving(u)) throw new Error("She is not here to answer.");
   delete draft.personal.pendingQuestion;
-  if (pending3.winner === "unit") {
+  if (pending4.winner === "unit") {
     addFact(draft, { about: [u.id, "commander"], text: `The commander answered ${u.displayName}'s question: ${text2}`, tags: ["wager", "answer"], importance: 3, day: draft.day, knownBy: [u.id] });
     return [{ type: "wager_question", wagerId, unitId: u.id, kind: "answered" }];
   }
@@ -19027,12 +19027,12 @@ function applyDirectorOutput(draft, ctx2, out, opts = {}) {
   return events;
 }
 function answerRequest(draft, ctx2, requestId, raw, opts = {}) {
-  const pending3 = draft.world.director?.pending;
-  if (!pending3 || pending3.id !== requestId) throw new Error("Stale director answer.");
+  const pending4 = draft.world.director?.pending;
+  if (!pending4 || pending4.id !== requestId) throw new Error("Stale director answer.");
   const cooldownDays = Number.isFinite(opts.cooldownDays) ? clamp25(Math.round(opts.cooldownDays), 1, 14) : beatCooldownDays(draft);
-  const { output, rejected } = validateDirectorOutput(draft, ctx2.registries, raw(pending3), {
+  const { output, rejected } = validateDirectorOutput(draft, ctx2.registries, raw(pending4), {
     cooldownDays,
-    only: pending3.reason === "scout" ? "rumors" : void 0
+    only: pending4.reason === "scout" ? "rumors" : void 0
   });
   const events = applyDirectorOutput(draft, ctx2, output, { fallback: opts.fallback });
   delete draft.world.director.pending;
@@ -19810,10 +19810,10 @@ function enterEvent(draft, ctx2, nodeId, isObjective, mission) {
 }
 var capital = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 function optionsOf(state, reg) {
-  const pending3 = state.expedition?.pending;
-  if (pending3?.kind !== "event") return null;
-  const fixed = reg.dilemmaTemplates.get(pending3.templateId)?.fixed;
-  return fixed ? { templateId: pending3.templateId, title: fixed.title, options: fixed.options } : null;
+  const pending4 = state.expedition?.pending;
+  if (pending4?.kind !== "event") return null;
+  const fixed = reg.dilemmaTemplates.get(pending4.templateId)?.fixed;
+  return fixed ? { templateId: pending4.templateId, title: fixed.title, options: fixed.options } : null;
 }
 function eventOptions(state, reg) {
   const found2 = optionsOf(state, reg);
@@ -22365,10 +22365,10 @@ registerAction("scene/start", (draft, payload, ctx2) => {
     if (held2) throw new Error(held2);
   }
   const participants = ids;
-  const pending3 = draft.calendar.pendingScene;
+  const pending4 = draft.calendar.pendingScene;
   if (origin === "activity") {
-    if (!pending3 || pending3.unitId !== participants[0]) throw new Error("The conversation (talk) for this scene is not open.");
-  } else if (pending3) {
+    if (!pending4 || pending4.unitId !== participants[0]) throw new Error("The conversation (talk) for this scene is not open.");
+  } else if (pending4) {
     throw new Error("A conversation is still open; end it first.");
   }
   if (origin === "night" && draft.slot !== "night") throw new Error("Night scenes only start in the Night slot.");
@@ -23693,9 +23693,9 @@ registerAction("director/request", (draft, payload) => {
 });
 registerDayEndStep("director_tick", (draft, ctx2) => {
   const events = [];
-  const pending3 = draft.world.director?.pending;
-  if (pending3) {
-    events.push(...answerRequest(draft, ctx2, pending3.id, () => fallbackOutput(draft, ctx2.registries, ctx2.rng), {
+  const pending4 = draft.world.director?.pending;
+  if (pending4) {
+    events.push(...answerRequest(draft, ctx2, pending4.id, () => fallbackOutput(draft, ctx2.registries, ctx2.rng), {
       cooldownDays: beatCooldownDays(draft),
       fallback: true
     }));
@@ -25973,10 +25973,10 @@ function createPersonal(deps) {
       return act("device/resolve_intercept", { id, keep });
     },
     async answerEdit(keep) {
-      const pending3 = await controller.pendingEdit();
-      if (!pending3 || !controller.resolveIntercept(pending3.id, keep)) return null;
-      wording.delete(keyOf(pending3.id));
-      return keep ? { unitId: pending3.toUnitId, text: pending3.edited, interceptId: pending3.id } : { unitId: pending3.toUnitId, text: pending3.original };
+      const pending4 = await controller.pendingEdit();
+      if (!pending4 || !controller.resolveIntercept(pending4.id, keep)) return null;
+      wording.delete(keyOf(pending4.id));
+      return keep ? { unitId: pending4.toUnitId, text: pending4.edited, interceptId: pending4.id } : { unitId: pending4.toUnitId, text: pending4.original };
     },
     onSlotAdvanced: playDue,
     onLoaded: playDue,
@@ -26411,7 +26411,7 @@ async function writeNewCampaign(st, state, expectChatId) {
   return { ok: true };
 }
 function createSaver(st, chatId, debounceMs = 500) {
-  let pending3 = null;
+  let pending4 = null;
   let timer = null;
   const clearTimer = () => {
     if (timer !== null) {
@@ -26421,8 +26421,8 @@ function createSaver(st, chatId, debounceMs = 500) {
   };
   const flush = async () => {
     clearTimer();
-    const state = pending3;
-    pending3 = null;
+    const state = pending4;
+    pending4 = null;
     if (!state) return;
     if (st.getActiveChat()?.chatId !== chatId) {
       console.warn(`[Alius] dropped pending save: chat ${chatId} is no longer open`);
@@ -26437,7 +26437,7 @@ function createSaver(st, chatId, debounceMs = 500) {
   };
   return {
     save(state) {
-      pending3 = structuredClone(state);
+      pending4 = structuredClone(state);
       clearTimer();
       timer = setTimeout(() => {
         flush().catch((e) => console.warn("[Alius] save failed", e));
@@ -26446,7 +26446,7 @@ function createSaver(st, chatId, debounceMs = 500) {
     flush,
     dispose() {
       clearTimer();
-      pending3 = null;
+      pending4 = null;
     }
   };
 }
@@ -27861,6 +27861,206 @@ function renderRevealCard(host, state, reg, onAck) {
   host.append(card2);
 }
 
+// src/llm/describe.ts
+var WHY = {
+  refused: () => "the model refused",
+  truncated: (v) => v.budget !== void 0 && v.budget > 0 ? `the answer was cut off at ${v.budget} tokens` : "the answer was cut off",
+  timeout: (v) => v.timeoutMs !== void 0 ? `no answer within ${Math.round(v.timeoutMs / 1e3)} s` : "no answer in time",
+  network: () => "the connection failed",
+  invalid_output: () => "the answer did not fit the form",
+  empty: () => "nothing came back",
+  no_profile: () => "no mechanic profile is selected",
+  expired: (v) => (v.expiredWhy ?? "it can no longer be retried").replace(/\.+\s*$/, "")
+};
+function describeFailure(v) {
+  const why = (WHY[v.reason] ?? (() => "it failed"))(v);
+  return `${v.label}: ${why}.`;
+}
+
+// src/llm/sites.ts
+var sites = /* @__PURE__ */ new Map();
+function registerGenerationSite(decl) {
+  if (sites.has(decl.id)) throw new Error(`Duplicate generation site: ${decl.id}`);
+  sites.set(decl.id, decl);
+}
+var generationSite = (id) => sites.get(id);
+var GLOSSARY = "generation_failed";
+function declare(id, callType, surface, reroll, record, label2, held2) {
+  registerGenerationSite({ id, callType, surface, reroll, record, glossary: GLOSSARY, label: () => label2, ...held2 ? { held: held2 } : {} });
+}
+declare("scene.intents", "intent_extract", "scene", "revert", "full", "Scene reading");
+declare("scene.summary", "scene_summary", "day", "revert", "full", "Scene summary");
+declare("scene.digest", "scene_summary", "scene", "none", "quiet", "Scene digest");
+declare("emotion.pick", "emotion_pick", "scene", "none", "none", "Expression pick");
+declare("dm.reply", "dm_reply", "comms", "revert", "full", "Her reply");
+declare("dm.initiate", "dm_reply", "comms", "none", "quiet", "Her message");
+declare("dm.door", "dm_reply", "comms", "none", "full", "Her answer at the door");
+declare("dm.intents", "intent_extract", "comms", "none", "quiet", "Message reading");
+declare("director.tick", "director_tick", "world", "none", "full", "The director's plan", true);
+declare("dilemma.generate", "dilemma_generate", "dilemma", "before_commit", "full", "Decision text");
+declare("expedition.recap", "expedition_recap", "expedition", "free", "full", "After-action recap");
+declare("activity.vignette", "activity_vignette", "day", "none", "quiet", "Vignette");
+declare("chronicle.compact", "chronicle_compact", "world", "none", "none", "Chronicle compaction");
+declare("memory.fold", "memory_fold", "world", "none", "none", "Memory fold");
+declare("memory.rumor", "rumor_retell", "world", "none", "quiet", "Rumor retelling");
+declare("flavor.grunt", "flavor", "day", "free", "quiet", "Grunt name");
+declare("flavor.enemy", "flavor", "expedition", "none", "none", "Enemy name");
+declare("flavor.demand", "flavor", "day", "free", "quiet", "Demand wording");
+declare("flavor.rule", "flavor", "day", "free", "quiet", "Rule wording");
+declare("flavor.ballot", "flavor", "day", "none", "none", "Ballot wording");
+declare("flavor.dm_edit", "flavor", "comms", "none", "none", "Message edit");
+declare("flavor.frequency_fragment", "flavor", "scene", "none", "none", "Fragment wording");
+declare("warden.agenda", "warden_agenda", "world", "before_commit", "quiet", "The warden's agenda");
+declare("warden.judge", "warden_judge", "world", "none", "none", "Warden judgement");
+declare("warden.epilogue", "epilogue", "world", "free", "full", "Epilogue");
+declare("setup.profile_import", "profile_import", "setup", "before_commit", "none", "Profile import");
+declare("setup.commander_import", "commander_import", "setup", "before_commit", "none", "Commander import");
+declare("sys.ping", "ping", "sys", "none", "none", "Connection test");
+
+// src/ui/generation/chip.ts
+function drawGenerationChip(host, rec, hd) {
+  const expired = rec.status === "expired";
+  const chip2 = h("span", {
+    class: `alius-chip alius-genfail${expired ? " alius-genfail-expired" : ""}`,
+    "data-record": rec.id,
+    "data-site": rec.siteId,
+    role: "note",
+    ...analyzeAttrs("glossary:generation_failed", { recordId: rec.id })
+  }, h("span", { class: "alius-genfail-text" }, `\u26A0 ${hd.text}`));
+  const button2 = (action, label2, aria, onclick) => h("button", {
+    type: "button",
+    class: "alius-btn alius-option",
+    "data-action": `generation-${action}`,
+    "aria-label": aria,
+    disabled: hd.pending === true,
+    ...analyzeNative("glossary:generation_failed", { recordId: rec.id }),
+    onclick
+  }, label2);
+  if (expired) {
+    if (hd.onDrop) chip2.append(" ", button2("drop", "[DROP]", `Remove this note about ${hd.label}`, hd.onDrop));
+  } else {
+    chip2.append(" ", button2("retry", "[RETRY]", `Retry ${hd.label}`, hd.onRetry));
+    if (hd.onUseFallback) chip2.append(" ", button2("fallback", "[USE FALLBACK]", `Use the plain version of ${hd.label}`, hd.onUseFallback));
+    chip2.append(" ", button2("menu", "[\u22EF]", `More ways to retry ${hd.label}`, hd.onMenu));
+  }
+  host.append(chip2);
+  return chip2;
+}
+function drawReroll(host, state, onReroll, pending4 = false) {
+  const off = !state.enabled;
+  const ctx2 = off && state.reason !== void 0 ? { reason: state.reason } : void 0;
+  const btn = h("button", {
+    type: "button",
+    class: "alius-btn alius-option alius-reroll",
+    "data-action": "generation-reroll",
+    "aria-label": "Reroll: ask the model again",
+    disabled: pending4,
+    "aria-disabled": off ? "true" : null,
+    title: off ? state.reason : null,
+    ...analyzeNative("glossary:generation_reroll", ctx2),
+    onclick: () => {
+      if (!off) onReroll();
+    }
+  }, "[REROLL]");
+  host.append(btn);
+  return btn;
+}
+function chipsFor(state, surface, filter) {
+  return (state.generations?.records ?? []).filter((r) => {
+    const site = generationSite(r.siteId);
+    return site !== void 0 && site.record === "full" && site.surface === surface && (filter === void 0 || filter(r));
+  });
+}
+
+// src/ui/generation/retryMenu.ts
+var BUDGETS = [1.5, 2, 3];
+async function openRetryMenu(modal, opts) {
+  const radio = (name, value, label2, checked = false) => h(
+    "label",
+    { class: "alius-genmenu-opt", ...analyzeNative("glossary:generation_reasons") },
+    h("input", { type: "radio", name, value, checked }),
+    ` ${label2}`
+  );
+  const body = h(
+    "div",
+    { class: "alius-genmenu" },
+    h("div", { class: "alius-genmenu-row" }, h("span", {}, "Budget:"), ...BUDGETS.map((m) => radio("generation-budget", String(m), `\xD7${m}`, m === BUDGETS[0]))),
+    ...opts.hasMechanic ? [h("div", { class: "alius-genmenu-row" }, h("span", {}, "Model:"), radio("generation-profile", "main", "MAIN"), radio("generation-profile", "mechanic", "MECHANIC"))] : []
+  );
+  const answer = await modal({
+    title: "Try again",
+    body,
+    actions: [
+      { label: "RETRY", value: "retry" },
+      ...opts.hasFallback ? [{ label: "USE FALLBACK", value: "fallback" }] : [],
+      { label: "DROP", value: "drop" },
+      { label: "CANCEL", value: "cancel" }
+    ]
+  });
+  if (answer === "drop" || answer === "fallback") return answer;
+  if (answer !== "retry") return null;
+  const picked = (name) => body.querySelector(`input[name="${name}"]:checked`)?.value ?? null;
+  const profile = picked("generation-profile");
+  return { budgetMult: Number(picked("generation-budget") ?? BUDGETS[0]), ...profile === "main" || profile === "mechanic" ? { profile } : {} };
+}
+
+// src/ui/generation/surface.ts
+var pending2 = /* @__PURE__ */ new Set();
+var isPending = (id) => pending2.has(id);
+function runPending(ui, id, fn) {
+  if (pending2.has(id)) return;
+  pending2.add(id);
+  ui.redraw();
+  void fn().catch((e) => console.warn("[Alius] generation failed", e)).finally(() => {
+    pending2.delete(id);
+    ui.redraw();
+  });
+}
+var rerollId = (siteId, key) => `reroll:${siteId}:${key}`;
+function drawRecordChip(host, ui, state, rec) {
+  const site = generationSite(rec.siteId);
+  const label2 = site ? site.label(state, rec.key) : rec.siteId;
+  const set = ui.settings();
+  const base = site ? Math.ceil((set.budgets[site.callType] ?? 0) * rec.budgetMult) : 0;
+  const text2 = describeFailure({ label: label2, reason: rec.reason, budget: base > 0 ? base : void 0, timeoutMs: set.llmTimeoutMs, expiredWhy: rec.expiredWhy });
+  const held2 = site?.held === true;
+  const retry = (opts) => runPending(ui, rec.id, async () => {
+    await ui.generations.retry(rec.id, opts);
+  });
+  return drawGenerationChip(host, rec, {
+    label: label2,
+    text: text2,
+    pending: isPending(rec.id),
+    onRetry: () => retry(),
+    onMenu: () => void retryMenuFor(ui, held2).then((choice) => {
+      if (choice === null) return;
+      if (choice === "drop") ui.generations.drop(rec.id);
+      else if (choice === "fallback") runPending(ui, rec.id, () => ui.generations.useFallback(rec.id));
+      else retry(choice);
+    }),
+    ...held2 && rec.status === "open" ? { onUseFallback: () => runPending(ui, rec.id, () => ui.generations.useFallback(rec.id)) } : {},
+    onDrop: () => ui.generations.drop(rec.id)
+  });
+}
+function drawGenerationChips(host, ui, state, surface, filter) {
+  if (!ui) return 0;
+  const list5 = chipsFor(state, surface, filter);
+  for (const rec of list5) drawRecordChip(host, ui, state, rec);
+  return list5.length;
+}
+function drawSiteReroll(host, ui, siteId, key, run, stateOf) {
+  if (!ui) return null;
+  const id = rerollId(siteId, key);
+  const state = stateOf ?? ui.generations.rerollState(siteId, key);
+  return drawReroll(host, state, () => runPending(ui, id, async () => {
+    const out = await (run ? run() : ui.generations.reroll(siteId, key));
+    if (out && typeof out === "object" && out.kind === "expired") ui.toast("warn", String(out.why ?? "This can no longer be rerolled."));
+  }), isPending(id));
+}
+function retryMenuFor(ui, held2) {
+  return openRetryMenu((o) => ui.modal(o), { hasMechanic: ui.settings().mechanicProfileId !== "", hasFallback: held2 });
+}
+
 // src/ui/warden/endScreen.ts
 var CAUSE = {
   terminated: "The controller was triggered.",
@@ -27870,11 +28070,17 @@ function renderEndScreen(host, state, deps) {
   host.replaceChildren();
   const ended = state.ended;
   if (!ended) return;
+  const gen = h("div", { class: "alius-generation-chips" });
+  if (deps.generation) {
+    const failed = drawGenerationChips(gen, deps.generation, state, "world", (r) => r.key === "epilogue");
+    if (failed === 0 && ended.epilogue !== void 0) drawSiteReroll(gen, deps.generation, "warden.epilogue", "epilogue");
+  }
   const body = h(
     "div",
     { class: "alius-end-body" },
     h("p", { class: "alius-end-cause" }, [`Day ${ended.day}.`, CAUSE[ended.cause], "The commander is dead."].filter((x) => Boolean(x)).join(" ")),
     ended.epilogue !== void 0 ? h("div", { class: "alius-end-epilogue" }, ...ended.epilogue.split(/\n{2,}/).map((p) => h("p", {}, p))) : h("p", { class: "alius-dim", role: "status" }, "The epilogue is being written."),
+    gen.childElementCount > 0 ? gen : null,
     h("div", { class: "alius-row" }, h("button", {
       type: "button",
       class: "alius-btn alius-option",
@@ -28068,12 +28274,19 @@ function renderDilemma(host, ctx2) {
     }
     if (picker) list5.append(picker);
   }
+  const gen = h("div", { class: "alius-generation-chips" });
+  if (ctx2.generation && !ctx2.scapegoat) {
+    const { ui, state, id } = ctx2.generation;
+    const failed = drawGenerationChips(gen, ui, state, "dilemma", (r) => r.key === id);
+    if (failed === 0) drawSiteReroll(gen, ui, "dilemma.generate", id);
+  }
   host.append(h(
     "div",
     { class: "alius-dilemma" },
     h("h3", {}, ctx2.title),
     h("p", { class: "alius-dim" }, `${SCALE_LABEL[ctx2.scale]} DECISION`),
     h("p", { class: "alius-dilemma-setup" }, ctx2.setup),
+    gen.childElementCount > 0 ? gen : null,
     ctx2.scapegoat ? h(
       "p",
       { class: "alius-scapegoat-who" },
@@ -30769,22 +30982,6 @@ registerCallType({
   schema: WardenAgendaSchema
 });
 
-// src/llm/describe.ts
-var WHY = {
-  refused: () => "the model refused",
-  truncated: (v) => v.budget !== void 0 && v.budget > 0 ? `the answer was cut off at ${v.budget} tokens` : "the answer was cut off",
-  timeout: (v) => v.timeoutMs !== void 0 ? `no answer within ${Math.round(v.timeoutMs / 1e3)} s` : "no answer in time",
-  network: () => "the connection failed",
-  invalid_output: () => "the answer did not fit the form",
-  empty: () => "nothing came back",
-  no_profile: () => "no mechanic profile is selected",
-  expired: (v) => (v.expiredWhy ?? "it can no longer be retried").replace(/\.+\s*$/, "")
-};
-function describeFailure(v) {
-  const why = (WHY[v.reason] ?? (() => "it failed"))(v);
-  return `${v.label}: ${why}.`;
-}
-
 // src/llm/log.ts
 var CAPACITY = 50;
 var LlmLog = class {
@@ -30924,46 +31121,6 @@ async function callLlm(id, input, deps, opts = {}) {
   }
   return last;
 }
-
-// src/llm/sites.ts
-var sites = /* @__PURE__ */ new Map();
-function registerGenerationSite(decl) {
-  if (sites.has(decl.id)) throw new Error(`Duplicate generation site: ${decl.id}`);
-  sites.set(decl.id, decl);
-}
-var generationSite = (id) => sites.get(id);
-var GLOSSARY = "generation_failed";
-function declare(id, callType, surface, reroll, record, label2) {
-  registerGenerationSite({ id, callType, surface, reroll, record, glossary: GLOSSARY, label: () => label2 });
-}
-declare("scene.intents", "intent_extract", "scene", "revert", "full", "Scene reading");
-declare("scene.summary", "scene_summary", "day", "revert", "full", "Scene summary");
-declare("scene.digest", "scene_summary", "scene", "none", "quiet", "Scene digest");
-declare("emotion.pick", "emotion_pick", "scene", "none", "none", "Expression pick");
-declare("dm.reply", "dm_reply", "comms", "revert", "full", "Her reply");
-declare("dm.initiate", "dm_reply", "comms", "none", "quiet", "Her message");
-declare("dm.door", "dm_reply", "comms", "none", "full", "Her answer at the door");
-declare("dm.intents", "intent_extract", "comms", "none", "quiet", "Message reading");
-declare("director.tick", "director_tick", "world", "none", "full", "The director's plan");
-declare("dilemma.generate", "dilemma_generate", "dilemma", "before_commit", "full", "Decision text");
-declare("expedition.recap", "expedition_recap", "expedition", "free", "full", "After-action recap");
-declare("activity.vignette", "activity_vignette", "day", "none", "quiet", "Vignette");
-declare("chronicle.compact", "chronicle_compact", "world", "none", "none", "Chronicle compaction");
-declare("memory.fold", "memory_fold", "world", "none", "none", "Memory fold");
-declare("memory.rumor", "rumor_retell", "world", "none", "quiet", "Rumor retelling");
-declare("flavor.grunt", "flavor", "day", "free", "quiet", "Grunt name");
-declare("flavor.enemy", "flavor", "expedition", "none", "none", "Enemy name");
-declare("flavor.demand", "flavor", "day", "free", "quiet", "Demand wording");
-declare("flavor.rule", "flavor", "day", "free", "quiet", "Rule wording");
-declare("flavor.ballot", "flavor", "day", "none", "none", "Ballot wording");
-declare("flavor.dm_edit", "flavor", "comms", "none", "none", "Message edit");
-declare("flavor.frequency_fragment", "flavor", "scene", "none", "none", "Fragment wording");
-declare("warden.agenda", "warden_agenda", "world", "before_commit", "quiet", "The warden's agenda");
-declare("warden.judge", "warden_judge", "world", "none", "none", "Warden judgement");
-declare("warden.epilogue", "epilogue", "world", "free", "full", "Epilogue");
-declare("setup.profile_import", "profile_import", "setup", "before_commit", "none", "Profile import");
-declare("setup.commander_import", "commander_import", "setup", "before_commit", "none", "Commander import");
-declare("sys.ping", "ping", "sys", "none", "none", "Connection test");
 
 // src/llm/envelope.ts
 var MOVED_REASON = "Something happened since: this can no longer be rerolled.";
@@ -31199,7 +31356,7 @@ function createSceneController(deps) {
   let extracting = false;
   const swipedWhileExtracting = /* @__PURE__ */ new Set();
   let awaitingReextract = false;
-  let pending3 = false;
+  let pending4 = false;
   let inflight = null;
   let openingRun = null;
   let openedScene = null;
@@ -31503,7 +31660,7 @@ function createSceneController(deps) {
       if (exchanges >= settings.scenePacing) deps.onUi({ type: "pacing" });
       deps.onUi({ type: "transcript" });
     } finally {
-      pending3 = false;
+      pending4 = false;
     }
   }
   let selfEdit = null;
@@ -31638,9 +31795,9 @@ function createSceneController(deps) {
       return true;
     },
     send(text2) {
-      if (text2.trim() !== "" && pending3 && openingRun) return openingRun.then(() => controller.send(text2));
-      if (text2.trim() === "" || pending3 || !state()?.scene) return Promise.resolve();
-      pending3 = true;
+      if (text2.trim() !== "" && pending4 && openingRun) return openingRun.then(() => controller.send(text2));
+      if (text2.trim() === "" || pending4 || !state()?.scene) return Promise.resolve();
+      pending4 = true;
       const run = sendNow(text2.trim());
       inflight = run;
       void run.finally(() => {
@@ -31650,10 +31807,10 @@ function createSceneController(deps) {
     },
     opening() {
       const scene = state()?.scene;
-      if (pending3 || !scene) return Promise.resolve();
+      if (pending4 || !scene) return Promise.resolve();
       if (openedScene === scene.id || st.getChatMessages(Math.min(scene.startIndex, st.chatLength())).length > 0) return Promise.resolve();
       openedScene = scene.id;
-      pending3 = true;
+      pending4 = true;
       const run = (async () => {
         const expect = chatId();
         try {
@@ -31674,7 +31831,7 @@ function createSceneController(deps) {
           await showSprites(replies, false);
           deps.onUi({ type: "transcript" });
         } finally {
-          pending3 = false;
+          pending4 = false;
         }
       })();
       inflight = run;
@@ -31737,12 +31894,12 @@ function createSceneController(deps) {
       const s = state();
       const scene = s?.scene;
       if (!s || !scene) return;
-      pending3 = true;
+      pending4 = true;
       try {
         if (st.getChatMessages(extracted).some((m) => !m.isUser)) await extract2(expect);
         await deps.generations.generate("scene.summary", scene.id);
       } finally {
-        pending3 = false;
+        pending4 = false;
         lastApply = null;
         awaitingReextract = false;
         await afterEnd(expect);
@@ -31762,11 +31919,11 @@ function createSceneController(deps) {
       const key = summaryKey;
       if (key === null) return;
       const expect = chatId();
-      pending3 = true;
+      pending4 = true;
       try {
         await deps.generations.reroll("scene.summary", key);
       } finally {
-        pending3 = false;
+        pending4 = false;
         const now = state();
         if (now?.scene) controller.resume();
         else await afterEnd(expect);
@@ -36169,6 +36326,20 @@ function oversightCard(ctx2, state, no, what) {
   for (const [k, v] of Object.entries(analyzeAttrs("glossary:leash"))) card2.setAttribute(k, v);
   return card2;
 }
+function failedBlock(ctx2, state) {
+  const ui = ctx2.generation;
+  if (!ui) return null;
+  const body = h("div", { class: "alius-generation-chips" });
+  drawGenerationChips(body, ui, state, "day");
+  drawGenerationChips(body, ui, state, "world");
+  const last = ctx2.lastScene;
+  if (last && last.state().enabled) {
+    const line2 = h("p", { class: "alius-dim alius-last-scene" }, "LAST SCENE ");
+    drawSiteReroll(line2, ui, "scene.summary", "last", () => last.run(), last.state());
+    body.append(line2);
+  }
+  return body.childElementCount > 0 ? h("section", { class: "alius-generation-failed" }, h("h2", {}, "FAILED"), body) : null;
+}
 function sideColumn(ctx2, state, readOnly) {
   const objective = currentObjective(state, ctx2.registries);
   const items = tonightItems(state, ctx2.registries);
@@ -36211,6 +36382,7 @@ function sideColumn(ctx2, state, readOnly) {
       h("h2", {}, "TONIGHT"),
       items.length === 0 ? h("p", { class: "alius-dim" }, "Nothing is waiting.") : h("ul", {}, ...items.map((i) => h("li", { class: "alius-tonight-item alius-stat", "data-tone": i.tone, ...analyzeAttrs(i.analyze) }, `${TONE_GLYPH[i.tone]} ${i.text}`)))
     ),
+    failedBlock(ctx2, state),
     renderVitalsStrip(state, ctx2.registries, { motion: !motionReduced(ctx2.settings()) }),
     oversight ? oversightCard(ctx2, state, oversight.no, `${oversight.kind.toUpperCase()} ${who} \u2014 ${oversight.outcome}`) : null,
     h(
@@ -36467,16 +36639,16 @@ function renderMapTab(host, ctx2) {
 // src/ui/expedition/herCallCard.ts
 function renderHerCallCard(state, reg, onAck) {
   const exp = state.expedition;
-  const pending3 = exp?.pending;
-  if (!exp || pending3?.kind !== "event" || !pending3.herCall) return null;
-  const { unitId, outcome } = pending3.herCall;
-  const template = reg.dilemmaTemplates.get(pending3.templateId);
+  const pending4 = exp?.pending;
+  if (!exp || pending4?.kind !== "event" || !pending4.herCall) return null;
+  const { unitId, outcome } = pending4.herCall;
+  const template = reg.dilemmaTemplates.get(pending4.templateId);
   const title = template?.fixed?.title ?? "A decision in the field";
   const said = herCallSpecOf(template)?.outcomes.find((o) => o.id === outcome)?.text;
   const name = state.squad.find((u) => u.id === unitId)?.displayName ?? unitId;
   const mission = state.missions.active.find((m) => m.id === exp.missionId);
-  const marked = outcome === "bad" && mission?.decidedBy?.source === "her_call" && mission.decidedBy.nodeId === pending3.nodeId;
-  const ctx2 = { unitId, nodeId: pending3.nodeId, missionId: exp.missionId };
+  const marked = outcome === "bad" && mission?.decidedBy?.source === "her_call" && mission.decidedBy.nodeId === pending4.nodeId;
+  const ctx2 = { unitId, nodeId: pending4.nodeId, missionId: exp.missionId };
   const body = h(
     "div",
     {},
@@ -36485,7 +36657,7 @@ function renderHerCallCard(state, reg, onAck) {
     h("button", { type: "button", class: "alius-btn alius-option", "data-ack-her-call": "", ...analyzeNative("glossary:her_call", ctx2), onclick: onAck }, "[ ACKNOWLEDGE ]")
   );
   const card2 = renderVoiceCard({ voice: VOICE_OF.her_call, title, body, accent: unitAccent(unitId), level: 3 });
-  card2.setAttribute("data-her-call", pending3.nodeId);
+  card2.setAttribute("data-her-call", pending4.nodeId);
   for (const [k, v] of Object.entries(analyzeAttrs("glossary:her_call", ctx2))) card2.setAttribute(k, v);
   return card2;
 }
@@ -36663,6 +36835,12 @@ function renderReport(host, ctx2) {
   const root = h("section", { class: "alius-section alius-report" }, h("h2", {}, lines[0] ?? "AFTER-ACTION REPORT"));
   if (report.recap) root.append(h("p", { class: "alius-recap" }, report.recap));
   else if (ctx2.recapPending) root.append(h("p", { class: "alius-dim" }, "COMPILING\u2026"));
+  if (ctx2.generation) {
+    const gen = h("div", { class: "alius-generation-chips" });
+    const failed = drawGenerationChips(gen, ctx2.generation, state, "expedition", (r) => r.key === report.id);
+    if (failed === 0 && report.recap) drawSiteReroll(gen, ctx2.generation, "expedition.recap", report.id);
+    if (gen.childElementCount > 0) root.append(gen);
+  }
   for (const line2 of lines.slice(1)) root.append(h("p", { class: "alius-report-line" }, line2));
   if (state.slot !== "night" && !report.debriefed) {
     const candidates4 = report.party.map((id) => state.squad.find((u) => u.id === id)).filter((u) => u !== void 0 && u.kind === "named" && u.status !== "dead" && u.status !== "deserted" && u.status !== "terminated");
@@ -36825,17 +37003,17 @@ function renderExpeditionScreen(host, ctx2) {
     }
   }
   function eventPanel(root, state) {
-    const pending3 = state.expedition.pending;
-    if (pending3?.kind !== "event") return;
+    const pending4 = state.expedition.pending;
+    if (pending4?.kind !== "event") return;
     const notice = renderHerCallCard(state, reg, () => controller.ackHerCall());
     if (notice) {
       root.append(h("section", { class: "alius-section alius-event" }, notice));
       return;
     }
-    const fixed = reg.dilemmaTemplates.get(pending3.templateId)?.fixed;
+    const fixed = reg.dilemmaTemplates.get(pending4.templateId)?.fixed;
     const panel = h("section", { class: "alius-section alius-event" }, h("h3", {}, fixed?.title ?? "EVENT"), h("p", {}, fixed?.setup ?? ""));
     const generated = state.dilemmas?.open;
-    if (ctx2.onDilemmaChoose && generated && generated.context === "expedition_event" && generated.templateId === pending3.templateId) {
+    if (ctx2.onDilemmaChoose && generated && generated.context === "expedition_event" && generated.templateId === pending4.templateId) {
       const slot2 = h("div", { class: "alius-dilemma-host" });
       panel.replaceChildren(slot2);
       renderDilemma(slot2, {
@@ -36846,7 +37024,8 @@ function renderExpeditionScreen(host, ctx2) {
         options: dilemmaOptions(state, reg),
         onChoose: ctx2.onDilemmaChoose,
         unitName: unitName3,
-        herPick: herPickView(state, reg)
+        herPick: herPickView(state, reg),
+        ...ctx2.generation ? { generation: { ui: ctx2.generation, state, id: generated.id } } : {}
       });
       root.append(panel);
       return;
@@ -36900,7 +37079,7 @@ function renderExpeditionScreen(host, ctx2) {
       return;
     }
     if (state.lastExpedition && !state.lastExpedition.acknowledged) {
-      renderReport(root, { state, registries: reg, controller, recapPending: ctx2.recapPending?.() ?? false, onClose: ctx2.onClose, redraw: render, debriefPick });
+      renderReport(root, { state, registries: reg, controller, recapPending: ctx2.recapPending?.() ?? false, onClose: ctx2.onClose, redraw: render, debriefPick, generation: ctx2.generation });
       return;
     }
     const target = controller.planning();
@@ -37029,9 +37208,9 @@ function createDirector(deps) {
   deps.generations.bind("director.tick", {
     build(requestId) {
       const state = deps.app.current().state;
-      const pending3 = state?.world.director?.pending;
-      if (!state || !pending3 || pending3.id !== requestId) return { expired: DAY_ENDED };
-      return { digest: buildDigest(state, deps.registries()), reason: pending3.reason, recent: publicRecent(state), worldDossier: worldDossier(state) };
+      const pending4 = state?.world.director?.pending;
+      if (!state || !pending4 || pending4.id !== requestId) return { expired: DAY_ENDED };
+      return { digest: buildDigest(state, deps.registries()), reason: pending4.reason, recent: publicRecent(state), worldDossier: worldDossier(state) };
     },
     apply(requestId, output) {
       const events = deps.app.dispatch({ type: "director/apply", payload: { requestId, output, beatCooldownDays: deps.settings().beatCooldownDays } }, { expectChatId: chatId() });
@@ -37057,31 +37236,31 @@ function createDirector(deps) {
   }
   async function onRequested() {
     const state = deps.app.current().state;
-    const pending3 = state?.world.director?.pending;
+    const pending4 = state?.world.director?.pending;
     const chat = chatId();
-    expireStale(pending3?.id, chat);
-    const key = `${chat ?? ""}:${pending3?.id ?? ""}`;
-    if (!state || !pending3 || running2.has(key)) return;
+    expireStale(pending4?.id, chat);
+    const key = `${chat ?? ""}:${pending4?.id ?? ""}`;
+    if (!state || !pending4 || running2.has(key)) return;
     running2.add(key);
     try {
       const settings = deps.settings();
       if (!settings.directorEnabled) {
-        answer({ type: "director/fallback", payload: { requestId: pending3.id } }, chat);
+        answer({ type: "director/fallback", payload: { requestId: pending4.id } }, chat);
         return;
       }
-      const out = await deps.generations.generate("director.tick", pending3.id);
-      if (out.kind === "failed" && out.reason === "no_profile" && chatId() === chat) answer({ type: "director/fallback", payload: { requestId: pending3.id } }, chat);
+      const out = await deps.generations.generate("director.tick", pending4.id);
+      if (out.kind === "failed" && out.reason === "no_profile" && chatId() === chat) answer({ type: "director/fallback", payload: { requestId: pending4.id } }, chat);
     } finally {
       running2.delete(key);
     }
   }
   function useFallback() {
     const state = deps.app.current().state;
-    const pending3 = state?.world.director?.pending;
-    if (!state || !pending3) return;
+    const pending4 = state?.world.director?.pending;
+    if (!state || !pending4) return;
     const chat = chatId();
-    answer({ type: "director/fallback", payload: { requestId: pending3.id } }, chat);
-    deps.app.dispatch({ type: "generation/close", payload: { siteId: "director.tick", key: pending3.id, outcome: "kept_fallback" } }, { expectChatId: chat });
+    answer({ type: "director/fallback", payload: { requestId: pending4.id } }, chat);
+    deps.app.dispatch({ type: "generation/close", payload: { siteId: "director.tick", key: pending4.id, outcome: "kept_fallback" } }, { expectChatId: chat });
   }
   return { onRequested, useFallback, busy: () => running2.size > 0 };
 }
@@ -37246,9 +37425,9 @@ var pendingOf = (state, id) => (state.base.upgrades ?? []).find((u) => u.facilit
 function schematic(state, reg) {
   const boxes = [...reg.facilities.values()].map((f) => {
     const levels = facilityLevels(reg, f.id);
-    const pending3 = pendingOf(state, f.id);
+    const pending4 = pendingOf(state, f.id);
     const head = ` ${String(f.name).toUpperCase()}`.padEnd(BOX_INNER).slice(0, BOX_INNER);
-    const level = ` L${facilityLevel2(state, f.id)}/${levels.length}${pending3 ? `  ^ ${pending3.daysLeft}d` : ""}`.padEnd(BOX_INNER).slice(0, BOX_INNER);
+    const level = ` L${facilityLevel2(state, f.id)}/${levels.length}${pending4 ? `  ^ ${pending4.daysLeft}d` : ""}`.padEnd(BOX_INNER).slice(0, BOX_INNER);
     const rule = `+${"-".repeat(BOX_INNER)}+`;
     return [rule, `|${head}|`, `|${level}|`, rule];
   });
@@ -37263,9 +37442,9 @@ function schematic(state, reg) {
 function facilityCard(state, f, ctx2) {
   const levels = facilityLevels(ctx2.registries, f.id);
   const level = facilityLevel2(state, f.id);
-  const pending3 = pendingOf(state, f.id);
+  const pending4 = pendingOf(state, f.id);
   const card2 = h("article", { class: "alius-facility", "data-facility": f.id }, h("h3", {}, `${String(f.name)} \u2014 `, h("span", { class: "alius-stat", ...analyzeAttrs(`facilities:${f.id}`) }, `LEVEL ${level}/${levels.length}`)), h("p", { class: "alius-dim" }, String(f.summary)));
-  if (pending3) card2.append(h("p", {}, `UPGRADING TO L${pending3.toLevel} ^ ${pending3.daysLeft}d`));
+  if (pending4) card2.append(h("p", {}, `UPGRADING TO L${pending4.toLevel} ^ ${pending4.daysLeft}d`));
   if (level >= levels.length) {
     card2.append(h("p", { class: "alius-dim" }, "MAX LEVEL"));
     return card2;
@@ -37297,6 +37476,8 @@ function roster(state, ctx2) {
         "div",
         { class: "alius-roster-row" },
         h("span", {}, `${u.displayName} \xB7 ${role} \xB7 LVL ${u.level}${u.status === "injured" ? " \xB7 INJURED" : ""} `),
+        // P14: a grunt's generated name can be asked for again
+        u.kind === "grunt" && ctx2.generation ? drawSiteReroll(h("span"), ctx2.generation, "flavor.grunt", u.id) : null,
         h(
           "button",
           {
@@ -37459,7 +37640,8 @@ function drawRuleChips(host, state, reg, pick2, on) {
       h("span", { class: "alius-chip", "data-rule": rule.id, ...analyzeAttrs(`relationshipRuleTemplates:${rule.templateId}`, { unitId: rule.unitId, ruleId: rule.id }) }, `${name} PROPOSES A RULE: ${rule.text}`),
       button2("accept", "[ACCEPT]", () => on.accept(rule.id), full),
       button2("negotiate", "[NEGOTIATE]", () => on.negotiate(rule.id)),
-      button2("refuse", "[REFUSE]", () => on.refuse(rule.id))
+      button2("refuse", "[REFUSE]", () => on.refuse(rule.id)),
+      on.generation ? drawSiteReroll(h("span"), on.generation, "flavor.rule", rule.id) : null
     ));
   }
 }
@@ -37507,7 +37689,8 @@ function renderRuleNote(state, reg, rule, on, opts) {
       { class: "alius-chip-group", "data-rule-group": rule.id },
       button2("accept", "[SIGN]", () => on.accept(rule.id), full),
       button2("negotiate", "[NEGOTIATE]", () => on.negotiate(rule.id)),
-      button2("refuse", "[DON'T SIGN]", () => on.refuse(rule.id))
+      button2("refuse", "[DON'T SIGN]", () => on.refuse(rule.id)),
+      on.generation ? drawSiteReroll(h("span"), on.generation, "flavor.rule", rule.id) : null
     ));
   }
   return note;
@@ -37722,7 +37905,8 @@ function drawDemandChips(host, state, reg, pick2, on) {
       grant,
       button2("refuse", desire ? "[POSTPONE]" : "[REFUSE]", () => on.refuse(d.id)),
       obeyed !== null ? defiesHint(obeyed) : null,
-      on.talk ? button2("talk", "[TALK]", () => on.talk(d.id)) : null
+      on.talk ? button2("talk", "[TALK]", () => on.talk(d.id)) : null,
+      on.generation ? drawSiteReroll(h("span"), on.generation, "flavor.demand", d.id) : null
     ));
   }
 }
@@ -37920,6 +38104,12 @@ function renderCommsTab(host, ctx2) {
       if (m.violation && m.violation.length > 0) drawViolation(shown[shown.length - 1], violationLabels(ctx2.registries, m.violation));
       thread.append(...shown);
     });
+    const doorId = state.calendar.nightEvent?.unitId === current ? state.calendar.nightEvent.id : null;
+    const genHost = h("div", { class: "alius-generation-chips" });
+    drawGenerationChips(genHost, ctx2.generation, state, "comms", (r) => r.key.startsWith(`${current}:`) || r.key === doorId);
+    const her = ctx2.reply?.state(current);
+    if (her) drawSiteReroll(genHost, ctx2.generation, "dm.reply", her.siteKey, () => ctx2.reply.run(current), her.reroll);
+    if (genHost.childElementCount > 0) thread.append(genHost);
     if (hesitates(state, ctx2.registries, current)) {
       const key = messages.at(-1).id;
       const motion = ctx2.motion?.() ?? true;
@@ -37934,8 +38124,8 @@ function renderCommsTab(host, ctx2) {
     const disciplineChips = h("div", { class: "alius-chips alius-discipline-chips" });
     drawDisciplineChips(disciplineChips, state, ctx2.registries, (c) => c.channel === "dm" && c.unitId === current, (id) => ctx2.onUndoDiscipline?.(id));
     const input = h("input", { type: "text", name: "dm", class: "alius-input", autocomplete: "off", "aria-label": `Message ${unit2.displayName}` });
-    const pending3 = ctx2.edit?.() ?? null;
-    const waiting2 = pending3 !== null && pending3.toUnitId === current ? pending3 : null;
+    const pending4 = ctx2.edit?.() ?? null;
+    const waiting2 = pending4 !== null && pending4.toUnitId === current ? pending4 : null;
     input.value = waiting2 ? waiting2.edited : drafts.get(host) ?? "";
     if (waiting2) input.readOnly = true;
     else input.addEventListener("input", () => drafts.set(host, input.value));
@@ -37954,10 +38144,11 @@ function renderCommsTab(host, ctx2) {
     drawDemandChips(demandChips, state, ctx2.registries, (c) => c.unitId === current, {
       grant: (id) => ctx2.onAnswerDemand?.(id, "grant"),
       refuse: (id) => ctx2.onAnswerDemand?.(id, "refuse"),
-      talk: (id) => ctx2.onTalkDemand?.(id)
+      talk: (id) => ctx2.onTalkDemand?.(id),
+      generation: ctx2.generation
     });
     const ruleChips = h("div", { class: "alius-chips alius-discipline-chips" });
-    const answers = { accept: (id) => ctx2.onAnswerRule?.(id, "accept"), negotiate: (id) => ctx2.onAnswerRule?.(id, "negotiate"), refuse: (id) => ctx2.onAnswerRule?.(id, "refuse") };
+    const answers = { accept: (id) => ctx2.onAnswerRule?.(id, "accept"), negotiate: (id) => ctx2.onAnswerRule?.(id, "negotiate"), refuse: (id) => ctx2.onAnswerRule?.(id, "refuse"), generation: ctx2.generation };
     for (const rule of ruleNotesFor(state, (id) => id === current).filter((r) => r.status === "proposed")) ruleChips.append(renderRuleNote(state, ctx2.registries, rule, answers, { motion: ctx2.motion?.() ?? true }));
     const personalChips = h("div", { class: "alius-chips alius-discipline-chips" });
     if (ctx2.personal) drawPersonalChips(personalChips, state, ctx2.registries, (id) => id === current, ctx2.personal);
@@ -38065,6 +38256,11 @@ function renderWardenPanel(host, state, reg, deps = {}) {
     h("h4", {}, "RECENT"),
     ...w.punishLog.length === 0 ? [h("p", { class: "alius-dim" }, "NOTHING ON THE RECORD.")] : w.punishLog.slice(-5).reverse().map((p) => h("p", { class: "alius-chip alius-stat", ...analyzeAttrs("glossary:commander_punishment") }, `Day ${p.day}: ${String(reg.commanderPunishments.get(p.punishmentId)?.label ?? "Punishment")}`))
   ];
+  if (deps.generation && w.agenda === "fallback" && w.overrideFired !== true) {
+    const row2 = h("p", { class: "alius-warden-agenda" }, h("span", { class: "alius-dim" }, "AGENDA: PLAIN "));
+    drawSiteReroll(row2, deps.generation, "warden.agenda", `${w.unitId}:${w.sinceDay}`, deps.onRerollAgenda);
+    rows.push(row2);
+  }
   const portrait = deps.avatar?.(unit2) ?? null;
   const body = h(
     "div",
@@ -38364,7 +38560,7 @@ var DOOR_SAY_MAX2 = 300;
 var TICK_MS = 250;
 var clocks = /* @__PURE__ */ new Map();
 var drafts2 = /* @__PURE__ */ new Map();
-var pending2 = /* @__PURE__ */ new Set();
+var pending3 = /* @__PURE__ */ new Set();
 var knocked = /* @__PURE__ */ new WeakMap();
 var running = /* @__PURE__ */ new WeakMap();
 function resetDoor() {
@@ -38372,7 +38568,7 @@ function resetDoor() {
   drafts2.clear();
 }
 function held(entry, input) {
-  if (pending2.has(entry.id) || document.hidden) return true;
+  if (pending3.has(entry.id) || document.hidden) return true;
   if (document.querySelector(".alius-modal-backdrop") || document.querySelector(".alius-analyze")) return true;
   return input !== null && (input.value !== "" || document.activeElement === input);
 }
@@ -38436,7 +38632,7 @@ function renderDoor(host, ctx2) {
   let input = null;
   const form = h("div", { class: "alius-door-form" });
   const openForm = () => {
-    if (input || used || pending2.has(entry.id)) return;
+    if (input || used || pending3.has(entry.id)) return;
     input = h("input", { type: "text", class: "alius-input alius-door-input", name: "door", maxlength: String(DOOR_SAY_MAX2), autocomplete: "off", "aria-label": `Say something through the door to ${ctx2.unitName}` });
     const sendButton = h("button", { type: "button", class: "alius-btn", "data-action": "send-door", onclick: send }, "[SAY]");
     input.addEventListener("keydown", (e) => {
@@ -38448,15 +38644,15 @@ function renderDoor(host, ctx2) {
   };
   function send() {
     const text2 = input?.value.trim() ?? "";
-    if (!input || text2 === "" || used || pending2.has(entry.id)) return;
-    pending2.add(entry.id);
+    if (!input || text2 === "" || used || pending3.has(entry.id)) return;
+    pending3.add(entry.id);
     drafts2.delete(entry.id);
     input.disabled = true;
     form.querySelector("button")?.setAttribute("disabled", "");
     for (const b of buttons) b.disabled = true;
     status.textContent = `${ctx2.unitName} is answering\u2026`;
     void Promise.resolve(ctx2.onSay(text2)).catch(() => void 0).finally(() => {
-      pending2.delete(entry.id);
+      pending3.delete(entry.id);
       if (!host.isConnected) return;
       if (ctx2.onChanged) ctx2.onChanged();
       else renderDoor(host, ctx2);
@@ -38478,12 +38674,12 @@ function renderDoor(host, ctx2) {
     row2
   ));
   const draft = drafts2.get(entry.id);
-  if (draft && !entry.door && !pending2.has(entry.id)) {
+  if (draft && !entry.door && !pending3.has(entry.id)) {
     openForm();
     const field2 = form.querySelector("input");
     if (field2) field2.value = draft;
   }
-  if (pending2.has(entry.id)) {
+  if (pending3.has(entry.id)) {
     status.textContent = `${ctx2.unitName} is answering\u2026`;
     for (const b of buttons) b.disabled = true;
   }
@@ -38615,7 +38811,7 @@ function renderSceneScreen(host, ctx2) {
   const root = h("div", { class: "alius-scene" });
   host.append(root);
   let pacing = false;
-  let pending3 = false;
+  let pending4 = false;
   let disposed = false;
   let seen = -1;
   let animating = null;
@@ -38635,6 +38831,8 @@ function renderSceneScreen(host, ctx2) {
   let disciplineChips;
   let demandChips;
   let freqChips;
+  let genChips;
+  let genTools;
   let leadChips;
   let ruleChips;
   let disciplineMenus;
@@ -38722,11 +38920,12 @@ function renderSceneScreen(host, ctx2) {
       follow: () => controller.follow?.(),
       ask: () => controller.ask?.(),
       limit: (text2) => controller.limit?.(text2)
-    }, pending3);
+    }, pending4);
     drawRuleChips(ruleChips, s, registries, (c) => ids.has(c.unitId), {
       accept: (id) => ctx2.onAnswerRule?.(id, "accept"),
       negotiate: (id) => ctx2.onAnswerRule?.(id, "negotiate"),
-      refuse: (id) => ctx2.onAnswerRule?.(id, "refuse")
+      refuse: (id) => ctx2.onAnswerRule?.(id, "refuse"),
+      generation: ctx2.generation
     });
   }
   function drawFreq(s) {
@@ -38735,7 +38934,7 @@ function renderSceneScreen(host, ctx2) {
   }
   function drawDiscipline(s) {
     const ids = new Set(s.scene?.participants ?? []);
-    drawDemandChips(demandChips, s, registries, (c) => ids.has(c.unitId), { grant: (id) => ctx2.onAnswerDemand?.(id, "grant"), refuse: (id) => ctx2.onAnswerDemand?.(id, "refuse") });
+    drawDemandChips(demandChips, s, registries, (c) => ids.has(c.unitId), { grant: (id) => ctx2.onAnswerDemand?.(id, "grant"), refuse: (id) => ctx2.onAnswerDemand?.(id, "refuse"), generation: ctx2.generation });
     drawDisciplineChips(disciplineChips, s, registries, (c) => ids.has(c.unitId) && (c.channel !== "scene" || c.sceneId === s.scene?.id), (id) => ctx2.onUndoDiscipline?.(id));
     if (!ctx2.onPunish) return;
     const open3 = new Set([...disciplineMenus.querySelectorAll("details[open]")].map((d) => d.dataset.disciplineMenu));
@@ -38767,7 +38966,7 @@ function renderSceneScreen(host, ctx2) {
     const messages = controller.transcript();
     const lastIndex = messages.length > 0 ? messages[messages.length - 1].index : -1;
     const speed = typingSpeed();
-    if (pending3) {
+    if (pending4) {
       stopTyping();
       if (lastIndex > seen) seen = lastIndex;
     } else {
@@ -38812,7 +39011,7 @@ function renderSceneScreen(host, ctx2) {
         "data-edit": m.index,
         "aria-label": "Edit message",
         title: "Edit this message",
-        disabled: pending3,
+        disabled: pending4,
         onclick: () => {
           editing = { index: m.index, value: m.text, focus: true };
           drawLog(s);
@@ -38821,7 +39020,7 @@ function renderSceneScreen(host, ctx2) {
       const line2 = h("div", { class: `alius-line${m.isUser ? " is-user" : ""}`, "data-index": m.index }, speaker, " ", text2, " ", edit);
       const flagged = s.scene?.violations?.find((v) => v.index === m.index);
       if (flagged && !m.isUser) drawViolation(line2, violationLabels(registries, flagged.categories), () => void st.regenerateLast().catch(() => {
-      }), pending3);
+      }), pending4);
       return line2;
     }));
     if (messages.length === 0) {
@@ -38850,6 +39049,16 @@ function renderSceneScreen(host, ctx2) {
         }
       }, TICK_MS2);
     }
+  }
+  function drawGeneration(s) {
+    const ui = ctx2.generation;
+    genChips.replaceChildren();
+    genTools.replaceChildren();
+    if (!ui || !s.scene) return;
+    const prefix = `${s.scene.id}:`;
+    drawGenerationChips(genChips, ui, s, "scene", (r) => r.key.startsWith(prefix));
+    const state2 = controller.rerollState();
+    if (state2.enabled || state2.reason !== "Nothing was read yet.") drawSiteReroll(genTools, ui, "scene.intents", "last", () => controller.rerollLast(), state2);
   }
   function drawBanner() {
     banner.replaceChildren();
@@ -38890,23 +39099,25 @@ function renderSceneScreen(host, ctx2) {
     disciplineChips = h("div", { class: "alius-chips alius-discipline-chips" });
     demandChips = h("div", { class: "alius-chips alius-discipline-chips" });
     freqChips = h("div", { class: "alius-chips alius-freq-chips" });
+    genChips = h("div", { class: "alius-generation-chips" });
+    genTools = h("span", { class: "alius-scene-reroll" });
     disciplineMenus = h("div", { class: "alius-discipline-units" });
     banner = h("div", { class: "alius-pacing-host" });
     busyHost = h("div", { class: "alius-busy-host" });
     caption = h("div", { class: "alius-stage-caption" });
     input = h("input", { type: "text", name: "cmd", class: "alius-input", autocomplete: "off", "aria-label": "Command line" });
     input.addEventListener("keydown", (ev) => {
-      if (ev.key !== "Enter" || pending3) return;
+      if (ev.key !== "Enter" || pending4) return;
       const text2 = input.value.trim();
       if (text2 === "") return;
       const order = orderOn && ctx2.onOrder !== void 0 ? ctx2.onOrder(orderWho?.value || present2(state())[0]?.id || "") : false;
-      pending3 = true;
+      pending4 = true;
       input.disabled = true;
       editing = null;
       lock(true);
       setBusy(true);
       void controller.send(text2).finally(() => {
-        pending3 = false;
+        pending4 = false;
         if (disposed) return;
         orderOn = false;
         syncOrder();
@@ -38964,6 +39175,7 @@ function renderSceneScreen(host, ctx2) {
           { class: "alius-scene-tools" },
           act("swipe-left", "\u2039", () => ignore(st.swipeLast("left")), "Previous reply"),
           act("regenerate", "\u21BB", () => ignore(st.regenerateLast()), "Regenerate the last reply"),
+          genTools,
           act("swipe-right", "\u203A", () => ignore(st.swipeLast("right")), "Next reply"),
           act("end", "[END TRANSMISSION]", () => void controller.end().then(() => {
             if (!disposed) ctx2.onEnded();
@@ -38975,6 +39187,7 @@ function renderSceneScreen(host, ctx2) {
       h("div", { class: "alius-stage" }, bg, spriteHost, caption),
       hud,
       log,
+      genChips,
       chips,
       leadChips,
       ruleChips,
@@ -39014,6 +39227,7 @@ function renderSceneScreen(host, ctx2) {
     drawChips(s);
     drawDiscipline(s);
     drawFreq(s);
+    drawGeneration(s);
     drawBanner();
   }
   function pulse(e) {
@@ -42171,6 +42385,16 @@ function createApp(st, deps) {
     contentLine: () => contentLine(state, registries),
     toast: (kind, text2) => toast(kind, text2)
   });
+  const genUi = {
+    generations,
+    modal: (o) => shell.modal(o),
+    settings: () => getSettings(st),
+    toast: (kind, text2) => toast(kind, text2),
+    redraw: () => {
+      drawDilemma();
+      shell.refresh();
+    }
+  };
   generations.bind("activity.vignette", {
     build(key) {
       const [activityId, unitId, day, slot2] = key.split(":");
@@ -42601,6 +42825,7 @@ function createApp(st, deps) {
         settings: () => getSettings(st),
         onEnded: leaveScene,
         sound,
+        generation: genUi,
         onOrder: (unitId) => loyalty.order(unitId),
         onCompel: (unitId) => void api.fileLeash("compel", unitId),
         onPunish: (unitId, measure, days) => void discipline.punish(unitId, measure, days),
@@ -42672,8 +42897,9 @@ function createApp(st, deps) {
       onChoose: (i, route) => void dilemmas.choose(i, route),
       unitName: (id) => s.squad.find((u) => u.id === id)?.displayName ?? id,
       scapegoat: scapegoatView(s, registries),
-      herPick: herPickView(s, registries)
+      herPick: herPickView(s, registries),
       // P9c: a day the commander obeys her
+      generation: { ui: genUi, state: s, id: open3.id }
     });
   }
   function openDilemmaModal() {
@@ -42974,7 +43200,8 @@ function createApp(st, deps) {
       onClose: leaveExpedition,
       recapPending: () => recapPendingFor !== null && recapPendingFor === state?.lastExpedition?.id,
       onDilemmaChoose: (index2, route) => void dilemmas.choose(index2, route),
-      coach: coachCtx
+      coach: coachCtx,
+      generation: genUi
     });
   }
   function adoptExpedition() {
@@ -43731,9 +43958,11 @@ function createApp(st, deps) {
         showRaw: getSettings(st).showRawValues,
         onAnswer: (a) => void warden.answer(a),
         onIntrigue: (action, unitId) => void act({ type: "intrigue/act", payload: { action, ...unitId !== void 0 ? { unitId } : {} } }),
-        onReport: () => void act({ type: "intrigue/report", payload: {} })
+        onReport: () => void act({ type: "intrigue/report", payload: {} }),
+        generation: genUi,
+        onRerollAgenda: () => warden.rerollAgenda()
       }
-      // P13: the WARDEN panel and its INTRIGUE section
+      // P13: the WARDEN panel and its INTRIGUE section (P14: REROLL of her agenda)
     })
   );
   shell.registerTab(
@@ -43843,7 +44072,7 @@ function createApp(st, deps) {
     setTimeout(() => URL.revokeObjectURL(url), 1e3);
   }
   shell.registerHub((host, device) => {
-    if (state?.ended) return renderEndScreen(host, state, { onExport: exportCurrent });
+    if (state?.ended) return renderEndScreen(host, state, { onExport: exportCurrent, generation: genUi });
     return renderHub(host, device, {
       getState: () => state,
       getLoad: () => load,
@@ -43851,6 +44080,8 @@ function createApp(st, deps) {
       settings: () => getSettings(st),
       assetUrl: deps.assetUrl,
       art: { hub: hubArt },
+      generation: genUi,
+      lastScene: { state: () => scene.summaryRerollState(), run: () => scene.rerollSummary() },
       ops: opsCtx(),
       overrideChip: (host2) => {
         if (state && load.kind !== "readonly") renderOverrideChip(host2, state, registries, (a) => void warden.answer(a));
@@ -43899,7 +44130,8 @@ function createApp(st, deps) {
       onUpgrade: (id) => api.upgradeFacility(id),
       onRecruit: () => void api.recruitGrunt(),
       onSetRoster: (ids) => api.setRoster(ids),
-      onSetRations: (mode) => void act({ type: "rations/set", payload: { mode } })
+      onSetRations: (mode) => void act({ type: "rations/set", payload: { mode } }),
+      generation: genUi
     })
   );
   shell.registerTab(
@@ -43931,8 +44163,10 @@ function createApp(st, deps) {
         void comms.answerEdit(keep).then(() => shell.refresh());
       },
       avatar: (unit2) => unitPortrait(st, unit2, portraitOptions(getSettings(st), 32)),
-      motion: () => !motionReduced(getSettings(st))
+      motion: () => !motionReduced(getSettings(st)),
       // P10b: the typing indicator
+      generation: genUi,
+      reply: { state: (unitId) => comms.replyState(unitId), run: (unitId) => comms.rerollLast(unitId) }
     })
   );
   shell.registerTab("log", (host) => renderLogTab(host, { getState: () => state }));

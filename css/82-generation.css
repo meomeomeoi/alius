@@ -30,3 +30,14 @@
   align-items: center;
   margin: 4px 0;
 }
+
+#alius-shell .alius-generation-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+
+#alius-shell .alius-generation-failed h2 {
+  margin: 0 0 4px;
+}

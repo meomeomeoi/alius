@@ -653,7 +653,7 @@ Each task moves the caller code into the site's handlers, deletes the async wrap
 **Interfaces:**
 - Consumes: Task 11's components, `app.generations` (Task 4), the controller reroll methods of Tasks 5–10
 
-- [ ] **Step 1: Write the failing tests** (one `describe` per surface)
+- [x] **Step 1: Write the failing tests** (one `describe` per surface)
   - `the scene shows a failed reading under the transcript and RETRY reads it`;
   - `COMMS shows a failed reply under the message and REROLL is disabled after another dispatch`;
   - `the dilemma card shows RETRY on the authored block, REROLL before an answer`;
@@ -662,10 +662,10 @@ Each task moves the caller code into the site's handlers, deletes the async wrap
   - `the END screen rerolls the epilogue`;
   - `a pending retry disables its buttons until it settles`;
   - `quiet records show on no surface`.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.** Every surface redraws on `generation_*` events through its existing refresh path.
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P14): failure chips and reroll on every surface`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.** Every surface redraws on `generation_*` events through its existing refresh path.
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P14): failure chips and reroll on every surface`
 
 ---
 

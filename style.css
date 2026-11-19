@@ -3316,6 +3316,17 @@ button.alius-node.alius-reachable { opacity: 1; cursor: pointer; border: 1px das
   margin: 4px 0;
 }
 
+#alius-shell .alius-generation-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+
+#alius-shell .alius-generation-failed h2 {
+  margin: 0 0 4px;
+}
+
 /* P6: oversight request form, loyalty and arc controls, dilemma and confrontation panels. Palette variables only. */
 #alius-shell .alius-form {
   font-family: monospace;

@@ -1,3 +1,4 @@
+import { drawSiteReroll, type GenerationUi } from '../generation/surface';
 import type { Registries } from '../../content/types';
 import { investigationBand, overrideOpen, remoteExpectations, wardenOf, type Expectation } from '../../engine/warden';
 import type { CampaignState, Unit } from '../../engine/state/types';
@@ -19,6 +20,10 @@ export interface WardenPanelDeps {
   onIntrigue?: (action: 'dig' | 'hack_step', unitId?: string) => void;
   /** INTRIGUE: REPORT TO OVERSIGHT. */
   onReport?: () => void;
+  /** P14: REROLL of her agenda while it is still the fallback (before any override fired). Absent = none drawn. */
+  generation?: GenerationUi;
+  /** P14: runs that reroll (the warden controller reads the new agenda afterwards). */
+  onRerollAgenda?: () => Promise<void>;
 }
 
 /** Words for the satisfaction and weight bands: the player reads these, never the engine's numbers (unless raw values are on). */
@@ -71,6 +76,12 @@ export function renderWardenPanel(host: HTMLElement, state: CampaignState, reg: 
     ...(w.punishLog.length === 0 ? [h('p', { class: 'alius-dim' }, 'NOTHING ON THE RECORD.')] : w.punishLog.slice(-5).reverse().map((p) =>
       h('p', { class: 'alius-chip alius-stat', ...analyzeAttrs('glossary:commander_punishment') }, `Day ${p.day}: ${String(reg.commanderPunishments.get(p.punishmentId)?.label ?? 'Punishment')}`))),
   ];
+  // P14: her agenda is the fallback list: it can be asked for again until an override fired
+  if (deps.generation && w.agenda === 'fallback' && w.overrideFired !== true) {
+    const row = h('p', { class: 'alius-warden-agenda' }, h('span', { class: 'alius-dim' }, 'AGENDA: PLAIN '));
+    drawSiteReroll(row, deps.generation, 'warden.agenda', `${w.unitId}:${w.sinceDay}`, deps.onRerollAgenda);
+    rows.push(row);
+  }
   const portrait = deps.avatar?.(unit) ?? null;
   const body = h('div', { class: 'alius-warden-body' },
     h('div', { class: 'alius-warden-head' }, portrait ? h('span', { class: 'alius-warden-portrait', 'aria-hidden': 'true' }, portrait) : null,

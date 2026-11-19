@@ -5,6 +5,7 @@ import { TUNING } from '../../engine/tuning';
 import { analyzeAttrs, analyzeNative } from '../analyze/mark';
 import type { RuleChipHandlers } from '../bonds/chips';
 import { h } from '../dom';
+import { drawSiteReroll } from '../generation/surface';
 import { noise } from '../fx';
 import { setHand } from './note';
 
@@ -52,7 +53,8 @@ export function renderRuleNote(state: CampaignState, reg: Registries, rule: Rule
     note.append(h('div', { class: 'alius-chip-group', 'data-rule-group': rule.id },
       button('accept', '[SIGN]', () => on.accept(rule.id), full),
       button('negotiate', '[NEGOTIATE]', () => on.negotiate(rule.id)),
-      button('refuse', "[DON'T SIGN]", () => on.refuse(rule.id))));
+      button('refuse', "[DON'T SIGN]", () => on.refuse(rule.id)),
+      on.generation ? drawSiteReroll(h('span'), on.generation, 'flavor.rule', rule.id) : null));
   }
   return note;
 }

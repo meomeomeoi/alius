@@ -19,6 +19,7 @@ import { renderHerCallCard } from './herCallCard';
 import { renderNodeMap } from './nodeMapView';
 import { newDraft, renderPlanner, type PlannerDraft } from './planner';
 import { renderReport } from './report';
+import type { GenerationUi } from '../generation/surface';
 
 export interface ExpeditionScreenCtx {
   getState: () => CampaignState | null;
@@ -32,6 +33,8 @@ export interface ExpeditionScreenCtx {
   onDilemmaChoose?: (index: number, route?: RoutePick) => void;
   /** P11: the tutorial's coach strip at the top of the run view. */
   coach?: CoachCtx;
+  /** P14: failure chips and REROLL on the decision and the after-action recap. */
+  generation?: GenerationUi;
 }
 
 export interface ExpeditionScreen {
@@ -178,6 +181,7 @@ export function renderExpeditionScreen(host: HTMLElement, ctx: ExpeditionScreenC
       renderDilemma(slot, {
         title: generated.title ?? fixed?.title ?? 'EVENT', setup: generated.setup ?? fixed?.setup ?? '', scale: generated.scale,
         waiting: generated.status === 'requested', options: dilemmaOptions(state, reg), onChoose: ctx.onDilemmaChoose, unitName, herPick: herPickView(state, reg),
+        ...(ctx.generation ? { generation: { ui: ctx.generation, state, id: generated.id } } : {}),
       });
       root.append(panel);
       return;
@@ -226,7 +230,7 @@ export function renderExpeditionScreen(host: HTMLElement, ctx: ExpeditionScreenC
       return;
     }
     if (state.lastExpedition && !state.lastExpedition.acknowledged) {
-      renderReport(root, { state, registries: reg, controller, recapPending: ctx.recapPending?.() ?? false, onClose: ctx.onClose, redraw: render, debriefPick });
+      renderReport(root, { state, registries: reg, controller, recapPending: ctx.recapPending?.() ?? false, onClose: ctx.onClose, redraw: render, debriefPick, generation: ctx.generation });
       return;
     }
     const target = controller.planning();

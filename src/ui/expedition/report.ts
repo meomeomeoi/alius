@@ -4,6 +4,7 @@ import { reportLines } from '../../engine/world/expedition';
 import type { CampaignState } from '../../engine/state/types';
 import type { ExpeditionController } from '../../world/expeditionController';
 import { h } from '../dom';
+import { drawGenerationChips, drawSiteReroll, type GenerationUi } from '../generation/surface';
 
 export interface ReportCtx {
   state: CampaignState;
@@ -14,6 +15,8 @@ export interface ReportCtx {
   onClose: () => void;
   redraw: () => void;
   debriefPick: string[];
+  /** P14: the recap's failure chip and REROLL. Absent = none drawn. */
+  generation?: GenerationUi;
 }
 
 const DEBRIEF_MAX = TUNING.scene.maxParticipants;
@@ -27,6 +30,13 @@ export function renderReport(host: HTMLElement, ctx: ReportCtx): void {
   const root = h('section', { class: 'alius-section alius-report' }, h('h2', {}, lines[0] ?? 'AFTER-ACTION REPORT'));
   if (report.recap) root.append(h('p', { class: 'alius-recap' }, report.recap));
   else if (ctx.recapPending) root.append(h('p', { class: 'alius-dim' }, 'COMPILING…'));
+  // P14: the recap failed (the deterministic report stands) or it can be asked for again
+  if (ctx.generation) {
+    const gen = h('div', { class: 'alius-generation-chips' });
+    const failed = drawGenerationChips(gen, ctx.generation, state, 'expedition', (r) => r.key === report.id);
+    if (failed === 0 && report.recap) drawSiteReroll(gen, ctx.generation, 'expedition.recap', report.id);
+    if (gen.childElementCount > 0) root.append(gen);
+  }
   for (const line of lines.slice(1)) root.append(h('p', { class: 'alius-report-line' }, line));
 
   if (state.slot !== 'night' && !report.debriefed) {
