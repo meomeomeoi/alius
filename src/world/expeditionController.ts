@@ -37,6 +37,8 @@ export function createExpedition(deps: WorldDeps & {
   startScene(o: StartOptions): Promise<boolean>;
   /** P9b: runs a decision the squad votes on (the app's `power.requestVote`). Without it a gated launch is refused like any other. */
   requestVote?: (action: Action) => Promise<'ran' | 'dropped' | 'cancelled'>;
+  /** P13: the warden's optional judge (the app's `warden`): an overridable action waits for it when the setting is on. */
+  judge?: { needsJudge(action: Action): boolean; judgeThen(action: Action): Promise<EngineEvent[]> };
 }): ExpeditionController {
   let target: PlanTarget | null = null;
 
@@ -63,6 +65,13 @@ export function createExpedition(deps: WorldDeps & {
         return false;
       }
       const payload = { ...target, unitIds: p.unitIds, formation: p.formation, supplies: p.supplies };
+      // P13: the warden's judge reads the order first (a short model call); the plan stays until the launch has run
+      const judged: Action = { type: 'expedition/start', payload };
+      if (deps.judge?.needsJudge(judged)) {
+        const planned = target;
+        void deps.judge.judgeThen(judged).then((events) => { if (!events.some((e) => e.type === 'error') && events.length > 0 && target === planned) target = null; });
+        return false;
+      }
       const { ok, events } = act('expedition/start', payload);
       if (!ok && deps.requestVote && events.some((e) => e.type === 'error' && e.code === 'vote_needed')) {
         // P9b: the squad votes on a mission from the board; the plan stays until the vote has run the launch

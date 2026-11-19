@@ -21,6 +21,8 @@ export interface DilemmaController {
 export function createDilemmas(deps: WorldDeps & {
   /** P9b: runs a decision the squad votes on (the app's `power.requestVote`). Without it a gated answer is refused like any other. */
   requestVote?: (action: Action) => Promise<'ran' | 'dropped' | 'cancelled'>;
+  /** P13: the warden's optional judge (the app's `warden`): an overridable action waits for it when the setting is on. */
+  judge?: { needsJudge(action: Action): boolean; judgeThen(action: Action): Promise<EngineEvent[]> };
 }): DilemmaController {
   const running = new Set<string>();
   const chatId = (): string | undefined => deps.st.getActiveChat()?.chatId;
@@ -82,6 +84,10 @@ export function createDilemmas(deps: WorldDeps & {
     const open = deps.app.current().state?.dilemmas?.open;
     if (!open || open.status !== 'presented') return [];
     const action = { type: 'dilemma/choose', payload: { id: open.id, index, ...(route ? { route } : {}) } };
+    if (deps.judge?.needsJudge(action)) {
+      void deps.judge.judgeThen(action); // P13: the warden's judge reads the choice first (a short model call)
+      return [];
+    }
     const events = deps.app.dispatch(action);
     const failed = events.find((e) => e.type === 'error');
     if (failed?.code === 'vote_needed' && deps.requestVote) {

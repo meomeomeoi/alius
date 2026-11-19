@@ -22,6 +22,8 @@ export interface EventIntent {
   text?: string;
   /** P13: the warden's override a `compromise_reached` settles (an id from the list the model was shown). */
   overrideId?: string;
+  /** P13: the warden's expectation an `expectation_kept` / `expectation_broken` is about (an id from the list the model was shown). */
+  expectationId?: string;
   /** P12: the intercepted item a `knowledge_leak` is about (an id from the list the model was given). */
   itemId?: string;
   evidence: string;
@@ -123,6 +125,8 @@ export function validateIntents(
     warned?: string[];
     /** P13: the ids of the warden's open overrides the model was shown. Without them a `compromise_reached` that names one is dropped. */
     overrides?: string[];
+    /** P13: the ids of the warden's expectations the model was shown. Without them an expectation event is dropped. */
+    expectations?: string[];
   },
 ): Intents {
   const out = emptyIntents();
@@ -156,6 +160,11 @@ export function validateIntents(
       if (actor !== 'commander' || !rule) continue;
       intent.ruleId = rule.id;
       if (type === 'compromise_reached') intent.text = typeof e.text === 'string' ? e.text.replace(/\s+/g, ' ').trim().slice(0, TUNING.bonds.rules.textMax).trim() : '';
+    }
+    if (type === 'expectation_kept' || type === 'expectation_broken') {
+      // the commander kept or broke something of hers: it names an expectation it was shown, and the warden is the target
+      if (actor !== 'commander' || typeof e.expectationId !== 'string' || !(ctx.expectations ?? []).includes(e.expectationId)) continue;
+      intent.expectationId = e.expectationId;
     }
     if (type === 'accused') {
       // the commander accuses a unit she was warned about; an accusation of anyone else is not offered and is dropped

@@ -1,3 +1,4 @@
+import { bondTierOf } from '../engine/bonds';
 import { describeOrder, overrideOpen, revealPending, wardenOf } from '../engine/warden';
 import type { Registries } from '../content/types';
 import type { CampaignState } from '../engine/state/types';
@@ -12,14 +13,17 @@ export const REVEAL_DIRECTIVE = 'warden:reveal';
 
 /** Ids derived from the state on every refresh. */
 export const ARGUE_DIRECTIVE = 'warden:argue';
-export const WARDEN_DERIVED: readonly string[] = [REVEAL_DIRECTIVE, ARGUE_DIRECTIVE];
+export const ROMANCE_DIRECTIVE = 'warden:romance';
+export const WARDEN_DERIVED: readonly string[] = [REVEAL_DIRECTIVE, ARGUE_DIRECTIVE, ROMANCE_DIRECTIVE];
 
 /**
  * Derived from the state, so they survive a reload:
  *  - `warden:reveal`: until the commander has been shown who holds the controller (the prologue's reveal scene, or the notice), the
  *    soldiers do not speak of it as settled news;
  *  - `warden:argue`: while the scene with her alone is the argument over an override, what she overrode, what she wants and that only a
- *    real compromise moves her.
+ *    real compromise moves her;
+ *  - `warden:romance`: while she is in a romantic-tier state and in the scene, any tenderness between her and the commander runs through
+ *    the controller she holds.
  */
 export function wardenDirectives(state: CampaignState, reg: Registries): Directive[] {
   const out: Directive[] = [];
@@ -30,6 +34,12 @@ export function wardenDirectives(state: CampaignState, reg: Registries): Directi
     out.push({
       id: ARGUE_DIRECTIVE, expiresAfter: 'scene',
       text: `AUTHOR TO WRITE: ${unit.displayName} has overridden the commander's order: ${describeOrder(state, reg, ov.order)}. She wants: ${ov.altLabel}. She can be talked round only by a real compromise.`,
+    });
+  }
+  if (unit && warden && state.scene?.participants.includes(unit.id) && bondTierOf(state, reg, unit.id) === 'romantic') {
+    out.push({
+      id: ROMANCE_DIRECTIVE, expiresAfter: 'scene',
+      text: `AUTHOR TO WRITE: ${unit.displayName} holds the commander's controller. Any tenderness between them runs through that power; she knows it and so does the commander.`,
     });
   }
   if (unit && revealPending(state, reg)) {

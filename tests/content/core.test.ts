@@ -201,7 +201,7 @@ describe('activity cross references', () => {
       expect(Object.keys(e!.rows as object).sort(), t).toEqual(['extreme', 'major', 'minor', 'moderate']);
     }
     expect(r.eventDeltas.size).toBe(ALL_EVENT_TYPES.length);
-    expect(ALL_EVENT_TYPES).toHaveLength(56); // 35 the model reports (P12: knowledge_leak, accused), 21 only the engine writes (P9d: 5, P9b: the leader's four and shielded, P9c: 6, P12: frequency_exposed, false_accusation, debts_exposed, P13: warden_complied, warden_defied)
+    expect(ALL_EVENT_TYPES).toHaveLength(58); // 37 the model reports (P12: knowledge_leak, accused; P13: expectation_kept, expectation_broken), 21 only the engine writes (P9d: 5, P9b: the leader's four and shielded, P9c: 6, P12: frequency_exposed, false_accusation, debts_exposed, P13: warden_complied, warden_defied)
   });
 
   it('table rows from the spec', async () => {

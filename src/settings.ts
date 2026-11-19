@@ -52,6 +52,8 @@ export interface AliusSettings {
   dmEditWording: boolean;
   /** P12: the mechanic model words each Secret Frequency fragment as a broken thought (off: the template fragment). */
   fragmentWording: boolean;
+  /** P13: the mechanic model judges whether an order cuts across a `personal` expectation of the warden (off: only the engine's rules). */
+  wardenJudge: boolean;
   /** P4: a lost combat can be retried (rewinds exactly, never recorded in memory). */
   easyRetry: boolean;
   /** P4: affixed enemies get a generated name (optional `flavor` call, cached, never blocks combat). */
@@ -111,6 +113,7 @@ export const DEFAULT_SETTINGS: AliusSettings = {
     rumor_retell: 200,
     warden_agenda: 800,
     epilogue: 700,
+    warden_judge: 120,
     ping: 100,
   },
   contextTokenCap: 1600,
@@ -139,6 +142,7 @@ export const DEFAULT_SETTINGS: AliusSettings = {
   ballotWording: false,
   dmEditWording: true,
   fragmentWording: true,
+  wardenJudge: false,
   easyRetry: false,
   enemyFlavor: false,
   directorEnabled: true,
@@ -190,6 +194,7 @@ const fieldSchemas = {
   ballotWording: z.boolean(),
   dmEditWording: z.boolean(),
   fragmentWording: z.boolean(),
+  wardenJudge: z.boolean(),
   easyRetry: z.boolean(),
   enemyFlavor: z.boolean(),
   directorEnabled: z.boolean(),

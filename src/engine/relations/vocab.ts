@@ -14,6 +14,8 @@ export const EVENT_TYPES = [
   'knowledge_leak',
   // P12: the commander openly accuses a unit of planning disloyalty (offered only while a present unit has an open premonition)
   'accused',
+  // P13: the commander kept or broke what the warden expects (offered only while she is present and her expectations are listed)
+  'expectation_kept', 'expectation_broken',
 ] as const;
 
 /** P9: events only the engine makes (a demand granted or refused; P9d: the commander followed her lead; P9b: the leader's moves). Never offered to the model; `validateIntents` rejects them. */

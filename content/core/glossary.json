@@ -1926,5 +1926,15 @@
       "warden",
       "leashswap"
     ]
+  },
+  {
+    "id": "setting_warden_judge",
+    "term": "Warden judge",
+    "short": "The mechanic model judges whether an order cuts across one of the warden's personal expectations. Off, only the engine's rules count.",
+    "long": "Costs one very short model call before an out-of-combat order while the warden has a personal expectation. The model only names which expectation an order touches and how much; the engine decides whether she overrides. Combat never calls it.",
+    "see": [
+      "warden_expectation",
+      "warden"
+    ]
   }
 ]

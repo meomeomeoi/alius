@@ -1,6 +1,7 @@
-import type { EngineEvent } from '../engine/dispatch';
+import type { Action, EngineEvent } from '../engine/dispatch';
 import type { CampaignState } from '../engine/state/types';
-import { EXPECTATION_KINDS, argueAvailable, normalizeAgenda, wardenOf } from '../engine/warden';
+import { EXPECTATION_KINDS, argueAvailable, describeOrder, normalizeAgenda, orderOfAction, wardenOf } from '../engine/warden';
+import { judgeOrder } from '../llm/calls/wardenJudge';
 import { worldDossier } from '../engine/memory/inputs';
 import { generateEpilogue, fallbackEpilogue } from '../llm/calls/epilogue';
 import { generateAgenda, type WardenAgendaInput } from '../llm/calls/wardenAgenda';
@@ -23,6 +24,13 @@ export interface WardenController {
   onLoaded(): void;
   /** [ARGUE] outside combat: opens the private scene with her alone; resolves whether it opened. The override then waits for a compromise or the scene's end. */
   argue(): Promise<boolean>;
+  /** Would the judge be asked about this action? Only with the setting on, a personal expectation of hers, and an out-of-combat overridable action. */
+  needsJudge(action: Action): boolean;
+  /**
+   * Asks the judge (when `needsJudge`) which of her personal expectations the order touches, attaches the answer as `wardenJudged` and dispatches.
+   * A failed call dispatches without it; a chat that changed meanwhile drops the action.
+   */
+  judgeThen(action: Action): Promise<EngineEvent[]>;
 }
 
 const CARD_MAX = 600;
@@ -146,8 +154,35 @@ export function createWarden(deps: WardenDeps): WardenController {
     return failed === undefined;
   }
 
+  const personalOf = (s: CampaignState) => wardenOf(s)?.expectations.filter((x) => x.kind === 'personal' && x.text !== undefined) ?? [];
+
+  function needsJudge(action: Action): boolean {
+    const s = state();
+    return s !== null && deps.settings().wardenJudge === true && orderOfAction(action) !== null && personalOf(s).length > 0 && s.combat === undefined;
+  }
+
+  async function judgeThen(action: Action): Promise<EngineEvent[]> {
+    const expect = chatId();
+    const send = (a: Action): EngineEvent[] => (deps.act ? deps.act(a) : deps.app.dispatch(a, { expectChatId: expect }));
+    const s = state();
+    const order = orderOfAction(action);
+    if (!s || !order || !needsJudge(action)) return send(action);
+    let judged: Awaited<ReturnType<typeof judgeOrder>> = null;
+    try {
+      judged = await judgeOrder(
+        { order: describeOrder(s, deps.registries(), order), expectations: personalOf(s).map((x) => ({ id: x.id, text: x.text! })) },
+        { st: deps.st, settings: deps.settings() },
+      );
+    } catch {
+      // fail soft: the engine judges by its rules alone
+    }
+    if (chatId() !== expect) return [];
+    const payload = typeof action.payload === 'object' && action.payload !== null ? action.payload : {};
+    return send(judged !== null && judged.conflict !== 'none' ? { ...action, payload: { ...payload, wardenJudged: judged } } : action);
+  }
+
   return {
-    argue,
+    argue, needsJudge, judgeThen,
     onEvents(events) {
       if (events.some((e) => e.type === 'warden_assigned')) void ask().catch(() => {});
       if (events.some((e) => e.type === 'day_started')) snapshot();

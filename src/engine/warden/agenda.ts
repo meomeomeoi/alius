@@ -135,6 +135,26 @@ export function setAgenda(draft: CampaignState, reg: Registries, list: unknown):
   return [{ type: 'warden_agenda_set', count: w.expectations.length }];
 }
 
+const EXPECTATION_STEP = { minor: 0, moderate: 1, major: 2, extreme: 2 } as const;
+const clamp100 = (n: number): number => Math.min(100, Math.max(0, n));
+
+/**
+ * The commander kept or broke an expectation (the model reported it in a scene): kept → satisfaction +3 / +5 / +8 (minor / moderate /
+ * major and up); broken → satisfaction −5 / −10 / −15 and defiance +5 / +10 / +15. Either teaches the commander that expectation.
+ * An id that is not one of hers changes nothing. Draws nothing; the relation event itself is applied by `applyEventToUnit`.
+ */
+export function expectationEvent(draft: CampaignState, expectationId: string, kept: boolean, severity: 'minor' | 'moderate' | 'major' | 'extreme'): EngineEvent[] {
+  const w = wardenOf(draft);
+  if (!w || !w.expectations.some((x) => x.id === expectationId)) return [];
+  const step = EXPECTATION_STEP[severity];
+  if (kept) w.satisfaction = clamp100(w.satisfaction + [3, 5, 8][step]);
+  else {
+    w.satisfaction = clamp100(w.satisfaction - [5, 10, 15][step]);
+    w.defiance = clamp100(w.defiance + [5, 10, 15][step]);
+  }
+  return learnExpectation(draft, expectationId);
+}
+
 /** An expectation becomes known to the commander (an override cites it, a report names it, a dig finds it). Says so once; the event carries the id only. */
 export function learnExpectation(draft: CampaignState, expectationId: string): EngineEvent[] {
   const x = wardenOf(draft)?.expectations.find((e) => e.id === expectationId);

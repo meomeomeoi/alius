@@ -713,16 +713,16 @@ Rulings marked **(user)** were answered by the user on 2026-11-18. Task 18 copie
     - broken: satisfaction `−5/10/15` and defiance `+5/10/15` (minor / moderate / major+); `afterDefy`'s escalation runs.
 - Consumes: `conflictOf(…, judged)` (Task 5), `rollOverride` (Task 6)
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - `judge off: no call`; `judge on with no personal expectation: no call`; `judge on: the payload carries wardenJudged`; `a failed call dispatches without it`; `combat never calls`.
   - LLM fixtures: an id not in the list, `conflict: 0.8` (→ null).
   - `expectation_broken moves satisfaction and defiance and learns the expectation`.
   - `expectation types are offered only with the warden present`.
   - `warden:romance appears only in a romantic-tier state` and has no commander pronoun.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement** per the Rulings.
-- [ ] **Step 4: Run** the files, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P13): optional warden judge, expectation events and romance hints`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement** per the Rulings.
+- [x] **Step 4: Run** the files, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P13): optional warden judge, expectation events and romance hints`
 
 ---
 

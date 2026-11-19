@@ -10,6 +10,7 @@ import { evaluateAutomatic } from './graph';
 import { validateIntents } from './intents';
 import { commanderProposal, offerProposal } from './proposals';
 import { applyRuleEvent, RULE_EVENT_TYPES, rulesOf } from '../bonds/rules';
+import { expectationEvent } from '../warden/agenda';
 import { resolveCompromise } from '../warden/override';
 import { overrideOpen, wardenOf } from '../warden/state';
 import { frequencyLeak, leakCandidates } from '../special/frequency/leaks';
@@ -35,6 +36,12 @@ function openOverrideIds(state: CampaignState, participants: string[]): string[]
   return o !== null && w !== null && participants.includes(w.unitId) && o.context !== 'combat' ? [o.id] : [];
 }
 
+/** P13: the ids of the warden's expectations while she is among the participants. */
+function expectationIds(state: CampaignState, participants: string[]): string[] {
+  const w = wardenOf(state);
+  return w !== null && participants.includes(w.unitId) ? w.expectations.map((x) => x.id) : [];
+}
+
 const DISCIPLINE_EVENTS: readonly string[] = ['defied', 'commander_enforced', 'commander_yielded', 'threatened'];
 /** The events of the commander's side whose reading is only trusted at `TUNING.impunity.minConfidence`. */
 const GATED_EVENTS: readonly string[] = ['commander_enforced', 'threatened'];
@@ -51,7 +58,8 @@ export function applyIntents(draft: CampaignState, ctx: EngineCtx, p: ApplyParam
   const intents = validateIntents(p.intents, { participants: p.participants, squad: draft.squad, maxEvents: TUNING.relations.maxEventsRead, measures: measureList(reg, draft), rules,
     intercepted: leakCandidates(draft, reg, p.participants).map((c) => c.id), // P12: only items the frequency really caught
     warned: warnedUnits(draft, p.participants), // P12: only units there is an open warning about
-    overrides: openOverrideIds(draft, p.participants) }); // P13: the warden's override a compromise may settle
+    overrides: openOverrideIds(draft, p.participants), // P13: the warden's override a compromise may settle
+    expectations: expectationIds(draft, p.participants) }); // P13: her expectations, while she is present // P13: the warden's override a compromise may settle
   const events: EngineEvent[] = [];
   const touched = new Set<string>();
   /** Types of the events that landed on at least one unit (P8: an event dropped for every unit is not here). */
@@ -73,6 +81,7 @@ export function applyIntents(draft: CampaignState, ctx: EngineCtx, p: ApplyParam
         ? applyDisciplineEvent(draft, ctx, id, e, { channel: p.channel, ...(p.sceneId ? { sceneId: p.sceneId } : {}), ...(p.messageRef ? { messageRef: p.messageRef } : {}) })
         : applyEventToUnit(draft, reg, id, e)));
       // P9d: what a kept or broken rule does on top of the event's own row, and a compromise's text
+      if ((e.type === 'expectation_kept' || e.type === 'expectation_broken') && e.expectationId !== undefined) events.push(...expectationEvent(draft, e.expectationId, e.type === 'expectation_kept', e.severity)); // P13
       if (e.type === 'compromise_reached' && e.overrideId !== undefined) events.push(...resolveCompromise(draft, ctx, e.overrideId, e.text)); // P13: a compromise with the warden
       else if (RULE_EVENT_TYPES.includes(e.type)) events.push(...applyRuleEvent(draft, ctx, id, e, p.participants));
       // P12: she noticed the commander using what the frequency told (suspicion; the event's own row already moved Trust)

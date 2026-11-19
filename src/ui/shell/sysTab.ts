@@ -245,6 +245,7 @@ export function renderSysTab(host: HTMLElement, ctx: SysCtx): void {
     field('The mechanic model words the reasons on a squad vote', checkbox('ballotWording', settings.ballotWording), 'ballotWording'),
     field('The mechanic model words a soldier\'s edit of your message', checkbox('dmEditWording', settings.dmEditWording), 'dmEditWording'),
     field('The mechanic model words the fragments of the secret frequency', checkbox('fragmentWording', settings.fragmentWording), 'fragmentWording'),
+    field('The mechanic model judges orders against the warden\'s personal expectations', checkbox('wardenJudge', settings.wardenJudge), 'wardenJudge'),
     field('First impression fades (days, 1–30)', numberInput('firstImpressionTau', settings.firstImpressionTau, (n) => apply({ firstImpressionTau: n }).firstImpressionTau, { min: '1', max: '30' }), 'firstImpressionTau'),
     h('h3', {}, 'Decisions'),
     field('Generated dilemmas (mechanic model; off: authored options)', checkbox('dilemmasEnabled', settings.dilemmasEnabled), 'dilemmasEnabled'),

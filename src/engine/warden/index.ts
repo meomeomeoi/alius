@@ -5,8 +5,8 @@ export {
 } from './state';
 export { corporateWardenPick, seedWarden } from './select';
 export { revealPending } from './reveal';
-export { AGENDA_MAX, AGENDA_MIN, PERSONAL_MAX, PERSONAL_TEXT_MAX, agendaProblem, fallbackAgenda, learnExpectation, normalizeAgenda, setAgenda } from './agenda';
+export { AGENDA_MAX, AGENDA_MIN, PERSONAL_MAX, PERSONAL_TEXT_MAX, agendaProblem, fallbackAgenda, learnExpectation, normalizeAgenda, setAgenda, expectationEvent } from './agenda';
 export { commanderDies, DEATH_CAUSES, type DeathCause } from './death';
-export { describeOrder, overrideInput } from './describe';
+export { describeOrder, expectationInput, orderOfAction, overrideInput } from './describe';
 export { conflictOf, herAlternative, type Alternative, type Conflict, type Judged } from './conflict';
 export { afterDefy, answerOverride, argueAvailable, argueEnded, argueStarted, resolveCompromise, argueChance, overrideChance, judgedOf, overrideOpen, plainPayload, rollOverride, runOrder, wardenSource, type OverrideSource } from './override';

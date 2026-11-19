@@ -392,7 +392,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     toast: (kind: 'info' | 'warn' | 'error', text: string) => toast(kind, text),
   };
   const director = createDirector(worldDeps);
-  const dilemmas = createDilemmas({ ...worldDeps, requestVote: (a) => power.requestVote(a) });
+  const dilemmas = createDilemmas({ ...worldDeps, requestVote: (a) => power.requestVote(a), judge: { needsJudge: (a) => warden.needsJudge(a), judgeThen: (a) => warden.judgeThen(a) } });
   const loyalty = createLoyalty({ ...worldDeps, context, refreshContext: applyContext });
   const power = createPower({
     ...worldDeps, context, refreshContext: applyContext,
@@ -429,6 +429,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
   const warden = createWarden({
     ...worldDeps, context, refreshContext: applyContext,
     // P13: a rewind puts the day-start state back, then everything that hangs on the state (the scene, the combat, the modals) is picked up afresh
+    act: (a) => act(a), // P13: the judged action goes through the app's own path (votes, refusal toasts)
     startScene: (o) => beginScene(o), // P13: the ARGUE scene with the warden
     restore: (snap, expected) => {
       if (!api.restoreSnapshot(snap, expected)) return false;
@@ -510,7 +511,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       shell.open();
     },
   });
-  const expedition = createExpedition({ ...worldDeps, startCombat: (p) => api.startCombat(p), startScene: (o) => beginScene(o), requestVote: (a) => power.requestVote(a) });
+  const expedition = createExpedition({ ...worldDeps, startCombat: (p) => api.startCombat(p), startScene: (o) => beginScene(o), requestVote: (a) => power.requestVote(a), judge: { needsJudge: (a) => warden.needsJudge(a), judgeThen: (a) => warden.judgeThen(a) } });
   let expeditionScreen: ExpeditionScreen | null = null;
   /** True while the expedition screen is what the shell shows. */
   let onExpeditionScreen = false;
@@ -2132,7 +2133,8 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         const answer = await shell.modal({ title: 'ONE WAY', body: question, actions: [{ label: '[ BURN IT ]', value: 'yes' }, { label: '[ KEEP IT ]', value: 'no' }] });
         if (answer !== 'yes' || st.getActiveChat()?.chatId !== chatId) return [];
       }
-      const events = act({ type: 'activity/do', payload: req });
+      const action: Action = { type: 'activity/do', payload: req };
+      const events = warden.needsJudge(action) ? await warden.judgeThen(action) : act(action); // P13: the warden's optional judge
       if (events.some((e) => e.type === 'workshop_opened')) {
         shell.showTab('inv');
         shell.open();
@@ -2254,7 +2256,14 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       return events;
     },
 
-    setRoster: (activeIds) => act({ type: 'roster/set_active', payload: { activeIds } }),
+    setRoster: (activeIds) => {
+      const action: Action = { type: 'roster/set_active', payload: { activeIds } };
+      if (warden.needsJudge(action)) {
+        void warden.judgeThen(action); // P13: the warden's judge reads the roster first (a short model call)
+        return [];
+      }
+      return act(action);
+    },
 
     async start() {
       getSettings(st); // normalizes extension settings

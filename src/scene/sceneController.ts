@@ -9,7 +9,7 @@ import type { ProposalAnswer } from '../engine/relations/proposals';
 import type { CampaignState, PendingProposal, SceneOrigin, Unit } from '../engine/state/types';
 import { pickEmotion } from '../llm/calls/emotionPick';
 import { leakInput } from '../engine/special/frequency/leaks';
-import { overrideInput } from '../engine/warden';
+import { expectationInput, overrideInput } from '../engine/warden';
 import { extractIntents, type IntentExtractInput } from '../llm/calls/intentExtract';
 import { confidenceFloor } from '../engine/worldOptions';
 import { summarizeScene } from '../llm/calls/sceneSummary';
@@ -247,6 +247,7 @@ export function createSceneController(deps: SceneDeps): SceneController {
       ...leakInput(s0, deps.registries(), scene.participants), // P12: what the frequency caught about those present (nothing without the trait)
       ...warnedInput(s0, scene.participants), // P12: the units the commander has an open warning about
       ...overrideInput(s0, deps.registries(), scene.participants), // P13: the warden's open override, while she is present
+      ...expectationInput(s0, deps.registries(), scene.participants), // P13: her expectations, while she is present
     };
     for (const m of messages) {
       if (m.isUser) continue;
