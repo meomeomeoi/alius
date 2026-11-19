@@ -203,5 +203,13 @@ _DRAFT — author will rewrite._ Texts of a campaign that begins as if the comma
   - You sit down at the table and let the past come back: the charge, the article, the day the transport brought you here.
   - One night you lie awake and work out what your place is in this outpost: a convicted officer over soldiers who were built to be written off.
   - The weeks since have gone by with the squad. You put them in order, one by one, before the first operation begins.
-- **Open:** the intake and the exam forms keep their arrival wording ("Name for the record", "Stand on the mark"); only the cold open has a head start version.
+- **Intake with a head start** (`intake.headStartTitle` / `headStartLines`; the start keeps its own flavour; the lines the form does not replace stay):
+  - title: `FILE REVIEW`.
+  - skeleton: `ask_crime` For the file: the article under which you were convicted. `ask_name` Name on the file? `confirm_owner` Your sentence is still held by {CORPORATION}. Confirm that the record is correct.
+  - Vesper: `ask_crime` Article under which Vesper Somatics convicted you. The file wants it as you remember it. `ask_name` Name on the file. The clean kind of record. `confirm_owner` Your sentence is still held by {CORPORATION}, and so is everything you touch. Confirm.
+  - Kestrel: `ask_crime` Article under which Kestrel-Ward convicted you. The ledger wants it as you remember it. `ask_name` Name. For the ledger. `confirm_owner` Your sentence is still held by {CORPORATION}. The quota has not changed. Confirm.
+- **Exam with a head start** (skeleton `exam.headStartTitle` / `headStartLines`; `traits_note` and the dossier's `sign_prompt` need no alternative):
+  - title: `MEDICAL RECORD`.
+  - `intro`: The medic's last report is in the file. Check it against how you are now.
+  - `dictate`: {FIELD}: {VALUE}. As the last examination found.
 

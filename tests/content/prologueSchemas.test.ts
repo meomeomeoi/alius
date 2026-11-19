@@ -59,6 +59,13 @@ describe('prologues schema', () => {
     expect(PrologueStepSchema.safeParse({ ...step, headStartTitle: 'x'.repeat(61) }).success).toBe(false);
   });
 
+  it('a step may carry the lines of a head start (P11b): keyed like `lines`, each up to 200 characters', () => {
+    const step = { kind: 'paper_form', voice: 'paper', lines: { ask_name: 'Name?' }, headStartLines: { ask_name: 'Name on the file?' }, completion: 'manual', skippable: false };
+    expect(PrologueStepSchema.safeParse(step).success).toBe(true);
+    expect(PrologueStepSchema.safeParse({ ...step, headStartLines: { 'Bad Key': 'x' } }).success).toBe(false);
+    expect(PrologueStepSchema.safeParse({ ...step, headStartLines: { ask_name: 'x'.repeat(201) } }).success).toBe(false);
+  });
+
   it('order id missing from steps is rejected', () => {
     const p = base();
     p.order.push('ghost');

@@ -1739,6 +1739,8 @@ export const PrologueStepSchema = z.object({
   headStartText: z.array(str.max(400)).max(8).optional(),
   /** Named lines the screens look up by key (`ask_crime`, `dictate`...); `{KEY}` placeholders are filled by code. */
   lines: z.record(z.string().regex(ID_PATTERN), str.max(200)).optional(),
+  /** P11b: lines that replace the same keys of `lines` when the campaign starts with a head start (the others stay). */
+  headStartLines: z.record(z.string().regex(ID_PATTERN), str.max(200)).optional(),
   /** The scene goal, injected as a hard directive while the step's scene runs. */
   directive: str.max(400).optional(),
   fields: z.array(z.enum(PROLOGUE_FIELDS)).optional(),

@@ -36,7 +36,16 @@ export function fillLine(template: string, vars: Record<string, string>): string
 const paper = (title: string | undefined, meta: string, body: Node, stamp?: string): HTMLElement =>
   renderVoiceCard({ voice: VOICE_OF.intake_form, title, meta, body, level: 2, ...(stamp !== undefined ? { stamp } : {}) });
 
-const linesOf = (ctx: PrologueStepCtx): Record<string, string> => ctx.wizard.prologueStep()?.lines ?? {};
+/** The step's lines; with a head start (P11b) its `headStartLines` replace the same keys. */
+const linesOf = (ctx: PrologueStepCtx): Record<string, string> => {
+  const step = ctx.wizard.prologueStep();
+  return { ...(step?.lines ?? {}), ...(ctx.wizard.state.headStart.days > 0 ? step?.headStartLines ?? {} : {}) };
+};
+/** The step's title; with a head start (P11b) its `headStartTitle` when it has one. */
+const titleOf = (ctx: PrologueStepCtx): string | undefined => {
+  const step = ctx.wizard.prologueStep();
+  return ctx.wizard.state.headStart.days > 0 ? step?.headStartTitle ?? step?.title : step?.title;
+};
 const clerk = (text: string | undefined, cls = 'alius-clerk'): HTMLElement | null => (text ? h('p', { class: cls }, text) : null);
 
 /** The transport and the sentence read aloud. The text is complete in the DOM; typing is a CSS reveal that reduced motion leaves out. */
@@ -76,7 +85,7 @@ export function renderIntake(host: HTMLElement, ctx: PrologueStepCtx): void {
     crimeCards(wizard, reg),
     h('label', { class: 'alius-field' }, h('span', { class: 'alius-field-label alius-clerk' }, lines.ask_name ?? 'Name for the record'), name),
     clerk(lines.confirm_owner ? fillLine(lines.confirm_owner, { CORPORATION: corporation }) : undefined));
-  host.replaceChildren(paper(step?.title, 'FORM CCP-1', body));
+  host.replaceChildren(paper(titleOf(ctx), 'FORM CCP-1', body));
 }
 
 const cap = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
@@ -106,7 +115,7 @@ export function renderExam(host: HTMLElement, ctx: PrologueStepCtx): void {
     onPrefill: () => wizard.prefillFromPersona(), onRandom: () => wizard.randomCommander(),
     importStatus: wizard.state.commanderImport,
   });
-  host.replaceChildren(paper(step?.title, 'MEDICAL FILE', dictated), clerk(lines.traits_note, 'alius-clerk alius-dim') ?? h('span'), file);
+  host.replaceChildren(paper(titleOf(ctx), 'MEDICAL FILE', dictated), clerk(lines.traits_note, 'alius-clerk alius-dim') ?? h('span'), file);
 }
 
 export interface FileCtx extends PrologueStepCtx {

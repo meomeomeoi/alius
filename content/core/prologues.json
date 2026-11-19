@@ -41,6 +41,12 @@
           "ask_name": "Name for the record?",
           "confirm_owner": "Your sentence is held by {CORPORATION}. Confirm."
         },
+        "headStartTitle": "FILE REVIEW",
+        "headStartLines": {
+          "ask_crime": "For the file: the article under which you were convicted.",
+          "ask_name": "Name on the file?",
+          "confirm_owner": "Your sentence is still held by {CORPORATION}. Confirm that the record is correct."
+        },
         "fields": [
           "crime",
           "name"
@@ -56,6 +62,11 @@
           "intro": "Stand on the mark. Arms out. This will take a minute.",
           "dictate": "{FIELD}: {VALUE}. Write it down.",
           "traits_note": "Notes for the file. Two at most; the file keeps what it is given."
+        },
+        "headStartTitle": "MEDICAL RECORD",
+        "headStartLines": {
+          "intro": "The medic's last report is in the file. Check it against how you are now.",
+          "dictate": "{FIELD}: {VALUE}. As the last examination found."
         },
         "fields": [
           "body",
@@ -179,6 +190,11 @@
           "ask_crime": "Article under which Vesper Somatics has convicted you?",
           "ask_name": "Name for the record. The clean kind of record.",
           "confirm_owner": "Your sentence is held by {CORPORATION}, and so is everything you are about to touch. Confirm."
+        },
+        "headStartLines": {
+          "ask_crime": "Article under which Vesper Somatics convicted you. The file wants it as you remember it.",
+          "ask_name": "Name on the file. The clean kind of record.",
+          "confirm_owner": "Your sentence is still held by {CORPORATION}, and so is everything you touch. Confirm."
         }
       },
       "lineup": {
@@ -209,6 +225,11 @@
           "ask_crime": "Article under which Kestrel-Ward has convicted you?",
           "ask_name": "Name. For the ledger.",
           "confirm_owner": "Your sentence is held by {CORPORATION}. The quota is not negotiable. Confirm."
+        },
+        "headStartLines": {
+          "ask_crime": "Article under which Kestrel-Ward convicted you. The ledger wants it as you remember it.",
+          "ask_name": "Name. For the ledger.",
+          "confirm_owner": "Your sentence is still held by {CORPORATION}. The quota has not changed. Confirm."
         }
       },
       "lineup": {

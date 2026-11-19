@@ -148,6 +148,22 @@ describe('intake', () => {
     expect(q(m, 'article.alius-voice-paper')).not.toBeNull();
   });
 
+  it('a head start asks its own questions and keeps the start\'s flavour (P11b)', () => {
+    const intake = (reg.prologues.get('prologue_vesper')!.steps as Record<string, { lines: Record<string, string>; headStartLines: Record<string, string>; headStartTitle: string; title: string }>).intake;
+    const m = make();
+    m.wizard.setStart('start_vesper');
+    m.wizard.setHeadStart(14);
+    goTo(m, 'intake', false);
+    expect(text(m)).toContain(intake.headStartLines.ask_crime);
+    expect(text(m)).toContain(intake.headStartLines.ask_name);
+    expect(text(m)).toContain(fillLine(intake.headStartLines.confirm_owner, { CORPORATION: 'Vesper Somatics' }));
+    expect(text(m)).not.toContain(intake.lines.ask_crime);
+    expect(q(m, 'article.alius-voice-paper .alius-voice-title')!.textContent).toBe(intake.headStartTitle);
+    const plain = goTo(make(), 'intake', false);
+    expect(text(plain)).toContain(intake.lines.ask_crime);
+    expect(q(plain, 'article.alius-voice-paper .alius-voice-title')!.textContent).toBe(intake.title);
+  });
+
   it('Next follows the wizard: it needs a crime', () => {
     const m = goTo(make(), 'intake', false);
     expect(q<HTMLButtonElement>(m, 'button[data-action="next"]')!.disabled).toBe(true);
@@ -157,6 +173,20 @@ describe('intake', () => {
 });
 
 describe('exam', () => {
+  it('a head start reads the last examination back instead of staging a new one (P11b)', () => {
+    const exam = (reg.prologues.get('prologue_vesper')!.steps as Record<string, { lines: Record<string, string>; headStartLines: Record<string, string>; headStartTitle: string }>).exam;
+    const m = make();
+    m.wizard.setStart('start_vesper');
+    m.wizard.setHeadStart(7);
+    goTo(m, 'exam');
+    expect(text(m)).toContain(exam.headStartLines.intro);
+    expect(text(m)).not.toContain(exam.lines.intro);
+    expect(qa(m, '.alius-dictate').every((p) => p.textContent!.includes('As the last examination found.'))).toBe(true);
+    expect(qa(m, '.alius-dictate').some((p) => p.textContent!.includes('Write it down.'))).toBe(false);
+    expect(text(m)).toContain(exam.lines.traits_note); // no alternative needed
+    expect(q(m, 'article.alius-voice-paper .alius-voice-title')!.textContent).toBe(exam.headStartTitle);
+  });
+
   it('a body change shows the dictate line with the descriptor', () => {
     const m = goTo(make(), 'exam');
     m.wizard.setBody('strength', 1);

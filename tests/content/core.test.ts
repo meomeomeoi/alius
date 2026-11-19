@@ -894,6 +894,12 @@ describe('core content pack: P11 prologues and unlocks', () => {
       const s = steps(p);
       expect(s.cold_open.authoredText!.length, String(p.id)).toBeGreaterThan(0);
       // P11b: a head start has its own recollection instead of the transport
+      const forms = s as unknown as Record<string, { headStartLines?: Record<string, string>; headStartTitle?: string }>;
+      expect(Object.keys(forms.intake.headStartLines ?? {}).sort(), String(p.id)).toEqual(['ask_crime', 'ask_name', 'confirm_owner']);
+      expect(Object.keys(forms.exam.headStartLines ?? {}).sort(), String(p.id)).toEqual(['dictate', 'intro']);
+      expect(forms.intake.headStartLines!.confirm_owner, String(p.id)).toContain('{CORPORATION}');
+      expect(forms.exam.headStartLines!.dictate, String(p.id)).toMatch(/\{FIELD\}.*\{VALUE\}/);
+      expect(forms.intake.headStartTitle && forms.exam.headStartTitle, String(p.id)).toBeTruthy();
       const own = s.cold_open as { headStartText?: string[]; headStartTitle?: string };
       expect(own.headStartText?.length, String(p.id)).toBeGreaterThanOrEqual(2);
       expect(own.headStartTitle, String(p.id)).toBeTruthy();
