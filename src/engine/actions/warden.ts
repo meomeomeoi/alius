@@ -2,7 +2,9 @@ import { registerDayEndStep } from '../calendar';
 import { registerAction } from '../dispatch';
 import { wardenDayStep } from '../warden/dayStep';
 import { setAgenda } from '../warden/agenda';
+import { leashCommander } from '../warden/leash';
 import { answerOverride, argueStarted } from '../warden/override';
+import { setLeashEffect } from '../warden/punish';
 import { commanderDies, DEATH_CAUSES, type DeathCause } from '../warden/death';
 
 // Importing this module registers the P13 LEASHSWAP actions. `app.ts` imports it after `actions/special`.
@@ -69,3 +71,6 @@ registerAction('warden/argue_started', (draft, payload) => argueStarted(draft, (
 
 // the warden's day step runs inside `director_tick`, after the hooks registered before it
 registerDayEndStep('director_tick', wardenDayStep);
+
+// the Leash on the commander is a punishment effect: `punish.ts` calls it through this hook (no import cycle through `leash/use`)
+setLeashEffect((draft, ctx, kind) => leashCommander(draft, ctx, kind));

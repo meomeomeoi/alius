@@ -12276,11 +12276,13 @@ var SLOTS = ["morning", "afternoon", "evening"];
 var entries = (reg) => [...reg.commanderPunishments.values()];
 var effectsOf2 = (entry) => entry.effects ?? [];
 var isLeash = (entry) => effectsOf2(entry).some((e) => e.type === "leash");
+var isSuppress = (entry) => effectsOf2(entry).some((e) => e.type === "leash" && e.kind === "suppress");
 function pickPunishment(state, reg, severity) {
   const w = wardenOf(state);
+  const busy = state.scene !== void 0 || state.combat !== void 0 || state.expedition !== void 0;
   for (let sev = Math.min(4, Math.floor(severity)); sev >= 1; sev--) {
-    const hit = entries(reg).find((e) => e.severity === sev && !(isLeash(e) && (w?.leashLeft ?? 0) < 1));
-    if (hit) return String(hit.id);
+    const eligible2 = entries(reg).filter((e) => e.severity === sev && !(isLeash(e) && (w?.leashLeft ?? 0) < 1) && !(isSuppress(e) && busy));
+    if (eligible2.length > 0) return String(eligible2[(w?.punishLog.length ?? 0) % eligible2.length].id);
   }
   return null;
 }
@@ -12326,6 +12328,9 @@ function runEffect(draft, ctx2, w, fx2, events) {
   }
 }
 var leashEffect = () => [];
+function setLeashEffect(fn) {
+  leashEffect = fn;
+}
 function applyCommanderPunishment(draft, ctx2, punishmentId) {
   const w = wardenOf(draft);
   if (!w) throw new Error("Nobody holds the leash.");
@@ -14635,11 +14640,12 @@ function nextNo(draft) {
   draft.leash.seq = n;
   return n;
 }
-function bookUse(draft, ctx2, unitId, kind, context, outcome) {
+function bookUse(draft, ctx2, unitId, kind, context, outcome, cc) {
   const events = [];
   const no = nextNo(draft);
   const entry = { no, unitId, kind, day: draft.day, context, outcome };
-  if (outsideActive(draft)) entry.cc = leaderOf(draft).id;
+  if (cc !== void 0) entry.cc = cc;
+  else if (outsideActive(draft)) entry.cc = leaderOf(draft).id;
   draft.leash.log.push(entry);
   if (draft.leash.log.length > TUNING.leash.logMax) draft.leash.log.splice(0, draft.leash.log.length - TUNING.leash.logMax);
   events.push({ type: "leash_used", kind, unitId, no, outcome });
@@ -16506,10 +16512,20 @@ function rollOverride(draft, ctx2, order, opts = {}) {
     if (scale !== "major" && scale !== "defining") return null;
   }
   if (order.kind === "combat_order" && !draft.combat?.combatants.some((c) => c.unitId === source.unitId && !c.downed && c.hp > 0)) return null;
+  if (w.compelled && order.kind === "dilemma") {
+    const alt = herAlternative(draft, ctx2.registries, order, "");
+    if (alt.order === null) {
+      delete w.compelled;
+      return null;
+    }
+    return openOverride(draft, w, order, { expectationId: "", weight: 0 }, alt, opts.payload);
+  }
   const hit = conflictOf(draft, ctx2.registries, order, opts.judged);
   if (!hit) return null;
   if (!ctx2.rng.chance(overrideChance(hit.weight, source))) return null;
-  const alt = herAlternative(draft, ctx2.registries, order, hit.expectationId);
+  return openOverride(draft, w, order, hit, herAlternative(draft, ctx2.registries, order, hit.expectationId), opts.payload);
+}
+function openOverride(draft, w, order, hit, alt, payload) {
   const seq = (w.overrideSeq ?? 0) + 1;
   const context = contextOf(order);
   w.overrideSeq = seq;
@@ -16521,13 +16537,13 @@ function rollOverride(draft, ctx2, order, opts = {}) {
     weight: hit.weight,
     alternative: alt.order,
     altLabel: alt.label,
-    ...opts.payload ? { payload: opts.payload } : {},
+    ...payload ? { payload } : {},
     day: draft.day,
     slot: draft.slot,
     context,
     ...context === "combat" ? { ref: draft.combat.id } : context === "dilemma" ? { ref: draft.dilemmas.open.id } : {}
   };
-  return [{ type: "warden_override", overrideId: w.override.id, expectationId: hit.expectationId, context }, ...learnExpectation(draft, hit.expectationId)];
+  return [{ type: "warden_override", overrideId: w.override.id, expectationId: hit.expectationId, context }, ...hit.expectationId === "" ? [] : learnExpectation(draft, hit.expectationId)];
 }
 function judgedOf(payload) {
   const j = typeof payload === "object" && payload !== null ? payload.wardenJudged : void 0;
@@ -22683,6 +22699,49 @@ registerAction("night/ignore", (draft, _payload, ctx2) => {
 });
 registerAction("relations/commander_injured", (draft, _payload, ctx2) => rollNight(draft, ctx2.registries, ctx2.rng, "commander_injured"));
 
+// src/engine/warden/leash.ts
+var clamp31 = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+var SLOTS2 = ["morning", "afternoon", "evening"];
+function cosignChance(state, _reg, _targetId) {
+  const w = wardenOf(state);
+  if (!w) return 1;
+  const C = TUNING.warden.cosign;
+  const unit2 = state.squad.find((u) => u.id === w.unitId);
+  const affinity = state.relations[w.unitId]?.affinity ?? 0;
+  return clamp31(C.base + C.perSatisfaction * (w.satisfaction - 50) + C.corporate * (unit2?.values.corporate ?? 0) - C.mercy * (unit2?.values.mercy ?? 0) + C.perAffinity * affinity, C.min, C.max);
+}
+function rollCosign(draft, ctx2, targetId, kind) {
+  const w = wardenOf(draft);
+  if (!w) return { ok: true, events: [] };
+  const ok = targetId !== w.unitId && ctx2.rng.chance(cosignChance(draft, ctx2.registries, targetId));
+  return { ok, events: [{ type: ok ? "leash_cosigned" : "leash_cosign_denied", unitId: targetId, kind }] };
+}
+function logCosignDenied(draft, ctx2, unitId, kind, context) {
+  return bookUse(draft, ctx2, unitId, kind, context, "denied", "warden");
+}
+var restOfDay = (slot2) => SLOTS2.includes(slot2) ? SLOTS2.length - SLOTS2.indexOf(slot2) : 0;
+function leashCommander(draft, ctx2, kind) {
+  const w = wardenOf(draft);
+  if (!w) throw new Error("Nobody holds the leash.");
+  if (w.leashLeft < 1) throw new Error("The warden has no Leash authorization left this week.");
+  w.leashLeft -= 1;
+  const events = [{ type: "commander_leashed", kind }];
+  if (kind === "compel") w.compelled = true;
+  else {
+    events.push(...addCommanderStress(draft, TUNING.warden.leash.suppressStress, "warden_leash"));
+    const rest = restOfDay(draft.slot);
+    if (rest > 0) events.push(...consumeSlots(draft, rest, ctx2));
+  }
+  return events;
+}
+function refreshWardenLeash(draft, _reg) {
+  const w = wardenOf(draft);
+  if (!w) return [];
+  w.leashLeft = TUNING.warden.leash.weekly;
+  w.leashRefreshDay = draft.leash.refreshDay;
+  return [{ type: "warden_leash_refreshed", left: w.leashLeft }];
+}
+
 // src/engine/personal/tally.ts
 function recordTally(draft, cs) {
   const exp = draft.expedition;
@@ -22938,6 +22997,12 @@ registerAction("combat/compel", (draft, _payload, ctx2) => {
   const unit2 = target?.unitId ? draft.squad.find((u) => u.id === target.unitId) : void 0;
   if (!target || !unit2 || !isStanding(target) || !isLiving(unit2)) throw new Error("The unit that refused is no longer standing.");
   if (draft.leash.authorizationsLeft - (cs.compels?.length ?? 0) < 1) throw new Error("No Leash authorization is left this week.");
+  if (refusal2.cosignDenied) throw new Error("The warden has already denied this request.");
+  const asked = rollCosign(draft, ctx2, unit2.id, "compel");
+  if (!asked.ok) {
+    cs.lastRefusal = { ...refusal2, cosignDenied: true };
+    return [...asked.events, ...logCosignDenied(draft, ctx2, unit2.id, "compel", "combat")];
+  }
   const cost = leashCost(draft, ctx2.registries, unit2.id, "compel");
   const ectx = makeCtx(cs, draft, ctx2.registries, ctx2.rng);
   const start = cs.log.length;
@@ -22946,7 +23011,7 @@ registerAction("combat/compel", (draft, _payload, ctx2) => {
   addStress(ectx, target.cid, cost.stress, "order");
   if (forced) issueOrder(ectx, refusal2.orderId, refusal2.targetCid, { free: true, compel: true });
   ectx.emit({ type: "combat_compelled", unitId: unit2.id, cid: target.cid, forced });
-  return settle3(draft, ctx2, ectx, start);
+  return [...asked.events, ...settle3(draft, ctx2, ectx, start)];
 });
 registerAction("combat/presence", (draft, _payload, ctx2) => {
   const cs = open(draft, "combat/presence");
@@ -23176,20 +23241,33 @@ registerAction("expedition/set_recap", (draft, payload) => {
 
 // src/engine/actions/leash.ts
 registerAction("leash/seed", (draft, _payload, ctx2) => ensureLeash(draft, ctx2.registries));
-registerDayEndStep("mission_deadlines", (draft, ctx2) => [...ensureLeash(draft, ctx2.registries), ...refreshLeash(draft, ctx2.registries)]);
+registerDayEndStep("mission_deadlines", (draft, ctx2) => {
+  const events = [...ensureLeash(draft, ctx2.registries), ...refreshLeash(draft, ctx2.registries)];
+  if (events.some((e) => e.type === "leash_refreshed")) events.push(...refreshWardenLeash(draft, ctx2.registries));
+  return events;
+});
 var isObj19 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var unitIdOf = (payload, action) => {
   const id = isObj19(payload) ? payload.unitId : void 0;
   if (typeof id !== "string") throw new Error(`${action} needs { unitId }`);
   return id;
 };
+function askWarden(draft, ctx2, unitId, kind, context) {
+  if (wardenOf(draft) === null) return { denied: false, events: [] };
+  const why = checkLeash(draft, ctx2.registries, kind, unitId);
+  if (why) throw new Error(why);
+  const asked = rollCosign(draft, ctx2, unitId, kind);
+  return asked.ok ? { denied: false, events: asked.events } : { denied: true, events: [...asked.events, ...logCosignDenied(draft, ctx2, unitId, kind, context)] };
+}
 registerAction("leash/compel", (draft, payload, ctx2) => {
   const unitId = unitIdOf(payload, "leash/compel");
   const refusal2 = draft.scene?.refusals?.find((r) => r.unitId === unitId);
   if (!draft.scene?.participants.includes(unitId) || !refusal2) throw new Error("She has not refused an order in this scene: there is nothing to compel.");
+  const asked = askWarden(draft, ctx2, unitId, "compel", "scene");
+  if (asked.denied) return asked.events;
   const { forced, events } = compel(draft, ctx2, { unitId, context: "scene" });
   if (forced && draft.scene.refusals) draft.scene.refusals = draft.scene.refusals.filter((r) => r.unitId !== unitId);
-  return [...events, { type: "scene_compelled", unitId, forced }, ...forced ? actOnWarning(draft, ctx2, unitId, "leash") : []];
+  return [...asked.events, ...events, { type: "scene_compelled", unitId, forced }, ...forced ? actOnWarning(draft, ctx2, unitId, "leash") : []];
 });
 registerAction("leash/suppress", (draft, payload, ctx2) => {
   const unitId = unitIdOf(payload, "leash/suppress");
@@ -23197,12 +23275,18 @@ registerAction("leash/suppress", (draft, payload, ctx2) => {
   if (!open3 || open3.unitId !== unitId || open3.kind !== "desertion" && open3.kind !== "mutiny") {
     throw new Error("There is nothing to suppress: no desertion or attack is about to happen.");
   }
-  const events = suppress(draft, ctx2, { unitId, context: open3.kind });
+  const asked = askWarden(draft, ctx2, unitId, "suppress", open3.kind);
+  if (asked.denied) return asked.events;
+  const events = [...asked.events, ...suppress(draft, ctx2, { unitId, context: open3.kind })];
   events.push(...actOnWarning(draft, ctx2, unitId, "leash"));
   if (open3.at === "night") events.push(...consumeSlots(draft, 1, ctx2));
   return events;
 });
-registerAction("leash/terminate", (draft, payload, ctx2) => terminate(draft, ctx2, unitIdOf(payload, "leash/terminate")).events);
+registerAction("leash/terminate", (draft, payload, ctx2) => {
+  const unitId = unitIdOf(payload, "leash/terminate");
+  const asked = askWarden(draft, ctx2, unitId, "terminate", "desertion");
+  return asked.denied ? asked.events : [...asked.events, ...terminate(draft, ctx2, unitId).events];
+});
 
 // src/engine/actions/loyalty.ts
 var isObj20 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -23501,14 +23585,14 @@ registerAction("device/resolve_intercept", (draft, payload, ctx2) => {
   if (!isObj23(payload) || typeof payload.id !== "string" || typeof payload.keep !== "boolean") throw new Error("device/resolve_intercept needs { id, keep }");
   return resolveIntercept(draft, ctx2, payload.id, payload.keep);
 });
-var SLOTS2 = ["morning", "afternoon", "evening"];
+var SLOTS3 = ["morning", "afternoon", "evening"];
 registerAction("booking/cancel", (draft, payload, ctx2) => {
   if (!isObj23(payload) || typeof payload.bookingId !== "string") throw new Error("booking/cancel needs { bookingId }");
   return cancelBooking(draft, ctx2, payload.bookingId);
 });
 registerAction("booking/resolve", (draft, payload, ctx2) => {
   if (isObj23(payload) && typeof payload.bookingId === "string") return resolveConflict(draft, ctx2, { bookingId: payload.bookingId });
-  if (isObj23(payload) && payload.settle === true && typeof payload.day === "number" && SLOTS2.includes(payload.slot)) {
+  if (isObj23(payload) && payload.settle === true && typeof payload.day === "number" && SLOTS3.includes(payload.slot)) {
     return resolveConflict(draft, ctx2, { day: payload.day, slot: payload.slot, settle: true });
   }
   throw new Error("booking/resolve needs { bookingId } or { day, slot, settle: true }");
@@ -24071,6 +24155,7 @@ registerAction("warden/answer", (draft, payload, ctx2) => {
 });
 registerAction("warden/argue_started", (draft, payload) => argueStarted(draft, payload?.sceneId));
 registerDayEndStep("director_tick", wardenDayStep);
+setLeashEffect((draft, ctx2, kind) => leashCommander(draft, ctx2, kind));
 
 // src/llm/callTypes.ts
 var CALL_TYPE_IDS = [
@@ -32632,7 +32717,7 @@ function renderMemoryBlock(host, ctx2) {
 var SVG_NS2 = "http://www.w3.org/2000/svg";
 var POINTS = 48;
 var unit = (seed, i) => fnv1a(`${seed}${i}`) % 1e3 / 1e3;
-var clamp31 = (v) => Math.round(Math.min(1, Math.max(0, v)) * 1e3) / 1e3;
+var clamp32 = (v) => Math.round(Math.min(1, Math.max(0, v)) * 1e3) / 1e3;
 function tracePoints(pattern, seed, n = POINTS, flicker = false) {
   const out = [];
   const blip = fnv1a(seed) % n;
@@ -32656,7 +32741,7 @@ function tracePoints(pattern, seed, n = POINTS, flicker = false) {
         v = flicker && i === blip ? 0.9 : 0.5;
         break;
     }
-    out.push(clamp31(v));
+    out.push(clamp32(v));
   }
   return out;
 }
@@ -33170,7 +33255,7 @@ function relationLine(unit2, state, ctx2) {
   return h("p", { class: "alius-relation" }, ...joinWith(parts, " \xB7 "));
 }
 var joinWith = (items, sep) => items.flatMap((item, i) => i === 0 ? [item] : [sep, item]);
-var SLOTS3 = ["weapon", "upper", "lower"];
+var SLOTS4 = ["weapon", "upper", "lower"];
 function effectiveStats(unit2, ctx2, state) {
   try {
     return unitStats(state, ctx2.registries, unit2);
@@ -33180,7 +33265,7 @@ function effectiveStats(unit2, ctx2, state) {
 }
 function equipmentBlock(unit2, ctx2, state) {
   const reg = ctx2.registries;
-  const rows = SLOTS3.map((slot2) => {
+  const rows = SLOTS4.map((slot2) => {
     const uid = unit2.equipment[slot2];
     const inst = uid ? state.inventory.find((i) => i.uid === uid) : void 0;
     const tpl = inst ? reg.items.get(inst.itemId) : void 0;

@@ -82,20 +82,33 @@ export function rollOverride(
     if (scale !== 'major' && scale !== 'defining') return null;
   }
   if (order.kind === 'combat_order' && !draft.combat?.combatants.some((c) => c.unitId === source.unitId && !c.downed && c.hp > 0)) return null;
+  // the Leash on the commander: at a major decision the choice is hers, whatever she expects; the compulsion is spent either way
+  if (w.compelled && order.kind === 'dilemma') {
+    const alt = herAlternative(draft, ctx.registries, order, '');
+    if (alt.order === null) {
+      delete w.compelled; // nothing else to choose: the choice stands and the compulsion is spent
+      return null;
+    }
+    return openOverride(draft, w, order, { expectationId: '', weight: 0 }, alt, opts.payload);
+  }
   const hit = conflictOf(draft, ctx.registries, order, opts.judged);
   if (!hit) return null;
   if (!ctx.rng.chance(overrideChance(hit.weight, source))) return null;
-  const alt = herAlternative(draft, ctx.registries, order, hit.expectationId);
+  return openOverride(draft, w, order, hit, herAlternative(draft, ctx.registries, order, hit.expectationId), opts.payload);
+}
+
+/** Writes the open override and reports it. An override that cites no expectation (`''`, a compelled decision) teaches nothing. */
+function openOverride(draft: CampaignState, w: WardenState, order: WardenOrder, hit: { expectationId: string; weight: number }, alt: { order: WardenOrder | null; label: string }, payload?: Record<string, unknown>): EngineEvent[] {
   const seq = (w.overrideSeq ?? 0) + 1;
   const context = contextOf(order);
   w.overrideSeq = seq;
   w.overrideFired = true;
   w.override = {
     id: `ov${seq}`, order, expectationId: hit.expectationId, weight: hit.weight, alternative: alt.order, altLabel: alt.label,
-    ...(opts.payload ? { payload: opts.payload } : {}), day: draft.day, slot: draft.slot, context,
+    ...(payload ? { payload } : {}), day: draft.day, slot: draft.slot, context,
     ...(context === 'combat' ? { ref: draft.combat!.id } : context === 'dilemma' ? { ref: draft.dilemmas!.open!.id } : {}),
   };
-  return [{ type: 'warden_override', overrideId: w.override.id, expectationId: hit.expectationId, context }, ...learnExpectation(draft, hit.expectationId)];
+  return [{ type: 'warden_override', overrideId: w.override.id, expectationId: hit.expectationId, context }, ...(hit.expectationId === '' ? [] : learnExpectation(draft, hit.expectationId))];
 }
 
 /** The judge's reading carried in an action's payload (`wardenJudged`), or undefined when absent or malformed. The engine accepts it only for a personal expectation of the warden (`conflictOf`). */

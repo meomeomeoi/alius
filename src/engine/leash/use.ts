@@ -98,13 +98,15 @@ function nextNo(draft: CampaignState): number {
  * (P9): the target's Impunity record falls by `TUNING.impunity.leashEnforced`, her held defiance is dropped and a pending
  * threat on her is kept. A terminated unit is gone by now, so nothing is left to enforce on.
  */
-function bookUse(
+export function bookUse(
   draft: CampaignState, ctx: EngineCtx, unitId: string, kind: LeashKind, context: LeashLogEntry['context'], outcome: LeashLogEntry['outcome'],
+  /** P13: who is copied on the request instead of the squad leader (the warden's denial). */ cc?: string,
 ): EngineEvent[] {
   const events: EngineEvent[] = [];
   const no = nextNo(draft);
   const entry: LeashLogEntry = { no, unitId, kind, day: draft.day, context, outcome };
-  if (outsideActive(draft)) entry.cc = leaderOf(draft)!.id; // P9b: oversight copies the squad leader
+  if (cc !== undefined) entry.cc = cc;
+  else if (outsideActive(draft)) entry.cc = leaderOf(draft)!.id; // P9b: oversight copies the squad leader
   draft.leash.log.push(entry);
   if (draft.leash.log.length > TUNING.leash.logMax) draft.leash.log.splice(0, draft.leash.log.length - TUNING.leash.logMax);
   events.push({ type: 'leash_used', kind, unitId, no, outcome });

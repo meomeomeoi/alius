@@ -772,17 +772,17 @@ Rulings marked **(user)** were answered by the user on 2026-11-18. Task 18 copie
   - `refreshWardenLeash(draft, reg): EngineEvent[]`
 - Consumes: `bookUse` path (P6: a denial is a `denied` log entry and spends nothing)
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - `compel accepts only COMPLY next and clears after one`;
   - `suppress ends the day`;
   - `leashLeft refreshes with the squad Leash`.
   - `co-sign: a denial spends nothing and logs cc warden`; `a request against her is denied without a draw`; `the co-sign rate matches the formula over seeds`.
   - `no warden in service: no draw` (investigation, free and default mode).
   - `combat/compel asks once and the denial leaves the refusal standing`.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement** per the Rulings.
-- [ ] **Step 4: Run** the file, then `npm test` → PASS; seeded P6 tests unmoved.
-- [ ] **Step 5: Commit** `feat(P13): the Leash on the commander and the warden's co-sign`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement** per the Rulings.
+- [x] **Step 4: Run** the file, then `npm test` → PASS; seeded P6 tests unmoved.
+- [x] **Step 5: Commit** `feat(P13): the Leash on the commander and the warden's co-sign`
 
 ---
 

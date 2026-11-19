@@ -22,16 +22,20 @@ const SLOTS: Slot[] = ['morning', 'afternoon', 'evening'];
 const entries = (reg: Registries) => [...reg.commanderPunishments.values()];
 const effectsOf = (entry: Entry): CommanderPunishmentEffect[] => (entry.effects ?? []) as CommanderPunishmentEffect[];
 const isLeash = (entry: Entry): boolean => effectsOf(entry).some((e) => e.type === 'leash');
+const isSuppress = (entry: Entry): boolean => effectsOf(entry).some((e) => e.type === 'leash' && e.kind === 'suppress');
 
 /**
- * The punishment of this severity: the first entry in registry order. A Leash punishment needs an authorization (`leashLeft ≥ 1`); without
- * one the next lower severity is tried. Null when nothing is left. Draws nothing.
+ * The punishment of this severity: entries of one severity take turns in registry order (by the number of punishments so far). A Leash
+ * punishment needs an authorization (`leashLeft ≥ 1`); without one the next lower severity is tried. Null when nothing is left. Draws nothing.
  */
 export function pickPunishment(state: CampaignState, reg: Registries, severity: number): string | null {
   const w = wardenOf(state);
+  const busy = state.scene !== undefined || state.combat !== undefined || state.expedition !== undefined;
   for (let sev = Math.min(4, Math.floor(severity)); sev >= 1; sev--) {
-    const hit = entries(reg).find((e) => e.severity === sev && !(isLeash(e) && (w?.leashLeft ?? 0) < 1));
-    if (hit) return String(hit.id);
+    // a Leash punishment needs an authorization, and a suppression (the rest of the day) cannot be spent inside a scene, a fight or a run
+    const eligible = entries(reg).filter((e) => e.severity === sev && !(isLeash(e) && (w?.leashLeft ?? 0) < 1) && !(isSuppress(e) && busy));
+    // several entries of one severity take turns, by how many punishments there already are (no draw)
+    if (eligible.length > 0) return String(eligible[(w?.punishLog.length ?? 0) % eligible.length].id);
   }
   return null;
 }

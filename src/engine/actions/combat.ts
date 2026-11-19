@@ -6,6 +6,7 @@ import { checkOrder, issueOrder } from '../combat/orders';
 import { addStress } from '../combat/stress';
 import { isStanding, living } from '../combat/targeting';
 import { TUNING } from '../tuning';
+import { logCosignDenied, rollCosign } from '../warden/leash';
 import { plainPayload, rollOverride } from '../warden/override';
 import { isLiving } from '../economy';
 import { leashCost } from '../leash/use';
@@ -117,6 +118,13 @@ registerAction('combat/compel', (draft, _payload, ctx) => {
   const unit = target?.unitId ? draft.squad.find((u) => u.id === target.unitId) : undefined;
   if (!target || !unit || !isStanding(target) || !isLiving(unit)) throw new Error('The unit that refused is no longer standing.');
   if (draft.leash.authorizationsLeft - (cs.compels?.length ?? 0) < 1) throw new Error('No Leash authorization is left this week.');
+  // P13: the warden co-signs the request (asked once per refusal: a denial leaves the refusal standing and is not asked again)
+  if (refusal.cosignDenied) throw new Error('The warden has already denied this request.');
+  const asked = rollCosign(draft, ctx, unit.id, 'compel');
+  if (!asked.ok) {
+    cs.lastRefusal = { ...refusal, cosignDenied: true };
+    return [...asked.events, ...logCosignDenied(draft, ctx, unit.id, 'compel', 'combat')];
+  }
   const cost = leashCost(draft, ctx.registries, unit.id, 'compel');
   const ectx = makeCtx(cs, draft, ctx.registries, ctx.rng);
   const start = cs.log.length;
@@ -125,7 +133,7 @@ registerAction('combat/compel', (draft, _payload, ctx) => {
   addStress(ectx, target.cid, cost.stress, 'order');
   if (forced) issueOrder(ectx, refusal.orderId, refusal.targetCid, { free: true, compel: true });
   ectx.emit({ type: 'combat_compelled', unitId: unit.id, cid: target.cid, forced });
-  return settle(draft, ctx, ectx, start);
+  return [...asked.events, ...settle(draft, ctx, ectx, start)];
 });
 
 /**

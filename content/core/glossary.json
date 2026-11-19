@@ -1943,7 +1943,29 @@
     "short": "What the warden does to the commander after open defiance: a reprimand, lost privileges, confinement, humiliation, pain or the Leash.",
     "long": "After a defiance the warden may punish. The harder the defiance, the harder the punishment: it follows how much open disobedience has built up. A punishment deters (it lowers defiance) and satisfies her. The Leash on the commander is the hardest and needs one of her weekly authorizations.",
     "see": [
-      "warden"
+      "warden",
+      "commander_leash"
+    ]
+  },
+  {
+    "id": "commander_leash",
+    "term": "The Leash on the commander",
+    "short": "The warden can use the controller on the commander: compel forces the next choice, suppress takes the rest of the day.",
+    "long": "The warden has a few Leash authorizations a week from oversight, refilled with the squad's. Compel means the next override can only be answered COMPLY, and a major decision becomes hers. Suppress takes the rest of the day and leaves the commander shaken. Using one is her hardest punishment.",
+    "see": [
+      "warden",
+      "commander_punishment",
+      "leash_cosign"
+    ]
+  },
+  {
+    "id": "leash_cosign",
+    "term": "Co-sign",
+    "short": "A Leash request on a soldier goes through the warden first: she co-signs or denies it.",
+    "long": "While a warden holds the leash, every request to compel, suppress or terminate a soldier needs her co-sign. A denial spends no authorization, is logged with her name and leaves the situation as it was. Her answer depends on how satisfied she is and on her own mind; a request against the warden herself is always denied.",
+    "see": [
+      "warden",
+      "commander_leash"
     ]
   }
 ]
