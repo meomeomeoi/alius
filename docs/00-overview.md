@@ -146,6 +146,7 @@ Source layout (TypeScript, same toolchain style as Mundi-Expanded):
 | `rumor_retell` | mechanic | A spreading fact → one line in the voice of whoever tells it (P3b, rumor mode `model` only; a digit makes it fall back to the plain text) | 200 |
 | `warden_agenda` | mechanic | The warden's card, values and the corporation → 3–5 expectations from the closed kinds, a weight each as `low` / `medium` / `high`, `personal` text ≤ 80 characters (P13; the engine validates every kind, normalizes the weights and decides which is known; only while the agenda is the fallback) | 800 |
 | `warden_judge` | mechanic | A `personal` expectation of hers and an order in words → `none` / `minor` / `major` (P13; behind the setting `wardenJudge`, off by default; never in combat; a failed call dispatches without it) | 120 |
+| `head_start_recap` | mechanic | The moments of a head start (per soldier: kind and description) and the commander's profile → one or two sentences per moment and a squad paragraph; JSON, validated pair by pair, template fallback (P11b; site `setup.head_start_recap`, REROLL before the first scene) | 900 |
 | `epilogue` | main | The campaign's public chronicle lines, the world dossier and the cause → the epilogue of a closed campaign, at most 2400 characters (P13; without a model the lines are joined under a fixed heading) | 700 |
 | *(scene dialogue)* | main | Normal ST generation with injected context | — (ST settings) |
 
@@ -165,7 +166,7 @@ Before each main-model generation the adapter injects one compact block:
 
 Character card text itself remains SillyTavern's job.
 
-### 5.4 Implemented engine interfaces (P0–P6, P7a, P7, P8, P9, P9d, P9b, P9e, P10, P11, P9c, P3b, P10b, P12, P13, P14)
+### 5.4 Implemented engine interfaces (P0–P6, P7a, P7, P8, P9, P9d, P9b, P9e, P10, P11, P9c, P3b, P10b, P12, P13, P14, P11b)
 
 Later packages build on these; change them only together with the owning spec.
 
@@ -310,6 +311,11 @@ Later packages build on these; change them only together with the owning spec.
 | `registerGenerationSite(decl)`, `generationSite`, `generationSites`, `SiteDecl` (`id`, `callType`, `surface`, `reroll`, `record`, `glossary`, `label`, `held?`), `fullOpenRecords(state)` (`src/llm/sites.ts`), `describeFailure(view)` (`src/llm/describe.ts`) | P14 | Sites are declarations (data only); a new call type or flavor kind registers its site in the same change (`tests/llm/siteRegistry.test.ts`). Record mode `full` (chip, SYS, badge, hub line), `quiet` (SYS only), `none`. |
 | `GenerationRecord`, `CampaignState.generations?: { seq, records }`, `openRecords`, `recordFor`, `TUNING.generation`, actions `generation/failed`, `generation/close`, `generation/expire`, day-end step `generation_sweep`, events `generation_failed` / `generation_closed` / `generation_expired`, actions `scene/late_summary`, `dilemma/reword`, `demand/reword`, `bonds/reword_rule`, `campaign/epilogue { replace }` | P14 | Pure bookkeeping, no rng; allowed in combat, in a run and on a closed campaign. |
 | `drawGenerationChip`, `drawReroll`, `openRetryMenu`, `chipsFor`, `GenerationUi`, `drawGenerationChips`, `drawSiteReroll`, `drawRecordChip`, `runPending` (`src/ui/generation/`), `renderGenerationsSection`, `generationBadge`, `registerGenerationProviders`, `StAdapter.generateMain / generateWithProfile → GenAnswer { text, finishReason? }` with `signal`, `compileRefusals`, registry `llmRefusals`, settings `llmTimeoutMs` / `autoRetry` | P14 | The UI side (one optional `generation` in a screen's context), SYS › GENERATIONS and the adapter's stop reason. |
+| `SetupResult.headStart { days, newArrivals, dynamicUnderway? }`, `HeadStartDays`, `headStartDays`, `isNewArrival`, `CampaignState.headStart?: HeadStartState`, `TUNING.headStart`, registry `headStartMoments` (10; `sign`, `requires`, `eventDelta`, `importance`, `tags`, `fallback`; `probe` is reserved for P15) | P11b | The head start: the squad has known the commander for 7 / 14 / 30 days (acquaintance only; world time does not move). Absent or `0` = byte-identical to a build without it. |
+| `applyHeadStart`, `developRelation`, `impressionOf`, `crimeChance`, `rollCrime`, `pickMoments`, `applyMoment`, `capTrust`, `headStartTransition`, `headStartHash` / `headStartRaw`, `HEAD_START_SKIPPED_KINDS`, `evaluateAutomatic(…, { allow })`, `reactsToCrime` | P11b | The build step and its pieces (`src/engine/headStart/`): pure, no rng draw (chances hash `<seed>\|<unitId>\|head_start\|<key>`), read moments by `sign` / `requires` / `tags`. `enterStep` skips scene, expedition and guided_slot steps while `headStart` is set. |
+| action `head_start/recap { units, chronicle, source }`, `recapCommitted`, `recapPairs`, events `head_start_applied` / `head_start_moment`, rules `head_start_moment_1…5`, `Digest.knownDays` | P11b | The recap of the first weeks: the first application writes facts and one chronicle entry, later ones replace the texts until the first scene starts. |
+| `createHeadStart` / `app.headStart`, `HeadStartController` (`onLoaded`, `onSceneOpened`, `onSceneClosed`, `rerollRecap`, `rerollState`), `headStartOpening`, directive `head_start:known`, `head_start_recap` call (`sanitizeRecap`, `fallbackRecap`), site `setup.head_start_recap`, `renderHeadStartSection`, `renderNewArrivals`, `Wizard.setHeadStart` / `toggleNewArrival`, `renderRecapCard`, `OPERATIONS_LABEL`, `HubCtx.headStartCard`, provider `glossary:head_start` | P11b | The model-facing and UI layers. |
+| `MemoryConfig.factTextMax`, `factTextMax(state)`, `OWN_MEMORY_FIELDS`, `validateIntents` option `factTextMax`, glossary `fact_length` | P11b | The longest text a fact keeps (100–400, default 200): the player's own memory setting, kept across presets. |
 
 Events emitted by the day-end pipeline: `director_requested` (P5), `leash_refreshed`, `loyalty_sign`, `desertion_attempt`, `mutiny_started`, `dilemma_requested`, `arc_unlocked` (P6), `mission_failed` / `mission_expired` / `clock_filled` / `leash_changed` (P5), `day_end_step`, `upkeep`, `quiet_night_started` / `morning_lost` (P7), `supply_shortage`, `trust_penalty_event`, `unit_recovered`, `facility_upgraded`, `slot_advanced`, `night_started`, `day_started`, `autosave` (the app flushes the saver on it).
 
@@ -343,6 +349,7 @@ Campaign {
   dilemmas?: { seq, lastDay?, lastDefiningDay?, definingBeats?[], recent?[] /* 3 */, open?: DilemmaState /* { id, templateId, scale, context, status: requested|presented, attempts, units, threadId?, beatId, title?, setup?, options?, source? } */ }   // P6
   expedition?: ExpeditionState   // P5: open run (map, party, formation, carried supplies, pending node, unbanked loot, log, queued relation hints)
   lastExpedition?: ExpeditionReport   // P5: the after-action report (outcome, log, loot, rewards, injuries, deaths, recap?)
+  headStart?: { days: 7|14|30, units: [{ unitId, impression, moments[] }], recap?: { source, chronicleId } }   // P11b: absent = no head start; world time never moves
   generations?: { seq, records: GenerationRecord[] }   // P14: failed model calls that wait for a retry (≤ 20; { id g<n>, siteId, key, reason, detail ≤ 160, attempts, day, slot, at, budgetMult, fallbackApplied?, status, expiredWhy?, quiet? }); no prompt, no model text; absent in old saves = none
   combat?: CombatState        // P4: only combat and rng change while it runs
   lastCombat?: CombatResult   // P4: for P5's recap and debrief
@@ -473,7 +480,7 @@ Defaults in code: Desire/Bond defects **off**, show raw values **off**, sprite m
 | 20 | P12 | Special traits: Secret Frequency, Bloom-induced Paranoia, Web of Debts | P5, P6, P7, P9 | implemented |
 | 21 | P13 | LEASHSWAP mode | P0, P5, P6, P7, P9, P9b, P9d, P11, P12 | implemented |
 | 22 | P14 | Generation envelope (retry of failed generations, refusal detection, reroll; every call site wrapped) — last package of 0.1.0 | P0, every package with a call site | implemented |
-| 23 | P11b | Head start: begin as if the commander had been at the base for a week / two weeks / a month (acquaintance only: `metDay` shifted, first impressions developed, crime knowledge, a model-written recap of the first weeks as facts and a chronicle entry; world time does not move) | P1, P3, P3b, P7, P8, P11, P14 | spec |
+| 23 | P11b | Head start: begin as if the commander had been at the base for a week / two weeks / a month (acquaintance only: `metDay` shifted, first impressions developed, crime knowledge, a model-written recap of the first weeks as facts and a chronicle entry; world time does not move) | P1, P3, P3b, P7, P8, P11, P14 | implemented |
 | 24 | P14b | Character development: development layer over card and profile, appraisal of events from her viewpoint (with misreading), rule accumulators + model review bounded by card anchors, quiet development moments, habits and skills, the "since joining" prompt block | P1, P3, P3b, P7, P8, P9d, P14 | spec |
 
 The table is in implementation order: take the first row whose status is not `implemented`. Why this order, and the session chunks for P7a onward: `ROADMAP-next.md`.

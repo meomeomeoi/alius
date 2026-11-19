@@ -21,6 +21,7 @@ P0–P6 are done. These packages bring the base to a proper starting level befor
 | 6 | **P12** Special traits: Secret Frequency, Bloom-induced Paranoia, Web of Debts | Stand on P7's trait framework, P9's leverage/punishments and P5's night events and threads. |
 | 7 | **P13** LEASHSWAP mode (**done**) | Mirrors P9's punishments onto the commander, reuses P12's suspicion clocks, sits above P9b's hierarchy, uses P9d's lead and content categories; needs P11's intake to reveal the warden. |
 | 8 | **P14** Generation envelope (**done**) | Every model call through one envelope: failure reasons, automatic retries, refusal patterns, a record and a chip where it failed, RETRY and REROLL; the last package of 0.1.0. Wraps the call sites of every package above, so it comes after them. |
+| 9 | **P11b** Head start (**done**) | The campaign may begin as if the commander had been at the base for a week / two weeks / a month: acquaintance only, a model-written recap of the first weeks as remembered facts; needs P11, P14, P3b, P7, P8. |
 
 The prologue was item 4 in the original list and the visuals item 5. They swap because a diegetic intake made of paper forms and a dossier needs the `paper` voice to exist first; otherwise the prologue gets built twice.
 

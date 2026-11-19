@@ -749,7 +749,7 @@ After every unit:
   - `docs/CONTENT.md`: the `headStartMoments` registry (fields, the `probe` tag reserved for P15).
   - `docs/content/prologue.md`: a "Head start" section with the draft moment texts, fallback lines, the opening line and the day-1 label (`AUTHOR TO WRITE`).
   - `docs/ROADMAP-next.md`: P11b marked done.
-- [ ] **Step 1: Write** the docs. The manual test covers, in SillyTavern:
+- [x] **Step 1: Write** the docs. The manual test covers, in SillyTavern:
   - each of the four options;
   - a new arrival among known soldiers;
   - the THE FIRST WEEKS card with a model answer, a refusal (chip, RETRY) and REROLL;
@@ -758,7 +758,7 @@ After every unit:
   - the MEMORY view and LOG after it;
   - the prologue done with every tab open;
   - LEASHSWAP with a head start.
-- [ ] **Step 2: Run** `npm test` → PASS; record the final file and test counts in the spec.
-- [ ] **Step 3: Commit** `docs(P11b): implemented as, overview, hand-offs, manual test`
+- [x] **Step 2: Run** `npm test` → PASS; record the final file and test counts in the spec.
+- [x] **Step 3: Commit** `docs(P11b): implemented as, overview, hand-offs, manual test`
 
 **Chunk (b) ends here.**

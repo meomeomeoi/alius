@@ -883,3 +883,17 @@ The warden's content. Every text is a draft (`AUTHOR TO WRITE`) and gives the co
 - **Adding a language:** add entries with its `lang` and phrases a model of that language uses to decline (the usual "as an AI language model", "I cannot help with that", "this goes against my guidelines" in the target language, plus an opening apology as a `json` pattern). Keep `any` entries specific; test them against the recorded failures in `tests/fixtures/llm/failures.ts` (a refusal, a cut JSON, a thinking-only answer, an empty answer, an invalid object and an in-character no) and against ordinary in-character lines.
 - **The 8 shipped entries are a draft** (AUTHOR TO EXTEND).
 
+## Head start moments (P11b)
+
+`headStartMoments` (core: `content/core/headStartMoments.json`): the moments a soldier remembers from the days before day 1 when a campaign starts with a head start. Every text is a draft (`AUTHOR TO WRITE`) and gives the commander no pronoun (lore §0).
+
+```
+{ id, sign: 'positive' | 'negative' | 'any', requires?: { values?: { <axis>: '+' | '-' }, knowsCrime?: boolean, minDays?: 7 | 14 | 30 },
+  eventDelta: { type, severity, actor: 'commander' | 'unit' }, importance 1–5, tags?, fallback ≤ 240 (may hold {name}), description }
+```
+- The engine picks by **`sign`** (her first impression's sign; a neutral impression takes any), **`requires`** and **`tags`**, never by id; the count per soldier is 1 (N = 7), 1–2 (N = 14) or 2 (N = 30), ordered by a hash.
+- **`eventDelta.type`** must be an `eventDeltas` id (checked at load); the row runs through the full modifier chain and writes only the three axis deltas and a history line (no stress, no transition).
+- **`probe`** is a reserved tag: an entry tagged `probe` is never picked by P11b (P15 §15.14 lifts that for a dynamic already underway).
+- **`fallback`** is the template line when no model writes one (`{name}` is her name); **`description`** is what the model is told the moment is.
+- Memory: `head_start_moment_1…5` in `memoryRules` (one per importance) turn the moment's text into a fact (`audience: unit`). The glossary has `head_start`, `new_arrival`, `head_start_recap` and `fact_length`.
+

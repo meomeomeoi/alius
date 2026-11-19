@@ -178,3 +178,25 @@ _DRAFT — author will rewrite._ Diegetic `terminal`-voice lines shown once when
 ## Tutorial content (`missionTemplates.json`, `dilemmaTemplates.json`)
 
 _DRAFT — author will rewrite._ See `tutorial_patrol` and `evt_tutorial_choice` in the core pack; the event brief is the authored directive the mechanic model writes the dilemma from.
+
+## Head start (P11b)
+
+_DRAFT — author will rewrite._ Texts of a campaign that begins as if the commander had already been at the base. Everything is `AUTHOR TO WRITE`; none gives the commander a pronoun.
+
+- **Day-1 label** (status header): `DAY 1 OF OPERATIONS`.
+- **Opening line** (first scene, directive `head_start:known`): `The squad has known the commander for N days: no introductions, no first meeting.` and, for new arrivals, `<Names> arrived today and meet the commander for the first time.`
+- **Pending card line:** `The first weeks are being written.`
+- **Chronicle fallback:** `AUTHOR TO WRITE: The squad had {days} days with the commander before operations began.`
+- **Moments** (`headStartMoments`: description / fallback):
+  - `shared_meal` (+): a late meal at the long table, eaten in near silence.
+  - `first_argument` (−): an argument in the corridor over a small order.
+  - `sparring_bout` (any): a sparring bout the commander only watched.
+  - `night_talk` (+, from 7 days): a night she told the commander something she had told no one.
+  - `commander_mistake` (−): a mistake that put her in a worse spot than the plan promised.
+  - `covered_for_her` (+, from 14 days): a day the commander took the blame for something that was hers.
+  - `cold_shoulder` (−): a request she brought and was turned away from without a reason.
+  - `learned_the_crime` (needs the crime known): the day she learned what the commander was convicted of.
+  - `small_favour` (+): a ration or a spare part that cost the commander something to give.
+  - `rule_reminder` (any): a rule set in the first days and kept when it was inconvenient.
+- **Open:** the cold open and the intake of the prologue still tell an arrival; with a head start in prologue mode they clash with it.
+
