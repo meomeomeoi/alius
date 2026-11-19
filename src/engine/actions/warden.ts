@@ -1,4 +1,6 @@
+import { registerDayEndStep } from '../calendar';
 import { registerAction } from '../dispatch';
+import { wardenDayStep } from '../warden/dayStep';
 import { setAgenda } from '../warden/agenda';
 import { answerOverride, argueStarted } from '../warden/override';
 import { commanderDies, DEATH_CAUSES, type DeathCause } from '../warden/death';
@@ -64,3 +66,6 @@ registerAction('warden/answer', (draft, payload, ctx) => {
 
 /** The ARGUE scene with her alone has opened: the override remembers it (`{ sceneId }`). Refused while compelled or after she has heard the commander out. */
 registerAction('warden/argue_started', (draft, payload) => argueStarted(draft, (payload as { sceneId?: unknown } | null | undefined)?.sceneId));
+
+// the warden's day step runs inside `director_tick`, after the hooks registered before it
+registerDayEndStep('director_tick', wardenDayStep);

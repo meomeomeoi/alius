@@ -16,7 +16,7 @@ import '../../src/engine/actions/expedition';
 import '../../src/engine/actions/base';
 
 let reg: Registries;
-beforeAll(async () => { reg = await loadCore(); });
+beforeAll(async () => { reg = await loadCore(); quiet = { ...reg, commanderPunishments: new Map() }; });
 
 const ex = (kind: ExpectationKind, weight: number): Expectation => ({ id: `e_${kind}`, kind, weight, source: 'values', known: false });
 const ID = { ann: 'unit_ann', bea: 'unit_bea', cat: 'unit_cat', dee: 'unit_dee' };
@@ -36,7 +36,9 @@ const run = (s: CampaignState, a: Action) => dispatch(s, a, reg);
 const err = (events: EngineEvent[]) => events.find((e) => e.type === 'error') as { message?: string } | undefined;
 const ok = (r: { state: CampaignState; events: EngineEvent[] }) => { expect(err(r.events)).toBeUndefined(); return r; };
 const train = (companionId = ID.ann): Action => ({ type: 'activity/do', payload: { activityId: 'train', companionId } });
-const answer = (s: CampaignState, a: 'comply' | 'argue' | 'defy') => run(s, { type: 'warden/answer', payload: { overrideId: overrideOpen(s)?.id ?? 'none', answer: a } });
+/** The registries with no commander punishment, so a DEFY's own numbers can be read without the punishment roll that follows it. */
+let quiet: Registries;
+const answer = (s: CampaignState, a: 'comply' | 'argue' | 'defy', r: Registries = reg) => dispatch(s, { type: 'warden/answer', payload: { overrideId: overrideOpen(s)?.id ?? 'none', answer: a } }, r);
 
 describe('overrideChance', () => {
   it('matches the formula and caps at 0.9', () => {
@@ -160,7 +162,7 @@ describe('answers', () => {
 
   it('DEFY runs the order once: defiance +round(30w), satisfaction −round(20w)', () => {
     const s = overridden();
-    const r = ok(answer(s, 'defy'));
+    const r = ok(answer(s, 'defy', quiet));
     const w = wardenOf(r.state)!;
     expect(w.defiance).toBe(15); // 30 × 0.5
     expect(w.satisfaction).toBe(50); // 60 − 20 × 0.5
@@ -328,7 +330,7 @@ describe('combat', () => {
       const s = inCombat(seed);
       const hit = run(s, order);
       if (!overrideOpen(hit.state)) continue;
-      const r = ok(answer(hit.state, 'defy'));
+      const r = ok(answer(hit.state, 'defy', quiet));
       expect(wardenOf(r.state)!.defiance).toBe(15);
       expect(r.state.combat!.cp).toBeLessThan(3);
       return;

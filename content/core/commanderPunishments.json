@@ -1,0 +1,117 @@
+[
+  {
+    "id": "reprimand",
+    "label": "Reprimand",
+    "description": "AUTHOR TO WRITE: A formal dressing-down on the record. It costs pride and a little composure.",
+    "severity": 1,
+    "defianceDelta": -5,
+    "satisfactionDelta": 4,
+    "effects": [
+      {
+        "type": "commander_stress",
+        "amount": 3
+      }
+    ]
+  },
+  {
+    "id": "privilege_revoked",
+    "label": "Privileges revoked",
+    "description": "AUTHOR TO WRITE: No company beyond the work and no messages, for a day.",
+    "severity": 2,
+    "defianceDelta": -8,
+    "satisfactionDelta": 6,
+    "effects": [
+      {
+        "type": "restrict",
+        "what": "no_leave",
+        "days": 1
+      },
+      {
+        "type": "restrict",
+        "what": "no_dms",
+        "days": 1
+      }
+    ]
+  },
+  {
+    "id": "confinement",
+    "label": "Confinement",
+    "description": "AUTHOR TO WRITE: The commander is held in quarters and loses part of the day.",
+    "severity": 3,
+    "defianceDelta": -12,
+    "satisfactionDelta": 8,
+    "effects": [
+      {
+        "type": "lose_slots",
+        "min": 1,
+        "max": 2
+      }
+    ]
+  },
+  {
+    "id": "public_humiliation",
+    "label": "Public humiliation",
+    "description": "AUTHOR TO WRITE: A reprimand in front of the squad. It costs standing with every soldier.",
+    "severity": 3,
+    "defianceDelta": -12,
+    "satisfactionDelta": 8,
+    "effects": [
+      {
+        "type": "squad_record",
+        "amount": 6
+      },
+      {
+        "type": "commander_stress",
+        "amount": 6
+      }
+    ]
+  },
+  {
+    "id": "pain_burst",
+    "label": "Pain burst",
+    "description": "AUTHOR TO WRITE: A burst through the implant. It hurts, and a weak body may not take it well.",
+    "severity": 3,
+    "defianceDelta": -15,
+    "satisfactionDelta": 10,
+    "effects": [
+      {
+        "type": "commander_stress",
+        "amount": 15
+      },
+      {
+        "type": "injury",
+        "chance": 0.35,
+        "perEndurance": 0.05,
+        "days": 1
+      }
+    ]
+  },
+  {
+    "id": "leash_compel",
+    "label": "Compel",
+    "description": "AUTHOR TO WRITE: A neural compliance burst: the commander's next choice is not the commander's own.",
+    "severity": 4,
+    "defianceDelta": -20,
+    "satisfactionDelta": 12,
+    "effects": [
+      {
+        "type": "leash",
+        "kind": "compel"
+      }
+    ]
+  },
+  {
+    "id": "leash_suppress",
+    "label": "Suppress",
+    "description": "AUTHOR TO WRITE: A full lockdown of the commander for the rest of the day.",
+    "severity": 4,
+    "defianceDelta": -25,
+    "satisfactionDelta": 12,
+    "effects": [
+      {
+        "type": "leash",
+        "kind": "suppress"
+      }
+    ]
+  }
+]

@@ -11,6 +11,7 @@ import { TUNING } from '../tuning';
 import { addFact } from '../memory';
 import { learnExpectation } from './agenda';
 import { conflictOf, herAlternative, type Judged } from './conflict';
+import { punishRoll } from './punish';
 import { overrideOpen, wardenOf, type Expectation, type OpenOverride, type WardenOrder, type WardenState } from './state';
 
 export { overrideOpen };
@@ -156,9 +157,9 @@ export function argueChance(state: CampaignState, _reg: Registries): number {
 
 const addTo = (w: WardenState, key: 'satisfaction' | 'defiance', n: number): void => { w[key] = clamp(w[key] + n, 0, 100); };
 
-/** The punishment roll and the escalation that follow a DEFY (Tasks 9 and 11 fill this in). */
-export function afterDefy(_draft: CampaignState, _ctx: EngineCtx, _weight: number): EngineEvent[] {
-  return [];
+/** The punishment roll and the escalation that follow a DEFY (the escalation is Task 11's). */
+export function afterDefy(draft: CampaignState, ctx: EngineCtx, weight: number): EngineEvent[] {
+  return punishRoll(draft, ctx, weight);
 }
 
 function relationEvent(draft: CampaignState, ctx: EngineCtx, type: 'warden_complied' | 'warden_defied', severity: 'minor' | 'moderate' | 'major', evidence: string): EngineEvent[] {

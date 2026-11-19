@@ -197,6 +197,19 @@ export function summarizeWorldEffect(effect: WorldEffect, reg: Registries): stri
 
 const WHO: Record<string, string> = { selected: 'Chosen units', companion: 'Companion', roster: 'Roster' };
 
+/** One line for an effect of a commander punishment (P13). Numbers are the content's own, so they are shown. */
+export function summarizeCommanderPunishmentEffect(fx: Loose): string | null {
+  switch (fx.type) {
+    case 'commander_stress': return `Commander stress ${signed(fx.amount)}`;
+    case 'restrict': return fx.what === 'no_dms' ? `No messages for ${num(fx.days)} day(s)` : `No leave for ${num(fx.days)} day(s)`;
+    case 'lose_slots': return fx.min === fx.max ? `Loses ${num(fx.min)} slot(s)` : `Loses ${num(fx.min)} to ${num(fx.max)} slots (not past the evening)`;
+    case 'squad_record': return `Every other soldier's impunity record ${signed(fx.amount)}`;
+    case 'injury': return `Injury chance ${Math.round(Number(fx.chance) * 100)}%, less ${Math.round(Number(fx.perEndurance) * 100)}% per point of endurance`;
+    case 'leash': return fx.kind === 'suppress' ? 'The Leash on the commander: suppress (the rest of the day)' : 'The Leash on the commander: compel (the next choice is forced)';
+    default: return null;
+  }
+}
+
 /** `emit_event` has no line (`null`). `focus` lets a `when.focus` show its label instead of its id. */
 export function summarizeActivityEffect(
   effect: ActivityEffect,
@@ -354,6 +367,12 @@ function effectsFor(registry: RegistryName, entry: Entry, reg: Registries, data?
       return summarizeDispositionLevel(entry);
     case 'punishments':
       return summarizePunishment(entry);
+    case 'commanderPunishments':
+      return compact([
+        ...list(e.effects).map((x) => summarizeCommanderPunishmentEffect(x as Loose)),
+        isNum(e.defianceDelta) && e.defianceDelta !== 0 ? `Defiance ${signed(e.defianceDelta)}` : null,
+        isNum(e.satisfactionDelta) && e.satisfactionDelta !== 0 ? `Her satisfaction ${signed(e.satisfactionDelta)}` : null,
+      ]);
     case 'reputations':
       return summarizeReputation(entry);
     case 'commanderTraits':

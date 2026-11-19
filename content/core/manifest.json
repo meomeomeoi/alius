@@ -70,6 +70,7 @@
     "frequencyFragments": "frequencyFragments.json",
     "premonitionLines": "premonitionLines.json",
     "debtHandlers": "debtHandlers.json",
-    "wardenExpectations": "wardenExpectations.json"
+    "wardenExpectations": "wardenExpectations.json",
+    "commanderPunishments": "commanderPunishments.json"
   }
 }

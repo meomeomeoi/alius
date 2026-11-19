@@ -1889,6 +1889,37 @@ export const OutsideFeatSchema = BaseEntrySchema.extend({
 registrySchemas.outsideFeats = OutsideFeatSchema;
 
 /**
+ * P13: what a commander punishment does (a closed vocabulary the engine reads by `type`, never by the punishment's id): stress on the
+ * commander, a restriction (`no_leave`: no activity with a companion but talk and medbay; `no_dms`: no messages), lost slots (at most to the
+ * evening), a rise of every other unit's Impunity record, an injury chance that falls with endurance, or the Leash on the commander.
+ */
+export const CommanderPunishmentEffectSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('commander_stress'), amount: int.min(1).max(100) }).strict(),
+  z.object({ type: z.literal('restrict'), what: z.enum(['no_leave', 'no_dms']), days: int.min(1).max(7) }).strict(),
+  z.object({ type: z.literal('lose_slots'), min: int.min(1).max(3), max: int.min(1).max(3) }).strict(),
+  z.object({ type: z.literal('squad_record'), amount: int.min(1).max(30) }).strict(),
+  z.object({ type: z.literal('injury'), chance: num.min(0).max(1), perEndurance: num.min(0).max(1), days: int.min(1).max(14) }).strict(),
+  z.object({ type: z.literal('leash'), kind: z.enum(['compel', 'suppress']) }).strict(),
+]);
+export type CommanderPunishmentEffect = z.infer<typeof CommanderPunishmentEffectSchema>;
+
+/** P13: what the warden may do to the commander (the mirror of `punishments`). `defianceDelta` deters (≤ 0); `satisfactionDelta` pleases her (≥ 0). */
+export const CommanderPunishmentSchema = BaseEntrySchema.extend({
+  label: str.max(40),
+  description: str.max(DESCRIPTION_MAX),
+  severity: int.min(1).max(4),
+  defianceDelta: int.max(0),
+  satisfactionDelta: int.min(0),
+  effects: z.array(CommanderPunishmentEffectSchema).min(1),
+}).strict().superRefine((p, ctx) => {
+  p.effects.forEach((e, i) => {
+    if (e.type === 'lose_slots' && e.min > e.max) ctx.addIssue({ code: 'custom', path: ['effects', i], message: 'min is at most max' });
+  });
+});
+export type CommanderPunishmentEntry = z.infer<typeof CommanderPunishmentSchema>;
+registrySchemas.commanderPunishments = CommanderPunishmentSchema;
+
+/**
  * P13: one kind of thing a warden can expect (the personal kind has no entry: its text is the warden's own). `weight` is the default
  * (`low` 1, `medium` 2, `high` 3); `values` says how a unit's own values pull her toward it (`Σ values[axis] × her value`), and
  * `corporate` adds her corporate value. Code reads the entry by its `kind`, never by id.
@@ -2166,7 +2197,7 @@ export const DESCRIBED_REGISTRIES = [
   // P12 (the handler is shown to the player; the fragment and premonition wording is hidden)
   'debtHandlers',
   // P13
-  'wardenExpectations',
+  'wardenExpectations', 'commanderPunishments',
 ] as const satisfies readonly RegistryName[];
 
 /** Adds the optional `description` rule to a registry schema without changing its shape. */

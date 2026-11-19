@@ -1936,5 +1936,14 @@
       "warden_expectation",
       "warden"
     ]
+  },
+  {
+    "id": "commander_punishment",
+    "term": "Commander punishment",
+    "short": "What the warden does to the commander after open defiance: a reprimand, lost privileges, confinement, humiliation, pain or the Leash.",
+    "long": "After a defiance the warden may punish. The harder the defiance, the harder the punishment: it follows how much open disobedience has built up. A punishment deters (it lowers defiance) and satisfies her. The Leash on the commander is the hardest and needs one of her weekly authorizations.",
+    "see": [
+      "warden"
+    ]
   }
 ]

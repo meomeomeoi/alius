@@ -742,7 +742,7 @@ Rulings marked **(user)** were answered by the user on 2026-11-18. Task 18 copie
   - `CommanderRestriction = { what: 'no_leave' | 'no_dms'; untilDay: number }`, `PunishRecord = { id; day; punishmentId }`
 - Consumes: `addCommanderStress` (P12), `consumeSlots` (P2), `addRecord` (P9), `commander/injure` logic (`injureCommander`, P2), the Leash on the commander (Task 10: until then a `leash` effect is skipped)
 
-- [ ] **Step 1: Write the failing tests:** one per effect type, plus:
+- [x] **Step 1: Write the failing tests:** one per effect type, plus:
   - `privilege_revoked blocks a companion activity and DMs for a day`, while `talk` and `medbay` stay open;
   - `confinement loses 1–2 slots but never past the evening`;
   - `public_humiliation raises every other unit's record`;
@@ -750,10 +750,10 @@ Rulings marked **(user)** were answered by the user on 2026-11-18. Task 18 copie
   - `punishRoll severity follows defiance bands`, and `a Leash punishment without leashLeft drops a severity`;
   - `no mode: no restriction is read`;
   - `the schema refuses an unknown effect type`.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement** per the Rulings.
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P13): commander punishments and restrictions`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement** per the Rulings.
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P13): commander punishments and restrictions`
 
 ---
 

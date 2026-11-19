@@ -10,6 +10,7 @@ import { stampBehaviours } from '../dmBehaviours';
 import { writeDoorNote } from '../notes';
 import { countSent, dmMode, pushMessage, rollInitiative } from '../dms';
 import { isLiving } from '../economy';
+import { commanderRestriction } from '../warden/punish';
 import { takeKeptEdit } from '../personal/intercept';
 import { rollNight } from '../night';
 import { applyRelationDelta } from '../relationGain';
@@ -69,6 +70,8 @@ registerAction('dm/send', (draft, payload) => {
   if (!isObj(payload)) throw new Error('dm/send needs { unitId, text }');
   const unit = namedUnit(draft, payload.unitId);
   const text = textOf(payload.text);
+  const revoked = commanderRestriction(draft, 'dm'); // P13: the warden revoked the commander's messages
+  if (revoked) throw new Error(revoked);
   // P9c: a DM the commander kept after a level-4 edit says who edited it (the edit is used once)
   const editedBy = payload.interceptId === undefined ? undefined : takeKeptEdit(draft, String(payload.interceptId), unit.id);
   pushMessage(draft, unit.id, { from: 'commander', text, day: draft.day, slot: draft.slot, read: true, ...(editedBy !== undefined ? { editedBy } : {}) });

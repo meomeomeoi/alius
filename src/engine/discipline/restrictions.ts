@@ -6,7 +6,7 @@ import { disciplineOf } from './record';
 export type RestrictionUse = 'scene' | 'companion' | 'expedition';
 
 /** Activities a unit without leave may still be the companion of: they are not leave. */
-const NOT_LEAVE: readonly string[] = ['talk', 'medbay'];
+export const NOT_LEAVE: readonly string[] = ['talk', 'medbay'];
 
 const nameOf = (state: CampaignState, id: string): string => state.squad.find((u) => u.id === id)?.displayName ?? id;
 
