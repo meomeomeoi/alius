@@ -838,6 +838,14 @@ export interface LedgerEntry {
   delta: number;
 }
 
+/** P11b: the head start of a campaign. `units` lists every soldier who knew the commander before day 1 (new arrivals are not listed). */
+export interface HeadStartState {
+  days: 7 | 14 | 30;
+  units: Array<{ unitId: string; impression: 'positive' | 'negative' | 'neutral'; moments: string[] }>;
+  /** Set by the first `head_start/recap`; a reroll replaces the texts in place. */
+  recap?: { source: 'model' | 'fallback'; chronicleId: string };
+}
+
 export interface CampaignState {
   version: number;
   rng: RngState;
@@ -978,6 +986,8 @@ export interface CampaignState {
    * nothing is locked and no step is shown. Written by `buildCampaign`, moved only by the `onboarding/*` actions.
    */
   onboarding?: OnboardingState;
+  /** P11b: set only when the campaign began with a head start (`days > 0`); absent = 0. World time never moves: `day` is still 1 at the start. */
+  headStart?: HeadStartState;
   /**
    * P11: only the director's hints are stored; prologue, spine and unit objectives are read from where they already
    * live (`objectiveList`). Absent in an older save.

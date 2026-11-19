@@ -329,7 +329,7 @@ After every unit:
     }
     ```
 
-- [ ] **Step 1: Write the failing tests** (reuse the `unit()` / `result()` helpers of `tests/engine/setup.test.ts`; copy them, do not import a test file)
+- [x] **Step 1: Write the failing tests** (reuse the `unit()` / `result()` helpers of `tests/engine/setup.test.ts`; copy them, do not import a test file)
   - Validation:
     - `days must be 0, 7, 14 or 30` (`days: 10` → one line);
     - `a new arrival must be a chosen card`;
@@ -347,12 +347,12 @@ After every unit:
     - `minDaysInState counts the skipped days` (`meets` with `minDaysInState: 3`, day 1, `stateSince −2` → true);
     - `commander/seed leaves a set metDay alone` (`metDay −29` survives `commander/seed`).
   - Leave the `discipline` undo test alone: it restores `sinceFrom` as stored.
-- [ ] **Step 2: Run** `npx vitest run tests/engine/headStart/setup.test.ts` → FAIL.
-- [ ] **Step 3: Implement.**
+- [x] **Step 2: Run** `npx vitest run tests/engine/headStart/setup.test.ts` → FAIL.
+- [x] **Step 3: Implement.**
   - In the unit loop: `initialRelation({ …, ...(days > 0 && !isNewArrival(r, u.cardRef) ? { since: 1 - days } : {}) })`. With days 0 nothing changes, so the state stays byte-identical.
   - `headStart` is not stored yet (Task 5 stores it).
-- [ ] **Step 4: Run** the file, then `npm test` → PASS (every seeded and setup test unchanged).
-- [ ] **Step 5: Commit** `feat(P11b): head start option, validation and shifted acquaintance`
+- [x] **Step 4: Run** the file, then `npm test` → PASS (every seeded and setup test unchanged).
+- [x] **Step 5: Commit** `feat(P11b): head start option, validation and shifted acquaintance`
 
 ---
 

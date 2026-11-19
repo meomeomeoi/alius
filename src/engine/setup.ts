@@ -80,7 +80,20 @@ export interface SetupResult {
    * (`corporateWardenPick`).
    */
   mode?: { kind: 'leashswap'; deathRule: DeathRule; warden: { by: 'player'; index: number } | { by: 'corporation' } };
+  /**
+   * P11b: the campaign begins as if the commander had been at the base for `days`. `newArrivals` are `cardRef`s of chosen units who
+   * arrive today. `dynamicUnderway` is P15's: type-checked here, otherwise unused. Absent or `days: 0` = today's behaviour.
+   */
+  headStart?: { days: HeadStartDays; newArrivals: string[]; dynamicUnderway?: boolean | string[] };
 }
+
+export type HeadStartDays = 0 | 7 | 14 | 30;
+
+/** P11b: the days of the head start; 0 when the option is absent. */
+export const headStartDays = (r: Pick<SetupResult, 'headStart'>): HeadStartDays => r.headStart?.days ?? 0;
+
+/** P11b: whether the unit with this card arrives today (it takes no part in the head start). */
+export const isNewArrival = (r: Pick<SetupResult, 'headStart'>, cardRef: string): boolean => r.headStart?.newArrivals.includes(cardRef) === true;
 
 interface Effect { type?: unknown; [k: string]: unknown }
 const effectsOf = (part: unknown): Effect[] => {
@@ -199,6 +212,32 @@ export function validateUnitProfile(
   return out;
 }
 
+/** P11b: one readable line per problem of the head start option. */
+function validateHeadStart(h: NonNullable<SetupResult['headStart']>, units: UnitSetup[]): string[] {
+  if (!(TUNING.headStart.days as readonly number[]).includes(h.days)) return ['The head start must be 0, 7, 14 or 30 days'];
+  const out: string[] = [];
+  const cards = new Set(units.map((u) => u.cardRef));
+  const arrivals = Array.isArray(h.newArrivals) ? h.newArrivals : [];
+  if (!Array.isArray(h.newArrivals)) out.push('New arrivals must be a list of chosen cards');
+  const seen = new Set<string>();
+  for (const ref of arrivals) {
+    if (!cards.has(ref)) out.push(`New arrival "${String(ref)}" is not one of the chosen units`);
+    else if (seen.has(ref)) out.push(`New arrival "${ref}" is listed more than once`);
+    seen.add(ref);
+  }
+  if (h.days === 0) {
+    if (arrivals.length > 0) out.push('A new arrival needs a head start: without one every soldier arrives today');
+  } else if (!units.some((u) => !seen.has(u.cardRef))) {
+    out.push('A head start needs at least one soldier who already knows the commander');
+  }
+  const d = h.dynamicUnderway;
+  if (d !== undefined && typeof d !== 'boolean') {
+    if (!Array.isArray(d)) out.push('dynamicUnderway must be true, false or a list of chosen cards');
+    else for (const ref of d) if (!cards.has(ref)) out.push(`dynamicUnderway names "${String(ref)}", which is not one of the chosen units`);
+  }
+  return out;
+}
+
 /** One readable message per problem; an empty list means the setup can be built. */
 export function validateSetup(r: SetupResult, reg: Registries, opts: { desireBondDefects: boolean }): string[] {
   const out: string[] = [];
@@ -241,6 +280,7 @@ export function validateSetup(r: SetupResult, reg: Registries, opts: { desireBon
       } else if (m.warden?.by !== 'corporation') out.push('The warden must be picked by the player or assigned by the corporation');
     }
   }
+  if (r.headStart !== undefined) out.push(...validateHeadStart(r.headStart, units));
   if (units.length > SETUP_LIMITS.maxUnits) out.push(`At most ${SETUP_LIMITS.maxUnits} units (has ${units.length})`);
   const cards = new Set<string>();
   units.forEach((u, i) => {
@@ -389,6 +429,7 @@ export function buildCampaign(
   const knowsCrime = crimeKnownByDefault(crime, start);
 
   const used = new Set<string>();
+  const days = headStartDays(r);
   for (const u of r.units) {
     const unit = makeNamedUnit(u, reg, used);
     const id = unit.id;
@@ -399,6 +440,7 @@ export function buildCampaign(
       affinity: u.baseline.affinity,
       attraction: u.baseline.attraction,
       knowsCrime,
+      ...(days > 0 && !isNewArrival(r, u.cardRef) ? { since: 1 - days } : {}), // P11b: she has known the commander for `days`
     });
     applyDispositionStart(state, reg, unit, state.relations[id]); // P8: before the first impression, which re-bases the band
     applyFirstImpression(state, reg, unit, state.relations[id]);

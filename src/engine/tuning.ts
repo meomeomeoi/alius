@@ -538,4 +538,17 @@ export const TUNING = Object.freeze({
     }),
     remote: Object.freeze({ quota: 0.6, obey: 0.4, missionDays: 7 }),
   }),
+  /** P11b: the head start (draft balance values). `k` scales the first impression's change, `crime` is the chance she knows the crime, by days. */
+  headStart: Object.freeze({
+    days: Object.freeze([0, 7, 14, 30] as const),
+    k: Object.freeze({ 7: 0.5, 14: 0.8, 30: 1.2 }),
+    spread: 3,
+    trustCap: 55,
+    crime: Object.freeze({ 7: 0.25, 14: 0.4, 30: 0.6 }),
+    crimeReactMult: 1.5,
+    crimeCap: 0.9,
+    moments: Object.freeze({ 7: Object.freeze([1, 1] as const), 14: Object.freeze([1, 2] as const), 30: Object.freeze([2, 2] as const) }),
+    textMax: 240,
+    chronicleMax: 600,
+  }),
 });

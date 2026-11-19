@@ -674,6 +674,19 @@ var TUNING = Object.freeze({
       newWardenSatisfaction: 40
     }),
     remote: Object.freeze({ quota: 0.6, obey: 0.4, missionDays: 7 })
+  }),
+  /** P11b: the head start (draft balance values). `k` scales the first impression's change, `crime` is the chance she knows the crime, by days. */
+  headStart: Object.freeze({
+    days: Object.freeze([0, 7, 14, 30]),
+    k: Object.freeze({ 7: 0.5, 14: 0.8, 30: 1.2 }),
+    spread: 3,
+    trustCap: 55,
+    crime: Object.freeze({ 7: 0.25, 14: 0.4, 30: 0.6 }),
+    crimeReactMult: 1.5,
+    crimeCap: 0.9,
+    moments: Object.freeze({ 7: Object.freeze([1, 1]), 14: Object.freeze([1, 2]), 30: Object.freeze([2, 2]) }),
+    textMax: 240,
+    chronicleMax: 600
   })
 });
 
@@ -21101,6 +21114,8 @@ function normalizeTag(s) {
   const t = s.toLowerCase().replace(/[^a-z0-9 '_-]/g, "").replace(/\s+/g, " ").trim().slice(0, SETUP_LIMITS.tagLength).trim();
   return t === "" ? null : t;
 }
+var headStartDays = (r) => r.headStart?.days ?? 0;
+var isNewArrival = (r, cardRef) => r.headStart?.newArrivals.includes(cardRef) === true;
 var effectsOf3 = (part) => {
   const list5 = part?.effects;
   return Array.isArray(list5) ? list5.filter((e) => typeof e === "object" && e !== null) : [];
@@ -21193,6 +21208,30 @@ function validateUnitProfile(u, label2, reg, opts) {
   validateUnit(u, label2, reg, opts, out, false);
   return out;
 }
+function validateHeadStart(h2, units) {
+  if (!TUNING.headStart.days.includes(h2.days)) return ["The head start must be 0, 7, 14 or 30 days"];
+  const out = [];
+  const cards = new Set(units.map((u) => u.cardRef));
+  const arrivals = Array.isArray(h2.newArrivals) ? h2.newArrivals : [];
+  if (!Array.isArray(h2.newArrivals)) out.push("New arrivals must be a list of chosen cards");
+  const seen = /* @__PURE__ */ new Set();
+  for (const ref of arrivals) {
+    if (!cards.has(ref)) out.push(`New arrival "${String(ref)}" is not one of the chosen units`);
+    else if (seen.has(ref)) out.push(`New arrival "${ref}" is listed more than once`);
+    seen.add(ref);
+  }
+  if (h2.days === 0) {
+    if (arrivals.length > 0) out.push("A new arrival needs a head start: without one every soldier arrives today");
+  } else if (!units.some((u) => !seen.has(u.cardRef))) {
+    out.push("A head start needs at least one soldier who already knows the commander");
+  }
+  const d = h2.dynamicUnderway;
+  if (d !== void 0 && typeof d !== "boolean") {
+    if (!Array.isArray(d)) out.push("dynamicUnderway must be true, false or a list of chosen cards");
+    else for (const ref of d) if (!cards.has(ref)) out.push(`dynamicUnderway names "${String(ref)}", which is not one of the chosen units`);
+  }
+  return out;
+}
 function validateSetup(r, reg, opts) {
   const out = [];
   const name = typeof r.commanderName === "string" ? r.commanderName.trim() : "";
@@ -21232,6 +21271,7 @@ function validateSetup(r, reg, opts) {
       } else if (m.warden?.by !== "corporation") out.push("The warden must be picked by the player or assigned by the corporation");
     }
   }
+  if (r.headStart !== void 0) out.push(...validateHeadStart(r.headStart, units));
   if (units.length > SETUP_LIMITS.maxUnits) out.push(`At most ${SETUP_LIMITS.maxUnits} units (has ${units.length})`);
   const cards = /* @__PURE__ */ new Set();
   units.forEach((u, i) => {
@@ -21352,6 +21392,7 @@ function buildCampaign(r, reg, opts) {
   syncTraitSettings(state, reg);
   const knowsCrime = crimeKnownByDefault(crime, start);
   const used = /* @__PURE__ */ new Set();
+  const days = headStartDays(r);
   for (const u of r.units) {
     const unit2 = makeNamedUnit(u, reg, used);
     const id = unit2.id;
@@ -21360,7 +21401,9 @@ function buildCampaign(r, reg, opts) {
       trust: u.baseline.trust + startingTrustAdjust(crimeEffects, u.values),
       affinity: u.baseline.affinity,
       attraction: u.baseline.attraction,
-      knowsCrime
+      knowsCrime,
+      ...days > 0 && !isNewArrival(r, u.cardRef) ? { since: 1 - days } : {}
+      // P11b: she has known the commander for `days`
     });
     applyDispositionStart(state, reg, unit2, state.relations[id]);
     applyFirstImpression(state, reg, unit2, state.relations[id]);
