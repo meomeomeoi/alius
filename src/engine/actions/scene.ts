@@ -16,6 +16,7 @@ import { addChronicle, addFact, applyCompaction, nextId, revealCrime } from '../
 import { recordSceneRange } from '../memory/scenes';
 import { applyIntents } from '../relations/apply';
 import { showMoments, stampMoments, unstampMoments } from '../development/moments';
+import { countCompanions } from '../development/habits';
 import { restrictionReason, settleDefiance } from '../discipline';
 import { installRelationAccounting } from '../relations/gain';
 import { evaluateAutomatic, pushHistory } from '../relations/graph';
@@ -161,6 +162,7 @@ registerAction('scene/end', (draft, payload, ctx) => {
   const reg = ctx.registries;
   const events = [];
   showMoments(draft, scene.id); // P14b: what this scene carried has been shown; it joins her dossier view
+  events.push(...countCompanions(draft, reg, scene.participants)); // P14b: who spent the scene together
   const summary = isObj(payload) && isObj(payload.summary) ? payload.summary : undefined;
 
   const names = scene.participants.map((id) => draft.squad.find((u) => u.id === id)?.displayName ?? id).join(', ');

@@ -2217,5 +2217,10 @@
     "see": [
       "character_development"
     ]
+  },
+  {
+    "id": "setting_habit_wording",
+    "term": "Habit wording",
+    "short": "The mechanic model words each habit a soldier forms in one call; off, the registry's text stands."
   }
 ]

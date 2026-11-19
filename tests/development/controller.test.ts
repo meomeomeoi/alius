@@ -176,3 +176,41 @@ describe('the scene directive', () => {
     expect(directives.size).toBe(0);
   });
 });
+
+describe('habit wording', () => {
+  const formed = (s: CampaignState) => {
+    ensureDevelopment(s.squad.find((u) => u.id === ANN)!).facts = [{ id: 'df7', text: 'AUTHOR TO WRITE: Ann drills every day now.', kind: 'habit', day: 2, source: 'habit' }];
+    return s;
+  };
+  const event = [{ type: 'habit_formed', unitId: ANN, habitId: 'drills_daily', factId: 'df7' }];
+  const flush = () => new Promise((r) => setTimeout(r, 0));
+
+  it('is off by default: no model call, the registry text stands', async () => {
+    const { h, ctl } = rig(formed(world([])));
+    ctl.onEvents(event);
+    await flush();
+    expect(h.st.calls).toHaveLength(0);
+  });
+
+  it('with the setting on, one call rewords the fact without marking it edited', async () => {
+    const { h, ctl } = rig(formed(world([])), { habitWording: true });
+    h.st.mainReplies = [JSON.stringify({ text: 'She drills at dawn, every dawn.' })];
+    ctl.onEvents(event);
+    await flush();
+    await flush();
+    const f = ann(h).facts[0];
+    expect(f.text).toBe('She drills at dawn, every dawn.');
+    expect(f.edited).toBeUndefined();
+    expect(records(h)).toEqual([]);
+  });
+
+  it('a failed wording leaves the registry text and writes nothing', async () => {
+    const { h, ctl } = rig(formed(world([])), { habitWording: true });
+    h.st.mainReplies = [JSON.stringify({ text: 'She drills 8 times.' })];
+    ctl.onEvents(event);
+    await flush();
+    await flush();
+    expect(ann(h).facts[0].text).toContain('AUTHOR TO WRITE');
+    expect(records(h)).toEqual([]);
+  });
+});

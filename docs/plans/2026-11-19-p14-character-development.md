@@ -787,7 +787,7 @@ interface DevMoment {
   - `checkHabits(draft, reg, unitId): EngineEvent[]` (forms each habit whose counter reached its threshold);
   - `habitEffect(state, reg, unitId, activityId): Array<{ type: 'unit_stress' | 'unit_xp'; amount: number }>`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - `off counts nothing`.
   - `a habit forms at the threshold`: 8 `train` activities with ANN as companion → `drills_daily` in `habits`, a `DevFact` with the fallback text (`{name}` filled), `habit_formed`.
   - `grunts form habits but never appraise`.
@@ -797,10 +797,10 @@ interface DevMoment {
   - `a habit tagged with a disabled category never forms`.
   - `no rng draw`.
   - `site registry passes` for the flavor kind.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P14b): counters, habits and habit effects`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P14b): counters, habits and habit effects`
 
 ---
 

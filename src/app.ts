@@ -791,6 +791,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
       power.onEvents(events); // P9b: a grudge that starts or ends changes the scene directives
       special.onEvents(events); // P12: a new frequency fragment is worded
       warden.onEvents(events); // P13: a new warden is asked for her agenda
+      development.onEvents(events); // P14b: a formed habit may be worded
       onboarding.onEvents(events); // the line-up and first words: the cap question and the step completing when the scene closes (P11)
       if (has('campaign_ended')) {
         shell.showScreen('hub'); // P13: the END screen takes the hub's place; nothing else of the campaign can change now

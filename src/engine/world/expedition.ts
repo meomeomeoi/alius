@@ -19,6 +19,7 @@ import { commanderProfile } from '../commander/profile';
 import { enqueueNight } from '../night';
 import { releaseBreakdowns } from '../progression';
 import { applyIntents } from '../relations';
+import { countRun } from '../development/habits';
 import { bankLoot, rollLoot } from '../items';
 import { afterFailedRoute, resolveRoute, routeChoices, routeScope, type RouteChoice, type RoutePick } from '../commander/checks';
 import type { RouteCheck } from '../../content/schemas';
@@ -464,6 +465,7 @@ export function endExpedition(draft: CampaignState, ctx: EngineCtx, outcome: Exp
   if (mission && mission.danger >= TUNING.bonds.want.relief.expeditionMinDanger) {
     for (const id of exp.party) events.push(...relieveWant(draft, id, TUNING.bonds.want.relief.expeditionDay, 'expedition'));
   }
+  events.push(...countRun(draft, reg, exp.party, exp.regionId)); // P14b: the ground and the company she keeps
   const released = releaseBreakdowns(draft, exp.party, reg);
   events.push(...released);
   for (const e of released.filter((x) => x.type === 'breakdown_released')) { // (a smother hold the release started is not another breakdown)

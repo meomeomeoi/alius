@@ -52,6 +52,8 @@ export interface AliusSettings {
   dmEditWording: boolean;
   /** P12: the mechanic model words each Secret Frequency fragment as a broken thought (off: the template fragment). */
   fragmentWording: boolean;
+  /** P14b: the mechanic model words a formed habit (off: the registry text). */
+  habitWording: boolean;
   /** P13: the mechanic model judges whether an order cuts across a `personal` expectation of the warden (off: only the engine's rules). */
   wardenJudge: boolean;
   /** P4: a lost combat can be retried (rewinds exactly, never recorded in memory). */
@@ -148,6 +150,7 @@ export const DEFAULT_SETTINGS: AliusSettings = {
   ballotWording: false,
   dmEditWording: true,
   fragmentWording: true,
+  habitWording: false,
   wardenJudge: false,
   easyRetry: false,
   enemyFlavor: false,
@@ -202,6 +205,7 @@ const fieldSchemas = {
   ballotWording: z.boolean(),
   dmEditWording: z.boolean(),
   fragmentWording: z.boolean(),
+  habitWording: z.boolean(),
   wardenJudge: z.boolean(),
   easyRetry: z.boolean(),
   enemyFlavor: z.boolean(),

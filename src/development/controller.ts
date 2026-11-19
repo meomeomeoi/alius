@@ -5,16 +5,20 @@ import { eligibleAxes, fallbackReview, reviewCommitted, reviewDue, undoReview, u
 import { developmentOf } from '../engine/development/state';
 import type { CampaignState, Unit } from '../engine/state/types';
 import { TUNING } from '../engine/tuning';
+import { sanitizeHabitWording, type HabitFlavorInput } from '../llm/calls/flavor';
 import { readReview, type DevelopmentReviewInput } from '../llm/calls/developmentReview';
 import type { DevelopmentDeps } from './deps';
 
 export type { DevelopmentDeps } from './deps';
 
 const SITE = 'development.review';
+const HABIT_SITE = 'flavor.habit';
 
 export interface DevelopmentController {
   /** After a settled dispatch: asks for one due review (one call per run; the next unit waits for the next run). */
   run(): Promise<void>;
+  /** The events of a settled dispatch: a formed habit is worded by the model when the setting is on. */
+  onEvents(events: Array<{ type: string; [k: string]: unknown }>): void;
   /** A scene opened: each participant whose quiet change the scene carries gets a one-time cue. */
   onSceneOpened(): void;
   onSceneClosed(): void;
@@ -101,6 +105,25 @@ export function createDevelopment(deps: DevelopmentDeps): DevelopmentController 
     },
   });
 
+  // the `flavor.habit` site (key `<unit>:<fact>`): the registry text is already in place, so a failure leaves it and writes nothing
+  deps.generations.bind<HabitFlavorInput, string>(HABIT_SITE, {
+    build(key) {
+      const [unitId, factId] = key.split(':');
+      const s = state();
+      const unit = s?.squad.find((u) => u.id === unitId);
+      const fact = unit?.development?.facts.find((f) => f.id === factId);
+      if (!unit || !fact || fact.source !== 'habit' || fact.edited === true) return { expired: 'The line is not hers to reword.' };
+      return { kind: 'habit', name: unit.displayName, text: fact.text };
+    },
+    parse: (raw) => sanitizeHabitWording(raw),
+    apply(key, text) {
+      const [unitId, factId] = key.split(':');
+      const err = deps.app.dispatch({ type: 'development/edit_fact', payload: { unitId, factId, text, byModel: true } }, { expectChatId: chatId() }).find((e) => e.type === 'error');
+      if (!err) return 'ok';
+      return err.code === 'chat_changed' ? { stale: true } : { rejected: String(err.message ?? 'The line was refused.') };
+    },
+  });
+
   async function run(): Promise<void> {
     const s = state();
     if (!s || flight) return;
@@ -114,6 +137,10 @@ export function createDevelopment(deps: DevelopmentDeps): DevelopmentController 
 
   return {
     run,
+    onEvents(events) {
+      if (!deps.settings().habitWording) return;
+      for (const e of events) if (e.type === 'habit_formed') void deps.generations.generate(HABIT_SITE, `${String(e.unitId)}:${String(e.factId)}`).catch(() => {});
+    },
     onSceneOpened() {
       const s = state();
       if (!s?.scene) return;
