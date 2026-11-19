@@ -39274,6 +39274,39 @@ function registerDisciplineProviders() {
   registerAnalyzeProvider("reputations", reputationProvider);
 }
 
+// src/analysis/providers/generation.ts
+var WHAT = {
+  refused: "The model declined to answer. It is never retried on its own (it would refuse again): pick the other model in the menu or change what is asked.",
+  truncated: "The answer ran past its token budget and was cut off. Automatic retries raise the budget by half each time; the menu can raise it further.",
+  timeout: "The model did not answer in time. A slow model needs a longer timeout in SYS \u203A Generation, not a bigger budget.",
+  network: "The connection failed before an answer came.",
+  invalid_output: "An answer came but did not fit the form the game needs, so nothing was applied.",
+  empty: "Nothing came back at all.",
+  no_profile: "No mechanic profile is selected, so the call was not made."
+};
+var find = (env, id) => typeof id === "string" ? env.state?.generations?.records.find((r) => r.id === id) : void 0;
+function recordProvider(subject, env) {
+  const rec = find(env, subject.data.recordId);
+  if (!rec) return null;
+  const tries = `${rec.attempts} ${rec.attempts === 1 ? "try" : "tries"}`;
+  if (rec.status === "expired") {
+    return { lines: [`The moment passed: ${rec.expiredWhy ?? "it can no longer be retried"}.`, `It had ${tries}. It stays listed for the rest of the day and the next, then goes.`] };
+  }
+  const lines = [WHAT[rec.reason] ?? "The call failed.", `${tries} so far, the last with a budget of \xD7${rec.budgetMult}.`];
+  if (rec.fallbackApplied) lines.push("A plain version already stands in its place; a later answer replaces it where that is allowed.");
+  lines.push("RETRY runs it again; the menu offers a bigger budget, the other model or giving it up.");
+  return { lines };
+}
+function rerollProvider(subject) {
+  const reason = typeof subject.data.reason === "string" ? subject.data.reason.slice(0, 200) : null;
+  if (reason !== null) return { lines: [`Not available now: ${reason}`] };
+  return { lines: ["Asks the model again for the result that was already given, and replaces it."] };
+}
+function registerGenerationProviders() {
+  registerAnalyzeProvider("glossary:generation_failed", recordProvider);
+  registerAnalyzeProvider("glossary:generation_reroll", rerollProvider, { stateless: true });
+}
+
 // src/analysis/providers/immersion.ts
 var PATTERN_WORDS = {
   steady: "a steady line: nothing out of the ordinary.",
@@ -40382,6 +40415,7 @@ function registerCoreProviders() {
   registerPowerProviders();
   registerPersonalProviders();
   registerImmersionProviders();
+  registerGenerationProviders();
   registerMemoryProviders();
   registerSpecialProviders();
   registerWardenProviders();

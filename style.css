@@ -3283,6 +3283,39 @@ button.alius-node.alius-reachable { opacity: 1; cursor: pointer; border: 1px das
 .alius-intrigue-why { max-width: 22ch; font-size: 0.85em; }
 .alius-warden-investigation .alius-warden-body p { margin: 0.2rem 0; }
 
+/* Generation (P14): the failure chip and REROLL. Palette variables only (same look as the content violation mark; readable mode safe). */
+#alius-shell .alius-genfail {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin: 2px 0 2px 8px;
+  padding: 0 6px;
+  border: var(--alius-line);
+  color: var(--alius-accent);
+}
+
+#alius-shell .alius-genfail .alius-btn {
+  padding: 0 4px;
+}
+
+#alius-shell .alius-genfail-expired {
+  opacity: 0.75;
+}
+
+#alius-shell .alius-reroll[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+#alius-shell .alius-genmenu-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin: 4px 0;
+}
+
 /* P6: oversight request form, loyalty and arc controls, dilemma and confrontation panels. Palette variables only. */
 #alius-shell .alius-form {
   font-family: monospace;

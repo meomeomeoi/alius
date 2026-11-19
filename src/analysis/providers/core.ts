@@ -11,6 +11,7 @@ import type { CampaignState, Relation, Unit } from '../../engine/state/types';
 import { humanize, signed, summarizeCombatEffect } from '../effects';
 import { registerCommanderProviders } from './commander';
 import { registerDisciplineProviders } from './discipline';
+import { registerGenerationProviders } from './generation';
 import { registerImmersionProviders } from './immersion';
 import { registerBondsProviders } from './bonds';
 import { registerMemoryProviders } from './memory';
@@ -327,6 +328,7 @@ export function registerCoreProviders(): void {
   registerPowerProviders(); // P9b
   registerPersonalProviders(); // P9c
   registerImmersionProviders(); // P10b
+  registerGenerationProviders(); // P14
   registerMemoryProviders(); // P3b
   registerSpecialProviders(); // P12
   registerWardenProviders(); // P13

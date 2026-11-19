@@ -620,7 +620,7 @@ Each task moves the caller code into the site's handlers, deletes the async wrap
   - `openRetryMenu(modal: ShellApi['modal'], opts: { hasMechanic: boolean; hasFallback: boolean }): Promise<{ budgetMult: number; profile?: 'main' | 'mechanic' } | 'drop' | 'fallback' | null>`
   - `chipsFor(state, surface: GenerationSurface, filter?: (r) => boolean): GenerationRecord[]`: open and expired records of `full` sites of that surface
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - `chip text per reason` (`describeFailure` through the chip);
   - `expired chip shows the why and only DROP`;
   - `REROLL disabled is aria-disabled, analyzable, explains`;
@@ -628,10 +628,10 @@ Each task moves the caller code into the site's handlers, deletes the async wrap
   - `every chip and button carries data-analyze`;
   - `the glossary ids exist and no entry gives the commander a pronoun`;
   - `a hidden sentinel never renders` (records built with labels from every site, checked against `tests/fixtures/analyze/hidden.ts`).
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.** Glossary text is AUTHOR TO WRITE in tone, with the facts of the Rulings.
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P14): failure chip, retry menu and reroll button`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.** Glossary text is AUTHOR TO WRITE in tone, with the facts of the Rulings.
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P14): failure chip, retry menu and reroll button`
 
 ---
 
