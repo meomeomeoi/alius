@@ -6192,7 +6192,9 @@ var REGISTRY_NAMES = [
   "wardenExpectations",
   "commanderPunishments",
   // P14
-  "llmRefusals"
+  "llmRefusals",
+  // P11b
+  "headStartMoments"
 ];
 var PackManifestSchema = external_exports.object({
   id: external_exports.string().min(1),
@@ -6884,7 +6886,10 @@ var RESERVED_EVENT_TYPES = [
   "scene_summarized_late",
   "dilemma_reworded",
   "demand_reworded",
-  "rule_reworded"
+  "rule_reworded",
+  // P11b
+  "head_start_applied",
+  "head_start_moment"
 ];
 var slotEnum = external_exports.enum(["morning", "afternoon", "evening", "night"]);
 var socialStat = external_exports.enum(["authority", "insight", "empathy", "cunning"]);
@@ -8334,8 +8339,24 @@ var DESCRIBED_REGISTRIES = [
   "debtHandlers",
   // P13
   "wardenExpectations",
-  "commanderPunishments"
+  "commanderPunishments",
+  // P11b
+  "headStartMoments"
 ];
+var HeadStartMomentSchema = BaseEntrySchema.extend({
+  sign: external_exports.enum(["positive", "negative", "any"]),
+  requires: external_exports.object({
+    values: external_exports.record(external_exports.enum(["+", "-"])).optional(),
+    knowsCrime: external_exports.boolean().optional(),
+    minDays: external_exports.union([external_exports.literal(7), external_exports.literal(14), external_exports.literal(30)]).optional()
+  }).strict().optional(),
+  eventDelta: external_exports.object({ type: str, severity: severityEnum, actor: external_exports.enum(["commander", "unit"]) }).strict(),
+  importance: int.min(1).max(5),
+  tags: external_exports.array(str).optional(),
+  fallback: str.max(240),
+  description: str
+}).strict();
+registrySchemas.headStartMoments = HeadStartMomentSchema;
 function withDescription(schema) {
   return schema.superRefine((entry, ctx2) => {
     const d = entry.description;
@@ -21749,6 +21770,15 @@ registerMemoryResolver("verdict", (_draft, event) => {
   return outcome === void 0 ? null : { ids: {}, vars: { outcome } };
 }, { ids: [], vars: ["outcome"] });
 registerMemoryResolver("ally_won", aboutOneUnit, { ids: ["subject"], vars: ["name"] });
+registerMemoryResolver("head_start_moment", (draft, event) => {
+  const subject = subjectOf2(draft, event.unitId);
+  const text2 = str2(event.text);
+  if (!subject || text2 === void 0 || !draft.squad.some((u) => u.id === subject.id)) return null;
+  return {
+    ids: { unit: [subject.id] },
+    vars: { text: text2, kind: str2(event.kind) ?? "", importance: String(event.importance ?? "") }
+  };
+}, { ids: ["unit"], vars: ["text", "kind", "importance"] });
 
 // src/engine/memory/remember.ts
 var index = /* @__PURE__ */ new WeakMap();
@@ -45141,6 +45171,14 @@ registerChecks("deviceAccessRules", (entry, regs) => {
 registerRefs("dmBehaviours", (entry) => (entry.when?.states ?? []).map((id, i) => ({ registry: "relationshipStates", id, path: `when.states[${i}]` })));
 registerRefs("handNotes", (entry) => (entry.when?.states ?? []).map((id, i) => ({ registry: "relationshipStates", id, path: `when.states[${i}]` })));
 registerRefs("bookingKinds", (entry) => typeof entry.locationId === "string" ? [{ registry: "locations", id: entry.locationId, path: "locationId" }] : []);
+registerRefs("headStartMoments", (entry) => {
+  const delta = entry.eventDelta;
+  return typeof delta?.type === "string" ? [{ registry: "eventDeltas", id: delta.type, path: "eventDelta.type" }] : [];
+});
+registerChecks("headStartMoments", (entry) => {
+  const values = entry.requires?.values ?? {};
+  return Object.keys(values).filter((axis) => !VALUE_AXES.includes(axis)).map((axis) => ({ path: `requires.values.${axis}`, message: `head start moment "${entry.id}": "${axis}" is not a value axis (${VALUE_AXES.join(", ")})` }));
+});
 
 // src/content/loader.ts
 var UNSAFE_KEYS = /* @__PURE__ */ new Set(["__proto__", "constructor", "prototype"]);

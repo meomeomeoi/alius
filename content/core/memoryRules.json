@@ -559,5 +559,80 @@
       "warden",
       "ally"
     ]
+  },
+  {
+    "id": "head_start_moment_1",
+    "event": "head_start_moment",
+    "when": {
+      "importance": "1"
+    },
+    "text": "{text}",
+    "importance": 1,
+    "about": "unit",
+    "audience": "unit",
+    "spread": "none",
+    "tags": [
+      "head_start"
+    ]
+  },
+  {
+    "id": "head_start_moment_2",
+    "event": "head_start_moment",
+    "when": {
+      "importance": "2"
+    },
+    "text": "{text}",
+    "importance": 2,
+    "about": "unit",
+    "audience": "unit",
+    "spread": "none",
+    "tags": [
+      "head_start"
+    ]
+  },
+  {
+    "id": "head_start_moment_3",
+    "event": "head_start_moment",
+    "when": {
+      "importance": "3"
+    },
+    "text": "{text}",
+    "importance": 3,
+    "about": "unit",
+    "audience": "unit",
+    "spread": "none",
+    "tags": [
+      "head_start"
+    ]
+  },
+  {
+    "id": "head_start_moment_4",
+    "event": "head_start_moment",
+    "when": {
+      "importance": "4"
+    },
+    "text": "{text}",
+    "importance": 4,
+    "about": "unit",
+    "audience": "unit",
+    "spread": "none",
+    "tags": [
+      "head_start"
+    ]
+  },
+  {
+    "id": "head_start_moment_5",
+    "event": "head_start_moment",
+    "when": {
+      "importance": "5"
+    },
+    "text": "{text}",
+    "importance": 5,
+    "about": "unit",
+    "audience": "unit",
+    "spread": "none",
+    "tags": [
+      "head_start"
+    ]
   }
 ]

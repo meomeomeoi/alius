@@ -494,6 +494,8 @@ export const RESERVED_EVENT_TYPES: readonly string[] = [
   'warden_removed', 'investigation_opened', 'remote_control_started', 'verdict',
   // P14
   'generation_failed', 'generation_closed', 'generation_expired', 'scene_summarized_late', 'dilemma_reworded', 'demand_reworded', 'rule_reworded',
+  // P11b
+  'head_start_applied', 'head_start_moment',
 ];
 
 const slotEnum = z.enum(['morning', 'afternoon', 'evening', 'night']);
@@ -2204,7 +2206,33 @@ export const DESCRIBED_REGISTRIES = [
   'debtHandlers',
   // P13
   'wardenExpectations', 'commanderPunishments',
+  // P11b
+  'headStartMoments',
 ] as const satisfies readonly RegistryName[];
+
+// ---------------------------------------------------------------------------------------------
+// P11b: head start moments
+
+/**
+ * A remembered moment of the weeks before day 1 (the picker reads `sign`, `requires` and `tags`, never the id). `eventDelta` names an
+ * `eventDeltas` row (checked at load); `actor` says who did it. `fallback` is the template line when the model gives none (`{name}` is
+ * her name). `AUTHOR TO WRITE`: every text is a draft. No entry may be tagged `probe` (P15 §15.14 lifts that, P11b never does).
+ */
+export const HeadStartMomentSchema = BaseEntrySchema.extend({
+  sign: z.enum(['positive', 'negative', 'any']),
+  requires: z.object({
+    values: z.record(z.enum(['+', '-'])).optional(),
+    knowsCrime: z.boolean().optional(),
+    minDays: z.union([z.literal(7), z.literal(14), z.literal(30)]).optional(),
+  }).strict().optional(),
+  eventDelta: z.object({ type: str, severity: severityEnum, actor: z.enum(['commander', 'unit']) }).strict(),
+  importance: int.min(1).max(5),
+  tags: z.array(str).optional(),
+  fallback: str.max(240),
+  description: str,
+}).strict();
+export type HeadStartMomentEntry = z.infer<typeof HeadStartMomentSchema>;
+registrySchemas.headStartMoments = HeadStartMomentSchema;
 
 /** Adds the optional `description` rule to a registry schema without changing its shape. */
 function withDescription(schema: z.ZodTypeAny): z.ZodTypeAny {

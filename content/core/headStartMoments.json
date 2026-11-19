@@ -1,0 +1,161 @@
+[
+  {
+    "id": "shared_meal",
+    "sign": "positive",
+    "eventDelta": {
+      "type": "listened",
+      "severity": "minor",
+      "actor": "commander"
+    },
+    "importance": 2,
+    "tags": [
+      "head_start"
+    ],
+    "fallback": "AUTHOR TO WRITE: {name}: A late meal at the long table, eaten in near silence, and nobody left.",
+    "description": "AUTHOR TO WRITE: A late meal at the long table, eaten in near silence, and nobody left."
+  },
+  {
+    "id": "first_argument",
+    "sign": "negative",
+    "eventDelta": {
+      "type": "insulted",
+      "severity": "minor",
+      "actor": "commander"
+    },
+    "importance": 2,
+    "tags": [
+      "head_start"
+    ],
+    "fallback": "AUTHOR TO WRITE: {name}: An argument in the corridor over a small order, and neither of them gave way.",
+    "description": "AUTHOR TO WRITE: An argument in the corridor over a small order, and neither of them gave way."
+  },
+  {
+    "id": "sparring_bout",
+    "sign": "any",
+    "eventDelta": {
+      "type": "praised",
+      "severity": "minor",
+      "actor": "commander"
+    },
+    "importance": 2,
+    "tags": [
+      "head_start"
+    ],
+    "fallback": "AUTHOR TO WRITE: {name}: A sparring bout the commander only watched, and a word said about it after.",
+    "description": "AUTHOR TO WRITE: A sparring bout the commander only watched, and a word said about it after."
+  },
+  {
+    "id": "night_talk",
+    "sign": "positive",
+    "requires": {
+      "minDays": 7
+    },
+    "eventDelta": {
+      "type": "shared_secret",
+      "severity": "minor",
+      "actor": "unit"
+    },
+    "importance": 3,
+    "tags": [
+      "head_start"
+    ],
+    "fallback": "AUTHOR TO WRITE: {name}: A night when she could not sleep and told the commander something she had told no one.",
+    "description": "AUTHOR TO WRITE: A night when she could not sleep and told the commander something she had told no one."
+  },
+  {
+    "id": "commander_mistake",
+    "sign": "negative",
+    "eventDelta": {
+      "type": "endangered",
+      "severity": "minor",
+      "actor": "commander"
+    },
+    "importance": 2,
+    "tags": [
+      "head_start"
+    ],
+    "fallback": "AUTHOR TO WRITE: {name}: A mistake of the commander's that put her in a worse spot than the plan had promised.",
+    "description": "AUTHOR TO WRITE: A mistake of the commander's that put her in a worse spot than the plan had promised."
+  },
+  {
+    "id": "covered_for_her",
+    "sign": "positive",
+    "requires": {
+      "minDays": 14
+    },
+    "eventDelta": {
+      "type": "protected",
+      "severity": "minor",
+      "actor": "commander"
+    },
+    "importance": 3,
+    "tags": [
+      "head_start"
+    ],
+    "fallback": "AUTHOR TO WRITE: {name}: A day the commander took the blame for something that was hers.",
+    "description": "AUTHOR TO WRITE: A day the commander took the blame for something that was hers."
+  },
+  {
+    "id": "cold_shoulder",
+    "sign": "negative",
+    "eventDelta": {
+      "type": "dismissed",
+      "severity": "minor",
+      "actor": "commander"
+    },
+    "importance": 2,
+    "tags": [
+      "head_start"
+    ],
+    "fallback": "AUTHOR TO WRITE: {name}: A request she brought to the commander and was turned away from without a reason.",
+    "description": "AUTHOR TO WRITE: A request she brought to the commander and was turned away from without a reason."
+  },
+  {
+    "id": "learned_the_crime",
+    "sign": "any",
+    "requires": {
+      "knowsCrime": true
+    },
+    "eventDelta": {
+      "type": "crime_revealed",
+      "severity": "minor",
+      "actor": "commander"
+    },
+    "importance": 3,
+    "tags": [
+      "head_start"
+    ],
+    "fallback": "AUTHOR TO WRITE: {name}: The day she learned what the commander was convicted of, and what she made of it.",
+    "description": "AUTHOR TO WRITE: The day she learned what the commander was convicted of, and what she made of it."
+  },
+  {
+    "id": "small_favour",
+    "sign": "positive",
+    "eventDelta": {
+      "type": "gift",
+      "severity": "minor",
+      "actor": "commander"
+    },
+    "importance": 2,
+    "tags": [
+      "head_start"
+    ],
+    "fallback": "AUTHOR TO WRITE: {name}: A small favour, a ration or a spare part, that cost the commander something to give.",
+    "description": "AUTHOR TO WRITE: A small favour, a ration or a spare part, that cost the commander something to give."
+  },
+  {
+    "id": "rule_reminder",
+    "sign": "any",
+    "eventDelta": {
+      "type": "kept_promise",
+      "severity": "minor",
+      "actor": "commander"
+    },
+    "importance": 2,
+    "tags": [
+      "head_start"
+    ],
+    "fallback": "AUTHOR TO WRITE: {name}: A rule the commander set in the first days and kept to when it was inconvenient.",
+    "description": "AUTHOR TO WRITE: A rule the commander set in the first days and kept to when it was inconvenient."
+  }
+]

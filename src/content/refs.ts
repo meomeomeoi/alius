@@ -2,6 +2,7 @@ import { CONTENT_GATED_REGISTRIES } from '../engine/bonds/content';
 import { RESOLVER_SHAPES } from '../engine/memory/resolvers';
 import { INTERNAL_HISTORY_TYPES } from '../engine/relations/vocab';
 import { TUNING } from '../engine/tuning';
+import { VALUE_AXES } from '../engine/state/types';
 import { COMMAND_STANCE_IDS, DESCRIBED_REGISTRIES, HUB_HOSTS, type Conditions } from './schemas';
 import { linkTargets } from './links';
 import { REGISTRY_NAMES, type Entry, type RegistryName } from './types';
@@ -813,3 +814,18 @@ registerRefs('handNotes', (entry) =>
 // P9c: a booking kind names the location of its scene.
 registerRefs('bookingKinds', (entry) =>
   typeof entry.locationId === 'string' ? [{ registry: 'locations' as const, id: entry.locationId, path: 'locationId' }] : []);
+
+// ---------------------------------------------------------------------------------------------
+// P11b: a head start moment's event row is an `eventDeltas` entry; its value requirements name value axes
+
+registerRefs('headStartMoments', (entry) => {
+  const delta = entry.eventDelta as { type?: unknown } | undefined;
+  return typeof delta?.type === 'string' ? [{ registry: 'eventDeltas', id: delta.type, path: 'eventDelta.type' }] : [];
+});
+
+registerChecks('headStartMoments', (entry) => {
+  const values = ((entry.requires as { values?: Record<string, unknown> } | undefined)?.values ?? {});
+  return Object.keys(values)
+    .filter((axis) => !(VALUE_AXES as readonly string[]).includes(axis))
+    .map((axis) => ({ path: `requires.values.${axis}`, message: `head start moment "${entry.id}": "${axis}" is not a value axis (${VALUE_AXES.join(', ')})` }));
+});

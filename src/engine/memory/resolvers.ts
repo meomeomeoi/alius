@@ -271,3 +271,16 @@ registerMemoryResolver('verdict', (_draft, event) => {
 }, { ids: [], vars: ['outcome'] });
 
 registerMemoryResolver('ally_won', aboutOneUnit, { ids: ['subject'], vars: ['name'] });
+
+// ---------------------------------------------------------------------------------------------
+// head start (P11b): one remembered moment of the weeks before day 1; `head_start_applied` is bookkeeping and has no rule
+
+registerMemoryResolver('head_start_moment', (draft, event) => {
+  const subject = subjectOf(draft, event.unitId);
+  const text = str(event.text);
+  if (!subject || text === undefined || !draft.squad.some((u) => u.id === subject.id)) return null;
+  return {
+    ids: { unit: [subject.id] },
+    vars: { text, kind: str(event.kind) ?? '', importance: String(event.importance ?? '') },
+  };
+}, { ids: ['unit'], vars: ['text', 'kind', 'importance'] });

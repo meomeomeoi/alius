@@ -2133,5 +2133,20 @@
       "investigation",
       "death_rule"
     ]
+  },
+  {
+    "id": "head_start",
+    "term": "Head start",
+    "short": "The campaign begins as if the commander had already been at the base for a while: acquaintance only, no missions or time skipped."
+  },
+  {
+    "id": "new_arrival",
+    "term": "New arrival",
+    "short": "This soldier arrives on day 1 and meets the commander for the first time, even in a head start."
+  },
+  {
+    "id": "head_start_recap",
+    "term": "The first weeks",
+    "short": "The remembered moments of the first weeks and the squad's paragraph; written by the mechanic model, or from templates."
   }
 ]

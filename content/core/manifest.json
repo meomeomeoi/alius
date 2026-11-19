@@ -72,6 +72,7 @@
     "debtHandlers": "debtHandlers.json",
     "wardenExpectations": "wardenExpectations.json",
     "commanderPunishments": "commanderPunishments.json",
-    "llmRefusals": "llmRefusals.json"
+    "llmRefusals": "llmRefusals.json",
+    "headStartMoments": "headStartMoments.json"
   }
 }
