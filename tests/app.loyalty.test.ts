@@ -162,6 +162,25 @@ describe('dilemmas', () => {
     expect(t.app.dispatch({ type: 'activity/do', payload: { activityId: 'rest' } }).some((e) => e.type === 'error')).toBe(false);
   });
 
+  it("the retry menu opened from the decision's chip brings the decision back when it closes (a modal cancels the open one)", async () => {
+    const t = await boot();
+    t.st.mainReplies = []; // the wording fails: the authored block shows with a chip
+    // the real shell keeps a modal open until it is closed, and a new modal cancels it: the fake does the same
+    let cancelDecision: (v: string | null) => void = () => {};
+    t.sh.script.push(() => new Promise<string | null>((res) => { cancelDecision = res; }));
+    requestRations(t);
+    await settle();
+    expect(t.state().dilemmas!.open).toMatchObject({ status: 'presented', source: 'fallback' });
+    const decisions = () => t.sh.modals.filter((m) => m.title === 'DECISION').length;
+    expect(decisions()).toBe(1);
+    const panel = t.sh.modals.at(-1)!.body as HTMLElement;
+    t.sh.script.push(async () => { cancelDecision(null); return 'cancel'; }); // the menu replaces the decision's modal; the player closes it
+    (panel.querySelector('[data-action="generation-menu"]') as HTMLButtonElement).click();
+    await settle();
+    expect(t.sh.modals.filter((m) => m.title === 'Try again')).toHaveLength(1);
+    expect(decisions()).toBe(2); // the decision is shown again: it is still unanswered
+  });
+
   it('with no mechanic profile the authored fallback is presented', async () => {
     const t = await boot({ settings: { mechanicFallbackToMain: false } });
     t.st.mainReplies = [RATIONS];

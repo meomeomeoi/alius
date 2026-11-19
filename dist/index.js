@@ -42435,7 +42435,15 @@ function createApp(st, deps) {
   });
   const genUi = {
     generations,
-    modal: (o) => shell.modal(o),
+    modal: async (o) => {
+      const reopen = dilemmaModalOpen;
+      const answer = await shell.modal(o);
+      if (reopen && state?.dilemmas?.open) {
+        dilemmaModalOpen = false;
+        openDilemmaModal();
+      }
+      return answer;
+    },
     settings: () => getSettings(st),
     toast: (kind, text2) => toast(kind, text2),
     redraw: () => {

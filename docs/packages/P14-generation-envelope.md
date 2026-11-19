@@ -171,6 +171,7 @@ Chunks (a) classification, records and the envelope, (b) every call site, (c) wh
 - **Seeded runs do not move.** The fake adapter's empty queues throw (a `network` failure); the unaffected weeks run with no profile and no fallback, so `no_profile` writes nothing and their states stay byte-identical.
 - **Hidden truth:** site labels are generic ("The warden's agenda", "Scene summary"), a fragment has no site record, and `tests/ui/generationChip.test.ts` runs the labels of every site against the sentinels of `tests/fixtures/analyze/hidden.ts`.
 - **The chip's "cut off at <n> tokens"** is the call type's budget times the record's `budgetMult`; the request floor of a mechanic call is not applied, so it can differ slightly from what was sent.
+- **A modal cancels the open one**, and the base decision is a modal: the retry menu opened from its chip would lose the decision, so `genUi.modal` in `app.ts` opens the decision again when the menu closes while it is still unanswered (`tests/app.loyalty.test.ts`).
 - **A pending button** is module state in `surface.ts` (a redraw makes new buttons): `runPending` keys it by record id or `reroll:<siteId>:<key>`.
 - **Gen containers use the class `alius-generation-chips` only**: an `alius-chips` sibling in front of the proposal chips broke `tests/ui/scene.test.ts`.
 - **A new call type registers its site in the same change** (a `SiteDecl` in `sites.ts` and the handlers in its controller); `tests/llm/siteRegistry.test.ts` enumerates call types and flavor kinds.
@@ -184,4 +185,4 @@ Chunks (a) classification, records and the envelope, (b) every call site, (c) wh
 - **An expired `dm.door` record** is listed in SYS only (the knock is over, so no thread draws it).
 - **Not covered by an automated test:** the in-SillyTavern behaviour (a real refusal, a real timeout, the stop reason of each provider) — `docs/MANUAL_TEST_P14.md`.
 
-Final counts at the end of the package: 441 test files, 7014 tests, all passing (baseline before chunk (c): 437 files, 6941 tests); `tsc` clean.
+Final counts at the end of the package: 441 test files, 7015 tests, all passing (baseline before chunk (c): 437 files, 6941 tests); `tsc` clean.

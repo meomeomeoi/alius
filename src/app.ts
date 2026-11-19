@@ -397,7 +397,16 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
   // P14: what every surface needs to draw its failure chips and REROLL buttons (its buttons call the envelope)
   const genUi: GenerationUi = {
     generations,
-    modal: (o) => shell.modal(o),
+    modal: async (o) => {
+      // a modal cancels the open one: the decision's own modal would be lost under the retry menu opened from its chip
+      const reopen = dilemmaModalOpen;
+      const answer = await shell.modal(o);
+      if (reopen && state?.dilemmas?.open) {
+        dilemmaModalOpen = false;
+        openDilemmaModal();
+      }
+      return answer;
+    },
     settings: () => getSettings(st),
     toast: (kind, text) => toast(kind, text),
     redraw: () => { drawDilemma(); shell.refresh(); },
