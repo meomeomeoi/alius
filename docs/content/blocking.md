@@ -249,3 +249,117 @@ commander: posture all_fours · anchor center
 she:       posture sitting · anchor on_person (relTo commander)
 contact:   human_chair (she → commander)
 ```
+
+## 7. Postures (`blockingPostures`, no scope: physics, not power)
+
+| id | Essence | Effects |
+|---|---|---|
+| `standing` | standing | — |
+| `standing_attention` | standing straight, still | `strain posture` when held long |
+| `sitting` | on a chair, bunk or desk | — |
+| `sitting_floor` | on the floor | camera lower than hers |
+| `kneeling_upright` | on the knees, back straight | `camera from_below` (her view of the commander: she looks down); `strain posture` |
+| `kneeling_sitting` | on the knees, sitting back on the heels | `camera from_below`; lighter strain |
+| `bowing` | kneeling, forehead to the floor | `camera pov_floor` / `pose_shot feet_floor`; her face unseen |
+| `all_fours` | on hands and knees | `camera pov_floor`; `mobility crawl` |
+| `crouching` | crouched | — |
+| `lying_back` | on the back | `camera` ceiling surface; `pose_shot from_below` when she stands over |
+| `lying_front` | face down | `camera pov_floor` |
+| `lying_side` | on the side | — |
+| `curled` | curled up | — |
+
+**Posture modifiers** (optional fields used by P16's named postures and by protocol): `arms: at_sides | behind_back | behind_head | on_knees | on_thighs | open`, `gaze: down | at_her | straight | closed`. A **named posture** of her protocol = a base posture + arms + gaze + her name for it (generated, stored on the pair). Changing a modifier is a blocking change the extractor may report.
+
+## 8. Anchors (`blockingAnchors`)
+
+| id | requires | Essence | Effects |
+|---|---|---|---|
+| `center` | — | the middle of the room | — |
+| `corner` | — | a corner | `camera ignored` when facing the wall |
+| `by_wall` | — | against a wall | — |
+| `across_room` | — | far from her | the farthest line of the sensory distance (P17d) |
+| `at_door` | — | inside, by the door | the first seen by anyone entering (`third_party` exposing) |
+| `outside_door` | — | behind the door | `perception` the commander hears, does not see; others hear (`thin_walls` later) |
+| `floor` | — | on the floor | `camera pov_floor` |
+| `at_her_feet` | relTo | at her feet | `pose_shot feet_floor` / `legs_seated`; `escalation nudge_with_foot` available |
+| `beside_her` | relTo | beside her | `close` for whispers |
+| `behind_her` | relTo | behind her | the commander sees her back (`pose_shot back`); she does not see the commander |
+| `in_front_of_her` | relTo | in front of her | `camera face_close` when near |
+| `behind_her_chair` | relTo | standing behind her chair | a visitor sees the commander, and in what role |
+| `on_person` | relTo | on another person | set by a contact's `implies`; follows the other |
+| `at_desk` | `desk` | at the desk | — |
+| `under_desk` | `desk` | under the desk | `backdrop frame_under_desk`; `visibility hiddenFromDoor`; visitors seen only as legs or voice |
+| `on_desk` | `desk` | sitting on the desk (usually her) | `camera from_below` for whoever is lower |
+| `on_bunk` / `beside_bunk` | `bunk` | on / beside the bunk | — |
+| `under_bunk` | `bunk` | under the bunk | `visibility hiddenFromDoor`; `camera pov_dark` |
+| `inside_cupboard` | `cupboard` | inside the cupboard | `visibility hiddenFromDoor`; `filter sensory_dark`; `strain silence` |
+| `behind_curtain` | `curtain` | behind a curtain | `visibility` partial (shadows, feet) |
+| `at_console` | `line` | at the comms console | `remote` source live |
+
+## 9. Escalation channels (closed list)
+
+The engine picks the channel from the contact, items and anchors; the model writes the act. In order of priority when several apply:
+
+| verb | from | Essence |
+|---|---|---|
+| `remote_pulse` | `remote_toy` | a pulse from her PDA (also when she is absent) |
+| `shock` | `shock_collar` | a discharge |
+| `tug_leash` | `leash`, `crawling_on_leash` | a jerk of the leash |
+| `tighten_hold` | `smothered_*`, `between_thighs` | she presses tighter |
+| `shift_weight` | weight contacts | she moves her weight |
+| `squeeze` | `between_thighs` | thighs squeeze |
+| `press` / `press_harder` | `foot_on_head`, `pinned_to_wall` | more pressure |
+| `tug_hair` | `held_by_hair`, `head_in_lap` (as a hand in the hair) | a pull of the hair |
+| `nudge_with_foot` | `at_her_feet`, `kneeling_between_legs`, `under_desk` | a nudge with her foot |
+| `whisper` | `close`, `beside_her`, `earpiece` | a whisper (P17d) |
+| `pda_message` | `remote`, she is elsewhere | a message on the PDA |
+| `look` / `cough` / `name_aloud` | no contact | fallbacks: a look, a cough, the commander's name said aloud |
+
+## 10. Moment sources: when live, and response types
+
+Response types: **Y** yielded, **R** resisted, **T** returned (took the lead back / turned it into the commander's move), **D** deflected. Typed answers also carry `tone`.
+
+| source | scope | live when | options → type |
+|---|---|---|---|
+| `her_demand` | dyn | she issues a demand or escalates (practice, her tactic, an unmet expectation) | obey Y · resist R · bargain D |
+| `her_offer` | any | she offers a privilege, closeness, a leniency (incl. a disguised test) | accept Y · decline R · accept carefully T |
+| `her_silence` | any | she stops talking with an expectation set in her profile; her activity `attending` or `ignoring` | guess by action T · ask D · wait Y |
+| `her_question` | any | she asks a direct question (generated or a P17e "what do you feel?") | honest T · what she wants to hear Y · silent R |
+| `her_weakness` | any | after a hard practice, a wound, stress or appraisal (P14b) she cracks | care T · keep the role Y · withdraw R |
+| `her_mood_shift` | any | her mood band jumps (VITALS / stress / Want) | adapt Y · ask T · ignore D |
+| `her_test` | dyn | a P17e test is running | by test (each test entry maps its options) |
+| `her_absence` | any | she leaves the scene with the commander in it (also asleep) | wait Y · call her T · leave / free yourself R |
+| `her_affection` | any | an unexpected tenderness inside strictness (or between equals) | answer T · stay in role Y · pull away R |
+| `her_jealousy` | any | another woman is mentioned, her message arrives, her scent on the commander is noticed | reassure Y · explain T · deflect D |
+| `endurance` | dyn | a physics gauge crosses its warning band, a posture or denial timer runs | endure Y · signal D · break R |
+| `permission` | dyn | an `ask_permission` rule holds and the commander wants something | ask Y · take R · wait D |
+| `own_slip` | dyn | the extractor reports a slip, or a physics slip happened | confess Y · hide R · pretend D |
+| `own_want` | any | the commander's text shows a want (extractor) | ask T · take R · stay quiet Y |
+| `duty_call` | any | the commander's duty interrupts (PDA, report due, oversight) | answer R · ignore Y · ask her T |
+| `third_party` | any | someone arrives, calls or looks in (whereabouts, staging, roll) | hide Y · as is T · show yourself R |
+| `remote` | any | someone is on a line during the scene | keep steady Y · slip D · cut the line R |
+| `sensory` | any | the commander cannot see and something happens (step, touch, voice, scent) | wait Y · speak D · reach out / name T |
+| `time` | any | a timer: she said "a minute", a hold, a wait | wait Y · call D · free yourself R |
+| `alarm` | any | a director emergency, a deadline, a launch, a night event (P16 §8) | stay Y · ask release D · go R |
+| `object_at_hand` | any | her thing, another woman's, or a key is within reach | leave it Y · take it R · tell her T |
+| `summons` | dyn | a contract clause (P17a) and she calls | come at once Y · delay R · ask a reprieve D |
+| `memory_surfaces` | any | she brings up a remembered fact (P3b) | own it Y · deny R · turn it T |
+| `rule_collision` | dyn | two of her rules, or her rule and an order from above, collide | her rule Y · the order R · ask her D |
+| `compromat_hint` | dyn | she hints at compromat she holds (P15 §11) | ask D · ignore R · bargain T |
+| `ritual_due` | dyn | a ritual or habit is due (P17e) | keep it Y · skip R · ask to move it D |
+
+## 11. Gaze rules (P17c)
+
+| id | Crop of her portrait | Fallback |
+|---|---|---|
+| `eyes_down` | floor and her feet only | `pose_shot feet_floor`; without it the sprite's lowest band over a floor gradient |
+| `not_above_knees` | below the knees | pose shots `feet_floor` / `legs_standing`; without them the lowest band |
+| `not_above_waist` | waist down | sprite crop from the waist line |
+| `only_at_her` | no crop; every other portrait dimmed | — |
+| `not_at_her` | her portrait hidden, `camera ignored` | — |
+
+Raising the gaze past the rule is a moment option (`own_slip` family) and a slip.
+
+## 12. Tells (for mood reading, P15 §15.8)
+
+Her profile stores, for each mood, 1–2 signs with a direction. Moods: `pleased`, `irritated`, `aroused`, `bored`, `worried`, `testing`. Sign vocabulary (closed): `reply_length` (shorter / longer), `pause_before_key` (P17d rhythm), `address_form` (name / rank / pet name / none), `touch_frequency`, `distance` (closer / farther), `expression` (sprite pick), `fidget` (an object in her hands), `scent_intent` (washes / does not), `typing_rhythm` (bursts / even). The engine renders a tell as a line in her directive ("show irritation only through shorter replies and a pause before the key word") and through P17d's rhythm; it never names the mood to the model as a label the commander could read.

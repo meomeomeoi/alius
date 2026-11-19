@@ -123,7 +123,7 @@ Code reads entries by field and effect type, never by id (P10 rule).
 
 ## 4. Starter content (`content/core`, texts `AUTHOR TO WRITE` where not given)
 
-**The full content — essence and effects of every worship target, item, contact and activity — is `docs/content/blocking.md`. Read it before writing the plan; the JSON mirrors it, and nothing there is a placeholder to invent.** The lists below are the index.
+**The full content — essence and effects of every worship target, item, contact, activity, posture and anchor, the escalation channels, when each moment source is live and how its options map to response types, gaze rules and tells — is `docs/content/blocking.md`. Read it before writing the plan; the JSON mirrors it, and nothing there is a placeholder to invent.** The lists below are the index.
 
 All of it lives in `content/core` (author ruling): descriptions are neutral and clinical, scene prose is written by the model. Tags gate everything; with the categories off, none of it exists.
 
