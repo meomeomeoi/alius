@@ -408,6 +408,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     app: sceneApp,
     registries: () => registries,
     settings: () => getSettings(st),
+    generations,
     contentLine: () => contentLine(state, registries),
     toast: (kind: 'info' | 'warn' | 'error', text: string) => toast(kind, text),
   };

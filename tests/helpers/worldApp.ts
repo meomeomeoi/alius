@@ -7,6 +7,7 @@ import { DEFAULT_SETTINGS, type AliusSettings } from '../../src/settings';
 import { FakeStAdapter } from '../../src/st/fake';
 import type { StartPayload } from '../../src/engine/combat/types';
 import type { WorldDeps } from '../../src/world/directorController';
+import { testEnvelope } from './envelopeHost';
 import './world';
 
 export interface WorldHarness {
@@ -49,20 +50,20 @@ export function worldHarness(reg: Registries, initial: CampaignState, over: Part
     return !events.some((e) => e.type === 'error');
   });
   const startScene = vi.fn(async (_o: unknown): Promise<boolean> => true);
-  const deps: WorldDeps = {
-    st, app, registries: () => reg, settings: () => settings,
-    toast: (kind, text) => { toasts.push({ kind, text }); },
+  const restore = (snap: CampaignState, expected: CampaignState): boolean => {
+    if (state !== expected) return false;
+    state = structuredClone(snap);
+    return true;
   };
+  const toast = (kind: 'info' | 'warn' | 'error', text: string): void => { toasts.push({ kind, text }); };
+  const generations = testEnvelope({ st, reg, settings: () => settings, state: () => state, dispatch: app.dispatch, restore, toast });
+  const deps: WorldDeps = { st, app, registries: () => reg, settings: () => settings, generations, toast };
   return {
     st, deps, log, toasts, settings, startCombat, startScene,
     state: () => state,
     setState: (f) => { const s = structuredClone(state); f(s); state = s; },
     app: () => app,
-    restore: (snap, expected) => {
-      if (state !== expected) return false;
-      state = structuredClone(snap);
-      return true;
-    },
+    restore,
     switchChat: (id) => { st.chat = { chatId: id, isGroup: true, groupId: 'g' }; },
   };
 }

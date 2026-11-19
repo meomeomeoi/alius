@@ -4,7 +4,7 @@ import type { RoutePick } from '../engine/commander/checks';
 import type { Action, EngineEvent } from '../engine/dispatch';
 import type { CampaignState } from '../engine/state/types';
 import { reportLines, type Formation, type TreatKind } from '../engine/world/expedition';
-import { generateRecap } from '../llm/calls/expeditionRecap';
+import { sanitizeRecap, type RecapInput } from '../llm/calls/expeditionRecap';
 import type { StartOptions } from '../scene/sceneController';
 import type { WorldDeps } from './deps';
 
@@ -53,6 +53,35 @@ export function createExpedition(deps: WorldDeps & {
     if (failed && failed.code !== 'chat_changed' && !voteNeeded) deps.toast('error', String(failed.message ?? failed.code));
     return { ok: !failed, events };
   }
+
+  // the `expedition.recap` site (key: the report id): the narrative recap of the last report; REROLL replaces it, a failure leaves the deterministic report
+  deps.generations.bind<RecapInput, string>('expedition.recap', {
+    build(reportId) {
+      const s = state();
+      const report = s?.lastExpedition;
+      if (!s || !report || report.id !== reportId) return { expired: 'A newer report replaced it.' };
+      const reg = deps.registries();
+      const region = reg.regions.get(report.regionId);
+      return {
+        commanderName: s.commander.name,
+        missionTitle: report.missionTitle,
+        regionName: String(region?.name ?? report.regionId),
+        environment: String(region?.environmentPrompt ?? ''),
+        outcome: report.outcome,
+        lines: reportLines(report, s, reg),
+        units: report.party.map((id) => {
+          const u = s.squad.find((x) => x.id === id);
+          return { name: u?.displayName ?? id, role: String(reg.roles.get(u?.roleId ?? '')?.name ?? u?.roleId ?? 'soldier') };
+        }),
+      };
+    },
+    parse: (raw) => sanitizeRecap(String(raw)),
+    apply(reportId, text) {
+      const { ok } = act('expedition/set_recap', { reportId, text }, chatId());
+      return ok ? 'ok' : { stale: true };
+    },
+    committed: (reportId) => (state()?.lastExpedition?.id === reportId ? null : 'A newer report replaced it.'),
+  });
 
   return {
     plan(t) { target = t; },
@@ -118,28 +147,9 @@ export function createExpedition(deps: WorldDeps & {
     ackHerCall() { act('expedition/ack_her_call'); },
 
     async requestRecap() {
-      const s = state();
-      const report = s?.lastExpedition;
-      const settings = deps.settings();
-      if (!s || !report || report.recap !== undefined || !settings.expeditionRecap) return;
-      const reg = deps.registries();
-      const chat = chatId();
-      const region = reg.regions.get(report.regionId);
-      const commander = s.commander.name;
-      const text = await generateRecap({
-        commanderName: commander,
-        missionTitle: report.missionTitle,
-        regionName: String(region?.name ?? report.regionId),
-        environment: String(region?.environmentPrompt ?? ''),
-        outcome: report.outcome,
-        lines: reportLines(report, s, reg),
-        units: report.party.map((id) => {
-          const u = s.squad.find((x) => x.id === id);
-          return { name: u?.displayName ?? id, role: String(reg.roles.get(u?.roleId ?? '')?.name ?? u?.roleId ?? 'soldier') };
-        }),
-      }, { st: deps.st, settings, contentLine: deps.contentLine });
-      if (text === null || chatId() !== chat || state()?.lastExpedition?.id !== report.id) return;
-      act('expedition/set_recap', { reportId: report.id, text }, chat);
+      const report = state()?.lastExpedition;
+      if (!report || report.recap !== undefined || !deps.settings().expeditionRecap) return;
+      await deps.generations.generate('expedition.recap', report.id);
     },
 
     async debrief(unitIds) {

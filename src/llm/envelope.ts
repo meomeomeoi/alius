@@ -4,6 +4,7 @@ import { openRecords, recordFor } from '../engine/generations';
 import type { CampaignState, GenerationRecord } from '../engine/state/types';
 import type { AliusSettings } from '../settings';
 import type { StAdapter } from '../st/adapter';
+import './calls/all'; // registers every call type
 import { describeFailure } from './describe';
 import { callLlm, compileRefusals, type FailReason, type RefusalPattern } from './orchestrator';
 import { generationSite, type SiteDecl } from './sites';
@@ -35,7 +36,7 @@ export interface SiteHandlers<I, V> {
   /** The model's answer to the value `apply` takes; null means it does not fit (an `invalid_output`). Default: the answer as it is. */
   parse?(raw: unknown, input: I): V | null;
   /** What the caller did with a success. `rejected` counts as an invalid attempt (the engine said no); `stale` drops the answer silently. */
-  apply(key: string, value: V, input: I): 'ok' | { rejected: string } | { stale: true };
+  apply(key: string, value: V, input: I): 'ok' | { rejected: string; /** The engine will not take another answer (it showed its own block): stop retrying. */ final?: true } | { stale: true };
   /** The site's fail-soft result (a template text, the authored block); true when it ran. */
   fallback?(key: string, input: I | null): boolean;
   /** `before_commit` and `free`: why the result can no longer be replaced, or null. */
@@ -121,11 +122,12 @@ export function createEnvelope(host: EnvelopeHost): Envelope {
     const site = generationSite(siteId);
     const h = handlers.get(siteId);
     if (!site || !h) return { kind: 'unbound' };
-    const flight = `${siteId}:${key}`;
+    const chatId = host.chatId();
+    // ids repeat from campaign to campaign: the chat is part of the flight
+    const flight = `${chatId ?? ''}|${siteId}:${key}`;
     if (inflight.has(flight)) return { kind: 'stale' };
     inflight.add(flight);
     try {
-      const chatId = host.chatId();
       const settings = host.settings();
       const first = await h.build(key);
       if (isExpired(first)) {
@@ -172,6 +174,7 @@ export function createEnvelope(host: EnvelopeHost): Envelope {
         }
         if ('stale' in done) return { kind: 'stale' };
         last = { reason: 'invalid_output', detail: done.rejected, at: r.at, budget: 0 };
+        if (done.final) break;
         factor *= BUDGET_GROWTH;
         // loop: another attempt while the automatic retries last
       }

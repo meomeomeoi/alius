@@ -1,6 +1,10 @@
+import '../../src/llm/calls/all'; // registers every call type, as the app does
 import { readEmotion, type EmotionPickInput } from '../../src/llm/calls/emotionPick';
 import { readDigest, readSceneSummary, type SceneDigest, type SceneSummary, type SceneSummaryInput } from '../../src/llm/calls/sceneSummary';
 import { callLlm, type LlmDeps } from '../../src/llm/orchestrator';
+import { sanitizeRecap, type RecapInput } from '../../src/llm/calls/expeditionRecap';
+import type { DilemmaGenerateInput } from '../../src/llm/calls/dilemmaGenerate';
+import type { DirectorTickInput } from '../../src/llm/calls/directorTick';
 import { readIntentOutput, type ExpressionLabel, type IntentExtractInput, type IntentOutput } from '../../src/llm/calls/intentExtract';
 import { sanitizeDm, type DmReplyInput } from '../../src/llm/calls/dmReply';
 
@@ -30,4 +34,19 @@ export async function generateDm(input: DmReplyInput, deps: LlmDeps): Promise<st
 export async function extractIntents(input: IntentExtractInput, deps: LlmDeps, opts: { minConfidence?: number } = {}): Promise<IntentOutput | null> {
   const r = await callLlm<unknown>('intent_extract', input, deps);
   return r.ok ? readIntentOutput(r.value, input, { minConfidence: opts.minConfidence ?? deps.settings.intentMinConfidence }) : null;
+}
+
+export async function generateRecap(input: RecapInput, deps: LlmDeps): Promise<string | null> {
+  const r = await callLlm<string>('expedition_recap', input, deps);
+  return r.ok ? sanitizeRecap(r.value) : null;
+}
+
+export async function runDilemmaGenerate(input: DilemmaGenerateInput, deps: LlmDeps): Promise<unknown | null> {
+  const r = await callLlm<unknown>('dilemma_generate', input, deps);
+  return r.ok ? r.value : null;
+}
+
+export async function runDirectorTick(input: DirectorTickInput, deps: LlmDeps): Promise<unknown | null> {
+  const r = await callLlm<unknown>('director_tick', input, deps);
+  return r.ok ? r.value : null;
 }

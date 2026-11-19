@@ -1,6 +1,5 @@
 import { TUNING } from '../../engine/tuning';
 import { registerCallType } from '../callTypes';
-import { callLlm, type LlmDeps } from '../orchestrator';
 
 export interface RecapInput {
   commanderName: string;
@@ -54,9 +53,3 @@ registerCallType<string>({
     ].join('\n');
   },
 });
-
-/** One optional main-model call; any failure or an empty answer gives null. */
-export async function generateRecap(input: RecapInput, deps: LlmDeps): Promise<string | null> {
-  const r = await callLlm<string>('expedition_recap', input, deps);
-  return r.ok ? sanitizeRecap(r.value) : null;
-}

@@ -61,21 +61,68 @@ describe('director controller', () => {
     expect(apply.payload).toMatchObject({ requestId: 'd1', beatCooldownDays: 1 });
   });
 
-  it('a failed call falls back', async () => {
+  it('a failed call keeps the request open and records director.tick (P14: held)', async () => {
     const h = worldHarness(reg, requested);
     h.st.mainReplies = []; // the call fails
     await createDirector(h.deps).onRequested();
-    expect(directorActions(h)).toEqual([{ type: 'director/fallback', payload: { requestId: 'd1' } }]);
-    expect(h.state().world.director!.pending).toBeUndefined();
-    expect(h.state().missions.offered.length).toBeGreaterThan(0);
+    expect(directorActions(h)).toEqual([]);
+    expect(h.state().world.director!.pending!.id).toBe('d1');
+    expect(h.state().generations!.records).toMatchObject([{ siteId: 'director.tick', key: 'd1', reason: 'network', status: 'open' }]);
+    expect(h.toasts.map((t) => t.text)).toEqual(["The director's plan: the connection failed."]);
   });
 
-  it('an invalid answer (twice) falls back too', async () => {
+  it('an invalid answer (twice) is held too', async () => {
     const h = worldHarness(reg, requested);
     h.st.mainReplies = ['no json here', 'still none'];
     await createDirector(h.deps).onRequested();
     expect(h.st.calls).toHaveLength(2);
+    expect(directorActions(h)).toEqual([]);
+    expect(h.state().generations!.records[0]).toMatchObject({ reason: 'invalid_output', attempts: 2 });
+  });
+
+  it('RETRY applies the model plan and closes the record', async () => {
+    const h = worldHarness(reg, requested);
+    h.st.mainReplies = [];
+    await createDirector(h.deps).onRequested();
+    h.st.mainReplies = [valid];
+    expect((await h.deps.generations.retry('g1')).kind).toBe('applied');
+    expect(directorActions(h).map((a) => a.type)).toEqual(['director/apply']);
+    expect(h.state().world.director!.pending).toBeUndefined();
+    expect(h.state().generations!.records).toEqual([]);
+  });
+
+  it('USE FALLBACK applies the engine plan and closes kept_fallback', async () => {
+    const h = worldHarness(reg, requested);
+    h.st.mainReplies = [];
+    const director = createDirector(h.deps);
+    await director.onRequested();
+    director.useFallback();
     expect(directorActions(h).map((a) => a.type)).toEqual(['director/fallback']);
+    expect(h.state().world.director!.pending).toBeUndefined();
+    expect(h.state().missions.offered.length).toBeGreaterThan(0);
+    expect(h.state().generations!.records).toEqual([]);
+    expect(h.log.map((a) => a.type)).toContain('generation/close');
+  });
+
+  it('the day end falls back and the record expires with the reason', async () => {
+    const h = worldHarness(reg, requested);
+    h.st.mainReplies = [];
+    const director = createDirector(h.deps);
+    await director.onRequested();
+    // the day ends: the engine answers the held request with its own plan and opens tonight's
+    h.setState((s) => { s.slot = 'evening'; });
+    h.app().dispatch({ type: 'calendar/consume_slot', payload: {} });
+    expect(h.state().world.director!.pending?.id).not.toBe('d1');
+    h.st.mainReplies = [];
+    await director.onRequested();
+    expect(h.state().generations!.records.find((r) => r.key === 'd1')).toMatchObject({ status: 'expired', expiredWhy: 'The day ended: the engine planned the world.' });
+  });
+
+  it('a missing mechanic profile falls back at once and writes no record', async () => {
+    const h = worldHarness(reg, requested, { mechanicProfileId: '', mechanicFallbackToMain: false });
+    await createDirector(h.deps).onRequested();
+    expect(directorActions(h).map((a) => a.type)).toEqual(['director/fallback']);
+    expect(h.state().generations).toBeUndefined();
   });
 
   it('directorEnabled off never calls the model', async () => {
@@ -131,8 +178,8 @@ describe('director controller', () => {
     };
     await createDirector(h.deps).onRequested();
     expect(h.toasts).toEqual([]);
-    // the late apply was tried and refused by the engine; nothing was applied twice
-    expect(directorActions(h).map((a) => a.type)).toEqual(['director/fallback', 'director/apply']);
+    // the envelope asks again after the answer arrives: the request is closed, so the late answer is never even tried (P14)
+    expect(directorActions(h).map((a) => a.type)).toEqual(['director/fallback']);
     expect(h.state().rumors.every((r) => r.text !== 'A convoy of sealed crates was left on the overpass. Three crews have gone to look.')).toBe(true);
   });
 

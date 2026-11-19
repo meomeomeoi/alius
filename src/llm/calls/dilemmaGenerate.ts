@@ -2,7 +2,6 @@ import { z } from 'zod';
 import type { DilemmaDigest } from '../../engine/dilemma/flow';
 import type { DilemmaScale } from '../../engine/dilemma/types';
 import { registerCallType } from '../callTypes';
-import { callLlm, type LlmDeps } from '../orchestrator';
 
 export interface DilemmaGenerateInput {
   template: { id: string; scale: DilemmaScale; brief: string; optionCount: number; flagPerOption: boolean };
@@ -65,11 +64,3 @@ registerCallType<DilemmaShape>({
   },
   schema: DilemmaShapeSchema as unknown as z.ZodType<DilemmaShape>,
 });
-
-/** One mechanic call. Returns the loosely shaped answer for the engine to validate, or `null` on any failure. */
-export async function runDilemmaGenerate(
-  input: DilemmaGenerateInput, deps: LlmDeps,
-): Promise<unknown | null> {
-  const r = await callLlm<DilemmaShape>('dilemma_generate', input, deps);
-  return r.ok ? r.value : null;
-}

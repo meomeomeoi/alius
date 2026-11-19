@@ -16,7 +16,7 @@ import { applyWorldEffects } from '../world/effects';
 import { currentBeat } from '../world/spine';
 import { clockById, knownRegions } from '../world/state';
 import type { WorldEffect } from '../world/types';
-import { DILEMMA_CONTEXTS, type DilemmaContext, type DilemmaOption, type DilemmaScale, type DilemmaState } from './types';
+import { DILEMMA_CONTEXTS, type DilemmaContext, type DilemmaOption, type DilemmaScale, type DilemmaState, type Rejection } from './types';
 import { checkDefining, parseDilemmaOutput, validateOptions } from './validate';
 
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
@@ -179,23 +179,50 @@ export function presentDilemma(draft: CampaignState, ctx: EngineCtx, requestId: 
   const template = reg.dilemmaTemplates.get(open.templateId);
   if (!template) return resolveNothing(draft, open);
   open.attempts += 1;
-  const parsed = parseDilemmaOutput(raw, { state: draft, reg, template, ...(open.threadId !== undefined ? { threadId: open.threadId } : {}) });
-  const rejections = 'rejected' in parsed ? parsed.rejected : validateOptions(parsed.options, open.scale, unitsOf(draft, open.units));
-  if (!('rejected' in parsed) && rejections.length === 0 && nothingChoosable(draft, reg, parsed.options)) {
-    rejections.push({ rule: 'shape', reason: 'No option can be chosen right now: every one costs more than the squad has. Offer at least one the squad can afford.' });
-  }
-  if (!('rejected' in parsed) && rejections.length === 0) {
-    open.title = parsed.title;
-    open.setup = parsed.setup;
-    open.options = parsed.options;
+  const checked = checkAnswer(draft, reg, open, template, raw);
+  if (checked.ok) {
+    open.title = checked.parsed.title;
+    open.setup = checked.parsed.setup;
+    open.options = checked.parsed.options;
     open.status = 'presented';
     open.source = 'model';
-    return [{ type: 'dilemma_presented', id: open.id, templateId: open.templateId, title: parsed.title, source: 'model' }];
+    return [{ type: 'dilemma_presented', id: open.id, templateId: open.templateId, title: checked.parsed.title, source: 'model' }];
   }
   const retry = open.attempts < TUNING.dilemma.maxAttempts;
-  const events: EngineEvent[] = [{ type: 'dilemma_rejected', id: open.id, retry, rejections }];
+  const events: EngineEvent[] = [{ type: 'dilemma_rejected', id: open.id, retry, rejections: checked.rejections }];
   if (!retry) events.push(...showFallback(draft, reg, open));
   return events;
+}
+
+/** The engine's judgement of a model answer: parsed, validated against the scale and the squad, and at least one option choosable. */
+function checkAnswer(draft: CampaignState, reg: Registries, open: DilemmaState, template: Entry, raw: unknown):
+  | { ok: true; parsed: Exclude<ReturnType<typeof parseDilemmaOutput>, { rejected: unknown }> }
+  | { ok: false; rejections: Rejection[] } {
+  const parsed = parseDilemmaOutput(raw, { state: draft, reg, template, ...(open.threadId !== undefined ? { threadId: open.threadId } : {}) });
+  if ('rejected' in parsed) return { ok: false, rejections: parsed.rejected };
+  const rejections = validateOptions(parsed.options, open.scale, unitsOf(draft, open.units));
+  if (rejections.length === 0 && nothingChoosable(draft, reg, parsed.options)) {
+    rejections.push({ rule: 'shape', reason: 'No option can be chosen right now: every one costs more than the squad has. Offer at least one the squad can afford.' });
+  }
+  return rejections.length === 0 ? { ok: true, parsed } : { ok: false, rejections };
+}
+
+/**
+ * P14: a new wording of a dilemma that is already on the card and has not been answered (RETRY of the authored block, REROLL). It
+ * is judged exactly like the first answer; a rejection changes nothing (`dilemma_rejected` with no retry). Draws nothing.
+ */
+export function rewordDilemma(draft: CampaignState, ctx: EngineCtx, id: unknown, raw: unknown): EngineEvent[] {
+  const open = draft.dilemmas?.open;
+  if (!open || open.id !== id || open.status !== 'presented') throw new Error(STALE);
+  const template = ctx.registries.dilemmaTemplates.get(open.templateId);
+  if (!template) throw new Error('That decision has no template any more.');
+  const checked = checkAnswer(draft, ctx.registries, open, template, raw);
+  if (!checked.ok) return [{ type: 'dilemma_rejected', id: open.id, retry: false, rejections: checked.rejections }];
+  open.title = checked.parsed.title;
+  open.setup = checked.parsed.setup;
+  open.options = checked.parsed.options;
+  open.source = 'model';
+  return [{ type: 'dilemma_reworded', id: open.id, templateId: open.templateId, title: checked.parsed.title }];
 }
 
 // ---------------------------------------------------------------------------------------------

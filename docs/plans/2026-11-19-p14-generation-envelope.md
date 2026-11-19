@@ -471,10 +471,10 @@ Each task moves the caller code into the site's handlers, deletes the async wrap
   - `a failed door reply records dm.door and expires when the night event closes`;
   - `a failed reading is quiet`;
   - `the P9c edit and the P10b curt stamp still run once` (existing tests unchanged).
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.** The `dm.reply` snapshot spans `dm/receive` plus `dm.intents`: `before` is the state just before `dm/receive`, `after` is the state after the reading (or after `dm/receive` when the reading failed). The reroll therefore never leaves deltas from words she no longer said. `curt` is decided again by `replyModeFor` on the restored state; it is a hash, so the same result.
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P14): COMMS sites through the envelope`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.** The `dm.reply` snapshot spans `dm/receive` plus `dm.intents`: `before` is the state just before `dm/receive`, `after` is the state after the reading (or after `dm/receive` when the reading failed). The reroll therefore never leaves deltas from words she no longer said. `curt` is decided again by `replyModeFor` on the restored state; it is a hash, so the same result.
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P14): COMMS sites through the envelope`
 
 ---
 

@@ -3,7 +3,7 @@ import { debtsChoice } from '../special/debts/discovery';
 import { wardenReportChoice } from '../warden/removal';
 import { registerAction } from '../dispatch';
 import { readRoutePick } from '../commander/checks';
-import { chooseDilemma, fallbackDilemma, openDilemma, pacingStep, presentDilemma } from '../dilemma/flow';
+import { chooseDilemma, fallbackDilemma, openDilemma, pacingStep, presentDilemma, rewordDilemma } from '../dilemma/flow';
 import type { DilemmaContext } from '../dilemma/types';
 import './loyalty'; // registered first: pacing runs after the loyalty day step
 
@@ -22,6 +22,12 @@ registerAction('dilemma/request', (draft, payload, ctx) => {
 registerAction('dilemma/present', (draft, payload, ctx) => {
   const p = isObj(payload) ? payload : {};
   return presentDilemma(draft, ctx, p.requestId, p.output);
+});
+
+// P14: a new wording of the dilemma on the card, before an answer (RETRY of the authored block, REROLL)
+registerAction('dilemma/reword', (draft, payload, ctx) => {
+  const p = isObj(payload) ? payload : {};
+  return rewordDilemma(draft, ctx, p.id, p.output);
 });
 
 registerAction('dilemma/fallback', (draft, payload, ctx) => {

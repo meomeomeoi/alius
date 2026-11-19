@@ -71,7 +71,7 @@ describe('dilemma controller', () => {
     await createDilemmas(failed.deps).onRequested();
     expect(kinds(failed)).toEqual(['dilemma/request', 'dilemma/fallback']);
     expect(open(failed)).toMatchObject({ status: 'presented', source: 'fallback' });
-    expect(failed.toasts).toEqual([]);
+    expect(failed.toasts).toEqual([{ kind: 'warn', text: 'Decision text: the connection failed.' }]); // P14: a failure is never silent
 
     // no profile and no fallback to the main model: no call at all
     const noProfile = requested({ mechanicProfileId: '', mechanicFallbackToMain: false });

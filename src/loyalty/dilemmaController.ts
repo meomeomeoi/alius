@@ -1,8 +1,7 @@
 import type { RoutePick } from '../engine/commander/checks';
 import type { Action, EngineEvent } from '../engine/dispatch';
 import { buildDilemmaDigest } from '../engine/dilemma/flow';
-import { TUNING } from '../engine/tuning';
-import { runDilemmaGenerate } from '../llm/calls/dilemmaGenerate';
+import type { DilemmaGenerateInput } from '../llm/calls/dilemmaGenerate';
 import type { WorldDeps } from '../world/deps';
 
 export interface DilemmaController {
@@ -42,6 +41,61 @@ export function createDilemmas(deps: WorldDeps & {
     return events;
   }
 
+  /** Requests the controller is writing right now: an answer to one of these is dropped if the card was shown meanwhile (by the engine's own block). */
+  const writing = new Set<string>();
+  const requestOf = (id: string) => {
+    const open = deps.app.current().state?.dilemmas?.open;
+    return open && open.id === id ? open : undefined;
+  };
+
+  // the `dilemma.generate` site (key: the dilemma id): the model writes the decision while it is `requested` (`dilemma/present`), or words it
+  // again while it is on the card and unanswered (`dilemma/reword`: RETRY of the authored block, REROLL). A failure shows the authored block
+  deps.generations.bind<DilemmaGenerateInput, unknown>('dilemma.generate', {
+    build(id) {
+      const state = deps.app.current().state;
+      const open = state ? requestOf(id) : undefined;
+      if (!state || !open) return { expired: 'The decision was made.' };
+      if (open.context === 'scapegoat') return { expired: 'This decision is never worded by a model.' }; // authored and presented at once
+      if (writing.has(id) && open.status !== 'requested') return { expired: 'The decision was shown meanwhile.' };
+      const reg = deps.registries();
+      const template = reg.dilemmaTemplates.get(open.templateId);
+      if (!template) return { expired: 'That decision has no template any more.' };
+      return {
+        template: {
+          id: open.templateId, scale: open.scale, brief: String((template.generate as { brief?: string } | undefined)?.brief ?? ''),
+          optionCount: (template.optionCount as number | undefined) ?? 3,
+          flagPerOption: (template.constraints as { flagPerOption?: boolean } | undefined)?.flagPerOption === true,
+        },
+        digest: buildDilemmaDigest(state, reg, open),
+      };
+    },
+    apply(id, output) {
+      const open = requestOf(id);
+      if (!open) return { stale: true };
+      const events = answer(open.status === 'requested'
+        ? { type: 'dilemma/present', payload: { requestId: id, output } }
+        : { type: 'dilemma/reword', payload: { id, output } }, chatId());
+      if (events.some((e) => e.type === 'error')) return { stale: true };
+      const rejected = events.find((e) => e.type === 'dilemma_rejected');
+      if (!rejected) return 'ok';
+      const why = (rejected.rejections as Array<{ reason: string }>).map((r) => r.reason).join('; ');
+      // the engine asks for one more try only on a first rejection of a request; otherwise it has shown its own block or kept the old one
+      return rejected.retry === true ? { rejected: why } : { rejected: why, final: true };
+    },
+    // the card must show: the authored block now (the request is waiting); one that is on the card already (the engine gave up) stands
+    fallback(id) {
+      const open = requestOf(id);
+      if (!open) return false;
+      if (open.status === 'requested') return !answer({ type: 'dilemma/fallback', payload: { requestId: id } }, chatId()).some((e) => e.type === 'error');
+      return open.source !== 'model';
+    },
+    committed(id) {
+      const open = requestOf(id);
+      if (!open) return 'It was answered.';
+      return open.status === 'presented' ? null : 'It is still being written.';
+    },
+  });
+
   async function onRequested(): Promise<void> {
     const first = deps.app.current().state?.dilemmas?.open;
     const chat = chatId();
@@ -50,33 +104,16 @@ export function createDilemmas(deps: WorldDeps & {
     // a scapegoat case is authored and presented at once: the model is never asked
     if (!first || first.status !== 'requested' || first.context === 'scapegoat' || running.has(key)) return;
     running.add(key);
+    writing.add(first.id);
     try {
-      const settings = deps.settings();
       const fallback = (id: string): void => void answer({ type: 'dilemma/fallback', payload: { requestId: id } }, chat);
-      if (!settings.dilemmasEnabled) return fallback(first.id);
-      for (let attempt = 0; attempt < TUNING.dilemma.maxAttempts; attempt++) {
-        const state = deps.app.current().state;
-        const open = state?.dilemmas?.open;
-        if (!state || !open || open.id !== first.id || open.status !== 'requested') return;
-        const reg = deps.registries();
-        const template = reg.dilemmaTemplates.get(open.templateId);
-        if (!template) return fallback(open.id); // the engine resolves a vanished template
-        const output = await runDilemmaGenerate({
-          template: {
-            id: open.templateId, scale: open.scale, brief: String((template.generate as { brief?: string } | undefined)?.brief ?? ''),
-            optionCount: (template.optionCount as number | undefined) ?? 3,
-            flagPerOption: (template.constraints as { flagPerOption?: boolean } | undefined)?.flagPerOption === true,
-          },
-          digest: buildDilemmaDigest(state, reg, open),
-        }, { st: deps.st, settings, contentLine: deps.contentLine });
-        // the chat changed while the model thought: the answer belongs to another campaign; the request stays open
-        if (chatId() !== chat) return;
-        if (output === null) return fallback(open.id);
-        const events = answer({ type: 'dilemma/present', payload: { requestId: open.id, output } }, chat);
-        if (events.find((e) => e.type === 'dilemma_rejected')?.retry !== true) return;
-      }
+      if (!deps.settings().dilemmasEnabled) return fallback(first.id);
+      const out = await deps.generations.generate('dilemma.generate', first.id);
+      // the engine resolves a template that vanished from the content
+      if (out.kind === 'expired' && chatId() === chat && requestOf(first.id)?.status === 'requested') fallback(first.id);
     } finally {
       running.delete(key);
+      writing.delete(first.id);
     }
   }
 

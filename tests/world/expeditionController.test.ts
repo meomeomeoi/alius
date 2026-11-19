@@ -260,7 +260,7 @@ describe('recap', () => {
     failing.st.mainReplies = [];
     await make(failing).requestRecap();
     expect(failing.state().lastExpedition!.recap).toBeUndefined();
-    expect(failing.toasts).toEqual([]);
+    expect(failing.toasts).toEqual([{ kind: 'warn', text: 'After-action recap: the connection failed.' }]); // P14: a failure is never silent
 
     const switched = worldHarness(reg, done());
     switched.st.mainReplies = ['A late recap.'];

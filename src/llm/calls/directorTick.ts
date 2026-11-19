@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import type { Digest } from '../../engine/world/director';
 import type { DirectorRequest } from '../../engine/world/types';
-import type { AliusSettings } from '../../settings';
-import type { StAdapter } from '../../st/adapter';
 import { registerCallType } from '../callTypes';
-import { callLlm } from '../orchestrator';
 
 export interface DirectorTickInput {
   digest: Digest;
@@ -72,12 +69,3 @@ registerCallType<DirectorShape>({
   },
   schema: DirectorShapeSchema as unknown as z.ZodType<DirectorShape>,
 });
-
-/** One mechanic call. Returns the loosely shaped answer for the engine to validate, or `null` on any failure. */
-export async function runDirectorTick(
-  input: DirectorTickInput, deps: { st: StAdapter; settings: AliusSettings },
-): Promise<unknown | null> {
-  const r = await callLlm<DirectorShape>('director_tick', input, deps);
-  return r.ok ? r.value : null;
-}
-

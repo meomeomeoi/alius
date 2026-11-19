@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { Registries } from '../../src/content/types';
 import { buildDigest, validateDirectorOutput } from '../../src/engine/world/director';
-import { runDirectorTick } from '../../src/llm/calls/directorTick';
+import { runDirectorTick } from '../helpers/calls';
 import { llmLog } from '../../src/llm/log';
 import { getSettings } from '../../src/settings';
 import { FakeStAdapter } from '../../src/st/fake';

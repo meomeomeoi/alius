@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { TUNING } from '../../src/engine/tuning';
-import { generateRecap, sanitizeRecap, type RecapInput } from '../../src/llm/calls/expeditionRecap';
+import { sanitizeRecap, type RecapInput } from '../../src/llm/calls/expeditionRecap';
+import { generateRecap } from '../helpers/calls';
 import { llmLog } from '../../src/llm/log';
 import { getSettings } from '../../src/settings';
 import { FakeStAdapter } from '../../src/st/fake';
