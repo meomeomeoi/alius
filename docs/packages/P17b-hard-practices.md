@@ -114,3 +114,9 @@ Added after the 0.2 depth review; built on P15a (blocking, moments, contact phys
 6. Service draws on real state; preferences are hidden until revealed and affect the verdict.
 7. Humiliation uses real memory and verbatim quotes; dictation, edits and the board work.
 8. Every element carries `data-analyze`; every generation goes through P14.
+
+## Interfaces already provided by P13 (implemented — use, do not rebuild)
+
+- **The pain burst** is the commander punishment with an `injury` effect in the registry `commanderPunishments` (read by effect, never by id): `commander_stress` 15 through `addCommanderStress(draft, amount, 'warden_punishment')` plus an injury chance falling with Endurance. `applyCommanderPunishment` needs a warden; `applyRemotePunishment` (no warden: stress, injury, slots, the squad's record) is the form for a holder that is not P13's. A discipline module of this package that hurts the commander adds an entry (and, if it needs a new effect, a case in `runEffect` in `src/engine/warden/punish.ts`) instead of a new mechanism.
+- **Commander stress** (P12): `addCommanderStress` / `commanderStress` / `commanderStressBand`; nothing here draws.
+

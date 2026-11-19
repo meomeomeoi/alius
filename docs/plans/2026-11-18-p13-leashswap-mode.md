@@ -997,9 +997,9 @@ Rulings marked **(user)** were answered by the user on 2026-11-18. Task 18 copie
   - `docs/CONTENT.md`: the two registries, the effect vocabulary, the prologue `mode`, the `tech` fields.
   - `docs/ROADMAP-next.md`: P13 marked done.
 
-- [ ] **Step 1: Write the failing test** `no leashswap: a seeded week of day ends, scenes, DMs, a dilemma, a combat and a squad Leash request is identical` (Review Focus 1, acceptance 6). Run the same scripted week on today's fixture campaign twice: once as is, once with the P13 modules imported. Compare the final state and the rng state.
-- [ ] **Step 2: Run** → PASS is acceptable here (it guards the earlier tasks). If it fails, stop and report which task drew.
-- [ ] **Step 3: Write** the docs. The manual test covers, in SillyTavern:
+- [x] **Step 1: Write the failing test** `no leashswap: a seeded week of day ends, scenes, DMs, a dilemma, a combat and a squad Leash request is identical` (Review Focus 1, acceptance 6). Run the same scripted week on today's fixture campaign twice: once as is, once with the P13 modules imported. Compare the final state and the rng state.
+- [x] **Step 2: Run** → PASS is acceptable here (it guards the earlier tasks). If it fails, stop and report which task drew.
+- [x] **Step 3: Write** the docs. The manual test covers, in SillyTavern:
   - both selection modes and the reveal (prologue and veteran);
   - an override at the base, in a dilemma and in combat, with each answer;
   - an ARGUE scene ending in a compromise;
@@ -1008,7 +1008,7 @@ Rulings marked **(user)** were answered by the user on 2026-11-18. Task 18 copie
   - two warnings, then termination under both death rules (rewind hides the chat, the END screen and epilogue);
   - an ally won in a scene, kompromat, a discovered hack step, a report;
   - each removal route, remote control and both verdicts.
-- [ ] **Step 4: Run** `npm test` → PASS; record the final file and test counts in the spec.
-- [ ] **Step 5: Commit** `docs(P13): implemented as, overview, hand-offs, manual test`
+- [x] **Step 4: Run** `npm test` → PASS; record the final file and test counts in the spec.
+- [x] **Step 5: Commit** `docs(P13): implemented as, overview, hand-offs, manual test`
 
 **Chunk (c) ends here.**

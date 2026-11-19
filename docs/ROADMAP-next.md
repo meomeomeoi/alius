@@ -19,7 +19,7 @@ P0–P6 are done. These packages bring the base to a proper starting level befor
 | 5d2 | **P3b** Memory (**done**) | What the squad remembers: engine events → facts with audiences, rumors, dossier folding, journal/chronicle/DM recap in the prompt, memory budget, presets and MEMORY view; needs P3, P7a and the packages it remembers (P4–P9c). Before P10b so P10b/P12/P13 write into it. |
 | 5e | **P10b** Intimate immersion UI (**done**) | Telemetry, living DMs, night door, handwriting, device marks; needs P10, P9c data, P9d. |
 | 6 | **P12** Special traits: Secret Frequency, Bloom-induced Paranoia, Web of Debts | Stand on P7's trait framework, P9's leverage/punishments and P5's night events and threads. |
-| 7 | **P13** LEASHSWAP mode | Mirrors P9's punishments onto the commander, reuses P12's suspicion clocks, sits above P9b's hierarchy, uses P9d's lead and content categories; needs P11's intake to reveal the warden. |
+| 7 | **P13** LEASHSWAP mode (**done**) | Mirrors P9's punishments onto the commander, reuses P12's suspicion clocks, sits above P9b's hierarchy, uses P9d's lead and content categories; needs P11's intake to reveal the warden. |
 
 The prologue was item 4 in the original list and the visuals item 5. They swap because a diegetic intake made of paper forms and a dossier needs the `paper` voice to exist first; otherwise the prologue gets built twice.
 
@@ -72,4 +72,4 @@ Rule of thumb from P0–P6: one chunk per session, start each session with the p
 - Art: hub cross-section; device renders with transparent screen per skin (optional); CC0 textures/sounds (optional).
 - Prologue texts for both starts (P11): every string is a placeholder in `docs/content/prologue.md`; the JSON mirrors it.
 - Content category list and descriptions (P9d); relationship rule templates; token kinds; vote reasons wording (P9b/P9c).
-- Handler character and `defector_arc` beats (P12); warden expectations, controller-implant lore (P13).
+- Handler character and `defector_arc` beats (P12); warden expectations, controller-implant lore, the `AUTHOR TO WRITE` wording and the kompromat lines (P13, built).

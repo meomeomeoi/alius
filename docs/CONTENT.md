@@ -847,6 +847,13 @@ One entry per votable decision; the id must be one of `mission`, `upgrade`, `pun
   | `wager_resolved` | `subject` | `name`, `result` (`won` / `lost`), `game`, `stake` |
   | `intercept_resolved` | `subject` | `name`, `keep` |
   | `activity_done` | `subject` | `name`, `activity`, `slot`, `scene` (the activity opens a scene, which remembers it itself) |
+  | `override_answered` (P13) | `subject` (the warden) | `name`, `answer` (`comply` / `argue` / `defy` / `compromise`), `witnessed` (a fight) |
+  | `commander_punished` (P13) | `subject` (the warden) | `name`, `label`, `heavy` (severity 3 or more; remote control writes nothing) |
+  | `commander_leashed` (P13) | `subject` | `name`, `kind` |
+  | `warden_warning` (P13) | `subject` | `name`, `level` |
+  | `warden_removed` (P13) | `subject`, `commander`, `allies` | `name`, `route` (`hack` / `report` / `death`) |
+  | `verdict` (P13) | — | `outcome` (`cleared` / `convicted`) |
+  | `ally_won` (P13) | `subject` | `name` |
 
 - **`when`** keeps a rule to some events of its type: `{ outcome: 'failed' }` (a var equals a string), `{ dead: true }` / `{ scapegoat: false }` (a var or id group is non-empty / empty). Keys are vars or id groups of the event.
 - **`about`** is `world` or an id group: who the fact is about (a rule about an empty group writes nothing).
@@ -855,3 +862,15 @@ One entry per votable decision; the id must be one of `mission`, `upgrade`, `pun
 - **`text`** may use the resolver's vars and `{names}` (the names of the `about` group, unless the resolver sets its own). A game or stake that a content category switched off reads "a wager".
 - **`eventDeltas[].journal`** (≤ 100 characters, optional) is the event as the relation journal words it in the prompt: third person, with a subject ("the commander praised her", "she defied the commander"); no pronoun for the commander. Without one the event type is used with its underscores turned into spaces. Every core row has one (`AUTHOR TO WRITE`).
 - A site that already writes a fact (a punishment, a good her call, a leader change, a Leash termination, loyalty signs, publicity, rules, wager answers) gets no rule.
+
+## LEASHSWAP (P13)
+
+The warden's content. Every text is a draft (`AUTHOR TO WRITE`) and gives the commander no pronoun (lore §0).
+
+- **`wardenExpectations`** (core: `content/core/wardenExpectations.json`): one entry per non-personal expectation kind, `{ id, kind, label, description, weight: 'low' | 'medium' | 'high', values?, corporate? }`. The kinds are the closed list `protect_squad`, `no_civilian_harm`, `meet_quota`, `obey_oversight`, `keep_me_close`, `no_romance_with_others` (and `personal`, which has no entry: the model writes its text). `values` (a score per value axis) and `corporate` feed the fallback agenda; code reads an entry by `kind`, never by id. It is an analyzable registry (`description`).
+- **`commanderPunishments`** (core: `content/core/commanderPunishments.json`): the mirror of `punishments`, `{ id, label, description, severity 1–4, defianceDelta (≤ 0), satisfactionDelta (≥ 0), effects[], contentTags }`. The closed effect vocabulary: `commander_stress { amount }`, `restrict { what: 'no_leave' | 'no_dms', days }`, `lose_slots { min, max }`, `squad_record { amount }`, `injury { chance, perEndurance, days }`, `leash { kind: 'compel' | 'suppress' }`. A pack adds entries (a Leash entry needs an authorization; a severity can have several entries, which take turns in registry order); a new effect type is code.
+- **`prologues[].mode`**: `'leashswap'` picks that prologue for a LEASHSWAP start (`prologueFor(reg, startId, mode?)` falls back to the one without a mode). The core entries `extends` the start's own and insert a `warden_reveal` step (kind `scene`, `participants: 'warden'`).
+- **`dilemmaTemplates`**: the fixed `warden_report_case` (context `warden_report`, options `submit` / `withdraw`, read by `id`).
+- **Fields on other registries**: `activities[].idle` (rest, mess: a quota conflict) and `quota` (work: her alternative), `orders[].wardenRule` (`retreat` / `risk`), `roles[].tech` and `defects[].tech` (know-how to open an implant; read by field).
+- **Glossary, flags, event deltas, memory rules**: 18 glossary entries (`leashswap`, `warden`, `warden_expectation`, …, `intrigue`, `kompromat`, `implant_hack`, `investigation`, `remote_control`, `verdict`, `setting_warden_judge`); flags `warden_ally`, `warden_knows_ally`, `commander_implant_dark`, `commander_watched`, `commander_convicted`, `warden_reassigned`; seven `eventDeltas` rows (`warden_complied`, `warden_defied`, `warden_betrayed`, `warden_removed_by`, `conspired`, `expectation_kept`, `expectation_broken`) each with a `journal` phrase; eleven `memoryRules` (the table above). `TUNING.warden.kompromat.lines` holds three authored kompromat lines; a report needs three, so the author writes more.
+
