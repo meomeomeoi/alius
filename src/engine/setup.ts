@@ -5,6 +5,7 @@ import { enterStep, initialOnboarding, stepIndex } from './onboarding';
 import { defectAllowedFor, validateBond } from './bonds/profile';
 import { TUNING } from './tuning';
 import { DEVELOPMENT_MODES } from './development/state';
+import { anchorKey } from './development/axes';
 import { ensureLeash } from './leash/weekly';
 import { seedWorld } from './world/state';
 import { initialLoyaltyBand } from './relations/bands';
@@ -18,7 +19,7 @@ import { corporateWardenPick, seedWarden } from './warden/select';
 import { DEATH_RULES, newLeashswap, type DeathRule } from './warden/state';
 import { applyCommanderSetup, defaultCommanderSetup, validateCommanderSetup, type CommanderSetup } from './commander/profile';
 import {
-  VALUE_AXES, type Bond, type CampaignState, type DevelopmentMode, type Relation, type SignatureInstance, type Unit, type WorldStance,
+  VALUE_AXES, type Bond, type CampaignState, type DevelopmentMode, type Insight, type Relation, type SignatureInstance, type Unit, type WorldStance,
 } from './state/types';
 
 export const SETUP_LIMITS = {
@@ -63,6 +64,9 @@ export interface UnitSetup {
   worldStances?: Record<string, WorldStance>;
   /** P9d: her bond profile (absent = modest). */
   bond?: Bond;
+  /** P14b: the axes her card states strongly (at most 4 axis keys) and how well she reads people (absent = mid). */
+  anchors?: string[];
+  insight?: Insight;
 }
 
 export interface SetupResult {
@@ -188,6 +192,7 @@ function validateUnit(
   }
 
   validateDisposition(u, label, reg, out);
+  validateDevelopmentProfile(u, label, reg, out);
   if (u.bond !== undefined) for (const issue of validateBond(u.bond, reg).issues) out.push(`${label}: bond: ${issue}`);
 
   const tagCaps = { likes: SETUP_LIMITS.likes, dislikes: SETUP_LIMITS.dislikes, triggers: SETUP_LIMITS.triggers } as const;
@@ -205,6 +210,20 @@ function validateUnit(
     if (!inRange(u.baseline?.[axis], range)) {
       out.push(`${label}: baseline ${axis} must be an integer from ${range[0]} to ${range[1]}`);
     }
+  }
+}
+
+/** P14b: her anchors are known axis keys (at most 4, no repeats) and her insight is a known word. */
+function validateDevelopmentProfile(u: Pick<UnitSetup, 'anchors' | 'insight'>, label: string, reg: Registries, out: string[]): void {
+  if (u.insight !== undefined && !(['low', 'mid', 'high'] as const).includes(u.insight)) out.push(`${label}: insight must be low, mid or high`);
+  if (u.anchors === undefined) return;
+  if (!Array.isArray(u.anchors)) return void out.push(`${label}: anchors must be a list`);
+  if (u.anchors.length > TUNING.development.anchorsMax) out.push(`${label}: at most ${TUNING.development.anchorsMax} anchors (has ${u.anchors.length})`);
+  const seen = new Set<string>();
+  for (const a of u.anchors) {
+    if (anchorKey(reg, a) !== a) out.push(`${label}: anchor "${String(a)}" is not an axis`);
+    if (seen.has(a)) out.push(`${label}: anchor "${String(a)}" is listed twice`);
+    seen.add(a);
   }
 }
 
@@ -381,6 +400,8 @@ export function makeNamedUnit(u: UnitSetup, reg: Registries, usedIds: Set<string
     ...(u.dispositionReason ? { dispositionReason: u.dispositionReason } : {}),
     ...(u.worldStances && Object.keys(u.worldStances).length > 0 ? { worldStances: structuredClone(u.worldStances) } : {}),
     ...(u.bond ? { bond: structuredClone(u.bond) } : {}),
+    ...(u.insight !== undefined && u.insight !== 'mid' ? { insight: u.insight } : {}),
+    ...(u.anchors && u.anchors.length > 0 ? { development: { drift: {}, acc: {}, anchors: [...u.anchors], counters: {}, pending: [], facts: [], moments: [], habits: [], nextId: 0 } } : {}),
   };
 }
 

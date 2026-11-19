@@ -140,6 +140,7 @@ import { renderDoor, resetDoor } from './ui/night/door';
 import { pickLocation } from './ui/scene/locationPicker';
 import { renderSceneScreen, type SceneScreen } from './ui/scene/sceneScreen';
 import { checkActivity, focusConfirm, type ActivityRequest } from './engine/activities';
+import { analyzeAttrs } from './ui/analyze/mark';
 import { RESYNC_SECTIONS, type ResyncPatch, type ResyncSection } from './engine/actions/squad';
 import { renderCalibration } from './ui/setup/calibration';
 import { h } from './ui/dom';
@@ -1585,6 +1586,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     disposition: 'How hard or kind she is for this world (disposition offset)',
     stances: 'Her stance toward the world\'s norms',
     bond: 'Bond profile: how she leads, bonds and what she will not do',
+    development: 'What the card says holds firm in her and how well she reads people (anchors and insight; what she has become is kept)',
   };
 
   /** Re-imports chosen sections from the unit's card and applies the player's choices via squad/resync. */
@@ -1600,11 +1602,14 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
 
     // 1. which sections
     const boxes = offered.map((s) => h('input', { type: 'checkbox', 'data-section': s, checked: true }) as HTMLInputElement);
+    // P14b: a re-sync keeps what she has become; this resets it (off by default)
+    const resetBox = h('input', { type: 'checkbox', 'data-reset-development': unitId }) as HTMLInputElement;
     const picker = await shell.modal({
       title: 'Re-sync from card',
       body: h('div', {},
         h('p', {}, 'Choose what to re-import from the character card. Relationship numbers are never changed.'),
-        ...offered.map((s, i) => h('label', { class: 'alius-check' }, boxes[i], ` ${RESYNC_LABELS[s]}`))),
+        ...offered.map((s, i) => h('label', { class: 'alius-check' }, boxes[i], ` ${RESYNC_LABELS[s]}`)),
+        h('label', { class: 'alius-check', ...analyzeAttrs('glossary:character_development') }, resetBox, ' Reset development: forget what she has become since joining')),
       actions: [{ label: 'Import', value: 'go' }, { label: 'Cancel', value: 'cancel' }],
     });
     if (picker !== 'go') return;
@@ -1683,18 +1688,23 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     }
     if (sections.includes('stances')) patch.worldStances = c.worldStances ?? {};
     if (sections.includes('bond') && c.bond) patch.bond = c.bond;
+    if (sections.includes('development')) {
+      patch.anchors = c.anchors ?? [];
+      patch.insight = c.insight ?? 'mid';
+    }
     const current: ResyncPatch = {
       ...(unit.bond !== undefined ? { bond: unit.bond } : {}),
       dispositionOffset: unit.dispositionOffset ?? 0, dispositionReason: unit.dispositionReason ?? '', worldStances: unit.worldStances ?? {},
       roleId: unit.roleId, values: unit.values, likes: unit.likes, dislikes: unit.dislikes, triggers: unit.triggers, // P14b: raw profile
       signature: unit.signatureSkill, defects: unit.defects.map((d) => ({ id: d.id, origin: d.origin ?? '' })),
       commanderTastes: unit.commanderTastes ?? [], // P14b: raw profile
+      anchors: unit.development?.anchors ?? [], insight: unit.insight ?? 'mid',
     };
     const unchanged = (Object.keys(patch) as Array<keyof ResyncPatch>).every(
       (k) => JSON.stringify(patch[k]) === JSON.stringify(current[k]),
     );
-    if (unchanged) return toast('info', `Nothing changed${draft.notice ? ` (${draft.notice})` : ''}.`);
-    const events = api.dispatch({ type: 'squad/resync', payload: { unitId, patch } }, { expectChatId: startChatId });
+    if (unchanged && !resetBox.checked) return toast('info', `Nothing changed${draft.notice ? ` (${draft.notice})` : ''}.`);
+    const events = api.dispatch({ type: 'squad/resync', payload: { unitId, patch, ...(resetBox.checked ? { resetDevelopment: true } : {}) } }, { expectChatId: startChatId });
     const failed = events.find((e) => e.type === 'error');
     if (failed) toast('error', String(failed.message ?? failed.code));
     else toast('info', `${unit.displayName} re-synced from the card.`);

@@ -351,6 +351,19 @@ export function renderCalibration(host: HTMLElement, ctx: CalibrationCtx): void 
     );
   }
 
+  // --- development (P14b): read-only; the anchors and the insight come from the card
+  if (shown.has('development')) {
+    const anchors = ch.anchors ?? [];
+    const words = (key: string): string => `${key.split(':')[0]} ${key.slice(key.indexOf(':') + 1).replace(/_/g, ' ')}`;
+    host.append(
+      section('development', 'CHARACTER DEVELOPMENT',
+        h('p', { class: 'alius-hint', ...analyzeAttrs('glossary:character_development') }, 'Soldiers change slowly from what they live through. Her card sets how firmly she holds each trait and how well she reads people; both are shown here and cannot be edited.'),
+        h('p', { class: 'alius-dev-anchors', 'data-development': 'anchors', ...analyzeAttrs('glossary:character_development') },
+          anchors.length > 0 ? `Holds firmly: ${anchors.map(words).join(', ')}` : 'Holds nothing firmly.'),
+        h('p', { class: 'alius-dev-insight', 'data-development': 'insight', ...analyzeAttrs('glossary:character_development') }, `Reads people: ${ch.insight ?? 'mid'}`)),
+    );
+  }
+
   // --- baseline
   if (shown.has('baseline')) {
     host.append(

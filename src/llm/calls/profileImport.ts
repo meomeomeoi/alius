@@ -2,8 +2,8 @@ import { z } from 'zod';
 import { registerCallType } from '../callTypes';
 import type { CardInfo } from '../../st/adapter';
 
-export type ImportSection = 'role' | 'values' | 'tags' | 'signature' | 'defects' | 'baseline' | 'tastes' | 'disposition' | 'stances' | 'bond';
-export const ALL_SECTIONS: readonly ImportSection[] = ['role', 'values', 'tags', 'signature', 'defects', 'baseline', 'tastes', 'disposition', 'stances', 'bond'];
+export type ImportSection = 'role' | 'values' | 'tags' | 'signature' | 'defects' | 'baseline' | 'tastes' | 'disposition' | 'stances' | 'bond' | 'development';
+export const ALL_SECTIONS: readonly ImportSection[] = ['role', 'values', 'tags', 'signature', 'defects', 'baseline', 'tastes', 'disposition', 'stances', 'bond', 'development'];
 
 export interface ProfileImportInput {
   card: CardInfo;
@@ -20,6 +20,8 @@ export interface ProfileImportInput {
   world?: { disposition: { name: string; description: string }; options: Array<{ id: string; label: string; choice: string; description: string }> };
   /** P9d: the content categories her own limits may name (`contentCategories`). Present only when the `bond` section is asked for. */
   categories?: Array<{ id: string; label: string }>;
+  /** P14b: the axis keys an anchor may name (value and bond axes, `taste:<id>`; `like:<tag>` and `dislike:<tag>` are free). Present only when the `development` section is asked for. */
+  development?: { axes: string[] };
 }
 
 /**
@@ -40,6 +42,7 @@ export const ProfileImportRawSchema = z
     dispositionOffset: z.unknown().optional(),
     worldStances: z.unknown().optional(),
     bond: z.unknown().optional(),
+    development: z.unknown().optional(),
     notes: z.unknown().optional(),
   })
   .passthrough();
@@ -70,6 +73,8 @@ const SCHEMA_PART: Record<ImportSection, string> = {
     '  "worldStances": { "<id from WORLD OPTIONS>": { "stance": "shares"|"indifferent"|"opposes", "strength": 1|2, "reason": "<one sentence>" } },   // one entry per option listed',
   bond:
     '  "bond": { "leadStyle": "dominant|assertive|balanced|yielding", "attachment": "slow|steady|intense|avoidant", "desire": "low|medium|high", "caretaker": bool, "ownLimits": { "categories": [<ids from CONTENT CATEGORIES>], "note": "<=160" }, "publicity": "secret|known|public", "reason": "<=160" }',
+  development:
+    '  "development": { "anchors": ["<key from DEVELOPMENT AXES>"], "insight": "low"|"mid"|"high" },   // anchors: at most 4 traits the card states strongly; insight: how perceptive she is',
   baseline:
     '  "emotionalBaseline": { "trust": 0, "affinity": 0, "attraction": 0 },   // trust 0..60, affinity -20..30, attraction 0..20',
 };
@@ -103,6 +108,9 @@ function system(raw: unknown): string {
     lines.push('', 'The bond profile is how she leads and bonds, read from the card; never invent. leadStyle is who takes the lead in close moments, attachment how fast and how hard she attaches, desire how strong her wants are, caretaker true only if the card shows she looks after others (and the commander) at her own expense, publicity how open she wants a relationship to be.');
     lines.push('ownLimits lists only what the card says she would not do (ids from CONTENT CATEGORIES); empty when the card says nothing. A card that does not say is balanced / steady / low, no caretaker, known.');
   }
+  if (has(input, 'development')) {
+    lines.push('', 'Anchors are the traits the card states strongly ("fiercely loyal", "despises weakness"): name the axis each one sits on, at most 4, and none when the card is not that firm. Write "like:<tag>" or "dislike:<tag>" for something she plainly loves or hates (a short lowercase tag). Insight is how well she reads other people: "low" when the card shows her naive, hot-headed or distracted, "high" when sharp, calm and observant, "mid" when it does not say.');
+  }
   if (has(input, 'values')) lines.push('', 'Value axes:', VALUE_AXES_TEXT);
   lines.push('', 'Output JSON shape:', '{', parts.join(',\n'), '}');
   return lines.join('\n');
@@ -127,6 +135,7 @@ function prompt(raw: unknown): string {
   if (has(input, 'defects')) out.push('', 'DEFECTS:', ...input.defects.map((d) => `- ${d.id}: ${d.lore}`));
   if (has(input, 'tastes')) out.push('', 'TASTES (id: what it means):', ...input.tastes.map((t) => `- ${t.id}: ${t.description}`));
   if (has(input, 'bond') && input.categories) out.push('', 'CONTENT CATEGORIES (id: label):', ...input.categories.map((c) => `- ${c.id}: ${c.label}`));
+  if (has(input, 'development') && input.development) out.push('', 'DEVELOPMENT AXES (keys an anchor may name):', input.development.axes.join(', '));
   if (has(input, 'disposition') && input.world) out.push('', `WORLD: soldiers of this world are "${input.world.disposition.name}": ${input.world.disposition.description}`);
   if (has(input, 'stances') && input.world) out.push('', 'WORLD OPTIONS (id: current choice, what it means):', ...input.world.options.map((o) => `- ${o.id}: ${o.label} = ${o.choice}. ${o.description}`));
   out.push('', `Produce the requested sections: ${input.sections.join(', ')}.`);

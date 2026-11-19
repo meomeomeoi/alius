@@ -1,5 +1,6 @@
 import type { Entry } from '../../content/types';
 import { registerAction } from '../dispatch';
+import { ensureDevelopment } from '../development/state';
 import { applyFirstImpression } from '../commander/presence';
 import { generateGrunt, gruntRelation } from '../grunts';
 import { applyDispositionStart } from '../worldOptions';
@@ -8,13 +9,13 @@ import {
   crimeEffectsOf, crimeKnownByDefault, initialRelation, makeNamedUnit, startingTrustAdjust, validateIncomingUnit, validateUnitProfile, type UnitSetup,
 } from '../setup';
 import { TUNING } from '../tuning';
-import type { Bond, CampaignState, WorldStance } from '../state/types';
+import type { Bond, CampaignState, Insight, WorldStance } from '../state/types';
 import type { DefectInstance } from '../state/types';
 
 // Importing this module registers the squad actions.
 
 /** Sections a re-sync can replace. The baseline is excluded: relationship axes are engine truth once the campaign runs. */
-export const RESYNC_SECTIONS = ['role', 'values', 'tags', 'signature', 'defects', 'tastes', 'disposition', 'stances', 'bond'] as const;
+export const RESYNC_SECTIONS = ['role', 'values', 'tags', 'signature', 'defects', 'tastes', 'disposition', 'stances', 'bond', 'development'] as const;
 export type ResyncSection = (typeof RESYNC_SECTIONS)[number];
 
 export type ResyncPatch = Partial<Pick<UnitSetup, 'roleId' | 'values' | 'likes' | 'dislikes' | 'triggers' | 'signature' | 'defects'>> & {
@@ -26,13 +27,16 @@ export type ResyncPatch = Partial<Pick<UnitSetup, 'roleId' | 'values' | 'likes' 
   worldStances?: Record<string, WorldStance>;
   /** P9d: replaces the bond profile (lead style, attachment, desire, caretaker, her own limits, her publicity preference). Never touches Want or publicity of the relation. */
   bond?: Bond;
+  /** P14b: the axes her card states strongly and how well she reads people. Never touches drift, accumulators or facts. */
+  anchors?: string[];
+  insight?: Insight;
 };
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 
 const SECTION_OF: Record<keyof ResyncPatch, ResyncSection> = {
   roleId: 'role', values: 'values', likes: 'tags', dislikes: 'tags', triggers: 'tags', signature: 'signature', defects: 'defects',
-  commanderTastes: 'tastes', dispositionOffset: 'disposition', dispositionReason: 'disposition', worldStances: 'stances', bond: 'bond',
+  commanderTastes: 'tastes', dispositionOffset: 'disposition', dispositionReason: 'disposition', worldStances: 'stances', bond: 'bond', anchors: 'development', insight: 'development',
 };
 
 registerAction('squad/resync', (draft, payload, ctx) => {
@@ -60,6 +64,8 @@ registerAction('squad/resync', (draft, payload, ctx) => {
     dispositionReason: patch.dispositionReason ?? unit.dispositionReason,
     worldStances: patch.worldStances ?? unit.worldStances,
     bond: patch.bond ?? unit.bond,
+    anchors: patch.anchors ?? unit.development?.anchors,
+    insight: patch.insight ?? unit.insight,
   };
   const errors = validateUnitProfile(next, unit.displayName, ctx.registries, {
     desireBondDefects: draft.settings.desireBondDefects === true,
@@ -94,6 +100,16 @@ registerAction('squad/resync', (draft, payload, ctx) => {
     else delete unit.worldStances;
   }
   if (patch.bond !== undefined) unit.bond = structuredClone(patch.bond);
+  // P14b: "Reset development" starts her over; anchors and insight come from the card, drift and facts never do
+  if (payload.resetDevelopment === true) delete unit.development;
+  if (patch.anchors !== undefined) {
+    if (patch.anchors.length > 0) ensureDevelopment(unit).anchors = [...patch.anchors];
+    else if (unit.development) unit.development.anchors = [];
+  }
+  if (patch.insight !== undefined) {
+    if (patch.insight === 'mid') delete unit.insight;
+    else unit.insight = patch.insight;
+  }
   if (patch.defects) {
     unit.defects = patch.defects.map((d): DefectInstance => {
       const kept = unit.defects.find((x) => x.id === d.id); // keeps arc progress of a defect that stays

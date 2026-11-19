@@ -10707,6 +10707,17 @@ function axisForbidden(_state, reg, unit2, key) {
   if (unit2.development?.held?.includes(key) === true) return "held by the player";
   return null;
 }
+var isTag = (s) => s.length > 0 && s.length <= 32 && /^[a-z0-9'_-]+( [a-z0-9'_-]+)*$/.test(s);
+function anchorKey(reg, raw) {
+  if (typeof raw !== "string") return null;
+  const key = raw === "bond:leadStyle" ? "bond:lead_style" : raw;
+  const kind = axisKind(key);
+  if (kind === null) return null;
+  const name = key.slice(kind.length + 1);
+  if (kind === "like" || kind === "dislike") return reg.developmentAxes.has(`${kind}:${WILDCARD}`) && isTag(name) ? key : null;
+  if (kind === "taste") return reg.tastes.has(name) && reg.developmentAxes.has(`taste:${WILDCARD}`) ? key : null;
+  return reg.developmentAxes.has(key) && name !== WILDCARD ? key : null;
+}
 
 // src/engine/development/state.ts
 var DEVELOPMENT_MODES = ["off", "slow", "normal"];
@@ -21869,6 +21880,7 @@ function validateUnit(u, label2, reg, opts, out, withBaseline = true) {
     }
   }
   validateDisposition(u, label2, reg, out);
+  validateDevelopmentProfile(u, label2, reg, out);
   if (u.bond !== void 0) for (const issue of validateBond(u.bond, reg).issues) out.push(`${label2}: bond: ${issue}`);
   const tagCaps = { likes: SETUP_LIMITS.likes, dislikes: SETUP_LIMITS.dislikes, triggers: SETUP_LIMITS.triggers };
   for (const [field2, cap7] of Object.entries(tagCaps)) {
@@ -21882,6 +21894,18 @@ function validateUnit(u, label2, reg, opts, out, withBaseline = true) {
     if (!inRange2(u.baseline?.[axis], range2)) {
       out.push(`${label2}: baseline ${axis} must be an integer from ${range2[0]} to ${range2[1]}`);
     }
+  }
+}
+function validateDevelopmentProfile(u, label2, reg, out) {
+  if (u.insight !== void 0 && !["low", "mid", "high"].includes(u.insight)) out.push(`${label2}: insight must be low, mid or high`);
+  if (u.anchors === void 0) return;
+  if (!Array.isArray(u.anchors)) return void out.push(`${label2}: anchors must be a list`);
+  if (u.anchors.length > TUNING.development.anchorsMax) out.push(`${label2}: at most ${TUNING.development.anchorsMax} anchors (has ${u.anchors.length})`);
+  const seen = /* @__PURE__ */ new Set();
+  for (const a of u.anchors) {
+    if (anchorKey(reg, a) !== a) out.push(`${label2}: anchor "${String(a)}" is not an axis`);
+    if (seen.has(a)) out.push(`${label2}: anchor "${String(a)}" is listed twice`);
+    seen.add(a);
   }
 }
 function validateUnitProfile(u, label2, reg, opts) {
@@ -22031,7 +22055,9 @@ function makeNamedUnit(u, reg, usedIds) {
     ...u.dispositionOffset !== void 0 && u.dispositionOffset !== 0 ? { dispositionOffset: u.dispositionOffset } : {},
     ...u.dispositionReason ? { dispositionReason: u.dispositionReason } : {},
     ...u.worldStances && Object.keys(u.worldStances).length > 0 ? { worldStances: structuredClone(u.worldStances) } : {},
-    ...u.bond ? { bond: structuredClone(u.bond) } : {}
+    ...u.bond ? { bond: structuredClone(u.bond) } : {},
+    ...u.insight !== void 0 && u.insight !== "mid" ? { insight: u.insight } : {},
+    ...u.anchors && u.anchors.length > 0 ? { development: { drift: {}, acc: {}, anchors: [...u.anchors], counters: {}, pending: [], facts: [], moments: [], habits: [], nextId: 0 } } : {}
   };
 }
 function validateIncomingUnit(u, reg, opts) {
@@ -22697,7 +22723,7 @@ function gruntRelation(state, reg, grunt) {
 }
 
 // src/engine/actions/squad.ts
-var RESYNC_SECTIONS = ["role", "values", "tags", "signature", "defects", "tastes", "disposition", "stances", "bond"];
+var RESYNC_SECTIONS = ["role", "values", "tags", "signature", "defects", "tastes", "disposition", "stances", "bond", "development"];
 var isObj8 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var SECTION_OF = {
   roleId: "role",
@@ -22711,7 +22737,9 @@ var SECTION_OF = {
   dispositionOffset: "disposition",
   dispositionReason: "disposition",
   worldStances: "stances",
-  bond: "bond"
+  bond: "bond",
+  anchors: "development",
+  insight: "development"
 };
 registerAction("squad/resync", (draft, payload, ctx2) => {
   if (!isObj8(payload) || typeof payload.unitId !== "string" || !isObj8(payload.patch)) {
@@ -22736,7 +22764,9 @@ registerAction("squad/resync", (draft, payload, ctx2) => {
     dispositionOffset: patch.dispositionOffset ?? unit2.dispositionOffset,
     dispositionReason: patch.dispositionReason ?? unit2.dispositionReason,
     worldStances: patch.worldStances ?? unit2.worldStances,
-    bond: patch.bond ?? unit2.bond
+    bond: patch.bond ?? unit2.bond,
+    anchors: patch.anchors ?? unit2.development?.anchors,
+    insight: patch.insight ?? unit2.insight
   };
   const errors = validateUnitProfile(next, unit2.displayName, ctx2.registries, {
     desireBondDefects: draft.settings.desireBondDefects === true
@@ -22770,6 +22800,15 @@ registerAction("squad/resync", (draft, payload, ctx2) => {
     else delete unit2.worldStances;
   }
   if (patch.bond !== void 0) unit2.bond = structuredClone(patch.bond);
+  if (payload.resetDevelopment === true) delete unit2.development;
+  if (patch.anchors !== void 0) {
+    if (patch.anchors.length > 0) ensureDevelopment(unit2).anchors = [...patch.anchors];
+    else if (unit2.development) unit2.development.anchors = [];
+  }
+  if (patch.insight !== void 0) {
+    if (patch.insight === "mid") delete unit2.insight;
+    else unit2.insight = patch.insight;
+  }
   if (patch.defects) {
     unit2.defects = patch.defects.map((d) => {
       const kept = unit2.defects.find((x) => x.id === d.id);
@@ -25646,7 +25685,7 @@ registerCallType({
 });
 
 // src/llm/calls/profileImport.ts
-var ALL_SECTIONS = ["role", "values", "tags", "signature", "defects", "baseline", "tastes", "disposition", "stances", "bond"];
+var ALL_SECTIONS = ["role", "values", "tags", "signature", "defects", "baseline", "tastes", "disposition", "stances", "bond", "development"];
 var ProfileImportRawSchema = external_exports.object({
   roleCandidates: external_exports.unknown().optional(),
   values: external_exports.unknown().optional(),
@@ -25660,6 +25699,7 @@ var ProfileImportRawSchema = external_exports.object({
   dispositionOffset: external_exports.unknown().optional(),
   worldStances: external_exports.unknown().optional(),
   bond: external_exports.unknown().optional(),
+  development: external_exports.unknown().optional(),
   notes: external_exports.unknown().optional()
 }).passthrough();
 var VALUE_AXES_TEXT = [
@@ -25680,6 +25720,7 @@ var SCHEMA_PART = {
   disposition: `  "dispositionOffset": { "offset": 0, "reason": "<one sentence>" },   // integer -2..2: how much kinder (negative) or harder (positive) she is than the world's default soldier; 0 when the card does not say`,
   stances: '  "worldStances": { "<id from WORLD OPTIONS>": { "stance": "shares"|"indifferent"|"opposes", "strength": 1|2, "reason": "<one sentence>" } },   // one entry per option listed',
   bond: '  "bond": { "leadStyle": "dominant|assertive|balanced|yielding", "attachment": "slow|steady|intense|avoidant", "desire": "low|medium|high", "caretaker": bool, "ownLimits": { "categories": [<ids from CONTENT CATEGORIES>], "note": "<=160" }, "publicity": "secret|known|public", "reason": "<=160" }',
+  development: '  "development": { "anchors": ["<key from DEVELOPMENT AXES>"], "insight": "low"|"mid"|"high" },   // anchors: at most 4 traits the card states strongly; insight: how perceptive she is',
   baseline: '  "emotionalBaseline": { "trust": 0, "affinity": 0, "attraction": 0 },   // trust 0..60, affinity -20..30, attraction 0..20'
 };
 var has = (i, s) => i.sections.includes(s);
@@ -25710,6 +25751,9 @@ function system(raw) {
     lines.push("", "The bond profile is how she leads and bonds, read from the card; never invent. leadStyle is who takes the lead in close moments, attachment how fast and how hard she attaches, desire how strong her wants are, caretaker true only if the card shows she looks after others (and the commander) at her own expense, publicity how open she wants a relationship to be.");
     lines.push("ownLimits lists only what the card says she would not do (ids from CONTENT CATEGORIES); empty when the card says nothing. A card that does not say is balanced / steady / low, no caretaker, known.");
   }
+  if (has(input, "development")) {
+    lines.push("", 'Anchors are the traits the card states strongly ("fiercely loyal", "despises weakness"): name the axis each one sits on, at most 4, and none when the card is not that firm. Write "like:<tag>" or "dislike:<tag>" for something she plainly loves or hates (a short lowercase tag). Insight is how well she reads other people: "low" when the card shows her naive, hot-headed or distracted, "high" when sharp, calm and observant, "mid" when it does not say.');
+  }
   if (has(input, "values")) lines.push("", "Value axes:", VALUE_AXES_TEXT);
   lines.push("", "Output JSON shape:", "{", parts.join(",\n"), "}");
   return lines.join("\n");
@@ -25732,6 +25776,7 @@ function prompt(raw) {
   if (has(input, "defects")) out.push("", "DEFECTS:", ...input.defects.map((d) => `- ${d.id}: ${d.lore}`));
   if (has(input, "tastes")) out.push("", "TASTES (id: what it means):", ...input.tastes.map((t) => `- ${t.id}: ${t.description}`));
   if (has(input, "bond") && input.categories) out.push("", "CONTENT CATEGORIES (id: label):", ...input.categories.map((c2) => `- ${c2.id}: ${c2.label}`));
+  if (has(input, "development") && input.development) out.push("", "DEVELOPMENT AXES (keys an anchor may name):", input.development.axes.join(", "));
   if (has(input, "disposition") && input.world) out.push("", `WORLD: soldiers of this world are "${input.world.disposition.name}": ${input.world.disposition.description}`);
   if (has(input, "stances") && input.world) out.push("", "WORLD OPTIONS (id: current choice, what it means):", ...input.world.options.map((o) => `- ${o.id}: ${o.label} = ${o.choice}. ${o.description}`));
   out.push("", `Produce the requested sections: ${input.sections.join(", ")}.`);
@@ -33409,8 +33454,13 @@ function buildImportInput(card2, registries, settings, sections, world, bond) {
     signatures: [...registries.signatures.values()].map((s) => ({ id: s.id, fits: str4(s.fits) })),
     defects: [...registries.defects.values()].filter((d) => settings.desireBondDefects || d.category !== "desire_bond").filter((d) => sections.includes("bond") || defectAllowedFor(registries, d.id, bond ?? null)).map((d) => ({ id: d.id, lore: str4(d.lore) })),
     tastes: [...registries.tastes.values()].map((t) => ({ id: t.id, description: str4(t.description) })),
-    ...sections.includes("bond") ? { categories: [...registries.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => ({ id: String(c.id), label: str4(c.label) })) } : {}
+    ...sections.includes("bond") ? { categories: [...registries.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => ({ id: String(c.id), label: str4(c.label) })) } : {},
+    ...sections.includes("development") ? { development: { axes: developmentAxisKeys(registries) } } : {}
   };
+}
+function developmentAxisKeys(registries) {
+  const fixed = [...registries.developmentAxes.keys()].filter((k) => !k.endsWith(":.any"));
+  return [...fixed, ...[...registries.tastes.keys()].map((t) => `taste:${t}`)];
 }
 var isObj37 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 var cap4 = (v, max, fallback = "") => typeof v === "string" ? v.trim().slice(0, max) : fallback;
@@ -33549,6 +33599,20 @@ function sanitizeProfile(raw, ctx2) {
       }
       profile.worldStances = out;
     }
+  }
+  if (want("development")) {
+    const dev = isObj37(src.development) ? src.development : {};
+    const anchors = [];
+    for (const raw2 of Array.isArray(dev.anchors) ? dev.anchors : []) {
+      const key = anchorKey(ctx2.registries, raw2);
+      if (key === null) {
+        dropped.push(`development:${typeof raw2 === "string" ? raw2 : "(invalid)"}`);
+        continue;
+      }
+      if (!anchors.includes(key) && anchors.length < TUNING.development.anchorsMax) anchors.push(key);
+    }
+    profile.anchors = anchors;
+    profile.insight = dev.insight === "low" || dev.insight === "high" ? dev.insight : "mid";
   }
   if (want("baseline")) {
     if (isObj37(src.emotionalBaseline)) {
@@ -34154,6 +34218,9 @@ var Wizard = class {
     else if (section === "bond") {
       c.bond = p.bond;
       c.bondReason = p.bondReason;
+    } else if (section === "development") {
+      c.anchors = p.anchors;
+      c.insight = p.insight;
     } else {
       c.likes = p.likes;
       c.dislikes = p.dislikes;
@@ -34207,6 +34274,10 @@ var Wizard = class {
         break;
       case "bond":
         if (p.bond) ch.bond = structuredClone(p.bond);
+        break;
+      case "development":
+        if (p.anchors) ch.anchors = [...p.anchors];
+        if (p.insight) ch.insight = p.insight;
         break;
     }
   }
@@ -34707,6 +34778,23 @@ function renderCalibration(host, ctx2) {
           textInput("bond-note", bond.ownLimits.note ?? "", TUNING.bonds.limits.noteMax, (v) => write2({ ownLimits: { categories: limited, note: v } }))
         ),
         fromCard ? h("p", { class: "alius-dim" }, `From the card: ${fromCard}`) : null
+      )
+    );
+  }
+  if (shown.has("development")) {
+    const anchors = ch.anchors ?? [];
+    const words3 = (key) => `${key.split(":")[0]} ${key.slice(key.indexOf(":") + 1).replace(/_/g, " ")}`;
+    host.append(
+      section(
+        "development",
+        "CHARACTER DEVELOPMENT",
+        h("p", { class: "alius-hint", ...analyzeAttrs("glossary:character_development") }, "Soldiers change slowly from what they live through. Her card sets how firmly she holds each trait and how well she reads people; both are shown here and cannot be edited."),
+        h(
+          "p",
+          { class: "alius-dev-anchors", "data-development": "anchors", ...analyzeAttrs("glossary:character_development") },
+          anchors.length > 0 ? `Holds firmly: ${anchors.map(words3).join(", ")}` : "Holds nothing firmly."
+        ),
+        h("p", { class: "alius-dev-insight", "data-development": "insight", ...analyzeAttrs("glossary:character_development") }, `Reads people: ${ch.insight ?? "mid"}`)
       )
     );
   }
@@ -44701,7 +44789,8 @@ function createApp(st, deps) {
     tastes: "How she reads the commander (tastes)",
     disposition: "How hard or kind she is for this world (disposition offset)",
     stances: "Her stance toward the world's norms",
-    bond: "Bond profile: how she leads, bonds and what she will not do"
+    bond: "Bond profile: how she leads, bonds and what she will not do",
+    development: "What the card says holds firm in her and how well she reads people (anchors and insight; what she has become is kept)"
   };
   async function resyncUnit(unitId) {
     const unit2 = state?.squad.find((u) => u.id === unitId);
@@ -44711,13 +44800,15 @@ function createApp(st, deps) {
     const world = state.world.options ?? defaultWorldOptions(registries);
     const offered2 = RESYNC_SECTIONS.filter((s) => s !== "stances" || stanceOptionIds(registries, world).length > 0);
     const boxes = offered2.map((s) => h("input", { type: "checkbox", "data-section": s, checked: true }));
+    const resetBox = h("input", { type: "checkbox", "data-reset-development": unitId });
     const picker = await shell.modal({
       title: "Re-sync from card",
       body: h(
         "div",
         {},
         h("p", {}, "Choose what to re-import from the character card. Relationship numbers are never changed."),
-        ...offered2.map((s, i) => h("label", { class: "alius-check" }, boxes[i], ` ${RESYNC_LABELS[s]}`))
+        ...offered2.map((s, i) => h("label", { class: "alius-check" }, boxes[i], ` ${RESYNC_LABELS[s]}`)),
+        h("label", { class: "alius-check", ...analyzeAttrs("glossary:character_development") }, resetBox, " Reset development: forget what she has become since joining")
       ),
       actions: [{ label: "Import", value: "go" }, { label: "Cancel", value: "cancel" }]
     });
@@ -44799,6 +44890,10 @@ function createApp(st, deps) {
     }
     if (sections.includes("stances")) patch.worldStances = c.worldStances ?? {};
     if (sections.includes("bond") && c.bond) patch.bond = c.bond;
+    if (sections.includes("development")) {
+      patch.anchors = c.anchors ?? [];
+      patch.insight = c.insight ?? "mid";
+    }
     const current = {
       ...unit2.bond !== void 0 ? { bond: unit2.bond } : {},
       dispositionOffset: unit2.dispositionOffset ?? 0,
@@ -44812,14 +44907,16 @@ function createApp(st, deps) {
       // P14b: raw profile
       signature: unit2.signatureSkill,
       defects: unit2.defects.map((d) => ({ id: d.id, origin: d.origin ?? "" })),
-      commanderTastes: unit2.commanderTastes ?? []
+      commanderTastes: unit2.commanderTastes ?? [],
       // P14b: raw profile
+      anchors: unit2.development?.anchors ?? [],
+      insight: unit2.insight ?? "mid"
     };
     const unchanged = Object.keys(patch).every(
       (k) => JSON.stringify(patch[k]) === JSON.stringify(current[k])
     );
-    if (unchanged) return toast("info", `Nothing changed${draft.notice ? ` (${draft.notice})` : ""}.`);
-    const events = api.dispatch({ type: "squad/resync", payload: { unitId, patch } }, { expectChatId: startChatId });
+    if (unchanged && !resetBox.checked) return toast("info", `Nothing changed${draft.notice ? ` (${draft.notice})` : ""}.`);
+    const events = api.dispatch({ type: "squad/resync", payload: { unitId, patch, ...resetBox.checked ? { resetDevelopment: true } : {} } }, { expectChatId: startChatId });
     const failed = events.find((e) => e.type === "error");
     if (failed) toast("error", String(failed.message ?? failed.code));
     else toast("info", `${unit2.displayName} re-synced from the card.`);

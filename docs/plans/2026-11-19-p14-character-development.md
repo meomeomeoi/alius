@@ -618,17 +618,17 @@ interface DevMoment {
 **Interfaces:**
 - Produces: `ImportSection 'development'`; `UnitSetup.anchors?: string[]`; `UnitSetup.insight?: Insight`; `ResyncPatch.anchors?`, `.insight?`; `squad/resync` payload `resetDevelopment?: true`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - `anchors are validated`: the raw `["value:ingroup", "value:greed", "bond:ownLimits", "value:ingroup", "like:x", "value:mercy", "value:autonomy"]` gives `['value:ingroup', 'like:x', 'value:mercy', 'value:autonomy']` (≤ 4, known, deduped).
   - `insight defaults to mid`.
   - `a build without anchors writes no development` (setup golden unchanged).
   - `re-sync keeps development`: a unit with drift and facts re-synced on `values` keeps `development` intact while `values` change.
   - `reset development` deletes it.
   - `the prompt names no disabled category` (the section text does not include a disabled category's label).
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** the files, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P14b): anchors and insight at import; re-sync keeps development`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** the files, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P14b): anchors and insight at import; re-sync keeps development`
 
 **Chunk (a) ends here.** Stop and report.
 

@@ -54,3 +54,22 @@ export function axisForbidden(
   if (unit.development?.held?.includes(key) === true) return 'held by the player';
   return null;
 }
+
+/** A tag as the import normalizes it (lowercase, `[a-z0-9 '_-]`, single spaces, trimmed, at most 32), without importing the setup module. */
+const isTag = (s: string): boolean => s.length > 0 && s.length <= 32 && /^[a-z0-9'_-]+( [a-z0-9'_-]+)*$/.test(s);
+
+/**
+ * An anchor key as the import and a re-sync may give it, or null: a value or bond axis with an entry (the camelCase `bond:leadStyle`
+ * is read as `bond:lead_style`), a taste of the registry, a like or a dislike with a normalized tag. Her limits and publicity have no
+ * entry and are refused.
+ */
+export function anchorKey(reg: Pick<Registries, 'developmentAxes' | 'tastes'>, raw: unknown): string | null {
+  if (typeof raw !== 'string') return null;
+  const key = raw === 'bond:leadStyle' ? 'bond:lead_style' : raw;
+  const kind = axisKind(key);
+  if (kind === null) return null;
+  const name = key.slice(kind.length + 1);
+  if (kind === 'like' || kind === 'dislike') return reg.developmentAxes.has(`${kind}:${WILDCARD}`) && isTag(name) ? key : null;
+  if (kind === 'taste') return reg.tastes.has(name) && reg.developmentAxes.has(`taste:${WILDCARD}`) ? key : null;
+  return reg.developmentAxes.has(key) && name !== WILDCARD ? key : null;
+}

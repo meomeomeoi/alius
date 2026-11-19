@@ -737,6 +737,9 @@ export class Wizard {
     else if (section === 'bond') {
       c.bond = p.bond;
       c.bondReason = p.bondReason;
+    } else if (section === 'development') {
+      c.anchors = p.anchors;
+      c.insight = p.insight;
     } else {
       c.likes = p.likes;
       c.dislikes = p.dislikes;
@@ -791,6 +794,10 @@ export class Wizard {
         break;
       case 'bond':
         if (p.bond) ch.bond = structuredClone(p.bond);
+        break;
+      case 'development':
+        if (p.anchors) ch.anchors = [...p.anchors];
+        if (p.insight) ch.insight = p.insight;
         break;
     }
   }

@@ -208,7 +208,7 @@ describe('setup screen', () => {
     expect(qa(m, '.alius-sig-card')).toHaveLength(12);
     expect(qa(m, '.alius-defect-card')).toHaveLength(14);
     expect(m.host.textContent).toContain('card not found');
-    expect(qa(m, 'button[data-regenerate]')).toHaveLength(9); // the AI can be retried after a fallback (six sections, the P7 tastes, the P8 disposition and the P9d bond; no stances in the Standard world)
+    expect(qa(m, 'button[data-regenerate]')).toHaveLength(10); // the AI can be retried after a fallback (six sections, the P7 tastes, the P8 disposition, the P9d bond and the P14b development; no stances in the Standard world)
   });
 
   it('manual signature starts as the template name and mechanic', async () => {

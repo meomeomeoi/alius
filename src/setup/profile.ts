@@ -2,7 +2,8 @@ import type { Entry, Registries } from '../content/types';
 import { SETUP_LIMITS, normalizeTag } from '../engine/setup';
 import { TUNING } from '../engine/tuning';
 import { defectAllowedFor, validateBond } from '../engine/bonds';
-import type { Bond, Unit, WorldStance } from '../engine/state/types';
+import { anchorKey } from '../engine/development/axes';
+import type { Bond, Insight, Unit, WorldStance } from '../engine/state/types';
 import { isNeutralChoice, worldChoices, worldDispositionLevel } from '../engine/worldOptions';
 import type { ImportSection, ProfileImportInput } from '../llm/calls/profileImport';
 import { describeFailure } from '../llm/describe';
@@ -85,7 +86,14 @@ export function buildImportInput(
     ...(sections.includes('bond')
       ? { categories: [...registries.contentCategories.values()].sort((a, b) => Number(a.order) - Number(b.order)).map((c) => ({ id: String(c.id), label: str(c.label) })) }
       : {}),
+    ...(sections.includes('development') ? { development: { axes: developmentAxisKeys(registries) } } : {}),
   };
+}
+
+/** P14b: the axis keys an anchor may name: the registry's value and bond axes, and `taste:<id>` for each taste (the wildcards are not keys). */
+export function developmentAxisKeys(registries: Registries): string[] {
+  const fixed = [...registries.developmentAxes.keys()].filter((k) => !k.endsWith(':.any'));
+  return [...fixed, ...[...registries.tastes.keys()].map((t) => `taste:${t}`)];
 }
 
 export interface ImportedProfile {
@@ -106,6 +114,9 @@ export interface ImportedProfile {
   /** P9d: her bond profile (per-field modest defaults when the card or the model gave nothing usable) and why. */
   bond?: Bond;
   bondReason?: string;
+  /** P14b: the axes her card states strongly (at most 4, validated) and how well she reads people. */
+  anchors?: string[];
+  insight?: Insight;
   notes: string;
 }
 
@@ -263,6 +274,22 @@ export function sanitizeProfile(
       }
       profile.worldStances = out;
     }
+  }
+
+  if (want('development')) {
+    // optional by nature: a card that is not firm anywhere has no anchors, and a missing insight is mid; never "missing"
+    const dev = isObj(src.development) ? src.development : {};
+    const anchors: string[] = [];
+    for (const raw of Array.isArray(dev.anchors) ? dev.anchors : []) {
+      const key = anchorKey(ctx.registries, raw);
+      if (key === null) {
+        dropped.push(`development:${typeof raw === 'string' ? raw : '(invalid)'}`);
+        continue;
+      }
+      if (!anchors.includes(key) && anchors.length < TUNING.development.anchorsMax) anchors.push(key);
+    }
+    profile.anchors = anchors;
+    profile.insight = dev.insight === 'low' || dev.insight === 'high' ? dev.insight : 'mid';
   }
 
   if (want('baseline')) {
