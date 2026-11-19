@@ -227,7 +227,7 @@ Every `CallTypeId` and every registered flavor kind (`grunt`, `enemy`, `demand`,
   - `finishReasonOf(raw: unknown): 'length' | 'stop' | undefined` in `src/st/real.ts` (exported for tests)
   - `FakeStAdapter.queueAnswer(a: GenAnswer, profile?: boolean)`, `FakeStAdapter.hangNext(profile?: boolean)`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - `finishReasonOf maps provider shapes`:
     - `{ choices: [{ finish_reason: 'length' }] }` → `'length'`;
     - `{ stop_reason: 'max_tokens' }` → `'length'`;
@@ -239,10 +239,10 @@ Every `CallTypeId` and every registered flavor kind (`grunt`, `enemy`, `demand`,
     - `{ content: [{ type: 'text', text: 'x' }] }`;
     - `{ choices: [{ text: 'x' }] }` → each `'x'`.
   - `fake hangNext resolves only on abort`: a call with `AbortSignal.timeout(10)` rejects with an `AbortError`.
-- [ ] **Step 2: Run** `npx vitest run tests/st/finishReason.test.ts tests/llm/text.test.ts` → FAIL.
-- [ ] **Step 3: Implement.** In `real.ts`, `generateWithProfile` sends `{ stream: false, extractData: false, includePreset: false, includeInstruct: false, signal }`, keeps the reasoning-payload retry, and returns `{ text: answerText(raw), finishReason: finishReasonOf(raw) }`. `generateMain` reads `generateRawData`'s data the same way.
-- [ ] **Step 4: Run** the files, then `npm test` → PASS (orchestrator tests unchanged).
-- [ ] **Step 5: Commit** `feat(P14): adapter answers carry a stop reason and take an abort signal`
+- [x] **Step 2: Run** `npx vitest run tests/st/finishReason.test.ts tests/llm/text.test.ts` → FAIL.
+- [x] **Step 3: Implement.** In `real.ts`, `generateWithProfile` sends `{ stream: false, extractData: false, includePreset: false, includeInstruct: false, signal }`, keeps the reasoning-payload retry, and returns `{ text: answerText(raw), finishReason: finishReasonOf(raw) }`. `generateMain` reads `generateRawData`'s data the same way.
+- [x] **Step 4: Run** the files, then `npm test` → PASS (orchestrator tests unchanged).
+- [x] **Step 5: Commit** `feat(P14): adapter answers carry a stop reason and take an abort signal`
 
 ---
 
@@ -268,7 +268,7 @@ Every `CallTypeId` and every registered flavor kind (`grunt`, `enemy`, `demand`,
   - `compileRefusals(reg: Registries): RefusalPattern[]`
   - settings `llmTimeoutMs: number` (10 000–600 000, default 120 000) and `autoRetry: 0 | 1 | 2` (default 1)
 
-- [ ] **Step 1: Write the failing tests** (`tests/llm/classify.test.ts`, one per row of the Rulings' order):
+- [x] **Step 1: Write the failing tests** (`tests/llm/classify.test.ts`, one per row of the Rulings' order):
   - `no profile`;
   - `a thrown error is network`;
   - `an abort is timeout`: `hangNext` + `llmTimeoutMs: 10000` with fake timers;
@@ -287,8 +287,8 @@ Every `CallTypeId` and every registered flavor kind (`grunt`, `enemy`, `demand`,
   - `autoRetry 0 makes one attempt`;
   - `network retries with the same budget`;
   - `a bad pattern is a content error`.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement** per the Rulings. `callLlm` keeps its signature with an optional `opts`, so every existing caller compiles. `detail` is cut to 160 characters. Draft refusal entries (`scope: 'json'` unless noted, AUTHOR TO EXTEND):
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement** per the Rulings. `callLlm` keeps its signature with an optional `opts`, so every existing caller compiles. `detail` is cut to 160 characters. Draft refusal entries (`scope: 'json'` unless noted, AUTHOR TO EXTEND):
   - `as an ai` (`any`);
   - `i can(?:'|no)t (?:assist|help) with (?:that|this) request` (`any`);
   - `i(?:'m| am) (?:not able|unable) to (?:continue|create|write|generate)` (`any`);
@@ -297,8 +297,8 @@ Every `CallTypeId` and every registered flavor kind (`grunt`, `enemy`, `demand`,
   - `i won't (?:be able to )?(?:produce|generate)`;
   - `this (?:request|content) (?:violates|goes against)`;
   - `^\s*(?:sorry|i apologi[sz]e)[,.!]`.
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P14): failure reasons, refusal patterns, automatic retries`
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P14): failure reasons, refusal patterns, automatic retries`
 
 ---
 
@@ -325,7 +325,7 @@ Every `CallTypeId` and every registered flavor kind (`grunt`, `enemy`, `demand`,
     - `generation/expire { id, why }` → `generation_expired`.
   - day-end step `generation_sweep`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - `a failure writes one record with no text beyond detail` (a 400-character detail is stored as 160).
   - `the same key updates, not duplicates` (`attempts` adds, `reason` and `at` take the newest).
   - `cap 20 drops the oldest`.
@@ -334,10 +334,10 @@ Every `CallTypeId` and every registered flavor kind (`grunt`, `enemy`, `demand`,
   - `allowed in combat, in an expedition and on an ended campaign`.
   - `no rng draw` (the rng state is equal before and after each action).
   - `old save without generations reads none`.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.** Closed records are removed, not kept. `scene/end` writes `day`, `locationId` and `participants` into the mark when it has no summary. This is the one change to an existing action; check that no golden compares scene marks (Review Focus 4).
-- [ ] **Step 4: Run** the file, then `npm test` → PASS, the unaffected goldens included.
-- [ ] **Step 5: Commit** `feat(P14): generation failure records`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.** Closed records are removed, not kept. `scene/end` writes `day`, `locationId` and `participants` into the mark when it has no summary. This is the one change to an existing action; check that no golden compares scene marks (Review Focus 4).
+- [x] **Step 4: Run** the file, then `npm test` → PASS, the unaffected goldens included.
+- [x] **Step 5: Commit** `feat(P14): generation failure records`
 
 ---
 
@@ -375,7 +375,7 @@ Every `CallTypeId` and every registered flavor kind (`grunt`, `enemy`, `demand`,
   - `type GenerationOutcome<V> = { kind: 'applied'; value: V } | { kind: 'failed'; reason: FailReason; detail: string; recordId?: string; fallbackApplied: boolean } | { kind: 'expired'; why: string } | { kind: 'stale' } | { kind: 'unbound' }`
   - `describeFailure(v: { label: string; reason: string; detail?: string; budget?: number; timeoutMs?: number; expiredWhy?: string }): string`
 
-- [ ] **Step 1: Write the failing tests** (a test site `test.free` on `ping`, plus `test.revert` and `test.commit`):
+- [x] **Step 1: Write the failing tests** (a test site `test.free` on `ping`, plus `test.revert` and `test.commit`):
   - `success applies and closes open records of the key`;
   - `failure records, emits, toasts for full, not for quiet`;
   - `fallback runs next to the record and sets fallbackApplied`;
@@ -392,8 +392,8 @@ Every `CallTypeId` and every registered flavor kind (`grunt`, `enemy`, `demand`,
   - `rejected apply retries within autoRetry then fails invalid_output`;
   - `useFallback runs fallback and closes kept_fallback`;
   - `describeFailure texts` (one assertion per reason, the exact strings of the Rulings).
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.** `generate`:
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.** `generate`:
   1. `build`;
   2. `callLlm` with `deps.refusals` from `compileRefusals`;
   3. `parse`;
@@ -403,8 +403,8 @@ Every `CallTypeId` and every registered flavor kind (`grunt`, `enemy`, `demand`,
   7. on failure, `fallback` (when no record says it already ran), then `generation/failed` unless the record mode or the rules say none.
 
   The envelope keeps `inflight: Set<siteId:key>`: a second `generate` for the same key while one runs returns `stale`.
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P14): site declarations and the generation envelope`
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P14): site declarations and the generation envelope`
 
 **Chunk (a) ends here.**
 
