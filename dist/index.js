@@ -12012,7 +12012,7 @@ function applyUnitEventAtBase(draft, ctx2, fx2, src) {
       evidence: src.label ?? src.id,
       confidence: 1,
       ...fx2.valueAxes ? { valueAxes: fx2.valueAxes.map((a) => ({ axis: a.axis, direction: a.direction })) } : {}
-    }));
+    }, fx2.targets === "witnesses" && src.subjectId !== void 0 && id !== src.subjectId ? { witnessOf: src.subjectId } : {}));
   }
   for (const id of targets) events.push(...evaluateAutomatic(draft, ctx2.registries, id));
   return events;
@@ -25831,7 +25831,7 @@ registerAction("head_start/recap", (draft, payload, ctx2) => applyRecap(draft, c
 var FACT_KINDS = ["attitude", "value", "habit", "skill", "memory"];
 var D2 = TUNING.development;
 var round4 = (n) => Math.round(n * 1e6) / 1e6;
-function room(unit2, key) {
+function room(unit2, key, pending4 = {}) {
   const kind = axisKind(key);
   const anchored = isAnchored(unit2, key);
   if (kind === "value") {
@@ -25854,7 +25854,7 @@ function room(unit2, key) {
   const name = key.slice((kind ?? "").length + 1);
   const list5 = kind === "like" ? likesOf(unit2) : kind === "dislike" ? dislikesOf(unit2) : tastesOf(unit2);
   const max = kind === "like" ? SETUP_LIMITS.likes : kind === "dislike" ? SETUP_LIMITS.dislikes : TUNING.commander.maxTastes;
-  return { up: !list5.includes(name) && list5.length < max, down: list5.includes(name) };
+  return { up: !list5.includes(name) && list5.length + (pending4[kind] ?? 0) < max, down: list5.includes(name) };
 }
 var stepNeed = (unit2, key) => D2.stepThreshold * (isAnchored(unit2, key) ? D2.anchorMult : 1);
 function eligibleAxes(state, reg, unit2) {
@@ -25886,6 +25886,7 @@ function validateReview(state, reg, unitId, v) {
   const dropped = [];
   if (!unit2 || unit2.kind !== "named" || !isLiving(unit2)) return { shifts: [], facts: [], dropped: (v.shifts ?? []).map((s) => ({ axis: s.axis, why: "not a named living unit" })) };
   const shifts = [];
+  const listDelta = {};
   for (const s of v.shifts ?? []) {
     const no = (why) => void dropped.push({ axis: s.axis, why });
     const forbidden = axisForbidden(state, reg, unit2, s.axis);
@@ -25898,8 +25899,12 @@ function validateReview(state, reg, unitId, v) {
     else if (acc > 0 !== (s.direction === "up")) no("against the accumulator");
     else if (s.size === "nudge" && axisKind(s.axis) !== "value") no("only a value nudges");
     else if (s.size === "step" && Math.abs(acc) < stepNeed(unit2, s.axis)) no("not enough support for a step");
-    else if (!room(unit2, s.axis)[s.direction]) no("at its cap");
-    else shifts.push({ axis: s.axis, direction: s.direction, size: s.size, reason: cut3(String(s.reason ?? ""), D2.reasonMax) });
+    else if (!room(unit2, s.axis, listDelta)[s.direction]) no("at its cap");
+    else {
+      const kind = axisKind(s.axis);
+      if (kind === "like" || kind === "dislike" || kind === "taste") listDelta[kind] = (listDelta[kind] ?? 0) + (s.direction === "up" ? 1 : -1);
+      shifts.push({ axis: s.axis, direction: s.direction, size: s.size, reason: cut3(String(s.reason ?? ""), D2.reasonMax) });
+    }
   }
   const facts = [];
   for (const f of v.facts ?? []) {
@@ -28483,6 +28488,8 @@ function plain3(text2, max) {
   if (typeof text2 !== "string") return "";
   return text2.replace(/```[a-z]*/gi, " ").replace(/[*_`~#>]+/g, "").replace(/\s+/g, " ").trim().replace(LABEL3, "").replace(/^["“”]+|["“”]+$/g, "").trim().slice(0, max).trim();
 }
+var COMMANDER_PRONOUN3 = /\b(he|him|his|himself|he's)\b/i;
+var noPronoun = (t) => COMMANDER_PRONOUN3.test(t) ? "" : t;
 var isObj34 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function sanitizeReview(raw, input) {
   if (!isObj34(raw) || !Array.isArray(raw.shifts) && !Array.isArray(raw.facts)) return null;
@@ -28492,14 +28499,14 @@ function sanitizeReview(raw, input) {
     if (!isObj34(s) || typeof s.axis !== "string" || !listed2.has(s.axis)) continue;
     if (s.direction !== "up" && s.direction !== "down") continue;
     if (s.size !== "nudge" && s.size !== "step") continue;
-    shifts.push({ axis: s.axis, direction: s.direction, size: s.size, reason: plain3(s.reason, TUNING.development.reasonMax) });
+    shifts.push({ axis: s.axis, direction: s.direction, size: s.size, reason: noPronoun(plain3(s.reason, TUNING.development.reasonMax)) });
     if (shifts.length === TUNING.development.maxShifts) break;
   }
   const facts = [];
   for (const f of Array.isArray(raw.facts) ? raw.facts : []) {
     if (!isObj34(f) || typeof f.kind !== "string" || !FACT_KINDS2.includes(f.kind)) continue;
     const text2 = plain3(f.text, TUNING.development.factTextMax);
-    if (text2 === "") continue;
+    if (text2 === "" || COMMANDER_PRONOUN3.test(text2)) continue;
     facts.push({ text: text2, kind: f.kind });
     if (facts.length === TUNING.development.maxFacts) break;
   }
@@ -28559,7 +28566,9 @@ function createDevelopment(deps) {
   const chatId = () => deps.st.getActiveChat()?.chatId;
   const state = () => deps.app.current().state;
   let flight = null;
-  const isRedo = (s, unitId) => !unitDue(s, unitId) && s.squad.find((u) => u.id === unitId)?.development?.lastApplied !== void 0;
+  let busy = false;
+  const fresh = /* @__PURE__ */ new Set();
+  const isRedo = (s, unitId) => !fresh.has(unitId) && !unitDue(s, unitId) && s.squad.find((u) => u.id === unitId)?.development?.lastApplied !== void 0;
   function before(s, unitId) {
     if (!isRedo(s, unitId)) return s;
     const c = structuredClone(s);
@@ -28637,13 +28646,18 @@ function createDevelopment(deps) {
   });
   async function run() {
     const s = state();
-    if (!s || flight) return;
+    if (!s || busy) return;
     const due = reviewDue(s, deps.registries());
     if (due === null) return;
+    busy = true;
+    fresh.add(due);
     flight = (async () => {
+      deps.app.dispatch({ type: "generation/close", payload: { siteId: SITE2, key: due, outcome: "dropped" } }, { expectChatId: chatId() });
       await deps.generations.generate(SITE2, due);
     })().finally(() => {
       flight = null;
+      busy = false;
+      fresh.delete(due);
     });
     await flight;
   }
@@ -29852,9 +29866,13 @@ function buildKnowledge(state, settings) {
       const dev = unit2?.development;
       if (!state || !unit2 || unit2.kind !== "named" || !dev) return { axes: [], facts: [], habits: [] };
       const axes = [];
-      for (const a of changedAxes(unit2, reg)) {
-        const shown = [...dev.moments].reverse().find((m) => m.axis === a.axis && m.shownDay !== void 0);
-        if (shown) axes.push({ axis: a.axis, words: a.words, up: a.up, reason: shown.reason, shownDay: shown.shownDay, held: dev.held?.includes(a.axis) === true });
+      for (const axis of new Set(dev.moments.map((m) => m.axis))) {
+        const mine = dev.moments.filter((m) => m.axis === axis);
+        const shown = mine.filter((m) => m.shownDay !== void 0).at(-1);
+        if (!shown || shown.to === mine[0].from) continue;
+        const up = wentUp({ ...shown, from: mine[0].from });
+        const words3 = axisWords(reg, axis, up);
+        if (words3 !== null) axes.push({ axis, words: words3, up, reason: shown.reason, shownDay: shown.shownDay, held: dev.held?.includes(axis) === true });
       }
       const facts = dev.facts.filter((f) => f.shownDay !== void 0);
       const habits = dev.habits.filter((id) => {
@@ -37366,7 +37384,7 @@ function bondBlock(unit2, state, ctx2) {
   const open3 = intimacyOf(state).romance ? state.relations[unit2.id]?.publicity : void 0;
   if (unit2.bond === void 0 && !showWant && rules2.length === 0 && open3 === void 0) return null;
   const chip2 = (text2, address, extra = {}) => h("span", { class: "alius-chip", ...extra, ...analyzeAttrs(address, live) }, text2);
-  const bond = unit2.bond;
+  const bond = unit2.bond === void 0 ? null : bondOf(unit2);
   return h(
     "div",
     { class: "alius-bond" },

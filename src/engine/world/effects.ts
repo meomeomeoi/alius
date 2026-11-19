@@ -67,7 +67,7 @@ function applyUnitEventAtBase(
     events.push(...applyEventToUnit(draft, ctx.registries, id, {
       type: fx.event, actor: 'commander', targets: [id], severity: fx.severity, evidence: src.label ?? src.id, confidence: 1,
       ...(fx.valueAxes ? { valueAxes: fx.valueAxes.map((a) => ({ axis: a.axis as never, direction: a.direction })) } : {}),
-    }));
+    }, fx.targets === 'witnesses' && src.subjectId !== undefined && id !== src.subjectId ? { witnessOf: src.subjectId } : {})); // P14b: the others who backed her decision watched it
   }
   for (const id of targets) events.push(...evaluateAutomatic(draft, ctx.registries, id));
   return events;

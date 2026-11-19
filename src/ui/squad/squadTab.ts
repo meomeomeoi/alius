@@ -325,7 +325,7 @@ function bondBlock(unit: Unit, state: CampaignState, ctx: SquadTabCtx): HTMLElem
   const open = intimacyOf(state).romance ? state.relations[unit.id]?.publicity : undefined; // romance off: no relationship news
   if (unit.bond === undefined && !showWant && rules.length === 0 && open === undefined) return null;
   const chip = (text: string, address: string, extra: Record<string, string> = {}) => h('span', { class: 'alius-chip', ...extra, ...analyzeAttrs(address, live) }, text);
-  const bond = unit.bond;
+  const bond = unit.bond === undefined ? null : bondOf(unit); // P14b: what she is now (an imported bond with her development on top)
   return h('div', { class: 'alius-bond' },
     bond ? h('p', {}, chip(`LEADS: ${bond.leadStyle.toUpperCase()}`, 'glossary:bond_profile', { 'data-bond': 'lead' }), ' ', chip(`ATTACHES: ${bond.attachment.toUpperCase()}`, 'glossary:bond_profile', { 'data-bond': 'attachment' }), ' ', chip(`DESIRE: ${bond.desire.toUpperCase()}`, 'glossary:bond_profile', { 'data-bond': 'desire' })) : null,
     open ? publicityLine(unit, open.level, bondOf(unit)?.publicity ?? 'known', ctx, state.relations[unit.id]?.stateId === 'secret_affair') : null,

@@ -12,7 +12,7 @@ import { RAW_MARK } from '../../src/engine/development/profile';
 const ALLOWED = [/^src\/llm\/calls\//, /^src\/engine\/development\//, /^src\/engine\/setup\.ts$/, /^src\/engine\/actions\/squad\.ts$/, /^src\/setup\//, /^src\/ui\/setup\//];
 
 const FIELD = /\b(unit|u|her|other|companion|w|warden|a|b|subject|target)\??\.(values|likes|dislikes|commanderTastes)\b/;
-const BOND = /\.bond\??\.(leadStyle|attachment|desire|caretaker)\b/;
+const BOND = /\.bond\??\.(leadStyle|attachment|desire|caretaker)\b|=\s*(unit|u|her|other|companion|w|warden)\.bond\s*;/; // a field read, or a whole raw bond taken for display
 
 function files(dir: string): string[] {
   return readdirSync(dir).flatMap((n) => {

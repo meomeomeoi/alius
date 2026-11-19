@@ -45,7 +45,7 @@ export function stampedMoments(state: CampaignState, unitId: string): DevMoment[
 }
 
 /** Did the moment move the axis up? Values compare numbers, bond fields their place on the scale, the lists their yes. */
-function wentUp(m: DevMoment): boolean {
+export function wentUp(m: Pick<DevMoment, 'axis' | 'from' | 'to'>): boolean {
   const kind = axisKind(m.axis);
   if (kind === 'value') return Number(m.to) > Number(m.from);
   if (kind === 'bond') {

@@ -45,6 +45,11 @@ function plain(text: unknown, max: number): string {
     .slice(0, max).trim();
 }
 
+const COMMANDER_PRONOUN = /\b(he|him|his|himself|he's)\b/i;
+
+/** A reason that gives the commander a pronoun is blanked (it is shown in the dossier readings). */
+const noPronoun = (t: string): string => (COMMANDER_PRONOUN.test(t) ? '' : t);
+
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 
 /**
@@ -60,14 +65,14 @@ export function sanitizeReview(raw: unknown, input: Pick<DevelopmentReviewInput,
     if (!isObj(s) || typeof s.axis !== 'string' || !listed.has(s.axis)) continue;
     if (s.direction !== 'up' && s.direction !== 'down') continue;
     if (s.size !== 'nudge' && s.size !== 'step') continue;
-    shifts.push({ axis: s.axis, direction: s.direction, size: s.size, reason: plain(s.reason, TUNING.development.reasonMax) });
+    shifts.push({ axis: s.axis, direction: s.direction, size: s.size, reason: noPronoun(plain(s.reason, TUNING.development.reasonMax)) });
     if (shifts.length === TUNING.development.maxShifts) break;
   }
   const facts: ReviewOutput['facts'] = [];
   for (const f of Array.isArray(raw.facts) ? raw.facts : []) {
     if (!isObj(f) || typeof f.kind !== 'string' || !FACT_KINDS.includes(f.kind as DevFact['kind'])) continue;
     const text = plain(f.text, TUNING.development.factTextMax);
-    if (text === '') continue;
+    if (text === '' || COMMANDER_PRONOUN.test(text)) continue; // the soldiers are women and the commander has no pronoun (lore §0)
     facts.push({ text, kind: f.kind as DevFact['kind'] });
     if (facts.length === TUNING.development.maxFacts) break;
   }

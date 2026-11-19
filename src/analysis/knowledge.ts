@@ -1,5 +1,6 @@
 import type { Registries } from '../content/types';
-import { changedAxes } from '../engine/development/words';
+import { wentUp } from '../engine/development/moments';
+import { axisWords } from '../engine/development/words';
 import type { CampaignState, DevFact, Fact } from '../engine/state/types';
 import type { AliusSettings } from '../settings';
 
@@ -73,10 +74,15 @@ export function buildKnowledge(state: CampaignState | null, settings: AliusSetti
       const unit = state?.squad.find((u) => u.id === unitId);
       const dev = unit?.development;
       if (!state || !unit || unit.kind !== 'named' || !dev) return { axes: [], facts: [], habits: [] };
+      // built from the moments she has shown, never from the state now: a later step no scene has carried must not change a line
       const axes: DevelopmentView['axes'] = [];
-      for (const a of changedAxes(unit, reg)) {
-        const shown = [...dev.moments].reverse().find((m) => m.axis === a.axis && m.shownDay !== undefined);
-        if (shown) axes.push({ axis: a.axis, words: a.words, up: a.up, reason: shown.reason, shownDay: shown.shownDay!, held: dev.held?.includes(a.axis) === true });
+      for (const axis of new Set(dev.moments.map((m) => m.axis))) {
+        const mine = dev.moments.filter((m) => m.axis === axis);
+        const shown = mine.filter((m) => m.shownDay !== undefined).at(-1);
+        if (!shown || shown.to === mine[0].from) continue; // nothing shown, or back where her file has her
+        const up = wentUp({ ...shown, from: mine[0].from });
+        const words = axisWords(reg, axis, up);
+        if (words !== null) axes.push({ axis, words, up, reason: shown.reason, shownDay: shown.shownDay!, held: dev.held?.includes(axis) === true });
       }
       const facts = dev.facts.filter((f) => f.shownDay !== undefined);
       // a habit shows with its line; one whose line was pushed out of the list was shown long ago

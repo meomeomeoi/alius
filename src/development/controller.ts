@@ -39,9 +39,12 @@ export function createDevelopment(deps: DevelopmentDeps): DevelopmentController 
   const chatId = (): string | undefined => deps.st.getActiveChat()?.chatId;
   const state = (): CampaignState | null => deps.app.current().state;
   let flight: Promise<void> | null = null;
+  let busy = false;
+  /** Units whose review was started as a NEW one (they were due): a batch that stops being due meanwhile is never a redo that replaces the last review. */
+  const fresh = new Set<string>();
 
   /** A redo (a retry after the fallback, a REROLL) replaces the last review; a unit that is due again starts a new one. */
-  const isRedo = (s: CampaignState, unitId: string): boolean => !unitDue(s, unitId) && s.squad.find((u) => u.id === unitId)?.development?.lastApplied !== undefined;
+  const isRedo = (s: CampaignState, unitId: string): boolean => !fresh.has(unitId) && !unitDue(s, unitId) && s.squad.find((u) => u.id === unitId)?.development?.lastApplied !== undefined;
 
   /** The state as it was when the review ran: a redo reads the batch the last review took. */
   function before(s: CampaignState, unitId: string): CampaignState {
@@ -126,10 +129,16 @@ export function createDevelopment(deps: DevelopmentDeps): DevelopmentController 
 
   async function run(): Promise<void> {
     const s = state();
-    if (!s || flight) return;
+    if (!s || busy) return;
     const due = reviewDue(s, deps.registries());
     if (due === null) return;
-    flight = (async () => { await deps.generations.generate(SITE, due); })().finally(() => { flight = null; });
+    busy = true;
+    fresh.add(due);
+    flight = (async () => {
+      // a quiet record of an earlier batch (its fallback was applied then) must not stand in for this one's fallback
+      deps.app.dispatch({ type: 'generation/close', payload: { siteId: SITE, key: due, outcome: 'dropped' } }, { expectChatId: chatId() });
+      await deps.generations.generate(SITE, due);
+    })().finally(() => { flight = null; busy = false; fresh.delete(due); });
     await flight;
   }
 

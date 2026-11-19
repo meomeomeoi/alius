@@ -24,7 +24,8 @@ const round = (n: number): number => Math.round(n * 1e6) / 1e6;
 type Room = { up: boolean; down: boolean };
 
 /** Which ways the axis may still move for this unit (caps, scale ends, list limits). Pure. */
-function room(unit: Unit, key: string): Room {
+/** `pending`: gains (+1) and losses (−1) per list already accepted in this review, so two gains cannot pass a cap that fits one. */
+function room(unit: Unit, key: string, pending: Partial<Record<'like' | 'dislike' | 'taste', number>> = {}): Room {
   const kind = axisKind(key);
   const anchored = isAnchored(unit, key);
   if (kind === 'value') {
@@ -47,7 +48,7 @@ function room(unit: Unit, key: string): Room {
   const name = key.slice((kind ?? '').length + 1);
   const list = kind === 'like' ? likesOf(unit) : kind === 'dislike' ? dislikesOf(unit) : tastesOf(unit);
   const max = kind === 'like' ? SETUP_LIMITS.likes : kind === 'dislike' ? SETUP_LIMITS.dislikes : TUNING.commander.maxTastes;
-  return { up: !list.includes(name) && list.length < max, down: list.includes(name) };
+  return { up: !list.includes(name) && list.length + (pending[kind as 'like'] ?? 0) < max, down: list.includes(name) };
 }
 
 /** The support an axis needs for a step: the base threshold, more when anchored. */
@@ -94,6 +95,7 @@ export function validateReview(
   const dropped: Array<{ axis: string; why: string }> = [];
   if (!unit || unit.kind !== 'named' || !isLiving(unit)) return { shifts: [], facts: [], dropped: (v.shifts ?? []).map((s) => ({ axis: s.axis, why: 'not a named living unit' })) };
   const shifts: ReviewShift[] = [];
+  const listDelta: Partial<Record<'like' | 'dislike' | 'taste', number>> = {};
   for (const s of v.shifts ?? []) {
     const no = (why: string): void => void dropped.push({ axis: s.axis, why });
     const forbidden = axisForbidden(state, reg, unit, s.axis);
@@ -106,8 +108,12 @@ export function validateReview(
     else if ((acc > 0) !== (s.direction === 'up')) no('against the accumulator');
     else if (s.size === 'nudge' && axisKind(s.axis) !== 'value') no('only a value nudges');
     else if (s.size === 'step' && Math.abs(acc) < stepNeed(unit, s.axis)) no('not enough support for a step');
-    else if (!room(unit, s.axis)[s.direction]) no('at its cap');
-    else shifts.push({ axis: s.axis, direction: s.direction, size: s.size, reason: cut(String(s.reason ?? ''), D.reasonMax) });
+    else if (!room(unit, s.axis, listDelta)[s.direction]) no('at its cap');
+    else {
+      const kind = axisKind(s.axis);
+      if (kind === 'like' || kind === 'dislike' || kind === 'taste') listDelta[kind] = (listDelta[kind] ?? 0) + (s.direction === 'up' ? 1 : -1);
+      shifts.push({ axis: s.axis, direction: s.direction, size: s.size, reason: cut(String(s.reason ?? ''), D.reasonMax) });
+    }
   }
   const facts: ReviewValue['facts'] = [];
   for (const f of v.facts ?? []) {
