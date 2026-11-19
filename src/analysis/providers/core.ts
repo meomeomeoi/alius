@@ -302,7 +302,7 @@ export const CORE_GLOSSARY_IDS: readonly string[] = [
   // P9c chunk (c): the squad's secrets
   'squad_secret',
   // P3b: memory (SYS › MEMORY and the MEMORY view address these; `rumor` is P5's mission-board gossip, so the spreading kind is `squad_rumor`)
-  'memory', 'memory_preset', 'memory_budget', 'memory_fill', 'dossier', 'squad_rumor', 'pinned_fact', 'hidden_scenes',
+  'memory', 'memory_preset', 'memory_budget', 'memory_fill', 'dossier', 'squad_rumor', 'pinned_fact', 'hidden_scenes', 'fact_length',
   // P12: the SPECIAL label of a trait card addresses this; later tasks add their own
   'special_trait', 'commander_stress', 'contingency', 'premonition', 'false_alarm', 'bloom_nightmare', 'handler', 'intel_exchange', 'handler_pressure', 'oversight_suspicion', 'defector_arc', 'frequency_intercept', 'frequency_suspicion', 'knowledge_leak', 'burn_implant',
   // P13 (the MODE section, the warden pick and the reveal card address these; the rest come with their screens)

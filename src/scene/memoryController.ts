@@ -2,7 +2,7 @@ import type { Registries } from '../content/types';
 import { disabledCategories } from '../engine/bonds';
 import { fallbackFold, foldDue, WORLD } from '../engine/memory/fold';
 import { hideCandidates } from '../engine/memory/scenes';
-import { memoryConfig } from '../engine/memory/config';
+import { factTextMax, memoryConfig } from '../engine/memory/config';
 import { affinityBand, stressBand, trustBand } from '../engine/relations/bands';
 import type { CampaignState, Fact } from '../engine/state/types';
 import { TUNING } from '../engine/tuning';
@@ -168,6 +168,7 @@ export function createMemoryController(deps: MemoryDeps): MemoryController {
         ...(excluded.length > 0 ? { excluded } : {}),
         ...(scene.digest ? { previous: scene.digest.text } : {}),
         mode: 'digest' as const,
+        factTextMax: factTextMax(s),
       };
     },
     parse: (raw, input) => readDigest(raw as never, input),

@@ -53,10 +53,10 @@ describe('memory config', () => {
 
   it('custom clamps every field to its range', () => {
     const low = configure(fresh(), {
-      preset: 'custom', factsMax: -5, foldAfterDays: 0, recencyBase: 0, retrievalK: 0, memoryTokens: 1, journalLines: -1, dmLines: -1, chronicleDays: -1, hideScenesAfter: -9,
+      preset: 'custom', factsMax: -5, foldAfterDays: 0, recencyBase: 0, retrievalK: 0, memoryTokens: 1, journalLines: -1, dmLines: -1, chronicleDays: -1, hideScenesAfter: -9, factTextMax: -9,
     });
     const high = configure(fresh(), {
-      preset: 'custom', factsMax: 1e9, foldAfterDays: 1e9, recencyBase: 5, retrievalK: 1e9, memoryTokens: 1e9, journalLines: 1e9, dmLines: 1e9, chronicleDays: 1e9, hideScenesAfter: 1e9,
+      preset: 'custom', factsMax: 1e9, foldAfterDays: 1e9, recencyBase: 5, retrievalK: 1e9, memoryTokens: 1e9, journalLines: 1e9, dmLines: 1e9, chronicleDays: 1e9, hideScenesAfter: 1e9, factTextMax: 1e9,
     });
     for (const [field, [min, max]] of Object.entries(MEMORY_RANGES)) {
       expect(memoryConfig(low.state)[field as keyof typeof MEMORY_RANGES], field).toBe(min);

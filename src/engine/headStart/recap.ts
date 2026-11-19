@@ -1,5 +1,6 @@
 import type { Registries } from '../../content/types';
 import { addChronicle } from '../memory/chronicle';
+import { factTextMax } from '../memory/config';
 import type { CampaignState } from '../state/types';
 import { TUNING } from '../tuning';
 import type { EngineEvent } from '../dispatch';
@@ -59,7 +60,7 @@ export function applyRecap(draft: CampaignState, reg: Registries, payload: unkno
   const hs = draft.headStart;
   if (!hs) throw new Error('This campaign has no head start.');
   const { texts, chronicle, source } = parse(draft, payload);
-  const factMax = TUNING.memory.factTextMax;
+  const factMax = factTextMax(draft);
   if (hs.recap === undefined) {
     const entry = addChronicle(draft, { kind: 'day', day: draft.day, text: chronicle, audience: hs.units.map((u) => u.unitId) });
     hs.recap = { source, chronicleId: entry.id };

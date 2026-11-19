@@ -72,6 +72,19 @@ describe('SYS › MEMORY', () => {
     expect(num(host, 'factsMax').value).toBe('160');
   });
 
+  it('the fact length is the player\'s own choice: never locked, kept with the preset', () => {
+    const s = fresh();
+    s.memory.config = { preset: 'long' } as CampaignState['memory']['config'];
+    const { host, dispatch } = section(s, { editLock: true });
+    const el = num(host, 'factTextMax');
+    expect(el.value).toBe('200');
+    expect(el.getAttribute('aria-disabled')).toBeNull();
+    el.value = '320';
+    el.dispatchEvent(new Event('change'));
+    expect(dispatch).toHaveBeenCalledWith({ type: 'memory/configure', payload: { preset: 'long', factTextMax: 320 } });
+    expect(host.querySelector('[data-analyze="glossary:fact_length"]')).not.toBeNull();
+  });
+
   it('with the edit lock off a number goes through memory/configure as a custom preset', () => {
     const { host, dispatch } = section(fresh(), { editLock: false });
     const el = num(host, 'retrievalK');

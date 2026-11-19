@@ -1,4 +1,5 @@
 import { raiseTone, startTone } from '../bonds/scene';
+import { factTextMax } from '../memory/config';
 import { rollIntercepts } from '../special/frequency/intercepts';
 import { returnNegotiations } from '../bonds/rules';
 import { metAtScene } from '../personal/bookings';
@@ -140,7 +141,7 @@ registerAction('intents/apply', (draft, payload, ctx) => {
  */
 function storeSceneFacts(draft: CampaignState, reg: Registries, scene: Pick<SceneRecord, 'id' | 'day' | 'participants'>, raw: unknown[]): EngineEvent[] {
   const events: EngineEvent[] = [];
-  const facts = validateIntents({ facts: raw }, { participants: scene.participants, squad: draft.squad }).facts;
+  const facts = validateIntents({ facts: raw }, { participants: scene.participants, squad: draft.squad, factTextMax: factTextMax(draft) }).facts;
   const room = Math.max(0, TUNING.memory.factsPerScene - draft.memory.facts.filter((x) => x.sceneId === scene.id).length);
   for (const f of facts.slice(0, room)) {
     addFact(draft, {

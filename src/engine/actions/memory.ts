@@ -2,7 +2,7 @@ import { registerDayEndStep } from '../calendar';
 import { registerAction } from '../dispatch';
 import { applyFold, WORLD } from '../memory/fold';
 import { spreadRumors } from '../memory/rumors';
-import { clampMemoryField, MEMORY_NUMERIC_FIELDS, memoryConfig } from '../memory/config';
+import { clampMemoryField, factTextMax, MEMORY_NUMERIC_FIELDS, memoryConfig, OWN_MEMORY_FIELDS } from '../memory/config';
 import type { MemoryConfig, MemoryPreset } from '../state/types';
 import { TUNING } from '../tuning';
 
@@ -19,7 +19,7 @@ registerAction('memory/configure', (draft, payload) => {
   if (!isObj(payload) || !PRESETS.includes(payload.preset as MemoryPreset)) throw new Error('memory/configure needs { preset: short | normal | long | custom }');
   const preset = payload.preset as MemoryPreset;
   const now = memoryConfig(draft);
-  const given = MEMORY_NUMERIC_FIELDS.filter((f) => f in payload && f !== 'hideScenesAfter');
+  const given = MEMORY_NUMERIC_FIELDS.filter((f) => f in payload && !(OWN_MEMORY_FIELDS as readonly string[]).includes(f));
   if (preset !== 'custom' && given.length > 0) throw new Error('memory/configure: numbers need preset "custom"');
   const next: { preset: MemoryPreset } & Partial<MemoryConfig> = { preset };
   if ('rumorMode' in payload) {
@@ -28,12 +28,14 @@ registerAction('memory/configure', (draft, payload) => {
   } else {
     next.rumorMode = now.rumorMode;
   }
-  const hide = 'hideScenesAfter' in payload ? payload.hideScenesAfter : now.hideScenesAfter;
-  if (typeof hide !== 'number' || !Number.isFinite(hide)) throw new Error('memory/configure: hideScenesAfter must be a number');
-  next.hideScenesAfter = clampMemoryField('hideScenesAfter', hide);
+  for (const f of OWN_MEMORY_FIELDS) {
+    const v = f in payload ? payload[f] : now[f];
+    if (typeof v !== 'number' || !Number.isFinite(v)) throw new Error(`memory/configure: ${f} must be a number`);
+    next[f] = clampMemoryField(f, v);
+  }
   if (preset === 'custom') {
     for (const f of MEMORY_NUMERIC_FIELDS) {
-      if (f === 'hideScenesAfter') continue;
+      if ((OWN_MEMORY_FIELDS as readonly string[]).includes(f)) continue;
       const v = f in payload ? payload[f] : now[f];
       if (typeof v !== 'number' || !Number.isFinite(v)) throw new Error(`memory/configure: ${f} must be a number`);
       next[f] = clampMemoryField(f, v);
@@ -66,7 +68,7 @@ registerAction('memory/forget', (draft, payload) => {
 
 registerAction('memory/edit', (draft, payload) => {
   const { fact, payload: p } = factOf(draft, payload, 'memory/edit');
-  const text = typeof p.text === 'string' ? p.text.trim().slice(0, TUNING.memory.factTextMax).trim() : '';
+  const text = typeof p.text === 'string' ? p.text.trim().slice(0, factTextMax(draft)).trim() : '';
   if (text === '') throw new Error('memory/edit: empty text');
   fact.text = text;
   fact.edited = true;
@@ -102,7 +104,7 @@ registerAction('memory/edit_dossier', (draft, payload) => {
 /** `memory/rumor_text { factId, text }`: the model's retelling of a rumor, stored once while the fact is still spreading. */
 registerAction('memory/rumor_text', (draft, payload) => {
   const { fact, payload: p } = factOf(draft, payload, 'memory/rumor_text');
-  const text = typeof p.text === 'string' ? p.text.trim().slice(0, TUNING.memory.factTextMax).trim() : '';
+  const text = typeof p.text === 'string' ? p.text.trim().slice(0, factTextMax(draft)).trim() : '';
   if (text === '') throw new Error('memory/rumor_text: empty text');
   if (!fact.spread || fact.rumor) throw new Error('memory/rumor_text: that fact is not waiting for a retelling');
   fact.rumor = { text };

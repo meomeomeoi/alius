@@ -13751,6 +13751,85 @@ function gearFault(draft, ctx2) {
   return [{ type: "covert_sabotage", kind: "gear", fired: true }];
 }
 
+// src/engine/memory/config.ts
+var OWN_MEMORY_FIELDS = ["hideScenesAfter", "factTextMax"];
+var MEMORY_PRESETS = Object.freeze({
+  short: Object.freeze({
+    factsMax: 80,
+    foldAfterDays: 4,
+    recencyBase: 0.7,
+    retrievalK: 5,
+    memoryTokens: 350,
+    journalLines: 2,
+    dmLines: 2,
+    chronicleDays: 1,
+    rumorMode: "plain",
+    hideScenesAfter: 0,
+    factTextMax: 200
+  }),
+  normal: Object.freeze({
+    factsMax: 160,
+    foldAfterDays: 7,
+    recencyBase: 0.8,
+    retrievalK: 6,
+    memoryTokens: 550,
+    journalLines: 3,
+    dmLines: 3,
+    chronicleDays: 2,
+    rumorMode: "plain",
+    hideScenesAfter: 0,
+    factTextMax: 200
+  }),
+  long: Object.freeze({
+    factsMax: 320,
+    foldAfterDays: 14,
+    recencyBase: 0.9,
+    retrievalK: 8,
+    memoryTokens: 900,
+    journalLines: 5,
+    dmLines: 5,
+    chronicleDays: 3,
+    rumorMode: "plain",
+    hideScenesAfter: 0,
+    factTextMax: 200
+  })
+});
+var MEMORY_RANGES = Object.freeze({
+  factsMax: [40, 600],
+  foldAfterDays: [1, 60],
+  recencyBase: [0.5, 0.95],
+  retrievalK: [2, 16],
+  memoryTokens: [150, 2e3],
+  journalLines: [0, 8],
+  dmLines: [0, 8],
+  chronicleDays: [0, 7],
+  hideScenesAfter: [0, 20],
+  factTextMax: [100, 400]
+});
+var MEMORY_NUMERIC_FIELDS = Object.keys(MEMORY_RANGES);
+function clampMemoryField(field2, value) {
+  const [min, max] = MEMORY_RANGES[field2];
+  const v = Math.min(max, Math.max(min, value));
+  return field2 === "recencyBase" ? Math.round(v * 100) / 100 : Math.round(v);
+}
+function memoryConfig(state) {
+  const stored = state.memory.config;
+  const preset = stored?.preset ?? "normal";
+  const out = { ...MEMORY_PRESETS[preset === "custom" ? "normal" : preset] };
+  if (stored) {
+    if (stored.rumorMode === "plain" || stored.rumorMode === "model") out.rumorMode = stored.rumorMode;
+    for (const f of OWN_MEMORY_FIELDS) if (typeof stored[f] === "number" && Number.isFinite(stored[f])) out[f] = clampMemoryField(f, stored[f]);
+    if (preset === "custom") {
+      for (const f of MEMORY_NUMERIC_FIELDS) {
+        const v = stored[f];
+        if (typeof v === "number" && Number.isFinite(v)) out[f] = clampMemoryField(f, v);
+      }
+    }
+  }
+  return { ...out, preset };
+}
+var factTextMax = (state) => memoryConfig(state).factTextMax;
+
 // src/engine/discipline/reputation.ts
 var patternOf = (e) => e.pattern;
 var total = (deeds, list5) => (list5 ?? []).reduce((n, c) => n + (deeds[c] ?? 0), 0);
@@ -14066,7 +14145,7 @@ function validateIntents(raw, ctx2) {
   }
   for (const f of arr(raw.facts)) {
     if (!isObj3(f) || typeof f.text !== "string") continue;
-    const text2 = f.text.trim().slice(0, TUNING.memory.factTextMax).trim();
+    const text2 = f.text.trim().slice(0, ctx2.factTextMax ?? TUNING.memory.factTextMax).trim();
     if (text2 === "") continue;
     let about2;
     if (f.about === "world" || f.about === "commander") about2 = f.about;
@@ -14090,7 +14169,7 @@ function validateIntents(raw, ctx2) {
     const kind = oneOf(["made", "kept", "broken"], p.kind);
     const pair = p.by === "commander" && isUnit(p.to) || isUnit(p.by) && p.to === "commander";
     if (!kind || !pair) continue;
-    const text2 = typeof p.text === "string" ? p.text.trim().slice(0, TUNING.memory.factTextMax).trim() : "";
+    const text2 = typeof p.text === "string" ? p.text.trim().slice(0, ctx2.factTextMax ?? TUNING.memory.factTextMax).trim() : "";
     if (kind === "made" && text2 === "") continue;
     if (out.promises.length < MAX_PROMISES) out.promises.push({ by: p.by, to: p.to, text: text2, kind });
   }
@@ -16202,6 +16281,7 @@ function applyIntents(draft, ctx2, p) {
   const intents = validateIntents(p.intents, {
     participants: p.participants,
     squad: draft.squad,
+    factTextMax: factTextMax(draft),
     maxEvents: TUNING.relations.maxEventsRead,
     measures: measureList(reg, draft),
     rules: rules2,
@@ -21550,79 +21630,6 @@ function buildCampaign(r, reg, opts) {
   return { ok: true, state };
 }
 
-// src/engine/memory/config.ts
-var MEMORY_PRESETS = Object.freeze({
-  short: Object.freeze({
-    factsMax: 80,
-    foldAfterDays: 4,
-    recencyBase: 0.7,
-    retrievalK: 5,
-    memoryTokens: 350,
-    journalLines: 2,
-    dmLines: 2,
-    chronicleDays: 1,
-    rumorMode: "plain",
-    hideScenesAfter: 0
-  }),
-  normal: Object.freeze({
-    factsMax: 160,
-    foldAfterDays: 7,
-    recencyBase: 0.8,
-    retrievalK: 6,
-    memoryTokens: 550,
-    journalLines: 3,
-    dmLines: 3,
-    chronicleDays: 2,
-    rumorMode: "plain",
-    hideScenesAfter: 0
-  }),
-  long: Object.freeze({
-    factsMax: 320,
-    foldAfterDays: 14,
-    recencyBase: 0.9,
-    retrievalK: 8,
-    memoryTokens: 900,
-    journalLines: 5,
-    dmLines: 5,
-    chronicleDays: 3,
-    rumorMode: "plain",
-    hideScenesAfter: 0
-  })
-});
-var MEMORY_RANGES = Object.freeze({
-  factsMax: [40, 600],
-  foldAfterDays: [1, 60],
-  recencyBase: [0.5, 0.95],
-  retrievalK: [2, 16],
-  memoryTokens: [150, 2e3],
-  journalLines: [0, 8],
-  dmLines: [0, 8],
-  chronicleDays: [0, 7],
-  hideScenesAfter: [0, 20]
-});
-var MEMORY_NUMERIC_FIELDS = Object.keys(MEMORY_RANGES);
-function clampMemoryField(field2, value) {
-  const [min, max] = MEMORY_RANGES[field2];
-  const v = Math.min(max, Math.max(min, value));
-  return field2 === "recencyBase" ? Math.round(v * 100) / 100 : Math.round(v);
-}
-function memoryConfig(state) {
-  const stored = state.memory.config;
-  const preset = stored?.preset ?? "normal";
-  const out = { ...MEMORY_PRESETS[preset === "custom" ? "normal" : preset] };
-  if (stored) {
-    if (stored.rumorMode === "plain" || stored.rumorMode === "model") out.rumorMode = stored.rumorMode;
-    if (typeof stored.hideScenesAfter === "number") out.hideScenesAfter = clampMemoryField("hideScenesAfter", stored.hideScenesAfter);
-    if (preset === "custom") {
-      for (const f of MEMORY_NUMERIC_FIELDS) {
-        const v = stored[f];
-        if (typeof v === "number" && Number.isFinite(v)) out[f] = clampMemoryField(f, v);
-      }
-    }
-  }
-  return { ...out, preset };
-}
-
 // src/engine/memory/fold.ts
 var WORLD = "*";
 var livingNamed2 = (state) => state.squad.filter((u) => u.kind === "named" && isLiving(u)).map((u) => u.id);
@@ -21705,7 +21712,7 @@ function nextRememberId(draft) {
   return `fr${n}`;
 }
 function addFact(draft, f, opts = {}) {
-  const text2 = f.text.trim().slice(0, TUNING.memory.factTextMax).trim();
+  const text2 = f.text.trim().slice(0, factTextMax(draft)).trim();
   const about2 = [...f.about];
   const dup = draft.memory.facts.find((x) => normText(x.text) === normText(text2) && sameAbout(x.about, about2));
   if (dup) {
@@ -22625,7 +22632,7 @@ registerAction("intents/apply", (draft, payload, ctx2) => {
 });
 function storeSceneFacts(draft, reg, scene, raw) {
   const events = [];
-  const facts = validateIntents({ facts: raw }, { participants: scene.participants, squad: draft.squad }).facts;
+  const facts = validateIntents({ facts: raw }, { participants: scene.participants, squad: draft.squad, factTextMax: factTextMax(draft) }).facts;
   const room = Math.max(0, TUNING.memory.factsPerScene - draft.memory.facts.filter((x) => x.sceneId === scene.id).length);
   for (const f of facts.slice(0, room)) {
     addFact(draft, {
@@ -22796,7 +22803,7 @@ registerAction("memory/configure", (draft, payload) => {
   if (!isObj13(payload) || !PRESETS.includes(payload.preset)) throw new Error("memory/configure needs { preset: short | normal | long | custom }");
   const preset = payload.preset;
   const now = memoryConfig(draft);
-  const given = MEMORY_NUMERIC_FIELDS.filter((f) => f in payload && f !== "hideScenesAfter");
+  const given = MEMORY_NUMERIC_FIELDS.filter((f) => f in payload && !OWN_MEMORY_FIELDS.includes(f));
   if (preset !== "custom" && given.length > 0) throw new Error('memory/configure: numbers need preset "custom"');
   const next = { preset };
   if ("rumorMode" in payload) {
@@ -22805,12 +22812,14 @@ registerAction("memory/configure", (draft, payload) => {
   } else {
     next.rumorMode = now.rumorMode;
   }
-  const hide = "hideScenesAfter" in payload ? payload.hideScenesAfter : now.hideScenesAfter;
-  if (typeof hide !== "number" || !Number.isFinite(hide)) throw new Error("memory/configure: hideScenesAfter must be a number");
-  next.hideScenesAfter = clampMemoryField("hideScenesAfter", hide);
+  for (const f of OWN_MEMORY_FIELDS) {
+    const v = f in payload ? payload[f] : now[f];
+    if (typeof v !== "number" || !Number.isFinite(v)) throw new Error(`memory/configure: ${f} must be a number`);
+    next[f] = clampMemoryField(f, v);
+  }
   if (preset === "custom") {
     for (const f of MEMORY_NUMERIC_FIELDS) {
-      if (f === "hideScenesAfter") continue;
+      if (OWN_MEMORY_FIELDS.includes(f)) continue;
       const v = f in payload ? payload[f] : now[f];
       if (typeof v !== "number" || !Number.isFinite(v)) throw new Error(`memory/configure: ${f} must be a number`);
       next[f] = clampMemoryField(f, v);
@@ -22839,7 +22848,7 @@ registerAction("memory/forget", (draft, payload) => {
 });
 registerAction("memory/edit", (draft, payload) => {
   const { fact, payload: p } = factOf(draft, payload, "memory/edit");
-  const text2 = typeof p.text === "string" ? p.text.trim().slice(0, TUNING.memory.factTextMax).trim() : "";
+  const text2 = typeof p.text === "string" ? p.text.trim().slice(0, factTextMax(draft)).trim() : "";
   if (text2 === "") throw new Error("memory/edit: empty text");
   fact.text = text2;
   fact.edited = true;
@@ -22865,7 +22874,7 @@ registerAction("memory/edit_dossier", (draft, payload) => {
 });
 registerAction("memory/rumor_text", (draft, payload) => {
   const { fact, payload: p } = factOf(draft, payload, "memory/rumor_text");
-  const text2 = typeof p.text === "string" ? p.text.trim().slice(0, TUNING.memory.factTextMax).trim() : "";
+  const text2 = typeof p.text === "string" ? p.text.trim().slice(0, factTextMax(draft)).trim() : "";
   if (text2 === "") throw new Error("memory/rumor_text: empty text");
   if (!fact.spread || fact.rumor) throw new Error("memory/rumor_text: that fact is not waiting for a retelling");
   fact.rumor = { text: text2 };
@@ -25064,7 +25073,7 @@ function applyRecap(draft, reg, payload) {
   const hs = draft.headStart;
   if (!hs) throw new Error("This campaign has no head start.");
   const { texts, chronicle, source } = parse(draft, payload);
-  const factMax = TUNING.memory.factTextMax;
+  const factMax = factTextMax(draft);
   if (hs.recap === void 0) {
     const entry2 = addChronicle(draft, { kind: "day", day: draft.day, text: chronicle, audience: hs.units.map((u) => u.unitId) });
     hs.recap = { source, chronicleId: entry2.id };
@@ -30209,7 +30218,7 @@ function sanitizeIntentOutput(raw, ctx2) {
   const src = parsed.success ? parsed.data : { events: [], facts: [], proposals: [], promises: [], emotions: [], stressHints: [], contentViolations: [], sceneTone: void 0 };
   const events = src.events.filter((e) => isObj35(e) && typeof e.confidence === "number" && e.confidence >= ctx2.minConfidence);
   const proposals2 = src.proposals.filter((p) => ctx2.romance || !(isObj35(p) && ROMANTIC_PROPOSALS.includes(p.kind)));
-  const intents = validateIntents({ ...src, events, proposals: proposals2 }, { participants: ctx2.participants, squad: ctx2.squad, maxEvents: TUNING.relations.maxEventsRead, ...ctx2.measures ? { measures: ctx2.measures } : {}, ...ctx2.rules ? { rules: ctx2.rules } : {}, ...ctx2.intercepted ? { intercepted: ctx2.intercepted } : {}, ...ctx2.warned ? { warned: ctx2.warned } : {}, ...ctx2.overrides ? { overrides: ctx2.overrides } : {}, ...ctx2.expectations ? { expectations: ctx2.expectations } : {}, ...ctx2.conspire ? { conspire: ctx2.conspire } : {} });
+  const intents = validateIntents({ ...src, events, proposals: proposals2 }, { participants: ctx2.participants, squad: ctx2.squad, maxEvents: TUNING.relations.maxEventsRead, ...ctx2.measures ? { measures: ctx2.measures } : {}, ...ctx2.rules ? { rules: ctx2.rules } : {}, ...ctx2.intercepted ? { intercepted: ctx2.intercepted } : {}, ...ctx2.warned ? { warned: ctx2.warned } : {}, ...ctx2.overrides ? { overrides: ctx2.overrides } : {}, ...ctx2.expectations ? { expectations: ctx2.expectations } : {}, ...ctx2.conspire ? { conspire: ctx2.conspire } : {}, ...ctx2.factTextMax !== void 0 ? { factTextMax: ctx2.factTextMax } : {} });
   const emotions = [];
   for (const e of src.emotions) {
     if (isObj35(e) && typeof e.unitId === "string" && ctx2.participants.includes(e.unitId) && typeof e.label === "string" && LABELS.includes(e.label)) {
@@ -30240,7 +30249,8 @@ function readIntentOutput(raw, input, opts) {
     warned: input.warned ?? [],
     overrides: (input.overrides ?? []).map((o) => o.id),
     expectations: (input.expectations ?? []).map((x) => x.id),
-    conspire: input.conspire ?? []
+    conspire: input.conspire ?? [],
+    ...input.factTextMax !== void 0 ? { factTextMax: input.factTextMax } : {}
   });
 }
 
@@ -30771,7 +30781,7 @@ function readAnswer(value, input) {
   const flagged = input.transcript.filter((m) => m.flagged).map((m) => norm(m.text));
   const evidence = contentViolations.map((v) => norm(v.evidence)).filter((e) => e.length >= 8);
   const marked = new Set(value.facts.filter((f) => typeof f === "object" && f !== null && f.excluded === true).map((f) => norm(String(f.text ?? ""))));
-  const { facts } = validateIntents({ facts: value.facts }, { participants: ids, squad: ids.map((id) => ({ id })) });
+  const { facts } = validateIntents({ facts: value.facts }, { participants: ids, squad: ids.map((id) => ({ id })), ...input.factTextMax !== void 0 ? { factTextMax: input.factTextMax } : {} });
   const kept = facts.filter((f) => {
     const t = norm(f.text);
     return !marked.has(t) && !flagged.some((src) => sharesRun(t, src)) && !evidence.some((e) => t.includes(e));
@@ -30915,7 +30925,8 @@ function createMemoryController(deps) {
         transcript: slice.map((x) => ({ speaker: x.isUser ? s.commander.name : x.name, text: x.text, ...flagged.has(x.index) ? { flagged: true } : {} })),
         ...excluded.length > 0 ? { excluded } : {},
         ...scene.digest ? { previous: scene.digest.text } : {},
-        mode: "digest"
+        mode: "digest",
+        factTextMax: factTextMax(s)
       };
     },
     parse: (raw, input) => readDigest(raw, input),
@@ -31781,6 +31792,7 @@ function createSceneController(deps) {
       exchange: messages.map((m) => ({ speaker: m.isUser ? s0.commander.name : m.name, text: m.text })),
       units,
       openPromises: openPromises(s0, scene.participants, scene.participants).map((p) => ({ by: nm(p.by), to: nm(p.to), text: p.text })),
+      factTextMax: factTextMax(s0),
       romance: intimacyOf(s0).romance,
       measures: measureList(deps.registries(), s0),
       ...contentInput(s0, scene.participants),
@@ -32029,7 +32041,8 @@ function createSceneController(deps) {
         location: String(reg.locations.get(scene.locationId)?.name ?? scene.locationId),
         participants: names(scene.participants),
         transcript: digest ? [{ speaker: "Digest of the scene so far", text: digest.text }, ...tail] : tail,
-        ...excluded.length > 0 ? { excluded } : {}
+        ...excluded.length > 0 ? { excluded } : {},
+        factTextMax: factTextMax(s)
       };
     }
     const mark = s.memory.scenes?.find((m) => m.sceneId === sceneId);
@@ -32041,7 +32054,8 @@ function createSceneController(deps) {
       location: String(reg.locations.get(mark.locationId)?.name ?? mark.locationId),
       participants: names(mark.participants),
       transcript: st.getChatMessages(mark.from).filter((m) => m.index <= mark.to).map((m) => ({ speaker: m.isUser ? s.commander.name : m.name, text: m.text })),
-      ...excluded.length > 0 ? { excluded } : {}
+      ...excluded.length > 0 ? { excluded } : {},
+      factTextMax: factTextMax(s)
     };
   }
   deps.generations.bind("scene.summary", {
@@ -40037,6 +40051,12 @@ function hiddenScenesProvider(_subject, env) {
   const hidden = state.memory.hidden?.length ?? 0;
   return { lines: [`Hiding every ended scene older than the last ${n}.`, `Hidden now: ${plural2(hidden, "stretch of messages", "stretches of messages")}.`] };
 }
+function factLengthProvider(_subject, env) {
+  const state = env.state;
+  if (!state) return null;
+  const n = memoryConfig(state).factTextMax;
+  return { lines: [`A fact keeps at most ${n} characters${n === 200 ? " (the default)" : ""}.`] };
+}
 function registerMemoryProviders() {
   registerKnowledgeRule({ fact: (f) => f.hiddenFromCommander !== true });
   registerAnalyzeProvider("glossary:memory_preset", presetProvider);
@@ -40046,6 +40066,7 @@ function registerMemoryProviders() {
   registerAnalyzeProvider("glossary:squad_rumor", rumorProvider);
   registerAnalyzeProvider("glossary:pinned_fact", pinnedProvider);
   registerAnalyzeProvider("glossary:hidden_scenes", hiddenScenesProvider);
+  registerAnalyzeProvider("glossary:fact_length", factLengthProvider);
 }
 
 // src/analysis/providers/personal.ts
@@ -41643,9 +41664,10 @@ var LABEL4 = {
   journalLines: "Lines of her story with the commander",
   dmLines: "Recent messages told in a private scene",
   chronicleDays: "Days of the chronicle told",
-  hideScenesAfter: "Hide scenes older than the last N (0 = off)"
+  hideScenesAfter: "Hide scenes older than the last N (0 = off)",
+  factTextMax: "Longest text of a fact (characters)"
 };
-var GLOSSARY2 = { memoryTokens: "memory_budget", hideScenesAfter: "hidden_scenes" };
+var GLOSSARY2 = { memoryTokens: "memory_budget", hideScenesAfter: "hidden_scenes", factTextMax: "fact_length" };
 function renderMemorySection(host, ctx2) {
   const cfg = memoryConfig(ctx2.state);
   const locked = ctx2.settings.editLock;
@@ -41663,7 +41685,7 @@ function renderMemorySection(host, ctx2) {
     onclick: () => send({ preset: p })
   }, p.toUpperCase()));
   const numberField = (field2) => {
-    const own = field2 === "hideScenesAfter";
+    const own = OWN_MEMORY_FIELDS.includes(field2);
     const [min, max] = MEMORY_RANGES[field2];
     const el = h("input", {
       type: "number",
@@ -41703,9 +41725,9 @@ function renderMemorySection(host, ctx2) {
     h("div", { class: "alius-row alius-memory-presets" }, ...presetButtons),
     ...cfg.memoryTokens > ctx2.settings.contextTokenCap / 2 ? [h("p", { class: "alius-dim", "data-memory-warning": "true" }, `The memory share (${cfg.memoryTokens} tokens) is more than half of the context cap (${ctx2.settings.contextTokenCap}): the rest of the prompt has to fit in what is left.`)] : [],
     h("label", { class: "alius-field alius-option", ...analyzeNative("glossary:squad_rumor") }, h("span", { class: "alius-field-label" }, "Rumors"), mode),
-    numberField("hideScenesAfter"),
+    ...OWN_MEMORY_FIELDS.map(numberField),
     h("h3", {}, "Numbers of the preset"),
-    h("div", { class: "alius-grid" }, ...MEMORY_NUMERIC_FIELDS.filter((f) => f !== "hideScenesAfter").map(numberField)),
+    h("div", { class: "alius-grid" }, ...MEMORY_NUMERIC_FIELDS.filter((f) => !OWN_MEMORY_FIELDS.includes(f)).map(numberField)),
     ...locked ? [h("p", { class: "alius-dim" }, "The numbers change with the mechanics edit lock off (Developer).")] : [],
     h("h3", {}, "Fill"),
     fillHost

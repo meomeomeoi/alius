@@ -32,6 +32,8 @@ export interface IntentExtractInput {
   exchange: Array<{ speaker: string; text: string }>;
   units: IntentUnitInput[];
   openPromises: Array<{ by: string; to: string; text: string }>;
+  /** P11b: the campaign's fact length (a memory setting); absent = the default. */
+  factTextMax?: number;
   romance: boolean;
   /** P9: the words a `measure` may take (the punishments, `leash`, `unspecified`). */
   measures: string[];
@@ -200,14 +202,14 @@ const LABELS: readonly string[] = EXPRESSION_LABELS;
  */
 export function sanitizeIntentOutput(
   raw: unknown,
-  ctx: { participants: string[]; squad: Array<{ id: string }>; minConfidence: number; romance: boolean; measures?: string[]; /** P12: the ids of the intercepted items the model was shown. */ intercepted?: string[]; /** P12: the units the model was told the commander is warned about. */ warned?: string[]; /** P13: the ids of the open overrides the model was shown. */ overrides?: string[]; /** P13: the ids of the warden's expectations the model was shown. */ expectations?: string[]; /** P13: the units a `conspired` may name. */ conspire?: string[]; /** P9d: the ids of the categories that are switched off. */ excluded?: string[]; /** P9d: the rules a rule event may name. */ rules?: Array<{ id: string; unitId: string }> },
+  ctx: { participants: string[]; squad: Array<{ id: string }>; minConfidence: number; romance: boolean; measures?: string[]; /** P12: the ids of the intercepted items the model was shown. */ intercepted?: string[]; /** P12: the units the model was told the commander is warned about. */ warned?: string[]; /** P13: the ids of the open overrides the model was shown. */ overrides?: string[]; /** P13: the ids of the warden's expectations the model was shown. */ expectations?: string[]; /** P13: the units a `conspired` may name. */ conspire?: string[]; /** P9d: the ids of the categories that are switched off. */ excluded?: string[]; /** P9d: the rules a rule event may name. */ rules?: Array<{ id: string; unitId: string }>; /** P11b: the campaign's fact length. */ factTextMax?: number },
 ): IntentOutput {
   const parsed = IntentExtractRawSchema.safeParse(raw);
   const src = parsed.success ? parsed.data : { events: [], facts: [], proposals: [], promises: [], emotions: [], stressHints: [], contentViolations: [], sceneTone: undefined };
   const events = src.events.filter((e) => isObj(e) && typeof e.confidence === 'number' && e.confidence >= ctx.minConfidence);
   const proposals = src.proposals.filter((p) => ctx.romance || !(isObj(p) && (ROMANTIC_PROPOSALS as readonly string[]).includes(p.kind as string)));
   // the engine judges each event per unit before it cuts the list to six (a dropped event must not take a slot)
-  const intents = validateIntents({ ...src, events, proposals }, { participants: ctx.participants, squad: ctx.squad, maxEvents: TUNING.relations.maxEventsRead, ...(ctx.measures ? { measures: ctx.measures } : {}), ...(ctx.rules ? { rules: ctx.rules } : {}), ...(ctx.intercepted ? { intercepted: ctx.intercepted } : {}), ...(ctx.warned ? { warned: ctx.warned } : {}), ...(ctx.overrides ? { overrides: ctx.overrides } : {}), ...(ctx.expectations ? { expectations: ctx.expectations } : {}), ...(ctx.conspire ? { conspire: ctx.conspire } : {}) });
+  const intents = validateIntents({ ...src, events, proposals }, { participants: ctx.participants, squad: ctx.squad, maxEvents: TUNING.relations.maxEventsRead, ...(ctx.measures ? { measures: ctx.measures } : {}), ...(ctx.rules ? { rules: ctx.rules } : {}), ...(ctx.intercepted ? { intercepted: ctx.intercepted } : {}), ...(ctx.warned ? { warned: ctx.warned } : {}), ...(ctx.overrides ? { overrides: ctx.overrides } : {}), ...(ctx.expectations ? { expectations: ctx.expectations } : {}), ...(ctx.conspire ? { conspire: ctx.conspire } : {}), ...(ctx.factTextMax !== undefined ? { factTextMax: ctx.factTextMax } : {}) });
   const emotions: Array<{ unitId: string; label: ExpressionLabel }> = [];
   for (const e of src.emotions) {
     if (isObj(e) && typeof e.unitId === 'string' && ctx.participants.includes(e.unitId) && typeof e.label === 'string' && LABELS.includes(e.label)) {
@@ -234,5 +236,6 @@ export function readIntentOutput(raw: unknown, input: IntentExtractInput, opts: 
     excluded: (input.excluded ?? []).map((e) => e.id), rules: (input.rules ?? []).map((r) => ({ id: r.id, unitId: r.unitId })),
     intercepted: (input.intercepted ?? []).map((i) => i.id), warned: input.warned ?? [],
     overrides: (input.overrides ?? []).map((o) => o.id), expectations: (input.expectations ?? []).map((x) => x.id), conspire: input.conspire ?? [],
+    ...(input.factTextMax !== undefined ? { factTextMax: input.factTextMax } : {}),
   });
 }

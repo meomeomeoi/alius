@@ -1,6 +1,7 @@
 import type { EngineCtx, EngineEvent } from '../dispatch';
 import type { CampaignState } from '../state/types';
 import { addFact, recordPromise, revealCrime } from '../memory';
+import { factTextMax } from '../memory/config';
 import { roundAway } from './gain';
 import { affectedUnits, computeDeltas, stressFromHint } from './deltas';
 import { applyEventToUnit } from './effects';
@@ -56,7 +57,7 @@ const CONFIDENCE_EPS = 1e-9;
 export function applyIntents(draft: CampaignState, ctx: EngineCtx, p: ApplyParams): EngineEvent[] {
   const reg = ctx.registries;
   const rules = rulesOf(draft).filter((r) => r.status === 'active' || r.status === 'negotiating').map((r) => ({ id: r.id, unitId: r.unitId }));
-  const intents = validateIntents(p.intents, { participants: p.participants, squad: draft.squad, maxEvents: TUNING.relations.maxEventsRead, measures: measureList(reg, draft), rules,
+  const intents = validateIntents(p.intents, { participants: p.participants, squad: draft.squad, factTextMax: factTextMax(draft), maxEvents: TUNING.relations.maxEventsRead, measures: measureList(reg, draft), rules,
     intercepted: leakCandidates(draft, reg, p.participants).map((c) => c.id), // P12: only items the frequency really caught
     warned: warnedUnits(draft, p.participants), // P12: only units there is an open warning about
     overrides: openOverrideIds(draft, p.participants), // P13: the warden's override a compromise may settle

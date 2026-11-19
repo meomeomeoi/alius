@@ -129,6 +129,8 @@ export function validateIntents(
     expectations?: string[];
     /** P13: the units a `conspired` may name (present, not the warden, not yet an ally). Without them the event is dropped. */
     conspire?: string[];
+    /** P11b: the longest text a fact or a promise keeps (the campaign's memory setting); default `TUNING.memory.factTextMax`. */
+    factTextMax?: number;
   },
 ): Intents {
   const out = emptyIntents();
@@ -209,7 +211,7 @@ export function validateIntents(
 
   for (const f of arr(raw.facts)) {
     if (!isObj(f) || typeof f.text !== 'string') continue;
-    const text = f.text.trim().slice(0, TUNING.memory.factTextMax).trim();
+    const text = f.text.trim().slice(0, ctx.factTextMax ?? TUNING.memory.factTextMax).trim();
     if (text === '') continue;
     let about: FactIntent['about'];
     if (f.about === 'world' || f.about === 'commander') about = f.about;
@@ -235,7 +237,7 @@ export function validateIntents(
     const kind = oneOf(['made', 'kept', 'broken'] as const, p.kind);
     const pair = (p.by === 'commander' && isUnit(p.to)) || (isUnit(p.by) && p.to === 'commander');
     if (!kind || !pair) continue;
-    const text = typeof p.text === 'string' ? p.text.trim().slice(0, TUNING.memory.factTextMax).trim() : '';
+    const text = typeof p.text === 'string' ? p.text.trim().slice(0, ctx.factTextMax ?? TUNING.memory.factTextMax).trim() : '';
     if (kind === 'made' && text === '') continue;
     if (out.promises.length < MAX_PROMISES) out.promises.push({ by: p.by as string, to: p.to as string, text, kind });
   }

@@ -277,6 +277,8 @@ export interface MemoryConfig {
   chronicleDays: number;
   rumorMode: 'plain' | 'model';
   hideScenesAfter: number;
+  /** P11b: the longest text a fact keeps, in characters (the player's own choice, kept across presets; default 200). */
+  factTextMax: number;
 }
 
 /** P3b: old facts of one unit (or the world, `'*'`) folded into two paragraphs. */

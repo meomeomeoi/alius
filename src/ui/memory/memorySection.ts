@@ -1,4 +1,4 @@
-import { MEMORY_NUMERIC_FIELDS, memoryConfig, MEMORY_RANGES, type MemoryNumericField } from '../../engine/memory/config';
+import { MEMORY_NUMERIC_FIELDS, memoryConfig, MEMORY_RANGES, OWN_MEMORY_FIELDS, type MemoryNumericField } from '../../engine/memory/config';
 import type { CampaignState, MemoryPreset } from '../../engine/state/types';
 import type { BuildStats } from '../../llm/context';
 import type { AliusSettings } from '../../settings';
@@ -21,8 +21,9 @@ const LABEL: Record<MemoryNumericField, string> = {
   factsMax: 'Facts kept before the fold', foldAfterDays: 'A fact may be folded after (days)', recencyBase: 'How fast old facts fade (0.5–0.95)',
   retrievalK: 'Facts told per scene', memoryTokens: 'Memory share of the prompt (tokens)', journalLines: 'Lines of her story with the commander',
   dmLines: 'Recent messages told in a private scene', chronicleDays: 'Days of the chronicle told', hideScenesAfter: 'Hide scenes older than the last N (0 = off)',
+  factTextMax: 'Longest text of a fact (characters)',
 };
-const GLOSSARY: Partial<Record<MemoryNumericField, string>> = { memoryTokens: 'memory_budget', hideScenesAfter: 'hidden_scenes' };
+const GLOSSARY: Partial<Record<MemoryNumericField, string>> = { memoryTokens: 'memory_budget', hideScenesAfter: 'hidden_scenes', factTextMax: 'fact_length' };
 
 /**
  * SYS › MEMORY (P3b): the preset, the player's own choices (rumor mode, hiding old scenes), every number of the preset (locked while the
@@ -44,7 +45,7 @@ export function renderMemorySection(host: HTMLElement, ctx: MemorySectionCtx): v
   }, p.toUpperCase()));
 
   const numberField = (field: MemoryNumericField): HTMLElement => {
-    const own = field === 'hideScenesAfter'; // the player's own choice, not a tuning number: never locked
+    const own = (OWN_MEMORY_FIELDS as readonly string[]).includes(field); // the player's own choice, not a tuning number: never locked
     const [min, max] = MEMORY_RANGES[field];
     const el = h('input', {
       type: 'number', name: `memory:${field}`, class: 'alius-input alius-num', min: String(min), max: String(max), step: field === 'recencyBase' ? '0.05' : '1', value: String(cfg[field]),
@@ -77,9 +78,9 @@ export function renderMemorySection(host: HTMLElement, ctx: MemorySectionCtx): v
       ? [h('p', { class: 'alius-dim', 'data-memory-warning': 'true' }, `The memory share (${cfg.memoryTokens} tokens) is more than half of the context cap (${ctx.settings.contextTokenCap}): the rest of the prompt has to fit in what is left.`)]
       : []),
     h('label', { class: 'alius-field alius-option', ...analyzeNative('glossary:squad_rumor') }, h('span', { class: 'alius-field-label' }, 'Rumors'), mode),
-    numberField('hideScenesAfter'),
+    ...OWN_MEMORY_FIELDS.map(numberField),
     h('h3', {}, 'Numbers of the preset'),
-    h('div', { class: 'alius-grid' }, ...MEMORY_NUMERIC_FIELDS.filter((f) => f !== 'hideScenesAfter').map(numberField)),
+    h('div', { class: 'alius-grid' }, ...MEMORY_NUMERIC_FIELDS.filter((f) => !(OWN_MEMORY_FIELDS as readonly string[]).includes(f)).map(numberField)),
     ...(locked ? [h('p', { class: 'alius-dim' }, 'The numbers change with the mechanics edit lock off (Developer).')] : []),
     h('h3', {}, 'Fill'),
     fillHost,

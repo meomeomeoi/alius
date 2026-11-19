@@ -15,6 +15,8 @@ export interface SceneSummaryInput {
   mode?: 'digest';
   /** P3b: the digest so far, which the new one continues. */
   previous?: string;
+  /** P11b: the campaign's fact length (a memory setting); absent = the default. */
+  factTextMax?: number;
 }
 
 export const CHRONICLE_LINE_MAX = 240;
@@ -129,7 +131,7 @@ function readAnswer(value: SceneSummaryRaw, input: SceneSummaryInput): { facts: 
   const flagged = input.transcript.filter((m) => m.flagged).map((m) => norm(m.text));
   const evidence = contentViolations.map((v) => norm(v.evidence)).filter((e) => e.length >= 8);
   const marked = new Set(value.facts.filter((f) => typeof f === 'object' && f !== null && (f as { excluded?: unknown }).excluded === true).map((f) => norm(String((f as { text?: unknown }).text ?? ''))));
-  const { facts } = validateIntents({ facts: value.facts }, { participants: ids, squad: ids.map((id) => ({ id })) });
+  const { facts } = validateIntents({ facts: value.facts }, { participants: ids, squad: ids.map((id) => ({ id })), ...(input.factTextMax !== undefined ? { factTextMax: input.factTextMax } : {}) });
   const kept = facts.filter((f) => {
     const t = norm(f.text);
     return !marked.has(t) && !flagged.some((src) => sharesRun(t, src)) && !evidence.some((e) => t.includes(e));

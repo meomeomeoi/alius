@@ -89,6 +89,13 @@ function hiddenScenesProvider(_subject: Subject, env: AnalyzeEnv): Reading {
   return { lines: [`Hiding every ended scene older than the last ${n}.`, `Hidden now: ${plural(hidden, 'stretch of messages', 'stretches of messages')}.`] };
 }
 
+function factLengthProvider(_subject: Subject, env: AnalyzeEnv): Reading {
+  const state = env.state;
+  if (!state) return null;
+  const n = memoryConfig(state).factTextMax;
+  return { lines: [`A fact keeps at most ${n} characters${n === 200 ? ' (the default)' : ''}.`] };
+}
+
 /** Registers the knowledge rule and the readings (called from `registerCoreProviders`). */
 export function registerMemoryProviders(): void {
   registerKnowledgeRule({ fact: (f) => f.hiddenFromCommander !== true });
@@ -99,4 +106,5 @@ export function registerMemoryProviders(): void {
   registerAnalyzeProvider('glossary:squad_rumor', rumorProvider);
   registerAnalyzeProvider('glossary:pinned_fact', pinnedProvider);
   registerAnalyzeProvider('glossary:hidden_scenes', hiddenScenesProvider);
+  registerAnalyzeProvider('glossary:fact_length', factLengthProvider);
 }

@@ -4,6 +4,7 @@ import type { EngineEvent } from '../engine/dispatch';
 import { disabledCategories, ownLimitLabels, rulesOf } from '../engine/bonds';
 import { measureList } from '../engine/discipline';
 import { openPromises } from '../engine/memory';
+import { factTextMax } from '../engine/memory/config';
 import { intimacyOf } from '../engine/relations/gain';
 import type { ProposalAnswer } from '../engine/relations/proposals';
 import type { CampaignState, PendingProposal, SceneOrigin, Unit } from '../engine/state/types';
@@ -261,7 +262,7 @@ export function createSceneController(deps: SceneDeps): SceneController {
       commanderName: s0.commander.name, channel: 'scene',
       exchange: messages.map((m) => ({ speaker: m.isUser ? s0.commander.name : m.name, text: m.text })),
       units, openPromises: openPromises(s0, scene.participants, scene.participants).map((p) => ({ by: nm(p.by), to: nm(p.to), text: p.text })),
-      romance: intimacyOf(s0).romance, measures: measureList(deps.registries(), s0),
+      factTextMax: factTextMax(s0), romance: intimacyOf(s0).romance, measures: measureList(deps.registries(), s0),
       ...contentInput(s0, scene.participants),
       ...leakInput(s0, deps.registries(), scene.participants), // P12: what the frequency caught about those present (nothing without the trait)
       ...warnedInput(s0, scene.participants), // P12: the units the commander has an open warning about
@@ -530,6 +531,7 @@ export function createSceneController(deps: SceneDeps): SceneController {
         participants: names(scene.participants),
         transcript: digest ? [{ speaker: 'Digest of the scene so far', text: digest.text }, ...tail] : tail,
         ...(excluded.length > 0 ? { excluded } : {}),
+        factTextMax: factTextMax(s),
       };
     }
     const mark = s.memory.scenes?.find((m) => m.sceneId === sceneId);
@@ -542,6 +544,7 @@ export function createSceneController(deps: SceneDeps): SceneController {
       participants: names(mark.participants),
       transcript: st.getChatMessages(mark.from).filter((m) => m.index <= mark.to).map((m) => ({ speaker: m.isUser ? s.commander.name : m.name, text: m.text })),
       ...(excluded.length > 0 ? { excluded } : {}),
+      factTextMax: factTextMax(s),
     };
   }
 

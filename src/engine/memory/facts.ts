@@ -1,7 +1,7 @@
 import type { CampaignState, Fact } from '../state/types';
 import { normalizeTag } from '../setup';
 import { TUNING } from '../tuning';
-import { memoryConfig } from './config';
+import { factTextMax, memoryConfig } from './config';
 import { sweepCovered } from './fold';
 
 /** `f12`, `p3`, `c40`, `s7`, …: one campaign-wide counter so ids never repeat inside a save. */
@@ -27,7 +27,7 @@ function nextRememberId(draft: CampaignState): string {
  * `remembered` (P3b rules) takes the id from the separate `fr` counter; `pinned`, `hiddenFromCommander` and `spread` pass through `f`.
  */
 export function addFact(draft: CampaignState, f: Omit<Fact, 'id'>, opts: { remembered?: true } = {}): Fact {
-  const text = f.text.trim().slice(0, TUNING.memory.factTextMax).trim();
+  const text = f.text.trim().slice(0, factTextMax(draft)).trim();
   const about = [...f.about];
   const dup = draft.memory.facts.find((x) => normText(x.text) === normText(text) && sameAbout(x.about, about));
   if (dup) {
