@@ -119,7 +119,7 @@ Registries `blockingPostures`, `blockingAnchors`, `blockingContacts`, `blockingI
 | `notice { kind }` | P15 §8 squad knowledge | `knows_dynamic` for whoever sees it |
 | `status_after { id, slots }` | P7 statuses | stiffness, dizziness, marks |
 
-Code reads entries by field and effect type, never by id (P10 rule).
+Code reads entries by field and effect type, never by id (P10 rule). Visual effects (`camera`, `backdrop`, `pose_shot`, `filter`) are **hints**: a missing file falls back along P17c's chains (down to no sprite at all), and no entry, moment or physics is ever withheld or fails because its art is absent.
 
 ## 4. Starter content (`content/core`, texts `AUTHOR TO WRITE` where not given)
 

@@ -75,6 +75,14 @@ Added after the 0.2 depth review; built on P15a (blocking, moments, contact phys
 - **The gaze rule.** "Not above the knees", "eyes on the floor", "only at me": her portrait is **cropped** to what the commander may look at. The crop is found without models: the opaque bounding box from the PNG alpha, standard proportions inside it for knee-length sprites (eyes ≈ 8 %, chest ≈ 25 %, waist ≈ 45 %, thighs ≈ 60–100 %), and a per-sprite manual override (four draggable lines in the dossier, stored on the unit). Knee-length sprites have no feet: "feet only" needs the `feet_floor` pose shot; without it the view is thighs and knees over a floor gradient. Raising the gaze is a moment option and a slip.
 - **§1 gag, gestures** and **§4 camera, light, pose shots** become P15a effects (`input`, `gestures`, `camera`, `filter`, `pose_shot`, `backdrop`) read from the blocking.
 - The sprite and pose-shot list for the contacts is to be decided after the docs (P15a open decisions).
+- **Art never gates anything (author ruling 2026-11-19).** Every pose shot, backdrop, frame, surface, prop and even the character's ordinary sprite is optional. Fallback chains, each step tried when the previous file is absent **or fails to load** (`img` error → next step):
+  - pose shot → the CSS camera on her ordinary sprite (crop by the gaze rule) → her ordinary ST expression sprite → **no sprite** (the scene runs as text with her name plate);
+  - frame / backdrop → its `derived` view (`pov_floor`, `pov_corner`, `pov_dark`) → the room background → a plain CSS gradient;
+  - floor / ceiling surface → the top or bottom of the room background, scaled and blurred → a CSS gradient;
+  - a prop → skipped;
+  - another unit's sprite (a visitor) → voice and name only.
+  A missing file is **never an error**: no toast, no blocked action, at most one line in the SYS debug panel. A staging, contact, moment, practice or physics is **never withheld** because its art is missing. A test runs the P15a–P17d flows with an empty asset set and expects every scene to start and finish.
+
 - **Memory check:** typed slips under jolts feed P17 suspicion and her discipline at their own sites; nothing new is remembered.
 
 ## Acceptance criteria
@@ -83,7 +91,7 @@ Added after the 0.2 depth review; built on P15a (blocking, moments, contact phys
 2. Passcodes, incoming reads and deletions, dossier notes, her voice for system texts, permission requests and session rituals work.
 3. Status effects on the interface follow statuses and respect reduced motion.
 4. Light, door-side entries, situational expressions, the CSS camera and panning work with knee-length sprites.
-5. Every art slot is optional with a working fallback; props compose a room by data; pose shots place by anchor and mode.
+5. Every art slot is optional with a working fallback (the chains of the depth revision); a missing or broken file is never an error and never withholds a mechanic; props compose a room by data; pose shots place by anchor and mode.
 6. Map marks and quiet mode work.
 7. No network loads; every element carries `data-analyze`.
 
