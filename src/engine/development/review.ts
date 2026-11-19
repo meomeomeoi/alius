@@ -31,7 +31,8 @@ function room(unit: Unit, key: string): Room {
     const axis = key.slice('value:'.length) as ValueAxis;
     const d = developmentOf(unit).drift[axis] ?? 0;
     const cap = anchored ? D.anchoredValueCap : D.valueCap;
-    return { up: d < cap, down: d > -cap };
+    const now = valuesOf(unit)[axis]; // a value at the end of the scale (±3) cannot move further: the support would be spent on nothing
+    return { up: d < cap && now < 3, down: d > -cap && now > -3 };
   }
   if (kind === 'bond') {
     const field = bondField(key);
@@ -171,7 +172,7 @@ function applyShift(unit: Unit, dev: Development, s: ReviewShift): { from: strin
     const old = dev.drift[axis] ?? 0;
     const cap = isAnchored(unit, s.axis) ? D.anchoredValueCap : D.valueCap;
     const delta = D.nudge * (isAnchored(unit, s.axis) ? D.anchorInertia : 1);
-    const next = s.size === 'nudge' ? old + (up ? delta : -delta) : up ? Math.floor(old) + 1 : Math.ceil(old) - 1;
+    const next = s.size === 'nudge' ? old + (up ? delta : -delta) : Math.trunc(old) + (up ? 1 : -1); // the next whole step from what she shows now (`valuesOf` truncates)
     dev.drift[axis] = round(Math.min(cap, Math.max(-cap, next)));
     const after = valuesOf(unit)[axis];
     return after === before ? null : { from: String(before), to: String(after) };
@@ -206,7 +207,7 @@ export function applyReview(draft: CampaignState, reg: Registries, unitId: strin
   const dev = ensureDevelopment(unit);
   const inverse: ReviewInverse = {
     drift: structuredClone(dev.drift), bond: structuredClone(dev.bond), gained: structuredClone(dev.gained), lost: structuredClone(dev.lost),
-    acc: {}, nextId: dev.nextId, factIds: [], momentIds: [], ...(dev.lastReview !== undefined ? { lastReview: dev.lastReview } : {}), pending: structuredClone(dev.pending),
+    acc: {}, factIds: [], momentIds: [], ...(dev.lastReview !== undefined ? { lastReview: dev.lastReview } : {}), pending: structuredClone(dev.pending),
   };
   const events: EngineEvent[] = [];
   for (const s of ok.shifts) {
@@ -256,7 +257,7 @@ export function undoReview(draft: CampaignState, unitId: string): boolean {
   dev.moments = dev.moments.filter((m) => !inv.momentIds.includes(m.id));
   if (inv.lastReview !== undefined) dev.lastReview = inv.lastReview; else delete dev.lastReview;
   dev.pending = [...structuredClone(inv.pending), ...dev.pending];
-  dev.nextId = inv.nextId;
+  // `nextId` is never moved back: an appraisal recorded since keeps its id, and ids only have to stay unique
   delete dev.lastApplied;
   return true;
 }

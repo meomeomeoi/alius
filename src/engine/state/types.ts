@@ -263,8 +263,6 @@ export interface ReviewInverse {
   lost: Development['lost'];
   /** What the review took out of the accumulators, signed (UNDO adds it back; pushes recorded since stay). */
   acc: Record<string, number>;
-  /** Her id counter before the review (so ids are reused, not skipped). */
-  nextId: number;
   factIds: string[];
   momentIds: string[];
   /** Facts the review pushed out of the list (the oldest unedited ones). */

@@ -323,6 +323,7 @@ describe('undo and replace', () => {
     expect(undoReview(draft, ANN)).toBe(true);
     const after = unitOf(draft);
     delete after.development!.lastApplied;
+    after.development!.nextId = before.development!.nextId; // ids are never reused: only the counter differs
     expect(after).toEqual(before);
     expect(undoReview(draft, ANN)).toBe(false);
   });

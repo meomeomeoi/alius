@@ -1,4 +1,5 @@
 import type { Registries } from '../../content/types';
+import { recordAppraisal } from '../development/appraisal';
 import { forgetSpecial } from '../special/state';
 import { forgetWarden, notifyWardenGone, wardenUnitId } from '../warden/state';
 import { clearSmother } from '../bonds/smother';
@@ -171,8 +172,9 @@ export function compel(
   const witnesses = witnessesOf(draft, p.unitId);
   for (const w of witnesses) {
     const unit = unitOf(draft, w)!;
-    events.push(...applyEventToUnit(draft, reg, w, { ...COERCED, targets: [w], severity: 'moderate' }, { scale: witnessScale(unit) }));
+    events.push(...applyEventToUnit(draft, reg, w, { ...COERCED, targets: [w], severity: 'moderate' }, { scale: witnessScale(unit), witnessOf: p.unitId })); // P14b: she watched it
   }
+  events.push(...recordAppraisal(draft, reg, p.unitId, { ...COERCED, targets: [p.unitId], severity: 'moderate' }, 'subject')); // P14b: the one compelled read it as its subject
   for (const id of [p.unitId, ...witnesses]) events.push(...evaluateAutomatic(draft, reg, id));
   events.push(...bookUse(draft, ctx, p.unitId, 'compel', p.context, forced ? 'done' : 'failed'));
   return { forced, events };

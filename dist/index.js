@@ -11008,6 +11008,23 @@ function removeAppraisals(draft, list5) {
     if (dev.misread) dev.misread = dev.misread.filter((a) => a.id !== id);
   }
 }
+function recordWitnessOf(draft, reg, unitId, event, subjectId) {
+  if (developmentMode(draft) === "off") return [];
+  const reading = readingFor(reg, event);
+  if (!reading) return [];
+  const sceneId = draft.scene?.id;
+  return pushAppraisal(draft, reg, unitId, {
+    kind: event.type,
+    target: `unit:${subjectId}`,
+    role: "witness",
+    subject: subjectId,
+    reading,
+    severity: event.severity,
+    evidence: event.evidence,
+    tags: event.tags ?? [],
+    ...sceneId !== void 0 ? { sceneId } : {}
+  });
+}
 
 // src/engine/discipline/perception.ts
 var punishmentFor = (reg, measure) => measure === void 0 ? void 0 : reg.punishments.get(measure);
@@ -11191,7 +11208,7 @@ function applyEventToUnit(draft, reg, unitId, event, opts = {}) {
     else if (event.type === "broke_promise") countDeed(draft, "promises_broken");
   }
   events.push(...evaluateEvent(draft, reg, unitId, event.type));
-  events.push(...recordAppraisal(draft, reg, unitId, event, event.actor === unitId ? "actor" : "subject"));
+  events.push(...opts.witnessOf !== void 0 ? recordWitnessOf(draft, reg, unitId, event, opts.witnessOf) : recordAppraisal(draft, reg, unitId, event, event.actor === unitId ? "actor" : "subject"));
   return events;
 }
 
@@ -15722,8 +15739,9 @@ function compel(draft, ctx2, p) {
   const witnesses = witnessesOf(draft, p.unitId);
   for (const w of witnesses) {
     const unit2 = unitOf4(draft, w);
-    events.push(...applyEventToUnit(draft, reg, w, { ...COERCED, targets: [w], severity: "moderate" }, { scale: witnessScale(unit2) }));
+    events.push(...applyEventToUnit(draft, reg, w, { ...COERCED, targets: [w], severity: "moderate" }, { scale: witnessScale(unit2), witnessOf: p.unitId }));
   }
+  events.push(...recordAppraisal(draft, reg, p.unitId, { ...COERCED, targets: [p.unitId], severity: "moderate" }, "subject"));
   for (const id of [p.unitId, ...witnesses]) events.push(...evaluateAutomatic(draft, reg, id));
   events.push(...bookUse(draft, ctx2, p.unitId, "compel", p.context, forced ? "done" : "failed"));
   return { forced, events };
@@ -19457,7 +19475,7 @@ function checkHabits(draft, reg, unitId) {
     const key = reached(dev.counters, h2);
     if (key === null) continue;
     const other = h2.counter.kind === "companion" ? draft.squad.find((u) => u.id === key.slice("companion:".length))?.displayName ?? "someone" : "";
-    const text2 = h2.fallback.replace(/\{name\}/g, unit2.displayName).replace(/\{other\}/g, other).replace(/\s+/g, " ").trim().slice(0, D.factTextMax).trim();
+    const text2 = h2.fallback.replace(/^\s*AUTHOR TO WRITE:\s*/i, "").replace(/\{name\}/g, unit2.displayName).replace(/\{other\}/g, other).replace(/\s+/g, " ").trim().slice(0, D.factTextMax).trim();
     const fact = { id: nextDevId(dev, "df"), text: text2, kind: "habit", day: draft.day, source: "habit", habitId: h2.id };
     dev.habits.push(h2.id);
     dev.facts.push(fact);
@@ -25820,7 +25838,8 @@ function room(unit2, key) {
     const axis = key.slice("value:".length);
     const d = developmentOf(unit2).drift[axis] ?? 0;
     const cap7 = anchored ? D2.anchoredValueCap : D2.valueCap;
-    return { up: d < cap7, down: d > -cap7 };
+    const now = valuesOf(unit2)[axis];
+    return { up: d < cap7 && now < 3, down: d > -cap7 && now > -3 };
   }
   if (kind === "bond") {
     const field2 = bondField(key);
@@ -25931,7 +25950,7 @@ function applyShift(unit2, dev, s) {
     const old = dev.drift[axis] ?? 0;
     const cap7 = isAnchored(unit2, s.axis) ? D2.anchoredValueCap : D2.valueCap;
     const delta = D2.nudge * (isAnchored(unit2, s.axis) ? D2.anchorInertia : 1);
-    const next = s.size === "nudge" ? old + (up ? delta : -delta) : up ? Math.floor(old) + 1 : Math.ceil(old) - 1;
+    const next = s.size === "nudge" ? old + (up ? delta : -delta) : Math.trunc(old) + (up ? 1 : -1);
     dev.drift[axis] = round4(Math.min(cap7, Math.max(-cap7, next)));
     const after = valuesOf(unit2)[axis];
     return after === before ? null : { from: String(before), to: String(after) };
@@ -25964,7 +25983,6 @@ function applyReview(draft, reg, unitId, v, source) {
     gained: structuredClone(dev.gained),
     lost: structuredClone(dev.lost),
     acc: {},
-    nextId: dev.nextId,
     factIds: [],
     momentIds: [],
     ...dev.lastReview !== void 0 ? { lastReview: dev.lastReview } : {},
@@ -26021,7 +26039,6 @@ function undoReview(draft, unitId) {
   if (inv.lastReview !== void 0) dev.lastReview = inv.lastReview;
   else delete dev.lastReview;
   dev.pending = [...structuredClone(inv.pending), ...dev.pending];
-  dev.nextId = inv.nextId;
   delete dev.lastApplied;
   return true;
 }

@@ -66,7 +66,7 @@ describe('counting', () => {
     }
     expect(dev(s).habits).toContain('close_with');
     expect(dev(s, BEA).habits).toContain('close_with');
-    expect(dev(s).facts.find((f) => f.source === 'habit')!.text).toBe('AUTHOR TO WRITE: Ann picked up a habit from Bea.');
+    expect(dev(s).facts.find((f) => f.source === 'habit')!.text).toBe('Ann picked up a habit from Bea.');
     expect(dev(s, BEA).facts.find((f) => f.source === 'habit')!.text).toContain('from Ann');
     expect(dev(s).counters[`companion:${BEA}`]).toBe(10);
   });

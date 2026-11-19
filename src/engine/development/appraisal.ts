@@ -142,3 +142,18 @@ export function removeAppraisals(draft: CampaignState, list: Array<{ unitId: str
     if (dev.misread) dev.misread = dev.misread.filter((a) => a.id !== id);
   }
 }
+
+/**
+ * A bystander of an event that landed on someone else (the Leash witnesses): she reads it from the side, the event's subject is `subjectId`.
+ * Used where one unit is applied an event on behalf of a witness (`applyEventToUnit` with `opts.witnessOf`).
+ */
+export function recordWitnessOf(draft: CampaignState, reg: Registries, unitId: string, event: EventIntent, subjectId: string): EngineEvent[] {
+  if (developmentMode(draft) === 'off') return [];
+  const reading = readingFor(reg, event);
+  if (!reading) return [];
+  const sceneId = draft.scene?.id;
+  return pushAppraisal(draft, reg, unitId, {
+    kind: event.type, target: `unit:${subjectId}`, role: 'witness', subject: subjectId, reading, severity: event.severity, evidence: event.evidence,
+    tags: event.tags ?? [], ...(sceneId !== undefined ? { sceneId } : {}),
+  });
+}

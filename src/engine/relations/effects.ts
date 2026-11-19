@@ -1,7 +1,7 @@
 import type { Registries } from '../../content/types';
 import type { EngineEvent } from '../dispatch';
 import { countDeed } from '../discipline/deeds';
-import { recordAppraisal } from '../development/appraisal';
+import { recordAppraisal, recordWitnessOf } from '../development/appraisal';
 import { applyRelationDelta } from '../relationGain';
 import type { CampaignState, Relation, Unit } from '../state/types';
 import { computeDeltas } from './deltas';
@@ -33,7 +33,7 @@ export function defectEventStress(reg: Registries, unit: Pick<Unit, 'defects'>, 
  * `opts.scale` multiplies the three axis deltas (a negative scale flips them: approval) and the stress by `max(0, scale)` (P6).
  */
 export function applyEventToUnit(
-  draft: CampaignState, reg: Registries, unitId: string, event: EventIntent, opts: { scale?: number } = {},
+  draft: CampaignState, reg: Registries, unitId: string, event: EventIntent, opts: { scale?: number; /** P14b: she is a bystander of an event that landed on this unit: her appraisal is a witness's. */ witnessOf?: string } = {},
 ): EngineEvent[] {
   const unit = draft.squad.find((u) => u.id === unitId);
   if (!unit || !draft.relations[unitId]) return [];
@@ -67,6 +67,8 @@ export function applyEventToUnit(
   }
   events.push(...evaluateEvent(draft, reg, unitId, event.type));
   // P14b: how she read it (nothing while development is off); it changes no relation axis
-  events.push(...recordAppraisal(draft, reg, unitId, event, event.actor === unitId ? 'actor' : 'subject'));
+  events.push(...(opts.witnessOf !== undefined
+    ? recordWitnessOf(draft, reg, unitId, event, opts.witnessOf)
+    : recordAppraisal(draft, reg, unitId, event, event.actor === unitId ? 'actor' : 'subject')));
   return events;
 }
