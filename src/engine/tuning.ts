@@ -566,6 +566,8 @@ export const TUNING = Object.freeze({
     reasonMax: 120, factTextMax: 140, summaryMax: 160, cardMax: 600, anchorsMax: 4,
     misread: Object.freeze({ low: 0.35, mid: 0.15, high: 0.05 }),
     secretMult: 1.5, misreadCap: 0.6, revertShare: 0.5,
+    /** A fact revises a misreading only when it is about few people (the subject and at most one more): a squad-wide fact tells her nothing about this one. */
+    reviseAboutMax: 2,
     scales: Object.freeze({
       desire: Object.freeze(['low', 'medium', 'high'] as const),
       attachment: Object.freeze(['avoidant', 'slow', 'steady', 'intense'] as const),

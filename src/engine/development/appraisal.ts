@@ -4,6 +4,7 @@ import { isLiving } from '../economy';
 import type { EventIntent } from '../relations/intents';
 import type { Appraisal, AppraisalRole, CampaignState, Reading, Severity } from '../state/types';
 import { TUNING } from '../tuning';
+import { flipReading, misreads, readingOf } from './misread';
 import { matchRules, accumulate } from './rules';
 import { developmentMode, ensureDevelopment, nextDevId } from './state';
 
@@ -57,8 +58,19 @@ export function pushAppraisal(draft: CampaignState, reg: Registries, unitId: str
     ...(seen.sceneId !== undefined ? { sceneId: seen.sceneId } : {}), subject: seen.subject, pushes: [],
     summary: '',
   };
+  // a witness may misread (only a clear yes or no): she keeps the flipped reading and the true one, until the truth reaches her
+  const misread = a.role === 'witness' && (a.wanted === 'yes' || a.wanted === 'no') && misreads(draft, unit, a.id, a.subject);
+  if (misread) {
+    a.truth = readingOf(a);
+    Object.assign(a, flipReading(a.truth));
+    a.misread = true;
+  }
   a.summary = summaryOf(draft, a, seen.evidence);
   a.pushes = accumulate(unit, matchRules(draft, reg, unit, a, seen.tags ?? []));
+  if (misread) {
+    (dev.misread ??= []).push(structuredClone(a));
+    if (dev.misread.length > TUNING.development.misreadMax) dev.misread.splice(0, dev.misread.length - TUNING.development.misreadMax);
+  }
   dev.pending.push(a);
   if (dev.pending.length > TUNING.development.pendingMax) dev.pending.splice(0, dev.pending.length - TUNING.development.pendingMax);
   return [{ type: 'appraisal_recorded', unitId, appraisalId: a.id, role: a.role }];

@@ -724,6 +724,8 @@ var TUNING = Object.freeze({
     secretMult: 1.5,
     misreadCap: 0.6,
     revertShare: 0.5,
+    /** A fact revises a misreading only when it is about few people (the subject and at most one more): a squad-wide fact tells her nothing about this one. */
+    reviseAboutMax: 2,
     scales: Object.freeze({
       desire: Object.freeze(["low", "medium", "high"]),
       attachment: Object.freeze(["avoidant", "slow", "steady", "intense"]),
@@ -9177,6 +9179,54 @@ function deedsOf(state) {
   return out;
 }
 
+// src/engine/hub.ts
+function fnv1a(s) {
+  let h2 = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h2 ^= s.charCodeAt(i);
+    h2 = Math.imul(h2, 16777619) >>> 0;
+  }
+  return h2 >>> 0;
+}
+function waitingDemands(state) {
+  return (state.discipline?.demands ?? []).filter((d) => d.status === "open" && state.squad.some((u) => u.id === d.unitId && isLiving(u)));
+}
+var roomsOf = (reg) => [...reg.hubRooms.values()];
+var hostOf = (rooms, host) => rooms.find((r) => (r.hosts ?? []).includes(host));
+var isInjured = (u) => u.status === "injured" || (u.injuryDays ?? 0) > 0;
+function routineWeight(state, reg, room, unit2) {
+  const base = (room.weights ?? {})[state.slot] ?? 0;
+  if (base <= 0) return 0;
+  const open3 = (reg.locations.get(room.sceneLocationId)?.slots ?? []).includes(state.slot);
+  if (!open3) return 0;
+  if (typeof room.facilityId === "string" && facilityLevel2(state, room.facilityId) < 1) return 0;
+  const liked = (room.likeTags ?? []).some((t) => likesOf(unit2).some((l) => l.toLowerCase() === t.toLowerCase()));
+  return base + (liked ? 2 : 0);
+}
+function place(state, reg, rooms, unit2) {
+  const here = (room, reason) => room ? { unitId: unit2.id, roomId: room.id, reason } : null;
+  if (state.expedition?.party.includes(unit2.id)) return { unitId: unit2.id, roomId: null, reason: "expedition" };
+  const held2 = activeRestrictions(state, unit2.id);
+  const found2 = (isInjured(unit2) ? here(hostOf(rooms, "injured"), "injured") : null) ?? (held2.some((r) => r.kind === "confined") ? here(hostOf(rooms, "confined"), "confined") : null) ?? (held2.some((r) => r.kind === "duty") ? here(hostOf(rooms, "duty"), "duty") : null) ?? (state.slot === "night" ? here(hostOf(rooms, "night"), "night") : null);
+  if (found2) return found2;
+  const booked = state.personal?.bookings?.find((b) => b.unitId === unit2.id && b.day === state.day && b.slot === state.slot && (b.status === "booked" || b.status === "played"));
+  const bookedRoom = booked ? rooms.find((r) => r.sceneLocationId === reg.bookingKinds.get(booked.kindId)?.locationId) : void 0;
+  if (bookedRoom) return { unitId: unit2.id, roomId: bookedRoom.id, reason: "routine" };
+  const weights = rooms.map((room) => routineWeight(state, reg, room, unit2));
+  const total2 = weights.reduce((a, b) => a + b, 0);
+  if (total2 <= 0) return { unitId: unit2.id, roomId: null, reason: "nowhere" };
+  let pick2 = fnv1a(`${state.day}|${state.slot}|${unit2.id}`) % total2;
+  for (let i = 0; i < rooms.length; i++) {
+    if (pick2 < weights[i]) return { unitId: unit2.id, roomId: rooms[i].id, reason: "routine" };
+    pick2 -= weights[i];
+  }
+  return { unitId: unit2.id, roomId: null, reason: "nowhere" };
+}
+function whereabouts(state, reg) {
+  const rooms = roomsOf(reg);
+  return livingUnits(state).map((u) => place(state, reg, rooms, u));
+}
+
 // src/engine/relations/gain.ts
 var RANGE2 = { trust: [0, 100], affinity: [-100, 100], attraction: [0, 100] };
 var roundAway = (x) => Math.sign(x) * Math.round(Math.abs(x));
@@ -10675,6 +10725,9 @@ var EMPTY = Object.freeze({
   habits: Object.freeze([]),
   nextId: 0
 });
+function developmentOf(unit2) {
+  return unit2.development ?? EMPTY;
+}
 function ensureDevelopment(unit2) {
   return unit2.development ??= { drift: {}, acc: {}, anchors: [], counters: {}, pending: [], facts: [], moments: [], habits: [], nextId: 0 };
 }
@@ -10753,6 +10806,69 @@ function accumulate(unit2, pushes) {
   return applied;
 }
 
+// src/engine/development/misread.ts
+function misreadChance(state, unit2, subject) {
+  const base = TUNING.development.misread[unit2.insight ?? "mid"];
+  const secret = subject !== "commander" && state.relations[subject]?.publicity?.level === "secret";
+  return Math.min(TUNING.development.misreadCap, secret ? base * TUNING.development.secretMult : base);
+}
+function misreads(state, unit2, appraisalId, subject) {
+  return fnv1a(`${unit2.id}|appraisal|${appraisalId}`) / 2 ** 32 < misreadChance(state, unit2, subject);
+}
+function flipReading(r) {
+  return {
+    wanted: r.wanted === "yes" ? "no" : r.wanted === "no" ? "yes" : "unclear",
+    initiator: r.initiator === "target" ? "actor" : r.initiator === "actor" ? "target" : "mutual",
+    harm: r.harm,
+    outcome: r.outcome
+  };
+}
+var readingOf = (a) => ({ wanted: a.wanted, initiator: a.initiator, harm: a.harm, outcome: a.outcome });
+function knowsAbout(state, unitId, subject, after) {
+  return state.memory.facts.some((f) => f.day > after && f.about.includes(subject) && f.about.length <= TUNING.development.reviseAboutMax && (f.knownBy.includes(unitId) || f.knownBy.includes("*") || f.heard?.[unitId] !== void 0));
+}
+function mergePushes(into, add) {
+  for (const p of add) {
+    const hit = into.find((x) => x.axis === p.axis);
+    if (hit) hit.amount = Math.round((hit.amount + p.amount) * 1e6) / 1e6;
+    else into.push({ ...p });
+  }
+  for (let i = into.length - 1; i >= 0; i--) if (into[i].amount === 0) into.splice(i, 1);
+}
+function revise(draft, reg, unit2, a) {
+  const share = TUNING.development.revertShare;
+  const truth = a.truth;
+  const dev = unit2.development;
+  const trueView = { ...a, ...truth, pushes: [] };
+  delete trueView.misread;
+  delete trueView.truth;
+  const back = a.pushes.map((p) => ({ axis: p.axis, amount: -p.amount * share }));
+  const forward = matchRules(draft, reg, unit2, trueView, []).map((p) => ({ axis: p.axis, amount: p.amount * share }));
+  const applied = accumulate(unit2, [...back, ...forward]);
+  const pend = dev.pending.find((p) => p.id === a.id);
+  if (pend) {
+    Object.assign(pend, truth);
+    delete pend.misread;
+    delete pend.truth;
+    mergePushes(pend.pushes, applied);
+  }
+  dev.misread = (dev.misread ?? []).filter((m) => m.id !== a.id);
+  return { type: "appraisal_revised", unitId: unit2.id, appraisalId: a.id };
+}
+function developmentDayStep(draft, ctx2) {
+  if (developmentMode(draft) === "off") return [];
+  const events = [];
+  for (const unit2 of draft.squad) {
+    if (unit2.kind !== "named" || !isLiving(unit2) || (developmentOf(unit2).misread?.length ?? 0) === 0) continue;
+    for (const a of [...unit2.development.misread ?? []]) {
+      if (a.truth !== void 0 && knowsAbout(draft, unit2.id, a.subject, a.day)) events.push(revise(draft, ctx2.registries, unit2, a));
+      else if (draft.day - a.day > TUNING.development.misreadDays) unit2.development.misread = unit2.development.misread.filter((m) => m.id !== a.id);
+    }
+    if (unit2.development.misread?.length === 0) delete unit2.development.misread;
+  }
+  return events;
+}
+
 // src/engine/development/appraisal.ts
 function readingFor(reg, event) {
   if (event.reading) return event.reading;
@@ -10783,8 +10899,18 @@ function pushAppraisal(draft, reg, unitId, seen) {
     pushes: [],
     summary: ""
   };
+  const misread = a.role === "witness" && (a.wanted === "yes" || a.wanted === "no") && misreads(draft, unit2, a.id, a.subject);
+  if (misread) {
+    a.truth = readingOf(a);
+    Object.assign(a, flipReading(a.truth));
+    a.misread = true;
+  }
   a.summary = summaryOf(draft, a, seen.evidence);
   a.pushes = accumulate(unit2, matchRules(draft, reg, unit2, a, seen.tags ?? []));
+  if (misread) {
+    (dev.misread ??= []).push(structuredClone(a));
+    if (dev.misread.length > TUNING.development.misreadMax) dev.misread.splice(0, dev.misread.length - TUNING.development.misreadMax);
+  }
   dev.pending.push(a);
   if (dev.pending.length > TUNING.development.pendingMax) dev.pending.splice(0, dev.pending.length - TUNING.development.pendingMax);
   return [{ type: "appraisal_recorded", unitId, appraisalId: a.id, role: a.role }];
@@ -12502,54 +12628,6 @@ function unlockedBetween(before, after, reg) {
   const was = lockedTabs(before, reg);
   const now = lockedTabs(after, reg);
   return [...reg.uiUnlocks.values()].filter((row2) => was.has(tabOf(row2)) && !now.has(tabOf(row2)));
-}
-
-// src/engine/hub.ts
-function fnv1a(s) {
-  let h2 = 2166136261;
-  for (let i = 0; i < s.length; i++) {
-    h2 ^= s.charCodeAt(i);
-    h2 = Math.imul(h2, 16777619) >>> 0;
-  }
-  return h2 >>> 0;
-}
-function waitingDemands(state) {
-  return (state.discipline?.demands ?? []).filter((d) => d.status === "open" && state.squad.some((u) => u.id === d.unitId && isLiving(u)));
-}
-var roomsOf = (reg) => [...reg.hubRooms.values()];
-var hostOf = (rooms, host) => rooms.find((r) => (r.hosts ?? []).includes(host));
-var isInjured = (u) => u.status === "injured" || (u.injuryDays ?? 0) > 0;
-function routineWeight(state, reg, room, unit2) {
-  const base = (room.weights ?? {})[state.slot] ?? 0;
-  if (base <= 0) return 0;
-  const open3 = (reg.locations.get(room.sceneLocationId)?.slots ?? []).includes(state.slot);
-  if (!open3) return 0;
-  if (typeof room.facilityId === "string" && facilityLevel2(state, room.facilityId) < 1) return 0;
-  const liked = (room.likeTags ?? []).some((t) => likesOf(unit2).some((l) => l.toLowerCase() === t.toLowerCase()));
-  return base + (liked ? 2 : 0);
-}
-function place(state, reg, rooms, unit2) {
-  const here = (room, reason) => room ? { unitId: unit2.id, roomId: room.id, reason } : null;
-  if (state.expedition?.party.includes(unit2.id)) return { unitId: unit2.id, roomId: null, reason: "expedition" };
-  const held2 = activeRestrictions(state, unit2.id);
-  const found2 = (isInjured(unit2) ? here(hostOf(rooms, "injured"), "injured") : null) ?? (held2.some((r) => r.kind === "confined") ? here(hostOf(rooms, "confined"), "confined") : null) ?? (held2.some((r) => r.kind === "duty") ? here(hostOf(rooms, "duty"), "duty") : null) ?? (state.slot === "night" ? here(hostOf(rooms, "night"), "night") : null);
-  if (found2) return found2;
-  const booked = state.personal?.bookings?.find((b) => b.unitId === unit2.id && b.day === state.day && b.slot === state.slot && (b.status === "booked" || b.status === "played"));
-  const bookedRoom = booked ? rooms.find((r) => r.sceneLocationId === reg.bookingKinds.get(booked.kindId)?.locationId) : void 0;
-  if (bookedRoom) return { unitId: unit2.id, roomId: bookedRoom.id, reason: "routine" };
-  const weights = rooms.map((room) => routineWeight(state, reg, room, unit2));
-  const total2 = weights.reduce((a, b) => a + b, 0);
-  if (total2 <= 0) return { unitId: unit2.id, roomId: null, reason: "nowhere" };
-  let pick2 = fnv1a(`${state.day}|${state.slot}|${unit2.id}`) % total2;
-  for (let i = 0; i < rooms.length; i++) {
-    if (pick2 < weights[i]) return { unitId: unit2.id, roomId: rooms[i].id, reason: "routine" };
-    pick2 -= weights[i];
-  }
-  return { unitId: unit2.id, roomId: null, reason: "nowhere" };
-}
-function whereabouts(state, reg) {
-  const rooms = roomsOf(reg);
-  return livingUnits(state).map((u) => place(state, reg, rooms, u));
 }
 
 // src/engine/onboarding/objectives.ts
@@ -14463,7 +14541,7 @@ var WANTED = ["yes", "no", "unclear"];
 var INITIATORS = ["target", "actor", "mutual"];
 var HARMS = ["none", "minor", "serious"];
 var OUTCOMES = ["good", "mixed", "bad"];
-function readingOf(v) {
+function readingOf2(v) {
   if (!isObj3(v)) return null;
   const wanted = oneOf(WANTED, v.wanted);
   const initiator = oneOf(INITIATORS, v.initiator);
@@ -14499,7 +14577,7 @@ function validateIntents(raw, ctx2) {
     if (actor === "commander" ? targets.length === 0 : arr(e.targets).some((t) => isUnit(t) && t !== actor)) continue;
     if (type === "defied" ? actor === "commander" : COMMANDER_DISCIPLINE.includes(type) && actor !== "commander") continue;
     const intent = { type, actor, targets, severity, evidence, confidence: clamp01(e.confidence) };
-    const reading = readingOf(e.reading);
+    const reading = readingOf2(e.reading);
     if (reading) intent.reading = reading;
     if (type === "compromise_reached" && typeof e.overrideId === "string") {
       if (actor !== "commander" || !(ctx2.overrides ?? []).includes(e.overrideId)) continue;
@@ -25525,6 +25603,7 @@ registerAction("development/set_mode", (draft, payload) => {
   return [];
 });
 registerActivityHook((draft, ctx2, done) => done.companionId ? recordActivity(draft, ctx2.registries, done.companionId, done.activityId) : []);
+registerDayEndStep("dm_rumors", developmentDayStep);
 
 // src/llm/callTypes.ts
 var CALL_TYPE_IDS = [

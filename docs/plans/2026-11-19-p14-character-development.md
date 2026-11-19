@@ -588,7 +588,7 @@ interface DevMoment {
   - `reviseMisreads(draft, reg): EngineEvent[]`;
   - `developmentDayStep(draft, ctx): EngineEvent[]` (revision, then the 30-day drop).
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - `only witnesses misread`: with `insight 'low'` and a chance forced by choosing an appraisal id whose hash is below 0.35 (find one in the test by scanning ids), the subject keeps the true reading and the witness flips.
   - `unclear never flips`.
   - `insight orders the chance`: low > mid > high; a `secret` subject relation ×1.5, capped 0.6.
@@ -596,10 +596,10 @@ interface DevMoment {
   - `revised when a newer fact reaches her`: a misread about ANN on day 3, then a fact `about [ANN]` on day 5 with `heard[BEA] = 5` → at day end, `appraisal_revised`; `acc` moved by `−0.5 × misread pushes + 0.5 × true pushes`; the appraisal left `misread`.
   - `an older fact does not revise`.
   - `dropped after 30 days unrevised`.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.** The misread copy goes to both `pending` (the review reads what she believes) and `misread` (≤ 8, oldest out). The true reading is stored on the misread copy as `truth`.
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P14b): misreading by insight, revision when the truth reaches her`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.** The misread copy goes to both `pending` (the review reads what she believes) and `misread` (≤ 8, oldest out). The true reading is stored on the misread copy as `truth`.
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P14b): misreading by insight, revision when the truth reaches her`
 
 ---
 
