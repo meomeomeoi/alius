@@ -884,14 +884,14 @@ interface DevMoment {
 
   All of them go through `Knowledge.development`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - `the axis reading shows words and the reason once shown, nothing before`.
   - `hidden.test passes`: no sentinel number or text appears in any reading.
   - `the mode reading says "off" for an old save`.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** the files, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P14b): development readings through Knowledge`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** the files, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P14b): development readings through Knowledge`
 
 ---
 

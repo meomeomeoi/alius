@@ -1,3 +1,4 @@
+import { axisEntry } from '../../engine/development/axes';
 import { buildKnowledge } from '../../analysis/knowledge';
 import type { Registries } from '../../content/types';
 import type { CampaignState, DevFact } from '../../engine/state/types';
@@ -30,18 +31,18 @@ export function renderDevelopmentBlock(host: HTMLElement, ctx: DevelopmentBlockC
     ctx.onChanged?.();
   };
   host.replaceChildren();
-  const head = h('p', { class: 'alius-stat', ...analyzeAttrs('glossary:character_development') }, 'DEVELOPMENT');
+  const head = h('p', { class: 'alius-stat', ...analyzeAttrs('glossary:character_development', { unitId }) }, 'DEVELOPMENT');
   host.append(head);
 
   const control = (label: string, action: string, address: string, run: () => void, pressed?: boolean): HTMLElement =>
     h('button', {
       type: 'button', class: 'alius-btn alius-option', 'data-action': action, 'aria-disabled': locked ? 'true' : null,
-      ...(pressed !== undefined ? { 'aria-pressed': String(pressed) } : {}), ...analyzeNative(address), onclick: () => { if (!locked) run(); },
+      ...(pressed !== undefined ? { 'aria-pressed': String(pressed) } : {}), ...analyzeNative(address, { unitId }), onclick: () => { if (!locked) run(); },
     }, label);
 
   const axisRow = (a: (typeof view.axes)[number]): HTMLElement =>
     h('div', { class: 'alius-dev-axis', 'data-axis': a.axis },
-      h('span', { class: 'alius-stat', ...analyzeAttrs(`development:${unitId}:${a.axis}`) }, `${a.words.charAt(0).toUpperCase()}${a.words.slice(1)}.`),
+      h('span', { class: 'alius-stat', ...analyzeAttrs(`developmentAxes:${axisEntry(ctx.registries, a.axis)?.id ?? a.axis}`, { unitId, axis: a.axis }) }, `${a.words.charAt(0).toUpperCase()}${a.words.slice(1)}.`),
       control(a.held ? '[ HELD ]' : '[ HOLD ]', 'hold', 'glossary:development_hold', () => send({ type: 'development/hold', payload: { unitId, axis: a.axis, on: !a.held } }), a.held));
 
   const factRow = (f: DevFact): HTMLElement => {
@@ -56,8 +57,8 @@ export function renderDevelopmentBlock(host: HTMLElement, ctx: DevelopmentBlockC
         return;
       }
       row.replaceChildren(
-        h('span', { class: 'alius-stat', 'data-role': 'text', ...analyzeAttrs(f.habitId !== undefined ? 'glossary:habit' : 'glossary:development_fact') }, f.text),
-        ...(f.edited ? [h('span', { class: 'alius-chip', ...analyzeAttrs('glossary:development_fact') }, 'EDITED')] : []),
+        h('span', { class: 'alius-stat', 'data-role': 'text', ...analyzeAttrs(f.habitId !== undefined ? 'glossary:habit' : 'glossary:development_fact', { unitId }) }, f.text),
+        ...(f.edited ? [h('span', { class: 'alius-chip', ...analyzeAttrs('glossary:development_fact', { unitId }) }, 'EDITED')] : []),
         h('div', { class: 'alius-dev-actions' },
           control('[ EDIT ]', 'edit', 'glossary:development_fact', () => draw(true)),
           control('[ REMOVE ]', 'remove', 'glossary:development_fact', () => send({ type: 'development/remove_fact', payload: { unitId, factId: f.id } }))));

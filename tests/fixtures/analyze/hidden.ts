@@ -89,6 +89,23 @@ export function hiddenFixture(reg: Registries): { state: CampaignState; unitId: 
   state.memory.facts.push({ id: 'fact_komp', about: [state.squad[1].id], text: 'SENTINEL_KOMPROMAT', tags: ['kompromat'], importance: 3, day: 8, knownBy: [unit.id], hiddenFromCommander: true });
   registerKnowledgeRule(wardenKnowledgeRule); // P13: what the warden knows about an ally
 
+  // P14b: what she is becoming that no panel may show: the accumulator (4.37), a moment and a line no scene has carried, a pending and a misread appraisal
+  state.squad[0].insight = 'low';
+  state.squad[0].development = {
+    drift: { mercy: 1.4 }, acc: { 'value:mercy': 4.37, 'value:autonomy': 2.19 }, anchors: ['value:ingroup'], counters: { 'activity:train': 7 }, habits: [], nextId: 9,
+    pending: [{ id: 'ap1', day: 7, kind: 'praised', target: 'her', role: 'witness', wanted: 'no', initiator: 'actor', harm: 'minor', outcome: 'bad', severity: 'moderate', subject: 'commander', pushes: [], summary: 'SENTINEL-PENDING' }],
+    misread: [{ id: 'ap2', day: 7, kind: 'coerced', target: 'commander', role: 'witness', wanted: 'no', initiator: 'actor', harm: 'minor', outcome: 'bad', severity: 'moderate', subject: 'commander', misread: true, truth: { wanted: 'yes', initiator: 'target', harm: 'none', outcome: 'good' }, pushes: [], summary: 'SENTINEL-MISREAD' }],
+    moments: [
+      { id: 'dm1', axis: 'value:mercy', from: '0', to: '1', reason: 'A reason she has shown.', day: 5, sceneId: 's1', shownDay: 6 },
+      { id: 'dm2', axis: 'value:autonomy', from: '0', to: '1', reason: 'SENTINEL-UNSHOWN-MOMENT', day: 7 },
+    ],
+    facts: [
+      { id: 'df1', text: 'She keeps a spare ration.', kind: 'attitude', day: 5, source: 'review', sceneId: 's1', shownDay: 6 },
+      { id: 'df2', text: 'SENTINEL-UNSHOWN-FACT', kind: 'memory', day: 7, source: 'review' },
+    ],
+  };
+  state.squad[0].development.drift.autonomy = 1.2; // the unshown moment's axis has already moved: the effective value changed, nothing says so yet
+
   state.disloyalty = { units: { [unit.id]: { signs: [], attempts: 3, nextCheckDay: 97 } } };
 
   state.dilemmas = {
@@ -107,8 +124,8 @@ export function hiddenFixture(reg: Registries): { state: CampaignState; unitId: 
     state,
     unitId: unit.id,
     sentinels: {
-      numbers: [37, 41, 23, 63, 17, 29, 97, 77, 31, 53, 59, 71, 57, 43, 47, 67],
-      texts: ['SENTINEL_CLOCK', 'SENTINEL_FACT', 'SENTINEL_OPTION_EFFECT', 'SENTINEL_SECRET', 'SENTINEL_FREQ_TRUE', 'SENTINEL_FREQ_FACT', 'SENTINEL_PREMONITION_REAL', 'SENTINEL_PREMONITION_FALSE', 'SENTINEL_INTEL_FALSE', 'SENTINEL_EXPECTATION', 'SENTINEL_KOMPROMAT'],
+      numbers: [37, 41, 23, 63, 17, 29, 97, 77, 31, 53, 59, 71, 57, 43, 47, 67, 4.37, 2.19],
+      texts: ['SENTINEL-PENDING', 'SENTINEL-MISREAD', 'SENTINEL-UNSHOWN-MOMENT', 'SENTINEL-UNSHOWN-FACT', 'SENTINEL_CLOCK', 'SENTINEL_FACT', 'SENTINEL_OPTION_EFFECT', 'SENTINEL_SECRET', 'SENTINEL_FREQ_TRUE', 'SENTINEL_FREQ_FACT', 'SENTINEL_PREMONITION_REAL', 'SENTINEL_PREMONITION_FALSE', 'SENTINEL_INTEL_FALSE', 'SENTINEL_EXPECTATION', 'SENTINEL_KOMPROMAT'],
     },
   };
 }

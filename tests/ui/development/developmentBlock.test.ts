@@ -88,7 +88,9 @@ describe('the DEVELOPMENT view', () => {
   it('every element carries data-analyze, and the axis line has its own address', () => {
     const { host } = mount(world(), { editLock: false });
     expect(markedWithout(host)).toEqual([]);
-    expect(q(host, '[data-axis="value:mercy"] .alius-stat').getAttribute('data-analyze')).toBe('development:unit_ann:value:mercy');
+    const line = q(host, '[data-axis="value:mercy"] .alius-stat');
+    expect(line.getAttribute('data-analyze')).toBe('developmentAxes:value:mercy');
+    expect(JSON.parse(line.getAttribute('data-analyze-ctx')!)).toEqual({ unitId: ANN, axis: 'value:mercy' });
     expect(q(host, '[data-action="hold"]').getAttribute('data-analyze')).toBe('glossary:development_hold');
   });
 });

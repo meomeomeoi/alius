@@ -24235,7 +24235,7 @@ function mergeHints(into, more) {
     else if (RANK.indexOf(h2.severity) > RANK.indexOf(have.severity)) have.severity = h2.severity;
   }
 }
-function relationHints(cs, unitIdOf4) {
+function relationHints(cs, unitIdOf5) {
   const out = [];
   mergeHints(out, cs.hints);
   const cmd = cs.commander;
@@ -24248,7 +24248,7 @@ function relationHints(cs, unitIdOf4) {
     }
   }
   for (const c of cs.combatants) {
-    const id = c.side === "squad" ? unitIdOf4(c.cid) : void 0;
+    const id = c.side === "squad" ? unitIdOf5(c.cid) : void 0;
     if (id && c.downed) mergeHints(out, [{ type: "endangered", actor: "commander", targets: [id], severity: "major" }]);
   }
   return out;
@@ -24269,7 +24269,7 @@ function finalizeCombat(draft, reg, rng, outcome) {
   const events = [];
   const squad = cs.combatants.filter((c) => c.side === "squad" && c.unitId);
   const unitOf11 = (c) => draft.squad.find((u) => u.id === c.unitId);
-  const unitIdOf4 = (cid) => cs.combatants.find((c) => c.cid === cid)?.unitId;
+  const unitIdOf5 = (cid) => cs.combatants.find((c) => c.cid === cid)?.unitId;
   const stressBefore = Object.fromEntries(squad.map((c) => [c.unitId, unitOf11(c).stress]));
   const injuries = [];
   const deaths = [];
@@ -24358,7 +24358,7 @@ function finalizeCombat(draft, reg, rng, outcome) {
     deaths,
     breakdowns,
     stressDelta: Object.fromEntries(squad.map((c) => [c.unitId, unitOf11(c).stress - stressBefore[c.unitId]])),
-    relationHints: relationHints(cs, unitIdOf4),
+    relationHints: relationHints(cs, unitIdOf5),
     commanderInjured,
     ...compels.length > 0 ? { compels: [...compels] } : {},
     ...mutineers.length > 0 ? { mutineers } : {}
@@ -36522,7 +36522,7 @@ function renderDevelopmentBlock(host, ctx2) {
     ctx2.onChanged?.();
   };
   host.replaceChildren();
-  const head = h("p", { class: "alius-stat", ...analyzeAttrs("glossary:character_development") }, "DEVELOPMENT");
+  const head = h("p", { class: "alius-stat", ...analyzeAttrs("glossary:character_development", { unitId }) }, "DEVELOPMENT");
   host.append(head);
   const control = (label2, action, address, run, pressed) => h("button", {
     type: "button",
@@ -36530,7 +36530,7 @@ function renderDevelopmentBlock(host, ctx2) {
     "data-action": action,
     "aria-disabled": locked ? "true" : null,
     ...pressed !== void 0 ? { "aria-pressed": String(pressed) } : {},
-    ...analyzeNative(address),
+    ...analyzeNative(address, { unitId }),
     onclick: () => {
       if (!locked) run();
     }
@@ -36538,7 +36538,7 @@ function renderDevelopmentBlock(host, ctx2) {
   const axisRow = (a) => h(
     "div",
     { class: "alius-dev-axis", "data-axis": a.axis },
-    h("span", { class: "alius-stat", ...analyzeAttrs(`development:${unitId}:${a.axis}`) }, `${a.words.charAt(0).toUpperCase()}${a.words.slice(1)}.`),
+    h("span", { class: "alius-stat", ...analyzeAttrs(`developmentAxes:${axisEntry(ctx2.registries, a.axis)?.id ?? a.axis}`, { unitId, axis: a.axis }) }, `${a.words.charAt(0).toUpperCase()}${a.words.slice(1)}.`),
     control(a.held ? "[ HELD ]" : "[ HOLD ]", "hold", "glossary:development_hold", () => send({ type: "development/hold", payload: { unitId, axis: a.axis, on: !a.held } }), a.held)
   );
   const factRow = (f) => {
@@ -36556,8 +36556,8 @@ function renderDevelopmentBlock(host, ctx2) {
         return;
       }
       row2.replaceChildren(
-        h("span", { class: "alius-stat", "data-role": "text", ...analyzeAttrs(f.habitId !== void 0 ? "glossary:habit" : "glossary:development_fact") }, f.text),
-        ...f.edited ? [h("span", { class: "alius-chip", ...analyzeAttrs("glossary:development_fact") }, "EDITED")] : [],
+        h("span", { class: "alius-stat", "data-role": "text", ...analyzeAttrs(f.habitId !== void 0 ? "glossary:habit" : "glossary:development_fact", { unitId }) }, f.text),
+        ...f.edited ? [h("span", { class: "alius-chip", ...analyzeAttrs("glossary:development_fact", { unitId }) }, "EDITED")] : [],
         h(
           "div",
           { class: "alius-dev-actions" },
@@ -42238,6 +42238,63 @@ function registerHeadStartProviders() {
   registerAnalyzeProvider("glossary:head_start", headStartProvider);
 }
 
+// src/analysis/providers/development.ts
+var unitIdOf4 = (s) => typeof s.data.unitId === "string" ? s.data.unitId : null;
+var plural4 = (n, one, many2) => `${n} ${n === 1 ? one : many2}`;
+function axisProvider(s, env, k) {
+  const unitId = unitIdOf4(s);
+  if (!env.state || unitId === null) return null;
+  const unit2 = env.state.squad.find((u) => u.id === unitId);
+  const view = k.development(unitId, env.registries);
+  const axis = typeof s.data.axis === "string" ? s.data.axis : null;
+  if (axis === null) return { lines: view.axes.length === 0 ? ["Nothing has changed yet."] : view.axes.map((a2) => `${unit2?.displayName ?? "She"}: ${a2.words}.`) };
+  const a = view.axes.find((x) => x.axis === axis);
+  if (!a) return { lines: ["Nothing has changed here yet."] };
+  return {
+    lines: [
+      `${unit2?.displayName ?? "She"} is ${a.words}.`,
+      ...a.reason !== "" ? [`Why: ${a.reason}`] : [],
+      `It showed on day ${a.shownDay}.`,
+      ...a.held ? ["Held: it takes no further change."] : []
+    ]
+  };
+}
+function modeProvider(_s, env, k) {
+  const state = env.state;
+  if (!state) return null;
+  const mode = developmentMode(state);
+  const changed = state.squad.filter((u) => {
+    const v = k.development(u.id, env.registries);
+    return v.axes.length + v.facts.length + v.habits.length > 0;
+  }).length;
+  return { lines: [`Character development is ${mode}${state.settings.characterDevelopment === void 0 ? " (this campaign never turned it on)" : ""}.`, `${plural4(changed, "soldier has", "soldiers have")} shown a change.`] };
+}
+function factProvider(s, env, k) {
+  const unitId = unitIdOf4(s);
+  if (!env.state || unitId === null) return null;
+  const v = k.development(unitId, env.registries);
+  return { lines: [`${plural4(v.facts.length, "line of hers is", "lines of hers are")} shown.`] };
+}
+function habitProvider(s, env, k) {
+  const unitId = unitIdOf4(s);
+  if (!env.state || unitId === null) return null;
+  const v = k.development(unitId, env.registries);
+  return { lines: [v.habits.length === 0 ? "No habit yet." : `${plural4(v.habits.length, "habit", "habits")}.`] };
+}
+function holdProvider(s, env, k) {
+  const unitId = unitIdOf4(s);
+  if (!env.state || unitId === null) return null;
+  const held2 = k.development(unitId, env.registries).axes.filter((a) => a.held);
+  return { lines: [held2.length === 0 ? "Nothing is held." : `Held: ${held2.map((a) => a.words).join("; ")}.`] };
+}
+function registerDevelopmentProviders() {
+  registerAnalyzeProvider("developmentAxes", axisProvider);
+  registerAnalyzeProvider("glossary:character_development", modeProvider);
+  registerAnalyzeProvider("glossary:development_fact", factProvider);
+  registerAnalyzeProvider("glossary:habit", habitProvider);
+  registerAnalyzeProvider("glossary:development_hold", holdProvider);
+}
+
 // src/analysis/providers/power.ts
 var TERM_WORDS = {
   values: "what she values",
@@ -42538,7 +42595,7 @@ function unitOf10(state, data) {
   return unit2 && relation ? { unit: unit2, relation } : null;
 }
 var BAND = { trust: trustBand, affinity: affinityBand, attraction: attractionBand };
-var axisProvider = (axis) => (subject, env, knowledge) => {
+var axisProvider2 = (axis) => (subject, env, knowledge) => {
   const state = env.state;
   const found2 = unitOf10(state, subject.data);
   if (!found2) return null;
@@ -42700,7 +42757,7 @@ var registered5 = false;
 function registerCoreProviders() {
   if (registered5) return;
   registered5 = true;
-  for (const axis of ["trust", "affinity", "attraction"]) registerAnalyzeProvider(`glossary:${axis}`, axisProvider(axis));
+  for (const axis of ["trust", "affinity", "attraction"]) registerAnalyzeProvider(`glossary:${axis}`, axisProvider2(axis));
   registerAnalyzeProvider("glossary:stress", stressProvider);
   for (const stat3 of STATS) registerAnalyzeProvider(`glossary:stat_${stat3}`, statProvider(stat3));
   for (const resource of ["credits", "supplies", "plyx"]) registerAnalyzeProvider(`glossary:${resource}`, resourceProvider(resource));
@@ -42718,6 +42775,7 @@ function registerCoreProviders() {
   registerSpecialProviders();
   registerWardenProviders();
   registerHeadStartProviders();
+  registerDevelopmentProviders();
 }
 
 // src/analysis/describe.ts
