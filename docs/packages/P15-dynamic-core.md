@@ -1,6 +1,6 @@
 # P15 — The Dynamic: Hold, Frames, Domains, Exit
 
-**Status: spec.** Release 0.2 (post-release). **Depends on:** P15a (blocking, moments, contact physics), P3 (relationship graph, facts, intents), P9 (Impunity, demands, punishments), P9b (hierarchy, outside perception), P9c (device access, bookings, secrets), P9d (bond profile, content categories, lead, Want, rules), P13 (LEASHSWAP: the countermand and co-sign machinery reused by the command domain), P14 (generation envelope), P7a. **Read:** overview; this file; the **Implemented as** of P9, P9b, P9c, P9d and P13; `docs/content/lore.md` (§0).
+**Status: spec.** Release 0.2 (post-release). **Depends on:** P15a (blocking, moments, contact physics), P11b (head start: §15.14), P3 (relationship graph, facts, intents), P9 (Impunity, demands, punishments), P9b (hierarchy, outside perception), P9c (device access, bookings, secrets), P9d (bond profile, content categories, lead, Want, rules), P13 (LEASHSWAP: the countermand and co-sign machinery reused by the command domain), P14 (generation envelope), P7a. **Read:** overview; this file; the **Implemented as** of P9, P9b, P9c, P9d and P13; `docs/content/lore.md` (§0).
 
 **Analysis tool (P7a):** every new stat, chip, option and choice card carries `data-analyze`, has a glossary entry or registry `description`, and live values get an analyze provider that reads through `Knowledge`. **P14:** every new generation registers a site.
 
@@ -405,6 +405,18 @@ Each is a fact (`hiddenFromCommander` until she shows it in a scene or DM, throu
 **Expected pace** (5 named units, holder `select_few`, frame `role`): an ordinary woman suspects in 9–10 days and knows in 2–3 weeks unless a demonstration comes first; the holder's friend about twice as fast.
 
 **Memory check:** `suspects_close`, `suspects_dynamic` and `knows_dynamic` are facts written at their sites (no `memoryRules` entry for them); suspicion values are hidden (a sentinel in `tests/fixtures/analyze/hidden.ts`). Outside the squad only through `public_humiliation` (B4), unchanged.
+
+### 15.14 Head start and the dynamic (P11b)
+
+Agreed in the design session 2026-11-19. P11b lets a campaign begin as if the commander had been at the base for N days. **By default it does not touch the dynamic:** hold 0, no probes behind the scenes, no reading of the position; probing starts on day 1 of the campaign exactly as without a head start, so the player sees the first gestures. P11b's recap contains no probe-like moment in that case.
+
+**Option "The dynamic is already underway"** (WORLD PARAMETERS › DYNAMIC, shown when P11b's head start is > 0 and the dynamic is on; default **off**; global or per woman, like seeded holders, §7):
+- for each eligible woman it applies (no RNG draw: hashed like P11b) the outcome of `round(N × daily probe chance)` probes with answers drawn from a neutral spread: starting hold inside *interest* / *testing* (never past *testing*: frames still change only through milestones, §4), and an initial reading of the position from those answers (§15.2);
+- P11b's recap may then include up to one **probe-like moment** per such woman (registry `headStartMoments` entries tagged `probe`, one per probe axis kind; texts `AUTHOR TO WRITE`), written by the same `head_start_recap` call; it becomes a fact with audience = the pair;
+- the probe queue (§15.1) is filled from these women first; the back-off rule does not start from the head start's answers.
+- A seeded holder (§7) with a starting frame keeps that frame; the option only adds the probing history to it.
+
+State: P11b's `SetupResult.headStart.dynamicUnderway` (`true` = all eligible, or a list of unit ids). Memory check: the probe-like recap moments use P11b's `head_start_moment` rule; nothing else is remembered.
 
 ## Acceptance criteria
 
