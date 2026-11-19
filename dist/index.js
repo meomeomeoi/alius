@@ -24653,6 +24653,13 @@ setLeashEffect((draft, ctx2, kind) => leashCommander(draft, ctx2, kind));
 var GENERATION_REASONS = ["no_profile", "network", "timeout", "truncated", "refused", "invalid_output", "empty"];
 var CLOSE_OUTCOMES = ["applied", "dropped", "kept_fallback"];
 var cut2 = (s, n) => s.length > n ? s.slice(0, n) : s;
+function openRecords(state, filter) {
+  return (state.generations?.records ?? []).filter((r) => r.status === "open" && (filter?.siteId === void 0 || r.siteId === filter.siteId));
+}
+function recordFor(state, siteId, key) {
+  const list5 = (state.generations?.records ?? []).filter((r) => r.siteId === siteId && r.key === key);
+  return list5.find((r) => r.status === "open") ?? list5[0];
+}
 var isObj30 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
 function readFailure(payload) {
   if (!isObj30(payload)) throw new Error("generation/failed needs a payload");
@@ -25097,6 +25104,16 @@ function estTokens(s) {
 // src/llm/orchestrator.ts
 var RETRY_BUDGET_FACTOR = 1.5;
 var DETAIL_MAX = 160;
+function compileRefusals(reg) {
+  const out = [];
+  for (const e of reg.llmRefusals.values()) {
+    try {
+      out.push({ re: new RegExp(String(e.pattern), "i"), scope: e.scope === "any" ? "any" : "json" });
+    } catch {
+    }
+  }
+  return out;
+}
 var cut3 = (s) => s.length > DETAIL_MAX ? s.slice(0, DETAIL_MAX) : s;
 var isAbort = (e) => typeof e === "object" && e !== null && (e.name === "AbortError" || e.name === "TimeoutError");
 function refuses(patterns, text2, scopes) {
@@ -30971,6 +30988,261 @@ function createSceneController(deps) {
     });
   });
   return controller;
+}
+
+// src/llm/describe.ts
+var WHY = {
+  refused: () => "the model refused",
+  truncated: (v) => v.budget !== void 0 && v.budget > 0 ? `the answer was cut off at ${v.budget} tokens` : "the answer was cut off",
+  timeout: (v) => v.timeoutMs !== void 0 ? `no answer within ${Math.round(v.timeoutMs / 1e3)} s` : "no answer in time",
+  network: () => "the connection failed",
+  invalid_output: () => "the answer did not fit the form",
+  empty: () => "nothing came back",
+  no_profile: () => "no mechanic profile is selected",
+  expired: (v) => (v.expiredWhy ?? "it can no longer be retried").replace(/\.+\s*$/, "")
+};
+function describeFailure(v) {
+  const why = (WHY[v.reason] ?? (() => "it failed"))(v);
+  return `${v.label}: ${why}.`;
+}
+
+// src/llm/sites.ts
+var sites = /* @__PURE__ */ new Map();
+function registerGenerationSite(decl) {
+  if (sites.has(decl.id)) throw new Error(`Duplicate generation site: ${decl.id}`);
+  sites.set(decl.id, decl);
+}
+var generationSite = (id) => sites.get(id);
+var GLOSSARY = "generation_failed";
+function declare(id, callType, surface, reroll, record, label2) {
+  registerGenerationSite({ id, callType, surface, reroll, record, glossary: GLOSSARY, label: () => label2 });
+}
+declare("scene.intents", "intent_extract", "scene", "revert", "full", "Scene reading");
+declare("scene.summary", "scene_summary", "day", "revert", "full", "Scene summary");
+declare("scene.digest", "scene_summary", "scene", "none", "quiet", "Scene digest");
+declare("emotion.pick", "emotion_pick", "scene", "none", "none", "Expression pick");
+declare("dm.reply", "dm_reply", "comms", "revert", "full", "Her reply");
+declare("dm.initiate", "dm_reply", "comms", "none", "quiet", "Her message");
+declare("dm.door", "dm_reply", "comms", "none", "full", "Her answer at the door");
+declare("dm.intents", "intent_extract", "comms", "none", "quiet", "Message reading");
+declare("director.tick", "director_tick", "world", "none", "full", "The director's plan");
+declare("dilemma.generate", "dilemma_generate", "dilemma", "before_commit", "full", "Decision text");
+declare("expedition.recap", "expedition_recap", "expedition", "free", "full", "After-action recap");
+declare("activity.vignette", "activity_vignette", "day", "none", "quiet", "Vignette");
+declare("chronicle.compact", "chronicle_compact", "world", "none", "none", "Chronicle compaction");
+declare("memory.fold", "memory_fold", "world", "none", "none", "Memory fold");
+declare("memory.rumor", "rumor_retell", "world", "none", "quiet", "Rumor retelling");
+declare("flavor.grunt", "flavor", "day", "free", "quiet", "Grunt name");
+declare("flavor.enemy", "flavor", "expedition", "none", "none", "Enemy name");
+declare("flavor.demand", "flavor", "day", "free", "quiet", "Demand wording");
+declare("flavor.rule", "flavor", "day", "free", "quiet", "Rule wording");
+declare("flavor.ballot", "flavor", "day", "none", "none", "Ballot wording");
+declare("flavor.dm_edit", "flavor", "comms", "none", "none", "Message edit");
+declare("flavor.frequency_fragment", "flavor", "scene", "none", "none", "Fragment wording");
+declare("warden.agenda", "warden_agenda", "world", "before_commit", "quiet", "The warden's agenda");
+declare("warden.judge", "warden_judge", "world", "none", "none", "Warden judgement");
+declare("warden.epilogue", "epilogue", "world", "free", "full", "Epilogue");
+declare("setup.profile_import", "profile_import", "setup", "before_commit", "none", "Profile import");
+declare("setup.commander_import", "commander_import", "setup", "before_commit", "none", "Commander import");
+declare("sys.ping", "ping", "sys", "none", "none", "Connection test");
+
+// src/llm/envelope.ts
+var MOVED_REASON = "Something happened since: this can no longer be rerolled.";
+var NONE_REASON = "This cannot be rerolled.";
+var BUDGET_GROWTH = 1.5;
+function createEnvelope(host) {
+  const handlers2 = /* @__PURE__ */ new Map();
+  const snapshots = /* @__PURE__ */ new Map();
+  const inflight = /* @__PURE__ */ new Set();
+  let compiled = null;
+  const refusals = () => {
+    const reg = host.registries();
+    if (compiled?.reg !== reg) compiled = { reg, patterns: compileRefusals(reg) };
+    return compiled.patterns;
+  };
+  const record = (siteId, key) => {
+    const s = host.state();
+    return s ? recordFor(s, siteId, key) : void 0;
+  };
+  const expire = (siteId, key, why, chatId) => {
+    const rec = record(siteId, key);
+    if (rec && rec.status === "open") host.dispatch({ type: "generation/expire", payload: { id: rec.id, why } }, { expectChatId: chatId });
+  };
+  const closeKey = (siteId, key, outcome, chatId) => {
+    const s = host.state();
+    if (s && openRecords(s, { siteId }).some((r) => r.key === key)) {
+      host.dispatch({ type: "generation/close", payload: { siteId, key, outcome } }, { expectChatId: chatId });
+    }
+  };
+  const unitLabel2 = (site, key) => site.label(host.state(), key);
+  async function run(siteId, key, opts) {
+    const site = generationSite(siteId);
+    const h2 = handlers2.get(siteId);
+    if (!site || !h2) return { kind: "unbound" };
+    const flight = `${siteId}:${key}`;
+    if (inflight.has(flight)) return { kind: "stale" };
+    inflight.add(flight);
+    try {
+      const chatId = host.chatId();
+      const settings = host.settings();
+      const first2 = await h2.build(key);
+      if (isExpired(first2)) {
+        expire(siteId, key, first2.expired, chatId);
+        return { kind: "expired", why: first2.expired };
+      }
+      let input = first2;
+      const mult = opts.budgetMult ?? 1;
+      const budgetLimit = 1 + settings.autoRetry;
+      let attempts = 0;
+      let factor = mult;
+      let last = null;
+      let value;
+      let applied = false;
+      while (attempts < budgetLimit) {
+        const left = budgetLimit - attempts;
+        const r = await callLlm(site.callType, input, { st: host.st, settings: { ...settings, autoRetry: left - 1 }, contentLine: host.contentLine, refusals: refusals() }, { budgetMult: factor, profile: opts.profile });
+        attempts += r.attempts;
+        if (host.chatId() !== chatId) return { kind: "stale" };
+        if (!r.ok) {
+          last = { reason: r.reason, detail: r.detail, at: r.at, budget: r.budget };
+          break;
+        }
+        const parsed = h2.parse ? h2.parse(r.value, input) : r.value;
+        if (parsed === null) {
+          last = { reason: "invalid_output", detail: "the answer did not fit the form", at: r.at, budget: 0 };
+          break;
+        }
+        const again = await h2.build(key);
+        if (host.chatId() !== chatId) return { kind: "stale" };
+        if (isExpired(again)) {
+          expire(siteId, key, again.expired, chatId);
+          return { kind: "expired", why: again.expired };
+        }
+        input = again;
+        const open3 = record(siteId, key);
+        if (open3?.fallbackApplied && site.reroll === "revert") {
+          const why = h2.undo?.(key) ?? undoSnapshot(siteId, key);
+          if (why !== null) {
+            expire(siteId, key, why, chatId);
+            return { kind: "expired", why };
+          }
+        }
+        const done = h2.apply(key, parsed, input);
+        if (done === "ok") {
+          value = parsed;
+          applied = true;
+          break;
+        }
+        if ("stale" in done) return { kind: "stale" };
+        last = { reason: "invalid_output", detail: done.rejected, at: r.at, budget: 0 };
+        factor *= BUDGET_GROWTH;
+      }
+      if (applied) {
+        closeKey(siteId, key, "applied", chatId);
+        return { kind: "applied", value };
+      }
+      return fail(site, h2, key, input, last, attempts, mult, chatId, opts);
+    } finally {
+      inflight.delete(flight);
+    }
+  }
+  function fail(site, h2, key, input, last, attempts, mult, chatId, opts) {
+    const existing = record(site.id, key);
+    const open3 = existing?.status === "open" ? existing : void 0;
+    let fallbackApplied = open3?.fallbackApplied === true;
+    if (!fallbackApplied && !opts.skipFallback && h2.fallback) fallbackApplied = h2.fallback(key, input) === true;
+    const writes = !opts.noRecord && last.reason !== "no_profile" && site.record !== "none" && !(fallbackApplied && site.reroll === "none");
+    let recordId;
+    if (writes) {
+      host.dispatch({
+        type: "generation/failed",
+        payload: {
+          siteId: site.id,
+          key,
+          reason: last.reason,
+          detail: last.detail,
+          attempts: Math.max(1, attempts),
+          at: last.at,
+          budgetMult: mult,
+          ...fallbackApplied ? { fallbackApplied: true } : {},
+          ...site.record === "quiet" ? { quiet: true } : {}
+        }
+      }, { expectChatId: chatId });
+      recordId = record(site.id, key)?.id;
+      if (site.record === "full" && open3 === void 0) {
+        host.toast("warn", describeFailure({ label: unitLabel2(site, key), reason: last.reason, budget: last.budget, timeoutMs: host.settings().llmTimeoutMs }));
+      }
+    }
+    return { kind: "failed", reason: last.reason, detail: last.detail, ...recordId !== void 0 ? { recordId } : {}, fallbackApplied };
+  }
+  function undoSnapshot(siteId, key) {
+    const snap = snapshots.get(siteId);
+    if (!snap || snap.key !== key || snap.chatId !== host.chatId()) return "There is nothing to restore.";
+    if (!host.restoreSnapshot(snap.before, snap.after)) return MOVED_REASON;
+    snapshots.delete(siteId);
+    return null;
+  }
+  const isExpired = (v) => typeof v === "object" && v !== null && typeof v.expired === "string";
+  function rerollState(siteId, key) {
+    const site = generationSite(siteId);
+    const h2 = handlers2.get(siteId);
+    if (!site || !h2 || site.reroll === "none") return { enabled: false, reason: NONE_REASON };
+    if (site.reroll === "revert") {
+      if (h2.canUndo) {
+        const why2 = h2.canUndo(key);
+        return why2 === null ? { enabled: true } : { enabled: false, reason: why2 };
+      }
+      const snap = snapshots.get(siteId);
+      if (!snap || snap.key !== key || snap.chatId !== host.chatId()) return { enabled: false, reason: "There is nothing to restore." };
+      return host.state() === snap.after ? { enabled: true } : { enabled: false, reason: MOVED_REASON };
+    }
+    const why = h2.committed?.(key) ?? null;
+    return why === null ? { enabled: true } : { enabled: false, reason: why };
+  }
+  return {
+    bind(siteId, h2) {
+      handlers2.set(siteId, h2);
+    },
+    generate: (siteId, key, opts = {}) => run(siteId, key, opts),
+    async retry(recordId, opts = {}) {
+      const rec = host.state()?.generations?.records.find((r) => r.id === recordId);
+      if (!rec) return { kind: "stale" };
+      if (rec.status === "expired") return { kind: "expired", why: rec.expiredWhy ?? "It can no longer be retried." };
+      if (!generationSite(rec.siteId) || !handlers2.has(rec.siteId)) return { kind: "unbound" };
+      return run(rec.siteId, rec.key, { budgetMult: opts.budgetMult ?? rec.budgetMult, profile: opts.profile });
+    },
+    async reroll(siteId, key) {
+      const state = rerollState(siteId, key);
+      if (!state.enabled) return { kind: "expired", why: state.reason ?? NONE_REASON };
+      const site = generationSite(siteId);
+      const h2 = handlers2.get(siteId);
+      if (site.reroll === "revert") {
+        const why = h2.undo ? h2.undo(key) : undoSnapshot(siteId, key);
+        if (why !== null) return { kind: "expired", why };
+      }
+      return run(siteId, key, { skipFallback: true });
+    },
+    rerollState,
+    drop(recordId) {
+      host.dispatch({ type: "generation/close", payload: { id: recordId, outcome: "dropped" } }, { expectChatId: host.chatId() });
+    },
+    async useFallback(recordId) {
+      const rec = host.state()?.generations?.records.find((r) => r.id === recordId);
+      const h2 = rec ? handlers2.get(rec.siteId) : void 0;
+      if (!rec || !h2?.fallback) return;
+      const chatId = host.chatId();
+      const input = await h2.build(rec.key);
+      if (host.chatId() !== chatId) return;
+      h2.fallback(rec.key, isExpired(input) ? null : input);
+      host.dispatch({ type: "generation/close", payload: { id: recordId, outcome: "kept_fallback" } }, { expectChatId: chatId });
+    },
+    takeSnapshot(siteId, key, before, after) {
+      snapshots.set(siteId, { chatId: host.chatId(), key, before, after });
+    },
+    clearSnapshots() {
+      snapshots.clear();
+    }
+  };
 }
 
 // src/ui/special/handlerPanel.ts
@@ -40249,7 +40521,7 @@ var LABEL4 = {
   chronicleDays: "Days of the chronicle told",
   hideScenesAfter: "Hide scenes older than the last N (0 = off)"
 };
-var GLOSSARY = { memoryTokens: "memory_budget", hideScenesAfter: "hidden_scenes" };
+var GLOSSARY2 = { memoryTokens: "memory_budget", hideScenesAfter: "hidden_scenes" };
 function renderMemorySection(host, ctx2) {
   const cfg = memoryConfig(ctx2.state);
   const locked = ctx2.settings.editLock;
@@ -40288,7 +40560,7 @@ function renderMemorySection(host, ctx2) {
       }
       send(own ? { preset: cfg.preset, [field2]: n } : { preset: "custom", [field2]: n });
     });
-    return h("label", { class: "alius-field alius-option", ...analyzeNative(`glossary:${GLOSSARY[field2] ?? "memory"}`) }, h("span", { class: "alius-field-label" }, LABEL4[field2]), el);
+    return h("label", { class: "alius-field alius-option", ...analyzeNative(`glossary:${GLOSSARY2[field2] ?? "memory"}`) }, h("span", { class: "alius-field-label" }, LABEL4[field2]), el);
   };
   const mode = h(
     "select",
@@ -41313,6 +41585,17 @@ function createApp(st, deps) {
     contentLine: () => contentLine(state, registries),
     toast: (kind, text2) => toast(kind, text2)
   };
+  const generations = createEnvelope({
+    st,
+    settings: () => getSettings(st),
+    registries: () => registries,
+    state: () => state,
+    chatId: () => st.getActiveChat()?.chatId,
+    dispatch: (a, o) => api.dispatch(a, o),
+    restoreSnapshot: (snap, expected) => api.restoreSnapshot(snap, expected),
+    contentLine: () => contentLine(state, registries),
+    toast: (kind, text2) => toast(kind, text2)
+  });
   const director = createDirector(worldDeps);
   const dilemmas = createDilemmas({ ...worldDeps, requestVote: (a) => power.requestVote(a), judge: { needsJudge: (a) => warden.needsJudge(a), judgeThen: (a) => warden.judgeThen(a) } });
   const loyalty = createLoyalty({ ...worldDeps, context, refreshContext: applyContext });
@@ -43006,6 +43289,7 @@ function createApp(st, deps) {
   const api = {
     context,
     shell,
+    generations,
     scene,
     comms,
     expedition,
@@ -43195,6 +43479,7 @@ function createApp(st, deps) {
         st.on("chat_changed", () => {
           expedition.cancelPlan();
           seenOffers.clear();
+          generations.clearSnapshots();
           reload();
           afterLoad();
           shell.refresh();

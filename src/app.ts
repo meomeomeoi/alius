@@ -88,6 +88,8 @@ import { createMemoryController } from './scene/memoryController';
 import { registerMemoryContext } from './scene/memoryContext';
 import { createSceneController, type SceneController, type SceneUiEvent, type StartOptions } from './scene/sceneController';
 import { callLlm, type LlmResult } from './llm/orchestrator';
+import { createEnvelope, type Envelope } from './llm/envelope';
+import './llm/sites'; // P14: declares every generation site
 import { getSettings } from './settings';
 import type { Lorebook, StAdapter } from './st/adapter';
 import { buildCampaign, type SetupResult } from './engine/setup';
@@ -197,6 +199,8 @@ export interface AliusApp {
    * and shows the combat screen. Returns false (with a toast) when the engine refuses.
    */
   startCombat(opts: StartPayload): boolean;
+  /** P14: the one place that asks the model: failure records, RETRY and REROLL. Controllers bind their sites' handlers here. */
+  generations: Envelope;
   /** Scenes (P3): send, propose, end, resume. */
   scene: SceneController;
   /** PDA DMs and night knocks (P3). */
@@ -395,6 +399,17 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     contentLine: () => contentLine(state, registries),
     toast: (kind: 'info' | 'warn' | 'error', text: string) => toast(kind, text),
   };
+  const generations = createEnvelope({
+    st,
+    settings: () => getSettings(st),
+    registries: () => registries,
+    state: () => state,
+    chatId: () => st.getActiveChat()?.chatId,
+    dispatch: (a, o) => api.dispatch(a, o),
+    restoreSnapshot: (snap, expected) => api.restoreSnapshot(snap, expected),
+    contentLine: () => contentLine(state, registries),
+    toast: (kind, text) => toast(kind, text),
+  });
   const director = createDirector(worldDeps);
   const dilemmas = createDilemmas({ ...worldDeps, requestVote: (a) => power.requestVote(a), judge: { needsJudge: (a) => warden.needsJudge(a), judgeThen: (a) => warden.judgeThen(a) } });
   const loyalty = createLoyalty({ ...worldDeps, context, refreshContext: applyContext });
@@ -2116,6 +2131,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
   const api: AliusApp = {
     context,
     shell,
+    generations,
     scene,
     comms,
     expedition,
@@ -2322,6 +2338,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
           // a plan and the "seen" offers belong to one campaign (ids such as m1 repeat in every one)
           expedition.cancelPlan();
           seenOffers.clear();
+          generations.clearSnapshots(); // a revert snapshot belongs to one campaign
           reload();
           afterLoad();
           shell.refresh();
