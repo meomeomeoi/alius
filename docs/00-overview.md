@@ -465,18 +465,19 @@ Each package must leave the extension in a runnable state and ship with tests fo
 
 ### Post-release (0.2)
 
-Packages after release 0.1.0 (the table above). Same rule: take the first row whose status is not `implemented`, and only once the table above is done. Direction in 0.2: a soldier holds authority over the commander; the mirrored direction is a later package.
+Packages after release 0.1.0 (the table above). Same rule: take the first row whose status is not `implemented`, and only once the table above is done. Direction in 0.2: a soldier holds authority over the commander; the mirrored direction is a later package. P15a is the foundation (blocking, moments, contact physics) and serves every close relation, not only holders; the 2026-11-19 depth review added a **Depth revision** section to P15–P17e.
 
 | # | Pkg | Name | Depends on | Status |
 |---|---|---|---|---|
-| 1 | P15 | The dynamic: practice profile, hold, frames, domains (incl. command), milestones and the vow, holder setup, squad perception, exit and aftermaths, Leash block, compromat | P3, P9, P9b, P9c, P9d, P13, P14 | spec |
-| 2 | P16 | Practices: generated tasks, her discipline of the commander, demonstrations, service, denial, holding (restraint incl. sensory), the commander's initiative | P15, P14, P9, P9c, P9d, P10 | spec |
-| 3 | P17 | Staged scenes (roles, visibility, condition, Strain, live visitors, her tactics, complicity) and the obscured presence layer | P16, P15, P14, P3, P9c, P10 | spec |
-| 4 | P17a | Dynamic foundations: attitudes between the women involved, contracts (hard dominants and the obsessive style), privileges, inspections, nights | P15, P16, P17, P9c | spec |
-| 5 | P17b | Hard practices: categories `deprivation`, `pet_play`, `objectification`, `coercion`; speech control, shock collar, cage, gratitude and begging, service and humiliation built from real state and memory | P17a, P15–P17, P3b | spec |
-| 6 | P17c | Immersion: gag and gestures, dictation, passcodes, her voice in the UI, permissions, session rituals, status effects, scene staging with the existing art, optional backdrops / props / pose shots, map marks, quiet runs | P17b, P10, P10b, P9c | spec |
-| 7 | P17d | Senses and voice: the sensory layer (room, events, scene call, her replies), her scent (arrives before her, clings, can be noticed, washing), whispers only the player sees, interruptions (display only), her rhythm and distance, "she thinks" | P17c, P17, P9d, P3 | spec |
-| 8 | P17e | The living dynamic: secret tests, emergent rituals, her weakness, the drawn signature, the chosen address, "what do you feel?" | P14b, P15–P17d | spec |
+| 1 | P15a | Scene blocking, moments and contact physics: per-person blocking (posture, anchor, contact, worn, activity), moments with option frames, output channels, contact physics with her rhythm and the commander's endurance, categories `worship`, `breath_play`, `bodily_fluids`, `watersports`, local content packs | P3, P3b, P7, P9c, P9d, P10, P10b, P14 | spec |
+| 2 | P15 | The dynamic: practice profile, hold, frames, domains (incl. command), milestones and the vow, holder setup, squad perception, exit and aftermaths, Leash block, compromat | P3, P9, P9b, P9c, P9d, P13, P14 | spec |
+| 3 | P16 | Practices: generated tasks, her discipline of the commander, demonstrations, service, denial, holding (restraint incl. sensory), the commander's initiative | P15, P14, P9, P9c, P9d, P10 | spec |
+| 4 | P17 | Staged scenes (roles, visibility, condition, Strain, live visitors, her tactics, complicity) and the obscured presence layer | P16, P15, P14, P3, P9c, P10 | spec |
+| 5 | P17a | Dynamic foundations: attitudes between the women involved, contracts (hard dominants and the obsessive style), privileges, inspections, nights | P15, P16, P17, P9c | spec |
+| 6 | P17b | Hard practices: categories `deprivation`, `pet_play`, `objectification`, `coercion`; speech control, shock collar, cage, gratitude and begging, service and humiliation built from real state and memory | P17a, P15–P17, P3b | spec |
+| 7 | P17c | Immersion: gag and gestures, dictation, passcodes, her voice in the UI, permissions, session rituals, status effects, scene staging with the existing art, optional backdrops / props / pose shots, map marks, quiet runs | P17b, P10, P10b, P9c | spec |
+| 8 | P17d | Senses and voice: the sensory layer (room, events, scene call, her replies), her scent (arrives before her, clings, can be noticed, washing), whispers only the player sees, interruptions (display only), her rhythm and distance, "she thinks" | P17c, P17, P9d, P3 | spec |
+| 9 | P17e | The living dynamic: secret tests, emergent rituals, her weakness, the drawn signature, the chosen address, "what do you feel?" | P14b, P15–P17d | spec |
 
 ### Post-release (0.3) — the AI story sandbox
 
@@ -506,6 +507,12 @@ After the authored prologue (spine beats 1–5) the model builds story arcs from
 **Immersion ideas for later** (from the 0.2 design talk): her photos in DMs (pose shots and backdrops reused as pictures with captions; compromat as a gallery), a squad group chat generated from memory (the holder can mute the commander), a wake-up card after each night (where the commander woke and her first line), a living hub (a line about what happens in a room on hover; light under her door at night).
 
 **Character interaction ideas beyond 0.2** (from the 0.2 design talk; not scheduled): a nickname she gives the commander (renamed in her DMs and on the PDA header), marks that last days and are seen by others (`pain_rough`), provocations (`jealousy_games`: flirting in front of the commander, lending the commander to another), marks of ownership (`body_modification`: a plyx ring, her unit number), categories `voyeurism`, `implant_play` (the Leash or the implant in intimacy), `sharing`, aftercare as a post-scene phase, the obscured presence layer in missions (voices behind a wall), and the mirrored direction of P15–P17 (the commander holds).
+
+**From the 0.2 depth review (2026-11-19), not scheduled:**
+- **Affordances for every room and new places** (0.2.1 or instead of 0.3, together with the backdrop generation work): affordances `thin_walls`, `loud`, `dark`, `water`, `mirror`, `cramped`, `table_under`, `straps`, `window`, `her_things`, `shared`; places shower block, storage, laundry, briefing room, corridor, field tent; their furniture-bound anchors (`under_table`, `in_shower`, `on_windowsill`, `in_vehicle`, …). 0.2 reads only the affordances already in P17 §2.
+- **Interrogation** as a general mechanic (a holder questioning the commander, a corporation questioning anyone): typed answers checked for consistency against memory facts; not tied to 0.2.
+- **Gifts** as a separate mechanic for every relation (loot offered instead of sold, her taste, a place for them in her quarters).
+- **Lore note (author):** biopunk. The soldiers' enhancements are in the head and under the skin; to the eye and to the touch they cannot be told from a human, though an ordinary human loses to them in a fight. Visible metal augmentations are the exception, not the rule.
 
 **Mission mechanics beyond 0.3** (textual in 0.3): `escort` (a protected NPC in combat), `hold` (waves), `survive` (a round goal), `capture_alive` (non-lethal takedowns).
 

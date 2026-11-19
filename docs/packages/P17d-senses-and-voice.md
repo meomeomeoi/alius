@@ -1,6 +1,6 @@
 # P17d — Senses and Voice: the Sensory Layer, Her Scent, Whispers, Interruptions
 
-**Status: spec.** Release 0.2 (post-release), after P17c. **Depends on:** P17c (scene staging, room data, door sides, obscured layer), P17 (stagings, Strain, visitors), P15–P17b, P9d (publicity, discovery), P3 (scene screen, typing speed), P10 (motion, `visualFlags`, UI sounds), P14, P7a. **Read:** overview; P17–P17c; this file.
+**Status: spec.** Release 0.2 (post-release), after P17c. **Depends on:** P15a (blocking, moments, contact physics), P17c (scene staging, room data, door sides, obscured layer), P17 (stagings, Strain, visitors), P15–P17b, P9d (publicity, discovery), P3 (scene screen, typing speed), P10 (motion, `visualFlags`, UI sounds), P14, P7a. **Read:** overview; P17–P17c; this file.
 
 **Analysis tool (P7a)** and **P14** rules apply. Nothing here reaches into the player's real life (author ruling: the player becomes the commander).
 
@@ -42,6 +42,18 @@ At a high hold, with `cold` / `cruel` (or by the situation), she may **cut the c
 ## 6. "She thinks"
 
 While the model generates, a line in her manner replaces the spinner ("she takes her time", "she studies you", "silence"); per style, from data.
+
+## Depth revision (design session 2026-11-19)
+
+Added after the 0.2 depth review; built on P15a (blocking, moments, contact physics). Where it conflicts with the sections above, this section wins.
+
+- **The engine decides what is noticed** (a general rule): the model only receives what the engine already decided. Whether a visitor notices a scent, a mark or a sound is a seeded roll (closeness, her perceptiveness, strength, time since); **noticed** → her directive says she notices it (and whose it is, or that she does not know); **not noticed** → it is not mentioned in her block at all, not even in the room description. Frequencies are `TUNING` numbers, never left to the model.
+- **Learned scent.** At first the sensory lines describe a scent vaguely ("something sharp, with metal"); once learned (a close scene, she said it, repetition), they **name** it ("Rhea's scent"). Under a blindfold the commander can guess who entered: with a known scent the `sensory` moment offers "name her"; otherwise only "wait".
+- **Nameless messages under a blindfold.** With `blindfold` or `hood` her lines arrive without name or portrait; the player identifies the speaker by the model's manner of writing, by scent (if learned) and by her rhythm; naming the wrong one is a moment.
+- **Scent strength per body part** (derived): base (her profile, per part) × hygiene (a trait) × situation (where she came from: a run, training, the shower; time since she last washed, derived from her `showering` activity) × intention (she did not wash on purpose, for the commander or to spite the commander, with its own term). Bands `faint / noticeable / strong / overwhelming`, read by the sensory layer, P15a `saturation` physics and the noticing roll.
+- **Her body follows the game state** (derived, nothing stored): after a run (stronger scent, dirty boots, sore feet), after training, after the shower (her soap), wounded (worship turns into care).
+- **Her absence smells of her**: after `warming_her_bed` or a night with her, her scent stays in the commander's quarters; visitors may notice (the rule above).
+- **Memory check:** a noticed scent that reveals a secret relation or dynamic is the existing discovery path (P9d publicity, P17 complicity) and writes its fact there; learning a scent is a `Knowledge` fact for the commander (`scent_known:<unitId>`), not a squad memory.
 
 ## Acceptance criteria
 

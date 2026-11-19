@@ -1,6 +1,6 @@
 # P17e — The Living Dynamic: Tests, Emergent Rituals, Her Weakness, Signature, Address, Feelings
 
-**Status: spec.** Release 0.2 (post-release), after P17d. **Depends on:** P14b (development, repetition counters, appraisal), P15–P17d, P3b (memory), P10b (handwriting), P14, P7a. **Read:** overview; P14b; P15–P17d; this file.
+**Status: spec.** Release 0.2 (post-release), after P17d. **Depends on:** P15a (blocking, moments, contact physics), P14b (development, repetition counters, appraisal), P15–P17d, P3b (memory), P10b (handwriting), P14, P7a. **Read:** overview; P14b; P15–P17d; this file.
 
 **Analysis tool (P7a)** and **P14** rules apply.
 
@@ -33,6 +33,14 @@ The player chooses the form of address (ma'am, mistress, her name, a nickname, f
 ## 6. "What do you feel?"
 
 After strong moments she sometimes asks. The player answers in free text; the answer is stored as a memory fact (P3b, the commander's words) and she may bring it back later ("you said you were afraid"). The commander's inner life is the player's to write; the world reacts to it (consistent with P15's ruling: no engine meter for the commander's state).
+
+## Depth revision (design session 2026-11-19)
+
+Added after the 0.2 depth review; built on P15a (blocking, moments, contact physics). Where it conflicts with the sections above, this section wins.
+
+- **Habits of the pair** (general to every close relation, not only holders): practices and small acts repeated and well received turn into habits by themselves (P14b counters): she always sits on the left, the morning coffee is the commander's, her phrase before a sortie. Others notice them; breaking one hurts (a small cost and her reaction). §2's emergent rituals are the dynamic's subset of habits; nothing is pre-authored and no order is fixed.
+- **The litany** (style `ritual`). She writes a formula of worship in her words (generated, P14 site `practice.litany`); the commander recites it by typing (P17c dictation compare). The litany **grows** with the dynamic's milestones (lines are added); a slip in it is a slip.
+- **Memory check:** a habit formed or broken → a `memoryRules` entry (audience: the pair; a habit seen by others: those who saw it); the litany's text is not a fact (it lives on the pair, like the contract).
 
 ## Acceptance criteria
 

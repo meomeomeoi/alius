@@ -1,6 +1,6 @@
 # P17a — Dynamic Foundations: Attitudes, Contracts, Privileges, Inspections, Nights
 
-**Status: spec.** Release 0.2 (post-release), after P17. **Depends on:** P15 (the dynamic), P16 (practices, favour), P17 (stagings), P9c (device access, bookings, tokens, intercepts), P9b (hierarchy), P7 (quiet night), P10 (hub), P10b (handwriting), P14, P7a. **Read:** overview; P15; P16; P17; this file; the **Implemented as** of P9c and P10.
+**Status: spec.** Release 0.2 (post-release), after P17. **Depends on:** P15a (blocking, moments, contact physics), P15 (the dynamic), P16 (practices, favour), P17 (stagings), P9c (device access, bookings, tokens, intercepts), P9b (hierarchy), P7 (quiet night), P10 (hub), P10b (handwriting), P14, P7a. **Read:** overview; P15; P16; P17; this file; the **Implemented as** of P9c and P10.
 
 **Analysis tool (P7a)** and **P14** rules as in P15. Direction as in P15: she holds, the commander yields. The commander is always addressed as "you"; no pronoun for the commander anywhere (lore §0).
 
@@ -47,6 +47,14 @@ Registry `privileges` (gated by content where relevant): call her by name, a fre
 ## 6. Events, actions, directives
 
 Events: `attitude_changed`, `contract_proposed`, `contract_signed`, `contract_amended`, `clause_broken`, `privilege_granted`, `privilege_revoked`, `inspection_started`, `inspection_found`, `night_claimed`. Actions: `contract/answer`, `contract/amend`, `privilege/ask`, `inspection/hide`, `night/answer_claim`. Directives `dynamic:contract:<unitId>`, `dynamic:night:<unitId>`.
+
+## Depth revision (design session 2026-11-19)
+
+Added after the 0.2 depth review; built on P15a (blocking, moments, contact physics). Where it conflicts with the sections above, this section wins.
+
+- **Summons** (`summons`, P15a moment source) is a possible **contract clause**: for N days she may call the commander at any time, even in the middle of the commander's own activity (a briefing, a comms session): come at once (risk being noticed) / delay (a slip) / ask a reprieve. Only holders who write contracts (§2) and whose profile fits; never a default.
+- Privileges (§3) read worship meanings: a target whose meaning is `reward` is granted like a privilege.
+- **Memory check:** a summons answered late or seen by others → the existing `clause_broken` / `knows_dynamic` sites; nothing new.
 
 ## Acceptance criteria
 

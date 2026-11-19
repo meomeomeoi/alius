@@ -1,6 +1,6 @@
 # P17c — Immersion: Input, Device, Scene Staging and Art
 
-**Status: spec.** Release 0.2 (post-release), after P17b. **Depends on:** P17b, P17, P16, P15, P10 (shell, device, portraits, `visualFlags`, sound), P10b (handwriting, device marks), P9c (intercepts, device access), P5 (world map, runs), P14, P7a. **Read:** overview; P15–P17b; this file; the **Implemented as** of P10 and P9c.
+**Status: spec.** Release 0.2 (post-release), after P17b. **Depends on:** P15a (blocking, moments, contact physics), P17b, P17, P16, P15, P10 (shell, device, portraits, `visualFlags`, sound), P10b (handwriting, device marks), P9c (intercepts, device access), P5 (world map, runs), P14, P7a. **Read:** overview; P15–P17b; this file; the **Implemented as** of P10 and P9c.
 
 **Analysis tool (P7a)** rules apply.
 
@@ -64,6 +64,17 @@ Visible results of **statuses** set by the engine (not an inner meter; P15 rulin
 
 - **Her marks on the world map** (P5) with the `command` domain: her colour and hand mark allowed regions and missions she approved; missions she cancelled are struck through.
 - **Quiet mode in runs:** gestures only, a darkened backdrop and no UI sounds at ambush and infiltration nodes (P20 when it exists; P5 elite/unknown nodes until then); breaking silence raises the alarm.
+
+## Depth revision (design session 2026-11-19)
+
+Added after the 0.2 depth review; built on P15a (blocking, moments, contact physics). Where it conflicts with the sections above, this section wins.
+
+- **Reading over the shoulder.** At high hold with speech rules: forbidden words are **struck through in the input while the player types** (a local check against the rules, no model); above the field a short reaction of hers to the draft sometimes appears ("she smirks", "she waits"), from simple features (length, address, forbidden words). The commander has not sent anything and she already sees it.
+- **Her toy in public.** With `remote_toy` worn (P15a §4), she drives it from **her** PDA, also when she is not in the scene: at each pulse the player's **input is jolted** (letters doubled or shifted at the pulse moment; the typos go into the message unless corrected). The model receives the text as it is; others present notice oddities (P17 suspicion). Pulses follow her rhythm (P15a §9) and style.
+- **The gaze rule.** "Not above the knees", "eyes on the floor", "only at me": her portrait is **cropped** to what the commander may look at. The crop is found without models: the opaque bounding box from the PNG alpha, standard proportions inside it for knee-length sprites (eyes ≈ 8 %, chest ≈ 25 %, waist ≈ 45 %, thighs ≈ 60–100 %), and a per-sprite manual override (four draggable lines in the dossier, stored on the unit). Knee-length sprites have no feet: "feet only" needs the `feet_floor` pose shot; without it the view is thighs and knees over a floor gradient. Raising the gaze is a moment option and a slip.
+- **§1 gag, gestures** and **§4 camera, light, pose shots** become P15a effects (`input`, `gestures`, `camera`, `filter`, `pose_shot`, `backdrop`) read from the blocking.
+- The sprite and pose-shot list for the contacts is to be decided after the docs (P15a open decisions).
+- **Memory check:** typed slips under jolts feed P17 suspicion and her discipline at their own sites; nothing new is remembered.
 
 ## Acceptance criteria
 

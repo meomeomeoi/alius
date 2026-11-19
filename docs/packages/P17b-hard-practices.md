@@ -1,6 +1,6 @@
 # P17b — Hard Practices: New Categories, Service and Humiliation in Depth
 
-**Status: spec.** Release 0.2 (post-release), after P17a. **Depends on:** P15, P16, P17, P17a, P4 (combat orders), P7 (commander body stats, crime, quiet night), P9b (rations, hierarchy), P3b (memory), P3 (chat history), P14, P7a. **Read:** overview; P15; P16; P17; P17a; this file; `docs/content/lore.md`.
+**Status: spec.** Release 0.2 (post-release), after P17a. **Depends on:** P15a (blocking, moments, contact physics), P15, P16, P17, P17a, P4 (combat orders), P7 (commander body stats, crime, quiet night), P9b (rations, hierarchy), P3b (memory), P3 (chat history), P14, P7a. **Read:** overview; P15; P16; P17; P17a; this file; `docs/content/lore.md`.
 
 **Analysis tool (P7a)** and **P14** rules as in P15. **Address:** she always speaks to the commander as "you" (author ruling: no third person, also inside objectification); no pronoun for the commander anywhere. Scene text, including bodily detail, is written by the main model; the engine sets the frame and owns the consequences.
 
@@ -81,6 +81,28 @@ With the P15 `command` domain, the commander's combat orders (P4 CP orders) pass
 - **Dictation:** she dictates a sentence (a confession, thanks, a plea) and the player must type it (P17c); mistakes or wilful changes are slips; refusal is possible with consequences.
 - **Edits:** when speech rules are broken, her correction shows as strike-through in the commander's own message (P9c intercept rendering, extended to scenes).
 - **Her verdict on the board** (`public_humiliation` only): her assessment or the commander's offence posted as a squad notice on the PDA.
+
+## Depth revision (design session 2026-11-19)
+
+Added after the 0.2 depth review; built on P15a (blocking, moments, contact physics). Where it conflicts with the sections above, this section wins.
+
+- **Object time (§2) and speech rules (§3)** run on P15a blocking (`activity: ignoring`, contacts `footrest`, `human_chair`, `under_her_seat`; input effects) instead of their own flags.
+- **Holds in sparring.** With a partner whose profile fits (not by default; an ordinary character will not), losing a P9c sparring bout can end in a hold: a headlock into her armpit (`smothered_armpit`, worship) or her foot on the commander's head on the mat (`foot_on_head`), with the squad watching when present.
+- **`bodily_fluids`** (P15a §1):
+  - sweat: the sweat layer of her scent (P17d) after a run or training, the cleanliness gauge of `tongue_work`;
+  - spit: her act in a moment (accept / turn away / thank); its meaning follows her worship meaning (`humiliation` = contempt, `play`, a "gift" for a hungry position); under a ring gag "accept" is the only option;
+  - feeding (§5, `hand_feeding` from her mouth);
+  - demonstrations with `public_humiliation`;
+  - tasks and mid-ladder punishments.
+- **`watersports`** (requires `bodily_fluids`):
+  - **territory marking** by a `possessive` holder: the strongest scent mark, lasts longest, overrides other women's scent on the commander, noticed by the squad almost surely (there is no general "scent war" mechanic; this mark is the one case);
+  - the "function" step of the objectification ladder (§2);
+  - drink only from her (§5, the bowl of `pet_play` as the hardest step);
+  - severity 5 of her discipline ladder;
+  - `cold_contempt` and `revenge` aftermaths;
+  - the `gulp` physics (P15a §9.1) with the chain "spilled → `tongue_work` on the floor and her check".
+- **Order is never fixed.** Summons, rituals and their sequence are per pair (profile, style, appetite); "boots → sweat → mark after every run" is an example of what *may* grow into a habit (P17e), never a scripted sequence.
+- **Memory check:** these events are strong compromat (P15 §11, high `importance`); rumours outside the squad only with `public_humiliation`; `memoryRules` entries for marking seen by others (audience: witnesses) and for a blackout (P15a §13).
 
 ## Acceptance criteria
 

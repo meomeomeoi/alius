@@ -1,6 +1,6 @@
 # P17 — Staged Scenes and Obscured Presence
 
-**Status: spec.** Release 0.2 (post-release). **Depends on:** P16 (practices, `practice_generate`, the hold and sensory mode), P15 (the dynamic, reactions, compromat), P14, P3 (scenes, participants, intents), P9c (bookings, squad secrets), P9d (lead, publicity), P10 (hub rooms, whereabouts, voices, portraits), P7 (non-body routes), P7a. **Read:** overview; P15; P16; this file; the **Implemented as** of P3, P9c, P9d and P10.
+**Status: spec.** Release 0.2 (post-release). **Depends on:** P15a (blocking, moments, contact physics), P16 (practices, `practice_generate`, the hold and sensory mode), P15 (the dynamic, reactions, compromat), P14, P3 (scenes, participants, intents), P9c (bookings, squad secrets), P9d (lead, publicity), P10 (hub rooms, whereabouts, voices, portraits), P7 (non-body routes), P7a. **Read:** overview; P15; P16; this file; the **Implemented as** of P3, P9c, P9d and P10.
 
 **Analysis tool (P7a):** every new stat, chip and card carries `data-analyze`; Strain and suspicion get a provider through `Knowledge`. **P14:** every generation registers a site.
 
@@ -105,6 +105,17 @@ Scene header: staging name (or her words for it), Strain bar, the condition, her
 ## 10. Directives, intents, events
 
 Directives `staging:`-prefixed: one for her (condition, tactic, what she expects), one per other by visibility (unaware: "does not know; notices only…", aware, remote), the POV directive. Intents: `staging_mode`. Events: `staging_booked`, `staging_started`, `visitor_entered`, `visitor_left`, `strain_slip`, `suspicion_rose`, `staging_held`, `staging_slipped`, `staging_exposed`, `staging_stopped`, `complicity_kept`, `complicity_found`. Actions: `staging/set_mode`, `staging/stop`, `scene/add_participant`, `scene/remove_participant`, `staging/answer_booking`.
+
+## Depth revision (design session 2026-11-19)
+
+Added after the 0.2 depth review; built on P15a (blocking, moments, contact physics). Where it conflicts with the sections above, this section wins.
+
+- **A staging is a P15a preset**: a starting blocking for everyone (anchors, postures, contacts, items, her activity) plus a live `third_party` (or `remote`) moment source with this package's Strain and suspicion. The template's `place.affordances`, `condition` and `roles` stay; `roles.others[].visibility` maps to P15a visibility effects.
+- **§5 modes** (continue quietly / freeze / signal her / give yourself away) are the option frame of the `third_party` source; free text maps through `moment_answer` (`staging_mode` stays as an alias).
+- **§6 tactics** stay; her escalation uses the channel derived from the contact (P15a §7: the foot under the desk, the leash, a whisper).
+- **§8 obscured presence** becomes a P15a `perception` effect read by the visual channel; the API (`setPerception`, `perceptionOf`) stays as specified and has no staging-specific code.
+- A staging is now one family of moments; tension in a two-person scene comes from P15a's other sources.
+- **Memory check:** as §7 (`complicity_kept` is a squad secret, not a fact; `staging_exposed` writes `knows_dynamic` facts at its site); P15a §13 covers the moment outcomes.
 
 ## Acceptance criteria
 
