@@ -132,3 +132,6 @@ Campaign `objectives: [{ id, text, source: 'prologue'|'spine'|'director'|'unit',
 - Typing sound for the cold open (`typing` is a `SoundId` but is not played there).
 - Not yet run by hand in SillyTavern: see `docs/MANUAL_TEST_P11.md`.
 
+## Interfaces used by P11b (head start)
+
+- P11b skips the campaign steps through `enterStep`, marks onboarding done and adds an opening line to the first scene (`SceneController.opening`); the wizard option sits next to the Veteran toggle, found by `kind`/`fields`.

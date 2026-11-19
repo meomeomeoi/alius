@@ -455,7 +455,8 @@ Defaults in code: Desire/Bond defects **off**, show raw values **off**, sprite m
 | 20 | P12 | Special traits: Secret Frequency, Bloom-induced Paranoia, Web of Debts | P5, P6, P7, P9 | implemented |
 | 21 | P13 | LEASHSWAP mode | P0, P5, P6, P7, P9, P9b, P9d, P11, P12 | spec |
 | 22 | P14 | Generation envelope (retry of failed generations, refusal detection, reroll; every call site wrapped) — last package of 0.1.0 | P0, every package with a call site | spec |
-| 23 | P14b | Character development: development layer over card and profile, appraisal of events from her viewpoint (with misreading), rule accumulators + model review bounded by card anchors, quiet development moments, habits and skills, the "since joining" prompt block | P1, P3, P3b, P7, P8, P9d, P14 | spec |
+| 23 | P11b | Head start: begin as if the commander had been at the base for a week / two weeks / a month (acquaintance only: `metDay` shifted, first impressions developed, crime knowledge, a model-written recap of the first weeks as facts and a chronicle entry; world time does not move) | P1, P3, P3b, P7, P8, P11, P14 | spec |
+| 24 | P14b | Character development: development layer over card and profile, appraisal of events from her viewpoint (with misreading), rule accumulators + model review bounded by card anchors, quiet development moments, habits and skills, the "since joining" prompt block | P1, P3, P3b, P7, P8, P9d, P14 | spec |
 
 The table is in implementation order: take the first row whose status is not `implemented`. Why this order, and the session chunks for P7a onward: `ROADMAP-next.md`.
 
