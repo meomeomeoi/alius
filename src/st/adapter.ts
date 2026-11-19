@@ -29,6 +29,13 @@ export type StEvent =
   | 'chat_changed' | 'message_sent' | 'message_received' | 'generation_started'
   | 'message_swiped' | 'message_deleted' | 'message_edited' | 'generation_ended' | 'group_wrapper_finished';
 
+/** What a model call returns: the answer text (thinking blocks removed) and, where the provider says so, why it stopped. */
+export interface GenAnswer {
+  text: string;
+  /** `length` = the token budget ran out; `stop` = any other reason; absent = the provider did not say. */
+  finishReason?: 'length' | 'stop';
+}
+
 /** The only surface through which the rest of Alius touches SillyTavern. */
 export interface StAdapter {
   getActiveChat(): ChatInfo | null;
@@ -40,14 +47,16 @@ export interface StAdapter {
   on(event: StEvent, fn: (...a: unknown[]) => void): void;
   /** Empty text clears the injection. */
   setInjection(id: string, text: string, position: InjectionPosition, depth: number): void;
-  generateMain(req: { prompt: string; systemPrompt?: string; maxTokens: number }): Promise<string>;
+  /** `signal` aborts the request where ST can (a rejection with an `AbortError`); P14 also races a timer for the main profile. */
+  generateMain(req: { prompt: string; systemPrompt?: string; maxTokens: number; signal?: AbortSignal }): Promise<GenAnswer>;
   generateWithProfile(req: {
     profileId: string;
     system?: string;
     prompt: string;
     maxTokens: number;
     think: 'min' | 'low' | 'auto';
-  }): Promise<string>;
+    signal?: AbortSignal;
+  }): Promise<GenAnswer>;
   listConnectionProfiles(): ProfileInfo[];
   getCharacterCard(avatar: string): CardInfo | null;
   getPersonaName(): string;

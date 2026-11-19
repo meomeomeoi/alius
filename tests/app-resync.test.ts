@@ -5,6 +5,7 @@ import { createApp } from '../src/app';
 import { loadPacks } from '../src/content/loader';
 import type { SetupResult } from '../src/engine/setup';
 import { FakeStAdapter } from '../src/st/fake';
+import type { GenAnswer } from '../src/st/adapter';
 import { h } from '../src/ui/dom';
 import type { ModalOpts } from '../src/ui/shell/modal';
 
@@ -221,7 +222,7 @@ describe('re-sync flow', () => {
 
   it('Apply while the import is still running does nothing', async () => {
     const t = await boot();
-    t.st.generateMain = () => new Promise<string>(() => {}); // never answers
+    t.st.generateMain = () => new Promise<GenAnswer>(() => {}); // never answers
     t.script.push(async () => 'go', async () => 'apply');
     t.clickResync();
     await t.settle(2);

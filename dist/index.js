@@ -24976,13 +24976,14 @@ ${line2}`;
     const entry = { at: started, callType: id, profile: profileLabel, maxTokens, prompt: prompt4 };
     let raw;
     try {
-      raw = useMain ? await st.generateMain({ prompt: prompt4, systemPrompt: system4, maxTokens }) : await st.generateWithProfile({
+      const answer = useMain ? await st.generateMain({ prompt: prompt4, systemPrompt: system4, maxTokens }) : await st.generateWithProfile({
         profileId: settings.mechanicProfileId,
         system: system4,
         prompt: prompt4,
         maxTokens,
         think: settings.mechanicThink
       });
+      raw = answer.text;
     } catch (e) {
       const detail = e instanceof Error ? e.message : String(e);
       llmLog.push({ ...entry, raw: detail, ok: false, ms: Date.now() - started });
@@ -44027,6 +44028,14 @@ function reasoningPayload(api, think) {
 }
 
 // src/st/real.ts
+function finishReasonOf(raw) {
+  if (typeof raw !== "object" || raw === null) return void 0;
+  const o = raw;
+  const first2 = (v) => Array.isArray(v) && typeof v[0] === "object" && v[0] !== null ? v[0] : void 0;
+  const reason = first2(o.choices)?.finish_reason ?? o.stop_reason ?? first2(o.candidates)?.finishReason;
+  if (typeof reason !== "string" || reason === "") return void 0;
+  return /^(length|max_tokens)$/i.test(reason) ? "length" : "stop";
+}
 var ctx = () => globalThis.SillyTavern.getContext();
 var POSITION = { in_prompt: 0, in_chat: 1, before_prompt: 2 };
 var EVENT = {
@@ -44094,7 +44103,7 @@ var RealStAdapter = class {
       systemPrompt: req.systemPrompt,
       responseLength: req.maxTokens
     });
-    return answerText(res);
+    return { text: answerText(res), finishReason: finishReasonOf(res) };
   }
   async generateWithProfile(req) {
     const c = ctx();
@@ -44103,14 +44112,15 @@ var RealStAdapter = class {
       ...req.system ? [{ role: "system", content: req.system }] : [],
       { role: "user", content: req.prompt }
     ];
-    const opts = { stream: false, extractData: true, includePreset: false, includeInstruct: false };
+    const opts = { stream: false, extractData: false, includePreset: false, includeInstruct: false, signal: req.signal };
     const send = (payload2) => c.ConnectionManagerRequestService.sendRequest(req.profileId, messages, req.maxTokens, opts, payload2);
+    const answer = (raw) => ({ text: answerText(raw), finishReason: finishReasonOf(raw) });
     const payload = reasoningPayload(api, req.think);
     try {
-      return answerText(await send(payload));
+      return answer(await send(payload));
     } catch (e) {
-      if (Object.keys(payload).length === 0) throw e;
-      return answerText(await send({}));
+      if (Object.keys(payload).length === 0 || req.signal?.aborted) throw e;
+      return answer(await send({}));
     }
   }
   listConnectionProfiles() {

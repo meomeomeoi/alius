@@ -54,11 +54,12 @@ export async function callLlm<T>(
 
     let raw: string;
     try {
-      raw = useMain
+      const answer = useMain
         ? await st.generateMain({ prompt, systemPrompt: system, maxTokens })
         : await st.generateWithProfile({
             profileId: settings.mechanicProfileId, system, prompt, maxTokens, think: settings.mechanicThink,
           });
+      raw = answer.text;
     } catch (e) {
       const detail = e instanceof Error ? e.message : String(e);
       llmLog.push({ ...entry, raw: detail, ok: false, ms: Date.now() - started });

@@ -105,3 +105,11 @@ describe('estTokens', () => {
     expect(estTokens('a'.repeat(37))).toBe(11);
   });
 });
+
+describe('answerText raw shapes', () => {
+  it('reads raw chat-completion, claude and textgen shapes', () => {
+    expect(answerText({ choices: [{ message: { content: 'x' } }] })).toBe('x');
+    expect(answerText({ content: [{ type: 'text', text: 'x' }] })).toBe('x');
+    expect(answerText({ choices: [{ text: 'x' }] })).toBe('x');
+  });
+});

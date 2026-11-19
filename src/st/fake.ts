@@ -1,9 +1,18 @@
 import type {
-  CardInfo, CharacterSummary, ChatInfo, ChatMessage, InjectionPosition, Lorebook, MemberInfo, ProfileInfo, StAdapter, StEvent,
+  GenAnswer, CardInfo, CharacterSummary, ChatInfo, ChatMessage, InjectionPosition, Lorebook, MemberInfo, ProfileInfo, StAdapter, StEvent,
 } from './adapter';
 import { hideRuns } from './chat';
 
 export interface ScriptedReply { avatar: string; name: string; text: string }
+
+/** A queued reply that never answers: it settles only when the call's abort signal fires (see `hangNext`). */
+const HANG = Symbol('hang');
+type Hang = typeof HANG;
+
+/** The fake's version of a request aborted by its signal (a real fetch rejects with the signal's reason). */
+function abortError(): Error {
+  return new DOMException('The operation was aborted.', 'AbortError');
+}
 
 export interface FakeCall {
   kind: 'main' | 'profile';
@@ -31,8 +40,10 @@ export class FakeStAdapter implements StAdapter {
   sprites = new Map<string, string>();
   failCreateGroup = false;
   failOpenGroup = false;
-  mainReplies: string[] = [];
-  profileReplies: (string | Error)[] = [];
+  /** Replies of `generateMain`, consumed in order: a string, a `GenAnswer` (`queueAnswer`) or a hang (`hangNext`). */
+  mainReplies: Array<string | GenAnswer | Hang> = [];
+  /** Replies of `generateWithProfile`; an `Error` makes the call throw. */
+  profileReplies: Array<string | Error | GenAnswer | Hang> = [];
   calls: FakeCall[] = [];
   expressions: Array<{ avatar: string; label: string }> = [];
   toasts: Array<{ kind: 'info' | 'warn' | 'error'; text: string }> = [];
@@ -113,11 +124,32 @@ export class FakeStAdapter implements StAdapter {
     else this.injections.set(id, { text, position, depth });
   }
 
-  async generateMain(req: { prompt: string; systemPrompt?: string; maxTokens: number }): Promise<string> {
+  /** Queues a structured answer (with a finish reason) for the main model, or for the mechanic profile when `profile` is true. */
+  queueAnswer(a: GenAnswer, profile = false): void {
+    (profile ? this.profileReplies : this.mainReplies).push(a);
+  }
+
+  /** Queues a call that never answers: it rejects with an `AbortError` when the call's signal fires, and hangs with no signal. */
+  hangNext(profile = false): void {
+    (profile ? this.profileReplies : this.mainReplies).push(HANG);
+  }
+
+  private settle(reply: string | Error | GenAnswer | Hang, signal?: AbortSignal): Promise<GenAnswer> {
+    if (reply === HANG) {
+      return new Promise<GenAnswer>((_, reject) => {
+        if (signal?.aborted) return reject(abortError());
+        signal?.addEventListener('abort', () => reject(abortError()), { once: true });
+      });
+    }
+    if (reply instanceof Error) return Promise.reject(reply);
+    return Promise.resolve(typeof reply === 'string' ? { text: reply } : reply);
+  }
+
+  async generateMain(req: { prompt: string; systemPrompt?: string; maxTokens: number; signal?: AbortSignal }): Promise<GenAnswer> {
     this.calls.push({ kind: 'main', maxTokens: req.maxTokens, system: req.systemPrompt, prompt: req.prompt });
     const reply = this.mainReplies.shift();
     if (reply === undefined) throw new Error('FakeStAdapter: no main reply queued');
-    return reply;
+    return this.settle(reply, req.signal);
   }
 
   async generateWithProfile(req: {
@@ -126,7 +158,8 @@ export class FakeStAdapter implements StAdapter {
     prompt: string;
     maxTokens: number;
     think: 'min' | 'low' | 'auto';
-  }): Promise<string> {
+    signal?: AbortSignal;
+  }): Promise<GenAnswer> {
     this.calls.push({
       kind: 'profile',
       maxTokens: req.maxTokens,
@@ -136,9 +169,7 @@ export class FakeStAdapter implements StAdapter {
       prompt: req.prompt,
     });
     if (this.profileReplies.length === 0) throw new Error('FakeStAdapter: no profile reply queued');
-    const reply = this.profileReplies.shift()!;
-    if (reply instanceof Error) throw reply;
-    return reply;
+    return this.settle(this.profileReplies.shift()!, req.signal);
   }
 
   listConnectionProfiles(): ProfileInfo[] {

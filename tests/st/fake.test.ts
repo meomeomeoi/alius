@@ -26,8 +26,8 @@ describe('FakeStAdapter', () => {
     const st = new FakeStAdapter(A);
     st.profileReplies.push('one', 'two');
     const req = { profileId: 'p', prompt: 'q', maxTokens: 123, think: 'min' as const };
-    expect(await st.generateWithProfile(req)).toBe('one');
-    expect(await st.generateWithProfile({ ...req, maxTokens: 456 })).toBe('two');
+    expect((await st.generateWithProfile(req)).text).toBe('one');
+    expect((await st.generateWithProfile({ ...req, maxTokens: 456 })).text).toBe('two');
     expect(st.calls.map((c) => [c.kind, c.maxTokens, c.think])).toEqual([
       ['profile', 123, 'min'],
       ['profile', 456, 'min'],
@@ -46,7 +46,7 @@ describe('FakeStAdapter', () => {
   it('main model replies are queued and recorded', async () => {
     const st = new FakeStAdapter(A);
     st.mainReplies.push('hi');
-    expect(await st.generateMain({ prompt: 'p', maxTokens: 50 })).toBe('hi');
+    expect((await st.generateMain({ prompt: 'p', maxTokens: 50 })).text).toBe('hi');
     expect(st.calls[0]).toMatchObject({ kind: 'main', maxTokens: 50 });
   });
 

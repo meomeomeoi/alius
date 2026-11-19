@@ -3,7 +3,7 @@ import { editGroup, openGroupById } from 'st:group-chats';
 import { newWorldInfoEntryTemplate } from 'st:world-info';
 import { answerText } from '../llm/text';
 import type {
-  CardInfo, CharacterSummary, ChatInfo, ChatMessage, InjectionPosition, Lorebook, MemberInfo, ProfileInfo, StAdapter, StEvent,
+  GenAnswer, CardInfo, CharacterSummary, ChatInfo, ChatMessage, InjectionPosition, Lorebook, MemberInfo, ProfileInfo, StAdapter, StEvent,
 } from './adapter';
 import { hideCommand, hideRuns, isSystemMessage, lastCharacterAvatar, mapChatMessages } from './chat';
 import { sendCommand, slashArg } from './slash';
@@ -11,6 +11,20 @@ import { toStLorebook } from './lorebook';
 import { pickSprite, spriteFolder } from './sprites';
 import { connectionProfiles } from './profiles';
 import { reasoningPayload } from './reasoning';
+
+/**
+ * Why the model stopped, normalized from the raw provider JSON: `length` for every provider's token-limit stop, `stop` for any
+ * other stop reason, undefined when the response carries none (a plain string, or a shape without one).
+ */
+export function finishReasonOf(raw: unknown): 'length' | 'stop' | undefined {
+  if (typeof raw !== 'object' || raw === null) return undefined;
+  const o = raw as Record<string, unknown>;
+  const first = (v: unknown): Record<string, unknown> | undefined =>
+    Array.isArray(v) && typeof v[0] === 'object' && v[0] !== null ? (v[0] as Record<string, unknown>) : undefined;
+  const reason = first(o.choices)?.finish_reason ?? o.stop_reason ?? first(o.candidates)?.finishReason;
+  if (typeof reason !== 'string' || reason === '') return undefined;
+  return /^(length|max_tokens)$/i.test(reason) ? 'length' : 'stop';
+}
 
 /** The slice of SillyTavern.getContext() that Alius uses. */
 interface StContext {
@@ -126,13 +140,14 @@ export class RealStAdapter implements StAdapter {
     ctx().setExtensionPrompt(`alius_${id}`, text, POSITION[position], depth, false, 0);
   }
 
-  async generateMain(req: { prompt: string; systemPrompt?: string; maxTokens: number }): Promise<string> {
+  async generateMain(req: { prompt: string; systemPrompt?: string; maxTokens: number }): Promise<GenAnswer> {
+    // generateRawData has no abort signal; the orchestrator races a timer and ignores a late answer.
     const res = await ctx().generateRawData({
       prompt: req.prompt,
       systemPrompt: req.systemPrompt,
       responseLength: req.maxTokens,
     });
-    return answerText(res);
+    return { text: answerText(res), finishReason: finishReasonOf(res) };
   }
 
   async generateWithProfile(req: {
@@ -141,24 +156,27 @@ export class RealStAdapter implements StAdapter {
     prompt: string;
     maxTokens: number;
     think: 'min' | 'low' | 'auto';
-  }): Promise<string> {
+    signal?: AbortSignal;
+  }): Promise<GenAnswer> {
     const c = ctx();
     const api = this.listConnectionProfiles().find((p) => p.id === req.profileId)?.api ?? '';
     const messages = [
       ...(req.system ? [{ role: 'system', content: req.system }] : []),
       { role: 'user', content: req.prompt },
     ];
-    const opts = { stream: false, extractData: true, includePreset: false, includeInstruct: false };
+    // extractData: false returns the raw response, the only form that carries the stop reason (`extractData: true` drops it).
+    const opts = { stream: false, extractData: false, includePreset: false, includeInstruct: false, signal: req.signal };
     const send = (payload: Record<string, unknown>) =>
       c.ConnectionManagerRequestService.sendRequest(req.profileId, messages, req.maxTokens, opts, payload);
 
+    const answer = (raw: unknown): GenAnswer => ({ text: answerText(raw), finishReason: finishReasonOf(raw) });
     const payload = reasoningPayload(api, req.think);
     try {
-      return answerText(await send(payload));
+      return answer(await send(payload));
     } catch (e) {
-      if (Object.keys(payload).length === 0) throw e;
+      if (Object.keys(payload).length === 0 || req.signal?.aborted) throw e;
       // Some providers reject the reasoning override: retry once without it.
-      return answerText(await send({}));
+      return answer(await send({}));
     }
   }
 
