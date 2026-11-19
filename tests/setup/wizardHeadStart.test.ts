@@ -113,3 +113,15 @@ describe('the wizard: head start', () => {
     }
   });
 });
+
+describe('the wizard: character development (P14b)', () => {
+  it('defaults to normal, and the result carries the chosen mode', () => {
+    const w = ready('ann', 'bea');
+    expect(w.state.development).toBe('normal');
+    expect(w.result()!.characterDevelopment).toBe('normal');
+    w.setDevelopment('off');
+    expect(w.result()!.characterDevelopment).toBe('off');
+    w.setDevelopment('slow');
+    expect(w.result()!.characterDevelopment).toBe('slow');
+  });
+});

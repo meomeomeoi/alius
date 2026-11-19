@@ -34447,6 +34447,7 @@ var Wizard = class {
       content: { enabled: this.deps.explicitContent === true && this.deps.registries.contentCategories.has(EXPLICIT_CATEGORY) ? [EXPLICIT_CATEGORY] : [] },
       campaign: { kind: "default", deathRule: defaultDeathRule(this.deps.difficulty ?? "normal"), warden: { by: "corporation" } },
       headStart: { days: 0, newArrivals: [] },
+      development: "normal",
       units: [],
       calibrationIndex: 0,
       target: "new_group",
@@ -34497,6 +34498,12 @@ var Wizard = class {
   setHeadStart(days) {
     if (!TUNING.headStart.days.includes(days)) return;
     this.s.headStart = { days, newArrivals: days === 0 ? [] : this.s.headStart.newArrivals };
+    this.emit();
+  }
+  /** P14b: the pace of character development; an unknown value is ignored. */
+  setDevelopment(mode) {
+    if (!["off", "slow", "normal"].includes(mode)) return;
+    this.s.development = mode;
     this.emit();
   }
   /** P11b: a chosen unit arrives today instead of having known the commander; nothing happens at arrival or for a card that is not chosen. */
@@ -35050,7 +35057,7 @@ var Wizard = class {
       const w = this.s.campaign.warden;
       result.mode = { kind: "leashswap", deathRule: this.s.campaign.deathRule, warden: w.by === "player" && w.index < units.length ? { by: "player", index: w.index } : { by: "corporation" } };
     }
-    result.characterDevelopment = "normal";
+    result.characterDevelopment = this.s.development;
     if (this.s.headStart.days > 0) result.headStart = { days: this.s.headStart.days, newArrivals: this.s.headStart.newArrivals.filter((a) => units.some((u) => u.cardRef === a)) };
     if (prologue) result.onboarding = { prologueId: prologue.id, veteran: this.s.mode === "veteran" };
     const errors = validateSetup(result, this.deps.registries, { desireBondDefects: this.deps.desireBondDefects });
@@ -35948,6 +35955,32 @@ function renderWardenPick(host, wizard) {
   ));
 }
 
+// src/ui/setup/developmentStep.ts
+var DEVELOPMENT_LABEL = { off: "OFF", slow: "SLOW", normal: "NORMAL" };
+var TEXT2 = {
+  off: "Soldiers stay as their cards say.",
+  slow: "Soldiers change slowly from what they live through, at half the pace.",
+  normal: "Soldiers change slowly from what they live through."
+};
+function renderDevelopmentSection(host, wizard) {
+  const current = wizard.state.development;
+  const select = h(
+    "select",
+    { name: "characterDevelopment", class: "alius-input" },
+    ...["off", "slow", "normal"].map((m) => h("option", { value: m, selected: m === current }, DEVELOPMENT_LABEL[m]))
+  );
+  select.value = current;
+  select.addEventListener("change", () => wizard.setDevelopment(select.value));
+  host.append(h(
+    "section",
+    { class: "alius-section alius-character-development" },
+    h("h3", {}, "CHARACTER DEVELOPMENT"),
+    h("p", { class: "alius-hint" }, "Nothing is announced when a soldier changes: it shows in how she acts, and her file records it afterwards. Her card and her own limits never change."),
+    h("label", { class: "alius-field alius-option", ...analyzeNative("glossary:character_development") }, h("span", { class: "alius-field-label" }, "Pace"), select),
+    h("p", { class: "alius-dim", "data-development-text": current }, TEXT2[current])
+  ));
+}
+
 // src/ui/setup/worldParams.ts
 var MAX_CARDS = 6;
 function renderWorldParams(host, ctx2) {
@@ -36004,6 +36037,8 @@ function renderWorldParams(host, ctx2) {
   renderModeSection(modeHost, wizard);
   const headStartHost = h("div", { class: "alius-world-head-start" });
   renderHeadStartSection(headStartHost, wizard);
+  const developmentHost = h("div", { class: "alius-world-development" });
+  renderDevelopmentSection(developmentHost, wizard);
   const contentHost = h("div", { class: "alius-section alius-world-content" });
   renderContentSection(contentHost, { enabled: wizard.state.content.enabled, registries: reg, onChange: (enabled) => wizard.setContent(enabled) });
   const summary = wizard.worldSummary();
@@ -36027,6 +36062,7 @@ function renderWorldParams(host, ctx2) {
     ]),
     modeHost,
     headStartHost,
+    developmentHost,
     contentHost,
     h(
       "section",

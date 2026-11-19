@@ -152,7 +152,7 @@ describe('SYS › character development', () => {
     let cur = state;
     renderSysTab(host, {
       st, getState: () => cur, getLoad: () => ({ kind: 'none' }), toast: () => {}, modal: async () => null, onSettingsChanged: () => {},
-      dispatch: (a) => { sent.push(a); if (cur) { const r = dispatch(cur, a as never, reg); cur = r.state; return r.events as never; } return []; },
+      dispatch: (a: { type: string; payload?: unknown }) => { sent.push(a); if (cur) { const r = dispatch(cur, a as never, reg); cur = r.state; return r.events as never; } return []; },
     } as never);
     return { host, sent, state: () => cur };
   };

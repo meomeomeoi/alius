@@ -904,11 +904,11 @@ interface DevMoment {
 - Create: `docs/MANUAL_TEST_P14b.md` (in-ST checklist: a week with a caretaker witnessing punishments; the moment directive in the next scene; the dossier line after; REROLL refused after; HOLD; re-sync with and without reset; old save stays off until SYS).
 - Test: `tests/ui/setup/developmentStep.test.ts`
 
-- [ ] **Step 1: Write the failing tests**: the select defaults to `normal` and writes the field; `off` writes `'off'`; an old save opened in SYS shows `off`.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.**
-- [ ] **Step 4: Run** the file, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P14b): development mode in the wizard; manual test`
+- [x] **Step 1: Write the failing tests**: the select defaults to `normal` and writes the field; `off` writes `'off'`; an old save opened in SYS shows `off`.
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.**
+- [x] **Step 4: Run** the file, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P14b): development mode in the wizard; manual test`
 
 ---
 
