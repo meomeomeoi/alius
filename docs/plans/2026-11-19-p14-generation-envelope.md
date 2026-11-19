@@ -461,7 +461,7 @@ Each task moves the caller code into the site's handlers, deletes the async wrap
   - `Comms.rerollLast(unitId): Promise<void>` (the `dm.reply` reroll)
   - `Comms.replyState(unitId): { siteKey: string; reroll: { enabled: boolean; reason?: string } } | null`, for the UI
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - `a failed reply records dm.reply under the commander's message`;
   - `retry answers that message and reads it`;
   - `a newer commander message expires the old record`;
@@ -489,7 +489,7 @@ Each task moves the caller code into the site's handlers, deletes the async wrap
   - action `dilemma/reword { id, output }`. It needs `status === 'presented'` and no choice. It validates like `presentDilemma` (`parseDilemmaOutput`, `validateOptions`, `nothingChoosable`) and replaces `title`, `setup`, `options` and `source: 'model'`. A rejection changes nothing and returns `dilemma_rejected { retry: false }`. It draws no rng; test it.
   - `DirectorController.useFallback(): void`: dispatches `director/fallback` for the open request.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - Director:
     - `a failed tick keeps the request open and records director.tick` (user: hold);
     - `RETRY applies the model plan and closes`;
@@ -506,10 +506,10 @@ Each task moves the caller code into the site's handlers, deletes the async wrap
     - `a failed recap records on the report`;
     - `reroll replaces the recap`;
     - `a newer report expires the record`.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.** If removing the dilemma `maxAttempts` loop moves a seeded dilemma test, stop and report. The fallback of an engine rejection stays in `presentDilemma`.
-- [ ] **Step 4: Run** the files, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P14): director, dilemma and recap sites through the envelope`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.** If removing the dilemma `maxAttempts` loop moves a seeded dilemma test, stop and report. The fallback of an engine rejection stays in `presentDilemma`.
+- [x] **Step 4: Run** the files, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P14): director, dilemma and recap sites through the envelope`
 
 ---
 
@@ -522,7 +522,7 @@ Each task moves the caller code into the site's handlers, deletes the async wrap
 **Interfaces:**
 - Produces: `AliusApp.rerollGrunt(unitId): Promise<void>` (`flavor.grunt` reroll, from the BASE row)
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - `compaction and fold fall back with no record`;
   - `a failed rumor retelling is a quiet record and expires once told`;
   - `a failed vignette is quiet and expires when the slot passes`;
@@ -530,10 +530,10 @@ Each task moves the caller code into the site's handlers, deletes the async wrap
   - `grunt reroll renames`;
   - `a failed enemy name writes nothing and the combat is untouched`;
   - `quiet records do not count for the badge or the hub` (`openRecords(…).filter(full)`).
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement** per the table.
-- [ ] **Step 4: Run** the files, then `npm test` → PASS; goldens unchanged.
-- [ ] **Step 5: Commit** `feat(P14): background and day sites through the envelope`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement** per the table.
+- [x] **Step 4: Run** the files, then `npm test` → PASS; goldens unchanged.
+- [x] **Step 5: Commit** `feat(P14): background and day sites through the envelope`
 
 ---
 
@@ -549,17 +549,17 @@ Each task moves the caller code into the site's handlers, deletes the async wrap
   - action `bonds/reword_rule { ruleId, text }`: the rule is `proposed`, delivered and unanswered; no rng
   - `DisciplineController.reword(demandId)`, `BondsController.reword(ruleId)`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - `a failed demand wording delivers the template and leaves a quiet record`;
   - `RETRY rewords it before an answer`;
   - `reroll refused after the answer`;
   - the same three for a rule;
   - `ballot, dm_edit and fragment failures keep their template and write nothing`;
   - `a fragment record never exists` (hidden truth: no record or label names an intercept).
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.** `flavor.<kind>` site handlers receive the kind's input; the site id is built as `` `flavor.${kind}` ``.
-- [ ] **Step 4: Run** the files, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P14): wording sites through the envelope`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.** `flavor.<kind>` site handlers receive the kind's input; the site id is built as `` `flavor.${kind}` ``.
+- [x] **Step 4: Run** the files, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P14): wording sites through the envelope`
 
 ---
 
@@ -579,7 +579,7 @@ Each task moves the caller code into the site's handlers, deletes the async wrap
 **Interfaces:**
 - Produces: `WardenController.rerollEpilogue()`, `WardenController.rerollAgenda()`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - Architecture:
     - `callLlm and attemptLlm are imported only by src/llm/envelope.ts`: a value import of `../llm/orchestrator` or `./orchestrator` anywhere else in `src/` fails; `import type` is allowed.
     - `no src file outside llm/ imports llm/calls/* for a function`: types and sanitizers are allowed.
@@ -595,10 +595,10 @@ Each task moves the caller code into the site's handlers, deletes the async wrap
     - `a failed judge dispatches without it and writes nothing`;
     - `a failed epilogue writes the joined lines and a full record; reroll replaces it`;
     - `ping reports the reason`.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.** `orchestrator.ts` keeps `LlmDeps` and the types; the architecture test reads `import {` lines (not `import type`).
-- [ ] **Step 4: Run** the files, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P14): setup, warden and ping sites; only the envelope calls the model`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.** `orchestrator.ts` keeps `LlmDeps` and the types; the architecture test reads `import {` lines (not `import type`).
+- [x] **Step 4: Run** the files, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P14): setup, warden and ping sites; only the envelope calls the model`
 
 **Chunk (b) ends here.**
 
