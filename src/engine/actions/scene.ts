@@ -15,6 +15,7 @@ import { isLiving } from '../economy';
 import { addChronicle, addFact, applyCompaction, nextId, revealCrime } from '../memory';
 import { recordSceneRange } from '../memory/scenes';
 import { applyIntents } from '../relations/apply';
+import { showMoments, stampMoments, unstampMoments } from '../development/moments';
 import { restrictionReason, settleDefiance } from '../discipline';
 import { installRelationAccounting } from '../relations/gain';
 import { evaluateAutomatic, pushHistory } from '../relations/graph';
@@ -94,6 +95,7 @@ registerAction('scene/start', (draft, payload, ctx) => {
     ...(typeof payload.nightEntryId === 'string' ? { nightEntryId: payload.nightEntryId } : {}),
   };
   draft.calendar.pendingScene ??= { unitId: participants[0], day: draft.day, slot: draft.slot };
+  stampMoments(draft, participants, sceneId); // P14b: a quiet change of hers shows in this scene
   for (const id of participants) if (draft.relations[id]) draft.relations[id].contactDay = draft.day; // P9d: judges a daily-contact rule
   // P12: Secret Frequency listens once per present unit (nothing is drawn without the trait)
   const heard = rollIntercepts(draft, ctx, participants, { private: participants.length === 1, dm: false, sceneId });
@@ -158,6 +160,7 @@ registerAction('scene/end', (draft, payload, ctx) => {
   if (!scene) throw new Error('scene/end: no scene is open');
   const reg = ctx.registries;
   const events = [];
+  showMoments(draft, scene.id); // P14b: what this scene carried has been shown; it joins her dossier view
   const summary = isObj(payload) && isObj(payload.summary) ? payload.summary : undefined;
 
   const names = scene.participants.map((id) => draft.squad.find((u) => u.id === id)?.displayName ?? id).join(', ');
@@ -224,6 +227,7 @@ registerAction('scene/abort', (draft, _payload, ctx) => {
   const scene = draft.scene;
   if (!scene) throw new Error('scene/abort: no scene is open');
   const settled = settleDefiance(draft, ctx, { sceneId: scene.id });
+  unstampMoments(draft, scene.id); // P14b: the scene never happened
   delete draft.scene;
   // an activity talk keeps its hold so the app can cancel it with `calendar/cancel_scene`
   if (scene.origin !== 'activity') delete draft.calendar.pendingScene;

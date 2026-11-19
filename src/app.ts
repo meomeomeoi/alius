@@ -673,12 +673,14 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     discipline.onSceneClosed(); // so do the stance and threat directives (P9)
     onboarding.onSceneClosed(); // and the prologue's goal and wrap directives (P11)
     headStart.onSceneClosed(); // and the head start's opening line (P11b)
+    development.onSceneClosed(); // and a quiet change's cue (P14b)
     if (state?.scene) {
       scene.resume();
       loyalty.onSceneOpened();
       discipline.onSceneOpened();
       onboarding.onSceneOpened();
       headStart.onSceneOpened();
+      development.onSceneOpened();
       showScene();
     } else if (state && state.slot === 'night' && state.calendar.nightEvent && confrontationNight(state)) {
       showScene(); // a confrontation is waiting: its panel comes back after a reload
@@ -709,6 +711,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
     discipline.onSceneOpened();
     onboarding.onSceneOpened();
     headStart.onSceneOpened();
+    development.onSceneOpened();
     showScene();
     shell.open();
     return true;
@@ -797,6 +800,7 @@ export function createApp(st: StAdapter, deps: AppDeps): AliusApp {
         loyalty.onSceneClosed();
         discipline.onSceneClosed();
         headStart.onSceneClosed();
+        development.onSceneClosed();
       }
       if (has('commander_injured')) api.dispatch({ type: 'relations/commander_injured', payload: {} }, { expectChatId: chatId });
       if (has('night_started') && state?.slot === 'night' && !state.scene) {

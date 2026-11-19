@@ -23071,6 +23071,58 @@ function recentLines(state, viewers, cfg) {
   ];
 }
 
+// src/engine/development/moments.ts
+function stampMoments(draft, participants, sceneId) {
+  for (const id of participants) {
+    const dev = draft.squad.find((u) => u.id === id)?.development;
+    if (!dev) continue;
+    for (const item of [...dev.moments, ...dev.facts]) if (item.sceneId === void 0 && item.shownDay === void 0) item.sceneId = sceneId;
+  }
+}
+function showMoments(draft, sceneId) {
+  for (const u of draft.squad) {
+    const dev = u.development;
+    if (!dev) continue;
+    for (const item of [...dev.moments, ...dev.facts]) if (item.sceneId === sceneId && item.shownDay === void 0) item.shownDay = draft.day;
+  }
+}
+function unstampMoments(draft, sceneId) {
+  for (const u of draft.squad) {
+    const dev = u.development;
+    if (!dev) continue;
+    for (const item of [...dev.moments, ...dev.facts]) if (item.sceneId === sceneId && item.shownDay === void 0) delete item.sceneId;
+  }
+}
+function stampedMoments(state, unitId) {
+  const id = state.scene?.id;
+  if (id === void 0) return [];
+  return developmentOf(state.squad.find((u) => u.id === unitId) ?? {}).moments.filter((m) => m.sceneId === id && m.shownDay === void 0);
+}
+var DRAFT_MARK = /^\s*AUTHOR TO WRITE:\s*/i;
+function wentUp(m) {
+  const kind = axisKind(m.axis);
+  if (kind === "value") return Number(m.to) > Number(m.from);
+  if (kind === "bond") {
+    const field2 = bondField(m.axis);
+    const scale = field2 === null ? [] : TUNING.development.scales[field2].map(String);
+    return scale.indexOf(m.to) > scale.indexOf(m.from);
+  }
+  return m.to === "yes";
+}
+function wordsOf(reg, m) {
+  const entry = axisEntry(reg, m.axis);
+  if (!entry) return null;
+  const tag2 = m.axis.slice(m.axis.indexOf(":") + 1);
+  const name = axisKind(m.axis) === "taste" ? String(reg.tastes.get(tag2)?.name ?? tag2) : tag2.replace(/_/g, " ");
+  return (wentUp(m) ? entry.up : entry.down).replace(DRAFT_MARK, "").replace(/\{tag\}/g, name).trim();
+}
+function momentDirective(state, reg, unitId) {
+  const unit2 = state.squad.find((u) => u.id === unitId);
+  const words3 = stampedMoments(state, unitId).map((m) => wordsOf(reg, m)).filter((w) => w !== null && w !== "");
+  if (!unit2 || words3.length === 0) return null;
+  return { id: `development:${unitId}`, text: `${unit2.displayName} has changed lately: ${words3.join("; ")}. Let it show in how she acts this scene; never announce it.`, expiresAfter: "scene" };
+}
+
 // src/engine/actions/scene.ts
 installRelationAccounting();
 var isObj12 = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -23139,6 +23191,7 @@ registerAction("scene/start", (draft, payload, ctx2) => {
     ...typeof payload.nightEntryId === "string" ? { nightEntryId: payload.nightEntryId } : {}
   };
   draft.calendar.pendingScene ??= { unitId: participants[0], day: draft.day, slot: draft.slot };
+  stampMoments(draft, participants, sceneId);
   for (const id of participants) if (draft.relations[id]) draft.relations[id].contactDay = draft.day;
   const heard = rollIntercepts(draft, ctx2, participants, { private: participants.length === 1, dm: false, sceneId });
   return [{ type: "scene_started", sceneId, participants, locationId: loc.id }, ...startTone(draft, reg), ...metAtScene(draft, reg, participants), ...heard];
@@ -23202,6 +23255,7 @@ registerAction("scene/end", (draft, payload, ctx2) => {
   if (!scene) throw new Error("scene/end: no scene is open");
   const reg = ctx2.registries;
   const events = [];
+  showMoments(draft, scene.id);
   const summary = isObj12(payload) && isObj12(payload.summary) ? payload.summary : void 0;
   const names = scene.participants.map((id) => draft.squad.find((u) => u.id === id)?.displayName ?? id).join(", ");
   const line2 = typeof summary?.chronicle === "string" ? summary.chronicle.trim().slice(0, CHRONICLE_LINE_MAX).trim() : "";
@@ -23262,6 +23316,7 @@ registerAction("scene/abort", (draft, _payload, ctx2) => {
   const scene = draft.scene;
   if (!scene) throw new Error("scene/abort: no scene is open");
   const settled = settleDefiance(draft, ctx2, { sceneId: scene.id });
+  unstampMoments(draft, scene.id);
   delete draft.scene;
   if (scene.origin !== "activity") delete draft.calendar.pendingScene;
   return [{ type: "scene_aborted", sceneId: scene.id }, ...settled, ...expireSceneProposals(draft, scene.participants), ...argueEnded(draft, ctx2, scene.id)];
@@ -28389,8 +28444,22 @@ function createDevelopment(deps) {
     });
     await flight;
   }
+  const clear = () => deps.context.clearMatching((d) => d.id.startsWith("development:"));
   return {
     run,
+    onSceneOpened() {
+      const s = state();
+      if (!s?.scene) return;
+      for (const id of s.scene.participants) {
+        const d = momentDirective(s, deps.registries(), id);
+        if (d) deps.context.setDirective(d);
+      }
+      deps.refreshContext();
+    },
+    onSceneClosed() {
+      clear();
+      deps.refreshContext();
+    },
     reroll: async (unitId) => {
       await deps.generations.reroll(SITE2, unitId);
     },
@@ -44377,12 +44446,14 @@ function createApp(st, deps) {
     discipline.onSceneClosed();
     onboarding.onSceneClosed();
     headStart.onSceneClosed();
+    development.onSceneClosed();
     if (state?.scene) {
       scene.resume();
       loyalty.onSceneOpened();
       discipline.onSceneOpened();
       onboarding.onSceneOpened();
       headStart.onSceneOpened();
+      development.onSceneOpened();
       showScene();
     } else if (state && state.slot === "night" && state.calendar.nightEvent && confrontationNight(state)) {
       showScene();
@@ -44418,6 +44489,7 @@ function createApp(st, deps) {
     discipline.onSceneOpened();
     onboarding.onSceneOpened();
     headStart.onSceneOpened();
+    development.onSceneOpened();
     showScene();
     shell.open();
     return true;
@@ -44495,6 +44567,7 @@ function createApp(st, deps) {
         loyalty.onSceneClosed();
         discipline.onSceneClosed();
         headStart.onSceneClosed();
+        development.onSceneClosed();
       }
       if (has2("commander_injured")) api.dispatch({ type: "relations/commander_injured", payload: {} }, { expectChatId: chatId });
       if (has2("night_started") && state?.slot === "night" && !state.scene) {

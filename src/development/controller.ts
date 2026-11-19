@@ -1,4 +1,5 @@
 import { enabledCategories } from '../engine/bonds/content';
+import { momentDirective } from '../engine/development/moments';
 import { effectiveProfile } from '../engine/development/profile';
 import { eligibleAxes, fallbackReview, reviewCommitted, reviewDue, undoReview, unitDue, type ReviewValue } from '../engine/development/review';
 import { developmentOf } from '../engine/development/state';
@@ -14,6 +15,9 @@ const SITE = 'development.review';
 export interface DevelopmentController {
   /** After a settled dispatch: asks for one due review (one call per run; the next unit waits for the next run). */
   run(): Promise<void>;
+  /** A scene opened: each participant whose quiet change the scene carries gets a one-time cue. */
+  onSceneOpened(): void;
+  onSceneClosed(): void;
   /** P14: REROLL of a unit's last review (before she has shown it) and why it is not allowed. */
   reroll(unitId: string): Promise<void>;
   rerollState(unitId: string): { enabled: boolean; reason?: string };
@@ -106,8 +110,23 @@ export function createDevelopment(deps: DevelopmentDeps): DevelopmentController 
     await flight;
   }
 
+  const clear = (): void => deps.context.clearMatching((d) => d.id.startsWith('development:'));
+
   return {
     run,
+    onSceneOpened() {
+      const s = state();
+      if (!s?.scene) return;
+      for (const id of s.scene.participants) {
+        const d = momentDirective(s, deps.registries(), id);
+        if (d) deps.context.setDirective(d);
+      }
+      deps.refreshContext();
+    },
+    onSceneClosed() {
+      clear();
+      deps.refreshContext();
+    },
     reroll: async (unitId) => { await deps.generations.reroll(SITE, unitId); },
     rerollState: (unitId) => deps.generations.rerollState(SITE, unitId),
     async idle() { while (flight) await flight.catch(() => {}); },

@@ -746,7 +746,7 @@ interface DevMoment {
     - `committed`: `reviewCommitted`;
     - `undo`: implicit in `replace: true`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - `stamp, show, abort`: a moment stamped at `scene/start` for a participant only; `scene/end` sets `shownDay`; `scene/abort` removes the stamp and leaves `shownDay` absent.
   - `the directive appears while the scene runs and is cleared after`: the text holds the axis `up` words; the pronoun test's checker (`tests/content/pronouns.test.ts` helper) passes on it.
   - `one review per run`: two units due → one `generate` call, the second on the next `run`.
@@ -754,10 +754,10 @@ interface DevMoment {
   - `answer after a chat switch is dropped` (`expectChatId`).
   - `reroll refused after the scene`.
   - `failure records quiet`: a refused answer writes a `quiet` record; no chip is drawn on the hub (the hub draws `full` only).
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement.** The controller follows `src/headStart/controller.ts` (state is the truth, `asked` set per chat) and `memoryController.run` (one call per run, `inflight`, `idle`).
-- [ ] **Step 4: Run** the files, then `npm test` → PASS.
-- [ ] **Step 5: Commit** `feat(P14b): quiet development moments and the review controller`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement.** The controller follows `src/headStart/controller.ts` (state is the truth, `asked` set per chat) and `memoryController.run` (one call per run, `inflight`, `idle`).
+- [x] **Step 4: Run** the files, then `npm test` → PASS.
+- [x] **Step 5: Commit** `feat(P14b): quiet development moments and the review controller`
 
 **Chunk (b) ends here.** Stop and report.
 
