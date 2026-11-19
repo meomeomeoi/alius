@@ -1,4 +1,5 @@
 import { negotiationHolds, noteFeat } from '../power/outside';
+import { judgedOf, plainPayload, rollOverride } from '../warden/override';
 import { herPick, overrideHer } from '../personal/obedience';
 import { obedienceOf } from '../personal/state';
 import { isCostEffect } from '../../content/schemas';
@@ -238,13 +239,18 @@ export function dilemmaOptions(
 const isBookkeeping = (fx: WorldEffect): boolean => fx.type === 'flag' || fx.type === 'thread_flag';
 
 /** Applies the chosen option once: an optional social check, the effects, the bookkeeping and the node of an expedition event. */
-export function chooseDilemma(draft: CampaignState, ctx: EngineCtx, id: unknown, index: unknown, route?: RoutePick): EngineEvent[] {
+export function chooseDilemma(draft: CampaignState, ctx: EngineCtx, id: unknown, index: unknown, route?: RoutePick, wardenChecked = false, raw?: unknown): EngineEvent[] {
   const open = draft.dilemmas?.open;
   if (!open || open.id !== id || open.status !== 'presented' || !open.options) throw new Error(STALE);
   const option = dilemmaOptions(draft, ctx.registries)[index as number];
   if (typeof index !== 'number' || !Number.isInteger(index) || !option) throw new Error(`There is no option ${String(index)}.`);
   if (option.disabled !== null) throw new Error(`${option.label}: ${option.disabled}.`);
   const chosen = open.options[index];
+  // P13: the warden may override a major or defining decision she does not want (it stays open); draws rng only on a conflict
+  if (!wardenChecked) {
+    const overridden = rollOverride(draft, ctx, { kind: 'dilemma', index }, { payload: { ...plainPayload(raw), id, index }, judged: judgedOf(raw) });
+    if (overridden) return overridden;
+  }
   // P9c: a day the commander obeys her: choosing another option than the one she would pick is choosing against her
   const ob = obedienceOf(draft);
   const pick = ob?.who === 'commander' ? herPick(draft, ctx.registries, ob.unitId) : null;

@@ -6,6 +6,7 @@ import { checkOrder, issueOrder } from '../combat/orders';
 import { addStress } from '../combat/stress';
 import { isStanding, living } from '../combat/targeting';
 import { TUNING } from '../tuning';
+import { plainPayload, rollOverride } from '../warden/override';
 import { isLiving } from '../economy';
 import { leashCost } from '../leash/use';
 import { finalizeCombat } from '../combat/outcome';
@@ -91,6 +92,11 @@ registerAction('combat/order', (draft, payload, ctx) => {
   const ectx = makeCtx(cs, draft, ctx.registries, ctx.rng);
   const reason = checkOrder(ectx, payload.orderId, payload.targetCid);
   if (reason) throw new Error(reason);
+  // P13: the warden may hold an order she does not want (no CP is spent); combat never calls the judge (overview P7)
+  if (payload.wardenChecked !== true) {
+    const overridden = rollOverride(draft, ctx, { kind: 'combat_order', orderId: payload.orderId, ...(payload.targetCid !== undefined ? { targetCid: payload.targetCid } : {}) }, { payload: plainPayload(payload) });
+    if (overridden) return overridden;
+  }
   const start = cs.log.length;
   issueOrder(ectx, payload.orderId, payload.targetCid);
   if (draft.expedition && cs.expedition) draft.expedition.orders = (draft.expedition.orders ?? 0) + 1; // P9b: an order given during a run counts for the `ordered_mission` feat

@@ -33,6 +33,6 @@ registerAction('dilemma/choose', (draft, payload, ctx) => {
   // P12: a debts dilemma's answer has effects beyond its authored ones, read by the dilemma's context and the option's id
   const open = draft.dilemmas?.open;
   const optionId = typeof p.index === 'number' ? open?.options?.[p.index]?.id : undefined;
-  const events = chooseDilemma(draft, ctx, p.id, p.index, readRoutePick(p.route));
+  const events = chooseDilemma(draft, ctx, p.id, p.index, readRoutePick(p.route), p.wardenChecked === true, p);
   return open ? [...events, ...debtsChoice(draft, ctx, open.context, optionId, open.subjectId)] : events;
 });

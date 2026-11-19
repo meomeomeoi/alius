@@ -1218,5 +1218,48 @@
         "stress": 14
       }
     }
+  },
+  {
+    "id": "warden_complied",
+    "cause": "The commander followed the warden's call",
+    "journal": "the commander followed her call",
+    "rows": {
+      "minor": {
+        "trust": 1,
+        "affinity": 1
+      },
+      "moderate": {
+        "trust": 2,
+        "affinity": 1
+      },
+      "major": {
+        "trust": 3,
+        "affinity": 2
+      },
+      "extreme": {}
+    }
+  },
+  {
+    "id": "warden_defied",
+    "cause": "The commander defied the warden's call",
+    "journal": "the commander defied her call",
+    "rows": {
+      "minor": {
+        "trust": -1,
+        "affinity": -1,
+        "stress": 1
+      },
+      "moderate": {
+        "trust": -2,
+        "affinity": -2,
+        "stress": 2
+      },
+      "major": {
+        "trust": -4,
+        "affinity": -3,
+        "stress": 4
+      },
+      "extreme": {}
+    }
   }
 ]

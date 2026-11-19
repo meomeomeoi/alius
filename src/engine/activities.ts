@@ -1,4 +1,5 @@
 import { rollCountermand } from './power/leader';
+import { judgedOf, plainPayload, rollOverride } from './warden/override';
 import type { Entry, Registries } from '../content/types';
 import type { ActivityEffect } from '../content/schemas';
 import { consumeSlots, isQuietNight } from './calendar';
@@ -23,6 +24,8 @@ export interface ActivityRequest {
   focus?: string;
   /** P9b: the leader's countermand was answered (OVERRULE): run the activity without rolling it again. */
   countermandChecked?: boolean;
+  /** P13: the warden's override was answered (or there is none to roll): run the activity without asking her again. */
+  wardenChecked?: boolean;
 }
 
 type Cost = { credits?: number; supplies?: number; plyx?: number };
@@ -155,6 +158,12 @@ export function runActivity(draft: CampaignState, ctx: EngineCtx, request: unkno
   if (req.countermandChecked !== true) {
     const countermanded = rollCountermand(draft, ctx, req);
     if (countermanded) return countermanded;
+  }
+
+  // P13: the warden may override an order that cuts across what she expects (nothing happens, no slot is spent); draws rng only on a conflict
+  if (req.wardenChecked !== true) {
+    const overridden = rollOverride(draft, ctx, { kind: 'activity', activityId: req.activityId, ...(req.companionId !== undefined ? { companionId: req.companionId } : {}), ...(req.unitIds !== undefined ? { unitIds: req.unitIds } : {}) }, { payload: plainPayload(request), judged: judgedOf(request) });
+    if (overridden) return overridden;
   }
 
   const cost = activityCost(draft, reg, a);

@@ -652,7 +652,7 @@ Rulings marked **(user)** were answered by the user on 2026-11-18. Task 18 copie
   - `OpenOverride = { id; order; expectationId; alternative: WardenOrder | null; altLabel; day; slot; context: 'base'|'combat'|'dilemma'; arguing?: string; argued?: boolean }`
 - Consumes: `conflictOf` / `herAlternative` (Task 5), `unitObeys` (P9c), `challengeChance`'s formula (P9b; the warden version is a new function, `argueChance(state, reg)`)
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - `overrideChance matches the formula`: weight 0.5, satisfaction 60, affinity 0 → `0.5 × 0.4 × 1 × 2 = 0.4`; affinity 100 → 0.2; cap 0.9.
   - `override rate over seeds`: 2000 seeded activity requests with a conflict at chance 0.4 → hits in [0.37, 0.43].
   - `no conflict: no draw`, `no mode: no draw` (rng equal), `obedience day: no draw`.
@@ -662,10 +662,10 @@ Rulings marked **(user)** were answered by the user on 2026-11-18. Task 18 copie
   - `roster and expedition overrides` (her alternative list).
   - `combat: hold spends no CP; ARGUE roll win runs the order; loss holds; no defiance either way`.
   - `the expectation becomes known on a hit`.
-- [ ] **Step 2: Run** → FAIL.
-- [ ] **Step 3: Implement** per the Rulings. The punishment roll and escalation after DEFY are stubs that Tasks 9 and 11 fill (`afterDefy(draft, ctx, weight)` returns `[]` for now).
-- [ ] **Step 4: Run** the file, then `npm test` → PASS; no seeded test moved.
-- [ ] **Step 5: Commit** `feat(P13): the override roll, COMPLY / DEFY and the combat ARGUE roll`
+- [x] **Step 2: Run** → FAIL.
+- [x] **Step 3: Implement** per the Rulings. The punishment roll and escalation after DEFY are stubs that Tasks 9 and 11 fill (`afterDefy(draft, ctx, weight)` returns `[]` for now).
+- [x] **Step 4: Run** the file, then `npm test` → PASS; no seeded test moved.
+- [x] **Step 5: Commit** `feat(P13): the override roll, COMPLY / DEFY and the combat ARGUE roll`
 
 ---
 

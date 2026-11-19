@@ -172,8 +172,10 @@ export function herAlternative(state: CampaignState, reg: Registries, order: War
     case 'dilemma': {
       const options = dilemmaOptions(state, reg);
       const hers = herPick(state, reg, w.unitId);
-      const ok = (i: number): boolean => i !== order.index && options[i]?.disabled === null && conflictOf(state, reg, { kind: 'dilemma', index: i }) === null;
-      const index = hers !== null && hers !== order.index && options[hers]?.disabled === null ? hers : options.findIndex((_, i) => ok(i));
+      // an option that asks how it is done (a route check) cannot be chosen for the commander
+      const plain = (i: number): boolean => options[i]?.disabled === null && state.dilemmas?.open?.options?.[i]?.routeCheck === undefined;
+      const ok = (i: number): boolean => i !== order.index && plain(i) && conflictOf(state, reg, { kind: 'dilemma', index: i }) === null;
+      const index = hers !== null && hers !== order.index && plain(hers) ? hers : options.findIndex((_, i) => ok(i));
       return index >= 0 ? { order: { kind: 'dilemma', index }, label: options[index].label } : HOLD();
     }
     case 'combat_order': return HOLD('Hold: the order is not given');

@@ -39,6 +39,8 @@ export interface OpenOverride {
   id: string;
   order: WardenOrder;
   expectationId: string;
+  /** The conflict's weight (the expectation's weight, or the judge's share of it). */
+  weight: number;
   /** What she wants instead; `null` = hold (nothing happens, no slot is spent). */
   alternative: WardenOrder | null;
   altLabel: string;
@@ -47,6 +49,8 @@ export interface OpenOverride {
   day: number;
   slot: string;
   context: 'base' | 'combat' | 'dilemma';
+  /** The combat id or the dilemma id this override belongs to (absent for a base order, which is tied to its day and slot). */
+  ref?: string;
   /** The scene id of an ARGUE in progress. */
   arguing?: string;
   /** An ARGUE scene ended without a compromise: only COMPLY and DEFY remain. */
@@ -76,6 +80,8 @@ export interface WardenState {
   leashRefreshDay: number;
   /** An override has fired at least once: the agenda is in play and the model may no longer replace it. */
   overrideFired?: true;
+  /** Counter behind the override ids. */
+  overrideSeq?: number;
   override?: OpenOverride;
   /** The Leash on the commander: only COMPLY is accepted at the next override. */
   compelled?: boolean;

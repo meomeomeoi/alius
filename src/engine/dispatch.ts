@@ -32,8 +32,15 @@ const EXPEDITION_OPEN_PREFIXES = ['expedition/', 'combat/', 'director/', 'debug/
 /** P13: a closed campaign (`ended`) runs only these: `debug/*` and the epilogue. */
 const ENDED_OK_PREFIXES = ['debug/', 'campaign/epilogue'];
 /** P13: allowed while a combat or an expedition is open (the death that closes the campaign, and its epilogue, must always be able to run). */
-const ALWAYS_OPEN = ['warden/no_snapshot', 'campaign/epilogue'];
+const ALWAYS_OPEN = ['warden/no_snapshot', 'campaign/epilogue', 'warden/answer'];
 const BLOCKED_BY_DILEMMA = ['activity/', 'calendar/consume_slot', 'scene/start', 'expedition/start'];
+
+/** P13: runs another action's handler on the same draft (the warden's COMPLY and DEFY re-run the order that was overridden). Throws when the action is unknown. */
+export function runHandler(type: string, draft: CampaignState, payload: unknown, ctx: EngineCtx): EngineEvent[] {
+  const handler = handlers.get(type);
+  if (!handler) throw new Error(`Unknown action ${type}`);
+  return handler(draft, payload, ctx);
+}
 
 export function registerAction(type: string, handler: Handler): void {
   if (handlers.has(type)) throw new Error(`Duplicate action type: ${type}`);

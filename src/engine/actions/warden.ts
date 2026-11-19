@@ -1,5 +1,6 @@
 import { registerAction } from '../dispatch';
 import { setAgenda } from '../warden/agenda';
+import { answerOverride } from '../warden/override';
 import { commanderDies, DEATH_CAUSES, type DeathCause } from '../warden/death';
 
 // Importing this module registers the P13 LEASHSWAP actions. `app.ts` imports it after `actions/special`.
@@ -50,4 +51,13 @@ registerAction('debug/kill_commander', (draft, payload, ctx) => {
   const cause = (payload as { cause?: unknown } | null | undefined)?.cause ?? 'terminated';
   if (!DEATH_CAUSES.includes(cause as DeathCause)) throw new Error('debug/kill_commander: the cause is `terminated` or `executed`.');
   return commanderDies(draft, ctx, cause as DeathCause);
+});
+
+/**
+ * The commander answers the warden's open override: `{ overrideId, answer: 'comply' | 'argue' | 'defy' }`. A stale or unknown id is refused
+ * and nothing runs. Allowed while a combat or an expedition is open (the override may belong to either).
+ */
+registerAction('warden/answer', (draft, payload, ctx) => {
+  const p = (typeof payload === 'object' && payload !== null ? payload : {}) as { overrideId?: unknown; answer?: unknown };
+  return answerOverride(draft, ctx, p.overrideId, p.answer);
 });

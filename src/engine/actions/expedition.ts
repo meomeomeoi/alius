@@ -1,4 +1,5 @@
 import { markDecidedBy } from '../power/scapegoat';
+import { judgedOf, plainPayload, rollOverride } from '../warden/override';
 import { readRoutePick } from '../commander/checks';
 import { registerAction } from '../dispatch';
 import {
@@ -28,6 +29,11 @@ registerAction('expedition/start', (draft, payload, ctx) => {
   }
   const problem = checkExpedition(draft, ctx.registries, p);
   if (problem) throw new Error(problem);
+  // P13: the warden may override a roster she does not want (nothing happens, nothing is spent)
+  if (payload.wardenChecked !== true) {
+    const overridden = rollOverride(draft, ctx, { kind: 'expedition', ...(p.missionId !== undefined ? { missionId: p.missionId } : {}), unitIds: [...unitIds] }, { payload: plainPayload(payload), judged: judgedOf(payload) });
+    if (overridden) return overridden;
+  }
   const events = startExpedition(draft, ctx, p);
   if (p.missionId !== undefined) markDecidedBy(draft, p.missionId, payload.voteId); // P9b: who answers for a mission the squad voted for
   return events;
